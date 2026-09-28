@@ -131,8 +131,11 @@ func TestDaftarInboxMengembalikanPekerjaanMilikPemanggil(t *testing.T) {
 	require.Equal(t, 3, respons.Summary.Outstanding)
 	require.NotEmpty(t, respons.Now)
 
-	// Nilai uang dikirim sebagai TEKS desimal kanonik, bukan angka JSON.
-	require.Equal(t, "45000000.00", respons.Cases[0].ClaimValue)
+	// Kontraknya berisi kesembilan kolom `InboxRegisterKomite_RD`, tidak lebih.
+	require.Equal(t, "K-2601", respons.Cases[0].CaseID)
+	require.NotEmpty(t, respons.Cases[0].PolicyNumber)
+	require.NotEmpty(t, respons.Cases[0].BranchName)
+	require.NotEmpty(t, respons.Cases[0].SourceOfBusiness)
 }
 
 // Kotak yang tidak dikenali JATUH ke Outstanding, dan pantulan `kotak` pada respons
@@ -298,7 +301,11 @@ func TestWaktuYangTidakTerisiDikirimKosong(t *testing.T) {
 	server := serverInbox(t, memory.SampleOperator)
 
 	kasus := bacaKasus(t, kirim(t, server, http.MethodGet, "/api/komite/inbox/K-2603", "")).Case
-	require.False(t, kasus.HasAIAssessment)
-	require.Empty(t, kasus.AIAssessedAt)
 	require.NotEmpty(t, kasus.CommitteeDate)
+	require.NotEmpty(t, kasus.CreatedAt)
+
+	// Kasus yang belum diputuskan Pega TIDAK membawa keputusan_pega sama sekali, alih-alih
+	// membawa "ditolak" — cabang `else` pada `GetKomitePAditerima` yang sengaja tidak
+	// ditiru. Lihat legacyOutcome pada repo/sqlstore.
+	require.Empty(t, kasus.LegacyOutcome)
 }

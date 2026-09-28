@@ -1,11 +1,18 @@
 // Package usecase mengorkestrasi modul Inbox PLA DLA — layar milik reasuradur.
 //
-// Empat operasi:
+// Layar induk — empat operasi:
 //
 //	Metadata  menyerahkan daftar tab, kolomnya, dan selisih terencana yang berlaku
 //	List      mengambil isi satu daftar
 //	Counts    mengambil tabel ringkas "Status / Jumlah"
 //	XOL       mengambil isi grid "DATA PLA DLA XOL KLAIM"
+//
+// Layar rincian ("Detail Claim") — empat lagi, di usecase/detail.go:
+//
+//	Detail           kepala klaim, grid PLA, grid DLA, dan riwayat komunikasi
+//	Documents        dokumen satu nomor pemberitahuan
+//	DocumentContent  isi satu dokumen
+//	Reply            MENULIS balasan atas satu percakapan
 //
 // Ekspor TIDAK menjadi operasi kelima: ia memanggil List berulang kali, halaman demi
 // halaman, dan menuliskan hasilnya langsung ke jawaban. Perakitannya ada di
@@ -23,10 +30,15 @@
 // muncul. Keduanya menempuh tindakan yang berbeda, dan hanya pesan yang membedakannya yang
 // dapat menuntun ke sana.
 //
-// # TIDAK ADA operasi yang MENULIS
+// # SATU operasi MENULIS, dan pelakunya PIHAK LUAR
 //
-// Layar ini seluruhnya baca-saja di Pega pula: keempat activity-nya hanya memuat data.
-// Ketiga tombolnya — "Detail Claim", "Detail", dan "DLA" — membuka layar lain.
+// Layar induknya baca-saja, di Pega maupun di sini. Yang menulis adalah balasan komunikasi
+// pada layar rincian — dan itu penulisan pertama di seluruh aplikasi ini yang pelakunya
+// bukan pegawai Asuransi Sinar Mas melainkan mitra reasuransi.
+//
+// Konsekuensinya diambil di usecase/detail.go: setiap balasan DICATAT beserta pelakunya,
+// dan pemagaran kepemilikannya berada di dalam pernyataan SQL-nya sendiri — bukan di
+// lapisan mana pun di atasnya.
 package usecase
 
 import (
@@ -105,6 +117,15 @@ func (s *Service) List(
 		return Listed{}, err
 	}
 
+	// Tampilan XOL tidak punya daftar klaim — lihat inboxpladla.ErrNotAClaimList.
+	//
+	// Pemeriksaannya di SINI, bukan di penyimpanan, karena ia keputusan bentuk layar:
+	// penyimpanan yang menolaknya akan menjawab "daftar tidak dikenal", dan kalimat itu
+	// salah — tampilannya dikenal, ia hanya bukan daftar.
+	if !query.Tab.IsClaimList() {
+		return Listed{}, inboxpladla.ErrNotAClaimList
+	}
+
 	result, err := repo.List(ctx, query, page)
 	if err != nil {
 		return Listed{}, fmt.Errorf(
@@ -153,6 +174,10 @@ func (s *Service) Counts(
 	repo, query, err := s.prepare(ctx, portalAlias, caller, input)
 	if err != nil {
 		return nil, err
+	}
+
+	if !query.Tab.IsClaimList() {
+		return nil, inboxpladla.ErrNotAClaimList
 	}
 
 	counts, err := repo.Counts(ctx, query)

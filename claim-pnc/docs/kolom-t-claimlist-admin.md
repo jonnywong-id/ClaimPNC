@@ -336,3 +336,103 @@ gerbang 1 tidak bermakna selama sumbernya belum selengkap pembandingnya.
 Dua yang pertama tidak punya kolom di tabel Pega mana pun — proses pengisi harus membacanya
 dari blob objek kerja. Katalog 2026-09-27: tabel ini belum memuat satu pun klaim tahap RCL
 Dokter.
+
+---
+
+## H. `L-3` TERTUTUP — daftar kolom dibaca langsung dari katalog (2026-09-28)
+
+Seluruh dokumen di atas menyebut **jumlah** kolom tanpa pernah menyebut **namanya**, dan §D.6
+mencatat sendiri bahwa itulah akar tiga kekeliruan pada 2026-09-27. Kueri yang diminta sebagai
+`L-3` kini **sudah dijalankan** terhadap ASM (`DEV_PEGA83G`, 2026-09-28):
+
+```sql
+SELECT column_name, data_type, nullable
+  FROM all_tab_columns
+ WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIMLIST_ADMIN'
+ ORDER BY column_id;
+```
+
+**Hasilnya 58 kolom, bukan 40.** Tabel ini bertambah sejak katalog 2026-09-22 dicatat.
+
+### H.1 Kolom yang ADA, beserta keterisiannya
+
+Angka "isi" dihitung dengan `COUNT(<kolom>)` atas seluruh **1.014 baris** — bukan dari
+statistik optimizer, yang pada lima kolom terakhir bahkan belum pernah dikumpulkan.
+
+| Kolom | Tipe | Isi | Kolom | Tipe | Isi |
+|---|---|---:|---|---|---:|
+| `PZINSKEY` | VARCHAR2 | 1.014 | `OS_CATEGORY` | VARCHAR2 | terisi |
+| `PYID` | VARCHAR2 | 1.014 | `SLA` | VARCHAR2 | terisi |
+| `PYSTATUSWORK` | VARCHAR2 | 1.014 | `AGING` | NUMBER | terisi |
+| `PXOBJCLASS` | VARCHAR2 | 1.014 | `STS_AKTIF` | VARCHAR2 | terisi |
+| `PXCREATEDATETIME` | TIMESTAMP(6) | 1.014 | `REPORTDATE_1` | DATE | terisi |
+| `PXCREATEOPERATOR` | VARCHAR2 | terisi | `REGISTERDATE_1` | DATE | terisi |
+| **`PXCREATEOPNAME`** | VARCHAR2 | terisi | `TIM` | VARCHAR2 | terisi |
+| `PXASSIGNEDOPERATORID` | VARCHAR2 | terisi | `STATUSPROGRESS1` | VARCHAR2 | terisi |
+| **`PXASSIGNEDORGUNIT`** | VARCHAR2 | **1** | `STATUSPROGRESS2` | VARCHAR2 | terisi |
+| **`PXFLOWNAME`** | VARCHAR2 | 1.006 | `PRODKE` | VARCHAR2 | terisi |
+| **`PXTASKLABEL`** | VARCHAR2 | 1.006 | **`BUSINESSGROUPID`** | VARCHAR2 | 1.014 |
+| `PXDEADLINETIME` | DATE | **0** | `REINSURER` | VARCHAR2 | terisi |
+| `PXGOALTIME` | DATE | **0** | `KURIR` | VARCHAR2 | terisi |
+| `PYASSIGNMENTSTATUS` | VARCHAR2 | **0** | `PNCCASEID` | VARCHAR2 | terisi |
+| `PYORIGUSERID` | VARCHAR2 | belum diukur | `DOKUMENLENGKAP_1` | VARCHAR2 | **0** |
+| `POLICYNO` | VARCHAR2 | 1.014 | `ISPENDINGCLOSE` | VARCHAR2 | **0** |
+| `QQNAME` | VARCHAR2 | 1.014 | `SURVEYORTYPE_1` | VARCHAR2 | **0** |
+| `BUSINESSNAME` | VARCHAR2 | 1.014 | `ADJUSTERPIC_1` | VARCHAR2 | **0** |
+| **`BUSINESSCODE_1`** | VARCHAR2 | 1.014 | `ADJUSTERSTATUS_1` | VARCHAR2 | **0** |
+| `SOBNAME` | VARCHAR2 | 1.014 | `STATUSKOMUNIKASI_1` | VARCHAR2 | **0** |
+| **`BRANCHNAME`** | VARCHAR2 | 1.014 | `SURVEYORNAME_1` | VARCHAR2 | **0** |
+| `KODECABANG_1` | VARCHAR2 | terisi | `SURVEYORNAMEMARINE_1` | VARCHAR2 | **0** |
+| **`GROUPPANEL_1`** | VARCHAR2 | 1.014 | `TANGGALDOKLENGKAP` | TIMESTAMP(6) | **0** |
+| **`USERTEKNIS_1`** | VARCHAR2 | **354** | **`STATUSCLAIM_1`** | VARCHAR2 | **0** |
+| `DATEOFLOSS_1` | TIMESTAMP(6) | terisi | `STATUSLOCK_1` | VARCHAR2 | **0** |
+| `DATEFORAGING_1` | TIMESTAMP(6) | terisi | `REQUESTSURVEY_1` | VARCHAR2 | **0** |
+| `STARTDATE` | DATE | terisi | `NOTREGISTNOTE_1` | VARCHAR2 | **0** |
+| `ENDDATE` | DATE | terisi | `TANGGALANALYSTSENDRCL_1` | TIMESTAMP(6) | **0** |
+| `NAMADOKTERRCL_1` | VARCHAR2 | **0** | `KOMENTARANALISATOR_1` | VARCHAR2 | **0** |
+
+### H.2 Tiga koreksi terhadap dokumen di atas
+
+| Pernyataan sebelumnya | Kenyataan per katalog |
+|---|---|
+| `STATUSCLAIM_1` "belum ada, sudah di migrasi 0005" (§B.2) | **SUDAH ADA** — tetapi **kosong di seluruh 1.014 baris** |
+| `DOKUMENLENGKAP_1`, `ISPENDINGCLOSE`, `SURVEYORTYPE_1`, `ADJUSTERPIC_1`, `STATUSKOMUNIKASI_1`, `PXDEADLINETIME`, `PXGOALTIME` "harus ditambahkan" (§B.1) | **SELURUHNYA SUDAH ADA** — dan seluruhnya **kosong** |
+| 40 kolom (§ Keadaan hari ini) | **58 kolom** |
+
+**Ketiganya menggeser pekerjaan yang sesungguhnya.** Yang menahan tujuh tab layar Inbox bukan
+lagi DDL melainkan **proses pengisi tabel**: kolomnya sudah ada, isinya tidak pernah ditulis.
+Menjalankan migrasi tambahan tidak akan mengubah apa pun.
+
+### H.3 Isi `PXOBJCLASS` — penyaringnya tetap wajib
+
+| Nilai | Baris |
+|---|---:|
+| `ASM-FW-GCNMFW-Work-PNC` | **872** |
+| `ASM-FW-GCNMFW-Work-ReceiveDocument` | **142** |
+
+Ini menutup §D.4 secara empiris: tabelnya memang bercampur, dan kedua angka itu berjumlah
+1.014.
+
+### H.4 Isi kolom yang menentukan penyaring
+
+| Kolom | Nilai yang ada |
+|---|---|
+| `PYSTATUSWORK` | `New` 986 · `Open` 20 · `Resolved-Rejected` 7 · `Resolved-Completed` 1 |
+| `PXFLOWNAME` | `Register_Flow` 864 · `ReceiveDocument_Flow` 142 · NULL 8 |
+| `PXTASKLABEL` | `Input Register` 345 · `Choose Surveyor` 338 · `Input Estimasi` 181 · `InputReceiveDocument` 142 · NULL 8 |
+| `GROUPPANEL_1` | `006` 657 · `003` 305 · `004` 50 · `002` 2 — **tidak ada `005`** |
+| `PXASSIGNEDORGUNIT` | `AdminPNC` **1** · NULL 1.013 |
+
+**Dua akibat yang perlu disebut:**
+
+1. **Tidak ada satu pun baris `GROUPPANEL_1 = '005'`**, sehingga penyaring lini bisnis
+   TRAVEL mengembalikan nol baris hari ini. Itu keadaan DATA, bukan cacat kueri.
+2. **`PXASSIGNEDORGUNIT` praktis kosong** — 1 dari 1.014. Modul **Inbox Manager Admin**
+   menyaring ketiga tabnya dengan kolom itu, sehingga ketiganya menampilkan paling banyak
+   satu baris. Kolomnya ADA dan kuerinya benar; yang belum berjalan adalah pengisinya.
+   Diangkat ke `permintaan-artefak-pega.md`.
+
+### H.5 Yang tetap tidak dapat dijawab katalog
+
+Apakah proses pengisi tabel ini akan mengisi kolom yang masih kosong, dan kapan. Katalog hanya
+menyatakan kolomnya ada — §D.1 dan §F.2 tetap berlaku sepenuhnya.

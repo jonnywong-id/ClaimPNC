@@ -6,6 +6,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { FormField } from '@/components/FormField'
 import { SelectField, type SelectOption } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
+import { DokumenPenunjangPanel } from '@/modules/dokumen-penunjang/DokumenPenunjangPanel'
 
 import { useClaimLookup } from './api'
 import {
@@ -101,6 +102,25 @@ export function ProtectionForm({
   const changesLossDate = type === TYPE_CHANGE_LOSS_DATE
   const changesCauseOfLoss = type === TYPE_CHANGE_CAUSE_OF_LOSS
 
+  // Keadaan pencarian klaim DITAMPILKAN, tidak lagi ditelan.
+  //
+  // # Cacat yang ini perbaiki
+  //
+  // Sebelumnya form hanya membaca `claim.data`; `claim.isError` tidak pernah diperiksa.
+  // Akibatnya nomor klaim yang tidak ditemukan terlihat PERSIS SAMA dengan klaim yang
+  // ditemukan tetapi datanya kosong: keenam field turunan blank, tanpa satu pun pesan.
+  //
+  // Itulah yang membuat "Object Name kosong terus" tidak dapat dibedakan dari "klaimnya
+  // memang tidak ada" — dan pada `PENYIMPANAN=memori`, hampir setiap nomor klaim nyata
+  // memang tidak ada.
+  const claimSedangDicari = claimNumber.trim() !== '' && claim.isPending
+  const claimTidakKetemu =
+    claimNumber.trim() !== '' &&
+    claim.isError &&
+    claim.error instanceof APIError &&
+    claim.error.status === 404
+  const claimGagalDibaca = claimNumber.trim() !== '' && claim.isError && !claimTidakKetemu
+
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     await onSubmit({
@@ -122,6 +142,36 @@ export function ProtectionForm({
           description={generalFailure}
           tone="penolakan"
         />
+      )}
+
+      {/*
+        Nada dibedakan, karena tindak lanjutnya berbeda: nomor yang salah ketik dapat
+        diperbaiki pengguna, gangguan pembacaan tidak.
+      */}
+      {claimTidakKetemu && (
+        <ErrorMessage
+          title="Klaim tidak ditemukan"
+          description={
+            'Nomor klaim ini tidak ada di data klaim, sehingga No Polis, Nama Tertanggung, ' +
+            'Object Name, Branch Name, Current Date Of Loss, dan Cause Of Loss tidak dapat diisi. ' +
+            'Periksa kembali nomornya.'
+          }
+          tone="penolakan"
+        />
+      )}
+
+      {claimGagalDibaca && (
+        <ErrorMessage
+          title="Data klaim gagal dibaca"
+          description="Field yang diturunkan dari klaim belum dapat diisi. Coba lagi beberapa saat."
+          tone="gangguan"
+        />
+      )}
+
+      {claimSedangDicari && (
+        // Tanpa penanda ini, jeda pembacaan terlihat sama dengan klaim yang tidak punya
+        // datanya — keduanya menampilkan field kosong.
+        <p className="text-sm text-slate-500">Mencari data klaim…</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -287,6 +337,18 @@ export function ProtectionForm({
         required
         {...(violations['keterangan'] ? { error: violations['keterangan'] } : {})}
       />
+
+      {/*
+        Dokumen penunjang menempel pada KLAIM, bukan pada permintaan proteksinya — karena
+        itu yang diserahkan nomor klaimnya, dan karena itu pula panelnya tetap berguna
+        sebelum permintaannya disimpan.
+
+        Akibatnya satu hal harus disadari: berkas yang diunggah di sini SUDAH tersimpan di
+        klaim meski form-nya kemudian dibatalkan. Itu memang perilaku yang benar — ia milik
+        klaim, bukan milik draf permintaan ini — tetapi berbeda dari isian lain di layar
+        yang sama.
+      */}
+      <DokumenPenunjangPanel nomorKlaim={found ? claimNumber : null} />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button tone="utama" type="submit" disabled={isSubmitting}>

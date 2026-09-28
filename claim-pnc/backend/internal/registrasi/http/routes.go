@@ -73,6 +73,25 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/adjustment", func(w http.ResponseWriter, r *http.Request) {
 			h.AddSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Transfer Komite pada baris Adjustment, dan putusan anggota komite.
+		sub.Post("/klaim/{klaimID}/adjustment/komite", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferCommittee(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Get("/komite", h.PendingCommittees)
+		sub.Get("/komite/{komiteID}", func(w http.ResponseWriter, r *http.Request) {
+			h.Committee(w, r, chi.URLParam(r, "komiteID"))
+		})
+		sub.Post("/komite/{komiteID}/putusan", func(w http.ResponseWriter, r *http.Request) {
+			h.DecideCommittee(w, r, chi.URLParam(r, "komiteID"))
+		})
+		// Penerima Klaim (InputReceiver): isian No Rekening membaca Master Rekening, tombol
+		// Simpan menyimpan penerima baru atau yang diubah.
+		sub.Get("/rekening/{nomor}", func(w http.ResponseWriter, r *http.Request) {
+			h.FindAccount(w, r, chi.URLParam(r, "nomor"))
+		})
+		sub.Post("/klaim/{klaimID}/penerima", func(w http.ResponseWriter, r *http.Request) {
+			h.SaveReceiver(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Get("/klaim/{klaimID}/progres", func(w http.ResponseWriter, r *http.Request) {
 			h.Progress(w, r, chi.URLParam(r, "klaimID"))
 		})

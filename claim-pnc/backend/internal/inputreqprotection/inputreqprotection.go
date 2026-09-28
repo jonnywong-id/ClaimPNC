@@ -576,6 +576,18 @@ type Claim struct {
 	// Number adalah nomor klaim itu sendiri, sebagaimana ditemukan.
 	Number string
 
+	// PegaID adalah kunci klaim ini di `POOLDATA.T_CLAIM_PNC.CLAIMID`. Bagi klaim warisan ia
+	// berbentuk `ASM-FW-GCNMFW-WORK PNC-1865`; bagi klaim sistem baru ia SAMA dengan nomor
+	// klaimnya, `PNCN.26.0007`.
+	//
+	// Nilai inilah yang disimpan sebagai `T_CLAIM_OPENPROTECTION.ID_CLAIM`, dan yang menjadi
+	// kunci `UPDATE T_CLAIM_PNC` saat proteksinya disetujui — lihat ClaimReferenceOf.
+	//
+	// Sejak sumber klaim menjadi `T_CLAIM_PNC` saja (2026-09-26) ia **selalu terisi**: kolom
+	// itu terisi pada seluruh 2.176 barisnya. Kosongnya tetap ditangani ClaimReferenceOf
+	// sebagai jaring pengaman, bukan sebagai keadaan yang diharapkan.
+	PegaID string
+
 	// PolicyNumber — `.PolicyNo`, disalin `OpenProtection` ke `pyWorkPage.PolicyNo`.
 	PolicyNumber string
 
@@ -594,6 +606,44 @@ type Claim struct {
 	// ObjectName dan BranchName melengkapi kedua panel.
 	ObjectName string
 	BranchName string
+}
+
+// ClaimReferenceOf menyatakan nilai yang disimpan pada kolom `ID_CLAIM`.
+//
+// # Aturannya, ditegaskan Work Owner 2026-09-26
+//
+//	klaim dari Pega     ID_CLAIM = IDPEGA          ASM-FW-GCNMFW-WORK PNC-1865
+//	klaim sistem baru   ID_CLAIM = nomor klaim     PNCN.26.0007
+//
+// Keduanya hidup berdampingan permanen: klaim warisan tidak dinomori ulang (`D-22`).
+//
+// # Kenapa ini sempat keliru
+//
+// Keputusan 2026-09-24 berbunyi "ClaimNo dan ClaimID berisi nilai yang sama", dan modul ini
+// menurunkan `ID_CLAIM` dari nomor klaim untuk SETIAP baris. Pernyataan itu benar untuk
+// klaim sistem baru dan **tidak berlaku** untuk klaim Pega — dan bedanya tidak menghasilkan
+// galat apa pun, hanya proteksi yang menunjuk klaim dengan kunci yang tidak dikenali Pega.
+//
+// # Yang menentukan cabangnya adalah ADA-TIDAKNYA IDPEGA, bukan bentuk nomornya
+//
+// Menebaknya dari awalan nomor — `PNC-` versus `PNCN.` — akan gagal pada dua baris warisan
+// produksi yang tidak berpola `PNC-` sama sekali (`kolom-open-protection.md` §1). Yang
+// dipakai adalah keberadaan `PegaID`.
+//
+// # Sejak 2026-09-26 cabang keduanya praktis tidak terpakai
+//
+// Sumber klaim menjadi `T_CLAIM_PNC` saja, dan `CLAIMID` di sana terisi pada SETIAP baris —
+// termasuk klaim sistem baru, yang `CLAIMID`-nya memang sama dengan nomor klaimnya. Jadi
+// cabang pertama selalu menang, dan hasilnya benar untuk kedua jenis klaim.
+//
+// Cabang kedua DIPERTAHANKAN sebagai jaring pengaman, bukan sebagai jalur yang diharapkan:
+// adapter memori memakainya, dan ia menahan baris `CLAIMID` kosong bila kelak muncul.
+// Menghapusnya akan menukar keadaan yang terbaca menjadi `ID_CLAIM` kosong yang senyap.
+func ClaimReferenceOf(c Claim) string {
+	if pega := strings.TrimSpace(c.PegaID); pega != "" {
+		return pega
+	}
+	return strings.TrimSpace(c.Number)
 }
 
 // ClaimRepo adalah seam ke pencarian klaim.

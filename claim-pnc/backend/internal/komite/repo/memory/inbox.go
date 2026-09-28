@@ -160,6 +160,13 @@ func (s *InboxStore) Record(_ context.Context, d komite.Decision) error {
 	return nil
 }
 
+// Available memenuhi seam komite.DecisionRepo, dan selalu menjawab benar.
+//
+// Penyimpanan di memori tidak dapat setengah ada: begitu store-nya terbentuk, jejaknya
+// sudah dapat ditulis. Yang dijawab adapter Oracle — apakah migrasi `0004` sudah
+// dijalankan DBA — tidak punya padanan di sini.
+func (s *InboxStore) Available(context.Context) bool { return true }
+
 // matching menyaring seluruh kasus memakai aturan domain, lalu mengurutkannya.
 //
 // Pemanggil WAJIB sudah memegang kunci baca.

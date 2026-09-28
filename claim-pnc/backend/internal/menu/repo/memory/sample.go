@@ -13,14 +13,15 @@ import "claim-pnc/internal/menu"
 //   - MENU_ID 83 "Report Adjuster" adalah daun TANPA MENU_PROGRAM. Ia menempel pada
 //     kelompok REPORT tetapi tidak menuju layar mana pun.
 //
-//   - TUJUH MENU_PROGRAM menunjuk harness yang TIDAK ADA di export Pega:
+//   - ENAM MENU_PROGRAM menunjuk harness yang TIDAK ADA di export Pega:
 //     InboxCloseClaim_Harness, InboxOutstanding_Harness, InboxRequestSalvage,
-//     InboxServiceCenter, LostAdjuster_harness, PNCViewClaim, dan
-//     ReportProduksiPA_harnes. Ini memperjelas `K-33`, yang menyebut sebagian harness
-//     target tidak ikut diekspor.
+//     LostAdjuster_harness, PNCViewClaim, dan ReportProduksiPA_harnes. Ini memperjelas
+//     `K-33`, yang menyebut sebagian harness target tidak ikut diekspor.
 //
 //     Angkanya SEMBILAN sampai 2026-09-22, ketika `DataMemberReas` dan
-//     `DetailMasterPasalAI` menyusul masuk.
+//     `DetailMasterPasalAI` menyusul masuk, lalu TUJUH sampai 2026-09-28 ketika
+//     `InboxServiceCenter` menyusul — beserta empat section tab, sembilan activity, dan
+//     delapan rule SQL-nya.
 //
 //     Harness yang ada TIDAK berarti layarnya dapat dibangun. `DetailMasterPasalAI`
 //     (MENU_ID 36) membuktikannya: harness-nya hanya menggambar judul, lalu menyerahkan

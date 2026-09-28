@@ -92,6 +92,18 @@ type Advice struct {
 	Sent     string
 	SentDate time.Time
 	Email    string
+
+	// Ketiga isian di bawah HANYA dipakai layar rincian — grid "PLA" dan "DLA".
+	//
+	//	Type          TIPEPLA / TIPEDLA
+	//	Amount        NILAIPLA / NILAIDLA   dibawa sebagai TEKS; lihat AdviceRow.Amount
+	//	AcceptanceNo  NOAKSEP               hanya ada pada DLA
+	Type         string
+	Amount       string
+	AcceptanceNo string
+
+	// AdviceDate adalah `TGLPLA` / `TGLDLA` — yang MENGURUTKAN grid rincian.
+	AdviceDate time.Time
 }
 
 // Reinsurer adalah satu baris `POOLDATA.T_REINSURER` sejauh yang dibaca layar ini.
@@ -126,6 +138,14 @@ type Store struct {
 	reinsurers []Reinsurer
 	xol        []XOL
 	labels     []StatusLabel
+
+	// messages dan documents melayani layar RINCIAN — lihat detail.go.
+	//
+	// Keduanya diisi lewat SeedMessages dan SeedDocuments, bukan lewat Seed: menambahkan
+	// keduanya sebagai parameter Seed akan memaksa setiap uji yang sudah ada menyebut dua
+	// senarai kosong tanpa alasan.
+	messages  []Message
+	documents []Document
 }
 
 // NewStore membentuk penyimpanan kosong.
@@ -136,6 +156,8 @@ func NewStore() *Store {
 		reinsurers: []Reinsurer{},
 		xol:        []XOL{},
 		labels:     []StatusLabel{},
+		messages:   []Message{},
+		documents:  []Document{},
 	}
 }
 
@@ -298,11 +320,21 @@ func (s *Store) rowsFor(query inboxpladla.Query) []inboxpladla.Row {
 		if !claimPassesTab(claim, query.Tab) {
 			continue
 		}
-		if !s.hasSentAdvice(claim.Key, query.Tab.AdviceKindSent, codes) {
-			continue
-		}
-		if query.Tab.ExcludeWhenDLASent && s.hasSentAdvice(claim.Key, "dla", codes) {
-			continue
+
+		if query.Tab.Source == inboxpladla.SourceCommunication {
+			// Daftar komunikasi TIDAK memeriksa dokumen pemberitahuan sama sekali —
+			// `BrowseCommunicationReas` tidak memuat satu pun syarat itu. Yang
+			// memasukkan sebuah klaim ke sini adalah adanya PERCAKAPAN.
+			if !s.hasConversation(claim.Key, query.Tab, query.Caller.Login) {
+				continue
+			}
+		} else {
+			if !s.hasSentAdvice(claim.Key, query.Tab.AdviceKindSent, codes) {
+				continue
+			}
+			if query.Tab.ExcludeWhenDLASent && s.hasSentAdvice(claim.Key, "dla", codes) {
+				continue
+			}
 		}
 
 		row := inboxpladla.Row{
@@ -337,7 +369,13 @@ func (s *Store) rowsFor(query inboxpladla.Query) []inboxpladla.Row {
 
 // claimPassesTab memeriksa penyaring yang berlaku pada BARIS KLAIM.
 func claimPassesTab(claim Claim, tab inboxpladla.Tab) bool {
-	if claim.GroupPanel == "002" || claim.GroupPanel == "005" {
+	// Pengecualian lini bisnis dibaca dari TAB-nya, bukan ditulis tetap di sini.
+	//
+	// Ketiga daftar pemberitahuan mengecualikan `002` dan `005`; ketiga daftar komunikasi
+	// tidak mengecualikan apa pun. Menuliskannya tetap di sini akan membuat klaim
+	// Personal Accident hilang dari daftar komunikasi — dan hilangnya tidak akan terlihat
+	// sampai seseorang membandingkannya dengan Pega.
+	if tab.ExcludesGroupPanel(claim.GroupPanel) {
 		return false
 	}
 

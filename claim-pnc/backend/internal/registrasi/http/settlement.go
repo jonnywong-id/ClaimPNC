@@ -32,6 +32,11 @@ type SettlementDTO struct {
 	Notes            string `json:"catatan"`
 	AcceptanceStatus string `json:"status_akseptasi"`
 	AcceptedNo       string `json:"nomor_akseptasi"`
+
+	// Komite: nomor kasus (CASEIDKOMITE), tanggal transfer, dan tanggal putusan akhir.
+	CommitteeID            string `json:"komite_id,omitempty"`
+	CommitteeTransferredAt string `json:"tanggal_transfer_komite,omitempty"`
+	CommitteeDecidedAt     string `json:"tanggal_putusan_komite,omitempty"`
 }
 
 func settlementDTO(lines []registrasi.SettlementLine) []SettlementDTO {
@@ -55,6 +60,8 @@ func settlementLineDTO(s registrasi.SettlementLine) SettlementDTO {
 		GrossCents: int64(s.Gross), ShareASM: int64(s.ShareASM), ValueCents: int64(s.Value),
 		AcceptedCents: int64(s.Accepted), Chronology: s.Chronology, Notes: s.Notes,
 		AcceptanceStatus: s.AcceptanceStatus, AcceptedNo: s.AcceptedNo,
+		CommitteeID: s.CommitteeCaseID, CommitteeTransferredAt: formatDate(s.CommitteeTransferredAt),
+		CommitteeDecidedAt: formatDate(s.CommitteeDecidedAt),
 	}
 }
 

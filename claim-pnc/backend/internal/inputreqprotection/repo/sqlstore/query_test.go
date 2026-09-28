@@ -204,11 +204,13 @@ func TestKueriMemakaiParameterBinding(t *testing.T) {
 	for _, nama := range namaKueri {
 		teks := query(nama)
 		// Tanda kutip tunggal hanya boleh muncul pada literal yang memang tetap —
-		// '1' pada STATUS_ACTIVE dan '%' pada LIKE.
-		// Dua literal tetap yang memang bukan nilai pengguna, ditambah nama KELAS PEGA pada
-		// claim_find — yang bukan data melainkan penanda tipe baris, sama sifatnya dengan
-		// nama tabel. Ia tidak pernah datang dari pemanggil.
-		for _, literal := range []string{"'1'", "'%'", "'ASM-FW-GCNMFW-Work-PNC'"} {
+		// '1' pada STATUS_ACTIVE dan '%' pada LIKE. Keduanya bukan nilai pengguna dan tidak
+		// pernah datang dari pemanggil.
+		//
+		// Nama kelas Pega sempat ada di daftar ini, sebagai penyaring `PXOBJCLASS` pada
+		// claim_find. Ia hilang ketika tabel kerja Pega berhenti dibaca (2026-09-26); yang
+		// tersisa dari nama itu adalah satu konstanta Go, `prefixKunciKlaimPega`.
+		for _, literal := range []string{"'1'", "'%'"} {
 			teks = strings.ReplaceAll(teks, literal, "")
 		}
 		require.NotContains(t, teks, "'",
@@ -228,29 +230,123 @@ func TestPencarianKlaimHanyaMembaca(t *testing.T) {
 	}
 }
 
-// TestPencarianKlaimMemakaiLEFTJOIN menjaga klaim yang datanya tidak lengkap tetap TERBACA.
+// TestPencarianKlaimBersumberT_CLAIM_PNC menjaga ketetapan Work Owner 2026-09-26.
 //
-// Hanya 1.393 dari 2.634 klaim punya baris di `T_CLAIM_PNC`, dan 1.281 punya objek.
-// `INNER JOIN` akan membuat separuh klaim tampak TIDAK ADA — dan pengguna menerima "klaim
-// tidak ditemukan" untuk klaim yang jelas-jelas ada.
-func TestPencarianKlaimMemakaiLEFTJOIN(t *testing.T) {
+//	"cari noklaim di input req nya ke t_claim_pnc"
+//	"jangan gunakan t_claimlist_admin sama sekali, gunakan t_claim_pnc saja"
+//
+// Dua tabel yang TIDAK boleh kembali, masing-masing dengan sebabnya sendiri:
+//
+//   - `T_CLAIMLIST_ADMIN` — tabel BACA untuk dashboard. Membacanya di sini membuat layar ini
+//     bergantung pada proses pengisi yang jadwalnya di luar modul ini.
+//   - `PC_ASM_FW_GCNMFW_WORK` — tabel kerja Pega. Ia sempat menjadi tabel utama kueri ini;
+//     mengembalikannya membatalkan ketetapan di atas tanpa ada yang menyadarinya, sebab
+//     hasilnya justru terlihat LEBIH lengkap.
+func TestPencarianKlaimBersumberT_CLAIM_PNC(t *testing.T) {
 	teks := strings.ToUpper(query("claim_find"))
-	require.Contains(t, teks, "LEFT JOIN POOLDATA.T_CLAIM_PNC")
-	require.NotContains(t, teks, "INNER JOIN")
+
+	require.Contains(t, teks, "FROM POOLDATA.T_CLAIM_PNC",
+		"sumber klaim harus T_CLAIM_PNC")
+	require.NotContains(t, teks, "T_CLAIMLIST_ADMIN",
+		"T_CLAIMLIST_ADMIN tabel dashboard — tidak dibaca modul ini")
+	require.NotContains(t, teks, "PC_ASM_FW_GCNMFW_WORK",
+		"tabel kerja Pega tidak lagi dibaca; sumbernya T_CLAIM_PNC saja")
 }
 
-// TestPencarianKlaimTidakMembacaKolomYangNolTerisi menjaga koreksi 2026-09-24.
+// TestPencarianKlaimMencocokkanDuaBentukCLAIMID menjaga klaim WARISAN tetap ditemukan.
+//
+// `CLAIMID` punya dua bentuk, dan hanya dua — terukur atas 2.176 baris pada 2026-09-26:
+//
+//	ASM-FW-GCNMFW-WORK PNC-1865   2.167 baris
+//	PNCN.26.0007                      9 baris
+//
+// Mencocokkan satu bentuk saja tidak menghasilkan galat; ia hanya membuat satu golongan
+// klaim menjawab "tidak ditemukan". Dua bind menyatakan keduanya dicoba.
+//
+// `CLAIMNO` sengaja TIDAK dipakai: ia kosong pada 479 baris, berulang pada satu pasang, dan
+// berbeda isi dari nomor turunan CLAIMID pada 11 baris.
+func TestPencarianKlaimMencocokkanDuaBentukCLAIMID(t *testing.T) {
+	teks := strings.ToUpper(query("claim_find"))
+
+	require.Contains(t, teks, "UPPER(TRIM(C.CLAIMID)) IN (:1, :2)",
+		"kedua bentuk CLAIMID harus dicoba, lewat dua bind terpisah")
+	require.NotContains(t, teks, "C.CLAIMNO",
+		"CLAIMNO tidak dapat diandalkan sebagai kunci; lihat komentar kueri")
+}
+
+// TestPencarianKlaimTidakMemotongDiSQL menjaga dua batas sekaligus.
+//
+// `INSTR(` ada di daftar pola terlarang `09-DATABASE-STRATEGY.md` §4, dan penggantinya yang
+// disebut di sana — `POSITION(x IN y)` — **tidak didukung Oracle**; diuji langsung
+// 2026-09-26 dan menghasilkan ORA-00907. Jadi memotong prefix di dalam SQL akan melanggar
+// `D-20` atau gagal berjalan.
+//
+// Pemotongannya karena itu ada di Go (`nomorKlaimDari`). Uji ini menahan keduanya kembali.
+func TestPencarianKlaimTidakMemotongDiSQL(t *testing.T) {
+	teks := strings.ToUpper(query("claim_find"))
+	require.NotContains(t, teks, "POSITION(",
+		"POSITION(x IN y) tidak didukung Oracle — ORA-00907")
+	require.NotContains(t, teks, "SUBSTR(",
+		"pemotongan awalan kunci Pega dikerjakan di Go, bukan di SQL")
+}
+
+// TestPencarianKlaimMembacaKolomDariTabelYangBENAR menjaga koreksi 2026-09-24.
 //
 // Versi pertama kueri ini membaca `DATEOFLOSS` dan `CAUSEOFLOSS` dari tabel kerja Pega.
 // Hitungan atas 2.634 klaim membantahnya: KEDUA kolom itu nol terisi di sana. Kalau dipakai,
 // form menampilkan "Current Date Of Loss" kosong pada SETIAP klaim — tanpa satu pun galat
 // yang memberi tahu sebabnya.
-func TestPencarianKlaimTidakMembacaKolomYangNolTerisi(t *testing.T) {
+//
+// Sejak tabel kerja Pega berhenti dibaca, salah-sumber itu tidak mungkin lagi terjadi. Yang
+// masih perlu dijaga adalah kedua kolomnya memang DIAMBIL, dan dari tabel yang benar —
+// `CAUSEOFLOSS` tidak ada di `T_CLAIM_PNC`, ia milik `T_CLAIM_OBJECTCOVERAGE`.
+func TestPencarianKlaimMembacaKolomDariTabelYangBENAR(t *testing.T) {
 	teks := strings.ToUpper(query("claim_find"))
-	require.NotContains(t, teks, "W.DATEOFLOSS",
-		"DATEOFLOSS nol terisi di tabel kerja Pega; sumbernya T_CLAIM_PNC")
-	require.NotContains(t, teks, "W.CAUSEOFLOSS",
-		"CAUSEOFLOSS nol terisi di tabel kerja Pega; sumbernya T_CLAIM_OBJECTCOVERAGE")
-	require.Contains(t, teks, "C.DATEOFLOSS")
-	require.Contains(t, teks, "T_CLAIM_OBJECTCOVERAGE")
+	require.Contains(t, teks, "C.DATEOFLOSS",
+		"DOL diambil dari T_CLAIM_PNC")
+	require.Contains(t, teks, "T_CLAIM_OBJECTCOVERAGE",
+		"CAUSEOFLOSS hanya ada di T_CLAIM_OBJECTCOVERAGE")
+	require.Contains(t, teks, "T_CLAIM_OBJECTLIST",
+		"OBJECTNAME hanya ada di T_CLAIM_OBJECTLIST")
+}
+
+// TestClaimFindMengambilCLAIMID menjaga sumber `ID_CLAIM` bagi klaim Pega.
+//
+// `ID_CLAIM` sempat terisi nomor klaim untuk SETIAP baris, termasuk klaim Pega yang
+// seharusnya menyimpan IDPEGA. Sumber nilai yang benar adalah `CLAIMID` UTUH — kolom yang
+// sama dengan kunci `UPDATE T_CLAIM_PNC` saat proteksinya disetujui.
+//
+// Menghapusnya kelak tidak akan menghasilkan galat: `ID_CLAIM` hanya akan diam-diam berisi
+// nilai yang salah bagi klaim warisan, dan penerapan perubahannya gagal belakangan.
+func TestClaimFindMengambilCLAIMID(t *testing.T) {
+	teks := strings.ToUpper(query("claim_find"))
+
+	pilihan := strings.SplitN(teks, "FROM POOLDATA.T_CLAIM_PNC", 2)[0]
+	require.Contains(t, pilihan, "C.CLAIMID,",
+		"claim_find harus MEMILIH CLAIMID utuh, bukan hanya memakainya di WHERE")
+}
+
+// TestNomorKlaimDiturunkanDariCLAIMID menjaga pemotongan awalan tetap benar untuk KEDUA
+// bentuk, dan tetap tahan perbedaan huruf besar-kecil.
+//
+// Data produksi menulis `ASM-FW-GCNMFW-WORK`, sementara nama kelas yang sama muncul sebagai
+// `ASM-FW-GCNMFW-Work-PNC` di tempat lain. Pencocokan yang peka huruf akan membuat satu ejaan
+// lolos dan ejaan lain tidak — tanpa gejala, karena keduanya tetap menghasilkan teks.
+func TestNomorKlaimDiturunkanDariCLAIMID(t *testing.T) {
+	for _, uji := range []struct {
+		nama    string
+		claimID string
+		mau     string
+	}{
+		{"klaim warisan Pega", "ASM-FW-GCNMFW-WORK PNC-1865", "PNC-1865"},
+		{"ejaan huruf campur", "ASM-FW-GCNMFW-Work PNC-1865", "PNC-1865"},
+		{"klaim sistem baru tanpa awalan", "PNCN.26.0007", "PNCN.26.0007"},
+		{"berspasi di tepi", "  ASM-FW-GCNMFW-WORK PNC-1865  ", "PNC-1865"},
+		{"nomor warisan tanpa pola PNC-", "ASM-FW-GCNMFW-WORK KLAIM-LAMA", "KLAIM-LAMA"},
+		{"kosong", "   ", ""},
+	} {
+		t.Run(uji.nama, func(t *testing.T) {
+			require.Equal(t, uji.mau, nomorKlaimDari(uji.claimID))
+		})
+	}
 }

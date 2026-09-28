@@ -166,8 +166,11 @@ type protectionTypeListResponse struct {
 // atas nama orang lain.
 // # `referensi_klaim` TIDAK diterima di sini, dan itu disengaja
 //
-// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang sama.
-// `ID_CLAIM` karena itu diturunkan server dari `nomor_klaim`.
+// `ID_CLAIM` diturunkan server dari KLAIM yang ditaut — IDPEGA bagi klaim Pega, nomor klaim
+// bagi klaim sistem baru (Work Owner, 2026-09-26; lihat `inputreqprotection.ClaimReferenceOf`).
+//
+// Pemohon tidak punya cara mengetahui IDPEGA sebuah klaim, sehingga menanyakannya hanya akan
+// menghasilkan tebakan.
 //
 // Menerimanya lalu MENGABAIKANNYA diam-diam akan lebih buruk daripada menolaknya: klien
 // yang mengirimnya akan mengira nilainya tersimpan. Field yang tidak dikenal pada badan

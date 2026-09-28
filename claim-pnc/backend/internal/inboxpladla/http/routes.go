@@ -62,9 +62,45 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun.
 		perPortal.Get("/inbox-pla-dla/ekspor", h.Export)
 
-		// Ketiga tombol yang belum dibangun — "Detail Claim", "Detail", dan "DLA".
-		// Rutenya ADA supaya tombolnya menjawab dengan alasan, bukan dengan "halaman
-		// tidak ditemukan".
+		// ====================================================================
+		// LAYAR RINCIAN — tombol "Detail Claim"
+		// ====================================================================
+		//
+		// Jalurnya memuat SEGMEN `klaim` supaya ia tidak bertabrakan dengan rute tetap
+		// di atasnya. Tanpa segmen itu, `/inbox-pla-dla/{kunci}` akan menangkap
+		// `daftar`, `ringkas`, `xol`, dan `ekspor` sebagai kunci klaim pada urutan
+		// pendaftaran tertentu — kelas kerusakan yang hanya muncul ketika rutenya
+		// bertambah. Presedennya ada di modul `inboxpladlapredla`.
+		//
+		// Kuncinya memuat SPASI (`ASM-FW-GCNMFW-WORK PNC-xxxx`) dan wajib terkodekan
+		// layar.
+		perPortal.Get("/inbox-pla-dla/klaim/{kunci}", h.Detail)
+
+		// Grid dokumen satu nomor pemberitahuan — tombol "Dokumen" pada baris PLA/DLA.
+		//
+		// Nomor dan jenisnya lewat parameter query, bukan segmen alamat: nomor
+		// pemberitahuan dapat memuat karakter apa pun yang dipakai penerbitnya, dan
+		// parameter query mengodekannya tanpa aturan tambahan.
+		perPortal.Get("/inbox-pla-dla/klaim/{kunci}/dokumen", h.Documents)
+
+		// ISI satu dokumen. Ia menulis BERKAS, bukan JSON.
+		perPortal.Get("/inbox-pla-dla/klaim/{kunci}/dokumen/{dokumen}", h.DocumentContent)
+
+		// **SATU-SATUNYA rute yang MENULIS di modul ini**, dan pelakunya PIHAK LUAR.
+		//
+		// Ia menyimpan balasan reasuradur atas satu percakapan
+		// (`RDB List/ReplyKomunikasi-SQL.xml`), dan tulisannya masuk ke tabel yang
+		// dibaca petugas internal lewat modul `inboxkomunikasicabang`.
+		//
+		// Nomor percakapannya berada di BADAN permintaan, bukan di alamat. Alasannya
+		// bukan gaya: badan permintaan tidak tercatat di log peladen web maupun di
+		// riwayat peramban, sementara segmen alamat tercatat di keduanya — dan nomor
+		// percakapan adalah kunci yang dipakai memagari siapa boleh membalas apa.
+		perPortal.Post("/inbox-pla-dla/klaim/{kunci}/komunikasi/balas", h.Reply)
+
+		// Kedua tombol yang belum dibangun — "Download ALL PLA" dan "Download ALL DLA"
+		// pada layar rincian. Rutenya ADA supaya tombolnya menjawab dengan alasan,
+		// bukan dengan "halaman tidak ditemukan".
 		perPortal.Post("/inbox-pla-dla/tindakan", h.RejectWrite)
 	})
 }

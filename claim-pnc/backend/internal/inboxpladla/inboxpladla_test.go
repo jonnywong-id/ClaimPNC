@@ -15,24 +15,130 @@ func caller() inboxpladla.Caller {
 
 func codes() []string { return []string{"R901", "R900"} }
 
-// Ketiga daftar layar lama ada, dengan kode yang dipakai alamat.
-func TestTheScreenOffersExactlyThreeLists(t *testing.T) {
+// Layar lama menawarkan TUJUH tampilan, bukan tiga.
+//
+// Seluruhnya dikendalikan satu nilai — `TempView.CityID`, yang `SetDataPLADLA` terima
+// sebagai `param.tipe` — dan percabangannya terbaca langsung dari activity itu:
+//
+//	1 PLA · 2 PLA & DLA · 3 CLOSE CLAIM
+//	4 komunikasi masuk · 5 terkirim belum dijawab · 6 terkirim sudah dijawab
+//	7 DATA PLA DLA XOL KLAIM
+//
+// Ketiga yang terakhir pada baris kedua tidak pernah dibangun sampai 2026-09-28, dan
+// ketiadaannya tidak terlihat dari layar: tampilan yang tidak punya tab tidak pernah
+// diminta siapa pun.
+func TestTheScreenOffersSevenViews(t *testing.T) {
 	tabs := inboxpladla.Tabs()
-	require.Len(t, tabs, 3)
+	require.Len(t, tabs, 7)
 
 	got := []string{}
 	for _, tab := range tabs {
 		got = append(got, tab.Code)
 	}
-	require.Equal(t, []string{"pla", "dla", "close"}, got)
+	require.Equal(t, []string{
+		"pla", "dla", "close",
+		"not-answered", "not-replied-from-asm", "replied-from-asm",
+		"xol",
+	}, got)
 }
 
-// Setiap daftar punya keterangan dan kolom.
-func TestEveryListDescribesItself(t *testing.T) {
+// Keenam daftar klaim memakai kolom yang SAMA; XOL punya kolomnya sendiri.
+func TestEveryViewDescribesItself(t *testing.T) {
 	for _, tab := range inboxpladla.Tabs() {
 		require.NotEmpty(t, tab.Name, "%s", tab.Code)
 		require.NotEmpty(t, tab.Description, "%s", tab.Code)
+
+		if !tab.IsClaimList() {
+			require.Len(t, tab.Columns, 4, "%s kolomnya bergeser", tab.Code)
+			continue
+		}
 		require.Len(t, tab.Columns, 9, "%s kolomnya bergeser", tab.Code)
+	}
+}
+
+// Judul kolomnya diambil APA ADANYA dari Pega, termasuk urutannya.
+//
+// Terbaca dari header grid pada `Section/InboxDLAReas_sect-Section.xml`. Menerjemahkannya
+// melanggar `D-13`, dan di layar ini akibatnya lebih tajam daripada biasanya: pembacanya
+// pihak LUAR, yang tidak dapat kita latih ulang.
+func TestTheColumnTitlesFollowPegaWordForWord(t *testing.T) {
+	pla, found := inboxpladla.FindTab("pla")
+	require.True(t, found)
+
+	titles := []string{}
+	for _, column := range pla.Columns {
+		titles = append(titles, column.Title)
+	}
+
+	require.Equal(t, []string{
+		"Claim No", "Insured", "Policy No", "Business Name",
+		"DOL", "Register Date", "PIC ASM", "PLA No", "Claim Progress",
+	}, titles)
+}
+
+// Ketiga daftar komunikasi TIDAK mengecualikan lini bisnis apa pun.
+//
+// Ketiga daftar pemberitahuan mengecualikan Personal Accident dan Travel;
+// `BrowseCommunicationReas` tidak memuat satu pun syarat itu. Menyeragamkannya akan
+// MENGHILANGKAN klaim PA dari daftar komunikasi tanpa satu pun galat.
+func TestOnlyTheAdviceListsExcludeBusinessLines(t *testing.T) {
+	for _, tab := range inboxpladla.Tabs() {
+		switch tab.Source {
+		case inboxpladla.SourceAdvice:
+			require.True(t, tab.ExcludesGroupPanel("002"), "%s", tab.Code)
+			require.True(t, tab.ExcludesGroupPanel("005"), "%s", tab.Code)
+		case inboxpladla.SourceCommunication:
+			require.False(t, tab.ExcludesGroupPanel("002"), "%s", tab.Code)
+			require.False(t, tab.ExcludesGroupPanel("005"), "%s", tab.Code)
+		}
+	}
+}
+
+// Ketiga daftar komunikasi menyaring PERCAKAPAN, bukan dokumen pemberitahuan.
+func TestTheCommunicationListsFilterOnConversationsOnly(t *testing.T) {
+	expected := map[string]struct {
+		status string
+		role   inboxpladla.CommunicationRole
+	}{
+		"not-answered":         {"0", inboxpladla.RoleRecipient},
+		"not-replied-from-asm": {"0", inboxpladla.RoleSender},
+		"replied-from-asm":     {"1", inboxpladla.RoleSender},
+	}
+
+	for code, want := range expected {
+		tab, found := inboxpladla.FindTab(code)
+		require.True(t, found, "%s", code)
+
+		require.Equal(t, inboxpladla.SourceCommunication, tab.Source, "%s", code)
+		require.Equal(t, want.status, tab.CommunicationStatus, "%s", code)
+		require.Equal(t, want.role, tab.CommunicationRole, "%s", code)
+
+		require.Empty(t, tab.AdviceKindSent,
+			"%s tidak boleh menuntut dokumen pemberitahuan terkirim", code)
+		require.False(t, tab.ExcludeWhenDLASent, "%s", code)
+	}
+}
+
+// Tampilan XOL BUKAN daftar klaim, dan layar mengetahuinya dari SERVER.
+//
+// Alternatifnya — layar mencocokkan `kode === 'xol'` — ditolak dengan alasan yang sama
+// seperti senarai kolom: inventaris tampilan adalah hasil pembacaan export, dan
+// menyalinnya ke layar berarti keputusan yang sama hidup di dua tempat.
+func TestTheXOLViewIsNotAClaimList(t *testing.T) {
+	xol, found := inboxpladla.FindTab("xol")
+	require.True(t, found)
+
+	require.False(t, xol.IsClaimList())
+	require.Equal(t, inboxpladla.ViewXOL, xol.Kind)
+	require.False(t, xol.HasDetailAction,
+		"tampilan XOL tidak menggambar klaim, sehingga tidak punya tombol rincian")
+
+	for _, tab := range inboxpladla.Tabs() {
+		if tab.Code == "xol" {
+			continue
+		}
+		require.True(t, tab.IsClaimList(), "%s", tab.Code)
+		require.True(t, tab.HasDetailAction, "%s", tab.Code)
 	}
 }
 

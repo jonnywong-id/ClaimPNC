@@ -17,6 +17,14 @@ const (
 	CodeNotAReinsurer     = "bukan_reasuradur_terdaftar"
 	CodeWriteNotAvailable = "belum_tersedia"
 	CodeInternalError     = "galat_internal"
+
+	// Kode layar RINCIAN.
+	CodeNotAClaimList        = "bukan_daftar_klaim"
+	CodeAdviceKindUnknown    = "jenis_pemberitahuan_tidak_dikenal"
+	CodeClaimNotFound        = "klaim_tidak_ditemukan"
+	CodeDocumentNotFound     = "dokumen_tidak_ditemukan"
+	CodeConversationNotFound = "percakapan_tidak_ditemukan"
+	CodeConversationAnswered = "percakapan_sudah_dijawab"
 )
 
 // JSONWriter menuliskan badan respons.
@@ -33,6 +41,17 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		status, body, recognized := mapError(err)
+
+		// Galat layar rincian dicoba SESUDAHNYA, bukan digabung ke satu switch raksasa.
+		//
+		// Urutannya penting satu kali: `NotAvailableError` membungkus
+		// ErrWriteNotAvailable lewat Unwrap, sehingga mapError akan menangkapnya lebih
+		// dulu dan menjawab kalimat umum. Itulah sebabnya mapError TIDAK lagi memeriksa
+		// sentinel itu — pemeriksaannya dipindahkan seluruhnya ke mapDetailError, yang
+		// menjawab alasan per tombol.
+		if !recognized {
+			status, body, recognized = mapDetailError(err)
+		}
 
 		if !recognized {
 			if fallback != nil {
@@ -115,16 +134,6 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"pakailah menu \"Inbox PLA, DLA, Pre DLA\". Bila Anda mitra " +
 				"reasuransi, hubungi administrator Claim PNC untuk melengkapi " +
 				"pendaftaran login Anda.",
-		}, true
-
-	case errors.Is(err, inboxpladla.ErrWriteNotAvailable):
-		// 501, bukan 403 maupun 404. Alamatnya ada, permintaannya sah, kemampuannya yang
-		// belum dibangun.
-		return http.StatusNotImplemented, ErrorResponse{
-			Code: CodeWriteNotAvailable,
-			Message: "Tombol \"Detail Claim\", \"Detail\", dan \"DLA\" belum tersedia " +
-				"di sistem baru. Ketiganya membuka layar rincian tersendiri yang " +
-				"belum dianalisis. Kerjakan lewat Pega.",
 		}, true
 
 	default:

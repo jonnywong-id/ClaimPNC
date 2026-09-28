@@ -7,6 +7,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
 import { useClaimTask, useInbox, useStartClaim } from './api'
+import { CommitteeInbox } from './Committee'
 import { QueueKind, type Task } from './types'
 
 /**
@@ -75,6 +76,8 @@ export function InboxPage() {
           </div>
         )}
       </section>
+
+      <CommitteeInbox />
     </div>
   )
 }

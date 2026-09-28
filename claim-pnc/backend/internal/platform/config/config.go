@@ -93,6 +93,7 @@ type Config struct {
 	HCQ             HCQ
 	Cashier         Cashier
 	SMTP            SMTP
+	DocumentStorage DocumentStorage
 
 	// PrimaryPortal adalah alias portal yang basis datanya melayani hal-hal yang
 	// dibutuhkan SEBELUM pengguna memilih portal: daftar portal (M_PORTAL_PNC),
@@ -103,6 +104,57 @@ type Config struct {
 	// mungkin ditentukan per login dari tabel. Karena itu nilainya dibaca dari
 	// konfigurasi, bukan ditulis di kode.
 	PrimaryPortal string
+
+	// DevelopmentReinsurerLogin mendaftarkan SATU login sebagai mitra reasuransi pada
+	// data contoh layar Inbox PLA DLA (`MENU_ID 45`).
+	//
+	// # Kenapa isian ini ada
+	//
+	// Layar itu menyaring klaim menurut `POOLDATA.T_REINSURER.LOGIN`, dan penolakannya
+	// terhadap login yang tidak terdaftar adalah PERILAKU YANG BENAR — bukan kerusakan.
+	// Akibatnya, di lingkungan pengembangan layar itu tidak dapat dilihat sama sekali:
+	// login pengembang adalah pegawai internal, dan pegawai internal memang ditolak.
+	//
+	// Isian ini menjawabnya tanpa melemahkan penyaringnya: ia hanya mengganti login pada
+	// DATA CONTOH, bukan melonggarkan aturan.
+	//
+	// # Dua jalur, karena ada DUA sumber data
+	//
+	// Yang menentukan jalur mana yang berlaku bukan `PENYIMPANAN` sendirian, melainkan
+	// syarat yang sama dengan `needsOracle` di `cmd/claimpnc`: `IDENTITAS_ADAPTER=hcq`
+	// menarik SELURUH modul ke Oracle, termasuk modul ini, walau `PENYIMPANAN=memori`.
+	//
+	//	data contoh  → `PENYIMPANAN != oracle` DAN `IDENTITAS_ADAPTER != hcq`
+	//	Oracle nyata → selain itu
+	//
+	// Pada data contoh, isian ini cukup sendirian: ia mengganti login mitra pada data
+	// contoh, tanpa melonggarkan penyaringnya.
+	//
+	// Pada Oracle nyata ia TIDAK cukup, dan sebabnya bukan selera: kueri layar menyaring
+	// dengan `T_REINSURER.LOGIN` secara langsung. Memberi login ini sekadar "izin masuk"
+	// akan membuka layar yang SELURUH tabnya kosong — keadaan yang tidak dapat dibedakan
+	// dari penyaring yang rusak. Karena itu Oracle menuntut
+	// `DevelopmentReinsurerPartner`.
+	//
+	// Kosong berarti data contoh memakai login bawaannya, dan layar menolak login lain.
+	DevelopmentReinsurerLogin string
+
+	// DevelopmentReinsurerPartner adalah login mitra NYATA yang dipinjam
+	// `DevelopmentReinsurerLogin` saat modul ini membaca Oracle.
+	//
+	// Selama dipinjam, layar berjalan PERSIS sebagai mitra itu: penyaringnya tidak
+	// disentuh sama sekali, dan yang berpindah hanyalah login yang dicocokkan. Itulah
+	// sebabnya ia menguji jalur yang sama dengan yang dipakai mitra sungguhan — berbeda
+	// dari sekadar melonggarkan gerbangnya.
+	//
+	// # Hanya di `APP_ENV=development`
+	//
+	// Bukan karena kebocoran baca, melainkan karena layar ini MENULIS: balasan komunikasi
+	// mengubah `POOLDATA.M_KOMUNIKASI_PNC` — tabel milik Pega (`P-1`) — dan di bawah
+	// peminjaman, balasan itu akan tercatat atas nama mitra yang dipinjam. Jejak audit
+	// adalah satu-satunya kontrol pengimbang yang tersisa (`D-59`), sehingga memalsukan
+	// pelakunya adalah hal terakhir yang boleh terjadi di luar lingkungan pengembangan.
+	DevelopmentReinsurerPartner string
 
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
@@ -171,6 +223,77 @@ type Cashier struct {
 // Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
 func (k Cashier) Active() bool {
 	return strings.TrimSpace(k.RegisterURL) != "" && strings.TrimSpace(k.UpdateURL) != ""
+}
+
+// Alamat baku kedua layanan dokumen, disalin dari rule Connect REST Pega.
+//
+// # Kenapa ada nilai baku, padahal §3.4 melarang endpoint tertanam di kode
+//
+// Yang §3.4 dan `R-18` larang adalah endpoint yang **tidak dapat diganti** — sebabnya dua
+// Connect REST produksi yang menunjuk host sandbox tanpa seorang pun dapat mengalihkannya.
+// Larangan itu tetap dipatuhi: kedua nilai di bawah **dapat ditimpa** lewat variabel
+// lingkungan, per lingkungan, tanpa rilis ulang.
+//
+// Yang berubah hanyalah nilai bakunya. Work Owner menetapkannya 2026-09-27: *"alamat
+// layanan ada di connect-rest pega"*. Tanpa nilai baku, unggah dokumen mati di setiap
+// lingkungan sampai seseorang mengingat mengisi dua variabel yang tidak pernah disebut
+// layar mana pun.
+//
+// `D-69` tidak dilanggar: host `app13` sudah tertulis di artefak yang di-commit sejak
+// awal — `docs/Steering/02-BUSINESS-UNDERSTANDING.md:238`, `docs/BRD/BRD.md:929`, dan
+// `D-16` sendiri. Menuliskannya di sini tidak menambah paparan apa pun.
+const (
+	// DefaultDocumentStorageURL — `Connect REST/UploadDokumenPNC-ConnectREST.xml`,
+	// `pyBaseURL`.
+	DefaultDocumentStorageURL = "https://app13.sinarmas.co.id"
+
+	// DefaultImageConverterURL — `Connect REST/KonversiAvif-ConnectREST.xml`, `pyBaseURL`.
+	//
+	// **`http://`, bukan `https://`** — begitu apa adanya di rule itu. Isi berkas, termasuk
+	// dokumen nasabah, melintas tanpa enkripsi dan tanpa otentikasi. Tidak diubah di sini
+	// karena memaksa TLS ke layanan yang belum melayaninya akan mematikan konversi; yang
+	// dilakukan adalah membuatnya dapat dialihkan ke HTTPS lewat konfigurasi begitu Tim
+	// Infra menyediakannya.
+	DefaultImageConverterURL = "http://aiimage.sinarmas.co.id"
+)
+
+// DocumentStorage memuat alamat kedua layanan dokumen internal.
+//
+// # Kenapa alamatnya di sini, bukan di GCNM_CONNECT_REST seperti HCQ
+//
+// Registri `POOLDATA.GCNM_CONNECT_REST` memang tempat yang lebih baik — perpindahan
+// endpoint menjadi perubahan data oleh DBA, bukan rilis ulang. Tetapi diperiksa langsung
+// 2026-09-26: registri itu **tidak punya baris** untuk unggah dokumen maupun konversi
+// gambar. Keduanya tertanam di dalam rule Connect REST Pega.
+//
+// Begitu DBA menambahkan barisnya, nilai ini dapat pindah ke sana dan kedua variabel
+// lingkungannya dicabut.
+type DocumentStorage struct {
+	// BaseURL adalah pangkal layanan penyimpanan, TANPA jalur `/api/v1/upload`.
+	BaseURL string
+
+	// ConverterURL adalah pangkal layanan konversi gambar, TANPA jalur `/convert-avif`.
+	//
+	// Kosongnya TIDAK menggagalkan start dan TIDAK mematikan unggah — yang gagal hanyalah
+	// berkas PNG, JPG, JPEG, dan PDF, yaitu yang memang menempuh konversi. Berkas lain
+	// tetap terunggah.
+	ConverterURL string
+
+	// Timeout membatasi satu unggahan maupun satu konversi. Kosong berarti 60 detik.
+	Timeout time.Duration
+}
+
+// Active menyatakan konfigurasi ini cukup untuk mengunggah dokumen.
+func (d DocumentStorage) Active() bool {
+	return strings.TrimSpace(d.BaseURL) != ""
+}
+
+// ConverterActive menyatakan konfigurasi ini cukup untuk mengonversi gambar.
+//
+// Dipisahkan dari Active karena keduanya layanan yang berbeda: penyimpanan dapat hidup
+// tanpa konversi, dan matinya konversi hanya menutup empat ekstensi.
+func (d DocumentStorage) ConverterActive() bool {
+	return strings.TrimSpace(d.ConverterURL) != ""
 }
 
 // SMTP memuat parameter server surel keluar.
@@ -363,6 +486,11 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// 60 detik, bukan 30 seperti pemanggilan biasa: muatannya membawa berkas.
+	documentStorageTimeout, err := getDuration("PENYIMPANAN_DOKUMEN_BATAS_WAKTU", 60*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	portSMTP, err := getInt("SMTP_PORT", 0)
 	if err != nil {
 		issues = append(issues, err)
@@ -370,6 +498,45 @@ func Load() (Config, error) {
 	smtpTimeout, err := getDuration("SMTP_BATAS_WAKTU", 20*time.Second)
 	if err != nil {
 		issues = append(issues, err)
+	}
+
+	// Login mitra pada data contoh. Namanya berbahasa Indonesia karena ia variabel
+	// lingkungan — pengecualian `D-80`: ia dipakai berkas `.env` dan skrip deployment.
+	devReinsurerLogin := strings.TrimSpace(get("REAS_LOGIN_PENGEMBANGAN", ""))
+	devReinsurerPartner := strings.TrimSpace(get("REAS_MITRA_PENGEMBANGAN", ""))
+
+	// Syarat ini HARUS sama dengan `needsOracle` di cmd/claimpnc. Versi sebelumnya
+	// memeriksa `storage == StorageOracle` saja, dan itu keliru: dengan
+	// `PENYIMPANAN=memori` + `IDENTITAS_ADAPTER=hcq`, modul ini membaca Oracle sementara
+	// penjagaannya menyatakan semuanya baik — sehingga `REAS_LOGIN_PENGEMBANGAN`
+	// diabaikan TANPA SATU PUN keluhan. Kegagalan senyap itulah yang membuat layarnya
+	// tetap menolak meski isiannya sudah benar.
+	usesSampleData := storage != StorageOracle && adapter != IdentityAdapterHCQ
+
+	switch {
+	case devReinsurerPartner != "" && devReinsurerLogin == "":
+		issues = append(issues, fmt.Errorf(
+			"REAS_MITRA_PENGEMBANGAN diisi %q sementara REAS_LOGIN_PENGEMBANGAN kosong; "+
+				"tidak ada login yang meminjamnya. Isi keduanya, atau kosongkan keduanya",
+			devReinsurerPartner))
+
+	case (devReinsurerLogin != "" || devReinsurerPartner != "") && env != Development:
+		issues = append(issues, fmt.Errorf(
+			"REAS_LOGIN_PENGEMBANGAN/REAS_MITRA_PENGEMBANGAN hanya berlaku pada "+
+				"APP_ENV=development; sekarang %q. Kosongkan keduanya", env))
+
+	case devReinsurerLogin != "" && !usesSampleData && devReinsurerPartner == "":
+		// Inilah keadaan yang kemarin lolos tanpa suara.
+		issues = append(issues, fmt.Errorf(
+			"REAS_LOGIN_PENGEMBANGAN diisi %q, tetapi Inbox PLA DLA membaca Oracle "+
+				"sungguhan di setelan ini (PENYIMPANAN=%s, IDENTITAS_ADAPTER=%s) sehingga "+
+				"isian itu sendirian tidak berpengaruh apa pun. Pilih SATU: "+
+				"(a) isi REAS_MITRA_PENGEMBANGAN dengan satu login mitra yang sudah ada "+
+				"di POOLDATA.T_REINSURER.LOGIN, sehingga %[1]q meminjamnya; atau "+
+				"(b) setel IDENTITAS_ADAPTER=fake agar data contoh yang dipakai; atau "+
+				"(c) minta DBA menambahkan %[1]q ke POOLDATA.T_REINSURER — menu Master "+
+				"Reas TIDAK dapat melakukannya, ia hanya membaca",
+			devReinsurerLogin, storage, adapter))
 	}
 
 	primaryPortal := strings.ToUpper(strings.TrimSpace(get("PORTAL_UTAMA", defaultPrimaryPortal)))
@@ -384,6 +551,10 @@ func Load() (Config, error) {
 		Address:         get("APP_ALAMAT", ":8080"),
 		IdentityAdapter: adapter,
 		Storage:         storage,
+
+		DevelopmentReinsurerLogin:   devReinsurerLogin,
+		DevelopmentReinsurerPartner: devReinsurerPartner,
+
 		Session:         Session{Lifetime: masaBerlaku},
 		HCQ: HCQ{
 			User:     strings.TrimSpace(os.Getenv("HCQ_LOGIN_USER")),
@@ -396,6 +567,11 @@ func Load() (Config, error) {
 			User:        strings.TrimSpace(os.Getenv("KASIR_USER")),
 			Password:    os.Getenv("KASIR_PASSWORD"),
 			Timeout:     cashierTimeout,
+		},
+		DocumentStorage: DocumentStorage{
+			BaseURL:      get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
+			ConverterURL: get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
+			Timeout:      documentStorageTimeout,
 		},
 		SMTP: SMTP{
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),

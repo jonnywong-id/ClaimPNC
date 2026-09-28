@@ -181,6 +181,9 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		if err := l.task.Save(ctx, task); err != nil {
 			return err
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		if err := l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID,
 			Event:   "KLAIM_DIBUKA",

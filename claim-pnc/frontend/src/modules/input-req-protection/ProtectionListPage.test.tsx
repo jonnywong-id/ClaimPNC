@@ -98,6 +98,20 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promi
     calls.push({ url, init })
 
     if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
+
+    // Dokumen penunjang diperiksa SEBELUM `/klaim/`, dan urutannya menentukan.
+    //
+    // Jalurnya `/api/klaim/{nomor}/dokumen-penunjang`, sehingga `/klaim/` ikut cocok.
+    // Bila ia lebih dulu, daftar dokumen akan menerima badan pencarian klaim — yang tidak
+    // punya `data`, dan panelnya galat pada setiap uji yang membuka form.
+    //
+    // Hari ini cabang ini tidak pernah terpakai — sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF`
+    // bernilai `false` sampai modul GCS disiapkan. Ia dipasang untuk saat sakelar itu
+    // dinyalakan, dan urutannya yang mudah terlewat itulah sebabnya ia tidak dihapus.
+    if (url.includes('/dokumen-penunjang')) {
+      return Promise.resolve(jsonResponse(200, { data: [] }))
+    }
+
     if (url.includes('/klaim/')) return Promise.resolve(jsonResponse(200, KLAIM))
     return Promise.resolve(answer(url, init))
   })
@@ -329,4 +343,81 @@ it('menuntun memilih entitas lebih dulu dan tidak menembak server', async () => 
 
   expect(await screen.findByText('Pilih entitas lebih dulu')).toBeInTheDocument()
   expect(calls).toHaveLength(0)
+})
+
+// ── Klaim yang tidak ditemukan ───────────────────────────────────────────────────
+//
+// Work Owner 2026-09-27: *"kenapa ketika di test kosong terus"* pada Object Name.
+//
+// Sebabnya bukan Object Name-nya. Form hanya membaca `claim.data` dan TIDAK PERNAH
+// memeriksa `claim.isError`, sehingga nomor klaim yang tidak ditemukan terlihat PERSIS SAMA
+// dengan klaim yang ditemukan tetapi datanya kosong — keenam field turunan blank, tanpa
+// satu pun pesan. Pada `PENYIMPANAN=memori`, hampir setiap nomor klaim nyata memang tidak
+// ada.
+//
+// Kedua uji di bawah memasang `vi.stubGlobal` SENDIRI, tidak memakai `stubFetch`: tiruan
+// bersama itu mencegat `/klaim/` dan selalu menjawabnya 200, persis seperti catatan di
+// kepalanya sudah menyatakan.
+
+/** stubKlaimGagal menjawab pencarian klaim dengan galat, sisanya normal. */
+function stubKlaimGagal(status: number, badan: unknown) {
+  vi.stubGlobal('fetch', (url: string) => {
+    if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
+    if (url.includes('/dokumen-penunjang')) {
+      return Promise.resolve(jsonResponse(200, { data: [] }))
+    }
+    if (url.includes('/klaim/')) return Promise.resolve(jsonResponse(status, badan))
+    return Promise.resolve(jsonResponse(200, listResponse()))
+  })
+}
+
+async function bukaFormLaluKetik(nomor: string) {
+  renderPage()
+  await screen.findByText('OPCN.26.0001')
+  await userEvent.click(screen.getByRole('button', { name: 'Input Open Protection' }))
+  await userEvent.type(screen.getByLabelText('No Klaim'), nomor)
+}
+
+it('menyatakan ketika klaimnya TIDAK DITEMUKAN, bukan membiarkan field blank', async () => {
+  stubKlaimGagal(404, { kode: 'tidak_ditemukan', pesan: 'Klaim tidak ditemukan.' })
+  await bukaFormLaluKetik('PNC-9999')
+
+  expect(await screen.findByText('Klaim tidak ditemukan')).toBeInTheDocument()
+
+  // Pesannya menyebut Object Name secara eksplisit — itulah field yang ditanyakan, dan
+  // menyebutnya menutup dugaan bahwa field itu yang rusak.
+  expect(screen.getByText(/Object Name/)).toBeInTheDocument()
+})
+
+it('membedakan gangguan pembacaan dari klaim yang tidak ada', async () => {
+  stubKlaimGagal(500, { kode: 'galat_internal', pesan: 'Terjadi kesalahan.' })
+  await bukaFormLaluKetik('PNC-1865')
+
+  // Nomor yang salah ketik dapat diperbaiki pengguna; gangguan pembacaan tidak. Menyamakan
+  // pesannya membuat pengguna mengetik ulang nomor yang sebenarnya sudah benar.
+  expect(await screen.findByText('Data klaim gagal dibaca')).toBeInTheDocument()
+  expect(screen.queryByText('Klaim tidak ditemukan')).not.toBeInTheDocument()
+})
+
+// Klaim yang DITEMUKAN tetapi memang tanpa objek bukan galat: 547 dari 2.196 baris
+// `T_CLAIM_PNC` tidak punya satu pun baris di `T_CLAIM_OBJECTLIST`. Keadaan itu harus
+// terbedakan dari klaim yang tidak ada.
+it('tidak mengeluh ketika klaim ADA tetapi tanpa Object Name', async () => {
+  vi.stubGlobal('fetch', (url: string) => {
+    if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
+    if (url.includes('/dokumen-penunjang')) {
+      return Promise.resolve(jsonResponse(200, { data: [] }))
+    }
+    if (url.includes('/klaim/')) {
+      return Promise.resolve(jsonResponse(200, { ...KLAIM, nama_objek: '' }))
+    }
+    return Promise.resolve(jsonResponse(200, listResponse()))
+  })
+  await bukaFormLaluKetik('PNCN.26.0009')
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('No Polis (dari klaim)')).toHaveValue(KLAIM.nomor_polis),
+  )
+  expect(screen.queryByText('Klaim tidak ditemukan')).not.toBeInTheDocument()
+  expect(screen.queryByText('Data klaim gagal dibaca')).not.toBeInTheDocument()
 })

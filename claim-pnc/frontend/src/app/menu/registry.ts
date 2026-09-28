@@ -30,13 +30,13 @@
  * (MASTER, INBOX, VIEW, REPORT) dan satu adalah MENU_ID 83 "Report Adjuster" yang
  * MENU_PROGRAM-nya memang kosong.
  *
- * TUJUH di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
+ * ENAM di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
  * (`InboxCloseClaim_Harness`, `InboxOutstanding_Harness`, `InboxRequestSalvage`,
- * `InboxServiceCenter`, `LostAdjuster_harness`, `PNCViewClaim`,
- * `ReportProduksiPA_harnes`) — memperjelas `K-33`.
+ * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas `K-33`.
  *
- * Dua yang dulu ada di daftar itu SUDAH DITERIMA pada 2026-09-22 dan karena itu
- * dikeluarkan: `DataMemberReas` dan `DetailMasterPasalAI` — keduanya kini punya layar.
+ * TIGA yang dulu ada di daftar itu SUDAH DITERIMA dan karena itu dikeluarkan:
+ * `DataMemberReas` dan `DetailMasterPasalAI` pada 2026-09-22, lalu `InboxServiceCenter`
+ * pada 2026-09-28 — ketiganya kini punya layar.
  *
  * SATU dari ketujuh yang tersisa KINI SUDAH PUNYA LAYAR, dibangun dari kueri,
  * activity, dan section yang memang ada — bukan dari harness-nya:
@@ -343,6 +343,21 @@ export const MENU_ROUTES: Record<string, string> = {
   // `RD 0`. Report Definition-nya ADA dan dua buah — keduanya tinggal di dalam section,
   // bukan di harness, sehingga tidak terhitung pada tingkat harness.
   inboxCompliance_Harness: '/inbox-compliance',
+
+  // MENU_ID 46 "Inbox Service Center", di bawah kelompok INBOX, urutan 1136 — tepat sebelum
+  // Inbox Compliance (1137). Ia Inbox sungguhan menurut `D-79`: barisnya klaim portal
+  // rekanan yang menunggu diputuskan, dan ia berpindah tab begitu komite memutuskan.
+  //
+  // Harness-nya sempat menjadi salah satu contoh `K-33` — dirujuk menu tetapi tidak ada di
+  // export. Ia DITERIMA pada export susulan 2026-09-28, lengkap dengan empat section tab,
+  // sembilan activity, dan delapan rule SQL. Satu rule tetap hilang, yaitu kueri grid-nya
+  // sendiri; penyusunan ulangnya dijelaskan di kepala `inboxservicecenter.sql`.
+  //
+  // Isinya klaim PERBAIKAN PERANGKAT — IMEI, Brand, Model, Battery — dan itu bukan salah
+  // baca: `When/IsServiceCenterPNC-When.xml` ikut menyalakan menu ini pada host entitas
+  // Insurtech, yaitu lini yang menjual asuransi gawai.
+  InboxServiceCenter: '/inbox-service-center',
+
   // MENU_ID 63, di bawah kelompok INBOX — bukan MASTER. Ia Inbox sungguhan menurut `D-79`:
   // barisnya pekerjaan, hilang setelah ditindaklanjuti, dan punya tenggat.
   PNCInboxAdmin: '/inbox-admin',
@@ -445,16 +460,33 @@ export const MENU_ROUTES: Record<string, string> = {
   // DATAPEGA.PC_ASSIGN_WORKLIST, hilang begitu klaimnya selesai, dan punya tenggat berupa
   // kolom "Lama Waktu Klaim".
   //
-  // Harness-nya klon dari `UserInbox_Harness` (`MENU_ID 58` "Inbox Manager"), yang BELUM
-  // dibangun dan karena itu belum dipetakan. Keduanya tidak boleh disatukan: yang ini
+  // Harness-nya klon dari `UserInbox_Harness` (`MENU_ID 58` "Inbox Manager"), yang kini
+  // SUDAH dibangun dan dipetakan di bawah. Keduanya tidak boleh disatukan: yang ini
   // menyaring unit organisasi penugasan lewat Report Definition `ManagementAdminView`,
-  // sedangkan induk klonnya adalah layar berbeda yang belum dibaca.
+  // sedangkan induk klonnya adalah meja kerja penyelia berisi tiga dashboard dan sembilan
+  // antrean persetujuan — dan satu-satunya layar inbox yang MENULIS.
   //
   // Butirnya dapat terlihat oleh pengguna yang jabatannya tidak membuka satu tab pun —
   // dan itu disengaja. Layarnya menjelaskan keadaan itu beserta jabatan yang terbaca
   // sistem; menyembunyikan butir menunya justru akan membuat pengguna mengira menunya
   // hilang. Penyaringan yang sesungguhnya ada di server (`TKT-F3-004` belum selesai).
   InboxManagerAdmin_Harness: '/inbox-manager-admin',
+
+  // MENU_ID 58 "Inbox Manager", kelompok INBOX, urutan 1148 — tepat sesudah butir di atas.
+  //
+  // Harness-nya cangkang: satu `pyInclude` ke `Section/InboxManager_Sec`, yang menggambar
+  // ringkasan pencacah lalu menyertakan TIGA BELAS kontainer bersyarat
+  // `FlagManager.AlasanKlaim==1..13`. Isinya tiga dashboard, satu indeks, dan sembilan
+  // antrean persetujuan.
+  //
+  // Ia satu-satunya butir inbox yang layarnya MENULIS. Yang ditulisnya kolom persetujuan
+  // pada tabel POOLDATA — bukan satu pun tabel DATAPEGA, yang selama masa paralel dimiliki
+  // Pega (`P-1`).
+  //
+  // Siapa yang melihat butirnya ditentukan `M_OTORISASI_PNC`, bukan kode di sini. Itu perlu
+  // disebut karena layarnya memutuskan: `D-59` menetapkan satuan izin adalah menu dan tidak
+  // ada pemisahan tugas formal, sehingga butir menu inilah kendalinya.
+  UserInbox_Harness: '/inbox-manager',
 
 
   // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.
@@ -511,6 +543,25 @@ export const MENU_ROUTES: Record<string, string> = {
   // kosong — bukan antrean orang lain. Itu peredam, bukan kendali.
   inboxAnalystDoctor_Harness: '/inbox-analyst-doctor',
 
+  // MENU_ID 50 "My Work", kelompok INBOX — antrean kerja Surveyor dan Loss Adjuster.
+  //
+  // JANGAN tertukar dengan MENU_ID 80 "Lost Adjuster" (`LostAdjuster_harness`), butir menu
+  // BERBEDA yang harness-nya tidak ada di export sama sekali dan masih tercatat di daftar
+  // tujuh butir tanpa layar di kepala berkas ini.
+  //
+  // Harness-nya ADA dan LENGKAP (`Harness/InboxSurvey_Harness-Harness.xml`, 1,9 MB) beserta
+  // section-nya, sehingga ketiga belas judul kolom dan ketujuh judul tab terbaca dari bukti.
+  // Yang TIDAK ada adalah keempat kueri tabnya — `BrowseOSLostAdjuster`,
+  // `BrowseConfirmLostAdjuster`, `BrowseCommunicationLostAdjuster`, `BrowseCloseLostAdjuster`
+  // (`R-16`) — sehingga penyaringnya dipulihkan dari `CountOSLostAdjuster` yang menghitung
+  // keranjang yang sama.
+  //
+  // Di Pega butir ini dijaga `POOLDATA.M_OTORISASI_PNC`, yang pada data contoh hanya memuat
+  // satu baris untuk MENU_ID 50 — grup `IT`. Pemeriksaan peran tetap `TKT-F3-005` yang belum
+  // ada; yang meredam akibatnya adalah jembatan identitas di server, yang menolak pengguna
+  // tak terdaftar dengan 403 yang menyebut sebabnya — bukan dengan antrean kosong.
+  InboxSurvey_Harness: '/inbox-survey',
+
   // MENU_ID 61 "Inbox RCL/PUCL", kelompok INBOX.
   //
   // Harness-nya ADA di export (`Harness/RCLPUCL_Harness-Harness.xml`) beserta keempat
@@ -542,7 +593,28 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
-
+  // MENU_ID 69 "Inbox OS Claim per Cabang", kelompok INBOX.
+  //
+  // Harness, section, activity pemuat, dan keempat kueri SQL-nya ADA di export, sehingga
+  // ke-16 judul kolom beserta aturan pewarnaan barisnya terbaca dari bukti — bukan disusun
+  // ulang.
+  //
+  // Bedakan dari DUA butir menu lain yang menyebut kata yang sama. Ketiganya berbeda
+  // penyaringnya, dan itu satu-satunya yang perlu diingat agar tidak menyatukannya:
+  //
+  //   MENU_ID 51  "My Inbox"                 pekerjaan milik PEMANGGIL  -> /inbox-outstanding
+  //   MENU_ID 69  layar ini                  klaim milik CABANG-nya
+  //   MENU_ID 79  "Inbox Outstanding"        BELUM ada layarnya; harness-nya pun tidak ada
+  //                                          di export (`K-33`)
+  //
+  // Batas datanya CABANG, bukan peran: setiap pengguna yang dapat masuk dan punya cabang
+  // melihat seluruh klaim berjalan cabangnya. Di Pega pun begitu — tidak ada satu pun
+  // pemeriksaan privilege pada jalur ini. Pemeriksaan peran adalah `TKT-F3-004`.
+  //
+  // Pengguna yang cabangnya tidak diketahui — pengguna non-karyawan, yang di
+  // `POOLDATA.M_LOGIN_PNC` memang tidak punya kolom cabang — memperoleh PESAN, bukan daftar
+  // kosong. Itu perilaku sistem lama, bukan tambahan.
+  OutstandingKlaimperCabang_Harness: '/inbox-os-claim-per-cabang',
   // MENU_ID 62 "Inbox RCL", kelompok INBOX.
   //
   // Harness-nya ADA di export (`Harness/RCL_Harness-Harness.xml`) beserta section

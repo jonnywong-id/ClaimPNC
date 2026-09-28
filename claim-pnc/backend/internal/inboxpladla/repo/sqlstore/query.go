@@ -52,22 +52,72 @@ var listColumns = []string{
 // countColumns adalah ketiga alias yang dikembalikan kueri tabel ringkas.
 var countColumns = []string{"STATUS_CODE", "STATUS_LABEL", "TOTAL_ROWS"}
 
-// listQueries adalah nama ketiga kueri daftar.
-var listQueries = []string{"list_pla", "list_dla", "list_close"}
+// adviceListQueries adalah ketiga kueri daftar PEMBERITAHUAN.
+//
+// Hanya ketiganya yang mengecualikan lini Personal Accident dan Travel — ketiga daftar
+// komunikasi tidak. Pemisahannya di sini yang membuat uji pengecualian itu tetap dapat
+// memeriksa "setiap kueri yang SEHARUSNYA mengecualikan", bukan "setiap kueri".
+var adviceListQueries = []string{"list_pla", "list_dla", "list_close"}
 
-// countQueries adalah nama ketiga kueri tabel ringkas.
-var countQueries = []string{"count_pla", "count_dla", "count_close"}
+// adviceCountQueries adalah ketiga kueri tabel ringkas daftar pemberitahuan.
+var adviceCountQueries = []string{"count_pla", "count_dla", "count_close"}
+
+// communicationListQueries adalah kedua kueri daftar KOMUNIKASI.
+//
+// Dua, bukan tiga: tab "Terkirim — Belum Dijawab" dan "Terkirim — Sudah Dijawab" memakai
+// kueri yang sama dengan nilai bind status yang berbeda.
+var communicationListQueries = []string{
+	"list_komunikasi_recipient", "list_komunikasi_sender",
+}
+
+// communicationCountQueries adalah kedua kueri tabel ringkas daftar komunikasi.
+var communicationCountQueries = []string{
+	"count_komunikasi_recipient", "count_komunikasi_sender",
+}
+
+// listQueries adalah SELURUH kueri daftar — pemberitahuan maupun komunikasi.
+var listQueries = append(
+	append([]string{}, adviceListQueries...), communicationListQueries...)
+
+// countQueries adalah SELURUH kueri tabel ringkas.
+var countQueries = append(
+	append([]string{}, adviceCountQueries...), communicationCountQueries...)
+
+// detailQueries adalah kueri layar RINCIAN.
+//
+// `detail_reply` TIDAK ada di sini: ia satu-satunya pernyataan yang MENULIS, dan uji yang
+// memeriksa bentuk kueri baca — jumlah kolom, paginasi, urutan alias — tidak berlaku
+// padanya. Ia diuji tersendiri.
+var detailQueries = []string{
+	"detail_claim_header",
+	"detail_advices_pla",
+	"detail_advices_dla",
+	"detail_documents",
+	"detail_document_content",
+	"detail_conversations",
+	"detail_conversation_exists",
+}
 
 // reinsurerScopedQueries adalah kueri yang WAJIB menyaring menurut reasuradur pemanggil.
 //
-// SELURUHNYA, tanpa perkecualian. Kueri yang kehilangan penyaring itu akan menampilkan
-// data satu mitra kepada mitra lain — dan di layar yang memang dibaca pihak luar, itu
-// bukan cacat tampilan melainkan kebocoran.
-var reinsurerScopedQueries = []string{
-	"list_pla", "list_dla", "list_close",
-	"count_pla", "count_dla", "count_close",
-	"xol_summary",
-}
+// SELURUHNYA, tanpa perkecualian — termasuk pernyataan yang menulis. Kueri yang kehilangan
+// penyaring itu akan menampilkan data satu mitra kepada mitra lain, dan di layar yang
+// memang dibaca pihak luar itu bukan cacat tampilan melainkan kebocoran.
+//
+// Cara masing-masing menyaring BERBEDA, dan perbedaannya disengaja:
+//
+//	daftar pemberitahuan  kode reasuradur dari `T_REINSURER`
+//	daftar komunikasi     login pada kedua sisi percakapan
+//	layar rincian         KEDUANYA — kode untuk pemberitahuan, login untuk percakapan
+//
+// Yang diuji karena itu bukan "memuat `T_REINSURER`" melainkan "memuat sekurang-kurangnya
+// satu batas yang berangkat dari pemanggil".
+var reinsurerScopedQueries = func() []string {
+	all := append([]string{}, listQueries...)
+	all = append(all, countQueries...)
+	all = append(all, detailQueries...)
+	return append(all, "xol_summary", "detail_reply")
+}()
 
 // loadQueries membaca seluruh berkas .sql yang disematkan dan memecahnya per nama.
 func loadQueries() map[string]string {

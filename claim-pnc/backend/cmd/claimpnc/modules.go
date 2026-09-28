@@ -38,6 +38,7 @@ import (
 
 	"claim-pnc/internal/inboxadmin"
 	"claim-pnc/internal/inboxcompliance"
+	"claim-pnc/internal/inboxmanager"
 	"claim-pnc/internal/inboxmanageradmin"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
@@ -59,7 +60,11 @@ import (
 	inboxcompliancememory "claim-pnc/internal/inboxcompliance/repo/memory"
 	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
 	inboxcomplianceusecase "claim-pnc/internal/inboxcompliance/usecase"
+	inboxmanagerhttp "claim-pnc/internal/inboxmanager/http"
 	inboxmanageradminhttp "claim-pnc/internal/inboxmanageradmin/http"
+	inboxmanagermemory "claim-pnc/internal/inboxmanager/repo/memory"
+	inboxmanagersql "claim-pnc/internal/inboxmanager/repo/sqlstore"
+	inboxmanagerusecase "claim-pnc/internal/inboxmanager/usecase"
 	inboxmanageradminmemory "claim-pnc/internal/inboxmanageradmin/repo/memory"
 	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	inboxmanageradminusecase "claim-pnc/internal/inboxmanageradmin/usecase"
@@ -109,6 +114,14 @@ type extraSelectors struct {
 	inboxCompliance   inboxcompliance.RepoSelector
 	inboxManagerAdmin inboxmanageradmin.RepoSelector
 
+	// inboxManager melayani modul Inbox Manager (`MENU_ID 58`). Ia SATU-SATUNYA selector
+	// di berkas ini yang repo-nya punya operasi MENULIS, sehingga portal yang salah di
+	// sini berakibat pada data yang BERUBAH — bukan hanya pada data yang terlihat.
+	inboxManager inboxmanager.RepoSelector
+
+	// inboxManagerLine membaca lini bisnis petugas, yang menyaring ketiga dashboard-nya.
+	inboxManagerLine inboxmanager.LineBusinessRepoSelector
+
 	// inboxManagerAdminLine membaca lini bisnis petugas, yang menentukan tab mana yang
 	// boleh ia buka. Ia dipisah dari selector di atas karena membaca tabel yang BERBEDA
 	// (`M_LOGIN_PNC`, milik modul Login) untuk pertanyaan yang berbeda: kewenangan, bukan
@@ -132,6 +145,7 @@ type extraServices struct {
 	inboxAdmin        *inboxadminusecase.Service
 	inboxCompliance   *inboxcomplianceusecase.Service
 	inboxManagerAdmin *inboxmanageradminusecase.Service
+	inboxManager      *inboxmanagerusecase.Service
 
 	autoClaim       *masterautoclaimusecase.Service
 	workshop        *masterbengkelusecase.Service
@@ -180,6 +194,20 @@ func setExtraOracleSelectors(pool *db.Pool, store *storage) {
 			return nil, err
 		}
 		return inboxmanageradminsql.NewRepo(conn), nil
+	}
+	store.extra.inboxManager = func(alias string) (inboxmanager.Repo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxmanagersql.NewRepo(conn), nil
+	}
+	store.extra.inboxManagerLine = func(alias string) (inboxmanager.LineBusinessRepo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxmanagersql.NewRepo(conn), nil
 	}
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		conn, err := pool.For(alias)
@@ -303,6 +331,20 @@ func setExtraMemorySelectors(primaryAlias string, store *storage) {
 		return inboxManagerAdminStore, nil
 	}
 
+	inboxManagerStore := inboxmanagermemory.NewSampleStore()
+	store.extra.inboxManager = func(alias string) (inboxmanager.Repo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxManagerStore, nil
+	}
+	store.extra.inboxManagerLine = func(alias string) (inboxmanager.LineBusinessRepo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxManagerStore, nil
+	}
+
 	autoClaimRepo := masterautoclaimmemory.NewSampleRepo()
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		if err := onlyPrimary(primaryAlias, alias); err != nil {
@@ -408,6 +450,25 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		Clock:        clock.System{},
 		Logger:       logger,
 	}); err != nil {
+		return extraServices{}, err
+	}
+
+	if result.inboxManager, err = inboxmanagerusecase.NewService(
+		inboxmanagerusecase.Options{
+			RepoSelector:         store.extra.inboxManager,
+			LineBusinessSelector: store.extra.inboxManagerLine,
+
+			// Clock menentukan bulan bawaan tab Produktivitas Klaim. Tab itu tidak dapat
+			// berjalan tanpa periode — kedelapan pencacahnya dibangun dari perbandingan
+			// dua periode.
+			Clock: clock.System{},
+
+			// Logger WAJIB terisi. Modul ini MENULIS, dan `D-59` menjadikan jejak audit
+			// satu-satunya kontrol pengimbang karena tidak ada pemisahan tugas formal:
+			// siapa pun yang dapat membuka layar ini dapat menyetujui pengajuan yang boleh
+			// jadi diajukannya sendiri. Lihat inboxmanager/usecase.logDecision.
+			Logger: logger,
+		}); err != nil {
 		return extraServices{}, err
 	}
 
@@ -583,6 +644,34 @@ func mountExtra(
 		FallbackErrorWriter: writeError,
 	})
 	inboxmanageradminhttp.Mount(protected, inboxManagerAdminHandler, portalDeps)
+
+	// Inbox Manager — `MENU_ID 58`, meja kerja penyelia.
+	//
+	// Identitasnya disusun dengan cara yang SAMA dengan modul di atas, dan alasannya sama
+	// pula: lini bisnis TIDAK diambil dari sesi melainkan dibaca usecase dari `M_LOGIN_PNC`
+	// milik portal yang aktif.
+	//
+	// Yang berbeda adalah taruhannya. Modul ini punya rute yang MENULIS, dan `Login` di
+	// bawah bukan sekadar bahan jejak log: pada dua antrean ia ikut tersimpan di kolom basis
+	// data sebagai penyetuju. Pemanggil tanpa login karena itu ditolak sebelum satu
+	// pernyataan pun dijalankan.
+	inboxManagerHandler := inboxmanagerhttp.NewHandler(inboxmanagerhttp.Options{
+		Service: service.inboxManager,
+		GetCaller: func(ctx context.Context) (inboxmanagerhttp.Caller, bool) {
+			base, ok := authhttp.CallerFromContext(ctx)
+			if !ok {
+				return inboxmanagerhttp.Caller{}, false
+			}
+			return inboxmanagerhttp.Caller{
+				Login:   base.User.Login,
+				OrgUnit: userOrgUnit(),
+			}, true
+		},
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: writeError,
+	})
+	inboxmanagerhttp.Mount(protected, inboxManagerHandler, portalDeps)
 
 	autoClaimHandler, err := masterautoclaimhttp.NewHandler(masterautoclaimhttp.Options{
 		Service: service.autoClaim,

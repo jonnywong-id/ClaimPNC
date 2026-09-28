@@ -2,12 +2,10 @@ package komite
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
 	"claim-pnc/internal/platform/clock"
-	"claim-pnc/internal/platform/money"
 )
 
 // Inbox Komite — daftar pekerjaan milik seorang anggota komite (`D-79`).
@@ -112,17 +110,18 @@ type CommitteeCase struct {
 	BusinessName     string
 	SourceOfBusiness string
 	BranchName       string
-	GroupPanel       string
-
-	// ClaimPIC adalah PIC Teknik klaim — kolom `PICTEKNIK` pada `T_CLAIM_PNC`.
-	ClaimPIC string
 
 	// AssignedOperator adalah pemilik pekerjaan ini: `PXASSIGNEDOPERATORID` pada
 	// `PC_ASSIGN_WORKLIST` untuk kotak Outstanding, `PYRESOLVEDUSERID` untuk riwayat.
 	AssignedOperator string
 
-	// CommitteeDate adalah kapan jenjang ini mulai menunggu — `Komite.DateOfComitee` di
-	// sistem lama, dan dasar perhitungan Aging.
+	// CommitteeDate adalah kapan jenjang ini mulai menunggu, dan dasar perhitungan Aging.
+	//
+	// `InboxRegisterKomite_RD` menyebutnya `.Komite.DateOfComitee`, tetapi properti itu
+	// BUKAN kolom basis data — diverifikasi ke `ALL_TAB_COLUMNS`, ia tidak ada di antara
+	// 186 kolom `PC_ASM_FW_GCNMFW_WORK` dan hidup di blob Pega. Penggantinya diambil dari
+	// kedua rule yang menjadi sumber layar ini: `TANGGALKOMITE` bila ada, jatuh ke tanggal
+	// pembuatan case bila tidak. Rinciannya di repo/sqlstore/inbox.sql.
 	CommitteeDate time.Time
 
 	// CreatedAt adalah `PXCREATEDATETIME` case komitenya.
@@ -134,33 +133,6 @@ type CommitteeCase struct {
 	// satu dari empat konsep status bisnis pada `D-18`. Menerjemahkannya akan
 	// menyiratkan ia punya arti bisnis yang sebenarnya tidak ia punya.
 	WorkStatus string
-
-	// CommitteeKind adalah "Tipe Komite" yang dilihat pengguna, hasil penurunan dari
-	// TYPEKOMITE dan PAYMENTTYPE. Lihat CommitteeKindOf.
-	CommitteeKind string
-
-	// ClaimValue, ASMShareValue, dan ORValue adalah tiga nilai uang yang ditampilkan.
-	//
-	// Ketiganya `money.Money`, tidak pernah float: `I-12` menetapkan nilai uang disimpan
-	// presisi penuh, dan pembulatan hanya terjadi saat ditampilkan.
-	ClaimValue    money.Money
-	ASMShareValue money.Money
-	ORValue       money.Money
-
-	// CommitteeNote adalah `NOTEKOMITE` — catatan yang ditulis komite saat memutuskan.
-	CommitteeNote string
-
-	// Empat medan AI di bawah berasal dari `POOLDATA.T_CLAIM_DATA_RESULTS_AI`, yang di
-	// kueri lama disambungkan dengan OUTER JOIN (`A.pyID = AI.KOMITE(+)`).
-	//
-	// OUTER, bukan INNER, dan itu penting: klaim yang belum pernah dinilai AI TETAP
-	// muncul di inbox. Mengubahnya menjadi INNER akan membuat pekerjaan menghilang tanpa
-	// satu pun tanda — kelas cacat paling mahal yang bisa ada di sebuah inbox.
-	AIResult        string
-	AINoteAccepted  string
-	AINoteRejected  string
-	AIAssessedAt    time.Time
-	HasAIAssessment bool
 
 	// LegacyOutcome adalah keputusan yang TERCATAT DI PEGA, diturunkan dari
 	// `T_CLAIM_KOMITE_LIST.STATUSAPPROVE`.
@@ -174,17 +146,10 @@ type CommitteeCase struct {
 	// menjadi OutcomePending, dan hanya nilai yang benar-benar ada yang menjadi diterima
 	// atau ditolak — perbedaan yang menentukan apakah sebuah klaim yang masih menunggu
 	// tampak sudah ditolak.
-	LegacyOutcome Outcome
-
-	// LegacyTier adalah jenjang yang TERCATAT DI PEGA — kolom `KOMITEKE` pada
-	// `T_CLAIM_KOMITE_LIST`.
 	//
-	// Ia dibawa apa adanya dan TIDAK dipakai menghitung apa pun. Ia ada supaya seseorang
-	// yang menelusuri sebuah kasus dapat melihat di jenjang berapa Pega mencatatnya,
-	// berdampingan dengan jenjang yang dicatat sistem ini. Selama masa paralel keduanya
-	// dapat berbeda, dan perbedaan itu harus TERLIHAT — bukan diselesaikan diam-diam
-	// dengan memilih salah satu.
-	LegacyTier int
+	// Inilah yang menentukan isi kotak Diterima dan Ditolak, persis seperti
+	// `GetKomitePAditerima` pada `SetDataKomitePNC_Act`.
+	LegacyOutcome Outcome
 
 	// TierCount adalah banyaknya jenjang yang harus menyetujui kasus ini — `KomiteLoop`
 	// di sistem lama.
@@ -257,14 +222,8 @@ func (c CommitteeCase) Normalized() CommitteeCase {
 	c.BusinessName = strings.TrimSpace(c.BusinessName)
 	c.SourceOfBusiness = strings.TrimSpace(c.SourceOfBusiness)
 	c.BranchName = strings.TrimSpace(c.BranchName)
-	c.GroupPanel = strings.TrimSpace(c.GroupPanel)
-	c.ClaimPIC = strings.TrimSpace(c.ClaimPIC)
 	c.AssignedOperator = strings.TrimSpace(c.AssignedOperator)
 	c.WorkStatus = strings.TrimSpace(c.WorkStatus)
-	c.CommitteeNote = strings.TrimSpace(c.CommitteeNote)
-	c.AIResult = strings.TrimSpace(c.AIResult)
-	c.AINoteAccepted = strings.TrimSpace(c.AINoteAccepted)
-	c.AINoteRejected = strings.TrimSpace(c.AINoteRejected)
 	return c
 }
 
@@ -379,70 +338,6 @@ func (c CommitteeCase) WithinDateRange(from, to time.Time) bool {
 		return false
 	}
 	return true
-}
-
-// CommitteeKindOf menurunkan "Tipe Komite" dari dua kolom `T_CLAIM_KOMITE_LIST`.
-//
-// # Aturannya disalin apa adanya dari SQL lama
-//
-// `RDB List/ShowKomiteTerimaTolakNonMBU-SQL.xml` menurunkannya lewat CASE bersarang atas
-// `MAX(TYPEKOMITE)` dan `MAX(PAYMENTTYPE)`, lalu — inilah bagian yang menyesatkan —
-// menaruh hasilnya pada property bernama `StatusKlaim`, yang di layar diberi caption
-// "Tipe Komite". Ia sama sekali bukan Status Klaim dalam arti `D-18`.
-//
-// # Kenapa dihitung di Go, bukan dibiarkan di SQL
-//
-// Bentuk aslinya menjalankan ENAM subkueri berkorelasi ke tabel yang sama untuk satu
-// baris — `(select max(PAYMENTTYPE) ... )` diulang sekali per cabang. Memindahkannya ke
-// sini membuat aturannya terbaca sebagai satu tabel keputusan, dapat diuji tanpa basis
-// data, dan berhenti membebani kueri inbox yang dibuka setiap hari.
-//
-// Nilai yang tidak dikenali jatuh ke "Survey Komite", persis seperti cabang `else`
-// terakhir pada rule aslinya — ditiru, bukan diperbaiki, karena menebak apa yang
-// SEHARUSNYA terjadi pada tipe yang tidak dikenal berarti mengarang aturan.
-func CommitteeKindOf(committeeType, paymentType string) string {
-	switch strings.TrimSpace(committeeType) {
-	case "1":
-		return "Survey Komite"
-	case "2":
-		return paymentKind(paymentType)
-	case "3":
-		return "Ex Gratia"
-	case "4":
-		return "Liable Klaim"
-	case "5":
-		return "Final"
-	default:
-		return "Survey Komite"
-	}
-}
-
-// paymentKind menerjemahkan PAYMENTTYPE, yang hanya bermakna saat TYPEKOMITE = 2.
-//
-// Angkanya tersimpan sebagai bilangan dan dibandingkan sebagai bilangan di rule aslinya,
-// sehingga "01" dan "1" adalah hal yang sama. Perbandingan teks di sini akan membuat
-// keduanya berbeda — karena itu ia diurai lebih dulu.
-func paymentKind(paymentType string) string {
-	code, err := strconv.Atoi(strings.TrimSpace(paymentType))
-	if err != nil {
-		return "Collection Fee"
-	}
-	switch code {
-	case 1:
-		return "Final"
-	case 2:
-		return "Interim"
-	case 3:
-		return "Salvage"
-	case 4:
-		return "Adjuster Fee"
-	case 5:
-		return "Adjustment"
-	case 6:
-		return "Tolak Klaim"
-	default:
-		return "Collection Fee"
-	}
 }
 
 // DefaultPageSize adalah banyaknya baris per halaman bila pemanggil tidak menyebutnya.
@@ -613,4 +508,43 @@ type InboxRepo interface {
 	// lewat BelongsTo, supaya perbedaan antara "tidak ada" dan "bukan milik Anda" dapat
 	// dijawab dengan jujur — dan supaya aturannya tidak tersembunyi di dalam WHERE.
 	FindCase(ctx context.Context, caseID string) (CommitteeCase, error)
+}
+
+// InboxEarliestYear adalah tahun terawal case komite yang ditampilkan inbox.
+//
+// # Ia bukan angka karangan
+//
+// `Report Definition/InboxRegisterKomite_RD-RD.xml` menyaring dengan
+// `pxYearNumber(.pxCreateDateTime) >= "2024"` sebagai penyaring `F1` pada logika
+// `(A) AND B AND F1`. Tanpa penyaring itu layar ini menampilkan pekerjaan yang TIDAK
+// pernah terlihat di Pega.
+//
+// Ukurannya nyata, bukan sepele: pada basis data ASM, penyaring A dan B meloloskan
+// **417 baris**, dan penambahan F1 menurunkannya menjadi **189**. Melewatkannya berarti
+// layar menampilkan lebih dari dua kali lipat pekerjaan yang seharusnya.
+//
+// # Kenapa ia konstanta di sini, dan kenapa itu belum selesai
+//
+// `D-15` menetapkan tidak ada nilai bisnis yang boleh di-hardcode. Angka ini melanggarnya,
+// dan pelanggarannya disadari: yang menentukan sekarang adalah `P-5` — perilaku
+// dipertahankan lebih dulu — dan memindahkannya ke master data berarti mengubah perilaku
+// tanpa keputusan tertulis.
+//
+// Ditaruh di SATU tempat dan dikirim sebagai parameter, bukan ditanam di dalam teks SQL,
+// supaya pemindahannya ke master data kelak menyentuh satu baris. Dicatat sebagai
+// pertanyaan terbuka di `docs/keputusan-implementasi.md`.
+const InboxEarliestYear = 2024
+
+// InboxEarliestCreatedAt mengembalikan batas bawah `PXCREATEDATETIME` untuk inbox.
+//
+// # Kenapa batas waktu, bukan perbandingan tahun
+//
+// `EXTRACT(YEAR FROM kolom) >= 2024` membungkus kolomnya dengan fungsi, dan kolom yang
+// terbungkus fungsi tidak dapat memakai indeks. Batas bawah waktu memberi hasil yang sama
+// persis — tahun 2024 dimulai tepat pada 1 Januari 2024 pukul 00:00 — sambil tetap dapat
+// memakai indeks pada tabel yang besar.
+//
+// UTC, bukan WIB, karena `PXCREATEDATETIME` disimpan Pega dalam GMT (`R-12`, `F-5`).
+func InboxEarliestCreatedAt() time.Time {
+	return time.Date(InboxEarliestYear, time.January, 1, 0, 0, 0, 0, time.UTC)
 }

@@ -24,6 +24,9 @@ const (
 	CodeStageMismatch        = "tahap_tidak_bersesuai"
 	CodeInvalidAction        = "tindakan_tidak_sah"
 	CodeExchangeRateNotFound = "kurs_tidak_ditemukan"
+	CodeAccountNotFound      = "rekening_tidak_ditemukan"
+	CodeCommitteeNotFound    = "komite_tidak_ditemukan"
+	CodeNotCommitteeTurn     = "bukan_giliran_komite"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
 )
@@ -59,6 +62,25 @@ func mapError(err error) (int, ErrorResponse) {
 		return http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Tingkat wilayah tidak dikenal.",
+		}
+
+	case errors.Is(err, registrasi.ErrAccountNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeAccountNotFound,
+			Message: "Account number is not registered in Master Rekening",
+		}
+
+	case errors.Is(err, registrasi.ErrCommitteeNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeCommitteeNotFound,
+			Message: "Committee case not found.",
+		}
+
+	case errors.Is(err, registrasi.ErrNotCommitteeTurn):
+		// 403: yang memutuskan hanyalah anggota jenjang yang sedang ditunggu.
+		return http.StatusForbidden, ErrorResponse{
+			Code:    CodeNotCommitteeTurn,
+			Message: "This committee decision is not waiting for you.",
 		}
 
 	case errors.Is(err, registrasi.ErrClaimNotFound):

@@ -17,52 +17,6 @@ import (
 // `RDB List/ShowKomiteTerimaTolakNonMBU-SQL.xml`. Ia diuji satu per satu karena inilah
 // yang dibaca pengguna sebagai "Tipe Komite" — dan di sistem lama ia tersimpan pada
 // property bernama `StatusKlaim`, yang sama sekali bukan Status Klaim dalam arti `D-18`.
-func TestTipeKomiteDiturunkanDariDuaKolom(t *testing.T) {
-	kasus := []struct {
-		typeKomite  string
-		paymentType string
-		harap       string
-	}{
-		{"1", "", "Survey Komite"},
-		{"3", "", "Ex Gratia"},
-		{"4", "", "Liable Klaim"},
-		{"5", "", "Final"},
-
-		{"2", "1", "Final"},
-		{"2", "2", "Interim"},
-		{"2", "3", "Salvage"},
-		{"2", "4", "Adjuster Fee"},
-		{"2", "5", "Adjustment"},
-		{"2", "6", "Tolak Klaim"},
-		{"2", "7", "Collection Fee"},
-	}
-
-	for _, k := range kasus {
-		require.Equal(t, k.harap, komite.CommitteeKindOf(k.typeKomite, k.paymentType),
-			"TYPEKOMITE=%q PAYMENTTYPE=%q", k.typeKomite, k.paymentType)
-	}
-}
-
-// Nilai yang tidak dikenali jatuh ke cabang `else` yang sama dengan rule aslinya.
-//
-// Ditiru, bukan diperbaiki: menebak apa yang SEHARUSNYA terjadi pada tipe yang tidak
-// dikenal berarti mengarang aturan yang menentukan apa yang dibaca pengguna.
-func TestTipeKomiteYangTidakDikenalMengikutiCabangTerakhirRuleLama(t *testing.T) {
-	require.Equal(t, "Survey Komite", komite.CommitteeKindOf("9", "1"))
-	require.Equal(t, "Survey Komite", komite.CommitteeKindOf("", ""))
-	require.Equal(t, "Collection Fee", komite.CommitteeKindOf("2", "bukan angka"))
-}
-
-// PAYMENTTYPE dibandingkan sebagai BILANGAN, bukan sebagai teks.
-//
-// Rule lama membandingkannya dengan angka telanjang (`=1`), sehingga "01" dan "1" adalah
-// hal yang sama di sana. Perbandingan teks akan membuat keduanya berbeda — dan kolomnya
-// datang dari sumber warisan yang penulisannya tidak seragam.
-func TestPaymentTypeDibandingkanSebagaiBilangan(t *testing.T) {
-	require.Equal(t, "Interim", komite.CommitteeKindOf("2", "02"))
-	require.Equal(t, "Interim", komite.CommitteeKindOf("2", " 2 "))
-}
-
 // Aging dihitung sebagai selisih TANGGAL KALENDER WIB, bukan selisih jam.
 //
 // Bentuknya ditiru dari

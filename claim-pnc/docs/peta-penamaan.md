@@ -3758,6 +3758,96 @@ Klaim" — mengetik saja tidak cukup.
 
 Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).
 
+<<<<<<< HEAD
+## My Work — antrean Surveyor / Loss Adjuster (MENU_ID 50)
+
+### Ketiga belas kolomnya
+
+Judul kolom diambil apa adanya dari `Section/InboxSurvey_section-Section.xml` — **berbahasa
+Inggris**, dan dibiarkan begitu (`D-13`). Properti Pega dipulihkan dari daftar Property-Set
+pada `Activity/SetTempLostAdjuster-Act.xml`, **bukan** dari alias SQL-nya yang menyesatkan.
+
+| Judul di layar | Properti Pega | Kolom basis data | Nama Go | Field JSON |
+|---|---|---|---|---|
+| Appointment No | `.City` | `k.ADJUSTERPIC_1` **?** | `AppointmentNumber` | `appointment_no` |
+| Reference No | `.AlasanDokterRejectRCL` | `k.REFNO_1` | `ReferenceNumber` | `reference_no` |
+| Claim No | `.UserName` | `k.PYID` | `ClaimNumber` | `claim_no` |
+| Policy No | `.Country` | `k.POLICYNO` | `PolicyNumber` | `policy_no` |
+| Insured Name | `.AnalystDoctorRemaks` | `k.QQNAME` | `InsuredName` | `insured_name` |
+| COB | `.KomiteStatus` | `k.BUSINESSNAME` | `ClassOfBusiness` | `cob` |
+| Cause Of Loss | `.CauseOfLoss` | `s.LOSSTYPE` **?** | `CauseOfLoss` | `cause_of_loss` |
+| Location | `.Location` | `s.LOCATION_SURVEY` | `Location` | `location` |
+| PIC ASM | `.UserTeknis` | `k.USERTEKNIS_1` | `TechnicalPIC` | `pic_asm` |
+| PIC Loss Adjuster | `.AnaylstRemarks` | `s.SURVEYOR_NAME` | `AdjusterPIC` | `pic_loss_adjuster` |
+| Date of Loss | `.DateOfLoss` | `k.DATEOFLOSS_1` | `DateOfLoss` | `date_of_loss` |
+| Aging | `.CPLValidDate` | `k.AGING` | `AgingDays` | `aging` |
+| Status ASM | `.UserAdmin` | `k.ADJUSTERSTATUS_1` | `ASMStatus` | `status_asm` |
+
+`s` = `POOLDATA.T_SURVEYORLIST` · `k` = `POOLDATA.T_CLAIMLIST_ADMIN`
+**?** = pemetaan belum dikonfirmasi DBA, dipasang di kueri `check_columns`.
+
+**Alias Pega yang TIDAK dibawa**, seluruhnya dari `BrowseLossAdjuster-SQL.xml`:
+
+    a.POLICYNO          AS "CityID"       ia NOMOR POLIS, bukan ID kota
+    a.QQNAME            AS "Country"      ia NAMA TERTANGGUNG, bukan negara
+    a.REFNO_1           AS "Province"     ia NOMOR REFERENSI, bukan provinsi
+    a.SURVEYORNAME_1    AS "CountryID"    ia NAMA SURVEYOR
+    a.USERTEKNIS_1      AS "District"     ia PIC TEKNIK
+    a.AdjusterStatus_1  AS "ProvinceID"   ia STATUS ADJUSTER
+    a.PYSTATUSWORK      AS "NamaSurveyor" ia STATUS ALUR KERJA
+
+Tidak satu pun dari tujuh alias itu mencerminkan isinya. Nama di sistem baru mengikuti
+padanan Inggris yang benar (`D-19`, `D-80`).
+
+### Ketujuh tab
+
+Kunci tab berbahasa Indonesia karena ia **kontrak** yang muncul di URL (`D-80`); judulnya
+tetap Inggris karena ia **teks yang dilihat pengguna** (`D-13`).
+
+| Judul di layar | Kunci (URL) | Konstanta Go |
+|---|---|---|
+| Outstanding | `outstanding` | `TabOutstanding` |
+| Invoice | `invoice` | `TabInvoice` |
+| Close | `close` | `TabClose` |
+| ALL | `all` | `TabAll` |
+| Not answered communication | `belum-dijawab` | `TabNotAnswered` |
+| Not replied from ASM | `belum-dibalas-asm` | `TabNotReplied` |
+| Replied from ASM | `sudah-dibalas-asm` | `TabReplied` |
+
+**"ALL" bukan seluruh baris.** `CountOSLostAdjuster` menghitungnya sebagai
+`ADJUSTERACCEPT_1 = '1'` — hanya yang sudah dikonfirmasi adjuster. Penamaannya menyesatkan
+sejak di Pega, dan nama itu dibawa apa adanya.
+
+### Kesembilan angka KPI
+
+Judul dari section (KAPITAL, dibawa apa adanya); kolom dari
+`POOLDATA.DETAIL_KPI_ADJUSTER`.
+
+| Judul di layar | Kolom | Nama Go | Field JSON |
+|---|---|---|---|
+| PENJADWALAN SURVEY | `SURVEYLAP` | `SurveyScheduling` | `penjadwalan_survey` |
+| IMMEDIATE ADVICE | `IMMEDIATEADVICE` | `ImmediateAdvice` | `immediate_advice` |
+| PRELIMINARY ADVICE | `PRELIMINARYADVICE` | `PreliminaryAdvice` | `preliminary_advice` |
+| INTERIM REPORT | `INTERIM` | `InterimReport` | `interim_report` |
+| UPDATE PROGRESS | `PROGRESS` | `ProgressUpdate` | `update_progress` |
+| TANGGAPAN KOMUNIKASI | `KOMUNIKASI` | `CommunicationResponse` | `tanggapan_komunikasi` |
+| PROPOSE ADJUSTMENT | `PROPOSE` | `ProposeAdjustment` | `propose_adjustment` |
+| FINAL REPORT | `FINALREPORT` | `FinalReport` | `final_report` |
+| NILAI | `NILAI` | `Value` | `nilai` |
+
+### Dua identitas yang mudah tertukar
+
+| Istilah | Isinya | Dicocokkan ke |
+|---|---|---|
+| `Login` | `MST_LOGIN_SURVEYOR.LOGIN` — yang **diketik** saat masuk | `M_KOMUNIKASI_PNC.SENDER` |
+| `Name` | `MST_LOGIN_SURVEYOR.NAMA` — nama surveyornya | `T_SURVEYORLIST.SURVEYOR_NAME`, `DETAIL_KPI_ADJUSTER.ADJUSTER` |
+
+Memakai yang salah tidak menghasilkan galat — hanya antrean kosong, dan antrean kosong tidak
+pernah dilaporkan siapa pun sebagai kerusakan.
+
+`LOGINLEADER` menyimpan **LOGIN atasan**, bukan namanya. Kolom kosong berarti orang itu
+sendiri yang menjadi puncak.
+=======
 ---
 
 ## Tambahan 2026-09-24 — modul Inbox Komunikasi Cabang (`inboxkomunikasicabang`)
@@ -4337,6 +4427,96 @@ lebih rapi dan sekaligus mengubah berkas yang sudah dipakai orang:
 | Note AI Tolak | **Note Tolak** |
 | Coverage Final | **Coverage AI Final** |
 
+## Tambahan 2026-09-28 — modul Inbox Service Center (`inboxservicecenter`)
+
+`MENU_ID 46`. Tabel inti `POOLDATA.T_KLAIM_PORTAL_REKANAN` — klaim perbaikan perangkat dari
+portal mitra.
+
+### Nama modul
+
+| Lapisan | Bentuk |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxservicecenter` |
+| Frontend, folder | `src/modules/inbox-service-center` |
+| Rute | `/inbox-service-center` |
+| Jalur API | `/api/inbox-service-center` dan `/api/inbox-service-center/tab` |
+
+Nama modulnya **tidak** diterjemahkan menjadi "inbox-pusat-layanan": `D-81` menetapkan folder
+modul mengikuti nama yang dipakai Work Owner, dan butir menunya memang berbunyi "Inbox
+Service Center".
+
+### Kolom grid — enam, dan aliasnya menyesatkan
+
+Tanda (!) berarti nama lamanya menyebut hal yang **berbeda** dari isinya.
+
+| Judul kolom | Properti grid Pega | Kolom sebenarnya | Alias SQL lama | Nama di Go | Field JSON |
+|---|---|---|---|---|---|
+| ID | `.CaseID` | `ID` | `"CaseID"` | `ID` | `id` |
+| Tanggal Input | `.DateOfLoss` (!) | `INPUTDATE` | `"DateOfLoss"` (!) | `InputDate` | `tanggal_input` |
+| No Polis | `.PolicyNo` | `NOPOLIS` | `"PolicyNo"` | `PolicyNumber` | `no_polis` |
+| Nasabah | `.UserName` (!) | `QQNAME` | `"NamaDokumen"` (!) | `CustomerName` | `nasabah` |
+| Tipe | `.RefNo` (!) | `TYPE` | `"RefNo"` (!) | `Type` | `tipe` |
+| PIC | `.PICRekanan` | `PIC` | `"PICRekanan"` | `TechnicalPIC` | `pic` |
+
+### Dibawa tetapi TIDAK digambar sebagai kolom
+
+| Kolom | Alias SQL lama | Nama di Go | Field JSON | Kenapa dibawa |
+|---|---|---|---|---|
+| `REPAIRID` | `"NoClaim"` (!) | `RepairID` | `repair_id` | kunci riwayat progres; rincian kelak |
+| `CLAIMNO` | `"ClaimNo"` | `ClaimNumber` | `no_klaim` | ikut dicari kotak "Cari" |
+| `IMEI` | `"ClientID"` / `"NoKTP"` (!) | `IMEI` | `imei` | ikut dicari kotak "Cari" |
+| `STS_APPROVAL` | `"Keyword"` (!) | `ApprovalStatus` | `status_persetujuan` | pembentuk keempat tab |
+| `STATUS` | `"Status"` | `RepairStatus` | `status_perbaikan` | keadaan perbaikan |
+| `LOGIN` | `"Resources"` (!) | `Owner` | *(tidak dikirim)* | penyaring peran, belum aktif |
+| `KOMITEAPPROVE` | `"Bgklname"` (!) | `CommitteeApprover` | *(tidak dikirim)* | jalur komite |
+
+### Kode tab — API vs Pega
+
+| Judul tab | Kode API | `stsapprove` Pega |
+|---|---|---|
+| Registrasi SC | `registrasi-sc` | *(teks kosong)* |
+| Waiting Approval | `waiting-approval` | `0` |
+| Approved | `approved` | `1` |
+| Rejected | `rejected` | `2` |
+
+Alasan tidak memakai nilai Pega sebagai kode ada di `keputusan-implementasi.md` §62.1.
+
+### Dua daftar status — nama propertinya tidak menyatakan isinya
+
+`STS_APPROVAL`, dari `TempApproval` (`Status` + `StatusClaim`):
+
+```
+(NULL) Belum diajukan · 0 Menunggu Approval (==PILIH==) · 1 APPROVED · 2 TLO · 3 REJECT
+```
+
+`STATUS`, dari `StatusRepair` — propertinya bernama **`CountryID`** dan **`Country`**, dua nama
+yang tidak berhubungan sama sekali dengan isinya:
+
+```
+1 Repair Submitted · 2 Repair Assesment · 3 Repair Cancel · 4 Repair Indent
+5 Repair Eligible  · 6 Repair Inprogress · 7 Repair Completed · 8 Pick UP · 9 Data SC
+```
+
+Ejaan **"Assesment"** dipertahankan apa adanya meski salah ketik — itulah yang dibaca pengguna
+hari ini (`D-13`).
+
+### Tambahan — alias dari `PEGA_PORTAL_REKANAN` (2026-09-28)
+
+Procedure-nya menambah satu alias menyesatkan lagi, dan ia yang paling tajam di modul ini:
+
+| Properti Pega | Parameter procedure | Kolom sebenarnya | Isinya |
+|---|---|---|---|
+| `TempSC.ErrorNotes` (!) | `tpartjson clob` | `DETAILPART` | **rincian sparepart dalam JSON**, bukan catatan galat |
+
+Ditambah dua yang perlu diketahui saat jalur tulis dibangun:
+
+| Parameter | Arti |
+|---|---|
+| `tType` | `'SC'` atau `'BROKER'` — menggerbangi SELURUH isi procedure |
+| `status` | `'insert'` · `'update'` · atau `'1'`/`'2'`/`'3'` (keputusan komite) |
+
+Kode keputusan komite **sama persis** dengan kode `STS_APPROVAL` yang sudah dipetakan modul
+ini: `1` APPROVED · `2` TLO · `3` REJECT.
 
 ---
 
@@ -4434,3 +4614,83 @@ Judulnya diturunkan dari **predikat yang dihitungnya**, bukan dari aliasnya:
 | `STSKLAIM NOT IN ('1','2','3')` | Outstanding |
 
 Masing-masing berpasangan "Periode Ini" dan "Tahun Lalu".
+
+---
+
+## Koreksi peta Inbox Manager (2026-09-28)
+
+Bagian di atas ditulis saat modul `MENU_ID 58` dibangun pertama kali, sebelum modul itu dihapus
+(`keputusan-implementasi.md` §66) dan dibangun ulang pada 2026-09-28. **Isinya tidak disunting**
+— ia rekaman pembacaan saat itu. Yang berlaku sekarang adalah bagian ini.
+
+### Satu tab DICORET dari daftar
+
+| Tercatat di atas | Kenyataan |
+|---|---|
+| "Approval Progress Klaim" sebagai salah satu tab Persetujuan Klaim | **Tidak dibawa.** Kontainernya ber-`pyContainerVisibleWhen = 1==2` di `Section/Sec_PaymentAkseptasiKlaimCase1-Section.xml:67064` — kondisi yang tidak pernah benar, sehingga bagian itu sudah mati di Pega |
+
+Layar sekarang punya **tiga belas** tab, dan tab Payment Klaim Akseptasi berisi **satu** daftar,
+bukan dua.
+
+### Judul kolom dashboard dikoreksi — arti `STSKLAIM` diperiksa ke DATA
+
+Judul yang tercatat di atas diturunkan dari predikat, dan itu benar sebagai metode. Tetapi
+**arti nilainya** saat itu belum diperiksa. Pemeriksaan langsung ke `POOLDATA.PEGA_DASHBOARDPNC`
+pada 2026-09-28 (66.972 baris) menjawabnya:
+
+| Nilai | Baris | `TGL_REJECT` terisi | `NOAKSEP` terisi | Arti |
+|---|---:|---:|---:|---|
+| `1` | 50.074 | 0 | 49.198 | **Akseptasi** |
+| `3` | 7.936 | **7.904** | 191 | **Ditolak** |
+| `0` | 8.710 | 0 | 6.982 | Masih berjalan |
+
+Judulnya karena itu dikoreksi:
+
+| Predikat | Tercatat di atas | **Berlaku sekarang** |
+|---|---|---|
+| tanpa penyaring status | Total Klaim | Total |
+| `STSKLAIM = '1'` | Selesai | **Akseptasi** |
+| `STSKLAIM = '3'` | Close | **Ditolak** |
+| `STSKLAIM NOT IN ('1','2','3')` | Outstanding | Outstanding |
+
+"Close" pada baris ketiga akan menyesatkan: barisnya justru yang **ditolak**, dan nilai uangnya
+diambil dari `TTLOS`, bukan dari nilai akseptasi.
+
+### Kode tab memakai angka Pega, bukan penomoran baru
+
+| Kode | Label — diambil dari `pyLabel` pencacah, bukan dari `<pyTitle>` kontainer |
+|---|---|
+| 1 | Outstanding |
+| 2 | Produktivitas Klaim |
+| 3 | Klaim |
+| 4 | Approval Master |
+| 5 | Master Bengkel |
+| 6 | Master Panel |
+| 7 | Approval Nomor Rangka Beda |
+| 8 | Master Sparepart |
+| 9 | Master Kategori Sparepart |
+| 10 | Master Tipe Sparepart |
+| 11 | Master Grouping Sparepart |
+| 12 | Payment Klaim Akseptasi |
+| 13 | Penolakan Klaim |
+
+Angkanya sama dengan `FlagManager.AlasanKlaim==n` pada kontainer section, dan sama pula dengan
+isian `ALASAN` yang ditulis `Activity/CountDashbroardManager`.
+
+**Label diambil dari `pyLabel`, bukan dari `<pyTitle>`**, dan itu bukan pilihan gaya: kontainer
+12 dan 13 sama-sama berjudul `<pyTitle>` "Payment Klaim Akseptasi". Hanya `pyLabel` yang
+membedakan keduanya.
+
+### Nama Go dan frontend
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `internal/inboxmanager` — nama modul bisnis, huruf kecil tanpa tanda hubung (`D-81`) |
+| Folder frontend | `src/modules/inbox-manager` — `kebab-case` (`D-81`) |
+| Rute | `/inbox-manager` |
+| Awalan API | `/api/inbox-manager` |
+
+Isi modulnya berbahasa Inggris (`D-80`): `Tab`, `Counter`, `QueueRow`, `DashboardCell`,
+`Decision`, `Verdict`. Nama field JSON tetap Indonesia karena ia kontrak: `kode`, `nama`,
+`jenis`, `kunci`, `sel`, `pencacah`, `tidak_tersedia`, `alasan_setuju_ditahan`.
+>>>>>>> dev

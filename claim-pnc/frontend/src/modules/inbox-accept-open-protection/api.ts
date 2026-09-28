@@ -9,12 +9,21 @@ import type {
   ProtectionDetail,
   ProtectionFilter,
   ProtectionListResponse,
+  QueuesResponse,
 } from './types'
 
 const PATH = '/api/inbox-accept-open-protection'
 
-/** Banyaknya baris per halaman; mengikuti `pyPageSize` layar lama. */
-export const PAGE_SIZE = 50
+/**
+ * Banyaknya baris per halaman.
+ *
+ * Mengikuti `<pyPageSize>20</pyPageSize>` pada ketiga grid
+ * `Section/InputProtection_Section-Section.xml`. Nilainya WAJIB sama dengan `DefaultLimit`
+ * di `backend/internal/inboxacceptopenprotection` — layar menghitung nomor halaman dari
+ * angka ini, sedangkan yang benar-benar memotong hasil adalah server. Bila keduanya
+ * berbeda, penomoran halaman meleset tanpa satu pun galat.
+ */
+export const PAGE_SIZE = 20
 
 /**
  * Kunci cache dikumpulkan di satu tempat.
@@ -38,6 +47,12 @@ const keys = {
     ] as const,
   detail: (portal: string | null, token: string | null, number: string) =>
     ['inbox-accept-open-protection', 'detail', portal, token, number] as const,
+
+  // Kewenangan TIDAK berkunci portal: satu identitas berlaku di keempat portal (`D-78`),
+  // dan tabelnya pun tinggal di basis data utama. Memasukkan portal ke kunci hanya akan
+  // menembak server berkali-kali untuk jawaban yang sama.
+  queues: (token: string | null) =>
+    ['inbox-accept-open-protection', 'antrean', token] as const,
 }
 
 function buildPath(f: ProtectionFilter): string {
@@ -58,14 +73,45 @@ function buildPath(f: ProtectionFilter): string {
  * `CaseID IS NOT NULL AND PolicyNo IS NOT NULL AND AcceptStatus IS NULL` — ditegakkan
  * server dan tidak dapat dimatikan dari sini.
  */
-export function useAcceptQueue(filter: ProtectionFilter) {
+/**
+ * Hook antrean yang boleh dibuka pemanggil.
+ *
+ * # Kenapa server yang menentukan, bukan layar
+ *
+ * Layar lama tidak punya pemilihan sama sekali: grid yang bukan hak seseorang **tidak
+ * pernah dirender** baginya (`Section/InputProtection_Section-Section.xml:1592` dan `:6036`
+ * menyaring lewat `AccessGroup.pyAccessGroup`).
+ *
+ * Menggambar kedua tab lalu membiarkan salah satunya dijawab 403 akan menampilkan pilihan
+ * yang pasti gagal — dan pengguna tetap akan mencobanya. Menebaknya di peramban lebih buruk
+ * lagi: kewenangan yang ditentukan klien bukan kewenangan.
+ *
+ * Tidak menuntut portal aktif — kewenangan sama di keempat portal (`D-78`).
+ */
+export function useAllowedQueues() {
+  const token = useSession((state) => state.token)
+
+  return useQuery({
+    queryKey: keys.queues(token),
+    queryFn: () => callAPI<QueuesResponse>(`${PATH}/antrean`, { token }),
+    enabled: token !== null,
+
+    // Tidak dicoba ulang saat 403: penolakan kewenangan BUKAN gangguan sementara, dan
+    // mengulanginya hanya menunda pesan yang sudah pasti.
+    retry: false,
+  })
+}
+
+export function useAcceptQueue(filter: ProtectionFilter, options?: { enabled?: boolean }) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
     queryKey: keys.list(portal, token, filter),
     queryFn: () => callAPI<ProtectionListResponse>(buildPath(filter), { token, portal }),
-    enabled: token !== null && portal !== null,
+    // Ditambah syarat pemanggil: selama antrean yang boleh dibuka belum diketahui, daftar
+    // TIDAK ditembak. Menembaknya lebih dulu hanya menghasilkan 403 yang pasti.
+    enabled: token !== null && portal !== null && (options?.enabled ?? true),
 
     // Antrean BERSAMA: baris dapat hilang kapan saja karena diputuskan petugas lain. Data
     // dianggap usang seketika supaya perpindahan tab dan Muat ulang selalu menembak server.
@@ -94,7 +140,7 @@ export function useProtectionDetail(number: string | null) {
  *
  * Pelaku dan waktunya TIDAK dikirim dari sini — keduanya diterbitkan server dari sesi dan
  * jam aplikasi. `D-59` menetapkan tidak ada pemisahan tugas formal, sehingga kolom
- * `DIAKSEP_OLEH` adalah satu-satunya kontrol pengimbang atas persetujuan ini; membiarkan
+ * `RESOLVED_BY` adalah satu-satunya kontrol pengimbang atas persetujuan ini; membiarkan
  * klien menentukannya akan menghapus kontrol itu.
  *
  * Backend menjawab `409` bila proteksi sudah diputuskan petugas lain. Itu BUKAN kesalahan

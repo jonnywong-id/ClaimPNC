@@ -60,6 +60,9 @@ var ErrClaimNumberAlreadyIssued = errors.New("registrasi: nomor klaim sudah pern
 // justru karena pesannya tidak menyebutkan apa pun.
 var ErrPolicyNotFound = errors.New("registrasi: polis tidak ditemukan")
 
+// ErrAccountNotFound: nomor rekening tidak ada di Master Rekening (POOLDATA.LST_ACCOUNT).
+var ErrAccountNotFound = errors.New("registrasi: rekening tidak ada di master rekening")
+
 // ViolationCode menamai satu aturan validasi.
 //
 // Klien membedakan pelanggaran lewat kode ini, bukan dengan mencocokkan teks pesan —
@@ -94,6 +97,12 @@ const (
 	ViolationPLANotLeader            ViolationCode = "pla_bukan_leader"
 	ViolationPLANoReserve            ViolationCode = "pla_tanpa_reserve"
 	ViolationSendNeedsFaceSheet      ViolationCode = "kirim_pic_belum_cfs"
+	ViolationReceiverAccountEmpty    ViolationCode = "rekening_penerima_kosong"
+	ViolationReceiverAccountUnknown  ViolationCode = "rekening_penerima_tidak_terdaftar"
+	ViolationReceiverEmailEmpty      ViolationCode = "email_penerima_kosong"
+	ViolationCommitteeTransferred    ViolationCode = "komite_sudah_ditransfer"
+	ViolationCommitteeIncomplete     ViolationCode = "adjustment_belum_lengkap"
+	ViolationCommitteeNoApprover     ViolationCode = "komite_tanpa_penyetuju"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

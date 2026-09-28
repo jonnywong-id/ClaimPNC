@@ -1,134 +1,157 @@
--- Kueri Inbox Komite — menggantikan TIGA rule SQL sistem lama.
+-- Kueri Inbox Komite.
 --
 -- ============================================================================
 -- SELURUH PERNYATAAN DI BERKAS INI HANYA MEMBACA.
 -- ============================================================================
 --
--- Tidak ada satu pun INSERT, UPDATE, atau DELETE. Keempat tabel di bawah masih ditulis
--- Pega, dan `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem. Yang ditulis
--- aplikasi ini adalah tabel keputusannya SENDIRI — lihat decision.sql.
+-- Tidak ada satu pun INSERT, UPDATE, atau DELETE. Ketiga tabel di bawah masih ditulis
+-- Pega, dan `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem.
 --
 --
--- # Rule yang digantikan
+-- ============================================================================
+-- SUMBER: InboxRegisterKomite_RD DAN SetDataKomitePNC_Act
+-- ============================================================================
 --
---   RDB List/GetKomitePAOutstanding-SQL.xml       → kotak Outstanding
---   RDB List/GetKomitePAditerima-SQL.xml          → kotak Diterima
---   RDB List/ShowKomiteTerimaTolakNonMBU-SQL.xml  → kotak Ditolak
+-- Ditetapkan Work Owner 2026-09-28. Keduanyalah yang benar-benar memunculkan data komite
+-- di sistem lama, dan keduanya HANYA MEMBACA:
 --
--- Ketiganya membaca tabel yang sama dengan penyaring berbeda, dan ketiganya merangkai
--- penyaringnya ke dalam teks SQL lewat `{ASIS:TempKomiteInput.CauseOfLoss}` dan
--- `{Asis:LaporanDataAIKlaim.NoteAITerima}`. Perangkaian itu bukan sekadar tidak rapi: ia
--- celah injeksi (`K-29`, 538 kemunculan pola `{ASIS:...}` di seluruh export).
+--   Report Definition/InboxRegisterKomite_RD-RD.xml
+--       Dipakai `Harness/InboxKomite_Harness` dan `Section/InboxKomite_section` sebagai
+--       sumber grid. Kelasnya `ASM-FW-GCNMFW-Work-Komite`, INNER JOIN ke `Assign-Worklist`
+--       berprefix `newAssignPage`, dan penyaringnya `(A) AND B AND F1`:
 --
--- Di sini seluruh nilai lewat parameter binding, tanpa perkecualian.
+--           A   newAssignPage.pxAssignedOperatorID = Param.assign
+--           B   .pyStatusWork != "Resolved-Completed"
+--           F1  pxYearNumber(.pxCreateDateTime) >= "2024"
 --
+--   Activity/SetDataKomitePNC_Act-Act.xml
+--       Pemuat portal (kelas `Data-Portal`, 18 langkah). Ia bercabang pada
+--       `FlagKomiteKlaims.pyCaseID`: 1 → Outstanding lewat `GetKomitePAOutstanding`,
+--       2 → Diterima lewat `GetKomitePAditerima`, 3 → CariData. Blok `Terima` dan `Tolak`
+--       di dalamnya HANYA `PROPERTY-SET` — tidak satu pun menulis.
 --
--- # Tabel yang dibaca
+-- Kesimpulan kotak Diterima dan Ditolak karena itu diturunkan dari
+-- `T_CLAIM_KOMITE_LIST.STATUSAPPROVE`, persis seperti `GetKomitePAditerima`:
 --
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK      header case; disaring PXOBJCLASS = Work-Komite
---   DATAPEGA.PC_ASSIGN_WORKLIST         penugasan — inilah yang menentukan MILIK SIAPA
---   POOLDATA.T_CLAIM_KOMITE_LIST        nilai, tipe komite, jenjang, keputusan Pega
---   POOLDATA.T_CLAIM_DATA_RESULTS_AI    penilaian AI (OUTER — lihat catatan di bawah)
---   POOLDATA.T_CLAIM_PNC                PIC Teknik klaim
---   POOLDATA.PEGA_DASHBOARDPNC          persentase OR untuk Nilai OR ASM
---   POOLDATA.CPNC_KOMITE_KEPUTUSAN      keputusan MILIK APLIKASI INI (migrasi 0004)
---
---
--- # OUTER JOIN ke penilaian AI WAJIB dipertahankan
---
--- Kueri lama memakai sintaks Oracle lama `A.pyID = AI.KOMITE(+)`. Di sini ia ditulis
--- sebagai LEFT JOIN — `09-DATABASE-STRATEGY.md` §4 menetapkan `(+)` diganti LEFT JOIN
--- demi portabilitas — tetapi SIFATNYA tidak berubah.
---
--- Mengubahnya menjadi INNER akan membuat kasus yang belum dinilai AI HILANG dari inbox
--- tanpa satu pun tanda. Itu kelas cacat paling mahal yang bisa ada di sebuah daftar
--- pekerjaan, dan ia dijaga uji `TestKasusTanpaPenilaianAITetapMuncul`.
+--     case when b.STATUSAPPROVE = '1' then 'DITERIMA' else 'DITOLAK' end
 --
 --
--- # Dua join DIAGREGASI, dan itu penyimpangan yang disengaja
+-- ============================================================================
+-- POOLDATA.CPNC_KOMITE_KEPUTUSAN TIDAK DIPAKAI DI BERKAS INI
+-- ============================================================================
 --
--- `T_CLAIM_DATA_RESULTS_AI` dan `PEGA_DASHBOARDPNC` dibaca lewat subkueri ber-GROUP BY,
--- bukan dijoin langsung. Sebabnya berbeda untuk masing-masing, dan keduanya nyata:
+-- Tabel itu tidak pernah ada di Pega — ia rancangan aplikasi ini sendiri untuk MENULIS
+-- keputusan, dan `0004_komite_keputusan.up.sql` belum pernah dijalankan di lingkungan mana
+-- pun. Menggabungkannya ke kueri daftar membuat ketiadaannya mematikan SELURUH layar
+-- dengan `ORA-00942`, padahal yang hilang hanya kolom pelengkap.
 --
---   * Penilaian AI. Tidak ada yang menjamin satu baris per KOMITE. Join langsung akan
---     MENGGANDAKAN baris inbox bila ada dua penilaian — dan kueri jumlah di bawah tidak
---     menyentuh tabel itu sama sekali, sehingga jumlah halaman akan berbeda dari isinya.
---     Paginasi yang jumlahnya berbeda dari isinya adalah pekerjaan yang hilang.
+-- Work Owner menetapkan tabel itu tidak dipakai untuk memunculkan data. Jalur tulisnya
+-- tetap ada di kode tetapi tidak aktif — lihat decision.sql dan tersedia.go.
 --
---   * Persentase OR. Rule lama memakai SUBKUERI SKALAR, yang di Oracle GAGAL bila
---     mengembalikan lebih dari satu baris. Menggantinya dengan join langsung akan
---     menukar galat itu menjadi penggandaan baris yang senyap — jauh lebih buruk.
---     MAX mempertahankan "satu nilai per klaim" tanpa dapat menggandakan apa pun.
+-- ============================================================================
+-- YANG WAJIB DIKETAHUI BILA JALUR TULIS ITU KELAK DIHIDUPKAN
+-- ============================================================================
 --
+-- Penyaring kotak di bawah TIDAK mengenal keputusan milik aplikasi ini. Selama tidak satu
+-- pun keputusan dapat tercatat, ia setara dengan `komite.CommitteeCase.InBox` — karena di
+-- sana `decided` selalu salah.
 --
--- # PRSN_PSPLNSOR DIJUMLAHKAN DUA KALI — ditiru, dan diduga cacat
---
--- Rumus persentase OR disalin apa adanya dari `ShowKomiteTerimaTolakNonMBU`:
---
---     PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
---
--- Suku terakhir muncul DUA KALI, dan kolom `PRSN_FSPLNSOR` yang namanya mirip hanya
--- sekali. Pola itu sangat menyerupai salin-tempel yang lupa diganti — dan bila benar, ia
--- MELEBIHKAN "Nilai OR ASM" yang dibaca komite saat menyetujui uang.
---
--- Ia TETAP DITIRU. `P-5` menetapkan perilaku dipertahankan lebih dulu, dan dugaan ini
--- TIDAK ada di antara 13 perbaikan eksplisit yang `D-49` setujui. Memperbaikinya diam-diam
--- akan memunculkan selisih pada uji kesetaraan yang tidak dapat dipetakan ke butir mana
--- pun — dan `D-54` menuntut setiap selisih seperti itu disetujui Work Owner tertulis.
---
--- Ia dicatat sebagai pertanyaan terbuka di `docs/keputusan-implementasi.md`, bukan
--- diperbaiki di sini.
+-- Begitu keputusan dapat tercatat, keduanya BERSELISIH: kasus yang sudah diputuskan
+-- seseorang akan tetap muncul di kotak Outstanding miliknya. Yang menghidupkan jalur tulis
+-- WAJIB mengembalikan penyaring itu ke sini. Uji `TestKotakSQLSelarasDenganDefinisiDomain`
+-- menyebut kewajiban ini secara eksplisit.
 --
 --
--- # Aturan kotak hidup di DUA tempat, dan itu disengaja
+-- ============================================================================
+-- DUA KOLOM YANG DIMINTA RD TETAPI BUKAN KOLOM BASIS DATA
+-- ============================================================================
 --
--- Definisi kanoniknya ada di Go — `komite.CommitteeCase.InBox`. Klausa di bawah
--- MENIRUNYA. Menyaring seluruhnya di Go akan menuntut seluruh antrean komite dibaca ke
--- memori sebelum satu halaman ditampilkan, dan kasus komite tumbuh bersama jumlah klaim.
+-- Diverifikasi ke `ALL_TAB_COLUMNS` pada basis data ASM, bukan disimpulkan:
 --
--- Bila salah satu diubah, yang lain WAJIB ikut. Adapter memori memakai definisi Go
--- langsung, sehingga setiap uji yang berjalan tanpa basis data menguji definisi itu —
--- bukan salinan ini.
+--   .CoverID              TIDAK ADA di DATAPEGA.PC_ASM_FW_GCNMFW_WORK (186 kolom)
+--   .Komite.DateOfComitee TIDAK ADA di tabel yang sama
 --
+-- Keduanya hidup di blob Pega, dan Pega dapat membacanya; SQL tidak. Penggantinya diambil
+-- dari kedua rule yang Work Owner sebut, bukan dikarang:
 --
--- # Pemotongan prefix kelas Pega
+--   .CoverID              `SUBSTR(PNCCASEID, INSTR(PNCCASEID,' ')+1)` pada
+--                         `GetKomitePAOutstanding` — memotong prefix kelas Pega
+--   .Komite.DateOfComitee `TRUNC(A.PXCREATEDATETIME)` pada `GetKomitePAOutstanding`,
+--                         dan `b.tanggalkomite` pada `GetKomitePAditerima`
 --
--- Awalan `ASM-FW-GCNMFW-WORK ` bocor ke dalam data bisnis sebagai bagian kunci
--- (utang teknis §4.1):
---
---     CLAIMID = 'ASM-FW-GCNMFW-WORK ' || {no_klaim}
---
--- Ia dibuang di sini supaya tidak pernah sampai ke domain maupun ke layar (`D-22`).
---
--- # Kenapa REPLACE, bukan SUBSTR + pencari posisi
---
--- Rule lama memakai `SUBSTR(PNCCASEID, <posisi spasi pertama> + 1)`. Fungsi pencari
--- posisi Oracle TIDAK portabel, dan padanan standarnya yang `09-DATABASE-STRATEGY.md` §4
--- sebut tidak tersedia di Oracle 19c — sehingga kedua bentuk itu melanggar salah satu
--- dari dua basis data yang `D-20` tuntut dilayani satu set SQL yang sama.
---
--- `REPLACE` ada di keduanya, dan ia langsung MEMBALIK penggabungan yang terdokumentasi di
--- atas alih-alih menebaknya dari letak spasi. `TRIM` menutup sisa spasi bila awalannya
--- tersimpan dengan pemisah yang sedikit berbeda.
+-- Karena itu Tgl Komite di sini `COALESCE(TANGGALKOMITE, CAST(PXCREATEDATETIME AS DATE))`:
+-- baris yang sudah punya tanggal komite memakainya, sisanya jatuh ke tanggal pembuatan
+-- case — persis pembagian yang kedua rule itu lakukan.
 --
 --
--- # Gaya SQL
+-- ============================================================================
+-- KENAPA PENYARING OPERATOR TIDAK DI-UPPER DAN TIDAK DI-TRIM
+-- ============================================================================
 --
--- COALESCE bukan NVL · CASE WHEN bukan DECODE · LEFT JOIN bukan `(+)` ·
--- OFFSET/FETCH bukan ROWNUM · tanpa TO_CHAR untuk tampilan · kolom selalu disebut
--- namanya. Seluruhnya mengikuti `09-DATABASE-STRATEGY.md` §4, sehingga kueri ini berjalan
--- apa adanya di Oracle 19c maupun PostgreSQL 17+.
+-- Dua sebab, dan keduanya menunjuk arah yang sama.
+--
+-- Pertama, KESETARAAN. RD membandingkan `newAssignPage.pxAssignedOperatorID = Param.assign`
+-- apa adanya. Menambahkan UPPER dan TRIM akan membuat layar ini menampilkan baris yang
+-- TIDAK pernah dilihat pengguna di Pega — selisih yang tidak dapat dipetakan ke satu pun
+-- dari 13 perbaikan `P-5` (`D-49`).
+--
+-- Kedua, KINERJA. `DATAPEGA.PC_ASSIGN_WORKLIST` punya indeks
+-- `BULKPROCESSFROMLIST(PXASSIGNEDOPERATORID, PXREFOBJECTKEY, …)` — persis urutan yang kueri
+-- ini butuhkan. Membungkus kolomnya dengan UPPER/TRIM membuat indeks itu tidak terpakai,
+-- dan sisi lain join-nya `POOLDATA.T_CLAIM_KOMITE_LIST` yang berisi **39 juta baris**.
+--
+-- Perapian nilainya dikerjakan di Go lewat `komite.OperatorKey` sebelum dikirim ke sini.
+--
+--
+-- ============================================================================
+-- KENAPA T_CLAIM_KOMITE_LIST DIBACA LEWAT SUBKUERI SKALAR
+-- ============================================================================
+--
+-- Tabel itu berisi **39.067.250 baris**. Membacanya lewat subkueri ber-GROUP BY atas
+-- SELURUH tabel — bentuk yang dipakai versi sebelumnya — memaksa agregasi penuh pada setiap
+-- permintaan inbox, berapa pun kecilnya halaman yang diminta.
+--
+-- Subkueri skalar berkorelasi pada `KOMITE_ID` memakai indeks `T_CLAIM_KOMITE_LIST_KMT`,
+-- sehingga biayanya sebanding dengan jumlah baris yang benar-benar ditampilkan. `MAX`
+-- mempertahankan "satu nilai per case" tanpa dapat menggandakan baris inbox.
+--
+--
+-- ============================================================================
+-- TABEL YANG DIBACA
+-- ============================================================================
+--
+--   DATAPEGA.PC_ASM_FW_GCNMFW_WORK   header case; disaring PXOBJCLASS = Work-Komite
+--   DATAPEGA.PC_ASSIGN_WORKLIST      penugasan — inilah yang menentukan MILIK SIAPA
+--   POOLDATA.T_CLAIM_KOMITE_LIST     keputusan dan tanggal komite MENURUT PEGA
+--
+-- Tidak lebih. Penilaian AI, nilai uang, tipe komite, dan PIC teknik TIDAK dibaca: tidak
+-- satu pun dari ketiganya ada di RD, dan yang menampilkannya di sistem lama adalah
+-- `ShowKomiteTerimaTolakNonMBU` — jalur Non-MBU yang bukan sumber layar ini.
+--
+--
+-- ============================================================================
+-- GAYA SQL
+-- ============================================================================
+--
+-- COALESCE bukan NVL · CASE WHEN bukan DECODE · LEFT/INNER JOIN bukan `(+)` ·
+-- OFFSET/FETCH bukan ROWNUM · tanpa TO_CHAR untuk tampilan · `CAST(x AS DATE)` bukan
+-- `TRUNC` · kolom selalu disebut namanya. Seluruhnya mengikuti
+-- `09-DATABASE-STRATEGY.md` §4, sehingga kueri ini berjalan apa adanya di Oracle 19c
+-- maupun PostgreSQL 17+.
 
 
 -- name: inbox_list
 --
--- Satu halaman inbox. Penyaring memakai pola `:n IS NULL OR ...`, sehingga satu kueri
--- melayani seluruh gabungan penyaring tanpa satu pun potongan teks yang dirangkai.
+-- Satu halaman inbox.
 --
--- Urutannya: yang paling lama menunggu di ATAS, persis `ORDER BY "AgingKomite" DESC` pada
--- `GetKomitePAOutstanding`. CASE_ID menjadi pemecah seri supaya urutannya PASTI — dua
--- kasus bertanggal sama tidak boleh berpindah tempat antar permintaan, karena halaman
--- kedua akan melewatkan baris yang berpindah ke halaman pertama.
+-- Urutannya: yang paling lama menunggu di ATAS. `GetKomitePAOutstanding` menuliskannya
+-- sebagai `ORDER BY "AgingKomite" DESC`, dan karena Aging dihitung dari `PXCREATEDATETIME`,
+-- urutan itu sama dengan `CREATED_AT ASC`. Bentuk ini dipakai karena ia memakai kolom
+-- tabel apa adanya alih-alih ekspresi turunan.
+--
+-- CASE_ID menjadi pemecah seri supaya urutannya PASTI: dua case bertanggal sama tidak boleh
+-- berpindah tempat antar permintaan, karena halaman kedua akan melewatkan baris yang
+-- berpindah ke halaman pertama.
 SELECT c.CASE_ID,
        c.CLAIM_NUMBER,
        c.POLICY_NUMBER,
@@ -136,116 +159,54 @@ SELECT c.CASE_ID,
        c.BUSINESS_NAME,
        c.SOURCE_OF_BUSINESS,
        c.BRANCH_NAME,
-       c.GROUP_PANEL,
-       c.CLAIM_PIC,
        c.ASSIGNED_OPERATOR,
        c.COMMITTEE_DATE,
        c.CREATED_AT,
        c.WORK_STATUS,
-       c.TYPE_KOMITE,
-       c.PAYMENT_TYPE,
-       c.CLAIM_VALUE,
-       c.ASM_SHARE_VALUE,
-       c.OR_VALUE,
-       c.COMMITTEE_NOTE,
-       c.LEGACY_APPROVE,
-       c.LEGACY_TIER,
-       c.AI_RESULT,
-       c.AI_NOTE_ACCEPTED,
-       c.AI_NOTE_REJECTED,
-       c.AI_ASSESSED_AT,
-       c.AI_PRESENT
+       c.LEGACY_APPROVE
   FROM (
-        SELECT a.PYID                                              AS CASE_ID,
-               TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', ''))    AS CLAIM_NUMBER,
-               a.POLICYNO                                          AS POLICY_NUMBER,
-               a.QQNAME                                            AS INSURED_NAME,
-               a.BUSINESSNAME                                      AS BUSINESS_NAME,
-               a.SOBNAME                                           AS SOURCE_OF_BUSINESS,
-               a.BRANCHNAME                                        AS BRANCH_NAME,
-               a.GROUPPANEL_1                                      AS GROUP_PANEL,
-               pnc.PICTEKNIK                                       AS CLAIM_PIC,
-               COALESCE(w.PXASSIGNEDOPERATORID, a.PYRESOLVEDUSERID) AS ASSIGNED_OPERATOR,
-               COALESCE(k.TANGGALKOMITE, a.PXCREATEDATETIME)       AS COMMITTEE_DATE,
-               a.PXCREATEDATETIME                                  AS CREATED_AT,
-               a.PYSTATUSWORK                                      AS WORK_STATUS,
-               k.TYPEKOMITE                                        AS TYPE_KOMITE,
-               k.PAYMENTTYPE                                       AS PAYMENT_TYPE,
-               k.NILAIKLAIM                                        AS CLAIM_VALUE,
-               k.NILAIKLAIM * k.SHAREASM / 100                     AS ASM_SHARE_VALUE,
-               k.NILAIKLAIM * dash.OR_PERCENT / 100               AS OR_VALUE,
-               k.NOTEKOMITE                                        AS COMMITTEE_NOTE,
-               k.STATUSAPPROVE                                     AS LEGACY_APPROVE,
-               k.KOMITEKE                                          AS LEGACY_TIER,
-               ai.RESULTAI                                         AS AI_RESULT,
-               ai.NOTETERIMA                                       AS AI_NOTE_ACCEPTED,
-               ai.NOTETOLAK                                        AS AI_NOTE_REJECTED,
-               ai.TGLAI                                            AS AI_ASSESSED_AT,
-               CASE WHEN ai.KOMITE IS NULL THEN 0 ELSE 1 END       AS AI_PRESENT,
-               d.KEPUTUSAN                                         AS MY_DECISION
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
-          LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
-                 ON w.PXREFOBJECTKEY = a.PZINSKEY
-                AND w.PXOBJCLASS = 'Assign-Worklist'
-                AND UPPER(TRIM(w.PXASSIGNEDOPERATORID)) = :1
-          LEFT JOIN (
-                    SELECT KOMITE_ID,
-                           MAX(TYPEKOMITE)    AS TYPEKOMITE,
-                           MAX(PAYMENTTYPE)   AS PAYMENTTYPE,
-                           MAX(NILAIKLAIM)    AS NILAIKLAIM,
-                           MAX(SHAREASM)      AS SHAREASM,
-                           MAX(STATUSAPPROVE) AS STATUSAPPROVE,
-                           MAX(NOTEKOMITE)    AS NOTEKOMITE,
-                           MAX(KOMITEKE)      AS KOMITEKE,
-                           MAX(TANGGALKOMITE) AS TANGGALKOMITE
-                      FROM POOLDATA.T_CLAIM_KOMITE_LIST
-                     GROUP BY KOMITE_ID
-                    ) k ON k.KOMITE_ID = a.PYID
-          LEFT JOIN (
-            SELECT KOMITE,
-                   MAX(RESULTAI)   AS RESULTAI,
-                   MAX(NOTETERIMA) AS NOTETERIMA,
-                   MAX(NOTETOLAK)  AS NOTETOLAK,
-                   MAX(TGLAI)      AS TGLAI
-              FROM POOLDATA.T_CLAIM_DATA_RESULTS_AI
-             GROUP BY KOMITE
-            ) ai ON ai.KOMITE = a.PYID
-          LEFT JOIN POOLDATA.T_CLAIM_PNC pnc ON pnc.CLAIMID = a.PNCCASEID
-          LEFT JOIN (
-                    SELECT NOKLAIM,
-                           MAX(PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR
-                                 + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR) AS OR_PERCENT
-                      FROM POOLDATA.PEGA_DASHBOARDPNC
-                      GROUP BY NOKLAIM
-                    ) dash ON dash.NOKLAIM = TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', ''))
-          LEFT JOIN POOLDATA.CPNC_KOMITE_KEPUTUSAN d
-                 ON d.CASE_ID = a.PYID
-                AND d.ACTOR_LOGIN = :2
-         WHERE a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+        SELECT a.PYID                                             AS CASE_ID,
+               TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', '')) AS CLAIM_NUMBER,
+               a.POLICYNO                                         AS POLICY_NUMBER,
+               a.QQNAME                                           AS INSURED_NAME,
+               a.BUSINESSNAME                                     AS BUSINESS_NAME,
+               a.SOBNAME                                          AS SOURCE_OF_BUSINESS,
+               a.BRANCHNAME                                       AS BRANCH_NAME,
+               w.PXASSIGNEDOPERATORID                             AS ASSIGNED_OPERATOR,
+               COALESCE((SELECT MAX(k.TANGGALKOMITE)
+                           FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+                          WHERE k.KOMITE_ID = a.PYID),
+                        CAST(a.PXCREATEDATETIME AS DATE))         AS COMMITTEE_DATE,
+               a.PXCREATEDATETIME                                 AS CREATED_AT,
+               a.PYSTATUSWORK                                     AS WORK_STATUS,
+               (SELECT MAX(k.STATUSAPPROVE)
+                  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+                 WHERE k.KOMITE_ID = a.PYID)                      AS LEGACY_APPROVE
+          FROM DATAPEGA.PC_ASSIGN_WORKLIST w
+          JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
+                 ON a.PZINSKEY = w.PXREFOBJECTKEY
+         WHERE w.PXOBJCLASS = 'Assign-Worklist'
+           AND w.PXASSIGNEDOPERATORID = :1
+           AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+           AND a.PXCREATEDATETIME >= :2
        ) c
- WHERE (c.ASSIGNED_OPERATOR IS NOT NULL
-        AND UPPER(TRIM(c.ASSIGNED_OPERATOR)) = :3)
-   AND (CASE
-          WHEN :4 = 'outstanding'
-               AND c.MY_DECISION IS NULL
+ WHERE (CASE
+          WHEN :3 = 'outstanding'
                AND c.WORK_STATUS <> 'Resolved-Completed' THEN 1
-          WHEN :5 = 'diterima'
-               AND (c.MY_DECISION = 'setuju'
-                    OR (c.MY_DECISION IS NULL AND c.LEGACY_APPROVE = '1')) THEN 1
-          WHEN :6 = 'ditolak'
-               AND (c.MY_DECISION IN ('tolak', 'kembalikan')
-                    OR (c.MY_DECISION IS NULL
-                        AND c.LEGACY_APPROVE IS NOT NULL
-                        AND c.LEGACY_APPROVE <> '1')) THEN 1
+          WHEN :4 = 'diterima'
+               AND c.LEGACY_APPROVE = '1' THEN 1
+          WHEN :5 = 'ditolak'
+               AND c.LEGACY_APPROVE IS NOT NULL
+               AND c.LEGACY_APPROVE <> '1' THEN 1
           ELSE 0
         END) = 1
-   AND (:7 IS NULL
-        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:8) || '%' ESCAPE '\'
-        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:9) || '%' ESCAPE '\')
-   AND (:10 IS NULL OR c.CREATED_AT >= :11)
-   AND (:12 IS NULL OR c.CREATED_AT < :13)
- ORDER BY c.COMMITTEE_DATE ASC, c.CASE_ID ASC
-OFFSET :14 ROWS FETCH NEXT :15 ROWS ONLY
+   AND (:6 IS NULL
+        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:7) || '%' ESCAPE '\'
+        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:8) || '%' ESCAPE '\')
+   AND (:9 IS NULL OR c.CREATED_AT >= :10)
+   AND (:11 IS NULL OR c.CREATED_AT < :12)
+ ORDER BY c.CREATED_AT ASC, c.CASE_ID ASC
+OFFSET :13 ROWS FETCH NEXT :14 ROWS ONLY
 
 
 -- name: inbox_count
@@ -254,52 +215,42 @@ OFFSET :14 ROWS FETCH NEXT :15 ROWS ONLY
 --
 -- Penyaringnya WAJIB sama persis dengan inbox_list. Bila keduanya berbeda, layar akan
 -- menampilkan jumlah halaman yang tidak pernah ada isinya — dan pengguna akan melaporkan
--- pekerjaan yang hilang.
+-- pekerjaan yang hilang. `TestPenyaringDaftarDanPenghitungSama` menegakkannya.
+--
+-- COMMITTEE_DATE tidak ikut dibaca di sini: ia tidak dipakai satu pun penyaring, dan
+-- membacanya berarti satu subkueri berkorelasi tambahan untuk setiap baris yang dihitung.
 SELECT COUNT(1)
   FROM (
-        SELECT a.PYID                                              AS CASE_ID,
-               TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', ''))    AS CLAIM_NUMBER,
-               COALESCE(w.PXASSIGNEDOPERATORID, a.PYRESOLVEDUSERID) AS ASSIGNED_OPERATOR,
-               a.PXCREATEDATETIME                                  AS CREATED_AT,
-               a.PYSTATUSWORK                                      AS WORK_STATUS,
-               k.STATUSAPPROVE                                     AS LEGACY_APPROVE,
-               d.KEPUTUSAN                                         AS MY_DECISION
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
-          LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
-                 ON w.PXREFOBJECTKEY = a.PZINSKEY
-                AND w.PXOBJCLASS = 'Assign-Worklist'
-                AND UPPER(TRIM(w.PXASSIGNEDOPERATORID)) = :1
-          LEFT JOIN (
-                    SELECT KOMITE_ID, MAX(STATUSAPPROVE) AS STATUSAPPROVE
-                      FROM POOLDATA.T_CLAIM_KOMITE_LIST
-                     GROUP BY KOMITE_ID
-                    ) k ON k.KOMITE_ID = a.PYID
-          LEFT JOIN POOLDATA.CPNC_KOMITE_KEPUTUSAN d
-                 ON d.CASE_ID = a.PYID
-                AND d.ACTOR_LOGIN = :2
-         WHERE a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+        SELECT a.PYID                                             AS CASE_ID,
+               TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', '')) AS CLAIM_NUMBER,
+               a.PXCREATEDATETIME                                 AS CREATED_AT,
+               a.PYSTATUSWORK                                     AS WORK_STATUS,
+               (SELECT MAX(k.STATUSAPPROVE)
+                  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+                 WHERE k.KOMITE_ID = a.PYID)                      AS LEGACY_APPROVE
+          FROM DATAPEGA.PC_ASSIGN_WORKLIST w
+          JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
+                 ON a.PZINSKEY = w.PXREFOBJECTKEY
+         WHERE w.PXOBJCLASS = 'Assign-Worklist'
+           AND w.PXASSIGNEDOPERATORID = :1
+           AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+           AND a.PXCREATEDATETIME >= :2
        ) c
- WHERE (c.ASSIGNED_OPERATOR IS NOT NULL
-        AND UPPER(TRIM(c.ASSIGNED_OPERATOR)) = :3)
-   AND (CASE
-          WHEN :4 = 'outstanding'
-               AND c.MY_DECISION IS NULL
+ WHERE (CASE
+          WHEN :3 = 'outstanding'
                AND c.WORK_STATUS <> 'Resolved-Completed' THEN 1
-          WHEN :5 = 'diterima'
-               AND (c.MY_DECISION = 'setuju'
-                    OR (c.MY_DECISION IS NULL AND c.LEGACY_APPROVE = '1')) THEN 1
-          WHEN :6 = 'ditolak'
-               AND (c.MY_DECISION IN ('tolak', 'kembalikan')
-                    OR (c.MY_DECISION IS NULL
-                        AND c.LEGACY_APPROVE IS NOT NULL
-                        AND c.LEGACY_APPROVE <> '1')) THEN 1
+          WHEN :4 = 'diterima'
+               AND c.LEGACY_APPROVE = '1' THEN 1
+          WHEN :5 = 'ditolak'
+               AND c.LEGACY_APPROVE IS NOT NULL
+               AND c.LEGACY_APPROVE <> '1' THEN 1
           ELSE 0
         END) = 1
-   AND (:7 IS NULL
-        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:8) || '%' ESCAPE '\'
-        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:9) || '%' ESCAPE '\')
-   AND (:10 IS NULL OR c.CREATED_AT >= :11)
-   AND (:12 IS NULL OR c.CREATED_AT < :13)
+   AND (:6 IS NULL
+        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:7) || '%' ESCAPE '\'
+        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:8) || '%' ESCAPE '\')
+   AND (:9 IS NULL OR c.CREATED_AT >= :10)
+   AND (:11 IS NULL OR c.CREATED_AT < :12)
 
 
 -- name: inbox_summary
@@ -307,60 +258,47 @@ SELECT COUNT(1)
 -- Jumlah baris KETIGA kotak dalam SATU perjalanan ke basis data.
 --
 -- Bentuk `SUM(CASE WHEN ...)` diambil dari `RDB List/BrowseClaimRCV_Aksep-SQL.xml`, yang
--- menghitung seluruh lencana sekaligus dengan cara yang sama. Sifatnya dipertahankan
--- karena itulah yang membuat lencana tidak dapat berselisih dengan isi tabel di bawahnya.
+-- menghitung seluruh lencana sekaligus dengan cara yang sama. Sifatnya dipertahankan karena
+-- itulah yang membuat lencana tidak dapat berselisih dengan isi tabel di bawahnya.
 --
 -- Penyaring kotak TIDAK diterapkan di sini — pencarian dan rentang tanggal diterapkan.
--- Dengan begitu lencana menjawab pertanyaan yang benar: "berapa yang cocok dengan
--- pencarian saya di kotak lain", bukan "berapa isi kotak lain seluruhnya" — yang akan
--- membuat pengguna berpindah tab lalu menemukan tabel kosong.
+-- Dengan begitu lencana menjawab pertanyaan yang benar: "berapa yang cocok dengan pencarian
+-- saya di kotak lain", bukan "berapa isi kotak lain seluruhnya" — yang akan membuat pengguna
+-- berpindah tab lalu menemukan tabel kosong.
 SELECT SUM(CASE
-             WHEN c.MY_DECISION IS NULL
-                  AND c.WORK_STATUS <> 'Resolved-Completed' THEN 1
+             WHEN c.WORK_STATUS <> 'Resolved-Completed' THEN 1
              ELSE 0
            END) AS OUTSTANDING_COUNT,
        SUM(CASE
-             WHEN c.MY_DECISION = 'setuju'
-                  OR (c.MY_DECISION IS NULL AND c.LEGACY_APPROVE = '1') THEN 1
+             WHEN c.LEGACY_APPROVE = '1' THEN 1
              ELSE 0
            END) AS ACCEPTED_COUNT,
        SUM(CASE
-             WHEN c.MY_DECISION IN ('tolak', 'kembalikan')
-                  OR (c.MY_DECISION IS NULL
-                      AND c.LEGACY_APPROVE IS NOT NULL
-                      AND c.LEGACY_APPROVE <> '1') THEN 1
+             WHEN c.LEGACY_APPROVE IS NOT NULL
+                  AND c.LEGACY_APPROVE <> '1' THEN 1
              ELSE 0
            END) AS REJECTED_COUNT
   FROM (
-        SELECT a.PYID                                              AS CASE_ID,
-               TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', ''))    AS CLAIM_NUMBER,
-               COALESCE(w.PXASSIGNEDOPERATORID, a.PYRESOLVEDUSERID) AS ASSIGNED_OPERATOR,
-               a.PXCREATEDATETIME                                  AS CREATED_AT,
-               a.PYSTATUSWORK                                      AS WORK_STATUS,
-               k.STATUSAPPROVE                                     AS LEGACY_APPROVE,
-               d.KEPUTUSAN                                         AS MY_DECISION
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
-          LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
-                 ON w.PXREFOBJECTKEY = a.PZINSKEY
-                AND w.PXOBJCLASS = 'Assign-Worklist'
-                AND UPPER(TRIM(w.PXASSIGNEDOPERATORID)) = :1
-          LEFT JOIN (
-                    SELECT KOMITE_ID, MAX(STATUSAPPROVE) AS STATUSAPPROVE
-                      FROM POOLDATA.T_CLAIM_KOMITE_LIST
-                     GROUP BY KOMITE_ID
-                    ) k ON k.KOMITE_ID = a.PYID
-          LEFT JOIN POOLDATA.CPNC_KOMITE_KEPUTUSAN d
-                 ON d.CASE_ID = a.PYID
-                AND d.ACTOR_LOGIN = :2
-         WHERE a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+        SELECT a.PYID                                             AS CASE_ID,
+               TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', '')) AS CLAIM_NUMBER,
+               a.PXCREATEDATETIME                                 AS CREATED_AT,
+               a.PYSTATUSWORK                                     AS WORK_STATUS,
+               (SELECT MAX(k.STATUSAPPROVE)
+                  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+                 WHERE k.KOMITE_ID = a.PYID)                      AS LEGACY_APPROVE
+          FROM DATAPEGA.PC_ASSIGN_WORKLIST w
+          JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
+                 ON a.PZINSKEY = w.PXREFOBJECTKEY
+         WHERE w.PXOBJCLASS = 'Assign-Worklist'
+           AND w.PXASSIGNEDOPERATORID = :1
+           AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+           AND a.PXCREATEDATETIME >= :2
        ) c
- WHERE (c.ASSIGNED_OPERATOR IS NOT NULL
-        AND UPPER(TRIM(c.ASSIGNED_OPERATOR)) = :3)
-   AND (:4 IS NULL
-        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:5) || '%' ESCAPE '\'
-        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:6) || '%' ESCAPE '\')
-   AND (:7 IS NULL OR c.CREATED_AT >= :8)
-   AND (:9 IS NULL OR c.CREATED_AT < :10)
+ WHERE (:3 IS NULL
+        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:4) || '%' ESCAPE '\'
+        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:5) || '%' ESCAPE '\')
+   AND (:6 IS NULL OR c.CREATED_AT >= :7)
+   AND (:8 IS NULL OR c.CREATED_AT < :9)
 
 
 -- name: inbox_get
@@ -371,77 +309,46 @@ SELECT SUM(CASE
 -- BelongsTo, supaya "tidak ada" dan "bukan milik Anda" dapat dibedakan di log meski
 -- disamakan di peramban.
 --
--- Karena itu pula kolom MY_DECISION tidak dibaca di sini: keputusan diambil terpisah
--- lewat decision.sql untuk SELURUH kasus pada halaman sekaligus.
-SELECT a.PYID                                              AS CASE_ID,
-       TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', ''))    AS CLAIM_NUMBER,
-       a.POLICYNO                                          AS POLICY_NUMBER,
-       a.QQNAME                                            AS INSURED_NAME,
-       a.BUSINESSNAME                                      AS BUSINESS_NAME,
-       a.SOBNAME                                           AS SOURCE_OF_BUSINESS,
-       a.BRANCHNAME                                        AS BRANCH_NAME,
-       a.GROUPPANEL_1                                      AS GROUP_PANEL,
-       pnc.PICTEKNIK                                       AS CLAIM_PIC,
+-- Penyaring tahun juga TIDAK diterapkan. Penyaring itu membatasi DAFTAR; menerapkannya di
+-- sini akan membuat sebuah case yang nomornya sudah dipegang seseorang menjawab "tidak
+-- ditemukan" hanya karena umurnya — dan itu pesan yang menyesatkan.
+--
+-- Penugasannya dibaca LEFT, bukan INNER: case yang penugasannya sudah selesai tetap harus
+-- dapat dibuka, dan `PYRESOLVEDUSERID` menjadi penggantinya persis seperti pada riwayat.
+SELECT a.PYID                                             AS CASE_ID,
+       TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', '')) AS CLAIM_NUMBER,
+       a.POLICYNO                                         AS POLICY_NUMBER,
+       a.QQNAME                                           AS INSURED_NAME,
+       a.BUSINESSNAME                                     AS BUSINESS_NAME,
+       a.SOBNAME                                          AS SOURCE_OF_BUSINESS,
+       a.BRANCHNAME                                       AS BRANCH_NAME,
        COALESCE(w.PXASSIGNEDOPERATORID, a.PYRESOLVEDUSERID) AS ASSIGNED_OPERATOR,
-       COALESCE(k.TANGGALKOMITE, a.PXCREATEDATETIME)       AS COMMITTEE_DATE,
-       a.PXCREATEDATETIME                                  AS CREATED_AT,
-       a.PYSTATUSWORK                                      AS WORK_STATUS,
-       k.TYPEKOMITE                                        AS TYPE_KOMITE,
-       k.PAYMENTTYPE                                       AS PAYMENT_TYPE,
-       k.NILAIKLAIM                                        AS CLAIM_VALUE,
-       k.NILAIKLAIM * k.SHAREASM / 100                     AS ASM_SHARE_VALUE,
-       k.NILAIKLAIM * dash.OR_PERCENT / 100               AS OR_VALUE,
-       k.NOTEKOMITE                                        AS COMMITTEE_NOTE,
-       k.STATUSAPPROVE                                     AS LEGACY_APPROVE,
-       k.KOMITEKE                                          AS LEGACY_TIER,
-       ai.RESULTAI                                         AS AI_RESULT,
-       ai.NOTETERIMA                                       AS AI_NOTE_ACCEPTED,
-       ai.NOTETOLAK                                        AS AI_NOTE_REJECTED,
-       ai.TGLAI                                            AS AI_ASSESSED_AT,
-       CASE WHEN ai.KOMITE IS NULL THEN 0 ELSE 1 END       AS AI_PRESENT
+       COALESCE((SELECT MAX(k.TANGGALKOMITE)
+                   FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+                  WHERE k.KOMITE_ID = a.PYID),
+                CAST(a.PXCREATEDATETIME AS DATE))         AS COMMITTEE_DATE,
+       a.PXCREATEDATETIME                                 AS CREATED_AT,
+       a.PYSTATUSWORK                                     AS WORK_STATUS,
+       (SELECT MAX(k.STATUSAPPROVE)
+          FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+         WHERE k.KOMITE_ID = a.PYID)                      AS LEGACY_APPROVE
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
   LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
          ON w.PXREFOBJECTKEY = a.PZINSKEY
         AND w.PXOBJCLASS = 'Assign-Worklist'
-  LEFT JOIN (
-            SELECT KOMITE_ID,
-                   MAX(TYPEKOMITE)    AS TYPEKOMITE,
-                   MAX(PAYMENTTYPE)   AS PAYMENTTYPE,
-                   MAX(NILAIKLAIM)    AS NILAIKLAIM,
-                   MAX(SHAREASM)      AS SHAREASM,
-                   MAX(STATUSAPPROVE) AS STATUSAPPROVE,
-                   MAX(NOTEKOMITE)    AS NOTEKOMITE,
-                   MAX(KOMITEKE)      AS KOMITEKE,
-                   MAX(TANGGALKOMITE) AS TANGGALKOMITE
-              FROM POOLDATA.T_CLAIM_KOMITE_LIST
-             GROUP BY KOMITE_ID
-            ) k ON k.KOMITE_ID = a.PYID
-  LEFT JOIN (
-            SELECT KOMITE,
-                   MAX(RESULTAI)   AS RESULTAI,
-                   MAX(NOTETERIMA) AS NOTETERIMA,
-                   MAX(NOTETOLAK)  AS NOTETOLAK,
-                   MAX(TGLAI)      AS TGLAI
-              FROM POOLDATA.T_CLAIM_DATA_RESULTS_AI
-             GROUP BY KOMITE
-            ) ai ON ai.KOMITE = a.PYID
-  LEFT JOIN POOLDATA.T_CLAIM_PNC pnc ON pnc.CLAIMID = a.PNCCASEID
-  LEFT JOIN (
-            SELECT NOKLAIM,
-                   MAX(PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR
-                         + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR) AS OR_PERCENT
-              FROM POOLDATA.PEGA_DASHBOARDPNC
-              GROUP BY NOKLAIM
-            ) dash ON dash.NOKLAIM = TRIM(REPLACE(a.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', ''))
  WHERE a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
    AND a.PYID = :1
 
 
 -- name: inbox_check_table
 --
--- Memastikan seluruh tabel dan kolomnya dapat dibaca akun aplikasi, tanpa mengambil satu
+-- Memastikan ketiga tabel beserta kolomnya dapat dibaca akun aplikasi, tanpa mengambil satu
 -- baris pun. Dipakai mode periksa untuk membedakan dua sebab kegagalan yang tampak mirip:
 -- tabelnya tidak ada versus tidak punya hak baca.
+--
+-- Ketiganya disebut di sini, bukan hanya tabel kerjanya. Versi sebelumnya hanya menyentuh
+-- `PC_ASM_FW_GCNMFW_WORK`, sehingga tabel lain yang tidak terbaca lolos dari pemeriksaan dan
+-- baru ketahuan ketika pengguna membuka layarnya.
 SELECT a.PYID,
        a.PNCCASEID,
        a.POLICYNO,
@@ -449,10 +356,16 @@ SELECT a.PYID,
        a.BUSINESSNAME,
        a.SOBNAME,
        a.BRANCHNAME,
-       a.GROUPPANEL_1,
        a.PXCREATEDATETIME,
        a.PYSTATUSWORK,
        a.PYRESOLVEDUSERID,
-       a.PZINSKEY
+       a.PZINSKEY,
+       w.PXASSIGNEDOPERATORID,
+       k.STATUSAPPROVE,
+       k.TANGGALKOMITE
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
+  LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
+         ON w.PXREFOBJECTKEY = a.PZINSKEY
+  LEFT JOIN POOLDATA.T_CLAIM_KOMITE_LIST k
+         ON k.KOMITE_ID = a.PYID
  WHERE 1 = 0

@@ -24,6 +24,12 @@ import {
   type PLAListResponse,
   type SettlementRequest,
   type SettlementPreviewResponse,
+  type BankAccount,
+  type ReceiverRequest,
+  type Committee,
+  type CommitteeListResponse,
+  type CommitteeTransferRequest,
+  type CommitteeTransferResponse,
   type Task,
 } from './types'
 
@@ -418,5 +424,110 @@ export function usePreviewSettlement(claimID: string) {
         token,
         portal,
       }),
+  })
+}
+
+/**
+ * Isian No Rekening InputReceiver: rekening Master Rekening bernomor itu — pengganti
+ * `GetDataBankMaster` Pega, yang dipanggil setiap nomor berubah. Nomor kosong tidak dibaca.
+ */
+export function useBankAccount(number: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const trimmed = number.trim()
+
+  return useQuery({
+    queryKey: ['registrasi', 'rekening', trimmed, token, portal],
+    enabled: trimmed !== '',
+    retry: false,
+    queryFn: () =>
+      callAPI<BankAccount>(`/api/registrasi/rekening/${encodeURIComponent(trimmed)}`, { token, portal }),
+  })
+}
+
+const committeeKey = ['registrasi', 'komite'] as const
+
+/** Tombol Transfer Komite pada satu baris Adjustment. */
+export function useTransferCommittee(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: CommitteeTransferRequest) =>
+      callAPI<CommitteeTransferResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/komite`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      void apiClient.invalidateQueries({ queryKey: committeeKey })
+    },
+  })
+}
+
+/** Status satu kasus komite per jenjang. */
+export function useCommittee(committeeID: string | undefined) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: [...committeeKey, committeeID ?? '', token, portal],
+    enabled: !!committeeID,
+    queryFn: () => callAPI<Committee>(`/api/registrasi/komite/${encodeURIComponent(committeeID ?? '')}`, { token, portal }),
+  })
+}
+
+/** Putusan komite klaim PNCN yang menunggu pengguna ini. */
+export function usePendingCommittees() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: [...committeeKey, 'menunggu', token, portal],
+    queryFn: () => callAPI<CommitteeListResponse>('/api/registrasi/komite', { token, portal }),
+  })
+}
+
+/** Tombol Setuju/Tolak anggota komite. */
+export function useDecideCommittee() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { komiteID: string; keputusan: string; catatan: string }) =>
+      callAPI<Committee>(`/api/registrasi/komite/${encodeURIComponent(content.komiteID)}/putusan`, {
+        metode: 'POST',
+        body: { keputusan: content.keputusan, catatan: content.catatan },
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: committeeKey })
+      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
+    },
+  })
+}
+
+/** Tombol Simpan InputReceiver — penerima baru (Tambah) atau yang sedang dibuka. */
+export function useSaveReceiver(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: ReceiverRequest) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/penerima`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
   })
 }

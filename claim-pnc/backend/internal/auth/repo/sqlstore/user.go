@@ -22,19 +22,21 @@ func (r *UserRepo) GetByIdentity(ctx context.Context, identity string) (auth.Use
 	rows := r.db.QueryRowContext(ctx, getQuery("user_get_by_identity"), identity)
 
 	var (
-		p          auth.User
-		kind       string
-		login      sql.NullString
-		email      sql.NullString
-		perusahaan sql.NullString
-		branch     sql.NullString
-		branchCode sql.NullString
-		jabatan    sql.NullString
-		operatorID sql.NullString
-		active     string
+		p            auth.User
+		kind         string
+		login        sql.NullString
+		email        sql.NullString
+		perusahaan   sql.NullString
+		branch       sql.NullString
+		branchCode   sql.NullString
+		branchDetail sql.NullString
+		jabatan      sql.NullString
+		operatorID   sql.NullString
+		active       string
 	)
 	err := rows.Scan(&p.Identity, &kind, &p.Name, &login, &email, &perusahaan,
-		&branch, &branchCode, &jabatan, &operatorID, &active, &p.CreatedAt, &p.UpdatedAt)
+		&branch, &branchCode, &branchDetail, &jabatan, &operatorID, &active,
+		&p.CreatedAt, &p.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return auth.User{}, auth.ErrUserNotFound
@@ -48,6 +50,7 @@ func (r *UserRepo) GetByIdentity(ctx context.Context, identity string) (auth.Use
 	p.Company = perusahaan.String
 	p.Branch = branch.String
 	p.BranchCode = branchCode.String
+	p.DetailBranchCode = branchDetail.String
 	p.Position = jabatan.String
 	p.OperatorID = operatorID.String
 	p.Active = active == "Y"
@@ -79,7 +82,8 @@ func (r *UserRepo) Save(ctx context.Context, p auth.User) error {
 	_, err = r.db.ExecContext(ctx, getQuery("user_insert"),
 		p.Identity, string(p.Kind), p.Name, emptyToNull(p.Login),
 		emptyToNull(p.Email), emptyToNull(p.Company),
-		emptyToNull(p.Branch), emptyToNull(p.BranchCode), emptyToNull(p.Position),
+		emptyToNull(p.Branch), emptyToNull(p.BranchCode),
+		emptyToNull(p.DetailBranchCode), emptyToNull(p.Position),
 		emptyToNull(p.OperatorID), active,
 		p.CreatedAt.UTC(), p.UpdatedAt.UTC())
 	if err == nil {
@@ -96,7 +100,8 @@ func (r *UserRepo) Save(ctx context.Context, p auth.User) error {
 func (r *UserRepo) update(ctx context.Context, p auth.User) (int64, error) {
 	result, err := r.db.ExecContext(ctx, getQuery("user_update"),
 		string(p.Kind), p.Name, emptyToNull(p.Login), emptyToNull(p.Email),
-		emptyToNull(p.Company), emptyToNull(p.Branch), emptyToNull(p.BranchCode), emptyToNull(p.Position),
+		emptyToNull(p.Company), emptyToNull(p.Branch), emptyToNull(p.BranchCode),
+		emptyToNull(p.DetailBranchCode), emptyToNull(p.Position),
 		p.UpdatedAt.UTC(), p.Identity)
 	if err != nil {
 		return 0, fmt.Errorf("sqlstore: memperbarui pengguna: %w", err)

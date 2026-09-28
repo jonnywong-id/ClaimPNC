@@ -15,7 +15,102 @@ var (
 
 	// ErrWriteNotAvailable berarti aksi yang belum dibangun diminta.
 	ErrWriteNotAvailable = errors.New("inboxpladla: tindakan ini belum tersedia")
+
+	// ErrNotAClaimList berarti daftar klaim diminta pada tampilan yang bukan daftar klaim.
+	//
+	// Satu-satunya yang bukan adalah **DATA PLA DLA XOL KLAIM**. Ia menggambar ringkasan
+	// per tahun dan per penyebab kerugian — bukan klaim satu per satu — sehingga
+	// permintaan daftar padanya tidak punya jawaban yang masuk akal.
+	//
+	// Ia ditolak dengan pesan, bukan dijawab daftar kosong: daftar kosong akan terbaca
+	// sebagai "belum ada pemberitahuan XOL untuk Anda", padahal yang terjadi adalah
+	// permintaannya salah alamat.
+	ErrNotAClaimList = errors.New("inboxpladla: tampilan ini bukan daftar klaim")
 )
+
+// Action adalah tindakan yang diminta salah satu tombol yang belum dibangun.
+//
+// # Yang tersisa hanya DUA, dan keduanya ada di layar RINCIAN
+//
+// Ketiga tombol yang sempat dicatat sebagai "belum dibangun" pada catatan sesi sebelumnya
+// ternyata bukan tiga hal yang sejenis, dan hanya satu yang nyata:
+//
+//	"Detail Claim"  nyata  -> DIBANGUN, lihat detail.go
+//	"Detail"        hanya tampil bagi satu Operator ID yang ditulis tetap di dalam rule
+//	                (`pyContainerVisibleWhen = OperatorID.pyUserIdentifier=='KBRU_PNC'`)
+//	"DLA"           berada di dalam wadah bersyarat `1==2` — TIDAK PERNAH tergambar
+//
+// Kedua yang terakhir TIDAK dibawa, dan karena itu tidak punya tombol maupun tindakan di
+// sini: tombol yang di Pega pun tidak pernah muncul tidak perlu dijawab alasannya.
+//
+// Yang benar-benar tersisa adalah kedua tombol unduh massal pada layar rincian.
+type Action string
+
+const (
+	// ActionDownloadAllPLA adalah tombol **"Download ALL PLA"** pada layar rincian.
+	ActionDownloadAllPLA Action = "unduh-semua-pla"
+
+	// ActionDownloadAllDLA adalah tombol **"Download ALL DLA"**.
+	ActionDownloadAllDLA Action = "unduh-semua-dla"
+)
+
+// actionReasons memetakan tiap tindakan ke alasan yang dibaca pengguna.
+//
+// Kalimatnya menyebut APA yang belum ada dan apa yang DAPAT dilakukan hari ini. Pembaca
+// layar ini adalah pihak luar yang tidak dapat kita latih, sehingga "belum tersedia" tanpa
+// jalan keluar akan berakhir sebagai telepon ke Service Center.
+var actionReasons = map[Action]string{
+	ActionDownloadAllPLA: "Tombol \"Download ALL PLA\" belum tersedia di sistem baru. Ia " +
+		"menggabungkan seluruh dokumen PLA klaim ini menjadi satu unduhan, dan rule " +
+		"yang melakukannya (`SetDocumentPLADLA`, `GetLinkViewDoc_Act`) tidak ada di " +
+		"export Pega. Untuk sementara, unduhlah dokumennya satu per satu lewat tombol " +
+		"\"Dokumen\" pada tiap baris PLA.",
+
+	ActionDownloadAllDLA: "Tombol \"Download ALL DLA\" belum tersedia di sistem baru, " +
+		"dengan sebab yang sama seperti \"Download ALL PLA\". Unduhlah dokumennya satu " +
+		"per satu lewat tombol \"Dokumen\" pada tiap baris DLA.",
+}
+
+// NotAvailableError menyatakan sebuah tombol ditekan yang tindakannya belum dibangun.
+//
+// Ia membawa TINDAKANNYA supaya lapisan transport dapat menjawab alasan yang tepat. Tanpa
+// itu, kedua tombol menjawab kalimat yang sama — dan pengguna yang menekan "Download ALL
+// DLA" akan membaca penjelasan tentang PLA.
+type NotAvailableError struct {
+	Action Action
+}
+
+// NewNotAvailable membentuk penolakan untuk satu tindakan.
+//
+// Tindakan yang TIDAK dikenal tetap menghasilkan penolakan, bukan galat lain: yang dituju
+// pengguna memang tombol yang belum dibangun, dan nama tindakan yang salah ketik di alamat
+// bukan sesuatu yang perlu dibedakan di layar.
+func NewNotAvailable(raw string) *NotAvailableError {
+	action := Action(strings.TrimSpace(raw))
+	if _, known := actionReasons[action]; !known {
+		return &NotAvailableError{}
+	}
+	return &NotAvailableError{Action: action}
+}
+
+// Reason adalah kalimat yang dibaca pengguna.
+func (e *NotAvailableError) Reason() string {
+	if reason, known := actionReasons[e.Action]; known {
+		return reason
+	}
+	return "Tindakan ini belum tersedia di sistem baru. Kerjakan lewat Pega."
+}
+
+// Error menyusun pesan ringkas untuk log. Yang dibaca pengguna adalah Reason.
+func (e *NotAvailableError) Error() string {
+	if e.Action == "" {
+		return "inboxpladla: tindakan tidak dikenal belum tersedia"
+	}
+	return "inboxpladla: tindakan " + string(e.Action) + " belum tersedia"
+}
+
+// Unwrap membuat errors.Is(err, ErrWriteNotAvailable) tetap benar.
+func (e *NotAvailableError) Unwrap() error { return ErrWriteNotAvailable }
 
 // Nama isian yang dapat ditunjuk sebuah pelanggaran validasi.
 const (
@@ -110,6 +205,15 @@ func (q Query) EffectiveReinsurerCodes() []string {
 // maxSearchLength membatasi panjang kata kunci pencarian.
 const maxSearchLength = 100
 
+// tabNames menyusun daftar nama tab untuk pesan galat.
+func tabNames() string {
+	names := make([]string, 0, len(tabs))
+	for _, tab := range tabs {
+		names = append(names, tab.Name)
+	}
+	return strings.Join(names, ", ")
+}
+
 // NewQuery membentuk permintaan yang sah, atau menyatakan apa yang salah.
 func NewQuery(input QueryInput, caller Caller, reinsurerCodes []string) (Query, error) {
 	cleanCaller := caller.Clean()
@@ -128,9 +232,14 @@ func NewQuery(input QueryInput, caller Caller, reinsurerCodes []string) (Query, 
 
 	tab, known := FindTab(code)
 	if !known {
+		// Pesannya menyebut PILIHANNYA, bukan sekadar menyatakan kodenya salah.
+		//
+		// Ia disusun dari daftar tab itu sendiri, bukan ditulis ulang di sini: sejak
+		// tampilannya menjadi tujuh, kalimat yang ditulis tangan akan tertinggal pada
+		// penambahan berikutnya dan menyebut pilihan yang tidak lagi lengkap.
 		return Query{}, NewValidationError([]Violation{{
 			Field:   FieldTab,
-			Message: "Daftar tidak dikenal. Pilih PLA, DLA, atau Close.",
+			Message: "Daftar tidak dikenal. Pilih salah satu dari: " + tabNames() + ".",
 		}})
 	}
 

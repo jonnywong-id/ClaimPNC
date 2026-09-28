@@ -7,22 +7,64 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"claim-pnc/internal/inboxpladla"
 )
 
 // Uji di berkas ini TIDAK menyentuh basis data. Yang diperiksa adalah kesesuaian antara
 // teks SQL, daftar alias di query.go, dan pemindai di inboxpladla.go.
 
 func TestEveryQueryNamedInTheCodeExists(t *testing.T) {
-	names := []string{
-		"reinsurer_codes",
-		"list_pla", "list_dla", "list_close",
-		"count_pla", "count_dla", "count_close",
-		"xol_summary",
-	}
+	names := []string{"reinsurer_codes", "xol_summary", "detail_reply"}
+	names = append(names, listQueries...)
+	names = append(names, countQueries...)
+	names = append(names, detailQueries...)
 
 	for _, name := range names {
 		require.NotPanics(t, func() { query(name) }, "kueri %q tidak ada", name)
 		require.NotEmpty(t, strings.TrimSpace(query(name)))
+	}
+}
+
+// Penanda bind WAJIB muncul dalam urutan MENAIK.
+//
+// # Ini uji yang paling mudah diremehkan, dan ia sudah pernah menggigit
+//
+// Oracle mengikat argumen menurut urutan KEMUNCULAN penanda di dalam teks kueri, BUKAN
+// menurut angka pada `:n`. Penomoran `:1 … :7` yang tersebar tidak berurutan terbaca benar
+// oleh manusia dan SALAH oleh Oracle.
+//
+// Kegagalannya tidak menghasilkan galat sama sekali — setiap bind tetap terisi sesuatu.
+// Pada modul ini akibatnya: kolom "PLA No" selalu kosong, dan pencarian tidak pernah
+// menemukan apa pun. Cacat yang sama pernah lolos di modul lain dan baru ketahuan setelah
+// Oracle hidup (`catatan-pengembangan.md` §19.14).
+//
+// Ketiga kueri daftar di modul ini MEMANG rusak begitu sampai 2026-09-28, dan modul ini
+// belum pernah dijalankan terhadap Oracle — sehingga tidak ada yang menyadarinya.
+func TestBindMarkersAppearInAscendingOrder(t *testing.T) {
+	pattern := regexp.MustCompile(`:(\d+)`)
+
+	for name, text := range queries {
+		seen := []int{}
+		for _, match := range pattern.FindAllStringSubmatch(text, -1) {
+			number, err := strconv.Atoi(match[1])
+			require.NoError(t, err)
+
+			if len(seen) > 0 && seen[len(seen)-1] == number {
+				// Penanda yang sama berturut-turut tidak mungkin: satu penanda yang
+				// dirujuk dua kali membuat jumlah kemunculan tidak lagi sama dengan
+				// jumlah argumen. Ia tetap dicatat supaya urutannya diperiksa.
+				continue
+			}
+			seen = append(seen, number)
+		}
+
+		for index := 1; index < len(seen); index++ {
+			require.Equal(t, seen[index-1]+1, seen[index],
+				"kueri %q: penanda bind muncul tidak berurutan (%v) — "+
+					"Oracle mengikat menurut urutan KEMUNCULAN, bukan menurut nomor",
+				name, seen)
+		}
 	}
 }
 
@@ -61,11 +103,128 @@ func TestAliasOrderInSQLMatchesTheListsInGo(t *testing.T) {
 func TestEveryQueryIsScopedToTheCallersReinsurerCode(t *testing.T) {
 	for _, name := range reinsurerScopedQueries {
 		text := strings.ToUpper(query(name))
-		require.Contains(t, text, "POOLDATA.T_REINSURER",
-			"kueri %q tidak menyaring menurut reasuradur pemanggil", name)
-		require.Contains(t, text, "LOGIN",
-			"kueri %q tidak mencocokkan login pemanggil", name)
+
+		// Cara menyaringnya BERBEDA menurut apa yang dibaca kuerinya, dan perbedaannya
+		// disengaja:
+		//
+		//	pemberitahuan  kode reasuradur dari `T_REINSURER`
+		//	komunikasi     login pada salah satu sisi percakapan
+		//	dokumen        `T_DOC_REAS.LOGIN`, ditambah rantai pemberitahuannya
+		//
+		// Yang diuji karena itu bukan "memuat T_REINSURER" melainkan "memuat
+		// sekurang-kurangnya satu batas yang berangkat dari pemanggil".
+		viaReinsurer := strings.Contains(text, "POOLDATA.T_REINSURER")
+		viaConversation := strings.Contains(text, "COMMUNICATE_TO") ||
+			strings.Contains(text, "K.SENDER") ||
+			strings.Contains(text, "(SENDER)")
+		viaDocumentOwner := strings.Contains(text, "R.LOGIN")
+
+		require.True(t, viaReinsurer || viaConversation || viaDocumentOwner,
+			"kueri %q tidak menyaring menurut pemanggil sama sekali", name)
+
+		// Kueri yang menyaring lewat `T_REINSURER` WAJIB mencocokkan kolom LOGIN-nya.
+		// Yang menyaring lewat percakapan tidak punya kolom itu — identitas pemanggil di
+		// sana berada pada `COMMUNICATE_TO` atau `SENDER`.
+		if viaReinsurer {
+			require.Contains(t, text, "LOGIN",
+				"kueri %q membaca T_REINSURER tanpa mencocokkan login", name)
+		}
 	}
+}
+
+// Setiap kueri RINCIAN WAJIB memagari kunci klaimnya sekaligus pemanggilnya.
+//
+// Kunci klaim saja tidak cukup: bentuknya `ASM-FW-GCNMFW-WORK PNC-xxxx` — pola yang dapat
+// ditebak — sehingga kueri yang hanya menyaring kunci akan menyerahkan nilai uang,
+// dokumen, dan isi percakapan milik mitra lain kepada siapa pun yang menebaknya.
+func TestEveryDetailQueryIsScopedToTheCaller(t *testing.T) {
+	for _, name := range append(append([]string{}, detailQueries...), "detail_reply") {
+		text := strings.ToUpper(query(name))
+
+		// Kunci klaim tersimpan di kolom yang BERBEDA menurut tabelnya:
+		//
+		//	T_CLAIM_PNC · T_PLALIST · T_DLALIST · T_DOC_REAS   CLAIMID
+		//	M_KOMUNIKASI_PNC                                    CASEID
+		//
+		// Kolom bernama `CASEID` yang berisi kunci klaim adalah perangkap penamaan Pega
+		// yang sudah tercatat: di modul `inboxkomunikasicabang` kolom yang SAMA berisi
+		// nama kanal. Uji ini menerima keduanya, bukan menuntut satu nama.
+		require.True(t,
+			strings.Contains(text, "CLAIMID") || strings.Contains(text, "CASEID"),
+			"kueri rincian %q tidak memagari kunci klaim", name)
+
+		// Identitas pemanggil pun tersimpan di kolom yang berbeda: `LOGIN` pada master
+		// reasuransi dan `T_DOC_REAS`, `COMMUNICATE_TO`/`SENDER` pada percakapan.
+		require.True(t,
+			strings.Contains(text, "LOGIN") ||
+				strings.Contains(text, "COMMUNICATE_TO") ||
+				strings.Contains(text, "SENDER"),
+			"kueri rincian %q tidak memagari pemanggil", name)
+	}
+}
+
+// Kedua kueri pemberitahuan pada layar rincian WAJIB menuntut dokumennya SUDAH terkirim.
+//
+// Ia selisih terhadap Pega yang disengaja: grid Pega dimuat dari objek kerja klaim dan
+// memuat seluruh baris apa pun keadaannya. Dokumen yang belum dikirim belum menjadi milik
+// penerimanya.
+func TestDetailAdviceGridsOnlyShowSentAdvices(t *testing.T) {
+	for _, name := range []string{"detail_advices_pla", "detail_advices_dla"} {
+		require.Contains(t, strings.ToUpper(query(name)), "ISKIRIM = '1'",
+			"kueri %q menampilkan pemberitahuan yang belum terkirim", name)
+	}
+}
+
+// Pernyataan balasan WAJIB memagari ketiganya sekaligus.
+//
+// Yang ketiga paling penting: `REPLYMESSAGE IS NULL` menutup balasan kedua yang akan
+// MENIMPA balasan pertama pada kolom yang sama, dan yang pertama tidak dapat dipulihkan
+// dari mana pun. Pemeriksaan terpisah sebelum menulis tidak menutupnya — dua permintaan
+// yang datang bersamaan akan sama-sama lolos.
+func TestTheReplyStatementGuardsAgainstOverwriting(t *testing.T) {
+	text := strings.ToUpper(query("detail_reply"))
+
+	require.Contains(t, text, "REPLYMESSAGE IS NULL",
+		"balasan kedua akan menimpa balasan pertama tanpa dapat dipulihkan")
+	require.Contains(t, text, "CASEID = :6",
+		"percakapan milik klaim lain dapat dibalas lewat alamat klaim ini")
+	require.Contains(t, text, "KOMUNIKASIID = :9",
+		"pernyataan balasan kehilangan kunci percakapannya")
+}
+
+// Pernyataan balasan TIDAK memberi alias pada tabelnya.
+//
+// Oracle mengizinkan `UPDATE tabel alias SET alias.kolom = …`; PostgreSQL menolak awalan
+// alias pada klausa SET. Bentuk tanpa alias sah di keduanya, dan `D-20` menuntut satu set
+// SQL yang berjalan di keduanya.
+func TestTheReplyStatementIsPortable(t *testing.T) {
+	text := strings.ToUpper(query("detail_reply"))
+	require.Contains(t, text, "UPDATE POOLDATA.M_KOMUNIKASI_PNC\n   SET",
+		"tabel pada pernyataan UPDATE tidak boleh diberi alias")
+}
+
+// Waktu balasan DIIKAT, tidak pernah diisi `sysdate`.
+//
+// `09-DATABASE-STRATEGY.md` §4 menuntutnya. Pada tulisan pihak luar alasannya nyata: waktu
+// yang lahir di basis data tidak dapat diuji secara deterministik, dan balasan pihak luar
+// adalah hal yang paling mungkin dipersoalkan kelak.
+func TestTheReplyTimeIsBoundNotTakenFromTheDatabase(t *testing.T) {
+	text := strings.ToUpper(query("detail_reply"))
+	require.NotContains(t, text, "SYSDATE",
+		"waktu balasan harus lahir di lapisan aplikasi, bukan di basis data")
+	require.NotContains(t, text, "CURRENT_TIMESTAMP",
+		"waktu balasan harus lahir di lapisan aplikasi, bukan di basis data")
+}
+
+// Isi dokumen dibaca APA ADANYA, tidak dibungkus procedure basis data.
+//
+// `GetAttachmentFromDB_Sql` membungkusnya `pooldata.base64encode(attachfile)`. Itu
+// memanggil procedure — yang `D-02` larang — dan membesarkan muatan sepertiga tanpa satu
+// pun manfaat, karena isinya diserahkan sebagai berkas, bukan sebagai teks di dalam JSON.
+func TestDocumentContentIsReadWithoutCallingAProcedure(t *testing.T) {
+	require.NotContains(t, strings.ToUpper(query("detail_document_content")),
+		"BASE64ENCODE",
+		"isi dokumen tidak boleh dibungkus procedure basis data")
 }
 
 // Login DIIKAT, tidak pernah dirangkai.
@@ -113,12 +272,62 @@ func TestCountQueriesDoNotPaginate(t *testing.T) {
 	}
 }
 
-// Ketiga kueri daftar dan ketiga kueri ringkas WAJIB mengecualikan PA dan Travel.
-func TestEveryQueryExcludesPersonalAccidentAndTravel(t *testing.T) {
-	for _, name := range append(append([]string{}, listQueries...), countQueries...) {
+// Ketiga daftar PEMBERITAHUAN mengecualikan PA dan Travel.
+func TestEveryAdviceQueryExcludesPersonalAccidentAndTravel(t *testing.T) {
+	names := append(append([]string{}, adviceListQueries...), adviceCountQueries...)
+	for _, name := range names {
 		require.Contains(t, strings.ToUpper(query(name)), "NOT IN ('002', '005')",
 			"kueri %q tidak mengecualikan Personal Accident dan Travel", name)
 	}
+}
+
+// Ketiga daftar KOMUNIKASI justru TIDAK mengecualikan keduanya.
+//
+// Ia perbedaan yang mudah "diperbaiki" tanpa sengaja oleh orang yang menyeragamkan keenam
+// kueri. `BrowseCommunicationReas` memang tidak memuat satu pun syarat `grouppanel`, dan
+// menambahkannya akan MENGHILANGKAN klaim Personal Accident dari daftar komunikasi —
+// hilang tanpa galat, dan tanpa ada yang menyadarinya sampai seseorang membandingkannya
+// dengan Pega.
+func TestCommunicationQueriesDoNotExcludeAnyBusinessLine(t *testing.T) {
+	names := append(
+		append([]string{}, communicationListQueries...), communicationCountQueries...)
+	for _, name := range names {
+		require.NotContains(t, strings.ToUpper(query(name)), "GROUPPANEL",
+			"kueri %q mengecualikan lini bisnis, sementara Pega tidak", name)
+	}
+}
+
+// Ketiga daftar komunikasi disaring PERCAKAPAN, bukan dokumen pemberitahuan.
+//
+// Sebuah klaim masuk daftar itu karena ada percakapan — bukan karena ada PLA maupun DLA.
+// Menambahkan syarat dokumen akan mengosongkan daftar bagi mitra yang berkomunikasi
+// sebelum satu pun pemberitahuan dikirimkan kepadanya.
+func TestCommunicationQueriesFilterOnConversationsNotOnAdvices(t *testing.T) {
+	for _, name := range communicationListQueries {
+		text := strings.ToUpper(query(name))
+		require.Contains(t, text, "POOLDATA.M_KOMUNIKASI_PNC",
+			"kueri %q tidak menyaring percakapan sama sekali", name)
+		require.Contains(t, text, "KOMUNIKASISTATUS = :4",
+			"kueri %q tidak mengikat status percakapan", name)
+	}
+}
+
+// Kedua sisi percakapan dipisahkan menjadi DUA kueri, bukan satu dengan `OR`.
+//
+// Bentuk `(:n = 'penerima' AND … OR :n = 'pengirim' AND …)` akan membuat Oracle kehilangan
+// index pada kedua kolomnya sekaligus — dan tabel percakapan tumbuh seiring SELURUH klaim,
+// bukan seiring klaim satu mitra.
+func TestEachCommunicationSideHasItsOwnQuery(t *testing.T) {
+	recipient := strings.ToUpper(query("list_komunikasi_recipient"))
+	sender := strings.ToUpper(query("list_komunikasi_sender"))
+
+	require.Contains(t, recipient, "K.COMMUNICATE_TO")
+	require.NotContains(t, recipient, "K.SENDER",
+		"daftar komunikasi masuk tidak boleh ikut mencocokkan pengirim")
+
+	require.Contains(t, sender, "K.SENDER")
+	require.NotContains(t, sender, "K.COMMUNICATE_TO",
+		"daftar komunikasi terkirim tidak boleh ikut mencocokkan penerima")
 }
 
 // Daftar Close disaring T_PLALIST, BUKAN T_DLALIST.
@@ -188,7 +397,8 @@ func TestOnlyTheDLAListJoinsTheWorkTableInner(t *testing.T) {
 // ikut terisi. Memeriksa yang pertama saja akan memasukkan dokumen yang ditandai terkirim
 // tanpa pernah benar-benar dikirim.
 func TestAnAdviceCountsAsSentOnlyWhenAllThreeMarkersAreSet(t *testing.T) {
-	for _, name := range append(append([]string{}, listQueries...), countQueries...) {
+	names := append(append([]string{}, adviceListQueries...), adviceCountQueries...)
+	for _, name := range names {
 		text := strings.ToUpper(query(name))
 		require.Contains(t, text, "ISKIRIM = '1'", "kueri %q", name)
 		require.Contains(t, text, "TGLKIRIM IS NOT NULL", "kueri %q", name)
@@ -196,9 +406,15 @@ func TestAnAdviceCountsAsSentOnlyWhenAllThreeMarkersAreSet(t *testing.T) {
 }
 
 // Kata kunci pencarian DIIKAT dan dilepaskan wildcard-nya.
+//
+// NOMOR bind-nya berbeda antara kueri daftar dan kueri ringkas — daftar mengambil kolom
+// "PLA No" yang binding-nya muncul lebih dulu di klausa SELECT, ringkas tidak. Yang diuji
+// karena itu bentuknya, bukan nomornya.
 func TestSearchKeywordIsBoundAndEscaped(t *testing.T) {
+	pattern := regexp.MustCompile(`(?i)LIKE :\d+ ESCAPE`)
+
 	for _, name := range append(append([]string{}, listQueries...), countQueries...) {
-		require.Contains(t, strings.ToUpper(query(name)), "LIKE :2 ESCAPE",
+		require.Regexp(t, pattern, query(name),
 			"kueri %q tidak melepaskan wildcard kata kunci", name)
 	}
 }
@@ -221,13 +437,36 @@ func TestDatesAreReturnedAsDatesNotAsFormattedText(t *testing.T) {
 func TestEachQueryUsesTheExpectedNumberOfBinds(t *testing.T) {
 	expected := map[string]int{
 		"reinsurer_codes": 1,
-		"list_pla":        7, // 2 penyaring + 3 login + offset + ukuran
-		"list_dla":        6, // 2 penyaring + 2 login + offset + ukuran
-		"list_close":      6, // 2 penyaring + 2 login + offset + ukuran
+		"list_pla":        7, // 3 login + 2 penyaring + offset + ukuran
+		"list_dla":        6, // 2 login + 2 penyaring + offset + ukuran
+		"list_close":      6, // 2 login + 2 penyaring + offset + ukuran
 		"count_pla":       4, // 2 penyaring + 2 login
 		"count_dla":       3, // 2 penyaring + 1 login
 		"count_close":     3, // 2 penyaring + 1 login
 		"xol_summary":     2, // login dua kali, satu per bagian union
+
+		"list_komunikasi_recipient":  7, // login + 2 penyaring + status + login + halaman
+		"list_komunikasi_sender":     7,
+		"count_komunikasi_recipient": 4, // 2 penyaring + status + login
+		"count_komunikasi_sender":    4,
+
+		"detail_claim_header":        5, // kunci klaim + 4 login
+		"detail_advices_pla":         2, // kunci klaim + login
+		"detail_advices_dla":         2,
+		"detail_documents":           5, // kunci + nomor + jenis + 2 login
+		"detail_document_content":    4, // id + kunci + 2 login
+		"detail_conversations":       3, // kunci klaim + 2 login
+		"detail_conversation_exists": 4, // kunci + percakapan + 2 login
+		"detail_reply":               9, // 5 nilai tulis + kunci + 2 login + percakapan
+	}
+
+	// Setiap kueri yang ADA wajib disebut di sini. Tanpa itu, kueri baru dapat lolos
+	// tanpa satu pun pemeriksaan jumlah bind — dan selisih satu bind menghasilkan galat
+	// yang menyebut NOMOR, bukan menyebut kueri mana yang rusak.
+	for name := range queries {
+		_, listed := expected[name]
+		require.True(t, listed,
+			"kueri %q belum disebut di daftar jumlah bind", name)
 	}
 
 	for name, count := range expected {
@@ -235,6 +474,42 @@ func TestEachQueryUsesTheExpectedNumberOfBinds(t *testing.T) {
 			"jumlah bind kueri %q berbeda dari yang disusun di Go", name)
 	}
 }
+
+// Jumlah argumen yang DISUSUN GO wajib sama dengan jumlah bind pada SQL-nya.
+//
+// # Kenapa uji ini berbeda dari yang di atasnya
+//
+// `TestEachQueryUsesTheExpectedNumberOfBinds` memeriksa SQL terhadap angka yang ditulis
+// tangan. Uji ini memeriksa SQL terhadap kode yang benar-benar menyusun argumennya —
+// sehingga penambahan satu rantai reasuradur di SQL yang lupa diikuti di `filterArgs` akan
+// gagal di sini, bukan di Oracle.
+//
+// Selisih satu argumen menghasilkan `ORA-01008: not all variables bound` yang menyebut
+// NOMOR, bukan menyebut tab mana yang rusak — dan pada modul yang belum pernah dijalankan
+// terhadap Oracle, ia tidak akan terlihat sampai seorang mitra membuka layarnya.
+func TestGoBuildsAsManyArgumentsAsTheSQLBinds(t *testing.T) {
+	for _, tab := range inboxpladla.Tabs() {
+		if !tab.IsClaimList() {
+			continue
+		}
+
+		list, count, err := queriesFor(tab)
+		require.NoError(t, err, "%s", tab.Code)
+
+		query := inboxpladla.Query{Tab: tab, Caller: inboxpladla.Caller{Login: "UJI"}}
+
+		// Kueri DAFTAR menerima paginasi di ujungnya — dua bind yang tidak disusun
+		// filterArgs melainkan ditambahkan List.
+		require.Equal(t, highestBind(this(list)), len(filterArgs(query))+2,
+			"jumlah argumen kueri daftar %q tidak cocok dengan bind-nya", list)
+
+		require.Equal(t, highestBind(this(count)), len(countArgs(query)),
+			"jumlah argumen kueri ringkas %q tidak cocok dengan bind-nya", count)
+	}
+}
+
+// this mengambil teks kueri; namanya sependek mungkin supaya baris require tetap terbaca.
+func this(name string) string { return query(name) }
 
 // Kueri ringkas WAJIB mengelompokkan menurut kode status.
 func TestCountQueriesGroupByStatus(t *testing.T) {

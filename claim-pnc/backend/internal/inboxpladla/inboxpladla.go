@@ -237,11 +237,25 @@ type Caller struct {
 	// bukan nama lengkap. Memakai NIK di sini akan membuat layar kosong bagi setiap
 	// reasuradur.
 	Login string
+
+	// Name adalah nama yang dibaca manusia (`OperatorID.pyUserName`).
+	//
+	// Ia TIDAK menyaring apa pun. Satu-satunya pemakainya adalah balasan komunikasi, yang
+	// menulisnya ke `M_KOMUNIKASI_PNC.REPLYFROMNAME` — kolom keterangan, bukan kolom
+	// identitas. Karena itu ia boleh kosong, dan operasi baca mana pun tidak menuntutnya.
+	//
+	// Membedakan keduanya bukan kerapian: `ReplyKomunikasi-SQL.xml` memang mengambil
+	// `pyUserIdentifier` untuk satu kolom dan `pyUserName` untuk kolom lain, dan
+	// menyamakannya akan membuat kolom nama berisi kode login.
+	Name string
 }
 
 // Clean memangkas spasi di ujung identitas pemanggil.
 func (c Caller) Clean() Caller {
-	return Caller{Login: strings.TrimSpace(c.Login)}
+	return Caller{
+		Login: strings.TrimSpace(c.Login),
+		Name:  strings.TrimSpace(c.Name),
+	}
 }
 
 // Pagination adalah permintaan satu halaman.
@@ -373,9 +387,38 @@ var PlannedDifferences = []string{
 
 	"Pencarian TIDAK peka huruf besar-kecil. Kueri lama membandingkan apa adanya.",
 
-	"Tombol \"Detail Claim\", \"Detail\", dan \"DLA\" belum tersedia. Ketiganya membuka " +
-		"layar rincian tersendiri yang di Pega memuat grid akseptasi reasuransi dan " +
-		"rincian XOL komite — keduanya belum dianalisis.",
+	"Ketiga daftar komunikasi TIDAK mengecualikan lini Personal Accident (`002`) maupun " +
+		"Travel (`005`), sementara ketiga daftar pemberitahuan mengecualikan keduanya. " +
+		"Itu perbedaan yang memang ada di kueri Pega — `BrowseCommunicationReas` tidak " +
+		"memuat satu pun syarat `grouppanel` — dan ia dibawa apa adanya.",
+
+	"Grid PLA dan DLA pada layar rincian hanya menampilkan pemberitahuan MILIK ANDA yang " +
+		"sudah terkirim. Di Pega gridnya dimuat dari objek kerja klaim, sehingga ia " +
+		"memuat pemberitahuan SELURUH mitra pada klaim itu — beserta nilai masing-" +
+		"masing. Itu jenis kebocoran yang sama dengan grid XOL, dan ia tidak dibawa.",
+
+	"Dokumen disaring pula menurut LOGIN Anda (`T_DOC_REAS.LOGIN`). `GetDokumenReas` " +
+		"tidak memakai kolom itu — ia menyaring nomor pemberitahuan saja. Penyaring " +
+		"tambahan ini diputuskan Work Owner pada 2026-09-28.",
+
+	"Kolom pertama grid XOL berjudul \"Tahun\", bukan \"Date Of Loss\" seperti di Pega. " +
+		"Isinya memang TAHUN (`T_PLA_XOL.TAHUN`), dan judul lama menyatakan hal yang " +
+		"bukan isinya.",
+
+	"Tombol \"Export To Excel\" TIDAK digambar pada tampilan \"DATA PLA DLA XOL KLAIM\". " +
+		"Di Pega ia tampil di sana — wadahnya bersyarat `TempView.CityID!=''` — tetapi " +
+		"`ExportDataPLADLAReas` menyalin daftar KLAIM, bukan ringkasan XOL. Tombol yang " +
+		"tergambar di tampilan yang tidak dapat diekspornya hanya menjanjikan berkas " +
+		"yang tidak akan sesuai isinya.",
+
+	"Balasan komunikasi menolak percakapan yang SUDAH dijawab. `ReplyKomunikasi` tidak " +
+		"memagarinya, dan tanpa pagar itu balasan kedua menimpa balasan pertama pada " +
+		"kolom yang sama tanpa dapat dipulihkan.",
+
+	"Tombol \"Detail\" dan \"DLA\" TIDAK dibawa, dan keduanya bukan penundaan. \"DLA\" " +
+		"berada di dalam wadah bersyarat `1==2` — ia tidak pernah tergambar di Pega. " +
+		"\"Detail\" hanya tampil bagi satu Operator ID yang ditulis tetap di dalam rule, " +
+		"dan penulisan seperti itu dilarang `D-15`.",
 
 	"Perbedaan yang DIBAWA apa adanya: daftar \"Close\" mencocokkan SELURUH kode " +
 		"reasuradur milik login Anda, sementara daftar \"PLA\" dan \"DLA\" hanya " +
@@ -423,6 +466,93 @@ type Repo interface {
 	// Menerjemahkannya di Go lebih dulu akan menambah satu perjalanan ke basis data tanpa
 	// mengubah hasilnya.
 	XOL(ctx context.Context, login string) ([]XOLRow, error)
+
+	// ============================================================================
+	// LAYAR RINCIAN — tombol "Detail Claim"
+	// ============================================================================
+	//
+	// Keenam operasi di bawah menerima SCOPE, bukan sekadar kunci klaim. Itu bukan
+	// kerapian: setiap satunya dapat dipanggil lewat alamat langsung, dan tanpa batas
+	// reasuradur di dalam pernyataannya, sebuah kunci klaim yang ditebak akan membuka
+	// pemberitahuan, dokumen, dan percakapan milik mitra lain.
+	//
+	// Batasnya karena itu dibawa sebagai parameter yang TIDAK DAPAT DILUPAKAN, bukan
+	// diperiksa di lapisan di atasnya.
+
+	// ClaimHeader mengembalikan keterangan klaim di kepala layar rincian.
+	//
+	// ErrRowNotFound berarti klaimnya tidak ada ATAU tidak satu pun pemberitahuannya
+	// pernah dikirimkan kepada pemanggil — dan keduanya dijawab sama, dengan alasan yang
+	// sama seperti ErrDocumentNotFound.
+	ClaimHeader(ctx context.Context, scope DetailScope) (ClaimHeader, error)
+
+	// Advices mengembalikan isi grid PLA atau grid DLA satu klaim.
+	//
+	// Hanya yang SUDAH terkirim kepada pemanggil, dan hanya miliknya. Lihat catatan
+	// selisih pada PlannedDifferences.
+	Advices(ctx context.Context, scope DetailScope, kind AdviceKind) ([]AdviceRow, error)
+
+	// Documents mengembalikan dokumen satu nomor pemberitahuan.
+	//
+	//	POOLDATA.T_DOC_REAS  ->  POOLDATA.DATA_ATTACHFILE
+	//
+	// Kuncinya `CLAIMID + NO_PLADLA + TIPE_PLADLA`, persis `GetDokumenReas`, DITAMBAH
+	// `LOGIN` atas keputusan Work Owner.
+	Documents(
+		ctx context.Context, scope DetailScope, adviceNo string, kind AdviceKind,
+	) ([]DocumentRow, error)
+
+	// DocumentContent mengembalikan ISI satu dokumen.
+	//
+	// Ia memeriksa ulang seluruh rantai kepemilikannya — bukan hanya id dokumennya.
+	// Sebuah `DATAID` adalah angka, dan angka dapat ditebak.
+	DocumentContent(
+		ctx context.Context, scope DetailScope, documentID string,
+	) (DocumentContent, error)
+
+	// Conversations mengembalikan riwayat komunikasi satu klaim yang menyangkut pemanggil.
+	Conversations(ctx context.Context, scope DetailScope) ([]Conversation, error)
+
+	// Reply menyimpan balasan atas satu percakapan.
+	//
+	// Ia menolak dengan ErrConversationNotFound bila percakapannya bukan milik pemanggil,
+	// dan dengan ErrConversationAlreadyAnswered bila sudah pernah dijawab — keduanya
+	// diputuskan di dalam pernyataannya sendiri, bukan lewat baca-lalu-tulis. Dua
+	// permintaan yang datang bersamaan akan membuat pemeriksaan terpisah meloloskan
+	// keduanya, dan balasan kedua menimpa yang pertama tanpa jejak.
+	Reply(ctx context.Context, scope DetailScope, command ReplyCommand) error
+}
+
+// DetailScope adalah batas yang berlaku pada seluruh operasi layar rincian.
+//
+// # Kenapa ia tipe tersendiri
+//
+// Karena keenam operasi rincian menuntut batas yang SAMA PERSIS, dan menuliskannya sebagai
+// tiga parameter lepas pada enam tanda tangan berarti enam kesempatan melupakan salah
+// satunya. Yang dilupakan tidak menghasilkan galat — hanya data mitra lain yang terbuka.
+type DetailScope struct {
+	// ClaimKey adalah `T_CLAIM_PNC.CLAIMID`.
+	ClaimKey string
+
+	// Login adalah login pemanggil, dipakai menerjemahkan kode reasuradurnya di dalam SQL
+	// dan menyaring `T_DOC_REAS.LOGIN` serta kedua sisi percakapan.
+	Login string
+
+	// ReinsurerCodes adalah kode reasuradur milik pemanggil, terurut MENURUN.
+	//
+	// Ia dibawa meski kuerinya menerjemahkan login sendiri, karena penyimpanan MEMORI
+	// tidak punya SQL untuk menerjemahkannya — dan kedua penyimpanan harus menegakkan
+	// batas yang sama.
+	ReinsurerCodes []string
+}
+
+// Clean memangkas spasi pada batas rincian.
+func (s DetailScope) Clean() DetailScope {
+	return DetailScope{
+		ClaimKey:       strings.TrimSpace(s.ClaimKey),
+		Login:          strings.TrimSpace(s.Login),
+		ReinsurerCodes: s.ReinsurerCodes,
+	}
 }
 
 // RepoSelector memilih penyimpanan milik satu portal entitas.

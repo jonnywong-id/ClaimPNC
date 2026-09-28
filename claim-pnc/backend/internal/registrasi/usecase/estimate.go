@@ -63,6 +63,9 @@ func (l *Service) SaveEstimate(ctx context.Context, p EstimateCommand, by Caller
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "INPUT_ESTIMASI_DISIMPAN",
 			Actor: by.Identity, At: now, Note: "Isian Input Estimasi disimpan tanpa menutup tahap",
@@ -116,6 +119,9 @@ func (l *Service) CompleteEstimate(ctx context.Context, p EstimateCommand, by Ca
 			if err := l.task.Save(ctx, *newTask); err != nil {
 				return err
 			}
+		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
 		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "TAHAP_DITUTUP",
