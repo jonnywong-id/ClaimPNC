@@ -140,3 +140,59 @@ func TestMemoryStoreIsReused(t *testing.T) {
 	require.NoError(t, err)
 	require.Same(t, first, second)
 }
+
+// Modul Case Study Claim ikut terpasang saat perakitan.
+//
+// # Kenapa uji ini ada
+//
+// Modul dapat hidup lengkap — usecase, penyimpanan, handler, dan ujinya sendiri LULUS —
+// tetapi tidak pernah dirakit, sehingga layarnya menjawab 404. Uji modul tidak dapat
+// menangkap itu: ia menguji modulnya, bukan apakah modulnya dipakai.
+//
+// Kegagalan seperti itu bukan kemungkinan teoretis di repo ini. Sepuluh modul pernah hidup
+// berbulan-bulan tanpa satu pun rutenya terdaftar, dan `TestExtraModulesMounted` di
+// `modules_test.go` lahir karenanya.
+func TestCaseStudyClaimAssembled(t *testing.T) {
+	result, err := build(devConfig(), logging.New(0))
+	require.NoError(t, err)
+	t.Cleanup(result.close)
+
+	require.NotNil(t, result.caseStudyClaim)
+}
+
+// Penyimpanan Case Study Claim di memori MENOLAK portal selain portal utama.
+//
+// Penolakan itu yang membuat perilaku pengembangan sama dengan produksi: memilih entitas
+// yang koneksinya belum hidup menghasilkan galat di keduanya, bukan diam-diam dilayani
+// basis data entitas lain (`R-20`).
+//
+// Taruhannya di modul ini lebih besar daripada modul baca: ia MENULIS catatan telaah ke
+// tabel klaim, sehingga jatuh ke entitas yang salah bukan sekadar menampilkan data yang
+// salah — ia menuliskannya.
+func TestCaseStudySelectorMemoryRejectsOtherPortals(t *testing.T) {
+	selector := caseStudySelectorMemory("ASM")
+
+	repo, err := selector("ASM")
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	for _, alias := range []string{"ASI", "SMAS", "TIDAKADA", ""} {
+		_, err := selector(alias)
+		require.Errorf(t, err,
+			"portal %q tidak boleh dilayani tanpa koneksi basis datanya sendiri", alias)
+	}
+}
+
+// Penyimpanan Case Study Claim di memori dipakai kembali antarpermintaan.
+//
+// Bila dibuat ulang, catatan telaah yang baru disimpan akan hilang pada permintaan
+// berikutnya — dan layarnya tampak rusak tanpa sebab yang terlihat.
+func TestCaseStudyMemoryStoreIsReused(t *testing.T) {
+	selector := caseStudySelectorMemory("ASM")
+
+	first, err := selector("ASM")
+	require.NoError(t, err)
+	second, err := selector("asm") // huruf kecil harus menunjuk penyimpanan yang sama
+	require.NoError(t, err)
+	require.Same(t, first, second)
+}

@@ -18731,6 +18731,1416 @@ Saya mengoreksinya sebelum melaporkan, tetapi ia dicatat: membaca satu nilai kon
 membaca fungsi yang memakainya adalah cara yang sama dengan membaca nama kolom tanpa membaca
 kuerinya.
 
+
+## 55. Modul Dashboard Claim (2026-09-26)
+
+Layar `Harness/DashboardClaim_Harness-Harness.xml` — empat angka ringkasan beserta
+telusurnya. Terdaftar di `Navigation/pyCaseWorkerNavigation-Navigation.xml` sebagai butir
+ber-`pyAction=showHarness`, dan di `Database/m_menu_aplikasi_pnc.csv:68` sebagai
+**MENU_ID 73 "Dashboard Claim"** → `DashboardClaim_Harness`.
+
+### 55.1 Yang dibaca lebih dulu, dan apa yang ditemukannya
+
+`Activity/SetDashboardClaim-Act.xml` ternyata **dispatcher**, bukan satu layar. Ia bercabang
+pada `param.tipe`/`TempView.CityID` menjadi empat tile:
+
+| tipe | Tile | Kueri |
+|---|---|---|
+| 0 | OUTSTANDING | `RDB List/GcnmBrowseCase_SQL-SQL.xml` |
+| 1 | CLOSE CLAIM | `RDB List/GcnmBrowseReopenCase_SQL-SQL.xml` |
+| 2 | LOSS ADJUSTER | `Get_CountLostAdjusterClaim` + `BrowseLossAdjuster`, `SURVEYORTYPE_1='2'` |
+| 3 | INTERNAL SURVEYOR | `Get_CountInternalSurveyor` + `BrowseInternalSurveyor`, `SURVEYORTYPE_1='1'` |
+
+Satu catatan asal-usul yang menjelaskan banyak hal: `pzOriginalInstanceKey` activity ini
+berbunyi `SETTEMPLOSTADJUSTER`. Ia **hasil salin** dari rule lain yang namanya kemudian
+diganti — pola yang sama dengan utang teknis §4.6, dan sebab mengapa sebagian isinya
+berbicara tentang surveyor pada layar yang bernama dashboard.
+
+Penyaring lini bisnisnya terbaca dari cabang `TempView2.Remark` pada activity yang sama:
+
+```
+NONMBU   GROUPPANEL_1 IN ('003','004','006')
+         AND c.businessgroupid NOT IN ('10008','10010','10015','10023')
+BONDING  c.businessgroupid IN ('10008','10010','10015','10023')
+PA       GROUPPANEL_1 = '002'
+TRAVEL   GROUPPANEL_1 = '005'
+ALL      tanpa saringan
+```
+
+### 55.2 Dua koreksi terhadap dokumen yang berlaku
+
+**`R-07` perlu dikoreksi.** `16-RISK-ANALYSIS.md` mendaftar `GCNMGetLossAdjuster_Act` dan
+`GCNMGetInternalSurveyor_Act` sebagai activity yang dipanggil tetapi tidak ada di export.
+**Keduanya ADA** — diperiksa langsung di direktori `Activity/`. Kemungkinan besar ikut masuk
+saat export bertambah dari 2.167 menjadi 2.634 berkas (`D-45`), dan daftar R-07 belum
+dihitung ulang sesudahnya.
+
+**Tanda JANGGAL pada Lampiran G terjawab.** Inventaris 74 harness menandai
+`DashboardClaim_Harness` sebagai janggal karena **`RD = 0`** — dashboard tanpa satu pun
+Report Definition, dan lampirannya menduga ia cangkang tipis atau layar yang sudah mati.
+Sebabnya bukan itu: layar ini mengambil data lewat **RDB List/Connect-SQL langsung**, bukan
+lewat Report Definition. Ia layar sungguhan.
+
+### 55.3 Keputusan yang diambil bersama Work Owner
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Keempat tile dibangun baru, atau sebagian pakai ulang? | **4 tile, pakai ulang bila populasinya memang sama** |
+| Perlu grafik? | **Tidak — kartu angka + tabel saja**, paling dekat dengan `D-13` |
+
+### 55.4 Premis pertanyaan lingkup saya ternyata keliru
+
+Saya menawarkan "2 tile pakai ulang" dengan anggapan tile OUTSTANDING dan CLOSE CLAIM
+keduanya sudah punya modul. Pemeriksaan membuktikan **hanya satu yang benar-benar dapat
+dipakai ulang**:
+
+| Tile | Populasi Pega | Modul yang ada | Putusan |
+|---|---|---|---|
+| CLOSE CLAIM | `PYSTATUSWORK IN (Resolved-*)` + `BRANCHNAME<>'ASNET'` + lini bisnis | `inboxcloseclaim` — **identik**, sudah parameter binding | **pakai ulang** |
+| OUTSTANDING | tanpa saringan operator | `inboxoutstanding` = **My Inbox**, menyaring `PXASSIGNEDOPERATORID` | **bangun baru** |
+
+Memakai ulang `inboxoutstanding` akan membuat dashboard manajerial menampilkan pekerjaan
+**satu orang**, dan kegagalan itu tidak menghasilkan galat apa pun — hanya angka yang dibaca
+keliru untuk mengambil keputusan.
+
+Preseden untuk penolakan itu sudah ada di basis kode ini:
+`internal/inboxcloseclaim/inboxcloseclaim.go` mencatat sendiri bahwa ia sengaja **tidak**
+memakai ulang `inboxoutstanding.ScopeFor` karena kesamaan namanya kebetulan dan isinya tidak
+sama.
+
+Koreksinya disampaikan terbuka sebelum kode ditulis, bukan diserap diam-diam.
+
+### 55.5 Cara pakai-ulang dirakit
+
+Modul domain tidak saling impor. `dashboardclaim` mendeklarasikan seam-nya sendiri:
+
+```go
+type ClosedClaimReader interface {
+    Count(ctx, portalAlias string, f Filter) (int, error)
+    List(ctx, portalAlias string, f Filter) (ClaimPage, error)
+}
+```
+
+Dipenuhi `internal/dashboardclaim/repo/closeclaim` — satu-satunya tempat kedua modul
+bertemu. Akibatnya `dashboardclaim` dapat diuji tanpa `inboxcloseclaim` sama sekali, dan
+`inboxcloseclaim` tidak tahu layar ini ada.
+
+Adapternya menempuh **Repo**, bukan Service: `inboxcloseclaimusecase.Service.List` ikut
+membaca permintaan ReOpen tertunda atas setiap baris — hasil yang tidak digambar dashboard,
+dari tabel yang migrasinya belum dijalankan DBA di lingkungan mana pun.
+
+### 55.6 Utang teknis yang diperbaiki
+
+| Utang | Perbaikan |
+|---|---|
+| Alias kolom menyesatkan — `POLICYNO AS "CityID"`, `PYSTATUSWORK AS "NamaSurveyor"`, `AdjusterPIC_1 as "City"`, `pxCreateOpName AS "ClaimID"` | Dinamai ulang sesuai `CONTEXT.md` (`D-19`) |
+| Perangkaian SQL `{ASIS:…}` — enam penanda pada kueri outstanding saja, ditambah `{ASIS:Pagination.FirstRow}` untuk batas halaman | Parameter binding tanpa perkecualian |
+| `ROWNUM` dua lapis | `OFFSET … FETCH NEXT` (`D-20`) |
+| `TRUNC(dateofloss_1)` | `CAST(… AS DATE)` — portabel Oracle dan PostgreSQL |
+| `to_char(…,'dd-mm-yyyy')` di SQL | Pemformatan pindah ke Go; pengurutan tanggal tidak lagi pengurutan teks |
+| `GET_POSISI_PROGRESS_PNC` dipanggil dua kali per baris | Tidak dibawa (`D-02`); kolomnya memang tidak digambar `Section2` |
+| `A.CASEID_1` ditampilkan apa adanya — kunci Pega bocor ke layar | Diganti subquery ke nomor klaim induk (`D-22`) |
+
+Perhatikan dua alias terakhir pada baris pertama: `"ClaimID"` dipakai untuk **nama
+operator**, sementara `"CaseID"` dipakai untuk kunci klaim. Membaca kueri itu berarti
+menebak.
+
+### 55.7 Ketidakkonsistenan Pega yang harus diputuskan, bukan ditelan
+
+**Kedua kueri hitung survei tidak menghitung satuan yang sama:**
+
+```
+Get_CountLostAdjusterClaim   SUM(CASE WHEN (…) > 0 THEN 1 ELSE 0 END)           -> jumlah KLAIM
+Get_CountInternalSurveyor    SUM(CASE WHEN (…) > 0 THEN (… COUNT …) ELSE 0 END) -> jumlah SURVEI
+```
+
+Padahal kedua kartu menelusur ke daftar yang sama-sama berisi **baris survei**. Di sistem
+lama, kartu Loss Adjuster menampilkan satu angka lalu telusurnya menampilkan jumlah baris
+yang lain — tanpa galat apa pun.
+
+Ditambah: kedua kueri hitung menggabung ke `PC_ASSIGN_WORKLIST` sementara `SUM` berjalan atas
+baris hasil gabungan, sehingga klaim dengan lebih dari satu penugasan **terhitung
+berkali-kali**.
+
+**Yang sempat dilakukan, lalu dicabut.** Kedua kueri hitung dibuat menghitung baris survei
+yang sama persis dengan kueri daftarnya, dan selisihnya diajukan sebagai selisih terencana
+(`D-54`).
+
+**Work Owner memutuskan 2026-09-26: ketiganya mengikuti Pega apa adanya.** Kedua kueri
+dikembalikan ke bentuk aslinya — `SUM(CASE …)` atas tabel klaim dengan gabung ke
+`PC_ASSIGN_WORKLIST`, termasuk penggandaannya.
+
+Akibatnya **tidak ada satu pun selisih terencana pada angka mana pun**, dan gerbang 1 dapat
+membandingkan keempat kartu tanpa pengecualian.
+
+**Yang ditambahkan hanyalah penjelasannya, bukan angkanya.** Respons ringkasan kini membawa
+dua daftar terpisah:
+
+| Field | Isi |
+|---|---|
+| `selisih_terencana` | yang **berbeda** dari Pega — tinggal satu, dan ia tidak menyentuh angka |
+| `catatan_warisan` | yang **sama** dengan Pega tetapi mudah dibaca sebagai cacat |
+
+Pemisahan itu disengaja: menggabungkannya akan membuat penguji gerbang 1 mencari selisih yang
+tidak ada. Dijaga `TestRingkasanMemisahkanSelisihDariCatatanWarisan` dan
+`TestCountAndListMayDifferForSurveyTiles` — yang kedua menuntut kedua kueri tetap BERBEDA,
+sehingga penyeragaman kelak harus menghapus ujinya lebih dulu.
+
+**Lanjutan hari yang sama: kedua panel DIHAPUS dari layar** atas permintaan Work Owner.
+Kedua field-nya **tetap ada di respons `/ringkasan`** — ia dibaca penguji gerbang 1, dan
+membuangnya dari kontrak akan menghapus jejak keputusannya. Yang berubah hanya tampilannya,
+dan penghapusan itu dijaga uji `tidak menggambar panel keterangan apa pun`.
+
+### 55.8 Group Panel 009 — direplikasi, bukan diperbaiki
+
+Cabang NONMBU hanya menyebut `003`, `004`, `006`. Klaim ber-Group Panel `009` karena itu
+tidak tampil pada pilihan Non-MBU, meski `CONTEXT.md` mendaftarnya sebagai varian Aneka.
+
+Dipertahankan apa adanya (`P-5`), dijaga uji `TestGroupPanel009TidakTermasukNonMBU`, dan
+dimasukkan ke data contoh supaya terlihat saat dicoba. Apakah `009` seharusnya ikut adalah
+pertanyaan untuk Work Owner — bukan sesuatu yang diputuskan sambil menulis kode.
+
+### 55.9 Perbedaan warisan yang ditemukan, dan tidak diselaraskan sepihak
+
+`inboxcloseclaim` menulis `(A.BRANCHNAME <> 'ASNET' OR A.BRANCHNAME IS NULL)`, sedangkan
+Pega menulis `a.branchname != 'ASNET'` — yang di Oracle **membuang** baris ber-`BRANCHNAME`
+NULL.
+
+Kueri modul ini memakai bentuk Pega apa adanya, sesuai keputusan 2026-09-26.
+
+**KOREKSI.** Saya menyebut pelebaran itu "tidak dicatat alasannya di modul tersebut".
+**Keliru** — alasannya ada, hanya bukan di berkas `.sql` melainkan di adapter memorinya
+(`internal/inboxcloseclaim/repo/memory/memory.go:195-198`): tanpa cabang kedua itu, setiap
+klaim yang cabangnya belum terisi **hilang dari layar karena aritmetika tiga-nilai SQL**,
+bukan karena dikecualikan.
+
+Jadi ia keputusan yang dipertimbangkan, bukan kelalaian. Saya menyimpulkannya tidak
+berdokumen karena hanya memeriksa `.sql` dan repo Go-nya — pola kekeliruan yang sama dengan
+ketiga yang lain di §55.12.
+
+**Karena itu `inboxcloseclaim` TIDAK diubah.** Mengubahnya akan mencabut keputusan modul lain
+yang punya alasan tertulis, dan menghidupkan kembali persoalan yang mereka catat.
+
+**Yang tersisa:** tile Close Claim tetap sedikit lebih longgar daripada ketiga tile lain di
+layar yang sama — hanya bila benar-benar ada baris ber-`BRANCHNAME` NULL. Menyamakannya
+menuntut keputusan lintas modul, dan bahannya satu hitungan DBA. Bila nol, persoalannya
+teoretis.
+
+### 55.10 Kontrak yang berubah di tengah jalan
+
+Saya semula memakai `limit`/`offset` sebagai parameter paginasi. Pemeriksaan ke modul lain
+menunjukkan tiga konvensi hidup berdampingan — `halaman`/`ukuran` (15/14 pemakaian),
+`lewati`/`batas` (8/8), `limit`/`offset` (2/2).
+
+Dialihkan ke **`halaman`/`ukuran`**: ia yang dominan, dan ia memetakan langsung ke
+`ServerPagination` milik komponen `DataTable` (`page`, `size`, `total`, `totalPage`) tanpa
+pemetaan khusus per layar. Konversi ke offset terjadi di **satu tempat**, di `readFilter`.
+
+### 55.11 Kendala: cmd/claimpnc sudah gagal dikompilasi sebelum modul ini
+
+Saat merakit wiring, `go build ./...` gagal dengan 12 galat. Pemeriksaan dengan menyisihkan
+perubahan saya (`git stash`) membuktikan **seluruhnya sudah ada di HEAD**:
+
+```
+undefined: riwayatklaimhttp / riwayatklaimusecase / riwayatklaimsql / riwayatklaimmemory
+```
+
+Menambal sementara memunculkan lapis berikutnya: impor `monitoringslinkojk` yang tidak
+terpakai, lalu `casestudyclaim` dan `slinkojk` yang tidak terdefinisi. Repo berada di tengah
+pekerjaan pada beberapa modul lain.
+
+**Yang dilakukan:** wiring dashboard diverifikasi dengan tambalan sementara, lalu berkasnya
+**dikembalikan utuh** — `git diff` menunjukkan **119 baris penambahan, nol penghapusan**.
+Pekerjaan rekan tidak disentuh, dan kegagalan itu dilaporkan apa adanya alih-alih diperbaiki
+diam-diam.
+
+**Keadaannya berubah selama sesi berlangsung.** Cabang ini dikerjakan orang lain pada mesin
+yang sama, dan berkasnya berubah di bawah tangan: `riwayatklaim*` dan `monitoringslinkojk`
+yang semula gagal sudah terpasang menjelang akhir sesi. Yang tersisa **satu** galat —
+`check.go:216: undefined: checkCaseStudyClaim`, milik modul `casestudyclaim` yang tidak
+disentuh modul ini sama sekali.
+
+**Akibat yang harus disadari:** wiring modul ini **belum terbukti berjalan di binary utuh**,
+karena satu modul lain masih setengah jalan. Yang terbukti: paketnya dikompilasi bersih,
+`go vet` bersih, seluruh ujinya lulus, dan **nol galat build menyebut dashboard**.
+
+**Kehati-hatian yang layak dibawa:** karena berkas berubah di bawah tangan, memakai `cp`
+berkas utuh sebagai cara mengembalikan keadaan **berisiko menimpa pekerjaan orang lain** yang
+tersimpan di sela-selanya. Yang lebih aman: suntingan bertarget, atau `git stash` yang
+dipasangkan dengan `git stash pop` seketika.
+
+### 55.12 Kekeliruan saya sendiri
+
+| Kekeliruan | Bagaimana ketahuan |
+|---|---|
+| Menawarkan pakai-ulang dua modul tanpa memeriksa populasinya lebih dulu | Pembacaan `inboxoutstanding/usecase/service.go` — ia My Inbox, terikat `LoginID` |
+| Uji `TestJalurStatisTidakTerbacaSebagaiTile` memeriksa ketiadaan kunci `tile` | Respons metadata memang **berisi** daftar tile; ujinya yang salah baca, bukan kodenya. Yang diperbaiki ujinya, bukan ujinya dilonggarkan |
+| Uji frontend memakai `getByText` untuk judul kolom | `DataTable` menggambar judul kolom **dua kali** — `<th>` dan label kartu pada tampilan sempit. Pola bakunya `getByRole('columnheader')`, dan itu sudah dipakai uji modul lain |
+| Menyebut pelebaran `BRANCHNAME` di `inboxcloseclaim` "tidak dicatat alasannya" | Alasannya **ada**, di adapter memorinya — `memory.go:195-198`. Saya hanya memeriksa `.sql` dan repo Go-nya |
+
+Keempatnya punya pola yang sama: **menyimpulkan bentuk sesuatu tanpa membaca seluruh yang
+memakainya.** Sama dengan pelajaran §54.4 — dan kali ini muncul empat kali dalam satu sesi.
+
+Yang keempat paling mahal seandainya lolos: ia hampir membuat saya mencabut keputusan modul
+lain yang punya alasan tertulis.
+
+### 55.13 Hasil
+
+| | |
+|---|---|
+| Berkas backend | 15 — domain 3, usecase 1, http 5, sqlstore 5, memory 3, adapter 1 |
+| Berkas frontend | 5 — `types.ts`, `api.ts`, `KartuPenghitung.tsx`, `DashboardClaimPage.tsx`, uji |
+| Uji backend | **38 lulus**, `go vet` bersih |
+| Uji frontend | **12 lulus**, `tsc --noEmit` bersih |
+| Selisih terencana | **1**, dan ia tidak menyentuh angka mana pun |
+| Endpoint | `GET /api/dashboard-claim/penyaring` · `/ringkasan` · `/{tile}` |
+| Rute layar | `/dashboard-claim`, terdaftar di `MENU_ROUTES` sebagai `DashboardClaim_Harness` |
+| Aksi tulis | **tidak ada** — seluruh tabelnya masih ditulis Pega (`P-1`) |
+
+---
+
+## 55. Monitoring SLINK OJK — modul baru, `MENU_ID 78` (2026-09-26)
+
+Modul pemantauan laporan klaim ke **SLIK OJK** — Sistem Layanan Informasi Keuangan —
+untuk lini **Asuransi Kredit** dan **Surety Bond**.
+
+### 55.1 Artefak Pega yang dibaca
+
+| Berkas | Isi |
+|---|---|
+| `Harness/MonitoringSLINKOJK-Harness.xml` | layar rujukan, judul "Inbox Monitoring Slik OJK" |
+| `Section/Sec_MonitoringSLINKOJK-Section.xml` | pembungkus + dropdown "Pilih Segmen" |
+| `Section/Sec_SegmentD01_1-Section.xml` | segmen D01 — 20 kolom, 6 tombol |
+| `Section/Sec_SegmentF06-Section.xml` | segmen F06 — 38 kolom, 4 tombol |
+| `Activity/GetTempDataD01-Act.xml` | "Cari Data" D01, sekaligus PENYUSUN penyaringnya |
+| `Activity/GetAllDataSumbisSlink-Act.xml` | "Cari Data" F06 |
+| `Activity/ExportDataSlinkD01-Act.xml` | "Export Data" D01 — 27 kolom CSV |
+| `Activity/ExportDataSlinkFOG-Act.xml` | "Export Data" F06 — 38 kolom CSV |
+| `Activity/DownloadFileCSVFormatSlikOJK-Act.xml` | "Format File" |
+| `RDB List/GetDataSlinkAllFOGF06-SQL.xml` | kueri segmen **D01** (namanya menyebut F06) |
+| `RDB List/GetDataSlinkAllFOG-SQL.xml` | kueri segmen **F06** (namanya menyebut FOG) |
+| `RDB List/InsertDataSlikOJKF06-SQL.xml` | 28 kolom `T_CLAIM_SLIK_OJK`, ditulis jalur akseptasi |
+
+### 55.2 Pertanyaan konfirmasi dan jawabannya
+
+Empat pertanyaan diajukan ke Work Owner **sebelum** satu baris kode ditulis.
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Enam tombol, empat menulis — mana yang dibangun? | **"samain saja seperti aplikasi PEGA"** |
+| 2 | Grid F06 punya 38 kolom tetapi sumbernya tidak lengkap | **bangun 38 kolom, sisanya kosong** |
+| 3 | Apakah `T_CLAIM_SLIK_OJK` dan `T_CLAIM_OBJECTLIST` sudah ada? | **sudah ada, pakai langsung** |
+| 4 | Nama penyaring tanggal yang menyesatkan | **pertahankan nama Pega** |
+
+Jawaban #1 **tidak dapat dipenuhi seluruhnya**, dan itu disampaikan apa adanya: tiga dari
+enam tombol tidak punya artefak di export. Rinciannya di §55.5.
+
+Jawaban #4 berlawanan dengan `D-19`/`D-80`. Ia dijalankan sebagai **pengecualian yang
+disebut namanya** di kepala paket, dengan arti sebenarnya dijelaskan di setiap tempat nama
+itu muncul — DTO, kueri, dan label layar. Label yang DIBACA pengguna tidak ikut
+menyesatkan: tetap "Dari" dan "Sampai", persis seperti di Pega.
+
+### 55.3 Empat temuan nyata pada artefak Pega
+
+Keempatnya ditemukan saat membaca, bukan dicari. Tiga di antaranya berakibat pada isi
+berkas yang dikirim ke **regulator**.
+
+#### (a) Penamaan segmen terbalik secara sistematis
+
+| Artefak | Namanya menyebut | Isinya |
+|---|---|---|
+| `GetDataSlinkAllFOGF06` | F06 | kueri **D01** |
+| `GetDataSlinkAllFOG` | FOG | kueri **F06** |
+| `ExportDataSlinkD01` | D01 | kolom D01, berkas bernama **"Laporan F06 SLIK OJK"** |
+| `ExportDataSlinkFOG` | FOG | kolom F06, berkas bernama **"Laporan SLIK OJK D01"** |
+
+Kedua nama berkas unduhan **tertukar satu sama lain**. Di modul baru nama berkasnya
+**dibetulkan** — satu-satunya hal yang tidak direplikasi, karena nama berkas bukan isi
+laporan dan membiarkannya berarti pelapor menyimpan dua berkas yang saling tertukar
+namanya di folder yang sama.
+
+#### (b) Berkas ekspor F06 MISALIGN — 38 judul, 34 properti
+
+`pxConvertResultsToCSV` memasangkan judul dengan properti menurut POSISI:
+
+    CSVPropHeaders  -> 38 judul
+    CSVProperties   -> 34 nama properti
+
+Tiga judul tanpa properti sama sekali — `KodeStatusPendidikan`, `Tempat Lahir`, `NPWP` —
+dan satu entri properti adalah **dua nama yang tersambung tanpa koma**:
+`ASMGenderASMDateOfBirth`, mestinya `ASMGender` dan `ASMDateOfBirth`.
+
+Akibatnya seluruh kolom sejak posisi keenam **bergeser**: nilai yang benar tertulis di
+bawah judul yang salah.
+
+Di modul baru berkasnya dibuat **sejajar**. Itu selisih terencana, bukan perbaikan
+diam-diam — dan alasannya sempit serta dapat diperiksa: ketiga puluh kolom tanpa sumber
+memang kosong, sehingga berkas yang sejajar **tidak menambah satu pun nilai**; ia hanya
+menaruh kedelapan nilai yang ada di bawah judul yang benar.
+
+#### (c) Satu kolom tabel mengisi DUA kolom layar
+
+`GetDataSlinkAllFOGF06` memilih `tanggalkondisi` dua kali dengan alias berbeda:
+
+    tanggalkondisi as "TanggalPembayaran"   -> kolom layar "Tanggal Pembayaran"
+    tanggalkondisi as "TanggalKondisi"      -> kolom layar "Tanggal Kondisi"
+
+Kolom **"Tanggal Pembayaran" tidak menampilkan tanggal pembayaran**. Tabelnya sendiri tidak
+menyimpannya — 28 kolom pada `InsertDataSlikOJKF06` tidak memuatnya.
+
+**Direplikasi** (`P-5`): mengubahnya berarti mengosongkan satu kolom laporan OJK atas dasar
+tebakan.
+
+#### (d) Penyaring dirangkai sebagai teks SQL
+
+`GetTempDataD01` menyusun penyaringnya begini, lalu menyisipkannya mentah dengan `ASIS`:
+
+    "and to_date(B.REGISTERDATE_1,'yyyy/mm/dd')>=to_date('" + DateOfLoss + "','dd/mm/yyyy') ..."
+
+Nilai dari layar masuk langsung ke teks SQL — utang teknis §4.5. Diganti **parameter
+binding** tanpa perkecualian.
+
+Sekaligus `to_date()` pada kolom tanggal **tidak dibawa**: ia bergantung pada NLS sesi dan
+mematikan index. Kolomnya dibandingkan langsung, dengan batas atas dimajukan satu hari dan
+dibandingkan `<` — sebab `REGISTERDATE_1` menyimpan jam, dan `<=` terhadap tengah malam
+**membuang seluruh klaim hari terakhir rentang** tanpa satu pun tanda.
+
+### 55.4 Segmen F06 — 8 kolom bersumber dari 38
+
+Section F06 memberi kolomnya judul field SLIK, tetapi MENGIKATNYA ke 14 slot properti
+fasilitas kredit yang seluruhnya bernama lain. Pemetaan judul ke properti **tidak dapat
+dipulihkan dari urutan elemen XML** — urutan elemen tidak mencerminkan urutan kolom.
+
+Yang menyelesaikannya adalah `CSVPropHeaders` + `CSVProperties` pada `ExportDataSlinkFOG` —
+satu-satunya tempat di export yang menyandingkan keduanya **berpasangan**. Dari sana urutan
+38 kolom dan properti asalnya terbaca.
+
+Kedelapan yang terisi dipasangkan karena **nama kolom sumbernya menyatakan artinya
+sendiri**: `OBJECTGENDER` untuk Jenis Kelamin, `DATEOFBIRTH` untuk Tanggal Lahir,
+`ASMZIPCODE` untuk Kode Pos, `ASMADDRESS` untuk Alamat, `TELFAXNUMBER` untuk Telepon,
+`NOMORCIFDEBITUR` untuk Nomor CIF Debitur, ditambah Kode Kantor Cabang dan Operasi Data.
+
+**Satu kandidat ditolak.** `CUSTOMERTYPE` sempat tampak mengisi "Kode Golongan Debitur";
+daftar CSV membuktikan kolom itu terikat `ReporterGroup` — properti yang sama sekali lain.
+Kolom laporan regulator yang terisi SALAH lebih berbahaya daripada yang kosong: yang kosong
+terlihat, yang salah tidak.
+
+Akibat yang perlu dikonfirmasi ke tim Pega: berkas ekspor F06 di produksi hari ini
+kemungkinan **hampir seluruhnya kosong**, karena ke-34 nama propertinya adalah properti CIF
+yang tidak dihasilkan kueri pengisi gridnya. Dicatat sebagai pertanyaan, bukan kesimpulan —
+ia perlu diuji terhadap satu berkas ekspor produksi sungguhan.
+
+### 55.5 Tiga tombol yang TIDAK dapat dibangun
+
+| Tombol | Sebab |
+|---|---|
+| **Proses Data Klaim** | **Tidak terhubung aktivitas apa pun** di `Sec_SegmentD01_1`. Keempat tombol lain punya `pyActivity`; yang ini tidak. Penulis sesungguhnya ke `T_CLAIM_SLIK_OJK` adalah jalur akseptasi (`InsertAdjustmentList`, `InsertAdjustmentListKredit`) — tabel milik Pega (`P-1`) |
+| **SLIK OJK** | Berakhir pada Connect-REST `Rest_SendDataClientBasedDebitur`, yang **nol kemunculan** di direktori `Connect REST/` (`R-16`) |
+| **Upload Data Klaim** | D01 menulis `T_CLAIM_SLIK_OJK` (`P-1`); F06 memanggil `UploadDataSlinkOJK` yang **tidak ada di export** |
+
+Ketiganya tetap punya rute yang menjawab **409 beserta sebabnya**, bukan 404 yang terbaca
+seperti salah alamat. Di layar, ketiadaannya dijelaskan di tempat tombolnya dulu berada —
+pengguna yang mencari tombol mencarinya di sana.
+
+### 55.6 Bentuk kode
+
+Kolomnya berupa **katalog** (`Column{Key, Header, LegacyProperty, Source}` ditambah `Row`
+bertipe peta), mengikuti preseden `reportklaim` yang menyalin sekitar 700 kolom dengan cara
+yang sama. Alasannya: 58 kolom yang ditulis sebagai field struct berarti empat daftar —
+domain, DTO, CSV, tabel frontend — yang harus berubah bersamaan, dan yang tertinggal tidak
+menghasilkan galat apa pun.
+
+Katalognya **dikirim ke layar**, sehingga tabel 38 kolom digambar dari satu sumber kebenaran
+alih-alih ditulis ulang dalam TypeScript. Penanda `tersedia` ikut dikirim, supaya sel kosong
+tidak salah dibaca sebagai "datanya memang kosong"; kolom tanpa sumber digambar sebagai tanda
+pisah beserta keterangan propertinya.
+
+Nilai kolom dibaca sebagai `any` lalu diformat di satu tempat, karena **tipe kolomnya belum
+diketahui** (`R-08`) dan bukti yang ada saling bertentangan: kueri D01 memilih kolom
+tanggalnya tanpa konversi, kueri F06 membungkusnya dengan `to_char`.
+
+### 55.7 Berkas yang ditambahkan
+
+Backend, 13 berkas di `internal/monitoringslinkojk/`:
+
+    monitoringslinkojk.go  columns.go  errors.go  monitoringslinkojk_test.go
+    usecase/service.go     usecase/service_test.go
+    repo/sqlstore/{monitoringslinkojk.go, monitoringslinkojk.sql, query.go, probe.go, query_test.go}
+    repo/memory/{memory.go, sample.go}
+    http/{dto.go, errors.go, handler.go, export.go, routes.go, routes_test.go}
+
+Frontend, 4 berkas di `src/modules/monitoring-slink-ojk/`:
+
+    types.ts  api.ts  SegmentPanel.tsx  MonitoringSlinkOjkPage.tsx
+
+Disunting: `cmd/claimpnc/main.go` (perakitan), `cmd/claimpnc/check.go` (pemeriksa
+`-periksa`), `app/App.tsx` (rute), `app/menu/registry.ts` (pemetaan `MonitoringSLINKOJK`).
+
+Tidak ada migrasi basis data — modul ini tidak membuat satu tabel pun.
+
+### 55.8 Hasil uji
+
+    go build ./internal/...                      bersih
+    go vet   ./internal/monitoringslinkojk/...   bersih
+    go test  ./internal/monitoringslinkojk/...   LULUS (4 paket)
+    npx tsc --noEmit                             bersih
+
+Uji yang paling menentukan, dan alasannya:
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestArgumentCountMatchesPlaceholders` | satu argumen yang tertinggal **menggeser** seluruh sisanya tanpa galat — kuerinya tetap berjalan, hanya menyaring dengan nilai tertukar |
+| `TestSearchIncludesLastDayOfRange` | klaim pukul 23.40 di hari terakhir rentang wajib IKUT; `<=` terhadap tengah malam membuangnya diam-diam |
+| `TestCountSharesFilterWithRows` | bilah halaman yang menjanjikan halaman berisi, padahal kosong |
+| `TestQueriesNeverWrite` | `P-1` — tabel SLIK tetap dimiliki Pega |
+| `TestD01ExportRepeatsKeteranganTwice` | duplikat `Keterangan` memang ada di Pega; jangan "dirapikan" |
+
+### 55.9 Kekeliruan saya pada sesi ini
+
+**(a) Alat ukur dipercaya sebelum divalidasi — lagi.** `TestCountSharesFilterWithRows`
+gagal pada percobaan pertama dan melaporkan `f06_rows` punya 3 `LIKE` sementara
+`f06_count` punya 2. Kuerinya benar; **helper ujinya** yang salah: ia mengambil `WHERE`
+PERTAMA, yang pada kueri F06 adalah milik subkueri `EXISTS` di dalam daftar `SELECT`.
+Diperbaiki menjadi mencari `WHERE` terluar. Polanya sama persis dengan §54.4 dan dengan
+tiga kekeliruan sesi restrukturisasi ticketing.
+
+**(b) `git stash` dipakai di direktori kerja yang sedang disunting proses lain.** Untuk
+membuktikan kegagalan build sudah ada sebelumnya, `main.go` di-stash lalu di-pop.
+`pop` GAGAL karena berkasnya berubah di antara keduanya, dan perubahan yang sudah tertulis
+sempat hilang. Dipulihkan lewat `git apply`. Yang seharusnya dilakukan: membaca versi
+`HEAD` ke berkas sementara lalu membangunnya di sana — bukan menyentuh direktori kerja.
+
+### 55.10 Dua hambatan di luar modul ini
+
+**(a) `cmd/claimpnc` tidak dapat dibangun, dan itu sudah begitu sebelum modul ini.**
+Diverifikasi dengan menyingkirkan perubahan modul ini lalu membangun ulang: galatnya tetap.
+
+    undefined: riwayatklaimhttp, riwayatklaimusecase, riwayatklaimsql, riwayatklaimmemory
+    undefined: casestudyclaim, casestudyclaimhttp, casestudyclaimmemory
+
+Keduanya **registrasi ganda**: `riwayatklaimhttp` sudah dirakit di `modules.go:615`, dan
+salinan kedua muncul di `main.go` tanpa import — sidik jari penggabungan cabang yang belum
+tuntas. Tidak disentuh: memperbaikinya berarti memutuskan mana salinan yang dibuang, dan itu
+milik pekerjaan yang sedang berjalan.
+
+Modul ini sendiri **nol galat** — diperiksa dengan `go build -gcflags=-e ./cmd/...` lalu
+menyaring keluar kedua kelompok di atas. Akibat yang harus disadari: **perakitannya belum
+dapat dijalankan end-to-end** sampai kedua registrasi ganda itu dibereskan.
+
+**(b) `main.go` disunting proses lain bersamaan.** Terjadi selama sesi ini: perubahan yang
+sudah tertulis hilang, lalu blok `caseStudySelectorMemory` yang bukan milik sesi ini muncul.
+Keduanya dipertahankan setelah pemulihan.
+
+---
+
+## 56. Modul Case Study Claim — `MENU_ID 74` (2026-09-26)
+
+Modul telaah klaim bernilai besar, pengganti harness `PNCStudyClaim`. Ia modul TELAAH
+pertama yang **menulis** ke tabel klaim milik sistem lama.
+
+### 56.1 Yang dibaca sebelum satu baris kode ditulis
+
+| Berkas | Yang diambil darinya |
+|---|---|
+| `Harness/PNCStudyClaim-Harness.xml` | Kelas `Data-Portal`, tiga tombol: Lihat Data · Export Data · Save |
+| `Section/PNCStudyClaim-Section.xml` (15.028 baris) | 24 judul kolom + 24 properti pengisinya, berpasangan satu-satu; `pyPageSize 20`; `pyEditOptions=Editable` pada sel Remark |
+| `RDB List/BrowseClaimStudy-SQL.xml` | Kueri lengkap: tiga tabel, delapan subkueri agregat, ambang, dan keempat penyaringnya |
+| `Activity/StudyClaim_act-Act.xml` | Perakitan kedua potongan `{ASIS:}` — status dan bisnis — beserta kelima precondition-nya |
+| `Activity/FilterStudyClaim_act-Act.xml` | Isi dropdown Status: dua nilai |
+| `Activity/ExportDataCaseStudyClaim-Act.xml` | Unduhan = `pxConvertResultsToCSV`, bukan XLSX |
+| `Activity/SaveRemarksRecommendation_act-Act.xml` | Tombol Save: parameter `CASE` dan `REMARK` |
+| `RDB List/SaveRemarksRecommendation_sql-SQL.xml` | `UPDATE POOLDATA.T_CLAIM_PNC SET REMARKRECOMENDATION = … WHERE claimno = …` |
+| `Property/StatusReceiver_property.xml` | **Label dropdown Bisnis** — lihat §56.2 |
+| `Database/m_menu_aplikasi_pnc.csv` | `MENU_ID 74`, `MENU_PROGRAM PNCStudyClaim`, `MENU_ID_LEADER 2` (INBOX) |
+
+### 56.2 Empat pertanyaan konfirmasi, dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tombol Save menulis tabel milik Pega — bangun sekarang atau baca dulu? | **Bangun penuh (baca + Save Remark)** |
+| 2 | Label dropdown Bisnis tidak ada di export — turunkan, sebutkan, atau tampilkan kodenya? | **Ambil dari `Property/StatusReceiver_property.xml`** |
+| 3 | Penyaring tanggal membuang hari dan bulan — tetap date picker atau ganti pilihan tahun? | **Tetap date picker, beri keterangan** |
+| 4 | "Nature of Loss" dan "Cause of Loss" kembar — replikasi atau satukan? | **Replikasi, tandai di kode dan layar** |
+
+Jawaban nomor 2 **mengoreksi premis pertanyaannya sendiri**. Folder `Property/` belum ada
+saat pertanyaan disusun; Work Owner menambahkannya, dan isinya menjawab dengan bukti
+langsung — tidak ada satu label pun yang perlu ditebak:
+
+    002 -> PA        005 -> TRAVEL        346 -> NONMBU        003 -> BONDING
+
+Keempatnya sama persis dengan nilai `TYPE_BUSINESS` pada `Database/emailkomite.csv`.
+Kesamaan itu yang menguatkan bahwa pembacaannya benar.
+
+### 56.3 Dua kode yang paling mudah salah dibaca
+
+**`346` bukan kode Group Panel.** Ia singkatan gabungan panel 3, 4, dan 6 — ditambah 9,
+yang tidak ikut disebut namanya.
+
+**`003` di dropdown ini bukan "Aneka" melainkan BONDING.** Keduanya berada di Group Panel
+yang sama; yang memisahkannya hanyalah kesepuluh `BUSINESSCODE`-nya.
+
+### 56.4 Temuan: cakupan NONMBU dan BONDING BERTUMPANG TINDIH
+
+Ditemukan oleh uji, bukan oleh pembacaan. Harapan awal saya: keempat pilihan Bisnis saling
+lepas. Uji `TestCakupanBisnisMenyaring/NONMBU` gagal dan menunjukkan sebaliknya:
+
+    NONMBU   panel 003/004/006/009 MINUS lima kode bisnis
+    BONDING  panel 003 DAN sepuluh kode bisnis tertentu
+
+Kesepuluh kode BONDING **tidak ada** di daftar lima yang dikecualikan NONMBU, sehingga
+**setiap klaim Bonding memenuhi kedua cakupan**. Menjumlahkan hasil keempat pilihan
+menghitung sebagian klaim dua kali.
+
+Direplikasi apa adanya (`P-5`) dan dicatat sebagai temuan — memperbaikinya menghilangkan
+baris yang di layar lama terlihat. Dijaga uji `TestCakupanNONMBUDanBONDINGBertumpangTindih`.
+
+### 56.5 Ambang diuji PER BARIS settlement, bukan atas jumlahnya
+
+    EXISTS (… WHERE total_claim*currencyvalue > 5000000000 AND claimid = b.claimid)
+
+`EXISTS` benar bila **ada satu baris** yang melampauinya. Klaim bertotal Rp 8 miliar yang
+terpecah menjadi dua baris Rp 4 miliar karena itu **tidak muncul**.
+
+Pembacaan yang keliru — "jumlah seluruh settlement" — menghasilkan daftar yang tampak wajar
+dan tidak akan tertangkap uji mana pun kecuali ada saksi yang membedakannya. Saksinya
+sengaja dibuat: baris contoh `STD-0007`.
+
+### 56.6 Tujuh hal yang berubah dari kueri lama
+
+| # | Perubahan | Alasan |
+|---|---|---|
+| 1 | Dua potongan `{ASIS:}` menjadi parameter binding | §4.3 melarangnya tanpa perkecualian |
+| 2 | `NVL` menjadi `COALESCE`; `TO_CHAR(…,'mm')` menjadi `EXTRACT(MONTH …)` | Portabilitas, **dan** menghindari `R-12`: `EXTRACT` membaca nilai tersimpan, sedangkan mengambil bulan di Go dari waktu yang sudah dikonversi WIB akan menggeser bulan di sekitar pergantian bulan |
+| 3 | Koma menjadi `INNER JOIN` eksplisit | Semantik identik; akibatnya dicatat — klaim tanpa baris `BUSINESS` tetap hilang |
+| 4 | Nilai uang dikembalikan dalam **satuan terkecil** (`× 100`, `ROUND`) | `money.FromSQLValue` MENOLAK `float64` berdesimal; seluruh nilai di sini hasil `SUM` atas perkalian |
+| 5 | Paginasi `OFFSET … FETCH NEXT` dua lapis | Grid lama menarik seluruh hasil (`K-34`). Dua lapis supaya kedelapan subkueri hanya dihitung untuk 20 baris satu halaman |
+| 6 | `ORDER BY` ditambahkan | Pega tidak punya satu pun. Tanpanya paginasi mengulang dan melewatkan baris |
+| 7 | `to_number(...)` dibuang | Tidak mengubah apa pun dan tidak portabel |
+
+### 56.7 Satu penolakan yang TIDAK mengubah data
+
+Rentang periode yang kosong ditolak 422. Di Pega ia menghasilkan
+`BETWEEN NULL AND NULL` — **nol baris tanpa satu pun pesan**.
+
+Kedua sistem menampilkan hasil yang sama; yang berubah hanyalah pengguna diberi tahu
+sebabnya, alih-alih menatap grid kosong dan menyimpulkan tidak ada klaim besar pada periode
+itu. Dicatat supaya tidak terbaca sebagai selisih saat `S-8` dijalankan.
+
+### 56.8 Penulisan ke tabel milik Pega
+
+`UPDATE POOLDATA.T_CLAIM_PNC SET REMARKRECOMENDATION` menuntut serah-terima kepemilikan
+tulis atas **satu kolom** lewat `D-63`. Presedennya sudah berjalan: modul Inbox Receive TKA
+menulis `TGLDOKLENGKAP` pada tabel yang sama.
+
+Dua pagar dipasang:
+
+- Jumlah baris terpengaruh **diperiksa**. Keunikan `CLAIMNO` tidak dibuktikan DDL mana pun
+  (`R-08`); lebih dari satu baris terpengaruh menjadi galat, bukan lewat begitu saja.
+- Uji `TestTidakAdaPernyataanTulisLain` menolak pernyataan tulis kedua yang masuk diam-diam.
+
+### 56.9 Kendala yang ditemukan, dan bagaimana diselesaikan
+
+**(a) `cmd/claimpnc` sudah rusak sebelum modul ini — dan kali ini dibereskan.**
+
+Dibuktikan dengan `git worktree add … HEAD` lalu `go build ./...` **di worktree itu**, tanpa
+menyentuh direktori kerja sama sekali. Hasilnya: HEAD `563464b` tidak dapat dikompilasi.
+
+Sebabnya: `main.go` memakai `riwayatklaimhttp`, `riwayatklaimusecase`, dan `riwayatklaimsql`
+tanpa mengimpornya — **impor di Go berlaku per berkas, bukan per paket** — sementara yang
+mengimpornya adalah `modules.go`. Dan seandainya terkompilasi, `riwayatklaimhttp.Mount`
+terdaftar **dua kali** pada router yang sama (`main.go` dan `modules.go:628`), yang membuat
+chi panik saat start.
+
+Diselesaikan dengan membuang perakitan ganda di `main.go` dan mempertahankan yang di
+`modules.go` — satu-satunya yang dijaga uji (`TestExtraModulesMounted`). `go build ./...`
+kini **exit 0**, dan seluruh suite backend lulus.
+
+Berbeda dari dua sesi sebelumnya yang mencatat hambatan ini dan memilih tidak menyentuhnya:
+di sini ia dibereskan karena tanpa itu tidak ada modul mana pun yang dapat dibuktikan
+berjalan di binary.
+
+**(b) `main.go` disunting proses lain bersamaan.** Terjadi dua kali; seluruh suntingan impor
+sempat hilang. Dipasang ulang, dan perubahan proses lain (`dashboardclaim`,
+`monitoringslinkojk`) dipertahankan utuh.
+
+**(c) `main.go` dan `check.go` ber-CRLF** sehingga `gofmt -l` selalu menandainya. TIDAK
+diformat ulang: diff-nya akan mencakup seluruh berkas dan menghapus pekerjaan sesi lain.
+Berkas modul ini sendiri bersih.
+
+### 56.10 Yang terbukti, dan yang belum
+
+**Terbukti:** `go build ./...` exit 0 · seluruh suite backend lulus · 24 kolom, keempat
+cakupan bisnis, kedua status, ambang, paginasi, unduhan CSV, dan jalur tulis diuji ujung ke
+ujung lewat server HTTP yang dirakit sama seperti `cmd/claimpnc`.
+
+**Belum:** kuerinya belum pernah menyentuh Oracle. `go-ora` belum pernah menghubungi Oracle
+di proyek ini sama sekali (`keputusan-implementasi.md` §3.2), sehingga bentuk yang
+diserahkan driver untuk kolom hasil `ROUND(...)` baru terbukti saat dijalankan sungguhan.
+Ketiga bentuk yang mungkin — `int64`, `float64`, dan teks — seluruhnya ditangani dan diuji.
+
+### 56.11 Berkas yang dibangun
+
+**Modul — 24 berkas, 6.266 baris** (domain & adapter 4.346 · frontend 1.246 · SQL 360 ·
+uji 1.680):
+
+    backend/internal/casestudyclaim/
+      casestudyclaim.go · columns.go · errors.go · filter.go   domain
+      http/          dto · errors · handler · routes
+      repo/memory/   memory · sample
+      repo/sqlstore/ casestudyclaim.go · casestudyclaim.sql · query.go
+      usecase/       service.go
+
+    frontend/src/modules/case-study-claim/
+      types.ts · api.ts · CaseStudyClaimPage.tsx · RemarkCell.tsx
+
+**Berkas bersama yang disentuh** — seluruhnya penambahan, kecuali satu penghapusan yang
+dijelaskan di §56.9(a):
+
+| Berkas | Yang ditambahkan |
+|---|---|
+| `backend/cmd/claimpnc/main.go` | impor · field `caseStudyClaim` dan `caseStudySelector` · pemilih Oracle dan memori · pembentukan layanan · handler · pemasangan rute |
+| `backend/cmd/claimpnc/check.go` | `checkCaseStudyClaim` — pemeriksaan keempat tabel pada `claimpnc -periksa` |
+| `backend/cmd/claimpnc/main_test.go` | tiga uji perakitan |
+| `frontend/src/app/App.tsx` | rute `/case-study-claim` |
+| `frontend/src/app/menu/registry.ts` | `PNCStudyClaim` |
+
+**Tiga penjaga yang ditambahkan setelah modulnya jadi**, masing-masing menutup kegagalan
+yang TIDAK menghasilkan galat:
+
+| Penjaga | Yang dicegahnya |
+|---|---|
+| `TestJumlahSelCSVSamaDenganJumlahJudulKolom` | Menambah kolom di `columns.go` tanpa menambahnya di `exportRow` — judul CSV bergeser satu kolom terhadap isinya |
+| `TestCaseStudyClaimAssembled` | Modul lengkap dan ujinya lulus, tetapi tidak pernah dirakit — layarnya menjawab 404. Persis yang pernah terjadi pada sepuluh modul sekaligus |
+| `TestCaseStudySelectorMemoryRejectsOtherPortals` | Portal lain dilayani penyimpanan portal utama saat berjalan tanpa Oracle — `R-20` yang paling mudah lolos justru di lingkungan pengembangan |
+
+### 56.12 Verifikasi
+
+**Perkakas:**
+
+    go build ./...                    exit 0
+    go vet ./...                      bersih
+    go test ./...                     seluruh paket lulus
+    gofmt -l internal/casestudyclaim  bersih
+    npx tsc --noEmit                  exit 0
+    npx vitest run case-study-claim   14 lulus / 14
+
+Catatan: proyek ini **tidak punya konfigurasi ESLint** — `npm run typecheck` adalah gerbang
+frontend yang sebenarnya. Bukan sesuatu yang berubah pada sesi ini.
+
+**Binary sungguhan.** Uji rute sudah merakit router yang sama dengan `cmd/claimpnc`, tetapi
+ia tetap uji. Binary-nya karena itu dibangun dan dijalankan
+(`PENYIMPANAN=memori IDENTITAS_ADAPTER=fake`), lalu ditembak satu per satu:
+
+| Yang ditembak | Hasil |
+|---|---|
+| `GET /penyaring` | 4 pilihan bisnis · 2 status · **24 kolom** · ambang 500.000.000.000 sen |
+| `GET /` rentang 2024–2025 | 6 klaim · periode dijawab `2024–2025` · `nature === cause` **true** |
+| `PUT /STD-0001/catatan` | tersimpan, spasi di ujung **dipangkas**, terbaca kembali di daftar |
+| `PUT` ke klaim tak dikenal | **404** |
+| `GET /` tanpa periode | **422** beserta `isian: "dari"` |
+| `GET /` tanpa `X-Portal` | **400** |
+| `GET /penyaring` tanpa sesi | **401** |
+| `GET /unduh` | `text/csv`, `Content-Disposition` bernama tanggal-jam, 24 judul kolom, nilai uang sebagai angka |
+| `bisnis=346` lalu `bisnis=003` | `STD-0004` muncul di **keduanya** — tumpang tindih §56.4 terlihat pada data sungguhan |
+
+**Satu kegagalan uji yang menemukan cacat di LAYAR, bukan di uji.**
+`findByText(/hanya TAHUNNYA/)` gagal dengan "Found multiple elements": kalimat keterangan
+periode digambar DUA KALI — sekali di bawah isian tanggal, sekali lagi di catatan bawah
+tabel. Yang diperbaiki layarnya, bukan ujinya; ujinya diperketat menjadi
+`getAllByText(...).toHaveLength(1)` supaya duplikasinya tidak dapat kembali.
+
+**Satu timeout uji yang BUKAN cacat.** Satu uji frontend sempat timeout 23 detik pada ambang
+5 detik. Sebabnya `go build ./...` berjalan bersamaan di mesin yang sama; dijalankan ulang
+tanpa beban itu, seluruh 14 uji lulus dengan waktu terlama 1,9 detik. Dicatat supaya
+kegagalan serupa tidak dikejar sebagai cacat produk.
+
+---
+
+## 57. Monitoring SLINK OJK — tiga selisih dicabut, disamakan persis dengan Pega (2026-09-26)
+
+Work Owner menanyakan *"sudah sesuai PEGA apa adanya kan"*. Pemeriksaan ulang atas
+pertanyaan itu menemukan **satu kekeliruan saya** dan menghasilkan **tiga keputusan baru**
+yang mencabut sebagian §55.
+
+### 57.1 Kekeliruan saya: berkas "Format File" DIPOTONG atas bacaan yang salah
+
+§55 menyatakan berkas contoh unggahan "25 judul dengan 6 nilai" sehingga tidak sejajar,
+lalu memotongnya menjadi 6 kolom.
+
+**Itu salah.** Pemeriksaan ke `Activity/DownloadFileCSVFormatSlikOJK-Act.xml`:
+
+    CSVPropHeaders  -> 25
+    CSVProperties   -> 25
+
+Keduanya **sama jumlahnya dan identik isinya**. Berkasnya SEJAJAR; yang enam adalah
+properti yang di-set nilainya, sembilan belas sisanya menghasilkan sel KOSONG — bukan
+baris yang bergeser. Yang misalign hanya `ExportDataSlinkFOG`, dan saya menyamakan
+keduanya tanpa memeriksa.
+
+**Dikembalikan utuh menjadi 25 kolom**, dengan 6 sel terisi dan 19 kosong. Diuji di
+`TestTemplateMatchesPega`, yang mengunci angka 25 supaya pemotongan itu tidak terulang.
+
+Polanya sama dengan §55.9(a) dan §54.4: **satu artefak disimpulkan dari artefak lain yang
+mirip, bukan dibaca sendiri.** Di sini `ExportDataSlinkFOG` yang misalign membuat saya
+menduga berkas format pun begitu.
+
+### 57.2 Nama berkas ekspor — ketertukarannya DIREPLIKASI
+
+§55 membetulkan nama berkas yang tertukar. **Dicabut.** Work Owner memilih "samakan persis
+dengan Pega" sesudah akibatnya disampaikan.
+
+| Segmen | Nama berkas sekarang | Sumber |
+|---|---|---|
+| D01 | **"Laporan F06 SLIK OJK"** | `<FileName>` pada `ExportDataSlinkD01` |
+| F06 | **"Laporan SLIK OJK D01"** | `<FileName>` pada `ExportDataSlinkFOG` |
+
+Akibat yang diterima secara sadar: pelapor menyimpan dua berkas yang **saling tertukar
+namanya** di folder yang sama, dan yang keliru membukanya tidak punya cara mengetahuinya.
+
+Diuji di `TestFileNamesMatchPega`, yang menyatakan ketertukarannya **disengaja** — tanpa
+uji itu, siapa pun yang membacanya akan "membetulkannya" dan mengira sedang memperbaiki
+salah ketik.
+
+### 57.3 Ekspor F06 — misalign 38 vs 34 DIREPLIKASI
+
+§55 membuat berkasnya sejajar 38↔38. **Dicabut.** Work Owner memilih replikasi persis.
+
+Bentuk berkas yang dihasilkan sekarang:
+
+| Bagian | Jumlah |
+|---|---|
+| Baris kepala | **38 judul** |
+| Setiap baris data | **34 sel** |
+
+Slot keenam pada `CSVProperties` adalah **dua nama tersambung tanpa koma** —
+`ASMGenderASMDateOfBirth` — yang tidak pernah ada sebagai properti. Satu entri memakan
+jatah dua, sehingga seluruh slot sesudahnya bergeser terhadap judulnya.
+
+**Hanya tiga slot yang terisi, dan ketiganya di bawah judul yang salah:**
+
+| Slot | Properti | Tercetak di bawah judul |
+|---:|---|---|
+| 7 | `ASMAddress` | **"Jenis Kelamin"** |
+| 33 | `KodeKantorCabang` | **"Perjanjian Pisah Harta"** |
+| 34 | `OperasiData` | **"Melanggar BMPK"** |
+
+Tiga puluh satu slot lainnya menyebut properti CIF (`ASMNIK`, `pyFullName`, `SpouseName`,
+…) yang **tidak dihasilkan** `GetDataSlinkAllFOG`, sehingga kosong.
+
+Perhatikan: `PostalCode` dan `PhoneNo` termasuk yang kosong, **meski nilainya ADA di
+grid** — alias kuerinya `ASMZIPCODE` dan `TELFAXNUMBER`, tidak berpadanan.
+
+Bentuk struktur kodenya berubah supaya ini dapat direplikasi tanpa memalsukannya:
+
+    ExportHeaders(segment)  -> baris kepala   D01: 27   F06: 38
+    ExportSlots(segment)    -> kolom data     D01: 27   F06: 34
+
+Keduanya **sengaja terpisah**. Menyatukannya menjadi satu daftar akan memaksa jumlahnya
+sama — dan itu justru menghapus pergeseran yang sedang direplikasi.
+
+Diuji di tiga tempat: `TestF06ExportReplicatesPegaMisalignment` (jumlah),
+`TestF06ExportKeepsGluedPropertyName` (slot keenam tetap satu),
+`TestExportF06ReplicatesPegaMisalignment` (berkas yang benar-benar dihasilkan, beserta
+nilai Alamat yang berada di bawah judul "Jenis Kelamin").
+
+### 57.4 Penanda kolom tanpa sumber DIBUANG
+
+§55 menggambar 30 kolom F06 tanpa sumber sebagai tanda pisah redup beserta keterangan
+properti asalnya, ditambah catatan di atas tabel. **Dicabut** atas pilihan Work Owner:
+layarnya mengikuti Pega apa adanya (`D-13`), dan di Pega sel itu kosong biasa.
+
+Konsekuensi yang diterima secara sadar: **30 dari 38 kolom tampil kosong tanpa ada apa pun
+di layar yang menyatakan sebabnya**. Pengguna tidak punya cara membedakan "datanya memang
+kosong" dari "kolomnya belum punya sumber".
+
+Keterangannya **pindah ke dokumentasi**, tidak hilang — §55.4 dan komentar pada
+`toColumn` di `SegmentPanel.tsx`.
+
+### 57.5 Tiga penambahan yang DIPERTAHANKAN
+
+Work Owner memilih menyimpan ketiganya:
+
+| Penambahan | Di Pega |
+|---|---|
+| Kotak cari No Klaim / Contract No | tidak ada |
+| Penolakan rentang tanggal terbalik dengan pesan | diam — nol baris tanpa keterangan |
+| Tab segmen | dropdown "Pilih Segmen" |
+
+### 57.6 Selisih yang TERSISA terhadap Pega
+
+Sesudah §56, yang masih berbeda tinggal lima — dan tiga di antaranya tidak dapat
+dihilangkan:
+
+| # | Selisih | Dapat dihilangkan? |
+|---|---|---|
+| 1 | Parameter binding menggantikan `{ASIS:}` | **tidak** — celah injeksi, dilarang `08-TECHNICAL-STRATEGY.md` §4.3. Hasilnya sama persis |
+| 2 | Paginasi dikerjakan server | **tidak** — `D-10` puluhan juta baris; Pega memuat seluruhnya ke peramban |
+| 3 | Tiga tombol tulis menjawab 409 beralasan | **tidak** — artefaknya tidak ada di export |
+| 4 | Kotak cari, penolakan rentang terbalik, tab segmen | ya — dipertahankan atas pilihan Work Owner |
+| 5 | Batas 200.000 baris ekspor + baris penanda | ya — belum ditanyakan; `MaxRecords` pada aktivitas Pega memang KOSONG (tanpa batas) |
+
+Nomor 5 belum pernah diputuskan secara eksplisit dan dicatat di sini supaya tidak
+tenggelam. Ia hanya menggigit bila satu ekspor melebihi 200.000 baris, dan berkas yang
+menyentuhnya diberi baris penanda — bukan dipotong diam-diam.
+
+### 57.7 Hasil uji sesudah perubahan
+
+    go vet   ./internal/monitoringslinkojk/...   bersih
+    gofmt -l ./internal/monitoringslinkojk       bersih
+    go test  ./internal/monitoringslinkojk/...   LULUS (5 paket)
+    npx tsc --noEmit                             bersih
+
+### 56.13 Keputusan Work Owner atas ketiga butir terbuka (2026-09-26, lanjutan)
+
+Ketiga butir pada §56.9 dan `permintaan-artefak-pega.md` §5 dibawa ke Work Owner.
+
+> "2 dan 3 biarin aja seperti PEGA, nomor 1 tinggal minta DBA"
+
+| Butir | Keputusan | Akibat pada kode |
+|---|---|---|
+| Tumpang tindih NONMBU/BONDING | Biarkan seperti Pega | **Nol** — itu memang yang sudah dibangun (`P-5`). Statusnya saja berubah: dari "menunggu konfirmasi" menjadi "sudah dikonfirmasi" |
+| DDL dua kolom | Tidak dikejar, jalan seperti Pega | **Satu penambahan** — lihat di bawah |
+| Kepemilikan tulis | Diminta ke DBA | Nol; teks permintaannya disiapkan siap kirim di `permintaan-artefak-pega.md` §5.6 |
+
+**Kenapa butir kedua tetap menuntut penambahan.**
+
+"Seperti Pega" pada panjang catatan berarti **tanpa batas di layar**: `pyMaxLength` **nol
+kemunculan** di seluruh `Section/PNCStudyClaim-Section.xml`. Batas sebenarnya karena itu
+hanyalah lebar kolom di basis data — dan lebar itu tidak diketahui (`R-08`), serta kini
+diputuskan tidak dikejar.
+
+Dengan begitu `MaxRemarkLength = 2000` tetap dugaan. Bila terlalu longgar, Oracle menolak
+dengan **ORA-12899**, dan tanpa penanganan khusus galat itu sampai ke pengguna sebagai
+"terjadi kesalahan pada sistem" — setelah ia mengetik satu halaman penuh, tanpa petunjuk
+bahwa yang salah hanyalah panjangnya.
+
+Yang ditambahkan supaya keputusan itu aman:
+
+| Penambahan | Berkas |
+|---|---|
+| `ErrRemarkRejectedByColumn` — dibedakan dari `ErrRemarkTooLong`, karena yang satu diketahui SEBELUM menyentuh basis data dan yang lain SESUDAHNYA | `errors.go` |
+| `isValueTooLarge` — mengenali **ORA-12899** lewat NOMORNYA, bukan teks pesannya; teks berubah bila basis datanya berbahasa lain, nomornya tidak | `repo/sqlstore/casestudyclaim.go` |
+| Pemetaan ke **422** menunjuk isian `catatan`; nomor galat Oracle hanya masuk log, tidak pernah ke peramban | `http/errors.go` |
+| `TestPenolakanLebarKolomDikenali` · `TestGalatLainTidakDikiraPenolakanLebarKolom` · `TestPenolakanLebarKolomDijawab422` | ketiga berkas uji |
+
+Uji kedua patut disebut: ia memastikan galat koneksi atau hak akses **tidak** tersamar
+menjadi "catatan terlalu panjang". Menyamarkannya akan menyuruh pengguna memperpendek
+catatannya berulang kali atas masalah yang tidak ada hubungannya.
+
+Akibatnya: DDL-nya boleh tidak pernah datang. Dan bila 2.000 ternyata terlalu longgar,
+kemunculan galat ini di log menjadi **bukti langsung** — satu-satunya cara mengetahuinya
+tanpa DDL.
+
+---
+
+## 58. Monitoring SLINK OJK — ketiga tombol tulis dibangun (2026-09-26)
+
+§55.5 menyatakan ketiga tombol tulis **tidak dapat dibangun**. Work Owner meminta ketiganya
+tetap dibangun "seperti PEGA". Pemeriksaan ulang membuktikan **pernyataan §55.5 keliru
+sebagai kesimpulan**, meski benar sebagai pengamatan.
+
+### 58.1 Kekeliruan saya: mengambil kesimpulan dari SATU tempat
+
+§55.5 benar bahwa ketiga tombol itu **tidak terhubung `<pyActivity>` apa pun** di
+`Sec_SegmentD01_1` — keempat tombol lain punya, ketiga ini tidak. Terverifikasi.
+
+Yang keliru adalah kesimpulannya: **"tidak terhubung di section" ≠ "logikanya tidak ada"**.
+Logikanya ada, dan lengkap, hanya tidak di tempat yang saya periksa:
+
+| Tombol | Logikanya ada di |
+|---|---|
+| Proses Data Klaim | `InsertDataSlikOJKF06` (INSERT 28 kolom) + `GetCountTClaimSlikOJK` + `GetDataSlinkAllFOG` + `InsertAdjustmentListKredit` |
+| Upload Data Klaim | `PNCUploadAutoClaimSlikOJK` — pemetaan nilainya, bermuara pada INSERT yang sama |
+| SLIK OJK | `QuerySLINKIndividu` (nomor urut + INSERT) + `UpdateTransactionClaimSlinkIndividu` |
+
+Polanya sama dengan §55.9(a) dan §57.1: **berhenti pada bukti pertama yang tampak
+menjawab.** Di sini saya berhenti pada ketiadaan `pyActivity` dan tidak menelusuri siapa
+yang sebenarnya memanggil `InsertDataSlikOJKF06`.
+
+Yang memaksanya terbuka adalah pertanyaan Work Owner, bukan pembacaan ulang yang lebih
+teliti — sama seperti §57.1.
+
+### 58.2 Pemetaan kolom yang ditemukan
+
+| Kolom tabel | Asal | Catatan |
+|---|---|---|
+| `tanggalmulai` / `tanggalakhir` | `.AwalPolis` / `.AkhirPolis` | ditampung properti `District` / `DistrictID` |
+| `nominal` | `.JUMLAHKEWAJIBAN` | ditampung properti `TSIObject` |
+| `bulanlapor` | `FormatDateTime(now,"yyyyMM")` | ditampung properti `City` |
+| `tunggakan` | **`.TUNGGAKAN − .RecoveryClaim`** | hanya pada jalur UNGGAH |
+| `recoveryclaim` | `.RecoveryClaim` unggah · **`0`** pada jalur proses | `InsertAdjustmentListKredit` mengisinya nol |
+| `operasidata` | `'U'` bila `count > 0`, `'C'` bila `0` | dari `GetCountTClaimSlikOJK` |
+
+Empat nama properti di atas — `District`, `DistrictID`, `TSIObject`, `City` — adalah alias
+yang **tidak ada hubungannya** dengan isinya. Tidak satu pun dibawa; namanya di modul baru
+menyebut isinya.
+
+### 58.3 Perilaku nyata yang ditemukan uji: satu klaim, dua fasilitas
+
+`GetCountTClaimSlikOJK` menghitung `where claimid = ?` — **tanpa `contractno`**.
+
+Akibatnya, klaim dengan DUA fasilitas kredit menghasilkan fasilitas pertama `'C'` dan
+fasilitas kedua **`'U'`**, meski keduanya baru pertama kali disusun.
+
+Ditemukan karena uji pertama menuntut "4 baru" dan gagal dengan "3 baru, 1 diperbarui".
+**Direplikasi** — menambahkan `contractno` ke pencacah akan mengubah isi kolom
+`operasidata` pada laporan regulator atas dasar tebakan. Dikunci di
+`TestProcessCreatesReportRows` beserta alasannya.
+
+### 58.4 Satu bagian yang TETAP tidak dapat dibangun
+
+Panggilan REST keluar pada "SLIK OJK" — `Rest_SendDataClientBasedDebitur` — **nol
+kemunculan** di direktori `Connect REST/` (`R-16`).
+
+Ia berada di balik seam `monitoringslinkojk.Sender`. Tanpa konfigurasi, tombolnya menjawab
+**503** beserta sebabnya dan **tidak mencatat satu baris pengiriman pun** — diuji di
+`TestSubmitWithoutSenderRecordsNothing`. Tanpa pemeriksaan di muka itu, setiap penekanan
+tombol akan meninggalkan baris yang tidak akan pernah terkirim, dan tabelnya terisi jejak
+palsu yang tidak dapat dibedakan dari pengiriman yang gagal.
+
+Sisi basis datanya lengkap: nomor urut, pencatatan, dan penyimpanan `id_transaction`.
+
+### 58.5 Satu hal yang TIDAK dapat dipulihkan: bagaimana klaimnya dipilih
+
+Di Pega, `InsertDataSlinkOJKIndividu` bekerja atas SATU klaim yang sedang dibuka
+(`pyWorkPagee.ClaimData.ClaimNo`). Layar pemantauan ini tidak punya klaim yang sedang
+dibuka, dan sectionnya tidak menghubungkan tombolnya ke aktivitas mana pun.
+
+Yang dipilih: **sasarannya sama dengan kedua tombol tulis lain** — himpunan yang sedang
+disaring dan sudah terlihat di tabel. Alternatifnya, menambah tombol per baris di grid,
+menambah kolom yang tidak ada di layar lama (`D-13`).
+
+Rutenya tetap menerima bentuk SATU KLAIM (`{"no_klaim":…,"contract_no":…}`) supaya
+pemanggil lain dapat memakainya tanpa menunggu keputusan itu. Dicatat sebagai pertanyaan
+terbuka di `permintaan-artefak-pega.md`.
+
+### 58.6 Tiga penambahan di luar Pega
+
+| Penambahan | Di Pega | Alasan |
+|---|---|---|
+| Ketiga tombol tulis **dinonaktifkan** sampai "Cari Data" ditekan | selalu aktif | ketiganya bekerja atas himpunan yang disaring; menekannya sebelum melihat isinya berarti menyusun laporan regulator tanpa tahu isinya |
+| Baris unggahan yang cacat **ditolak sendirian**, dilaporkan beserta nomor barisnya | tidak melaporkan apa pun | berkas seribu baris yang gagal seluruhnya karena satu baris kosong memaksa pelapor menebak baris mana |
+| Kepala kolom unggahan **dibaca menurut NAMA**, bukan posisi | posisional | berkas yang kolomnya tergeser di aplikasi lembar kerja akan menulis nilai ke kolom yang salah tanpa satu pun galat |
+
+### 58.7 Konsekuensi `P-1` yang diterima secara sadar
+
+`POOLDATA.T_CLAIM_SLIK_OJK` juga diisi jalur akseptasi sistem lama. Sejak ketiga rute ini
+hidup, **dua sistem menulis satu tabel** — dan yang mencegah baris ganda hanyalah disiplin
+pemakaian, bukan mekanisme apa pun.
+
+Satu pengaman yang dapat dibangun sudah dipasang, dan ia dari Pega sendiri: pencacah
+menandai klaim berulang sebagai `operasidata = 'U'` alih-alih `'C'`.
+
+### 58.8 Berkas yang ditambahkan
+
+    internal/monitoringslinkojk/write.go
+    internal/monitoringslinkojk/usecase/write.go          + write_test.go
+    internal/monitoringslinkojk/repo/sqlstore/write.go    + write.sql
+    internal/monitoringslinkojk/repo/memory/write.go
+    internal/monitoringslinkojk/http/write.go
+
+Empat pemeriksa `-periksa` baru — `T_CLAIM_PNC`, `T_CLAIM_ADJUSTMENT`,
+`T_CLAIM_OBJECTCOVERAGE`, `T_CLAIM_SLINK_INDIVIDU` — dilaporkan **terpisah** dari ketiga
+pemeriksa lama, karena akibat kegagalannya berbeda: layar yang dapat memantau tetapi tidak
+dapat menyusun adalah keadaan yang berbeda dari layar yang sama sekali tidak berfungsi.
+
+### 58.9 Uji yang paling menentukan
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestProcessSecondRunMarksUpdate` | klaim yang sudah dilaporkan masuk lagi sebagai `'U'`, bukan `'C'` — tanpa ini OJK menerima satu klaim terhitung dua kali |
+| `TestSubmitWithoutSenderRecordsNothing` | tidak ada baris pengiriman palsu saat layanan belum siap |
+| `TestSubmitFailureKeepsRecordWithoutTransaction` | pengiriman gagal TETAP meninggalkan jejak |
+| `TestUploadKeepsUnparsableArrears` | tunggakan yang tidak terbaca tidak diam-diam menjadi nol |
+| `TestUploadReadsHeadersByName` | kolom yang tergeser tidak menulis nilai ke kolom yang salah |
+| `TestWriteQueriesTouchOnlyAgreedTables` | aksi tulis tidak merembet ke tabel lain |
+
+### 56.14 Panel "Yang perlu diketahui" dihapus (2026-09-26, lanjutan)
+
+Permintaan Work Owner setelah melihat layarnya berjalan. Panel di bawah tabel dibuang
+seluruhnya.
+
+**Isinya tidak hilang** — ia sudah ada di tempat yang lebih dekat dengan kejadiannya:
+
+| Kalimat | Ke mana |
+|---|---|
+| Keterangan periode hanya memakai TAHUN | tetap, tepat di bawah kedua isian tanggal |
+| Ambang Rp 5.000.000.000 | tetap, pada pesan grid ketika hasilnya kosong |
+| Kekembaran "Nature of Loss" / "Cause of Loss" | **hilang dari layar** |
+
+Yang benar-benar berkurang hanyalah baris ketiga. Kekembaran itu tetap tercatat di kode,
+di `keputusan-implementasi.md` §57.9, dan dijaga `P-5` — hanya tidak lagi dinyatakan kepada
+pengguna.
+
+**Kontrak API tidak diubah.** `catatan_periode`, `catatan_kolom_kembar`, dan
+`ambang_nilai_klaim` tetap dikirim `/penyaring`. Membuangnya berarti perubahan yang merusak
+demi menghapus satu kotak tampilan — dan keduanya masih dipakai: yang pertama di bawah
+isian tanggal, yang ketiga pada pesan grid kosong.
+
+Tidak ada uji yang menyentuh panel itu, sehingga tidak ada uji yang perlu diubah.
+
+---
+
+## 59. Monitoring SLINK OJK — disamakan dengan Pega (2026-09-27)
+
+Work Owner menjawab "samain semua aja" atas ketiga hal yang §58.6 catat sebagai penambahan
+di luar Pega. Pemeriksaan ulang ke export membuktikan **dua dari tiga catatan itu sendiri
+keliru** — jadi yang benar-benar dicabut hanya satu, satu lagi ternyata sudah sama dengan
+Pega sejak awal, dan satu lagi ditemukan sebagai kekurangan yang berlawanan arah.
+
+### 59.1 Yang keliru pada §58.6, dan bagaimana ketahuannya
+
+| §58.6 menyatakan | Kenyataannya | Cara memastikannya |
+|---|---|---|
+| kepala kolom unggahan di Pega dibaca menurut POSISI | **menurut NAMA** | `PNCUploadAutoClaimSlikOJK` memanggil `pxUploadCSVResults` lalu membaca `.ContractNo`, `.Keterangan`, … — nama properti, bukan nomor kolom |
+| Pega menolak seluruh berkas bila ada satu baris cacat | **tidak menolak apa pun** | tidak ada satu pun pemeriksaan di `PNCUploadAutoClaimSlikOJK` maupun `InsertDataSlikOJKF06` |
+| tombol tulis di Pega selalu aktif | **benar** | nol `pyDisabledCondition` di `Sec_SegmentD01_1-Section.xml` |
+
+Baris pertama berarti pemetaan menurut nama **bukan penyimpangan** — ia perilaku Pega, dan
+tidak ada yang perlu dicabut. Baris kedua berarti pilihan yang saya sodorkan ke Work Owner
+("ditolak sendirian" versus "gagal seluruhnya") adalah **dikotomi palsu**: Pega tidak
+melakukan keduanya.
+
+Polanya sama dengan §58.1 — menyimpulkan tanpa membuka berkas yang benar. Yang berbeda kali
+ini: kekeliruannya masuk ke **pertanyaan yang saya ajukan**, sehingga Work Owner memutuskan
+di atas premis yang salah. Itu lebih buruk daripada salah sendiri, dan karena itu dicatat
+di sini alih-alih diperbaiki diam-diam.
+
+### 59.2 Yang benar-benar diubah
+
+| Perubahan | Berkas |
+|---|---|
+| Ketiga tombol tulis **selalu aktif**, tidak lagi menunggu "Cari Data" | `MonitoringSlinkOjkPage.tsx` |
+| **Penyaringan baris unggahan dicabut** — setiap baris berkas ditulis apa adanya | `usecase/write.go` |
+| Tiga kolom yang terlewat kini **terisi**: `jumlahharitunggakan`, `noktp`, `npwpperusahaan` | `http/write.go` |
+| `nopolis` **tidak lagi diisi** pada jalur unggah | `http/write.go` |
+
+Dua yang terakhir berasal dari sensus properti: `PNCUploadAutoClaimSlikOJK` menetapkan
+**27 properti** pada `TempDataSlinkD01`. Tiga di antaranya tidak ikut saya baca, dan satu
+yang saya isi (`PolicyNo`) justru **tidak ada** di daftar Pega — sehingga `nopolis` memang
+masuk kosong pada jalur unggah, meski kolomnya terisi pada jalur "Proses Data Klaim".
+
+Jadi menyamakan dengan Pega di sini **menambah** isi tiga kolom dan **mengosongkan** satu.
+Bukan sekadar mencabut pengaman.
+
+### 59.3 Akibat pencabutan penyaringan — disampaikan dan tetap diputuskan
+
+Baris berkas tanpa No Klaim kini **tetap masuk** `T_CLAIM_SLIK_OJK`. Baris semacam itu
+tidak dapat dicocokkan ke klaim mana pun, sehingga tidak dapat dikoreksi maupun ditarik
+kembali lewat layar ini.
+
+Keberatannya sudah disampaikan sebelum perubahan dikerjakan; Work Owner menegaskan
+keputusannya. Dijalankan apa adanya, dan dikunci uji
+`TestUploadWritesEveryRowIncludingIncomplete` supaya penyaringan tidak kembali masuk
+diam-diam.
+
+Ketiga tombol yang selalu aktif membawa akibat sejenis: penyaring yang belum pernah
+dijalankan berarti penyaring **kosong**, dan menekan "Proses Data Klaim" saat itu menyusun
+laporan atas seluruh klaim yang memenuhi syarat.
+
+### 59.4 Dua hal yang TIDAK dapat disamakan, dan sebabnya bukan pilihan
+
+| Hal | Sebab |
+|---|---|
+| Sasaran tombol "SLIK OJK" | Di Pega ia bekerja atas satu klaim yang sedang dibuka. Layar pemantauan tidak punya klaim terbuka, dan sectionnya tidak menghubungkan tombolnya ke aktivitas mana pun — tidak ada yang dapat disalin |
+| Isi 30 kolom F06 yang kosong | Pemetaannya tidak ada di export (`R-16`). Mengisinya menuntut artefak, bukan kode |
+
+Keduanya tetap tercatat sebagai pertanyaan terbuka di `permintaan-artefak-pega.md`.
+
+### 59.5 Uji yang berubah
+
+| Uji | Sebelum | Sesudah |
+|---|---|---|
+| `TestUploadSkipsInvalidRowOnly` | menuntut baris cacat ditolak | **diganti** `TestUploadWritesEveryRowIncludingIncomplete` — menjaga KETIADAAN penyaringan |
+| `TestUploadSkipsBadRowsOnly` | idem, di lapisan transport | **diganti** `TestUploadWritesEveryRow` |
+| — | — | **baru** `TestUploadFillsArrearsDaysAndIdentityColumns` — ketiga kolom terisi, dan `nopolis` tetap kosong |
+
+Uji terakhir dibuat justru karena penambahan kolom tanpa uji tidak dijaga siapa pun; ia
+sekaligus mengunci pengosongan `nopolis` supaya tidak terbaca sebagai kelalaian kelak.
+
+---
+
+## 60. Monitoring SLINK OJK — koreksi menyeluruh terhadap layar Pega (2026-09-27)
+
+Work Owner mengirim **tangkapan layar Pega yang berjalan** pada segmen F06 dan menyatakan
+isi menunya sudah berbeda. Tangkapan itu mengoreksi beberapa hal sekaligus — dan salah
+satunya adalah kekeliruan besar yang sudah berjalan sejak modul ini dibangun.
+
+### 60.1 Kekeliruan terbesar: grid F06 dibangun dari berkas EKSPOR
+
+Grid F06 dibangun dari **38 judul `CSVPropHeaders`** milik `ExportDataSlinkFOG` — daftar
+CIF nasabah (`ASMNIK`, `pyFullName`, `SpouseName`, …). Layar Pega yang berjalan
+menampilkan **kedua puluh kolom yang sama dengan segmen D01**, dan tidak satu pun kolom
+CIF.
+
+Buktinya juga ada di kueri, dan itu yang seharusnya saya baca lebih dulu:
+`RDB List/GetDataSlinkAllFOG-SQL.xml` — kueri yang mengisi grid ini — menghasilkan alias
+`ClaimID`, `ContractNo`, `NOMORREKENINGFASILITAS`, dan seterusnya. **Nol alias CIF.**
+
+Pola kekeliruannya sama seperti §58.1 dan §59.1: **menyimpulkan dari artefak yang salah**.
+Bedanya, kali ini akibatnya paling besar — layar yang dilihat pengguna menampilkan 38
+kolom yang 30 di antaranya selalu kosong, padahal seharusnya 20 kolom yang seluruhnya
+terisi.
+
+### 60.2 Kueri F06 juga jauh terlalu kecil
+
+`GetDataSlinkAllFOG` memilih **30 kolom**, sebagian besar berupa subkueri berkorelasi ke
+`T_GENERAL`, `T_CLAIM_PNC`, `T_CLAIM_ADJUSTMENT`, dan `T_CLAIM_OBJECTCOVERAGE`. Kueri
+saya hanya memilih **9** kolom mentah dari `T_CLAIM_OBJECTLIST`.
+
+Kedua puluh satu kolom yang hilang itulah sebab grid F06 kosong hampir seluruhnya.
+Seluruhnya kini dibawa.
+
+### 60.3 Dua penyaring yang tidak ada di Pega
+
+| Penyaring | Bukti |
+|---|---|
+| **Kotak pencarian** "No Klaim / Contract No" | section hanya mengikat `BusinessName`, `DateOfLoss`, `DateOfRequestDocument`; kedua kueri hanya punya dua placeholder |
+| **Business Name pada segmen F06** | `GetAllDataSumbisSlink` tidak pernah menurunkannya menjadi `BusinessID`, dan `GetDataSlinkAllFOG` tidak memuat placeholder-nya sama sekali |
+
+Yang kedua menarik: dropdown-nya **tampil** di layar F06 tetapi **tidak menyaring apa
+pun**. Direplikasi apa adanya — tampil, tidak menyaring.
+
+Kotak pencariannya dicabut. Akibatnya: pada hasil berhalaman, satu klaim tertentu hanya
+dapat ditemukan dengan mempersempit rentang tanggalnya.
+
+### 60.4 Tombol segmen F06 hanya dua
+
+Tangkapan layar menunjukkan **"Cari Data"** dan **"Export Data"** saja. "Upload Data
+Klaim" dan "SLIK OJK" sempat tampil di kedua segmen karena `Sec_SegmentF06-Section.xml`
+memuat labelnya.
+
+Pelajarannya: **label yang ada di XML belum tentu dirender.** Layar yang berjalan adalah
+bukti yang lebih kuat daripada berkasnya.
+
+### 60.5 Satu perubahan saya yang SALAH dan dikembalikan
+
+Membaca bahwa kedua kueri Pega memakai `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, saya menukar
+tabel klaimnya dari `POOLDATA.T_CLAIMLIST_ADMIN`.
+
+**Itu keliru.** Work Owner sudah menetapkan tabel datar itulah yang menggantikan tabel
+kerja Pega, dan **tiga modul lain sudah memakainya** — `inboxcloseclaim`,
+`inboxlaporanklaim`, `inboxoutstanding`. Catatannya bahkan sudah tertulis di berkas SQL
+modul ini sendiri, dan saya melewatinya.
+
+Dikembalikan. Yang dikoreksi adalah **daftar kolomnya**, bukan keputusan tabelnya.
+
+Ini kali pertama dalam rangkaian sesi ini saya keliru ke arah **sebaliknya**: bukan gagal
+mengikuti Pega, melainkan mengikuti Pega sampai melanggar keputusan proyek yang sudah
+berlaku. "Samakan dengan Pega" tidak mencabut keputusan yang sudah diambil.
+
+### 60.6 Urutan kolom diambil dari layar, bukan dari SELECT
+
+Keduanya berbeda, dan itu terbukti: di `GetDataSlinkAllFOGF06`, alias `TanggalPembayaran`
+berada tepat sesudah `kodejenisfasilitas`; di layar ia berada sesudah "Kode Valuta".
+Tata letak grid ditentukan section, bukan kueri — dan section tidak dapat dibaca
+urutannya dari XML-nya.
+
+### 60.7 Uji yang berubah
+
+| Uji | Yang dijaganya sekarang |
+|---|---|
+| `TestBothGridsUseTheSameColumns` | **baru** — kedua grid identik; bila salah satunya disunting sendirian, ia menyalak |
+| `TestColumnCounts` | grid F06 **20**, ekspor F06 tetap **38** |
+| `TestEveryF06GridColumnIsSourced` | menggantikan uji yang menuntut hanya 8 kolom bersumber |
+| `TestF06RowCarriesTheSameColumnsAsD01` | menggantikan `TestF06RowCarriesOnlySourcedColumns` |
+| `TestSearchF06ReturnsTheSameGridColumnsAsD01` | idem di lapisan usecase |
+
+Empat uji yang memakai kotak pencarian untuk menghasilkan "nol baris" dialihkan ke
+**rentang tanggal di luar data contoh** — cara yang tetap berlaku tanpa kotak itu.
+
+---
+
+## 55. Modul Laporan Hasil AI (`MENU_ID 82`) dibangun (2026-09-26)
+
+### 55.1 Apa yang diminta
+
+*"lanjutkan untuk penambahan modul Laporan Hasil AI — cek secara penuh aplikasi existing
+pada dokumen `Harness/Har_LaporanHasilAI-Harness.xml` jadikan ini sebagai referensi."*
+
+### 55.2 Artefak Pega yang dibaca sebelum satu baris kode ditulis
+
+Harness-nya sendiri tidak memuat isi layar; ia hanya kerangka. Yang benar-benar
+menentukan bentuk modul ini adalah lima artefak lain, dan keenamnya dibaca utuh:
+
+| Artefak | Yang didapat darinya |
+|---|---|
+| `Harness/Har_LaporanHasilAI-Harness.xml` | judul layar, daftar rule yang dirujuk, nama section |
+| `Section/SecLaporanHasilAI-Section.xml` | 2 isian tanggal · 2 tombol · 2 grid · 10 kolom rincian · 4 kolom ringkasan |
+| `Activity/SearchDataLaporanAI-Act.xml` | penyaring, pencacah, definisi CSV — **pengisi grid sekaligus pembuat berkas** |
+| `RDB List/CountAIDiterima_SQL-SQL.xml` | kuerinya, beserta `pyMemo = "work in progress"` |
+| `Database/INSERTDATAAIKLAIMPNC.prc` | daftar kolom `POOLDATA.T_CLAIM_DATA_RESULTS_AI` |
+| `RDB List/GetKomitePAditerima-SQL.xml` | bukti kelima kolom yang hilang MEMANG ada di tabel yang sama |
+
+### 55.3 Temuan yang mengubah bentuk pekerjaan: kuerinya tertinggal dari layarnya
+
+Grid menggambar **sepuluh** kolom. Kuerinya hanya menyediakan **lima** di antaranya.
+
+| kolom grid | properti yang dibaca | diisi kueri? |
+|---|---|---|
+| No Klaim | `.ClaimID` | ya |
+| Object Name | `.ObjectName` | **TIDAK** |
+| Komite Status | `.KomiteAccepted` | ya |
+| Tanggal Komite | `.TanggalComitee` | ya |
+| AI Status | `.ResultAI` | ya |
+| Tanggal AI | `.TanggalAI` | ya |
+| Note AI Terima | `.Notes` | **TIDAK** |
+| Note AI Tolak | `.NoteAkseptasi` | **TIDAK** |
+| Coverage Final | `.COVERAGE_AI_FINAL` | **TIDAK** |
+| Kategori Kronologi | `.KATEGORI_KRONOLOGI` | **TIDAK** |
+
+Dua di antaranya **nyaris** terisi: kueri memilih `NOTETERIMA AS "NoteAITerima"` dan
+`NOTETOLAK AS "NoteAITolak"`, sementara grid membaca `.Notes` dan `.NoteAkseptasi` — nama
+yang berbeda, sehingga nilainya tidak pernah sampai.
+
+Definisi CSV pada activity yang sama justru menyebut **kesepuluhnya**
+(`CSVPropHeaders`/`CSVProperties`), yang membuktikan kesepuluh kolom itu memang dimaksudkan.
+Ditambah `pyMemo = "work in progress"` pada kuerinya, kesimpulannya: **layar ini belum
+selesai di Pega**, bukan salah baca kami.
+
+### 55.4 Empat pertanyaan yang diajukan, dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Lima kolom kosong — diisi dari sumber yang benar, atau replikasi apa adanya? | **Replikasi apa adanya** |
+| 2 | Label "Tgl Input" yang sebenarnya menyaring `TANGGALKOMITE` | **Label lama apa adanya**, tanpa keterangan |
+| 3 | "No Klaim" kosong pada jenjang komite kedua ke atas | **Tiru** |
+| 4 | "Total" ringkasan = Diterima + Ditolak, bukan jumlah baris | **Tiru + tambah kolom "Menunggu"** |
+
+Rekomendasi saya berbeda pada nomor 1, 2, dan 3. Keputusan Work Owner dihormati dan
+diterapkan apa adanya; alasan setiap rekomendasi tetap tercatat di
+`keputusan-implementasi.md` §55 supaya dapat ditinjau ulang bila kelak berubah.
+
+### 55.5 Perilaku yang berhasil diekstraksi dari activity
+
+Ketiganya tidak terbaca dari harness maupun section — hanya dari `PropertiesName`/
+`PropertiesValue` dan `pyStepsPreCondParamsWhen` pada `SearchDataLaporanAI`:
+
+**Penyaringnya.** Kedua isian disusun menjadi klausa teks, lalu ditempel ke kueri:
+
+```
+TempDatalaporanAI.NoteAITerima :=
+  " AND trunc(TANGGALKOMITE) >= to_date('"+Local.awal+"','dd/mm/yyyy')
+    and trunc(TANGGALKOMITE) <= to_date('"+Local.akhir+"','dd/mm/yyyy')"
+```
+
+Yang disaring `TANGGALKOMITE`, bukan tanggal input. Dan ia pola `{Asis:…}` — celah injeksi
+yang **tidak dibawa**.
+
+**Pencacahnya.** Enam precondition, dan keenamnya persis:
+
+```
+.ResultAI=="DITERIMA"   .ResultAI=="DITOLAK"   .ResultAI==""
+.KOMITESTATUS=="1"      .KOMITESTATUS=="2"     .KOMITESTATUS!="1" && !="2"
+```
+
+**Ringkasannya.** Dua baris, ditambahkan Komite lebih dulu lalu AI, dengan
+`Total := terima + tolak` — sehingga yang menunggu **tidak** ikut.
+
+### 55.6 Kedua tombol memanggil activity yang SAMA
+
+`pyActionAPI` pada tombol "Export To Excel" berbunyi `pyActivity = SearchDataLaporanAI`,
+`pyAction = openUrlInWindow`, `flagss = 2` — identik dengan tombol "Cari Data", hanya dibuka
+di jendela baru sehingga jawabannya terunduh.
+
+Di sistem baru keduanya dipisah menjadi dua rute karena bentuk keluarannya memang dua hal
+berbeda (JSON dan CSV), tetapi penyaring dan pembacaannya sama persis — dijaga uji
+`TestExportRejectsEmptyDatesToo`.
+
+### 55.7 Yang dibangun
+
+| Lapisan | Berkas |
+|---|---|
+| Domain | `internal/laporanhasilai/laporanhasilai.go` · `errors.go` |
+| Orkestrasi | `usecase/browse.go` |
+| Penyimpanan | `repo/sqlstore/laporanhasilai.{go,sql}` · `repo/memory/{memory,sample}.go` |
+| Transport | `http/{dto,errors,handler,export,routes}.go` |
+| Antarmuka | `modules/laporan-hasil-ai/{types.ts,api.ts,LaporanHasilAIPage.tsx}` |
+| Rute & menu | `app/App.tsx` · `app/menu/registry.ts` |
+| Perakitan | `cmd/claimpnc/main.go` — 7 titik sisip |
+
+Dua rute API baru:
+
+```
+GET /api/laporan-hasil-ai?dari=&sampai=&halaman=&ukuran=   → JSON: ringkasan + rincian
+GET /api/laporan-hasil-ai/ekspor?dari=&sampai=             → CSV 10 kolom
+```
+
+**Tanpa migrasi basis data.** Kedua tabelnya — `T_CLAIM_DATA_RESULTS_AI` dan
+`T_CLAIM_KOMITE_LIST` — sudah ada dan masih ditulis Pega; modul ini hanya membacanya
+(`P-1`).
+
+### 55.8 Pengujian
+
+| Lapisan | Jumlah |
+|---|---|
+| Domain | 13 uji |
+| Orkestrasi | 14 uji |
+| Kueri SQL | 15 uji |
+| HTTP | 14 uji |
+| Antarmuka | 11 uji |
+
+Seluruh suite backend (`go test ./...`) dan frontend (1.105 uji, 66 berkas) lulus.
+
+### 55.9 Kendala, dan bagaimana ditangani
+
+| Kendala | Penanganan |
+|---|---|
+| Nama rule RDB pada langkah `RDB-List` **tidak dapat dibaca** — `pyParamArray` kosong | Nama kueri dipulihkan dari teks XML activity; `CountAIDiterima_SQL` muncul 3× di sana |
+| Subkueri `IN (SELECT MAX(B.KOMITEKE) … )` memakai alias terluar di dalam dirinya | Diurai: ia setara `EXISTS(...) AND B.TANGGALKOMITE IS NOT NULL`. Ditulis sebagai EXISTS — himpunan baris sama persis |
+| Tipe `STATUSAPPROVE` belum diketahui (`R-08`) | Dibandingkan sebagai **teks** (`= '1'`), aman pada kolom NUMBER maupun VARCHAR2 di kedua basis data |
+| Urutan `KOMITE_ID, KOMITEKE` tidak unik | `OBJECTID, COVERAGEID` ditambahkan sebagai pemutus seri — tuntutan paginasi server, bukan perubahan hasil |
+| Binary `claimpnc.exe` sedang dipakai proses berjalan | Kompilasi diverifikasi ke nama sementara lalu dibersihkan; binary produksinya menunggu peladen dihentikan |
+
+### 55.10 Satu hal yang ditemukan tetapi TIDAK disentuh
+
+`src/modules/inbox-komunikasi-cabang/KomunikasiCabangPage.test.tsx` memunculkan dua galat
+React saat suite dijalankan. Seluruh 1.105 uji tetap lulus, dan modul itu di luar lingkup
+tugas ini — dicatat, bukan diperbaiki.
+
+### 55.11 Koreksi tata letak — judul menempel ke sidebar (2026-09-26, lanjutan)
+
+Work Owner menunjukkan tangkapan layar: judul **Laporan Hasil Data AI** menempel ke tepi
+sidebar, sedangkan judul **Report Claim** menjorok ke dalam. Pertanyaannya: *"apakah
+tampilannya memang terlalu ke kiri?"*
+
+**Bukan soal grid — akar halamannya yang salah.**
+
+| | Akar halaman |
+|---|---|
+| `ReportKlaimPage.tsx:103` | `mx-auto max-w-6xl space-y-6 p-4 sm:p-6` |
+| `LaporanHasilAIPage.tsx` sebelum koreksi | `space-y-6` — **tanpa padding, tanpa batas lebar** |
+
+`<main>` pada `PageShell.tsx:57` ber-`min-w-0 flex-1 pb-16` — **tanpa padding horizontal sama
+sekali**. Setiap halaman menyediakan paddingnya sendiri, dan halaman yang lupa akan
+menempelkan isinya ke sisi sidebar. Saya lupa.
+
+**Dua hal diperbaiki**, keduanya menyamakan layar ini dengan Report Klaim sesuai arahan
+Work Owner:
+
+1. Akar halaman menjadi `mx-auto max-w-6xl space-y-6 p-4 sm:p-6`.
+2. Bilah penyaring dari `grid gap-4 sm:grid-cols-2 lg:grid-cols-3` menjadi
+   `flex flex-wrap items-start gap-6`, dengan `max-w-xs` pada kedua isian.
+
+Yang kedua menyelesaikan keluhan aslinya. Dengan tiga kolom untuk dua isian, tiap kolom
+selebar ±360 px sehingga kotak pemilih tanggal melar hampir dua kali lebar wajarnya lalu
+menyisakan satu kolom kosong. Dengan flex, keduanya berhenti di 320 px.
+
+**Satu penyimpangan dari Report Klaim, disengaja:** `items-start`, bukan `items-end`. Pesan
+galat digambar di bawah isian, dan di layar ini galatnya sering hanya mengenai salah satu
+tanggal — merapatkan dasar kedua isian akan menggeser isian yang benar ke bawah, seolah ia
+yang bermasalah.
+
+Uji tidak ada yang berubah: kesebelasnya memakai `getByLabelText` dan `getByRole`, bukan
+struktur tata letak. Seluruhnya tetap lulus, `tsc` bersih, SPA dibangun ulang.
+
+#### Yang TIDAK saya simpulkan
+
+Saya sempat menjalankan pemindaian kasar untuk menebak halaman lain yang kehilangan padding,
+dan hasilnya menyebut sekitar dua puluh berkas. **Angka itu tidak dapat dipercaya** —
+pemeriksaan ulang pada tiga berkas contoh tidak menemukan akar halaman di tempat yang
+diasumsikan pemindaiannya. Ia dicatat sebagai **dugaan yang belum diperiksa**, bukan temuan,
+dan layar di luar modul ini tidak disentuh.
 ## 55. Sesi kedua puluh lima — modul Inbox Salvage (2026-09-25)
 
 Permintaan Work Owner: *"lanjutkan untuk penambahan modul Inbox Inbox Salvage, cek secara
@@ -20029,6 +21439,328 @@ Bila Work Owner menghendaki ketiganya ikut digambar dengan pola yang sama, itu k
 tersendiri — dan layar tujuannya perlu dianalisis lebih dulu supaya alasannya dapat
 menyebut apa yang sebenarnya kurang.
 
+---
+
+## 61. Modul Inbox Manager Admin (2026-09-26)
+
+Keputusan desainnya ada di [`keputusan-implementasi.md`](keputusan-implementasi.md) §60;
+berkas ini merekam **prosesnya**.
+
+Permintaannya menyebut satu berkas sebagai acuan:
+`Harness/InboxManagerAdmin_Harness-Harness.xml`.
+
+### 61.1 Analisis pra-implementasi
+
+Dilakukan sebelum satu baris kode ditulis, sesuai larangan di kepala permintaan.
+
+**Langkah pertama bukan membaca harness, melainkan memastikan modulnya yang mana.** Nama
+menu "Inbox Manager Admin" dicari lebih dulu ke
+`backend/internal/menu/repo/memory/sample.go`, dan ditemukan di baris 84: **`MENU_ID 57`**,
+program `InboxManagerAdmin_Harness`, kelompok INBOX (`ParentID 2`), urutan 1147.
+
+Itu memastikan berkas acuan yang diberikan memang milik menu yang dimaksud — bukan salah
+satu dari tiga harness lain yang namanya mirip: `PNCInboxAdmin` (`MENU_ID 63`, sudah
+dibangun), `ReceiveDoucument_Harness` (`MENU_ID 56`, sudah dibangun), dan `UserInbox_Harness`
+(`MENU_ID 58`, belum).
+
+**Berkas acuannya 498 KiB — terlalu besar untuk dibaca utuh.** Yang dikerjakan adalah
+mengekstrak bagian yang menentukan bentuk layar:
+
+| Yang dicari | Cara | Hasil |
+|---|---|---|
+| Asal harness | `pzOriginalInstanceKey` | **klon `UserInbox_Harness`** |
+| Section yang dirujuk | `pyRuleName` + `pxRuleObjClass` | satu: `InboxManagerAdmin_Section` |
+| Report Definition | idem | satu: `ManagementAdminView` |
+| Judul kolom | pola `pyCaption <teks>` | 8 judul + 3 judul kontainer |
+| Properti yang digambar | pola jalur properti berawalan titik | 7 properti unik |
+| Aksi | elemen `pyAction` | `openAssignment` 4× · `runActivity` 4× |
+| Parameter grid | elemen `pyRDParams` | `AdminPNC` · `AdminPA` · `AdminTRAVEL` |
+
+**Harness-nya sendiri hampir seluruhnya boilerplate portal Pega.** Yang menentukan bentuk
+layar ada di section dan di Report Definition-nya.
+
+### 61.2 Empat temuan yang mengubah rencana sebelum kode ditulis
+
+**Pertama: "My Inbox" bukan tombol, melainkan JUDUL.** Ia muncul sebagai `pyCaption` dan
+sempat dibaca sebagai tombol aksi. Pembacaan konteksnya membantah itu — nilainya bertipe
+`LABEL` dengan `pyLabelFormat` `Heading 1`, yakni judul bagian, bukan kontrol.
+
+**Kedua: tombol pada kolom terakhir TIDAK MENULIS APA PUN.** Ini yang paling menentukan
+bentuk modul. Keempat `runActivity` menunjuk `SetAssignmentInboxReg_act` dengan parameter
+`inskey` berisi `.pzInsKey`. Nama activity-nya menyiratkan penugasan; isinya tidak:
+
+```
+langkah 1 (satu-satunya):  Property-Set
+  TempIns.pyNote := "ASSIGN-WORKLIST " + param.inskey + "!Register_Flow"
+```
+
+Satu langkah, satu Property-Set, dan yang disusunnya adalah **kunci assignment untuk
+dibuka**. Pola yang persis sama sudah tercatat di §28.1 untuk `SetAssignmentCompliance`.
+
+Akibatnya modul ini **baca-saja**, dan seam `Repo` cukup punya satu operasi. Seandainya nama
+activity-nya dipercaya begitu saja, modul ini akan dibangun dengan jalur tulis yang tidak
+pernah ada.
+
+**Ketiga: deskripsi Report Definition-nya menyesatkan.**
+`ManagementAdminView-RD.xml:13` berbunyi **"ONLY SHOWS VALUE IF THE USERTEKNIS IS NULL"**.
+Pembacaan seluruh berkas RD membantahnya:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| `pyFilterLogic` | `A AND B AND C` |
+| filter A | `newAssignPage.pxAssignedOrgUnit = Param.OrgUnit` |
+| filter B, C | `pyStatusWork` bukan `Resolved-Completed` dan bukan `Resolved-Rejected` |
+| `.ClaimData.UserTeknis` | muncul **hanya** di `pyListFields` nomor 9 — kolom tampilan |
+
+Tidak ada penyaring UserTeknis. Deskripsinya usang, atau penyaringnya pernah dihapus.
+Menerapkannya akan menghilangkan baris yang hari ini terlihat, tanpa satu pun pesan galat —
+jadi ia **tidak diterapkan**, dan dicatat sebagai pertanyaan terbuka.
+
+**Keempat: berkas ekspor memuat kolom yang tidak ada di layar.**
+`Activity/ExportExcelManagerAdminPA-Act.xml` menyusun berkasnya lewat `HeadersMap` berisi
+delapan judul: ID, No Polis, Nama Tertanggung, Nama Bisnis, Nama Sumber Bisnis, **Status
+Klaim**, Tanggal Pendaftaran, **AdminPNC**.
+
+Status Klaim ada di berkas tetapi tidak di grid; Lama Waktu Klaim ada di grid tetapi tidak
+di berkas. Judul terakhirnya pun "AdminPNC" tanpa spasi, sedangkan judul kolom yang sama di
+grid berbunyi "Admin PNC".
+
+### 61.3 Satu kolom yang keberadaannya tidak dapat dipastikan
+
+Penyaring utama layar ini adalah `PXASSIGNEDORGUNIT` pada
+`DATAPEGA.PC_ASSIGN_WORKLIST` — ia yang membedakan ketiga tab satu sama lain.
+
+Penghitungan langsung atas seluruh 652 rule Connect-SQL, mencari nama kolom yang dipakai
+dengan alias tabel:
+
+| Kolom | Kemunculan |
+|---|---|
+| `SOBNAME` | 71 |
+| `BUSINESSNAME` | 68 |
+| `PXCREATEOPNAME` | 19 |
+| `STATUSCLAIM_1` | 10 |
+| **`PXASSIGNEDORGUNIT`** | **0** |
+
+Nol. Tidak satu pun kueri Pega pernah membacanya sebagai kolom basis data; yang dipakai
+kueri-kueri lama atas tabel yang sama hanyalah `PXASSIGNEDOPERATORID`. Dan DDL tabelnya
+belum ada (`R-08`).
+
+Ini diangkat sebagai pertanyaan konfirmasi dengan tiga pilihan. Jawabannya di §61.4.
+
+### 61.4 Empat pertanyaan konfirmasi, dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Bagaimana ketiga tab disaring, mengingat `PXASSIGNEDORGUNIT` tak terbukti ada | **pakai kolom itu apa adanya** |
+| 2 | Visibilitas tab, mengingat `pyPosition` dan `pyOrgUnit` tak punya padanan | **seperti pada Pega** |
+| 3 | Paginasi — dua preseden berbeda ada di repo | **replikasi apa adanya seperti Inbox Admin** |
+| 4 | Isi berkas ekspor | **ikuti 8 kolom Pega apa adanya** |
+
+**Jawaban 2 menuntut pemeriksaan lanjutan sebelum kode ditulis**, dan hasilnya mengubah
+konsekuensinya:
+
+| Isian Pega | Padanan di sistem baru | Keadaan |
+|---|---|---|
+| `OperatorID.pyPosition` | `auth.User.Position` | **ADA**, diisi HCQ dari `Placement.PositionName` — tetapi isinya JABATAN ("IT SPECIALIST"), bukan kode lini bisnis |
+| `OperatorID.pyOrgUnit` | — | **TIDAK ADA sama sekali** di profil HCQ maupun catatan pengguna lokal |
+
+Keduanya dilaporkan apa adanya sebelum menulis kode. Padanan `pyOrgUnit` diputuskan lewat
+variabel lingkungan `UNIT_ORGANISASI_PENGGUNA`, mengikuti preseden `PERAN_PENGGUNA` di
+`registration.go` — dan seperti preseden itu, ia **bukan otorisasi**.
+
+### 61.5 Yang dibangun
+
+**Backend** — `internal/inboxmanageradmin/`:
+
+| Berkas | Isi |
+|---|---|
+| `inboxmanageradmin.go` | `WorkItem` 10 isian · paginasi · `Slice` · seam `Repo`, `RepoSelector`, `Clock` |
+| `tab.go` | 3 tab · 8 kolom · `VisibleTabs` · `CanSee` · `DefaultTabFor` · `PlannedDifferences` |
+| `elapsed.go` | `FormatElapsed` — kolom "Lama Waktu Klaim" |
+| `query.go` | `NewQuery` — validasi + **penegakan kewenangan tab** |
+| `errors.go` | 3 galat domain, masing-masing dengan kode HTTP berbeda |
+| `repo/sqlstore/` | 1 kueri daftar + 2 kueri pemeriksaan |
+| `repo/memory/` | 9 baris contoh, tiap penyaring punya baris lolos dan baris tertolak |
+| `usecase/list.go` | `Metadata` per pemanggil · `List` + pencatatan pembukaan |
+| `http/` | dto · errors · handler · **export** · routes |
+
+**Frontend** — `src/modules/inbox-manager-admin/`: `types.ts`, `api.ts`,
+`ManagerAdminTabs.tsx`, `InboxManagerAdminPage.tsx`, dan ujinya.
+
+**Perakitan**: `cmd/claimpnc/modules.go` (pemilih Oracle + memori, layanan, rute, fungsi
+`userOrgUnit`) dan `cmd/claimpnc/check.go` (dua pemeriksaan `-periksa`).
+
+**Menu**: `registry.ts` memetakan `InboxManagerAdmin_Harness` ke `/inbox-manager-admin`;
+`App.tsx` menambah rutenya.
+
+### 61.6 Dua hal yang ditambahkan sebagai penjaga, bukan sebagai fitur
+
+**Pertama: kueri `check_column` tersendiri.** Perintah `-periksa` kini menjalankan dua
+pemeriksaan untuk modul ini — satu untuk tabel objek kerja, satu khusus untuk kolom
+`PXASSIGNEDORGUNIT`. Pesan gagalnya menyebut kolomnya beserta alasan kenapa ia meragukan.
+
+Yang **tidak** dapat dibuktikannya: apakah kolomnya TERISI di produksi. Kolom yang ada
+tetapi selalu kosong mengembalikan nol baris tanpa satu pun galat — dan itulah sebabnya
+pesan antrean kosong di layar menyebut unit organisasi yang disaring.
+
+**Kedua: nama berkas ekspor menyebut unit organisasinya.** Activity lama menamai berkasnya
+`"Data PA"` — satu nama tetap untuk ketiga tab, dengan `AppendTimeStampToFileName=False`.
+Tiga unduhan menghasilkan tiga berkas bernama sama, dan karena kolom ketiganya **identik**,
+yang tertimpa tidak dapat dikenali dari isinya. Namanya diubah menjadi
+`Data <unit organisasi>.csv`; isinya tidak berubah sama sekali.
+
+### 61.7 Kendala yang muncul, dan penanganannya
+
+| Kendala | Penanganan |
+|---|---|
+| `logging.RequestIDFrom` tidak ada — ditulis dari ingatan pola modul lain | Diperiksa ke `platform/logging`; yang ada `logging.From(ctx, logger)`. Diperbaiki mengikuti `inboxmanagerreceivepucl/http/export.go` |
+| `gofmt -l` melaporkan hampir seluruh repo | Diperiksa: berkas lama ber-CRLF (`core.autocrlf=true`), dan gofmt melaporkannya. Bukan yang diperkenalkan sesi ini — `gofmt -l internal/inboxmanageradmin/` **bersih** |
+| Duplikasi baris `autoClaim` saat menyunting `extraSelectors` | Ketahuan langsung dari pembacaan ulang; diperbaiki sebelum build |
+| `npx vitest --reporter=basic` gagal | Reporter itu tidak ada di versi terpasang. Dijalankan tanpa opsi tersebut |
+| `npx eslint` gagal — tidak ada `eslint.config.*` | Pre-existing; repo tidak punya konfigurasi ESLint. Verifikasi frontend resminya `typecheck` dan `test` menurut `package.json` |
+
+### 61.8 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxmanageradmin/**` | **baru** — 9 berkas kode + 3 berkas uji |
+| `frontend/src/modules/inbox-manager-admin/**` | **baru** — 4 berkas + 1 berkas uji |
+| `cmd/claimpnc/modules.go` | import, `extraSelectors`, `extraServices`, dua pemilih, layanan, rute, `userOrgUnit` |
+| `cmd/claimpnc/check.go` | import, deklarasi repo, satu entri pemeriksaan |
+| `frontend/src/app/App.tsx` | import + rute `/inbox-manager-admin` |
+| `frontend/src/app/menu/registry.ts` | pemetaan `InboxManagerAdmin_Harness` |
+
+### 61.9 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build ./...` | **bersih** |
+| `go vet ./...` | **bersih** |
+| `go test ./...` | **lulus**, seluruh paket |
+| `gofmt -l internal/inboxmanageradmin/` | **bersih** |
+| `vitest run src/modules/inbox-manager-admin` | **19 lulus** |
+| `vitest run` (seluruh suite) | **68 berkas, 1145 uji lulus** |
+| `tsc --noEmit` | **bersih** |
+
+Dua "errors" pada suite frontend berasal dari `inbox-komunikasi-cabang` — modul yang tidak
+disentuh sesi ini, dan ujinya tetap lulus.
+
+**Yang BELUM dijalankan:** `PENYIMPANAN=oracle -periksa`. Ia menuntut koneksi Oracle yang
+tidak tersedia di lingkungan sesi ini, dan justru pemeriksaan itulah yang akan menjawab
+pertanyaan terbesar modul ini — apakah `PXASSIGNEDORGUNIT` benar-benar ada dan terisi.
+Menjalankannya adalah langkah pertama saat modul ini disentuh berikutnya.
+
+---
+
+## 62. Modul Inbox Manager (2026-09-27, sesi kedua puluh tujuh)
+
+Permintaan: tambahkan modul **Inbox Manager**, dengan `Harness/UserInbox_Harness-Harness.xml`
+sebagai acuan.
+
+### 62.1 Urutan kerja
+
+| Tahap | Yang dikerjakan |
+|---|---|
+| 1 | Membaca `CLAUDE.md`, struktur project, pola modul yang sudah ada (`inboxmanagerreceivepucl` sebagai acuan terdekat) |
+| 2 | Membongkar `UserInbox_Harness` sampai ke kueri: harness → `InboxManager_Sec` → 13 sub-section → 19 rule SQL |
+| 3 | Memeriksa mana yang SUDAH dibangun modul lain, dan mana yang benar-benar baru |
+| 4 | Tiga pertanyaan ke Work Owner, dijawab, lalu kode ditulis |
+| 5 | Backend: domain → usecase → sqlstore → memory → http → uji |
+| 6 | Perakitan `main.go` dan `check.go` |
+| 7 | Frontend: types → api → empat komponen → halaman → uji |
+| 8 | Registrasi rute dan menu, lalu dokumentasi |
+
+### 62.2 Pertanyaan konfirmasi dan jawabannya
+
+Ketiganya diajukan **sebelum** satu baris kode ditulis, beserta rekomendasi dan akibat tiap
+pilihan. Rinciannya di `keputusan-implementasi.md` §61.1.
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Enam "Approval Master" sudah ada di layar Master-nya — tautan, bangun ulang, atau hilangkan? | Bangun ulang di Inbox Manager |
+| 2 | Tiga dashboard sekarang atau tahap dua? | Seluruh tujuh area sekaligus |
+| 3 | Boleh menulis ke tiga tabel persetujuan? | "sama seperti pega dan rekomendasi" |
+
+### 62.3 Temuan pembacaan export yang mengubah bentuk pekerjaan
+
+**Enam sub-tab sudah dibangun di tempat lain.** `keputusan-implementasi.md` §35.3 mencatatnya
+eksplisit: Approve/Reject dipindahkan ke dalam layar Master masing-masing *"karena Inbox Manager
+belum dibangun"*. Membangunnya ulang di sini berarti dua layar menulis kolom yang sama —
+keberatan disampaikan, keputusannya ditegaskan, lalu dijalankan.
+
+**Penolakan Klaim memang menunggu modul ini.**
+`internal/masterpenolakan/masterpenolakan.go:169` menulis: *"`ApprovedBy` adalah kolom
+`APPROVEBY` — diisi layar Inbox Manager, baca-saja di sini"*. Catatan sesi kesepuluh di
+`penggunaan-skill.md` bahkan sudah menyiapkan bahannya.
+
+**Tiga rule keputusan HILANG dari export.** `SetStatusAksepNoRangka`,
+`SaveApproveAkseptasiPaymentLeader_Sql`, dan penulis `T_APPROVAL_PROGRESS.STS_APPROVE` tidak ada
+di mana pun. Pencarian menempuh `RDB List/`, `Activity/`, `Database/`, `Section/`, dan
+`Flow Action/`. Ketiganya karena itu dibangun **baca-saja**, dengan alasan dan pemilik
+penghalang yang dikirim ke layar.
+
+**Satu cacat kueri yang dibawa akan menghitung ganda.** `CountOutstandingManager` menggabung
+`t_claim_objectlist` lalu tidak memilih satu kolom pun darinya — klaim berobjek banyak terhitung
+berkali-kali pada pencacah yang menamai dirinya jumlah klaim.
+
+### 62.4 Keputusan desain dan alasannya
+
+| Keputusan | Alasan |
+|---|---|
+| SATU bentuk `WorkItem` untuk sepuluh antrean | Preseden `inboxmanagerreceivepucl`. Bentuk yang dipecah sepuluh akan memaksa transport, penyimpanan, dan layar bercabang sepuluh kali — padahal percabangannya hanya satu: tab mana yang terbuka |
+| `DashboardRow` TERPISAH dari `WorkItem` | Barisnya tidak punya kunci, tidak dapat diputuskan, dan tidak hilang setelah ditindaklanjuti. Menyatukannya akan membuat layar menggambar tombol keputusan pada baris tanpa kunci |
+| `DashboardCell` punya `Count` DAN `Amount` | Dashboard Klaim mencampur keduanya dalam satu baris. Uang tidak boleh menjadi bilangan pecahan biner (`09-DATABASE-STRATEGY.md` §5, `I-12`) |
+| Ringkasan endpoint TERSENDIRI | Ia tidak berubah saat tab berpindah; menempelkannya ke setiap pemuatan tab berarti sepuluh kueri pencacah per klik |
+| `ValueOf` di paket DOMAIN | Tiga tempat memerlukannya — pencarian memori, penyusun ekspor, dan uji. Menaruhnya di repo akan membuat lapisan transport mengimpor pengisi seam penyimpanan |
+| Satu alamat keputusan untuk tujuh antrean | Kunci antrean master hanyalah angka, dan angka yang sama ada di enam tabel. Tab dikirim di badan permintaan, bukan ditebak dari kuncinya |
+
+### 62.5 Perubahan API
+
+Lima endpoint baru, seluruhnya di balik sesi dan pemeriksaan portal:
+
+| Metode | Jalur | Isi |
+|---|---|---|
+| GET | `/api/inbox-manager/tab` | 13 tab, kolomnya, isi tiga dropdown, selisih terencana |
+| GET | `/api/inbox-manager/ringkasan` | sepuluh pencacah |
+| GET | `/api/inbox-manager` | isi satu tab — antrean atau dashboard |
+| GET | `/api/inbox-manager/ekspor` | CSV mengalir, mengikuti tab dan penyaring yang terbuka |
+| POST | `/api/inbox-manager/keputusan` | setujui atau tolak sejumlah baris sekaligus |
+
+Yang terakhir **satu-satunya rute menulis** di antara seluruh modul inbox.
+
+### 62.6 Perubahan basis data
+
+**Tidak ada migrasi.** Seluruh tabel sudah ada. Yang berubah adalah siapa yang menulis kolom
+persetujuannya:
+
+| Tabel | Kolom yang ditulis |
+|---|---|
+| `BENGKEL_HE` | `APPROVAL`, `ALASAN_STS_BGKL` |
+| `PANEL_HE` | `APPROVAL`, `ALASAN_TOLAK` |
+| `SPAREPART_HE` | `APPROVAL`, `USER_UPDATE` |
+| `GCNM_M_SPAREPART_CATEGORY` | `APPROVAL` |
+| `GCNM_M_SPAREPART_TYPE` | `APPROVAL` |
+| `SPAREPART_HE_VIN_KEY` | `APPROVAL` |
+| `MST_PENOLAKAN_KLAIM_2` | `STATUS`, `APPROVEBY`, `TANGGAL_APPROVE`, `NOTEAPPROVED` |
+
+Enam yang pertama sudah ditulis modul Master masing-masing; yang ketujuh kolom persetujuannya
+memang dicadangkan untuk layar ini.
+
+### 62.7 Dependensi baru
+
+**Tidak ada.** `recharts` sudah terpasang dan sudah dipakai `inbox-outstanding` serta
+`inbox-auto-claim`.
+
+### 62.8 Kendala yang ditemui dan cara menanganinya
+
+| Kendala | Penanganan |
+|---|---|
+| **Sesi lain menyunting berkas yang sama.** `main.go`, `check.go`, `modules.go`, `App.tsx`, dan `registry.ts` berubah timestamp-nya di tengah sesi; satu build sempat gagal dengan galat yang tidak masuk akal | Build diulang; galatnya hilang. Seluruh suntingan dilakukan lewat pencocokan teks tunggal yang gagal bila konteksnya berubah — bukan lewat nomor baris |
+| **Vitest gagal memulai worker**, termasuk pada berkas uji yang bukan milik sesi ini | Dinyatakan apa adanya sebagai kontensi proses, bukan cacat kode; uji dijalankan ulang dengan pool berbeda |
+| **`callAPI` memakai `metode`, bukan `method`** | Tertangkap `tsc --noEmit` sebelum uji dijalankan |
+| **`Column` DataTable tidak punya `renderHeader`** | Kotak "pilih semua" dipindahkan ke bilah keputusan. Menambah prop baru pada komponen bersama akan menyentuh 60+ layar lain |
+| **Kutip melengkung masuk ke komentar Go** dari satu blok yang ditulis | Dipindai dengan pola `U+2018`–`U+201D` di seluruh berkas modul, lalu diperbaiki |
+
 ### 62.9 Hasil uji
 
 | Uji | Hasil |
@@ -21032,3 +22764,585 @@ pembacanya tidak akan salah menyimpulkan.
 | Pengaktifan terverifikasi dari log start | ✅ |
 
 Binary dibangun ulang: 28 Sep 08:26.
+
+| `go build ./...` | **bersih** |
+| `go vet ./...` | **bersih**, seluruh repo |
+| `go test ./internal/inboxmanager/...` | **lulus** — domain, sqlstore, usecase |
+| `go test ./...` | **233 paket lulus**, tidak ada kegagalan |
+| `gofmt -l internal/inboxmanager/` | **bersih** |
+| `tsc --noEmit` | **bersih** |
+| `vitest run src/modules/inbox-manager` | **15 lulus** |
+| `vitest run` (seluruh suite) | **69 berkas, 1160 uji lulus** |
+
+Dua "errors" pada suite frontend berasal dari `inbox-komunikasi-cabang` — modul yang tidak
+disentuh sesi ini, dan ujinya tetap lulus. Keduanya sudah tercatat pada §61.9 dengan bunyi yang
+sama.
+
+**Satu uji sempat gagal, dan yang keliru adalah UJINYA.** Ia menuntut penyaring periode muncul
+pada Dashboard OS. Dashboard OS memang tidak punya penyaring periode: ketiga kuerinya tidak
+menyaring tanggal sama sekali — yang dihitungnya klaim yang SEDANG berjalan, bukan klaim pada
+suatu periode. Ujinya diperbaiki menjadi kebalikannya, yaitu memastikan isian periode TIDAK
+digambar di sana.
+
+**`gofmt -l` bukan gerbang di repo ini.** Ia menandai **setiap** berkas Go di working tree,
+termasuk yang tidak disentuh sesi mana pun, karena working tree memakai CRLF sementara bentuk
+ter-commit-nya LF. Berkas baru modul ini disamakan ke CRLF supaya diff-nya tidak menampilkan
+perubahan seluruh berkas.
+
+### 62.10 Yang BELUM dijalankan
+
+`PENYIMPANAN=oracle -periksa`. Ia menuntut koneksi Oracle yang tidak tersedia, dan ia pula yang
+akan menjawab dua hal yang belum dapat dipastikan: hak TULIS atas ketujuh tabel persetujuan, dan
+bentuk `T_APPROVAL_PROGRESS.ATASAN` pada seluruh barisnya. Rinciannya di
+`keputusan-implementasi.md` §61.12.
+
+## 63. Inbox Manager Admin pindah sumber ke `T_CLAIMLIST_ADMIN` (2026-09-27, sesi kedua puluh delapan)
+
+Permintaan: lanjutkan modul **Inbox Manager Admin** dengan
+`Harness/InboxManagerAdmin_Harness-Harness.xml` sebagai acuan, dan **ganti sumber datanya**
+dari `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` + `DATAPEGA.PC_ASSIGN_WORKLIST` menjadi
+`POOLDATA.T_CLAIMLIST_ADMIN` — dengan izin melaporkan kolom yang kurang ke Work Owner agar
+ditambahkan.
+
+Modul ini **sudah ada** dari sesi kedua puluh enam (§61). Yang dikerjakan sesi ini hanya
+pemindahan sumbernya; tidak satu pun aturan bisnis, kolom layar, atau bentuk API berubah.
+
+### 63.1 Urutan kerja
+
+| Tahap | Yang dikerjakan |
+|---|---|
+| 1 | Membaca `CLAUDE.md`, struktur project, dan modul yang sudah ada — termasuk mendapati `inboxmanageradmin` **sudah terbangun**, bukan modul baru |
+| 2 | Memetakan kesembilan kolom yang dibutuhkan terhadap kolom `T_CLAIMLIST_ADMIN` yang **terbukti ada** |
+| 3 | Menemukan **tiga kolom yang belum ada**, satu di antaranya memblokir seluruh pembedaan tab |
+| 4 | Dua pertanyaan ke Work Owner, dijawab, lalu kode ditulis |
+| 5 | Menulis ulang `.sql`, menyesuaikan `CheckTable`, menambah tiga uji penjaga |
+| 6 | Menambahkan dua kolom ke `migrations/0005` tahap 1 — ketiga varian berkasnya |
+| 7 | Menyesuaikan komentar yang menyebut tabel lama, lalu dokumentasi |
+
+### 63.2 Pemetaan kolom — dan dari mana keyakinannya
+
+`T_CLAIMLIST_ADMIN` punya **nol kemunculan di seluruh export Pega**, jadi kolomnya tidak
+dapat dibaca dari sana. Yang dipakai diturunkan dari dua sumber yang dapat diperiksa:
+kolom yang **sudah terbukti** dipakai modul lain terhadap tabel yang sama, dan katalog
+Oracle 2026-09-22 yang tercatat di `kolom-t-claimlist-admin.md`.
+
+| Dibutuhkan | Status | Bukti |
+|---|---|---|
+| `PYID` · `POLICYNO` · `QQNAME` · `BUSINESSNAME` · `SOBNAME` · `PYSTATUSWORK` | **ADA** | dipakai `inboxoutstanding` |
+| `PXOBJCLASS` | **ADA** | dipakai `inboxlaporanklaim` |
+| `PZINSKEY` · `PXCREATEDATETIME` | **ADA** | `kolom-t-claimlist-admin.md` §A · migrasi 0005 |
+| `STATUSCLAIM_1` | **belum** — sudah di migrasi 0005 sejak 2026-09-22 | §B.2 |
+| `PXCREATEOPNAME` | **tidak ada** — yang ada `PXCREATEOPERATOR` (ID, bukan nama) | pemetaan `inboxoutstanding` |
+| **`PXASSIGNEDORGUNIT`** | **tidak ada, dan tidak ada di migrasi 0005** | §B.1 hanya membawa 4 kolom worklist, bukan ini |
+
+### 63.3 Temuan yang mengubah bentuk pekerjaan
+
+**`PXASSIGNEDORGUNIT` memblokir seluruh pembedaan tab.** Ia satu-satunya pembeda ketiga tab.
+Tanpanya ketiganya mengembalikan baris yang **persis sama** — bukan layar kosong yang
+terlihat rusak, melainkan tiga tab yang tampak bekerja sambil menampilkan hal yang salah.
+Karena itu ia diangkat sebagai pertanyaan, bukan diputuskan sendiri.
+
+**`PXOBJCLASS` ternyata WAJIB disaring.** Tabel ini bukan berisi klaim PNC saja:
+`inboxlaporanklaim.sql:197-200` menggabungnya pada kelas `Work-ReceiveDocument`, dan
+`README.md` mencatat 142 baris RCV di dalamnya. Penyaring itu karena itu **dipertahankan**,
+bukan dibuang seperti yang dilakukan modul Inbox Manager.
+
+**Dua konvensi penamaan bertentangan.** `inboxoutstanding`/`inboxlaporanklaim` memakai nama
+asli (`PYID`, `PYSTATUSWORK`); `inboxmanager` meminta nama baru (`NOKLAIM`, `STATUSWORK`).
+Keduanya tidak dapat sama-sama benar. Modul ini memakai **nama asli** — yang terbukti ada.
+
+Kedua temuan terakhir menyentuh modul lain dan **tidak diubah**: permintaan sesi ini
+menyebut "hanya ubah bagian ini saja". Keduanya diangkat ke Work Owner lewat
+`permintaan-artefak-pega.md` §6.2.
+
+### 63.4 Pertanyaan konfirmasi dan jawabannya
+
+Keduanya diajukan **sebelum** satu baris kode ditulis, beserta pilihan, rekomendasi, dan
+akibat tiap pilihan. Rinciannya di `keputusan-implementasi.md` §62.
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | `PXASSIGNEDORGUNIT` tidak ada — minta ditambah, join hibrida, atau turunkan dari `GROUPPANEL`? | **Minta kolomnya ditambah** |
+| 2 | "Admin PNC": minta `PXCREATEOPNAME` ditambah, atau pakai `PXCREATEOPERATOR` (ID)? | **Minta `PXCREATEOPNAME` ditambah** |
+
+### 63.5 Yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `repo/sqlstore/inboxmanageradmin.sql` | satu tabel menggantikan dua + join; `check_column` menjaga **tiga** kolom, bukan satu |
+| `repo/sqlstore/inboxmanageradmin.go` | pesan `CheckTable` menyebut tabel dan ketiga kolom yang benar |
+| `repo/sqlstore/query_test.go` | tiga uji baru: tidak ada `DATAPEGA`, tidak ada `JOIN`, ketiga kolom disebut |
+| `migrations/0005` (3 berkas) | `PXASSIGNEDORGUNIT` + `PXCREATEOPNAME` masuk tahap 1 |
+| `inboxmanageradmin.go`, `tab.go`, `memory.go`, `dto.go`, `check.go`, `InboxManagerAdminPage.tsx` | komentar yang menyebut tabel lama |
+| `tab.go` `PlannedDifferences` | dua selisih baru ditambahkan — 3 butir menjadi 5 |
+| `kolom-t-claimlist-admin.md` · `permintaan-artefak-pega.md` | kedua kolom + dua temuan lintas modul |
+
+**Yang TIDAK berubah:** kesembilan kolom layar, ketiga tab, aturan visibilitas jabatan,
+bentuk API, seluruh frontend selain satu komentar, dan modul mana pun di luar
+`inboxmanageradmin`.
+
+### 63.6 Dua selisih perilaku baru, dicatat sebagai terencana
+
+Keduanya masuk `inboxmanageradmin.PlannedDifferences` sehingga **terkirim ke layar** dan
+terbaca pengguna — bukan hanya tersimpan di komentar. `D-54` menuntut setiap selisih pada
+uji kesetaraan gerbang 1 dapat dipetakan ke butir yang sudah diputuskan.
+
+1. **Satu klaim kini selalu satu baris.** Join `INNER` yang lama membuang klaim tanpa
+   penugasan terbuka — padahal justru itu pekerjaan yang terhenti — dan menampilkan klaim
+   berpenugasan banyak berkali-kali. Keduanya hilang bersama join itu.
+2. **Untuk sementara daftarnya lebih pendek daripada Pega**, dan bukan karena penyaring:
+   tabel sumbernya baru memuat 1.014 dari 7.703 klaim. Selisih ini menyusut sendiri begitu
+   tabelnya terisi penuh, tanpa perubahan kode.
+
+### 63.7 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./internal/inboxmanageradmin/... ./cmd/claimpnc/` | bersih |
+| `go test ./...` | **seluruh paket lulus** |
+| `gofmt -l internal/inboxmanageradmin/` | bersih |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run src/modules/inbox-manager-admin` | 19 uji lulus |
+
+`gofmt -l cmd/claimpnc/check.go` melaporkan berkas itu, dan itu **pra-ada**: seluruh isi
+diff-nya `^M` (CRLF), dan ia tetap dilaporkan saat perubahan sesi ini di-*stash*. Sebabnya
+`core.autocrlf=true`, bukan kode yang perlu diformat.
+
+**Yang belum dapat diverifikasi:** kueri barunya baru terbukti **sah secara bentuk**, bukan
+sah terhadap Oracle. Ketiga kolom yang diminta belum ada, sehingga `PENYIMPANAN=oracle
+-periksa` akan **gagal dengan sengaja** sampai DBA menjalankan `migrations/0005` tahap 1 —
+dan pesan gagalnya menyebut ketiga nama kolomnya.
+
+## 64. Koreksi: tab Inbox Manager Admin dibaca dari sumber yang salah (2026-09-27)
+
+Ditemukan **oleh Work Owner**, bukan oleh pengujian: layar Inbox Manager Admin menampilkan
+"Tidak ada antrean yang menjadi hak jabatan Anda" bagi setiap pengguna, sementara **di Pega
+layar itu kelihatan**.
+
+### 64.1 Pernyataan saya sebelumnya keliru, dan itu dikoreksi terbuka
+
+Pada §61 keadaan itu dicatat sebagai **konsekuensi yang diterima** dari "ikuti Pega apa
+adanya" — bahwa Pega pun menyembunyikan kontainernya bagi pengguna tanpa `pyPosition`.
+
+Pertanyaan Work Owner — *"kenapa di Pega kelihatan?"* — membantahnya. Pernyataan itu benar
+secara harfiah tetapi **menyesatkan**: ia menyajikan **cacat** sebagai kesetaraan yang
+disengaja.
+
+### 64.2 Sebabnya, dibaca dari export dan dari kode
+
+| Sisi | Yang sebenarnya |
+|---|---|
+| **Pega** | `OperatorID.pyPosition` adalah field pada **rekaman operator**, diisi administrator dengan **kode lini bisnis**. Terbukti dari perbandingannya: `'NONMBU'` (`Section/InboxManagerAdmin_Section-Section.xml:2618`), `'PA'` (`When/IsRCLPA-When.xml:549`), `'BROKER'` (`Section/ViewInputReceiveDocument_sec-Section.xml:3728`). Karena **terisi**, kontainernya tampil |
+| **Aplikasi baru** | membaca `auth.User.Position`, yang `auth/identity.go:68` isi dari HCQ `EmpResponse.Placement.PositionName` — **jabatan kepegawaian** seperti "IT SPECIALIST" |
+
+Nilai itu tidak pernah berisi `NONMBU`/`PA`/`TRAVEL`, sehingga **tidak seorang pun** melihat
+satu tab pun. Aturannya benar; **sumber nilainya** yang salah.
+
+### 64.3 Penggantinya sudah ada, dan sudah dipakai modul lain
+
+`POOLDATA.M_LOGIN_PNC.LINE_BUSINESS` — terverifikasi dari `ALL_TAB_COLUMNS`, berisi
+`PA`/`TRAVEL`/`NONMBU`/`BONDING`, dan sudah dibaca `inboxoutstanding` lewat kueri
+`line_business_for` untuk keperluan yang persis sama.
+
+`migrations/0004_DICABUT.md` bahkan sudah mencatat namanya **bergaris bawah** — migrasi yang
+menulisnya `LINEBUSINESS` dicabut sebelum dijalankan justru karena salah nama.
+
+### 64.4 Urutan kerja
+
+| Tahap | Yang dikerjakan |
+|---|---|
+| 1 | Membaca `pyContainerVisibleWhen` ketiga kontainer — ternyata **persis seperti tercatat**, jadi bukan aturannya yang salah |
+| 2 | Menelusuri dari mana `Caller.Position` diisi → `auth/identity.go:68`, HCQ |
+| 3 | Mencari padanan yang benar → `M_LOGIN_PNC.LINE_BUSINESS`, sudah dipakai `inboxoutstanding` |
+| 4 | Melaporkan koreksi ke Work Owner beserta bukti, lalu dikerjakan atas persetujuan |
+| 5 | Seam baru → SQL → memori → usecase → transport → perakitan → uji → frontend |
+
+### 64.5 Yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `inboxmanageradmin.go` | `Caller.Position` → `Caller.LineBusiness`; seam **`LineBusinessRepo`** + **`LineBusinessRepoSelector`** |
+| `tab.go` | `Position*` → `Line*`; `Tab.Position` → `Tab.LineBusiness`; `ExpectedPositions` → `ExpectedLineBusinesses` |
+| `repo/sqlstore` | kueri **`line_business_for`** + **`check_line_business`**; method `LineBusinessFor` |
+| `repo/memory` | `SetLineBusiness` + `LineBusinessFor` |
+| `usecase/list.go` | `resolveCaller`; `Metadata` kini **ber-ctx, ber-portal, dan dapat gagal** |
+| `http/handler.go`, `dto.go`, `errors.go` | transport **tidak lagi mengisi** lini bisnis; field JSON `jabatan*` → `lini_bisnis*` |
+| `cmd/claimpnc/modules.go` | selector baru pada **kedua** mode penyimpanan |
+| frontend `types.ts`, `InboxManagerAdminPage.tsx`, uji | kontrak + teks layar |
+
+**Kontrak API berubah**, dan itu disengaja: `jabatan_anda` → `lini_bisnis_anda`,
+`jabatan_yang_diharapkan` → `lini_bisnis_yang_diharapkan`, `tab.jabatan` →
+`tab.lini_bisnis`, dan kode galat `tidak_ada_tab_untuk_jabatan_anda` →
+`tidak_ada_tab_untuk_lini_bisnis_anda`. Membiarkan nama lama berarti mengekalkan kekeliruan
+yang justru sedang diperbaiki.
+
+**Modul Login TIDAK disentuh** (Isolasi Protektif). Modul ini hanya **membaca** satu kolom
+dari tabel milik Login, persis seperti `inboxoutstanding` — `P-1` tetap terpenuhi.
+
+### 64.6 Layar kini membedakan dua keadaan yang dulu satu
+
+| Keadaan | Yang ditampilkan | Tindakan yang dituntut |
+|---|---|---|
+| `LINE_BUSINESS` **kosong** | "(belum diisi)" + ajakan melengkapi | **melengkapi** master pengguna |
+| terisi nilai lain | nilai itu apa adanya + ajakan membetulkan | **membetulkan** nilainya |
+
+Keduanya dulu menghasilkan pesan yang sama, dan laporan pengguna karena itu tidak dapat
+ditindaklanjuti.
+
+### 64.7 Tiga uji yang menjaga cacatnya tidak kembali
+
+1. **`TestLiniBisnisDibacaDariPenyimpananBukanDariPemanggil`** — `Caller` sengaja membawa
+   nilai yang SALAH dan penyimpanan membawa yang BENAR. Bila nilai pemanggil dipakai lagi,
+   uji ini gagal.
+2. **`TestPetugasTanpaLiniBisnisTidakMembukaTabDanBUKANGalat`** — keadaan paling umum di
+   produksi harus menghasilkan layar yang menjelaskan diri, bukan galat.
+3. **`TestPortalLainDitolakSaatMembacaKewenangan`** — `M_LOGIN_PNC` per entitas; membacanya
+   dari portal yang salah adalah `R-20`.
+
+### 64.8 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` | lulus · bersih |
+| `go test ./...` | **seluruh paket lulus** |
+| `gofmt -l internal/inboxmanageradmin/` | bersih |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` | **669 uji lulus** (modul ini 20, bertambah satu) |
+
+### 64.9 Yang TIDAK diselesaikan kode, dan tidak diklaim selesai
+
+`LINE_BUSINESS` baru terisi pada sebagian petugas — saat diperiksa 2026-09-24, **1 dari 1
+baris** `M_LOGIN_PNC`. Sesudah koreksi ini, yang melihat tab hanyalah petugas yang barisnya
+terisi.
+
+Bedanya dengan sebelum koreksi: layar kosong sekarang berarti **datanya belum diisi** —
+sesuatu yang dapat dilengkapi tanpa perubahan aplikasi — bukan karena kode membaca field
+yang salah. Permintaan pengisiannya ada di `permintaan-artefak-pega.md` §7.
+
+## 65. Dua cacat lanjutan dan tiga koreksi kolom (2026-09-27)
+
+Dipicu tangkapan layar Work Owner: tab **muncul** — perbaikan §64 bekerja — tetapi antreannya
+gagal dimuat dengan "Terjadi kesalahan pada sistem".
+
+### 65.1 Diagnosis
+
+| Gejala | Sebab |
+|---|---|
+| Tab muncul | `M_LOGIN_PNC.LINE_BUSINESS` JONNY = `NONMBU`. Perbaikan §64 bekerja, dan kolomnya terisi untuk lebih banyak petugas daripada yang tercatat 2026-09-24 |
+| Antrean gagal | Kueri memakai kolom yang belum ada → ORA-00904 → 500 |
+
+Aplikasi berjalan dengan `PENYIMPANAN=oracle` (menimpa `.env`), terbaca dari
+`POOLDATA_ASM_SANDI` yang terisi.
+
+### 65.2 Dua cacat yang ditemukan, keduanya milik sesi ini
+
+**C-1 · Pesan galat tidak menjelaskan apa pun.** §62 menyebut konsekuensinya "ketiga tab
+kosong". Kenyataannya **galat keras** dengan pesan umum. Keadaan ini berlangsung sampai DBA
+menjalankan migrasinya — bisa berhari-hari — dan setiap petugas akan melaporkannya sebagai
+kerusakan aplikasi.
+
+Perbaikan: `ErrSourceColumnMissing` + pengenalan ORA-00904 di sqlstore + pemetaan ke
+**503** dengan pesan yang **menyebut kolomnya** dan menyatakan ini bukan kerusakan.
+`503`, bukan `500`, supaya pemantauan tidak mencampurnya dengan kegagalan tak terduga.
+
+**C-2 · Mode memori lumpuh.** `SetLineBusiness` tidak pernah dipanggil di luar uji, sehingga
+`PENYIMPANAN=memori` mengembalikan lini bisnis kosong untuk **setiap** login — dan tidak
+seorang pun melihat satu tab pun. Modul ini tidak dapat dikembangkan tanpa Oracle.
+
+Perbaikan: `NewSampleStore` memberi lini bisnis bawaan (`NONMBU`); `NewStore` dan
+`NewStrictStore` **tidak**, supaya uji tetap ketat.
+
+> Tidak ada preseden yang dapat disalin: di `inboxoutstanding` lini bisnis kosong berarti
+> **melihat semua** (gagal terbuka), di sini berarti **tidak melihat apa pun** (gagal
+> tertutup).
+
+### 65.3 Tiga koreksi kolom dari Work Owner
+
+| Pernyataan saya | Kenyataan |
+|---|---|
+| `PXCREATEOPNAME` perlu diminta | **sudah ada** |
+| `STATUSCLAIM_1` dibutuhkan | **tidak** — Status Klaim dari `PYSTATUSWORK` |
+| `PYORIGUSERID` | sudah ada; tetap tidak dibawa karena tidak digambar |
+
+Permintaan ke DBA menyusut dari tiga kolom menjadi **satu**: `PXASSIGNEDORGUNIT`.
+
+Rinciannya di `keputusan-implementasi.md` §64, termasuk kenapa kekeliruan
+`PXCREATEOPNAME` berakibat nyata bila lolos (ORA-01430 → tabel setengah jadi).
+
+### 65.4 Yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `errors.go`, `http/errors.go` | `ErrSourceColumnMissing` → 503 + pesan yang menyebut kolomnya |
+| `repo/sqlstore/*.go` | `isMissingColumn`; `check_column` tinggal satu kolom; Status Klaim diturunkan |
+| `repo/sqlstore/*.sql` | `PYSTATUSWORK` menggantikan subkueri `V_STS_CLAIM` |
+| **`status.go`** (baru) | `DisplayStatusFor` — **tanpa cabang default**, lihat §64.3 |
+| `repo/memory/*.go` | `defaultLine` + `NewStrictStore`; `List` menurunkan Status Klaim |
+| `migrations/0005` (3 berkas) | `PXCREATEOPNAME` dikeluarkan |
+| `tab.go` | selisih terencana baru — Status Klaim praktis satu nilai |
+
+### 65.5 Verifikasi
+
+`go build` · `go vet` bersih · `go test ./...` **seluruh paket lulus** · `gofmt` bersih ·
+`tsc --noEmit` bersih · `vitest` modul ini **20 uji lulus**.
+
+Empat uji baru: pengenalan ORA-00904 · nilai bawaan mode memori (dan bahwa nilai yang
+ditetapkan tetap menang) · penurunan Status Klaim · **nilai asing tidak dipaksa menjadi
+"On Progress"**.
+
+### 65.6 Yang masih menahan
+
+`migrations/0005` tahap 1 belum dijalankan DBA. Sampai itu terjadi, antrean tetap gagal —
+tetapi kini dengan pesan yang menyebut kolomnya dan menyatakan ini bukan kerusakan
+aplikasi.
+
+## 66. Permintaan kolom dicabut — ketiganya sudah ada (2026-09-27)
+
+Dipicu pertanyaan Work Owner: *"kenapa datanya kosong, seharusnya ada PNC-2856"*.
+
+### 66.1 Jawabannya
+
+Kuerinya **tidak pernah berjalan** — Oracle menolaknya di ORA-00904, sehingga
+`Total Data : 0` berarti "nol baris dibaca", bukan "nol baris cocok". Tidak ada satu klaim
+pun yang muncul, bukan hanya PNC-2856.
+
+Penyebabnya **`STATUSCLAIM_1`**, bukan ketiga kolom yang saya minta. Dan sejak §64 kolom itu
+sudah tidak dipakai — yang berjalan saat tangkapan layar diambil adalah **binary lama**,
+terbaca dari pesannya yang masih menyebut tiga kolom.
+
+### 66.2 Koreksi ketiga: `PXASSIGNEDORGUNIT` sudah ada
+
+Dengan itu seluruh permintaan kolom gugur. Rinciannya di `keputusan-implementasi.md` §65,
+termasuk pola yang menyatukan ketiga kekeliruan: **menyimpulkan ketiadaan dari sumber yang
+tidak membuktikannya**.
+
+### 66.3 Yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `migrations/0005` (3 berkas) | penambahan kolom **dicabut seluruhnya** — kembali ke keadaan semula |
+| `repo/sqlstore/*.sql` | `check_column` **dihapus**; kepala berkas mencatat ketiga koreksinya |
+| `repo/sqlstore/*.go` | `CheckTable` tinggal dua pemeriksaan, keduanya tabel berbeda |
+| `http/errors.go` | pesan 503 **tidak lagi menyebut nama kolom** |
+| `query_test.go` | `TestKueriHanyaMemakaiKolomYangTerbuktiAda` menggantikan uji `check_column` |
+| `permintaan-artefak-pega.md` §6.1 | permintaan **dicabut**; `L-3` tetap |
+| `kolom-t-claimlist-admin.md` §B.1 | ketiganya dicatat sebagai bukti langsung untuk §D.6 |
+
+### 66.4 Langkah berikutnya untuk Work Owner
+
+**Bangun ulang dan jalankan ulang aplikasinya.** Kueri sekarang hanya memakai kolom yang
+terbukti ada, sehingga antrean seharusnya termuat — dan PNC-2856 tampil bila
+`PXASSIGNEDORGUNIT`-nya bernilai `AdminPNC`.
+
+Bila setelah dibangun ulang ia tetap kosong **tanpa galat**, sebabnya bukan lagi kolom
+melainkan **isi**: entah `PXASSIGNEDORGUNIT` baris itu bukan `AdminPNC`, entah
+`PXOBJCLASS`-nya bukan `ASM-FW-GCNMFW-Work-PNC`, entah `PYSTATUSWORK`-nya sudah
+`Resolved-*`. Ketiganya dapat diperiksa satu kueri.
+
+### 66.5 Verifikasi
+
+`go build` · `go vet` bersih · `go test ./...` **seluruh paket lulus** · `gofmt` bersih.
+## 61. Modul Inbox RCL (`MENU_ID 62`) dibangun (2026-09-27)
+
+Tugas: menambah modul **Inbox RCL** dengan `Harness/RCL_Harness-Harness.xml` sebagai acuan.
+Modul Login, Home, dan seluruh Master Data **tidak disentuh**.
+
+### 61.1 Artefak yang dibaca
+
+| Artefak | Yang diambil |
+|---|---|
+| `Harness/RCL_Harness-Harness.xml` | judul "Inbox RCL", 5 `pyCaption`, activity pemuat `GetpyUserIdentifierFromTable` |
+| `Section/InboxRCLDokter_Section-Section.xml` | grid 5 sel berkepala, tautan `.pyID`, `pyRDParams assign = TempOperator.City` |
+| `Report Definition/InboxRCLDokter_RD-RD.xml` | 4 penyaring `A AND B AND C AND D`, INNER JOIN `Assign-Worklist`, urutan, `pyMaxRecords 500` |
+| `Activity/GetpyUserIdentifierFromTable-Act.xml` + `RDB List/GetOperatorID-SQL.xml` | asal `TempOperator.City` |
+| `Activity/SetAssignmentInboxRCLDoctor_act-Act.xml` | klik baris → `ASSIGN-WORKLIST <inskey>!Register_Flow` |
+| `When/IsRCLPA-When.xml` | penjaga menu `(A OR (B AND D) OR (C AND D)) AND E` |
+| `Flow/Register_Flow.xml` | asal tugas: `Assignment12` router `RouterRCLDokter` |
+
+### 61.2 Temuan yang membedakan layar ini dari seluruh inbox lain
+
+**`Param.assign` bukan login.** Ia `TempOperator.City`, yang diisi activity pemuat harness
+dari `T_ACCESS_GROUP_PNC.OLD_OPERATOR_ID` — dan hanya dari grup Administrators, PNCKomite,
+atau CaseManager, **tanpa cadangan**. Identitas yang sama menyaring dua hal: pemilik
+penugasan (A) dan nama dokter RCL (D).
+
+**Filter tanpa opsi "abaikan bila kosong".** Diperiksa langsung pada `pyFilter`: tidak ada.
+Identitas lama yang tidak ditemukan karena itu menghasilkan nol baris di Pega (Oracle
+menyamakan string kosong dengan NULL). Sistem baru tidak menjalankan kuerinya sama sekali —
+hasilnya sama, tanpa bergantung dialek.
+
+**Pemutus seri `pyID`, bukan `pzInsKey`** — berbeda dari Inbox Analyst Doctor.
+
+### 61.3 Pertanyaan & jawaban konfirmasi
+
+Tidak ada pertanyaan baru yang diajukan ke Work Owner pada sesi ini. Setiap pilihan yang
+terbuka sudah punya preseden yang disetujui:
+
+| Pilihan | Diikuti preseden |
+|---|---|
+| Properti `unexposed` → kolom `_1`, gagal keras, diperiksa `-periksa` | Inbox Analyst Doctor (Work Owner 2026-09-23) |
+| Identitas lama dari `T_ACCESS_GROUP_PNC`, `MAX` bukan `pxResults(1)` | Inbox Outstanding |
+| Kotak cari, paginasi basis data, klik baris ke `/view-claim` | enam inbox lain |
+| Baca-saja; `SendToRCLDokter` tidak dibawa | `P-1`, sama dengan Analyst Doctor |
+
+### 61.4 Dibuktikan terhadap Oracle — dan satu kesimpulan saya yang keliru
+
+`-periksa` pertama melaporkan `ORA-00904` hanya untuk `NAMADOKTERRCL_1`. Saya sempat
+menyimpulkan `TANGGALANALYSTSENDRCL_1` ada. **Itu salah**: Oracle hanya menyebut satu
+identifier per galat. Kueri katalog baca-saja (`ALL_TAB_COLUMNS`) kemudian membuktikan:
+
+| Temuan | Hasil |
+|---|---|
+| `TANGGALANALYSTSENDRCL_1`, `NAMADOKTERRCL_1` | **keduanya tidak ada**; nol kolom berunsur DOKTER/DOCTOR |
+| `KOMENTARANALISATOR_1` | ada, 45 nilai — kolom "Deskripsi Analyst" aman |
+| `ANALYSTTRANSFERDATE_1` | ada (TIMESTAMP, statistik 0 nilai) — **tidak dipakai** sebagai pengganti |
+| Operator aktif di tiga grup akses | 17; **nol** punya lebih dari satu identitas lama |
+
+Program penyelidiknya ditulis sementara di `cmd/_rclprobe`, hanya mencetak nama kolom dan
+hitungan, lalu **dihapus**. Permintaannya ke DBA/Tim Pega: `permintaan-artefak-pega.md` §6.12.
+
+### 61.5 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `backend/internal/inboxrcl/**` | **baru** — domain, galat, usecase, sqlstore (+`.sql`), memory, http, uji |
+| `backend/cmd/claimpnc/main.go` | perakitan: impor, handler, rute, field assembly/store, selector Oracle & memori |
+| `backend/cmd/claimpnc/check.go` | `checkInboxRCL` — tabel dan dua kolom |
+| `frontend/src/modules/inbox-rcl/**` | **baru** — `types.ts`, `api.ts`, `InboxRCLPage.tsx`, uji |
+| `frontend/src/app/menu/registry.ts` | `RCL_Harness: '/inbox-rcl'`; catatan RCL/PUCL dikoreksi |
+| `frontend/src/app/App.tsx` | rute `/inbox-rcl` |
+| `README.md`, `docs/permintaan-artefak-pega.md` | entri modul, §6.12 |
+
+Tidak ada perubahan basis data, migrasi, dependensi, maupun konfigurasi baru.
+
+### 61.6 Kendala
+
+| Kendala | Solusi | Dampak |
+|---|---|---|
+| Dua kolom penyaring tidak ada di Oracle | gagal keras + `-periksa` + permintaan §6.12 | layar belum dapat dipakai terhadap Oracle; berfungsi penuh terhadap memori |
+| `gofmt` mengubah `''` di komentar menjadi kutip tipografis | kalimatnya ditulis ulang | — |
+| `main.go`/`check.go` sudah tidak ter-`gofmt` sejak HEAD | dibiarkan (bukan milik tugas ini) | — |
+
+### 61.7 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go test ./...` | **lulus** |
+| `go vet` modul + cmd | bersih |
+| `vitest run src/modules/inbox-rcl` (+ `inbox-rcl-pucl` ikut tersaring) | **45 lulus** |
+| `vitest run src/app` | 12 lulus |
+| `tsc --noEmit`, disaring ke berkas yang disentuh | bersih |
+| `PENYIMPANAN=oracle -periksa` | tabel **[ok]**, kolom **[BELUM]** — sesuai dugaan |
+
+---
+
+## 62. Inbox RCL — sumber data dipindahkan ke `T_CLAIMLIST_ADMIN` (2026-09-27)
+
+### 62.1 Pertanyaan & jawaban
+
+| Pertanyaan Work Owner / jawaban | Isi |
+|---|---|
+| "Kolom `TanggalAnalystSendRCL` dan `NamaDokterRCL` ditarik dari tabel apa dan untuk apa?" | Dari objek kerja `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, di dalam blob (`unexposed`). Yang pertama menyaring klaim yang sudah dikirim analis ke dokter RCL dan tampil sebagai "Tanggal Masuk Inbox"; yang kedua menyaring klaim yang dokter RCL-nya pemanggil. Penulisnya tidak ada di export — dugaan `RouterRCLDokter` (`R-04`) |
+| Keputusan Work Owner | **Tidak memakai tabel Pega (DATAPEGA) lagi; modul ini memakai `T_CLAIMLIST_ADMIN`** |
+
+### 62.2 Diukur langsung ke katalog sebelum diubah
+
+| Temuan | Hasil |
+|---|---|
+| `T_CLAIMLIST_ADMIN` | 53 kolom (0005 tahap 1 sudah berjalan), 1.014 baris |
+| Kolom yang dibutuhkan dan ADA | `PZINSKEY`, `PYID`, `POLICYNO`, `QQNAME`, `PXCREATEDATETIME`, `PYSTATUSWORK`, `PXASSIGNEDOPERATORID`, `PXOBJCLASS` — seluruhnya terisi |
+| Kolom yang TIDAK ADA | padanan `TanggalAnalystSendRCL`, `NamaDokterRCL`, `KomentarAnalisator` |
+| Tahap yang dimuat tabel | hanya Input Register (345), Choose Surveyor (338), Input Estimasi (181) — **nol** klaim tahap RCL Dokter |
+| Worklist Pega berlabel dokter | 2 penugasan "Route to Doctor" |
+
+### 62.3 Yang diubah
+
+| Berkas | Perubahan |
+|---|---|
+| `repo/sqlstore/inboxrcl.sql` | `list_tasks` membaca `POOLDATA.T_CLAIMLIST_ADMIN k` tanpa gabungan; `check_tables`/`check_columns` tidak lagi menyentuh DATAPEGA |
+| `repo/sqlstore/inboxrcl.go` | `CheckColumns` memeriksa tiga kolom migrasi 0012 |
+| `repo/sqlstore/query_test.go` | uji baru: tidak ada `DATAPEGA.` di kueri mana pun; tabel datar tanpa `JOIN` |
+| `migrations/0012_claimlist_admin_rcl.{up,down}.sql` | **baru** — tiga kolom; tipe/panjang dari katalog. **Tidak dijalankan** (`D-63`) |
+| `cmd/claimpnc/check.go` | pesan `checkInboxRCL` menunjuk migrasi 0012 |
+| `inboxrcl.go`, `usecase/list.go` | dokumentasi paket dan keterbatasan layar |
+
+Kontrak API tidak berubah; frontend tidak disentuh. `T_ACCESS_GROUP_PNC` (POOLDATA) tetap
+dipakai untuk identitas lama.
+
+### 62.4 Hasil uji
+
+`go test ./...` **lulus** · `go vet` bersih · `-periksa` Oracle: tabel **[ok]**, kolom
+**[BELUM]** (`ORA-00904` — migrasi 0012 belum dijalankan).
+
+---
+
+## 63. Tiga kolom ditambahkan, dan cacat bind yang hanya muncul di Oracle (2026-09-27)
+
+### 63.1 Keputusan Work Owner
+
+> "untuk tiga kolom tersebut bisa tambahkan saja di table tersebut"
+
+Migrasi `0012_claimlist_admin_rcl.up.sql` dijalankan terhadap **ASM, `APP_ENV=development`**,
+lewat program sementara yang memeriksa katalog lebih dulu (aman diulang) lalu menjalankan DDL
+yang sama persis. Programnya dihapus sesudahnya.
+
+| Sebelum | Sesudah |
+|---|---|
+| 53 kolom | **56 kolom** — `TANGGALANALYSTSENDRCL_1` TIMESTAMP(6) · `NAMADOKTERRCL_1` VARCHAR2(128 CHAR) · `KOMENTARANALISATOR_1` VARCHAR2(1500 CHAR), seluruhnya nullable |
+
+Uji Pega+Go bersamaan (`D-63`) tidak berlaku: tidak ada satu pun rule Pega yang membaca
+`T_CLAIMLIST_ADMIN`. Entitas lain dan lingkungan lain **belum** dijalankan.
+
+### 63.2 Cacat yang ditemukan uji menyeluruh — ORA-01008
+
+Setelah kolom ada, `-periksa` hijau — tetapi kueri daftar yang sungguhan gagal:
+`ORA-01008: not all variables bound`. Penyebabnya kata kunci `:4` dipakai **tiga kali**,
+sedangkan godror mengikat argumen **menurut urutan kemunculan**, bukan menurut nomor
+penanda. Uji memori dan uji teks kueri tidak dapat menangkapnya; `-periksa` pun tidak, karena
+kuerinya tidak mengikat apa pun.
+
+**Perbaikan:** setiap penanda muncul tepat sekali (`:1`…`:8`); pola `LIKE` dibentuk dan
+di-escape di Go (preseden `inboxoutstanding`), dikirim dua kali. **Dikunci uji baru**
+`TestSetiapPenandaBindMunculTepatSekaliDanBerurutan`, yang gagal pada kueri lama.
+
+Dibuktikan ulang terhadap Oracle: identitas lama, daftar kosong, daftar + cari + halaman 2,
+dan kata kunci `100%_x` — seluruhnya tanpa galat, 0 baris (kolom baru belum diisi: **0 baris**
+terisi dari 1.014).
+
+### 63.3 Temuan di luar modul ini — dicatat, TIDAK diubah
+
+Mekanismenya sama dengan yang sudah ditemukan modul Case Study Claim (`casestudyclaim.sql`).
+Pemindaian seluruh `.sql`: **36 kueri di 11 modul** memakai penanda berulang.
+
+- **Inbox Analyst Doctor `list_tasks` PASTI cacat**: 8 kemunculan, 6 argumen. Pola itulah
+  yang saya salin ke modul ini.
+- 35 lainnya **belum tentu** cacat — sah bila kode Go mengirim argumen sebanyak kemunculannya.
+  Perlu diperiksa per modul.
+
+Tidak saya perbaiki karena di luar lingkup tugas ini; diserahkan ke Work Owner untuk
+diputuskan.
+
+### 63.4 Hasil uji
+
+`go test ./internal/inboxrcl/...` lulus · `go vet` bersih · Oracle ujung-ke-ujung tanpa galat.
+
+---
+
+## 64. Inbox RCL — tampilan disamakan dengan Pega (2026-09-27)
+
+Keputusan Work Owner, dari tangkapan layar `localhost:5173/inbox-rcl`:
+
+| Butir | Keputusan |
+|---|---|
+| Cacat bind di Inbox Analyst Doctor dan 35 kueri lain (§63.3) | **Dibiarkan** — "kalau memang dari Pega begitu, biarkan saja". Tidak diubah |
+| Kolom `T_CLAIMLIST_ADMIN` yang belum terisi | **Dibiarkan** seperti Pega; cukup sebagai catatan di dokumen |
+| Peringatan merah "Identitas lama Anda tidak ditemukan" | **Dihapus** — terkesan galat. Penyebabnya: akun yang dipakai tidak punya baris `T_ACCESS_GROUP_PNC` pada grup Administrators/PNCKomite/CaseManager; di Pega keadaan itu juga hanya grid kosong |
+| Panel "Perbedaan yang disengaja" dan "Yang perlu diketahui" | **Dihapus dari layar** |
+
+Layar kini hanya menampilkan grid dengan pesan kosong biasa "Tidak ada klaim RCL untuk Anda
+saat ini." Backend tetap mengirim `identitas_lama_ditemukan`, `selisih_terencana`, dan
+`keterbatasan` (kontrak API tidak diubah) — hanya tidak digambar. Isinya tercatat di §61–§63.
+
+Uji: `vitest run src/modules/inbox-rcl` **5 lulus** (uji baru memastikan peringatan dan kedua
+catatan tidak tampil) · `tsc` bersih.

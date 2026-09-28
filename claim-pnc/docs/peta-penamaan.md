@@ -4224,3 +4224,213 @@ Dinilai domain lewat `Document.CanSend()`, dikirim per baris sebagai `boleh_kiri
 Ini alias menyesatkan **keenam** di modul ini, setelah `BRANCH_NAME` (kunci klaim),
 `BRANCH_CODE` (nomor klaim), `END_DATE` (tanggal kejadian), `TglDLA` (tanggal kirim), dan
 `Currency` (kunci lampiran).
+
+---
+
+## Tambahan 2026-09-26 — modul Laporan Hasil AI (`laporanhasilai`)
+
+Nama modul mengikuti `D-81`: folder backend `internal/laporanhasilai` (tanpa tanda hubung,
+karena Go tidak mengizinkannya), folder frontend `src/modules/laporan-hasil-ai`. Namanya
+**tidak dikarang** — ia tertulis di `Database/m_menu_aplikasi_pnc.csv` baris 77 sebagai
+`MENU_ID 82`, **"Laporan Hasil AI"**. Isinya berbahasa Inggris sesuai `D-80`.
+
+Jangan tertukar dengan `masterpasalai` (`MENU_ID 36`, "Master Pasal AI"): keduanya menyangkut
+AI, tetapi yang itu master wording polis dan yang ini laporan hasil penilaian.
+
+### Alias klipboard yang TIDAK dibawa — grid ringkasan
+
+Keempat kolom grid ringkasan terikat properti kelas `ASM-FW-GCNMFW-Data-Adjustment` yang
+dipakai ulang dari layar lain. Tidak satu pun namanya berhubungan dengan isinya (`D-19`):
+
+| Properti Pega | Kolom di layar | Isi sebenarnya | Nama di sini |
+|---|---|---|---|
+| `.BatasUmur` | Keputusan | teks `"AI"` atau `"Komite"` — bukan batas umur | `Tally.Subject` |
+| `.NoteAITerima` | Total | `terima + tolak` — bukan catatan | `Tally.Total()` |
+| `.BatasLapor` | Diterima | pencacah — bukan batas lapor | `Tally.Accepted` |
+| `.NoteKomite` | Ditolak | pencacah — bukan catatan komite | `Tally.Rejected` |
+| — | Menunggu | **kolom baru**, tidak ada di Pega | `Tally.Pending` |
+
+Arti `.BatasUmur` baru terbukti setelah membaca activity-nya, bukan section-nya:
+`TempTotal.pxResults(<APPEND>).BatasUmur := "Komite"`.
+
+### Alias klipboard yang TIDAK dibawa — grid rincian
+
+| Properti Pega | Kolom di layar | Kolom basis data | Nama di sini |
+|---|---|---|---|
+| `.ClaimID` | No Klaim | `T_CLAIM_KOMITE_LIST.NO_KLAIM` | `Row.ClaimNumber` |
+| `.ObjectName` | Object Name | `T_CLAIM_DATA_RESULTS_AI.OBJECTNAME` | `Row.ObjectName` |
+| `.KomiteAccepted` | Komite Status | `STATUSAPPROVE`, diterjemahkan | `Row.CommitteeStatus` |
+| `.TanggalComitee` | Tanggal Komite | `TANGGALKOMITE` | `Row.CommitteeDate` |
+| `.ResultAI` | AI Status | `RESULTAI` | `Row.AIStatus` |
+| `.TanggalAI` | Tanggal AI | `TGLAI` | `Row.AIDate` |
+| `.Notes` | Note AI Terima | `NOTETERIMA` | `Row.AcceptNote` |
+| `.NoteAkseptasi` | Note AI Tolak | `NOTETOLAK` | `Row.RejectNote` |
+| `.COVERAGE_AI_FINAL` | Coverage Final | `COVERAGE_AI_FINAL` | `Row.CoverageFinal` |
+| `.KATEGORI_KRONOLOGI` | Kategori Kronologi | `KATEGORI_KRONOLOGI` | `Row.ChronologyCategory` |
+
+**Lima di antaranya SELALU kosong** — `ObjectName`, `AcceptNote`, `RejectNote`,
+`CoverageFinal`, `ChronologyCategory` — karena kueri layar lamanya tidak memilih kolomnya.
+Keputusan Work Owner 2026-09-26: replikasi apa adanya.
+
+Dua baris patut disebut khusus: kueri lamanya **memilih** `NOTETERIMA AS "NoteAITerima"` dan
+`NOTETOLAK AS "NoteAITolak"`, sementara grid membaca `.Notes` dan `.NoteAkseptasi` — nama
+yang berbeda, sehingga nilainya tidak pernah sampai ke layar.
+
+### Alias isian penyaring
+
+| Properti Pega | Label di layar | Yang sebenarnya disaring | Nama di sini |
+|---|---|---|---|
+| `.AnalystTransferDate` | Tgl Input Dari | `TANGGALKOMITE` batas bawah | `Filter.From` |
+| `.DateOfLoss` | Tgl Input Sampai | `TANGGALKOMITE` batas atas | `Filter.To` |
+
+**Labelnya pun menyesatkan, bukan hanya propertinya.** "Tgl Input" menyaring **Tanggal
+Komite** — kolom yang juga digambar di grid yang sama. Label lamanya tetap dipakai apa adanya
+atas keputusan Work Owner 2026-09-26 (`D-13`).
+
+### Alias kolom kueri yang TIDAK dibawa
+
+Dari `RDB List/CountAIDiterima_SQL-SQL.xml`:
+
+| Alias kueri | Isi sebenarnya | Perlakuan |
+|---|---|---|
+| `"CaseIDKomite"` | `KOMITE_ID` | dipakai sebagai bagian `Row.ID`, aliasnya tidak dibawa |
+| `"Komiteno"` | `KOMITEKE` | idem |
+| `"BatasUmur"` (kolom luar) | cacah baris komite ber-`TANGGALKOMITE` tidak NULL | **tidak dipilih** — tidak dibaca properti mana pun |
+| `"TanggalKomite"` | `TO_CHAR(SYSDATE-7,'dd/mm/yyyy')` — **hari ini dikurangi tujuh** | **tidak dipilih** — kolom mati, dan kolom layar bernama sama justru membaca `.TanggalComitee` |
+| `"NamaKomite"` | `NAMAKOMITE` | **tidak dipilih** — tidak tergambar |
+| `"KOMITESTATUS"` | `STATUSAPPROVE` mentah | `Row.CommitteeStatusCode` |
+
+Dua baris bertanda "kolom mati" adalah contoh utang teknis §4.2 dalam bentuk yang paling
+menjebak: **dua hal berbeda bernama sama**. Kolom kueri `"TanggalKomite"` dan kolom layar
+"Tanggal Komite" tidak ada hubungannya sama sekali.
+
+### Nama rute dan berkas
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `laporanhasilai`, `usecase`, `sqlstore`, `memory`, `laporanhasilaihttp` |
+| Rute API | `/api/laporan-hasil-ai` · `/api/laporan-hasil-ai/ekspor` |
+| Rute layar | `/laporan-hasil-ai` |
+| Kunci menu | `Har_LaporanHasilAI` — nama harness, dikirim server apa adanya |
+| Nama kueri | `report_list` · `report_count` · `report_summary` · `report_check_table` |
+| Pemilih repo di cmd | `aiReportSelector` · `aiReportSelectorMemory` |
+
+### Nama field JSON — tetap Indonesia (`D-80`)
+
+Ia kontrak, bukan nama internal. Namanya mengikuti **judul kolom di layar**:
+
+```
+no_klaim · nama_object · komite_status · kode_komite_status · tanggal_komite
+ai_status · tanggal_ai · note_ai_terima · note_ai_tolak · coverage_final
+kategori_kronologi
+```
+
+### Judul kolom berkas CSV — BERBEDA dari judul kolom layar
+
+Disalin persis dari `CSVPropHeaders`, termasuk perbedaannya. Menyeragamkannya akan terasa
+lebih rapi dan sekaligus mengubah berkas yang sudah dipakai orang:
+
+| Judul di layar | Judul di berkas CSV |
+|---|---|
+| Object Name | **Nama Object** |
+| Note AI Terima | **Note Terima** |
+| Note AI Tolak | **Note Tolak** |
+| Coverage Final | **Coverage AI Final** |
+
+
+---
+
+## Inbox Manager (`MENU_ID 58`, `UserInbox_Harness`)
+
+Modul dengan alias Pega paling menyesatkan yang pernah dipetakan sampai sesi ini. Dua kueri
+sumbernya mengaliaskan **seluruh** kolomnya ke nama yang tidak mencerminkan isinya.
+
+### Alias yang TIDAK dibawa — `BrowseStatusPenolakanKlaim2`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `NOTE_ST` | `City` | `catatan_induk` — alasan penolakan INDUK |
+| `NOTE_ND` | `CityID` | `catatan_baris` — alasan penolakan baris ini |
+| `ID_ND` | `District` | `referensi` / `kode` — kunci baris |
+| `ID_ST` | `CaseID` | *(tidak digambar; ia kunci induknya)* |
+| `STATUS` | `DistrictID` | `kode_status` |
+| `USER_INPUT` | `UserTeknis` | `diajukan_oleh` — pengaju, **bukan** PIC Teknik |
+| `NOTEAPPROVED` | `NoteKasir` | `alasan_penolakan` — tidak ada urusan dengan kasir |
+| *(derivasi)* | `AnaylstRemarks` | `status` — bukan catatan analis, dan salah eja |
+
+`City` dan `CityID` **tidak berpasangan**: yang satu nama induk, yang satu nama anak. Sama
+persis dengan pola yang sudah ditemukan pada Master Status Progres 2.
+
+### Alias yang TIDAK dibawa — `GetDataKonfirmasiHE`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `NOKLAIM` | `BRANCH_CODE` | `no_klaim` |
+| `PENGIRIM` | `BRANCH_NAME` | `pengirim` |
+| `MODEL` | `BUSINESS_CODE` | `model` |
+| `MERK` | `BUSINESS_NAME` | `merk` |
+| `TIPE` | `CURRENCY` | `tipe` |
+| `NO_RANGKA_USER` | `MARKETING` | `no_rangka` |
+| `NO_RANGKA_BENGKEL` | `POLICY_NO` | `no_rangka_bengkel` |
+
+### Alias yang TIDAK dibawa — `ShowApproveProgressKlaim`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `SUBSTR(ATASAN, …)` | `BranchName` | `cabang_atasan` |
+| `ID_AP` | `IDMaster` | `referensi` |
+| `PROGRESS1` | `ProvinceID` | *(kunci gabung, tidak digambar)* |
+| `PROGRESS2` | `Province` | *(kunci gabung, tidak digambar)* |
+| `STS_PROGRESS1` | `Notes` | `progres_1` |
+| `STS_PROGRESS2` | `NoteAkseptasi` | `progres_2` |
+| `NOKLAIM` | `ClaimID` | `no_klaim` |
+| `TGL_INPUT` | `AlasanKlaim` | `tanggal_pengajuan` |
+| `NEXTFOLLOWUP` | `BranchID` | `tenggat_tindak_lanjut` |
+| subkueri `PICTEKNIK` | `ClaimNoSRB` | `pic` |
+
+### Alias yang TIDAK dibawa — `GcnmBrowseCase_SQL`
+
+Kueri ini **tidak dipakai** modul ini — gridnya ternyata milik layar lain — tetapi aliasnya
+dicatat karena ia contoh paling ekstrem yang ditemukan sejauh ini, dan kelak akan ditemui lagi:
+
+```
+a.pyid          AS "City"          nomor case, bukan kota
+policyno        AS "Currency"      nomor polis, bukan mata uang
+qqname          AS "CityID"        nama tertanggung
+businessname    AS "District"      nama bisnis
+branchname      AS "Country"       cabang
+dateofloss_1    AS "CountryID"     tanggal kejadian
+userteknis_1    AS "CauseOfLoss"   PIC Teknik, bukan penyebab kerugian
+pxCreateOpName  AS "ClaimID"       pembuat, bukan ID klaim
+```
+
+### Nama kelompok tab — DITAMBAHKAN, tidak ada di Pega
+
+Ketiga belas tab di Pega berjajar dalam satu baris tanpa pengelompokan, dan **tiga di antaranya
+tidak berjudul**: judul kontainernya masih bernilai bawaan `Title`.
+
+| Kelompok di sistem baru | Tab |
+|---|---|
+| Dashboard | Dashboard OS · Dashboard Produktivitas Klaim · Dashboard Klaim |
+| Persetujuan Master | Master Bengkel · Panel · Sparepart · Kategori Sparepart · Tipe Sparepart · Grouping Sparepart |
+| Persetujuan Klaim | Approval Nomor Rangka Beda · Payment Klaim Akseptasi · Approval Progress Klaim · Penolakan Klaim |
+
+Judul tab yang **ada** di Pega dibawa apa adanya (`D-13`) — termasuk yang bercampur bahasa
+Inggris seperti "Approval Nomor Rangka Beda" dan "Payment Klaim Akseptasi".
+
+### Judul kolom dashboard — DITURUNKAN, karena aliasnya tidak menyatakan apa pun
+
+`GetSumBusinessDashboardProduktivitas_SQL` mengaliaskan kedelapan pencacahnya menjadi
+`BRANCHNAME`, `BUSINESSCODE`, `BUSINESSNAME`, `CLIENTID`, `EDMNO`, `FLAGEDMBATAL`,
+`FOLLOWEDPOLICY`, dan `IDPEGA`. Tidak satu pun menyatakan isinya.
+
+Judulnya diturunkan dari **predikat yang dihitungnya**, bukan dari aliasnya:
+
+| Predikat | Judul di sistem baru |
+|---|---|
+| tanpa penyaring status | Total Klaim |
+| `STSKLAIM = '1'` | Selesai |
+| `STSKLAIM = '3'` | Close |
+| `STSKLAIM NOT IN ('1','2','3')` | Outstanding |
+
+Masing-masing berpasangan "Periode Ini" dan "Tahun Lalu".

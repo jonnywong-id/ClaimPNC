@@ -6,7 +6,8 @@
       "Bash(gofmt -e claim-pnc/backend/cmd/claimpnc/main.go)",
       "Bash(python \"C:/Users/User/AppData/Local/Temp/claude/c--Users-User-Documents-Migrasi-Pega-Ke-Golang-ClaimPNC/ddf43da5-36b9-41a8-b90a-ff9984ad777e/scratchpad/patch_test5.py\")",
       "Bash(go clean *)",
-      "Bash(powershell -NoProfile -Command \"Get-Process -Id 50080 | Select-Object Id,ProcessName,StartTime,Path | Format-List\")"
+      "Bash(powershell -NoProfile -Command \"Get-Process -Id 50080 | Select-Object Id,ProcessName,StartTime,Path | Format-List\")",
+      "Bash(awk '/^ *)"
     ]
   }
 }

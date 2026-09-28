@@ -38,6 +38,8 @@ import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjec
 import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
+import { InboxRCLPage } from '@/modules/inbox-rcl/InboxRCLPage'
+import { DashboardClaimPage } from '@/modules/dashboard-claim/DashboardClaimPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
 import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
@@ -59,17 +61,21 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManagerAdminPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
+import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
 import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
 import { InboxPLADLAPreDLAPage } from '@/modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage'
 import { InboxPLADLAReasPage } from '@/modules/inbox-pla-dla/InboxPLADLAReasPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { LaporanHasilAIPage } from '@/modules/laporan-hasil-ai/LaporanHasilAIPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
+import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -874,6 +880,29 @@ export function AppRoute() {
         }
       />
       {/*
+        Monitoring SLINK OJK — pemantauan laporan klaim ke OJK, pengganti harness
+        `MonitoringSLINKOJK` (`MENU_ID 78`).
+
+        Dua segmen: D01 (fasilitas kredit) membaca tabel SLIK yang SUDAH tersusun, F06
+        (debitur individu) membaca berkas klaim SUMBERNYA. Keduanya bukan dua tampilan
+        dari data yang sama.
+
+        Layar ini MEMBACA SAJA. Ketiga tombol yang menulis di layar lama tidak dapat
+        dibangun: tabel SLIK diisi jalur akseptasi dan masih dimiliki Pega selama masa
+        paralel (`P-1`), dan kontrak layanan pengiriman ke SLIK tidak ada di export
+        (`R-16`). Ketiadaannya dijelaskan di layarnya, bukan disembunyikan.
+      */}
+      <Route
+        path="/monitoring-slink-ojk"
+        element={
+          <SessionGuard>
+            <Protected>
+              <MonitoringSlinkOjkPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Claim Treaty Prop — antrean klaim treaty proporsional, pengganti harness
         `InboxClaimTreaty_Harness` (`MENU_ID 54`).
 
@@ -965,6 +994,27 @@ export function AppRoute() {
         }
       />
       {/*
+        Dashboard Claim — empat angka ringkasan beserta telusurnya.
+
+        Layar ini PANDANGAN MANAJERIAL: tidak satu pun angkanya disaring menurut siapa yang
+        membukanya. Yang ditampilkan bukan satu baris klaim melainkan gambaran menyeluruh
+        pekerjaan satu badan hukum, sehingga kewenangannya justru lebih patut dijaga
+        daripada layar yang menampilkan satu klaim.
+
+        Penegakan peran belum ada di sini maupun di server (TKT-F3-005) — rutenya baru
+        terlindungi sesi.
+      */}
+      <Route
+        path="/dashboard-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <DashboardClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Input Req Protection — permintaan pembukaan proteksi beserta form inputnya.
 
         Layar lama dibatasi `When/IsReqProtection-When.xml` pada empat access group:
@@ -1007,6 +1057,24 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox RCL — antrean penolakan medis milik SATU dokter RCL, pengganti harness
+        `RCL_Harness` (`MENU_ID 62`). Disaring dengan identitas LAMA pemanggil, bukan login.
+
+        Layar ini MEMBACA SAJA. Menyelesaikan tugasnya berarti menjalankan Flow Action
+        `SendToRCLDokter`, yang memindahkan penugasan — milik Pega selama masa paralel
+        (`P-1`). Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox-rcl"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxRCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Manager Receive / PUCL — pandangan penyelia atas DUA antrean sekaligus,
         pengganti harness `ReceiveDoucument_Harness` (`MENU_ID 56`).
 
@@ -1038,6 +1106,37 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox Manager Admin (`MENU_ID 57`) — antrean registrasi klaim per unit organisasi
+        admin, dipecah menjadi tiga tab: AdminPNC, AdminPA, dan AdminTRAVEL.
+
+        Ia BERSAUDARA dekat dengan Inbox Manager Receive / PUCL tepat di atasnya — keduanya
+        pandangan penyelia, dan Report Definition-nya pun bersaudara (`ManagementAdminView`
+        lawan `ManagementRecieveView`). Yang membedakan: yang di atas membaca berkas
+        PENERIMAAN DOKUMEN, yang ini membaca KLAIM. Rutenya karena itu terpisah, dan
+        menunjuk keduanya ke satu rute akan menampilkan jenis objek kerja yang salah tanpa
+        satu pun tanda di layar.
+
+        Layar ini MEMBACA SAJA, tanpa pengecualian selain ekspor. Bahkan tombol pada kolom
+        terakhir layar lama pun tidak menulis apa-apa: activity-nya hanya menyusun kunci
+        assignment untuk dibuka.
+
+        Satu hal yang membedakannya dari SELURUH layar lain di berkas ini: ia dapat sah-sah
+        saja tidak menampilkan satu tab pun. Tab disaring menurut jabatan pengguna persis
+        seperti di Pega (keputusan Work Owner 2026-09-26), sementara jabatan di sistem baru
+        datang dari HCQ dan berisi hal seperti "IT SPECIALIST" — bukan kode lini bisnis.
+        Layarnya menjelaskan keadaan itu alih-alih tampil kosong.
+      */}
+      <Route
+        path="/inbox-manager-admin"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxManagerAdminPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox RCL/PUCL (`MENU_ID 61`) — klaim yang ditolak atau diproses ulang.
 
         Ia BERSAUDARA dekat dengan layar tepat di atasnya, dan keduanya membaca antrean
@@ -1063,6 +1162,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <RCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 82 "Laporan Hasil AI" — harness `Har_LaporanHasilAI`.
+
+        Layar baca-saja yang menyandingkan penilaian AI dengan keputusan komitenya. Dua
+        grid: ringkasan pencacah di atas, rincian baris di bawah.
+
+        Tiga hal yang ditiru dari Pega dan mudah dikira kerusakan: lima kolom yang SELALU
+        kosong, isian berlabel "Tgl Input" yang sebenarnya menyaring Tanggal Komite, dan
+        "No Klaim" yang dikosongkan pada jenjang komite kedua ke atas. Ketiganya keputusan
+        Work Owner 2026-09-26; alasannya ada di doc `LaporanHasilAIPage`.
+      */}
+      <Route
+        path="/laporan-hasil-ai"
+        element={
+          <SessionGuard>
+            <Protected>
+              <LaporanHasilAIPage />
             </Protected>
           </SessionGuard>
         }
@@ -1125,6 +1245,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <KomunikasiCabangPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+
+      {/*
+        Case Study Claim (`MENU_ID 74`), pengganti harness `PNCStudyClaim`.
+
+        Ia SATU rute: layar lama pun satu harness tanpa layar tujuan lain — penyuntingan
+        catatan telaah terjadi DI DALAM grid, baris demi baris, bukan pada layar
+        tersendiri.
+
+        Butir menunya berada di bawah kelompok INBOX, tetapi rutenya sengaja TIDAK memakai
+        awalan `/inbox/...`: menurut `D-79` ia bukan Inbox — barisnya bukan pekerjaan dan
+        tidak punya tenggat. Yang menentukan keanggotaan daftarnya hanyalah nilai klaim.
+      */}
+      <Route
+        path="/case-study-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CaseStudyClaimPage />
             </Protected>
           </SessionGuard>
         }
