@@ -1,0 +1,55 @@
+-- Kasus komite klaim PNCN di POOLDATA.T_CLAIM_KOMITE_LIST — satu baris per anggota.
+--
+-- Bentuk barisnya mengikuti INSERTDATAKOMITELIST.prc: KOMITE_ID nomor kasus, NO_KLAIM nomor
+-- klaim, NAMAKOMITE OPERATOR_ID anggota, KOMITEKE urutan jenjang, STATUSAPPROVE 0/1/2,
+-- STATUSCASE New/Resolved-Completed, TYPEKOMITE "2", NILAIKLAIM dalam rupiah.
+--
+-- Tabel ini juga ditulis Pega untuk kasus KMT-. Seluruh pernyataan di sini dibatasi ke
+-- KOMITE_ID berawalan KMTN- milik aplikasi ini, dan awalan itulah yang membuat kueri
+-- memakai indeks KOMITE_ID pada tabel berisi 39 juta baris. Tanpa hapus fisik (D-66).
+
+-- name: komite_nomor_berikut
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(KOMITE_ID, 6))), 0) + 1
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST
+ WHERE KOMITE_ID LIKE 'KMTN-%'
+
+-- name: komite_perbarui
+UPDATE POOLDATA.T_CLAIM_KOMITE_LIST
+   SET NO_KLAIM = :1, STATUSCASE = :2, STATUSAPPROVE = :3, NOTEKOMITE = :4,
+       DATEOFCOMMITE_CREATE = :5, TANGGALKOMITE = :6, TYPEKOMITE = :7, PAYMENTTYPE = :8,
+       SHAREASM = :9 / 10000, NILAIKLAIM = :10 / 100
+ WHERE KOMITE_ID = :11 AND NAMAKOMITE = :12 AND KOMITEKE = :13
+
+-- name: komite_sisip
+INSERT INTO POOLDATA.T_CLAIM_KOMITE_LIST
+       (NO_KLAIM, STATUSCASE, STATUSAPPROVE, NOTEKOMITE, DATEOFCOMMITE_CREATE, TANGGALKOMITE,
+        TYPEKOMITE, PAYMENTTYPE, SHAREASM, NILAIKLAIM, KOMITE_ID, NAMAKOMITE, KOMITEKE)
+VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9 / 10000, :10 / 100, :11, :12, :13)
+
+-- name: komite_ambil
+SELECT KOMITE_ID, NO_KLAIM, NAMAKOMITE, KOMITEKE, STATUSAPPROVE, STATUSCASE, NOTEKOMITE,
+       TYPEKOMITE, PAYMENTTYPE, ROUND(SHAREASM * 10000), ROUND(NILAIKLAIM * 100),
+       DATEOFCOMMITE_CREATE, TANGGALKOMITE
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST
+ WHERE KOMITE_ID = :1
+ ORDER BY TO_NUMBER(KOMITEKE)
+
+-- name: komite_tertunda
+--
+-- Anggota yang sedang ditunggu: keputusannya 0, kasusnya masih New, dan seluruh jenjang di
+-- bawahnya sudah setuju.
+SELECT k.KOMITE_ID, k.NO_KLAIM, k.NAMAKOMITE, k.KOMITEKE, k.STATUSAPPROVE, k.STATUSCASE,
+       k.NOTEKOMITE, k.TYPEKOMITE, k.PAYMENTTYPE, ROUND(k.SHAREASM * 10000),
+       ROUND(k.NILAIKLAIM * 100), k.DATEOFCOMMITE_CREATE, k.TANGGALKOMITE
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+ WHERE k.KOMITE_ID LIKE 'KMTN-%'
+   AND UPPER(TRIM(k.NAMAKOMITE)) = UPPER(TRIM(:1))
+   AND k.STATUSAPPROVE = '0'
+   AND k.STATUSCASE = 'New'
+   AND NOT EXISTS (
+         SELECT 1
+           FROM POOLDATA.T_CLAIM_KOMITE_LIST p
+          WHERE p.KOMITE_ID = k.KOMITE_ID
+            AND TO_NUMBER(p.KOMITEKE) < TO_NUMBER(k.KOMITEKE)
+            AND p.STATUSAPPROVE <> '1')
+ ORDER BY k.DATEOFCOMMITE_CREATE, k.KOMITE_ID

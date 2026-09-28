@@ -9,8 +9,11 @@ import (
 // — cacat pemrograman atau permintaan cacat, bukan kesalahan pengguna.
 var (
 	ErrUnknownStage = errors.New("registrasi: tahap tidak dikenal")
-	ErrUnknownNode  = errors.New("registrasi: simpul alur tidak dikenal")
-	ErrFlowLoop     = errors.New("registrasi: keputusan alur berputar tanpa ujung")
+
+	// ErrUnknownAreaLevel menolak tingkat wilayah di luar kelima tingkat daftar pilihan.
+	ErrUnknownAreaLevel = errors.New("registrasi: tingkat wilayah tidak dikenal")
+	ErrUnknownNode      = errors.New("registrasi: simpul alur tidak dikenal")
+	ErrFlowLoop         = errors.New("registrasi: keputusan alur berputar tanpa ujung")
 )
 
 // Galat yang dikembalikan seam penyimpanan.
@@ -43,6 +46,23 @@ var ErrExchangeRateNotFound = errors.New("registrasi: kurs tanggal kejadian tida
 // ulang. Nomor klaim tidak dapat ditarik kembali dan tidak diterbitkan dua kali.
 var ErrClaimNumberAlreadyIssued = errors.New("registrasi: nomor klaim sudah pernah terbit")
 
+// ErrPolicyNotFound dikembalikan bila nomor polis tidak ada di sumber polis.
+//
+// # Kenapa ia punya sentinel sendiri
+//
+// Ini keadaan yang PALING SERING ditemui petugas, dan satu-satunya yang dapat mereka
+// perbaiki sendiri — dengan membetulkan nomornya. Tanpa sentinel, ia jatuh ke cabang
+// terakhir pemetaan galat dan sampai ke layar sebagai "Terjadi kesalahan pada sistem":
+// kalimat yang benar secara teknis, tetapi menyuruh orang menunggu bantuan untuk salah
+// ketik yang bisa mereka betulkan dalam tiga detik.
+//
+// Itu bukan kemungkinan teoretis — ia terjadi pada 2026-09-24, dan menghabiskan waktu
+// justru karena pesannya tidak menyebutkan apa pun.
+var ErrPolicyNotFound = errors.New("registrasi: polis tidak ditemukan")
+
+// ErrAccountNotFound: nomor rekening tidak ada di Master Rekening (POOLDATA.LST_ACCOUNT).
+var ErrAccountNotFound = errors.New("registrasi: rekening tidak ada di master rekening")
+
 // ViolationCode menamai satu aturan validasi.
 //
 // Klien membedakan pelanggaran lewat kode ini, bukan dengan mencocokkan teks pesan —
@@ -68,7 +88,21 @@ const (
 	ViolationSpreadingTotalNot100    ViolationCode = "total_spreading_bukan_100"
 	ViolationFacOfferIncomplete      ViolationCode = "fac_offer_tidak_lengkap"
 	ViolationEstimateExceedsTSI      ViolationCode = "estimasi_melebihi_tsi"
+	ViolationEstimateMissing         ViolationCode = "estimasi_kosong"
 	ViolationReporterStatusEmpty     ViolationCode = "status_pelapor_kosong"
+	ViolationFaceSheetMissing        ViolationCode = "belum_claim_face_sheet"
+	ViolationFaceSheetNothingNew     ViolationCode = "tidak_ada_estimasi_baru"
+	ViolationPLANeedsFaceSheet       ViolationCode = "pla_belum_cfs"
+	ViolationPLANoCoins              ViolationCode = "pla_tanpa_koasuransi"
+	ViolationPLANotLeader            ViolationCode = "pla_bukan_leader"
+	ViolationPLANoReserve            ViolationCode = "pla_tanpa_reserve"
+	ViolationSendNeedsFaceSheet      ViolationCode = "kirim_pic_belum_cfs"
+	ViolationReceiverAccountEmpty    ViolationCode = "rekening_penerima_kosong"
+	ViolationReceiverAccountUnknown  ViolationCode = "rekening_penerima_tidak_terdaftar"
+	ViolationReceiverEmailEmpty      ViolationCode = "email_penerima_kosong"
+	ViolationCommitteeTransferred    ViolationCode = "komite_sudah_ditransfer"
+	ViolationCommitteeIncomplete     ViolationCode = "adjustment_belum_lengkap"
+	ViolationCommitteeNoApprover     ViolationCode = "komite_tanpa_penyetuju"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

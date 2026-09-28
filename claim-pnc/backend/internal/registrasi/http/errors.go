@@ -15,6 +15,7 @@ import (
 // bentuk ini mengikuti bentuk yang sudah berjalan.
 const (
 	CodeValidationFailed     = "validasi_gagal"
+	CodePolicyNotFound       = "polis_tidak_ditemukan"
 	CodeClaimNotFound        = "klaim_tidak_ditemukan"
 	CodeTaskNotFound         = "tugas_tidak_ditemukan"
 	CodeTaskAlreadyClaimed   = "tugas_sudah_diambil"
@@ -23,6 +24,9 @@ const (
 	CodeStageMismatch        = "tahap_tidak_bersesuai"
 	CodeInvalidAction        = "tindakan_tidak_sah"
 	CodeExchangeRateNotFound = "kurs_tidak_ditemukan"
+	CodeAccountNotFound      = "rekening_tidak_ditemukan"
+	CodeCommitteeNotFound    = "komite_tidak_ditemukan"
+	CodeNotCommitteeTurn     = "bukan_giliran_komite"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
 )
@@ -40,6 +44,43 @@ func mapError(err error) (int, ErrorResponse) {
 			Code:      CodeValidationFailed,
 			Message:   shortMessage(validation),
 			Violation: violationsDTO(validation),
+		}
+
+	case errors.Is(err, registrasi.ErrPolicyNotFound):
+		// 422, bukan 404: yang tidak ditemukan bukan alamat yang diminta melainkan ISI
+		// permintaannya, dan petugas dapat memperbaikinya sendiri. Pesannya menyebut
+		// tindakan yang mungkin, bukan sekadar menyatakan kegagalan.
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code: CodePolicyNotFound,
+			Message: "Nomor Polis tidak ditemukan. Periksa kembali nomornya, " +
+				"atau pastikan polisnya sudah terbit di sistem polis.",
+		}
+
+	case errors.Is(err, registrasi.ErrUnknownAreaLevel):
+		// Tingkat wilayah adalah bagian alamat yang disusun layar, bukan isian petugas;
+		// nilai di luar kelima tingkat adalah permintaan cacat.
+		return http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Tingkat wilayah tidak dikenal.",
+		}
+
+	case errors.Is(err, registrasi.ErrAccountNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeAccountNotFound,
+			Message: "Account number is not registered in Master Rekening",
+		}
+
+	case errors.Is(err, registrasi.ErrCommitteeNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeCommitteeNotFound,
+			Message: "Committee case not found.",
+		}
+
+	case errors.Is(err, registrasi.ErrNotCommitteeTurn):
+		// 403: yang memutuskan hanyalah anggota jenjang yang sedang ditunggu.
+		return http.StatusForbidden, ErrorResponse{
+			Code:    CodeNotCommitteeTurn,
+			Message: "This committee decision is not waiting for you.",
 		}
 
 	case errors.Is(err, registrasi.ErrClaimNotFound):

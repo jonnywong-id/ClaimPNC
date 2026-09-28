@@ -261,6 +261,25 @@ it('menyatakan klaim yang belum bernomor, bukan membiarkannya kosong', async () 
   expect(await screen.findByText('belum bernomor')).toBeInTheDocument()
 })
 
+// Klaim PNCN dibuka di halaman klaim registrasi lewat nomornya; klaim Pega tidak ditautkan
+// karena masih dikerjakan di Pega (`P-3`).
+it('menautkan klaim PNCN ke halaman klaimnya, tidak klaim Pega', async () => {
+  stubFetch(() =>
+    jsonResponse(
+      200,
+      listResponse({
+        klaim: [claim({ nomor_klaim: 'PNCN.26.0010' }), claim({ klaim_id: 'pega-1', nomor_klaim: 'PNC-1865' })],
+      }),
+    ),
+  )
+  renderPage()
+
+  const links = await screen.findAllByRole('link', { name: 'PNCN.26.0010' })
+  expect(links[0]).toHaveAttribute('href', '/registrasi/klaim/PNCN.26.0010')
+  expect(screen.queryByRole('link', { name: 'PNC-1865' })).not.toBeInTheDocument()
+  expect(screen.getAllByText('PNC-1865').length).toBeGreaterThan(0)
+})
+
 // Pemegang tugas dan tahap TETAP diterima dari server, tetapi TIDAK ditampilkan sebagai
 // kolom — `Section/InboxRegister_Section-Section.xml` tidak punya kolomnya.
 //

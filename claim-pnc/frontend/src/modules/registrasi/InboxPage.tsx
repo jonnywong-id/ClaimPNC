@@ -7,6 +7,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
 import { useClaimTask, useInbox, useStartClaim } from './api'
+import { CommitteeInbox } from './Committee'
 import { QueueKind, type Task } from './types'
 
 /**
@@ -75,6 +76,8 @@ export function InboxPage() {
           </div>
         )}
       </section>
+
+      <CommitteeInbox />
     </div>
   )
 }
@@ -160,7 +163,7 @@ function NewClaimForm() {
       onSubmit={(e) => {
         e.preventDefault()
         if (policyNumber.trim() === '') return
-        mulai.mutate({ nomor_polis: policyNumber.trim(), portal: '' })
+        mulai.mutate({ nomor_polis: policyNumber.trim() })
       }}
     >
       <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">

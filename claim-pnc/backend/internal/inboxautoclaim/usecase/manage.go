@@ -249,7 +249,7 @@ func (s *Service) Upload(
 		return inboxautoclaim.UploadResult{}, err
 	}
 
-	if err := inboxautoclaim.CheckUploadShape(row); err != nil {
+	if err := inboxautoclaim.CheckUploadShape(source, row); err != nil {
 		return inboxautoclaim.UploadResult{}, err
 	}
 
@@ -259,7 +259,19 @@ func (s *Service) Upload(
 	)
 
 	for _, r := range row {
-		resolved, err := s.resolve(ctx, repo, r)
+		// Pemeriksaan khusus tab yang MENOLAK baris dijalankan sebelum pencarian polis,
+		// mengikuti urutan Pega: keterangan laporan Travel diperiksa sebelum penerima
+		// klaim dicari (InsertKlaimToTable_Travel :3976).
+		if message, reject := inboxautoclaim.CheckRowForSource(source, r); reject {
+			rejected = append(rejected, inboxautoclaim.RejectedRow{
+				LineNumber: r.LineNumber,
+				PolicyNo:   r.PolicyNo,
+				Message:    message,
+			})
+			continue
+		}
+
+		resolved, err := s.resolve(ctx, repo, source, r)
 		if err != nil {
 			return inboxautoclaim.UploadResult{}, err
 		}
@@ -323,6 +335,7 @@ func (s *Service) Upload(
 func (s *Service) resolve(
 	ctx context.Context,
 	repo inboxautoclaim.Repo,
+	source inboxautoclaim.Source,
 	row inboxautoclaim.UploadRow,
 ) (inboxautoclaim.Resolution, error) {
 	company, found, err := repo.ResolveReceiver(ctx, row.PolicyNo)
@@ -350,7 +363,10 @@ func (s *Service) resolve(
 	}
 	resolution.ProductSeq = productSeq
 
-	if message := inboxautoclaim.CheckDateOrder(row.DateOfLoss, row.ReportDate); message != "" {
+	// Proteksi tanggal MENGIKUTI TAB — hanya ANEKA yang membandingkan tanggal lapor dengan
+	// tanggal kejadian. Kredit tidak punya kedua tanggal itu, Travel tidak punya tanggal
+	// lapor (lihat inboxautoclaim.CheckRowForSource).
+	if message, _ := inboxautoclaim.CheckRowForSource(source, row); message != "" {
 		resolution.Message = message
 	}
 	return resolution, nil

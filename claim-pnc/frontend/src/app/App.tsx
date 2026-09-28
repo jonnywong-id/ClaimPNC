@@ -48,6 +48,8 @@ import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPag
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
 import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
+import { ClaimPage as RegistrationClaimPage } from '@/modules/registrasi/ClaimPage'
+import { InboxPage as RegistrationInboxPage } from '@/modules/registrasi/InboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
 import { CauseOfLossPage } from '@/modules/master-penyebab-kerugian/CauseOfLossPage'
@@ -67,6 +69,8 @@ import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/Man
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
 import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
+import { InboxPLADLAPreDLAPage } from '@/modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage'
+import { InboxPLADLAReasPage } from '@/modules/inbox-pla-dla/InboxPLADLAReasPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { LaporanHasilAIPage } from '@/modules/laporan-hasil-ai/LaporanHasilAIPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
@@ -1312,6 +1316,45 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox PLA, DLA, Pre DLA (`MENU_ID 44`), pengganti harness `InboxPLA_harness`.
+
+        Antrean pemberitahuan reasuransi yang sudah terbit tetapi BELUM dikirim, untuk
+        petugas internal. Tiga tab — PLA, DLA, Pre DLA — dan ketiganya BACA-SAJA: tombol
+        "Send", "Upload File Penunjang", dan "Print Pre DLA" belum dibangun (keputusan
+        Work Owner 2026-09-26).
+      */}
+      <Route
+        path="/inbox-pla-dla-pre-dla"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxPLADLAPreDLAPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox PLA DLA (`MENU_ID 45`), pengganti harness `InboxPLADLA`.
+
+        Rute TERSENDIRI dari yang di atasnya, dan itu bukan kerapian: pembacanya berbeda.
+        Layar ini milik MITRA REASURANSI — daftarnya disaring menurut kode reasuradur yang
+        dipetakan dari login pemanggil, dan petugas internal yang membukanya ditolak
+        dengan pesan yang menunjuk menu di atas.
+
+        Menunjuk kedua butir menu ke satu rute akan menyatukan dua layar yang penyaringnya
+        justru BERLAWANAN ARAH — yang satu dokumen belum terkirim, yang lain sudah.
+      */}
+      <Route
+        path="/inbox-pla-dla"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxPLADLAReasPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Layar kerja satu klaim RCL/PUCL — section `SendtoRCLPUCL`, yang di Pega dibuka Open
         Assignment saat Nomor Case diklik.
         Ia rute TERSENDIRI, bukan panel di dalam antrean, karena di Pega pun ia layar tujuan:
@@ -1343,6 +1386,33 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Registrasi Klaim (B-2) beserta alur Register_Flow. Dua layar: daftar tugas, dan
+        satu klaim beserta jalur tahapnya.
+
+        Alamat klaim memuat pengenalnya, sehingga satu klaim dapat dibuka kembali dari
+        tautan — alasan yang sama dengan form Input Receive Document.
+      */}
+      <Route
+        path="/registrasi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RegistrationInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/registrasi/klaim/:claimID"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RegistrationClaimPage />
             </Protected>
           </SessionGuard>
         }

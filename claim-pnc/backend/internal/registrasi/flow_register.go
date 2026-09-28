@@ -89,7 +89,11 @@ func RegisterFlow() Definition {
 		ID: StageInputRegister, Name: "Input Register", PegaID: "Assignment1",
 		Queue: QueueWorklist, Router: RouterPNCAdmin,
 		ExitAction: ActionInputRegister,
-		// `setToRegister_ticket` — Ticket rule yang TIDAK ADA di export (`ADR-0021`).
+		// `setToRegister_ticket` — Ticket rule-nya sendiri tidak ada di export
+		// (`ADR-0021`), TETAPI tempat mendaratnya sudah diketahui: pada
+		// `Flow/Register_Flow.xml` tiket itu (`Ticket8`) menempel pada assignment ini,
+		// dan `Activity/CreateRegisterKlaimPNC_act.xml` langkah 27 yang menyalakannya.
+		// Lihat Service.Start.
 		// Namanya dibawa sebagai tujuan lompatan; pemicunya tidak dibuat-buat.
 		LateralJump: "setToRegister_ticket",
 		Next:        DecisionReturnFromRegister,

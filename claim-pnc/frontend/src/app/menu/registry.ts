@@ -679,6 +679,31 @@ export const MENU_ROUTES: Record<string, string> = {
   // (`Section/InboxSalvageInsurtech`) dan belum dibangun — keputusan Work Owner
   // 2026-09-25, supaya perbedaan keduanya terbaca sebagai perbedaan, bukan kerusakan.
   InboxSalvage: '/inbox-salvage',
+
+  // Inbox PLA, DLA, Pre DLA — `MENU_ID 44`, antrean pemberitahuan reasuransi yang sudah
+  // terbit tetapi BELUM dikirim.
+  //
+  // Butirnya untuk petugas INTERNAL. Ketiga daftarnya bersama — tidak satu pun kueri
+  // Pega-nya menyebut pemanggil — sehingga yang menentukan siapa melihatnya sekarang
+  // adalah `M_OTORISASI_PNC`, sama seperti butir lain (`TKT-F3-004` belum ada).
+  //
+  // Nama programnya `InboxPLA_harness`, dengan garis bawah dan huruf kecil di ujungnya.
+  // Ia disalin apa adanya dari `MENU_PROGRAM`; menormalkannya akan membuat butirnya
+  // tampak belum tersedia.
+  InboxPLA_harness: '/inbox-pla-dla-pre-dla',
+
+  // Inbox PLA DLA — `MENU_ID 45`, layar milik MITRA REASURANSI.
+  //
+  // Bedakan baik-baik dari butir di atasnya. Keduanya bersebelahan di menu dan judulnya
+  // hampir sama, tetapi penyaringnya BERLAWANAN ARAH: yang di atas menampilkan dokumen
+  // yang belum dikirim, yang ini menampilkan dokumen yang sudah dikirim — dan yang
+  // membacanya penerimanya, bukan pengirimnya.
+  //
+  // Satu batas MEMANG sudah berlaku di sini, dan ia bukan peran melainkan KEPEMILIKAN:
+  // daftarnya disaring menurut kode reasuradur yang dipetakan dari login pemanggil lewat
+  // `POOLDATA.T_REINSURER.LOGIN`. Petugas internal yang membuka butir ini ditolak dengan
+  // pesan yang menunjuk butir di atasnya.
+  InboxPLADLA: '/inbox-pla-dla',
 }
 
 /**

@@ -54,6 +54,7 @@ import (
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/mastercolsimasonline"
@@ -61,7 +62,6 @@ import (
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastergroupingsparepart"
 	"claim-pnc/internal/masterkategorisparepart"
-	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterlogin"
 	"claim-pnc/internal/mastermasking"
 	"claim-pnc/internal/masterpanel"
@@ -214,6 +214,10 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
+	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
+	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
+	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterautoclaimhttp "claim-pnc/internal/masterautoclaim/http"
 	masterautoclaimmemory "claim-pnc/internal/masterautoclaim/repo/memory"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
@@ -258,10 +262,6 @@ import (
 	masterpasalmemory "claim-pnc/internal/masterpasal/repo/memory"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpasalusecase "claim-pnc/internal/masterpasal/usecase"
-	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
-	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
-	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
-	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterpasalaihttp "claim-pnc/internal/masterpasalai/http"
 	masterpasalaimemory "claim-pnc/internal/masterpasalai/repo/memory"
 	masterpasalaisql "claim-pnc/internal/masterpasalai/repo/sqlstore"
@@ -341,6 +341,8 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	registrasihttp "claim-pnc/internal/registrasi/http"
+	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	reportklaimhttp "claim-pnc/internal/reportklaim/http"
 	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
 	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
@@ -1219,6 +1221,30 @@ func run() error {
 		return err
 	}
 
+	// Registrasi Klaim. Handlernya nil bila aplikasi berjalan tanpa Oracle; rutenya
+	// tidak dipasang, dan layar registrasi menjawab 404 alih-alih data karangan.
+	var registrationHandler *registrasihttp.Handler
+	if assembly.registrasi != nil {
+		registrationHandler = registrasihttp.NewHandler(registrasihttp.Options{
+			Service: assembly.registrasi,
+			Logger:  logger,
+			Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(r.Context())
+				if !existing {
+					return registrasiusecase.Caller{}, false
+				}
+				// Peran dan workbasket belum datang dari tabel peran (TKT-F3-004).
+				// Dikosongkan, BUKAN diisi tebakan: daftar workbasket menentukan tugas
+				// siapa yang terlihat, dan menebaknya berarti menebak batas data.
+				return registrasiusecase.Caller{
+					Identity: baseCtx.User.Login,
+					Name:     baseCtx.User.Name,
+				}, true
+			},
+			WriteResponse: writeJSON,
+		})
+	}
+
 	picTeknikHandler, err := masterpicteknikhttp.NewHandler(masterpicteknikhttp.Options{
 		Service:       assembly.masterPicTeknik,
 		Logger:        logger,
@@ -1974,6 +2000,29 @@ func run() error {
 				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
+
+				// Registrasi Klaim (B-2) beserta alur Register_Flow.
+				//
+				// # Kenapa dipagari portal utama, bukan dilayani seluruh portal
+				//
+				// Modul ini terikat pada SATU koneksi: seam-nya menerima *sql.DB, bukan
+				// pemilih repo per portal seperti modul inbox. Dipasang apa adanya, petugas
+				// yang sedang membuka portal Syariah akan menulis klaimnya ke basis data
+				// ASM — persis kebocoran antar badan hukum yang R-20 sebut, dan yang tidak
+				// menampakkan diri sebagai galat: layarnya tampak normal, angkanya masuk
+				// akal, yang salah hanya MILIK SIAPA data itu.
+				//
+				// Karena itu rutenya menolak portal selain portal utama. Batasnya nyata dan
+				// terlihat, bukan diserahkan pada harapan bahwa tidak ada yang berpindah.
+				// Melayani seluruh portal menuntut modulnya menerima pemilih repo — pekerjaan
+				// tersendiri, bukan penyesuaian di tempat pemasangan.
+				if registrationHandler != nil {
+					protected.Group(func(sub chi.Router) {
+						sub.Use(portalhttp.ActivePortal(activePortalDeps))
+						sub.Use(onlyPrimaryPortal(cfg.PrimaryPortal, writePortalAwareError))
+						registrasihttp.Mount(sub, registrationHandler)
+					})
+				}
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
 				inputreqprotectionhttp.Mount(protected, protectionRequestHandler, activePortalDeps)
 				inboxacceptopenprotectionhttp.Mount(protected, protectionAcceptHandler, activePortalDeps)
@@ -2058,6 +2107,19 @@ func run() error {
 				); err != nil {
 					panic(fmt.Errorf("modul tambahan gagal dipasang: %w", err))
 				}
+
+				// Kedua modul pemberitahuan reasuransi, dirakit di pladla.go.
+				//
+				// `MENU_ID 44` memuat nama tertanggung dan nomor polis; `MENU_ID 45`
+				// memuat keduanya DAN dibaca pihak luar — mitra reasuransi. Rute
+				// keduanya menuntut portal karena alasan yang sama dengan modul inbox
+				// lain, ditambah satu yang khas pada yang kedua: permintaan yang jatuh
+				// ke koneksi bawaan tidak sekadar menampilkan data entitas lain kepada
+				// petugas sendiri — ia menampilkannya kepada mitra (`R-20`).
+				mountPLADLA(
+					protected, assembly.pladla, activePortalDeps,
+					writeJSON, writePortalAwareError, logger,
+				)
 				// Modul Komite memasang tiga kelompok rute sekaligus: master ambang di
 				// bawah master/, perhitungan penjenjangan di bawah komite/, dan Inbox
 				// Komite di bawah komite/inbox.
@@ -2420,6 +2482,10 @@ type assembly struct {
 	// extra memegang sepuluh modul yang perakitannya ada di modules.go. Ia satu field,
 	// bukan sebelas, supaya berkas ini tidak ikut tumbuh setiap kali satu modul dirakit.
 	extra extraServices
+
+	// pladla memegang kedua modul pemberitahuan reasuransi — `MENU_ID 44` Inbox PLA,
+	// DLA, Pre DLA dan `MENU_ID 45` Inbox PLA DLA. Perakitannya ada di pladla.go.
+	pladla pladlaServices
 	// inboxAutoClaim memakai pemilih repo per portal, sama seperti masterStatusProgres:
 	// POOLDATA.TMP_BATCH_AUTO_CLAIM ada di basis data SETIAP entitas (ADR-0030).
 	inboxAutoClaim *inboxautoclaimusecase.Service
@@ -2493,6 +2559,15 @@ type assembly struct {
 	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
 	// milik satu badan hukum (ADR-0030).
 	inboxLaporanKlaim *inboxlaporanklaimusecase.Service
+
+	// registrasi melayani modul Registrasi Klaim (B-2) beserta alur Register_Flow.
+	//
+	// Ia TERIKAT PADA SATU KONEKSI, tidak memakai pemilih repo per portal seperti modul
+	// inbox. Itu bentuk modulnya, bukan pilihan di sini — dan karena itu rutenya dipagari
+	// agar hanya melayani portal utama. Lihat catatan di tempat ia dipasang.
+	//
+	// Bernilai nil bila aplikasi berjalan tanpa Oracle; rutenya tidak dipasang.
+	registrasi *registrasiusecase.Service
 
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
@@ -2936,6 +3011,10 @@ type storage struct {
 
 	// extra memegang pemilih penyimpanan sepuluh modul yang dirakit di modules.go.
 	extra extraSelectors
+
+	// pladla memegang pemilih penyimpanan kedua modul pemberitahuan reasuransi —
+	// `MENU_ID 44` dan `MENU_ID 45` — yang dirakit di pladla.go.
+	pladla pladlaSelectors
 	// autoClaimSelector memilih penyimpanan Inbox Auto Claim milik satu portal.
 	//
 	// Alasannya sama dengan progressStatusSelector: tabelnya ada di basis data SETIAP
@@ -3294,6 +3373,28 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Registrasi Klaim (B-2). Dirakit HANYA bila Oracle tersedia.
+	//
+	// Modul ini menulis klaim ke POOLDATA.T_CLAIM_PNC beserta pohon objek, coverage, dan
+	// spreading di bawahnya (Work Owner, 2026-09-24). Tanpa koneksi, tidak ada satu pun
+	// adapter yang dapat diisi data sungguhan, dan mengisinya dengan data contoh berarti
+	// layar registrasi berjalan di atas polis dan kurs karangan.
+	// Perakitannya ada di assembleRegistration, dan TIDAK boleh disalin ke sini.
+	//
+	// Sebelum 2026-09-24 kedua tempat ini memuat daftar seam masing-masing, dan yang
+	// disunting adalah yang SALAH: `assembleRegistration` tidak pernah dipanggil, sehingga
+	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
+	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
+	// aplikasi dijalankan.
+	var registrationService *registrasiusecase.Service
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
+	}
+
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
 		// Waktu datang dari jam yang sama dengan modul lain, bukan dari SYSDATE basis data
@@ -3391,6 +3492,12 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		RepoSelector: store.recoverySelector,
 		Issuer:       recoveryIssuer,
 	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	pladlaService, err := buildPLADLAServices(cfg, store, logger)
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -3847,6 +3954,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterMasking:             maskingService,
 		menu:                      menuService,
 		extra:                     extra,
+		pladla:                    pladlaService,
 		readyAliases:              store.readyAliases,
 		close:                     store.close,
 		komite:                    komiteService,
@@ -3872,6 +3980,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAcceptOpenProtection: protectionAcceptService,
 		inboxCloseClaim:           closeClaimService,
 		dashboardClaim:            dashboardClaimService,
+		registrasi:                registrationService,
 	}, nil
 }
 
@@ -4628,6 +4737,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Kesepuluh modul yang perakitannya ada di modules.go memakai kolam koneksi yang
 		// sama, dengan jaminan yang sama pula.
 		setExtraOracleSelectors(pool, &store)
+		setPLADLAOracleSelectors(pool, &store)
 		store.inboxXOLSelector = func(alias string) (inboxxol.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -4968,6 +5078,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Oracle: bahwa "hapus" hanya menonaktifkan, dan bahwa sub modul boleh kosong.
 		store.maskingSelector = maskingSelectorMemory(cfg.PrimaryPortal)
 		setExtraMemorySelectors(cfg.PrimaryPortal, &store)
+		setPLADLAMemorySelectors(cfg.PrimaryPortal, &store)
 		store.claimReportBranch = inboxlaporanklaimmemory.NewBranchResolver(
 			inboxlaporanklaimmemory.SampleBranchOfLogin())
 

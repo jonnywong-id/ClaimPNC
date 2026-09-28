@@ -50,13 +50,18 @@ export function BatchDetail({ source, company, companyName, batch, onClose }: Pr
       title: 'Kejadian / Lapor',
       width: '11rem',
       value: (row) => `${row.tanggal_kejadian} ${row.tanggal_lapor}`,
-      render: (row) => (
-        <span className="whitespace-nowrap">
-          {row.tanggal_kejadian}
-          <span className="mx-1 text-slate-400">→</span>
-          {row.tanggal_lapor}
-        </span>
-      ),
+      // Tab Kredit tidak punya kedua tanggal, Travel tidak punya tanggal lapor. Yang
+      // kosong ditulis "—", bukan panah menunjuk ke kekosongan.
+      render: (row) =>
+        row.tanggal_kejadian === '' && row.tanggal_lapor === '' ? (
+          <span className="text-slate-400">—</span>
+        ) : (
+          <span className="whitespace-nowrap">
+            {row.tanggal_kejadian || '—'}
+            <span className="mx-1 text-slate-400">→</span>
+            {row.tanggal_lapor || '—'}
+          </span>
+        ),
     },
     {
       // Kolom kedua pada grid rincian Pega
@@ -147,7 +152,11 @@ export function BatchDetail({ source, company, companyName, batch, onClose }: Pr
           // Kunci barisnya mengikuti PRIMARY KEY tabelnya —
           // (NOPOLIS, TGLPROSES, TGLKEJADIAN) menurut Database/CREATE_TABLE_1.sql —
           // bukan susunan kolom yang kebetulan terasa unik.
-          rowKey={(row) => `${row.nomor_polis}-${row.tanggal_proses}-${row.tanggal_kejadian}`}
+          // `penyebab_kerugian` ikut karena di tab Kredit tanggal kejadian kosong dan kolom
+          // itu membawa nomor asuransi (NOASURANSI) — kunci baris Pega di tabel Kredit.
+          rowKey={(row) =>
+            `${row.nomor_polis}-${row.tanggal_proses}-${row.tanggal_kejadian}-${row.penyebab_kerugian}`
+          }
           isLoading={list.isPending}
           // Pencarian disembunyikan: ia hanya akan menyaring HALAMAN YANG SEDANG TAMPIL,
           // dan pengguna mengira ia mencari ke seluruh batch. Baris yang dicarinya ada di

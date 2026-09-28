@@ -180,6 +180,41 @@ describe('inbox registrasi', () => {
     ).toBeInTheDocument()
   })
 
+  // Putusan komite klaim PNCN yang menunggu pengguna ini tampil di bagian Komite; Setuju
+  // mengirim keputusan "1" beserta catatannya (KomitePost_Adjustment).
+  it('menampilkan putusan komite yang menunggu dan mengirim Setuju', async () => {
+    const komite = {
+      komite: [
+        {
+          komite_id: 'KMTN-00001', jenjang: 1, jumlah_jenjang: 2, klaim_id: 'klaim-1', nomor_klaim: 'PNCN.26.0001',
+          nomor_polis: 'POL-FIRE-0001', nama_tertanggung: 'PT UJI', nama_objek: 'Gudang', nama_coverage: 'FLEXAS',
+          adjustment: 1, nama_tipe_pembayaran: 'Final', mata_uang: 'IDR', nilai_asm_sen: 900_000_000,
+          nilai_komite_sen: 900_000_000, tanggal_transfer: '2026-09-28',
+        },
+      ],
+    }
+    stubFetch((url) => {
+      if (url === '/api/registrasi/komite') return { body: komite, status: 200 }
+      if (url.endsWith('/putusan')) return { body: { id: 'KMTN-00001', status: 'berjalan', anggota: [] }, status: 200 }
+      return { body: { tugas: [] }, status: 200 }
+    })
+    mount(<InboxPage />)
+    const pengguna = userEvent.setup()
+
+    const row = await screen.findByRole('group', { name: 'Komite KMTN-00001' })
+    expect(within(row).getByRole('link', { name: 'PNCN.26.0001' })).toHaveAttribute('href', '/registrasi/klaim/klaim-1')
+    expect(within(row).getByText(/jenjang 1\/2/)).toBeInTheDocument()
+
+    await pengguna.type(within(row).getByLabelText('Catatan Komite'), 'sesuai survei')
+    await pengguna.click(within(row).getByRole('button', { name: 'Setuju' }))
+
+    await waitFor(() => {
+      const request = calls.find((p) => p.url === '/api/registrasi/komite/KMTN-00001/putusan')
+      expect(request?.method).toBe('POST')
+      expect(request?.body).toEqual({ keputusan: '1', catatan: 'sesuai survei' })
+    })
+  })
+
   it('membuka klaim baru dari nomor polis', async () => {
     stubFetch((url) =>
       url === '/api/registrasi/klaim'

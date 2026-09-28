@@ -62,6 +62,15 @@ const (
 	LineFire             LineOfBusiness = "006"
 )
 
+// IsNonMBU adalah When `IsNonMBU`: Group Panel 003, 004, 006, atau 009.
+func (l LineOfBusiness) IsNonMBU() bool {
+	switch l {
+	case LineMiscellaneous, LineMarineCargo, LineFire, "009":
+		return true
+	}
+	return false
+}
+
 // ProcessStatus adalah posisi klaim dalam alur kerja — `StatusWork` di sistem lama
 // (`ADR-0018`).
 type ProcessStatus string
@@ -78,6 +87,14 @@ const (
 // Yang disebut namanya di sini hanya kode yang benar-benar dipakai modul ini. Sisanya
 // tetap sah sebagai nilai; artinya dibaca dari master, bukan dari kode.
 type ClaimStatus string
+
+// ClaimStatusNames adalah nama sebagian kode Status Klaim (master V_STS_CLAIM), dipakai
+// penyimpanan memori. Penyimpanan SQL membaca masternya langsung.
+var ClaimStatusNames = map[ClaimStatus]string{
+	"1142": "Rejected Claim",
+	"1146": "View Polis",
+	"1147": "Register",
+}
 
 const (
 	// StatusRegistered ditetapkan saat klaim selesai didaftarkan.
@@ -126,15 +143,154 @@ type Policy struct {
 	// MBU, yang tidak dapat diturunkan dari Lini.
 	BusinessType string
 
-	CoverageStart         time.Time
-	CoverageEnd           time.Time
-	Declaration           bool
-	Currency              string
-	CreditGuarantee       bool
-	InsuredName           string
+	CoverageStart time.Time
+	CoverageEnd   time.Time
+	Declaration   bool
+
+	// Kind adalah TypeOfPolicy apa adanya. Nilai "2" adalah Open Policy, yang pada
+	// lini kargo mengubah asal spreading (lihat BuildInsuredItems).
+	Kind            string
+	Currency        string
+	CreditGuarantee bool
+	InsuredName     string
+
+	// QQName dan DeliveryAddress (DeliveryAddressList(1).ASMAddress) dipakai membentuk
+	// penerima klaim bawaan — lihat receiver.go.
+	QQName                string
+	DeliveryAddress       string
 	BranchCode            string
 	HasSpreadingAvailable bool
+
+	// Medan di bawah ini diisi Pega ke POOLDATA.T_CLAIM_PNC saat klaim dibuat, dari
+	// `PolicyData` yang dibekukan bersama klaimnya — `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc`
+	// baris 317–373. Semuanya disimpan apa adanya; tidak satu pun ikut menentukan aturan
+	// registrasi.
+
+	BusinessCode         string // Quotation.BusinessCode   -> BUSINESSCODE
+	BusinessName         string // Quotation.BusinessName   -> BUSINESSNAME
+	BranchName           string // Quotation.BranchName     -> BRANCHNAME
+	SourceOfBusiness     string // Quotation.SourceOfBusiness -> SOBNAMEID
+	SourceOfBusinessName string // Quotation.SobName        -> SOBNAME
+	ProdKe               string // ProdKe                   -> PRODKE
+	PolicyLeader         string // PolicyLeader             -> POLISLEADER
+	TypeOfCoins          string // TypeOfCoins              -> TYPEOFCOINS
+
+	// Coinsurance diturunkan dari CoinsList — lihat DeriveCoinsurance.
+	Coinsurance Coinsurance
 }
+
+// Coinsurance adalah posisi Asuransi Sinar Mas pada koasuransi polis ini.
+type Coinsurance struct {
+	Name     string  // COINSNAME     — nama perusahaan leader
+	Role     string  // LEADER_MEMBER — LEADER, MEMBER, atau FAC IN
+	ShareASM Percent // SHAREASM      — bagian Sinar Mas
+
+	// HasShare membedakan share yang memang tidak diketahui dari share nol. Pega
+	// menyimpan NULL untuk yang pertama, dan keduanya tidak boleh tertukar.
+	HasShare bool
+}
+
+// CoinsuranceRow adalah satu baris `CoinsList` pada dokumen polis.
+type CoinsuranceRow struct {
+	Leader       string // "true" bila baris ini leader
+	CoinsName    string
+	PercentShare Percent
+	HasShare     bool
+}
+
+// OwnCompany adalah penanda perusahaan sendiri pada CoinsList.
+//
+// Pega mencarinya dengan like '%ASURANSI SINAR MAS%', bukan kesamaan — nama pada
+// dokumen polis dapat berawalan atau berakhiran lain.
+const OwnCompany = "ASURANSI SINAR MAS"
+
+// DeriveCoinsurance menurunkan posisi koasuransi persis seperti
+// `PEGA_CONVERT_JSONKLAIM_PNC.prc` baris 315–373, termasuk perilakunya yang tampak janggal
+// (`P-5`).
+//
+// # NULL, bukan teks kosong
+//
+// Di Oracle, CoinsName yang kosong adalah NULL, dan pada NULL baik LIKE maupun NOT LIKE
+// tidak benar. Baris leader tanpa nama karena itu TIDAK menjadi MEMBER: ia jatuh ke cabang
+// ketiga — LEADER dengan share 100 — sedangkan nama leader-nya ikut menjadi kosong.
+// Fungsi ini meniru tiga keadaan itu (memuat, tidak memuat, tidak ada), bukan dua.
+//
+// # Yang terbawa antarbaris
+//
+// Nama leader dan share tidak diatur ulang di awal setiap baris, sehingga baris
+// sesudahnya dapat menimpa atau mewarisi nilai baris sebelumnya — sama dengan variabel
+// PL/SQL yang dipakai berulang.
+//
+// Polis fakultatif masuk (TypeOfCoins = "F") menimpa seluruhnya: perannya FAC IN, nama
+// perusahaannya ceding company, dan sharenya dari penawaran fakultatif.
+func DeriveCoinsurance(typeOfCoins string, rows []CoinsuranceRow, cedingName string, facShare Percent, facHasShare bool) Coinsurance {
+	c := Coinsurance{Name: OwnCompany}
+	role := ""
+
+	for _, r := range rows {
+		named := r.CoinsName != ""
+		own := named && strings.Contains(r.CoinsName, OwnCompany)
+		notOwn := named && !own
+
+		if r.Leader == "true" {
+			c.Name = r.CoinsName
+		}
+		if own {
+			c.ShareASM, c.HasShare = r.PercentShare, r.HasShare
+		}
+		switch {
+		case r.Leader == "true" && own:
+			role = "LEADER"
+		case r.Leader == "true" && notOwn:
+			role = "MEMBER"
+		case !named:
+			role = "LEADER"
+			c.ShareASM, c.HasShare = PercentFull, true
+		}
+	}
+
+	// Daftar yang tidak ada, kosong, atau tidak menghasilkan peran sama sekali jatuh ke
+	// bawaan yang sama: Sinar Mas sebagai leader penuh (baris 356–367).
+	if role == "" {
+		role = "LEADER"
+		c.Name = OwnCompany
+		c.ShareASM, c.HasShare = PercentFull, true
+	}
+	c.Role = role
+
+	if typeOfCoins == "F" {
+		c.Role = "FAC IN"
+		c.Name = cedingName
+		c.ShareASM, c.HasShare = facShare, facHasShare
+	}
+	return c
+}
+
+// Area adalah wilayah kejadian — `ClaimData.Country` sampai `ClaimData.PostalCode`.
+//
+// Setiap tingkat disimpan sebagai pasangan kode dan nama, persis seperti Pega: kode
+// dipakai menyaring tingkat di bawahnya, nama yang ditampilkan dan dicetak. Keduanya
+// disimpan supaya klaim tetap terbaca meski master wilayahnya kelak berubah.
+//
+// Kota sampai Kode Pos hanya berlaku bila negaranya Indonesia — section Pega
+// menyembunyikannya dengan kondisi `.ClaimData.Country = 'INDONESIA'`.
+type Area struct {
+	Country, CountryID   string
+	Province, ProvinceID string
+	City, CityID         string
+	District, DistrictID string // Kabupaten di layar; isinya kecamatan (KEC. …)
+	RW, RWID             string // Kelurahan di layar
+	PostalCode           string
+}
+
+// CountryIndonesia adalah nama negara yang membuka isian Kota sampai Kode Pos.
+const CountryIndonesia = "INDONESIA"
+
+// Nilai Prinsip Mengenal Nasabah. NORMAL adalah bawaan layar (`pyDefaultValue` 1).
+const (
+	CustomerPrincipleNormal     = "1"
+	CustomerPrincipleSuspicious = "2"
+)
 
 // InsuredItem adalah satu objek pertanggungan yang tertimpa kejadian.
 //
@@ -149,10 +305,19 @@ type InsuredItem struct {
 
 // Coverage adalah satu jaminan yang dipakai pada sebuah objek.
 type Coverage struct {
-	ID          string
+	ID string
+
+	// Name adalah CoverageNote polis — nama jaminan, disimpan ke COVERAGENAME.
+	Name        string
 	CauseOfLoss string
 	TSI         Money
 	Spreading   []Spreading
+
+	// Item adalah daftar item objek beserta estimasinya (tahap Input Estimasi).
+	Item []ObjectItem
+
+	// Settlement adalah AdjustmentList jaminan ini (tahap InputSurveyor) — lihat settlement.go.
+	Settlement []SettlementLine
 }
 
 // CauseOfLossPA adalah kode penyebab kerugian yang menjadi bagian kunci duplikasi
@@ -229,6 +394,18 @@ type Claim struct {
 	Chronology string
 	Reporter   Reporter
 
+	// Area adalah wilayah kejadian bertingkat di bawah isian Lokasi pada layar Input
+	// Register (`Section/ViewInputRegisterDetail-Section.xml`).
+	Area Area
+
+	// CustomerPrinciple adalah Prinsip Mengenal Nasabah — `ClaimData.CustomerPrinciple`.
+	// Nilainya "1" NORMAL (bawaan layar) atau "2" SUSPICIOUS, dan ia ikut menentukan komite:
+	// `Activity/SetEmailKomite-Act.xml` memeriksa `CustomerPrinciple == "2"`.
+	CustomerPrinciple string
+
+	// SuspiciousComment hanya tampil — dan hanya bermakna — bila CustomerPrinciple "2".
+	SuspiciousComment string
+
 	EstimateValue Money
 	Currency      string
 
@@ -242,11 +419,28 @@ type Claim struct {
 	// TechnicalPIC adalah PIC teknik yang menerima klaim setelah registrasi.
 	TechnicalPIC string
 
+	// LargeLossNoticed menandai Notice of Large Losses sudah pernah terbit untuk klaim
+	// ini — `ClaimData.FlagNOLL` di sistem lama.
+	//
+	// Ia menentukan SUBJEK pemberitahuan berikutnya, bukan apakah ia dikirim:
+	// `Activity/SendEmailLargeLoss_act.xml` langkah 7 memakai subjek biasa selama flag
+	// masih kosong, langkah 8 memakai "(REVISE)" setelah ia bernilai "1", dan langkah 11
+	// mengisinya tepat setelah surel dikirim.
+	//
+	// Di Pega ia hidup di dalam BLOB work object dan TIDAK punya kolom sendiri —
+	// terverifikasi 2026-09-24: tidak ada satu pun kolom bernama `%NOLL%` di POOLDATA
+	// maupun DATAPEGA. Di sini ia diberi kolom `FLAG_NOLL` (migrasi `0010`), karena tanpa
+	// tempat menyimpannya setiap pemberitahuan akan selamanya terbaca sebagai yang pertama.
+	LargeLossNoticed bool
+
 	// RCVID menautkan klaim ke pencatatan penerimaan dokumen (`B-14`). Kosong berarti
 	// klaim tidak berasal dari Receive Document.
 	RCVID string
 
 	InsuredItem []InsuredItem
+
+	// Receiver adalah ClaimData.ReceiverClaim — penerima klaim (T_CLAIM_RECEIVER).
+	Receiver []Receiver
 
 	// PUCLStatus menyimpan `ClaimData.PUCLStatus.RCL_PUCL`. Nilai 2 mengarahkan klaim
 	// ke tahap RCL/PUCL (rule `IsPUCL`).
@@ -265,8 +459,12 @@ type Claim struct {
 	// bukan cara menyimpannya.
 	RequestReturn bool
 
-	ProcessStatus          ProcessStatus
-	ClaimStatus            ClaimStatus
+	ProcessStatus ProcessStatus
+	ClaimStatus   ClaimStatus
+
+	// ClaimStatusName adalah nama ClaimStatus dari master V_STS_CLAIM — hanya dibaca,
+	// diisi penyimpanan.
+	ClaimStatusName        string
 	ClaimFlag              ClaimFlag
 	ProgressPositionStatus ProgressPositionStatus
 
