@@ -445,16 +445,33 @@ export const MENU_ROUTES: Record<string, string> = {
   // DATAPEGA.PC_ASSIGN_WORKLIST, hilang begitu klaimnya selesai, dan punya tenggat berupa
   // kolom "Lama Waktu Klaim".
   //
-  // Harness-nya klon dari `UserInbox_Harness` (`MENU_ID 58` "Inbox Manager"), yang BELUM
-  // dibangun dan karena itu belum dipetakan. Keduanya tidak boleh disatukan: yang ini
+  // Harness-nya klon dari `UserInbox_Harness` (`MENU_ID 58` "Inbox Manager"), yang kini
+  // SUDAH dibangun dan dipetakan di bawah. Keduanya tidak boleh disatukan: yang ini
   // menyaring unit organisasi penugasan lewat Report Definition `ManagementAdminView`,
-  // sedangkan induk klonnya adalah layar berbeda yang belum dibaca.
+  // sedangkan induk klonnya adalah meja kerja penyelia berisi tiga dashboard dan sembilan
+  // antrean persetujuan — dan satu-satunya layar inbox yang MENULIS.
   //
   // Butirnya dapat terlihat oleh pengguna yang jabatannya tidak membuka satu tab pun —
   // dan itu disengaja. Layarnya menjelaskan keadaan itu beserta jabatan yang terbaca
   // sistem; menyembunyikan butir menunya justru akan membuat pengguna mengira menunya
   // hilang. Penyaringan yang sesungguhnya ada di server (`TKT-F3-004` belum selesai).
   InboxManagerAdmin_Harness: '/inbox-manager-admin',
+
+  // MENU_ID 58 "Inbox Manager", kelompok INBOX, urutan 1148 — tepat sesudah butir di atas.
+  //
+  // Harness-nya cangkang: satu `pyInclude` ke `Section/InboxManager_Sec`, yang menggambar
+  // ringkasan pencacah lalu menyertakan TIGA BELAS kontainer bersyarat
+  // `FlagManager.AlasanKlaim==1..13`. Isinya tiga dashboard, satu indeks, dan sembilan
+  // antrean persetujuan.
+  //
+  // Ia satu-satunya butir inbox yang layarnya MENULIS. Yang ditulisnya kolom persetujuan
+  // pada tabel POOLDATA — bukan satu pun tabel DATAPEGA, yang selama masa paralel dimiliki
+  // Pega (`P-1`).
+  //
+  // Siapa yang melihat butirnya ditentukan `M_OTORISASI_PNC`, bukan kode di sini. Itu perlu
+  // disebut karena layarnya memutuskan: `D-59` menetapkan satuan izin adalah menu dan tidak
+  // ada pemisahan tugas formal, sehingga butir menu inilah kendalinya.
+  UserInbox_Harness: '/inbox-manager',
 
 
   // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.

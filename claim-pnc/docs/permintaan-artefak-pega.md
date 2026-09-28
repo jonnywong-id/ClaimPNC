@@ -1225,3 +1225,128 @@ bukan tabel Pega. Permintaannya kini:
    tahap RCL Dokter (hari ini nol).
 3. **Tim Pega** — rule mana yang menulis `NamaDokterRCL` dan `TanggalAnalystSendRCL`
    (dugaan `RouterRCLDokter`, hilang dari export), supaya pengisi tahu kapan nilainya sah.
+
+---
+
+## 8. Inbox Manager dibangun ulang (2026-09-28) — status seluruh permintaan
+
+Modul `MENU_ID 58` dibangun ulang pada 2026-09-28. Catatan penangguhan di bawah §7.4 karena
+itu **tidak berlaku lagi**, dan status tiap permintaan diperbarui di sini.
+
+### 8.1 `L-3` TERTUTUP — daftar kolom sudah dibaca
+
+Kueri katalog pada §7.6 **sudah dijalankan** terhadap ASM (`DEV_PEGA83G`, 2026-09-28).
+Hasilnya lengkap dengan keterisian tiap kolom ada di `kolom-t-claimlist-admin.md` §H.
+
+| Yang dicatat sebelumnya | Kenyataan |
+|---|---|
+| 40 kolom | **58 kolom** |
+| `STATUSCLAIM_1` belum ada | **ADA** — tetapi kosong di seluruh 1.014 baris |
+| `DOKUMENLENGKAP_1`, `ISPENDINGCLOSE`, `SURVEYORTYPE_1`, `ADJUSTERPIC_1`, `STATUSKOMUNIKASI_1`, `PXDEADLINETIME`, `PXGOALTIME` "harus ditambahkan" | **SELURUHNYA ADA** — dan seluruhnya kosong |
+
+**Akibat yang menggeser pekerjaan.** Yang menahan tujuh tab layar Inbox bukan lagi DDL
+melainkan **proses pengisi tabel**: kolomnya sudah ada, isinya tidak pernah ditulis.
+Menjalankan migrasi tambahan tidak akan mengubah apa pun.
+
+### 8.2 Permintaan kolom untuk Inbox Manager — TIDAK ADA
+
+Seluruh kolom yang dibutuhkan keempat kueri dashboard **sudah ada**, termasuk dua yang
+berasal dari tabel worklist:
+
+`PXOBJCLASS` · `PYSTATUSWORK` · `USERTEKNIS_1` · `PXCREATEDATETIME` · `GROUPPANEL_1` ·
+`BRANCHNAME` · `BUSINESSCODE_1` · `BUSINESSGROUPID` · **`PXFLOWNAME`** · **`PXTASKLABEL`**
+
+Tidak ada satu pun yang perlu diminta ke DBA untuk modul ini.
+
+### 8.3 Dua artefak Pega yang MASIH hilang — ke **Tim Pega**
+
+Keduanya dibutuhkan jalur **Setuju** pada tab Payment Klaim Akseptasi, dan tanpa keduanya
+jalur itu ditahan di aplikasi.
+
+| # | Yang diminta | Dipanggil oleh |
+|---|---|---|
+| P-1 | `RDB List/UpdateChasierIDTablePembayaran` | `TransferToKasir_act_Leader` |
+| P-2 | `RDB List/GetDataMSTDetailSales` | `TransferCashierDataASM_act` |
+
+**Terima kasih atas lima artefak yang sudah dikirim pada hari yang sama** —
+`SetStatusAksepNoRangka_SQL`, `SaveApproveAkseptasiPaymentLeader_Sql`,
+`InsertDataAkseptasiToLeader`, `InsertLogKasir_act`, dan `TransferCashierDataASM_act`. Dua yang
+pertama **langsung dipakai**: antrean Approval Nomor Rangka Beda kini dapat diputuskan penuh,
+dan jalur Tolak pada Payment Akseptasi pun.
+
+**Satu hal yang TIDAK akan selesai dengan artefak tambahan.** `SaveApprovalAkseptasiPaymentLeader_Act`
+juga menulis kolom pada objek kerja Pega (`.StsPenerimaKlaim`, `.FlagAtasan`, `.RemarkManager`,
+`.TransferCashierStatus`) lewat `Obj-Save` + `Commit`. Tabel itu berada di skema `DATAPEGA` dan
+dimiliki Pega selama masa paralel (`P-1`), sehingga aplikasi ini tidak boleh menulisinya —
+berapa pun artefak yang dikirim. Ditambah integrasi keluar ke sistem Kasir yang merupakan
+lingkup modul `S-4`, yang belum dibangun.
+
+Jalur Setuju karena itu **tetap ditahan** sampai ketiganya selesai, dan alasannya ditampilkan
+di layar supaya penyelia tidak melaporkannya sebagai kerusakan.
+
+### 8.4 Dua temuan BASIS DATA — ke **DBA**, dan keduanya menyentuh modul yang SUDAH JADI
+
+Ditemukan saat memeriksa kesembilan sumber antrean. Keduanya **bukan** cacat aplikasi, dan
+tidak dapat diperbaiki dari sisi aplikasi.
+
+#### D-1 · `POOLDATA.SPAREPART_HE` adalah VIEW berstatus **INVALID**
+
+```
+ORA-04063: view "POOLDATA.SPAREPART_HE" has errors
+ORA-00904: "A"."JSONDATA": invalid identifier
+```
+
+Definisi view-nya membaca `JSON_VALUE(a.JSONDATA, '$.NO_SPART')` dan dua puluh enam ekspresi
+sejenis dari `POOLDATA.M_SPAREPART_HE`. Kolom `JSONDATA` **sudah tidak ada** di tabel itu:
+isinya kini 18 kolom bernama `MERK`, `TYPE`, `SUBTYPE`, `PRODDATE`, `KATEGORI`, `SUBKATEGORI`,
+`BAGIAN`, `PARTNO`, `PARTNAME`, `QTY`, `NOMORPNC`, `SERIALNUMBER`, `REFF`, `TGLINPUT`,
+`SOURCE`, `JENISALATBERAT`, `ID_IMAGE`, `OTOMATIS_MAPPING` — 9.869.746 baris.
+
+**Yang perlu diperhatikan:** nama kolom baru itu **tidak sama** dengan nama parameter JSON yang
+dibaca view-nya, dan **tidak satu pun tabel `POOLDATA.%SPAREPART%` punya kolom `APPROVAL`**
+selain view yang rusak itu sendiri. Artinya kolom persetujuan Master Sparepart HE belum punya
+tempat setelah JSON-nya dibongkar.
+
+**Terdampak:**
+
+| Layar | Akibat |
+|---|---|
+| Inbox Manager — tab Master Sparepart | pencacah dan daftarnya tidak dapat dibaca; layar menyatakannya apa adanya |
+| **Modul Master Sparepart** (`MENU_ID` tersendiri, sudah selesai) | membaca DAN menulis view yang sama — seluruh layarnya gagal |
+
+Modul Master Sparepart **tidak disentuh** sesi ini (Isolasi Protektif). Yang dibutuhkan adalah
+view-nya diperbaiki; begitu itu terjadi, kedua layar hidup tanpa satu baris kode pun berubah.
+
+#### D-2 · `T_CLAIMLIST_ADMIN.PXASSIGNEDORGUNIT` terisi **1 dari 1.014 baris**
+
+Kolomnya ADA — koreksi 2026-09-27 benar. Yang belum berjalan adalah **pengisinya**.
+
+Modul **Inbox Manager Admin** (`MENU_ID 57`) menyaring ketiga tabnya dengan kolom itu
+(`AdminPNC` / `AdminPA` / `AdminTRAVEL`), sehingga ketiganya menampilkan paling banyak satu
+baris hari ini. Kuerinya benar dan `-periksa` akan hijau; yang kurang adalah datanya.
+
+Ia keadaan yang **tidak menghasilkan satu pun galat**, dan karena itu hanya terlihat bila
+dihitung — persis keadaan `STATUSLOCK_1` dan `REQUESTSURVEY_1` yang sudah tercatat.
+
+### 8.5 Satu keadaan data yang perlu diketahui, bukan diperbaiki
+
+`T_CLAIMLIST_ADMIN.GROUPPANEL_1` **tidak memuat satu pun nilai `005`** (Travel):
+
+| Nilai | Baris |
+|---|---:|
+| `006` | 657 |
+| `003` | 305 |
+| `004` | 50 |
+| `002` | 2 |
+
+Penyaring lini bisnis **TRAVEL** pada dashboard Outstanding karena itu mengembalikan nol baris
+hari ini. Itu keadaan DATA, bukan cacat kueri — dicatat supaya tidak dilaporkan sebagai
+kerusakan.
+
+### 8.6 Yang TIDAK kami butuhkan — dicatat supaya tidak diminta berulang
+
+| Hal | Alasan |
+|---|---|
+| `GetYearDashboardOS` | Ia mengisi daftar pilihan tahun, dan tab Outstanding tidak punya penyaring periode — ketiga kuerinya tidak menyaring tanggal sama sekali |
+| `ShowApproveProgressKlaim` beserta sub-tab "Approval Progress Klaim" | Kontainernya ber-`pyContainerVisibleWhen = 1==2` di Pega — sudah mati di sana, dan tidak dibawa |
+| Kolom tambahan untuk kesembilan antrean persetujuan | Seluruhnya POOLDATA dan seluruh kolomnya sudah ada |

@@ -22052,3 +22052,174 @@ saat ini." Backend tetap mengirim `identitas_lama_ditemukan`, `selisih_terencana
 
 Uji: `vitest run src/modules/inbox-rcl` **5 lulus** (uji baru memastikan peringatan dan kedua
 catatan tidak tampil) · `tsc` bersih.
+
+---
+
+## 67. Modul Inbox Manager dibangun ulang (2026-09-28, sesi kedua puluh sembilan)
+
+Permintaan: tambahkan modul **Inbox Manager** dengan `Harness/UserInbox_Harness-Harness.xml`
+sebagai acuan, dan **ganti sumber data dashboard** dari `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` +
+`DATAPEGA.PC_ASSIGN_WORKLIST` menjadi `POOLDATA.T_CLAIMLIST_ADMIN` — dengan izin melaporkan
+kolom yang kurang ke Work Owner.
+
+Modul ini **pernah ada dan dihapus** atas perintah Work Owner pada 2026-09-27
+(`keputusan-implementasi.md` §66). Berkasnya tidak pernah masuk git, dan salinan cadangannya
+hilang bersama sesi itu — sehingga yang menjadi acuan adalah catatan §61, bukan kodenya.
+
+### 67.1 Urutan kerja
+
+| Tahap | Yang dikerjakan |
+|---|---|
+| 1 | Membaca memori proyek, `CLAUDE.md`, struktur project, dan pola modul terdekat (`inboxmanageradmin`) |
+| 2 | Mendapati modul ini **pernah dibangun lalu dihapus** — dan bahwa catatannya, bukan kodenya, yang tersisa |
+| 3 | Membongkar `UserInbox_Harness` sampai ke kueri: harness → `InboxManager_Sec` → 13 kontainer → kueri per bagian |
+| 4 | Memisahkan kueri yang menyentuh DATAPEGA dari yang tidak — hasilnya **empat dari sekitar dua puluh** |
+| 5 | **Membaca katalog Oracle langsung** untuk daftar kolom `T_CLAIMLIST_ADMIN` — menutup `L-3` |
+| 6 | Empat pertanyaan ke Work Owner, dijawab; dua di antaranya menghasilkan artefak baru |
+| 7 | Memeriksa ulang artefak yang dikirim, lalu dua pertanyaan lanjutan |
+| 8 | Backend: domain → decision → query → sqlstore → memory → usecase → http → uji |
+| 9 | Perakitan `modules.go` dan `check.go` |
+| 10 | Frontend: types → api → empat komponen → halaman → uji |
+| 11 | Registrasi rute dan menu, lalu dokumentasi |
+
+### 67.2 Pertanyaan konfirmasi dan jawabannya
+
+Seluruhnya diajukan **sebelum satu baris kode ditulis**, beserta pilihan, rekomendasi, dan
+akibat tiap pilihan. Rinciannya di `keputusan-implementasi.md` §67.
+
+**Putaran pertama — empat pertanyaan:**
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Sub-tab "Approval Progress Klaim" ber-`1==2` di Pega — dibawa atau tidak? | **Jangan dibawa** |
+| 2 | Lini bisnis dari `M_LOGIN_PNC.LINE_BUSINESS` atau dropdown? | **Dari `M_LOGIN_PNC`** |
+| 3 | `SPAREPART_HE` adalah view INVALID — bagaimana tab-nya? | "data JSON sudah dikeluarkan menjadi kolom" |
+| 4 | Dua antrean yang rule keputusannya hilang — baca-saja? | **"Dua file SQL tersebut sudah ditambahkan"** |
+
+Jawaban 3 dan 4 **mengubah keadaan**, bukan sekadar memilih opsi. Keduanya diperiksa ulang.
+
+**Putaran kedua — dua pertanyaan, disusun dari hasil pemeriksaan itu:**
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 5 | Katalog menunjukkan kolom pengganti JSON **tidak sama** dengan parameter JSON-nya, dan tidak ada tabel `%SPAREPART%` lain yang punya `APPROVAL` | **Bangun apa adanya, DBA perbaiki view** |
+| 6 | Jalur SETUJU Payment Akseptasi memanggil transfer kasir yang rantainya masih kurang tiga rule | **"sudah saya berikan di activity untuk ketiga file tersebut"** |
+
+Ketiga activity itu benar-benar ditambahkan (timestamp 13:24–13:46 hari yang sama), dan
+pemeriksaan ulangnya menemukan **dua rule SQL masih hilang** ditambah satu batas arsitektur
+yang tidak dapat diselesaikan artefak — lihat `keputusan-implementasi.md` §67.6.
+
+### 67.3 Temuan pembacaan yang mengubah bentuk pekerjaan
+
+**Empat kueri saja yang menyentuh DATAPEGA.** Dari sekitar dua puluh kueri layar ini, hanya
+`CountOutstandingManager`, `GetPICDashboardOS`, `GetBisnisGroupDashboardOS`, dan
+`GetYearDashboardOS` yang menggabung kedua tabel Pega — dan keempatnya milik satu tab. Sembilan
+antrean persetujuan dan dua dashboard lainnya sudah POOLDATA sejak awal.
+
+**Tidak ada satu pun kolom yang kurang.** Katalog dibaca langsung: 58 kolom, bukan 40 seperti
+tercatat 2026-09-22, dan kesepuluh kolom yang dibutuhkan **seluruhnya sudah ada** — termasuk
+`PXFLOWNAME` dan `PXTASKLABEL` yang berasal dari tabel worklist.
+
+**`STATUSCLAIM_1` dan tujuh kolom lain ternyata SUDAH ADA tetapi KOSONG.**
+`kolom-t-claimlist-admin.md` §B mencatatnya sebagai kolom yang "harus ditambahkan". Yang
+menahan tujuh tab layar Inbox karena itu bukan DDL melainkan **proses pengisi tabel**.
+
+**Sub-tab yang dibangun §61 ternyata mati di Pega.** `pyContainerVisibleWhen = 1==2` pada
+"Approval Progress Klaim" — dan §61 justru membangunnya sebagai daftar baca-saja.
+
+**Label tab tidak boleh diambil dari `<pyTitle>`.** Tab 12 dan 13 sama-sama berjudul "Payment
+Klaim Akseptasi" di section. Yang membedakannya `pyLabel` pada pencacah — "Payment Klaim
+Akseptasi" dan "Penolakan Klaim".
+
+### 67.4 Keputusan desain dan alasannya
+
+| Keputusan | Alasan |
+|---|---|
+| Kode tab memakai angka `1..13` dari `FlagManager.AlasanKlaim` | Penelusuran balik ke export cukup dengan mencocokkan angkanya; tidak ada kesempatan bagi dua penomoran untuk menyimpang |
+| `QueueRow` generik (`Key` + `Cells`), bukan struct bermedan tetap | Kesembilan antrean berada di atas tabel yang tidak berhubungan. Struct bermedan tetap akan menjadi gabungan puluhan isian yang sebagian besarnya kosong pada setiap baris |
+| `DashboardRow` TERPISAH dari `QueueRow` | Barisnya tidak punya kunci dan tidak dapat diputuskan. Menyatukannya membuat layar menggambar tombol keputusan pada baris tanpa kunci |
+| `DashboardCell` punya `Count` DAN `Amount` | Dashboard Klaim mencampur pencacah dan nilai uang dalam satu baris. Uang tidak boleh menjadi bilangan pecahan biner (`I-12`) |
+| Pencacah endpoint TERSENDIRI | Ia tidak berubah saat tab berpindah; menempelkannya berarti sepuluh kueri per klik tab |
+| `DecisionRule` dikirim sebagai DATA ke layar | Layar menggambar tombol dari aturan server, bukan menyimpulkannya dari kode tab. Aturan yang hidup di dua tempat akan menyimpang — dan yang menyimpang di sini menyangkut uang |
+| Satu alamat keputusan untuk sembilan antrean | Pada enam dari sembilan, kuncinya hanyalah sebuah ID — dan ID yang sama ada di tabel berbeda. Tab dikirim di badan permintaan, bukan ditebak dari kuncinya |
+| Bendera lini bisnis, bukan satu nilai dibandingkan lima kali | Driver mengikat argumen menurut urutan kemunculan penanda; penanda berulang menuntut argumen berulang |
+
+### 67.5 Perubahan API
+
+Lima endpoint baru, seluruhnya di balik sesi dan pemeriksaan portal:
+
+| Metode | Jalur | Isi |
+|---|---|---|
+| GET | `/api/inbox-manager/tab` | tab yang boleh dilihat, kolomnya, aturan keputusan, selisih terencana |
+| GET | `/api/inbox-manager/ringkasan` | sepuluh pencacah + satu turunan |
+| GET | `/api/inbox-manager` | isi satu tab — dashboard atau antrean |
+| GET | `/api/inbox-manager/ekspor` | CSV mengalir, mengikuti tab yang terbuka |
+| **POST** | `/api/inbox-manager/keputusan` | setujui atau tolak sejumlah baris sekaligus |
+
+Yang terakhir **satu-satunya rute menulis** di antara seluruh modul inbox.
+
+### 67.6 Perubahan basis data
+
+**Tidak ada migrasi.** Seluruh tabel dan kolom sudah ada — termasuk kesepuluh kolom dashboard,
+yang sempat diperkirakan perlu diminta.
+
+Yang berubah adalah siapa yang menulis kolom persetujuan pada sembilan tabel POOLDATA:
+`BENGKEL_HE`, `PANEL_HE`, `NOTIF_RANGKA_HE`, `SPAREPART_HE`, `GCNM_M_SPAREPART_CATEGORY`,
+`GCNM_M_SPAREPART_TYPE`, `SPAREPART_HE_VIN_KEY`, `T_CLAIM_AKSEPTASI_CHECKER`, dan
+`MST_PENOLAKAN_KLAIM_2`.
+
+Tidak satu pun tabel `DATAPEGA` disentuh, dan itu bukan kebetulan (`P-1`).
+
+### 67.7 Dependensi baru
+
+**Tidak ada.**
+
+### 67.8 Kendala yang ditemui dan cara menanganinya
+
+| Kendala | Penanganan |
+|---|---|
+| **Daftar kolom `T_CLAIMLIST_ADMIN` belum pernah dibaca**, dan tiga kekeliruan sebelumnya lahir dari menebaknya | Program pemeriksa sementara ditulis, dijalankan baca-saja terhadap katalog Oracle, lalu **dihapus**. Hasilnya menutup `L-3` |
+| **Output pemeriksaan sempat terpotong** `head -70` sehingga tampak program gagal | Dijalankan ulang tanpa pemotongan; kekeliruan ada pada perintah saya, bukan pada programnya |
+| **Nama kolom sembilan tabel antrean tidak diketahui** | Diverifikasi ke berkas `.sql` modul Master yang kuerinya sudah berjalan — bukan ditebak. Tiga di antaranya ternyata berbeda dari dugaan: `PANEL_HE.NAME` bukan `NAMA_PANEL`, `BENGKEL_HE.ALM_BENGKEL` bukan `ALAMAT_BENGKEL`, dan `NO_RANGKA` ada di tabel GROUP bukan tabel KEY |
+| **`exactOptionalPropertyTypes` menolak enam prop opsional** | Deklarasinya diubah menjadi `?: T \| undefined`; satu prop `DataTable` yang tidak menerimanya dikirim lewat spread bersyarat |
+| **`callAPI` memakai `metode`, bukan `method`** | Tertangkap `tsc --noEmit` sebelum uji dijalankan |
+| **Vitest gagal memulai worker**, termasuk pada berkas uji yang bukan milik sesi ini | Dinyatakan apa adanya sebagai kontensi proses — sudah tercatat pada §62.8. Dijalankan ulang dengan `--pool=threads` dan lulus |
+| **`go build ./cmd/...` gagal menyalin binary** karena peladen pengembangan sedang berjalan | Kompilasi diverifikasi dengan `go vet ./cmd/...`, yang mengompilasi tanpa menulis berkas |
+
+### 67.9 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build ./internal/inboxmanager/...` | **bersih** |
+| `go vet ./cmd/...` | **bersih** |
+| `go test ./internal/inboxmanager/...` | **lulus** — domain, sqlstore, usecase |
+| `go test ./...` | **249 paket lulus**, nol kegagalan |
+| `gofmt -l internal/inboxmanager/` | **bersih** |
+| `npx tsc --noEmit` | **bersih** |
+| `npx vitest run` (seluruh suite) | **72 berkas, 1.191 uji lulus** |
+
+Dua "errors" pada suite frontend berasal dari `inbox-komunikasi-cabang` — modul yang tidak
+disentuh sesi ini, dan ujinya tetap lulus. Keduanya sudah tercatat pada §61.9 dan §62.9 dengan
+bunyi yang sama.
+
+**Satu uji sengaja dibuat mengharapkan GALAT.** `TestDashboardDanAntreanTidakPernahTerisiBersamaan`
+semula gagal pada tab Master Sparepart, dan yang benar adalah ujinya: data contoh sengaja
+menandai antrean itu sebagai sumber yang tidak dapat dibaca, karena memang begitu keadaannya
+di basis data. Ujinya diperbaiki menjadi menuntut `ErrSourceUnavailable`, bukan menuntut
+berhasil.
+
+### 67.10 Yang BELUM dijalankan
+
+`PENYIMPANAN=oracle -periksa` terhadap modul ini. Kuerinya baru terbukti sah secara bentuk dan
+sah terhadap katalog — bukan terbukti berjalan. Rinciannya di `keputusan-implementasi.md`
+§67.15.
+
+### 67.11 Koreksi tata letak setelah tangkapan layar Work Owner
+
+Layar sempat dibangun **tanpa pembungkus halaman**, sehingga isinya menempel ke bilah samping
+tanpa jarak. Ditemukan Work Owner dari tangkapan layar, bukan oleh pengujian — `tsc` dan
+seluruh uji hijau, dan halamannya berfungsi penuh.
+
+Sebabnya struktural: tidak ada pembungkus bersama di `App.tsx`, setiap modul membungkus
+halamannya sendiri. Rinciannya beserta dua uji yang menahannya di
+`keputusan-implementasi.md` §67.16.

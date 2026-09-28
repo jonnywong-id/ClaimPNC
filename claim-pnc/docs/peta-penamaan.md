@@ -4292,3 +4292,82 @@ Judulnya diturunkan dari **predikat yang dihitungnya**, bukan dari aliasnya:
 | `STSKLAIM NOT IN ('1','2','3')` | Outstanding |
 
 Masing-masing berpasangan "Periode Ini" dan "Tahun Lalu".
+
+---
+
+## Koreksi peta Inbox Manager (2026-09-28)
+
+Bagian di atas ditulis saat modul `MENU_ID 58` dibangun pertama kali, sebelum modul itu dihapus
+(`keputusan-implementasi.md` §66) dan dibangun ulang pada 2026-09-28. **Isinya tidak disunting**
+— ia rekaman pembacaan saat itu. Yang berlaku sekarang adalah bagian ini.
+
+### Satu tab DICORET dari daftar
+
+| Tercatat di atas | Kenyataan |
+|---|---|
+| "Approval Progress Klaim" sebagai salah satu tab Persetujuan Klaim | **Tidak dibawa.** Kontainernya ber-`pyContainerVisibleWhen = 1==2` di `Section/Sec_PaymentAkseptasiKlaimCase1-Section.xml:67064` — kondisi yang tidak pernah benar, sehingga bagian itu sudah mati di Pega |
+
+Layar sekarang punya **tiga belas** tab, dan tab Payment Klaim Akseptasi berisi **satu** daftar,
+bukan dua.
+
+### Judul kolom dashboard dikoreksi — arti `STSKLAIM` diperiksa ke DATA
+
+Judul yang tercatat di atas diturunkan dari predikat, dan itu benar sebagai metode. Tetapi
+**arti nilainya** saat itu belum diperiksa. Pemeriksaan langsung ke `POOLDATA.PEGA_DASHBOARDPNC`
+pada 2026-09-28 (66.972 baris) menjawabnya:
+
+| Nilai | Baris | `TGL_REJECT` terisi | `NOAKSEP` terisi | Arti |
+|---|---:|---:|---:|---|
+| `1` | 50.074 | 0 | 49.198 | **Akseptasi** |
+| `3` | 7.936 | **7.904** | 191 | **Ditolak** |
+| `0` | 8.710 | 0 | 6.982 | Masih berjalan |
+
+Judulnya karena itu dikoreksi:
+
+| Predikat | Tercatat di atas | **Berlaku sekarang** |
+|---|---|---|
+| tanpa penyaring status | Total Klaim | Total |
+| `STSKLAIM = '1'` | Selesai | **Akseptasi** |
+| `STSKLAIM = '3'` | Close | **Ditolak** |
+| `STSKLAIM NOT IN ('1','2','3')` | Outstanding | Outstanding |
+
+"Close" pada baris ketiga akan menyesatkan: barisnya justru yang **ditolak**, dan nilai uangnya
+diambil dari `TTLOS`, bukan dari nilai akseptasi.
+
+### Kode tab memakai angka Pega, bukan penomoran baru
+
+| Kode | Label — diambil dari `pyLabel` pencacah, bukan dari `<pyTitle>` kontainer |
+|---|---|
+| 1 | Outstanding |
+| 2 | Produktivitas Klaim |
+| 3 | Klaim |
+| 4 | Approval Master |
+| 5 | Master Bengkel |
+| 6 | Master Panel |
+| 7 | Approval Nomor Rangka Beda |
+| 8 | Master Sparepart |
+| 9 | Master Kategori Sparepart |
+| 10 | Master Tipe Sparepart |
+| 11 | Master Grouping Sparepart |
+| 12 | Payment Klaim Akseptasi |
+| 13 | Penolakan Klaim |
+
+Angkanya sama dengan `FlagManager.AlasanKlaim==n` pada kontainer section, dan sama pula dengan
+isian `ALASAN` yang ditulis `Activity/CountDashbroardManager`.
+
+**Label diambil dari `pyLabel`, bukan dari `<pyTitle>`**, dan itu bukan pilihan gaya: kontainer
+12 dan 13 sama-sama berjudul `<pyTitle>` "Payment Klaim Akseptasi". Hanya `pyLabel` yang
+membedakan keduanya.
+
+### Nama Go dan frontend
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `internal/inboxmanager` — nama modul bisnis, huruf kecil tanpa tanda hubung (`D-81`) |
+| Folder frontend | `src/modules/inbox-manager` — `kebab-case` (`D-81`) |
+| Rute | `/inbox-manager` |
+| Awalan API | `/api/inbox-manager` |
+
+Isi modulnya berbahasa Inggris (`D-80`): `Tab`, `Counter`, `QueueRow`, `DashboardCell`,
+`Decision`, `Verdict`. Nama field JSON tetap Indonesia karena ia kontrak: `kode`, `nama`,
+`jenis`, `kunci`, `sel`, `pencacah`, `tidak_tersedia`, `alasan_setuju_ditahan`.

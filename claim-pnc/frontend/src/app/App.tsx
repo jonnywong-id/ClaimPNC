@@ -61,6 +61,7 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { InboxManagerPage } from '@/modules/inbox-manager/InboxManagerPage'
 import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManagerAdminPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
@@ -1130,6 +1131,25 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxManagerAdminPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Manager (`MENU_ID 58`) — meja kerja penyelia: tiga dashboard dan sembilan
+        antrean persetujuan dalam satu layar.
+
+        Ia INDUK KLON dari layar tepat di atasnya, bukan saudaranya: harness Inbox Manager
+        Admin adalah klon `UserInbox_Harness`. Keduanya tidak boleh disatukan — yang di atas
+        menyaring satu unit organisasi penugasan lewat Report Definition, sedangkan yang ini
+        tidak menyaring pemanggil sama sekali dan justru MENULIS kolom persetujuan.
+      */}
+      <Route
+        path="/inbox-manager"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxManagerPage />
             </Protected>
           </SessionGuard>
         }

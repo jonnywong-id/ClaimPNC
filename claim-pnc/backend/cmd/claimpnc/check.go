@@ -62,7 +62,9 @@ import (
 	"claim-pnc/internal/inboxkomunikasicabang"
 	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
+	"claim-pnc/internal/inboxmanager"
 	"claim-pnc/internal/inboxmanageradmin"
+	inboxmanagersql "claim-pnc/internal/inboxmanager/repo/sqlstore"
 	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
@@ -1211,6 +1213,7 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 	supplier := mastersuppliersql.NewRepo(primary)
 	inboxCompliance := inboxcompliancesql.NewRepo(primary)
 	inboxManagerAdmin := inboxmanageradminsql.NewRepo(primary)
+	inboxManager := inboxmanagersql.NewRepo(primary)
 
 	// Tab Compliance dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
 	// memakai tab yang BENAR-BENAR terdaftar. Tab yang tidak ditemukan membuat kueri
@@ -1280,6 +1283,37 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 
 			rows, err := inboxManagerAdmin.List(ctx, inboxmanageradmin.Query{Tab: tab})
 			return len(rows), err
+		}},
+
+		// Inbox Manager membaca TIGA tabel yang berbeda, dan CheckTable memeriksa
+		// ketiganya tersendiri supaya pesan gagalnya menyebut satu hal saja.
+		//
+		// Yang dijalankan di bawah adalah kueri PENCACAH, bukan kueri daftar, dan itu
+		// disengaja: pencacahnya menyentuh kesepuluh sumber layar ini sekaligus — termasuk
+		// view `SPAREPART_HE` yang saat diperiksa 2026-09-28 berstatus INVALID. Kueri
+		// daftar hanya akan menyentuh satu antrean.
+		//
+		// Pencacah yang sumbernya tidak terbaca TIDAK menggagalkan pemeriksaan ini: ia
+		// dilaporkan per antrean lewat Counter.Unavailable, persis seperti yang dibaca
+		// penyelia di layar. Angka di bawah karena itu jumlah pencacah yang BERHASIL, dan
+		// selisihnya terhadap sepuluh adalah jumlah sumber yang sedang rusak.
+		//
+		// Yang TIDAK dapat dibuktikan perintah ini: apakah akun aplikasi punya hak TULIS
+		// atas kesembilan tabel persetujuan. Memeriksanya menuntut menulis sungguhan, dan
+		// perintah pemeriksa tidak boleh meninggalkan jejak di basis data mana pun.
+		{"Inbox Manager", inboxManager.CheckTable, func(ctx context.Context) (int, error) {
+			counters, err := inboxManager.Counters(ctx, inboxmanager.Caller{Login: "-periksa"})
+			if err != nil {
+				return 0, err
+			}
+
+			terbaca := 0
+			for _, counter := range counters {
+				if counter.Unavailable == "" {
+					terbaca++
+				}
+			}
+			return terbaca, nil
 		}},
 
 		{"Master Auto Claim", autoClaim.CheckTable, func(ctx context.Context) (int, error) {

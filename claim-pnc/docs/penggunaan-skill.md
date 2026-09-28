@@ -9441,3 +9441,89 @@ Tetap tanpa skill (tidak tersedia). Yang menangkap cacat ORA-01008 bukan skill, 
 **menjalankan kueri sungguhan terhadap Oracle** setelah `-periksa` hijau. Pelajarannya:
 pemeriksaan yang hanya mem-parse kueri tidak membuktikan kueri dapat dijalankan. Bukti
 yang sah adalah satu eksekusi nyata dengan parameter binding.
+
+---
+
+## Sesi 2026-09-28 — modul Inbox Manager dibangun ulang
+
+| | |
+|---|---|
+| Permintaan | tambahkan modul **Inbox Manager** dengan `Harness/UserInbox_Harness-Harness.xml` sebagai acuan; sumber data dashboard diganti `POOLDATA.T_CLAIMLIST_ADMIN` |
+| Skill Matt Pocock | **tidak satu pun tersedia** di lingkungan ini — `mattpocock-skills:*` tidak terpasang, dan pemeriksaan daftar skill sesi ini mengonfirmasinya |
+| Skill Claude yang dipakai | **memori proyek** (tiga berkas), dan itu yang paling menentukan |
+
+### Skill yang dipakai: memori proyek
+
+**Kapan.** Sebelum satu berkas pun dibaca.
+
+**Kenapa.** Tiga catatan memori berlaku langsung pada tugas ini, dan ketiganya menghemat
+pekerjaan yang sudah pernah salah:
+
+| Memori | Yang dicegahnya di sesi ini |
+|---|---|
+| `kolom-t-claimlist-admin-belum-terbaca` | Mencegah saya menyimpulkan kolom tidak ada dari modul lain — pola yang sudah keliru **tiga kali** pada 2026-09-27. Ia langsung mengarahkan ke langkah yang benar: baca katalog |
+| `membaca-section-pega` | Mengarahkan pembacaan ke `pyContainerVisibleWhen`, `pyPageListProperty`, dan `pyTitle` — bukan ke activity saja. Tanpa itu, sub-tab ber-`1==2` akan terbawa lagi, dan tiga panel akan digambar padahal section hanya mengikat dua |
+| `perintah-verifikasi-claim-pnc` | Menghemat dua jalan buntu: `gofmt -l` seluruh repo yang menyesatkan, dan `grep -r` atas akar repo yang selalu melampaui batas waktu |
+
+**Manfaat yang terukur.** Memori kedua langsung membuahkan tiga koreksi terhadap catatan §61
+modul yang sama — jumlah anak pencacah, sub-tab yang mati, dan asal label tab. Ketiganya
+ditemukan pada jam pertama, bukan setelah kode ditulis.
+
+### Teknik yang paling menentukan: membaca KATALOG, bukan menebak kolom
+
+**Apa yang dilakukan.** Sebuah program pemeriksa sementara ditulis di `cmd/kolomdump`,
+dijalankan **baca-saja** terhadap Oracle ASM, lalu **dihapus** — empat kali, masing-masing
+untuk satu pertanyaan.
+
+**Kenapa itu sepadan.** Pertanyaan "apakah kolom X ada" hanya punya satu jawaban yang sah, dan
+jawaban itu ada di katalog. Dokumen proyek menyebut jumlahnya tanpa menyebut namanya; modul
+lain hanya membuktikan kolom yang **dipakainya**, bukan yang tidak.
+
+**Yang dihasilkannya, dan tidak akan diperoleh dengan cara lain:**
+
+| Temuan | Akibat bila ditebak |
+|---|---|
+| **58 kolom, bukan 40** | Permintaan DDL untuk kolom yang sudah ada — `ALTER TABLE … ADD` polos gagal **ORA-01430** dan menyisakan tabel setengah jadi |
+| `PXFLOWNAME` dan `PXTASKLABEL` **ADA** | Penyaring alur Pega akan dihilangkan tanpa alasan, mengubah baris yang dihitung |
+| `STATUSCLAIM_1` dan tujuh kolom lain **ADA tetapi KOSONG** | Migrasi dijalankan, layar tetap kosong, dan sebabnya dicari di tempat yang salah |
+| `GROUPPANEL_1` **tidak punya satu pun `005`** | Tab TRAVEL yang mengembalikan nol baris akan dilaporkan sebagai cacat kueri |
+| **`SPAREPART_HE` adalah VIEW INVALID** | Tab-nya dibangun, gagal di produksi, dan modul Master Sparepart yang sudah jadi ikut terbukti gagal tanpa ada yang tahu sejak kapan |
+| `STSKLAIM` `1`=akseptasi, `3`=ditolak | Judul kolom dashboard dikarang |
+
+**`L-3` tertutup karenanya** — permintaan yang sudah menggantung sejak 2026-09-27.
+
+### Teknik kedua: memeriksa ULANG artefak yang baru dikirim
+
+Work Owner mengirimkan **lima artefak** dalam sesi ini sebagai jawaban atas pertanyaan
+(`SetStatusAksepNoRangka_SQL`, `SaveApproveAkseptasiPaymentLeader_Sql`, lalu tiga activity
+transfer kasir).
+
+Keduanya **tidak diterima begitu saja**. Masing-masing dibaca sampai ke pemanggilnya, dan
+pembacaan itu yang menemukan bahwa rantai transfer kasir **masih kurang dua rule SQL** —
+`UpdateChasierIDTablePembayaran` dan `GetDataMSTDetailSales` — di samping satu batas
+arsitektur yang tidak dapat diselesaikan artefak sama sekali (`P-1`).
+
+Menerima kiriman itu sebagai "sudah lengkap" akan menghasilkan tombol Setujui yang menandai
+pembayaran disetujui tanpa pernah sampai ke kasir.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|
+| **Memotong output pemeriksa dengan `head -70`** sehingga program tampak berhenti sendiri pada exit code 0 | Daftar kolomnya tepat 68 baris — `head` menutup pipa dan program menerima SIGPIPE | Saat sebuah program berhenti "diam-diam", periksa dulu apakah yang memotongnya adalah perintah saya sendiri |
+| **Menebak tiga nama kolom** antrean persetujuan (`NAMA_PANEL`, `ALAMAT_BENGKEL`, letak `NO_RANGKA`) | Diverifikasi ke `.sql` modul Master sebelum kode dijalankan — ketiganya salah | Pola yang sama dengan memori `kolom-t-claimlist-admin`: nama kolom dibuktikan dari kueri yang **berjalan**, bukan dari nama yang masuk akal |
+| **Menulis uji yang menuntut seluruh tab berhasil dimuat** | Uji gagal pada tab Master Sparepart | Yang keliru ujinya, bukan kodenya: data contoh sengaja menandai antrean itu tidak terbaca karena memang begitu keadaannya. Ujinya diperbaiki menjadi menuntut galat yang **dikenali** |
+
+Ketiganya berpola sama dengan pelajaran sesi-sesi sebelumnya — **alat atau dugaan dipercaya
+sebelum divalidasi**. Yang berbeda: ketiganya tertangkap sebelum sampai ke kode yang berjalan.
+
+### Catatan untuk sesi berikutnya
+
+1. **Program pemeriksa katalog layak dijadikan perkakas tetap**, bukan ditulis ulang tiap
+   sesi. Ia sudah ditulis empat kali dalam satu hari, dan tiap kali dihapus.
+2. **`PENYIMPANAN=oracle -periksa` belum dijalankan** untuk modul ini — kuerinya baru terbukti
+   sah terhadap katalog, bukan terbukti berjalan. Ia langkah pertama saat modul ini disentuh
+   berikutnya.
+3. **Dua temuan menyangkut modul yang sudah jadi** dan sengaja tidak disentuh:
+   `SPAREPART_HE` yang rusak, dan `PXASSIGNEDORGUNIT` yang praktis kosong. Keduanya di
+   `permintaan-artefak-pega.md`.
