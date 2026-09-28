@@ -9031,3 +9031,52 @@ Tetap tanpa skill (tidak tersedia). Yang menangkap cacat ORA-01008 bukan skill, 
 **menjalankan kueri sungguhan terhadap Oracle** setelah `-periksa` hijau. Pelajarannya:
 pemeriksaan yang hanya mem-parse kueri tidak membuktikan kueri dapat dijalankan. Bukti
 yang sah adalah satu eksekusi nyata dengan parameter binding.
+
+## Sesi 2026-09-28 — modul Inbox Service Center
+
+**Skill Matt Pocock tidak tersedia di lingkungan ini** (sudah diperiksa pada sesi-sesi
+sebelumnya dan tidak berubah). Yang dipakai adalah disiplinnya, bukan perkakasnya.
+
+### `grilling` — dipakai pada premis tugas, sebelum satu baris kode ditulis
+
+Permintaan menyebut `Harness/InboxServiceCenter-Harness.xml` sebagai acuan. Alih-alih
+membukanya dan mulai bekerja, premisnya diuji lebih dulu: berkasnya **tidak ada**, dan
+ketiadaannya dibuktikan dari enam direktori rule sekaligus, bukan dari satu `ls` yang gagal.
+
+**Manfaatnya konkret:** tanpa pengujian premis itu, satu-satunya jalan meneruskan adalah
+mengarang kolom, penyaring, dan aksi layar — persis yang dilarang `CLAUDE.md` ("No Shortcuts")
+dan `D-41`. Pekerjaan dihentikan, temuan dilaporkan dengan buktinya, dan Work Owner mengirim
+export susulan. Modulnya kemudian dibangun dari bukti, bukan dari dugaan.
+
+### `codebase-design` — dipakai menentukan di mana aturan tinggal
+
+Dua keputusan batas yang lahir darinya:
+
+- **Penyaring tab bertipe sendiri** (`ApprovalFilter`) alih-alih satu kode, karena bentuknya
+  memang tiga macam dan `IS NULL` tidak dapat digabung ke daftar kode.
+- **Satu fungsi penyusun argumen** (`filterArgs`) dipakai kueri daftar DAN kueri hitung,
+  sehingga keduanya tidak dapat berselisih tanpa uji yang gagal.
+
+### `domain-modeling` — dipakai pada alias yang menyesatkan
+
+Layar ini kasus ekstrem: `DateOfLoss` berisi tanggal input, `UserName` berisi nama nasabah,
+`NoKTP` berisi IMEI, dan daftar status perbaikan disimpan di properti bernama `Country` dan
+`CountryID`. Nama-nama itu **tidak dibawa**; padanannya disusun dari arti kolomnya dan
+dipetakan tiga arah di `peta-penamaan.md` serta di kepala `inboxservicecenter.sql`.
+
+### Yang menangkap cacat pada sesi ini — bukan skill, melainkan uji
+
+Dua kali, dan keduanya layak dicatat:
+
+1. **`Tabs()` bocor.** Salinan senarai tab ternyata masih berbagi larik `Columns`, sehingga
+   pemanggil dapat mengubah judul kolom bagi seluruh permintaan berikutnya. Ditangkap
+   `TestDaftarKolomTidakDapatDiubahLewatHasilTabs` — uji yang ditulis justru untuk memastikan
+   hal yang saya kira sudah benar.
+2. **Uji berjam tiruan meracuni uji sesudahnya.** `vi.useFakeTimers()` pada uji debounce
+   membuat empat uji berikutnya kehabisan waktu, meski sudah dipulihkan di `finally`.
+   Penyebabnya: layar menunggu jeda ketikan SEKALIGUS janji fetch dan React Query. Diganti
+   jam sungguhan + `vi.waitFor`, mengikuti preseden `inbox-admin`.
+
+**Pelajaran, melanjutkan pola dua sesi sebelumnya:** yang membuktikan sesuatu bekerja adalah
+menjalankannya, bukan membacanya. Pada sesi ini ia berlaku dua arah — uji menangkap cacat
+kode, dan menjalankan uji menangkap cacat pada ujinya sendiri.

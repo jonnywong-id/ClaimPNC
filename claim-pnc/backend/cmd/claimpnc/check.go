@@ -19,6 +19,7 @@ import (
 	"claim-pnc/internal/inboxinvestigator"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxreceivetka"
+	"claim-pnc/internal/inboxservicecenter"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/masterdominanfactor"
@@ -71,6 +72,7 @@ import (
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
 	"claim-pnc/internal/inboxsalvage"
 	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
+	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -1208,6 +1210,12 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 	rejection := masterpenolakansql.NewRepo(primary)
 	supplier := mastersuppliersql.NewRepo(primary)
 	inboxCompliance := inboxcompliancesql.NewRepo(primary)
+	inboxServiceCenter := inboxservicecentersql.NewRepo(primary)
+
+	// Tab Registrasi SC dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
+	// memakai tab yang BENAR-BENAR terdaftar.
+	serviceCenterTab, serviceCenterTabKnown := inboxservicecenter.FindTab(
+		inboxservicecenter.TabRegistration)
 
 	// Tab Compliance dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
 	// memakai tab yang BENAR-BENAR terdaftar. Tab yang tidak ditemukan membuat kueri
@@ -1251,6 +1259,64 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 				inboxcompliance.Pagination{Page: 1, Size: 1},
 			)
 			return page.Total, err
+		}},
+		// Kueri daftarnya ikut dijalankan, dan di modul ini pembedaan itu justru paling
+		// berharga: kueri grid aslinya TIDAK ADA di export (`R-16`) dan disusun ulang dari
+		// tiga rule sekelas — lihat kepala inboxservicecenter.sql. Nama kolom yang meleset
+		// karena itu bukan kemungkinan teoretis.
+		//
+		// Tab Registrasi SC yang dipakai, bukan tab lain, karena ia satu-satunya yang
+		// menempuh cabang `STS_APPROVAL IS NULL`. Cabang itulah yang paling mudah salah
+		// ditulis, sebab `= NULL` tidak pernah benar dan gagalnya DIAM: kuerinya berjalan,
+		// hasilnya nol baris, dan layar terbaca seperti antrean yang memang kosong.
+		{"Inbox Service Center", inboxServiceCenter.CheckTable, func(ctx context.Context) (int, error) {
+			if !serviceCenterTabKnown {
+				return 0, fmt.Errorf(
+					"tab %q tidak terdaftar di inboxservicecenter.Tabs()",
+					inboxservicecenter.TabRegistration)
+			}
+
+			page, err := inboxServiceCenter.List(
+				ctx,
+				inboxservicecenter.Query{
+					Tab:      serviceCenterTab,
+					Approval: inboxservicecenter.ApprovalFilter{MatchNull: true},
+					// Login karangan: yang diperiksa adalah kuerinya dapat berjalan dan
+					// kolomnya terbaca, bukan ada tidaknya baris milik seseorang.
+					Caller: inboxservicecenter.Caller{Login: "PERIKSA"},
+				},
+				inboxservicecenter.Pagination{Page: 1, Size: 1},
+			)
+			if err != nil {
+				return 0, err
+			}
+
+			// Kueri RINCIAN ikut dijalankan, dan justru inilah yang paling perlu.
+			//
+			// Ia menyebut **83 nama kolom** yang disusun ulang dari tiga rule sekelas —
+			// bukan disalin dari satu rule yang ada. Satu nama yang meleset menghasilkan
+			// ORA-00904 yang hanya menyebut kolom PERTAMA yang salah, sehingga menemukannya
+			// lewat layar berarti menemukannya satu per satu.
+			//
+			// Login dan ID karangan: yang diperiksa keberadaan kolomnya, bukan barisnya.
+			// Baris yang tidak ditemukan karena itu BUKAN kegagalan — ia jawaban yang
+			// diharapkan.
+			_, err = inboxServiceCenter.FindDetail(ctx, inboxservicecenter.DetailQuery{
+				ID:     "PERIKSA",
+				Caller: inboxservicecenter.Caller{Login: "PERIKSA"},
+			})
+			if err != nil && !errors.Is(err, inboxservicecenter.ErrNotFound) {
+				return 0, err
+			}
+
+			// Riwayat progres menyentuh tabel yang BERBEDA
+			// (`POOLDATA.PROGRESS_SERVICECENTER_CLAIM`), sehingga hak bacanya perlu
+			// dibuktikan tersendiri. Riwayat kosong bukan kegagalan.
+			if _, err := inboxServiceCenter.ListProgress(ctx, "PERIKSA"); err != nil {
+				return 0, err
+			}
+
+			return page.Total, nil
 		}},
 		{"Master Auto Claim", autoClaim.CheckTable, func(ctx context.Context) (int, error) {
 			row, err := autoClaim.List(ctx, masterautoclaim.Filter{})

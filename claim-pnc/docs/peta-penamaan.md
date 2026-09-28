@@ -4194,3 +4194,94 @@ lebih rapi dan sekaligus mengubah berkas yang sudah dipakai orang:
 | Note AI Terima | **Note Terima** |
 | Note AI Tolak | **Note Tolak** |
 | Coverage Final | **Coverage AI Final** |
+
+## Tambahan 2026-09-28 — modul Inbox Service Center (`inboxservicecenter`)
+
+`MENU_ID 46`. Tabel inti `POOLDATA.T_KLAIM_PORTAL_REKANAN` — klaim perbaikan perangkat dari
+portal mitra.
+
+### Nama modul
+
+| Lapisan | Bentuk |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxservicecenter` |
+| Frontend, folder | `src/modules/inbox-service-center` |
+| Rute | `/inbox-service-center` |
+| Jalur API | `/api/inbox-service-center` dan `/api/inbox-service-center/tab` |
+
+Nama modulnya **tidak** diterjemahkan menjadi "inbox-pusat-layanan": `D-81` menetapkan folder
+modul mengikuti nama yang dipakai Work Owner, dan butir menunya memang berbunyi "Inbox
+Service Center".
+
+### Kolom grid — enam, dan aliasnya menyesatkan
+
+Tanda (!) berarti nama lamanya menyebut hal yang **berbeda** dari isinya.
+
+| Judul kolom | Properti grid Pega | Kolom sebenarnya | Alias SQL lama | Nama di Go | Field JSON |
+|---|---|---|---|---|---|
+| ID | `.CaseID` | `ID` | `"CaseID"` | `ID` | `id` |
+| Tanggal Input | `.DateOfLoss` (!) | `INPUTDATE` | `"DateOfLoss"` (!) | `InputDate` | `tanggal_input` |
+| No Polis | `.PolicyNo` | `NOPOLIS` | `"PolicyNo"` | `PolicyNumber` | `no_polis` |
+| Nasabah | `.UserName` (!) | `QQNAME` | `"NamaDokumen"` (!) | `CustomerName` | `nasabah` |
+| Tipe | `.RefNo` (!) | `TYPE` | `"RefNo"` (!) | `Type` | `tipe` |
+| PIC | `.PICRekanan` | `PIC` | `"PICRekanan"` | `TechnicalPIC` | `pic` |
+
+### Dibawa tetapi TIDAK digambar sebagai kolom
+
+| Kolom | Alias SQL lama | Nama di Go | Field JSON | Kenapa dibawa |
+|---|---|---|---|---|
+| `REPAIRID` | `"NoClaim"` (!) | `RepairID` | `repair_id` | kunci riwayat progres; rincian kelak |
+| `CLAIMNO` | `"ClaimNo"` | `ClaimNumber` | `no_klaim` | ikut dicari kotak "Cari" |
+| `IMEI` | `"ClientID"` / `"NoKTP"` (!) | `IMEI` | `imei` | ikut dicari kotak "Cari" |
+| `STS_APPROVAL` | `"Keyword"` (!) | `ApprovalStatus` | `status_persetujuan` | pembentuk keempat tab |
+| `STATUS` | `"Status"` | `RepairStatus` | `status_perbaikan` | keadaan perbaikan |
+| `LOGIN` | `"Resources"` (!) | `Owner` | *(tidak dikirim)* | penyaring peran, belum aktif |
+| `KOMITEAPPROVE` | `"Bgklname"` (!) | `CommitteeApprover` | *(tidak dikirim)* | jalur komite |
+
+### Kode tab — API vs Pega
+
+| Judul tab | Kode API | `stsapprove` Pega |
+|---|---|---|
+| Registrasi SC | `registrasi-sc` | *(teks kosong)* |
+| Waiting Approval | `waiting-approval` | `0` |
+| Approved | `approved` | `1` |
+| Rejected | `rejected` | `2` |
+
+Alasan tidak memakai nilai Pega sebagai kode ada di `keputusan-implementasi.md` §62.1.
+
+### Dua daftar status — nama propertinya tidak menyatakan isinya
+
+`STS_APPROVAL`, dari `TempApproval` (`Status` + `StatusClaim`):
+
+```
+(NULL) Belum diajukan · 0 Menunggu Approval (==PILIH==) · 1 APPROVED · 2 TLO · 3 REJECT
+```
+
+`STATUS`, dari `StatusRepair` — propertinya bernama **`CountryID`** dan **`Country`**, dua nama
+yang tidak berhubungan sama sekali dengan isinya:
+
+```
+1 Repair Submitted · 2 Repair Assesment · 3 Repair Cancel · 4 Repair Indent
+5 Repair Eligible  · 6 Repair Inprogress · 7 Repair Completed · 8 Pick UP · 9 Data SC
+```
+
+Ejaan **"Assesment"** dipertahankan apa adanya meski salah ketik — itulah yang dibaca pengguna
+hari ini (`D-13`).
+
+### Tambahan — alias dari `PEGA_PORTAL_REKANAN` (2026-09-28)
+
+Procedure-nya menambah satu alias menyesatkan lagi, dan ia yang paling tajam di modul ini:
+
+| Properti Pega | Parameter procedure | Kolom sebenarnya | Isinya |
+|---|---|---|---|
+| `TempSC.ErrorNotes` (!) | `tpartjson clob` | `DETAILPART` | **rincian sparepart dalam JSON**, bukan catatan galat |
+
+Ditambah dua yang perlu diketahui saat jalur tulis dibangun:
+
+| Parameter | Arti |
+|---|---|
+| `tType` | `'SC'` atau `'BROKER'` — menggerbangi SELURUH isi procedure |
+| `status` | `'insert'` · `'update'` · atau `'1'`/`'2'`/`'3'` (keputusan komite) |
+
+Kode keputusan komite **sama persis** dengan kode `STS_APPROVAL` yang sudah dipetakan modul
+ini: `1` APPROVED · `2` TLO · `3` REJECT.

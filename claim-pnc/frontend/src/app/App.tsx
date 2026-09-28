@@ -7,6 +7,8 @@ import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
 import { InboxCompliancePage } from '@/modules/inbox-compliance/InboxCompliancePage'
+import { InboxServiceCenterPage } from '@/modules/inbox-service-center/InboxServiceCenterPage'
+import { ServiceCenterDetailPage } from '@/modules/inbox-service-center/ServiceCenterDetailPage'
 import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
 import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
 import { PanelPage } from '@/modules/master-panel/PanelPage'
@@ -574,6 +576,37 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxCompliancePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 46 "Inbox Service Center" — klaim portal rekanan (perbaikan perangkat).
+        Harness `InboxServiceCenter` sempat TIDAK ADA di export dan menjadi salah satu
+        contoh `K-33`; ia diterima pada export susulan 2026-09-28 beserta empat section
+        tab, sembilan activity, dan delapan rule SQL-nya.
+      */}
+      <Route
+        path="/inbox-service-center"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxServiceCenterPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Rincian satu klaim — pengganti `Section/InputClaimServiceCenter-Section.xml`.
+        Didaftarkan SESUDAH jalur daftarnya supaya `/inbox-service-center` tidak tertangkap
+        sebagai sebuah id.
+      */}
+      <Route
+        path="/inbox-service-center/:id"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ServiceCenterDetailPage />
             </Protected>
           </SessionGuard>
         }

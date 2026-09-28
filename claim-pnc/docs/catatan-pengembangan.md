@@ -21350,3 +21350,284 @@ saat ini." Backend tetap mengirim `identitas_lama_ditemukan`, `selisih_terencana
 
 Uji: `vitest run src/modules/inbox-rcl` **5 lulus** (uji baru memastikan peringatan dan kedua
 catatan tidak tampil) · `tsc` bersih.
+
+---
+
+## 65. Inbox Service Center — modul baru (2026-09-28)
+
+`MENU_ID 46`, kelompok INBOX, urutan 1136. Pengganti harness `InboxServiceCenter`.
+
+### 65.1 Premis tugas sempat tidak terpenuhi, lalu terpenuhi
+
+Permintaan awal menyebut `Harness/InboxServiceCenter-Harness.xml` sebagai acuan. Berkas itu
+**tidak ada** saat diperiksa: direktori `Harness/` memuat 74 berkas dan bukan salah satunya.
+Itu bukan salah ketik nama — `Section/`, `Activity/`, `RDB List/`, `Report Definition/`,
+`DataPage/`, dan `Flow Action/` juga nihil untuk kata "ServiceCenter". Yang ada hanya tiga
+jejak: butir menu di `Navigation/pyCaseWorkerNavigation-Navigation.xml:4770`, rule tampil
+`When/IsServiceCenterPNC-When.xml`, dan tiga activity yang justru **mengecualikan**
+`GCNMFW:PNCServiceCenter` dari daftar pekerja klaim.
+
+Keadaan itu sudah tercatat proyek ini sendiri — `registry.ts` dan
+`internal/menu/repo/memory/sample.go` menyebut `InboxServiceCenter` sebagai salah satu
+`MENU_PROGRAM` yang harness-nya hilang (`K-33`). Pekerjaan karena itu **dihentikan dan
+dilaporkan**, bukan dilanjutkan dengan lingkup karangan.
+
+Work Owner kemudian mengirim **export susulan** pada 2026-09-28. Yang masuk:
+
+| Direktori | Berkas baru |
+|---|---|
+| `Harness/` | `InboxServiceCenter-Harness.xml` (1,1 MB) |
+| `Section/` | 30, termasuk keempat section tab |
+| `Activity/` | 29, termasuk 9 milik modul ini |
+| `RDB List/` | 25, termasuk 8 milik modul ini |
+| `Flow Action/`, `Data Transform/`, `When/`, `DataPage/`, `Report Definition/` | 7 · 5 · 6 · 1 · 1 |
+
+### 65.2 Apa layar ini sebenarnya
+
+Bukan klaim PNC biasa. Tabel intinya `POOLDATA.T_KLAIM_PORTAL_REKANAN` memuat `IMEI`,
+`BRAND`, `MODEL`, `COLOUR`, `SIMCARD`, `BATTERY`, `LCD_TEXT`, dan `SUKUCADANG` — ia **klaim
+perbaikan perangkat** dari portal mitra. Itu sejalan dengan `IsServiceCenterPNC` yang ikut
+menyalakan menu ini pada host **entitas Insurtech**, lini yang menjual asuransi gawai.
+
+Harness-nya sendiri hanya pembungkus: panel CENTER-nya memuat section `BrowseServiceCenter`,
+sebuah wadah `TABBED` berisi empat sub-section.
+
+### 65.3 Empat tab, dan aturan penyaringnya
+
+Dibaca dari `Activity/DataServiceCenter-Act.xml` — 61 langkah — dengan prakondisi tiap
+langkah diperiksa satu per satu (`pyStepsPreCondition`, `pyStepsPreCondParamsWhen`, dan
+pasangan `WhenTrue`/`WhenFalse`; nilai `2` = lanjut, `3` = lewati).
+
+| Tab (judul Pega) | Section | `stsapprove` | Penyaring `STS_APPROVAL` |
+|---|---|---|---|
+| Registrasi SC | `ClaimServiceCenterOSnotTransfer` | *(kosong)* | `IS NULL` (langkah 15) |
+| Waiting Approval | `BrowseServiceCenterWaitingApproval` | `0` | `= '0'` (langkah 8) |
+| Approved | `BrowseServiceCenterApprove` | `1` | `= '1'` (langkah 8) |
+| Rejected | `BrowseServiceCenterReject` | `2` | **`IN ('2','3')`** (langkah 12) |
+
+Tab Rejected membawa **dua** kode: `2` TLO dan `3` REJECT.
+
+**Penyaring `PIC = pemanggil` berlaku pada keempat tab.** Langkah 13 berprakondisi
+`stsapprove=="komite"` dengan `true=3` (lewati) dan `false=2` (lanjut) — sehingga ia justru
+berjalan pada seluruh tab layar ini. Inilah yang membuatnya "inbox saya".
+
+Nilai `komite` bukan tab layar ini; ia dikirim layar komite dan menempuh langkah 14
+(`sts_approval='0' AND komiteapprove = saya`). Tidak dibawa.
+
+### 65.4 Enam kolom — bukan 18
+
+Keempat section memuat `pyCaption` yang **persis sama**: ID · Tanggal Input · No Polis ·
+Nasabah · Tipe · PIC. Sesuai median grid sistem lama (`T-11`). Aliasnya nyaris seluruhnya
+menyesatkan — `DateOfLoss` berisi tanggal input, `UserName` berisi nama nasabah, dan `NoKTP`
+pada kueri export justru berisi IMEI. Pemetaan tiga arahnya ada di kepala
+`inboxservicecenter.sql`.
+
+### 65.5 Satu rule yang tetap hilang, dan bagaimana ia disusun ulang
+
+`DataServiceCenter` memanggil RDB rule `GetDataServiceCenter` pada kelas
+**`ASM-FW-GCNMFW-Data-ClaimData`**. Yang ikut terekspor adalah rule bernama sama pada kelas
+**`ASM-FW-GCNMFW-Int-T_GENERAL`** — kueri lain sama sekali, yang membaca
+`pooldata.service_log_nonmbu`. Kueri grid yang sebenarnya **tidak ada di export** (`R-16`).
+
+Ia tidak dikarang. Tiga rule sekelas yang ada memberi seluruh bahannya: `CountDataServiceCenter`
+(tabel + ketiga penyaring persis), `ExportDataServiceCenter` (kolom), dan
+`GetDataServiceCenter_Update` (peta kolom → alias). Keenam kolom grid ada di kedua terakhir.
+
+**Yang tersisa sebagai dugaan hanya `ORDER BY`.** Dua bukti tersedia dan berbeda: langkah 28
+activity memakai `order by A.INPUTDATE desc`, sedangkan `ExportDataServiceCenter` memakai
+`ORDER BY ID ASC`. Dipakai yang pertama — ia grid atas tabel yang sama, yang kedua unduhan
+berkas. Dicatat di kepala berkas SQL supaya dapat diganti dengan satu suntingan.
+
+### 65.6 Cacat pencarian yang DIREPLIKASI, bukan diperbaiki
+
+Langkah 17 dan 18 memasang **dua potongan pencarian terpisah** yang keduanya ikut terpasang,
+digabung dengan `AND`:
+
+```
+17:  AND (ID      LIKE %k% OR NOPOLIS LIKE %k% OR QQNAME LIKE %k% OR IMEI LIKE %k%)
+18:  AND (CLAIMNO LIKE %k% OR NOPOLIS LIKE %k% OR QQNAME LIKE %k% OR IMEI LIKE %k%)
+```
+
+Keduanya hanya berbagi **NOPOLIS, QQNAME, IMEI**. Akibatnya mencari dengan **ID saja** atau
+**No Klaim saja tidak menghasilkan baris** — kata kuncinya gugur pada kelompok yang lain.
+
+Ia tidak masuk 13 butir perbaikan `P-5`, sehingga **direplikasi** dan dinyatakan terbuka:
+sebagai keterbatasan yang dikirim server, sebagai keterangan tepat di bawah kotak cari, dan
+sebagai uji bernama `TestPencarianDenganIDSajaTidakMenghasilkanBaris` — sehingga
+memperbaikinya kelak menjadi keputusan yang tercatat, bukan perubahan tidak sengaja.
+
+### 65.7 Paginasi mati saat mencari
+
+Langkah 22 ("Jika Tidak Ada Pencarian // Set Row") memasang `WHERE rn >= awal AND rn <= akhir`;
+langkah 23 ("Jika Ada Pencarian // Tidak Set Row") **mengosongkannya**. Klausa `rn` itu
+satu-satunya paginasi kuerinya, jadi begitu kotak cari terisi seluruh baris yang cocok
+terbawa sekaligus. Ditiru apa adanya; server menyatakannya lewat `paginasi.aktif`, dan layar
+menyembunyikan bilah halaman alih-alih menggambar tombol yang tak bisa ditekan.
+
+Ukuran halaman **25**, dibaca dari langkah 21 (`.PageSize`) — bukan disamakan dengan modul
+lain yang memakai 20.
+
+### 65.8 Kenapa modul ini MEMBACA SAJA
+
+Bukan pilihan gaya. Seluruh jalur tulisnya bermuara pada **`POOLDATA.PEGA_PORTAL_REKANAN`**,
+stored procedure **ber-90 parameter** yang dipanggil `RDB List/CallProcServiceCenter-SQL.xml`.
+Sumbernya **tidak ada** di `Database/` (74 berkas, tidak satu pun untuknya) — `R-01`. `D-02`
+menetapkan logikanya ditulis ulang di Go, dan itu tidak dapat dilakukan tanpa membacanya.
+
+### 65.9 Satu cacat yang ditangkap uji saat modul ditulis
+
+`Tabs()` mengembalikan salinan senarai tab, tetapi `Tab.Columns` adalah senarai — salinannya
+masih berbagi larik yang sama. Menulisi `Tabs()[0].Columns[0].Title` karena itu mengubah judul
+kolom bagi **seluruh permintaan berikutnya**, sebab `tabs` hidup selama aplikasi berjalan.
+Ditangkap `TestDaftarKolomTidakDapatDiubahLewatHasilTabs`, diperbaiki dengan `copyTab`.
+
+### 65.10 Hasil uji
+
+`go build ./...` bersih · `go vet` bersih · `go test ./...` **246 paket lulus, nol gagal** ·
+`tsc --noEmit` bersih · `vitest run` **71 berkas, 1164 uji lulus** (9 di antaranya milik modul
+ini).
+
+Format Go: berkas modul ini bersih terhadap `gofmt`. `cmd/claimpnc/main.go` dan `check.go`
+tetap ditandai `gofmt -l`, dan itu **sudah begitu sebelum sesi ini** — sebabnya akhiran baris
+CRLF ditambah urutan impor lama (`inboxrcl`, `laporanhasilai`, `casestudyclaim`). Tidak
+diperbaiki: memperbaikinya menulis ulang seluruh baris kedua berkas dan mengubur perubahan
+yang sesungguhnya.
+
+---
+
+## 66. `PEGA_PORTAL_REKANAN` diterima — penghalang tulis tertutup (2026-09-28)
+
+`Database/PEGA_PORTAL_REKANAN.prc`, 156 baris, 89 parameter masuk + 1 keluar. Dengan ini
+**penghalang terakhir modul Inbox Service Center tertutup**: seluruh artefak yang dirujuknya
+kini ada — activity, section, SQL, report definition, dan objek basis data.
+
+### 66.1 Empat temuan yang mengubah pemahaman
+
+**a. Tabelnya melayani DUA lini, bukan satu.** Seluruh isi procedure digerbangi `tType`:
+
+```
+IF tType = 'SC'      THEN   ... insert / update / approval
+ELSIF tType = 'BROKER' THEN ... insert / update
+```
+
+Keduanya menulis tabel yang **sama**, `POOLDATA.T_KLAIM_PORTAL_REKANAN`. Itulah sebab kolom
+`TYPE` ada, dan sebab grid punya kolom berjudul "Tipe".
+
+**Tidak ada satu pun kueri yang menyaring `TYPE`** — `CountDataServiceCenter`,
+`ExportDataServiceCenter`, dan `GetDataServiceCenter_Update` ketiganya tanpa penyaring itu.
+Artinya Inbox Service Center di Pega **menampilkan baris BROKER juga**, sejauh `PIC`-nya
+cocok. Implementasi kita mengikuti apa adanya (`P-5`); apakah itu memang dikehendaki
+diajukan sebagai pertanyaan ke Work Owner.
+
+**b. Tiga jalur tulis, bukan satu.** Nilai `status` menentukannya:
+
+| `status` | Yang terjadi | Kolom tersentuh |
+|---|---|---|
+| `insert` | baris baru | ±80 kolom |
+| `update` | ubah rincian | ±70 kolom, `WHERE ID = IDPega` |
+| `1`, `2`, `3` | **keputusan komite** | hanya `STS_APPROVAL` dan `REMARK` |
+
+Keputusan komite karena itu operasi yang sangat sempit — dua kolom — dan kodenya sama persis
+dengan kode `STS_APPROVAL` yang sudah dipetakan modul ini (`1` APPROVED, `2` TLO, `3` REJECT).
+
+**c. `COMMIT` tidak konsisten.** Cabang `insert` memanggil `COMMIT` sendiri; cabang `update`
+dan cabang keputusan komite **tidak**. Keduanya bergantung pada `COMMIT` milik pemanggil di
+`RDB List/CallProcServiceCenter-SQL.xml`.
+
+Ini bukan cacat yang menggigit hari ini, tetapi ia contoh lain dari pola yang `D-68` catat:
+batas transaksi tersebar antara procedure dan pemanggilnya. Setelah logikanya naik ke Go,
+ketiganya menjadi satu transaksi dengan satu `COMMIT` di lapisan aplikasi.
+
+**d. `ErrMsg` di sini BERPERILAKU BENAR** — berbeda dari enam procedure yang `D-68` sebut.
+Ia di-set `'Success'` pada setiap jalur sukses dan `'<Operasi> Error : ' || sqlerrm` pada
+setiap jalur gagal, disertai `ROLLBACK` dan `RETURN`. Jadi `NULL` di sini tidak berarti
+berhasil — ia berarti procedure tidak pernah sampai ke cabang mana pun, yakni `tType` di luar
+`SC` dan `BROKER`.
+
+### 66.2 Satu alias menyesatkan lagi
+
+Pemanggil mengirim `{TempSC.ErrorNotes}` pada posisi parameter `tpartjson clob`, dan procedure
+menyimpannya ke kolom **`DETAILPART`**. Properti bernama "ErrorNotes" karena itu sebenarnya
+membawa **rincian sparepart dalam bentuk JSON** — bukan catatan galat.
+
+Ditambahkan ke peta penamaan modul ini.
+
+### 66.3 Yang belum diputuskan sebelum jalur tulis dibangun
+
+Bukan lagi soal artefak. Yang tersisa keputusan:
+
+1. **`P-1`.** `T_KLAIM_PORTAL_REKANAN` hari ini ditulis Pega. Membangun jalur tulis di Go
+   berarti dua sistem menulis satu tabel — dilarang selama masa paralel sampai kepemilikannya
+   berpindah. Ini keputusan Work Owner, bukan keputusan teknis.
+2. **Baris BROKER** — apakah memang seharusnya tampil di Inbox Service Center.
+3. **Lingkup layar rincian** — baca-saja lebih dulu, atau langsung dengan simpan.
+
+---
+
+## 67. Inbox Service Center — layar rincian (2026-09-28)
+
+Lanjutan §66, atas arahan Work Owner **"ikuti PEGA"**.
+
+### 67.1 Yang dibangun
+
+Layar rincian pengganti `Section/InputClaimServiceCenter-Section.xml`: **83 isian** dalam
+**tujuh kelompok**, ditambah riwayat catatan progres.
+
+| Kelompok | Sumber judul |
+|---|---|
+| General Information · Informasi Unit · Informasi Perbaikan · Estimasi Date · Estimasi Biaya · Harga Approve Komite · Accessories Unit | judul kontainer di section Pega |
+
+Kelompok, urutan, dan **judul tiap isian dikirim SERVER** — bukan daftar tetap di layar.
+Alasannya sama dengan kolom grid: ketiganya hasil pembacaan `pyCaption` di export, dan tempat
+pembacaan itu tercatat di backend. Menyalinnya ke frontend berarti 83 judul hidup di dua
+tempat.
+
+Rute baru: `GET /api/inbox-service-center/{id}` dan layar `/inbox-service-center/:id`, dengan
+tautan "Lihat Rincian" di tiap baris daftar.
+
+### 67.2 Tiga perbedaan yang DISENGAJA terhadap Pega
+
+1. **Rincian disaring menurut `PIC`.** Kueri lama tidak menyaringnya — di Pega rincian hanya
+   dapat dicapai lewat klik pada baris yang SUDAH tersaring. Pada API yang dapat dipanggil
+   langsung jaminan itu hilang, dan `ID` di tabel ini berurutan. Tanpa penyaring, siapa pun
+   yang sudah masuk dapat membaca nama nasabah dan IMEI milik petugas lain dengan menaikkan
+   angka pada jalurnya.
+2. **Klaim tidak ada dan klaim bukan milik sendiri dijawab SAMA** (404, pesan identik).
+   Membedakannya memberi tahu penanya bahwa sebuah ID nyata.
+3. **`BIAYA LAINNYA` kini terisi benar.** Di kueri lama `OTHER_FEE` dan `CANCELLED_REASON`
+   sama-sama dialiaskan `"DistrictID"`, sehingga yang belakangan menimpa yang duluan dan
+   salah satunya selalu hilang di klipboard.
+
+Ketiganya dinyatakan lewat `Limitations`, yang kini **7 butir** dan tampil di layar.
+
+### 67.3 Yang sengaja BELUM diuraikan
+
+Kolom `DETAILPART` ditampilkan **apa adanya** sebagai teks. Bentuk JSON-nya belum pernah
+dibaca dari data sungguhan; menguraikannya berdasarkan tebakan akan menghasilkan grid kosong
+atau salah kolom **tanpa satu pun galat**, dan pengguna tidak punya cara menduga bahwa yang
+ia lihat tidak lengkap.
+
+### 67.4 Kenapa masih BACA-SAJA
+
+Bukan lagi karena artefaknya kurang — `PEGA_PORTAL_REKANAN` sudah diterima. Yang menahan
+adalah **`P-1`**: `T_KLAIM_PORTAL_REKANAN` hari ini ditulis Pega, dan selama masa paralel satu
+tabel hanya boleh ditulis satu sistem. Memindahkan kepemilikannya adalah keputusan Work Owner,
+bukan keputusan teknis.
+
+Begitu keputusan itu ada, ketiga jalur tulis sudah terbaca seluruhnya dari procedure-nya
+(§66.1) dan tinggal ditulis ulang di Go dalam satu transaksi.
+
+### 67.5 `-periksa` ikut menguji kueri rincian
+
+Ditambahkan ke probe "Inbox Service Center", dan justru inilah yang paling perlu: kueri
+rincian menyebut **83 nama kolom** yang disusun ulang dari tiga rule sekelas. Satu nama yang
+meleset menghasilkan `ORA-00904` yang hanya menyebut kolom PERTAMA yang salah — menemukannya
+lewat layar berarti menemukannya satu per satu.
+
+Riwayat progres ikut diperiksa tersendiri karena tabelnya berbeda
+(`POOLDATA.PROGRESS_SERVICECENTER_CLAIM`), sehingga hak bacanya perlu dibuktikan sendiri.
+
+### 67.6 Hasil uji
+
+`go build ./...` bersih · `go vet` bersih · **246 paket Go lulus** · `tsc --noEmit` bersih ·
+**72 berkas frontend, 1171 uji lulus** (16 di antaranya milik modul ini).

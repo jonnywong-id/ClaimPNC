@@ -17613,3 +17613,83 @@ Propertinya `DateTime` dan section memakai kontrol `pxDateTime`, sehingga dikiri
    pengisi `T_CLAIMLIST_ADMIN` (§D.1 dokumen kolom): ia harus membawa ketiga nilai, dua di
    antaranya dari blob Pega, dan memuat klaim tahap RCL Dokter — hari ini nol.
 4. `T_ACCESS_GROUP_PNC` tetap sumber identitas lama; ia tabel POOLDATA, di luar keputusan ini.
+
+## 62. Inbox Service Center (2026-09-28)
+
+### 62.1 Kode tab TIDAK memakai nilai Pega apa adanya
+
+Modul lain mempertahankan kode tab Pega demi ketelusuran (mis. `inboxadmin` memakai `3`, `7`,
+`9`). Di sini **tidak bisa**: nilai `stsapprove` untuk tab pertama adalah **teks kosong**.
+
+Pada parameter query HTTP, "kosong" tidak dapat dibedakan dari "tidak dikirim" — dan keduanya
+di sini berarti hal berbeda: yang pertama tab Registrasi SC, yang kedua "pakai tab bawaan".
+
+**Keputusan:** kode tab pada kontrak API dibuat deskriptif (`registrasi-sc`,
+`waiting-approval`, `approved`, `rejected`), dan nilai Pega-nya dibawa terpisah pada
+`Tab.PegaParam` — ikut dikirim ke layar sebagai `parameter_pega`, tidak digambar. Dengan
+begitu ketelusuran ke langkah activity tetap ada tanpa ambiguitas parameter.
+
+### 62.2 Paginasi dipotong di BASIS DATA, bukan di aplikasi
+
+Berbeda dari `inboxadmin`, yang atas keputusan Work Owner 2026-09-20 menarik seluruh baris
+lalu memotongnya di aplikasi.
+
+Alasannya: di layar itu, sistem lama memang menarik semuanya lebih dulu. **Di sini tidak** —
+kuerinya memotong di basis data lewat `WHERE rn >= :awal AND rn <= :akhir` atas kolom
+`ROW_NUMBER()`. Menirunya dengan menarik semuanya ke memori akan **lebih buruk daripada
+Pega**, bukan setara dengannya. Dipakai `OFFSET … ROWS FETCH NEXT … ROWS ONLY` (portabel,
+`D-20`).
+
+### 62.3 Hitung dulu, baru ambil
+
+Dua alasan, keduanya perlu: layar menggambar "halaman x dari y", dan saat **mencari**
+paginasi mati sehingga batas `FETCH NEXT` harus sebesar jumlah baris yang cocok — angka yang
+tidak diketahui tanpa menghitung lebih dulu. Sistem lama pun memakai kueri hitung tersendiri
+(`CountDataServiceCenter`).
+
+Penyaring kedua kueri disusun **satu fungsi** (`filterArgs`) dan dijaga uji
+`TestPenyaringDaftarDanHitungSamaPersis` — penyaring yang berselisih menghasilkan "halaman 1
+dari 7" yang halaman ketujuhnya kosong.
+
+### 62.4 Penyaring `STS_APPROVAL` bertipe sendiri, bukan satu kode
+
+Bentuknya tiga macam: sama dengan satu nilai, termasuk salah satu dari dua, dan `IS NULL`.
+`IS NULL` **tidak dapat** digabung ke daftar kode karena `= NULL` tidak pernah benar di SQL.
+
+Di SQL dipakai dua penanda `'Y'`/`'N'` yang menyalakan salah satu cabang, ditambah `IN (:3, :4)`
+berpenanda tetap — tab berkode tunggal mengirim kodenya dua kali. Daftar `IN` berpanjang
+berubah menuntut teks SQL yang dirakit, dan itu jalan kembali ke perangkaian string yang
+justru ditinggalkan.
+
+### 62.5 Penyaring `LOGIN` tidak dibawa; `PIC` dibawa
+
+Langkah 19 memasang `AND LOGIN = saya` **hanya** bagi access group `GCNMFW:PNCServiceCenter`.
+Sumber peran belum ada (`TKT-F3-004`), sehingga penyaring itu tidak dapat diterapkan dengan
+benar — menerapkannya pada semua orang akan menyembunyikan baris dari `PncAdmin` yang
+seharusnya melihatnya.
+
+Yang **dibawa** adalah `PIC = pemanggil`, karena ia tidak bergantung peran sama sekali dan
+berlaku pada keempat tab. Ia pula yang menahan kebocoran sementara pemeriksaan peran belum
+ada: petugas yang bukan PIC sebuah klaim tidak melihatnya, peran apa pun yang ia punya.
+Dinyatakan terbuka lewat `Limitations`.
+
+### 62.6 Dua status dikirim sebagai kode DAN label
+
+`status_perbaikan` dan `status_persetujuan` dikirim berpasangan dengan `_label`-nya. Kode
+supaya layar membandingkan tanpa mencocokkan teks yang dapat berubah; label supaya tabel
+terjemahannya hidup di satu tempat — backend, tempat ia dibaca dari rule Pega.
+
+Kode asing dikembalikan **apa adanya**, bukan diganti "Tidak diketahui": kode asing berarti
+ada nilai di basis data yang belum terbaca modul ini, dan menyembunyikannya di balik satu
+label seragam membuat hal itu tidak pernah ketahuan.
+
+### 62.7 Utang teknis yang disadari
+
+- **`TKT-F3-005`**: penjaga menu `IsServiceCenterPNC` belum ditegakkan; peredamnya penyaring
+  `PIC`. Dua cabang berbasis nama server pada rule itu **tidak dibawa** — `12-CROSSCUTTING.md`
+  §3.4 melarangnya, dan penggantinya belum diputuskan (`ADR-0025`).
+- **Layar rincian belum ada.** `Section/InputClaimServiceCenter-Section.xml` memuat ±85 isian
+  (Brand, Model, IMEI, delapan aksesori, tujuh komponen biaya beserta pasangan
+  "approve"-nya). Ia layar tersendiri, dan tetap terhalang `R-01` yang sama dengan jalur tulis.
+- **`ORDER BY` masih dugaan** — lihat catatan pengembangan §65.5.
+- **Awalan `/v1` belum dipakai**, mengikuti modul lain; penyeragamannya utang bersama.

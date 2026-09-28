@@ -961,3 +961,94 @@ bukan tabel Pega. Permintaannya kini:
    tahap RCL Dokter (hari ini nol).
 3. **Tim Pega** — rule mana yang menulis `NamaDokterRCL` dan `TanggalAnalystSendRCL`
    (dugaan `RouterRCLDokter`, hilang dari export), supaya pengisi tahu kapan nilainya sah.
+
+### 6.13 Inbox Service Center — dua artefak, ke Tim Pega dan DBA
+
+Modul `MENU_ID 46` sudah dibangun dan berjalan dari export susulan 2026-09-28. Dua artefak
+tetap kurang, dan keduanya menahan hal yang berbeda.
+
+#### a. Kueri grid `GetDataServiceCenter` — ke **Tim Pega**
+
+`Activity/DataServiceCenter-Act.xml` memanggil RDB rule bernama `GetDataServiceCenter` pada
+kelas **`ASM-FW-GCNMFW-Data-ClaimData`**.
+
+Yang ikut terekspor adalah rule **bernama sama pada kelas lain** —
+`ASM-FW-GCNMFW-Int-T_GENERAL` (`RDB List/GetDataServiceCenter-SQL.xml`, `pzInsKey`
+`RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETDATASERVICECENTER`). Isinya kueri lain
+sama sekali: ia membaca `pooldata.service_log_nonmbu` lewat `JSON_VALUE`, bukan
+`T_KLAIM_PORTAL_REKANAN`.
+
+**Yang diminta:** rule `GetDataServiceCenter` pada kelas `ASM-FW-GCNMFW-Data-ClaimData`.
+
+**Dampaknya bila tidak datang — kecil tetapi nyata.** Kuerinya sudah disusun ulang dari tiga
+rule sekelas yang ada (`CountDataServiceCenter`, `ExportDataServiceCenter`,
+`GetDataServiceCenter_Update`), dan keenam kolom gridnya ada di kedua terakhir. Yang **tidak**
+dapat disusun ulang hanyalah klausa `ORDER BY`-nya: dua bukti yang tersedia berbeda —
+`order by A.INPUTDATE desc` (langkah 28 activity) dan `ORDER BY ID ASC`
+(`ExportDataServiceCenter`). Dipakai yang pertama. Bila rule aslinya datang dan urutannya
+berbeda, yang berubah satu klausa.
+
+Sekalian dikonfirmasi: apakah rule bernama sama pada dua kelas berbeda itu disengaja, atau
+sisa Save-As yang salah kelas.
+
+#### b. Source `POOLDATA.PEGA_PORTAL_REKANAN` — ke **DBA**
+
+Stored procedure **ber-90 parameter**, dipanggil `RDB List/CallProcServiceCenter-SQL.xml`. Ia
+satu-satunya jalur tulis layar ini: menyimpan rincian klaim, memutuskan komite, dan menulis
+ketujuh komponen biaya beserta pasangan "approve"-nya.
+
+Sumbernya **tidak ada** di `Database/` — 74 berkas, tidak satu pun untuknya. Ini bagian dari
+`R-01`.
+
+**Dampaknya besar:** `D-02` menetapkan logikanya ditulis ulang di Go, dan itu tidak dapat
+dilakukan tanpa membacanya. Sampai ia datang, modul Inbox Service Center **MEMBACA SAJA** —
+tombol simpan dan keputusan komite tidak dibangun sama sekali, bukan dibangun lalu
+dinonaktifkan.
+
+Parameter `ErrMsg`-nya patut diperhatikan saat ditulis ulang: pola yang sama pada procedure
+lain ternyata tidak di-set pada jalur sukses, sehingga `NULL` berarti berhasil (`D-68`).
+
+Kueri penarik source-nya sama dengan §1:
+
+```sql
+SELECT owner, name, type, line, text
+  FROM all_source
+ WHERE owner = 'POOLDATA' AND name = 'PEGA_PORTAL_REKANAN'
+ ORDER BY type, line;
+```
+
+#### ✅ Status §6.13(b) — DITERIMA 2026-09-28
+
+`Database/PEGA_PORTAL_REKANAN.prc` sudah dikirim Work Owner: 156 baris, 89 parameter masuk +
+`ErrMsg` keluar. **Permintaan ini ditutup.**
+
+Dengan itu seluruh artefak modul Inbox Service Center lengkap — pemindaian ulang terhadap
+sembilan activity dan sepuluh section modul ini tidak menemukan satu pun activity, section,
+rule SQL, atau report definition buatan sendiri yang masih hilang.
+
+Isinya dicatat di catatan pengembangan §66, termasuk empat temuan yang mengubah pemahaman:
+tabelnya melayani dua lini (`SC` dan `BROKER`), ada tiga jalur tulis, `COMMIT`-nya tidak
+konsisten antar cabang, dan `ErrMsg`-nya justru berperilaku benar.
+
+**§6.13(a) masih terbuka** — rule grid `GetDataServiceCenter` pada kelas
+`ASM-FW-GCNMFW-Data-ClaimData`. Dampaknya tetap kecil: hanya memastikan klausa `ORDER BY`.
+
+#### ✅ Status §6.13(a) — DITUTUP 2026-09-28, tidak perlu diminta
+
+Work Owner menegaskan: jalur JSON **sudah tidak dipakai lagi — sekarang langsung ke kolom**.
+
+Itu menjelaskan mengapa rule `GetDataServiceCenter` yang terekspor (kelas
+`ASM-FW-GCNMFW-Int-T_GENERAL`) membaca `pooldata.service_log_nonmbu` lewat `JSON_VALUE`: ia
+jalur LAMA, bukan kueri grid yang berlaku. Kueri yang berlaku membaca kolom
+`POOLDATA.T_KLAIM_PORTAL_REKANAN` secara langsung — persis seperti rekonstruksi di
+`inboxservicecenter.sql`, yang memang disusun dari `CountDataServiceCenter`,
+`ExportDataServiceCenter`, dan `GetDataServiceCenter_Update` (ketiganya membaca kolom, bukan
+JSON).
+
+**Permintaan ini ditutup.** Dengan begitu seluruh §6.13 selesai, dan modul Inbox Service
+Center tidak lagi menunggu artefak apa pun.
+
+Satu hal yang TETAP dugaan dan tidak tertutup oleh penegasan ini: klausa `ORDER BY`. Dua
+bukti yang ada tetap berbeda — `order by A.INPUTDATE desc` (langkah 28 activity) versus
+`ORDER BY ID ASC` (`ExportDataServiceCenter`). Dipakai yang pertama; bila keliru, satu
+suntingan.
