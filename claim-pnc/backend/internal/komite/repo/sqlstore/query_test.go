@@ -25,6 +25,10 @@ func TestSeluruhKueriYangDipakaiAda(t *testing.T) {
 		"inbox_get",
 		"inbox_check_table",
 
+		"transfer_lines",
+		"transfer_committee",
+		"transfer_check_table",
+
 		"decision_list_for_cases",
 		"decision_insert",
 		"decision_check_table",
@@ -495,4 +499,151 @@ func TestPenyaringPemilikHanyaMatiBilaDiminta(t *testing.T) {
 		require.Nil(t, summaryArgs(semua)[0])
 		require.Nil(t, summaryArgs(semua)[1])
 	})
+}
+
+// Rincian transfer WAJIB dikunci pada case komite, bukan pada klaimnya.
+//
+// # Kenapa uji ini ada
+//
+// `T_CLAIM_ADJUSTMENT` punya `CASEIDKOMITE` dan `CLAIMID`, dan keduanya berarti hal yang
+// BERBEDA. Diukur pada basis data ASM atas dua belas case yang punya keduanya:
+//
+//	lewat CASEIDKOMITE   1 baris   pada dua belas-duanya
+//	lewat CLAIMID        4–8 baris pada dua belas-duanya
+//
+// Tidak satu pun sama. Menukar kuncinya tidak menimbulkan galat apa pun — ia hanya
+// menampilkan empat sampai delapan nilai uang milik case komite LAIN pada layar tempat
+// orang menyetujui uang. Kegagalan seperti itu tidak terlihat sebagai kegagalan.
+func TestKueriTransferMemakaiKunciCaseKomite(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_lines"))
+
+	require.Contains(t, rapat, "WHERE j.CASEIDKOMITE = :1",
+		"rincian transfer harus dikunci pada case komite")
+	require.NotContains(t, rapat, "j.CLAIMID = :",
+		"rincian transfer TIDAK boleh dikunci pada nomor klaim — ia mengembalikan baris "+
+			"milik case komite lain")
+}
+
+// Keputusan komite dibaca TERAGREGASI, dan itu bukan kerapian.
+//
+// `T_CLAIM_KOMITE_LIST` berisi 39.067.250 baris dan `KOMITE_ID` tidak dijamin unik. Kueri
+// yang mengembalikan dua baris untuk satu case akan gagal pada `QueryRow` — pada layar yang
+// baru saja dibuka seseorang, bukan pada layar acuan yang dapat ditunda.
+func TestKueriKeputusanKomiteSelaluSatuBaris(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_committee"))
+
+	require.Contains(t, rapat, "MAX(k.NAMAKOMITE)")
+	require.Contains(t, rapat, "COUNT(1)",
+		"tanpa pencacah, 'tidak ada baris' tidak dapat dibedakan dari 'ada tetapi kosong'")
+	require.Contains(t, rapat, "WHERE k.KOMITE_ID = :1")
+}
+
+// Kueri rincian hanya boleh menyentuh tabel yang sudah ditelusuri asalnya.
+//
+// Tabel tambahan apa pun berarti layar ini menampilkan sesuatu yang belum ditelusuri
+// asalnya — dan pada rincian yang memuat nilai uang, asal-usul itu yang menentukan apakah
+// angkanya dapat dipercaya.
+//
+// # Kenapa `transfer_case` boleh menyentuh DATAPEGA dan yang lain tidak
+//
+// Kedua kueri NILAI (`transfer_lines`, `transfer_committee`) membaca POOLDATA saja, dan
+// itu batas yang dijaga ketat. `transfer_case` tidak membaca nilai sama sekali: ia
+// mengambil `GROUPPANEL_1` dan `BUSINESSTYPE` yang dibutuhkan JUDUL layar, dan keduanya
+// memang hanya ada di baris kerja.
+//
+// Pembedaan ini disengaja: yang dijaga bukan "jangan sentuh DATAPEGA", melainkan "nilai
+// uang hanya boleh datang dari POOLDATA".
+func TestKueriTransferHanyaMenyentuhTabelYangSudahDitelusuri(t *testing.T) {
+	terlarang := []string{
+		"T_CLAIM_DATA_RESULTS_AI", "PEGA_DASHBOARDPNC",
+		"CPNC_KOMITE_KEPUTUSAN", "EMAILKOMITE",
+	}
+
+	for nama, teks := range queries {
+		if !strings.HasPrefix(nama, "transfer_") {
+			continue
+		}
+		hurufBesar := strings.ToUpper(teks)
+		for _, tabel := range terlarang {
+			require.NotContainsf(t, hurufBesar, strings.ToUpper(tabel),
+				"kueri %q menyentuh %s", nama, tabel)
+		}
+
+		if nama == "transfer_case" {
+			continue
+		}
+		require.NotContainsf(t, hurufBesar, "DATAPEGA.",
+			"kueri nilai %q membaca tabel engine Pega; nilai uang hanya boleh dari POOLDATA", nama)
+	}
+}
+
+// `transfer_case` membaca tepat dua medan, dan tidak satu pun di antaranya nilai uang.
+//
+// Ia satu-satunya kueri rincian yang menyentuh tabel engine Pega. Batasnya dijaga di sini
+// supaya ia tidak perlahan berubah menjadi jalan pintas untuk mengambil apa pun dari sana.
+func TestKueriKonteksCaseHanyaUntukJudul(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_case"))
+
+	require.Contains(t, rapat, "MAX(a.GROUPPANEL_1)",
+		"IsTravel pada ShowTransfer membandingkan GroupPanel = 005")
+	require.Contains(t, rapat, "MAX(a.BUSINESSTYPE)",
+		"IsHE pada ShowTransfer membandingkan BusinessType")
+	require.Contains(t, rapat, "WHERE a.PYID = :1")
+	require.Contains(t, rapat, "PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'",
+		"tanpa penyaring kelas, PYID dapat mengenai case bukan komite")
+
+	// MAX bukan kerapian: tanpanya kueri ini tidak mengembalikan baris sama sekali ketika
+	// PYID tidak ditemukan, dan `QueryRow` akan berbunyi sql.ErrNoRows pada case yang
+	// sebenarnya sehat.
+	require.NotContains(t, rapat, "NILAI", "kueri judul tidak boleh membaca nilai uang")
+}
+
+// Kunci klaim WAJIB diambil ber-prefix, dan ini uji yang paling berharga di berkas ini.
+//
+// `T_CLAIM_PNC.CLAIMID` berbunyi `ASM-FW-GCNMFW-WORK PNC-1670`, bukan `PNC-1670`. Menjoin
+// dengan nomor yang sudah dipangkas menghasilkan NOL baris pada seluruh 189 case — tanpa
+// satu pun galat, hanya layar kosong. Cacat seperti itu tidak terlihat sebagai cacat.
+//
+// Karena itu `transfer_case` tidak boleh memangkas apa pun dari `PNCCASEID`.
+func TestKunciKlaimDiambilBerPrefix(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_case"))
+
+	require.Contains(t, rapat, "MAX(a.PNCCASEID)")
+	require.NotContains(t, rapat, "REPLACE",
+		"PNCCASEID adalah kunci join; prefiksnya dibuang di domain, bukan di SQL")
+	require.NotContains(t, rapat, "ASM-FW-GCNMFW-WORK ",
+		"tidak ada pemangkasan prefix di kueri ini")
+
+	for _, nama := range []string{"transfer_claim", "transfer_coverages"} {
+		teks := bersihkanSpasi(query(nama))
+		require.Containsf(t, teks, "CLAIMID = :1",
+			"kueri %q harus dikunci CLAIMID ber-prefix", nama)
+		require.NotContainsf(t, teks, "REPLACE",
+			"kueri %q tidak boleh memangkas kuncinya sendiri", nama)
+	}
+}
+
+// Blok analisis komite ada di T_CLAIM_OBJECTCOVERAGE, dan baris terhapus tidak ikut.
+//
+// `DIHAPUS_PADA` adalah penanda soft delete pada tabel warisan ini. Menampilkannya berarti
+// menampilkan coverage yang sudah dicabut dari klaimnya — pada layar tempat orang
+// menyetujui uang.
+func TestKueriCoverageMembuangBarisTerhapus(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_coverages"))
+
+	require.Contains(t, rapat, "POOLDATA.T_CLAIM_OBJECTCOVERAGE")
+	require.Contains(t, rapat, "DIHAPUS_PADA IS NULL")
+	require.Contains(t, rapat, "ORDER BY c.OBJECTID, c.OBJECTCOVERAGEID")
+
+	// Medan analisis komite — yang di Pega berbunyi `.Komite.*`.
+	for _, kolom := range []string{
+		"CURICUMOFLOSS", "EXTENTOFLOSS", "LEGALLIABILITY", "REMARKS", "DIAGNOSE",
+	} {
+		require.Containsf(t, rapat, kolom, "medan analisis %q hilang dari kueri", kolom)
+	}
+
+	// Diukur 1 sampai 3 baris per case; membatasi hasilnya hanya akan menyembunyikan
+	// baris ketiga tanpa alasan.
+	require.NotContains(t, rapat, "FETCH NEXT",
+		"coverage tidak dipaginasi — maksimum tiga baris per case")
 }

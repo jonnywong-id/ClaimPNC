@@ -33,6 +33,8 @@ export type InboxFilter = {
  */
 const keys = {
   all: (token: string | null) => ['inbox-komite', token] as const,
+  detail: (token: string | null, caseID: string) =>
+    ['inbox-komite', token, 'rincian', caseID] as const,
   list: (token: string | null, f: InboxFilter) =>
     [
       'inbox-komite',
@@ -123,5 +125,42 @@ export function useDecide() {
       // isi kotak lain.
       void client.invalidateQueries({ queryKey: keys.all(token) })
     },
+  })
+}
+
+
+/**
+ * Hook rincian satu kasus komite.
+ *
+ * # Apa yang ia gantikan
+ *
+ * Menekan nomor case di layar lama menjalankan `Activity/SetAssignmentKomite-Act.xml`,
+ * yang merangkai kunci assignment `"ASSIGN-WORKLIST " + inskey + "!Komite_Flow"`,
+ * membukanya dengan `OBJ-OPEN-BY-HANDLE`, lalu merender flow action `ViewTransferDtl`.
+ *
+ * Ketiga langkah itu menjadi SATU permintaan di sini. Perangkaian kunci tidak ikut dibawa:
+ * ia bentuk kunci internal Pega yang `D-22` larang bocor ke data bisnis, dan yang
+ * dibutuhkan server hanyalah nomor case-nya.
+ *
+ * # "Open Assignment" menjadi pemeriksaan kepemilikan, bukan penguncian
+ *
+ * `OBJ-OPEN-BY-HANDLE` di Pega membuka SEKALIGUS mengunci objek kerjanya. Di sini tidak ada
+ * yang dikunci, dan itu disengaja: layar ini tidak menulis apa pun, dan kunci yang tidak
+ * pernah dilepas adalah cacat yang jauh lebih mahal daripada yang dicegahnya. Yang tersisa
+ * dari "membuka assignment" adalah pertanyaannya yang sebenarnya — apakah kasus ini milik
+ * pemanggil — dan itu dijawab server lewat `BelongsTo`.
+ */
+export function useKomiteCase(caseID: string) {
+  const token = useSession((state) => state.token)
+
+  return useQuery({
+    queryKey: keys.detail(token, caseID),
+    queryFn: () =>
+      callAPI<KomiteCaseResponse>(`${PATH}/${encodeURIComponent(caseID)}`, { token }),
+    enabled: token !== null && caseID !== '',
+
+    // Sama pendeknya dengan daftarnya: keadaan sebuah kasus komite dapat berubah dari
+    // Pega kapan saja selama masa paralel.
+    staleTime: 30 * 1000,
   })
 }

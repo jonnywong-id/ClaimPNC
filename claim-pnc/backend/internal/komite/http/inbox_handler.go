@@ -59,7 +59,8 @@ type InboxCaller struct {
 // penyimpanannya.
 type InboxService interface {
 	Inbox(ctx context.Context, f komite.InboxFilter) (usecase.InboxResult, error)
-	Case(ctx context.Context, caseID string, operator string) (komite.CommitteeCase, error)
+	Case(ctx context.Context, caseID string, operator string, allOperators bool) (komite.CommitteeCase, error)
+	Detail(ctx context.Context, caseID string, operator string, allOperators bool) (usecase.CaseDetail, error)
 	Decide(ctx context.Context, cmd komite.DecisionCommand, actor usecase.Actor) (komite.CommitteeCase, error)
 }
 
@@ -170,16 +171,17 @@ func (h *InboxHandler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, err := h.service.Case(r.Context(), chi.URLParam(r, "nomor"), caller.Login)
+	detail, err := h.service.Detail(r.Context(), chi.URLParam(r, "nomor"), caller.Login, h.allOperators)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 
-	now := time.Now().UTC()
+	transfer := toTransferDTO(detail.Transfer)
 	h.writeResponse(w, r, http.StatusOK, CommitteeCaseResponse{
-		Case: toCommitteeCaseDTO(found, caller.Login, now),
-		Now:  now.Format(time.RFC3339),
+		Case:     toCommitteeCaseDTO(detail.Case, caller.Login, detail.Now),
+		Now:      detail.Now.UTC().Format(time.RFC3339),
+		Transfer: &transfer,
 	})
 }
 
@@ -384,4 +386,103 @@ func formatTime(t time.Time) string {
 		return ""
 	}
 	return t.UTC().Format(time.RFC3339)
+}
+
+// toTransferDTO memetakan rincian transfer ke bentuk kontraknya.
+//
+// Senarai barisnya dibentuk dengan panjang nol, bukan nil: `nil` menjadi `null` di JSON,
+// dan layar yang melakukan `baris.map(...)` atasnya akan gagal — bukan menampilkan daftar
+// kosong seperti yang dimaksud.
+func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
+	lines := make([]AdjustmentLineDTO, 0, len(d.Lines))
+	for _, l := range d.Lines {
+		lines = append(lines, AdjustmentLineDTO{
+			ClaimNumber:  l.ClaimNumber,
+			ObjectID:     l.ObjectID,
+			CoverageID:   l.CoverageID,
+			AcceptanceNo: l.AcceptanceNo,
+			AcceptedAt:   formatTime(l.AcceptedAt),
+
+			Currency:    l.Currency,
+			PaymentType: l.PaymentType,
+
+			GrossValue:     l.GrossValue.String(),
+			ProposeValue:   l.ProposeValue.String(),
+			AcceptedValue:  l.AcceptedValue.String(),
+			SalvageValue:   l.SalvageValue.String(),
+			ASMShareValue:  l.ASMShareValue.String(),
+			IndividualRisk: l.IndividualRisk.String(),
+
+			ASMSharePercent: l.ASMSharePercent,
+			ExGratia:        l.ExGratia,
+			Notes:           l.Notes,
+			CauseOfLoss:     l.CauseOfLoss,
+		})
+	}
+
+	coverages := make([]CoverageAnalysisDTO, 0, len(d.Coverages))
+	for _, c := range d.Coverages {
+		coverages = append(coverages, CoverageAnalysisDTO{
+			ObjectID:   c.ObjectID,
+			CoverageID: c.CoverageID,
+
+			ObjectName:   c.ObjectName,
+			CoverageName: c.CoverageName,
+			CauseOfLoss:  c.CauseOfLoss,
+
+			SumInsured: c.SumInsured.String(),
+			Currency:   c.Currency,
+
+			Circumstances:  c.Circumstances,
+			ExtentOfLoss:   c.ExtentOfLoss,
+			LegalLiability: c.LegalLiability,
+			Remarks:        c.Remarks,
+			Diagnose:       c.Diagnose,
+			InitialName:    c.InitialName,
+
+			CommitteeDate:  formatTime(c.CommitteeDate),
+			AnalysisFilled: c.Filled(),
+		})
+	}
+
+	dto := TransferDetailDTO{
+		Judul:          d.Judul(),
+		HEDapatDinilai: strings.TrimSpace(d.BusinessType) != "",
+		Lines:          lines,
+		Coverages:      coverages,
+		Empty:          d.Empty(),
+		MoneyEmpty:     d.MoneyEmpty(),
+	}
+	if d.HasClaim {
+		c := d.Claim
+		dto.Claim = &ClaimSummaryDTO{
+			DateOfLoss:   formatTime(c.DateOfLoss),
+			RegisterDate: formatTime(c.RegisterDate),
+
+			Location:    c.Location,
+			Chronology:  c.Chronology,
+			ClaimStatus: c.ClaimStatus,
+
+			Recommendation: c.Recommendation,
+
+			ASMShare:  c.ASMShare,
+			CoinsName: c.CoinsName,
+			Currency:  c.Currency,
+			ExGratia:  c.ExGratia,
+		}
+	}
+	if d.HasCommitteeRecord {
+		c := d.Committee
+		dto.Committee = &CommitteeRecordDTO{
+			MemberName: c.MemberName,
+			Tier:       c.Tier,
+			Kind:       c.Kind,
+			Note:       c.Note,
+			ClaimValue: c.ClaimValue.String(),
+			ASMShare:   c.ASMShare,
+			DecidedAt:  formatTime(c.DecidedAt),
+			Outcome:    legacyOutcomeText(c.Outcome),
+		}
+	}
+	return dto
 }

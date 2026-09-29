@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { APIError, NetworkError } from '@/api/client'
 import {
@@ -13,9 +14,8 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { ReloadIcon, ScaleIcon } from '@/components/Icon'
 
-import { DecisionPanel } from './DecisionPanel'
 import { InboxTabs } from './InboxTabs'
-import { useDecide, useInboxList } from './api'
+import { useInboxList } from './api'
 
 /**
  * formatTanggal menggambar tanggal untuk manusia.
@@ -83,27 +83,15 @@ export function InboxKomitePage() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [offset, setOffset] = useState(0)
-  const [deciding, setDeciding] = useState<KomiteCase | null>(null)
 
   const list = useInboxList({ kind, search, from, to, offset })
-  const decide = useDecide()
 
   const data = list.data
   const rows = data?.kasus ?? []
 
-  /**
-   * Apakah keputusan dapat dicatat saat ini.
-   *
-   * Selama halaman pertama masih dimuat, `data` belum ada dan jawabannya dianggap
-   * TERSEDIA — bukan sebaliknya. Menganggapnya tidak tersedia akan membuat tombol
-   * berkedip nonaktif lalu aktif pada setiap pembukaan layar, dan kedipan itu
-   * mengajarkan pengguna untuk mengabaikan keadaan nonaktif yang sesungguhnya.
-   */
-  const decisionsAvailable = data?.jejak_keputusan_tersedia !== false
 
   function changeKind(next: Kind) {
     setKind(next)
-    setDeciding(null)
     // Halaman dikembalikan ke awal. Tanpa ini, berpindah dari kotak berisi 200 baris di
     // halaman empat ke kotak berisi 3 baris akan menampilkan tabel kosong yang tampak
     // rusak.
@@ -127,11 +115,28 @@ export function InboxKomitePage() {
       title: 'No case & klaim',
       width: '12rem',
       value: (c) => `${c.nomor_case} ${c.nomor_klaim}`,
+      /*
+        Nomor case DAN nomor klaim keduanya membuka rincian, dalam satu tautan.
+
+        Di sistem lama keduanya memang satu perbuatan: menekannya menjalankan
+        `SetAssignmentKomite`, yang membuka assignment `ASSIGN-WORKLIST <pzInsKey>!
+        Komite_Flow`, lalu merender flow action `ViewTransferDtl`. Membuat dua tautan
+        terpisah akan memecah satu perbuatan menjadi dua tanpa alasan.
+
+        Ia tautan sungguhan, bukan `div` ber-onClick: pengguna papan ketik dapat
+        menjangkaunya dengan Tab, dan "buka di tab baru" bekerja seperti yang diharapkan.
+      */
       render: (c) => (
-        <div className="min-w-0">
-          <p className="truncate font-mono text-xs font-medium text-slate-900">{c.nomor_case}</p>
+        <Link
+          to={`/komite/inbox/${encodeURIComponent(c.nomor_case)}`}
+          className="block min-w-0 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          aria-label={`Buka rincian komite ${c.nomor_case}`}
+        >
+          <p className="truncate font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline">
+            {c.nomor_case}
+          </p>
           <p className="truncate font-mono text-xs text-slate-500">{c.nomor_klaim || '—'}</p>
-        </div>
+        </Link>
       ),
     },
     {
@@ -181,35 +186,6 @@ export function InboxKomitePage() {
       value: (c) => c.penjenjangan.kesimpulan,
       render: (c) => <StateCell item={c} />,
     },
-    {
-      key: 'tindakan',
-      title: 'Tindakan',
-      width: '8rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (c) => (
-        <div className="flex justify-end">
-          {c.penjenjangan.sudah_saya_putuskan ? (
-            <span className="text-xs text-slate-400">sudah diputuskan</span>
-          ) : (
-            <Button
-              tone="utama"
-              onClick={() => setDeciding(c)}
-              disabled={!decisionsAvailable}
-              title={
-                decisionsAvailable
-                  ? undefined
-                  : 'Jejak keputusan belum dibuat di basis data — keputusan tidak akan tersimpan.'
-              }
-              aria-label={`Beri keputusan komite untuk kasus ${c.nomor_case}`}
-            >
-              Putuskan
-            </Button>
-          )}
-        </div>
-      ),
-    },
   ]
 
   return (
@@ -258,29 +234,6 @@ export function InboxKomitePage() {
         </div>
       )}
 
-      {/*
-        Keterbatasan dinyatakan di ATAS, sebelum daftar dan sebelum tombol apa pun.
-
-        Ketika jejak keputusan belum ada, daftar di bawah TETAP benar — ia dibaca dari
-        tabel warisan — tetapi tidak satu pun keputusan dapat tersimpan. Pada layar yang
-        menyetujui uang klaim, menemukan itu SETELAH menekan tombol adalah kegagalan yang
-        jauh lebih mahal daripada satu kotak pemberitahuan yang mengganggu.
-      */}
-      {data?.jejak_keputusan_tersedia === false && (
-        <div className="mb-5">
-          <ErrorMessage
-            tone="gangguan"
-            title="Keputusan komite belum dapat dicatat"
-            description={
-              'Daftar kasus di bawah tetap benar dan dibaca dari sistem lama, tetapi tabel ' +
-              'jejak keputusannya belum dibuat di basis data — sehingga kotak Diterima dan ' +
-              'Ditolak hanya memuat riwayat keputusan Pega, dan tombol keputusan tidak akan ' +
-              'menyimpan apa pun. Hubungi DBA untuk menjalankan migrasi 0004.'
-            }
-          />
-        </div>
-      )}
-
       <div className="mb-5">
         <InboxTabs
           summary={data?.ringkasan}
@@ -293,26 +246,6 @@ export function InboxKomitePage() {
       <div className="mb-5">
         <RangeFilter from={from} to={to} onChange={changeRange} />
       </div>
-
-      {deciding && (
-        <div className="mb-6">
-          <DecisionPanel
-            item={deciding}
-            working={decide.isPending}
-            error={decide.error}
-            onClose={() => {
-              setDeciding(null)
-              decide.reset()
-            }}
-            onSubmit={(decision, note) =>
-              decide.mutate(
-                { caseID: deciding.nomor_case, decision, note },
-                { onSuccess: () => setDeciding(null) },
-              )
-            }
-          />
-        </div>
-      )}
 
       <DataTable
         columns={columns}

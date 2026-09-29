@@ -296,141 +296,6 @@ describe('penyaring', () => {
   })
 })
 
-describe('keputusan', () => {
-  it('mengirim persetujuan tanpa menyebut jenjang maupun waktu', async () => {
-    stubDefaultFetch()
-    renderPage()
-    await screen.findByText('PT Harapan Sentosa')
-
-    await userEvent.click(screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0]!)
-    await userEvent.click(screen.getByRole('radio', { name: /Setuju/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan keputusan' }))
-
-    await waitFor(() => {
-      const post = calls.find((c) => c.init?.method === 'POST')
-      expect(post).toBeDefined()
-      expect(post?.url).toContain('/api/komite/inbox/K-2601/keputusan')
-
-      const body = JSON.parse(String(post?.init?.body))
-      expect(body).toEqual({ keputusan: 'setuju', catatan: '' })
-      // Jenjang, waktu, dan identitas pemutus milik SERVER — klien tidak pernah
-      // menyebutnya.
-      expect(body).not.toHaveProperty('jenjang')
-      expect(body).not.toHaveProperty('pada')
-      expect(body).not.toHaveProperty('oleh')
-    })
-  })
-
-  // Penolakan tanpa catatan ditolak DI LAYAR lebih dulu, sehingga pengguna tidak perlu
-  // menunggu perjalanan ke server untuk tahu isiannya kurang. Server tetap menolaknya
-  // juga — pemeriksaan di layar adalah kenyamanan, bukan penegakan.
-  it('menolak penolakan tanpa catatan sebelum dikirim', async () => {
-    stubDefaultFetch()
-    renderPage()
-    await screen.findByText('PT Harapan Sentosa')
-
-    await userEvent.click(screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0]!)
-    await userEvent.click(screen.getByRole('radio', { name: /Tolak/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan keputusan' }))
-
-    expect(await screen.findByText(/Catatan wajib diisi/)).toBeInTheDocument()
-    expect(calls.find((c) => c.init?.method === 'POST')).toBeUndefined()
-  })
-
-  // Keputusan yang MENGHENTIKAN komite menempuh satu langkah konfirmasi, dan konfirmasinya
-  // menyebutkan nomor kasus — supaya yang dihentikan bukan kasus yang salah.
-  it('meminta konfirmasi sebelum menolak', async () => {
-    stubDefaultFetch()
-    renderPage()
-    await screen.findByText('PT Harapan Sentosa')
-
-    await userEvent.click(screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0]!)
-    await userEvent.click(screen.getByRole('radio', { name: /Tolak/ }))
-    await userEvent.type(screen.getByLabelText(/Catatan/), 'Nilai melebihi sisa TSI.')
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan keputusan' }))
-
-    const peringatan = await screen.findByRole('alert')
-    expect(peringatan).toHaveTextContent('K-2601')
-    expect(peringatan).toHaveTextContent(/tidak dapat ditarik kembali/)
-    expect(calls.find((c) => c.init?.method === 'POST')).toBeUndefined()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Ya, lanjutkan' }))
-
-    await waitFor(() => {
-      expect(calls.find((c) => c.init?.method === 'POST')).toBeDefined()
-    })
-  })
-
-  // Persetujuan TIDAK meminta konfirmasi: ia tidak menutup apa pun selama masih ada
-  // jenjang berikutnya, dan ia pekerjaan yang paling sering dilakukan.
-  it('tidak meminta konfirmasi untuk persetujuan', async () => {
-    stubDefaultFetch()
-    renderPage()
-    await screen.findByText('PT Harapan Sentosa')
-
-    await userEvent.click(screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0]!)
-    await userEvent.click(screen.getByRole('radio', { name: /Setuju/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan keputusan' }))
-
-    await waitFor(() => {
-      expect(calls.find((c) => c.init?.method === 'POST')).toBeDefined()
-    })
-    expect(screen.queryByRole('button', { name: 'Ya, lanjutkan' })).not.toBeInTheDocument()
-  })
-
-  // Konflik (409) diberi tindakan yang benar: muat ulang. Menyuruh "coba lagi" akan
-  // membuat pengguna menekan tombol berulang kali pada sesuatu yang tidak akan berubah.
-  it('menjelaskan keputusan yang sudah tercatat dari tab lain', async () => {
-    stubFetch((url, init) => {
-      if (url.includes('/keputusan') && init?.method === 'POST') {
-        return jsonResponse(409, {
-          kode: 'komite_sudah_selesai',
-          pesan: 'Keputusan atas kasus ini sudah tercatat. Muat ulang untuk melihat keadaan terbarunya.',
-        })
-      }
-      return jsonResponse(200, listBody())
-    })
-    renderPage()
-    await screen.findByText('PT Harapan Sentosa')
-
-    await userEvent.click(screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0]!)
-    await userEvent.click(screen.getByRole('radio', { name: /Setuju/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan keputusan' }))
-
-    expect(await screen.findByText('Keputusan sudah tercatat')).toBeInTheDocument()
-  })
-
-  // Tombol disembunyikan pada kasus yang sudah diputuskan. Itu KENYAMANAN TAMPILAN;
-  // penegakannya tetap di server, yang menjawab 409.
-  it('tidak menawarkan tombol putuskan pada kasus yang sudah diputuskan', async () => {
-    stubFetch(() =>
-      jsonResponse(
-        200,
-        listBody([
-          kasus({
-            penjenjangan: {
-              kesimpulan: 'menunggu',
-              jumlah_jenjang: 0,
-              jenjang_kini: 2,
-              jenjang_disetujui: 1,
-              jumlah_jenjang_belum_diketahui: true,
-              selesai: false,
-              sudah_saya_putuskan: true,
-              keputusan: [],
-            },
-          }),
-        ]),
-      ),
-    )
-    renderPage()
-
-    expect(await screen.findByText('sudah diputuskan')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /Beri keputusan komite/ }),
-    ).not.toBeInTheDocument()
-  })
-})
-
 describe('keadaan kosong', () => {
   // Inbox kosong punya DUA sebab yang sangat berbeda, dan keduanya tidak dapat dibedakan
   // dari tabel kosong. Operator yang dipakai menyaring karena itu ditampilkan.
@@ -454,71 +319,6 @@ describe('keadaan kosong', () => {
   })
 })
 
-/**
- * Keadaan ketika jejak keputusan belum dapat dipakai.
- *
- * `POOLDATA.CPNC_KOMITE_KEPUTUSAN` dibuat migrasi `0004`, dan migrasi menempuh `D-63`
- * sehingga hanya DBA yang dapat menjalankannya. Sebelum perbaikan 2026-09-28,
- * ketiadaannya mematikan SELURUH layar — padahal kasusnya sendiri ada di tabel warisan.
- */
-describe('jejak keputusan belum siap', () => {
-  function stubTanpaJejak() {
-    stubFetch((url) => {
-      if (url.startsWith(PATH)) {
-        return jsonResponse(200, listBody(SAMPLES, { jejak_keputusan_tersedia: false }))
-      }
-      return jsonResponse(200, listBody())
-    })
-  }
-
-  it('tetap menampilkan daftar pekerjaan', async () => {
-    stubTanpaJejak()
-    renderPage()
-
-    // Inilah inti perbaikannya: pekerjaannya tetap terbaca.
-    expect(await screen.findByText('PT Harapan Sentosa')).toBeInTheDocument()
-    expect(screen.getByText('K-2601')).toBeInTheDocument()
-  })
-
-  it('menyatakan keterbatasannya sebelum tombol ditekan', async () => {
-    stubTanpaJejak()
-    renderPage()
-
-    expect(await screen.findByText('Keputusan komite belum dapat dicatat')).toBeInTheDocument()
-    expect(screen.getByText(/migrasi 0004/i)).toBeInTheDocument()
-  })
-
-  // Tombol yang aktif padahal keputusannya pasti gagal adalah jebakan, bukan kemurahan
-  // hati — terlebih pada layar yang menyetujui uang klaim.
-  it('menonaktifkan tombol Putuskan', async () => {
-    stubTanpaJejak()
-    renderPage()
-
-    await screen.findByText('PT Harapan Sentosa')
-    for (const tombol of screen.getAllByRole('button', { name: /Beri keputusan komite/ })) {
-      expect(tombol).toBeDisabled()
-    }
-  })
-
-  it('tidak mengganggu layar ketika jejaknya tersedia', async () => {
-    stubDefaultFetch()
-    renderPage()
-
-    await screen.findByText('PT Harapan Sentosa')
-    expect(screen.queryByText('Keputusan komite belum dapat dicatat')).not.toBeInTheDocument()
-    expect(
-      screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0],
-    ).toBeEnabled()
-  })
-})
-
-/**
- * Penyaring pemilik dimatikan — `KOMITE_TANPA_PENYARING_OPERATOR`.
- *
- * Diminta Work Owner 2026-09-29 supaya isi Inbox Outstanding terlihat selama pemetaan
- * identitas HCC/HCQ ke `OPERATOR_ID` belum ada. Dalam keadaan itu layar berhenti menjadi
- * inbox seseorang, dan itu WAJIB terbaca sebelum baris pertama.
- */
 describe('penyaring pemilik dimatikan', () => {
   function stubTanpaPenyaring() {
     stubFetch((url) => {
@@ -553,5 +353,33 @@ describe('penyaring pemilik dimatikan', () => {
 
     await screen.findByText('PT Harapan Sentosa')
     expect(screen.queryByText('Daftar ini BUKAN inbox Anda')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * Menekan nomor case membuka rincian — pengganti `SetAssignmentKomite` + `ViewTransferDtl`.
+ */
+describe('membuka rincian', () => {
+  it('menjadikan nomor case tautan ke halaman rincian', async () => {
+    stubDefaultFetch()
+    renderPage()
+
+    await screen.findByText('PT Harapan Sentosa')
+    const tautan = screen.getByRole('link', { name: /Buka rincian komite K-2601/ })
+    expect(tautan).toHaveAttribute('href', '/komite/inbox/K-2601')
+  })
+
+  // Tombol keputusan DIBUANG atas permintaan Work Owner 2026-09-29. Uji ini menjaganya
+  // tidak kembali diam-diam lewat penyuntingan kolom berikutnya.
+  it('tidak menawarkan tombol keputusan sama sekali', async () => {
+    stubDefaultFetch()
+    renderPage()
+
+    await screen.findByText('PT Harapan Sentosa')
+    expect(screen.queryByRole('button', { name: /Beri keputusan komite/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Putuskan')).not.toBeInTheDocument()
+
+    const judul = screen.getAllByRole('columnheader').map((h) => h.textContent ?? '')
+    expect(judul).not.toContain('Tindakan')
   })
 })
