@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 import type { MenuItem } from '@/api/types'
-import { ChevronIcon, ShieldIcon } from '@/components/Icon'
+import {
+  ChartIcon,
+  ChevronIcon,
+  ClipboardIcon,
+  EyeIcon,
+  HomeIcon,
+  InboxIcon,
+  ListIcon,
+} from '@/components/Icon'
 
 import { useMenu } from './menu/api'
 import { routeFor } from './menu/registry'
@@ -10,9 +18,25 @@ import { routeFor } from './menu/registry'
 /** Beranda tidak ada di M_MENU_APLIKASI_PNC — lihat catatan di Sidebar. */
 const HOME_PATH = '/'
 
+/** Permintaan membuka satu kelompok dari luar; `seq` membuat klik ulang tetap terbaca. */
+export type GroupRequest = { id: number; seq: number }
+
 type Props = {
   /** Dipanggil setelah pengguna memilih sebuah butir; dipakai menutup laci di layar sempit. */
   onNavigate?: (() => void) | undefined
+
+  /**
+   * Menu diperkecil menjadi rel ikon (permintaan Work Owner 2026-09-28).
+   *
+   * Butir menu tidak punya ikon di M_MENU_APLIKASI_PNC, sehingga rel menampilkan Beranda
+   * dan SATU ikon per kelompok. Mengeklik ikon kelompok memanggil `onExpandGroup` —
+   * pemanggil membentangkan menu dan kelompok itu langsung terbuka.
+   */
+  collapsed?: boolean
+  onExpandGroup?: ((id: number) => void) | undefined
+
+  /** Kelompok yang diminta terbuka saat menu dibentangkan dari rel. */
+  requestedGroup?: GroupRequest | null
 }
 
 /**
@@ -44,7 +68,7 @@ type Props = {
  * adalah pemeriksaan di server pada setiap endpoint. Sidebar ini tidak menambah maupun
  * mengurangi kewenangan siapa pun.
  */
-export function Sidebar({ onNavigate }: Props) {
+export function Sidebar({ onNavigate, collapsed = false, onExpandGroup, requestedGroup }: Props) {
   const menu = useMenu()
   const location = useLocation()
 
@@ -72,6 +96,43 @@ export function Sidebar({ onNavigate }: Props) {
     if (activeGroupID !== null) setOpenID(activeGroupID)
   }, [activeGroupID])
 
+  // Kelompok yang dipilih dari rel ikon dibuka begitu menu dibentangkan.
+  useEffect(() => {
+    if (requestedGroup) setOpenID(requestedGroup.id)
+  }, [requestedGroup])
+
+  if (collapsed) {
+    return (
+      <nav aria-label="Menu utama" className="flex flex-col items-center gap-1.5 py-3">
+        <NavLink
+          to={HOME_PATH}
+          end
+          onClick={onNavigate}
+          aria-label="Beranda"
+          title="Beranda"
+          className={({ isActive }) => railClass(isActive)}
+        >
+          <HomeIcon className="h-5 w-5" />
+        </NavLink>
+
+        {groups.map((group) => (
+          <button
+            key={group.id}
+            type="button"
+            onClick={() => onExpandGroup?.(group.id)}
+            // Nama kelompok ditulis lengkap untuk pembaca layar dan sebagai tooltip:
+            // ikon saja tidak menjelaskan apa pun.
+            aria-label={`Buka kelompok menu ${group.nama}`}
+            title={group.nama}
+            className={railClass(activeGroupID === group.id)}
+          >
+            <GroupIcon name={group.nama} />
+          </button>
+        ))}
+      </nav>
+    )
+  }
+
   return (
     <nav
       aria-label="Menu utama"
@@ -83,7 +144,7 @@ export function Sidebar({ onNavigate }: Props) {
         onClick={onNavigate}
         className={({ isActive }) => entryClass(isActive)}
       >
-        <ShieldIcon className="h-4 w-4 shrink-0" />
+        <HomeIcon className="h-4 w-4 shrink-0" />
         Beranda
       </NavLink>
 
@@ -199,6 +260,38 @@ function MenuEntry({ item, onNavigate }: { item: MenuItem; onNavigate?: (() => v
       <span className="truncate">{item.nama}</span>
     </NavLink>
   )
+}
+
+/**
+ * Ikon kelompok menu pada rel.
+ *
+ * Nama kelompok datang dari basis data, sehingga pemetaannya lewat kata kunci; kelompok
+ * yang belum dikenal mendapat dua huruf pertama namanya — tetap terbedakan, dan tetap
+ * bernama lengkap lewat tooltip dan aria-label.
+ */
+function GroupIcon({ name }: { name: string }) {
+  const key = name.toUpperCase()
+  if (key.includes('MASTER')) return <ListIcon className="h-5 w-5" />
+  if (key.includes('INBOX')) return <InboxIcon className="h-5 w-5" />
+  if (key.includes('REPORT') || key.includes('LAPORAN')) return <ChartIcon className="h-5 w-5" />
+  if (key.includes('VIEW')) return <EyeIcon className="h-5 w-5" />
+  if (key.includes('SURVEY')) return <ClipboardIcon className="h-5 w-5" />
+  return (
+    <span aria-hidden="true" className="text-xs font-semibold">
+      {key.slice(0, 2)}
+    </span>
+  )
+}
+
+function railClass(isActive: boolean): string {
+  return [
+    'flex h-10 w-10 items-center justify-center rounded-kontrol',
+    'transition-[color,background-color] duration-150 ease-halus',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
+    isActive
+      ? 'bg-blue-50 text-blue-700'
+      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+  ].join(' ')
 }
 
 function entryClass(isActive: boolean): string {

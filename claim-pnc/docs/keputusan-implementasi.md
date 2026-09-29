@@ -15991,6 +15991,95 @@ wajar tetapi bukan yang diminta.
 `total === 0`; akibatnya petugas tanpa pekerjaan tidak dapat membedakan "tidak ada
 pekerjaan" dari "fitur tidak ada". Ia sekarang tetap tampil dengan keterangannya.
 
+## 41. My Work — sumber data bergeser, dan identitas berlapis (2026-09-28)
+
+### K-41.1 Baris digerakkan `T_SURVEYORLIST`, bukan tabel Pega
+
+**Konteks.** Seluruh kueri layar `InboxSurvey_Harness` membaca
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`.
+Tetapi `POOLDATA.T_CLAIMLIST_ADMIN` — tabel yang Work Owner tetapkan sebagai penggantinya —
+**tidak memuat satu pun baris jenis itu**; isinya 870 `Work-PNC` dan 142
+`Work-ReceiveDocument`, sudah diverifikasi langsung ke basis data pada sesi sebelumnya.
+
+**Keputusan (Work Owner, 2026-09-28).** `POOLDATA.T_SURVEYORLIST` menggerakkan baris,
+`T_CLAIMLIST_ADMIN` menyediakan header, disambung `PNCCASEID = PZINSKEY`.
+
+**Konsekuensi yang diterima sadar.** Empat kolom yang di Pega melekat pada tiap objek survei
+kini berlaku **per klaim**: `ADJUSTERACCEPT_1`, `ADJUSTERSTATUS_1`, `REFNO_1`,
+`ADJUSTERPIC_1`. Klaim dengan dua janji survei berstatus berbeda menampilkan status yang sama
+pada kedua barisnya. Bila kelak mengganggu, penyelesaiannya adalah meminta kolom-kolom itu
+ikut dipindahkan ke `T_SURVEYORLIST` — **bukan** menebaknya di kueri.
+
+### K-41.2 Tab Close memakai `ADJUSTERSTATUS_1`, bukan status alur kerja
+
+**Konteks.** Pega menyaring `PYSTATUSWORK = 'Resolved-Completed'` milik objek SurveyClaim.
+Kolom itu tidak ada di tabel penggerak.
+
+**Keputusan.** Memakai `ADJUSTERSTATUS_1 = 'Close Case'`. Nilainya terbukti dari
+`RDB List/GetDataCaseSurveyALL-SQL.xml`, yang menyebut ketiganya berdampingan:
+`('Final Report','Close Case','Invoice Fee')`.
+
+**Ini SELISIH TERENCANA, bukan kesetaraan.** Keduanya berkorelasi tetapi bukan predikat yang
+sama: survei ber-`Close Case` yang objek kerjanya belum ditutup muncul di sini, sementara di
+Pega tidak. Dinyatakan ke pengguna lewat `PlannedDifferences` (`D-54`).
+
+### K-41.3 Identitas berlapis, tanpa perubahan skema
+
+**Keputusan (Work Owner).** `M_LOGIN_PNC.LOGIN_ID` sebagai master pengguna aplikasi,
+`POOLDATA.MST_LOGIN_SURVEYOR.LOGIN` sebagai data surveyor, dicocokkan pada nilai login yang
+sama.
+
+**Dasarnya bukti, bukan pilihan gaya.** `RDB List/GetLoginLeaderSurveyor-SQL.xml`:
+
+    select loginleader from pooldata.mst_login_surveyor
+     where login = {OperatorID.pyUserIdentifier}
+
+`LOGINLEADER` sekaligus memberi hierarki leader→anggota, yang menjelaskan kenapa kueri Pega
+membandingkan dengan `IN (…)`. **Tidak ada perubahan skema**, sehingga `D-63` tidak ditempuh.
+
+**Seam terpisah, bukan satu antarmuka.** `Directory` dipisahkan dari `Repo` karena membaca
+tabel yang berbeda dan kepemilikan yang berbeda — `MST_LOGIN_SURVEYOR` dimiliki modul Master
+Login (`MENU_ID 37`), dan modul ini hanya membacanya.
+
+### K-41.4 Pemanggil bukan surveyor → 403, bukan daftar kosong
+
+**Keputusan.** `ErrNotSurveyor` dipetakan ke **403 dengan pesan yang menyebut sebabnya**.
+
+**Alasan.** Daftar kosong dan "Anda bukan surveyor" terlihat sama di layar dan berarti hal
+yang sangat berbeda. Yang pertama terbaca sebagai "tidak ada pekerjaan hari ini" dan **tidak
+pernah dilaporkan siapa pun sebagai kerusakan** — sehingga salah pasang kewenangan akan
+bertahan sampai ada orang yang kebetulan bertanya.
+
+### K-41.5 Cakupan dikirim sebagai teks berpembatas, bukan klausa `IN`
+
+**Keputusan.** `INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0`, dengan `:1`
+berbentuk `|NAMA SATU|NAMA DUA|`.
+
+**Alasan.** Cakupan seorang leader berpanjang berubah, dan `IN (:1, :2, …)` menuntut jumlah
+bind yang tetap. Merangkai namanya ke teks SQL adalah persis celah `{ASIS:...}` yang sedang
+dihapus (§4.5).
+
+**Harganya, dan kenapa diterima.** `INSTR` tidak dapat memakai indeks pada `SURVEYOR_NAME`.
+Cakupan seorang leader berjumlah belasan, bukan ribuan. Pembatas dipasang di **kedua sisi**
+tiap nama — tanpa itu, "BUDI" cocok dengan "BUDIONO" dan seorang surveyor melihat pekerjaan
+surveyor lain yang namanya kebetulan memuat namanya.
+
+### K-41.6 Empat rute, bukan satu
+
+    /keterangan   bentuk layar   tidak menyentuh basis data
+    /jumlah-tab   bilah tab      tujuh penjumlahan, tidak berubah saat halaman berpindah
+    /kpi          tab KPI        tabel LAIN (DETAIL_KPI_ADJUSTER)
+    (akar)        daftar         satu halaman satu tab
+
+Menyatukannya akan membuat setiap penekanan tombol halaman ikut menjalankan tujuh penjumlahan
+tab dan satu ringkasan KPI — tiga pekerjaan untuk satu yang diminta.
+
+### K-41.7 Kegagalan tab KPI TIDAK menghentikan `-periksa`
+
+`POOLDATA.DETAIL_KPI_ADJUSTER` diisi `Database/INSERT_KPIADJUSTER.prc`. Ketiadaannya
+mengosongkan satu tab, bukan merusak layar — sehingga `CheckKPI` dilaporkan `[catat]`, bukan
+`[BELUM]`. Menyamakannya dengan kegagalan tabel utama akan membuat modul yang sebenarnya siap
+terbaca sebagai belum siap.
 ## 49. Modul Inbox Komunikasi Cabang (2026-09-24, sesi kedua puluh empat)
 
 Butir menu `MENU_ID 70`, pengganti `Harness/InboxKomunikasiCabang`. Layar ini adalah kotak
@@ -21452,6 +21541,109 @@ menyimpannya ke POOLDATA.T_CLAIM_RECEIVER untuk klaim PNCN. Tab Penerima Klaim m
 Alamat (`ViewShowReceiver`). Isian tambah/ubah penerima belum dibangun karena section-nya tidak ada
 di export (catatan-pengembangan §77).
 
+## 61. Inbox Auto Claim: daftar perusahaan di kiri, batch di kanan — menggantikan §60.1 (2026-09-28)
+
+Work Owner meminta baris melar (accordion) diganti bentuk master–detail, dengan contoh
+tampilan "kategori di kiri, daftar di kanan". Alasannya: daftar perusahaan tetap terlihat
+selama batch diperiksa, sehingga berpindah perusahaan cukup satu klik.
+
+| Keputusan | Alasan |
+|---|---|
+| Perusahaan pertama **langsung terpilih** | Seperti contohnya; panel kanan kosong tidak memberi tahu apa pun |
+| Daftar kiri **digulir, tidak dipaginasi** | Seperti contohnya; isinya puluhan baris dan dikirim server utuh. Grid batch kanan tetap dipaginasi server |
+| Pilihan **dipertahankan saat mencari** | Kata kunci hanya menyaring daftar kiri; batch yang sedang diperiksa tidak ikut hilang |
+| Penanda terpilih = **garis tepi kiri + `aria-current`** | Pembedaan penting tidak pernah hanya warna |
+| Wadah halaman dilebarkan (`max-w-[96rem]`) | Grid batch 10 kolom di samping daftar 18rem tidak muat di `max-w-7xl` |
+| Layar sempit: kedua panel **ditumpuk** | Daftar kiri dibatasi tingginya dan digulir |
+
+`CompanyTable.tsx` diganti `CompanyBrowser.tsx`; `CompanyBatches.tsx` (grid batch) tidak
+berubah perilakunya.
+
+### 61.1 Yang disiapkan supaya proteksi unggahan yang tersisa dapat dijalankan
+
+Pertanyaan Work Owner 2026-09-28. Proteksi yang BELUM jalan (lihat §60.5) dan
+prasyaratnya:
+
+| Proteksi | Tab | Prasyarat | Pemilik |
+|---|---|---|---|
+| Tanggal kejadian dalam periode polis | Travel; ANEKA produk 10166 | Periode polis dari `JSON_POLIS.DATA_JSONBLOB` (`BrowsePolisAso` membacanya). Keputusan: pembacaan sempit khusus field yang dipakai, atau menunggu B-1 | Work Owner (keputusan) · tim (kueri) |
+| Premi belum lunas | ketiganya (SOB tertentu; Kredit juga Group Panel 002) | `CekPremiAutoKlaim` memanggil Connect REST `getPremiumPaidOn_before` — kontrak, alamat per lingkungan, dan kredensial layanan itu (lingkup S-4, D-40) | Tim pemilik layanan premi · Infra/Security |
+| Polis sudah dibatalkan | Kredit | StatusBusiness dan FlagEdmBatal dari snapshot polis | idem baris pertama |
+| Objek tidak ditemukan · Sudah Klaim · Objek belum ada Outstanding | Kredit | Rule pencarian objek dan klaim outstanding — `GetOutstandingObjectClaimKredit` ADA; `CekObjekNotDouble` TIDAK ADA di export (R-16) | Tim Pega |
+| Mata uang baris | ketiganya | Kurs/ID mata uang dari polis; `GetIDCurrencyByNote` TIDAK ADA di export | Tim Pega / B-1 |
+| Nilai klaim diubah untuk satu operator bernama | Kredit | Hardcode operator (K:4025) — dibawa sebagai master data (D-15) atau dibuang | Work Owner |
+
+## 62. Tema Glassmorphism Navy untuk seluruh aplikasi (2026-09-28)
+
+**Permintaan Work Owner:** tampilan modern bergaya kaca dengan gradasi navy, efek kaca
+pada kartu/container/modal/navbar, bayangan melayang, sudut melengkung dan tombol pil, teks
+terang dengan aksen neon — **tanpa mengubah logika, HTML, komponen, fungsi, maupun
+arsitektur**. Menggantikan tema terang yang ditetapkan 2026-09-17.
+
+### 62.1 Cara menerapkannya tanpa menyentuh komponen
+
+Hanya `frontend/src/styles.css` yang berubah. Tailwind v4 menyimpan setiap warna sebagai
+variabel CSS, sehingga menimpa token di `@theme` mengganti warna di seluruh 186 komponen
+sekaligus.
+
+| Skala | Dipakai sebagai | Dipetakan ke |
+|---|---|---|
+| slate 50–300 | latar & garis tepi di atas putih | putih transparan 5–32% — permukaan kaca |
+| slate 400–950 | teks | abu terang sampai putih |
+| blue | aksen, tautan, cincin fokus | cyan terang |
+| emerald / green | berhasil | hijau neon |
+| amber | peringatan | kuning |
+| red / rose | galat | merah muda terang |
+
+`--color-white` **tidak** diubah: `text-white` pada tombol harus tetap putih pekat. Latar
+`bg-white` (kartu, panel, modal, bilah atas, kontrol) diganti lewat aturan tanpa lapisan
+di akhir berkas, dengan `backdrop-filter: blur` hanya pada wadah — bukan pada ratusan
+kontrol dan baris tabel, demi kelancaran gulir.
+
+### 62.2 Benturan satu warna untuk latar pekat dan teks
+
+Token biru, hijau, merah, dan slate dipetakan terang karena mayoritas pemakaiannya teks.
+Sebagian kecil kelas memakainya sebagai latar pekat di bawah teks putih; ditangani aturan
+khusus: tombol utama `bg-blue-600/700/800` (gradasi biru–cyan), tombol gelap
+`bg-slate-900` + `hover:bg-slate-700` (Master Rekening, Registrasi), lencana
+`bg-green-700`/`bg-red-700` + hover-nya, latar modal `bg-slate-900/…`, gradasi logo dan
+panel halaman masuk.
+
+### 62.3 Yang belum diverifikasi dan yang disadari
+
+- **Belum diperiksa secara visual di peramban** — tidak ada peramban otomatis di
+  lingkungan kerja ini. Build dan seluruh uji lulus, tetapi uji komponen tidak menilai
+  warna.
+- Kontras teks utama di atas navy ≥ 6,7:1 (AA). Kekecualian sadar: `text-slate-300`
+  (16 pemakaian, hiasan/nonaktif) ≈ 2,4:1.
+- Warna di dalam `style={{…}}` dan warna heks Recharts (donut Inbox Outstanding, tooltip
+  berlatar putih) tidak ikut berubah — mengubahnya menuntut menyunting komponen.
+- Penalaran kontras lama di kepala `styles.css` dipertahankan sebagai riwayat.
+
+### 62.4 Koreksi Work Owner (2026-09-28): kaca hanya untuk bilah atas dan menu samping
+
+Dengan gambar beranotasi, Work Owner menetapkan: **Top Nav Bar dan Side Nav Bar** tetap bergaya kaca navy; **area konten** (seluruh isi `<main>`, semua modul) dan **halaman masuk** dikembalikan ke tampilan terang sebelumnya — pada tema gelap sebagian tulisan halaman masuk tidak terbaca (`text-blue-100/200` pada panel biru telanjur dipetakan ke cyan transparan).
+
+Tetap hanya `styles.css`: 62 token warna, bayangan, radius, dan `color-scheme` dipulihkan ke nilai bawaan Tailwind (disalin dari `node_modules/tailwindcss/theme.css`) di dalam `main`; setiap aturan kaca dilepas di dalam `main` dengan `revert-layer`. Latar terang digambar pada `<main>` terluar setinggi layar di bawah bilah atas.
+
+Konsekuensi: token global tetap bertema gelap, jadi komponen baru yang dirender DI LUAR `<main>` akan ikut gelap. Terverifikasi pada CSS hasil build; belum diperiksa visual di peramban.
+
+## 63. Menu kiri dapat diperkecil, bilah atas tetap di tempat (2026-09-28)
+
+**Permintaan Work Owner:** menu kiri dapat di-minimize seperti contoh terlampir (rel ikon dengan tombol buka/tutup), dan Top Nav Bar tetap di posisinya saat layar digulir.
+
+| Keputusan | Alasan |
+|---|---|
+| Rel menampilkan Beranda + **satu ikon per kelompok** (MASTER, INBOX, REPORT, VIEW, SURVEYOR) | Butir menu di `M_MENU_APLIKASI_PNC` tidak punya ikon; ±80 ikon karangan tidak akan terbedakan. Kelompok tak dikenal mendapat dua huruf pertama namanya |
+| Klik ikon kelompok **membentangkan menu** dan membuka kelompok itu | Butirnya baru terbaca dalam keadaan lebar |
+| Pilihan diperkecil **diingat per peramban** (`localStorage`, dengan try/catch) | Kenyamanan pribadi; menu tetap berfungsi bila penyimpanan ditolak |
+| Laci menu layar sempit **tidak berubah** | Di layar sempit menu sudah berupa laci |
+| Bilah atas `fixed`, bukan `sticky`; tempatnya dicadangkan `pt-16` | `sticky` berhenti bekerja begitu wadah di atasnya memakai overflow; `fixed` tidak bergantung pada wadah |
+
+Berkas: `app/PageShell.tsx`, `app/Sidebar.tsx`, `app/Sidebar.test.tsx` (+3 uji), `components/Icon.tsx` (+6 ikon). Pencarian menu seperti pada contoh **tidak** dibuat — tidak diminta.
+
+Verifikasi: 56/56 uji app, Beranda, login, dan Inbox Auto Claim; `tsc` dan build bersih; uji rel dibuktikan merah dengan sabotase. Belum diperiksa visual di peramban.
+=======
 ## 98. Registrasi menulis baris klaim PNCN ke T_CLAIMLIST_ADMIN (2026-09-28)
 
 **Keputusan Work Owner (opsi B).** Supaya klaim PNCN muncul di My Inbox, registrasi menulis satu

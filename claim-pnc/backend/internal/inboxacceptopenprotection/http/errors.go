@@ -17,6 +17,11 @@ const (
 	CodeNotFound      = "tidak_ditemukan"
 	CodeConflict      = "konflik"
 	CodeInternalError = "galat_internal"
+
+	// CodeForbidden menandai pemanggil sudah masuk tetapi tidak berwenang.
+	//
+	// Dibedakan dari CodeNotFound dengan sengaja — lihat komentar ErrForbidden.
+	CodeForbidden = "tidak_berwenang"
 )
 
 // ErrorResponse adalah bentuk galat yang dikirim ke klien.
@@ -44,6 +49,27 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		switch {
+		case errors.Is(err, inboxacceptopenprotection.ErrForbidden):
+			// Pesannya menyebut SEBABNYA — access group — supaya petugas tahu apa yang
+			// harus diminta, bukan sekadar bahwa ia ditolak. Nama group yang dimilikinya
+			// TIDAK disebut: itu memberi tahu penyerang peta kewenangan aplikasi.
+			writeJSON(w, r, http.StatusForbidden, ErrorResponse{
+				Code:    CodeForbidden,
+				Message: "Access group Anda tidak berwenang atas layar akseptasi proteksi. Hubungi administrator bila seharusnya berhak.",
+			})
+			return
+
+		case errors.Is(err, inboxacceptopenprotection.ErrClaimNotSynced):
+			// 409, bukan 500: tidak ada yang rusak — klaimnya belum ada di daftar klaim.
+			// Pesannya menyebut apa yang harus dibereskan dan menegaskan keputusannya TIDAK
+			// tersimpan, supaya petugas tidak mengira persetujuannya sudah berlaku.
+			writeJSON(w, r, http.StatusConflict, ErrorResponse{
+				Code: CodeConflict,
+				Message: "Keputusan tidak disimpan: klaim yang ditaut belum ada di daftar klaim, " +
+					"sehingga perubahan Tanggal Kejadian tidak dapat diterapkan. Laporkan nomor klaimnya ke administrator.",
+			})
+			return
+
 		case errors.Is(err, inboxacceptopenprotection.ErrNotFound):
 			writeJSON(w, r, http.StatusNotFound, ErrorResponse{
 				Code:    CodeNotFound,

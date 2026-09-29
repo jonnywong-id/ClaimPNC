@@ -124,6 +124,22 @@ func NewClaimRepoWithSamples() *ClaimRepo {
 			LossDate:     &dol,
 			BranchName:   "CABANG CONTOH",
 		},
+		// Klaim WARISAN Pega: satu-satunya yang ber-PegaID.
+		//
+		// Ia ada justru supaya percabangan `ClaimReferenceOf` benar-benar terlewati saat
+		// pengembangan lokal. Contoh yang seluruhnya klaim sistem baru akan membuat cabang
+		// IDPEGA tidak pernah dijalankan, dan cacatnya baru muncul di produksi — tempat
+		// mayoritas klaim justru berasal dari Pega.
+		inputreqprotection.Claim{
+			Number:       "PNC-1865",
+			PegaID:       "ASM-FW-GCNMFW-WORK PNC-1865",
+			PolicyNumber: "99.001.2026.00000004",
+			InsuredName:  "TERTANGGUNG CONTOH EMPAT",
+			LossDate:     &dol,
+			CauseOfLoss:  "Kebakaran",
+			ObjectName:   "OBJEK CONTOH EMPAT",
+			BranchName:   "CABANG CONTOH",
+		},
 	)
 	return r
 }

@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   Sistem desain Claim PNC — Light Mode
+   Sistem desain Claim PNC — Glassmorphism Navy (sejak 2026-09-28)
    ==========================================================================
 
-   Hanya ada satu mode: terang. Ditetapkan Work Owner 2026-09-17, dan `color-scheme`
+   PERHATIAN: sejak 2026-09-28 aplikasi memakai tema GELAP Glassmorphism Navy atas
+   permintaan Work Owner — lihat blok "TEMA GLASSMORPHISM NAVY" di @theme dan lapisan
+   kaca di akhir berkas. Catatan di bawah ini adalah riwayat tema terang yang digantikan;
+   penalaran kontrasnya tetap berlaku untuk tombol utama.
+
+   (Riwayat) Hanya ada satu mode: terang. Ditetapkan Work Owner 2026-09-17, dan `color-scheme`
    di bawah memberi tahu peramban supaya kontrol bawaannya — bilah gulir, pemilih
    tanggal, tanda centang — ikut terang, bukan mengikuti tema sistem pengguna.
 
@@ -46,9 +51,111 @@
      berwarna. */
   --shadow-aksen: 0 1px 2px 0 rgb(29 78 216 / 0.16), 0 6px 16px -6px rgb(29 78 216 / 0.35);
 
-  /* Lengkung. Satu tangga saja supaya tidak ada tiga radius berbeda di satu layar. */
-  --radius-kartu: 0.875rem;
-  --radius-kontrol: 0.625rem;
+  /* Lengkung: satu tangga saja supaya tidak ada tiga radius berbeda di satu layar —
+     nilainya di blok tema di bawah. */
+
+  /* ==================================================================
+     TEMA GLASSMORPHISM NAVY — permintaan Work Owner 2026-09-28.
+
+     Aturannya: HANYA gaya yang berubah, tidak satu pun komponen. Caranya memanfaatkan
+     sifat Tailwind v4 — setiap warna adalah variabel CSS — sehingga token di bawah
+     MENIMPA palet bawaan dan seluruh 186 komponen ikut berganti tanpa disentuh.
+
+     Arah pemetaannya: layar ditulis untuk latar TERANG, jadi skala "terang → gelap"
+     dibalik. Angka kecil (50–300), yang dipakai sebagai latar dan garis tepi di atas
+     putih, menjadi lapisan putih TRANSPARAN di atas navy — itulah kacanya. Angka besar
+     (400–950), yang dipakai sebagai teks, menjadi abu TERANG sampai putih.
+
+     Kontras (di atas navy #0b1b3a, dihitung): slate-900 → #f8fafc 16,9:1 · slate-700 →
+     #d6dde8 13,0:1 · slate-500 → #a9b6c9 8,6:1 · slate-400 → #94a3b8 6,7:1. Seluruhnya
+     di atas AA (4,5:1). Kekecualian yang disadari: slate-300 (16 pemakaian, hiasan dan
+     keadaan nonaktif) menjadi putih 32% ≈ 2,4:1.
+     ================================================================== */
+
+  /* Radius — lebih melengkung sesuai gaya kaca; tombol dijadikan pil di bawah. */
+  --radius-kartu: 1.25rem;
+  --radius-kontrol: 0.875rem;
+
+  /* Bayangan melayang: lebih dalam dan lebih lebar, ditambah kilap tipis di tepi atas
+     yang meniru pantulan cahaya pada kaca. */
+  --shadow-lembut: inset 0 1px 0 0 rgb(255 255 255 / 0.06), 0 8px 24px -8px rgb(2 6 23 / 0.55);
+  --shadow-angkat: inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 12px 32px -10px rgb(2 6 23 / 0.65);
+  --shadow-terbang: inset 0 1px 0 0 rgb(255 255 255 / 0.1), 0 24px 56px -16px rgb(2 6 23 / 0.75);
+  --shadow-aksen: 0 0 0 1px rgb(34 211 238 / 0.25), 0 8px 24px -6px rgb(34 211 238 / 0.45);
+
+  /* Slate — permukaan dan garis tepi kaca (50–300), teks (400–950). */
+  --color-slate-50: rgb(255 255 255 / 0.05);
+  --color-slate-100: rgb(255 255 255 / 0.08);
+  --color-slate-200: rgb(255 255 255 / 0.14);
+  --color-slate-300: rgb(255 255 255 / 0.32);
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #a9b6c9;
+  --color-slate-600: #c3cddb;
+  --color-slate-700: #d6dde8;
+  --color-slate-800: #e6ebf2;
+  --color-slate-900: #f8fafc;
+  --color-slate-950: #ffffff;
+
+  /* Blue → aksen CYAN terang. */
+  --color-blue-50: rgb(34 211 238 / 0.12);
+  --color-blue-100: rgb(34 211 238 / 0.2);
+  --color-blue-200: rgb(34 211 238 / 0.35);
+  --color-blue-300: rgb(34 211 238 / 0.5);
+  --color-blue-400: #38bdf8;
+  --color-blue-500: #22d3ee;
+  --color-blue-600: #22d3ee;
+  --color-blue-700: #67e8f9;
+  --color-blue-800: #a5f3fc;
+  --color-blue-900: #cffafe;
+
+  /* Emerald dan green → hijau NEON (lencana berhasil, angka positif). */
+  --color-emerald-50: rgb(52 211 153 / 0.12);
+  --color-emerald-100: rgb(52 211 153 / 0.2);
+  --color-emerald-200: rgb(52 211 153 / 0.35);
+  --color-emerald-500: #34d399;
+  --color-emerald-600: #4ade80;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-emerald-900: #d1fae5;
+  --color-emerald-950: #ecfdf5;
+  --color-green-50: rgb(74 222 128 / 0.12);
+  --color-green-100: rgb(74 222 128 / 0.2);
+  --color-green-200: rgb(74 222 128 / 0.35);
+  --color-green-700: #86efac;
+  --color-green-800: #bbf7d0;
+
+  /* Amber → KUNING (peringatan, menunggu). */
+  --color-amber-50: rgb(251 191 36 / 0.12);
+  --color-amber-100: rgb(251 191 36 / 0.2);
+  --color-amber-200: rgb(251 191 36 / 0.35);
+  --color-amber-300: rgb(251 191 36 / 0.5);
+  --color-amber-400: #fbbf24;
+  --color-amber-600: #fcd34d;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+
+  /* Red dan rose → merah muda terang (galat tetap merah, tetapi terbaca di atas gelap). */
+  --color-red-50: rgb(248 113 113 / 0.12);
+  --color-red-100: rgb(248 113 113 / 0.2);
+  --color-red-200: rgb(248 113 113 / 0.35);
+  --color-red-400: #f87171;
+  --color-red-500: #f87171;
+  --color-red-600: #fca5a5;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+  --color-red-900: #fee2e2;
+  --color-rose-50: rgb(251 113 133 / 0.12);
+  --color-rose-200: rgb(251 113 133 / 0.35);
+  --color-rose-300: rgb(251 113 133 / 0.5);
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+  --color-rose-900: #ffe4e6;
+
+  /* Sky dan orange — pemakaian sedikit, disesuaikan seperlunya. */
+  --color-sky-50: rgb(56 189 248 / 0.12);
+  --color-sky-200: rgb(56 189 248 / 0.35);
+  --color-orange-600: #fdba74;
 
   /* Lengkung gerak. Ease-out: cepat memulai, melambat di akhir — terasa responsif
      karena reaksinya terlihat seketika. */
@@ -56,8 +163,10 @@
 }
 
 @layer base {
+  /* Gelap sejak tema Glassmorphism Navy (2026-09-28): bilah gulir, pemilih tanggal, dan
+     daftar pilihan bawaan peramban ikut gelap, bukan putih di tengah layar navy. */
   :root {
-    color-scheme: light;
+    color-scheme: dark;
   }
 
   html {
@@ -65,8 +174,17 @@
     scroll-behavior: smooth;
   }
 
+  /* Latar gradasi navy dengan dua pendar lembut (biru di kiri atas, cyan di kanan
+     atas). `fixed` supaya gradasinya tidak ikut tergulir — kaca di atasnya yang bergerak,
+     bukan latarnya. `background-color` tetap diisi sebagai cadangan bila gradien gagal. */
   body {
-    background-color: var(--color-slate-50);
+    min-height: 100vh;
+    background-color: #0b1b3a;
+    background-image:
+      radial-gradient(1100px 620px at 8% -8%, rgb(37 99 235 / 0.32), transparent 60%),
+      radial-gradient(900px 560px at 100% 0%, rgb(8 145 178 / 0.26), transparent 60%),
+      linear-gradient(160deg, #0f2350 0%, #0b1b3a 45%, #060d22 100%);
+    background-attachment: fixed;
     color: var(--color-slate-900);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -109,4 +227,279 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ==========================================================================
+   Glassmorphism Navy — lapisan kaca (2026-09-28)
+
+   Seluruh aturan di bawah SENGAJA di luar @layer. Utilitas Tailwind v4 hidup di
+   `@layer utilities`, dan CSS tanpa lapisan selalu menang atasnya — itulah yang membuat
+   gaya ini berlaku tanpa menyunting satu kelas pun di komponen.
+
+   Selektornya atribut (`[class~="…"]`), bukan `.bg-white`: nilai atribut ditulis apa
+   adanya tanpa meloloskan titik dua dan garis miring, dan `~=` hanya cocok dengan satu
+   kelas UTUH — `hover:bg-white` tidak ikut tertangkap `bg-white`.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Permukaan kaca: bg-white adalah latar kartu, panel, modal, bilah atas, dan kontrol.
+   `--color-white` sendiri TIDAK diubah, karena `text-white` pada tombol harus tetap
+   putih pekat.
+   -------------------------------------------------------------------------- */
+[class~="bg-white"],
+[class*=" bg-white/"],
+[class^="bg-white/"] {
+  background-color: rgb(255 255 255 / 0.07);
+}
+
+/* Blur hanya pada wadah (kartu, modal, panel, bilah atas) — bukan pada setiap kontrol
+   dan baris tabel. backdrop-filter mahal digambar, dan ratusan elemen kabur sekaligus
+   membuat gulir tersendat di komputer kantor. */
+[class~="bg-white"][class*="rounded-kartu"],
+[class~="bg-white"][class*="shadow-"],
+[class*=" bg-white/"],
+[class^="bg-white/"],
+header[class~="bg-white"],
+nav[class~="bg-white"],
+aside[class~="bg-white"] {
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+/* Garis tepi kaca: tipis, putih transparan, sedikit lebih terang di atas. */
+[class~="bg-white"][class*="rounded-kartu"] {
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+/* Hover pada permukaan kaca. Tanpa ini, aturan di atas (tanpa lapisan) mengalahkan
+   `hover:bg-slate-50` milik tombol sekunder, dan tombol berhenti bereaksi saat disentuh. */
+[class~="bg-white"][class*="hover:bg-"]:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / 0.14);
+}
+
+/* Isian dan pilihan: kaca yang lebih pekat supaya teks di dalamnya tetap tegas. */
+input[class~="bg-white"],
+select[class~="bg-white"],
+textarea[class~="bg-white"] {
+  background-color: rgb(8 18 42 / 0.55);
+}
+
+/* Daftar pilihan bawaan <select>: sebagian peramban menggambarnya dengan latar sendiri
+   dan mengabaikan warna transparan. */
+option {
+  background-color: #0b1b3a;
+  color: #f8fafc;
+}
+
+/* --------------------------------------------------------------------------
+   Latar belakang modal: lebih gelap dan mengaburkan layar di belakangnya.
+   -------------------------------------------------------------------------- */
+[class*="bg-slate-900/"] {
+  background-color: rgb(2 6 23 / 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* --------------------------------------------------------------------------
+   Tombol berbentuk pil. Hanya <button> dan tautan ber-rounded-kontrol — isian teks
+   tetap bersudut lembut, karena pil pada kotak teks berbaris banyak terlihat janggal.
+   -------------------------------------------------------------------------- */
+button[class*="rounded-kontrol"],
+a[class*="rounded-kontrol"] {
+  border-radius: 9999px;
+}
+
+/* --------------------------------------------------------------------------
+   Latar PEKAT yang memakai warna yang sama dengan teks.
+
+   Token biru, hijau, merah, dan slate di atas dipetakan ke nilai TERANG karena
+   mayoritas pemakaiannya adalah teks. Sebagian kecil kelas memakai warna itu sebagai
+   latar pekat di bawah `text-white` — tanpa aturan ini, teks putih jatuh di atas latar
+   terang dan tidak terbaca.
+   -------------------------------------------------------------------------- */
+
+/* Tombol utama, nomor halaman aktif, dan penanda terpilih: gradasi biru → cyan. */
+[class~="bg-blue-600"],
+[class~="bg-blue-700"],
+[class~="bg-blue-800"] {
+  background-color: #1d4ed8;
+  background-image: linear-gradient(135deg, #2563eb 0%, #0e7490 100%);
+  border-color: rgb(103 232 249 / 0.35);
+}
+[class~="bg-blue-600"]:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+/* Tombol gelap berlatar slate-900 di Master Rekening dan Registrasi. */
+[class~="bg-slate-900"] {
+  background-color: rgb(15 23 42 / 0.9);
+  border: 1px solid rgb(255 255 255 / 0.16);
+}
+[class~="hover:bg-slate-700"]:hover:not(:disabled) {
+  background-color: rgb(30 41 59 / 0.95);
+}
+
+/* Lencana dan tombol status berlatar hijau/merah pekat (Master Rekening). */
+[class~="bg-green-700"] {
+  background-color: #15803d;
+}
+[class~="hover:bg-green-800"]:hover:not(:disabled) {
+  background-color: #166534;
+}
+[class~="bg-red-700"] {
+  background-color: #b91c1c;
+}
+[class~="hover:bg-red-800"]:hover:not(:disabled) {
+  background-color: #991b1b;
+}
+
+/* Gradasi berbiru di logo bilah atas dan panel halaman masuk: tetap pekat, sebab
+   teks putih duduk di atasnya. */
+[class~="from-blue-500"][class~="to-blue-700"] {
+  background-image: linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+}
+[class~="from-blue-600"] {
+  background-image: linear-gradient(145deg, #1e3a8a 0%, #0f2350 55%, #060d22 100%);
+}
+
+/* ==========================================================================
+   Area konten TETAP TERANG — koreksi Work Owner 2026-09-28
+
+   Tema kaca navy hanya berlaku untuk BILAH ATAS dan MENU SAMPING. Seluruh area konten
+   (elemen <main> — isi setiap modul) dan halaman masuk dikembalikan ke tampilan terang
+   sebelumnya: pada tema gelap, sebagian tulisan halaman masuk tidak terbaca.
+
+   Caranya tetap tanpa menyentuh komponen:
+     1. Token warna, bayangan, dan radius DIPULIHKAN ke nilai bawaan di dalam <main>.
+        Variabel CSS diwariskan, sehingga setiap kelas Tailwind di dalamnya kembali
+        memakai palet terang. Nilai warnanya disalin dari
+        node_modules/tailwindcss/theme.css, bukan dikira-kira.
+     2. Setiap aturan kaca di atas DILEPAS di dalam <main> dengan `revert-layer`, yang
+        mengembalikan properti ke nilai utilitas Tailwind asli.
+   ========================================================================== */
+main {
+    --color-slate-50:  oklch(98.4% 0.003 247.858);
+    --color-slate-100:  oklch(96.8% 0.007 247.896);
+    --color-slate-200:  oklch(92.9% 0.013 255.508);
+    --color-slate-300:  oklch(86.9% 0.022 252.894);
+    --color-slate-400:  oklch(70.4% 0.04 256.788);
+    --color-slate-500:  oklch(55.4% 0.046 257.417);
+    --color-slate-600:  oklch(44.6% 0.043 257.281);
+    --color-slate-700:  oklch(37.2% 0.044 257.287);
+    --color-slate-800:  oklch(27.9% 0.041 260.031);
+    --color-slate-900:  oklch(20.8% 0.042 265.755);
+    --color-slate-950:  oklch(12.9% 0.042 264.695);
+    --color-blue-50:  oklch(97% 0.014 254.604);
+    --color-blue-100:  oklch(93.2% 0.032 255.585);
+    --color-blue-200:  oklch(88.2% 0.059 254.128);
+    --color-blue-300:  oklch(80.9% 0.105 251.813);
+    --color-blue-400:  oklch(70.7% 0.165 254.624);
+    --color-blue-500:  oklch(62.3% 0.214 259.815);
+    --color-blue-600:  oklch(54.6% 0.245 262.881);
+    --color-blue-700:  oklch(48.8% 0.243 264.376);
+    --color-blue-800:  oklch(42.4% 0.199 265.638);
+    --color-blue-900:  oklch(37.9% 0.146 265.522);
+    --color-emerald-50:  oklch(97.9% 0.021 166.113);
+    --color-emerald-100:  oklch(95% 0.052 163.051);
+    --color-emerald-200:  oklch(90.5% 0.093 164.15);
+    --color-emerald-500:  oklch(69.6% 0.17 162.48);
+    --color-emerald-600:  oklch(59.6% 0.145 163.225);
+    --color-emerald-700:  oklch(50.8% 0.118 165.612);
+    --color-emerald-800:  oklch(43.2% 0.095 166.913);
+    --color-emerald-900:  oklch(37.8% 0.077 168.94);
+    --color-emerald-950:  oklch(26.2% 0.051 172.552);
+    --color-green-50:  oklch(98.2% 0.018 155.826);
+    --color-green-100:  oklch(96.2% 0.044 156.743);
+    --color-green-200:  oklch(92.5% 0.084 155.995);
+    --color-green-700:  oklch(52.7% 0.154 150.069);
+    --color-green-800:  oklch(44.8% 0.119 151.328);
+    --color-amber-50:  oklch(98.7% 0.022 95.277);
+    --color-amber-100:  oklch(96.2% 0.059 95.617);
+    --color-amber-200:  oklch(92.4% 0.12 95.746);
+    --color-amber-300:  oklch(87.9% 0.169 91.605);
+    --color-amber-400:  oklch(82.8% 0.189 84.429);
+    --color-amber-600:  oklch(66.6% 0.179 58.318);
+    --color-amber-700:  oklch(55.5% 0.163 48.998);
+    --color-amber-800:  oklch(47.3% 0.137 46.201);
+    --color-amber-900:  oklch(41.4% 0.112 45.904);
+    --color-red-50:  oklch(97.1% 0.013 17.38);
+    --color-red-100:  oklch(93.6% 0.032 17.717);
+    --color-red-200:  oklch(88.5% 0.062 18.334);
+    --color-red-400:  oklch(70.4% 0.191 22.216);
+    --color-red-500:  oklch(63.7% 0.237 25.331);
+    --color-red-600:  oklch(57.7% 0.245 27.325);
+    --color-red-700:  oklch(50.5% 0.213 27.518);
+    --color-red-800:  oklch(44.4% 0.177 26.899);
+    --color-red-900:  oklch(39.6% 0.141 25.723);
+    --color-rose-50:  oklch(96.9% 0.015 12.422);
+    --color-rose-200:  oklch(89.2% 0.058 10.001);
+    --color-rose-300:  oklch(81% 0.117 11.638);
+    --color-rose-700:  oklch(51.4% 0.222 16.935);
+    --color-rose-800:  oklch(45.5% 0.188 13.697);
+    --color-rose-900:  oklch(41% 0.159 10.272);
+    --color-sky-50:  oklch(97.7% 0.013 236.62);
+    --color-sky-200:  oklch(90.1% 0.058 230.902);
+    --color-orange-600:  oklch(64.6% 0.222 41.116);
+    --shadow-lembut: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+    --shadow-angkat: 0 2px 4px -2px rgb(15 23 42 / 0.06), 0 8px 16px -6px rgb(15 23 42 / 0.10);
+    --shadow-terbang: 0 4px 8px -4px rgb(15 23 42 / 0.06), 0 20px 40px -16px rgb(15 23 42 / 0.18);
+    --shadow-aksen: 0 1px 2px 0 rgb(29 78 216 / 0.16), 0 6px 16px -6px rgb(29 78 216 / 0.35);
+    --radius-kartu: 0.875rem;
+    --radius-kontrol: 0.625rem;
+    color-scheme: light;
+    color: var(--color-slate-900);
+}
+
+/* Latar terang untuk <main> terluar saja — <main> di dalam halaman tidak perlu
+   menggambarnya lagi. Tingginya minimal setinggi layar di bawah bilah atas, supaya
+   latar navy tidak menyembul di bawah halaman yang pendek. */
+main:not(main main) {
+  background-color: var(--color-slate-50);
+  min-height: calc(100vh - 4rem);
+}
+
+/* Lepaskan lapisan kaca di dalam area konten. Daftar selektornya SAMA dengan lapisan
+   kaca di atas, supaya spesifisitas aturan ini selalu lebih tinggi. */
+main
+  :is(
+    [class~="bg-white"],
+    [class*=" bg-white/"],
+    [class^="bg-white/"],
+    [class~="bg-white"][class*="rounded-kartu"],
+    [class~="bg-white"][class*="shadow-"],
+    header[class~="bg-white"],
+    nav[class~="bg-white"],
+    aside[class~="bg-white"],
+    input[class~="bg-white"],
+    select[class~="bg-white"],
+    textarea[class~="bg-white"],
+    option,
+    [class*="bg-slate-900/"],
+    button[class*="rounded-kontrol"],
+    a[class*="rounded-kontrol"],
+    [class~="bg-blue-600"],
+    [class~="bg-blue-700"],
+    [class~="bg-blue-800"],
+    [class~="bg-slate-900"],
+    [class~="bg-green-700"],
+    [class~="bg-red-700"],
+    [class~="from-blue-500"][class~="to-blue-700"],
+    [class~="from-blue-600"]
+  ),
+main
+  :is(
+      [class~="bg-white"][class*="hover:bg-"],
+      [class~="bg-blue-600"],
+      [class~="hover:bg-slate-700"],
+      [class~="hover:bg-green-800"],
+      [class~="hover:bg-red-800"]
+    ):hover:not(:disabled) {
+  background-color: revert-layer;
+  background-image: revert-layer;
+  border: revert-layer;
+  border-radius: revert-layer;
+  -webkit-backdrop-filter: revert-layer;
+  backdrop-filter: revert-layer;
+  filter: revert-layer;
+  color: revert-layer;
 }

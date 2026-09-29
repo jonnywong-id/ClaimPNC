@@ -138,11 +138,15 @@ func TestNomorKlaimTerlaluPanjangDitolakSebelumMenyentuhOracle(t *testing.T) {
 	require.Contains(t, v.Errors[0].Message, "terlalu panjang")
 }
 
-// TestDraftTidakMenerimaClaimIDTerpisah menjaga keputusan 2026-09-24.
+// TestDraftTidakMenerimaClaimIDTerpisah menjaga `ID_CLAIM` tetap DITURUNKAN.
 //
-// Work Owner menegaskan ClaimNo dan ClaimID berisi nilai yang sama. Menanyakannya dua kali
-// akan membuat keduanya berbeda cepat atau lambat — tanpa galat, hanya proteksi yang
-// menunjuk dua klaim berbeda.
+// Nilainya bergantung pada ASAL klaim — IDPEGA bagi klaim Pega, nomor klaim bagi klaim
+// sistem baru (`ClaimReferenceOf`). Keduanya dapat diketahui dari klaim yang ditaut, dan
+// tidak satu pun perlu ditanyakan ke pemohon.
+//
+// Menanyakannya justru berbahaya: pemohon tidak punya cara mengetahui IDPEGA sebuah klaim,
+// sehingga yang terisi akan berupa tebakan — dan tebakan yang keliru tidak menghasilkan
+// galat, hanya proteksi yang menunjuk klaim yang tidak dikenali.
 //
 // Uji ini memakai refleksi karena yang dijaga adalah KETIADAAN sebuah field: menambahkannya
 // kembali akan lolos setiap uji perilaku, dan baru terlihat sebagai data yang tidak cocok.

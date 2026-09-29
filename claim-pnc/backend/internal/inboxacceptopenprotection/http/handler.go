@@ -21,7 +21,8 @@ import (
 // Service adalah bagian usecase yang dipakai handler ini.
 type Service interface {
 	List(ctx context.Context, q usecase.ListQuery) (inboxacceptopenprotection.Page, error)
-	Get(ctx context.Context, portalAlias, number string) (inboxacceptopenprotection.Protection, error)
+	Queues(ctx context.Context, login string) ([]inboxacceptopenprotection.Queue, error)
+	Get(ctx context.Context, portalAlias, number, login string) (inboxacceptopenprotection.Protection, error)
 	Decide(ctx context.Context, cmd usecase.DecideCommand) (inboxacceptopenprotection.Protection, error)
 }
 
@@ -101,10 +102,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	caller, ok := h.requireCaller(w, r)
+	if !ok {
+		return
+	}
 
 	page, err := h.service.List(r.Context(), usecase.ListQuery{
 		PortalAlias: alias,
 		Queue:       queue,
+		Login:       caller.Login,
 		Search:      strings.TrimSpace(r.URL.Query().Get("cari")),
 		Limit:       limit,
 		Offset:      offset,
@@ -137,14 +143,46 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	caller, ok := h.requireCaller(w, r)
+	if !ok {
+		return
+	}
 
-	p, err := h.service.Get(r.Context(), alias, number)
+	p, err := h.service.Get(r.Context(), alias, number, caller.Login)
 	if err != nil {
 		h.writeErrorF(w, r, err)
 		return
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toDetailDTO(p, h.location))
+}
+
+// Queues melayani daftar antrean yang boleh dibuka pemanggil.
+//
+// Layar memanggilnya untuk menggambar tab. Tanpa rute ini, layar hanya punya dua pilihan
+// yang sama-sama buruk: menggambar kedua tab lalu membiarkan salah satunya dijawab 403, atau
+// menebak kewenangan dari sesuatu yang ada di peramban.
+//
+// Rute ini TIDAK menuntut portal aktif — kewenangan seseorang sama di keempat portal
+// (`D-78`), dan tabelnya pun tinggal di basis data utama.
+func (h *Handler) Queues(w http.ResponseWriter, r *http.Request) {
+	caller, ok := h.requireCaller(w, r)
+	if !ok {
+		return
+	}
+
+	queues, err := h.service.Queues(r.Context(), caller.Login)
+	if err != nil {
+		h.writeErrorF(w, r, err)
+		return
+	}
+
+	daftar := make([]string, 0, len(queues))
+	for _, q := range queues {
+		daftar = append(daftar, string(q))
+	}
+
+	h.writeJSON(w, r, http.StatusOK, queuesResponse{Antrean: daftar})
 }
 
 // Decide melayani keputusan akseptasi: setuju atau tolak.

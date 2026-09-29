@@ -93,6 +93,7 @@ type Config struct {
 	HCQ             HCQ
 	Cashier         Cashier
 	SMTP            SMTP
+	DocumentStorage DocumentStorage
 
 	// PrimaryPortal adalah alias portal yang basis datanya melayani hal-hal yang
 	// dibutuhkan SEBELUM pengguna memilih portal: daftar portal (M_PORTAL_PNC),
@@ -250,6 +251,77 @@ type Cashier struct {
 // Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
 func (k Cashier) Active() bool {
 	return strings.TrimSpace(k.RegisterURL) != "" && strings.TrimSpace(k.UpdateURL) != ""
+}
+
+// Alamat baku kedua layanan dokumen, disalin dari rule Connect REST Pega.
+//
+// # Kenapa ada nilai baku, padahal §3.4 melarang endpoint tertanam di kode
+//
+// Yang §3.4 dan `R-18` larang adalah endpoint yang **tidak dapat diganti** — sebabnya dua
+// Connect REST produksi yang menunjuk host sandbox tanpa seorang pun dapat mengalihkannya.
+// Larangan itu tetap dipatuhi: kedua nilai di bawah **dapat ditimpa** lewat variabel
+// lingkungan, per lingkungan, tanpa rilis ulang.
+//
+// Yang berubah hanyalah nilai bakunya. Work Owner menetapkannya 2026-09-27: *"alamat
+// layanan ada di connect-rest pega"*. Tanpa nilai baku, unggah dokumen mati di setiap
+// lingkungan sampai seseorang mengingat mengisi dua variabel yang tidak pernah disebut
+// layar mana pun.
+//
+// `D-69` tidak dilanggar: host `app13` sudah tertulis di artefak yang di-commit sejak
+// awal — `docs/Steering/02-BUSINESS-UNDERSTANDING.md:238`, `docs/BRD/BRD.md:929`, dan
+// `D-16` sendiri. Menuliskannya di sini tidak menambah paparan apa pun.
+const (
+	// DefaultDocumentStorageURL — `Connect REST/UploadDokumenPNC-ConnectREST.xml`,
+	// `pyBaseURL`.
+	DefaultDocumentStorageURL = "https://app13.sinarmas.co.id"
+
+	// DefaultImageConverterURL — `Connect REST/KonversiAvif-ConnectREST.xml`, `pyBaseURL`.
+	//
+	// **`http://`, bukan `https://`** — begitu apa adanya di rule itu. Isi berkas, termasuk
+	// dokumen nasabah, melintas tanpa enkripsi dan tanpa otentikasi. Tidak diubah di sini
+	// karena memaksa TLS ke layanan yang belum melayaninya akan mematikan konversi; yang
+	// dilakukan adalah membuatnya dapat dialihkan ke HTTPS lewat konfigurasi begitu Tim
+	// Infra menyediakannya.
+	DefaultImageConverterURL = "http://aiimage.sinarmas.co.id"
+)
+
+// DocumentStorage memuat alamat kedua layanan dokumen internal.
+//
+// # Kenapa alamatnya di sini, bukan di GCNM_CONNECT_REST seperti HCQ
+//
+// Registri `POOLDATA.GCNM_CONNECT_REST` memang tempat yang lebih baik — perpindahan
+// endpoint menjadi perubahan data oleh DBA, bukan rilis ulang. Tetapi diperiksa langsung
+// 2026-09-26: registri itu **tidak punya baris** untuk unggah dokumen maupun konversi
+// gambar. Keduanya tertanam di dalam rule Connect REST Pega.
+//
+// Begitu DBA menambahkan barisnya, nilai ini dapat pindah ke sana dan kedua variabel
+// lingkungannya dicabut.
+type DocumentStorage struct {
+	// BaseURL adalah pangkal layanan penyimpanan, TANPA jalur `/api/v1/upload`.
+	BaseURL string
+
+	// ConverterURL adalah pangkal layanan konversi gambar, TANPA jalur `/convert-avif`.
+	//
+	// Kosongnya TIDAK menggagalkan start dan TIDAK mematikan unggah — yang gagal hanyalah
+	// berkas PNG, JPG, JPEG, dan PDF, yaitu yang memang menempuh konversi. Berkas lain
+	// tetap terunggah.
+	ConverterURL string
+
+	// Timeout membatasi satu unggahan maupun satu konversi. Kosong berarti 60 detik.
+	Timeout time.Duration
+}
+
+// Active menyatakan konfigurasi ini cukup untuk mengunggah dokumen.
+func (d DocumentStorage) Active() bool {
+	return strings.TrimSpace(d.BaseURL) != ""
+}
+
+// ConverterActive menyatakan konfigurasi ini cukup untuk mengonversi gambar.
+//
+// Dipisahkan dari Active karena keduanya layanan yang berbeda: penyimpanan dapat hidup
+// tanpa konversi, dan matinya konversi hanya menutup empat ekstensi.
+func (d DocumentStorage) ConverterActive() bool {
+	return strings.TrimSpace(d.ConverterURL) != ""
 }
 
 // SMTP memuat parameter server surel keluar.
@@ -442,6 +514,11 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// 60 detik, bukan 30 seperti pemanggilan biasa: muatannya membawa berkas.
+	documentStorageTimeout, err := getDuration("PENYIMPANAN_DOKUMEN_BATAS_WAKTU", 60*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	portSMTP, err := getInt("SMTP_PORT", 0)
 	if err != nil {
 		issues = append(issues, err)
@@ -538,6 +615,11 @@ func Load() (Config, error) {
 			User:        strings.TrimSpace(os.Getenv("KASIR_USER")),
 			Password:    os.Getenv("KASIR_PASSWORD"),
 			Timeout:     cashierTimeout,
+		},
+		DocumentStorage: DocumentStorage{
+			BaseURL:      get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
+			ConverterURL: get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
+			Timeout:      documentStorageTimeout,
 		},
 		SMTP: SMTP{
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),

@@ -249,45 +249,45 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-/** Tabel perusahaan — tabel utama layar ini. */
-async function companyTable() {
-  return screen.findByRole('table', { name: 'Daftar perusahaan' })
+/** Daftar perusahaan di panel kiri. */
+async function companyList() {
+  return screen.findByRole('navigation', { name: 'Daftar perusahaan' })
+}
+
+/** Tombol satu perusahaan di panel kiri, dicari dari awal namanya. */
+async function companyButton(name: string) {
+  const list = await companyList()
+  return within(list).getByRole('button', { name: new RegExp(`^${name}`) })
 }
 
 /**
- * Membuka baris satu perusahaan lalu mengembalikan grid batch di dalamnya.
+ * Memilih satu perusahaan lalu mengembalikan grid batch di panel kanan.
  *
  * Grid itu DIAMBIL ULANG oleh pemanggil bila perlu: DataTable melepas elemen <table>-nya
  * saat berganti ke keadaan memuat, sehingga simpulan lama menunjuk DOM yang sudah hilang.
  */
 async function openCompany(name: string) {
-  const table = await companyTable()
-  await userEvent.click(within(table).getByRole('button', { name: `Buka batch ${name}` }))
+  await userEvent.click(await companyButton(name))
   return screen.findByRole('table', { name: `Batch ${name}` })
 }
 
-/** Nama perusahaan per baris tabel perusahaan, sesuai urutan tampil. */
-function companyNames(table: HTMLElement) {
-  return within(table)
-    .getAllByRole('button', { name: /^(Buka|Tutup) batch / })
-    .map((b) => b.getAttribute('aria-label')?.replace(/^(Buka|Tutup) batch /, ''))
+/** Nama perusahaan di panel kiri, sesuai urutan tampil. */
+function companyNames(list: HTMLElement) {
+  return within(list)
+    .getAllByRole('button')
+    .map((b) => b.querySelector('span span')?.textContent)
 }
 
-describe('tabel perusahaan', () => {
-  it('menampilkan judul, kolom perusahaan paling kiri, dan tanpa grafik', async () => {
+describe('daftar perusahaan di kiri', () => {
+  it('menampilkan judul, daftar perusahaan di kiri, dan tanpa grafik', async () => {
     installFetch(defaultReply())
     const { container } = show()
 
     expect(screen.getByRole('heading', { name: 'Inbox Auto Claim' })).toBeInTheDocument()
+    const list = await companyList()
+    expect(companyNames(list)).toEqual(['Mitra Finansial Nusantara', 'ZZZZ'])
 
-    const table = await companyTable()
-    const kepala = within(table)
-      .getAllByRole('columnheader')
-      .map((h) => h.textContent)
-    expect(kepala).toEqual(['Nama Perusahaan & Kode', 'Jumlah Batch', 'Aksi'])
-
-    // Donut sudah dibuang (keputusan Work Owner 2026-09-27). Recharts menggambar <svg>
-    // berkelas recharts-surface; tidak boleh ada satu pun.
+    // Donut sudah dibuang (keputusan Work Owner 2026-09-27).
     expect(container.querySelector('.recharts-surface')).toBeNull()
   })
 
@@ -295,45 +295,40 @@ describe('tabel perusahaan', () => {
     installFetch(defaultReply())
     show()
 
-    const table = await companyTable()
-    const mfin = within(table)
-      .getAllByRole('row')
-      .find((r) => r.textContent?.includes('Mitra Finansial Nusantara'))
-    expect(mfin).toBeDefined()
-    const sel = within(mfin as HTMLElement).getAllByRole('cell')
-    expect(sel[0]?.textContent).toContain('MFIN')
-    expect(sel[1]?.textContent?.trim()).toBe('2')
+    const mfin = await companyButton('Mitra Finansial Nusantara')
+    expect(mfin).toHaveTextContent('MFIN')
+    expect(mfin).toHaveTextContent(/2$/)
   })
 
   it('menandai perusahaan yang tidak terdaftar di master, bukan menyembunyikannya', async () => {
     installFetch(defaultReply())
     show()
 
-    const table = await companyTable()
-    expect(within(table).getByText('tidak terdaftar di Master Auto Claim')).toBeInTheDocument()
+    const list = await companyList()
+    expect(within(list).getByText('tidak terdaftar di Master Auto Claim')).toBeInTheDocument()
   })
 
   it('pencarian menyaring menurut nama maupun kode', async () => {
     installFetch(defaultReply())
     show()
 
-    await companyTable()
+    await companyList()
     const cari = screen.getByLabelText('Cari nama perusahaan')
 
     await userEvent.type(cari, 'mitra')
-    expect(companyNames(await companyTable())).toEqual(['Mitra Finansial Nusantara'])
+    expect(companyNames(await companyList())).toEqual(['Mitra Finansial Nusantara'])
 
     await userEvent.clear(cari)
     await userEvent.type(cari, 'zzz')
-    expect(companyNames(await companyTable())).toEqual(['ZZZZ'])
+    expect(companyNames(await companyList())).toEqual(['ZZZZ'])
 
     await userEvent.clear(cari)
     await userEvent.type(cari, 'tidak-ada')
     expect(await screen.findByText(/Tidak ada perusahaan yang cocok/)).toBeInTheDocument()
   })
 
-  it('memaginasi lebih dari 15 perusahaan', async () => {
-    // Alasan bentuk baru ini: tab Asuransi Kredit dapat memuat lebih dari 20 perusahaan.
+  it('memuat lebih dari 20 perusahaan dalam daftar yang digulir', async () => {
+    // Alasan bentuk ini: tab Asuransi Kredit dapat memuat lebih dari 20 perusahaan.
     const banyak = Array.from({ length: 22 }, (_, i) => ({
       kode: `K${String(i + 1).padStart(2, '0')}`,
       nama: `Perusahaan ${String(i + 1).padStart(2, '0')}`,
@@ -346,25 +341,16 @@ describe('tabel perusahaan', () => {
     )
     show()
 
-    expect(companyNames(await companyTable())).toHaveLength(15)
-    expect(screen.getByText(/dari 22 baris/)).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Halaman 2' }))
-    const kedua = companyNames(await companyTable())
-    expect(kedua).toHaveLength(7)
-    expect(kedua[0]).toBe('Perusahaan 16')
+    expect(companyNames(await companyList())).toHaveLength(22)
   })
 
   it('tidak ada baris berjumlah nol', async () => {
-    // Apa pun yang tampil di sini, bila dibuka, menghasilkan batch.
     installFetch(defaultReply())
     show()
 
-    const table = await companyTable()
-    const angka = within(table)
-      .getAllByRole('row')
-      .slice(1)
-      .map((r) => Number(within(r).getAllByRole('cell')[1]?.textContent?.trim()))
+    const angka = within(await companyList())
+      .getAllByRole('button')
+      .map((b) => Number(b.lastElementChild?.textContent?.trim()))
     expect(angka.length).toBeGreaterThan(0)
     for (const n of angka) expect(n).toBeGreaterThan(0)
   })
@@ -373,7 +359,7 @@ describe('tabel perusahaan', () => {
     installFetch(defaultReply())
     show()
 
-    await companyTable()
+    await companyList()
     expect(screen.queryByRole('combobox', { name: 'Nama Perusahaan' })).not.toBeInTheDocument()
   })
 
@@ -383,8 +369,6 @@ describe('tabel perusahaan', () => {
 
     await openCompany('Mitra Finansial Nusantara')
 
-    // Dua rute sengaja TIDAK menyebut portal: bentuk berkas unggahan dan daftar tab sama
-    // untuk setiap entitas.
     const dataCall = calls.filter(
       (c) => !c.url.includes('format-unggahan') && !c.url.startsWith('/api/inbox-auto-claim/tab'),
     )
@@ -404,17 +388,19 @@ describe('tabel perusahaan', () => {
   })
 })
 
-describe('baris perusahaan yang melar', () => {
-  it('tidak memuat batch sebelum ada baris yang dibuka', async () => {
+describe('batch perusahaan di kanan', () => {
+  it('perusahaan pertama langsung terpilih dan batchnya tampil di kanan', async () => {
+    // Seperti contoh yang disetujui: panel kanan tidak dibiarkan kosong.
     installFetch(defaultReply())
     show()
 
-    await companyTable()
-    expect(calls.some((c) => c.url.startsWith('/api/inbox-auto-claim?'))).toBe(false)
-    expect(screen.queryByRole('table', { name: /^Batch / })).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('table', { name: 'Batch Mitra Finansial Nusantara' }),
+    ).toBeInTheDocument()
+    expect(await companyButton('Mitra Finansial Nusantara')).toHaveAttribute('aria-current', 'true')
   })
 
-  it('membuka grid batch 9 kolom di dalam baris, tanpa jendela sembulan', async () => {
+  it('grid batch 9 kolom tampil DI SAMPING daftar, tanpa jendela sembulan', async () => {
     installFetch(defaultReply())
     show()
 
@@ -436,24 +422,26 @@ describe('baris perusahaan yang melar', () => {
     }
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    // Grid itu ada DI DALAM tabel perusahaan, bukan tabel terpisah di bawahnya.
-    expect((await companyTable()).contains(grid)).toBe(true)
+    // Grid ada di panel kanan, BUKAN di dalam daftar kiri.
+    const panel = screen.getByRole('region', { name: 'Batch perusahaan terpilih' })
+    expect(panel.contains(grid)).toBe(true)
+    expect((await companyList()).contains(grid)).toBe(false)
   })
 
   it('menyaring pada KODE perusahaan, bukan namanya', async () => {
     installFetch(defaultReply())
     show()
 
-    await companyTable()
+    await companyList()
     calls = []
-    await openCompany('Mitra Finansial Nusantara')
+    await openCompany('ZZZZ')
 
-    expect(calls.some((c) => c.url.includes('perusahaan=MFIN'))).toBe(true)
+    expect(calls.some((c) => c.url.includes('perusahaan=ZZZZ'))).toBe(true)
     expect(calls.some((c) => c.url.includes('Mitra'))).toBe(false)
   })
 
-  it('isi grid hanya milik perusahaan yang dibuka', async () => {
-    // Cacat yang dilaporkan Work Owner: grid menampilkan batch perusahaan lain.
+  it('isi grid hanya milik perusahaan yang dipilih, dan berganti saat memilih yang lain', async () => {
+    // Cacat yang pernah dilaporkan Work Owner: grid menampilkan batch perusahaan lain.
     installFetch(defaultReply())
     show()
 
@@ -467,41 +455,22 @@ describe('baris perusahaan yang melar', () => {
     ) // 1 judul + 2 batch MFIN
     expect(within(grid).queryByText('Kode ZZZZ perlu didaftarkan')).not.toBeInTheDocument()
     expect(within(grid).getByText('+2 menunggu')).toBeInTheDocument()
-  })
 
-  it('hanya satu baris terbuka sekaligus, dan mengekliknya lagi menutupnya', async () => {
-    installFetch(defaultReply())
-    show()
-
-    await openCompany('Mitra Finansial Nusantara')
     await openCompany('ZZZZ')
-
     expect(screen.queryByRole('table', { name: 'Batch Mitra Finansial Nusantara' })).toBeNull()
-    const grid = screen.getByRole('table', { name: 'Batch ZZZZ' })
-    expect(await within(grid).findByText('Kode ZZZZ perlu didaftarkan')).toBeInTheDocument()
-
-    const table = await companyTable()
-    const tutup = within(table).getByRole('button', { name: 'Tutup batch ZZZZ' })
-    expect(tutup).toHaveAttribute('aria-expanded', 'true')
-    await userEvent.click(tutup)
-    expect(screen.queryByRole('table', { name: 'Batch ZZZZ' })).toBeNull()
+    const lain = screen.getByRole('table', { name: 'Batch ZZZZ' })
+    expect(await within(lain).findByText('Kode ZZZZ perlu didaftarkan')).toBeInTheDocument()
+    expect(await companyButton('ZZZZ')).toHaveAttribute('aria-current', 'true')
   })
 
-  it('mengeklik di mana pun pada baris ikut membukanya', async () => {
-    // Sorotan hover menjanjikan seluruh baris dapat diklik — janji itu harus ditepati.
+  it('mencari tidak menghilangkan batch yang sedang diperiksa', async () => {
     installFetch(defaultReply())
     show()
 
-    const table = await companyTable()
-    const baris = within(table)
-      .getAllByRole('row')
-      .find((r) => r.textContent?.includes('Mitra Finansial Nusantara'))
-    const angka = within(baris as HTMLElement).getAllByRole('cell')[1]
-    await userEvent.click(angka as HTMLElement)
+    await openCompany('ZZZZ')
+    await userEvent.type(screen.getByLabelText('Cari nama perusahaan'), 'mitra')
 
-    expect(
-      await screen.findByRole('table', { name: 'Batch Mitra Finansial Nusantara' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Batch ZZZZ' })).toBeInTheDocument()
   })
 
   it('menampilkan Total Data dan tombol halaman grid batch', async () => {
@@ -529,7 +498,7 @@ describe('baris perusahaan yang melar', () => {
 })
 
 describe('rincian batch', () => {
-  it('membuka rincian di dalam baris dan menampilkan hasilnya', async () => {
+  it('membuka rincian di panel kanan dan menampilkan hasilnya', async () => {
     installFetch(defaultReply())
     show()
 
@@ -539,9 +508,9 @@ describe('rincian batch', () => {
     expect(await screen.findByRole('heading', { name: /Rincian batch 1/ })).toBeInTheDocument()
     expect(await screen.findByText('PNCN.26.101')).toBeInTheDocument()
 
-    // Rinciannya juga di dalam baris yang terbuka, bukan di bawah halaman.
     const detail = screen.getAllByRole('table').at(-1) as HTMLElement
-    expect((await companyTable()).contains(detail)).toBe(true)
+    const panel = screen.getByRole('region', { name: 'Batch perusahaan terpilih' })
+    expect(panel.contains(detail)).toBe(true)
     expect(within(detail).getByText('Penyebab kerugian tidak ditemukan')).toBeInTheDocument()
   })
 
@@ -776,19 +745,21 @@ describe('tab jenis klaim', () => {
     })
   })
 
-  it('berpindah tab menutup baris yang terbuka dan mengosongkan pencarian', async () => {
-    // Kode perusahaan pada satu tabel belum tentu ada di tabel lain.
+  it('berpindah tab mengosongkan pencarian dan kembali ke perusahaan pertama', async () => {
+    // Kode perusahaan dan kata kunci pada satu tabel belum tentu berlaku di tabel lain.
     installFetch(defaultReply())
     show()
 
-    await openCompany('Mitra Finansial Nusantara')
-    await userEvent.type(screen.getByLabelText('Cari nama perusahaan'), 'mitra')
+    await openCompany('ZZZZ')
+    await userEvent.type(screen.getByLabelText('Cari nama perusahaan'), 'zzz')
 
     const tablist = screen.getByRole('tablist', { name: 'Jenis klaim' })
     await userEvent.click(within(tablist).getByRole('tab', { name: 'Travel' }))
 
-    await companyTable()
-    expect(screen.queryByRole('table', { name: /^Batch / })).toBeNull()
+    expect(
+      await screen.findByRole('table', { name: 'Batch Mitra Finansial Nusantara' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Batch ZZZZ' })).toBeNull()
     expect(screen.getByLabelText('Cari nama perusahaan')).toHaveValue('')
   })
 
@@ -797,8 +768,11 @@ describe('tab jenis klaim', () => {
     show()
 
     const tablist = await screen.findByRole('tablist', { name: 'Jenis klaim' })
-    await userEvent.click(within(tablist).getByRole('tab', { name: 'Travel' }))
+    await companyList()
+    // Dikosongkan SEBELUM pindah tab: perusahaan pertama langsung terpilih, sehingga
+    // batchnya dimuat seketika tab berganti.
     calls = []
+    await userEvent.click(within(tablist).getByRole('tab', { name: 'Travel' }))
     await openCompany('Mitra Finansial Nusantara')
 
     const batchCall = calls.find((c) => c.url.startsWith('/api/inbox-auto-claim?'))

@@ -108,7 +108,7 @@ yang seolah-olah menyalahkan pengguna; dengan lebar sasaran, kegagalannya muncul
 | `OPEN_PROTECTION_ID` | `.pyID` | **No Proteksi** | `input-req-protection` |
 | `POLICY_NO` | `.PolicyNo` | **No Polis** | `input-req-protection` |
 | `CLAIM_NO` | `.CaseID` | **No Klaim** | `input-req-protection` |
-| `ID_CLAIM` | `.PNCCaseID` | hanya bila BERBEDA dari `CLAIM_NO` | `input-req-protection` (diturunkan) |
+| `ID_CLAIM` | `.PNCCaseID` | hanya bila BERBEDA dari `CLAIM_NO` | `input-req-protection` (diturunkan dari ASAL klaim) |
 | `PROTECTION_TYPE_ID` | `.TypeProtection` | **Tipe Proteksi** | `input-req-protection` |
 | `CREATE_DATE` | `.InputDate` | **Tanggal Proteksi Dibuat** | `input-req-protection` |
 | `CREATED_BY` | `.pxCreateOpName` | **User Create** | `input-req-protection` |
@@ -129,20 +129,33 @@ didaftarkan dan uji di `query_test.go` masing-masing.
 `CREATE_DATE` memikul dua peran sekaligus — tanggal proteksi dibuat dan waktu baris dibuat.
 Tabel hanya punya satu kolom waktu pembuatan, dan sistem lama pun tidak membedakan keduanya.
 
-### `ID_CLAIM` = `CLAIM_NO` pada baris baru
+### `ID_CLAIM` ditentukan ASAL KLAIMNYA, bukan selalu sama dengan `CLAIM_NO`
 
-Work Owner menegaskan 2026-09-24: **ClaimNo dan ClaimID berisi nilai yang sama**, yaitu
-`PNCN.YY.xxxx`.
+Work Owner menegaskan **2026-09-26**: klaim yang berasal dari Pega menyimpan **IDPEGA**;
+klaim sistem baru menyimpan nomor klaimnya sendiri.
 
-| | `CLAIM_NO` | `ID_CLAIM` |
+| Klaim yang ditaut | `CLAIM_NO` | `ID_CLAIM` |
 |---|---|---|
-| Baris **warisan Pega** | `PNC-1865` | `ASM-FW-GCNMFW-WORK PNC-1865` |
-| Baris **sistem baru** | `PNCN.26.0007` | `PNCN.26.0007` |
+| **dari Pega** | `PNC-1865` | **`ASM-FW-GCNMFW-WORK PNC-1865`** |
+| **sistem baru** | `PNCN.26.0007` | `PNCN.26.0007` |
 
-Server **menurunkan** `ID_CLAIM` dari nomor klaim; form tidak menanyakannya kedua kalinya.
-Dua isian yang wajib sama tetapi diketik terpisah akan berbeda cepat atau lambat, dan
-perbedaannya tidak menghasilkan galat apa pun — hanya proteksi yang menunjuk dua klaim
-berbeda.
+> **Koreksi atas catatan 2026-09-24.** Versi sebelumnya berbunyi *"ClaimNo dan ClaimID berisi
+> nilai yang sama"*, dan modul menurunkan `ID_CLAIM` dari nomor klaim untuk **setiap** baris.
+> Pernyataan itu benar untuk klaim sistem baru dan **tidak berlaku** untuk klaim Pega —
+> sehingga proteksi baru yang ditaut ke klaim warisan menyimpan `ID_CLAIM` yang tidak
+> dikenali Pega. Kekeliruannya tidak menghasilkan galat apa pun. Diperbaiki 2026-09-26.
+
+Server tetap **menurunkan** `ID_CLAIM`, tidak menanyakannya ke form — dua isian yang wajib
+bersesuaian tetapi diketik terpisah akan berbeda cepat atau lambat.
+
+**Yang menentukan cabangnya adalah ada-tidaknya IDPEGA, bukan bentuk nomornya.** IDPEGA
+diambil dari `DATAPEGA.PC_ASM_FW_GCNMFW_WORK.PZINSKEY`, yang sudah lama dipakai kueri
+pencarian klaim untuk menjoin `T_CLAIM_PNC` — mengambilnya sebagai kolom tidak menambah satu
+pun pembacaan tabel.
+
+Menebak cabang dari awalan nomor (`PNC-` versus `PNCN.`) **akan gagal**: dua baris warisan di
+produksi tidak berpola `PNC-` sama sekali — lihat §1. Dikunci uji di
+`internal/inputreqprotection/claimreference_test.go`.
 
 Kolomnya **tetap ada dan tetap dibaca**: pada baris warisan nilainya memang berbeda, dan
 menghapusnya akan membuat baris warisan tampak seolah ClaimID-nya sama dengan nomor
@@ -477,3 +490,106 @@ Terbaca di **kedua layar**: muncul di Input Req Protection (dengan tautan MATI k
 tertaut klaim) dan di antrean akseptasi NON PREMI. Penyalinannya memakai `INSERT … SELECT`
 sehingga nomor polis dan nomor klaimnya berpindah **di dalam basis data** dan tidak pernah
 dibaca ke memori aplikasi.
+
+---
+
+## 10. Mengatur siapa boleh mengakseptasi
+
+| | |
+|---|---|
+| **Tanggal** | 2026-09-26 |
+| **Untuk** | Work Owner dan DBA |
+| **Tabelnya** | `POOLDATA.M_LOGIN_GROUP_PNC` — sudah ada, DDL di `Database/CREATE_MENU.sql` |
+| **Berlaku sejak** | 2026-09-25, saat kewenangan ditegakkan di server |
+
+```sql
+CREATE TABLE POOLDATA.M_LOGIN_GROUP_PNC
+( LOGIN_ID VARCHAR2(50),
+  GROUP_ID VARCHAR2(100),
+  CONSTRAINT M_LOGIN_GROUP_PNC_PK PRIMARY KEY (LOGIN_ID, GROUP_ID) )
+```
+
+`GROUP_ID` berisi nama access group Pega **tanpa awalan `GCNMFW:`** — `GCNMFW:PncCollection`
+menjadi `PncCollection`. Satu login boleh punya **banyak** baris; kuncinya gabungan keduanya.
+
+### 10.1 Aturan yang berlaku
+
+| Group yang diikuti | Yang dapat dibukanya |
+|---|---|
+| `PncCollection` | antrean **PREMI** saja |
+| `CaseManager` · `PncOPCGeneral` · `PNCKomite` · `Administrators` | antrean **NON PREMI** saja |
+| `PncCollection` **+** salah satu di atas | **kedua** antrean |
+| di luar kelima itu, atau tidak punya baris sama sekali | **tidak satu pun** — layar menjawab 403 |
+
+Kelimanya berasal dari `When/IsOpenProtectionPNC-When.xml`; pemisahan PREMI / NON PREMI dari
+`Section/InputProtection_Section-Section.xml:1592` dan `:6036`.
+
+### 10.2 Memberi kewenangan
+
+```sql
+-- Petugas penagihan premi: antrean PREMI.
+INSERT INTO POOLDATA.M_LOGIN_GROUP_PNC (LOGIN_ID, GROUP_ID)
+VALUES ('<LOGIN>', 'PncCollection');
+
+-- Petugas akseptasi umum: antrean NON PREMI.
+INSERT INTO POOLDATA.M_LOGIN_GROUP_PNC (LOGIN_ID, GROUP_ID)
+VALUES ('<LOGIN>', 'CaseManager');
+
+COMMIT;
+```
+
+`LOGIN_ID` adalah login yang **DIKETIK pengguna saat masuk**, bukan NIK. Salah satu dari
+keduanya akan menghasilkan layar yang menolak tanpa sebab yang terlihat.
+
+### 10.3 Mencabut kewenangan
+
+```sql
+DELETE FROM POOLDATA.M_LOGIN_GROUP_PNC
+ WHERE UPPER(TRIM(LOGIN_ID)) = UPPER(TRIM('<LOGIN>'))
+   AND GROUP_ID = 'PncCollection';
+
+COMMIT;
+```
+
+Berlaku pada **permintaan berikutnya** — tidak perlu restart aplikasi, dan penggunanya tidak
+perlu keluar-masuk.
+
+> Tabel ini **di luar** `D-66`: penghapusan fisik dibolehkan di sini karena ia data
+> kewenangan, bukan data bernilai bisnis. Yang dilarang dihapus adalah proteksi dan jejak
+> akseptasinya.
+
+### 10.4 Memeriksa keadaan sekarang
+
+```sql
+-- Siapa saja yang dapat membuka layar akseptasi, dan antrean mana.
+SELECT g.LOGIN_ID,
+       g.GROUP_ID,
+       CASE WHEN UPPER(TRIM(g.GROUP_ID)) = 'PNCCOLLECTION'
+            THEN 'PREMI' ELSE 'NON PREMI' END AS ANTREAN
+  FROM POOLDATA.M_LOGIN_GROUP_PNC g
+ WHERE UPPER(TRIM(g.GROUP_ID)) IN
+       ('PNCCOLLECTION','CASEMANAGER','PNCOPCGENERAL','PNCKOMITE','ADMINISTRATORS')
+ ORDER BY g.LOGIN_ID, g.GROUP_ID;
+```
+
+### 10.5 Tiga hal yang sering menjadi sebab "kok tidak bisa"
+
+| Gejala | Sebab yang paling mungkin |
+|---|---|
+| Layar menolak dengan 403 | login tidak punya satu pun dari kelima group |
+| Tab PREMI tidak muncul | login tidak punya `PncCollection` |
+| Tab NON PREMI tidak muncul | login **hanya** punya `PncCollection` |
+
+**Kapitalisasi tidak menjadi sebab.** `PncCollection`, `PNCCOLLECTION`, dan `pnccollection`
+diperlakukan sama, dan awalan `GCNMFW:` yang telanjur terisi pun tetap dikenali — `D-58`
+mencatat Pega sendiri tidak konsisten kapitalisasinya.
+
+### 10.6 Dua hal yang TIDAK diatur tabel ini
+
+1. **Tidak ada penugasan perorangan.** Akseptasi OPC adalah antrean **bersama** —
+   `Flow/CreateProtection_Flow.xml` menempatkannya di workbasket `ProtectionPNC` dengan router
+   `ToWorkbasket`, bukan di worklist seseorang. Tabel ini menentukan **siapa boleh**, bukan
+   **siapa ditugaskan**; yang kedua tidak ada di Pega maupun di sini.
+2. **Tidak ada pemisahan tugas.** `D-59` menetapkan seorang yang berwenang atas layar ini
+   berwenang atas **seluruh** tindakan di dalamnya. Menambah group tidak memperhalus itu —
+   yang bertambah adalah antrean yang dapat dibukanya.

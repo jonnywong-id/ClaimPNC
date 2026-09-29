@@ -8,7 +8,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { AcceptQueuePage } from './AcceptQueuePage'
-import type { Protection, ProtectionDetail, ProtectionListResponse } from './types'
+import type { Protection, ProtectionDetail, ProtectionListResponse, Queue } from './types'
 
 /** Data uji seluruhnya KARANGAN (`D-69`). */
 function protection(partial: Partial<Protection> = {}): Protection {
@@ -36,6 +36,9 @@ function detail(partial: Partial<ProtectionDetail> = {}): ProtectionDetail {
     tanggal_akseptasi: '',
     diaksep_oleh: '',
     menunggu_keputusan: true,
+    // null adalah keadaan BAWAAN: tipe '1' pada fixture ini memang tidak memunculkan panel
+    // Detail Perubahan. Uji yang membutuhkannya mengisinya lewat `partial`.
+    detail_perubahan: null,
     ...partial,
   }
 }
@@ -55,9 +58,50 @@ function jsonResponse(status: number, body: unknown): Response {
   })
 }
 
-function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promise<Response>) {
+/**
+ * Memasang stub fetch.
+ *
+ * Rute `/antrean` — daftar antrean yang boleh dibuka pemanggil — dijawab DI SINI, bukan oleh
+ * tiap uji. Layar memanggilnya lebih dulu dan menahan daftar proteksi sampai jawabannya
+ * tiba, sehingga uji yang lupa menanganinya akan gagal dengan gejala yang menyesatkan:
+ * tabelnya kosong, seolah penyaringnya yang salah.
+ *
+ * Bawaannya KEDUA antrean, supaya uji yang sedang menguji hal lain tidak diam-diam terhalang
+ * kewenangan. Uji kewenangan menimpanya lewat `queues`.
+ */
+function stubFetch(
+  answer: (url: string, init?: RequestInit) => Response | Promise<Response>,
+  queues: Queue[] | { status: number } = ['non-premi', 'premi'],
+) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
+
+    if (url.includes('/antrean')) {
+      if (!Array.isArray(queues)) {
+        return Promise.resolve(
+          jsonResponse(queues.status, {
+            kode: 'tidak_berwenang',
+            pesan: 'Access group Anda tidak berwenang atas layar akseptasi proteksi.',
+          }),
+        )
+      }
+      return Promise.resolve(jsonResponse(200, { antrean: queues }))
+    }
+
+    // Dokumen penunjang dijawab daftar KOSONG secara baku.
+    //
+    // Hari ini cabang ini TIDAK PERNAH terpakai: sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF`
+    // bernilai `false` sampai modul GCS disiapkan, sehingga panelnya tidak menembak server
+    // sama sekali.
+    //
+    // Ia tetap dipasang karena begitu sakelarnya dinyalakan, panelnya ikut dirender pada
+    // form akseptasi dan membuka satu baris akan selalu menembak jalur ini. Tanpa cabang
+    // ini, setiap uji di berkas ini menerima badan daftar proteksi sebagai daftar dokumen —
+    // dan yang gagal bukan panelnya, melainkan uji yang sedang menguji hal lain.
+    if (url.includes('/dokumen-penunjang')) {
+      return Promise.resolve(jsonResponse(200, { data: [] }))
+    }
+
     return Promise.resolve(answer(url, init))
   })
 }
@@ -212,11 +256,163 @@ it('menyampaikan bahwa keputusan sudah diambil petugas lain', async () => {
   expect(await screen.findByText(/sudah diakseptasi/)).toBeInTheDocument()
 })
 
-it('menuntun memilih entitas lebih dulu dan tidak menembak server', async () => {
+it('menuntun memilih entitas lebih dulu dan tidak meminta data milik portal', async () => {
   useSelectedPortal.setState({ alias: null })
   stubFetch(() => jsonResponse(200, listResponse()))
   renderPage()
 
   expect(await screen.findByText('Pilih entitas lebih dulu')).toBeInTheDocument()
-  expect(calls).toHaveLength(0)
+
+  // Yang dijaga: tidak ada permintaan atas data MILIK PORTAL — daftar proteksi tinggal di
+  // basis data tiap entitas, dan memintanya tanpa portal aktif berarti menebak entitasnya
+  // (`R-20`).
+  //
+  // Rute `/antrean` DIKECUALIKAN, dan itu bukan kelonggaran: kewenangan seseorang sama di
+  // keempat portal (`D-78`) dan tabelnya tinggal di basis data utama, sehingga ia tidak
+  // menuntut portal aktif sama sekali.
+  const milikPortal = calls.filter((call) => !call.url.includes('/antrean'))
+  expect(milikPortal).toHaveLength(0)
+})
+
+it('hanya menggambar tab antrean yang menjadi hak pemanggil', async () => {
+  // Layar lama tidak punya pemilihan: grid yang bukan haknya TIDAK PERNAH dirender
+  // (`Section/InputProtection_Section-Section.xml:1592` dan `:6036`). Menggambar tab yang
+  // pasti dijawab 403 hanya membuat pengguna mencobanya.
+  stubFetch(() => jsonResponse(200, listResponse({ antrean: 'premi' })), ['premi'])
+  renderPage()
+
+  await screen.findByText('OPCN.26.0001')
+
+  expect(screen.getByRole('tab', { name: 'Proteksi Klaim PREMI' })).toBeInTheDocument()
+  expect(screen.queryByRole('tab', { name: 'Proteksi Klaim NON PREMI' })).not.toBeInTheDocument()
+
+  // Antrean yang dibuka mengikuti haknya, bukan bawaan NON PREMI.
+  expect(calls.some((call) => call.url.includes('antrean=premi'))).toBe(true)
+  expect(calls.some((call) => call.url.includes('antrean=non-premi'))).toBe(false)
+})
+
+it('menjelaskan penolakan kewenangan, bukan menampilkannya sebagai gangguan', async () => {
+  // Petugas yang salah membuka layar perlu tahu bahwa ia MEMANG tidak berhak — bukan
+  // mengira datanya hilang lalu melaporkannya sebagai gangguan.
+  stubFetch(() => jsonResponse(200, listResponse()), { status: 403 })
+  renderPage()
+
+  expect(await screen.findByText('Anda tidak berwenang atas layar ini')).toBeInTheDocument()
+
+  // Tidak ada tab, dan daftar proteksi tidak pernah diminta.
+  expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+  expect(calls.some((call) => call.url.includes('antrean=non-premi'))).toBe(false)
+})
+
+it('menampilkan panel Detail Perubahan DOL beserta nilai sebelum dan sesudahnya', async () => {
+  stubFetch((url) => {
+    if (url.includes('/OPCN.26.0001'))
+      return jsonResponse(
+        200,
+        detail({
+          tipe_proteksi: '7',
+          nama_tipe_proteksi: 'Perubahan DOL',
+          detail_perubahan: {
+            judul: 'Detail Perubahan DOL',
+            dol_sebelum: '2026-08-03',
+            dol_sesudah: '2026-08-05',
+            penyebab_sebelum: '',
+            penyebab_sesudah: '',
+            nama_objek: 'Objek Contoh',
+            nama_cabang: 'Cabang Contoh',
+            kosong: false,
+          },
+        }),
+      )
+    return jsonResponse(200, listResponse())
+  })
+  renderPage()
+
+  await userEvent.click(await screen.findByRole('button', { name: 'OPCN.26.0001' }))
+
+  // Yang diperiksa KEDUA nilainya, bukan sekadar panelnya muncul: panel yang tampil tanpa
+  // isi tidak memberi tahu petugas apa pun tentang apa yang diubah.
+  expect(await screen.findByText('Detail Perubahan DOL')).toBeInTheDocument()
+  expect(screen.getByText('Current Date Of Loss')).toBeInTheDocument()
+  expect(screen.getByText('Next Date Of Loss')).toBeInTheDocument()
+  expect(screen.getByText('Objek Contoh')).toBeInTheDocument()
+  expect(screen.getByText('Cabang Contoh')).toBeInTheDocument()
+})
+
+it('memakai label Cause Of Loss, bukan label DOL, pada permintaan tipe 8', async () => {
+  stubFetch((url) => {
+    if (url.includes('/OPCN.26.0001'))
+      return jsonResponse(
+        200,
+        detail({
+          tipe_proteksi: '8',
+          detail_perubahan: {
+            judul: 'Detail Perubahan Cause Of Loss',
+            dol_sebelum: '',
+            dol_sesudah: '',
+            penyebab_sebelum: '12001',
+            penyebab_sesudah: '12002',
+            nama_objek: '',
+            nama_cabang: '',
+            kosong: false,
+          },
+        }),
+      )
+    return jsonResponse(200, listResponse())
+  })
+  renderPage()
+
+  await userEvent.click(await screen.findByRole('button', { name: 'OPCN.26.0001' }))
+
+  expect(await screen.findByText('Cause Of Loss Dipilih')).toBeInTheDocument()
+  expect(screen.getByText('Next Cause Of Loss')).toBeInTheDocument()
+  expect(screen.getByText('12001')).toBeInTheDocument()
+  expect(screen.getByText('12002')).toBeInTheDocument()
+  expect(screen.queryByText('Current Date Of Loss')).not.toBeInTheDocument()
+})
+
+it('tetap menampilkan panelnya untuk baris warisan yang rinciannya kosong', async () => {
+  stubFetch((url) => {
+    if (url.includes('/OPCN.26.0001'))
+      return jsonResponse(
+        200,
+        detail({
+          tipe_proteksi: '7',
+          detail_perubahan: {
+            judul: 'Detail Perubahan DOL',
+            dol_sebelum: '',
+            dol_sesudah: '',
+            penyebab_sebelum: '',
+            penyebab_sesudah: '',
+            nama_objek: '',
+            nama_cabang: '',
+            kosong: true,
+          },
+        }),
+      )
+    return jsonResponse(200, listResponse())
+  })
+  renderPage()
+
+  await userEvent.click(await screen.findByRole('button', { name: 'OPCN.26.0001' }))
+
+  // Menyembunyikannya akan membuat permintaan perubahan tampak seolah tidak mengubah apa
+  // pun. Seluruh baris warisan Pega berkeadaan begini.
+  expect(await screen.findByText('Detail Perubahan DOL')).toBeInTheDocument()
+  expect(
+    screen.getByText('Rincian perubahan tidak tersedia untuk permintaan ini.'),
+  ).toBeInTheDocument()
+})
+
+it('tidak menampilkan panel Detail Perubahan pada tipe yang tidak memilikinya', async () => {
+  stubFetch((url) => {
+    if (url.includes('/OPCN.26.0001')) return jsonResponse(200, detail())
+    return jsonResponse(200, listResponse())
+  })
+  renderPage()
+
+  await userEvent.click(await screen.findByRole('button', { name: 'OPCN.26.0001' }))
+  await screen.findByText('Akseptasi Proteksi')
+
+  expect(screen.queryByText(/Detail Perubahan/)).not.toBeInTheDocument()
 })

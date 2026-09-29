@@ -15,9 +15,40 @@ import (
 
 const portal = "asm"
 
+// loginBerwenang mengikuti DUA access group sekaligus, sehingga kedua antrean terbuka
+// baginya.
+//
+// Dipakai uji yang sedang menguji hal LAIN — penyaringan, keputusan, paginasi — supaya
+// kewenangan tidak diam-diam menjadi sebab kegagalannya. Uji kewenangan itu sendiri memakai
+// login yang berbeda; lihat berkas authorization_test.go.
+const loginBerwenang = "KEDUACONTOH"
+
 var wib = time.FixedZone("WIB", 7*60*60)
 
 func bangun(t *testing.T, at time.Time) (*usecase.Service, *memory.Repo) {
+	t.Helper()
+	return bangunDenganGroup(t, at, groupUji())
+}
+
+// groupUji adalah keanggotaan group untuk uji yang TIDAK sedang menguji kewenangan.
+//
+// Ia contoh bawaan ditambah login-login yang dipakai uji keputusan. Seluruhnya diberi kedua
+// access group supaya kewenangan tidak pernah menjadi sebab tersembunyi sebuah uji gagal —
+// yang diuji di sana adalah penyaringan, pencatatan pelaku, dan perebutan baris.
+func groupUji() map[string][]string {
+	groups := memory.SampleGroups()
+	for _, login := range []string{"KOLEKSICONTOH", "PETUGAS-A", "PETUGAS-B"} {
+		groups[login] = []string{"CaseManager", "PncCollection"}
+	}
+	return groups
+}
+
+// bangunDenganGroup membentuk service dengan keanggotaan group tertentu.
+func bangunDenganGroup(
+	t *testing.T,
+	at time.Time,
+	groups map[string][]string,
+) (*usecase.Service, *memory.Repo) {
 	t.Helper()
 
 	repo := memory.NewRepo()
@@ -28,7 +59,8 @@ func bangun(t *testing.T, at time.Time) (*usecase.Service, *memory.Repo) {
 			}
 			return repo, nil
 		},
-		Now: func() time.Time { return at },
+		Groups: memory.NewGroupRepo(groups),
+		Now:    func() time.Time { return at },
 	})
 	require.NoError(t, err)
 
@@ -38,13 +70,14 @@ func bangun(t *testing.T, at time.Time) (*usecase.Service, *memory.Repo) {
 // lengkap membentuk proteksi yang memenuhi ketiga syarat antrean akseptasi.
 func lengkap(number, protectionType string, at time.Time) inboxacceptopenprotection.Protection {
 	return inboxacceptopenprotection.Protection{
-		Number:       number,
-		PolicyNumber: "99.001.2026.00000001",
-		ClaimNumber:  "PNCN.26.0007",
-		Type:         protectionType,
-		InputDate:    at,
-		CreatedBy:    "ADMINCONTOH",
-		AcceptStatus: inboxacceptopenprotection.AcceptPending,
+		Number:         number,
+		PolicyNumber:   "99.001.2026.00000001",
+		ClaimNumber:    "PNCN.26.0007",
+		ClaimReference: "PNCN.26.0007",
+		Type:           protectionType,
+		InputDate:      at,
+		CreatedBy:      "ADMINCONTOH",
+		AcceptStatus:   inboxacceptopenprotection.AcceptPending,
 	}
 }
 
@@ -61,6 +94,7 @@ func TestAntreanPremiHanyaMemuatTipeDua(t *testing.T) {
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
 		PortalAlias: portal,
+		Login:       loginBerwenang,
 		Queue:       inboxacceptopenprotection.QueuePremium,
 	})
 	require.NoError(t, err)
@@ -84,6 +118,7 @@ func TestAntreanNonPremiMemuatSeluruhTipeSelainDua(t *testing.T) {
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
 		PortalAlias: portal,
+		Login:       loginBerwenang,
 		Queue:       inboxacceptopenprotection.QueueNonPremium,
 	})
 	require.NoError(t, err)
@@ -105,6 +140,7 @@ func TestProteksiTanpaNomorKlaimTidakSampaiKeMejaAkseptasi(t *testing.T) {
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
 		PortalAlias: portal,
+		Login:       loginBerwenang,
 		Queue:       inboxacceptopenprotection.QueueNonPremium,
 	})
 	require.NoError(t, err)
@@ -121,6 +157,7 @@ func TestProteksiYangSudahDiputuskanHilangDariAntrean(t *testing.T) {
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
 		PortalAlias: portal,
+		Login:       loginBerwenang,
 		Queue:       inboxacceptopenprotection.QueueNonPremium,
 	})
 	require.NoError(t, err)
@@ -137,7 +174,7 @@ func TestProteksiYangSudahDiputuskanTetapDapatDibukaLewatNomor(t *testing.T) {
 	disetujui.AcceptStatus = inboxacceptopenprotection.AcceptApproved
 	repo.Add(disetujui)
 
-	p, err := service.Get(context.Background(), portal, "OPCN.26.0006")
+	p, err := service.Get(context.Background(), portal, "OPCN.26.0006", loginBerwenang)
 	require.NoError(t, err)
 	require.True(t, p.Approved())
 }

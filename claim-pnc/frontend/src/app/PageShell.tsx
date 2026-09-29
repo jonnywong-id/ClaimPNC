@@ -1,13 +1,30 @@
 import { useState, type ReactNode } from 'react'
 
-import { CloseIcon, LogoutIcon, MenuIcon, ShieldIcon } from '@/components/Icon'
+import { CloseIcon, LogoutIcon, MenuIcon, ShieldIcon, SidebarIcon } from '@/components/Icon'
 import { Button } from '@/components/Button'
 import { useLogout } from '@/modules/login/api'
 import { PortalPicker } from '@/modules/portal/PortalPicker'
 import { UserKind } from '@/api/types'
 import { useSession } from '@/app/session'
 
-import { Sidebar } from './Sidebar'
+import { Sidebar, type GroupRequest } from './Sidebar'
+
+/** Kunci penyimpanan peramban untuk pilihan menu diperkecil. */
+const COLLAPSED_KEY = 'claimpnc.menu-diperkecil'
+
+/**
+ * readCollapsed membaca pilihan menu diperkecil yang diingat peramban.
+ *
+ * Bila penyimpanan tidak dapat dibaca, menu dibentangkan — keadaan bawaan yang paling
+ * jelas bagi pengguna baru.
+ */
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 /**
  * PageShell membungkus layar yang berada di balik sesi: bilah atas, menu kiri, dan isi.
@@ -38,16 +55,66 @@ export function PageShell({ children }: { children: ReactNode }) {
   // di lapangan, dan kolom selebar 16rem akan memakan hampir separuh layar ponsel.
   const [drawerOpen, setDrawerOpen] = useState(false)
 
+  // Menu kiri dapat DIPERKECIL menjadi rel ikon (permintaan Work Owner 2026-09-28),
+  // memberi ruang lebih bagi grid lebar. Pilihannya diingat per peramban — kenyamanan
+  // pribadi, bukan data yang perlu dibagikan.
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [requestedGroup, setRequestedGroup] = useState<GroupRequest | null>(null)
+
+  function changeCollapsed(value: boolean) {
+    setCollapsed(value)
+    try {
+      window.localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0')
+    } catch {
+      // Penyimpanan peramban dapat ditolak (mode privat, kebijakan kantor). Menu tetap
+      // berfungsi; hanya pilihannya tidak diingat.
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    // pt-16 memberi tempat bagi bilah atas yang kini `fixed`.
+    <div className="min-h-screen bg-slate-50 pt-16">
       <TopBar onOpenMenu={() => setDrawerOpen(true)} />
 
       <div className="mx-auto flex max-w-[100rem]">
         {/* Kolom menu tetap pada layar lebar. `sticky` membuatnya tinggal di tempat saat
             isi halaman digulir — pada tabel panjang, menggulir kembali ke atas hanya
             untuk berpindah menu adalah gesekan yang tidak perlu. */}
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-slate-200 bg-white lg:block">
-          <Sidebar />
+        <aside
+          className={[
+            'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex',
+            'transition-[width] duration-200 ease-halus',
+            collapsed ? 'w-16' : 'w-64',
+          ].join(' ')}
+        >
+          <div
+            className={['flex px-3 pt-3', collapsed ? 'justify-center' : 'justify-end'].join(' ')}
+          >
+            <button
+              type="button"
+              onClick={() => changeCollapsed(!collapsed)}
+              aria-label={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
+              className={[
+                'flex h-9 w-9 items-center justify-center rounded-kontrol border border-slate-200 text-slate-600',
+                'transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-900',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
+              ].join(' ')}
+            >
+              <SidebarIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1">
+            <Sidebar
+              collapsed={collapsed}
+              requestedGroup={requestedGroup}
+              onExpandGroup={(id) => {
+                changeCollapsed(false)
+                setRequestedGroup((previous) => ({ id, seq: (previous?.seq ?? 0) + 1 }))
+              }}
+            />
+          </div>
         </aside>
 
         {drawerOpen && <MenuDrawer onClose={() => setDrawerOpen(false)} />}
@@ -98,11 +165,14 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   return (
     /*
-      `sticky` supaya bilah atas tetap terjangkau pada tabel panjang, dan `backdrop-blur`
-      membuat isi yang lewat di belakangnya tetap terbaca samar — bilahnya terasa
-      melayang, bukan menutup.
+      `fixed`, bukan `sticky` (permintaan Work Owner 2026-09-28: bilah atas tetap di
+      tempat saat layar digulir). `sticky` berhenti bekerja begitu salah satu wadah di
+      atasnya memakai overflow; `fixed` tidak bergantung pada wadah apa pun. Tempatnya
+      dicadangkan `pt-16` pada PageShell.
+
+      `backdrop-blur` membuat isi yang lewat di belakangnya tetap terbaca samar.
     */
-    <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white/85 shadow-lembut backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-30 h-16 border-b border-slate-200 bg-white/85 shadow-lembut backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[100rem] items-center justify-between gap-4 px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Button tone="halus" onClick={onOpenMenu} aria-label="Buka menu" className="lg:hidden">
