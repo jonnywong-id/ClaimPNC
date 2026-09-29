@@ -227,7 +227,6 @@ import (
 	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
 	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
-
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
 	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
@@ -375,6 +374,7 @@ import (
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
 	"claim-pnc/internal/riwayatklaim"
+	
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -468,10 +468,30 @@ func run() error {
 				Name:  baseCtx.User.Name,
 			}, true
 		},
+		// Penyaring pemilik dimatikan bila diminta. Konfigurasi sudah MENOLAK menyalakannya
+		// di luar `APP_ENV=development`, sehingga di sini nilainya cukup diteruskan —
+		// pemeriksaan lingkungan hidup di satu tempat, bukan diulang di setiap modul.
+		AllOperators: cfg.KomiteTanpaPenyaringOperator,
+
 		Logger:              logger,
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
 	})
+
+	// Keadaan ini dicatat SETIAP start, bukan sekali saat diisi.
+	//
+	// Isian yang mematikan penjagaan mudah tertinggal di berkas `.env` seseorang berminggu
+	// -minggu. Peringatan yang muncul pada setiap start adalah satu-satunya hal yang
+	// membuatnya tetap terlihat.
+	if cfg.KomiteTanpaPenyaringOperator {
+		logger.Warn("penyaring pemilik Inbox Komite DIMATIKAN",
+			slog.String("modul", "komite"),
+			slog.String("akibat", "daftarnya adalah antrean komite SELURUH perusahaan, "+
+				"bukan pekerjaan pengguna yang masuk"),
+			slog.String("berlaku", "hanya APP_ENV=development; konfigurasi menolaknya di luar itu"),
+			slog.String("mematikan", "kosongkan KOMITE_TANPA_PENYARING_OPERATOR"),
+		)
+	}
 
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
@@ -2848,6 +2868,10 @@ type storage struct {
 	komiteInbox    komite.InboxRepo
 	komiteDecision komite.DecisionRepo
 
+	// komiteTransfer membaca rincian "Lihat Detail Transfer" — nilai uang dan keputusan
+	// komite menurut Pega. DIBACA SAJA; kedua tabelnya masih ditulis Pega (`P-1`).
+	komiteTransfer komite.TransferRepo
+
 	// accountSelector memilih penyimpanan master rekening milik satu portal entitas.
 	// Repo dan BankRepo dipilih bersamaan karena keduanya hidup di basis data yang sama.
 	accountSelector func(alias string) (masterrekening.Repo, masterrekening.BankRepo, error)
@@ -4177,6 +4201,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// umur.
 	komiteInboxService, err := komiteusecase.NewInboxService(komiteusecase.InboxOptions{
 		Cases:     store.komiteInbox,
+		Transfers: store.komiteTransfer,
 		Decisions: store.komiteDecision,
 		IDs:       komitememory.IDGenerator{},
 		Clock:     clock.System{},
@@ -4660,6 +4685,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// secara harfiah, dan penutupannya `TKT-F6-002`.
 		store.komiteInbox = komitesql.NewInboxRepo(primary)
 		store.komiteDecision = komitesql.NewDecisionRepo(primary)
+		store.komiteTransfer = komitesql.NewTransferRepo(primary)
 
 		// KEDUA kumpulan koneksi ditutup bersamaan. Menutup yang pertama saja akan
 		// meninggalkan koneksi kedua tetap terbuka saat aplikasi berhenti — kebocoran
@@ -5372,6 +5398,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		inboxStore := komitememory.NewSampleInboxStore()
 		store.komiteInbox = inboxStore
 		store.komiteDecision = inboxStore
+		store.komiteTransfer = inboxStore
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		store.travelDocumentSelector = travelDocumentSelectorMemory(cfg.PrimaryPortal)
 

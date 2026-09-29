@@ -5069,11 +5069,143 @@ export type KomiteInboxListResponse = {
    * penting daripada kerapian tampilan.
    */
   jejak_keputusan_tersedia: boolean
+  /**
+   * Apakah daftar di atas benar-benar milik `operator`.
+   *
+   * `false` berarti penyaring pemilik sedang **dimatikan** — daftarnya adalah SELURUH
+   * antrean komite, termasuk pekerjaan orang lain beserta nama tertanggung dan nomor
+   * polisnya. Keadaan itu hanya mungkin pada `APP_ENV=development`; konfigurasi server
+   * menolak menyalakannya di luar sana.
+   *
+   * Layar WAJIB menyatakannya. Daftar pekerjaan orang lain yang tampak seperti daftar
+   * pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan pada
+   * layar yang menyetujui uang, itu kelas kesalahan yang paling mahal.
+   */
+  penyaring_pemilik_aktif: boolean
+}
+
+/**
+ * Satu baris `POOLDATA.T_CLAIM_ADJUSTMENT` — isi "Lihat Detail Transfer".
+ *
+ * Nilai uangnya **teks desimal kanonik**, bukan angka JSON: angka JSON adalah floating
+ * point ganda di hampir seluruh peramban (`I-12`).
+ */
+export type KomiteAdjustmentLine = {
+  nomor_klaim: string
+  id_objek?: string
+  id_coverage?: string
+
+  nomor_akseptasi?: string
+  tanggal_akseptasi?: string
+
+  mata_uang?: string
+  jenis_pembayaran?: string
+
+  nilai_gross: string
+  nilai_usulan: string
+  nilai_akseptasi: string
+  nilai_salvage: string
+  nilai_asm_share: string
+  nilai_risiko_sendiri: string
+
+  /** Persentase, bukan nilai uang. */
+  persen_asm_share?: string
+
+  ex_gratia: boolean
+  catatan?: string
+  sebab_kerugian?: string
+}
+
+/** Keputusan komite **menurut Pega**, dari `POOLDATA.T_CLAIM_KOMITE_LIST`. */
+export type KomiteCommitteeRecord = {
+  nama_komite?: string
+  jenjang?: number
+  tipe_komite?: string
+  catatan?: string
+  nilai_klaim: string
+  persen_asm_share?: string
+  tanggal_komite?: string
+  kesimpulan?: KomiteOutcome
+}
+
+/**
+ * Rincian "Lihat Detail Transfer" — pengganti `Section/ShowTransferDetail`.
+ *
+ * Nilai uang muncul di SINI dan bukan pada daftar, dan itu bukan pertentangan: sumber
+ * daftar (`InboxRegisterKomite_RD`) memang tidak memuat satu pun nilai uang, sementara
+ * `ShowTransferDetail` memuatnya. Masing-masing mengikuti sumbernya.
+ */
+export type KomiteTransferDetail = {
+  /**
+   * Judul layar yang SUDAH JADI, mis. `CLAIM COMMITTEE - ADJUSTMENT`.
+   *
+   * Dirakit server, bukan di sini: aturannya enam syarat `Section/ShowTransfer`, salah
+   * satunya menyembunyikan `- ADJUSTMENT` pada lini Travel. Menyalinnya ke React berarti
+   * aturan yang sama hidup di dua tempat.
+   */
+  judul: string
+  /**
+   * Apakah cabang `IsHE` dapat dinilai sama sekali.
+   *
+   * `BUSINESSTYPE` yang dibandingkan `IsHE` kosong pada seluruh case komite, jadi layar
+   * tidak boleh menyatakan "case ini bukan HE" — yang benar "hal itu tidak diketahui".
+   */
+  he_dapat_dinilai: boolean
+  baris: KomiteAdjustmentLine[]
+  /** `null` bila case ini belum punya baris di `T_CLAIM_KOMITE_LIST`. */
+  komite: KomiteCommitteeRecord | null
+  /** Data klaim yang dikomitekan — `.KomiteClaimData.*` pada `ShowTransferDetail`. */
+  klaim: KomiteClaimSummary | null
+  /** Blok analisis komite — `.Komite.*`. Satu sampai tiga baris per case. */
+  coverage: KomiteCoverageAnalysis[]
+  /** Kesimpulan dari server, bukan disimpulkan layar dari senarai yang kosong. */
+  kosong: boolean
+  /**
+   * Tidak ada NILAI UANG, meski data klaimnya ada.
+   *
+   * Dipisahkan dari `kosong`: 148 dari 189 case punya klaim lengkap tanpa satu pun baris
+   * adjustment, dan menyamakan keduanya menyembunyikan seluruh layar.
+   */
+  nilai_uang_kosong: boolean
+}
+
+export type KomiteClaimSummary = {
+  tanggal_kejadian?: string
+  tanggal_register?: string
+  lokasi?: string
+  kronologi?: string
+  status_klaim?: string
+  rekomendasi?: string
+  persen_asm_share?: string
+  koasuransi?: string
+  mata_uang?: string
+  ex_gratia?: string
+}
+
+export type KomiteCoverageAnalysis = {
+  id_objek?: string
+  id_coverage?: string
+  nama_objek?: string
+  nama_coverage?: string
+  sebab_kerugian?: string
+  nilai_tsi: string
+  mata_uang?: string
+  keadaan_kerugian?: string
+  luas_kerugian?: string
+  tanggung_jawab_hukum?: string
+  catatan?: string
+  diagnosa?: string
+  nama_initial?: string
+  tanggal_komite?: string
+  /** Kesimpulan server: baris ini punya keterangan analisis, bukan hanya nama coverage. */
+  analisis_terisi: boolean
 }
 
 export type KomiteCaseResponse = {
   kasus: KomiteCase
   sekarang: string
+  /** Hanya diisi oleh layar rincian; jawaban lain tidak membawanya. */
+  transfer?: KomiteTransferDetail
 }
 
 /** Kode galat khusus layar Inbox Komite. */

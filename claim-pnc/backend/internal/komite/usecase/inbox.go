@@ -32,6 +32,7 @@ import (
 // seluruh pemakai master ambang ikut menyediakan bahan yang tidak mereka pakai.
 type InboxService struct {
 	cases     komite.InboxRepo
+	transfers komite.TransferRepo
 	decisions komite.DecisionRepo
 	ids       komite.IDGenerator
 	now       func() time.Time
@@ -39,7 +40,13 @@ type InboxService struct {
 
 // InboxOptions adalah bahan pembentuk InboxService.
 type InboxOptions struct {
-	Cases     komite.InboxRepo
+	Cases komite.InboxRepo
+
+	// Transfers membaca rincian "Lihat Detail Transfer" — nilai uang dan keputusan komite
+	// menurut Pega. Ia seam TERSENDIRI karena dibaca pada saat yang lain: daftar dibaca
+	// setiap kali layar dibuka, rincian hanya ketika satu case ditekan.
+	Transfers komite.TransferRepo
+
 	Decisions komite.DecisionRepo
 	IDs       komite.IDGenerator
 
@@ -57,6 +64,9 @@ func NewInboxService(o InboxOptions) (*InboxService, error) {
 	if o.Cases == nil {
 		return nil, errors.New("komite/usecase: seam kasus komite wajib diisi")
 	}
+	if o.Transfers == nil {
+		return nil, errors.New("komite/usecase: seam rincian transfer wajib diisi")
+	}
 	if o.Decisions == nil {
 		return nil, errors.New("komite/usecase: seam keputusan komite wajib diisi")
 	}
@@ -68,7 +78,13 @@ func NewInboxService(o InboxOptions) (*InboxService, error) {
 	if o.Clock != nil {
 		now = o.Clock.Now
 	}
-	return &InboxService{cases: o.Cases, decisions: o.Decisions, ids: o.IDs, now: now}, nil
+	return &InboxService{
+		cases:     o.Cases,
+		transfers: o.Transfers,
+		decisions: o.Decisions,
+		ids:       o.IDs,
+		now:       now,
+	}, nil
 }
 
 // InboxResult adalah satu halaman inbox beserta bahan yang dibutuhkan layar.
@@ -149,12 +165,20 @@ func (s *InboxService) Case(
 	ctx context.Context,
 	caseID string,
 	operator string,
+	allOperators bool,
 ) (komite.CommitteeCase, error) {
 	found, err := s.cases.FindCase(ctx, caseID)
 	if err != nil {
 		return komite.CommitteeCase{}, err
 	}
-	if !found.BelongsTo(operator) {
+
+	// allOperators HARUS diteruskan ke sini, bukan hanya ke daftar.
+	//
+	// Bila daftar menampilkan kasus milik orang lain sementara pemeriksaan ini tetap
+	// berlaku, setiap baris yang diklik menjawab "tidak ada di inbox Anda" — layar yang
+	// isinya dapat dilihat tetapi tidak satu pun barisnya dapat dibuka. Keduanya WAJIB
+	// menjawab pertanyaan yang sama tentang siapa pemiliknya.
+	if !allOperators && !found.BelongsTo(operator) {
 		return komite.CommitteeCase{}, komite.ErrNotAssigned
 	}
 
@@ -203,7 +227,12 @@ func (s *InboxService) Decide(
 		return komite.CommitteeCase{}, err
 	}
 
-	current, err := s.Case(ctx, cmd.CaseID, actor.Login)
+	// `false` disebut TEGAS, bukan diteruskan dari pemanggil.
+	//
+	// Melihat pekerjaan orang lain dapat dilonggarkan untuk pengembangan; MEMUTUSKANNYA
+	// tidak. Kewenangan atas uang klaim tidak boleh ikut longgar hanya karena sebuah
+	// penanda tampilan menyala.
+	current, err := s.Case(ctx, cmd.CaseID, actor.Login, false)
 	if err != nil {
 		return komite.CommitteeCase{}, err
 	}
@@ -275,4 +304,46 @@ func (s *InboxService) withProgress(
 		result = append(result, c)
 	}
 	return result, nil
+}
+
+// CaseDetail adalah satu kasus beserta rincian transfernya — isi layar "Lihat Detail
+// Transfer".
+//
+// Keduanya dikembalikan BERSAMA, dalam satu pemanggilan. Di sistem lama pun ia satu layar:
+// `SetAssignmentKomite` membuka assignment, lalu flow action `ViewTransferDtl` merender
+// `ShowTransfer` beserta `ShowTransferDetail` di dalamnya. Memecahnya menjadi dua
+// permintaan akan membuat layar itu tergambar dua kali dengan isi yang berbeda.
+type CaseDetail struct {
+	Case     komite.CommitteeCase
+	Transfer komite.TransferDetail
+
+	// Now adalah jam server yang dipakai menghitung Aging, sama dengan pada daftar.
+	Now time.Time
+}
+
+// Detail mengambil satu kasus beserta rincian transfernya.
+//
+// # Kenapa rinciannya dibaca SESUDAH kepemilikan diperiksa
+//
+// Urutannya menentukan. `Case` menjawab "kasus ini milik Anda?" lebih dulu; baru setelah
+// jawabannya ya, nilai uangnya dibaca. Membalik urutannya berarti membaca — dan berpotensi
+// membocorkan lewat pesan galat — angka milik pekerjaan orang lain sebelum tahu apakah
+// pemanggil berhak melihatnya.
+func (s *InboxService) Detail(
+	ctx context.Context,
+	caseID string,
+	operator string,
+	allOperators bool,
+) (CaseDetail, error) {
+	found, err := s.Case(ctx, caseID, operator, allOperators)
+	if err != nil {
+		return CaseDetail{}, err
+	}
+
+	transfer, err := s.transfers.FindTransfer(ctx, found.CaseID)
+	if err != nil {
+		return CaseDetail{}, fmt.Errorf("komite/usecase: membaca rincian transfer: %w", err)
+	}
+
+	return CaseDetail{Case: found, Transfer: transfer, Now: s.now()}, nil
 }

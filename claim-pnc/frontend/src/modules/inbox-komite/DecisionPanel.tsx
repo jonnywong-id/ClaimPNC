@@ -43,6 +43,24 @@ const CHOICES: { kind: Kind; label: string; hint: string }[] = [
 /**
  * Panel keputusan komite.
  *
+ * ============================================================================
+ * TIDAK DIPASANG DI LAYAR MANA PUN SEJAK 2026-09-29.
+ * ============================================================================
+ *
+ * Work Owner meminta tombol "Putuskan" dihapus. Berkas ini SENGAJA dipertahankan, bukan
+ * terlewat dihapus: keputusan sebelumnya (§68) menetapkan jalur tulisnya disimpan dan hanya
+ * dinonaktifkan, dan jalur itu masih utuh di server — `decision_insert`, `DecisionRepo.Record`,
+ * dan endpoint `POST /api/komite/inbox/{nomor}/keputusan`.
+ *
+ * Yang dibutuhkan untuk menghidupkannya kembali ada tiga, dan ketiganya di luar berkas ini:
+ *
+ *   1. migrasi `0004_komite_keputusan.up.sql` dijalankan DBA (`D-63`);
+ *   2. penyaring kotak pada `repo/sqlstore/inbox.sql` dikembalikan mengenal keputusan
+ *      aplikasi ini — lihat peringatan di kepala berkas itu;
+ *   3. memasang kembali komponen ini beserta `useDecide` di InboxKomitePage.
+ *
+ * Jangan mencari pemakaiannya; tidak ada. Ini catatannya.
+ *
  * Menggantikan flow action `ViewTransferDtl` pada `Flow/Komite_Flow.xml` — layar "Lihat
  * Detail Transfer" tempat anggota komite memberi keputusan.
  *

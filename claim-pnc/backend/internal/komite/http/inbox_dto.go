@@ -174,12 +174,33 @@ type InboxListResponse struct {
 	// Tanpa `omitempty`: penandanya harus selalu ada. Nilai `false` yang hilang dari
 	// respons tidak dapat dibedakan dari versi server lama oleh klien mana pun.
 	DecisionsAvailable bool `json:"jejak_keputusan_tersedia"`
+
+	// OwnerFilterActive menyatakan daftar di atas benar-benar milik `Operator`.
+	//
+	// `false` berarti penyaring pemilik sedang DIMATIKAN, dan daftarnya adalah SELURUH
+	// antrean komite — termasuk pekerjaan orang lain beserta nama tertanggung dan nomor
+	// polisnya. Keadaan itu hanya mungkin di `APP_ENV=development`; konfigurasi menolak
+	// menyalakannya di luar sana.
+	//
+	// Layar WAJIB menyatakannya. Daftar pekerjaan orang lain yang tampak seperti daftar
+	// pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan
+	// pada layar yang menyetujui uang, itu kelas kesalahan yang paling mahal.
+	//
+	// Tanpa `omitempty`, dengan alasan yang sama seperti penanda di atas.
+	OwnerFilterActive bool `json:"penyaring_pemilik_aktif"`
 }
 
 // CommitteeCaseResponse adalah jawaban satu kasus — detail maupun sesudah keputusan.
 type CommitteeCaseResponse struct {
 	Case CommitteeCaseDTO `json:"kasus"`
 	Now  string           `json:"sekarang"`
+
+	// Transfer null pada jawaban yang BUKAN layar rincian.
+	//
+	// Ia hanya diisi `GET /api/komite/inbox/{nomor}`. Jawaban lain yang memakai bentuk ini
+	// tidak membacanya, dan mengirim objek kosong di sana akan menyiratkan rincian yang
+	// memang tidak diminta.
+	Transfer *TransferDetailDTO `json:"transfer,omitempty"`
 }
 
 // DecisionRequest adalah badan POST /api/komite/inbox/{nomor}/keputusan.
@@ -193,4 +214,148 @@ type CommitteeCaseResponse struct {
 type DecisionRequest struct {
 	Decision string `json:"keputusan"`
 	Note     string `json:"catatan"`
+}
+
+// TransferDetailDTO adalah isi "Lihat Detail Transfer" — pengganti `ShowTransferDetail`.
+//
+// # Kenapa ada di sini padahal daftarnya sengaja tanpa nilai uang
+//
+// Bukan pertentangan, melainkan dua layar yang berbeda. `InboxRegisterKomite_RD` — sumber
+// DAFTAR — memang tidak memuat satu pun nilai uang, dan `§69` mengikutinya. Yang memuatnya
+// adalah `ShowTransferDetail`, yang hanya tergambar setelah sebuah case ditekan.
+//
+// Nilai uangnya karena itu muncul di tempat layar lama menempatkannya: pada rincian, bukan
+// pada daftar.
+type TransferDetailDTO struct {
+	// Judul adalah judul layar yang SUDAH JADI, mis. "CLAIM COMMITTEE - ADJUSTMENT".
+	//
+	// Ia dikirim jadi, bukan dirakit layar dari kode mentah, karena aturannya adalah enam
+	// syarat Pega — termasuk `IsTravel` yang menyembunyikan "- ADJUSTMENT" pada Group
+	// Panel 005. Menaruh aturan itu di React berarti ia hidup di dua tempat begitu ada
+	// klien kedua, dan itu persis kegagalan yang dihindari `D-19`.
+	Judul string `json:"judul"`
+
+	// HEDapatDinilai menyatakan apakah cabang `IsHE` — yang memunculkan
+	// `ShowTransferDetailHE` — dapat dinilai sama sekali.
+	//
+	// `BUSINESSTYPE` yang dibandingkan `IsHE` terisi 0 dari 610 case komite. Selama ia
+	// kosong, layar TIDAK BOLEH menyatakan "case ini bukan HE" — yang benar adalah "hal
+	// itu tidak dapat diketahui dari sini". Keduanya berbeda, dan hanya satu yang jujur.
+	HEDapatDinilai bool `json:"he_dapat_dinilai"`
+
+	Lines []AdjustmentLineDTO `json:"baris"`
+
+	// Claim null bila klaimnya tidak terbaca. Terbaca pada 189 dari 189 case inbox, jadi
+	// null di sini menandakan keadaan yang layak diperiksa, bukan keadaan biasa.
+	Claim *ClaimSummaryDTO `json:"klaim"`
+
+	// Coverages adalah blok analisis komite — 1 sampai 3 baris per case.
+	Coverages []CoverageAnalysisDTO `json:"coverage"`
+
+	// MoneyEmpty dipisahkan dari Empty sejak blok klaim masuk.
+	//
+	// Sebuah case dapat punya data klaim lengkap tanpa satu pun baris adjustment — 148
+	// dari 189 berada dalam keadaan itu. Menyamakan keduanya akan menyembunyikan seluruh
+	// layar hanya karena angkanya belum ada.
+	MoneyEmpty bool `json:"nilai_uang_kosong"`
+
+	// Committee null bila case ini belum punya baris di `T_CLAIM_KOMITE_LIST`.
+	//
+	// `null`, bukan objek kosong: "belum ada keputusan" dan "ada keputusan yang isinya
+	// kosong" adalah dua keadaan yang berbeda, dan layar menggambarnya berbeda.
+	Committee *CommitteeRecordDTO `json:"komite"`
+
+	// Empty menyatakan tidak ada satu pun rincian yang dapat ditampilkan.
+	//
+	// Dikirim sebagai KESIMPULAN, bukan dibiarkan disimpulkan layar dari senarai yang
+	// kosong — supaya aturannya hidup di satu tempat.
+	Empty bool `json:"kosong"`
+}
+
+// AdjustmentLineDTO adalah satu baris `POOLDATA.T_CLAIM_ADJUSTMENT`.
+type AdjustmentLineDTO struct {
+	ClaimNumber string `json:"nomor_klaim"`
+	ObjectID    string `json:"id_objek,omitempty"`
+	CoverageID  string `json:"id_coverage,omitempty"`
+
+	AcceptanceNo string `json:"nomor_akseptasi,omitempty"`
+	AcceptedAt   string `json:"tanggal_akseptasi,omitempty"`
+
+	Currency    string `json:"mata_uang,omitempty"`
+	PaymentType string `json:"jenis_pembayaran,omitempty"`
+
+	// Keenam nilai uang dikirim sebagai TEKS desimal kanonik, bukan angka JSON. Angka JSON
+	// adalah floating point ganda di hampir seluruh peramban, dan mengirim nilai uang
+	// lewatnya berarti menyerahkan ketepatannya kepada pembulatan biner (`I-12`).
+	GrossValue     string `json:"nilai_gross"`
+	ProposeValue   string `json:"nilai_usulan"`
+	AcceptedValue  string `json:"nilai_akseptasi"`
+	SalvageValue   string `json:"nilai_salvage"`
+	ASMShareValue  string `json:"nilai_asm_share"`
+	IndividualRisk string `json:"nilai_risiko_sendiri"`
+
+	// ASMSharePercent persentase, bukan nilai uang — karena itu tidak ikut aturan di atas.
+	ASMSharePercent string `json:"persen_asm_share,omitempty"`
+
+	ExGratia    bool   `json:"ex_gratia"`
+	Notes       string `json:"catatan,omitempty"`
+	CauseOfLoss string `json:"sebab_kerugian,omitempty"`
+}
+
+// CommitteeRecordDTO adalah keputusan komite MENURUT PEGA.
+type CommitteeRecordDTO struct {
+	MemberName string `json:"nama_komite,omitempty"`
+	Tier       int    `json:"jenjang,omitempty"`
+	Kind       string `json:"tipe_komite,omitempty"`
+	Note       string `json:"catatan,omitempty"`
+
+	ClaimValue string `json:"nilai_klaim"`
+	ASMShare   string `json:"persen_asm_share,omitempty"`
+
+	DecidedAt string `json:"tanggal_komite,omitempty"`
+	Outcome   string `json:"kesimpulan,omitempty"`
+}
+
+// ClaimSummaryDTO adalah blok `.KomiteClaimData.*` pada `ShowTransferDetail`.
+type ClaimSummaryDTO struct {
+	DateOfLoss   string `json:"tanggal_kejadian,omitempty"`
+	RegisterDate string `json:"tanggal_register,omitempty"`
+
+	Location    string `json:"lokasi,omitempty"`
+	Chronology  string `json:"kronologi,omitempty"`
+	ClaimStatus string `json:"status_klaim,omitempty"`
+
+	Recommendation string `json:"rekomendasi,omitempty"`
+
+	ASMShare  string `json:"persen_asm_share,omitempty"`
+	CoinsName string `json:"koasuransi,omitempty"`
+	Currency  string `json:"mata_uang,omitempty"`
+	ExGratia  string `json:"ex_gratia,omitempty"`
+}
+
+// CoverageAnalysisDTO adalah satu baris blok analisis komite.
+//
+// `analisis_terisi` dikirim sebagai KESIMPULAN dari server, bukan disimpulkan layar dari
+// enam medan yang mungkin kosong: aturannya satu, dan tempatnya satu.
+type CoverageAnalysisDTO struct {
+	ObjectID   string `json:"id_objek,omitempty"`
+	CoverageID string `json:"id_coverage,omitempty"`
+
+	ObjectName   string `json:"nama_objek,omitempty"`
+	CoverageName string `json:"nama_coverage,omitempty"`
+	CauseOfLoss  string `json:"sebab_kerugian,omitempty"`
+
+	SumInsured string `json:"nilai_tsi"`
+	Currency   string `json:"mata_uang,omitempty"`
+
+	Circumstances  string `json:"keadaan_kerugian,omitempty"`
+	ExtentOfLoss   string `json:"luas_kerugian,omitempty"`
+	LegalLiability string `json:"tanggung_jawab_hukum,omitempty"`
+	Remarks        string `json:"catatan,omitempty"`
+	Diagnose       string `json:"diagnosa,omitempty"`
+	InitialName    string `json:"nama_initial,omitempty"`
+
+	CommitteeDate string `json:"tanggal_komite,omitempty"`
+
+	AnalysisFilled bool `json:"analisis_terisi"`
 }

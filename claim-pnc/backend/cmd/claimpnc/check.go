@@ -6319,6 +6319,7 @@ func checkKomiteInbox(
 ) {
 	kasus := komitesql.NewInboxRepo(primary)
 	keputusan := komitesql.NewDecisionRepo(primary)
+	transfer := komitesql.NewTransferRepo(primary)
 
 	if err := kasus.CheckTables(ctx); err != nil {
 		print("  [BELUM] Tabel warisan Inbox Komite tidak dapat dibaca: %v", err)
@@ -6327,6 +6328,20 @@ func checkKomiteInbox(
 		return
 	}
 	print("  [ok]    Tabel warisan Inbox Komite dapat dibaca (ketiganya)")
+
+	// Rincian "Lihat Detail Transfer" memakai DUA tabel lain, dan ketiadaannya berakibat
+	// berbeda: daftarnya tetap jalan, yang mati hanya layar rinciannya.
+	if err := transfer.CheckTables(ctx); err != nil {
+		print("  [BELUM] Tabel rincian transfer tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_CLAIM_ADJUSTMENT,")
+		print("            T_CLAIM_KOMITE_LIST, T_CLAIM_PNC, dan T_CLAIM_OBJECTCOVERAGE.")
+		print("            Daftar inbox TIDAK terpengaruh; yang gagal hanya layar rincian")
+		print("            saat sebuah case ditekan.")
+	} else {
+		print("  [ok]    Keempat tabel rincian transfer dapat dibaca")
+		print("            T_CLAIM_ADJUSTMENT · T_CLAIM_KOMITE_LIST · T_CLAIM_PNC ·")
+		print("            T_CLAIM_OBJECTCOVERAGE (blok klaim dan analisis komite)")
+	}
 
 	// Jejak keputusan diperiksa TERPISAH dari tabel warisan, karena akibat ketiadaannya
 	// berbeda sama sekali: yang satu mematikan layar, yang lain hanya mematikan tombolnya.
