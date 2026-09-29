@@ -38,8 +38,6 @@ import (
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
-	"claim-pnc/internal/inboxsurvey"
-	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -51,10 +49,12 @@ import (
 	"claim-pnc/internal/inboxosclaimpercabang"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
+	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxservicecenter"
+	"claim-pnc/internal/inboxsurvey"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/laporanhasilai"
@@ -103,6 +103,10 @@ import (
 	archivedokumenklaimsql "claim-pnc/internal/archivedokumenklaim/repo/sqlstore"
 	archivedokumenklaimusecase "claim-pnc/internal/archivedokumenklaim/usecase"
 	authhttp "claim-pnc/internal/auth/http"
+	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
+	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
+	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
 	daftardetaildokumentravelhttp "claim-pnc/internal/daftardetaildokumentravel/http"
 	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
@@ -132,29 +136,21 @@ import (
 	detailpenyebabmemory "claim-pnc/internal/detailpenyebab/repo/memory"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
 	detailpenyebabusecase "claim-pnc/internal/detailpenyebab/usecase"
+	"claim-pnc/internal/dokumenpenunjang"
+	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
+	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
+	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
+	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
+	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
+	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
 	inboxacceptopenprotectionhttp "claim-pnc/internal/inboxacceptopenprotection/http"
 	inboxacceptopenprotectionmemory "claim-pnc/internal/inboxacceptopenprotection/repo/memory"
 	inboxacceptopenprotectionsql "claim-pnc/internal/inboxacceptopenprotection/repo/sqlstore"
 	inboxacceptopenprotectionusecase "claim-pnc/internal/inboxacceptopenprotection/usecase"
-	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
-	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
-	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
-	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
-	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
-	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
-	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
-	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
-	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
-	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
-	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
-	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
-	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
-	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
-	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
@@ -199,6 +195,10 @@ import (
 	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
+	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
+	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
+	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
@@ -216,17 +216,14 @@ import (
 	inboxservicecentermemory "claim-pnc/internal/inboxservicecenter/repo/memory"
 	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
 	inboxservicecenterusecase "claim-pnc/internal/inboxservicecenter/usecase"
+	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
+	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
+	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
-	"claim-pnc/internal/dokumenpenunjang"
-	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
-	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
-	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
-	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
-	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
-	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
 	"claim-pnc/internal/registrasi/repo/dokumenlink"
 
 	"claim-pnc/internal/inputreqprotection"
@@ -376,6 +373,9 @@ import (
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
 	"claim-pnc/internal/riwayatklaim"
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -469,10 +469,30 @@ func run() error {
 				Name:  baseCtx.User.Name,
 			}, true
 		},
+		// Penyaring pemilik dimatikan bila diminta. Konfigurasi sudah MENOLAK menyalakannya
+		// di luar `APP_ENV=development`, sehingga di sini nilainya cukup diteruskan —
+		// pemeriksaan lingkungan hidup di satu tempat, bukan diulang di setiap modul.
+		AllOperators: cfg.KomiteTanpaPenyaringOperator,
+
 		Logger:              logger,
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
 	})
+
+	// Keadaan ini dicatat SETIAP start, bukan sekali saat diisi.
+	//
+	// Isian yang mematikan penjagaan mudah tertinggal di berkas `.env` seseorang berminggu
+	// -minggu. Peringatan yang muncul pada setiap start adalah satu-satunya hal yang
+	// membuatnya tetap terlihat.
+	if cfg.KomiteTanpaPenyaringOperator {
+		logger.Warn("penyaring pemilik Inbox Komite DIMATIKAN",
+			slog.String("modul", "komite"),
+			slog.String("akibat", "daftarnya adalah antrean komite SELURUH perusahaan, "+
+				"bukan pekerjaan pengguna yang masuk"),
+			slog.String("berlaku", "hanya APP_ENV=development; konfigurasi menolaknya di luar itu"),
+			slog.String("mematikan", "kosongkan KOMITE_TANPA_PENYARING_OPERATOR"),
+		)
+	}
 
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
@@ -1601,7 +1621,7 @@ func run() error {
 			FallbackErrorWriter: inboxsurveyhttp.ErrorWriter(writePortalAwareError),
 		})
 
-		// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
+	// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
 	// Inbox Analyst Doctor, login itu BUKAN yang menyaring antrean. Ia hanya kunci untuk
 	// mencari identitas LAMA pemanggil di `POOLDATA.T_ACCESS_GROUP_PNC`, padanan
 	// `TempOperator.City` yang diisi `GetpyUserIdentifierFromTable` pada harness lama.
@@ -1740,10 +1760,10 @@ func run() error {
 				if !existing {
 					return inboxosclaimpercabanghttp.Caller{}, false
 				}
-					// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
-					// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
-					// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
-					// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
+				// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
+				// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
+				// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
+				// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
 				return inboxosclaimpercabanghttp.Caller{
 					Login:            baseCtx.User.Login,
 					DetailBranchCode: baseCtx.User.DetailBranchCode,
@@ -2676,9 +2696,9 @@ type assembly struct {
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 
-	inboxRCLPUCL            *inboxrclpuclusecase.Service
-	reportKPI               *reportkpiusecase.Service
-	reportKlaim             *reportklaimusecase.Service
+	inboxRCLPUCL *inboxrclpuclusecase.Service
+	reportKPI    *reportkpiusecase.Service
+	reportKlaim  *reportklaimusecase.Service
 
 	// inboxSalvage melayani layar Inbox Salvage (`MENU_ID 71`).
 	//
@@ -2849,6 +2869,10 @@ type storage struct {
 	komiteInbox    komite.InboxRepo
 	komiteDecision komite.DecisionRepo
 
+	// komiteTransfer membaca rincian "Lihat Detail Transfer" — nilai uang dan keputusan
+	// komite menurut Pega. DIBACA SAJA; kedua tabelnya masih ditulis Pega (`P-1`).
+	komiteTransfer komite.TransferRepo
+
 	// accountSelector memilih penyimpanan master rekening milik satu portal entitas.
 	// Repo dan BankRepo dipilih bersamaan karena keduanya hidup di basis data yang sama.
 	accountSelector func(alias string) (masterrekening.Repo, masterrekening.BankRepo, error)
@@ -2897,9 +2921,9 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 
-	rclPUCLSelector            inboxrclpucl.RepoSelector
-	reportKPISelector          reportkpi.RepoSelector
-	reportKlaimSelector        reportklaim.RepoSelector
+	rclPUCLSelector     inboxrclpucl.RepoSelector
+	reportKPISelector   reportkpi.RepoSelector
+	reportKlaimSelector reportklaim.RepoSelector
 
 	// salvageSelector memilih penyimpanan salvage milik satu portal.
 	//
@@ -4019,8 +4043,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-
-
 	// Inbox OS Claim per Cabang. Cabang pemanggil diselesaikan CallerBranch, yang membacanya
 	// dari profil sesi — yakni dari jawaban API HCQ saat masuk (keputusan Work Owner
 	// 2026-09-28).
@@ -4176,6 +4198,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// umur.
 	komiteInboxService, err := komiteusecase.NewInboxService(komiteusecase.InboxOptions{
 		Cases:     store.komiteInbox,
+		Transfers: store.komiteTransfer,
 		Decisions: store.komiteDecision,
 		IDs:       komitememory.IDGenerator{},
 		Clock:     clock.System{},
@@ -4667,6 +4690,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// secara harfiah, dan penutupannya `TKT-F6-002`.
 		store.komiteInbox = komitesql.NewInboxRepo(primary)
 		store.komiteDecision = komitesql.NewDecisionRepo(primary)
+		store.komiteTransfer = komitesql.NewTransferRepo(primary)
 
 		// KEDUA kumpulan koneksi ditutup bersamaan. Menutup yang pertama saja akan
 		// meninggalkan koneksi kedua tetap terbuka saat aplikasi berhenti — kebocoran
@@ -5379,6 +5403,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		inboxStore := komitememory.NewSampleInboxStore()
 		store.komiteInbox = inboxStore
 		store.komiteDecision = inboxStore
+		store.komiteTransfer = inboxStore
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		store.travelDocumentSelector = travelDocumentSelectorMemory(cfg.PrimaryPortal)
 
@@ -7187,7 +7212,6 @@ func managerReceivePUCLSelectorMemory(
 		return fresh, nil
 	}
 }
-
 
 // rclPUCLSelectorMemory menyusun penyimpanan Inbox RCL/PUCL di memori; alasannya sama
 // dengan claimTreatyPropSelectorMemory di atas.

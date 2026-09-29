@@ -67,8 +67,8 @@ import (
 	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	"claim-pnc/internal/inboxmanager"
-	"claim-pnc/internal/inboxmanageradmin"
 	inboxmanagersql "claim-pnc/internal/inboxmanager/repo/sqlstore"
+	"claim-pnc/internal/inboxmanageradmin"
 	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
@@ -82,12 +82,12 @@ import (
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
-	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
 	"claim-pnc/internal/inboxsalvage"
 	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
+	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
 	"claim-pnc/internal/komite"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
-	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -1349,7 +1349,7 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 			}
 			return terbaca, nil
 		}},
-		
+
 		{"Inbox Service Center", inboxServiceCenter.CheckTable, func(ctx context.Context) (int, error) {
 			if !serviceCenterTabKnown {
 				return 0, fmt.Errorf(
@@ -3801,7 +3801,6 @@ func checkInboxRCL(
 	print("            Catatan: antrean disaring dengan identitas LAMA pemanggil")
 	print("            (T_ACCESS_GROUP_PNC, grup Administrators/PNCKomite/CaseManager).")
 }
-
 
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
 //
@@ -6308,6 +6307,7 @@ func checkKomiteInbox(
 ) {
 	kasus := komitesql.NewInboxRepo(primary)
 	keputusan := komitesql.NewDecisionRepo(primary)
+	transfer := komitesql.NewTransferRepo(primary)
 
 	if err := kasus.CheckTables(ctx); err != nil {
 		print("  [BELUM] Tabel warisan Inbox Komite tidak dapat dibaca: %v", err)
@@ -6316,6 +6316,20 @@ func checkKomiteInbox(
 		return
 	}
 	print("  [ok]    Tabel warisan Inbox Komite dapat dibaca (ketiganya)")
+
+	// Rincian "Lihat Detail Transfer" memakai DUA tabel lain, dan ketiadaannya berakibat
+	// berbeda: daftarnya tetap jalan, yang mati hanya layar rinciannya.
+	if err := transfer.CheckTables(ctx); err != nil {
+		print("  [BELUM] Tabel rincian transfer tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_CLAIM_ADJUSTMENT,")
+		print("            T_CLAIM_KOMITE_LIST, T_CLAIM_PNC, dan T_CLAIM_OBJECTCOVERAGE.")
+		print("            Daftar inbox TIDAK terpengaruh; yang gagal hanya layar rincian")
+		print("            saat sebuah case ditekan.")
+	} else {
+		print("  [ok]    Keempat tabel rincian transfer dapat dibaca")
+		print("            T_CLAIM_ADJUSTMENT · T_CLAIM_KOMITE_LIST · T_CLAIM_PNC ·")
+		print("            T_CLAIM_OBJECTCOVERAGE (blok klaim dan analisis komite)")
+	}
 
 	// Jejak keputusan diperiksa TERPISAH dari tabel warisan, karena akibat ketiadaannya
 	// berbeda sama sekali: yang satu mematikan layar, yang lain hanya mematikan tombolnya.

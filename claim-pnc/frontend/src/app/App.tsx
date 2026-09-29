@@ -50,6 +50,7 @@ import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
 import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
+import { KomiteCasePage } from '@/modules/inbox-komite/KomiteCasePage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { ClaimPage as RegistrationClaimPage } from '@/modules/registrasi/ClaimPage'
 import { InboxPage as RegistrationInboxPage } from '@/modules/registrasi/InboxPage'
@@ -1578,6 +1579,33 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxKomitePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Rincian satu kasus komite — "Lihat Detail Transfer".
+
+        Ia rute tersendiri, bukan panel di dalam daftarnya. Di sistem lama pun ia perpindahan
+        yang sesungguhnya: menekan nomor case menjalankan `SetAssignmentKomite`, membuka
+        assignment `ASSIGN-WORKLIST <pzInsKey>!Komite_Flow`, lalu merender flow action
+        `ViewTransferDtl`.
+
+        Rute tersendiri memberi tiga hal yang panel tidak dapat berikan: alamat yang dapat
+        dibagikan, tombol Kembali peramban yang berperilaku benar, dan "buka di tab baru"
+        pada baris tabel.
+
+        Nomor case dipakai apa adanya sebagai parameter. Kunci assignment Pega — hasil
+        rangkaian `"ASSIGN-WORKLIST " + inskey + "!Komite_Flow"` — TIDAK dibawa: ia kunci
+        internal Pega yang `D-22` larang bocor ke data bisnis, dan server tidak
+        membutuhkannya.
+      */}
+      <Route
+        path="/komite/inbox/:nomor"
+        element={
+          <SessionGuard>
+            <Protected>
+              <KomiteCasePage />
             </Protected>
           </SessionGuard>
         }

@@ -85,6 +85,32 @@
 --
 --
 -- ============================================================================
+-- PENYARING PEMILIK DAPAT DIMATIKAN — DAN ITU HANYA UNTUK PENGEMBANGAN
+-- ============================================================================
+--
+-- Bentuknya `(:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)` — pola yang sama dengan penyaring
+-- pencarian dan rentang tanggal di bawah, bukan bentuk khusus.
+--
+-- Ketika `:1` NULL, daftarnya berhenti menjadi inbox seseorang dan menjadi SELURUH antrean
+-- komite. Diminta Work Owner 2026-09-29 supaya isi Inbox Outstanding dapat dilihat selama
+-- pemetaan identitas HCC/HCQ ke `OPERATOR_ID` belum ada (`ADR-0024`).
+--
+-- Tiga penjagaan mengelilinginya, dan ketiganya disengaja:
+--
+--   1. Ia harus DIMINTA lewat `InboxFilter.AllOperators`. Operator yang kebetulan kosong
+--      tetap berarti nol baris — kegagalan pembacaan identitas tidak boleh berubah menjadi
+--      "tampilkan antrean seluruh perusahaan".
+--   2. Penyalaannya lewat `KOMITE_TANPA_PENYARING_OPERATOR`, yang MENOLAK berjalan di luar
+--      `APP_ENV=development`.
+--   3. Respons membawa penandanya, dan layar menyatakannya. Daftar pekerjaan orang lain
+--      tidak boleh tampak seperti daftar pekerjaan sendiri.
+--
+-- Biayanya diukur, bukan diperkirakan: keempat bentuk — `= :1` polos, bentuk opsional
+-- dengan nilai terisi, bentuk opsional dengan NULL, dan tanpa predikat sama sekali —
+-- seluruhnya **24–28 ms** pada basis data ASM. Tidak ada yang dikorbankan.
+--
+--
+-- ============================================================================
 -- KENAPA PENYARING OPERATOR TIDAK DI-UPPER DAN TIDAK DI-TRIM
 -- ============================================================================
 --
@@ -186,27 +212,27 @@ SELECT c.CASE_ID,
           JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
                  ON a.PZINSKEY = w.PXREFOBJECTKEY
          WHERE w.PXOBJCLASS = 'Assign-Worklist'
-           AND w.PXASSIGNEDOPERATORID = :1
+           AND (:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)
            AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
-           AND a.PXCREATEDATETIME >= :2
+           AND a.PXCREATEDATETIME >= :3
        ) c
  WHERE (CASE
-          WHEN :3 = 'outstanding'
+          WHEN :4 = 'outstanding'
                AND c.WORK_STATUS <> 'Resolved-Completed' THEN 1
-          WHEN :4 = 'diterima'
+          WHEN :5 = 'diterima'
                AND c.LEGACY_APPROVE = '1' THEN 1
-          WHEN :5 = 'ditolak'
+          WHEN :6 = 'ditolak'
                AND c.LEGACY_APPROVE IS NOT NULL
                AND c.LEGACY_APPROVE <> '1' THEN 1
           ELSE 0
         END) = 1
-   AND (:6 IS NULL
-        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:7) || '%' ESCAPE '\'
-        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:8) || '%' ESCAPE '\')
-   AND (:9 IS NULL OR c.CREATED_AT >= :10)
-   AND (:11 IS NULL OR c.CREATED_AT < :12)
+   AND (:7 IS NULL
+        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:8) || '%' ESCAPE '\'
+        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:9) || '%' ESCAPE '\')
+   AND (:10 IS NULL OR c.CREATED_AT >= :11)
+   AND (:12 IS NULL OR c.CREATED_AT < :13)
  ORDER BY c.CREATED_AT ASC, c.CASE_ID ASC
-OFFSET :13 ROWS FETCH NEXT :14 ROWS ONLY
+OFFSET :14 ROWS FETCH NEXT :15 ROWS ONLY
 
 
 -- name: inbox_count
@@ -232,25 +258,25 @@ SELECT COUNT(1)
           JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
                  ON a.PZINSKEY = w.PXREFOBJECTKEY
          WHERE w.PXOBJCLASS = 'Assign-Worklist'
-           AND w.PXASSIGNEDOPERATORID = :1
+           AND (:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)
            AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
-           AND a.PXCREATEDATETIME >= :2
+           AND a.PXCREATEDATETIME >= :3
        ) c
  WHERE (CASE
-          WHEN :3 = 'outstanding'
+          WHEN :4 = 'outstanding'
                AND c.WORK_STATUS <> 'Resolved-Completed' THEN 1
-          WHEN :4 = 'diterima'
+          WHEN :5 = 'diterima'
                AND c.LEGACY_APPROVE = '1' THEN 1
-          WHEN :5 = 'ditolak'
+          WHEN :6 = 'ditolak'
                AND c.LEGACY_APPROVE IS NOT NULL
                AND c.LEGACY_APPROVE <> '1' THEN 1
           ELSE 0
         END) = 1
-   AND (:6 IS NULL
-        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:7) || '%' ESCAPE '\'
-        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:8) || '%' ESCAPE '\')
-   AND (:9 IS NULL OR c.CREATED_AT >= :10)
-   AND (:11 IS NULL OR c.CREATED_AT < :12)
+   AND (:7 IS NULL
+        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:8) || '%' ESCAPE '\'
+        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:9) || '%' ESCAPE '\')
+   AND (:10 IS NULL OR c.CREATED_AT >= :11)
+   AND (:12 IS NULL OR c.CREATED_AT < :13)
 
 
 -- name: inbox_summary
@@ -290,15 +316,15 @@ SELECT SUM(CASE
           JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
                  ON a.PZINSKEY = w.PXREFOBJECTKEY
          WHERE w.PXOBJCLASS = 'Assign-Worklist'
-           AND w.PXASSIGNEDOPERATORID = :1
+           AND (:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)
            AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
-           AND a.PXCREATEDATETIME >= :2
+           AND a.PXCREATEDATETIME >= :3
        ) c
- WHERE (:3 IS NULL
-        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:4) || '%' ESCAPE '\'
-        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:5) || '%' ESCAPE '\')
-   AND (:6 IS NULL OR c.CREATED_AT >= :7)
-   AND (:8 IS NULL OR c.CREATED_AT < :9)
+ WHERE (:4 IS NULL
+        OR UPPER(c.CASE_ID)      LIKE '%' || UPPER(:5) || '%' ESCAPE '\'
+        OR UPPER(c.CLAIM_NUMBER) LIKE '%' || UPPER(:6) || '%' ESCAPE '\')
+   AND (:7 IS NULL OR c.CREATED_AT >= :8)
+   AND (:9 IS NULL OR c.CREATED_AT < :10)
 
 
 -- name: inbox_get
