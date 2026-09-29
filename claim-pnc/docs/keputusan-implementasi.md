@@ -21701,3 +21701,104 @@ EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
 >>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
+
+
+## 105. Master Recovery punya tab Outstanding; penyaringnya sengaja TIDAK ditebak (2026-09-29)
+
+**Mencabut** keputusan sebelumnya bahwa layar Master Recovery adalah form entri tanpa
+daftar. Keputusan itu berdiri di atas kesimpulan yang keliru: *tidak ada kueri pembaca di
+export, berarti tidak ada daftar*. Export-nya sendiri tidak lengkap (`R-16`), dan grid
+Outstanding terbaca jelas di `Section/OutstandingMasterRecovery-Section.xml:17510` — yang
+hilang adalah rule pemuat halaman `Data_BACTH_RECOVERY`, bukan fiturnya.
+
+**Yang ditetapkan sekarang:**
+
+1. `GET /api/master/recovery` ada, dengan lima kolom yang dibaca dari section:
+   `NAMAPRINCIPAL`, `NILAIKLAIM`, `NILAIRECOVERY`, `PEMBAYARAN`, `SISAKLAIM`.
+2. **Tidak ada penyaring "outstanding".** Klausa WHERE aslinya ada di rule yang hilang dan
+   tidak dapat dibaca siapa pun. Menerjemahkannya menjadi `SISAKLAIM > 0` berarti
+   menyembunyikan baris atas dasar tebakan — dan baris yang hilang diam-diam tidak pernah
+   dikeluhkan siapa pun, sedangkan baris berlebih langsung terlihat dan dapat dipersempit
+   begitu rule-nya tiba. Diminta ke Tim Pega bersama `D-39`.
+3. **`PUT` dan `DELETE` tetap tidak ada**, dan dasarnya BERBEDA: ia dibaca dari ISI
+   `INSERTMASTERRECOVERYKLAIM.prc`, yang hanya mengenal INSERT — bukan dari ketidakhadiran
+   sesuatu di export.
+4. Susunan layar mengikuti Pega: judul, tombol Tambah/Refresh di kanannya, satu tab
+   Outstanding, lalu grid. Entri dibuka lewat Tambah. Satu penyimpangan disengaja: panel
+   di tempat, bukan jendela modal — form ini terlalu panjang untuk modal.
+5. Batas `limit` (baku 10, maksimum 100) ditegakkan di lapisan **usecase**, supaya
+   pemanggil mana pun yang ditulis kemudian tidak dapat menarik seluruh tabel.
+
+## 106. Grid Outstanding dikelompokkan per principal, dan View Document ditambahkan (2026-09-29)
+
+**Melengkapi keputusan 105.** Bentuk daftar yang ditetapkan di sana — satu baris per batch,
+terurut menurun — ternyata bukan bentuk layar lama. Work Owner menunjukkan Pega yang
+berjalan pada hari yang sama.
+
+**Yang ditetapkan:**
+
+1. **Satu baris luar per principal**, dan mengekliknya membuka riwayat seluruh batch
+   principal itu. Angka baris luar diambil dari batch **TERAKHIR**, bukan dijumlahkan —
+   terbukti dari tangkapan layar: baris luar 7.000/100.000/153.000 sama persis dengan baris
+   terakhir, sedangkan jumlah pembayarannya 107.000.
+2. **Riwayat terurut dari yang paling lama** (`INSERTDATE` menaik, `BATCH` sebagai
+   pemutus). Urutan menurun yang sempat saya pakai adalah pilihan saya sendiri, bukan
+   perilaku layar lama.
+3. **Paginasi memotong PRINCIPAL, bukan baris.** Memotong per baris memenggal riwayat satu
+   principal di tengah tanpa satu pun tanda bahwa ada yang terpotong.
+4. **Dikelompokkan menurut NAMA**, bukan `CLIENTID`, karena namanyalah yang ditampilkan
+   grid luar. Bila terbukti dua principal dapat bernama sama, kuncinya harus pindah.
+5. **`GET /api/master/recovery/bukti-bayar/{id}`** melayani tombol View Document. Isinya
+   dialirkan **mentah** dan `inline` — bukan base64 lewat `pooldata.base64encode` seperti
+   jalur lama, yang melanggar `D-02` dan tidak diperlukan.
+6. **Dua kegagalan dokumen dibedakan**: `bukti_bayar_tidak_ditemukan` (baris tidak ada)
+   versus `bukti_bayar_di_penyimpanan_lain` (baris ada, isinya di penyimpanan luar per
+   `D-16`). Menyamakannya membuat petugas mencari kesalahan di tempat yang salah.
+7. **`DataTable` mendapat prop `expandedRow`** — opsional, mati secara baku, sehingga
+   sepuluh layar master yang sudah selesai tidak berubah. Pola yang sama dengan `pageSize`
+   dan `showHeaderWhenEmpty`.
+
+**Catatan penting.** Bentuk ini **tidak dapat disimpulkan dari export**: `pyEnableGrouping`
+dan `pyRDLShowDetails` keduanya `false`, sehingga pengelompokan bukan bawaan grid — ia
+dikerjakan rule pemuat halaman `Data_BACTH_RECOVERY` yang hilang (`R-16`). Ia dibaca dari
+layar yang berjalan, dan itu dicatat supaya siapa pun yang kelak membandingkannya dengan
+export tidak menyimpulkan bahwa bentuk ini dikarang.
+
+## 107. View Document membuka daftar dokumen pendukung; berkas tidak aman diunduh, bukan ditampilkan (2026-09-29)
+
+**Mengoreksi keputusan 106 butir 5.** Di sana View Document ditetapkan mengalirkan berkas
+`inline`. Keduanya salah: bentuknya bukan unduhan, dan `inline` untuk setiap jenis adalah
+celah keamanan.
+
+**Yang ditetapkan:**
+
+1. **View Document membuka modal "View Dokument Pendukung"**, berisi tabel berkolom
+   **Input Nama** dan **Tanggal**, dan menulis **"Data Tidak Ada"** saat kosong — mengikuti
+   layar Pega yang berjalan. Berkasnya dibuka dari dalam daftar itu, bukan langsung.
+2. Kedua kolomnya dipetakan ke `INPUTOPERATOR` dan `INPUTDATE` milik
+   `POOLDATA.DATA_ATTACHFILE`, diambil lewat **`LEFT JOIN`** pada kueri daftar. LEFT,
+   karena batch tanpa lampiran wajib tetap muncul.
+3. **Tombol tampil di setiap batch**, termasuk yang tanpa lampiran — mencabut keputusan
+   sebelumnya yang menyembunyikannya. Menyembunyikannya membuat petugas tidak punya cara
+   memastikan sebuah batch memang belum berlampiran.
+4. **`DOKUMENID` yang menunjuk baris tidak ada diperlakukan sebagai "belum ada lampiran"**,
+   bukan sebagai tombol yang menjanjikan berkas yang tidak dapat dibuka.
+5. **`inline` hanya untuk daftar jenis yang aman ditampilkan** — PDF, gambar raster,
+   `text/plain`. Selebihnya `attachment`. `image/svg+xml` **sengaja tidak masuk**: SVG
+   dapat memuat `<script>` yang berjalan saat dibuka langsung.
+6. **`X-Content-Type-Options: nosniff`** pada setiap jawaban berkas.
+7. **Sisi layar membaca `Content-Disposition`**, tidak menebak ulang jenisnya — supaya
+   server dan layar tidak dapat berbeda pendapat.
+
+**Kenapa butir 5–7 bukan soal kerapian.** Jenis isi berasal dari kolom `ATTACHMIMETYPE` di
+basis data, bukan dari kode. Satu baris bernilai `text/html` akan dijalankan peramban
+sebagai halaman **di origin aplikasi ini**, dan skrip di dalamnya membaca sesi pengguna
+yang membukanya. Tabel `DATA_ATTACHFILE` dipakai bersama seluruh modul, dan isinya dapat
+berasal dari unggahan pengguna.
+
+**Batas yang disadari:** tautan batch ke lampiran hanyalah satu kolom `DOKUMENID`, sehingga
+daftar itu berisi paling banyak satu baris hari ini. Bentuk daftar tetap dipakai supaya
+sama dengan layar lama.
+
+**Catatan.** Rule yang membangun modal ini **tidak ada di export** — teks `View Dokument`
+nol kemunculan di seluruh berkas (`R-16`). Bentuknya dibaca dari layar yang berjalan.

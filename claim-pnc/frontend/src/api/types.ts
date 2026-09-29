@@ -1444,6 +1444,10 @@ export const ErrorCode = {
   claimFileEmpty: 'berkas_klaim_kosong',
   claimFileTooBig: 'berkas_klaim_terlalu_besar',
   claimFileUnreadable: 'berkas_klaim_tidak_terbaca',
+  /** Penandanya menunjuk lampiran yang tidak ada. */
+  documentNotFound: 'bukti_bayar_tidak_ditemukan',
+  /** Barisnya ada, tetapi isinya di penyimpanan dokumen yang belum terhubung (`D-16`). */
+  documentElsewhere: 'bukti_bayar_di_penyimpanan_lain',
   // Milik modul Komite.
   unknownLine: 'lini_tidak_dikenal',
   malformedClaimValue: 'nilai_klaim_cacat',
@@ -1818,6 +1822,80 @@ export type AutoClaimLineListResponse = {
   paginasi: Pagination
 }
 /** Bekal awal layar: nomor batch perkiraan dan pilihan tahun, dalam satu permintaan. */
+/**
+ * Satu baris pada tab **Outstanding**.
+ *
+ * Kelima kolom yang ditampilkan grid Pega adalah `nama_principal`, `nilai_klaim`,
+ * `pembayaran_sebelumnya`, `pembayaran`, dan `sisa`. Sisanya dikirim supaya baris dapat
+ * dibaca lebih lengkap tanpa permintaan kedua.
+ *
+ * Nilai uang datang sebagai ANGKA rupiah bulat, bukan teks terformat — pemformatannya
+ * urusan layar (`shared/lib/money`).
+ */
+export type RecoveryRow = {
+  batch: number
+  nama_principal: string
+  tahun: string
+  /** RFC 3339; kosong berarti barisnya tidak punya INSERTDATE. */
+  tanggal_input: string
+  /** Kolom NOHPLL. Namanya menyiratkan nomor telepon; isinya nomor catatan log layanan. */
+  no_hpll: string
+  nilai_klaim: number
+  pembayaran_sebelumnya: number
+  pembayaran: number
+  sisa: number
+  keterangan: string
+  posisi_kasus: string
+  nomor_virtual_account: string
+  nomor_polis: string
+  /** Penanda Bukti Bayar; kosong berarti belum ada yang diunggah. */
+  id_dokumen: string
+  /**
+   * Keterangan lampirannya, atau `null` bila belum ada.
+   *
+   * Mengisi daftar pada modal **View Dokument Pendukung**. Tidak memuat berkasnya —
+   * berkas diambil terpisah saat barisnya benar-benar dibuka.
+   */
+  dokumen: RecoveryAttachment | null
+}
+
+/** Satu baris pada modal **View Dokument Pendukung**. */
+export type RecoveryAttachment = {
+  id: string
+  nama_berkas: string
+  /** Kolom "Input Nama" — `INPUTOPERATOR`. */
+  input_nama: string
+  /** Kolom "Tanggal" — `INPUTDATE`, RFC 3339. Kosong bila tidak tercatat. */
+  tanggal: string
+}
+
+/**
+ * Satu baris pada grid LUAR beserta isinya.
+ *
+ * Keempat angkanya diambil dari batch TERAKHIR, bukan dijumlahkan — itu yang dilakukan
+ * layar lama.
+ */
+export type RecoveryPrincipalGroup = {
+  nama_principal: string
+  nilai_klaim: number
+  pembayaran_sebelumnya: number
+  pembayaran: number
+  sisa: number
+  /** Seluruh riwayat principal ini, dari yang paling lama. */
+  batch: RecoveryRow[]
+}
+
+export type RecoveryListResponse = {
+  principal: RecoveryPrincipalGroup[]
+  /**
+   * Jumlah PRINCIPAL yang cocok sebelum dipotong paginasi — bukan jumlah batch, dan bukan
+   * panjang senarai di atas. Itulah yang menentukan berapa halaman ada.
+   */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
 export type RecoveryFormResponse = {
   /**
    * PERKIRAAN, untuk ditampilkan saja.

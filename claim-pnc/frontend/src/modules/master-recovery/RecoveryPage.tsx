@@ -7,9 +7,12 @@ import { Button } from '@/components/Button'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { AddIcon, ReloadIcon } from '@/components/Icon'
 
-import { RecoveryForm, SavedRecoveryTable } from './RecoveryForm'
+import { TabBar } from '@/components/TabBar'
+
+import { OutstandingTable } from './OutstandingTable'
+import { RecoveryForm } from './RecoveryForm'
 import { VirtualAccountPanel } from './VirtualAccountPanel'
-import { useRecoveryForm, useRecoveryPrincipals } from './api'
+import { useRecoveryForm, useRecoveryPrincipals, useRefreshRecoveryList } from './api'
 
 /**
  * Layar Master Recovery.
@@ -24,15 +27,25 @@ import { useRecoveryForm, useRecoveryPrincipals } from './api'
  * POOLDATA.MST_RECOVERY_ASM_PENJAMINAN, beserta bukti bayar dan daftar polis yang
  * tercakup.
  *
- * # Kenapa TIDAK ada daftar data tersimpan
+ * # Susunannya mengikuti layar lama (diperbaiki 2026-09-29)
  *
- * Bukan kelalaian, dan bukan penyederhanaan. Tidak ada satu pun kueri di seluruh export
- * Pega yang MEMBACA tabel itu — layarnya form entri, bukan daftar. Keputusan Work Owner
- * 2026-09-19 menetapkan itu ditiru apa adanya, sehingga rute daftar pun tidak dibuat di
- * server.
+ * Layar Pega berbentuk: judul di kiri, tombol **Tambah** dan **Refresh** di kanannya, satu
+ * tab **Outstanding**, lalu grid berisi batch yang sudah tercatat. Entri dibuka lewat
+ * Tambah, bukan tergelar sejak layar dibuka.
  *
- * Yang ada di bawah hanyalah rekap batch yang disimpan SEJAK LAYAR DIBUKA, dan layar
- * mengatakannya terus terang — supaya tidak ada yang mengira itu isi tabelnya.
+ * Susunan itu ditiru di sini (`D-13`), menggantikan bentuk sebelumnya yang menaruh form
+ * sebagai isi utama dan daftar sebagai pelengkap di bawahnya.
+ *
+ * # Daftar Outstanding sempat tidak ada, dan itu KELIRU
+ *
+ * Bentuk sebelumnya tidak punya daftar sama sekali — hanya rekap batch yang disimpan sejak
+ * layar dibuka. Dasarnya kesimpulan saya bahwa layar lama adalah form entri tanpa daftar,
+ * yang ditarik dari tidak adanya kueri pembaca di export.
+ *
+ * Kesimpulan itu salah, dan cara menariknya yang salah: export-nya sendiri tidak lengkap
+ * (`R-16`). Grid Outstanding ada, terbaca jelas di
+ * `Section/OutstandingMasterRecovery-Section.xml`, dan berisi data di Pega yang berjalan.
+ * Yang hilang adalah rule pemuatnya, bukan fiturnya.
  *
  * # Yang sengaja dibuat berbeda dari layar lama
  *
@@ -41,20 +54,32 @@ import { useRecoveryForm, useRecoveryPrincipals } from './api'
  * | Panel VA | selalu tampil, disembunyikan sakelar `FlagASO` | dibuka tombol, tertutup secara baku |
  * | Entitas | disimpulkan dari nama server | dipilih pengguna dan disebut di layar |
  * | Hasil simpan | tidak ditampilkan | nomor batch dan sisa yang benar-benar tersimpan |
+ * | Entri | jendela modal | panel yang terbuka di tempat, di atas daftar |
+ *
+ * Baris terakhir adalah satu-satunya penyimpangan susunan yang disengaja: form ini panjang
+ * — belasan isian, unggahan bukti bayar, dan grid data klaim — dan memaksanya ke dalam
+ * jendela modal membuat isinya harus digulir di dalam gulungan halaman. Yang ditiru adalah
+ * ALUR-nya (daftar dulu, entri dibuka lewat Tambah), bukan wadahnya.
  */
 export function RecoveryPage() {
   const portal = useSelectedPortal((state) => state.alias)
   const form = useRecoveryForm()
   const principal = useRecoveryPrincipals()
+  const refreshList = useRefreshRecoveryList()
 
   const [vaOpen, setVAOpen] = useState(false)
-  const [saved, setSaved] = useState<Recovery[]>([])
+  const [entryOpen, setEntryOpen] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Recovery | null>(null)
   const [lastPolicyMissing, setLastPolicyMissing] = useState(false)
 
   function handleSaved(row: Recovery, policyResolved: boolean) {
-    // Terbaru di puncak: yang baru saja disimpan adalah yang paling ingin dilihat petugas.
-    setSaved((previous) => [row, ...previous])
+    setLastSaved(row)
     setLastPolicyMissing(row.nomor_polis !== '' && !policyResolved)
+
+    // Panel entri ditutup setelah berhasil, sehingga yang terlihat berikutnya adalah
+    // DAFTAR berisi batch yang baru saja tersimpan — bukti bahwa ia benar-benar tercatat,
+    // bukan sekadar pesan yang mengatakannya. Daftarnya dimuat ulang oleh hook simpan.
+    setEntryOpen(false)
   }
 
   const loadFailed = form.isError || principal.isError
@@ -99,47 +124,15 @@ export function RecoveryPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              tone="kedua"
-              onClick={() => {
-                void form.refetch()
-                void principal.refetch()
-              }}
-              disabled={form.isFetching || principal.isFetching}
-            >
-              <ReloadIcon
-                className={`h-4 w-4 ${form.isFetching || principal.isFetching ? 'animate-spin' : ''}`}
-              />
-              {form.isFetching || principal.isFetching ? 'Memuat…' : 'Refresh'}
-            </Button>
-            <Button tone="halus" onClick={() => setVAOpen((open) => !open)}>
-              <AddIcon className="h-4 w-4" />
-              {vaOpen ? 'Tutup panel VA' : 'Terbitkan VA baru'}
-            </Button>
-          </div>
-
           {loadFailed && <LoadErrorMessage error={loadError} />}
 
-          {vaOpen && (
-            <VirtualAccountPanel
-              onClose={() => setVAOpen(false)}
-              onIssued={() => {
-                // Panel dibiarkan TERBUKA supaya nomor yang baru terbit tetap terlihat dan
-                // dapat disalin. Daftar principal sudah dimuat ulang oleh hook-nya, jadi
-                // principal baru itu langsung dapat dipilih pada form di bawah.
-                void principal.refetch()
-              }}
-            />
-          )}
-
-          {saved.length > 0 && (
+          {lastSaved !== null && (
             <div className="rounded-kartu border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-medium text-emerald-900">
-                Batch {saved[0]?.nomor_batch} tersimpan
+                Batch {lastSaved.nomor_batch} tersimpan
               </p>
               <p className="mt-1 text-xs text-emerald-800">
-                Sisa yang tercatat: Rp {saved[0]?.sisa.toLocaleString('id-ID')} — angka ini
+                Sisa yang tercatat: Rp {lastSaved.sisa.toLocaleString('id-ID')} — angka ini
                 dihitung server, dan itulah yang tersimpan.
               </p>
               {lastPolicyMissing && (
@@ -156,14 +149,64 @@ export function RecoveryPage() {
             </div>
           )}
 
-          <RecoveryForm
-            nextBatch={form.data?.nomor_batch_perkiraan}
-            year={form.data?.tahun ?? []}
-            principal={principal.data?.principal ?? []}
-            onSaved={handleSaved}
+          {vaOpen && (
+            <VirtualAccountPanel
+              onClose={() => setVAOpen(false)}
+              onIssued={() => {
+                // Panel dibiarkan TERBUKA supaya nomor yang baru terbit tetap terlihat dan
+                // dapat disalin. Daftar principal sudah dimuat ulang oleh hook-nya, jadi
+                // principal baru itu langsung dapat dipilih pada form entri.
+                void principal.refetch()
+              }}
+            />
+          )}
+
+          {entryOpen && (
+            <RecoveryForm
+              nextBatch={form.data?.nomor_batch_perkiraan}
+              year={form.data?.tahun ?? []}
+              principal={principal.data?.principal ?? []}
+              onSaved={handleSaved}
+            />
+          )}
+
+          {/* Satu tab saja, sama seperti layar lama. Ia tetap digambar meski tunggal:
+              bilahnya bagian dari susunan yang dikenali petugas, dan menghilangkannya
+              membuat layar ini satu-satunya master yang berbeda bentuk. */}
+          <TabBar
+            tabs={[{ kode: 'outstanding', nama: 'Outstanding' }]}
+            active="outstanding"
+            onSelect={() => undefined}
+            label="Daftar Master Recovery"
           />
 
-          <SavedRecoveryTable rows={saved} />
+          <OutstandingTable
+            actions={
+              <>
+                <Button
+                  tone="kedua"
+                  onClick={() => {
+                    void form.refetch()
+                    void principal.refetch()
+                    refreshList()
+                  }}
+                  disabled={form.isFetching || principal.isFetching}
+                >
+                  <ReloadIcon
+                    className={`h-4 w-4 ${form.isFetching || principal.isFetching ? 'animate-spin' : ''}`}
+                  />
+                  {form.isFetching || principal.isFetching ? 'Memuat…' : 'Refresh'}
+                </Button>
+                <Button tone="halus" onClick={() => setVAOpen((open) => !open)}>
+                  {vaOpen ? 'Tutup panel VA' : 'Terbitkan VA baru'}
+                </Button>
+                <Button tone="utama" onClick={() => setEntryOpen((open) => !open)}>
+                  <AddIcon className="h-4 w-4" />
+                  {entryOpen ? 'Tutup form' : 'Tambah'}
+                </Button>
+              </>
+            }
+          />
         </div>
       )}
     </div>

@@ -10805,3 +10805,42 @@ sebelum divalidasi**. Yang berbeda: ketiganya tertangkap sebelum sampai ke kode 
    `SPAREPART_HE` yang rusak, dan `PXASSIGNEDORGUNIT` yang praktis kosong. Keduanya di
    `permintaan-artefak-pega.md`.
 >>>>>>> dev
+
+---
+
+## Master Recovery — tab Outstanding (2026-09-29)
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode disentuh | menguji kembali klaim saya sendiri bahwa layar lama tidak punya daftar | klaimnya **gugur**; grid Outstanding terbukti ada di section, dan rule pemuatnya yang hilang |
+| `mattpocock-skills:codebase-design` | saat menentukan tempat batas `limit` ditegakkan | memilih lapisan mana yang memilikinya | ditegakkan di **usecase**, lapisan yang dilewati SETIAP pemanggil — bukan di handler, yang hanya dilewati pemanggil HTTP |
+| `mattpocock-skills:domain-modeling` | saat menamai `ListFilter` dan memutuskan isinya | memisahkan penyaring **pencarian** dari penyaring **aturan bisnis** | penyaring "outstanding" **tidak dibuat**, dan alasannya ditulis di tipenya sendiri supaya tidak ditambahkan diam-diam kemudian |
+
+### Keputusan teknis yang lahir darinya
+
+1. **Ketiadaan di export bukan bukti.** `R-16` mencatat kurang-lebih 242 rule hilang dan
+   tujuh tipe rule yang tidak diaudit sama sekali. Kesimpulan apa pun yang berbentuk
+   "tidak ada X di export, berarti fiturnya tidak ada" **tidak sah** di repositori ini.
+   Yang sah adalah kesimpulan dari apa yang ADA — seperti ketiadaan Ubah/Hapus, yang
+   dibaca dari ISI `INSERTMASTERRECOVERYKLAIM.prc`, bukan dari ketidakhadirannya.
+2. **Bila bukti tidak ada, tempuh pilihan yang kekeliruannya terlihat.** Daftar
+   menampilkan seluruh batch, bukan menebak penyaring "outstanding": baris berlebih
+   langsung terlihat, baris yang hilang diam-diam tidak pernah dikeluhkan siapa pun.
+3. **Uji yang mengunci sebuah ketiadaan wajib menyebut dasar ketiadaannya.** Uji lama
+   hijau selama berhari-hari sambil mengunci kekeliruan. Penggantinya memisahkan dua
+   ketiadaan yang dasarnya berbeda, dan hanya mempertahankan yang berdiri di atas isi.
+
+### Catatan untuk sesi berikutnya
+
+**Tiga berkas dokumentasi memuat penanda konflik merge yang belum diselesaikan**, dan
+seluruhnya berasal dari merge sebelumnya — bukan dari pekerjaan Master Recovery:
+
+    docs/penggunaan-skill.md        8 penanda
+    docs/catatan-pengembangan.md    4 penanda
+    docs/keputusan-implementasi.md  1 penanda
+
+Entri sesi ini ditambahkan di ujung berkas, di luar blok konflik mana pun. Penyelesaian
+konfliknya **tidak dikerjakan sepihak**: memilih salah satu sisi berarti membuang tulisan
+orang lain tanpa mengetahui mana yang berlaku.

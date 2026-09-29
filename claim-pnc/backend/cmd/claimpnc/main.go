@@ -38,8 +38,6 @@ import (
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
-	"claim-pnc/internal/inboxsurvey"
-	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -51,10 +49,12 @@ import (
 	"claim-pnc/internal/inboxosclaimpercabang"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
+	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxservicecenter"
+	"claim-pnc/internal/inboxsurvey"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/laporanhasilai"
@@ -103,6 +103,10 @@ import (
 	archivedokumenklaimsql "claim-pnc/internal/archivedokumenklaim/repo/sqlstore"
 	archivedokumenklaimusecase "claim-pnc/internal/archivedokumenklaim/usecase"
 	authhttp "claim-pnc/internal/auth/http"
+	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
+	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
+	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
 	daftardetaildokumentravelhttp "claim-pnc/internal/daftardetaildokumentravel/http"
 	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
@@ -132,29 +136,21 @@ import (
 	detailpenyebabmemory "claim-pnc/internal/detailpenyebab/repo/memory"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
 	detailpenyebabusecase "claim-pnc/internal/detailpenyebab/usecase"
+	"claim-pnc/internal/dokumenpenunjang"
+	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
+	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
+	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
+	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
+	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
+	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
 	inboxacceptopenprotectionhttp "claim-pnc/internal/inboxacceptopenprotection/http"
 	inboxacceptopenprotectionmemory "claim-pnc/internal/inboxacceptopenprotection/repo/memory"
 	inboxacceptopenprotectionsql "claim-pnc/internal/inboxacceptopenprotection/repo/sqlstore"
 	inboxacceptopenprotectionusecase "claim-pnc/internal/inboxacceptopenprotection/usecase"
-	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
-	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
-	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
-	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
-	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
-	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
-	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
-	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
-	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
-	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
-	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
-	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
-	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
-	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
-	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
@@ -199,6 +195,10 @@ import (
 	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
+	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
+	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
+	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
@@ -216,17 +216,17 @@ import (
 	inboxservicecentermemory "claim-pnc/internal/inboxservicecenter/repo/memory"
 	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
 	inboxservicecenterusecase "claim-pnc/internal/inboxservicecenter/usecase"
+	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
+	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
+	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
-	"claim-pnc/internal/dokumenpenunjang"
-	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
-	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
-	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
-	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
-	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
-	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
@@ -1600,7 +1600,7 @@ func run() error {
 			FallbackErrorWriter: inboxsurveyhttp.ErrorWriter(writePortalAwareError),
 		})
 
-		// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
+	// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
 	// Inbox Analyst Doctor, login itu BUKAN yang menyaring antrean. Ia hanya kunci untuk
 	// mencari identitas LAMA pemanggil di `POOLDATA.T_ACCESS_GROUP_PNC`, padanan
 	// `TempOperator.City` yang diisi `GetpyUserIdentifierFromTable` pada harness lama.
@@ -1739,10 +1739,10 @@ func run() error {
 				if !existing {
 					return inboxosclaimpercabanghttp.Caller{}, false
 				}
-					// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
-					// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
-					// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
-					// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
+				// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
+				// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
+				// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
+				// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
 				return inboxosclaimpercabanghttp.Caller{
 					Login:            baseCtx.User.Login,
 					DetailBranchCode: baseCtx.User.DetailBranchCode,
@@ -2675,9 +2675,9 @@ type assembly struct {
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 
-	inboxRCLPUCL            *inboxrclpuclusecase.Service
-	reportKPI               *reportkpiusecase.Service
-	reportKlaim             *reportklaimusecase.Service
+	inboxRCLPUCL *inboxrclpuclusecase.Service
+	reportKPI    *reportkpiusecase.Service
+	reportKlaim  *reportklaimusecase.Service
 
 	// inboxSalvage melayani layar Inbox Salvage (`MENU_ID 71`).
 	//
@@ -2896,9 +2896,9 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 
-	rclPUCLSelector            inboxrclpucl.RepoSelector
-	reportKPISelector          reportkpi.RepoSelector
-	reportKlaimSelector        reportklaim.RepoSelector
+	rclPUCLSelector     inboxrclpucl.RepoSelector
+	reportKPISelector   reportkpi.RepoSelector
+	reportKlaimSelector reportklaim.RepoSelector
 
 	// salvageSelector memilih penyimpanan salvage milik satu portal.
 	//
@@ -4021,8 +4021,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		store.close()
 		return assembly{}, err
 	}
-
-
 
 	// Inbox OS Claim per Cabang. Cabang pemanggil diselesaikan CallerBranch, yang membacanya
 	// dari profil sesi — yakni dari jawaban API HCQ saat masuk (keputusan Work Owner
@@ -6680,49 +6678,73 @@ func businessSelectorMemory(
 
 // buildVirtualAccountIssuer menyusun seam penerbit rekening virtual milik Master Recovery.
 //
-// # Kenapa pilihannya mengikuti PENYIMPANAN, bukan adapter identitas
+// # Penerbit sungguhan TERTUTUP secara baku, dan hanya dibuka dengan sengaja
 //
-// Berbeda dari direktori pegawai, yang mengikuti `IDENTITAS_ADAPTER` karena keduanya
-// menembak API yang sama. Penerbit VA menembak layanan yang berbeda, dan alamatnya dibaca
-// dari POOLDATA.GCNM_CONNECT_REST — baris `TYPESERVICE='GENERATEDVA'`. Tanpa koneksi
-// Oracle, alamat itu tidak dapat dibaca sama sekali, sehingga yang menentukan adalah ada
-// atau tidaknya koneksi.
+// Keputusan Work Owner 2026-09-29: **jangan dibuka dulu.** Karena itu pilihannya TIDAK
+// lagi mengikuti ada-tidaknya koneksi Oracle seperti adapter lain — cara itu membuat
+// penerbitan sungguhan ikut menyala begitu aplikasi dijalankan dengan
+// `PENYIMPANAN=oracle`, tanpa ada yang memutuskannya.
 //
-// # Kenapa tiruan BUKAN sekadar kenyamanan di sini
+// Yang membukanya sekarang adalah `config.VirtualAccount.Live()`, yang menuntut TIGA hal
+// sekaligus: `VIRTUAL_ACCOUNT_ADAPTER=pega`, `VIRTUAL_ACCOUNT_PENGGUNA` terisi, dan
+// `VIRTUAL_ACCOUNT_SANDI` terisi. Kurang satu pun, yang dipakai adalah tiruan.
 //
-// Alamat yang terdaftar menunjuk layanan Pega yang MENERBITKAN REKENING SUNGGUHAN.
-// Menembaknya dari lingkungan pengembangan meninggalkan rekening nyata yang tidak diminta
-// siapa pun, pada sistem yang dipakai orang lain.
+// # Kenapa seketat itu
 //
-// Perbedaannya diumumkan di log, bukan dibiarkan senyap: layar yang tampak bekerja padahal
-// nomor yang ditampilkannya karangan adalah kegagalan yang tidak terlihat siapa pun sampai
-// dana pertama dikirim ke nomor itu.
+// Menyalakannya MENERBITKAN REKENING BANK SUNGGUHAN lewat layanan Pega. Adapter lain yang
+// keliru menyala paling jauh membaca data yang salah; yang ini meninggalkan rekening nyata
+// yang tidak diminta siapa pun, pada sistem yang dipakai orang lain.
+//
+// Keadaannya diumumkan di log saat start pada KEDUA arah — baik saat tiruan dipakai maupun
+// saat penerbit sungguhan menyala. Layar yang tampak bekerja padahal nomornya karangan,
+// dan layar yang diam-diam menerbitkan rekening nyata, sama-sama kegagalan yang tidak
+// terlihat siapa pun sampai terlambat.
 func buildVirtualAccountIssuer(
 	cfg config.Config,
 	legacy *sqlstore.Legacy,
 	logger *slog.Logger,
 ) (masterrecovery.VirtualAccountIssuer, error) {
-	if legacy == nil {
+	switch {
+	case !cfg.VirtualAccount.Live():
 		logger.Warn("penerbit virtual account memakai nomor tiruan",
 			slog.String("modul", "masterrecovery"),
-			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga alamat layanan pada POOLDATA.GCNM_CONNECT_REST tidak dapat dibaca"),
+			slog.String("sebab", "VIRTUAL_ACCOUNT_ADAPTER bukan \"pega\", atau VIRTUAL_ACCOUNT_PENGGUNA/VIRTUAL_ACCOUNT_SANDI belum diisi"),
+			slog.String("akibat", "nomor VA yang ditampilkan layar adalah nomor TIRUAN berawalan "+masterrecoveryva.Prefix+"; tidak ada rekening yang benar-benar terbit"),
 		)
 		return masterrecoveryva.NewFake(), nil
-	}
 
-	return masterrecoveryva.NewPega(masterrecoveryva.Options{
-		Catalog: legacy,
-		// Kredensial HCQ dipakai ulang sebagai Basic Auth bila terisi. Layanan ini tidak
-		// diketahui menuntut autentikasi — 18 dari 21 Connect REST di sistem lama
-		// ber-`pyUseAuthentication=false` (`D-73`) — dan bila keduanya kosong, header
-		// Authorization tidak dikirim sama sekali.
-		User:     cfg.HCQ.User,
-		Password: cfg.HCQ.Password,
-		// Galat "baris tidak terdaftar" milik modul auth diteruskan sebagai nilai, bukan
-		// diimpor tipenya: itulah yang membuat modul ini dapat MEMBEDAKAN katalog yang
-		// belum diisi dari jaringan yang sedang putus, tanpa bergantung pada modul auth.
-		NotRegistered: provider.ErrServiceNotRegistered,
-	})
+	case legacy == nil:
+		// Sakelar sudah dibuka, tetapi alamat layanannya dibaca dari
+		// POOLDATA.GCNM_CONNECT_REST — tanpa koneksi Oracle ia tidak dapat dibaca sama
+		// sekali. Ini keadaan salah rakit, dan ia dihentikan saat start alih-alih
+		// diam-diam turun ke tiruan: yang meminta `pega` berhak tahu permintaannya tidak
+		// dapat dipenuhi.
+		return nil, errors.New(
+			"VIRTUAL_ACCOUNT_ADAPTER=pega menuntut PENYIMPANAN=oracle: alamat layanan dibaca dari POOLDATA.GCNM_CONNECT_REST")
+
+	default:
+		logger.Warn("penerbit virtual account SUNGGUHAN menyala",
+			slog.String("modul", "masterrecovery"),
+			slog.String("akibat", "menyimpan principal baru akan MENERBITKAN REKENING VIRTUAL SUNGGUHAN lewat layanan Pega"),
+		)
+		return masterrecoveryva.NewPega(masterrecoveryva.Options{
+			Catalog: legacy,
+			// Kredensial profil autentikasi `LELANG`, BUKAN HCQ.
+			//
+			// `Connect REST/VirtualAccountClaimsPNC-ConnectREST.xml` ber-
+			// `pyUseAuthentication=true` dengan `pyAuthenticationProfile = LELANG`.
+			// Memakai ulang kredensial HCQ di sini akan gagal dengan cara yang
+			// membingungkan — tampak seperti layanan menolak, padahal kredensialnya
+			// memang milik layanan lain.
+			User:     cfg.VirtualAccount.User,
+			Password: cfg.VirtualAccount.Password,
+			Timeout:  cfg.VirtualAccount.Timeout,
+			// Galat "baris tidak terdaftar" milik modul auth diteruskan sebagai nilai, bukan
+			// diimpor tipenya: itulah yang membuat modul ini dapat MEMBEDAKAN katalog yang
+			// belum diisi dari jaringan yang sedang putus, tanpa bergantung pada modul auth.
+			NotRegistered: provider.ErrServiceNotRegistered,
+		})
+	}
 }
 
 // accountSelectorMemory menyusun penyimpanan master rekening di memori.
@@ -7182,7 +7204,6 @@ func managerReceivePUCLSelectorMemory(
 		return fresh, nil
 	}
 }
-
 
 // rclPUCLSelectorMemory menyusun penyimpanan Inbox RCL/PUCL di memori; alasannya sama
 // dengan claimTreatyPropSelectorMemory di atas.

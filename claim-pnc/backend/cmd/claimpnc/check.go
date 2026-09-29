@@ -67,8 +67,8 @@ import (
 	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	"claim-pnc/internal/inboxmanager"
-	"claim-pnc/internal/inboxmanageradmin"
 	inboxmanagersql "claim-pnc/internal/inboxmanager/repo/sqlstore"
+	"claim-pnc/internal/inboxmanageradmin"
 	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
@@ -82,12 +82,12 @@ import (
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
-	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
 	"claim-pnc/internal/inboxsalvage"
 	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
+	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
 	"claim-pnc/internal/komite"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
-	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -828,6 +828,18 @@ func checkRecovery(
 		print("            dan DATA_ATTACHFILE dapat dibaca")
 	}
 
+	// Tabel baris klaim dibuat migrasi kita sendiri, bukan warisan — kegagalannya berarti
+	// migrasinya belum dijalankan, bukan soal hak akses.
+	if err := repo.CheckClaimLineTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.CPNC_RECOVERY_BARIS_KLAIM tidak dapat dibaca: %v", err)
+		print("            Migrasi backend/migrations/0013 tampaknya belum dijalankan DBA.")
+		print("            Akibatnya TIDAK terbatas: daftar polis disimpan di tabel ini, dan")
+		print("            karena ia satu transaksi dengan kepala batch, SELURUH penyimpanan")
+		print("            batch akan gagal selama tabelnya belum ada.")
+	} else {
+		print("  [ok]    POOLDATA.CPNC_RECOVERY_BARIS_KLAIM dapat dibaca")
+	}
+
 	// Kegagalan di sini sengaja bertanda [BELUM], bukan [GAGAL]: ia tidak menghalangi
 	// pencatatan batch sama sekali.
 	if err := repo.CheckPolicyLink(ctx); err != nil {
@@ -1349,7 +1361,7 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 			}
 			return terbaca, nil
 		}},
-		
+
 		{"Inbox Service Center", inboxServiceCenter.CheckTable, func(ctx context.Context) (int, error) {
 			if !serviceCenterTabKnown {
 				return 0, fmt.Errorf(
@@ -3801,7 +3813,6 @@ func checkInboxRCL(
 	print("            Catatan: antrean disaring dengan identitas LAMA pemanggil")
 	print("            (T_ACCESS_GROUP_PNC, grup Administrators/PNCKomite/CaseManager).")
 }
-
 
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
 //

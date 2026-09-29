@@ -35,6 +35,19 @@ var (
 	ErrIssuerUnconfigured = errors.New("masterrecovery: alamat layanan penerbit virtual account belum terdaftar")
 	ErrIssuerRejected     = errors.New("masterrecovery: layanan penerbit virtual account menolak permintaan")
 	ErrDocumentNotSaved   = errors.New("masterrecovery: bukti bayar gagal disimpan")
+
+	// ErrDocumentNotFound dikembalikan saat Bukti Bayar yang diminta tidak ada.
+	//
+	// Ia BEDA dari dokumen yang ada tetapi kosong isinya: baris warisan dapat punya
+	// DATAID sementara kolom ATTACHFILE-nya NULL, karena sistem lama menyimpan sebagian
+	// berkas di penyimpanan luar lewat IMAGEID. Keduanya harus terbaca berbeda di layar,
+	// sebab yang pertama berarti salah tautan dan yang kedua berarti berkasnya ada di
+	// tempat lain.
+	ErrDocumentNotFound = errors.New("masterrecovery: bukti bayar tidak ditemukan")
+
+	// ErrDocumentElsewhere dikembalikan saat barisnya ada tetapi isinya tidak di kolom
+	// BLOB — menandakan berkasnya berada di penyimpanan luar (`D-16`, modul `S-1`).
+	ErrDocumentElsewhere = errors.New("masterrecovery: isi bukti bayar tidak ada di basis data")
 )
 
 // Field yang dapat membawa pelanggaran validasi.

@@ -30098,3 +30098,661 @@ T_CLAIM_ADJUSTMENT PNCN.26.0014. Uji usecase baru 7, uji layar baru 2; uji regis
 - Email ke komite dan PIC, riwayat klaim, dan progres klaim otomatis (`InsertHistoryClaimPNC`,
   `PNCInsertProgressClaim`) — hanya jejak audit yang ditulis. Nomor akseptasi (B-10).
 - Nomor KMTN diambil dari MAX + 1: dua transfer serentak dapat memperoleh nomor yang sama.
+
+### 21.12 Koreksi 2026-09-29 — satu rule yang saya nyatakan hilang ternyata ADA
+
+Saat menjawab permintaan Work Owner menyebutkan **tipe rule** dari artefak yang perlu
+ditarik, ketiganya diperiksa ulang ke export. Hasilnya mengoreksi pernyataan saya sendiri
+di §21.6 dan §21.11:
+
+| Rule | Yang saya nyatakan | Keadaan sebenarnya |
+|---|---|---|
+| `VirtualAccountClaimsPNC` | hilang dari export | **benar hilang** — `Rule-Connect-REST`, Applies To `ASM-FW-GCNMFW-Work-PNC` |
+| `GetListYear` | hilang dari export | **benar hilang** — `Rule-Obj-Model` (Data Transform) |
+| `DownloadFileCSVFormaatter` | hilang dari export | **SALAH — ia ADA**, di `Activity/DownloadFileCSVFormaatter-Act.xml` |
+
+**Kenapa keliru:** saya menyimpulkannya dari ketiadaan berkas `Connect REST/` untuk VA lalu
+menyamaratakan, tanpa menjalankan `ls Activity/ | grep DownloadFileCSV` yang akan
+menjawabnya dalam satu detik. Pelajarannya sama dengan §21.8 dalam bentuk lain:
+**ketiadaan satu artefak bukan bukti tentang artefak lain.**
+
+**Yang isinya ungkap, dan ini lebih penting daripada koreksinya sendiri.** Tiga langkah
+nyata activity itu:
+
+```
+Page-New       TempsFormaater
+Property-Set   TempsFormaater.pxResults(<APPEND>).PolicyNo := "TESTINg…"
+Call           pxConvertResultsToCSV   FileName "Fromat Recovery Klaim"
+```
+
+**Berkas contohnya hanya SATU kolom (`PolicyNo`), sedangkan grid unggahannya DUA**
+(`Section/OutstandingMasterRecovery-Section.xml:3783` "No Polis" dan `:3872` "Nilai
+Klaims"). Judulnya pun dibentuk `pxConvertResultsToCSV` dari nama properti, bukan teks
+yang dibaca manusia.
+
+Artinya berkas contoh sistem lama **tidak dapat diunggah kembali lewat grid-nya sendiri**
+tanpa petugas menambahkan kolom kedua secara manual.
+
+**Yang diputuskan sekarang, dan yang TIDAK.** Berkas contoh yang dihasilkan modul ini tetap
+dua kolom dengan judul yang dibaca manusia — berkas contoh yang ditolak pembacanya sendiri
+bukan contoh yang berguna. Pembacanya tetap menuntut dua kolom, karena grid dan kolom
+`JSON_POLIS` memang membutuhkan keduanya.
+
+Yang **tidak** saya putuskan: apakah ketidakcocokan satu-lawan-dua kolom itu cacat yang
+harus dilaporkan ke pengguna lama, atau memang begitu cara kerjanya (nilai klaim diisi
+petugas sendiri setelah mengunduh). Itu pertanyaan ke Work Owner — lihat §21.13.
+
+Komentar kode yang memuat pernyataan keliru itu sudah diperbaiki di tiga tempat:
+`claimline.go`, `http/handler.go`, dan `frontend/.../api.ts`.
+
+### 21.13 Tiga artefak yang perlu ditarik Tim Pega, beserta tipe rule-nya
+
+| Nama rule | Tipe rule (kelas Pega) | Applies To | RuleSet | Keadaan |
+|---|---|---|---|---|
+| `VirtualAccountClaimsPNC` | **`Rule-Connect-REST`** | `ASM-FW-GCNMFW-Work-PNC` | `GCNMFW` | **hilang** — perlu ditarik |
+| `GetListYear` | **`Rule-Obj-Model`** (Data Transform) | belum pasti — lihat catatan | `GCNMFW` | **hilang** — perlu ditarik |
+| `DownloadFileCSVFormaatter` | `Rule-Obj-Activity` | `Data-Portal` | `GCNMFW` | **sudah ada**, tidak perlu ditarik |
+
+**Catatan Applies To `GetListYear`.** Ia dirujuk dari dua section berkelas berbeda —
+`OutstandingMasterRecovery` (`Data-Portal`) dan `DetailXOL_sec` (`@baseclass`) — sehingga
+agar resolusi rule menemukannya dari keduanya, kelasnya haruslah kelas yang diwarisi
+keduanya. Kandidatnya `@baseclass`; `pyPromptClass` pada kedua rujukan adalah
+`ASM-FW-GCNMFW-Data-ClaimData`, yaitu kelas BARIS yang dihasilkan, belum tentu kelas
+rule-nya. Karena itu permintaannya dibuat **menurut NAMA**, bukan menurut kelas.
+
+**Pertanyaan terbuka yang muncul dari §21.12:** berkas contoh lama satu kolom, grid-nya
+dua. Apakah itu cacat, atau memang nilai klaim diisi petugas setelah mengunduh? Jawabannya
+menentukan bentuk berkas contoh yang dihasilkan modul ini.
+
+---
+
+## 22. Dua rule tiba, dan JSON ditinggalkan (2026-09-29)
+
+Work Owner menyerahkan kedua rule yang kurang, lalu menetapkan tiga hal:
+**ikuti Pega apa adanya** untuk kedelapan keputusan yang menggantung ·
+**penerbit VA jangan dibuka dulu**, tetapi sakelarnya harus jelas ·
+**tidak lagi lewat JSON, langsung ke basis data**.
+
+### 22.1 Apa yang ternyata ada di dalam kedua rule itu
+
+| Rule | Isinya | Akibatnya |
+|---|---|---|
+| `GetListYear` (`Rule-Obj-Model`, `@baseclass`) | **daftar mati**: REMOVE `TempYear`, lalu 11 SET `"2015"`…`"2025"`, ditulis 2022-06 | Rentang yang saya hitung dari tahun berjalan **dibuang**, diganti daftar aslinya |
+| `VirtualAccountClaimsPNC` (`Rule-Connect-REST`, `ASM-FW-GCNMFW-Work-PNC`) | `pyUseAuthentication=true`, profil **`LELANG`**; badan permintaan = halaman `ClaimData` yang **diserialkan** `SetDataJson`; respons dipetakan balik ke `ClaimData` | Dua tebakan saya **dikoreksi**; satu terkonfirmasi |
+
+**Yang dikoreksi pada adapter VA:**
+
+1. **Autentikasi.** Semula adapter memakai ulang kredensial HCQ dan mengirim header hanya
+   bila terisi. Itu keliru — rule-nya menuntut autentikasi lewat profil `LELANG`, yang
+   **tidak ada di export** (hanya namanya dirujuk). Kredensialnya kini terpisah, wajib,
+   dan diperiksa saat perakitan.
+2. **Badan permintaan.** `pyMapFromKey = PNCVARECOVERY.ClaimData.City` — dan `.City` bukan
+   kota: `GeneratedVAClaimRecovery-Act.xml:1783` mengisinya dengan `Param.jsonData`, hasil
+   `Apply-DataTransform SetDataJson` (`executionMode=SERIALIZE`). Jadi badannya JSON datar
+   berisi keempat properti yang diisi activity — bukan amplop bersarang.
+
+**Yang terkonfirmasi:** respons dipetakan ke halaman `ClaimData` (`pyMapTo=JSON`), sehingga
+kunci responsnya memang `Status`, `Message`, `VirtualAccountNumber`.
+
+### 22.2 Penerbit VA: tertutup secara baku, dan sakelarnya dibuat tegas
+
+Semula pilihannya mengikuti ada-tidaknya koneksi Oracle. **Itu berbahaya**, dan baru
+terlihat ketika keputusan "jangan dibuka dulu" datang: menjalankan aplikasi dengan
+`PENYIMPANAN=oracle` akan ikut menyalakan penerbitan sungguhan, tanpa ada yang
+memutuskannya.
+
+Sekarang pembukaannya menuntut **tiga hal sekaligus**:
+
+    VIRTUAL_ACCOUNT_ADAPTER=pega
+    VIRTUAL_ACCOUNT_PENGGUNA=<pengguna profil LELANG>
+    VIRTUAL_ACCOUNT_SANDI=<sandi profil LELANG>
+
+Kurang satu pun → tiruan. Salah ketik pada nilai adapter → tiruan. Keadaannya diumumkan di
+log saat start pada **kedua** arah, dan ikut di `Summary()` sebagai
+`virtual_account_sungguhan`.
+
+Satu keadaan sengaja dibuat **gagal saat start**, bukan turun diam-diam ke tiruan:
+`VIRTUAL_ACCOUNT_ADAPTER=pega` tanpa `PENYIMPANAN=oracle`. Alamat layanannya dibaca dari
+`POOLDATA.GCNM_CONNECT_REST`, jadi permintaan itu tidak dapat dipenuhi — dan yang memintanya
+berhak tahu, bukan mengira VA-nya sudah menyala.
+
+### 22.3 Daftar tahun disalin apa adanya — beserta akibatnya
+
+Daftar Pega **berhenti di 2025**. Karena ia daftar mati yang ditulis 2022 dan tidak pernah
+diperbarui, **batch tahun 2026 ke atas tidak dapat dicatat lewat dropdown ini** — persis
+seperti di Pega hari ini.
+
+Ditiru dengan sengaja (`P-5`). Satu uji khusus, `TestDaftarTahunTIDAKMemuatTahunBerjalan`,
+ada supaya perpanjangannya tidak dapat terjadi diam-diam: menambah tahun berjalan adalah
+selisih perilaku, dan itu menempuh keputusan tertulis.
+
+Catatan yang jujur: validasi **bentuk** (`CheckYear`) tetap menerima "2026" bila dikirim
+langsung ke API. Yang membatasi hanyalah dropdown — sama seperti di Pega, yang juga tidak
+memvalidasi keanggotaan daftar pada propertinya.
+
+### 22.4 Berkas contoh CSV: satu kolom, dan pembacanya menyesuaikan
+
+`DownloadFileCSVFormaatter` hanya menuliskan **satu** kolom (`PolicyNo`), sementara grid
+unggahannya **dua**. Berkas contoh sistem lama karena itu tidak dapat diunggah kembali
+lewat grid-nya sendiri.
+
+Keputusan: **ikuti Pega** — berkas contoh kini satu kolom berjudul `PolicyNo`. Yang membuat
+itu aman adalah pembacanya ikut dilonggarkan: kolom kedua **opsional**, dan baris tanpa
+nilai klaim diterima bernilai nol untuk dilengkapi petugas di layar. Kolom kedua yang
+**terisi tetapi bukan angka** tetap ditolak — itu salah ketik, bukan kolom yang tidak ada.
+
+### 22.5 Satu cacat yang lahir dari perubahan itu, dan tertangkap uji
+
+Deteksi baris judul semula bersandar pada **kolom kedua yang bukan angka**. Begitu berkas
+satu kolom diterima, syarat itu selalu benar — sehingga berkas `POL-1\nPOL-2` akan membuat
+**baris pertama dikira judul** dan satu polis hilang tanpa satu pun pesan.
+
+Diperbaiki dengan mencocokkan **nama judulnya** lebih dulu (`PolicyNo`, `No Polis`,
+`nomor polis`, dengan spasi/garis diabaikan), dan memperlakukan berkas satu kolom yang
+namanya tidak dikenali sebagai **data**.
+
+Satu keadaan tetap tidak dapat dibedakan dan itu dicatat di kode: berkas tanpa judul yang
+baris pertamanya bernilai klaim cacat (`POL-1;seribu`). Akibatnya terbatas — satu baris
+terlewat, bukan salah nilai.
+
+### 22.6 JSON ditinggalkan: daftar polis pindah ke tabel
+
+Keputusan Work Owner: **tidak lagi lewat JSON, langsung ke basis data.**
+
+Sistem lama menyimpan daftar polis sebagai satu dokumen JSON di kolom
+`MST_RECOVERY_ASM_PENJAMINAN.JSON_POLIS`, hasil `@GCNM.GetPageJSONString()` — serialisasi
+mentah halaman klipboard Pega. Itu bentuk yang `R-10` catat sebagai utang: data yang sama
+hidup dua kali tanpa mekanisme apa pun yang memeriksa keduanya sejalan.
+
+**Migrasi `0013`** membuat `POOLDATA.CPNC_RECOVERY_BARIS_KLAIM` — `BATCH`, `URUTAN`,
+`NOPOLIS`, `NILAIKLAIM`, kunci utama `(BATCH, URUTAN)`, foreign key ke induknya.
+
+Empat hal yang membuatnya aman, dan seluruhnya diperiksa:
+
+| Hal | Keadaannya |
+|---|---|
+| Tabelnya baru | tidak ada baris yang ditulis ulang |
+| Kolom `JSON_POLIS` | **tidak disentuh** — tidak diubah, tidak dikosongkan, tidak dibuang. Baris lama tetap membawa dokumennya sebagai jejak |
+| Pembaca di sisi Pega | **nol** — tidak ada satu pun rule yang membaca tabel recovery, sehingga berhenti mengisi kolom itu tidak memutus apa pun |
+| Kegagalan separuh jalan | baris klaim disisipkan **di dalam transaksi yang sama** dengan kepala batch. Di sistem lama keduanya menyatu dalam satu kolom sehingga persoalan ini tidak ada — memisahkannya memunculkannya, dan transaksi itu jawabannya |
+
+`URUTAN` dimulai dari 1, sama dengan nomor baris yang dilaporkan pembaca CSV kepada
+petugas — supaya "baris ke-3" berarti hal yang sama di layar dan di basis data.
+
+### 22.7 Verifikasi yang benar-benar dijalankan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet` atas modul ini, cmd, dan config | **lulus** |
+| `go test ./internal/masterrecovery/... ./internal/platform/config/` | **lulus** |
+| `npx tsc --noEmit` | **0 galat tipe** |
+| `npx vitest run src/modules/master-recovery` | **16 uji lulus** |
+| Uji asap aplikasi berjalan (`PENYIMPANAN=memori`) | 7 perkara — lihat di bawah |
+
+Uji asap:
+
+| Perkara | Hasil |
+|---|---|
+| daftar tahun | `2015…2025`; **2026 tidak ada** — sesuai daftar Pega |
+| berkas contoh | `PolicyNo\nCONTOH-POLIS-0001` — satu kolom, sesuai Pega |
+| contoh itu diunggah kembali | `200`, 1 baris, nilai klaim 0 — **round-trip berhasil** |
+| berkas dua kolom | `200`, 2 baris, jumlah 3.000 — tetap diterima |
+| satu kolom tanpa judul | `POL-A,POL-B` — **baris pertama tidak hilang** |
+| simpan dengan 2 baris klaim | `201`, batch 1, sisa 155.000, 2 baris tersimpan |
+| tahun 2026 lewat API langsung | `201` — validasi bentuk tetap menerimanya; yang membatasi dropdown, sama seperti Pega |
+
+### 22.8 Yang belum dapat dibuktikan
+
+| Hal | Apa yang menahannya |
+|---|---|
+| **Migrasi `0013` berjalan di Oracle** | Ia DDL pada skema produksi. `D-63` menuntut permintaan tertulis → persetujuan Work Owner → dijalankan DBA. **Belum diajukan.** Sampai itu, penyimpanan batch akan gagal di lingkungan ber-Oracle — dan mode `-periksa` kini melaporkannya sebagai `[BELUM]` beserta akibatnya |
+| **Penerbitan VA sungguhan** | Sengaja tertutup. Menuntut kredensial profil `LELANG` yang tidak ada di export |
+| **Penyisipan sungguhan ke Oracle** | Belum dijalankan; seluruh jalur baca sudah diverifikasi pada sesi sebelumnya |
+
+---
+
+## 23. Tab Outstanding: kesimpulan saya keliru, dan layarnya disusun ulang (2026-09-29)
+
+Work Owner membandingkan layar ini dengan Pega yang berjalan dan menyampaikan dua hal:
+**daftarnya kosong padahal di Pega ada isinya**, dan **tata letaknya berbeda**.
+
+Keduanya benar. Bagian ini mencatat apa yang salah, kenapa bisa salah, dan apa yang
+diperbaiki.
+
+### 23.1 Kekeliruan saya, dan cara kekeliruan itu terjadi
+
+Saya menyatakan — di komentar kode, di berkas rute, di dokumentasi layar, dan di sebuah uji
+yang MENUNTUT daftarnya tidak ada — bahwa layar lama adalah form entri tanpa daftar.
+
+Dasarnya satu pemeriksaan yang hasilnya benar:
+
+    grep -ril "MST_RECOVERY_ASM_PENJAMINAN" "RDB List/" Activity/ Database/
+    -> RDB List/GetMasterRecoveryClaimSPK-SQL.xml   (hanya max(BATCH)+1)
+    -> Database/INSERTMASTERRECOVERYKLAIM.prc       (hanya INSERT)
+
+Tidak ada kueri yang membaca tabel itu. **Fakta itu tetap benar hari ini.** Yang salah
+adalah kesimpulan yang saya tarik darinya: *tidak ada pembaca, berarti tidak ada daftar.*
+
+Grid-nya ada, dan terbaca jelas begitu section-nya dibuka:
+
+| Bukti | `berkas:baris` |
+|---|---|
+| Repeat atas halaman `Data_BACTH_RECOVERY.pxResults` | `Section/OutstandingMasterRecovery-Section.xml:17510` |
+| Kelasnya `Code-Pega-List` — bentuk hasil sebuah RDB-List | `:6738` |
+| Kelas barisnya `ASM-FW-GCNMFW-Data-ClaimData` | `:6742` |
+| Lima kolom, `pyRDLPageSize` 10 | `:17529`, `:17536` |
+| Judul kolomnya: Nama Principal, Nilai Pembayaran Sebelumnya, Sisa | `:17569`, `:17866`, `:18170` |
+
+Dan nama halaman `Data_BACTH_RECOVERY` muncul di **satu berkas saja** di seluruh export —
+section-nya sendiri. Tidak ada activity, data page, maupun rule SQL yang mengisinya.
+
+Artinya **rule pemuatnya hilang**, bukan fiturnya tidak ada. Ini satu kejadian konkret
+`R-16` yang belum tercatat di `19-GAP-EXPORT-DETAIL.md`.
+
+> **Pelajaran yang sebenarnya, dan ia berlaku jauh di luar modul ini.** Export Pega
+> **tidak lengkap** — itu tercatat sebagai `R-16` sejak lama, dengan kurang-lebih 242 rule
+> hilang dan **tujuh tipe rule yang tidak diaudit sama sekali**. Di atas export seperti
+> itu, **ketiadaan sesuatu bukan bukti**. Yang sah disimpulkan dari export adalah apa yang
+> ADA di dalamnya; apa yang tidak ada di dalamnya hanya berarti *tidak ada di dalam
+> export*.
+>
+> Saya melanggarnya, lalu memakai kesimpulan itu untuk **menghapus sebuah fitur** dan
+> **menulis uji yang mengunci penghapusan itu**. Uji seperti itu berbahaya justru karena
+> ia hijau: ia membuat kekeliruan tampak sebagai keputusan yang sudah diperiksa.
+
+Dan ia berlipat: kekeliruan itu saya sampaikan sebagai temuan kepada Work Owner, lalu
+menjadi dasar pertanyaan "daftar atau entri saja?" yang dijawab **"Tiru apa adanya: entri
+saja"**. Jawaban itu benar untuk premis yang saya berikan, dan premisnya salah.
+
+### 23.2 Apa yang sekarang ada
+
+**Backend.** Rute `GET /api/master/recovery`, kueri `recovery_list` dan `recovery_count`,
+metode `List` pada kedua pengisi seam, dan `ListFilter` di domain.
+
+Kelima kolomnya **dibaca dari section, bukan dikarang**:
+
+| Kolom layar | Properti Pega | Kolom basis data |
+|---|---|---|
+| Nama Principal | `.NamaPrincipal` | `NAMAPRINCIPAL` |
+| Nilai Klaim | `.TotalListClaimAmountIDR` | `NILAIKLAIM` |
+| Nilai Pembayaran Sebelumnya | `.NilaiDeductible` | `NILAIRECOVERY` |
+| Pembayaran | `.ClaimAmountAdjust` | `PEMBAYARAN` |
+| Sisa | `.TPLAmount` | `SISAKLAIM` |
+
+**Frontend.** Susunannya mengikuti layar lama: judul di kiri, **Tambah** dan **Refresh** di
+kanannya, satu tab **Outstanding**, lalu grid. Form entri dibuka lewat Tambah — bukan
+tergelar sejak layar dibuka seperti sebelumnya.
+
+Daftar "batch yang disimpan sejak layar dibuka" **dihapus seluruhnya**. Membiarkannya
+berdampingan dengan daftar sungguhan berarti dua tabel yang tampak serupa dengan arti yang
+berbeda, dan tidak ada petunjuk di layar yang membedakannya dengan andal.
+
+### 23.3 Yang TIDAK saya tiru, dan alasannya disebut terus terang
+
+**Penyaring "outstanding" tidak dibuat.** Istilahnya punya arti tegas di `CONTEXT.md` —
+klaim yang sudah diakui nilainya tetapi belum selesai dibayar — dan godaannya besar untuk
+menerjemahkannya menjadi `SISAKLAIM > 0`.
+
+Itu tidak dilakukan karena klausa WHERE aslinya **tidak dapat dibaca**: ia ada di rule yang
+hilang. Menyaring atas dasar tebakan berarti **menyembunyikan baris**, dan baris yang
+hilang diam-diam tidak akan pernah dikeluhkan siapa pun. Baris berlebih sebaliknya langsung
+terlihat dan dapat dipersempit begitu rule-nya tiba.
+
+Ini pilihan yang sama dengan yang seharusnya saya ambil sejak awal: **bila bukti tidak ada,
+yang ditempuh adalah pilihan yang kekeliruannya terlihat** — bukan pilihan yang
+kekeliruannya senyap.
+
+**Satu penyimpangan susunan yang disengaja.** Di Pega, Tambah membuka jendela modal. Di
+sini ia membuka panel di tempat, di atas daftar. Form ini panjang — belasan isian, unggahan
+bukti bayar, dan grid data klaim — dan memaksanya ke dalam modal membuat isinya harus
+digulir di dalam gulungan halaman. Yang ditiru adalah **alurnya**, bukan wadahnya.
+
+### 23.4 Yang ditambahkan di luar layar lama
+
+| Hal | Pega | Di sini | Alasan |
+|---|---|---|---|
+| Pencarian principal | tidak ada | ada, **di server** | menyaring satu halaman dari sepuluh akan membohongi pencarinya |
+| Paginasi | `pyRDLPageSize` 10 di klipboard | 10, dari server | tabelnya bertambah satu baris per batch dan tidak pernah aman dibaca seluruhnya |
+| Kolom Batch | tidak ada | ada | nomor inilah yang dipakai menelusuri satu batch |
+| Sisa negatif | tampil biasa | diberi warna | keadaan sah yang layak diperiksa orang |
+
+Batas `limit` ditegakkan di **lapisan usecase**, bukan di handler — supaya pemanggil mana
+pun, termasuk yang ditulis kemudian, tidak dapat menarik seluruh tabel dengan
+`limit=100000`. Diverifikasi: permintaan itu mengembalikan paling banyak 100 baris.
+
+### 23.5 Uji yang dicabut, dan uji yang menggantikannya
+
+`TestTidakAdaDaftarUbahMaupunHapus` menuntut tiga ketiadaan sekaligus. Tuntutan atas GET
+**dicabut**; tuntutan atas PUT dan DELETE **dipertahankan** — dan bedanya penting:
+
+| Ketiadaan | Dasarnya | Sah? |
+|---|---|---|
+| GET daftar | tidak ada kueri pembaca di export | **tidak** — kesimpulan dari ketiadaan bukti |
+| PUT dan DELETE | `INSERTMASTERRECOVERYKLAIM.prc` dibaca utuh dan hanya mengenal INSERT | **ya** — kesimpulan dari isi |
+
+Penggantinya menguji hal yang dapat dibuktikan: daftar mengembalikan batch yang benar-benar
+tersimpan, kelima kolomnya bernama sama dengan grid lama, halamannya diminta ke server, dan
+portal yang belum siap **ditolak** alih-alih dilayani repo portal lain.
+
+Uji yang terakhir itu sengaja menyimpan satu batch di ASM lebih dulu — tanpa itu, jawaban
+kosong akan lulus tanpa membuktikan apa pun.
+
+### 23.6 Verifikasi yang benar-benar dijalankan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...`, `go vet` modul ini + cmd | **lulus** |
+| `go test ./internal/masterrecovery/... ./cmd/claimpnc/` | **lulus** |
+| `npx tsc --noEmit` | **0 galat** |
+| `npx vitest run src/modules/master-recovery` | **18 lulus** (dari 16; dua uji baru) |
+| `npx vitest run` seluruh frontend | **1.353 lulus, 82 berkas** |
+| Uji asap aplikasi berjalan (`PENYIMPANAN=memori`) | 8 perkara — di bawah |
+
+Uji asap:
+
+| Perkara | Hasil |
+|---|---|
+| daftar saat kosong | `200`, total 0, portal `ASM` |
+| simpan dua batch | `201`; sisa **153.000** (160.000 - 7.000) dan **30.000** (50.000 - 20.000) |
+| daftar sesudahnya | total 2, urutan batch **2, 1** — terbaru lebih dulu |
+| pencarian `cari=kedua` | total **1**, principal yang benar |
+| paginasi `limit=1` | halaman 1 batch 2, halaman 2 batch 1, **total tetap 2** |
+| `limit=100000` | dipotong; tidak menarik seluruh tabel |
+| portal `SMI` | **`503 portal_belum_siap`** — ditolak, tidak dilayani repo ASM |
+| `PUT` dan `DELETE` | **`404 rute_tidak_ditemukan`** |
+
+### 23.7 Koreksi atas laporan saya sebelumnya
+
+Saya pernah melaporkan bahwa `PUT`/`DELETE` pada rute API yang tidak terdaftar **jatuh ke
+SPA dan menjawab `200` berisi HTML**, dan menyerahkannya sebagai persoalan
+`platform/httpserver`.
+
+Diperiksa ulang terhadap aplikasi yang berjalan hari ini: `/api/tidak-ada-sama-sekali`,
+`/api/master/rekening/1`, dan `/api/master/recovery/1` **ketiganya menjawab `404` berisi
+JSON `rute_tidak_ditemukan`**. Persoalan itu **sudah tidak ada**. Serah-terimanya dicabut.
+
+### 23.8 Yang belum dapat dibuktikan
+
+| Hal | Apa yang menahannya |
+|---|---|
+| **Kueri `recovery_list` terhadap Oracle sungguhan** | belum dijalankan; bentuk kolomnya sudah diverifikasi dari `ALL_TAB_COLUMNS`, tetapi kuerinya sendiri baru diuji lewat adapter memori |
+| **Penyaring "outstanding" yang sebenarnya** | rule-nya hilang (`R-16`). Perlu diminta ke Tim Pega bersama permintaan export ulang berbasis Product rule (`D-39`) |
+| **Migrasi `0013`** | tetap belum diajukan; lihat 22.8 |
+
+---
+
+## 24. Bentuk grid Outstanding, dan View Document yang tidak pernah saya buat (2026-09-29)
+
+Work Owner menunjukkan layar Pega yang berjalan dan menyampaikan tiga hal sekaligus:
+urutannya terbalik, bentuknya bukan daftar rata melainkan **satu baris yang dibuka**, dan
+**View Document tidak ada sama sekali**. Ketiganya benar.
+
+### 24.1 Bentuk yang sebenarnya, dibaca dari layar — bukan dari export
+
+Tangkapan layar Pega memperlihatkan:
+
+    Nama Principal                     Nilai Klaim  N.Pemb.Sebelumnya  Pembayaran     Sisa
+    Blockchain Group qq The Insured        160.000              7.000     100.000  153.000   <- diklik
+    +-- Tanggal Input   NO HPLL  Tahun  Nilai Klaim  N.Pemb.Sebelumnya  N.Pembayaran  Sisa Klaim  Ket  Posisi  [View Document]
+        14/05/2025 10:49          2018      160.000                  0         5.000     155.000   OK  test    [View Document]
+        14/05/2025 10:53          2018      160.000              5.000         2.000     155.000   OK  test    [View Document]
+        14/05/2025 10:54          2018      160.000              7.000       100.000     153.000  TEST  ok     [View Document]
+
+Tiga hal yang terbaca dari situ dan **tidak dapat ditarik dari export**:
+
+| Hal | Buktinya di tangkapan layar |
+|---|---|
+| Satu baris luar per **principal** | tiga batch, satu baris |
+| Angka baris luar = batch **TERAKHIR**, bukan jumlah | 7.000 / 100.000 / 153.000 sama persis dengan baris 10:54. Jumlah pembayarannya 107.000 |
+| Riwayat terurut dari yang **paling lama** | 10:49, 10:53, 10:54 |
+
+Export justru mengatakan sebaliknya bila dibaca sendirian: `pyEnableGrouping` bernilai
+`false` dan `pyRDLShowDetails` bernilai `false`, sehingga pengelompokan dan baris detail
+**bukan bawaan grid**. Keduanya dikerjakan rule pemuat halaman `Data_BACTH_RECOVERY` —
+rule yang hilang (`R-16`).
+
+Ini kejadian kedua pada modul yang sama, dan polanya sama persis dengan §23: yang tidak
+ada di export bukan berarti tidak ada di sistemnya.
+
+### 24.2 Urutan: pilihan saya, dan pilihan itu salah
+
+Saya mengurutkan `BATCH DESC` dengan alasan "yang terbaru paling mungkin dicari". Itu
+alasan yang masuk akal dan tetap salah — layar lama mengurutkan dari yang paling lama,
+karena yang dibaca petugas di grid dalam adalah **riwayat**, dan riwayat dibaca maju.
+
+Sekarang: `ORDER BY NAMAPRINCIPAL, INSERTDATE, BATCH`. `BATCH` menjadi pemutus supaya dua
+baris berwaktu sama — dan baris warisan yang `INSERTDATE`-nya NULL — tetap punya urutan
+yang tetap.
+
+### 24.3 View Document: memang tidak ada, sekarang ada
+
+Sebelumnya modul ini hanya dapat **mengunggah** bukti bayar. Membacanya kembali tidak ada
+sama sekali — dan kolom `DOKUMENID` bahkan saya ringkas menjadi boolean `ada_bukti_bayar`,
+sehingga nomornya tidak sampai ke layar dan tombolnya tidak mungkin dibuat.
+
+Yang ditambahkan: `GET /api/master/recovery/bukti-bayar/{id}`.
+
+**Isinya dialirkan mentah.** `RDB List/GetAttachmentFromDB_Sql-SQL.xml` membungkusnya
+dengan `pooldata.base64encode(attachfile)` — pemanggilan fungsi basis data yang `D-02`
+larang, dan lagipula tidak perlu: byte mentahnya dikirim apa adanya beserta jenis isinya,
+sehingga ukurannya tidak membesar sepertiga dan tidak ada yang perlu diurai ulang.
+
+**`inline`, bukan `attachment`**, karena tombolnya bernama *View* Document: PDF dan gambar
+terbuka langsung di tab peramban, sedangkan berkas yang tidak dapat ditampilkan tetap
+diunduh peramban dengan sendirinya.
+
+**Dua kegagalan dibedakan**, dan pembedaan itu bukan kerapian:
+
+| Keadaan | Kode | Artinya bagi petugas |
+|---|---|---|
+| Baris lampiran tidak ada | `bukti_bayar_tidak_ditemukan` | penandanya salah; unggah ulang |
+| Baris ada, kolom BLOB kosong | `bukti_bayar_di_penyimpanan_lain` | berkasnya di penyimpanan luar (`D-16`, modul `S-1` belum ada) |
+
+Menyamakan keduanya akan membuat petugas mencari kesalahan di tempat yang salah. Keadaan
+kedua nyata: sistem lama menyimpan sebagian berkas di luar dan hanya menaruh penunjuknya
+di `IMAGEID`.
+
+**Batch tanpa bukti bayar tidak diberi tombol.** Tombol yang selalu tampil lalu menjawab
+"tidak ditemukan" membuat petugas mengira berkasnya hilang, padahal memang tidak pernah
+ada. Barisnya menulis "Tanpa bukti bayar".
+
+### 24.4 Paginasi memotong PRINCIPAL, bukan baris
+
+Konsekuensi langsung dari pengelompokan, dan ia mudah salah: memotong per baris akan
+memenggal riwayat satu principal di tengah, dan baris luar yang dibuka akan menampilkan
+sebagian riwayatnya **tanpa satu pun tanda bahwa ada yang terpotong**.
+
+Kueri karena itu memilih sepuluh NAMA principal lebih dulu di subkueri, baru menarik
+seluruh batch milik kesepuluh nama itu. `recovery_count` ikut berubah menjadi
+`COUNT(DISTINCT NAMAPRINCIPAL)` — penyaringnya wajib sama persis dengan subkueri itu.
+
+Diverifikasi: dengan `limit=1`, halaman kedua tetap membawa **ketiga** batch principal-nya.
+
+Dikelompokkan menurut **nama**, bukan `CLIENTID`, karena namanyalah yang ditampilkan grid
+luar. Bila kelak terbukti dua principal berbeda dapat memakai nama yang sama, kunci itu
+harus pindah — dan itu perubahan yang terlihat, bukan senyap.
+
+### 24.5 Satu prop baru pada komponen bersama
+
+`DataTable` mendapat `expandedRow` — opsional, **mati secara baku**, sehingga sepuluh layar
+master yang sudah selesai berperilaku persis seperti sebelumnya. Polanya sama dengan
+`pageSize` dan `showHeaderWhenEmpty` yang sudah ada.
+
+Isi yang terbuka dibiarkan bebas bentuknya, bukan dipaksa menjadi tabel bersarang: grid
+dalam pada layar ini punya sepuluh kolom yang seluruhnya berbeda dari grid luarnya, dan
+memaksakan satu bentuk untuk keduanya akan membuat komponen bersama tahu terlalu banyak
+tentang satu layar.
+
+Baris yang dapat dibuka menjadi `role="button"` dengan `aria-expanded`, dan dapat dibuka
+dengan Enter maupun Spasi — tanpa itu isinya hanya terjangkau tetikus.
+
+Grid dalam **tidak** memakai `DataTable` kedua: ia tidak butuh pencarian, pengurutan,
+maupun paginasi sendiri — seluruh riwayat satu principal sudah di tangan — dan dua bilah
+pencarian bersarang pada satu layar justru membingungkan.
+
+### 24.6 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...`, `go vet`, `go test` modul + cmd | **lulus** |
+| `npx tsc --noEmit` | **0 galat** |
+| `npx vitest run src/modules/master-recovery` | **20 lulus** (dari 18) |
+| `npx vitest run` seluruh frontend | **1.355 lulus, 82 berkas** — sepuluh layar master lain tidak terpengaruh perubahan `DataTable` |
+| Uji asap aplikasi berjalan | 9 perkara — di bawah |
+
+Uji asap (4 batch, 2 principal):
+
+| Perkara | Hasil |
+|---|---|
+| total | **2** — menghitung principal, bukan 4 batch |
+| urutan principal | menaik menurut nama |
+| baris luar | 7.000 / 100.000 / **153.000** — batch terakhir, bukan jumlah 107.000 |
+| riwayat batch | **1, 2, 3** — menaik |
+| `tanggal_input` | terisi ketiganya |
+| `id_dokumen` | hanya pada batch yang punya |
+| View Document | `200`, `application/pdf`, `inline; filename=bukti.pdf`, isi **apa adanya** |
+| dokumen tidak ada | `404 bukti_bayar_tidak_ditemukan` |
+| `limit=1` | halaman 2 tetap membawa **3** batch — riwayat tidak terpenggal |
+
+### 24.7 Yang masih belum dapat dibuktikan
+
+| Hal | Apa yang menahannya |
+|---|---|
+| **Kueri terhadap Oracle sungguhan** | subkueri paginasi principal baru diuji lewat adapter memori dan terhadap katalog, belum dijalankan di Oracle |
+| **Penyaring "outstanding"** | tetap tidak diketahui; rule-nya hilang (`R-16`) |
+| **Apakah pengelompokan memang per NAMA, bukan per CLIENTID** | tidak dapat dibaca dari export; dipilih mengikuti apa yang ditampilkan layar |
+| **Migrasi `0013`** | tetap belum diajukan; lihat 22.8 |
+
+---
+
+## 25. View Document: salah bentuk, dan salah cara menyajikannya (2026-09-29)
+
+Work Owner menunjukkan dua tangkapan layar berdampingan. Di Pega, tombol **View Document**
+membuka **modal berjudul "View Dokument Pendukung"** berisi tabel berkolom **Input Nama**
+dan **Tanggal**, dengan tulisan **"Data Tidak Ada"**. Di aplikasi kita, tombol yang sama
+membuka tab berisi **berhalaman-halaman karakter acak**.
+
+Keduanya salah, dan sebabnya berbeda.
+
+### 25.1 Bentuknya: daftar, bukan unduhan
+
+Saya membuat tombol itu langsung membuka berkas. Layar lama tidak begitu — ia membuka
+**daftar dokumen pendukung**, dan berkasnya dibuka dari dalam daftar itu.
+
+Rule yang membangun modal itu **tidak ada di export**: teks `View Dokument` **nol
+kemunculan** di seluruh berkas. Sama seperti rule pemuat grid luar (§23) dan rule grid
+dalam (§24) — ketiganya hilang, dan ketiganya milik layar yang sama.
+
+Pemetaan kedua kolomnya disandarkan pada kolom yang memang ada di
+`POOLDATA.DATA_ATTACHFILE`:
+
+| Kolom modal | Kolom basis data |
+|---|---|
+| Input Nama | `INPUTOPERATOR` |
+| Tanggal | `INPUTDATE` |
+
+Keduanya diambil lewat `LEFT JOIN` pada kueri daftar — **LEFT**, karena batch tanpa
+lampiran wajib tetap muncul. `INNER JOIN` akan menghilangkan batch yang belum berlampiran,
+dan hilangnya tidak akan terlihat sebagai galat apa pun.
+
+**Satu batas yang harus disebut.** Tautan batch ke lampiran di sistem lama hanyalah SATU
+kolom, `DOKUMENID`. Karena itu daftar ini berisi paling banyak satu baris hari ini.
+Bentuknya tetap dibuat daftar supaya sama dengan layar lama, dan supaya menambah lampiran
+kedua kelak tidak menuntut layar ini dirombak.
+
+**Tombolnya kembali tampil di setiap batch.** Versi sebelumnya menyembunyikannya pada
+batch tanpa lampiran. Itu tampak lebih ramah, tetapi membuat petugas tidak punya cara
+memastikan sebuah batch memang belum berlampiran — dan layar lama menjawab pertanyaan itu
+lewat modalnya, dengan kalimat "Data Tidak Ada".
+
+**Tautan yang putus dibedakan dari tautan yang kosong.** `DOKUMENID` terisi tetapi
+menunjuk baris yang sudah tidak ada menghasilkan seluruh kolom `LEFT JOIN` bernilai NULL.
+Keadaan itu diperlakukan sebagai "belum ada lampiran", bukan sebagai tombol yang
+menjanjikan berkas yang tidak dapat dibuka. Diverifikasi: `DOKUMENID = 'TIDAK-ADA-999'`
+menghasilkan `dokumen: null`.
+
+### 25.2 Keluaran kacau: dua cacat sekaligus, satu di antaranya keamanan
+
+Versi pertama menyajikan **setiap** lampiran dengan `Content-Disposition: inline` dan jenis
+isi apa adanya dari kolom `ATTACHMIMETYPE`. Saya menuliskan alasannya di kode dengan
+percaya diri: *"tombolnya bernama VIEW Document"*. Alasannya benar, penerapannya tidak.
+
+**Cacat pertama — yang terlihat.** Lampiran yang peramban tidak dapat gambar — XLSX di
+portal ASM — tergambar sebagai teks biner. Itulah tangkapan layar kedua.
+
+**Cacat kedua — yang tidak terlihat, dan lebih berat.** Jenis isi itu datang dari **basis
+data**, bukan dari kode. Satu baris ber-`ATTACHMIMETYPE` bernilai `text/html` akan
+dijalankan peramban sebagai halaman **di origin aplikasi ini**, dan skrip di dalamnya
+membaca sesi pengguna yang membukanya. Lampiran dapat diunggah pengguna, dan tabel
+`DATA_ATTACHFILE` dipakai bersama seluruh modul.
+
+**Perbaikannya:**
+
+1. `inline` hanya untuk **daftar jenis yang memang aman ditampilkan** — PDF, gambar raster,
+   dan `text/plain`. Selebihnya `attachment`, sehingga peramban mengunduhnya.
+2. `image/svg+xml` **sengaja tidak masuk** meski ia gambar: SVG dapat memuat `<script>`,
+   dan skrip itu berjalan saat berkasnya dibuka langsung.
+3. `X-Content-Type-Options: nosniff` pada setiap jawaban, supaya peramban tidak menebak
+   sendiri jenisnya dan membatalkan pembedaan di atas.
+4. Sisi layar **membaca `Content-Disposition`**, tidak menebak ulang: `inline` dibuka di
+   tab baru, selebihnya diunduh dengan namanya. Menebaknya di dua tempat membuat keduanya
+   dapat berbeda pendapat.
+
+Tombolnya tetap jujur dengan namanya: yang dapat dilihat, dilihat; yang tidak, diunduh —
+dan tidak ada yang berakhir sebagai layar penuh karakter acak.
+
+### 25.3 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...`, `go vet`, `gofmt`, `go test` modul + cmd | **lulus** |
+| `npx tsc --noEmit` | **0 galat** |
+| `npx vitest run src/modules/master-recovery` | **20 lulus** |
+| `npx vitest run` seluruh frontend | **1.355 lulus, 82 berkas** |
+| Uji asap aplikasi berjalan | di bawah |
+
+Perlakuan berkas menurut jenisnya, diuji terhadap aplikasi yang berjalan:
+
+| Berkas | Jenis | Perlakuan | nosniff |
+|---|---|---|---|
+| `bukti.pdf` | `application/pdf` | **inline** | ✅ |
+| `catatan.txt` | `text/plain` | **inline** | ✅ |
+| `rekap.xlsx` | `application/vnd.ms-excel` | **attachment** | ✅ |
+| `jebakan.html` | `text/html` | **attachment** | ✅ |
+| `gambar.svg` | `image/svg+xml` | **attachment** | ✅ |
+
+Keterangan lampiran di daftar:
+
+| Perkara | Hasil |
+|---|---|
+| batch tanpa lampiran | `dokumen: null` → modal menulis "Data Tidak Ada" |
+| batch berlampiran | `input_nama`, `tanggal`, dan nama berkas terbawa |
+| `DOKUMENID` menunjuk baris yang tidak ada | `dokumen: null` — tidak menjanjikan berkas yang tidak dapat dibuka |
+
+Uji yang ditambahkan: `TestBerkasYangTidakAmanDiunduhBukanDitampilkan` menjaga ketiga jenis
+berbahaya tetap `attachment`, dan uji layar memastikan modal menulis "Data Tidak Ada" saat
+kosong serta menyebut pengunggah dan tanggal saat ada.
+
+### 25.4 Pola yang berulang tiga kali di modul ini
+
+Tiga kali berturut-turut saya membangun sesuatu yang bentuknya keliru, dan ketiganya
+berakar pada hal yang sama: **rule yang menentukan bentuk layar ini hilang dari export**.
+
+| # | Yang saya buat | Yang sebenarnya | Rule yang hilang |
+|---|---|---|---|
+| §23 | tanpa daftar sama sekali | ada grid Outstanding | pemuat `Data_BACTH_RECOVERY` |
+| §24 | daftar rata, urut menurun | satu baris per principal, riwayat menaik | pemuat yang sama |
+| §25 | unduhan langsung | modal daftar dokumen pendukung | pembangun modal |
+
+Ketiganya baru terbaca dari **layar Pega yang berjalan**, bukan dari export. Itu satu
+pelajaran yang layak dibawa ke modul lain: untuk layar yang rule pemuatnya hilang,
+tangkapan layar sistem berjalan **bukan pelengkap** — ia satu-satunya sumber bentuk.
+
+### 25.5 Yang belum dapat dibuktikan
+
+| Hal | Apa yang menahannya |
+|---|---|
+| **Apakah modal lama memang membaca `DATA_ATTACHFILE`** | rule-nya hilang; pemetaan "Input Nama"/"Tanggal" ke `INPUTOPERATOR`/`INPUTDATE` disandarkan pada nama kolom yang ada, bukan dibaca dari rule |
+| **Apakah satu batch dapat punya lebih dari satu lampiran** | tautannya satu kolom `DOKUMENID`; bila layar lama dapat menampilkan lebih dari satu baris, tautannya ada di tempat yang belum ditemukan |
+| **Kueri `LEFT JOIN` terhadap Oracle sungguhan** | baru diuji lewat adapter memori dan terhadap katalog |
+| **Migrasi `0013`** | tetap belum diajukan; lihat 22.8 |

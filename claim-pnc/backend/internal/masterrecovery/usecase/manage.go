@@ -35,7 +35,6 @@ import (
 type Service struct {
 	repoSelector masterrecovery.RepoSelector
 	issuer       masterrecovery.VirtualAccountIssuer
-	now          func() time.Time
 }
 
 // Options adalah bahan pembentuk Service.
@@ -47,8 +46,11 @@ type Options struct {
 	// fake, dan yang memilih adalah perakitan di cmd, bukan paket ini.
 	Issuer masterrecovery.VirtualAccountIssuer
 
-	// Now dapat diganti pada pengujian supaya daftar tahun tidak berubah arti setiap
-	// pergantian tahun dan membuat pengujiannya gagal tanpa ada yang menyentuh kode.
+	// Now TIDAK LAGI DIPAKAI sejak daftar tahun disalin apa adanya dari Data Transform
+	//  (2026-09-29). Ia dipertahankan sebagai field supaya perakit yang sudah
+	// mengisinya tidak perlu diubah, dan diabaikan diam-diam.
+	//
+	// Deprecated: tidak berpengaruh pada perilaku apa pun.
 	Now func() time.Time
 }
 
@@ -64,11 +66,8 @@ func NewService(o Options) (*Service, error) {
 		return nil, errors.New("masterrecovery/usecase: Issuer wajib diisi")
 	}
 
-	now := o.Now
-	if now == nil {
-		now = time.Now
-	}
-	return &Service{repoSelector: o.RepoSelector, issuer: o.Issuer, now: now}, nil
+	// o.Now sengaja tidak dibaca — lihat catatannya di Options.
+	return &Service{repoSelector: o.RepoSelector, issuer: o.Issuer}, nil
 }
 
 // NextBatch mengembalikan nomor batch berikutnya untuk DITAMPILKAN di layar.
@@ -111,37 +110,116 @@ func (s *Service) Principals(ctx context.Context, portalAlias string) ([]masterr
 	return list, nil
 }
 
+// List membaca batch recovery yang sudah tercatat, untuk tab Outstanding.
+//
+// Batas paginasi dirapikan DI SINI, bukan dipercayakan kepada pemanggil: permintaan tanpa
+// limit memakai nilai baku, dan limit yang melebihi batas dipotong. Dengan begitu satu
+// permintaan yang menyebut `limit=100000` tidak dapat menarik seluruh tabel — pengaman
+// yang harus ada di lapisan yang dilewati SEMUA pemanggil, bukan hanya di layar.
+func (s *Service) List(
+	ctx context.Context,
+	portalAlias string,
+	filter masterrecovery.ListFilter,
+) ([]masterrecovery.PrincipalGroup, int, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	switch {
+	case filter.Limit <= 0:
+		filter.Limit = masterrecovery.DefaultListLimit
+	case filter.Limit > masterrecovery.MaxListLimit:
+		filter.Limit = masterrecovery.MaxListLimit
+	}
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	rows, total, err := repo.List(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("masterrecovery/usecase: membaca daftar batch recovery: %w", err)
+	}
+	return group(rows), total, nil
+}
+
+// group menyusun baris yang sudah terurut menjadi satu baris per principal.
+//
+// Ia menelusuri SEKALI JALAN dan bersandar pada urutan yang dijanjikan Repo.List: baris
+// satu principal berdampingan, dan di dalamnya terurut dari yang paling lama. Bila janji
+// itu dilanggar, satu principal akan pecah menjadi beberapa baris luar — dan itu terlihat
+// seketika di layar, bukan tersembunyi.
+//
+// Angka baris luar diambil dari batch TERAKHIR, bukan dijumlahkan. Itu yang dilakukan
+// layar lama: barisnya menunjukkan 7.000 / 100.000 / 153.000, persis baris terakhir di
+// dalamnya, sedangkan jumlah pembayarannya 107.000.
+func group(rows []masterrecovery.Recovery) []masterrecovery.PrincipalGroup {
+	var result []masterrecovery.PrincipalGroup
+	for _, row := range rows {
+		if len(result) == 0 || result[len(result)-1].Name != row.PrincipalName {
+			result = append(result, masterrecovery.PrincipalGroup{Name: row.PrincipalName})
+		}
+		current := &result[len(result)-1]
+		current.Batch = append(current.Batch, row)
+		current.Latest = row
+	}
+	return result
+}
+
+// Document membaca satu Bukti Bayar untuk diunduh.
+//
+// Tidak ada pemeriksaan bahwa dokumen ini benar-benar milik salah satu batch recovery.
+// Itu disebut di sini supaya menjadi keputusan yang terlihat, bukan kelalaian:
+// `POOLDATA.DATA_ATTACHFILE` dipakai bersama seluruh modul, dan menambahkan pemeriksaan
+// kepemilikan di modul ini saja akan memberi rasa aman yang tidak berdasar selama rute
+// lampiran modul lain tidak melakukannya. Pembatasnya hari ini adalah sesi dan portal —
+// sama seperti seluruh rute lampiran yang sudah ada.
+func (s *Service) Document(ctx context.Context, portalAlias, id string) (masterrecovery.Document, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return masterrecovery.Document{}, err
+	}
+
+	document, err := repo.FindDocument(ctx, strings.TrimSpace(id))
+	if err != nil {
+		// Kedua galat domain diteruskan APA ADANYA supaya transport dapat membedakan
+		// "tidak ada" dari "ada tetapi isinya di penyimpanan luar". Membungkusnya akan
+		// membuat keduanya jatuh ke satu pesan yang sama.
+		return masterrecovery.Document{}, err
+	}
+	return document, nil
+}
+
 // Years mengembalikan pilihan isian Tahun.
 //
-// # Kenapa dihitung, bukan dibaca
+// # Daftar ini DISALIN dari Pega, bukan dihitung (diperbarui 2026-09-29)
 //
-// Layar lama mengisinya dari Data Transform `GetListYear`, dan rule itu TIDAK ADA di
-// export — satu dari ±242 rule yang hilang (`R-16`). Isinya tidak dapat dibaca dari mana
-// pun, sehingga menyalinnya mustahil.
+// Data Transform `GetListYear` sudah diterima dari Tim Pega
+// (`Data Transform/GetListYear-DT.xml`, Applies To `@baseclass`, RuleSet `GCNMFW`).
+// Isinya ternyata **daftar mati**: satu langkah REMOVE atas halaman `TempYear`, lalu
+// sebelas langkah SET yang menambahkan `TreatyYear` satu per satu — `"2015"` sampai
+// `"2025"`, ditulis sebagai teks, dibuat 2022-06.
 //
-// Yang dikembalikan di sini adalah rentang yang dihitung dari tahun berjalan: sepuluh
-// tahun ke belakang, satu ke depan. Sepuluh dipilih karena batch tertua yang benar-benar
-// ada bertahun 2018, dan satu ke depan memberi ruang tahun buku yang sudah dibuka.
+// Versi sebelumnya MENGHITUNG rentangnya dari tahun berjalan. Itu asumsi kerja yang
+// dicatat terbuka, dan kini digantikan aslinya atas keputusan Work Owner 2026-09-29:
+// **ikuti Pega apa adanya**.
 //
-// Ini ASUMSI KERJA yang dicatat terbuka, bukan aturan yang dibaca. Begitu daftar
-// sebenarnya tiba dari Tim Pega atau Work Owner, yang berubah hanyalah fungsi ini.
+// # Akibat yang harus disadari, bukan ditemukan belakangan
+//
+// Daftarnya BERHENTI DI 2025. Karena ia daftar mati yang ditulis 2022 dan tidak pernah
+// diperbarui, tahun berjalan tidak ada di dalamnya — batch tahun 2026 ke atas TIDAK DAPAT
+// dicatat lewat layar ini, persis seperti di Pega hari ini.
+//
+// Ini ditiru dengan sengaja (`P-5`), bukan terlewat. Menambahkan tahun berjalan diam-diam
+// akan membuat layar baru menerima batch yang layar lamanya tolak — selisih perilaku yang
+// tidak tercatat di mana pun. Perpanjangannya menempuh keputusan tertulis, dan ketika itu
+// diambil, yang berubah hanyalah senarai di bawah.
 func (s *Service) Years(context.Context, string) []string {
-	const (
-		back    = 10
-		forward = 1
-	)
-
-	current := s.now().Year()
-	year := make([]string, 0, back+forward+1)
-	// Terbaru lebih dulu: batch yang dicatat hampir selalu tahun berjalan, dan menaruhnya
-	// di puncak menghemat satu gulir pada setiap pemakaian.
-	for value := current + forward; value >= current-back; value-- {
-		if value < masterrecovery.MinYear || value > masterrecovery.MaxYear {
-			continue
-		}
-		year = append(year, fmt.Sprintf("%d", value))
+	// Urutannya menaik, persis seperti urutan langkah SET pada data transform-nya.
+	return []string{
+		"2015", "2016", "2017", "2018", "2019", "2020",
+		"2021", "2022", "2023", "2024", "2025",
 	}
-	return year
 }
 
 // LookupPolicy mencari identitas lini bisnis, cabang, agen, dan marketing dari nomor

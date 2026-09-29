@@ -30,6 +30,8 @@ const (
 	CodeIssuerUnconfigured = "penerbit_va_belum_terdaftar"
 	CodeIssuerRejected     = "penerbit_va_menolak"
 	CodeDocumentNotSaved   = "bukti_bayar_gagal_disimpan"
+	CodeDocumentNotFound   = "bukti_bayar_tidak_ditemukan"
+	CodeDocumentElsewhere  = "bukti_bayar_di_penyimpanan_lain"
 	CodeClaimLineEmpty     = "berkas_klaim_kosong"
 	CodeClaimLineTooBig    = "berkas_klaim_terlalu_besar"
 	CodeClaimLineBad       = "berkas_klaim_tidak_terbaca"
@@ -142,6 +144,21 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		return http.StatusInternalServerError, ErrorResponse{
 			Code:    CodeDocumentNotSaved,
 			Message: "Bukti bayar gagal disimpan. Batch belum dicatat — coba unggah ulang.",
+		}, true
+
+	case errors.Is(err, masterrecovery.ErrDocumentNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeDocumentNotFound,
+			Message: "Bukti bayar tidak ditemukan. Penandanya menunjuk lampiran yang tidak ada.",
+		}, true
+
+	case errors.Is(err, masterrecovery.ErrDocumentElsewhere):
+		// 404 juga, tetapi sebabnya berbeda dan pesannya mengatakan itu: barisnya ADA,
+		// isinya yang tidak di basis data. Menyamakan keduanya akan membuat petugas
+		// mencari kesalahan di tempat yang salah.
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeDocumentElsewhere,
+			Message: "Isi bukti bayar ini tidak tersimpan di basis data. Berkasnya berada di penyimpanan dokumen yang belum terhubung.",
 		}, true
 
 	case errors.Is(err, masterrecovery.ErrClaimLineEmpty):
