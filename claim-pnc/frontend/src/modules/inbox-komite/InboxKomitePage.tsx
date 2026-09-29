@@ -236,6 +236,29 @@ export function InboxKomitePage() {
       </header>
 
       {/*
+        Penyaring pemilik yang MATI dinyatakan paling atas, di atas segalanya.
+
+        Ia bukan sekadar keterbatasan — ia mengubah ARTI seluruh layar: yang tergambar
+        bukan lagi pekerjaan pengguna, melainkan antrean komite seluruh perusahaan.
+        Membiarkannya tampak seperti inbox biasa adalah kekeliruan yang tidak terlihat
+        sebagai kekeliruan, dan pada layar yang menyetujui uang itu yang paling mahal.
+      */}
+      {data?.penyaring_pemilik_aktif === false && (
+        <div className="mb-5">
+          <ErrorMessage
+            tone="gangguan"
+            title="Daftar ini BUKAN inbox Anda"
+            description={
+              'Penyaring pemilik sedang dimatikan, sehingga daftar di bawah berisi seluruh ' +
+              'antrean komite — termasuk pekerjaan orang lain beserta nama tertanggung dan ' +
+              'nomor polisnya. Keadaan ini hanya berlaku di lingkungan pengembangan; ' +
+              'kosongkan KOMITE_TANPA_PENYARING_OPERATOR untuk mengembalikannya.'
+            }
+          />
+        </div>
+      )}
+
+      {/*
         Keterbatasan dinyatakan di ATAS, sebelum daftar dan sebelum tombol apa pun.
 
         Ketika jejak keputusan belum ada, daftar di bawah TETAP benar — ia dibaca dari
@@ -334,7 +357,7 @@ export function InboxKomitePage() {
         belum ada (`ADR-0024`), dan ia tidak muncul sebagai galat sama sekali. Karena itu
         operator yang dipakai menyaring ditampilkan apa adanya.
       */}
-      {data && data.total === 0 && (
+      {data && data.total === 0 && data.penyaring_pemilik_aktif && (
         <p className="mt-4 text-xs leading-relaxed text-slate-500">
           Inbox disaring untuk operator <span className="font-mono">{data.operator || '—'}</span>.
           Bila Anda yakin ada kasus yang menunggu, periksa apakah nama operator Anda di

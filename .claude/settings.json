@@ -43,7 +43,9 @@
       "Bash(gofmt -w internal/komite/inbox_test.go)",
       "Bash(gofmt -w internal/komite/usecase/inbox_test.go internal/komite/http/inbox_routes_test.go)",
       "Bash(gofmt -w internal/komite/http/inbox_routes_test.go)",
-      "Bash(grep -A 30 \"tidak menampilkan nilai uang apa pun$\")"
+      "Bash(grep -A 30 \"tidak menampilkan nilai uang apa pun$\")",
+      "Bash(gofmt -w cmd/claimpnc/main.go)",
+      "Bash(APP_ENV=staging timeout 30 ./claimpnc.exe)"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -38,7 +38,6 @@ import (
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
-	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -49,6 +48,7 @@ import (
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
+	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/inboxsalvage"
@@ -101,6 +101,10 @@ import (
 	archivedokumenklaimsql "claim-pnc/internal/archivedokumenklaim/repo/sqlstore"
 	archivedokumenklaimusecase "claim-pnc/internal/archivedokumenklaim/usecase"
 	authhttp "claim-pnc/internal/auth/http"
+	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
+	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
+	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
 	daftardetaildokumentravelhttp "claim-pnc/internal/daftardetaildokumentravel/http"
 	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
@@ -134,21 +138,10 @@ import (
 	inboxacceptopenprotectionmemory "claim-pnc/internal/inboxacceptopenprotection/repo/memory"
 	inboxacceptopenprotectionsql "claim-pnc/internal/inboxacceptopenprotection/repo/sqlstore"
 	inboxacceptopenprotectionusecase "claim-pnc/internal/inboxacceptopenprotection/usecase"
-	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
-	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
-	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
-	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
-	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
-	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
-	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
-	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
-	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
-	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
-	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
@@ -189,6 +182,10 @@ import (
 	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
+	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
+	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
+	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
@@ -357,6 +354,9 @@ import (
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
 	"claim-pnc/internal/riwayatklaim"
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -450,10 +450,30 @@ func run() error {
 				Name:  baseCtx.User.Name,
 			}, true
 		},
+		// Penyaring pemilik dimatikan bila diminta. Konfigurasi sudah MENOLAK menyalakannya
+		// di luar `APP_ENV=development`, sehingga di sini nilainya cukup diteruskan —
+		// pemeriksaan lingkungan hidup di satu tempat, bukan diulang di setiap modul.
+		AllOperators: cfg.KomiteTanpaPenyaringOperator,
+
 		Logger:              logger,
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
 	})
+
+	// Keadaan ini dicatat SETIAP start, bukan sekali saat diisi.
+	//
+	// Isian yang mematikan penjagaan mudah tertinggal di berkas `.env` seseorang berminggu
+	// -minggu. Peringatan yang muncul pada setiap start adalah satu-satunya hal yang
+	// membuatnya tetap terlihat.
+	if cfg.KomiteTanpaPenyaringOperator {
+		logger.Warn("penyaring pemilik Inbox Komite DIMATIKAN",
+			slog.String("modul", "komite"),
+			slog.String("akibat", "daftarnya adalah antrean komite SELURUH perusahaan, "+
+				"bukan pekerjaan pengguna yang masuk"),
+			slog.String("berlaku", "hanya APP_ENV=development; konfigurasi menolaknya di luar itu"),
+			slog.String("mematikan", "kosongkan KOMITE_TANPA_PENYARING_OPERATOR"),
+		)
+	}
 
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
@@ -2557,9 +2577,9 @@ type assembly struct {
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 
-	inboxRCLPUCL            *inboxrclpuclusecase.Service
-	reportKPI               *reportkpiusecase.Service
-	reportKlaim             *reportklaimusecase.Service
+	inboxRCLPUCL *inboxrclpuclusecase.Service
+	reportKPI    *reportkpiusecase.Service
+	reportKlaim  *reportklaimusecase.Service
 
 	// inboxSalvage melayani layar Inbox Salvage (`MENU_ID 71`).
 	//
@@ -2760,9 +2780,9 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 
-	rclPUCLSelector            inboxrclpucl.RepoSelector
-	reportKPISelector          reportkpi.RepoSelector
-	reportKlaimSelector        reportklaim.RepoSelector
+	rclPUCLSelector     inboxrclpucl.RepoSelector
+	reportKPISelector   reportkpi.RepoSelector
+	reportKlaimSelector reportklaim.RepoSelector
 
 	// salvageSelector memilih penyimpanan salvage milik satu portal.
 	//
@@ -6765,7 +6785,6 @@ func managerReceivePUCLSelectorMemory(
 		return fresh, nil
 	}
 }
-
 
 // rclPUCLSelectorMemory menyusun penyimpanan Inbox RCL/PUCL di memori; alasannya sama
 // dengan claimTreatyPropSelectorMemory di atas.

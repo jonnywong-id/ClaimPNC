@@ -10244,3 +10244,60 @@ sebelum divalidasi**. Yang berbeda: ketiganya tertangkap sebelum sampai ke kode 
 3. **Dua temuan menyangkut modul yang sudah jadi** dan sengaja tidak disentuh:
    `SPAREPART_HE` yang rusak, dan `PXASSIGNEDORGUNIT` yang praktis kosong. Keduanya di
    `permintaan-artefak-pega.md`.
+
+---
+
+## Sesi 2026-09-29 — mematikan penyaring pemilik Inbox Komite
+
+**Skill khusus yang dipanggil: tidak ada.** Konsisten dengan tiga putaran sebelumnya.
+
+### Yang menentukan hasil putaran ini: mengukur, bukan memperkirakan
+
+Permintaannya satu kalimat — "jangan pakai where operator dulu". Godaannya adalah menghapus satu
+baris. Yang dikerjakan sebagai gantinya adalah menjawab dua pertanyaan lebih dulu, dan **keduanya
+diukur**:
+
+| Pertanyaan | Cara menjawabnya | Hasil |
+|---|---|---|
+| Satu kueri opsional, atau dua kueri kembar? | Menjalankan **keempat bentuk** terhadap Oracle, 5 putaran masing-masing | 24–28 ms semuanya → satu kueri, kembaran tidak perlu |
+| Apakah benar datanya muncul? | Menjalankan repo-nya sendiri dengan dan tanpa penanda | 0 → **189** baris, dan operator kosong tetap 0 |
+
+Tanpa pengukuran pertama, saya akan membangun dua kueri kembar beserta uji keselarasannya —
+mengulang persis mesin yang baru saja saya buang pada §69, untuk masalah yang ternyata tidak ada.
+
+### Disiplin yang dipakai: memisahkan "diminta" dari "gagal"
+
+Bagian yang paling mudah salah di sini bukan SQL-nya, melainkan **bentuk datanya**. Cara termudah
+mematikan penyaring adalah membiarkan operator kosong berarti "semua". Itu akan bekerja, dan itu
+akan salah: operator kosong adalah **kegagalan pembacaan identitas**, dan menyatukan keduanya
+berarti setiap kegagalan identitas berubah menjadi kebocoran.
+
+Karena itu `AllOperators` menjadi medan tersendiri, dan uji
+`TestPenyaringPemilikHanyaMatiBilaDiminta` menegakkan ketiga keadaannya — terisi, kosong, dan
+diminta — bukan hanya yang terakhir.
+
+### Penjagaan diuji dengan menjalankannya, bukan dengan membacanya
+
+Penolakan di luar `development` tidak cukup ditulis lalu dipercaya. Ia dijalankan:
+
+```
+APP_ENV=staging ./claimpnc.exe
+  -> KOMITE_TANPA_PENYARING_OPERATOR menyala pada APP_ENV="staging"; ia hanya berlaku
+     pada development karena mematikan penyaring pemilik Inbox Komite …
+```
+
+Penjagaan yang tidak pernah dilihat gagal adalah penjagaan yang belum diketahui bekerja.
+
+### Satu uji yang sengaja menguji arah sebaliknya
+
+`tidak muncul ketika penyaringnya aktif` — memastikan pemberitahuan "Daftar ini BUKAN inbox Anda"
+**tidak** muncul pada keadaan normal. Uji seperti ini mudah dianggap berlebihan, tetapi ia menjaga
+hal yang nyata: pemberitahuan yang muncul terus-menerus akan diabaikan orang, dan pemberitahuan yang
+diabaikan sama saja dengan tidak ada.
+
+### Yang dilaporkan, bukan diperbaiki
+
+Dua uji gagal di `inboxpladla` dan `inboxservicecenter` — keduanya dari commit orang lain yang masuk
+sejak run penuh saya sebelumnya pada hari yang sama. Berkasnya bersih di working tree saya.
+`Isolasi Protektif` menetapkan keduanya bukan milik sesi ini; keduanya disebutkan lengkap dengan
+nama uji dan sebabnya supaya dapat langsung diarahkan.

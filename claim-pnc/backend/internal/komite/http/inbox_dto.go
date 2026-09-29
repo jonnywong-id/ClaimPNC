@@ -174,6 +174,20 @@ type InboxListResponse struct {
 	// Tanpa `omitempty`: penandanya harus selalu ada. Nilai `false` yang hilang dari
 	// respons tidak dapat dibedakan dari versi server lama oleh klien mana pun.
 	DecisionsAvailable bool `json:"jejak_keputusan_tersedia"`
+
+	// OwnerFilterActive menyatakan daftar di atas benar-benar milik `Operator`.
+	//
+	// `false` berarti penyaring pemilik sedang DIMATIKAN, dan daftarnya adalah SELURUH
+	// antrean komite — termasuk pekerjaan orang lain beserta nama tertanggung dan nomor
+	// polisnya. Keadaan itu hanya mungkin di `APP_ENV=development`; konfigurasi menolak
+	// menyalakannya di luar sana.
+	//
+	// Layar WAJIB menyatakannya. Daftar pekerjaan orang lain yang tampak seperti daftar
+	// pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan
+	// pada layar yang menyetujui uang, itu kelas kesalahan yang paling mahal.
+	//
+	// Tanpa `omitempty`, dengan alasan yang sama seperti penanda di atas.
+	OwnerFilterActive bool `json:"penyaring_pemilik_aktif"`
 }
 
 // CommitteeCaseResponse adalah jawaban satu kasus — detail maupun sesudah keputusan.

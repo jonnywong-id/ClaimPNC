@@ -28229,3 +28229,96 @@ T_CLAIM_ADJUSTMENT PNCN.26.0014. Uji usecase baru 7, uji layar baru 2; uji regis
 - Email ke komite dan PIC, riwayat klaim, dan progres klaim otomatis (`InsertHistoryClaimPNC`,
   `PNCInsertProgressClaim`) — hanya jejak audit yang ditulis. Nomor akseptasi (B-10).
 - Nomor KMTN diambil dari MAX + 1: dua transfer serentak dapat memperoleh nomor yang sama.
+
+### 71.10 Penyaring pemilik Inbox Komite dapat dimatikan — hanya di pengembangan (2026-09-29)
+
+**Arahan Work Owner:** *"data inbox outstanding dari InboxRegisterKomite_RD munculin datanya jangan
+pakai where operator dulu."*
+
+#### Kenapa layarnya kosong, dan kenapa itu bukan kerusakan
+
+`InboxRegisterKomite_RD` menyaring `newAssignPage.pxAssignedOperatorID = Param.assign`, dan layar
+ini menirunya. Penyaring itu **benar** — inbox adalah daftar pekerjaan seseorang. Yang belum ada
+adalah **pemetaan identitas HCC/HCQ ke `OPERATOR_ID`** (`ADR-0024`), sehingga login pengembang tidak
+cocok dengan satu pun operator di data warisan.
+
+Diukur langsung:
+
+```
+A. penyaring AKTIF, login JONNY   -> outstanding 0     <- yang dikeluhkan
+B. penyaring DIMATIKAN            -> outstanding 189
+C. operator kosong, tanpa diminta -> outstanding 0     <- penjagaan tetap berdiri
+```
+
+#### Yang dikerjakan
+
+Penyaringnya dibuat **opsional**, memakai pola yang sudah dipakai pencarian dan rentang tanggal di
+berkas yang sama:
+
+```sql
+AND (:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)
+```
+
+Bukan dua kueri kembar. Biayanya **diukur, bukan diperkirakan** — keempat bentuknya sama cepat pada
+basis data ASM:
+
+| Bentuk | Hasil |
+|---|---|
+| `= :1` polos (produksi) | 90 baris · **28,4 ms** |
+| opsional, nilai terisi | 90 baris · **24,6 ms** |
+| opsional, NULL (mode semua) | 189 baris · **27,2 ms** |
+| tanpa predikat sama sekali | 189 baris · **27,1 ms** |
+
+#### Empat penjagaan, dan kenapa masing-masing ada
+
+| Penjagaan | Yang dicegahnya |
+|---|---|
+| **Medan `AllOperators` tersendiri** di `InboxFilter` | Operator kosong adalah **kegagalan** pembacaan identitas. Menyatukannya dengan "semua" berarti setiap kegagalan identitas berubah menjadi "tampilkan antrean seluruh perusahaan" |
+| **`KOMITE_TANPA_PENYARING_OPERATOR` menolak di luar `development`** | Aplikasi **tidak mau start**. Diuji: `APP_ENV=staging` → *"ia hanya berlaku pada development karena mematikan penyaring pemilik Inbox Komite"* |
+| **Peringatan pada SETIAP start** | Isian seperti ini mudah tertinggal berminggu-minggu di `.env` seseorang |
+| **Tidak dapat dinyalakan lewat parameter kueri** | Penanda yang dapat dikirim klien berarti siapa pun yang punya sesi dapat meminta antrean seluruh perusahaan — tepat yang penyaring ini cegah |
+
+#### Layar wajib menyatakannya
+
+Respons membawa `penyaring_pemilik_aktif`, dan saat `false` layar menampilkan di paling atas:
+
+> **Daftar ini BUKAN inbox Anda** — penyaring pemilik sedang dimatikan, sehingga daftar di bawah
+> berisi seluruh antrean komite, termasuk pekerjaan orang lain beserta nama tertanggung dan nomor
+> polisnya.
+
+Ini bagian terpenting perubahan ini. Yang berubah bukan sekadar isi tabel melainkan **arti seluruh
+layar**: daftar pekerjaan orang lain yang tampak seperti daftar pekerjaan sendiri adalah kekeliruan
+yang tidak terlihat sebagai kekeliruan — dan pada layar yang menyetujui uang, itu yang paling mahal.
+
+Catatan "Inbox disaring untuk operator …" ikut disembunyikan saat penyaringnya mati; ia tidak lagi
+benar di sana.
+
+#### Uji
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestPenyaringPemilikHanyaMatiBilaDiminta` | Operator kosong TIDAK dikirim sebagai NULL; hanya `AllOperators` yang membuatnya NULL |
+| `TestKueriDaftarInboxSelaluMenyaringPemilik` | Bentuk `(:1 IS NULL OR …)` ada di ketiga kueri daftar |
+| `menyatakan bahwa daftar ini bukan inbox pemanggil` | Pemberitahuannya muncul |
+| `tidak muncul ketika penyaringnya aktif` | Ia **tidak** muncul pada keadaan normal — pemberitahuan yang selalu muncul akan diabaikan orang |
+
+#### Cara mengembalikannya
+
+Kosongkan `KOMITE_TANPA_PENYARING_OPERATOR` di `claim-pnc/backend/.env`. Tidak ada yang lain yang
+perlu disentuh.
+
+#### Dua uji yang gagal, dan keduanya BUKAN dari perubahan ini
+
+`go test ./...` melaporkan dua kegagalan:
+
+| Paket | Kegagalan |
+|---|---|
+| `internal/inboxpladla/repo/sqlstore` | `TestTheReplyStatementIsPortable` — perbandingan teks SQL gagal karena akhiran baris CRLF |
+| `internal/inboxservicecenter/repo/sqlstore` | `TestUrutanKolomRincianSamaDenganSELECT` — kolom `BOXUNIT` tidak ada di `SELECT find_detail` |
+
+Keduanya di modul yang **tidak disentuh** sesi ini; berkasnya bersih di working tree, dan run penuh
+sebelumnya pada hari yang sama bersih seluruhnya. Keduanya datang bersama commit `fran service
+center` dan `reo28/09/2026`. Dilaporkan, tidak diperbaiki — `Isolasi Protektif`.
+
+Sisanya: `go vet ./...` bersih, seluruh uji lain lulus, frontend `tsc` bersih dan **1.294 uji di 78
+berkas lulus**.

@@ -21508,3 +21508,80 @@ catatan-pengembangan §83.
 EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
+
+## 70. Penyaring pemilik Inbox Komite dapat dimatikan, hanya di pengembangan (2026-09-29)
+
+**Permintaan Work Owner, 2026-09-29:** munculkan data Inbox Outstanding tanpa memakai penyaring
+operator dulu.
+
+### Persoalannya, dan kenapa ia bukan kerusakan
+
+`InboxRegisterKomite_RD` menyaring `pxAssignedOperatorID = Param.assign`. Penyaring itu benar, dan
+`§69` menirunya apa adanya. Yang belum ada adalah pemetaan identitas HCC/HCQ ke `OPERATOR_ID`
+(`ADR-0024`), sehingga login pengembang tidak cocok dengan operator mana pun dan layarnya kosong
+untuk semua orang — tanpa satu pun galat yang menjelaskannya.
+
+### Yang dipertimbangkan
+
+| Pilihan | Kenapa tidak / ya |
+|---|---|
+| Hapus penyaringnya begitu saja | Tidak ada yang mengingatkan mengembalikannya. Ia akan sampai ke staging sebagai kebocoran antar-pengguna |
+| Pinjam identitas operator nyata, seperti `REAS_MITRA_PENGEMBANGAN` | Menampilkan inbox SATU orang. Work Owner ingin melihat isinya, dan meminjam satu identitas tidak menjawab "apa saja yang ada di sana" |
+| Penanda pada parameter kueri | Siapa pun yang punya sesi dapat meminta antrean seluruh perusahaan. Ditolak |
+| **Penanda konfigurasi, khusus `development`** | **Dipilih.** Mengikuti preseden `REAS_LOGIN_PENGEMBANGAN`, tetapi dijaga lebih keras karena akibatnya lebih luas |
+
+### Keputusannya
+
+`KOMITE_TANPA_PENYARING_OPERATOR` mematikan penyaring pemilik. Kuerinya memakai
+`(:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)` — pola yang sama dengan penyaring pencarian dan
+tanggal di berkas yang sama, bukan bentuk khusus dan bukan kueri kembar.
+
+**Biayanya diukur.** Keempat bentuk — `= :1` polos, opsional dengan nilai, opsional dengan NULL, dan
+tanpa predikat — seluruhnya **24–28 ms** pada basis data ASM. Tidak ada yang dikorbankan, dan
+karenanya tidak ada alasan memelihara dua kueri kembar.
+
+### Empat penjagaan yang mengikat
+
+1. **`AllOperators` adalah medan tersendiri pada `InboxFilter`.** Operator kosong tetap berarti nol
+   baris. Ini pemisahan yang menentukan: operator kosong adalah **kegagalan pembacaan identitas**,
+   dan menyatukannya dengan "semua" berarti setiap kegagalan identitas berubah menjadi "tampilkan
+   antrean komite seluruh perusahaan" — tepat kebalikan dari kegagalan yang aman.
+
+2. **Konfigurasi MENOLAK menyalakannya di luar `APP_ENV=development`.** Aplikasi tidak mau start,
+   bukan sekadar memperingatkan. Diuji: `APP_ENV=staging` menghasilkan penolakan bernama.
+
+3. **Peringatan dicetak pada setiap start**, bukan sekali saat diisi. Isian yang mematikan penjagaan
+   mudah tertinggal berminggu-minggu di berkas `.env` seseorang.
+
+4. **Ia TIDAK dapat dinyalakan lewat parameter kueri.** Penanda yang dapat dikirim klien berarti
+   siapa pun yang punya sesi dapat meminta antrean seluruh perusahaan.
+
+Ditambah satu hal yang bukan penjagaan teknis melainkan kejujuran layar: respons membawa
+`penyaring_pemilik_aktif`, dan layar menampilkan **"Daftar ini BUKAN inbox Anda"** di paling atas
+saat ia mati.
+
+### Kenapa pemberitahuan di layar itu bagian yang terpenting
+
+Yang berubah ketika penyaringnya mati bukan sekadar isi tabel, melainkan **arti seluruh layar**:
+yang tergambar bukan lagi pekerjaan pengguna. Daftar pekerjaan orang lain yang tampak seperti daftar
+pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan pada layar yang
+menyetujui uang, itu kelas kesalahan yang paling mahal.
+
+Uji `tidak muncul ketika penyaringnya aktif` menjaga sisi sebaliknya: pemberitahuan yang muncul juga
+pada keadaan normal akan diabaikan orang, dan pemberitahuan yang diabaikan sama saja dengan tidak
+ada.
+
+### Konsekuensi yang diterima
+
+1. **Selama menyala, layar memperlihatkan nama tertanggung dan nomor polis milik pekerjaan orang
+   lain.** Itulah sebabnya ia dikunci ke `development`, tempat basis datanya adalah salinan
+   pengembangan.
+2. **Ia harus dimatikan begitu pemetaan `OPERATOR_ID` tersedia.** Selama ia menyala, layar ini tidak
+   dapat dipakai menguji bahwa penyaring pemiliknya bekerja — dan penyaring itulah yang menjaga
+   pekerjaan seseorang tetap miliknya.
+
+### Pertanyaan terbuka
+
+**Pemetaan identitas HCC/HCQ ke `OPERATOR_ID` masih belum ada** (`ADR-0024`). Isian ini menunda
+akibatnya, tidak menyelesaikannya. Selama ia belum ada, tidak seorang pun dapat memakai Inbox Komite
+sebagai inbox — hanya sebagai daftar.

@@ -4991,6 +4991,19 @@ export type KomiteInboxListResponse = {
    * penting daripada kerapian tampilan.
    */
   jejak_keputusan_tersedia: boolean
+  /**
+   * Apakah daftar di atas benar-benar milik `operator`.
+   *
+   * `false` berarti penyaring pemilik sedang **dimatikan** — daftarnya adalah SELURUH
+   * antrean komite, termasuk pekerjaan orang lain beserta nama tertanggung dan nomor
+   * polisnya. Keadaan itu hanya mungkin pada `APP_ENV=development`; konfigurasi server
+   * menolak menyalakannya di luar sana.
+   *
+   * Layar WAJIB menyatakannya. Daftar pekerjaan orang lain yang tampak seperti daftar
+   * pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan pada
+   * layar yang menyetujui uang, itu kelas kesalahan yang paling mahal.
+   */
+  penyaring_pemilik_aktif: boolean
 }
 
 export type KomiteCaseResponse = {

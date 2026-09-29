@@ -155,6 +155,34 @@ type Config struct {
 	// pelakunya adalah hal terakhir yang boleh terjadi di luar lingkungan pengembangan.
 	DevelopmentReinsurerPartner string
 
+	// KomiteTanpaPenyaringOperator mematikan penyaring pemilik pada layar Inbox Komite.
+	//
+	// # Kenapa isian ini ada
+	//
+	// Inbox Komite menyaring `PXASSIGNEDOPERATORID` terhadap login pemanggil, dan
+	// penyaring itu BENAR — inbox adalah daftar pekerjaan seseorang. Tetapi pemetaan
+	// identitas HCC/HCQ ke `OPERATOR_ID` belum ada (`ADR-0024`), sehingga login pengembang
+	// tidak cocok dengan satu pun operator di data warisan dan layarnya kosong untuk semua
+	// orang — tanpa satu pun galat yang menjelaskannya.
+	//
+	// Diminta Work Owner 2026-09-29 supaya isi Inbox Outstanding dapat dilihat lebih dulu.
+	//
+	// # Apa yang ia lakukan, dinyatakan terang
+	//
+	// Ia TIDAK meminjam identitas orang lain seperti `DevelopmentReinsurerPartner`. Ia
+	// mematikan penyaringnya seluruhnya: daftarnya menjadi SELURUH antrean komite
+	// perusahaan, beserta nama tertanggung dan nomor polis milik pekerjaan orang lain.
+	//
+	// Karena itu ia lebih keras dijaga, bukan lebih longgar:
+	//
+	//   - MENOLAK berjalan di luar `APP_ENV=development`.
+	//   - Respons daftar membawa penandanya, dan layar WAJIB menyatakannya.
+	//   - Di lapisan domain ia tetap harus diminta lewat `InboxFilter.AllOperators`;
+	//     operator yang kebetulan kosong tidak pernah berarti "semua".
+	//
+	// Kosong atau `false` berarti penyaring pemilik berlaku seperti biasa.
+	KomiteTanpaPenyaringOperator bool
+
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
 	Portal map[string]Database
@@ -462,6 +490,24 @@ func Load() (Config, error) {
 			devReinsurerLogin, storage, adapter))
 	}
 
+	// Penyaring pemilik Inbox Komite. Namanya berbahasa Indonesia karena ia variabel
+	// lingkungan — pengecualian `D-80`, sama dengan REAS_LOGIN_PENGEMBANGAN di atas.
+	komiteTanpaPenyaring := isTrue(get("KOMITE_TANPA_PENYARING_OPERATOR", ""))
+
+	// Penjagaannya SATU baris, dan sengaja tidak punya pengecualian.
+	//
+	// Isian ini mematikan penyaring pemilik pada sebuah daftar pekerjaan pribadi. Di luar
+	// pengembangan, akibatnya adalah setiap orang yang punya sesi melihat antrean komite
+	// SELURUH perusahaan beserta nama tertanggung dan nomor polisnya. Tidak ada keadaan
+	// yang membuat itu benar di staging maupun produksi.
+	if komiteTanpaPenyaring && env != Development {
+		issues = append(issues, fmt.Errorf(
+			"KOMITE_TANPA_PENYARING_OPERATOR menyala pada APP_ENV=%q; ia hanya berlaku "+
+				"pada development karena mematikan penyaring pemilik Inbox Komite — "+
+				"daftarnya menjadi antrean komite seluruh perusahaan. Kosongkan isian itu",
+			env))
+	}
+
 	primaryPortal := strings.ToUpper(strings.TrimSpace(get("PORTAL_UTAMA", defaultPrimaryPortal)))
 	portal, portalErrs := loadPortals()
 	issues = append(issues, portalErrs...)
@@ -478,7 +524,9 @@ func Load() (Config, error) {
 		DevelopmentReinsurerLogin:   devReinsurerLogin,
 		DevelopmentReinsurerPartner: devReinsurerPartner,
 
-		Session:         Session{Lifetime: masaBerlaku},
+		KomiteTanpaPenyaringOperator: komiteTanpaPenyaring,
+
+		Session: Session{Lifetime: masaBerlaku},
 		HCQ: HCQ{
 			User:     strings.TrimSpace(os.Getenv("HCQ_LOGIN_USER")),
 			Password: os.Getenv("HCQ_LOGIN_PASSWORD"),
@@ -779,5 +827,24 @@ func defaultStorage(l Environment) string {
 		return StorageOracle
 	default:
 		return StorageMemory
+	}
+}
+
+// isTrue menafsirkan sebuah isian lingkungan sebagai penanda menyala.
+//
+// # Kenapa hanya nilai yang disebut, bukan "apa pun selain kosong"
+//
+// Isian yang memakainya mematikan penjagaan. "Apa pun selain kosong" akan membuat
+// `KOMITE_TANPA_PENYARING_OPERATOR=false` — bentuk yang paling wajar ditulis orang untuk
+// MEMATIKANNYA — justru menyalakannya.
+//
+// Nilai yang tidak dikenali dianggap PADAM. Kegagalan yang aman pada penanda seperti ini
+// adalah tetap menjaga, bukan terlanjur membuka.
+func isTrue(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "ya", "yes", "on":
+		return true
+	default:
+		return false
 	}
 }

@@ -187,7 +187,7 @@ func TestKueriDaftarInboxSelaluMenyaringPemilik(t *testing.T) {
 	for _, nama := range daftar {
 		t.Run(nama, func(t *testing.T) {
 			rapat := bersihkanSpasi(query(nama))
-			require.Containsf(t, rapat, "w.PXASSIGNEDOPERATORID = :1",
+			require.Containsf(t, rapat, "(:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)",
 				"kueri %q tidak menyaring pemilik", nama)
 
 			// INNER, bukan LEFT. `InboxRegisterKomite_RD` memakai INNER JOIN ke
@@ -287,7 +287,7 @@ func TestKueriDaftarHanyaMenyentuhTigaTabelSumber(t *testing.T) {
 func TestKueriDaftarMenyaringTahunTerawal(t *testing.T) {
 	for _, nama := range []string{"inbox_list", "inbox_count", "inbox_summary"} {
 		t.Run(nama, func(t *testing.T) {
-			require.Containsf(t, bersihkanSpasi(query(nama)), "a.PXCREATEDATETIME >= :2",
+			require.Containsf(t, bersihkanSpasi(query(nama)), "a.PXCREATEDATETIME >= :3",
 				"kueri %q tidak menyaring tahun terawal (penyaring F1 pada RD)", nama)
 		})
 	}
@@ -456,5 +456,43 @@ func TestPenafsiranNilaiKolom(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, money.FromRupiah(50_000_001), hasil)
 		}
+	})
+}
+
+// Penyaring pemilik hanya boleh mati bila DIMINTA.
+//
+// # Kenapa uji ini ada
+//
+// `KOMITE_TANPA_PENYARING_OPERATOR` mematikan penyaring pemilik pada sebuah daftar
+// pekerjaan pribadi. Yang menjaganya tetap aman bukan isian itu sendiri, melainkan bentuk
+// argumennya: penyaringnya mati HANYA ketika `AllOperators` bernilai benar.
+//
+// Kegagalan yang dijaga di sini tidak menimbulkan galat apa pun — ia hanya menampilkan
+// antrean komite seluruh perusahaan kepada seseorang yang mengira sedang melihat
+// pekerjaannya sendiri.
+func TestPenyaringPemilikHanyaMatiBilaDiminta(t *testing.T) {
+	dasar := komite.InboxFilter{Operator: "ELLENSUPRIYATI"}.Normalize()
+
+	t.Run("operator terisi: penyaring aktif", func(t *testing.T) {
+		require.Equal(t, "ELLENSUPRIYATI", filterArgs(dasar)[0])
+		require.Equal(t, "ELLENSUPRIYATI", summaryArgs(dasar)[0])
+	})
+
+	// Operator kosong adalah KEGAGALAN pembacaan identitas, bukan permintaan "semua".
+	// Argumennya tetap bukan NULL, dan repo menjawabnya nol baris tanpa menyentuh basis
+	// data — lihat ListCases.
+	t.Run("operator kosong: TIDAK berubah menjadi semua", func(t *testing.T) {
+		kosong := komite.InboxFilter{}.Normalize()
+		require.NotNil(t, filterArgs(kosong)[0],
+			"operator kosong tidak boleh dikirim sebagai NULL")
+		require.Equal(t, "", filterArgs(kosong)[0])
+	})
+
+	t.Run("diminta: penyaring mati", func(t *testing.T) {
+		semua := komite.InboxFilter{Operator: "ELLENSUPRIYATI", AllOperators: true}.Normalize()
+		require.Nil(t, filterArgs(semua)[0], "penanda penyaring seharusnya NULL")
+		require.Nil(t, filterArgs(semua)[1], "nilai pembandingnya seharusnya NULL")
+		require.Nil(t, summaryArgs(semua)[0])
+		require.Nil(t, summaryArgs(semua)[1])
 	})
 }

@@ -65,9 +65,10 @@ type InboxService interface {
 
 // InboxHandler melayani layar Inbox Komite.
 type InboxHandler struct {
-	service InboxService
-	caller  func(context.Context) (InboxCaller, bool)
-	logger  *slog.Logger
+	service      InboxService
+	caller       func(context.Context) (InboxCaller, bool)
+	logger       *slog.Logger
+	allOperators bool
 
 	writeResponse JSONWriter
 	writeError    ErrorWriter
@@ -82,6 +83,18 @@ type InboxHandlerOptions struct {
 	// kedua modul tetap tidak saling mengimpor.
 	Caller func(context.Context) (InboxCaller, bool)
 
+	// AllOperators mematikan penyaring pemilik pada SELURUH permintaan daftar.
+	//
+	// Ia dipasang saat perakitan dari `KOMITE_TANPA_PENYARING_OPERATOR`, dan konfigurasi
+	// MENOLAK menyalakannya di luar `APP_ENV=development`. Handler tidak membaca
+	// lingkungan sendiri: yang menentukan lingkungan adalah satu tempat, dan modul ini
+	// bukan tempat itu.
+	//
+	// Ia TIDAK dapat dinyalakan lewat parameter kueri. Penanda yang dapat dikirim klien
+	// berarti siapa pun yang punya sesi dapat meminta antrean komite seluruh perusahaan —
+	// tepat yang penyaring ini ada untuk mencegahnya.
+	AllOperators bool
+
 	Logger              *slog.Logger
 	WriteResponse       JSONWriter
 	FallbackErrorWriter ErrorWriter
@@ -93,6 +106,7 @@ func NewInboxHandler(o InboxHandlerOptions) *InboxHandler {
 		service:       o.Service,
 		caller:        o.Caller,
 		logger:        o.Logger,
+		allOperators:  o.AllOperators,
 		writeResponse: o.WriteResponse,
 		writeError:    WriteError(o.Logger, o.WriteResponse, o.FallbackErrorWriter),
 	}
@@ -112,7 +126,7 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, err := inboxFilterFrom(r, caller.Login)
+	filter, err := inboxFilterFrom(r, caller.Login, h.allOperators)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
@@ -144,6 +158,7 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 		Operator:           normalized.Operator,
 		Now:                result.Now.UTC().Format(time.RFC3339),
 		DecisionsAvailable: result.DecisionsAvailable,
+		OwnerFilterActive:  !normalized.AllOperators,
 	})
 }
 
@@ -229,15 +244,24 @@ func (h *InboxHandler) callerFrom(r *http.Request) (InboxCaller, bool) {
 // Tanggal yang tidak dapat diurai DITOLAK sebagai validasi, bukan diabaikan. Penyaring
 // yang gagal terurai lalu diam-diam dianggap kosong akan menampilkan SELURUH riwayat
 // kepada seseorang yang mengira ia sedang melihat satu minggu.
-func inboxFilterFrom(r *http.Request, operator string) (komite.InboxFilter, error) {
+func inboxFilterFrom(
+	r *http.Request,
+	operator string,
+	allOperators bool,
+) (komite.InboxFilter, error) {
 	params := r.URL.Query()
 
 	filter := komite.InboxFilter{
 		Operator: operator,
-		Kind:     komite.InboxKind(strings.TrimSpace(params.Get("kotak"))),
-		Search:   params.Get("cari"),
-		Offset:   atoiOrZero(params.Get("lewati")),
-		Limit:    atoiOrZero(params.Get("batas")),
+
+		// Datang dari perakitan, BUKAN dari parameter kueri. Lihat
+		// InboxHandlerOptions.AllOperators.
+		AllOperators: allOperators,
+
+		Kind:   komite.InboxKind(strings.TrimSpace(params.Get("kotak"))),
+		Search: params.Get("cari"),
+		Offset: atoiOrZero(params.Get("lewati")),
+		Limit:  atoiOrZero(params.Get("batas")),
 	}
 
 	var violations []komite.Violation

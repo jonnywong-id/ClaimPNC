@@ -105,6 +105,7 @@ function listBody(rows: KomiteCase[] = SAMPLES, extra: Record<string, unknown> =
     operator: 'ELLENSUPRIYATI',
     sekarang: '2026-09-20T02:00:00Z',
     jejak_keputusan_tersedia: true,
+    penyaring_pemilik_aktif: true,
     ...extra,
   }
 }
@@ -508,5 +509,49 @@ describe('jejak keputusan belum siap', () => {
     expect(
       screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0],
     ).toBeEnabled()
+  })
+})
+
+/**
+ * Penyaring pemilik dimatikan — `KOMITE_TANPA_PENYARING_OPERATOR`.
+ *
+ * Diminta Work Owner 2026-09-29 supaya isi Inbox Outstanding terlihat selama pemetaan
+ * identitas HCC/HCQ ke `OPERATOR_ID` belum ada. Dalam keadaan itu layar berhenti menjadi
+ * inbox seseorang, dan itu WAJIB terbaca sebelum baris pertama.
+ */
+describe('penyaring pemilik dimatikan', () => {
+  function stubTanpaPenyaring() {
+    stubFetch((url) => {
+      if (url.startsWith(PATH)) {
+        return jsonResponse(200, listBody(SAMPLES, { penyaring_pemilik_aktif: false }))
+      }
+      return jsonResponse(200, listBody())
+    })
+  }
+
+  it('menyatakan bahwa daftar ini bukan inbox pemanggil', async () => {
+    stubTanpaPenyaring()
+    renderPage()
+
+    expect(await screen.findByText('Daftar ini BUKAN inbox Anda')).toBeInTheDocument()
+    expect(screen.getByText(/seluruh antrean komite/i)).toBeInTheDocument()
+  })
+
+  it('tetap menampilkan datanya', async () => {
+    stubTanpaPenyaring()
+    renderPage()
+
+    expect(await screen.findByText('PT Harapan Sentosa')).toBeInTheDocument()
+  })
+
+  // Diam adalah kegagalan yang paling mungkin di sini: pemberitahuan yang muncul pada
+  // keadaan normal akan diabaikan orang, dan pemberitahuan yang diabaikan sama saja
+  // dengan tidak ada.
+  it('tidak muncul ketika penyaringnya aktif', async () => {
+    stubDefaultFetch()
+    renderPage()
+
+    await screen.findByText('PT Harapan Sentosa')
+    expect(screen.queryByText('Daftar ini BUKAN inbox Anda')).not.toBeInTheDocument()
   })
 })
