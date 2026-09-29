@@ -227,6 +227,7 @@ import (
 	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
 	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
 	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
+	"claim-pnc/internal/registrasi/repo/dokumenlink"
 
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
@@ -3627,14 +3628,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
 	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
 	// aplikasi dijalankan.
+	//
+	// Perakitannya dijalankan di bawah, SESUDAH layanan dokumen penunjang terbentuk: tombol
+	// Unggah Dokumen klaim mengunggah lewat layanan itu.
 	var registrationService *registrasiusecase.Service
-	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
-		if err != nil {
-			store.close()
-			return assembly{}, err
-		}
-	}
 
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
@@ -4224,6 +4221,14 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	if err != nil {
 		store.close()
 		return assembly{}, err
+	}
+
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService))
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
 	}
 
 	return assembly{

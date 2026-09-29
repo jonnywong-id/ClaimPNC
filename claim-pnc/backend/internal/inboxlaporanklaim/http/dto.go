@@ -152,6 +152,11 @@ type SingleResponse struct {
 	// ke layar berarti satu aturan hidup di dua tempat.
 	DapatDisunting bool `json:"dapat_disunting"`
 
+	// SudahDiregistrasi: berkas ini sudah menjadi klaim (nomor klaimnya di
+	// `laporan.nomor_klaim`). Layar memakainya untuk menyembunyikan Simpan dan Register
+	// Klaim serta menjelaskan kenapa isiannya terkunci.
+	SudahDiregistrasi bool `json:"sudah_diregistrasi"`
+
 	Portal string `json:"portal"`
 }
 

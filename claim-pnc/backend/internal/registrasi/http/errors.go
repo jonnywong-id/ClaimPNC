@@ -27,6 +27,8 @@ const (
 	CodeAccountNotFound      = "rekening_tidak_ditemukan"
 	CodeCommitteeNotFound    = "komite_tidak_ditemukan"
 	CodeNotCommitteeTurn     = "bukan_giliran_komite"
+	CodeReportRegistered     = "laporan_sudah_diregistrasi"
+	CodeDocumentUpload       = "unggah_dokumen_gagal"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
 )
@@ -34,8 +36,42 @@ const (
 // mapError memilih status HTTP dan badan respons untuk sebuah galat.
 func mapError(err error) (int, ErrorResponse) {
 	var validation *registrasi.ValidationError
+	var registered *registrasi.ReportAlreadyRegisteredError
+	var upload *registrasi.DocumentUploadError
 
 	switch {
+	case errors.As(err, &upload):
+		status := map[registrasi.UploadFailure]int{
+			registrasi.UploadInvalid:       http.StatusBadRequest,
+			registrasi.UploadTooLarge:      http.StatusRequestEntityTooLarge,
+			registrasi.UploadUnavailable:   http.StatusBadGateway,
+			registrasi.UploadHalfDone:      http.StatusInternalServerError,
+			registrasi.UploadMisconfigured: http.StatusInternalServerError,
+		}[upload.Kind]
+		if status == 0 {
+			status = http.StatusInternalServerError
+		}
+		return status, ErrorResponse{Code: CodeDocumentUpload, Message: upload.Message}
+
+	case errors.Is(err, registrasi.ErrDocumentTypeUnknown):
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeDocumentUpload,
+			Message: "This document type is not in the checklist of this claim's line of business.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentFileEmpty):
+		return http.StatusBadRequest, ErrorResponse{
+			Code:    CodeDocumentUpload,
+			Message: "Berkas kosong. Pilih berkas yang berisi lalu unggah ulang.",
+		}
+
+	case errors.As(err, &registered):
+		// 409: berkasnya sudah menjadi klaim; menekan Register Klaim lagi tidak sah.
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeReportRegistered,
+			Message: "This Receive Document is already registered as claim " + registered.ClaimNumber + ".",
+		}
+
 	case errors.As(err, &validation):
 		// 422, bukan 400: badan permintaan terbaca dengan benar dan bentuknya sah —
 		// yang ditolak adalah ISINYA menurut aturan bisnis. Membedakan keduanya

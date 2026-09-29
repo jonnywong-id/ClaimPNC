@@ -30098,3 +30098,155 @@ T_CLAIM_ADJUSTMENT PNCN.26.0014. Uji usecase baru 7, uji layar baru 2; uji regis
 - Email ke komite dan PIC, riwayat klaim, dan progres klaim otomatis (`InsertHistoryClaimPNC`,
   `PNCInsertProgressClaim`) — hanya jejak audit yang ditulis. Nomor akseptasi (B-10).
 - Nomor KMTN diambil dari MAX + 1: dua transfer serentak dapat memperoleh nomor yang sama.
+
+## 84. Transfer Komite gagal "Error Case Komite tidak kebuat" — master hidup dan grup A/B; TC_PNC_KOMITE (2026-09-29)
+
+**Gejala.** Transfer Komite PNCN.26.0014 (Marine Cargo, Interim, nilai pembanding Rp 2.500.000
+— gross, karena Sinar Mas leader) ditolak "Error Case Komite tidak kebuat. Silakan transfer ulang".
+
+**Sebab.** Penjenjangan mengembalikan nol penyetuju, juga tanpa pengecualian pengaju. EMAILKOMITE
+hidup ASM berbeda dari `Database/emailkomite.csv`: pada NONMBU pita 1, baris ber-batas-bawah 0
+(ID 5) STS_AKTIF 0, sehingga jenjang aktif pertama baru mulai Rp 5.000.000 (ID 1). Klaim di bawah
+itu tidak pernah punya penyetuju di tangga NONMBU.
+
+**Yang Pega lakukan.** Seluruh 34 adjustment Non-MBU ≤ Rp 50 jt yang diputus sejak Juni 2025
+diputus SATU anggota — 25 di 0–5 jt dan 9 di 5–50 jt, tanpa sekali pun ikut anggota tangga NONMBU
+— yaitu baris NONMBUAB (ID 14: TYPE_KOMITE 0, Rp 0–50 jt, aktif). Ini `SetEmailKomite` step 4
+"kalo < 50jt sesuaikan grup A, B, C": nilai ≤ Rp 50 jt diarahkan ke lini NONMBUAB (NONMBUC untuk
+grup C). Aturan berbasis nilai dan grup, bukan nama orang (`D-52` hanya mencabut step 6–11).
+
+**Perbaikan.** `CommitteeLine(polis, nilai)`: Non-MBU ≤ Rp 50.000.000 → NONMBUAB. Grup C tidak
+dibedakan: registrasi tidak menyimpan grup PIC Teknik, dan master hidup memberi penyetuju yang
+sama (ID 14 dan ID 63). Pesan galat kini menyebut lini, nilai, dan pengaju yang dikecualikan.
+Hasil di Oracle: Rp 2,5 jt / 4 jt / 50 jt → NONMBUAB 1 jenjang; Rp 60 jt → NONMBU pita 1,
+1 jenjang; Rp 150 jt → pita 2, 1 jenjang; Rp 750 jt → pita 2, 2 jenjang.
+
+**TC_PNC_KOMITE.** Kepala kasus komite — pengganti case `Work-Komite` Pega (KomiteLoop,
+KomiteCount, Type, TransferType, lini, pita, nilai pembanding, AcceptStatus, pyStatusWork, alamat
+adjustment, pengaju). Anggota tetap di T_CLAIM_KOMITE_LIST (peta tc_pnc_object_tree: "lengkap,
+tidak diubah"); TC_PNC_* hanya untuk data yang belum punya tabel (Work Owner, 2026-09-26).
+Skrip: `docs/ddl/tc_pnc_komite.sql`. **Dijalankan di Oracle ASM 2026-09-29 atas izin Work Owner**:
+26 kolom, PK KOMITE_ID, indeks (CLAIMID, OBJECTID, OBJECTCOVERAGEID, ADJUSTMENTID). Nomor KMTN
+kini diambil dari tabel ini; PK menolak nomor ganda dari dua transfer serentak.
+
+**Diverifikasi ujung ke ujung di Oracle ASM** — usecase asli, satu transaksi di-rollback:
+transfer PNCN.26.0014 oleh SURYAFEBRI → KMTN-00001 NONMBUAB 1 jenjang ELLENSUPRIYATI, Status
+Klaim 1149, kepala terbaca (obj 1 cov 1 adj 1, New); tertunda di ELLENSUPRIYATI; Setuju →
+Resolved-Completed, STATUSAKSEPTASI 1. Uji registrasi, cmd, komite, dan `go vet` lulus.
+
+## 85. Penomoran RCVN, PNCN, dan KMTN tanpa nol di depan (2026-09-29)
+
+**Pertanyaan Work Owner:** sequence apa yang dipakai? **Jawabannya: tidak ada sequence.** Diperiksa
+di ALL_SEQUENCES Oracle ASM: `POOLDATA.CLAIM_NO_NONPEGA_SEQ` (D-71) tidak pernah dibuat, dan tidak
+ada sequence RCV/KOMITE/KMT (satu-satunya yang mirip, `JNUSERKOMITE_SEQ`, tidak dipakai modul ini).
+Ketiga nomor diturunkan dari MAX+1 atas isi tabel, per tahun:
+
+| Nomor | Kueri | Tabel |
+|---|---|---|
+| PNCN | `nomor_terakhir_tahun` (registrasi/repo/sqlstore/support.sql) | T_CLAIM_PNC.CLAIMNO |
+| RCVN | `claim_report_next_sequence` (inboxlaporanklaim.sql) | T_CLAIM_RECIVEDCLAIM.CLAIMID |
+| KMTN | `komite_nomor_berikut` (registrasi/repo/sqlstore/committee.sql) | TC_PNC_KOMITE.KOMITE_ID |
+
+**Perubahan:** nomor urut tidak lagi dipadatkan nol — `RCVN.26.1`, `RCVN.26.2`; sama untuk PNCN
+dan KMTN. KMTN kini ikut bentuk `KMTN.YY.n` per tahun (sebelumnya `KMTN-00001` tanpa tahun).
+Formatter: `support.go` (sqlstore dan memory), `inboxlaporanklaim/number.go`,
+`registrasi.FormatCommitteeCaseID`. `CommitteeStore.NextCaseID` kini menerima waktu untuk tahun WIB.
+
+Kueri tetap membaca nomor urut sebagai ANGKA (`TO_NUMBER(SUBSTR(...,9))`), sehingga nomor lama
+berlebar empat digit tetap terhitung. Diperiksa di Oracle ASM (transaksi di-rollback): berikutnya
+**PNCN.26.15** (terakhir PNCN.26.0014), **RCVN.26.32** (terakhir RCVN.26.0031), **KMTN.26.1**
+(satu baris lama KMTN-00001 tidak ikut deret tahunan, tetap sah dan tetap muncul di inbox komite).
+
+**Batas KMTN:** KOMITE_ID VARCHAR2(10) di T_CLAIM_KOMITE_LIST dan TC_PNC_KOMITE. `KMTN.26.99` tepat
+sepuluh karakter; nomor ke-100 dalam setahun DITOLAK dengan galat (bukan dipotong). Butuh
+pelebaran kolom (D-63) sebelum itu terjadi.
+
+**Akibat yang diterima:** urutan teks tidak lagi sama dengan urutan terbit (`.10` sebelum `.9`,
+D-71 butir 2). Layar yang `ORDER BY CLAIMNO` akan mengurutkan secara teks — sama dengan perilaku
+Pega untuk `PNC-xxxx`. Nomor OPN di modul Input Req Protection tidak diubah (tidak diminta).
+
+Uji registrasi, inboxlaporanklaim, komite, cmd, dan `go vet` lulus.
+
+## 86. Input Receive Document terkunci setelah RCVN menjadi PNCN (2026-09-29)
+
+**Permintaan Work Owner:** isian RCVN yang sudah terbuat PNCN-nya tidak dapat diubah lagi, dan
+tombol Simpan serta Register Klaim tidak dimunculkan.
+
+**Temuan:** server sebelumnya TIDAK menolak Register Klaim kedua atas RCVN yang sama — menekannya
+lagi menerbitkan PNCN baru dan menimpa NOKLAIM berkasnya. Karena itu penguncian dibuat di server,
+bukan hanya di layar.
+
+- `inboxlaporanklaim.ClaimReport.Editable()` = milik aplikasi ini DAN NOKLAIM kosong. Respons
+  berkas membawa `dapat_disunting` dari aturan itu dan penanda baru `sudah_diregistrasi`.
+- `Service.Save` menolak berkas bernomor klaim dengan `ErrAlreadyRegistered` (409).
+- Registrasi: `laporan_isi` kini membaca NOKLAIM (`ClaimReportSnapshot.ClaimNumber`);
+  `Service.Start` menolak RCVID yang sudah bernomor dengan `ReportAlreadyRegisteredError`
+  (409, kode `laporan_sudah_diregistrasi`, pesan menyebut PNCN-nya).
+- Layar `ClaimReportFormPage`: bila `sudah_diregistrasi`, seluruh isian terkunci, Simpan dan
+  Register Klaim tidak digambar, dan muncul keterangan nomor klaimnya. "Kembali ke daftar" tetap ada.
+  Teks keterangan berbahasa Inggris karena tidak ada di layar Pega (D-80).
+
+Uji: registrasi (Register Klaim kedua ditolak), inboxlaporanklaim (Editable), dan layar
+(berkas terkunci tanpa kedua tombol) lulus; `go vet` dan `tsc` bersih.
+
+## 87. Tombol Unggah Dokumen pada tab checklist klaim (2026-09-29)
+
+**Permintaan Work Owner:** proses "Unggah Dokumen" pada tab Unggah Dokumen dapat dicoba.
+
+**Sumber Pega.** Section unggahnya (`UploadDocument`) tidak ada di export; rantai penyimpanannya ada:
+`InsertDokumenPNC` (layanan penyimpanan internal → IMAGEID, GENERAL.T_STORAGE_IMAGE) lalu
+`PNCSaveAttachmentToDB` → `SaveAttachmentToDB_Sql` → `SET_ATTACHMENT_64BIT` → satu baris
+POOLDATA.DATA_ATTACHFILE. Baris itulah yang dihitung "Total Sudah Diunggah" (SUB_CATEGORY =
+DOC_TYPE_DT_ID, hanya baris ber-IMAGEID). Terverifikasi pada baris Pega 2026-09-28: CATEGORY =
+DOCUMENT_TYPE_ID, ATTACHMIMETYPE = ekstensi (`pdf`), IDPEGA = `ASM-FW-GCNMFW-WORK <nomor klaim>`,
+DATAID = `yy` || LPAD(ATTACHFILE_SEQ, 10, '0').
+
+**Yang dibangun.**
+- Endpoint `POST /api/registrasi/klaim/{id}/dokumen` (multipart: `berkas`, `jenis_dokumen`, `catatan`),
+  menjawab checklist yang sudah diperbarui.
+- `usecase.UploadDocument`: jenis dokumen divalidasi terhadap checklist lini bisnis klaim (kategori
+  dan sub-kategori diambil dari master, bukan dari permintaan) → unggah lewat modul dokumen penunjang
+  (seam `registrasi.DocumentUploader`, adapter `repo/dokumenlink` — konversi AVIF, izin akses,
+  layanan penyimpanan, T_STORAGE_IMAGE) → sisip DATA_ATTACHFILE + jejak audit `DOKUMEN_DIUNGGAH`
+  dalam satu transaksi. Gagal menyisip setelah berkas terkirim dilaporkan sebagai "JANGAN unggah ulang".
+- `sqlstore.AttachmentStore` (`attachment.sql`, `lampiran_sisip`). Procedure tidak dipanggil (D-02);
+  C_COUNTER_ATTACHMENT (perantara pembentuk DATAID) tidak dibawa.
+- Layar: tombol Unggah Dokumen per baris membuka panel berkas + catatan; berlaku di tab Unggah
+  Dokumen layar Input Estimasi dan InputSurveyor.
+- Perakitan registrasi di cmd dipindah ke sesudah layanan dokumen penunjang terbentuk.
+
+**Pengecualian dialek.** DATAID memakai `POOLDATA.ATTACHFILE_SEQ.NEXTVAL` langsung di INSERT.
+Tabel ini masih ditulis Pega setiap hari; MAX+1 akan membuat penyisipan Pega berikutnya menabrak
+PK DATAID. Ini pengecualian dialek kedua setelah generator nomor klaim (ADR-0005).
+
+**Diverifikasi di Oracle ASM** (transaksi di-rollback): sisip menghasilkan DATAID 260001895402 —
+melanjutkan deret Pega (terakhir 260001895401) — dengan IDPEGA, CATEGORY 10064, SUB_CATEGORY 14963.
+Satu nilai sequence terpakai oleh uji itu (deret berlubang satu, tidak berbahaya).
+
+Uji: usecase (checklist bertambah; jenis di luar checklist ditolak tanpa mengirim berkas),
+layar (multipart terkirim dengan jenis dan catatan), cmd, dan `go vet`/`tsc` lulus.
+
+## 88. Estimasi Pembayaran di layar InputSurveyor dapat ditambah dan disimpan (2026-09-29)
+
+**Permintaan Work Owner:** sub-tab Estimasi Pembayaran pada layar InputSurveyor seperti
+`InputEstimasiDetail_sect.xml` — data dapat dilihat dan estimasi dapat ditambah.
+
+**Sumber Pega.** `Section/ClaimSurvey_sect.xml` (layar InputSurveyor) menanam
+`InputEstimasiDetail_sect` — section yang sama dengan tab Estimasi Pembayaran layar Input
+Estimasi. Isinya: grid objek (Nama Objek, Lokasi Object, Currency, Nilai Klaim `.NilaiOSKalim`,
+Nilai Adjuster `.NilaiOSAdjuster`, View `InformasiOsDanAkseptasiKlaim`), grid item (`ObjectItem`)
+dan estimasi (`Estimasi`) beserta Tambah, serta aksi lokal `SetOpenTSI` (Buka Proteksi TSI).
+
+**Yang dibangun.**
+- Frontend: editor estimasi di `EstimateForm.tsx` dipecah menjadi `useEstimateEditor` +
+  `EstimatePaymentTable`, dipakai layar Input Estimasi dan sub-tab Estimasi Pembayaran InputSurveyor
+  (sebelumnya tabel baca-saja). Di InputSurveyor ada tombol Save; Kirim PIC Teknik tidak ada.
+  Isian terkunci bila tugas bukan milik pemanggil.
+- Backend: `loadContext.alsoAction` — Save estimasi, Download Claim Face Sheet, dan Print PLA
+  diterima di tahap Input Estimasi ATAU InputSurveyor. `CompleteEstimate` (Kirim PIC Teknik/Back)
+  tetap hanya di Input Estimasi.
+
+**Belum dibangun:** View (Informasi OS & Akseptasi) dan Buka Proteksi TSI tetap tampil mati.
+
+Uji: usecase (simpan di Choose Surveyor tidak memindahkan tahap; CompleteEstimate ditolak di sana),
+layar (Save di InputSurveyor mengirim ke /estimasi/simpan), seluruh uji registrasi, `go vet`, `tsc` lulus.

@@ -61,6 +61,8 @@ type Service struct {
 	accounts    registrasi.AccountDirectory
 	tiering     registrasi.CommitteeTiering
 	committees  registrasi.CommitteeStore
+	documents   registrasi.DocumentUploader
+	attachments registrasi.AttachmentStore
 	id          registrasi.IDGenerator
 	unit        registrasi.UnitOfWork
 	clock       clock.Clock
@@ -119,6 +121,11 @@ type Options struct {
 	// kasus komite di POOLDATA.T_CLAIM_KOMITE_LIST.
 	CommitteeTiering registrasi.CommitteeTiering
 	Committees       registrasi.CommitteeStore
+
+	// Documents mengunggah berkas ke layanan penyimpanan (modul dokumen penunjang);
+	// Attachments mencatat barisnya di POOLDATA.DATA_ATTACHFILE — tombol Unggah Dokumen.
+	Documents   registrasi.DocumentUploader
+	Attachments registrasi.AttachmentStore
 
 	IDGenerator registrasi.IDGenerator
 	UnitOfWork  registrasi.UnitOfWork
@@ -179,6 +186,8 @@ func NewService(o Options) (*Service, error) {
 	check("MasterRekening", o.Accounts != nil)
 	check("PenjenjanganKomite", o.CommitteeTiering != nil)
 	check("KasusKomite", o.Committees != nil)
+	check("UnggahDokumen", o.Documents != nil)
+	check("LampiranKlaim", o.Attachments != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -213,6 +222,8 @@ func NewService(o Options) (*Service, error) {
 		accounts:         o.Accounts,
 		tiering:          o.CommitteeTiering,
 		committees:       o.Committees,
+		documents:        o.Documents,
+		attachments:      o.Attachments,
 		id:              o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,
@@ -298,7 +309,7 @@ func (l *Service) loadOpenTask(fctx loadContext) (registrasi.Claim, registrasi.T
 	if fctx.requiredStage != "" && stage.ID != fctx.requiredStage {
 		return registrasi.Claim{}, registrasi.Task{}, registrasi.ErrStageMismatch
 	}
-	if fctx.action != "" && stage.ExitAction != fctx.action {
+	if fctx.action != "" && stage.ExitAction != fctx.action && (fctx.alsoAction == "" || stage.ExitAction != fctx.alsoAction) {
 		return registrasi.Claim{}, registrasi.Task{}, fmt.Errorf("%w: %q pada tahap %q",
 			registrasi.ErrInvalidAction, fctx.action, stage.ID)
 	}
@@ -331,6 +342,12 @@ type loadContext struct {
 	// action menolak tindakan yang tidak menjadi penutup tahap itu. Kosong berarti
 	// action tidak diperiksa.
 	action string
+
+	// alsoAction adalah penutup tahap lain yang juga diterima. Dipakai isian yang tampil di
+	// dua tahap: section InputEstimasiDetail ditanam di Input Estimasi DAN InputSurveyor
+	// (ClaimSurvey_sect), sehingga simpan estimasi, Claim Face Sheet, dan Print PLA berlaku
+	// di keduanya. Menutup tahapnya tetap hanya lewat action.
+	alsoAction string
 }
 
 // ResolveCaller melengkapi pemanggil dengan perannya dari POOLDATA.M_LOGIN_GROUP_PNC.

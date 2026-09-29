@@ -21,15 +21,16 @@ type Tiering struct{ service *komiteusecase.Service }
 // New membentuk Tiering di atas layanan komite.
 func New(service *komiteusecase.Service) Tiering { return Tiering{service: service} }
 
-// Approvers mengembalikan penyetuju berurutan jenjang untuk nilai (dalam sen) pada lini itu.
-func (t Tiering) Approvers(ctx context.Context, line string, value registrasi.Money, applicant string) ([]registrasi.CommitteeApprover, error) {
+// Route mengembalikan pita dan penyetuju berurutan jenjang untuk nilai (dalam sen) pada lini
+// itu.
+func (t Tiering) Route(ctx context.Context, line string, value registrasi.Money, applicant string) (registrasi.CommitteeRoute, error) {
 	result, err := t.service.TieringWith(ctx, money.FromMinorUnits(int64(value)), komite.BusinessLine(line), applicant)
 	if err != nil {
-		return nil, err
+		return registrasi.CommitteeRoute{}, err
 	}
-	out := make([]registrasi.CommitteeApprover, 0, len(result.Approvers))
+	out := registrasi.CommitteeRoute{Band: result.Band, Approvers: make([]registrasi.CommitteeApprover, 0, len(result.Approvers))}
 	for _, a := range result.Approvers {
-		out = append(out, registrasi.CommitteeApprover{
+		out.Approvers = append(out.Approvers, registrasi.CommitteeApprover{
 			OperatorID: strings.TrimSpace(a.OperatorID),
 			Name:       strings.TrimSpace(a.Name),
 		})

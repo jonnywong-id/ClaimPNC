@@ -21701,3 +21701,44 @@ EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
 >>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
+
+## 105. Non-MBU ≤ Rp 50 jt diputus komite grup A/B; kepala kasus komite di TC_PNC_KOMITE (2026-09-29)
+
+Non-MBU sampai Rp 50.000.000 memakai lini EMAILKOMITE NONMBUAB (`SetEmailKomite` step 4),
+dibuktikan dari putusan Pega Juni 2025–September 2026; tanpa itu klaim kecil tidak punya penyetuju
+karena tangga NONMBU aktif baru mulai Rp 5 jt. Grup C (NONMBUC) belum dibedakan. Kepala kasus
+komite disimpan di TC_PNC_KOMITE (baru, dibuat di ASM atas izin Work Owner); anggota tetap di
+T_CLAIM_KOMITE_LIST. Menggantikan sebagian #103: kasus komite kini dua tabel, bukan satu.
+
+## 106. Nomor PNCN, RCVN, dan KMTN tanpa nol di depan, tanpa sequence (2026-09-29)
+
+Work Owner menetapkan nomor urut bertambah tanpa pemadatan: `RCVN.26.1` lalu `RCVN.26.2`, sama
+untuk PNCN dan KMTN. Tidak ada sequence Oracle (CLAIM_NO_NONPEGA_SEQ tidak ada di ASM); ketiganya
+MAX+1 per tahun atas isi tabel, dibaca sebagai angka. KMTN berpindah ke `KMTN.YY.n`; bentuk lama
+`KMTN-00001` tetap dikenali. Menggantikan pemadatan empat digit pada catatan nomor sebelumnya dan
+bentuk `KMTN-` + lima digit pada #105. Batas: KOMITE_ID VARCHAR2(10) → maksimal 99 kasus komite
+per tahun sampai kolom dilebarkan (D-63).
+
+## 107. RCVN yang sudah bernomor klaim terkunci dan tidak dapat diregistrasi ulang (2026-09-29)
+
+Work Owner: isian Input Receive Document terkunci dan tombol Simpan/Register Klaim tidak
+dimunculkan bila RCVN sudah menjadi PNCN. Penanda kuncinya NOKLAIM di T_CLAIM_RECIVEDCLAIM.
+Ditegakkan di server — Simpan (409) dan Register Klaim kedua (409) ditolak — karena sebelumnya
+Register Klaim kedua menerbitkan PNCN baru dan menimpa NOKLAIM. Layar membaca `dapat_disunting`
+dan `sudah_diregistrasi` dari server, tidak menyimpulkannya sendiri.
+
+## 108. Unggah Dokumen klaim menulis DATA_ATTACHFILE dengan DATAID dari ATTACHFILE_SEQ (2026-09-29)
+
+Tombol Unggah Dokumen mengunggah lewat modul dokumen penunjang (layanan penyimpanan internal,
+D-16) lalu menyisipkan satu baris POOLDATA.DATA_ATTACHFILE seperti `PNCSaveAttachmentToDB` — baris
+yang dihitung checklist. DATAID diambil dari POOLDATA.ATTACHFILE_SEQ di dalam INSERT (pengecualian
+dialek kedua setelah nomor klaim) karena Pega masih menulis tabel yang sama; MAX+1 akan membuat
+Pega menabrak PK. Kategori/sub-kategori diambil dari master LST_TYPE_DOC_BUSINESS, bukan dari
+permintaan.
+
+## 109. Isian InputEstimasiDetail berlaku di Input Estimasi dan InputSurveyor (2026-09-29)
+
+ClaimSurvey_sect menanam InputEstimasiDetail_sect, sehingga simpan estimasi, Claim Face Sheet, dan
+Print PLA diterima di kedua tahap (`alsoAction`). Menutup tahap Input Estimasi tetap hanya dari
+layarnya sendiri. Satu editor (`useEstimateEditor`) dipakai kedua layar agar aturannya tidak
+bercabang.

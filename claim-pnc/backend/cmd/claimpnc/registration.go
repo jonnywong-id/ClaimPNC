@@ -47,7 +47,11 @@ import (
 // Owner, dan tiga aturan routing tidak ada di export (`R-04`) sehingga pemilihan petugas
 // direkonstruksi dari kueri beban — bukan dibaca dari rule aslinya. Keduanya diperingatkan
 // saat start supaya tidak dikira sudah lengkap.
-func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.Service, error) {
+func assembleRegistration(
+	db *sql.DB,
+	logger *slog.Logger,
+	documents registrasi.DocumentUploader,
+) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
 
@@ -82,6 +86,9 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.Inbox = registrasisql.NewInboxEntryStore(db)
 		options.Accounts = registrasisql.NewAccountDirectory(db)
 		options.Committees = registrasisql.NewCommitteeStore(db)
+		// Unggah Dokumen: berkas lewat modul dokumen penunjang, baris di DATA_ATTACHFILE.
+		options.Documents = documents
+		options.Attachments = registrasisql.NewAttachmentStore(db)
 
 		// Penjenjangan komite membaca POOLDATA.EMAILKOMITE lewat modul komite, di atas
 		// koneksi yang sama dengan klaimnya.
@@ -120,7 +127,13 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.PolicyItems = registrasimemory.NewPolicyItems(registrasimemory.SamplePolicyItems())
 		options.CurrencyDirectory = registrasimemory.CurrencyDirectory{}
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
-		options.ClaimRecords = registrasimemory.SampleClaimRecords()
+		records := registrasimemory.SampleClaimRecords()
+		options.ClaimRecords = records
+		options.Attachments = records
+		options.Documents = documents
+		if options.Documents == nil {
+			options.Documents = &registrasimemory.DocumentUploader{}
+		}
 		options.FaceSheet = registrasimemory.NewFaceSheet()
 		options.PLA = registrasimemory.NewPLA()
 		options.Groups = registrasimemory.Groups{}

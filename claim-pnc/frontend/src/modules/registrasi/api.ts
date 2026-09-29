@@ -312,6 +312,44 @@ export function useDocuments(claimID: string, enabled = true) {
   return useClaimRecord<DocumentsResponse>(claimID, 'dokumen', enabled)
 }
 
+/** Bahan satu unggahan dari baris checklist. */
+export interface UploadDocumentInput {
+  /** DOC_TYPE_DT_ID baris checklist. */
+  jenisDokumen: string
+  berkas: File
+  catatan?: string
+}
+
+/**
+ * Tombol Unggah Dokumen pada satu baris checklist. Dikirim multipart; jawabannya checklist
+ * yang sudah diperbarui, dan tab Unggah Dokumen dimuat ulang dari server.
+ */
+export function useUploadDocument(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: UploadDocumentInput) => {
+      const form = new FormData()
+      // Nama bagian `berkas`, `jenis_dokumen`, dan `catatan` harus sama dengan yang dibaca
+      // handler (UploadDocument).
+      form.append('berkas', input.berkas, input.berkas.name)
+      form.append('jenis_dokumen', input.jenisDokumen)
+      if (input.catatan?.trim()) form.append('catatan', input.catatan.trim())
+      return callAPI<DocumentsResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen`, {
+        metode: 'POST',
+        body: form,
+        token,
+        portal,
+      })
+    },
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
+  })
+}
+
 /** Tab Progress Claim & Komunikasi. */
 export function useProgressRecords(claimID: string, enabled = true) {
   return useClaimRecord<ProgressResponse>(claimID, 'progres', enabled)

@@ -88,6 +88,11 @@ var (
 	// sistem menulis satu baris dengan aturan validasi yang berbeda — kelas cacat yang
 	// `P-1` ada untuk mencegahnya.
 	ErrReadOnlyOrigin = errors.New("inboxlaporanklaim: laporan milik Pega hanya dapat dibaca")
+
+	// ErrAlreadyRegistered: berkas sudah menjadi klaim (NOKLAIM terisi), sehingga isiannya
+	// terkunci (Work Owner, 2026-09-29). Isinya sudah disalin ke klaim saat Register Klaim;
+	// mengubahnya di sini tidak lagi sampai ke klaimnya.
+	ErrAlreadyRegistered = errors.New("inboxlaporanklaim: laporan sudah diregistrasi menjadi klaim")
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.

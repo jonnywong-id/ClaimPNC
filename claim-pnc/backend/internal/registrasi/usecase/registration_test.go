@@ -23,7 +23,7 @@ import (
 // sesering yang dibutuhkan.
 
 // regexpNomorKlaim adalah bentuk nomor klaim yang sah: PNCN.YY.xxxx (`D-71`).
-const regexpNomorKlaim = `^PNCN\.\d{2}\.\d{4}$`
+const regexpNomorKlaim = `^PNCN\.\d{2}\.[1-9]\d*$`
 
 const (
 	firePolicy = "POL-FIRE-0001"
@@ -56,6 +56,8 @@ type environment struct {
 	pla       *memory.PLA
 	groups    memory.Groups
 	inbox     *memory.InboxEntries
+	records   *memory.ClaimRecords
+	uploader  *memory.DocumentUploader
 	caller    usecase.Caller
 }
 
@@ -70,6 +72,8 @@ func setup(t *testing.T, roles ...string) environment {
 	pla := memory.NewPLA()
 	groups := memory.Groups{}
 	inbox := memory.NewInboxEntries()
+	records := memory.SampleClaimRecords()
+	uploader := &memory.DocumentUploader{}
 
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
@@ -86,7 +90,7 @@ func setup(t *testing.T, roles ...string) environment {
 		PolicyItems:        policyItems,
 		CurrencyDirectory:  memory.CurrencyDirectory{},
 		ItemOptions:        policyItems,
-		ClaimRecords:       memory.SampleClaimRecords(),
+		ClaimRecords:       records,
 		FaceSheet:          memory.NewFaceSheet(),
 		FaceSheetRenderer:  facesheetpdf.Renderer{},
 		PLA:                pla,
@@ -96,6 +100,8 @@ func setup(t *testing.T, roles ...string) environment {
 		Accounts:           memory.NewAccounts(),
 		CommitteeTiering:   memory.NewCommitteeTiering(),
 		Committees:         memory.NewCommittees(),
+		Documents:          uploader,
+		Attachments:        records,
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -111,6 +117,8 @@ func setup(t *testing.T, roles ...string) environment {
 		pla:       pla,
 		groups:    groups,
 		inbox:     inbox,
+		records:   records,
+		uploader:  uploader,
 		caller: usecase.Caller{
 			Identity:   testOperator,
 			Name:       "Petugas Uji",
@@ -271,7 +279,7 @@ func TestRegistrationUntilNumberIssued(t *testing.T) {
 	result, err := l.service.SaveRegister(context.Background(), validInput(task.ID), l.caller)
 	require.NoError(t, err)
 
-	require.Regexp(t, `^PNCN\.26\.\d{4}$`, result.Claim.Number)
+	require.Regexp(t, `^PNCN\.26\.[1-9]\d*$`, result.Claim.Number)
 	require.Equal(t, registrasi.StatusRegistered, result.Claim.ClaimStatus)
 	require.Equal(t, registrasi.ProcessRunning, result.Claim.ProcessStatus)
 
@@ -477,6 +485,7 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 
 	groups := memory.Groups{}
 	inbox := memory.NewInboxEntries()
+	records := memory.SampleClaimRecords()
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
 		TaskRepo:           store.TaskRepo(),
@@ -492,7 +501,7 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		PolicyItems:        policyItems,
 		CurrencyDirectory:  memory.CurrencyDirectory{},
 		ItemOptions:        policyItems,
-		ClaimRecords:       memory.SampleClaimRecords(),
+		ClaimRecords:       records,
 		FaceSheet:          memory.NewFaceSheet(),
 		FaceSheetRenderer:  facesheetpdf.Renderer{},
 		PLA:                memory.NewPLA(),
@@ -502,6 +511,8 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		Accounts:           memory.NewAccounts(),
 		CommitteeTiering:   memory.NewCommitteeTiering(),
 		Committees:         memory.NewCommittees(),
+		Documents:          &memory.DocumentUploader{},
+		Attachments:        records,
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -708,6 +719,24 @@ func TestRegisterKlaimJumpsStraightToInputRegister(t *testing.T) {
 			"klaim dari Register Klaim harus melompat ke Input Register")
 		require.Equal(t, registrasi.StageInputRegister, hasil.Task.Stage)
 		require.Regexp(t, regexpNomorKlaim, hasil.Claim.Number)
+	})
+
+	// Work Owner, 2026-09-29: berkas RCVN yang sudah menjadi PNCN tidak dapat diregistrasi
+	// lagi. Tanpa penolakan ini terbit PNCN kedua dan NOKLAIM berkasnya tertimpa.
+	t.Run("berkas RCV yang sudah bernomor klaim ditolak", func(t *testing.T) {
+		l := setup(t)
+
+		first, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.1",
+		}, l.caller)
+		require.NoError(t, err)
+
+		_, err = l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.1",
+		}, l.caller)
+		var registered *registrasi.ReportAlreadyRegisteredError
+		require.ErrorAs(t, err, &registered)
+		require.Equal(t, first.Claim.Number, registered.ClaimNumber)
 	})
 
 	t.Run("tanpa berkas RCV, tugas pertama tetap View Polis", func(t *testing.T) {

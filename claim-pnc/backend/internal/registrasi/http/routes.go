@@ -52,6 +52,10 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.Documents(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Unggah Dokumen pada satu baris checklist: layanan penyimpanan + DATA_ATTACHFILE.
+		sub.Post("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
+			h.UploadDocument(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Tombol Download Claim Face Sheet: membentuk PDF, mencatat revisi, mengunci estimasi.
 		sub.Post("/klaim/{klaimID}/cfs", func(w http.ResponseWriter, r *http.Request) {
 			h.FaceSheet(w, r, chi.URLParam(r, "klaimID"))

@@ -4112,7 +4112,7 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 	if err != nil {
 		print("  [BELUM] nomor klaim berikutnya tidak dapat dihitung: %v", err)
 	} else {
-		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%04d",
+		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%d",
 			time.Now().Year()%100, terakhir+1)
 	}
 

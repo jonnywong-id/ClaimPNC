@@ -10,11 +10,13 @@
 -- dibuat: nomor diturunkan dari isi tabel klaim, pola yang sudah berjalan untuk
 -- `RCVN.YY.xxxx` pada modul Inbox Laporan Klaim.
 --
--- # Kenapa aman dibaca sebagai teks
+-- # Dibaca sebagai ANGKA, bukan teks
 --
--- Nomor berbentuk `PNCN.YY.xxxx` dengan lebar tetap dan dipadatkan nol, sehingga urutan
--- teks sama dengan urutan angka DI DALAM SATU TAHUN. Penyaring membatasi pada tahun yang
--- diminta, jadi pergantian tahun tidak membuat deretnya melompat.
+-- Sejak 2026-09-29 nomor urut tidak dipadatkan nol (`PNCN.26.1`, `PNCN.26.10`), sehingga
+-- urutan teks TIDAK lagi sama dengan urutan angka. Karena itu MAX diambil atas
+-- TO_NUMBER(SUBSTR(CLAIMNO, 9)) — posisi 9 tepat sesudah `PNCN.YY.` — yang benar untuk
+-- bentuk lama berlebar empat digit maupun bentuk baru. Penyaring membatasi pada tahun
+-- yang diminta, jadi deret tiap tahun berdiri sendiri.
 --
 -- # Yang TIDAK dijamin kueri ini
 --

@@ -166,3 +166,21 @@ func TestRegisterCreatesDefaultReceiver(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, claim.Receiver, stored.Receiver)
 }
+
+// Section InputEstimasiDetail juga ditanam di layar InputSurveyor (`ClaimSurvey_sect`):
+// estimasi dapat ditambah dan disimpan di tahap Choose Surveyor tanpa memindahkan tahap,
+// sedangkan Kirim PIC Teknik tetap hanya milik Input Estimasi.
+func TestSaveEstimateAlsoWorksAtInputSurveyor(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+	command := oneEstimate(task.ID, registrasi.Rupiah(5_000_000), 2)
+	claim, err := l.service.SaveEstimate(ctx, command, l.caller)
+	require.NoError(t, err)
+	require.Equal(t, registrasi.StageChooseSurveyor, claim.CurrentStage)
+	require.Len(t, claim.InsuredItem[0].Coverage[0].Item[0].Estimation, 2)
+
+	_, err = l.service.CompleteEstimate(ctx, command, l.caller)
+	require.ErrorIs(t, err, registrasi.ErrInvalidAction)
+}

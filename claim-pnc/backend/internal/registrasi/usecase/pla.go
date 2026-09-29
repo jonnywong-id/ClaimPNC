@@ -70,7 +70,7 @@ func plaEntity(portal string) string {
 
 // plaScopeOf memeriksa tugas, jaminan, dan isCFS, lalu mengembalikan cakupannya.
 func (l *Service) plaScopeOf(ctx context.Context, p PLACommand, by Caller) (plaScope, error) {
-	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate})
+	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate, alsoAction: registrasi.ActionInputSurveyor})
 	if err != nil {
 		return plaScope{}, err
 	}

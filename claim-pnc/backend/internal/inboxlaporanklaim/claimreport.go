@@ -278,6 +278,10 @@ type ClaimReport struct {
 	Origin Origin
 }
 
+// Editable menyatakan isian berkas boleh disimpan dari sini: milik aplikasi ini (P-1) dan
+// belum menjadi klaim (Work Owner, 2026-09-29).
+func (r ClaimReport) Editable() bool { return r.Origin == OriginNew && !r.Registered() }
+
 // AgingDays menghitung umur berkas dalam hari penuh terhadap waktu acuan.
 //
 // Kolom "Total Aging" di sistem lama menghitungnya di sisi tampilan atas `DateForAging`.
