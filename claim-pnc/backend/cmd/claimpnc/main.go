@@ -38,9 +38,8 @@ import (
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
-	"claim-pnc/internal/inboxsurvey"
-	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/inboxbandinghargasalvage"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	"claim-pnc/internal/inboxcloseclaim"
@@ -51,10 +50,12 @@ import (
 	"claim-pnc/internal/inboxosclaimpercabang"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
+	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxservicecenter"
+	"claim-pnc/internal/inboxsurvey"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/laporanhasilai"
@@ -103,6 +104,10 @@ import (
 	archivedokumenklaimsql "claim-pnc/internal/archivedokumenklaim/repo/sqlstore"
 	archivedokumenklaimusecase "claim-pnc/internal/archivedokumenklaim/usecase"
 	authhttp "claim-pnc/internal/auth/http"
+	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
+	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
+	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
 	daftardetaildokumentravelhttp "claim-pnc/internal/daftardetaildokumentravel/http"
 	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
@@ -132,33 +137,29 @@ import (
 	detailpenyebabmemory "claim-pnc/internal/detailpenyebab/repo/memory"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
 	detailpenyebabusecase "claim-pnc/internal/detailpenyebab/usecase"
+	"claim-pnc/internal/dokumenpenunjang"
+	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
+	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
+	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
+	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
+	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
+	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
 	inboxacceptopenprotectionhttp "claim-pnc/internal/inboxacceptopenprotection/http"
 	inboxacceptopenprotectionmemory "claim-pnc/internal/inboxacceptopenprotection/repo/memory"
 	inboxacceptopenprotectionsql "claim-pnc/internal/inboxacceptopenprotection/repo/sqlstore"
 	inboxacceptopenprotectionusecase "claim-pnc/internal/inboxacceptopenprotection/usecase"
-	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
-	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
-	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
-	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
-	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
-	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
-	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
-	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
-	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
-	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
-	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
-	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
-	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
-	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
-	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
+	inboxbandinghargasalvagehttp "claim-pnc/internal/inboxbandinghargasalvage/http"
+	inboxbandinghargasalvagememory "claim-pnc/internal/inboxbandinghargasalvage/repo/memory"
+	inboxbandinghargasalvagesql "claim-pnc/internal/inboxbandinghargasalvage/repo/sqlstore"
+	inboxbandinghargasalvageusecase "claim-pnc/internal/inboxbandinghargasalvage/usecase"
 	inboxclaimtreatynonprophttp "claim-pnc/internal/inboxclaimtreatynonprop/http"
 	inboxclaimtreatynonpropmemory "claim-pnc/internal/inboxclaimtreatynonprop/repo/memory"
 	inboxclaimtreatynonpropsql "claim-pnc/internal/inboxclaimtreatynonprop/repo/sqlstore"
@@ -199,6 +200,10 @@ import (
 	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
+	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
+	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
+	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
@@ -216,17 +221,17 @@ import (
 	inboxservicecentermemory "claim-pnc/internal/inboxservicecenter/repo/memory"
 	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
 	inboxservicecenterusecase "claim-pnc/internal/inboxservicecenter/usecase"
+	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
+	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
+	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
-	"claim-pnc/internal/dokumenpenunjang"
-	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
-	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
-	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
-	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
-	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
-	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
@@ -1527,6 +1532,30 @@ func run() error {
 			FallbackErrorWriter: inboxsalvagehttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Banding Harga Salvage. Jembatan pemanggilnya membawa LOGIN, dan di modul ini ia
+	// MENYARING — bukan sekadar mengisi jejak.
+	//
+	// Kedua tabnya menampilkan banding yang `T_CLAIM_CHEKER_SALVAGE.NAMAKOMITE`-nya
+	// pemanggil sendiri. Kolom itu menyimpan Operator ID, bukan NIK; memakai NIK di sini
+	// akan membuat layar ini KOSONG bagi setiap pengguna — dan antrean kosong tidak pernah
+	// dilaporkan siapa pun sebagai kerusakan.
+	bandingHargaSalvageHandler := inboxbandinghargasalvagehttp.NewHandler(
+		inboxbandinghargasalvagehttp.Options{
+			Service: assembly.inboxBandingHargaSalvage,
+			GetCaller: func(ctx context.Context) (inboxbandinghargasalvagehttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxbandinghargasalvagehttp.Caller{}, false
+				}
+				return inboxbandinghargasalvagehttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxbandinghargasalvagehttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -1600,7 +1629,7 @@ func run() error {
 			FallbackErrorWriter: inboxsurveyhttp.ErrorWriter(writePortalAwareError),
 		})
 
-		// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
+	// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
 	// Inbox Analyst Doctor, login itu BUKAN yang menyaring antrean. Ia hanya kunci untuk
 	// mencari identitas LAMA pemanggil di `POOLDATA.T_ACCESS_GROUP_PNC`, padanan
 	// `TempOperator.City` yang diisi `GetpyUserIdentifierFromTable` pada harness lama.
@@ -1739,10 +1768,10 @@ func run() error {
 				if !existing {
 					return inboxosclaimpercabanghttp.Caller{}, false
 				}
-					// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
-					// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
-					// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
-					// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
+				// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
+				// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
+				// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
+				// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
 				return inboxosclaimpercabanghttp.Caller{
 					Login:            baseCtx.User.Login,
 					DetailBranchCode: baseCtx.User.DetailBranchCode,
@@ -2375,6 +2404,13 @@ func run() error {
 				inboxsalvagehttp.Mount(
 					protected, salvageHandler, activePortalDeps)
 
+				// Inbox Banding Harga Salvage (`MENU_ID 72`) — layar TERSENDIRI, bukan tab
+				// pada modul di atasnya. Barisnya memuat dua harga yang sedang
+				// dipertentangkan atas satu barang, dan keduanya milik satu badan hukum
+				// (`R-20`).
+				inboxbandinghargasalvagehttp.Mount(
+					protected, bandingHargaSalvageHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -2656,6 +2692,13 @@ type assembly struct {
 	// barisnya memuat nama nasabah beserta nomor IMEI perangkatnya.
 	inboxServiceCenter *inboxservicecenterusecase.Service
 
+	// inboxBandingHargaSalvage melayani layar Inbox Banding Harga Salvage (`MENU_ID 72`).
+	//
+	// Ia layar TERSENDIRI, bukan tab pada Inbox Salvage (`MENU_ID 71`): di Pega keduanya
+	// harness yang berbeda, dan tabel intinya pun berbeda —
+	// POOLDATA.T_CLAIM_CHEKER_SALVAGE, bukan PNC_SALVAGE.
+	inboxBandingHargaSalvage *inboxbandinghargasalvageusecase.Service
+
 	// inboxClaimTreatyProp melayani layar Inbox Claim Treaty Prop (`MENU_ID 54`).
 	//
 	// Kedua tabel penugasan yang dibacanya ada di basis data SETIAP entitas (`ADR-0030`),
@@ -2675,9 +2718,9 @@ type assembly struct {
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 
-	inboxRCLPUCL            *inboxrclpuclusecase.Service
-	reportKPI               *reportkpiusecase.Service
-	reportKlaim             *reportklaimusecase.Service
+	inboxRCLPUCL *inboxrclpuclusecase.Service
+	reportKPI    *reportkpiusecase.Service
+	reportKlaim  *reportklaimusecase.Service
 
 	// inboxSalvage melayani layar Inbox Salvage (`MENU_ID 71`).
 	//
@@ -2878,6 +2921,27 @@ type storage struct {
 	// tanpa satu pun pesan galat (`R-20`).
 	inboxServiceCenterSelector inboxservicecenter.RepoSelector
 
+	// inboxBandingHargaSalvageWriterSelector memilih PENULIS keputusan banding milik satu
+	// portal.
+	//
+	// Terpisah dari selector pembacanya, mengikuti pemisahan seam-nya: Repo dipakai seluruh
+	// permintaan baca, Writer hanya satu rute — dan yang satu itu MENGUBAH nilai uang.
+	inboxBandingHargaSalvageWriterSelector inboxbandinghargasalvage.WriterSelector
+
+	// inboxBandingHargaSalvageDocSelector memilih PEMBACA DOKUMEN banding milik satu portal.
+	//
+	// Terpisah pula, dengan alasan yang khas: yang diserahkannya adalah ISI BERKAS, dan
+	// berkas yang telanjur terunduh dari entitas yang salah tidak dapat ditarik kembali.
+	inboxBandingHargaSalvageDocSelector inboxbandinghargasalvage.DocumentReaderSelector
+
+	// inboxBandingHargaSalvageSelector memilih penyimpanan Inbox Banding Harga Salvage
+	// milik satu portal.
+	//
+	// Alasannya sama, dan di modul ini taruhannya berupa angka: barisnya memuat DUA harga
+	// yang sedang dipertentangkan atas satu barang salvage, dan keduanya milik satu badan
+	// hukum (`R-20`).
+	inboxBandingHargaSalvageSelector inboxbandinghargasalvage.RepoSelector
+
 	// claimTreatyPropSelector memilih penyimpanan Inbox Claim Treaty Prop milik satu
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
 	// Ceding Co, dan keduanya milik satu badan hukum.
@@ -2896,9 +2960,9 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 
-	rclPUCLSelector            inboxrclpucl.RepoSelector
-	reportKPISelector          reportkpi.RepoSelector
-	reportKlaimSelector        reportklaim.RepoSelector
+	rclPUCLSelector     inboxrclpucl.RepoSelector
+	reportKPISelector   reportkpi.RepoSelector
+	reportKlaimSelector reportklaim.RepoSelector
 
 	// salvageSelector memilih penyimpanan salvage milik satu portal.
 	//
@@ -3847,6 +3911,26 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Logger diberikan supaya pembukaan antrean atas nama komite LAIN tercatat.
+	//
+	// Di layar ini satu Operator ID melihat antrean komite lain, dan aturannya tertanam
+	// sebagai nama orang di dalam rule Pega — ditiru apa adanya atas keputusan Work Owner
+	// 2026-09-29, meski `D-15` melarangnya. Sampai `F-4` menggantikannya dengan peran dari
+	// master data, jejak di log inilah satu-satunya hal yang menyatakan siapa benar-benar
+	// memakainya.
+	inboxBandingHargaSalvageService, err := inboxbandinghargasalvageusecase.NewService(
+		inboxbandinghargasalvageusecase.Options{
+			RepoSelector:     store.inboxBandingHargaSalvageSelector,
+			WriterSelector:   store.inboxBandingHargaSalvageWriterSelector,
+			DocumentSelector: store.inboxBandingHargaSalvageDocSelector,
+			Logger:           logger,
+		},
+	)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	claimTreatyPropService, err := inboxclaimtreatypropusecase.NewService(
 		inboxclaimtreatypropusecase.Options{
 			RepoSelector: store.claimTreatyPropSelector,
@@ -4021,8 +4105,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		store.close()
 		return assembly{}, err
 	}
-
-
 
 	// Inbox OS Claim per Cabang. Cabang pemanggil diselesaikan CallerBranch, yang membacanya
 	// dari profil sesi — yakni dari jawaban API HCQ saat masuk (keputusan Work Owner
@@ -4278,6 +4360,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAutoClaim:            autoClaimService,
 		inboxXOL:                  inboxXOLService,
 		inboxServiceCenter:        inboxServiceCenterService,
+		inboxBandingHargaSalvage:  inboxBandingHargaSalvageService,
 		inboxClaimTreatyProp:      claimTreatyPropService,
 		inboxClaimTreatyNonProp:   claimTreatyNonPropService,
 		inboxManagerReceivePUCL:   managerReceivePUCLService,
@@ -5190,6 +5273,36 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxservicecentersql.NewRepo(conn), nil
 		}
 
+		store.inboxBandingHargaSalvageSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxbandinghargasalvagesql.NewRepo(conn), nil
+		}
+
+		store.inboxBandingHargaSalvageWriterSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.Writer, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxbandinghargasalvagesql.NewWriter(conn), nil
+		}
+
+		store.inboxBandingHargaSalvageDocSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.DocumentReader, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxbandinghargasalvagesql.NewDocumentReader(conn), nil
+		}
+
 		store.claimTreatyPropSelector = func(alias string) (inboxclaimtreatyprop.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -5590,6 +5703,42 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.menu = menumemory.NewDevRepo()
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxServiceCenterSelector = inboxServiceCenterSelectorMemory(cfg.PrimaryPortal)
+		bandingHargaSalvageMemory := inboxBandingHargaSalvageSelectorMemory(cfg.PrimaryPortal)
+		store.inboxBandingHargaSalvageSelector = bandingHargaSalvageMemory
+
+		// Penulisnya berbagi penyimpanan yang SAMA dengan pembacanya — keputusan yang
+		// ditulis harus terlihat pada daftar dan panel rincian, sebagaimana di basis data.
+		store.inboxBandingHargaSalvageWriterSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.Writer, error) {
+			repo, err := bandingHargaSalvageMemory(alias)
+			if err != nil {
+				return nil, err
+			}
+			store, ok := repo.(*inboxbandinghargasalvagememory.Store)
+			if !ok {
+				return nil, fmt.Errorf(
+					"penyimpanan Inbox Banding Harga Salvage bukan penyimpanan memori")
+			}
+			return inboxbandinghargasalvagememory.NewWriter(store), nil
+		}
+
+		// Pembaca dokumennya pun berbagi penyimpanan yang sama: penyaring kepemilikannya
+		// membaca baris checker, dan baris itu harus baris yang sedang tergambar.
+		store.inboxBandingHargaSalvageDocSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.DocumentReader, error) {
+			repo, err := bandingHargaSalvageMemory(alias)
+			if err != nil {
+				return nil, err
+			}
+			store, ok := repo.(*inboxbandinghargasalvagememory.Store)
+			if !ok {
+				return nil, fmt.Errorf(
+					"penyimpanan Inbox Banding Harga Salvage bukan penyimpanan memori")
+			}
+			return inboxbandinghargasalvagememory.NewSampleDocumentStore(store), nil
+		}
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyNonPropSelector = claimTreatyNonPropSelectorMemory(cfg.PrimaryPortal)
 		// Sepuluh baris contoh ikut dimuat, dan lima di antaranya sengaja TIDAK muncul di
@@ -7085,6 +7234,44 @@ func inboxServiceCenterSelectorMemory(primaryAlias string) inboxservicecenter.Re
 	}
 }
 
+// inboxBandingHargaSalvageSelectorMemory menyusun penyimpanan Inbox Banding Harga Salvage di
+// memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali —
+// alasannya sama dengan selector memori lain di berkas ini.
+//
+// Isinya contoh yang melatih SETIAP penyaring layar ini, dan dua di antaranya sengaja ada
+// supaya aturan yang paling mudah hilang tetap teruji: sepasang baris berumur 30 dan 9 hari
+// yang membuktikan umur diurutkan sebagai ANGKA, dan sepasang baris yang membuktikan penyaring
+// giliran komite benar-benar menahan satu baris. Seluruhnya karangan — lihat
+// inboxbandinghargasalvage/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+func inboxBandingHargaSalvageSelectorMemory(
+	primaryAlias string,
+) inboxbandinghargasalvage.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxbandinghargasalvage.Repo{}
+
+	return func(alias string) (inboxbandinghargasalvage.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxbandinghargasalvagememory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
 // claimTreatyPropSelectorMemory menyusun penyimpanan Inbox Claim Treaty Prop di memori.
 //
 // Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
@@ -7182,7 +7369,6 @@ func managerReceivePUCLSelectorMemory(
 		return fresh, nil
 	}
 }
-
 
 // rclPUCLSelectorMemory menyusun penyimpanan Inbox RCL/PUCL di memori; alasannya sama
 // dengan claimTreatyPropSelectorMemory di atas.

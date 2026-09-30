@@ -2799,6 +2799,29 @@ export type WorkshopResponse = {
   portal: string
 }
 
+/**
+ * Metadata satu dokumen lampiran bengkel — satu baris `POOLDATA.DATA_ATTACHFILE`.
+ *
+ * `berisi` membedakan dokumen yang benar-benar tersimpan dari dokumen WARISAN Pega yang
+ * hanya punya keterangan. Jalur unggah sistem lama tidak pernah menulis isi berkasnya,
+ * sehingga baris lama menunjuk ke isi kosong — dan layar harus dapat mengatakannya alih-alih
+ * menawarkan unduhan yang menghasilkan berkas nol byte.
+ */
+export type WorkshopDocument = {
+  id_dokumen: string
+  nama_berkas: string
+  tipe_media: string
+  ukuran_byte: number
+  berisi: boolean
+  diunggah_oleh: string
+  diunggah_pada: string
+}
+
+export type WorkshopDocumentResponse = {
+  dokumen: WorkshopDocument
+  portal: string
+}
+
 export type WorkshopBranchListResponse = {
   cabang: WorkshopBranch[]
   portal: string

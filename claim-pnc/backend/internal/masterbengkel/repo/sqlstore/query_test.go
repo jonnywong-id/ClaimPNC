@@ -91,16 +91,22 @@ func TestQueriesFollowPortableSQLDiscipline(t *testing.T) {
 // Uji ini memagari pengecualian itu supaya ia tidak menyebar: kueri KEDUA yang memakai
 // FROM DUAL akan membuat uji ini gagal.
 func TestFromDualOnlyInSequenceQuery(t *testing.T) {
-	const exempted = "bengkel_next_sequence"
+	// DUA kueri urutan, dan hanya keduanya: nomor bengkel dan nomor lampiran. Keduanya
+	// memakai NEXTVAL, yang menuntut FROM DUAL. Daftar ini sengaja berupa himpunan tertutup
+	// — menambahnya menuntut alasan yang ditulis, bukan sekadar menambah satu baris.
+	exempted := map[string]bool{
+		"bengkel_next_sequence":          true,
+		"bengkel_next_document_sequence": true,
+	}
 
 	for name, text := range query {
-		if name == exempted {
-			require.Contains(t, strings.ToUpper(text), "FROM DUAL",
-				"kueri urutan memang harus memakainya; bila tidak lagi, hapus pengecualiannya")
+		if exempted[name] {
+			require.Containsf(t, strings.ToUpper(text), "FROM DUAL",
+				"kueri urutan %q memang harus memakainya; bila tidak lagi, hapus pengecualiannya", name)
 			continue
 		}
 		require.NotContainsf(t, strings.ToUpper(text), "FROM DUAL",
-			"kueri %q memakai FROM DUAL; hanya %q yang dibenarkan", name, exempted)
+			"kueri %q memakai FROM DUAL; hanya kueri urutan yang dibenarkan", name)
 	}
 }
 
@@ -139,18 +145,31 @@ func TestNoDeleteStatement(t *testing.T) {
 	}
 }
 
-// Kelima objek acuan HANYA DIBACA (ADR-0004, penulis tunggal per tabel).
+// Objek acuan HANYA DIBACA (ADR-0004, penulis tunggal per tabel).
 //
-// Satu-satunya tabel yang boleh ditulis modul ini adalah POOLDATA.BENGKEL_HE. Yang
-// paling penting dijaga di sini: M_BENGKEL_HE — tabel JSON milik Pega — tidak boleh ikut
-// ditulis. Dua penulis atas satu master adalah persis keadaan yang P-1 larang.
-func TestOnlyTheMasterTableIsWritten(t *testing.T) {
+// Yang paling penting dijaga di sini: M_BENGKEL_HE — tabel JSON milik Pega — tidak boleh
+// ikut ditulis. Dua penulis atas satu master adalah persis keadaan yang P-1 larang.
+//
+// DUA tabel yang boleh ditulis, dan hanya dua:
+//
+//	POOLDATA.BENGKEL_HE       master bengkelnya sendiri
+//	POOLDATA.DATA_ATTACHFILE  lampiran, sejak modul ini menangani unggah dokumen
+//
+// Yang kedua ditambahkan bersama fitur unggah. Ia tabel lampiran bersama — Master Panel
+// dan Master Sparepart memakai tabel yang sama lewat procedure yang sama — sehingga
+// "penulis tunggal" di sini berlaku per BARIS, bukan per tabel: setiap baris dimiliki
+// DATAID yang menerbitkannya, dan tidak ada modul yang menyentuh baris modul lain.
+func TestOnlyTheseTablesAreWritten(t *testing.T) {
 	readOnlyObjects := []string{
 		"POOLDATA.M_BENGKEL_HE",
 		"GENERAL.LST_USER_ASURANSI",
 		"LST_DET_CABANG",
 		"GENERAL.LST_BANK_GROUP",
 		"POOLDATA.M_SITE_DATABASE",
+	}
+	writable := []string{
+		"POOLDATA.BENGKEL_HE",
+		"POOLDATA.DATA_ATTACHFILE",
 	}
 
 	for name, text := range query {
@@ -162,7 +181,15 @@ func TestOnlyTheMasterTableIsWritten(t *testing.T) {
 			require.NotContainsf(t, upperCase, object,
 				"kueri %q menulis ke %s, padahal objek itu hanya boleh dibaca (ADR-0004)", name, object)
 		}
-		require.Containsf(t, upperCase, "POOLDATA.BENGKEL_HE",
+
+		allowed := false
+		for _, object := range writable {
+			if strings.Contains(upperCase, object) {
+				allowed = true
+				break
+			}
+		}
+		require.Truef(t, allowed,
 			"kueri tulis %q menyentuh tabel yang bukan milik modul ini", name)
 	}
 }

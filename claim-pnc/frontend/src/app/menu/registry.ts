@@ -20,7 +20,7 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 25 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 24 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
@@ -30,13 +30,20 @@
  * (MASTER, INBOX, VIEW, REPORT) dan satu adalah MENU_ID 83 "Report Adjuster" yang
  * MENU_PROGRAM-nya memang kosong.
  *
- * ENAM di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
- * (`InboxCloseClaim_Harness`, `InboxOutstanding_Harness`, `InboxRequestSalvage`,
- * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas `K-33`.
+ * LIMA di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
+ * (`InboxCloseClaim_Harness`, `InboxOutstanding_Harness`, `LostAdjuster_harness`,
+ * `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas `K-33`.
  *
- * TIGA yang dulu ada di daftar itu SUDAH DITERIMA dan karena itu dikeluarkan:
- * `DataMemberReas` dan `DetailMasterPasalAI` pada 2026-09-22, lalu `InboxServiceCenter`
- * pada 2026-09-28 — ketiganya kini punya layar.
+ * EMPAT yang dulu ada di daftar itu SUDAH DITERIMA dan karena itu dikeluarkan:
+ * `DataMemberReas` dan `DetailMasterPasalAI` pada 2026-09-22, `InboxServiceCenter` pada
+ * 2026-09-28, lalu `InboxRequestSalvage` pada 2026-09-29 — keempatnya kini punya layar.
+ *
+ * Yang terakhir itu datang bertahap dan perlu dicatat, karena ia menjelaskan mengapa
+ * layarnya baru dibangun sekarang: harness-nya ada, tetapi section dan activity yang
+ * menggambar gridnya TIDAK. Ketujuh artefak sisanya diminta dan diterima pada hari yang
+ * sama — section `InboxReqSalvageASM`, activity `SetReqSalvage_Act` dan
+ * `GCNMCountRequestSalvage_act`, serta keempat rule SQL-nya. Tanpa ketujuhnya, yang terbaca
+ * dari harness hanyalah bahwa layar itu ada; kolom dan penyaringnya tidak.
  *
  * SATU dari ketujuh yang tersisa KINI SUDAH PUNYA LAYAR, dibangun dari kueri,
  * activity, dan section yang memang ada — bukan dari harness-nya:
@@ -726,14 +733,35 @@ export const MENU_ROUTES: Record<string, string> = {
   // "Request Balai Lelang" hanya menampilkan pengajuan yang PIC-nya pemanggil sendiri,
   // diturunkan di sisi peladen dari login. Kedua belas daftar lain bersama.
   //
-  // Bedakan dari `MENU_ID 72` "Inbox Banding Harga Salvage" (`InboxRequestSalvage`), yang
-  // BELUM dipetakan: ia harness tersendiri dan belum dianalisis sama sekali. Menunjuk
+  // Bedakan dari `MENU_ID 72` "Inbox Banding Harga Salvage" (`InboxRequestSalvage`) tepat
+  // di bawah ini. Keduanya menyentuh salvage, tetapi bukan layar yang sama — dan menunjuk
   // keduanya ke satu rute akan menyatukan dua layar yang di Pega memang terpisah.
   //
   // Layar ini melayani portal ASM. Portal Insurtech punya isi tersendiri di Pega
   // (`Section/InboxSalvageInsurtech`) dan belum dibangun — keputusan Work Owner
   // 2026-09-25, supaya perbedaan keduanya terbaca sebagai perbedaan, bukan kerusakan.
   InboxSalvage: '/inbox-salvage',
+
+  // Inbox Banding Harga Salvage — `MENU_ID 72`, antrean banding harga dari balai lelang.
+  //
+  // Isinya satu hal saja: balai lelang (SimasBid) menilai sebuah barang salvage tidak layak
+  // dijual pada harga yang diajukan PIC, lalu mengajukan harga tandingan lewat layanan REST
+  // (`Activity/PengajuanRequestBalaiLelang`). Layar ini sisi komite ASM yang membacanya.
+  //
+  // Tabel intinya BERBEDA dari butir di atasnya: `POOLDATA.T_CLAIM_CHEKER_SALVAGE`, bukan
+  // `PNC_SALVAGE`. Itulah alasan pokok keduanya tidak disatukan.
+  //
+  // Dua batas MEMANG sudah berlaku di sini, dan keduanya bukan peran melainkan KEPEMILIKAN:
+  // kedua tabnya hanya menampilkan banding yang `NAMAKOMITE`-nya pemanggil sendiri, dan satu
+  // Operator ID melihat antrean komite lain — aturan bernama orang yang ditiru dari Pega atas
+  // keputusan Work Owner 2026-09-29, menunggu peran dari master data (`F-4`).
+  //
+  // Butirnya dijaga `When/IsGCNMUser` di Pega, dan rule itu berisi `1 = 2` — sakelar "jangan
+  // tampilkan ini", bukan pemeriksaan peran (lihat `keputusan-implementasi.md` §41.15, yang
+  // menyebut butir menu ini namanya). Menirunya akan membuat layar ini tidak dapat dibuka
+  // siapa pun, sehingga yang menentukan siapa melihat butirnya di sini adalah
+  // `M_OTORISASI_PNC` — sama seperti butir lain.
+  InboxRequestSalvage: '/inbox-banding-harga-salvage',
 
   // Inbox PLA, DLA, Pre DLA — `MENU_ID 44`, antrean pemberitahuan reasuransi yang sudah
   // terbit tetapi BELUM dikirim.

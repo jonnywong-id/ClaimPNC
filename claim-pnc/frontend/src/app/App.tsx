@@ -72,6 +72,7 @@ import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManage
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
+import { InboxBandingHargaSalvagePage } from '@/modules/inbox-banding-harga-salvage/InboxBandingHargaSalvagePage'
 import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
 import { InboxPLADLAPreDLAPage } from '@/modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage'
 import { InboxPLADLAReasPage } from '@/modules/inbox-pla-dla/InboxPLADLAReasPage'
@@ -1393,6 +1394,32 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SalvageInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Banding Harga Salvage (`MENU_ID 72`), pengganti harness `InboxRequestSalvage`.
+
+        Layar TERSENDIRI, bukan tab pada butir di atasnya. Di Pega keduanya harness yang
+        berbeda, dan tabel intinya pun berbeda — `T_CLAIM_CHEKER_SALVAGE`, bukan
+        `PNC_SALVAGE`. Menunjuk keduanya ke satu rute akan menyatukan dua layar yang memang
+        terpisah.
+
+        Isinya antrean banding harga dari balai lelang: dua tab, dan keduanya menampilkan
+        HANYA baris yang komitenya pemanggil sendiri — kecuali bagi satu Operator ID, yang
+        melihat antrean komite lain karena aturan bernama orang yang ditiru dari Pega.
+
+        Daftar, halaman, dan kata kunci pencarian dipegang layar, bukan alamat: pencariannya
+        cocok persis, sehingga menyimpannya di alamat akan membuat tombol kembali menempuh
+        satu per satu keadaan setengah-ketik yang seluruhnya menghasilkan nol baris.
+      */}
+      <Route
+        path="/inbox-banding-harga-salvage"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxBandingHargaSalvagePage />
             </Protected>
           </SessionGuard>
         }

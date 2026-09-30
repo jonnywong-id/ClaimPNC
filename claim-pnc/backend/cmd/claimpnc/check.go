@@ -83,6 +83,8 @@ import (
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
 	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
+	"claim-pnc/internal/inboxbandinghargasalvage"
+	inboxbandinghargasalvagesql "claim-pnc/internal/inboxbandinghargasalvage/repo/sqlstore"
 	"claim-pnc/internal/inboxsalvage"
 	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
 	"claim-pnc/internal/komite"
@@ -229,6 +231,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
 	checkSalvage(ctx, inboxsalvagesql.NewRepo(primary), print)
+	checkBandingHargaSalvage(ctx, inboxbandinghargasalvagesql.NewRepo(primary), print)
 	checkPLADLAQueue(ctx, inboxpladlapredlasql.NewRepo(primary), print)
 	checkPLADLAReinsurer(ctx, inboxpladlasql.NewRepo(primary), print)
 	checkPLADLACommunicationFunnel(ctx, primary, login, print)
@@ -4208,6 +4211,92 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 
 	print("            Seam Penugasan tidak diperiksa di sini: memanggilnya menaikkan")
 	print("            pencacah beban petugas, dan mode ini tidak menulis apa pun.")
+}
+
+// checkBandingHargaSalvage memeriksa kesiapan modul Inbox Banding Harga Salvage.
+//
+// # Kenapa modul ini PERLU diperiksa, sementara modul baca lain sering tidak
+//
+// Karena DDL tabel intinya belum pernah dibaca. Seluruh nama kolom
+// `POOLDATA.T_CLAIM_CHEKER_SALVAGE` disimpulkan dari teks kueri Pega, dan SATU di antaranya
+// — `NOTEKOMITE` — bahkan disimpulkan dari nama properti gridnya, bukan dari kueri mana pun.
+//
+// Kolom yang ternyata tidak ada akan menggagalkan SELURUH layar, bukan mengosongkan satu
+// kolom. Pemeriksaan di sini membuat kekeliruan itu terbaca saat aplikasi start, lengkap
+// dengan nama kolom yang salah — bukan sebagai layar galat yang dilaporkan pengguna.
+//
+// Satu nama memang PERNAH keliru: kolom catatan komite sempat ditulis `NOTEKOMITE`,
+// disimpulkan dari nama properti gridnya, sampai `UpdateDataReqSalvage` membuktikan namanya
+// `NOTEAPPROVE`.
+//
+// # Sejak modul ini MENULIS, pemeriksaannya bertambah
+//
+// Tombol Approve dan Reject menyentuh dua tabel LAIN — `SALAVAGEDOCUMENT` dan
+// `DETAIL_PNC_SALVAGE` — dan nama kolom keduanya pun disimpulkan dari teks kueri Pega. Kolom
+// yang ternyata bernama lain menggagalkan seluruh transaksi keputusan, dan itu baru ketahuan
+// ketika seorang komite menekan Simpan atas putusan yang sudah ia pertimbangkan.
+//
+// Ia tetap tidak menulis apa pun dan tidak membaca satu baris pun: yang dibaca adalah katalog
+// kolom. Menguji hak tulis dengan benar-benar menulis akan meninggalkan baris percobaan di
+// tabel produksi.
+func checkBandingHargaSalvage(
+	ctx context.Context,
+	repo *inboxbandinghargasalvagesql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.T_CLAIM_CHEKER_SALVAGE tidak terbaca utuh: %v", err)
+		print("            Nama kolom modul ini disimpulkan dari kueri Pega, bukan dari DDL")
+		print("            — yang belum pernah diterima. Bila kolomnya bernama lain, yang")
+		print("            disesuaikan adalah kuerinya, bukan tabelnya.")
+		return
+	}
+	print("  [ok]    POOLDATA.T_CLAIM_CHEKER_SALVAGE punya kedua belas kolom yang dibaca")
+
+	// KEDUA tab dijalankan, bukan satu: keduanya membaca tabel yang BERBEDA —
+	// T_CLAIM_CHEKER_SALVAGE dan PNC_SALVAGE — sehingga satu kueri yang berhasil tidak
+	// menyatakan apa pun tentang yang lain.
+	caller := inboxbandinghargasalvage.Caller{Login: "pemeriksa-kesiapan"}
+	page := inboxbandinghargasalvage.Pagination{Page: 1, Size: 5}
+
+	for _, tab := range inboxbandinghargasalvage.Tabs() {
+		query, err := inboxbandinghargasalvage.NewQuery(
+			inboxbandinghargasalvage.QueryInput{Tab: tab.Code}, caller)
+		if err != nil {
+			print("  [BELUM] Tab %q tidak dapat disusun: %v", tab.Code, err)
+			continue
+		}
+
+		if _, err := repo.List(ctx, query, page); err != nil {
+			print("  [BELUM] Kueri tab %q gagal: %v", tab.Name, err)
+			continue
+		}
+		print("  [ok]    Kueri tab %q berjalan", tab.Name)
+	}
+
+	print("            Nol baris BUKAN kegagalan: kedua tab menyaring menurut NAMA KOMITE,")
+	print("            dan akun pemeriksa bukan komite mana pun.")
+
+	// Tabel tujuan PENULISAN diperiksa terpisah, dan kegagalannya tidak menghentikan
+	// pemeriksaan di atas: layar ini tetap dapat dibaca meski tombolnya tidak dapat dipakai.
+	found, err := repo.CheckWriteTargets(ctx)
+	switch {
+	case err != nil:
+		print("  [BELUM] Katalog kolom tabel tujuan penulisan tidak terbaca: %v", err)
+		print("            Periksa hak SELECT akun aplikasi atas ALL_TAB_COLUMNS.")
+	case found < inboxbandinghargasalvagesql.WriteTargetColumns:
+		print("  [BELUM] Tabel tujuan penulisan hanya punya %d dari %d kolom yang ditulis",
+			found, inboxbandinghargasalvagesql.WriteTargetColumns)
+		print("            POOLDATA.SALAVAGEDOCUMENT   IDBALAILELANG, NOKLAIM, TIPEDOCSALVAGE")
+		print("            POOLDATA.DETAIL_PNC_SALVAGE HARGAITEM, IDSALVAGE, IDDETAILSALVAGE")
+		print("            Tombol Approve/Reject akan gagal SELURUHNYA saat ditekan, karena")
+		print("            keempat pernyataannya berjalan dalam satu transaksi.")
+	default:
+		print("  [ok]    Kedua tabel tujuan penulisan punya keenam kolom yang ditulis")
+		print("            Hak INSERT/UPDATE-nya TIDAK diuji di sini — mengujinya berarti")
+		print("            menulis baris percobaan ke tabel produksi. Pastikan ke DBA bahwa")
+		print("            akun aplikasi punya UPDATE atas ketiga tabelnya.")
+	}
 }
 
 // checkSalvage memeriksa kesiapan modul Inbox Salvage.

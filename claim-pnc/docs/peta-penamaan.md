@@ -4694,3 +4694,183 @@ Isi modulnya berbahasa Inggris (`D-80`): `Tab`, `Counter`, `QueueRow`, `Dashboar
 `Decision`, `Verdict`. Nama field JSON tetap Indonesia karena ia kontrak: `kode`, `nama`,
 `jenis`, `kunci`, `sel`, `pencacah`, `tidak_tersedia`, `alasan_setuju_ditahan`.
 >>>>>>> dev
+
+
+## Tambahan 2026-09-29 — modul Inbox Banding Harga Salvage (`inboxbandinghargasalvage`)
+
+`MENU_ID 72`, harness `InboxRequestSalvage`. Layar TERSENDIRI, bukan tab pada Inbox Salvage
+(`MENU_ID 71`): tabel intinya `POOLDATA.T_CLAIM_CHEKER_SALVAGE`, bukan `PNC_SALVAGE`.
+
+### Kenapa peta ini lebih panjang dari biasanya
+
+Karena di layar ini **satu nama properti berarti dua hal berbeda pada dua grid**. Ia bukan
+sekadar alias yang buruk; ia alias yang artinya berpindah di dalam satu layar:
+
+| Properti Pega | Grid Request | Grid History |
+|---|---|---|
+| `.Email` | `HARGAREQUEST` — nilai uang | `JENISSALVAGE` — jenis barang |
+| `.AgentID` | `HARGABARANG` — nilai uang | `LOKASISALVAGE` — lokasi |
+| `.BranchName` | `NAMABARANG` — nama barang | `PIC` — nama orang |
+
+### Grid "Request Banding Harga" (`tipe=1`, `FlagASO==1`)
+
+Sumber: `RDB List/DataReqSalvage_SQL`, seluruhnya dari `POOLDATA.T_CLAIM_CHEKER_SALVAGE`.
+
+| Judul di layar | Properti Pega | Kolom sebenarnya | Alias SQL | Field JSON |
+|---|---|---|---|---|
+| Tanggal Request | `.TglTerimaSalvage` | `TGLREQUEST` | `REQUEST_DATE` | `tanggal_request` |
+| No Klaim | `.ClaimID` | `NOKLAIM` | `CLAIM_NO` | `no_klaim` |
+| Detail Object (!) | `.ClientName` | `IDDETAILSALVAGE` | `DETAIL_OBJECT` | `detail_object` |
+| Nama Barang | `.BranchName` | `NAMABARANG` | `ITEM_NAME` | `nama_barang` |
+| Harga Barang | `.AgentID` | `HARGABARANG` | `ITEM_PRICE` | `harga_barang` |
+| Harga Request | `.Email` | `HARGAREQUEST` | `REQUEST_PRICE` | `harga_request` |
+| Note Request | `.BranchID` | `ALASANREQUEST` | `REQUEST_NOTE` | `note_request` |
+| Aging | `.AgingAmount` | (dihitung) | `AGING_DAYS` | `aging` |
+| Note Checker | `.NoteKomite` | `NOTEKOMITE` | `CHECKER_NOTE` | `note_checker` |
+| Action | — | — | — | (tidak dibangun) |
+| (tidak digambar) | — | `IDSALVAGE` | `SALVAGE_ID` | `id_salvage` |
+| (tidak digambar) | — | `NAMAKOMITE` | `COMMITTEE_NAME` | `nama_komite` |
+
+Tanda (!) pada **Detail Object**: judulnya menjanjikan rincian objek, isinya ID baris detail
+salvage. Judul dipertahankan (`D-13`), nama isiannya menyebut apa adanya (`D-19`).
+
+`NOTEKOMITE` adalah satu-satunya kolom yang keberadaannya **belum terbukti dari rule mana pun**
+— ia disimpulkan dari nama properti gridnya, karena kueri lama tidak pernah memilihnya. Karena
+itu `check_table` menyebutkannya secara eksplisit.
+
+### Grid "History Cheker" (`tipe=2`, `FlagASO==2`)
+
+Sumber: `RDB List/HistoryReqSalvage_SQL`, seluruhnya dari `POOLDATA.PNC_SALVAGE`.
+
+| Judul di layar | Properti Pega | Kolom sebenarnya | Alias SQL | Field JSON |
+|---|---|---|---|---|
+| No Klaim | `.ClaimID` | `NOKLAIM` | `CLAIM_NO` | `no_klaim` |
+| Object Name (!) | `.Email` | `JENISSALVAGE` | `SALVAGE_TYPE` | `object_name` |
+| Lokasi Salvage | `.AgentID` | `LOKASISALVAGE` | `SALVAGE_LOCATION` | `lokasi_salvage` |
+| PIC | `.BranchName` | `PIC` | `PIC` | `pic` |
+
+Tanda (!) pada **Object Name**: isinya JENIS SALVAGE, bukan nama objek. Nama field JSON-nya
+sengaja `object_name` — ia mengikuti judul kolom yang dibaca pengguna, sebagaimana kontrak API
+lain di aplikasi ini.
+
+### Label tabel ringkas
+
+Diambil harfiah dari `Local.LOOP` pada `Activity/GCNMCountRequestSalvage_act` langkah 9 dan 11:
+
+| Label | Kode tab |
+|---|---|
+| `Request Banding Harga` | `request-banding-harga` |
+| `History Cheker` | `history-cheker` |
+
+Salah ketik **"Cheker"** dipertahankan — itulah yang dibaca pengguna hari ini (`D-13`), sama
+seperti "Assesment" pada Inbox Service Center. Satu uji menjaganya agar tidak dibetulkan tanpa
+sadar.
+
+### Nama Go dan frontend
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `internal/inboxbandinghargasalvage` — nama modul bisnis, huruf kecil tanpa tanda hubung (`D-81`) |
+| Folder frontend | `src/modules/inbox-banding-harga-salvage` — `kebab-case` (`D-81`) |
+| Rute | `/inbox-banding-harga-salvage` |
+| Awalan API | `/api/inbox-banding-harga-salvage` |
+
+Isi modulnya berbahasa Inggris (`D-80`): `AppealRow`, `Reviewer`, `Tab`, `Column`, `Summary`,
+`SummaryRow`, `Query`, `Pagination`. Nama field JSON tetap Indonesia karena ia kontrak:
+`no_klaim`, `harga_request`, `note_checker`, `aging`, `antrean`, `selisih_terencana`.
+
+Satu nama Go yang sengaja berbahasa Indonesia: berkas `komite.go` beserta konstanta
+`operatorMaria`, `operatorBambang`, `operatorDaniel`, `operatorWulan`. Ia memuat aturan bernama
+orang yang ditiru dari Pega, dan namanya menyebut peran yang dimaksud rule-nya — bukan istilah
+domain baru.
+
+#### Jalur tulis — tombol Approve dan Reject (2026-09-30)
+
+Peta kolom untuk `POOLDATA.T_CLAIM_CHEKER_SALVAGE` pada pernyataan yang MENULIS. Alias Pega
+sengaja dicantumkan, karena di layar ini alias itulah yang menyesatkan.
+
+| Kolom Oracle | Properti Pega pengirim | Nama Go | Field JSON |
+|---|---|---|---|
+| `STATUSAPPROVE` | `statusapprove` (`"1"`/`"0"`) | `DecisionCommand.Status` | `setujui` (boolean) |
+| `NOTEAPPROVE` | `.NoteKomite` — **nama propertinya menyesatkan** | `DecisionCommand.Note` | `catatan` |
+| `TGLAPPROVE` | `sysdate` di dalam pernyataannya | — (`CURRENT_TIMESTAMP`) | — |
+| `IDDETAILSALVAGE` | `.ClientName` | `DecisionCommand.DetailObject` | `detail_object` |
+| `IDSALVAGE` | `.ClaimNo` | `DecisionCommand.SalvageID` | `id_salvage` |
+| `HARGAREQUEST` | `.Email` | `DecisionCommand.RequestPrice` | `harga_request` |
+| `NAMAKOMITE` | `TempInsert.AgentID` | `DecisionCommand.Reviewer.Name` | — (dari sesi) |
+
+**Empat alias yang wajib dibaca dua kali.** `.Email` berisi **harga**, `.ClaimNo` berisi **ID
+salvage** (bukan nomor klaim), `.ClientName` berisi **ID detail salvage**, dan `.NoteKomite`
+menulis kolom **`NOTEAPPROVE`** — bukan `NOTEKOMITE`, yang justru milik `T_CLAIM_KOMITE_LIST`.
+
+Yang terakhir sempat ditulis keliru di kueri modul ini karena **disimpulkan dari nama
+propertinya**. Kuerinya akan gagal seluruhnya dengan `ORA-00904`. Sejak diperbaiki, nama
+`NOTEKOMITE` **ditolak satu uji** di paket `sqlstore` supaya tidak muncul kembali.
+
+Dua tabel lain yang ikut ditulis, beserta batasnya:
+
+| Tabel | Kolom | Batas |
+|---|---|---|
+| `POOLDATA.SALAVAGEDOCUMENT` | `IDBALAILELANG` | ditulis hanya saat banding DITOLAK |
+| `POOLDATA.DETAIL_PNC_SALVAGE` | **`HARGAITEM` saja** | tabel milik modul Inbox Salvage; batas ditetapkan Work Owner (`keputusan-implementasi.md` §107.3) dan dijaga uji |
+
+Nama Go yang bertambah di modul ini, seluruhnya Inggris (`D-80`): `DecisionInput`,
+`DecisionCommand`, `DecisionResult`, `Writer`, `WriterSelector`, `PlanDecision`. Nama field
+JSON tetap Indonesia karena ia kontrak: `setujui`, `catatan`, `tersimpan`,
+`harga_diterapkan`, `dokumen_ditandai`, `pesan`.
+
+Satu berkas frontend baru: `DecisionConfirm.tsx` — nama komponen Inggris, folder modulnya tetap
+`inbox-banding-harga-salvage` (`D-81`).
+
+#### Dialog "Lihat File" (2026-09-30)
+
+| Kolom Oracle | Properti Pega | Nama Go | Field JSON |
+|---|---|---|---|
+| `SALAVAGEDOCUMENT.IDDOC` | `.ClaimID` pada hasil kueri pertama | `DocumentRow.ID` | `id` |
+| `DATA_ATTACHFILE.ATTACHNAME` | `.ATTACHNAME` | `DocumentRow.Name` | `nama` |
+| `SALAVAGEDOCUMENT.TGLINS` | `.DateOfLoss`, lalu disalin ke `.INPUTDATE` | `DocumentRow.UploadedAt` | `tanggal_unggah` |
+| `DATA_ATTACHFILE.ATTACHMIMETYPE` | `.ATTACHMIMETYPE` | `DocumentContent.MIMEType` | — (header HTTP) |
+| `DATA_ATTACHFILE.ATTACHFILE` | `.ATTACHFILE` | `DocumentContent.Content` | — (badan respons) |
+| — | `.ATTACHNOTE` | `DocumentCategory` | `kategori` |
+
+**Empat alias yang menyesatkan di dialog ini saja:**
+
+- `.ClaimID` berisi **IDDOC**, bukan nomor klaim.
+- `.DateOfLoss` berisi **TGLINS** dokumen, bukan tanggal kejadian.
+- `.INPUTDATE` disalin dari `TGLINS`, **bukan** dari kolom `INPUTDATE` tabel lampiran.
+- `.ATTACHNOTE` **tidak dibaca dari basis data sama sekali** — activity mengisinya konstanta
+  `"BandingHarga"` untuk setiap baris.
+
+**Satu nama kolom basis data yang menyesatkan:** `SALAVAGEDOCUMENT.NOKLAIM` berisi **id detail
+salvage**, bukan nomor klaim. Karena itu `DocumentQuery.DetailObject`-lah yang dibandingkan
+dengannya, dan nama field di memori sengaja `DetailObject` — bukan `ClaimNo` — supaya kekeliruan
+nama kolomnya tidak menular ke kode baru.
+
+Nama Go yang bertambah: `DocumentRow`, `DocumentContent`, `DocumentQuery`, `DocumentReader`,
+`DocumentReaderSelector`, `DocumentCategory`, `ErrDocumentNotFound`. Frontend:
+`DocumentPanel.tsx`, `AppealDocument`, `DocumentScope`.
+
+## Dokumen lampiran Master Bengkel — `POOLDATA.DATA_ATTACHFILE`
+
+Tabel lampiran bersama: Master Bengkel, Master Panel, dan Master Sparepart menulis ke tabel
+yang sama lewat procedure yang sama. Pemetaan di bawah dipakai modul Master Bengkel.
+
+| Kolom basis data | Nama di kode (Inggris, `D-80`) | Nama field JSON (kontrak, tetap Indonesia) |
+|---|---|---|
+| `DATAID` | `Document.ID` | `id_dokumen` |
+| `ATTACHNAME` | `Document.Name` | `nama_berkas` |
+| `ATTACHNOTE` | `Document.Note` | — tidak dikirim; jalur ini tidak pernah mengisinya |
+| `ATTACHMIMETYPE` | `Document.MimeType` | `tipe_media` |
+| `ATTACHFILE` | `Document.Content` | — dikirim sebagai berkas, bukan field JSON |
+| `INPUTOPERATOR` | `Document.UploadedBy` | `diunggah_oleh` |
+| `INPUTDATE` | `Document.UploadedAt` | `diunggah_pada` |
+| `BENGKEL_HE.DOKUMENID` | `Workshop.DocumentID` | `id_dokumen` pada baris bengkel |
+
+**Empat kolom yang sengaja tidak dipetakan**, karena jalur Master Bengkel tidak pernah
+mengisinya: `IMAGEID`, `CATEGORY`, `SUB_CATEGORY`, dan `IDPEGA`. Yang terakhir adalah
+`pyWorkPage.pzInsKey` — kunci teknis Pega yang `D-22` larang dibawa ke data bisnis.
+
+**Satu nama yang menyesatkan dan wajib diingat:** pada jalur simpan master bengkel,
+properti **`ACCOUNT_ID`** membawa **muatan JSON**, bukan nomor rekening —
+`RDB List/UpdateBengkelHE-SQL.xml` mengirimnya sebagai CLOB ke `PEGA_M_BENGKEL_HE`. Nomor
+rekening yang sesungguhnya ada di kolom `NO_ACCOUNT`.

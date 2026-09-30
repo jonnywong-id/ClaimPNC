@@ -767,4 +767,11 @@ type Store interface {
 	Repo
 	LookupRepo
 	IDSource
+
+	// Dokumen lampiran — lihat document.go. Ia ikut di sini, bukan menjadi seam tersendiri
+	// di luar Store, karena tautannya (`BENGKEL_HE.DOKUMENID`) dan barisnya
+	// (`DATA_ATTACHFILE`) ditulis dalam SATU transaksi; memisahkan penyimpannya berarti
+	// memisahkan hal yang justru tidak boleh terpisah.
+	DocumentRepo
+	DocumentIDSource
 }
