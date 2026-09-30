@@ -184,6 +184,15 @@ type Props<T> = {
    * server dan TIDAK boleh memakai ini (`TKT-U2-001`).
    */
   pageSize?: number
+
+  /**
+   * Jarak sel dirapatkan pada tampilan meja.
+   *
+   * Opt-in, sama alasannya dengan `showHeaderWhenEmpty`: layar yang sudah ada tidak
+   * berubah. Dipakai grid yang harus muat SATU LAYAR tanpa gulir menyamping di samping
+   * panel lain — Inbox Auto Claim adalah yang pertama (permintaan Work Owner 2026-09-29).
+   */
+  dense?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -286,6 +295,7 @@ export function DataTable<T>({
   pagination,
   pageSize,
   showHeaderWhenEmpty = false,
+  dense = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -442,7 +452,8 @@ export function DataTable<T>({
                         : 'none'
                     }
                     className={[
-                      'px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600',
+                      dense ? 'px-3 py-2.5' : 'px-5 py-3',
+                      'text-xs font-semibold uppercase tracking-wide text-slate-600',
                       k.alignRight ? 'text-right' : '',
                     ].join(' ')}
                   >
@@ -515,7 +526,9 @@ export function DataTable<T>({
                       key={k.key}
                       className={[
                         'flex items-baseline gap-3 px-5 py-1.5',
-                        'md:table-cell md:py-3.5 md:align-middle',
+                        dense
+                          ? 'md:table-cell md:px-3 md:py-2 md:align-middle'
+                          : 'md:table-cell md:py-3.5 md:align-middle',
                         k.alignRight ? 'md:text-right' : '',
                       ].join(' ')}
                     >

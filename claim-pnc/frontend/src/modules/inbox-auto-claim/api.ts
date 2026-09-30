@@ -4,6 +4,8 @@ import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
 import type {
   AutoClaimBatchListResponse,
   AutoClaimLineListResponse,
+  AutoClaimPremiumCheckResponse,
+  AutoClaimPremiumChoicesResponse,
   AutoClaimSummaryResponse,
   AutoClaimTabListResponse,
   AutoClaimUploadResponse,
@@ -17,6 +19,7 @@ const ROUTE_SUMMARY = `${ROUTE}/ringkasan`
 const ROUTE_TAB = `${ROUTE}/tab`
 const ROUTE_TEMPLATE = `${ROUTE}/format-unggahan`
 const ROUTE_UPLOAD = `${ROUTE}/unggah`
+const ROUTE_PREMIUM = `${ROUTE}/cek-premi`
 
 /**
  * batchKey menyertakan portal DAN token, sama seperti modul master lain.
@@ -252,5 +255,46 @@ export function useExportAutoClaim() {
       simpanBerkas(file)
       return file.namaBerkas
     },
+  })
+}
+
+/** Hook isi kedua isian tab Cek Premi (Nama Bisnis dan Sumber Bisnis). */
+export function useAutoClaimPremiumChoices() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['inbox-auto-claim-cek-premi-pilihan', portal, token],
+    queryFn: () =>
+      callAPI<AutoClaimPremiumChoicesResponse>(`${ROUTE_PREMIUM}/pilihan`, { token, portal }),
+    enabled: token !== null && portal !== null,
+    // Master bisnis dan master auto claim jarang berubah.
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook tombol Cek Premi.
+ *
+ * Ia query, bukan mutation: tombolnya hanya membaca. `pair` null berarti tombolnya belum
+ * ditekan. Hasilnya TIDAK disimpan di cache lama-lama (`gcTime: 0`) — total premi berubah
+ * setiap ada pembayaran, dan angka lama yang tampil lagi saat tab dibuka ulang akan
+ * dikira angka terbaru.
+ */
+export function useAutoClaimPremiumCheck(pair: { bisnis: string; sumber: string } | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['inbox-auto-claim-cek-premi', portal, token, pair?.bisnis, pair?.sumber],
+    queryFn: () =>
+      callAPI<AutoClaimPremiumCheckResponse>(
+        `${ROUTE_PREMIUM}?kode_bisnis=${encodeURIComponent(pair?.bisnis ?? '')}` +
+          `&kode_sumber_bisnis=${encodeURIComponent(pair?.sumber ?? '')}`,
+        { token, portal },
+      ),
+    enabled: token !== null && portal !== null && pair !== null,
+    gcTime: 0,
+    retry: false,
   })
 }

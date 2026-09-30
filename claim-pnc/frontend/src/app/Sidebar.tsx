@@ -216,7 +216,12 @@ function MenuGroup({
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
         ].join(' ')}
       >
-        {group.nama}
+        {/* Ikon yang sama dengan rel saat menu diperkecil (permintaan Work Owner
+            2026-09-30), supaya kelompok dikenali dengan tanda yang sama di kedua keadaan. */}
+        <span className="flex min-w-0 items-center gap-3">
+          <GroupIcon name={group.nama} className="h-4 w-4 shrink-0" />
+          <span className="truncate">{group.nama}</span>
+        </span>
         <ChevronIcon
           className={`h-4 w-4 shrink-0 transition-transform duration-150 ease-halus ${
             open ? 'rotate-90' : ''
@@ -269,13 +274,13 @@ function MenuEntry({ item, onNavigate }: { item: MenuItem; onNavigate?: (() => v
  * yang belum dikenal mendapat dua huruf pertama namanya — tetap terbedakan, dan tetap
  * bernama lengkap lewat tooltip dan aria-label.
  */
-function GroupIcon({ name }: { name: string }) {
+function GroupIcon({ name, className = 'h-5 w-5' }: { name: string; className?: string }) {
   const key = name.toUpperCase()
-  if (key.includes('MASTER')) return <ListIcon className="h-5 w-5" />
-  if (key.includes('INBOX')) return <InboxIcon className="h-5 w-5" />
-  if (key.includes('REPORT') || key.includes('LAPORAN')) return <ChartIcon className="h-5 w-5" />
-  if (key.includes('VIEW')) return <EyeIcon className="h-5 w-5" />
-  if (key.includes('SURVEY')) return <ClipboardIcon className="h-5 w-5" />
+  if (key.includes('MASTER')) return <ListIcon className={className} />
+  if (key.includes('INBOX')) return <InboxIcon className={className} />
+  if (key.includes('REPORT') || key.includes('LAPORAN')) return <ChartIcon className={className} />
+  if (key.includes('VIEW')) return <EyeIcon className={className} />
+  if (key.includes('SURVEY')) return <ClipboardIcon className={className} />
   return (
     <span aria-hidden="true" className="text-xs font-semibold">
       {key.slice(0, 2)}

@@ -21701,3 +21701,89 @@ EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
 >>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
+
+## 64. Inbox Auto Claim: grid muat satu layar, rincian pop-up, dan proteksi unggahan lanjutan (2026-09-29)
+
+### 64.1 Tampilan
+
+| Permintaan Work Owner | Yang dikerjakan |
+|---|---|
+| Dynamic layout & mobile friendly | Kolom kiri 15rem (18rem di layar sangat lebar), `sticky` di layar lebar dengan gulir sendiri; di ponsel/tablet kedua panel ditumpuk dan grid menjadi kartu (perilaku `DataTable`) |
+| Grid kanan terbaca satu layar tanpa gulir | KODE dan Nama Perusahaan dibuang dari grid (sudah di kepala panel; peringatan "tidak terdaftar" pindah ke pita di atas grid) · Di Upload digabung ke Diproses ("diproses / diunggah") · tombol dipadatkan · prop baru `DataTable.dense` (opt-in, layar lain tidak berubah) |
+| Detail sebagai pop-up | Rincian batch dibuka di modal (Escape, tombol Tutup rincian, atau klik latar menutup) |
+
+### 64.2 Koreksi: titik nilai klaim Kredit
+
+Aturan §60.2 "titik pada nilai klaim Kredit = pemisah ribuan, dibuang" **dicabut**. Langkah
+`@replaceAll(.ClaimAmount,".","")` (InsertKlaimToTable_Kredit :3966) bersyarat
+`OperatorID.pyUserIdentifier=="DONNYSULISTYOMANURUNG"` (:4025) — hanya untuk satu operator.
+Pengunggah lain membaca titik sebagai desimal. Hardcode operator itu tidak ditiru; ia
+menunggu keputusan Work Owner (D-15).
+
+### 64.3 Proteksi unggahan yang kini berjalan
+
+| Proteksi | Tab | Sumber |
+|---|---|---|
+| Tanggal kejadian dalam periode polis | Travel ("DOL tidak dalam range polis"); ANEKA produk 10166 ("Tanggal kejadian tidak dalam range polis") | `T_GENERAL.STARTDATE/ENDDATE`, per hari, inklusif |
+| Polis sudah dibatalkan | Kredit | `T_GENERAL.STATUSBUSINESS='3'` dan `FLAGEDMBATAL='1'`, diperiksa SESUDAH premi (urutan Pega) |
+| Sudah Klaim | Kredit | `CekObjekNotDouble` atas TMP_BATCH_CLAIM_KREDIT, ditambah kembar di dalam berkas yang sama |
+| Premi belum lunas | **ketiga tab, semua baris** | Layanan `getPremiumPaidOn_before`; `AgingAmount` kosong atau > 1 |
+| Pengecualian premi | Travel & ANEKA | Open Protection `PROTECTION_TYPE_ID='3'` di `POOLDATA.T_CLAIM_OPENPROTECTION` |
+| Mata uang baris | ketiga tab | `T_GENERAL.CURRENCY` → `POOLDATA.CURRENCY.ID` (`GetIDCurrencyByNote`) |
+
+`JSON_POLIS.DATA_JSONBLOB` tidak dipakai (Work Owner 2026-09-29); katalog Oracle
+membuktikan `T_GENERAL` memuat seluruh field yang dulu dibaca dari JSON.
+
+**Keputusan Work Owner 2026-09-29 (ditanyakan):** cek premi untuk SEMUA baris ketiga tab,
+tidak dibatasi Source of Business · layanan mati/galat → baris ditandai
+"Cek premi gagal: layanan tidak dapat dihubungi" · Open Protection tipe 3 membebaskan di
+Travel/ANEKA · sumber Open Protection adalah `T_CLAIM_OPENPROTECTION`, bukan Report
+Definition Pega.
+
+**Keputusan teknis:** alamat layanan dibaca katalog `GCNM_CONNECT_REST` yang sama dengan
+modul lain (`APP = <portal>`, `TYPESERVICE='PREMI'`) · layanan dipanggil sekali per
+(polis, prodke), paralel maksimal 8, batas waktu 15 detik · pesan galat tidak memuat alamat
+layanan (uji menangkap `dial tcp IP:port` yang semula bocor) · penandaan Open Protection
+"terpakai" (`IsUsedPNC`) TIDAK ditiru — tabelnya milik modul Open Protection (P-1).
+
+### 64.4 Yang belum dan temuan data
+
+| Hal | Keadaan |
+|---|---|
+| `APP` baris SMI di `GCNM_CONNECT_REST` bernilai `"SMI\n"` | Tidak cocok dengan `APP = 'SMI'` — cek premi SMI akan gagal, begitu juga fitur lain yang memakai katalog ini untuk SMI. Perlu dibersihkan DBA; kueri katalog milik modul auth tidak diubah (Login dilindungi) |
+| `T_GENERAL.CURRENCY` kosong pada polis contoh ketiga tab | Kolom mata uang baris tetap kosong; sumber lain perlu ditetapkan Work Owner |
+| Bentuk jawaban layanan premi | Disimpulkan dari pemetaan Pega; belum pernah dipanggil dari aplikasi baru |
+| Kredit: "Tidak bisa input adjustment", "Objek belum ada Outstanding" (alur akseptasi) | Belum dibawa |
+| Berkas ketiga di `RDB List` | Hanya dua yang ditemukan: `CekObjekNotDouble`, `GetIDCurrencyByNote` |
+
+## 65. Inbox Auto Claim: letak tombol, catatan dibuang, gulir di bawah bilah atas (2026-09-29)
+
+| Permintaan Work Owner | Yang dikerjakan |
+|---|---|
+| Upload Data Klaim di dalam tab | Tombol pindah dari kepala halaman ke panel tab (`role="tabpanel"`, dinamai tab aktif). Layar lama juga menaruh satu tombol Upload per tab (`InboxAutoClaim-Harness.xml` :4409, :20307, :35913) |
+| Proses Klaim & Generate DLA di grid kanan, Proses Klaim per batch | Keduanya menjadi tombol per baris batch. Di layar lama Proses Klaim satu per tab dan memproses semua batch (`CreateCasePNCAgent_*`); kini per batch. Generate DLA memang per baris (`GenerateDLA_Askredit`) |
+| Buang catatan Proses Klaim & Generate DLA | Panel "Belum tersedia di aplikasi ini" dibuang. Mesin keduanya belum dibangun, jadi tombolnya nonaktif dengan alasan di `title` |
+| Cek Premi sudah bisa lewat API? | **Belum.** Cek Premi adalah TAB KEEMPAT di layar lama (:50640), memanggil `CekPremi-Act` → Connect REST `GetPremiumPaid_SPK` (`/getPaymentDataSumbis`, TYPESERVICE `PREMI-API`, parameter SourceOfBizCode & BizCode, dibaca `TotalPremiumPaid`) lalu total klaim sukses dari `GetTotalKlaimCreditValue_API`. Layanan yang sudah dipakai proteksi unggahan adalah yang lain (`getPremiumPaidOn_before`, TYPESERVICE `PREMI`). Keterangan dipertahankan sebagai satu baris di bawah tab |
+| Gulir tidak melewati bilah atas | Yang digulir kini wadah di bawah bilah atas (`PageShell`), bukan jendela. Posisi gulir kembali ke atas setiap berpindah halaman. Berlaku untuk seluruh layar di balik sesi |
+
+## 66. Inbox Auto Claim: tab Cek Premi (2026-09-29)
+
+Tab keempat layar lama (`InboxAutoClaim-Harness.xml` :50640) kini dibangun, setelah Work Owner menyerahkan `InboxAutoClaim/GetTotalKlaimCreditValue_API-SQL.xml`.
+
+| Bagian | Sumber Pega | Di aplikasi baru |
+|---|---|---|
+| Isian Nama Bisnis | Report Definition `BrowseBusiness_RD` (kelas `ASM-FW-GISFW-Int-BUSINESS`), tampil `.Note`, kirim `.ID` | `POOLDATA.BUSINESS` (ID, NOTE), dropdown |
+| Isian Sumber Bisnis | `BrowseAutoKlaim_act` → `BrowseAutoKlaim` dengan `approval='1'`; parameter komite kosong | `M_AUTO_CLAIM_PNC` approval='1', dikelompokkan per INISIALID (satu kode bisa berbaris ganda di master) |
+| Total Premi | `CekPremi-Act` langkah 4 → `GetPremiumPaid_SPK`: POST badan kosong, query `SourceOfBizCode`, `BizCode`; dibaca `PaymentData.TotalPremiumPaid` | Adaptor `premium.Pega.PremiumPaidBySource` |
+| Total Klaim | `GetTotalKlaimCreditValue_API` versi baru: `SUM(NILAIKLAIM)` Kredit `'Sukses Klaim'` yang polisnya cocok di `T_GENERAL` (bisnis + sumber bisnis) | Kueri `auto_claim_premium_claim_total`, parameter terikat. Versi lama di `RDB List` (`{ASIS:TempServices.BookNo}`) tidak dipakai |
+
+**Keputusan teknis.**
+- **Alamat layanan dari katalog, bukan dari rule.** Rule `GetPremiumPaid_SPK` menanam alamat http-nya sendiri (pyBaseURL). `CekPremi-Act` memang membaca katalog `PREMI-API` lebih dulu, tapi hasilnya tidak dipakai rule itu. Aplikasi baru membaca `POOLDATA.GCNM_CONNECT_REST` (`APP=<portal>`, `TYPESERVICE='PREMI-API'`) sesuai D-15. `-periksa` memastikan baris katalognya berakhir di `/getPaymentDataSumbis` (1 dari 1). **Baris `PREMI-API` hanya ada untuk APP `ASM`**, sehingga portal lain akan mendapat "layanan cek premi tidak dapat dihubungi".
+- **Rute GET** `/api/inbox-auto-claim/cek-premi/pilihan` dan `/api/inbox-auto-claim/cek-premi?kode_bisnis=&kode_sumber_bisnis=`, di balik pemeriksaan portal. Tombolnya hanya membaca data.
+- Layanan gagal → 502 `layanan_premi_gagal`, dan Total Klaim tidak ditampilkan sendirian. Isian kosong → 422 dengan kedua pelanggaran sekaligus.
+- **Dua perbedaan dari layar lama yang disengaja:**
+  - "Max Premi (%)" (`TempPremi.DistrictID`) tidak dibawa, karena tidak pernah diisi activity mana pun.
+  - Hasil tetap tampil walau Total Klaim kosong. Layar lama menyembunyikannya (`pyContainerVisibleWhen TempPremi.District!=''`), sehingga "belum ada klaim" tidak bisa dibedakan dari "tombol tidak bekerja".
+
+**Verifikasi Oracle (`-periksa`):** 206 bisnis, 9 sumber bisnis. Kueri total klaim berjalan, termasuk penjumlahan pada pasangan yang benar-benar punya klaim sukses. Nilai dan kode tidak dicetak.
+**Belum:** layanan `getPaymentDataSumbis` belum pernah dipanggil dari aplikasi baru. Bentuk jawabannya disimpulkan dari pemetaan Pega (`TotalPremiumPaid`, tingkat atas atau di dalam `PaymentData`).

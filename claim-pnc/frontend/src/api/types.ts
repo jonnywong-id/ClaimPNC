@@ -2156,13 +2156,29 @@ export type AutoClaimUploadResponse = {
  * Dilayani server, tidak disalin ke sini: bila flow action Pega yang asli akhirnya tiba
  * dan judul kolomnya ternyata berbeda, yang berubah hanya satu tempat.
  */
+/** Isi kedua isian tab Cek Premi Inbox Auto Claim. */
+export type AutoClaimPremiumChoicesResponse = {
+  /** POOLDATA.BUSINESS: kode = ID, nama = NOTE. */
+  bisnis: { kode: string; nama: string }[]
+  /** Master Auto Claim yang disetujui: kode = INISIALID, nama = NAMA_PENERIMA. */
+  sumber_bisnis: { kode: string; nama: string }[]
+  portal: string
+}
+
+/** Hasil tombol Cek Premi. Kedua angka teks desimal presisi penuh; kosong = tidak ada. */
+export type AutoClaimPremiumCheckResponse = {
+  kode_bisnis: string
+  kode_sumber_bisnis: string
+  total_premi: string
+  total_klaim: string
+  portal: string
+}
+
 export type AutoClaimUploadTemplateResponse = {
   kolom_wajib: string[]
   kolom_opsional: string[]
   /** Kolom yang wajib dd/mm/yyyy pada tab ini — berbeda per bisnis. */
   kolom_tanggal: string[]
-  /** Benar di tab Kredit: titik pada nilai klaim dibuang sebagai pemisah ribuan. */
-  titik_ribuan: boolean
   batas_baris: number
  /* Badan permintaan penambahan dan penyuntingan.
  *

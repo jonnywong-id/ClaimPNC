@@ -30098,3 +30098,33 @@ T_CLAIM_ADJUSTMENT PNCN.26.0014. Uji usecase baru 7, uji layar baru 2; uji regis
 - Email ke komite dan PIC, riwayat klaim, dan progres klaim otomatis (`InsertHistoryClaimPNC`,
   `PNCInsertProgressClaim`) — hanya jejak audit yang ditulis. Nomor akseptasi (B-10).
 - Nomor KMTN diambil dari MAX + 1: dua transfer serentak dapat memperoleh nomor yang sama.
+
+## 64. Inbox Auto Claim: tampilan satu layar, pop-up rincian, proteksi unggahan lanjutan (2026-09-29)
+
+**Permintaan Work Owner:** layout dinamis & mobile friendly, grid kanan terbaca satu layar, Detail sebagai pop-up; melanjutkan proteksi unggahan (DATA_JSONBLOB tidak dipakai, dua berkas RDB List baru, alamat cek premi dari GCNM_CONNECT_REST per portal, lokasi hardcode operator).
+
+**Pertanyaan konfirmasi (dijawab):** cakupan cek premi → semua baris ketiga tab · layanan mati → baris ditandai gagal · Open Protection tipe 3 membebaskan di Travel/ANEKA · sumber Open Protection → `T_CLAIM_OPENPROTECTION`.
+
+**Perubahan:** frontend `CompanyBatches.tsx`, `CompanyBrowser.tsx`, `UploadForm.tsx`, `DataTable.tsx` (`dense`), `Icon.tsx` (`DownloadIcon`), `api/types.ts`; backend domain `policy.go` baru, `upload.go`, `inboxautoclaim.go` (4 metode Repo); usecase `manage.go` (tahap premi); adapter `premium/` baru (Pega + Fake); sqlstore 4 kueri baru; memori; `cmd/claimpnc` (perakitan + 2 pemeriksaan `-periksa`). Tidak ada perubahan skema.
+
+**Kendala:** (1) aturan titik nilai klaim Kredit kemarin keliru — langkah Pega-nya bersyarat satu operator; dicabut. (2) galat jaringan Go membocorkan IP:port layanan — ditangkap uji, pesan disaring. (3) `APP` SMI berakhiran baris baru. (4) `T_GENERAL.CURRENCY` kosong. (5) `main.go` ber-CRLF membuat penggantian teks via perl gagal diam-diam — dipakai Edit.
+
+**Verifikasi:** seluruh paket Inbox Auto Claim lulus; 3 sabotase membuktikan uji premi, Open Protection, dan kontrak ganda dapat merah; `-periksa` Oracle: keempat kueri baru berjalan di ketiga tab; frontend 65/65, `tsc` dan build bersih. Kegagalan uji di `inboxosclaimpercabang`, `inboxpladla`, `inboxservicecenter` berasal dari commit lain, bukan perubahan ini.
+
+## 65. Inbox Auto Claim: letak tombol dan gulir di bawah bilah atas (2026-09-29)
+
+Upload Data Klaim pindah ke panel tab; Proses Klaim dan Generate DLA menjadi tombol per baris batch (nonaktif, mesin belum dibangun); panel catatan "belum tersedia" dibuang; Cek Premi tetap satu baris keterangan karena ia tab keempat dengan layanan `GetPremiumPaid_SPK` yang belum dibangun. `PageShell` kini menggulir wadah di bawah bilah atas, bukan jendela; `sticky` menu kiri dan daftar perusahaan disesuaikan ke wadah itu. Uji diperbarui (tombol Upload dicari di dalam `tabpanel`; uji baru untuk tombol per batch). Frontend 66/66, `tsc` dan build bersih. Belum diperiksa di peramban.
+
+## 66. Inbox Auto Claim: tab Cek Premi (2026-09-29)
+
+Tab keempat Cek Premi dibangun (lihat keputusan-implementasi §66).
+- **Backend:**
+  - domain `premiumcheck.go`;
+  - `PremiumChecker.PremiumPaidBySource` (Pega + Fake; jalur panggil HTTP disatukan di `Pega.call`);
+  - `Repo.PremiumCheckChoices` / `SucceededClaimTotal` (sqlstore + memori + data contoh);
+  - usecase `CheckPremiumTotal`;
+  - dua rute GET dan kode galat `layanan_premi_gagal` (502);
+  - pemeriksaan `-periksa` untuk katalog `PREMI-API`, kolom `POOLDATA.BUSINESS`, dan ketiga kueri.
+- **Frontend:** `PremiumCheckPanel` sebagai tab keempat (tanpa tombol Upload); baris "Cek Premi belum tersedia" dibuang.
+- **Uji:** Go (pega_test, manage_test, routes_test) lulus; frontend 69/69; `tsc` dan build bersih.
+- Saat verifikasi, drive C tinggal 32 MB sehingga link Go gagal. Build/uji dijalankan dengan `GOTMPDIR`/`GOCACHE` sementara di drive D, lalu foldernya dihapus.

@@ -307,14 +307,15 @@ func TestBerkasKreditTanpaKolomTanggalDiterima(t *testing.T) {
 	// (InsertKlaimToTable_Kredit membaca PolicyNo, ContractNo, ClaimAmount, ReportType,
 	// FlagData, TanggalBayarKlaim). Versi sebelumnya mewajibkan keduanya untuk semua tab.
 	berkas := "PolicyNo,ContractNo,ClaimAmount,ReportType,FlagData,TanggalBayarKlaim\n" +
-		"'0100120260500,ktr-1,12.500.000,KLAIM,1,17/09/2026\n"
+		"'0100120260500,ktr-1,12500000.50,KLAIM,1,17/09/2026\n"
 
 	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceKredit, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceKredit, baris))
 
 	require.Equal(t, "0100120260500", baris[0].PolicyNo, "tanda kutip Excel dibuang (K:4321)")
-	require.Equal(t, "12500000", baris[0].ClaimAmount, "titik pada nilai Kredit adalah pemisah ribuan (K:3966)")
+	require.Equal(t, "12500000.50", baris[0].ClaimAmount,
+		"titik tetap desimal — pembuangan titik di Pega hanya untuk satu operator (K:4025)")
 	require.Equal(t, "KLAIM", baris[0].ReportType)
 	require.Equal(t, "17/09/2026", baris[0].PaymentDate)
 
