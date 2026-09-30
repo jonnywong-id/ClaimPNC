@@ -87,7 +87,11 @@
       "Bash(.TransferCashierStatus)",
       "Bash(gofmt -l internal/registrasi/usecase/service.go)",
       "Bash(gofmt /tmp/s.go)",
-      "Bash(sed -i 's/\\\\r*$/\\\\r/' src/modules/registrasi/CashierDialog.tsx)"
+      "Bash(sed -i 's/\\\\r*$/\\\\r/' src/modules/registrasi/CashierDialog.tsx)",
+      "Bash(gofmt -l /tmp/m.go)",
+      "Bash(gofmt -d /tmp/m.go)",
+      "Bash(gofmt -l /tmp/h.go)",
+      "Bash(gofmt /tmp/m.go)"
     ],
     "additionalDirectories": [
       "\\tmp"
