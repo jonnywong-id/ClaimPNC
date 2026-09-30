@@ -6,7 +6,9 @@ import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { Field } from '@/components/Field'
 import { ReloadIcon } from '@/components/Icon'
+import { TabBar, type TabItem } from '@/components/TabBar'
 
 import {
   PAGE_SIZE,
@@ -171,12 +173,20 @@ export function SurveyInboxPage() {
 
   return (
     <PageFrame identitas={identitas}>
-      <BilahBagian aktif={bagian} onPilih={setBagian} />
+      <div className="mt-6">
+        <TabBar
+          tabs={TAB_BAGIAN}
+          active={bagian}
+          onSelect={(kode) => setBagian(kode as Bagian)}
+          label="Bagian layar My Work"
+        />
+      </div>
 
       {bagian === 'inbox' ? (
         <BagianInbox
           tabTersedia={keterangan.data?.tab ?? []}
           jumlah={jumlahTab.data?.tab ?? []}
+          jumlahGagal={jumlahTab.isError}
           tabAktif={tab}
           onPindahTab={pindahTab}
           kolom={keterangan.data?.kolom ?? []}
@@ -220,46 +230,24 @@ export function SurveyInboxPage() {
   )
 }
 
-/** Bilah dua tab besar: INBOX dan KPI, sesuai harness. */
-function BilahBagian({
-  aktif,
-  onPilih,
-}: {
-  aktif: Bagian
-  onPilih: (bagian: Bagian) => void
-}) {
-  const pilihan: { kunci: Bagian; judul: string }[] = [
-    { kunci: 'inbox', judul: 'INBOX' },
-    { kunci: 'kpi', judul: 'KPI' },
-  ]
-
-  return (
-    <div className="mt-6 flex gap-1 border-b border-slate-200" role="tablist">
-      {pilihan.map((p) => (
-        <button
-          key={p.kunci}
-          type="button"
-          role="tab"
-          aria-selected={aktif === p.kunci}
-          onClick={() => onPilih(p.kunci)}
-          className={
-            'rounded-t-md px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ' +
-            (aktif === p.kunci
-              ? 'border-b-2 border-blue-600 text-blue-700'
-              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-          }
-        >
-          {p.judul}
-        </button>
-      ))}
-    </div>
-  )
-}
+/**
+ * Bilah dua tab besar: INBOX dan KPI, sesuai harness.
+ *
+ * Memakai `TabBar` bersama, bukan tombol buatan sendiri. Bilah buatan sendiri di sini
+ * sempat ada dan MIRIP tapi tidak sama — `rounded-t-md` alih-alih `rounded-t-kontrol`,
+ * tanpa `ease-halus` — yaitu jarak yang cukup dekat untuk tampak seperti cacat dan cukup
+ * jauh untuk terlihat berbeda dari layar sebelahnya di menu.
+ */
+const TAB_BAGIAN: TabItem[] = [
+  { kode: 'inbox', nama: 'INBOX', keterangan: 'Antrean pekerjaan survei Anda.' },
+  { kode: 'kpi', nama: 'KPI', keterangan: 'Ringkasan penilaian adjuster.' },
+]
 
 /** Bagian INBOX — bilah tujuh tab status, tabel, dan paginasinya. */
 function BagianInbox({
   tabTersedia,
   jumlah,
+  jumlahGagal,
   tabAktif,
   onPindahTab,
   kolom,
@@ -277,6 +265,8 @@ function BagianInbox({
 }: {
   tabTersedia: TabLayar[]
   jumlah: { kunci: string; total: number }[]
+  /** Jumlah baris per tab gagal diambil — angkanya tidak dapat ditampilkan. */
+  jumlahGagal: boolean
   tabAktif: string
   onPindahTab: (kunci: string) => void
   kolom: KolomLayar[]
@@ -299,76 +289,125 @@ function BagianInbox({
   // Pega; menyamakan keduanya akan membuat angka tab berkedip setiap huruf yang diketik.
   const angka = new Map(jumlah.map((j) => [j.kunci, j.total]))
 
+  // Angka dititipkan ke NAMA tabnya, bukan digambar sebagai lencana tersendiri.
+  //
+  // `TabBar` bersama tidak menyediakan slot lencana, dan menambahkannya berarti mengubah
+  // komponen yang sudah dipakai layar lain. Tanda kurung terbaca sama jelasnya, dan
+  // konsistensi bilah tab antarlayar lebih berharga daripada bentuk lencananya.
+  //
+  // Tab yang BELUM TERSEDIA memakai slot yang sama untuk menyatakan keadaannya, bukan angka.
+  // Membiarkannya tampil polos akan membuatnya terbaca sebagai tab kosong — dan tab kosong
+  // tidak pernah dilaporkan siapa pun sebagai kerusakan.
+  const tabs: TabItem[] = tabTersedia.map((t) => ({
+    kode: t.kunci,
+    nama: !t.tersedia
+      ? `${t.judul} (belum tersedia)`
+      : angka.has(t.kunci)
+        ? `${t.judul} (${angka.get(t.kunci)})`
+        : t.judul,
+    ...(t.alasan_tak_tersedia ?? t.keterangan
+      ? { keterangan: t.alasan_tak_tersedia ?? t.keterangan }
+      : {}),
+  }))
+
+  // Tab yang sedang dibuka tetapi belum dapat dihitung.
+  //
+  // Ia TETAP dapat dipilih, dan itu disengaja. Tab yang dimatikan tanpa penjelasan sama
+  // membingungkannya dengan tab kosong; yang dibutuhkan pengguna adalah SEBABNYA, dan sebab
+  // itu baru muat ditampilkan setelah tabnya dibuka.
+  const tabDibuka = tabTersedia.find((t) => t.kunci === tabAktif)
+  const tabBelumTersedia = tabDibuka && !tabDibuka.tersedia ? tabDibuka : null
+
   return (
     <>
-      <div className="mt-4 flex flex-wrap gap-2" role="tablist">
-        {tabTersedia.map((t) => (
-          <button
-            key={t.kunci}
-            type="button"
-            role="tab"
-            aria-selected={tabAktif === t.kunci}
-            title={t.keterangan ?? ''}
-            onClick={() => onPindahTab(t.kunci)}
-            className={
-              'rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ' +
-              (tabAktif === t.kunci
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900')
-            }
-          >
-            {t.judul}
-            {angka.has(t.kunci) && (
-              <span className="ml-2 rounded-full bg-slate-100 px-1.5 py-0.5 tabular-nums text-slate-700">
-                {angka.get(t.kunci)}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
       <div className="mt-4">
-        <DataTable<TugasSurvei>
-          columns={buildColumns(kolom, bukaKlaim)}
-          rows={baris}
-          // Kunci baris memakai survei_id DAN index_survei sekaligus.
-          //
-          // Satu klaim dapat punya beberapa janji survei, dan masing-masing adalah barisnya
-          // sendiri. Memakai klaim_id saja akan membuat React menemukan kunci ganda pada
-          // baris yang memang seharusnya berbeda.
-          rowKey={(row) => `${row.survei_id}|${row.index_survei}`}
-          title="Antrean pekerjaan survei"
-          label="Antrean My Work"
-          {...(total > 0 ? { description: `${total} pekerjaan pada tab ini.` } : {})}
-          isLoading={sedangMemuat}
-          searchLabel="Cari Claim No / Reference No"
-          emptyMessage="Tidak ada pekerjaan pada tab ini untuk Anda saat ini."
-          serverSearch={{ value: cari, onChange: onCari, matchCount: total }}
-          actions={
-            <Button tone="halus" onClick={onMuatUlang} disabled={sedangMengambil}>
-              <ReloadIcon className="h-4 w-4" />
-              {sedangMengambil ? 'Memuat…' : 'Muat ulang'}
-            </Button>
-          }
-          error={
-            galat ? (
-              <ErrorMessage
-                title="Antrean tidak dapat dimuat"
-                description={galat}
-                tone="gangguan"
-              />
-            ) : undefined
-          }
-          pagination={{
-            page: halaman,
-            size: PAGE_SIZE,
-            total,
-            totalPage: totalHalaman,
-            onPageChange: onPindahHalaman,
-            isLoading: sedangMengambil,
-          }}
+        <TabBar
+          tabs={tabs}
+          active={tabAktif}
+          onSelect={onPindahTab}
+          label="Tab status antrean survei"
         />
       </div>
+
+      {jumlahGagal && (
+        // Kegagalan penghitung tab HARUS terlihat, dan ini bukan kelengkapan.
+        //
+        // Tanpa pesan ini, tab tampil tanpa angka — dan pengguna tidak dapat membedakan
+        // "tab ini memang kosong" dari "angkanya gagal diambil". Yang pertama tidak pernah
+        // dilaporkan siapa pun sebagai kerusakan.
+        //
+        // Ia pemberitahuan di dalam layar, BUKAN pengganti seluruh layar: daftarnya sendiri
+        // tetap dapat dibaca, dan menutup layar karena penghitungnya gagal akan mengambil
+        // lebih banyak daripada yang hilang.
+        <p className="mt-2 text-xs text-slate-600" role="status">
+          Jumlah pekerjaan per tab tidak dapat diambil, sehingga angkanya tidak ditampilkan.
+          Daftarnya sendiri tetap dapat dibuka. Tekan Muat ulang untuk mencoba lagi.
+        </p>
+      )}
+
+      {tabBelumTersedia ? (
+        // Tab yang belum dapat dihitung MENGGANTI tabelnya, bukan menampilkannya kosong.
+        //
+        // Daftar kosong terbaca sebagai "tidak ada pekerjaan untuk saya", dan pembacaan itu
+        // salah: yang benar adalah kolom penggeraknya belum ada. Perbedaan keduanya menentukan
+        // — yang pertama tidak pernah dilaporkan siapa pun, yang kedua akan.
+        <div className="mt-4">
+          <ErrorMessage
+            title={`Tab ${tabBelumTersedia.judul} belum dapat ditampilkan`}
+            description={
+              (tabBelumTersedia.alasan_tak_tersedia ??
+                'Kolom penggeraknya belum tersedia di basis data.') +
+              ' Tab lain pada bilah di atas tetap berisi.'
+            }
+            tone="gangguan"
+          />
+        </div>
+      ) : (
+        <div className="mt-4">
+          <DataTable<TugasSurvei>
+            columns={buildColumns(kolom, bukaKlaim)}
+            rows={baris}
+            // Kunci baris memakai survei_id DAN index_survei sekaligus.
+            //
+            // Satu klaim dapat punya beberapa janji survei, dan masing-masing adalah barisnya
+            // sendiri. Memakai klaim_id saja akan membuat React menemukan kunci ganda pada
+            // baris yang memang seharusnya berbeda.
+            rowKey={(row) => `${row.survei_id}|${row.index_survei}`}
+            title="Antrean pekerjaan survei"
+            label="Antrean My Work"
+            {...(total > 0 ? { description: `${total} pekerjaan pada tab ini.` } : {})}
+            isLoading={sedangMemuat}
+            // HANYA Claim No. Layar lama juga mencari pada Reference No, dan kolom itu belum
+            // tersedia — menyebutnya di sini akan menjanjikan pencarian yang tidak terjadi.
+            searchLabel="Cari Claim No"
+            emptyMessage="Tidak ada pekerjaan pada tab ini untuk Anda saat ini."
+            serverSearch={{ value: cari, onChange: onCari, matchCount: total }}
+            actions={
+              <Button tone="halus" onClick={onMuatUlang} disabled={sedangMengambil}>
+                <ReloadIcon className="h-4 w-4" />
+                {sedangMengambil ? 'Memuat…' : 'Muat ulang'}
+              </Button>
+            }
+            error={
+              galat ? (
+                <ErrorMessage
+                  title="Antrean tidak dapat dimuat"
+                  description={galat}
+                  tone="gangguan"
+                />
+              ) : undefined
+            }
+            pagination={{
+              page: halaman,
+              size: PAGE_SIZE,
+              total,
+              totalPage: totalHalaman,
+              onPageChange: onPindahHalaman,
+              isLoading: sedangMengambil,
+            }}
+          />
+        </div>
+      )}
     </>
   )
 }
@@ -411,40 +450,41 @@ function BagianKPI({
   // sebagai nama orang yang kebetulan berupa angka.
   const judulKelompok = jenis === 'kuartal' ? 'TAHUN' : 'ADJUSTER'
 
+  const tabs: TabItem[] = jenisTersedia.map((j) => ({
+    kode: j,
+    nama: JUDUL_JENIS_KPI[j] ?? j,
+  }))
+
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-end gap-3">
-        <div className="flex flex-wrap gap-2" role="tablist">
-          {jenisTersedia.map((j) => (
-            <button
-              key={j}
-              type="button"
-              role="tab"
-              aria-selected={jenis === j}
-              onClick={() => onPilihJenis(j)}
-              className={
-                'rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ' +
-                (jenis === j
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900')
-              }
-            >
-              {JUDUL_JENIS_KPI[j] ?? j}
-            </button>
-          ))}
-        </div>
+      <div className="mt-4">
+        <TabBar
+          tabs={tabs}
+          active={jenis}
+          onSelect={onPilihJenis}
+          label="Jenis ringkasan KPI adjuster"
+        />
+      </div>
 
-        <label className="flex flex-col text-xs font-medium text-slate-600">
-          Tahun
-          <input
-            type="text"
-            inputMode="numeric"
-            value={tahun}
-            onChange={(event) => onUbahTahun(event.target.value)}
-            placeholder="semua"
-            className="mt-1 w-28 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          />
-        </label>
+      <div className="mt-4 w-32">
+        {/*
+          `Field`, bukan `<input>` buatan sendiri.
+
+          Alasannya bukan kerapian. `src/styles.css:281` menempelkan permukaan gelap lewat
+          selector `input[class~="bg-white"]`, dan isian tanpa kelas itu KELUAR dari tema —
+          ia tampil transparan di tema gelap. `Field` membawanya, berikut `htmlFor` yang
+          benar dan cincin fokus yang sama dengan seluruh isian lain di aplikasi ini.
+        */}
+        <Field
+          id="kpi-tahun"
+          label="Tahun"
+          type="text"
+          inputMode="numeric"
+          value={tahun}
+          onChange={(event) => onUbahTahun(event.target.value)}
+          placeholder="semua"
+          hint="Kosongkan untuk seluruh tahun."
+        />
       </div>
 
       <div className="mt-4">
@@ -546,6 +586,31 @@ function Teks({ nilai }: { nilai: string }) {
   return <span className="truncate">{nilai}</span>
 }
 
+/**
+ * Judul kolom yang belum tersedia diberi penanda, bukan dibiarkan tampak biasa.
+ *
+ * Tanpa penanda, kolom yang SELALU kosong tidak dapat dibedakan dari kolom yang kebetulan
+ * kosong pada halaman ini — dan yang kedua terbaca sebagai "datanya belum diisi petugas".
+ */
+function judulKolom(k: KolomLayar): string {
+  return k.tersedia ? k.judul : `${k.judul} · belum tersedia`
+}
+
+/**
+ * Sel kolom yang belum tersedia.
+ *
+ * Ia menyebut keadaannya, bukan menggambar em dash. Em dash pada kolom yang SELALU kosong
+ * tidak dapat dibedakan dari em dash pada baris yang kebetulan kosong, dan sebab keduanya
+ * berbeda jauh: yang satu menunggu Tim Pega, yang lain menunggu petugas mengisi.
+ */
+function SelBelumTersedia({ keterangan }: { keterangan: string | undefined }) {
+  return (
+    <span className="text-xs text-slate-400" title={keterangan ?? ''}>
+      belum tersedia
+    </span>
+  )
+}
+
 type Renderer = (
   k: KolomLayar,
   bukaKlaim: (nomorKlaim: string) => void,
@@ -558,31 +623,35 @@ type Renderer = (
  * judul tetap backend.
  */
 const renderer: Record<string, Renderer | undefined> = {
+  // Appointment No, Reference No, dan Status ASM ber-`tersedia: false` hari ini.
+  //
+  // Ketiganya TETAP digambar — `D-13` menetapkan bentuk layar mengikuti Pega, dan menghapus
+  // tiga dari tiga belas kolom akan membuat pengguna yang hafal layarnya mengira isinya
+  // hilang. Yang berubah: judul dan selnya menyatakan sebabnya.
   appointment_no: (k) => ({
     key: k.kunci,
-    title: k.judul,
+    title: judulKolom(k),
     width: '10rem',
     value: (row) => row.appointment_no,
     render: (row) =>
       row.appointment_no ? (
         <Teks nilai={row.appointment_no} />
       ) : (
-        // Sel kosong MENJELASKAN dirinya lewat keterangan dari server.
-        //
-        // Pemetaan kolom ini belum dikonfirmasi DBA, sehingga kosongnya punya dua sebab yang
-        // tampak sama: memang belum ada nomor janji, atau kolom yang dibaca keliru.
-        <span className="text-xs text-slate-400" title={k.keterangan ?? ''}>
-          —
-        </span>
+        <SelBelumTersedia keterangan={k.keterangan} />
       ),
   }),
 
   reference_no: (k) => ({
     key: k.kunci,
-    title: k.judul,
+    title: judulKolom(k),
     width: '10rem',
     value: (row) => row.reference_no,
-    render: (row) => <Teks nilai={row.reference_no} />,
+    render: (row) =>
+      row.reference_no ? (
+        <Teks nilai={row.reference_no} />
+      ) : (
+        <SelBelumTersedia keterangan={k.keterangan} />
+      ),
   }),
 
   claim_no: (k, bukaKlaim) => ({
@@ -683,11 +752,12 @@ const renderer: Record<string, Renderer | undefined> = {
     render: (row) =>
       // `null` dan `0` digambar BERBEDA, dan itu inti kolomnya.
       //
-      // Kolom `AGING` boleh kosong. Menggambar keduanya sama akan menampilkan "0 hari" pada
-      // baris yang sebenarnya belum pernah dihitung — angka yang terlihat sah dan salah.
+      // `null` berarti tanggal janji surveinya tidak ada, sehingga umurnya tidak dapat
+      // dihitung. Menggambar keduanya sama akan menampilkan "0 hari" pada baris yang
+      // sebenarnya tidak punya angka — angka yang terlihat sah dan salah.
       row.aging === null ? (
         <span className="text-xs text-slate-400" title={k.keterangan ?? ''}>
-          belum dihitung
+          tidak dapat dihitung
         </span>
       ) : (
         <span className="tabular-nums text-slate-700">{row.aging} hari</span>
@@ -696,10 +766,15 @@ const renderer: Record<string, Renderer | undefined> = {
 
   status_asm: (k) => ({
     key: k.kunci,
-    title: k.judul,
+    title: judulKolom(k),
     width: '11rem',
     value: (row) => row.status_asm,
-    render: (row) => <Teks nilai={row.status_asm} />,
+    render: (row) =>
+      row.status_asm ? (
+        <Teks nilai={row.status_asm} />
+      ) : (
+        <SelBelumTersedia keterangan={k.keterangan} />
+      ),
   }),
 }
 
@@ -746,9 +821,10 @@ function PageFrame({
  * Catatan di bawah layar.
  *
  * Datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya begitu
- * penghalangnya hilang. Pada layar ini daftarnya panjang — empat kueri tab layar lama hilang
- * dari export, dan dua pemetaan kolom masih menunggu DBA — sehingga menuliskannya di sini
- * berarti menyunting layar setiap kali satu penghalang selesai.
+ * penghalangnya hilang. Pada layar ini daftarnya panjang — empat kolom adjuster belum ada di
+ * basis data, empat kueri tab layar lama hilang dari export, dan satu pemetaan kolom masih
+ * menunggu DBA — sehingga menuliskannya di sini berarti menyunting layar setiap kali satu
+ * penghalang selesai.
  */
 function Catatan({ judul, baris }: { judul: string; baris: string[] }) {
   if (baris.length === 0) return null

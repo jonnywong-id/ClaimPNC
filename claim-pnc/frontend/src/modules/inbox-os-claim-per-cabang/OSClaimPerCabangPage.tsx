@@ -9,6 +9,7 @@ import { formatDate } from '@/components/format'
 import { formatRupiah } from '@/lib/money'
 
 import { useExportOSClaimPerCabang, useOSClaimPerCabangList } from './api'
+import { DetailDialog } from './DetailDialog'
 import type { Branch, PageInfo, WorkItem } from './types'
 
 /**
@@ -32,13 +33,24 @@ import type { Branch, PageInfo, WorkItem } from './types'
  * Diambil dari `Section/InboxOutstandingperCabang_Section-Section.xml` apa adanya: judul
  * yang menyebut cabang, tombol ekspor, lalu grid 16 kolom. Nama kolom TIDAK diterjemahkan.
  *
- * Satu hal yang ada di layar lama dan BELUM ada di sini: tombol "Detail" per baris, yang
- * membuka `View_DetailKlaimCabang_Harness`. Ia serahan kedua modul ini — keputusan Work
- * Owner 2026-09-28 — dan sengaja tidak digambar sebagai tombol mati, karena tombol yang
- * tidak menjawab apa pun terbaca sebagai kerusakan.
+ * # Satu hal yang berbeda tempatnya dari layar lama
+ *
+ * Tombol "Detail" ada di dalam BARIS di sini, sedangkan di Pega ia berada di bilah atas dan
+ * bekerja atas baris yang sedang disorot. Tabel ini tidak punya konsep "baris yang disorot",
+ * dan tombol di bilah atas yang bekerja atas sesuatu yang tidak terlihat dipilih adalah
+ * tombol yang menebak maksud pengguna.
+ *
+ * Yang dibukanya sama: `View_DetailKlaimCabang_Harness`, lihat DetailDialog.
  */
 export function OSClaimPerCabangPage() {
   const [page, setPage] = useState(1)
+
+  // Nomor klaim yang popupnya sedang terbuka, atau null bila tidak ada.
+  //
+  // Yang disimpan NOMOR, bukan barisnya. Menyimpan barisnya berarti popup menggambar
+  // salinan data yang diambil saat daftar dimuat — dan bila datanya sudah berubah sejak
+  // itu, popup menampilkan angka yang tidak berlaku lagi tanpa satu pun tanda.
+  const [detailOf, setDetailOf] = useState<string | null>(null)
 
   const portal = useSelectedPortal((state) => state.alias)
   const list = useOSClaimPerCabangList(page)
@@ -83,7 +95,7 @@ export function OSClaimPerCabangPage() {
     <PageFrame exportable={(list.data?.paginasi.total ?? 0) > 0} branch={branch}>
       <div className="mt-4">
         <DataTable<WorkItem>
-          columns={columnsFor(list.data?.ambang_aging ?? 0)}
+          columns={columnsFor(list.data?.ambang_aging ?? 0, setDetailOf)}
           rows={rows}
           rowKey={(row) => row.no_klaim}
           // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman yang
@@ -121,6 +133,10 @@ export function OSClaimPerCabangPage() {
           <RedRuleLegend threshold={list.data.ambang_aging} />
           <PlannedDifferences lines={list.data.selisih_terencana} />
         </>
+      )}
+
+      {detailOf !== null && (
+        <DetailDialog nomorKlaim={detailOf} onTutup={() => setDetailOf(null)} />
       )}
     </PageFrame>
   )
@@ -216,7 +232,10 @@ function ExportButton({ enabled }: { enabled: boolean }) {
  * komponen BERSAMA, dan menambah kemampuan pewarnaan baris ke sana menyentuh setiap layar
  * yang memakainya. Sampai kebutuhan itu muncul di layar kedua, penandaannya tinggal di sini.
  */
-function columnsFor(threshold: number): Column<WorkItem>[] {
+function columnsFor(
+  threshold: number,
+  onDetail: (nomorKlaim: string) => void,
+): Column<WorkItem>[] {
   /**
    * text menyusun satu kolom teks biasa yang ikut ditandai merah.
    *
@@ -245,6 +264,7 @@ function columnsFor(threshold: number): Column<WorkItem>[] {
     text('sumbis', 'Sumbis', (row) => row.sumbis),
     text('cob', 'COB', (row) => row.cob),
     text('no_polis', 'Policy No', (row) => row.no_polis),
+    text('nama_insured', 'Nama Insured', (row) => row.nama_insured),
     text('no_klaim', 'Claim No', (row) => row.no_klaim),
     text('tanggal_registrasi', 'Registration Date', (row) =>
       formatDate(row.tanggal_registrasi),
@@ -279,6 +299,28 @@ function columnsFor(threshold: number): Column<WorkItem>[] {
         </Marked>
       ),
       alignRight: true,
+    },
+    {
+      // Kolom aksi, bukan kolom data. Ia tidak ada di grid Pega sebagai kolom — di sana
+      // tombolnya berada di bilah atas dan bekerja atas baris yang sedang DISOROT.
+      //
+      // Dipindahkan ke dalam baris di sini karena tabel ini tidak punya konsep "baris yang
+      // disorot": tombol di bilah atas yang bekerja atas sesuatu yang tidak terlihat
+      // dipilih adalah tombol yang menebak maksud pengguna.
+      key: 'aksi',
+      title: 'Detail',
+      value: () => '',
+      noSort: true,
+      render: (row) => (
+        <Button
+          tone="halus"
+          onClick={() => onDetail(row.no_klaim)}
+          // Pembaca layar mendengar "Detail" delapan puluh kali tanpa keterangan ini.
+          aria-label={`Lihat detail klaim ${row.no_klaim}`}
+        >
+          Detail
+        </Button>
+      ),
     },
   ]
 }

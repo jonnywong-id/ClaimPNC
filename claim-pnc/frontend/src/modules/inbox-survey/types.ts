@@ -12,10 +12,10 @@ export type TugasSurvei = {
    * Kunci teknis objek survei (`T_SURVEYORLIST.CASEID`). TIDAK ditampilkan sebagai kolom —
    * isinya memuat nama kelas internal Pega — tetapi dipakai sebagai kunci baris.
    */
-  survei_id: string
+  survei_id: string;
 
   /** Kunci klaim induknya, dipakai tautan baris membuka klaimnya. */
-  klaim_id: string
+  klaim_id: string;
 
   /**
    * Janji keberapa pada klaim yang sama.
@@ -23,53 +23,82 @@ export type TugasSurvei = {
    * Tidak digambar. Satu klaim dapat punya beberapa janji survei, dan tanpa index ini kedua
    * barisnya tidak dapat dibedakan sebagai kunci React.
    */
-  index_survei: string
-
-  appointment_no: string
-  reference_no: string
-  claim_no: string
-  policy_no: string
-  insured_name: string
-  cob: string
-  cause_of_loss: string
-  location: string
-  pic_asm: string
-  pic_loss_adjuster: string
-
-  /** YYYY-MM-DD, sudah dalam WIB. Dikonversi server, bukan di peramban (`R-12`). */
-  date_of_loss: string
+  index_survei: string;
 
   /**
-   * Kolom "Aging" — DIBACA dari kolom `AGING`, bukan dihitung.
+   * `appointment_no` dan `reference_no` SELALU kosong hari ini.
    *
-   * `null` berarti belum dihitung, dan itu BERBEDA dari nol hari. Menggambar keduanya sama
-   * akan menampilkan "0" pada baris yang sebenarnya tidak punya angka.
+   * Kolom asalnya milik objek kerja survei di Pega, dan belum ada di `T_SURVEYORLIST`. Keduanya
+   * tetap dikirim supaya kolomnya tetap tergambar; `KolomLayar.tersedia` yang menyatakan
+   * sebabnya, sehingga sel kosong tidak terbaca sebagai "data belum diisi".
+   *
+   * `status_asm` TIDAK termasuk — kolom itu terisi dari `STS_SURVEY`.
    */
-  aging: number | null
+  appointment_no: string;
+  reference_no: string;
+  claim_no: string;
+  policy_no: string;
+  insured_name: string;
+  cob: string;
+  cause_of_loss: string;
+  location: string;
+  pic_asm: string;
+  pic_loss_adjuster: string;
 
-  status_asm: string
+  /** YYYY-MM-DD, sudah dalam WIB. Dikonversi server, bukan di peramban (`R-12`). */
+  date_of_loss: string;
+
+  /**
+   * Kolom "Aging" — DIHITUNG server dari tanggal janji survei dicatat, bukan dibaca.
+   *
+   * `null` berarti tanggal masuknya tidak ada sehingga umurnya tidak dapat dihitung, dan itu
+   * BERBEDA dari nol hari. Menggambar keduanya sama akan menampilkan "0" pada baris yang
+   * sebenarnya tidak punya angka.
+   */
+  aging: number | null;
+
+  status_asm: string;
 
   /** `SURVEYORTYPE_1` — `"1"` internal, `"2"` loss adjuster. Tidak digambar sebagai kolom. */
-  jenis_surveyor: string
-
-  /** `STS_SURVEY`, dibawa apa adanya dan tidak dipakai menyaring. */
-  status_survei: string
-}
+  jenis_surveyor: string;
+};
 
 /** Satu judul kolom, datang dari server. */
 export type KolomLayar = {
-  kunci: string
-  judul: string
+  kunci: string;
+  judul: string;
   /** Keterangan yang ditempelkan pada judul; kosong bila tidak ada. */
-  keterangan?: string
-}
+  keterangan?: string;
+
+  /**
+   * Kolom ini benar-benar terisi dari data.
+   *
+   * Kolom yang TIDAK tersedia tetap digambar — `D-13` menetapkan bentuk layar mengikuti Pega,
+   * dan menghapusnya akan membuat pengguna yang hafal layarnya mengira isinya hilang. Yang
+   * berubah: judulnya ditandai dan sebabnya disebut, alih-alih menampilkan sel kosong yang
+   * terbaca sebagai "data belum diisi".
+   */
+  tersedia: boolean;
+};
 
 /** Satu tab beserta judulnya. */
 export type TabLayar = {
-  kunci: string
-  judul: string
-  keterangan?: string
-}
+  kunci: string;
+  judul: string;
+  keterangan?: string;
+
+  /**
+   * Tab ini dapat dihitung dari data yang ada hari ini.
+   *
+   * Tab yang tidak tersedia tetap digambar tetapi TIDAK dapat dipilih: daftar kosong terbaca
+   * sebagai "tidak ada pekerjaan", dan itu tidak pernah dilaporkan siapa pun sebagai
+   * kerusakan.
+   */
+  tersedia: boolean;
+
+  /** Sebab tab ini belum dapat dihitung; kosong bila ia tersedia. */
+  alasan_tak_tersedia?: string;
+};
 
 /**
  * Identitas surveyor pemanggil.
@@ -79,34 +108,34 @@ export type TabLayar = {
  * kenapa — dan yang pertama kali terpikir adalah "layarnya bocor".
  */
 export type IdentitasSurveyor = {
-  login: string
-  nama: string
-  leader: boolean
-  cakupan: string[]
-  jumlah_tim: number
-}
+  login: string;
+  nama: string;
+  leader: boolean;
+  cakupan: string[];
+  jumlah_tim: number;
+};
 
 /** Keterangan layar — judul kolom, judul tab, selisih terencana, dan keterbatasan. */
 export type KeteranganResponse = {
-  portal: string
-  kolom: KolomLayar[]
-  tab: TabLayar[]
-  kolom_kpi: KolomLayar[]
-  tab_bawaan: string
-  jenis_kpi: string[]
-  ukuran_halaman: number
-  selisih_terencana: string[]
-  keterbatasan: string[]
-}
+  portal: string;
+  kolom: KolomLayar[];
+  tab: TabLayar[];
+  kolom_kpi: KolomLayar[];
+  tab_bawaan: string;
+  jenis_kpi: string[];
+  ukuran_halaman: number;
+  selisih_terencana: string[];
+  keterbatasan: string[];
+};
 
 /** Satu halaman antrean. */
 export type DaftarResponse = {
-  portal: string
-  identitas: IdentitasSurveyor
-  data: TugasSurvei[]
+  portal: string;
+  identitas: IdentitasSurveyor;
+  data: TugasSurvei[];
 
   /** Jumlah SELURUH baris yang cocok, bukan jumlah baris di halaman ini. */
-  total: number
+  total: number;
 
   /**
    * Paginasi dan tab yang BENAR-BENAR dipakai server, bukan yang diminta.
@@ -114,47 +143,47 @@ export type DaftarResponse = {
    * Tab yang tidak dikenal dijatuhkan ke Outstanding, dan tanpa mengembalikan yang dipakai,
    * bilah tab akan menyorot tab yang salah.
    */
-  lewati: number
-  batas: number
-  tab: string
-  cari: string
-}
+  lewati: number;
+  batas: number;
+  tab: string;
+  cari: string;
+};
 
 /** Jumlah baris satu tab. */
 export type JumlahTab = {
-  kunci: string
-  total: number
-}
+  kunci: string;
+  total: number;
+};
 
 /** Jumlah baris ketujuh tab, untuk bilah tab. */
 export type JumlahTabResponse = {
-  portal: string
-  identitas: IdentitasSurveyor
-  tab: JumlahTab[]
-}
+  portal: string;
+  identitas: IdentitasSurveyor;
+  tab: JumlahTab[];
+};
 
 /** Satu baris ringkasan KPI. */
 export type BarisKPI = {
   /** Nama adjuster, atau TAHUN pada ringkasan kuartal. */
-  kelompok: string
+  kelompok: string;
 
-  penjadwalan_survey: number
-  immediate_advice: number
-  preliminary_advice: number
-  interim_report: number
-  update_progress: number
-  tanggapan_komunikasi: number
-  propose_adjustment: number
-  final_report: number
-  nilai: number
-}
+  penjadwalan_survey: number;
+  immediate_advice: number;
+  preliminary_advice: number;
+  interim_report: number;
+  update_progress: number;
+  tanggapan_komunikasi: number;
+  propose_adjustment: number;
+  final_report: number;
+  nilai: number;
+};
 
 /** Ringkasan KPI adjuster. */
 export type KPIResponse = {
-  portal: string
-  identitas: IdentitasSurveyor
-  jenis: string
-  kategori: string
-  tahun: string
-  data: BarisKPI[]
-}
+  portal: string;
+  identitas: IdentitasSurveyor;
+  jenis: string;
+  kategori: string;
+  tahun: string;
+  data: BarisKPI[];
+};

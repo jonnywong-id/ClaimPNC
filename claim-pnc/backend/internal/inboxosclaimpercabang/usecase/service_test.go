@@ -36,18 +36,18 @@ func newService(t *testing.T, store inboxosclaimpercabang.Repo) *usecase.Service
 
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector: selectorFor(store),
-		Branches:     inboxosclaimpercabang.CallerBranch{},
 		Clock:        fixedNow(),
 	})
 	require.NoError(t, err)
 	return service
 }
 
-func callerAt(branch string) inboxosclaimpercabang.Caller {
+// callerAt membentuk pemanggil dengan kode cabang RINCI — yang dikirim HCQ, bukan yang dipakai
+// baris klaim. Contoh: "078" untuk CILEGON, yang barisnya berkode "100099".
+func callerAt(detailBranch string) inboxosclaimpercabang.Caller {
 	return inboxosclaimpercabang.Caller{
-		Login:      "PETUGAS1",
-		BranchCode: branch,
-		BranchName: "DARI SESI",
+		Login:            "PETUGAS1",
+		DetailBranchCode: detailBranch,
 	}
 }
 
@@ -56,23 +56,17 @@ func firstPage() inboxosclaimpercabang.Pagination {
 }
 
 func TestServiceRefusesToBeBuiltWithoutItsSeams(t *testing.T) {
-	// Ketiganya WAJIB, dan kegagalannya harus terjadi saat aplikasi dirakit — bukan saat
-	// pengguna membuka layar. Branches yang nil menghasilkan layar TANPA batas data, dan
-	// Clock yang nil membuat setiap baris berumur nol hari; keduanya tampak wajar.
+	// Keduanya WAJIB, dan kegagalannya harus terjadi saat aplikasi dirakit — bukan saat
+	// pengguna membuka layar. Clock yang nil membuat setiap baris berumur nol hari, dan nol
+	// hari adalah angka yang tampak wajar.
 	base := usecase.Options{
 		RepoSelector: selectorFor(memory.NewSampleStore()),
-		Branches:     inboxosclaimpercabang.CallerBranch{},
 		Clock:        fixedNow(),
 	}
 
 	withoutRepo := base
 	withoutRepo.RepoSelector = nil
 	_, err := usecase.NewService(withoutRepo)
-	require.Error(t, err)
-
-	withoutBranches := base
-	withoutBranches.Branches = nil
-	_, err = usecase.NewService(withoutBranches)
 	require.Error(t, err)
 
 	withoutClock := base
@@ -85,7 +79,7 @@ func TestListRefusesCallerWithoutIdentity(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.List(context.Background(), primaryPortal,
-		inboxosclaimpercabang.Caller{BranchCode: "100099"}, firstPage())
+		inboxosclaimpercabang.Caller{DetailBranchCode: "078"}, firstPage())
 
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrCallerUnknown)
 }
@@ -121,11 +115,11 @@ func TestListScopesToTheCallerBranch(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("100099"), firstPage())
+		callerAt("078"), firstPage())
 	require.NoError(t, err)
 
-	require.Equal(t, "100099", listed.Query.BranchCode)
-	require.Equal(t, "CILEGON", listed.Query.BranchName,
+	require.Equal(t, "100099", listed.Query.Branch.Code)
+	require.Equal(t, "CILEGON", listed.Query.Branch.Name,
 		"nama cabang harus datang dari master, bukan dari profil sesi")
 
 	for _, item := range listed.Page.Items {
@@ -137,7 +131,7 @@ func TestListFillsAgingFromTheClock(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("100099"), firstPage())
+		callerAt("078"), firstPage())
 	require.NoError(t, err)
 
 	byNumber := map[string]inboxosclaimpercabang.WorkItem{}
@@ -156,23 +150,33 @@ func TestListFillsAgingFromTheClock(t *testing.T) {
 	require.True(t, byNumber["PNC-9002"].ProgressStalled)
 }
 
-func TestUnknownBranchCodeStillShowsTheScreen(t *testing.T) {
-	// Kode cabang yang ada di sesi tetapi tidak ada di master BUKAN alasan menghentikan
-	// layar: barisnya tetap dapat disaring dengan kode itu, dan judul tanpa nama masih lebih
-	// berguna daripada galat.
+func TestUnknownDetailBranchCodeStopsTheScreenInsteadOfShowingNothing(t *testing.T) {
+	// Kode rinci yang tidak dikenal master TIDAK dapat diteruskan sebagai penyaring: ia bukan
+	// kode yang dipakai baris klaim, dan memakainya apa adanya menghasilkan nol baris.
 	//
-	// Ia justru tanda paling awal bahwa kode dari HCQ berbeda ruang kode dari `BRANCH.ID` —
-	// kegagalan yang pada modul lain baru ketahuan sebagai daftar kosong.
+	// Nol baris dan "cabang Anda tidak dikenal" TERLIHAT SAMA di layar, padahal yang pertama
+	// berarti tidak ada pekerjaan dan yang kedua berarti layar tidak dapat bekerja sama
+	// sekali. Karena itu jawabannya pesan, bukan grid kosong.
 	service := newService(t, memory.NewSampleStore())
 
-	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("999999"), firstPage())
-	require.NoError(t, err)
+	_, err := service.List(context.Background(), primaryPortal,
+		callerAt("999"), firstPage())
 
-	require.Equal(t, "999999", listed.Query.BranchCode)
-	require.Equal(t, "DARI SESI", listed.Query.BranchName,
-		"nama dari sesi dipakai sebagai cadangan ketika master tidak mengenal kodenya")
-	require.Empty(t, listed.Page.Items)
+	require.ErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
+}
+
+func TestClaimBranchCodeIsNotAcceptedAsTheDetailCode(t *testing.T) {
+	// Kekeliruan yang paling mungkin terjadi: meneruskan `BranchCode` profil (6 digit) ke
+	// tempat kode rinci (3 digit), karena keduanya sama-sama disebut "cabang".
+	//
+	// Bila itu diam-diam lolos, layar menampilkan baris cabang yang salah — tepat kelas cacat
+	// yang tidak menghasilkan satu pun galat (`R-20`).
+	service := newService(t, memory.NewSampleStore())
+
+	_, err := service.List(context.Background(), primaryPortal,
+		callerAt("100099"), firstPage())
+
+	require.ErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
 }
 
 func TestListRejectsUnknownPortal(t *testing.T) {
@@ -181,7 +185,7 @@ func TestListRejectsUnknownPortal(t *testing.T) {
 	// tanpa satu pun pesan galat (`R-20`).
 	service := newService(t, memory.NewSampleStore())
 
-	_, err := service.List(context.Background(), "SMI", callerAt("100099"), firstPage())
+	_, err := service.List(context.Background(), "SMI", callerAt("078"), firstPage())
 	require.Error(t, err)
 }
 
@@ -189,7 +193,7 @@ func TestListCarriesThePlannedDifferences(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("100099"), firstPage())
+		callerAt("078"), firstPage())
 	require.NoError(t, err)
 	require.NotEmpty(t, listed.PlannedDifferences,
 		"selisih terencana harus sampai ke layar, bukan berhenti di komentar kode")
@@ -201,14 +205,14 @@ func TestExportSessionAppliesTheSameGuardsAsTheList(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.BeginExport(context.Background(), primaryPortal,
-		inboxosclaimpercabang.Caller{BranchCode: "100099"})
+		inboxosclaimpercabang.Caller{DetailBranchCode: "078"})
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrCallerUnknown)
 
 	_, err = service.BeginExport(context.Background(), primaryPortal,
 		inboxosclaimpercabang.Caller{Login: "MITRA1"})
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
 
-	_, err = service.BeginExport(context.Background(), "SMI", callerAt("100099"))
+	_, err = service.BeginExport(context.Background(), "SMI", callerAt("078"))
 	require.Error(t, err)
 }
 
@@ -216,9 +220,9 @@ func TestExportFillsAgingAndDominantFactors(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	session, err := service.BeginExport(context.Background(), primaryPortal,
-		callerAt("100099"))
+		callerAt("078"))
 	require.NoError(t, err)
-	require.Equal(t, "CILEGON", session.Query.BranchName)
+	require.Equal(t, "CILEGON", session.Query.Branch.Name)
 
 	page, err := session.Page(context.Background(), firstPage())
 	require.NoError(t, err)
@@ -240,7 +244,7 @@ func TestExportPagesDoNotRepeatRows(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	session, err := service.BeginExport(context.Background(), primaryPortal,
-		callerAt("100099"))
+		callerAt("078"))
 	require.NoError(t, err)
 
 	seen := map[string]bool{}

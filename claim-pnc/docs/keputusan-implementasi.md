@@ -15991,9 +15991,9 @@ wajar tetapi bukan yang diminta.
 `total === 0`; akibatnya petugas tanpa pekerjaan tidak dapat membedakan "tidak ada
 pekerjaan" dari "fitur tidak ada". Ia sekarang tetap tampil dengan keterangannya.
 
-## 41. My Work — sumber data bergeser, dan identitas berlapis (2026-09-28)
+## 105. My Work — sumber data bergeser, dan identitas berlapis (2026-09-28)
 
-### K-41.1 Baris digerakkan `T_SURVEYORLIST`, bukan tabel Pega
+### K-105.1 Baris digerakkan `T_SURVEYORLIST`, bukan tabel Pega
 
 **Konteks.** Seluruh kueri layar `InboxSurvey_Harness` membaca
 `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`.
@@ -16010,7 +16010,7 @@ kini berlaku **per klaim**: `ADJUSTERACCEPT_1`, `ADJUSTERSTATUS_1`, `REFNO_1`,
 pada kedua barisnya. Bila kelak mengganggu, penyelesaiannya adalah meminta kolom-kolom itu
 ikut dipindahkan ke `T_SURVEYORLIST` — **bukan** menebaknya di kueri.
 
-### K-41.2 Tab Close memakai `ADJUSTERSTATUS_1`, bukan status alur kerja
+### K-105.2 Tab Close memakai `ADJUSTERSTATUS_1`, bukan status alur kerja
 
 **Konteks.** Pega menyaring `PYSTATUSWORK = 'Resolved-Completed'` milik objek SurveyClaim.
 Kolom itu tidak ada di tabel penggerak.
@@ -16023,7 +16023,7 @@ Kolom itu tidak ada di tabel penggerak.
 sama: survei ber-`Close Case` yang objek kerjanya belum ditutup muncul di sini, sementara di
 Pega tidak. Dinyatakan ke pengguna lewat `PlannedDifferences` (`D-54`).
 
-### K-41.3 Identitas berlapis, tanpa perubahan skema
+### K-105.3 Identitas berlapis, tanpa perubahan skema
 
 **Keputusan (Work Owner).** `M_LOGIN_PNC.LOGIN_ID` sebagai master pengguna aplikasi,
 `POOLDATA.MST_LOGIN_SURVEYOR.LOGIN` sebagai data surveyor, dicocokkan pada nilai login yang
@@ -16041,7 +16041,7 @@ membandingkan dengan `IN (…)`. **Tidak ada perubahan skema**, sehingga `D-63` 
 tabel yang berbeda dan kepemilikan yang berbeda — `MST_LOGIN_SURVEYOR` dimiliki modul Master
 Login (`MENU_ID 37`), dan modul ini hanya membacanya.
 
-### K-41.4 Pemanggil bukan surveyor → 403, bukan daftar kosong
+### K-105.4 Pemanggil bukan surveyor → 403, bukan daftar kosong
 
 **Keputusan.** `ErrNotSurveyor` dipetakan ke **403 dengan pesan yang menyebut sebabnya**.
 
@@ -16050,7 +16050,7 @@ yang sangat berbeda. Yang pertama terbaca sebagai "tidak ada pekerjaan hari ini"
 pernah dilaporkan siapa pun sebagai kerusakan** — sehingga salah pasang kewenangan akan
 bertahan sampai ada orang yang kebetulan bertanya.
 
-### K-41.5 Cakupan dikirim sebagai teks berpembatas, bukan klausa `IN`
+### K-105.5 Cakupan dikirim sebagai teks berpembatas, bukan klausa `IN`
 
 **Keputusan.** `INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0`, dengan `:1`
 berbentuk `|NAMA SATU|NAMA DUA|`.
@@ -16064,7 +16064,7 @@ Cakupan seorang leader berjumlah belasan, bukan ribuan. Pembatas dipasang di **k
 tiap nama — tanpa itu, "BUDI" cocok dengan "BUDIONO" dan seorang surveyor melihat pekerjaan
 surveyor lain yang namanya kebetulan memuat namanya.
 
-### K-41.6 Empat rute, bukan satu
+### K-105.6 Empat rute, bukan satu
 
     /keterangan   bentuk layar   tidak menyentuh basis data
     /jumlah-tab   bilah tab      tujuh penjumlahan, tidak berubah saat halaman berpindah
@@ -16074,12 +16074,358 @@ surveyor lain yang namanya kebetulan memuat namanya.
 Menyatukannya akan membuat setiap penekanan tombol halaman ikut menjalankan tujuh penjumlahan
 tab dan satu ringkasan KPI — tiga pekerjaan untuk satu yang diminta.
 
-### K-41.7 Kegagalan tab KPI TIDAK menghentikan `-periksa`
+### K-105.7 Kegagalan tab KPI TIDAK menghentikan `-periksa`
 
 `POOLDATA.DETAIL_KPI_ADJUSTER` diisi `Database/INSERT_KPIADJUSTER.prc`. Ketiadaannya
 mengosongkan satu tab, bukan merusak layar — sehingga `CheckKPI` dilaporkan `[catat]`, bukan
 `[BELUM]`. Menyamakannya dengan kegagalan tabel utama akan membuat modul yang sebenarnya siap
 terbaca sebagai belum siap.
+### K-105.8 Bilah tab memakai `TabBar` bersama, dan angkanya masuk ke NAMA tab
+
+**Konteks.** Layar ini punya tiga bilah tab: INBOX/KPI, tujuh tab status, dan tiga jenis
+ringkasan KPI. Ketiganya semula ditulis sendiri.
+
+**Keputusan.** Ketiganya memakai `src/components/TabBar.tsx`.
+
+**Akibat yang diterima sadar.** `TabBar` tidak punya slot lencana, sehingga jumlah baris per
+tab dititipkan ke nama tabnya — `ALL (6)`, bukan lencana terpisah. Menambahkan slot lencana
+berarti mengubah komponen yang **sudah dipakai layar lain**, dan konsistensi bilah tab
+antarlayar lebih berharga daripada bentuk lencananya.
+
+**Catatan yang adil.** `TabBar.tsx` bertanggal 28 Sep 17:14 — SESUDAH halaman ini ditulis,
+oleh sesi lain. Ia tidak diabaikan; saat halaman dibuat ia belum ada.
+
+### K-105.9 Isian tahun KPI memakai `Field`, bukan `<input>` sendiri
+
+**Konteks.** `src/styles.css:281` menempelkan permukaan gelap lewat selector
+`input[class~="bg-white"]`.
+
+**Keputusan.** Memakai `Field`, yang membawa kelas itu.
+
+**Alasan.** Isian tanpa kelas tersebut **keluar dari tema dan tampil transparan** di tema
+gelap. Ini cacat visual nyata, bukan soal kerapian — dan tidak akan terlihat pada pengembangan
+bertema terang.
+
+### K-105.10 Kegagalan penghitung tab diberitahukan DI DALAM layar, bukan menggantikannya
+
+**Konteks.** Dua rute dapat gagal terpisah: `/keterangan` (bentuk layar) dan `/jumlah-tab`
+(angka per tab).
+
+**Keputusan.** Kegagalan `/keterangan` **mengganti seluruh layar**; kegagalan `/jumlah-tab`
+hanya **memunculkan pemberitahuan** di atas tabel.
+
+**Alasan.** Tanpa keterangan, layar tidak dapat dibentuk sama sekali — `tab` tidak terisi dan
+daftarnya tidak pernah dijalankan. Tanpa penghitung, daftarnya tetap terbaca; menutup layar
+karena angkanya gagal akan mengambil lebih banyak daripada yang hilang.
+
+Keduanya sama-sama WAJIB terlihat. Yang berbahaya bukan kegagalannya melainkan **kesunyiannya**:
+tab tanpa angka terbaca sebagai "tab ini memang kosong", dan itu tidak pernah dilaporkan
+siapa pun sebagai kerusakan.
+
+### K-105.11 Header klaim diambil dari `T_CLAIM_PNC`, menyupersede K-105.1 pada bagian header
+
+**Konteks.** `K-105.1` menetapkan baris digerakkan `T_SURVEYORLIST` dan header klaimnya diambil
+dari `POOLDATA.T_CLAIMLIST_ADMIN` lewat `PNCCASEID -> PZINSKEY`. Work Owner menggeser tabel
+headernya pada 2026-09-29: **"ganti ke t_claim_pnc"**.
+
+**Keputusan.** Header klaim diambil dari **`POOLDATA.T_CLAIM_PNC`**, disambung
+`c.CLAIMID = s.PNCCASEID`. Bagian `K-105.1` yang menyangkut tabel penggerak — `T_SURVEYORLIST`
+— **tetap berlaku**; yang disupersede hanyalah tabel headernya.
+
+**Alasan.** Dua, dan keduanya terbukti dari artefak.
+
+1. **Itu pasangan yang Pega sendiri pakai.** `RDB List/BroswseKlaimByNoSurvey-SQL.xml`
+   menyambungkan `T_CLAIM_PNC.CLAIMID` dengan `t_surveyorlist.pnccaseid` persis begitu.
+
+2. **`T_CLAIMLIST_ADMIN` membuang populasi utama layar ini.** Tabel datar itu hanya memuat klaim
+   yang tugasnya berada di antrean Admin — empat label, salah satunya **Choose Surveyor**.
+   Survei yang SEDANG BERJALAN berarti klaimnya sudah melewati tahap itu, sehingga `INNER JOIN`
+   ke sana membuang justru baris yang dicari. Layarnya terisi sebagian, dan tampak wajar.
+
+**Konsekuensi yang diterima.** Tidak satu pun nama kolom header sama antara kedua tabel —
+`CLAIMNO` bukan `PYID`, `NOPOLIS` bukan `POLICYNO`, `PICTEKNIK` bukan `USERTEKNIS_1` — dan salah
+satu saja menjatuhkan seluruh layar dengan ORA-00904. Dijaga uji
+`TestKolomHeaderMemakaiNamaTabelKlaim`, yang menangkapnya **tanpa basis data**.
+
+### K-105.12 Isian yang belum tersedia MENYATAKAN dirinya, bukan tampil kosong
+
+**Konteks.** Empat kolom — `ADJUSTERACCEPT_1`, `ADJUSTERSTATUS_1`, `ADJUSTERPIC_1`, `REFNO_1` —
+hidup hanya di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, tabel yang dicabut dari pemakaian. Keadaan ini
+**sudah begitu sebelum perpindahan tabel**: diukur ke katalog (`docs/kolom-t-claimlist-admin.md`
+§H, 2026-09-28), dua di antaranya tidak ada di `T_CLAIMLIST_ADMIN` dan dua sisanya ada tetapi
+**kosong di seluruh 1.014 baris**.
+
+Akibatnya **empat dari tujuh tab** dan **tiga dari tiga belas kolom** belum dapat diisi.
+
+**Keputusan.** Keempat tab dan ketiga kolom **TETAP digambar**, dan masing-masing **menyebut
+sebabnya**:
+
+| Tempat | Bentuknya |
+|---|---|
+| bilah tab | `Outstanding (belum tersedia)` — slot yang sama dengan angka jumlah |
+| isi tab | `ErrorMessage` menyebut kolom penggeraknya, **menggantikan** tabelnya |
+| judul kolom | `Appointment No · belum tersedia` |
+| sel kolom | teks `belum tersedia` bertooltip, bukan em dash |
+
+**Alasan.** `D-13` menetapkan bentuk layar mengikuti Pega; menghapus empat dari tujuh tab akan
+membuat pengguna yang hafal layarnya mengira fiturnya hilang.
+
+Yang menentukan adalah perbedaan antara **"kosong"** dan **"belum tersedia"**. Daftar kosong
+terbaca sebagai *"tidak ada pekerjaan untuk saya"* — dan bacaan itu **tidak pernah dilaporkan
+siapa pun sebagai kerusakan**. Tab yang menyebut sebabnya akan.
+
+**Yang mengikutinya di lapisan bawah, supaya kejujuran itu tidak bergantung pada layar saja:**
+
+- `inboxsurvey.UnavailableReason(tab)` adalah **satu-satunya** sumber keterangannya; lapisan
+  aplikasi menghitungnya, tidak menyalinnya ke daftar kedua yang dapat tertinggal.
+- `Repo.List` **mencegat** tab yang belum tersedia sebelum menyentuh basis data — perjalanan
+  yang pasti sia-sia tidak pernah dilakukan.
+- `Repo.Counts` **tidak mengembalikan** tab itu sama sekali. Angka nol akan menyatakan "tab ini
+  kosong", padahal yang benar adalah "tab ini belum dapat dihitung".
+- `repo/memory` menirunya persis. Menyimpan predikat keempat tab di sana akan menghasilkan uji
+  yang LULUS atas perilaku yang di Oracle tidak pernah terjadi — bentuk pengujian yang paling
+  menyesatkan, karena ia memberi rasa aman tanpa menjamin apa pun.
+
+**Alat ukur kapan batas ini hilang.** Kueri `check_missing_columns` menanyakan keempat kolom itu
+dan **sengaja dirancang gagal hari ini**; `-periksa` melaporkannya sebagai `[catat]`, bukan
+`[BELUM]`. Begitu Tim Pega menambahkannya, ia mulai berhasil — dan itulah tanda untuk
+menghidupkan keempat tab.
+
+### K-105.13 Tab bawaan adalah tab TERSEDIA pertama, bukan Outstanding
+
+**Konteks.** `DefaultTab` domain adalah Outstanding — tab yang di layar lama berisi pekerjaan
+yang belum disentuh siapa pun, dan itulah alasan orang membuka layar bernama My Work. Ia kini
+termasuk yang belum dapat dihitung.
+
+**Keputusan.** `inboxsurvey.DefaultAvailableTab()` mengembalikan tab bawaan yang benar-benar
+dapat dihitung, dan metadata layar memakai itu.
+
+**Alasan.** Membuka layar pada tab yang pasti kosong membuat **kesan pertama setiap pengguna
+berupa layar tanpa isi** — dan kesan itu bertahan meski tiga tab lain berisi.
+
+**Konsekuensi yang diterima.** Ini **selisih terhadap layar Pega** (`D-54`), dan ia dinyatakan di
+layar lewat `PlannedDifferences`, bukan disimpan sebagai catatan teknis.
+
+Ia **memulihkan dirinya sendiri**: begitu kolomnya tiba, fungsi itu kembali mengembalikan
+Outstanding tanpa satu baris pun disunting.
+
+### K-105.14 Kolom Aging DIHITUNG, menyupersede pembacaan kolom `AGING`
+
+**Konteks.** `AGING` adalah kolom tabel datar. `T_CLAIM_PNC` tidak punya.
+
+**Keputusan.** Aging dihitung sebagai **umur janji survei sejak `T_SURVEYORLIST.TGLINPUT`**,
+terhadap **tanggal WIB** — bukan selisih jam dibagi 24. Preseden yang sudah disetujui:
+`inboxcloseclaim.DurationDays` dan `inboxanalystdoctor.DurationDays`.
+
+**Alasan, dan kenapa ia LEBIH tepat daripada yang digantikannya.** Yang ditanyakan seorang
+adjuster adalah *"sudah berapa lama SURVEI ini menunggu saya"*, bukan *"sudah berapa lama
+KLAIMNYA berjalan"*. Keduanya berbeda jauh pada klaim lama yang surveinya baru ditugaskan
+kemarin.
+
+**Kenapa terhadap TANGGAL, bukan selisih jam.** Janji yang masuk pukul 23.00 dan dilihat pukul
+01.00 keesokan harinya sudah berumur SATU HARI bagi pengguna, meski selisihnya dua jam.
+
+**Kenapa perhitungannya TIDAK di SQL.** "Hari" yang dimaksud pengguna adalah hari WIB sementara
+kolomnya UTC. Menaruh konversi zona waktu di dalam SQL adalah cara paling cepat menyebarkannya
+ke tempat yang lupa melakukannya — persis cacat `Set7Hours` sistem lama, 118 titik `+7 jam` di
+36 activity (`R-12`).
+
+`now` dan `location` diserahkan pemanggil lewat parameter, bukan dibaca dari jam sistem di dalam
+fungsinya — angka yang bergantung pada hari saat uji dijalankan tidak dapat diuji (`F-5`).
+
+**Yang tetap dijaga.** `null` dan `0` digambar BERBEDA. `null` berarti tanggal masuknya tidak
+ada sehingga umurnya tidak dapat dihitung; menyamakannya akan menampilkan "0 hari" pada baris
+yang sebenarnya tidak punya angka — angka yang terlihat sah dan salah.
+
+### K-105.15 Nama method ketersediaan disamakan dengan `D-80`
+
+**Konteks.** Tiga nama sempat ditulis berbahasa Indonesia saat perubahan ini dikerjakan.
+
+**Keputusan.** Dikoreksi sebelum selesai:
+
+    Tersedia()            ->  Available()
+    AlasanTakTersedia()   ->  UnavailableReason()
+    DefaultTabTersedia()  ->  DefaultAvailableTab()
+
+**Alasan.** `D-80` menetapkan seluruh nama di dalam kode berbahasa Inggris; yang tetap
+berbahasa Indonesia hanyalah komentar, nama field JSON, nama kolom basis data, teks layar,
+variabel lingkungan, dan **nama modul** (`D-81`). Method bukan satu pun di antaranya.
+
+**Yang TIDAK diubah.** Nama uji tetap berbahasa Indonesia — itu konvensi yang sudah berlaku di
+seluruh modul (`TestPemanggilBukanSurveyorDitolak`, dan seterusnya), dan mengubahnya di satu
+modul saja justru menciptakan ketidakseragaman yang baru.
+
+### K-105.16 Baris survei yang berjalan dikenali dari status Pega, dan predikatnya direkam meski belum dapat dipasang
+
+**Konteks.** `POOLDATA.T_SURVEYORLIST` berkunci `(CASEID, INDEX_SURVEY)`, dan `INDEX_SURVEY`
+adalah **nomor urut survei ke-berapa** pada berkas survei yang sama — bertambah tiap kali survei
+baru ditambahkan (`SetSurveyorList`: `local.index+1`), dibaca kembali sebagai riwayat oleh
+`GetDataProgressSurvey` (`order by to_number(index_survey) asc`).
+
+Satu berkas survei karena itu dapat punya beberapa baris.
+
+**Keputusan Work Owner (2026-09-29).** Hanya **satu** survei yang berjalan; bila ada lebih dari
+satu, sisanya sudah dibatalkan. Yang berjalan dikenali dari **status alur kerja Pega**:
+
+    PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+
+**Alasan ia benar, bukan sekadar disepakati.** Itu persis penyaring yang dipasang kedua Browse
+rule yang tersisa di tingkat teratas (`BrowseLossAdjuster`, `BrowseInternalSurveyor`), dan yang
+dipasang `CountOSLostAdjuster` pada **enam dari tujuh** tab. Ia perilaku Pega apa adanya
+(`P-5`), bukan aturan baru.
+
+**Konsekuensi yang harus diterima hari ini.** Kolomnya **tidak ada** di `T_SURVEYORLIST`,
+sehingga penyaringnya belum dapat dipasang. Antrean menampilkan **seluruh riwayat survei**,
+termasuk yang sudah dibatalkan — satu berkas survei tampil beberapa kali dengan Claim No yang
+sama berulang.
+
+Ini **cacat, bukan pilihan desain**, dan ia dinyatakan di layar lewat `Limitations()` pada
+urutan pertama — bukan disimpan sebagai catatan teknis.
+
+**Yang diputuskan sebagai gantinya:**
+
+1. **Predikatnya direkam sekarang** sebagai `inboxsurvey.ClosedWorkStatuses()`, meski belum
+   dipakai. Menggalinya ulang saat kolomnya tiba berarti mengulang penelusuran yang sama —
+   dan penelusuran itu yang menghasilkan koreksi atas dua kesalahan pembacaan.
+2. **Keduanya diserahkan sebagai satu daftar**, bukan dua konstanta lepas. Memasang salah
+   satunya dan lupa yang lain menghasilkan antrean yang memuat survei batal, **tanpa satu pun
+   galat**.
+3. **`PYSTATUSWORK` naik menjadi kolom berprioritas tertinggi** pada permintaan ke Tim Pega
+   (`docs/permintaan-kolom-t-surveyorlist.md`). Ia bukan sekadar penggerak tab Close.
+4. **Uji yang menegaskan KETIADAAN penyaring** ditambahkan
+   (`TestKueriDaftarBelumMenyaringBarisBerjalan`). Begitu penyaringnya dipasang, uji itu gagal
+   — dan kegagalannya adalah pengingat menghapus keterbatasan yang sudah tidak berlaku. Tanpa
+   itu, keterbatasan yang selesai akan tertinggal di layar dan dibaca sebagai cacat yang masih
+   ada.
+
+### K-105.17 `POOLDATA.T_CLAIM_SURVEY_DATAPEGA` tidak dipakai
+
+**Konteks.** Tabel itu tampak menjanjikan: `INSERT_SURVEYORLIST` mengisinya dengan
+`SURVEYID, PZINSKEY, PICTEKNIK, SURVEYTYPE, STATUSWORK, CREATEDATE` dari objek `Work-SurveyClaim`
+— termasuk `STATUSWORK` yang dibutuhkan `K-105.16`, dan dengan butir **satu baris per berkas
+survei**.
+
+**Keputusan.** **Tidak dipakai.** Kelima kolom diminta ditambahkan ke `T_SURVEYORLIST`.
+
+**Alasan — tiga, dan yang pertama menentukan:**
+
+1. **Tabelnya kemungkinan kosong sejak dibuat.** Penjaganya pada `INSERT_SURVEYORLIST.prc:65-66`
+   membandingkan **satu kolom dengan dua parameter berbeda**:
+
+       where pxobjclass = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+         and pzinskey = TCASEID and pzinskey = TPNCCASEID
+
+   `TCASEID` kunci berkas survei, `TPNCCASEID` kunci klaim — tidak pernah sama. Terbukti dari
+   tiga tempat: `T_SURVEYORLIST` menyimpan keduanya sebagai kolom terpisah;
+   `BroswseKlaimByNoSurvey` menulis `CLAIMID = (select pnccaseid … where caseid = …)`; dan
+   `INSERT`-nya memetakan `SURVEYID ← pzinskey`, `PZINSKEY ← caseid_1`. Jadi `jumlahsurvey`
+   selalu 0 dan `INSERT`-nya tidak pernah dijalankan.
+
+2. **Tidak ada `UPDATE` maupun `DELETE`** terhadapnya di seluruh export. Kalaupun terisi,
+   isinya status pada saat pembuatan — tidak pernah `Resolved-Completed`.
+
+3. **Nol pembaca.** Tidak satu rule pun membacanya, sehingga tidak ada kompatibilitas yang
+   didapat dengan memakainya.
+
+Memperbaikinya berarti membetulkan penjaga yang salah, menambah 4 kolom yang belum ada di sana,
+**dan** membangun jalur `UPDATE` yang belum pernah ada — yaitu seluruh pekerjaan opsi
+`T_SURVEYORLIST`, ditambah satu tabel yang tidak dibaca siapa pun.
+
+**Usulan `T_CLAIM_SURVEY_DATAPEGA` yang sempat saya ajukan pada 2026-09-29 ditarik.** Ia lahir
+dari salah baca `INDEX_SURVEY` sebagai kunjungan survei — lihat `catatan-pengembangan` §84.14.
+
+**Yang tetap ditanyakan ke Tim Pega:** apakah tabel itu memang ditinggalkan. Pembacaan di atas
+statis; `R-01` mencatat 12 dependensi procedure belum dikirim, sehingga penulis di luar export
+mungkin ada.
+
+### K-105.18 Tabel cermin `T_CLAIM_SURVEY_DATAPEGA` dipakai — merevisi `K-105.17`
+
+**Konteks.** `K-105.17` menolak tabel itu. Tiga fakta yang terukur **setelah** keputusan itu
+ditulis membalikkan seluruh alasannya.
+
+**Keputusan Work Owner (2026-09-29).** `POOLDATA.T_SURVEYORLIST` di-join ke
+`POOLDATA.T_CLAIM_SURVEY_DATAPEGA`. Ketiga kolom yang tertunda diminta ditambahkan ke **tabel
+cermin**, dan `T_SURVEYORLIST` **tidak disentuh sama sekali**.
+
+**Apa yang membalikkannya:**
+
+| Fakta baru | Akibat |
+|---|---|
+| `T_SURVEYORLIST` adalah **jejak perkembangan** — 17.641 baris untuk 2.448 berkas, rata-rata 7,21, terberat 176 | menaruh kolom di sana = nilai terduplikasi 7×, dan satu perubahan status memutakhirkan sampai 176 baris |
+| `T_SURVEYORLIST` **memberi makan KPI adjuster** — `GetReportKPI_Survey`, `GetReportKPIAdjuster_Progress`, `GetReportKPIAdjuster_FinalReport`, tiga dari sembilan angka | menulis ke sana berjangkauan sampai nilai kinerja orang |
+| tabel cermin berkunci `SURVEYID` = **satu baris per berkas survei**, dan **tidak dibaca siapa pun** | butirnya tepat, dan mengisinya — termasuk backfill mundur — aman |
+
+**Alasan `K-105.17` yang masih berlaku, dan yang gugur.** Alasan "tabelnya kosong dan
+penjaganya salah" **tetap benar** — itu justru masuk ke permintaan sebagai butir 4–6. Yang gugur
+adalah kesimpulannya: pekerjaan memperbaikinya ternyata **lebih kecil** daripada akibat menaruh
+kolom di tabel yang salah butirnya dan memberi makan KPI.
+
+**Bentuk yang dipasang:**
+
+```
+FROM   (T_SURVEYORLIST + ROW_NUMBER() per CASEID) s
+JOIN   T_CLAIM_PNC c                ON c.CLAIMID = s.PNCCASEID
+LEFT JOIN T_CLAIM_SURVEY_DATAPEGA d ON d.SURVEYID = s.CASEID
+WHERE  s.STEP_RANK = 1
+  AND  (d.STATUSWORK IS NULL OR d.STATUSWORK NOT IN (:completed, :rejected))
+```
+
+**`LEFT JOIN`, bukan `INNER` — dan ini yang paling menentukan.** Tabel cerminnya belum pernah
+terisi; `INNER JOIN` akan mengosongkan SELURUH antrean hari ini. Kelak pun, satu berkas yang
+baris cerminnya belum tertulis akan **lenyap dari inbox** tanpa satu pun tanda. Pekerjaan yang
+lenyap tidak pernah dilaporkan siapa pun sebagai kerusakan; kolom kosong akan.
+
+**Penyaring yang menyala sendiri.** `d.STATUSWORK IS NULL OR …` ditulis begitu dengan sengaja:
+selama NULL ia meloloskan semuanya — persis perilaku hari ini — dan mulai menyaring **tanpa satu
+baris kode disunting** begitu tabelnya terisi. Menulisnya `NOT IN (…)` saja akan mengosongkan
+antrean, karena `NULL NOT IN (…)` bernilai UNKNOWN.
+
+### K-105.19 `STS_SURVEY` adalah `ADJUSTERSTATUS_1` — kolom Status ASM hidup tanpa menunggu siapa pun
+
+**Konteks.** `K-105.12` menyatakan Status ASM belum tersedia karena `ADJUSTERSTATUS_1` tidak ada
+di tabel mana pun. Sebaran `STS_SURVEY` di produksi membuktikan sebaliknya.
+
+**Bukti.** 22 nilai berbeda, dan ketiga nilai yang dipakai Pega sebagai penyaring pada
+`GetDataCaseSurveyALL` ada semua dengan jumlah yang nyata: `Final Report` 1.466, `Invoice Fee`
+1.069, `Close Case` 316 — berdampingan dengan seluruh tahapan hidup survei.
+
+**Keputusan.** Kolom "Status ASM" diisi `STS_SURVEY` pada langkah terakhir. `ADJUSTERSTATUS_1`
+**gugur** dari daftar permintaan.
+
+**Pernyataan yang dicabut.** Saya sebelumnya menyatakan `STS_SURVEY` hanya berisi `"On
+Progress"`, disimpulkan dari `KomitePost_Survey` yang mengisinya konstanta. Itu satu dari 22
+nilai; penulis lainnya berada di luar export (`R-01`, `R-16`).
+
+**Batas yang tetap dinyatakan.** Kesamaannya dengan `ADJUSTERSTATUS_1` **belum diuji baris per
+baris** — yang terbukti adalah domainnya. Dicatat sebagai selisih terencana (`D-54`), bukan
+disamarkan sebagai kesetaraan.
+
+### K-105.20 Rancangan tab Close dicabut — penggantinya kehilangan 69%
+
+**Konteks.** `K-105.2` menetapkan tab Close memakai `ADJUSTERSTATUS_1 = 'Close Case'` sebagai
+pengganti terencana `PYSTATUSWORK = 'Resolved-Completed'`. Begitu `STS_SURVEY` tersedia,
+penggantinya dapat diuji — dan gagal.
+
+**Ukurannya.** Dari **1.070** berkas survei yang sudah `Resolved-*` di Pega, hanya **308
+(28,8%)** berakhir di `Close Case`/`Reject Case`. `Resolved-Rejected` **tidak pernah sekali pun**
+berpasangan dengan `Reject Case` — nol dari 70.
+
+| | Jumlah berkas |
+|---|---:|
+| Tab Close di Pega (`PYSTATUSWORK = 'Resolved-Completed'`) | **1.000** |
+| Pengganti pada `K-105.2` (`STS_SURVEY = 'Close Case'`) | **307** |
+
+**Keputusan.** `K-105.2` **dicabut**. Kehilangan 69% bukan selisih terencana melainkan tab yang
+rusak — dan selisih terencana yang menghilangkan dua pertiga isinya tidak dapat disetujui
+`D-54`.
+
+**Sebabnya, begitu terlihat, masuk akal.** `Invoice Fee` (497) adalah langkah terakhir pekerjaan
+adjuster — ia menagih, lalu berkasnya ditutup petugas ASM. Adjuster tidak pernah mencatat "Close
+Case" sendiri.
+
+**Yang berlaku sekarang.** Tab Close menunggu `STATUSWORK` pada tabel cermin **terisi** — bukan
+menunggu kolom baru. Sebab itu berbeda dari tiga tab lain, dan `-periksa` memisahkannya.
+
 ## 49. Modul Inbox Komunikasi Cabang (2026-09-24, sesi kedua puluh empat)
 
 Butir menu `MENU_ID 70`, pengganti `Harness/InboxKomunikasiCabang`. Layar ini adalah kotak
@@ -21643,7 +21989,6 @@ Konsekuensi: token global tetap bertema gelap, jadi komponen baru yang dirender 
 Berkas: `app/PageShell.tsx`, `app/Sidebar.tsx`, `app/Sidebar.test.tsx` (+3 uji), `components/Icon.tsx` (+6 ikon). Pencarian menu seperti pada contoh **tidak** dibuat — tidak diminta.
 
 Verifikasi: 56/56 uji app, Beranda, login, dan Inbox Auto Claim; `tsc` dan build bersih; uji rel dibuktikan merah dengan sabotase. Belum diperiksa visual di peramban.
-=======
 ## 98. Registrasi menulis baris klaim PNCN ke T_CLAIMLIST_ADMIN (2026-09-28)
 
 **Keputusan Work Owner (opsi B).** Supaya klaim PNCN muncul di My Inbox, registrasi menulis satu
@@ -21700,4 +22045,3 @@ catatan-pengembangan §83.
 EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
->>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7

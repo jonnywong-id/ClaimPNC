@@ -20613,7 +20613,6 @@ Pemeriksaannya mengecualikan "ALL Case" dari penjumlahan — ia totalnya sendiri
 salah satu bagiannya — dan mengabaikan tab tanpa angka, supaya tidak lulus karena alasan
 yang salah.
 
-<<<<<<< HEAD
 ---
 
 ## 38. Sesi kedua puluh dua — audit kesesuaian Inbox Open Protection terhadap Pega (2026-09-25)
@@ -22183,7 +22182,7 @@ Invoice. Itu menutup pertanyaan tanpa perlu DBA — tetapi tetap **bukan** predi
 dengan Pega, yang memakai `PYSTATUSWORK = 'Resolved-Completed'` milik objek SurveyClaim.
 Kolom itu tidak ada di tabel penggerak.
 
-### 41.5 Yang masih menunggu DBA
+### 84.5 Yang masih menunggu DBA
 
 | Kolom | Dipetakan ke | Kenapa belum pasti |
 |---|---|---|
@@ -22215,6 +22214,570 @@ Uji baru — 9 di sqlstore, 16 di memory. Yang paling berharga: ketiga tab komun
 tertukar (ketiganya hanya dibedakan arah pengirim dan status pesan), nama berawalan sama
 tidak ikut terbawa cakupan, tab Outstanding memakai `IS NULL` bukan `<> '1'`, dan jumlah
 pada bilah tab sepadan dengan isi tabnya.
+
+### 84.9 Sisir ulang modul — empat cacat ditemukan setelah modulnya "selesai"
+
+Work Owner meminta modulnya diperiksa, bukan diringkas. Empat hal ditemukan, seluruhnya
+diperbaiki dan dikunci uji.
+
+**1. Penyaring kelas objek kerja HILANG.** `T_CLAIMLIST_ADMIN` menampung dua kelas — 870
+`Work-PNC` dan 142 `Work-ReceiveDocument`. Gabungan `k.PZINSKEY = s.PNCCASEID` tidak
+menyaringnya. Induk sebuah janji survei SELALU `Work-PNC`, terbaca dari
+`BrowseLossAdjuster-SQL.xml` yang menyaring `z.pxobjclass` sebelum mencocokkan
+`a.caseid_1 = z.pzinskey`. Pelajaran yang sama sudah dibayar sekali di
+`inboxmanagerreceivepucl`.
+
+**2. Jenis surveyor diambil dari sisi yang salah.** Semula `k.SURVEYORTYPE_1` — per KLAIM.
+`T_SURVEYORLIST.SURVEYTYPE` membawa nilai yang sama **per janji survei**, dan jalur
+penulisnya terbaca utuh:
+
+    ClaimData.SurveyData.SurveyorType
+      -> Param.SurveyType         KomitePost_Survey-Act.xml:14950
+      -> TempSurvey.SurveyorType  SetSurveyorList-Act.xml:657
+      -> TSRVTYPE                 CallProcedureInsertSurvey-SQL.xml
+      -> SURVEYTYPE               INSERT_SURVEYORLIST.prc:32
+
+Satu kolom lagi lepas dari granularitas per-klaim, **tanpa perubahan skema**.
+
+**3. Kegagalan `/keterangan` tidak terlihat pengguna.** Ditemukan lewat uji yang sengaja
+menggagalkannya, bukan lewat pembacaan kode. Rantainya melewati tiga tempat dan tidak satu
+pun terlihat salah bila dibaca sendiri:
+
+    /keterangan gagal -> `tab` tidak pernah terisi
+                      -> useDaftarSurvei `enabled: false`
+                      -> isPending TRUE selamanya
+                      -> tabel menampilkan kerangka pemuatan tanpa pesan apa pun
+
+**4. Kegagalan `/jumlah-tab` juga tidak terlihat — dan ini SAUDARA KEMBAR nomor 3 yang
+sempat saya lewatkan.** Perbaikan pertama hanya menutup satu dari dua. Bedanya: kegagalan di
+sini TIDAK menutup layar, karena daftarnya tetap terbaca — yang benar adalah pemberitahuan di
+dalam layar.
+
+### 84.10 Peninjauan antarmuka dua poros
+
+Dijalankan dengan skill `front-review` (Consistency dan UX, paralel, tidak saling mencemari).
+Dua temuannya saya verifikasi sendiri sebelum diterima — laporan agen tidak dipakai apa
+adanya.
+
+**Terverifikasi dan diperbaiki:**
+
+- **`src/components/TabBar.tsx` ada dan tidak saya pakai.** Tiga bilah tab buatan sendiri
+  diganti dengannya. Ia menutup sekaligus tiga `role="tablist"` yang tidak punya
+  `aria-label` — `TabBar` mewajibkannya. Catatan yang adil: berkas itu bertanggal **28 Sep
+  17:14**, yaitu SESUDAH halaman ini ditulis, oleh sesi lain. Bukan diabaikan; belum ada.
+- **Isian tahun KPI tampil transparan di tema gelap.** `src/styles.css:281` menempelkan
+  permukaan gelap lewat selector `input[class~="bg-white"]`; `<input>` buatan sendiri tidak
+  membawa kelas itu sehingga ia keluar dari tema. Diganti `Field`, yang membawanya berikut
+  `htmlFor` dan cincin fokus yang seragam.
+
+**Akibat yang diambil secara sadar:** angka tab kini menyatu dengan namanya — `ALL (6)` —
+bukan lencana tersendiri. `TabBar` tidak punya slot lencana, dan menambahkannya berarti
+mengubah komponen yang sudah dipakai layar lain. Ujinya disesuaikan, bukan dilonggarkan, dan
+ditulis ulang memakai `getByRole('tab', …)` sehingga ia menguji peran aksesibilitasnya.
+
+### 84.11 Yang TIDAK disentuh, dan kenapa
+
+| Temuan | Alasan |
+|---|---|
+| Kontras `text-slate-400` (≈2,6:1) pada teks bermakna · target sentuh < 44px | berlaku di **22 modul**. Memperbaikinya hanya di sini membuat modul ini berbeda sendiri; milik `baseline-ui` menyeluruh |
+| `TabBar` tanpa navigasi panah, `aria-controls`, roving `tabIndex` | komponen **bersama**, dipakai layar lain. Mengubahnya berisiko ke modul yang tidak sedang dikerjakan |
+| State di URL, debounce isian tahun KPI | nyata, tetapi bukan cacat — menuntut keputusan, bukan perbaikan |
+| **13 modul lama masih membaca DATAPEGA**, 9 lewat `PC_ASSIGN_WORKLIST` | Work Owner menyatakan "jangan kerjakan". Konversinya BUKAN mekanis: gabungan ke worklist menghasilkan beberapa baris per klaim, `T_CLAIMLIST_ADMIN` satu baris per klaim — `inboxanalystdoctor` justru SENGAJA membawa kembaran itu sebagai `P-5` |
+
+### 84.12 Bukti akhir
+
+Menggantikan angka pada §84.8, yang benar saat ditulis dan sudah tidak lagi.
+
+    frontend  tsc --noEmit                        bersih
+              vitest run                          82 berkas · 1.352 uji lulus
+              (modul ini: 15 uji)
+    backend   go build ./internal/inboxsurvey/... OK · go vet bersih
+              go test  ./internal/inboxsurvey/... memory ok · sqlstore ok
+
+**`go test ./...` TIDAK bersih**, dan itu bukan akibat modul ini: `inboxpladla` dan
+`inboxservicecenter` gagal, keduanya dari commit `9cf1ce8 reo28/09/2026`. Dicatat supaya
+tidak terbaca sebagai akibat perubahan di sini.
+
+Uji modul bertambah dari 11 menjadi 15. Empat yang baru mengunci keempat cacat §84.9.
+
+> **Catatan penomoran.** Bab ini semula bernomor **41**, dan bertabrakan dengan dua bab lain
+> dari sesi yang berjalan bersamaan. Dinomori ulang menjadi **84** — nomor bebas pertama di
+> atas nomor tertinggi yang terpakai (83) — pada 2026-09-29, berikut seluruh sub-babnya dan
+> rujukan §41.x di dalamnya.
+>
+> Yang dinomori ulang **hanya bab ini**. Berkas ini masih memuat **51 nomor bab ganda**, satu
+> di antaranya dipakai enam kali, seluruhnya warisan sesi paralel yang menomori sendiri-sendiri
+> lalu digabung. Penomoran ulang menyeluruh **tidak dikerjakan dengan sengaja**: keempat
+> dokumen memuat **1.426 rujukan bergaya `§NN`**, dan menomori ulang tanpa memperbaiki
+> rujukannya akan mengubah kekacauan yang terlihat menjadi kekacauan yang tidak terlihat —
+> setiap `§49` akan menunjuk bab yang salah tanpa satu pun tanda.
+>
+> Penomoran bab perlu disepakati ulang bila beberapa sesi terus berjalan paralel.
+
+### 84.13 Sumber header berpindah ke `T_CLAIM_PNC` (2026-09-29)
+
+Permintaan Work Owner: *"ngomong2 jika t_claimlist_admin diganti menggunakan t_claim_pnc akan
+berpengaruh kemana"*, lalu **"ganti ke t_claim_pnc"**. Dikerjakan **hanya untuk modul ini** —
+delapan modul lain yang membaca `T_CLAIMLIST_ADMIN` tidak disentuh, sesuai instruksi
+sebelumnya (*"jangan kerjakan, fokus ke modul ini"*).
+
+#### Kenapa perpindahan ini benar, dan bukan sekadar penggantian nama tabel
+
+Dua alasan, keduanya terbukti dari artefak — bukan preferensi.
+
+**Pertama, itu pasangan yang Pega sendiri pakai.**
+`RDB List/BroswseKlaimByNoSurvey-SQL.xml` menyambungkan keduanya persis begitu:
+
+    FROM T_CLAIM_PNC c
+    where CLAIMID = (select pnccaseid from t_surveyorlist where caseid = ...)
+
+Kuncinya `CLAIMID = PNCCASEID`, bukan `PZINSKEY`.
+
+**Kedua — dan ini yang menentukan — `T_CLAIMLIST_ADMIN` MEMBUANG populasi utama layar ini.**
+Tabel datar itu hanya memuat klaim yang tugasnya berada di antrean Admin: empat label, salah
+satunya **Choose Surveyor**. Sebuah survei yang SEDANG BERJALAN berarti klaimnya sudah
+**melewati** tahap itu — sehingga `INNER JOIN` ke sana membuang justru baris yang dicari layar
+ini.
+
+Cacat seperti itu **tidak menghasilkan galat**. Layarnya terisi sebagian, dan tampak wajar.
+
+#### Tidak satu pun nama kolom header yang sama
+
+    T_CLAIMLIST_ADMIN          T_CLAIM_PNC
+    -------------------------  -----------------
+    PZINSKEY                   CLAIMID
+    PYID                       CLAIMNO
+    POLICYNO                   NOPOLIS
+    DATEOFLOSS_1               DATEOFLOSS
+    USERTEKNIS_1               PICTEKNIK
+    PYSTATUSWORK               STATUSWORK
+    PXOBJCLASS                 — tidak ada, dan tidak perlu
+
+Penyaring `PXOBJCLASS` yang dulu **wajib** kini hilang dengan sendirinya, dan itu bukan
+kelalaian: `T_CLAIMLIST_ADMIN` mencampur `Work-PNC` dengan `Work-ReceiveDocument`, sedangkan
+`T_CLAIM_PNC` tidak mencampur apa pun. Ia dikunci uji `TestPenyaringKelasObjekKerjaTidakLagi
+Dibutuhkan` supaya hilangnya terbaca sebagai konsekuensi yang disadari.
+
+#### Empat isian menjadi BELUM TERSEDIA — dan ini bukan akibat perpindahan tabel
+
+Ini bagian yang paling penting dicatat, karena mudah salah dibaca sebagai kemunduran.
+
+    ADJUSTERPIC_1     -> kolom "Appointment No"
+    REFNO_1           -> kolom "Reference No"
+    ADJUSTERSTATUS_1  -> kolom "Status ASM", tab Invoice, tab Close
+    ADJUSTERACCEPT_1  -> tab Outstanding, tab ALL
+
+Keempatnya hidup di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`. Diukur langsung ke katalog kolom
+(`docs/kolom-t-claimlist-admin.md` §H, `ALL_TAB_COLUMNS`, 2026-09-28), keadaannya **sudah
+begitu SEBELUM perpindahan**:
+
+    pada T_CLAIMLIST_ADMIN   REFNO_1, ADJUSTERACCEPT_1  TIDAK ADA di 58 kolomnya
+                             ADJUSTERPIC_1, ADJUSTERSTATUS_1  ada, 0 dari 1.014 terisi
+    pada T_CLAIM_PNC         keempatnya tidak ada
+
+Jadi yang berubah bukan kemampuan layarnya, melainkan **kejujurannya**: sebelumnya kuerinya
+GAGAL dengan ORA-00904 pada dua kolom yang tidak ada; sekarang ia jalan, dan keempat isian itu
+**menyatakan dirinya belum tersedia**.
+
+Akibatnya **empat dari tujuh tab** dan **tiga dari tiga belas kolom** belum dapat diisi. Tiga
+tab komunikasi TETAP berjalan penuh.
+
+#### Kenapa tab dan kolomnya tetap digambar
+
+`D-13` menetapkan bentuk layar mengikuti Pega. Menghapus empat dari tujuh tab dan tiga dari
+tiga belas kolom akan membuat pengguna yang hafal layarnya mengira fiturnya hilang.
+
+Yang berubah hanyalah: tab dan kolom itu **menyebut sebabnya**, alih-alih menampilkan kosong.
+Perbedaannya menentukan — **daftar kosong tidak pernah dilaporkan siapa pun sebagai
+kerusakan**; tab yang menyebut sebabnya akan.
+
+Bentuknya:
+
+    bilah tab      "Outstanding (belum tersedia)" — slot yang sama dengan angka jumlah
+    isi tab        ErrorMessage yang menyebut kolom penggeraknya, MENGGANTIKAN tabelnya
+    judul kolom    "Appointment No · belum tersedia"
+    sel kolom      "belum tersedia" bertooltip, bukan em dash
+
+Tabnya **tetap dapat dipilih**, dan itu disengaja: tab yang dimatikan tanpa penjelasan sama
+membingungkannya dengan tab kosong, dan sebabnya baru muat ditampilkan setelah tabnya dibuka.
+
+#### Kolom Aging berubah dari DIBACA menjadi DIHITUNG
+
+`AGING` adalah kolom tabel datar; `T_CLAIM_PNC` tidak punya. Penggantinya: **umur janji survei
+sejak `T_SURVEYORLIST.TGLINPUT`**, dihitung terhadap **tanggal WIB** — preseden `inboxcloseclaim.
+DurationDays` dan `inboxanalystdoctor.DurationDays`.
+
+Ia juga **lebih tepat** untuk layar ini. Yang ditanyakan adjuster adalah *"sudah berapa lama
+SURVEI ini menunggu saya"*, bukan *"sudah berapa lama KLAIMNYA berjalan"* — dan keduanya berbeda
+jauh pada klaim lama yang surveinya baru ditugaskan kemarin.
+
+Perhitungannya **tidak** dilakukan di SQL: "hari" yang dimaksud pengguna adalah hari WIB
+sementara kolomnya UTC, dan menaruh konversi zona waktu di dalam SQL adalah cara paling cepat
+menyebarkannya ke tempat yang lupa melakukannya — persis cacat `Set7Hours` sistem lama.
+
+#### Tab bawaan berpindah, dan itu keputusan tersendiri
+
+Bawaan layar lama adalah **Outstanding**, dan Outstanding termasuk yang belum dapat dihitung.
+Membuka layar di sana akan membuat **kesan pertama setiap pengguna berupa layar tanpa isi** —
+dan kesan itu bertahan meski tiga tab lain berisi.
+
+`inboxsurvey.DefaultAvailableTab()` karena itu mengembalikan tab tersedia pertama. Begitu
+kolomnya tiba, ia kembali mengembalikan Outstanding **dengan sendirinya**, tanpa satu baris pun
+disunting.
+
+#### Nama method disamakan dengan `D-80`
+
+Tiga nama yang sempat saya tulis berbahasa Indonesia dikoreksi sebelum selesai, karena `D-80`
+menetapkan nama di dalam kode berbahasa Inggris:
+
+    Tersedia()             ->  Available()
+    AlasanTakTersedia()    ->  UnavailableReason()
+    DefaultTabTersedia()   ->  DefaultAvailableTab()
+
+Nama uji tetap berbahasa Indonesia — itu konvensi yang sudah berlaku di seluruh modul.
+
+#### Kueri pemeriksa yang SENGAJA dirancang gagal
+
+`check_missing_columns` menanyakan keempat kolom adjuster ke `T_SURVEYORLIST`. Ia gagal hari
+ini, dan kegagalannya **diharapkan** — karena itu `-periksa` melaporkannya sebagai `[catat]`,
+bukan `[BELUM]`.
+
+Begitu Tim Pega menambahkan kolomnya, kueri itu mulai berhasil dan `-periksa` mengucapkan
+`[ok]` berikut petunjuk menghidupkan empat tab. Tanpanya, satu-satunya cara mengetahui kolomnya
+sudah tiba adalah mencobanya secara kebetulan.
+
+#### Bukti
+
+    backend   go build ./...                       OK
+              go vet   ./...                       bersih
+              go test  ./internal/inboxsurvey/...  memory ok · sqlstore ok
+    frontend  tsc --noEmit                         bersih
+              vitest run src/modules/inbox-survey  17 uji lulus (dari 15)
+
+Dua uji baru: `menjelaskan sebabnya saat tab yang belum tersedia dibuka` dan `menandai sel
+kolom yang belum tersedia`. Keduanya mengunci perbedaan antara "belum tersedia" dan "kosong".
+
+Di sisi Go, tiga uji baru menjaga arah yang sama: `TestKolomHeaderMemakaiNamaTabelKlaim`
+(menangkap ORA-00904 tanpa basis data), `TestKeempatKolomAdjusterTidakDibacaKueriDaftar`, dan
+`TestSetiapTabTakTersediaMenyebutSebabnya` — yang terakhir sengaja **gagal** bila kelak seluruh
+tab tersedia, sebagai tanda untuk menghapusnya.
+
+#### Yang masih harus diminta
+
+Ke **Tim Pega** (perubahan skema menempuh `D-63`): tambahkan `ADJUSTERACCEPT_1`,
+`ADJUSTERSTATUS_1`, `ADJUSTERPIC_1`, dan `REFNO_1` ke `POOLDATA.T_SURVEYORLIST`, dan perluas
+`Database/INSERT_SURVEYORLIST.prc` untuk mengisinya.
+
+Ke **DBA**: konfirmasi pemetaan `LOSSTYPE` ke kolom "Cause Of Loss" — kueri Pega yang mengisinya
+hilang dari export (`R-16`).
+
+Keduanya belum dikirim.
+
+### 84.14 `INDEX_SURVEY` salah dibaca, dan akibatnya cacat penggandaan baris (2026-09-29)
+
+Work Owner bertanya apakah `POOLDATA.T_CLAIM_SURVEY_DATAPEGA` di-update saat survei
+`Resolved-Completed`/`Rejected`. Pertanyaan itu membongkar dua hal yang lebih besar daripada
+jawabannya.
+
+#### Jawaban pertanyaannya: tidak, dan tabelnya kemungkinan kosong sejak awal
+
+Seluruh export menyentuh tabel itu di **dua pernyataan**, keduanya di
+`Database/INSERT_SURVEYORLIST.prc` — `SELECT COUNT(1)` baris 62 dan `INSERT` baris 69. **Tidak
+ada `UPDATE`, `DELETE`, maupun `MERGE`** terhadapnya di berkas mana pun.
+
+Lebih dari itu, penjaganya mustahil terpenuhi:
+
+```sql
+-- baris 65-66
+select count(1) into jumlahsurvey FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
+   WHERE pxobjclass = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+     and pzinskey = TCASEID and pzinskey = TPNCCASEID;   -- satu kolom, DUA parameter
+if listsur < 1 and jumlahsurvey > 0 then                  -- baris 68
+```
+
+`TCASEID` adalah kunci berkas survei, `TPNCCASEID` kunci klaim induk — keduanya tidak pernah
+sama. Buktinya tiga: `T_SURVEYORLIST` menyimpan keduanya sebagai kolom terpisah;
+`BroswseKlaimByNoSurvey-SQL.xml` menulis `where CLAIMID = (select pnccaseid … where caseid = …)`
+yang memperlakukannya sebagai nilai berbeda; dan `INSERT`-nya sendiri memetakan
+`SURVEYID ← pzinskey` dan `PZINSKEY ← caseid_1`.
+
+Jadi `jumlahsurvey` selalu 0, blok `if` tidak pernah dimasuki, dan tabel itu kemungkinan
+**kosong sejak dibuat** — bukan berisi data basi.
+
+#### Kesalahan saya: `INDEX_SURVEY` saya kira "kunjungan survei", dan istilah "objek" saya pakai untuk dua hal
+
+Saya menyodorkan pilihan **"per objek atau per hasil survei"** kepada Work Owner. Dua kesalahan
+sekaligus:
+
+1. **Kata "objek" saya pakai untuk objek kerja Pega**, padahal di aplikasi ini **"Objek" berarti
+   Objek Pertanggungan** — dan `CONTEXT.md` justru membuang kata `Object` karena tabrakan makna
+   itu. Work Owner bingung, dan wajar.
+2. **Pilihannya sendiri salah rumus.** Keduanya bukan dua cara memandang yang sama-sama sah.
+
+Penelusuran menunjukkan `INDEX_SURVEY` adalah **nomor urut survei ke-berapa pada berkas survei
+yang sama**, dan nilainya **bertambah**:
+
+```
+Activity/SetSurveyorList-Act.xml
+  TempSurvey.IdxSurveyResults := @if(Param.IndexSurvey=="", local.index+1, Param.IndexSurvey)
+  childPageSurveyClaim.SurveyData.SurveyList(<LAST>).IdxSurveyResults := local.index+1
+
+RDB List/GetDataProgressSurvey-SQL.xml     -- dibaca kembali sebagai RIWAYAT
+  order by to_number(index_survey) asc
+```
+
+Work Owner mengonfirmasi bentuk itu: **hanya satu survei yang berjalan; bila ada lebih dari
+satu, sisanya sudah dibatalkan.**
+
+#### Cacat yang tersingkap: layar menampilkan seluruh riwayat survei
+
+Kedua Browse rule yang tersisa memasang penyaring di tingkat teratas —
+`A.PYSTATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')` — dan
+`CountOSLostAdjuster` memasangnya pada **enam dari tujuh** tab.
+
+Layar yang saya serahkan **tidak punya penyaring itu**, karena `T_SURVEYORLIST` tidak punya
+kolomnya. Akibatnya satu berkas survei tampil beberapa kali dengan Claim No yang sama berulang.
+
+Work Owner menegaskan aturannya: **baris yang berjalan adalah yang status Pega-nya bukan
+`Resolved-Completed` maupun `Resolved-Rejected`** — persis kolom kelima yang sudah diminta.
+
+#### Yang berubah di kode
+
+| Berkas | Perubahan |
+|---|---|
+| `inboxsurvey.go` | konstanta `StatusWorkCompleted`/`StatusWorkRejected` + `ClosedWorkStatuses()`, beserta jejak buktinya |
+| `inboxsurvey.sql` | **CATATAN 4** baru; `PYSTATUSWORK` masuk `check_missing_columns` |
+| `repo/sqlstore/check.go` | `CheckMissingColumns` menjadi 5 kolom |
+| `cmd/claimpnc/check.go` | pesan `-periksa` menyebut kelimanya dan akibat ketiadaan `PYSTATUSWORK` |
+| `usecase/list.go` | keterbatasan penggandaan baris **dinaikkan ke urutan pertama** di `Limitations()` |
+| `query_test.go` | dua uji baru |
+
+Predikatnya **direkam sekarang meski belum dapat dipasang**, supaya tidak digali ulang saat
+kolomnya tiba. `ClosedWorkStatuses()` menyerahkan keduanya sebagai satu daftar, bukan dua
+konstanta lepas: memasang salah satunya dan lupa yang lain menghasilkan antrean yang memuat
+survei batal, tanpa satu pun galat.
+
+#### Uji yang sengaja menegaskan KETIADAAN
+
+`TestKueriDaftarBelumMenyaringBarisBerjalan` memastikan `list_tasks` dan `count_tabs` **belum**
+memuat `PYSTATUSWORK`. Begitu penyaringnya dipasang, uji itu **gagal** — dan kegagalannya
+adalah pengingat untuk menghapus keterbatasan yang sudah tidak berlaku dari `Limitations()`,
+dari kepala `.sql`, dan dari layar.
+
+Tanpa uji itu, keterbatasan yang sudah selesai akan tertinggal dan dibaca pengguna sebagai cacat
+yang masih ada.
+
+#### Berkas serah-terima
+
+`docs/permintaan-kolom-t-surveyorlist.md` — siap dikirim apa adanya. Memuat kelima kolom
+beserta buktinya, **penegasan bahwa kolomnya harus dimutakhirkan bukan hanya diisi saat
+dibuat**, dua pertanyaan ke Tim Pega (`STS_SURVEY`, `T_CLAIM_SURVEY_DATAPEGA`), dan tiga kueri
+pengukuran untuk DBA.
+
+#### Bukti
+
+    backend   go build ./...                       OK
+              go vet   ./internal/inboxsurvey/...  bersih
+              go test  ./internal/inboxsurvey/...  memory ok · sqlstore ok
+
+#### Yang BELUM terjawab
+
+Satu kueri menentukan seberapa besar cacat penggandaan baris itu di produksi, dan saya tidak
+dapat menjalankannya:
+
+```sql
+SELECT jumlah_index, COUNT(*) FROM (SELECT caseid, COUNT(*) AS jumlah_index
+  FROM POOLDATA.T_SURVEYORLIST GROUP BY caseid) GROUP BY jumlah_index ORDER BY jumlah_index;
+```
+
+Bila hampir seluruhnya `1`, cacatnya tidak pernah terlihat pengguna. Bila banyak yang `> 1`, ia
+cacat yang terlihat setiap hari.
+
+### 84.15 Empat pengukuran produksi, tiga dugaan gugur, dan bentuk akhirnya (2026-09-29)
+
+Work Owner menjalankan empat kueri. Hasilnya **membatalkan tiga kesimpulan saya berturut-turut**
+dan menghasilkan bentuk yang sekarang dipakai. Dicatat berurutan, karena urutannya yang
+mengajarkan sesuatu.
+
+#### Pengukuran 1 — sebaran `INDEX_SURVEY` per berkas survei
+
+|  | Dev | **Produksi** |
+|---|---:|---:|
+| Berkas survei | 188 | **2.448** |
+| Baris `T_SURVEYORLIST` | 279 | **17.641** |
+| Berkas dengan >1 baris | 16,5% | **69,1%** |
+| Rata-rata baris per berkas | 1,48 | **7,21** |
+| Terberat | 13 | **176** |
+
+Layar Pega menampilkan 2.448 baris; layar saya 17.641 — **tujuh baris untuk setiap satu yang
+benar**. Dugaan berdasar data dev akan meleset jauh.
+
+#### Pengukuran 2 — bentuk berkas terberat
+
+    baris  objek  surveyor  ragam_status
+      176      0         1             6
+      138      0         1             8
+      116      0         1            10
+
+`COUNT(DISTINCT idobject) = 0` → **`IDOBJECT` NULL**. Dugaan "satu baris per Objek
+Pertanggungan" gugur. Dan `COUNT(DISTINCT sts_survey)` 4–10 → kolom itu **berubah-ubah di dalam
+satu berkas**.
+
+#### Pengukuran 3 — sebaran `STS_SURVEY`
+
+22 nilai, dan ketiga nilai yang dipakai Pega sebagai penyaring ada semua:
+
+    Waiting Claim Document 4.926 · On Progress 3.355 · Draft Final Report 1.533
+    Final Report 1.466 · Initial Advice 1.246 · Invoice Fee 1.069 · Preliminary Advice 1.020
+    Waiting Confirmation 948 · … · Close Case 316 · (kosong) 316 · … · Reject Case 11
+
+**`STS_SURVEY` adalah `ADJUSTERSTATUS_1`**, dan `T_SURVEYORLIST` adalah **jejak perkembangan** —
+satu baris per perubahan status. Rata-rata 7,21 langkah per survei menjadi masuk akal.
+
+Saya **cabut** pernyataan §84.14 bahwa kolom itu hanya berisi `"On Progress"`. Itu satu dari 22
+nilai, disimpulkan dari satu-satunya penulis yang kebetulan ada di export.
+
+#### Pengukuran 4 — apakah `STS_SURVEY` dapat menggantikan `PYSTATUSWORK`
+
+**Tidak.** Dari 1.070 berkas yang sudah `Resolved-*`, hanya **308 (28,8%)** berakhir di
+`Close Case`/`Reject Case`:
+
+    Resolved-Completed -> Invoice Fee 497 · Close Case 301 · Final Report 95 · On Progress 45
+    Resolved-Rejected  -> On Progress 42 · (kosong) 22 · Reject Case **0 dari 70**
+
+`Invoice Fee` adalah langkah terakhir pekerjaan adjuster — ia menagih, lalu berkasnya ditutup
+petugas ASM.
+
+**Akibatnya rancangan tab Close saya salah dan dicabut.** Pengganti
+`ADJUSTERSTATUS_1 = 'Close Case'` akan menampilkan **307 dari 1.000** berkas — kehilangan 69%.
+Itu bukan selisih terencana melainkan tab yang rusak.
+
+#### Keputusan Work Owner: join ke tabel cermin
+
+Setelah bukti lengkap, Work Owner memilih **`T_SURVEYORLIST` di-join ke
+`POOLDATA.T_CLAIM_SURVEY_DATAPEGA`**. Saya sempat menolak tabel itu di `K-105.17`; penolakan itu
+**direvisi** — tiga fakta baru membalikkan alasannya, dan tercatat di `K-105.18`.
+
+#### Bentuk akhirnya
+
+```
+FROM   (T_SURVEYORLIST + ROW_NUMBER() per CASEID) s    -- langkah TERAKHIR saja
+JOIN   T_CLAIM_PNC c                ON c.CLAIMID = s.PNCCASEID
+LEFT JOIN T_CLAIM_SURVEY_DATAPEGA d ON d.SURVEYID = s.CASEID
+WHERE  s.STEP_RANK = 1
+  AND  (d.STATUSWORK IS NULL OR d.STATUSWORK NOT IN (:completed, :rejected))
+```
+
+Empat keputusan di dalamnya, masing-masing punya sebab:
+
+| Keputusan | Sebab |
+|---|---|
+| **`LEFT JOIN`**, bukan `INNER` | baris cermin yang belum tertulis akan **melenyapkan pekerjaan dari inbox**. Pekerjaan yang lenyap tidak pernah dilaporkan sebagai kerusakan; kolom kosong akan |
+| **`LPAD`**, bukan `TO_NUMBER` | `to_number` khas Oracle (melanggar `D-20`) dan gagal ORA-01722 pada satu baris warisan yang indeksnya bukan angka |
+| **`NULLS LAST`** disebut tegas | bawaan Oracle untuk `DESC` adalah `NULLS FIRST` — tanpanya baris ber-indeks kosong terpilih sebagai "langkah terakhir" |
+| **`STATUSWORK IS NULL OR …`** | selama tabel cermin kosong ia meloloskan semua (perilaku hari ini); begitu terisi ia **menyala sendiri** tanpa satu baris disunting |
+
+Penyaring cakupan sengaja **tidak** ditaruh di dalam partisi: bila nama surveyor berganti di
+tengah jalan, menyaring lebih dulu akan memilih langkah terakhir MILIK SURVEYOR ITU, bukan
+langkah terakhir berkasnya.
+
+#### Yang hidup sekarang, tanpa menunggu siapa pun
+
+- **Satu baris per berkas survei** — 17.641 turun ke 2.448
+- **Kolom Status ASM** terisi dari `STS_SURVEY` langkah terakhir
+
+#### Yang masih menunggu, dan sebabnya BERBEDA
+
+| Menunggu | Yang tertunda | Sebab |
+|---|---|---|
+| kolom `ADJUSTERACCEPT_1`, `ADJUSTERPIC_1`, `REFNO_1` | tab Outstanding, ALL, Invoice + kolom Appointment No, Reference No | kolomnya **belum ada** |
+| isi tabel cermin | tab Close + penyaring berkas tutup | kolomnya ada, **tabelnya kosong** |
+
+Keduanya diperiksa **terpisah** oleh `-periksa` (`CheckMissingColumns` versus
+`CheckMirrorRows`), karena diperbaiki langkah yang berbeda: `ALTER` oleh DBA versus procedure
+oleh Tim Pega. Menyatukannya membuat "kolomnya ada tetapi tabelnya kosong" terbaca sebagai siap.
+
+#### Kenapa BUKAN menambah kolom ke `T_SURVEYORLIST`
+
+Tiga alasan terukur, dan yang kedua paling berat:
+
+1. Butirnya salah — nilai terduplikasi rata-rata 7×, dan satu perubahan status harus
+   memutakhirkan sampai 176 baris serentak.
+2. **`T_SURVEYORLIST` memberi makan KPI adjuster** — dibaca `GetReportKPI_Survey`,
+   `GetReportKPIAdjuster_Progress`, dan `GetReportKPIAdjuster_FinalReport`, yaitu tiga dari
+   sembilan angka KPI. Menulis ke sana berjangkauan sampai **nilai kinerja orang**.
+3. Tabel cermin **tidak dibaca siapa pun**, sehingga mengisinya — termasuk backfill mundur —
+   aman.
+
+#### Yang berubah di kode
+
+| Berkas | Perubahan |
+|---|---|
+| `inboxsurvey.sql` | ditulis ulang: dedup langkah terakhir, `LEFT JOIN` tabel cermin, penyaring berkas tutup yang menyala sendiri, `check_mirror_rows` baru |
+| `inboxsurvey.go` | `ASMStatus` jadi tersedia · `SurveyStatus` dihapus · `WorkStatus` ditambahkan · `UnavailableReason` menyebut sebab yang berbeda per tab |
+| `repo/sqlstore/check.go` | `CheckMirrorRows` baru; `CheckMissingColumns` turun ke 3 kolom |
+| `cmd/claimpnc/check.go` | dua pemeriksaan terpisah, masing-masing dengan petunjuk perbaikannya |
+| `usecase/list.go` | metadata kolom Status ASM jadi tersedia; keterbatasan dipecah menurut sebabnya |
+| frontend | `status_survei` → `status_berkas`; Status ASM tidak lagi bertanda |
+
+#### Uji yang ditambahkan
+
+`TestTabelCerminDisambungLeftJoin` · `TestHanyaLangkahTerakhirYangDiambil` ·
+`TestPenyaringBerkasTerbukaMenyalaSendiri` · `TestStatusASMDibacaDariJejakPerkembangan` ·
+`TestPredikatBerkasTutupTerekamDiDomain`
+
+Ditambah satu di frontend: Status ASM terisi dan **tidak** bertanda "belum tersedia".
+
+#### Bukti
+
+    backend   go build ./...  ·  go vet ./...        bersih
+              go test ./internal/inboxsurvey/...     memory ok · sqlstore ok
+    frontend  tsc --noEmit                           bersih
+              vitest src/modules/inbox-survey        17 uji lulus
+
+#### 84.15.1 Koreksi Work Owner — `SURVEYORNAME` dan `ADJUSTER_PIC` satu kolom (2026-09-30)
+
+Work Owner menegaskan keduanya seharusnya sama. **Benar**, dan pemeriksaannya menemukan kasus
+alias terburuk sejauh ini: **satu kolom, tiga alias yang saling bertentangan.**
+
+| Rule | Alias untuk `SURVEYORNAME_1` |
+|---|---|
+| `BrowseOSLossAdjusterPIC` | `AS "AnaylstRemarks"` ← **ini yang diikat section** |
+| `BrowseLossAdjuster` | `AS "CountryID"` |
+| `BrowseInternalSurveyor` | `AS "CountryID"` **dan** `as "ComplianceRemark"` |
+
+`Section/InboxSurvey_section-Section.xml` mengikat kolom "PIC Loss Adjuster" ke
+`.AnaylstRemarks` — sehingga ia memang `SURVEYORNAME_1`, bukan catatan analis.
+
+**Implementasinya sudah benar** — `s.SURVEYOR_NAME` adalah padanannya di tabel penggerak, dan
+kolom itu pula yang menyaring cakupan kewenangan. Yang salah adalah **dokumennya**: peta
+penamaan menyebut `SURVEYOR_NAME` dan `SURVEYORNAME_1` di dua tempat terpisah seolah dua hal
+berbeda, dan daftar "alias yang tidak dibawa" hanya menyebut satu dari tiga aliasnya.
+
+**Satu hal yang tersingkap dan sebelumnya tidak saya sadari.** Penyaringan langkah terakhir yang
+dipasang kemarin **juga** yang membuat keduanya benar-benar sepadan: `T_SURVEYORLIST` adalah
+jejak perkembangan, sehingga `SURVEYOR_NAME` dapat berbeda antar langkah bila surveyornya
+diganti, sementara objek kerja hanya punya satu `SURVEYORNAME_1`.
+
+Dan karena penyaring cakupan dipasang **sesudah** penyaringan langkah terakhir — keputusan yang
+kemarin saya ambil karena alasan lain (CATATAN 3) — surveyor yang sudah diganti tidak lagi
+melihat berkas itu. Persis perilaku Pega, yang menyaring atas keadaan objek kerja hari ini.
+
+**Akibat praktisnya:** `SURVEYORNAME_1` **tidak perlu** diminta ke tabel cermin. Permintaannya
+tetap tiga kolom.
+
+Ditambahkan `TestPICLossAdjusterAdalahSurveyorName`, yang mengunci ketiganya sekaligus: kolomnya
+dibaca dari `s.SURVEYOR_NAME`, kolom yang sama dipakai menyaring cakupan, dan `SURVEYORNAME_1`
+tidak muncul di kueri.
+
+#### Pelajaran yang saya bayar tiga kali
+
+Tiga dugaan berturut-turut tentang `INDEX_SURVEY` — kunjungan survei, Objek Pertanggungan,
+perubahan status — dan **dua yang pertama terasa sama meyakinkannya** dengan yang ketiga saat
+ditulis. Yang membedakan bukan penalarannya melainkan **pengukurannya**.
+
+Ketiga pengukuran itu masing-masing satu kueri, dan seluruhnya dijalankan dalam satu percakapan.
+Menebak tiga kali lebih mahal daripada mengukur sekali.
 
 ## 42. Inbox OS Claim per Cabang — `MENU_ID 69` (2026-09-28)
 
@@ -22460,7 +23023,363 @@ penyaring outstanding tidak hilang · alias SQL sama dengan pemindai · alias ek
 awalan alias grid · tepat 24 kolom treaty dan urutannya tidak tertukar · hanya ekspor yang
 menyentuh DB Link · kedua subkueri polis memakai urutan identik · umur kemarin-siang tetap
 1 hari · ambang merah `>` bukan `>=` · cabang kosong dijawab pesan, bukan daftar kosong.
-=======
+
+### 42.12 Dua koreksi Work Owner, dan apa yang ditemukan saat mengerjakannya (2026-09-29)
+
+Work Owner menyampaikan tiga hal sekaligus: cabang diambil dari `detailbranchcode` jawaban HCQ,
+sumber klaim outstanding dipindah ke `T_CLAIMLIST_ADMIN`, dan popup Detail dikerjakan sekarang.
+
+**Pertanyaan dan jawaban konfirmasi**
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Dari mana cabang pemanggil | "Cabang dari API HCQ saat login menggunakan parameter detailbranchcode" |
+| 2 | Bagaimana kode itu dipetakan ke kode klaim | "DetailBranchCode itu sama dengan LDC_ID di `general.lst_det_cabang@asmd.sinarmas.co.id`" |
+| 3 | Susulan Work Owner atas jawaban 2 | "karena berbeda detailbranchcode dari API = oldid di pooldata.branch jadi bisa diambil ID barunya dengan query select id where oldid = detailbranchcode" |
+| 4 | Sumber outstanding | "Pindah ke T_CLAIMLIST_ADMIN sekarang" |
+| 5 | Popup Detail | "Kerjakan sekarang, setelah dua koreksi di atas" |
+
+#### Koreksi A — cabang dari kode cabang RINCI
+
+Jalur lama memakai `BranchCode` pada profil sesi apa adanya sebagai penyaring. Itu **tidak dapat
+bekerja**: yang dikirim HCQ berkode 3 digit (`001`), sedangkan baris klaim berkode 6 digit
+(`100081`). Tanpa terjemahan, setiap pemanggil memperoleh **layar kosong tanpa satu pun galat**.
+
+Kedua jalur terjemahan yang disebut Work Owner diukur berdampingan terhadap basis data:
+
+| Jalur | Hasil |
+|---|---|
+| `POOLDATA.BRANCH.OLDID` → `ID` | 792 dari 803 baris punya `OLDID`, **seluruhnya unik** |
+| `GENERAL.LST_DET_CABANG@asmd` `LDC_ID` → `LDC_ID_PEGA` | **791 sepakat, 0 berselisih** |
+
+Yang lokal dipilih: hasilnya sama, dan ia **tidak menambah satu pun ketergantungan DB Link**
+(`D-25`). Tiga belas `LDC_ID` tanpa pasangan di `BRANCH` seluruhnya **nol klaim**, dan sebelas di
+antaranya memang tidak punya `LDC_ID_PEGA`.
+
+Yang berubah menembus seluruh lapisan, karena terjemahan itu milik penyimpanan — bukan milik
+lapisan transport:
+
+| Lapisan | Sebelum | Sesudah |
+|---|---|---|
+| `auth` | — | `Profile.DetailBranchCode`, `User.DetailBranchCode`, kolom `KODE_CABANG_DETAIL`, migrasi `0012` |
+| domain | `Caller{Login, BranchCode, BranchName}` | `Caller{Login, DetailBranchCode}` + tipe `Branch{Code, Name}` |
+| seam | `BranchName(ctx, kode) (string, bool, error)` | `BranchOf(ctx, kodeRinci) (Branch, bool, error)` |
+| usecase | seam `BranchResolver` terpisah | dihapus; terjemahan ada di `Repo` |
+| SQL | `branch_name`, `WHERE id = :1` | `branch_of`, `WHERE TRIM(oldid) = TRIM(:1)`, mengembalikan **kode dan nama sekaligus** |
+
+**Satu perubahan perilaku yang mengikuti, dan itu perbaikan.** Sebelumnya kode yang tidak dikenal
+master tetap dipakai sebagai penyaring — layar terbuka, daftarnya kosong. Sekarang ia **ditolak
+dengan pesan**, karena tanpa terjemahan tidak ada kode klaim yang dapat dipakai menyaring sama
+sekali. Daftar kosong dan "cabang Anda tidak dikenal" terlihat sama di layar, padahal yang pertama
+berarti tidak ada pekerjaan.
+
+**Kode dan nama diambil dari satu baris.** Mengambilnya lewat dua kueri membuka kemungkinan judul
+layar menyebut cabang yang berbeda dari cabang barisnya — cacat yang tidak menghasilkan galat.
+
+`TRIM` dipasang di kedua sisi: `OLDID` bertipe `VARCHAR2` dan diisi sistem lama, sementara kode
+dari HCQ datang lewat JSON. Satu spasi di ujung salah satunya cukup menolak seluruh pemanggil satu
+cabang, dan pesannya menyuruh mereka menghubungi Tim IT — bukan menunjuk spasinya.
+
+#### Koreksi B — `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` → `POOLDATA.T_CLAIMLIST_ADMIN`
+
+Diganti pada empat kueri: `list`, `list_export`, `dominant_factors`, `any_branch_with_claims`,
+serta pada `check_tables`. Kunci gabungannya `PZINSKEY`, dan itu **sempat saya salah**: pernah
+saya coba `PNCCASEID`, yang ternyata berisi nomor **register dokumen (RCV)** — hasilnya nol baris,
+dan nol baris terbaca sebagai "cabang ini memang tidak punya klaim". `PZINSKEY` unik di tabel itu
+(1.023 baris, 1.023 nilai), sehingga tidak menggandakan baris.
+
+**Akibatnya bukan perbedaan angka, melainkan perbedaan ARTI layar** — diukur langsung dengan
+penyaring dan gabungan yang sama persis:
+
+| Sumber | Baris |
+|---|---:|
+| `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` | **953** |
+| `POOLDATA.T_CLAIMLIST_ADMIN` | **443** |
+| tidak ada di `T_CLAIMLIST_ADMIN` | **517** |
+
+> **KOREKSI 2026-09-29 — penjelasan pertama saya atas angka ini SALAH.**
+>
+> Saya menulis bahwa 517 klaim yang hilang adalah "klaim yang sedang di PIC Teknik, Komite,
+> Survey, atau Compliance". Work Owner menanyakan bagian "PIC Teknik", dan pertanyaan itu
+> membuka bahwa saya **menebak nama tahap dari alur Register, bukan mengukurnya**. Ketiga nama
+> lain pun keliru: Komite, Survey, dan Compliance **tidak muncul sama sekali** dalam sebaran
+> tahapnya. Paragraf di bawah menggantikannya; yang lama tidak dipertahankan karena ia
+> pernyataan fakta yang salah, bukan rekaman keputusan.
+
+Sebabnya bukan data yang basi — baris terbaru `T_CLAIMLIST_ADMIN` bertanggal **hari pengukuran**
+(29 Sep 06:26). Keduanya **himpunan yang berbeda**, dan masing-masing punya ratusan baris yang
+tidak ada di yang lain.
+
+**Arah pertama — 517 klaim outstanding yang tidak ada di `T_CLAIMLIST_ADMIN`**, dihitung per
+klaim menurut tahap penugasan terbukanya di `PC_ASSIGN_WORKLIST`:
+
+| Tahap | Klaim |
+|---|---:|
+| Send To Analis | **167** |
+| Estimation | **136** |
+| Choose Surveyor | 81 |
+| (tanpa penugasan terbuka) | 45 |
+| View Polis | 37 |
+| Send To PIC Teknik | **19** |
+| Input Estimasi | 12 |
+| Input Register | 10 |
+| FixCorrespondence · InputPanel · Review Klaim OCR | 10 |
+
+Yang menguasai angka adalah tahap **Analis (167) dan Estimator (136)** — 303 klaim, **59%**.
+"Send To PIC Teknik" justru yang terkecil kedua, **19 klaim**.
+
+**`T_CLAIMLIST_ADMIN` tidak sekadar bersempit lingkup, ia juga TIDAK LENGKAP.** Isinya memang
+hanya empat label — `Input Register 351 · Choose Surveyor 340 · Input Estimasi 182 ·
+InputReceiveDocument 142` — tetapi itu tidak menjelaskan seluruh selisihnya. Dipilah menurut
+apakah tahap klaimnya termasuk keempatnya:
+
+| Kelompok | Klaim |
+|---|---:|
+| seluruh tugasnya **di luar** empat label itu | 411 |
+| seluruh tugasnya **justru** empat label itu, namun barisnya tetap tidak ada | **103** |
+| campuran | 3 |
+
+Seratus tiga klaim duduk di label yang tabel itu memang bawa dan tetap tidak punya baris di
+sana. Penjelasan "hanya memuat empat tahap Admin" karena itu **tidak cukup**.
+
+**Arah kedua — 453 baris tabel itu yang tidak dapat ditampilkan, dan ini BUKAN kemunduran.**
+Dari 874 baris `Work-PNC` outstanding di dalamnya:
+
+| Sebab | Baris |
+|---|---:|
+| `PZINSKEY` tidak ada di `T_CLAIM_PNC` | **371** |
+| `registerdate` NULL | 59 |
+| `branchcode` NULL | 23 |
+| cocok penuh | **421** |
+
+> **KOREKSI 2026-09-29 (kedua).** Saya sempat menyampaikan ketiga sebab ini sebagai
+> "pertanyaan terbuka milik Work Owner" atas layar ini. **Itu keliru.** Work Owner menanyakan
+> apakah 371 baris itu RCV atau PNC, dan penelusurannya membuka bahwa ketiga sebab itu berlaku
+> **sama persis pada sumber lama** — sehingga tidak ada yang berubah bagi pengguna.
+
+Tabel penggiring kedua kueri adalah **`T_CLAIM_PNC`**, bukan tabel penugasan. Klaim tanpa baris
+di sana tidak pernah muncul, sumber tabel apa pun yang dipakai:
+
+| Sumber | Outstanding `Work-PNC` | Punya baris `T_CLAIM_PNC` | Terbuang |
+|---|---:|---:|---:|
+| `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` | 1.985 | 1.062 | **923** |
+| `POOLDATA.T_CLAIMLIST_ADMIN` | 874 | 503 | **371** |
+
+Sumber lama justru membuang **lebih banyak** — 923 berbanding 371 — dengan sebab yang sama.
+
+Ketiga ratus tujuh puluh satu yatim itu seluruhnya **klaim PNC**, bukan RCV: `PZINSKEY`
+berbentuk `ASM-FW-GCNMFW-WORK PNC-nnnn` dan `PYID` berbentuk `PNC-nnnn`. Yang berisi RCV adalah
+kolom `PNCCASEID` — konsisten dengan temuan sebelumnya bahwa kolom itu memang nomor register
+dokumen. Seluruh 371 juga ada di DATAPEGA, dan **nol** di antaranya dapat ditemukan di
+`T_CLAIM_PNC` lewat `CLAIMNO` — jadi gabungannya benar, klaimnya memang tidak ada.
+
+Tahapnya: **Input Register 294 · Input Estimasi 57 · Choose Surveyor 20** — pola klaim yang
+case-nya sudah dibuat di Pega tetapi registrasinya belum pernah disubmit, sehingga
+`T_CLAIM_PNC` belum ditulis.
+
+Karena itu ia **tidak dinyatakan sebagai selisih** ke pengguna, dan **bukan pertanyaan terbuka**
+bagi layar ini.
+
+Pemindahan sumbernya sendiri tetap dilaporkan ke Work Owner, dikerjakan sesuai keputusannya, dan
+**dinyatakan ke pengguna** lewat `PlannedDifferences` dengan angkanya (`D-54`). Tiga kolom yang
+tidak ada di tabel baru — penyebab kerugian, nilai cadangan, tanggal pembaruan progres — tetap
+dibaca dari `T_CLAIM_PNC` beserta gabungannya, persis seperti sebelumnya.
+
+### 42.12b Kolom "Nama Insured" TERLEWAT pada serahan pertama (2026-09-29)
+
+Work Owner menanyakan apakah modul ini sudah selesai. Pemeriksaan ulang terhadap
+`Section/InboxOutstandingperCabang_Section-Section.xml` menemukan **satu kolom grid yang saya
+lewatkan sepenuhnya**: **Nama Insured**, terikat `.InsuredName`, di antara "Policy No" dan
+"Claim No". Grid lama punya 16 kolom data; implementasi saya hanya 15.
+
+Kolom yang hilang **tidak menghasilkan galat apa pun** — tabelnya tampak wajar tanpa satu
+kolom. Ia hanya ketahuan dengan mencocokkan urutan `pyValue` section satu per satu.
+
+**Temuan yang menyertainya: di Pega kolom itu SELALU KOSONG.** Diverifikasi dengan hitungan
+kemunculan:
+
+| Artefak | `InsuredName` |
+|---|---:|
+| `RDB List/GetDataOutstandingperCabang-SQL.xml` (kueri grid) | **0** |
+| `Activity/OutstandingperCabang_PreAct-Act.xml` | **0** |
+| `RDB List/GetDataOutstandingperCabangExport-SQL.xml` (kueri ekspor) | **1** |
+
+Jadi layar lamanya menggambar kolom yang tidak pernah diisi, sementara berkas ekspornya
+memuat nama tertanggung. Layar dan berkasnya **saling bertentangan sejak awal**.
+
+**Keputusan: kolomnya ditambahkan dan DIISI**, dari sumber yang sudah dipakai berkas ekspor
+layar yang sama — `t_general.theinsured` pada perpanjangan polis terbaru (`prodke` terbesar
+sebagai angka). Alasannya: kolom yang selalu kosong tidak melayani siapa pun, sumbernya sudah
+terbukti ada, dan berkas ekspornya sudah memuatnya. Ini selisih terhadap `P-5`, dinyatakan
+lewat `PlannedDifferences` (`D-54`); bila Work Owner memilih mengosongkannya demi kesetaraan,
+yang berubah satu ekspresi di `.sql`.
+
+**Diverifikasi ke Oracle:** 83 dari 83 baris cabang contoh terisi namanya.
+
+**Susunan berkas ekspor TIDAK berubah.** `exportBaseHeader` sudah memuat "Nama Insured" di
+antara "Policy No" dan "Claim No" sejak serahan pertama — hanya gridnya yang kehilangan. Yang
+dipindahkan adalah tempat aliasnya: dari `exportOnlyColumns` ke `listColumns`, sehingga
+`InsuredName` kini hidup di `WorkItem` dan bukan lagi di `ExportRow`. Invarian "19 kolom
+pertama berkas sama dengan kolom pertama grid" tetap dijaga uji yang sudah ada.
+
+**Penjaga baru:** kedua kueri wajib membaca `t.theinsured` dengan urutan perpanjangan yang
+identik — bila berbeda, layar dan berkas menyebut nama tertanggung berlainan untuk klaim yang
+sama — dan posisi `INSURED_NAME` wajib tepat di antara `POLICY_NUMBER` dan `CLAIM_NUMBER`.
+Di sisi layar, satu uji mencocokkan **keenam belas judul kolom beserta urutannya**; itulah yang
+akan menangkap kolom hilang berikutnya.
+
+**Pelajaran.** Saya menyatakan "grid 16 kolom" di komentar berkas sejak serahan pertama, dan
+angka itu benar — tetapi saya tidak pernah MENGHITUNG kolom yang saya tulis. Pernyataan jumlah
+yang tidak diuji tidak menjaga apa pun.
+
+
+### 42.13 Serahan kedua — popup Detail
+
+Pengganti `Harness/View_DetailKlaimCabang_Harness-Harness.xml` (775 KB) +
+`Section/DetailKlaimCabang_Sect-Section.xml` (720 KB), diisi
+`Activity/ViewStatusProgressCabang_act-Act.xml` — **15 langkah**, terbaca setelah pemisah
+`<rowdata>` dibuat sadar kedalaman (pemisah polos memecah satu langkah menjadi puluhan potongan
+kosong, karena `pyParamArray` di dalamnya memakai tag yang sama).
+
+**Empat bagian, urutannya mengikuti section lama:**
+
+| # | Bagian | Sumber |
+|---|---|---|
+| 1 | delapan nilai ringkasan | `pyWorkPage` + parameter tombol |
+| 2 | grid objek pertanggungan | `T_CLAIM_OBJECTLIST` |
+| 3 | grid riwayat progres, 8 kolom | `GetCommunicationList` |
+| 4 | grid komunikasi loss adjuster, 5 kolom | `GetInboxKomunikasi_OS_Cabang` |
+
+**Lima RDB List yang dipanggil activity, seluruhnya ada di export:**
+`GetDataDominanFactorListOS` · `GetOccupationName` · `GetCommunicationList` ·
+`GetInboxKomunikasi_OS_Cabang`, ditambah `Obj-Open-By-Handle` atas `pyWorkPage`.
+
+#### Lima keputusan desain, dan alasannya
+
+**1. Hanya NOMOR klaim yang diterima dari klien.** Tombol Pega mengirim lima parameter dari baris
+yang diklik — nomor, nilai cadangan, umur, lini bisnis, catatan PIC. Empat yang terakhir **dibaca
+ulang dari penyimpanan**: menerimanya dari klien berarti angka uang yang tampil ditentukan
+pengirim permintaan, dan itu dapat diubah lewat alat peramban biasa. Akibat yang disadari — bila
+datanya berubah sejak daftar dimuat, angka popup berbeda dari angka barisnya; yang benar adalah
+popup.
+
+**2. Popup DISARING cabang, meski layar lamanya tidak.** Di Pega, popup hanya dapat dibuka dari
+baris yang sudah tampil, sehingga penyaringannya terjadi dengan sendirinya. Endpoint HTTP tidak
+punya pembatas itu. Penyaringnya sama persis dengan daftar — cabang, `registerdate IS NOT NULL`,
+dan penyaring outstanding — sehingga tidak ada klaim yang tidak tampil di layar tetapi isinya
+terbaca lewat nomor (`R-20`).
+
+Kepala dibaca **lebih dulu**, dan keempat kueri anak memakai `CLAIMID` yang hanya diperoleh
+darinya. Menjalankannya paralel berarti membaca isi klaim sebelum diketahui ia milik siapa.
+
+**3. "Klaim tidak ditemukan" TIDAK membedakan dua sebabnya.** Nomor yang memang tidak ada dan
+nomor milik cabang lain dijawab sama. Membedakannya menjadikan endpoint ini alat memastikan
+keberadaan klaim badan hukum lain, cukup dengan membaca pesannya. Perbedaannya tetap terekam — di
+log server saja.
+
+**4. Daftar kunci survei menjadi SUBKUERI.** Kueri lama merangkai `'a','b','c'` sebagai teks lewat
+perulangan Pega lalu menyisipkannya mentah:
+
+    WHERE a.caseid in ({ASIS:getkomunikasi.D_SURVEY_ID})
+
+Pola `{ASIS:…}` adalah perangkaian SQL dari nilai, yang dilarang tanpa perkecualian
+(`08-TECHNICAL-STRATEGY.md` §4.3). Menggantinya dengan subkueri menutup celahnya **sekaligus**
+menghapus perulangan per baris survei.
+
+**5. Varian kolom grid objek dipilih di LAYAR, bukan di kueri.** Grid punya tiga varian di Pega,
+dipilih when rule `IsPA`, `IsTravel`, `IsAneka`, dan `IsMarineCargo` — dan **keempatnya tidak ada
+di export** (`R-16`). Peladen karena itu mengirim seluruh kolom ketiga varian, dan pemilihannya
+dikerjakan layar dari lini bisnis. Menaruh tebakan itu di SQL akan menguncinya; di layar ia dapat
+diperbaiki tanpa menyentuh penyimpanan begitu keempat rule tiba.
+
+#### Cacat layar lama yang direplikasi dengan sadar
+
+**"Total Sum Insured" bukan total.** Di Pega, `local.idxobj` disetel di dalam perulangan atas
+`ObjectList` (langkah 4) sehingga berakhir pada objek **terakhir**, lalu langkah 6 dan 7 mengisi
+`TempDetail.TSI` dan `TempDetail.Occupation` dari objek itu saja. Labelnya yang menyesatkan.
+Direplikasi (`P-5`) dan dinyatakan lewat `DetailPlannedDifferences`.
+
+"Objek terakhir" sendiri tidak dapat direproduksi: urutan clipboard Pega bergantung pada urutan
+pemuatan, dan kolom yang seharusnya menentukannya kosong — `URUTAN` terisi pada **4 dari 2.610**
+baris, `OBJECTINDEX` pada **0**. Yang dipakai `OBJECTID` terbesar, satu-satunya kolom yang terisi
+seluruhnya.
+
+#### Temuan yang perlu diketahui Work Owner
+
+**Kolom "Occupation :" akan selalu kosong di lingkungan ini.** Kedua jalurnya bergantung pada
+kolom yang **NULL pada seluruh 2.610 baris** — `OCCUPATIONNAME` dan `OCCUPATIONID`. Jalurnya tetap
+dibangun karena produksi dapat berbeda, dan kekosongannya dilaporkan alih-alih disamarkan menjadi
+tanda hubung. Jalur ketiga milik Pega (langkah 8, lewat `CoverageList(1).DeductibleList(1)`)
+**tidak dibawa**: daftar deductible tidak punya tabel yang terbaca dari export.
+
+**`Status Progress 1` dibaca dari tabel yang BERBEDA di kedua layar.** Popup memakai
+`GCNM_MST_PROGRESS_KLAIM`; daftar memakai `GCNM_MST_PROGRESS`. Itu bukan salah salin — kueri
+lamanya memang begitu, dan keduanya dibawa apa adanya.
+
+**`ROWNUM = 1` pada kueri komunikasi tidak dibawa.** Kueri lama memakainya mengambil satu nama
+pengirim internal untuk **seluruh baris**, sehingga semua baris menampilkan nama yang sama. Di
+sini setiap baris membawa nama pengirimnya sendiri, dan penanda internal/eksternal dikirim sebagai
+kolom.
+
+#### Perubahan API dan komponen
+
+| Hal | Isi |
+|---|---|
+| Rute baru | `GET /api/inbox-os-claim-per-cabang/{nomor}` — di balik portal dan sesi, sama dengan kedua rute lain |
+| Kode galat baru | `klaim_tidak_ditemukan` → HTTP 404 |
+| Bentuk jawaban | `ringkasan` · `objek` · `riwayat_progres` · `komunikasi_adjuster` · `cabang` · `selisih_terencana` · `portal` |
+| Nilai uang | **teks desimal kanonik**, bukan angka JSON (`I-12`) |
+| Cap waktu | riwayat progres dan komunikasi membawa **jam** (`YYYY-MM-DD HH:mm` WIB); tanggal lahir dan follow-up tanpa jam, seperti layar lama |
+| Komponen baru | `DetailDialog.tsx` — memakai `DataTable`, `Button`, `ErrorMessage` yang sudah ada; tidak ada komponen bersama yang diubah |
+| Kueri SQL baru | `detail_header` · `detail_objects` · `detail_progress` · `detail_messages` · `detail_dominant_factors` · `check_detail_tables` |
+
+Satu perbedaan tempat yang disengaja: **tombol Detail ada di dalam baris**, sedangkan di Pega ia di
+bilah atas dan bekerja atas baris yang sedang disorot. Tabel ini tidak punya konsep "baris yang
+disorot", dan tombol di bilah atas yang bekerja atas sesuatu yang tidak terlihat dipilih adalah
+tombol yang menebak maksud pengguna.
+
+#### Kesalahan saya sendiri pada sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | Menggabungkan `T_CLAIMLIST_ADMIN` lewat `PNCCASEID` | Nol baris. Kolom itu berisi nomor RCV, bukan nomor klaim |
+| 2 | Pemisah `<rowdata>` tanpa kesadaran kedalaman | 15 langkah activity terbaca sebagai 130 potongan kosong; `pyParamArray` memakai tag yang sama |
+| 3 | Pencocokan `<pySteps>` ikut menangkap tag yang menutup diri sendiri | Panjang blok negatif — tanda pasangan tag-nya meleset |
+| 4 | Menulis `nullableTime(any)` padahal ia menerima `sql.NullTime` | Gagal kompilasi |
+| 5 | Uji faktor dominan diarahkan ke klaim yang memang tidak punya faktor | Gagal; contohnya melekat pada `CLAIM-0002` |
+| 6 | Uji judul kolom memakai `getByText` tunggal | `DataTable` menggambar judul dua kali — kepala tabel dan label kartu ponsel |
+
+#### Bukti
+
+Seluruh kueri dijalankan terhadap Oracle dev, bukan hanya dikompilasi:
+
+    -periksa   [ok] Kedelapan tabel OS klaim per cabang dapat dibaca
+               [ok] Tabel ekspor OS per cabang dapat dibaca, termasuk lewat DB Link
+               [ok] Kode rinci 078 diterjemahkan menjadi cabang 100099 (CILEGON)
+               [ok] Cabang 100099 punya 83 klaim outstanding (5 baris dibaca)
+               [info] 1 dari 5 baris contoh bertanda progres mandek
+               [ok] Tabel popup Detail dapat dibaca
+               [ok] Popup Detail klaim PNC-268: 1 objek · 6 catatan progres · 0 pesan adjuster
+               [ok] Popup Detail menolak klaim yang bukan milik cabang pemanggil
+
+    backend    go build ./...  OK · go vet ./...  bersih
+               go test ./internal/inboxosclaimpercabang/...  lima paket ok
+    frontend   tsc --noEmit  bersih
+               vitest run modul ini  **28 uji lulus** (17 daftar + 11 popup)
+
+Dua kegagalan uji tersisa di `go test ./...` — `inboxpladla` dan `inboxservicecenter` — **bukan
+milik modul ini**. Keduanya sudah gagal sebelum sesi ini dimulai, tidak satu berkas pun di kedua
+modul itu disentuh (`git status` bersih untuk keduanya), dan keduanya dilaporkan tanpa disentuh.
+
+Penjaga baru yang ditambahkan: `branch_of` menerjemahkan lewat `OLDID` dan **bukan** lewat `ID` ·
+tidak ada satu kueri pun yang masih menyentuh `DATAPEGA.` · `detail_header` memakai keempat
+penyaring yang sama dengan daftar · keempat kueri anak tidak dapat berjalan tanpa kunci · daftar
+kunci survei berupa subkueri, bukan teks · kode klaim yang dikirim sebagai kode rinci **ditolak**
+di ketiga lapisan (penyimpanan, usecase, transport) · popup menolak klaim cabang lain · pesan
+"tidak ditemukan" tidak menyebut cabang lain · nilai uang dikirim sebagai teks · cap waktu popup
+membawa jam · varian kolom objek berbeda antara PA dan lini lain · Escape dan tombol Tutup
+menutup popup.
+
 ## 48. Sesi kedua puluh empat — modul Inbox Komunikasi Cabang (2026-09-24)
 
 Permintaan Work Owner: *"lanjutkan untuk penambahan modul Inbox Komunikasi Cabang, cek secara
@@ -29853,7 +30772,6 @@ membiarkannya kosong (50 baris T_CLAIM_RECEIVER tanpa nama).
 **Belum dibawa:** menambah/mengubah penerima (sampai 5 per klaim di data Pega) beserta bank dan
 nomor rekening — section isiannya tidak ada di export; PaymentType "2" penerima (tanpa kolom).
 
-<<<<<<< HEAD
 ## 62. Inbox Auto Claim: tata letak kiri–kanan (2026-09-28)
 
 **Permintaan Work Owner:** daftar perusahaan di kiri, batch perusahaan terpilih di kanan, menggantikan accordion (contoh tampilan dilampirkan); dan daftar prasyarat proteksi unggahan yang tersisa.
@@ -29873,7 +30791,6 @@ Keputusan dan daftar prasyarat proteksi: keputusan-implementasi §61.
 **Kendala:** (1) satu token dipakai untuk latar pekat dan teks — ditangani aturan khusus per kelas (keputusan-implementasi §62.2); (2) prettier mengubah akhir baris empat berkas modul tanpa mengubah isinya — dikembalikan.
 
 **Verifikasi:** `vite build` bersih; suite frontend penuh 1.231/1.237 dengan 6 kegagalan tak stabil di modul lain saat berjalan paralel — berkas-berkas itu lulus 75/75 saat dijalankan tersendiri, baik dengan maupun tanpa perubahan ini. **Belum diperiksa visual di peramban.**
-=======
 ## 78. Klaim PNCN ditulis ke T_CLAIMLIST_ADMIN supaya muncul di My Inbox (2026-09-28)
 
 **Masalah.** Klaim PNCN tidak pernah muncul di My Inbox (`inboxoutstanding`, MENU_ID 51). Layar

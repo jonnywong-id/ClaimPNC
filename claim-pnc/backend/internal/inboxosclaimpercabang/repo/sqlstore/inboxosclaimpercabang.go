@@ -266,7 +266,7 @@ type scanner interface {
 func scanWorkItem(row scanner) (inboxosclaimpercabang.WorkItem, int, error) {
 	var (
 		branchName, branchCode, businessSource, businessName sql.NullString
-		policyNumber, claimNumber                            sql.NullString
+		policyNumber, insuredName, claimNumber               sql.NullString
 		registerDate, lossDate, lastProgressAt               sql.NullTime
 		remarkRecommendation                                 sql.NullString
 		estimationValue                                      any
@@ -278,7 +278,7 @@ func scanWorkItem(row scanner) (inboxosclaimpercabang.WorkItem, int, error) {
 
 	err := row.Scan(
 		&branchName, &branchCode, &businessSource, &businessName,
-		&policyNumber, &claimNumber, &registerDate, &lossDate,
+		&policyNumber, &insuredName, &claimNumber, &registerDate, &lossDate,
 		&remarkRecommendation, &estimationValue, &lastProgressAt,
 		&progressStatus1, &progressStatus2, &technicalPIC, &progressNote,
 		&adjusterName, &causeOfLoss, &chronology, &progressStalled,
@@ -326,7 +326,7 @@ func scanWorkItem(row scanner) (inboxosclaimpercabang.WorkItem, int, error) {
 func scanExportRow(row scanner) (inboxosclaimpercabang.ExportRow, int, error) {
 	var (
 		branchName, branchCode, businessSource, businessName sql.NullString
-		policyNumber, claimNumber                            sql.NullString
+		policyNumber, insuredName, claimNumber               sql.NullString
 		registerDate, lossDate, lastProgressAt               sql.NullTime
 		remarkRecommendation                                 sql.NullString
 		estimationValue                                      any
@@ -334,7 +334,7 @@ func scanExportRow(row scanner) (inboxosclaimpercabang.ExportRow, int, error) {
 		progressNote, adjusterName, causeOfLoss, chronology  sql.NullString
 		progressStalled                                      sql.NullInt64
 
-		claimKey, policyBusinessName, insuredName sql.NullString
+		claimKey, policyBusinessName sql.NullString
 		reserveFull, reserveASM, coinsurance      any
 		shares                                    [24]any
 
@@ -343,11 +343,11 @@ func scanExportRow(row scanner) (inboxosclaimpercabang.ExportRow, int, error) {
 
 	dest := []any{
 		&branchName, &branchCode, &businessSource, &businessName,
-		&policyNumber, &claimNumber, &registerDate, &lossDate,
+		&policyNumber, &insuredName, &claimNumber, &registerDate, &lossDate,
 		&remarkRecommendation, &estimationValue, &lastProgressAt,
 		&progressStatus1, &progressStatus2, &technicalPIC, &progressNote,
 		&adjusterName, &causeOfLoss, &chronology, &progressStalled,
-		&claimKey, &policyBusinessName, &insuredName,
+		&claimKey, &policyBusinessName,
 		&reserveFull, &reserveASM, &coinsurance,
 	}
 	for i := range shares {
@@ -406,7 +406,6 @@ func scanExportRow(row scanner) (inboxosclaimpercabang.ExportRow, int, error) {
 		},
 		ClaimKey:           claimKey.String,
 		PolicyBusinessName: policyBusinessName.String,
-		InsuredName:        insuredName.String,
 		ReserveClaimFull:   values["RESERVE_CLAIM_FULL"],
 		ReserveClaimASM:    values["RESERVE_CLAIM_ASM"],
 		Coinsurance:        values["COINSURANCE"],

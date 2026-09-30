@@ -4,7 +4,7 @@ import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { ListResponse } from './types'
+import type { DetailResponse, ListResponse } from './types'
 
 const PATH = '/api/inbox-os-claim-per-cabang'
 
@@ -23,6 +23,8 @@ const PATH = '/api/inbox-os-claim-per-cabang'
 const keys = {
   list: (portal: string | null, token: string | null, page: number) =>
     ['inbox-os-claim-per-cabang', 'daftar', portal, token, page] as const,
+  detail: (portal: string | null, token: string | null, nomor: string | null) =>
+    ['inbox-os-claim-per-cabang', 'detail', portal, token, nomor] as const,
 }
 
 /**
@@ -133,4 +135,41 @@ function downloadBlob(blob: Blob, filename: string): void {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Hook isi popup Detail.
+ *
+ * # Ia hanya mengirim NOMOR klaim
+ *
+ * Tombol Detail di Pega mengirim lima parameter dari baris yang diklik — nomor, nilai
+ * cadangan, umur, lini bisnis, dan catatan PIC. Di sini hanya nomornya; empat sisanya dibaca
+ * ulang peladen.
+ *
+ * Perbedaannya bukan kerapian. Mengirim nilai cadangan dari sini berarti angka uang yang
+ * tampil di popup ditentukan peramban, dan itu dapat diubah lewat alat pengembang biasa.
+ *
+ * # `enabled` menunggu nomornya ada
+ *
+ * Popup baru diminta setelah barisnya diklik. Tanpa penjaga itu, layar akan menembak endpoint
+ * dengan nomor kosong setiap kali dibuka — dan dijawab "klaim tidak ditemukan" yang tidak
+ * pernah dilihat siapa pun tetapi tetap mengisi log peladen.
+ */
+export function useOSClaimPerCabangDetail(nomorKlaim: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.detail(portal, token, nomorKlaim),
+    queryFn: () =>
+      callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(nomorKlaim ?? '')}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && nomorKlaim !== null,
+
+    // Isi popup jarang berubah selama satu sesi membaca, dan popup yang sama sering dibuka
+    // ulang bolak-balik dari daftar.
+    staleTime: 30 * 1000,
+  })
 }

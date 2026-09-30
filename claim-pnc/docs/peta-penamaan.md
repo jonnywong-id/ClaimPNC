@@ -3758,7 +3758,6 @@ Klaim" — mengetik saja tidak cukup.
 
 Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).
 
-<<<<<<< HEAD
 ## My Work — antrean Surveyor / Loss Adjuster (MENU_ID 50)
 
 ### Ketiga belas kolomnya
@@ -3769,22 +3768,66 @@ pada `Activity/SetTempLostAdjuster-Act.xml`, **bukan** dari alias SQL-nya yang m
 
 | Judul di layar | Properti Pega | Kolom basis data | Nama Go | Field JSON |
 |---|---|---|---|---|
-| Appointment No | `.City` | `k.ADJUSTERPIC_1` **?** | `AppointmentNumber` | `appointment_no` |
-| Reference No | `.AlasanDokterRejectRCL` | `k.REFNO_1` | `ReferenceNumber` | `reference_no` |
-| Claim No | `.UserName` | `k.PYID` | `ClaimNumber` | `claim_no` |
-| Policy No | `.Country` | `k.POLICYNO` | `PolicyNumber` | `policy_no` |
-| Insured Name | `.AnalystDoctorRemaks` | `k.QQNAME` | `InsuredName` | `insured_name` |
-| COB | `.KomiteStatus` | `k.BUSINESSNAME` | `ClassOfBusiness` | `cob` |
+| Appointment No | `.City` | **— belum tersedia** | `AppointmentNumber` | `appointment_no` |
+| Reference No | `.AlasanDokterRejectRCL` | **— belum tersedia** | `ReferenceNumber` | `reference_no` |
+| Claim No | `.UserName` | `c.CLAIMNO` | `ClaimNumber` | `claim_no` |
+| Policy No | `.Country` | `c.NOPOLIS` | `PolicyNumber` | `policy_no` |
+| Insured Name | `.AnalystDoctorRemaks` | `c.QQNAME` | `InsuredName` | `insured_name` |
+| COB | `.KomiteStatus` | `c.BUSINESSNAME` | `ClassOfBusiness` | `cob` |
 | Cause Of Loss | `.CauseOfLoss` | `s.LOSSTYPE` **?** | `CauseOfLoss` | `cause_of_loss` |
 | Location | `.Location` | `s.LOCATION_SURVEY` | `Location` | `location` |
-| PIC ASM | `.UserTeknis` | `k.USERTEKNIS_1` | `TechnicalPIC` | `pic_asm` |
-| PIC Loss Adjuster | `.AnaylstRemarks` | `s.SURVEYOR_NAME` | `AdjusterPIC` | `pic_loss_adjuster` |
-| Date of Loss | `.DateOfLoss` | `k.DATEOFLOSS_1` | `DateOfLoss` | `date_of_loss` |
-| Aging | `.CPLValidDate` | `k.AGING` | `AgingDays` | `aging` |
-| Status ASM | `.UserAdmin` | `k.ADJUSTERSTATUS_1` | `ASMStatus` | `status_asm` |
+| PIC ASM | `.UserTeknis` | `c.PICTEKNIK` | `TechnicalPIC` | `pic_asm` |
+| PIC Loss Adjuster | `.AnaylstRemarks` | `s.SURVEYOR_NAME` = `SURVEYORNAME_1` | `AdjusterPIC` | `pic_loss_adjuster` |
+| Date of Loss | `.DateOfLoss` | `c.DATEOFLOSS` | `DateOfLoss` | `date_of_loss` |
+| Aging | `.CPLValidDate` | **dihitung** dari `s.TGLINPUT` | `CreatedAt` → `AgingDays()` | `aging` |
+| Status ASM | `.UserAdmin` | `s.STS_SURVEY` langkah terakhir | `ASMStatus` | `status_asm` |
 
-`s` = `POOLDATA.T_SURVEYORLIST` · `k` = `POOLDATA.T_CLAIMLIST_ADMIN`
+`s` = `POOLDATA.T_SURVEYORLIST` · `c` = `POOLDATA.T_CLAIM_PNC` ·
+`d` = `POOLDATA.T_CLAIM_SURVEY_DATAPEGA`
 **?** = pemetaan belum dikonfirmasi DBA, dipasang di kueri `check_columns`.
+
+#### Perubahan 2026-09-29 — tabel header berpindah, dan tidak satu pun namanya sama
+
+Work Owner memindahkan tabel header dari `T_CLAIMLIST_ADMIN` ke `POOLDATA.T_CLAIM_PNC`,
+disambung `c.CLAIMID = s.PNCCASEID` — pasangan yang `BroswseKlaimByNoSurvey-SQL.xml` pakai
+persis begitu. Alasannya: tabel datar itu hanya memuat klaim yang tugasnya berada di antrean
+Admin, sehingga survei yang SEDANG BERJALAN justru terbuang.
+
+| Tabel datar (lama) | Tabel klaim (berlaku) |
+|---|---|
+| `PZINSKEY` | `CLAIMID` |
+| `PYID` | `CLAIMNO` |
+| `POLICYNO` | `NOPOLIS` |
+| `DATEOFLOSS_1` | `DATEOFLOSS` |
+| `USERTEKNIS_1` | `PICTEKNIK` |
+| `PYSTATUSWORK` | `STATUSWORK` |
+| `PXOBJCLASS` | — tidak ada, dan tidak perlu |
+
+Salah satu saja menjatuhkan seluruh layar dengan ORA-00904; dijaga uji
+`TestKolomHeaderMemakaiNamaTabelKlaim`.
+
+#### Perubahan 2026-09-29 (lanjutan) — tabel cermin masuk, dan Status ASM hidup
+
+Tiga lapis sumbernya sekarang:
+
+| Alias | Tabel | Butir | Menyumbang |
+|---|---|---|---|
+| `s` | `T_SURVEYORLIST` | satu baris per **perubahan status** | penggerak baris, Cause Of Loss, Location, PIC Loss Adjuster, Aging, **Status ASM** |
+| `c` | `T_CLAIM_PNC` | satu baris per **klaim** | Claim No, Policy No, Insured Name, COB, PIC ASM, Date of Loss |
+| `d` | `T_CLAIM_SURVEY_DATAPEGA` | satu baris per **berkas survei** | `STATUSWORK`, dan kelak Appointment No + Reference No |
+
+Kueri mengambil **langkah terakhir** tiap berkas survei (`ROW_NUMBER()` per `CASEID`), dan
+menyambung `d` dengan **`LEFT JOIN`** supaya baris cermin yang belum tertulis menghasilkan kolom
+kosong, bukan berkas yang lenyap dari antrean.
+
+**`STS_SURVEY` adalah `ADJUSTERSTATUS_1`.** Sebarannya di produksi memuat ketiga nilai yang
+dipakai Pega sebagai penyaring: `Final Report` 1.466, `Invoice Fee` 1.069, `Close Case` 316.
+Kolom "Status ASM" karena itu **terisi**, dan `ADJUSTERSTATUS_1` gugur dari daftar permintaan.
+
+**DUA kolom masih belum tersedia** — `ADJUSTERPIC_1` dan `REFNO_1` — ditambah `ADJUSTERACCEPT_1`
+yang tidak digambar tetapi menggerakkan tiga tab. Ketiganya milik objek kerja `Work-SurveyClaim`
+dan diminta ditambahkan ke **tabel cermin**, bukan ke `T_SURVEYORLIST` — tabel itu memberi makan
+KPI adjuster dan menyimpan 7 baris per berkas.
 
 **Alias Pega yang TIDAK dibawa**, seluruhnya dari `BrowseLossAdjuster-SQL.xml`:
 
@@ -3799,24 +3842,64 @@ pada `Activity/SetTempLostAdjuster-Act.xml`, **bukan** dari alias SQL-nya yang m
 Tidak satu pun dari tujuh alias itu mencerminkan isinya. Nama di sistem baru mengikuti
 padanan Inggris yang benar (`D-19`, `D-80`).
 
+#### `SURVEYORNAME_1` = `ADJUSTER_PIC` — satu kolom, TIGA alias
+
+Baris keempat di atas adalah kasus terburuknya: kolom yang sama dialiaskan tiga nama berbeda
+di tiga rule, dan yang menjadi kolom layar justru alias yang paling menyesatkan.
+
+| Rule | Alias |
+|---|---|
+| `BrowseOSLossAdjusterPIC` | `SURVEYORNAME_1 AS "AnaylstRemarks"` ← **ini yang diikat section** |
+| `BrowseLossAdjuster` | `SURVEYORNAME_1 AS "CountryID"` |
+| `BrowseInternalSurveyor` | `SURVEYORNAME_1 AS "CountryID"` **dan** `as "ComplianceRemark"` |
+
+Kolom layar **"PIC Loss Adjuster"** mengikat `.AnaylstRemarks`, sehingga ia memang
+`SURVEYORNAME_1` — bukan catatan analis, bukan ID negara, bukan catatan compliance.
+
+**Akibat yang menghemat satu permintaan:** `SURVEYORNAME_1` **tidak perlu** diminta ke tabel
+cermin. Padanannya `T_SURVEYORLIST.SURVEYOR_NAME` sudah dibaca, dan ia juga yang dipakai
+menyaring cakupan — keduanya wajib kolom yang sama, karena menyaring dengan satu kolom lalu
+menggambar kolom lain akan menampilkan nama yang tidak menjelaskan kenapa barisnya muncul.
+
+**Penyaringan langkah terakhir yang membuat keduanya benar-benar sepadan.** `T_SURVEYORLIST`
+adalah jejak perkembangan, sehingga `SURVEYOR_NAME` dapat berbeda antar langkah bila surveyornya
+diganti; objek kerja hanya punya satu `SURVEYORNAME_1` — yang berlaku sekarang. Karena penyaring
+cakupan dipasang SESUDAH penyaringan langkah terakhir, surveyor yang sudah diganti tidak lagi
+melihat berkas itu, persis seperti Pega.
+
 ### Ketujuh tab
 
 Kunci tab berbahasa Indonesia karena ia **kontrak** yang muncul di URL (`D-80`); judulnya
 tetap Inggris karena ia **teks yang dilihat pengguna** (`D-13`).
 
-| Judul di layar | Kunci (URL) | Konstanta Go |
-|---|---|---|
-| Outstanding | `outstanding` | `TabOutstanding` |
-| Invoice | `invoice` | `TabInvoice` |
-| Close | `close` | `TabClose` |
-| ALL | `all` | `TabAll` |
-| Not answered communication | `belum-dijawab` | `TabNotAnswered` |
-| Not replied from ASM | `belum-dibalas-asm` | `TabNotReplied` |
-| Replied from ASM | `sudah-dibalas-asm` | `TabReplied` |
+| Judul di layar | Kunci (URL) | Konstanta Go | Tersedia |
+|---|---|---|---|
+| Outstanding | `outstanding` | `TabOutstanding` | **belum** — butuh `ADJUSTERACCEPT_1` |
+| Invoice | `invoice` | `TabInvoice` | **belum** — butuh `ADJUSTERACCEPT_1` |
+| Close | `close` | `TabClose` | **belum** — kolom `STATUSWORK` ada, tabelnya kosong |
+| ALL | `all` | `TabAll` | **belum** — butuh `ADJUSTERACCEPT_1` |
+| Not answered communication | `belum-dijawab` | `TabNotAnswered` | ya |
+| Not replied from ASM | `belum-dibalas-asm` | `TabNotReplied` | ya |
+| Replied from ASM | `sudah-dibalas-asm` | `TabReplied` | ya |
 
 **"ALL" bukan seluruh baris.** `CountOSLostAdjuster` menghitungnya sebagai
 `ADJUSTERACCEPT_1 = '1'` — hanya yang sudah dikonfirmasi adjuster. Penamaannya menyesatkan
 sejak di Pega, dan nama itu dibawa apa adanya.
+
+Keempat tab yang belum tersedia **tetap digambar** dan menyebut sebabnya (`D-13`); kunci URL dan
+konstanta Go-nya tidak berubah, sehingga menghidupkannya kelak tidak menyentuh penamaan.
+
+#### Tiga nama ketersediaan, dan kenapa berbahasa Inggris
+
+| Nama Go | Isinya | Field JSON |
+|---|---|---|
+| `Tab.Available()` | tab ini dapat dihitung hari ini | `tersedia` |
+| `UnavailableReason(tab)` | sebabnya, kosong bila tersedia | `alasan_tak_tersedia` |
+| `DefaultAvailableTab()` | tab bawaan yang benar-benar dapat dihitung | — (isi `tab_bawaan`) |
+
+Ketiganya sempat ditulis `Tersedia`, `AlasanTakTersedia`, `DefaultTabTersedia` dan dikoreksi
+sebelum selesai: `D-80` menetapkan nama di dalam kode berbahasa Inggris. **Field JSON-nya tetap
+Indonesia** karena ia kontrak yang dibaca layar — perbedaan perlakuan itu disengaja.
 
 ### Kesembilan angka KPI
 
@@ -3847,7 +3930,30 @@ pernah dilaporkan siapa pun sebagai kerusakan.
 
 `LOGINLEADER` menyimpan **LOGIN atasan**, bukan namanya. Kolom kosong berarti orang itu
 sendiri yang menjadi puncak.
-=======
+
+### Tiga lapis yang mudah tertukar — dan satu kata yang dilarang
+
+Kata **"objek"** di modul ini **hanya** berarti Objek Pertanggungan (`CONTEXT.md`). Objek kerja
+Pega disebut **"berkas survei"** atau dengan nama teknisnya, tidak pernah "objek survei".
+
+| Lapis | Kunci | Isinya |
+|---|---|---|
+| Klaim | `T_SURVEYORLIST.PNCCASEID` = `T_CLAIM_PNC.CLAIMID` | satu klaim |
+| **Berkas survei** | `T_SURVEYORLIST.CASEID` = `pzInsKey` objek `Work-SurveyClaim` | satu penugasan survei |
+| Survei ke-N | `T_SURVEYORLIST.INDEX_SURVEY` | **nomor urut survei**, bertambah tiap survei baru |
+
+`INDEX_SURVEY` **bukan** penanda Objek Pertanggungan dan **bukan** kunjungan. Buktinya:
+
+```
+SetSurveyorList        : IdxSurveyResults := local.index+1   -- bertambah
+                         childPageSurveyClaim.SurveyData.SurveyList(<LAST>).IdxSurveyResults
+GetDataProgressSurvey  : order by to_number(index_survey) asc  -- dibaca sebagai riwayat
+```
+
+Hanya **satu** survei yang berjalan per berkas survei; sisanya sudah dibatalkan (Work Owner,
+2026-09-29). Yang berjalan dikenali dari `PYSTATUSWORK NOT IN ('Resolved-Completed',
+'Resolved-Rejected')` — kolom yang **belum ada** di `T_SURVEYORLIST`, direkam di
+`inboxsurvey.ClosedWorkStatuses()`.
 ---
 
 ## Tambahan 2026-09-24 — modul Inbox Komunikasi Cabang (`inboxkomunikasicabang`)
@@ -4693,4 +4799,3 @@ membedakan keduanya.
 Isi modulnya berbahasa Inggris (`D-80`): `Tab`, `Counter`, `QueueRow`, `DashboardCell`,
 `Decision`, `Verdict`. Nama field JSON tetap Indonesia karena ia kontrak: `kode`, `nama`,
 `jenis`, `kunci`, `sel`, `pencacah`, `tidak_tersedia`, `alasan_setuju_ditahan`.
->>>>>>> dev

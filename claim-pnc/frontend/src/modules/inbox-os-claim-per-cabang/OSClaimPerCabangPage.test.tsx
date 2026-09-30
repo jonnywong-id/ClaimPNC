@@ -40,6 +40,7 @@ const TUA: WorkItem = {
   sumbis: 'BANK CONTOH CILEGON',
   cob: 'Aneka',
   no_polis: '99.002.2024.00001',
+  nama_insured: 'PT CONTOH SATU',
   no_klaim: 'PNC-9001',
   tanggal_registrasi: '2024-01-15',
   tanggal_kejadian: '2024-01-10',
@@ -61,6 +62,7 @@ const MANDEK: WorkItem = {
   sumbis: 'AGEN CONTOH',
   cob: 'PA',
   no_polis: '99.002.2026.00002',
+  nama_insured: 'PT CONTOH DUA',
   no_klaim: 'PNC-9002',
   tanggal_registrasi: '2026-09-20',
   tanggal_kejadian: '2026-09-18',
@@ -82,6 +84,7 @@ const TENANG: WorkItem = {
   sumbis: 'AGEN CONTOH',
   cob: 'Travel',
   no_polis: '99.002.2026.00003',
+  nama_insured: 'PT CONTOH TIGA',
   no_klaim: 'PNC-9003',
   tanggal_registrasi: '2026-09-22',
   tanggal_kejadian: '2026-09-21',
@@ -413,4 +416,44 @@ describe('selisih terencana', () => {
       .parentElement as HTMLElement
     expect(within(section).getByText(/Daftar dibagi per halaman di server/)).toBeInTheDocument()
   })
+})
+
+it('menggambar keenam belas kolom grid layar lama, dalam urutannya', async () => {
+  // Urutannya diambil dari `Section/InboxOutstandingperCabang_Section-Section.xml` apa
+  // adanya. "Nama Insured" sempat TERLEWAT sepenuhnya pada serahan pertama — kolom yang
+  // hilang tidak menghasilkan galat apa pun, hanya tabel yang tampak wajar tanpa satu kolom.
+  stubDefaultFetch()
+  await renderLoaded()
+
+  const judul = [
+    'Cabang',
+    'Sumbis',
+    'COB',
+    'Policy No',
+    'Nama Insured',
+    'Claim No',
+    'Registration Date',
+    'DOL',
+    'COL',
+    'Reserve Claim ASM Share',
+    'Tgl Update Progress Terakhir',
+    'Status Progress 1',
+    'Status Progress2',
+    'Adjuster',
+    'PIC',
+    'Aging (Hari)',
+  ]
+
+  // DataTable menggambar judul dua kali — kepala tabel lebar dan label kartu ponsel —
+  // sehingga yang diperiksa keberadaannya, bukan jumlahnya.
+  for (const teks of judul) {
+    expect(screen.getAllByText(teks).length).toBeGreaterThan(0)
+  }
+})
+
+it('mengisi kolom Nama Insured, yang di layar lama selalu kosong', async () => {
+  stubDefaultFetch()
+  await renderLoaded()
+
+  expect(screen.getAllByText('PT CONTOH SATU').length).toBeGreaterThan(0)
 })
