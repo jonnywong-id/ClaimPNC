@@ -3801,9 +3801,14 @@ func checkInboxSurvey(
 		return
 	}
 
-	print("  [catat] Keterisian, dari %d baris: ADJUSTERACCEPT %d · REFNO %d",
-		filled.TotalRows, filled.Accept, filled.Reference)
+	print("  [catat] Keterisian, dari %d baris: ADJUSTERACCEPT %d · REFNO %d · PYSTATUSWORK %d",
+		filled.TotalRows, filled.Accept, filled.Reference, filled.WorkStatus)
 
+	if filled.WorkStatus == 0 {
+		print("  [BELUM] PYSTATUSWORK ADA tetapi SELURUHNYA kosong")
+		print("            Tab Close belum dapat dihitung, dan berkas survei yang sudah ditutup")
+		print("            di Pega masih ikut ditampilkan pada tab yang berjalan.")
+	}
 	if filled.Accept == 0 {
 		print("  [BELUM] ADJUSTERACCEPT ADA tetapi SELURUHNYA kosong")
 		print("            Tab Outstanding menyaring kolom itu IS NULL, sehingga menghidupkannya")

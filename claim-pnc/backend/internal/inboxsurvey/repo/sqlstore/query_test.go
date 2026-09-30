@@ -488,3 +488,48 @@ func TestSeluruhKueriHanyaMembaca(t *testing.T) {
 		}
 	}
 }
+
+// TestNamaKolomTanpaAkhiranPerataanPega mengunci penamaan kolom di `T_SURVEYORLIST`.
+//
+// # Kenapa uji ini ada
+//
+// Kolom yang sama punya DUA nama. Di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` ia berakhiran `_1` —
+// artefak perataan objek kerja Pega — sedangkan di `POOLDATA.T_SURVEYORLIST` akhiran itu tidak
+// dipakai. Analisis modul ini bersumber dari rule Pega, sehingga nama ber-`_1` adalah bentuk
+// yang lebih dulu tertulis di mana-mana.
+//
+// Itu sudah menggigit sekali: teks yang tampil di layar menyebut `ADJUSTERACCEPT_1` "belum ada
+// di POOLDATA.T_SURVEYORLIST" pada hari kolom `ADJUSTERACCEPT` justru baru ditambahkan ke sana.
+// Orang yang menambahkannya membaca pesan itu sebagai pekerjaannya tidak terbaca sistem.
+//
+// Modul dashboardclaim SAH memakai akhiran `_1` karena ia memang membaca tabel datar Pega.
+// Uji ini hanya mengikat kueri modul ini.
+func TestNamaKolomTanpaAkhiranPerataanPega(t *testing.T) {
+	flattened := []string{
+		"ADJUSTERACCEPT_1", "ADJUSTERPIC_1", "REFNO_1", "ADJUSTERSTATUS_1", "SURVEYORNAME_1",
+	}
+
+	for name, text := range queries {
+		upper := strings.ToUpper(text)
+		for _, column := range flattened {
+			require.NotContainsf(t, upper, column,
+				"kueri %s memakai nama Pega %q; di POOLDATA.T_SURVEYORLIST kolomnya TANPA "+
+					"akhiran _1", name, column)
+		}
+	}
+}
+
+// TestKeterisianDiukurUntukSeluruhKolomYangSudahAda menutup celah yang paling mudah terlewat.
+//
+// Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom yang tidak ada — dan pada tab
+// Outstanding ia lebih berbahaya, karena `ADJUSTERACCEPT IS NULL` bernilai benar untuk SELURUH
+// antrean. Satu kolom yang tiba tanpa ikut diukur di sini akan terbaca siap.
+func TestKeterisianDiukurUntukSeluruhKolomYangSudahAda(t *testing.T) {
+	text := strings.ToUpper(query("check_filled_columns"))
+
+	for _, column := range []string{"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK"} {
+		require.Containsf(t, text, "COUNT(S."+column+")",
+			"kolom %s sudah ada di POOLDATA.T_SURVEYORLIST tetapi keterisiannya tidak diukur",
+			column)
+	}
+}

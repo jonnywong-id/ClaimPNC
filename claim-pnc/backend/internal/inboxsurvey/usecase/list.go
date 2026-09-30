@@ -78,13 +78,17 @@ type Column struct {
 	Available bool
 }
 
-// missingAdjusterColumn adalah keterangan yang sama bagi ketiga kolom yang belum tersedia.
+// Kedua kolom yang belum tersedia punya SEBAB YANG BERBEDA, dan teksnya karena itu terpisah.
 //
-// Satu teks, bukan tiga: ketiganya belum tersedia karena SEBAB YANG SAMA, dan menulisnya tiga
-// kali membuat dua di antaranya tertinggal saat kolomnya tiba.
-const missingAdjusterColumn = "BELUM TERSEDIA. Kolom asalnya milik objek kerja survei di " +
-	"Pega, dan belum ada di tabel cermin POOLDATA.T_CLAIM_SURVEY_DATAPEGA. Menunggu Tim Pega " +
-	"menambahkannya."
+// Menyatukannya pernah dicoba — satu konstanta bersama — dan hasilnya menyesatkan: keduanya
+// terbaca menunggu hal yang sama, padahal yang satu menunggu `ALTER` dari DBA dan yang satu
+// lagi menunggu jalur pengisian dari Tim Pega.
+const (
+	columnNotAdded = "BELUM TERSEDIA. Kolomnya belum ada di POOLDATA.T_SURVEYORLIST."
+
+	columnAddedButEmpty = "BELUM TERSEDIA. Kolomnya sudah ada di POOLDATA.T_SURVEYORLIST " +
+		"tetapi seluruh barisnya masih kosong — menunggu jalur pengisian dari Tim Pega."
+)
 
 // columns adalah ketiga belas kolom layar, dalam urutan tampilnya.
 //
@@ -92,15 +96,18 @@ const missingAdjusterColumn = "BELUM TERSEDIA. Kolom asalnya milik objek kerja s
 // memuat ketiga belas judul itu berturut-turut pada ketiga varian gridnya.
 var columns = []Column{
 	{
-		Key:       "appointment_no",
-		Title:     "Appointment No",
-		Note:      missingAdjusterColumn + " Kolom asalnya `ADJUSTERPIC_1`.",
+		Key:   "appointment_no",
+		Title: "Appointment No",
+		Note: columnNotAdded + " Padanan Pega-nya `ADJUSTERPIC_1`, yang menurut " +
+			"`ExportDataDetailKlaim-SQL.xml` berisi NAMA adjuster eksternal — bukan nomor " +
+			"penugasan. Bila itu benar, isinya sudah dibawa SURVEYOR_NAME dan kolom ini " +
+			"tidak perlu ditambahkan sama sekali.",
 		Available: false,
 	},
 	{
 		Key:       "reference_no",
 		Title:     "Reference No",
-		Note:      missingAdjusterColumn + " Kolom asalnya `REFNO_1`.",
+		Note:      columnAddedButEmpty + " Kolomnya `REFNO`.",
 		Available: false,
 	},
 	{Key: "claim_no", Title: "Claim No", Available: true},
@@ -300,19 +307,26 @@ func PlannedDifferences() []string {
 // keterbatasan yang selesai dapat dihapus tanpa menyentuh keputusan yang masih berlaku.
 func Limitations() []string {
 	return []string{
-		"EMPAT dari tujuh tab dan DUA dari tiga belas kolom belum dapat diisi. Ketiganya " +
-			"menunggu kolom yang sama: `ADJUSTERACCEPT_1` (tab Outstanding, ALL, dan " +
-			"Invoice), `ADJUSTERPIC_1` (kolom Appointment No), dan `REFNO_1` (kolom Reference " +
-			"No). Ketiganya milik objek kerja survei di Pega, dan diminta ditambahkan ke " +
-			"tabel cermin `POOLDATA.T_CLAIM_SURVEY_DATAPEGA`.",
+		"EMPAT dari tujuh tab dan DUA dari tiga belas kolom belum dapat diisi, dan sebabnya " +
+			"BUKAN kolom yang tidak ada. Per 2026-09-30 `ADJUSTERACCEPT`, `REFNO`, dan " +
+			"`PYSTATUSWORK` SUDAH ditambahkan ke `POOLDATA.T_SURVEYORLIST` — tetapi seluruh " +
+			"17.641 barisnya masih kosong. Yang ditunggu sekarang adalah jalur PENGISIANNYA " +
+			"dari Tim Pega, bukan `ALTER` berikutnya dari DBA.",
 
-		"Tab Close belum dapat dihitung karena alasan yang BERBEDA: kolomnya (`STATUSWORK`) " +
-			"sudah ada di tabel cermin, tetapi tabel itu belum pernah terisi. Penyebabnya " +
-			"terbaca di prosedur pengisinya, yang penjaganya membandingkan satu kolom dengan " +
-			"dua nilai berbeda sehingga tidak pernah terpenuhi.",
+		"Kolom yang ADA tetapi KOSONG lebih berbahaya daripada kolom yang tidak ada, dan " +
+			"itulah alasan tab-tab itu ditahan alih-alih dihidupkan. Tab Outstanding " +
+			"menyaring `ADJUSTERACCEPT IS NULL`: dengan kolom yang seluruhnya kosong ia " +
+			"menampilkan SELURUH antrean sebagai belum dikonfirmasi adjuster — terisi wajar, " +
+			"angkanya masuk akal, isinya salah. Tab ALL dan Invoice sebaliknya, kosong sama " +
+			"sekali, yang terbaca sebagai tidak ada pekerjaan.",
+
+		"Satu kolom masih benar-benar belum ada: `ADJUSTERPIC` untuk \"Appointment No\". " +
+			"Padanannya di Pega berisi NAMA adjuster eksternal, bukan nomor penugasan, " +
+			"sehingga kemungkinan besar kolom itu tidak perlu ditambahkan sama sekali — " +
+			"`SURVEYOR_NAME` sudah membawanya. Menunggu keputusan Work Owner.",
 
 		"Berkas survei yang SUDAH ditutup atau dibatalkan di Pega masih ikut ditampilkan. " +
-			"Penyaringnya sudah terpasang dan akan menyala SENDIRI begitu tabel cermin " +
+			"Penyaringnya sudah terpasang dan akan menyala SENDIRI begitu `PYSTATUSWORK` " +
 			"terisi — tidak ada perubahan kode yang dibutuhkan. Diukur di produksi " +
 			"2026-09-29: 1.070 dari 2.448 berkas survei sudah berstatus tutup.",
 

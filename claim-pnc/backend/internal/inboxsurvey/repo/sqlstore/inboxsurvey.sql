@@ -77,16 +77,26 @@
 -- C. APA YANG BELUM TERBAWA
 -- ============================================================================
 --
--- Empat isian masih menunggu, seluruhnya milik objek kerja `Work-SurveyClaim`:
+-- Empat isian masih menunggu, seluruhnya milik objek kerja `Work-SurveyClaim`. Namanya di
+-- `T_SURVEYORLIST` TANPA akhiran `_1` — akhiran itu artefak perataan Pega:
 --
---   ADJUSTERACCEPT_1  -> tab Outstanding, ALL, dan Invoice
---   ADJUSTERPIC_1     -> kolom "Appointment No"
---   REFNO_1           -> kolom "Reference No" dan setengah kotak cari
---   PYSTATUSWORK      -> tab Close, dan penyaring "berkas survei masih terbuka"
+--   kolom             menghidupkan                                       keadaan 2026-09-30
+--   ----------------- -------------------------------------------------- ------------------
+--   ADJUSTERACCEPT    tab Outstanding, ALL, dan Invoice                   ADA, masih KOSONG
+--   REFNO             kolom "Reference No" dan setengah kotak cari        ADA, masih KOSONG
+--   PYSTATUSWORK      tab Close, dan penyaring "berkas masih terbuka"     ADA, masih KOSONG
+--   ADJUSTERPIC       kolom "Appointment No"                              belum ditambahkan
 --
--- Keempatnya diminta ditambahkan ke `POOLDATA.T_SURVEYORLIST` — lihat
--- `docs/permintaan-kolom-t-surveyorlist.md`. Kueri di bawah **belum membacanya**: menuliskan
--- kolom yang belum ada menghasilkan ORA-00904 yang menjatuhkan SELURUH layar, bukan sel kosong.
+-- Kueri di bawah **belum membaca satu pun**, dan itu berlaku untuk keempatnya — termasuk
+-- ketiga yang sudah ada. Alasannya berbeda untuk masing-masing:
+--
+--   yang BELUM ADA    menuliskannya menghasilkan ORA-00904, yang menjatuhkan SELURUH layar
+--   yang ADA & KOSONG membacanya menghasilkan jawaban yang salah tanpa galat apa pun
+--
+-- Yang kedua lebih berbahaya. `ADJUSTERACCEPT IS NULL` bernilai benar untuk seluruh 17.641
+-- baris, sehingga tab Outstanding akan menampilkan seluruh antrean sebagai belum dikonfirmasi
+-- adjuster — terisi wajar, dan salah. Karena itu keduanya sama-sama ditahan sampai
+-- `claimpnc -periksa` melaporkan keterisiannya. Lihat `docs/permintaan-kolom-t-surveyorlist.md`.
 --
 -- ## Kenapa `STS_SURVEY` tidak dapat menggantikan `PYSTATUSWORK`
 --
@@ -112,8 +122,8 @@
 --
 --   judul di layar      properti Pega            kolom sekarang            alias
 --   ------------------- ------------------------ ------------------------- -------------------
---   Appointment No      .City                    — menunggu ADJUSTERPIC_1  —
---   Reference No        .AlasanDokterRejectRCL   — menunggu REFNO_1        —
+--   Appointment No      .City                    — ADJUSTERPIC belum ada   —
+--   Reference No        .AlasanDokterRejectRCL   — REFNO ada, kosong       —
 --   Claim No            .UserName                c.CLAIMNO                 CLAIM_NUMBER
 --   Policy No           .Country                 c.NOPOLIS                 POLICY_NUMBER
 --   Insured Name        .AnalystDoctorRemaks     c.QQNAME                  INSURED_NAME
@@ -237,7 +247,7 @@
 -- Satu halaman satu tab, satu baris per BERKAS SURVEI.
 --
 -- HANYA tab yang dapat dihitung yang sampai ke sini. Keempat tab yang membutuhkan
--- `ADJUSTERACCEPT_1` atau `PYSTATUSWORK` dicegat lebih dulu di Go (`Tab.Available`).
+-- `ADJUSTERACCEPT` atau `PYSTATUSWORK` dicegat lebih dulu di Go (`Tab.Available`).
 --
 -- Bind:
 --   :1  cakupan nama surveyor, berbentuk `|NAMA SATU|NAMA DUA|`  (lihat CATATAN 1)
@@ -510,12 +520,14 @@ SELECT COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERACCEPT' THEN 1 END) AS HAS_ACCEPT,
 -- sehingga kolom yang ADA tetapi SELURUHNYA kosong akan menampilkan **seluruh antrean** sebagai
 -- "belum dikonfirmasi adjuster". Itu cacat diam — layarnya terisi wajar dan isinya salah.
 --
--- Ia HANYA memuat kolom yang sudah ada per 2026-09-30. `ADJUSTERPIC` dan `PYSTATUSWORK` belum
--- ditambahkan, dan menuliskannya di sini akan membuat kueri ini gagal seluruhnya — termasuk
--- untuk dua kolom yang justru ingin diukur.
+-- Ia HANYA memuat kolom yang sudah ada per 2026-09-30 — `ADJUSTERACCEPT`, `REFNO`, dan
+-- `PYSTATUSWORK`. `ADJUSTERPIC` belum ditambahkan, dan menuliskannya di sini akan membuat kueri
+-- ini gagal seluruhnya, termasuk untuk ketiga kolom yang justru ingin diukur. Yang melaporkan
+-- ketiadaan sebuah kolom adalah `check_new_columns`, lewat katalog.
 SELECT COUNT(*)                 AS TOTAL_ROWS,
        COUNT(s.ADJUSTERACCEPT)  AS FILLED_ACCEPT,
-       COUNT(s.REFNO)           AS FILLED_REFERENCE
+       COUNT(s.REFNO)           AS FILLED_REFERENCE,
+       COUNT(s.PYSTATUSWORK)    AS FILLED_WORK_STATUS
   FROM POOLDATA.T_SURVEYORLIST s
 
 -- name: check_kpi

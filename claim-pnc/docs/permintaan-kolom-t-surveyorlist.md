@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Tanggal** | 2026-09-29, diperbarui 2026-09-30 |
+| **Tanggal** | 2026-09-29, diperbarui 2026-09-30 (kolom tiba, isinya belum) |
 | **Diminta oleh** | Tim migrasi Claim PNC |
 | **Ditujukan ke** | **Tim Pega** |
 | **Menempuh** | `D-63` — permintaan tertulis tim pengembang, persetujuan Work Owner, pelaksanaan DBA |
@@ -11,36 +11,50 @@
 
 ---
 
-## 1. Ringkas — apa yang diminta
+## 1. Ringkas — separuh permintaan ini SUDAH dipenuhi
 
-Empat kolom ditambahkan ke `POOLDATA.T_SURVEYORLIST`, **dan diisi**.
+Per **2026-09-30** tiga dari empat kolom sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST`.
+**Seluruhnya masih kosong**, dan karena itu belum satu pun manfaat di bawah terwujud.
 
-| # | Kolom | Yang dihidupkan |
-|---|---|---|
-| 1 | `ADJUSTERACCEPT_1` | tab Outstanding, ALL, dan Invoice |
-| 2 | `PYSTATUSWORK` | tab Close, dan penyaring "berkas survei masih terbuka" |
-| 3 | `ADJUSTERPIC_1` | kolom "Appointment No" |
-| 4 | `REFNO_1` | kolom "Reference No" dan setengah kotak cari |
+| # | Kolom di `T_SURVEYORLIST` | Yang dihidupkan | Ada | Terisi |
+|---|---|---|:---:|:---:|
+| 1 | `ADJUSTERACCEPT` | tab Outstanding, ALL, dan Invoice | ✅ | ❌ |
+| 2 | `PYSTATUSWORK` | tab Close, dan penyaring "berkas survei masih terbuka" | ✅ | ❌ |
+| 3 | `REFNO` | kolom "Reference No" dan setengah kotak cari | ✅ | ❌ |
+| 4 | `ADJUSTERPIC` | kolom "Appointment No" | ❌ | — |
 
-**Tipe dan panjang mengikuti kolom asalnya** di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`. Kami tidak
-mengusulkan angkanya karena DDL tabel itu belum kami terima (`R-08`) — mohon disalin dari
-sumbernya. Seluruhnya **nullable tanpa default**.
+> **Perhatikan penamaannya.** Di `T_SURVEYORLIST` kolomnya **tanpa akhiran `_1`**. Akhiran itu
+> artefak perataan objek kerja di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, dan menghilangkannya memang
+> lebih bersih — tetapi versi awal dokumen ini memakai nama Pega, sehingga kolom yang **sudah**
+> ditambahkan sempat terbaca sebagai belum ada oleh orang yang menambahkannya. Seluruh dokumen
+> ini sekarang memakai nama sebenarnya.
+
+**Yang tersisa dari permintaan ini adalah §2 — pengisiannya.** Butir 4 belum tentu diperlukan;
+lihat §4.
 
 > **`POOLDATA.T_CLAIM_SURVEY_DATAPEGA` tidak dipakai** (keputusan Work Owner 2026-09-30). Tabel
 > cermin itu sempat menjadi sasaran permintaan ini dan dilepas.
 
 ---
 
-## 2. Menambah kolom saja TIDAK cukup
+## 2. Menambah kolom saja TIDAK cukup — dan inilah yang tersisa
 
-Ini bagian yang paling mudah terlewat, dan tanpa itu **tidak satu pun** dari empat manfaat di
-§1 terwujud.
+Bagian ini ditulis sebagai peringatan pada 2026-09-29; pada 2026-09-30 ia **menjadi kenyataan**.
+Ketiga kolom sudah ada, seluruh 17.641 barisnya `NULL`, dan tidak satu pun manfaat di §1 aktif.
 
-Keempat nilai berubah **sepanjang hidup berkas survei**:
+Nilainya berubah **sepanjang hidup berkas survei**:
 
-- `ADJUSTERACCEPT_1` berubah saat adjuster menerima penugasan;
+- `ADJUSTERACCEPT` berubah saat adjuster menerima penugasan;
 - `PYSTATUSWORK` berubah saat berkas ditutup atau dibatalkan — **dan justru nilai akhirnya yang
   dibutuhkan**.
+
+Yang dibutuhkan ada dua, dan keduanya **di luar `ALTER`**:
+
+1. **Backfill sekali jalan** dari `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` untuk 17.641 baris yang sudah
+   ada — kuncinya `T_SURVEYORLIST.CASEID` ke `pzInsKey` objek kerja `Work-SurveyClaim`.
+2. **Jalur pemutakhiran** saat status objek kerja berubah, supaya isinya tetap mutakhir.
+
+Tanpa nomor 2, nomor 1 basi dalam hitungan hari.
 
 `INSERT_SURVEYORLIST` hanya dipanggil saat hasil survei disimpan, dan `UPDATE`-nya dijaga
 `TNOTE IS NOT NULL` (baris 37). Ia **tidak pernah dipanggil** saat status objek kerja berubah.
@@ -50,9 +64,12 @@ mekanismenya kami serahkan ke Tim Pega.
 
 ### Kenapa kolom yang ADA tetapi KOSONG lebih berbahaya daripada kolom yang tidak ada
 
-Tab Outstanding menyaring `ADJUSTERACCEPT_1 IS NULL`. Kolom yang ada tetapi seluruhnya kosong
-akan menampilkan **seluruh antrean** sebagai "belum dikonfirmasi adjuster" — layar terisi wajar,
-angkanya masuk akal, dan isinya salah.
+Tab Outstanding menyaring `ADJUSTERACCEPT IS NULL`. Kolom yang ada tetapi seluruhnya kosong
+akan menampilkan **seluruh 2.448 berkas** sebagai "belum dikonfirmasi adjuster" — layar terisi
+wajar, angkanya masuk akal, dan isinya salah. Tab ALL dan Invoice sebaliknya: kosong sama
+sekali, yang terbaca sebagai "tidak ada pekerjaan".
+
+Keduanya cacat diam. Tidak ada yang akan melaporkannya sebagai kerusakan.
 
 Karena itu `-periksa` memisahkan keduanya, dan modul ini **tidak akan menghidupkan tabnya**
 sebelum keterisiannya terukur.
@@ -85,11 +102,45 @@ tab Close       : PYSTATUSWORK = 'Resolved-Completed'
 Perhatikan lawan tab Outstanding adalah **`IS NULL`**, bukan `<> '1'`. Keduanya berbeda pada
 baris bernilai `'0'`, dan perilaku Pega dibawa apa adanya (`P-5`).
 
+> Nama ber-`_1` pada blok di atas dikutip **apa adanya dari rule Pega**, dan hanya berlaku di
+> `PC_ASM_FW_GCNMFW_WORK`. Padanannya di `T_SURVEYORLIST` ada di tabel §1 — tanpa akhiran itu.
+
 ---
 
-## 4. Dua kolom yang SEMPAT diminta dan sudah gugur
+## 4. Kolom yang SEMPAT diminta dan sudah gugur
 
 Dicatat supaya tidak diminta ulang.
+
+### `ADJUSTERPIC` — kemungkinan besar tidak diperlukan
+
+Judul layar **"Appointment No"** adalah kolom paling kiri grid My Work, dan ia mengikat
+`.City`, yang `BrowseLossAdjuster-SQL.xml` isi dari `AdjusterPIC_1`.
+
+`ExportDataDetailKlaim-SQL.xml` membuktikan kolom itu berisi **nama adjuster**, bukan nomor
+penugasan:
+
+```sql
+CASE WHEN C.SURVEYORTYPE_1 IN ('2','3','4') THEN C.Adjusterpic_1 ELSE '' END
+CASE WHEN C.SURVEYORTYPE_1 = '1'            THEN c.SURVEYORNAME_1 …
+```
+
+Keduanya konsep yang sama, dipisah menurut jenis surveyor — eksternal versus internal. Dan
+`Database/INSERT_SURVEYORLIST.prc` hanya punya **satu** kolom nama, `SURVEYOR_NAME`, diisi
+`TempSurvey.SurveyorName` tanpa memandang jenisnya.
+
+Bila itu benar, kolom "Appointment No" menggandakan "PIC Loss Adjuster" di sebelahnya, dan
+`SURVEYOR_NAME` sudah membawanya. **Satu kueri memastikannya sebelum butir 4 dicoret:**
+
+```sql
+SELECT surveytype, COUNT(*) AS baris, COUNT(surveyor_name) AS terisi
+  FROM POOLDATA.T_SURVEYORLIST GROUP BY surveytype ORDER BY surveytype;
+```
+
+Bila `terisi` penuh di semua `surveytype` — termasuk `1` dan `2` — satu kolom itu cukup.
+
+**Keputusan Work Owner yang menyertainya:** kolom "Appointment No" di layar baru dihapus, atau
+dipertahankan menampilkan nama adjuster seperti Pega? Menghapusnya menyimpang dari `D-13`;
+mempertahankannya berarti dua kolom bersebelahan berisi nama yang sama.
 
 ### `ADJUSTERSTATUS_1` — `STS_SURVEY` sudah membawanya
 
@@ -165,25 +216,29 @@ claimpnc -periksa
 Dua tahap, **terpisah dengan sengaja** — kolom ditambahkan DBA lewat `ALTER`, isinya ditulis
 procedure:
 
-```
-[catat] Empat kolom belum ada di POOLDATA.T_SURVEYORLIST
-        ->  [ok] Keempat kolom SUDAH ADA di POOLDATA.T_SURVEYORLIST
+Keluarannya per 2026-09-30:
 
-[catat] Keterisian keempat kolom, dari N baris:
-          ADJUSTERACCEPT_1 … · ADJUSTERPIC_1 … · REFNO_1 … · PYSTATUSWORK …
-[BELUM] ADJUSTERACCEPT_1 ADA tetapi SELURUHNYA kosong
+```
+[catat] Keempat kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:
+          ADJUSTERACCEPT ADA · ADJUSTERPIC belum · REFNO ADA · PYSTATUSWORK ADA
+
+[catat] Keterisian, dari 17.641 baris: ADJUSTERACCEPT 0 · REFNO 0 · PYSTATUSWORK 0
+[BELUM] PYSTATUSWORK ADA tetapi SELURUHNYA kosong
+[BELUM] ADJUSTERACCEPT ADA tetapi SELURUHNYA kosong
+[BELUM] REFNO ADA tetapi SELURUHNYA kosong
 ```
 
-Baris `[BELUM]` itu yang menentukan. Selama ia muncul, tabnya tetap dinyatakan belum tersedia.
+Baris `[BELUM]` itu yang menentukan, **bukan baris pertama**. Selama ia muncul, tabnya tetap
+dinyatakan belum tersedia — kolom yang ada tetapi kosong tidak lebih siap daripada kolom yang
+tidak ada.
 
 Bila `-periksa` tidak dapat dijalankan, satu kueri setara:
 
 ```sql
-SELECT COUNT(*)                  AS baris,
-       COUNT(adjusteraccept_1)   AS terisi_accept,
-       COUNT(pystatuswork)       AS terisi_status,
-       COUNT(adjusterpic_1)      AS terisi_pic,
-       COUNT(refno_1)            AS terisi_refno
+SELECT COUNT(*)                AS baris,
+       COUNT(adjusteraccept)   AS terisi_accept,
+       COUNT(pystatuswork)     AS terisi_status,
+       COUNT(refno)            AS terisi_refno
   FROM POOLDATA.T_SURVEYORLIST;
 ```
 

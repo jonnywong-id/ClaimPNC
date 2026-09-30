@@ -22779,6 +22779,80 @@ ditulis. Yang membedakan bukan penalarannya melainkan **pengukurannya**.
 Ketiga pengukuran itu masing-masing satu kueri, dan seluruhnya dijalankan dalam satu percakapan.
 Menebak tiga kali lebih mahal daripada mengukur sekali.
 
+
+### 84.16 Kolom tiba, isinya belum — dan pesannya menyebut nama yang salah (2026-09-30)
+
+Work Owner menambahkan kolomnya, membuka layarnya, dan melaporkan satu kalimat:
+
+> *"Membutuhkan kolom ADJUSTERACCEPT_1, yang belum ada di POOLDATA.T_SURVEYORLIST. Tab lain
+> pada bilah di atas tetap berisi."* — padahal sudah ada `adjusteraccept`.
+
+Dua cacat di dalam satu pesan, dan yang kedua lebih serius.
+
+#### Cacat pertama — nama kolom bergeser satu akhiran
+
+Kolom yang sama punya dua nama. Di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` ia berakhiran `_1` —
+artefak perataan objek kerja Pega — sedangkan di `POOLDATA.T_SURVEYORLIST` akhiran itu tidak
+dipakai. Seluruh analisis modul ini bersumber dari rule Pega, sehingga nama ber-`_1` adalah
+bentuk yang **lebih dulu tertulis di mana-mana**: domain, usecase, `.sql`, uji, fixture frontend.
+
+Kueri pemeriksa sudah dikoreksi ke nama sebenarnya pada hari kolomnya tiba. **Teks yang dibaca
+pengguna tidak ikut**, dan tidak ada uji yang mengikat keduanya — sehingga keduanya dapat
+berbeda tanpa satu pun uji merah.
+
+Akibatnya bukan sekadar salah ketik: **pekerjaan yang sudah selesai terbaca sebagai belum
+dikerjakan oleh orang yang mengerjakannya.**
+
+#### Cacat kedua — "belum ada" padahal "ada tapi kosong"
+
+Keadaan sebenarnya per 2026-09-30:
+
+| Kolom | Ada | Terisi |
+|---|:---:|:---:|
+| `ADJUSTERACCEPT` | ✅ | ❌ 0 dari 17.641 |
+| `REFNO` | ✅ | ❌ |
+| `PYSTATUSWORK` | ✅ | ❌ |
+| `ADJUSTERPIC` | ❌ | — |
+
+Keduanya diperbaiki **orang yang berbeda**: kolom ditambahkan DBA lewat satu `ALTER`, isinya
+ditulis Tim Pega lewat jalur pemutakhiran saat status objek kerja berubah. Pesan yang menyebut
+sebab yang salah mengirim orang yang memperbaikinya ke arah yang keliru — dan di sini persis
+begitu: yang dibaca sebagai "DBA belum menjalankan `ALTER`" sebenarnya "belum ada yang mengisi".
+
+#### Yang dikerjakan
+
+| Berkas | Perubahan |
+|---|---|
+| `inboxsurvey.go` | `UnavailableReason` menyebut nama sebenarnya **dan** keadaan sebenarnya |
+| `usecase/list.go` | `missingAdjusterColumn` dipecah menjadi `columnNotAdded` dan `columnAddedButEmpty` |
+| `inboxsurvey.sql` | §C ditulis ulang sebagai tabel ada/terisi; `check_filled_columns` mengukur `PYSTATUSWORK` |
+| `check.go` | `-periksa` melaporkan keterisian `PYSTATUSWORK`, dengan `[BELUM]` tersendiri |
+| `query_test.go` | dua uji baru mengunci penamaan dan kelengkapan pengukuran |
+| `SurveyInboxPage.test.tsx` | fixture mengikuti teks baru; satu asertion mengunci nama tanpa `_1` |
+| `permintaan-kolom-t-surveyorlist.md` | §1 menjadi tabel status; §2 menjadi satu-satunya sisa permintaan |
+
+Konstanta bersama **dipecah** karena kedua kolom kini menunggu hal yang berbeda — menyatukannya
+membuat keduanya terbaca menunggu hal yang sama.
+
+#### Yang TIDAK dikerjakan, dan itu yang menentukan
+
+**Tidak satu tab pun dihidupkan.** Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom
+yang tidak ada, dan pada tab Outstanding ia justru **lebih berbahaya**: penyaringnya
+`ADJUSTERACCEPT IS NULL` bernilai benar untuk seluruh 2.448 berkas, sehingga tabnya akan
+menampilkan seluruh antrean sebagai "belum dikonfirmasi adjuster" — terisi wajar, angkanya masuk
+akal, isinya salah. Tab ALL dan Invoice sebaliknya: kosong, yang terbaca sebagai tidak ada
+pekerjaan.
+
+Keduanya cacat diam. Tidak ada yang akan melaporkannya.
+
+#### Pelajarannya
+
+Pemisahan `CheckNewColumns` dari `CheckFilledColumns` — ditulis 2026-09-29 sebagai kehati-hatian
+— **terbukti berguna dalam satu hari**. Tanpa pemisahan itu, "kolomnya sudah ada" akan terbaca
+sebagai siap, dan tab Outstanding akan dihidupkan di atas kolom yang seluruhnya kosong.
+
+Yang **tidak** ditulis saat itu adalah uji yang mengikat teks pengguna ke nama sebenarnya, dan
+di situlah cacat pertama lolos. Pengukuran terlindungi; kalimatnya tidak.
 ## 42. Inbox OS Claim per Cabang — `MENU_ID 69` (2026-09-28)
 
 Layar rujukan: `Harness/OutstandingKlaimperCabang_Harness-Harness.xml`. Butir menunya

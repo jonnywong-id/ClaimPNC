@@ -74,13 +74,13 @@ const keteranganResponse: KeteranganResponse = {
     {
       kunci: 'appointment_no',
       judul: 'Appointment No',
-      keterangan: 'BELUM TERSEDIA. Kolom asalnya ADJUSTERPIC_1.',
+      keterangan: 'BELUM TERSEDIA. Kolomnya belum ada di POOLDATA.T_SURVEYORLIST.',
       tersedia: false,
     },
     {
       kunci: 'reference_no',
       judul: 'Reference No',
-      keterangan: 'BELUM TERSEDIA. Kolom asalnya REFNO_1.',
+      keterangan: 'BELUM TERSEDIA. Kolomnya sudah ada tetapi seluruh barisnya masih kosong.',
       tersedia: false,
     },
     { kunci: 'claim_no', judul: 'Claim No', tersedia: true },
@@ -113,25 +113,25 @@ const keteranganResponse: KeteranganResponse = {
       kunci: 'outstanding',
       judul: 'Outstanding',
       tersedia: false,
-      alasan_tak_tersedia: 'Membutuhkan kolom ADJUSTERACCEPT_1, yang belum ada.',
+      alasan_tak_tersedia: 'Kolom ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong.',
     },
     {
       kunci: 'invoice',
       judul: 'Invoice',
       tersedia: false,
-      alasan_tak_tersedia: 'Membutuhkan kolom ADJUSTERACCEPT_1, yang belum ada.',
+      alasan_tak_tersedia: 'Kolom ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong.',
     },
     {
       kunci: 'close',
       judul: 'Close',
       tersedia: false,
-      alasan_tak_tersedia: 'Membutuhkan kolom PYSTATUSWORK, yang belum ada.',
+      alasan_tak_tersedia: 'Kolom PYSTATUSWORK sudah ada tetapi seluruh barisnya masih kosong.',
     },
     {
       kunci: 'all',
       judul: 'ALL',
       tersedia: false,
-      alasan_tak_tersedia: 'Membutuhkan kolom ADJUSTERACCEPT_1, yang belum ada.',
+      alasan_tak_tersedia: 'Kolom ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong.',
     },
     { kunci: 'belum-dijawab', judul: 'Not answered communication', tersedia: true },
     { kunci: 'belum-dibalas-asm', judul: 'Not replied from ASM', tersedia: true },
@@ -378,7 +378,12 @@ it('menjelaskan sebabnya saat tab yang belum tersedia dibuka', async () => {
   await userEvent.click(screen.getByRole('tab', { name: /^Outstanding/ }))
 
   expect(await screen.findByText(/Tab Outstanding belum dapat ditampilkan/)).toBeInTheDocument()
-  expect(screen.getByText(/ADJUSTERACCEPT_1/)).toBeInTheDocument()
+  // Nama kolomnya WAJIB terbaca apa adanya — `ADJUSTERACCEPT`, bukan `ADJUSTERACCEPT_1`.
+  // Akhiran `_1` milik tabel datar Pega, dan pernah membuat kolom yang SUDAH ditambahkan
+  // terbaca sebagai belum ada oleh orang yang menambahkannya.
+  expect(
+    screen.getByText(/ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong/),
+  ).toBeInTheDocument()
 
   // Tabelnya TIDAK digambar — bukan digambar kosong.
   expect(screen.queryByText('PNCN.26.0101')).not.toBeInTheDocument()

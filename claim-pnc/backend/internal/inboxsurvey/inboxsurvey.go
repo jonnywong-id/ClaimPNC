@@ -75,15 +75,23 @@
 // BERJALAN berarti klaimnya sudah MELEWATI tahap itu, sehingga `INNER JOIN` ke sana membuang
 // justru baris yang dicari layar ini. Layarnya akan terisi sebagian, dan tampak wajar.
 //
-// ### Akibat yang harus terlihat: empat isian belum tersedia
+// ### Akibat yang harus terlihat: isian yang belum tersedia
 //
-// `ADJUSTERPIC_1`, `REFNO_1`, `ADJUSTERSTATUS_1`, dan `ADJUSTERACCEPT_1` hidup hanya di
-// `PC_ASM_FW_GCNMFW_WORK`. Ini BUKAN akibat perpindahan tabel — diukur ke katalog kolom
-// (`docs/kolom-t-claimlist-admin.md` §H, 2026-09-28), dua di antaranya sudah tidak ada di
-// `T_CLAIMLIST_ADMIN` dan dua sisanya ada tetapi kosong di seluruh 1.014 baris.
+// Empat nilai layar berasal dari objek kerja `Work-SurveyClaim`, yang di Pega diratakan ke
+// `PC_ASM_FW_GCNMFW_WORK` dengan akhiran `_1`. Di `T_SURVEYORLIST` akhiran itu TIDAK dipakai,
+// dan penamaan itulah yang berlaku di sini:
 //
-// Akibatnya tiga kolom layar dan EMPAT dari tujuh tab belum dapat dihitung. Keduanya
-// menyatakan sebabnya, bukan menampilkan kosong — lihat UnavailableReason.
+//	Pega                 T_SURVEYORLIST    keadaan per 2026-09-30
+//	ADJUSTERSTATUS_1     STS_SURVEY        ADA dan TERISI — tidak lagi menghalangi
+//	ADJUSTERACCEPT_1     ADJUSTERACCEPT    ADA, seluruh barisnya masih KOSONG
+//	REFNO_1              REFNO             ADA, seluruh barisnya masih KOSONG
+//	PYSTATUSWORK         PYSTATUSWORK      ADA, seluruh barisnya masih KOSONG
+//	ADJUSTERPIC_1        —                 belum ditambahkan
+//
+// **Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom yang tidak ada**, dan pada tab
+// Outstanding ia justru lebih berbahaya: penyaringnya `ADJUSTERACCEPT IS NULL` bernilai benar
+// untuk SELURUH antrean, sehingga tabnya terisi wajar dan isinya salah. Karena itu keduanya
+// sama-sama menahan tab — lihat UnavailableReason.
 //
 // ## 2. EMPAT kueri tab HILANG dari export
 //
@@ -188,8 +196,8 @@ const (
 	StatusInvoiceFee = "Invoice Fee"
 )
 
-// AdjusterConfirmed adalah nilai `ADJUSTERACCEPT_1` yang berarti adjuster SUDAH menerima
-// penugasan.
+// AdjusterConfirmed adalah nilai `ADJUSTERACCEPT` — `ADJUSTERACCEPT_1` di Pega — yang berarti
+// adjuster SUDAH menerima penugasan.
 //
 // Ia membelah antrean menjadi dua tab yang berlawanan, dan pembelahannya terbaca dari
 // `CountOSLostAdjuster`:
@@ -347,9 +355,9 @@ func Tabs() []Tab {
 //
 // # Kenapa ini ada, dan kenapa tabnya tetap digambar
 //
-// Keempat tab di bawah bergantung pada kolom yang TIDAK ADA di tabel klaim mana pun —
-// bukan kosong, melainkan tidak ada. Kolomnya hidup di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`,
-// tabel yang `D-73`-lanjutan (keputusan Work Owner 2026-09-28) cabut dari pemakaian.
+// Keempat tab di bawah bergantung pada kolom yang BELUM DAPAT DIPERCAYA. Per 2026-09-30
+// kolomnya sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST` lewat `ALTER`, tetapi **belum ada
+// yang mengisinya**: seluruh 17.641 baris bernilai NULL.
 //
 // Tabnya TETAP digambar, dan itu disengaja. `D-13` menetapkan bentuk layar mengikuti Pega;
 // menghapus empat dari tujuh tab akan membuat pengguna yang hafal layarnya mengira fiturnya
@@ -358,15 +366,25 @@ func Tabs() []Tab {
 //
 // Perbedaan itu yang menentukan. Daftar kosong tidak pernah dilaporkan siapa pun sebagai
 // kerusakan; tab yang menyebut sebabnya akan.
+//
+// # Kenapa teksnya menyebut "belum terisi", bukan "belum ada"
+//
+// Karena keduanya diperbaiki orang yang berbeda. Kolom ditambahkan DBA lewat satu `ALTER`;
+// isinya ditulis Tim Pega lewat jalur pemutakhiran saat status objek kerja berubah. Pesan yang
+// menyebut sebab yang salah akan mengirim orang yang memperbaikinya ke arah yang keliru — dan
+// pernah persis begitu: teks lama masih menyebut `ADJUSTERACCEPT_1` (nama Pega, berakhiran
+// `_1`) padahal kolom yang ditambahkan bernama `ADJUSTERACCEPT`, sehingga kolom yang SUDAH ada
+// terbaca sebagai belum ada.
 func UnavailableReason(t Tab) string {
 	switch t {
 	case TabOutstanding, TabAll, TabInvoice:
-		return "Membutuhkan kolom ADJUSTERACCEPT_1, yang belum ada di " +
-			"POOLDATA.T_SURVEYORLIST."
+		return "Kolom ADJUSTERACCEPT sudah ada di POOLDATA.T_SURVEYORLIST tetapi seluruh " +
+			"barisnya masih kosong. Menghitung tab ini sekarang akan menampilkan seluruh " +
+			"antrean sebagai belum dikonfirmasi adjuster."
 
 	case TabClose:
-		return "Membutuhkan kolom PYSTATUSWORK, yang belum ada di " +
-			"POOLDATA.T_SURVEYORLIST."
+		return "Kolom PYSTATUSWORK sudah ada di POOLDATA.T_SURVEYORLIST tetapi seluruh " +
+			"barisnya masih kosong, sehingga berkas yang sudah tutup belum dapat dibedakan."
 
 	default:
 		return ""
@@ -439,17 +457,22 @@ type SurveyTask struct {
 	// tidak dapat dibedakan di layar maupun saat menelusuri keluhan.
 	SurveyIndex string
 
-	// AppointmentNumber dan ReferenceNumber BELUM TERSEDIA, dan keduanya tetap ada di sini.
+	// AppointmentNumber dan ReferenceNumber BELUM TERSEDIA, dengan sebab yang BERBEDA.
 	//
-	// Kolom asalnya — `ADJUSTERPIC_1` dan `REFNO_1` — milik objek kerja `Work-SurveyClaim`,
-	// dan diminta ditambahkan ke tabel cermin `POOLDATA.T_CLAIM_SURVEY_DATAPEGA` (bukan ke
-	// `T_SURVEYORLIST`; alasannya di kepala inboxsurvey.sql §C).
+	//	ReferenceNumber   -> T_SURVEYORLIST.REFNO   kolomnya ADA, isinya masih kosong
+	//	AppointmentNumber -> belum ada kolomnya sama sekali
 	//
 	// Keduanya TIDAK dihapus dari tipe ini. Menghapusnya akan menghilangkan kolomnya dari
 	// layar, dan isian yang belum terbawa harus TERLIHAT — bukan tersamar sebagai layar yang
 	// sudah setara.
-	AppointmentNumber string // "Appointment No"  <- d.ADJUSTERPIC_1  ** BELUM TERSEDIA **
-	ReferenceNumber   string // "Reference No"    <- d.REFNO_1        ** BELUM TERSEDIA **
+	//
+	// Satu catatan untuk AppointmentNumber: judul "Appointment No" di Pega menggambar
+	// `AdjusterPIC_1`, dan `ExportDataDetailKlaim-SQL.xml` membuktikan kolom itu berisi **nama
+	// adjuster eksternal**, bukan nomor penugasan. Bila itu benar, isinya menggandakan kolom
+	// "PIC Loss Adjuster" di sebelahnya dan `T_SURVEYORLIST.SURVEYOR_NAME` sudah membawanya —
+	// lihat `docs/permintaan-kolom-t-surveyorlist.md` §4.
+	AppointmentNumber string // "Appointment No"  ** BELUM ADA KOLOMNYA **
+	ReferenceNumber   string // "Reference No"    <- REFNO ** ADA, MASIH KOSONG **
 
 	ClaimNumber     string // "Claim No"      <- T_CLAIM_PNC.CLAIMNO
 	PolicyNumber    string // "Policy No"     <- T_CLAIM_PNC.NOPOLIS

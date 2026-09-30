@@ -101,12 +101,13 @@ func (r *Repo) CheckNewColumns(ctx context.Context) (NewColumns, error) {
 
 // FilledColumns adalah hasil pengukuran keterisian kolom yang SUDAH ADA.
 //
-// Hanya memuat kolom yang ada per 2026-09-30. `ADJUSTERPIC` dan `PYSTATUSWORK` belum
-// ditambahkan, sehingga tidak dapat diukur — CheckNewColumns yang melaporkan ketiadaannya.
+// Hanya memuat kolom yang ada per 2026-09-30. `ADJUSTERPIC` belum ditambahkan, sehingga tidak
+// dapat diukur — CheckNewColumns yang melaporkan ketiadaannya.
 type FilledColumns struct {
-	TotalRows int
-	Accept    int
-	Reference int
+	TotalRows  int
+	Accept     int
+	Reference  int
+	WorkStatus int
 }
 
 // CheckFilledColumns menghitung berapa baris kolom yang sudah ada BENAR-BENAR terisi.
@@ -130,6 +131,7 @@ func (r *Repo) CheckFilledColumns(ctx context.Context) (FilledColumns, error) {
 		&result.TotalRows,
 		&result.Accept,
 		&result.Reference,
+		&result.WorkStatus,
 	)
 	if err != nil {
 		return FilledColumns{}, fmt.Errorf(

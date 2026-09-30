@@ -22045,3 +22045,50 @@ catatan-pengembangan §83.
 EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
+
+### K-105.21 Nama kolom mengikuti `T_SURVEYORLIST`, bukan Pega — akhiran `_1` dibuang
+
+**Tanggal** 2026-09-30 · **Pemicu** laporan Work Owner · **Sifat** koreksi cacat yang sudah
+sampai ke pengguna
+
+**Apa yang terjadi.** Work Owner menambahkan kolomnya ke `POOLDATA.T_SURVEYORLIST`, lalu
+membuka layarnya dan membaca:
+
+> Membutuhkan kolom ADJUSTERACCEPT_1, yang belum ada di POOLDATA.T_SURVEYORLIST.
+
+Padahal `ADJUSTERACCEPT` **sudah ada**. Pesannya menyebut nama Pega — berakhiran `_1`, artefak
+perataan objek kerja di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` — sambil menunjuk tabel ASM yang tidak
+memakai akhiran itu. Akibatnya pekerjaan yang **sudah selesai** terbaca sebagai belum dikerjakan
+oleh orang yang mengerjakannya.
+
+**Sebabnya, dan kenapa ia lolos sejauh ini.** Seluruh analisis modul ini bersumber dari rule
+Pega, sehingga nama ber-`_1` adalah bentuk yang lebih dulu tertulis di mana-mana — domain,
+usecase, `.sql`, uji, sampai fixture frontend. Kueri pemeriksa sudah dikoreksi ke nama
+sebenarnya pada hari kolomnya tiba; **teks yang dibaca pengguna tidak ikut**. Tidak ada uji yang
+mengikat keduanya, sehingga keduanya bisa berbeda tanpa satu pun uji merah.
+
+**Yang diputuskan.**
+
+1. Di seluruh artefak modul ini, kolom `T_SURVEYORLIST` ditulis **tanpa akhiran `_1`**. Nama
+   ber-`_1` hanya dipakai saat mengutip rule Pega, dan kutipannya diberi catatan.
+2. Modul `dashboardclaim` **tidak disentuh** — ia memang membaca tabel datar Pega, sehingga
+   `_1` di sana benar (Isolasi Protektif ikut berlaku).
+3. `TestNamaKolomTanpaAkhiranPerataanPega` mengunci kueri modul ini terhadap kelima nama Pega.
+
+**Cacat kedua yang ikut terbongkar, dan lebih serius daripada namanya.** Pesan itu juga
+menyatakan kolomnya **"belum ada"**, padahal keadaan sebenarnya kolomnya **ada tetapi seluruh
+17.641 barisnya kosong**. Keduanya diperbaiki orang yang berbeda: kolom ditambahkan DBA lewat
+satu `ALTER`, isinya ditulis Tim Pega lewat jalur pemutakhiran. Pesan yang menyebut sebab yang
+salah mengirim orang yang memperbaikinya ke arah yang keliru.
+
+Teksnya karena itu diubah menyebut keadaan sebenarnya, dan konstanta bersama
+`missingAdjusterColumn` **dipecah** menjadi `columnNotAdded` dan `columnAddedButEmpty` — karena
+"Appointment No" dan "Reference No" kini menunggu hal yang berbeda.
+
+**Yang TIDAK berubah.** Tidak satu tab pun dihidupkan. Kolom yang ADA tetapi KOSONG tidak lebih
+siap daripada kolom yang tidak ada, dan pada tab Outstanding ia justru lebih berbahaya:
+`ADJUSTERACCEPT IS NULL` bernilai benar untuk seluruh antrean, sehingga tabnya akan terisi wajar
+dengan isi yang salah.
+
+**Bukti** `Activity/SetTempLostAdjuster-Act.xml` · `RDB List/BrowseLossAdjuster-SQL.xml` ·
+`Database/INSERT_SURVEYORLIST.prc` · `ALL_TAB_COLUMNS` per 2026-09-30
