@@ -156,6 +156,7 @@ import (
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
+	inboxautoclaimpremium "claim-pnc/internal/inboxautoclaim/premium"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
 	inboxbandinghargasalvagehttp "claim-pnc/internal/inboxbandinghargasalvage/http"
@@ -3985,6 +3986,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	autoClaimService, err := inboxautoclaimusecase.NewService(inboxautoclaimusecase.Options{
 		RepoSelector: store.autoClaimSelector,
+		Premium:      buildPremiumChecker(store.legacy, logger),
 	})
 	if err != nil {
 		store.close()
@@ -8393,4 +8395,26 @@ func caseStudySelectorMemory(primaryAlias string) casestudyclaim.RepoSelector {
 		store[clean] = fresh
 		return fresh, nil
 	}
+}
+
+// buildPremiumChecker menyusun pemeriksa premi unggahan Inbox Auto Claim.
+//
+// Tanpa koneksi basis data (mode memori), alamat layanan pada POOLDATA.GCNM_CONNECT_REST
+// tidak dapat dibaca, sehingga yang dipakai tiruan yang menjawab LUNAS — sama dengan
+// penerbit virtual account. Dengan koneksi, alamatnya dibaca per portal:
+// `APP = <alias portal> AND TYPESERVICE = 'PREMI'` (Work Owner 2026-09-29).
+func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxautoclaim.PremiumChecker {
+	if legacy == nil {
+		logger.Warn("cek premi unggahan memakai jawaban tiruan (selalu lunas)",
+			slog.String("modul", "inboxautoclaim"),
+			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga alamat layanan pada POOLDATA.GCNM_CONNECT_REST tidak dapat dibaca"),
+		)
+		return inboxautoclaimpremium.NewFake()
+	}
+	checker, err := inboxautoclaimpremium.NewPega(inboxautoclaimpremium.Options{Catalog: legacy})
+	if err != nil {
+		// Hanya terjadi bila katalognya nil — sudah disaring di atas.
+		panic(err)
+	}
+	return checker
 }

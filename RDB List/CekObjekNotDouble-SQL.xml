@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHandlerFlow/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceDateProp/>
+<pyLabel>CekObjekNotDouble</pyLabel>
+<pyRelativePath/>
+<pyRuleParamsStreamName/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDescription/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalCreateOperator/>
+<pxSiblingCount/>
+<pxMoveFromSystem/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyClassName>
+<pxHostId>jboss2145</pxHostId>
+<pyCircumstanceType/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM CekObjekNotDouble</pyRuleName>
+<pyLabelOld>CekObjekNotDouble</pyLabelOld>
+<pyMethodStatus/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplate/>
+<pyInterface/>
+<pyWorkKey/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxInstanceLockedBy/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxSaveDateTime>20200804T022803.953 GMT</pxSaveDateTime>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!CEKOBJEKNOTDOUBLE #20200804T015629.787 GMT</pzInsKey>
+<pyCircumstanceDefinition/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pyTemplateInputBox/>
+<pyCircumstanceDate/>
+<pyUsage/>
+<pxCreateDateTime>20200804T015629.787 GMT</pxCreateDateTime>
+<pySaveSQL/>
+<pyStatus/>
+<pyCircumstanceTemplate/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyBaseRule>false</pyBaseRule>
+<pySPRuleSetName>WILLYYAKOBUSTANDRA@</pySPRuleSetName>
+<pyWindowTitle/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyBrowseSQL>SELECT NOPOLIS AS "LSC_ID" FROM POOLDATA.TMP_BATCH_CLAIM_KREDIT WHERE AGENID={inputcsv.SOBNAME} AND NOASURANSI={InputData.CARI20} and (tmp_message is null or tmp_message='Sukses Klaim')</pyBrowseSQL>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyRuleFormStatusTime>20260929T062133.139 GMT</pyRuleFormStatusTime>
+<pyRuleStarts/>
+<pyDeleteSQL/>
+<pxOriginalCreateOpName/>
+<pyDocumentTitle/>
+<pyIsFromManageChangeLP/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM CekObjekNotDouble</pxTabLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMemo>done</pyMemo>
+<pyDeletedObject/>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pxOriginalCreateDateTime/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!CEKOBJEKNOTDOUBLE</pxInsName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCommitDateTime>20200813T090238.000 GMT</pxCommitDateTime>
+<pxUpdateDateTime>20200804T022803.932 GMT</pxUpdateDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!CEKOBJEKNOTDOUBLE #20200403T083015.266 GMT</pzOriginalInstanceKey>
+<pzChecksum>-749314248</pzChecksum>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionPatch>55</pzRuleSetVersionPatch>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyHistoryObject>false</pyHistoryObject>
+<pyShowJavaWindowName>GeneratedJava20260929T062133.173 GMT</pyShowJavaWindowName>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOpenSQL/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!CEKOBJEKNOTDOUBLE #20200804T015629.787 GMT</pzDocumentKey>
+<pyCircumstanceProp/>
+<pyRuleEnds/>
+<pxInstanceLockedKey/>
+<pyRequestType>CekObjekNotDouble</pyRequestType>
+<pySpecialtyComponentData/>
+<pyFormPost/>
+<pyStreamName/>
+<pyJavaStream/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateOpName>WILLY YAKOBUS TANDRA</pxUpdateOpName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateOperator>WILLYYAKOBUSTANDRA</pxUpdateOperator>
+<pxInstanceLockedRuleSet/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!CEKOBJEKNOTDOUBLE</pxInsId>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pxMoveImportDateTime>20200813T090238.467 GMT</pxMoveImportDateTime>
+<pyRuleSetVersion>01-01-55</pyRuleSetVersion>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-55 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!CEKOBJEKNOTDOUBLE #20200804T015629.787 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!CEKOBJEKNOTDOUBLE #20200403T083015.266 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

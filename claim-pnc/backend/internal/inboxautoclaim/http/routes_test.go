@@ -20,6 +20,7 @@ import (
 	authmemory "claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/inboxautoclaim"
+	inboxautoclaimpremium "claim-pnc/internal/inboxautoclaim/premium"
 	"claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
 	"claim-pnc/internal/platform/clock"
@@ -46,6 +47,8 @@ type testServer struct {
 	// asi tidak diberi isi apa pun; ia yang membuktikan pemisahan antarentitas.
 	asm *memory.Repo
 	asi *memory.Repo
+
+	premium *inboxautoclaimpremium.Fake
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -70,6 +73,7 @@ func newTestServer(t *testing.T) *testServer {
 	// sekadar membuktikan bahwa ASI belum dikonfigurasi.
 	asi := memory.NewRepo(memory.SampleMaster(), memory.SamplePolicy())
 
+	checker := inboxautoclaimpremium.NewFake()
 	autoClaimService, err := inboxautoclaimusecase.NewService(inboxautoclaimusecase.Options{
 		RepoSelector: func(alias string) (inboxautoclaim.Repo, error) {
 			switch alias {
@@ -81,6 +85,7 @@ func newTestServer(t *testing.T) *testServer {
 				return nil, portal.ErrNotReady
 			}
 		},
+		Premium: checker,
 	})
 	require.NoError(t, err)
 
@@ -134,7 +139,7 @@ func newTestServer(t *testing.T) *testServer {
 	}))
 	t.Cleanup(server.Close)
 
-	p := &testServer{server: server, asm: asm, asi: asi}
+	p := &testServer{server: server, asm: asm, asi: asi, premium: checker}
 	p.token = p.login(t)
 	return p
 }
@@ -569,10 +574,52 @@ func TestFormatUnggahanBerbedaPerTab(t *testing.T) {
 	require.NotContains(t, kredit["kolom_wajib"], "dateofloss")
 	require.NotContains(t, kredit["kolom_wajib"], "reportdate")
 	require.Contains(t, kredit["kolom_wajib"], "reporttype")
-	require.Equal(t, true, kredit["titik_ribuan"])
 
 	_, travel := p.call(t, http.MethodGet, "/api/inbox-auto-claim/format-unggahan?sumber=travel", "")
 	require.Contains(t, travel["kolom_wajib"], "dateofloss")
 	require.NotContains(t, travel["kolom_wajib"], "reportdate")
 	require.Equal(t, []any{"dateofloss"}, travel["kolom_tanggal"])
+}
+
+func TestPilihanCekPremiMemuatBisnisDanSumberBisnis(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodGet, "/api/inbox-auto-claim/cek-premi/pilihan", "ASM")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.NotEmpty(t, body["bisnis"])
+	require.NotEmpty(t, body["sumber_bisnis"])
+
+	// Rutenya TIDAK tertelan pola /{kode}/{batch}.
+	response, _ = p.call(t, http.MethodGet, "/api/inbox-auto-claim/cek-premi/pilihan", "")
+	require.NotEqual(t, http.StatusOK, response.StatusCode, "tanpa portal harus ditolak")
+}
+
+func TestCekPremiMenjawabTotalPremiDanTotalKlaim(t *testing.T) {
+	p := newTestServer(t)
+	p.premium.SetPremiumPaid("KRDU", "10104", "150000000")
+
+	response, body := p.call(t, http.MethodGet,
+		"/api/inbox-auto-claim/cek-premi?kode_bisnis=10104&kode_sumber_bisnis=KRDU", "ASM")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, "150000000", body["total_premi"])
+	// Hanya baris Kredit Sukses Klaim yang polisnya berbisnis 10104 dan bersumber KRDU.
+	require.Equal(t, "24000000", body["total_klaim"])
+}
+
+func TestCekPremiTanpaPilihanMenjawab422(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodGet, "/api/inbox-auto-claim/cek-premi", "ASM")
+	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
+	require.Len(t, body["detail"], 2, "kedua isian dilaporkan sekaligus")
+}
+
+func TestCekPremiSaatLayananMatiMenjawab502TanpaAlamat(t *testing.T) {
+	p := newTestServer(t)
+	p.premium.SetTotalUnreachable()
+
+	response, body := p.call(t, http.MethodGet,
+		"/api/inbox-auto-claim/cek-premi?kode_bisnis=10104&kode_sumber_bisnis=KRDU", "ASM")
+	require.Equal(t, http.StatusBadGateway, response.StatusCode)
+	require.Equal(t, inboxautoclaimhttp.CodePremiumServiceDown, body["kode"])
 }

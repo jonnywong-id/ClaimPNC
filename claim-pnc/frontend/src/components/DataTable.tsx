@@ -206,7 +206,15 @@ type Props<T> = {
    * Mengembalikan `null` untuk sebuah baris berarti baris itu tidak dapat dibuka —
    * dipakai saat sebagian baris memang tidak punya isi.
    */
+  
   expandedRow?: (row: T) => ReactNode
+   /** Jarak sel dirapatkan pada tampilan meja.
+   *
+   * Opt-in, sama alasannya dengan `showHeaderWhenEmpty`: layar yang sudah ada tidak
+   * berubah. Dipakai grid yang harus muat SATU LAYAR tanpa gulir menyamping di samping
+   * panel lain — Inbox Auto Claim adalah yang pertama (permintaan Work Owner 2026-09-29).
+   */
+  dense?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -310,6 +318,7 @@ export function DataTable<T>({
   pageSize,
   showHeaderWhenEmpty = false,
   expandedRow,
+  dense = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -470,7 +479,8 @@ export function DataTable<T>({
                         : 'none'
                     }
                     className={[
-                      'px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600',
+                      dense ? 'px-3 py-2.5' : 'px-5 py-3',
+                      'text-xs font-semibold uppercase tracking-wide text-slate-600',
                       k.alignRight ? 'text-right' : '',
                     ].join(' ')}
                   >
