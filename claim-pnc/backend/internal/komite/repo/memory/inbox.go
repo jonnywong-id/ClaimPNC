@@ -247,3 +247,19 @@ var (
 	_ komite.DecisionRepo = (*InboxStore)(nil)
 	_ komite.IDGenerator  = IDGenerator{}
 )
+
+// FindTransfer memenuhi seam komite.TransferRepo.
+//
+// Adapter memori TIDAK mengarang rincian transfer. Ia mengembalikan yang kosong, dan itu
+// keadaan yang sah: dari 189 case pada basis data sungguhan, hanya 41 punya baris
+// adjustment. Layar sudah harus menangani keadaan itu dengan benar, dan data contoh yang
+// selalu berisi akan menyembunyikan jalur yang paling sering ditempuh.
+func (s *InboxStore) FindTransfer(context.Context, string) (komite.TransferDetail, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.err != nil {
+		return komite.TransferDetail{}, s.err
+	}
+	return komite.TransferDetail{}, nil
+}

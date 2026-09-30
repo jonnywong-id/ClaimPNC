@@ -21700,7 +21700,6 @@ catatan-pengembangan §83.
 EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
->>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
 
 ## 105. Inbox Banding Harga Salvage: modul tersendiri, empat cacat diperbaiki, satu aturan bernama orang ditiru (2026-09-29)
 
@@ -22073,3 +22072,530 @@ yang menuntut keputusan Work Owner lebih dulu: langkah 19–20 memanggil
 `GCNMSetRecommendationLogin_act` lalu `GCNMCreateOperator` dengan **kata sandi tetap yang
 sama untuk setiap bengkel**, sehingga satu unggahan CSV dapat menerbitkan puluhan akun
 berkata sandi itu.
+
+## 105. Master Recovery punya tab Outstanding; penyaringnya sengaja TIDAK ditebak (2026-09-29)
+
+**Mencabut** keputusan sebelumnya bahwa layar Master Recovery adalah form entri tanpa
+daftar. Keputusan itu berdiri di atas kesimpulan yang keliru: *tidak ada kueri pembaca di
+export, berarti tidak ada daftar*. Export-nya sendiri tidak lengkap (`R-16`), dan grid
+Outstanding terbaca jelas di `Section/OutstandingMasterRecovery-Section.xml:17510` — yang
+hilang adalah rule pemuat halaman `Data_BACTH_RECOVERY`, bukan fiturnya.
+
+**Yang ditetapkan sekarang:**
+
+1. `GET /api/master/recovery` ada, dengan lima kolom yang dibaca dari section:
+   `NAMAPRINCIPAL`, `NILAIKLAIM`, `NILAIRECOVERY`, `PEMBAYARAN`, `SISAKLAIM`.
+2. **Tidak ada penyaring "outstanding".** Klausa WHERE aslinya ada di rule yang hilang dan
+   tidak dapat dibaca siapa pun. Menerjemahkannya menjadi `SISAKLAIM > 0` berarti
+   menyembunyikan baris atas dasar tebakan — dan baris yang hilang diam-diam tidak pernah
+   dikeluhkan siapa pun, sedangkan baris berlebih langsung terlihat dan dapat dipersempit
+   begitu rule-nya tiba. Diminta ke Tim Pega bersama `D-39`.
+3. **`PUT` dan `DELETE` tetap tidak ada**, dan dasarnya BERBEDA: ia dibaca dari ISI
+   `INSERTMASTERRECOVERYKLAIM.prc`, yang hanya mengenal INSERT — bukan dari ketidakhadiran
+   sesuatu di export.
+4. Susunan layar mengikuti Pega: judul, tombol Tambah/Refresh di kanannya, satu tab
+   Outstanding, lalu grid. Entri dibuka lewat Tambah. Satu penyimpangan disengaja: panel
+   di tempat, bukan jendela modal — form ini terlalu panjang untuk modal.
+5. Batas `limit` (baku 10, maksimum 100) ditegakkan di lapisan **usecase**, supaya
+   pemanggil mana pun yang ditulis kemudian tidak dapat menarik seluruh tabel.
+
+## 106. Grid Outstanding dikelompokkan per principal, dan View Document ditambahkan (2026-09-29)
+
+**Melengkapi keputusan 105.** Bentuk daftar yang ditetapkan di sana — satu baris per batch,
+terurut menurun — ternyata bukan bentuk layar lama. Work Owner menunjukkan Pega yang
+berjalan pada hari yang sama.
+
+**Yang ditetapkan:**
+
+1. **Satu baris luar per principal**, dan mengekliknya membuka riwayat seluruh batch
+   principal itu. Angka baris luar diambil dari batch **TERAKHIR**, bukan dijumlahkan —
+   terbukti dari tangkapan layar: baris luar 7.000/100.000/153.000 sama persis dengan baris
+   terakhir, sedangkan jumlah pembayarannya 107.000.
+2. **Riwayat terurut dari yang paling lama** (`INSERTDATE` menaik, `BATCH` sebagai
+   pemutus). Urutan menurun yang sempat saya pakai adalah pilihan saya sendiri, bukan
+   perilaku layar lama.
+3. **Paginasi memotong PRINCIPAL, bukan baris.** Memotong per baris memenggal riwayat satu
+   principal di tengah tanpa satu pun tanda bahwa ada yang terpotong.
+4. **Dikelompokkan menurut NAMA**, bukan `CLIENTID`, karena namanyalah yang ditampilkan
+   grid luar. Bila terbukti dua principal dapat bernama sama, kuncinya harus pindah.
+5. **`GET /api/master/recovery/bukti-bayar/{id}`** melayani tombol View Document. Isinya
+   dialirkan **mentah** dan `inline` — bukan base64 lewat `pooldata.base64encode` seperti
+   jalur lama, yang melanggar `D-02` dan tidak diperlukan.
+6. **Dua kegagalan dokumen dibedakan**: `bukti_bayar_tidak_ditemukan` (baris tidak ada)
+   versus `bukti_bayar_di_penyimpanan_lain` (baris ada, isinya di penyimpanan luar per
+   `D-16`). Menyamakannya membuat petugas mencari kesalahan di tempat yang salah.
+7. **`DataTable` mendapat prop `expandedRow`** — opsional, mati secara baku, sehingga
+   sepuluh layar master yang sudah selesai tidak berubah. Pola yang sama dengan `pageSize`
+   dan `showHeaderWhenEmpty`.
+
+**Catatan penting.** Bentuk ini **tidak dapat disimpulkan dari export**: `pyEnableGrouping`
+dan `pyRDLShowDetails` keduanya `false`, sehingga pengelompokan bukan bawaan grid — ia
+dikerjakan rule pemuat halaman `Data_BACTH_RECOVERY` yang hilang (`R-16`). Ia dibaca dari
+layar yang berjalan, dan itu dicatat supaya siapa pun yang kelak membandingkannya dengan
+export tidak menyimpulkan bahwa bentuk ini dikarang.
+
+## 107. View Document membuka daftar dokumen pendukung; berkas tidak aman diunduh, bukan ditampilkan (2026-09-29)
+
+**Mengoreksi keputusan 106 butir 5.** Di sana View Document ditetapkan mengalirkan berkas
+`inline`. Keduanya salah: bentuknya bukan unduhan, dan `inline` untuk setiap jenis adalah
+celah keamanan.
+
+**Yang ditetapkan:**
+
+1. **View Document membuka modal "View Dokument Pendukung"**, berisi tabel berkolom
+   **Input Nama** dan **Tanggal**, dan menulis **"Data Tidak Ada"** saat kosong — mengikuti
+   layar Pega yang berjalan. Berkasnya dibuka dari dalam daftar itu, bukan langsung.
+2. Kedua kolomnya dipetakan ke `INPUTOPERATOR` dan `INPUTDATE` milik
+   `POOLDATA.DATA_ATTACHFILE`, diambil lewat **`LEFT JOIN`** pada kueri daftar. LEFT,
+   karena batch tanpa lampiran wajib tetap muncul.
+3. **Tombol tampil di setiap batch**, termasuk yang tanpa lampiran — mencabut keputusan
+   sebelumnya yang menyembunyikannya. Menyembunyikannya membuat petugas tidak punya cara
+   memastikan sebuah batch memang belum berlampiran.
+4. **`DOKUMENID` yang menunjuk baris tidak ada diperlakukan sebagai "belum ada lampiran"**,
+   bukan sebagai tombol yang menjanjikan berkas yang tidak dapat dibuka.
+5. **`inline` hanya untuk daftar jenis yang aman ditampilkan** — PDF, gambar raster,
+   `text/plain`. Selebihnya `attachment`. `image/svg+xml` **sengaja tidak masuk**: SVG
+   dapat memuat `<script>` yang berjalan saat dibuka langsung.
+6. **`X-Content-Type-Options: nosniff`** pada setiap jawaban berkas.
+7. **Sisi layar membaca `Content-Disposition`**, tidak menebak ulang jenisnya — supaya
+   server dan layar tidak dapat berbeda pendapat.
+
+**Kenapa butir 5–7 bukan soal kerapian.** Jenis isi berasal dari kolom `ATTACHMIMETYPE` di
+basis data, bukan dari kode. Satu baris bernilai `text/html` akan dijalankan peramban
+sebagai halaman **di origin aplikasi ini**, dan skrip di dalamnya membaca sesi pengguna
+yang membukanya. Tabel `DATA_ATTACHFILE` dipakai bersama seluruh modul, dan isinya dapat
+berasal dari unggahan pengguna.
+
+**Batas yang disadari:** tautan batch ke lampiran hanyalah satu kolom `DOKUMENID`, sehingga
+daftar itu berisi paling banyak satu baris hari ini. Bentuk daftar tetap dipakai supaya
+sama dengan layar lama.
+
+**Catatan.** Rule yang membangun modal ini **tidak ada di export** — teks `View Dokument`
+nol kemunculan di seluruh berkas (`R-16`). Bentuknya dibaca dari layar yang berjalan.
+=======
+
+## 70. Penyaring pemilik Inbox Komite dapat dimatikan, hanya di pengembangan (2026-09-29)
+
+**Permintaan Work Owner, 2026-09-29:** munculkan data Inbox Outstanding tanpa memakai penyaring
+operator dulu.
+
+### Persoalannya, dan kenapa ia bukan kerusakan
+
+`InboxRegisterKomite_RD` menyaring `pxAssignedOperatorID = Param.assign`. Penyaring itu benar, dan
+`§69` menirunya apa adanya. Yang belum ada adalah pemetaan identitas HCC/HCQ ke `OPERATOR_ID`
+(`ADR-0024`), sehingga login pengembang tidak cocok dengan operator mana pun dan layarnya kosong
+untuk semua orang — tanpa satu pun galat yang menjelaskannya.
+
+### Yang dipertimbangkan
+
+| Pilihan | Kenapa tidak / ya |
+|---|---|
+| Hapus penyaringnya begitu saja | Tidak ada yang mengingatkan mengembalikannya. Ia akan sampai ke staging sebagai kebocoran antar-pengguna |
+| Pinjam identitas operator nyata, seperti `REAS_MITRA_PENGEMBANGAN` | Menampilkan inbox SATU orang. Work Owner ingin melihat isinya, dan meminjam satu identitas tidak menjawab "apa saja yang ada di sana" |
+| Penanda pada parameter kueri | Siapa pun yang punya sesi dapat meminta antrean seluruh perusahaan. Ditolak |
+| **Penanda konfigurasi, khusus `development`** | **Dipilih.** Mengikuti preseden `REAS_LOGIN_PENGEMBANGAN`, tetapi dijaga lebih keras karena akibatnya lebih luas |
+
+### Keputusannya
+
+`KOMITE_TANPA_PENYARING_OPERATOR` mematikan penyaring pemilik. Kuerinya memakai
+`(:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)` — pola yang sama dengan penyaring pencarian dan
+tanggal di berkas yang sama, bukan bentuk khusus dan bukan kueri kembar.
+
+**Biayanya diukur.** Keempat bentuk — `= :1` polos, opsional dengan nilai, opsional dengan NULL, dan
+tanpa predikat — seluruhnya **24–28 ms** pada basis data ASM. Tidak ada yang dikorbankan, dan
+karenanya tidak ada alasan memelihara dua kueri kembar.
+
+### Empat penjagaan yang mengikat
+
+1. **`AllOperators` adalah medan tersendiri pada `InboxFilter`.** Operator kosong tetap berarti nol
+   baris. Ini pemisahan yang menentukan: operator kosong adalah **kegagalan pembacaan identitas**,
+   dan menyatukannya dengan "semua" berarti setiap kegagalan identitas berubah menjadi "tampilkan
+   antrean komite seluruh perusahaan" — tepat kebalikan dari kegagalan yang aman.
+
+2. **Konfigurasi MENOLAK menyalakannya di luar `APP_ENV=development`.** Aplikasi tidak mau start,
+   bukan sekadar memperingatkan. Diuji: `APP_ENV=staging` menghasilkan penolakan bernama.
+
+3. **Peringatan dicetak pada setiap start**, bukan sekali saat diisi. Isian yang mematikan penjagaan
+   mudah tertinggal berminggu-minggu di berkas `.env` seseorang.
+
+4. **Ia TIDAK dapat dinyalakan lewat parameter kueri.** Penanda yang dapat dikirim klien berarti
+   siapa pun yang punya sesi dapat meminta antrean seluruh perusahaan.
+
+Ditambah satu hal yang bukan penjagaan teknis melainkan kejujuran layar: respons membawa
+`penyaring_pemilik_aktif`, dan layar menampilkan **"Daftar ini BUKAN inbox Anda"** di paling atas
+saat ia mati.
+
+### Kenapa pemberitahuan di layar itu bagian yang terpenting
+
+Yang berubah ketika penyaringnya mati bukan sekadar isi tabel, melainkan **arti seluruh layar**:
+yang tergambar bukan lagi pekerjaan pengguna. Daftar pekerjaan orang lain yang tampak seperti daftar
+pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan pada layar yang
+menyetujui uang, itu kelas kesalahan yang paling mahal.
+
+Uji `tidak muncul ketika penyaringnya aktif` menjaga sisi sebaliknya: pemberitahuan yang muncul juga
+pada keadaan normal akan diabaikan orang, dan pemberitahuan yang diabaikan sama saja dengan tidak
+ada.
+
+### Konsekuensi yang diterima
+
+1. **Selama menyala, layar memperlihatkan nama tertanggung dan nomor polis milik pekerjaan orang
+   lain.** Itulah sebabnya ia dikunci ke `development`, tempat basis datanya adalah salinan
+   pengembangan.
+2. **Ia harus dimatikan begitu pemetaan `OPERATOR_ID` tersedia.** Selama ia menyala, layar ini tidak
+   dapat dipakai menguji bahwa penyaring pemiliknya bekerja — dan penyaring itulah yang menjaga
+   pekerjaan seseorang tetap miliknya.
+
+### Pertanyaan terbuka
+
+**Pemetaan identitas HCC/HCQ ke `OPERATOR_ID` masih belum ada** (`ADR-0024`). Isian ini menunda
+akibatnya, tidak menyelesaikannya. Selama ia belum ada, tidak seorang pun dapat memakai Inbox Komite
+sebagai inbox — hanya sebagai daftar.
+
+## 71. Inbox Komite menjadi baca-saja; nomor case membuka rincian (2026-09-29)
+
+**Keputusan Work Owner, 2026-09-29:** tombol Putuskan dihapus, dan menekan nomor case/klaim
+menjalankan `SetAssignmentKomite` + Open Assignment + flow action `ViewTransferDtl`.
+
+### Apa yang dipetakan dari Pega
+
+| Pega | Di sini |
+|---|---|
+| `SetAssignmentKomite` langkah 1–2: rangkai `"ASSIGN-WORKLIST " + inskey + "!Komite_Flow"`, lalu `OBJ-OPEN-BY-HANDLE` | satu permintaan `GET /api/komite/inbox/{nomor}` |
+| Flow action `ViewTransferDtl` → section `ShowTransfer` | rute `/komite/inbox/:nomor`, komponen `KomiteCasePage` |
+| Local action `KomitePostAct` (keputusan) | **tidak dibawa** — tombolnya dihapus |
+
+### Tiga hal yang diputuskan, beserta alasannya
+
+**1. Kunci assignment Pega TIDAK dibawa ke alamat halaman.** Yang dipakai hanya nomor case.
+Merangkai `"ASSIGN-WORKLIST " + inskey + "!Komite_Flow"` di klien berarti membawa bentuk kunci
+internal Pega ke dalam alamat yang dilihat dan dibagikan orang — persis kebocoran yang `D-22`
+larang. Server tidak membutuhkannya.
+
+**2. "Open Assignment" menjadi pemeriksaan kepemilikan, bukan penguncian.** `OBJ-OPEN-BY-HANDLE`
+di Pega membuka **sekaligus mengunci** objek kerjanya. Di sini tidak ada yang dikunci, dan itu
+disengaja: layar ini tidak menulis apa pun, dan kunci yang tidak pernah dilepas adalah cacat yang
+jauh lebih mahal daripada yang dicegahnya. Yang tersisa dari "membuka assignment" adalah
+pertanyaannya yang sebenarnya — apakah kasus ini milik pemanggil — dan itu sudah dijawab
+`BelongsTo`.
+
+**3. Rute tersendiri, bukan panel di dalam daftar.** Di Pega pun ia perpindahan yang sesungguhnya.
+Rute memberi tiga hal yang panel tidak dapat berikan: alamat yang dapat dibagikan, tombol Kembali
+peramban yang berperilaku benar, dan "buka di tab baru" pada baris tabel.
+
+### Konsistensi kepemilikan antara daftar dan rincian
+
+`InboxService.Case` kini menerima `allOperators`, sama dengan daftarnya.
+
+Tanpa itu, keadaan §71.10 menghasilkan layar yang **isinya dapat dilihat tetapi tidak satu pun
+barisnya dapat dibuka**: daftar menampilkan kasus milik orang lain, dan setiap klik dijawab 404.
+Kegagalan seperti itu tidak muncul sebagai galat konfigurasi — ia muncul sebagai layar yang tampak
+rusak.
+
+**`Decide` TIDAK ikut.** Ia menyebut `false` secara tegas, bukan meneruskan penanda dari
+pemanggilnya. Melihat pekerjaan orang lain boleh dilonggarkan untuk pengembangan; menyetujui uangnya
+tidak, dan pembedaan itu ditulis sebagai kode — bukan sebagai kehati-hatian.
+
+### Yang TIDAK dibangun, dan kenapa itu dinyatakan di layar
+
+`ShowTransfer` merakit empat sub-section. Tiga **tidak ada di export** (`R-16`):
+`ShowTransferDetail`, `ShowTransferDetailHE`, `UploadDocumentKomite`. Yang keempat,
+`ViewPolicyDetail`, ada tetapi isinya milik modul `B-1`.
+
+`ShowTransferDetail` adalah tabel rincian transfernya — bagian yang paling ingin dilihat orang.
+Mengarangnya berarti menaruh angka yang tidak dapat dibandingkan dengan apa pun pada layar yang
+menyetujui uang.
+
+Keempatnya karena itu **disebut satu per satu di layar**, lengkap dengan nama rule dan sebabnya.
+Menyebut namanya yang membuat kalimat itu dapat ditindaklanjuti: yang meminta ke Tim Pega tahu
+persis apa yang diminta, dan yang membacanya kelak tahu kapan bagian itu boleh dihapus.
+
+### `DecisionPanel.tsx` dipertahankan, tidak dihapus
+
+Konsisten dengan `§68`, yang menetapkan jalur tulis disimpan dan hanya dinonaktifkan. Berkasnya
+diberi catatan di kepalanya bahwa ia **tidak dipasang di mana pun**, beserta ketiga langkah yang
+dibutuhkan untuk menghidupkannya. Komponen tanpa pemakai yang tidak menjelaskan dirinya akan
+membuat pembaca berikutnya mencari pemakaian yang tidak ada.
+
+### Konsekuensi yang diterima
+
+1. **Inbox Komite kini baca-saja seluruhnya.** Tidak ada satu pun jalan di antarmuka untuk mencatat
+   keputusan. Selama masa paralel, keputusan tetap diambil di Pega dan layar ini menampilkannya dari
+   `T_CLAIM_KOMITE_LIST.STATUSAPPROVE`.
+2. **Layar rinciannya belum menampilkan rincian transfer.** Yang ada adalah identitas kasus dan
+   keputusan Pega. Itu lebih sedikit daripada `ShowTransfer`, dan perbedaannya dinyatakan.
+
+### Pertanyaan terbuka
+
+1. **Judul "CLAIM COMMITTEE - SURVEY / ADJUSTMENT / …" belum menampilkan jenisnya.** Jenis komite
+   diturunkan dari `TYPEKOMITE` + `PAYMENTTYPE`, dan keduanya dibuang pada `§69` atas keputusan
+   mengikuti RD apa adanya. Menghidupkannya kembali khusus untuk layar rincian adalah keputusan
+   tersendiri; aturannya masih dapat dibangun ulang dari `ShowKomiteTerimaTolakNonMBU`.
+2. **`ShowTransferDetail` dan `UploadDocumentKomite` perlu diminta ke Tim Pega** — keduanya masuk
+   daftar `R-16` yang sudah ada, tetapi belum pernah disebut namanya dalam permintaan.
+
+## 72. Rincian transfer dibaca dari POOLDATA, bukan dari tempat Pega membacanya (2026-09-29)
+
+**Latar:** Work Owner menambahkan `ShowTransferDetail`, `ShowTransferDetailHE`, dan
+`UploadDocumentKomite` ke export, dan menetapkan `ViewPolicyDetail` dipakai.
+
+### Temuan yang memaksa keputusan ini
+
+`ShowTransferDetail` (4,5 MB, 119 properti) membaca **clipboard** objek kerja, yang
+`OBJ-OPEN-BY-HANDLE` muat dari **blob Pega**.
+
+Diverifikasi ke `ALL_TAB_COLUMNS`: dari 33 properti yang diuji sebagai nama kolom
+`PC_ASM_FW_GCNMFW_WORK`, hanya **6** yang ada. Dua puluh tujuh sisanya — termasuk **seluruh**
+nilai uangnya — tidak ada di sana.
+
+Blob tidak dapat dibaca SQL, dan membacanya bukan sesuatu yang layak dicoba. Jadi rinciannya
+**tidak dapat disalin** dari tempat Pega membacanya; ia harus diambil dari tabel POOLDATA
+yang memuat data yang sama.
+
+### Keputusannya
+
+Rincian dibaca dari dua tabel:
+
+| Tabel | Isi |
+|---|---|
+| `POOLDATA.T_CLAIM_ADJUSTMENT` | nilai uang dan keadaan akseptasinya, dikunci `CASEIDKOMITE` |
+| `POOLDATA.T_CLAIM_KOMITE_LIST` | keputusan komite menurut Pega, dikunci `KOMITE_ID` |
+
+### Kunci: `CASEIDKOMITE`, dan perbedaannya DIUKUR
+
+`T_CLAIM_ADJUSTMENT` punya `CASEIDKOMITE` **dan** `CLAIMID`. Diukur pada dua belas case yang
+punya keduanya:
+
+| Kunci | Baris |
+|---|---|
+| `CASEIDKOMITE` | **1** pada dua belas-duanya |
+| `CLAIMID` | **4–8** pada dua belas-duanya |
+
+Tidak satu pun sama. `CLAIMID` mengembalikan seluruh baris adjustment milik **klaimnya** —
+termasuk milik case komite lain, objek lain, coverage lain.
+
+Memakainya tidak menimbulkan galat apa pun; ia hanya menaruh empat sampai delapan nilai uang
+yang bukan urusan case ini pada layar tempat orang menyetujui uang. Kegagalan seperti itu
+tidak terlihat sebagai kegagalan, dan karena itu `TestKueriTransferMemakaiKunciCaseKomite`
+menegakkan pilihannya — bukan komentar.
+
+### Empat hal lain yang mengikat
+
+1. **`transfer_committee` diagregasi.** `T_CLAIM_KOMITE_LIST` berisi 39.067.250 baris dan
+   `KOMITE_ID` tidak dijamin unik. Dua baris untuk satu case akan menggagalkan `QueryRow` —
+   pada layar yang baru saja dibuka seseorang. `COUNT(1)` ikut dibaca supaya "tidak ada
+   baris" dapat dibedakan dari "ada tetapi kosong".
+
+2. **Kepemilikan diperiksa SEBELUM nilai uang dibaca.** `Detail()` memanggil `Case()` lebih
+   dulu. Membalik urutannya berarti membaca — dan berpotensi membocorkan lewat pesan galat —
+   angka milik pekerjaan orang lain sebelum tahu apakah pemanggil berhak melihatnya.
+
+3. **Seam `TransferRepo` terpisah dari `InboxRepo`.** Pemisahannya mengikuti kapan keduanya
+   dibaca: daftar setiap kali layar dibuka, rincian hanya ketika satu case ditekan.
+   Menyatukannya memaksa setiap pemakai daftar menyediakan bahan yang tidak pernah ia pakai.
+
+4. **Nilai uang gagal KERAS, keterangan tidak.** Keterangan yang tidak terbaca cukup menjadi
+   teks kosong; nilai uang menggagalkan barisnya. Nol yang seharusnya angka besar tidak
+   terlihat keliru, dan ia yang dibaca orang saat memutuskan.
+
+### Nilai uang kembali — dan itu bukan pertentangan dengan §69
+
+§69 membuang nilai uang dari **daftar** karena `InboxRegisterKomite_RD` tidak memuatnya.
+`ShowTransferDetail` memuatnya. Masing-masing layar mengikuti sumbernya, dan itulah sebabnya
+nilai uang muncul setelah sebuah case ditekan.
+
+`CommitteeKindOf` dihidupkan kembali dengan alasan yang sama: daftar tidak memerlukannya,
+rincian memerlukannya.
+
+### Ketiadaan ditampilkan sebagai keterangan, bukan sebagai Rp 0
+
+Diukur atas 60 case pertama dari daftar sungguhan: **43 punya rincian, 17 kosong**.
+
+Case tanpa rincian bukan cacat — baris adjustment lahir pada tahap tertentu, dan komite jenis
+Survey maupun Liable Klaim memang tidak memilikinya. Layar menyatakannya dengan kalimat, dan
+sebuah uji menjaga `Rp 0` tidak muncul di sana.
+
+### Pertanyaan terbuka
+
+1. **Kunci `PC_LINK_ATTACHMENT` ke case komite belum ditemukan.** `PXINSNAME = PZINSKEY`
+   menghasilkan nol dari 131.027 baris. `UploadDocumentKomite` karena itu belum dibangun,
+   dan dokumen juga milik modul `S-1`.
+2. **Survei belum dibangun.** Kuncinya ditemukan — `T_SURVEYORLIST.PNCCASEID = PNCCASEID`,
+   8 dari 189 — tetapi menampilkannya menuntut keputusan tentang objek mana yang ditampilkan
+   ketika sebuah klaim punya banyak objek.
+3. **`ShowTransferDetailHE`** belum dibangun; lini Heavy Equipment belum ditangani modul ini.
+4. **`ViewPolicyDetail`** belum dibangun; rincian polis milik modul `B-1`, dan sebagian besar
+   medannya pun bukan kolom pada tabel kerja.
+
+## 73. Judul rincian komite dirakit di server, dari `TYPEKOMITE` (2026-09-29)
+
+**Latar:** penelusuran `Section/ShowTransfer` menunjukkan ia bukan bungkus melainkan penentu
+**jenis komite** — tujuh sel label bersyarat atas `.TransferType` dan `.Adjustment.PaymentType`.
+
+### Keputusan 1 — judul dirakit di Go, bukan di React
+
+`TransferDetail.Judul()` mengembalikan teks jadi; layar menampilkannya apa adanya.
+
+**Alasannya bukan selera lapisan.** Aturannya enam syarat, dan salah satunya —
+`!IsTravel` — **menyembunyikan** akhiran. Aturan yang menyembunyikan sesuatu adalah aturan yang
+paling mahal bila disalin ke tempat kedua: yang tertinggal tidak menampilkan yang salah, ia
+menampilkan sesuatu yang **seharusnya tidak ada**, dan itu tidak terlihat sebagai cacat.
+
+### Keputusan 2 — `TYPEKOMITE` menggantikan `.TransferType`
+
+`.TransferType` hidup di clipboard Pega, jadi tidak terbaca SQL. Penggantinya
+`T_CLAIM_KOMITE_LIST.TYPEKOMITE`, dan itu **bukan tebakan**:
+
+| Bukti | Isi |
+|---|---|
+| `InsertUpdateKomiteList` | menulis kolom itu dari `TempKomite.TransferType` |
+| `ShowKomiteTerimaTolakNonMBU` | membacanya dengan domain kode yang sama (1..5) |
+| diukur | **tidak satu pun case punya dua `TYPEKOMITE` berbeda**, jadi `MAX` tidak memilih apa pun |
+
+### Keputusan 3 — akhiran DIGABUNG, bukan dipilih satu
+
+Di Pega ketujuh label adalah sel berdampingan dengan syaratnya masing-masing. Kode `3` dengan
+pembayaran `6` memenuhi dua syarat sekaligus, dan keduanya tampil.
+
+Memilih satu akan lebih rapi dan **lebih salah**. `P-5` menuntut perilakunya, bukan bentuk yang
+kita sukai.
+
+### Keputusan 4 — kode mentah disimpan di samping hasil penurunannya
+
+`CommitteeRecord` kini membawa `TransferTypeCode` dan `PaymentTypeCode` berdampingan dengan
+`Kind` yang diturunkan darinya. Itu tampak berlebihan sampai kode `3` diperiksa:
+
+| Kode | `ShowTransfer` | `ShowKomiteTerimaTolakNonMBU` |
+|---|---|---|
+| `3` | **REJECT** | **Ex Gratia** |
+
+Dua rule, dua caption, satu kode — dan **keduanya benar**. Membuang kode mentahnya memaksa
+salah satu menebak dari hasil penurunan yang lain, dan tebakan itu akan salah tepat pada kode
+ini. `TestKodeMentahDanTipeKomiteBolehBerbeda` menjaganya.
+
+### Keputusan 5 — `transfer_case` menyentuh DATAPEGA, dan batasnya digeser secara sadar
+
+Uji `TestKueriTransferHanyaMenyentuhDuaTabelSumber` semula melarang seluruh kueri rincian
+menyentuh `DATAPEGA.`. Larangan itu **diganti**, bukan dilonggarkan:
+
+> yang dijaga bukan *"jangan sentuh DATAPEGA"*, melainkan *"nilai uang hanya boleh datang dari
+> POOLDATA"*.
+
+`transfer_case` tidak membaca satu pun nilai uang — hanya `GROUPPANEL_1` dan `BUSINESSTYPE`,
+yang memang hanya ada di baris kerja. `TestKueriKonteksCaseHanyaUntukJudul` menjaga batas
+barunya supaya ia tidak perlahan menjadi jalan pintas mengambil apa pun dari sana.
+
+**Bentuknya ditentukan Oracle.** Penyatuan ke `transfer_committee` sebagai subkueri skalar
+ditolak dengan `ORA-00937: not a single-group group function`. Pemisahan itu sekaligus membuat
+kedua medan judul tetap terbaca pada **218 dari 610** case yang tidak punya baris komite.
+
+### Keputusan 6 — "tidak dapat dinilai" dinyatakan, bukan disamakan dengan "tidak"
+
+`IsHE` membandingkan `BUSINESSTYPE`, dan kolom itu terisi **0 dari 610** case komite. Kolomnya
+ada; Pega hanya tidak menulisinya untuk kelas `Work-Komite`.
+
+Layar karena itu **tidak** menyatakan "case ini bukan HE". Ia menyatakan cabang itu belum dapat
+dinilai sama sekali, lewat `he_dapat_dinilai`. Keduanya berbeda, dan hanya satu yang jujur.
+
+Medannya tetap dibaca meski selalu kosong, supaya cabang HE menjadi benar dengan sendirinya
+bila kolom itu kelak terisi — tanpa perubahan kode.
+
+### Yang SENGAJA tidak dihidupkan kembali
+
+`ShowTransfer` memuat form keputusan lengkap: `.AcceptStatus`, `.RadApprove`, `.RejectedCode`,
+`.Comment`, dan konfirmasi *"Apakah anda yakin untuk akseptasi ini?"*. Work Owner mencabut
+tombol keputusan pada §71.11, dan penelusuran ini **tidak** dipakai sebagai alasan
+mengembalikannya.
+
+Satu di antaranya bahkan mati di Pega sendiri: sel `.AcceptStatus` bersyarat `1==2`.
+
+### Pertanyaan terbuka
+
+1. **Blok surveyor tidak dapat dibangun dari case komite.** Kelima kolomnya
+   (`SURVEYORNAME_1`, `SURVEYORNAMEMARINE_1`, `SURVEYORTYPE_1`, `SURVEYDATE_1`,
+   `REQUESTSURVEY_1`) ada tetapi terisi **0 dari 610** — datanya milik case klaim. Jalur yang
+   tersisa `T_SURVEYORLIST.PNCCASEID`, **8 dari 189**, dan itu menuntut keputusan tentang objek
+   mana yang ditampilkan ketika satu klaim punya banyak objek.
+2. **`IsMarineHull` tidak ada di export** (`R-16`), sehingga varian surveyor Marine tidak dapat
+   dibedakan meski datanya kelak tersedia.
+3. **`ShowTransferDetailHE`, `UploadDocumentKomite`, `ViewPolicyDetail`** tetap seperti §72.
+
+## 74. Kunci klaim dipakai BER-PREFIX, dan ketiadaan uang dipisahkan dari ketiadaan data (2026-09-29)
+
+**Latar:** layar rincian komite terbuka tanpa galat tetapi kosong pada **148 dari 189** case.
+
+### Keputusan 1 — kunci join memakai `PNCCASEID` apa adanya
+
+`T_CLAIM_PNC`, `T_CLAIM_OBJECTLIST`, dan `T_CLAIM_OBJECTCOVERAGE` menyimpan `CLAIMID`
+**ber-prefix** `ASM-FW-GCNMFW-WORK `. Menjoin dengan nomor yang sudah dipangkas menghasilkan
+**nol baris pada seluruh 189 case**, tanpa satu pun galat.
+
+Pemangkasan prefiksnya karena itu **dipindah ke lapisan domain**, setelah join selesai —
+bukan dihapus. `D-22` tetap dipegang: prefix tidak pernah sampai ke layar.
+
+**Kenapa ini berbahaya dan pantas dijaga uji.** Kegagalannya tidak terlihat sebagai
+kegagalan. Tidak ada galat, tidak ada peringatan, hanya layar yang tampak "memang belum ada
+datanya" — dan itu bacaan yang masuk akal, sehingga tidak ada yang memeriksanya.
+`TestKunciKlaimDiambilBerPrefix` melarang pemangkasan itu kembali ke SQL.
+
+Ini utang teknis 4.1 pada Steering, dan ia menggigit persis seperti yang diperingatkan:
+data bisnis tidak dapat dibaca tanpa mengetahui konvensi internal Pega.
+
+### Keputusan 2 — blok `.Komite.*` dibaca dari `T_CLAIM_OBJECTCOVERAGE`
+
+Properti yang di Pega berbunyi `.Komite.ExtentOfLoss`,
+`.Komite.CircumtansesCouseOfLoss`, dan `.Komite.Remarks` **bukan** milik tabel kerja dan
+**bukan** milik `T_CLAIM_KOMITE_LIST`. Keduanya sudah diperiksa kolom demi kolom.
+
+Dua dugaan lain dicoba dan gugur, dicatat supaya tidak diulang:
+
+| Dugaan | Hasil |
+|---|---|
+| `DATAPEGA.PR_ASM_CLH_DATA_KOMITE` | ada, tetapi bukan sumbernya |
+| `POOLDATA.TC_PNC_KOMITE` punya `TRANSFERTYPE` dan `ACCEPTSTATUS` | **tabel buatan proyek ini sendiri** — kolom audit berbahasa Indonesia, isi 1 baris |
+
+### Keputusan 3 — `kosong` dipecah menjadi `kosong` dan `nilai_uang_kosong`
+
+Satu penanda mengatur seluruh blok, sehingga case yang punya klaim lengkap tetapi belum
+punya baris adjustment menyembunyikan **semuanya**. Itu **148 dari 189** case — mayoritas,
+bukan kasus tepi.
+
+Sekarang yang dinyatakan kosong hanya angkanya. Klaim dan analisisnya tetap tergambar.
+
+**Keduanya tetap dikirim sebagai kesimpulan server**, bukan disimpulkan layar dari senarai
+yang panjangnya nol: aturannya satu, dan tempatnya satu.
+
+### Keputusan 4 — coverage digambar seluruhnya, tanpa paginasi
+
+Diukur: **1 sampai 3 baris per case, rerata 1,4**, tidak satu pun melampaui tiga. Memberi
+`FETCH NEXT` hanya akan menyembunyikan baris ketiga tanpa alasan, dan uji melarangnya.
+
+Baris bertanda `DIHAPUS_PADA` dibuang — ia penanda soft delete pada tabel warisan itu, dan
+menampilkan coverage yang sudah dicabut dari klaimnya pada layar persetujuan uang adalah
+kesalahan yang tidak terlihat.
+
+### Keputusan 5 — blok analisis hanya digambar bila ADA isinya
+
+Dari 79 baris coverage, hanya **21** punya `EXTENTOFLOSS` dan **11** punya
+`CURICUMOFLOSS`/`REMARKS`; `LEGALLIABILITY`, `DIAGNOSE`, `INITIALNAME`, dan
+`TANGGALCOMITEE` terisi **nol**.
+
+`CoverageAnalysis.Filled()` menjadi kesimpulan server. Judul blok yang di bawahnya kosong
+lebih buruk daripada tidak ada blok.
+
+Keempat kolom yang selalu kosong **tetap dibaca**. Biayanya nol, dan ia membuat layar benar
+dengan sendirinya bila kolomnya kelak terisi — sementara menghapusnya berarti menebak bahwa
+ia tidak akan pernah terisi.
+
+### Nilai uang: TSI gagal keras, keterangan tidak
+
+`SUMTSI` diperlakukan seperti nilai uang lainnya (§72): ia menggagalkan barisnya bila tidak
+terbaca. Ia dibandingkan terhadap nilai akseptasi oleh orang yang sedang memutuskan, dan
+nol yang seharusnya satu setengah miliar tidak terlihat keliru.
+
+### Pertanyaan terbuka
+
+1. **Judul masih telanjang pada mayoritas case.** `TYPEKOMITE` terisi hanya **52 dari 189**;
+   `.TransferType` yang sesungguhnya hidup di blob Pega. Yang tampil sekarang benar menurut
+   data yang ada, tetapi tidak selengkap layar lama.
+2. **Blok surveyor, `ShowTransferDetailHE`, `UploadDocumentKomite`, `ViewPolicyDetail`**
+   tetap seperti §72 dan §73.

@@ -43,7 +43,27 @@
       "Bash(gofmt -w internal/komite/inbox_test.go)",
       "Bash(gofmt -w internal/komite/usecase/inbox_test.go internal/komite/http/inbox_routes_test.go)",
       "Bash(gofmt -w internal/komite/http/inbox_routes_test.go)",
-      "Bash(grep -A 30 \"tidak menampilkan nilai uang apa pun$\")"
+      "Bash(grep -A 30 \"tidak menampilkan nilai uang apa pun$\")",
+      "Bash(gofmt -w cmd/claimpnc/main.go)",
+      "Bash(APP_ENV=staging timeout 30 ./claimpnc.exe)",
+      "Bash(gofmt -w internal/komite/usecase/inbox.go)",
+      "Bash(gofmt -l internal/komite/http/inbox_routes_test.go internal/komite/usecase/inbox_test.go)",
+      "Bash(gofmt -w internal/komite/http/inbox_routes_test.go internal/komite/usecase/inbox_test.go)",
+      "Bash(PENYIMPANAN=oracle timeout 600 /tmp/cp3.exe -periksa)",
+      "Bash(sed -n '/CommitteeKindOf/,/^}/p' internal/komite/transfer.go)",
+      "Bash(sed -n '/func paymentKind/,/^}/p' internal/komite/transfer.go)",
+      "Bash(gofmt -w internal/komite/transfer_test.go)",
+      "Bash(gofmt -w internal/komite/repo/sqlstore/transfer.go)",
+      "Bash(git -c core.safecrlf=false diff --numstat internal/komite/)",
+      "Bash(grep -nB2 -A8 -i \"errors\" \"C:/Users/User/AppData/Local/Temp/claude/c--Users-User-Documents-Migrasi-Pega-Ke-Golang-ClaimPNC/a51ab866-fe7c-4480-aaa7-3346d7011ced/tasks/btwel8t3s.output\")",
+      "Bash(cat __TRACKED_VAR__/catatan7113.md)",
+      "Bash(cat __TRACKED_VAR__/keputusan73.md)",
+      "Bash(cat __TRACKED_VAR__/skill7.md)",
+      "Bash(./bin/claimpnc.exe -periksa)",
+      "Bash(timeout 120 ./bin/claimpnc.exe -periksa)",
+      "Bash(cat __TRACKED_VAR__/catatan7114.md)",
+      "Bash(cat __TRACKED_VAR__/keputusan74.md)",
+      "Bash(cat __TRACKED_VAR__/skill8.md)"
     ],
     "additionalDirectories": [
       "\\tmp"

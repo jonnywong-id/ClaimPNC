@@ -92,6 +92,7 @@ type Config struct {
 	Session         Session
 	HCQ             HCQ
 	Cashier         Cashier
+	VirtualAccount  VirtualAccount
 	SMTP            SMTP
 	DocumentStorage DocumentStorage
 
@@ -155,6 +156,34 @@ type Config struct {
 	// adalah satu-satunya kontrol pengimbang yang tersisa (`D-59`), sehingga memalsukan
 	// pelakunya adalah hal terakhir yang boleh terjadi di luar lingkungan pengembangan.
 	DevelopmentReinsurerPartner string
+
+	// KomiteTanpaPenyaringOperator mematikan penyaring pemilik pada layar Inbox Komite.
+	//
+	// # Kenapa isian ini ada
+	//
+	// Inbox Komite menyaring `PXASSIGNEDOPERATORID` terhadap login pemanggil, dan
+	// penyaring itu BENAR — inbox adalah daftar pekerjaan seseorang. Tetapi pemetaan
+	// identitas HCC/HCQ ke `OPERATOR_ID` belum ada (`ADR-0024`), sehingga login pengembang
+	// tidak cocok dengan satu pun operator di data warisan dan layarnya kosong untuk semua
+	// orang — tanpa satu pun galat yang menjelaskannya.
+	//
+	// Diminta Work Owner 2026-09-29 supaya isi Inbox Outstanding dapat dilihat lebih dulu.
+	//
+	// # Apa yang ia lakukan, dinyatakan terang
+	//
+	// Ia TIDAK meminjam identitas orang lain seperti `DevelopmentReinsurerPartner`. Ia
+	// mematikan penyaringnya seluruhnya: daftarnya menjadi SELURUH antrean komite
+	// perusahaan, beserta nama tertanggung dan nomor polis milik pekerjaan orang lain.
+	//
+	// Karena itu ia lebih keras dijaga, bukan lebih longgar:
+	//
+	//   - MENOLAK berjalan di luar `APP_ENV=development`.
+	//   - Respons daftar membawa penandanya, dan layar WAJIB menyatakannya.
+	//   - Di lapisan domain ia tetap harus diminta lewat `InboxFilter.AllOperators`;
+	//     operator yang kebetulan kosong tidak pernah berarti "semua".
+	//
+	// Kosong atau `false` berarti penyaring pemilik berlaku seperti biasa.
+	KomiteTanpaPenyaringOperator bool
 
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
@@ -223,6 +252,59 @@ type Cashier struct {
 // Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
 func (k Cashier) Active() bool {
 	return strings.TrimSpace(k.RegisterURL) != "" && strings.TrimSpace(k.UpdateURL) != ""
+}
+
+// Dua nilai sah untuk VIRTUAL_ACCOUNT_ADAPTER.
+//
+// Bawaannya SELALU `tiruan`, termasuk di produksi. Ini satu-satunya adapter di aplikasi
+// yang bawaannya tertutup meski seluruh kredensialnya sudah terisi — lihat VirtualAccount.
+const (
+	VirtualAccountAdapterFake = "tiruan"
+	VirtualAccountAdapterPega = "pega"
+)
+
+// VirtualAccount memuat sakelar dan kredensial penerbit rekening virtual Master Recovery.
+//
+// # Kenapa ia punya sakelar sendiri, tidak mengikuti PENYIMPANAN seperti adapter lain
+//
+// Karena menyalakannya MENERBITKAN REKENING SUNGGUHAN. Adapter lain yang keliru menyala
+// paling jauh membaca data yang salah; yang ini meninggalkan rekening bank nyata yang
+// tidak diminta siapa pun, pada sistem yang dipakai orang lain.
+//
+// Semula pilihannya mengikuti ada-tidaknya koneksi Oracle — dan itu berbahaya: begitu
+// aplikasi dijalankan dengan `PENYIMPANAN=oracle`, penerbitan sungguhan ikut menyala
+// tanpa ada yang memutuskannya. Keputusan Work Owner 2026-09-29: **jangan dibuka dulu**,
+// dan pembukaannya harus berupa tindakan yang disengaja.
+//
+// # Yang dituntut rule aslinya
+//
+// `Connect REST/VirtualAccountClaimsPNC-ConnectREST.xml` ber-`pyUseAuthentication=true`
+// dengan `pyAuthenticationProfile = LELANG`. Profil itu TIDAK ADA di export — hanya
+// namanya yang dirujuk — sehingga kredensialnya harus diminta ke Tim Pega/Infra.
+//
+// Kredensialnya SENGAJA tidak memakai ulang HCQ: keduanya profil berbeda, dan memakai
+// kredensial HCQ untuk layanan ini akan gagal dengan cara yang membingungkan.
+type VirtualAccount struct {
+	// Adapter bernilai `tiruan` atau `pega`. Apa pun selain `pega` diperlakukan sebagai
+	// `tiruan` — supaya salah ketik menutup, bukan membuka.
+	Adapter string
+
+	// User dan Password adalah kredensial profil autentikasi LELANG.
+	User     string
+	Password string
+
+	Timeout time.Duration
+}
+
+// Live menyatakan penerbit SUNGGUHAN yang dipakai.
+//
+// Ia menuntut ketiganya sekaligus: sakelar disetel `pega`, dan kedua kredensialnya terisi.
+// Sakelar tanpa kredensial TIDAK membukanya — permintaan yang pasti ditolak layanan lebih
+// buruk daripada tidak dikirim sama sekali, karena kegagalannya tampak seperti gangguan
+// jaringan.
+func (v VirtualAccount) Live() bool {
+	return v.Adapter == VirtualAccountAdapterPega &&
+		strings.TrimSpace(v.User) != "" && strings.TrimSpace(v.Password) != ""
 }
 
 // Alamat baku kedua layanan dokumen, disalin dari rule Connect REST Pega.
@@ -486,6 +568,12 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// 30 detik: layanan penerbit VA sendiri berbicara ke bank, sehingga jawabannya wajar
+	// lebih lambat daripada pemanggilan internal biasa.
+	virtualAccountTimeout, err := getDuration("VIRTUAL_ACCOUNT_BATAS_WAKTU", 30*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	// 60 detik, bukan 30 seperti pemanggilan biasa: muatannya membawa berkas.
 	documentStorageTimeout, err := getDuration("PENYIMPANAN_DOKUMEN_BATAS_WAKTU", 60*time.Second)
 	if err != nil {
@@ -539,6 +627,24 @@ func Load() (Config, error) {
 			devReinsurerLogin, storage, adapter))
 	}
 
+	// Penyaring pemilik Inbox Komite. Namanya berbahasa Indonesia karena ia variabel
+	// lingkungan — pengecualian `D-80`, sama dengan REAS_LOGIN_PENGEMBANGAN di atas.
+	komiteTanpaPenyaring := isTrue(get("KOMITE_TANPA_PENYARING_OPERATOR", ""))
+
+	// Penjagaannya SATU baris, dan sengaja tidak punya pengecualian.
+	//
+	// Isian ini mematikan penyaring pemilik pada sebuah daftar pekerjaan pribadi. Di luar
+	// pengembangan, akibatnya adalah setiap orang yang punya sesi melihat antrean komite
+	// SELURUH perusahaan beserta nama tertanggung dan nomor polisnya. Tidak ada keadaan
+	// yang membuat itu benar di staging maupun produksi.
+	if komiteTanpaPenyaring && env != Development {
+		issues = append(issues, fmt.Errorf(
+			"KOMITE_TANPA_PENYARING_OPERATOR menyala pada APP_ENV=%q; ia hanya berlaku "+
+				"pada development karena mematikan penyaring pemilik Inbox Komite — "+
+				"daftarnya menjadi antrean komite seluruh perusahaan. Kosongkan isian itu",
+			env))
+	}
+
 	primaryPortal := strings.ToUpper(strings.TrimSpace(get("PORTAL_UTAMA", defaultPrimaryPortal)))
 	portal, portalErrs := loadPortals()
 	issues = append(issues, portalErrs...)
@@ -555,7 +661,9 @@ func Load() (Config, error) {
 		DevelopmentReinsurerLogin:   devReinsurerLogin,
 		DevelopmentReinsurerPartner: devReinsurerPartner,
 
-		Session:         Session{Lifetime: masaBerlaku},
+		KomiteTanpaPenyaringOperator: komiteTanpaPenyaring,
+
+		Session: Session{Lifetime: masaBerlaku},
 		HCQ: HCQ{
 			User:     strings.TrimSpace(os.Getenv("HCQ_LOGIN_USER")),
 			Password: os.Getenv("HCQ_LOGIN_PASSWORD"),
@@ -567,6 +675,14 @@ func Load() (Config, error) {
 			User:        strings.TrimSpace(os.Getenv("KASIR_USER")),
 			Password:    os.Getenv("KASIR_PASSWORD"),
 			Timeout:     cashierTimeout,
+		},
+		// Bawaannya `tiruan`, dan itu disengaja: menyalakannya menerbitkan rekening
+		// sungguhan. Lihat VirtualAccount untuk alasan lengkapnya.
+		VirtualAccount: VirtualAccount{
+			Adapter:  get("VIRTUAL_ACCOUNT_ADAPTER", VirtualAccountAdapterFake),
+			User:     strings.TrimSpace(os.Getenv("VIRTUAL_ACCOUNT_PENGGUNA")),
+			Password: os.Getenv("VIRTUAL_ACCOUNT_SANDI"),
+			Timeout:  virtualAccountTimeout,
 		},
 		DocumentStorage: DocumentStorage{
 			BaseURL:      get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
@@ -771,8 +887,11 @@ func (k Config) Summary() map[string]any {
 		"hcq_pengguna_diisi": k.HCQ.User != "",
 		"hcq_sandi_diisi":    k.HCQ.Password != "",
 		"kasir_aktif":        k.Cashier.Active(),
-		"smtp_aktif":         k.SMTP.Active(),
-		"smtp_tka_aktif":     k.SMTP.TKAActive(),
+		// Disebut di log saat start supaya keadaan "penerbit VA sungguhan menyala"
+		// tidak pernah menjadi hal yang baru diketahui setelah rekening terbit.
+		"virtual_account_sungguhan": k.VirtualAccount.Live(),
+		"smtp_aktif":                k.SMTP.Active(),
+		"smtp_tka_aktif":            k.SMTP.TKAActive(),
 	}
 }
 
@@ -861,5 +980,24 @@ func defaultStorage(l Environment) string {
 		return StorageOracle
 	default:
 		return StorageMemory
+	}
+}
+
+// isTrue menafsirkan sebuah isian lingkungan sebagai penanda menyala.
+//
+// # Kenapa hanya nilai yang disebut, bukan "apa pun selain kosong"
+//
+// Isian yang memakainya mematikan penjagaan. "Apa pun selain kosong" akan membuat
+// `KOMITE_TANPA_PENYARING_OPERATOR=false` — bentuk yang paling wajar ditulis orang untuk
+// MEMATIKANNYA — justru menyalakannya.
+//
+// Nilai yang tidak dikenali dianggap PADAM. Kegagalan yang aman pada penanda seperti ini
+// adalah tetap menjaga, bukan terlanjur membuka.
+func isTrue(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "ya", "yes", "on":
+		return true
+	default:
+		return false
 	}
 }

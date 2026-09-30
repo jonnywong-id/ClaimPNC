@@ -37,6 +37,103 @@ type PrincipalDTO struct {
 	Email string `json:"email_inputor_va"`
 }
 
+// RecoveryRowDTO adalah satu baris pada tab Outstanding.
+//
+// Kelima kolom pertama sesudah Batch adalah kolom yang benar-benar ditampilkan grid lama;
+// sisanya dikirim supaya baris dapat dibuka detailnya tanpa permintaan kedua.
+//
+// # Yang sengaja TIDAK dikirim
+//
+// `USERNAME` (petugas pencatat), `NOHPLL`, `CLIENTID`, dan isi Bukti Bayar tidak ikut.
+// Grid lama tidak menampilkannya, dan mengirim kolom yang tidak dipakai layar berarti
+// memperluas permukaan data tanpa ada yang memintanya. `DOKUMENID` diringkas menjadi
+// HasDocument — layar hanya perlu tahu ADA atau TIDAK, bukan nomor lampirannya.
+type RecoveryRowDTO struct {
+	Batch int64 `json:"batch"`
+
+	PrincipalName string `json:"nama_principal"`
+	Year          string `json:"tahun"`
+
+	// InputDate adalah kolom "Tanggal Input" pada grid dalam, dalam RFC 3339.
+	//
+	// Dikirim sebagai WAKTU, bukan teks yang sudah diformat — pemformatan tanggal urusan
+	// layar, dan mengirimnya sudah terformat membuat pengurutan di klien mustahil tanpa
+	// menguraikannya kembali. Kosong berarti barisnya tidak punya INSERTDATE.
+	InputDate string `json:"tanggal_input"`
+
+	// ServiceLogID adalah kolom NOHPLL, berlabel "NO HPLL" di grid dalam. Namanya
+	// menyiratkan nomor telepon; isinya nomor catatan log layanan.
+	ServiceLogID string `json:"no_hpll"`
+
+	// Keempat nilai uang dikirim sebagai ANGKA rupiah bulat, bukan teks terformat.
+	// Pemformatan ribuan adalah urusan layar; mengirimnya sudah terformat membuat
+	// pengurutan dan penjumlahan di klien mustahil tanpa membongkarnya kembali.
+	ClaimAmount     int64 `json:"nilai_klaim"`
+	PreviousPayment int64 `json:"pembayaran_sebelumnya"`
+	Payment         int64 `json:"pembayaran"`
+	Remainder       int64 `json:"sisa"`
+
+	Remark       string `json:"keterangan"`
+	CasePosition string `json:"posisi_kasus"`
+
+	VirtualAccountNumber string `json:"nomor_virtual_account"`
+	PolicyNo             string `json:"nomor_polis"`
+
+	// DocumentID menunjuk Bukti Bayar; kosong berarti belum ada yang diunggah.
+	//
+	// Dikirim sebagai NOMOR, bukan diringkas menjadi ada/tidak ada seperti sebelumnya:
+	// tombol **View Document** pada grid dalam membutuhkannya untuk membuka berkasnya.
+	DocumentID string `json:"id_dokumen"`
+
+	// Attachment adalah keterangan lampiran itu, atau `null` bila belum ada.
+	//
+	// Ia yang mengisi daftar pada modal **View Dokument Pendukung**. Isinya TIDAK termasuk
+	// berkasnya — berkas diambil terpisah saat barisnya benar-benar dibuka.
+	Attachment *AttachmentDTO `json:"dokumen"`
+}
+
+// AttachmentDTO adalah satu baris pada modal **View Dokument Pendukung**.
+//
+// Kedua kolom yang ditampilkan modal itu adalah "Input Nama" dan "Tanggal" — dipetakan ke
+// `INPUTOPERATOR` dan `INPUTDATE` milik `POOLDATA.DATA_ATTACHFILE`.
+type AttachmentDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"nama_berkas"`
+	// UploadedBy berlabel "Input Nama" di modal.
+	UploadedBy string `json:"input_nama"`
+	// UploadedAt berlabel "Tanggal" di modal; RFC 3339, kosong bila tidak tercatat.
+	UploadedAt string `json:"tanggal"`
+}
+
+// RecoveryGroupDTO adalah satu baris pada grid LUAR beserta isinya.
+//
+// Bentuknya meniru layar lama: baris luar per principal, dan isinya terbuka saat diklik.
+type RecoveryGroupDTO struct {
+	PrincipalName string `json:"nama_principal"`
+
+	// Keempat angka baris luar diambil dari batch TERAKHIR, bukan dijumlahkan.
+	ClaimAmount     int64 `json:"nilai_klaim"`
+	PreviousPayment int64 `json:"pembayaran_sebelumnya"`
+	Payment         int64 `json:"pembayaran"`
+	Remainder       int64 `json:"sisa"`
+
+	// Batch adalah seluruh riwayat principal ini, dari yang paling lama.
+	Batch []RecoveryRowDTO `json:"batch"`
+}
+
+// RecoveryListResponse adalah jawaban GET /api/master/recovery.
+type RecoveryListResponse struct {
+	Principal []RecoveryGroupDTO `json:"principal"`
+
+	// Total adalah jumlah PRINCIPAL yang cocok sebelum dipotong paginasi — bukan jumlah
+	// batch, dan bukan panjang senarai di atas. Itulah yang menentukan berapa halaman ada,
+	// karena yang dipotong halaman adalah baris luar.
+	Total int `json:"total"`
+
+	// Portal menyebut entitas yang benar-benar menjawab permintaan ini (`R-20`).
+	Portal string `json:"portal"`
+}
+
 // PrincipalListResponse adalah jawaban GET /api/master/recovery/principal.
 type PrincipalListResponse struct {
 	Principal []PrincipalDTO `json:"principal"`

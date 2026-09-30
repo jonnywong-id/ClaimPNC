@@ -232,7 +232,6 @@ import (
 	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
 	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
-
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
 	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
@@ -380,6 +379,7 @@ import (
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
 	"claim-pnc/internal/riwayatklaim"
+	
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -473,10 +473,30 @@ func run() error {
 				Name:  baseCtx.User.Name,
 			}, true
 		},
+		// Penyaring pemilik dimatikan bila diminta. Konfigurasi sudah MENOLAK menyalakannya
+		// di luar `APP_ENV=development`, sehingga di sini nilainya cukup diteruskan —
+		// pemeriksaan lingkungan hidup di satu tempat, bukan diulang di setiap modul.
+		AllOperators: cfg.KomiteTanpaPenyaringOperator,
+
 		Logger:              logger,
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
 	})
+
+	// Keadaan ini dicatat SETIAP start, bukan sekali saat diisi.
+	//
+	// Isian yang mematikan penjagaan mudah tertinggal di berkas `.env` seseorang berminggu
+	// -minggu. Peringatan yang muncul pada setiap start adalah satu-satunya hal yang
+	// membuatnya tetap terlihat.
+	if cfg.KomiteTanpaPenyaringOperator {
+		logger.Warn("penyaring pemilik Inbox Komite DIMATIKAN",
+			slog.String("modul", "komite"),
+			slog.String("akibat", "daftarnya adalah antrean komite SELURUH perusahaan, "+
+				"bukan pekerjaan pengguna yang masuk"),
+			slog.String("berlaku", "hanya APP_ENV=development; konfigurasi menolaknya di luar itu"),
+			slog.String("mematikan", "kosongkan KOMITE_TANPA_PENYARING_OPERATOR"),
+		)
+	}
 
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
@@ -2891,6 +2911,10 @@ type storage struct {
 	komiteInbox    komite.InboxRepo
 	komiteDecision komite.DecisionRepo
 
+	// komiteTransfer membaca rincian "Lihat Detail Transfer" — nilai uang dan keputusan
+	// komite menurut Pega. DIBACA SAJA; kedua tabelnya masih ditulis Pega (`P-1`).
+	komiteTransfer komite.TransferRepo
+
 	// accountSelector memilih penyimpanan master rekening milik satu portal entitas.
 	// Repo dan BankRepo dipilih bersamaan karena keduanya hidup di basis data yang sama.
 	accountSelector func(alias string) (masterrekening.Repo, masterrekening.BankRepo, error)
@@ -4261,6 +4285,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// umur.
 	komiteInboxService, err := komiteusecase.NewInboxService(komiteusecase.InboxOptions{
 		Cases:     store.komiteInbox,
+		Transfers: store.komiteTransfer,
 		Decisions: store.komiteDecision,
 		IDs:       komitememory.IDGenerator{},
 		Clock:     clock.System{},
@@ -4745,6 +4770,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// secara harfiah, dan penutupannya `TKT-F6-002`.
 		store.komiteInbox = komitesql.NewInboxRepo(primary)
 		store.komiteDecision = komitesql.NewDecisionRepo(primary)
+		store.komiteTransfer = komitesql.NewTransferRepo(primary)
 
 		// KEDUA kumpulan koneksi ditutup bersamaan. Menutup yang pertama saja akan
 		// meninggalkan koneksi kedua tetap terbuka saat aplikasi berhenti — kebocoran
@@ -5487,6 +5513,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		inboxStore := komitememory.NewSampleInboxStore()
 		store.komiteInbox = inboxStore
 		store.komiteDecision = inboxStore
+		store.komiteTransfer = inboxStore
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		store.travelDocumentSelector = travelDocumentSelectorMemory(cfg.PrimaryPortal)
 
@@ -6829,49 +6856,73 @@ func businessSelectorMemory(
 
 // buildVirtualAccountIssuer menyusun seam penerbit rekening virtual milik Master Recovery.
 //
-// # Kenapa pilihannya mengikuti PENYIMPANAN, bukan adapter identitas
+// # Penerbit sungguhan TERTUTUP secara baku, dan hanya dibuka dengan sengaja
 //
-// Berbeda dari direktori pegawai, yang mengikuti `IDENTITAS_ADAPTER` karena keduanya
-// menembak API yang sama. Penerbit VA menembak layanan yang berbeda, dan alamatnya dibaca
-// dari POOLDATA.GCNM_CONNECT_REST — baris `TYPESERVICE='GENERATEDVA'`. Tanpa koneksi
-// Oracle, alamat itu tidak dapat dibaca sama sekali, sehingga yang menentukan adalah ada
-// atau tidaknya koneksi.
+// Keputusan Work Owner 2026-09-29: **jangan dibuka dulu.** Karena itu pilihannya TIDAK
+// lagi mengikuti ada-tidaknya koneksi Oracle seperti adapter lain — cara itu membuat
+// penerbitan sungguhan ikut menyala begitu aplikasi dijalankan dengan
+// `PENYIMPANAN=oracle`, tanpa ada yang memutuskannya.
 //
-// # Kenapa tiruan BUKAN sekadar kenyamanan di sini
+// Yang membukanya sekarang adalah `config.VirtualAccount.Live()`, yang menuntut TIGA hal
+// sekaligus: `VIRTUAL_ACCOUNT_ADAPTER=pega`, `VIRTUAL_ACCOUNT_PENGGUNA` terisi, dan
+// `VIRTUAL_ACCOUNT_SANDI` terisi. Kurang satu pun, yang dipakai adalah tiruan.
 //
-// Alamat yang terdaftar menunjuk layanan Pega yang MENERBITKAN REKENING SUNGGUHAN.
-// Menembaknya dari lingkungan pengembangan meninggalkan rekening nyata yang tidak diminta
-// siapa pun, pada sistem yang dipakai orang lain.
+// # Kenapa seketat itu
 //
-// Perbedaannya diumumkan di log, bukan dibiarkan senyap: layar yang tampak bekerja padahal
-// nomor yang ditampilkannya karangan adalah kegagalan yang tidak terlihat siapa pun sampai
-// dana pertama dikirim ke nomor itu.
+// Menyalakannya MENERBITKAN REKENING BANK SUNGGUHAN lewat layanan Pega. Adapter lain yang
+// keliru menyala paling jauh membaca data yang salah; yang ini meninggalkan rekening nyata
+// yang tidak diminta siapa pun, pada sistem yang dipakai orang lain.
+//
+// Keadaannya diumumkan di log saat start pada KEDUA arah — baik saat tiruan dipakai maupun
+// saat penerbit sungguhan menyala. Layar yang tampak bekerja padahal nomornya karangan,
+// dan layar yang diam-diam menerbitkan rekening nyata, sama-sama kegagalan yang tidak
+// terlihat siapa pun sampai terlambat.
 func buildVirtualAccountIssuer(
 	cfg config.Config,
 	legacy *sqlstore.Legacy,
 	logger *slog.Logger,
 ) (masterrecovery.VirtualAccountIssuer, error) {
-	if legacy == nil {
+	switch {
+	case !cfg.VirtualAccount.Live():
 		logger.Warn("penerbit virtual account memakai nomor tiruan",
 			slog.String("modul", "masterrecovery"),
-			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga alamat layanan pada POOLDATA.GCNM_CONNECT_REST tidak dapat dibaca"),
+			slog.String("sebab", "VIRTUAL_ACCOUNT_ADAPTER bukan \"pega\", atau VIRTUAL_ACCOUNT_PENGGUNA/VIRTUAL_ACCOUNT_SANDI belum diisi"),
+			slog.String("akibat", "nomor VA yang ditampilkan layar adalah nomor TIRUAN berawalan "+masterrecoveryva.Prefix+"; tidak ada rekening yang benar-benar terbit"),
 		)
 		return masterrecoveryva.NewFake(), nil
-	}
 
-	return masterrecoveryva.NewPega(masterrecoveryva.Options{
-		Catalog: legacy,
-		// Kredensial HCQ dipakai ulang sebagai Basic Auth bila terisi. Layanan ini tidak
-		// diketahui menuntut autentikasi — 18 dari 21 Connect REST di sistem lama
-		// ber-`pyUseAuthentication=false` (`D-73`) — dan bila keduanya kosong, header
-		// Authorization tidak dikirim sama sekali.
-		User:     cfg.HCQ.User,
-		Password: cfg.HCQ.Password,
-		// Galat "baris tidak terdaftar" milik modul auth diteruskan sebagai nilai, bukan
-		// diimpor tipenya: itulah yang membuat modul ini dapat MEMBEDAKAN katalog yang
-		// belum diisi dari jaringan yang sedang putus, tanpa bergantung pada modul auth.
-		NotRegistered: provider.ErrServiceNotRegistered,
-	})
+	case legacy == nil:
+		// Sakelar sudah dibuka, tetapi alamat layanannya dibaca dari
+		// POOLDATA.GCNM_CONNECT_REST — tanpa koneksi Oracle ia tidak dapat dibaca sama
+		// sekali. Ini keadaan salah rakit, dan ia dihentikan saat start alih-alih
+		// diam-diam turun ke tiruan: yang meminta `pega` berhak tahu permintaannya tidak
+		// dapat dipenuhi.
+		return nil, errors.New(
+			"VIRTUAL_ACCOUNT_ADAPTER=pega menuntut PENYIMPANAN=oracle: alamat layanan dibaca dari POOLDATA.GCNM_CONNECT_REST")
+
+	default:
+		logger.Warn("penerbit virtual account SUNGGUHAN menyala",
+			slog.String("modul", "masterrecovery"),
+			slog.String("akibat", "menyimpan principal baru akan MENERBITKAN REKENING VIRTUAL SUNGGUHAN lewat layanan Pega"),
+		)
+		return masterrecoveryva.NewPega(masterrecoveryva.Options{
+			Catalog: legacy,
+			// Kredensial profil autentikasi `LELANG`, BUKAN HCQ.
+			//
+			// `Connect REST/VirtualAccountClaimsPNC-ConnectREST.xml` ber-
+			// `pyUseAuthentication=true` dengan `pyAuthenticationProfile = LELANG`.
+			// Memakai ulang kredensial HCQ di sini akan gagal dengan cara yang
+			// membingungkan — tampak seperti layanan menolak, padahal kredensialnya
+			// memang milik layanan lain.
+			User:     cfg.VirtualAccount.User,
+			Password: cfg.VirtualAccount.Password,
+			Timeout:  cfg.VirtualAccount.Timeout,
+			// Galat "baris tidak terdaftar" milik modul auth diteruskan sebagai nilai, bukan
+			// diimpor tipenya: itulah yang membuat modul ini dapat MEMBEDAKAN katalog yang
+			// belum diisi dari jaringan yang sedang putus, tanpa bergantung pada modul auth.
+			NotRegistered: provider.ErrServiceNotRegistered,
+		})
+	}
 }
 
 // accountSelectorMemory menyusun penyimpanan master rekening di memori.

@@ -39,6 +39,7 @@ func serverInbox(t *testing.T, login string) http.Handler {
 	store := memory.NewSampleInboxStore()
 	service, err := usecase.NewInboxService(usecase.InboxOptions{
 		Cases:     store,
+		Transfers: store,
 		Decisions: store,
 		IDs:       memory.IDGenerator{},
 		Clock:     clock.FixedAt(sekarangHTTP),
@@ -220,6 +221,31 @@ func TestDetailKasusMengembalikanPenjenjangan(t *testing.T) {
 	require.True(t, kasus.Progress.TierCountUnknown)
 	require.False(t, kasus.Progress.DecidedByMe)
 	require.Empty(t, kasus.LegacyOutcome, "Pega belum memutuskan apa pun pada kasus ini")
+}
+
+// Nama medan JSON rincian transfer adalah KONTRAK dengan layar.
+//
+// Ia diuji pada teks JSON-nya, bukan pada struct-nya: mengganti tag `json:"judul"` tidak
+// menggagalkan satu pun uji yang membaca hasil unmarshal ke struct yang sama, sementara di
+// peramban judulnya langsung hilang. Yang perlu dijaga tepat bagian yang tidak terjaga itu.
+func TestRincianTransferMembawaJudulDanCabangHE(t *testing.T) {
+	server := serverInbox(t, memory.SampleOperator)
+
+	rekaman := kirim(t, server, http.MethodGet, "/api/komite/inbox/K-2601", "")
+	require.Equal(t, http.StatusOK, rekaman.Code)
+
+	badan := rekaman.Body.String()
+	require.Contains(t, badan, `"judul"`)
+	require.Contains(t, badan, `"he_dapat_dinilai"`)
+
+	// Adapter memori tidak mengarang rincian transfer, jadi tidak satu pun dari enam
+	// syarat ShowTransfer terpenuhi — dan judul telanjang itulah yang Pega tampilkan
+	// dalam keadaan yang sama.
+	transfer := bacaKasus(t, rekaman).Transfer
+	require.NotNil(t, transfer, "layar rincian selalu menerima blok transfer")
+	require.Equal(t, "CLAIM COMMITTEE", transfer.Judul)
+	require.False(t, transfer.HEDapatDinilai,
+		"BUSINESSTYPE kosong berarti cabang IsHE tidak dapat dinilai, bukan bernilai salah")
 }
 
 func TestKeputusanTercatatDanDikembalikan(t *testing.T) {

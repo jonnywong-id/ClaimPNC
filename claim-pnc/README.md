@@ -664,12 +664,14 @@ berdampingan.
 | `POST` | `/api/master-rekening` | wajib | **wajib** | mengajukan rekening baru — selalu lahir berstatus menunggu |
 | `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | mengubah rekening yang **masih menunggu** keputusan |
 | `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | **wajib** | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
+| `GET` | `/api/master/recovery` | wajib | **wajib** | tab **Outstanding**: satu baris per principal beserta riwayat batch-nya. `?cari=` principal, `?tahun=`, `?limit=` (baku 10 **principal**, maksimum 100), `?lewati=` |
 | `GET` | `/api/master/recovery/form` | wajib | **wajib** | bekal awal layar: nomor batch **perkiraan** + pilihan tahun |
 | `GET` | `/api/master/recovery/principal` | wajib | **wajib** | pilihan principal dari `POOLDATA.MST_VIRTUAL_ACCOUNT_PNC` |
 | `GET` | `/api/master/recovery/polis/{nomor}` | wajib | **wajib** | identitas lini bisnis, cabang, agen, marketing dari `MST_DET_SALES@ASMD` |
 | `GET` | `/api/master/recovery/format-unggahan` | wajib | **wajib** | berkas contoh CSV daftar klaim; `text/csv`, bukan JSON |
 | `POST` | `/api/master/recovery/virtual-account` | wajib | **wajib** | terbitkan VA; `201` bila baru, `200` + `dipakai_ulang=true` bila principal sudah punya |
 | `POST` | `/api/master/recovery/bukti-bayar` | wajib | **wajib** | unggah bukti bayar (`multipart`, bagian `berkas`) → `id_dokumen` |
+| `GET` | `/api/master/recovery/bukti-bayar/{id}` | wajib | **wajib** | **View Document**: mengalirkan isi berkasnya. `inline` hanya untuk PDF, gambar raster, dan `text/plain`; selebihnya `attachment`. Selalu `nosniff` |
 | `POST` | `/api/master/recovery/baris-klaim` | wajib | **wajib** | baca CSV daftar klaim (`multipart`); **tidak menyimpan apa pun** |
 | `POST` | `/api/master/recovery` | wajib | **wajib** | Transfer Recovery; `sisa`, `nomor_batch`, identitas polis, dan `dicatat_oleh` **ditolak** bila dikirim klien |
 

@@ -276,23 +276,40 @@ func TestBuktiBayarTersimpanDenganPengunggahnya(t *testing.T) {
 	require.Equal(t, "PETUGAS01", tersimpan.UploadedBy)
 }
 
-// TestDaftarTahunTerbaruLebihDulu mengunci urutan pilihan Tahun.
+// TestDaftarTahunDisalinDariPega mengunci isi dropdown Tahun terhadap
+// `Data Transform/GetListYear-DT.xml`.
 //
-// Batch yang dicatat hampir selalu tahun berjalan, dan menaruhnya di puncak menghemat satu
-// gulir pada setiap pemakaian.
-func TestDaftarTahunTerbaruLebihDulu(t *testing.T) {
+// Daftarnya MATI di sana — sebelas langkah SET, "2015" sampai "2025", ditulis 2022 dan
+// tidak pernah diperbarui. Ditiru apa adanya atas keputusan Work Owner 2026-09-29.
+func TestDaftarTahunDisalinDariPega(t *testing.T) {
 	service, _, _ := bangun(t)
 
 	tahun := service.Years(context.Background(), portalUji)
-	require.NotEmpty(t, tahun)
-	require.Equal(t, "2027", tahun[0], "satu tahun ke depan, untuk tahun buku yang sudah dibuka")
-	require.Equal(t, "2016", tahun[len(tahun)-1], "sepuluh tahun ke belakang")
+	require.Equal(t, []string{
+		"2015", "2016", "2017", "2018", "2019", "2020",
+		"2021", "2022", "2023", "2024", "2025",
+	}, tahun, "urutannya menaik, persis seperti urutan langkah SET pada data transform-nya")
 
 	// Setiap pilihan harus lolos aturan bentuk yang ditegakkan saat menyimpan. Tanpa ini,
 	// dropdown dapat menawarkan nilai yang kemudian ditolak servernya sendiri.
 	for _, t2 := range tahun {
 		require.Empty(t, masterrecovery.CheckYear(t2), "tahun %q ditawarkan tetapi ditolak validasi", t2)
 	}
+}
+
+// TestDaftarTahunTIDAKMemuatTahunBerjalan mendokumentasikan akibat yang disengaja.
+//
+// Daftar Pega berhenti di 2025, sehingga batch tahun berjalan (2026 ke atas) tidak dapat
+// dicatat lewat layar ini — persis seperti di Pega hari ini.
+//
+// Uji ini ada supaya perpanjangan daftar TIDAK dapat terjadi diam-diam: menambah tahun
+// berjalan adalah selisih perilaku terhadap sistem lama, dan itu menempuh keputusan
+// tertulis (`P-5`).
+func TestDaftarTahunTIDAKMemuatTahunBerjalan(t *testing.T) {
+	service, _, _ := bangun(t)
+
+	require.NotContains(t, service.Years(context.Background(), portalUji), "2026",
+		"bila ini gagal, daftar tahun sudah diperpanjang — pastikan ada keputusan tertulisnya")
 }
 
 // TestBarisKlaimDibacaTanpaMenyentuhPenyimpanan mengunci bahwa unggahan CSV hanyalah

@@ -1444,6 +1444,10 @@ export const ErrorCode = {
   claimFileEmpty: 'berkas_klaim_kosong',
   claimFileTooBig: 'berkas_klaim_terlalu_besar',
   claimFileUnreadable: 'berkas_klaim_tidak_terbaca',
+  /** Penandanya menunjuk lampiran yang tidak ada. */
+  documentNotFound: 'bukti_bayar_tidak_ditemukan',
+  /** Barisnya ada, tetapi isinya di penyimpanan dokumen yang belum terhubung (`D-16`). */
+  documentElsewhere: 'bukti_bayar_di_penyimpanan_lain',
   // Milik modul Komite.
   unknownLine: 'lini_tidak_dikenal',
   malformedClaimValue: 'nilai_klaim_cacat',
@@ -1818,6 +1822,80 @@ export type AutoClaimLineListResponse = {
   paginasi: Pagination
 }
 /** Bekal awal layar: nomor batch perkiraan dan pilihan tahun, dalam satu permintaan. */
+/**
+ * Satu baris pada tab **Outstanding**.
+ *
+ * Kelima kolom yang ditampilkan grid Pega adalah `nama_principal`, `nilai_klaim`,
+ * `pembayaran_sebelumnya`, `pembayaran`, dan `sisa`. Sisanya dikirim supaya baris dapat
+ * dibaca lebih lengkap tanpa permintaan kedua.
+ *
+ * Nilai uang datang sebagai ANGKA rupiah bulat, bukan teks terformat — pemformatannya
+ * urusan layar (`shared/lib/money`).
+ */
+export type RecoveryRow = {
+  batch: number
+  nama_principal: string
+  tahun: string
+  /** RFC 3339; kosong berarti barisnya tidak punya INSERTDATE. */
+  tanggal_input: string
+  /** Kolom NOHPLL. Namanya menyiratkan nomor telepon; isinya nomor catatan log layanan. */
+  no_hpll: string
+  nilai_klaim: number
+  pembayaran_sebelumnya: number
+  pembayaran: number
+  sisa: number
+  keterangan: string
+  posisi_kasus: string
+  nomor_virtual_account: string
+  nomor_polis: string
+  /** Penanda Bukti Bayar; kosong berarti belum ada yang diunggah. */
+  id_dokumen: string
+  /**
+   * Keterangan lampirannya, atau `null` bila belum ada.
+   *
+   * Mengisi daftar pada modal **View Dokument Pendukung**. Tidak memuat berkasnya —
+   * berkas diambil terpisah saat barisnya benar-benar dibuka.
+   */
+  dokumen: RecoveryAttachment | null
+}
+
+/** Satu baris pada modal **View Dokument Pendukung**. */
+export type RecoveryAttachment = {
+  id: string
+  nama_berkas: string
+  /** Kolom "Input Nama" — `INPUTOPERATOR`. */
+  input_nama: string
+  /** Kolom "Tanggal" — `INPUTDATE`, RFC 3339. Kosong bila tidak tercatat. */
+  tanggal: string
+}
+
+/**
+ * Satu baris pada grid LUAR beserta isinya.
+ *
+ * Keempat angkanya diambil dari batch TERAKHIR, bukan dijumlahkan — itu yang dilakukan
+ * layar lama.
+ */
+export type RecoveryPrincipalGroup = {
+  nama_principal: string
+  nilai_klaim: number
+  pembayaran_sebelumnya: number
+  pembayaran: number
+  sisa: number
+  /** Seluruh riwayat principal ini, dari yang paling lama. */
+  batch: RecoveryRow[]
+}
+
+export type RecoveryListResponse = {
+  principal: RecoveryPrincipalGroup[]
+  /**
+   * Jumlah PRINCIPAL yang cocok sebelum dipotong paginasi — bukan jumlah batch, dan bukan
+   * panjang senarai di atas. Itulah yang menentukan berapa halaman ada.
+   */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
 export type RecoveryFormResponse = {
   /**
    * PERKIRAAN, untuk ditampilkan saja.
@@ -5014,11 +5092,143 @@ export type KomiteInboxListResponse = {
    * penting daripada kerapian tampilan.
    */
   jejak_keputusan_tersedia: boolean
+  /**
+   * Apakah daftar di atas benar-benar milik `operator`.
+   *
+   * `false` berarti penyaring pemilik sedang **dimatikan** — daftarnya adalah SELURUH
+   * antrean komite, termasuk pekerjaan orang lain beserta nama tertanggung dan nomor
+   * polisnya. Keadaan itu hanya mungkin pada `APP_ENV=development`; konfigurasi server
+   * menolak menyalakannya di luar sana.
+   *
+   * Layar WAJIB menyatakannya. Daftar pekerjaan orang lain yang tampak seperti daftar
+   * pekerjaan sendiri adalah kekeliruan yang tidak terlihat sebagai kekeliruan — dan pada
+   * layar yang menyetujui uang, itu kelas kesalahan yang paling mahal.
+   */
+  penyaring_pemilik_aktif: boolean
+}
+
+/**
+ * Satu baris `POOLDATA.T_CLAIM_ADJUSTMENT` — isi "Lihat Detail Transfer".
+ *
+ * Nilai uangnya **teks desimal kanonik**, bukan angka JSON: angka JSON adalah floating
+ * point ganda di hampir seluruh peramban (`I-12`).
+ */
+export type KomiteAdjustmentLine = {
+  nomor_klaim: string
+  id_objek?: string
+  id_coverage?: string
+
+  nomor_akseptasi?: string
+  tanggal_akseptasi?: string
+
+  mata_uang?: string
+  jenis_pembayaran?: string
+
+  nilai_gross: string
+  nilai_usulan: string
+  nilai_akseptasi: string
+  nilai_salvage: string
+  nilai_asm_share: string
+  nilai_risiko_sendiri: string
+
+  /** Persentase, bukan nilai uang. */
+  persen_asm_share?: string
+
+  ex_gratia: boolean
+  catatan?: string
+  sebab_kerugian?: string
+}
+
+/** Keputusan komite **menurut Pega**, dari `POOLDATA.T_CLAIM_KOMITE_LIST`. */
+export type KomiteCommitteeRecord = {
+  nama_komite?: string
+  jenjang?: number
+  tipe_komite?: string
+  catatan?: string
+  nilai_klaim: string
+  persen_asm_share?: string
+  tanggal_komite?: string
+  kesimpulan?: KomiteOutcome
+}
+
+/**
+ * Rincian "Lihat Detail Transfer" — pengganti `Section/ShowTransferDetail`.
+ *
+ * Nilai uang muncul di SINI dan bukan pada daftar, dan itu bukan pertentangan: sumber
+ * daftar (`InboxRegisterKomite_RD`) memang tidak memuat satu pun nilai uang, sementara
+ * `ShowTransferDetail` memuatnya. Masing-masing mengikuti sumbernya.
+ */
+export type KomiteTransferDetail = {
+  /**
+   * Judul layar yang SUDAH JADI, mis. `CLAIM COMMITTEE - ADJUSTMENT`.
+   *
+   * Dirakit server, bukan di sini: aturannya enam syarat `Section/ShowTransfer`, salah
+   * satunya menyembunyikan `- ADJUSTMENT` pada lini Travel. Menyalinnya ke React berarti
+   * aturan yang sama hidup di dua tempat.
+   */
+  judul: string
+  /**
+   * Apakah cabang `IsHE` dapat dinilai sama sekali.
+   *
+   * `BUSINESSTYPE` yang dibandingkan `IsHE` kosong pada seluruh case komite, jadi layar
+   * tidak boleh menyatakan "case ini bukan HE" — yang benar "hal itu tidak diketahui".
+   */
+  he_dapat_dinilai: boolean
+  baris: KomiteAdjustmentLine[]
+  /** `null` bila case ini belum punya baris di `T_CLAIM_KOMITE_LIST`. */
+  komite: KomiteCommitteeRecord | null
+  /** Data klaim yang dikomitekan — `.KomiteClaimData.*` pada `ShowTransferDetail`. */
+  klaim: KomiteClaimSummary | null
+  /** Blok analisis komite — `.Komite.*`. Satu sampai tiga baris per case. */
+  coverage: KomiteCoverageAnalysis[]
+  /** Kesimpulan dari server, bukan disimpulkan layar dari senarai yang kosong. */
+  kosong: boolean
+  /**
+   * Tidak ada NILAI UANG, meski data klaimnya ada.
+   *
+   * Dipisahkan dari `kosong`: 148 dari 189 case punya klaim lengkap tanpa satu pun baris
+   * adjustment, dan menyamakan keduanya menyembunyikan seluruh layar.
+   */
+  nilai_uang_kosong: boolean
+}
+
+export type KomiteClaimSummary = {
+  tanggal_kejadian?: string
+  tanggal_register?: string
+  lokasi?: string
+  kronologi?: string
+  status_klaim?: string
+  rekomendasi?: string
+  persen_asm_share?: string
+  koasuransi?: string
+  mata_uang?: string
+  ex_gratia?: string
+}
+
+export type KomiteCoverageAnalysis = {
+  id_objek?: string
+  id_coverage?: string
+  nama_objek?: string
+  nama_coverage?: string
+  sebab_kerugian?: string
+  nilai_tsi: string
+  mata_uang?: string
+  keadaan_kerugian?: string
+  luas_kerugian?: string
+  tanggung_jawab_hukum?: string
+  catatan?: string
+  diagnosa?: string
+  nama_initial?: string
+  tanggal_komite?: string
+  /** Kesimpulan server: baris ini punya keterangan analisis, bukan hanya nama coverage. */
+  analisis_terisi: boolean
 }
 
 export type KomiteCaseResponse = {
   kasus: KomiteCase
   sekarang: string
+  /** Hanya diisi oleh layar rincian; jawaban lain tidak membawanya. */
+  transfer?: KomiteTransferDetail
 }
 
 /** Kode galat khusus layar Inbox Komite. */

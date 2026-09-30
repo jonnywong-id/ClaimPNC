@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"strings"
 	"testing"
 	"time"
@@ -214,6 +216,48 @@ func (p *testServer) upload(t *testing.T, path, portalAlias, filename, content s
 	return response, answer
 }
 
+// uploadWithType mengirim berkas beserta jenis isinya yang DISEBUT EKSPLISIT.
+//
+// `upload` di atas menyerahkan penentuan jenis kepada `CreateFormFile`, yang selalu
+// menulis `application/octet-stream`. Untuk menguji perbedaan perlakuan antarjenis, jenis
+// itu harus dapat ditetapkan — dan begitulah peramban mengirimnya.
+func (p *testServer) uploadWithType(
+	t *testing.T,
+	path, portalAlias, filename, mimeType, content string,
+) (*http.Response, map[string]any) {
+	t.Helper()
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="berkas"; filename=%q`, filename))
+	header.Set("Content-Type", mimeType)
+
+	part, err := writer.CreatePart(header)
+	require.NoError(t, err)
+	_, err = io.WriteString(part, content)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	request, err := http.NewRequest(http.MethodPost, p.server.URL+path, &body)
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer "+p.token)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	if portalAlias != "" {
+		request.Header.Set(portalhttp.HeaderPortal, portalAlias)
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = response.Body.Close() })
+
+	answer := map[string]any{}
+	_ = json.NewDecoder(response.Body).Decode(&answer)
+	return response, answer
+}
+
 // isianLengkap adalah badan simpan yang lolos seluruh validasi, dipakai sebagai dasar
 // beberapa uji di bawah.
 const isianLengkap = `{
@@ -383,7 +427,9 @@ func TestFormMengirimNomorBatchDanDaftarTahun(t *testing.T) {
 
 	tahun := body["tahun"].([]any)
 	require.NotEmpty(t, tahun)
-	require.Equal(t, "2027", tahun[0])
+	// Disalin apa adanya dari Data Transform GetListYear: 2015..2025, urutan menaik.
+	require.Equal(t, "2015", tahun[0])
+	require.Len(t, tahun, 11)
 }
 
 // TestPolisTidakDitemukanDijawab404 memastikan pencarian polis dapat dipakai layar untuk
@@ -497,24 +543,27 @@ func TestFormatUnggahanDiunduhSebagaiCSV(t *testing.T) {
 
 	content, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
-	require.Contains(t, string(content), "No Polis")
+	require.Contains(t, string(content), "PolicyNo")
 }
 
 // ── Aksi yang sengaja TIDAK ada ─────────────────────────────────────────────────
 
-// TestTidakAdaDaftarUbahMaupunHapus mengunci keputusan Work Owner 2026-09-19.
+// TestTidakAdaUbahMaupunHapus mengunci ketiadaan yang berdiri di atas BUKTI.
 //
-// Sistem lama tidak punya satu pun dari ketiganya, dan test ini yang menghentikan
-// penambahannya tanpa keputusan sadar — rute yang tidak ada tidak dapat dipanggil kode
-// yang ditulis kemudian.
-func TestTidakAdaDaftarUbahMaupunHapus(t *testing.T) {
+// Dahulu test ini juga menuntut GET daftar tidak ada. Tuntutan itu DICABUT 2026-09-29:
+// grid Outstanding memang ada di layar lama, dan kesimpulan bahwa ia tidak ada berdiri di
+// atas ketiadaan kueri di export yang ternyata tidak lengkap (`R-16`).
+//
+// Yang tersisa di sini bukan kesimpulan dari ketiadaan, melainkan dari isi:
+// `INSERTMASTERRECOVERYKLAIM.prc` dibaca utuh dan hanya mengenal INSERT, dan tidak ada
+// satu pun UPDATE maupun DELETE atas tabel ini di seluruh export.
+func TestTidakAdaUbahMaupunHapus(t *testing.T) {
 	p := newTestServer(t)
 
 	for _, jalur := range []struct {
 		method string
 		path   string
 	}{
-		{http.MethodGet, route + "/"},
 		{http.MethodPut, route + "/1"},
 		{http.MethodDelete, route + "/1"},
 	} {
@@ -522,4 +571,231 @@ func TestTidakAdaDaftarUbahMaupunHapus(t *testing.T) {
 		require.NotEqual(t, http.StatusOK, response.StatusCode, jalur.method+" "+jalur.path)
 		require.NotEqual(t, http.StatusCreated, response.StatusCode, jalur.method+" "+jalur.path)
 	}
+}
+
+// TestDaftarOutstandingMengembalikanBatchTersimpan membuktikan tab Outstanding benar-benar
+// membaca dari penyimpanan, bukan dari keadaan layar.
+//
+// Ini yang membedakannya dari daftar sesi yang digantikannya: batch yang disimpan harus
+// tetap terbaca oleh permintaan BARU, sebagaimana layar Pega menampilkan batch yang
+// dicatat orang lain di hari sebelumnya.
+func TestDaftarOutstandingMengembalikanBatchTersimpan(t *testing.T) {
+	p := newTestServer(t)
+
+	simpan, _ := p.call(t, http.MethodPost, route+"/", "ASM", `{
+		"nama_principal":"PT CONTOH PENJAMINAN NUSANTARA",
+		"client_id":"CONTOH-PRINCIPAL-001",
+		"nomor_virtual_account":"0000000000000001",
+		"tahun":"2025",
+		"nilai_klaim":160000,
+		"pembayaran_sebelumnya":7000,
+		"pembayaran":100000,
+		"keterangan":"pengembalian sebagian",
+		"posisi_kasus":"dalam proses"
+	}`)
+	require.Equal(t, http.StatusCreated, simpan.StatusCode)
+
+	response, body := p.call(t, http.MethodGet, route+"/", "ASM", "")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, float64(1), body["total"])
+	require.Equal(t, "ASM", body["portal"])
+
+	// Baris LUAR: satu per principal.
+	rows, ok := body["principal"].([]any)
+	require.True(t, ok, "kunci principal harus berupa senarai")
+	require.Len(t, rows, 1)
+
+	row, ok := rows[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "PT CONTOH PENJAMINAN NUSANTARA", row["nama_principal"])
+	require.Equal(t, float64(160000), row["nilai_klaim"])
+
+	// Sisa dihitung server: pembayaran sebelumnya terisi, jadi 160.000 − 7.000.
+	require.Equal(t, float64(153000), row["sisa"])
+
+	// Baris DALAM: riwayat batch principal itu.
+	batch, ok := row["batch"].([]any)
+	require.True(t, ok, "baris luar harus membawa riwayat batch-nya")
+	require.Len(t, batch, 1)
+	require.Equal(t, float64(1), batch[0].(map[string]any)["batch"])
+}
+
+// TestDaftarOutstandingMengelompokPerPrincipal mengunci bentuk yang dibaca dari layar Pega
+// yang berjalan (2026-09-29): SATU baris luar per principal, isinya seluruh batch,
+// terurut dari yang paling lama, dan angka baris luar adalah angka batch TERAKHIR.
+//
+// Angka terakhir, bukan jumlah — itu yang membedakannya dan itu yang mudah salah. Tiga
+// pembayaran di bawah berjumlah 107.000; yang harus tampil di baris luar adalah 100.000.
+func TestDaftarOutstandingMengelompokPerPrincipal(t *testing.T) {
+	p := newTestServer(t)
+
+	for _, isian := range []struct{ sebelum, bayar, sisa int }{
+		{0, 5000, 155000},
+		{5000, 2000, 155000},
+		{7000, 100000, 153000},
+	} {
+		simpan, _ := p.call(t, http.MethodPost, route+"/", "ASM", fmt.Sprintf(`{
+			"nama_principal":"PT CONTOH PENJAMINAN NUSANTARA",
+			"client_id":"CONTOH-PRINCIPAL-001",
+			"nomor_virtual_account":"0000000000000001",
+			"tahun":"2025",
+			"nilai_klaim":160000,
+			"pembayaran_sebelumnya":%d,
+			"pembayaran":%d,
+			"keterangan":"pengembalian sebagian",
+			"posisi_kasus":"dalam proses"
+		}`, isian.sebelum, isian.bayar))
+		require.Equal(t, http.StatusCreated, simpan.StatusCode)
+	}
+
+	response, body := p.call(t, http.MethodGet, route+"/", "ASM", "")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	// Tiga batch, tetapi SATU baris luar — dan totalnya menghitung principal, bukan batch.
+	require.Equal(t, float64(1), body["total"])
+	rows := body["principal"].([]any)
+	require.Len(t, rows, 1)
+
+	row := rows[0].(map[string]any)
+	require.Equal(t, float64(7000), row["pembayaran_sebelumnya"])
+	require.Equal(t, float64(100000), row["pembayaran"], "angka baris luar dari batch TERAKHIR, bukan dijumlahkan")
+	require.Equal(t, float64(153000), row["sisa"])
+
+	batch := row["batch"].([]any)
+	require.Len(t, batch, 3)
+
+	// Dari yang paling lama — mengikuti grid dalam layar lama.
+	urutan := make([]float64, 0, 3)
+	for _, b := range batch {
+		urutan = append(urutan, b.(map[string]any)["batch"].(float64))
+	}
+	require.Equal(t, []float64{1, 2, 3}, urutan)
+
+	// Kolom yang hanya ada di grid dalam ikut terbawa.
+	pertama := batch[0].(map[string]any)
+	require.Contains(t, pertama, "tanggal_input")
+	require.Contains(t, pertama, "no_hpll")
+	require.Contains(t, pertama, "id_dokumen")
+}
+
+// TestViewDocumentMengalirkanIsinya mengunci tombol View Document pada grid dalam.
+//
+// Yang diperiksa bukan hanya statusnya, melainkan bahwa yang keluar adalah ISI berkasnya
+// apa adanya — bukan JSON ber-base64 seperti jalur lama, dan bukan berkas kosong.
+func TestViewDocumentMengalirkanIsinya(t *testing.T) {
+	p := newTestServer(t)
+
+	unggah, body := p.upload(t, route+"/bukti-bayar", "ASM", "bukti-transfer.pdf", "%PDF-1.4 contoh")
+	require.Equal(t, http.StatusCreated, unggah.StatusCode)
+	id, ok := body["id_dokumen"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, id)
+
+	request, err := http.NewRequest(http.MethodGet, p.server.URL+route+"/bukti-bayar/"+id, nil)
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer "+p.token)
+	request.Header.Set(portalhttp.HeaderPortal, "ASM")
+
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer func() { _ = response.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	// PDF ada di daftar aman, jadi ia boleh DITAMPILKAN.
+	require.Contains(t, response.Header.Get("Content-Disposition"), "inline")
+	require.Contains(t, response.Header.Get("Content-Disposition"), "bukti-transfer.pdf")
+	require.Equal(t, "nosniff", response.Header.Get("X-Content-Type-Options"))
+
+	isi, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.Equal(t, "%PDF-1.4 contoh", string(isi))
+}
+
+// TestBerkasYangTidakAmanDiunduhBukanDitampilkan mengunci perbaikan 2026-09-29.
+//
+// Versi pertama menyajikan SETIAP lampiran `inline` dengan jenis isi apa adanya dari
+// basis data. Akibatnya dua, dan keduanya nyata:
+//
+//   - XLSX di portal ASM tergambar sebagai berhalaman-halaman karakter acak.
+//   - Satu baris ber-ATTACHMIMETYPE `text/html` akan dijalankan peramban sebagai halaman
+//     di origin aplikasi ini.
+//
+// Uji ini menjaga keduanya tertutup: yang tidak ada di daftar aman WAJIB `attachment`.
+func TestBerkasYangTidakAmanDiunduhBukanDitampilkan(t *testing.T) {
+	p := newTestServer(t)
+
+	for _, berkas := range []struct {
+		nama  string
+		jenis string
+		isi   string
+	}{
+		// Jenis Office — tidak dapat digambar peramban.
+		{"rekap.xlsx", "application/vnd.ms-excel", "PK\x03\x04 contoh"},
+		// Yang paling berbahaya: HTML yang dapat menjalankan skrip.
+		{"jebakan.html", "text/html", "<script>alert(1)</script>"},
+		// SVG sengaja TIDAK masuk daftar aman meski ia gambar.
+		{"gambar.svg", "image/svg+xml", "<svg xmlns='http://www.w3.org/2000/svg'/>"},
+	} {
+		unggah, body := p.uploadWithType(t, route+"/bukti-bayar", "ASM", berkas.nama, berkas.jenis, berkas.isi)
+		require.Equal(t, http.StatusCreated, unggah.StatusCode, berkas.nama)
+		id := body["id_dokumen"].(string)
+
+		request, err := http.NewRequest(http.MethodGet, p.server.URL+route+"/bukti-bayar/"+id, nil)
+		require.NoError(t, err)
+		request.Header.Set("Authorization", "Bearer "+p.token)
+		request.Header.Set(portalhttp.HeaderPortal, "ASM")
+
+		response, err := http.DefaultClient.Do(request)
+		require.NoError(t, err)
+		defer func() { _ = response.Body.Close() }()
+
+		require.Equal(t, http.StatusOK, response.StatusCode, berkas.nama)
+		require.Contains(t, response.Header.Get("Content-Disposition"), "attachment", berkas.nama)
+		require.Equal(t, "nosniff", response.Header.Get("X-Content-Type-Options"), berkas.nama)
+	}
+}
+
+// TestViewDocumentYangTidakAdaMenjawab404 memastikan penanda yang menunjuk lampiran yang
+// tidak ada tidak menghasilkan berkas kosong yang tampak berhasil diunduh.
+func TestViewDocumentYangTidakAdaMenjawab404(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodGet, route+"/bukti-bayar/TIDAK-ADA", "ASM", "")
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Equal(t, "bukti_bayar_tidak_ditemukan", body["kode"])
+}
+
+// TestDaftarOutstandingMenolakPortalYangBelumSiap adalah pengaman `R-20` pada jalur BACA.
+//
+// Yang dibuktikan di sini bukan "daftarnya kosong", melainkan sesuatu yang lebih tegas:
+// permintaan atas portal yang koneksinya belum hidup DITOLAK, dan tidak pernah dilayani
+// repo portal lain sebagai cadangan. Daftar kosong masih dapat berarti "portalnya benar,
+// datanya memang belum ada"; penolakan tidak bermakna ganda.
+//
+// Batch sengaja disimpan lebih dulu di ASM supaya ada sesuatu yang BISA bocor — tanpa itu,
+// jawaban kosong akan lulus uji ini tanpa membuktikan apa pun.
+func TestDaftarOutstandingMenolakPortalYangBelumSiap(t *testing.T) {
+	p := newTestServer(t)
+
+	simpan, _ := p.call(t, http.MethodPost, route+"/", "ASM", `{
+		"nama_principal":"HANYA DI ASM",
+		"client_id":"CONTOH-PRINCIPAL-001",
+		"nomor_virtual_account":"0000000000000001",
+		"tahun":"2025",
+		"nilai_klaim":50000,
+		"pembayaran":10000,
+		"keterangan":"pengembalian sebagian",
+		"posisi_kasus":"dalam proses"
+	}`)
+	require.Equal(t, http.StatusCreated, simpan.StatusCode)
+
+	response, body := p.call(t, http.MethodGet, route+"/", "SIMASNET", "")
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.NotContains(t, body, "batch", "jawaban penolakan tidak boleh membawa satu baris pun")
+
+	// Dan yang tersimpan tetap terbaca di portal yang benar — supaya penolakan di atas
+	// tidak lolos hanya karena penyimpanannya gagal diam-diam.
+	lanjut, isi := p.call(t, http.MethodGet, route+"/", "ASM", "")
+	require.Equal(t, http.StatusOK, lanjut.StatusCode)
+	require.Equal(t, float64(1), isi["total"])
 }
