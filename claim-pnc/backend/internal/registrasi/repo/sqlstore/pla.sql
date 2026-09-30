@@ -96,3 +96,21 @@ SELECT m.NAME, m.JSONDATA
 UPDATE POOLDATA.T_PLALIST
    SET NOTES = :1, ISPLA = '1'
  WHERE CLAIMID = :2 AND NOPLA = :3 AND REVISI = :4
+
+-- name: lod_email_tertanggung
+--
+-- Isian Email LOD (`SetDataEmailTertanggung` ← `ClaimData.Email`), yang diisi
+-- `GetDataPengkinianDataTertanggung` dari `GetDataPengkinianData_SQLF`: OLDEMAIL baris
+-- pengkinian data klaim itu. Pega mengambil baris pertama tanpa urutan.
+SELECT u.OLDEMAIL
+  FROM POOLDATA.UPDATE_PENGKINIANDATA u
+ WHERE u.PYID = :1
+ FETCH FIRST 1 ROWS ONLY
+
+-- name: lod_email_pic
+--
+-- `ClaimData.UserTeknisEmail` — `BrowseEmailUserTeknis` (InputRegister_act langkah 67-68).
+SELECT t.EMAIL
+  FROM POOLDATA.MST_USER_TEKNIK t
+ WHERE t.OPERATOR_ID = :1
+ FETCH FIRST 1 ROWS ONLY

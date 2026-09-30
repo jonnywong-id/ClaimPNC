@@ -21700,6 +21700,49 @@ catatan-pengembangan §83.
 EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
+>>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
+
+## 105. Non-MBU ≤ Rp 50 jt diputus komite grup A/B; kepala kasus komite di TC_PNC_KOMITE (2026-09-29)
+
+Non-MBU sampai Rp 50.000.000 memakai lini EMAILKOMITE NONMBUAB (`SetEmailKomite` step 4),
+dibuktikan dari putusan Pega Juni 2025–September 2026; tanpa itu klaim kecil tidak punya penyetuju
+karena tangga NONMBU aktif baru mulai Rp 5 jt. Grup C (NONMBUC) belum dibedakan. Kepala kasus
+komite disimpan di TC_PNC_KOMITE (baru, dibuat di ASM atas izin Work Owner); anggota tetap di
+T_CLAIM_KOMITE_LIST. Menggantikan sebagian #103: kasus komite kini dua tabel, bukan satu.
+
+## 106. Nomor PNCN, RCVN, dan KMTN tanpa nol di depan, tanpa sequence (2026-09-29)
+
+Work Owner menetapkan nomor urut bertambah tanpa pemadatan: `RCVN.26.1` lalu `RCVN.26.2`, sama
+untuk PNCN dan KMTN. Tidak ada sequence Oracle (CLAIM_NO_NONPEGA_SEQ tidak ada di ASM); ketiganya
+MAX+1 per tahun atas isi tabel, dibaca sebagai angka. KMTN berpindah ke `KMTN.YY.n`; bentuk lama
+`KMTN-00001` tetap dikenali. Menggantikan pemadatan empat digit pada catatan nomor sebelumnya dan
+bentuk `KMTN-` + lima digit pada #105. Batas: KOMITE_ID VARCHAR2(10) → maksimal 99 kasus komite
+per tahun sampai kolom dilebarkan (D-63).
+
+## 107. RCVN yang sudah bernomor klaim terkunci dan tidak dapat diregistrasi ulang (2026-09-29)
+
+Work Owner: isian Input Receive Document terkunci dan tombol Simpan/Register Klaim tidak
+dimunculkan bila RCVN sudah menjadi PNCN. Penanda kuncinya NOKLAIM di T_CLAIM_RECIVEDCLAIM.
+Ditegakkan di server — Simpan (409) dan Register Klaim kedua (409) ditolak — karena sebelumnya
+Register Klaim kedua menerbitkan PNCN baru dan menimpa NOKLAIM. Layar membaca `dapat_disunting`
+dan `sudah_diregistrasi` dari server, tidak menyimpulkannya sendiri.
+
+## 108. Unggah Dokumen klaim menulis DATA_ATTACHFILE dengan DATAID dari ATTACHFILE_SEQ (2026-09-29)
+
+Tombol Unggah Dokumen mengunggah lewat modul dokumen penunjang (layanan penyimpanan internal,
+D-16) lalu menyisipkan satu baris POOLDATA.DATA_ATTACHFILE seperti `PNCSaveAttachmentToDB` — baris
+yang dihitung checklist. DATAID diambil dari POOLDATA.ATTACHFILE_SEQ di dalam INSERT (pengecualian
+dialek kedua setelah nomor klaim) karena Pega masih menulis tabel yang sama; MAX+1 akan membuat
+Pega menabrak PK. Kategori/sub-kategori diambil dari master LST_TYPE_DOC_BUSINESS, bukan dari
+permintaan.
+
+## 109. Isian InputEstimasiDetail berlaku di Input Estimasi dan InputSurveyor (2026-09-29)
+
+ClaimSurvey_sect menanam InputEstimasiDetail_sect, sehingga simpan estimasi, Claim Face Sheet, dan
+Print PLA diterima di kedua tahap (`alsoAction`). Menutup tahap Input Estimasi tetap hanya dari
+layarnya sendiri. Satu editor (`useEstimateEditor`) dipakai kedua layar agar aturannya tidak
+bercabang.
+
 
 ## 105. Inbox Banding Harga Salvage: modul tersendiri, empat cacat diperbaiki, satu aturan bernama orang ditiru (2026-09-29)
 
@@ -22599,3 +22642,157 @@ nol yang seharusnya satu setengah miliar tidak terlihat keliru.
    data yang ada, tetapi tidak selengkap layar lama.
 2. **Blok surveyor, `ShowTransferDetailHE`, `UploadDocumentKomite`, `ViewPolicyDetail`**
    tetap seperti §72 dan §73.
+
+## 110. Sumber Inbox Komite: POOLDATA.T_CLAIM_KOMITE_LIST, satu baris per keanggotaan (2026-09-29)
+
+Work Owner menetapkan Inbox Komite dibaca dari T_CLAIM_KOMITE_LIST (bukan worklist Pega) supaya
+kasus KMTN muncul, dengan risiko yang sudah diukur dan diterima: sebagian case Pega yang berjalan
+tidak punya baris tertunda, dan 65 case yang sudah selesai di Pega tetap tampil di Outstanding.
+Header klaim dari T_CLAIM_PNC. Kotak ditentukan per anggota (STATUSAPPROVE/STATUSCASE), dan anggota
+hanya tampil bila jenjang di bawahnya sudah setuju. Menggantikan sumber pada catatan komite
+sebelumnya (InboxRegisterKomite_RD).
+
+## 111. Kolom kanan rincian komite dihitung ulang di Go dari bahannya, bukan disimpan (2026-09-29)
+
+Pega mengisi LEADER, CO MEMBER, List Spreading, dan Fac-Out di clipboard saat case komite dibentuk
+(`CalculatedSpredingForClaimKomite`), dan hasilnya tidak tersimpan di tabel mana pun. Aplikasi ini
+menghitungnya ulang setiap kali rincian dibuka, dengan rumus yang sama, dari `T_CLAIM_ADJUSTMENT`,
+`T_CLAIM_SPREADING`, dan CoinsList `JSON_POLIS` — tanpa tabel baru dan tanpa perubahan skema
+(`D-63` tidak tersentuh). Yang rumus atau bahannya tidak terbaca (Fac-Out, Quota Share, status
+premi) ditampilkan sebagai "belum", bukan dikarang. Kolom uang rincian dibulatkan ke sen di SQL
+karena Pega menyimpan desimal lebih halus dan money.Money menolaknya.
+
+## 112. Salvage B dan Interim pada tabel Claim Adjustment diturunkan, bukan dibaca (2026-09-29)
+
+Keduanya tidak punya kolom di `T_CLAIM_ADJUSTMENT`; yang tersimpan hanya `GROSSVALUE = Final −
+SalvageB − Interim`. Interim dihitung ulang dengan aturan registrasi (gross baris Interim yang sudah
+diakseptasi pada coverage yang sama, hanya Non-MBU), dan Salvage B adalah sisanya — kosong bila
+tidak positif, seperti Pega menampilkan Salvage B yang tidak diisi. History komite dibaca per klaim
+(bukan per baris adjustment) karena `ComiteeClaim` Pega hanya hidup di clipboard.
+
+## 113. Keputusan komite dibuka kembali, khusus case KMTN (2026-09-29)
+
+Work Owner membatasi pencabutan tombol keputusan (hari yang sama): case KMTN — dibentuk aplikasi
+ini, kepalanya di TC_PNC_KOMITE — boleh diputuskan dari layar rincian komite lewat
+`DecideCommittee` modul registrasi. Case Pega tetap hanya-baca karena tabel dan alurnya masih milik
+Pega (`P-1`), dan rute keputusan modul komite (`/api/komite/inbox/{nomor}/keputusan`) tetap tidak
+dipakai. Tidak ada tabel atau kolom baru.
+
+## 114. Tombol akseptasi dibangun, prosesnya menunggu export dan contoh PDF (2026-09-29)
+
+Work Owner memutuskan: template LOD, Draft Persetujuan, dan DLA menunggu contoh PDF (seperti PLA);
+proses Persetujuan / Akseptasi menunggu flow action `AcceptationLOD` masuk ke export. Yang dibangun
+hanya tombol beserta aturan tampil/matinya dari `ShowAdjustment_sect`, dan pembacaan
+`STATUSAKSEPTASILOD` di registrasi (tanpa menulisnya). Tidak ada proses karangan dan tidak ada
+tabel baru.
+
+## 115. Print LOD hanya untuk jenis yang ada contohnya; Simpan akseptasi menunggu activity (2026-09-29)
+
+Work Owner memutuskan: Print LOD dibangun untuk jenis yang contoh PDF-nya ada ("Property - Final
+dengan Co Member"), 15 jenis lain menolak dengan pesan template belum tersedia; form Persetujuan /
+Akseptasi dibangun dari `AcceptationLOD_Sect` dengan Simpan dimatikan sampai
+`SetAdjustmentAcceptation` masuk export; Print DLA menunggu contoh PDF. Mencetak LOD tidak menulis
+kolom apa pun (akibatnya di Pega tidak terbaca) — hanya jejak audit. Tidak ada tabel atau kolom baru.
+
+## 116. Akseptasi dan Print DLA menunggu; kolom baru T_CLAIM_ADJUSTMENT disetujui untuk nanti (2026-09-29)
+
+Work Owner memutuskan proses Persetujuan / Akseptasi menunggu activity yang dipanggilnya masuk
+export, dan Print DLA hanya dapat dilakukan setelah akseptasi (ikut menunggu). Untuk saat
+akseptasi dibangun: nomor akseptasi terbit sama seperti Pega (juga bila Persetujuan
+Tertanggung = 0), dan isian form tanpa kolom disimpan sebagai kolom baru `T_CLAIM_ADJUSTMENT` —
+perubahan skema itu tetap menempuh DBA (`D-63`) dan BELUM dijalankan. Email LOD/DLA: print saja,
+tombol kirim menunggu badan email. Tidak ada tabel atau kolom baru pada tahap ini.
+
+## 117. Akseptasi LOD dibangun tanpa PA, kasir, Outstanding Acceptance, dan SLIK (2026-09-30)
+
+Work Owner memutuskan: cek premi disertakan (layanan `getPremiumPaidOn_before`, alamat dari
+GCNM_CONNECT_REST per APP); PA menunggu bersama Transfer Kasir (paket `gl.pkg_pelunasan_kasir`
+tidak ada di export dan kredensial kasir tertanam di rule); Outstanding Acceptance dan SLIK
+dilewati dan dicatat; PDF tanpa logo sampai berkas logo tersedia. Status premi yang tidak dapat
+dibaca menahan akseptasi (Pega meloloskannya diam-diam). Tujuh isian form menjadi kolom baru
+T_CLAIM_ADJUSTMENT lewat migrasi 0013 yang dijalankan DBA (`D-63`).
+
+## 118. Template LOD disalin dari contoh PDF, termasuk salah ketiknya (2026-09-30)
+
+**Konteks:** template LOD Pega (section/HTML di balik `PrintLODdanEmail`) tidak ada di export;
+satu-satunya sumber adalah 15 contoh PDF Work Owner. Contoh-contohnya tidak seragam — tanda
+baca nilai ("500.000.-", "500.000-", "500.000 -("), penulisan tanggal cetak, gaya huruf, dan
+beberapa salah ketik berbeda antar jenis.
+
+**Keputusan:** setiap jenis punya templatenya sendiri yang menyalin contohnya kalimat per
+kalimat, termasuk salah ketik dan tanda baca janggal, karena hasil yang benar selama migrasi
+adalah hasil yang sama dengan Pega (P-5). Merapikan kalimat surat pernyataan adalah perubahan
+isi dokumen hukum dan bukan wewenang tim pengembang.
+
+**Tambahan:** baris tabel co member untuk polis tanpa CoinsList ("PT. Asuransi Sinar Mas
+100 %") diambil dari contoh, bukan dikarang. Jenis 16 tetap ditolak sampai contohnya ada.
+
+## 119. Jenis LOD yang dicetak disimpan ke PDFTYPE (2026-09-30)
+
+**Konteks:** form akseptasi Pega menampilkan Tipe PDF dan Tanggal Cetak LOD baca saja dari
+clipboard, yang diisi saat Print LOD dalam sesi yang sama. PDFTYPE kosong pada seluruh baris
+Pega karena Pega tidak pernah menyimpannya.
+
+**Keputusan:** Print LOD menulis PDFTYPE (jenis terakhir) dan PRINTLOD_DATE (hanya bila kosong)
+pada baris T_CLAIM_ADJUSTMENT klaim aplikasi ini. Tanpa clipboard, inilah satu-satunya cara
+form akseptasi menampilkan keduanya. Kolom sudah ada — tidak ada migrasi. Selisih terhadap
+Pega hanya pada isi PDFTYPE, yang tidak dibaca rule Pega mana pun dari basis data.
+
+## 120. Konversi AVIF dapat dilewati lewat penanda, padam secara baku (2026-09-30)
+
+**Konteks:** Work Owner meminta konversi AVIF di-skip sementara. Pega selalu mengonversi
+PNG/JPG/JPEG/PDF sebelum mengunggah.
+
+**Keputusan:** penyimpangan ini dibuat sebagai penanda lingkungan yang padam secara baku,
+bukan penghapusan kode, supaya lingkungan yang layanan konversinya siap tetap sama dengan Pega
+dan pengembalian cukup mengubah konfigurasi. Selama penanda menyala, berkas tersimpan dalam
+format asli — berbeda dari dokumen yang diunggah Pega (AVIF).
+
+## 121. Kunci dokumen penyimpanan diterbitkan aplikasi (2026-09-30)
+
+**Konteks:** respons layanan penyimpanan tidak memuat ImageID, dan Pega memang tidak membacanya
+dari sana (`InsertDokumenPNC` :4216, :4448); kuncinya hasil `GenerateImageID`, dan keberhasilan
+unggah dinilai dari `URLImage` (:4728).
+
+**Keputusan:** ImageID diterbitkan aplikasi dengan rumus yang sama (MD5 `'ASMPP'` + waktu
+milidetik, heksadesimal huruf besar). Satu penyimpangan kecil yang disengaja: dalam satu proses
+waktunya dijaga selalu maju minimal 1 ms, karena rumus aslinya menghasilkan kunci kembar bila
+dua berkas terbit pada milidetik yang sama. `URLImage` kosong diperlakukan sebagai kegagalan
+unggah — Pega sendiri melewati pencatatan metadata dalam keadaan itu tanpa pesan, sehingga
+berkasnya hilang diam-diam; di sini pengguna diberi tahu.
+
+## 122. Kode akses penyimpanan dapat dikonfigurasi (2026-09-30)
+
+**Konteks:** layanan penyimpanan menolak token sekali pakai `GET_TOKEN_STORAGE` ("invalid
+kodestring data"), sementara aplikasi yang berhasil mengunggah tidak meninggalkan token
+sekali pakai, dan folder uji lain memakai kode akses statis.
+
+**Keputusan:** kode akses terdaftar dibaca dari `PENYIMPANAN_DOKUMEN_KODE_AKSES` (rahasia,
+ADR-0025). Diisi → dikirim sebagai `KodeString`, tanpa baris GCP_IMAGE baru. Kosong → perilaku
+Pega (`GET_TOKEN_STORAGE`). Nilainya harus berasal dari pemilik layanan penyimpanan; aplikasi
+tidak membuat atau menyisipkan kode statis sendiri.
+
+## 123. Print DLA dibangun untuk keempat pengolah (2026-09-30)
+
+**Konteks:** Work Owner meminta Print DLA aktif dan memilih keempat jenis sekaligus (COINS, Fac
+Out, Treaty, BPPDAN/EQ POOL), gerbang ex gratia mengikuti Pega, PDF diunduh langsung (bukan
+lampiran klaim), dan Kirim DLA nonaktif sampai SMTP tersedia.
+
+**Keputusan:** aturan dibaca dari `GenerateDLAList`, `DLACoins_act`, `DLAFacout_act`,
+`DLATreaty_Act`, `DLABPPDAN_act`, `DownloadDLA`, `INSERT_PLADLA.prc`, dan `PLA_DLA.prc`; nilai
+disimpan sebagai teks desimal dengan pembulatan tiap `@divide` rule asalnya (bilangan rasional,
+setengah menjauhi nol — mode pembulatan Pega tidak tercantum di export). Keanehan Pega yang
+mengubah hasil (penghitungan ganda totalConvert, label EQ POOL) dibawa apa adanya (`P-5`) dan
+dicatat, bukan diperbaiki diam-diam. Bagian yang bergantung pada data yang tidak ada di model
+klaim (ContractNo cargo, kanal kredit, TKA) tidak ditebak.
+
+## 124. Transfer Kasir jalur langsung (2026-09-30)
+
+**Konteks:** dialog Pega (`ValidasiTransferKasir_dialog`) tidak ada di export; alamat dasar
+Kasir dan kredensialnya berada di konfigurasi instans / tertanam di rule.
+
+**Keputusan (Work Owner):** alamat layanan dibaca dari `POOLDATA.GCNM_CONNECT_REST` per APP
+portal dan TYPESERVICE; kredensial dari KASIR_USER / KASIR_PASSWORD; hanya syarat DLA tercetak
+yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status transfer dibaca
+dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
+baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.

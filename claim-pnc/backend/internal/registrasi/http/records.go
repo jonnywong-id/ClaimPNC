@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/registrasi/usecase"
 )
 
 // formatMoment mengirim waktu sebagai RFC 3339 dalam WIB; kosong bila tidak ada.
@@ -133,6 +134,11 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request, claimID stri
 		h.failure(w, r, err)
 		return
 	}
+	h.writeResponse(w, r, http.StatusOK, documentsResponse(view))
+}
+
+// documentsResponse menyusun badan tab Unggah Dokumen.
+func documentsResponse(view usecase.DocumentView) DocumentsResponse {
 	body := DocumentsResponse{
 		Category:   make([]DocumentCategoryDTO, 0, len(view.Category)),
 		Attachment: make([]AttachmentDTO, 0, len(view.Attachment)),
@@ -154,7 +160,7 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request, claimID stri
 			UploadedAt: formatMoment(a.UploadedAt),
 		})
 	}
-	h.writeResponse(w, r, http.StatusOK, body)
+	return body
 }
 
 // Progress menangani GET /api/registrasi/klaim/{klaimID}/progres.

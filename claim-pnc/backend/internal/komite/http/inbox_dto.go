@@ -270,6 +270,75 @@ type TransferDetailDTO struct {
 	// Dikirim sebagai KESIMPULAN, bukan dibiarkan disimpulkan layar dari senarai yang
 	// kosong — supaya aturannya hidup di satu tempat.
 	Empty bool `json:"kosong"`
+
+	// Policy null bila dokumen polisnya tidak ditemukan di JSON_POLIS.
+	Policy *PolicyPeriodDTO `json:"polis"`
+
+	// Leader adalah baris LEADER kolom kanan — nama dan share leader koasuransi.
+	Leader LeaderDTO `json:"leader"`
+
+	// FullSpreading memilih bentuk List Spreading: empat kolom beserta blok Fac-Out bila
+	// benar, dua kolom tanpa Fac-Out bila salah — `tempCvg.ObjectSurveyor` pada Pega.
+	FullSpreading bool `json:"spreading_lengkap"`
+
+	// FacOffers adalah List Reas Fac-Out dari dokumen polis. Share-nya share PADA POLIS,
+	// bukan hasil hitung Pega — lihat komite/committeesheet.go.
+	FacOffers []FacOfferDTO `json:"fac_out"`
+
+	DominantFactors []string        `json:"faktor_dominan"`
+	Attachments     []AttachmentDTO `json:"lampiran"`
+
+	// Members adalah "Daftar Komite" case ini; History adalah "History of Previous
+	// Adjustment Committees" — case komite lain milik klaim yang sama.
+	Members []CommitteeEntryDTO `json:"daftar_komite"`
+	History []CommitteeEntryDTO `json:"riwayat_komite"`
+}
+
+// PolicyPeriodDTO adalah PERIOD OF INSURANCE.
+type PolicyPeriodDTO struct {
+	Start string `json:"mulai,omitempty"`
+	End   string `json:"berakhir,omitempty"`
+}
+
+// LeaderDTO adalah baris LEADER.
+type LeaderDTO struct {
+	Name    string `json:"nama"`
+	Percent string `json:"persen"`
+}
+
+// FacOfferDTO adalah satu baris List Reas Fac-Out.
+type FacOfferDTO struct {
+	ReinsurerName string `json:"reasuradur"`
+	Percent       string `json:"persen_polis,omitempty"`
+}
+
+// SpreadingRowDTO adalah satu baris List Spreading.
+//
+// `nilai` kosong bila share-nya tidak terbaca sebagai angka — bukan nol.
+type SpreadingRowDTO struct {
+	TreatyType string `json:"jenis_treaty,omitempty"`
+	TreatyName string `json:"nama_treaty,omitempty"`
+	Currency   string `json:"mata_uang,omitempty"`
+	Percent    string `json:"persen,omitempty"`
+	Value      string `json:"nilai,omitempty"`
+}
+
+// CoMemberRowDTO adalah satu baris CO MEMBER.
+type CoMemberRowDTO struct {
+	Name     string `json:"nama"`
+	Currency string `json:"mata_uang,omitempty"`
+	Percent  string `json:"persen,omitempty"`
+	Value    string `json:"nilai,omitempty"`
+}
+
+// AttachmentDTO adalah satu lampiran klaim.
+type AttachmentDTO struct {
+	ID         string `json:"id"`
+	Name       string `json:"nama,omitempty"`
+	Note       string `json:"catatan,omitempty"`
+	Category   string `json:"kategori,omitempty"`
+	UploadedBy string `json:"diunggah_oleh,omitempty"`
+	UploadedAt string `json:"diunggah_pada,omitempty"`
 }
 
 // AdjustmentLineDTO adalah satu baris `POOLDATA.T_CLAIM_ADJUSTMENT`.
@@ -300,6 +369,51 @@ type AdjustmentLineDTO struct {
 	ExGratia    bool   `json:"ex_gratia"`
 	Notes       string `json:"catatan,omitempty"`
 	CauseOfLoss string `json:"sebab_kerugian,omitempty"`
+
+	// CurrencyCode adalah kode mata uang (IDR, USD) — Currency di atas berisi ID master.
+	CurrencyCode string `json:"kode_mata_uang,omitempty"`
+
+	// CommitteeValue adalah "nilai komite" — dasar Result Value List Spreading.
+	CommitteeValue string `json:"nilai_komite"`
+
+	Spreading []SpreadingRowDTO `json:"spreading"`
+
+	// CoMembers kosong bila Pega tidak membentuknya: Type 3, atau CoinsList ≤ 1 baris.
+	CoMembers []CoMemberRowDTO `json:"co_member"`
+
+	// Breakdown adalah tabel Claim Adjustment / Salvage / Adjuster Fee baris ini.
+	Breakdown BreakdownDTO `json:"rincian"`
+}
+
+// BreakdownDTO adalah tabel nilai satu baris adjustment — lihat komite/breakdown.go.
+type BreakdownDTO struct {
+	Title       string `json:"judul"`
+	ValueHeader string `json:"judul_nilai"`
+	// Known salah untuk Type yang tabelnya belum ada; layar menyatakannya.
+	Known bool              `json:"tersedia"`
+	Rows  []BreakdownRowDTO `json:"baris"`
+}
+
+// BreakdownRowDTO adalah satu baris tabel nilai. Nilai kosong berarti sel kosong, bukan nol.
+type BreakdownRowDTO struct {
+	Description      string `json:"deskripsi"`
+	EstimateCurrency string `json:"mata_uang_estimasi,omitempty"`
+	Estimate         string `json:"estimasi,omitempty"`
+	EstimateLabel    string `json:"keterangan_estimasi,omitempty"`
+	Percent          string `json:"persen,omitempty"`
+	Currency         string `json:"mata_uang,omitempty"`
+	Value            string `json:"nilai,omitempty"`
+	Total            bool   `json:"total,omitempty"`
+}
+
+// CommitteeEntryDTO adalah satu baris Daftar Komite atau History.
+type CommitteeEntryDTO struct {
+	CaseID     string `json:"nomor_case"`
+	MemberName string `json:"nama_komite"`
+	Tier       int    `json:"jenjang,omitempty"`
+	Status     string `json:"status"`
+	Note       string `json:"catatan,omitempty"`
+	DecidedAt  string `json:"tanggal,omitempty"`
 }
 
 // CommitteeRecordDTO adalah keputusan komite MENURUT PEGA.
@@ -314,6 +428,9 @@ type CommitteeRecordDTO struct {
 
 	DecidedAt string `json:"tanggal_komite,omitempty"`
 	Outcome   string `json:"kesimpulan,omitempty"`
+
+	// CreatedAt adalah CREATE COMITEE DATE.
+	CreatedAt string `json:"tanggal_dibuat,omitempty"`
 }
 
 // ClaimSummaryDTO adalah blok `.KomiteClaimData.*` pada `ShowTransferDetail`.
@@ -331,6 +448,16 @@ type ClaimSummaryDTO struct {
 	CoinsName string `json:"koasuransi,omitempty"`
 	Currency  string `json:"mata_uang,omitempty"`
 	ExGratia  string `json:"ex_gratia,omitempty"`
+
+	ClaimNumber      string `json:"nomor_klaim,omitempty"`
+	PolicyNumber     string `json:"nomor_polis,omitempty"`
+	InsuredName      string `json:"tertanggung,omitempty"`
+	BusinessName     string `json:"kelas_asuransi,omitempty"`
+	BranchName       string `json:"cabang,omitempty"`
+	SourceOfBusiness string `json:"sumber_bisnis,omitempty"`
+	CoinsRole        string `json:"peran_koasuransi,omitempty"`
+	GroupPanel       string `json:"group_panel,omitempty"`
+	CurrencyCode     string `json:"kode_mata_uang,omitempty"`
 }
 
 // CoverageAnalysisDTO adalah satu baris blok analisis komite.

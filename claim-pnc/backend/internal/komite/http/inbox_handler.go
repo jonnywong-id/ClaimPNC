@@ -417,6 +417,12 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 			ExGratia:        l.ExGratia,
 			Notes:           l.Notes,
 			CauseOfLoss:     l.CauseOfLoss,
+
+			CurrencyCode:   l.CurrencyCode,
+			CommitteeValue: l.CommitteeValue().String(),
+			Spreading:      spreadingDTO(d.SpreadingFor(l)),
+			CoMembers:      coMembersDTO(d.CoMembersFor(l)),
+			Breakdown:      breakdownDTO(d.BreakdownFor(l)),
 		})
 	}
 
@@ -445,6 +451,25 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 		})
 	}
 
+	leader := d.Leader()
+	facOffers := make([]FacOfferDTO, 0, len(d.Policy.FacOffers))
+	for _, f := range d.Policy.FacOffers {
+		facOffers = append(facOffers, FacOfferDTO{ReinsurerName: f.ReinsurerName, Percent: f.Percent})
+	}
+	attachments := make([]AttachmentDTO, 0, len(d.Attachments))
+	for _, a := range d.Attachments {
+		attachments = append(attachments, AttachmentDTO{
+			ID:         a.ID,
+			Name:       a.Name,
+			Note:       a.Note,
+			Category:   a.Category,
+			UploadedBy: a.InputBy,
+			UploadedAt: formatTime(a.InputAt),
+		})
+	}
+	dominant := make([]string, 0, len(d.DominantFactors))
+	dominant = append(dominant, d.DominantFactors...)
+
 	dto := TransferDetailDTO{
 		Judul:          d.Judul(),
 		HEDapatDinilai: strings.TrimSpace(d.BusinessType) != "",
@@ -452,6 +477,17 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 		Coverages:      coverages,
 		Empty:          d.Empty(),
 		MoneyEmpty:     d.MoneyEmpty(),
+
+		Leader:          LeaderDTO{Name: leader.Name, Percent: leader.Percent},
+		FullSpreading:   d.FullSpreading(),
+		FacOffers:       facOffers,
+		DominantFactors: dominant,
+		Attachments:     attachments,
+		Members:         entriesDTO(d.Members),
+		History:         entriesDTO(d.History),
+	}
+	if d.HasPolicy {
+		dto.Policy = &PolicyPeriodDTO{Start: formatTime(d.Policy.Start), End: formatTime(d.Policy.End)}
 	}
 	if d.HasClaim {
 		c := d.Claim
@@ -469,6 +505,16 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 			CoinsName: c.CoinsName,
 			Currency:  c.Currency,
 			ExGratia:  c.ExGratia,
+
+			ClaimNumber:      c.ClaimNumber,
+			PolicyNumber:     c.PolicyNumber,
+			InsuredName:      c.InsuredName,
+			BusinessName:     c.BusinessName,
+			BranchName:       c.BranchName,
+			SourceOfBusiness: c.SourceOfBusiness,
+			CoinsRole:        c.CoinsRole,
+			GroupPanel:       c.GroupPanel,
+			CurrencyCode:     c.CurrencyCode,
 		}
 	}
 	if d.HasCommitteeRecord {
@@ -482,7 +528,76 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 			ASMShare:   c.ASMShare,
 			DecidedAt:  formatTime(c.DecidedAt),
 			Outcome:    legacyOutcomeText(c.Outcome),
+			CreatedAt:  formatTime(c.CreatedAt),
 		}
 	}
 	return dto
+}
+
+// spreadingDTO dan coMembersDTO selalu mengembalikan senarai, tidak pernah nil — lihat
+// catatan pada toTransferDTO.
+func spreadingDTO(rows []komite.SpreadingRow) []SpreadingRowDTO {
+	out := make([]SpreadingRowDTO, 0, len(rows))
+	for _, r := range rows {
+		dto := SpreadingRowDTO{
+			TreatyType: r.TreatyType,
+			TreatyName: r.TreatyName,
+			Currency:   r.Currency,
+			Percent:    r.Percent,
+		}
+		if r.HasValue {
+			dto.Value = r.Value.String()
+		}
+		out = append(out, dto)
+	}
+	return out
+}
+
+func breakdownDTO(b komite.Breakdown) BreakdownDTO {
+	rows := make([]BreakdownRowDTO, 0, len(b.Rows))
+	for _, r := range b.Rows {
+		dto := BreakdownRowDTO{
+			Description:      r.Description,
+			EstimateCurrency: r.EstimateCurrency,
+			EstimateLabel:    r.EstimateLabel,
+			Percent:          r.Percent,
+			Currency:         r.Currency,
+			Total:            r.Total,
+		}
+		if r.HasEstimate {
+			dto.Estimate = r.Estimate.String()
+		}
+		if r.HasValue {
+			dto.Value = r.Value.String()
+		}
+		rows = append(rows, dto)
+	}
+	return BreakdownDTO{Title: b.Title, ValueHeader: b.ValueHeader, Known: b.Known, Rows: rows}
+}
+
+func entriesDTO(entries []komite.CommitteeEntry) []CommitteeEntryDTO {
+	out := make([]CommitteeEntryDTO, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, CommitteeEntryDTO{
+			CaseID:     e.CaseID,
+			MemberName: e.MemberName,
+			Tier:       e.Tier,
+			Status:     e.StatusLabel(),
+			Note:       e.Note,
+			DecidedAt:  formatTime(e.DecidedAt),
+		})
+	}
+	return out
+}
+
+func coMembersDTO(rows []komite.CoMemberRow) []CoMemberRowDTO {
+	out := make([]CoMemberRowDTO, 0, len(rows))
+	for _, r := range rows {
+		dto := CoMemberRowDTO{Name: r.Name, Currency: r.Currency, Percent: r.Percent}
+		if r.HasValue {
+			dto.Value = r.Value.String()
+		}
+		out = append(out, dto)
+	}
+	return out
 }

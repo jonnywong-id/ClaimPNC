@@ -107,6 +107,9 @@ func TestUnggahMengirimBentukYangSamaDenganPega(t *testing.T) {
 	require.Equal(t, "Doc/2026/09/", kirim.Folder)
 	require.Equal(t, "FotoKerugianpdf", kirim.NamaBerkas)
 
+	// Token izin unggah yang dicatat ke GCP_IMAGE ikut terkirim sebagai KodeString.
+	require.Equal(t, "KODE-1", kirim.KodeAkses)
+
 	// PDF ikut dikonversi (`PerluKonversi`), tetapi tipenya TIDAK berubah — Pega hanya
 	// menyetel `Param.MimeType := "Avif"` pada cabang PNG/JPG/JPEG.
 	require.Equal(t, "application/pdf", kirim.TipeMedia)
@@ -114,7 +117,7 @@ func TestUnggahMengirimBentukYangSamaDenganPega(t *testing.T) {
 	// Yang terkirim adalah HASIL konversi, bukan isi aslinya.
 	require.Equal(t, []byte("AVIF:%PDF-1.4 isi berkas"), kirim.Isi)
 
-	require.NotEmpty(t, dokumen.ImageID, "ImageID diterbitkan layanan")
+	require.Len(t, dokumen.ImageID, 32, "ImageID diterbitkan seperti GenerateImageID")
 	require.Equal(t, "FotoKerugianpdf", dokumen.FileName)
 	require.Equal(t, "PNC-1865", dokumen.ClaimNumber)
 	require.NotNil(t, dokumen.UploadedAt)
@@ -448,4 +451,57 @@ func TestNamaBerkasTidakBerubahKarenaKonversi(t *testing.T) {
 	_, err := unggahBerkas(t, service, "Foto Kerugian.png")
 	require.NoError(t, err)
 	require.Equal(t, "FotoKerugianpng", storage.Terakhir().NamaBerkas)
+}
+
+// TestKonversiDilewatiMengunggahBerkasAsli: dengan KONVERSI_GAMBAR_LEWATI (keputusan Work
+// Owner 2026-09-30) PNG dan PDF terunggah apa adanya — isi, nama, dan tipe media asli —
+// tanpa menyentuh layanan konversi, bahkan saat layanan itu gagal.
+func TestKonversiDilewatiMengunggahBerkasAsli(t *testing.T) {
+	for _, uji := range []struct{ nama, tipeMedia string }{
+		{"foto.png", "image/png"},
+		{"surat.pdf", "application/pdf"},
+	} {
+		t.Run(uji.nama, func(t *testing.T) {
+			repo := memory.NewRepo()
+			storage := memory.NewStorage()
+			converter := memory.NewConverter()
+			converter.Gagalkan(errors.New("layanan konversi tumbang"))
+			service, err := usecase.NewService(usecase.Options{
+				Repos:          func(string) (dokumenpenunjang.Repo, error) { return repo, nil },
+				Storage:        storage,
+				Converter:      converter,
+				Clock:          jamTetap{pada: time.Now()},
+				SkipConversion: true,
+			})
+			require.NoError(t, err)
+
+			_, err = unggahBerkas(t, service, uji.nama)
+			require.NoError(t, err)
+			require.Empty(t, converter.Diterima())
+			require.Equal(t, []byte("isi "+uji.nama), storage.Terakhir().Isi)
+			require.Equal(t, uji.tipeMedia, storage.Terakhir().TipeMedia)
+		})
+	}
+}
+
+// TestKodeAksesTerdaftarDikirimTanpaTokenSekaliPakai: bila PENYIMPANAN_DOKUMEN_KODE_AKSES
+// diisi, kode itu yang menjadi KodeString dan tidak ada baris GCP_IMAGE yang dicatat.
+func TestKodeAksesTerdaftarDikirimTanpaTokenSekaliPakai(t *testing.T) {
+	repo := memory.NewRepo()
+	storage := memory.NewStorage()
+	service, err := usecase.NewService(usecase.Options{
+		Repos:      func(string) (dokumenpenunjang.Repo, error) { return repo, nil },
+		Storage:    storage,
+		Converter:  memory.NewConverter(),
+		Clock:      jamTetap{pada: time.Now()},
+		AccessCode: "KODE-TERDAFTAR",
+	})
+	require.NoError(t, err)
+
+	_, err = service.Upload(context.Background(), usecase.UploadCommand{
+		PortalAlias: portal, Request: permintaan(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "KODE-TERDAFTAR", storage.Terakhir().KodeAkses)
+	require.Empty(t, repo.Akses())
 }

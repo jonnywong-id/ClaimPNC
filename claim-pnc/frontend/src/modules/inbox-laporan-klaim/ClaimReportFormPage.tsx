@@ -53,7 +53,8 @@ export function ClaimReportFormPage() {
     setEstimateText(centsToRupiah(berkas.data.isian.estimasi_kerugian))
   }, [berkas.data])
 
-  const editable = berkas.data?.dapat_disunting ?? false
+  const registered = berkas.data?.sudah_diregistrasi ?? false
+  const editable = (berkas.data?.dapat_disunting ?? false) && !registered
   const violation = simpan.error instanceof APIError ? simpan.error.violations() : {}
 
   // Tombol yang menulis berkas dimatikan untuk polis Syariah atau bukan PNC — di layar lama
@@ -125,7 +126,17 @@ export function ClaimReportFormPage() {
 
   return (
     <FormFrame id={id} report={berkas.data?.laporan.posisi}>
-      {!editable && (
+      {registered && (
+        <p
+          className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
+          role="status"
+        >
+          This Receive Document is already registered as claim{' '}
+          <strong>{berkas.data?.laporan.nomor_klaim}</strong> and can no longer be changed.
+        </p>
+      )}
+
+      {!editable && !registered && (
         <div className="mt-4">
           <ErrorMessage
             title="Berkas ini hanya dapat dibaca"
@@ -404,20 +415,27 @@ export function ClaimReportFormPage() {
 
             Ia diperiksa di `useRegisterClaim`, satu tempat, supaya pesan penolakannya sama
             dari mana pun pendaftaran dimulai.
+
+            # Tidak digambar sama sekali setelah berkas menjadi klaim
+
+            Work Owner, 2026-09-29: Simpan dan Register Klaim tidak dimunculkan bila RCVN
+            sudah punya PNCN. Server juga menolak Register Klaim kedua.
           */}
-          <Button
-            type="button"
-            tone="kedua"
-            disabled={!editable || daftar.isPending || policyBlocked}
-            onClick={() =>
-              daftar.mutate(
-                { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
-                { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
-              )
-            }
-          >
-            {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
-          </Button>
+          {!registered && (
+            <Button
+              type="button"
+              tone="kedua"
+              disabled={!editable || daftar.isPending || policyBlocked}
+              onClick={() =>
+                daftar.mutate(
+                  { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
+                  { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
+                )
+              }
+            >
+              {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
+            </Button>
+          )}
 
           <Button
             type="button"

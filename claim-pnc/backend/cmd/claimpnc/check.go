@@ -4126,7 +4126,7 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 	if err != nil {
 		print("  [BELUM] nomor klaim berikutnya tidak dapat dihitung: %v", err)
 	} else {
-		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%04d",
+		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%d",
 			time.Now().Year()%100, terakhir+1)
 	}
 
@@ -4218,6 +4218,20 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 			print("  [BELUM] %d berkas ber-NOKLAIM tetapi belum diserahkan — TIDAK muncul", tanpaTab)
 			print("            di tab mana pun. Urutan penulisannya terbalik.")
 		}
+	}
+
+	// Persetujuan / Akseptasi LOD menulis tujuh kolom baru T_CLAIM_ADJUSTMENT. Tanpanya klaim
+	// tetap dapat dimuat (kolomnya dibaca terpisah), tetapi Simpan akseptasi gagal.
+	if _, err := primary.ExecContext(ctx, `
+		SELECT TANGGALBOLEHBAYAR, RECEIVEDATEANALIST, ACCEPTANCEVALUELOD, TIPEAKSEPTASI,
+		       KOMITEACCEPTED, REMARKACCEPTED, UPLOADNOTELOD
+		  FROM POOLDATA.T_CLAIM_ADJUSTMENT
+		 WHERE 1 = 0`); err != nil {
+		print("  [BELUM] kolom isian akseptasi belum ada di T_CLAIM_ADJUSTMENT: %v", err)
+		print("            Jalankan migrations/0013_akseptasi_lod.up.sql (DBA, D-63). Sampai itu,")
+		print("            tombol Simpan Persetujuan / Akseptasi gagal; klaim tetap dapat dibuka.")
+	} else {
+		print("  [ok]    kolom isian akseptasi (migrasi 0013) ada di T_CLAIM_ADJUSTMENT")
 	}
 
 	print("            Seam Penugasan tidak diperiksa di sini: memanggilnya menaikkan")

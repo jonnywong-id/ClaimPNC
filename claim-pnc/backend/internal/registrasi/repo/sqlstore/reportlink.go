@@ -131,13 +131,14 @@ func (p *ClaimReportLink) Snapshot(
 		reportDateText                 sql.NullString
 		name, phone, email             sql.NullString
 		location, chronology, policyNo sql.NullString
+		claimNumber                    sql.NullString
 		estimateRupiah                 sql.NullFloat64
 	)
 
 	exec := executorFrom(ctx, p.db)
 	err := exec.QueryRowContext(ctx, loadQuery("laporan_isi"), id).Scan(
 		&lossDate, &reportDateText, &name, &phone, &email,
-		&location, &chronology, &estimateRupiah, &policyNo,
+		&location, &chronology, &estimateRupiah, &policyNo, &claimNumber,
 	)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -163,6 +164,7 @@ func (p *ClaimReportLink) Snapshot(
 		EstimateValue: registrasi.Money(int64(estimateRupiah.Float64 * 100)),
 
 		PolicyNumber: strings.TrimSpace(policyNo.String),
+		ClaimNumber:  strings.TrimSpace(claimNumber.String),
 	}, nil
 }
 

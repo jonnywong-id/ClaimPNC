@@ -229,9 +229,6 @@ import (
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
-	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
-	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
-	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
 	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
@@ -369,6 +366,7 @@ import (
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 	registrasihttp "claim-pnc/internal/registrasi/http"
+	"claim-pnc/internal/registrasi/repo/dokumenlink"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	reportklaimhttp "claim-pnc/internal/reportklaim/http"
 	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
@@ -379,7 +377,9 @@ import (
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
 	"claim-pnc/internal/riwayatklaim"
-	
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -3715,14 +3715,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
 	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
 	// aplikasi dijalankan.
+	//
+	// Perakitannya dijalankan di bawah, SESUDAH layanan dokumen penunjang terbentuk: tombol
+	// Unggah Dokumen klaim mengunggah lewat layanan itu.
 	var registrationService *registrasiusecase.Service
-	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
-		if err != nil {
-			store.close()
-			return assembly{}, err
-		}
-	}
 
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
@@ -4322,15 +4318,33 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// jamnya dapat dipatok.
 	documentService, err := dokumenpenunjangusecase.NewService(
 		dokumenpenunjangusecase.Options{
-			Repos:     store.dokumenPenunjangSelector,
-			Storage:   store.dokumenPenunjangStorage,
-			Converter: store.dokumenPenunjangConverter,
-			Clock:     clock.System{},
+			Repos:          store.dokumenPenunjangSelector,
+			Storage:        store.dokumenPenunjangStorage,
+			Converter:      store.dokumenPenunjangConverter,
+			Clock:          clock.System{},
+			SkipConversion: cfg.DocumentStorage.SkipConversion,
+			AccessCode:     cfg.DocumentStorage.AccessCode,
 		},
 	)
+	if cfg.DocumentStorage.AccessCode != "" {
+		logger.Info("unggah dokumen memakai kode akses terdaftar; token sekali pakai tidak dibuat",
+			slog.String("penanda", "PENYIMPANAN_DOKUMEN_KODE_AKSES"))
+	}
+	if cfg.DocumentStorage.SkipConversion {
+		logger.Warn("konversi gambar ke AVIF dilewati; PNG, JPG, JPEG, dan PDF diunggah apa adanya",
+			slog.String("penanda", "KONVERSI_GAMBAR_LEWATI"))
+	}
 	if err != nil {
 		store.close()
 		return assembly{}, err
+	}
+
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier)
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
 	}
 
 	return assembly{

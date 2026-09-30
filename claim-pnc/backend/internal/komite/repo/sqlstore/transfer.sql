@@ -54,6 +54,14 @@
 --
 -- Diurutkan supaya hasilnya PASTI: dua baris pada case yang sama tidak boleh berpindah
 -- tempat antar permintaan, karena pembacanya membandingkan angka uang antar baris.
+--
+-- # Nilai uang dibulatkan ke sen di sini
+--
+-- Pega menyimpan sebagian nilai berdesimal lebih dari dua (`ASM_SHARE_VALUE` `69591.261` pada
+-- KMT-209620, `LOSS_ADJUSTER_FEE` `21881.317425` pada KMT-208651). money.Money bersatuan sen
+-- dan MENOLAK angka yang lebih halus, sehingga tanpa ROUND case semacam itu gagal dibuka
+-- sama sekali. Pembulatan ke sen adalah pembulatan tampilan (`I-12`): nilainya tidak
+-- disimpan balik, dan tidak ada yang dijadikan nol.
 SELECT j.CLAIMID,
        j.OBJECTID,
        j.OBJECTCOVERAGEID,
@@ -61,17 +69,46 @@ SELECT j.CLAIMID,
        j.TGLAKSEPTASI,
        j.CURRENCY,
        j.PAYMENTTYPE,
-       j.GROSSVALUE,
-       j.PROPOSE_VALUE,
-       j.NILAIAKSEPTASI,
-       j.NILAI_SALVAGE_A,
+       ROUND(j.GROSSVALUE, 2),
+       ROUND(j.PROPOSE_VALUE, 2),
+       ROUND(j.NILAIAKSEPTASI, 2),
+       ROUND(j.NILAI_SALVAGE_A, 2),
        j.ASM_SHARE,
-       j.ASM_SHARE_VALUE,
-       j.INDIVIDUAL_RISK_VALUE,
+       ROUND(j.ASM_SHARE_VALUE, 2),
+       ROUND(j.INDIVIDUAL_RISK_VALUE, 2),
        j.EXGRATIA,
        j.NOTES,
-       j.CIRCUMCAUSEOFLOSS
+       j.CIRCUMCAUSEOFLOSS,
+       -- Dua kolom di bawah ditambahkan untuk kolom kanan layar (committeesheet.go):
+       -- kode mata uang untuk kolom "Currency", dan fee adjuster sebagai nilai komite
+       -- Type 4/7. `CURRENCY.ID` unik (35 dari 35), jadi LEFT JOIN tidak menggandakan baris.
+       m.CURRENCY,
+       ROUND(j.LOSS_ADJUSTER_FEE, 2),
+       -- Bahan tabel Claim Adjustment (breakdown.go). Kedua subkueri berkorelasi memakai
+       -- indeks CLAIMID (T_CLAIM_ESTIMASI_IDX_01, T_CLAIM_ADJUSTMENT_IDX1) dan hanya
+       -- berjalan untuk 1–3 baris satu case.
+       j.ADJUSTMENTID,
+       ROUND(j.TOTAL_CLAIM, 2),
+       j.LOC,
+       j.INDIVIDUAL_RISK_TYPE,
+       j.INDIVIDUAL_RISK_PERCENT,
+       (SELECT ROUND(SUM(e.ESTIMATIONVALUE), 2)
+          FROM POOLDATA.T_CLAIM_ESTIMASI e
+         WHERE e.CLAIMID = j.CLAIMID
+           AND e.OBJECTID = j.OBJECTID
+           AND e.OBJECTCOVERAGEID = j.OBJECTCOVERAGEID
+           AND e.ESTIMATIONTYPE = CASE WHEN j.PAYMENTTYPE IN ('4', '7') THEN '2' ELSE '1' END),
+       (SELECT ROUND(SUM(i.GROSSVALUE), 2)
+          FROM POOLDATA.T_CLAIM_ADJUSTMENT i
+         WHERE i.CLAIMID = j.CLAIMID
+           AND i.OBJECTID = j.OBJECTID
+           AND i.OBJECTCOVERAGEID = j.OBJECTCOVERAGEID
+           AND i.PAYMENTTYPE = '2'
+           AND i.STATUSAKSEPTASI = '1'
+           AND i.ADJUSTMENTID <> j.ADJUSTMENTID)
   FROM POOLDATA.T_CLAIM_ADJUSTMENT j
+  LEFT JOIN POOLDATA.CURRENCY m
+         ON m.ID = j.CURRENCY
  WHERE j.CASEIDKOMITE = :1
  ORDER BY j.OBJECTID, j.OBJECTCOVERAGEID, j.ADJUSTMENTID
 
@@ -91,11 +128,14 @@ SELECT MAX(k.NAMAKOMITE),
        MAX(k.TYPEKOMITE),
        MAX(k.PAYMENTTYPE),
        MAX(k.NOTEKOMITE),
-       MAX(k.NILAIKLAIM),
+       ROUND(MAX(k.NILAIKLAIM), 2),
        MAX(k.SHAREASM),
        MAX(k.TANGGALKOMITE),
        MAX(k.STATUSAPPROVE),
-       COUNT(1)
+       COUNT(1),
+       -- "CREATE COMITEE DATE": seluruh anggota satu case dibentuk bersamaan, jadi yang
+       -- paling awal adalah saat case komite dibuat.
+       MIN(k.DATEOFCOMMITE_CREATE)
   FROM POOLDATA.T_CLAIM_KOMITE_LIST k
  WHERE k.KOMITE_ID = :1
 
@@ -143,6 +183,31 @@ SELECT MAX(a.GROUPPANEL_1),
    AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
 
 
+-- name: transfer_case_new
+--
+-- Padanan `transfer_case` untuk case komite yang dibentuk APLIKASI INI (KMTN.*).
+--
+-- Case itu tidak punya baris kerja Pega — `TC_PNC_KOMITE` adalah kepalanya
+-- (`docs/ddl/tc_pnc_komite.sql`). Tanpa kueri ini kunci klaimnya kosong, dan seluruh blok
+-- klaim, coverage, spreading, serta lampiran tidak terbaca.
+--
+-- Ketiga medan diambil dengan urutan yang SAMA dengan `transfer_case`:
+--
+--     GROUPPANEL           IsTravel (Group Panel 005)
+--     POLIS_JENIS_BISNIS   IsHE — Quotation.BusinessType yang registrasi simpan
+--     CLAIMID              kunci klaim; untuk klaim PNCN ia nomor klaim itu sendiri
+--
+-- `MAX` supaya selalu tepat satu baris, termasuk ketika KOMITE_ID tidak ditemukan.
+SELECT MAX(p.GROUPPANEL),
+       MAX(p.POLIS_JENIS_BISNIS),
+       MAX(k.CLAIMID)
+  FROM POOLDATA.TC_PNC_KOMITE k
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+         ON p.CLAIMID = k.CLAIMID
+ WHERE k.KOMITE_ID = :1
+   AND k.DIHAPUS_PADA IS NULL
+
+
 -- name: transfer_claim
 --
 -- Data klaim yang `ShowTransferDetail` tampilkan lewat `.KomiteClaimData.*`.
@@ -163,8 +228,22 @@ SELECT MAX(p.DATEOFLOSS),
        MAX(p.COINSNAME),
        MAX(p.CURRENCY),
        MAX(p.EXGRATIA),
-       COUNT(1)
+       COUNT(1),
+       -- Kepala kolom kiri `ShowTransferDetail` (.Policy.* dan .CoverID). Lookup mata uang
+       -- lewat LEFT JOIN, bukan subkueri skalar: subkueri di dalam SELECT beragregat tanpa
+       -- GROUP BY ditolak Oracle (ORA-00937, lihat `transfer_case`).
+       MAX(p.CLAIMNO),
+       MAX(p.NOPOLIS),
+       MAX(p.QQNAME),
+       MAX(p.BUSINESSNAME),
+       MAX(p.BRANCHNAME),
+       MAX(p.SOBNAME),
+       MAX(p.LEADER_MEMBER),
+       MAX(p.GROUPPANEL),
+       MAX(m.CURRENCY)
   FROM POOLDATA.T_CLAIM_PNC p
+  LEFT JOIN POOLDATA.CURRENCY m
+         ON m.ID = p.CURRENCY
  WHERE p.CLAIMID = :1
 
 
@@ -188,7 +267,7 @@ SELECT c.OBJECTID,
        c.OBJECTNAME,
        c.COVERAGENAME,
        c.CAUSEOFLOSS,
-       c.SUMTSI,
+       ROUND(c.SUMTSI, 2),
        c.CURRENCY,
        c.CURICUMOFLOSS,
        c.EXTENTOFLOSS,
@@ -201,6 +280,208 @@ SELECT c.OBJECTID,
  WHERE c.CLAIMID = :1
    AND c.DIHAPUS_PADA IS NULL
  ORDER BY c.OBJECTID, c.OBJECTCOVERAGEID
+
+
+-- ============================================================================
+-- KOLOM KANAN DAN TAB TAMBAHAN — lihat internal/komite/committeesheet.go
+-- ============================================================================
+--
+-- Pega mengisi bagian ini di clipboard (`CalculatedSpredingForClaimKomite`,
+-- `SetListComiteeClaimPerObjAdj`, `ShowKomiteViewContent`). Yang dibaca di sini BAHANNYA;
+-- hitungannya dilakukan di Go dengan rumus yang sama.
+
+
+-- name: transfer_policy
+--
+-- Periode pertanggungan — `.Policy.StartDateTime` S/D `.Policy.EndDateTime`.
+--
+-- Dokumen yang dipakai sama dengan registrasi `polis_ambil`: baris JSON_POLIS terbaru,
+-- POLICYDATA lebih dulu, DATA_JSONBLOB bila POLICYDATA kosong. Nilainya teks Pega
+-- (`20260801T050000.000 GMT`) dan diurai di Go.
+SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.StartDateTime'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.StartDateTime')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.EndDateTime'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.EndDateTime'))
+  FROM POOLDATA.JSON_POLIS p
+ WHERE p.NOPOLIS = :1
+   AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+ ORDER BY p.TGL_INPUT DESC
+ FETCH FIRST 1 ROWS ONLY
+
+
+-- name: transfer_coinsurance
+--
+-- CoinsList polis — sumber LEADER dan CO MEMBER. Salinan registrasi `polis_koasuransi`:
+-- dua cabang karena POLICYDATA (CLOB) dan DATA_JSONBLOB (BLOB) tidak dapat digabung
+-- COALESCE sebelum JSON_TABLE.
+WITH terbaru AS (
+    SELECT p.POLICYDATA, p.DATA_JSONBLOB
+      FROM POOLDATA.JSON_POLIS p
+     WHERE p.NOPOLIS = :1
+       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+     ORDER BY p.TGL_INPUT DESC
+     FETCH FIRST 1 ROWS ONLY
+)
+SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
+  FROM terbaru t,
+       JSON_TABLE(t.POLICYDATA, '$.CoinsList[*]' COLUMNS (
+           LEADER        VARCHAR(10)  PATH '$.Leader',
+           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
+           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
+ WHERE t.POLICYDATA IS NOT NULL
+UNION ALL
+SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
+  FROM terbaru t,
+       JSON_TABLE(t.DATA_JSONBLOB, '$.CoinsList[*]' COLUMNS (
+           LEADER        VARCHAR(10)  PATH '$.Leader',
+           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
+           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
+ WHERE t.POLICYDATA IS NULL
+
+
+-- name: transfer_fac_offer
+--
+-- FacOfferList polis — baris "List Reas Fac-Out". Salinan registrasi `cfs_fac_offer`.
+WITH terbaru AS (
+    SELECT p.POLICYDATA, p.DATA_JSONBLOB
+      FROM POOLDATA.JSON_POLIS p
+     WHERE p.NOPOLIS = :1
+       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+     ORDER BY p.TGL_INPUT DESC
+     FETCH FIRST 1 ROWS ONLY
+)
+SELECT jt.REINSURER_NAME, jt.PCT_SHARE
+  FROM terbaru t,
+       JSON_TABLE(t.POLICYDATA, '$.FacOfferList[*]' COLUMNS (
+           REINSURER_NAME VARCHAR(200) PATH '$.ReinsurerName',
+           PCT_SHARE      VARCHAR(50)  PATH '$.PctShareForAllObj')) jt
+ WHERE t.POLICYDATA IS NOT NULL
+UNION ALL
+SELECT jt.REINSURER_NAME, jt.PCT_SHARE
+  FROM terbaru t,
+       JSON_TABLE(t.DATA_JSONBLOB, '$.FacOfferList[*]' COLUMNS (
+           REINSURER_NAME VARCHAR(200) PATH '$.ReinsurerName',
+           PCT_SHARE      VARCHAR(50)  PATH '$.PctShareForAllObj')) jt
+ WHERE t.POLICYDATA IS NULL
+
+
+-- name: transfer_spreading
+--
+-- Spreading seluruh coverage klaim; dipilah per baris adjustment di Go.
+--
+-- Nama treaty dari view `REINSURANCETYPE` (ID unik, 62 dari 62) — itulah yang ditampilkan
+-- dropdown Pega (`BrowseReinsuranceType_RD`, prompt `.Note`). TREATYNAME hanya cadangan:
+-- ia kosong pada klaim PNCN.
+SELECT s.OBJECTID,
+       s.OBJECTCOVERAGEID,
+       s.TREATYTYPE,
+       COALESCE(t.NOTE, s.TREATYNAME),
+       s.SHAREPERCENTAGE
+  FROM POOLDATA.T_CLAIM_SPREADING s
+  LEFT JOIN POOLDATA.REINSURANCETYPE t
+         ON t.ID = s.TREATYTYPE
+ WHERE s.CLAIMID = :1
+ ORDER BY s.OBJECTID, s.OBJECTCOVERAGEID, s.URUTAN
+
+
+-- name: transfer_dominant_factors
+--
+-- "Dominan Factor" — `KomiteClaimData.DominanFactorList`, diisi `ShowKomiteViewContent`.
+-- Pasangan tabelnya sama dengan `GetDataDominanFactorListOS` dan modul laporan klaim.
+SELECT f.NAME
+  FROM POOLDATA.T_CLAIM_DOMINANFACTOR d
+  JOIN POOLDATA.M_DOMINAN_FACTOR f
+    ON f.ID = d.ID_DOMINANFACTOR
+ WHERE d.CLAIMID = :1
+ ORDER BY d.IDX_DOMINANFACTOR
+
+
+-- name: transfer_attachments
+--
+-- Lampiran klaim untuk tab "Lampiran Dokumen". Isi berkasnya (BLOB ATTACHFILE) tidak dibaca.
+--
+-- Tiga bentuk kunci — apa adanya, tanpa prefix, dan ber-prefix — sama dengan registrasi
+-- `lampiran_daftar`: IDPEGA ditulis dalam bentuk yang berbeda oleh Pega dan oleh aplikasi
+-- ini. Tabelnya kecil (±8.900 baris) sehingga ketiadaan indeks IDPEGA tidak terasa.
+SELECT a.DATAID,
+       a.ATTACHNAME,
+       a.ATTACHNOTE,
+       a.CATEGORY,
+       a.INPUTOPERATOR,
+       a.INPUTDATE
+  FROM POOLDATA.DATA_ATTACHFILE a
+ WHERE a.IDPEGA IN (:1, :2, :3)
+ ORDER BY a.INPUTDATE, a.DATAID
+
+
+-- ============================================================================
+-- DAFTAR KOMITE DAN HISTORY — bagian bawah ShowTransferDetail
+-- ============================================================================
+--
+-- Keduanya baris `T_CLAIM_KOMITE_LIST` lewat indeks KOMITE_ID. Anggota ganda (9 di seluruh
+-- tabel) digabung GROUP BY seperti kueri inbox; NAMAKOMITE dirapikan TRIM.
+
+
+-- name: transfer_members
+--
+-- "Daftar Komite" — `.KomiteList` case ini: Komite, Status, Catatan, Tanggal Akseptasi.
+SELECT MAX(TRIM(k.NAMAKOMITE)),
+       CAST(k.KOMITEKE AS INTEGER),
+       MAX(k.STATUSAPPROVE),
+       MAX(k.NOTEKOMITE),
+       MAX(k.TANGGALKOMITE),
+       k.KOMITE_ID
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+ WHERE k.KOMITE_ID = :1
+ GROUP BY k.KOMITE_ID, UPPER(TRIM(k.NAMAKOMITE)), CAST(k.KOMITEKE AS INTEGER)
+ ORDER BY CAST(k.KOMITEKE AS INTEGER), MAX(TRIM(k.NAMAKOMITE))
+
+
+-- name: transfer_history_legacy
+--
+-- "History of Previous Adjustment Committees" untuk klaim Pega: case komite lain yang
+-- `PNCCASEID`-nya kunci klaim yang sama — kolom yang juga dipakai `transfer_case`.
+--
+-- Bukan `PXCOVERINSKEY`: kolom itu (yang berindeks) KOSONG pada seluruh baris Work-Komite —
+-- diperiksa 2026-09-29. `PNCCASEID` tanpa indeks, tetapi tabel kerja hanya ±6.800 baris
+-- (diukur 13 ms).
+--
+-- :1 kunci klaim ber-prefix, :2 case yang sedang dibuka (dikecualikan).
+SELECT MAX(TRIM(k.NAMAKOMITE)),
+       CAST(k.KOMITEKE AS INTEGER),
+       MAX(k.STATUSAPPROVE),
+       MAX(k.NOTEKOMITE),
+       MAX(k.TANGGALKOMITE),
+       k.KOMITE_ID
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+ WHERE k.KOMITE_ID IN (SELECT a.PYID
+                         FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
+                        WHERE a.PNCCASEID = :1
+                          AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite')
+   AND k.KOMITE_ID <> :2
+ GROUP BY k.KOMITE_ID, UPPER(TRIM(k.NAMAKOMITE)), CAST(k.KOMITEKE AS INTEGER)
+ ORDER BY MIN(k.DATEOFCOMMITE_CREATE), k.KOMITE_ID, CAST(k.KOMITEKE AS INTEGER)
+
+
+-- name: transfer_history_new
+--
+-- Padanan untuk klaim PNCN: case komitenya di TC_PNC_KOMITE (indeks CLAIMID).
+--
+-- :1 kunci klaim, :2 case yang sedang dibuka (dikecualikan).
+SELECT MAX(TRIM(k.NAMAKOMITE)),
+       CAST(k.KOMITEKE AS INTEGER),
+       MAX(k.STATUSAPPROVE),
+       MAX(k.NOTEKOMITE),
+       MAX(k.TANGGALKOMITE),
+       k.KOMITE_ID
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+ WHERE k.KOMITE_ID IN (SELECT t.KOMITE_ID
+                         FROM POOLDATA.TC_PNC_KOMITE t
+                        WHERE t.CLAIMID = :1
+                          AND t.DIHAPUS_PADA IS NULL)
+   AND k.KOMITE_ID <> :2
+ GROUP BY k.KOMITE_ID, UPPER(TRIM(k.NAMAKOMITE)), CAST(k.KOMITEKE AS INTEGER)
+ ORDER BY MIN(k.DATEOFCOMMITE_CREATE), k.KOMITE_ID, CAST(k.KOMITEKE AS INTEGER)
 
 
 -- name: transfer_check_table

@@ -21,6 +21,7 @@ func perintah() dokumenpenunjang.PerintahUnggah {
 		NamaAplikasi: "klaimpnc",
 		Pengunggah:   "PETUGAS01",
 		NomorKlaim:   "PNC-1865",
+		KodeAkses:    "KODE-1",
 		Folder:       "Doc/2026/09/",
 		NamaBerkas:   "FotoKerugianpdf",
 		TipeMedia:    "application/pdf",
@@ -43,7 +44,7 @@ func TestMuatanSamaBentukDenganPega(t *testing.T) {
 			tipeIsi = r.Header.Get("Content-Type")
 			isi, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(isi, &diterima)
-			_, _ = w.Write([]byte(`{"ImageID":"IMG-1","exp":"2026-12-31T23:59:59Z"}`))
+			_, _ = w.Write([]byte(`{"ImageID":"IMG-1","URLImage":"https://penyimpanan.contoh/a","exp":"2026-12-31T23:59:59Z"}`))
 		}))
 	defer server.Close()
 
@@ -56,7 +57,9 @@ func TestMuatanSamaBentukDenganPega(t *testing.T) {
 	require.Equal(t, "/api/v1/upload", jalur)
 	require.Equal(t, "application/json", tipeIsi)
 
-	// Kedelapan nama field, persis seperti halaman DocAPI di Pega.
+	// Kesembilan nama field, persis seperti halaman DocAPI di Pega — termasuk KodeString dari
+	// GenerateTokenPNCDokumen, yang ditolak layanan bila kosong.
+	require.Equal(t, "KODE-1", diterima["KodeString"])
 	require.Equal(t, "PETUGAS01", diterima["UserInput"])
 	require.Equal(t, "PNC-1865", diterima["NoClaim"])
 	require.Equal(t, "klaimpnc", diterima["App"])
@@ -65,7 +68,7 @@ func TestMuatanSamaBentukDenganPega(t *testing.T) {
 	require.Equal(t, "application/pdf", diterima["MimeType"])
 	require.Equal(t, base64.StdEncoding.EncodeToString([]byte("%PDF-1.4 isi")),
 		diterima["Image"])
-	require.Len(t, diterima, 8, "tidak boleh ada field kesembilan yang ikut terkirim")
+	require.Len(t, diterima, 9, "tidak boleh ada field kesepuluh yang ikut terkirim")
 
 	require.Equal(t, "IMG-1", hasil.ImageID)
 	require.NotNil(t, hasil.ExpiresAt)
@@ -81,7 +84,7 @@ func TestDurasiTerkirimSebagaiAngkaBukanTeks(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			mentah, _ = io.ReadAll(r.Body)
-			_, _ = w.Write([]byte(`{"ImageID":"IMG-1"}`))
+			_, _ = w.Write([]byte(`{"ImageID":"IMG-1","URLImage":"https://penyimpanan.contoh/a"}`))
 		}))
 	defer server.Close()
 
@@ -110,7 +113,7 @@ func TestGarisMiringDiUjungAlamatTidakMenggandakanJalur(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			jalur = r.URL.Path
-			_, _ = w.Write([]byte(`{"ImageID":"IMG-1"}`))
+			_, _ = w.Write([]byte(`{"ImageID":"IMG-1","URLImage":"https://penyimpanan.contoh/a"}`))
 		}))
 	defer server.Close()
 
@@ -121,11 +124,11 @@ func TestGarisMiringDiUjungAlamatTidakMenggandakanJalur(t *testing.T) {
 	require.Equal(t, "/api/v1/upload", jalur)
 }
 
-// TestResponsTanpaImageIDDianggapGagal menutup keberhasilan semu.
+// TestResponsTanpaURLImageDianggapGagal menutup keberhasilan semu.
 //
-// Tanpa ImageID, berkasnya tidak dapat dicatat dan tidak dapat ditemukan lagi. Menerimanya
-// sebagai berhasil meninggalkan satu berkas yatim per unggahan.
-func TestResponsTanpaImageIDDianggapGagal(t *testing.T) {
+// Pega menilai unggahan dari URLImage (precondition InsertDataPNCStorage). Tanpanya berkas
+// tidak tersimpan; pesan layanan harus ikut supaya penolakannya dapat ditelusuri.
+func TestResponsTanpaURLImageDianggapGagal(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte(`{"message":"ok"}`))
@@ -135,7 +138,8 @@ func TestResponsTanpaImageIDDianggapGagal(t *testing.T) {
 	klien, _ := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
 	_, err := klien.Upload(context.Background(), perintah())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "ImageID")
+	require.Contains(t, err.Error(), "URLImage")
+	require.Contains(t, err.Error(), `"ok"`, "pesan layanan ikut ke galat")
 }
 
 // TestGalatTidakMembocorkanIsiRespons menjaga `D-69`.
@@ -166,7 +170,7 @@ func TestMasaBerlakuYangTidakTerbacaTidakMenggagalkanUnggahan(t *testing.T) {
 	for _, exp := range []string{"", "entah kapan", "2026-12-31T23:59:59Z"} {
 		server := httptest.NewServer(http.HandlerFunc(
 			func(w http.ResponseWriter, _ *http.Request) {
-				_, _ = w.Write([]byte(`{"ImageID":"IMG-1","exp":"` + exp + `"}`))
+				_, _ = w.Write([]byte(`{"ImageID":"IMG-1","URLImage":"https://penyimpanan.contoh/a","exp":"` + exp + `"}`))
 			}))
 
 		klien, _ := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
@@ -182,7 +186,7 @@ func TestBatasWaktuDihormati(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, _ *http.Request) {
 			time.Sleep(200 * time.Millisecond)
-			_, _ = w.Write([]byte(`{"ImageID":"IMG-1"}`))
+			_, _ = w.Write([]byte(`{"ImageID":"IMG-1","URLImage":"https://penyimpanan.contoh/a"}`))
 		}))
 	defer server.Close()
 
