@@ -111,6 +111,8 @@ import (
 	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
 	monitoringslinkojksql "claim-pnc/internal/monitoringslinkojk/repo/sqlstore"
+	"claim-pnc/internal/outstandingclaim"
+	outstandingclaimsql "claim-pnc/internal/outstandingclaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
@@ -224,6 +226,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkDetailDocumentType(ctx, daftardetailtipedokumensql.NewRepo(primary), daftardetailtipedokumensql.NewReferenceRepo(primary), print)
 	checkAssembledModules(ctx, primary, print)
 	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
+	checkOutstandingClaim(ctx, outstandingclaimsql.NewRepo(primary),
+		inboxclaimtreatypropsql.NewRepo(primary), print)
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkOSClaimPerCabang(ctx, inboxosclaimpercabangsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
@@ -6428,4 +6432,117 @@ func checkKomiteInbox(
 		print("            karena jejaknya belum ada. Ia akan berubah setelah migrasi 0004")
 		print("            dijalankan dan keputusan pertama tercatat.")
 	}
+}
+
+// checkOutstandingClaim memeriksa modul Outstanding Claim — rincian klaim treaty.
+//
+// Tiga hal yang diperiksa, dan yang ketiga tidak dimiliki modul lain:
+//
+//  1. hak baca atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan POOLDATA.JSON_KLAIM;
+//  2. apakah kueri rinciannya benar-benar berjalan terhadap klaim yang ada;
+//  3. BERAPA BANYAK jalur dokumen klaim yang ditemukan — karena bentuk dokumen itu belum
+//     pernah diperiksa (`R-08`), dan layar berisi 97 isian kosong terbaca sama persis entah
+//     karena klaimnya memang belum diisi atau karena seluruh jalurnya salah.
+//
+// Pemeriksaan ketiga itulah yang paling berguna di sini: ia menjawab "apakah kita membaca
+// dokumen yang benar" sebelum ada satu pun pengguna yang membuka layarnya.
+func checkOutstandingClaim(
+	ctx context.Context,
+	repo *outstandingclaimsql.Repo,
+	queue *inboxclaimtreatypropsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel rincian klaim treaty tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — kedua tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas")
+		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan POOLDATA.JSON_KLAIM.")
+		return
+	}
+	print("  [ok]    Tabel rincian klaim treaty dapat dibaca")
+
+	// Satu klaim nyata dibutuhkan untuk memeriksa jalur dokumennya, dan nomornya tidak
+	// dapat ditebak. Ia diambil dari antrean modul di atasnya — bukan dikarang — supaya
+	// pemeriksaan ini tidak pernah menyentuh nomor klaim yang tidak ada.
+	sample := firstTreatyClaimID(ctx, queue)
+	if sample == "" {
+		print("            Tidak ada klaim treaty di antrean untuk diperiksa. Itu BUKAN")
+		print("            kegagalan — hanya berarti jalur dokumennya belum dapat diuji.")
+		return
+	}
+
+	query, err := outstandingclaim.NewQuery(sample, outstandingclaim.Caller{Login: "-periksa"})
+	if err != nil {
+		print("  [GAGAL] Permintaan rincian tidak terbentuk: %v", err)
+		return
+	}
+
+	detail, err := repo.Find(ctx, query)
+	if err != nil {
+		print("  [GAGAL] Rincian klaim %s tidak dapat dibaca: %v", sample, err)
+		print("            Bila galatnya menyebut JSON, isi")
+		print("            POOLDATA.JSON_KLAIM.DATA_JSONBLOB bukan JSON yang sah.")
+		return
+	}
+
+	// Isian yang terhalang tidak ikut dihitung: ia memang tidak punya jalur.
+	expected := 0
+	for _, field := range outstandingclaim.Fields() {
+		if !field.Blocked {
+			expected++
+		}
+	}
+
+	found := len(detail.Values)
+	print("  [ok]    Rincian klaim %s terbaca: %d dari %d isian ditemukan di dokumen",
+		sample, found, expected)
+
+	switch {
+	case found == 0:
+		print("  [PERIKSA] TIDAK SATU PUN jalur ditemukan. Dua kemungkinan, dan keduanya")
+		print("            menuntut tindakan berbeda: klaim ini belum punya baris di")
+		print("            POOLDATA.JSON_KLAIM, atau seluruh jalur di section.go salah.")
+		print("            Bandingkan isi DATA_JSONBLOB klaim ini dengan daftar jalur di")
+		print("            internal/outstandingclaim/section.go sebelum menyimpulkan.")
+	case found*2 < expected:
+		print("  [PERIKSA] Kurang dari separuh jalur ditemukan. Bentuk dokumen kemungkinan")
+		print("            berbeda dari yang dibaca dari section — lihat log peringatan")
+		print("            modul untuk rincian isian mana yang hilang.")
+	}
+
+	grids := 0
+	for _, rows := range detail.Grids {
+		if len(rows) > 0 {
+			grids++
+		}
+	}
+	print("  [ok]    %d grid berisi baris pada klaim %s", grids, sample)
+}
+
+// firstTreatyClaimID mengambil satu nomor klaim treaty dari antrean, atau teks kosong.
+//
+// Ia memakai penyimpanan modul Inbox Claim Treaty Prop, bukan kueri tersendiri, supaya
+// pemeriksaan ini tidak menambah satu pun kueri yang harus dipelihara — dan supaya nomor yang
+// diperiksa memang nomor yang benar-benar tampil di layar antrean.
+//
+// Antrean TEKNIK yang dipakai, bukan antrean milik pemanggil: `-periksa` berjalan tanpa
+// pengguna, sehingga antrean per orang selalu kosong baginya.
+//
+// Galat DITELAN di sini dan dijawab teks kosong. Kegagalan membaca antrean bukan temuan modul
+// ini — ia sudah dilaporkan checkClaimTreatyProp tepat sebelumnya, dan melaporkannya dua kali
+// membuat satu masalah terbaca sebagai dua.
+func firstTreatyClaimID(ctx context.Context, queue *inboxclaimtreatypropsql.Repo) string {
+	technical, found := inboxclaimtreatyprop.FindTab(inboxclaimtreatyprop.TabTechnical)
+	if !found {
+		return ""
+	}
+
+	page, err := queue.List(ctx,
+		inboxclaimtreatyprop.Query{Tab: technical},
+		inboxclaimtreatyprop.Pagination{Page: 1, Size: 1},
+	)
+	if err != nil || len(page.Items) == 0 {
+		return ""
+	}
+	return page.Items[0].ClaimID
 }

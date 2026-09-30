@@ -22126,3 +22126,300 @@ nol yang seharusnya satu setengah miliar tidak terlihat keliru.
    data yang ada, tetapi tidak selengkap layar lama.
 2. **Blok surveyor, `ShowTransferDetailHE`, `UploadDocumentKomite`, `ViewPolicyDetail`**
    tetap seperti §72 dan §73.
+
+---
+
+## 75. Inbox Claim Treaty Prop mengikuti Pega produksi, dan Outstanding Claim dibangun (2026-09-30)
+
+**Latar:** Work Owner melampirkan tangkapan layar Pega **produksi** untuk `MENU_ID 54` dan
+meminta layarnya diikuti, ditambah satu perilaku yang belum ada — mengklik nomor klaim
+menjalankan Flow Action `OutstandingClaim` dan menggambar section dengan nama yang sama.
+
+### Temuan yang menentukan seluruh sesi — export sudah tertinggal dari produksi
+
+Tangkapan layarnya memuat **sepuluh kolom**; `Section/InboxClaimTreaty_Section-Section.xml`
+hanya punya **delapan**, berakhir di "Insured Name". Diverifikasi sel demi sel dari `pyRows`
+grid itu, dan ketiga kueri `GetClaimTreaty*_SQL` juga tidak memilih satu pun kolom operator
+pengubah maupun status.
+
+Pemilih antreannya pun berbeda bentuk: **dropdown** di produksi, **tiga kontainer** di
+export.
+
+Ini `R-09` yang menggigit — sistem sumber masih aktif berubah. Yang diikuti adalah
+**produksi**, sesuai permintaan, dan setiap selisihnya dicatat sebagai selisih terencana
+alih-alih diserap diam-diam.
+
+### Keputusan 1 — asal dua kolom baru DITETAPKAN, bukan dibaca
+
+`PXUPDATEOPERATOR` dan `PYSTATUSWORK` pada `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, dipilih Work
+Owner 2026-09-29 dari dua kemungkinan yang diajukan.
+
+Tabelnya dipilih karena ia yang **sudah terbukti** memuat keduanya: modul saudaranya membaca
+`PXUPDATEOPERATOR` untuk judul yang sama (`inboxclaimtreatynonprop.sql`, alias `CARI24`).
+Dengan begitu dua layar yang bersebelahan di menu tidak mengartikan "Last update" berbeda.
+
+Gabungannya **`LEFT JOIN`**, dan itu dijaga uji: dengan `INNER`, setiap penugasan yang objek
+kerjanya tidak terbaca akan **hilang dari antrean** — pekerjaan yang lenyap tanpa pesan,
+bukan kolom yang kosong.
+
+**Satu hal sengaja tidak disembunyikan:** apakah objek kerja berkelas
+`ASM-FW-GCNMFW-Work-ClaimTreaty` benar-benar tersimpan di tabel itu **belum diverifikasi** —
+DDL-nya tidak ada (`R-08`). Bila dugaan itu salah, yang terjadi bukan galat melainkan dua
+kolom kosong pada seluruh baris, dan itulah yang pertama terlihat saat layar dibuka.
+
+### Keputusan 2 — "Status Claim ID" TIDAK diterjemahkan
+
+Judulnya menyesatkan sejak di Pega: isinya `PYSTATUSWORK` — status **alur kerja** ("New",
+"Pending") — bukan Status Klaim berkode `1134`–`1166` milik master `V_STS_CLAIM`. Keduanya
+konsep berbeda (`D-18`).
+
+Judulnya dipertahankan apa adanya (`D-13`); yang tidak dipertahankan adalah salah artinya.
+Nama kontraknya `status_kerja`, bukan `status_klaim`, supaya salah arti itu tidak menular ke
+setiap pemakainya.
+
+### Keputusan 3 — tombol "Lihat Detail Klaim" dihapus, digantikan tautan pada nomor klaim
+
+Tombol lama menunjuk penampung `/view-claim/:referensi` yang memang belum punya isi. Dua
+jalan dari satu baris ke dua layar berbeda, yang satu buntu, lebih buruk daripada satu.
+
+Yang dikirim di alamatnya adalah **nomor klaim**, bukan kunci teknis Pega: alamatnya terbaca
+orang, dapat disalin ke percakapan, dan tidak membocorkan bentuk kunci internal Pega ke bilah
+alamat. Kunci teknisnya tetap dikirim server pada setiap baris.
+
+### Keputusan 4 — dokumen klaim dibaca UTUH lalu diurai di Go
+
+`Section/OutstandingClaim-Section.xml` mengikat hampir seluruh isinya ke `.ClaimData.*`, yang
+di basis data adalah satu dokumen JSON — `POOLDATA.JSON_KLAIM.DATA_JSONBLOB`. Itu bukan
+dugaan: ketiga kueri inbox sudah membaca `$.IDMaster`, `$.InsuredName`, `$.DateOfLoss`, dan
+`$.QuotationData.*` dari dokumen yang sama untuk klaim yang sama.
+
+Dibaca utuh, bukan dipetik `JSON_VALUE` per isian, karena tiga hal:
+
+| Alasan | Isi |
+|---|---|
+| satu perjalanan | 97 isian dan 10 grid berarti sepuluh `JSON_TABLE`, masing-masing membaca ulang dokumen yang sama |
+| **kegagalan yang terbaca** | jalur salah pada `JSON_TABLE` mengembalikan **kosong diam-diam**; diurai di Go, "jalur tidak ada" dapat dibedakan dari "ada tetapi kosong" |
+| portabilitas | sepuluh `JSON_TABLE` harus berperilaku sama di Oracle 19c dan PostgreSQL 17 (`D-20`, `D-24`); satu kolom CLOB tidak menuntut apa pun |
+
+Alasan kedua yang paling menentukan. Bentuk dokumen itu **belum pernah diperiksa** (`R-08`),
+sehingga jalur yang salah adalah kemungkinan nyata — dan layar berisi 97 isian kosong terbaca
+sama persis, entah karena klaimnya memang belum diisi atau karena seluruh jalurnya salah.
+Karena itu penyimpanannya **menghitung** berapa jalur yang tidak ditemukan dan mencatatnya,
+dan `-periksa` melaporkannya sebagai angka.
+
+### Keputusan 5 — blok Treaty Information digambar TERHALANG, bukan ditebak
+
+Delapan isian terikat ke `.TreatyInMaster.*`, halaman berkelas `ASM-FW-GISFW-Int-TREATY_IN`.
+Ia halaman **tersendiri** pada objek kerja, bukan bagian `.ClaimData`, sehingga tidak ikut
+tersimpan di dokumen JSON.
+
+Seluruh export hanya menyebut `TREATY_IN` di **dua berkas**, dan keduanya **memakai** halaman
+itu — tidak ada yang mengisinya. Kedua pra-aksi Flow Action pun bukan pemuat data:
+`ProteksiData_act` seluruhnya validasi (17 langkah, seluruhnya `Page-Set-Messages` dan
+`Property-Set`), dan `CheeckNoRNM_Act` hanya mengambil Treaty Group ID.
+
+**Kenapa tidak ditebak.** `ceding_name` paling menggoda: ada `CEDINGCONAME` di tabel objek
+kerja dan `$.QuotationData.CedingCoName` di dokumen klaim. Keduanya **belum tentu treaty yang
+sama**, dan menampilkan pita share reasuransi milik treaty lain sebagai milik treaty ini tidak
+menghasilkan satu pun galat. `TestTreatyMasterFieldsAreAllBlocked` melarangnya.
+
+Grid lampiran terhalang dengan alasan berbeda: sumbernya Report Definition
+`BrowseUpRegisterDoc_rd`, yang tidak ada di export (`R-16`).
+
+### Keputusan 6 — dua pasangan kolom yang TAMPAK tertukar dibawa apa adanya
+
+Pada grid **Insured Interest** dan **Estimation**, kolom berjudul "Value in IDR" terikat ke
+`.KursObjectItem` dan `.KursValue` — **kurs**, bukan nilai. Diverifikasi dari `pyRows` grid
+yang sama: baris kepala dan baris isi cocok satu lawan satu.
+
+`P-5` menetapkan perilaku dipertahankan lebih dulu. Menukarnya di sini berarti angka di layar
+baru berbeda dari Pega tanpa satu pun butir perbaikan yang menjelaskannya. **Diangkat sebagai
+pertanyaan terbuka ke Work Owner**, bukan diperbaiki sepihak.
+
+### Keputusan 7 — rincian TIDAK disaring menurut pemanggil, dan itu dicatat sebagai risiko
+
+Di Pega pun tidak: layar itu hanya dapat dicapai lewat assignment yang sudah terbuka, dan
+tidak ada satu pun prakondisi berbasis operator di kedua pra-aksinya.
+
+Pada alamat yang dapat diketik langsung, jaminan itu **hilang**. Nomor klaim treaty berurutan,
+sehingga siapa pun yang sudah masuk dapat menelusuri seluruh klaim treaty di portalnya satu
+per satu.
+
+Yang meredamnya bukan modul ini melainkan `TKT-F3-005`, yang belum ada. Sampai itu ada,
+**setiap pembukaan dicatat** beserta pelakunya. Pencatatan **bukan kendali** dan tidak diklaim
+sebagai kendali — ia yang membuat penyalahgunaannya dapat ditelusuri setelah terjadi.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Rule pemuat halaman `ASM-FW-GISFW-Int-TREATY_IN` beserta DDL tabelnya | Tim Pega, DBA |
+| Report Definition `BrowseUpRegisterDoc_rd` beserta rule tombol View File | Tim Pega |
+| `SetDateOutstanding` — pra-aksi ketiga Flow Action, tidak ada di export | Tim Pega |
+| Apakah pasangan "Value in IDR"/"Value" memang tertukar di Pega | Work Owner |
+| Apakah objek kerja ClaimTreaty benar tersimpan di `PC_ASM_FW_GCNMFW_WORK` | DBA (`R-08`) |
+
+---
+
+## 76. Koreksi — isi dropdown datang dari `FilterWorkBasket_Act`, bukan dari judul grid (2026-09-30)
+
+**Latar:** Work Owner mengoreksi hasil §75. Dropdown pemilih antrean menjalankan `postValue`
+lalu activity `GetDataTreatyin_Act`, dan **daftar pilihannya** — Choose / Prop Treaty-in
+Admin / Prop Treaty-in Teknik — datang dari `Data Transform/FilterWorkBasket_Act-DT.xml`.
+
+### Kesalahan saya, dan kenapa ia tidak terlihat sebagai kesalahan
+
+Saya memakai **judul kontainer grid** sebagai teks pilihan dropdown. Keduanya ada di layar
+yang sama dan tampil **bersamaan**, tetapi saya memperlakukannya sebagai satu teks:
+
+| | Sebelum (salah) | Sesudah |
+|---|---|---|
+| Teks pilihan dropdown | `Work List Treatyin Propotional` | **`Prop Treaty-in Admin`** |
+| Judul grid | *(hilang — dipakai di dropdown)* | **`Work List Treatyin Propotional`** |
+
+Akibatnya dua sekaligus: pilihan yang dicari pengguna tidak ada, dan judul grid hilang.
+Tidak ada galat, tidak ada kolom kosong — hanya layar yang tidak dikenali.
+
+`Tab` karena itu sekarang punya **`Name` DAN `GridTitle`**, dan
+`TestTabLabelComesFromTheDropdownNotTheGridCaption` melarang keduanya disamakan lagi.
+
+### Apa yang sebenarnya dilakukan `FilterWorkBasket_Act`
+
+| Langkah | Isi |
+|---|---|
+| 1 | `REMOVE Operator.pxResults` |
+| 2 | `SET …(<APPEND>).CARI2 := "Prop Treaty-in Admin"`, `CARI1 := ""` |
+| 3 | `FOR_EACH_PAGE_IN OperatorID.pyWorkBasketList`, `WHEN .pyWorkBasketName == "TreatyinPNCTeknik"` → append `CARI1 := pyWorkBasketName` |
+| 4 | `FOR_EACH_PAGE_IN Operator.pxResults`, `WHEN .CARI1 == "TreatyinPNCTeknik"` → `CARI2 := "Prop Treaty-in Teknik"` |
+
+`CARI2` label, `CARI1` nilai. Section mengikat dropdown-nya ke `SearchWorkbasket.CARI1`
+dengan `pyPrompt = .CARI2` dan `pySourceName = Operator.pxResults` — cocok persis.
+
+### Tiga hal yang ikut terbaca, dan ketiganya berarti
+
+**1. "Prop Treaty-in Teknik" BERSYARAT.** Ia hanya muncul bila pemanggil benar-benar anggota
+antrean `TreatyinPNCTeknik`. Keanggotaan itu tidak ada di basis data maupun di export
+(`TKT-F3-004`), sehingga di sini pilihannya **selalu** terlihat — dicatat sebagai selisih
+terencana, bukan diserap diam-diam. Taruhannya terbatas: layar ini membaca saja, sehingga
+melihat pilihannya bukan berarti dapat mengambil pekerjaannya.
+
+**2. "Choose" dan "Prop Treaty-in Admin" BERNILAI SAMA.** Keduanya `CARI1` kosong, sehingga
+pemeriksaan `== "TreatyinPNCTeknik"` gagal pada keduanya dan yang tampil adalah antrean
+admin. Itu perilaku Pega, bukan cacat — dan karena itu kotaknya kembali menunjuk "Prop
+Treaty-in Admin" sesudah "Choose" dipilih, alih-alih menggantung pada pilihan yang tidak
+menyaring apa pun.
+
+**3. Komite ada di DROPDOWN KEDUA, bukan di dropdown ini.** Mode komite punya dropdown
+tersendiri: sumbernya `Operator1.pxResults` dan refresh-nya menjalankan
+`GetDataTreatyin_Actkomite`. **Tidak satu pun rule di export mengisi `Operator1.pxResults`**
+(`R-16`) — sehingga tab Komite terhalang bukan hanya karena datanya tidak terbaca, tetapi
+juga karena daftar pilihannya pun tidak. Alasan terhalangnya diperluas menyebut itu.
+
+### Padanan `postValue` + `GetDataTreatyin_Act`
+
+Di Pega, memilih memposting nilainya lalu me-refresh bagian layar dengan activity itu. Di
+sini padanannya adalah **permintaan ulang daftar ke server** — bukan pemuatan ulang halaman.
+Kuncinya sudah memuat kode antrean, sehingga berpindah pilihan memang memicu permintaan baru.
+
+---
+
+## 77. Koreksi kedua — kedua grid dipasok Report Definition, bukan Connect-SQL (2026-09-30)
+
+**Latar:** Work Owner mengirim dua Report Definition dan menyatakan setiap tabel di
+`InboxClaimTreaty_Section` punya RD-nya sendiri, jadi datanya diambil dari RD langsung.
+
+| RD | Kelas | Melayani |
+|---|---|---|
+| `InboxKlaimPropAdmin-RD.xml` | `Assign-Worklist` | Prop Treaty-in Admin |
+| `InboxKlaimPropTeknik-RD.xml` | `Assign-WorkBasket` | Prop Treaty-in Teknik |
+
+Keduanya dibuat **2026-09-09** dan **tidak dirujuk satu pun rule di export** — perubahan
+produksi yang belum masuk snapshot (`R-09`), sama seperti dua kolom baru dan dropdown-nya.
+
+### Keputusan 1 — sumber kolom bisnis PINDAH dari dokumen JSON ke objek kerja
+
+Ketiga rule Connect-SQL yang sebelumnya dipakai membaca kolom bisnis dari
+`POOLDATA.JSON_KLAIM.DATA_JSONBLOB` lewat `JSON_VALUE`. Kedua RD membacanya dari **kolom
+terekspos** pada `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` — awalan `WorkPage.` pada setiap
+`pyFieldName` adalah hasil JOIN-nya ke kelas objek kerja.
+
+Kedua sumber dapat berbeda isinya, dan yang dilihat pengguna hari ini adalah yang kedua.
+`POOLDATA.JSON_KLAIM` karena itu **tidak lagi disentuh modul ini**, dan uji melarangnya
+kembali.
+
+**Nama kolomnya tidak tertulis di RD.** Pega menyimpan pemetaan properti-ke-kolom di rule
+Property, dan export memuat **satu** rule Property. Nama kolom diverifikasi dengan cara lain:
+setiap kolom benar-benar dipakai rule Pega lain terhadap alias yang menunjuk tabel objek
+kerja. Hasilnya seluruh 13 kolom terverifikasi, satu tidak.
+
+| Properti RD | Kolom | Berkas rule yang memakainya |
+|---|---|---:|
+| `ClaimData.IDMaster` | `MASTERID` | 4 |
+| `ClaimData.PolicyData.PolicyNo` | `POLICYNO` | 35 |
+| `ClaimData.DateOfLoss` | **`DATEOFLOSS_1`** | 19 |
+| `ClaimData.QuotationData.BusinessName` | `BUSINESSNAME` | 28 |
+| `ClaimData.QuotationData.SobName` | `SOBNAME` | 25 |
+| `ClaimData.QuotationData.CedingCoName` | `CEDINGCONAME` | 4 |
+| `ClaimData.InsuredName` | `INSUREDNAME` | 4 |
+| `pxUpdateOperator` | `PXUPDATEOPERATOR` | 4 |
+| `pyStatusWork` | `PYSTATUSWORK` | 63 |
+| `ClaimData.IsSubjectivity` | **tidak ditemukan** | 0 |
+
+`DATEOFLOSS_1` berakhiran `_1`, dan itu bukan salah ketik: pada setiap rule yang aliasnya
+menunjuk tabel objek kerja, yang dipakai **selalu** bentuk ber-`_1` (19 berkas) dan **tidak
+pernah** yang tanpa (0 berkas). Salah memilih di antara keduanya tidak menghasilkan galat —
+hanya tanggal milik properti yang berbeda.
+
+`IsSubjectivity` dikirim **NULL**, bukan ditebak. Nama kolom yang salah menggagalkan SELURUH
+kueri dengan ORA-00904 — tab yang tidak dapat dibuka sama sekali, alih-alih satu kolom yang
+kosong. Kolomnya tetap digambar karena Pega produksi punya; isinya yang belum ada.
+
+### Keputusan 2 — JOIN menjadi INNER, dan alasan LEFT saya DITARIK
+
+RD menyatakan `JOIN type=INNER` ke `ASM-FW-GCNMFW-Work-ClaimTreaty` dengan kondisi
+`WorkPage.pzInsKey = .pxRefObjectKey`.
+
+Pada §75 saya memakai `LEFT JOIN` dan menulis uji yang **melarang** INNER, dengan alasan
+"penugasan yang objek kerjanya tidak terbaca tetap muncul". Alasan itu keliru menyamakan dua
+hal: yang boleh di-LEFT-join adalah `JSON_KLAIM`, salinan yang memang boleh belum ada —
+sedangkan ini **objek kerja yang ditunjuk penugasan itu sendiri**. Penugasan tanpa objek
+kerja adalah data rusak, dan Pega produksi pun membuangnya. Ujinya dibalik.
+
+### Keputusan 3 — pembatas jenis klaim pindah dari `LIKE` ke `PXOBJCLASS`
+
+`PXREFOBJECTKEY LIKE '%CLMP%'` dihapus. JOIN ke sebuah kelas di Pega membatasi barisnya ke
+kelas itu, dan pembatas itu tegas — sementara `LIKE` mencocokkan pola di tengah teks kunci,
+yang kebetulan bekerja karena nomor klaim treaty berawalan `CLMP`.
+
+Nilainya satu tempat: `inboxclaimtreatyprop.WorkClass`, dikirim sebagai **bind**.
+
+### Keputusan 4 — TIDAK ada penyaring operator, dan itu terlihat pengguna
+
+Kedua RD tidak punya satu pun filter selain kondisi join. Tidak ada
+`pxAssignedOperatorID = <pemanggil>`, dan keenam parameternya (`F_CLAIMID`, `F_CLAIMNO`,
+`F_NOPOLIS`, `F_INSURED`, `F_SOB`, `F_CEDING`) **dideklarasikan tetapi tidak dirujuk di mana
+pun** di dalam RD.
+
+Tiga akibat, dan ketiganya terlihat pengguna:
+
+1. **Tab Admin menampilkan seluruh penugasan klaim treaty di entitas itu**, bukan milik
+   pemanggil. Kueri `list_worklist_all` dihapus — tinggal dua kueri, bukan tiga.
+2. **Checkbox "See All Claim" dihapus.** Ia tidak lagi punya penyaring untuk dilepas, dan
+   kontrol yang tidak mengubah apa pun lebih buruk daripada kontrol yang tidak ada. Parameter
+   `lihat_semua` yang masih dikirim klien lama **diabaikan**, bukan ditolak.
+3. **Tab Teknik menampilkan seluruh antrean bersama klaim treaty**, tidak lagi disaring ke
+   akun `TreatyinPNCTeknik`. Baris contoh `CLMP-3001` karena itu berbalik peran — dulu harus
+   tersaring, sekarang harus muncul.
+
+`Tab.ScopedToCaller` dan `Tab.SupportsSeeAll` **dipertahankan** meski keduanya kini selalu
+false. Keduanya yang menjaga agar penyaring itu tidak kembali diam-diam: sekali ada tab yang
+menyatakannya true, kueri dan penyimpanan memori wajib menyaring — dan uji memaksa ketiganya
+berubah bersama.
+
+### Yang masih perlu dipastikan
+
+| Pertanyaan | Kenapa penting |
+|---|---|
+| Apakah `GetDataTreatyin_Act` versi produksi menambah filter operator saat RUNTIME | Bila ya, tab Admin seharusnya tetap menyempit ke pemanggil dan keputusan 4 harus dibalik |
+| Nama kolom terekspos properti `IsSubjectivity` | Satu-satunya kolom yang kini selalu kosong |
+| Apakah `pyMaxRecords = 500` sengaja, atau sisa bawaan | Di sini batas itu dihapus dan diganti paginasi; baris ke-501 kini dapat dicapai |

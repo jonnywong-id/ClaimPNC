@@ -30711,3 +30711,75 @@ Mode `-periksa` kini melaporkan **keempat** tabel rincian, bukan dua.
 
 Ditambahkan `TestKunciKlaimDiambilBerPrefix` — uji yang paling berharga di berkas itu,
 karena cacat yang diperbaikinya **tidak pernah menampilkan galat**.
+
+---
+
+## 84. Inbox Claim Treaty Prop mengikuti Pega produksi, dan modul Outstanding Claim (2026-09-30)
+
+**Permintaan Work Owner:** perbaiki Inbox Claim Treaty Prop mengikuti tangkapan layar Pega
+**produksi** yang dilampirkan, dan buat nomor klaim menjalankan Flow Action
+`OutstandingClaim` beserta section dengan nama yang sama.
+
+### Yang ditemukan sebelum satu baris pun ditulis
+
+Tangkapan layarnya **tidak cocok dengan export**, dan selisihnya bukan sepele:
+
+| Hal | Export | Produksi |
+|---|---|---|
+| Kolom grid | **8** (Claim ID … Insured Name) | **10** (+ Last update, Status Claim ID) |
+| Pemilih antrean | 3 kontainer, dipilih KEADAAN pemanggil | **dropdown** |
+| Judul layar | `Claim Treatyin In Progress` | sama |
+
+Diverifikasi sel demi sel dari `pyRows` grid itu, dan ketiga kueri `GetClaimTreaty*_SQL` juga
+tidak memilih satu pun kolom operator pengubah maupun status. Ini `R-09` — sistem sumber
+masih aktif berubah.
+
+Keduanya diangkat ke Work Owner **sebelum** dikerjakan, beserta pilihan asal datanya.
+Jawabannya: `PXUPDATEOPERATOR` + `PYSTATUSWORK`, dan section OutstandingClaim dibangun
+**penuh**.
+
+### Yang dikerjakan — Inbox Claim Treaty Prop
+
+| Perubahan | Berkas |
+|---|---|
+| Dua kolom baru + gabungan ketiga ke `PC_ASM_FW_GCNMFW_WORK` | `inboxclaimtreatyprop.go`, `tab.go`, `.sql`, `query.go`, sqlstore, memory, dto |
+| Judul menjadi `Claim Treatyin In Progress` | `ClaimTreatyPropPage.tsx` |
+| Bilah tab → dropdown | `TreatyTabs.tsx` **dihapus**, `TreatyViewSelect.tsx` dibuat |
+| Nomor klaim menjadi tautan; tombol "Lihat Detail Klaim" dihapus | `ClaimTreatyPropPage.tsx` |
+
+### Yang dikerjakan — modul `outstandingclaim` (baru)
+
+Sepuluh kelompok, **47 isian terbaca + 8 terhalang**, **9 grid terbaca + 1 terhalang**.
+
+Susunannya dibaca dari `Section/OutstandingClaim-Section.xml` (2,9 MB) dengan menelusuri
+`pyRows` → `pyCells` setiap grid, sehingga pasangan judul-kolom ↔ properti cocok satu lawan
+satu — bukan ditebak dari urutan properti di kelasnya, yang berbeda.
+
+Nama ketiga page list utamanya justru terbaca dari **pra-aksi Flow Action**, bukan dari
+section: `Activity/ProteksiData_act-Act.xml` menyebut `EstimationList`, `SpreadingClaim`, dan
+`InterestList` satu per satu saat memvalidasinya.
+
+### Tiga hal yang sengaja TIDAK dikerjakan, dan alasannya
+
+1. **Blok Treaty Information (8 isian) tidak diisi.** Ia terikat ke halaman
+   `ASM-FW-GISFW-Int-TREATY_IN`, yang seluruh export hanya menyebutnya di dua berkas — dan
+   keduanya MEMAKAI, tidak ada yang mengisi. Menebaknya dari kolom yang kebetulan mirip
+   berarti menampilkan pita share reasuransi milik treaty lain.
+2. **Grid lampiran tidak diisi.** Sumbernya Report Definition `BrowseUpRegisterDoc_rd`, tidak
+   ada di export (`R-16`).
+3. **Dua pasangan kolom yang tampak tertukar tidak diperbaiki.** Kolom "Value in IDR" pada
+   grid Insured Interest dan Estimation terikat ke **kurs**. `P-5` menetapkan perilaku
+   dipertahankan lebih dulu; diangkat sebagai pertanyaan terbuka.
+
+### Uji
+
+| Suite | Hasil |
+|---|---|
+| `internal/outstandingclaim/...` | lulus — 14 uji susunan, 16 uji dokumen & SQL |
+| `internal/inboxclaimtreatyprop/...` | lulus |
+| Frontend penuh | **1389 lulus, 0 gagal** (84 berkas) |
+
+**Lima kegagalan yang TIDAK saya sentuh** ada di `inboxosclaimpercabang` (3 paket gagal
+build), `inboxpladla/repo/sqlstore`, dan `inboxservicecenter/repo/sqlstore`. Diverifikasi
+sudah gagal pada pohon bersih sebelum perubahan sesi ini — uji modulnya tertinggal dari
+perubahan kodenya.

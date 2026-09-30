@@ -37,6 +37,24 @@ export type WorkItem = {
 
   /** Hanya terisi pada tab Work Teknik Treatyin — hanya kueri itu yang membawanya. */
   subjectivity: string
+
+  /**
+   * Petugas yang terakhir mengubah objek kerjanya — kolom "Last update".
+   *
+   * Dibaca lewat LEFT JOIN ke tabel objek kerja, sehingga baris yang objek kerjanya tidak
+   * terbaca memang mengirimkannya kosong.
+   */
+  operator_pengubah: string
+
+  /**
+   * Status alur kerja Pega — kolom "Status Claim ID".
+   *
+   * Namanya `status_kerja`, bukan `status_klaim`, dan itu disengaja: isinya `PYSTATUSWORK`
+   * ("New", "Pending", …), BUKAN Status Klaim berkode `1134`–`1166` milik master
+   * `V_STS_CLAIM`. Keduanya konsep berbeda (`D-18`). Judul kolomnya dipertahankan
+   * menyesatkan karena `D-13`; nama kontraknya tidak ikut menularkan salah arti itu.
+   */
+  status_kerja: string
 }
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
@@ -51,7 +69,23 @@ export type TabColumn = {
 /** Satu tab beserta bentuk gridnya. */
 export type Tab = {
   kode: string
+
+  /**
+   * Teks PILIHAN pada dropdown pemilih antrean.
+   *
+   * Diambil dari `Data Transform/FilterWorkBasket_Act-DT.xml` — "Prop Treaty-in Admin" dan
+   * "Prop Treaty-in Teknik". JANGAN tertukar dengan `judul_grid` di bawah: keduanya teks
+   * yang berbeda dan tampil bersamaan di layar yang sama.
+   */
   nama: string
+
+  /**
+   * Judul KONTAINER grid yang digambar sesudah dropdown — "Work List Treatyin Propotional".
+   *
+   * Kosong pada antrean yang terhalang: tidak ada grid yang digambar di sana.
+   */
+  judul_grid?: string
+
   keterangan: string
   kolom: TabColumn[]
 

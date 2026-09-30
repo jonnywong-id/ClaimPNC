@@ -11131,3 +11131,46 @@ membaca kode, melainkan dari melihat **berapa banyak case** yang jatuh ke cabang
 
 Angka yang membuatnya terlihat: **148 dari 189**. Sebuah cabang yang dilalui mayoritas
 bukan cabang pengecualian.
+
+---
+
+# Sesi kedua puluh sembilan — Inbox Claim Treaty Prop & Outstanding Claim (2026-09-30)
+
+**Tidak satu pun skill dipakai**, dan itu bukan kelalaian.
+
+Pekerjaan sesi ini seluruhnya **pembacaan export Pega** — menelusuri `pyRows` → `pyCells`
+pada section 2,9 MB, mencocokkan `pyPageListProperty` ke jalur dokumen JSON, dan menelusuri
+kelas `ASM-FW-GISFW-Int-TREATY_IN` sampai terbukti tidak punya rule pemuat. Tidak ada satu pun
+skill yang tersedia menyentuh itu; yang dipakai adalah pembacaan langsung berkas XML.
+
+Empat skill yang paling dekat dan alasannya tidak dipakai:
+
+| Skill | Alasan |
+|---|---|
+| `frontend-design` | bentuk layar TIDAK dirancang — ia ditiru dari Pega (`D-13`), dan merancangnya justru melanggar keputusan itu |
+| `front-review` | perubahan frontend-nya kecil dan sudah dijaga 13 uji layar baru |
+| `dataviz` | tidak ada satu pun grafik; sepuluh grid di layar ini tabel, bukan visualisasi |
+| `code-review` | uji yang ditulis sudah menjaga hal-hal yang paling mudah salah diam-diam — lihat daftar di bawah |
+
+## Yang dijaga uji, dan kenapa justru itu
+
+Dipilih menurut satu pertanyaan: **cacat mana yang tidak menghasilkan galat apa pun?**
+
+| Uji | Cacat yang dicegah |
+|---|---|
+| `TestTreatyMasterFieldsAreAllBlocked` | delapan isian tanpa sumber diisi dari kolom yang kebetulan mirip — menampilkan share reasuransi milik treaty lain |
+| `TestTheWorkObjectJoinNeverDropsRows` | `INNER JOIN` menghilangkan pekerjaan dari antrean tanpa pesan |
+| `TestMissingIsDistinctFromEmpty` | "jalur salah" tidak dapat dibedakan dari "data belum diisi" |
+| `TestDetailQueryKeepsTheTreatyGuard` | nomor klaim PNC biasa digambar dengan susunan treaty |
+| `TestClaimWithoutDocumentStillOpens` | klaim yang ada dijawab "tidak ditemukan" |
+| `TestLayoutNeverLeaksDocumentPaths` | jalur dokumen Pega ikut menjadi kontrak API |
+
+## Satu kesalahan saya sendiri pada sesi ini
+
+`TestLayoutNeverLeaksDocumentPaths` semula memeriksa `NotContains(raw, "jalur")` — kata,
+bukan kunci JSON. Ia gagal karena kata itu muncul di **prosa alasan terhalang** ("lewat jalur
+yang sama"), kalimat yang memang ditujukan ke pengguna.
+
+Asersi yang terlalu kasar seperti itu berbahaya dua arah: ia gagal pada yang benar, dan bila
+kalimatnya kebetulan diubah ia akan **lulus pada yang salah**. Diperbaiki menjadi pencarian
+kunci JSON lengkap dengan tanda kutipnya.

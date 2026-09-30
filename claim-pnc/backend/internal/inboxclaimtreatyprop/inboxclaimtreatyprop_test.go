@@ -14,13 +14,33 @@ func caller() inboxclaimtreatyprop.Caller {
 	return inboxclaimtreatyprop.Caller{Login: "ADMINTREATY1"}
 }
 
-func TestTabBawaanAdalahAntreanMilikPemanggil(t *testing.T) {
-	// Layar terbuka pada pekerjaan MILIK petugas, bukan pada antrean bersama. Membuka
-	// pada antrean bersama akan menampilkan nama tertanggung milik pekerjaan orang lain
-	// sebagai hal pertama yang dilihat pengguna.
+func TestTabBawaanAdalahPilihanYangSelaluAda(t *testing.T) {
+	// Layar terbuka pada "Prop Treaty-in Admin", karena itulah satu-satunya pilihan yang
+	// SELALU ada di dropdown Pega: `FilterWorkBasket_Act` menambahkannya tanpa syarat,
+	// sedangkan pilihan Teknik hanya menyusul bila pemanggil anggota antreannya.
+	//
+	// Membuka layar pada pilihan yang bisa jadi tidak ada berarti layar kosong tanpa sebab
+	// yang terbaca.
 	tab, found := inboxclaimtreatyprop.FindTab(inboxclaimtreatyprop.DefaultTab)
 	require.True(t, found)
-	require.True(t, tab.ScopedToCaller)
+	require.Equal(t, "Prop Treaty-in Admin", tab.Name)
+	require.False(t, tab.Blocked)
+}
+
+func TestTidakAdaTabYangMenyaringPemanggil(t *testing.T) {
+	// Kedua Report Definition yang memasok layar ini TIDAK punya satu pun filter selain
+	// kondisi join — tidak ada `pxAssignedOperatorID = <pemanggil>`, dan keenam
+	// parameternya dideklarasikan tetapi tidak pernah dirujuk.
+	//
+	// Uji ini menjaga agar penyaring itu tidak kembali diam-diam. Bila suatu saat ia memang
+	// harus kembali, yang berubah bukan hanya penanda di sini melainkan juga kueri dan
+	// penyimpanan memori — dan uji ini yang memaksa ketiganya berubah bersama.
+	for _, tab := range inboxclaimtreatyprop.Tabs() {
+		require.Falsef(t, tab.ScopedToCaller,
+			"tab %s menyaring pemanggil; Report Definition-nya tidak", tab.Code)
+		require.Falsef(t, tab.SupportsSeeAll,
+			"tab %s menggambar \"See All Claim\" yang tidak melepas apa pun", tab.Code)
+	}
 }
 
 func TestSetiapTabPunyaKodeDanNamaYangBerbeda(t *testing.T) {
@@ -127,22 +147,24 @@ func TestLihatSemuaDiabaikanPadaTabYangTidakMengenalnya(t *testing.T) {
 	require.False(t, query.SeeAll)
 }
 
-func TestLihatSemuaMelepasPenyaringKepemilikan(t *testing.T) {
-	// Dua penentu yang harus dibaca bersama — Tab.ScopedToCaller dan Query.SeeAll — dan
-	// jawabannya disediakan di satu tempat supaya tidak ada pemanggil yang membaca
-	// salah satunya saja.
-	milik, err := inboxclaimtreatyprop.NewQuery(
-		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabWorkList}, caller())
-	require.NoError(t, err)
-	require.True(t, milik.ScopedToCaller())
-
-	semua, err := inboxclaimtreatyprop.NewQuery(
-		inboxclaimtreatyprop.QueryInput{
-			Tab:    inboxclaimtreatyprop.TabWorkList,
-			SeeAll: true,
-		}, caller())
-	require.NoError(t, err)
-	require.False(t, semua.ScopedToCaller())
+func TestLihatSemuaDiabaikanKarenaTakAdaYangDilepas(t *testing.T) {
+	// "See All Claim" dikirim layar lama dan mungkin masih dikirim klien yang belum
+	// diperbarui. Ia DIABAIKAN, bukan ditolak: permintaannya sah, hanya tidak lagi
+	// mengubah apa pun karena tab Admin sendiri sudah tidak menyaring pemanggil.
+	//
+	// Diabaikan diam-diam lebih baik daripada ditolak di sini — menolaknya akan membuat
+	// klien lama gagal membuka layar yang sebenarnya dapat dilayani.
+	for _, seeAll := range []bool{false, true} {
+		query, err := inboxclaimtreatyprop.NewQuery(
+			inboxclaimtreatyprop.QueryInput{
+				Tab:    inboxclaimtreatyprop.TabWorkList,
+				SeeAll: seeAll,
+			}, caller())
+		require.NoError(t, err)
+		require.Falsef(t, query.SeeAll,
+			"See All=%v diteruskan padahal tabnya tidak mendukungnya", seeAll)
+		require.False(t, query.ScopedToCaller())
+	}
 }
 
 func TestAntreanTeknikBukanAntreanMilikPemanggil(t *testing.T) {
@@ -255,5 +277,55 @@ func TestSelisihTerencanaDinyatakanDiMuka(t *testing.T) {
 	require.NotEmpty(t, inboxclaimtreatyprop.PlannedDifferences)
 	for _, line := range inboxclaimtreatyprop.PlannedDifferences {
 		require.NotEmpty(t, line)
+	}
+}
+
+func TestTabLabelComesFromTheDropdownNotTheGridCaption(t *testing.T) {
+	// Keduanya teks yang BERBEDA dan tampil BERSAMAAN di layar yang sama: dropdown
+	// bertuliskan "Prop Treaty-in Admin", grid di bawahnya berjudul "Work List Treatyin
+	// Propotional".
+	//
+	// Uji ini ada karena keduanya SEMPAT tertukar di sini — judul kontainer dipakai sebagai
+	// teks pilihan dropdown, sehingga pilihan yang dicari pengguna tidak ada dan judul
+	// gridnya hilang. Kegagalannya tidak menghasilkan galat apa pun; ia hanya layar yang
+	// tidak dikenali.
+	//
+	// Labelnya diambil dari `Data Transform/FilterWorkBasket_Act-DT.xml`, judul gridnya dari
+	// `Section/InboxClaimTreaty_Section-Section.xml`.
+	expected := map[string]struct{ name, gridTitle string }{
+		inboxclaimtreatyprop.TabWorkList: {
+			name:      "Prop Treaty-in Admin",
+			gridTitle: "Work List Treatyin Propotional",
+		},
+		inboxclaimtreatyprop.TabTechnical: {
+			name:      "Prop Treaty-in Teknik",
+			gridTitle: "Work Teknik Treatyin",
+		},
+	}
+
+	for _, tab := range inboxclaimtreatyprop.Tabs() {
+		want, checked := expected[tab.Code]
+		if !checked {
+			continue
+		}
+		require.Equalf(t, want.name, tab.Name,
+			"teks pilihan dropdown tab %s tidak sesuai FilterWorkBasket_Act", tab.Code)
+		require.Equalf(t, want.gridTitle, tab.GridTitle,
+			"judul grid tab %s tidak sesuai section", tab.Code)
+		require.NotEqualf(t, tab.Name, tab.GridTitle,
+			"tab %s memakai satu teks untuk dua hal yang berbeda", tab.Code)
+	}
+}
+
+func TestOnlySelectableTabsHaveAGridTitle(t *testing.T) {
+	// Tab terhalang tidak menggambar grid sama sekali, sehingga judul grid yang menganggur
+	// di sana hanya menunggu dipakai layar yang kemudian menggambar tabel kosong.
+	for _, tab := range inboxclaimtreatyprop.Tabs() {
+		if tab.Blocked {
+			require.Emptyf(t, tab.GridTitle,
+				"tab %s terhalang tetapi punya judul grid", tab.Code)
+			continue
+		}
+		require.NotEmptyf(t, tab.GridTitle, "tab %s tidak punya judul grid", tab.Code)
 	}
 }

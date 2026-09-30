@@ -82,6 +82,7 @@ import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
+import { OutstandingClaimPage } from '@/modules/outstanding-claim/OutstandingClaimPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
@@ -959,6 +960,37 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimTreatyPropPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Outstanding Claim — rincian satu klaim treaty, pengganti Flow Action
+        `OutstandingClaim` beserta `Section/OutstandingClaim-Section.xml`.
+
+        Ia TIDAK punya butir menu, dan memang tidak boleh punya: di Pega pun layar ini hanya
+        dapat dicapai dengan mengklik nomor klaim di rute tepat di atasnya.
+
+        Layar ini MEMBACA SAJA. Flow Action aslinya menyimpan kembali objek kerja beserta
+        seluruh page list di dalamnya, dan tabel itu masih dimiliki Pega selama masa paralel
+        (`P-1`).
+
+        Delapan isian pada blok Treaty Information dan satu grid lampiran digambar dengan
+        alasan terhalang, bukan disembunyikan: halaman `TreatyInMaster` dan Report Definition
+        `BrowseUpRegisterDoc_rd` tidak ada di export (`R-16`).
+
+        Rincian TIDAK disaring menurut pemanggil — di Pega pun tidak, karena di sana layar
+        ini hanya dapat dicapai lewat assignment yang sudah terbuka. Pada alamat yang dapat
+        diketik langsung, jaminan itu hilang: nomor klaim treaty berurutan. Yang meredamnya
+        adalah `TKT-F3-005` yang belum ada; sampai itu ada, setiap pembukaan dicatat di sisi
+        peladen beserta pelakunya.
+      */}
+      <Route
+        path="/outstanding-claim/:no_klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <OutstandingClaimPage />
             </Protected>
           </SessionGuard>
         }

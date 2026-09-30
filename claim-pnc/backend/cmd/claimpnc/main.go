@@ -85,6 +85,7 @@ import (
 	"claim-pnc/internal/masterxol"
 	"claim-pnc/internal/menu"
 	"claim-pnc/internal/monitoringslinkojk"
+	"claim-pnc/internal/outstandingclaim"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
@@ -163,6 +164,11 @@ import (
 	inboxclaimtreatypropmemory "claim-pnc/internal/inboxclaimtreatyprop/repo/memory"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxclaimtreatypropusecase "claim-pnc/internal/inboxclaimtreatyprop/usecase"
+	outstandingclaimhttp "claim-pnc/internal/outstandingclaim/http"
+	outstandingclaimmemory "claim-pnc/internal/outstandingclaim/repo/memory"
+	outstandingclaimsql "claim-pnc/internal/outstandingclaim/repo/sqlstore"
+	outstandingclaimusecase "claim-pnc/internal/outstandingclaim/usecase"
+
 	inboxcloseclaimhttp "claim-pnc/internal/inboxcloseclaim/http"
 	inboxcloseclaimmemory "claim-pnc/internal/inboxcloseclaim/repo/memory"
 	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
@@ -1397,6 +1403,26 @@ func run() error {
 			FallbackErrorWriter: inboxclaimtreatypropthttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Outstanding Claim — rincian klaim treaty. Jembatan pemanggilnya membawa LOGIN dengan
+	// alasan yang BERBEDA dari modul antrean: di sini login tidak menyaring apa pun, ia yang
+	// dicatat pada setiap pembukaan rincian.
+	outstandingClaimHandler := outstandingclaimhttp.NewHandler(
+		outstandingclaimhttp.Options{
+			Service: assembly.outstandingClaim,
+			GetCaller: func(ctx context.Context) (outstandingclaimhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return outstandingclaimhttp.Caller{}, false
+				}
+				return outstandingclaimhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: outstandingclaimhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Claim Treaty Non Prop (`MENU_ID 55`). Layar SAUDARA dari yang di atas, dan
 	// dirakit terpisah dengan sengaja: keduanya membaca tabel, kolom, dan penanda objek
 	// kerja yang berbeda — lihat kepala `internal/inboxclaimtreatynonprop`.
@@ -2328,6 +2354,8 @@ func run() error {
 				// masa paralel (`P-1`).
 				inboxclaimtreatypropthttp.Mount(
 					protected, claimTreatyPropHandler, activePortalDeps)
+				outstandingclaimhttp.Mount(
+					protected, outstandingClaimHandler, activePortalDeps)
 
 				// Inbox Claim Treaty Non Prop memuat data yang sama sifatnya —
 				// nama tertanggung dan nama Ceding Co milik satu badan hukum —
@@ -2682,6 +2710,13 @@ type assembly struct {
 	// sama seperti modul inbox lain.
 	inboxClaimTreatyProp *inboxclaimtreatypropusecase.Service
 
+	// outstandingClaim melayani layar rincian klaim treaty — Flow Action
+	// `OutstandingClaim`, yang di Pega dibuka dengan mengklik nomor klaim di layar di atas.
+	//
+	// Ia TIDAK punya butir menu, dan memang tidak boleh punya: satu-satunya pintunya adalah
+	// nomor klaim di Inbox Claim Treaty Prop.
+	outstandingClaim *outstandingclaimusecase.Service
+
 	// inboxClaimTreatyNonProp melayani layar Inbox Claim Treaty Non Prop (`MENU_ID 55`).
 	//
 	// Ia layar SAUDARA dari yang di atas dan sengaja berdiri sendiri: ketiga tabel yang
@@ -2906,6 +2941,13 @@ type storage struct {
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
 	// Ceding Co, dan keduanya milik satu badan hukum.
 	claimTreatyPropSelector inboxclaimtreatyprop.RepoSelector
+
+	// outstandingClaimSelector memilih penyimpanan rincian klaim treaty milik satu portal.
+	//
+	// Alasannya lebih berat daripada selector di atasnya: yang dibaca bukan satu baris
+	// antrean melainkan SELURUH isi satu klaim — nilai klaim, deductible, dan pembagian
+	// reasuransinya (`R-20`).
+	outstandingClaimSelector outstandingclaim.RepoSelector
 
 	// claimTreatyNonPropSelector memilih penyimpanan Inbox Claim Treaty Non Prop milik
 	// satu portal, dengan alasan yang sama persis dengan selector di atasnya.
@@ -3885,6 +3927,23 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Outstanding Claim — rincian klaim treaty, dibuka dari nomor klaim di layar di atas.
+	outstandingClaimService, err := outstandingclaimusecase.NewService(
+		outstandingclaimusecase.Options{
+			RepoSelector: store.outstandingClaimSelector,
+
+			// Logger diberikan supaya SETIAP pembukaan rincian tercatat beserta
+			// pelakunya. Di modul ini alasannya lebih berat daripada di layar antrean:
+			// tidak ada satu pun penyaring yang membatasi klaim mana yang boleh dibuka
+			// seseorang, dan nomor klaim treaty berurutan. Sampai `TKT-F3-005` ada, jejak
+			// inilah satu-satunya hal yang membuat penelusuran satu per satu terlihat.
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	claimTreatyNonPropService, err := inboxclaimtreatynonpropusecase.NewService(
 		inboxclaimtreatynonpropusecase.Options{
 			RepoSelector: store.claimTreatyNonPropSelector,
@@ -4302,6 +4361,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxXOL:                  inboxXOLService,
 		inboxServiceCenter:        inboxServiceCenterService,
 		inboxClaimTreatyProp:      claimTreatyPropService,
+		outstandingClaim:          outstandingClaimService,
 		inboxClaimTreatyNonProp:   claimTreatyNonPropService,
 		inboxManagerReceivePUCL:   managerReceivePUCLService,
 		inboxRCLPUCL:              rclPUCLService,
@@ -5222,6 +5282,18 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxclaimtreatypropsql.NewRepo(conn), nil
 		}
 
+		store.outstandingClaimSelector = func(alias string) (outstandingclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			// Logger diteruskan supaya jalur dokumen klaim yang TIDAK ditemukan tercatat.
+			// Bentuk dokumen itu belum pernah diperiksa (`R-08`), dan tanpa hitungan itu
+			// layar berisi 97 isian kosong terbaca sama persis, entah karena klaimnya
+			// memang belum diisi atau karena seluruh jalurnya salah.
+			return outstandingclaimsql.NewRepo(conn).WithLogger(logger), nil
+		}
+
 		store.claimTreatyNonPropSelector = func(
 			alias string,
 		) (inboxclaimtreatynonprop.Repo, error) {
@@ -5616,6 +5688,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxServiceCenterSelector = inboxServiceCenterSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
+		store.outstandingClaimSelector = outstandingClaimSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyNonPropSelector = claimTreatyNonPropSelectorMemory(cfg.PrimaryPortal)
 		// Sepuluh baris contoh ikut dimuat, dan lima di antaranya sengaja TIDAK muncul di
 		// tab mana pun — berkas tanpa Group Panel, klaim yang bocor ke tabel penugasan per
@@ -7136,6 +7209,34 @@ func claimTreatyPropSelectorMemory(primaryAlias string) inboxclaimtreatyprop.Rep
 			return existing, nil
 		}
 		fresh := inboxclaimtreatypropmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// outstandingClaimSelectorMemory menyusun penyimpanan rincian klaim treaty di memori;
+// alasannya sama dengan claimTreatyPropSelectorMemory di atas.
+//
+// Isinya dua klaim contoh: satu terisi penuh di seluruh kelompok dan grid, satu lagi TANPA
+// dokumen klaim sama sekali — meniru gabungan LEFT JOIN yang tidak menemukan baris di
+// JSON_KLAIM. Tanpa yang kedua, layar pengembangan tidak dapat menunjukkan bahwa klaim
+// seperti itu tetap dapat dibuka.
+func outstandingClaimSelectorMemory(primaryAlias string) outstandingclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]outstandingclaim.Repo{}
+
+	return func(alias string) (outstandingclaim.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := outstandingclaimmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}
