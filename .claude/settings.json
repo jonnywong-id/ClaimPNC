@@ -88,7 +88,12 @@
       "Bash(gofmt -w internal/inboxclaimtreatyprop/usecase/list_test.go)",
       "Bash(gofmt -w internal/inboxclaimtreatyprop/)",
       "Bash(gofmt -l internal/inboxclaimtreatyprop internal/outstandingclaim)",
-      "Bash(grep -v \"\\\\.go$\")"
+      "Bash(grep -v \"\\\\.go$\")",
+      "Bash(gofmt -l internal/inboxclaimtreatynonprop)",
+      "Bash(gofmt -l internal/inboxclaimtreatyprop)",
+      "Bash(gofmt -d internal/inboxclaimtreatynonprop/tab.go)",
+      "Bash(go run *)",
+      "Bash(PENYIMPANAN=oracle go run ./cmd/claimpnc -periksa)"
     ],
     "additionalDirectories": [
       "\\tmp"
