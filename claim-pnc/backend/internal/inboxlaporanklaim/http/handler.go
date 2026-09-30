@@ -246,9 +246,11 @@ func singleResponse(
 		Isian:   &detail,
 		// Berkas milik Pega hanya dapat dibaca dari sini selama masa paralel
 		// (`ADR-0004`, `P-1`). Layar memakai penanda ini untuk menggambar formnya dalam
-		// modus baca saja — bukan menyimpulkannya sendiri dari kolom `asal`.
-		DapatDisunting: report.Origin == inboxlaporanklaim.OriginNew,
-		Portal:         portalAlias,
+		// modus baca saja — bukan menyimpulkannya sendiri dari kolom `asal`. Berkas yang
+		// sudah menjadi klaim juga terkunci (Work Owner, 2026-09-29).
+		DapatDisunting:    report.Editable(),
+		SudahDiregistrasi: report.Registered(),
+		Portal:            portalAlias,
 	}
 }
 

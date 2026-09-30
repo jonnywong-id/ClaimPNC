@@ -279,7 +279,64 @@ func TestFormatUnggahanDapatDibacaPembacanyaSendiri(t *testing.T) {
 	baris, ditolak, err := masterrecovery.ParseClaimLine(strings.NewReader(masterrecovery.ClaimLineTemplate()))
 	require.NoError(t, err)
 	require.Empty(t, ditolak)
-	require.Len(t, baris, 2, "kedua baris contoh terbaca sebagai data, bukan sebagai judul")
+	// Satu baris contoh, sama seperti `DownloadFileCSVFormaatter`. Judulnya tidak ikut
+	// terbaca sebagai data.
+	require.Len(t, baris, 1)
+	require.Equal(t, "CONTOH-POLIS-0001", baris[0].PolicyNo)
+}
+
+// TestBerkasKlaimSatuKolomDiterima mengunci kelonggaran yang membuat berkas contoh Pega
+// dapat diunggah kembali.
+//
+// Contoh Pega hanya memuat kolom `PolicyNo`, sementara grid unggahannya dua kolom.
+// Menuntut dua kolom akan membuat berkas yang kita bagikan sendiri ditolak saat diunggah
+// — petugas melengkapi nilai klaimnya di layar.
+func TestBerkasKlaimSatuKolomDiterima(t *testing.T) {
+	baris, ditolak, err := masterrecovery.ParseClaimLine(strings.NewReader("PolicyNo\nPOL-1\nPOL-2\n"))
+	require.NoError(t, err)
+	require.Empty(t, ditolak)
+	require.Len(t, baris, 2)
+	require.Equal(t, masterrecovery.Amount(0), baris[0].ClaimAmount, "nilai klaim nol, dilengkapi di layar")
+}
+
+// TestBerkasSatuKolomTanpaJudulTidakKehilanganBarisPertama mengunci cacat yang ditemukan
+// saat berkas satu kolom mulai diterima.
+//
+// Deteksi judul semula bersandar pada kolom kedua yang bukan angka. Pada berkas satu
+// kolom, syarat itu selalu benar — sehingga baris PERTAMA dikira judul dan satu polis
+// hilang tanpa satu pun pesan.
+func TestBerkasSatuKolomTanpaJudulTidakKehilanganBarisPertama(t *testing.T) {
+	baris, ditolak, err := masterrecovery.ParseClaimLine(strings.NewReader("POL-1\nPOL-2\n"))
+	require.NoError(t, err)
+	require.Empty(t, ditolak)
+	require.Len(t, baris, 2, "baris pertama adalah data, bukan judul")
+	require.Equal(t, "POL-1", baris[0].PolicyNo)
+}
+
+// TestJudulDikenaliDariNamanya memastikan berbagai ejaan judul tidak terbaca sebagai data.
+func TestJudulDikenaliDariNamanya(t *testing.T) {
+	for _, judul := range []string{"PolicyNo", "No Polis", "no_polis", "NOMOR POLIS"} {
+		t.Run(judul, func(t *testing.T) {
+			baris, _, err := masterrecovery.ParseClaimLine(strings.NewReader(judul + "\nPOL-1\n"))
+			require.NoError(t, err)
+			require.Len(t, baris, 1)
+			require.Equal(t, "POL-1", baris[0].PolicyNo)
+		})
+	}
+}
+
+// TestKolomKeduaTerisiTetapiBukanAngkaTetapDitolak memastikan kelonggaran di atas tidak
+// ikut memaafkan salah ketik.
+//
+// Kolom yang TIDAK ADA berbeda dari kolom yang ADA tetapi cacat: yang pertama bentuk
+// berkas contoh, yang kedua kekeliruan yang harus terlihat.
+func TestKolomKeduaTerisiTetapiBukanAngkaTetapDitolak(t *testing.T) {
+	baris, ditolak, err := masterrecovery.ParseClaimLine(
+		strings.NewReader("PolicyNo;Nilai Klaim\nPOL-1;seribu\n"))
+	require.NoError(t, err)
+	require.Empty(t, baris)
+	require.Len(t, ditolak, 1)
+	require.Contains(t, ditolak[0].Message, "Baris 2")
 }
 
 // TestBuktiBayarKosongDitolak memastikan berkas tanpa isi tidak tersimpan sebagai lampiran

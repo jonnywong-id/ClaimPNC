@@ -28,10 +28,24 @@ import (
 //	:3783  "No Polis"     → .PolicyNo
 //	:3872  "Nilai Klaims" → .ClaimAmount   (pxNumber)
 //
-// Rule `DownloadFileCSVFormaatter` yang menyediakan berkas contohnya TIDAK ADA di export
-// — ia satu dari ±242 rule yang hilang (`R-16`), sehingga pemisah dan judul kolom
-// sebenarnya tidak dapat dibaca. Yang ditegakkan di sini karena itu adalah bentuk yang
-// dapat disimpulkan dari grid-nya, dan pembacaannya dibuat LAPANG dengan sengaja:
+// Rule `DownloadFileCSVFormaatter` yang menyediakan berkas contohnya ADA di export
+// (`Activity/DownloadFileCSVFormaatter-Act.xml`, Applies To `Data-Portal`), dan isinya
+// mengungkap ketidakcocokan yang perlu diketahui:
+//
+//	langkah 2  TempsFormaater.pxResults(<APPEND>).PolicyNo := "TESTINg…"   ← SATU kolom
+//	langkah 3  Call pxConvertResultsToCSV, FileName "Fromat Recovery Klaim"
+//
+// **Berkas contohnya hanya satu kolom — `PolicyNo` — sedangkan grid unggahannya dua**
+// (`:3783` "No Polis" dan `:3872` "Nilai Klaims"). Judulnya pun dibentuk
+// `pxConvertResultsToCSV` dari nama properti, bukan ditulis sebagai teks yang dibaca
+// manusia.
+//
+// Keputusan Work Owner 2026-09-29: berkas contoh mengikuti Pega — SATU kolom. Yang
+// menyesuaikan adalah pembacanya, yang memperlakukan kolom nilai klaim sebagai OPSIONAL
+// dan mengisinya nol untuk dilengkapi petugas di layar. Kolom kedua yang terisi tetapi
+// bukan angka tetap ditolak: itu salah ketik, bukan kolom yang tidak ada.
+//
+// Pembacaannya dibuat LAPANG dengan sengaja:
 //
 //   - Pemisah titik koma maupun koma sama-sama diterima. Excel berbahasa Indonesia
 //     menulis titik koma; menolaknya akan membuat berkas yang diekspor petugas sendiri
@@ -102,13 +116,6 @@ func ParseClaimLine(source io.Reader) ([]ClaimLine, []Violation, error) {
 		if index == 0 && headerRow(row) {
 			continue
 		}
-		if len(row) < 2 {
-			violation = append(violation, Violation{
-				Field:   FieldClaimLine,
-				Message: "Baris " + number + " hanya memuat satu kolom; harus nomor polis dan nilai klaim.",
-			})
-			continue
-		}
 
 		policyNo := strings.TrimSpace(row[0])
 		if policyNo == "" {
@@ -126,14 +133,27 @@ func ParseClaimLine(source io.Reader) ([]ClaimLine, []Violation, error) {
 			continue
 		}
 
-		amount, err := ParseAmount(row[1])
-		if err != nil {
-			message := "Baris " + number + ": nilai klaim bukan angka rupiah utuh."
-			if errors.Is(err, ErrAmountEmpty) {
-				message = "Baris " + number + " tidak menyebut nilai klaim."
+		// Kolom kedua OPSIONAL, dan itu mengikuti berkas contoh Pega.
+		//
+		// `Activity/DownloadFileCSVFormaatter-Act.xml` hanya menuliskan satu kolom —
+		// `PolicyNo` — sementara grid unggahannya memuat dua. Menuntut dua kolom di sini
+		// akan membuat berkas contoh yang kita bagikan sendiri DITOLAK saat diunggah
+		// kembali.
+		//
+		// Baris tanpa kolom kedua karena itu diterima dengan nilai nol, dan petugas
+		// melengkapinya di layar. Yang tetap ditolak hanyalah kolom kedua yang TERISI
+		// tetapi bukan angka — itu salah ketik, bukan kolom yang memang tidak ada.
+		var amount Amount
+		if len(row) >= 2 && strings.TrimSpace(row[1]) != "" {
+			parsed, err := ParseAmount(row[1])
+			if err != nil {
+				violation = append(violation, Violation{
+					Field:   FieldClaimLine,
+					Message: "Baris " + number + ": nilai klaim bukan angka rupiah utuh.",
+				})
+				continue
 			}
-			violation = append(violation, Violation{Field: FieldClaimLine, Message: message})
-			continue
+			amount = parsed
 		}
 		if amount < 0 {
 			violation = append(violation, Violation{
@@ -191,15 +211,60 @@ func detectSeparator(text string) rune {
 
 // headerRow mengenali baris judul supaya ia tidak terbaca sebagai data.
 //
-// Dikenali dari kolom KEDUA yang bukan angka: baris data selalu memuat nilai klaim di
-// sana. Mencocokkan teks judulnya akan menuntut mengetahui judul yang sebenarnya — dan
-// rule yang menyediakan berkas contohnya tidak ada di export.
+// # Kenapa dua cara, bukan satu
+//
+// Versi sebelumnya mengenalinya HANYA dari kolom kedua yang bukan angka. Itu runtuh
+// begitu berkas satu kolom diterima (mengikuti berkas contoh Pega): berkas
+// `POL-1\nPOL-2` akan membuat baris PERTAMA dikira judul, dan satu polis hilang tanpa
+// satu pun pesan.
+//
+// Karena itu nama judulnya kini dicocokkan lebih dulu — termasuk `PolicyNo`, nama yang
+// benar-benar dihasilkan `pxConvertResultsToCSV` pada berkas contoh Pega.
+//
+// # Satu keadaan yang memang tidak dapat dibedakan
+//
+// Berkas TANPA judul yang baris pertamanya bernilai klaim cacat — `POL-1;seribu` —
+// tetap terbaca sebagai judul. Itu tidak terhindarkan tanpa menuntut judul, dan
+// akibatnya terbatas: satu baris terlewat, bukan salah nilai. Berkas contoh yang
+// dibagikan selalu berjudul, sehingga keadaan ini praktis hanya muncul pada berkas yang
+// disusun tangan.
 func headerRow(row []string) bool {
-	if len(row) < 2 {
+	if len(row) == 0 {
 		return true
+	}
+	if headerName[normalizeHeader(row[0])] {
+		return true
+	}
+	// Berkas satu kolom yang namanya tidak dikenali diperlakukan sebagai DATA, bukan
+	// judul — inilah yang menyelamatkan baris pertama berkas tanpa judul.
+	if len(row) < 2 || strings.TrimSpace(row[1]) == "" {
+		return false
 	}
 	_, err := ParseAmount(row[1])
 	return err != nil
+}
+
+// headerName memuat nama judul kolom pertama yang dikenali.
+//
+// `policyno` adalah yang dihasilkan `pxConvertResultsToCSV` dari nama properti; sisanya
+// bentuk yang wajar diketik orang. Dicocokkan setelah dinormalkan, sehingga "No Polis",
+// "no_polis", dan "NOPOLIS" sama-sama dikenali.
+var headerName = map[string]bool{
+	"policyno":   true,
+	"nopolis":    true,
+	"nomorpolis": true,
+	"nomerpolis": true,
+}
+
+func normalizeHeader(cell string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(cell)) {
+		if r == ' ' || r == '_' || r == '-' || r == '.' {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 func blankRow(row []string) bool {
@@ -217,15 +282,33 @@ func blankRow(row []string) bool {
 // DIUNDUH dan bentuk yang DIBACA tidak dapat berbeda pendapat — keduanya berasal dari
 // satu berkas sumber ini.
 //
-// Menggantikan rule `DownloadFileCSVFormaatter`, yang tidak ada di export sehingga isi
-// contohnya tidak dapat ditiru persis. Yang ditiru adalah KOLOMNYA, yang terbaca dari
-// grid unggahan.
+// Menggantikan rule `DownloadFileCSVFormaatter`, dan mengikutinya apa adanya.
+//
+// # Satu kolom, karena begitulah contoh Pega (keputusan Work Owner 2026-09-29)
+//
+// `Activity/DownloadFileCSVFormaatter-Act.xml` hanya berisi tiga langkah nyata:
+//
+//	Page-New       TempsFormaater
+//	Property-Set   TempsFormaater.pxResults(<APPEND>).PolicyNo := "TESTINg…"
+//	Call           pxConvertResultsToCSV   FileName "Fromat Recovery Klaim"
+//
+// Satu kolom, satu baris contoh. Versi sebelumnya di sini menambahkan kolom kedua "Nilai
+// Klaim" karena grid unggahannya memang dua kolom — itu menyimpang dari Pega, dan
+// penyimpangan itu ditarik.
+//
+// Yang membuat penarikan ini aman: pembacanya di atas kini menerima berkas satu kolom,
+// dengan nilai klaim nol yang dilengkapi petugas di layar. Jadi berkas contoh ini tetap
+// dapat diunggah kembali — hal yang, di sistem lama, tidak berlaku.
+//
+// Judul kolomnya memakai nama properti `PolicyNo`, sama seperti keluaran
+// `pxConvertResultsToCSV` yang membentuk judul dari nama properti — bukan teks yang
+// dibaca manusia.
 func ClaimLineTemplate() string {
 	var builder strings.Builder
-	builder.WriteString("No Polis;Nilai Klaim\n")
-	// Dua baris contoh, bukan nol: berkas berisi judul saja membuat petugas menebak
-	// apakah angkanya boleh berpemisah ribuan. Contoh menjawabnya tanpa perlu bertanya.
-	builder.WriteString("POL-0000001;1000000\n")
-	builder.WriteString("POL-0000002;2500000\n")
+	builder.WriteString("PolicyNo\n")
+	// Satu baris contoh, sama seperti Pega. Nilainya diganti nomor yang jelas contoh —
+	// nilai asli pada rule lama adalah nomor polis nyata, dan `D-69` melarang menuliskan
+	// data nasabah ke berkas yang di-commit.
+	builder.WriteString("CONTOH-POLIS-0001\n")
 	return builder.String()
 }

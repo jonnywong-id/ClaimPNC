@@ -61,11 +61,10 @@ func (p *NumberIssuer) Issue(ctx context.Context, at time.Time) (string, error) 
 	}
 	last++
 
-	// Lebar minimum empat digit, dan TUMBUH bila terlampaui. Memotong pada empat digit
-	// membuat nomor ke-10.001 menabrak nomor yang sudah terbit. Apakah lebarnya memang
-	// dibuat tetap masih pertanyaan terbuka `TKT-F2-006`; yang dipilih di sini adalah
-	// tafsir yang tidak dapat menghasilkan tabrakan.
-	return fmt.Sprintf("%s.%02d.%04d", p.prefix, year%100, last), nil
+	// Nomor urut TANPA nol di depan: PNCN.26.1, PNCN.26.2, … (Work Owner, 2026-09-29 —
+	// sama dengan TO_CHAR(seq.NEXTVAL) tanpa format mask pada D-71). Nomor yang telanjur
+	// terbit berlebar empat digit (PNCN.26.0014) tetap sah; kueri membacanya sebagai angka.
+	return fmt.Sprintf("%s.%02d.%d", p.prefix, year%100, last), nil
 }
 
 // AuditRecorder menuliskan jejak audit.

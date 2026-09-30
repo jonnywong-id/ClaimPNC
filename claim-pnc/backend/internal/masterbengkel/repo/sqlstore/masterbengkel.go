@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/masterbengkel"
 )
@@ -41,6 +42,11 @@ const sequenceWidth = 10
 // interface-nya, bukan pengisinya.
 type Repo struct {
 	db *sql.DB
+
+	// clock memasok dua digit tahun pada DATAID lampiran. Ia opsional dan berjam sistem
+	// bila tidak disetel, sehingga perakitan yang sudah ada tidak perlu berubah — lihat
+	// WithClock.
+	clock masterbengkel.Clock
 }
 
 // NewRepo membentuk repo; db wajib sudah terhubung ke basis data portal yang dimaksud.
@@ -662,6 +668,113 @@ func splitByName(content string) map[string]string {
 	}
 	save()
 	return result
+}
+
+// WithClock mengganti jam yang memasok dua digit tahun pada DATAID lampiran.
+//
+// Ia setter, bukan parameter NewRepo, supaya seluruh perakitan yang sudah ada tetap sah —
+// menambah parameter berarti menyentuh berkas perakitan modul lain tanpa satu pun alasan
+// yang berasal dari modul itu.
+func (r *Repo) WithClock(clock masterbengkel.Clock) *Repo {
+	r.clock = clock
+	return r
+}
+
+// now menjawab dengan jam yang disetel, atau jam sistem bila belum disetel.
+func (r *Repo) now() time.Time {
+	if r.clock != nil {
+		return r.clock.Now()
+	}
+	return time.Now()
+}
+
+// NextDocumentID menerbitkan DATAID berikutnya, meniru `SET_ATTACHMENT_64BIT.prc:18-26`.
+//
+// Nomor urutnya dari `ATTACHFILE_SEQ` — sequence yang SAMA dengan milik procedure lama,
+// sehingga deretnya bersambung dan tidak pernah bertabrakan. Tahunnya dari jam aplikasi,
+// bukan `sysdate`; selisihnya dinyatakan di berkas .sql.
+func (r *Repo) NextDocumentID(ctx context.Context) (string, error) {
+	var sequence int64
+	query := getQuery("bengkel_next_document_sequence")
+	if err := r.db.QueryRowContext(ctx, query).Scan(&sequence); err != nil {
+		return "", fmt.Errorf("masterbengkel/sqlstore: mengambil nomor urut lampiran: %w", err)
+	}
+
+	year := r.now().Format("06")
+	return masterbengkel.ComposeDocumentID(year, sequence), nil
+}
+
+// SaveDocument menyisipkan lampiran lalu menautkannya ke bengkel, dalam SATU transaksi.
+//
+// Keduanya tidak boleh terpisah: baris lampiran tanpa tautan tidak dapat ditemukan siapa
+// pun, dan tautan tanpa baris lampiran menunjuk ke ketiadaan. Procedure lama menempuh
+// keduanya dengan `COMMIT` sendiri-sendiri (`D-68`), dan justru itu yang tidak dibawa.
+func (r *Repo) SaveDocument(ctx context.Context, workshopID string, document masterbengkel.Document) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("masterbengkel/sqlstore: memulai transaksi lampiran: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = tx.ExecContext(ctx, getQuery("bengkel_insert_document"),
+		strings.TrimSpace(document.ID),
+		strings.TrimSpace(document.UploadedBy),
+		strings.TrimSpace(document.Name),
+		strings.TrimSpace(document.Note),
+		strings.TrimSpace(document.MimeType),
+		document.Content,
+	)
+	if err != nil {
+		return fmt.Errorf("masterbengkel/sqlstore: menyisipkan lampiran: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, getQuery("bengkel_set_document"),
+		strings.TrimSpace(document.ID),
+		strings.TrimSpace(workshopID),
+	)
+	if err != nil {
+		return fmt.Errorf("masterbengkel/sqlstore: menautkan lampiran ke bengkel: %w", err)
+	}
+
+	// Nol baris berarti bengkelnya tidak ada. Ia dibedakan dari kegagalan teknis karena
+	// perbaikannya berbeda: yang satu salah masukan, yang lain gangguan.
+	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
+		return masterbengkel.ErrNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("masterbengkel/sqlstore: menutup transaksi lampiran: %w", err)
+	}
+	return nil
+}
+
+// FindDocument membaca satu lampiran menurut DATAID-nya.
+func (r *Repo) FindDocument(ctx context.Context, documentID string) (masterbengkel.Document, error) {
+	var (
+		id, name, note, mime, operator sql.NullString
+		uploadedAt                     sql.NullTime
+		content                        []byte
+	)
+
+	query := getQuery("bengkel_get_document")
+	err := r.db.QueryRowContext(ctx, query, strings.TrimSpace(documentID)).
+		Scan(&id, &name, &note, &mime, &operator, &uploadedAt, &content)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return masterbengkel.Document{}, masterbengkel.ErrDocumentNotFound
+	case err != nil:
+		return masterbengkel.Document{}, fmt.Errorf("masterbengkel/sqlstore: membaca lampiran: %w", err)
+	}
+
+	return masterbengkel.Document{
+		ID:         strings.TrimSpace(id.String),
+		Name:       strings.TrimSpace(name.String),
+		Note:       strings.TrimSpace(note.String),
+		MimeType:   strings.TrimSpace(mime.String),
+		Content:    content,
+		UploadedBy: strings.TrimSpace(operator.String),
+		UploadedAt: uploadedAt.Time,
+	}, nil
 }
 
 var _ masterbengkel.Store = (*Repo)(nil)

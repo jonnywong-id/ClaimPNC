@@ -235,6 +235,25 @@ describe('form Input Receive Document', () => {
     expect(screen.getByLabelText('Nomor Polis')).toBeDisabled()
   })
 
+  it('RCVN yang sudah menjadi PNCN terkunci, tanpa Simpan dan Register Klaim', async () => {
+    // Work Owner, 2026-09-29.
+    installFetch(() => ({
+      body: berkas({
+        dapat_disunting: false,
+        sudah_diregistrasi: true,
+        laporan: { ...berkas().laporan, nomor_klaim: 'PNCN.26.15' },
+      }),
+    }))
+    show()
+
+    expect(await screen.findByText('PNCN.26.15')).toBeInTheDocument()
+    expect(screen.queryByText('Berkas ini hanya dapat dibaca')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Simpan' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Register Klaim' })).toBeNull()
+    expect(screen.getByLabelText('Nomor Polis')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Kembali ke daftar' })).toBeInTheDocument()
+  })
+
   it('kewenangan menyunting dibaca dari server, bukan disimpulkan dari kolom asal', async () => {
     // Aturan siapa yang boleh menulis milik server. Bila layar menyimpulkannya sendiri,
     // satu aturan hidup di dua tempat — dan yang di layar akan tertinggal saat yang di

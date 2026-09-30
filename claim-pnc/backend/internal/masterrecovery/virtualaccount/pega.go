@@ -4,35 +4,50 @@
 // pengujian serta pengembangan tanpa jaringan. Dua adapter itulah yang membuat seam ini
 // benar-benar seam (`docs/Steering/04-FUTURE-ARCHITECTURE.md` §3).
 //
-// # Peringatan yang harus dibaca sebelum menyunting berkas ini
+// # PENERBIT INI TERTUTUP SECARA BAKU
 //
-// **Bentuk permintaan dan responsnya DISIMPULKAN, bukan dibaca.** Rule Connect REST
-// `VirtualAccountClaimsPNC` yang dipanggil `Activity/GeneratedVAClaimRecovery-Act.xml:2456`
-// TIDAK ADA di export — ia satu dari ±242 rule yang hilang (`R-16`), dan pemetaan
-// field-nya karena itu tidak dapat disalin.
+// Keputusan Work Owner 2026-09-29: jangan dibuka dulu. Yang membukanya adalah
+// `VIRTUAL_ACCOUNT_ADAPTER=pega` ditambah `VIRTUAL_ACCOUNT_PENGGUNA` dan
+// `VIRTUAL_ACCOUNT_SANDI` yang terisi — ketiganya sekaligus. Perakitnya ada di
+// cmd/claimpnc/buildVirtualAccountIssuer.
 //
-// Yang DIKETAHUI PASTI hanya tiga hal, dan ketiganya diverifikasi:
+// # Kontrak ini DIBACA dari rule-nya, bukan lagi disimpulkan (2026-09-29)
 //
-//  1. Alamatnya, dibaca dari POOLDATA.GCNM_CONNECT_REST pada 2026-09-19 —
-//     `APP='ASM'`, `TYPESERVICE='GENERATEDVA'`. Alamat itu TIDAK ditulis di kode mana
-//     pun; ia dibaca per portal, sehingga perpindahan endpoint menjadi perubahan data
-//     oleh DBA, bukan rilis ulang.
+// Rule `Connect REST/VirtualAccountClaimsPNC-ConnectREST.xml` sudah diterima dari Tim
+// Pega. Ia mengoreksi dua tebakan sebelumnya:
 //
-//  2. Metodenya POST (`:2457`).
+//  1. **Autentikasi WAJIB.** `pyUseAuthentication=true` dengan
+//     `pyAuthenticationProfile=LELANG`. Adapter ini semula memakai ulang kredensial HCQ —
+//     itu KELIRU, keduanya profil yang berbeda. Profil `LELANG` sendiri TIDAK ADA di
+//     export; hanya namanya yang dirujuk, sehingga kredensialnya diminta terpisah.
+//  2. **Badan permintaan adalah halaman `ClaimData` yang DISERIALKAN menjadi JSON.**
+//     `pyMapFrom=Clipboard`, `pyMapFromKey=PNCVARECOVERY.ClaimData.City` — dan `.City`
+//     bukan kota: `GeneratedVAClaimRecovery-Act.xml:1783` mengisinya dengan
+//     `Param.jsonData`, hasil `Apply-DataTransform SetDataJson`
+//     (`executionMode=SERIALIZE`) atas halaman itu. Jadi badannya JSON datar berisi
+//     properti yang diisi activity — bukan amplop bersarang.
 //
-//  3. Properti yang DIISI sebelum memanggil dan properti yang DIBACA sesudahnya, dari
-//     activity yang sama:
+// Yang sudah benar sejak awal dan kini terkonfirmasi:
 //
-//     diisi : ClaimData.SourceID = "LELANG" · ClaimData.NoRef = ClientID ·
-//     ClaimData.CustomerName = NamaPrincipal · ClaimData.PaymentAmount = 0
-//     dibaca: ClaimData.Status · ClaimData.Message · ClaimData.VirtualAccountNumber
+//   - **Respons dipetakan kembali ke halaman `ClaimData`** (`pyMapTo=JSON`,
+//     `pyMapToKey=PNCVARECOVERY.ClaimData`), sehingga kunci responsnya bernama persis
+//     seperti propertinya: `Status`, `Message`, `VirtualAccountNumber`.
+//   - Metode POST, `Content-Type: application/json`, dan alamat `ServiceFromTable` —
+//     dibaca dari POOLDATA.GCNM_CONNECT_REST (`APP=<portal>`,
+//     `TYPESERVICE='GENERATEDVA'`), sehingga perpindahan endpoint tetap menjadi perubahan
+//     data oleh DBA, bukan rilis ulang.
 //
-// Karena pemetaannya disimpulkan, pembacaan respons di bawah dibuat TOLERAN: beberapa
-// ejaan kunci yang lazim diterima sekaligus. Itu bukan kecerobohan — ia pilihan sadar
-// supaya satu perbedaan ejaan tidak membuat VA yang sudah benar-benar terbit gagal
-// tercatat, sementara rule aslinya masih ditunggu dari Tim Pega.
+// Keempat properti yang diisi activity sebelum memanggil — inilah badan permintaannya:
 //
-// Begitu rule-nya tiba, yang perlu diperiksa hanyalah berkas ini.
+//	ClaimData.SourceID      = "LELANG"        (:1109)
+//	ClaimData.NoRef         = ClientID        (:1154)
+//	ClaimData.CustomerName  = NamaPrincipal   (:1174)
+//	ClaimData.PaymentAmount = 0               (:1200)
+//
+// Pembacaan respons tetap TOLERAN terhadap beberapa ejaan kunci. Ejaan yang benar kini
+// diketahui dan dicoba lebih dulu; sisanya dipertahankan sebagai jaring pengaman, karena
+// satu perbedaan ejaan tidak boleh membuat VA yang sudah benar-benar terbit gagal
+// tercatat — dan yang di seberang layanan yang tidak kita miliki.
 package virtualaccount
 
 import (
@@ -91,10 +106,13 @@ type Options struct {
 	// Catalog membaca alamat layanan per portal. Wajib.
 	Catalog ServiceCatalog
 
-	// User dan Password adalah kredensial Basic Auth ke layanan. Boleh KOSONG: layanan
-	// Pega ini tidak diketahui menuntut autentikasi — 18 dari 21 Connect REST di sistem
-	// lama ber-`pyUseAuthentication=false` (`D-73`). Bila keduanya kosong, header
-	// Authorization tidak dikirim sama sekali.
+	// User dan Password adalah kredensial profil autentikasi `LELANG`. **Wajib** —
+	// rule-nya ber-`pyUseAuthentication=true`, jadi permintaan tanpa kredensial pasti
+	// ditolak. Keduanya diperiksa NewPega, bukan dibiarkan gagal di jaringan: penolakan
+	// autentikasi tampak seperti gangguan layanan, dan itu menyesatkan orang yang
+	// menelusurinya.
+	//
+	// BUKAN kredensial HCQ. Keduanya profil yang berbeda.
 	User     string
 	Password string
 
@@ -115,8 +133,17 @@ type Options struct {
 
 // NewPega membentuk adapter penerbit VA dan menolak bahan yang tidak lengkap.
 func NewPega(o Options) (*Pega, error) {
-	if o.Catalog == nil {
+	switch {
+	case o.Catalog == nil:
 		return nil, errors.New("masterrecovery/virtualaccount: katalog layanan wajib diisi")
+	case strings.TrimSpace(o.User) == "":
+		// Ditolak di sini, bukan dibiarkan gagal saat memanggil: rule-nya menuntut
+		// autentikasi, sehingga permintaan tanpa kredensial pasti ditolak — dan
+		// penolakannya akan terbaca sebagai gangguan layanan, bukan sebagai konfigurasi
+		// yang belum lengkap.
+		return nil, errors.New("masterrecovery/virtualaccount: VIRTUAL_ACCOUNT_PENGGUNA wajib diisi (profil autentikasi LELANG)")
+	case strings.TrimSpace(o.Password) == "":
+		return nil, errors.New("masterrecovery/virtualaccount: VIRTUAL_ACCOUNT_SANDI wajib diisi (profil autentikasi LELANG)")
 	}
 
 	client := o.Client
@@ -224,9 +251,9 @@ func (p *Pega) Issue(
 	}
 	httpRequest.Header.Set("Content-Type", "application/json")
 	httpRequest.Header.Set("Accept", "application/json")
-	if p.user != "" {
-		httpRequest.SetBasicAuth(p.user, p.password)
-	}
+	// Selalu dikirim, tidak lagi bersyarat: rule-nya ber-`pyUseAuthentication=true`, dan
+	// NewPega sudah menolak kredensial yang kosong.
+	httpRequest.SetBasicAuth(p.user, p.password)
 
 	httpResponse, err := p.client.Do(httpRequest)
 	if err != nil {

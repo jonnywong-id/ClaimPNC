@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -95,11 +94,6 @@ func (r *Repo) Insert(ctx context.Context, recovery masterrecovery.Recovery) (ma
 	}
 	recovery.Batch = batch
 
-	policyJSON, err := encodeClaimLine(recovery.ClaimLine)
-	if err != nil {
-		return masterrecovery.Recovery{}, err
-	}
-
 	if _, err := tx.ExecContext(ctx, getQuery("recovery_insert"),
 		recovery.Batch,
 		nullable(recovery.PrincipalName),
@@ -114,7 +108,6 @@ func (r *Repo) Insert(ctx context.Context, recovery masterrecovery.Recovery) (ma
 		nullable(recovery.VirtualAccountNumber),
 		nullable(recovery.InputBy),
 		nullable(recovery.ClientID),
-		nullable(policyJSON),
 		nullable(recovery.ServiceLogID),
 		nullable(recovery.PolicyNo),
 		nullable(recovery.BusinessID),
@@ -125,10 +118,184 @@ func (r *Repo) Insert(ctx context.Context, recovery masterrecovery.Recovery) (ma
 		return masterrecovery.Recovery{}, translateWriteError(err, "menyisipkan batch recovery")
 	}
 
+	// Baris klaim disisipkan DI DALAM transaksi yang sama.
+	//
+	// Itu yang membuat batch tanpa rincian polis tidak pernah ada: bila salah satu baris
+	// gagal, kepala batch-nya ikut batal. Di sistem lama keduanya menyatu dalam satu kolom
+	// sehingga persoalan ini tidak muncul — memindahkannya ke tabel tersendiri
+	// memunculkannya, dan transaksi inilah jawabannya.
+	for index, line := range recovery.ClaimLine {
+		if _, err := tx.ExecContext(ctx, getQuery("recovery_claim_line_insert"),
+			recovery.Batch,
+			// Urutan dimulai dari 1, sama dengan nomor baris yang dilaporkan pembaca CSV
+			// kepada petugas — supaya "baris ke-3" berarti hal yang sama di layar dan di
+			// basis data.
+			index+1,
+			line.PolicyNo,
+			int64(line.ClaimAmount),
+		); err != nil {
+			return masterrecovery.Recovery{}, translateWriteError(err, "menyisipkan baris klaim recovery")
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return masterrecovery.Recovery{}, fmt.Errorf("masterrecovery/sqlstore: menyimpan batch recovery: %w", err)
 	}
 	return recovery, nil
+}
+
+// List membaca seluruh batch milik principal yang masuk halaman ini.
+//
+// Angka kedua yang dikembalikan adalah jumlah PRINCIPAL yang cocok, bukan jumlah baris —
+// lihat masterrecovery.Repo.
+//
+// Jumlah itu dihitung dengan kueri TERPISAH, bukan dengan window function di kueri yang
+// sama. Alasannya portabilitas sekaligus keterbacaan: `COUNT(*) OVER ()` berlaku di Oracle
+// dan PostgreSQL, tetapi menggabungkannya membuat kolom hitung terbawa ke setiap baris di
+// dalam kueri yang sudah bersubkueri. Dua kueri kecil terhadap tabel sekecil ini lebih
+// murah daripada satu kueri yang sulit dikoreksi.
+func (r *Repo) List(ctx context.Context, f masterrecovery.ListFilter) ([]masterrecovery.Recovery, int, error) {
+	name := nullable(f.PrincipalName)
+	year := nullable(f.Year)
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, getQuery("recovery_count"),
+		name, name, year, year,
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("masterrecovery/sqlstore: menghitung batch recovery: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, getQuery("recovery_list"),
+		name, name, year, year, f.Offset, f.Limit,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("masterrecovery/sqlstore: membaca daftar batch recovery: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []masterrecovery.Recovery
+	for rows.Next() {
+		recovery, err := scanRecovery(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("masterrecovery/sqlstore: membaca baris batch recovery: %w", err)
+		}
+		result = append(result, recovery)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("masterrecovery/sqlstore: menelusuri daftar batch recovery: %w", err)
+	}
+	return result, total, nil
+}
+
+// scanRecovery membaca satu baris daftar.
+//
+// Seluruh kolom teks diperlakukan NULLABLE. Itu bukan kehati-hatian berlebihan: ketiga
+// baris yang ada di portal ASM punya NULL pada sebagian kolomnya, dan tabel ini tidak
+// punya satu pun NOT NULL selain kunci utamanya.
+//
+// Kolom uang dibaca sebagai sql.NullInt64, sehingga NULL menjadi nol — bukan galat.
+// Sistem lama menyimpan batch tanpa nilai, dan menolak membacanya berarti satu baris
+// warisan membuat seluruh halaman gagal tampil.
+func scanRecovery(rows rowScanner) (masterrecovery.Recovery, error) {
+	var (
+		batch           int64
+		principalName   sql.NullString
+		year            sql.NullString
+		claimAmount     sql.NullInt64
+		previousPayment sql.NullInt64
+		payment         sql.NullInt64
+		remainder       sql.NullInt64
+		remark          sql.NullString
+		casePosition    sql.NullString
+		documentID      sql.NullString
+		virtualAccount  sql.NullString
+		clientID        sql.NullString
+		policyNo        sql.NullString
+		serviceLogID    sql.NullString
+		inputDate       sql.NullTime
+
+		attachName     sql.NullString
+		attachOperator sql.NullString
+		attachDate     sql.NullTime
+	)
+	if err := rows.Scan(
+		&batch, &principalName, &year,
+		&claimAmount, &previousPayment, &payment, &remainder,
+		&remark, &casePosition, &documentID, &virtualAccount, &clientID, &policyNo,
+		&serviceLogID, &inputDate,
+		&attachName, &attachOperator, &attachDate,
+	); err != nil {
+		return masterrecovery.Recovery{}, err
+	}
+
+	// Lampiran hanya dianggap ADA bila barisnya benar-benar ketemu di DATA_ATTACHFILE.
+	// DOKUMENID yang terisi tetapi menunjuk baris yang sudah tidak ada menghasilkan
+	// seluruh kolom LEFT JOIN bernilai NULL — dan di layar itu harus terbaca "belum ada
+	// bukti bayar", bukan tombol yang menjanjikan berkas yang tidak dapat dibuka.
+	var attachment *masterrecovery.AttachmentInfo
+	if id := strings.TrimSpace(documentID.String); id != "" && (attachName.Valid || attachOperator.Valid || attachDate.Valid) {
+		attachment = &masterrecovery.AttachmentInfo{
+			ID:         id,
+			Name:       strings.TrimSpace(attachName.String),
+			UploadedBy: strings.TrimSpace(attachOperator.String),
+			UploadedAt: attachDate.Time,
+		}
+	}
+
+	return masterrecovery.Recovery{
+		Attachment:           attachment,
+		Batch:                batch,
+		PrincipalName:        strings.TrimSpace(principalName.String),
+		Year:                 strings.TrimSpace(year.String),
+		ClaimAmount:          masterrecovery.Amount(claimAmount.Int64),
+		PreviousPayment:      masterrecovery.Amount(previousPayment.Int64),
+		Payment:              masterrecovery.Amount(payment.Int64),
+		Remainder:            masterrecovery.Amount(remainder.Int64),
+		Remark:               strings.TrimSpace(remark.String),
+		CasePosition:         strings.TrimSpace(casePosition.String),
+		DocumentID:           strings.TrimSpace(documentID.String),
+		VirtualAccountNumber: strings.TrimSpace(virtualAccount.String),
+		ClientID:             strings.TrimSpace(clientID.String),
+		PolicyNo:             strings.TrimSpace(policyNo.String),
+		ServiceLogID:         strings.TrimSpace(serviceLogID.String),
+		// NULL menjadi waktu nol, bukan galat. Baris warisan boleh tidak punya INSERTDATE,
+		// dan menolak membacanya berarti satu baris lama membuat seluruh halaman gagal.
+		InputDate: inputDate.Time,
+	}, nil
+}
+
+// FindDocument membaca satu Bukti Bayar beserta isinya.
+func (r *Repo) FindDocument(ctx context.Context, id string) (masterrecovery.Document, error) {
+	var (
+		content  []byte
+		name     sql.NullString
+		mimeType sql.NullString
+		note     sql.NullString
+		imageID  sql.NullString
+	)
+
+	err := r.db.QueryRowContext(ctx, getQuery("attachment_read"), id).
+		Scan(&content, &name, &mimeType, &note, &imageID)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return masterrecovery.Document{}, masterrecovery.ErrDocumentNotFound
+	case err != nil:
+		return masterrecovery.Document{}, fmt.Errorf("masterrecovery/sqlstore: membaca bukti bayar: %w", err)
+	}
+
+	// Baris ADA tetapi kolom BLOB-nya kosong. Itu bukan salah tautan: sistem lama
+	// menyimpan sebagian berkas di penyimpanan luar dan hanya menaruh penunjuknya di
+	// IMAGEID. Dibedakan supaya layar dapat mengatakan yang sebenarnya.
+	if len(content) == 0 {
+		return masterrecovery.Document{}, masterrecovery.ErrDocumentElsewhere
+	}
+
+	return masterrecovery.Document{
+		Name:     strings.TrimSpace(name.String),
+		MimeType: strings.TrimSpace(mimeType.String),
+		Note:     strings.TrimSpace(note.String),
+		Content:  content,
+	}, nil
 }
 
 // ListPrincipal membaca seluruh principal di master Virtual Account.
@@ -337,40 +504,6 @@ func newCounterKey() (string, error) {
 	return hex.EncodeToString(buffer), nil
 }
 
-// encodeClaimLine mengubah daftar polis menjadi dokumen JSON untuk kolom JSON_POLIS.
-//
-// Bentuknya disusun di sini, bukan diwarisi: sistem lama memakai
-// `@GCNM.GetPageJSONString()` yang menuliskan seluruh halaman klipboard Pega beserta
-// properti internalnya (`pxObjClass` dan kerabatnya). Menirunya berarti menyimpan sampah
-// yang tidak berarti apa pun di luar Pega.
-//
-// Yang ditulis di sini hanya kedua kolom yang benar-benar dibaca grid — nomor polis dan
-// nilai klaim — dengan nama field Indonesia karena isinya adalah DATA YANG TERSIMPAN dan
-// akan dibaca orang lain, bukan nama internal (`D-80`).
-//
-// Daftar KOSONG menghasilkan NULL, bukan "[]": kolomnya boleh NULL, dan baris tanpa
-// daftar polis memang tidak punya daftar polis.
-func encodeClaimLine(line []masterrecovery.ClaimLine) (string, error) {
-	if len(line) == 0 {
-		return "", nil
-	}
-
-	type row struct {
-		PolicyNo    string `json:"nomor_polis"`
-		ClaimAmount int64  `json:"nilai_klaim"`
-	}
-	content := make([]row, 0, len(line))
-	for _, l := range line {
-		content = append(content, row{PolicyNo: l.PolicyNo, ClaimAmount: int64(l.ClaimAmount)})
-	}
-
-	encoded, err := json.Marshal(content)
-	if err != nil {
-		return "", fmt.Errorf("masterrecovery/sqlstore: menyusun daftar klaim: %w", err)
-	}
-	return string(encoded), nil
-}
-
 // nullable mengirim NULL alih-alih teks kosong.
 //
 // Perbedaannya nyata di Oracle untuk kolom teks — keduanya memang sama di sana — tetapi ia
@@ -457,6 +590,23 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// CheckClaimLineTable menguji tabel baris klaim ada dan dapat dibaca akun aplikasi.
+//
+// Dipisahkan dari CheckTable dengan sengaja: ia SATU-SATUNYA objek modul ini yang dibuat
+// migrasi kita sendiri (`0013`), sehingga kegagalannya punya tindak lanjut yang khas —
+// migrasinya belum dijalankan DBA — bukan soal hak akses atas tabel warisan.
+//
+// Selama tabel ini belum ada, batch tetap dapat dicatat TETAPI daftar polisnya akan gagal
+// tersimpan, dan karena keduanya satu transaksi, seluruh penyimpanan ikut batal. Itulah
+// sebabnya ia layak dilaporkan terpisah dan tegas.
+func (r *Repo) CheckClaimLineTable(ctx context.Context) error {
+	rows, err := r.db.QueryContext(ctx, getQuery("recovery_claim_line_check_table"))
+	if err != nil {
+		return fmt.Errorf("masterrecovery/sqlstore: POOLDATA.CPNC_RECOVERY_BARIS_KLAIM tidak dapat dibaca: %w", err)
+	}
+	return rows.Close()
 }
 
 // CheckPolicyLink menguji DB Link ke MST_DET_SALES dapat ditembak.

@@ -92,6 +92,7 @@ type Config struct {
 	Session         Session
 	HCQ             HCQ
 	Cashier         Cashier
+	VirtualAccount  VirtualAccount
 	SMTP            SMTP
 	DocumentStorage DocumentStorage
 
@@ -253,6 +254,59 @@ func (k Cashier) Active() bool {
 	return strings.TrimSpace(k.RegisterURL) != "" && strings.TrimSpace(k.UpdateURL) != ""
 }
 
+// Dua nilai sah untuk VIRTUAL_ACCOUNT_ADAPTER.
+//
+// Bawaannya SELALU `tiruan`, termasuk di produksi. Ini satu-satunya adapter di aplikasi
+// yang bawaannya tertutup meski seluruh kredensialnya sudah terisi — lihat VirtualAccount.
+const (
+	VirtualAccountAdapterFake = "tiruan"
+	VirtualAccountAdapterPega = "pega"
+)
+
+// VirtualAccount memuat sakelar dan kredensial penerbit rekening virtual Master Recovery.
+//
+// # Kenapa ia punya sakelar sendiri, tidak mengikuti PENYIMPANAN seperti adapter lain
+//
+// Karena menyalakannya MENERBITKAN REKENING SUNGGUHAN. Adapter lain yang keliru menyala
+// paling jauh membaca data yang salah; yang ini meninggalkan rekening bank nyata yang
+// tidak diminta siapa pun, pada sistem yang dipakai orang lain.
+//
+// Semula pilihannya mengikuti ada-tidaknya koneksi Oracle — dan itu berbahaya: begitu
+// aplikasi dijalankan dengan `PENYIMPANAN=oracle`, penerbitan sungguhan ikut menyala
+// tanpa ada yang memutuskannya. Keputusan Work Owner 2026-09-29: **jangan dibuka dulu**,
+// dan pembukaannya harus berupa tindakan yang disengaja.
+//
+// # Yang dituntut rule aslinya
+//
+// `Connect REST/VirtualAccountClaimsPNC-ConnectREST.xml` ber-`pyUseAuthentication=true`
+// dengan `pyAuthenticationProfile = LELANG`. Profil itu TIDAK ADA di export — hanya
+// namanya yang dirujuk — sehingga kredensialnya harus diminta ke Tim Pega/Infra.
+//
+// Kredensialnya SENGAJA tidak memakai ulang HCQ: keduanya profil berbeda, dan memakai
+// kredensial HCQ untuk layanan ini akan gagal dengan cara yang membingungkan.
+type VirtualAccount struct {
+	// Adapter bernilai `tiruan` atau `pega`. Apa pun selain `pega` diperlakukan sebagai
+	// `tiruan` — supaya salah ketik menutup, bukan membuka.
+	Adapter string
+
+	// User dan Password adalah kredensial profil autentikasi LELANG.
+	User     string
+	Password string
+
+	Timeout time.Duration
+}
+
+// Live menyatakan penerbit SUNGGUHAN yang dipakai.
+//
+// Ia menuntut ketiganya sekaligus: sakelar disetel `pega`, dan kedua kredensialnya terisi.
+// Sakelar tanpa kredensial TIDAK membukanya — permintaan yang pasti ditolak layanan lebih
+// buruk daripada tidak dikirim sama sekali, karena kegagalannya tampak seperti gangguan
+// jaringan.
+func (v VirtualAccount) Live() bool {
+	return v.Adapter == VirtualAccountAdapterPega &&
+		strings.TrimSpace(v.User) != "" && strings.TrimSpace(v.Password) != ""
+}
+
 // Alamat baku kedua layanan dokumen, disalin dari rule Connect REST Pega.
 //
 // # Kenapa ada nilai baku, padahal §3.4 melarang endpoint tertanam di kode
@@ -306,6 +360,18 @@ type DocumentStorage struct {
 	// berkas PNG, JPG, JPEG, dan PDF, yaitu yang memang menempuh konversi. Berkas lain
 	// tetap terunggah.
 	ConverterURL string
+
+	// SkipConversion (KONVERSI_GAMBAR_LEWATI) melewati konversi AVIF: PNG, JPG, JPEG, dan PDF
+	// diunggah apa adanya dengan ekstensi aslinya. Penyimpangan sementara dari Pega
+	// (`Convert_Avif`) atas keputusan Work Owner 2026-09-30; padam secara baku.
+	SkipConversion bool
+
+	// AccessCode (PENYIMPANAN_DOKUMEN_KODE_AKSES) adalah kode akses terdaftar untuk folder
+	// aplikasi ini, dikirim sebagai `KodeString`. Kosong = token sekali pakai dibuat dan
+	// dicatat ke GENERAL.GCP_IMAGE seperti `GET_TOKEN_STORAGE`. Diisi bila layanan
+	// penyimpanan menuntut kode yang didaftarkan pemiliknya — layanan menolak token sekali
+	// pakai dengan "invalid kodestring data" (2026-09-30). Rahasia: tidak pernah dicatat.
+	AccessCode string
 
 	// Timeout membatasi satu unggahan maupun satu konversi. Kosong berarti 60 detik.
 	Timeout time.Duration
@@ -514,6 +580,12 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// 30 detik: layanan penerbit VA sendiri berbicara ke bank, sehingga jawabannya wajar
+	// lebih lambat daripada pemanggilan internal biasa.
+	virtualAccountTimeout, err := getDuration("VIRTUAL_ACCOUNT_BATAS_WAKTU", 30*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	// 60 detik, bukan 30 seperti pemanggilan biasa: muatannya membawa berkas.
 	documentStorageTimeout, err := getDuration("PENYIMPANAN_DOKUMEN_BATAS_WAKTU", 60*time.Second)
 	if err != nil {
@@ -616,10 +688,20 @@ func Load() (Config, error) {
 			Password:    os.Getenv("KASIR_PASSWORD"),
 			Timeout:     cashierTimeout,
 		},
+		// Bawaannya `tiruan`, dan itu disengaja: menyalakannya menerbitkan rekening
+		// sungguhan. Lihat VirtualAccount untuk alasan lengkapnya.
+		VirtualAccount: VirtualAccount{
+			Adapter:  get("VIRTUAL_ACCOUNT_ADAPTER", VirtualAccountAdapterFake),
+			User:     strings.TrimSpace(os.Getenv("VIRTUAL_ACCOUNT_PENGGUNA")),
+			Password: os.Getenv("VIRTUAL_ACCOUNT_SANDI"),
+			Timeout:  virtualAccountTimeout,
+		},
 		DocumentStorage: DocumentStorage{
-			BaseURL:      get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
-			ConverterURL: get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
-			Timeout:      documentStorageTimeout,
+			BaseURL:        get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
+			ConverterURL:   get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
+			SkipConversion: isTrue(os.Getenv("KONVERSI_GAMBAR_LEWATI")),
+			AccessCode:     strings.TrimSpace(os.Getenv("PENYIMPANAN_DOKUMEN_KODE_AKSES")),
+			Timeout:        documentStorageTimeout,
 		},
 		SMTP: SMTP{
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
@@ -819,8 +901,11 @@ func (k Config) Summary() map[string]any {
 		"hcq_pengguna_diisi": k.HCQ.User != "",
 		"hcq_sandi_diisi":    k.HCQ.Password != "",
 		"kasir_aktif":        k.Cashier.Active(),
-		"smtp_aktif":         k.SMTP.Active(),
-		"smtp_tka_aktif":     k.SMTP.TKAActive(),
+		// Disebut di log saat start supaya keadaan "penerbit VA sungguhan menyala"
+		// tidak pernah menjadi hal yang baru diketahui setelah rekening terbit.
+		"virtual_account_sungguhan": k.VirtualAccount.Live(),
+		"smtp_aktif":                k.SMTP.Active(),
+		"smtp_tka_aktif":            k.SMTP.TKAActive(),
 	}
 }
 

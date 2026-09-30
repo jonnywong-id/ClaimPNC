@@ -1444,6 +1444,10 @@ export const ErrorCode = {
   claimFileEmpty: 'berkas_klaim_kosong',
   claimFileTooBig: 'berkas_klaim_terlalu_besar',
   claimFileUnreadable: 'berkas_klaim_tidak_terbaca',
+  /** Penandanya menunjuk lampiran yang tidak ada. */
+  documentNotFound: 'bukti_bayar_tidak_ditemukan',
+  /** Barisnya ada, tetapi isinya di penyimpanan dokumen yang belum terhubung (`D-16`). */
+  documentElsewhere: 'bukti_bayar_di_penyimpanan_lain',
   // Milik modul Komite.
   unknownLine: 'lini_tidak_dikenal',
   malformedClaimValue: 'nilai_klaim_cacat',
@@ -1818,6 +1822,80 @@ export type AutoClaimLineListResponse = {
   paginasi: Pagination
 }
 /** Bekal awal layar: nomor batch perkiraan dan pilihan tahun, dalam satu permintaan. */
+/**
+ * Satu baris pada tab **Outstanding**.
+ *
+ * Kelima kolom yang ditampilkan grid Pega adalah `nama_principal`, `nilai_klaim`,
+ * `pembayaran_sebelumnya`, `pembayaran`, dan `sisa`. Sisanya dikirim supaya baris dapat
+ * dibaca lebih lengkap tanpa permintaan kedua.
+ *
+ * Nilai uang datang sebagai ANGKA rupiah bulat, bukan teks terformat — pemformatannya
+ * urusan layar (`shared/lib/money`).
+ */
+export type RecoveryRow = {
+  batch: number
+  nama_principal: string
+  tahun: string
+  /** RFC 3339; kosong berarti barisnya tidak punya INSERTDATE. */
+  tanggal_input: string
+  /** Kolom NOHPLL. Namanya menyiratkan nomor telepon; isinya nomor catatan log layanan. */
+  no_hpll: string
+  nilai_klaim: number
+  pembayaran_sebelumnya: number
+  pembayaran: number
+  sisa: number
+  keterangan: string
+  posisi_kasus: string
+  nomor_virtual_account: string
+  nomor_polis: string
+  /** Penanda Bukti Bayar; kosong berarti belum ada yang diunggah. */
+  id_dokumen: string
+  /**
+   * Keterangan lampirannya, atau `null` bila belum ada.
+   *
+   * Mengisi daftar pada modal **View Dokument Pendukung**. Tidak memuat berkasnya —
+   * berkas diambil terpisah saat barisnya benar-benar dibuka.
+   */
+  dokumen: RecoveryAttachment | null
+}
+
+/** Satu baris pada modal **View Dokument Pendukung**. */
+export type RecoveryAttachment = {
+  id: string
+  nama_berkas: string
+  /** Kolom "Input Nama" — `INPUTOPERATOR`. */
+  input_nama: string
+  /** Kolom "Tanggal" — `INPUTDATE`, RFC 3339. Kosong bila tidak tercatat. */
+  tanggal: string
+}
+
+/**
+ * Satu baris pada grid LUAR beserta isinya.
+ *
+ * Keempat angkanya diambil dari batch TERAKHIR, bukan dijumlahkan — itu yang dilakukan
+ * layar lama.
+ */
+export type RecoveryPrincipalGroup = {
+  nama_principal: string
+  nilai_klaim: number
+  pembayaran_sebelumnya: number
+  pembayaran: number
+  sisa: number
+  /** Seluruh riwayat principal ini, dari yang paling lama. */
+  batch: RecoveryRow[]
+}
+
+export type RecoveryListResponse = {
+  principal: RecoveryPrincipalGroup[]
+  /**
+   * Jumlah PRINCIPAL yang cocok sebelum dipotong paginasi — bukan jumlah batch, dan bukan
+   * panjang senarai di atas. Itulah yang menentukan berapa halaman ada.
+   */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
 export type RecoveryFormResponse = {
   /**
    * PERKIRAAN, untuk ditampilkan saja.
@@ -2796,6 +2874,29 @@ export type WorkshopListResponse = {
 
 export type WorkshopResponse = {
   bengkel: Workshop
+  portal: string
+}
+
+/**
+ * Metadata satu dokumen lampiran bengkel — satu baris `POOLDATA.DATA_ATTACHFILE`.
+ *
+ * `berisi` membedakan dokumen yang benar-benar tersimpan dari dokumen WARISAN Pega yang
+ * hanya punya keterangan. Jalur unggah sistem lama tidak pernah menulis isi berkasnya,
+ * sehingga baris lama menunjuk ke isi kosong — dan layar harus dapat mengatakannya alih-alih
+ * menawarkan unduhan yang menghasilkan berkas nol byte.
+ */
+export type WorkshopDocument = {
+  id_dokumen: string
+  nama_berkas: string
+  tipe_media: string
+  ukuran_byte: number
+  berisi: boolean
+  diunggah_oleh: string
+  diunggah_pada: string
+}
+
+export type WorkshopDocumentResponse = {
+  dokumen: WorkshopDocument
   portal: string
 }
 
@@ -5036,6 +5137,80 @@ export type KomiteAdjustmentLine = {
   ex_gratia: boolean
   catatan?: string
   sebab_kerugian?: string
+
+  /** Kode mata uang (IDR, USD); `mata_uang` berisi ID master. */
+  kode_mata_uang?: string
+  /** "Nilai komite" — dasar Result Value List Spreading (`CalculatedSpredingForClaimKomite`). */
+  nilai_komite?: string
+  /** Opsional hanya supaya jawaban server lama tetap terbaca. */
+  spreading?: KomiteSpreadingRow[]
+  /** Kosong bila Pega tidak membentuknya: Type 3, atau CoinsList satu baris. */
+  co_member?: KomiteCoMemberRow[]
+  /** Tabel Claim Adjustment / Salvage / Adjuster Fee (`ShowTransferDetail`). */
+  rincian?: KomiteBreakdown
+}
+
+/** Tabel nilai satu baris adjustment; sel kosong berarti kosong, bukan nol. */
+export type KomiteBreakdown = {
+  judul: string
+  judul_nilai: string
+  tersedia: boolean
+  baris: KomiteBreakdownRow[]
+}
+
+export type KomiteBreakdownRow = {
+  deskripsi: string
+  mata_uang_estimasi?: string
+  estimasi?: string
+  keterangan_estimasi?: string
+  persen?: string
+  mata_uang?: string
+  nilai?: string
+  total?: boolean
+}
+
+/** Satu baris Daftar Komite atau History of Previous Adjustment Committees. */
+export type KomiteCommitteeEntry = {
+  nomor_case: string
+  nama_komite: string
+  jenjang?: number
+  /** "Setuju", "Tidak Setuju", atau "Menunggu" — teks `.KomiteAproval` Pega. */
+  status: string
+  catatan?: string
+  tanggal?: string
+}
+
+/** Satu baris "List Spreading". `nilai` kosong bila share-nya tidak terbaca — bukan nol. */
+export type KomiteSpreadingRow = {
+  jenis_treaty?: string
+  nama_treaty?: string
+  mata_uang?: string
+  persen?: string
+  nilai?: string
+}
+
+/** Satu baris "CO MEMBER". */
+export type KomiteCoMemberRow = {
+  nama: string
+  mata_uang?: string
+  persen?: string
+  nilai?: string
+}
+
+/** Satu baris "List Reas Fac-Out" — share PADA POLIS, bukan hasil hitung Pega. */
+export type KomiteFacOffer = {
+  reasuradur: string
+  persen_polis?: string
+}
+
+/** Satu lampiran klaim — tab "Lampiran Dokumen". */
+export type KomiteAttachment = {
+  id: string
+  nama?: string
+  catatan?: string
+  kategori?: string
+  diunggah_oleh?: string
+  diunggah_pada?: string
 }
 
 /** Keputusan komite **menurut Pega**, dari `POOLDATA.T_CLAIM_KOMITE_LIST`. */
@@ -5048,6 +5223,8 @@ export type KomiteCommitteeRecord = {
   persen_asm_share?: string
   tanggal_komite?: string
   kesimpulan?: KomiteOutcome
+  /** CREATE COMITEE DATE. */
+  tanggal_dibuat?: string
 }
 
 /**
@@ -5089,6 +5266,20 @@ export type KomiteTransferDetail = {
    * adjustment, dan menyamakan keduanya menyembunyikan seluruh layar.
    */
   nilai_uang_kosong: boolean
+
+  /** PERIOD OF INSURANCE; `null` bila dokumen polisnya tidak ditemukan. */
+  polis?: { mulai?: string; berakhir?: string } | null
+  /** Baris LEADER — dari CoinsList polis, atau ASURANSI SINAR MAS 100 tanpa koasuransi. */
+  leader?: { nama: string; persen: string }
+  /** Bentuk List Spreading: empat kolom + Fac-Out bila benar (`tempCvg.ObjectSurveyor`). */
+  spreading_lengkap?: boolean
+  fac_out?: KomiteFacOffer[]
+  faktor_dominan?: string[]
+  lampiran?: KomiteAttachment[]
+  /** Daftar Komite — anggota case ini. */
+  daftar_komite?: KomiteCommitteeEntry[]
+  /** History of Previous Adjustment Committees — case komite lain milik klaim yang sama. */
+  riwayat_komite?: KomiteCommitteeEntry[]
 }
 
 export type KomiteClaimSummary = {
@@ -5102,6 +5293,16 @@ export type KomiteClaimSummary = {
   koasuransi?: string
   mata_uang?: string
   ex_gratia?: string
+
+  nomor_klaim?: string
+  nomor_polis?: string
+  tertanggung?: string
+  kelas_asuransi?: string
+  cabang?: string
+  sumber_bisnis?: string
+  peran_koasuransi?: string
+  group_panel?: string
+  kode_mata_uang?: string
 }
 
 export type KomiteCoverageAnalysis = {

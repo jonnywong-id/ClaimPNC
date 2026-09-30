@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"claim-pnc/internal/masterrecovery"
 )
@@ -31,6 +32,9 @@ type Repo struct {
 	policy    map[string]masterrecovery.PolicyReference
 	document  map[string]masterrecovery.Document
 
+	// documentAt menirukan kolom INPUTDATE yang di Oracle diisi basis data sendiri.
+	documentAt map[string]time.Time
+
 	batch         int64
 	documentOrder int64
 	issues        error
@@ -43,9 +47,10 @@ func NewRepo(principal []masterrecovery.Principal, policy map[string]masterrecov
 		clean[policyKey(number)] = reference
 	}
 	return &Repo{
-		principal: append([]masterrecovery.Principal(nil), principal...),
-		policy:    clean,
-		document:  map[string]masterrecovery.Document{},
+		principal:  append([]masterrecovery.Principal(nil), principal...),
+		policy:     clean,
+		document:   map[string]masterrecovery.Document{},
+		documentAt: map[string]time.Time{},
 	}
 }
 
@@ -88,11 +93,117 @@ func (r *Repo) Insert(_ context.Context, recovery masterrecovery.Recovery) (mast
 
 	r.batch++
 	recovery.Batch = r.batch
+
+	// Menirukan DEFAULT sysdate pada kolom INSERTDATE. Diisi di SINI, bukan di lapisan
+	// atasnya, supaya pengisiannya tetap menjadi urusan penyimpanan — sama seperti di
+	// Oracle, tempat jamnya datang dari basis data dan bukan dari aplikasi (`R-12`).
+	recovery.InputDate = time.Now()
+
 	// Disalin supaya pemanggil yang menyunting senarainya setelah menyimpan tidak ikut
 	// mengubah yang sudah tersimpan — kekeliruan yang mudah terjadi dan sulit dilacak.
 	recovery.ClaimLine = append([]masterrecovery.ClaimLine(nil), recovery.ClaimLine...)
 	r.recovery = append(r.recovery, recovery)
 	return recovery, nil
+}
+
+// List mengembalikan seluruh batch milik principal yang masuk halaman ini.
+//
+// Penyaring, pengurutan, DAN cara memotong halaman sengaja ditiru dari kueri sqlstore —
+// termasuk bahwa yang dipotong adalah PRINCIPAL, bukan baris. Bila keduanya berbeda, uji
+// yang lulus terhadap adapter ini tidak membuktikan apa pun tentang perilaku sungguhannya.
+func (r *Repo) List(_ context.Context, f masterrecovery.ListFilter) ([]masterrecovery.Recovery, int, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.issues != nil {
+		return nil, 0, r.issues
+	}
+
+	name := strings.ToUpper(strings.TrimSpace(f.PrincipalName))
+	year := strings.TrimSpace(f.Year)
+
+	matched := make([]masterrecovery.Recovery, 0, len(r.recovery))
+	for _, recovery := range r.recovery {
+		if name != "" && !strings.Contains(strings.ToUpper(recovery.PrincipalName), name) {
+			continue
+		}
+		if year != "" && recovery.Year != year {
+			continue
+		}
+		matched = append(matched, recovery)
+	}
+
+	// Principal menaik, lalu waktu input menaik, lalu batch sebagai pemutus — sama
+	// persis dengan ORDER BY kueri sqlstore.
+	sort.Slice(matched, func(i, j int) bool {
+		if matched[i].PrincipalName != matched[j].PrincipalName {
+			return matched[i].PrincipalName < matched[j].PrincipalName
+		}
+		if !matched[i].InputDate.Equal(matched[j].InputDate) {
+			return matched[i].InputDate.Before(matched[j].InputDate)
+		}
+		return matched[i].Batch < matched[j].Batch
+	})
+
+	// Nama principal yang berbeda, dalam urutan kemunculannya — yang sudah terurut.
+	var principal []string
+	for _, recovery := range matched {
+		if len(principal) == 0 || principal[len(principal)-1] != recovery.PrincipalName {
+			principal = append(principal, recovery.PrincipalName)
+		}
+	}
+
+	total := len(principal)
+	if f.Offset >= total {
+		return nil, total, nil
+	}
+	end := total
+	if f.Limit > 0 && f.Offset+f.Limit < end {
+		end = f.Offset + f.Limit
+	}
+
+	halaman := map[string]bool{}
+	for _, nama := range principal[f.Offset:end] {
+		halaman[nama] = true
+	}
+
+	var rows []masterrecovery.Recovery
+	for _, recovery := range matched {
+		if !halaman[recovery.PrincipalName] {
+			continue
+		}
+		// Menirukan LEFT JOIN ke DATA_ATTACHFILE pada kueri sqlstore: keterangan lampiran
+		// menempel di baris daftar, isinya tidak.
+		if id := strings.TrimSpace(recovery.DocumentID); id != "" {
+			if document, ada := r.document[id]; ada {
+				recovery.Attachment = &masterrecovery.AttachmentInfo{
+					ID:         id,
+					Name:       document.Name,
+					UploadedBy: document.UploadedBy,
+					UploadedAt: r.documentAt[id],
+				}
+			}
+		}
+		rows = append(rows, recovery)
+	}
+	return rows, total, nil
+}
+
+// FindDocument mengembalikan Bukti Bayar yang tersimpan di memori.
+func (r *Repo) FindDocument(_ context.Context, id string) (masterrecovery.Document, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.issues != nil {
+		return masterrecovery.Document{}, r.issues
+	}
+
+	document, ada := r.document[strings.TrimSpace(id)]
+	if !ada {
+		return masterrecovery.Document{}, masterrecovery.ErrDocumentNotFound
+	}
+	if len(document.Content) == 0 {
+		return masterrecovery.Document{}, masterrecovery.ErrDocumentElsewhere
+	}
+	return document, nil
 }
 
 // ListPrincipal mengembalikan seluruh principal, terurut menurut nama.
@@ -166,6 +277,7 @@ func (r *Repo) SaveDocument(_ context.Context, document masterrecovery.Document)
 	r.documentOrder++
 	id := SampleYear + tenDigits(r.documentOrder)
 	r.document[id] = document
+	r.documentAt[id] = time.Now()
 	return id, nil
 }
 

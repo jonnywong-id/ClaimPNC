@@ -2,11 +2,12 @@ package memory
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -14,18 +15,21 @@ import (
 type Committees struct {
 	mu    sync.Mutex
 	cases map[string]registrasi.CommitteeCase
-	next  int
+	next  map[int]int64
 }
 
 // NewCommittees membentuk penyimpan kasus komite kosong.
-func NewCommittees() *Committees { return &Committees{cases: map[string]registrasi.CommitteeCase{}} }
+func NewCommittees() *Committees {
+	return &Committees{cases: map[string]registrasi.CommitteeCase{}, next: map[int]int64{}}
+}
 
-// NextCaseID menerbitkan KMTN-00001, KMTN-00002, …
-func (c *Committees) NextCaseID(context.Context) (string, error) {
+// NextCaseID menerbitkan KMTN.26.1, KMTN.26.2, … — deret per tahun WIB.
+func (c *Committees) NextCaseID(_ context.Context, at time.Time) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.next++
-	return fmt.Sprintf("%s%05d", registrasi.CommitteeCasePrefix, c.next), nil
+	year := clock.DateWIB(at).Year()
+	c.next[year]++
+	return registrasi.FormatCommitteeCaseID(year, c.next[year])
 }
 
 // Save menyimpan salinan kasus.
@@ -80,12 +84,12 @@ func NewCommitteeTiering(approvers ...registrasi.CommitteeApprover) CommitteeTie
 	return CommitteeTiering{List: approvers}
 }
 
-// Approvers mengembalikan penyetuju tetap, tanpa pengaju.
-func (t CommitteeTiering) Approvers(_ context.Context, _ string, _ registrasi.Money, applicant string) ([]registrasi.CommitteeApprover, error) {
-	var result []registrasi.CommitteeApprover
+// Route mengembalikan penyetuju tetap, tanpa pengaju; pita tidak dipakai.
+func (t CommitteeTiering) Route(_ context.Context, _ string, _ registrasi.Money, applicant string) (registrasi.CommitteeRoute, error) {
+	var result registrasi.CommitteeRoute
 	for _, a := range t.List {
 		if !strings.EqualFold(a.OperatorID, strings.TrimSpace(applicant)) {
-			result = append(result, a)
+			result.Approvers = append(result.Approvers, a)
 		}
 	}
 	return result, nil

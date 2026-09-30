@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -140,7 +141,9 @@ describe('rincian kasus komite', () => {
 
     expect(await screen.findByText('PT Harapan Sentosa')).toBeInTheDocument()
     expect(screen.getByText('CONTOH-PL-000117')).toBeInTheDocument()
-    expect(screen.getByText('Property All Risk')).toBeInTheDocument()
+    // Dua kali, persis seperti Pega: CLASS OF INSURANCE dan INTEREST INSURED sama-sama
+    // `.Policy.Quotation.BusinessName`.
+    expect(screen.getAllByText('Property All Risk')).toHaveLength(2)
     expect(screen.getByText('Jakarta Pusat')).toBeInTheDocument()
     expect(screen.getByText('9 hari')).toBeInTheDocument()
   })
@@ -382,8 +385,10 @@ describe('klaim dan analisis komite', () => {
     renderDetail()
 
     expect(await screen.findByText('Objek dan analisis komite')).toBeInTheDocument()
-    expect(screen.getByText('FLEXAS')).toBeInTheDocument()
-    expect(screen.getByText('FIRE - OPEN FLAME')).toBeInTheDocument()
+    // Nama coverage dan sebab kerugian juga tergambar di kolom kiri (Coverage, NATURE OF
+    // LOSS), jadi keduanya muncul dua kali.
+    expect(screen.getAllByText('FLEXAS')).toHaveLength(2)
+    expect(screen.getAllByText('FIRE - OPEN FLAME')).toHaveLength(2)
     expect(screen.getByText('Rp 1.500.000.000')).toBeInTheDocument()
     expect(screen.getByText('Luas kerugian contoh untuk uji.')).toBeInTheDocument()
   })
@@ -418,7 +423,7 @@ describe('klaim dan analisis komite', () => {
     renderDetail()
 
     await screen.findByText('Objek dan analisis komite')
-    expect(screen.getByText('FLEXAS')).toBeInTheDocument()
+    expect(screen.getAllByText('FLEXAS').length).toBeGreaterThan(0)
     expect(screen.queryByText('Luas kerugian')).not.toBeInTheDocument()
     expect(screen.queryByText('Keadaan kerugian')).not.toBeInTheDocument()
   })
@@ -501,5 +506,288 @@ describe('judul bersyarat ShowTransfer', () => {
     await screen.findByText('Bagian yang belum dibangun')
     expect(screen.getByText('Blok surveyor')).toBeInTheDocument()
     expect(screen.getByText(/terisi 0 dari 610 case komite/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * Kolom kanan dan tab tambahan — tata letak `ShowTransfer` / `ShowTransferDetail`.
+ *
+ * Angkanya KARANGAN, tetapi bentuknya mengikuti KMTN-00001: satu baris adjustment, share
+ * ASM 65%, dua baris CoinsList, spreading ORS 100%. Hitungannya milik server; layar hanya
+ * menggambar yang dikirim.
+ */
+describe('lembar komite ala Pega', () => {
+  const SHEET = {
+    judul: 'CLAIM COMMITTEE - ADJUSTMENT',
+    he_dapat_dinilai: true,
+    baris: [
+      {
+        nomor_klaim: 'PNCN.26.0101',
+        id_objek: '1',
+        id_coverage: '1',
+        mata_uang: '10026',
+        kode_mata_uang: 'IDR',
+        jenis_pembayaran: '2',
+        nilai_gross: '2500000.00',
+        nilai_usulan: '0.00',
+        nilai_akseptasi: '2500000.00',
+        nilai_salvage: '0.00',
+        nilai_asm_share: '1625000.00',
+        nilai_risiko_sendiri: '0.00',
+        nilai_komite: '1625000.00',
+        ex_gratia: false,
+        spreading: [
+          { jenis_treaty: '10007', nama_treaty: 'ORS', mata_uang: 'IDR', persen: '100', nilai: '1625000.00' },
+        ],
+        co_member: [
+          { nama: 'CONTOH ASURANSI LEADER', mata_uang: 'IDR', persen: '65', nilai: '1625000.00' },
+          { nama: 'CONTOH ASURANSI MEMBER', mata_uang: 'IDR', persen: '35', nilai: '875000.00' },
+        ],
+      },
+    ],
+    komite: { nilai_klaim: '2500000.00', tanggal_dibuat: '2026-09-28T21:10:19Z' },
+    klaim: {
+      nomor_klaim: 'PNCN.26.0101',
+      nomor_polis: 'CONTOH-PL-000117',
+      tertanggung: 'PT Harapan Sentosa',
+      kelas_asuransi: 'MARINE CARGO',
+      cabang: 'Jakarta Pusat',
+      sumber_bisnis: 'Direct',
+      lokasi: 'Gudang contoh, Jakarta',
+      group_panel: '004',
+      kode_mata_uang: 'USD',
+      tanggal_kejadian: '2026-09-26T17:00:00Z',
+    },
+    coverage: [],
+    kosong: false,
+    nilai_uang_kosong: false,
+    polis: { mulai: '2026-08-01T05:00:00Z', berakhir: '2026-10-01T05:00:00Z' },
+    leader: { nama: 'CONTOH ASURANSI LEADER', persen: '65' },
+    spreading_lengkap: true,
+    fac_out: [],
+    faktor_dominan: ['Faktor contoh'],
+    lampiran: [
+      {
+        id: '260000000001',
+        nama: 'foto-kerusakan.jpg',
+        catatan: 'Foto kerusakan',
+        kategori: '10064',
+        diunggah_oleh: 'CONTOHADMIN',
+        diunggah_pada: '2026-09-28T03:00:00Z',
+      },
+    ],
+  }
+
+  function stubSheet(transfer: unknown = SHEET) {
+    stubFetch(() =>
+      jsonResponse(200, { kasus: KASUS, sekarang: '2026-09-29T02:00:00Z', transfer }),
+    )
+  }
+
+  it('menggambar label kolom kiri persis seperti ShowTransferDetail', async () => {
+    stubSheet()
+    renderDetail()
+
+    await screen.findByText('LEADER')
+    for (const label of [
+      'CREATE COMITEE DATE',
+      'STATUS PREMI',
+      'INSURED',
+      'CLASS OF INSURANCE',
+      'POLICY No.',
+      'PERIOD OF INSURANCE',
+      'SOURCE OF BUSINESS',
+      'INTEREST INSURED',
+      'CLAIM No.',
+      'DATE OF ACCIDENT',
+      'RESERVES',
+    ]) {
+      expect(screen.getByText(label)).toBeInTheDocument()
+    }
+    expect(screen.getByText(/S\/D/)).toBeInTheDocument()
+    expect(screen.getByText('USD')).toBeInTheDocument()
+  })
+
+  // Status premi tidak tersimpan di mana pun — layar wajib mengatakannya, bukan diam.
+  it('menyatakan asal STATUS PREMI alih-alih mengarang nilainya', async () => {
+    stubSheet()
+    renderDetail()
+
+    // Disebut di baris STATUS PREMI dan di daftar bagian yang belum dibangun.
+    await screen.findByText('STATUS PREMI')
+    expect(screen.getAllByText(/GetPremiumPaymentStatus/)).toHaveLength(2)
+  })
+
+  it('menampilkan LEADER, CO MEMBER, dan List Spreading dari server', async () => {
+    stubSheet()
+    renderDetail()
+
+    expect(await screen.findByText(/CONTOH ASURANSI LEADER\s+65 %/)).toBeInTheDocument()
+    expect(screen.getByText('CO MEMBER')).toBeInTheDocument()
+    expect(screen.getByText('CONTOH ASURANSI MEMBER')).toBeInTheDocument()
+    expect(screen.getByText('875.000')).toBeInTheDocument()
+    expect(screen.getByText('List Spreading')).toBeInTheDocument()
+    expect(screen.getByText('ORS')).toBeInTheDocument()
+    expect(screen.getByText('Faktor contoh')).toBeInTheDocument()
+  })
+
+  // Fac-Out hanya bagian dari bentuk empat kolom, dan hitungannya belum dibawa.
+  it('menampilkan List Reas Fac-Out hanya pada bentuk lengkap', async () => {
+    stubSheet()
+    const { unmount } = renderDetail()
+    expect(await screen.findByText('List Reas Fac-Out')).toBeInTheDocument()
+    expect(screen.getByText('Polis ini tidak punya reasuradur fac-out.')).toBeInTheDocument()
+    unmount()
+
+    stubSheet({ ...SHEET, spreading_lengkap: false })
+    renderDetail()
+    await screen.findByText('List Spreading')
+    expect(screen.queryByText('List Reas Fac-Out')).not.toBeInTheDocument()
+    // Bentuk ringkas List Spreading hanya dua kolom: Spreading dan Share (%).
+    const ringkas = screen.getByText('List Spreading').closest('section')!
+    expect(within(ringkas).queryByText('Result Value')).not.toBeInTheDocument()
+    expect(within(ringkas).queryByText('Currency')).not.toBeInTheDocument()
+  })
+
+  it('membuka tab Policy Detail dan Lampiran Dokumen', async () => {
+    stubSheet()
+    renderDetail()
+
+    await userEvent.click(await screen.findByRole('tab', { name: 'Policy Detail' }))
+    expect(screen.getByText('POSISI KOASURANSI')).toBeInTheDocument()
+    expect(screen.queryByText('Detail transfer')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Lampiran Dokumen' }))
+    expect(screen.getByText('foto-kerusakan.jpg')).toBeInTheDocument()
+    expect(screen.getByText('CONTOHADMIN')).toBeInTheDocument()
+  })
+})
+/**
+ * Bagian bawah ShowTransferDetail: Claim Adjustment, Dokumen, History, Daftar Komite.
+ * Angka KARANGAN; susunan barisnya milik server.
+ */
+describe('bagian bawah ShowTransferDetail', () => {
+  const BAWAH = {
+    judul: 'CLAIM COMMITTEE - ADJUSTMENT',
+    he_dapat_dinilai: true,
+    baris: [
+      {
+        nomor_klaim: 'PNCN.26.0101',
+        id_objek: '1',
+        id_coverage: '1',
+        nilai_gross: '96107499.00',
+        nilai_usulan: '0.00',
+        nilai_akseptasi: '96107499.00',
+        nilai_salvage: '0.00',
+        nilai_asm_share: '62469874.35',
+        nilai_risiko_sendiri: '1000000.00',
+        ex_gratia: false,
+        rincian: {
+          judul: 'Claim Adjustment',
+          judul_nilai: 'ADJUSTMENT',
+          tersedia: true,
+          baris: [
+            { deskripsi: 'Total Claim', mata_uang_estimasi: 'IDR', estimasi: '90000000.00', mata_uang: 'IDR', nilai: '97107499.00' },
+            { deskripsi: 'Less Deductible', keterangan_estimasi: 'Lainnya', persen: '0', mata_uang: 'IDR', nilai: '1000000.00' },
+            { deskripsi: 'Total Pembayaran ASM', persen: '65', mata_uang: 'IDR', nilai: '62469874.35', total: true },
+          ],
+        },
+      },
+    ],
+    komite: null,
+    klaim: null,
+    coverage: [],
+    kosong: false,
+    nilai_uang_kosong: false,
+    lampiran: [
+      { id: '1', nama: 'contoh-analisa.pdf', catatan: 'File Penunjang', diunggah_pada: '2026-09-29T07:56:00Z' },
+    ],
+    riwayat_komite: [
+      { nomor_case: 'KMT-0001', nama_komite: 'CONTOHKOMITE', status: 'Tidak Setuju', catatan: 'Catatan contoh', tanggal: '2026-09-29T02:00:00Z' },
+    ],
+    daftar_komite: [{ nomor_case: 'K-2601', nama_komite: 'CONTOHKOMITE2', jenjang: 1, status: 'Menunggu' }],
+  }
+
+  it('menggambar Claim Adjustment, dokumen, history, dan daftar komite', async () => {
+    stubFetch(() => jsonResponse(200, { kasus: KASUS, sekarang: '2026-09-29T02:00:00Z', transfer: BAWAH }))
+    renderDetail()
+
+    expect(await screen.findByText('Claim Adjustment')).toBeInTheDocument()
+    expect(screen.getByText('90.000.000')).toBeInTheDocument()
+    expect(screen.getByText('Lainnya')).toBeInTheDocument()
+    expect(screen.getByText('62.469.874,35')).toBeInTheDocument()
+
+    expect(screen.getByText('Dokumen Pendukung')).toBeInTheDocument()
+    expect(screen.getAllByText('contoh-analisa.pdf').length).toBeGreaterThan(0)
+    expect(screen.getByText('Dokumen Polis')).toBeInTheDocument()
+
+    expect(screen.getByText('History of Previous Adjustment Committees')).toBeInTheDocument()
+    expect(screen.getByText('KMT-0001')).toBeInTheDocument()
+    expect(screen.getByText('Tidak Setuju')).toBeInTheDocument()
+    expect(screen.getByText('Daftar Komite')).toBeInTheDocument()
+    expect(screen.getByText('CONTOHKOMITE2')).toBeInTheDocument()
+    expect(screen.getByText('Menunggu')).toBeInTheDocument()
+  })
+})
+/**
+ * Form keputusan ShowTransfer — hanya case KMTN, hanya anggota yang sedang ditunggu.
+ * Diteruskan ke `POST /api/registrasi/komite/{id}/putusan`.
+ */
+describe('form keputusan KMTN', () => {
+  const KMTN: KomiteCase = { ...KASUS, nomor_case: 'KMTN.26.1' }
+
+  function stubKmtn(menunggu: string, sent: { url: string; body: unknown }[] = []) {
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
+      if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
+      if (url.startsWith('/api/registrasi/komite/')) {
+        if (init?.method === 'POST') {
+          sent.push({ url, body: JSON.parse(String(init.body)) })
+          return Promise.resolve(
+            jsonResponse(200, { id: 'KMTN.26.1', nomor_klaim: 'X', status: 'disetujui', anggota: [] }),
+          )
+        }
+        return Promise.resolve(
+          jsonResponse(200, { id: 'KMTN.26.1', nomor_klaim: 'X', status: 'berjalan', menunggu, anggota: [] }),
+        )
+      }
+      return Promise.resolve(jsonResponse(200, { kasus: KMTN, sekarang: '2026-09-29T02:00:00Z' }))
+    })
+  }
+
+  it('menampilkan form bagi anggota yang ditunggu dan mengirim keputusannya', async () => {
+    const sent: { url: string; body: unknown }[] = []
+    stubKmtn('ELLENSUPRIYATI', sent)
+    renderDetail('KMTN.26.1')
+
+    expect(await screen.findByText('Apakah anda yakin untuk akseptasi ini?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(screen.getByText('Keputusan Komite and Catatan Komite are required.')).toBeInTheDocument()
+    expect(sent).toHaveLength(0)
+
+    await userEvent.click(screen.getByLabelText('Approved'))
+    await userEvent.type(screen.getByLabelText(/Catatan Komite/), 'setuju bayar')
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await screen.findByText('Decision saved.')
+    expect(sent).toEqual([
+      { url: '/api/registrasi/komite/KMTN.26.1/putusan', body: { keputusan: '1', catatan: 'setuju bayar' } },
+    ])
+  })
+
+  it('tidak menampilkan form bila bukan giliran pemanggil', async () => {
+    stubKmtn('ORANGLAIN')
+    renderDetail('KMTN.26.1')
+
+    expect(await screen.findByText(/Waiting for the decision of ORANGLAIN/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
+  })
+
+  it('tidak menampilkan form pada case Pega', async () => {
+    stubKmtn('ELLENSUPRIYATI')
+    renderDetail('K-2601')
+
+    await screen.findByText('PT Harapan Sentosa')
+    expect(screen.queryByText('Apakah anda yakin untuk akseptasi ini?')).not.toBeInTheDocument()
   })
 })

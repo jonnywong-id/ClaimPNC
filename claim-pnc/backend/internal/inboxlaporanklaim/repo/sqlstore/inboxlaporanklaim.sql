@@ -610,9 +610,10 @@ SELECT DISTINCT br.basterritory
 --
 -- # Kenapa MAX aman dipakai di sini
 --
--- Nomor berbentuk `RCVN.YY.0001` — lebar tetap dan dipadatkan nol, sehingga urutan teks
--- sama dengan urutan angka. Penyaring membatasi pada TAHUN yang diminta, jadi pergantian
--- tahun tidak membuat deretnya melompat.
+-- Nomor berbentuk `RCVN.YY.n` tanpa nol di depan (sejak 2026-09-29; sebelumnya
+-- `RCVN.YY.0001`). MAX diambil atas TO_NUMBER, bukan atas teks, sehingga kedua bentuk
+-- terbaca benar. Penyaring membatasi pada TAHUN yang diminta, jadi pergantian tahun tidak
+-- membuat deretnya melompat.
 --
 -- # Satu bentuk lain ikut dihitung, dan alasannya
 --

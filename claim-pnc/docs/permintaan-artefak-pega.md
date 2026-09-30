@@ -1576,3 +1576,376 @@ layanan yang sama kadang menunjuk host produksi, kadang host pengembangan.
 **Variabel lingkungan baru sengaja TIDAK dibuat** sambil menunggu. Alamat per entitas adalah
 keputusan konfigurasi milik pemilik lingkungan, bukan milik satu modul — dan membuatnya lebih
 dulu akan menetapkan tempat penyimpanannya tanpa ada yang memutuskannya.
+
+## 9. Inbox Banding Harga Salvage — `MENU_ID 72`, `InboxRequestSalvage` (2026-09-29)
+
+### 9.1 Tujuh artefak sudah DITERIMA pada hari yang sama
+
+Diminta bertahap dalam tiga putaran, karena setiap berkas yang datang memunculkan rujukan ke
+berkas berikutnya. Dicatat supaya urutan itu terbaca bila kelak ada layar sejenis:
+
+| Artefak | Ditemukan dari | Isi yang dibawa |
+|---|---|---|
+| `Section/InboxReqSalvageASM-Section.xml` | rujukan di harness | DUA grid, kolomnya, kotak Cari |
+| `Activity/GCNMCountRequestSalvage_act-Act.xml` | rujukan di harness | tabel ringkas; label dari `Local.LOOP` |
+| `Activity/SetReqSalvage_Act-Act.xml` | `pyActivity` di section | pemasok kedua grid, paginasi, penyaring bernama orang |
+| `RDB List/CountRequestSalvage_Sql-SQL.xml` | rujukan di activity pencacah | pencacah Request dan total paginasi |
+| `RDB List/CountHistoryReqSalvage_Sql-SQL.xml` | idem | pencacah History |
+| `RDB List/DataReqSalvage_SQL-SQL.xml` | rujukan di `SetReqSalvage_Act` | kueri grid Request |
+| `RDB List/HistoryReqSalvage_SQL-SQL.xml` | idem | kueri grid History |
+
+**Pelajaran untuk permintaan berikutnya:** harness saja tidak cukup untuk menyatakan apa yang
+kurang. Ia hanya menyebut section teratas; rantai sesungguhnya baru terbaca setelah section itu
+dibuka, lalu activity-nya, lalu rule SQL-nya. Meminta "harness beserta seluruh rule yang
+dirujuknya secara berantai" akan memangkas tiga putaran menjadi satu.
+
+### 9.2 TIGA artefak yang MASIH kurang
+
+| # | Artefak | Yang tertahan karenanya |
+|---|---|---|
+| 1 | `Section/ButtonApproveRejectedRequest-Section.xml` | Kolom **Action** — tombol Approve dan Reject banding. Kolom mana yang ditulisnya pada `T_CLAIM_CHEKER_SALVAGE` dan nilai apa yang disetelnya tidak diketahui, sehingga tombolnya tidak digambar sama sekali |
+| 2 | `Flow Action/DetailHistoryRequestSalvage-FA.xml` | Panel rincian satu baris pada grid **History Cheker** |
+| 3 | Rule SQL yang dipanggil nomor 1 | Belum diketahui namanya — ia baru terbaca setelah section-nya ada |
+
+Padanannya yang ADA di export dan dapat dipakai sebagai pembanding bentuk:
+`Section/ButtonApproveRejectedChecker-Section.xml`, yang memuat `pyButtonLabel Approve`,
+`pyButtonLabel REJECTED`, dan `pyButtonLabel Lihat File`. Ia **bukan** rule yang dicari — ia
+milik grid Checker pada layar Inbox Salvage — tetapi bentuknya menunjukkan apa yang diharapkan.
+
+### 9.3 Satu permintaan ke DBA, bukan ke Tim Pega
+
+**DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`**, beserta beberapa baris contoh.
+
+Tabel ini **nol kemunculan** di seluruh export selain di dalam satu potongan SQL yang dirangkai
+`Activity/SetReqSalvage_Act` — ia bahkan tidak muncul sebagai nama tabel pada rule SQL mana pun
+sebelum keempat rule di 9.1 diterima. Akibatnya seluruh nama kolom modul ini disimpulkan dari
+teks kueri, dan **satu di antaranya disimpulkan dari nama properti grid**:
+
+| Kolom | Dari mana namanya diketahui |
+|---|---|
+| `NOKLAIM`, `IDSALVAGE`, `IDDETAILSALVAGE`, `NAMAKOMITE` | disebut kueri |
+| `NAMABARANG`, `HARGABARANG`, `HARGAREQUEST`, `ALASANREQUEST` | disebut kueri |
+| `TGLREQUEST`, `TGLAPPROVE`, `STATUSAPPROVE` | disebut kueri |
+| **`NOTEKOMITE`** | **disimpulkan dari `.NoteKomite`, properti kolom "Note Checker"** |
+
+Yang dibutuhkan dari DDL ada tiga, dan ketiganya berakibat nyata:
+
+1. **Apakah `NOTEKOMITE` benar-benar ada.** Bila tidak, kuerinya gagal seluruhnya — bukan
+   mengosongkan satu kolom. `check_table` sudah menyebut kedua belas kolomnya satu per satu
+   supaya kekeliruan itu terbaca saat aplikasi start, tetapi DDL menutupnya lebih awal.
+2. **Tipe `HARGABARANG` dan `HARGAREQUEST`.** Keduanya nilai uang; bila ternyata `VARCHAR2`,
+   perbandingan dan pengurutan apa pun terhadapnya menjadi leksikografis (`I-12`).
+3. **Apakah `TGL_REQUEST` (dengan garis bawah) ada.** `CountRequestSalvage_Sql` menutup
+   `SELECT COUNT(1)` dengan `ORDER BY TGL_REQUEST DESC`, dan ejaan itu **nol kemunculan** di
+   mana pun selain baris tersebut. Klausanya dibuang di sistem baru (selisih terencana nomor
+   3); DDL memastikan pembuangan itu memang benar dan bukan menutupi kolom yang nyata.
+
+### 9.4 Yang TIDAK kami butuhkan — dicatat supaya tidak diminta berulang
+
+| Hal | Alasan |
+|---|---|
+| `Section/TambahData_Salvage` | Sudah dipakai modul Inbox Salvage; tombol "Tambah" di layar ini membuka form yang sama, dan tidak digandakan |
+| `pxChart` pada tabel ringkas | Harness menggambar isi yang sama dua kali — tabel dan diagram. Dua baris angka tidak memerlukan grafik |
+| `When/IsGCNMUser` | Sudah ada di export, dan isinya `compareTwoValues(1, "=", 2)` — sakelar "jangan tampilkan ini", bukan pemeriksaan peran |
+
+### 9.5 Koreksi atas 9.2 — kedua artefak itu SUDAH diterima, dan keduanya cangkang pula (2026-09-29)
+
+`Section/ButtonApproveRejectedRequest-Section.xml` dan
+`Flow Action/DetailHistoryRequestSalvage-FA.xml` diterima pada hari yang sama. Bagian 9.2 di
+atas **tidak disunting** — ia merekam keadaan saat permintaan itu diajukan; yang berlaku
+sekarang adalah bagian ini.
+
+**Keduanya ternyata cangkang, persis seperti harness-nya.** Masing-masing menunjuk rule
+berikutnya yang belum ada, sehingga putaran permintaan bertambah menjadi **empat**.
+
+#### Yang kini DIKETAHUI dari `ButtonApproveRejectedRequest`
+
+Kedua tombol memanggil satu activity, `ApprovalCheckerSalvage`, dengan lima isian yang sama:
+
+| Parameter | Nilai | Kolom sebenarnya |
+|---|---|---|
+| `statusapprove` | `1` pada dua titik panggil, `0` pada dua titik lain | `STATUSAPPROVE` |
+| `noteapprove` | `.NoteKomite` | `NOTEKOMITE` — catatan yang diketik komite |
+| `iddetailsalvage` | `.ClientName` | `IDDETAILSALVAGE` |
+| `idsalvage` | `.ClaimNo` | `IDSALVAGE` |
+| `hargarequest` | `.Email` | `HARGAREQUEST` |
+
+**Ketiga baris terakhir meneguhkan peta kolom modul ini dari sumber yang berbeda** — berguna,
+dan dicatat. Ditambah satu hal yang sebelumnya hanya tertulis di `.NoteKomite`: kolom
+`NOTEKOMITE` memang **ada dan ditulis**, sehingga dugaan pada 9.3 butir 1 menguat.
+
+Ditemukan pula tombol ketiga, **"Lihat File"**, yang membuka local action
+`DokumenBandingSalvage`.
+
+#### Yang MASIH tidak diketahui, dan itu yang menahan
+
+1. **Kolom mana yang ditulis `ApprovalCheckerSalvage`**, dan apakah ia juga menyentuh
+   `TGLAPPROVE`, `PNC_SALVAGE.STSTRANSFER`, atau `HISTORY_KOMUNIKASI_SALVAGE`.
+2. **Arti `statusapprove = 0`.** Pada `T_CLAIM_KOMITE_LIST` kode yang sama berarti **MENUNGGU**
+   (`RDB List/CountAIDiterima_SQL`: `0` = MENUNGGU, `1` = DITERIMA, `2` = DITOLAK), sementara
+   di layar ini penolakan mestinya memindahkan barisnya ke History — dan grid History menuntut
+   `STATUSAPPROVE IS NOT NULL`. Kedua bacaan itu tidak dapat dipilih tanpa membaca activity-nya,
+   dan memilih yang salah berarti banding yang ditolak **tidak pernah hilang dari antrean** atau
+   sebaliknya **hilang tanpa pernah diputus**.
+
+#### Empat artefak yang diminta sekarang
+
+| # | Artefak | Yang tertahan karenanya | Pemilik |
+|---|---|---|---|
+| 1 | `Activity/ApprovalCheckerSalvage-Act.xml` | **Tombol Approve dan Reject.** Ini yang paling menahan — tanpa isinya, keputusan atas nilai uang tidak dapat ditulis | Tim Pega |
+| 2 | `Section/DetailHistReqSalvage-Section.xml` | Isi panel rincian baris History | Tim Pega |
+| 3 | `Activity/ShowDtlHistoryReqSalvage_Act-Act.xml` | Pemasok panel itu — flow action-nya mengirim nomor klaim (`ClaimID`) | Tim Pega |
+| 4 | `DokumenBandingSalvage` (local action / section) | Tombol "Lihat File" pada kolom Action | Tim Pega |
+
+Ditambah yang belum berubah: **DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`** ke DBA (lihat 9.3).
+
+#### Pelajaran yang mengubah cara meminta
+
+Empat putaran untuk satu layar, dan tiap putaran hanya membuka satu lapis:
+
+```
+Harness -> Section -> Activity -> rule SQL
+                   -> Section tombol -> Activity penulis
+                   -> Flow Action     -> Section + Activity pemasoknya
+```
+
+Permintaan yang tepat bukan menyebut berkasnya satu per satu, melainkan:
+**"harness ini beserta SELURUH rule yang dirujuknya secara berantai, sampai tidak ada lagi
+rujukan yang menggantung"** — yakni export berbasis Product rule dengan
+*include dependent rules*, persis yang `D-39` tetapkan.
+
+### 9.6 Putaran kelima (2026-09-29, malam) — tiga artefak diterima, enam rule terdalam masih kurang
+
+`ApprovalCheckerSalvage`, `DetailHistReqSalvage`, dan `ShowDtlHistoryReqSalvage_Act` diterima.
+Bagian 9.5 tidak disunting; yang berlaku adalah bagian ini.
+
+#### Pertanyaan terbesar pada 9.5 TERJAWAB
+
+`ApprovalCheckerSalvage` langkah 11 menyusun harganya begini:
+
+```
+SalvagePrice = @if(statusapprove == "1", hargarequest, hargasalvage)
+```
+
+Artinya **`1` = Approve** (harga tandingan balai lelang diterima) dan **`0` = Reject** (harga
+semula dipertahankan). Dugaan `0` = MENUNGGU — yang berlaku pada `T_CLAIM_KOMITE_LIST` — GUGUR.
+
+Ikut terbaca: `SalvageStatus := "2"`, `ApprovalStatus := statusapprove`,
+`ApprovalUser := <komite>`, `ApprovalNote := noteapprove`, dan satu parameter keenam yang
+tidak dikirim tombolnya — `hargasalvage`.
+
+Panel rincian History pun kini terpetakan lengkap — tujuh kolom, dikunci nomor klaim:
+
+| Judul | Properti Pega |
+|---|---|
+| Tgl Approve | `.DateOfLoss` |
+| Detail Object | `.Notes` |
+| Nama Barang | `.CityID` |
+| Harga Barang | `.ContractNo` |
+| Harga Request | `.BranchID` |
+| Jawaban Checker | `.AgentID` |
+| Nama Checker | `.ClaimID` |
+
+#### Enam rule yang MASIH kurang — seluruhnya rule terdalam
+
+| # | Artefak | Yang tertahan |
+|---|---|---|
+| 1 | `RDB List/UpdateDataReqSalvage-SQL.xml` | bagian tulis Approve/Reject |
+| 2 | `RDB List/UpdateDokReqSalvage-SQL.xml` | jalur Reject (`TempInsert.City == "0"`) |
+| 3 | `RDB List/UpdateHargaSalvage-SQL.xml` | harga pada detail salvage |
+| 4 | `Connect REST/SendData_SalvageSimasBid-REST.xml` | **mengirim keputusan KEMBALI ke balai lelang** |
+| 5 | `RDB List/DetailHistReqSalvage_SQL-SQL.xml` | isi panel rincian History |
+| 6 | `DokumenBandingSalvage` | tombol "Lihat File" |
+
+#### Satu pertanyaan yang BELUM terjawab dan berakibat langsung
+
+**Siapa yang menyetel `TGLAPPROVE`.** Satu-satunya `UPDATE` yang terbaca langsung — dirangkai
+sebagai teks pada langkah 5 — hanya menyetel `STATUSAPPROVE`, dan justru menyaring
+`TGLAPPROVE IS NULL`:
+
+```
+UPDATE POOLDATA.T_CLAIM_CHEKER_SALVAGE
+   SET STATUSAPPROVE = '<status>'
+ WHERE NAMAKOMITE = 'DANIELLISWANDI'        <- nama orang, tertanam di dalam teks SQL
+   AND IDDETAILSALVAGE = '<id>'
+   AND TGLAPPROVE IS NULL
+```
+
+Padahal grid Request menyaring `TGLAPPROVE IS NULL` dan grid History menuntutnya TERISI. Bila
+tidak ada rule lain yang mengisinya, banding yang sudah diputus **tidak berpindah ke History
+dan tidak hilang dari Request**. Dugaan terkuat: `UpdateDataReqSalvage` yang mengisinya — dan
+itu salah satu dari enam yang diminta.
+
+Dicatat pula: `NAMAKOMITE='DANIELLISWANDI'` tertanam di dalam teks SQL yang dirangkai — nama
+orang kelima yang menentukan perilaku di layar ini, dan satu lagi titik `{Asis}` yang tidak
+dibawa.
+
+#### Permintaan yang seharusnya diajukan sejak awal
+
+Ini putaran **kelima**. Sepuluh artefak sudah diterima, enam masih kurang, dan setiap putaran
+hanya membuka satu lapis. Permintaan yang tepat bukan menyebut berkas satu per satu melainkan:
+
+> **Export berbasis Product rule untuk harness `InboxRequestSalvage`, dengan opsi
+> *include dependent rules* dinyalakan** — persis yang `D-39` tetapkan untuk seluruh gap
+> export.
+
+### 9.7 Putaran ketujuh — yang tersisa setelah jalur tulis selesai
+
+Tanggal: 2026-09-30. Seluruh artefak **rule Pega** yang menahan tombol Approve dan Reject sudah
+diterima, dan tombolnya dibangun. Bagian ini mencatat apa yang **masih** kurang, kepada siapa,
+dan apa yang tertahan karenanya — supaya permintaan berikutnya tidak salah sasaran.
+
+#### Putaran keenam, yang tidak sempat dicatat tersendiri
+
+Nomor bagian melompat dari putaran kelima ke ketujuh, dan itu bukan kekeliruan penomoran:
+putaran **keenam** diterima dan langsung dikerjakan pada hari yang sama, sehingga catatannya
+masuk ke `catatan-pengembangan.md` §84.3 tanpa sempat menjadi bagian tersendiri di sini.
+Dicatat di sini supaya daftar penerimaannya tetap utuh — kelima rule yang tiba pada putaran itu:
+
+| Rule | Apa yang akhirnya terbaca |
+|---|---|
+| `UpdateDataReqSalvage` | nama kolom catatan komite yang sebenarnya — **`NOTEAPPROVE`**, bukan `NOTEKOMITE`; dan bahwa `TGLAPPROVE` diisi `sysdate` di pernyataan yang sama |
+| `UpdateDokReqSalvage` | penandaan dokumen saat ditolak, beserta penyaringnya yang tampak keliru (§107.2) |
+| `UpdateHargaSalvage` | penerapan harga ke `DETAIL_PNC_SALVAGE.HARGAITEM` |
+| `DetailHistReqSalvage_SQL` | ketujuh kolom panel rincian beserta terjemahan kode putusannya |
+| `SendData_SalvageSimasBid` | bahwa layanan pengirimannya menunjuk host **dev** tanpa autentikasi (§107.1) |
+
+Yang pertama layak digarisbawahi: nama kolom `NOTEKOMITE` sempat **disimpulkan** dari nama
+properti Pega `.NoteKomite`, dan kueri dengan nama itu akan gagal seluruhnya dengan
+`ORA-00904`. Ia bukan cacat tampilan melainkan layar yang tidak dapat dibuka sama sekali —
+bukti bahwa nama kolom tidak boleh disimpulkan dari nama properti.
+
+#### Yang masih kurang, dan kepada siapa
+
+| # | Yang diminta | Kepada | Yang tertahan |
+|---|---|---|---|
+| 1 | `Activity/LihatDokRequestSalvage` **dan** `Section/DokBandingHargaSalvage` | **Tim Pega** | tombol "Lihat File" pada kolom Action |
+| 2 | **DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`** — tipe, panjang, index, constraint | **DBA** | lihat di bawah |
+| 3 | **Alamat produksi** layanan balai lelang beserta cara autentikasinya | **Work Owner + tim integrasi** | pengiriman keputusan ke balai lelang |
+| 4 | Rule yang MENULIS `HISTORY_KOMUNIKASI_SALVAGE.MESSAGE_PNC` | **Tim Pega** | balasan ke balai lelang |
+
+#### Kenapa DDL tabel checker kini lebih mendesak daripada sebelumnya
+
+Selama modul ini hanya membaca, tipe kolom hanya memengaruhi tampilan. Sejak ia **menulis**,
+tiga kolom menjadi penentu benar-tidaknya sebuah keputusan tersimpan:
+
+| Kolom | Yang belum diketahui | Akibat bila tebakannya salah |
+|---|---|---|
+| `STATUSAPPROVE` | teks atau angka | Ditulis `'1'` ke kolom `NUMBER` dapat terbaca kembali sebagai `"1.0"`. Perapian sudah dipasang di `normalizeDecisionCode`, tetapi ia menambal **pembacaan**, bukan penulisan |
+| `TGLAPPROVE` | `DATE` atau `TIMESTAMP` | `CURRENT_TIMESTAMP` ke kolom `DATE` memangkas jamnya. Pengurutan riwayat per hari menjadi tidak menentu |
+| `NOTEAPPROVE` | panjang maksimum | Catatan yang melebihi batas ditolak Oracle saat disimpan — pengguna kehilangan putusan yang baru ia tulis, tanpa peringatan sebelumnya |
+
+Yang terakhir paling layak diminta lebih dulu: ia satu-satunya yang akibatnya **terlihat
+pengguna sebagai kegagalan**, dan satu-satunya yang dapat dicegah dengan batas panjang di
+layar.
+
+Kueri untuk DBA:
+
+```sql
+SELECT column_name, data_type, data_length, data_precision, data_scale, nullable
+  FROM all_tab_columns
+ WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIM_CHEKER_SALVAGE'
+ ORDER BY column_id;
+```
+
+#### Satu permintaan yang TIDAK diajukan, dan alasannya
+
+Sempat terpikir meminta isi `POOLDATA.SALAVAGEDOCUMENT` untuk membuktikan bahwa penyaring
+`UpdateDokReqSalvage` memang tidak pernah mencocokkan apa pun. Itu **tidak diminta**: Work
+Owner sudah memutuskan menirunya apa adanya (§107.2), sehingga jawabannya — cocok atau tidak —
+tidak mengubah satu baris kode pun. Permintaan yang jawabannya tidak mengubah apa pun hanya
+membebani pihak lain.
+
+Ia layak diminta kembali **bila** perbaikan penyaringnya kelak dipertimbangkan.
+
+#### Catatan atas bentuk permintaan
+
+Putaran keenam menutup seluruh rule yang menahan, dan itu karena permintaannya akhirnya
+diajukan sebagai **satu daftar berdasarkan rujukan di dalam activity**, bukan berkas per
+berkas. Empat butir di atas berasal dari **tiga pihak berbeda**, sehingga tidak dapat digabung
+menjadi satu permintaan — tetapi masing-masing sudah disertai alasan dan akibatnya, supaya
+penerimanya dapat menilai urgensinya sendiri.
+
+Yang tetap berlaku sebagai bentuk permintaan yang benar kepada Tim Pega:
+
+> **Export berbasis Product rule untuk harness `InboxRequestSalvage`, dengan opsi
+> *include dependent rules* dinyalakan** (`D-39`).
+
+#### Koreksi 2026-09-30 — `DokumenBandingSalvage` sudah diterima, dan ia cangkang
+
+Butir 1 pada tabel di atas **berubah sasarannya**, dan itu perlu dicatat karena inilah kekeliruan
+yang sudah tiga kali memboroskan satu putaran di layar ini.
+
+`Flow Action/DokumenBandingSalvage-FA.xml` diterima. Membacanya membuktikan ia **tidak memuat
+apa pun yang dapat dibangun**:
+
+| Bagian | Isi | Status |
+|---|---|---|
+| `<pyPreProcessingActivity>` | `LihatDokRequestSalvage` — yang memuat daftar dokumennya | **tidak ada di export** |
+| `pxRuleReferences` ber-`Rule-HTML-Section` | `DokBandingHargaSalvage` — yang menggambarnya | **tidak ada di export** |
+
+Parameter pra-aktivitasnya terbaca, dan ia memakai pemetaan alias yang sama dengan tombol
+Approve/Reject: `IDsalvage ← .ClaimNo`, `iddetailsalvage ← .ClientName`.
+
+**Pola yang sudah berulang, dan layak dijadikan aturan permintaan.** Tiga artefak layar ini
+diterima "lengkap" lalu ternyata cangkang: harness-nya, section tombolnya, dan kini flow
+action-nya. Ketiganya terbaca utuh tanpa satu pun galat — yang hilang justru bagian yang bekerja.
+
+Sebelum sebuah berkas dinyatakan menutup permintaan, dua elemen ini wajib dibaca lebih dulu:
+
+```
+<pyPreProcessingActivity>                      nama activity pemasoknya
+pxRuleReferences  ber-Rule-HTML-Section        nama section yang menggambarnya
+```
+
+Itu pula alasan `D-39` menetapkan permintaan yang benar adalah **export berbasis Product rule
+dengan *include dependent rules***, bukan daftar berkas — daftar berkas hanya dapat menyebut
+lapis yang sudah diketahui.
+
+### 9.8 Putaran kesembilan (2026-09-30) — tidak ada lagi artefak Pega yang menahan
+
+`LihatDokRequestSalvage` dan `DokBandingHargaSalvage` diterima, dan keduanya menutup lapis
+terakhir. Tombol "Lihat File" dibangun.
+
+#### Butir 1 pada tabel §9.7 DITUTUP
+
+Satu rule tetap tidak ada — `GetAttachmentReqSalvage` — dan ia **tidak diminta**, karena
+jawabannya sudah pasti tanpa berkasnya:
+
+| Yang diketahui | Dari mana |
+|---|---|
+| kelasnya `ASM-FW-GCNMFW-Int-DATA_ATTACHFILE` | `pxRuleReferences` pada activity |
+| kuncinya `pyID`, diisi `IDDOC` | langkah `TempInputParamAttach.pyID := .ClaimID` |
+| tiga kolom yang dibaca hasilnya | langkah Property-Set sesudahnya |
+| kueri yang sama sudah berjalan | `internal/inboxpladla/repo/sqlstore/detail.sql` |
+
+Meminta berkas yang isinya sudah tertentukan hanya membebani pihak lain tanpa mengubah satu
+baris kode.
+
+#### Yang MASIH kurang, dan kepada siapa
+
+| # | Yang diminta | Kepada | Yang tertahan |
+|---|---|---|---|
+| 1 | **DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`** — terutama panjang `NOTEAPPROVE` | **DBA** | catatan komite yang melebihi batas ditolak saat disimpan |
+| 2 | **Alamat produksi** layanan balai lelang + autentikasinya | **Work Owner + tim integrasi** | pengiriman keputusan ke balai lelang |
+| 3 | Rule yang MENULIS `HISTORY_KOMUNIKASI_SALVAGE.MESSAGE_PNC` | **Tim Pega** | balasan ke balai lelang |
+
+#### Satu pertanyaan untuk DBA, bukan untuk Tim Pega
+
+Kolom `POOLDATA.SALAVAGEDOCUMENT.NOKLAIM` **berisi id DETAIL salvage**, bukan nomor klaim —
+disimpulkan dari dua rule yang membandingkannya begitu, salah satunya kueri baca yang hasilnya
+terlihat pengguna. Konfirmasinya satu kueri:
+
+```sql
+SELECT DISTINCT NOKLAIM
+  FROM POOLDATA.SALAVAGEDOCUMENT
+ WHERE TIPEDOCSALVAGE = 'Request Banding Harga Salvage'
+   AND ROWNUM <= 20;
+```
+
+Bila nilainya berbentuk `<nomor klaim>/<n>`, kesimpulan di atas benar dan nama kolomnya yang
+menyesatkan. Bila berbentuk nomor klaim polos, maka kedua rule itu memang tidak pernah cocok —
+dan dialog "Lihat File" di sistem lama selalu kosong tanpa ada yang melaporkannya.
+
+Jawabannya **tidak mengubah kode**: kedua kueri meniru perbandingan yang sama apa adanya
+(`P-5`). Ia hanya menentukan mana dari kedua kalimat di `PlannedDifferences()` yang berlaku.

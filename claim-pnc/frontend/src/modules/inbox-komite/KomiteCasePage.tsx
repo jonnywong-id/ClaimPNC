@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { APIError, NetworkError } from '@/api/client'
@@ -10,9 +11,21 @@ import {
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { ReloadIcon, ScaleIcon } from '@/components/Icon'
+import { TabBar } from '@/components/TabBar'
 import { formatRupiah } from '@/lib/money'
 
 import { useKomiteCase } from './api'
+import { AttachmentTab, ClaimSheet, PolicyTab } from './ClaimSheet'
+import { CommitteeBottom } from './CommitteeBottom'
+import { KmtnDecisionForm } from './KmtnDecisionForm'
+import { formatTanggal } from './format'
+
+/** Ketiga tab `Section/ShowTransfer` — Claim Detail, Policy Detail, Lampiran Dokumen. */
+const TABS = [
+  { kode: 'klaim', nama: 'Claim Detail' },
+  { kode: 'polis', nama: 'Policy Detail' },
+  { kode: 'lampiran', nama: 'Lampiran Dokumen' },
+]
 
 /**
  * Layar rincian kasus komite — "Lihat Detail Transfer".
@@ -42,11 +55,12 @@ import { useKomiteCase } from './api'
  * | Bagian | Status |
  * |---|---|
  * | judul bersyarat (7 label) | **dibangun** — dirakit server, lihat `TransferDetail.Judul` |
- * | `ShowTransferDetail` | **dibangun** — lihat TransferSection di bawah |
- * | `ShowTransferDetailHE` | belum — syarat `IsHE` pun belum dapat dinilai |
+ * | `ShowTransferDetail` kolom kiri & kanan | **dibangun** — ClaimSheet (tab Claim Detail) |
+ * | `ShowTransferDetail` rincian transfer | **dibangun** — TransferSection di bawah |
+ * | `ShowTransferDetailHE` | belum — lini HE belum ditangani modul ini |
  * | blok surveyor | belum — kolomnya ada tetapi kosong pada seluruh case komite |
- * | `UploadDocumentKomite` | belum — kunci `PC_LINK_ATTACHMENT` belum ditemukan, dan dokumen milik `S-1` |
- * | `ViewPolicyDetail` | belum — rinciannya milik modul `B-1` Polis & Snapshot |
+ * | `UploadDocumentKomite` | **sebagian** — tab Lampiran Dokumen menampilkan lampiran klaim; unggah ke case komite belum |
+ * | `ViewPolicyDetail` | **sebagian** — tab Policy Detail menampilkan kepala polis; rincian penuh milik `B-1` |
  *
  * Tiga bagian ShowTransfer SENGAJA tidak dibangun karena memang tidak berlaku lagi:
  * `.AcceptStatus`, `.RadApprove`, `.RejectedCode`, dan `.Comment` adalah form keputusan,
@@ -57,17 +71,22 @@ import { useKomiteCase } from './api'
  * tampak lengkap. Halaman yang terlihat utuh padahal isinya belum ada adalah cara paling
  * cepat membuat orang mengira modulnya selesai.
  *
- * # Tidak ada tombol keputusan di sini
+ * # Keputusan hanya untuk case KMTN
  *
- * Diminta Work Owner 2026-09-29. Jalur tulisnya tetap ada di server dan tetap tertutup —
- * lihat `docs/keputusan-implementasi.md` §68 dan §69.
+ * Work Owner mencabut tombol keputusan 2026-09-29, lalu pada hari yang sama membukanya
+ * kembali KHUSUS case KMTN (form ShowTransfer, lihat KmtnDecisionForm dan
+ * `docs/keputusan-implementasi.md` §113). Case Pega tetap tanpa tombol keputusan, dan jalur
+ * tulis modul komite sendiri (`/api/komite/inbox/{nomor}/keputusan`, §68 dan §69) tetap
+ * tertutup.
  */
 export function KomiteCasePage() {
   const params = useParams<{ nomor: string }>()
   const caseID = params.nomor ?? ''
   const detail = useKomiteCase(caseID)
+  const [tab, setTab] = useState('klaim')
 
   const found = detail.data?.kasus
+  const transfer = detail.data?.transfer
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -132,13 +151,25 @@ export function KomiteCasePage() {
 
       {found && (
         <>
-          <CaseFacts item={found} />
-          {detail.data?.transfer?.klaim && <ClaimSection klaim={detail.data.transfer.klaim} />}
-          {(detail.data?.transfer?.coverage.length ?? 0) > 0 && (
-            <CoverageSection coverages={detail.data!.transfer!.coverage} />
-          )}
-          {detail.data?.transfer && <TransferSection transfer={detail.data.transfer} />}
-          <MissingParts heDapatDinilai={detail.data?.transfer?.he_dapat_dinilai ?? false} />
+          <TabBar tabs={TABS} active={tab} onSelect={setTab} label="Bagian kasus komite" />
+          <div className="mt-4">
+            {tab === 'klaim' && (
+              <>
+                <ClaimSheet kasus={found} transfer={transfer} />
+                <CaseFacts item={found} />
+                {transfer?.klaim && <ClaimSection klaim={transfer.klaim} />}
+                {(transfer?.coverage.length ?? 0) > 0 && (
+                  <CoverageSection coverages={transfer!.coverage} />
+                )}
+                {transfer && <TransferSection transfer={transfer} />}
+                {transfer && <CommitteeBottom transfer={transfer} />}
+                <KmtnDecisionForm caseID={caseID} />
+                <MissingParts heDapatDinilai={transfer?.he_dapat_dinilai ?? false} />
+              </>
+            )}
+            {tab === 'polis' && <PolicyTab kasus={found} transfer={transfer} />}
+            {tab === 'lampiran' && <AttachmentTab transfer={transfer} />}
+          </div>
         </>
       )}
     </div>
@@ -146,21 +177,15 @@ export function KomiteCasePage() {
 }
 
 /**
- * Kesembilan medan yang benar-benar kita punya.
+ * Medan case dari daftar inbox (`InboxRegisterKomite_RD`) yang TIDAK ada di ClaimSheet.
  *
- * Seluruhnya berasal dari `InboxRegisterKomite_RD`, sama dengan kolom daftarnya. Angka uang
- * tidak ada di blok ini dengan sengaja: ia milik `ShowTransferDetail`, dan digambar
- * TransferSection di bawah.
+ * Nomor polis, tertanggung, bisnis, sumber bisnis, dan cabang sudah tergambar di kolom kiri
+ * ClaimSheet — dengan nilai daftar ini sebagai cadangannya — sehingga tidak diulang di sini.
+ * Menampilkan satu nilai dua kali di layar yang sama membuat orang bertanya mana yang benar.
  */
 function CaseFacts({ item }: { item: KomiteCase }) {
   const rows: { label: string; value: string }[] = [
     { label: 'Nomor case', value: item.nomor_case },
-    { label: 'Nomor klaim', value: item.nomor_klaim || '—' },
-    { label: 'Nomor polis', value: item.nomor_polis || '—' },
-    { label: 'Tertanggung', value: item.nama_tertanggung || '—' },
-    { label: 'Nama bisnis', value: item.nama_bisnis || '—' },
-    { label: 'Sumber bisnis', value: item.sumber_bisnis || '—' },
-    { label: 'Cabang', value: item.cabang || '—' },
     { label: 'Tgl komite', value: formatTanggal(item.tanggal_komite) },
     { label: 'Tgl input', value: formatTanggal(item.tanggal_input) },
     { label: 'Aging komite', value: `${item.aging_komite} hari` },
@@ -170,7 +195,7 @@ function CaseFacts({ item }: { item: KomiteCase }) {
   return (
     <section
       aria-labelledby="judul-fakta-komite"
-      className="rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
+      className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
       <h2 id="judul-fakta-komite" className="text-base font-semibold text-slate-900">
         Data kasus
@@ -233,12 +258,26 @@ function MissingParts({ heDapatDinilai }: { heDapatDinilai: boolean }) {
     {
       name: 'UploadDocumentKomite',
       reason:
-        'dokumen pendukung — kunci PC_LINK_ATTACHMENT ke case komite belum ditemukan, ' +
-        'dan dokumen milik modul S-1',
+        'unggah ke case komite — tab Lampiran Dokumen menampilkan lampiran klaimnya, ' +
+        'tetapi kunci PC_LINK_ATTACHMENT ke case komite belum ditemukan',
     },
     {
       name: 'ViewPolicyDetail',
-      reason: 'rincian polis — rule-nya ada, tetapi isinya milik modul B-1 Polis & Snapshot',
+      reason:
+        'rincian penuh polis — tab Policy Detail menampilkan kepala polis; objek, coverage, ' +
+        'dan premi milik modul B-1 Polis & Snapshot',
+    },
+    {
+      name: 'STATUS PREMI · Detail Premi',
+      reason:
+        'Pega membacanya dari layanan premi (GetPremiumPaymentStatus, Connect-REST) dan ' +
+        'tidak menyimpannya di basis data',
+    },
+    {
+      name: 'Hitungan Fac-Out',
+      reason:
+        'Spreding (%) dan Result Value Fac-Out diturunkan dari ShareOffered, TSI Sublimit, dan ' +
+        'Limit of Liability per coverage polis dengan syarat yang tidak terbaca di export',
     },
   ]
 
@@ -300,19 +339,6 @@ function LoadError({ error, caseID }: { error: unknown; caseID: string }) {
       tone="gangguan"
     />
   )
-}
-
-/** Sama persis dengan yang dipakai daftarnya; keduanya tidak boleh berbeda bentuk. */
-function formatTanggal(value: string | undefined): string {
-  if (!value) return '—'
-  const saat = new Date(value)
-  if (Number.isNaN(saat.getTime())) return '—'
-  return saat.toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
 }
 
 function outcomeLabel(outcome: KomiteCase['keputusan_pega']): string {
@@ -394,10 +420,8 @@ function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
  * case, jadi blok ini nyaris selalu tergambar.
  */
 function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klaim']> }) {
+  // Tanggal kejadian, tanggal register, dan lokasi sudah di kolom kiri ClaimSheet.
   const rows: { label: string; value: string }[] = [
-    { label: 'Tanggal kejadian', value: formatTanggal(klaim.tanggal_kejadian) },
-    { label: 'Tanggal register', value: formatTanggal(klaim.tanggal_register) },
-    { label: 'Lokasi kejadian', value: klaim.lokasi || '—' },
     { label: 'Status klaim', value: klaim.status_klaim || '—' },
     { label: 'Share ASM', value: klaim.persen_asm_share ? `${klaim.persen_asm_share}%` : '—' },
     { label: 'Koasuransi', value: klaim.koasuransi || '—' },

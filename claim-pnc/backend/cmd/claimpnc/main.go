@@ -39,6 +39,7 @@ import (
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/inboxbandinghargasalvage"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	"claim-pnc/internal/inboxcloseclaim"
@@ -157,6 +158,10 @@ import (
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
+	inboxbandinghargasalvagehttp "claim-pnc/internal/inboxbandinghargasalvage/http"
+	inboxbandinghargasalvagememory "claim-pnc/internal/inboxbandinghargasalvage/repo/memory"
+	inboxbandinghargasalvagesql "claim-pnc/internal/inboxbandinghargasalvage/repo/sqlstore"
+	inboxbandinghargasalvageusecase "claim-pnc/internal/inboxbandinghargasalvage/usecase"
 	inboxclaimtreatynonprophttp "claim-pnc/internal/inboxclaimtreatynonprop/http"
 	inboxclaimtreatynonpropmemory "claim-pnc/internal/inboxclaimtreatynonprop/repo/memory"
 	inboxclaimtreatynonpropsql "claim-pnc/internal/inboxclaimtreatynonprop/repo/sqlstore"
@@ -235,7 +240,6 @@ import (
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
-
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
 	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
@@ -373,6 +377,7 @@ import (
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 	registrasihttp "claim-pnc/internal/registrasi/http"
+	"claim-pnc/internal/registrasi/repo/dokumenlink"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	reportklaimhttp "claim-pnc/internal/reportklaim/http"
 	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
@@ -1599,6 +1604,30 @@ func run() error {
 			FallbackErrorWriter: inboxsalvagehttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Banding Harga Salvage. Jembatan pemanggilnya membawa LOGIN, dan di modul ini ia
+	// MENYARING — bukan sekadar mengisi jejak.
+	//
+	// Kedua tabnya menampilkan banding yang `T_CLAIM_CHEKER_SALVAGE.NAMAKOMITE`-nya
+	// pemanggil sendiri. Kolom itu menyimpan Operator ID, bukan NIK; memakai NIK di sini
+	// akan membuat layar ini KOSONG bagi setiap pengguna — dan antrean kosong tidak pernah
+	// dilaporkan siapa pun sebagai kerusakan.
+	bandingHargaSalvageHandler := inboxbandinghargasalvagehttp.NewHandler(
+		inboxbandinghargasalvagehttp.Options{
+			Service: assembly.inboxBandingHargaSalvage,
+			GetCaller: func(ctx context.Context) (inboxbandinghargasalvagehttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxbandinghargasalvagehttp.Caller{}, false
+				}
+				return inboxbandinghargasalvagehttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxbandinghargasalvagehttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -2457,6 +2486,13 @@ func run() error {
 				inboxsalvagehttp.Mount(
 					protected, salvageHandler, activePortalDeps)
 
+				// Inbox Banding Harga Salvage (`MENU_ID 72`) — layar TERSENDIRI, bukan tab
+				// pada modul di atasnya. Barisnya memuat dua harga yang sedang
+				// dipertentangkan atas satu barang, dan keduanya milik satu badan hukum
+				// (`R-20`).
+				inboxbandinghargasalvagehttp.Mount(
+					protected, bandingHargaSalvageHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -2738,6 +2774,13 @@ type assembly struct {
 	// barisnya memuat nama nasabah beserta nomor IMEI perangkatnya.
 	inboxServiceCenter *inboxservicecenterusecase.Service
 
+	// inboxBandingHargaSalvage melayani layar Inbox Banding Harga Salvage (`MENU_ID 72`).
+	//
+	// Ia layar TERSENDIRI, bukan tab pada Inbox Salvage (`MENU_ID 71`): di Pega keduanya
+	// harness yang berbeda, dan tabel intinya pun berbeda —
+	// POOLDATA.T_CLAIM_CHEKER_SALVAGE, bukan PNC_SALVAGE.
+	inboxBandingHargaSalvage *inboxbandinghargasalvageusecase.Service
+
 	// inboxClaimTreatyProp melayani layar Inbox Claim Treaty Prop (`MENU_ID 54`).
 	//
 	// Kedua tabel penugasan yang dibacanya ada di basis data SETIAP entitas (`ADR-0030`),
@@ -2974,6 +3017,27 @@ type storage struct {
 	// barisnya memuat nama nasabah — satu repo bersama akan menampilkannya lintas entitas
 	// tanpa satu pun pesan galat (`R-20`).
 	inboxServiceCenterSelector inboxservicecenter.RepoSelector
+
+	// inboxBandingHargaSalvageWriterSelector memilih PENULIS keputusan banding milik satu
+	// portal.
+	//
+	// Terpisah dari selector pembacanya, mengikuti pemisahan seam-nya: Repo dipakai seluruh
+	// permintaan baca, Writer hanya satu rute — dan yang satu itu MENGUBAH nilai uang.
+	inboxBandingHargaSalvageWriterSelector inboxbandinghargasalvage.WriterSelector
+
+	// inboxBandingHargaSalvageDocSelector memilih PEMBACA DOKUMEN banding milik satu portal.
+	//
+	// Terpisah pula, dengan alasan yang khas: yang diserahkannya adalah ISI BERKAS, dan
+	// berkas yang telanjur terunduh dari entitas yang salah tidak dapat ditarik kembali.
+	inboxBandingHargaSalvageDocSelector inboxbandinghargasalvage.DocumentReaderSelector
+
+	// inboxBandingHargaSalvageSelector memilih penyimpanan Inbox Banding Harga Salvage
+	// milik satu portal.
+	//
+	// Alasannya sama, dan di modul ini taruhannya berupa angka: barisnya memuat DUA harga
+	// yang sedang dipertentangkan atas satu barang salvage, dan keduanya milik satu badan
+	// hukum (`R-20`).
+	inboxBandingHargaSalvageSelector inboxbandinghargasalvage.RepoSelector
 
 	// claimTreatyPropSelector memilih penyimpanan Inbox Claim Treaty Prop milik satu
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
@@ -3734,14 +3798,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
 	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
 	// aplikasi dijalankan.
+	//
+	// Perakitannya dijalankan di bawah, SESUDAH layanan dokumen penunjang terbentuk: tombol
+	// Unggah Dokumen klaim mengunggah lewat layanan itu.
 	var registrationService *registrasiusecase.Service
-	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
-		if err != nil {
-			store.close()
-			return assembly{}, err
-		}
-	}
 
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
@@ -3947,6 +4007,26 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxservicecenterusecase.Options{
 			RepoSelector: store.inboxServiceCenterSelector,
 			Logger:       logger,
+		},
+	)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Logger diberikan supaya pembukaan antrean atas nama komite LAIN tercatat.
+	//
+	// Di layar ini satu Operator ID melihat antrean komite lain, dan aturannya tertanam
+	// sebagai nama orang di dalam rule Pega — ditiru apa adanya atas keputusan Work Owner
+	// 2026-09-29, meski `D-15` melarangnya. Sampai `F-4` menggantikannya dengan peran dari
+	// master data, jejak di log inilah satu-satunya hal yang menyatakan siapa benar-benar
+	// memakainya.
+	inboxBandingHargaSalvageService, err := inboxbandinghargasalvageusecase.NewService(
+		inboxbandinghargasalvageusecase.Options{
+			RepoSelector:     store.inboxBandingHargaSalvageSelector,
+			WriterSelector:   store.inboxBandingHargaSalvageWriterSelector,
+			DocumentSelector: store.inboxBandingHargaSalvageDocSelector,
+			Logger:           logger,
 		},
 	)
 	if err != nil {
@@ -4358,15 +4438,33 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// jamnya dapat dipatok.
 	documentService, err := dokumenpenunjangusecase.NewService(
 		dokumenpenunjangusecase.Options{
-			Repos:     store.dokumenPenunjangSelector,
-			Storage:   store.dokumenPenunjangStorage,
-			Converter: store.dokumenPenunjangConverter,
-			Clock:     clock.System{},
+			Repos:          store.dokumenPenunjangSelector,
+			Storage:        store.dokumenPenunjangStorage,
+			Converter:      store.dokumenPenunjangConverter,
+			Clock:          clock.System{},
+			SkipConversion: cfg.DocumentStorage.SkipConversion,
+			AccessCode:     cfg.DocumentStorage.AccessCode,
 		},
 	)
+	if cfg.DocumentStorage.AccessCode != "" {
+		logger.Info("unggah dokumen memakai kode akses terdaftar; token sekali pakai tidak dibuat",
+			slog.String("penanda", "PENYIMPANAN_DOKUMEN_KODE_AKSES"))
+	}
+	if cfg.DocumentStorage.SkipConversion {
+		logger.Warn("konversi gambar ke AVIF dilewati; PNG, JPG, JPEG, dan PDF diunggah apa adanya",
+			slog.String("penanda", "KONVERSI_GAMBAR_LEWATI"))
+	}
 	if err != nil {
 		store.close()
 		return assembly{}, err
+	}
+
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier)
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
 	}
 
 	return assembly{
@@ -4421,6 +4519,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAutoClaim:            autoClaimService,
 		inboxXOL:                  inboxXOLService,
 		inboxServiceCenter:        inboxServiceCenterService,
+		inboxBandingHargaSalvage:  inboxBandingHargaSalvageService,
 		inboxClaimTreatyProp:      claimTreatyPropService,
 		outstandingClaim:          outstandingClaimService,
 		inputAcceptation:          inputAcceptationService,
@@ -5336,6 +5435,36 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxservicecentersql.NewRepo(conn), nil
 		}
 
+		store.inboxBandingHargaSalvageSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxbandinghargasalvagesql.NewRepo(conn), nil
+		}
+
+		store.inboxBandingHargaSalvageWriterSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.Writer, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxbandinghargasalvagesql.NewWriter(conn), nil
+		}
+
+		store.inboxBandingHargaSalvageDocSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.DocumentReader, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxbandinghargasalvagesql.NewDocumentReader(conn), nil
+		}
+
 		store.claimTreatyPropSelector = func(alias string) (inboxclaimtreatyprop.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -5763,6 +5892,42 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.menu = menumemory.NewDevRepo()
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxServiceCenterSelector = inboxServiceCenterSelectorMemory(cfg.PrimaryPortal)
+		bandingHargaSalvageMemory := inboxBandingHargaSalvageSelectorMemory(cfg.PrimaryPortal)
+		store.inboxBandingHargaSalvageSelector = bandingHargaSalvageMemory
+
+		// Penulisnya berbagi penyimpanan yang SAMA dengan pembacanya — keputusan yang
+		// ditulis harus terlihat pada daftar dan panel rincian, sebagaimana di basis data.
+		store.inboxBandingHargaSalvageWriterSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.Writer, error) {
+			repo, err := bandingHargaSalvageMemory(alias)
+			if err != nil {
+				return nil, err
+			}
+			store, ok := repo.(*inboxbandinghargasalvagememory.Store)
+			if !ok {
+				return nil, fmt.Errorf(
+					"penyimpanan Inbox Banding Harga Salvage bukan penyimpanan memori")
+			}
+			return inboxbandinghargasalvagememory.NewWriter(store), nil
+		}
+
+		// Pembaca dokumennya pun berbagi penyimpanan yang sama: penyaring kepemilikannya
+		// membaca baris checker, dan baris itu harus baris yang sedang tergambar.
+		store.inboxBandingHargaSalvageDocSelector = func(
+			alias string,
+		) (inboxbandinghargasalvage.DocumentReader, error) {
+			repo, err := bandingHargaSalvageMemory(alias)
+			if err != nil {
+				return nil, err
+			}
+			store, ok := repo.(*inboxbandinghargasalvagememory.Store)
+			if !ok {
+				return nil, fmt.Errorf(
+					"penyimpanan Inbox Banding Harga Salvage bukan penyimpanan memori")
+			}
+			return inboxbandinghargasalvagememory.NewSampleDocumentStore(store), nil
+		}
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
 		store.outstandingClaimSelector = outstandingClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inputAcceptationSelector = inputAcceptationSelectorMemory(cfg.PrimaryPortal)
@@ -6855,49 +7020,73 @@ func businessSelectorMemory(
 
 // buildVirtualAccountIssuer menyusun seam penerbit rekening virtual milik Master Recovery.
 //
-// # Kenapa pilihannya mengikuti PENYIMPANAN, bukan adapter identitas
+// # Penerbit sungguhan TERTUTUP secara baku, dan hanya dibuka dengan sengaja
 //
-// Berbeda dari direktori pegawai, yang mengikuti `IDENTITAS_ADAPTER` karena keduanya
-// menembak API yang sama. Penerbit VA menembak layanan yang berbeda, dan alamatnya dibaca
-// dari POOLDATA.GCNM_CONNECT_REST — baris `TYPESERVICE='GENERATEDVA'`. Tanpa koneksi
-// Oracle, alamat itu tidak dapat dibaca sama sekali, sehingga yang menentukan adalah ada
-// atau tidaknya koneksi.
+// Keputusan Work Owner 2026-09-29: **jangan dibuka dulu.** Karena itu pilihannya TIDAK
+// lagi mengikuti ada-tidaknya koneksi Oracle seperti adapter lain — cara itu membuat
+// penerbitan sungguhan ikut menyala begitu aplikasi dijalankan dengan
+// `PENYIMPANAN=oracle`, tanpa ada yang memutuskannya.
 //
-// # Kenapa tiruan BUKAN sekadar kenyamanan di sini
+// Yang membukanya sekarang adalah `config.VirtualAccount.Live()`, yang menuntut TIGA hal
+// sekaligus: `VIRTUAL_ACCOUNT_ADAPTER=pega`, `VIRTUAL_ACCOUNT_PENGGUNA` terisi, dan
+// `VIRTUAL_ACCOUNT_SANDI` terisi. Kurang satu pun, yang dipakai adalah tiruan.
 //
-// Alamat yang terdaftar menunjuk layanan Pega yang MENERBITKAN REKENING SUNGGUHAN.
-// Menembaknya dari lingkungan pengembangan meninggalkan rekening nyata yang tidak diminta
-// siapa pun, pada sistem yang dipakai orang lain.
+// # Kenapa seketat itu
 //
-// Perbedaannya diumumkan di log, bukan dibiarkan senyap: layar yang tampak bekerja padahal
-// nomor yang ditampilkannya karangan adalah kegagalan yang tidak terlihat siapa pun sampai
-// dana pertama dikirim ke nomor itu.
+// Menyalakannya MENERBITKAN REKENING BANK SUNGGUHAN lewat layanan Pega. Adapter lain yang
+// keliru menyala paling jauh membaca data yang salah; yang ini meninggalkan rekening nyata
+// yang tidak diminta siapa pun, pada sistem yang dipakai orang lain.
+//
+// Keadaannya diumumkan di log saat start pada KEDUA arah — baik saat tiruan dipakai maupun
+// saat penerbit sungguhan menyala. Layar yang tampak bekerja padahal nomornya karangan,
+// dan layar yang diam-diam menerbitkan rekening nyata, sama-sama kegagalan yang tidak
+// terlihat siapa pun sampai terlambat.
 func buildVirtualAccountIssuer(
 	cfg config.Config,
 	legacy *sqlstore.Legacy,
 	logger *slog.Logger,
 ) (masterrecovery.VirtualAccountIssuer, error) {
-	if legacy == nil {
+	switch {
+	case !cfg.VirtualAccount.Live():
 		logger.Warn("penerbit virtual account memakai nomor tiruan",
 			slog.String("modul", "masterrecovery"),
-			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga alamat layanan pada POOLDATA.GCNM_CONNECT_REST tidak dapat dibaca"),
+			slog.String("sebab", "VIRTUAL_ACCOUNT_ADAPTER bukan \"pega\", atau VIRTUAL_ACCOUNT_PENGGUNA/VIRTUAL_ACCOUNT_SANDI belum diisi"),
+			slog.String("akibat", "nomor VA yang ditampilkan layar adalah nomor TIRUAN berawalan "+masterrecoveryva.Prefix+"; tidak ada rekening yang benar-benar terbit"),
 		)
 		return masterrecoveryva.NewFake(), nil
-	}
 
-	return masterrecoveryva.NewPega(masterrecoveryva.Options{
-		Catalog: legacy,
-		// Kredensial HCQ dipakai ulang sebagai Basic Auth bila terisi. Layanan ini tidak
-		// diketahui menuntut autentikasi — 18 dari 21 Connect REST di sistem lama
-		// ber-`pyUseAuthentication=false` (`D-73`) — dan bila keduanya kosong, header
-		// Authorization tidak dikirim sama sekali.
-		User:     cfg.HCQ.User,
-		Password: cfg.HCQ.Password,
-		// Galat "baris tidak terdaftar" milik modul auth diteruskan sebagai nilai, bukan
-		// diimpor tipenya: itulah yang membuat modul ini dapat MEMBEDAKAN katalog yang
-		// belum diisi dari jaringan yang sedang putus, tanpa bergantung pada modul auth.
-		NotRegistered: provider.ErrServiceNotRegistered,
-	})
+	case legacy == nil:
+		// Sakelar sudah dibuka, tetapi alamat layanannya dibaca dari
+		// POOLDATA.GCNM_CONNECT_REST — tanpa koneksi Oracle ia tidak dapat dibaca sama
+		// sekali. Ini keadaan salah rakit, dan ia dihentikan saat start alih-alih
+		// diam-diam turun ke tiruan: yang meminta `pega` berhak tahu permintaannya tidak
+		// dapat dipenuhi.
+		return nil, errors.New(
+			"VIRTUAL_ACCOUNT_ADAPTER=pega menuntut PENYIMPANAN=oracle: alamat layanan dibaca dari POOLDATA.GCNM_CONNECT_REST")
+
+	default:
+		logger.Warn("penerbit virtual account SUNGGUHAN menyala",
+			slog.String("modul", "masterrecovery"),
+			slog.String("akibat", "menyimpan principal baru akan MENERBITKAN REKENING VIRTUAL SUNGGUHAN lewat layanan Pega"),
+		)
+		return masterrecoveryva.NewPega(masterrecoveryva.Options{
+			Catalog: legacy,
+			// Kredensial profil autentikasi `LELANG`, BUKAN HCQ.
+			//
+			// `Connect REST/VirtualAccountClaimsPNC-ConnectREST.xml` ber-
+			// `pyUseAuthentication=true` dengan `pyAuthenticationProfile = LELANG`.
+			// Memakai ulang kredensial HCQ di sini akan gagal dengan cara yang
+			// membingungkan — tampak seperti layanan menolak, padahal kredensialnya
+			// memang milik layanan lain.
+			User:     cfg.VirtualAccount.User,
+			Password: cfg.VirtualAccount.Password,
+			Timeout:  cfg.VirtualAccount.Timeout,
+			// Galat "baris tidak terdaftar" milik modul auth diteruskan sebagai nilai, bukan
+			// diimpor tipenya: itulah yang membuat modul ini dapat MEMBEDAKAN katalog yang
+			// belum diisi dari jaringan yang sedang putus, tanpa bergantung pada modul auth.
+			NotRegistered: provider.ErrServiceNotRegistered,
+		})
+	}
 }
 
 // accountSelectorMemory menyusun penyimpanan master rekening di memori.
@@ -7255,6 +7444,44 @@ func inboxServiceCenterSelectorMemory(primaryAlias string) inboxservicecenter.Re
 			return existing, nil
 		}
 		fresh := inboxservicecentermemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxBandingHargaSalvageSelectorMemory menyusun penyimpanan Inbox Banding Harga Salvage di
+// memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali —
+// alasannya sama dengan selector memori lain di berkas ini.
+//
+// Isinya contoh yang melatih SETIAP penyaring layar ini, dan dua di antaranya sengaja ada
+// supaya aturan yang paling mudah hilang tetap teruji: sepasang baris berumur 30 dan 9 hari
+// yang membuktikan umur diurutkan sebagai ANGKA, dan sepasang baris yang membuktikan penyaring
+// giliran komite benar-benar menahan satu baris. Seluruhnya karangan — lihat
+// inboxbandinghargasalvage/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+func inboxBandingHargaSalvageSelectorMemory(
+	primaryAlias string,
+) inboxbandinghargasalvage.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxbandinghargasalvage.Repo{}
+
+	return func(alias string) (inboxbandinghargasalvage.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxbandinghargasalvagememory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

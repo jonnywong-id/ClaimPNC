@@ -73,21 +73,29 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 
 			recovery.Post("/bukti-bayar", h.UploadDocument)
 
+			// Tombol View Document pada grid dalam. GET, karena ia hanya membaca dan
+			// aman diulang berapa kali pun.
+			recovery.Get("/bukti-bayar/{id}", h.Document)
+
 			// Pembacaan CSV memakai POST karena berkasnya dikirim di badan permintaan,
 			// meski ia tidak menyimpan apa pun.
 			recovery.Post("/baris-klaim", h.ReadClaimLine)
 
 			recovery.Post("/", h.Save)
 
-			// GET "/" sengaja TIDAK didaftarkan.
+			// Tab Outstanding. Ditambahkan 2026-09-29 — lihat Handler.List untuk sebab
+			// ia sempat tidak ada, dan kenapa ketiadaannya itu keliru.
+			recovery.Get("/", h.List)
+
+			// PUT dan DELETE tetap sengaja TIDAK didaftarkan.
 			//
-			// Tidak ada satu pun kueri di export Pega yang membaca
-			// POOLDATA.MST_RECOVERY_ASM_PENJAMINAN — layarnya form entri, bukan daftar.
-			// Keputusan Work Owner 2026-09-19 menetapkan itu ditiru apa adanya.
+			// Alasannya berbeda dari alasan GET dulu, dan alasan ini BERDIRI DI ATAS
+			// BUKTI, bukan di atas ketiadaan bukti: `INSERTMASTERRECOVERYKLAIM.prc`
+			// dibaca utuh dan hanya mengenal INSERT — tidak ada satu pun UPDATE maupun
+			// DELETE atas tabel ini di seluruh export, termasuk di dalam procedure-nya.
 			//
-			// PUT dan DELETE juga tidak ada, dengan alasan yang sama: procedure lamanya
-			// hanya mengenal INSERT. Rute yang tidak ada tidak dapat dipanggil kode yang
-			// ditulis kemudian tanpa keputusan sadar.
+			// Rute yang tidak ada tidak dapat dipanggil kode yang ditulis kemudian tanpa
+			// keputusan sadar.
 		})
 	})
 }

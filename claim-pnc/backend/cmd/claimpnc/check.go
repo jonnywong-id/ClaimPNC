@@ -56,6 +56,8 @@ import (
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	"claim-pnc/internal/inboxautoclaim"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
+	"claim-pnc/internal/inboxbandinghargasalvage"
+	inboxbandinghargasalvagesql "claim-pnc/internal/inboxbandinghargasalvage/repo/sqlstore"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	inboxclaimtreatynonpropsql "claim-pnc/internal/inboxclaimtreatynonprop/repo/sqlstore"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -237,6 +239,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
 	checkSalvage(ctx, inboxsalvagesql.NewRepo(primary), print)
+	checkBandingHargaSalvage(ctx, inboxbandinghargasalvagesql.NewRepo(primary), print)
 	checkPLADLAQueue(ctx, inboxpladlapredlasql.NewRepo(primary), print)
 	checkPLADLAReinsurer(ctx, inboxpladlasql.NewRepo(primary), print)
 	checkPLADLACommunicationFunnel(ctx, primary, login, print)
@@ -834,6 +837,18 @@ func checkRecovery(
 	} else {
 		print("  [ok]    POOLDATA.MST_RECOVERY_ASM_PENJAMINAN, MST_VIRTUAL_ACCOUNT_PNC,")
 		print("            dan DATA_ATTACHFILE dapat dibaca")
+	}
+
+	// Tabel baris klaim dibuat migrasi kita sendiri, bukan warisan — kegagalannya berarti
+	// migrasinya belum dijalankan, bukan soal hak akses.
+	if err := repo.CheckClaimLineTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.CPNC_RECOVERY_BARIS_KLAIM tidak dapat dibaca: %v", err)
+		print("            Migrasi backend/migrations/0013 tampaknya belum dijalankan DBA.")
+		print("            Akibatnya TIDAK terbatas: daftar polis disimpan di tabel ini, dan")
+		print("            karena ia satu transaksi dengan kepala batch, SELURUH penyimpanan")
+		print("            batch akan gagal selama tabelnya belum ada.")
+	} else {
+		print("  [ok]    POOLDATA.CPNC_RECOVERY_BARIS_KLAIM dapat dibaca")
 	}
 
 	// Kegagalan di sini sengaja bertanda [BELUM], bukan [GAGAL]: ia tidak menghalangi
@@ -4269,7 +4284,7 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 	if err != nil {
 		print("  [BELUM] nomor klaim berikutnya tidak dapat dihitung: %v", err)
 	} else {
-		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%04d",
+		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%d",
 			time.Now().Year()%100, terakhir+1)
 	}
 
@@ -4363,8 +4378,108 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 		}
 	}
 
+	// Persetujuan / Akseptasi LOD menulis tujuh kolom baru T_CLAIM_ADJUSTMENT. Tanpanya klaim
+	// tetap dapat dimuat (kolomnya dibaca terpisah), tetapi Simpan akseptasi gagal.
+	if _, err := primary.ExecContext(ctx, `
+		SELECT TANGGALBOLEHBAYAR, RECEIVEDATEANALIST, ACCEPTANCEVALUELOD, TIPEAKSEPTASI,
+		       KOMITEACCEPTED, REMARKACCEPTED, UPLOADNOTELOD
+		  FROM POOLDATA.T_CLAIM_ADJUSTMENT
+		 WHERE 1 = 0`); err != nil {
+		print("  [BELUM] kolom isian akseptasi belum ada di T_CLAIM_ADJUSTMENT: %v", err)
+		print("            Jalankan migrations/0013_akseptasi_lod.up.sql (DBA, D-63). Sampai itu,")
+		print("            tombol Simpan Persetujuan / Akseptasi gagal; klaim tetap dapat dibuka.")
+	} else {
+		print("  [ok]    kolom isian akseptasi (migrasi 0013) ada di T_CLAIM_ADJUSTMENT")
+	}
+
 	print("            Seam Penugasan tidak diperiksa di sini: memanggilnya menaikkan")
 	print("            pencacah beban petugas, dan mode ini tidak menulis apa pun.")
+}
+
+// checkBandingHargaSalvage memeriksa kesiapan modul Inbox Banding Harga Salvage.
+//
+// # Kenapa modul ini PERLU diperiksa, sementara modul baca lain sering tidak
+//
+// Karena DDL tabel intinya belum pernah dibaca. Seluruh nama kolom
+// `POOLDATA.T_CLAIM_CHEKER_SALVAGE` disimpulkan dari teks kueri Pega, dan SATU di antaranya
+// — `NOTEKOMITE` — bahkan disimpulkan dari nama properti gridnya, bukan dari kueri mana pun.
+//
+// Kolom yang ternyata tidak ada akan menggagalkan SELURUH layar, bukan mengosongkan satu
+// kolom. Pemeriksaan di sini membuat kekeliruan itu terbaca saat aplikasi start, lengkap
+// dengan nama kolom yang salah — bukan sebagai layar galat yang dilaporkan pengguna.
+//
+// Satu nama memang PERNAH keliru: kolom catatan komite sempat ditulis `NOTEKOMITE`,
+// disimpulkan dari nama properti gridnya, sampai `UpdateDataReqSalvage` membuktikan namanya
+// `NOTEAPPROVE`.
+//
+// # Sejak modul ini MENULIS, pemeriksaannya bertambah
+//
+// Tombol Approve dan Reject menyentuh dua tabel LAIN — `SALAVAGEDOCUMENT` dan
+// `DETAIL_PNC_SALVAGE` — dan nama kolom keduanya pun disimpulkan dari teks kueri Pega. Kolom
+// yang ternyata bernama lain menggagalkan seluruh transaksi keputusan, dan itu baru ketahuan
+// ketika seorang komite menekan Simpan atas putusan yang sudah ia pertimbangkan.
+//
+// Ia tetap tidak menulis apa pun dan tidak membaca satu baris pun: yang dibaca adalah katalog
+// kolom. Menguji hak tulis dengan benar-benar menulis akan meninggalkan baris percobaan di
+// tabel produksi.
+func checkBandingHargaSalvage(
+	ctx context.Context,
+	repo *inboxbandinghargasalvagesql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.T_CLAIM_CHEKER_SALVAGE tidak terbaca utuh: %v", err)
+		print("            Nama kolom modul ini disimpulkan dari kueri Pega, bukan dari DDL")
+		print("            — yang belum pernah diterima. Bila kolomnya bernama lain, yang")
+		print("            disesuaikan adalah kuerinya, bukan tabelnya.")
+		return
+	}
+	print("  [ok]    POOLDATA.T_CLAIM_CHEKER_SALVAGE punya kedua belas kolom yang dibaca")
+
+	// KEDUA tab dijalankan, bukan satu: keduanya membaca tabel yang BERBEDA —
+	// T_CLAIM_CHEKER_SALVAGE dan PNC_SALVAGE — sehingga satu kueri yang berhasil tidak
+	// menyatakan apa pun tentang yang lain.
+	caller := inboxbandinghargasalvage.Caller{Login: "pemeriksa-kesiapan"}
+	page := inboxbandinghargasalvage.Pagination{Page: 1, Size: 5}
+
+	for _, tab := range inboxbandinghargasalvage.Tabs() {
+		query, err := inboxbandinghargasalvage.NewQuery(
+			inboxbandinghargasalvage.QueryInput{Tab: tab.Code}, caller)
+		if err != nil {
+			print("  [BELUM] Tab %q tidak dapat disusun: %v", tab.Code, err)
+			continue
+		}
+
+		if _, err := repo.List(ctx, query, page); err != nil {
+			print("  [BELUM] Kueri tab %q gagal: %v", tab.Name, err)
+			continue
+		}
+		print("  [ok]    Kueri tab %q berjalan", tab.Name)
+	}
+
+	print("            Nol baris BUKAN kegagalan: kedua tab menyaring menurut NAMA KOMITE,")
+	print("            dan akun pemeriksa bukan komite mana pun.")
+
+	// Tabel tujuan PENULISAN diperiksa terpisah, dan kegagalannya tidak menghentikan
+	// pemeriksaan di atas: layar ini tetap dapat dibaca meski tombolnya tidak dapat dipakai.
+	found, err := repo.CheckWriteTargets(ctx)
+	switch {
+	case err != nil:
+		print("  [BELUM] Katalog kolom tabel tujuan penulisan tidak terbaca: %v", err)
+		print("            Periksa hak SELECT akun aplikasi atas ALL_TAB_COLUMNS.")
+	case found < inboxbandinghargasalvagesql.WriteTargetColumns:
+		print("  [BELUM] Tabel tujuan penulisan hanya punya %d dari %d kolom yang ditulis",
+			found, inboxbandinghargasalvagesql.WriteTargetColumns)
+		print("            POOLDATA.SALAVAGEDOCUMENT   IDBALAILELANG, NOKLAIM, TIPEDOCSALVAGE")
+		print("            POOLDATA.DETAIL_PNC_SALVAGE HARGAITEM, IDSALVAGE, IDDETAILSALVAGE")
+		print("            Tombol Approve/Reject akan gagal SELURUHNYA saat ditekan, karena")
+		print("            keempat pernyataannya berjalan dalam satu transaksi.")
+	default:
+		print("  [ok]    Kedua tabel tujuan penulisan punya keenam kolom yang ditulis")
+		print("            Hak INSERT/UPDATE-nya TIDAK diuji di sini — mengujinya berarti")
+		print("            menulis baris percobaan ke tabel produksi. Pastikan ke DBA bahwa")
+		print("            akun aplikasi punya UPDATE atas ketiga tabelnya.")
+	}
 }
 
 // checkSalvage memeriksa kesiapan modul Inbox Salvage.

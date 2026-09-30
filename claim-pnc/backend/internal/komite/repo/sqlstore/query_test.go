@@ -28,6 +28,16 @@ func TestSeluruhKueriYangDipakaiAda(t *testing.T) {
 		"transfer_lines",
 		"transfer_committee",
 		"transfer_check_table",
+		"transfer_case_new",
+		"transfer_policy",
+		"transfer_coinsurance",
+		"transfer_fac_offer",
+		"transfer_spreading",
+		"transfer_dominant_factors",
+		"transfer_attachments",
+		"transfer_members",
+		"transfer_history_legacy",
+		"transfer_history_new",
 
 		"decision_list_for_cases",
 		"decision_insert",
@@ -191,16 +201,19 @@ func TestKueriDaftarInboxSelaluMenyaringPemilik(t *testing.T) {
 	for _, nama := range daftar {
 		t.Run(nama, func(t *testing.T) {
 			rapat := bersihkanSpasi(query(nama))
-			require.Containsf(t, rapat, "(:1 IS NULL OR w.PXASSIGNEDOPERATORID = :2)",
+			// Sumbernya T_CLAIM_KOMITE_LIST (Work Owner, 2026-09-29): pemiliknya NAMAKOMITE,
+			// dibandingkan UPPER/TRIM karena sebagian baris berhuruf kecil atau berspasi.
+			require.Containsf(t, rapat, "(:1 IS NULL OR UPPER(TRIM(k.NAMAKOMITE)) = :2)",
 				"kueri %q tidak menyaring pemilik", nama)
 
-			// INNER, bukan LEFT. `InboxRegisterKomite_RD` memakai INNER JOIN ke
-			// `Assign-Worklist`, dan LEFT JOIN di sini akan meloloskan case yang TIDAK
-			// ditugaskan kepada siapa pun ke dalam inbox seseorang.
-			require.Containsf(t, rapat, "JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a",
-				"kueri %q tidak menyambung penugasan ke case secara INNER", nama)
-			require.NotContainsf(t, rapat, "LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST",
-				"kueri %q menyambung worklist secara LEFT; RD memakai INNER", nama)
+			// Anggota yang jenjang di bawahnya belum setuju BELUM mendapat tugasnya di Pega;
+			// tanpa penyaring ini seluruh anggota tampil sekaligus sejak case dibuat.
+			require.Containsf(t, rapat, "CAST(l.KOMITEKE AS INTEGER) < CAST(k.KOMITEKE AS INTEGER)",
+				"kueri %q tidak menahan anggota yang belum gilirannya", nama)
+
+			// Baris ber-KOMITE_ID kosong adalah sampah (7.166 baris) dan tidak boleh tampil.
+			require.Containsf(t, rapat, "k.KOMITE_ID IS NOT NULL",
+				"kueri %q tidak membuang baris tanpa KOMITE_ID", nama)
 		})
 	}
 }
@@ -250,21 +263,21 @@ func TestKueriDaftarTidakMenyentuhTabelKeputusan(t *testing.T) {
 	}
 }
 
-// Kueri daftar hanya boleh menyentuh KETIGA tabel yang kedua rule sumber sebut.
+// Kueri inbox hanya boleh menyentuh T_CLAIM_KOMITE_LIST dan header klaim T_CLAIM_PNC.
 //
-// `InboxRegisterKomite_RD` membaca kelas Work-Komite dan `Assign-Worklist`;
-// `GetKomitePAditerima` menambahkan `T_CLAIM_KOMITE_LIST` untuk kesimpulan kotak Diterima
-// dan Ditolak. Tidak ada yang keempat.
-//
-// Tabel tambahan apa pun — penilaian AI, dashboard OR, `T_CLAIM_PNC` — berarti layar ini
-// menampilkan sesuatu yang TIDAK pernah ada di layar aslinya, dan angka yang tidak dapat
-// dibandingkan dengan apa pun pada uji kesetaraan (`P-5`).
+// Work Owner menetapkan 2026-09-29 sumbernya `T_CLAIM_KOMITE_LIST`, supaya kasus KMTN ikut
+// muncul; header klaim (No Polis, Tertanggung, Bisnis, SOB, Cabang) tidak ada di sana dan
+// diambil dari `T_CLAIM_PNC`. Tabel kerja Pega tidak lagi dibaca, dan tabel lain — penilaian
+// AI, dashboard OR — berarti layar ini menampilkan sesuatu yang tidak pernah ada di layar
+// aslinya.
 func TestKueriDaftarHanyaMenyentuhTigaTabelSumber(t *testing.T) {
+	// Sejak 2026-09-29 sumbernya T_CLAIM_KOMITE_LIST ditambah header klaim T_CLAIM_PNC
+	// (Work Owner). Tabel kerja Pega tidak lagi dibaca.
 	terlarang := []string{
 		"T_CLAIM_DATA_RESULTS_AI",
 		"PEGA_DASHBOARDPNC",
-		"T_CLAIM_PNC",
 		"BUSINESSNEW",
+		"DATAPEGA.",
 	}
 
 	for nama, teks := range queries {
@@ -272,6 +285,8 @@ func TestKueriDaftarHanyaMenyentuhTigaTabelSumber(t *testing.T) {
 			continue
 		}
 		hurufBesar := strings.ToUpper(teks)
+		require.Containsf(t, hurufBesar, "POOLDATA.T_CLAIM_KOMITE_LIST",
+			"kueri %q tidak membaca T_CLAIM_KOMITE_LIST", nama)
 		for _, tabel := range terlarang {
 			require.NotContainsf(t, hurufBesar, tabel,
 				"kueri %q menyentuh %s — bukan salah satu dari tiga tabel sumber", nama, tabel)
@@ -291,9 +306,38 @@ func TestKueriDaftarHanyaMenyentuhTigaTabelSumber(t *testing.T) {
 func TestKueriDaftarMenyaringTahunTerawal(t *testing.T) {
 	for _, nama := range []string{"inbox_list", "inbox_count", "inbox_summary"} {
 		t.Run(nama, func(t *testing.T) {
-			require.Containsf(t, bersihkanSpasi(query(nama)), "a.PXCREATEDATETIME >= :3",
+			require.Containsf(t, bersihkanSpasi(query(nama)), "k.DATEOFCOMMITE_CREATE >= :3",
 				"kueri %q tidak menyaring tahun terawal (penyaring F1 pada RD)", nama)
 		})
+	}
+}
+
+// Penanda kueri inbox WAJIB dinomori menurut urutan KEMUNCULANNYA.
+//
+// go-ora mengisi penanda secara posisional, bukan menurut nomornya. Pada 2026-09-29
+// `inbox_get` memakai `:2` (operator) di SELECT sebelum `:1` (KOMITE_ID) di WHERE, dan
+// setiap case menjawab "tidak ditemukan" tanpa satu pun galat — nilainya tertukar.
+func TestPenandaInboxBerurutanMenurutKemunculan(t *testing.T) {
+	for nama, teks := range queries {
+		if !strings.HasPrefix(nama, "inbox_") {
+			continue
+		}
+		var tanpaKomentar []string
+		for _, baris := range strings.Split(teks, "\n") {
+			if !strings.HasPrefix(strings.TrimSpace(baris), "--") {
+				tanpaKomentar = append(tanpaKomentar, baris)
+			}
+		}
+		berikut := 1
+		for _, cocok := range regexp.MustCompile(`:(\d+)`).FindAllStringSubmatch(strings.Join(tanpaKomentar, "\n"), -1) {
+			nomor, err := strconv.Atoi(cocok[1])
+			require.NoError(t, err)
+			if nomor < berikut {
+				continue // penanda yang sama dipakai ulang
+			}
+			require.Equalf(t, berikut, nomor, "kueri %q: penanda :%d muncul sebelum :%d", nama, nomor, berikut)
+			berikut++
+		}
 	}
 }
 
@@ -569,7 +613,9 @@ func TestKueriTransferHanyaMenyentuhTabelYangSudahDitelusuri(t *testing.T) {
 				"kueri %q menyentuh %s", nama, tabel)
 		}
 
-		if nama == "transfer_case" {
+		// transfer_history_legacy hanya mengambil PYID case komite yang menaungi klaim —
+		// daftar nomor case, bukan nilai.
+		if nama == "transfer_case" || nama == "transfer_history_legacy" {
 			continue
 		}
 		require.NotContainsf(t, hurufBesar, "DATAPEGA.",
@@ -621,6 +667,21 @@ func TestKunciKlaimDiambilBerPrefix(t *testing.T) {
 		require.NotContainsf(t, teks, "REPLACE",
 			"kueri %q tidak boleh memangkas kuncinya sendiri", nama)
 	}
+}
+
+// Case KMTN tidak punya baris kerja Pega; kepalanya TC_PNC_KOMITE, dan baris yang ditandai
+// terhapus (`D-66`) tidak boleh menghidupkan kembali klaimnya. Urutan medan harus sama
+// dengan `transfer_case`, karena keduanya dipindai ke variabel yang sama.
+func TestKonteksCaseBaruDariKepalaKomite(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_case_new"))
+
+	require.Contains(t, rapat, "FROM POOLDATA.TC_PNC_KOMITE k")
+	require.Contains(t, rapat, "WHERE k.KOMITE_ID = :1")
+	require.Contains(t, rapat, "k.DIHAPUS_PADA IS NULL")
+	require.Contains(t, rapat, "SELECT MAX(p.GROUPPANEL), MAX(p.POLIS_JENIS_BISNIS), MAX(k.CLAIMID)")
+	require.True(t, isNewCase("KMTN.26.1"))
+	require.True(t, isNewCase("KMTN-00001"))
+	require.False(t, isNewCase("KMT-210150"), "case Pega tidak dibaca dari TC_PNC_KOMITE")
 }
 
 // Blok analisis komite ada di T_CLAIM_OBJECTCOVERAGE, dan baris terhapus tidak ikut.

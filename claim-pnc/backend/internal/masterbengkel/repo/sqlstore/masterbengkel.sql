@@ -701,3 +701,104 @@ SELECT LBG_ID,
        BANK_GROUP
   FROM GENERAL.LST_BANK_GROUP
  ORDER BY BANK_GROUP
+
+-- name: bengkel_next_document_sequence
+--
+-- Urutan lampiran, SAMA dengan yang dipakai `Database/SET_ATTACHMENT_64BIT.prc:19`
+-- (`ATTACHFILE_SEQ`), supaya DATAID yang diterbitkan aplikasi ini melanjutkan deret yang
+-- sudah ada dan tidak pernah bertabrakan dengan DATAID terbitan Pega.
+--
+-- Prosedur lama menyebutnya tanpa skema; di sini ia dilengkapi POOLDATA, skema yang sama
+-- dengan tabel yang disisipinya.
+--
+-- FROM DUAL kembali tidak terhindarkan — NEXTVAL menuntutnya. Ia kueri urutan kedua di
+-- modul ini, dan keduanya diisolasi dengan alasan yang sama.
+--
+-- Dua digit TAHUN sengaja TIDAK diambil di sini. Prosedur lama memakai
+-- `to_char(sysdate,'yy')`, sedangkan modul ini melarang SYSDATE maupun TO_CHAR: pemformatan
+-- tanggal dilakukan di Go (`D-20`), dan waktunya berasal dari seam Clock (`F-5`).
+--
+-- Selisihnya dinyatakan: Pega memakai jam BASIS DATA, sistem baru memakai jam APLIKASI
+-- dalam WIB. Keduanya "sekarang", dan bedanya hanya muncul bila kedua jam itu berada di
+-- tahun yang berbeda — pada pergantian tahun, bertaut dengan `R-12`.
+SELECT POOLDATA.ATTACHFILE_SEQ.NEXTVAL
+  FROM DUAL
+
+-- name: bengkel_insert_document
+--
+-- Asal: Database/SET_ATTACHMENT_64BIT.prc:30-31
+--
+--   insert into pooldata.data_attachfile
+--     (DATAID, inputdate, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE, ATTACHMIMETYPE,
+--      IMAGEID, CATEGORY, SUB_CATEGORY, IDPEGA)
+--   values (tDATAID, sysdate, tINPUTOPERATOR, ...)
+--
+-- SATU KOLOM DITAMBAHKAN: `ATTACHFILE`.
+--
+-- Prosedur yang dipakai layar Master Bengkel tidak menulisnya, dan jalur unggahnya tidak
+-- pernah mengisi `IMAGEID` — sehingga berkas yang diunggah di sistem lama tidak tersimpan
+-- di mana pun. Kolomnya sendiri ADA dan memang dibaca: `GetAttachmentFromDB_Sql`
+-- mengambilnya lewat `base64encode(attachfile)`, dan varian temp prosedur yang sama
+-- (`Database/TEMP_SET_ATTACHMENT_64BIT.prc:30-31`) memang mengisinya.
+--
+-- Jadi yang dipakai di sini adalah pola Pega sendiri, bukan karangan. Selisihnya
+-- dinyatakan di muka: dokumen terbitan sistem baru punya isi, dokumen terbitan Pega tidak.
+--
+-- TIGA KOLOM SENGAJA DIBIARKAN KOSONG:
+--
+--	IMAGEID                 kunci layanan penyimpanan; jalur ini tidak memakainya
+--	CATEGORY, SUB_CATEGORY  `Section/UploadDocument` tidak punya isian untuk keduanya
+--
+-- `IDPEGA` juga kosong: ia `pyWorkPage.pzInsKey`, kunci teknis Pega yang `D-22` larang
+-- dibawa ke data bisnis.
+--
+-- Baris `C_COUNTER_ATTACHMENT` yang prosedur lama sisipkan TIDAK direplikasi. Prosedur itu
+-- memakainya hanya untuk membaca kembali nilai yang baru saja disusunnya; tidak ada satu
+-- pun rule, procedure, atau kueri lain di seluruh export yang membacanya. Barisnya residu,
+-- dan menulisnya berarti menyalin residu.
+--
+-- CURRENT_TIMESTAMP menggantikan `sysdate` — padanan portabel, sesuai disiplin modul ini.
+INSERT INTO POOLDATA.DATA_ATTACHFILE
+       (DATAID, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
+        ATTACHMIMETYPE, ATTACHFILE)
+VALUES (:1, CURRENT_TIMESTAMP, :2, :3, :4,
+        :5, :6)
+
+-- name: bengkel_set_document
+--
+-- Menautkan lampiran ke barisnya, meniru `BENGKEL_HE.DOKUMENID` yang diisi Pega dari
+-- `DATAID` keluaran prosedur lampiran.
+--
+-- Ia dijalankan dalam TRANSAKSI YANG SAMA dengan penyisipan lampirannya: baris lampiran
+-- tanpa tautan tidak dapat ditemukan siapa pun, dan tautan tanpa baris lampiran menunjuk
+-- ke ketiadaan. `D-68` menempatkan kepemilikan transaksi di Go, dan inilah salah satu
+-- tempat yang paling jelas membutuhkannya.
+UPDATE POOLDATA.BENGKEL_HE
+   SET DOKUMENID = :1
+ WHERE TRIM(ID_BENGKEL) = :2
+
+-- name: bengkel_get_document
+--
+-- Asal: RDB List/GetAttachmentFromDB_Sql-SQL.xml
+--
+--   select (CASE WHEN attachfile IS NULL THEN NULL
+--                ELSE pooldata.base64encode (attachfile) END) AS "ATTACHFILE",
+--          ATTACHNAME, ATTACHMIMETYPE, ATTACHNOTE, INPUTDATE, SUB_CATEGORY, IMAGEID
+--     from pooldata.data_attachfile where dataid = ?
+--
+-- `pooldata.base64encode(...)` TIDAK dibawa. Ia function basis data, dan `D-02` menetapkan
+-- tidak ada pemanggilan objek basis data dari aplikasi; isinya dibaca sebagai byte lalu
+-- disandikan di Go bila transportnya memang membutuhkannya. Hasil akhirnya sama, dan satu
+-- ketergantungan pada objek yang source-nya tidak pernah kita lihat hilang.
+--
+-- `SUB_CATEGORY` tidak ikut dibaca: jalur ini tidak pernah mengisinya, sehingga menariknya
+-- hanya menambah kolom yang selalu kosong.
+SELECT DATAID,
+       ATTACHNAME,
+       ATTACHNOTE,
+       ATTACHMIMETYPE,
+       INPUTOPERATOR,
+       INPUTDATE,
+       ATTACHFILE
+  FROM POOLDATA.DATA_ATTACHFILE
+ WHERE TRIM(DATAID) = :1

@@ -21700,6 +21700,522 @@ catatan-pengembangan §83.
 EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
 komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
 berubah karena kueri Pega tidak menyaring kolom itu.
+>>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
+
+## 105. Non-MBU ≤ Rp 50 jt diputus komite grup A/B; kepala kasus komite di TC_PNC_KOMITE (2026-09-29)
+
+Non-MBU sampai Rp 50.000.000 memakai lini EMAILKOMITE NONMBUAB (`SetEmailKomite` step 4),
+dibuktikan dari putusan Pega Juni 2025–September 2026; tanpa itu klaim kecil tidak punya penyetuju
+karena tangga NONMBU aktif baru mulai Rp 5 jt. Grup C (NONMBUC) belum dibedakan. Kepala kasus
+komite disimpan di TC_PNC_KOMITE (baru, dibuat di ASM atas izin Work Owner); anggota tetap di
+T_CLAIM_KOMITE_LIST. Menggantikan sebagian #103: kasus komite kini dua tabel, bukan satu.
+
+## 106. Nomor PNCN, RCVN, dan KMTN tanpa nol di depan, tanpa sequence (2026-09-29)
+
+Work Owner menetapkan nomor urut bertambah tanpa pemadatan: `RCVN.26.1` lalu `RCVN.26.2`, sama
+untuk PNCN dan KMTN. Tidak ada sequence Oracle (CLAIM_NO_NONPEGA_SEQ tidak ada di ASM); ketiganya
+MAX+1 per tahun atas isi tabel, dibaca sebagai angka. KMTN berpindah ke `KMTN.YY.n`; bentuk lama
+`KMTN-00001` tetap dikenali. Menggantikan pemadatan empat digit pada catatan nomor sebelumnya dan
+bentuk `KMTN-` + lima digit pada #105. Batas: KOMITE_ID VARCHAR2(10) → maksimal 99 kasus komite
+per tahun sampai kolom dilebarkan (D-63).
+
+## 107. RCVN yang sudah bernomor klaim terkunci dan tidak dapat diregistrasi ulang (2026-09-29)
+
+Work Owner: isian Input Receive Document terkunci dan tombol Simpan/Register Klaim tidak
+dimunculkan bila RCVN sudah menjadi PNCN. Penanda kuncinya NOKLAIM di T_CLAIM_RECIVEDCLAIM.
+Ditegakkan di server — Simpan (409) dan Register Klaim kedua (409) ditolak — karena sebelumnya
+Register Klaim kedua menerbitkan PNCN baru dan menimpa NOKLAIM. Layar membaca `dapat_disunting`
+dan `sudah_diregistrasi` dari server, tidak menyimpulkannya sendiri.
+
+## 108. Unggah Dokumen klaim menulis DATA_ATTACHFILE dengan DATAID dari ATTACHFILE_SEQ (2026-09-29)
+
+Tombol Unggah Dokumen mengunggah lewat modul dokumen penunjang (layanan penyimpanan internal,
+D-16) lalu menyisipkan satu baris POOLDATA.DATA_ATTACHFILE seperti `PNCSaveAttachmentToDB` — baris
+yang dihitung checklist. DATAID diambil dari POOLDATA.ATTACHFILE_SEQ di dalam INSERT (pengecualian
+dialek kedua setelah nomor klaim) karena Pega masih menulis tabel yang sama; MAX+1 akan membuat
+Pega menabrak PK. Kategori/sub-kategori diambil dari master LST_TYPE_DOC_BUSINESS, bukan dari
+permintaan.
+
+## 109. Isian InputEstimasiDetail berlaku di Input Estimasi dan InputSurveyor (2026-09-29)
+
+ClaimSurvey_sect menanam InputEstimasiDetail_sect, sehingga simpan estimasi, Claim Face Sheet, dan
+Print PLA diterima di kedua tahap (`alsoAction`). Menutup tahap Input Estimasi tetap hanya dari
+layarnya sendiri. Satu editor (`useEstimateEditor`) dipakai kedua layar agar aturannya tidak
+bercabang.
+
+
+## 105. Inbox Banding Harga Salvage: modul tersendiri, empat cacat diperbaiki, satu aturan bernama orang ditiru (2026-09-29)
+
+### 105.1 Modul TERSENDIRI, bukan tab pada Inbox Salvage
+
+**Pertanyaannya nyata, bukan formalitas.** Populasi yang dibayangkan dari harness —
+`PNC_SALVAGE.STSTRANSFER = '7'` — persis sama dengan tab `TabRequestBalai` yang SUDAH ADA di
+modul Inbox Salvage dan disembunyikan (`HiddenNotOnScreen`). Menunjuk `MENU_ID 72` ke rute
+yang sama lalu membuka tab itu adalah jalan termurah.
+
+**Ditolak, dan tiga hal mendukung penolakannya:**
+
+1. `registry.ts` sudah lebih dulu memperingatkannya — menyatukan keduanya berarti
+   menggabungkan dua layar yang di Pega memang terpisah.
+2. Setelah `Section/InboxReqSalvageASM` diterima, ternyata tabel intinya **bukan**
+   `PNC_SALVAGE` melainkan `POOLDATA.T_CLAIM_CHEKER_SALVAGE` — tabel yang tidak dibaca modul
+   Inbox Salvage sama sekali. Jadi bahkan populasinya pun berbeda.
+3. Isolasi Protektif: modul Inbox Salvage sudah selesai dan lulus ujinya. Membuka tab
+   tersembunyinya berarti menyunting modul itu.
+
+### 105.2 Empat cacat Pega DIPERBAIKI — bukan direplikasi
+
+Disetujui Work Owner 2026-09-29 setelah keempatnya dibacakan beserta buktinya. Ketiga belas
+butir `P-5` bertambah efektif empat di layar ini, dan seluruhnya dinyatakan lewat
+`PlannedDifferences()` supaya uji kesetaraan gerbang 1 tidak melaporkannya sebagai bug
+(`D-54`).
+
+| # | Cacat | Kenapa diperbaiki, bukan ditiru |
+|---|---|---|
+| 1 | Aging teks, diurutkan sebagai teks | Urutannya SALAH, bukan sekadar berbeda: `'9 days'` mendahului `'30 days'`, sehingga banding yang paling lama menunggu justru tenggelam. Tampilannya tetap `<n> days` |
+| 2 | `NOTEKOMITE` tidak pernah dipilih kuerinya | Kolom yang digambar tetapi selalu kosong bukan perilaku yang perlu dipertahankan; ia kolom yang tidak pernah bekerja |
+| 3 | `ORDER BY` pada `SELECT COUNT(1)` | Menyebut kolom `TGL_REQUEST` yang nol kemunculan di export, dan pada Oracle berpotensi menggagalkan kuerinya — akibatnya total paginasi tidak pernah terisi |
+| 4 | Pencacah dan daftar menghitung populasi berbeda | Bukan beda penyaring melainkan beda BENTUK: JOIN vs `IN`, dan kolom syaratnya ada di tabel yang berlainan |
+
+**Catatan atas nomor 4.** Modul Inbox Salvage menghadapi cacat sejenis dan Work Owner memilih
+**mereplikasinya** di sana (`counts.go`, keputusan 2026-09-25). Di sini pilihannya berbeda, dan
+itu bukan ketidakkonsistenan: di sana angkanya sudah berjalan dan dibaca orang setiap hari,
+sementara layar ini **belum pernah dipakai siapa pun** — butir menunya dimatikan `IsGCNMUser`
+(§41.15). Tidak ada kebiasaan yang perlu dipertahankan.
+
+### 105.3 Aturan bernama orang DITIRU — keberatan diajukan, keputusan Work Owner dihormati
+
+Penyaring antrean di Pega bukan `PIC = pemanggil`. `Activity/SetReqSalvage_Act` langkah 7–9
+menyaring dengan empat Operator ID yang tertanam di rule: satu orang melihat antrean orang
+lain, dan satu orang hanya melihat baris yang komite sebelumnya sudah putuskan.
+
+**Keberatan disampaikan lebih dulu**, beserta bukti dan tiga alternatif: memakai identitas
+pemanggil apa adanya (rekomendasi saya), membuang penyaringnya, atau menundanya sampai `F-4`.
+Dasarnya `D-15` — nama orang sebagai penentu perilaku adalah tepat yang dilarangnya, dan
+keempat nama itu termasuk 24 Operator ID yang `F-4` hapus.
+
+**Work Owner memilih meniru Pega apa adanya.** Keputusan dihormati dan diterapkan penuh,
+mengikuti preseden §41.15.
+
+**Empat hal yang mengikat penerapannya:**
+
+1. **Seluruhnya di satu berkas** (`komite.go`). Hari `F-4` selesai, yang dihapus adalah satu
+   berkas dan satu pemanggilan — bukan empat nama yang tersebar di kueri, pencacah, dan uji.
+2. **Langkah 9 dibaca sebagai URUTAN GILIRAN, bukan kepemilikan.** Ia menyembunyikan baris yang
+   komite sebelumnya belum putuskan atas barang yang sama. Membacanya sebagai "penyaring milik
+   sendiri" akan membuat seseorang menyimpulkan ia dapat dibuang begitu saja.
+3. **Setiap pembukaan antrean orang lain DICATAT** (`usecase.logDelegation`). Sampai `F-4`
+   menggantikannya, jejak di log itu satu-satunya hal yang menyatakan siapa benar-benar
+   memakainya — dan itu dasar memutuskan kapan aturannya dicabut.
+4. **Layar MENYATAKANNYA ke pengguna.** Tanpa itu, petugas yang melihat antrean komite lain
+   akan menyimpulkan antreannya sendiri kosong — kesimpulan yang tidak akan ia laporkan
+   sebagai kerusakan.
+
+**Satu hal yang TIDAK ditiru:** perbandingan namanya diseragamkan huruf besar dan dipangkas
+spasinya. Di Pega ia dibandingkan apa adanya, sehingga login berhuruf kecil diam-diam melihat
+antrean yang salah. Itu bukan aturan bisnis; ia akibat membandingkan teks tanpa
+menormalkannya.
+
+### 105.4 Versi DAFTAR menjadi kanonikal saat kedua activity berselisih
+
+Kedua activity tidak sepakat pada dua hal:
+
+| | `SetReqSalvage_Act` (daftar) | `GCNMCountRequestSalvage_act` (pencacah) |
+|---|---|---|
+| Perwakilan | hanya `MARIATRIELSA` | `MARIATRIELSA` **atau** `WULANINDRIPAAT` |
+| Syarat `NOT EXISTS` | `STATUSAPPROVE IS NULL` | `STATUSAPPROVE IS NULL **OR = 0**` |
+
+Karena keputusan 105.2 nomor 4 menyamakan pencacah dengan daftarnya, versi **daftar** yang
+berlaku untuk keduanya. `WULANINDRIPAAT` karena itu **tidak** mewakili siapa pun di sistem
+baru; konstantanya tetap dicatat di `komite.go` supaya selisih antar kedua activity tidak
+hilang dari ingatan, dan satu uji menjaga agar ia tidak diam-diam "dilengkapi" kembali —
+melengkapinya akan mengembalikan selisih angka yang baru saja diperbaiki, bagi satu orang.
+
+### 105.5 `ORDER BY` DITAMBAHKAN pada grid History — dan itu bukan pilihan gaya
+
+`HistoryReqSalvage_SQL` tidak punya `ORDER BY` sama sekali. Di Pega itu tidak berakibat karena
+paginasinya ditangani mekanisme lain; di sini paginasinya `OFFSET ... FETCH`, dan tanpa urutan
+yang pasti basis data boleh mengembalikan baris dalam urutan berbeda antar halaman — satu baris
+muncul dua kali sementara baris lain tidak pernah terlihat.
+
+Ditetapkan `NOKLAIM, IDSALVAGE`. `DISTINCT` **tidak** ditambahkan: kueri lama tidak punya, dan
+satu klaim yang punya beberapa pengajuan salvage memang muncul beberapa kali (`P-5`).
+
+### 105.6 Tombol Approve/Reject TIDAK digambar, tetapi rutenya ADA
+
+`Section/ButtonApproveRejectedRequest` tidak ada di export, sehingga kolom mana yang ditulisnya
+pada `T_CLAIM_CHEKER_SALVAGE` dan nilai apa yang disetelnya tidak diketahui. Menambalnya dengan
+tebakan berarti menulis keputusan atas NILAI UANG tanpa mengetahui aturannya — dilarang tegas
+oleh prinsip No Shortcuts.
+
+**Tombolnya tidak digambar** — tombol yang pasti gagal adalah janji yang tidak ditepati.
+**Rutenya tetap ada** (`POST .../tindakan`) dan menjawab `501` beserta alasannya, sehingga
+pemanggil yang menebak jalurnya mendapat keterangan, bukan "halaman tidak ditemukan" yang
+terbaca sebagai kerusakan. Setiap permintaannya dicatat, dan itu yang menjadi dasar memutuskan
+seberapa mendesak section-nya harus diminta.
+
+### 105.7 `check_table` menyebut kolom satu per satu
+
+DDL `T_CLAIM_CHEKER_SALVAGE` belum pernah dibaca. Seluruh nama kolom modul ini disimpulkan dari
+teks kueri Pega, dan **satu di antaranya — `NOTEKOMITE` — bahkan disimpulkan dari nama properti
+gridnya**, bukan dari kueri mana pun.
+
+`SELECT COUNT(*)` akan lolos meski kolomnya tidak ada. Karena itu `check_table` menyebut kedua
+belas kolomnya secara eksplisit: bila salah satunya bernama lain, `-periksa` melaporkannya saat
+aplikasi start lengkap dengan nama kolom yang salah — bukan pengguna yang menemukannya sebagai
+layar galat.
+
+Ini penerapan langsung dari pelajaran `T_CLAIMLIST_ADMIN`: jebakan yang sesungguhnya bukan
+tabel yang tidak ada, melainkan kolom yang disangka ada.
+
+### 105.8 Pencarian tetap COCOK PERSIS
+
+`Activity/SetReqSalvage_Act` langkah 5 dan 11 menyusun penyaringnya dengan tanda sama dengan,
+bukan `LIKE`. Petunjuk di bawah kotaknya pun menyebut satu nomor utuh (`Contoh : PNC-1234`).
+Perilakunya ditiru (`P-5`), dan layar MENYATAKANNYA di bawah kotak cari — pada pencarian cocok
+persis, kekosongan hampir selalu berarti pengguna mengetik separuh nomor, dan tanpa keterangan
+itu ia akan menyimpulkan datanya hilang.
+
+Yang tidak ditiru adalah cara nilainya masuk: `{Asis:...}` yang merangkai kata kunci ke dalam
+teks SQL diganti parameter terikat (`11-SECURITY.md` section 5). Larangan itu tidak ikut
+dikecualikan `P-5` — yang direplikasi adalah perilaku bisnis, bukan celah injeksi.
+
+## 106. Arti `statusapprove` pada banding harga salvage: `1` Approve, `0` Reject (2026-09-29)
+
+Melengkapi 105.6, yang menyatakan arti kedua kode itu belum dapat dipastikan.
+
+**Terjawab dari `Activity/ApprovalCheckerSalvage` langkah 11:**
+
+```
+SalvagePrice = @if(statusapprove == "1", hargarequest, hargasalvage)
+```
+
+`1` menetapkan harga menjadi harga tandingan balai lelang; `0` mempertahankan harga semula.
+Jadi `1` = Approve dan `0` = Reject.
+
+**Kenapa ini tidak boleh disimpulkan tanpa activity-nya.** Pada `T_CLAIM_KOMITE_LIST` kode yang
+sama berarti MENUNGGU (`RDB List/CountAIDiterima_SQL`: `0`=MENUNGGU, `1`=DITERIMA,
+`2`=DITOLAK). Dua tabel, dua arti, kode yang sama. Memilih bacaan yang salah di sini berakibat:
+banding yang ditolak tidak pernah berpindah ke History (bila `0` dibaca "menunggu"), atau
+sebaliknya berpindah padahal belum diputus. Keduanya tidak menghasilkan galat.
+
+**Satu pertanyaan yang tetap terbuka dan dicatat sebagai risiko, bukan sebagai detail.** Siapa
+yang menyetel `TGLAPPROVE`. Grid Request menyaring kolom itu kosong, grid History menuntutnya
+terisi, dan satu-satunya UPDATE yang terbaca hanya menyetel `STATUSAPPROVE`. Bila ternyata
+tidak ada yang mengisinya, kedua grid akan berperilaku salah secara bersamaan — dan itu baru
+terlihat setelah tombolnya dipakai.
+
+**Keputusan kerja.** Arti kedua kode itu DITULIS di `Limitations()` dan dijaga satu uji,
+meskipun tombolnya belum dibangun. Alasannya: ia hasil pembacaan yang mahal — lima putaran
+permintaan artefak — dan keterangan yang hilang akan membuat orang berikutnya menyimpulkannya
+ulang dari tabel yang salah.
+
+## 107. Tombol Approve dan Reject banding harga salvage: tiga keputusan Work Owner (2026-09-30)
+
+Tanggal: 2026-09-30. Modul `inboxbandinghargasalvage`. Ketiganya diputuskan setelah akibatnya
+dibacakan satu per satu beserta buktinya.
+
+### 107.1 Layanan REST ke balai lelang tidak dipanggil
+
+**Yang ditemukan.** `ApprovalCheckerSalvage` langkah 16 memanggil
+`Connect REST/SendData_SalvageSimasBid`, dan berkas itu memuat dua hal yang tidak dapat
+diabaikan: `pyResourcePath` menunjuk host **dev** balai lelang, dan `pyUseAuthentication`
+bernilai `false`. Ia sekelas `R-18` — dua integrasi BRI yang menunjuk host sandbox di dalam
+ruleset produksi.
+
+**Pilihan yang diajukan.** (a) panggil apa adanya, (b) bangun tanpa memanggilnya, (c) tunggu
+alamat produksinya sebelum membangun tombolnya sama sekali.
+
+**Keputusan Work Owner: (b) — bangun tanpa memanggil REST dulu.**
+
+**Akibat yang diterima sadar.** Keputusan komite **tersimpan di basis data tetapi tidak sampai
+ke balai lelang**. Balai lelang tidak mengetahui harga tandingannya diterima atau ditolak
+sampai alamat produksinya ditetapkan.
+
+**Kenapa ini bukan sekadar catatan teknis.** Akibatnya menimpa pihak LUAR yang tidak membaca
+dokumen ini. Karena itu ia dinyatakan di tiga tempat sekaligus: `Limitations()` yang dibaca
+pengguna, kalimat hasil pada setiap keputusan, dan `permintaan-artefak-pega.md` sebagai
+permintaan kepada tim integrasi.
+
+**Yang dibutuhkan untuk menutupnya:** alamat produksi layanan balai lelang, beserta kredensial
+dan cara autentikasinya. Pemilik: **Work Owner + tim integrasi**.
+
+### 107.2 `UpdateDokReqSalvage` ditiru apa adanya, termasuk penyaringnya yang keliru
+
+**Yang ditemukan.** Pernyataan penandaan dokumen menyaring `NOKLAIM` dengan nilai yang
+ternyata **ID detail salvage**, bukan nomor klaim:
+
+```sql
+UPDATE POOLDATA.SALAVAGEDOCUMENT SET IDBALAILELANG='Reject Checker'
+ WHERE NOKLAIM={TempInsert.ClaimNo} ...
+```
+
+`TempInsert.ClaimNo` diisi parameter `iddetailsalvage` di `ApprovalCheckerSalvage` langkah 3.
+Dua kolom bertipe berbeda dibandingkan, sehingga pernyataan itu hampir pasti **tidak
+mencocokkan satu baris pun** — dan karena `UPDATE` yang tidak mencocokkan apa pun bukan galat,
+tidak ada yang pernah mengetahuinya.
+
+**Pilihan yang diajukan.** (a) tiru apa adanya dan catat sebagai selisih, (b) perbaiki
+penyaringnya menjadi nomor klaim.
+
+**Keputusan Work Owner: (a) — tiru apa adanya, catat sebagai selisih.**
+
+**Kenapa (b) tidak diambil, dan kenapa itu masuk akal.** Memperbaikinya berarti menandai baris
+yang selama ini **tidak pernah** tertandai. Tidak ada yang tahu apa yang bergantung pada
+kolom `IDBALAILELANG` tetap kosong — dan memperbaiki cacat yang tidak pernah berakibat dapat
+menimbulkan akibat yang belum pernah ada. Perbaikannya, bila kelak diambil, layak menjadi
+keputusan tersendiri dengan pemeriksaan atas pemakainya.
+
+**Yang dikerjakan sebagai gantinya.** Pernyataannya ditulis ulang apa adanya, dan
+ketidakcocokannya **dinyatakan di muka** pada `PlannedDifferences()` — supaya uji kesetaraan
+gerbang 1 tidak melaporkannya sebagai bug, dan supaya orang berikutnya tidak "memperbaikinya"
+tanpa keputusan.
+
+### 107.3 Modul ini hanya boleh menulis kolom `HARGAITEM`
+
+**Yang ditemukan.** Langkah penerapan harga menulis `POOLDATA.DETAIL_PNC_SALVAGE`, dan tabel
+itu **dimiliki modul Inbox Salvage** (`MENU_ID 71`). `P-1` menetapkan satu tabel hanya boleh
+ditulis satu sistem; di dalam satu sistem, prinsip yang sama berlaku antar modul — dua modul
+yang menulis tabel yang sama dengan aturan validasi berbeda menghasilkan data yang tidak dapat
+ditelusuri.
+
+**Pilihan yang diajukan.** (a) modul ini menulis tabel itu seperlunya, (b) modul ini menulis
+**satu kolom saja**, (c) penerapan harga diserahkan ke modul Inbox Salvage lewat pemanggilan
+antar modul.
+
+**Keputusan Work Owner: (b) — modul ini boleh menulis kolom `HARGAITEM` saja.**
+
+**Kenapa (c) tidak diambil.** Ia paling bersih secara kepemilikan, tetapi menuntut seam baru
+antar dua modul untuk satu pernyataan `UPDATE` — dan seam yang hanya punya satu pemakai adalah
+seam hipotetis, bukan seam nyata.
+
+**Bagaimana batas itu ditegakkan, bukan sekadar dicatat.** Tiga uji memindai berkas `.sql`
+modul ini:
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestHanyaKueriKeputusanYangMenulis` | hanya pernyataan bernama `decide_*` yang boleh menulis |
+| `TestKueriKeputusanHanyaMenyentuhTabelYangDisepakati` | tabel di luar ketiganya ditolak |
+| `TestKueriKeputusanMenjagaPutusanYangSudahAda` | penyaring `TGLAPPROVE IS NULL` tidak boleh hilang |
+
+Batas yang hanya tertulis di dokumen akan dilanggar oleh orang yang tidak membacanya. Ketiga
+uji ini membuatnya gagal di CI, bukan ditemukan saat data sudah rusak.
+
+### 107.4 Satu keputusan kerja yang TIDAK ditanyakan, dan alasannya
+
+Kotak penegasan sebelum menyimpan **tidak** ditanyakan ke Work Owner, dan itu disengaja: ia
+tidak mengubah satu pun aturan bisnis. Hasil akhirnya sama persis dengan satu klik di layar
+lama; yang bertambah hanya kesempatan membaca sebelum menekan, pada putusan yang menyentuh
+nilai uang dan tidak dapat ditarik kembali.
+
+Pembedaannya: yang menyangkut **apa yang terjadi di basis data** ditanyakan; yang menyangkut
+**bagaimana pengguna sampai ke sana** diputuskan sebagai pekerjaan rancangan layar, konsisten
+dengan modul-modul sebelumnya.
+
+## 108. Dokumen lampiran Master Bengkel: isi berkas disimpan, tiga batas baru ditetapkan (2026-09-30)
+
+### Keputusan 1 — isi berkasnya benar-benar disimpan
+
+Jalur unggah Pega **tidak menyimpan berkasnya**. Tiga bukti, dan ketiganya dari sumber:
+
+	Database/SET_ATTACHMENT_64BIT.prc:30-31   INSERT tanpa kolom ATTACHFILE
+	PNCUploadMasterBengkel_Act                nol kemunculan IMAGEID / GenerateimageID / InsertDokumenPNC
+	SaveFilePenunjang                         menghasilkan FileBase64, lalu tidak mengirimnya ke mana pun
+
+Akibatnya baris metadata menunjuk isi kosong, dan "Lihat Dokumen" menemukan lampiran tanpa
+berkas.
+
+Meniru itu apa adanya berarti membangun fitur unggah yang membuang berkasnya, sehingga
+**lubangnya diisi** — memakai pola Pega sendiri, bukan rancangan baru:
+
+	Database/TEMP_SET_ATTACHMENT_64BIT.prc:30-31   menyimpan isi lewat base64decode(tATTACHFILE)
+	RDB List/GetAttachmentFromDB_Sql               membacanya kembali lewat base64encode(attachfile)
+
+Kolomnya ada dan memang dibaca; hanya prosedur simpan yang dipakai layar ini yang
+melewatkannya.
+
+**Ini selisih terencana (`P-5`), bukan perbaikan diam-diam.** Pada uji kesetaraan, dokumen
+terbitan sistem baru punya isi sedangkan dokumen terbitan Pega tidak. Layar membedakan
+keduanya lewat kode galat `dokumen_tanpa_isi`, dan menjelaskan sebabnya kepada pengguna
+alih-alih menawarkan unduhan yang menghasilkan berkas nol byte.
+
+`pooldata.base64encode` TIDAK dipanggil dari aplikasi (`D-02`); isinya dibaca sebagai byte
+lalu disandikan di Go bila transportnya membutuhkannya.
+
+### Keputusan 2 — batas ukuran dan jenis berkas: KEPUTUSAN BARU
+
+Sistem lama tidak punya satu pun pemeriksaan. `GCNMUploadResult64` menghitung ukuran dalam
+KB lalu menaruhnya di parameter, dan angka itu **tidak pernah dibandingkan dengan apa pun**.
+Tidak ada daftar jenis berkas yang diizinkan.
+
+Membiarkannya tanpa batas berarti membuka lubang baru di sistem baru, sehingga ditetapkan:
+
+| Batas | Nilai | Sifat |
+|---|---|---|
+| Ukuran satu berkas | 10 MiB | keputusan modul, bukan aturan bisnis |
+| Jenis yang diterima | pdf · jpg · jpeg · png · csv · xls · xlsx | keputusan modul |
+| Berkas kosong | ditolak | Pega menerimanya |
+
+Ketiganya **bukan salinan**, dan dinyatakan begitu di kode. Mengubahnya cukup menyentuh dua
+konstanta di `document.go`.
+
+Tipe media **tidak dipercaya dari peramban** — nilai itu dapat disetel apa saja oleh klien.
+Yang dipakai adalah akhiran berkas yang sudah lolos daftar izin.
+
+### Keputusan 3 — letak tombolnya PER BARIS, bukan tingkat layar
+
+Di Pega "Upload Document" adalah tombol tingkat layar pada `Section/BrowseMasterHE`,
+sedangkan yang disimpannya adalah `BENGKEL_HE.DOKUMENID` — kolom milik SATU baris. Pada
+layar daftar, tombol tingkat layar tidak menyatakan baris mana yang dilampiri.
+
+Penempatannya karena itu mengikuti bentuk datanya. Penyimpangan letak ini sejenis dengan
+bilah Approve/Reject yang sudah lebih dulu diputuskan begitu.
+
+### Keputusan 4 — tahun pada DATAID diambil dari jam APLIKASI
+
+`SET_ATTACHMENT_64BIT.prc:18-26` menyusun DATAID dari `to_char(sysdate,'yy')` ditambah
+`lpad(ATTACHFILE_SEQ.nextval,10,'0')`. Nomor urutnya dipakai apa adanya — sequence yang sama,
+sehingga deretnya bersambung dan tidak pernah bertabrakan dengan terbitan Pega.
+
+Tahunnya tidak: `SYSDATE` dan `TO_CHAR` dilarang disiplin SQL modul ini, dan pemformatan
+tanggal dilakukan di Go (`D-20`). Ia diambil dari seam `Clock` (`F-5`).
+
+Selisihnya dinyatakan: Pega memakai jam basis data, sistem baru memakai jam aplikasi. Bedanya
+hanya muncul bila kedua jam berada di tahun yang berbeda — pada pergantian tahun, bertaut
+dengan `R-12`, persis seperti nomor klaim pada `D-71`.
+
+### Keputusan 5 — baris C_COUNTER_ATTACHMENT tidak direplikasi
+
+Prosedur lama menyisipkan satu baris ke `C_COUNTER_ATTACHMENT` hanya untuk membaca kembali
+nilai yang baru saja disusunnya. Tidak ada satu pun rule, procedure, atau kueri lain di
+seluruh export yang membacanya — diperiksa langsung. Barisnya residu, dan menulisnya berarti
+menyalin residu.
+
+### Dua uji penjaga yang diperluas, bukan dilemahkan
+
+| Uji | Sebelumnya | Sekarang |
+|---|---|---|
+| `TestFromDualOnlyInSequenceQuery` | satu kueri dikecualikan | himpunan tertutup **dua** kueri urutan, keduanya disebut namanya |
+| `TestOnlyTheMasterTableIsWritten` → `TestOnlyTheseTablesAreWritten` | satu tabel boleh ditulis | **dua** — `BENGKEL_HE` dan `DATA_ATTACHFILE`, dengan penjelasan bahwa "penulis tunggal" pada tabel lampiran bersama berlaku **per baris** |
+
+Keduanya tetap menolak penulisan ke `M_BENGKEL_HE` — tabel JSON milik Pega — yang justru
+paling penting dijaga (`P-1`).
+
+### Satu lampiran per bengkel
+
+`BENGKEL_HE` hanya punya satu kolom `DOKUMENID`, sehingga unggahan berikutnya MENGGANTIKAN
+tautannya. Baris lampiran yang lama tidak dihapus (`D-66`); ia hanya tidak lagi tertaut, dan
+tetap dapat ditemukan lewat DATAID-nya. Layar menyatakan ini sebelum pengguna mengunggah.
+
+### Yang belum dikerjakan, dinyatakan bukan disembunyikan
+
+Impor CSV massal (`PNCUploadMasterBengkelCSV`) belum dibangun. Rantainya sudah terbaca penuh
+— 27 langkah, upsert berdasarkan nama, lookup kota/cabang/bank — tetapi ia memuat satu hal
+yang menuntut keputusan Work Owner lebih dulu: langkah 19–20 memanggil
+`GCNMSetRecommendationLogin_act` lalu `GCNMCreateOperator` dengan **kata sandi tetap yang
+sama untuk setiap bengkel**, sehingga satu unggahan CSV dapat menerbitkan puluhan akun
+berkata sandi itu.
+
+## 105. Master Recovery punya tab Outstanding; penyaringnya sengaja TIDAK ditebak (2026-09-29)
+
+**Mencabut** keputusan sebelumnya bahwa layar Master Recovery adalah form entri tanpa
+daftar. Keputusan itu berdiri di atas kesimpulan yang keliru: *tidak ada kueri pembaca di
+export, berarti tidak ada daftar*. Export-nya sendiri tidak lengkap (`R-16`), dan grid
+Outstanding terbaca jelas di `Section/OutstandingMasterRecovery-Section.xml:17510` — yang
+hilang adalah rule pemuat halaman `Data_BACTH_RECOVERY`, bukan fiturnya.
+
+**Yang ditetapkan sekarang:**
+
+1. `GET /api/master/recovery` ada, dengan lima kolom yang dibaca dari section:
+   `NAMAPRINCIPAL`, `NILAIKLAIM`, `NILAIRECOVERY`, `PEMBAYARAN`, `SISAKLAIM`.
+2. **Tidak ada penyaring "outstanding".** Klausa WHERE aslinya ada di rule yang hilang dan
+   tidak dapat dibaca siapa pun. Menerjemahkannya menjadi `SISAKLAIM > 0` berarti
+   menyembunyikan baris atas dasar tebakan — dan baris yang hilang diam-diam tidak pernah
+   dikeluhkan siapa pun, sedangkan baris berlebih langsung terlihat dan dapat dipersempit
+   begitu rule-nya tiba. Diminta ke Tim Pega bersama `D-39`.
+3. **`PUT` dan `DELETE` tetap tidak ada**, dan dasarnya BERBEDA: ia dibaca dari ISI
+   `INSERTMASTERRECOVERYKLAIM.prc`, yang hanya mengenal INSERT — bukan dari ketidakhadiran
+   sesuatu di export.
+4. Susunan layar mengikuti Pega: judul, tombol Tambah/Refresh di kanannya, satu tab
+   Outstanding, lalu grid. Entri dibuka lewat Tambah. Satu penyimpangan disengaja: panel
+   di tempat, bukan jendela modal — form ini terlalu panjang untuk modal.
+5. Batas `limit` (baku 10, maksimum 100) ditegakkan di lapisan **usecase**, supaya
+   pemanggil mana pun yang ditulis kemudian tidak dapat menarik seluruh tabel.
+
+## 106. Grid Outstanding dikelompokkan per principal, dan View Document ditambahkan (2026-09-29)
+
+**Melengkapi keputusan 105.** Bentuk daftar yang ditetapkan di sana — satu baris per batch,
+terurut menurun — ternyata bukan bentuk layar lama. Work Owner menunjukkan Pega yang
+berjalan pada hari yang sama.
+
+**Yang ditetapkan:**
+
+1. **Satu baris luar per principal**, dan mengekliknya membuka riwayat seluruh batch
+   principal itu. Angka baris luar diambil dari batch **TERAKHIR**, bukan dijumlahkan —
+   terbukti dari tangkapan layar: baris luar 7.000/100.000/153.000 sama persis dengan baris
+   terakhir, sedangkan jumlah pembayarannya 107.000.
+2. **Riwayat terurut dari yang paling lama** (`INSERTDATE` menaik, `BATCH` sebagai
+   pemutus). Urutan menurun yang sempat saya pakai adalah pilihan saya sendiri, bukan
+   perilaku layar lama.
+3. **Paginasi memotong PRINCIPAL, bukan baris.** Memotong per baris memenggal riwayat satu
+   principal di tengah tanpa satu pun tanda bahwa ada yang terpotong.
+4. **Dikelompokkan menurut NAMA**, bukan `CLIENTID`, karena namanyalah yang ditampilkan
+   grid luar. Bila terbukti dua principal dapat bernama sama, kuncinya harus pindah.
+5. **`GET /api/master/recovery/bukti-bayar/{id}`** melayani tombol View Document. Isinya
+   dialirkan **mentah** dan `inline` — bukan base64 lewat `pooldata.base64encode` seperti
+   jalur lama, yang melanggar `D-02` dan tidak diperlukan.
+6. **Dua kegagalan dokumen dibedakan**: `bukti_bayar_tidak_ditemukan` (baris tidak ada)
+   versus `bukti_bayar_di_penyimpanan_lain` (baris ada, isinya di penyimpanan luar per
+   `D-16`). Menyamakannya membuat petugas mencari kesalahan di tempat yang salah.
+7. **`DataTable` mendapat prop `expandedRow`** — opsional, mati secara baku, sehingga
+   sepuluh layar master yang sudah selesai tidak berubah. Pola yang sama dengan `pageSize`
+   dan `showHeaderWhenEmpty`.
+
+**Catatan penting.** Bentuk ini **tidak dapat disimpulkan dari export**: `pyEnableGrouping`
+dan `pyRDLShowDetails` keduanya `false`, sehingga pengelompokan bukan bawaan grid — ia
+dikerjakan rule pemuat halaman `Data_BACTH_RECOVERY` yang hilang (`R-16`). Ia dibaca dari
+layar yang berjalan, dan itu dicatat supaya siapa pun yang kelak membandingkannya dengan
+export tidak menyimpulkan bahwa bentuk ini dikarang.
+
+## 107. View Document membuka daftar dokumen pendukung; berkas tidak aman diunduh, bukan ditampilkan (2026-09-29)
+
+**Mengoreksi keputusan 106 butir 5.** Di sana View Document ditetapkan mengalirkan berkas
+`inline`. Keduanya salah: bentuknya bukan unduhan, dan `inline` untuk setiap jenis adalah
+celah keamanan.
+
+**Yang ditetapkan:**
+
+1. **View Document membuka modal "View Dokument Pendukung"**, berisi tabel berkolom
+   **Input Nama** dan **Tanggal**, dan menulis **"Data Tidak Ada"** saat kosong — mengikuti
+   layar Pega yang berjalan. Berkasnya dibuka dari dalam daftar itu, bukan langsung.
+2. Kedua kolomnya dipetakan ke `INPUTOPERATOR` dan `INPUTDATE` milik
+   `POOLDATA.DATA_ATTACHFILE`, diambil lewat **`LEFT JOIN`** pada kueri daftar. LEFT,
+   karena batch tanpa lampiran wajib tetap muncul.
+3. **Tombol tampil di setiap batch**, termasuk yang tanpa lampiran — mencabut keputusan
+   sebelumnya yang menyembunyikannya. Menyembunyikannya membuat petugas tidak punya cara
+   memastikan sebuah batch memang belum berlampiran.
+4. **`DOKUMENID` yang menunjuk baris tidak ada diperlakukan sebagai "belum ada lampiran"**,
+   bukan sebagai tombol yang menjanjikan berkas yang tidak dapat dibuka.
+5. **`inline` hanya untuk daftar jenis yang aman ditampilkan** — PDF, gambar raster,
+   `text/plain`. Selebihnya `attachment`. `image/svg+xml` **sengaja tidak masuk**: SVG
+   dapat memuat `<script>` yang berjalan saat dibuka langsung.
+6. **`X-Content-Type-Options: nosniff`** pada setiap jawaban berkas.
+7. **Sisi layar membaca `Content-Disposition`**, tidak menebak ulang jenisnya — supaya
+   server dan layar tidak dapat berbeda pendapat.
+
+**Kenapa butir 5–7 bukan soal kerapian.** Jenis isi berasal dari kolom `ATTACHMIMETYPE` di
+basis data, bukan dari kode. Satu baris bernilai `text/html` akan dijalankan peramban
+sebagai halaman **di origin aplikasi ini**, dan skrip di dalamnya membaca sesi pengguna
+yang membukanya. Tabel `DATA_ATTACHFILE` dipakai bersama seluruh modul, dan isinya dapat
+berasal dari unggahan pengguna.
+
+**Batas yang disadari:** tautan batch ke lampiran hanyalah satu kolom `DOKUMENID`, sehingga
+daftar itu berisi paling banyak satu baris hari ini. Bentuk daftar tetap dipakai supaya
+sama dengan layar lama.
+
+**Catatan.** Rule yang membangun modal ini **tidak ada di export** — teks `View Dokument`
+nol kemunculan di seluruh berkas (`R-16`). Bentuknya dibaca dari layar yang berjalan.
+=======
 
 ## 70. Penyaring pemilik Inbox Komite dapat dimatikan, hanya di pengembangan (2026-09-29)
 
@@ -22127,6 +22643,7 @@ nol yang seharusnya satu setengah miliar tidak terlihat keliru.
 2. **Blok surveyor, `ShowTransferDetailHE`, `UploadDocumentKomite`, `ViewPolicyDetail`**
    tetap seperti §72 dan §73.
 
+<<<<<<< HEAD
 ---
 
 ## 75. Inbox Claim Treaty Prop mengikuti Pega produksi, dan Outstanding Claim dibangun (2026-09-30)
@@ -23126,3 +23643,158 @@ ketiga.
 | Kapan kepemilikan objek kerja `ReceiveDocument` berpindah dari Pega — prasyarat kedelapan tombol tulisnya (`P-1`) | Work Owner |
 | Grid dokumen (`.ReceiveDocument.DocumentList`) dan blok Komunikasi belum dibangun; keduanya milik `S-1` dan `S-3` | Work Owner |
 | Apakah `NOREFERENSI` memang "No. Referensi/Placing Slip" (`.Policy.BookNo`) — dipetakan dari nama parameter procedure, belum dikonfirmasi | Tim Pega |
+=======
+## 110. Sumber Inbox Komite: POOLDATA.T_CLAIM_KOMITE_LIST, satu baris per keanggotaan (2026-09-29)
+
+Work Owner menetapkan Inbox Komite dibaca dari T_CLAIM_KOMITE_LIST (bukan worklist Pega) supaya
+kasus KMTN muncul, dengan risiko yang sudah diukur dan diterima: sebagian case Pega yang berjalan
+tidak punya baris tertunda, dan 65 case yang sudah selesai di Pega tetap tampil di Outstanding.
+Header klaim dari T_CLAIM_PNC. Kotak ditentukan per anggota (STATUSAPPROVE/STATUSCASE), dan anggota
+hanya tampil bila jenjang di bawahnya sudah setuju. Menggantikan sumber pada catatan komite
+sebelumnya (InboxRegisterKomite_RD).
+
+## 111. Kolom kanan rincian komite dihitung ulang di Go dari bahannya, bukan disimpan (2026-09-29)
+
+Pega mengisi LEADER, CO MEMBER, List Spreading, dan Fac-Out di clipboard saat case komite dibentuk
+(`CalculatedSpredingForClaimKomite`), dan hasilnya tidak tersimpan di tabel mana pun. Aplikasi ini
+menghitungnya ulang setiap kali rincian dibuka, dengan rumus yang sama, dari `T_CLAIM_ADJUSTMENT`,
+`T_CLAIM_SPREADING`, dan CoinsList `JSON_POLIS` — tanpa tabel baru dan tanpa perubahan skema
+(`D-63` tidak tersentuh). Yang rumus atau bahannya tidak terbaca (Fac-Out, Quota Share, status
+premi) ditampilkan sebagai "belum", bukan dikarang. Kolom uang rincian dibulatkan ke sen di SQL
+karena Pega menyimpan desimal lebih halus dan money.Money menolaknya.
+
+## 112. Salvage B dan Interim pada tabel Claim Adjustment diturunkan, bukan dibaca (2026-09-29)
+
+Keduanya tidak punya kolom di `T_CLAIM_ADJUSTMENT`; yang tersimpan hanya `GROSSVALUE = Final −
+SalvageB − Interim`. Interim dihitung ulang dengan aturan registrasi (gross baris Interim yang sudah
+diakseptasi pada coverage yang sama, hanya Non-MBU), dan Salvage B adalah sisanya — kosong bila
+tidak positif, seperti Pega menampilkan Salvage B yang tidak diisi. History komite dibaca per klaim
+(bukan per baris adjustment) karena `ComiteeClaim` Pega hanya hidup di clipboard.
+
+## 113. Keputusan komite dibuka kembali, khusus case KMTN (2026-09-29)
+
+Work Owner membatasi pencabutan tombol keputusan (hari yang sama): case KMTN — dibentuk aplikasi
+ini, kepalanya di TC_PNC_KOMITE — boleh diputuskan dari layar rincian komite lewat
+`DecideCommittee` modul registrasi. Case Pega tetap hanya-baca karena tabel dan alurnya masih milik
+Pega (`P-1`), dan rute keputusan modul komite (`/api/komite/inbox/{nomor}/keputusan`) tetap tidak
+dipakai. Tidak ada tabel atau kolom baru.
+
+## 114. Tombol akseptasi dibangun, prosesnya menunggu export dan contoh PDF (2026-09-29)
+
+Work Owner memutuskan: template LOD, Draft Persetujuan, dan DLA menunggu contoh PDF (seperti PLA);
+proses Persetujuan / Akseptasi menunggu flow action `AcceptationLOD` masuk ke export. Yang dibangun
+hanya tombol beserta aturan tampil/matinya dari `ShowAdjustment_sect`, dan pembacaan
+`STATUSAKSEPTASILOD` di registrasi (tanpa menulisnya). Tidak ada proses karangan dan tidak ada
+tabel baru.
+
+## 115. Print LOD hanya untuk jenis yang ada contohnya; Simpan akseptasi menunggu activity (2026-09-29)
+
+Work Owner memutuskan: Print LOD dibangun untuk jenis yang contoh PDF-nya ada ("Property - Final
+dengan Co Member"), 15 jenis lain menolak dengan pesan template belum tersedia; form Persetujuan /
+Akseptasi dibangun dari `AcceptationLOD_Sect` dengan Simpan dimatikan sampai
+`SetAdjustmentAcceptation` masuk export; Print DLA menunggu contoh PDF. Mencetak LOD tidak menulis
+kolom apa pun (akibatnya di Pega tidak terbaca) — hanya jejak audit. Tidak ada tabel atau kolom baru.
+
+## 116. Akseptasi dan Print DLA menunggu; kolom baru T_CLAIM_ADJUSTMENT disetujui untuk nanti (2026-09-29)
+
+Work Owner memutuskan proses Persetujuan / Akseptasi menunggu activity yang dipanggilnya masuk
+export, dan Print DLA hanya dapat dilakukan setelah akseptasi (ikut menunggu). Untuk saat
+akseptasi dibangun: nomor akseptasi terbit sama seperti Pega (juga bila Persetujuan
+Tertanggung = 0), dan isian form tanpa kolom disimpan sebagai kolom baru `T_CLAIM_ADJUSTMENT` —
+perubahan skema itu tetap menempuh DBA (`D-63`) dan BELUM dijalankan. Email LOD/DLA: print saja,
+tombol kirim menunggu badan email. Tidak ada tabel atau kolom baru pada tahap ini.
+
+## 117. Akseptasi LOD dibangun tanpa PA, kasir, Outstanding Acceptance, dan SLIK (2026-09-30)
+
+Work Owner memutuskan: cek premi disertakan (layanan `getPremiumPaidOn_before`, alamat dari
+GCNM_CONNECT_REST per APP); PA menunggu bersama Transfer Kasir (paket `gl.pkg_pelunasan_kasir`
+tidak ada di export dan kredensial kasir tertanam di rule); Outstanding Acceptance dan SLIK
+dilewati dan dicatat; PDF tanpa logo sampai berkas logo tersedia. Status premi yang tidak dapat
+dibaca menahan akseptasi (Pega meloloskannya diam-diam). Tujuh isian form menjadi kolom baru
+T_CLAIM_ADJUSTMENT lewat migrasi 0013 yang dijalankan DBA (`D-63`).
+
+## 118. Template LOD disalin dari contoh PDF, termasuk salah ketiknya (2026-09-30)
+
+**Konteks:** template LOD Pega (section/HTML di balik `PrintLODdanEmail`) tidak ada di export;
+satu-satunya sumber adalah 15 contoh PDF Work Owner. Contoh-contohnya tidak seragam — tanda
+baca nilai ("500.000.-", "500.000-", "500.000 -("), penulisan tanggal cetak, gaya huruf, dan
+beberapa salah ketik berbeda antar jenis.
+
+**Keputusan:** setiap jenis punya templatenya sendiri yang menyalin contohnya kalimat per
+kalimat, termasuk salah ketik dan tanda baca janggal, karena hasil yang benar selama migrasi
+adalah hasil yang sama dengan Pega (P-5). Merapikan kalimat surat pernyataan adalah perubahan
+isi dokumen hukum dan bukan wewenang tim pengembang.
+
+**Tambahan:** baris tabel co member untuk polis tanpa CoinsList ("PT. Asuransi Sinar Mas
+100 %") diambil dari contoh, bukan dikarang. Jenis 16 tetap ditolak sampai contohnya ada.
+
+## 119. Jenis LOD yang dicetak disimpan ke PDFTYPE (2026-09-30)
+
+**Konteks:** form akseptasi Pega menampilkan Tipe PDF dan Tanggal Cetak LOD baca saja dari
+clipboard, yang diisi saat Print LOD dalam sesi yang sama. PDFTYPE kosong pada seluruh baris
+Pega karena Pega tidak pernah menyimpannya.
+
+**Keputusan:** Print LOD menulis PDFTYPE (jenis terakhir) dan PRINTLOD_DATE (hanya bila kosong)
+pada baris T_CLAIM_ADJUSTMENT klaim aplikasi ini. Tanpa clipboard, inilah satu-satunya cara
+form akseptasi menampilkan keduanya. Kolom sudah ada — tidak ada migrasi. Selisih terhadap
+Pega hanya pada isi PDFTYPE, yang tidak dibaca rule Pega mana pun dari basis data.
+
+## 120. Konversi AVIF dapat dilewati lewat penanda, padam secara baku (2026-09-30)
+
+**Konteks:** Work Owner meminta konversi AVIF di-skip sementara. Pega selalu mengonversi
+PNG/JPG/JPEG/PDF sebelum mengunggah.
+
+**Keputusan:** penyimpangan ini dibuat sebagai penanda lingkungan yang padam secara baku,
+bukan penghapusan kode, supaya lingkungan yang layanan konversinya siap tetap sama dengan Pega
+dan pengembalian cukup mengubah konfigurasi. Selama penanda menyala, berkas tersimpan dalam
+format asli — berbeda dari dokumen yang diunggah Pega (AVIF).
+
+## 121. Kunci dokumen penyimpanan diterbitkan aplikasi (2026-09-30)
+
+**Konteks:** respons layanan penyimpanan tidak memuat ImageID, dan Pega memang tidak membacanya
+dari sana (`InsertDokumenPNC` :4216, :4448); kuncinya hasil `GenerateImageID`, dan keberhasilan
+unggah dinilai dari `URLImage` (:4728).
+
+**Keputusan:** ImageID diterbitkan aplikasi dengan rumus yang sama (MD5 `'ASMPP'` + waktu
+milidetik, heksadesimal huruf besar). Satu penyimpangan kecil yang disengaja: dalam satu proses
+waktunya dijaga selalu maju minimal 1 ms, karena rumus aslinya menghasilkan kunci kembar bila
+dua berkas terbit pada milidetik yang sama. `URLImage` kosong diperlakukan sebagai kegagalan
+unggah — Pega sendiri melewati pencatatan metadata dalam keadaan itu tanpa pesan, sehingga
+berkasnya hilang diam-diam; di sini pengguna diberi tahu.
+
+## 122. Kode akses penyimpanan dapat dikonfigurasi (2026-09-30)
+
+**Konteks:** layanan penyimpanan menolak token sekali pakai `GET_TOKEN_STORAGE` ("invalid
+kodestring data"), sementara aplikasi yang berhasil mengunggah tidak meninggalkan token
+sekali pakai, dan folder uji lain memakai kode akses statis.
+
+**Keputusan:** kode akses terdaftar dibaca dari `PENYIMPANAN_DOKUMEN_KODE_AKSES` (rahasia,
+ADR-0025). Diisi → dikirim sebagai `KodeString`, tanpa baris GCP_IMAGE baru. Kosong → perilaku
+Pega (`GET_TOKEN_STORAGE`). Nilainya harus berasal dari pemilik layanan penyimpanan; aplikasi
+tidak membuat atau menyisipkan kode statis sendiri.
+
+## 123. Print DLA dibangun untuk keempat pengolah (2026-09-30)
+
+**Konteks:** Work Owner meminta Print DLA aktif dan memilih keempat jenis sekaligus (COINS, Fac
+Out, Treaty, BPPDAN/EQ POOL), gerbang ex gratia mengikuti Pega, PDF diunduh langsung (bukan
+lampiran klaim), dan Kirim DLA nonaktif sampai SMTP tersedia.
+
+**Keputusan:** aturan dibaca dari `GenerateDLAList`, `DLACoins_act`, `DLAFacout_act`,
+`DLATreaty_Act`, `DLABPPDAN_act`, `DownloadDLA`, `INSERT_PLADLA.prc`, dan `PLA_DLA.prc`; nilai
+disimpan sebagai teks desimal dengan pembulatan tiap `@divide` rule asalnya (bilangan rasional,
+setengah menjauhi nol — mode pembulatan Pega tidak tercantum di export). Keanehan Pega yang
+mengubah hasil (penghitungan ganda totalConvert, label EQ POOL) dibawa apa adanya (`P-5`) dan
+dicatat, bukan diperbaiki diam-diam. Bagian yang bergantung pada data yang tidak ada di model
+klaim (ContractNo cargo, kanal kredit, TKA) tidak ditebak.
+
+## 124. Transfer Kasir jalur langsung (2026-09-30)
+
+**Konteks:** dialog Pega (`ValidasiTransferKasir_dialog`) tidak ada di export; alamat dasar
+Kasir dan kredensialnya berada di konfigurasi instans / tertanam di rule.
+
+**Keputusan (Work Owner):** alamat layanan dibaca dari `POOLDATA.GCNM_CONNECT_REST` per APP
+portal dan TYPESERVICE; kredensial dari KASIR_USER / KASIR_PASSWORD; hanya syarat DLA tercetak
+yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status transfer dibaca
+dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
+baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.
+>>>>>>> dev

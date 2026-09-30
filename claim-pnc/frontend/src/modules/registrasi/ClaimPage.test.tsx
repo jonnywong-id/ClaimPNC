@@ -394,6 +394,7 @@ describe('tahap Input Estimasi', () => {
   }
 
   let estimateBody: { url: string; body: unknown } | null = null
+  let uploads: FormData[] = []
   let itemOptions: { nama: string; kelompok: string; tsi_sen: number }[] = []
 
   function stubEstimate(claim: unknown = AT_ESTIMATE) {
@@ -402,7 +403,10 @@ describe('tahap Input Estimasi', () => {
       if (url === '/api/registrasi/alur') body = ALUR
       else if (url.includes('/pilihan-item')) body = { pilihan: itemOptions }
       else if (url.endsWith('/survey')) body = RECORDS.survey
-      else if (url.endsWith('/dokumen')) body = RECORDS.dokumen
+      else if (url.endsWith('/dokumen')) {
+        if (init?.method === 'POST') uploads.push(init.body as FormData)
+        body = RECORDS.dokumen
+      }
       else if (url.endsWith('/progres')) body = RECORDS.progres
       else if (url.startsWith('/api/registrasi/klaim/')) body = claim
       else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }, { id: '10001', nama: 'USD' }] }
@@ -416,6 +420,7 @@ describe('tahap Input Estimasi', () => {
 
   beforeEach(() => {
     estimateBody = null
+    uploads = []
     itemOptions = []
   })
 
@@ -498,6 +503,29 @@ describe('tahap Input Estimasi', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Penerima Klaim' }))
     expect(screen.getByRole('columnheader', { name: 'Alamat' })).toBeInTheDocument()
+  })
+
+  // Sub-tab Estimasi Pembayaran InputSurveyor adalah section InputEstimasiDetail yang sama
+  // dengan Input Estimasi (ClaimSurvey_sect menanamnya): estimasi dapat ditambah dan disimpan
+  // tanpa memindahkan tahap — Kirim PIC Teknik tidak ada di sini.
+  it('Choose Surveyor: Estimasi Pembayaran dapat ditambah dan disimpan', async () => {
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor' },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('region', { name: 'InputSurveyor' })
+    await user.click(screen.getByRole('tab', { name: 'Estimasi Pembayaran' }))
+    expect(screen.getByRole('button', { name: 'Download Claim Face Sheet' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kirim PIC Teknik' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(estimateBody).not.toBeNull())
+    expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan')
+    expect(estimateBody?.body).toMatchObject({ tugas_id: 'tugas-1', kembali: false })
   })
 
   // Choose Surveyor dirutekan ke PIC Teknik; bila tugas milik orang lain, Tambah dikunci
@@ -928,13 +956,37 @@ describe('tahap Input Estimasi', () => {
     expect(await screen.findByText('PELAPORAN KLAIM')).toBeInTheDocument()
     expect(screen.getByText('Ya')).toBeInTheDocument()
     expect(screen.getByText('laporan.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Unggah Dokumen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Unggah Dokumen' })).toBeEnabled()
 
     await user.click(screen.getByRole('tab', { name: 'Progress Claim & Komunikasi' }))
     expect(await screen.findByText('Auto Create Register')).toBeInTheDocument()
     expect(screen.getByText('POLIS BELUM ADA')).toBeInTheDocument()
     expect(screen.getByText('Mohon laporan survey')).toBeInTheDocument()
     expect(screen.getByText('Sudah dikirim')).toBeInTheDocument()
+  })
+
+  // Tombol Unggah Dokumen: berkas, jenis dokumen baris itu, dan catatan dikirim multipart.
+  it('mengunggah dokumen dari baris checklist', async () => {
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('region', { name: 'Input Estimasi' })
+    await user.click(screen.getByRole('tab', { name: 'Unggah Dokumen' }))
+    await user.click(await screen.findByRole('button', { name: 'Unggah Dokumen' }))
+
+    const unggah = screen.getByRole('button', { name: 'Unggah' })
+    expect(unggah).toBeDisabled()
+    await user.upload(screen.getByLabelText('Berkas'), new File(['%PDF'], 'lapor.pdf', { type: 'application/pdf' }))
+    await user.type(screen.getByLabelText('Catatan'), 'asli')
+    await user.click(unggah)
+
+    await waitFor(() => expect(uploads).toHaveLength(1))
+    const sent = uploads[0]!
+    expect((sent.get('berkas') as File).name).toBe('lapor.pdf')
+    expect(sent.get('jenis_dokumen')).toBe(RECORDS.dokumen.kategori[0]!.dokumen[0]!.id)
+    expect(sent.get('catatan')).toBe('asli')
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Unggah' })).toBeNull())
   })
 
   // Lini Fire: Objek dipilih dari item properti polis, dan kelompoknya ikut terkirim.

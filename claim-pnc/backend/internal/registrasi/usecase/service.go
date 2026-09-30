@@ -37,33 +37,42 @@ type Caller struct {
 type Service struct {
 	flow registrasi.Definition
 
-	claim       registrasi.ClaimRepo
-	task        registrasi.TaskRepo
-	policy      registrasi.PolicyRepo
-	number      registrasi.NumberIssuer
-	parameter   registrasi.Parameter
-	rate        registrasi.ExchangeRateSource
-	assigner    registrasi.Assigner
-	notifier    registrasi.Notifier
-	audit       registrasi.AuditRecorder
-	reportLink  registrasi.ClaimReportLink
-	area        registrasi.AreaDirectory
-	items       registrasi.PolicyItemSource
-	currency    registrasi.CurrencyDirectory
-	options     registrasi.ItemOptionSource
-	records     registrasi.ClaimRecordSource
-	faceSheet   registrasi.FaceSheetSource
-	renderer    registrasi.FaceSheetRenderer
-	pla         registrasi.PLASource
-	plaRenderer registrasi.PLARenderer
-	groups      registrasi.GroupSource
-	inbox       registrasi.InboxMirror
-	accounts    registrasi.AccountDirectory
-	tiering     registrasi.CommitteeTiering
-	committees  registrasi.CommitteeStore
-	id          registrasi.IDGenerator
-	unit        registrasi.UnitOfWork
-	clock       clock.Clock
+	claim          registrasi.ClaimRepo
+	task           registrasi.TaskRepo
+	policy         registrasi.PolicyRepo
+	number         registrasi.NumberIssuer
+	parameter      registrasi.Parameter
+	rate           registrasi.ExchangeRateSource
+	assigner       registrasi.Assigner
+	notifier       registrasi.Notifier
+	audit          registrasi.AuditRecorder
+	reportLink     registrasi.ClaimReportLink
+	area           registrasi.AreaDirectory
+	items          registrasi.PolicyItemSource
+	currency       registrasi.CurrencyDirectory
+	options        registrasi.ItemOptionSource
+	records        registrasi.ClaimRecordSource
+	faceSheet      registrasi.FaceSheetSource
+	renderer       registrasi.FaceSheetRenderer
+	pla            registrasi.PLASource
+	plaRenderer    registrasi.PLARenderer
+	dla            registrasi.DLASource
+	dlaRenderer    registrasi.DLARenderer
+	cashier        registrasi.CashierStore
+	cashierGateway registrasi.CashierGateway
+	lodRenderer    registrasi.LODRenderer
+	acceptance     registrasi.AcceptanceSource
+	premium        registrasi.PremiumService
+	groups         registrasi.GroupSource
+	inbox          registrasi.InboxMirror
+	accounts       registrasi.AccountDirectory
+	tiering        registrasi.CommitteeTiering
+	committees     registrasi.CommitteeStore
+	documents      registrasi.DocumentUploader
+	attachments    registrasi.AttachmentStore
+	id             registrasi.IDGenerator
+	unit           registrasi.UnitOfWork
+	clock          clock.Clock
 
 	validateOnReturn bool
 }
@@ -103,6 +112,16 @@ type Options struct {
 	// PLA menerbitkan dan membaca PLA koasuransi; PLARenderer membentuk dokumennya.
 	PLA         registrasi.PLASource
 	PLARenderer registrasi.PLARenderer
+	// DLA menerbitkan dan membaca Definite Loss Advice; DLARenderer membentuk dokumennya.
+	DLA         registrasi.DLASource
+	DLARenderer registrasi.DLARenderer
+	// Cashier membaca kode bank dan menulis log serta status Transfer Kasir; CashierGateway
+	// mengirim pembayaran ke sistem Kasir.
+	Cashier        registrasi.CashierStore
+	CashierGateway registrasi.CashierGateway
+
+	// LODRenderer membentuk PDF Letter of Discharge (tombol Print LOD).
+	LODRenderer registrasi.LODRenderer
 
 	// Groups membaca keanggotaan grup pengguna (POOLDATA.M_LOGIN_GROUP_PNC) — penentu
 	// peran dan tahap yang boleh dikerjakannya (access.go).
@@ -119,6 +138,16 @@ type Options struct {
 	// kasus komite di POOLDATA.T_CLAIM_KOMITE_LIST.
 	CommitteeTiering registrasi.CommitteeTiering
 	Committees       registrasi.CommitteeStore
+
+	// Documents mengunggah berkas ke layanan penyimpanan (modul dokumen penunjang);
+	// Attachments mencatat barisnya di POOLDATA.DATA_ATTACHFILE — tombol Unggah Dokumen.
+	Documents   registrasi.DocumentUploader
+	Attachments registrasi.AttachmentStore
+
+	// Acceptance menyimpan Persetujuan / Akseptasi (nomor ALOD, isian, riwayat, progres);
+	// Premium memanggil layanan status premi yang memeriksa premi sebelum akseptasi.
+	Acceptance registrasi.AcceptanceSource
+	Premium    registrasi.PremiumService
 
 	IDGenerator registrasi.IDGenerator
 	UnitOfWork  registrasi.UnitOfWork
@@ -174,11 +203,20 @@ func NewService(o Options) (*Service, error) {
 	check("PembentukFaceSheet", o.FaceSheetRenderer != nil)
 	check("PLA", o.PLA != nil)
 	check("PembentukPLA", o.PLARenderer != nil)
+	check("DLA", o.DLA != nil)
+	check("PembentukDLA", o.DLARenderer != nil)
+	check("Kasir", o.Cashier != nil)
+	check("LayananKasir", o.CashierGateway != nil)
+	check("PembentukLOD", o.LODRenderer != nil)
 	check("GrupPengguna", o.Groups != nil)
 	check("DaftarKerja", o.Inbox != nil)
 	check("MasterRekening", o.Accounts != nil)
 	check("PenjenjanganKomite", o.CommitteeTiering != nil)
 	check("KasusKomite", o.Committees != nil)
+	check("UnggahDokumen", o.Documents != nil)
+	check("LampiranKlaim", o.Attachments != nil)
+	check("Akseptasi", o.Acceptance != nil)
+	check("LayananPremi", o.Premium != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -208,12 +246,21 @@ func NewService(o Options) (*Service, error) {
 		renderer:         o.FaceSheetRenderer,
 		pla:              o.PLA,
 		plaRenderer:      o.PLARenderer,
+		dla:              o.DLA,
+		dlaRenderer:      o.DLARenderer,
+		cashier:          o.Cashier,
+		cashierGateway:   o.CashierGateway,
+		lodRenderer:      o.LODRenderer,
+		acceptance:       o.Acceptance,
+		premium:          o.Premium,
 		groups:           o.Groups,
 		inbox:            o.Inbox,
 		accounts:         o.Accounts,
 		tiering:          o.CommitteeTiering,
 		committees:       o.Committees,
-		id:              o.IDGenerator,
+		documents:        o.Documents,
+		attachments:      o.Attachments,
+		id:               o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,
 		validateOnReturn: o.ValidateOnReturn,
@@ -298,7 +345,7 @@ func (l *Service) loadOpenTask(fctx loadContext) (registrasi.Claim, registrasi.T
 	if fctx.requiredStage != "" && stage.ID != fctx.requiredStage {
 		return registrasi.Claim{}, registrasi.Task{}, registrasi.ErrStageMismatch
 	}
-	if fctx.action != "" && stage.ExitAction != fctx.action {
+	if fctx.action != "" && stage.ExitAction != fctx.action && (fctx.alsoAction == "" || stage.ExitAction != fctx.alsoAction) {
 		return registrasi.Claim{}, registrasi.Task{}, fmt.Errorf("%w: %q pada tahap %q",
 			registrasi.ErrInvalidAction, fctx.action, stage.ID)
 	}
@@ -331,6 +378,12 @@ type loadContext struct {
 	// action menolak tindakan yang tidak menjadi penutup tahap itu. Kosong berarti
 	// action tidak diperiksa.
 	action string
+
+	// alsoAction adalah penutup tahap lain yang juga diterima. Dipakai isian yang tampil di
+	// dua tahap: section InputEstimasiDetail ditanam di Input Estimasi DAN InputSurveyor
+	// (ClaimSurvey_sect), sehingga simpan estimasi, Claim Face Sheet, dan Print PLA berlaku
+	// di keduanya. Menutup tahapnya tetap hanya lewat action.
+	alsoAction string
 }
 
 // ResolveCaller melengkapi pemanggil dengan perannya dari POOLDATA.M_LOGIN_GROUP_PNC.

@@ -104,6 +104,16 @@ export type Settlement = {
   catatan: string
   status_akseptasi: string
   nomor_akseptasi: string
+  /** STATUSAKSEPTASILOD — `.AcceptationStatusLOD`: "" belum, "1" disetujui, "0" tidak. */
+  status_akseptasi_lod?: string
+  /** Print LOD terakhir (PRINTLOD_DATE, RFC3339) dan jenisnya (PDFTYPE) — baca saja di form akseptasi. */
+  tanggal_cetak_lod?: string
+  tipe_pdf_lod?: string
+  nama_tipe_pdf_lod?: string
+  /** Transfer Kasir: TRANSFER_CASHIER_DATE, IDCHASIER, dan penanda sudah ditransfer. */
+  tanggal_transfer_kasir?: string
+  case_id_kasir?: string
+  sudah_transfer_kasir?: boolean
   /** Terisi begitu baris ditransfer ke komite (CASEIDKOMITE); baris itu tidak dapat ditransfer ulang. */
   komite_id?: string
   tanggal_transfer_komite?: string
@@ -560,4 +570,59 @@ export type PLAListResponse = {
   revisi_cfs: number
   baru_terbit: number
   pla: PLARow[]
+}
+
+/**
+ * Alamat satu baris adjustment untuk dialog Print DLA. Indeks berbasis 1. Nomor memilih satu
+ * DLA untuk dicetak (kosong = seluruhnya); catatan berisi REMARKS per nomor yang belum dicetak.
+ */
+export type DLARequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  nomor?: string
+  catatan?: Record<string, string>
+  sesuai_polis?: boolean
+}
+
+/** Satu baris grid layar PrintDLA. */
+export type DLARow = {
+  nomor: string
+  penerima: string
+  tipe: string
+  catatan: string
+  email: string
+  tanggal: string
+  nilai: string
+  mata_uang: string
+  sudah_cetak: boolean
+  sudah_kirim: boolean
+}
+
+/** Alamat satu baris adjustment untuk Transfer Kasir. Indeks berbasis 1. */
+export type CashierRequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+}
+
+/** Isi dialog konfirmasi Transfer Kasir; masalah berisi galat validasi pertama. */
+export type CashierPreview = {
+  nomor_akseptasi: string
+  penerima: string
+  nomor_rekening: string
+  nama_bank: string
+  email: string
+  nilai_nett_sen: number
+  mata_uang: string
+  masalah: string
+}
+
+export type DLAListResponse = {
+  baru_terbit: number
+  ex_gratia: boolean
+  peringatan: string[]
+  dla: DLARow[]
 }

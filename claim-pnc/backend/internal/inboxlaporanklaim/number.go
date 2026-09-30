@@ -24,16 +24,16 @@ import (
 // Segmen tahun ada, sehingga deretnya boleh berulang tiap tahun tanpa menerbitkan nomor
 // ganda: `RCVN.26.0001` dan `RCVN.27.0001` adalah dua nomor yang berbeda.
 //
-// # Nomor urut dipadatkan nol sampai empat digit, dan TUMBUH bila terlampaui
+// # Nomor urut TANPA nol di depan
 //
-// Lebar tetap membuat urutan teks sama dengan urutan angka DI DALAM SATU TAHUN, sehingga
-// `ORDER BY` atas kolomnya benar tanpa mengurai apa pun. `D-71` butir 2 mencatat cacat
-// sebaliknya pada nomor klaim: tanpa pemadatan, ".10" mendahului ".9".
+// Work Owner, 2026-09-29: `RCVN.26.1`, lalu `RCVN.26.2`, dan seterusnya — bukan
+// `RCVN.26.0001`. Sama dengan sintaks `TO_CHAR(seq.NEXTVAL)` tanpa format mask pada `D-71`.
 //
-// Memotongnya pada empat digit akan menerbitkan nomor ganda pada berkas ke-10.001, dan
-// nomor ganda jauh lebih mahal daripada kolom yang melebar.
+// Akibat yang diterima: urutan TEKS tidak lagi sama dengan urutan terbit (".10" mendahului
+// ".9", `D-71` butir 2). Penerbitan nomor tidak terpengaruh karena kuerinya membaca angka
+// (TO_NUMBER), dan nomor berlebar empat digit yang telanjur terbit tetap sah.
 func FormatReportNumber(year int, sequence int64) string {
-	return fmt.Sprintf("%s.%02d.%04d", ReportNumberPrefix, year%100, sequence)
+	return fmt.Sprintf("%s.%02d.%d", ReportNumberPrefix, year%100, sequence)
 }
 
 // IssuedHere menyatakan sebuah nomor diterbitkan aplikasi ini, bukan Pega.

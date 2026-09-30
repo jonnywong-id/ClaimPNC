@@ -39,6 +39,18 @@ const (
 	// CodeLoginTaken dibedakan dengan alasan yang sama.
 	CodeLoginTaken = "login_sudah_dipakai"
 
+	// CodeDocumentNotFound berarti bengkelnya ada tetapi belum punya lampiran, atau
+	// DOKUMENID-nya menunjuk baris yang tidak ada.
+	CodeDocumentNotFound = "dokumen_tidak_ditemukan"
+
+	// CodeDocumentEmpty dibedakan dari CodeDocumentNotFound dengan sengaja.
+	//
+	// Ia keadaan warisan: barisnya ADA, isinya tidak pernah tersimpan karena jalur unggah
+	// Pega tidak pernah menulis kolom isinya. Membedakannya membuat layar dapat
+	// menjelaskan sebabnya, alih-alih menyatakan dokumennya tidak ada padahal keterangannya
+	// terlihat di baris yang sama.
+	CodeDocumentEmpty = "dokumen_tanpa_isi"
+
 	// CodeUnknownStatus muncul bila status yang diminta di luar "0", "1", "2".
 	CodeUnknownStatus = "status_tidak_dikenal"
 )
@@ -138,6 +150,12 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		return http.StatusNotFound, ErrorResponse{
 			Code:    CodeNotFound,
 			Message: "Bengkel yang dimaksud tidak ditemukan. Mungkin sudah diubah petugas lain — muat ulang daftarnya.",
+		}, true
+
+	case errors.Is(err, masterbengkel.ErrDocumentNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeDocumentNotFound,
+			Message: "Bengkel ini belum punya dokumen terlampir.",
 		}, true
 
 	default:

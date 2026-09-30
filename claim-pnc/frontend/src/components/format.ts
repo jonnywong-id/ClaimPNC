@@ -74,6 +74,21 @@ export function todayWIB(): string {
 }
 
 /**
+ * formatDateTimeWIB menulis waktu RFC3339 sebagai `dd/MM/yyyy H:mm` menurut WIB — bentuk
+ * DateTime Pega pada isian baca saja, mis. Tanggal Cetak LOD "30/09/2026 7:59".
+ */
+export function formatDateTimeWIB(iso: string | undefined): string {
+  if (!iso) return ''
+  const t = new Date(iso)
+  if (Number.isNaN(t.getTime())) return iso
+  const wib = new Date(t.getTime() + 7 * 60 * 60_000)
+  const day = String(wib.getUTCDate()).padStart(2, '0')
+  const month = String(wib.getUTCMonth() + 1).padStart(2, '0')
+  const minute = String(wib.getUTCMinutes()).padStart(2, '0')
+  return `${day}/${month}/${wib.getUTCFullYear()} ${wib.getUTCHours()}:${minute}`
+}
+
+/**
  * rupiahToCents membaca angka yang diketik pengguna menjadi sen.
  *
  * Pemisah ribuan titik dan desimal koma diterima, karena itu yang diketik orang di

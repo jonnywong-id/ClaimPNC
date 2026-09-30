@@ -26,6 +26,11 @@ const SampleSite = "01"
 // urut pertama dan tidak bertabrakan dengan baris contoh di bawah.
 const SampleSequence int64 = 3
 
+// SampleDocumentYear adalah dua digit tahun pada DATAID contoh.
+//
+// Dipatok, bukan diambil dari jam berjalan — lihat catatan pada field documentYear.
+const SampleDocumentYear = "26"
+
 // SampleList adalah bengkel contoh, satu per status persetujuan.
 //
 // Ketiga tab layar karena itu terisi tanpa perlu menambah apa pun lebih dulu — termasuk

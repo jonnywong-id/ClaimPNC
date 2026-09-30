@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { callAPI, downloadAPI, uploadAPI } from '@/api/client'
+import { blobAPI, callAPI, downloadAPI, uploadAPI } from '@/api/client'
 import type {
   RecoveryClaimLineResponse,
   RecoveryDocumentResponse,
   RecoveryFormResponse,
   RecoveryInput,
+  RecoveryListResponse,
   RecoveryPolicyReference,
   RecoveryPrincipalListResponse,
   RecoverySaveResponse,
@@ -197,16 +198,136 @@ export function useSaveRecovery() {
       callAPI<RecoverySaveResponse>(`${ROUTE}/`, { metode: 'POST', body, token, portal }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keyOf('form', portal, token) })
+      // Tab Outstanding ikut dimuat ulang supaya batch yang baru disimpan langsung
+      // terlihat. Di layar lama, hal ini menuntut petugas menekan Refresh sendiri.
+      void client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
     },
   })
 }
 
 /**
+ * Hook tab **Outstanding** — daftar batch recovery yang sudah tercatat.
+ *
+ * Mengisi grid `Data_BACTH_RECOVERY.pxResults` pada
+ * `Section/OutstandingMasterRecovery-Section.xml:17510`.
+ *
+ * # Kenapa hook ini ada, padahal sempat dinyatakan tidak perlu
+ *
+ * Kesimpulan sebelumnya — "layar lama tidak punya daftar" — KELIRU. Ia disimpulkan dari
+ * tidak adanya kueri pembaca di export, padahal export itu sendiri tidak lengkap
+ * (`R-16`): rule yang memuat halaman grid itu memang hilang, tetapi grid-nya ada dan
+ * berisi data di Pega yang berjalan.
+ *
+ * # Paginasi dari server
+ *
+ * Sepuluh baris per halaman, sama dengan `pyRDLPageSize` grid lama. Pencarian principal
+ * dan penyaringan tahun juga dikerjakan server — bukan di peramban — supaya jumlah baris
+ * yang disebut layar selalu jumlah yang benar-benar ada, bukan jumlah yang kebetulan
+ * sudah terunduh.
+ */
+export function useRecoveryList(filter: { cari?: string; tahun?: string; halaman?: number } = {}) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  const cari = filter.cari?.trim() ?? ''
+  const tahun = filter.tahun?.trim() ?? ''
+  const halaman = Math.max(1, filter.halaman ?? 1)
+
+  const query = new URLSearchParams()
+  if (cari !== '') query.set('cari', cari)
+  if (tahun !== '') query.set('tahun', tahun)
+  query.set('limit', String(PAGE_SIZE))
+  query.set('lewati', String((halaman - 1) * PAGE_SIZE))
+
+  return useQuery({
+    // Filter ikut ke kunci cache: dua pencarian berbeda adalah dua hasil berbeda, dan
+    // menyatukannya akan menampilkan hasil pencarian sebelumnya sesaat setelah kata
+    // kuncinya diubah.
+    queryKey: [...keyOf('daftar', portal, token), cari, tahun, halaman] as const,
+    queryFn: () => callAPI<RecoveryListResponse>(`${ROUTE}/?${query.toString()}`, { token, portal }),
+    enabled: token !== null && portal !== null,
+    // Sependek bekal awal layar, dan karena alasan yang sama: petugas lain dapat menambah
+    // batch kapan saja, sehingga daftar yang ditahan lama akan keliru tanpa terlihat.
+    staleTime: 0,
+  })
+}
+
+/** Jumlah baris per halaman — sama dengan `pyRDLPageSize` grid Outstanding. */
+export const PAGE_SIZE = 10
+
+/**
+ * Hook tombol **View Document** pada grid dalam.
+ *
+ * Ia bukan `<a href>` biasa karena rutenya berada di balik sesi dan portal, dan peramban
+ * tidak mengirim kedua header itu pada navigasi — persoalan yang sama dengan unduhan
+ * berkas contoh.
+ *
+ * # Ditampilkan atau diunduh, ditentukan SERVER
+ *
+ * Versi pertama selalu membuka tab baru. Akibatnya lampiran yang tidak dapat digambar
+ * peramban — XLSX pada portal ASM — muncul sebagai berhalaman-halaman karakter acak.
+ *
+ * Sekarang keputusannya dibaca dari `Content-Disposition`: `inline` dibuka di tab baru,
+ * selebihnya diunduh dengan namanya. Yang menentukan adalah daftar jenis aman di server;
+ * menebaknya lagi di sini akan membuat kedua sisi dapat berbeda pendapat.
+ *
+ * URL objeknya DICABUT setelah dipakai — tanpa itu isinya tertahan di memori peramban
+ * selama tab hidup, dan di layar ini isinya dapat berupa pindaian bukti transfer nasabah.
+ */
+export function useViewDocument() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const berkas = await blobAPI(`${ROUTE}/bukti-bayar/${encodeURIComponent(id)}`, {
+        token,
+        portal,
+      })
+
+      const alamat = URL.createObjectURL(berkas.isi)
+      if (berkas.bolehDitampilkan) {
+        window.open(alamat, '_blank', 'noopener,noreferrer')
+        // Dicabut setelah peramban sempat membacanya. Mencabutnya seketika akan
+        // membatalkan tab yang baru saja dibuka.
+        window.setTimeout(() => URL.revokeObjectURL(alamat), 60_000)
+        return
+      }
+
+      const tautan = document.createElement('a')
+      tautan.href = alamat
+      tautan.download = berkas.nama || 'bukti-bayar'
+      tautan.click()
+      URL.revokeObjectURL(alamat)
+    },
+  })
+}
+
+/**
+ * Memuat ulang tab Outstanding dari luar komponen yang memilikinya.
+ *
+ * Ada supaya tombol **Refresh** di kepala layar dapat menyegarkan daftar tanpa kuerinya
+ * harus diangkat ke layar — daftar tetap dimiliki komponennya sendiri, dan yang dibagikan
+ * hanyalah cara menandainya basi.
+ */
+export function useRefreshRecoveryList() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return () => {
+    void client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
+  }
+}
+
+/**
  * Hook unduhan berkas contoh CSV.
  *
- * Menggantikan tautan **Format File** beserta rule `DownloadFileCSVFormaatter`, yang tidak
- * ada di export — isi contohnya karena itu disusun backend dari sumber yang SAMA dengan
- * pembacanya, sehingga keduanya tidak dapat berbeda pendapat.
+ * Menggantikan tautan **Format File** beserta rule `DownloadFileCSVFormaatter`. Isi
+ * contohnya disusun backend dari sumber yang SAMA dengan pembacanya, sehingga keduanya
+ * tidak dapat berbeda pendapat. Bentuknya SATU kolom, sama persis dengan berkas contoh
+ * sistem lama; yang menyesuaikan adalah pembacanya, yang menerima kolom nilai klaim
+ * sebagai opsional.
  *
  * Ia bukan tautan `<a href>` biasa: rutenya berada di balik sesi dan portal, dan peramban
  * tidak mengirim kedua header itu pada navigasi.

@@ -5,13 +5,48 @@
 -- STATUSCASE New/Resolved-Completed, TYPEKOMITE "2", NILAIKLAIM dalam rupiah.
 --
 -- Tabel ini juga ditulis Pega untuk kasus KMT-. Seluruh pernyataan di sini dibatasi ke
--- KOMITE_ID berawalan KMTN- milik aplikasi ini, dan awalan itulah yang membuat kueri
+-- KOMITE_ID berawalan KMTN. (atau KMTN- bentuk lama) milik aplikasi ini, dan awalan itulah yang membuat kueri
 -- memakai indeks KOMITE_ID pada tabel berisi 39 juta baris. Tanpa hapus fisik (D-66).
 
+-- Kepala kasusnya di POOLDATA.TC_PNC_KOMITE (docs/ddl/tc_pnc_komite.sql): satu baris per
+-- KOMITE_ID, berprimary key, sehingga dua transfer serentak tidak dapat menyimpan nomor sama.
+
 -- name: komite_nomor_berikut
-SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(KOMITE_ID, 6))), 0) + 1
-  FROM POOLDATA.T_CLAIM_KOMITE_LIST
- WHERE KOMITE_ID LIKE 'KMTN-%'
+-- Tidak ada sequence. Nomor urut tahun yang diminta (:1 = 'KMTN.YY.%') dibaca sebagai
+-- ANGKA dari posisi 9 — tepat sesudah `KMTN.YY.` — karena nomornya tanpa nol di depan dan
+-- urutan teksnya tidak sama dengan urutan terbit. Nomor bentuk lama `KMTN-00001` tidak
+-- ikut deret tahunan; ia tetap sah dan tidak dapat bertabrakan dengan bentuk bertitik.
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(KOMITE_ID, 9))), 0) + 1
+  FROM POOLDATA.TC_PNC_KOMITE
+ WHERE KOMITE_ID LIKE :1
+
+-- name: komite_kepala_perbarui
+UPDATE POOLDATA.TC_PNC_KOMITE
+   SET CLAIMID = :1, NO_KLAIM = :2, OBJECTID = :3, OBJECTCOVERAGEID = :4, ADJUSTMENTID = :5,
+       PAYMENTTYPE = :6, TRANSFERTYPE = :7, TYPE_BUSINESS = :8, TYPE_KOMITE = :9,
+       CURRENCY = :10, CURRENCYVALUE = :11 / 10000, NILAIADJUSTMENT = :12 / 100,
+       CONVERTADJUSTMENTVALUE = :13 / 100, KOMITELOOP = :14, KOMITECOUNT = :15,
+       ACCEPTSTATUS = :16, STATUSWORK = :17, PENGAJU = :18, DIBUAT_PADA = :19, DIBUAT_OLEH = :20,
+       DIUBAH_PADA = :21, DIUBAH_OLEH = :22, DIPUTUS_PADA = :23
+ WHERE KOMITE_ID = :24
+
+-- name: komite_kepala_sisip
+INSERT INTO POOLDATA.TC_PNC_KOMITE
+       (CLAIMID, NO_KLAIM, OBJECTID, OBJECTCOVERAGEID, ADJUSTMENTID, PAYMENTTYPE, TRANSFERTYPE,
+        TYPE_BUSINESS, TYPE_KOMITE, CURRENCY, CURRENCYVALUE, NILAIADJUSTMENT,
+        CONVERTADJUSTMENTVALUE, KOMITELOOP, KOMITECOUNT, ACCEPTSTATUS, STATUSWORK, PENGAJU,
+        DIBUAT_PADA, DIBUAT_OLEH, DIUBAH_PADA, DIUBAH_OLEH, DIPUTUS_PADA, KOMITE_ID)
+VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11 / 10000, :12 / 100, :13 / 100, :14, :15,
+        :16, :17, :18, :19, :20, :21, :22, :23, :24)
+
+-- name: komite_kepala_ambil
+SELECT KOMITE_ID, CLAIMID, NO_KLAIM, OBJECTID, OBJECTCOVERAGEID, ADJUSTMENTID, PAYMENTTYPE,
+       TRANSFERTYPE, TYPE_BUSINESS, TYPE_KOMITE, CURRENCY, ROUND(CURRENCYVALUE * 10000),
+       ROUND(NILAIADJUSTMENT * 100), ROUND(CONVERTADJUSTMENTVALUE * 100), PENGAJU,
+       DIBUAT_PADA, DIBUAT_OLEH, DIUBAH_PADA, DIUBAH_OLEH, DIPUTUS_PADA
+  FROM POOLDATA.TC_PNC_KOMITE
+ WHERE KOMITE_ID = :1
+   AND DIHAPUS_PADA IS NULL
 
 -- name: komite_perbarui
 UPDATE POOLDATA.T_CLAIM_KOMITE_LIST
@@ -42,7 +77,7 @@ SELECT k.KOMITE_ID, k.NO_KLAIM, k.NAMAKOMITE, k.KOMITEKE, k.STATUSAPPROVE, k.STA
        k.NOTEKOMITE, k.TYPEKOMITE, k.PAYMENTTYPE, ROUND(k.SHAREASM * 10000),
        ROUND(k.NILAIKLAIM * 100), k.DATEOFCOMMITE_CREATE, k.TANGGALKOMITE
   FROM POOLDATA.T_CLAIM_KOMITE_LIST k
- WHERE k.KOMITE_ID LIKE 'KMTN-%'
+ WHERE (k.KOMITE_ID LIKE 'KMTN.%' OR k.KOMITE_ID LIKE 'KMTN-%')
    AND UPPER(TRIM(k.NAMAKOMITE)) = UPPER(TRIM(:1))
    AND k.STATUSAPPROVE = '0'
    AND k.STATUSCASE = 'New'

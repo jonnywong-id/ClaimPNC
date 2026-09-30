@@ -7,21 +7,25 @@
 // POOLDATA.MST_RECOVERY_ASM_PENJAMINAN. Setiap batch menyebut principal, tahun, nilai
 // klaim, pembayaran, dan sisanya, ditambah bukti bayar serta daftar polis yang tercakup.
 //
-// # Bentuknya BUKAN CRUD master, dan itu bukan penyederhanaan
+// # Bentuknya: daftar + entri, tanpa Ubah dan tanpa Hapus
 //
-// Diperiksa ke seluruh export rule Pega, bukan diandaikan:
+// Kedua ketiadaan di bawah dasarnya BERBEDA, dan perbedaan itu yang menentukan mana yang
+// boleh dipercaya:
 //
-//   - **Tidak ada satu pun kueri yang MEMBACA tabel itu.** Satu-satunya rule yang
-//     menyentuhnya adalah `RDB List/GetMasterRecoveryClaimSPK-SQL.xml`, dan isinya
-//     `select nvl(max(BATCH),0)+1` — penerbit nomor, bukan pembaca daftar.
-//   - **Tidak ada UPDATE dan tidak ada DELETE.** `Database/INSERTMASTERRECOVERYKLAIM.prc`
-//     hanya mengenal INSERT.
-//   - Layarnya sendiri, `Section/OutstandingMasterRecovery-Section.xml`, adalah FORM
-//     ENTRI; grid yang ada di dalamnya menampilkan baris CSV yang baru diunggah, bukan
-//     isi tabel.
+//   - **Tidak ada UPDATE dan tidak ada DELETE** — dibaca dari ISI
+//     `Database/INSERTMASTERRECOVERYKLAIM.prc`, yang hanya mengenal INSERT. Kesimpulan
+//     dari apa yang ADA, karena itu sah.
+//   - **Ada daftar.** Grid Outstanding membaca `Data_BACTH_RECOVERY.pxResults`
+//     (`Section/OutstandingMasterRecovery-Section.xml:17510`), dan rule pemuatnya HILANG
+//     dari export (`R-16`) — bukan tidak ada.
 //
-// Keputusan Work Owner 2026-09-19: ditiru apa adanya — entri saja, tanpa daftar, tanpa
-// Ubah, tanpa Hapus.
+// # Koreksi 2026-09-29
+//
+// Modul ini sempat dibangun TANPA daftar, atas kesimpulan bahwa tidak adanya kueri pembaca
+// di export berarti layarnya form entri belaka. Kesimpulan itu keliru: di atas export yang
+// tidak lengkap, ketiadaan sesuatu bukan bukti. Satu-satunya rule yang menyentuh tabel ini
+// di export memang `RDB List/GetMasterRecoveryClaimSPK-SQL.xml` — penerbit nomor batch —
+// tetapi itu tidak berarti daftarnya tidak pernah ada.
 //
 // # Asal setiap aturan di berkas ini
 //
@@ -50,6 +54,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -129,11 +134,14 @@ func ParseAmount(text string) (Amount, error) {
 
 // ClaimLine adalah satu polis beserta nilai klaimnya di dalam sebuah batch recovery.
 //
-// Daftarnya diunggah sebagai CSV, ditampilkan sebagai grid, lalu disimpan UTUH sebagai
-// dokumen JSON di kolom JSON_POLIS — bukan sebagai tabel anak. Itu mengikuti sistem lama:
-// `Activity/Insert_mst_recoveryKlaimASM-Act.xml` menyusun `TempRecovery.ObjectList` lalu
+// Daftarnya diunggah sebagai CSV, ditampilkan sebagai grid, lalu disimpan sebagai baris
+// di tabel anak `POOLDATA.CPNC_RECOVERY_BARIS_KLAIM` — satu baris per polis.
+//
+// Sistem lama menyimpannya sebagai satu dokumen JSON di kolom `JSON_POLIS`:
+// `Activity/Insert_mst_recoveryKlaimASM-Act.xml` menyusun `TempRecovery.ObjectList`, lalu
 // mengubahnya menjadi teks dengan `@GCNM.GetPageJSONString()` dan mengirimnya sebagai
-// parameter `tJSON_POLIS`.
+// parameter `tJSON_POLIS`. Keputusan Work Owner 2026-09-29 menghentikan itu — kolom lama
+// tidak disentuh, dan baris warisan tetap membawa dokumennya sebagai jejak.
 type ClaimLine struct {
 	// PolicyNo adalah nomor polis yang tercakup batch ini.
 	PolicyNo string
@@ -199,6 +207,27 @@ type Recovery struct {
 	// Bayar. Kosong berarti bukti bayar belum diunggah.
 	DocumentID string
 
+	// Attachment adalah keterangan Bukti Bayar yang tertaut ke batch ini, atau nil bila
+	// belum ada.
+	//
+	// Isinya TIDAK termasuk berkasnya — hanya keterangannya, karena itulah yang
+	// ditampilkan daftar **View Dokument Pendukung**: kolom "Input Nama" dan "Tanggal".
+	// Berkasnya diambil terpisah saat benar-benar dibuka; membawa BLOB pada setiap baris
+	// daftar akan memuat berkas yang tidak seorang pun minta.
+	Attachment *AttachmentInfo
+
+	// InputDate adalah INSERTDATE — waktu baris ini tercatat, berlabel "Tanggal Input" di
+	// grid dalam.
+	//
+	// HANYA DIBACA, tidak pernah ditulis: kolomnya ber-DEFAULT sysdate, sehingga jamnya
+	// datang dari basis data dan bukan dari jam server aplikasi. Pada dua instans di
+	// belakang penyeimbang beban, keduanya belum tentu sama (`R-12`).
+	//
+	// Ia juga kunci pengurutan grid dalam, dan karena itu baris warisan yang kolom ini
+	// NULL akan berkumpul di satu ujung. Dibiarkan demikian — memaksakan nilai pengganti
+	// berarti mengarang waktu yang tidak pernah tercatat.
+	InputDate time.Time
+
 	// InputBy adalah USERNAME — identitas petugas yang mencatat. Diisi server dari sesi,
 	// tidak pernah dari badan permintaan.
 	InputBy string
@@ -222,7 +251,7 @@ type Recovery struct {
 	AgentID     string
 	MarketingID string
 
-	// ClaimLine adalah isi JSON_POLIS.
+	// ClaimLine adalah baris-baris POOLDATA.CPNC_RECOVERY_BARIS_KLAIM milik batch ini.
 	ClaimLine []ClaimLine
 }
 
@@ -327,6 +356,29 @@ type PolicyReference struct {
 // keberadaannya diverifikasi langsung ke katalog pada 2026-09-19. Karena itu modul ini
 // TIDAK bergantung pada API penyimpanan dokumen luar (`D-16`, modul `S-1`) yang belum
 // dibangun: berkasnya cukup ditulis ke tabel yang sudah ada.
+// AttachmentInfo adalah keterangan satu lampiran, TANPA isinya.
+//
+// Ia yang mengisi daftar **View Dokument Pendukung** pada layar lama: judul modalnya
+// "View Dokument Pendukung", dan tabelnya berkolom **Input Nama** dan **Tanggal** —
+// keduanya kolom `POOLDATA.DATA_ATTACHFILE`, yaitu `INPUTOPERATOR` dan `INPUTDATE`.
+//
+// Rule yang membangun modal itu TIDAK ADA di export — "View Dokument" nol kemunculan di
+// seluruh berkas (`R-16`). Bentuknya dibaca dari layar Pega yang berjalan, dan pemetaan
+// kedua kolomnya disandarkan pada nama kolom yang memang ada di tabel itu.
+type AttachmentInfo struct {
+	// ID adalah DATAID; dipakai saat berkasnya benar-benar dibuka.
+	ID string
+
+	// Name adalah ATTACHNAME.
+	Name string
+
+	// UploadedBy adalah INPUTOPERATOR, berlabel "Input Nama" di modal.
+	UploadedBy string
+
+	// UploadedAt adalah INPUTDATE, berlabel "Tanggal" di modal.
+	UploadedAt time.Time
+}
+
 type Document struct {
 	// Name adalah nama berkas apa adanya dari peramban. Kolom ATTACHNAME VARCHAR2(255).
 	Name string
@@ -359,6 +411,77 @@ const (
 	MaxMimeTypeLength     = 30
 )
 
+// PrincipalGroup adalah satu baris pada tab Outstanding beserta isinya.
+//
+// # Bentuk ini DIBACA dari layar Pega yang berjalan, bukan dari export
+//
+// Work Owner menunjukkan layar lamanya pada 2026-09-29: grid luar memuat **satu baris per
+// principal**, dan mengeklik baris itu membuka grid kedua berisi **seluruh batch**
+// principal tersebut, terurut dari yang paling lama.
+//
+// Angka pada baris luar adalah angka **batch terakhir** — bukan jumlah. Terbukti dari
+// tangkapan layarnya: baris luar menunjukkan 7.000 / 100.000 / 153.000, dan itu persis
+// baris terakhir di dalamnya. Penjumlahan pembayaran akan menghasilkan 107.000.
+//
+// Ini tidak dapat disimpulkan dari export: `pyEnableGrouping` bernilai `false` dan
+// `pyRDLShowDetails` bernilai `false`, sehingga pengelompokannya BUKAN bawaan grid —
+// ia dikerjakan rule pemuat halaman `Data_BACTH_RECOVERY`, yang hilang (`R-16`).
+type PrincipalGroup struct {
+	// Name adalah NAMAPRINCIPAL, dan sekaligus kunci pengelompokannya.
+	//
+	// Dikelompokkan menurut NAMA, bukan CLIENTID, karena namanyalah yang ditampilkan grid
+	// luar. Bila kelak terbukti dua principal berbeda dapat memakai nama yang sama, kunci
+	// ini harus pindah ke CLIENTID — dan itu perubahan yang terlihat, bukan senyap.
+	Name string
+
+	// Latest adalah batch TERAKHIR principal ini; angkanya yang tampil di baris luar.
+	Latest Recovery
+
+	// Batch adalah seluruh batch principal ini, terurut dari yang paling lama.
+	Batch []Recovery
+}
+
+// ListFilter menyaring dan memotong daftar pada tab Outstanding.
+//
+// Yang dipotong paginasi adalah PRINCIPAL, bukan batch: satu halaman berisi sepuluh baris
+// luar, dan seluruh batch milik kesepuluh principal itu ikut terbawa. Memotong per batch
+// akan memenggal isi sebuah principal di tengah, dan baris luar yang terbuka akan
+// menampilkan sebagian riwayatnya tanpa mengatakan ada yang terpotong.
+//
+// # Kenapa penyaringnya hanya pencarian, tanpa "outstanding saja"
+//
+// Tab di layar lama bernama **Outstanding**, dan istilah itu punya arti tegas di
+// `CONTEXT.md`: klaim yang sudah diakui nilainya tetapi belum selesai dibayar. Godaannya
+// adalah menerjemahkannya menjadi `SISAKLAIM > 0`.
+//
+// Itu TIDAK dilakukan, karena penyaring sebenarnya TIDAK DAPAT DIBACA: rule yang memuat
+// halaman `Data_BACTH_RECOVERY` tidak ada di export (`R-16`), sehingga klausa WHERE-nya
+// tidak diketahui siapa pun. Menyaring berarti MENYEMBUNYIKAN baris atas dasar tebakan,
+// dan baris yang hilang diam-diam tidak akan pernah dikeluhkan siapa pun — sedangkan
+// baris berlebih langsung terlihat dan dapat dikoreksi.
+type ListFilter struct {
+	// PrincipalName dan Year adalah pencarian sebagian, tanpa peduli besar-kecil huruf.
+	// Kosong berarti tidak menyaring.
+	PrincipalName string
+	Year          string
+
+	// Limit dan Offset adalah paginasi dari server. Limit 0 berarti memakai nilai baku
+	// pengisi seam, BUKAN berarti tanpa batas: tabel ini bertambah satu baris setiap
+	// batch dan tidak pernah aman dibaca seluruhnya.
+	Limit  int
+	Offset int
+}
+
+// DefaultListLimit adalah jumlah baris per halaman bila pemanggil tidak menyebutkannya.
+//
+// Sepuluh, sama dengan `pyRDLPageSize` grid Outstanding di
+// `Section/OutstandingMasterRecovery-Section.xml:17529` — supaya halaman pertama berisi
+// baris yang sama banyak dengan layar lama.
+const DefaultListLimit = 10
+
+// MaxListLimit membatasi permintaan yang menyebut limitnya sendiri.
+const MaxListLimit = 100
+
 // Repo adalah seam ke penyimpanan Master Recovery SATU portal.
 //
 // Satu instans Repo selalu terikat pada satu basis data entitas — pemisahan antarentitas
@@ -366,6 +489,20 @@ const (
 // ada satu pun kueri di pengisinya yang menyaring berdasarkan entitas, dan memang tidak
 // boleh ada.
 type Repo interface {
+	// List membaca SELURUH batch milik principal yang masuk halaman ini, beserta jumlah
+	// PRINCIPAL yang cocok dengan filter — bukan jumlah batch.
+	//
+	// Barisnya wajib terurut principal menaik, lalu waktu input menaik: pengelompokannya
+	// dikerjakan pemanggil dengan menelusuri barisan ini sekali jalan, dan itu hanya
+	// benar bila baris satu principal berdampingan.
+	//
+	// Urutan waktu input MENAIK, bukan menurun — mengikuti grid dalam pada layar lama,
+	// yang menampilkan riwayat dari yang paling lama.
+	List(ctx context.Context, f ListFilter) (rows []Recovery, totalPrincipal int, err error)
+
+	// FindDocument membaca Bukti Bayar beserta isinya. ErrDocumentNotFound bila tidak ada.
+	FindDocument(ctx context.Context, id string) (Document, error)
+
 	// NextBatch mengembalikan nomor batch berikutnya, meniru
 	// `select nvl(max(BATCH),0)+1`. Ia hanya PERKIRAAN untuk ditampilkan di layar; yang
 	// mengikat adalah nomor yang diterbitkan Insert di dalam transaksinya sendiri.

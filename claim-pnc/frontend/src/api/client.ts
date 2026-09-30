@@ -234,6 +234,64 @@ export async function downloadAPI(
   }
 }
 
+/**
+ * Mengambil satu berkas dan mengembalikan isinya, TANPA memicu unduhan.
+ *
+ * Bedanya dari `downloadAPI` hanya pada apa yang terjadi sesudahnya: yang ini menyerahkan
+ * blob-nya kepada pemanggil, sehingga berkas dapat DILIHAT di tab baru alih-alih langsung
+ * tersimpan ke folder unduhan. Tombol **View Document** pada Master Recovery memakainya.
+ *
+ * Header sesi dan portal dikirim di sini, dan itulah sebabnya rute berkas tidak dapat
+ * dipasang sebagai `<a href>` biasa — navigasi peramban tidak membawa keduanya.
+ */
+export type BerkasDiambil = {
+  isi: Blob
+  /** Nama berkas dari `Content-Disposition`; kosong bila server tidak menyebutkannya. */
+  nama: string
+  /**
+   * Server menyatakan berkas ini AMAN ditampilkan (`inline`), bukan diunduh.
+   *
+   * Dibaca dari `Content-Disposition`, bukan ditebak dari jenis isinya: yang menentukan
+   * adalah daftar aman di server, dan menebaknya lagi di sini akan membuat kedua sisi
+   * dapat berbeda pendapat.
+   */
+  bolehDitampilkan: boolean
+}
+
+export async function blobAPI(
+  path: string,
+  options: { token?: string | null; portal?: string | null } = {},
+): Promise<BerkasDiambil> {
+  const header: Record<string, string> = {}
+  if (options.token) header['Authorization'] = `Bearer ${options.token}`
+  if (options.portal) header[HEADER_PORTAL] = options.portal
+
+  let response: Response
+  try {
+    response = await fetch(path, { headers: header })
+  } catch {
+    throw new NetworkError()
+  }
+
+  if (!response.ok) {
+    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
+    throw new APIError(
+      error?.kode ?? ErrorCode.internalError,
+      error?.pesan ?? 'Berkas tidak dapat dibuka.',
+      response.status,
+    )
+  }
+
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const namaCocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
+
+  return {
+    isi: await response.blob(),
+    nama: namaCocok ? decodeURIComponent(namaCocok[1] ?? '') : '',
+    bolehDitampilkan: disposition.toLowerCase().startsWith('inline'),
+  }
+}
+
 type UploadOptions = {
   /** Berkas yang diunggah. Dikirim pada bagian bernama `berkas`, sama dengan backend. */
   berkas: File

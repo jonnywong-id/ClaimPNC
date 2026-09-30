@@ -677,3 +677,117 @@ describe('form bengkel', () => {
     expect(datalist?.querySelector('option')?.getAttribute('value')).toBe('1')
   })
 })
+
+/*
+  Panel dokumen — padanan dua tombol layar lama: "Upload Document" pada
+  Section/BrowseMasterHE dan tombol lihat dokumen pada Section/ApprovalMasterBengkelHE.
+
+  Letaknya PER BARIS, bukan tingkat layar, karena yang disimpannya adalah DOKUMENID —
+  kolom milik satu baris. Alasannya lengkap di DocumentPanel.
+*/
+describe('dokumen bengkel', () => {
+  /** replyWithDocument melayani daftar seperti biasa, dan dokumen sesuai jawaban yang diminta. */
+  function replyWithDocument(document: Reply) {
+    installFetch((call) => {
+      if (call.url.includes('/dokumen')) return document
+      return defaultReply()(call)
+    })
+  }
+
+  it('menggambar tombol Dokumen pada setiap baris', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+    expect(screen.getAllByRole('button', { name: 'Dokumen' }).length).toBeGreaterThan(0)
+  })
+
+  it('menyatakan belum ada dokumen ketika bengkel belum pernah dilampiri', async () => {
+    replyWithDocument({
+      body: { kode: 'dokumen_tidak_ditemukan', pesan: 'Bengkel ini belum punya dokumen terlampir.' },
+      status: 404,
+    })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
+
+    expect(await screen.findByText('Bengkel ini belum punya dokumen terlampir.')).toBeInTheDocument()
+    // 404 di sini keadaan wajar, bukan kerusakan — tidak digambar sebagai galat.
+    expect(screen.queryByText('Keterangan dokumen tidak dapat dimuat')).not.toBeInTheDocument()
+  })
+
+  it('menampilkan keterangan dokumen yang tertaut beserta tombol unduh', async () => {
+    replyWithDocument({
+      body: {
+        dokumen: {
+          id_dokumen: '260000000001',
+          nama_berkas: 'kerjasama.pdf',
+          tipe_media: 'application/pdf',
+          ukuran_byte: 2048,
+          berisi: true,
+          diunggah_oleh: 'adminpnc',
+          diunggah_pada: '2026-09-30T03:00:00Z',
+        },
+        portal: 'ASM',
+      },
+    })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
+
+    expect(await screen.findByText('kerjasama.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unduh' })).toBeInTheDocument()
+  })
+
+  /*
+    Dokumen WARISAN: barisnya ada, isinya tidak pernah tersimpan karena
+    SET_ATTACHMENT_64BIT tidak menulis kolom ATTACHFILE dan jalur Master Bengkel tidak
+    pernah mengisi IMAGEID.
+
+    Menawarkan tombol unduh di sini hanya menghasilkan berkas nol byte yang tampak seperti
+    unduhan berhasil, sehingga yang digambar adalah keterangannya.
+  */
+  it('tidak menawarkan unduhan untuk dokumen warisan yang isinya tidak tersimpan', async () => {
+    replyWithDocument({
+      body: {
+        dokumen: {
+          id_dokumen: '250000000009',
+          nama_berkas: 'lama.pdf',
+          tipe_media: 'application/pdf',
+          ukuran_byte: 0,
+          berisi: false,
+          diunggah_oleh: 'petugaslama',
+          diunggah_pada: '2025-02-01T03:00:00Z',
+        },
+        portal: 'ASM',
+      },
+    })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
+
+    expect(await screen.findByText('lama.pdf')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Unduh' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Isi berkas ini tidak tersimpan/)).toBeInTheDocument()
+  })
+
+  // Judul dan label isian mengikuti layar lama apa adanya — keduanya dibaca dari
+  // Section/UploadDocument.
+  it('memakai judul dan label isian milik layar lama', async () => {
+    replyWithDocument({ body: { kode: 'dokumen_tidak_ditemukan', pesan: 'belum ada' }, status: 404 })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
+
+    expect(await screen.findByText('Select a file to load and import')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nama File')).toBeInTheDocument()
+  })
+})

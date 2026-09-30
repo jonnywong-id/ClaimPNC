@@ -78,11 +78,11 @@ func (r *Repo) NamaFolderAplikasi(_ context.Context, aplikasi string) (string, e
 }
 
 // CatatAksesUnggah memenuhi dokumenpenunjang.Repo.
-func (r *Repo) CatatAksesUnggah(_ context.Context, aplikasi, pengunggah string) error {
+func (r *Repo) CatatAksesUnggah(_ context.Context, aplikasi, pengunggah string) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.akses = append(r.akses, CatatanAkses{Aplikasi: aplikasi, Pengunggah: pengunggah})
-	return nil
+	return fmt.Sprintf("KODE-%d", len(r.akses)), nil
 }
 
 // Simpan memenuhi dokumenpenunjang.Repo.

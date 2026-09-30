@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyInterface/>
+<pxCommitDateTime>20250123T092254.000 GMT</pxCommitDateTime>
+<pyIsFromManageChangeLP/>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pyTemplateInputBox/>
+<pxSaveDateTime>20250123T092254.775 GMT</pxSaveDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM UpdateDokReqSalvage</pxTabLabel>
+<pxHostId>jboss10-asm2</pxHostId>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!UPDATEDOKREQSALVAGE</pxInsName>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyMethodStatus/>
+<pyRuleStarts/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxSiblingCount/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!UPDATEDOKREQSALVAGE #20250123T085636.603 GMT</pzDocumentKey>
+<pyCircumstanceTemplate/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!UPDATEDOKREQSALVAGE</pxInsId>
+<pyCircumstanceProp/>
+<pySaveSQL/>
+<pzIsPrivateCheckOut/>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyDocumentTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDescription/>
+<pyLabelOld>UpdateDokReqSalvage</pyLabelOld>
+<pyWorkKey/>
+<pxMoveFromSystem/>
+<pySpecialtyComponentData/>
+<pyOpenSQL/>
+<pyCircumstanceType/>
+<pyShowJavaWindowName>GeneratedJava20260929T121722.240 GMT</pyShowJavaWindowName>
+<pyRequestType>UpdateDokReqSalvage</pyRequestType>
+<pyFormPost/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzChecksum>1231011496</pzChecksum>
+<pySPRuleSetName>MARIATRIELSA@</pySPRuleSetName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateOperator/>
+<pyTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateDateTime/>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pxOriginalCreateOpName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyBrowseSQL>UPDATE POOLDATA.SALAVAGEDOCUMENT SET IDBALAILELANG='Reject Checker' where NOKLAIM={TempInsert.ClaimNo} and TIPEDOCSALVAGE='Request Banding Harga Salvage' and IDBALAILELANG is null</pyBrowseSQL>
+<pyDeleteSQL/>
+<pyCircumstanceDefinition/>
+<pyValueChanged>false</pyValueChanged>
+<pyStreamName/>
+<pyDeletedObject/>
+<pyCircumstanceDateProp/>
+<pyCircumstanceDate/>
+<pxCreateDateTime>20250123T085636.603 GMT</pxCreateDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!UPDATEDATAREQSALVAGE #20250117T064611.429 GMT</pzOriginalInstanceKey>
+<pxMoveImportOperName/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedRuleSetVersion/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedRuleSet/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRelativePath/>
+<pyJavaStream/>
+<pxMoveImportDateTime/>
+<pxUpdateDateTime>20250123T092254.768 GMT</pxUpdateDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedBy/>
+<pyRuleEnds/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedKey/>
+<pyUsage/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportOperId/>
+<pyHandlerFlow/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM UpdateDokReqSalvage</pyRuleName>
+<pyMemo>OKE</pyMemo>
+<pyStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>UpdateDokReqSalvage</pyLabel>
+<pyWindowTitle/>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pyRuleFormStatusTime>20260929T121722.211 GMT</pyRuleFormStatusTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!UPDATEDOKREQSALVAGE #20250123T085636.603 GMT</pzInsKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyShowJava>false</pyShowJava>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyDelete>true</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!UPDATEDOKREQSALVAGE #20250123T085636.603 GMT</pzInsKey>
+<pyLabel>01-03-11 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>
