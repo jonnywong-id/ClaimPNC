@@ -52,17 +52,34 @@ var resultColumns = []string{
 	"TOTAL_ROWS",
 }
 
-// listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.
-var listQueries = []string{
-	"list_receive_pa", "list_receive_non_mbu", "list_rclpucl",
-}
+// listQueries adalah nama kedua kueri daftar, dipakai uji kesesuaian alias.
+var listQueries = []string{"list_receive", "list_rclpucl"}
 
-// receiveQueries adalah kedua kueri tab Receive.
+// receiveQueries adalah kueri tab Receive.
 //
-// Dipisah dari listQueries karena hanya keduanya yang WAJIB menyaring kelas objek kerja
-// berkas penerimaan dokumen dan menggabung tabel penugasan per orang; kueri RCL/PUCL
-// menyaring kelas dan tabel yang berbeda. Kesesuaiannya dijaga query_test.go.
-var receiveQueries = []string{"list_receive_pa", "list_receive_non_mbu"}
+// Dipisah dari listQueries karena hanya ia yang WAJIB menyaring kelas objek kerja berkas
+// penerimaan dokumen dan menggabung tabel penugasan per orang; kueri RCL/PUCL menyaring
+// kelas dan tabel yang berbeda. Kesesuaiannya dijaga query_test.go.
+//
+// Ia tetap senarai meski isinya satu: kedua grid Pega digabung menjadi satu kueri pada
+// 2026-09-30, dan bentuk senarai membuat pemecahannya kembali — bila kelak diputuskan — tidak
+// menuntut perubahan bentuk uji.
+var receiveQueries = []string{"list_receive"}
+
+// documentColumns adalah ke-23 alias yang dikembalikan kueri LAYAR KERJA.
+//
+// Urutannya WAJIB sama dengan urutan kolom `detail_receive_document` di
+// inboxmanagerreceivepucl.sql dan dengan urutan pemindai scanDocument. Ia ditulis lengkap di
+// sini pula supaya ketiga tempat itu dapat diuji kesesuaiannya di query_test.go — pemindai
+// yang urutannya bergeser satu kolom tidak menghasilkan satu pun galat, ia hanya menaruh
+// kronologi kejadian di kolom nomor polis.
+var documentColumns = []string{
+	"REFERENCE", "CASE_ID", "CLAIM_NUMBER", "GROUP_PANEL", "WORK_STATUS",
+	"CREATED_AT", "RECEIVED_AT", "SENDER_NAME", "SENDER_EMAIL", "SENDER_PHONE",
+	"COURIER_NAME", "INSURED_NAME", "POLICY_NUMBER", "LOSS_DATE", "REFERENCE_NUMBER",
+	"INSURED_EMAIL", "LOSS_LOCATION", "DRIVER_LICENCE", "CHRONOLOGY", "DAMAGE_DETAIL",
+	"TRANSFER_REASON", "EMAIL_SUBJECT", "NOT_REGISTERED_NOTE",
+}
 
 // loadQueries membaca setiap berkas .sql dan memecahnya pada penanda "-- name: <nama>",
 // sehingga satu berkas dapat memuat beberapa pernyataan dan tetap terbaca sebagai satu

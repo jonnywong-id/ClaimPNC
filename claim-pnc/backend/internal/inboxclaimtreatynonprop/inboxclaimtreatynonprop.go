@@ -90,6 +90,9 @@ package inboxclaimtreatynonprop
 import (
 	"context"
 	"strings"
+	"time"
+
+	"claim-pnc/internal/platform/clock"
 )
 
 // WorkItem adalah satu baris pekerjaan klaim treaty non-proporsional.
@@ -191,23 +194,32 @@ type WorkItem struct {
 	// InsuredName — `b.INSUREDNAME` (alias `CARI17`), berjudul "Insured Name".
 	InsuredName string
 
-	// Status adalah tahap yang ditampilkan grid — alias `CARI13`.
+	// CreatedAt adalah waktu OBJEK KERJA dibuat — `b.PXCREATEDATETIME` (alias `CARI21`).
 	//
-	// # Ia LITERAL di dalam kueri, bukan kolom
+	// # Ia digambar di bawah judul kolom "Status", dan itu bukan salah pasang
 	//
-	// `GetKlaimNonPropAdmin_SQL` dan kedua variannya memilih `'Estimation'` sebagai teks
-	// tetap; `GetInboxListCNP_SQL` memilih `'Acceptation'`. Tidak ada satu pun kolom status
-	// yang dibaca.
+	// Sel ke-12 grid Teknik pada `Section/InboxClaimNonProp_Harness-Section.xml` berjudul
+	// `Status` dan terikat `.CARI21` — dan `CARI21` di `GetInboxListCNP_SQL` adalah
+	// `b.PXCREATEDATETIME`, bukan kolom status mana pun. Judulnya menyesatkan sejak di Pega
+	// dan dipertahankan apa adanya (`D-13`); yang tidak dipertahankan adalah salah artinya,
+	// karena nilainya tidak pernah diterjemahkan menjadi status.
 	//
-	// Artinya kolom ini TIDAK menyatakan status klaim yang sebenarnya — ia menyatakan
-	// ANTREAN MANA baris ini berasal. Dua klaim dengan status bisnis berbeda akan
-	// menampilkan teks yang sama selama keduanya berada di antrean yang sama.
+	// # Kenapa TEKS, dan kenapa berbentuk `20240201T095612.955 GMT`
 	//
-	// Itu dipertahankan apa adanya (`P-5`), dan justru karena mudah disalahpahami, sifatnya
-	// dinyatakan ke pengguna lewat PlannedDifferences alih-alih hanya dicatat di sini.
-	// Perhatikan pula: keempat kode status klaim yang sebenarnya ada 33 (`1134`–`1166`,
-	// `R-06`), dan tak satu pun dari kedua teks di atas termasuk di dalamnya.
-	Status string
+	// Karena begitulah yang terbaca di layar Pega: propertinya bertipe teks, sehingga Pega
+	// menuliskan timestamp-nya dalam notasi internalnya sendiri. Bentuk itu disusun
+	// FormatPegaDateTime supaya penyimpanan SQL dan penyimpanan memori tidak dapat
+	// menghasilkan dua bentuk yang berbeda.
+	//
+	// # Ia bukan pasangan AgingDays yang berlebihan
+	//
+	// Keduanya memang dihitung dari kolom yang sama, tetapi menyatakan hal yang berbeda:
+	// AgingDays berubah sendiri setiap hari, CreatedAt tidak pernah berubah. Grid Pega
+	// menggambar keduanya berdampingan, dan itu dipertahankan.
+	//
+	// HANYA grid Teknik yang menggambarnya — grid Admin di section yang sama tidak punya
+	// sel `CARI21`.
+	CreatedAt string
 
 	// AgingDays adalah umur pekerjaan dalam HARI KALENDER —
 	// `TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)` (alias `CARI20`), berjudul "Aging".
@@ -219,8 +231,10 @@ type WorkItem struct {
 	// memotong hari kerja lewat `GET_WORKING_HOURS` dan `HRD_LBR` (`D-50`), dan tidak satu
 	// pun dari keduanya disentuh layar ini.
 	//
-	// Nilainya dihitung terhadap tanggal server basis data. Ia karena itu berubah sendiri
-	// setiap hari tanpa ada yang menyentuh datanya — dan itu memang yang dikehendaki.
+	// # Ia dihitung di GO, bukan di SQL — lihat AgingDaysSince
+	//
+	// Nilainya berubah sendiri setiap hari tanpa ada yang menyentuh datanya, dan itu memang
+	// yang dikehendaki.
 	AgingDays int
 
 	// CreateOperator adalah petugas yang membuat PENUGASAN ini — `a.PXCREATEOPNAME`
@@ -292,18 +306,75 @@ const CommitteeClaimPrefix = "KMTNP-"
 // dan dipisahkan hanya oleh awalan nomor klaimnya.
 const TechnicalWorkbasket = "TreatyinPNCTeknik"
 
-// Teks status yang ditampilkan tiap antrean.
+// pegaDateTimeLayout adalah notasi waktu internal Pega tanpa akhiran zonanya.
 //
-// Keduanya LITERAL di dalam kueri lama, bukan kolom — lihat WorkItem.Status. Ia dikumpulkan
-// di sini supaya SQL dan penyimpanan memori memakai teks yang sama persis; ejaannya
-// dipertahankan apa adanya, termasuk "Acceptation" yang bukan bentuk baku bahasa Inggris.
-const (
-	// StatusEstimation dipakai ketiga kueri tab Admin.
-	StatusEstimation = "Estimation"
+// Akhiran " GMT" disambung sebagai teks biasa, tidak dimasukkan ke dalam layout, supaya
+// tidak terbaca sebagai penanda zona yang akan ikut berubah mengikuti waktu lokal.
+const pegaDateTimeLayout = "20060102T150405.000"
 
-	// StatusAcceptation dipakai kueri tab Teknik.
-	StatusAcceptation = "Acceptation"
-)
+// FormatPegaDateTime menyusun waktu dalam notasi yang dibaca pengguna di kolom "Status".
+//
+// SELALU UTC, karena akhiran "GMT" pada layar lama menyatakan demikian. Menulis waktu lokal
+// dengan akhiran GMT akan menggeser setiap baris tujuh jam tanpa satu pun tanda.
+//
+// Waktu nol menghasilkan teks KOSONG, bukan "00010101T000000.000 GMT": baris penugasan yang
+// objek kerjanya belum ada mengembalikan NULL, dan tanggal tahun satu terbaca sebagai data
+// rusak alih-alih data yang tidak ada.
+//
+// Ia hidup di paket domain, bukan di sqlstore, karena penyimpanan memori menyusun teks yang
+// sama — dan dua penyusun yang berbeda akan menghasilkan dua bentuk yang berbeda tanpa
+// ketahuan.
+func FormatPegaDateTime(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	return at.UTC().Format(pegaDateTimeLayout) + " GMT"
+}
+
+// AgingDaysSince menghitung umur pekerjaan dalam hari kalender WIB.
+//
+// # Kenapa di Go, dan bukan di SQL seperti kueri lama
+//
+// Karena padanan portabel `TRUNC` yang dianjurkan `09-DATABASE-STRATEGY.md` §4 —
+// `CAST(x AS DATE)` — **tidak memangkas jam di Oracle**. DATE pada Oracle membawa jam,
+// sehingga pengurangan dua nilai hasil cast menghasilkan PECAHAN hari. Terukur langsung dari
+// basis data pengembangan:
+//
+//	CAST(CURRENT_TIMESTAMP AS DATE) - CAST(b.PXCREATEDATETIME AS DATE)  ->  979.8191898…
+//	TRUNC(SYSDATE)                  - TRUNC(b.PXCREATEDATETIME)         ->  979
+//
+// Pecahan itu bukan sekadar tidak rapi: ia membuat seluruh antrean GAGAL DIMUAT, karena
+// pemindainya mengharapkan bilangan bulat dan godror menyerahkan angkanya sebagai teks.
+// Modul `inboxosclaimpercabang` sudah menemukan jebakan yang sama dan menyelesaikannya
+// dengan cara ini pula; bentuknya disamakan supaya kedua layar tidak punya dua definisi
+// "umur".
+//
+// # Tanggal WIB, bukan UTC
+//
+// Batas harinya tengah malam WIB (`F-5`), sama dengan `TRUNC(SYSDATE)` pada basis data yang
+// berjalan di zona itu. Memakai UTC akan membuat pekerjaan yang dibuat sebelum pukul 07:00
+// WIB terhitung satu hari lebih tua.
+//
+// Waktu yang tidak diketahui — baris penugasan tanpa pasangan objek kerja — berumur NOL,
+// bukan umur yang dihitung dari tahun satu.
+func AgingDaysSince(created, now time.Time) int {
+	if created.IsZero() {
+		return 0
+	}
+
+	from := clock.DateWIB(created)
+	to := clock.DateWIB(now)
+	if !to.After(from) {
+		// Objek kerja bertanggal hari ini atau masa depan. Oracle akan menghasilkan angka
+		// negatif; di sini ia dijepit ke nol, karena umur negatif tidak punya arti bagi
+		// pembaca grid dan hanya akan terbaca sebagai kerusakan.
+		return 0
+	}
+
+	// Pembagian jam, bukan `Sub().Hours()/24` yang dibulatkan: keduanya sudah tengah malam
+	// WIB, sehingga selisihnya selalu kelipatan 24 jam persis.
+	return int(to.Sub(from).Hours() / 24)
+}
 
 // Pagination menyatakan halaman keberapa yang diminta dan sebesar apa.
 //

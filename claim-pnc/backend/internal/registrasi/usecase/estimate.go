@@ -55,7 +55,7 @@ func (l *Service) ItemOptions(ctx context.Context, claimID, objectID string) ([]
 
 // SaveEstimate menyimpan isian Input Estimasi tanpa menutup tahap — tombol Save.
 func (l *Service) SaveEstimate(ctx context.Context, p EstimateCommand, by Caller) (registrasi.Claim, error) {
-	claim, _, now, err := l.prepareEstimate(ctx, p, by)
+	claim, _, now, err := l.prepareEstimate(ctx, p, by, registrasi.ActionInputSurveyor)
 	if err != nil {
 		return registrasi.Claim{}, err
 	}
@@ -85,7 +85,7 @@ func (l *Service) SaveEstimate(ctx context.Context, p EstimateCommand, by Caller
 // keduanya dirutekan PNCTeknikRouter. Ia menjalankan gerbang ValidateEstimate lebih dulu,
 // termasuk `isCFS`; Back tidak, seperti Back pada Input Register. Keduanya menyimpan isiannya.
 func (l *Service) CompleteEstimate(ctx context.Context, p EstimateCommand, by Caller) (CompleteResult, error) {
-	claim, task, now, err := l.prepareEstimate(ctx, p, by)
+	claim, task, now, err := l.prepareEstimate(ctx, p, by, "")
 	if err != nil {
 		return CompleteResult{}, err
 	}
@@ -136,9 +136,12 @@ func (l *Service) CompleteEstimate(ctx context.Context, p EstimateCommand, by Ca
 
 // prepareEstimate memuat tugas Input Estimasi, memeriksa pemiliknya, lalu memasang isian
 // beserta kurs dan nilai rupiahnya.
-func (l *Service) prepareEstimate(ctx context.Context, p EstimateCommand, by Caller) (registrasi.Claim, registrasi.Task, time.Time, error) {
+//
+// alsoAction menerima tahap kedua selain Input Estimasi — InputSurveyor untuk Save, karena
+// section InputEstimasiDetail juga ditanam di sana. Kirim PIC Teknik tidak memakainya.
+func (l *Service) prepareEstimate(ctx context.Context, p EstimateCommand, by Caller, alsoAction string) (registrasi.Claim, registrasi.Task, time.Time, error) {
 	claim, task, err := l.loadOpenTask(loadContext{
-		ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate,
+		ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate, alsoAction: alsoAction,
 	})
 	if err != nil {
 		return registrasi.Claim{}, registrasi.Task{}, time.Time{}, err

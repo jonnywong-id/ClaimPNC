@@ -72,10 +72,40 @@ SELECT COALESCE(MAX(BATCH), 0) + 1
 -- satu pun pesan.
 LOCK TABLE POOLDATA.MST_RECOVERY_ASM_PENJAMINAN IN EXCLUSIVE MODE
 
+-- name: recovery_claim_line_insert
+--
+-- Satu baris daftar polis milik sebuah batch.
+--
+-- # Menggantikan kolom JSON_POLIS (keputusan Work Owner 2026-09-29)
+--
+-- Sistem lama menyimpan seluruh daftar sebagai satu dokumen JSON di kolom `JSON_POLIS`,
+-- hasil `@GCNM.GetPageJSONString()` — serialisasi mentah halaman klipboard Pega. Sejak
+-- sekarang barisnya masuk ke tabel sungguhan, dan kolom JSON itu TIDAK diisi lagi.
+--
+-- Tidak ada rule Pega yang membaca tabel recovery, sehingga berhenti mengisinya tidak
+-- memutus apa pun di sisi sana — sudah diperiksa ke seluruh export.
+--
+-- URUTAN dikirim pemanggil, bukan dibentuk basis data: ia urutan baris di dalam berkas
+-- yang diunggah, dan itu satu-satunya cara membandingkan hasil unggahan dengan berkas
+-- aslinya.
+INSERT INTO POOLDATA.CPNC_RECOVERY_BARIS_KLAIM (BATCH, URUTAN, NOPOLIS, NILAIKLAIM)
+VALUES (:1, :2, :3, :4)
+
+-- name: recovery_claim_line_check_table
+--
+-- Memastikan tabel baris klaim ada dan dapat dibaca akun aplikasi, tanpa mengambil satu
+-- baris pun. Ia dipisah dari pemeriksaan tabel lain karena kegagalannya punya tindak
+-- lanjut yang berbeda: migrasi `0013` belum dijalankan DBA.
+SELECT BATCH, URUTAN, NOPOLIS, NILAIKLAIM
+  FROM POOLDATA.CPNC_RECOVERY_BARIS_KLAIM
+ WHERE 1 = 0
+
 -- name: recovery_insert
 --
--- Kedua puluh kolom yang benar-benar diisi, sama persis dengan yang diisi
--- `INSERTMASTERRECOVERYKLAIM.prc`.
+-- Kesembilan belas kolom yang benar-benar diisi.
+--
+-- Sama dengan yang diisi `INSERTMASTERRECOVERYKLAIM.prc`, DIKURANGI `JSON_POLIS` —
+-- daftar polis kini masuk ke tabel tersendiri; lihat `recovery_claim_line_insert`.
 --
 -- INSERTDATE sengaja TIDAK disebut: kolomnya ber-DEFAULT sysdate, diverifikasi dari
 -- ALL_TAB_COLUMNS. Menuliskannya dari aplikasi akan memakai jam server aplikasi alih-alih
@@ -90,15 +120,122 @@ INSERT INTO POOLDATA.MST_RECOVERY_ASM_PENJAMINAN (
   BATCH, NAMAPRINCIPAL, TAHUN,
   NILAIKLAIM, NILAIRECOVERY, PEMBAYARAN, SISAKLAIM,
   KETERANGAN, POSISIKASUS, DOKUMENID, NOVA, USERNAME, CLIENTID,
-  JSON_POLIS, NOHPLL, NOPOLIS,
+  NOHPLL, NOPOLIS,
   LBU_ID, LDC_ID, LAG_AGEN_ID, LMO_ID
 ) VALUES (
   :1, :2, :3,
   :4, :5, :6, :7,
   :8, :9, :10, :11, :12, :13,
-  :14, :15, :16,
-  :17, :18, :19, :20
+  :14, :15,
+  :16, :17, :18, :19
 )
+
+-- name: recovery_list
+--
+-- Mengisi tab **Outstanding**.
+--
+-- # Kueri ini tidak meniru satu rule pun — rule-nya tidak ada
+--
+-- Grid Outstanding membaca halaman klipboard `Data_BACTH_RECOVERY.pxResults`
+-- (`Section/OutstandingMasterRecovery-Section.xml:17510`), berkelas `Code-Pega-List`,
+-- yaitu bentuk hasil sebuah RDB-List. Nama halaman itu muncul di SATU berkas saja di
+-- seluruh export — section-nya sendiri. Tidak ada activity, data page, maupun rule SQL
+-- yang mengisinya, sehingga kueri aslinya termasuk ±242 rule yang hilang (`R-16`).
+--
+-- Yang DAPAT dibaca dengan pasti adalah kelima kolom yang diikat grid itu, dan itulah
+-- yang dipakai di sini:
+--
+--     .NamaPrincipal             -> NAMAPRINCIPAL      "Nama Principal"
+--     .TotalListClaimAmountIDR   -> NILAIKLAIM         "Nilai Klaim"
+--     .NilaiDeductible           -> NILAIRECOVERY      "Nilai Pembayaran Sebelumnya"
+--     .ClaimAmountAdjust         -> PEMBAYARAN         "Pembayaran"
+--     .TPLAmount                 -> SISAKLAIM          "Sisa"
+--
+-- # Kenapa tidak ada WHERE "outstanding"
+--
+-- Karena klausa WHERE aslinya tidak diketahui. Menebaknya — misalnya `SISAKLAIM > 0` —
+-- akan MENYEMBUNYIKAN baris, dan baris yang hilang diam-diam tidak pernah dikeluhkan
+-- siapa pun. Baris berlebih sebaliknya langsung terlihat dan dapat dipersempit setelah
+-- rule-nya tiba. Lihat masterrecovery.ListFilter.
+--
+-- Penyaring yang ADA di sini murni pencarian dari pengguna, bukan aturan bisnis.
+--
+-- # Yang dipotong paginasi adalah PRINCIPAL, bukan baris
+--
+-- Subkueri di dalam memilih sepuluh NAMA principal untuk halaman ini; kueri luar menarik
+-- SELURUH batch milik kesepuluh nama itu. Memotong per baris akan memenggal riwayat satu
+-- principal di tengah, dan baris luar yang dibuka akan menampilkan sebagian riwayatnya
+-- tanpa satu pun tanda bahwa ada yang terpotong.
+--
+-- # Urutannya menentukan kebenaran pengelompokan
+--
+-- `NAMAPRINCIPAL` lebih dulu supaya baris satu principal berdampingan — pengelompokannya
+-- dikerjakan Go dengan satu kali telusur, dan itu hanya benar bila urutan ini dipegang.
+-- Lalu `INSERTDATE` MENAIK, mengikuti grid dalam pada layar lama yang menampilkan riwayat
+-- dari yang paling lama. `BATCH` menjadi pemutus supaya dua baris berwaktu sama — dan
+-- baris warisan yang INSERTDATE-nya NULL — tetap punya urutan yang tetap.
+--
+-- # Kenapa ada LEFT JOIN ke lampiran
+--
+-- Tombol **View Document** pada grid dalam membuka daftar berkolom **Input Nama** dan
+-- **Tanggal** — yaitu `INPUTOPERATOR` dan `INPUTDATE` milik lampirannya. Keduanya diambil
+-- di sini supaya membuka daftar itu tidak menembak server lagi; jumlahnya paling banyak
+-- satu baris per batch, karena tautannya satu kolom `DOKUMENID`.
+--
+-- LEFT, bukan INNER: batch tanpa bukti bayar WAJIB tetap muncul. INNER JOIN akan
+-- menghilangkan batch yang belum punya lampiran, dan hilangnya tidak akan terlihat
+-- sebagai galat apa pun.
+SELECT r.BATCH, r.NAMAPRINCIPAL, r.TAHUN,
+       r.NILAIKLAIM, r.NILAIRECOVERY, r.PEMBAYARAN, r.SISAKLAIM,
+       r.KETERANGAN, r.POSISIKASUS, r.DOKUMENID, r.NOVA, r.CLIENTID, r.NOPOLIS,
+       r.NOHPLL, r.INSERTDATE,
+       d.ATTACHNAME, d.INPUTOPERATOR, d.INPUTDATE
+  FROM POOLDATA.MST_RECOVERY_ASM_PENJAMINAN r
+  LEFT JOIN POOLDATA.DATA_ATTACHFILE d ON d.DATAID = r.DOKUMENID
+ WHERE r.NAMAPRINCIPAL IN (
+         SELECT NAMAPRINCIPAL
+           FROM (SELECT DISTINCT NAMAPRINCIPAL
+                   FROM POOLDATA.MST_RECOVERY_ASM_PENJAMINAN
+                  WHERE (:1 IS NULL OR UPPER(NAMAPRINCIPAL) LIKE '%' || UPPER(:2) || '%')
+                    AND (:3 IS NULL OR TAHUN = :4)
+                  ORDER BY NAMAPRINCIPAL
+                 OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY) halaman
+       )
+ ORDER BY r.NAMAPRINCIPAL, r.INSERTDATE, r.BATCH
+
+-- name: recovery_count
+--
+-- Jumlah PRINCIPAL yang cocok — bukan jumlah baris. Itulah yang menentukan berapa halaman
+-- ada, karena satu halaman berisi sepuluh baris luar.
+--
+-- Penyaringnya WAJIB sama persis dengan subkueri di recovery_list; bila keduanya berbeda,
+-- jumlah halaman yang ditampilkan tidak sesuai isinya.
+--
+-- COUNT DISTINCT di sini tidak melanggar larangan `15-NFR` §3.2 butir 3: larangan itu
+-- berlaku bagi tabel berpuluh juta baris. Tabel ini bertambah satu baris per batch.
+SELECT COUNT(DISTINCT NAMAPRINCIPAL)
+  FROM POOLDATA.MST_RECOVERY_ASM_PENJAMINAN
+ WHERE (:1 IS NULL OR UPPER(NAMAPRINCIPAL) LIKE '%' || UPPER(:2) || '%')
+   AND (:3 IS NULL OR TAHUN = :4)
+
+-- name: attachment_read
+--
+-- Membaca satu Bukti Bayar beserta isinya, untuk tombol **View Document** pada grid dalam.
+--
+-- # Kenapa BLOB-nya diambil MENTAH
+--
+-- `RDB List/GetAttachmentFromDB_Sql-SQL.xml` membungkusnya dengan
+-- `pooldata.base64encode(attachfile)`. Itu pemanggilan fungsi basis data, yang `D-02`
+-- larang — dan lagipula tidak perlu: byte mentahnya dialirkan apa adanya ke peramban
+-- beserta jenis isinya, sehingga tidak ada pembesaran sepertiga akibat base64 dan tidak
+-- ada yang perlu diurai ulang di sisi mana pun.
+--
+-- IMAGEID ikut dibaca meski tidak ditampilkan: ia yang membedakan "berkasnya tidak ada"
+-- dari "berkasnya ada di penyimpanan luar" (`D-16`). Keduanya tampak sama bila hanya
+-- ATTACHFILE yang diperiksa, padahal yang pertama salah tautan dan yang kedua bukan.
+SELECT ATTACHFILE, ATTACHNAME, ATTACHMIMETYPE, ATTACHNOTE, IMAGEID
+  FROM POOLDATA.DATA_ATTACHFILE
+ WHERE DATAID = :1
 
 -- name: recovery_check_table
 --

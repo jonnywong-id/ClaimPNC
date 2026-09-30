@@ -46,7 +46,10 @@ func (r *InboxRepo) ListCases(ctx context.Context, f komite.InboxFilter) (komite
 	// data sama sekali: kueri yang penyaring pemiliknya kosong tidak boleh pernah
 	// dikirim, supaya satu salah ketik pada klausa WHERE tidak dapat membuatnya
 	// mengembalikan seluruh antrean komite perusahaan.
-	if f.Operator == "" {
+	//
+	// AllOperators adalah SATU-SATUNYA jalan keluar dari penjagaan ini, dan ia harus
+	// diminta — ia tidak pernah menyala karena identitas gagal terbaca.
+	if f.Operator == "" && !f.AllOperators {
 		return komite.InboxPage{Cases: []komite.CommitteeCase{}}, nil
 	}
 
@@ -82,7 +85,7 @@ func (r *InboxRepo) ListCases(ctx context.Context, f komite.InboxFilter) (komite
 // Summarize menghitung isi ketiga kotak dalam satu perjalanan ke basis data.
 func (r *InboxRepo) Summarize(ctx context.Context, f komite.InboxFilter) (komite.InboxSummary, error) {
 	f = f.Normalize()
-	if f.Operator == "" {
+	if f.Operator == "" && !f.AllOperators {
 		return komite.InboxSummary{}, nil
 	}
 
@@ -104,13 +107,13 @@ func (r *InboxRepo) Summarize(ctx context.Context, f komite.InboxFilter) (komite
 }
 
 // FindCase mengambil satu kasus tanpa memandang pemiliknya.
-func (r *InboxRepo) FindCase(ctx context.Context, caseID string) (komite.CommitteeCase, error) {
+func (r *InboxRepo) FindCase(ctx context.Context, caseID, operator string) (komite.CommitteeCase, error) {
 	caseID = strings.TrimSpace(caseID)
 	if caseID == "" {
 		return komite.CommitteeCase{}, komite.ErrCaseNotFound
 	}
 
-	row := r.db.QueryRowContext(ctx, query("inbox_get"), caseID)
+	row := r.db.QueryRowContext(ctx, query("inbox_get"), komite.OperatorKey(operator), caseID)
 	found, err := scanCase(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return komite.CommitteeCase{}, komite.ErrCaseNotFound
@@ -139,17 +142,14 @@ func (r *InboxRepo) CheckTables(ctx context.Context) error {
 // Urutannya WAJIB sama dengan inbox_list sampai penanda terakhir sebelum paginasi —
 // itulah sebabnya inbox_list memakai daftar yang sama lalu menambahkan offset dan limit di
 // belakangnya. Menyusun dua daftar terpisah akan membuat keduanya berbeda diam-diam.
-//
-// Operator disebut SEKALI. Kuerinya menyaring pemilik di satu tempat — pada INNER JOIN ke
-// `PC_ASSIGN_WORKLIST`, persis seperti `InboxRegisterKomite_RD` — bukan di dua tempat
-// seperti bentuk sebelumnya.
 func filterArgs(f komite.InboxFilter) []any {
 	kind := string(f.Kind)
 	search := nilIfEmpty(searchPattern(f.Search))
 	from, to := dateBounds(f)
 
+	owner := ownerArg(f)
 	return []any{
-		f.Operator,
+		owner, owner,
 		komite.InboxEarliestCreatedAt(),
 		kind, kind, kind,
 		search, search, search,
@@ -163,13 +163,34 @@ func summaryArgs(f komite.InboxFilter) []any {
 	search := nilIfEmpty(searchPattern(f.Search))
 	from, to := dateBounds(f)
 
+	owner := ownerArg(f)
 	return []any{
-		f.Operator,
+		owner, owner,
 		komite.InboxEarliestCreatedAt(),
 		search, search, search,
 		from, from,
 		to, to,
 	}
+}
+
+// ownerArg mengembalikan pemilik yang disaring, atau nil bila penyaringnya dimatikan.
+//
+// # Kenapa nil, bukan string kosong
+//
+// Kuerinya memakai pola `:n IS NULL OR kolom = :n+1` — pola yang sama dengan penyaring
+// pencarian dan rentang tanggal di berkas yang sama. String kosong BUKAN NULL bagi Oracle,
+// sehingga mengirimnya akan menyaring operator yang namanya kebetulan kosong: nol baris,
+// diam-diam, tanpa satu pun galat.
+//
+// # Ia satu-satunya tempat penyaring pemilik dapat dimatikan
+//
+// Dikumpulkan di sini, bukan disebar ke kedua penyusun argumen, supaya "kapan inbox berhenti
+// menjadi milik seseorang" punya SATU jawaban yang dapat dibaca sekali.
+func ownerArg(f komite.InboxFilter) any {
+	if f.AllOperators {
+		return nil
+	}
+	return f.Operator
 }
 
 // dateBounds mengubah rentang tanggal WIB menjadi batas yang dapat dibandingkan SQL.

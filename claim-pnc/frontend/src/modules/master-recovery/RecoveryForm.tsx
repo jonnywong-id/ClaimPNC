@@ -11,7 +11,6 @@ import {
   type RecoveryPrincipal,
 } from '@/api/types'
 import { Button } from '@/components/Button'
-import { DataTable } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
@@ -580,66 +579,6 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
         </Button>
       </div>
     </form>
-  )
-}
-
-/** Tabel ringkas batch yang baru tersimpan, ditampilkan pemanggil. */
-export function SavedRecoveryTable({ rows }: { rows: Recovery[] }) {
-  return (
-    <DataTable
-      columns={[
-        {
-          key: 'nomor_batch',
-          title: 'Batch',
-          width: '6rem',
-          value: (row) => String(row.nomor_batch).padStart(12, '0'),
-          render: (row) => (
-            <span className="font-mono text-xs font-medium text-slate-800">
-              {row.nomor_batch}
-            </span>
-          ),
-        },
-        {
-          key: 'nama_principal',
-          title: 'Principal',
-          value: (row) => row.nama_principal,
-        },
-        { key: 'tahun', title: 'Tahun', width: '6rem', value: (row) => row.tahun },
-        {
-          key: 'nilai_klaim',
-          title: 'Nilai Klaim (Rp)',
-          width: '11rem',
-          alignRight: true,
-          value: (row) => String(row.nilai_klaim).padStart(20, '0'),
-          render: (row) => (
-            <span className="font-mono text-xs tabular-nums">{formatMoney(row.nilai_klaim)}</span>
-          ),
-        },
-        {
-          key: 'sisa',
-          title: 'Sisa (Rp)',
-          width: '11rem',
-          alignRight: true,
-          value: (row) => String(row.sisa).padStart(20, '0'),
-          render: (row) => (
-            <span
-              className={
-                'font-mono text-xs font-medium tabular-nums ' +
-                (row.sisa < 0 ? 'text-red-700' : 'text-slate-900')
-              }
-            >
-              {formatMoney(row.sisa)}
-            </span>
-          ),
-        },
-      ]}
-      rows={rows}
-      rowKey={(row) => String(row.nomor_batch)}
-      title="Tersimpan pada sesi ini"
-      description="Daftar ini hanya berisi batch yang Anda simpan sejak layar dibuka — sistem lama tidak menyediakan cara membaca kembali batch yang sudah tercatat."
-      emptyMessage="Belum ada batch yang disimpan pada sesi ini."
-      searchLabel="Cari principal"
-    />
   )
 }
 

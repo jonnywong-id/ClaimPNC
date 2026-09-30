@@ -33,6 +33,10 @@ type WorkItemDTO struct {
 	// Kedua isian master id memang berdampingan dan memang dari dua sumber yang berbeda —
 	// lihat inboxclaimtreatynonprop.WorkItem.JSONMasterID. Menyatukannya di DTO akan
 	// menghapus pembedaan yang justru perlu terlihat.
+	//
+	// Kedua grid menggambar SATU di antaranya, dan yang digambar BERBEDA: grid Admin memakai
+	// `id_master` (blob JSON), grid Teknik memakai `master_id` (kolom objek kerja). Karena
+	// itu keduanya tetap dikirim pada setiap baris — layar memilih lewat `kolom`.
 	MasterID     string `json:"master_id"`
 	JSONMasterID string `json:"id_master"`
 
@@ -44,8 +48,12 @@ type WorkItemDTO struct {
 	CedingCompany  string `json:"ceding_co"`
 	InsuredName    string `json:"nama_tertanggung"`
 
-	// Status menyatakan ANTREAN, bukan status klaim — ia teks tetap di dalam kuerinya.
-	Status string `json:"status"`
+	// CreatedAt adalah waktu objek kerja dibuat, digambar di bawah judul kolom "Status".
+	//
+	// Namanya mengikuti ARTI isinya, bukan judul kolomnya. Judul "Status" menyesatkan sejak
+	// di Pega, dan nama kontrak yang ikut menyesatkan akan menularkan salah arti itu ke
+	// setiap pemakainya.
+	CreatedAt string `json:"dibuat_pada"`
 
 	// AgingDays adalah umur dalam hari kalender. Ia ANGKA, bukan teks: layar
 	// mengurutkannya dan dapat menandai yang melewati ambang, dan keduanya menuntut
@@ -67,8 +75,14 @@ type ColumnDTO struct {
 
 // TabDTO adalah satu antrean kerja beserta bentuk gridnya.
 type TabDTO struct {
-	Code        string `json:"kode"`
-	Name        string `json:"nama"`
+	Code string `json:"kode"`
+
+	// Name adalah teks PILIHAN pada dropdown; GridTitle adalah judul kontainer grid di
+	// bawahnya. Keduanya tampil bersamaan dan berbunyi berbeda — dropdown "Treaty-In
+	// Teknik", grid "Work Treatyin Non Propotional Teknik".
+	Name      string `json:"nama"`
+	GridTitle string `json:"judul_grid,omitempty"`
+
 	Description string `json:"keterangan"`
 
 	Columns []ColumnDTO `json:"kolom"`
@@ -156,7 +170,7 @@ func toWorkItemDTO(item inboxclaimtreatynonprop.WorkItem) WorkItemDTO {
 		BusinessSource:     item.BusinessSource,
 		CedingCompany:      item.CedingCompany,
 		InsuredName:        item.InsuredName,
-		Status:             item.Status,
+		CreatedAt:          item.CreatedAt,
 		AgingDays:          item.AgingDays,
 		CreateOperator:     item.CreateOperator,
 		LastUpdateOperator: item.LastUpdateOperator,
@@ -185,6 +199,7 @@ func toTabDTO(tab inboxclaimtreatynonprop.Tab) TabDTO {
 	return TabDTO{
 		Code:            tab.Code,
 		Name:            tab.Name,
+		GridTitle:       tab.GridTitle,
 		Description:     tab.Description,
 		Columns:         columns,
 		ScopedToCaller:  tab.ScopedToCaller,

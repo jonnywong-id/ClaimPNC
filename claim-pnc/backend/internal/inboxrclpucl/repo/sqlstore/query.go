@@ -38,15 +38,19 @@ func query(name string) string {
 	return text
 }
 
-// listColumns adalah ke-11 alias yang dikembalikan SETIAP kueri daftar.
+// listColumns adalah ke-12 alias yang dikembalikan SETIAP kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxrclpucl.sql dan dengan urutan pemindai
 // scanWorkItem. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat diuji
 // kesesuaiannya di query_test.go.
+//
+// `CREATED_AT` adalah kolom yang MENGURUTKAN ketiga kueri (`ORDER BY PXCREATEDATETIME
+// DESC`). Ia ditambahkan 2026-09-30 atas keputusan Work Owner supaya tabelnya tidak lagi
+// terbaca acak; urutannya sendiri tidak berubah sedikit pun. Lihat WorkItem.CreatedAt.
 var listColumns = []string{
 	"REFERENCE", "CASE_ID", "POLICY_NUMBER", "INSURED_NAME", "INBOX_ENTRY_AT",
 	"ANALYST_NOTE", "TRACK_CODE", "LETTER_PRINTED_AT", "CLAIM_AGE", "EXPIRY_STATUS",
-	"TOTAL_ROWS",
+	"CREATED_AT", "TOTAL_ROWS",
 }
 
 // reportColumns adalah ke-10 alias yang dikembalikan kueri laporan harian.

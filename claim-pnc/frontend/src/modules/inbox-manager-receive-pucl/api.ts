@@ -4,7 +4,7 @@ import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { ListResponse, MetadataResponse } from './types'
+import type { DocumentResponse, ListResponse, MetadataResponse } from './types'
 
 const PATH = '/api/inbox-manager-receive-pucl'
 
@@ -24,6 +24,9 @@ const keys = {
 
   list: (portal: string | null, token: string | null, tab: string, page: number) =>
     ['inbox-manager-receive-pucl', 'daftar', portal, token, tab, page] as const,
+
+  document: (portal: string | null, token: string | null, reference: string) =>
+    ['inbox-manager-receive-pucl', 'dokumen', portal, token, reference] as const,
 }
 
 /**
@@ -84,6 +87,69 @@ export function useManagerReceivePUCLList(tab: string, page: number, enabled: bo
     // Kedua antrean berubah saat petugas lain mengerjakan pekerjaannya, jadi cache-nya
     // pendek — sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
+  })
+}
+
+/**
+ * Hook layar kerja penerimaan dokumen — flow action `InputReceiveDocument`.
+ *
+ * # Kenapa kuncinya dikodekan
+ *
+ * Karena `pzInsKey` memuat SPASI — `ASM-FW-GCNMFW-WORK RCV-900001` — dan spasi mentah di
+ * dalam alamat bukan alamat yang sah. Ia dikodekan di sini, bukan diserahkan ke pemanggil,
+ * supaya tidak ada satu pun tempat yang lupa melakukannya.
+ *
+ * # Kenapa cache-nya pendek
+ *
+ * Karena berkas ini SEDANG DIKERJAKAN — di Pega, oleh petugas lain, saat layar ini terbuka.
+ * Cache panjang akan membuat petugas membaca kronologi kejadian yang sudah berubah, lalu
+ * mengerjakan berkasnya di Pega berdasarkan isi yang lama.
+ */
+export function useReceiveDocument(reference: string, enabled = true) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.document(portal, token, reference),
+    queryFn: () =>
+      callAPI<DocumentResponse>(
+        `${PATH}/dokumen/${encodeURIComponent(reference)}`,
+        { token, portal },
+      ),
+    enabled: enabled && reference !== '' && token !== null && portal !== null,
+    staleTime: 15 * 1000,
+  })
+}
+
+/**
+ * Hook kedelapan tombol layar kerja yang di Pega MENGUBAH data.
+ *
+ * # Kenapa tombolnya DITEKAN ke server, bukan dijawab layar sendiri
+ *
+ * Karena alasan mengapa sebuah tombol belum dapat dijalankan adalah keadaan SISTEM, bukan
+ * keadaan layar — dan ia berubah begitu kemampuannya dibangun. Menuliskan alasannya di layar
+ * berarti alasan yang sama hidup di dua tempat, dan yang di layar akan tertinggal pada hari
+ * tombolnya mulai bekerja.
+ *
+ * Ada alasan kedua yang sama pentingnya: penekanannya DICATAT di sisi peladen. Selama masa
+ * paralel, jejak itulah satu-satunya tanda seberapa sering tombol-tombol ini benar-benar
+ * dibutuhkan — dan itu yang menjadi dasar memutuskan mana yang dibangun lebih dulu.
+ */
+export function useReceiveDocumentAction() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (input: { tindakan: string; berkas: string }) => {
+      const query = new URLSearchParams({ tindakan: input.tindakan })
+      if (input.berkas) query.set('berkas', input.berkas)
+
+      return callAPI<void>(`${PATH}/tindakan?${query.toString()}`, {
+        token,
+        portal,
+        metode: 'POST',
+      })
+    },
   })
 }
 

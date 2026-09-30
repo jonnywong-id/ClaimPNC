@@ -353,7 +353,7 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 			TrackCode:    candidate.TrackCode,
 			AnalystNote:  candidate.Item.AnalystNote,
 			PolicyNumber: candidate.Item.PolicyNumber,
-			LossDate:     candidate.LossDate,
+			LossDate:     inboxrclpucl.DisplayTimeText(candidate.LossDate),
 
 			InsuredName: candidate.FirstObjectName,
 			SumInsured:  candidate.FirstObjectName,
@@ -369,12 +369,37 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 
 // decorate mengisi isian yang di sistem baru DITURUNKAN, bukan disimpan.
 //
-// Hanya satu: jalur penanganan, yang diturunkan dari kode mentah lewat penerjemah milik
-// domain. Memakai penerjemah yang sama dengan penyimpanan SQL adalah syarat agar uji yang
-// berjalan di atas memori menyatakan sesuatu tentang yang berjalan di Oracle.
+// Dua: jalur penanganan dan keempat isian tanggal. Keduanya diturunkan lewat penggambar
+// milik domain — `TrackOf` dan `DisplayTimeText` — dan memakai penggambar yang SAMA dengan
+// penyimpanan SQL adalah syarat agar uji yang berjalan di atas memori menyatakan sesuatu
+// tentang yang berjalan di Oracle.
 func decorate(candidate Row) inboxrclpucl.WorkItem {
 	item := candidate.Item
 	item.Track = inboxrclpucl.TrackOf(candidate.TrackCode)
+
+	// Ketiga isian tanggal baris contoh dilewatkan penggambar yang sama dengan penyimpanan
+	// SQL, bukan dipakai apa adanya.
+	//
+	// Baris contoh menuliskannya sudah dalam bentuk tampilan, sehingga ini nyaris selalu
+	// tanpa akibat — dan justru itulah gunanya: baris contoh yang kelak ditulis dalam
+	// bentuk lain akan tergambar sama seperti di Oracle, alih-alih meloloskan uji yang
+	// tidak akan lolos di produksi.
+	item.InboxEntryAt = inboxrclpucl.DisplayTimeText(item.InboxEntryAt)
+	item.LetterPrintedAt = inboxrclpucl.DisplayTimeText(item.LetterPrintedAt)
+	item.ClaimAge = inboxrclpucl.DisplayTimeText(item.ClaimAge)
+
+	// `CreatedAt` DITURUNKAN dari kolom pengurut, bukan diisi sendiri pada tiap baris
+	// contoh.
+	//
+	// Ia harus mustahil menyimpang dari `Row.CreatedAt`: kolom yang digambar layar dan
+	// kolom yang mengurutkannya adalah kolom yang SAMA, dan baris contoh yang keduanya
+	// diisi terpisah dapat menyatakan urutan yang tidak sesuai dengan angka yang tampil.
+	//
+	// Waktu NOL menghasilkan teks kosong, bukan "0001-01-01": baris contoh yang tidak
+	// menyebut waktunya berarti waktunya tidak diketahui, dan tanggal tahun 1 di layar
+	// terbaca sebagai data, bukan sebagai ketiadaan data.
+	item.CreatedAt = inboxrclpucl.DisplayTime(candidate.CreatedAt)
+
 	return item
 }
 
@@ -389,9 +414,9 @@ func reportRowOf(candidate Row) inboxrclpucl.DailyReportRow {
 		CaseID:          candidate.Item.CaseID,
 		PolicyNumber:    candidate.Item.PolicyNumber,
 		InsuredName:     candidate.Item.InsuredName,
-		SentAt:          candidate.Item.InboxEntryAt,
+		SentAt:          inboxrclpucl.DisplayTimeText(candidate.Item.InboxEntryAt),
 		AnalystNote:     candidate.Item.AnalystNote,
-		LetterPrintedAt: candidate.Item.LetterPrintedAt,
+		LetterPrintedAt: inboxrclpucl.DisplayTimeText(candidate.Item.LetterPrintedAt),
 		Track:           inboxrclpucl.TrackOf(candidate.TrackCode),
 		ClaimStatus:     candidate.ClaimStatus,
 	}
@@ -456,7 +481,7 @@ func matchesExpiryCaseStatus(candidate Row, q inboxrclpucl.Query) bool {
 // lama, dan ditiru di sini tanpa diperbaiki — lihat catatan di kepala paket dan pada berkas
 // .sql.
 //
-// Menuliskannya sebagai `candidate.PUCLApprove != PUCLApproved` akan MELOLOSKAN nilai
+// Menuliskannya sebagai `candidate.PUCLApprove != PUCLReturnedToAnalyst` akan MELOLOSKAN nilai
 // kosong, dan uji yang lulus karenanya tidak menyatakan apa pun tentang Oracle.
 func matchesApproval(candidate Row, q inboxrclpucl.Query) bool {
 	if q.Tab.Code == inboxrclpucl.TabCetakSurat {
@@ -465,7 +490,7 @@ func matchesApproval(candidate Row, q inboxrclpucl.Query) bool {
 	if strings.TrimSpace(candidate.PUCLApprove) == "" {
 		return false
 	}
-	return candidate.PUCLApprove != inboxrclpucl.PUCLApproved
+	return candidate.PUCLApprove != inboxrclpucl.PUCLReturnedToAnalyst
 }
 
 // matchesMSIG meniru penyaring `MSIG_1` tab Kelengkapan Dokumen dan Klaim MSIG.

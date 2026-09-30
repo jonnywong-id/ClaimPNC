@@ -24,17 +24,20 @@ export type WorkItem = {
    * Master ID dari KOLOM objek kerja (`PC_ASM_FW_GCNMFW_WORK.MASTERID`).
    *
    * Ia BUKAN isian yang sama dengan `id_master` di bawah — lihat catatan di sana.
+   * Grid **Teknik** yang menggambarnya, di bawah judul "ID Master".
    */
   master_id: string
 
   /**
    * Master ID dari BLOB JSON klaim (`JSON_KLAIM.DATA_JSON` jalur `$.IDMaster`).
    *
-   * Layar lama menampilkan keduanya berdampingan, dan keduanya diambil dari tempat yang
-   * berbeda. Apakah isinya selalu sama belum pernah diperiksa (`R-08`), sehingga keduanya
-   * dibawa apa adanya alih-alih dipilih salah satu.
+   * Grid **Admin** yang menggambarnya, di bawah judul "MasterID" — satu kata tanpa spasi,
+   * berbeda dari judul grid Teknik untuk hal yang terdengar sama.
    *
-   * Hanya tab Admin yang memilikinya; kueri tab Teknik tidak mengambilnya sama sekali.
+   * Kedua grid menggambar SATU kolom master id, dan masing-masing mengambilnya dari sumber
+   * yang berbeda. Apakah isi keduanya selalu sama belum pernah diperiksa (`R-08`), sehingga
+   * keduanya dibawa apa adanya alih-alih dipilih salah satu. Kueri tab Teknik bahkan tidak
+   * mengambil yang dari blob JSON sama sekali.
    */
   id_master: string
 
@@ -55,14 +58,19 @@ export type WorkItem = {
   nama_tertanggung: string
 
   /**
-   * Menyatakan ANTREAN, bukan status klaim.
+   * Waktu objek kerja dibuat, digambar di bawah judul kolom **"Status"**.
    *
-   * Ia teks tetap di dalam kueri — "Estimation" untuk seluruh baris tab Admin dan
-   * "Acceptation" untuk seluruh baris tab Teknik — dan tidak membaca satu pun kolom
-   * status. Tak satu pun dari kedua teks itu termasuk dalam 33 kode status klaim yang
-   * sebenarnya (`R-06`).
+   * Judul itu menyesatkan sejak di Pega dan dipertahankan apa adanya (`D-13`): sel ke-12
+   * grid Teknik berjudul "Status" tetapi terikat `CARI21`, yang di `GetInboxListCNP_SQL`
+   * adalah `b.PXCREATEDATETIME`. Ia TIDAK ada hubungannya dengan 33 kode status klaim
+   * (`R-06`).
+   *
+   * Bentuknya notasi internal Pega — `20240201T095612.955 GMT` — karena itulah yang selama
+   * ini terbaca pengguna. Ia dikirim sebagai teks jadi; layar tidak memformatnya ulang.
+   *
+   * Hanya grid Teknik yang menggambarnya.
    */
-  status: string
+  dibuat_pada: string
 
   /**
    * Umur pekerjaan dalam HARI KALENDER sejak objek kerja dibuat.
@@ -85,10 +93,24 @@ export type TabColumn = {
   judul: string
 }
 
-/** Satu tab beserta bentuk gridnya. */
+/** Satu antrean beserta bentuk gridnya. */
 export type Tab = {
   kode: string
+
+  /**
+   * Teks PILIHAN pada dropdown pemilih antrean — "Treaty-In Admin", "Treaty-In Teknik".
+   *
+   * Jangan tertukar dengan `judul_grid`: keduanya tampil bersamaan dan berbunyi berbeda.
+   */
   nama: string
+
+  /**
+   * Judul KONTAINER grid di bawah dropdown — "Work Treatyin Non Propotional Teknik".
+   *
+   * Kosong pada antrean yang terhalang: tidak ada grid yang digambar di sana.
+   */
+  judul_grid?: string
+
   keterangan: string
   kolom: TabColumn[]
 

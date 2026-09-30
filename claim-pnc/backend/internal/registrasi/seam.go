@@ -291,6 +291,11 @@ type ClaimReportSnapshot struct {
 	// Ia dibawa untuk DIPERIKSA, bukan dipakai: pemanggil sudah menyebut nomor polis,
 	// dan keduanya harus sama. Berbeda berarti berkas dan klaim menunjuk polis yang lain.
 	PolicyNumber string
+
+	// ClaimNumber ← NOKLAIM: nomor klaim yang sudah terbit dari berkas ini. Terisi berarti
+	// berkasnya sudah diregistrasi, dan Register Klaim kedua ditolak (Work Owner,
+	// 2026-09-29) — tanpa itu terbit PNCN kedua dan NOKLAIM berkasnya tertimpa.
+	ClaimNumber string
 }
 
 type ClaimReportLink interface {
@@ -305,6 +310,17 @@ type ClaimReportLink interface {
 	// Tanpa ini, klaim lahir kosong dan petugas mengetik ulang seluruh isi berkas yang
 	// baru saja diisinya — di Pega tidak demikian, dan itu terlihat langsung di layar.
 	Snapshot(ctx context.Context, reportID string) (ClaimReportSnapshot, error)
+}
+
+// ReportAlreadyRegisteredError: berkas Receive Document sudah punya nomor klaim, sehingga
+// Register Klaim kedua ditolak (Work Owner, 2026-09-29).
+type ReportAlreadyRegisteredError struct {
+	ReportID    string
+	ClaimNumber string
+}
+
+func (e *ReportAlreadyRegisteredError) Error() string {
+	return "registrasi: laporan " + e.ReportID + " sudah diregistrasi sebagai klaim " + e.ClaimNumber
 }
 
 // AreaLevel adalah satu tingkat daftar pilihan wilayah kejadian.

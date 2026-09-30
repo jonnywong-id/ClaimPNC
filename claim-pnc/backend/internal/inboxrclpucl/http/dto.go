@@ -52,11 +52,34 @@ type WorkItemDTO struct {
 	// justru itulah arti tab tersebut.
 	LetterPrintedAt string `json:"tanggal_cetak_surat"`
 
-	// ClaimAge dikirim sebagai TEKS, bukan angka. Satuannya tidak diketahui: tidak satu pun
-	// kueri di export menghitungnya, dan tidak ada DDL yang menyatakan tipenya (`R-08`).
+	// ClaimAge dikirim sebagai TEKS TANGGAL, bukan angka dan bukan durasi.
+	//
+	// Judulnya menyebut durasi; isinya **tanggal kirim untuk proses PUCL** (Work Owner,
+	// 2026-09-30), dan kolomnya terverifikasi bertipe `TIMESTAMP(6)` di Oracle. Judulnya
+	// tetap dibawa apa adanya (`D-13`); yang dibentuk hanya isinya, oleh
+	// `inboxrclpucl.DisplayTimeText` di penyimpanan.
 	ClaimAge string `json:"lama_klaim"`
 
 	ExpiryStatus string `json:"status_kadaluarsa"`
+
+	// CreatedAt adalah kolom yang MENGURUTKAN tabel ini — `PXCREATEDATETIME`.
+	//
+	// Ia tidak ada di layar lama. Ditambahkan 2026-09-30 atas keputusan Work Owner supaya
+	// tabelnya tidak lagi terbaca acak; urutan barisnya sendiri tidak berubah sedikit pun.
+	CreatedAt string `json:"tanggal_dibuat"`
+}
+
+// DifferenceDTO adalah satu selisih terhadap Pega yang sudah diputuskan.
+//
+// Dua bagian, karena pembacanya dua: `ringkas` untuk petugas klaim yang sedang memakai
+// layar, `rincian` untuk penguji kesetaraan yang sedang mencari pemetaan `P-5`-nya. Layar
+// menggambar yang pertama dan menyembunyikan yang kedua di balik satu ketukan.
+//
+// Keduanya SELALU dikirim. Mengirim `rincian` hanya saat diminta akan menuntut satu
+// permintaan tambahan per butir, padahal seluruh isinya teks tetap yang sudah ada di memori.
+type DifferenceDTO struct {
+	Summary string `json:"ringkas"`
+	Detail  string `json:"rincian"`
 }
 
 // ColumnDTO adalah satu kolom grid.
@@ -110,7 +133,7 @@ type MetadataResponse struct {
 	ReportColumns []ColumnDTO `json:"kolom_laporan"`
 
 	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
+	PlannedDifferences []DifferenceDTO `json:"selisih_terencana"`
 
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal
 	// yang sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
@@ -151,12 +174,13 @@ type LetterDraftDTO struct {
 	PolicyNumber string `json:"no_polis"`
 	LossDate     string `json:"tanggal_kejadian"`
 
-	// InsuredName dan SumInsured sama-sama DITURUNKAN dari anak klaim, tetapi dari kolom
-	// yang BERBEDA — dan itu selisih terencana terhadap Pega, tempat keduanya diisi dari
-	// ekspresi yang sama persis sehingga "UP" ikut berisi nama objek.
+	// InsuredName dan SumInsured DITURUNKAN dari kolom yang SAMA — nama objek pertama —
+	// dan itu BUKAN selisih, melainkan perilaku Pega apa adanya.
 	//
-	// `up` karena itu berisi ANGKA di sini. Lihat `inboxrclpucl.LetterDraft.SumInsured`
-	// untuk keputusannya dan bukti sumbernya.
+	// `up` karena itu berisi NAMA OBJEK, bukan angka. Ia terbaca seperti salin-tempel yang
+	// keliru dan sempat "diperbaiki" menjadi nilai pertanggungan pada 2026-09-24; Work
+	// Owner meralatnya hari itu juga, dan perbaikannya dicabut seluruhnya. Lihat
+	// `inboxrclpucl.LetterDraft.SumInsured`.
 	InsuredName string `json:"nama_peserta"`
 	SumInsured  string `json:"up"`
 
@@ -223,6 +247,7 @@ func toWorkItemDTO(item inboxrclpucl.WorkItem) WorkItemDTO {
 		LetterPrintedAt: item.LetterPrintedAt,
 		ClaimAge:        item.ClaimAge,
 		ExpiryStatus:    item.ExpiryStatus,
+		CreatedAt:       item.CreatedAt,
 	}
 }
 
@@ -269,8 +294,13 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
+	differences := make([]DifferenceDTO, 0, len(meta.PlannedDifferences))
+	for _, difference := range meta.PlannedDifferences {
+		differences = append(differences, DifferenceDTO{
+			Summary: difference.Summary,
+			Detail:  difference.Detail,
+		})
+	}
 
 	return MetadataResponse{
 		Tabs:               tabs,

@@ -96,6 +96,8 @@ const (
 	ViolationPLANoCoins              ViolationCode = "pla_tanpa_koasuransi"
 	ViolationPLANotLeader            ViolationCode = "pla_bukan_leader"
 	ViolationPLANoReserve            ViolationCode = "pla_tanpa_reserve"
+	ViolationDLANotAllowed           ViolationCode = "dla_tidak_berlaku"
+	ViolationDLAZeroShare            ViolationCode = "dla_share_nol"
 	ViolationSendNeedsFaceSheet      ViolationCode = "kirim_pic_belum_cfs"
 	ViolationReceiverAccountEmpty    ViolationCode = "rekening_penerima_kosong"
 	ViolationReceiverAccountUnknown  ViolationCode = "rekening_penerima_tidak_terdaftar"

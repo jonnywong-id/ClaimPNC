@@ -8,6 +8,7 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
 import { useCreateWorkshop, useDecideWorkshop, useSaveWorkshop, useWorkshopList } from './api'
+import { DocumentPanel } from './DocumentPanel'
 import { WorkshopForm, type WorkshopFormValues } from './WorkshopForm'
 
 /**
@@ -142,6 +143,9 @@ export function WorkshopPage() {
   const [editing, setEditing] = useState<Workshop | null>(null)
   const [chosen, setChosen] = useState<Set<string>>(new Set())
 
+  // Bengkel yang panel dokumennya sedang terbuka. Null berarti tertutup.
+  const [documentFor, setDocumentFor] = useState<Workshop | null>(null)
+
   const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = useWorkshopList(active.status)
   const create = useCreateWorkshop()
@@ -178,6 +182,18 @@ export function WorkshopPage() {
     setEditing(null)
   }
 
+  /*
+    Panel dokumen dan form saling menutup.
+
+    Keduanya menggarap baris yang sama dan keduanya digambar di tempat yang sama. Dibiarkan
+    terbuka bersamaan, pengguna melihat dua panel bertumpuk yang tidak jelas mana yang
+    sedang dikerjakannya.
+  */
+  function openDocument(row: Workshop) {
+    closeForm()
+    setDocumentFor(row)
+  }
+
   function openAdd() {
     create.reset()
     save.reset()
@@ -190,6 +206,8 @@ export function WorkshopPage() {
     save.reset()
     setAdding(false)
     setEditing(row)
+    // Panel dokumen ikut ditutup — lihat alasannya pada openDocument.
+    setDocumentFor(null)
   }
 
   function toggle(id: string) {
@@ -303,14 +321,25 @@ export function WorkshopPage() {
     {
       key: 'aksi',
       title: 'Aksi',
-      width: '6rem',
+      width: '11rem',
       noSort: true,
       alignRight: true,
       value: () => '',
       render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-          Ubah
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
+            Ubah
+          </Button>
+          {/*
+            Padanan dua tombol layar lama sekaligus — "Upload Document" dan tombol lihat
+            dokumen pada layar persetujuan. Letaknya PER BARIS, bukan tingkat layar:
+            yang disimpannya adalah DOKUMENID, kolom milik satu baris. Alasannya lengkap
+            di DocumentPanel.
+          */}
+          <Button tone="halus" onClick={() => openDocument(row)}>
+            Dokumen
+          </Button>
+        </div>
       ),
     },
   ]
@@ -415,6 +444,10 @@ export function WorkshopPage() {
           onReject={() => runDecision(WorkshopStatus.ditolak)}
           onClear={() => setChosen(new Set())}
         />
+      )}
+
+      {documentFor && (
+        <DocumentPanel workshop={documentFor} onClose={() => setDocumentFor(null)} />
       )}
 
       {isFormOpen && (

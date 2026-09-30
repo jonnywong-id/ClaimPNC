@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 
 import { SearchIcon, EmptyBoxIcon, ChevronIcon } from './Icon'
 
@@ -184,6 +184,29 @@ type Props<T> = {
    * server dan TIDAK boleh memakai ini (`TKT-U2-001`).
    */
   pageSize?: number
+
+  /**
+   * Isi yang terbuka di bawah sebuah baris ketika baris itu diklik.
+   *
+   * Tidak diisi berarti **tidak ada baris yang dapat dibuka** — dan itulah bawaannya,
+   * sehingga sepuluh layar master yang sudah selesai berperilaku persis seperti sebelumnya.
+   *
+   * # Kenapa opt-in, sama seperti `pageSize` dan `showHeaderWhenEmpty`
+   *
+   * Yang memintanya adalah Master Recovery. Grid Outstanding-nya memuat satu baris per
+   * principal, dan mengekliknya membuka riwayat seluruh batch principal tersebut —
+   * terbaca dari layar Pega yang berjalan, bukan dari export (rule pemuatnya hilang,
+   * `R-16`).
+   *
+   * Isi yang terbuka dibiarkan BEBAS bentuknya, bukan dipaksa menjadi tabel bersarang:
+   * grid dalam pada layar itu punya sepuluh kolom yang seluruhnya berbeda dari grid
+   * luarnya, dan memaksakan satu bentuk untuk keduanya akan membuat komponen ini tahu
+   * terlalu banyak tentang satu layar.
+   *
+   * Mengembalikan `null` untuk sebuah baris berarti baris itu tidak dapat dibuka —
+   * dipakai saat sebagian baris memang tidak punya isi.
+   */
+  expandedRow?: (row: T) => ReactNode
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -286,10 +309,15 @@ export function DataTable<T>({
   pagination,
   pageSize,
   showHeaderWhenEmpty = false,
+  expandedRow,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
   const [page, setPage] = useState(1)
+
+  // Kunci baris yang sedang terbuka; null berarti tidak ada. SATU saja yang terbuka pada
+  // satu waktu, sama seperti grid lama — membuka baris lain menutup yang sebelumnya.
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   const onServer = serverSearch !== undefined
   const query = serverSearch ? serverSearch.value : localQuery
@@ -500,43 +528,80 @@ export function DataTable<T>({
                   </td>
                 </tr>
               ) : null}
-              {shown.map((b) => (
-                <tr
-                  key={rowKey(b)}
-                  className={[
-                    'block border-b border-slate-200 py-2.5 last:border-0',
-                    'md:table-row md:border-slate-100 md:py-0',
-                    'transition-colors duration-150 ease-halus',
-                    'hover:bg-blue-50/50',
-                  ].join(' ')}
-                >
-                  {columns.map((k) => (
-                    <td
-                      key={k.key}
+              {shown.map((b) => {
+                const kunci = rowKey(b)
+                const isi = expandedRow?.(b) ?? null
+                const bisaDibuka = isi !== null && isi !== undefined && isi !== false
+                const terbuka = bisaDibuka && expanded === kunci
+
+                return (
+                  <Fragment key={kunci}>
+                    <tr
                       className={[
-                        'flex items-baseline gap-3 px-5 py-1.5',
-                        'md:table-cell md:py-3.5 md:align-middle',
-                        k.alignRight ? 'md:text-right' : '',
+                        'block border-b border-slate-200 py-2.5 last:border-0',
+                        'md:table-row md:border-slate-100 md:py-0',
+                        'transition-colors duration-150 ease-halus',
+                        'hover:bg-blue-50/50',
+                        bisaDibuka ? 'cursor-pointer' : '',
+                        terbuka ? 'bg-blue-50/60' : '',
                       ].join(' ')}
+                      // Baris yang dapat dibuka dijadikan tombol bagi teknologi bantu, dan
+                      // dapat dibuka dengan Enter maupun Spasi. Tanpa itu, isinya hanya
+                      // terjangkau tetikus — dan grid lama pun membukanya dengan klik.
+                      {...(bisaDibuka
+                        ? {
+                            onClick: () => setExpanded(terbuka ? null : kunci),
+                            onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                              if (event.key !== 'Enter' && event.key !== ' ') return
+                              event.preventDefault()
+                              setExpanded(terbuka ? null : kunci)
+                            },
+                            role: 'button',
+                            tabIndex: 0,
+                            'aria-expanded': terbuka,
+                          }
+                        : {})}
                     >
-                      {/*
-                        Nama kolom digambar ulang di dalam sel untuk tampilan kartu.
-                        aria-hidden karena <th scope="col"> sudah menjelaskan sel ini —
-                        tanpa itu pembaca layar menyebut nama kolom dua kali.
-                      */}
-                      <span
-                        aria-hidden="true"
-                        className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500 md:hidden"
-                      >
-                        {k.title}
-                      </span>
-                      <span className="min-w-0 flex-1 break-words text-slate-900">
-                        {k.render ? k.render(b) : k.value(b) || '—'}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-              ))}
+                      {columns.map((k) => (
+                        <td
+                          key={k.key}
+                          className={[
+                            'flex items-baseline gap-3 px-5 py-1.5',
+                            'md:table-cell md:py-3.5 md:align-middle',
+                            k.alignRight ? 'md:text-right' : '',
+                          ].join(' ')}
+                        >
+                          {/*
+                            Nama kolom digambar ulang di dalam sel untuk tampilan kartu.
+                            aria-hidden karena <th scope="col"> sudah menjelaskan sel ini —
+                            tanpa itu pembaca layar menyebut nama kolom dua kali.
+                          */}
+                          <span
+                            aria-hidden="true"
+                            className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500 md:hidden"
+                          >
+                            {k.title}
+                          </span>
+                          <span className="min-w-0 flex-1 break-words text-slate-900">
+                            {k.render ? k.render(b) : k.value(b) || '—'}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+
+                    {terbuka && (
+                      <tr className="block bg-slate-50/70 md:table-row">
+                        <td
+                          className="block border-b border-slate-200 px-5 py-4 md:table-cell"
+                          colSpan={columns.length}
+                        >
+                          {isi}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>

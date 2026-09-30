@@ -8312,6 +8312,75 @@ gagal — dan dapat pula **lulus** — karena sebab yang bukan yang diuji.
 
 | Skill | Kapan | Untuk apa | Hasilnya |
 |---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | menekan setiap premis ke bukti, lalu mengajukan yang tidak terbukti sebagai pertanyaan | **5 pertanyaan**, seluruhnya dijawab Work Owner; satu di antaranya **mengoreksi premis pertanyaan saya sendiri** |
+| `mattpocock-skills:domain-modeling` | saat menyusun tipe domain | menolak alias Pega yang menyesatkan, memberi nama yang tidak mungkin tertukar | 13 alias dibongkar; `Tab` menjadi tipe tertutup, bukan teks bebas |
+| `mattpocock-skills:codebase-design` | saat menetapkan seam | memisahkan `Directory` dari `Repo` | jembatan identitas dapat berubah di satu tempat tanpa menyentuh antrean |
+
+### `grilling` — yang paling berharga di sesi ini
+
+Disiplinnya menuntut **fakta dicari sendiri, keputusan diserahkan Work Owner**. Empat kali ia
+mencegah pekerjaan yang salah arah:
+
+1. **Sumber data.** Saya hampir memakai `T_CLAIMLIST_ADMIN` begitu saja karena itu tabel yang
+   dipakai inbox lain. Pemeriksaan ke `inboxoutstanding.go` menemukan catatan verifikasi:
+   tabel itu berisi **0** baris `Work-SurveyClaim`. Seluruh modul akan menampilkan layar
+   kosong yang tampak wajar.
+
+2. **Empat kueri tab hilang.** Diperiksa lewat isi `pyRuleName`, **bukan nama berkas** —
+   pelajaran dari sesi sebelumnya bahwa nama berkas export Pega tidak dapat dipercaya.
+   Keempatnya memang tidak ada. Tetapi pencarian lanjutan menemukan `CountOSLostAdjuster`
+   menghitung ketujuh keranjang yang sama, sehingga predikatnya **tetap terbaca** — blokir
+   berubah menjadi keterbatasan.
+
+3. **Jembatan identitas.** Saya sempat menawarkan `M_LOGIN_PNC` sebagai kandidat kepada Work
+   Owner. Sebelum jawabannya diterapkan, saya menemukan `GetLoginLeaderSurveyor-SQL.xml`
+   yang membuktikan Pega memakai `MST_LOGIN_SURVEYOR.LOGIN`. **Koreksi atas premis
+   pertanyaan saya sendiri disampaikan lebih dulu**, bukan dilewatkan diam-diam.
+
+4. **Pertanyaan balik Work Owner** — "apakah sama dengan `sts_survey` Close Case?" — dijawab
+   dengan bukti, bukan dengan ingatan. `GetDataCaseSurveyALL-SQL.xml` membuktikan "Close
+   Case" adalah nilai `ADJUSTERSTATUS_1`, **bukan** `STS_SURVEY`. Itu menutup pertanyaan
+   tanpa perlu DBA.
+
+### `domain-modeling` — alias yang dibongkar
+
+Kueri Pega mengalias kolom secara menyesatkan (§4.2 Steering). Tidak satu pun dibawa:
+
+    a.POLICYNO        AS "CityID"    -> PolicyNumber
+    a.QQNAME          AS "Country"   -> InsuredName
+    a.SURVEYORNAME_1  AS "CountryID" -> AdjusterPIC
+    a.USERTEKNIS_1    AS "District"  -> TechnicalPIC
+    a.AdjusterStatus_1 AS "ProvinceID" -> ASMStatus
+
+Pemetaannya dipulihkan dari daftar Property-Set pada `SetTempLostAdjuster`, bukan ditebak
+dari nama aliasnya.
+
+`Tab` dibuat sebagai **tipe tertutup**, bukan teks bebas. Alasannya khas modul ini: ketujuh
+tab menjawab pertanyaan berbeda atas tabel yang sama, sehingga tab yang salah menghasilkan
+layar yang **terisi wajar dengan isi yang keliru** — bukan galat.
+
+### Kesalahan saya sendiri, tertangkap uji
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| `members()` membandingkan **nama** dengan **login** untuk membuang duplikat | ketahuan saat membaca ulang sebelum uji ditulis; diperbaiki menjadi dua parameter terpisah |
+| Data contoh menaruh Aging kosong pada baris ber-`AdjusterAccept = "0"` | uji gagal — baris itu **sengaja** tidak masuk tab mana pun, sehingga keadaan Aging kosong tidak pernah sampai ke layar |
+| Uji mencari `ref-0105` padahal Reference No-nya `REF-0005` | uji gagal; nomor referensi dan nomor klaim memang sengaja dibuat berbeda supaya kolomnya benar-benar teruji |
+| Komentar memuat `INSTR('', …)` | `gofmt` mengubah `''` menjadi tanda kutip tipografis; kalimatnya ditulis ulang |
+
+Dua yang pertama satu pola: **data contoh yang dirancang membuktikan satu hal dipakai
+membuktikan hal lain.**
+
+### Yang sengaja TIDAK dikerjakan, dan dinyatakan
+
+Membuka baris untuk **mengerjakan** surveinya. Di Pega tautannya membuka
+`ASSIGN-WORKLIST <pyID>!Surveyor_Flow`; `Flow/` hanya memuat empat flow dan itu bukan salah
+satunya. Dicatat sebagai keterbatasan yang TAMPIL DI LAYAR, bukan disembunyikan sebagai
+"selesai".
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-28 (modul Inbox OS Claim per Cabang, `MENU_ID 69`)
 | `mattpocock-skills:codebase-design` | sebelum menulis satu baris pun | menentukan **di mana** transaksi tinggal, dan apakah `Reply` menjadi satu operasi seam atau dua | Satu operasi. Dua operasi (`UpdateReply` + `InsertHistory`) akan memaksa `*sql.Tx` bocor lewat seam, sehingga lapisan domain harus menyebut tipe `database/sql`. Kosakata **depth** menjawabnya: `Reply` adalah satu interface kecil yang menyembunyikan dua pernyataan — bukan dua interface yang pemanggilnya harus tahu urutannya |
 | `mattpocock-skills:domain-modeling` | saat membaca `ReplyKomunikasi-SQL` | menguji apakah kolom `kodecabang` benar-benar berisi kode cabang | **Tidak.** Penelusuran `tempReply.NAME ← Param.kodecabang ← TempView2.City ← .pzInsKey` membuktikan isinya `CASEID`. Ini perangkap yang **sama bentuknya** dengan yang §49.10 catat — dan tanpa disiplin "silangkan pernyataan dengan kode", nama kolomnya akan dipercaya |
 | `mattpocock-skills:grilling` | pada diri sendiri, saat hendak menyalin `reply_update` apa adanya | menanyakan "apa yang terjadi bila percakapannya sudah ditutup?" | Jawabannya: balasannya **berhasil** pada baris yang tetap tidak muncul di kedua tab, lalu dijawab layar dengan kalimat tentang perpindahan tab yang tidak terjadi. Penjagaan `CASEID` ditambahkan, dan dinyatakan sebagai selisih terencana |
@@ -10832,6 +10901,7 @@ sebelum divalidasi**. Yang berbeda: ketiganya tertangkap sebelum sampai ke kode 
 3. **Dua temuan menyangkut modul yang sudah jadi** dan sengaja tidak disentuh:
    `SPAREPART_HE` yang rusak, dan `PXASSIGNEDORGUNIT` yang praktis kosong. Keduanya di
    `permintaan-artefak-pega.md`.
+<<<<<<< HEAD
 
 ---
 
@@ -10904,3 +10974,744 @@ kolom" sejak serahan pertama — angkanya benar, tetapi saya **tidak pernah meng
 yang saya tulis**. Pernyataan jumlah yang tidak diuji tidak menjaga apa pun. Penjaganya
 sekarang satu uji yang mencocokkan keenam belas judul beserta urutannya, dan itulah yang akan
 menangkap kolom hilang berikutnya.
+=======
+<<<<<<< HEAD
+
+---
+
+## Sesi 2026-09-29 — mematikan penyaring pemilik Inbox Komite
+
+**Skill khusus yang dipanggil: tidak ada.** Konsisten dengan tiga putaran sebelumnya.
+
+### Yang menentukan hasil putaran ini: mengukur, bukan memperkirakan
+
+Permintaannya satu kalimat — "jangan pakai where operator dulu". Godaannya adalah menghapus satu
+baris. Yang dikerjakan sebagai gantinya adalah menjawab dua pertanyaan lebih dulu, dan **keduanya
+diukur**:
+
+| Pertanyaan | Cara menjawabnya | Hasil |
+|---|---|---|
+| Satu kueri opsional, atau dua kueri kembar? | Menjalankan **keempat bentuk** terhadap Oracle, 5 putaran masing-masing | 24–28 ms semuanya → satu kueri, kembaran tidak perlu |
+| Apakah benar datanya muncul? | Menjalankan repo-nya sendiri dengan dan tanpa penanda | 0 → **189** baris, dan operator kosong tetap 0 |
+
+Tanpa pengukuran pertama, saya akan membangun dua kueri kembar beserta uji keselarasannya —
+mengulang persis mesin yang baru saja saya buang pada §69, untuk masalah yang ternyata tidak ada.
+
+### Disiplin yang dipakai: memisahkan "diminta" dari "gagal"
+
+Bagian yang paling mudah salah di sini bukan SQL-nya, melainkan **bentuk datanya**. Cara termudah
+mematikan penyaring adalah membiarkan operator kosong berarti "semua". Itu akan bekerja, dan itu
+akan salah: operator kosong adalah **kegagalan pembacaan identitas**, dan menyatukan keduanya
+berarti setiap kegagalan identitas berubah menjadi kebocoran.
+
+Karena itu `AllOperators` menjadi medan tersendiri, dan uji
+`TestPenyaringPemilikHanyaMatiBilaDiminta` menegakkan ketiga keadaannya — terisi, kosong, dan
+diminta — bukan hanya yang terakhir.
+
+### Penjagaan diuji dengan menjalankannya, bukan dengan membacanya
+
+Penolakan di luar `development` tidak cukup ditulis lalu dipercaya. Ia dijalankan:
+
+```
+APP_ENV=staging ./claimpnc.exe
+  -> KOMITE_TANPA_PENYARING_OPERATOR menyala pada APP_ENV="staging"; ia hanya berlaku
+     pada development karena mematikan penyaring pemilik Inbox Komite …
+```
+
+Penjagaan yang tidak pernah dilihat gagal adalah penjagaan yang belum diketahui bekerja.
+
+### Satu uji yang sengaja menguji arah sebaliknya
+
+`tidak muncul ketika penyaringnya aktif` — memastikan pemberitahuan "Daftar ini BUKAN inbox Anda"
+**tidak** muncul pada keadaan normal. Uji seperti ini mudah dianggap berlebihan, tetapi ia menjaga
+hal yang nyata: pemberitahuan yang muncul terus-menerus akan diabaikan orang, dan pemberitahuan yang
+diabaikan sama saja dengan tidak ada.
+
+### Yang dilaporkan, bukan diperbaiki
+
+Dua uji gagal di `inboxpladla` dan `inboxservicecenter` — keduanya dari commit orang lain yang masuk
+sejak run penuh saya sebelumnya pada hari yang sama. Berkasnya bersih di working tree saya.
+`Isolasi Protektif` menetapkan keduanya bukan milik sesi ini; keduanya disebutkan lengkap dengan
+nama uji dan sebabnya supaya dapat langsung diarahkan.
+=======
+>>>>>>> dev
+<<<<<<< HEAD
+
+---
+
+## Master Recovery — tab Outstanding (2026-09-29)
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode disentuh | menguji kembali klaim saya sendiri bahwa layar lama tidak punya daftar | klaimnya **gugur**; grid Outstanding terbukti ada di section, dan rule pemuatnya yang hilang |
+| `mattpocock-skills:codebase-design` | saat menentukan tempat batas `limit` ditegakkan | memilih lapisan mana yang memilikinya | ditegakkan di **usecase**, lapisan yang dilewati SETIAP pemanggil — bukan di handler, yang hanya dilewati pemanggil HTTP |
+| `mattpocock-skills:domain-modeling` | saat menamai `ListFilter` dan memutuskan isinya | memisahkan penyaring **pencarian** dari penyaring **aturan bisnis** | penyaring "outstanding" **tidak dibuat**, dan alasannya ditulis di tipenya sendiri supaya tidak ditambahkan diam-diam kemudian |
+
+### Keputusan teknis yang lahir darinya
+
+1. **Ketiadaan di export bukan bukti.** `R-16` mencatat kurang-lebih 242 rule hilang dan
+   tujuh tipe rule yang tidak diaudit sama sekali. Kesimpulan apa pun yang berbentuk
+   "tidak ada X di export, berarti fiturnya tidak ada" **tidak sah** di repositori ini.
+   Yang sah adalah kesimpulan dari apa yang ADA — seperti ketiadaan Ubah/Hapus, yang
+   dibaca dari ISI `INSERTMASTERRECOVERYKLAIM.prc`, bukan dari ketidakhadirannya.
+2. **Bila bukti tidak ada, tempuh pilihan yang kekeliruannya terlihat.** Daftar
+   menampilkan seluruh batch, bukan menebak penyaring "outstanding": baris berlebih
+   langsung terlihat, baris yang hilang diam-diam tidak pernah dikeluhkan siapa pun.
+3. **Uji yang mengunci sebuah ketiadaan wajib menyebut dasar ketiadaannya.** Uji lama
+   hijau selama berhari-hari sambil mengunci kekeliruan. Penggantinya memisahkan dua
+   ketiadaan yang dasarnya berbeda, dan hanya mempertahankan yang berdiri di atas isi.
+
+### Catatan untuk sesi berikutnya
+
+**Tiga berkas dokumentasi memuat penanda konflik merge yang belum diselesaikan**, dan
+seluruhnya berasal dari merge sebelumnya — bukan dari pekerjaan Master Recovery:
+
+    docs/penggunaan-skill.md        8 penanda
+    docs/catatan-pengembangan.md    4 penanda
+    docs/keputusan-implementasi.md  1 penanda
+
+Entri sesi ini ditambahkan di ujung berkas, di luar blok konflik mana pun. Penyelesaian
+konfliknya **tidak dikerjakan sepihak**: memilih salah satu sisi berarti membuang tulisan
+orang lain tanpa mengetahui mana yang berlaku.
+=======
+>>>>>>> dev
+
+---
+
+## Sesi 2026-09-29 (putaran kedua) — tombol Putuskan dibuang, rincian dibuka
+
+**Skill khusus yang dipanggil: tidak ada.**
+
+### Membaca rule DULU, sebelum menebak apa yang diminta
+
+Permintaannya menyebut tiga nama: `SetAssignmentKomite`, "Open Assignment", dan `ViewTransferDtl`.
+Godaannya adalah menerjemahkannya langsung menjadi "buat halaman rincian". Yang dikerjakan lebih
+dulu adalah membaca ketiganya, dan **dua temuan mengubah bentuk pekerjaannya**:
+
+| Dibaca | Temuan | Akibatnya |
+|---|---|---|
+| `SetAssignmentKomite` | Langkah 2 `OBJ-OPEN-BY-HANDLE` atas `"ASSIGN-WORKLIST " + inskey + "!Komite_Flow"` | "Open Assignment" = buka **dan kunci**. Penguncian sengaja tidak ditiru; alasannya ditulis |
+| `ViewTransferDtl` | Merender section `ShowTransfer` | Bukan layar sederhana — ia merakit **empat** sub-section |
+| `find` atas keempat sub-section | **Tiga tidak ada di export** | Rincian transfernya tidak dapat dibangun; ketiadaan itu dinyatakan, bukan dikarang |
+
+Tanpa langkah ketiga, saya akan membangun tabel rincian transfer dari tebakan — pada layar yang
+menyetujui uang.
+
+### Satu cacat yang tertangkap karena memikirkan perubahan SEBELUMNYA
+
+Penyaring pemilik baru saja dimatikan pada putaran sebelumnya. Menambahkan tautan ke rincian tanpa
+mengingat itu akan menghasilkan layar yang **isinya terlihat tetapi tidak satu pun barisnya dapat
+dibuka** — daftar menampilkan kasus orang lain, `Case` menolaknya dengan 404.
+
+Kegagalan itu tidak akan muncul di uji mana pun yang saya tulis untuk fitur ini; ia muncul saat
+seseorang mengklik baris. Yang menangkapnya adalah bertanya "apa lagi yang berubah minggu ini yang
+menyentuh pertanyaan yang sama" — bukan perkakas.
+
+Perbaikannya sekaligus menegaskan batasnya: `Decide` **tidak** ikut dilonggarkan, dan `false`-nya
+ditulis tegas di kode beserta alasannya.
+
+### Diuji terhadap Oracle, bukan hanya terhadap tiruan
+
+`inbox_get` ditulis ulang pada §69 dan **belum pernah dieksekusi** terhadap Oracle. Keempat jalurnya
+dijalankan langsung: pemilik, bukan pemilik, penyaring mati, dan nomor yang tidak ada. Semuanya
+benar.
+
+Kueri yang belum pernah dijalankan terhadap basis data sungguhan adalah kueri yang belum terbukti
+sah — berapa pun uji yang mengelilinginya.
+
+### Satu kesalahan uji saya sendiri
+
+Uji judul memeriksa `"Claim No. PNCN.26.0101"` **sebelum** datanya tiba. Judul tergambar lebih dulu,
+dan sebelum data masuk baris itu menampilkan nomor dari alamatnya sebagai cadangan — sehingga uji
+itu menguji keadaan sementara dan gagal.
+
+Kegagalannya justru membuktikan cadangan itu bekerja. Diperbaiki dengan menunggu datanya lebih dulu,
+dan sebabnya ditulis di komentar uji supaya tidak "diperbaiki" lagi dengan melonggarkan
+pencocokannya.
+
+### Yang dilaporkan, bukan diperbaiki
+
+Tiga paket gagal di modul orang lain, dan satu di antaranya **baru muncul sesi ini**:
+`inboxosclaimpercabang` gagal **build** karena ujinya memakai medan yang tidak ada lagi di tipenya —
+tanda perubahan tipe yang ujinya belum ikut disesuaikan. Disebutkan lengkap dengan nama medannya
+supaya dapat langsung diarahkan.
+
+---
+
+## Sesi 2026-09-29 (putaran ketiga) — rincian transfer dibangun
+
+**Skill khusus yang dipanggil: tidak ada.**
+
+### Yang menentukan putaran ini: bertanya ke basis data SEBELUM menulis satu baris SQL
+
+Ketiga section yang hilang datang. Godaannya adalah langsung membangun tampilannya dari
+properti yang terbaca di XML. Yang dikerjakan lebih dulu adalah **menguji 33 properti itu
+sebagai nama kolom**, dan jawabannya membalik seluruh rancangan:
+
+| Diuji | Hasil |
+|---|---|
+| 33 properti `ShowTransferDetail` terhadap 186 kolom tabel kerja | **6 ada, 27 tidak** |
+
+Sebabnya: section itu membaca **clipboard**, yang isinya di **blob Pega**. Tanpa pemeriksaan
+itu, saya akan menulis kueri terhadap kolom yang tidak ada — dan baru tahu setelah layarnya
+dijalankan.
+
+### Satu pilihan yang tampak sepele dan sebenarnya menentukan
+
+`T_CLAIM_ADJUSTMENT` punya `CASEIDKOMITE` dan `CLAIMID`. Keduanya masuk akal secara nama.
+Alih-alih memilih yang "terasa benar", keduanya **dijalankan berdampingan** atas dua belas
+case:
+
+```
+lewat CASEIDKOMITE   1 baris   pada dua belas-duanya
+lewat CLAIMID        4–8 baris pada dua belas-duanya
+```
+
+Nol kesamaan. Memilih yang salah tidak akan menimbulkan galat — ia hanya menampilkan empat
+sampai delapan nilai uang milik case komite lain pada layar tempat orang menyetujui uang.
+
+**Perbandingan berdampingan adalah satu-satunya hal yang membedakan pilihan ini dari
+tebakan**, dan angkanya masuk ke komentar kode serta ke uji — bukan hanya ke catatan ini.
+
+### Cakupan diukur, bukan dijanjikan
+
+Sebelum menyatakan fiturnya selesai, `Detail()` dijalankan atas **60 case pertama dari daftar
+sungguhan**: 43 berisi, 17 kosong. Angka itu yang menentukan bagaimana keadaan kosong
+digambar — sebagai kalimat, bukan sebagai `Rp 0` — karena ia bukan kasus tepi melainkan lebih
+dari seperempat layar yang akan dibuka orang.
+
+### Satu uji yang menjaga daftar "belum dibangun" tetap jujur
+
+Ketika `ShowTransferDetail` selesai, ia **dihapus** dari daftar bagian yang belum ada — dan
+sebuah uji menegakkan bahwa ia tidak muncul lagi di sana. Daftar keterbatasan yang tidak ikut
+menyusut ketika sesuatu selesai akan berhenti dipercaya orang, dan daftar yang tidak dipercaya
+sama saja dengan tidak ada.
+
+### Kesalahan uji saya sendiri, lagi, dan polanya sama
+
+Uji nilai uang memakai `getByText('Rp 64.595.892')` — gagal karena angka itu muncul **dua
+kali**: sebagai Akseptasi dan sebagai Share ASM, yang pada data contoh kebetulan sama.
+Diperbaiki dengan `getAllByText` beserta komentar yang menyebutkan kebetulan itu.
+
+Ini kesalahan ketiga dengan bentuk yang sama dalam beberapa sesi: **mengandaikan satu
+kecocokan pada halaman yang menampilkan nilai berulang**. Dicatat di sini supaya polanya
+terlihat, bukan hanya kejadiannya.
+
+---
+
+## Sesi 2026-09-29 (putaran keempat) — `ShowTransfer` ditelusuri
+
+**Skill khusus yang dipanggil: tidak ada.**
+
+### Yang menentukan putaran ini: membaca SYARAT, bukan daftar properti
+
+Pada putaran sebelumnya `ShowTransfer` sudah "dibaca" — daftar label dan properti terikatnya
+dicatat. Yang terlewat, dan yang justru menentukan, adalah **dua belas `pyCondition`** yang
+menempel pada sel-selnya.
+
+Daftar properti menjawab *"apa yang ada di layar itu"*. Syaratnya menjawab *"kapan"* — dan
+justru itu yang membuat `ShowTransfer` bukan bungkus melainkan **penentu jenis komite**.
+
+Pelajaran yang dapat dipakai lagi: pada section Pega, `pyCondition` lebih informatif daripada
+`pyValue`.
+
+### Satu sel yang membuktikan pentingnya membaca syarat
+
+Field `.AcceptStatus` bersyarat `1==2` — **tidak pernah benar**. Ia mati di Pega sendiri.
+Tanpa membaca syaratnya, ia akan terbaca sebagai medan yang perlu dibangun.
+
+### Kolom yang ADA tetapi KOSONG adalah temuan, bukan kegagalan
+
+`ALL_TAB_COLUMNS` menjawab "kolomnya ada". Itu tidak cukup, dan putaran ini membuktikannya:
+
+```
+GROUPPANEL_1   terisi 610 dari 610   -> cabang IsTravel dapat dinilai
+BUSINESSTYPE   terisi   0 dari 610   -> cabang IsHE TIDAK dapat dinilai
+SURVEYORNAME_1 terisi   0 dari 610   -> blok surveyor tidak dapat dibangun
+```
+
+Bila hanya keberadaan kolomnya yang diperiksa, blok surveyor akan dibangun, lolos uji, dan
+menampilkan kosong pada setiap case — dengan tampilan yang meyakinkan bahwa memang tidak ada
+surveyornya.
+
+**Sejak putaran ini: setelah bertanya "kolomnya ada?", selalu bertanya "terisi berapa?".**
+
+### Bentuk kueri ditentukan basis data, bukan diputuskan lebih dulu
+
+Penyatuan `transfer_case` ke `transfer_committee` sebagai subkueri skalar **dicoba dan ditolak**
+(`ORA-00937`). Karena dicoba lebih dulu, alasan pemisahannya dapat ditulis sebagai fakta di
+komentar kode — bukan sebagai preferensi yang akan dipertanyakan pembaca berikutnya.
+
+### Uji yang diubah, bukan dilonggarkan
+
+`TestKueriTransferHanyaMenyentuhDuaTabelSumber` melarang seluruh kueri rincian menyentuh
+`DATAPEGA.`, dan `transfer_case` melanggarnya. Godaannya adalah menghapus larangan itu.
+
+Yang dikerjakan: larangannya **diganti dengan yang sebenarnya dimaksud** — *nilai uang hanya
+boleh datang dari POOLDATA* — lalu ditambah uji kedua yang memagari `transfer_case` supaya ia
+tidak berubah menjadi jalan pintas. Uji yang dilonggarkan tanpa diganti akan terus melonggar.
+
+### Cabang yang menyembunyikan diperiksa TERSENDIRI
+
+Rekapitulasi 400 case menunjukkan empat judul dan tampak meyakinkan. Tetapi cabang `IsTravel`
+**menyembunyikan** akhiran, dan penyembunyian tidak muncul sebagai baris pada rekapitulasi —
+ia bersembunyi di dalam 225 case ber-judul telanjang.
+
+Ketiga case Travel karena itu diperiksa satu per satu dengan nomornya disebut. Rekapitulasi
+tidak dapat membuktikan ketiadaan.
+
+### Pembedaan yang nyaris terlewat: "bukan" versus "tidak diketahui"
+
+Karena `BUSINESSTYPE` kosong, versi pertama layar akan berbunyi *"lini HE belum ditangani"* —
+yang mengandaikan kita tahu case itu bukan HE. Kita tidak tahu.
+
+Dua uji dibuat berpasangan untuk menjaga perbedaan itu tetap hidup: satu memastikan
+ketidaktahuan **dinyatakan** selama kolomnya kosong, satu lagi memastikan pernyataan itu
+**berhenti** begitu kolomnya terisi.
+
+### Yang TIDAK dilakukan meski penelusurannya membuka jalan
+
+`ShowTransfer` memuat form keputusan lengkap. Penelusuran ini membuat seluruh medannya
+terbaca, dan membangunnya akan terasa seperti kelengkapan.
+
+Work Owner mencabut tombol keputusan pada putaran sebelumnya. Penelusuran yang menemukan
+sesuatu bukan izin untuk membangunnya.
+
+---
+
+## Sesi 2026-09-29 (putaran kelima) — layar kosong yang tidak melapor apa pun
+
+**Skill khusus yang dipanggil: tidak ada.**
+
+### Yang menentukan putaran ini: menjalankan jalurnya, bukan membacanya
+
+Keluhannya satu kalimat dan dapat dibaca beberapa cara. Alih-alih menebak maksudnya, jalur
+rinciannya **dijalankan terhadap Oracle** atas dua belas case pertama daftar sungguhan.
+
+Hasilnya memisahkan dua hal yang mudah tertukar:
+
+```
+galat                 : tidak ada
+baris=0               : 8 dari 12
+judul telanjang       : 10 dari 12
+```
+
+**Layarnya tidak rusak — isinya yang tidak ada.** Tanpa menjalankannya, saya akan mencari
+galat yang memang tidak pernah ada.
+
+### Kesalahan saya sendiri, dan bentuknya patut diingat
+
+Kunci join dipangkas prefiksnya **satu langkah terlalu awal**. Akibatnya nol baris pada
+seluruh 189 case — dan **tidak ada satu pun galat**.
+
+Ini kelas cacat yang paling mahal di proyek ini: layar yang kosong terbaca sebagai "memang
+belum ada datanya", dan bacaan itu masuk akal, sehingga tidak ada yang memeriksanya. Ia
+bertahan sejak §71.12 sampai Work Owner menyebutnya.
+
+Pelajarannya bukan "hati-hati dengan prefix". Pelajarannya: **ketika sebuah join
+mengembalikan nol baris, itu temuan yang harus dibuktikan, bukan keadaan yang diterima.**
+Saya menerima 148 dari 189 case kosong sebagai keadaan wajar, dan bahkan menuliskannya di
+komentar kode sebagai fakta.
+
+### Dua dugaan yang dicoba dan gugur — keduanya dicatat
+
+| Dugaan | Hasil |
+|---|---|
+| Ada tabel kerja khusus Komite | `PR_ASM_CLH_DATA_KOMITE` ada, bukan itu |
+| `TC_PNC_KOMITE` punya `TRANSFERTYPE` | **tabel buatan proyek ini sendiri**, 1 baris |
+
+Yang kedua nyaris meyakinkan: nama kolomnya persis properti Pega yang dicari. Yang
+membatalkannya bukan nama melainkan **isinya** — kolom audit berbahasa Indonesia dan satu
+baris data. Nama kolom yang cocok bukan bukti asal.
+
+### "Kolomnya ada?" tidak cukup — dan kali ini terbukti dua arah
+
+Putaran lalu pelajarannya: kolom yang ada bisa kosong. Kali ini kebalikannya: **kolom yang
+dikira tidak ada ternyata ada, di tabel yang belum diperiksa.** Pencarian putaran lalu
+dibatasi ke satu tabel kerja; memperluasnya ke seluruh POOLDATA menemukan seluruh blok
+`.Komite.*`.
+
+Sejak sekarang: cari kolom di **seluruh skema**, bukan di tabel yang sedang dibaca.
+
+### Ukur sebelum merancang tampilan
+
+Sebaran baris coverage diukur lebih dulu — **1 sampai 3, rerata 1,4** — dan angka itu yang
+memutuskan bahwa paginasi tidak diperlukan. Tanpanya saya akan menambahkan `FETCH NEXT`
+"untuk aman", yang justru menyembunyikan baris ketiga.
+
+Begitu pula tingkat keterisian: 21 dari 79 punya `EXTENTOFLOSS`, dan itu yang memutuskan
+blok analisis digambar **bersyarat**, bukan selalu.
+
+### Satu penanda yang ternyata mengatur terlalu banyak
+
+`kosong` dipakai untuk menyembunyikan seluruh blok, padahal ia hanya berarti "tidak ada
+nilai uang". Memecahnya menjadi dua adalah inti perbaikannya — dan itu ditemukan bukan dari
+membaca kode, melainkan dari melihat **berapa banyak case** yang jatuh ke cabang itu.
+
+Angka yang membuatnya terlihat: **148 dari 189**. Sebuah cabang yang dilalui mayoritas
+bukan cabang pengecualian.
+<<<<<<< HEAD
+
+---
+
+# Sesi kedua puluh sembilan — Inbox Claim Treaty Prop & Outstanding Claim (2026-09-30)
+
+**Tidak satu pun skill dipakai**, dan itu bukan kelalaian.
+
+Pekerjaan sesi ini seluruhnya **pembacaan export Pega** — menelusuri `pyRows` → `pyCells`
+pada section 2,9 MB, mencocokkan `pyPageListProperty` ke jalur dokumen JSON, dan menelusuri
+kelas `ASM-FW-GISFW-Int-TREATY_IN` sampai terbukti tidak punya rule pemuat. Tidak ada satu pun
+skill yang tersedia menyentuh itu; yang dipakai adalah pembacaan langsung berkas XML.
+
+Empat skill yang paling dekat dan alasannya tidak dipakai:
+
+| Skill | Alasan |
+|---|---|
+| `frontend-design` | bentuk layar TIDAK dirancang — ia ditiru dari Pega (`D-13`), dan merancangnya justru melanggar keputusan itu |
+| `front-review` | perubahan frontend-nya kecil dan sudah dijaga 13 uji layar baru |
+| `dataviz` | tidak ada satu pun grafik; sepuluh grid di layar ini tabel, bukan visualisasi |
+| `code-review` | uji yang ditulis sudah menjaga hal-hal yang paling mudah salah diam-diam — lihat daftar di bawah |
+
+## Yang dijaga uji, dan kenapa justru itu
+
+Dipilih menurut satu pertanyaan: **cacat mana yang tidak menghasilkan galat apa pun?**
+
+| Uji | Cacat yang dicegah |
+|---|---|
+| `TestTreatyMasterFieldsAreAllBlocked` | delapan isian tanpa sumber diisi dari kolom yang kebetulan mirip — menampilkan share reasuransi milik treaty lain |
+| `TestTheWorkObjectJoinNeverDropsRows` | `INNER JOIN` menghilangkan pekerjaan dari antrean tanpa pesan |
+| `TestMissingIsDistinctFromEmpty` | "jalur salah" tidak dapat dibedakan dari "data belum diisi" |
+| `TestDetailQueryKeepsTheTreatyGuard` | nomor klaim PNC biasa digambar dengan susunan treaty |
+| `TestClaimWithoutDocumentStillOpens` | klaim yang ada dijawab "tidak ditemukan" |
+| `TestLayoutNeverLeaksDocumentPaths` | jalur dokumen Pega ikut menjadi kontrak API |
+
+## Satu kesalahan saya sendiri pada sesi ini
+
+`TestLayoutNeverLeaksDocumentPaths` semula memeriksa `NotContains(raw, "jalur")` — kata,
+bukan kunci JSON. Ia gagal karena kata itu muncul di **prosa alasan terhalang** ("lewat jalur
+yang sama"), kalimat yang memang ditujukan ke pengguna.
+
+Asersi yang terlalu kasar seperti itu berbahaya dua arah: ia gagal pada yang benar, dan bila
+kalimatnya kebetulan diubah ia akan **lulus pada yang salah**. Diperbaiki menjadi pencarian
+kunci JSON lengkap dengan tanda kutipnya.
+=======
+>>>>>>> dev
+
+---
+
+## Sesi 2026-09-29 — modul Inbox Banding Harga Salvage
+
+| | |
+|---|---|
+| Permintaan | tambahkan modul **Inbox Banding Harga Salvage**, dengan `Harness/InboxRequestSalvage-Harness.xml` sebagai acuan |
+| Skill Matt Pocock | **tidak satu pun tersedia** di lingkungan ini — diperiksa ulang pada sesi ini dan tidak berubah. Yang dipakai adalah disiplinnya, bukan perkakasnya |
+| Skill Claude yang dipakai | **memori proyek** (tiga berkas), dan salah satunya menghemat seluruh sesi |
+
+### Memori proyek — dipakai sebelum perintah pertama, dan langsung terbukti
+
+Ketiga berkas memori dibaca di awal. Dua di antaranya menentukan arah sesi ini:
+
+**`membaca-section-pega`** menetapkan tiga elemen XML yang wajib dibaca dari sebuah Section:
+`pyPageListProperty`, `pyContainerVisibleWhen`, dan `pyTitle` pada kontainer bersyarat. Catatan
+itu lahir dari tujuh kesimpulan salah pada modul yang sudah dinyatakan selesai.
+
+Di sesi ini ia langsung membayar dirinya: begitu `Section/InboxReqSalvageASM` diterima, ketiga
+elemen itulah yang pertama dibaca — dan hasilnya **DUA** `pyPageListProperty`
+(`TempDataReq.pxResults` dan `TempDataHistory.pxResults`), bukan satu. Seluruh dugaan
+sebelumnya dibangun di atas anggapan satu grid. Tanpa catatan itu, urutan pembacaan yang wajar
+(activity lebih dulu) akan menunda penemuan itu sampai kodenya sudah ditulis.
+
+**`perintah-verifikasi-claim-pnc`** menghemat dua kali. Pertama, larangan `grep -r` atas akar
+repo: export Pega ~297 MiB, dan satu percobaan `Grep` tanpa membatasi path memang langsung
+melampaui batas waktu pada sesi ini — persis seperti yang dicatat. Kedua, jebakan `gofmt`:
+`cmd/claimpnc/check.go` dan `main.go` dilaporkan "perlu diformat", dan tanpa catatan itu
+godaannya adalah menjalankan `gofmt -w` atas keduanya. Pemeriksaan akhiran baris membuktikan
+keduanya **seluruhnya CRLF** (6.472 dan 8.056 baris) sementara berkas baru saya LF —
+memformatnya akan menulis ulang 14.528 baris dan menghancurkan diff-nya.
+
+### `grilling` — dipakai pada premis tugas, tiga putaran
+
+Harness-nya ada, tetapi ia **cangkang**. Yang menggambar gridnya adalah sub-section
+`InboxReqSalvageASM`, dan itu tidak ada. Alih-alih menyimpulkan bentuk layar dari harness,
+premisnya diuji dan kekurangannya dilaporkan beserta **nama berkas yang tepat**.
+
+Tiga putaran, karena setiap berkas yang datang memunculkan rujukan ke berkas berikutnya:
+
+1. Section + activity pencacah diminta → diterima.
+2. Activity pencacah menunjuk dua rule SQL; section menunjuk `SetReqSalvage_Act` → diminta,
+   diterima.
+3. `SetReqSalvage_Act` menunjuk **dua rule SQL lagi** yang belum pernah disebut → diminta,
+   diterima.
+
+**Manfaatnya terukur, bukan teoretis.** Sebelum berkasnya datang, inferensi terkuat adalah:
+satu grid, membaca `DETAIL_PNC_SALVAGE.NOTE_REQUEST` dan `NILAI_REQUEST`, populasi
+`STSTRANSFER = '7'`. Setelah berkasnya dibaca: **dua** grid, dan tabel intinya
+`POOLDATA.T_CLAIM_CHEKER_SALVAGE` — tabel yang **nol kemunculan** di seluruh export selain di
+dalam satu potongan SQL yang dirangkai activity. Membangun dari inferensi itu akan
+menghasilkan layar yang membaca tabel yang salah, dengan kolom yang salah, dan tidak satu pun
+galat yang menyatakannya.
+
+### `grilling` — dipakai kedua kalinya pada JAWABAN Work Owner
+
+Work Owner menjawab "Samakan dengan PEGA" untuk penyaring kepemilikan. Jawaban itu **tidak
+langsung diterapkan**: activity-nya dibaca lebih dulu, dan ternyata Pega di sana tidak
+menyaring `PIC = pemanggil` sama sekali melainkan dengan empat Operator ID yang tertanam di
+rule. Selisih itu dilaporkan balik beserta buktinya dan tiga alternatif, karena "samakan dengan
+Pega" dan `D-15` menunjuk ke arah yang berlawanan. Work Owner memilih meniru Pega; keputusan
+dihormati dan diterapkan penuh.
+
+**Ini pola yang sama dengan §41.15**, dan layak dicatat sebagai pola: jawaban yang diberikan
+atas premis yang keliru perlu dikembalikan, bukan dijalankan.
+
+### `codebase-design` — dipakai menentukan di mana aturan tinggal
+
+Tiga keputusan batas yang lahir darinya:
+
+- **Aturan bernama orang dikumpulkan di SATU berkas** (`komite.go`), bukan disebar ke kueri,
+  pencacah, dan uji. Hari `F-4` selesai, yang dihapus adalah satu berkas — dan sampai hari itu,
+  satu berkas itu pula satu-satunya yang perlu dibaca untuk tahu siapa melihat antrean siapa.
+- **Satu fungsi penyusun argumen** (`filterArgs`) dipakai kueri daftar DAN kueri pencacah,
+  sehingga keduanya tidak dapat berselisih tanpa uji yang gagal. Di layar ini itu bukan
+  kerapian: selisih antara keduanya justru cacat nomor 4 yang sedang diperbaiki.
+- **Nama kueri dan pemindainya diserahkan BERSAMAAN** (`listQueryFor`), karena keduanya bertipe
+  sama dan pasangan yang tertukar tidak menghasilkan galat kompilasi — hanya kolom yang isinya
+  tertukar di layar.
+
+### `domain-modeling` — dipakai pada alias yang menyesatkan
+
+Layar ini termasuk yang terburuk yang ditemui sejauh ini. Dalam satu layar, satu nama properti
+berarti dua hal berbeda pada dua grid:
+
+| Properti | Grid Request | Grid History |
+|---|---|---|
+| `.Email` | `HARGAREQUEST` (harga) | `JENISSALVAGE` (jenis) |
+| `.AgentID` | `HARGABARANG` (harga) | `LOKASISALVAGE` (lokasi) |
+| `.BranchName` | `NAMABARANG` (nama barang) | `PIC` (nama orang) |
+
+Ditambah judul kolom yang menyesatkan pada layarnya sendiri: **"Object Name"** berisi jenis
+salvage, dan **"Detail Object"** berisi ID baris. Judulnya dipertahankan (`D-13`); nama
+isiannya di kode menyebut isinya (`D-19`), dan ketiga arahnya dipetakan berdampingan di kepala
+`inboxbandinghargasalvage.sql`.
+
+### Yang menangkap cacat pada sesi ini
+
+**Pertama — membaca daftar pola SQL terlarang menangkap `SYSDATE` milik saya sendiri.** Kueri
+umur disalin apa adanya dari Pega (`TRUNC (SYSDATE) - TRUNC (...)`), dan keduanya ada di daftar
+padanan wajib `09-DATABASE-STRATEGY.md`. Ditemukan sebelum ujinya ditulis, lalu diganti bentuk
+portabel yang sudah dipakai Inbox Claim Treaty Non Prop. Satu uji ditambahkan supaya bentuk
+lamanya tidak dapat kembali diam-diam.
+
+**Kedua — uji berbasis data contoh yang rapuh terhadap tanggal.** Tiga uji memasangkan jam
+tetap (`WithNow(acuan)`) dengan tanggal contoh yang dibentuk relatif terhadap hari ini. Ia lulus
+hari itu dan akan menghasilkan umur negatif keesokan harinya, tanpa satu baris kode berubah.
+Ditemukan saat membaca ulang ujinya sendiri, bukan saat ia gagal — dan diperbaiki dengan
+melepas patokan jamnya, bukan dengan memaku tanggal contohnya.
+
+**Ketiga — dua kegagalan uji yang BUKAN milik sesi ini.** `go test ./...` melaporkan
+`inboxosclaimpercabang` (tiga paket gagal build) dan satu uji `inboxpladla`. `git status`
+membuktikan keduanya tidak disentuh sesi ini — hanya empat berkas yang diubah, dan tidak satu
+pun di kedua modul itu. Dilaporkan apa adanya, bukan diperbaiki sambil jalan: memperbaikinya di
+sini akan mencampur dua pekerjaan dan membuat diff modul ini tidak lagi terbaca.
+
+**Pelajaran sesi ini.** Yang paling mahal bukan kode yang salah, melainkan **bentuk layar yang
+disimpulkan dari artefak yang tidak menggambarnya**. Harness menyatakan sebuah layar ada; ia
+tidak menyatakan layar itu berisi apa. Jarak antara keduanya di sesi ini adalah: satu grid vs
+dua, dan tabel yang salah.
+
+### Sesi 2026-09-30 (lanjutan) — jalur TULIS Inbox Banding Harga Salvage
+
+Putaran ketujuh. Yang dikerjakan: tombol Approve dan Reject, dari pembacaan activity sampai
+layar.
+
+#### `mattpocock-skills:grilling`
+
+**Alasan dipakai.** Tiga keputusan Work Owner dibutuhkan sebelum satu baris kode tulis dapat
+ditulis, dan ketiganya menyangkut hal yang **akibatnya tidak terlihat dari kodenya**: sebuah
+layanan REST yang menunjuk host dev, sebuah penyaring SQL yang tampak keliru, dan kepemilikan
+tabel milik modul lain. Menebak salah satunya berarti menulis kode yang harus dibongkar.
+
+**Yang dikerjakan mengikuti skill.** Fakta dicari sendiri lebih dulu, keputusan diserahkan ke
+Work Owner. Sebelum bertanya soal REST, berkasnya dibaca sampai menemukan `pyResourcePath` dan
+`pyUseAuthentication=false`; sebelum bertanya soal penyaring, nilai `TempInsert.ClaimNo`
+ditelusuri sampai ke parameter yang mengisinya. Tiap pertanyaan disertai pilihan beserta
+akibat masing-masing — bukan "bagaimana menurut Bapak".
+
+**Hasilnya.** Ketiga pertanyaan dijawab dalam satu putaran, dan tidak ada satu pun yang harus
+ditanyakan ulang. Ketiganya tercatat di `keputusan-implementasi.md` §107 beserta pilihan yang
+TIDAK diambil dan alasannya — bagian yang biasanya hilang, padahal itu yang dibutuhkan orang
+yang kelak mempertimbangkannya kembali.
+
+#### `mattpocock-skills:codebase-design`
+
+**Alasan dipakai.** Satu pertanyaan rancangan yang jawabannya tidak jelas: **ketiga langkah
+tambahan diputuskan di mana** — di domain, di usecase, atau di adapter SQL?
+
+**Yang dikerjakan mengikuti skill.** Pertanyaannya dibalik menjadi "apa yang sebenarnya
+bervariasi di sini". Jawabannya: ketiga langkah itu seluruhnya bergantung pada **aturan bernama
+orang**, dan aturan itu sudah dikurung di satu berkas (`komite.go`) justru supaya hari `F-4`
+selesai yang dibongkar hanya satu tempat. Menaruh keputusannya di adapter akan membuat nama
+orang muncul di lapisan SQL pula — dan satu tempat menjadi dua.
+
+**Hasilnya.** `PlanDecision` tinggal di `komite.go`, dan `DecisionCommand` membawa rencananya
+(`CascadeTo`, `ApplyPrice`, `MarkDocument`) sampai ke adapter. Adapter menjalankan, tidak
+memutuskan. Seam `Writer` dibuat TERPISAH dari `Repo` dengan alasan yang sama seperti prinsip
+"dua adapter berarti seam nyata": menyatukannya akan memaksa setiap pengisi `Repo` — termasuk
+yang hanya dipakai uji baca — ikut memikul operasi tulis yang tidak dipakainya.
+
+#### Tiga hal yang tertangkap disiplin skill, bukan oleh pembacaan ulang
+
+**Pertama — nama kolom yang disimpulkan.** `NOTEKOMITE` sempat ditulis di kueri, disimpulkan
+dari properti Pega `.NoteKomite`. `UpdateDataReqSalvage` membuktikan namanya **`NOTEAPPROVE`**;
+`NOTEKOMITE` milik tabel lain. Kuerinya akan gagal seluruhnya dengan `ORA-00904` — bukan cacat
+tampilan, melainkan layar yang tidak dapat dibuka. Diperbaiki, lalu **dijaga uji** yang menolak
+nama itu muncul kembali.
+
+**Kedua — premis yang salah yang sudah terlanjur disampaikan.** Pada putaran sebelumnya saya
+menyatakan kolom "Note Checker" kosong karena Pega "lupa memilih kolomnya". Sebab yang
+sebenarnya berbeda: grid Request hanya memuat baris yang **belum** diputus, dan catatan komite
+ditulis bersamaan dengan tanggal putusan — sehingga baris yang catatannya terisi memang sudah
+tidak ada di sana. Dicabut secara tertulis di `PlannedDifferences()`, bukan diam-diam
+diperbaiki.
+
+**Ketiga — uji yang menguji kalimat, bukan perilaku.** Satu uji lama menahan kalimat tertentu
+di `Limitations()` sebagai cara menjaga arti kode `1` dan `0`. Ketika artinya pindah ke
+`DecisionLabel` — kode yang benar-benar dijalankan — uji itu menjadi penghalang penyuntingan
+kalimat tanpa menjaga apa pun. Dihapus, dengan komentar yang menjelaskan mengapa, dan digantikan
+uji yang memeriksa perilakunya langsung.
+
+#### Kegagalan yang BUKAN milik sesi ini, dilaporkan apa adanya
+
+`go test ./...` melaporkan `inboxosclaimpercabang` (tiga paket gagal build), satu uji
+`inboxpladla`, dan satu uji `inboxservicecenter`. Suite layar melaporkan dua galat tak
+tertangani dari `inbox-komunikasi-cabang`. `git status` membuktikan tidak satu pun berkas di
+keempat modul itu disentuh sesi ini.
+
+Tidak diperbaiki sambil jalan. Memperbaikinya di sini mencampur dua pekerjaan dan membuat diff
+modul ini tidak lagi terbaca — dan modul yang sedang dibangun adalah modul yang menulis nilai
+uang.
+
+#### Pelajaran sesi ini
+
+Yang paling mahal bukan aturan yang salah ditiru, melainkan **aturan yang ditiru dengan benar
+lalu tidak dinyatakan**. Bagi hampir semua komite, menekan Approve tidak mengubah harga apa
+pun — itu perilaku layar lama apa adanya, dan meniru ia benar. Yang akan menjadi cacat adalah
+menampilkan "berhasil disimpan" sesudahnya, karena pengguna lalu mengira sesuatu sudah terjadi.
+
+Karena itu jawaban setiap keputusan membawa `harga_diterapkan` dan `dokumen_ditandai`, dan
+kalimat yang dibaca pengguna **disusun server dari nilai yang sama** — bukan dikarang layar.
+Replikasi yang jujur menuntut dua hal: meniru perilakunya, dan mengatakan apa yang ditiru.
+
+### Sesi 2026-09-30 (putaran kedelapan) — data produksi sebagai alat verifikasi
+
+**Yang dipakai.** Bukan skill bernama, melainkan disiplin `grilling` yang sama: **fakta dicari
+dari bukti, bukan dari pembacaan ulang kode sendiri.**
+
+Work Owner memperlihatkan isi `T_CLAIM_CHEKER_SALVAGE`. Ia membenarkan lima kesimpulan yang
+sudah dibangun — nama kolom `NOTEAPPROVE`, kedua belas kolom yang dibaca, arti kode `1`/`0`,
+struktur komite berpasangan, dan sebab kosongnya kolom "Note Checker" — lalu **menemukan satu
+cacat yang tidak terlihat dari kode**.
+
+**Cacatnya.** Kolom `HARGABARANG` boleh kosong. Kotak penegasan yang saya tulis memakai
+`Number(row.harga_barang)`, dan `Number('')` menghasilkan **0** yang lolos `Number.isFinite`.
+Selisihnya lalu terhitung `request - 0`, sehingga panel menampilkan seluruh harga request
+sebagai "Selisih". Kelas cacatnya sama dengan `GETSELISIHJAM` (`D-49` butir 10) — nol yang tidak
+dapat dibedakan dari kegagalan membaca — dan ia lolos dari 32 uji.
+
+**Kenapa ia tidak tertangkap lebih awal.** Karena data contoh yang saya buat sendiri tidak
+pernah memuat harga kosong. Uji yang datanya dikarang penulis kodenya hanya menguji keadaan yang
+terpikir olehnya. Ini alasan konkret di balik `D-64` — uji kesetaraan dijalankan atas salinan
+data produksi, bukan data buatan.
+
+**Assertion pertama saya untuk uji regresinya pun cacat.** Ia memeriksa `-1.350.000` tidak
+muncul, padahal dengan bug angkanya **positif**. Uji itu akan lulus meski bugnya ada. Yang
+membedakan bukan nilainya melainkan sel mana yang memuatnya, sehingga ujinya diarahkan langsung
+ke sel "Selisih" — lalu **dibuktikan menangkap bugnya** dengan memasang kembali kode lama
+sementara dan melihat ujinya gagal.
+
+**Kesalahan ketiga, dan yang paling mudah dihindari.** Saya menyatakan sebuah berkas "belum ada"
+berdasarkan satu `ls` yang diambil sebelum Work Owner menyimpannya, lalu mengulanginya saat
+dikoreksi. Yang benar: periksa ulang dengan `find` sebelum menyangkal keberadaan sesuatu.
+
+**Pelajaran sesi ini.** Tiga kesalahan hari ini seluruhnya satu bentuk: **menyimpulkan dari
+sumber yang tidak menyatakan hal itu.** Nama kolom disimpulkan dari nama properti; harga kosong
+tidak terpikir karena data contohnya dikarang sendiri; ketiadaan berkas disimpulkan dari listing
+yang sudah basi. Yang mengoreksi ketiganya adalah bukti dari luar — rule yang datang kemudian,
+isi tabel produksi, dan `find`.
+
+### Sesi 2026-09-30 (putaran kesembilan) — satu pernyataan sendiri yang dicabut
+
+**Yang dipakai.** `codebase-design`, untuk satu pertanyaan: seam dokumen dibuat tersendiri atau
+ditumpangkan pada `Repo`?
+
+Jawabannya mengikuti prinsip "dua adapter berarti seam nyata" dari arah yang lain: `Repo` dipakai
+SETIAP permintaan baca, sementara pembaca dokumen dipakai satu dialog. Menyatukannya memaksa
+setiap pengisi `Repo` — termasuk yang hanya dipakai uji daftar — ikut memikul pembacaan lampiran
+yang tidak dipakainya. Ia dibuat tersendiri, dan boleh nil: pemasangan tanpa pembaca dokumen
+tetap berjalan penuh, dengan tombolnya menjawab alasan.
+
+**Pencabutan yang harus dicatat.** Pada putaran sebelumnya saya menaikkan sebuah dugaan menjadi
+pernyataan — bahwa penandaan dokumen `UpdateDokReqSalvage` tidak pernah berjalan, karena kedua
+kolom yang dibandingkannya berbeda bentuk. Kueri dialog "Lihat File" melakukan perbandingan yang
+sama, dan ia kueri BACA yang hasilnya langsung terlihat pengguna. Bila tidak pernah cocok,
+dialognya selalu kosong.
+
+Yang keliru bukan dugaan awalnya, melainkan **dasar yang saya pakai menaikkannya**. Bentuk data
+yang berbeda membuktikan kedua KOLOM berbeda isinya — bukan bahwa salah satunya tidak pernah
+cocok. Kesimpulan yang benar justru sebaliknya: nama kolomnya yang menyesatkan.
+
+**Pelajaran, dan ia melanjutkan pelajaran putaran sebelumnya.** Bukti baru membuat dugaan lebih
+kuat, tetapi **arah** penguatannya harus diperiksa. Saya menemukan bentuk data, lalu memakainya
+membenarkan dugaan yang sudah ada alih-alih mengujinya. Uji yang benar adalah bertanya apa lagi
+yang harus benar bila dugaan itu benar — dalam hal ini: "berarti ada dialog yang selalu kosong;
+apakah memang begitu?"
+
+**Satu keputusan yang diambil sendiri, dan alasannya.** Kedua kueri dokumen menambahkan
+penyaring kepemilikan yang TIDAK ada di sistem lama. Ia tidak ditanyakan ke Work Owner karena
+tanpanya endpoint baru ini lebih longgar daripada layar yang digantikannya: di Pega kedua id
+hanya bisa datang dari baris yang tergambar, sedangkan endpoint menerima apa pun yang dikirim.
+Menirunya apa adanya berarti membuat kemunduran keamanan atas nama kesetaraan. Ia dinyatakan
+sebagai selisih dan dijaga empat uji.
+
+## Sesi 2026-09-30 — Master Bengkel: dokumen lampiran
+
+### Skill yang dipakai
+
+| Skill | Alasan memilih | Keluaran | Manfaat nyata |
+|---|---|---|---|
+| `mattpocock-skills:codebase-design` | Menentukan di mana seam dokumen berada, dan apakah ia modul tersendiri atau perluasan `masterbengkel` | `DocumentRepo`, `DocumentIDSource`, dan `Clock` dideklarasikan **di paket yang memakainya**, lalu disatukan ke `Store` | Mencegah membangun subsistem dokumen kedua berdampingan dengan `dokumenpenunjang`. Uji "dua adapter" terpenuhi: SQL dan memori |
+| `mattpocock-skills:grilling` (disiplinnya, bukan pemanggilannya) | Setiap klaim tentang jalur Pega diuji ke sumbernya sebelum dipakai menulis kode | Empat kesimpulan saya sendiri gugur dan dikoreksi — lihat di bawah | Kode tidak dibangun di atas premis yang salah |
+
+### Empat kesimpulan saya yang gugur di sesi ini
+
+Dicatat karena polanya lebih berguna daripada kesalahannya: **semuanya lahir dari pembacaan
+sebagian yang disajikan sebagai temuan.**
+
+| # | Klaim | Bagaimana gugur |
+|---|---|---|
+| 1 | "Folder `Flow Action/` berisi 29 berkas" | 42. Salah hitung sejak awal |
+| 2 | "`Section/UploadDocument_sect.xml` tidak ada di export" | Ada — tetapi rule BERBEDA, kelas `Work-PNC`, milik layar klaim |
+| 3 | "`DOKUMENID` tidak ada di jalur bengkel" | Ada. Kesimpulan itu lahir dari keluaran pencarian yang saya potong dengan `head -10`, dan berkasnya ada di urutan ke-11 |
+| 4 | "`DATA_ATTACHFILE` tidak punya kolom isi" | Punya — `GetAttachmentFromDB_Sql` membacanya. Yang benar: prosedur simpan layar ini yang tidak menulisnya |
+
+Nomor 3 yang paling perlu diingat: **kesimpulan dari keluaran yang terpotong**. Perkakasnya
+benar, cara membacanya yang salah.
+
+### Satu koreksi yang datang dari Work Owner, bukan dari saya
+
+Saya meminta `UploadDocument` kelas `Data-Portal`. Work Owner menunjukkan daftar rule-nya:
+ada **dua**, dan yang benar `@baseclass`. Tanpa koreksi itu, permintaan berikutnya akan
+kembali membawa rule yang salah untuk ketiga kalinya.
+
+Hal yang sama berulang pada `ViewAttachment` — **tujuh** rule bernama sama, dan yang berlaku
+`@baseclass` versi **tertinggi** (`01-01-93`), bukan versi yang tertulis di flow action
+pemanggilnya.
+
+### Memori proyek yang ditegakkan sesi ini
+
+`membaca-section-pega` — *"harness adalah cangkang"* dan *"mintalah sejak awal: harness
+beserta seluruh rule yang dirujuknya secara berantai"*. Permintaan sesi ini tetap menempuh
+**empat putaran**; tanpa catatan itu kemungkinan lebih.
+>>>>>>> dev
+>>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904

@@ -49,6 +49,16 @@ type Repo struct {
 	// diterbitkan di produksi — bukan angka berurut yang terlihat berbeda.
 	site     string
 	sequence int64
+
+	// documents menyimpan lampiran menurut DATAID-nya, dan documentYear/documentSequence
+	// meniru `ATTACHFILE_SEQ` beserta dua digit tahun pada `SET_ATTACHMENT_64BIT`.
+	//
+	// Tahunnya dipatok, bukan diambil dari jam berjalan: kunci yang berubah tiap tahun
+	// membuat uji yang menyebutkan kuncinya gagal pada 1 Januari, dan kegagalan seperti
+	// itu selalu tampak sebagai kerusakan kode.
+	documents        map[string]masterbengkel.Document
+	documentYear     string
+	documentSequence int64
 }
 
 // Options adalah isi awal repo memori.
@@ -63,13 +73,28 @@ type Options struct {
 
 	// Sequence adalah nomor urut terakhir yang sudah dipakai.
 	Sequence int64
+
+	// DocumentYear adalah dua digit tahun pada DATAID. Kosong berarti SampleDocumentYear.
+	DocumentYear string
+
+	// DocumentSequence adalah nomor urut lampiran terakhir yang sudah dipakai.
+	DocumentSequence int64
 }
 
 // NewRepo membentuk repo berisi baris dan acuan yang diberikan.
 func NewRepo(o Options) *Repo {
-	r := &Repo{site: strings.TrimSpace(o.Site), sequence: o.Sequence}
+	r := &Repo{
+		site:             strings.TrimSpace(o.Site),
+		sequence:         o.Sequence,
+		documents:        map[string]masterbengkel.Document{},
+		documentYear:     strings.TrimSpace(o.DocumentYear),
+		documentSequence: o.DocumentSequence,
+	}
 	if r.site == "" {
 		r.site = SampleSite
+	}
+	if r.documentYear == "" {
+		r.documentYear = SampleDocumentYear
 	}
 	r.rows = append(r.rows, o.Rows...)
 	r.branch = append(r.branch, o.Branches...)
@@ -333,6 +358,62 @@ func (r *Repo) ListBanks(_ context.Context) ([]masterbengkel.Bank, error) {
 	copy(result, r.bank)
 	sort.SliceStable(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	return result, nil
+}
+
+// NextDocumentID menerbitkan DATAID berikutnya, sebentuk dengan yang diterbitkan Oracle.
+func (r *Repo) NextDocumentID(_ context.Context) (string, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return "", r.failure
+	}
+
+	r.documentSequence++
+	return masterbengkel.ComposeDocumentID(r.documentYear, r.documentSequence), nil
+}
+
+// SaveDocument menyimpan lampiran DAN menautkannya ke bengkel dalam satu langkah.
+//
+// Keduanya di bawah satu kunci, meniru satu transaksi pada adapter SQL: bila penautannya
+// gagal, lampirannya pun tidak jadi tersimpan. Tanpa itu, adapter memori akan meloloskan
+// keadaan yang adapter SQL tolak — dan uji yang lulus di memori akan gagal di Oracle.
+func (r *Repo) SaveDocument(_ context.Context, workshopID string, document masterbengkel.Document) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return r.failure
+	}
+
+	key := strings.TrimSpace(workshopID)
+	index := -1
+	for i := range r.rows {
+		if strings.TrimSpace(r.rows[i].ID) == key {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return masterbengkel.ErrNotFound
+	}
+
+	r.documents[strings.TrimSpace(document.ID)] = document
+	r.rows[index].DocumentID = strings.TrimSpace(document.ID)
+	return nil
+}
+
+// FindDocument mengembalikan satu lampiran menurut DATAID-nya.
+func (r *Repo) FindDocument(_ context.Context, documentID string) (masterbengkel.Document, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return masterbengkel.Document{}, r.failure
+	}
+
+	document, ok := r.documents[strings.TrimSpace(documentID)]
+	if !ok {
+		return masterbengkel.Document{}, masterbengkel.ErrDocumentNotFound
+	}
+	return document, nil
 }
 
 // matchesKeyword meniru penyaring kata kunci adapter SQL: nama bengkel, nama kota, atau

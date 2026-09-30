@@ -214,11 +214,43 @@
 -- di aplikasi ini. Ia BELUM portabel ke PostgreSQL yang memakai `$n`; itu utang yang sudah
 -- ada sebelum modul ini dan berlaku untuk seluruh berkas .sql di sini.
 
--- name: list_receive_pa
--- Tab Receive PA — berkas penerimaan dokumen Personal Accident.
--- — Report Definition/ManagementRecieveView-RD.xml, dijalankan dengan Position1="PA"
+-- name: list_receive
+-- Tab Receive — berkas penerimaan dokumen, Personal Accident maupun di luarnya.
+-- — Report Definition/ManagementRecieveView-RD.xml, dijalankan DUA KALI di layar lama:
+--   sekali dengan Position1="PA", sekali dengan Position1="NONMBU"
 --
--- Bind: :1 kode Group Panel PA · :2 offset · :3 jumlah baris
+-- ============================================================================
+-- KENAPA SATU KUERI, DAN KENAPA HIMPUNAN BARISNYA TETAP SAMA
+-- ============================================================================
+--
+-- Kedua grid Pega tampil bersamaan di dalam satu tab (`pyVisible` ALWAYS pada keduanya),
+-- sehingga yang dilihat pengguna adalah gabungan keduanya. Modul ini menggambarnya sebagai
+-- satu tabel, dan penyaringnya karena itu harus menjadi GABUNGAN TEPAT dari kedua penyaring
+-- lama — bukan "tanpa penyaring".
+--
+-- Penyaring lama:   GROUPPANEL_1 = '002'   (grid PA)
+--                   GROUPPANEL_1 <> '002'  (grid NONMBU)
+--
+-- Gabungannya persis `GROUPPANEL_1 IS NOT NULL`, dan itu berlaku di KEDUA dialek:
+--
+--   nilai        Oracle lama        Oracle baru   PostgreSQL lama      PostgreSQL baru
+--   ---------    ----------------   -----------   ------------------   ---------------
+--   '002'        masuk grid PA      masuk         masuk grid PA        masuk
+--   nilai lain   masuk grid NONMBU  masuk         masuk grid NONMBU    masuk
+--   ''           '' IS NULL →       tidak masuk   '' <> '002' TRUE →   masuk
+--                tidak masuk di                   masuk grid NONMBU
+--                kedua grid
+--   NULL         UNKNOWN di         tidak masuk   UNKNOWN di kedua     tidak masuk
+--                kedua grid                       grid
+--
+-- Menghapus penyaringnya sama sekali akan MENAMBAH baris yang tidak pernah terlihat di Pega
+-- — berkas tanpa Group Panel — dan penambahan itu tidak diputuskan siapa pun.
+--
+-- Perhatikan kolom GROUPPANEL_1 tetap dipilih: ia yang menjadi kolom "Jenis Klaim" di layar,
+-- yang kini memikul pembedaan yang dulu dipikul "tabel yang mana". Penerjemahannya
+-- dikerjakan Go, bukan SQL — lihat scanWorkItem.
+--
+-- Bind: :1 offset · :2 jumlah baris
 SELECT w.PZINSKEY                       AS REFERENCE,
        w.PYID                           AS CASE_ID,
        w.POLICYNO                       AS POLICY_NUMBER,
@@ -243,47 +275,9 @@ SELECT w.PZINSKEY                       AS REFERENCE,
        LEFT JOIN POOLDATA.T_CLAIM_RECIVEDCLAIM r
               ON r.CLAIMID = w.PZINSKEY
  WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
-   AND w.GROUPPANEL_1 = :1
+   AND w.GROUPPANEL_1 IS NOT NULL
  ORDER BY w.PXCREATEDATETIME DESC, w.PYID
-OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
-
--- name: list_receive_non_mbu
--- Tab Receive NONMBU — berkas penerimaan dokumen di luar Personal Accident.
--- — Report Definition/ManagementRecieveView-RD.xml, dijalankan dengan Position1="NONMBU"
---
--- Bedanya dengan list_receive_pa HANYA arah pembanding Group Panel. Keduanya sengaja tidak
--- disatukan menjadi satu kueri berparameter arah: penyaring yang artinya berbalik menurut
--- nilai bind adalah tempat paling mudah menampilkan lini bisnis yang salah, dan tidak ada
--- apa pun di layar yang menandakannya bila itu terjadi.
---
--- Bind: :1 kode Group Panel PA (yang DIKECUALIKAN) · :2 offset · :3 jumlah baris
-SELECT w.PZINSKEY                       AS REFERENCE,
-       w.PYID                           AS CASE_ID,
-       w.POLICYNO                       AS POLICY_NUMBER,
-       w.PNCCASEID                      AS CLAIM_NUMBER,
-       w.QQNAME                         AS INSURED_NAME,
-       w.DATEOFLOSS_1                   AS LOSS_DATE,
-       w.GROUPPANEL_1                   AS GROUP_PANEL,
-       r.NAMAPELAPOR                    AS SENDER_NAME,
-       r.TANGGALTERIMADOKUMEN           AS DOCUMENT_RECEIVED_DATE,
-       CAST(NULL AS VARCHAR2(50))       AS DOCUMENT_SHEET_COUNT,
-       w.PXCREATEDATETIME               AS INBOX_ENTRY_AT,
-       CAST(NULL AS VARCHAR2(4000))     AS ANALYST_NOTE,
-       CAST(NULL AS VARCHAR2(10))       AS TRACK,
-       CAST(NULL AS VARCHAR2(100))      AS TRACK_STATUS,
-       CAST(NULL AS VARCHAR2(100))      AS LETTER_PRINTED_AT,
-       CAST(NULL AS VARCHAR2(100))      AS CLAIM_AGE,
-       CAST(NULL AS VARCHAR2(100))      AS EXPIRY_STATUS,
-       COUNT(*) OVER ()                 AS TOTAL_ROWS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
-               ON a.PXREFOBJECTKEY = w.PZINSKEY
-       LEFT JOIN POOLDATA.T_CLAIM_RECIVEDCLAIM r
-              ON r.CLAIMID = w.PZINSKEY
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
-   AND w.GROUPPANEL_1 <> :1
- ORDER BY w.PXCREATEDATETIME DESC, w.PYID
-OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
+OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 
 -- name: list_rclpucl
 -- Tab RCL/PUCL — klaim yang ditolak atau diproses ulang, menunggu keputusan.
@@ -327,6 +321,96 @@ SELECT w.PZINSKEY                       AS REFERENCE,
    AND b.PXASSIGNEDOPERATORID = :2
  ORDER BY w.PXCREATEDATETIME DESC, w.PYID
 OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
+
+-- name: detail_receive_document
+-- LAYAR KERJA penerimaan dokumen — flow action `InputReceiveDocument`, untuk SATU berkas.
+--
+-- Ia yang di Pega terbuka ketika nomor case pada grid Receive diklik: `runActivity`
+-- `SetAssignmentInboxReceive_act` dengan `kunci = .pzInsKey`, lalu Open Assignment.
+--
+-- ============================================================================
+-- PEMETAAN KOLOM — judul layar -> properti Pega -> kolom sebenarnya
+-- ============================================================================
+--
+-- Judulnya dari `Section/InputReceiveDocument_sect.xml`; propertinya dari `pyValue` sel yang
+-- sama; kolomnya dari pernyataan `update` pada
+-- `Database/PROCINSERTDATARECIVEDKLAIM.prc` untuk tabel cermin, dan dari kueri Pega yang
+-- membaca kelas yang sama untuk objek kerja.
+--
+--   judul layar                       properti Pega                          kolom
+--   --------------------------------- -------------------------------------- ---------------
+--   Tanggal Input Dokumen             .pxCreateDateTime                      w.PXCREATEDATETIME
+--   Tanggal Terima Dokumen            .ReceiveDocument.ReceivedDate          r.TANGGALTERIMADOKUMEN
+--   Nama Pengirim / Pelapor Dokumen   .ReceiveDocument.Sender                r.NAMAPELAPOR
+--   Email Pengirim                    .ReceiveDocument.EmailPengirim         r.EMAILPENGIRIM
+--   No. HP Pengirim                   .ReceiveDocument.TelpPengirim          r.TLPPENGIRIM
+--   Nama Kurir ASM                    .ReceiveDocument.Kurir                 r.NAMAKURIRASM
+--   Nama Tertanggung                  .ReceiveDocument.QQName                w.QQNAME
+--   Nomor Polis                       .ReceiveDocument.PolicyNo              w.POLICYNO
+--   Tanggal Kejadian                  .ReceiveDocument.TglKejadian           w.DATEOFLOSS_1
+--   No. Referensi/Placing Slip        .Policy.BookNo                         r.NOREFERENSI
+--   Email Tertanggung                 .ReceiveDocument.EmailLOD              r.EMAILTERTANGGUNG
+--   Lokasi Kejadian                   .ReceiveDocument.LokasiKejadian        r.LOKASIKEJADIAN
+--   SIM Pengendara                    .ReceiveDocument.SIM                   r.SIMPENGENDARA
+--   Kronologis Kejadian               .ReceiveDocument.KronologisKejadian    r.KRONOLOGIKEJADIAN
+--   Rincian Kerusakan                 .ReceiveDocument.RincianKerusakan      r.RINCIANKERUSAKAN
+--   Alasan Belum Transfer             .ReceiveDocument.Keterangan            r.ALASANBLMTRANSFER
+--   Subjek Email                      .ReceiveDocument.SubjectEmail          r.SUBJECTEMAIL
+--   Keterangan Belum Registrasi       .ReceiveDocument.NotRegistNote         w.NOTREGISTNOTE_1
+--
+-- Enam belas isian layar TIDAK ada di sini karena tidak punya kolom mana pun — Polis Leader,
+-- Nama Bisnis, Estimasi Kerugian, No Ref Broker, Source Of Reports, Total Jumlah Dokumen,
+-- dan sebelas isian blok Data Pelapor. Seluruhnya bertanda Blocked di
+-- inboxmanagerreceivepucl.DocumentFieldGroups dan tetap DIGAMBAR beserta alasannya, bukan
+-- dihilangkan.
+--
+-- ============================================================================
+-- DUA HAL YANG MEMBUAT KUERI INI GAGAL TANPA SATU PUN GALAT BILA DILUPAKAN
+-- ============================================================================
+--
+-- 1. PENYARING PXOBJCLASS. Tabel objek kerja menampung DUA kelas, dan keduanya punya PYID,
+--    POLICYNO, dan QQNAME. Tanpa penyaring ini, kunci milik sebuah klaim akan membuka layar
+--    kerja penerimaan dokumen yang isinya klaim — tanpa satu pun tanda bahwa itu keliru.
+--
+-- 2. `LEFT JOIN` ke tabel cermin. Tabel itu TIDAK PERNAH DIBACA sistem lama, sehingga
+--    kelengkapan isinya belum terverifikasi. Gabungan dalam akan membuat berkas yang tidak
+--    punya pasangan di sana dinyatakan TIDAK ADA — padahal ia ada, dan justru itulah berkas
+--    yang paling perlu dilihat.
+--
+-- TIDAK ada gabungan ke tabel penugasan di sini, dan itu disengaja. Grid menyaringnya karena
+-- grid memang daftar PEKERJAAN yang menunggu; layar kerja membuka SATU berkas yang kuncinya
+-- sudah di tangan. Menambahkan gabungan itu akan membuat berkas yang penugasannya baru saja
+-- selesai gagal dibuka di tengah pengerjaan, dengan pesan "tidak ditemukan" yang menyesatkan.
+--
+-- Bind: :1 kunci berkas (PZINSKEY)
+SELECT w.PZINSKEY                       AS REFERENCE,
+       w.PYID                           AS CASE_ID,
+       w.PNCCASEID                      AS CLAIM_NUMBER,
+       w.GROUPPANEL_1                   AS GROUP_PANEL,
+       w.PYSTATUSWORK                   AS WORK_STATUS,
+       w.PXCREATEDATETIME               AS CREATED_AT,
+       r.TANGGALTERIMADOKUMEN           AS RECEIVED_AT,
+       r.NAMAPELAPOR                    AS SENDER_NAME,
+       r.EMAILPENGIRIM                  AS SENDER_EMAIL,
+       r.TLPPENGIRIM                    AS SENDER_PHONE,
+       r.NAMAKURIRASM                   AS COURIER_NAME,
+       w.QQNAME                         AS INSURED_NAME,
+       w.POLICYNO                       AS POLICY_NUMBER,
+       w.DATEOFLOSS_1                   AS LOSS_DATE,
+       r.NOREFERENSI                    AS REFERENCE_NUMBER,
+       r.EMAILTERTANGGUNG               AS INSURED_EMAIL,
+       r.LOKASIKEJADIAN                 AS LOSS_LOCATION,
+       r.SIMPENGENDARA                  AS DRIVER_LICENCE,
+       r.KRONOLOGIKEJADIAN              AS CHRONOLOGY,
+       r.RINCIANKERUSAKAN               AS DAMAGE_DETAIL,
+       r.ALASANBLMTRANSFER              AS TRANSFER_REASON,
+       r.SUBJECTEMAIL                   AS EMAIL_SUBJECT,
+       w.NOTREGISTNOTE_1                AS NOT_REGISTERED_NOTE
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       LEFT JOIN POOLDATA.T_CLAIM_RECIVEDCLAIM r
+              ON r.CLAIMID = w.PZINSKEY
+ WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
+   AND w.PZINSKEY = :1
 
 -- name: check_receive
 -- Dipakai perintah `-periksa`: memastikan ketiga tabel tab Receive terbaca dari koneksi yang

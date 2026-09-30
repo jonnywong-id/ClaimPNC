@@ -3,10 +3,13 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -18,25 +21,37 @@ func NewCommitteeStore(db *sql.DB) *CommitteeStore { return &CommitteeStore{db: 
 
 func (s *CommitteeStore) exec(ctx context.Context) executor { return executorFrom(ctx, s.db) }
 
-// NextCaseID menerbitkan KOMITE_ID berikutnya: KMTN- ditambah lima digit.
+// NextCaseID menerbitkan KOMITE_ID berikutnya: `KMTN.YY.n`, deret per tahun WIB.
 //
-// Nomor diambil dari nomor terbesar yang sudah ada, di dalam transaksi pemanggil. Dua transfer
-// yang berlangsung pada saat yang sama dapat memperoleh nomor yang sama; dengan beban komite
-// PNCN hari ini peluangnya kecil, dan penggantinya — sequence — menuntut perubahan skema.
-func (s *CommitteeStore) NextCaseID(ctx context.Context) (string, error) {
+// Tidak ada sequence: nomor diambil dari nomor terbesar tahun itu di TC_PNC_KOMITE, di dalam
+// transaksi pemanggil — pola yang sama dengan PNCN dan RCVN. Dua transfer serentak dapat
+// memperoleh nomor yang sama; primary key KOMITE_ID membuat yang kedua gagal (transaksinya
+// dibatalkan seluruhnya) alih-alih menyimpan nomor ganda.
+func (s *CommitteeStore) NextCaseID(ctx context.Context, at time.Time) (string, error) {
+	year := clock.DateWIB(at).Year()
+	pattern := fmt.Sprintf("%s.%02d.%%", registrasi.CommitteeCasePrefix, year%100)
 	var next int64
-	if err := s.exec(ctx).QueryRowContext(ctx, loadQuery("komite_nomor_berikut")).Scan(&next); err != nil {
+	if err := s.exec(ctx).QueryRowContext(ctx, loadQuery("komite_nomor_berikut"), pattern).Scan(&next); err != nil {
 		return "", fmt.Errorf("registrasi/sqlstore: menerbitkan nomor komite: %w", err)
 	}
-	if next > 99999 {
-		return "", fmt.Errorf("registrasi/sqlstore: nomor komite %d melampaui KOMITE_ID VARCHAR2(10)", next)
-	}
-	return fmt.Sprintf("%s%05d", registrasi.CommitteeCasePrefix, next), nil
+	return registrasi.FormatCommitteeCaseID(year, next)
 }
 
-// Save menulis seluruh anggota kasus: perbarui-atau-sisip per (KOMITE_ID, NAMAKOMITE, KOMITEKE).
+// Save menulis kepala kasus ke TC_PNC_KOMITE, lalu seluruh anggotanya ke T_CLAIM_KOMITE_LIST:
+// perbarui-atau-sisip per KOMITE_ID dan per (KOMITE_ID, NAMAKOMITE, KOMITEKE).
 func (s *CommitteeStore) Save(ctx context.Context, c registrasi.CommitteeCase) error {
 	exec := s.exec(ctx)
+	head := []any{
+		c.ClaimID, c.ClaimNumber, c.ObjectID, strconv.Itoa(c.CoverageSeq), strconv.Itoa(c.AdjustmentSeq),
+		emptyTextAsNil(c.PaymentType), emptyTextAsNil(c.TransferType), emptyTextAsNil(c.Line), emptyTextAsNil(c.Band),
+		emptyTextAsNil(c.Currency), int64(c.Rate), int64(c.AdjustmentValue), int64(c.Value),
+		len(c.Members), c.Level(), emptyTextAsNil(c.Outcome()), c.Status(), emptyTextAsNil(c.Applicant),
+		timeOrNil(c.CreatedAt), emptyTextAsNil(c.CreatedBy), timeOrNil(c.UpdatedAt), emptyTextAsNil(c.UpdatedBy),
+		timeOrNil(c.DecidedAt), c.ID,
+	}
+	if err := upsert(ctx, exec, "komite_kepala_perbarui", head, "komite_kepala_sisip", head); err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menyimpan kepala komite %s: %w", c.ID, err)
+	}
 	for _, m := range c.Members {
 		values := []any{
 			c.ClaimNumber, m.CaseStatus, m.Decision, emptyTextAsNil(m.Note), timeOrNil(m.CreatedAt),
@@ -50,16 +65,39 @@ func (s *CommitteeStore) Save(ctx context.Context, c registrasi.CommitteeCase) e
 	return nil
 }
 
-// Get membaca satu kasus komite.
+// Get membaca satu kasus komite: kepala dan anggotanya.
 func (s *CommitteeStore) Get(ctx context.Context, caseID string) (registrasi.CommitteeCase, error) {
-	members, err := s.query(ctx, "komite_ambil", strings.TrimSpace(caseID))
+	id := strings.TrimSpace(caseID)
+	var (
+		key, claimID, number, objectID, coverage, adjustment, payment, transfer, line, band sql.NullString
+		currency, applicant, createdBy, updatedBy                                           sql.NullString
+		rate, adjValue, value                                                               sql.NullInt64
+		created, updated, decided                                                           sql.NullTime
+	)
+	err := s.exec(ctx).QueryRowContext(ctx, loadQuery("komite_kepala_ambil"), id).Scan(
+		&key, &claimID, &number, &objectID, &coverage, &adjustment, &payment, &transfer, &line, &band,
+		&currency, &rate, &adjValue, &value, &applicant, &created, &createdBy, &updated, &updatedBy, &decided)
+	if errors.Is(err, sql.ErrNoRows) {
+		return registrasi.CommitteeCase{}, registrasi.ErrCommitteeNotFound
+	}
+	if err != nil {
+		return registrasi.CommitteeCase{}, fmt.Errorf("registrasi/sqlstore: membaca kepala komite: %w", err)
+	}
+	members, err := s.query(ctx, "komite_ambil", id)
 	if err != nil {
 		return registrasi.CommitteeCase{}, err
 	}
-	if len(members) == 0 {
-		return registrasi.CommitteeCase{}, registrasi.ErrCommitteeNotFound
-	}
-	return registrasi.CommitteeCase{ID: members[0].CaseID, ClaimNumber: members[0].ClaimNumber, Members: members}, nil
+	coverageSeq, _ := strconv.Atoi(trimmed(coverage))
+	adjustmentSeq, _ := strconv.Atoi(trimmed(adjustment))
+	return registrasi.CommitteeCase{
+		ID: trimmed(key), ClaimID: trimmed(claimID), ClaimNumber: trimmed(number), ObjectID: trimmed(objectID),
+		CoverageSeq: coverageSeq, AdjustmentSeq: adjustmentSeq, PaymentType: trimmed(payment),
+		TransferType: trimmed(transfer), Line: trimmed(line), Band: trimmed(band), Currency: trimmed(currency),
+		Rate: registrasi.ExchangeRate(rate.Int64), AdjustmentValue: registrasi.Money(adjValue.Int64),
+		Value: registrasi.Money(value.Int64), Applicant: trimmed(applicant),
+		CreatedAt: created.Time, CreatedBy: trimmed(createdBy), UpdatedAt: updated.Time, UpdatedBy: trimmed(updatedBy),
+		DecidedAt: decided.Time, Members: members,
+	}, nil
 }
 
 // Pending mengembalikan baris anggota yang sedang ditunggu dan milik operator itu.

@@ -26,8 +26,9 @@ type Props = {
  *
  * Berkas dibaca SERVER, bukan di peramban — aturan bentuknya satu, dan pemanggil lain
  * kelak memakai pembaca yang sama. Barisnya dikembalikan untuk ditampilkan, lalu dikirim
- * kembali bersama permintaan simpan sebagai isi kolom JSON_POLIS. Itu meniru sistem lama,
- * yang menyusunnya di klipboard sebelum mengubahnya menjadi teks JSON.
+ * kembali bersama permintaan simpan dan disisipkan ke `CPNC_RECOVERY_BARIS_KLAIM` dalam
+ * transaksi yang sama dengan kepala batch. Sistem lama menyimpannya sebagai satu dokumen
+ * JSON di kolom `JSON_POLIS`; itu dihentikan atas keputusan Work Owner 2026-09-29.
  *
  * # Yang sengaja dibuat berbeda dari layar lama
  *
@@ -79,8 +80,9 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
         <div>
           <h3 className="text-base font-semibold text-slate-900">Data Klaim (opsional)</h3>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Daftar polis yang tercakup batch ini, diunggah sebagai berkas CSV dua kolom.
-            Isinya tersimpan menyatu dengan batch — bukan sebagai data tersendiri.
+            Daftar polis yang tercakup batch ini, diunggah sebagai berkas CSV. Kolom nilai
+            klaim boleh dikosongkan — berkas contoh hanya memuat nomor polis, sama seperti
+            sistem lama.
           </p>
         </div>
 
@@ -223,7 +225,7 @@ function parse(error: APIError): { title: string; description: string; tone: Err
       return {
         title: 'Bentuk berkas tidak dikenali',
         description:
-          'Pakai berkas CSV dengan dua kolom: nomor polis dan nilai klaim. Unduh berkas contoh untuk acuannya.',
+          'Pakai berkas CSV berkolom nomor polis, dan nilai klaim bila ada. Unduh berkas contoh untuk acuannya.',
         tone: 'penolakan',
       }
     default:

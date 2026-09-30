@@ -65,12 +65,14 @@ SELECT f.NAMA_FOLDER
 -- `D-02` melarang memanggil stored procedure, jadi logikanya naik ke Go: tokennya dibentuk
 -- di Go dan dikirim sebagai `:2`.
 --
--- # Tokennya TIDAK pernah ikut terkirim ke layanan penyimpanan
+-- # Tokennya IKUT terkirim ke layanan penyimpanan (koreksi 2026-09-30)
 --
--- Diperiksa menyeluruh pada `Connect REST/UploadDokumenPNC-ConnectREST.xml`: header POST
--- hanya `Content-Type: application/json`, `pyUseAuthentication=false`, dan muatannya
--- `DocAPI_JSON.JSON` yang tidak memuat token. Jadi baris ini **bukan otentikasi** melainkan
--- catatan siapa mengunggah apa dan kapan.
+-- `RDB List/GenerateTokenPNCDokumen-SQL.xml:44` menulis OUT procedure ke
+-- `{DocAPI.KodeString OUT}`, dan muatan unggah adalah `@GetPageJSONString()` halaman DocAPI
+-- (`InsertDokumenPNC` :3903) — jadi `KodeString` ada di JSON. Catatan sebelumnya yang
+-- menyatakan sebaliknya salah baca; layanan menolak muatan tanpanya dengan
+-- "can't Kodestring null value in json data". Token yang dikirim harus SAMA dengan yang
+-- disisipkan di sini.
 --
 -- Ia tetap ditulis, dan bukan karena meniru: `D-59` menjadikan jejak audit satu-satunya
 -- kontrol pengimbang, dan ini satu-satunya jejak yang tercatat sebelum berkasnya terkirim.

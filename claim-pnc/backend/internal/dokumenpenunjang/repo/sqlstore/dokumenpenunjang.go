@@ -34,7 +34,7 @@ func (r *Repo) NamaFolderAplikasi(ctx context.Context, aplikasi string) (string,
 	}
 	if err != nil {
 		return "", fmt.Errorf(
-			"dokumenpenunjang/sqlstore: mencari folder penyimpanan: %w", err)
+			"dokumenpenunjang/sqlstore: mencari folder penyimpanan: %w", linkError(err))
 	}
 
 	rapi := strings.TrimSpace(nama.String)
@@ -57,16 +57,17 @@ func (r *Repo) NamaFolderAplikasi(ctx context.Context, aplikasi string) (string,
 // baris yang sudah ada. Ia BUKAN pengaman — tokennya tidak pernah dikirim ke mana pun dan
 // tidak pernah diperiksa; ia penanda baris. Karena itu kelemahan MD5 tidak berlaku di sini,
 // dan menggantinya justru membuat barisnya berbeda bentuk dari 33 baris yang sudah ada.
-func (r *Repo) CatatAksesUnggah(ctx context.Context, aplikasi, pengunggah string) error {
+func (r *Repo) CatatAksesUnggah(ctx context.Context, aplikasi, pengunggah string) (string, error) {
+	token := tokenAkses(time.Now())
 	_, err := r.db.ExecContext(ctx, query("catat_akses_unggah"),
 		strings.TrimSpace(aplikasi),
-		tokenAkses(time.Now()),
+		token,
 		strings.TrimSpace(pengunggah),
 	)
 	if err != nil {
-		return fmt.Errorf("dokumenpenunjang/sqlstore: mencatat izin unggah: %w", err)
+		return "", fmt.Errorf("dokumenpenunjang/sqlstore: mencatat izin unggah: %w", linkError(err))
 	}
-	return nil
+	return token, nil
 }
 
 // Simpan memenuhi dokumenpenunjang.Repo.
@@ -97,7 +98,7 @@ func (r *Repo) PerKlaim(
 	rows, err := r.db.QueryContext(ctx, query("dokumen_per_klaim"),
 		kunci(nomorKlaim), kunci(namaAplikasiPenyimpanan))
 	if err != nil {
-		return nil, fmt.Errorf("dokumenpenunjang/sqlstore: membaca dokumen klaim: %w", err)
+		return nil, fmt.Errorf("dokumenpenunjang/sqlstore: membaca dokumen klaim: %w", linkError(err))
 	}
 	defer rows.Close()
 
@@ -205,6 +206,25 @@ func tokenAkses(saat time.Time) string {
 }
 
 // kunci menormalkan nilai pembanding menjadi huruf besar tanpa spasi tepi.
+// oracleNetworkCodes adalah galat Oracle Net: yang gagal sambungannya, bukan kuerinya.
+// Lewat DB link, itulah tanda database ASMD di ujung link tidak dapat dijangkau.
+var oracleNetworkCodes = []string{
+	"ORA-12541", "ORA-12543", "ORA-12545", "ORA-12170", "ORA-12514", "ORA-12537",
+	"ORA-12560", "ORA-12154", "ORA-02019", "ORA-03113", "ORA-03135",
+}
+
+// linkError menandai galat sambungan DB link sebagai ErrLinkTakTerjangkau, tanpa
+// membuang galat aslinya (yang tetap masuk log).
+func linkError(err error) error {
+	message := err.Error()
+	for _, code := range oracleNetworkCodes {
+		if strings.Contains(message, code) {
+			return fmt.Errorf("%w: %w", dokumenpenunjang.ErrLinkTakTerjangkau, err)
+		}
+	}
+	return err
+}
+
 func kunci(v string) string { return strings.ToUpper(strings.TrimSpace(v)) }
 
 // teks mengubah kolom yang boleh NULL menjadi string rapi.

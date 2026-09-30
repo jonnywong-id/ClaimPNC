@@ -37,7 +37,7 @@ func query(name string) string {
 	return text
 }
 
-// resultColumns adalah ke-16 alias yang dikembalikan SETIAP kueri daftar.
+// resultColumns adalah ke-15 alias yang dikembalikan SETIAP kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxclaimtreatynonprop.sql dan dengan urutan
 // pemindai scanWorkItem. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat
@@ -46,7 +46,7 @@ var resultColumns = []string{
 	"REFERENCE", "CLAIM_ID", "ASSIGNED_OPERATOR",
 	"MASTER_ID", "JSON_MASTER_ID", "POLICY_NUMBER", "LOSS_DATE",
 	"BUSINESS_NAME", "BUSINESS_SOURCE", "CEDING_COMPANY", "INSURED_NAME",
-	"STATUS", "AGING_DAYS", "CREATE_OPERATOR", "LAST_UPDATE_OPERATOR",
+	"WORK_CREATED_AT", "CREATE_OPERATOR", "LAST_UPDATE_OPERATOR",
 	"TOTAL_ROWS",
 }
 
@@ -58,9 +58,8 @@ var listQueries = []string{
 
 // adminQueries adalah keempat kueri tab Admin.
 //
-// Dipisah dari listQueries karena hanya keempat ini yang WAJIB memuat teks status
-// "Estimation"; kueri Teknik memakai teks yang berbeda. Kesesuaiannya dengan konstanta
-// domain dijaga query_test.go.
+// Dipisah dari listQueries karena hanya keempat ini yang membaca ID Master dari blob JSON;
+// kueri Teknik memakai kolom objek kerja. Kesesuaiannya dijaga query_test.go.
 var adminQueries = []string{
 	"list_admin", "list_admin_all", "list_admin_tba", "list_admin_all_tba",
 }

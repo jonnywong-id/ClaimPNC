@@ -108,6 +108,12 @@ type SettlementLine struct {
 	AcceptanceStatus string
 	AcceptedNo       string
 
+	// AcceptanceLODStatus adalah STATUSAKSEPTASILOD — `.AcceptationStatusLOD`: kosong sebelum
+	// persetujuan LOD, "1" disetujui (Nomor Akseptasi terbit), "0" tidak disetujui. Hanya
+	// DIBACA: ia menentukan tombol Print LOD, Persetujuan / Akseptasi, dan Print DLA
+	// (`ShowAdjustment_sect`), dan tidak pernah ditulis `adjustment_perbarui`.
+	AcceptanceLODStatus string
+
 	// CommitteeCaseID (CASEIDKOMITE) terisi begitu baris ditransfer ke komite; baris yang
 	// sudah ditransfer tidak dapat ditransfer ulang (`IsKomiteTransfer := 1`).
 	// CommitteeTransferredAt (ANALYST_TFKOMITEDATE, `TanggalComitee`) dan CommitteeDecidedAt
@@ -116,6 +122,17 @@ type SettlementLine struct {
 	CommitteeCaseID        string
 	CommitteeTransferredAt time.Time
 	CommitteeDecidedAt     time.Time
+
+	// CashierTransferredAt (TRANSFER_CASHIER_DATE) dan CashierCaseID (IDCHASIER, `.CaseIDCashier`)
+	// terisi setelah Transfer Kasir berhasil. `.TransferCashierStatus` Pega tidak punya kolom;
+	// di sini "sudah ditransfer" dibaca dari keduanya.
+	CashierTransferredAt time.Time
+	CashierCaseID        string
+
+	// Acceptance adalah isian form Persetujuan / Akseptasi (acceptance.go). Dibaca dan
+	// ditulis terpisah dari kolom adjustment lain — tujuh kolomnya baru ada setelah migrasi
+	// 0013 dijalankan DBA, dan klaim tanpa akseptasi tidak boleh ikut gagal dimuat.
+	Acceptance Acceptance
 
 	CreatedAt time.Time
 }

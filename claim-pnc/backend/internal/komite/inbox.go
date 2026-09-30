@@ -357,6 +357,31 @@ type InboxFilter struct {
 	// lihat Normalize.
 	Operator string
 
+	// AllOperators mematikan penyaring pemilik: daftarnya menjadi SELURUH antrean komite,
+	// bukan milik satu orang.
+	//
+	// # Ia medan tersendiri, bukan "Operator yang kebetulan kosong"
+	//
+	// Perbedaannya menentukan. Operator kosong adalah KEGAGALAN — identitas sesi tidak
+	// terbaca, atau tidak cocok dengan satu pun `OPERATOR_ID` di data warisan (`ADR-0024`)
+	// — dan kegagalan itu dijawab nol baris. Menyatukan keduanya berarti setiap kegagalan
+	// pembacaan identitas berubah menjadi "tampilkan seluruh antrean komite perusahaan",
+	// dan itu tepat kebalikan dari yang aman.
+	//
+	// Dengan medan terpisah, tidak-menyaring harus DIMINTA. Ia tidak dapat terjadi karena
+	// sesuatu yang lain gagal.
+	//
+	// # Ia hanya boleh menyala di pengembangan
+	//
+	// Diminta Work Owner 2026-09-29 supaya isi Inbox Outstanding dapat dilihat sementara
+	// pemetaan identitas HCC/HCQ ke `OPERATOR_ID` belum ada. Penyalaannya lewat
+	// `KOMITE_TANPA_PENYARING_OPERATOR`, yang MENOLAK berjalan di luar
+	// `APP_ENV=development` — lihat platform/config.
+	//
+	// Selama menyala, layar menampilkan pekerjaan orang lain beserta nama tertanggung dan
+	// nomor polisnya. Itu dinyatakan di layar, bukan disembunyikan.
+	AllOperators bool
+
 	Kind InboxKind
 
 	// Search mencocokkan "No Komite / No Klaim", persis seperti prompt pencarian pada
@@ -383,6 +408,7 @@ type InboxFilter struct {
 // klaim dan nama tertanggung — kepada siapa pun yang punya sesi.
 //
 // Kegagalan yang aman di sini adalah MENAMPILKAN TERLALU SEDIKIT, bukan terlalu banyak.
+// Satu-satunya cara memperoleh "semua" adalah MEMINTANYA lewat AllOperators.
 func (f InboxFilter) Normalize() InboxFilter {
 	f.Operator = OperatorKey(f.Operator)
 	f.Search = strings.TrimSpace(f.Search)
@@ -507,7 +533,10 @@ type InboxRepo interface {
 	// Ia TIDAK menyaring pemilik. Pemeriksaan kepemilikan dikerjakan lapisan usecase
 	// lewat BelongsTo, supaya perbedaan antara "tidak ada" dan "bukan milik Anda" dapat
 	// dijawab dengan jujur — dan supaya aturannya tidak tersembunyi di dalam WHERE.
-	FindCase(ctx context.Context, caseID string) (CommitteeCase, error)
+	//
+	// operator menentukan baris ANGGOTA mana yang dikembalikan bila case itu punya beberapa
+	// anggota: baris milik operator itu lebih dulu, lalu anggota yang sedang ditunggu.
+	FindCase(ctx context.Context, caseID, operator string) (CommitteeCase, error)
 }
 
 // InboxEarliestYear adalah tahun terawal case komite yang ditampilkan inbox.

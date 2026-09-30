@@ -1,12 +1,16 @@
 import { Fragment, useState, type ReactNode } from 'react'
 
+import { Button } from '@/components/Button'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate, formatPercent } from '@/components/format'
 
 import { useSession } from '@/app/session'
 
-import { useCurrencies } from './api'
+import { useCurrencies, violationsFrom } from './api'
+import { AcceptanceButtons } from './AcceptanceButtons'
 import { CommitteeStatus, TransferCommitteeButton } from './Committee'
 import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
+import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
 import { ReceiverTab } from './ReceiverTab'
 import { SettlementDetail, SettlementEditor } from './SettlementEditor'
 import {
@@ -15,6 +19,7 @@ import {
   type Claim,
   type Coverage,
   type CurrencyOption,
+  type Receiver,
   type Settlement,
   type Spreading,
   type Task,
@@ -54,9 +59,10 @@ function claimEstimate(c: Coverage): number {
  * Pega dari Work Owner dan section tampilan yang ada (`ViewInputEstimasiDetail`,
  * `ViewShowReceiver`).
  *
- * Layar ini membaca, kecuali dua isian: Tambah pada grid Adjustment, yang membuka baris
- * isian di dalam grid itu (SettlementEditor), dan grid Penerima Klaim yang barisnya dibuka
- * menjadi panel InputReceiver (ReceiverTab). Tombol lain yang memproses klaim tampil
+ * Isian yang berjalan: sub-tab Estimasi Pembayaran (section InputEstimasiDetail, sama
+ * dengan layar Input Estimasi — tambah dan simpan estimasi, Claim Face Sheet, Print PLA),
+ * Tambah pada grid Adjustment (SettlementEditor), dan grid Penerima Klaim yang barisnya
+ * dibuka menjadi panel InputReceiver (ReceiverTab). Tombol lain yang memproses klaim tampil
  * tetapi mati sampai prosesnya dibangun.
  */
 
@@ -196,7 +202,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       {tab === 'Estimasi & Adjustment' && (
         <div>
           <TabList items={SUB_TABS} current={subTab} onSelect={setSubTab} label="Sub-tab Estimasi & Adjustment" />
-          {subTab === 'Estimasi Pembayaran' && <EstimateView klaim={klaim} currencies={currencyList} />}
+          {subTab === 'Estimasi Pembayaran' && <EstimateView klaim={klaim} tugas={tugas} currencies={currencyList} lockedReason={notice} />}
           {subTab === 'Penerima Klaim' && <ReceiverTab klaim={klaim} tugas={tugas} lockedReason={notice} />}
           {subTab === 'Adjustment & Akseptasi' && <AdjustmentView klaim={klaim} tugas={tugas} identity={identity} currencies={currencyList} />}
         </div>
@@ -344,55 +350,56 @@ function RegisterView({ klaim }: { klaim: Claim }) {
 
 // ── Sub-tab Estimasi Pembayaran — ViewInputEstimasiDetail ──────────────────────────
 
-function EstimateView({ klaim, currencies }: { klaim: Claim; currencies: CurrencyOption[] }) {
+function EstimateView({
+  klaim,
+  tugas,
+  currencies,
+  lockedReason,
+}: {
+  klaim: Claim
+  tugas: Task
+  currencies: CurrencyOption[]
+  lockedReason: string | null
+}) {
+  // Section InputEstimasiDetail yang sama dengan layar Input Estimasi — ClaimSurvey_sect
+  // menanamnya, sehingga estimasi dapat ditambah dan disimpan di tahap ini tanpa memindahkan
+  // tahap. Kirim PIC Teknik tidak ada di sini.
+  const editor = useEstimateEditor(klaim, tugas)
+  const { save, faceSheet } = editor
+  const busy = save.isPending || faceSheet.isPending
+  const failure = faceSheet.error ?? save.error
+  const violations = violationsFrom(failure)
+
   return (
-    <NoObjects klaim={klaim}>
-      <table className="mt-3 w-full border-collapse text-sm">
-        <caption className="sr-only">Estimasi pembayaran</caption>
-        <Head columns={['Objek / Jaminan / Item', 'Tipe Estimasi', 'Mata Uang', 'Tanggal', 'Nilai Estimasi', 'Nilai IDR', 'CFS']} />
-        <tbody>
-          {klaim.objek.map((o, i) => (
-            <Fragment key={i}>
-              <tr className="bg-blue-100/70">
-                <td colSpan={7} className="p-2 font-medium">
-                  {i + 1}. {o.nama || o.id}
-                </td>
-              </tr>
-              {o.coverage.map((c, j) => {
-                const rows = (c.item ?? []).flatMap((it) => it.estimasi.map((e) => ({ it, e })))
-                return (
-                  <Fragment key={j}>
-                    <tr className="bg-slate-50">
-                      <td colSpan={7} className="p-2 pl-6 text-slate-800">
-                        {c.nama || c.id}
-                      </td>
-                    </tr>
-                    {rows.length === 0 ? (
-                      <Empty span={7} />
-                    ) : (
-                      rows.map(({ it, e }, n) => (
-                        <tr key={n} className="border-b border-slate-100">
-                          <td className="p-2 pl-10">{it.nama || '—'}</td>
-                          <td className="p-2">{e.tipe === EstimationType.Adjuster ? 'Estimasi Adjuster' : 'Estimasi Klaim'}</td>
-                          <td className="p-2">{currencyName(e.mata_uang, currencies)}</td>
-                          <td className="p-2">{formatDate(e.tanggal)}</td>
-                          <td className="p-2 text-right">{formatAmount(e.nilai_sen)}</td>
-                          <td className="p-2 text-right">{formatAmount(e.nilai_idr_sen)}</td>
-                          <td className="p-2 text-xs">{e.sudah_cfs ? 'Sudah CFS' : '—'}</td>
-                        </tr>
-                      ))
-                    )}
-                  </Fragment>
-                )
-              })}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </NoObjects>
+    <div>
+      <EstimatePaymentTable klaim={klaim} tugas={tugas} editor={editor} currencyList={currencies} busy={busy || lockedReason !== null} />
+      {failure && (
+        <div className="mt-4">
+          <ErrorMessage
+            title={faceSheet.error ? 'Claim Face Sheet belum dapat dibuat' : 'Estimasi belum dapat disimpan'}
+            description={violations.length > 0 ? violations.map((v) => v.pesan).join(' ') : errorText(failure)}
+            tone="penolakan"
+          />
+        </div>
+      )}
+      {faceSheet.isSuccess && !busy && !failure && (
+        <p className="mt-4 text-sm text-emerald-700" role="status">
+          Claim Face Sheet diunduh. Estimasi jaminan itu kini terkunci.
+        </p>
+      )}
+      {save.isSuccess && !faceSheet.isSuccess && !busy && !failure && (
+        <p className="mt-4 text-sm text-emerald-700" role="status">
+          Estimasi disimpan.
+        </p>
+      )}
+      <div className="mt-4 flex justify-end">
+        <Button tone="kedua" disabled={busy || lockedReason !== null} title={lockedReason ?? undefined} onClick={editor.saveNow}>
+          {save.isPending ? 'Menyimpan…' : 'Save'}
+        </Button>
+      </div>
+    </div>
   )
 }
-
 // ── Sub-tab Adjustment & Akseptasi ─────────────────────────────────────────────────
 
 /** Adjustment sudah diakseptasi komite (STATUSAKSEPTASI 1). */
@@ -481,6 +488,9 @@ function AdjustmentView({
                                     estimation={claimEstimate(c)}
                                     travel={klaim.polis.lini === PANEL_TRAVEL}
                                     nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                    groupPanel={klaim.polis.lini}
+                                    businessType={klaim.polis.jenis_bisnis}
+                                    receivers={klaim.penerima_klaim ?? []}
                                     onAdd={() => setAddFor({ i, j })}
                                     lockedReason={lockedReason}
                                     editor={
@@ -529,6 +539,9 @@ function SettlementGrid({
   estimation,
   travel,
   nonMBU,
+  groupPanel,
+  businessType,
+  receivers,
   onAdd,
   editor,
   lockedReason,
@@ -545,6 +558,11 @@ function SettlementGrid({
   estimation: number
   travel: boolean
   nonMBU: boolean
+  /** Group Panel dan jenis bisnis polis — aturan tombol Print LOD. */
+  groupPanel: string
+  businessType: string
+  /** Penerima klaim — pilihan Penerima Klaim form Persetujuan / Akseptasi. */
+  receivers: Receiver[]
   onAdd: () => void
   /** Baris isian adjustment baru, bila tombol Tambah jaminan ini sedang dibuka. */
   editor: ReactNode
@@ -583,6 +601,13 @@ function SettlementGrid({
             <Fragment key={n}>
             <tr className="border-b border-slate-100 align-top">
               <td className="p-2">
+                {/* `.PDFType` baca saja (ShowAdjustment_sect, sel pertama kolom Adjustment):
+                    jenis LOD terakhir yang dicetak lewat Print LOD. */}
+                {s.nama_tipe_pdf_lod && (
+                  <span className="mb-1 block text-xs text-slate-700" title="Tipe PDF">
+                    {s.nama_tipe_pdf_lod}
+                  </span>
+                )}
                 <button
                   type="button"
                   aria-expanded={open === n}
@@ -612,6 +637,17 @@ function SettlementGrid({
               <td className="p-2">{s.nama_tipe_pembayaran}</td>
               <td className="p-2 text-xs">
                 <CommitteeStatus line={s} />
+                <AcceptanceButtons
+                  claimID={claimID}
+                  taskID={taskID}
+                  object={object}
+                  coverage={coverage}
+                  adjustment={n + 1}
+                  line={s}
+                  groupPanel={groupPanel}
+                  businessType={businessType}
+                  receivers={receivers}
+                />
               </td>
               <td className="p-2" />
             </tr>

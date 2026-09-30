@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/registrasi"
 )
@@ -64,22 +65,30 @@ func (l *Service) TransferCommittee(ctx context.Context, p CommitteeTransferComm
 	}
 
 	value := registrasi.CommitteeValue(*line, claim.Policy)
-	approvers, err := l.tiering.Approvers(ctx, registrasi.CommitteeLine(claim.Policy), value, by.Identity)
+	businessLine := registrasi.CommitteeLine(claim.Policy, value)
+	route, err := l.tiering.Route(ctx, businessLine, value, by.Identity)
 	if err != nil {
 		return CommitteeTransferResult{}, fmt.Errorf("registrasi/usecase: menghitung penjenjangan komite: %w", err)
 	}
-	if len(approvers) == 0 {
-		return CommitteeTransferResult{}, transferViolation(registrasi.ViolationCommitteeNoApprover, msgTransferNoApprover)
+	if len(route.Approvers) == 0 {
+		return CommitteeTransferResult{}, transferViolation(registrasi.ViolationCommitteeNoApprover,
+			fmt.Sprintf("%s (no active committee member in Master Komite for %s at IDR %s, excluding %s).",
+				msgTransferNoApprover, businessLine, rupiahText(value), by.Identity))
 	}
 
 	now := l.clock.Now().UTC()
 	var committee registrasi.CommitteeCase
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
-		id, err := l.committees.NextCaseID(ctx)
+		id, err := l.committees.NextCaseID(ctx, now)
 		if err != nil {
 			return err
 		}
-		committee = registrasi.NewCommitteeCase(id, claim.Number, approvers, *line, value, now)
+		committee = registrasi.NewCommitteeCase(id, claim.Number, route.Approvers, *line, value, now)
+		committee.ClaimID = claim.ID
+		committee.ObjectID = claim.InsuredItem[p.Object-1].ID
+		committee.CoverageSeq, committee.AdjustmentSeq = p.Coverage, p.Adjustment
+		committee.Line, committee.Band = businessLine, route.Band
+		committee.Applicant, committee.CreatedBy, committee.UpdatedBy = by.Identity, by.Identity, by.Identity
 		line.CommitteeCaseID = id
 		line.CommitteeTransferredAt = now
 		line.AcceptanceStatus = registrasi.DecisionPending
@@ -98,8 +107,8 @@ func (l *Service) TransferCommittee(ctx context.Context, p CommitteeTransferComm
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "ADJUSTMENT_TRANSFER_KOMITE",
 			Actor: by.Identity, At: now,
-			Note: fmt.Sprintf("Adjustment Transfer To Committee — objek %d jaminan %d adjustment %d, %s, %d jenjang",
-				p.Object, p.Coverage, p.Adjustment, id, len(approvers)),
+			Note: fmt.Sprintf("Adjustment Transfer To Committee — objek %d jaminan %d adjustment %d, %s, %s, %d jenjang",
+				p.Object, p.Coverage, p.Adjustment, id, businessLine, len(route.Approvers)),
 		})
 	})
 	if err != nil {
@@ -128,6 +137,19 @@ func checkTransfer(line registrasi.SettlementLine) error {
 		}
 	}
 	return nil
+}
+
+// rupiahText menulis nilai sen sebagai rupiah bulat berpemisah titik: 2.500.000.
+func rupiahText(v registrasi.Money) string {
+	digits := fmt.Sprintf("%d", int64(v)/100)
+	var out []byte
+	for i, d := range []byte(digits) {
+		if i > 0 && (len(digits)-i)%3 == 0 {
+			out = append(out, '.')
+		}
+		out = append(out, d)
+	}
+	return string(out)
 }
 
 func transferViolation(code registrasi.ViolationCode, message string) error {
@@ -256,7 +278,9 @@ func (l *Service) DecideCommittee(ctx context.Context, p CommitteeDecisionComman
 		if line == nil {
 			return fmt.Errorf("%w: adjustment kasus komite %s tidak ditemukan pada klaim %s", registrasi.ErrInvalidAction, c.ID, claim.Number)
 		}
+		c.UpdatedAt, c.UpdatedBy = now, by.Identity
 		if outcome := c.Outcome(); outcome != "" {
+			c.DecidedAt = now
 			line.AcceptanceStatus = outcome
 			line.CommitteeDecidedAt = now
 			if note := strings.TrimSpace(p.Note); note != "" {
@@ -270,6 +294,9 @@ func (l *Service) DecideCommittee(ctx context.Context, p CommitteeDecisionComman
 			return err
 		}
 		if err := l.claim.Save(ctx, claim); err != nil {
+			return err
+		}
+		if err := l.committeeProgress(ctx, claim.Number, c.Outcome(), by, now); err != nil {
 			return err
 		}
 		if err := l.mirrorInbox(ctx, claim); err != nil {
@@ -289,6 +316,44 @@ func (l *Service) DecideCommittee(ctx context.Context, p CommitteeDecisionComman
 		return registrasi.CommitteeCase{}, err
 	}
 	return result, nil
+}
+
+// committeeProgress menulis progres putusan akhir komite (`KomitePost_Adjustment`).
+//
+//   - Setuju di jenjang terakhir — langkah 19–21: buka posisi AKSEPTASI "On Progress"
+//     ("Auto Create AKSEPTASI", 014/60), yang kelak ditutup Submit akseptasi; langkah 22–23:
+//     tutup posisi KOMITE ("Auto Finish KOMITE", 006/24, Done).
+//   - Tolak — langkah 61–62: tutup posisi KOMITE ("Auto Reject KOMITE", 006/24, Done).
+//
+// Posisi KOMITE dibuka Pega saat Transfer Komite (`SetChildKomitePerAdjustment_act` langkah 25),
+// yang belum dibangun di aplikasi ini; bila tidak ada posisi KOMITE terbuka, penutupannya
+// dilewati — POSISIID wajib terisi.
+func (l *Service) committeeProgress(ctx context.Context, claimNumber, outcome string, by Caller, now time.Time) error {
+	if outcome == "" {
+		return nil // jenjang berikutnya masih menunggu
+	}
+	if outcome == registrasi.DecisionApprove {
+		if _, err := l.acceptance.StartProgress(ctx, registrasi.ProgressStart{
+			ClaimNumber: claimNumber, CaseID: claimNumber, Position: registrasi.PositionAcceptance,
+			Note: registrasi.CommitteeAcceptNote, Progress1: registrasi.AcceptanceProgress1,
+			Progress2: registrasi.AcceptanceProgress2, User: by.Identity, At: now,
+		}); err != nil {
+			return err
+		}
+	}
+	committee, err := l.acceptance.OpenPosition(ctx, claimNumber, registrasi.PositionCommittee)
+	if err != nil || committee == "" {
+		return err
+	}
+	note := registrasi.CommitteeFinishNote
+	if outcome == registrasi.DecisionReject {
+		note = registrasi.CommitteeRejectNote
+	}
+	return l.acceptance.AddProgress(ctx, registrasi.ProgressUpdate{
+		ClaimNumber: claimNumber, PositionID: committee, Note: note,
+		Progress1: registrasi.CommitteeProgress1, Progress2: registrasi.CommitteeProgress2,
+		Position: registrasi.AcceptanceProgressDone, User: by.Identity, At: now,
+	})
 }
 
 func outcomeNote(outcome string) string {

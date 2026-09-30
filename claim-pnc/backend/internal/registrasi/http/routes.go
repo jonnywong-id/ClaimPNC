@@ -52,6 +52,10 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.Documents(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Unggah Dokumen pada satu baris checklist: layanan penyimpanan + DATA_ATTACHFILE.
+		sub.Post("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
+			h.UploadDocument(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Tombol Download Claim Face Sheet: membentuk PDF, mencatat revisi, mengunci estimasi.
 		sub.Post("/klaim/{klaimID}/cfs", func(w http.ResponseWriter, r *http.Request) {
 			h.FaceSheet(w, r, chi.URLParam(r, "klaimID"))
@@ -65,6 +69,31 @@ func Mount(r chi.Router, h *Handler) {
 		})
 		sub.Post("/klaim/{klaimID}/pla", func(w http.ResponseWriter, r *http.Request) {
 			h.PLA(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol Print LOD pada grid Adjustment & Akseptasi: pilihan Tipe PDF dan unduhan PDF.
+		sub.Post("/klaim/{klaimID}/lod/tipe", func(w http.ResponseWriter, r *http.Request) {
+			h.LODTypes(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/lod", func(w http.ResponseWriter, r *http.Request) {
+			h.PrintLOD(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol Transfer Kasir: dialog konfirmasi dan pengiriman ke sistem Kasir (TransferToKasir_act).
+		sub.Post("/klaim/{klaimID}/kasir/pratinjau", func(w http.ResponseWriter, r *http.Request) {
+			h.PreviewCashier(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/kasir", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferCashier(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol Print DLA: daftar DLA per penerima (GenerateDLAListAdjustment) dan unduhan PDF.
+		sub.Post("/klaim/{klaimID}/dla/daftar", func(w http.ResponseWriter, r *http.Request) {
+			h.ListDLA(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/dla", func(w http.ResponseWriter, r *http.Request) {
+			h.DLA(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol Persetujuan / Akseptasi: Simpan form AcceptationLOD (SetAdjustmentAcceptation).
+		sub.Post("/klaim/{klaimID}/akseptasi", func(w http.ResponseWriter, r *http.Request) {
+			h.AcceptSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
 		// Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor).
 		sub.Post("/klaim/{klaimID}/adjustment/hitung", func(w http.ResponseWriter, r *http.Request) {

@@ -64,6 +64,19 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox-manager-receive-pucl/tab", h.Metadata)
 		perPortal.Get("/inbox-manager-receive-pucl", h.List)
 
+		// LAYAR KERJA penerimaan dokumen — yang di Pega terbuka lewat Open Assignment saat
+		// nomor case pada grid Receive diklik, dan flow action yang menunggu di sana adalah
+		// `InputReceiveDocument`.
+		//
+		// Kuncinya di JALUR, bukan parameter query: ia mengidentifikasi sumber daya, bukan
+		// menyaringnya (`10-API-STRATEGY.md` §2). Bersarang satu tingkat, sesuai batas dua
+		// tingkat pada aturan yang sama.
+		//
+		// Ia GET, dan itu bukan kelalaian: layar ini MEMBACA. Di Pega, membuka baris berarti
+		// mengambil penugasannya untuk dikerjakan — dan itu menulis ke tabel penugasan yang
+		// masih dimiliki Pega (`P-1`).
+		perPortal.Get("/inbox-manager-receive-pucl/dokumen/{referensi}", h.Document)
+
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
 		// membuat unduhannya dapat dipicu tautan biasa — termasuk dibuka ulang dari
 		// riwayat peramban dengan penyaring yang sama.

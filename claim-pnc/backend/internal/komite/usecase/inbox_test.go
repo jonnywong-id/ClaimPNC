@@ -24,6 +24,7 @@ func layananInbox(t *testing.T) (*usecase.InboxService, *memory.InboxStore) {
 	penyimpanan := memory.NewSampleInboxStore()
 	layanan, err := usecase.NewInboxService(usecase.InboxOptions{
 		Cases:     penyimpanan,
+		Transfers: penyimpanan,
 		Decisions: penyimpanan,
 		IDs:       memory.IDGenerator{},
 		Clock:     clock.FixedAt(sekarangUji),
@@ -428,6 +429,7 @@ func layananInboxTanpaJejak(t *testing.T) *usecase.InboxService {
 	penyimpanan := memory.NewSampleInboxStore()
 	layanan, err := usecase.NewInboxService(usecase.InboxOptions{
 		Cases:     penyimpanan,
+		Transfers: penyimpanan,
 		Decisions: jejakBelumSiap{penyimpanan},
 		IDs:       memory.IDGenerator{},
 		Clock:     clock.FixedAt(sekarangUji),
@@ -500,4 +502,53 @@ func TestBahanYangTidakLengkapDitolakSaatStart(t *testing.T) {
 
 	_, err = usecase.NewInboxService(usecase.InboxOptions{Cases: penyimpanan, Decisions: penyimpanan})
 	require.Error(t, err)
+}
+
+// Rincian kasus harus menjawab pertanyaan kepemilikan yang SAMA dengan daftarnya.
+//
+// # Kenapa uji ini ada
+//
+// Ketika penyaring pemilik dimatikan (`KOMITE_TANPA_PENYARING_OPERATOR`), daftar
+// menampilkan kasus milik orang lain. Bila pemeriksaan kepemilikan di sini tetap berlaku,
+// setiap baris yang diklik menjawab "tidak ada di inbox Anda" — layar yang isinya dapat
+// dilihat tetapi tidak satu pun barisnya dapat dibuka.
+//
+// Kegagalan seperti itu tidak muncul sebagai galat konfigurasi; ia muncul sebagai layar
+// yang tampak rusak.
+func TestRincianMengikutiKepemilikanYangSamaDenganDaftar(t *testing.T) {
+	layanan, _ := layananInbox(t)
+	ctx := context.Background()
+
+	// K-2606 milik operator LAIN.
+	t.Run("penyaring aktif: ditolak", func(t *testing.T) {
+		_, err := layanan.Case(ctx, "K-2606", memory.SampleOperator, false)
+		require.ErrorIs(t, err, komite.ErrNotAssigned)
+	})
+
+	t.Run("penyaring dimatikan: terbuka", func(t *testing.T) {
+		found, err := layanan.Case(ctx, "K-2606", memory.SampleOperator, true)
+		require.NoError(t, err)
+		require.Equal(t, "K-2606", found.CaseID)
+	})
+
+	// Kasus yang memang tidak ada tetap tidak ada, apa pun penandanya.
+	t.Run("kasus tidak ada tetap 'tidak ditemukan'", func(t *testing.T) {
+		_, err := layanan.Case(ctx, "K-9999", memory.SampleOperator, true)
+		require.ErrorIs(t, err, komite.ErrCaseNotFound)
+	})
+}
+
+// Kewenangan MEMUTUSKAN tidak ikut longgar.
+//
+// Melihat pekerjaan orang lain dapat dilonggarkan untuk pengembangan; menyetujui uangnya
+// tidak. `Decide` menyebut `false` secara tegas, bukan meneruskan penanda dari pemanggil.
+func TestKeputusanTidakIkutLonggarSaatPenyaringDimatikan(t *testing.T) {
+	layanan, _ := layananInbox(t)
+
+	_, err := layanan.Decide(context.Background(), komite.DecisionCommand{
+		CaseID: "K-2606", // milik operator lain
+		Kind:   komite.DecisionApprove,
+	}, pemeranUji())
+
+	require.ErrorIs(t, err, komite.ErrNotAssigned)
 }

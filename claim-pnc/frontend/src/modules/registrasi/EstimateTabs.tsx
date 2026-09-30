@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
-import { useDocuments, useProgressRecords, useSurveys } from './api'
+import { useDocuments, useProgressRecords, useSurveys, useUploadDocument } from './api'
 
 /*
  * Tiga tab pendamping tahap Input Estimasi. Sub-section aslinya — TabSurvey,
@@ -11,8 +11,9 @@ import { useDocuments, useProgressRecords, useSurveys } from './api'
  * mengikuti section tampilan yang ada: ViewHasilSurvey, ViewUploadDocument,
  * ViewShowKomunikasi.
  *
- * Ketiganya HANYA MEMBACA. Tombol yang menulis (ajukan survey, unggah dokumen, input
- * progres, kirim dan jawab pesan) tampil tetapi mati sampai modulnya dibangun.
+ * Tombol Unggah Dokumen sudah berjalan (layanan penyimpanan + DATA_ATTACHFILE). Tombol
+ * lain yang menulis (ajukan survey, input progres, kirim dan jawab pesan) tampil tetapi
+ * mati sampai modulnya dibangun.
  */
 
 const NOT_BUILT = 'Modul ini belum dibangun.'
@@ -101,25 +102,94 @@ export function SurveyTab({ claimID }: { claimID: string }) {
   )
 }
 
+/** Ekstensi yang dikenali layanan penyimpanan (`dokumenpenunjang.TipeMedia`). */
+const ACCEPTED_FILES = '.png,.jpg,.jpeg,.avif,.txt,.doc,.docx,.pdf,.eml,.rar,.zip,.csv,.xls,.xlsx,.ppt,.pptx'
+
+/**
+ * UploadPanel adalah isian unggah satu baris checklist — pengganti section `UploadDocument`
+ * yang tidak ada di export. Berkasnya ke layanan penyimpanan, barisnya ke DATA_ATTACHFILE.
+ */
+function UploadPanel({ claimID, typeID, typeName, onDone }: { claimID: string; typeID: string; typeName: string; onDone: () => void }) {
+  const upload = useUploadDocument(claimID)
+  const [file, setFile] = useState<File | null>(null)
+  const [note, setNote] = useState('')
+  const message = upload.error instanceof Error ? upload.error.message : ''
+
+  return (
+    <div className="space-y-2 rounded border border-blue-200 bg-blue-50/60 p-3 text-sm">
+      <p className="font-semibold text-slate-800">Unggah Dokumen: {typeName}</p>
+      <label className="block">
+        <span className="text-xs text-slate-600">Berkas</span>
+        <input
+          type="file"
+          accept={ACCEPTED_FILES}
+          aria-label="Berkas"
+          className="mt-1 block w-full text-sm"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+      </label>
+      <label className="block">
+        <span className="text-xs text-slate-600">Catatan</span>
+        <input
+          type="text"
+          aria-label="Catatan"
+          maxLength={255}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="mt-1 block w-full rounded border border-slate-300 px-2 py-1"
+        />
+      </label>
+      {message && <ErrorMessage title="Dokumen tidak dapat diunggah" description={message} tone="gangguan" />}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={!file || upload.isPending}
+          onClick={() => file && upload.mutate({ jenisDokumen: typeID, berkas: file, catatan: note }, { onSuccess: onDone })}
+          className="rounded bg-blue-700 px-3 py-1 text-white disabled:opacity-60"
+        >
+          {upload.isPending ? 'Mengunggah…' : 'Unggah'}
+        </button>
+        <button type="button" onClick={onDone} disabled={upload.isPending} className="rounded border border-slate-300 px-3 py-1">
+          Batal
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function DocumentTab({ claimID }: { claimID: string }) {
   const q = useDocuments(claimID)
+  const [open, setOpen] = useState<string | null>(null)
   return (
     <div className="mt-3">
       <Loading state={q} />
       {q.data?.kategori.map((c) => (
         <Table key={c.kode} caption={c.nama} head={['Kategori', 'Wajib Unggah', 'Minimal Unggah', 'Total Sudah Diunggah', '']} empty={c.dokumen.length === 0}>
           {c.dokumen.map((d) => (
-            <tr key={d.id} className="border-b border-slate-100">
-              <td className="p-2">{d.nama}</td>
-              <td className="p-2">{d.wajib ? 'Ya' : 'Tidak'}</td>
-              <td className="p-2">{d.minimal || '0'}</td>
-              <td className="p-2">{d.terunggah}</td>
-              <td className="p-2">
-                <button type="button" disabled title={NOT_BUILT} className="rounded border border-blue-300 px-2 text-blue-700 disabled:opacity-60">
-                  Unggah Dokumen
-                </button>
-              </td>
-            </tr>
+            <Fragment key={d.id}>
+              <tr className="border-b border-slate-100">
+                <td className="p-2">{d.nama}</td>
+                <td className="p-2">{d.wajib ? 'Ya' : 'Tidak'}</td>
+                <td className="p-2">{d.minimal || '0'}</td>
+                <td className="p-2">{d.terunggah}</td>
+                <td className="p-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpen(open === `${c.kode}:${d.id}` ? null : `${c.kode}:${d.id}`)}
+                    className="rounded border border-blue-300 px-2 text-blue-700"
+                  >
+                    Unggah Dokumen
+                  </button>
+                </td>
+              </tr>
+              {open === `${c.kode}:${d.id}` && (
+                <tr>
+                  <td colSpan={5} className="p-2">
+                    <UploadPanel claimID={claimID} typeID={d.id} typeName={d.nama} onDone={() => setOpen(null)} />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
           ))}
         </Table>
       ))}

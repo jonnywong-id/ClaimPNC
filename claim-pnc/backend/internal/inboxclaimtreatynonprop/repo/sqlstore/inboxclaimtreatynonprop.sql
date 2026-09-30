@@ -41,15 +41,15 @@
 -- CARI11      a.PXREFOBJECTINSNAME                         CLAIM_ID
 -- (-)         a.PXASSIGNEDOPERATORID                       ASSIGNED_OPERATOR
 -- CARI12      a.PXCREATEOPNAME                             CREATE_OPERATOR
--- CARI13      teks tetap 'Estimation' / 'Acceptation'      STATUS
+-- CARI13      teks tetap 'Estimation' / 'Acceptation'      (tidak diambil, lihat bawah)
 -- CARI14      b.SOBNAME                                    BUSINESS_SOURCE
 -- CARI15      b.BUSINESSNAME                               BUSINESS_NAME
 -- CARI16      b.CEDINGCONAME                               CEDING_COMPANY
 -- CARI17      b.INSUREDNAME                                INSURED_NAME
 -- CARI18      c.NOPOLIS                                    POLICY_NUMBER
 -- CARI19      b.MASTERID                                   MASTER_ID
--- CARI20      TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)   AGING_DAYS  (lihat catatan 6)
--- CARI21      b.PXCREATEDATETIME (hanya kueri Teknik)      — hanya untuk ORDER BY
+-- CARI20      TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)   (dihitung di Go, lihat catatan 5)
+-- CARI21      b.PXCREATEDATETIME                           WORK_CREATED_AT
 -- CARI22      c.DATA_JSON '$.DateOfLoss'                   LOSS_DATE
 -- CARI23      c.DATA_JSON '$.IDMaster'                     JSON_MASTER_ID
 -- CARI24      b.PXUPDATEOPERATOR                           LAST_UPDATE_OPERATOR
@@ -57,6 +57,16 @@
 -- `ASSIGNED_OPERATOR` tidak punya pasangan alias Pega: kueri lama MENYARING menurut kolom
 -- itu tetapi tidak pernah memilihnya. Ia dibawa di sini supaya penyimpanan memori dapat
 -- meniru penyaring yang sama, dan tidak pernah digambar sebagai kolom.
+--
+-- `CARI13` sebaliknya: kueri lama MEMILIHNYA tetapi tidak satu pun sel di
+-- `Section/InboxClaimNonProp_Harness-Section.xml` terikat padanya, sehingga kedua teks tetap
+-- itu tidak pernah sampai ke layar. Ia karena itu tidak diambil di sini. Yang digambar di
+-- bawah judul kolom "Status" adalah `CARI21` — waktu objek kerja dibuat, bukan status.
+--
+-- `WORK_CREATED_AT` diambil KELIMA kueri, meski hanya grid Teknik yang menggambarnya di
+-- bawah judul "Status". Ke-15 alias wajib sama di setiap kueri (lihat bawah), dan kolomnya
+-- memang ada di tabel yang sama pada kelimanya — mengambilnya tidak menambah satu gabungan
+-- pun. Ia sekaligus BAHAN perhitungan Aging di Go, lihat catatan 5.
 --
 -- ============================================================================
 -- DUA KOLOM JSON YANG BERBEDA PADA SATU TABEL — JANGAN TERTUKAR
@@ -83,7 +93,7 @@
 -- dari dokumen dan jalur yang sama.
 --
 -- ============================================================================
--- KE-16 ALIAS WAJIB SAMA DI SETIAP KUERI
+-- KE-15 ALIAS WAJIB SAMA DI SETIAP KUERI
 -- ============================================================================
 --
 -- Urutan DAN namanya. Dua hal bergantung padanya:
@@ -146,20 +156,31 @@
 --    membuat syarat gabungan dan syarat penyaring bercampur di satu klausa. Isinya tidak
 --    berubah sedikit pun — yang berubah hanya tempat syaratnya tertulis.
 --
--- 5. UMUR DIHITUNG DENGAN BENTUK YANG PORTABEL, ARTINYA TIDAK BERUBAH.
---    Kueri lama memakai `TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)`. Keduanya ada di
---    daftar padanan wajib `09-DATABASE-STRATEGY.md` §4 — `SYSDATE` menjadi
---    `CURRENT_TIMESTAMP`, dan `TRUNC(tanggal)` menjadi `CAST(x AS DATE)` — sehingga
---    bentuknya di sini:
+-- 5. UMUR TIDAK DIHITUNG DI SINI. Ia dihitung di Go, dan itu KOREKSI atas cacat nyata.
+--    Kueri lama memakai `TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)`. Padanan portabel yang
+--    dianjurkan `09-DATABASE-STRATEGY.md` §4 adalah `CAST(x AS DATE)`, dan berkas ini pernah
+--    memakainya:
 --
 --      CAST(CURRENT_TIMESTAMP AS DATE) - CAST(b.PXCREATEDATETIME AS DATE)
 --
---    Hasilnya SAMA PERSIS: pemangkasan ke tanggal tetap terjadi pada kedua sisi, dan
---    pengurangan dua tanggal menghasilkan bilangan hari penuh di Oracle maupun
---    PostgreSQL. Yang hilang hanya ketergantungan pada dua fungsi khas Oracle.
+--    Catatan di sini dulu menyatakan hasilnya "SAMA PERSIS". Itu KELIRU. DATE pada Oracle
+--    membawa jam, sehingga cast tidak memangkas apa pun dan selisihnya berupa PECAHAN hari.
+--    Terukur langsung dari basis data pengembangan pada 2026-09-30:
 --
---    Pemangkasan kedua sisi itu bukan kerapian: tanpanya, selisih dihitung dari JAM,
---    sehingga pekerjaan yang dibuat kemarin sore terhitung nol hari sampai lewat 24 jam.
+--      CAST(CURRENT_TIMESTAMP AS DATE) - CAST(b.PXCREATEDATETIME AS DATE)  ->  979.8191898…
+--      TRUNC(SYSDATE)                  - TRUNC(b.PXCREATEDATETIME)         ->  979
+--
+--    Akibatnya bukan angka yang kurang rapi melainkan SELURUH ANTREAN GAGAL DIMUAT: godror
+--    menyerahkan angka berpecahan itu sebagai teks, dan pemindainya mengharapkan bilangan
+--    bulat. Tab Admin lolos hanya karena pemanggil yang belum punya penugasan tidak memindai
+--    satu baris pun — tab Teknik membaca antrean bersama yang selalu berisi, sehingga di
+--    sanalah galatnya muncul.
+--
+--    Tidak ada bentuk SQL yang memangkas jam di Oracle DAN di PostgreSQL sekaligus: `TRUNC`
+--    khas Oracle, `DATE_TRUNC` khas PostgreSQL. Perhitungannya karena itu pindah ke
+--    `inboxclaimtreatynonprop.AgingDaysSince`, terhadap tanggal WIB (`F-5`), memakai
+--    `WORK_CREATED_AT` yang memang sudah diambil. Modul `inboxosclaimpercabang` menempuh
+--    jalan yang sama atas sebab yang sama.
 --
 -- 6. NILAI SELALU LEWAT PARAMETER BINDING.
 --    Kueri lama menyisipkan `{Inputdata.CARI10}` langsung ke teks SQL, dan
@@ -189,9 +210,11 @@
 --   depan dipertahankan persis seperti aslinya. Polanya literal, bukan masukan pengguna,
 --   sehingga tidak butuh ESCAPE.
 --
--- * Teks status ditulis LITERAL, sama seperti kueri lama. Ia tidak dibuat bind supaya
---   bentuk kuerinya tetap dapat dibaca DBA apa adanya; kesesuaiannya dengan konstanta
---   `StatusEstimation` dan `StatusAcceptation` dijaga query_test.go.
+-- * `WORK_CREATED_AT` dikembalikan sebagai NILAI WAKTU, bukan teks berformat. Bentuk yang
+--   dibaca pengguna (`20240201T095612.955 GMT`) disusun di Go oleh
+--   `inboxclaimtreatynonprop.FormatPegaDateTime`. Memformatnya di SQL menuntut `TO_CHAR`,
+--   yang ada di daftar terlarang `08-TECHNICAL-STRATEGY.md` §4.3 — dan pemformatan tampilan
+--   memang milik Go, bukan milik kueri.
 --
 -- * Nama akun antrean teknik dikirim sebagai BIND, bukan ditulis di sini. Nilainya satu
 --   tempat saja — inboxclaimtreatynonprop.TechnicalWorkbasket — supaya SQL dan penyimpanan
@@ -219,9 +242,7 @@ SELECT a.PZINSKEY                                    AS REFERENCE,
        b.SOBNAME                                     AS BUSINESS_SOURCE,
        b.CEDINGCONAME                                AS CEDING_COMPANY,
        b.INSUREDNAME                                 AS INSURED_NAME,
-       'Estimation'                                  AS STATUS,
-       (CAST(CURRENT_TIMESTAMP AS DATE)
-        - CAST(b.PXCREATEDATETIME AS DATE))          AS AGING_DAYS,
+       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
        b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
@@ -255,9 +276,7 @@ SELECT a.PZINSKEY                                    AS REFERENCE,
        b.SOBNAME                                     AS BUSINESS_SOURCE,
        b.CEDINGCONAME                                AS CEDING_COMPANY,
        b.INSUREDNAME                                 AS INSURED_NAME,
-       'Estimation'                                  AS STATUS,
-       (CAST(CURRENT_TIMESTAMP AS DATE)
-        - CAST(b.PXCREATEDATETIME AS DATE))          AS AGING_DAYS,
+       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
        b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
@@ -289,9 +308,7 @@ SELECT a.PZINSKEY                                    AS REFERENCE,
        b.SOBNAME                                     AS BUSINESS_SOURCE,
        b.CEDINGCONAME                                AS CEDING_COMPANY,
        b.INSUREDNAME                                 AS INSURED_NAME,
-       'Estimation'                                  AS STATUS,
-       (CAST(CURRENT_TIMESTAMP AS DATE)
-        - CAST(b.PXCREATEDATETIME AS DATE))          AS AGING_DAYS,
+       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
        b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
@@ -324,9 +341,7 @@ SELECT a.PZINSKEY                                    AS REFERENCE,
        b.SOBNAME                                     AS BUSINESS_SOURCE,
        b.CEDINGCONAME                                AS CEDING_COMPANY,
        b.INSUREDNAME                                 AS INSURED_NAME,
-       'Estimation'                                  AS STATUS,
-       (CAST(CURRENT_TIMESTAMP AS DATE)
-        - CAST(b.PXCREATEDATETIME AS DATE))          AS AGING_DAYS,
+       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
        b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
@@ -348,8 +363,9 @@ OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 -- membuat kueri ini tidak dapat disatukan dengan keempat kueri di atas.
 --
 -- Dua hal yang HANYA berlaku di sini:
---   * statusnya 'Acceptation', bukan 'Estimation';
---   * JSON_MASTER_ID tidak diambil sama sekali — kueri lamanya tidak memuat CARI23.
+--   * JSON_MASTER_ID tidak diambil sama sekali — kueri lamanya tidak memuat CARI23, dan
+--     grid Teknik memang memakai `b.MASTERID` sebagai kolom "ID Master";
+--   * hanya grid inilah yang MENGGAMBAR `WORK_CREATED_AT`, di bawah judul "Status".
 --
 -- Urutannya `ORDER BY CARI21`, yaitu `b.PXCREATEDATETIME` MENAIK, dan itu dipertahankan
 -- apa adanya meski berlawanan arah dengan urutan tab Admin. Antrean bersama memang wajar
@@ -367,9 +383,7 @@ SELECT a.PZINSKEY                                    AS REFERENCE,
        b.SOBNAME                                     AS BUSINESS_SOURCE,
        b.CEDINGCONAME                                AS CEDING_COMPANY,
        b.INSUREDNAME                                 AS INSURED_NAME,
-       'Acceptation'                                 AS STATUS,
-       (CAST(CURRENT_TIMESTAMP AS DATE)
-        - CAST(b.PXCREATEDATETIME AS DATE))          AS AGING_DAYS,
+       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
        b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS

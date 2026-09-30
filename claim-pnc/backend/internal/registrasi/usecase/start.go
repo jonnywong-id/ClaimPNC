@@ -125,6 +125,12 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		if err != nil {
 			return StartResult{}, fmt.Errorf("registrasi/usecase: membaca isi laporan: %w", err)
 		}
+		// Berkas yang sudah bernomor klaim tidak diregistrasi lagi: tanpa penolakan ini
+		// terbit PNCN kedua dan NOKLAIM berkasnya tertimpa (Work Owner, 2026-09-29).
+		if isi.ClaimNumber != "" {
+			return StartResult{}, &registrasi.ReportAlreadyRegisteredError{
+				ReportID: claim.RCVID, ClaimNumber: isi.ClaimNumber}
+		}
 		applyReport(&claim, isi)
 	}
 

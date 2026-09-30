@@ -46,7 +46,15 @@ func TestTransferCommitteeCreatesCaseAndFreezesLine(t *testing.T) {
 	task, result := l.transferredClaim(t)
 
 	c := result.Committee
-	require.Equal(t, "KMTN-00001", c.ID)
+	require.Equal(t, "KMTN.26.1", c.ID)
+	require.Equal(t, task.ClaimID, c.ClaimID)
+	require.Equal(t, 1, c.CoverageSeq)
+	require.Equal(t, 1, c.AdjustmentSeq)
+	require.NotEmpty(t, c.ObjectID)
+	require.Equal(t, registrasi.CommitteeLineNonMBUAB, c.Line, "Rp 9 jt Non-MBU masuk grup A/B")
+	require.Equal(t, testOperator, c.Applicant)
+	require.Equal(t, registrasi.CommitteeCaseOpen, c.Status())
+	require.Equal(t, 1, c.Level())
 	require.Len(t, c.Members, 2)
 	require.Equal(t, "KOMITE01", c.Members[0].Operator)
 	require.Equal(t, 1, c.Members[0].Level)
@@ -61,7 +69,7 @@ func TestTransferCommitteeCreatesCaseAndFreezesLine(t *testing.T) {
 	stored, err := l.store.Get(ctx, task.ClaimID)
 	require.NoError(t, err)
 	line := stored.InsuredItem[0].Coverage[0].Settlement[0]
-	require.Equal(t, "KMTN-00001", line.CommitteeCaseID)
+	require.Equal(t, "KMTN.26.1", line.CommitteeCaseID)
 	require.Equal(t, registrasi.DecisionPending, line.AcceptanceStatus)
 	require.False(t, line.CommitteeTransferredAt.IsZero())
 	require.Equal(t, registrasi.StatusClaimCommittee, stored.ClaimStatus)
@@ -151,8 +159,9 @@ func decide(id, decision, note string) usecase.CommitteeDecisionCommand {
 	return usecase.CommitteeDecisionCommand{CaseID: id, Decision: decision, Note: note}
 }
 
-// SetEmailKomite step 15–19: lini komite dari jenis bisnis polis.
+// SetEmailKomite step 4 dan 15–19: lini komite dari jenis bisnis polis dan nilainya.
 func TestCommitteeLineFollowsBusinessType(t *testing.T) {
+	big := registrasi.Rupiah(75_000_000)
 	cases := map[string]registrasi.Policy{
 		"BONDING": {BusinessType: "BondingKBG"},
 		"TRAVEL":  {BusinessType: "Travel"},
@@ -160,9 +169,19 @@ func TestCommitteeLineFollowsBusinessType(t *testing.T) {
 		"NONMBU":  {BusinessType: "Fire"},
 	}
 	for want, p := range cases {
-		require.Equal(t, want, registrasi.CommitteeLine(p), p.BusinessType)
+		require.Equal(t, want, registrasi.CommitteeLine(p, big), p.BusinessType)
 	}
-	require.Equal(t, "BONDING", registrasi.CommitteeLine(registrasi.Policy{BusinessType: "Fire", BusinessCode: "10168"}))
+	require.Equal(t, "BONDING", registrasi.CommitteeLine(registrasi.Policy{BusinessType: "Fire", BusinessCode: "10168"}, big))
+}
+
+// Non-MBU sampai Rp 50.000.000 diputus komite grup A/B (NONMBUAB); satu rupiah di atasnya
+// kembali ke tangga NONMBU. PA dan Travel tidak terpengaruh.
+func TestCommitteeLineSendsSmallNonMBUToGroupAB(t *testing.T) {
+	cargo := registrasi.Policy{BusinessType: "MarineCargo"}
+	require.Equal(t, registrasi.CommitteeLineNonMBUAB, registrasi.CommitteeLine(cargo, registrasi.Rupiah(2_500_000)))
+	require.Equal(t, registrasi.CommitteeLineNonMBUAB, registrasi.CommitteeLine(cargo, registrasi.Rupiah(50_000_000)))
+	require.Equal(t, registrasi.CommitteeLineNonMBU, registrasi.CommitteeLine(cargo, registrasi.Rupiah(50_000_001)))
+	require.Equal(t, "PA", registrasi.CommitteeLine(registrasi.Policy{BusinessType: "PA"}, registrasi.Rupiah(1)))
 }
 
 // SetListComiteeClaimPerObjAdj step 28–36: nilai pembanding ambang komite.
@@ -191,7 +210,7 @@ func TestCommitteeValueFollowsPaymentTypeAndCoinsurance(t *testing.T) {
 // Decide mengabaikan kapitalisasi operator dan mengisi waktu putusan.
 func TestCommitteeCaseDecideMatchesOperatorCaseInsensitively(t *testing.T) {
 	now := time.Date(2026, 9, 28, 3, 0, 0, 0, time.UTC)
-	c := registrasi.NewCommitteeCase("KMTN-00009", "PNCN.26.0001",
+	c := registrasi.NewCommitteeCase("KMTN.26.9", "PNCN.26.0001",
 		[]registrasi.CommitteeApprover{{OperatorID: "KOMITE01"}}, registrasi.SettlementLine{PaymentType: "1"}, 100, now)
 	require.NoError(t, c.Decide("komite01", registrasi.DecisionApprove, "", now))
 	require.Equal(t, registrasi.DecisionApprove, c.Outcome())

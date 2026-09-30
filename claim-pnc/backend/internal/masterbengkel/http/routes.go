@@ -425,5 +425,12 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Post("/master/bengkel", h.Create)
 		perPortal.Get("/master/bengkel/{id}", h.Get)
 		perPortal.Put("/master/bengkel/{id}", h.Save)
+
+		// Dokumen lampiran. Jalurnya bersarang di bawah bengkelnya karena ia memang milik
+		// satu baris — dan `10-API-STRATEGY.md` §2 membatasi sarang pada dua tingkat,
+		// yang masih terpenuhi.
+		perPortal.Post("/master/bengkel/{id}/dokumen", h.UploadDocument)
+		perPortal.Get("/master/bengkel/{id}/dokumen", h.Document)
+		perPortal.Get("/master/bengkel/{id}/dokumen/berkas", h.DocumentFile)
 	})
 }

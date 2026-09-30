@@ -9,7 +9,9 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -40,6 +42,8 @@ const (
 type Service interface {
 	NextBatch(ctx context.Context, portalAlias string) (int64, error)
 	Years(ctx context.Context, portalAlias string) []string
+	List(ctx context.Context, portalAlias string, filter masterrecovery.ListFilter) ([]masterrecovery.PrincipalGroup, int, error)
+	Document(ctx context.Context, portalAlias, id string) (masterrecovery.Document, error)
 	Principals(ctx context.Context, portalAlias string) ([]masterrecovery.Principal, error)
 	LookupPolicy(ctx context.Context, portalAlias, policyNo string) (masterrecovery.PolicyReference, error)
 	IssueVirtualAccount(ctx context.Context, portalAlias string, request masterrecovery.VirtualAccountRequest) (masterrecovery.VirtualAccount, error)
@@ -132,6 +136,232 @@ func (h *Handler) Form(w http.ResponseWriter, r *http.Request) {
 		Year:      h.service.Years(r.Context(), active),
 		Portal:    active,
 	})
+}
+
+// List menangani GET /api/master/recovery.
+//
+// Mengisi tab **Outstanding** pada `Section/OutstandingMasterRecovery-Section.xml`.
+//
+// # Kenapa rute ini akhirnya ada
+//
+// Ia sempat sengaja TIDAK didaftarkan, atas kesimpulan saya bahwa layar lama adalah form
+// entri tanpa daftar. Kesimpulan itu KELIRU, dan dasarnya keliru: saya menyimpulkannya
+// dari tidak adanya kueri pembaca di export, padahal export itu sendiri tidak lengkap
+// (`R-16`). Grid-nya ada, jelas terbaca di section, dan berisi data di layar Pega yang
+// berjalan. Yang hilang adalah rule pemuatnya, bukan fiturnya.
+//
+// # Paginasi
+//
+// `limit` dan `lewati` diterima dari klien tetapi TIDAK dipercaya: keduanya dirapikan di
+// lapisan usecase, yang dilewati setiap pemanggil. Nilai yang bukan angka diperlakukan
+// sebagai tidak disebutkan, bukan ditolak — pemotongan halaman bukan aturan bisnis, dan
+// menolak permintaan karena satu parameter tampilan salah ketik tidak menolong siapa pun.
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	active, ready := h.activePortal(w, r)
+	if !ready {
+		return
+	}
+
+	query := r.URL.Query()
+	filter := masterrecovery.ListFilter{
+		PrincipalName: strings.TrimSpace(query.Get("cari")),
+		Year:          strings.TrimSpace(query.Get("tahun")),
+		Limit:         atoiOrZero(query.Get("limit")),
+		Offset:        atoiOrZero(query.Get("lewati")),
+	}
+
+	groups, total, err := h.service.List(r.Context(), active, filter)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	content := make([]RecoveryGroupDTO, 0, len(groups))
+	for _, group := range groups {
+		batch := make([]RecoveryRowDTO, 0, len(group.Batch))
+		for _, row := range group.Batch {
+			batch = append(batch, toRowDTO(row))
+		}
+		content = append(content, RecoveryGroupDTO{
+			PrincipalName:   group.Name,
+			ClaimAmount:     int64(group.Latest.ClaimAmount),
+			PreviousPayment: int64(group.Latest.PreviousPayment),
+			Payment:         int64(group.Latest.Payment),
+			Remainder:       int64(group.Latest.Remainder),
+			Batch:           batch,
+		})
+	}
+
+	h.writeResponse(w, r, http.StatusOK, RecoveryListResponse{
+		Principal: content,
+		Total:     total,
+		Portal:    active,
+	})
+}
+
+func toRowDTO(row masterrecovery.Recovery) RecoveryRowDTO {
+	// Waktu nol dikirim sebagai teks KOSONG, bukan sebagai "0001-01-01T00:00:00Z".
+	// Tanggal tahun satu yang muncul di layar jauh lebih membingungkan daripada kolom
+	// kosong, dan baris warisan tanpa INSERTDATE memang ada.
+	inputDate := ""
+	if !row.InputDate.IsZero() {
+		inputDate = row.InputDate.Format(time.RFC3339)
+	}
+
+	var attachment *AttachmentDTO
+	if row.Attachment != nil {
+		uploadedAt := ""
+		if !row.Attachment.UploadedAt.IsZero() {
+			uploadedAt = row.Attachment.UploadedAt.Format(time.RFC3339)
+		}
+		attachment = &AttachmentDTO{
+			ID:         row.Attachment.ID,
+			Name:       row.Attachment.Name,
+			UploadedBy: row.Attachment.UploadedBy,
+			UploadedAt: uploadedAt,
+		}
+	}
+
+	return RecoveryRowDTO{
+		Attachment:           attachment,
+		Batch:                row.Batch,
+		PrincipalName:        row.PrincipalName,
+		Year:                 row.Year,
+		InputDate:            inputDate,
+		ServiceLogID:         row.ServiceLogID,
+		ClaimAmount:          int64(row.ClaimAmount),
+		PreviousPayment:      int64(row.PreviousPayment),
+		Payment:              int64(row.Payment),
+		Remainder:            int64(row.Remainder),
+		Remark:               row.Remark,
+		CasePosition:         row.CasePosition,
+		VirtualAccountNumber: row.VirtualAccountNumber,
+		PolicyNo:             row.PolicyNo,
+		DocumentID:           strings.TrimSpace(row.DocumentID),
+	}
+}
+
+// Document menangani GET /api/master/recovery/bukti-bayar/{id}.
+//
+// Melayani tombol **View Document** pada grid dalam.
+//
+// # Isinya dialirkan mentah, bukan sebagai JSON ber-base64
+//
+// `RDB List/GetAttachmentFromDB_Sql-SQL.xml` mengembalikannya sebagai teks base64 lewat
+// `pooldata.base64encode`. Di sini tidak: bytenya dikirim apa adanya beserta jenis isinya,
+// sehingga peramban dapat membukanya sendiri, ukurannya tidak membesar sepertiga, dan
+// tidak ada yang perlu diurai ulang di sisi mana pun.
+//
+// # `inline` HANYA untuk jenis yang memang dapat ditampilkan — diperbaiki 2026-09-29
+//
+// Versi pertama menyajikan seluruh berkas `inline` dengan jenis isi apa adanya dari kolom
+// `ATTACHMIMETYPE`. Itu keliru dua kali:
+//
+//  1. **Keluarannya kacau.** Lampiran warisan yang jenisnya tidak tercatat, atau tercatat
+//     keliru, membuat peramban menggambar isi biner sebagai teks — berhalaman-halaman
+//     karakter acak alih-alih berkas. Terlihat langsung pada lampiran XLSX di portal ASM.
+//  2. **Ia celah keamanan.** Jenis isi itu datang dari BASIS DATA, bukan dari kode. Satu
+//     baris ber-`ATTACHMIMETYPE` `text/html` akan dijalankan peramban sebagai halaman di
+//     origin aplikasi ini — skrip di dalamnya membaca sesi pengguna yang membukanya.
+//
+// Karena itu `inline` hanya diberikan kepada **daftar jenis yang memang aman ditampilkan**
+// (`inlineSafe`). Selebihnya dikirim sebagai `attachment`, sehingga peramban mengunduhnya
+// alih-alih menggambarnya. Ditambah `X-Content-Type-Options: nosniff`, supaya peramban
+// tidak menebak sendiri jenisnya dan membatalkan pembedaan di atas.
+//
+// Tombolnya tetap bernama **View** Document dan tetap jujur: yang dapat dilihat, dilihat;
+// yang tidak, diunduh — dan tidak ada yang berakhir sebagai layar penuh karakter acak.
+func (h *Handler) Document(w http.ResponseWriter, r *http.Request) {
+	active, ready := h.activePortal(w, r)
+	if !ready {
+		return
+	}
+
+	id := strings.TrimSpace(chi.URLParam(r, "id"))
+	if id == "" {
+		h.writeError(w, r, masterrecovery.ErrDocumentNotFound)
+		return
+	}
+
+	document, err := h.service.Document(r.Context(), active, id)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	mimeType := strings.ToLower(strings.TrimSpace(document.MimeType))
+	if mimeType == "" {
+		// Jenis isi yang tidak tercatat TIDAK ditebak dari nama berkas: menebak salah
+		// membuat peramban menampilkan isi yang keliru. Oktet mentah membuatnya diunduh,
+		// dan berkasnya tetap utuh.
+		mimeType = "application/octet-stream"
+	}
+
+	name := strings.TrimSpace(document.Name)
+	if name == "" {
+		name = "bukti-bayar"
+	}
+
+	// Ditampilkan hanya bila jenisnya ada di daftar aman; selebihnya diunduh.
+	disposition := "attachment"
+	if inlineSafe[mimeType] {
+		disposition = "inline"
+	}
+
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(document.Content)))
+	// Melarang peramban menebak sendiri jenis isinya. Tanpa ini, berkas ber-jenis
+	// application/octet-stream yang isinya kebetulan menyerupai HTML masih dapat
+	// digambar sebagai halaman — dan pembedaan di atas menjadi tidak berarti.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{
+		"filename": name,
+	}))
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(document.Content); err != nil {
+		h.logger.WarnContext(r.Context(), "bukti bayar gagal dialirkan",
+			slog.String("modul", "masterrecovery"), slog.Any("galat", err))
+	}
+}
+
+// inlineSafe adalah jenis isi yang boleh DIGAMBAR peramban, bukan diunduh.
+//
+// Daftar, bukan aturan — dan pendek dengan sengaja. Yang masuk hanyalah jenis yang tidak
+// dapat menjalankan skrip di origin aplikasi ini:
+//
+//   - PDF dan gambar raster: digambar peramban, tidak dieksekusi.
+//   - `text/plain`: digambar apa adanya; peramban TIDAK menafsirkan tag di dalamnya.
+//
+// Yang sengaja TIDAK masuk, meski tampak tidak berbahaya:
+//
+//   - `image/svg+xml` — SVG dapat memuat `<script>`, dan dijalankan saat dibuka langsung.
+//   - `text/html`, `application/xhtml+xml`, `application/xml` — jelas dapat menjalankan
+//     skrip.
+//   - Seluruh bentuk Office — peramban tidak dapat menampilkannya, dan memaksanya inline
+//     justru menghasilkan layar penuh karakter acak. Inilah yang terjadi pada lampiran
+//     XLSX di portal ASM.
+var inlineSafe = map[string]bool{
+	"application/pdf": true,
+	"image/png":       true,
+	"image/jpeg":      true,
+	"image/jpg":       true,
+	"image/gif":       true,
+	"image/webp":      true,
+	"image/bmp":       true,
+	"image/tiff":      true,
+	"text/plain":      true,
+}
+
+// atoiOrZero membaca angka desimal dan mengembalikan 0 bila tidak dapat dibaca.
+//
+// Nol berarti "tidak disebutkan" di seluruh pemakaiannya, sehingga nilai cacat jatuh ke
+// perilaku baku alih-alih menggagalkan permintaan.
+func atoiOrZero(raw string) int {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value < 0 {
+		return 0
+	}
+	return value
 }
 
 // Principals menangani GET /api/master/recovery/principal.
@@ -358,8 +588,11 @@ func (h *Handler) ReadClaimLine(w http.ResponseWriter, r *http.Request) {
 
 // Template menangani GET /api/master/recovery/format-unggahan.
 //
-// Menggantikan tautan **Format File** beserta rule `DownloadFileCSVFormaatter`, yang tidak
-// ada di export — lihat masterrecovery.ClaimLineTemplate.
+// Menggantikan tautan **Format File** beserta rule `DownloadFileCSVFormaatter`.
+//
+// Isi contohnya sengaja berbeda dari yang lama — yang lama hanya memuat satu kolom,
+// sehingga tidak dapat diunggah kembali lewat grid yang menuntut dua. Alasannya di
+// masterrecovery.ClaimLineTemplate.
 func (h *Handler) Template(w http.ResponseWriter, r *http.Request) {
 	if _, ready := h.activePortal(w, r); !ready {
 		return

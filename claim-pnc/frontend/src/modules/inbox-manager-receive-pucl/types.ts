@@ -128,6 +128,15 @@ export type Tab = {
   antrean_bersama: boolean
 
   /**
+   * Nomor case pada tab ini adalah TAUTAN yang membuka layar kerja penerimaan dokumen.
+   *
+   * Hanya tab Receive begitu — di layar lama pun perilaku klik hanya dipasang pada kedua
+   * grid Receive. Ia datang dari SERVER, bukan disimpulkan layar dari kode tab, supaya
+   * perilaku klik ditetapkan di tempat buktinya dibaca.
+   */
+  buka_layar_kerja: boolean
+
+  /**
    * Tab digambar tetapi belum dapat diisi.
    *
    * Tidak ada yang begitu di layar ini hari ini. Isian tetap dibaca supaya penambahan tab
@@ -162,5 +171,73 @@ export type ListResponse = {
   tab: Tab
   baris: WorkItem[]
   paginasi: PageInfo
+  portal: string
+}
+
+/**
+ * Satu isian pada layar kerja penerimaan dokumen — flow action `InputReceiveDocument`.
+ *
+ * Judulnya datang dari SERVER, bukan ditulis di sini, karena ia hasil pembacaan
+ * `Section/InputReceiveDocument_sect.xml` dan tempat pembacaan itu tercatat adalah di
+ * backend. Menyalin 36 judul ke sini berarti daftar yang sama hidup di dua tempat.
+ */
+export type DocumentField = {
+  kunci: string
+  judul: string
+
+  /** Di Pega digambar sebagai kotak teks bertingkat, bukan satu baris. */
+  bertingkat?: boolean
+
+  /**
+   * Isian digambar tetapi belum dapat diisi.
+   *
+   * Enam belas dari 36 isian begitu. Ia TIDAK disembunyikan: menyembunyikannya membuat
+   * pengguna yang membandingkan layar ini dengan Pega mengira isiannya hilang.
+   */
+  terhalang?: boolean
+  alasan_terhalang?: string
+  pemilik_penghalang?: string
+}
+
+/** Satu kelompok isian, digambar sebagai satu panel. */
+export type DocumentFieldGroup = {
+  judul: string
+  isian: DocumentField[]
+}
+
+/**
+ * Satu tombol yang di layar lama MENGUBAH data.
+ *
+ * Belum satu pun dapat dihidupkan — lihat `WriteAction` di backend. `pemilik` menyebut modul
+ * yang kelak memilikinya, supaya layar dapat menjawab lebih dari "belum tersedia".
+ */
+export type DocumentAction = {
+  kode: string
+  label: string
+  activity_pega: string
+  pemilik: string
+}
+
+/** Jawaban GET /api/inbox-manager-receive-pucl/dokumen/{referensi}. */
+export type DocumentResponse = {
+  referensi: string
+  no_case: string
+  no_klaim_pnc: string
+  jenis_klaim: string
+  status_kerja: string
+
+  kelompok: DocumentFieldGroup[]
+
+  /**
+   * Isi tiap isian, berkunci `DocumentField.kunci`.
+   *
+   * Isian bertanda `terhalang` sengaja TIDAK ada di sini. Mengisinya dengan teks kosong akan
+   * membuat layar tidak dapat membedakan "belum ada sumbernya" dari "sumbernya ada tetapi
+   * kosong" — dua hal yang tindak lanjutnya berbeda.
+   */
+  nilai: Record<string, string>
+
+  tindakan: DocumentAction[]
+
   portal: string
 }

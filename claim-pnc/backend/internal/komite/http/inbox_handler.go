@@ -59,15 +59,17 @@ type InboxCaller struct {
 // penyimpanannya.
 type InboxService interface {
 	Inbox(ctx context.Context, f komite.InboxFilter) (usecase.InboxResult, error)
-	Case(ctx context.Context, caseID string, operator string) (komite.CommitteeCase, error)
+	Case(ctx context.Context, caseID string, operator string, allOperators bool) (komite.CommitteeCase, error)
+	Detail(ctx context.Context, caseID string, operator string, allOperators bool) (usecase.CaseDetail, error)
 	Decide(ctx context.Context, cmd komite.DecisionCommand, actor usecase.Actor) (komite.CommitteeCase, error)
 }
 
 // InboxHandler melayani layar Inbox Komite.
 type InboxHandler struct {
-	service InboxService
-	caller  func(context.Context) (InboxCaller, bool)
-	logger  *slog.Logger
+	service      InboxService
+	caller       func(context.Context) (InboxCaller, bool)
+	logger       *slog.Logger
+	allOperators bool
 
 	writeResponse JSONWriter
 	writeError    ErrorWriter
@@ -82,6 +84,18 @@ type InboxHandlerOptions struct {
 	// kedua modul tetap tidak saling mengimpor.
 	Caller func(context.Context) (InboxCaller, bool)
 
+	// AllOperators mematikan penyaring pemilik pada SELURUH permintaan daftar.
+	//
+	// Ia dipasang saat perakitan dari `KOMITE_TANPA_PENYARING_OPERATOR`, dan konfigurasi
+	// MENOLAK menyalakannya di luar `APP_ENV=development`. Handler tidak membaca
+	// lingkungan sendiri: yang menentukan lingkungan adalah satu tempat, dan modul ini
+	// bukan tempat itu.
+	//
+	// Ia TIDAK dapat dinyalakan lewat parameter kueri. Penanda yang dapat dikirim klien
+	// berarti siapa pun yang punya sesi dapat meminta antrean komite seluruh perusahaan —
+	// tepat yang penyaring ini ada untuk mencegahnya.
+	AllOperators bool
+
 	Logger              *slog.Logger
 	WriteResponse       JSONWriter
 	FallbackErrorWriter ErrorWriter
@@ -93,6 +107,7 @@ func NewInboxHandler(o InboxHandlerOptions) *InboxHandler {
 		service:       o.Service,
 		caller:        o.Caller,
 		logger:        o.Logger,
+		allOperators:  o.AllOperators,
 		writeResponse: o.WriteResponse,
 		writeError:    WriteError(o.Logger, o.WriteResponse, o.FallbackErrorWriter),
 	}
@@ -112,7 +127,7 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, err := inboxFilterFrom(r, caller.Login)
+	filter, err := inboxFilterFrom(r, caller.Login, h.allOperators)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
@@ -144,6 +159,7 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 		Operator:           normalized.Operator,
 		Now:                result.Now.UTC().Format(time.RFC3339),
 		DecisionsAvailable: result.DecisionsAvailable,
+		OwnerFilterActive:  !normalized.AllOperators,
 	})
 }
 
@@ -155,16 +171,17 @@ func (h *InboxHandler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, err := h.service.Case(r.Context(), chi.URLParam(r, "nomor"), caller.Login)
+	detail, err := h.service.Detail(r.Context(), chi.URLParam(r, "nomor"), caller.Login, h.allOperators)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 
-	now := time.Now().UTC()
+	transfer := toTransferDTO(detail.Transfer)
 	h.writeResponse(w, r, http.StatusOK, CommitteeCaseResponse{
-		Case: toCommitteeCaseDTO(found, caller.Login, now),
-		Now:  now.Format(time.RFC3339),
+		Case:     toCommitteeCaseDTO(detail.Case, caller.Login, detail.Now),
+		Now:      detail.Now.UTC().Format(time.RFC3339),
+		Transfer: &transfer,
 	})
 }
 
@@ -229,15 +246,24 @@ func (h *InboxHandler) callerFrom(r *http.Request) (InboxCaller, bool) {
 // Tanggal yang tidak dapat diurai DITOLAK sebagai validasi, bukan diabaikan. Penyaring
 // yang gagal terurai lalu diam-diam dianggap kosong akan menampilkan SELURUH riwayat
 // kepada seseorang yang mengira ia sedang melihat satu minggu.
-func inboxFilterFrom(r *http.Request, operator string) (komite.InboxFilter, error) {
+func inboxFilterFrom(
+	r *http.Request,
+	operator string,
+	allOperators bool,
+) (komite.InboxFilter, error) {
 	params := r.URL.Query()
 
 	filter := komite.InboxFilter{
 		Operator: operator,
-		Kind:     komite.InboxKind(strings.TrimSpace(params.Get("kotak"))),
-		Search:   params.Get("cari"),
-		Offset:   atoiOrZero(params.Get("lewati")),
-		Limit:    atoiOrZero(params.Get("batas")),
+
+		// Datang dari perakitan, BUKAN dari parameter kueri. Lihat
+		// InboxHandlerOptions.AllOperators.
+		AllOperators: allOperators,
+
+		Kind:   komite.InboxKind(strings.TrimSpace(params.Get("kotak"))),
+		Search: params.Get("cari"),
+		Offset: atoiOrZero(params.Get("lewati")),
+		Limit:  atoiOrZero(params.Get("batas")),
 	}
 
 	var violations []komite.Violation
@@ -360,4 +386,218 @@ func formatTime(t time.Time) string {
 		return ""
 	}
 	return t.UTC().Format(time.RFC3339)
+}
+
+// toTransferDTO memetakan rincian transfer ke bentuk kontraknya.
+//
+// Senarai barisnya dibentuk dengan panjang nol, bukan nil: `nil` menjadi `null` di JSON,
+// dan layar yang melakukan `baris.map(...)` atasnya akan gagal — bukan menampilkan daftar
+// kosong seperti yang dimaksud.
+func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
+	lines := make([]AdjustmentLineDTO, 0, len(d.Lines))
+	for _, l := range d.Lines {
+		lines = append(lines, AdjustmentLineDTO{
+			ClaimNumber:  l.ClaimNumber,
+			ObjectID:     l.ObjectID,
+			CoverageID:   l.CoverageID,
+			AcceptanceNo: l.AcceptanceNo,
+			AcceptedAt:   formatTime(l.AcceptedAt),
+
+			Currency:    l.Currency,
+			PaymentType: l.PaymentType,
+
+			GrossValue:     l.GrossValue.String(),
+			ProposeValue:   l.ProposeValue.String(),
+			AcceptedValue:  l.AcceptedValue.String(),
+			SalvageValue:   l.SalvageValue.String(),
+			ASMShareValue:  l.ASMShareValue.String(),
+			IndividualRisk: l.IndividualRisk.String(),
+
+			ASMSharePercent: l.ASMSharePercent,
+			ExGratia:        l.ExGratia,
+			Notes:           l.Notes,
+			CauseOfLoss:     l.CauseOfLoss,
+
+			CurrencyCode:   l.CurrencyCode,
+			CommitteeValue: l.CommitteeValue().String(),
+			Spreading:      spreadingDTO(d.SpreadingFor(l)),
+			CoMembers:      coMembersDTO(d.CoMembersFor(l)),
+			Breakdown:      breakdownDTO(d.BreakdownFor(l)),
+		})
+	}
+
+	coverages := make([]CoverageAnalysisDTO, 0, len(d.Coverages))
+	for _, c := range d.Coverages {
+		coverages = append(coverages, CoverageAnalysisDTO{
+			ObjectID:   c.ObjectID,
+			CoverageID: c.CoverageID,
+
+			ObjectName:   c.ObjectName,
+			CoverageName: c.CoverageName,
+			CauseOfLoss:  c.CauseOfLoss,
+
+			SumInsured: c.SumInsured.String(),
+			Currency:   c.Currency,
+
+			Circumstances:  c.Circumstances,
+			ExtentOfLoss:   c.ExtentOfLoss,
+			LegalLiability: c.LegalLiability,
+			Remarks:        c.Remarks,
+			Diagnose:       c.Diagnose,
+			InitialName:    c.InitialName,
+
+			CommitteeDate:  formatTime(c.CommitteeDate),
+			AnalysisFilled: c.Filled(),
+		})
+	}
+
+	leader := d.Leader()
+	facOffers := make([]FacOfferDTO, 0, len(d.Policy.FacOffers))
+	for _, f := range d.Policy.FacOffers {
+		facOffers = append(facOffers, FacOfferDTO{ReinsurerName: f.ReinsurerName, Percent: f.Percent})
+	}
+	attachments := make([]AttachmentDTO, 0, len(d.Attachments))
+	for _, a := range d.Attachments {
+		attachments = append(attachments, AttachmentDTO{
+			ID:         a.ID,
+			Name:       a.Name,
+			Note:       a.Note,
+			Category:   a.Category,
+			UploadedBy: a.InputBy,
+			UploadedAt: formatTime(a.InputAt),
+		})
+	}
+	dominant := make([]string, 0, len(d.DominantFactors))
+	dominant = append(dominant, d.DominantFactors...)
+
+	dto := TransferDetailDTO{
+		Judul:          d.Judul(),
+		HEDapatDinilai: strings.TrimSpace(d.BusinessType) != "",
+		Lines:          lines,
+		Coverages:      coverages,
+		Empty:          d.Empty(),
+		MoneyEmpty:     d.MoneyEmpty(),
+
+		Leader:          LeaderDTO{Name: leader.Name, Percent: leader.Percent},
+		FullSpreading:   d.FullSpreading(),
+		FacOffers:       facOffers,
+		DominantFactors: dominant,
+		Attachments:     attachments,
+		Members:         entriesDTO(d.Members),
+		History:         entriesDTO(d.History),
+	}
+	if d.HasPolicy {
+		dto.Policy = &PolicyPeriodDTO{Start: formatTime(d.Policy.Start), End: formatTime(d.Policy.End)}
+	}
+	if d.HasClaim {
+		c := d.Claim
+		dto.Claim = &ClaimSummaryDTO{
+			DateOfLoss:   formatTime(c.DateOfLoss),
+			RegisterDate: formatTime(c.RegisterDate),
+
+			Location:    c.Location,
+			Chronology:  c.Chronology,
+			ClaimStatus: c.ClaimStatus,
+
+			Recommendation: c.Recommendation,
+
+			ASMShare:  c.ASMShare,
+			CoinsName: c.CoinsName,
+			Currency:  c.Currency,
+			ExGratia:  c.ExGratia,
+
+			ClaimNumber:      c.ClaimNumber,
+			PolicyNumber:     c.PolicyNumber,
+			InsuredName:      c.InsuredName,
+			BusinessName:     c.BusinessName,
+			BranchName:       c.BranchName,
+			SourceOfBusiness: c.SourceOfBusiness,
+			CoinsRole:        c.CoinsRole,
+			GroupPanel:       c.GroupPanel,
+			CurrencyCode:     c.CurrencyCode,
+		}
+	}
+	if d.HasCommitteeRecord {
+		c := d.Committee
+		dto.Committee = &CommitteeRecordDTO{
+			MemberName: c.MemberName,
+			Tier:       c.Tier,
+			Kind:       c.Kind,
+			Note:       c.Note,
+			ClaimValue: c.ClaimValue.String(),
+			ASMShare:   c.ASMShare,
+			DecidedAt:  formatTime(c.DecidedAt),
+			Outcome:    legacyOutcomeText(c.Outcome),
+			CreatedAt:  formatTime(c.CreatedAt),
+		}
+	}
+	return dto
+}
+
+// spreadingDTO dan coMembersDTO selalu mengembalikan senarai, tidak pernah nil — lihat
+// catatan pada toTransferDTO.
+func spreadingDTO(rows []komite.SpreadingRow) []SpreadingRowDTO {
+	out := make([]SpreadingRowDTO, 0, len(rows))
+	for _, r := range rows {
+		dto := SpreadingRowDTO{
+			TreatyType: r.TreatyType,
+			TreatyName: r.TreatyName,
+			Currency:   r.Currency,
+			Percent:    r.Percent,
+		}
+		if r.HasValue {
+			dto.Value = r.Value.String()
+		}
+		out = append(out, dto)
+	}
+	return out
+}
+
+func breakdownDTO(b komite.Breakdown) BreakdownDTO {
+	rows := make([]BreakdownRowDTO, 0, len(b.Rows))
+	for _, r := range b.Rows {
+		dto := BreakdownRowDTO{
+			Description:      r.Description,
+			EstimateCurrency: r.EstimateCurrency,
+			EstimateLabel:    r.EstimateLabel,
+			Percent:          r.Percent,
+			Currency:         r.Currency,
+			Total:            r.Total,
+		}
+		if r.HasEstimate {
+			dto.Estimate = r.Estimate.String()
+		}
+		if r.HasValue {
+			dto.Value = r.Value.String()
+		}
+		rows = append(rows, dto)
+	}
+	return BreakdownDTO{Title: b.Title, ValueHeader: b.ValueHeader, Known: b.Known, Rows: rows}
+}
+
+func entriesDTO(entries []komite.CommitteeEntry) []CommitteeEntryDTO {
+	out := make([]CommitteeEntryDTO, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, CommitteeEntryDTO{
+			CaseID:     e.CaseID,
+			MemberName: e.MemberName,
+			Tier:       e.Tier,
+			Status:     e.StatusLabel(),
+			Note:       e.Note,
+			DecidedAt:  formatTime(e.DecidedAt),
+		})
+	}
+	return out
+}
+
+func coMembersDTO(rows []komite.CoMemberRow) []CoMemberRowDTO {
+	out := make([]CoMemberRowDTO, 0, len(rows))
+	for _, r := range rows {
+		dto := CoMemberRowDTO{Name: r.Name, Currency: r.Currency, Percent: r.Percent}
+		if r.HasValue {
+			dto.Value = r.Value.String()
+		}
+		out = append(out, dto)
+	}
+	return out
 }

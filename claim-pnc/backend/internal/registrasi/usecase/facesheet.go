@@ -29,7 +29,7 @@ type FaceSheetResult struct {
 // Dokumen dibentuk SEBELUM transaksi dibuka: bila pembentukannya gagal, tidak ada estimasi
 // yang terkunci tanpa dokumennya pernah sampai ke petugas.
 func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by Caller) (FaceSheetResult, error) {
-	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate})
+	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate, alsoAction: registrasi.ActionInputSurveyor})
 	if err != nil {
 		return FaceSheetResult{}, err
 	}

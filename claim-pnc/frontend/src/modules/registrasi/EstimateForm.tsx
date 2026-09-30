@@ -30,9 +30,11 @@ import {
  * (Tanggal, User, Catatan), lalu empat tab: Survey, Estimasi Pembayaran, Unggah Dokumen,
  * Progress Claim & Komunikasi.
  *
- * # Tab Estimasi Pembayaran direkonstruksi
+ * # Tab Estimasi Pembayaran — section InputEstimasiDetail
  *
- * Isinya ada di sub-section `InputEstimasiDetail`, yang TIDAK ada di export. Susunannya
+ * Isinya sub-section `Section/InputEstimasiDetail_sect.xml` (kini ada di export), yang juga
+ * ditanam `ClaimSurvey_sect` di layar InputSurveyor — karena itu isiannya dipegang
+ * useEstimateEditor dan digambar EstimatePaymentTable, dipakai kedua layar. Susunannya
  * mengikuti tangkapan layar Pega dari Work Owner: objek (Nama Objek, Lokasi Object, Mata
  * Uang, Nilai Klaim, Nilai Adjuster) → jaminan (Jaminan, Mata Uang, TSI) → item (Objek,
  * Deskripsi Item) → baris estimasi (kolom section `Estimasi`).
@@ -180,21 +182,19 @@ function currencyName(code: string, list: CurrencyOption[]): string {
   return list.find((m) => m.id === code)?.nama ?? code
 }
 
-export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
+/**
+ * useEstimateEditor memegang isian section `InputEstimasiDetail`: pohon objek → jaminan →
+ * item → estimasi, tombol Save (tanpa menutup tahap), Download Claim Face Sheet, dan Print
+ * PLA. Section itu ditanam di DUA layar — Input Estimasi (`InputEstimasiAdmin_SECT`) dan
+ * InputSurveyor (`ClaimSurvey_sect`) — sehingga isiannya hidup di sini, bukan di salah satu
+ * layar.
+ */
+export function useEstimateEditor(klaim: Claim, tugas: Task) {
   const [form, setForm] = useState<ItemForm[][][]>(() => fromClaim(klaim))
-  const [tab, setTab] = useState<Tab>('Estimasi Pembayaran')
   const save = useSaveEstimate(true)
-  const complete = useSaveEstimate(false)
-  const currencies = useCurrencies()
-  const currencyList = currencies.data?.pilihan ?? []
-
   const faceSheet = useFaceSheet(klaim.id)
   // Jaminan yang dialog Print PLA-nya sedang terbuka.
   const [plaFor, setPLAFor] = useState<{ i: number; j: number } | null>(null)
-
-  const busy = save.isPending || complete.isPending || faceSheet.isPending
-  const failure = faceSheet.error ?? complete.error ?? save.error
-  const violations = violationsFrom(failure)
 
   /**
    * Download Claim Face Sheet satu jaminan. Isian layar disimpan lebih dulu — Pega
@@ -237,6 +237,138 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     setForm(fromClaim(result.klaim))
   }
 
+  return {
+    form,
+    save,
+    faceSheet,
+    plaFor,
+    setPLAFor,
+    updateItems,
+    updateItem,
+    afterSave,
+    downloadFaceSheet,
+    /** Permintaan simpan dari isian yang sedang tampil. */
+    request: (kembali: boolean) => toRequest(tugas.id, form, kembali),
+    /** Save tanpa menutup tahap. */
+    saveNow: () => save.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave }),
+    hasFaceSheet: () => claimHasFaceSheet(form),
+  }
+}
+
+export type EstimateEditor = ReturnType<typeof useEstimateEditor>
+
+/**
+ * EstimatePaymentTable menggambar isi section InputEstimasiDetail: grid objek (Nama Objek,
+ * Lokasi Object, Mata Uang, Nilai Klaim, Nilai Adjuster, Informasi OS & Akseptasi), jaminan
+ * di bawahnya, beserta dialog Print PLA.
+ */
+export function EstimatePaymentTable({
+  klaim,
+  tugas,
+  editor,
+  currencyList,
+  busy,
+}: {
+  klaim: Claim
+  tugas: Task
+  editor: EstimateEditor
+  currencyList: CurrencyOption[]
+  busy: boolean
+}) {
+  const { form, updateItems, updateItem, downloadFaceSheet, plaFor, setPLAFor } = editor
+  return (
+    <div className="mt-3">
+      {klaim.objek.length === 0 && (
+        <p className="text-sm text-slate-600">Klaim ini belum punya objek. Kembali ke Input Register untuk mengisinya.</p>
+      )}
+
+      {klaim.objek.length > 0 && (
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">Objek klaim</caption>
+          <thead>
+            <tr className="bg-slate-100 text-left text-xs text-slate-700">
+              <th className="p-2" />
+              <th className="p-2">Nama Objek</th>
+              <th className="p-2">Lokasi Object</th>
+              <th className="p-2">Mata Uang</th>
+              <th className="p-2 text-right">Nilai Klaim</th>
+              <th className="p-2 text-right">Nilai Adjuster</th>
+              <th className="p-2">Informasi OS &amp; Akseptasi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {klaim.objek.map((o, i) => {
+              const totals = objectTotals(o)
+              return (
+                <ObjectRows key={i}>
+                  <tr className="bg-blue-100/70 align-top">
+                    <td className="p-2">{i + 1}</td>
+                    <td className="p-2">{o.nama || o.id}</td>
+                    <td className="p-2">{o.lokasi || '—'}</td>
+                    <td className="p-2">{currencyName(klaim.polis.mata_uang, currencyList)}</td>
+                    <td className="p-2 text-right">{formatRupiah(totals.klaim)}</td>
+                    <td className="p-2 text-right">{formatRupiah(totals.adjuster)}</td>
+                    <td className="p-2">
+                      <button type="button" disabled title={NOT_BUILT} className="rounded border border-blue-300 px-2 text-blue-700 disabled:opacity-60">
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={7} className="border-l-2 border-slate-200 p-2 pl-6">
+                      <CoverageTable
+                        klaim={klaim}
+                        objek={o}
+                        objectIndex={i}
+                        form={form[i] ?? []}
+                        currencyList={currencyList}
+                        updateItems={updateItems}
+                        updateItem={updateItem}
+                        busy={busy}
+                        onFaceSheet={(j) => downloadFaceSheet(i, j)}
+                        onPrintPLA={(j) => setPLAFor({ i, j })}
+                      />
+                    </td>
+                  </tr>
+                </ObjectRows>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+
+      <p className="mt-3 text-xs text-slate-500">
+        Kurs dan nilai IDR dihitung saat disimpan, memakai kurs pada tanggal kejadian. Estimasi yang
+        sudah disimpan tidak dapat dihapus, dan estimasi yang sudah dibuatkan Claim Face Sheet tidak
+        dapat diubah.
+      </p>
+
+      {plaFor && (
+        <PLADialog
+          claimID={klaim.id}
+          taskID={tugas.id}
+          object={plaFor.i + 1}
+          coverage={plaFor.j + 1}
+          coverageName={klaim.objek[plaFor.i]?.coverage[plaFor.j]?.nama ?? ''}
+          onClose={() => setPLAFor(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
+  const editor = useEstimateEditor(klaim, tugas)
+  const { form, save, faceSheet, afterSave } = editor
+  const [tab, setTab] = useState<Tab>('Estimasi Pembayaran')
+  const complete = useSaveEstimate(false)
+  const currencies = useCurrencies()
+  const currencyList = currencies.data?.pilihan ?? []
+
+  const busy = save.isPending || complete.isPending || faceSheet.isPending
+  const failure = faceSheet.error ?? complete.error ?? save.error
+  const violations = violationsFrom(failure)
+
   return (
     <section className="mt-6 rounded border border-slate-200 p-4" aria-label="Input Estimasi">
       <h2 className="text-sm text-slate-700">InputEstimasi</h2>
@@ -269,8 +401,8 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           {/* Kirim PIC Teknik — finishAssignment pada InputEstimasiAdmin_SECT, mati bila !isCFS. */}
           <Button
             tone="utama"
-            disabled={busy || !claimHasFaceSheet(form)}
-            title={claimHasFaceSheet(form) ? undefined : 'Download Claim Face Sheet lebih dulu.'}
+            disabled={busy || !editor.hasFaceSheet()}
+            title={editor.hasFaceSheet() ? undefined : 'Download Claim Face Sheet lebih dulu.'}
             onClick={() => complete.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave })}
           >
             {complete.isPending ? 'Memproses…' : 'Kirim PIC Teknik'}
@@ -341,72 +473,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
 
       {tab === 'Estimasi Pembayaran' && (
-        <div className="mt-3">
-          {klaim.objek.length === 0 && (
-            <p className="text-sm text-slate-600">Klaim ini belum punya objek. Kembali ke Input Register untuk mengisinya.</p>
-          )}
-
-          {klaim.objek.length > 0 && (
-            <table className="w-full border-collapse text-sm">
-              <caption className="sr-only">Objek klaim</caption>
-              <thead>
-                <tr className="bg-slate-100 text-left text-xs text-slate-700">
-                  <th className="p-2" />
-                  <th className="p-2">Nama Objek</th>
-                  <th className="p-2">Lokasi Object</th>
-                  <th className="p-2">Mata Uang</th>
-                  <th className="p-2 text-right">Nilai Klaim</th>
-                  <th className="p-2 text-right">Nilai Adjuster</th>
-                  <th className="p-2">Informasi OS &amp; Akseptasi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {klaim.objek.map((o, i) => {
-                  const totals = objectTotals(o)
-                  return (
-                    <ObjectRows key={i}>
-                      <tr className="bg-blue-100/70 align-top">
-                        <td className="p-2">{i + 1}</td>
-                        <td className="p-2">{o.nama || o.id}</td>
-                        <td className="p-2">{o.lokasi || '—'}</td>
-                        <td className="p-2">{currencyName(klaim.polis.mata_uang, currencyList)}</td>
-                        <td className="p-2 text-right">{formatRupiah(totals.klaim)}</td>
-                        <td className="p-2 text-right">{formatRupiah(totals.adjuster)}</td>
-                        <td className="p-2">
-                          <button type="button" disabled title={NOT_BUILT} className="rounded border border-blue-300 px-2 text-blue-700 disabled:opacity-60">
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td colSpan={7} className="border-l-2 border-slate-200 p-2 pl-6">
-                          <CoverageTable
-                            klaim={klaim}
-                            objek={o}
-                            objectIndex={i}
-                            form={form[i] ?? []}
-                            currencyList={currencyList}
-                            updateItems={updateItems}
-                            updateItem={updateItem}
-                            busy={busy}
-                            onFaceSheet={(j) => downloadFaceSheet(i, j)}
-                            onPrintPLA={(j) => setPLAFor({ i, j })}
-                          />
-                        </td>
-                      </tr>
-                    </ObjectRows>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-
-          <p className="mt-3 text-xs text-slate-500">
-            Kurs dan nilai IDR dihitung saat disimpan, memakai kurs pada tanggal kejadian. Estimasi yang
-            sudah disimpan tidak dapat dihapus, dan estimasi yang sudah dibuatkan Claim Face Sheet tidak
-            dapat diubah.
-          </p>
-        </div>
+        <EstimatePaymentTable klaim={klaim} tugas={tugas} editor={editor} currencyList={currencyList} busy={busy} />
       )}
 
       {failure && (
@@ -417,16 +484,6 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             tone="penolakan"
           />
         </div>
-      )}
-      {plaFor && (
-        <PLADialog
-          claimID={klaim.id}
-          taskID={tugas.id}
-          object={plaFor.i + 1}
-          coverage={plaFor.j + 1}
-          coverageName={klaim.objek[plaFor.i]?.coverage[plaFor.j]?.nama ?? ''}
-          onClose={() => setPLAFor(null)}
-        />
       )}
       {faceSheet.isSuccess && !busy && !failure && (
         <p className="mt-4 text-sm text-emerald-700" role="status">
@@ -451,7 +508,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           <Button
             tone="kedua"
             disabled={busy}
-            onClick={() => save.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave })}
+            onClick={editor.saveNow}
           >
             {save.isPending ? 'Menyimpan…' : 'Save'}
           </Button>
@@ -824,7 +881,7 @@ function EstimationTable({
   )
 }
 
-function errorText(failure: unknown): string {
+export function errorText(failure: unknown): string {
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
 }
