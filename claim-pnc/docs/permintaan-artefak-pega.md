@@ -213,6 +213,22 @@ modulnya dapat langsung dibangun.
 > sepuluh properti Pega menjadi kolom. **Permintaan itu DICABUT** — ternyata tidak perlu.
 > Lihat §2.3.
 
+> **KOREKSI 2026-09-30 — kesimpulan §2.2–§2.5 SALAH, permintaan §2.3 yang dicabut ternyata
+> BENAR.** Work Owner mengirim `Section/InputClaimInvestigasiDetail-Section.xml` (formulir
+> investigasi yang dirujuk `Flow Action/InputInvestigator-FA.xml`). Dua fakta darinya:
+>
+> 1. **Seluruh kolom CSV terpetakan ke isian formulir**, termasuk `NoRekapMedis` = "Nomor
+>    Rekam Medik" dan `IsInvestigated` = "Dapat Diinvestigasi" (`1` → status 6993, selain
+>    itu 6994 — `SetStatusInvestigator_Act`). Pertanyaan §2.5 gugur.
+> 2. **`ExportDataInvestigator` tidak membaca `POOLDATA.INVESTIGATIONREPORT`.** Ia membuka
+>    setiap case lewat `Obj-Open-By-Handle` dan membaca `SurveyResults(1).SurveyList(1).*`
+>    dari objek kerja — yaitu BLOB `pzPVStream` pada `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`.
+>
+> Kueri katalog DBA 2026-09-30 atas `ALL_TAB_COLUMNS` (`OWNER = 'DATAPEGA'`, 13 nama
+> properti) mengembalikan **nol baris**: tidak satu pun properti investigasi tersedia sebagai
+> kolom. Penghalang yang sebenarnya karena itu **bukan pemetaan, melainkan data yang hanya
+> ada di BLOB Pega** — dan hanya Tim Pega yang dapat mengeluarkannya menjadi kolom.
+
 ### 2.1 Apa yang belum dapat kami bangun
 
 Tombol **"Export Data Investigation"** pada layar Inbox Investigator. Ia nyata dan terlihat di
