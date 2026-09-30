@@ -315,7 +315,7 @@ func TestTheMSIGPlanBindsTheMarkerBeforePagination(t *testing.T) {
 	args := entry.plan.args(samplePage())
 
 	require.Len(t, args, 7)
-	require.Equal(t, inboxrclpucl.PUCLApproved, args[3])
+	require.Equal(t, inboxrclpucl.PUCLReturnedToAnalyst, args[3])
 	require.Equal(t, inboxrclpucl.MSIGMarker, args[4])
 	require.Equal(t, 100, args[5], "offset halaman ketiga berukuran 50")
 	require.Equal(t, 50, args[6])

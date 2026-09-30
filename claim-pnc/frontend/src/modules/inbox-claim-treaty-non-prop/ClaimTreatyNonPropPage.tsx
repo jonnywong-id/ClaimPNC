@@ -434,32 +434,37 @@ function filterExplanation(tab: Tab, filter: FilterForm): string {
 }
 
 /**
- * Nomor klaim sebagai tautan ke rincian klaim.
+ * Nomor klaim sebagai tautan ke layar Acceptation Claim.
  *
  * Sel Claim.ID di kedua grid Pega ber-`pyAction openAssignment` — mengkliknya membuka objek
- * kerjanya, bukan sebuah harness tertentu. Padanannya di sini adalah rute
- * `/view-claim/:referensi`, penampung layar `MENU_ID 75` "View Claim" (`PNCViewClaim`) yang
- * belum dibangun sebagai modul tersendiri.
+ * kerjanya, dan Flow Action yang digambar untuk objek kerja itu adalah `InputAcceptation`:
+ * satu-satunya Flow Action yang terdaftar pada kelas
+ * `ASM-FW-GCNMFW-Work-ClaimTreatyNonProp`. Padanannya di sini adalah modul
+ * `input-acceptation`.
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega — itulah yang menunjuk objek kerjanya,
- * dan dengan begitu menyalakan layar rincian kelak tidak menuntut perubahan kontrak API
- * modul ini. Nomor klaim sendiri TIDAK cukup: satu nomor dapat punya lebih dari satu
- * penugasan.
+ * Sebelumnya tautan ini menunjuk `/view-claim/:referensi`, penampung layar "View Claim" yang
+ * belum dibangun — sehingga setiap klik berakhir di pemberitahuan "layar belum dibangun".
+ * Tujuannya dibetulkan setelah Flow Action-nya ditelusuri (2026-09-30).
  *
- * # Baris tanpa kunci tidak menjadi tautan
+ * # Yang dikirim adalah NOMOR KLAIM, bukan kunci teknis Pega
+ *
+ * Alamatnya terbaca orang (`/input-acceptation/CLMNP-232`), dapat disalin ke percakapan, dan
+ * tidak membocorkan bentuk kunci internal Pega ke bilah alamat. Itu mengikuti layar saudaranya
+ * `outstanding-claim`, yang memakai nomor klaim dengan alasan yang sama. Kunci teknisnya tetap
+ * dikirim server pada setiap baris, sehingga beralih memakainya kelak tidak menuntut perubahan
+ * kontrak.
+ *
+ * # Baris tanpa nomor klaim tidak menjadi tautan
  *
  * Tautan yang alamatnya kosong tetap dapat diklik dan membawa pengguna ke layar yang pasti
- * gagal. Yang digambar untuk baris seperti itu adalah nomornya sebagai teks biasa.
+ * gagal. Yang digambar untuk baris seperti itu adalah tanda pisah.
  */
 function ClaimIDLink({ item }: { item: WorkItem }) {
-  const key = item.referensi || item.no_klaim
-
   if (item.no_klaim === '') return <span className="text-slate-400">—</span>
-  if (key === '') return <span>{item.no_klaim}</span>
 
   return (
     <Link
-      to={`/view-claim/${encodeURIComponent(key)}`}
+      to={`/input-acceptation/${encodeURIComponent(item.no_klaim)}`}
       className={[
         'font-medium text-blue-700 underline-offset-2 hover:underline',
         'focus:outline-none focus-visible:rounded-kontrol',

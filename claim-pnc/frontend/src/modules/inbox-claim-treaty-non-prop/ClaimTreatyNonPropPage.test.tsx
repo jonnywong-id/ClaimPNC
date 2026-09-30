@@ -531,17 +531,18 @@ describe('tombol ekspor', () => {
 })
 
 describe('penggambaran sel', () => {
-  it('menjadikan nomor klaim TAUTAN ke rincian klaim', async () => {
-    // Sel Claim.ID di Pega ber-`pyAction openAssignment`. Yang dikirim adalah kunci teknis
-    // Pega, bukan nomor klaimnya: satu nomor dapat punya lebih dari satu penugasan.
+  it('menjadikan nomor klaim TAUTAN ke layar Acceptation Claim', async () => {
+    // Sel Claim.ID di Pega ber-`pyAction openAssignment`, dan Flow Action yang digambar
+    // untuk objek kerja itu adalah `InputAcceptation` — satu-satunya yang terdaftar pada
+    // kelas ASM-FW-GCNMFW-Work-ClaimTreatyNonProp.
+    //
+    // Alamatnya memakai NOMOR KLAIM, bukan kunci teknis Pega: ia terbaca orang dan dapat
+    // disalin ke percakapan, mengikuti layar saudaranya Outstanding Claim.
     stubDefaultFetch()
     await renderLoaded()
 
     const tautan = await screen.findByRole('link', { name: 'CLMNP-1001' })
-    expect(tautan).toHaveAttribute(
-      'href',
-      `/view-claim/${encodeURIComponent(ROW.referensi)}`,
-    )
+    expect(tautan).toHaveAttribute('href', '/input-acceptation/CLMNP-1001')
   })
 
   it('menampilkan aging nol sebagai angka polos, bukan sebagai tanda pisah', async () => {

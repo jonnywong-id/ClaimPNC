@@ -34,9 +34,9 @@ type planCase struct {
 	query inboxmanagerreceivepucl.Query
 }
 
-// allPlans mengembalikan ketiga rencana kueri beserta permintaannya.
+// allPlans mengembalikan kedua rencana kueri beserta permintaannya.
 //
-// Ketiganya disebut lengkap, bukan disimpulkan dari daftar tab: daftar yang dihitung sendiri
+// Keduanya disebut lengkap, bukan disimpulkan dari daftar tab: daftar yang dihitung sendiri
 // oleh uji akan ikut salah bila pemilihan kuerinya salah.
 func allPlans(t *testing.T) map[string]planCase {
 	t.Helper()
@@ -45,8 +45,7 @@ func allPlans(t *testing.T) map[string]planCase {
 		label string
 		tab   string
 	}{
-		{"receive_pa", inboxmanagerreceivepucl.TabReceivePA},
-		{"receive_nonmbu", inboxmanagerreceivepucl.TabReceiveNonMBU},
+		{"receive", inboxmanagerreceivepucl.TabReceive},
 		{"rclpucl", inboxmanagerreceivepucl.TabRCLPUCL},
 	}
 
@@ -160,8 +159,8 @@ func TestReceiveQueriesReadTheAssignmentTableOfTheirOwn(t *testing.T) {
 
 func TestOnlyReceiveQueriesFilterTheGroupPanel(t *testing.T) {
 	// Group Panel adalah pengganti `.ReceiveDocument.TypeOfClaim` yang tidak punya kolom.
-	// Ia HANYA berlaku pada kedua tab Receive; membocorkannya ke tab RCL/PUCL akan
-	// menyaring klaim menurut lini bisnis yang layar lama tidak pernah saring.
+	// Ia HANYA berlaku pada tab Receive; membocorkannya ke tab RCL/PUCL akan menyaring klaim
+	// menurut lini bisnis yang layar lama tidak pernah saring.
 	for _, name := range receiveQueries {
 		require.Containsf(t, strings.ToUpper(query(name)), "GROUPPANEL_1",
 			"kueri %s tidak menyaring Group Panel", name)
@@ -170,33 +169,38 @@ func TestOnlyReceiveQueriesFilterTheGroupPanel(t *testing.T) {
 		"kueri RCL/PUCL menyaring Group Panel; ia tidak seharusnya")
 }
 
-func TestTheTwoReceiveQueriesFilterTheGroupPanelInOppositeDirections(t *testing.T) {
-	// Keduanya mengikat NILAI yang sama (kode Group Panel PA) dan berbeda hanya pada ARAH
-	// pembandingnya. Bila keduanya memakai arah yang sama, satu tab akan menampilkan isi
-	// tab yang lain — dan kolomnya identik, sehingga tidak ada apa pun di layar yang
-	// menandakannya.
-	pa := strings.ToUpper(query("list_receive_pa"))
-	nonMBU := strings.ToUpper(query("list_receive_non_mbu"))
+func TestReceiveQueryKeepsTheUnionOfBothPegaGrids(t *testing.T) {
+	// Kedua grid Pega disaring `= '002'` dan `<> '002'`. Gabungan tepat keduanya adalah
+	// `IS NOT NULL`, dan itu berlaku di Oracle maupun PostgreSQL — lihat tabel di kepala
+	// `list_receive`.
+	//
+	// Dua hal yang dijaga uji ini, dan keduanya salah dengan cara yang tidak menghasilkan
+	// galat:
+	//
+	//   * penyaringnya DIHAPUS  -> berkas tanpa Group Panel muncul, padahal di Pega tidak
+	//     pernah terlihat di grid mana pun;
+	//   * penyaringnya DIBIARKAN membandingkan nilai -> separuh isi tab hilang tanpa jejak.
+	text := strings.ToUpper(query("list_receive"))
 
-	require.Contains(t, pa, "W.GROUPPANEL_1 = :1",
-		"kueri PA tidak membandingkan Group Panel dengan kesamaan")
-	require.Contains(t, nonMBU, "W.GROUPPANEL_1 <> :1",
-		"kueri NONMBU tidak membandingkan Group Panel dengan ketidaksamaan")
+	require.Contains(t, text, "W.GROUPPANEL_1 IS NOT NULL",
+		"kueri Receive tidak lagi menyaring Group Panel sebagai gabungan kedua grid Pega")
+	require.NotContains(t, text, "W.GROUPPANEL_1 =",
+		"kueri Receive masih menyaring satu lini bisnis saja")
+	require.NotContains(t, text, "W.GROUPPANEL_1 <>",
+		"kueri Receive masih mengecualikan satu lini bisnis")
 }
 
-func TestReceiveQueriesBindTheGroupPanelInsteadOfWritingIt(t *testing.T) {
-	// Kode Group Panel dikirim sebagai BIND, bukan ditulis di dalam SQL. Nilainya karena
-	// itu hanya hidup di satu tempat — konstanta domain — dan penyimpanan memori membaca
-	// konstanta yang sama lewat penerjemah yang sama.
-	plans := allPlans(t)
+func TestReceiveQueryBindsNothingButPagination(t *testing.T) {
+	// Sejak kedua grid digabung, kode Group Panel tidak lagi menjadi bind — penyaringnya
+	// tidak membandingkan nilai apa pun. Yang tersisa hanyalah paginasi.
+	//
+	// Kodenya tetap TIDAK BOLEH ditulis di dalam SQL: ia masih dipakai scanWorkItem untuk
+	// menurunkan kolom "Jenis Klaim", dan nilainya harus hidup di satu tempat saja —
+	// konstanta domain yang dibaca pula oleh penyimpanan memori.
+	entry := allPlans(t)["receive"]
+	args := entry.plan.args(samplePage())
 
-	for _, label := range []string{"receive_pa", "receive_nonmbu"} {
-		entry := plans[label]
-		require.Equalf(t,
-			inboxmanagerreceivepucl.GroupPanelPA,
-			entry.plan.args(samplePage())[0],
-			"%s wajib mengikat kode Group Panel PA", label)
-	}
+	require.Len(t, args, 2, "kueri Receive tidak lagi mengikat dua nilai paginasi saja")
 
 	for _, name := range receiveQueries {
 		require.NotContainsf(t, query(name),
@@ -399,4 +403,53 @@ func TestBothCheckQueriesReturnExactlyOneRow(t *testing.T) {
 		require.Containsf(t, strings.ToUpper(query(name)), "COUNT(*)",
 			"kueri %s tidak menjamin satu baris hasil", name)
 	}
+}
+
+func TestDocumentQueryReturnsItsAliasesInTheScannerOrder(t *testing.T) {
+	// scanDocument memindai 23 kolom secara POSISIONAL. Satu alias yang bergeser TIDAK
+	// menghasilkan galat — ia hanya menaruh kronologi kejadian di isian nomor polis, dan
+	// layar menggambarnya apa adanya.
+	//
+	// Bahayanya lebih besar daripada pada kueri daftar: ke-13 kolom tabel cermin sering
+	// bernilai NULL bersamaan, sehingga pergeseran di antara keduanya menghasilkan isian
+	// kosong — bentuk yang mudah dikira "data memang belum diisi".
+	alias := regexp.MustCompile(`(?im)\bAS\s+([A-Z_]+)\s*,?\s*$`)
+
+	found := []string{}
+	for _, match := range alias.FindAllStringSubmatch(
+		strings.ToUpper(query("detail_receive_document")), -1) {
+		found = append(found, match[1])
+	}
+
+	require.Equal(t, documentColumns, found,
+		"alias kueri layar kerja tidak sama dengan urutan pemindai scanDocument")
+}
+
+func TestDocumentQueryFiltersTheWorkClassAndJoinsTheMirrorTableLoosely(t *testing.T) {
+	// Dua hal yang gagal TANPA satu pun galat bila dilupakan:
+	//
+	//   * penyaring kelas hilang -> kunci milik klaim membuka layar kerja penerimaan
+	//     dokumen berisi klaim;
+	//   * gabungannya menjadi INNER -> berkas tanpa pasangan di tabel cermin dinyatakan
+	//     TIDAK ADA, padahal ia ada — dan justru itulah berkas yang paling perlu dilihat.
+	text := strings.ToUpper(query("detail_receive_document"))
+
+	require.Contains(t, text,
+		strings.ToUpper(inboxmanagerreceivepucl.WorkClassReceiveDocument),
+		"kueri layar kerja tidak menyaring kelas objek kerja")
+	require.Contains(t, text, "LEFT JOIN POOLDATA.T_CLAIM_RECIVEDCLAIM",
+		"kueri layar kerja tidak menggabung tabel cermin secara longgar")
+	require.NotContains(t, text, "PC_ASSIGN_WORKLIST",
+		"kueri layar kerja menggabung tabel penugasan; berkas yang penugasannya sudah "+
+			"selesai akan gagal dibuka di tengah pengerjaan")
+}
+
+func TestDocumentQueryBindsItsKeyInsteadOfWritingIt(t *testing.T) {
+	// Kunci berkas datang dari JALUR permintaan — masukan pengguna. Merangkainya ke dalam
+	// teks SQL adalah persis celah `{ASIS:…}` warisan yang dilarang
+	// `08-TECHNICAL-STRATEGY.md` §4.3.
+	text := query("detail_receive_document")
+
+	require.Contains(t, text, "w.PZINSKEY = :1",
+		"kueri layar kerja tidak mengikat kunci berkas sebagai parameter")
 }

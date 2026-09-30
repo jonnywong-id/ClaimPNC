@@ -22423,3 +22423,706 @@ berubah bersama.
 | Apakah `GetDataTreatyin_Act` versi produksi menambah filter operator saat RUNTIME | Bila ya, tab Admin seharusnya tetap menyempit ke pemanggil dan keputusan 4 harus dibalik |
 | Nama kolom terekspos properti `IsSubjectivity` | Satu-satunya kolom yang kini selalu kosong |
 | Apakah `pyMaxRecords = 500` sengaja, atau sisa bawaan | Di sini batas itu dihapus dan diganti paginasi; baris ke-501 kini dapat dicapai |
+
+---
+
+## 78. Inbox RCL/PUCL — lima kolom yang artinya akhirnya diketahui (2026-09-30)
+
+**Latar:** sepuluh pertanyaan terbuka modul `inbox-rcl-pucl` diajukan ke Work Owner, dan
+enam di antaranya dijawab langsung. Empat kolom yang selama ini dibawa apa adanya karena
+artinya tidak diketahui kini punya arti, dan **dua di antaranya ternyata dinamai keliru sejak
+di Pega**.
+
+### Jawaban Work Owner
+
+| Kolom / pertanyaan | Jawaban |
+|---|---|
+| `MSIG_1` | data **dari atau untuk perusahaan MSIG** |
+| `PUCLAPPROVE_1` | `1` PUCL kirim ke Analyst · `0` Kirim ke PUCL |
+| `STATUSCASE_1` | **ikuti apa adanya dari Pega** |
+| `LAMAKLAIM_1` | **tanggal kirim untuk proses PUCL** |
+| `RCL_PUCL_1` | `1` RCL · `2` PUCL · **`3` Notification** |
+| Urutan baris · kewenangan tulis · isian clipboard · letak isian tanggal | mengikuti rekomendasi |
+
+### Keputusan 1 — `PUCLApproved` DINAMAI ULANG, tanpa menyentuh satu pun kueri
+
+Konstanta itu menyatakan **"disetujui"**; yang sebenarnya ditandai kolomnya adalah **kepada
+siapa klaimnya sekarang berada**. Nama yang menyatakan putusan pada kolom yang menyatakan
+posisi adalah persis jenis kekeliruan yang `D-19` larang dibawa dari sistem lama — dan ia
+sudah sempat dibawa.
+
+Namanya menjadi **`PUCLReturnedToAnalyst`**, berpasangan dengan **`PUCLWithPUCL`** yang tidak
+dipakai penyaring mana pun tetapi ditulis supaya kedua nilai kolom ini terbaca berdampingan.
+Penyaring `<> '1'` **tidak berubah**: ia memang berarti "masih di tangan PUCL", dan tab 2
+memang antrean pekerjaan PUCL. Yang keliru hanya namanya.
+
+### Keputusan 2 — lubang `PUCLAPPROVE_1` kosong DIPERSEMPIT, bukan ditutup
+
+Dengan arti di atas, klaim yang penandanya kosong **memang bukan** pekerjaan PUCL — sehingga
+ketiadaannya di tab 2 dan 3 bukan cacat, dan usul memperbaikinya **ditarik**.
+
+Yang tersisa satu keadaan sempit dan nyata: klaim yang suratnya **sudah dicetak** tetapi
+penandanya kosong keluar dari tab "Cetak Surat" (`TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL`) dan
+tidak masuk tab 2 maupun 3 (`NULL <> '1'` bernilai UNKNOWN). Klaim seperti itu **tidak
+terlihat di tab mana pun**. Kueri hitungnya dicetak `-periksa` dan ditagihkan ke DBA.
+
+### Keputusan 3 — "Lama Klaim" berisi TANGGAL, dan judulnya tetap dibawa
+
+`D-13` menetapkan teks layar mengikuti Pega apa adanya, termasuk saat judulnya menyesatkan.
+Yang tidak dibawa adalah salah artinya: komentar kode, kontrak API, dan tipe frontend kini
+menyebut isinya tanggal.
+
+**Satu pertanyaan justru DIBUKA oleh jawaban ini.** `TANGGALKIRIMPUCL_1` — yang digambar
+sebagai "Tanggal Masuk Inbox" — namanya menyatakan hal yang sama persis, dan jumlah nilai
+berbedanya nyaris sama di produksi: **88 lawan 86**. Layar ini mungkin menggambar satu tanggal
+yang sama di dua kolom dengan dua judul berbeda. Tidak ditebak; kueri pembandingnya dicetak
+`-periksa`.
+
+### Keputusan 4 — kolom pengurut DITAMPILKAN, urutannya tidak disentuh
+
+Tiga kemungkinan dipertimbangkan, dan yang dipilih satu-satunya yang **tidak memindahkan satu
+baris pun**:
+
+| Pilihan | Akibat |
+|---|---|
+| biarkan | `P-5` murni, tetapi terus dilaporkan sebagai kerusakan |
+| ganti kunci urut | **memindahkan baris antarhalaman** — melanggar kesetaraan gerbang 1 |
+| **tampilkan kolomnya** | dipakai — urutan, isi, dan paginasi sama persis |
+
+Kolom **"Tanggal Dibuat"** (`PXCREATEDATETIME`) menjadi kolom kesepuluh, ditaruh **paling
+kanan** supaya kesembilan kolom sebelumnya tetap berada pada urutan layar lama. Uji
+`TestEveryTabDrawsTheSameNineColumns` menangkapnya saat kolomnya ditambahkan — persis
+gunanya — dan diganti namanya menjadi `...TenColumns`.
+
+Di penyimpanan memori, isinya **diturunkan** dari kolom pengurut yang sudah ada alih-alih
+diisi pada tiap baris contoh: kolom yang digambar dan kolom yang mengurutkan adalah kolom yang
+sama, dan baris contoh yang mengisinya terpisah dapat menyatakan urutan yang tidak sesuai
+dengan angka yang tampil.
+
+### Keputusan 5 — `RCL_PUCL_1 = '3'` menjadi PRASYARAT, bukan sekadar catatan
+
+Kode `3` berarti **Notification** — bukan pekerjaan RCL maupun PUCL, dan Pega menyembunyikan
+layar kerjanya justru karena itu. Keputusan Work Owner 2026-09-24 *"tidak usah pakai when
+dulu"* **tetap berlaku dan tetap aman**, karena layar ini hanya membaca.
+
+Yang ditambahkan adalah pagarnya: syarat itu **wajib diberlakukan kembali sebelum operasi
+tulis pertama ditambahkan ke `Repo`** — bukan sesudahnya. Sejak tombol tulis hidup, petugas
+dapat mencetak surat pada klaim yang di Pega tidak pernah bisa dibuka sama sekali, dan itu
+tidak menghasilkan satu pun galat.
+
+### Keputusan 6 — layar dinyatakan BACA-SAJA sampai Pega dimatikan
+
+Sebelumnya kelima tombol mati dinyatakan sebagai *"belum tersedia"* — yang terbaca sebagai
+pekerjaan yang tertunda. Ia bukan: kedua tabel yang disentuhnya dibaca ratusan aturan Pega,
+sehingga kepemilikannya tidak berpindah satu layar demi satu layar (`P-1`).
+
+Menyatakannya sebagai keputusan menghentikan modul ini menggantung menunggu perpindahan yang
+tidak akan datang per-modul.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Berapa klaim bersurat ber-`PUCLAPPROVE_1` kosong — baris yang tidak terlihat di tab mana pun | DBA |
+| Apakah `MSIG_1` pernah terisi sama sekali | DBA |
+| Apakah `LAMAKLAIM_1` sama isinya dengan `TANGGALKIRIMPUCL_1` | DBA |
+| Apakah kesembilan properti clipboard `.ClaimData.PUCLStatus.*` akan diekspos menjadi kolom | Tim Pega + Work Owner |
+
+Ketiga yang pertama masing-masing satu kueri, dan seluruhnya dicetak `-periksa` supaya
+pertanyaannya sampai ke tangan yang menjalankan aplikasinya, bukan berhenti di dokumen ini.
+
+---
+
+## 79. Inbox RCL/PUCL — tiga pertanyaan ditutup dengan "ikuti Pega apa adanya" (2026-09-30)
+
+**Latar:** empat pertanyaan tersisa dari §78 diajukan ulang, dan Work Owner menjawab dengan
+satu pertanyaan balik: *"bisa ga ikuti apa adanya dari Pega?"*
+
+Jawabannya **bisa untuk tiga, tidak untuk satu** — dan pemisahannya bukan soal keras kepala,
+melainkan soal jenis pertanyaannya.
+
+### 79.1 Tiga pertanyaan pertama adalah pertanyaan PERILAKU, dan karena itu selalu ada jawabannya
+
+| Butir | Ditutup dengan | Perubahan kode |
+|---|---|---|
+| Klaim bersurat ber-`PUCLAPPROVE_1` kosong | penyaring tidak diubah | **nol** — memang sudah begitu |
+| Apakah `MSIG_1` pernah terisi | pembandingnya milik Pega, bukan kami | **nol** |
+| Apakah `LAMAKLAIM_1` = `TANGGALKIRIMPUCL_1` | kedua kolom tetap digambar | **nol** |
+
+Ketiganya berbentuk *"Pega melakukan X, kita ikut X"*, sehingga "ikuti apa adanya" selalu
+menghasilkan tindakan yang dapat dijalankan. Dan ketiganya **tidak menuntut satu baris kode
+pun**, karena kodenya memang sudah mengikuti Pega — yang berubah hanya statusnya, dari
+*menunggu jawaban* menjadi *selesai, memang begitu*.
+
+### 79.2 Satu kekhawatiran saya sendiri yang GUGUR
+
+Saya sempat mengusulkan kueri `GROUP BY MSIG_1` untuk berjaga-jaga kalau-kalau kolomnya
+berisi `Y` atau `MSIG` berspasi, sehingga penyaring kami meleset.
+
+**Kekhawatiran itu tidak berdasar, dan buktinya ada di kode kami sendiri.** Nilai `MSIG`
+bukan tebakan: ia disalin dari penyaring `E` pada `Report Definition/InboxMISG_RD-RD.xml`.
+Apa pun isi kolom itu, kedua sistem berperilaku sama persis — bila tabnya kosong di sini, ia
+kosong juga di Pega. Itu definisi setara, dan tidak ada yang perlu dipastikan.
+
+Pelajaran yang layak dibawa: sebelum mengusulkan kueri pemastian, periksa dulu apakah nilai
+yang diragukan **berasal dari artefak Pega atau dari pembacaan kami**. Yang pertama tidak
+dapat salah terhadap Pega; hanya yang kedua yang dapat.
+
+### 79.3 Butir keempat TIDAK dapat ditutup begitu, dan sebabnya berbeda jenis
+
+Kesembilan isian clipboard bukan pertanyaan perilaku. Di Pega isiannya **terisi** — petugas
+membacanya di layar. "Ikuti apa adanya" berarti menampilkannya terisi juga, dan itu yang
+tidak dapat dikerjakan: nilainya hidup di memori kerja Pega, bukan di kolom mana pun.
+
+Dua pilihan diajukan, dan **Work Owner memilih (a)**:
+
+| | Pilihan | Akibat |
+|---|---|---|
+| **(a)** | Tim Pega mengekspos propertinya | **dipilih** — layar benar-benar setara |
+| (b) | kesembilannya dikeluarkan dari lingkup | layar tetap seperti sekarang, berhenti dihitung sebagai pekerjaan tertunda |
+
+Pilihan (a) berarti modul ini **tetap menggantung sampai Tim Pega menjawab**, dan itu diterima
+secara sadar: yang dipertaruhkan pilihan (b) adalah layar yang setara-dengan-pengecualian
+secara permanen.
+
+Konsekuensinya satu permintaan berada di jalur kritis kelulusan modul, sehingga ia dimintakan
+**beserta tanggal komitmen tertulis** (`D-36`), bukan sekadar konfirmasi diterima.
+
+### 79.4 Yang disunting
+
+Ketiga penutupan itu menyentuh **pernyataan keadaan**, bukan rekaman — sehingga disunting di
+tempatnya alih-alih ditimpa entri baru:
+
+| Berkas | Perubahan |
+|---|---|
+| `tab.go` — `PlannedDifferences` | tiga butir berhenti berbunyi "menunggu DBA"; ketiganya kini menyatakan keputusannya |
+| `cmd/claimpnc/check.go` | blok `[TANYA]` menjadi `[CATATAN]`; kuerinya **tetap dicetak** untuk menjawab laporan "klaim saya hilang" dengan angka |
+| `permintaan-artefak-pega.md` §9 | ketiga permintaan ke DBA **dicabut**; bab itu kini memuat satu permintaan ke Tim Pega saja |
+
+Kueri klaim-tidak-terlihat sengaja **tidak dihapus** dari `-periksa`. Ia berhenti menjadi
+tagihan, tetapi tetap menjadi alat: keadaan itu nyata, dan bila kelak ada petugas melapor
+klaimnya hilang, sebabnya sudah tertulis beserta cara menghitungnya.
+
+### 79.5 Satu hal yang tetap menyimpang dari "ikuti Pega apa adanya"
+
+Kolom **"Tanggal Dibuat"** yang ditambahkan §78 tidak ada di layar Pega. Ia ditawarkan untuk
+dicabut bersamaan dengan keputusan ini dan **tidak dicabut**, sehingga ia tetap berlaku
+sebagai selisih terencana — satu-satunya di modul ini yang menambah sesuatu alih-alih
+mengikuti.
+
+Ia dicatat di sini supaya penyimpangan itu tidak tenggelam di antara tiga penutupan yang
+arahnya berlawanan.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Sembilan properti `.ClaimData.PUCLStatus.*` dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega |
+
+Satu, dan ia satu-satunya yang menahan kelulusan modul ini.
+
+---
+
+## 80. Inbox RCL/PUCL — tanggal yang akhirnya digambar, dan dua dugaan yang terbantah (2026-09-30)
+
+**Latar:** tiga pekerjaan diminta pada modul `inbox-rcl-pucl` — memeriksa bentuk tampilan
+ketiga kolom tanggal, menyelidiki tautan "buka di Pega", dan memastikan peringatan `-periksa`
+masih benar. Ketiganya dikerjakan terhadap **Oracle sungguhan**, bukan terhadap dugaan, dan
+pemeriksaan itulah yang membantah dua hal yang selama ini tertulis sebagai fakta.
+
+### 80.1 Ketiga kolom tanggal memang tergambar MENTAH, dan sekarang dibentuk
+
+Diperiksa langsung ke `ALL_TAB_COLUMNS` dan ke datanya:
+
+| Kolom | Tipe | Yang sampai ke layar sebelum ini |
+|---|---|---|
+| `TANGGALKIRIMPUCL_1` | `TIMESTAMP(6)` | `2025-06-13T14:41:01.532+07:00` |
+| `LAMAKLAIM_1` | `TIMESTAMP(6)` | `2025-06-13T14:41:01.531+07:00` |
+| `TANGGALCETAKDOKUMENPUCL_1` | `TIMESTAMP(6)` | `2025-06-13T14:47:46.188+07:00` |
+| `PXCREATEDATETIME` | `TIMESTAMP(6)` | idem — kolom "Tanggal Dibuat" yang §78 tambahkan |
+| `DATEOFLOSS_1` | `TIMESTAMP(6)` | idem — "Tanggal Kejadian" di layar kerja |
+
+Bentuk itu **tidak pernah muncul di Pega**: ketiga sel grid memakai kontrol `pxDateTime`.
+Jadi ia selisih yang terlihat pengguna, dan bukan selisih yang pernah diputuskan siapa pun.
+
+**Keputusan: dibentuk di Go, di penyimpanan.** Penggambarnya
+`inboxrclpucl.DisplayTimeText`, dan ia dipanggil di `scanWorkItem`, `scanReportRow`,
+`scanDetail`, serta di penyimpanan memori.
+
+**Kenapa di penyimpanan, bukan di lapisan tampilan.** Karena berkas ekspor CSV mengambil
+nilai domain **langsung**, tanpa melewati DTO (`http/export.go`). Memformatnya di DTO akan
+membuat tabel dan berkas menggambar isian yang sama dengan dua bentuk yang berbeda. Ia juga
+mengikuti preseden yang sudah ada di berkas yang sama: `TrackOf` menerjemahkan kode jalur di
+tempat yang persis sama, dengan alasan yang persis sama — kedua pengisi seam wajib
+menghasilkan teks yang sama persis.
+
+**Bentuknya tidak dikarang:** `2006-01-02 15:04:05` sudah dipakai penyimpanan memori modul ini
+sejak awal, baik untuk kolom pengurut maupun untuk baris contohnya. Yang berubah bukan pilihan
+bentuknya melainkan siapa yang mematuhinya — sampai hari ini penyimpanan SQL tidak.
+
+**Bentuk Pega sendiri TIDAK dapat dipastikan** dari artefaknya: `pyDateFormat` dan
+`pyDateTimeFormat` pada ketiga sel **kosong**, sehingga Pega memakai bentuk bawaan locale-nya.
+Yang dapat dipastikan hanyalah bahwa ia bentuk tanggal, bukan teks ISO. Selisih bentuk itu
+dinyatakan lewat `PlannedDifferences` — **judul kolomnya tidak berubah sedikit pun** (`D-13`).
+
+**Dua penjagaan yang dipasang, dan sebabnya berbeda:**
+
+- Nilai yang **tidak dikenali dilewatkan apa adanya**, bukan dikosongkan. Tipe kolomnya
+  terverifikasi pada **satu** basis data dari enam (`R-08`); mengosongkan bentuk yang tidak
+  dikenali akan menghapus isi kolom pada seluruh baris di portal yang berbeda, tanpa satu pun
+  galat.
+- Nilai **tanpa zona tidak digeser**. Membacanya sebagai UTC lalu mengubahnya ke WIB
+  memajukannya tujuh jam, dan pada nilai menjelang tengah malam itu memindahkannya ke hari
+  berikutnya — kelas kekeliruan yang sama dengan §49, hanya berlawanan arah.
+
+`-periksa` kini mencetak bentuk tanggal yang **benar-benar tergambar**, dan memperingatkan
+bila ia masih ISO. Terhadap Oracle: `Tanggal digambar sebagai "2024-12-19 21:30:16"`.
+
+### 80.2 Dugaan yang terbantah — `MSIG_1` TERISI
+
+Modul ini dibangun dengan dugaan bahwa `MSIG_1` tidak pernah diisi, karena kolomnya tidak
+muncul di inventaris kolom terisi yang dibaca dari katalog Oracle pada 2026-09-22. Dugaan itu
+tertulis di lima tempat, termasuk **dua yang dibaca pengguna** — keterangan tab dan selisih
+terencana.
+
+Hitungan langsung membantahnya: `GROUP BY MSIG_1` pada portal ASM mengembalikan `MSIG`
+**1 baris** dan kosong **7.721 baris**.
+
+Tab "Klaim MSIG" **berisi satu baris**, bukan nol. Seluruh pernyataan "kemungkinan besar
+kosong" diganti pernyataan terukur: nyaris selalu kosong, dan itu berbeda dari selalu kosong.
+
+Ini tidak mengubah satu baris kueri pun — nilai pembandingnya memang disalin dari Report
+Definition Pega, sehingga kesetaraannya tidak pernah bergantung pada jawaban ini (§79.2).
+Yang berubah hanya apa yang dikatakan layar kepada penggunanya.
+
+### 80.3 Dugaan kedua yang terjawab — `LAMAKLAIM_1` nyaris kembar
+
+§78 membuka pertanyaan apakah "Lama Klaim" dan "Tanggal Masuk Inbox" berisi tanggal yang sama.
+Terbaca sendiri saat datanya dilihat: keduanya ditulis pada **langkah yang sama** dan terpaut
+**milidetik**. Dari 7.722 baris, 61 sama persis dan 25 berbeda.
+
+Setelah digambar sampai satuan detik, kedua kolom karena itu **kerap terbaca identik**. Itu
+dinyatakan di muka lewat selisih terencana, supaya tidak dilaporkan sebagai kolom kembar yang
+salah. Kedua kolom tetap digambar — duplikasinya ada di Pega (§79.1).
+
+### 80.4 Tautan "buka di Pega" TIDAK dibuat, dan alasannya bukan kesulitan teknis
+
+Diperiksa lebih dulu, seperti diminta: **tidak ada satu pun alamat portal Pega**, baik di
+konfigurasi maupun di `POOLDATA.GCNM_CONNECT_REST`. Tabel itu memuat 60-an baris dan
+seluruhnya **alamat layanan REST** — tidak satu pun alamat portal yang dapat dibuka orang.
+
+Sebagian memang memuat nama host Pega, tetapi menurunkan alamat portal dari alamat layanan
+REST berarti menebak — dan host-nya sendiri tidak sepakat: layanan yang sama kadang menunjuk
+host produksi, kadang host pengembangan.
+
+**Variabel lingkungan baru sengaja tidak dibuat.** Alamat per entitas adalah keputusan
+konfigurasi milik pemilik lingkungan, bukan milik satu modul; membuatnya lebih dulu akan
+menetapkan tempat penyimpanannya tanpa ada yang memutuskannya. Permintaannya ditulis di
+`permintaan-artefak-pega.md` §10, beserta pemiliknya.
+
+### 80.5 Lima pernyataan usang yang disunting — dan kenapa disunting, bukan ditimpa
+
+Seluruhnya **pernyataan keadaan**, bukan rekaman; §79.4 sudah menetapkan perlakuan itu.
+
+| Tempat | Yang usang |
+|---|---|
+| `repo/sqlstore/inboxrclpucl.sql` | Masih memuat bab **"PERBAIKAN YANG DIPUTUSKAN EKSPLISIT: UP MENGAMBIL NILAI PERTANGGUNGAN"** — perbaikan yang **dicabut** §47.1, lengkap dengan jalur `SumTSI` dan pernyataan selisihnya. Kodenya sendiri sudah benar sejak pencabutan |
+| `http/dto.go` | Menyatakan `up` berisi **ANGKA** dan bahwa ia diturunkan dari kolom yang **berbeda** dari `nama_peserta`. Keduanya kebalikan dari yang berlaku |
+| `tab.go` `PlannedDifferences` | Menyatakan layar kerja dibuka **sebagai panel di halaman yang sama** — diganti rute tersendiri sejak §46.1. Dan memuat **dua butir** untuk hal yang sama: "delapan isian tanpa kolom" (sebab: kolom belum ditemukan, pemilik DBA) berdampingan dengan "sembilan isian clipboard" (sebab: tidak ada kolomnya, pemilik Tim Pega) — yang pertama disupersede §47.2 |
+| `RCLPUCLPage.tsx` | Menjelaskan panjang lebar "**Kenapa PANEL, bukan halaman tujuan**", padahal kode di berkas yang sama memanggil `navigate()` |
+| `RCLPUCLPage.test.tsx` | Baris contoh `up: '250000000'` — angka, sisa perbaikan yang dicabut — **tepat di bawah komentar yang menyatakan `up` sama dengan `nama_peserta`** |
+
+Dua yang terakhir paling berbahaya, dan sebabnya sama: keduanya **mengundang orang berikutnya
+mengembalikan perbaikan yang sudah dicabut**, atas nama merapikan kode yang tampak tidak
+konsisten. Isian "UP" sudah dua kali terbaca sebagai cacat; komentar yang menyuruh
+memperbaikinya adalah lapis ketiga yang tidak seorang pun pasang dengan sengaja.
+
+### 80.6 Satu pernyataan layar yang diperbaiki arah bacanya
+
+Panel "Yang masih dikerjakan lewat Pega" berbunyi kedua tindakan **"belum tersedia di sini"**.
+§78 keputusan 6 sudah menetapkan sebaliknya: layar ini **membaca saja sampai Pega dimatikan**,
+dan itu keputusan — bukan pekerjaan yang tertunda.
+
+"Belum tersedia" menjanjikan tombol yang akan hidup pada rilis berikutnya. Judulnya menjadi
+**"Yang dikerjakan lewat Pega"**, dan kalimatnya menyebut sampai kapan.
+
+### 80.7 Baris contoh yang menceritakan layar yang tidak ada
+
+`sample.go` mengisi "Lama Klaim" dengan **bilangan** — `"12"`, `"5"`, `"30"` — mengikuti
+judul kolomnya. Isinya tanggal, dan kolomnya `TIMESTAMP(6)`.
+
+Baris contoh yang bentuknya berbeda dari produksi **meloloskan uji yang tidak akan lolos di
+produksi**, sehingga kesebelasnya diganti tanggal. Sengaja dibuat **satu detik lebih awal**
+daripada "Tanggal Masuk Inbox", bukan sama persis: di produksi keduanya memang terpaut
+milidetik, tetapi baris contoh yang membuatnya identik akan meloloskan tertukarnya kedua
+isian tanpa ketahuan.
+
+### 80.8 Yang TIDAK dikerjakan, dan tetap terhalang
+
+| Pekerjaan | Penghalang | Pemilik |
+|---|---|---|
+| Mengisi sembilan isian clipboard | properti belum dioptimasi menjadi kolom | Tim Pega |
+| Tindakan tulis (Cetak Surat, Reminder PUCL, Unggah Dokumen, Kirim ke PIC Teknik) | `P-1` sampai cutover | — |
+| Pemeriksaan kewenangan peran | `When/IsRCLPUCL` hilang dari export (`TKT-F3-004`) | Tim Pega |
+| Tautan "buka di Pega" | alamat portal Pega belum ada di mana pun | Work Owner + Tim Infra |
+
+Syarat `TrackHidden` (`RCL_PUCL_1 = '3'`, Notification) **tetap tidak ditegakkan**, dan tetap
+aman karena layarnya hanya membaca. Pagarnya tidak berubah: ia wajib hidup **sebelum** operasi
+tulis pertama ditambahkan ke `Repo`, bukan sesudahnya.
+
+### 80.9 Panel "Yang berbeda dari layar lama" DIHAPUS dari layar (2026-09-30)
+
+> **DICABUT 2026-09-30 oleh §80.10, pada hari yang sama.** Work Owner meralat permintaannya
+> sebelum perubahannya dipakai: *"jangan di hapus balikin lagi"*. Panelnya dikembalikan utuh.
+> Isi di bawah dibiarkan apa adanya sebagai rekaman keputusan yang pernah diambil, bukan
+> sebagai keadaan yang berlaku.
+
+**Permintaan Work Owner**, setelah melihat layarnya: *"catatanya masih ada tolong hapus
+catatanya"*.
+
+Panel itu menggambar `selisih_terencana` sebagai daftar berbutir di bawah tabel. Ia memuat
+empat belas butir dan mengisi layar lebih panjang daripada tabelnya sendiri.
+
+**Yang dihapus hanya PENGGAMBARANNYA.** Daftarnya tetap disusun server
+(`inboxrclpucl.PlannedDifferences`) dan tetap dikirim lewat `selisih_terencana`.
+
+Pembedaan itu disengaja, dan alasannya bukan kehati-hatian: daftar itu **bahan uji kesetaraan
+gerbang 1**. `D-54` menetapkan setiap selisih wajib dapat dipetakan ke salah satu butir `P-5`
+atau dinyatakan sebagai bug, dan butir-butir itulah pemetaannya — sudah tertulis di muka
+alih-alih dicari setelah selisihnya muncul. Menghapusnya dari server berarti menghapus
+pemetaan itu, dan itu keputusan yang berbeda dari merapikan layar.
+
+**Satu akibat yang diterima.** Panel itu ada untuk mencegah hal yang sama dilaporkan berulang
+kali sebagai kerusakan oleh orang yang membandingkan kedua layar berdampingan — tab MSIG yang
+nyaris kosong, isian tanggal yang tidak menyaring tabel, berkas ekspor yang isinya berbeda
+dari tabel. Tiga hal itu kini **tidak dijelaskan di layar utama**.
+
+Yang masih menjelaskannya dan sengaja TIDAK ikut dihapus:
+
+| Tetap ada | Apa yang dijelaskannya |
+|---|---|
+| `catatan` per tab, di atas grid | kolom "Tanggal Cetak Surat" yang selalu kosong di tab 1; jarangnya isi tab "Klaim MSIG" |
+| peringatan di bawah kedua isian tanggal | bahwa keduanya hanya dipakai tombol unduh |
+| panel "Yang dikerjakan lewat Pega" | kelima tindakan yang dikerjakan di sistem lama |
+| keterangan di layar kerja | isian yang tersimpan di clipboard, dan sebab layar itu baca-saja |
+
+**Penghapusannya terbatas pada layar ini.** Delapan layar lain masih menggambar panel yang
+sama, dan tidak disentuh — permintaannya menyebut layar ini.
+
+Satu uji dibalik, bukan dihapus: yang dulu menuntut panelnya TAMPIL kini menuntutnya TIDAK
+tampil. Uji yang dihapus tidak menahan siapa pun mengembalikannya diam-diam; uji yang dibalik
+menahannya.
+
+### 80.10 Panel selisih terencana DIKEMBALIKAN — menyupersede §80.9 (2026-09-30)
+
+**Ralat Work Owner**, pada hari yang sama dan sebelum perubahan §80.9 dipakai siapa pun:
+*"jangan di hapus balikin lagi"*.
+
+Panel "Yang berbeda dari layar lama, dan itu disengaja" **digambar kembali utuh**. Tidak ada
+sisa penghapusannya: komponennya, pemanggilannya, dan ujinya kembali seperti semula.
+
+**Yang tersisa dari §80.9 hanya satu hal, dan itu disengaja:** catatan di kepala komponennya
+dan di kepala ujinya menyebut bahwa panel ini pernah dihapus lalu dikembalikan. Tanpa itu,
+penghapusan berikutnya akan diusulkan lagi dengan alasan yang sama — layarnya panjang — tanpa
+ada yang tahu usulan itu sudah pernah ditolak.
+
+**Uji dibalik dua kali, dan yang terakhir lebih ketat daripada yang pertama.** Sebelum §80.9 ia
+hanya menuntut satu butir isinya tampil; sekarang ia menuntut **judul panelnya** tampil pula.
+Yang sempat dihapus adalah panelnya, dan uji yang hanya memeriksa satu butir akan tetap lulus
+meski judulnya hilang.
+
+**Pelajaran yang layak dibawa, dan ia tentang cara kerja, bukan tentang panelnya.** Permintaan
+"hapus" dan permintaan "perbaiki" terbaca sangat mirip ketika yang ditunjuk adalah sesuatu yang
+sedang menampilkan isi yang usang. Layar yang dilihat Work Owner saat itu memang menampilkan
+teks lama — binary dan SPA yang berjalan belum dibangun ulang sejak 2026-09-29 — sehingga
+"catatanya masih ada" dapat berarti *"catatan yang salah itu belum hilang"* sama masuk akalnya
+dengan *"panel ini tidak saya inginkan"*. Yang dikerjakan adalah bacaan kedua, dan bacaan
+pertama yang benar.
+
+Yang seharusnya dilakukan: membangun ulang lebih dulu, memperlihatkan isinya yang sudah
+diperbaiki, lalu menanyakan apakah panelnya tetap tidak dikehendaki. Satu pertanyaan akan
+mendahului dua perubahan yang saling meniadakan.
+
+### 80.11 Panel selisih terencana dipisah menurut PEMBACANYA (2026-09-30)
+
+**Permintaan Work Owner:** *"Tolong Analis ini dan perbaiki"*, sambil menunjukkan panelnya
+lagi.
+
+#### Dua hal berbeda yang tampak sama
+
+**Yang pertama, dan ini yang sebenarnya terlihat di layar:** teksnya basi. Panel itu dipasok
+**server**, bukan SPA, dan `claimpnc.exe` yang berjalan bertanggal **2026-09-29 11:37** —
+sehari sebelumnya. Dibuktikan langsung: butir *"Delapan isian layar kerja lama…"* **0
+kemunculan** di sumber, **1 kemunculan** di dalam binary itu.
+
+Membangun ulang SPA tidak menyentuhnya sama sekali, dan itulah sebabnya layarnya tidak
+berubah setelah §80.10. Yang perlu dibangun ulang adalah **binary-nya**. Sudah dikerjakan;
+teks lama nol kemunculan.
+
+**Yang kedua, dan ini yang tidak akan hilang dengan membangun ulang:** panelnya memang cacat
+sebagai teks, bukan hanya basi.
+
+#### Apa yang salah, terukur
+
+| Ukuran | Sebelum |
+|---|---|
+| Panjang | **1.114 kata, 15 butir** — lebih panjang daripada tabel yang dijelaskannya |
+| Yang harus dibaca sebelum menemukan butir yang relevan | seluruhnya; tidak ada ringkasan |
+
+Tiga cacat yang lebih dalam daripada panjangnya:
+
+1. **Pembacanya keliru.** Ia digambar untuk petugas klaim, tetapi ditulis untuk insinyur
+   migrasi: `P-5`, `D-13`, "Report Definition", "Keputusan Work Owner 2026-09-23",
+   "inventaris kolom terisi yang dibaca dari katalog Oracle", "Oracle maupun PostgreSQL".
+   Istilah yang tidak dikenali tidak membuat kalimatnya dipelajari — ia membuat kalimatnya
+   dilewati.
+
+2. **Urutannya urutan penulisan, bukan urutan kepentingan.** Dua hal yang benar-benar
+   ditabrak petugas setiap hari — isian tanggal yang tidak menyaring tabel, dan berkas
+   unduhan yang bukan salinan tabel — berada di urutan **kedua dan ketiga**, di bawah butir
+   **terpanjang di seluruh daftar** (tab MSIG, 94 kata tentang inventaris katalog Oracle).
+
+3. **Tiga keperluan ditumpuk pada satu daftar.** Sebagian butir menjawab *"apa akibatnya bagi
+   pekerjaan saya"*; sebagian menjawab *"ke butir `P-5` mana selisih ini dipetakan"* (`D-54`);
+   sebagian lagi murni rekaman (*"Ditutup 2026-09-30: ikuti Pega apa adanya"*). Ketiganya
+   punya pembaca yang berbeda dan hanya satu yang sedang menatap layar.
+
+> Panel yang terlalu panjang untuk dibaca **tidak** mencegah laporan kerusakan palsu yang
+> menjadi alasan keberadaannya. Ia hanya memindahkan kegagalannya dari *"tidak ada
+> penjelasan"* menjadi *"penjelasannya tidak dibaca"* — dan yang kedua lebih buruk, karena ia
+> tampak sudah ditangani.
+
+#### Yang dikerjakan
+
+`PlannedDifferences` berubah dari `[]string` menjadi `[]Difference`, dan tiap butir punya dua
+bagian:
+
+| | Pembacanya | Isinya |
+|---|---|---|
+| `Summary` → `ringkas` | petugas klaim | satu kalimat, **akibatnya**, tanpa nama artefak Pega / nomor keputusan / tanggal |
+| `Detail` → `rincian` | penguji kesetaraan, DBA | alasan lengkapnya beserta pemetaan `P-5`-nya |
+
+Layar menggambar ringkasannya; rinciannya dibuka satu ketukan. Hasilnya **133 kata** yang
+terbaca tanpa membuka apa pun — turun dari 1.114.
+
+**Tidak satu kata pun dibuang.** Seluruh teks lama pindah ke `rincian`, sehingga `D-54` tetap
+terlayani sepenuhnya: pemetaan `P-5` masih ada di layar, hanya tidak lagi menghalangi orang
+yang sedang bekerja.
+
+**Urutannya diubah menurut seberapa sering butirnya ditabrak**, bukan menurut kapan ia
+ditulis. Sembilan butir pertama menyangkut hal yang ditemui saat memakai layar; enam sisanya
+hanya terlihat bila kedua layar dibandingkan berdampingan.
+
+#### Kenapa `details` bawaan peramban, bukan buka-tutup yang ditulis sendiri
+
+Isinya **tetap ada di halaman** saat tertutup, sehingga pencarian peramban (Ctrl+F) dan
+pembaca layar tetap menemukannya. Buka-tutup yang ditulis sendiri akan menghapusnya dari
+halaman, dan seorang penguji yang mencari kata tertentu akan menyimpulkan selisihnya tidak
+dinyatakan — padahal ia hanya sedang tertutup.
+
+Ia pula tanpa state, sehingga tidak ada yang dapat menyimpang antara apa yang tergambar dan
+apa yang dikirim server.
+
+#### Tiga uji yang dipasang, dan masing-masing menjaga hal yang berbeda
+
+| Uji | Yang dijaganya |
+|---|---|
+| setiap butir punya **kedua** bagian | butir tanpa ringkasan tidak terbaca petugas; butir tanpa rincian tidak dapat dipetakan saat gerbang 1 |
+| ringkasan **≤ 200 karakter** | panel itu menjadi 1.114 kata lewat pertumbuhan sedikit demi sedikit, dan tidak ada satu langkah pun yang terasa keliru saat dikerjakan |
+| ketiga hal yang paling sering dilaporkan ada di **ringkasan**, bukan di rincian | uji lama menggabungkan seluruh teks, sehingga butir yang hanya disebut di rincian tetap meloloskannya — padahal yang di rincian tidak terbaca orang yang sedang memakai layar |
+
+Uji ketiga itu **diperketat, bukan sekadar disesuaikan**. Bentuk lamanya akan tetap lulus
+seandainya seluruh ringkasan dikosongkan.
+
+#### Kontrak API berubah
+
+`selisih_terencana` berubah dari senarai teks menjadi senarai objek `{ringkas, rincian}`.
+Modul ini satu-satunya pemakainya, sehingga perubahannya tidak menyentuh klien lain.
+
+#### Satu hal yang TIDAK diubah
+
+Isi keputusannya. Tidak ada selisih yang ditambah, dihapus, maupun diputuskan ulang di sini —
+yang berubah hanya **cara ia disajikan**. Kelima belas butirnya masih butir yang sama, dan
+masih dipetakan ke `P-5` yang sama.
+
+#### Pelajaran, dan ia bukan tentang panel ini
+
+Dua permintaan sebelumnya — "hapus" lalu "balikin" — sebenarnya **satu keluhan yang sama**
+yang saya jawab dua kali dengan jawaban yang salah arah. Keluhannya bukan "panel ini tidak
+saya inginkan" dan bukan pula "panel ini harus ada"; keluhannya **"panel ini tidak terbaca"**.
+
+Menghapusnya membuang informasi yang dibutuhkan; mengembalikannya apa adanya membiarkan
+keadaan yang dikeluhkan. Yang benar tidak ada di antara keduanya — ia di sumbu yang berbeda.
+
+Yang seharusnya saya lakukan pada permintaan pertama: membangun ulang binary lebih dulu,
+memperlihatkan isinya yang sudah diperbaiki, lalu bertanya apakah yang mengganggu **isinya
+atau panjangnya**. Satu pertanyaan akan mendahului tiga perubahan.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Sembilan properti `.ClaimData.PUCLStatus.*` dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega |
+| Apakah tautan "buka di Pega" dikehendaki; bila ya, alamat portal per entitas dan di mana ia disimpan | Work Owner + Tim Infra |
+| Apakah kelima kolom tanggal bertipe sama di kelima portal selain ASM | DBA — **tidak menahan**: bentuk yang tidak dikenali dilewatkan apa adanya, dan `-periksa` mencetak bentuk yang tergambar |
+
+---
+
+## 81. Inbox Manager Receive / PUCL — nomor case menjadi TAUTAN, dan layar kerja `InputReceiveDocument` dibangun (2026-09-30)
+
+Permintaan Work Owner: *"perbaiki Inbox Manager Receive / PUCL ikuti pada gambar di atas;
+ketika dia klik nomor case di Receive dia menjalankan flow action InputReceiveDocument."*
+
+### 81.1 Dua kekeliruan versi pertama, dan keduanya terbaca dari satu sel section
+
+`Section/InboxManagerReceive_Section-Section.xml` menggambar sel nomor case pada **kedua grid
+Receive** sebagai `pyUIElement = link` ber-`pyLabel = .pyID`, dengan tiga perilaku berurutan:
+
+| # | `pyAction` | Isi |
+|---|---|---|
+| 1 | `runActivity` | `SetAssignmentInboxReceive_act`, parameter `kunci = .pzInsKey` |
+| 2 | `refresh` | thisSection |
+| 3 | `openAssignment` | `pyInsKey = TempIns.pyNote` |
+
+Activity-nya sendiri **nyaris kosong** — `pyUsage = FLOW`, tanpa satu pun method, dengan satu
+penetapan ke `TempIns.pyNote`. Ia kait pra-proses; yang bekerja adalah **Open Assignment**
+bawaan Pega, yang membuka berkasnya pada tahap alur kerjanya — dan flow action yang menunggu
+di sana adalah `InputReceiveDocument`.
+
+Versi pertama modul ini keliru dua kali di tempat yang sama:
+
+1. nomor case digambar sebagai **teks biasa**;
+2. di ujung baris ditambahkan kolom tombol **"Lihat Detail"** yang **tidak ada di Pega sama
+   sekali**, menunjuk `/view-claim/…` milik modul lain yang belum dibangun.
+
+Kekeliruan yang sama pernah terjadi di modul Inbox RCL/PUCL dan sudah dicabut di sana. Ia
+terulang karena kolom tombol itu **disalin sebagai pola antar-modul**, bukan dibaca dari
+section masing-masing.
+
+### 81.2 Kedua tab Receive DIGABUNG — menyupersede pemecahan pada §38
+
+Section itu memuat tepat **dua** `<pyTitle>`: `Receive` dan `RCL/PUCL`. Tab "Receive" memuat
+grid `ManagementRecieveView` dua kali — `Position1="PA"` dan `Position1="NONMBU"` — keduanya
+`pyVisible ALWAYS`, tampil bersamaan, **tanpa satu pun judul di antaranya**.
+
+§38 memecahnya menjadi dua tab berjudul "Receive PA" dan "Receive NONMBU", dengan alasan
+paginasi dan kejujuran. **Work Owner mencabutnya 2026-09-30**: yang dibaca pengguna adalah
+satu tab "Receive", dan memecahnya membuat petugas mencari tab yang tidak ada di Pega.
+
+Pembedaannya tidak hilang — ia pindah dari *"tabel yang mana"* menjadi **isi kolom "Jenis
+Klaim"**, yang memang sudah digambar kedua grid.
+
+**Himpunan barisnya tidak berubah**, dan itu dijaga secara tegas. Penyaring lama
+`= '002'` dan `<> '002'`; gabungan tepat keduanya adalah `GROUPPANEL_1 IS NOT NULL`:
+
+| Nilai | Lama (Oracle) | Baru | Lama (PostgreSQL) | Baru |
+|---|---|---|---|---|
+| `'002'` | grid PA | masuk | grid PA | masuk |
+| lain | grid NONMBU | masuk | grid NONMBU | masuk |
+| kosong | `'' IS NULL` → tidak masuk | tidak masuk | `<> '002'` benar → masuk | masuk |
+| `NULL` | tidak masuk | tidak masuk | tidak masuk | tidak masuk |
+
+Menghapus penyaringnya sama sekali akan **menambah** baris yang tidak pernah terlihat di
+Pega, dan penambahan itu tidak diputuskan siapa pun.
+`TestReceiveQueryKeepsTheUnionOfBothPegaGrids` menjaga ketiga bentuk salahnya.
+
+### 81.3 Temuan yang menentukan bentuk layar kerjanya: SELURUHNYA read-only di Pega
+
+Work Owner memilih *"layar kerja lengkap dengan tombol tulis aktif"*. Pembacaan
+`Section/InputReceiveDocument_sect.xml` membantah premisnya, dan bantahannya terbaca langsung
+dari artefaknya:
+
+- Ke-25 sel ber-properti `.ReceiveDocument.*`, `.Policy.*`, dan `.pxCreateDateTime` bertanda
+  **`<pyReadOnly>true</pyReadOnly>` TANPA KECUALI**. Layar ini di Pega pun **menampilkan**
+  berkasnya, tidak menyuntingnya.
+- Yang bertanda `false` hanyalah blok **Data Pelapor** (`.ReportHE.*`) dan alamatnya
+  (`tempTES.*`) — dan **tidak satu pun punya kolom basis data**. Keduanya hidup di dalam blob
+  objek kerja Pega, sehingga menyimpan perubahannya dengan SQL **tidak mungkin**, bukan
+  sekadar tidak diizinkan.
+- Kedelapan tombolnya memanggil pekerjaan **milik modul lain**: `CreateRegisterKlaimPNC`
+  MEMBUAT KLAIM (`B-2`), `SendAttachmentToPNC` integrasi keluar (`S-4`),
+  `InputParamUpload_act`/`SetCategoryAttachment` unggah dokumen (`S-1`),
+  `PNCSendMessageKomunikasi`/`PNCReplyMessage` notifikasi (`S-3`).
+
+Jadi penghalangnya **bukan `P-1` saja**. Bahkan bila kepemilikan tabel berpindah hari ini,
+tidak ada kolom yang dapat ditulis dan tidak ada modul yang dapat dipanggil.
+
+**Yang dibangun:** layar kerjanya utuh — 36 isian dalam lima kelompok, kedelapan tombolnya
+tergambar — dan penekanan tombolnya **menjawab alasan beserta modul pemiliknya**, lewat pola
+`RejectWrite` yang sudah dipakai lima modul lain. Kode tindakan dan kunci berkasnya ikut
+dicatat di sisi peladen, karena pertanyaan yang ingin dijawab jejak itu adalah *modul mana
+yang paling mendesak dibangun* — dan jejak yang hanya menyebut jalurnya tidak dapat
+menjawabnya.
+
+### 81.4 Enam belas isian DIGAMBAR tanpa sumber, dan itu keputusan
+
+| Kelompok | Isian terhalang |
+|---|---|
+| Data Polis | Polis Leader · Nama Bisnis · Estimasi Kerugian · No Ref Broker · Source Of Reports |
+| Transfer dan Registrasi | Total Jumlah Dokumen |
+| Data Pelapor | kesebelasnya |
+
+Seluruhnya tergambar **di tempatnya, bertanda, beserta alasan dan pemiliknya** — bukan
+disembunyikan. Menyembunyikannya membuat layar tampak setara dengan Pega padahal belum, dan
+itu persis yang tidak boleh terjadi pada uji kesetaraan gerbang 1.
+
+Layar membedakan **tiga** keadaan, dan pembedaan ketiga itulah yang mudah hilang:
+
+| Keadaan | Digambar | Tindak lanjutnya |
+|---|---|---|
+| terhalang | tanda *belum terbawa* | kolomnya dibuka di Pega |
+| sumbernya ada, isinya kosong | tanda pisah | petugas mengisinya |
+| terisi | nilainya | — |
+
+Isian terhalang sengaja **tidak punya entri** di peta `nilai`. Mengisinya dengan teks kosong
+akan membuat keadaan pertama dan kedua tidak dapat dibedakan.
+
+### 81.5 Dari mana isinya dibaca
+
+Dua tabel. Nama ke-13 kolom `POOLDATA.T_CLAIM_RECIVEDCLAIM` **terverifikasi** dari pernyataan
+`update` di `Database/PROCINSERTDATARECIVEDKLAIM.prc` — bukan dari DDL, yang memang belum
+pernah diterima (`R-08`).
+
+Tiga hal yang gagal **tanpa satu pun galat** bila dilupakan, dan ketiganya dijaga uji:
+
+1. **Penyaring `PXOBJCLASS`.** Tabel objek kerja menampung dua kelas; tanpa penyaring ini,
+   kunci milik klaim membuka layar kerja penerimaan dokumen berisi klaim.
+2. **`LEFT JOIN` ke tabel cermin.** Tabel itu tidak pernah dibaca sistem lama, sehingga
+   kelengkapan isinya belum terverifikasi. Gabungan dalam akan menyatakan berkas yang tidak
+   punya pasangan **TIDAK ADA** — padahal justru itulah berkas yang paling perlu dilihat.
+3. **TIDAK ada gabungan ke tabel penugasan.** Grid menyaringnya karena grid memang daftar
+   pekerjaan yang menunggu; layar kerja membuka satu berkas yang kuncinya sudah di tangan.
+   Menambahkannya membuat berkas yang penugasannya baru selesai gagal dibuka di tengah
+   pengerjaan.
+
+### 81.6 Satu judul Pega yang sengaja TIDAK dibawa apa adanya
+
+Pega memberi **dua sel berturut-turut judul yang sama persis** — "Lokasi Kejadian" — padahal
+propertinya berbeda (`.ReceiveDocument.LokasiKejadian` dan `.ReceiveDocument.SIM`). Yang
+kedua diubah menjadi **"SIM Pengendara"**, mengikuti nama parameter procedure yang
+menyimpannya (`tSIMPENGENDARA`).
+
+Dua isian berjudul sama persis pada satu layar bukan "tampilan yang meniru Pega" melainkan
+tampilan yang tidak dapat dibaca, dan `D-13` tidak menuntut membawa kekeliruan penamaan.
+Selisihnya dinyatakan ke pengguna, bukan disembunyikan.
+
+Sebaliknya, satu kekeliruan Pega **tetap dibawa**: "Alasan Belum Transfer" dan "Keterangan
+Belum Transfer" menunjuk properti yang **sama**, sehingga keduanya menampilkan isi yang sama.
+Bedanya dengan kasus di atas — yang ini tidak menghalangi pembacaan, dan menebak kolom kedua
+berarti mengarang.
+
+### 81.7 Tab dan halaman pindah ke ALAMAT
+
+Konsekuensi langsung dari klik yang kini berpindah halaman: komponen antreannya dilepas, dan
+state yang hanya ada di memori hilang. Tanpa perubahan ini, petugas yang kembali dari sebuah
+berkas mendarat di tab pertama halaman pertama — padahal ia sedang mengerjakan halaman
+ketiga.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Ke-16 isian yang hidup di blob objek kerja dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega + DBA |
+| Kapan kepemilikan objek kerja `ReceiveDocument` berpindah dari Pega — prasyarat kedelapan tombol tulisnya (`P-1`) | Work Owner |
+| Grid dokumen (`.ReceiveDocument.DocumentList`) dan blok Komunikasi belum dibangun; keduanya milik `S-1` dan `S-3` | Work Owner |
+| Apakah `NOREFERENSI` memang "No. Referensi/Placing Slip" (`.Policy.BookNo`) — dipetakan dari nama parameter procedure, belum dikonfirmasi | Tim Pega |

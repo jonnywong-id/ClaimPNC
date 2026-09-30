@@ -41,29 +41,30 @@ const (
 
 // Kode tab.
 //
-// # Kenapa TIGA, padahal layar lama punya DUA judul tab
+// # DUA tab, sama dengan layar lama
 //
-// Karena tab "Receive" pada layar lama memuat DUA grid bertumpuk, bukan satu.
-// `Section/InboxManagerReceive_Section-Section.xml` menempatkan grid `ManagementRecieveView`
-// dua kali di dalam satu tab — yang pertama dijalankan dengan `<Position1>"PA"</Position1>`
-// dan yang kedua dengan `<Position1>"NONMBU"</Position1>` — dan keduanya ber-`pyVisible`
-// `ALWAYS`, sehingga keduanya tampil bersamaan.
+// `Section/InboxManagerReceive_Section-Section.xml` memuat tepat dua judul tab —
+// `<pyTitle>Receive</pyTitle>` dan `<pyTitle>RCL/PUCL</pyTitle>` — dan modul ini mengikutinya
+// (`D-13`).
 //
-// Kedua grid itu TIDAK punya judul apa pun di sana: penelusuran seluruh section tidak
-// menemukan satu pun label di antara keduanya. Pengguna karena itu melihat dua tabel yang
-// kolomnya identik, berurutan ke bawah, tanpa satu pun tanda mana yang mana.
+// # Kenapa tab "Receive" SATU, padahal di baliknya ada dua grid
 //
-// Di sini keduanya menjadi tab yang dapat dipilih dan DIBERI JUDUL. Ini perubahan yang
-// disadari, dan pola yang sama sudah ditempuh modul Inbox Claim Treaty Non Prop — di sana
-// tiga kontainer yang dipilih oleh keadaan pemanggil menjadi tiga tab yang dapat diklik.
-// Dua alasannya:
+// Di layar lama, tab "Receive" menempatkan grid `ManagementRecieveView` DUA KALI: yang
+// pertama dijalankan dengan `<Position1>"PA"</Position1>`, yang kedua dengan
+// `<Position1>"NONMBU"</Position1>`. Keduanya ber-`pyVisible` `ALWAYS`, sehingga keduanya
+// tampil bersamaan, bertumpuk ke bawah, dan TIDAK punya satu pun judul di antaranya.
 //
-//   - Paginasi. Masing-masing grid punya halamannya sendiri di sistem lama
-//     (`pyPageSize` 50, penomoran Numeric). Dua tabel berhalaman yang bertumpuk pada satu
-//     layar menghasilkan dua penomoran yang mudah tertukar.
-//   - Kejujuran. Tabel tanpa judul yang isinya berbeda adalah cacat tampilan yang dibawa
-//     tanpa perlu — dan justru di layar ini akibatnya nyata, karena yang membedakan keduanya
-//     adalah lini bisnis klaimnya.
+// Versi pertama modul ini memecahnya menjadi dua tab bernama "Receive PA" dan
+// "Receive NONMBU". Itu dicabut atas keputusan Work Owner 2026-09-30: yang dibaca pengguna
+// adalah satu tab "Receive", dan memecahnya membuat petugas yang membandingkan kedua layar
+// berdampingan mencari tab yang tidak ada di Pega.
+//
+// Yang menggantikan pembedaannya adalah kolom **Jenis Klaim**, yang memang sudah digambar
+// grid dan memang berisi "PA" atau "NONMBU". Jadi pembedaannya tidak hilang — ia pindah dari
+// "tabel yang mana" menjadi "isi kolom yang mana", dan justru dapat diurutkan.
+//
+// Himpunan barisnya TIDAK berubah karenanya; lihat catatan `list_receive` di
+// repo/sqlstore/inboxmanagerreceivepucl.sql.
 //
 // # Kenapa angka, dan kenapa bukan nilai sistem lama
 //
@@ -73,16 +74,15 @@ const (
 // kontrak modul ini sendiri. Penelusuran balik ke export ditempuh lewat nama Report
 // Definition-nya — disebut lengkap pada setiap tab di bawah — bukan lewat kodenya.
 const (
-	TabReceivePA     = "1"
-	TabReceiveNonMBU = "2"
-	TabRCLPUCL       = "3"
+	TabReceive = "1"
+	TabRCLPUCL = "2"
 )
 
 // DefaultTab adalah tab yang terbuka saat layar pertama dibuka.
 //
-// Grid PA, karena itulah grid PERTAMA pada tab "Receive" di layar lama — ia berada di
-// posisi paling atas section, dan itulah yang lebih dulu terbaca pengguna.
-const DefaultTab = TabReceivePA
+// "Receive", karena itulah tab PERTAMA pada layar lama — ia berada di posisi paling atas
+// kontainer tabnya, dan itulah yang lebih dulu terbaca pengguna.
+const DefaultTab = TabReceive
 
 // Tab adalah satu antrean kerja pada layar Inbox Manager Receive / PUCL.
 type Tab struct {
@@ -100,12 +100,12 @@ type Tab struct {
 	// Columns adalah kolom grid tab ini, berurutan seperti tampilnya.
 	Columns []Column
 
-	// ClaimType menyatakan Jenis Klaim yang disaring tab ini.
+	// OpensReceiveDocument menyatakan mengklik nomor case pada tab ini membuka LAYAR KERJA
+	// penerimaan dokumen — flow action `InputReceiveDocument`.
 	//
-	// Kosong pada tab RCL/PUCL, yang tidak menyaring menurut lini bisnis sama sekali.
-	// Nilainya BUKAN sekadar keterangan: ia yang memilih kueri di repo/sqlstore dan yang
-	// menyaring di repo/memory, sehingga keduanya tidak dapat berselisih.
-	ClaimType string
+	// Hanya tab Receive begitu, dan pembedaannya bukan kerapian: kedua tab membuka layar
+	// kerja yang BERBEDA, karena kelas objek kerjanya berbeda. Lihat ReceiveDocument.
+	OpensReceiveDocument bool
 
 	// FromWorkbasket menyatakan barisnya diambil dari antrean BERSAMA
 	// (DATAPEGA.PC_ASSIGN_WORKBASKET), bukan dari penugasan per orang
@@ -189,36 +189,23 @@ var rclpuclColumns = []Column{
 	{Key: FieldExpiryStatus, Title: "Status Kadaluarsa"},
 }
 
-// tabs adalah ketiga tab beserta kolomnya, berurutan seperti tampilnya.
+// tabs adalah kedua tab beserta kolomnya, berurutan seperti tampilnya.
 //
-// Urutannya mengikuti urutan grid di section: grid PA (offset ~37.000), grid NON-MBU
-// (~170.000), lalu grid RCL/PUCL (~317.000).
+// Urutannya mengikuti urutan kontainer tab di section: "Receive" lebih dulu, lalu "RCL/PUCL".
 var tabs = []Tab{
 	{
-		Code: TabReceivePA,
+		Code: TabReceive,
 
-		// Judulnya tidak ada di layar lama — kedua grid Receive di sana tanpa label.
-		// Yang dipakai adalah judul tabnya ("Receive", dari `<pyTitle>Receive</pyTitle>`)
-		// ditambah lini bisnis yang disaringnya, dalam ejaan yang sama dengan nilai
-		// parameter Report Definition-nya.
-		Name: "Receive PA",
+		// Judul ini ADA di layar lama, apa adanya:
+		// `Section/InboxManagerReceive_Section-Section.xml` — `<pyTitle>Receive</pyTitle>`.
+		Name: "Receive",
 
-		Description: "Berkas penerimaan dokumen klaim Personal Accident yang masih punya " +
-			"penugasan terbuka. Ditampilkan untuk seluruh petugas, bukan hanya milik Anda.",
+		Description: "Berkas penerimaan dokumen klaim yang masih punya penugasan terbuka. " +
+			"Ditampilkan untuk seluruh petugas, bukan hanya milik Anda. Kolom " +
+			"\"Jenis Klaim\" memisahkan Personal Accident dari lini lainnya.",
 
-		Columns:   receiveColumns,
-		ClaimType: ClaimTypePA,
-	},
-	{
-		Code: TabReceiveNonMBU,
-		Name: "Receive NONMBU",
-
-		Description: "Berkas penerimaan dokumen klaim di luar Personal Accident yang masih " +
-			"punya penugasan terbuka. Ditampilkan untuk seluruh petugas, bukan hanya milik " +
-			"Anda.",
-
-		Columns:   receiveColumns,
-		ClaimType: ClaimTypeNonMBU,
+		Columns:              receiveColumns,
+		OpensReceiveDocument: true,
 	},
 	{
 		Code: TabRCLPUCL,
@@ -275,11 +262,28 @@ var PlannedDifferences = []string{
 		"kosong tidak muncul di tab mana pun — sama seperti berkas tanpa Jenis Klaim di " +
 		"layar lama. Keputusan Work Owner 2026-09-22 sebagai selisih terencana P-5.",
 
-	"Kedua daftar Receive menjadi DUA TAB, bukan dua tabel bertumpuk. Di Pega keduanya " +
-		"berada di dalam satu tab \"Receive\", tampil bersamaan, dan tidak punya judul " +
-		"satu pun — sehingga tidak ada tanda mana yang PA dan mana yang bukan. Isi, kolom, " +
-		"dan urutan kolomnya sama persis; yang berubah hanya cara keduanya dipisahkan di " +
-		"layar.",
+	"Kedua daftar Receive digabung menjadi SATU tabel di dalam satu tab \"Receive\", sama " +
+		"dengan judul tab di layar lama. Di Pega keduanya adalah dua grid bertumpuk yang " +
+		"tampil bersamaan dan tidak punya judul satu pun, sehingga tidak ada tanda mana " +
+		"yang Personal Accident dan mana yang bukan; yang membedakannya kini kolom " +
+		"\"Jenis Klaim\", yang memang sudah ada di kedua grid itu. Himpunan barisnya sama " +
+		"persis: penyaring gabungannya adalah gabungan tepat dari kedua penyaring lama, " +
+		"sehingga berkas tanpa Group Panel tetap tidak muncul — sama seperti di Pega. Yang " +
+		"berubah hanya satu hal yang terlihat: baris PA dan NONMBU kini berbagi satu " +
+		"penomoran halaman, bukan dua.",
+
+	"Mengklik nomor case di tab \"Receive\" membuka layar kerja penerimaan dokumen sebagai " +
+		"halaman tersendiri, dan tab serta nomor halaman antrean ikut ke alamatnya supaya " +
+		"tombol kembali mendarat di tempat yang sama. Itu yang terjadi di Pega: sel nomor " +
+		"case memang TAUTAN, dan mengkliknya menjalankan `SetAssignmentInboxReceive_act` " +
+		"dengan `kunci = .pzInsKey` lalu Open Assignment — yang membuka flow action " +
+		"`InputReceiveDocument`. Versi pertama modul ini keliru di sini: nomor case digambar " +
+		"sebagai teks biasa, dan di ujung baris ditambahkan kolom tombol \"Lihat Detail\" " +
+		"yang tidak ada di Pega sama sekali. Kolom itu dihapus.",
+
+	"Tab \"RCL/PUCL\" TIDAK punya tautan pada nomor case-nya. Di layar lama pun tidak: " +
+		"perilaku klik hanya dipasang pada kedua grid Receive. Nomor case di tab itu karena " +
+		"itu digambar sebagai teks biasa.",
 
 	"Tab RCL/PUCL menyaring antrean bersama `RCLPUCL`. Report Definition yang memasok " +
 		"grid itu di Pega (`InboxRCLPUCL_RD`) tidak punya gabungan sama sekali dan hanya " +

@@ -75,7 +75,7 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 					inboxrclpucl.WorkClassClaim,
 					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
-					inboxrclpucl.PUCLApproved,
+					inboxrclpucl.PUCLReturnedToAnalyst,
 					p.Offset(),
 					p.Normalize().Size,
 				}
@@ -93,7 +93,7 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 					inboxrclpucl.WorkClassClaim,
 					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
-					inboxrclpucl.PUCLApproved,
+					inboxrclpucl.PUCLReturnedToAnalyst,
 					inboxrclpucl.MSIGMarker,
 					p.Offset(),
 					p.Normalize().Size,
@@ -302,26 +302,42 @@ type scanner interface {
 // Dan kelima kolom PUCL lain hanya punya 2–86 nilai berbeda di produksi, yang berarti
 // sebagian besar barisnya kosong.
 //
-// # Kenapa waktu ikut dipindai sebagai teks
+// # Kenapa waktu ikut dipindai sebagai teks, dan DI MANA ia dibentuk
 //
 // Bentuk yang dikembalikan driver bergantung pada tipe kolomnya, dan DDL tabel Pega tidak
-// tersedia (`R-08`). Memindainya sebagai `sql.NullString` membuat nilainya sampai ke layar
-// apa adanya alih-alih gagal dipindai pada baris pertama di produksi. Pemformatannya
-// dikerjakan layar, dan hanya bila bentuknya memang dikenali.
+// tersedia (`R-08`). Memindainya sebagai `sql.NullString` membuat nilainya sampai ke sini
+// apa adanya alih-alih gagal dipindai pada baris pertama di produksi.
+//
+// Pemformatannya dikerjakan `inboxrclpucl.DisplayTimeText`, di sini — bukan di layar, dan
+// bukan dengan `TO_CHAR` di dalam SQL.
+//
+//   - Bukan di layar, karena berkas ekspor CSV mengambil nilai domain LANGSUNG tanpa
+//     melewati DTO (`http/export.go`). Memformatnya di layar akan membuat berkas dan tabel
+//     menggambar isian yang sama dengan dua bentuk yang berbeda.
+//   - Bukan `TO_CHAR`, karena pemformatan tampilan dilarang di SQL
+//     (`09-DATABASE-STRATEGY.md` §4) dan tidak portabel ke PostgreSQL.
+//   - Di sini dan bukan di lapisan atas, mengikuti preseden `TrackOf` beberapa baris di
+//     bawah: penyimpanan SQL dan penyimpanan memori WAJIB menghasilkan teks yang sama
+//     persis, dan itu hanya terjamin bila keduanya memakai penggambar yang sama.
+//
+// Terverifikasi terhadap Oracle 2026-09-30: `TANGGALKIRIMPUCL_1`, `LAMAKLAIM_1`,
+// `TANGGALCETAKDOKUMENPUCL_1`, dan `PXCREATEDATETIME` seluruhnya `TIMESTAMP(6)`, dan driver
+// mengembalikannya sebagai teks ISO ber-offset (`2025-06-13T14:41:01.532+07:00`) — bentuk
+// yang tidak pernah muncul di layar Pega.
 func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 	var (
 		reference, caseID, policyNumber sql.NullString
 		insuredName, inboxEntryAt       sql.NullString
 		analystNote, trackCode          sql.NullString
 		letterPrintedAt, claimAge       sql.NullString
-		expiryStatus                    sql.NullString
+		expiryStatus, createdAt         sql.NullString
 		total                           sql.NullInt64
 	)
 
 	err := row.Scan(
 		&reference, &caseID, &policyNumber, &insuredName, &inboxEntryAt,
 		&analystNote, &trackCode, &letterPrintedAt, &claimAge, &expiryStatus,
-		&total,
+		&createdAt, &total,
 	)
 	if err != nil {
 		return inboxrclpucl.WorkItem{}, 0, err
@@ -332,7 +348,7 @@ func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 		CaseID:       caseID.String,
 		PolicyNumber: policyNumber.String,
 		InsuredName:  insuredName.String,
-		InboxEntryAt: inboxEntryAt.String,
+		InboxEntryAt: inboxrclpucl.DisplayTimeText(inboxEntryAt.String),
 		AnalystNote:  analystNote.String,
 
 		// Jalur DITERJEMAHKAN di sini, bukan di dalam kueri.
@@ -346,9 +362,17 @@ func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 		// dikenali menghasilkan teks kosong.
 		Track: inboxrclpucl.TrackOf(trackCode.String),
 
-		LetterPrintedAt: letterPrintedAt.String,
-		ClaimAge:        claimAge.String,
-		ExpiryStatus:    expiryStatus.String,
+		LetterPrintedAt: inboxrclpucl.DisplayTimeText(letterPrintedAt.String),
+
+		// "Lama Klaim" digambar sebagai TANGGAL, karena isinya memang tanggal.
+		//
+		// Judulnya menyebut durasi dan tetap dibawa apa adanya (`D-13`); yang dibentuk di
+		// sini isinya, bukan judulnya. Terverifikasi: kolomnya `TIMESTAMP(6)`, dan Work
+		// Owner menjelaskan 2026-09-30 bahwa isinya tanggal kirim untuk proses PUCL.
+		ClaimAge: inboxrclpucl.DisplayTimeText(claimAge.String),
+
+		ExpiryStatus: expiryStatus.String,
+		CreatedAt:    inboxrclpucl.DisplayTimeText(createdAt.String),
 	}, int(total.Int64), nil
 }
 
@@ -385,7 +409,12 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 			TrackCode:    trackCode.String,
 			AnalystNote:  analystNote.String,
 			PolicyNumber: policyNumber.String,
-			LossDate:     lossDate.String,
+
+			// `DATEOFLOSS_1` pun `TIMESTAMP(6)` (terverifikasi 2026-09-30), sehingga ia
+			// dibentuk dengan penggambar yang sama. Membiarkannya mentah di sini sementara
+			// keempat isian tanggal grid dibentuk akan membuat satu layar menggambar dua
+			// bentuk tanggal berdampingan.
+			LossDate: inboxrclpucl.DisplayTimeText(lossDate.String),
 
 			// Kedua isian diisi dari SATU sumber, dan itu memang benar.
 			//
@@ -438,9 +467,9 @@ func scanReportRow(row scanner) (inboxrclpucl.DailyReportRow, int, error) {
 		CaseID:          caseID.String,
 		PolicyNumber:    policyNumber.String,
 		InsuredName:     insuredName.String,
-		SentAt:          sentAt.String,
+		SentAt:          inboxrclpucl.DisplayTimeText(sentAt.String),
 		AnalystNote:     analystNote.String,
-		LetterPrintedAt: letterPrintedAt.String,
+		LetterPrintedAt: inboxrclpucl.DisplayTimeText(letterPrintedAt.String),
 
 		// Kueri lama menuliskan kode mentah `1`/`2` ke dalam berkas. Di sini ia
 		// diterjemahkan supaya berkas dan layar menyebut hal yang sama dengan kata yang

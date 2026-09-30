@@ -190,6 +190,7 @@ SELECT w.PZINSKEY                       AS REFERENCE,
        w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
        w.LAMAKLAIM_1                    AS CLAIM_AGE,
        w.STATUSKLAIM_1                  AS EXPIRY_STATUS,
+       w.PXCREATEDATETIME               AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
@@ -220,6 +221,7 @@ SELECT w.PZINSKEY                       AS REFERENCE,
        w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
        w.LAMAKLAIM_1                    AS CLAIM_AGE,
        w.STATUSKLAIM_1                  AS EXPIRY_STATUS,
+       w.PXCREATEDATETIME               AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
@@ -243,14 +245,18 @@ OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 -- artinya berbalik menurut nilai bind adalah tempat paling mudah menukar isi dua tab, dan
 -- tidak ada apa pun di layar yang menandakannya bila itu terjadi.
 --
--- KUERI INI KEMUNGKINAN SELALU MENGEMBALIKAN NOL BARIS. `MSIG_1` tidak muncul di inventaris
--- kolom terisi yang dibaca langsung dari katalog Oracle pada 2026-09-22
+-- KUERI INI NYARIS SELALU MENGEMBALIKAN NOL BARIS, tetapi TIDAK selalu. `MSIG_1` tidak
+-- muncul di inventaris kolom terisi yang dibaca dari katalog Oracle pada 2026-09-22
 -- (`docs/kolom-t-claimlist-admin.md` §B.3), sementara `PUCLAPPROVE_1`, `STATUSCASE_1`,
--- `RCL_PUCL_1`, dan `TANGGALKIRIMPUCL_1` semuanya ada di sana. Artinya kolomnya ada tetapi
--- tampaknya belum pernah diisi.
+-- `RCL_PUCL_1`, dan `TANGGALKIRIMPUCL_1` semuanya ada di sana — sehingga kolom ini sempat
+-- dianggap tidak pernah terisi.
 --
--- Kuerinya tetap dibangun apa adanya — keputusan Work Owner 2026-09-23 — dan kosongnya
--- dinyatakan ke pengguna lewat Tab.Notice, bukan disamarkan. Menunggu pemastian DBA.
+-- Hitungan langsung pada 2026-09-30 membantahnya: `GROUP BY MSIG_1` di portal ASM
+-- mengembalikan 'MSIG' SATU baris dan kosong 7.721 baris. Kolomnya terisi, hanya sangat
+-- jarang.
+--
+-- Kuerinya dibangun apa adanya — keputusan Work Owner 2026-09-23 — dan jarangnya isi tab
+-- ini dinyatakan ke pengguna lewat Tab.Notice, bukan disamarkan.
 --
 -- Bind: :1 kelas objek kerja · :2 akun antrean bersama · :3 status kerja yang dikecualikan
 --       :4 nilai PUCLAPPROVE_1 yang dikecualikan · :5 penanda jalur MSIG · :6 offset
@@ -265,6 +271,7 @@ SELECT w.PZINSKEY                       AS REFERENCE,
        w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
        w.LAMAKLAIM_1                    AS CLAIM_AGE,
        w.STATUSKLAIM_1                  AS EXPIRY_STATUS,
+       w.PXCREATEDATETIME               AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
@@ -424,34 +431,26 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 -- Indeksnya SELALU `(1)`. Klaim dengan banyak objek hanya membawa yang PERTAMA ke suratnya,
 -- dan itu perilaku sistem lama apa adanya (`P-5`) — bukan penyederhanaan di sini.
 --
+-- ============================================================================
+-- "UP" BERISI NAMA OBJEK, DAN ITU MEMANG BENAR — JANGAN "DIPERBAIKI"
+-- ============================================================================
+--
 -- PERHATIKAN BARIS PERTAMA DAN KEDUA MENUNJUK EKSPRESI YANG SAMA PERSIS. Kolom "UP" (Uang
--- Pertanggungan) di Pega karena itu berisi NAMA OBJEK, bukan nilai pertanggungan — salin-tempel
--- yang keliru, dan termasuk kelas cacat `R-19` (cacat pada aturan yang menyangkut uang).
+-- Pertanggungan) di Pega karena itu berisi NAMA OBJEK, bukan angka.
 --
--- ============================================================================
--- PERBAIKAN YANG DIPUTUSKAN EKSPLISIT: "UP" MENGAMBIL NILAI PERTANGGUNGAN
--- ============================================================================
+-- Ia terbaca seperti salin-tempel yang keliru, dan pada 2026-09-24 ia memang sempat
+-- "diperbaiki" di berkas ini menjadi `SumTSI` pada coverage pertama — lengkap dengan
+-- subkueri kedua, alias, uji, dan pernyataan selisih terencana.
 --
--- Keputusan Work Owner 2026-09-24, menjawab pertanyaan terbuka yang diajukan bersama modul
--- ini: **"Iya nilai pertanggungan"**.
+-- **Work Owner meralatnya pada hari yang sama: UP memang `ObjectName`.** Seluruh perbaikan
+-- itu dicabut (`keputusan-implementasi.md` §47.1), dan `P-5` berlaku apa adanya — perilaku
+-- direplikasi KECUALI perbaikannya diputuskan eksplisit, dan untuk yang ini TIDAK.
 --
--- `P-5` menetapkan perilaku direplikasi KECUALI perbaikan yang diputuskan eksplisit, dan
--- inilah keputusan itu — mekanisme yang sama dengan ketiga belas butir `D-49`.
---
--- Yang dipakai:
---
---   .UP <- pyWorkPage.ClaimData.ObjectList(1).ObjectCoverageList(1).SumTSI
---
--- Navigasinya SAMA PERSIS dengan `.JumlahTagihan` — objek pertama, coverage pertamanya —
--- hanya berhenti satu tingkat lebih dangkal, pada isian yang memang berarti nilai
--- pertanggungan. Ia bukan jalur karangan: `SumTSI` adalah properti kelas
--- `ASM-FW-GCNMFW-Data-ObjectCoverage` (terbaca sebagai `pxRuleClassName` di sembilan
--- activity), dan kolomnya `SUMTSI` pada `POOLDATA.T_CLAIM_OBJECTCOVERAGE`, dibaca
--- `RDB List/GetDataSlinkAllFOG-SQL.xml` dengan kunci `CLAIMID` + `OBJECTID`.
---
--- SELISIH YANG AKAN MUNCUL PADA UJI KESETARAAN: kolom "UP" berisi angka di sistem baru dan
--- teks nama objek di Pega. Itu selisih yang DIRENCANAKAN dan dinyatakan lewat
--- PlannedDifferences — bukan bug.
+-- Karena itu kueri `detail` di bawah memilih SATU subkueri nama objek, dan nilainya mengisi
+-- DUA isian sekaligus. `POOLDATA.T_CLAIM_OBJECTCOVERAGE` TIDAK disentuh sama sekali, dan
+-- satu uji kueri menjaganya tetap begitu — berpasangan dengan satu uji di penyimpanan
+-- memori yang menuntut kedua isian SAMA. Dua lapis penahan, karena isian ini sudah dua kali
+-- terbaca sebagai cacat.
 --
 -- ============================================================================
 -- APA ARTI "PERTAMA" DI SINI
@@ -481,21 +480,27 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 --   Tanggal Kirim          .ClaimData.PUCLStatus.TanggalKirimPUCL     w.TANGGALKIRIMPUCL_1
 --   Komentar PUCL          .ClaimData.PUCLStatus.KomentarPUCL         w.KOMENTARPUCL_1
 --   Nama Peserta           .ClaimData.PUCLStatus.NamaPeserta          TURUNAN (objek pertama)
---   UP                     .ClaimData.PUCLStatus.UP                   TURUNAN (SUMTSI coverage pertama)
+--   UP                     .ClaimData.PUCLStatus.UP                   TURUNAN (objek pertama — SAMA)
 --   Jumlah Tagihan         .ClaimData.PUCLStatus.JumlahTagihan        TURUNAN (adjustment pertama)
 --
 -- ============================================================================
--- DELAPAN ISIAN YANG TIDAK PUNYA KOLOM — dan ini BUKAN kelalaian
+-- SEMBILAN ISIAN YANG TIDAK PUNYA KOLOM — dan ini BUKAN kelalaian
 -- ============================================================================
 --
 -- NIK · BusinessUnitSeksi · Perihal · Keterangan1 · Keterangan2 · Keterangan3 ·
 -- TanggalTerimaDokumenPUCL · EmailLOD, ditambah daftar berulang
 -- "Tanggal terima Dokumen / Tanggal / Keterangan" pada bagian kedua.
 --
--- Penelusuran SELURUH export — `RDB List/`, `Database/*.prc`, `*.fnc`, dan kedua berkas CSV
--- master — tidak menemukan satu pun kolom untuk kedelapannya. Inventaris katalog Oracle
--- (`docs/kolom-t-claimlist-admin.md`, dibaca 2026-09-22) pun tidak mendaftarkannya di
--- kelompok "Alur PUCL/RCL", yang justru memuat keenam kolom PUCL lain secara lengkap.
+-- SEBABNYA BUKAN KOLOM YANG BELUM DITEMUKAN. Work Owner menjelaskan 2026-09-24 bahwa
+-- kesembilannya diambil dari **clipboard** Pega (`.ClaimData.PUCLStatus.*`), dan properti
+-- clipboard yang tidak dioptimasi memang TIDAK punya kolom sendiri. Mencarinya lagi ke DDL
+-- tidak akan menemukannya; yang mengubah keadaan ini hanyalah Tim Pega mengeksposnya
+-- (`keputusan-implementasi.md` §47.2 dan §79.3).
+--
+-- Itu sejalan dengan penelusuran yang sudah dilakukan: seluruh export — `RDB List/`,
+-- `Database/*.prc`, `*.fnc`, dan kedua berkas CSV master — tidak memuat satu pun kolomnya,
+-- dan inventaris katalog Oracle (`docs/kolom-t-claimlist-admin.md`, 2026-09-22) pun tidak
+-- mendaftarkannya, sementara keenam kolom PUCL lain lengkap di sana.
 --
 -- Dua di antaranya patut disebut khusus:
 --
@@ -508,8 +513,11 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 --     `POOLDATA.T_CLAIM_RECIVEDCLAIM` — tabel BERKAS PENERIMAAN DOKUMEN, bukan kolom PUCL
 --     pada objek kerja klaim. Keduanya bernama mirip dan mudah tertukar.
 --
--- Kedelapannya tetap DIGAMBAR di layar sebagai isian kosong, bukan dihilangkan: isian yang
--- belum terbawa harus terlihat. Mengarangnya melanggar larangan paling dasar proyek ini.
+-- Kesembilannya tetap DIGAMBAR di layar, di tempatnya, bertanda "di clipboard Pega" —
+-- bukan dihilangkan dan bukan digambar sebagai sel kosong. Sel kosong berarti PETUGAS belum
+-- mengisinya; "di clipboard Pega" berarti nilainya ADA tetapi tidak terbaca dari tabel.
+-- Keduanya menuntut tindakan yang berbeda dari orang yang berbeda. Mengarang isinya
+-- melanggar larangan paling dasar proyek ini.
 --
 -- Bind: :1 kunci klaim (PZINSKEY) · :2 kelas objek kerja
 SELECT w.PZINSKEY                       AS REFERENCE,

@@ -76,6 +76,18 @@ type Row struct {
 	// digambar di layar: yang satu dipakai mengurutkan, yang lain dibaca pengguna, dan
 	// keduanya dapat berbeda bentuk karena bentuk teks kolomnya tidak diketahui (`R-08`).
 	CreatedAt time.Time
+
+	// Document adalah isi LAYAR KERJA penerimaan dokumen untuk baris ini.
+	//
+	// Ia berarti HANYA pada baris berkelas ReceiveDocument. Pada baris klaim ia dibiarkan
+	// kosong dan tidak pernah dibaca — layar kerja tab RCL/PUCL adalah layar yang berbeda,
+	// dan modul ini tidak membukanya.
+	//
+	// Ia disimpan TERPISAH dari Item, bukan diturunkan darinya, karena keduanya memang
+	// berasal dari kueri yang berbeda: grid membaca sembilan kolom, layar kerja membaca dua
+	// puluh tiga. Menurunkannya dari Item akan membuat uji layar kerja lulus dengan isian
+	// yang tidak pernah benar-benar dibaca kueri mana pun.
+	Document inboxmanagerreceivepucl.ReceiveDocument
 }
 
 // Store adalah penyimpanan antrean di memori.
@@ -116,7 +128,7 @@ func (s *Store) List(
 		if !matchesQueue(candidate, q) {
 			continue
 		}
-		if !matchesClaimType(candidate, q) {
+		if !matchesGroupPanel(candidate, q) {
 			continue
 		}
 		if !matchesWorkStatus(candidate, q) {
@@ -148,6 +160,40 @@ func (s *Store) List(
 	return inboxmanagerreceivepucl.Slice(items, page), nil
 }
 
+// Document mengembalikan isi layar kerja penerimaan dokumen untuk satu berkas.
+//
+// Penyaring kelas objek kerja ditiru di sini pula, sama seperti pada List. Tanpanya, kunci
+// milik sebuah klaim akan membuka layar kerja penerimaan dokumen berisi klaim — dan
+// penyimpanan memori yang tidak menirunya akan membuat uji lulus untuk kueri yang salah.
+func (s *Store) Document(
+	_ context.Context,
+	reference string,
+) (inboxmanagerreceivepucl.ReceiveDocument, error) {
+	wanted := strings.TrimSpace(reference)
+	if wanted == "" {
+		return inboxmanagerreceivepucl.ReceiveDocument{},
+			inboxmanagerreceivepucl.ErrReferenceRequired
+	}
+
+	for _, candidate := range s.rows {
+		if candidate.WorkClass != inboxmanagerreceivepucl.WorkClassReceiveDocument {
+			continue
+		}
+		if candidate.Item.Reference != wanted {
+			continue
+		}
+
+		doc := candidate.Document
+		if strings.TrimSpace(candidate.GroupPanel) != "" {
+			doc.ClaimType = inboxmanagerreceivepucl.ClaimTypeOf(candidate.GroupPanel)
+		}
+		return doc, nil
+	}
+
+	return inboxmanagerreceivepucl.ReceiveDocument{},
+		inboxmanagerreceivepucl.ErrDocumentNotFound
+}
+
 // decorate mengisi isian yang di sistem baru DITURUNKAN, bukan disimpan.
 //
 // Hanya satu: Jenis Klaim, yang diturunkan dari Group Panel lewat penerjemah milik domain.
@@ -162,7 +208,8 @@ func decorate(
 ) inboxmanagerreceivepucl.WorkItem {
 	item := candidate.Item
 
-	if q.Tab.ClaimType != "" {
+	if q.Tab.Code == inboxmanagerreceivepucl.TabReceive &&
+		strings.TrimSpace(candidate.GroupPanel) != "" {
 		item.ClaimType = inboxmanagerreceivepucl.ClaimTypeOf(candidate.GroupPanel)
 	}
 
@@ -201,22 +248,23 @@ func matchesQueue(candidate Row, q inboxmanagerreceivepucl.Query) bool {
 		)
 }
 
-// matchesClaimType meniru penyaring Group Panel kedua tab Receive.
+// matchesGroupPanel meniru penyaring `GROUPPANEL_1 IS NOT NULL` tab Receive.
 //
-// Baris yang Group Panel-nya kosong tidak lolos SATU PUN dari keduanya, dan itu bukan
-// kekeliruan: `GROUPPANEL_1 <> '002'` tidak menangkap NULL di Oracle maupun PostgreSQL,
-// sehingga penyimpanan ini meniru perilaku yang sama persis.
-func matchesClaimType(candidate Row, q inboxmanagerreceivepucl.Query) bool {
-	if q.Tab.ClaimType == "" {
+// # Kenapa ia menyaring apa pun, padahal tab Receive tidak lagi memisahkan lini bisnis
+//
+// Karena penyaring itu adalah GABUNGAN TEPAT dari kedua penyaring grid lama
+// (`= '002'` dan `<> '002'`). Berkas yang Group Panel-nya kosong tidak lolos satu pun dari
+// keduanya di Pega — perbandingan dengan NULL tidak pernah bernilai benar, di Oracle maupun
+// PostgreSQL — sehingga ia tidak pernah terlihat di layar lama.
+//
+// Menghapus penyaringnya akan MENAMBAH baris yang tidak pernah terlihat di Pega, dan
+// penambahan itu tidak diputuskan siapa pun. Lihat catatan `list_receive` di
+// repo/sqlstore/inboxmanagerreceivepucl.sql.
+func matchesGroupPanel(candidate Row, q inboxmanagerreceivepucl.Query) bool {
+	if q.Tab.Code != inboxmanagerreceivepucl.TabReceive {
 		return true
 	}
-
-	panel := strings.TrimSpace(candidate.GroupPanel)
-	if panel == "" {
-		return false
-	}
-
-	return inboxmanagerreceivepucl.ClaimTypeOf(panel) == q.Tab.ClaimType
+	return strings.TrimSpace(candidate.GroupPanel) != ""
 }
 
 // matchesWorkStatus meniru penyaring `PYSTATUSWORK <> 'Resolved-Completed'` tab RCL/PUCL.

@@ -3,6 +3,8 @@ package inboxmanagerreceivepucl_test
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 	"testing"
 
 	"claim-pnc/internal/inboxmanagerreceivepucl"
@@ -59,73 +61,71 @@ func listAll(t *testing.T, tab string) inboxmanagerreceivepucl.Page {
 	return page
 }
 
-func TestReceivePATabHoldsOnlyPersonalAccidentDocuments(t *testing.T) {
-	// Kedua tab Receive dipisahkan Group Panel, pengganti `.ReceiveDocument.TypeOfClaim`
-	// yang tidak punya kolom basis data. Bila pemisahnya keliru, satu tab menampilkan isi
-	// tab yang lain — dan kolom keduanya IDENTIK, sehingga tidak ada apa pun di layar yang
-	// menandakannya.
-	page := listAll(t, inboxmanagerreceivepucl.TabReceivePA)
+func TestReceiveTabHoldsBothLinesOfBusinessTogether(t *testing.T) {
+	// Kedua grid Pega digabung menjadi SATU tab pada 2026-09-30, dan himpunan barisnya wajib
+	// tetap sama: gabungan tepat dari keduanya, tidak lebih dan tidak kurang.
+	//
+	// Keempat berkas di bawah adalah dua PA ditambah dua NONMBU — persis isi kedua grid lama
+	// bila ditumpuk seperti di Pega.
+	page := listAll(t, inboxmanagerreceivepucl.TabReceive)
 
-	want := []string{"RCV-900001", "RCV-900002"}
-	if got := caseIDs(page); !equal(got, want) {
-		t.Fatalf("tab Receive PA berisi %v, seharusnya %v", got, want)
+	want := []string{"RCV-900001", "RCV-900002", "RCV-900003", "RCV-900004"}
+	got := append([]string{}, caseIDs(page)...)
+	sort.Strings(got)
+
+	if !equal(got, want) {
+		t.Fatalf("tab Receive berisi %v, seharusnya %v", got, want)
+	}
+}
+
+func TestReceiveTabCarriesTheClaimTypeThatUsedToSplitIt(t *testing.T) {
+	// Pembedaan PA versus NONMBU tidak hilang saat kedua grid digabung — ia pindah dari
+	// "tabel yang mana" menjadi ISI kolom "Jenis Klaim".
+	//
+	// Bila penurunannya hilang, tabelnya tetap tampil utuh dan tidak ada satu pun galat;
+	// yang terjadi hanyalah kolom itu kosong, dan pengguna kehilangan satu-satunya hal yang
+	// membedakan kedua lini bisnis di layar ini.
+	page := listAll(t, inboxmanagerreceivepucl.TabReceive)
+
+	seen := map[string]bool{}
+	for _, item := range page.Items {
+		if item.ClaimType == "" {
+			t.Fatalf("baris %s tidak membawa Jenis Klaim", item.CaseID)
+		}
+		seen[item.ClaimType] = true
 	}
 
-	for _, item := range page.Items {
-		if item.ClaimType != inboxmanagerreceivepucl.ClaimTypePA {
-			t.Fatalf("baris %s berjenis %q, seharusnya %q",
-				item.CaseID, item.ClaimType, inboxmanagerreceivepucl.ClaimTypePA)
+	for _, want := range []string{
+		inboxmanagerreceivepucl.ClaimTypePA,
+		inboxmanagerreceivepucl.ClaimTypeNonMBU,
+	} {
+		if !seen[want] {
+			t.Fatalf("tab Receive tidak memuat satu pun baris berjenis %q", want)
 		}
 	}
 }
 
-func TestReceiveNonMBUTabHoldsEverythingElse(t *testing.T) {
-	page := listAll(t, inboxmanagerreceivepucl.TabReceiveNonMBU)
-
-	want := []string{"RCV-900003", "RCV-900004"}
-	if got := caseIDs(page); !equal(got, want) {
-		t.Fatalf("tab Receive NONMBU berisi %v, seharusnya %v", got, want)
-	}
-
-	for _, item := range page.Items {
-		if item.ClaimType != inboxmanagerreceivepucl.ClaimTypeNonMBU {
-			t.Fatalf("baris %s berjenis %q, seharusnya %q",
-				item.CaseID, item.ClaimType, inboxmanagerreceivepucl.ClaimTypeNonMBU)
-		}
-	}
-}
-
-func TestDocumentWithoutGroupPanelAppearsInNoReceiveTab(t *testing.T) {
-	// `GROUPPANEL_1 <> '002'` TIDAK menangkap NULL di Oracle maupun PostgreSQL, sehingga
-	// berkas tanpa Group Panel tidak muncul di tab mana pun. Itu perilaku yang sama dengan
-	// layar lama, tempat berkas tanpa `TypeOfClaim` tidak cocok dengan grid mana pun.
+func TestDocumentWithoutGroupPanelStillAppearsInNoTab(t *testing.T) {
+	// Penyaring `GROUPPANEL_1 IS NOT NULL` adalah gabungan TEPAT dari kedua penyaring grid
+	// Pega — bukan "tanpa penyaring". Berkas tanpa Group Panel karena itu tetap tidak
+	// terlihat, persis seperti sebelum kedua grid digabung dan persis seperti di Pega.
 	//
 	// Uji ini ada supaya keadaan itu menjadi keputusan yang tercatat, bukan kebetulan yang
 	// kelak "diperbaiki" oleh orang yang mengira ia bug.
-	for _, tab := range []string{
-		inboxmanagerreceivepucl.TabReceivePA,
-		inboxmanagerreceivepucl.TabReceiveNonMBU,
-	} {
-		for _, id := range caseIDs(listAll(t, tab)) {
-			if id == "RCV-900005" {
-				t.Fatalf("berkas tanpa Group Panel muncul di tab %s", tab)
-			}
+	for _, id := range caseIDs(listAll(t, inboxmanagerreceivepucl.TabReceive)) {
+		if id == "RCV-900005" {
+			t.Fatal("berkas tanpa Group Panel muncul di tab Receive")
 		}
 	}
 }
 
-func TestClaimsNeverLeakIntoTheReceiveTabs(t *testing.T) {
+func TestClaimsNeverLeakIntoTheReceiveTab(t *testing.T) {
 	// Berkas penerimaan dokumen dan klaim hidup di SATU tabel, dibedakan hanya PXOBJCLASS.
 	// Keduanya punya PYID, POLICYNO, dan QQNAME, sehingga pencampurannya tidak menghasilkan
 	// satu pun galat — hanya baris yang tidak seharusnya ada.
-	for _, tab := range []string{
-		inboxmanagerreceivepucl.TabReceivePA,
-		inboxmanagerreceivepucl.TabReceiveNonMBU,
-	} {
-		for _, id := range caseIDs(listAll(t, tab)) {
-			if len(id) >= 4 && id[:4] == "PNC-" {
-				t.Fatalf("klaim %s bocor ke tab %s", id, tab)
-			}
+	for _, id := range caseIDs(listAll(t, inboxmanagerreceivepucl.TabReceive)) {
+		if strings.HasPrefix(id, "PNC-") {
+			t.Fatalf("klaim %s bocor ke tab Receive", id)
 		}
 	}
 }
@@ -189,8 +189,7 @@ func TestNoTabIsScopedToTheCaller(t *testing.T) {
 	store := memory.NewSampleStore()
 
 	for _, tab := range []string{
-		inboxmanagerreceivepucl.TabReceivePA,
-		inboxmanagerreceivepucl.TabReceiveNonMBU,
+		inboxmanagerreceivepucl.TabReceive,
 		inboxmanagerreceivepucl.TabRCLPUCL,
 	} {
 		page := inboxmanagerreceivepucl.Pagination{Page: 1, Size: 100}
@@ -340,29 +339,39 @@ func TestEveryTabColumnHasATitleAndKey(t *testing.T) {
 	}
 }
 
-func TestBothReceiveTabsShareTheSameColumns(t *testing.T) {
-	// Keduanya digambar Report Definition yang SAMA, dijalankan dengan parameter berbeda.
-	// Kolomnya karena itu wajib sama persis — perbedaan satu kolom saja berarti salah satu
-	// tab tidak lagi mencerminkan grid aslinya.
-	pa, found := inboxmanagerreceivepucl.FindTab(inboxmanagerreceivepucl.TabReceivePA)
-	if !found {
-		t.Fatal("tab Receive PA tidak ditemukan")
-	}
-	nonMBU, found := inboxmanagerreceivepucl.FindTab(
-		inboxmanagerreceivepucl.TabReceiveNonMBU)
-	if !found {
-		t.Fatal("tab Receive NONMBU tidak ditemukan")
-	}
-
-	if len(pa.Columns) != len(nonMBU.Columns) {
-		t.Fatalf("tab Receive PA punya %d kolom, NONMBU %d",
-			len(pa.Columns), len(nonMBU.Columns))
-	}
-	for i := range pa.Columns {
-		if pa.Columns[i] != nonMBU.Columns[i] {
-			t.Fatalf("kolom ke-%d berbeda: %+v vs %+v",
-				i, pa.Columns[i], nonMBU.Columns[i])
+func TestOnlyTheReceiveTabOpensTheWorkScreen(t *testing.T) {
+	// Di layar lama, perilaku klik hanya dipasang pada kedua grid Receive — nomor case di
+	// grid RCL/PUCL bukan tautan sama sekali.
+	//
+	// Bila penandanya bocor ke tab RCL/PUCL, nomor case di sana menjadi tautan yang membuka
+	// layar kerja PENERIMAAN DOKUMEN untuk sebuah KLAIM. Kuerinya menyaring kelas objek
+	// kerja, sehingga yang terjadi bukan layar berisi data keliru melainkan "berkas tidak
+	// ditemukan" pada setiap baris — kerusakan yang sebabnya tidak terbaca di mana pun.
+	for _, tab := range inboxmanagerreceivepucl.Tabs() {
+		want := tab.Code == inboxmanagerreceivepucl.TabReceive
+		if tab.OpensReceiveDocument != want {
+			t.Fatalf("tab %s (%s) membuka layar kerja = %v, seharusnya %v",
+				tab.Code, tab.Name, tab.OpensReceiveDocument, want)
 		}
+	}
+}
+
+func TestTheScreenHasExactlyTheTwoTabsPegaHas(t *testing.T) {
+	// `Section/InboxManagerReceive_Section-Section.xml` memuat tepat dua `<pyTitle>`:
+	// "Receive" dan "RCL/PUCL". Modul ini mengikutinya (`D-13`).
+	//
+	// Uji ini menjaga penggabungan 2026-09-30 tidak terurai kembali diam-diam: versi pertama
+	// modul ini memecah Receive menjadi dua tab, dan pemecahan itu dicabut.
+	tabs := inboxmanagerreceivepucl.Tabs()
+
+	if len(tabs) != 2 {
+		t.Fatalf("layar punya %d tab, seharusnya 2", len(tabs))
+	}
+	if tabs[0].Name != "Receive" {
+		t.Fatalf("tab pertama bernama %q, seharusnya \"Receive\"", tabs[0].Name)
+	}
+	if tabs[1].Name != "RCL/PUCL" {
+		t.Fatalf("tab kedua bernama %q, seharusnya \"RCL/PUCL\"", tabs[1].Name)
 	}
 }
 
@@ -392,4 +401,186 @@ func equal(got, want []string) bool {
 		}
 	}
 	return true
+}
+
+// ============================================================================
+// LAYAR KERJA PENERIMAAN DOKUMEN — flow action `InputReceiveDocument`
+// ============================================================================
+
+// openDocument membuka layar kerja sebuah berkas, dan menggagalkan uji bila gagal.
+func openDocument(t *testing.T, reference string) inboxmanagerreceivepucl.ReceiveDocument {
+	t.Helper()
+
+	doc, err := memory.NewSampleStore().Document(context.Background(), reference)
+	if err != nil {
+		t.Fatalf("membuka berkas %q: %v", reference, err)
+	}
+	return doc
+}
+
+func TestWorkScreenOpensTheDocumentBehindItsCaseNumber(t *testing.T) {
+	// Kunci yang dipakai adalah `PZINSKEY` — nilai yang sama yang di Pega dikirim sebagai
+	// parameter `kunci` ke `SetAssignmentInboxReceive_act` lalu dipakai Open Assignment.
+	doc := openDocument(t, "ASM-FW-GCNMFW-WORK RCV-900001")
+
+	if doc.CaseID != "RCV-900001" {
+		t.Fatalf("berkas yang terbuka %q, seharusnya RCV-900001", doc.CaseID)
+	}
+	if doc.SenderName == "" || doc.Chronology == "" {
+		t.Fatalf("isian dari tabel cermin kosong: %+v", doc)
+	}
+}
+
+func TestWorkScreenStillOpensWhenTheMirrorTableHasNoMatch(t *testing.T) {
+	// POOLDATA.T_CLAIM_RECIVEDCLAIM digabung `LEFT JOIN` karena tabel itu TIDAK PERNAH
+	// DIBACA sistem lama — kelengkapan isinya belum terverifikasi.
+	//
+	// Berkas tanpa pasangan di sana harus tetap TERBUKA dengan isian kosong, bukan
+	// dinyatakan tidak ada. Justru berkas seperti itulah yang paling perlu dilihat orang
+	// yang memeriksa kelengkapan tabelnya.
+	doc := openDocument(t, "ASM-FW-GCNMFW-WORK RCV-900004")
+
+	if doc.CaseID != "RCV-900004" {
+		t.Fatalf("berkas yang terbuka %q, seharusnya RCV-900004", doc.CaseID)
+	}
+	if doc.SenderName != "" {
+		t.Fatalf("berkas tanpa pasangan membawa Nama Pengirim %q", doc.SenderName)
+	}
+	if doc.PolicyNumber == "" {
+		t.Fatal("isian dari objek kerja ikut kosong; gabungannya bukan LEFT JOIN")
+	}
+}
+
+func TestWorkScreenNeverOpensAClaim(t *testing.T) {
+	// Berkas penerimaan dokumen dan klaim hidup di SATU tabel, dibedakan hanya PXOBJCLASS.
+	// Tanpa penyaring itu, kunci milik sebuah klaim akan membuka layar kerja penerimaan
+	// dokumen yang isinya klaim — tanpa satu pun tanda bahwa itu keliru.
+	_, err := memory.NewSampleStore().Document(
+		context.Background(), "ASM-FW-GCNMFW-WORK PNC-800002")
+
+	if !errors.Is(err, inboxmanagerreceivepucl.ErrDocumentNotFound) {
+		t.Fatalf("membuka kunci klaim menghasilkan %v, seharusnya ErrDocumentNotFound", err)
+	}
+}
+
+func TestWorkScreenRejectsAnEmptyKeyDifferentlyFromAnUnknownOne(t *testing.T) {
+	// Keduanya DIBEDAKAN karena tindak lanjutnya berbeda: yang pertama bug pemanggil, yang
+	// kedua kunci yang keliru atau berkas milik portal lain. Menjawab keduanya sama akan
+	// membuat yang pertama dicari di tempat yang salah.
+	store := memory.NewSampleStore()
+
+	_, err := store.Document(context.Background(), "   ")
+	if !errors.Is(err, inboxmanagerreceivepucl.ErrReferenceRequired) {
+		t.Fatalf("kunci kosong menghasilkan %v, seharusnya ErrReferenceRequired", err)
+	}
+
+	_, err = store.Document(context.Background(), "ASM-FW-GCNMFW-WORK RCV-TIDAK-ADA")
+	if !errors.Is(err, inboxmanagerreceivepucl.ErrDocumentNotFound) {
+		t.Fatalf("kunci tak dikenal menghasilkan %v, seharusnya ErrDocumentNotFound", err)
+	}
+}
+
+func TestEveryValueBelongsToADrawnField(t *testing.T) {
+	// Bentuk layar (DocumentFieldGroups) dan isinya (Values) hidup di dua tempat, dan
+	// keduanya harus sepadan. Nilai yang tidak punya isian TIDAK akan pernah tergambar —
+	// dan ketiadaannya tidak menghasilkan satu pun galat, hanya isian yang hilang diam-diam.
+	drawn := map[string]inboxmanagerreceivepucl.Field{}
+	for _, group := range inboxmanagerreceivepucl.DocumentFieldGroupList() {
+		for _, field := range group.Fields {
+			if _, clash := drawn[field.Key]; clash {
+				t.Fatalf("isian %q digambar lebih dari sekali", field.Key)
+			}
+			drawn[field.Key] = field
+		}
+	}
+
+	for key := range openDocument(t, "ASM-FW-GCNMFW-WORK RCV-900001").Values() {
+		field, exists := drawn[key]
+		if !exists {
+			t.Fatalf("nilai %q tidak punya isian yang menggambarnya", key)
+		}
+		if field.Blocked {
+			t.Fatalf("isian %q bertanda terhalang tetapi tetap membawa nilai", key)
+		}
+	}
+}
+
+func TestEveryUnblockedFieldHasAValue(t *testing.T) {
+	// Kebalikan uji di atas, dan sama pentingnya: isian yang digambar TANPA tanda terhalang
+	// tetapi tidak pernah punya nilai akan tergambar kosong selamanya — tidak dapat
+	// dibedakan dari isian yang memang belum diisi petugas.
+	values := openDocument(t, "ASM-FW-GCNMFW-WORK RCV-900001").Values()
+
+	for _, group := range inboxmanagerreceivepucl.DocumentFieldGroupList() {
+		for _, field := range group.Fields {
+			if field.Blocked {
+				continue
+			}
+			if _, exists := values[field.Key]; !exists {
+				t.Fatalf("isian %q (%s) digambar tanpa tanda terhalang, "+
+					"tetapi tidak pernah punya nilai", field.Key, field.Title)
+			}
+		}
+	}
+}
+
+func TestEveryBlockedFieldNamesItsReasonAndItsOwner(t *testing.T) {
+	// Penghalang tanpa alamat tidak pernah hilang (`D-36`). Isian yang digambar kosong tanpa
+	// alasan akan dibaca sebagai data yang hilang, bukan sebagai isian yang belum terbawa.
+	blocked := 0
+
+	for _, group := range inboxmanagerreceivepucl.DocumentFieldGroupList() {
+		if group.Title == "" {
+			t.Fatal("ada kelompok isian tanpa judul")
+		}
+		for _, field := range group.Fields {
+			if field.Key == "" || field.Title == "" {
+				t.Fatalf("isian tanpa kunci atau tanpa judul: %+v", field)
+			}
+			if !field.Blocked {
+				continue
+			}
+			blocked++
+			if field.BlockedReason == "" {
+				t.Fatalf("isian terhalang %q tidak menyebut alasannya", field.Key)
+			}
+			if field.BlockedOwner == "" {
+				t.Fatalf("isian terhalang %q tidak menyebut pemiliknya", field.Key)
+			}
+		}
+	}
+
+	if blocked == 0 {
+		t.Fatal("tidak ada satu pun isian terhalang; enam belas di antaranya memang belum " +
+			"punya sumber, dan ketiadaannya wajib terlihat")
+	}
+}
+
+func TestEveryWriteActionNamesItsActivityAndItsOwner(t *testing.T) {
+	// Kedelapan tombol tetap digambar meski belum satu pun dapat dihidupkan. Yang membuatnya
+	// berguna adalah penyebutan modul pemiliknya: "belum tersedia" tidak memberi tahu
+	// siapa pun apa yang harus dikerjakan, sementara "`B-2` Registrasi Klaim" memberi tahu.
+	actions := inboxmanagerreceivepucl.DocumentWriteActionList()
+
+	if len(actions) == 0 {
+		t.Fatal("tidak ada satu pun tombol; layar lama punya delapan")
+	}
+
+	seen := map[string]bool{}
+	for _, action := range actions {
+		if action.Code == "" || action.Label == "" {
+			t.Fatalf("tombol tanpa kode atau tanpa label: %+v", action)
+		}
+		if seen[action.Code] {
+			t.Fatalf("kode tombol ganda: %q", action.Code)
+		}
+		seen[action.Code] = true
+
+		if action.Activity == "" {
+			t.Fatalf("tombol %q tidak menyebut activity Pega-nya", action.Code)
+		}
+		if action.Owner == "" {
+			t.Fatalf("tombol %q tidak menyebut modul pemiliknya", action.Code)
+		}
+	}
 }

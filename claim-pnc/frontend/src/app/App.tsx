@@ -70,6 +70,7 @@ import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/Cl
 import { OSClaimPerCabangPage } from '@/modules/inbox-os-claim-per-cabang/OSClaimPerCabangPage'
 import { InboxManagerPage } from '@/modules/inbox-manager/InboxManagerPage'
 import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManagerAdminPage'
+import { InputReceiveDocumentPage } from '@/modules/inbox-manager-receive-pucl/InputReceiveDocumentPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
@@ -82,6 +83,7 @@ import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
+import { InputAcceptationPage } from '@/modules/input-acceptation/InputAcceptationPage'
 import { OutstandingClaimPage } from '@/modules/outstanding-claim/OutstandingClaimPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
@@ -996,6 +998,33 @@ export function AppRoute() {
         }
       />
       {/*
+        Acceptation Claim — akseptasi klaim treaty NON-proporsional, pengganti Flow Action
+        `InputAcceptation` pada kelas `ASM-FW-GCNMFW-Work-ClaimTreatyNonProp`.
+
+        Ia layar SAUDARA dari Outstanding Claim di atas, dan rutenya sengaja terpisah:
+        keduanya membaca kolom JSON yang BERBEDA pada tabel yang sama — `DATA_JSON` lawan
+        `DATA_JSONBLOB` — dan kelas objek kerja yang berbeda. Menyatukannya akan menampilkan
+        isi dokumen milik klaim yang lain tanpa satu pun galat.
+
+        Pintunya nomor klaim di Inbox Claim Treaty Non Prop, mengikuti Pega: sel Claim.ID di
+        grid inbox ber-`pyAction openAssignment`, dan Flow Action ini satu-satunya yang
+        terdaftar pada kelas objek kerjanya.
+
+        Layar ini MENERIMA Submit — berbeda dari Outstanding Claim yang membaca saja. Yang
+        belum berpindah adalah KEPEMILIKAN TABELNYA (`P-1`), sehingga penyimpanannya menolak
+        dengan alasan yang terbaca alih-alih menyimpan diam-diam ke tabel milik Pega.
+      */}
+      <Route
+        path="/input-acceptation/:no_klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InputAcceptationPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Claim Treaty Non Prop — antrean klaim treaty NON-proporsional, pengganti
         harness `InboxClaimNonProp_Harness` (`MENU_ID 55`).
 
@@ -1219,6 +1248,30 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ManagerReceivePUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Layar kerja satu berkas penerimaan dokumen — flow action `InputReceiveDocument`,
+        yang di Pega dibuka Open Assignment saat nomor case pada grid Receive diklik.
+
+        Ia rute TERSENDIRI, bukan panel di dalam antrean, karena di Pega pun ia layar
+        tujuan: berkasnya terbuka pada tahap alur kerjanya untuk dikerjakan. Alamatnya
+        karena itu dapat disalin dan dibuka kembali — dan `pzInsKey` di dalamnya wajib
+        terkodekan, sebab kunci itu memuat spasi.
+
+        Ia BERBEDA dari `/input-receive-document` di bawah, dan keduanya mudah tertukar:
+        yang di bawah adalah FORM pencatatan berkas baru, yang ini layar kerja berkas yang
+        SUDAH ada dan sedang menunggu tindakan. Menunjuk keduanya ke satu rute akan membuka
+        form kosong untuk berkas yang isinya justru ingin dibaca.
+      */}
+      <Route
+        path="/inbox-manager-receive-pucl/dokumen/:referensi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InputReceiveDocumentPage />
             </Protected>
           </SessionGuard>
         }

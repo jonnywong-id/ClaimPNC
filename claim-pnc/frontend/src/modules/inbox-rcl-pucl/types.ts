@@ -71,16 +71,32 @@ export type WorkItem = {
   tanggal_cetak_surat: string
 
   /**
-   * Kolom "Lama Klaim", dikirim sebagai TEKS.
+   * Kolom "Lama Klaim", dikirim sebagai teks TANGGAL.
    *
-   * Satuannya tidak diketahui: tidak satu pun kueri di export menghitungnya, dan tidak ada
-   * DDL yang menyatakan tipenya (`R-08`). Menambahkan kata "hari" di layar berarti
-   * menetapkan satuan yang belum pernah dipastikan.
+   * Judulnya menyebut durasi; isinya **tanggal kirim untuk proses PUCL** (Work Owner,
+   * 2026-09-30), dan kolomnya terverifikasi bertipe timestamp di Oracle. Judulnya tetap
+   * dibawa apa adanya (`D-13`); yang dibentuk hanya isinya, dan itu dikerjakan SERVER —
+   * layar tidak memformat ulang apa pun, supaya tabel dan berkas ekspor tidak dapat
+   * menggambar isian yang sama dengan dua bentuk yang berbeda.
+   *
+   * Isinya akan sering terbaca SAMA dengan `tanggal_masuk_inbox`: keduanya ditulis pada
+   * langkah yang sama dan hanya terpaut milidetik. Itu keadaan di Pega, bukan kekeliruan.
    */
   lama_klaim: string
 
   /** Kolom "Status Kadaluarsa". Sumbernya BUKAN kolom yang dipakai menyaring tab pertama. */
   status_kadaluarsa: string
+
+  /**
+   * Kolom "Tanggal Dibuat" — kolom yang MENGURUTKAN tabel ini.
+   *
+   * Ia tidak ada di layar lama. Ditambahkan 2026-09-30 atas keputusan Work Owner supaya
+   * tabelnya tidak lagi terbaca acak: yang tampil sebagai "Tanggal Masuk Inbox" adalah
+   * tanggal pengiriman RCL/PUCL, sementara yang mengurutkan adalah tanggal ini.
+   *
+   * Urutan barisnya sendiri TIDAK berubah — hanya kolomnya yang kini terlihat.
+   */
+  tanggal_dibuat: string
 }
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
@@ -96,6 +112,24 @@ export type TabColumn = {
 export type ReportColumn = {
   kunci: string
   judul: string
+}
+
+/**
+ * Satu selisih terhadap layar lama yang sudah diputuskan.
+ *
+ * # Kenapa dua bagian
+ *
+ * Karena pembacanya dua. `ringkas` untuk petugas klaim yang sedang memakai layar — satu
+ * kalimat, tanpa nama artefak Pega, tanpa nomor keputusan, tanpa tanggal. `rincian` untuk
+ * penguji kesetaraan yang sedang mencari pemetaan `P-5`-nya.
+ *
+ * Sebelum dipisah, keduanya ditulis menjadi satu dan panel ini berisi 1.114 kata — lebih
+ * panjang daripada tabel yang dijelaskannya, sehingga tidak dibaca siapa pun. Panel yang
+ * tidak dibaca tidak mencegah laporan kerusakan palsu yang menjadi alasan keberadaannya.
+ */
+export type PlannedDifference = {
+  ringkas: string
+  rincian: string
 }
 
 /** Satu tab beserta bentuk gridnya. */
@@ -156,7 +190,7 @@ export type MetadataResponse = {
   kolom_laporan: ReportColumn[]
 
   /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel. */
-  selisih_terencana: string[]
+  selisih_terencana: PlannedDifference[]
 
   portal: string
 }
