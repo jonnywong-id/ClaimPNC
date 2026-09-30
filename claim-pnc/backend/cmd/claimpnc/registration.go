@@ -9,12 +9,17 @@ import (
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/dlapdf"
+	"claim-pnc/internal/registrasi/lodpdf"
 	"claim-pnc/internal/registrasi/plapdf"
+	"claim-pnc/internal/registrasi/repo/cashierlink"
 	"claim-pnc/internal/registrasi/repo/komitelink"
 	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
+	"claim-pnc/internal/registrasi/repo/premiumlink"
 	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 )
@@ -51,6 +56,8 @@ func assembleRegistration(
 	db *sql.DB,
 	logger *slog.Logger,
 	documents registrasi.DocumentUploader,
+	catalog premiumlink.ServiceCatalog,
+	cashier config.Cashier,
 ) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
@@ -60,6 +67,8 @@ func assembleRegistration(
 		Clock:             clock,
 		FaceSheetRenderer: facesheetpdf.Renderer{},
 		PLARenderer:       plapdf.Renderer{},
+		DLARenderer:       dlapdf.Renderer{},
+		LODRenderer:       lodpdf.Renderer{},
 	}
 
 	if db != nil {
@@ -82,6 +91,8 @@ func assembleRegistration(
 		options.ClaimRecords = registrasisql.NewClaimRecords(db)
 		options.FaceSheet = registrasisql.NewFaceSheetStore(db)
 		options.PLA = registrasisql.NewPLAStore(db)
+		options.DLA = registrasisql.NewDLAStore(db)
+		options.Cashier = registrasisql.NewCashierStore(db)
 		options.Groups = registrasisql.NewGroupStore(db)
 		options.Inbox = registrasisql.NewInboxEntryStore(db)
 		options.Accounts = registrasisql.NewAccountDirectory(db)
@@ -89,6 +100,25 @@ func assembleRegistration(
 		// Unggah Dokumen: berkas lewat modul dokumen penunjang, baris di DATA_ATTACHFILE.
 		options.Documents = documents
 		options.Attachments = registrasisql.NewAttachmentStore(db)
+		options.Acceptance = registrasisql.NewAcceptanceStore(db)
+		// Transfer Kasir: alamat dari POOLDATA.GCNM_CONNECT_REST (KASIRPAID…), kredensial dari
+		// KASIR_USER / KASIR_PASSWORD.
+		if catalog != nil {
+			options.CashierGateway = cashierlink.New(catalog, cashier.User, cashier.Password, nil)
+			if cashier.User == "" {
+				logger.Warn("Transfer Kasir tanpa kredensial — isi KASIR_USER dan KASIR_PASSWORD bila Kasir menuntutnya")
+			}
+		} else {
+			options.CashierGateway = registrasimemory.NewCashier()
+			logger.Warn("Transfer Kasir memakai layanan contoh yang tidak pernah berhasil — daftar alamat layanan tidak tersedia")
+		}
+		// Status premi (akseptasi): alamat layanan dari POOLDATA.GCNM_CONNECT_REST.
+		if catalog != nil {
+			options.Premium = premiumlink.New(catalog, nil)
+		} else {
+			options.Premium = registrasimemory.NewPremium()
+			logger.Warn("layanan status premi memakai jawaban contoh — daftar alamat layanan tidak tersedia")
+		}
 
 		// Penjenjangan komite membaca POOLDATA.EMAILKOMITE lewat modul komite, di atas
 		// koneksi yang sama dengan klaimnya.
@@ -136,11 +166,17 @@ func assembleRegistration(
 		}
 		options.FaceSheet = registrasimemory.NewFaceSheet()
 		options.PLA = registrasimemory.NewPLA()
+		options.DLA = registrasimemory.NewDLA()
+		cashierMemory := registrasimemory.NewCashier()
+		options.Cashier = cashierMemory
+		options.CashierGateway = cashierMemory
 		options.Groups = registrasimemory.Groups{}
 		options.Inbox = registrasimemory.NewInboxEntries()
 		options.Accounts = registrasimemory.NewAccounts()
 		options.Committees = registrasimemory.NewCommittees()
 		options.CommitteeTiering = registrasimemory.NewCommitteeTiering()
+		options.Acceptance = registrasimemory.NewAcceptance()
+		options.Premium = registrasimemory.NewPremium()
 
 		logger.Warn("modul registrasi berjalan ATAS DATA CONTOH — tidak ada koneksi Oracle",
 			slog.String("akibat", "klaim yang dibuat tidak tersimpan dan polisnya karangan"),

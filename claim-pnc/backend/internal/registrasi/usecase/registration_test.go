@@ -12,6 +12,8 @@ import (
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/lodpdf"
+	"claim-pnc/internal/registrasi/dlapdf"
 	"claim-pnc/internal/registrasi/plapdf"
 	"claim-pnc/internal/registrasi/repo/memory"
 	"claim-pnc/internal/registrasi/usecase"
@@ -48,17 +50,21 @@ func testTeams() map[string][]string {
 }
 
 type environment struct {
-	service   *usecase.Service
-	store     *memory.Store
-	parameter *memory.Parameter
-	link      *memory.ClaimReportLink
-	clock     *clock.Fixed
-	pla       *memory.PLA
-	groups    memory.Groups
-	inbox     *memory.InboxEntries
-	records   *memory.ClaimRecords
-	uploader  *memory.DocumentUploader
-	caller    usecase.Caller
+	service    *usecase.Service
+	store      *memory.Store
+	parameter  *memory.Parameter
+	link       *memory.ClaimReportLink
+	clock      *clock.Fixed
+	pla        *memory.PLA
+	dla        *memory.DLA
+	cashier    *memory.Cashier
+	groups     memory.Groups
+	inbox      *memory.InboxEntries
+	records    *memory.ClaimRecords
+	uploader   *memory.DocumentUploader
+	acceptance *memory.Acceptance
+	premium    *memory.Premium
+	caller     usecase.Caller
 }
 
 func setup(t *testing.T, roles ...string) environment {
@@ -70,10 +76,14 @@ func setup(t *testing.T, roles ...string) environment {
 	link := memory.NewClaimReportLink()
 	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
 	pla := memory.NewPLA()
+	dla := memory.NewDLA()
+	cashier := memory.NewCashier()
 	groups := memory.Groups{}
 	inbox := memory.NewInboxEntries()
 	records := memory.SampleClaimRecords()
 	uploader := &memory.DocumentUploader{}
+	acceptance := memory.NewAcceptance()
+	premium := memory.NewPremium()
 
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
@@ -95,6 +105,13 @@ func setup(t *testing.T, roles ...string) environment {
 		FaceSheetRenderer:  facesheetpdf.Renderer{},
 		PLA:                pla,
 		PLARenderer:        plapdf.Renderer{},
+		DLA:                dla,
+		DLARenderer:        dlapdf.Renderer{},
+		Cashier:            cashier,
+		CashierGateway:     cashier,
+		LODRenderer:        lodpdf.Renderer{},
+		Acceptance:         acceptance,
+		Premium:            premium,
 		Groups:             groups,
 		Inbox:              inbox,
 		Accounts:           memory.NewAccounts(),
@@ -109,16 +126,20 @@ func setup(t *testing.T, roles ...string) environment {
 	require.NoError(t, err)
 
 	return environment{
-		service:   service,
-		store:     store,
-		parameter: parameter,
-		link:      link,
-		clock:     clock,
-		pla:       pla,
-		groups:    groups,
-		inbox:     inbox,
-		records:   records,
-		uploader:  uploader,
+		service:    service,
+		store:      store,
+		parameter:  parameter,
+		link:       link,
+		clock:      clock,
+		pla:        pla,
+		dla:        dla,
+		cashier:    cashier,
+		groups:     groups,
+		inbox:      inbox,
+		records:    records,
+		uploader:   uploader,
+		acceptance: acceptance,
+		premium:    premium,
 		caller: usecase.Caller{
 			Identity:   testOperator,
 			Name:       "Petugas Uji",
@@ -506,6 +527,13 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		FaceSheetRenderer:  facesheetpdf.Renderer{},
 		PLA:                memory.NewPLA(),
 		PLARenderer:        plapdf.Renderer{},
+		DLA:                memory.NewDLA(),
+		DLARenderer:        dlapdf.Renderer{},
+		Cashier:            memory.NewCashier(),
+		CashierGateway:     memory.NewCashier(),
+		LODRenderer:        lodpdf.Renderer{},
+		Acceptance:         memory.NewAcceptance(),
+		Premium:            memory.NewPremium(),
 		Groups:             groups,
 		Inbox:              inbox,
 		Accounts:           memory.NewAccounts(),

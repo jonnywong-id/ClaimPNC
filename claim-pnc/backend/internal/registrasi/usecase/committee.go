@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/registrasi"
 )
@@ -295,6 +296,9 @@ func (l *Service) DecideCommittee(ctx context.Context, p CommitteeDecisionComman
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
+		if err := l.committeeProgress(ctx, claim.Number, c.Outcome(), by, now); err != nil {
+			return err
+		}
 		if err := l.mirrorInbox(ctx, claim); err != nil {
 			return err
 		}
@@ -312,6 +316,44 @@ func (l *Service) DecideCommittee(ctx context.Context, p CommitteeDecisionComman
 		return registrasi.CommitteeCase{}, err
 	}
 	return result, nil
+}
+
+// committeeProgress menulis progres putusan akhir komite (`KomitePost_Adjustment`).
+//
+//   - Setuju di jenjang terakhir — langkah 19–21: buka posisi AKSEPTASI "On Progress"
+//     ("Auto Create AKSEPTASI", 014/60), yang kelak ditutup Submit akseptasi; langkah 22–23:
+//     tutup posisi KOMITE ("Auto Finish KOMITE", 006/24, Done).
+//   - Tolak — langkah 61–62: tutup posisi KOMITE ("Auto Reject KOMITE", 006/24, Done).
+//
+// Posisi KOMITE dibuka Pega saat Transfer Komite (`SetChildKomitePerAdjustment_act` langkah 25),
+// yang belum dibangun di aplikasi ini; bila tidak ada posisi KOMITE terbuka, penutupannya
+// dilewati — POSISIID wajib terisi.
+func (l *Service) committeeProgress(ctx context.Context, claimNumber, outcome string, by Caller, now time.Time) error {
+	if outcome == "" {
+		return nil // jenjang berikutnya masih menunggu
+	}
+	if outcome == registrasi.DecisionApprove {
+		if _, err := l.acceptance.StartProgress(ctx, registrasi.ProgressStart{
+			ClaimNumber: claimNumber, CaseID: claimNumber, Position: registrasi.PositionAcceptance,
+			Note: registrasi.CommitteeAcceptNote, Progress1: registrasi.AcceptanceProgress1,
+			Progress2: registrasi.AcceptanceProgress2, User: by.Identity, At: now,
+		}); err != nil {
+			return err
+		}
+	}
+	committee, err := l.acceptance.OpenPosition(ctx, claimNumber, registrasi.PositionCommittee)
+	if err != nil || committee == "" {
+		return err
+	}
+	note := registrasi.CommitteeFinishNote
+	if outcome == registrasi.DecisionReject {
+		note = registrasi.CommitteeRejectNote
+	}
+	return l.acceptance.AddProgress(ctx, registrasi.ProgressUpdate{
+		ClaimNumber: claimNumber, PositionID: committee, Note: note,
+		Progress1: registrasi.CommitteeProgress1, Progress2: registrasi.CommitteeProgress2,
+		Position: registrasi.AcceptanceProgressDone, User: by.Identity, At: now,
+	})
 }
 
 func outcomeNote(outcome string) string {

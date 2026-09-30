@@ -4235,19 +4235,29 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// jamnya dapat dipatok.
 	documentService, err := dokumenpenunjangusecase.NewService(
 		dokumenpenunjangusecase.Options{
-			Repos:     store.dokumenPenunjangSelector,
-			Storage:   store.dokumenPenunjangStorage,
-			Converter: store.dokumenPenunjangConverter,
-			Clock:     clock.System{},
+			Repos:          store.dokumenPenunjangSelector,
+			Storage:        store.dokumenPenunjangStorage,
+			Converter:      store.dokumenPenunjangConverter,
+			Clock:          clock.System{},
+			SkipConversion: cfg.DocumentStorage.SkipConversion,
+			AccessCode:     cfg.DocumentStorage.AccessCode,
 		},
 	)
+	if cfg.DocumentStorage.AccessCode != "" {
+		logger.Info("unggah dokumen memakai kode akses terdaftar; token sekali pakai tidak dibuat",
+			slog.String("penanda", "PENYIMPANAN_DOKUMEN_KODE_AKSES"))
+	}
+	if cfg.DocumentStorage.SkipConversion {
+		logger.Warn("konversi gambar ke AVIF dilewati; PNG, JPG, JPEG, dan PDF diunggah apa adanya",
+			slog.String("penanda", "KONVERSI_GAMBAR_LEWATI"))
+	}
 	if err != nil {
 		store.close()
 		return assembly{}, err
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService))
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier)
 		if err != nil {
 			store.close()
 			return assembly{}, err

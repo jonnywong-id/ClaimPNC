@@ -34,6 +34,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -111,25 +112,36 @@ func NewClient(o Options) (*Client, error) {
 type muatan struct {
 	UserInput string `json:"UserInput"`
 	NoClaim   string `json:"NoClaim"`
-	App       string `json:"App"`
-	Folder    string `json:"Folder"`
-	NamaFile  string `json:"NamaFile"`
-	Image     string `json:"Image"`
-	MimeType  string `json:"MimeType"`
-	Durasi    int    `json:"Durasi"`
+
+	// KodeString adalah token GCP_IMAGE.KODEAKSES (GenerateTokenPNCDokumen).
+	KodeString string `json:"KodeString"`
+
+	App      string `json:"App"`
+	Folder   string `json:"Folder"`
+	NamaFile string `json:"NamaFile"`
+	Image    string `json:"Image"`
+	MimeType string `json:"MimeType"`
+	Durasi   int    `json:"Durasi"`
 }
 
 // jawaban adalah bentuk respons layanan.
 //
-// Hanya dua field yang Pega baca: `ImageID` dan `exp`
-// (`Activity/InsertDokumenPNC-Act.xml:4448`, `:4492`). Field lain diabaikan — dan itu
-// disengaja: layanan boleh menambah field tanpa membuat modul ini gagal mengurai.
+// Pega membaca dua field dari respons (`DocAPI_Return.ServiceReturn`): `URLImage` —
+// penentu berhasil, precondition `URLImage==""` (`Activity/InsertDokumenPNC-Act.xml:4728`) —
+// dan `exp` (`:4492`). `ImageID` TIDAK dibaca dari respons: `:4448` mengisi
+// `DocAPI.ServiceReturn.ImageID` dari RDB `GenerateImageID` yang dijalankan sesudah unggah
+// (`:4216`). Bila layanan tetap mengirimnya, nilainya diteruskan tetapi tidak dipakai sebagai
+// kunci. `message` dibaca hanya untuk galat.
 type jawaban struct {
 	ImageID string `json:"ImageID"`
 	Exp     string `json:"exp"`
 	URL     string `json:"URLImage"`
 	Folder  string `json:"appfolder"`
 	Pesan   string `json:"message"`
+
+	// ErrorCode dan ErrorMessage diisi layanan saat menolak (URLImage kosong).
+	ErrorCode    any    `json:"ErrorCode"`
+	ErrorMessage string `json:"ErrorMessage"`
 }
 
 // Upload memenuhi dokumenpenunjang.Storage.
@@ -138,14 +150,15 @@ func (c *Client) Upload(
 	perintah dokumenpenunjang.PerintahUnggah,
 ) (dokumenpenunjang.HasilUnggah, error) {
 	badan, err := json.Marshal(muatan{
-		UserInput: perintah.Pengunggah,
-		NoClaim:   perintah.NomorKlaim,
-		App:       perintah.NamaAplikasi,
-		Folder:    perintah.Folder,
-		NamaFile:  perintah.NamaBerkas,
-		Image:     base64.StdEncoding.EncodeToString(perintah.Isi),
-		MimeType:  perintah.TipeMedia,
-		Durasi:    0,
+		UserInput:  perintah.Pengunggah,
+		NoClaim:    perintah.NomorKlaim,
+		KodeString: perintah.KodeAkses,
+		App:        perintah.NamaAplikasi,
+		Folder:     perintah.Folder,
+		NamaFile:   perintah.NamaBerkas,
+		Image:      base64.StdEncoding.EncodeToString(perintah.Isi),
+		MimeType:   perintah.TipeMedia,
+		Durasi:     0,
 	})
 	if err != nil {
 		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
@@ -188,9 +201,13 @@ func (c *Client) Upload(
 		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
 			"dokumenpenunjang/httpstorage: respons bukan JSON yang dikenali: %w", err)
 	}
-	if strings.TrimSpace(hasil.ImageID) == "" {
-		return dokumenpenunjang.HasilUnggah{}, errors.New(
-			"dokumenpenunjang/httpstorage: respons tidak memuat ImageID")
+	if strings.TrimSpace(hasil.URL) == "" {
+		// Pega melewati pencatatan metadata bila URLImage kosong — berkasnya tidak
+		// tersimpan. Pesan layanan dan nama field yang diterima (bukan nilainya) ikut ke log
+		// supaya penolakannya dapat ditelusuri.
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: respons tidak memuat URLImage (ErrorCode: %v; ErrorMessage: %q; pesan layanan: %q; field: %s)",
+			hasil.ErrorCode, strings.TrimSpace(hasil.ErrorMessage), strings.TrimSpace(hasil.Pesan), fieldNames(isi))
 	}
 
 	return dokumenpenunjang.HasilUnggah{
@@ -216,6 +233,20 @@ func (c *Client) Upload(
 // Gagal mengurai TIDAK menggagalkan unggahan: masa berlaku yang tidak terbaca membuat URL
 // diperlakukan tetap berlaku (lihat Document.Kedaluwarsa), dan itu jauh lebih baik daripada
 // membatalkan unggahan yang sebenarnya berhasil.
+// fieldNames menyebut kunci tingkat atas respons JSON, terurut, tanpa nilainya.
+func fieldNames(isi []byte) string {
+	var peta map[string]json.RawMessage
+	if err := json.Unmarshal(isi, &peta); err != nil {
+		return "(bukan objek JSON)"
+	}
+	nama := make([]string, 0, len(peta))
+	for k := range peta {
+		nama = append(nama, k)
+	}
+	sort.Strings(nama)
+	return strings.Join(nama, ", ")
+}
+
 func uraiKedaluwarsa(nilai string) *time.Time {
 	rapi := strings.TrimSpace(nilai)
 	if rapi == "" {

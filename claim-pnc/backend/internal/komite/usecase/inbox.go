@@ -167,7 +167,7 @@ func (s *InboxService) Case(
 	operator string,
 	allOperators bool,
 ) (komite.CommitteeCase, error) {
-	found, err := s.cases.FindCase(ctx, caseID)
+	found, err := s.cases.FindCase(ctx, caseID, operator)
 	if err != nil {
 		return komite.CommitteeCase{}, err
 	}

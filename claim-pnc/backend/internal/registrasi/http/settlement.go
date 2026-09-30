@@ -33,6 +33,20 @@ type SettlementDTO struct {
 	AcceptanceStatus string `json:"status_akseptasi"`
 	AcceptedNo       string `json:"nomor_akseptasi"`
 
+	// AcceptanceLODStatus adalah STATUSAKSEPTASILOD: "" belum, "1" disetujui, "0" tidak.
+	AcceptanceLODStatus string `json:"status_akseptasi_lod"`
+
+	// Print LOD terakhir — tampil baca saja di form Persetujuan / Akseptasi: tanggal cetak
+	// (PRINTLOD_DATE, RFC3339 WIB) dan jenis LOD (PDFTYPE) beserta namanya.
+	LODPrintedAt string `json:"tanggal_cetak_lod,omitempty"`
+	LODType      string `json:"tipe_pdf_lod,omitempty"`
+	LODTypeName  string `json:"nama_tipe_pdf_lod,omitempty"`
+
+	// Transfer Kasir: TRANSFER_CASHIER_DATE dan IDCHASIER; sudah_transfer_kasir mematikan tombolnya.
+	CashierTransferredAt string `json:"tanggal_transfer_kasir,omitempty"`
+	CashierCaseID        string `json:"case_id_kasir,omitempty"`
+	CashierTransferred   bool   `json:"sudah_transfer_kasir"`
+
 	// Komite: nomor kasus (CASEIDKOMITE), tanggal transfer, dan tanggal putusan akhir.
 	CommitteeID            string `json:"komite_id,omitempty"`
 	CommitteeTransferredAt string `json:"tanggal_transfer_komite,omitempty"`
@@ -60,7 +74,12 @@ func settlementLineDTO(s registrasi.SettlementLine) SettlementDTO {
 		GrossCents: int64(s.Gross), ShareASM: int64(s.ShareASM), ValueCents: int64(s.Value),
 		AcceptedCents: int64(s.Accepted), Chronology: s.Chronology, Notes: s.Notes,
 		AcceptanceStatus: s.AcceptanceStatus, AcceptedNo: s.AcceptedNo,
-		CommitteeID: s.CommitteeCaseID, CommitteeTransferredAt: formatDate(s.CommitteeTransferredAt),
+		AcceptanceLODStatus: s.AcceptanceLODStatus,
+		LODPrintedAt:        formatMoment(s.Acceptance.Form.PrintDate),
+		LODType:             s.Acceptance.LODType, LODTypeName: registrasi.LODTypeName(s.Acceptance.LODType),
+		CashierTransferredAt: formatMoment(s.CashierTransferredAt), CashierCaseID: s.CashierCaseID,
+		CashierTransferred: s.CashierTransferred(),
+		CommitteeID:        s.CommitteeCaseID, CommitteeTransferredAt: formatDate(s.CommitteeTransferredAt),
 		CommitteeDecidedAt: formatDate(s.CommitteeDecidedAt),
 	}
 }

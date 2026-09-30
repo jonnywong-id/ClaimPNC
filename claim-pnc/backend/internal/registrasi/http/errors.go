@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/usecase"
 )
 
 // Kode galat modul registrasi.
@@ -31,6 +32,9 @@ const (
 	CodeDocumentUpload       = "unggah_dokumen_gagal"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
+	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
+	CodeCashierUnavailable   = "kasir_tidak_terhubung"
+	CodeCashierRejected      = "kasir_menolak"
 )
 
 // mapError memilih status HTTP dan badan respons untuk sebuah galat.
@@ -38,6 +42,7 @@ func mapError(err error) (int, ErrorResponse) {
 	var validation *registrasi.ValidationError
 	var registered *registrasi.ReportAlreadyRegisteredError
 	var upload *registrasi.DocumentUploadError
+	var cashierRejected *usecase.CashierRejectedError
 
 	switch {
 	case errors.As(err, &upload):
@@ -161,6 +166,25 @@ func mapError(err error) (int, ErrorResponse) {
 		return http.StatusBadRequest, ErrorResponse{
 			Code:    CodeInvalidAction,
 			Message: "Tindakan itu tidak berlaku pada tahap ini.",
+		}
+
+	case errors.Is(err, usecase.ErrCashierUnavailable):
+		// Kasir tidak menjawab atau alamatnya belum terdaftar: tidak ada yang ditandai terkirim.
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodeCashierUnavailable,
+			Message: "The cashier system could not be reached, so nothing was transferred. Try again, or report it to the administrator.",
+		}
+
+	case errors.As(err, &cashierRejected):
+		// Jawaban Kasir tanpa CaseIDCashier: pesannya ditampilkan apa adanya, seperti Pega.
+		return http.StatusUnprocessableEntity, ErrorResponse{Code: CodeCashierRejected, Message: cashierRejected.Message}
+
+	case errors.Is(err, usecase.ErrPremiumUnavailable):
+		// Status premi yang tidak terbaca MENAHAN akseptasi (Pega tidak menangani
+		// kegagalan layanannya). Rinciannya masuk log.
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodePremiumUnavailable,
+			Message: "The premium status could not be checked, so the acceptance was not saved. Try again, or report it to the administrator.",
 		}
 
 	case errors.Is(err, registrasi.ErrExchangeRateNotFound):

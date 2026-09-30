@@ -307,6 +307,18 @@ type DocumentStorage struct {
 	// tetap terunggah.
 	ConverterURL string
 
+	// SkipConversion (KONVERSI_GAMBAR_LEWATI) melewati konversi AVIF: PNG, JPG, JPEG, dan PDF
+	// diunggah apa adanya dengan ekstensi aslinya. Penyimpangan sementara dari Pega
+	// (`Convert_Avif`) atas keputusan Work Owner 2026-09-30; padam secara baku.
+	SkipConversion bool
+
+	// AccessCode (PENYIMPANAN_DOKUMEN_KODE_AKSES) adalah kode akses terdaftar untuk folder
+	// aplikasi ini, dikirim sebagai `KodeString`. Kosong = token sekali pakai dibuat dan
+	// dicatat ke GENERAL.GCP_IMAGE seperti `GET_TOKEN_STORAGE`. Diisi bila layanan
+	// penyimpanan menuntut kode yang didaftarkan pemiliknya — layanan menolak token sekali
+	// pakai dengan "invalid kodestring data" (2026-09-30). Rahasia: tidak pernah dicatat.
+	AccessCode string
+
 	// Timeout membatasi satu unggahan maupun satu konversi. Kosong berarti 60 detik.
 	Timeout time.Duration
 }
@@ -617,9 +629,11 @@ func Load() (Config, error) {
 			Timeout:     cashierTimeout,
 		},
 		DocumentStorage: DocumentStorage{
-			BaseURL:      get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
-			ConverterURL: get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
-			Timeout:      documentStorageTimeout,
+			BaseURL:        get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
+			ConverterURL:   get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
+			SkipConversion: isTrue(os.Getenv("KONVERSI_GAMBAR_LEWATI")),
+			AccessCode:     strings.TrimSpace(os.Getenv("PENYIMPANAN_DOKUMEN_KODE_AKSES")),
+			Timeout:        documentStorageTimeout,
 		},
 		SMTP: SMTP{
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),

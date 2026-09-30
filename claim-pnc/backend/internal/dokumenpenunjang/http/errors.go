@@ -95,6 +95,16 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			})
 			return
 
+		case errors.Is(err, dokumenpenunjang.ErrLinkTakTerjangkau):
+			// 502: yang gagal database ASMD di ujung DB link, bukan aplikasi ini. Belum ada
+			// berkas yang terkirim, sehingga mengulang aman.
+			writeJSON(w, r, http.StatusBadGateway, ErrorResponse{
+				Code: CodeUpstream,
+				Message: "Basis data penyimpanan dokumen (DB link ASMD) sedang tidak dapat dihubungi. " +
+					"Berkas belum tersimpan. Laporkan ke DBA, lalu coba lagi.",
+			})
+			return
+
 		case errors.Is(err, dokumenpenunjang.ErrKonversiGagal):
 			// 502, sama dengan kegagalan penyimpanan: yang gagal layanan di hulu, dan
 			// belum ada apa pun yang tersimpan sehingga mengulang aman.

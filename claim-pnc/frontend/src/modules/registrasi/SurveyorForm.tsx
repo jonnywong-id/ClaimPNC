@@ -7,6 +7,7 @@ import { formatDate, formatPercent } from '@/components/format'
 import { useSession } from '@/app/session'
 
 import { useCurrencies, violationsFrom } from './api'
+import { AcceptanceButtons } from './AcceptanceButtons'
 import { CommitteeStatus, TransferCommitteeButton } from './Committee'
 import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
@@ -18,6 +19,7 @@ import {
   type Claim,
   type Coverage,
   type CurrencyOption,
+  type Receiver,
   type Settlement,
   type Spreading,
   type Task,
@@ -486,6 +488,9 @@ function AdjustmentView({
                                     estimation={claimEstimate(c)}
                                     travel={klaim.polis.lini === PANEL_TRAVEL}
                                     nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                    groupPanel={klaim.polis.lini}
+                                    businessType={klaim.polis.jenis_bisnis}
+                                    receivers={klaim.penerima_klaim ?? []}
                                     onAdd={() => setAddFor({ i, j })}
                                     lockedReason={lockedReason}
                                     editor={
@@ -534,6 +539,9 @@ function SettlementGrid({
   estimation,
   travel,
   nonMBU,
+  groupPanel,
+  businessType,
+  receivers,
   onAdd,
   editor,
   lockedReason,
@@ -550,6 +558,11 @@ function SettlementGrid({
   estimation: number
   travel: boolean
   nonMBU: boolean
+  /** Group Panel dan jenis bisnis polis — aturan tombol Print LOD. */
+  groupPanel: string
+  businessType: string
+  /** Penerima klaim — pilihan Penerima Klaim form Persetujuan / Akseptasi. */
+  receivers: Receiver[]
   onAdd: () => void
   /** Baris isian adjustment baru, bila tombol Tambah jaminan ini sedang dibuka. */
   editor: ReactNode
@@ -588,6 +601,13 @@ function SettlementGrid({
             <Fragment key={n}>
             <tr className="border-b border-slate-100 align-top">
               <td className="p-2">
+                {/* `.PDFType` baca saja (ShowAdjustment_sect, sel pertama kolom Adjustment):
+                    jenis LOD terakhir yang dicetak lewat Print LOD. */}
+                {s.nama_tipe_pdf_lod && (
+                  <span className="mb-1 block text-xs text-slate-700" title="Tipe PDF">
+                    {s.nama_tipe_pdf_lod}
+                  </span>
+                )}
                 <button
                   type="button"
                   aria-expanded={open === n}
@@ -617,6 +637,17 @@ function SettlementGrid({
               <td className="p-2">{s.nama_tipe_pembayaran}</td>
               <td className="p-2 text-xs">
                 <CommitteeStatus line={s} />
+                <AcceptanceButtons
+                  claimID={claimID}
+                  taskID={taskID}
+                  object={object}
+                  coverage={coverage}
+                  adjustment={n + 1}
+                  line={s}
+                  groupPanel={groupPanel}
+                  businessType={businessType}
+                  receivers={receivers}
+                />
               </td>
               <td className="p-2" />
             </tr>

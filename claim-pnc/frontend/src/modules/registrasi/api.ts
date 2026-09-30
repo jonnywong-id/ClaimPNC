@@ -22,6 +22,10 @@ import {
   type FaceSheetRequest,
   type PLARequest,
   type PLAListResponse,
+  type DLARequest,
+  type DLAListResponse,
+  type CashierRequest,
+  type CashierPreview,
   type SettlementRequest,
   type SettlementPreviewResponse,
   type BankAccount,
@@ -426,6 +430,179 @@ export function usePrintPLA(claimID: string) {
         token,
         portal,
       }),
+  })
+}
+
+/**
+ * Membuka layar PrintDLA: menerbitkan DLA adjustment itu (bila belum) lalu mengembalikan
+ * daftarnya. Mutasi, bukan kueri, karena membukanya dapat menerbitkan nomor.
+ */
+export function useDLAList(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: DLARequest) =>
+      callAPI<DLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla/daftar`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** PRINT (satu nomor) dan Print All DLA — PDF, atau ZIP bila lebih dari satu. */
+export function usePrintDLA(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: DLARequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Isi dialog konfirmasi Transfer Kasir (penerima, rekening, nilai nett, galat pertama). */
+export function useCashierPreview(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: CashierRequest) =>
+      callAPI<CashierPreview>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir/pratinjau`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Submit Transfer Kasir — mengirim pembayaran ke sistem Kasir (TransferToKasir_act). */
+export function useTransferCashier(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: CashierRequest) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Alamat satu baris adjustment untuk dialog Print LOD. Indeks berbasis 1. */
+export type LODRequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  tipe_pdf?: string
+}
+
+export type LODType = { id: string; nama: string; tersedia: boolean }
+
+/** Isi awal dialog Print LOD — pilihan Tipe PDF dan isian section PrintLODdanEmail. */
+export type LODDialog = { tipe: LODType[]; email_lod: string; nama_tertanggung: string }
+
+/** Isi awal dialog Print LOD (`SetTypePDFAdjustment`, `SetDataEmailTertanggung`). */
+export function useLODTypes(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: LODRequest) =>
+      callAPI<LODDialog>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/**
+ * Print LOD — mengunduh PDF Letter of Discharge satu baris adjustment. Mencetak menulis
+ * PDFTYPE dan PRINTLOD_DATE baris itu, sehingga klaim dimuat ulang: kolom Adjustment grid dan
+ * form AcceptationLOD menampilkan Tipe PDF dan Tanggal Cetak LOD yang baru.
+ */
+export function usePrintLOD(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: LODRequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Isian form Persetujuan / Akseptasi (AcceptationLOD_Sect). Tanggal YYYY-MM-DD. */
+export type AcceptanceInput = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  persetujuan_tertanggung: string
+  tanggal_terima_lod: string
+  tanggal_boleh_bayar: string
+  nilai_lod_sen?: number
+  penerima: string
+  nama_komite_akseptasi: string
+  catatan_penerima: string
+  berita_acara: string
+}
+
+/** Satu berkas "Unggah Dokumen Persetujuan LOD" beserta jenis dokumennya (DOC_TYPE_DT_ID). */
+export type AcceptanceFileInput = { berkas: File; jenisDokumen: string }
+
+/** Simpan form Persetujuan / Akseptasi — menerbitkan nomor akseptasi (SetAdjustmentAcceptation). */
+export function useAcceptSettlement(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ isian, berkas }: { isian: AcceptanceInput; berkas: AcceptanceFileInput[] }) => {
+      const form = new FormData()
+      // Nama bagian harus sama dengan yang dibaca handler (AcceptSettlement).
+      form.append('isian', JSON.stringify(isian))
+      for (const f of berkas) {
+        form.append('berkas', f.berkas, f.berkas.name)
+        form.append('jenis_dokumen', f.jenisDokumen)
+      }
+      return callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi`, {
+        metode: 'POST',
+        body: form,
+        token,
+        portal,
+      })
+    },
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
   })
 }
 

@@ -65,6 +65,10 @@ func translate(err error) error {
 	case errors.Is(err, dokumenpenunjang.ErrFolderAplikasiTidakAda):
 		return fail(registrasi.UploadMisconfigured,
 			"Folder penyimpanan dokumen belum terdaftar. Laporkan ke administrator — unggahan tidak dapat diproses.")
+	case errors.Is(err, dokumenpenunjang.ErrLinkTakTerjangkau):
+		return fail(registrasi.UploadUnavailable,
+			"Basis data penyimpanan dokumen (DB link ASMD) sedang tidak dapat dihubungi. Berkas belum "+
+				"tersimpan dan akseptasi belum disimpan. Laporkan ke DBA, lalu coba lagi.")
 	case errors.Is(err, dokumenpenunjang.ErrKonversiGagal):
 		return fail(registrasi.UploadUnavailable,
 			"Layanan konversi gambar sedang tidak dapat dihubungi, sehingga berkas PNG, JPG, dan PDF "+

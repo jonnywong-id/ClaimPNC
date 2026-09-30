@@ -533,7 +533,10 @@ type InboxRepo interface {
 	// Ia TIDAK menyaring pemilik. Pemeriksaan kepemilikan dikerjakan lapisan usecase
 	// lewat BelongsTo, supaya perbedaan antara "tidak ada" dan "bukan milik Anda" dapat
 	// dijawab dengan jujur — dan supaya aturannya tidak tersembunyi di dalam WHERE.
-	FindCase(ctx context.Context, caseID string) (CommitteeCase, error)
+	//
+	// operator menentukan baris ANGGOTA mana yang dikembalikan bila case itu punya beberapa
+	// anggota: baris milik operator itu lebih dulu, lalu anggota yang sedang ditunggu.
+	FindCase(ctx context.Context, caseID, operator string) (CommitteeCase, error)
 }
 
 // InboxEarliestYear adalah tahun terawal case komite yang ditampilkan inbox.
