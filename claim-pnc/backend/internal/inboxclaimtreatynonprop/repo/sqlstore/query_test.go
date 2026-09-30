@@ -163,24 +163,56 @@ func TestEveryListQueryReturnsTheSameAliases(t *testing.T) {
 	}
 }
 
-func TestStatusTextMatchesTheDomainConstants(t *testing.T) {
-	// Teks status adalah LITERAL di dalam kueri, bukan kolom — sehingga ia satu-satunya
-	// nilai di modul ini yang hidup di dua tempat sekaligus: di SQL dan di konstanta
-	// domain yang dipakai penyimpanan memori. Uji ini yang menjaga keduanya tidak
-	// berselisih.
-	for _, name := range adminQueries {
-		require.Containsf(t, query(name),
-			"'"+inboxclaimtreatynonprop.StatusEstimation+"'",
-			"kueri %s tidak memakai teks status tab Admin", name)
+func TestNoQuerySelectsTheUnusedStatusLiteral(t *testing.T) {
+	// `CARI13` — teks tetap 'Estimation' dan 'Acceptation' — DIPILIH keempat kueri lama
+	// tetapi tidak satu pun sel di Section/InboxClaimNonProp_Harness-Section.xml terikat
+	// padanya. Keduanya karena itu tidak pernah sampai ke layar Pega, dan tidak boleh
+	// kembali ke sini: yang digambar di bawah judul "Status" adalah CARI21, yaitu waktu
+	// objek kerja dibuat.
+	for name, text := range queries {
+		require.NotContainsf(t, text, "'Estimation'",
+			"kueri %s memilih teks status yang tidak pernah digambar", name)
+		require.NotContainsf(t, text, "'Acceptation'",
+			"kueri %s memilih teks status yang tidak pernah digambar", name)
 	}
+}
 
-	require.Contains(t, query("list_technical"),
-		"'"+inboxclaimtreatynonprop.StatusAcceptation+"'",
-		"kueri antrean teknik tidak memakai teks status tab Teknik")
+func TestNoQueryComputesAgingWithDateArithmetic(t *testing.T) {
+	// Aritmetika tanggal di SQL adalah jebakan yang SUDAH menggigit sekali di modul ini:
+	// padanan portabel `TRUNC` (`CAST(x AS DATE)`) tidak memangkas jam di Oracle, sehingga
+	// selisihnya berupa pecahan hari — dan pecahan itu membuat SELURUH antrean gagal dimuat,
+	// bukan sekadar menampilkan angka yang keliru.
+	//
+	// Umur karena itu dihitung di Go (`inboxclaimtreatynonprop.AgingDaysSince`). Uji ini
+	// yang mencegahnya kembali ke SQL tanpa ada yang menyadarinya.
+	arithmetic := regexp.MustCompile(`(?i)CAST\([^)]*AS\s+DATE\)\s*\n?\s*-`)
 
-	require.NotContains(t, query("list_technical"),
-		"'"+inboxclaimtreatynonprop.StatusEstimation+"'",
-		"kueri antrean teknik memakai teks status tab Admin")
+	for name, text := range queries {
+		require.NotContainsf(t, strings.ToUpper(text), "AGING_DAYS",
+			"kueri %s menghitung umur di SQL; ia milik Go", name)
+		require.Falsef(t, arithmetic.MatchString(text),
+			"kueri %s mengurangkan dua tanggal di SQL; hasilnya pecahan di Oracle", name)
+	}
+}
+
+func TestEveryListQuerySelectsTheWorkCreationTime(t *testing.T) {
+	// Kolom berjudul "Status" pada grid Teknik terikat `CARI21` = `b.PXCREATEDATETIME`.
+	// Ia diambil KELIMA kueri karena ke-16 alias wajib sama di setiap kueri — pemindai yang
+	// satu melayani kelimanya.
+	//
+	// Ia diambil sebagai NILAI WAKTU. `TO_CHAR` ada di daftar terlarang dan dijaga
+	// TestQueriesFollowPortableSQLDiscipline; bentuk yang dibaca pengguna disusun
+	// inboxclaimtreatynonprop.FormatPegaDateTime.
+	//
+	// Polanya mensyaratkan alias itu bertetangga langsung dengan kolomnya. Pemeriksaan
+	// longgar "memuat PXCREATEDATETIME" akan lulus hanya karena kolom Aging menghitung dari
+	// kolom yang sama.
+	selected := regexp.MustCompile(`(?i)\bB\.PXCREATEDATETIME\s+AS\s+WORK_CREATED_AT\b`)
+
+	for _, name := range listQueries {
+		require.Truef(t, selected.MatchString(query(name)),
+			"kueri %s tidak membawa b.PXCREATEDATETIME sebagai WORK_CREATED_AT", name)
+	}
 }
 
 func TestOnlyAdminQueriesReadTheJSONMasterID(t *testing.T) {

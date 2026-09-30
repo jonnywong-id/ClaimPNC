@@ -45,7 +45,7 @@
 //	tab 1 Cetak Surat           surat BELUM dicetak    TANGGALCETAKDOKUMENPUCL_1 IS NULL
 //	                                                   dan STATUSCASE_1 = '0'
 //	tab 2 Kelengkapan Dokumen   surat SUDAH dicetak    TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL
-//	                            belum disetujui        PUCLAPPROVE_1 <> '1'
+//	                            MASIH di tangan PUCL   PUCLAPPROVE_1 <> '1'
 //	                            bukan jalur MSIG       MSIG_1 IS NULL
 //	tab 3 Klaim MSIG            sama seperti tab 2     MSIG_1 = 'MSIG'
 //	                            tetapi jalur MSIG
@@ -56,16 +56,24 @@
 //
 // # DUA HAL YANG HARUS DISADARI SEBELUM MEMBACA SISA BERKAS INI
 //
-// PERTAMA — kolom `MSIG_1` tampaknya TIDAK PERNAH TERISI.
-// `claim-pnc/docs/kolom-t-claimlist-admin.md` dibaca langsung dari katalog Oracle pada
-// 2026-09-22 dan mendaftar seluruh kolom ber-`NUM_DISTINCT > 0` pada tabel yang sama.
-// `RCL_PUCL_1`, `PUCLAPPROVE_1`, `STATUSCASE_1`, dan `TANGGALKIRIMPUCL_1` ADA di sana;
-// `MSIG_1` TIDAK. Kolomnya nyata — tiga rule SQL memakainya — tetapi tampaknya kosong di
-// seluruh baris.
+// PERTAMA — kolom `MSIG_1` nyaris tidak pernah terisi, tetapi ia BUKAN kosong.
 //
-// Akibatnya: **tab 3 kemungkinan selalu kosong di produksi**, dan tab 2 (`MSIG_1 IS NULL`)
-// menampung seluruhnya. Keputusan Work Owner 2026-09-23: bangun apa adanya, nyatakan
-// temuannya ke pengguna. Lihat PlannedDifferences.
+// `claim-pnc/docs/kolom-t-claimlist-admin.md` dibaca dari katalog Oracle pada 2026-09-22 dan
+// mendaftar seluruh kolom ber-`NUM_DISTINCT > 0` pada tabel yang sama. `RCL_PUCL_1`,
+// `PUCLAPPROVE_1`, `STATUSCASE_1`, dan `TANGGALKIRIMPUCL_1` ADA di sana; `MSIG_1` TIDAK —
+// sehingga modul ini sempat dibangun dengan dugaan bahwa kolomnya tidak pernah diisi.
+//
+// **Dugaan itu terbantah 2026-09-30**, dengan menghitung barisnya langsung:
+// `SELECT MSIG_1, COUNT(*) … GROUP BY MSIG_1` pada portal ASM mengembalikan `MSIG` satu
+// baris dan kosong 7.721 baris. Kolomnya terisi, hanya sangat jarang. Inventaris katalog
+// itu rupanya tidak menangkap kolom yang isinya sesedikit ini.
+//
+// Work Owner menjelaskan pada hari yang sama apa yang DITANDAI kolom itu: **klaim yang
+// datanya dari atau untuk perusahaan MSIG**.
+//
+// Akibatnya: **tab 3 nyaris selalu kosong**, dan tab 2 (`MSIG_1 IS NULL`) menampung
+// selebihnya. Keputusan Work Owner 2026-09-23: bangun apa adanya, nyatakan temuannya ke
+// pengguna. Lihat PlannedDifferences.
 //
 // KEDUA — judul kolom yang SAMA menunjuk kolom yang BERBEDA di layar ini dan di layar
 // Inbox Manager Receive / PUCL. Lihat catatan pada WorkItem.Track dan WorkItem.ExpiryStatus.
@@ -138,8 +146,15 @@ type WorkItem struct {
 	// dibawa adalah pemetaan milik layarnya sendiri (`D-13`), dan menyamakan keduanya akan
 	// menampilkan kolom yang salah tanpa satu pun galat.
 	//
-	// Kolomnya menyimpan ANGKA: `1` berarti RCL, `2` berarti PUCL. Penerjemahannya ada di
-	// kueri sistem lama apa adanya (`GetReminderPUCL-SQL.xml:7-9`), bukan dikarang di sini.
+	// Kolomnya menyimpan ANGKA: `1` berarti RCL, `2` berarti PUCL, dan `3` berarti
+	// **Notification** (Work Owner, 2026-09-30). Penerjemahannya ada di kueri sistem lama
+	// apa adanya (`GetReminderPUCL-SQL.xml:7-9`), bukan dikarang di sini — dan `CASE` di
+	// sana hanya mengenal `1` dan `2`, tanpa `ELSE`.
+	//
+	// Karena itu klaim ber-kode `3` digambar dengan sel KOSONG, bukan dengan teks
+	// "Notification". Artinya sekarang diketahui, tetapi menuliskannya berarti menampilkan
+	// teks yang tidak pernah muncul di Pega — dan `P-5` menetapkan perilaku dipertahankan
+	// lebih dulu. Lihat TrackHidden untuk akibat yang lebih besar dari kode ini.
 	Track string
 
 	// LetterPrintedAt — kolom **"Tanggal Cetak Surat"** <- `TANGGALCETAKDOKUMENPUCL_1`.
@@ -152,19 +167,45 @@ type WorkItem struct {
 
 	// ClaimAge — kolom **"Lama Klaim"** <- `LAMAKLAIM_1`.
 	//
-	// # Kenapa TEKS, bukan angka, dan kenapa tidak dihitung sendiri
+	// # Judulnya menyebut DURASI; isinya TANGGAL
 	//
-	// Karena satuannya tidak diketahui. Tidak satu pun kueri di export MENGHITUNGNYA —
-	// keempatnya hanya MEMILIH kolomnya — dan tidak ada DDL yang menyatakan tipenya
-	// (`R-08`). Kolomnya punya 86 nilai berbeda di produksi
-	// (`docs/kolom-t-claimlist-admin.md` §B.3), jadi ia memang terisi; yang tidak diketahui
-	// adalah artinya.
+	// Work Owner menjelaskan 2026-09-30: isinya **tanggal kirim untuk proses PUCL** — bukan
+	// lamanya klaim. Judul "Lama Klaim" karena itu menyesatkan sejak di Pega, sama seperti
+	// alias-alias yang didaftar di kepala berkas `.sql`. Judulnya tetap dibawa apa adanya
+	// (`D-13`); yang tidak dibawa adalah salah artinya.
 	//
-	// Modul `inboxcloseclaim` dan `inboxanalystdoctor` MENGHITUNG kolom serupa dari selisih
-	// tanggal, dan itu keputusan Work Owner untuk layar yang Report Definition-nya memang
-	// TIDAK mengambil kolom durasi apa pun. Di sini keadaannya kebalikannya: kolomnya
-	// diambil section secara eksplisit, sehingga menggantinya dengan hitungan sendiri
-	// berarti menampilkan angka yang berbeda dari yang dilihat pengguna hari ini.
+	// # Ia nyaris kembar dengan "Tanggal Masuk Inbox", dan itu sudah diukur
+	//
+	// `TANGGALKIRIMPUCL_1` — yang digambar sebagai "Tanggal Masuk Inbox" — namanya
+	// menyatakan hal yang sama persis, dan jumlah nilai berbedanya pun nyaris sama di
+	// produksi: **88 lawan 86** (`docs/kolom-t-claimlist-admin.md` §B.3).
+	//
+	// Pembacaan langsung pada 2026-09-30 menjelaskan mengapa: keduanya ditulis pada langkah
+	// yang SAMA dan hanya terpaut milidetik —
+	//
+	//	kirim = 2025-06-13T14:41:01.532+07:00
+	//	lama  = 2025-06-13T14:41:01.531+07:00
+	//
+	// Dari 7.722 baris, 61 memuat keduanya persis sama dan 25 berbeda. Setelah digambar
+	// sampai satuan detik, kedua kolom karena itu kerap terbaca IDENTIK.
+	//
+	// Keduanya tetap digambar. Duplikasinya ada di Pega, dan keputusan Work Owner
+	// 2026-09-30 adalah mengikuti Pega apa adanya (`P-5`).
+	//
+	// # Kenapa TEKS, dan kenapa tidak dihitung sendiri
+	//
+	// Teks, karena DDL-nya tidak pernah diterima (`R-08`) dan yang terverifikasi barulah
+	// satu basis data dari enam. Pada portal ASM kolomnya `TIMESTAMP(6)`, dan penggambarnya
+	// (`DisplayTimeText`) melewatkan bentuk yang tidak dikenalinya apa adanya — sehingga
+	// portal yang menyimpannya sebagai teks tetap terlayani.
+	//
+	// Tidak dihitung sendiri, karena tidak satu pun kueri di export MENGHITUNGNYA; keempatnya
+	// hanya MEMILIH kolomnya. Modul `inboxcloseclaim` dan `inboxanalystdoctor` memang
+	// menghitung kolom serupa dari selisih tanggal, tetapi itu keputusan Work Owner untuk
+	// layar yang Report Definition-nya TIDAK mengambil kolom durasi apa pun. Di sini
+	// keadaannya kebalikannya: kolomnya diambil section secara eksplisit, sehingga
+	// menggantinya dengan hitungan sendiri berarti menampilkan angka yang berbeda dari yang
+	// dilihat pengguna hari ini.
 	ClaimAge string
 
 	// ExpiryStatus — kolom **"Status Kadaluarsa"** <- `STATUSKLAIM_1`.
@@ -187,6 +228,25 @@ type WorkItem struct {
 	// dengannya. Itu perilaku sistem lama apa adanya; keduanya dibawa menurut layarnya
 	// masing-masing (`P-5`).
 	ExpiryStatus string
+
+	// CreatedAt — kolom **"Tanggal Dibuat"** <- `PXCREATEDATETIME`.
+	//
+	// # Ia kolom yang MENGURUTKAN, dan sebelumnya tidak digambar sama sekali
+	//
+	// Urutan baris layar ini `ORDER BY PXCREATEDATETIME DESC` — mengikuti Report Definition
+	// sistem lama apa adanya. Sistem lama tidak menggambar kolomnya, sehingga tabelnya
+	// terbaca TIDAK URUT: yang tampil sebagai "Tanggal Masuk Inbox" adalah
+	// `TANGGALKIRIMPUCL_1`, dan keduanya dapat terpaut berbulan-bulan karena sebuah klaim
+	// lahir jauh sebelum ia masuk antrean ini.
+	//
+	// Keputusan Work Owner 2026-09-30: **kolom pengurutnya ditampilkan**.
+	//
+	// Yang menentukan pilihan itu di antara tiga kemungkinan: menambah kolom **tidak
+	// mengubah satu baris pun**. Urutan, isi, dan pembagian halamannya sama persis dengan
+	// sebelumnya, sehingga uji kesetaraan gerbang 1 tidak tersentuh. Mengganti kunci
+	// urutnya — pilihan yang tampak lebih langsung — akan memindahkan baris antarhalaman,
+	// dan itu selisih yang jauh lebih mahal untuk hal yang sama.
+	CreatedAt string
 }
 
 // Caller adalah identitas petugas yang mengirim permintaan.
@@ -314,23 +374,61 @@ const (
 	// di export mana pun. Yang diketahui hanyalah `'0'` inilah yang dipakai penyaring, dan
 	// itu dibawa apa adanya.
 	//
+	// Keputusan Work Owner 2026-09-30: **"ikuti apa adanya saja dari Pega"** — artinya
+	// tidak akan dicari, dan penyaringnya tidak akan diubah. Peringatan `-periksa` tetap
+	// dipasang: bila nilai `'0'` kelak berubah di Pega, tab 1 akan kosong tanpa satu pun
+	// galat, dan peringatan itulah satu-satunya yang akan menyebut sebabnya.
+	//
 	// Perhatikan kolom ini MENYARING tab 1 tetapi TIDAK digambar satu sel pun di layar —
 	// judul "Status Kadaluarsa" menunjuk `STATUSKLAIM_1`. Lihat WorkItem.ExpiryStatus.
 	ExpiryStatusActive = "0"
 
-	// PUCLApproved adalah nilai `PUCLAPPROVE_1` yang MENGELUARKAN klaim dari tab 2 dan 3 —
-	// penyaring `D` pada kedua Report Definition-nya.
+	// PUCLReturnedToAnalyst adalah nilai `PUCLAPPROVE_1` yang MENGELUARKAN klaim dari tab 2
+	// dan 3 — penyaring `D` pada kedua Report Definition-nya.
 	//
-	// Pembandingnya `<>`, sehingga klaim yang `PUCLAPPROVE_1` kosong TETAP muncul di Oracle
-	// maupun PostgreSQL? TIDAK — `NULL <> '1'` menghasilkan UNKNOWN, bukan TRUE, sehingga
-	// barisnya TIDAK lolos. Itu perilaku sistem lama apa adanya, dan dibawa tanpa
-	// diperbaiki; lihat catatan pada berkas .sql.
-	PUCLApproved = "1"
+	// # Arti kedua nilainya, dan kenapa namanya BUKAN "PUCLApproved"
+	//
+	// Work Owner, 2026-09-30:
+	//
+	//	'0'  Kirim Ke PUCL          — klaimnya berada di tangan PUCL, MENUNGGU dikerjakan
+	//	'1'  PUCL kirim Ke Analyst  — PUCL sudah selesai dan mengembalikannya ke Analyst
+	//
+	// Nama lamanya `PUCLApproved` menyatakan "disetujui", dan itu bukan yang terjadi:
+	// yang ditandai adalah **kepada siapa klaimnya sekarang berada**, bukan putusan setuju
+	// atau tolak. Nama yang menyatakan putusan pada kolom yang menyatakan posisi adalah
+	// persis jenis kekeliruan yang `D-19` larang dibawa dari sistem lama.
+	//
+	// Penyaring `<> '1'` karena itu berarti **"masih di tangan PUCL"**, dan tab 2 memang
+	// antrean pekerjaan PUCL. Perilakunya benar; yang keliru hanya namanya, dan itu
+	// diperbaiki di sini tanpa menyentuh satu pun kueri.
+	//
+	// # Nilai KOSONG tetap tidak lolos, dan sekarang itu dapat dinilai
+	//
+	// `NULL <> '1'` menghasilkan UNKNOWN, bukan TRUE, sehingga klaim yang penandanya belum
+	// pernah diisi TIDAK muncul — di Oracle maupun PostgreSQL. Dengan arti di atas, itu
+	// **masuk akal**: klaim yang belum pernah dikirim ke PUCL memang bukan pekerjaan PUCL.
+	//
+	// Yang tetap perlu dihitung adalah klaim yang suratnya SUDAH dicetak tetapi penandanya
+	// kosong. Klaim seperti itu keluar dari tab 1 (suratnya sudah dicetak) dan tidak masuk
+	// tab 2 maupun 3 — ia tidak terlihat di tab mana pun. Kueri hitungnya dicetak
+	// `-periksa`.
+	PUCLReturnedToAnalyst = "1"
+
+	// PUCLWithPUCL adalah nilai `PUCLAPPROVE_1` yang MENAHAN klaim di tab 2 dan 3.
+	//
+	// Tidak dipakai satu pun penyaring — penyaringnya menyebut nilai yang dikecualikan,
+	// bukan nilai yang diterima. Ia ditulis di sini supaya kedua nilai kolom ini terbaca
+	// berdampingan: tanpa pasangannya, `PUCLReturnedToAnalyst` terbaca seolah satu-satunya
+	// nilai yang mungkin.
+	PUCLWithPUCL = "0"
 
 	// MSIGMarker adalah nilai `MSIG_1` yang menempatkan klaim di tab "Klaim MSIG" —
 	// penyaring `E` pada `InboxMISG_RD`.
 	//
-	// Kolomnya tampaknya TIDAK PERNAH TERISI di produksi; lihat catatan di kepala paket.
+	// Ia menandai **klaim yang datanya dari atau untuk perusahaan MSIG** (Work Owner,
+	// 2026-09-30). Kolomnya TERISI di produksi, tetapi sangat jarang — satu baris dari
+	// 7.722 pada portal ASM, dihitung langsung 2026-09-30. Lihat catatan di kepala paket:
+	// dugaan bahwa ia tidak pernah terisi terbantah oleh hitungan itu.
 	MSIGMarker = "MSIG"
 )
 
@@ -678,11 +776,19 @@ type DocumentReceipt struct {
 // Keputusan Work Owner 2026-09-24: **"tidak usah pakai when dulu"**. Layar kerja karena itu
 // terbuka untuk kode jalur apa pun, termasuk `3`.
 //
-// Konstantanya tetap ada karena ia merekam temuan yang nyata dan akan dibutuhkan bila
-// syaratnya kelak diberlakukan — bukan karena ada kode yang memakainya. Artinya pun belum
-// diketahui: tidak ada master yang menerjemahkan kode jalur di export mana pun, dan `CASE`
-// penerjemah di `GetReminderPUCL-SQL.xml` hanya mengenal `1` dan `2`, sementara kolomnya
-// punya TIGA nilai berbeda di produksi (`docs/kolom-t-claimlist-admin.md` §B.3).
+// # Artinya sekarang diketahui: `3` = Notification
+//
+// Work Owner, 2026-09-30: `1` RCL · `2` PUCL · **`3` Notification**. Itu mengubah bobot
+// keputusan di atas, dan perlu dibaca sebelum satu pun tombol tulis dihidupkan.
+//
+// Klaim ber-kode `3` bukan pekerjaan RCL maupun PUCL — ia pemberitahuan. Pega
+// menyembunyikan layar kerjanya justru karena itu. Selama layar di sini **hanya membaca**,
+// membukanya tidak mengubah apa pun dan keputusan Work Owner tetap aman.
+//
+// Yang berubah begitu tombol tulis hidup: petugas akan dapat mencetak surat atau mengirim
+// pengingat pada klaim yang di Pega tidak pernah bisa dibuka sama sekali — dan itu tidak
+// menghasilkan satu pun galat. Karena itu syarat ini WAJIB diberlakukan kembali sebelum
+// operasi tulis pertama ditambahkan ke Repo, bukan sesudahnya.
 const TrackHidden = "3"
 
 // ErrClaimNotFound dikembalikan saat kunci klaim tidak ditemukan di portal yang dipilih.

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { APIError, callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -9,7 +9,7 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
-import { NonPropTabs } from './NonPropTabs'
+import { NonPropViewSelect } from './NonPropViewSelect'
 import {
   useClaimTreatyNonPropList,
   useClaimTreatyNonPropMetadata,
@@ -39,14 +39,29 @@ import {
  *
  * # Susunan layar, dan dari mana bentuknya
  *
- * Diambil dari `Section/InboxClaimNonProp_Harness-Section.xml` apa adanya: bilah tab,
- * tombol pembuat klaim, tombol ekspor, DUA checkbox, lalu grid berhalaman. Nama kolom
- * TIDAK diterjemahkan — `D-13` menetapkan tampilan meniru Pega, dan itulah teks yang
- * selama ini dibaca pengguna.
+ * Diambil dari `Section/InboxClaimNonProp_Harness-Section.xml` apa adanya: judul "Claims In
+ * Progress", tombol pembuat klaim, tombol ekspor, dropdown pemilih antrean, DUA checkbox,
+ * lalu grid berhalaman yang punya judulnya sendiri. Nama kolom TIDAK diterjemahkan —
+ * `D-13` menetapkan tampilan meniru Pega, dan itulah teks yang selama ini dibaca pengguna.
+ *
+ * Bentuk itu berbeda dari versi sebelumnya di sini pada tiga hal, dan ketiganya karena
+ * section-nya dibaca ulang sel demi sel:
+ *
+ *   - pemilih antreannya DROPDOWN, bukan bilah tab;
+ *   - urutan kolomnya mengikuti urutan SEL, bukan urutan kolom kuerinya — nomor polis
+ *     berada sesudah Ceding Co, bukan di tengah;
+ *   - kolom berjudul "Status" berisi WAKTU objek kerja dibuat, bukan teks tetap per
+ *     antrean, dan hanya ada di grid Teknik.
+ *
+ * # Nomor klaim adalah TAUTAN, bukan tombol di kolom terakhir
+ *
+ * Sel Claim.ID di kedua grid ber-`pyAction openAssignment`: mengkliknya membuka objek
+ * kerjanya. Tombol "Lihat Detail Klaim" di kolom tambahan karena itu DIHAPUS — ia kolom
+ * ke-13 yang tidak ada di Pega, sementara tautannya menempati kolom yang memang sudah ada.
  *
  * # Kenapa kolomnya datang dari server
  *
- * Karena kedua tab yang terisi punya kolom yang berbeda, dan daftar itu adalah hasil
+ * Karena kedua antrean yang terisi punya kolom yang berbeda, dan daftar itu adalah hasil
  * pembacaan export Pega yang tercatat di backend. Menyalinnya ke sini berarti daftar yang
  * sama hidup di dua tempat.
  */
@@ -118,7 +133,7 @@ export function ClaimTreatyNonPropPage() {
   return (
     <PageFrame filter={filter} exportable={!blocked && (list.data?.paginasi.total ?? 0) > 0}>
       <div className="mt-4">
-        <NonPropTabs tabs={tabs} active={active} onSelect={selectTab} />
+        <NonPropViewSelect tabs={tabs} active={active} onSelect={selectTab} />
       </div>
 
       {tab && (
@@ -138,10 +153,13 @@ export function ClaimTreatyNonPropPage() {
 
               <div className="mt-4">
                 <DataTable<WorkItem>
-                  columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+                  columns={columnsFor(tab)}
                   rows={list.data?.baris ?? []}
                   rowKey={(row) => `${row.referensi}|${row.no_klaim}`}
-                  title={tab.nama}
+                  // Judul GRID, bukan teks pilihan dropdown. Keduanya tampil bersamaan dan
+                  // berbunyi berbeda: dropdown "Treaty-In Teknik", grid "Work Treatyin Non
+                  // Propotional Teknik".
+                  title={tab.judul_grid ?? tab.nama}
                   // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA
                   // halaman yang sedang terbuka, sehingga pengguna dapat diberi tahu
                   // "tidak ada" untuk baris yang sebenarnya ada di halaman berikutnya.
@@ -195,9 +213,13 @@ function PageFrame({
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">
-            Inbox Claim Treaty Non Prop
-          </h1>
+          {/*
+            Judulnya "Claims In Progress", bukan nama menunya. Itulah judul kontainer di
+            `Section/InboxClaimNonProp_Harness-Section.xml` dan itu pula yang terbaca di
+            Pega (`D-13`). Nama menunya — "Inbox Claim Treaty Non Prop" — tetap terlihat di
+            menu kiri, tempat pengguna memilihnya.
+          */}
+          <h1 className="text-xl font-semibold text-slate-900">Claims In Progress</h1>
           <p className="mt-1 text-sm text-slate-600">
             Antrean klaim treaty non-proporsional — klaim yang dialihkan perusahaan
             asuransi lain (Ceding Co) kepada ASM sebagai penanggung kerugian di atas batas
@@ -412,27 +434,45 @@ function filterExplanation(tab: Tab, filter: FilterForm): string {
 }
 
 /**
- * Tombol rincian klaim.
+ * Nomor klaim sebagai tautan ke layar Acceptation Claim.
  *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri
- * yang belum dibangun. Tombolnya tetap dibangun mengikuti layar Treaty Prop, dan tujuannya
- * diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
+ * Sel Claim.ID di kedua grid Pega ber-`pyAction openAssignment` — mengkliknya membuka objek
+ * kerjanya, dan Flow Action yang digambar untuk objek kerja itu adalah `InputAcceptation`:
+ * satu-satunya Flow Action yang terdaftar pada kelas
+ * `ASM-FW-GCNMFW-Work-ClaimTreatyNonProp`. Padanannya di sini adalah modul
+ * `input-acceptation`.
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega. Dengan begitu menyalakan layar
- * rincian kelak tidak menuntut perubahan kontrak API modul ini.
+ * Sebelumnya tautan ini menunjuk `/view-claim/:referensi`, penampung layar "View Claim" yang
+ * belum dibangun — sehingga setiap klik berakhir di pemberitahuan "layar belum dibangun".
+ * Tujuannya dibetulkan setelah Flow Action-nya ditelusuri (2026-09-30).
+ *
+ * # Yang dikirim adalah NOMOR KLAIM, bukan kunci teknis Pega
+ *
+ * Alamatnya terbaca orang (`/input-acceptation/CLMNP-232`), dapat disalin ke percakapan, dan
+ * tidak membocorkan bentuk kunci internal Pega ke bilah alamat. Itu mengikuti layar saudaranya
+ * `outstanding-claim`, yang memakai nomor klaim dengan alasan yang sama. Kunci teknisnya tetap
+ * dikirim server pada setiap baris, sehingga beralih memakainya kelak tidak menuntut perubahan
+ * kontrak.
+ *
+ * # Baris tanpa nomor klaim tidak menjadi tautan
+ *
+ * Tautan yang alamatnya kosong tetap dapat diklik dan membawa pengguna ke layar yang pasti
+ * gagal. Yang digambar untuk baris seperti itu adalah tanda pisah.
  */
-function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.no_klaim
+function ClaimIDLink({ item }: { item: WorkItem }) {
+  if (item.no_klaim === '') return <span className="text-slate-400">—</span>
 
   return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+    <Link
+      to={`/input-acceptation/${encodeURIComponent(item.no_klaim)}`}
+      className={[
+        'font-medium text-blue-700 underline-offset-2 hover:underline',
+        'focus:outline-none focus-visible:rounded-kontrol',
+        'focus-visible:ring-2 focus-visible:ring-blue-500/50',
+      ].join(' ')}
     >
-      Lihat Detail Klaim
-    </Button>
+      {item.no_klaim}
+    </Link>
   )
 }
 
@@ -508,26 +548,26 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
- * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol,
- * dan backend tidak tahu apa pun tentang rute antarmuka.
+ * SELURUH kolom datang dari server, tanpa kolom aksi tambahan di ujung. Yang membawa
+ * pengguna ke rincian klaim adalah nomor klaim di kolom pertama — lihat ClaimIDLink.
+ *
+ * Kolom pertama itu tetap punya `value` berupa teks polos. `Column.value` adalah yang
+ * dicari dan diurutkan, sedangkan `render` yang dilihat; menyatukannya akan membuat
+ * pengurutan menelusuri markup tautannya, bukan nomornya.
  */
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-  }))
+function columnsFor(tab: Tab): Column<WorkItem>[] {
+  return tab.kolom.map((column) => {
+    const base: Column<WorkItem> = {
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => cellText(row, column),
+    }
 
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
+    if (column.kunci === 'no_klaim') {
+      return { ...base, render: (row) => <ClaimIDLink item={row} /> }
+    }
+    return base
   })
-
-  return columns
 }
 
 /**
@@ -535,12 +575,15 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
  *
  * Tiga perlakuan yang berbeda, dan masing-masing punya alasannya:
  *
- *  - Aging adalah ANGKA. Nol hari adalah nilai yang sah dan berarti "masuk hari ini",
- *    sehingga ia TIDAK boleh berubah menjadi tanda pisah seperti isian teks yang kosong.
+ *  - Aging adalah ANGKA, digambar apa adanya tanpa satuan — persis seperti di Pega. Nol
+ *    hari adalah nilai yang sah dan berarti "masuk hari ini", sehingga ia TIDAK boleh
+ *    berubah menjadi tanda pisah seperti isian teks yang kosong. Satuannya disebutkan di
+ *    keterangan antrean dan di daftar selisih terencana, bukan diulang pada setiap baris.
  *  - Tanggal Kejadian diformat HANYA bila bentuknya memang `YYYY-MM-DD`. Ia dibaca dari
  *    blob JSON yang bentuknya tidak dapat diperiksa (`R-08`), sehingga memaksakan
  *    pemformatan akan mengubah nilai yang tidak dikenali menjadi teks yang salah — lebih
- *    buruk daripada menampilkannya apa adanya.
+ *    buruk daripada menampilkannya apa adanya. Kolom "Status" lolos syarat itu dengan
+ *    sendirinya: `20240201T095612.955 GMT` bukan `YYYY-MM-DD`, jadi ia tampil apa adanya.
  *  - Teks kosong menjadi tanda pisah, bukan sel kosong yang tidak dapat dibedakan dari
  *    kolom yang gagal dimuat.
  */
@@ -548,7 +591,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
   if (typeof value === 'number') {
-    return `${value} hari`
+    return String(value)
   }
 
   if (value === null || value === undefined || value === '') return '—'

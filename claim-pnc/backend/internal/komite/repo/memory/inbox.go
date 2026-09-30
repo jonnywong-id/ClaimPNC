@@ -107,7 +107,7 @@ func (s *InboxStore) Summarize(_ context.Context, f komite.InboxFilter) (komite.
 // Pemeriksaan kepemilikan sengaja TIDAK dikerjakan di sini — ia milik lapisan usecase,
 // supaya "tidak ada" dan "bukan milik Anda" dapat dibedakan di log meski disamakan di
 // peramban.
-func (s *InboxStore) FindCase(_ context.Context, caseID string) (komite.CommitteeCase, error) {
+func (s *InboxStore) FindCase(_ context.Context, caseID, _ string) (komite.CommitteeCase, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

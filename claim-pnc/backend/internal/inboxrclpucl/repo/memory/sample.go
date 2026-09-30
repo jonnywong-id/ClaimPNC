@@ -54,7 +54,28 @@ func SampleRows() []Row {
 	// membuat baris contoh menceritakan dua hal yang berbeda.
 	sent := func(day int) (time.Time, string) {
 		at := time.Date(2026, time.September, day, 9, 30, 0, 0, time.UTC)
-		return at, at.Format("2006-01-02 15:04:05")
+		return at, at.Format(inboxrclpucl.DisplayTimeLayout)
+	}
+
+	// claimAge menyusun isi kolom "Lama Klaim".
+	//
+	// # Ia TANGGAL, bukan angka — dan baris contoh ini sempat menyatakan sebaliknya
+	//
+	// Sampai 2026-09-30 kesebelas baris di bawah mengisinya dengan bilangan ("12", "5", …),
+	// mengikuti judul kolomnya. Judul itu menyesatkan sejak di Pega: Work Owner menjelaskan
+	// isinya **tanggal kirim untuk proses PUCL**, dan kolomnya terverifikasi bertipe
+	// `TIMESTAMP(6)` di Oracle pada hari yang sama.
+	//
+	// Baris contoh yang bentuknya berbeda dari produksi meloloskan uji yang tidak akan
+	// lolos di produksi, sehingga bilangan itu diganti tanggal.
+	//
+	// Ia sengaja dibuat satu detik LEBIH AWAL daripada "Tanggal Masuk Inbox", bukan sama
+	// persis. Di produksi kedua kolom memang terpaut milidetik — keduanya ditulis pada
+	// langkah yang sama — tetapi baris contoh yang membuatnya identik akan meloloskan
+	// tertukarnya kedua isian tanpa ketahuan.
+	claimAge := func(day int) string {
+		at, _ := sent(day)
+		return at.Add(-time.Second).Format(inboxrclpucl.DisplayTimeLayout)
 	}
 
 	rows := []Row{}
@@ -71,7 +92,7 @@ func SampleRows() []Row {
 			AnalystNote:  "Dokumen pendukung tidak lengkap, diteruskan ke jalur RCL.",
 			// Kosong — inilah yang menempatkannya di tab Cetak Surat.
 			LetterPrintedAt: "",
-			ClaimAge:        "12",
+			ClaimAge:        claimAge(10),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
@@ -105,7 +126,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text2,
 			AnalystNote:     "Permintaan proses ulang dari cabang.",
 			LetterPrintedAt: "",
-			ClaimAge:        "5",
+			ClaimAge:        claimAge(11),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodePUCL,
@@ -139,7 +160,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text3,
 			AnalystNote:     "Penanda kasus berbeda; tidak masuk antrean cetak surat.",
 			LetterPrintedAt: "",
-			ClaimAge:        "30",
+			ClaimAge:        claimAge(12),
 			ExpiryStatus:    "Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
@@ -164,7 +185,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text4,
 			AnalystNote:     "Surat penolakan sudah dikirim, menunggu tanggapan.",
 			LetterPrintedAt: "2026-09-15",
-			ClaimAge:        "8",
+			ClaimAge:        claimAge(13),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
@@ -194,7 +215,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text5,
 			AnalystNote:     "Menunggu kelengkapan dokumen dari tertanggung.",
 			LetterPrintedAt: "2026-09-16",
-			ClaimAge:        "3",
+			ClaimAge:        claimAge(14),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodePUCL,
@@ -220,7 +241,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text6,
 			AnalystNote:     "Sudah disetujui; keluar dari antrean.",
 			LetterPrintedAt: "2026-09-17",
-			ClaimAge:        "2",
+			ClaimAge:        claimAge(15),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodePUCL,
@@ -228,7 +249,7 @@ func SampleRows() []Row {
 		AssignedOperator: basket,
 		WorkStatus:       "Open",
 		ExpiryCaseStatus: "1",
-		PUCLApprove:      inboxrclpucl.PUCLApproved,
+		PUCLApprove:      inboxrclpucl.PUCLReturnedToAnalyst,
 		ClaimStatus:      "1163",
 		GroupPanel:       "006",
 		CreatedAt:        base.Add(-50 * time.Minute),
@@ -254,7 +275,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text7,
 			AnalystNote:     "Penanda persetujuan belum pernah diisi.",
 			LetterPrintedAt: "2026-09-18",
-			ClaimAge:        "9",
+			ClaimAge:        claimAge(16),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
@@ -284,7 +305,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text8,
 			AnalystNote:     "Klaim jalur MSIG.",
 			LetterPrintedAt: "2026-09-19",
-			ClaimAge:        "4",
+			ClaimAge:        claimAge(17),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodePUCL,
@@ -311,7 +332,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text9,
 			AnalystNote:     "Sudah tuntas; tidak lagi menunggu tindakan.",
 			LetterPrintedAt: "",
-			ClaimAge:        "1",
+			ClaimAge:        claimAge(18),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
@@ -336,7 +357,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text10,
 			AnalystNote:     "Berada di antrean komite, bukan RCL/PUCL.",
 			LetterPrintedAt: "",
-			ClaimAge:        "6",
+			ClaimAge:        claimAge(19),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
@@ -367,7 +388,7 @@ func SampleRows() []Row {
 			InboxEntryAt:    text11,
 			AnalystNote:     "Klaim Personal Accident di luar antrean RCL/PUCL.",
 			LetterPrintedAt: "2026-09-14",
-			ClaimAge:        "7",
+			ClaimAge:        claimAge(13),
 			ExpiryStatus:    "Belum Kadaluarsa",
 		},
 		TrackCode:        inboxrclpucl.TrackCodePUCL,

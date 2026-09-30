@@ -65,7 +65,11 @@ type Metadata struct {
 	ReportColumns []inboxrclpucl.Column
 
 	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string
+	//
+	// Tiap butir membawa ringkasan satu kalimat DAN rinciannya. Layar menggambar
+	// ringkasannya, dan membuka rinciannya hanya bila diminta — lihat
+	// `inboxrclpucl.Difference`.
+	PlannedDifferences []inboxrclpucl.Difference
 }
 
 // Metadata menyerahkan keterangan layar.
@@ -76,11 +80,16 @@ func (s *Service) Metadata() Metadata {
 	columns := make([]inboxrclpucl.Column, len(inboxrclpucl.DailyReportColumns))
 	copy(columns, inboxrclpucl.DailyReportColumns)
 
+	// Salinan, bukan senarai aslinya — sama alasannya dengan Tabs(): pemanggil tidak boleh
+	// dapat mengubah daftar selisih dengan menulisi hasilnya.
+	differences := make([]inboxrclpucl.Difference, len(inboxrclpucl.PlannedDifferences))
+	copy(differences, inboxrclpucl.PlannedDifferences)
+
 	return Metadata{
 		Tabs:               inboxrclpucl.Tabs(),
 		DefaultTab:         inboxrclpucl.DefaultTab,
 		ReportColumns:      columns,
-		PlannedDifferences: inboxrclpucl.PlannedDifferences,
+		PlannedDifferences: differences,
 	}
 }
 

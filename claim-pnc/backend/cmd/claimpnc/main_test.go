@@ -14,6 +14,7 @@ import (
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/logging"
+	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
 )
 
 func devConfig() config.Config {
@@ -232,7 +233,7 @@ func TestRegistrationAssemblesOnBothBranches(t *testing.T) {
 	logger := logging.New(slog.LevelError)
 
 	t.Run("tanpa Oracle", func(t *testing.T) {
-		service, err := assembleRegistration(nil, logger)
+		service, err := assembleRegistration(nil, logger, nil, nil, config.Cashier{})
 		require.NoError(t, err)
 		require.NotNil(t, service)
 	})
@@ -241,7 +242,7 @@ func TestRegistrationAssemblesOnBothBranches(t *testing.T) {
 		db := sql.OpenDB(fakeConnector{})
 		defer db.Close()
 
-		service, err := assembleRegistration(db, logger)
+		service, err := assembleRegistration(db, logger, &registrasimemory.DocumentUploader{}, nil, config.Cashier{})
 		require.NoError(t, err)
 		require.NotNil(t, service)
 	})

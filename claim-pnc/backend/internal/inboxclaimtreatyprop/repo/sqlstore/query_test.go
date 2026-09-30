@@ -47,8 +47,7 @@ func allPlans(t *testing.T) map[string]struct {
 		tab    string
 		seeAll bool
 	}{
-		{"worklist_milik_sendiri", inboxclaimtreatyprop.TabWorkList, false},
-		{"worklist_lihat_semua", inboxclaimtreatyprop.TabWorkList, true},
+		{"antrean_admin", inboxclaimtreatyprop.TabWorkList, false},
 		{"antrean_teknik", inboxclaimtreatyprop.TabTechnical, false},
 	}
 
@@ -88,42 +87,47 @@ func TestBlockedTabHasNoQuery(t *testing.T) {
 	}
 }
 
-func TestSeeAllPicksADifferentQuery(t *testing.T) {
-	// Kedua keadaan checkbox dilayani kueri yang BERBEDA, bukan satu kueri ber-penyaring
-	// yang dapat dimatikan. Kalau keduanya sama, penyaring kepemilikan pasti hilang di
-	// salah satunya — dan itu kebocoran antrean, bukan sekadar hasil yang lebih banyak.
-	plans := allPlans(t)
-	require.NotEqual(t,
-		plans["worklist_milik_sendiri"].plan.name,
-		plans["worklist_lihat_semua"].plan.name,
-	)
-}
-
-func TestOnlyScopedQueryBindsTheCallerLogin(t *testing.T) {
-	plans := allPlans(t)
+func TestNoQueryBindsTheCallerLogin(t *testing.T) {
+	// Kedua Report Definition tidak menyaring menurut petugas. Satu bind berisi login
+	// pemanggil yang masuk diam-diam akan mengembalikan penyaring itu tanpa satu pun
+	// keputusan — dan tab yang tiba-tiba menyempit terbaca sebagai data hilang.
 	page := samplePage()
-
-	scoped := plans["worklist_milik_sendiri"]
-	require.Equal(t, "ADMINTREATY1", scoped.plan.args(scoped.query, page)[0],
-		"kueri antrean milik sendiri wajib mengikat login pemanggil")
-
-	all := plans["worklist_lihat_semua"]
-	for _, arg := range all.plan.args(all.query, page) {
-		require.NotEqual(t, "ADMINTREATY1", arg,
-			"kueri lihat semua tidak boleh mengikat login pemanggil")
+	for label, entry := range allPlans(t) {
+		for _, arg := range entry.plan.args(entry.query, page) {
+			require.NotEqualf(t, "ADMINTREATY1", arg,
+				"%s mengikat login pemanggil; Report Definition-nya tidak menyaringnya",
+				label)
+		}
 	}
 }
 
-func TestTechnicalQueryBindsTheWorkbasketAccount(t *testing.T) {
-	// Nama akun antrean dikirim sebagai BIND, bukan ditulis di dalam SQL. Nilainya karena
-	// itu hanya hidup di satu tempat, dan penyimpanan memori membaca konstanta yang sama.
-	plans := allPlans(t)
-	technical := plans["antrean_teknik"]
+func TestEveryQueryBindsTheWorkClass(t *testing.T) {
+	// Kelas objek kerja dikirim sebagai BIND, bukan ditulis di dalam SQL. Nilainya karena
+	// itu hanya hidup di satu tempat — inboxclaimtreatyprop.WorkClass — dan penyimpanan
+	// memori membaca konstanta yang sama.
+	//
+	// Ia yang menggantikan pola `CLMP` pada kunci objek kerja: JOIN ke sebuah kelas di Pega
+	// membatasi barisnya ke kelas itu, sedangkan pola di tengah teks kunci hanya kebetulan
+	// bekerja.
+	page := samplePage()
+	for label, entry := range allPlans(t) {
+		require.Equalf(t, inboxclaimtreatyprop.WorkClass,
+			entry.plan.args(entry.query, page)[0],
+			"%s tidak mengikat kelas objek kerja sebagai argumen pertama", label)
+	}
+}
 
-	require.Equal(t,
-		inboxclaimtreatyprop.TechnicalWorkbasket,
-		technical.plan.args(technical.query, samplePage())[0],
-	)
+func TestNoQueryBindsTheWorkbasketAccount(t *testing.T) {
+	// Report Definition antrean teknik tidak menyaring menurut nama antrean. Nama akun yang
+	// masuk kembali sebagai bind akan menyembunyikan antrean bersama lain yang di Pega
+	// justru tampil.
+	page := samplePage()
+	for label, entry := range allPlans(t) {
+		for _, arg := range entry.plan.args(entry.query, page) {
+			require.NotEqualf(t, inboxclaimtreatyprop.TechnicalWorkbasket, arg,
+				"%s masih menyaring menurut nama antrean", label)
+		}
+	}
 }
 
 func TestMissingQueryPanics(t *testing.T) {
@@ -149,25 +153,82 @@ func TestEveryListQueryReturnsTheSameAliases(t *testing.T) {
 	}
 }
 
-func TestOnlyTheTechnicalQueryReadsSubjectivity(t *testing.T) {
-	// Hanya `GetClaimTreatyTeknik_SQL` yang membawa Subjectivity. Kalau kueri worklist
-	// diam-diam ikut membacanya, kolomnya akan terisi di tab yang di sistem lama tidak
-	// pernah memilikinya — selisih yang tidak ada di daftar P-5.
-	require.Contains(t, query("list_workbasket"), "$.IsSubjectivity")
-	require.NotContains(t, query("list_worklist"), "$.IsSubjectivity")
-	require.NotContains(t, query("list_worklist_all"), "$.IsSubjectivity")
+func TestSubjectivityIsNeverGuessed(t *testing.T) {
+	// `IsSubjectivity` adalah satu-satunya properti pada Report Definition yang nama kolom
+	// tereksposnya tidak dapat ditemukan di export. Ia dikirim NULL.
+	//
+	// Menebak namanya menggagalkan SELURUH kueri dengan ORA-00904 — tab yang tidak dapat
+	// dibuka sama sekali, alih-alih satu kolom yang kosong. Uji ini yang menahan tebakan
+	// itu masuk.
+	for _, name := range listQueries {
+		upper := strings.ToUpper(query(name))
+		require.Containsf(t, upper, "AS SUBJECTIVITY",
+			"kueri %s tidak lagi mengirim kolom SUBJECTIVITY", name)
+		require.Containsf(t, upper, "CAST(NULL AS VARCHAR2(100))",
+			"kueri %s tidak lagi mengirim SUBJECTIVITY sebagai NULL", name)
+		require.NotContainsf(t, upper, "W.ISSUBJECTIVITY",
+			"kueri %s menebak nama kolom IsSubjectivity", name)
+	}
 }
 
-func TestEveryListQueryReadsTheLossDate(t *testing.T) {
-	// Inilah perbaikan P-5 yang disetujui Work Owner 2026-09-21. Di sistem lama kueri
-	// antrean teknik menaruh Tanggal Kejadian di CARI13 sementara gridnya membaca CARI10,
-	// sehingga kolomnya selalu kosong. Uji ini menjaga agar ketiganya benar-benar
-	// membawanya, dan dengan alias yang sama.
+func TestEveryListQueryReadsTheLossDateFromTheWorkObject(t *testing.T) {
+	// `DATEOFLOSS_1`, BUKAN `DATEOFLOSS`. Pada seluruh rule Pega yang aliasnya menunjuk
+	// tabel objek kerja, yang dipakai selalu bentuk ber-`_1` (19 berkas) dan tidak pernah
+	// yang tanpa (0 berkas).
+	//
+	// Salah memilih di antara keduanya tidak menghasilkan galat bila kolom tanpa `_1`
+	// kebetulan ada — hanya tanggal milik properti yang berbeda.
 	for _, name := range listQueries {
-		require.Containsf(t, query(name), "$.DateOfLoss",
-			"kueri %s tidak membawa Tanggal Kejadian", name)
+		require.Containsf(t, query(name), "w.DATEOFLOSS_1",
+			"kueri %s tidak membaca Tanggal Kejadian dari tabel objek kerja", name)
 		require.Containsf(t, query(name), "AS LOSS_DATE",
 			"kueri %s tidak mengaliaskan Tanggal Kejadian ke LOSS_DATE", name)
+	}
+}
+
+func TestNoQueryReadsTheClaimJSONDocument(t *testing.T) {
+	// Sumber kolom bisnis BERPINDAH: kedua Report Definition membacanya dari kolom
+	// terekspos pada objek kerja, bukan dari dokumen JSON. Kedua sumber dapat berbeda
+	// isinya, dan membaca yang salah menampilkan nilai milik salinan yang usang tanpa satu
+	// pun galat.
+	for name, text := range queries {
+		upper := strings.ToUpper(text)
+		require.NotContainsf(t, upper, "JSON_VALUE",
+			"kueri %s masih memetik dari dokumen JSON", name)
+		require.NotContainsf(t, upper, "JSON_KLAIM",
+			"kueri %s masih menyentuh POOLDATA.JSON_KLAIM", name)
+	}
+}
+
+func TestEveryListQueryReadsTheWorkObjectColumns(t *testing.T) {
+	// "Last update" dan "Status Claim ID" disebut Report Definition sebagai
+	// `WorkPage.pxUpdateOperator` dan `WorkPage.pyStatusWork` — keduanya milik objek kerja.
+	// Uji ini memastikan kedua kueri membacanya dari kolom yang SAMA; satu kueri yang
+	// mengambilnya dari tempat lain akan menampilkan arti berbeda pada tab yang berbeda,
+	// tanpa satu pun galat.
+	for _, name := range listQueries {
+		text := query(name)
+		require.Containsf(t, text, "w.PXUPDATEOPERATOR",
+			"kueri %s tidak membaca operator pengubah", name)
+		require.Containsf(t, text, "w.PYSTATUSWORK",
+			"kueri %s tidak membaca status objek kerja", name)
+		require.Containsf(t, text, "INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w",
+			"kueri %s menggabungkan tabel objek kerja bukan dengan INNER JOIN", name)
+	}
+}
+
+func TestTheWorkObjectJoinIsInner(t *testing.T) {
+	// Report Definition menyatakan `JOIN type=INNER`. Versi sebelumnya di sini memakai LEFT
+	// dengan alasan "penugasan yang objek kerjanya tidak terbaca tetap muncul"; alasan itu
+	// DITARIK setelah RD-nya dibaca — yang di-LEFT-join dulu adalah JSON_KLAIM, salinan yang
+	// memang boleh belum ada, sedangkan ini objek kerja yang DITUNJUK penugasan itu sendiri.
+	//
+	// Memakai LEFT di sini akan menampilkan baris yang Pega produksi buang, dan barisnya
+	// kosong di SELURUH kolom bisnis — terbaca sebagai data hilang.
+	for _, name := range listQueries {
+		require.Containsf(t, strings.ToUpper(query(name)),
+			"INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+			"kueri %s tidak menggabungkan tabel objek kerja dengan INNER JOIN", name)
 	}
 }
 
@@ -266,20 +327,26 @@ func TestEveryListQueryPaginatesAndOrders(t *testing.T) {
 	}
 }
 
-func TestEveryLikeComparesAFixedPattern(t *testing.T) {
-	// Satu-satunya LIKE di modul ini membandingkan dengan pola TETAP milik kueri
-	// (`'%CLMP%'`), bukan dengan isian pengguna — sehingga ia tidak butuh ESCAPE. Uji ini
-	// menjaga agar tidak ada LIKE lain yang masuk diam-diam dengan bind di kanannya.
+func TestNoQueryUsesLikeAnyMore(t *testing.T) {
+	// Penyaring pola pada kunci objek kerja digantikan pembatas kelas, dan tidak ada LIKE
+	// lain yang sah di modul ini.
+	//
+	// Uji ini lebih tegas daripada "LIKE harus berpola tetap": sebuah LIKE baru dengan bind
+	// di kanannya adalah pola yang dirangkai dari masukan pengguna, dan di sini tidak ada
+	// satu pun masukan pengguna yang masuk ke kueri.
 	for name, text := range queries {
-		for _, line := range strings.Split(text, "\n") {
-			upper := strings.ToUpper(line)
-			if !strings.Contains(upper, " LIKE ") {
-				continue
-			}
-			require.Containsf(t, upper, "'%CLMP%'",
-				"kueri %s memakai LIKE dengan pola selain penanda klaim treaty: %s",
-				name, strings.TrimSpace(line))
-		}
+		require.NotContainsf(t, strings.ToUpper(text), " LIKE ",
+			"kueri %s memakai LIKE; pembatas jenis klaim kini PXOBJCLASS", name)
+	}
+}
+
+func TestEveryListQueryRestrictsTheWorkClass(t *testing.T) {
+	// Tanpa pembatas ini, kedua tab menampilkan penugasan SELURUH jenis klaim — bukan hanya
+	// treaty proporsional — dengan susunan kolom treaty. Tidak ada galat, hanya baris yang
+	// seharusnya tidak ada di sana.
+	for _, name := range listQueries {
+		require.Containsf(t, query(name), "w.PXOBJCLASS = :1",
+			"kueri %s tidak membatasi kelas objek kerja", name)
 	}
 }
 
@@ -290,7 +357,10 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 	allowed := []string{
 		"DATAPEGA.PC_ASSIGN_WORKLIST",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
-		"POOLDATA.JSON_KLAIM",
+
+		// Tabel objek kerja — sumber SELURUH kolom bisnis sejak layar ini dipasok Report
+		// Definition. `POOLDATA.JSON_KLAIM` sengaja TIDAK ada di daftar ini lagi.
+		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
 	}
 
 	table := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+([A-Z_]+\.[A-Z_]+)`)

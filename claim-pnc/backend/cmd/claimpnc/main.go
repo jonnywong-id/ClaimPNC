@@ -57,6 +57,7 @@ import (
 	"claim-pnc/internal/inboxservicecenter"
 	"claim-pnc/internal/inboxsurvey"
 	"claim-pnc/internal/inboxxol"
+	"claim-pnc/internal/inputacceptation"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
@@ -86,6 +87,7 @@ import (
 	"claim-pnc/internal/masterxol"
 	"claim-pnc/internal/menu"
 	"claim-pnc/internal/monitoringslinkojk"
+	"claim-pnc/internal/outstandingclaim"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
@@ -168,6 +170,15 @@ import (
 	inboxclaimtreatypropmemory "claim-pnc/internal/inboxclaimtreatyprop/repo/memory"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxclaimtreatypropusecase "claim-pnc/internal/inboxclaimtreatyprop/usecase"
+	inputacceptationhttp "claim-pnc/internal/inputacceptation/http"
+	inputacceptationmemory "claim-pnc/internal/inputacceptation/repo/memory"
+	inputacceptationsql "claim-pnc/internal/inputacceptation/repo/sqlstore"
+	inputacceptationusecase "claim-pnc/internal/inputacceptation/usecase"
+	outstandingclaimhttp "claim-pnc/internal/outstandingclaim/http"
+	outstandingclaimmemory "claim-pnc/internal/outstandingclaim/repo/memory"
+	outstandingclaimsql "claim-pnc/internal/outstandingclaim/repo/sqlstore"
+	outstandingclaimusecase "claim-pnc/internal/outstandingclaim/usecase"
+
 	inboxcloseclaimhttp "claim-pnc/internal/inboxcloseclaim/http"
 	inboxcloseclaimmemory "claim-pnc/internal/inboxcloseclaim/repo/memory"
 	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
@@ -229,9 +240,6 @@ import (
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
-	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
-	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
-	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
 	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
@@ -369,6 +377,7 @@ import (
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 	registrasihttp "claim-pnc/internal/registrasi/http"
+	"claim-pnc/internal/registrasi/repo/dokumenlink"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	reportklaimhttp "claim-pnc/internal/reportklaim/http"
 	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
@@ -379,7 +388,9 @@ import (
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
 	"claim-pnc/internal/riwayatklaim"
-	
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -1402,6 +1413,47 @@ func run() error {
 			FallbackErrorWriter: inboxclaimtreatypropthttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Outstanding Claim — rincian klaim treaty. Jembatan pemanggilnya membawa LOGIN dengan
+	// alasan yang BERBEDA dari modul antrean: di sini login tidak menyaring apa pun, ia yang
+	// dicatat pada setiap pembukaan rincian.
+	outstandingClaimHandler := outstandingclaimhttp.NewHandler(
+		outstandingclaimhttp.Options{
+			Service: assembly.outstandingClaim,
+			GetCaller: func(ctx context.Context) (outstandingclaimhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return outstandingclaimhttp.Caller{}, false
+				}
+				return outstandingclaimhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: outstandingclaimhttp.ErrorWriter(writePortalAwareError),
+		})
+
+	// Acceptation Claim — Flow Action `InputAcceptation` pada kelas
+	// `ASM-FW-GCNMFW-Work-ClaimTreatyNonProp`, dibuka dari nomor klaim di Inbox Claim Treaty
+	// Non Prop. Jembatan pemanggilnya membawa LOGIN: di layar ini login tidak menyaring apa
+	// pun, ia yang dicatat pada setiap pembukaan DAN setiap percobaan Submit.
+	inputAcceptationHandler := inputacceptationhttp.NewHandler(
+		inputacceptationhttp.Options{
+			Service: assembly.inputAcceptation,
+			GetCaller: func(ctx context.Context) (inputacceptationhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inputacceptationhttp.Caller{}, false
+				}
+				return inputacceptationhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inputacceptationhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Claim Treaty Non Prop (`MENU_ID 55`). Layar SAUDARA dari yang di atas, dan
 	// dirakit terpisah dengan sengaja: keduanya membaca tabel, kolom, dan penanda objek
 	// kerja yang berbeda — lihat kepala `internal/inboxclaimtreatynonprop`.
@@ -2357,6 +2409,16 @@ func run() error {
 				// masa paralel (`P-1`).
 				inboxclaimtreatypropthttp.Mount(
 					protected, claimTreatyPropHandler, activePortalDeps)
+				outstandingclaimhttp.Mount(
+					protected, outstandingClaimHandler, activePortalDeps)
+
+				// Acceptation Claim dijaga pemeriksaan portal yang SAMA, dan di layar
+				// ini alasannya dua kali lipat: selain menampilkan nilai klaim dan
+				// pembagian reasuransi milik satu badan hukum, ia juga MENERIMA Submit.
+				// Jatuh ke koneksi bawaan berarti menulisi akseptasi milik entitas yang
+				// salah (`R-20`).
+				inputacceptationhttp.Mount(
+					protected, inputAcceptationHandler, activePortalDeps)
 
 				// Inbox Claim Treaty Non Prop memuat data yang sama sifatnya —
 				// nama tertanggung dan nama Ceding Co milik satu badan hukum —
@@ -2725,6 +2787,17 @@ type assembly struct {
 	// sama seperti modul inbox lain.
 	inboxClaimTreatyProp *inboxclaimtreatypropusecase.Service
 
+	// outstandingClaim melayani layar rincian klaim treaty — Flow Action
+	// `OutstandingClaim`, yang di Pega dibuka dengan mengklik nomor klaim di layar di atas.
+	//
+	// Ia TIDAK punya butir menu, dan memang tidak boleh punya: satu-satunya pintunya adalah
+	// nomor klaim di Inbox Claim Treaty Prop.
+	outstandingClaim *outstandingclaimusecase.Service
+
+	// inputAcceptation melayani layar Acceptation Claim — Flow Action InputAcceptation,
+	// dibuka dari nomor klaim di Inbox Claim Treaty Non Prop.
+	inputAcceptation *inputacceptationusecase.Service
+
 	// inboxClaimTreatyNonProp melayani layar Inbox Claim Treaty Non Prop (`MENU_ID 55`).
 	//
 	// Ia layar SAUDARA dari yang di atas dan sengaja berdiri sendiri: ketiga tabel yang
@@ -2970,6 +3043,16 @@ type storage struct {
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
 	// Ceding Co, dan keduanya milik satu badan hukum.
 	claimTreatyPropSelector inboxclaimtreatyprop.RepoSelector
+
+	// outstandingClaimSelector memilih penyimpanan rincian klaim treaty milik satu portal.
+	//
+	// Alasannya lebih berat daripada selector di atasnya: yang dibaca bukan satu baris
+	// antrean melainkan SELURUH isi satu klaim — nilai klaim, deductible, dan pembagian
+	// reasuransinya (`R-20`).
+	outstandingClaimSelector outstandingclaim.RepoSelector
+
+	// inputAcceptationSelector memilih penyimpanan Acceptation Claim milik satu portal.
+	inputAcceptationSelector inputacceptation.RepoSelector
 
 	// claimTreatyNonPropSelector memilih penyimpanan Inbox Claim Treaty Non Prop milik
 	// satu portal, dengan alasan yang sama persis dengan selector di atasnya.
@@ -3715,14 +3798,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
 	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
 	// aplikasi dijalankan.
+	//
+	// Perakitannya dijalankan di bawah, SESUDAH layanan dokumen penunjang terbentuk: tombol
+	// Unggah Dokumen klaim mengunggah lewat layanan itu.
 	var registrationService *registrasiusecase.Service
-	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
-		if err != nil {
-			store.close()
-			return assembly{}, err
-		}
-	}
 
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
@@ -3962,6 +4041,43 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			// Logger diberikan supaya pembukaan antrean tanpa penyaring kepemilikan
 			// ("See All Claim") tercatat. Sampai pemeriksaan peran ada (`TKT-F3-005`),
 			// jejak di log adalah satu-satunya hal yang menyatakan siapa memakainya.
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Outstanding Claim — rincian klaim treaty, dibuka dari nomor klaim di layar di atas.
+	outstandingClaimService, err := outstandingclaimusecase.NewService(
+		outstandingclaimusecase.Options{
+			RepoSelector: store.outstandingClaimSelector,
+
+			// Logger diberikan supaya SETIAP pembukaan rincian tercatat beserta
+			// pelakunya. Di modul ini alasannya lebih berat daripada di layar antrean:
+			// tidak ada satu pun penyaring yang membatasi klaim mana yang boleh dibuka
+			// seseorang, dan nomor klaim treaty berurutan. Sampai `TKT-F3-005` ada, jejak
+			// inilah satu-satunya hal yang membuat penelusuran satu per satu terlihat.
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Acceptation Claim — Flow Action `InputAcceptation`, dibuka dari nomor klaim di Inbox
+	// Claim Treaty Non Prop. Ia layar SAUDARA dari Outstanding Claim di atas, dan dirakit
+	// terpisah dengan sengaja: keduanya membaca kolom JSON yang BERBEDA pada tabel yang sama
+	// (`DATA_JSON` lawan `DATA_JSONBLOB`) dan kelas objek kerja yang berbeda.
+	inputAcceptationService, err := inputacceptationusecase.NewService(
+		inputacceptationusecase.Options{
+			RepoSelector: store.inputAcceptationSelector,
+
+			// Logger diberikan dengan alasan yang sama seperti Outstanding Claim, ditambah
+			// satu yang khas layar ini: ia juga MENERIMA Submit. Setiap percobaan menyimpan
+			// akseptasi tercatat beserta pelakunya, termasuk yang ditolak karena tabelnya
+			// masih dimiliki Pega — dan justru penolakan itulah yang perlu terlihat bila
+			// kelak seseorang bertanya kenapa akseptasinya tidak tersimpan.
 			Logger: logger,
 		})
 	if err != nil {
@@ -4322,15 +4438,33 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// jamnya dapat dipatok.
 	documentService, err := dokumenpenunjangusecase.NewService(
 		dokumenpenunjangusecase.Options{
-			Repos:     store.dokumenPenunjangSelector,
-			Storage:   store.dokumenPenunjangStorage,
-			Converter: store.dokumenPenunjangConverter,
-			Clock:     clock.System{},
+			Repos:          store.dokumenPenunjangSelector,
+			Storage:        store.dokumenPenunjangStorage,
+			Converter:      store.dokumenPenunjangConverter,
+			Clock:          clock.System{},
+			SkipConversion: cfg.DocumentStorage.SkipConversion,
+			AccessCode:     cfg.DocumentStorage.AccessCode,
 		},
 	)
+	if cfg.DocumentStorage.AccessCode != "" {
+		logger.Info("unggah dokumen memakai kode akses terdaftar; token sekali pakai tidak dibuat",
+			slog.String("penanda", "PENYIMPANAN_DOKUMEN_KODE_AKSES"))
+	}
+	if cfg.DocumentStorage.SkipConversion {
+		logger.Warn("konversi gambar ke AVIF dilewati; PNG, JPG, JPEG, dan PDF diunggah apa adanya",
+			slog.String("penanda", "KONVERSI_GAMBAR_LEWATI"))
+	}
 	if err != nil {
 		store.close()
 		return assembly{}, err
+	}
+
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier)
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
 	}
 
 	return assembly{
@@ -4387,6 +4521,8 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxServiceCenter:        inboxServiceCenterService,
 		inboxBandingHargaSalvage:  inboxBandingHargaSalvageService,
 		inboxClaimTreatyProp:      claimTreatyPropService,
+		outstandingClaim:          outstandingClaimService,
+		inputAcceptation:          inputAcceptationService,
 		inboxClaimTreatyNonProp:   claimTreatyNonPropService,
 		inboxManagerReceivePUCL:   managerReceivePUCLService,
 		inboxRCLPUCL:              rclPUCLService,
@@ -5337,6 +5473,32 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxclaimtreatypropsql.NewRepo(conn), nil
 		}
 
+		store.inputAcceptationSelector = func(
+			alias string,
+		) (inputacceptation.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			// Logger diteruskan supaya hitungan jalur dokumen yang TIDAK ditemukan
+			// tercatat. Bentuk dokumen ini belum pernah diperiksa (`R-08`), dan tanpa
+			// hitungan itu layar berisi ~50 isian kosong terbaca sama persis — entah
+			// karena klaimnya memang belum diisi, atau karena seluruh jalurnya salah.
+			return inputacceptationsql.NewRepo(conn).WithLogger(logger), nil
+		}
+
+		store.outstandingClaimSelector = func(alias string) (outstandingclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			// Logger diteruskan supaya jalur dokumen klaim yang TIDAK ditemukan tercatat.
+			// Bentuk dokumen itu belum pernah diperiksa (`R-08`), dan tanpa hitungan itu
+			// layar berisi 97 isian kosong terbaca sama persis, entah karena klaimnya
+			// memang belum diisi atau karena seluruh jalurnya salah.
+			return outstandingclaimsql.NewRepo(conn).WithLogger(logger), nil
+		}
+
 		store.claimTreatyNonPropSelector = func(
 			alias string,
 		) (inboxclaimtreatynonprop.Repo, error) {
@@ -5767,6 +5929,8 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxbandinghargasalvagememory.NewSampleDocumentStore(store), nil
 		}
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
+		store.outstandingClaimSelector = outstandingClaimSelectorMemory(cfg.PrimaryPortal)
+		store.inputAcceptationSelector = inputAcceptationSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyNonPropSelector = claimTreatyNonPropSelectorMemory(cfg.PrimaryPortal)
 		// Sepuluh baris contoh ikut dimuat, dan lima di antaranya sengaja TIDAK muncul di
 		// tab mana pun — berkas tanpa Group Panel, klaim yang bocor ke tabel penugasan per
@@ -7349,6 +7513,65 @@ func claimTreatyPropSelectorMemory(primaryAlias string) inboxclaimtreatyprop.Rep
 			return existing, nil
 		}
 		fresh := inboxclaimtreatypropmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// outstandingClaimSelectorMemory menyusun penyimpanan rincian klaim treaty di memori;
+// alasannya sama dengan claimTreatyPropSelectorMemory di atas.
+//
+// Isinya dua klaim contoh: satu terisi penuh di seluruh kelompok dan grid, satu lagi TANPA
+// dokumen klaim sama sekali — meniru gabungan LEFT JOIN yang tidak menemukan baris di
+// JSON_KLAIM. Tanpa yang kedua, layar pengembangan tidak dapat menunjukkan bahwa klaim
+// seperti itu tetap dapat dibuka.
+// inputAcceptationSelectorMemory menyusun penyimpanan Acceptation Claim di memori.
+//
+// Isi contohnya DUA klaim, dan masing-masing membuktikan hal yang berbeda: `CLMNP-1001`
+// akseptasi yang terisi lengkap, dan `CLMNP-1002` klaim yang ADA tetapi dokumen JSON-nya
+// kosong. Yang kedua membuktikan layar tetap terbuka dengan nomor klaimnya terbaca alih-alih
+// dijawab "tidak ditemukan" — perilaku yang ditetapkan gabungan LEFT JOIN pada kuerinya.
+//
+// Seluruh isinya karangan (`D-69`) — lihat inputacceptation/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func inputAcceptationSelectorMemory(primaryAlias string) inputacceptation.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inputacceptation.Repo{}
+
+	return func(alias string) (inputacceptation.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inputacceptationmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+func outstandingClaimSelectorMemory(primaryAlias string) outstandingclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]outstandingclaim.Repo{}
+
+	return func(alias string) (outstandingclaim.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := outstandingclaimmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

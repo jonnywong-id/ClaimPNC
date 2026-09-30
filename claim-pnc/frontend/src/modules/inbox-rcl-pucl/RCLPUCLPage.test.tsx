@@ -47,6 +47,7 @@ function kolom(judulJalur: string): Tab['kolom'] {
     { kunci: 'tanggal_cetak_surat', judul: 'Tanggal Cetak Surat' },
     { kunci: 'lama_klaim', judul: 'Lama Klaim' },
     { kunci: 'status_kadaluarsa', judul: 'Status Kadaluarsa' },
+    { kunci: 'tanggal_dibuat', judul: 'Tanggal Dibuat' },
   ] as Tab['kolom']
 }
 
@@ -75,7 +76,7 @@ const TAB_MSIG: Tab = {
   keterangan: 'Klaim RCL/PUCL jalur MSIG.',
   kolom: kolom('Status'),
   punya_laporan_rentang_tanggal: false,
-  catatan: 'Tab ini kemungkinan besar kosong. Menunggu pemastian DBA.',
+  catatan: 'Tab ini nyaris selalu kosong. Penandanya hanya terisi pada segelintir klaim.',
   terhalang: false,
 }
 
@@ -87,8 +88,14 @@ const METADATA: MetadataResponse = {
     { kunci: 'status_klaim', judul: 'Status Klaim' },
   ],
   selisih_terencana: [
-    'Tab "Klaim MSIG" kemungkinan besar kosong, dan itu bukan kerusakan.',
-    'Isian tanggal di tab "Cetak Surat" TIDAK menyaring tabel di bawahnya.',
+    {
+      ringkas: 'Tab "Klaim MSIG" nyaris selalu kosong, dan itu normal.',
+      rincian: 'Penandanya hanya terisi pada segelintir klaim.',
+    },
+    {
+      ringkas: 'Kedua isian tanggal tidak menyaring tabel di bawahnya.',
+      rincian: 'Keduanya hanya dipakai tombol unduh — perilaku layar lama apa adanya.',
+    },
   ],
   portal: 'ASM',
 }
@@ -110,8 +117,13 @@ const BARIS: WorkItem = {
   deskripsi_analyst: 'Dokumen pendukung tidak lengkap.',
   status_rcl_pucl: 'RCL',
   tanggal_cetak_surat: '',
-  lama_klaim: '12',
+  // Kolomnya berjudul "Lama Klaim" tetapi berisi TANGGAL — kolomnya terverifikasi
+  // bertipe timestamp di Oracle, dan Work Owner menjelaskan isinya tanggal kirim untuk
+  // proses PUCL. Baris contoh yang mengisinya dengan bilangan menceritakan layar yang
+  // tidak ada.
+  lama_klaim: '2026-09-10 09:29:59',
   status_kadaluarsa: 'Belum Kadaluarsa',
+  tanggal_dibuat: '2026-08-02 08:15:00',
 }
 
 type Call = { url: string; init?: RequestInit | undefined }
@@ -153,10 +165,8 @@ const DETAIL = {
     no_polis: 'CONTOH-RCL-0001',
     tanggal_kejadian: '2026-09-01',
     nama_peserta: 'Objek Contoh Satu',
-    up: '250000000',
+    up: 'Objek Contoh Satu',
     jumlah_tagihan: '15000000',
-    tanggal_cetak_surat: '',
-    tanggal_kirim_rcl_pucl: '2026-09-10 09:30:00',
   },
   penerimaan_dokumen: { komentar_pucl: 'Menunggu kelengkapan dari cabang.' },
   isian_belum_terpetakan: ['NIK', 'Perihal', 'Email LOD'],
@@ -297,21 +307,52 @@ describe('bentuk layar', () => {
   })
 
   it('menampilkan selisih terencana dari server', async () => {
+    // Panel ini sempat dihapus pada 2026-09-30 dan DIKEMBALIKAN pada hari yang sama atas
+    // ralat Work Owner. Judul panelnya ikut dituntut di sini, bukan hanya isinya: yang
+    // sempat dihapus adalah panelnya, dan uji yang hanya memeriksa satu butir akan tetap
+    // lulus meski judulnya hilang.
     stubDefaultFetch()
     await renderLoaded()
 
     expect(
-      await screen.findByText(/Tab "Klaim MSIG" kemungkinan besar kosong/),
+      await screen.findByText(/Yang berbeda dari layar lama/),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Tab "Klaim MSIG" nyaris selalu kosong/),
     ).toBeInTheDocument()
   })
 
-  it('menyatakan kedua tindakan yang masih dikerjakan lewat Pega', async () => {
-    // Keduanya pekerjaan NYATA pengguna layar ini setiap hari. Layar yang kehilangan
-    // tombolnya tanpa penjelasan akan dilaporkan sebagai kerusakan.
+  it('menggambar ringkasan selisih, dan rinciannya menyusul di baliknya', async () => {
+    // Panel ini pernah berisi 1.114 kata dan karena itu tidak dibaca siapa pun. Yang
+    // digambar sekarang ringkasannya; rinciannya tetap ada di halaman — `details` bawaan
+    // peramban, sehingga Ctrl+F dan pembaca layar tetap menemukannya — tetapi tidak
+    // menghalangi pembacaan.
     stubDefaultFetch()
     await renderLoaded()
 
-    const notice = screen.getByText(/Yang masih dikerjakan lewat Pega/)
+    const ringkas = await screen.findByText(/Tab "Klaim MSIG" nyaris selalu kosong/)
+    const rincian = screen.getByText(/Penandanya hanya terisi pada segelintir klaim/)
+
+    expect(ringkas).toBeInTheDocument()
+    expect(rincian).toBeInTheDocument()
+
+    // Rinciannya berada DI DALAM butir yang diringkasnya, bukan sebagai butir tersendiri.
+    // Tanpa ini, daftar yang menggambar keduanya berdampingan tetap lulus — dan itu
+    // persis keadaan yang sedang diperbaiki.
+    expect(ringkas.closest('details')).toBe(rincian.closest('details'))
+    expect(ringkas.closest('details')).not.toBeNull()
+  })
+
+  it('menyatakan kedua tindakan yang dikerjakan lewat Pega', async () => {
+    // Keduanya pekerjaan NYATA pengguna layar ini setiap hari. Layar yang kehilangan
+    // tombolnya tanpa penjelasan akan dilaporkan sebagai kerusakan.
+    //
+    // Kata "masih" sengaja TIDAK lagi dituntut di sini: keterangannya menyatakan
+    // keputusan, bukan pekerjaan yang tertunda (Work Owner, 2026-09-30).
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const notice = screen.getByText(/Yang dikerjakan lewat Pega/)
     expect(notice).toBeInTheDocument()
     expect(screen.getByText(/Reminder PUCL/)).toBeInTheDocument()
   })
@@ -334,7 +375,7 @@ describe('catatan per tab', () => {
     await userEvent.click(screen.getByRole('tab', { name: /Klaim MSIG/ }))
 
     expect(
-      await screen.findByText(/kemungkinan besar kosong. Menunggu pemastian DBA/),
+      await screen.findByText(/nyaris selalu kosong. Penandanya hanya terisi/),
     ).toBeInTheDocument()
   })
 })

@@ -25,13 +25,17 @@ import (
 //
 //	baris  membuktikan
 //	-----  ----------------------------------------------------------------------------
-//	1, 2   tab Receive PA berisi berkas ber-Group Panel 002
-//	3, 4   tab Receive NONMBU berisi berkas ber-Group Panel lain
-//	5      berkas tanpa Group Panel TIDAK muncul di tab mana pun
+//	1, 2   tab Receive memuat berkas ber-Group Panel 002, berjenis klaim PA
+//	3, 4   tab Receive memuat pula berkas ber-Group Panel lain, berjenis klaim NONMBU
+//	5      berkas tanpa Group Panel TIDAK muncul, sama seperti di kedua grid Pega
 //	6      klaim (kelas berbeda) TIDAK bocor ke tab Receive
 //	7, 8   tab RCL/PUCL berisi klaim di antrean RCLPUCL, satu RCL dan satu PUCL
 //	9      klaim SELESAI tidak muncul di tab RCL/PUCL
 //	10     klaim di antrean bersama LAIN tidak muncul di tab RCL/PUCL
+//
+// Baris 1 sampai 4 membawa pula isi LAYAR KERJA penerimaan dokumennya. Baris 4 sengaja
+// membawanya nyaris kosong: ia berkas tanpa pasangan di tabel cermin, dan layar kerjanya
+// harus tetap terbuka alih-alih dinyatakan tidak ada.
 func SampleRows() []Row {
 	// Waktu dasar dibuat tetap, bukan `time.Now()`. Urutan baris pada uji karena itu tidak
 	// berubah menurut hari, dan uji yang memeriksanya tidak gagal esok hari tanpa ada yang
@@ -57,6 +61,30 @@ func SampleRows() []Row {
 			AssignedOperator: "PETUGASCONTOH1",
 			GroupPanel:       inboxmanagerreceivepucl.GroupPanelPA,
 			CreatedAt:        base.Add(-2 * time.Hour),
+			Document: inboxmanagerreceivepucl.ReceiveDocument{
+				Reference:        "ASM-FW-GCNMFW-WORK RCV-900001",
+				CaseID:           "RCV-900001",
+				ClaimNumber:      "PNCN.26.0001",
+				WorkStatus:       "Open",
+				CreatedAt:        "2026-09-03 09:14:00",
+				ReceivedAt:       "03/09/2026",
+				SenderName:       "Pengirim Contoh Satu",
+				SenderEmail:      "pengirim.satu@contoh.invalid",
+				SenderPhone:      "08000000001",
+				CourierName:      "Kurir Contoh Satu",
+				InsuredName:      "Tertanggung Contoh Satu",
+				PolicyNumber:     "CONTOH-PA-0001",
+				LossDate:         "2026-09-01",
+				ReferenceNumber:  "REF-CONTOH-0001",
+				InsuredEmail:     "tertanggung.satu@contoh.invalid",
+				LossLocation:     "Lokasi Contoh Satu",
+				DriverLicence:    "SIM-CONTOH-0001",
+				Chronology:       "Kronologi contoh baris pertama.",
+				DamageDetail:     "Rincian kerusakan contoh baris pertama.",
+				TransferReason:   "Menunggu kelengkapan dokumen pendukung.",
+				EmailSubject:     "Penerimaan dokumen klaim contoh satu",
+				NotRegisteredNot: "",
+			},
 		},
 		{
 			// Berkas PA yang BELUM diregistrasi menjadi klaim: nomor klaim PNC-nya kosong,
@@ -75,6 +103,24 @@ func SampleRows() []Row {
 			AssignedOperator: "PETUGASCONTOH2",
 			GroupPanel:       inboxmanagerreceivepucl.GroupPanelPA,
 			CreatedAt:        base.Add(-5 * time.Hour),
+			Document: inboxmanagerreceivepucl.ReceiveDocument{
+				Reference:  "ASM-FW-GCNMFW-WORK RCV-900002",
+				CaseID:     "RCV-900002",
+				WorkStatus: "Open",
+				CreatedAt:  "2026-09-06 10:02:00",
+				ReceivedAt: "06/09/2026",
+				SenderName: "Pengirim Contoh Dua",
+
+				// Berkas ini BELUM diregistrasi menjadi klaim — nomor klaim PNC-nya kosong —
+				// dan alasannya diisi di sini supaya layar kerjanya menunjukkan keadaan yang
+				// benar-benar dihadapi petugas.
+				InsuredName:      "Tertanggung Contoh Dua",
+				PolicyNumber:     "CONTOH-PA-0002",
+				LossDate:         "2026-09-05",
+				LossLocation:     "Lokasi Contoh Dua",
+				Chronology:       "Kronologi contoh baris kedua.",
+				NotRegisteredNot: "Menunggu konfirmasi nomor polis dari cabang.",
+			},
 		},
 		{
 			// Group Panel 006 — Fire/Property. Ia bukan PA, sehingga muncul di tab NONMBU.
@@ -93,6 +139,26 @@ func SampleRows() []Row {
 			AssignedOperator: "PETUGASCONTOH1",
 			GroupPanel:       "006",
 			CreatedAt:        base.Add(-30 * time.Hour),
+			Document: inboxmanagerreceivepucl.ReceiveDocument{
+				Reference:      "ASM-FW-GCNMFW-WORK RCV-900003",
+				CaseID:         "RCV-900003",
+				ClaimNumber:    "PNCN.26.0003",
+				WorkStatus:     "Open",
+				CreatedAt:      "2026-08-30 14:20:00",
+				ReceivedAt:     "30/08/2026",
+				SenderName:     "Pengirim Contoh Tiga",
+				SenderEmail:    "pengirim.tiga@contoh.invalid",
+				CourierName:    "Kurir Contoh Dua",
+				InsuredName:    "PT Contoh Properti",
+				PolicyNumber:   "CONTOH-FIRE-0003",
+				LossDate:       "2026-08-28",
+				InsuredEmail:   "properti@contoh.invalid",
+				LossLocation:   "Lokasi Contoh Tiga",
+				Chronology:     "Kronologi contoh baris ketiga.",
+				DamageDetail:   "Rincian kerusakan contoh baris ketiga.",
+				TransferReason: "Menunggu hasil survei.",
+				EmailSubject:   "Penerimaan dokumen klaim contoh tiga",
+			},
 		},
 		{
 			// Berkas NONMBU tanpa pasangan di tabel cermin: Nama Pengirim dan Tanggal
@@ -111,6 +177,20 @@ func SampleRows() []Row {
 			AssignedOperator: "PETUGASCONTOH3",
 			GroupPanel:       "004",
 			CreatedAt:        base.Add(-40 * time.Hour),
+
+			// Layar kerjanya nyaris kosong, dan itu SENGAJA: berkas ini tidak punya pasangan
+			// di tabel cermin, sehingga ke-13 isian yang berasal dari sana memang NULL.
+			// Ia harus tetap TERBUKA — bukan dinyatakan tidak ada — karena `LEFT JOIN` pada
+			// kueri aslinya memang membiarkannya terbaca.
+			Document: inboxmanagerreceivepucl.ReceiveDocument{
+				Reference:    "ASM-FW-GCNMFW-WORK RCV-900004",
+				CaseID:       "RCV-900004",
+				WorkStatus:   "Open",
+				CreatedAt:    "2026-09-11 08:45:00",
+				InsuredName:  "PT Contoh Kargo",
+				PolicyNumber: "CONTOH-MARINE-0004",
+				LossDate:     "2026-09-10",
+			},
 		},
 		{
 			// Group Panel KOSONG. Ia tidak muncul di tab Receive mana pun, persis seperti

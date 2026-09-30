@@ -107,13 +107,13 @@ func (r *InboxRepo) Summarize(ctx context.Context, f komite.InboxFilter) (komite
 }
 
 // FindCase mengambil satu kasus tanpa memandang pemiliknya.
-func (r *InboxRepo) FindCase(ctx context.Context, caseID string) (komite.CommitteeCase, error) {
+func (r *InboxRepo) FindCase(ctx context.Context, caseID, operator string) (komite.CommitteeCase, error) {
 	caseID = strings.TrimSpace(caseID)
 	if caseID == "" {
 		return komite.CommitteeCase{}, komite.ErrCaseNotFound
 	}
 
-	row := r.db.QueryRowContext(ctx, query("inbox_get"), caseID)
+	row := r.db.QueryRowContext(ctx, query("inbox_get"), komite.OperatorKey(operator), caseID)
 	found, err := scanCase(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return komite.CommitteeCase{}, komite.ErrCaseNotFound

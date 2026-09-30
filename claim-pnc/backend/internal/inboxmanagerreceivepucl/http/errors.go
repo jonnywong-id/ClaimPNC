@@ -17,6 +17,8 @@ const (
 	CodeValidationFail    = "validasi_gagal"
 	CodeCallerUnknown     = "profil_pemanggil_tidak_lengkap"
 	CodeWriteNotAvailable = "belum_tersedia"
+	CodeDocumentNotFound  = "berkas_tidak_ditemukan"
+	CodeReferenceRequired = "kunci_berkas_kosong"
 	CodeInternalError     = "galat_internal"
 )
 
@@ -95,6 +97,30 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Message: "Identitas Anda tidak terbaca. Layar ini menampilkan pekerjaan " +
 				"seluruh petugas, sehingga pembukaannya wajib tercatat atas nama " +
 				"seseorang. Masuk ulang lalu coba lagi.",
+		}, true
+
+	case errors.Is(err, inboxmanagerreceivepucl.ErrReferenceRequired):
+		// 422, bukan 404: alamatnya ada, yang kurang adalah kunci berkas di dalamnya.
+		// Menjawab 404 akan menyatakan berkasnya tidak ada — padahal belum ada berkas yang
+		// dicari sama sekali.
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeReferenceRequired,
+			Message: "Berkas penerimaan dokumen yang dibuka tidak disebutkan.",
+		}, true
+
+	case errors.Is(err, inboxmanagerreceivepucl.ErrDocumentNotFound):
+		// 404, dan ia BENAR-BENAR 404: yang diminta adalah satu sumber daya bernama, dan
+		// sumber daya itu tidak ada.
+		//
+		// Pesannya menyebut kemungkinan sebabnya, bukan hanya menyatakan tidak ada. Berkas
+		// yang penugasannya sudah selesai tetap dapat dibuka di sini — kueri layar kerja
+		// memang tidak menggabung tabel penugasan — sehingga "tidak ditemukan" hampir selalu
+		// berarti kuncinya yang keliru, atau berkasnya milik portal lain.
+		return http.StatusNotFound, ErrorResponse{
+			Code: CodeDocumentNotFound,
+			Message: "Berkas penerimaan dokumen ini tidak ditemukan. Periksa apakah " +
+				"Anda sudah berada di portal yang benar — setiap entitas punya basis " +
+				"datanya sendiri, dan berkas milik entitas lain tidak terbaca dari sini.",
 		}, true
 
 	case errors.Is(err, inboxmanagerreceivepucl.ErrWriteNotAvailable):

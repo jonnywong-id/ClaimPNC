@@ -1457,6 +1457,141 @@ kerusakan.
 | `ShowApproveProgressKlaim` beserta sub-tab "Approval Progress Klaim" | Kontainernya ber-`pyContainerVisibleWhen = 1==2` di Pega — sudah mati di sana, dan tidak dibawa |
 | Kolom tambahan untuk kesembilan antrean persetujuan | Seluruhnya POOLDATA dan seluruh kolomnya sudah ada |
 
+---
+
+## 9. Inbox RCL/PUCL — `MENU_ID 61`
+
+Bab ini ditujukan ke **Tim Pega**, dan isinya **satu permintaan**.
+
+Sepuluh pertanyaan modul ini diajukan pada 2026-09-30. **Sembilan sudah ditutup** pemilik
+bisnis pada hari yang sama — sebagian dengan menjelaskan arti kolomnya, sebagian dengan
+memutuskan mengikuti sistem lama apa adanya. Tidak ada satu pun permintaan ke DBA yang
+tersisa dari modul ini.
+
+### 9.1 Sembilan isian yang tidak punya kolom
+
+Layar kerja RCL/PUCL memuat tujuh belas isian. **Delapan** dapat diisi; **sembilan** tidak,
+dan sebabnya bukan data yang kosong melainkan **tempat penyimpanannya**.
+
+Kesembilannya tersimpan sebagai properti clipboard pada objek kerja — dijelaskan Work Owner
+pada 2026-09-24 — dan properti clipboard yang tidak dioptimasi tidak punya kolom tabel,
+sehingga tidak dapat dibaca kueri biasa selama objek kerjanya masih dimiliki sistem lama:
+
+| Isian di layar | Properti |
+|---|---|
+| No Kontrak | `.ClaimData.PUCLStatus.NIK` |
+| Business Unit / Seksi | `.ClaimData.PUCLStatus.*` |
+| Perihal | `.ClaimData.PUCLStatus.*` |
+| Keterangan (tiga isian) | `.ClaimData.PUCLStatus.*` |
+| Email Tertanggung | `.ClaimData.PUCLStatus.*` |
+| Tanggal Kelengkapan Dokumen | `.ClaimData.PUCLStatus.*` |
+| Tanggal terima Dokumen (daftar) | `.ClaimData.PUCLStatus.*` |
+
+**Yang diminta:** kesembilan properti itu **dioptimasi menjadi kolom** (*Optimize for
+reporting*), lalu **nama kolom hasilnya** dikirimkan kepada kami.
+
+Nama kolomnya perlu disebutkan, bukan hanya optimasinya dijalankan: nama kolom hasil optimasi
+tidak selalu sama dengan nama propertinya, dan menebaknya menghasilkan kueri yang gagal
+seluruhnya — bukan satu isian yang kosong.
+
+### 9.2 Kenapa ini tidak dapat digantung
+
+Keberhasilan setiap layar diukur dengan membandingkan hasilnya terhadap sistem lama. Selama
+kesembilan isian ini tidak dapat dibaca, layar RCL/PUCL **tidak akan pernah dapat dinyatakan
+setara** — bukan karena ada yang salah, melainkan karena sembilan isiannya memang tidak
+terbaca.
+
+Layarnya tetap dapat dipakai hari ini; yang tertahan adalah pernyataan selesainya. Karena itu
+permintaan ini berada di jalur kritis kelulusan modul, dan kami meminta **tanggal komitmen
+tertulis** — bukan sekadar konfirmasi bahwa permintaannya diterima.
+
+Keputusan Work Owner 2026-09-30 memilih jalur ini secara sadar, di antara dua kemungkinan:
+mengekspos propertinya, atau mengeluarkan kesembilan isian itu dari lingkup. Yang dipilih
+**mengekspos**, sehingga layarnya benar-benar setara dan bukan setara-dengan-pengecualian.
+
+### 9.3 Sementara menunggu
+
+Kesembilan isian tetap **digambar di tempatnya** dengan penanda tersendiri — bukan
+dihilangkan, dan bukan pula digambar sebagai sel kosong.
+
+Perbedaannya bukan kosmetik. Sel kosong berarti **petugas belum mengisinya**; penanda ini
+berarti **nilainya ada tetapi tidak terbaca dari tabel**. Keduanya menuntut tindakan dari
+orang yang berbeda, dan menyamakannya membuat yang satu tersamar sebagai yang lain.
+
+### 9.4 Yang TIDAK perlu dikirim — dicatat supaya tidak diminta berulang
+
+Seluruh baris di bawah ini **sudah ditutup** dan tidak memerlukan artefak, kueri, maupun
+jawaban dari siapa pun.
+
+| Hal | Sebabnya ditutup |
+|---|---|
+| Arti `MSIG_1`, `PUCLAPPROVE_1`, `LAMAKLAIM_1`, `RCL_PUCL_1` | dijelaskan Work Owner 2026-09-30 |
+| Arti `STATUSCASE_1` | Work Owner memutuskan mengikuti sistem lama apa adanya |
+| Jumlah klaim bersurat yang penandanya kosong | keputusan 2026-09-30: ikuti sistem lama apa adanya; penyaringnya tidak diubah |
+| Apakah `MSIG_1` pernah terisi | nilai pembandingnya disalin dari Report Definition, bukan ditebak — tab ini kosong di sini persis bila ia kosong juga di sistem lama |
+| Apakah `LAMAKLAIM_1` sama isinya dengan `TANGGALKIRIMPUCL_1` | bila sama pun, kedua kolom tetap digambar — duplikasinya ada di sistem lama |
+| Rule Section `SendtoRCLPUCL` | sudah diterima 2026-09-24 |
+| Report Definition ketiga antrean | ketiganya ada di export dan sudah terbaca utuh |
+
+### 9.5 Dua baris §9.4 yang kini punya jawaban terukur — tidak mengubah permintaannya
+
+Keduanya ditutup pada 2026-09-30 dengan alasan yang benar: perilakunya mengikuti sistem lama,
+sehingga jawabannya tidak dapat mengubah apa pun. Angkanya kemudian **terbaca sendiri** saat
+modul ini dijalankan terhadap Oracle pada hari yang sama, dan dicatat di sini supaya tidak
+ditanyakan lagi:
+
+| Hal | Angkanya |
+|---|---|
+| Apakah `MSIG_1` pernah terisi | **Ya, sekali.** `GROUP BY MSIG_1` pada portal ASM: `MSIG` 1 baris, kosong 7.721 baris. Dugaan "tidak pernah terisi" terbantah |
+| Apakah `LAMAKLAIM_1` sama dengan `TANGGALKIRIMPUCL_1` | **Nyaris.** Keduanya ditulis pada langkah yang sama dan terpaut milidetik; 61 baris sama persis, 25 berbeda. Setelah digambar sampai satuan detik, keduanya kerap identik |
+
+Keduanya **tidak mengubah satu baris kode pun** — penyaring dan kolomnya memang sudah
+mengikuti sistem lama. Yang berubah hanya keterangan di layar, yang sebelumnya menyatakan tab
+MSIG "kemungkinan besar kosong" dan kini menyatakan isinya sangat sedikit.
+
+---
+
+## 10. Inbox RCL/PUCL — alamat portal Pega untuk tautan "buka di Pega"
+
+Bab ini **bukan** ditujukan ke Tim Pega. Pemiliknya **Work Owner + Tim Infra**, dan isinya
+satu keputusan konfigurasi — bukan artefak.
+
+### 10.1 Apa yang dibutuhkan, dan untuk apa
+
+Layar Inbox RCL/PUCL dan layar kerjanya **membaca saja** sampai sistem lama dimatikan
+(keputusan 2026-09-30). Kelima tombol tindakannya digambar tetapi mati, dan petugas
+mengerjakan tindakannya di sistem lama memakai kunci klaim yang sudah ditampilkan layar kerja.
+
+Yang diusulkan: kelima tombol itu membuka klaim yang sama **langsung di sistem lama**,
+sehingga langkah mencari klaimnya hilang.
+
+### 10.2 Kenapa ia belum dapat dikerjakan
+
+**Tidak ada satu pun alamat portal sistem lama di konfigurasi maupun di basis data.**
+Diperiksa langsung pada 2026-09-30:
+
+- Berkas konfigurasi aplikasi tidak memuatnya sama sekali.
+- `POOLDATA.GCNM_CONNECT_REST` — tempat aplikasi ini membaca alamat layanan per portal, pola
+  yang sama dengan alamat layanan HCQ — memuat **hanya alamat layanan REST**
+  (`…/prweb/PRRestService/…`, `…/resources/restws/…`). Tidak satu pun barisnya alamat portal
+  yang dapat dibuka orang.
+
+Sebagian baris itu memang memuat nama host sistem lama, tetapi **menurunkan alamat portal dari
+alamat layanan REST berarti menebak** — dan host-nya sendiri tidak sepakat: baris untuk
+layanan yang sama kadang menunjuk host produksi, kadang host pengembangan.
+
+### 10.3 Yang diminta diputuskan
+
+1. **Apakah tautan "buka di Pega" memang dikehendaki** pada layar yang baca-saja.
+2. Bila ya: **alamat portal sistem lama per entitas**, beserta **bentuk tautan yang membuka
+   satu klaim** dari kunci `pzInsKey` yang sudah ditampilkan layar.
+3. **Di mana alamat itu disimpan.** Usul kami: satu baris baru di `POOLDATA.GCNM_CONNECT_REST`
+   per portal — pola yang sudah dipakai alamat layanan HCQ, sehingga perpindahan alamat
+   menjadi perubahan data oleh DBA, bukan rilis ulang aplikasi.
+
+**Variabel lingkungan baru sengaja TIDAK dibuat** sambil menunggu. Alamat per entitas adalah
+keputusan konfigurasi milik pemilik lingkungan, bukan milik satu modul — dan membuatnya lebih
+dulu akan menetapkan tempat penyimpanannya tanpa ada yang memutuskannya.
 
 ## 9. Inbox Banding Harga Salvage — `MENU_ID 72`, `InboxRequestSalvage` (2026-09-29)
 

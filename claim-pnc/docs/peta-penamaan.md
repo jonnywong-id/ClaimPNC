@@ -4695,6 +4695,122 @@ Isi modulnya berbahasa Inggris (`D-80`): `Tab`, `Counter`, `QueueRow`, `Dashboar
 `jenis`, `kunci`, `sel`, `pencacah`, `tidak_tersedia`, `alasan_setuju_ditahan`.
 >>>>>>> dev
 
+<<<<<<< HEAD
+---
+
+## Tambahan 2026-09-30 — modul Outstanding Claim (`outstandingclaim`)
+
+Rincian satu klaim treaty proporsional. Di Pega ia BUKAN butir menu melainkan **Flow Action**
+`OutstandingClaim` pada kelas `ASM-FW-GCNMFW-Work-ClaimTreaty`, dengan layar
+`Section/OutstandingClaim-Section.xml`.
+
+### Nama folder
+
+| Lapisan | Bentuk |
+|---|---|
+| Backend | `internal/outstandingclaim` — paket `outstandingclaim` |
+| Frontend | `src/modules/outstanding-claim` |
+
+Nama modulnya **berbahasa Inggris**, bukan Indonesia seperti `master-rekening`. `D-81`
+menetapkan folder modul memakai nama modul yang disebut Work Owner; di sini yang disebut Work
+Owner adalah nama Flow Action dan section-nya sendiri — `OutstandingClaim` — bukan nama bisnis
+berbahasa Indonesia. Mengindonesiakannya menjadi `klaim-outstanding` akan memutus penelusuran
+ke rule Pega yang menjadi satu-satunya sumbernya.
+
+### Properti Pega → kunci kontrak
+
+Seluruh isian di layar ini terikat ke `.ClaimData.*` atau `.TreatyInMaster.*`. Yang pertama
+tersimpan sebagai dokumen JSON di `POOLDATA.JSON_KLAIM.DATA_JSONBLOB`; jalur `$.X` pada
+dokumen itu adalah `.ClaimData.X` di klipboard.
+
+| Properti Pega | Jalur dokumen | Kunci kontrak | Judul di layar |
+|---|---|---|---|
+| `.ClaimData.IDMaster` | `IDMaster` | `id_master` | Treaty ID |
+| `.ClaimData.QuotationData.BusinessName` | `QuotationData.BusinessName` | `class_of_business` | Class Of Business |
+| `.ClaimData.YearofAccount` | `YearofAccount` | `year_of_account` | Treaty Year |
+| `.ClaimData.PolicyData.PolicyNo` | `PolicyData.PolicyNo` | `policy_no` | Policy No |
+| `.ClaimData.PolicyNo` | `PolicyNo` | `policy_no_ceding` | Policy No Ceding |
+| `.ClaimData.DateReceived` | `DateReceived` | `received_date` | Received Date |
+| `.ClaimData.Email` | `Email` | `reporter_email` | Reporter Email |
+| `.ClaimData.Location` | `Location` | `location_of_loss` | Location of Loss |
+| `.ClaimData.PostalCode` | `PostalCode` | `zip_code` | Zip Code |
+| `.ClaimData.Amount` | `Amount` | `deductible_percent` | % |
+| `.ClaimData.IBNR` | `IBNR` | `ibnr_idr` | IBNR in IDR |
+| `.TreatyInMaster.*` (8 isian) | — | — | **terhalang** |
+
+Perhatikan tiga pasangan yang mudah tertukar: `.ClaimData.PolicyNo` adalah nomor polis
+**Ceding**, sedangkan nomor polis ASM ada di `.ClaimData.PolicyData.PolicyNo`;
+`.ClaimData.Amount` adalah **persentase** deductible, bukan nilainya
+(`.ClaimData.DeductibleValue`); dan `.ClaimData.IBNR` adalah total IBNR dalam IDR, sedangkan
+`.IBNR` di dalam baris grid adalah IBNR per baris.
+
+### Sumber grid → kode grid
+
+Diambil dari `pyPageListProperty` tiap grid di section.
+
+| `pyPageListProperty` | Jalur dokumen | Kode grid |
+|---|---|---|
+| `.ClaimData.InterestList` | `InterestList` | `interest_list` |
+| `.ClaimData.TotalInterestInsured` | `TotalInterestInsured` | `interest_total` |
+| `pyWorkPage.ClaimData.ListClaimAmount` | `ListClaimAmount` | `claim_amount` |
+| `.ClaimData.SpreadingRisk` | `SpreadingRisk` | `spreading_risk` |
+| `.ClaimData.EstimationList` | `EstimationList` | `estimation_list` |
+| `.ClaimData.ListTotalEstimation` | `ListTotalEstimation` | `estimation_total` |
+| `.ClaimData.SpreadingClaim` | `SpreadingClaim` | `spreading_claim` |
+| `.ClaimData.SpreadingBreakQS` | `SpreadingBreakQS` | `spreading_break_qs` |
+| `AttachCategory.pxResults` | — | `attachment` — **terhalang** |
+| `pyWorkPage.ClaimData.SuggestList` | `SuggestList` | `suggestion` |
+
+### Judul yang sengaja TIDAK dirapikan (`D-13`)
+
+| Di Pega | Yang benar | Dipakai |
+|---|---|---|
+| `Geoss Estimate Treaty (100%)` | Gross | **Geoss** |
+| `Esstimation ASM` | Estimation | **Esstimation** |
+| `TERITORIAL SCOPE` | Territorial | **TERITORIAL** |
+| `StartDateTreaty` | Start Date Treaty | **StartDateTreaty** |
+| `.TypeDeductible` | (sel tanpa label) | **`.TypeDeductible`** |
+| `Class Of Business` dipakai DUA isian berbeda | — | **keduanya** |
+
+### Tambahan pada modul Inbox Claim Treaty Prop
+
+| Kolom di layar | Asal | Kunci kontrak |
+|---|---|---|
+| Last update | `w.PXUPDATEOPERATOR` | `operator_pengubah` |
+| Status Claim ID | `w.PYSTATUSWORK` | `status_kerja` |
+
+Kunci kontraknya **`status_kerja`, bukan `status_klaim`**: isinya status alur kerja Pega,
+bukan Status Klaim berkode `1134`–`1166` milik master `V_STS_CLAIM`. Judul kolomnya
+menyesatkan sejak di Pega dan dipertahankan (`D-13`); nama kontraknya tidak ikut menularkan
+salah arti itu.
+
+---
+
+## Koreksi 2026-09-30 — dua teks berbeda pada Inbox Claim Treaty Prop
+
+Judul pilihan dropdown dan judul kontainer grid adalah teks yang **berbeda** dan tampil
+**bersamaan**. Keduanya sempat tertukar; `Tab` sekarang membawa keduanya.
+
+| Kode tab | `nama` — pilihan dropdown | `judul_grid` — judul kontainer |
+|---|---|---|
+| `1` | `Prop Treaty-in Admin` | `Work List Treatyin Propotional` |
+| `2` | `Prop Treaty-in Teknik` | `Work Teknik Treatyin` |
+| `3` | `Komite Treaty ASM` | *(kosong — terhalang)* |
+
+**Asalnya berbeda pula:** kolom kiri dari `Data Transform/FilterWorkBasket_Act-DT.xml`
+(properti `CARI2`), kolom kanan dari `Section/InboxClaimTreaty_Section-Section.xml`.
+
+Nilai yang diposting dropdown adalah `CARI1`, bukan kode tab kami:
+
+| Pilihan | `CARI1` di Pega | kode tab di sini |
+|---|---|---|
+| `Choose` | `""` | `""` → jatuh ke tab bawaan |
+| `Prop Treaty-in Admin` | `""` | `1` |
+| `Prop Treaty-in Teknik` | `"TreatyinPNCTeknik"` | `2` |
+
+Dua pilihan pertama bernilai **sama** di Pega — itu bukan salah baca, dan layar meniru
+perilakunya.
+=======
 
 ## Tambahan 2026-09-29 — modul Inbox Banding Harga Salvage (`inboxbandinghargasalvage`)
 
@@ -4874,3 +4990,4 @@ mengisinya: `IMAGEID`, `CATEGORY`, `SUB_CATEGORY`, dan `IDPEGA`. Yang terakhir a
 properti **`ACCOUNT_ID`** membawa **muatan JSON**, bukan nomor rekening —
 `RDB List/UpdateBengkelHE-SQL.xml` mengirimnya sebagai CLOB ke `PEGA_M_BENGKEL_HE`. Nomor
 rekening yang sesungguhnya ada di kolom `NO_ACCOUNT`.
+>>>>>>> dev

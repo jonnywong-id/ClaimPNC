@@ -29,10 +29,11 @@ const PORTAL_LIST = {
 }
 
 /**
- * Kolom kedua tab Receive — sembilan, dan IDENTIK di antara keduanya.
+ * Kolom tab Receive — sembilan, persis seperti pada kedua grid Pega.
  *
- * Kesamaan itu bukan kebetulan: keduanya digambar Report Definition yang sama
- * (`ManagementRecieveView`), dijalankan dengan parameter yang berbeda.
+ * Keduanya digambar Report Definition yang sama (`ManagementRecieveView`), dijalankan
+ * dengan parameter yang berbeda, sehingga kolomnya memang identik. Sejak keduanya digabung
+ * menjadi satu tab, yang membedakan lini bisnisnya adalah ISI kolom "Jenis Klaim".
  */
 const KOLOM_RECEIVE = [
   { kunci: 'no_case', judul: 'CaseID' },
@@ -46,30 +47,21 @@ const KOLOM_RECEIVE = [
   { kunci: 'jumlah_lembar_dokumen', judul: 'Jumlah Lembar Dokumen' },
 ] as Tab['kolom']
 
-const TAB_PA: Tab = {
+/** Tab Receive — satu-satunya yang nomor case-nya membuka layar kerja. */
+const TAB_RECEIVE: Tab = {
   kode: '1',
-  nama: 'Receive PA',
+  nama: 'Receive',
   keterangan:
-    'Berkas penerimaan dokumen klaim Personal Accident yang masih punya penugasan terbuka.',
+    'Berkas penerimaan dokumen klaim yang masih punya penugasan terbuka.',
   kolom: KOLOM_RECEIVE,
   antrean_bersama: false,
-  terhalang: false,
-}
-
-const TAB_NONMBU: Tab = {
-  kode: '2',
-  nama: 'Receive NONMBU',
-  keterangan:
-    'Berkas penerimaan dokumen klaim di luar Personal Accident yang masih punya ' +
-    'penugasan terbuka.',
-  kolom: KOLOM_RECEIVE,
-  antrean_bersama: false,
+  buka_layar_kerja: true,
   terhalang: false,
 }
 
 /** Tab RCL/PUCL — kolomnya BERBEDA seluruhnya, dan sumbernya antrean bersama. */
 const TAB_RCLPUCL: Tab = {
-  kode: '3',
+  kode: '2',
   nama: 'RCL/PUCL',
   keterangan: 'Klaim yang ditolak (RCL) atau diproses ulang (PUCL).',
   kolom: [
@@ -85,11 +77,16 @@ const TAB_RCLPUCL: Tab = {
     { kunci: 'status_kadaluarsa', judul: 'Status Kadaluarsa' },
   ],
   antrean_bersama: true,
+
+  // Nomor case di tab ini BUKAN tautan — di layar lama pun perilaku klik hanya dipasang
+  // pada kedua grid Receive.
+  buka_layar_kerja: false,
+
   terhalang: false,
 }
 
 const METADATA: MetadataResponse = {
-  tab: [TAB_PA, TAB_NONMBU, TAB_RCLPUCL],
+  tab: [TAB_RECEIVE, TAB_RCLPUCL],
   tab_bawaan: '1',
   selisih_terencana: [
     'Kolom "Jenis Klaim" diturunkan dari Group Panel, bukan dibaca dari isian aslinya.',
@@ -168,16 +165,41 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
   })
 }
 
+/**
+ * Isi layar kerja seperlunya — hanya untuk menguji PERPINDAHAN dari antrean ke sana.
+ *
+ * Isinya sengaja minimal: bentuk layar kerja diuji lengkap di
+ * `InputReceiveDocumentPage.test.tsx`, dan menyalinnya ke sini akan membuat dua berkas uji
+ * menjaga hal yang sama.
+ */
+const DOKUMEN_RINGKAS = {
+  referensi: BARIS_RECEIVE.referensi,
+  no_case: BARIS_RECEIVE.no_case,
+  no_klaim_pnc: BARIS_RECEIVE.no_klaim_pnc,
+  jenis_klaim: 'PA',
+  status_kerja: 'Open',
+  kelompok: [
+    {
+      judul: 'Penerimaan Dokumen',
+      isian: [{ kunci: 'nama_pengirim', judul: 'Nama Pengirim / Pelapor Dokumen' }],
+    },
+  ],
+  nilai: { nama_pengirim: 'Pengirim Contoh Satu' },
+  tindakan: [],
+  portal: 'ASM',
+}
+
 /** Peladen tiruan yang menjawab bentuk layar dan satu baris antrean. */
-function stubDefaultFetch(rows: WorkItem[] = [BARIS_RECEIVE], tab: Tab = TAB_PA) {
+function stubDefaultFetch(rows: WorkItem[] = [BARIS_RECEIVE], tab: Tab = TAB_RECEIVE) {
   stubFetch((url) => {
     if (url === TAB_PATH) return jsonResponse(200, METADATA)
+    if (url.startsWith(`${PATH}/dokumen/`)) return jsonResponse(200, DOKUMEN_RINGKAS)
     if (url.startsWith(EXPORT_PATH)) {
       return new Response('CaseID\nRCV-900001\n', {
         status: 200,
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="receive-pa.csv"',
+          'Content-Disposition': 'attachment; filename="receive.csv"',
         },
       })
     }
@@ -185,12 +207,7 @@ function stubDefaultFetch(rows: WorkItem[] = [BARIS_RECEIVE], tab: Tab = TAB_PA)
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun.
     const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab')
-    const answered =
-      wanted === TAB_RCLPUCL.kode
-        ? TAB_RCLPUCL
-        : wanted === TAB_NONMBU.kode
-          ? TAB_NONMBU
-          : tab
+    const answered = wanted === TAB_RCLPUCL.kode ? TAB_RCLPUCL : tab
 
     const baris = answered.kode === TAB_RCLPUCL.kode ? [BARIS_RCLPUCL] : rows
 
@@ -224,7 +241,7 @@ function renderPage() {
  */
 async function renderLoaded() {
   renderPage()
-  await screen.findByRole('tab', { name: /Receive PA/ })
+  await screen.findByRole('tab', { name: 'Receive' })
 }
 
 function lastListCall(): Call | undefined {
@@ -248,15 +265,15 @@ afterEach(() => {
 })
 
 describe('bentuk layar', () => {
-  it('menggambar TIGA tab, bukan dua judul tab seperti di Pega', async () => {
-    // Pega punya dua judul tab tetapi TIGA grid: tab "Receive" memuat dua tabel bertumpuk
-    // tanpa judul. Pemisahannya menjadi tiga tab adalah selisih terencana, dan uji ini
-    // yang menjaganya tidak diam-diam dikembalikan menjadi dua.
+  it('menggambar DUA tab, sama dengan judul tab di Pega', async () => {
+    // `Section/InboxManagerReceive_Section-Section.xml` memuat tepat dua `<pyTitle>`.
+    // Versi pertama modul ini memecah "Receive" menjadi dua tab; pemecahan itu dicabut
+    // 2026-09-30, dan uji ini yang menjaganya tidak diam-diam kembali menjadi tiga.
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(screen.getByRole('tab', { name: /Receive PA/ })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Receive NONMBU/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(2)
+    expect(screen.getByRole('tab', { name: 'Receive' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'RCL/PUCL' })).toBeInTheDocument()
   })
 
@@ -264,7 +281,7 @@ describe('bentuk layar', () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(screen.getByRole('tab', { name: /Receive PA/ })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Receive' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -274,7 +291,7 @@ describe('bentuk layar', () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    for (const column of TAB_PA.kolom) {
+    for (const column of TAB_RECEIVE.kolom) {
       expect(
         await screen.findByRole('columnheader', { name: column.judul }),
       ).toBeInTheDocument()
@@ -314,7 +331,7 @@ describe('perpindahan tab', () => {
       await screen.findByRole('columnheader', { name: 'Deskripsi Analyst' }),
     ).toBeInTheDocument()
 
-    expect(lastListCall()?.url).toContain('tab=3')
+    expect(lastListCall()?.url).toContain('tab=2')
   })
 
   it('kembali ke halaman pertama saat tab berpindah', async () => {
@@ -374,7 +391,7 @@ describe('portal', () => {
 
 describe('ekspor', () => {
   it('mengirim tab yang sedang dilihat ke endpoint ekspor', async () => {
-    // Ketiga tab punya kolom yang berbeda, sehingga berkasnya pun berbeda susunannya.
+    // Kedua tab punya kolom yang berbeda, sehingga berkasnya pun berbeda susunannya.
     // Ekspor yang mengabaikan tab akan mengeluarkan berkas yang tidak dapat dicocokkan
     // dengan apa pun di layar.
     stubDefaultFetch()
@@ -386,7 +403,7 @@ describe('ekspor', () => {
     await userEvent.click(screen.getByRole('button', { name: /Export Data/ }))
 
     const ekspor = [...calls].reverse().find((c) => c.url.startsWith(EXPORT_PATH))
-    expect(ekspor?.url).toContain('tab=3')
+    expect(ekspor?.url).toContain('tab=2')
   })
 
   it('mematikan tombol ekspor saat tidak ada yang dapat diekspor', async () => {
@@ -396,5 +413,78 @@ describe('ekspor', () => {
     await renderLoaded()
 
     expect(await screen.findByRole('button', { name: /Export Data/ })).toBeDisabled()
+  })
+})
+
+describe('membuka layar kerja lewat nomor case', () => {
+  it('menggambar nomor case tab Receive sebagai TAUTAN, bukan teks biasa', async () => {
+    // Di Pega, sel nomor case pada grid Receive adalah `pyUIElement = link` yang menjalankan
+    // `SetAssignmentInboxReceive_act` lalu Open Assignment.
+    //
+    // Versi pertama modul ini menggambarnya sebagai teks biasa dan menambahkan tombol
+    // "Lihat Detail" di ujung baris — kolom yang tidak ada di Pega sama sekali.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(await screen.findByRole('button', { name: 'RCV-900001' })).toBeInTheDocument()
+  })
+
+  it('TIDAK menambahkan kolom aksi yang tidak ada di Pega', async () => {
+    // Kolom tambahan bukan sekadar beda tampilan: ia membuat pengguna mengira ada dua cara
+    // berbeda membuka baris, dan menggeser lebar seluruh kolom lain.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByRole('columnheader', { name: 'CaseID' })
+
+    expect(screen.queryByRole('button', { name: /Lihat Detail/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader')).toHaveLength(TAB_RECEIVE.kolom.length)
+  })
+
+  it('TIDAK menjadikan nomor case tab RCL/PUCL sebuah tautan', async () => {
+    // Di layar lama, perilaku klik hanya dipasang pada kedua grid Receive. Bila penandanya
+    // bocor ke tab ini, nomor case menjadi tautan yang membuka layar kerja PENERIMAAN
+    // DOKUMEN untuk sebuah KLAIM — dan kuerinya menyaring kelas objek kerja, sehingga
+    // jawabannya "tidak ditemukan" pada setiap baris.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'RCL/PUCL' }))
+    await screen.findByRole('columnheader', { name: 'Deskripsi Analyst' })
+
+    expect(await screen.findByText('PNC-800002')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'PNC-800002' })).not.toBeInTheDocument()
+  })
+
+  it('menuju layar kerja dengan kunci terkodekan saat nomor case diklik', async () => {
+    // `pzInsKey` memuat SPASI — `ASM-FW-GCNMFW-WORK RCV-900001` — dan spasi mentah di dalam
+    // alamat bukan alamat yang sah.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'RCV-900001' }))
+
+    // Layar kerjanya terbuka: judulnya menyebut berkas, bukan antrean.
+    expect(await screen.findByText('Berkas RCV-900001')).toBeInTheDocument()
+
+    const dokumen = [...calls].reverse().find((c) => c.url.startsWith(`${PATH}/dokumen/`))
+    expect(dokumen?.url).toContain(encodeURIComponent(BARIS_RECEIVE.referensi))
+  })
+
+  it('membawa tab dan halaman ke alamat layar kerja supaya tombol kembali tepat', async () => {
+    // Berpindah halaman melepas komponen antrean. Tanpa tab dan halaman di alamat, petugas
+    // yang kembali dari sebuah berkas mendarat di tab pertama halaman pertama.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'RCV-900001' }))
+    await screen.findByRole('button', { name: /Kembali ke antrean/ })
+
+    await userEvent.click(screen.getByRole('button', { name: /Kembali ke antrean/ }))
+
+    expect(await screen.findByRole('tab', { name: 'Receive' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 })

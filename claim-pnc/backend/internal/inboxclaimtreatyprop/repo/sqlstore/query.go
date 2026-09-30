@@ -36,20 +36,27 @@ func query(name string) string {
 	return text
 }
 
-// resultColumns adalah ke-13 alias yang dikembalikan SETIAP kueri daftar.
+// resultColumns adalah ke-15 alias yang dikembalikan SETIAP kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxclaimtreatyprop.sql dan dengan urutan
 // pemindai scanWorkItem. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat
 // diuji kesesuaiannya di query_test.go.
+//
+// Dua alias terakhir sebelum TOTAL_ROWS datang dari tabel objek kerja, bukan dari tabel
+// penugasan maupun JSON_KLAIM — lihat bagian "TABEL KETIGA" di inboxclaimtreatyprop.sql.
 var resultColumns = []string{
 	"WORK_KEY", "REFERENCE", "CLAIM_ID", "ASSIGNED_OPERATOR",
 	"MASTER_ID", "POLICY_NUMBER", "LOSS_DATE",
 	"BUSINESS_NAME", "BUSINESS_SOURCE", "CEDING_COMPANY", "INSURED_NAME",
-	"SUBJECTIVITY", "TOTAL_ROWS",
+	"SUBJECTIVITY", "LAST_UPDATE_OPERATOR", "CLAIM_STATUS", "TOTAL_ROWS",
 }
 
-// listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.
-var listQueries = []string{"list_worklist", "list_worklist_all", "list_workbasket"}
+// listQueries adalah nama kedua kueri daftar, dipakai uji kesesuaian alias.
+//
+// DUA, bukan tiga: kueri "See All Claim" dihapus ketika sumbernya berpindah ke Report
+// Definition — kedua RD tidak punya penyaring operator, sehingga tab Admin sendiri sudah
+// tidak menyaring pemanggil dan tidak ada lagi yang perlu ditukar.
+var listQueries = []string{"list_worklist", "list_workbasket"}
 
 // loadQueries membaca setiap berkas .sql dan memecahnya pada penanda "-- name: <nama>",
 // sehingga satu berkas dapat memuat beberapa pernyataan dan tetap terbaca sebagai satu

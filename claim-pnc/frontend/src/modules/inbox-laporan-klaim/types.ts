@@ -170,6 +170,12 @@ export type ClaimReportResponse = {
    */
   dapat_disunting: boolean
 
+  /**
+   * Berkas sudah menjadi klaim (nomornya di `laporan.nomor_klaim`). Simpan dan Register
+   * Klaim tidak digambar, dan isiannya terkunci (Work Owner, 2026-09-29).
+   */
+  sudah_diregistrasi?: boolean
+
   portal: string
 }
 

@@ -193,6 +193,13 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"Perubahannya dilakukan di Pega.",
 		}, true
 
+	case errors.Is(err, inboxlaporanklaim.ErrAlreadyRegistered):
+		// 409: keadaan berkasnya, bukan kewenangan pengguna.
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeReadOnly,
+			Message: "This Receive Document is already registered as a claim and can no longer be changed.",
+		}, true
+
 	default:
 		return 0, ErrorResponse{}, false
 	}

@@ -1,9 +1,10 @@
 // Package usecase mengorkestrasi modul Inbox Manager Receive / PUCL.
 //
-// Dua operasi:
+// Tiga operasi:
 //
 //	Metadata  menyerahkan daftar tab, kolomnya, dan selisih terencana yang berlaku
 //	List      mengambil isi satu tab
+//	Document  mengambil isi layar kerja penerimaan dokumen untuk satu berkas
 //
 // Ekspor TIDAK menjadi operasi ketiga: ia memanggil List berulang kali, halaman demi
 // halaman, dan menuliskan hasilnya langsung ke jawaban. Menaruhnya di sini akan memaksa

@@ -82,6 +82,14 @@ type TabDTO struct {
 	// per orang. Layar memakainya untuk menjelaskan antrean yang kosong menurut sebabnya.
 	FromWorkbasket bool `json:"antrean_bersama"`
 
+	// OpensReceiveDocument menyatakan nomor case pada tab ini adalah TAUTAN yang membuka
+	// layar kerja penerimaan dokumen.
+	//
+	// Ia dikirim sebagai DATA, bukan disimpulkan layar dari kode tab, supaya perilaku klik
+	// ditetapkan di satu tempat — di sanalah buktinya dibaca. Hanya tab Receive yang begitu;
+	// di layar lama pun perilaku klik hanya dipasang pada kedua grid Receive.
+	OpensReceiveDocument bool `json:"buka_layar_kerja"`
+
 	// Ketiga isian berikut menyatakan tab yang digambar tetapi belum dapat diisi.
 	//
 	// Tidak ada tab terhalang di layar ini hari ini. Isian tetap dikirim sebagai DATA
@@ -119,6 +127,116 @@ type ListResponse struct {
 	Items      []WorkItemDTO `json:"baris"`
 	Pagination PaginationDTO `json:"paginasi"`
 	Portal     string        `json:"portal"`
+}
+
+// FieldDTO adalah satu isian pada layar kerja penerimaan dokumen.
+type FieldDTO struct {
+	Key   string `json:"kunci"`
+	Title string `json:"judul"`
+
+	// Multiline menandai isian yang di Pega digambar sebagai kotak teks bertingkat.
+	Multiline bool `json:"bertingkat,omitempty"`
+
+	// Ketiga isian berikut menyatakan isian yang digambar tetapi belum dapat diisi.
+	//
+	// Alasannya datang dari SERVER, bukan ditulis tetap di layar, supaya ia hilang dengan
+	// sendirinya begitu penghalangnya hilang — tanpa menyunting frontend.
+	Blocked       bool   `json:"terhalang,omitempty"`
+	BlockedReason string `json:"alasan_terhalang,omitempty"`
+	BlockedOwner  string `json:"pemilik_penghalang,omitempty"`
+}
+
+// FieldGroupDTO adalah satu kelompok isian, digambar sebagai satu panel.
+type FieldGroupDTO struct {
+	Title  string     `json:"judul"`
+	Fields []FieldDTO `json:"isian"`
+}
+
+// WriteActionDTO adalah satu tombol yang di layar lama mengubah data.
+//
+// Ia dikirim meski belum satu pun dapat dihidupkan — lihat
+// inboxmanagerreceivepucl.WriteAction. Owner disertakan supaya layar dapat menyebut modul
+// mana yang kelak memilikinya, alih-alih hanya mengatakan "belum tersedia".
+type WriteActionDTO struct {
+	Code     string `json:"kode"`
+	Label    string `json:"label"`
+	Activity string `json:"activity_pega"`
+	Owner    string `json:"pemilik"`
+}
+
+// DocumentResponse adalah jawaban GET
+// /api/inbox-manager-receive-pucl/dokumen/{referensi}.
+//
+// Nilai isian dikirim sebagai PETA berkunci `kunci` pada FieldDTO, bukan sebagai struct
+// bernama satu per satu. Dengan begitu bentuk layar (`kelompok`) dan isinya (`nilai`) tidak
+// dapat berselisih: isian yang tidak disebut bentuk layar tidak tergambar, dan isian yang
+// disebut tetapi tidak punya nilai tergambar kosong beserta alasannya.
+type DocumentResponse struct {
+	Reference   string `json:"referensi"`
+	CaseID      string `json:"no_case"`
+	ClaimNumber string `json:"no_klaim_pnc"`
+	ClaimType   string `json:"jenis_klaim"`
+	WorkStatus  string `json:"status_kerja"`
+
+	Groups []FieldGroupDTO   `json:"kelompok"`
+	Values map[string]string `json:"nilai"`
+
+	Actions []WriteActionDTO `json:"tindakan"`
+
+	Portal string `json:"portal"`
+}
+
+// toFieldGroupListDTO mengubah susunan isian layar.
+func toFieldGroupListDTO(
+	groups []inboxmanagerreceivepucl.FieldGroup,
+) []FieldGroupDTO {
+	result := make([]FieldGroupDTO, 0, len(groups))
+	for _, group := range groups {
+		fields := make([]FieldDTO, 0, len(group.Fields))
+		for _, field := range group.Fields {
+			fields = append(fields, FieldDTO{
+				Key:           field.Key,
+				Title:         field.Title,
+				Multiline:     field.Multiline,
+				Blocked:       field.Blocked,
+				BlockedReason: field.BlockedReason,
+				BlockedOwner:  field.BlockedOwner,
+			})
+		}
+		result = append(result, FieldGroupDTO{Title: group.Title, Fields: fields})
+	}
+	return result
+}
+
+// toWriteActionListDTO mengubah daftar tombol.
+func toWriteActionListDTO(
+	actions []inboxmanagerreceivepucl.WriteAction,
+) []WriteActionDTO {
+	result := make([]WriteActionDTO, 0, len(actions))
+	for _, action := range actions {
+		result = append(result, WriteActionDTO{
+			Code:     action.Code,
+			Label:    action.Label,
+			Activity: action.Activity,
+			Owner:    action.Owner,
+		})
+	}
+	return result
+}
+
+// toDocumentResponse merakit jawaban layar kerja.
+func toDocumentResponse(doc usecase.Document, portalAlias string) DocumentResponse {
+	return DocumentResponse{
+		Reference:   doc.Detail.Reference,
+		CaseID:      doc.Detail.CaseID,
+		ClaimNumber: doc.Detail.ClaimNumber,
+		ClaimType:   doc.Detail.ClaimType,
+		WorkStatus:  doc.Detail.WorkStatus,
+		Groups:      toFieldGroupListDTO(doc.Groups),
+		Values:      doc.Detail.Values(),
+		Actions:     toWriteActionListDTO(doc.Actions),
+		Portal:      portalAlias,
+	}
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -177,14 +295,15 @@ func toTabDTO(tab inboxmanagerreceivepucl.Tab) TabDTO {
 	}
 
 	return TabDTO{
-		Code:           tab.Code,
-		Name:           tab.Name,
-		Description:    tab.Description,
-		Columns:        columns,
-		FromWorkbasket: tab.FromWorkbasket,
-		Blocked:        tab.Blocked,
-		BlockedReason:  tab.BlockedReason,
-		BlockedOwner:   tab.BlockedOwner,
+		Code:                 tab.Code,
+		Name:                 tab.Name,
+		Description:          tab.Description,
+		Columns:              columns,
+		FromWorkbasket:       tab.FromWorkbasket,
+		OpensReceiveDocument: tab.OpensReceiveDocument,
+		Blocked:              tab.Blocked,
+		BlockedReason:        tab.BlockedReason,
+		BlockedOwner:         tab.BlockedOwner,
 	}
 }
 

@@ -11,8 +11,9 @@
 // # Kenapa penyaringnya ditiru, bukan disederhanakan
 //
 // Karena kalau tidak, uji yang lulus di sini tidak menyatakan apa pun tentang yang berjalan
-// di Oracle. Ketiga penyaring ditiru sedekat-dekatnya dengan predikat SQL-nya: penanda
-// `%CLMP%` pada kunci objek kerja, kepemilikan penugasan, dan antrean teknik.
+// di Oracle. Penyaringnya ditiru sedekat-dekatnya dengan predikat SQL-nya — dan sejak
+// sumbernya berpindah ke Report Definition, predikat itu tinggal DUA: kelas objek kerja, dan
+// tabel penugasan mana yang dibaca.
 package memory
 
 import (
@@ -43,6 +44,17 @@ type Row struct {
 
 	// AssignedAt adalah waktu penugasan dibuat — `PXCREATEDATETIME`, dasar pengurutan.
 	AssignedAt time.Time
+
+	// WorkClass adalah kelas objek kerja yang ditunjuk penugasan ini — `PXOBJCLASS` pada
+	// DATAPEGA.PC_ASM_FW_GCNMFW_WORK.
+	//
+	// Ia yang MENGGANTIKAN penanda `%CLMP%`: kedua Report Definition membatasi barisnya
+	// dengan JOIN ke kelas `ASM-FW-GCNMFW-Work-ClaimTreaty`, bukan dengan pola di tengah
+	// teks kunci.
+	//
+	// Baris yang mengosongkannya tidak akan pernah cocok — dan itu disengaja: penugasan
+	// tanpa objek kerja memang dibuang INNER JOIN di Oracle.
+	WorkClass string
 }
 
 // Store adalah penyimpanan antrean di memori.
@@ -63,13 +75,6 @@ func NewSampleStore() *Store {
 	return NewStore(SampleRows()...)
 }
 
-// claimKeyMarker adalah penanda yang membedakan objek kerja klaim treaty dari objek kerja
-// lain di tabel penugasan yang sama.
-//
-// Ketiga kueri memakainya: `WHERE a.PXREFOBJECTKEY LIKE '%CLMP%'`. Ia ditiru di sini supaya
-// baris contoh yang tidak bertanda itu ikut tersaring, persis seperti di Oracle.
-const claimKeyMarker = "CLMP"
-
 // List mengembalikan satu halaman baris yang lolos penyaring beserta jumlah seluruhnya.
 func (s *Store) List(
 	_ context.Context,
@@ -80,7 +85,10 @@ func (s *Store) List(
 	order := map[string]time.Time{}
 
 	for _, candidate := range s.rows {
-		if !strings.Contains(strings.ToUpper(candidate.Item.WorkKey), claimKeyMarker) {
+		// Meniru `INNER JOIN … ON w.PZINSKEY = a.PXREFOBJECTKEY WHERE w.PXOBJCLASS = :1`.
+		// Baris yang kelasnya berbeda — atau yang objek kerjanya tidak ada sama sekali —
+		// dibuang, persis seperti INNER JOIN di Oracle.
+		if candidate.WorkClass != inboxclaimtreatyprop.WorkClass {
 			continue
 		}
 		if !matchesQueue(candidate, q) {
@@ -91,8 +99,11 @@ func (s *Store) List(
 	}
 
 	// Urutan ditetapkan supaya paginasi di atasnya stabil: penugasan terbaru lebih dulu,
-	// mengikuti `ORDER BY A.PXCREATEDATETIME DESC` pada GetClaimTreaty_SQL. Baris yang
-	// waktunya sama diurutkan menurut Claim ID supaya tetap deterministik.
+	// mengikuti `ORDER BY a.PXCREATEDATETIME DESC` pada kedua kueri. Baris yang waktunya
+	// sama diurutkan menurut Claim ID supaya tetap deterministik.
+	//
+	// Kedua Report Definition sendiri TIDAK menetapkan urutan — lihat catatan di
+	// inboxclaimtreatyprop.sql.
 	sort.SliceStable(matched, func(i, j int) bool {
 		left, right := order[rowKey(matched[i])], order[rowKey(matched[j])]
 		if !left.Equal(right) {
@@ -115,18 +126,20 @@ func rowKey(item inboxclaimtreatyprop.WorkItem) string {
 	return item.ClaimID
 }
 
-// matchesQueue meniru pemilihan antrean ketiga kueri.
+// matchesQueue meniru pemilihan antrean kedua kueri.
 //
-//	tab Teknik                      workbasket, PXASSIGNEDOPERATORID = TreatyinPNCTeknik
-//	tab Work List tanpa "See All"   worklist, PXASSIGNEDOPERATORID = pemanggil
-//	tab Work List dengan "See All"  worklist, tanpa penyaring operator
+//	tab Teknik  PC_ASSIGN_WORKBASKET  — Report Definition/InboxKlaimPropTeknik
+//	tab Admin   PC_ASSIGN_WORKLIST    — Report Definition/InboxKlaimPropAdmin
+//
+// Itu SELURUH pembedanya. Tidak ada penyaring operator dan tidak ada penyaring nama antrean:
+// kedua RD tidak punya satu pun filter selain kondisi join-nya.
+//
+// Penyaring operator TETAP dihormati bila suatu saat ada tab yang menyatakan
+// `ScopedToCaller` — bukan karena ada yang memakainya hari ini, melainkan supaya menyalakan
+// kembali penyaring itu cukup satu penanda, tanpa menyentuh penyimpanan ini maupun SQL-nya.
 func matchesQueue(candidate Row, q inboxclaimtreatyprop.Query) bool {
 	if q.Tab.Code == inboxclaimtreatyprop.TabTechnical {
-		return candidate.FromWorkbasket &&
-			strings.EqualFold(
-				candidate.Item.AssignedOperator,
-				inboxclaimtreatyprop.TechnicalWorkbasket,
-			)
+		return candidate.FromWorkbasket
 	}
 
 	if candidate.FromWorkbasket {

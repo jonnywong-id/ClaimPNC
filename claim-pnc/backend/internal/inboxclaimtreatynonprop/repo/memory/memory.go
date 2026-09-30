@@ -16,10 +16,11 @@
 //
 // # Dua isian yang DIHITUNG di sini, bukan disimpan
 //
-// `Status` dan `AgingDays` tidak ada di Row, dan itu disengaja: di sistem lama keduanya
-// bukan kolom melainkan hasil kuerinya — teks tetap dan pengurangan dua tanggal. Menyimpan
-// keduanya sebagai data contoh akan membuat penyaring yang salah tetap lulus uji, karena
-// nilainya datang dari tempat yang salah.
+// `CreatedAt` dan `AgingDays` tidak ada di WorkItem yang disimpan Row, dan itu disengaja:
+// keduanya diturunkan dari satu kolom yang sama — `Row.WorkCreatedAt`, yaitu
+// `b.PXCREATEDATETIME`. Menyimpan keduanya sebagai data contoh akan membuat keduanya dapat
+// berselisih dengan sumbernya, dan uji yang memeriksanya tetap lulus karena nilainya datang
+// dari tempat yang salah.
 package memory
 
 import (
@@ -152,53 +153,25 @@ func (s *Store) List(
 
 // decorate mengisi kedua isian yang di sistem lama dihasilkan KUERI, bukan disimpan.
 //
-//	Status     teks tetap yang berbeda per antrean
+//	CreatedAt  waktu pembuatan objek kerja dalam notasi yang dibaca pengguna
 //	AgingDays  selisih hari kalender antara hari ini dan pembuatan objek kerja
 //
-// Keduanya dihitung di sini supaya penyimpanan memori menghasilkan baris yang bentuknya
-// sama dengan yang datang dari Oracle — termasuk sifatnya yang berubah sendiri tiap hari.
+// Keduanya bersumber dari SATU kolom yang sama (`b.PXCREATEDATETIME`) dan dihitung di sini
+// supaya penyimpanan memori menghasilkan baris yang bentuknya sama dengan yang datang dari
+// Oracle — termasuk sifat AgingDays yang berubah sendiri tiap hari, sementara CreatedAt
+// tidak pernah berubah.
+//
+// Ia tidak lagi bergantung pada tab mana yang diminta: kolom "Status" berisi waktu, bukan
+// teks tetap per antrean. Lihat WorkItem.CreatedAt.
 func (s *Store) decorate(
 	candidate Row,
-	q inboxclaimtreatynonprop.Query,
+	_ inboxclaimtreatynonprop.Query,
 ) inboxclaimtreatynonprop.WorkItem {
 	item := candidate.Item
 
-	if q.Tab.Code == inboxclaimtreatynonprop.TabTechnical {
-		item.Status = inboxclaimtreatynonprop.StatusAcceptation
-	} else {
-		item.Status = inboxclaimtreatynonprop.StatusEstimation
-	}
-
-	item.AgingDays = agingDays(s.now(), candidate.WorkCreatedAt)
+	item.CreatedAt = inboxclaimtreatynonprop.FormatPegaDateTime(candidate.WorkCreatedAt)
+	item.AgingDays = inboxclaimtreatynonprop.AgingDaysSince(candidate.WorkCreatedAt, s.now())
 	return item
-}
-
-// agingDays meniru `TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)`.
-//
-// Kedua sisi dipangkas ke tanggal lebih dulu, lalu selisihnya dihitung dalam hari penuh.
-// Memangkas keduanya penting: selisih dua timestamp mentah akan menghasilkan angka yang
-// berubah menurut JAM, sehingga pekerjaan yang dibuat kemarin sore terhitung nol hari
-// sampai lewat 24 jam.
-//
-// Baris tanpa pasangan objek kerja tidak punya waktu pembuatan; umurnya nol, sama dengan
-// yang dihasilkan pemindai SQL saat kolomnya NULL.
-func agingDays(now, created time.Time) int {
-	if created.IsZero() {
-		return 0
-	}
-
-	truncate := func(t time.Time) time.Time {
-		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
-	}
-
-	days := int(truncate(now).Sub(truncate(created.In(now.Location()))).Hours() / 24)
-	if days < 0 {
-		// Objek kerja bertanggal masa depan. Oracle akan menghasilkan angka negatif;
-		// di sini ia dijepit ke nol, karena umur negatif tidak punya arti bagi pembaca
-		// grid dan hanya akan terbaca sebagai kerusakan.
-		return 0
-	}
-	return days
 }
 
 // matchesQueue meniru pemilihan antrean kelima kueri.

@@ -36,6 +36,12 @@ type WorkItemDTO struct {
 	CedingCompany  string `json:"ceding_co"`
 	InsuredName    string `json:"nama_tertanggung"`
 	Subjectivity   string `json:"subjectivity"`
+
+	// Kedua isian berikut mengisi kolom "Last update" dan "Status Claim ID". Namanya
+	// mengikuti ARTI kolomnya, bukan judulnya — lihat catatan pada
+	// inboxclaimtreatyprop.FieldClaimStatus.
+	LastUpdateOperator string `json:"operator_pengubah"`
+	ClaimStatus        string `json:"status_kerja"`
 }
 
 // ColumnDTO adalah satu kolom grid.
@@ -49,8 +55,13 @@ type ColumnDTO struct {
 
 // TabDTO adalah satu antrean kerja beserta bentuk gridnya.
 type TabDTO struct {
-	Code        string `json:"kode"`
-	Name        string `json:"nama"`
+	Code string `json:"kode"`
+
+	// Name adalah teks PILIHAN pada dropdown; GridTitle judul kontainer gridnya. Keduanya
+	// teks yang berbeda dan tampil bersamaan — lihat inboxclaimtreatyprop.Tab.
+	Name      string `json:"nama"`
+	GridTitle string `json:"judul_grid,omitempty"`
+
 	Description string `json:"keterangan"`
 
 	Columns []ColumnDTO `json:"kolom"`
@@ -126,16 +137,18 @@ type ErrorResponse struct {
 // toWorkItemDTO mengubah satu baris.
 func toWorkItemDTO(item inboxclaimtreatyprop.WorkItem) WorkItemDTO {
 	return WorkItemDTO{
-		Reference:      item.Reference,
-		ClaimID:        item.ClaimID,
-		MasterID:       item.MasterID,
-		PolicyNumber:   item.PolicyNumber,
-		LossDate:       item.LossDate,
-		BusinessName:   item.BusinessName,
-		BusinessSource: item.BusinessSource,
-		CedingCompany:  item.CedingCompany,
-		InsuredName:    item.InsuredName,
-		Subjectivity:   item.Subjectivity,
+		Reference:          item.Reference,
+		ClaimID:            item.ClaimID,
+		MasterID:           item.MasterID,
+		PolicyNumber:       item.PolicyNumber,
+		LossDate:           item.LossDate,
+		BusinessName:       item.BusinessName,
+		BusinessSource:     item.BusinessSource,
+		CedingCompany:      item.CedingCompany,
+		InsuredName:        item.InsuredName,
+		Subjectivity:       item.Subjectivity,
+		LastUpdateOperator: item.LastUpdateOperator,
+		ClaimStatus:        item.ClaimStatus,
 	}
 }
 
@@ -161,6 +174,7 @@ func toTabDTO(tab inboxclaimtreatyprop.Tab) TabDTO {
 	return TabDTO{
 		Code:           tab.Code,
 		Name:           tab.Name,
+		GridTitle:      tab.GridTitle,
 		Description:    tab.Description,
 		Columns:        columns,
 		ScopedToCaller: tab.ScopedToCaller,

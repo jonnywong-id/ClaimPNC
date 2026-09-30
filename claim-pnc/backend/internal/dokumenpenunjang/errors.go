@@ -43,6 +43,17 @@ var ErrTidakDitemukan = errors.New("dokumenpenunjang: dokumen tidak ditemukan")
 var ErrFolderAplikasiTidakAda = errors.New(
 	"dokumenpenunjang: folder penyimpanan untuk aplikasi ini belum terdaftar")
 
+// ErrLinkTakTerjangkau dikembalikan ketika basis data portal tidak dapat menjangkau
+// GENERAL lewat DB link `@asmd.sinarmas.co.id` — ORA-12541, ORA-12170, ORA-02019, dan
+// sejenisnya. Tabel folder, izin unggah, dan metadata dokumen seluruhnya berada di sana.
+//
+// Dibedakan dari galat internal biasa karena penyebabnya di luar aplikasi (listener atau
+// jaringan database ASMD) dan pengguna perlu tahu apa yang dilaporkan: tanpanya layar hanya
+// menampilkan "Terjadi kesalahan pada sistem." dan penelusurannya dimulai dari tempat yang
+// salah. Belum ada berkas yang terkirim saat galat ini muncul, sehingga mengulang aman.
+var ErrLinkTakTerjangkau = errors.New(
+	"dokumenpenunjang: basis data penyimpanan dokumen (DB link ASMD) tidak dapat dihubungi")
+
 // ErrKonversiGagal dikembalikan ketika layanan konversi gambar menolak berkasnya.
 //
 // # Kenapa ia MEMBATALKAN unggahan, bukan meneruskan berkas aslinya

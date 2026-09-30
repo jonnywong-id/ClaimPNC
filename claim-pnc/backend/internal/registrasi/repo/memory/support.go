@@ -114,7 +114,7 @@ func (p *NumberIssuer) Issue(_ context.Context, at time.Time) (string, error) {
 
 	year := clock.DateWIB(at).Year()
 	p.seq[year]++
-	return fmt.Sprintf("%s.%02d.%04d", p.prefix, year%100, p.seq[year]), nil
+	return fmt.Sprintf("%s.%02d.%d", p.prefix, year%100, p.seq[year]), nil
 }
 
 // ── Parameter bisnis ─────────────────────────────────────────────────────────────
@@ -474,5 +474,10 @@ func (p *ClaimReportLink) Snapshot(
 ) (registrasi.ClaimReportSnapshot, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.snapshot[reportID], nil
+	isi := p.snapshot[reportID]
+	// Nomor klaim yang sudah terpasang ikut terbaca, seperti NOKLAIM pada pengisi SQL.
+	if n := p.claimNumber[reportID]; n != "" {
+		isi.ClaimNumber = n
+	}
+	return isi, nil
 }

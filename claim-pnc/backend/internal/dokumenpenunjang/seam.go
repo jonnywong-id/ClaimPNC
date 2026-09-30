@@ -53,12 +53,17 @@ type PerintahUnggah struct {
 	// `KLAIMPNC`. Lihat komentar NamaAplikasi.
 	NamaAplikasi string
 
-	Pengunggah  string
-	NomorKlaim  string
-	Folder      string
-	NamaBerkas  string
-	TipeMedia   string
-	Isi         []byte
+	Pengunggah string
+	NomorKlaim string
+
+	// KodeAkses adalah token GCP_IMAGE.KODEAKSES dari CatatAksesUnggah, dikirim sebagai
+	// `KodeString`. Layanan menolak muatan tanpanya ("can't Kodestring null value").
+	KodeAkses string
+
+	Folder     string
+	NamaBerkas string
+	TipeMedia  string
+	Isi        []byte
 }
 
 // HasilUnggah adalah yang dikembalikan layanan penyimpanan.
@@ -67,7 +72,8 @@ type PerintahUnggah struct {
 // (`Activity/InsertDokumenPNC-Act.xml:3786`) dan tidak pernah membaca apa pun darinya.
 // Membawanya sebagai field akan mengundang seseorang menyetelnya.
 type HasilUnggah struct {
-	// ImageID adalah kunci berkas di layanan penyimpanan.
+	// ImageID yang dikirim layanan, bila ada. Tidak dipakai sebagai kunci: Pega menerbitkan
+	// kuncinya sendiri lewat GenerateImageID (lihat dokumenpenunjang.NewImageID).
 	ImageID string
 
 	// URL dan ExpiresAt boleh kosong: Pega membacanya kembali dari tabel metadata
@@ -89,9 +95,10 @@ type Repo interface {
 	// CatatAksesUnggah merekam satu izin unggah sebelum berkasnya dikirim.
 	//
 	// Pega menempuhnya lewat `GENERAL.GET_TOKEN_STORAGE`, yang membuat token lalu
-	// MENYISIPKAN barisnya ke `GENERAL.GCP_IMAGE`. Lihat catatan di adapter — tokennya
-	// tidak pernah ikut terkirim.
-	CatatAksesUnggah(ctx context.Context, aplikasi, pengunggah string) error
+	// MENYISIPKAN barisnya ke `GENERAL.GCP_IMAGE`. Tokennya dikembalikan karena IKUT
+	// terkirim: procedure itu menulisnya ke `DocAPI.KodeString`, dan muatan unggah adalah
+	// `@GetPageJSONString()` halaman DocAPI.
+	CatatAksesUnggah(ctx context.Context, aplikasi, pengunggah string) (string, error)
 
 	// Simpan mencatat metadata satu dokumen yang sudah terunggah.
 	Simpan(ctx context.Context, dokumen Document) error

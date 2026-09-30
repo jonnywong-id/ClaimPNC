@@ -39,10 +39,14 @@ func TestTabsReturnsACopy(t *testing.T) {
 	require.Equal(t, "Cetak Surat", second[0].Name)
 }
 
-func TestEveryTabDrawsTheSameNineColumns(t *testing.T) {
-	// Kesembilan kolom dibaca dari sel grid ketiga section, dan ketiganya IDENTIK kecuali
-	// judul kolom keenam. Kolom yang bertambah atau berkurang di salah satu tab berarti
-	// salah satu section dibaca keliru.
+func TestEveryTabDrawsTheSameTenColumns(t *testing.T) {
+	// Sembilan kolom pertama dibaca dari sel grid ketiga section, dan ketiganya IDENTIK
+	// kecuali judul kolom keenam. Kolom yang bertambah atau berkurang di salah satu tab
+	// berarti salah satu section dibaca keliru.
+	//
+	// Kolom KESEPULUH tidak berasal dari section mana pun: ia kolom yang mengurutkan
+	// tabel, ditambahkan 2026-09-30 atas keputusan Work Owner. Ia ikut dituntut identik
+	// di ketiga tab karena ketiganya diurutkan dengan kolom yang sama.
 	wanted := []string{
 		inboxrclpucl.FieldCaseID,
 		inboxrclpucl.FieldPolicyNumber,
@@ -53,6 +57,7 @@ func TestEveryTabDrawsTheSameNineColumns(t *testing.T) {
 		inboxrclpucl.FieldLetterPrintedAt,
 		inboxrclpucl.FieldClaimAge,
 		inboxrclpucl.FieldExpiryStatus,
+		inboxrclpucl.FieldCreatedAt,
 	}
 
 	for _, tab := range inboxrclpucl.Tabs() {
@@ -136,14 +141,52 @@ func TestPlannedDifferencesMentionTheThingsMostLikelyReportedAsBugs(t *testing.T
 	// Tiga hal di layar ini akan dilaporkan sebagai kerusakan oleh orang yang
 	// membandingkan kedua layar berdampingan. Ketiganya WAJIB dinyatakan lebih dulu,
 	// bukan dijelaskan setelah dilaporkan.
-	joined := strings.ToLower(strings.Join(inboxrclpucl.PlannedDifferences, " "))
+	//
+	// Yang diperiksa RINGKASANNYA, bukan seluruh teksnya. Rincian dibuka hanya bila
+	// diminta, sehingga hal yang hanya disebut di sana TIDAK terbaca oleh orang yang
+	// sedang memakai layar — dan uji yang menggabungkan keduanya akan lulus meski
+	// ringkasannya bisu.
+	summaries := []string{}
+	for _, difference := range inboxrclpucl.PlannedDifferences {
+		summaries = append(summaries, difference.Summary)
+	}
+	joined := strings.ToLower(strings.Join(summaries, " "))
 
 	require.Contains(t, joined, "msig",
-		"tab yang kemungkinan kosong harus dinyatakan")
+		"tab yang nyaris selalu kosong harus dinyatakan")
 	require.Contains(t, joined, "tidak menyaring tabel",
 		"isian tanggal yang tidak menyaring grid harus dinyatakan")
-	require.Contains(t, joined, "laporan harian",
+	require.Contains(t, joined, "bukan salinan tabel",
 		"isi berkas ekspor yang berbeda dari tabel harus dinyatakan")
+}
+
+func TestEveryPlannedDifferenceHasBothHalves(t *testing.T) {
+	// Butir tanpa ringkasan tidak terbaca petugas; butir tanpa rincian tidak dapat
+	// dipetakan ke butir `P-5` saat uji kesetaraan (`D-54`). Keduanya kegagalan, dan
+	// keduanya tidak menghasilkan galat apa pun saat layarnya digambar.
+	require.NotEmpty(t, inboxrclpucl.PlannedDifferences)
+
+	for _, difference := range inboxrclpucl.PlannedDifferences {
+		require.NotEmpty(t, difference.Summary, "setiap selisih wajib punya ringkasan")
+		require.NotEmpty(t, difference.Detail,
+			"setiap selisih wajib punya rincian: %q", difference.Summary)
+	}
+}
+
+func TestEverySummaryStaysShortEnoughToBeRead(t *testing.T) {
+	// Panel ini sebelumnya 1.114 kata dalam 15 butir — lebih panjang daripada tabel yang
+	// dijelaskannya, dan karena itu tidak dibaca siapa pun.
+	//
+	// Batasnya dijaga uji, bukan ingatan: butir yang tumbuh sedikit demi sedikit adalah
+	// persis cara panel itu menjadi sepanjang itu, dan tidak ada satu langkah pun yang
+	// terasa keliru saat dikerjakan.
+	const maxSummaryChars = 200
+
+	for _, difference := range inboxrclpucl.PlannedDifferences {
+		require.LessOrEqualf(t, len(difference.Summary), maxSummaryChars,
+			"ringkasan terlalu panjang (%d karakter); pindahkan sisanya ke rincian: %q",
+			len(difference.Summary), difference.Summary)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -389,7 +432,7 @@ func TestFilterValuesMatchTheLegacyRules(t *testing.T) {
 	require.Equal(t, "Resolved-Completed", inboxrclpucl.WorkStatusCompleted)
 	require.Equal(t, "ASM-FW-GCNMFW-Work-PNC", inboxrclpucl.WorkClassClaim)
 	require.Equal(t, "0", inboxrclpucl.ExpiryStatusActive)
-	require.Equal(t, "1", inboxrclpucl.PUCLApproved)
+	require.Equal(t, "1", inboxrclpucl.PUCLReturnedToAnalyst)
 	require.Equal(t, "MSIG", inboxrclpucl.MSIGMarker)
 	require.Equal(t, "002", inboxrclpucl.GroupPanelPA)
 }
