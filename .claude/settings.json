@@ -175,7 +175,8 @@
       "Bash(awk '{print \"bin/claimpnc.exe :\",$6,$7,$8}')",
       "Bash(grep -rn \"bin/claimpnc\\\\|bin\\\\\\\\\\\\\\\\claimpnc\" --include=*.md --include=*.json --include=*.ps1 --include=*.bat .)",
       "Bash(awk '{print $6,$7,$8}')",
-      "Bash(gofmt -w internal/inboxrclpucl/adapter/pega/)"
+      "Bash(gofmt -w internal/inboxrclpucl/adapter/pega/)",
+      "Bash(awk '{print $NF,$5}')"
     ],
     "additionalDirectories": [
       "\\tmp",

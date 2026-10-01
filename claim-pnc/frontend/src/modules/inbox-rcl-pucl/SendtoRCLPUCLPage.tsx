@@ -923,12 +923,41 @@ function ClaimAction({
       )}
 
       {tindakan.isError && (
-        <p className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-slate-700">
-          {messageOf(tindakan.error)}
-        </p>
+        <div className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs text-slate-700">{messageOf(tindakan.error)}</p>
+
+          {/*
+            Nomor case-nya digambar DI SINI, bukan hanya di kaki layar.
+
+            Pesan peladen menyuruh mengerjakannya di Pega, dan untuk itu petugas butuh nomor
+            case-nya. Sebelumnya ia hanya ada di kaki layar, sehingga kalimat yang benar
+            berujung pada gulir mencari — lihat CopyCaseNumber.
+
+            Hanya untuk galat "layanan belum tersambung". Galat lain — kewenangan, tindakan
+            tidak berlaku, sambungan putus — TIDAK diselesaikan dengan mengerjakannya di Pega,
+            dan menawarkan nomor case di sana akan menyesatkan.
+          */}
+          {belumTersambungKePega(tindakan.error) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-700">Kerjakan di Pega pada klaim</span>
+              <CopyCaseNumber caseNumber={reference} />
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
+}
+
+/**
+ * Benarkah galat ini "layanan Pega belum tersambung"?
+ *
+ * Diuji lewat KODE galat, bukan lewat teks pesannya. Pesan ditulis untuk dibaca manusia dan
+ * boleh diperbaiki kapan saja; kode adalah kontrak. Mencocokkan teks berarti satu perbaikan
+ * kalimat di peladen diam-diam menghilangkan nomor case dari layar.
+ */
+function belumTersambungKePega(error: unknown): boolean {
+  return error instanceof APIError && error.kode === 'layanan_pega_belum_tersedia'
 }
 
 function WriteAction({
@@ -944,30 +973,13 @@ function WriteAction({
 }) {
   const panel = useContext(WriteActionPanel)
   const open = panel.open === label
-  const [copied, setCopied] = useState(false)
-
-  async function salinNomorCase() {
-    if (!caseNumber) return
-    try {
-      await navigator.clipboard.writeText(caseNumber)
-      setCopied(true)
-    } catch {
-      // Penyalinan ditolak peramban — tombolnya tetap menampilkan nomornya supaya
-      // dapat disalin dengan tangan. Kegagalan ini TIDAK dilaporkan sebagai galat:
-      // ia bukan kerusakan, dan pesannya akan mengalihkan perhatian dari nomornya.
-      setCopied(false)
-    }
-  }
 
   return (
     <div className="mt-4">
       <Button
         tone="kedua"
         aria-expanded={open}
-        onClick={() => {
-          panel.toggle(label)
-          setCopied(false)
-        }}
+        onClick={() => panel.toggle(label)}
       >
         {label}
       </Button>
@@ -986,19 +998,60 @@ function WriteAction({
           <span className="text-xs text-slate-700">
             Kerjakan <span className="font-medium">{label}</span> di Pega pada klaim
           </span>
-          <span className="font-mono text-sm text-slate-900">{caseNumber ?? '—'}</span>
-          {caseNumber && (
-            <button
-              type="button"
-              onClick={salinNomorCase}
-              className="rounded-kontrol border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
-            >
-              {copied ? 'Tersalin' : 'Salin nomor case'}
-            </button>
-          )}
+          <CopyCaseNumber caseNumber={caseNumber} />
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Nomor case beserta tombol salinnya.
+ *
+ * # Kenapa ia komponen tersendiri
+ *
+ * Ia dipakai DUA tempat yang keadaannya berbeda: panel tombol yang memang belum dibangun
+ * (WriteAction), dan panel GALAT tombol yang sudah dibangun tetapi layanan Pega-nya belum
+ * tersambung (ClaimAction). Keduanya menuntut hal yang sama dari petugas — menyalin nomor
+ * case lalu mengerjakannya di Pega — sehingga keduanya wajib menyediakan nomor itu DI TEMPAT
+ * pesannya muncul.
+ *
+ * Sebelum 2026-10-01 hanya WriteAction yang punya. ClaimAction menampilkan pesan
+ * "salin nomor case-nya dari layar ini" tanpa satu pun nomor di dekatnya, sehingga petugas
+ * harus menggulir ke kaki layar untuk mencarinya. Kalimatnya benar; letaknya yang salah.
+ *
+ * Keadaan "Tersalin" tidak perlu disetel ulang dengan tangan: pemanggilnya menggambar
+ * komponen ini hanya saat panelnya terbuka, sehingga ia lahir kembali bersama panelnya.
+ */
+function CopyCaseNumber({ caseNumber }: { caseNumber?: string | undefined }) {
+  const [copied, setCopied] = useState(false)
+
+  async function salin() {
+    if (!caseNumber) return
+    try {
+      await navigator.clipboard.writeText(caseNumber)
+      setCopied(true)
+    } catch {
+      // Penyalinan ditolak peramban — nomornya tetap tergambar supaya dapat disalin dengan
+      // tangan. Kegagalan ini TIDAK dilaporkan sebagai galat: ia bukan kerusakan, dan
+      // pesannya akan mengalihkan perhatian dari nomornya.
+      setCopied(false)
+    }
+  }
+
+  return (
+    <>
+      <span className="font-mono text-sm text-slate-900">{caseNumber ?? '—'}</span>
+      {caseNumber && (
+        <button
+          type="button"
+          onClick={salin}
+          className="rounded-kontrol border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
+        >
+          {copied ? 'Tersalin' : 'Salin nomor case'}
+        </button>
+      )}
+    </>
   )
 }
 

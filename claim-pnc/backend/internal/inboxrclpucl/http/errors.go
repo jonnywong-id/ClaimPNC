@@ -109,10 +109,20 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		//
 		// Pesannya menyebutkan itu, karena petugas yang membacanya tidak punya cara lain
 		// mengetahui ke mana laporannya harus pergi.
+		//
+		// Pesannya menyebut APA yang ditunggu, bukan sekadar "belum tersambung". Petugas yang
+		// menekan tombol ini sudah menanyakannya berkali-kali, dan jawaban yang tidak menyebut
+		// penghalangnya terbaca seperti kerusakan yang seharusnya sudah diperbaiki.
+		//
+		// Nomor case TIDAK lagi disebut di kalimat ini. Dulu ia berbunyi "salin nomor case-nya
+		// dari layar ini", padahal nomornya hanya ada di kaki layar — kalimat yang benar
+		// berujung pada gulir mencari. Layar kini menggambar nomornya tepat di bawah pesan ini
+		// (`CopyCaseNumber`), sehingga menyebutnya di sini hanya mengulang apa yang terlihat.
 		return http.StatusServiceUnavailable, ErrorResponse{
 			Code: "layanan_pega_belum_tersedia",
-			Message: "Tindakan ini dijalankan oleh Pega, dan layanannya belum tersambung. " +
-				"Sementara itu kerjakan di Pega; salin nomor case-nya dari layar ini.",
+			Message: "Tindakan ini dijalankan oleh Pega, dan layanannya belum dibangun — " +
+				"yang ditunggu rule Service REST `ActionClaimPUCL` dari Tim Pega. " +
+				"Sementara itu tindakan ini dikerjakan di Pega.",
 		}, true
 
 	case errors.Is(err, inboxrclpucl.ErrActionNotAvailable):

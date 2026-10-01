@@ -25752,3 +25752,82 @@ ada. Yang belum ada tinggal isinya.
 
 **Perilaku tombol Kirim Ke Analyst tidak berubah** — ia memang sudah benar. Yang diperbaiki tiga
 tombol lain dan kelengkapan parameternya.
+
+---
+
+## 142. "Kirim Ke Analyst" TIDAK dapat dibuat berjalan dari sini — dibuktikan, bukan diduga (2026-10-01)
+
+**Keluhan Work Owner:** *"masih tidak bisa, tolong perbaiki dengan benar"*, disertai tangkapan
+layar panel 503.
+
+Sampai sekarang kesimpulan "harus lewat Pega" bersandar pada **satu** bukti: inbox Analyst membaca
+`PC_ASM_FW_GCNMFW_WORK INNER JOIN PC_ASSIGN_WORKLIST`. Itu cukup untuk menduga, **tidak cukup untuk
+menyatakan**. Karena itu `Activity/PUCLPost-Act.xml` dibaca langsung.
+
+### 142.1 Apa yang sebenarnya dikerjakan `PUCLPost`
+
+**69 langkah**, dan yang menentukan ada di ujungnya:
+
+```
+66  Obj-Refresh-And-Lock          mengunci objek kerja Pega
+68  Obj-Save                      MENULIS PC_ASM_FW_GCNMFW_WORK
+69  Commit
+```
+
+`pyWorkPage` disebut **43 kali**. Di antara 69 langkah itu juga ada:
+
+| Langkah | Isi |
+|---|---|
+| 48 | `AttachAsPDFC` — membuat PDF dan melampirkannya ke klaim |
+| 52–55 | `GetEmailCabang` → `ASMCollectAttachments` → `ASMSendsEmailAttachments` — **mengirim email berlampiran** |
+| 35 | `SetTicket` — lompatan lateral alur kerja Pega |
+| 56–58 | tiga penulisan riwayat |
+| 62 | `HitServiceOSAkseptasiClaimNonMBU` — memanggil sistem lain |
+| 63–64 | `ASMForceCaseClose` dua kali |
+
+### 142.2 Kenapa ini menutup perkaranya
+
+Menjalankan tombol ini dari sini berarti **menulis `PC_ASM_FW_GCNMFW_WORK`** — tabel yang `P-1`
+nyatakan milik Pega selama masa paralel, dan yang barisnya memuat `PZPVSTREAM`, blob serialisasi
+Pega yang tidak dapat kami bentuk dari luar. Ditambah mengirim email, membuat PDF, dan memanggil
+`SetTicket` serta `ASMForceCaseClose` — keduanya operasi mesin alur kerja, bukan operasi data.
+
+Bukan "sulit". **Tidak mungkin dari luar Pega**, dan sekarang itu pernyataan berbukti.
+
+Keempat Service REST yang sudah ada diperiksa sekalian — `KomiteAcceptAdjustment`,
+`KomiteAcceptAdjustmentPA`, `RecivedDataandAttachmentLelangASMSimasbid`,
+`RequestCreateClaimCredit2` — **tidak satu pun** menyentuh jalur PUCL.
+
+### 142.3 Yang BISA diperbaiki, dan diperbaiki
+
+Tombolnya tidak bisa berjalan, tetapi panelnya **buruk**, dan itu kesalahan kami:
+
+> "Sementara itu kerjakan di Pega; salin nomor case-nya **dari layar ini**."
+
+Nomor case-nya hanya ada di **kaki layar**. Kalimat yang benar berujung pada gulir mencari.
+
+| Sebelum | Sesudah |
+|---|---|
+| Pesan menyuruh menyalin, nomornya jauh di bawah | Nomor case + tombol **Salin nomor case** tepat di bawah pesan |
+| "layanannya belum tersambung" — tidak menyebut apa yang ditunggu | "belum dibangun — yang ditunggu rule Service REST `ActionClaimPUCL` dari Tim Pega" |
+
+Komponen `CopyCaseNumber` dipisahkan dan kini dipakai **dua** tempat: panel tombol yang belum
+dibangun (`WriteAction`) dan panel galat tombol yang sudah dibangun (`ClaimAction`).
+
+**Hanya untuk kode `layanan_pega_belum_tersedia`.** Galat kewenangan atau "tindakan tidak berlaku"
+TIDAK selesai dengan mengerjakannya di Pega, dan menawarkan nomor case di sana mengarahkan petugas
+menempuh jalan yang tidak menyelesaikan apa pun. Diuji lewat **kode**, bukan teks pesan — kode
+adalah kontrak, pesan boleh diperbaiki kapan saja.
+
+Dua uji baru menjaga keduanya: nomor case **muncul** pada 503, dan **tidak muncul** pada 409.
+
+### 142.4 Yang perlu diputuskan di luar tim ini
+
+Tombol ini akan tetap 503 sampai salah satu terjadi — dan keduanya **bukan keputusan teknis**:
+
+| Jalan | Pemilik | Catatan |
+|---|---|---|
+| Tim Pega membangun `ActionClaimPUCL` | Tim Pega | Spesifikasi lengkap sudah siap di `permintaan-artefak-pega.md` §12.8 |
+| Petugas mengerjakan PUCL di Pega sampai Pega dimatikan | Work Owner | Keadaan yang berlaku hari ini |
+
+Yang **tidak** ada: jalan ketiga yang dapat kami tempuh sendiri.

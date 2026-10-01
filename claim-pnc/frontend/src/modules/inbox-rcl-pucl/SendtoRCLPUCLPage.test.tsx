@@ -527,6 +527,43 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Kirim Ke Analyst' }))
 
     expect(await screen.findByText(/layanannya belum tersambung/)).toBeInTheDocument()
+
+    // Dan nomor case-nya digambar DI PANEL YANG SAMA, bukan hanya di kaki layar.
+    //
+    // Pesannya menyuruh mengerjakannya di Pega, dan untuk itu petugas butuh nomornya. Sebelum
+    // 2026-10-01 nomor itu hanya ada di kaki layar, sehingga kalimat yang benar berujung pada
+    // gulir mencari — keluhan yang diangkat Work Owner dengan tangkapan layar.
+    expect(screen.getByRole('button', { name: 'Salin nomor case' })).toBeInTheDocument()
+  })
+
+  it('TIDAK menawarkan "kerjakan di Pega" pada galat yang bukan soal layanan Pega', async () => {
+    // Galat kewenangan tidak selesai dengan mengerjakannya di Pega. Menawarkan nomor case di
+    // sana mengarahkan petugas menempuh jalan yang tidak menyelesaikan apa pun — dan karena
+    // panelnya terlihat sama, ia akan mengira sudah melakukan hal yang benar.
+    stubFetch((url) => {
+      if (url.includes('/tindakan/kirim-analyst')) {
+        return jsonResponse(409, {
+          kode: 'tindakan_tidak_tersedia',
+          pesan: 'Tindakan ini tidak berlaku untuk klaim ini.',
+        })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH))
+        return jsonResponse(200, {
+          ...DETAIL,
+          lampiran_surat: { ...DETAIL.lampiran_surat, rcl_pucl: 'PUCL', kode_rcl_pucl: '2' },
+          tombol: { ...DETAIL.tombol, tolak_klaim: false, kirim_ke_analyst: true },
+        })
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Ke Analyst' }))
+
+    expect(await screen.findByText(/tidak berlaku untuk klaim ini/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Salin nomor case' })).not.toBeInTheDocument()
   })
 
   it('"Download Dokumen" dan "Save" MENJALANKAN tindakannya lewat alamat yang benar', async () => {
