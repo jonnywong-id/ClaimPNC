@@ -229,18 +229,36 @@ func inlineHeader(name string) string {
 	return `inline; filename="` + clean + `"`
 }
 
-// SendToAnalyst menangani POST /api/inbox-rcl-pucl/klaim/{referensi}/kirim-analyst.
+// PerformAction menangani POST /api/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}.
 //
 // Satu-satunya rute modul ini yang MENGUBAH klaim. Ia tidak menulis satu baris pun sendiri:
 // yang menulis adalah Pega, lewat layanannya — lihat `inboxrclpucl.ClaimActions`.
-func (h *Handler) SendToAnalyst(w http.ResponseWriter, r *http.Request) {
+//
+// # Kenapa SATU rute untuk beberapa tindakan
+//
+// Karena di Pega pun keempat tombolnya memanggil activity yang sama; yang membedakan hanya
+// parameternya. Satu rute per tombol akan menyalin rangkaian yang sama berkali-kali dan
+// menyembunyikan bahwa keempatnya satu jalur.
+func (h *Handler) PerformAction(w http.ResponseWriter, r *http.Request) {
 	active, caller, ready := h.prepare(w, r)
 	if !ready {
 		return
 	}
 
-	err := h.service.SendToAnalyst(
-		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"),
+	// Tindakan yang tidak dikenali dijawab 404, bukan diteruskan ke layanan Pega. Meneruskan
+	// teks apa pun ke sana berarti layar dapat menyuruh Pega mengerjakan hal yang tidak
+	// pernah ada tombolnya.
+	kind, known := inboxrclpucl.ClaimActionOf(chi.URLParam(r, "aksi"))
+	if !known {
+		h.writeJSON(w, r, http.StatusNotFound, ErrorResponse{
+			Code:    "tindakan_tidak_dikenal",
+			Message: "Tindakan yang diminta tidak dikenali.",
+		})
+		return
+	}
+
+	err := h.service.PerformAction(
+		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"), kind,
 	)
 	if err != nil {
 		h.writeError(w, r, err)
@@ -248,8 +266,30 @@ func (h *Handler) SendToAnalyst(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, map[string]string{
-		"pesan": "Klaim diteruskan ke Analyst.",
+		"pesan": actionDoneMessage(kind),
 	})
+}
+
+// actionDoneMessage adalah kalimat yang dibaca petugas setelah tindakannya berhasil.
+//
+// Ia menyebut AKIBATNYA, bukan "berhasil": petugas perlu tahu klaimnya berpindah ke mana,
+// karena itu yang menentukan apakah ia masih harus mengerjakan sesuatu.
+func actionDoneMessage(kind inboxrclpucl.ClaimActionKind) string {
+	switch kind {
+	case inboxrclpucl.ActionPrintLetter:
+		return "Surat diterbitkan dan ditandai sudah dicetak. " +
+			"Klaimnya berpindah ke tab \"Kelengkapan Dokumen\"."
+	case inboxrclpucl.ActionRejectClaim:
+		return "Klaim ditolak."
+	case inboxrclpucl.ActionSendToAnalyst:
+		return "Klaim diteruskan ke Analyst."
+	case inboxrclpucl.ActionSendToPICTeknik:
+		return "Klaim diteruskan ke PIC Teknik."
+	case inboxrclpucl.ActionSave:
+		return "Isian disimpan. Klaimnya tetap di antrean ini."
+	default:
+		return "Tindakan dijalankan."
+	}
 }
 
 // RejectWrite menjawab aksi tulis yang belum tersedia.

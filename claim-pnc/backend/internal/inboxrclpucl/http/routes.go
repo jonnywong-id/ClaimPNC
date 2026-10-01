@@ -88,7 +88,11 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// di Pega pun tombolnya satu dan sama, hanya activity di baliknya yang berbeda.
 		perPortal.Get("/inbox-rcl-pucl/ekspor", h.Export)
 
-		// "Kirim Ke Analyst" — satu-satunya rute yang MENGUBAH klaim.
+		// Tindakan klaim — satu-satunya rute yang MENGUBAH klaim.
+		//
+		// SATU rute untuk lima tindakan (`cetak`, `tolak`, `kirim-analyst`,
+		// `kirim-pic-teknik`, `save`), karena di Pega pun keempat tombol pertama memanggil
+		// activity yang SAMA; yang membedakan hanya parameternya.
 		//
 		// POST, bukan GET: ia menimbulkan akibat, dan akibatnya tidak dapat diulang tanpa
 		// akibat kedua. Alamatnya bersarang pada klaimnya karena yang diubah adalah klaim
@@ -97,8 +101,9 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Ia tidak menulis satu baris pun sendiri — yang menulis Pega, lewat layanannya.
 		// Alasannya bukan `P-1` melainkan klaim yang berhenti bergerak: inbox Analyst
 		// membaca `PC_ASM_FW_GCNMFW_WORK` INNER JOIN `PC_ASSIGN_WORKLIST`, sehingga klaim
-		// sampai ke Analyst HANYA lewat baris penugasan yang dibuat mesin alur kerja Pega.
-		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/kirim-analyst", h.SendToAnalyst)
+		// sampai ke Analyst HANYA lewat baris penugasan yang dibuat mesin alur kerja Pega
+		// ketika flow action `SendtoRCLPUCL` diserahkan.
+		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}", h.PerformAction)
 
 		// Aksi tulis sistem lama yang BELUM punya jalur. Rutenya ADA supaya tindakan di layar
 		// menjawab dengan alasan, bukan dengan "halaman tidak ditemukan".

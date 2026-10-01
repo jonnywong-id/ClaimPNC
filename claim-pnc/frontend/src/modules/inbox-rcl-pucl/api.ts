@@ -311,8 +311,16 @@ export function rclpuclDocumentURL(reference: string, documentID: string): strin
   return `${PATH}/klaim/${encodeURIComponent(reference)}/dokumen/${encodeURIComponent(documentID)}`
 }
 
+/** Tindakan klaim yang dikenali peladen. */
+export type TindakanKlaim =
+  | 'cetak'
+  | 'tolak'
+  | 'kirim-analyst'
+  | 'kirim-pic-teknik'
+  | 'save'
+
 /**
- * Hook tindakan "Kirim Ke Analyst".
+ * Hook tindakan klaim.
  *
  * # Ia satu-satunya pemanggilan modul ini yang MENGUBAH klaim
  *
@@ -322,7 +330,7 @@ export function rclpuclDocumentURL(reference: string, documentID: string): strin
  * Setelah berhasil, isi klaim dan daftar antrean dibatalkan supaya keduanya ditarik ulang —
  * klaim yang sudah diteruskan TIDAK boleh tetap terlihat di tab yang baru saja ditinggalkannya.
  */
-export function useKirimKeAnalyst(reference: string | null) {
+export function useTindakanKlaim(reference: string | null, aksi: TindakanKlaim) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
   const client = useQueryClient()
@@ -330,7 +338,7 @@ export function useKirimKeAnalyst(reference: string | null) {
   return useMutation({
     mutationFn: () =>
       callAPI<{ pesan: string }>(
-        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/kirim-analyst`,
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/tindakan/${aksi}`,
         { token, portal, metode: 'POST' },
       ),
     onSuccess: () => {

@@ -15,8 +15,9 @@ import (
 	"claim-pnc/internal/inboxrclpucl/adapter/pega"
 )
 
-func contoh() inboxrclpucl.SendToAnalystCommand {
-	return inboxrclpucl.SendToAnalystCommand{
+func contoh() inboxrclpucl.ClaimActionCommand {
+	return inboxrclpucl.ClaimActionCommand{
+		Kind:         inboxrclpucl.ActionSendToAnalyst,
 		CaseNumber:   "PNC-700001",
 		IDObject:     "OBJ-7",
 		IDCoverage:   "COV-8",
@@ -30,7 +31,7 @@ func TestAlamatKosongBerartiBelumTersedia(t *testing.T) {
 	// Keadaan HARI INI: layanannya belum dibangun. Ia TIDAK boleh membuat aplikasi gagal
 	// menyala maupun layarnya gagal digambar — yang gagal hanyalah tindakannya, dengan galat
 	// yang dapat dikenali transport dan diterjemahkan menjadi kalimat yang berguna.
-	err := pega.NewClient(pega.Config{}).SendToAnalyst(context.Background(), contoh())
+	err := pega.NewClient(pega.Config{}).Perform(context.Background(), contoh())
 	require.ErrorIs(t, err, inboxrclpucl.ErrPegaServiceUnavailable)
 }
 
@@ -50,7 +51,7 @@ func TestParameterDikirimDenganNamaPUCLPost(t *testing.T) {
 	defer srv.Close()
 
 	err := pega.NewClient(pega.Config{BaseURL: srv.URL}).
-		SendToAnalyst(context.Background(), contoh())
+		Perform(context.Background(), contoh())
 	require.NoError(t, err)
 
 	require.Equal(t, "1", terima["Status"], `Status "1" yang meneruskan klaim ke Analyst`)
@@ -82,7 +83,7 @@ func TestGagalMenghubungiTerbacaSebagaiBelumTersedia(t *testing.T) {
 	defer srv.Close()
 
 	err := pega.NewClient(pega.Config{BaseURL: srv.URL}).
-		SendToAnalyst(context.Background(), contoh())
+		Perform(context.Background(), contoh())
 	require.ErrorIs(t, err, inboxrclpucl.ErrPegaServiceUnavailable)
 }
 
@@ -95,7 +96,7 @@ func TestPenolakanBUKANKetidaktersediaan(t *testing.T) {
 	defer srv.Close()
 
 	err := pega.NewClient(pega.Config{BaseURL: srv.URL}).
-		SendToAnalyst(context.Background(), contoh())
+		Perform(context.Background(), contoh())
 	require.Error(t, err)
 	require.False(t, errors.Is(err, inboxrclpucl.ErrPegaServiceUnavailable))
 }
@@ -117,7 +118,7 @@ func TestJalurDanKredensialDapatDiaturTanpaUbahKode(t *testing.T) {
 		Path:     "TindakanKlaimPNC",
 		User:     "svc-claimpnc",
 		Password: "rahasia",
-	}).SendToAnalyst(context.Background(), contoh())
+	}).Perform(context.Background(), contoh())
 	require.NoError(t, err)
 
 	require.Equal(t, "/TindakanKlaimPNC", jalur)
@@ -136,7 +137,47 @@ func TestTanpaKredensialTIDAKMengirimHeaderOtentikasi(t *testing.T) {
 	defer srv.Close()
 
 	err := pega.NewClient(pega.Config{BaseURL: srv.URL}).
-		SendToAnalyst(context.Background(), contoh())
+		Perform(context.Background(), contoh())
 	require.NoError(t, err)
 	require.False(t, ada)
+}
+
+func TestTiapTindakanMengirimParameterPUCLPostYangBENAR(t *testing.T) {
+	// Pemetaannya dibaca dari rangkaian aksi tiap tombol di section-nya. Satu nilai yang
+	// tertukar membuat Pega mengerjakan tindakan yang BERBEDA — mencetak surat alih-alih
+	// meneruskan klaim, atau menolak alih-alih mengirim — dan `PUCLPost` tidak menolaknya.
+	//
+	// Keempat nilai di bawah disalin dari `pyBehaviors` tiap tombol — termasuk SPASI di ujung
+	// "Wait for Complete PUCL Document ", yang ada di Pega dan terbawa ke kolom riwayat apa
+	// adanya. Membuangnya mengubah data yang tersimpan, sehingga ia dijaga di sini.
+	for _, c := range []struct {
+		kind                                 inboxrclpucl.ClaimActionKind
+		status, tipe, statusCase, statusNote string
+	}{
+		{inboxrclpucl.ActionPrintLetter, "", "cetak", "1", "Wait for Complete PUCL Document "},
+		{inboxrclpucl.ActionRejectClaim, "0", "dokumen", "", ""},
+		{inboxrclpucl.ActionSendToAnalyst, "1", "dokumen", "", ""},
+		// Tanpa `tipe`: jalur ini memakai `InsertHistoryClaimPNC`, bukan `InsertMitraPA`.
+		{inboxrclpucl.ActionSendToPICTeknik, "1", "", "", "send by PUCL to PIC Teknis"},
+		{inboxrclpucl.ActionSave, "", "", "", ""},
+	} {
+		var terima map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			b, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(b, &terima)
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		cmd := contoh()
+		cmd.Kind = c.kind
+		err := pega.NewClient(pega.Config{BaseURL: srv.URL}).Perform(context.Background(), cmd)
+		srv.Close()
+
+		require.NoErrorf(t, err, "tindakan %s", c.kind)
+		require.Equalf(t, string(c.kind), terima["aksi"], "tindakan %s", c.kind)
+		require.Equalf(t, c.status, terima["Status"], "Status tindakan %s", c.kind)
+		require.Equalf(t, c.tipe, terima["tipe"], "tipe tindakan %s", c.kind)
+		require.Equalf(t, c.statusCase, terima["statusCase"], "statusCase tindakan %s", c.kind)
+		require.Equalf(t, c.statusNote, terima["statusNote"], "statusNote tindakan %s", c.kind)
+	}
 }

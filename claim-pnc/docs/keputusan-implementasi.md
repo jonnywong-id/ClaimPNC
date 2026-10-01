@@ -25478,3 +25478,277 @@ yang keliru.
 | Pertanyaan | Pemilik |
 |---|---|
 | **Mana jalur binary yang berlaku** — `backend/claimpnc.exe` (terdokumentasi) atau `backend/bin/claimpnc.exe` (yang dijalankan)? Dua jalur berarti satu di antaranya akan basi lagi | Work Owner |
+
+---
+
+## 138. Inbox RCL/PUCL — empat tombol tersambung, satu tidak bisa (2026-10-01)
+
+**Permintaan Work Owner:** perbaiki **Unggah Dokumen**, **Save**, dan **Download Dokumen**.
+
+Ketiganya diperiksa terpisah, dan jawabannya tidak sama.
+
+### 138.1 Dua di antaranya ternyata TERCAKUP layanan yang sudah diminta
+
+| Tombol | Yang dijalankan | Butuh mesin Pega? |
+|---|---|---|
+| **Download Dokumen** | `InsertMitraPA(cetak)` → `PUCLPost(Status="")` | activity saja |
+| **Save** | `SaveInputRegisterDetail2` | activity saja |
+| **Unggah Dokumen** | `SaveAllAttachments` (bawaan Pega) | **ya** — `PZPVSTREAM` |
+
+Dua yang pertama hanya memanggil activity, sama seperti "Kirim Ke Analyst". Jadi keduanya
+dilayani **layanan yang sama** — tidak perlu permintaan tambahan ke Tim Pega.
+
+### 138.2 Seam digeneralisasi: satu jalur untuk LIMA tindakan
+
+Semula `SendToAnalyst` satu metode. Kini `Perform(cmd)` dengan `ClaimActionKind`:
+
+| `aksi` | Activity | `Status` | `tipe` | Finish Assignment |
+|---|---|---|---|---|
+| `cetak` | `InsertMitraPA` → `PUCLPost` | *(kosong)* | `cetak` | tidak |
+| `tolak` | `InsertMitraPA` → `PUCLPost` | `0` | `dokumen` | tidak |
+| `kirim-analyst` | `InsertMitraPA` → `PUCLPost` | `1` | `dokumen` | **ya** |
+| `kirim-pic-teknik` | `InsertHistoryClaimPNC` → `PUCLPost` | `1` | *(kosong)* | **ya** |
+| `save` | `SaveInputRegisterDetail2` | — | — | tidak |
+
+**Kenapa satu seam, bukan satu metode per tombol.** Karena di Pega pun begitu: empat tombol
+memanggil activity yang SAMA, dan yang membedakan hanya parameter. Satu metode per tombol akan
+menyalin rangkaian yang sama empat kali, dan menyembunyikan bahwa keempatnya satu jalur.
+
+Rutenya ikut menjadi satu: `POST /klaim/{referensi}/tindakan/{aksi}`. Tindakan yang tidak
+dikenali dijawab **404 sebelum menyentuh layanan Pega** — meneruskan teks apa pun ke sana
+berarti layar dapat menyuruh Pega mengerjakan hal yang tidak pernah ada tombolnya.
+
+**`aksi` dikirim SELAIN `Status`**, dan itu bukan ganda: `Status` hanya membedakan ketiga
+tindakan `PUCLPost`, sementara `save` memakai activity yang berbeda sama sekali. Menyandikan
+semuanya ke dalam `Status` menuntut layanan menebak.
+
+Satu uji menahan pemetaan parameternya per tindakan. Nilai yang tertukar membuat Pega
+mengerjakan tindakan yang **berbeda** — mencetak surat alih-alih meneruskan klaim — dan
+`PUCLPost` tidak menolaknya.
+
+### 138.3 Pesan berhasil datang dari PELADEN, dan menyebut akibatnya
+
+Bukan "berhasil", melainkan apa yang terjadi pada klaimnya:
+
+```
+cetak          "Surat diterbitkan dan ditandai sudah dicetak.
+                Klaimnya berpindah ke tab Kelengkapan Dokumen."
+kirim-analyst  "Klaim diteruskan ke Analyst."
+save           "Isian disimpan. Klaimnya tetap di antrean ini."
+```
+
+Petugas perlu tahu klaimnya berpindah ke mana — itu yang menentukan apakah masih ada yang harus
+dikerjakan. Kalimatnya di peladen, bukan di layar, karena akibatnya milik tindakan — bukan milik
+tampilan.
+
+### 138.4 "Unggah Dokumen" TIDAK disambungkan, dan itu keputusan
+
+Ia menuntut **unggahan berkas** dan **mesin lampiran Pega**: `SaveAllAttachments` menulis
+`PC_LINK_ATTACHMENT` dan `PC_DATA_WORKATTACH` termasuk `PZPVSTREAM`, blob serialisasi internal
+Pega yang tidak terdokumentasi di export mana pun (§12.7).
+
+Menyambungkannya ke alamat tindakan yang sama akan membuat Pega menerima tindakan yang tidak
+pernah ada. Ia karena itu tetap memakai panel "kerjakan di Pega", dan **satu uji menahan** supaya
+ia tidak ikut tersambung diam-diam.
+
+### 138.5 Keadaan sekarang
+
+| Tombol | Status |
+|---|---|
+| Download Dokumen · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik · Save | ✅ tersambung — menunggu alamat layanan |
+| Lihat Dokumen | ✅ **berjalan penuh** (baca) |
+| Unggah Dokumen · Tutup Klaim · + Tambah · Hapus | panel "kerjakan di Pega" |
+
+Lima dari sembilan tombol akan hidup begitu `PEGA_LAYANAN_KLAIM` diisi — **tanpa perubahan kode**.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Rule Service REST `ActionClaimPUCL` — kini melayani **lima** tindakan, bukan satu | Tim Pega |
+| "Unggah Dokumen" — menuntut mekanisme unggah berkas tersendiri | Tim Pega |
+| "Tutup Klaim" — `localAction PreventRejectClaim`, belum ditelusuri | Lead Engineer |
+
+---
+
+## 139. Langkah ketiga layanan dinamai flow action-nya, bukan "Finish Assignment" (2026-10-01)
+
+**Koreksi Work Owner:** *"yang Finish Assignment itu menjalankan flow action SendtoRCLPUCL"*.
+
+Sampai §138, spesifikasi layanan dan komentar kode menyebut langkah ketiga sebagai
+**"Finish Assignment, seperti tombol di layar"**. Itu tidak salah, tetapi **tidak cukup tepat
+untuk dikerjakan orang lain** — dan di dokumen permintaan, ketidaktepatan itu berbiaya.
+
+### 139.1 Kenapa "Finish Assignment" kurang tepat
+
+`Finish Assignment` adalah **nama tombol**, bukan nama rule. Satu tombol Finish Assignment
+menyerahkan **flow action mana pun yang sedang berlaku** pada penugasan itu — jadi menyebut
+namanya saja menyerahkan kepada Tim Pega untuk menebak flow action yang mana.
+
+Yang dijalankan tombol ini satu dan tertentu, terverifikasi dari export:
+
+```
+pzInsKey     RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-WORK-PNC SENDTORCLPUCL
+pxInsName    ASM-FW-GCNMFW-WORK-PNC!SENDTORCLPUCL
+pyClassName  ASM-FW-GCNMFW-Work-PNC
+pyRuleName   SendtoRCLPUCL
+dirujuk      Flow/Register_Flow.xml
+```
+
+### 139.2 Akibat yang tidak terduga: lingkup permintaan bisa MENGECIL
+
+Menamai langkahnya membuat satu hal terlihat yang sebelumnya tertutup oleh kata "Finish
+Assignment": **penyerahan flow action adalah hal yang sudah dapat dilakukan API standar Pega**,
+tanpa rule baru.
+
+```
+POST /prweb/api/v1/assignments/{assignmentID}/actions/SendtoRCLPUCL
+```
+
+Bila `/prweb/api/v1/` aktif, layanan baru cukup mengerjakan **butir 1 dan 2**
+(`InsertMitraPA` + `PUCLPost`); butir 3 kami panggil sendiri.
+
+**Yang tetap TIDAK dapat dikerjakan API standar** — dan ini yang membuat layanan baru tetap
+diperlukan — adalah butir 1 dan 2. Keduanya rangkaian aksi **tombol**, bukan pra/pasca-proses
+flow action. Diperiksa langsung: `SendtoRCLPUCL` hanya punya
+`pyPreProcessingActivity = SetDataLampiranSuratRCLPUCL_Act`, **tanpa pasca-proses**. Menyerahkan
+flow action itu lewat API standar akan melewatkan `InsertMitraPA` dan `PUCLPost` seluruhnya —
+klaim berpindah, tetapi datanya tidak tertulis.
+
+Ini kebalikan dari kekeliruan §138: di sana jalur yang terlihat mudah ternyata melewatkan
+langkah. Di sini langkah yang terlihat menuntut rule baru ternyata **sudah ada jalurnya** — asal
+dua langkah lainnya tetap lewat layanan.
+
+### 139.3 Yang disunting
+
+| Berkas | Perubahan |
+|---|---|
+| `permintaan-artefak-pega.md` §12.8c | Butir 3 menyebut rule, kelas, dan flow-nya; ditambah catatan API standar |
+| `inboxrclpucl.go` | Komentar `ActionSendToAnalyst` dan `ClaimActions` |
+| `adapter/pega/pega.go` | Tabel `parameterFor` dan komentar `resourceActionClaimPUCL` |
+| `http/routes.go` | Komentar rute tindakan |
+
+**Tidak ada perubahan perilaku.** Kode yang berjalan tidak berubah satu baris pun — yang berubah
+adalah ketepatan apa yang kami minta dan apa yang kami jelaskan.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apakah `/prweb/api/v1/` aktif**, dan adakah akun layanan untuknya? Jawabannya mengubah lingkup `ActionClaimPUCL` | Tim Pega |
+
+---
+
+## 140. API standar Pega tidak tersedia — ketiga langkah tetap masuk lingkup (2026-10-01)
+
+Menutup pertanyaan terbuka §139.
+
+**Jawaban Work Owner:** *"tidak ada"* — `/prweb/api/v1/` tidak aktif, dan tidak ada akun layanan
+untuknya.
+
+### 140.1 Akibatnya
+
+Kemungkinan memperkecil lingkup yang §139 angkat **gugur**. Layanan `ActionClaimPUCL` tetap harus
+mengerjakan **ketiga** langkah:
+
+| # | Langkah | Dapatkah kami panggil sendiri? |
+|---|---|---|
+| 1 | `InsertMitraPA` (atau `InsertHistoryClaimPNC` untuk Travel) | tidak — rangkaian aksi tombol |
+| 2 | `PUCLPost` | tidak — rangkaian aksi tombol |
+| 3 | serahkan flow action `SendtoRCLPUCL` | **tidak** — API standar tidak tersedia |
+
+Butir 1 dan 2 memang tidak pernah mungkin, apa pun jawabannya — keduanya rangkaian aksi **tombol**,
+bukan pra/pasca-proses flow action. Yang berubah hanya butir 3.
+
+### 140.2 Yang tidak berubah
+
+**Kode tidak disentuh.** Jalur yang dibangun §138 sudah menempuh satu layanan untuk ketiga
+langkah; andai API standar tersedia, yang berubah hanyalah pembagian pekerjaan di seberang —
+bukan bentuk pemanggilan dari sini. Jadi jawaban ini **menutup pertanyaan tanpa menuntut
+perubahan apa pun di modul**.
+
+Itu bukan kebetulan: seam `ClaimActions` sengaja menyatakan **tindakan**, bukan langkah. Modul
+ini tidak pernah tahu satu tindakan ditempuh satu panggilan atau tiga.
+
+### 140.3 Yang disunting
+
+`permintaan-artefak-pega.md` §12.8c — catatan "mungkin memperkecil pekerjaan" diganti dengan
+jawabannya, supaya pertanyaannya tidak diajukan ulang dan supaya jelas butir 3 **bukan**
+permintaan yang berlebihan.
+
+---
+
+## 141. Rangkaian aksi tiap tombol dibaca ulang dari section — tiga catatan kami SALAH (2026-10-01)
+
+**Permintaan Work Owner:** *"1,2,3 dijalankan pas klik kirim ke analyst, ikuti apa saja yang ada
+di Pega"*.
+
+`pyBehaviors` kedelapan tombol dibaca utuh dari `SectionPenerimaanDokumenPUCL` dan
+`SectionLampiranSuratPUCL`. Rangkaian untuk **Kirim Ke Analyst terbukti benar** seperti yang
+sudah kami catat — tetapi tiga tombol lain **tidak**.
+
+### 141.1 Rangkaian yang sebenarnya
+
+| Tombol | 1 | 2 | 3 |
+|---|---|---|---|
+| Download Dokumen | `InsertMitraPA(tipe="cetak")` | `PUCLPost(Status="", statusCase="1")` | `InsertHistoryClaimPNC` |
+| Tolak Klaim | `InsertMitraPA(tipe="dokumen")` | `PUCLPost(Status="0")` | *refresh harness* |
+| **Kirim Ke Analyst** | `InsertMitraPA(tipe="dokumen")` | `PUCLPost(Status="1")` | **Finish Assignment** |
+| Kirim ke PIC Teknik | **`PUCLPost(Status="1")`** | `InsertHistoryClaimPNC` | **Finish Assignment** |
+| Save | `SaveInputRegisterDetail2` | — | — |
+
+Ketiganya memakai `idObj`/`idCov`/`idAdj` dari `.ClaimData.PUCLStatus.*`.
+
+### 141.2 Tiga hal yang kami catat keliru
+
+| # | Catatan kami | Yang sebenarnya |
+|---|---|---|
+| 1 | "Kirim ke PIC Teknik: `InsertHistoryClaimPNC` → `PUCLPost`" | **Terbalik.** `PUCLPost` DULU, baru `InsertHistoryClaimPNC` |
+| 2 | "Download Dokumen: dua langkah" | **Tiga.** Langkah ketiganya menulis riwayat, dan ada `statusCase="1"` yang tak pernah kami catat |
+| 3 | Tabel §12.8b menyiratkan `tolak` setara `cetak` | `tolak` **menyegarkan harness**; ia tidak menyelesaikan penugasan — klaimnya tetap di tangan petugas yang sama |
+
+Nomor 1 yang paling berbahaya bila lolos: `PUCLPost` mengubah status klaim, dan
+`InsertHistoryClaimPNC` menulis riwayat. Menjalankannya terbalik menghasilkan riwayat yang
+mendahului perubahan yang dicatatnya — urutan jejak audit yang salah, tanpa satu pun galat.
+
+### 141.3 Dua parameter yang tidak pernah kami kirim
+
+`statusCase` dan `statusNote`. Keduanya ditambahkan ke badan permintaan.
+
+`statusNote` berisi teks yang **berbeda per tombol**, dan salah satunya —
+`"Wait for Complete PUCL Document "` — **berakhir dengan spasi**. Spasi itu ada di Pega dan
+dipertahankan (`P-5`): ia terbawa ke kolom riwayat apa adanya, dan membuangnya mengubah data yang
+tersimpan. Uji `TestTiapTindakanMengirimParameterPUCLPostYangBENAR` menjaganya, termasuk spasinya.
+
+**Keduanya dikirim dari sini, bukan ditanam di layanan.** Alasannya: bila layanan menanamnya,
+perubahan satu kata menuntut rilis Pega; dan dua tempat yang memuat nilai sama dapat berbeda tanpa
+ada yang menyadarinya.
+
+### 141.4 Satu hal yang TIDAK kami kirim, dan alasannya
+
+`InsertHistoryClaimPNC` juga menerima `caseID`, yang di layar diisi `pyWorkPage.pzInsKey`. Itu
+**kunci internal Pega**, dan `D-22`/`D-71` justru melarang kunci semacam itu bocor ke data bisnis
+kami. Layanan dapat menurunkannya sendiri dari `caseNumber`. Dicatat di spesifikasi sebagai
+anggapan yang mohon dikoreksi bila keliru.
+
+### 141.5 Temuan sampingan: nama local action ketiga tombol sisa
+
+Terbaca sekalian, dan menutup satu pertanyaan terbuka §138:
+
+| Tombol | Local action |
+|---|---|
+| Unggah Dokumen | `SetUploadDocPUCL` |
+| Lihat Dokumen | `ViewAttachmentPUCL` — sudah dibangun sebagai baca |
+| Tutup Klaim | `PreventRejectClaim` |
+
+"Unggah Dokumen" karena itu bukan lagi "menuntut mekanisme yang belum diketahui" — namanya sudah
+ada. Yang belum ada tinggal isinya.
+
+### 141.6 Yang disunting
+
+`adapter/pega/pega.go` (`plans` menggantikan `parameterFor`, dua isian baru) ·
+`adapter/pega/pega_test.go` (penjaga keempat parameter) · `permintaan-artefak-pega.md` §12.8b–c
+(tabel urutan per tombol).
+
+**Perilaku tombol Kirim Ke Analyst tidak berubah** — ia memang sudah benar. Yang diperbaiki tiga
+tombol lain dan kelengkapan parameternya.

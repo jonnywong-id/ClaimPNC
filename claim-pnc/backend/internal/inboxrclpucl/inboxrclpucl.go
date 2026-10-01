@@ -1298,7 +1298,68 @@ var ErrActionNotAvailable = errors.New("inboxrclpucl: tindakan tidak tersedia un
 // Tim Pega dan Infra, yang kedua tim pengembang.
 var ErrPegaServiceUnavailable = errors.New("inboxrclpucl: layanan Pega belum tersedia")
 
-// SendToAnalystCommand adalah permintaan menjalankan tindakan "Kirim Ke Analyst".
+// ClaimActionKind adalah tindakan yang diminta layar.
+//
+// # Kenapa satu seam untuk beberapa tombol, bukan satu metode per tombol
+//
+// Karena di Pega pun begitu: EMPAT tombol memanggil activity yang sama (`PUCLPost`), dan yang
+// membedakannya hanya parameter. Satu metode per tombol akan menyalin rangkaian yang sama
+// empat kali, dan menyembunyikan fakta bahwa keempatnya satu jalur.
+type ClaimActionKind string
+
+const (
+	// ActionPrintLetter — tombol "Download Dokumen".
+	//
+	// `InsertMitraPA(tipe="cetak")` lalu `PUCLPost` dengan `Status` KOSONG. Ia menerbitkan
+	// PDF suratnya DAN mengisi tanggal cetak, sehingga klaimnya berpindah tab.
+	ActionPrintLetter ClaimActionKind = "cetak"
+
+	// ActionRejectClaim — tombol "Tolak Klaim". `PUCLPost` dengan `Status = "0"`.
+	ActionRejectClaim ClaimActionKind = "tolak"
+
+	// ActionSendToAnalyst — tombol "Kirim Ke Analyst".
+	//
+	// `Status = "1"`, lalu penugasannya diselesaikan dengan menyerahkan flow action
+	// **`SendtoRCLPUCL`** (`RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-WORK-PNC SENDTORCLPUCL`,
+	// dipakai `Register_Flow`) — itulah yang di layar Pega terlihat sebagai Finish Assignment.
+	ActionSendToAnalyst ClaimActionKind = "kirim-analyst"
+
+	// ActionSendToPICTeknik — tombol "Kirim ke PIC Teknik". Jalur Travel; di Pega ia
+	// `InsertHistoryClaimPNC` lalu `PUCLPost`, bukan `InsertMitraPA`.
+	ActionSendToPICTeknik ClaimActionKind = "kirim-pic-teknik"
+
+	// ActionSave — tombol "Save". Activity LAIN: `SaveInputRegisterDetail2`.
+	//
+	// Ia tidak meneruskan klaim dan tidak menyelesaikan penugasan — satu-satunya tindakan
+	// layar ini yang hanya menyimpan.
+	ActionSave ClaimActionKind = "save"
+)
+
+// KnownClaimActions adalah seluruh tindakan yang dikenali.
+//
+// "Unggah Dokumen" TIDAK ada di sini, dan itu disengaja: ia menuntut unggahan berkas dan
+// mesin lampiran Pega (`PZPVSTREAM`), bukan pemanggilan berparameter. Lihat
+// `permintaan-artefak-pega.md` §12.7.
+var KnownClaimActions = []ClaimActionKind{
+	ActionPrintLetter,
+	ActionRejectClaim,
+	ActionSendToAnalyst,
+	ActionSendToPICTeknik,
+	ActionSave,
+}
+
+// ClaimActionOf mengubah teks menjadi tindakan yang dikenali.
+func ClaimActionOf(raw string) (ClaimActionKind, bool) {
+	candidate := ClaimActionKind(strings.TrimSpace(raw))
+	for _, known := range KnownClaimActions {
+		if candidate == known {
+			return known, true
+		}
+	}
+	return "", false
+}
+
+// ClaimActionCommand adalah permintaan menjalankan satu tindakan pada satu klaim.
 //
 // # Kenapa ketiga parameter dibawa, bukan dicari ulang di sisi Pega
 //
@@ -1306,7 +1367,10 @@ var ErrPegaServiceUnavailable = errors.New("inboxrclpucl: layanan Pega belum ter
 // disetujui: langkah 11 menyetujui `AdjustmentList(<LAST>)` yang `CoverageID`-nya sama dengan
 // `param.idCov`. Mencarinya ulang di sisi lain berarti dua tempat dapat memilih baris yang
 // berbeda untuk satu klaim yang sama.
-type SendToAnalystCommand struct {
+type ClaimActionCommand struct {
+	// Kind adalah tindakan yang diminta.
+	Kind ClaimActionKind
+
 	// CaseNumber adalah nomor case — `PYID` di Pega.
 	CaseNumber string
 
@@ -1327,10 +1391,11 @@ type SendToAnalystCommand struct {
 //
 // # Kenapa seam, dan kenapa pengisinya Pega
 //
-// "Kirim Ke Analyst" di Pega menempuh tiga hal — `InsertMitraPA`, `PUCLPost` 57 langkah, dan
-// `Finish Assignment`. Yang ketiga membuat baris penugasan baru di `PC_ASSIGN_WORKLIST`, dan
-// **hanya lewat baris itulah klaim sampai ke Analyst**: inbox Analyst membaca
-// `PC_ASM_FW_GCNMFW_WORK` INNER JOIN `PC_ASSIGN_WORKLIST`.
+// Ketiga tombol yang memanggil `PUCLPost` menempuh activity Pega, dan kedua tombol Kirim
+// ditambah penyerahan flow action **`SendtoRCLPUCL`** — yang di layar terlihat sebagai
+// `Finish Assignment`. Penyerahan itulah yang membuat baris penugasan baru di
+// `PC_ASSIGN_WORKLIST`, dan **hanya lewat baris itu klaim sampai ke Analyst**: inbox Analyst
+// membaca `PC_ASM_FW_GCNMFW_WORK` INNER JOIN `PC_ASSIGN_WORKLIST`.
 //
 // Menulis `PUCL_APPROVE = '1'` dari sini akan membuat klaim HILANG dari antrean PUCL tanpa
 // sampai ke siapa pun — klaim yang berhenti bergerak tanpa satu pun galat. Karena itu
@@ -1338,10 +1403,10 @@ type SendToAnalystCommand struct {
 //
 // Saat Pega dimatikan, pengisi ini diganti logika kami sendiri; yang memakainya tidak berubah.
 type ClaimActions interface {
-	// SendToAnalyst menjalankan tindakan "Kirim Ke Analyst" pada satu klaim.
+	// Perform menjalankan satu tindakan pada satu klaim.
 	//
 	// Mengembalikan ErrPegaServiceUnavailable bila layanannya belum tersedia.
-	SendToAnalyst(ctx context.Context, cmd SendToAnalystCommand) error
+	Perform(ctx context.Context, cmd ClaimActionCommand) error
 }
 
 // CanSendToAnalyst menyatakan tindakan ini sah untuk klaim yang sedang dibuka.
@@ -1352,4 +1417,27 @@ type ClaimActions interface {
 // tindakan yang berjalan padahal tombolnya tidak pernah ada.
 func (d ClaimDetail) CanSendToAnalyst() bool {
 	return d.Buttons().SendToAnalyst
+}
+
+// Allows menyatakan sebuah tindakan sah untuk klaim yang sedang dibuka.
+//
+// Syaratnya diturunkan dari Buttons() — tombol yang TIDAK digambar berarti tindakannya tidak
+// sah. Dua pemeriksaan yang terpisah dapat berselisih, dan selisihnya berarti tindakan yang
+// berjalan padahal tombolnya tidak pernah ada.
+func (d ClaimDetail) Allows(kind ClaimActionKind) bool {
+	b := d.Buttons()
+	switch kind {
+	case ActionPrintLetter:
+		return b.DownloadDocument
+	case ActionRejectClaim:
+		return b.RejectClaim
+	case ActionSendToAnalyst:
+		return b.SendToAnalyst
+	case ActionSendToPICTeknik:
+		return b.SendToPICTeknik
+	case ActionSave:
+		return b.Save
+	default:
+		return false
+	}
 }

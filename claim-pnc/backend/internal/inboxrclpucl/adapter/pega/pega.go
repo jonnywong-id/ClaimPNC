@@ -98,34 +98,106 @@ func NewClient(cfg Config) *Client {
 	}
 }
 
-// sendToAnalystRequest adalah badan permintaan ke layanan Pega.
+// claimActionRequest adalah badan permintaan ke layanan Pega.
 //
 // Nama isiannya mengikuti NAMA PARAMETER `PUCLPost` apa adanya — `Status`, `idObj`, `idCov`,
 // `idAdj` — bukan dinamai ulang mengikuti gaya kami. Ia kontrak dengan sistem lain, dan
 // menamainya ulang hanya menambah satu terjemahan yang dapat salah di antara dua pihak.
-type sendToAnalystRequest struct {
+type claimActionRequest struct {
+	// Aksi menyebut TINDAKAN yang diminta, dan ia yang menentukan rangkaian activity mana
+	// yang dijalankan layanan.
+	//
+	// Ia dikirim selain `Status` karena keduanya tidak sepadan: `Status` hanya membedakan
+	// ketiga tindakan `PUCLPost`, sementara "save" memakai activity yang berbeda sama
+	// sekali. Menyandikan semuanya ke dalam `Status` akan menuntut layanan menebak.
+	Aksi string `json:"aksi"`
+
 	CaseNumber   string `json:"caseNumber"`
 	Status       string `json:"Status"`
 	IDObject     string `json:"idObj"`
 	IDCoverage   string `json:"idCov"`
 	IDAdjustment string `json:"idAdj"`
 	Tipe         string `json:"tipe"`
-	Note         string `json:"note"`
-	Caller       string `json:"caller"`
+
+	// StatusCase hanya terisi pada "Download Dokumen" (`statusCase = "1"`). Ketujuh tombol
+	// lain tidak mengirimkannya sama sekali.
+	StatusCase string `json:"statusCase"`
+
+	// StatusNote adalah catatan riwayat `InsertHistoryClaimPNC`, dan isinya BERBEDA per
+	// tombol. Ia dikirim dari sini — bukan ditanam di layanan — supaya keduanya tidak bisa
+	// berbeda tanpa ada yang menyadarinya.
+	StatusNote string `json:"statusNote"`
+
+	Note   string `json:"note"`
+	Caller string `json:"caller"`
 }
 
-// statusSendToAnalyst adalah nilai `Status` yang membuat `PUCLPost` meneruskan klaim.
-//
-// Ketiga nilainya terbaca dari rangkaian aksi tombol di `SectionPenerimaanDokumenPUCL`:
-// kosong untuk cetak, `0` untuk tolak, `1` untuk kirim.
-const statusSendToAnalyst = "1"
+// actionPlan adalah parameter satu tombol, dibaca dari rangkaian aksinya di section Pega.
+type actionPlan struct {
+	status     string // parameter `Status` pada PUCLPost
+	tipe       string // parameter `tipe` pada InsertMitraPA
+	statusCase string // parameter `statusCase` pada PUCLPost
+	statusNote string // parameter `statusNote` pada InsertHistoryClaimPNC
+}
 
-// tipeDokumen adalah nilai `tipe` yang dikirim tombol Kirim — berbeda dari `"cetak"` yang
-// dikirim tombol Download Dokumen.
-const tipeDokumen = "dokumen"
+// plans memetakan tindakan menjadi parameter keempat activity Pega.
+//
+// # Urutan langkahnya BERBEDA per tombol, dan urutan itu bagian dari kontrak
+//
+// Dibaca apa adanya dari `pyBehaviors` tiap tombol di `SectionPenerimaanDokumenPUCL` dan
+// `SectionLampiranSuratPUCL`. Nomornya adalah URUTAN KLIK yang sebenarnya:
+//
+//	Download Dokumen     1 InsertMitraPA(tipe="cetak")
+//	                     2 PUCLPost(Status="", statusCase="1", idObj, idCov, idAdj)
+//	                     3 InsertHistoryClaimPNC(statusNote="Wait for Complete PUCL Document ")
+//
+//	Tolak Klaim          1 InsertMitraPA(tipe="dokumen")
+//	                     2 PUCLPost(Status="0", idObj, idCov, idAdj)
+//	                     3 refresh currentharness  — BUKAN Finish Assignment
+//
+//	Kirim Ke Analyst     1 InsertMitraPA(tipe="dokumen")
+//	                     2 PUCLPost(Status="1", idObj, idCov, idAdj)
+//	                     3 Finish Assignment → flow action SendtoRCLPUCL
+//
+//	Kirim ke PIC Teknik  1 PUCLPost(Status="1", idObj, idCov, idAdj)      ← PUCLPost DULU
+//	                     2 InsertHistoryClaimPNC(statusNote="send by PUCL to PIC Teknis")
+//	                     3 Finish Assignment → flow action SendtoRCLPUCL
+//
+//	Save                 1 SaveInputRegisterDetail2  — tanpa PUCLPost sama sekali
+//
+// Tiga hal yang mudah terbaca terbalik, dan ketiganya sudah pernah salah di catatan kami:
+//
+//   - "Kirim ke PIC Teknik" menjalankan `PUCLPost` LEBIH DULU, baru `InsertHistoryClaimPNC`.
+//     Pada "Download Dokumen" urutannya kebalikannya.
+//   - "Tolak Klaim" TIDAK menyelesaikan penugasan. Ia hanya menyegarkan harness, sehingga
+//     klaimnya tetap di tangan petugas yang sama.
+//   - "Download Dokumen" punya TIGA langkah, bukan dua — langkah ketiganya menulis riwayat.
+//
+// Spasi di ujung "Wait for Complete PUCL Document " ADA di Pega dan dipertahankan (`P-5`).
+// Ia terbawa ke kolom riwayat apa adanya, dan membuangnya mengubah data yang tersimpan.
+var plans = map[inboxrclpucl.ClaimActionKind]actionPlan{
+	inboxrclpucl.ActionPrintLetter: {
+		status: "", tipe: "cetak", statusCase: "1",
+		statusNote: "Wait for Complete PUCL Document ",
+	},
+	inboxrclpucl.ActionRejectClaim:   {status: "0", tipe: "dokumen"},
+	inboxrclpucl.ActionSendToAnalyst: {status: "1", tipe: "dokumen"},
+	inboxrclpucl.ActionSendToPICTeknik: {
+		// Tanpa `tipe`: jalur ini memakai `InsertHistoryClaimPNC`, bukan `InsertMitraPA`.
+		status: "1", statusNote: "send by PUCL to PIC Teknis",
+	},
+	// ActionSave sengaja TIDAK ada di peta ini — ia tidak memanggil `PUCLPost` maupun
+	// `InsertMitraPA`, sehingga keempat parameternya kosong.
+}
 
 // resourceActionClaimPUCL adalah `pyResourcePath` layanan yang menjalankan rangkaian
-// `InsertMitraPA` → `PUCLPost` → `Finish Assignment`.
+// `InsertMitraPA` → `PUCLPost` → penyerahan flow action `SendtoRCLPUCL`.
+//
+// Langkah ketiga dinamai flow action-nya, bukan "Finish Assignment", karena yang terakhir itu
+// nama TOMBOL — dan satu tombol Finish Assignment dapat menyerahkan flow action mana pun yang
+// sedang berlaku. Yang dijalankan tombol ini satu dan tertentu:
+//
+//	RULE-OBJ-FLOWACTION  ASM-FW-GCNMFW-WORK-PNC  SENDTORCLPUCL   (dipakai Register_Flow)
 //
 // # Kenapa BUKAN dinamai "PUCLPost"
 //
@@ -143,27 +215,33 @@ const tipeDokumen = "dokumen"
 // Bila Tim Pega memilih nama lain, yang berubah hanya `PEGA_LAYANAN_KLAIM_PATH` — bukan kode.
 const resourceActionClaimPUCL = "ActionClaimPUCL"
 
-// SendToAnalyst menjalankan tindakan "Kirim Ke Analyst" lewat layanan Pega.
-func (c *Client) SendToAnalyst(
+// Perform menjalankan satu tindakan klaim lewat layanan Pega.
+func (c *Client) Perform(
 	ctx context.Context,
-	cmd inboxrclpucl.SendToAnalystCommand,
+	cmd inboxrclpucl.ClaimActionCommand,
 ) error {
 	if c.baseURL == "" {
 		return inboxrclpucl.ErrPegaServiceUnavailable
 	}
 
-	body, err := json.Marshal(sendToAnalystRequest{
+	// Tindakan yang tidak ada di peta menghasilkan actionPlan kosong, dan itu BENAR untuk
+	// ActionSave — bukan keadaan galat.
+	plan := plans[cmd.Kind]
+	body, err := json.Marshal(claimActionRequest{
+		Aksi:         string(cmd.Kind),
 		CaseNumber:   cmd.CaseNumber,
-		Status:       statusSendToAnalyst,
+		Status:       plan.status,
 		IDObject:     cmd.IDObject,
 		IDCoverage:   cmd.IDCoverage,
 		IDAdjustment: cmd.IDAdjustment,
-		Tipe:         tipeDokumen,
+		Tipe:         plan.tipe,
+		StatusCase:   plan.statusCase,
+		StatusNote:   plan.statusNote,
 		Note:         cmd.Note,
 		Caller:       cmd.Caller,
 	})
 	if err != nil {
-		return fmt.Errorf("menyusun permintaan kirim ke analyst: %w", err)
+		return fmt.Errorf("menyusun permintaan tindakan %s: %w", cmd.Kind, err)
 	}
 
 	// Jalurnya dari konfigurasi, dengan bawaan resourceActionClaimPUCL.
@@ -194,8 +272,7 @@ func (c *Client) SendToAnalyst(
 		// 4xx BUKAN ketidaktersediaan: permintaannya sampai dan DITOLAK. Membungkusnya
 		// sebagai "belum tersedia" akan menyuruh orang menunggu Tim Pega, padahal yang salah
 		// ada di permintaan kita.
-		return fmt.Errorf("layanan Pega menolak permintaan kirim ke analyst: %d",
-			res.StatusCode)
+		return fmt.Errorf("layanan Pega menolak tindakan %s: %d", cmd.Kind, res.StatusCode)
 	}
 	return nil
 }

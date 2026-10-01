@@ -174,7 +174,8 @@
       "Bash(cp /tmp/rt_test.go internal/inboxrclpucl/http/zz_rt_test.go)",
       "Bash(awk '{print \"bin/claimpnc.exe :\",$6,$7,$8}')",
       "Bash(grep -rn \"bin/claimpnc\\\\|bin\\\\\\\\\\\\\\\\claimpnc\" --include=*.md --include=*.json --include=*.ps1 --include=*.bat .)",
-      "Bash(awk '{print $6,$7,$8}')"
+      "Bash(awk '{print $6,$7,$8}')",
+      "Bash(gofmt -w internal/inboxrclpucl/adapter/pega/)"
     ],
     "additionalDirectories": [
       "\\tmp",

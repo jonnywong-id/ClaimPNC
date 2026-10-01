@@ -7,10 +7,11 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 
 import {
   rclpuclDocumentURL,
-  useKirimKeAnalyst,
   useRCLPUCLClaim,
   useRCLPUCLDocuments,
+  useTindakanKlaim,
 } from './api'
+import type { TindakanKlaim } from './api'
 import type { ClaimDetailResponse } from './types'
 
 /**
@@ -489,9 +490,10 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
           yaitu melewati langkah itu. Ia hanya jalan untuk "Tolak Klaim" di jalur RCL.
         */}
         {buttons.download_dokumen && (
-          <WriteAction
+          <ClaimAction
             label="Download Dokumen"
-            caseNumber={detail?.referensi}
+            aksi="cetak"
+            reference={detail?.referensi}
             note={
               'Menerbitkan PDF surat DAN menandainya sudah dicetak — klaimnya berpindah ' +
               'dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
@@ -582,9 +584,10 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
         */}
         {buttons.lihat_dokumen && <ViewDocumentsAction reference={detail?.referensi} />}
         {buttons.save && (
-          <WriteAction
+          <ClaimAction
             label="Save"
-            caseNumber={detail?.referensi}
+            aksi="save"
+            reference={detail?.referensi}
             note="Menyimpan isian tanpa meneruskan klaimnya."
           />
         )}
@@ -597,9 +600,10 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
       */}
       <div className="flex flex-wrap gap-3">
         {buttons.tolak_klaim && (
-          <WriteAction
+          <ClaimAction
             label="Tolak Klaim"
-            caseNumber={detail?.referensi}
+            aksi="tolak"
+            reference={detail?.referensi}
             note="Menolak klaim. Hanya tersedia pada jalur RCL."
           />
         )}
@@ -610,11 +614,19 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
           Analyst HANYA lewat baris penugasan yang dibuat mesin alur kerja Pega. Selama
           layanannya belum tersambung, peladen menjawab 503 dan pesannya digambar apa adanya.
         */}
-        {buttons.kirim_ke_analyst && <SendToAnalystAction reference={detail?.referensi} />}
+        {buttons.kirim_ke_analyst && (
+          <ClaimAction
+            label="Kirim Ke Analyst"
+            aksi="kirim-analyst"
+            reference={detail?.referensi}
+            note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
+          />
+        )}
         {buttons.kirim_ke_pic_teknik && (
-          <WriteAction
+          <ClaimAction
             label="Kirim ke PIC Teknik"
-            caseNumber={detail?.referensi}
+            aksi="kirim-pic-teknik"
+            reference={detail?.referensi}
             note="Meneruskan klaim ke PIC Teknik. Jalur PUCL pada lini Travel."
           />
         )}
@@ -867,7 +879,7 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
 }
 
 /**
- * Tombol "Kirim Ke Analyst" — satu-satunya tindakan yang benar-benar dijalankan.
+ * Tombol yang benar-benar MENJALANKAN tindakannya lewat Pega.
  *
  * # Kenapa ia tidak memakai panel WriteAction
  *
@@ -876,32 +888,43 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
  *
  * Saat GAGAL karena layanan Pega belum tersambung, pesan peladen sudah memuat langkah
  * penggantinya ("kerjakan di Pega; salin nomor case"), sehingga tidak diulang di sini.
+ *
+ * Pesan BERHASIL pun datang dari peladen, bukan ditulis di sini: ia menyebut AKIBATNYA —
+ * "klaimnya berpindah ke tab Kelengkapan Dokumen" — dan akibat itu berbeda per tindakan.
  */
-function SendToAnalystAction({ reference }: { reference?: string | undefined }) {
-  const kirim = useKirimKeAnalyst(reference ?? null)
+function ClaimAction({
+  label,
+  note,
+  aksi,
+  reference,
+}: {
+  label: string
+  note: string
+  aksi: TindakanKlaim
+  reference?: string | undefined
+}) {
+  const tindakan = useTindakanKlaim(reference ?? null, aksi)
 
   return (
     <div className="mt-4">
       <Button
         tone="kedua"
-        disabled={!reference || kirim.isPending}
-        onClick={() => kirim.mutate()}
+        disabled={!reference || tindakan.isPending}
+        onClick={() => tindakan.mutate()}
       >
-        {kirim.isPending ? 'Mengirim…' : 'Kirim Ke Analyst'}
+        {tindakan.isPending ? 'Menjalankan…' : label}
       </Button>
-      <p className="mt-1 text-xs text-slate-500">
-        Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap.
-      </p>
+      <p className="mt-1 text-xs text-slate-500">{note}</p>
 
-      {kirim.isSuccess && (
+      {tindakan.isSuccess && (
         <p className="mt-2 max-w-md rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-slate-700">
-          Klaim diteruskan ke Analyst.
+          {tindakan.data?.pesan ?? 'Tindakan dijalankan.'}
         </p>
       )}
 
-      {kirim.isError && (
+      {tindakan.isError && (
         <p className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-slate-700">
-          {messageOf(kirim.error)}
+          {messageOf(tindakan.error)}
         </p>
       )}
     </div>

@@ -322,10 +322,15 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // Inilah yang membedakannya dari tombol mati: menekannya MENGHASILKAN sesuatu. Nomor
     // case-nya disertakan karena itu yang dibutuhkan petugas untuk mengerjakan tindakannya
     // di Pega; tanpanya ia harus kembali ke antrean dan mencarinya lagi.
+    // Dipakai "Unggah Dokumen": sejak tindakan lain tersambung ke Pega, hanya tombol yang
+    // BELUM punya jalur yang masih memakai panel ini.
     stubDefaultFetch()
     renderWorkScreen()
 
-    const tombol = await screen.findByRole('button', { name: 'Download Dokumen' })
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    const tombol = screen.getByRole('button', { name: 'Unggah Dokumen' })
     expect(tombol).toHaveAttribute('aria-expanded', 'false')
 
     await userEvent.click(tombol)
@@ -472,7 +477,7 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // alamat klaimnya, dan keberhasilannya dinyatakan — bukan diam.
     let dipanggil = ''
     stubFetch((url) => {
-      if (url.includes('/kirim-analyst')) {
+      if (url.includes('/tindakan/kirim-analyst')) {
         dipanggil = url
         return jsonResponse(200, { pesan: 'Klaim diteruskan ke Analyst.' })
       }
@@ -492,7 +497,7 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Kirim Ke Analyst' }))
 
     expect(await screen.findByText('Klaim diteruskan ke Analyst.')).toBeInTheDocument()
-    expect(dipanggil).toContain('/kirim-analyst')
+    expect(dipanggil).toContain('/tindakan/kirim-analyst')
   })
 
   it('menggambar ALASAN saat layanan Pega belum tersambung', async () => {
@@ -500,7 +505,7 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // menggambarnya APA ADANYA — menuliskannya ulang di sini berarti dua kalimat yang dapat
     // berselisih, dan yang di layar bukan yang dikirim peladen.
     stubFetch((url) => {
-      if (url.includes('/kirim-analyst')) {
+      if (url.includes('/tindakan/kirim-analyst')) {
         return jsonResponse(503, {
           kode: 'layanan_pega_belum_tersedia',
           pesan: 'Tindakan ini dijalankan oleh Pega, dan layanannya belum tersambung.',
@@ -522,6 +527,56 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Kirim Ke Analyst' }))
 
     expect(await screen.findByText(/layanannya belum tersambung/)).toBeInTheDocument()
+  })
+
+  it('"Download Dokumen" dan "Save" MENJALANKAN tindakannya lewat alamat yang benar', async () => {
+    // Keduanya memanggil activity yang sama dengan tombol Kirim — yang membedakan hanya
+    // parameternya. Yang dijaga di sini: alamat tindakannya BERBEDA per tombol, karena
+    // alamat yang tertukar membuat Pega mengerjakan tindakan yang salah tanpa menolak.
+    const dipanggil: string[] = []
+    stubFetch((url) => {
+      if (url.includes('/tindakan/')) {
+        dipanggil.push(url)
+        return jsonResponse(200, { pesan: 'Tindakan dijalankan.' })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Download Dokumen' }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(dipanggil.some((u) => u.endsWith('/tindakan/cetak'))).toBe(true)
+    expect(dipanggil.some((u) => u.endsWith('/tindakan/save'))).toBe(true)
+  })
+
+  it('"Unggah Dokumen" BELUM punya jalur, dan itu dinyatakan apa adanya', async () => {
+    // Ia menuntut unggahan berkas DAN mesin lampiran Pega (`PZPVSTREAM`), bukan pemanggilan
+    // berparameter — sehingga ia tidak ikut tersambung bersama keempat tombol lain.
+    //
+    // Yang dijaga: ia TIDAK memanggil alamat tindakan. Menyambungkannya ke alamat yang sama
+    // akan membuat Pega menerima tindakan yang tidak pernah ada.
+    const dipanggil: string[] = []
+    stubFetch((url) => {
+      if (url.includes('/tindakan/')) {
+        dipanggil.push(url)
+        return jsonResponse(200, { pesan: 'Tindakan dijalankan.' })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Unggah Dokumen' }))
+
+    expect(dipanggil).toHaveLength(0)
+    expect(screen.getByText(/di Pega pada klaim/)).toBeInTheDocument()
   })
 
   it('membuka paling banyak SATU panel — menekan tombol kedua menutup yang pertama', async () => {

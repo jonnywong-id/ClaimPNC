@@ -419,7 +419,7 @@ func (s *Service) documentAccess(
 	return repo, key, nil
 }
 
-// SendToAnalyst menjalankan tindakan "Kirim Ke Analyst" pada satu klaim.
+// PerformAction menjalankan satu tindakan pada satu klaim.
 //
 // # Urutannya: baca dulu, baru kirim
 //
@@ -427,11 +427,12 @@ func (s *Service) documentAccess(
 // ketiga parameter tersembunyi, catatan untuk Analyst, dan syarat apakah tombolnya memang
 // digambar. Mengirimkannya dari layar akan membuat sisi peladen memercayai nilai yang dapat
 // disusun siapa pun.
-func (s *Service) SendToAnalyst(
+func (s *Service) PerformAction(
 	ctx context.Context,
 	portalAlias string,
 	caller inboxrclpucl.Caller,
 	reference string,
+	kind inboxrclpucl.ClaimActionKind,
 ) error {
 	cleanCaller := caller.Clean()
 	if cleanCaller.Login == "" {
@@ -456,12 +457,11 @@ func (s *Service) SendToAnalyst(
 		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
 			return err
 		}
-		return fmt.Errorf("membaca klaim %s sebelum kirim ke analyst: %w", key, err)
+		return fmt.Errorf("membaca klaim %s sebelum tindakan %s: %w", key, kind, err)
 	}
 
-	// Syaratnya diturunkan dari tombolnya, bukan ditulis ulang — lihat
-	// `inboxrclpucl.ClaimDetail.CanSendToAnalyst`.
-	if !detail.CanSendToAnalyst() {
+	// Syaratnya diturunkan dari tombolnya, bukan ditulis ulang — lihat ClaimDetail.Allows.
+	if !detail.Allows(kind) {
 		return inboxrclpucl.ErrActionNotAvailable
 	}
 
@@ -469,7 +469,8 @@ func (s *Service) SendToAnalyst(
 		return inboxrclpucl.ErrPegaServiceUnavailable
 	}
 
-	err = s.actions.SendToAnalyst(ctx, inboxrclpucl.SendToAnalystCommand{
+	err = s.actions.Perform(ctx, inboxrclpucl.ClaimActionCommand{
+		Kind:         kind,
 		CaseNumber:   detail.ClaimNumber,
 		IDObject:     detail.ActionParameters.IDObject,
 		IDCoverage:   detail.ActionParameters.IDCoverage,
@@ -483,19 +484,20 @@ func (s *Service) SendToAnalyst(
 		if errors.Is(err, inboxrclpucl.ErrPegaServiceUnavailable) {
 			return err
 		}
-		return fmt.Errorf("mengirim klaim %s ke analyst: %w", key, err)
+		return fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
 	}
 
-	// Tindakan yang MENGUBAH klaim dicatat, dan pelakunya ikut.
+	// Setiap tindakan yang MENGUBAH klaim dicatat, dan pelakunya ikut.
 	//
-	// Ia satu-satunya jalur tulis modul ini. Jejaknya karena itu bukan kelengkapan melainkan
-	// satu-satunya cara mengetahui siapa meneruskan klaim mana — `D-59` menjadikan jejak audit
+	// Ia satu-satunya jalur tulis modul ini. Jejaknya bukan kelengkapan melainkan satu-satunya
+	// cara mengetahui siapa mengerjakan apa pada klaim mana — `D-59` menjadikan jejak audit
 	// kontrol pengimbang tunggal, karena tidak ada pemisahan tugas.
 	if s.logger != nil {
-		s.logger.Info("klaim RCL/PUCL dikirim ke Analyst",
+		s.logger.Info("tindakan klaim RCL/PUCL dijalankan",
 			"portal", portalAlias,
 			"login", cleanCaller.Login,
 			"klaim", detail.ClaimNumber,
+			"tindakan", string(kind),
 		)
 	}
 	return nil

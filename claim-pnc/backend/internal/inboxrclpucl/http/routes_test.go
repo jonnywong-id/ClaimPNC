@@ -43,7 +43,7 @@ func TestSeluruhRuteTerdaftar(t *testing.T) {
 		"GET /inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}",
 
 		// Satu-satunya rute yang MENGUBAH klaim. POST, bukan GET.
-		"POST /inbox-rcl-pucl/klaim/{referensi}/kirim-analyst",
+		"POST /inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}",
 	} {
 		require.Truef(t, terpasang[wajib], "rute %q tidak terdaftar", wajib)
 	}
@@ -60,7 +60,7 @@ func TestTindakanTulisBukanGET(t *testing.T) {
 	require.NoError(t, chi.Walk(r, func(
 		metode, rute string, _ http.Handler, _ ...func(http.Handler) http.Handler,
 	) error {
-		if rute == "/inbox-rcl-pucl/klaim/{referensi}/kirim-analyst" {
+		if rute == "/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}" {
 			require.Equal(t, "POST", metode)
 		}
 		return nil

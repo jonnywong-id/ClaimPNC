@@ -2221,6 +2221,7 @@ terjemahan yang dapat salah di antara dua pihak.
 
 | Isian | Tipe | Isi | Dari |
 |---|---|---|---|
+| `aksi` | teks | `cetak` · `tolak` · `kirim-analyst` · `kirim-pic-teknik` · `save` | tombol yang ditekan |
 | `caseNumber` | teks | nomor case, mis. `PNC-2183` | `PYID` |
 | `Status` | teks | **`"1"`** = kirim · `"0"` = tolak · `""` = cetak | parameter `PUCLPost` |
 | `idObj` | teks | parameter `idObj` | kolom `TC_PNC_PUCL.ID_OBJECT` |
@@ -2234,19 +2235,90 @@ terjemahan yang dapat salah di antara dua pihak.
 integrasi**, bukan orangnya — dan `D-59` menjadikan jejak audit kontrol pengimbang tunggal
 karena tidak ada pemisahan tugas.
 
+#### b.1 `aksi` menentukan rangkaian activity
+
+Satu layanan melayani **lima tombol**. Yang membedakan bukan hanya `Status` — "save" memakai
+activity yang berbeda sama sekali:
+
+| `aksi` | `Status` | `tipe` | `statusCase` | `statusNote` | Finish Assignment |
+|---|---|---|---|---|---|
+| `cetak` | *(kosong)* | `cetak` | `1` | `Wait for Complete PUCL Document ` | tidak |
+| `tolak` | `0` | `dokumen` | — | — | tidak |
+| `kirim-analyst` | `1` | `dokumen` | — | — | **ya** |
+| `kirim-pic-teknik` | `1` | *(kosong)* | — | `send by PUCL to PIC Teknis` | **ya** |
+| `save` | — | — | — | — | tidak |
+
+> Spasi di ujung `Wait for Complete PUCL Document ` **ada di Pega** dan mohon dipertahankan apa
+> adanya. Ia terbawa ke kolom riwayat, dan membuangnya mengubah data yang tersimpan (`P-5`).
+
+**Urutan langkahnya BERBEDA per tombol, dan urutan itu bagian dari kontrak.** Dibaca apa adanya
+dari `pyBehaviors` tiap tombol:
+
+| `aksi` | 1 | 2 | 3 |
+|---|---|---|---|
+| `cetak` | `InsertMitraPA` | `PUCLPost` | `InsertHistoryClaimPNC` |
+| `tolak` | `InsertMitraPA` | `PUCLPost` | *refresh harness — bukan Finish Assignment* |
+| `kirim-analyst` | `InsertMitraPA` | `PUCLPost` | **Finish Assignment** |
+| `kirim-pic-teknik` | **`PUCLPost`** | `InsertHistoryClaimPNC` | **Finish Assignment** |
+| `save` | `SaveInputRegisterDetail2` | — | — |
+
+Tiga hal yang mudah terbaca terbalik, dan ketiganya pernah salah di catatan kami sendiri:
+
+- **`kirim-pic-teknik` menjalankan `PUCLPost` LEBIH DULU**, baru `InsertHistoryClaimPNC`. Pada
+  `cetak` urutannya justru kebalikannya.
+- **`tolak` TIDAK menyelesaikan penugasan.** Ia hanya menyegarkan harness, sehingga klaimnya
+  tetap di tangan petugas yang sama.
+- **`cetak` punya TIGA langkah, bukan dua** — langkah ketiganya menulis riwayat.
+
+`InsertHistoryClaimPNC` juga menerima `caseID`, yang di layar diisi `pyWorkPage.pzInsKey`. Kami
+**tidak** mengirimkannya: `pzInsKey` adalah kunci internal Pega, dan layanan dapat menurunkannya
+sendiri dari `caseNumber`. Mohon dikonfirmasi bila anggapan itu keliru.
+
+`Status` tetap dikirim selain `aksi` supaya layanan dapat meneruskannya apa adanya ke
+`PUCLPost` tanpa memetakan ulang.
+
 #### c. Yang harus DICAPAI layanan — bukan caranya
 
 Caranya diserahkan kepada Tim Pega, karena ketiganya operasi mesin Pega yang tidak dapat kami
 baca dari export (§12.7). Yang kami butuhkan adalah hasilnya:
 
-1. Jalankan **`InsertMitraPA`** dengan `tipe` yang dikirim.
-2. Jalankan **`PUCLPost`** dengan `Status`, `idObj`, `idCov`, `idAdj`.
-3. **Selesaikan penugasannya** — `Finish Assignment`, seperti tombol di layar.
+1. Jalankan ketiga langkah `aksi` itu **dalam urutan pada tabel §12.8b** — urutannya berbeda
+   per tombol, dan bukan detail yang boleh diseragamkan.
+2. Teruskan parameternya apa adanya: `tipe`, `Status`, `statusCase`, `statusNote`, `idObj`,
+   `idCov`, `idAdj`.
+3. Untuk `kirim-analyst` dan `kirim-pic-teknik`, langkah terakhirnya adalah **menyerahkan flow
+   action `SendtoRCLPUCL`** pada penugasan klaim itu — inilah yang di layar terlihat sebagai
+   `Finish Assignment`.
+
+```
+Rule   RULE-OBJ-FLOWACTION  ASM-FW-GCNMFW-WORK-PNC  SENDTORCLPUCL
+Kelas  ASM-FW-GCNMFW-Work-PNC
+Flow   Register_Flow
+```
 
 Butir 3 yang paling menentukan, dan mohon tidak dilewatkan: inbox Analyst membaca
 `PC_ASM_FW_GCNMFW_WORK` **INNER JOIN `PC_ASSIGN_WORKLIST`**, sehingga klaim sampai ke Analyst
 **hanya** lewat baris penugasan baru. Tanpa butir 3, klaim hilang dari antrean PUCL tanpa sampai
 ke siapa pun — dan tidak ada galat yang memunculkannya.
+
+> **Jalan pintas yang sudah ditanyakan dan TIDAK ada.** Butir 3 adalah penyerahan flow action
+> biasa, sehingga pada prinsipnya dapat dilayani API standar Pega tanpa rule baru:
+>
+> ```
+> POST /prweb/api/v1/assignments/{assignmentID}/actions/SendtoRCLPUCL
+> ```
+>
+> Work Owner menjawab **tidak ada** (2026-10-01): `/prweb/api/v1/` tidak tersedia, dan tidak ada
+> akun layanan untuknya. **Ketiga butir karena itu tetap masuk lingkup layanan ini** — tidak ada
+> satu pun yang dapat kami panggil sendiri.
+>
+> Dicatat di sini supaya pertanyaannya tidak diajukan ulang, dan supaya jelas bahwa butir 3
+> **bukan** permintaan yang berlebihan.
+>
+> Ditambah satu hal yang berlaku meski API itu kelak diaktifkan: butir 1 dan 2 tetap tidak dapat
+> dikerjakannya, karena keduanya rangkaian aksi TOMBOL, bukan pra/pasca-proses flow action.
+> Diperiksa langsung — `SendtoRCLPUCL` hanya punya
+> `pyPreProcessingActivity = SetDataLampiranSuratRCLPUCL_Act`, tanpa pasca-proses.
 
 #### d. Bentuk jawaban
 
