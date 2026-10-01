@@ -733,3 +733,79 @@ SELECT COUNT(*) AS PROBE
                ON j.CLAIMID = o.CLAIMID
               AND j.OBJECTID = o.OBJECTID
  WHERE 1 = 0
+
+-- name: documents
+-- Daftar dokumen satu klaim — tombol **"Lihat Dokumen"** (`localAction ViewAttachmentPUCL`).
+--
+-- ============================================================================
+-- JALUR DATANYA DIPILIH DARI BUKTI, BUKAN DARI NAMA SECTION
+-- ============================================================================
+-- `Section/ViewAttachmentPUCLDetail-Section.xml` memakai Report Definition
+-- `GCNMGetAllAttachments` pada kelas `Link-Attachment`, yaitu tabel lampiran Pega
+-- (`DATAPEGA.PC_LINK_ATTACHMENT`). Meniru itu apa adanya akan membawa kita ke
+-- `PC_DATA_WORKATTACH.PZPVSTREAM` — blob serialisasi Pega, BUKAN berkas mentah.
+--
+-- Katalog dan data dibaca langsung 2026-10-01, dan memberi jalan yang lebih baik:
+--
+--   POOLDATA.DATA_ATTACHFILE  9.937 baris · ATTACHFILE BLOB berisi BERKAS MENTAH
+--   IDPEGA cocok PZINSKEY objek kerja   3.915 dari 3.974 yang terisi
+--   IDPEGA cocok PYID (nomor case)         32   <- bukan ini
+--   IDPEGA cocok kunci PC_LINK_ATTACHMENT    0   <- bukan ini
+--
+-- Jadi `IDPEGA` menyimpan **kunci objek kerja**, dan berkasnya dapat dibaca apa adanya —
+-- tanpa membongkar blob Pega dan tanpa memanggil `pooldata.base64encode` yang `D-02` larang.
+--
+-- ============================================================================
+-- YANG TIDAK TERLIHAT LEWAT JALUR INI, DAN ITU DINYATAKAN
+-- ============================================================================
+-- Untuk seluruh klaim PNC, `PC_LINK_ATTACHMENT` memuat 12.051 lampiran sementara
+-- `DATA_ATTACHFILE` hanya 9.937 baris seluruhnya. Dokumen yang HANYA ada di tabel Pega —
+-- lampiran lama yang diunggah lewat jalur bawaan Pega — tidak muncul di sini.
+--
+-- Layar menyatakan kemungkinan itu alih-alih menampilkan daftar kosong seolah klaimnya
+-- memang tidak berdokumen. Arah kegagalannya dipilih sadar: KURANG, bukan salah.
+--
+-- Nama kategori dicari lewat LEFT JOIN, mengikuti alasan yang sama seperti `inboxpladla`:
+-- satu kode yang tidak ada di master tidak boleh MENYEMBUNYIKAN dokumennya.
+--
+-- Bind: :1 nomor case
+SELECT a.DATAID                                     AS DOCUMENT_ID,
+       a.ATTACHNAME                                 AS DOCUMENT_NAME,
+       a.ATTACHMIMETYPE                             AS MIME_TYPE,
+       COALESCE(t.TYPE_DOCUMENT, a.CATEGORY)        AS CATEGORY_NAME,
+       COALESCE(dt.DETAIL_DOCUMENT, a.SUB_CATEGORY) AS SUBCATEGORY_NAME,
+       a.INPUTDATE                                  AS UPLOADED_AT,
+       a.INPUTOPERATOR                              AS UPLOADED_BY
+  FROM POOLDATA.DATA_ATTACHFILE a
+  LEFT JOIN POOLDATA.V_LST_DOC_TYPE t
+         ON t.ID = a.CATEGORY
+  LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC dt
+         ON dt.ID = a.SUB_CATEGORY
+ WHERE a.ATTACHFILE IS NOT NULL
+   AND EXISTS (SELECT 1
+                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+                WHERE w.PZINSKEY = a.IDPEGA
+                  AND TRIM(w.PYID) = TRIM(:1))
+ ORDER BY a.INPUTDATE DESC NULLS LAST, a.DATAID DESC
+
+-- name: document_content
+-- ISI satu dokumen.
+--
+-- `DATAID` dapat ditebak, sehingga pernyataan ini TIDAK menerimanya apa adanya: dokumennya
+-- wajib terbukti milik klaim yang diminta. Rantai kepemilikan diperiksa di dalam kueri, bukan
+-- di lapisan Go — pemeriksaan yang berada di luar kueri dapat terlewat oleh pemanggil baru.
+--
+-- Isinya dibaca sebagai bita apa adanya dari kolom BLOB. `GetAttachmentFromDB_Sql` lama
+-- membungkusnya `pooldata.base64encode(attachfile)`; pembungkusan itu tidak dibawa karena
+-- memanggil procedure basis data (`D-02`) dan membesarkan muatan sepertiga tanpa manfaat.
+--
+-- Bind: :1 id dokumen · :2 nomor case
+SELECT a.ATTACHNAME     AS DOCUMENT_NAME,
+       a.ATTACHMIMETYPE AS MIME_TYPE,
+       a.ATTACHFILE     AS CONTENT
+  FROM POOLDATA.DATA_ATTACHFILE a
+ WHERE a.DATAID = :1
+   AND EXISTS (SELECT 1
+                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+                WHERE w.PZINSKEY = a.IDPEGA
+                  AND TRIM(w.PYID) = TRIM(:2))

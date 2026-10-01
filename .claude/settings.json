@@ -164,10 +164,15 @@
       "Bash(rm -rf cmd/tmpprobe)",
       "Bash(grep -oiE \"download[^<\\\\\"]{0,30}|tutup[^<\\\\\"]{0,30}|cetak[^<\\\\\"]{0,30}\" \"Section/SectionLampiranSuratPUCL-Section.xml\")",
       "Bash(grep -oE \"^\\\\s{2,}[A-Z_0-9]+\" claim-pnc/docs/ddl/tc_pnc_pucl.sql)",
-      "Bash(awk '{print $NF, $5}')"
+      "Bash(awk '{print $NF, $5}')",
+      "Bash(grep -vE \"^--$\")",
+      "Bash(grep -vE \"^--\\( |$\\)\")",
+      "Bash(gofmt -w internal/inboxrclpucl/repo/sqlstore/inboxrclpucl.go)",
+      "Bash(cd \"C:/Users/User/Documents/Migrasi Pega Ke Golang/ClaimPNC/claim-pnc/backend/internal/inboxrclpucl\" && sed -n '171,215p' usecase/*.go && echo \"=== routes ===\" && sed -n '54,90p' http/routes.go)"
     ],
     "additionalDirectories": [
-      "\\tmp"
+      "\\tmp",
+      "C:\\Users\\User\\Documents\\Migrasi Pega Ke Golang\\ClaimPNC\\claim-pnc\\backend\\usecase"
     ]
   }
 }

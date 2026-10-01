@@ -2000,3 +2000,54 @@ hanyalah `pxCommitDateTime` — metadata kapan rule itu disimpan (2020-03-12), b
    bersama halaman sementaranya. Ini membenarkan pembacaan kolom `PERIHAL` apa adanya ke layar
    (§84.2), dan berarti klaim tidak menyimpan kunci asing ke master — mengubah teks sebuah baris
    master tidak mengubah klaim yang sudah memakainya.
+
+---
+
+## 12. PERMINTAAN LAYANAN REST — `PUCLPost` dan `SaveInputRegisterDetail2` (2026-10-01)
+
+| | |
+|---|---|
+| **Jenis** | Bukan permintaan artefak — **permintaan membangun layanan** |
+| **Kepada** | Tim Pega |
+| **Diputuskan** | Work Owner, 2026-10-01 |
+| **Kelas** | `ASM-FW-GCNMFW-Work-PNC` |
+
+### 12.1 Yang diminta
+
+Ekspos kedua activity berikut sebagai **Service REST masuk**, dengan pola yang sama seperti
+empat layanan yang sudah berjalan di `Service REST/`:
+
+| Activity | Parameter | Dipakai tombol |
+|---|---|---|
+| `InsertMitraPA` lalu `PUCLPost` | `tipe` · `Status` · `idObj` · `idCov` · `idAdj` | Download Dokumen (`Status` kosong) · Tolak Klaim (`0`) · Kirim Ke Analyst (`1`) · Kirim ke PIC Teknik (`1`) |
+| `SaveInputRegisterDetail2` | isian Penerimaan Dokumen | Save |
+
+Ditambah penyelesaian penugasan (`Finish Assignment`) untuk kedua tombol Kirim, karena itu
+bagian dari rangkaian aksinya di layar.
+
+### 12.2 Kenapa LAYANAN, bukan tulis langsung dari Go
+
+Tiga alasan, dan ketiganya diperiksa sebelum diusulkan:
+
+1. **`P-1` tetap utuh.** Pega tetap satu-satunya yang menulis objek kerja. Tidak ada dua
+   sistem menulis baris yang sama selama masa paralel.
+2. **`PUCLPost` dipakai APA ADANYA — 57 step.** Menulis ulangnya di Go menuntut meniru
+   `SetTicket`, `AttachAsPDFC`, `ASMForceCaseClose`, pengiriman surel, panggilan
+   `HitServiceOSAkseptasiClaimNonMBU`, dan sinkronisasi `JSON_KLAIM`. Satu langkah yang
+   terlewat **tidak memunculkan galat** — ia hanya terlihat berminggu-minggu kemudian sebagai
+   klaim yang tersangkut.
+3. **Polanya sudah ada di aplikasi ini.** `Service REST/` memuat empat layanan pada kelas yang
+   sama, dan salah satunya (`ActSalvageSimasbidAsmUpdate`) memang **menulis** data klaim atas
+   permintaan sistem luar. Jadi ini bukan mekanisme baru.
+
+Saat Pega kelak dimatikan, adapter pemanggil layanan ini diganti logika kami sendiri. Seam-nya
+sudah ada di arsitektur (`ExternalSystem`), sehingga penggantian itu tidak menyentuh domain.
+
+### 12.3 Yang perlu disepakati bersama permintaan ini
+
+| Hal | Catatan |
+|---|---|
+| **Otentikasi** | Keempat layanan yang ada ber-`pyUseAuthentication=false`. Layanan BARU ini menulis data klaim, sehingga perlakuan yang sama **tidak memadai** — lihat `D-73` dan `ADR-0008` |
+| Perilaku saat gagal | `PUCLPost` mengirim surel dan memanggil layanan luar. Layanan harus menyatakan apakah kegagalan di tengah menghasilkan rollback |
+| Idempotensi | Tombol yang ditekan dua kali tidak boleh menerbitkan surat dua kali (`10-API-STRATEGY.md` §7) |
+| Lingkungan uji | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |

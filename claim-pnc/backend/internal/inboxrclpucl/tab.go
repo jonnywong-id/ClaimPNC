@@ -454,15 +454,17 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "Tombol \"Download Dokumen\" tidak mengunduh apa pun — ia menandai surat " +
-			"sudah dicetak, dan klaimnya BERPINDAH tab.",
+		Summary: "Tombol \"Download Dokumen\" melakukan DUA hal: menerbitkan PDF suratnya, " +
+			"DAN menandainya sudah dicetak sehingga klaimnya berpindah tab.",
 
-		Detail: "Namanya dibawa apa adanya dari layar lama, termasuk ketika menyesatkan. Di " +
-			"Pega tombol itu menjalankan aksi bertipe \"cetak\" yang mengisi tanggal cetak " +
-			"dokumen — kolom yang menentukan klaim berada di tab \"Cetak Surat\" atau sudah " +
-			"pindah ke \"Kelengkapan Dokumen\". Jadi ia tindakan yang MENGUBAH data, bukan " +
-			"tombol lihat-lihat, dan itulah sebabnya ia ikut mati di sini. Keterangan di " +
-			"bawah tombolnya menyebut akibat ini supaya tidak ditekan dengan anggapan aman.",
+		Detail: "Di Pega tombol itu menjalankan aksi bertipe \"cetak\". Surat memang terbit — " +
+			"PDF-nya dibentuk, dilampirkan ke klaim, lalu dibuka. Tetapi pada langkah yang " +
+			"sama tanggal cetak dokumen ikut terisi, dan kolom itulah yang menentukan klaim " +
+			"berada di tab \"Cetak Surat\" atau sudah pindah ke \"Kelengkapan Dokumen\". Jadi " +
+			"ia bukan tombol lihat-lihat: sekali ditekan, klaimnya berpindah. Itu sebabnya ia " +
+			"ikut terhalang di sini. Yang TIDAK terjadi padanya adalah penutupan klaim — " +
+			"langkah itu dilewati untuk jalur cetak, dan hanya berlaku pada \"Tolak Klaim\" " +
+			"di jalur RCL.",
 	},
 
 	{

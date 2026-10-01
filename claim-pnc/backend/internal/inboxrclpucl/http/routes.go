@@ -66,6 +66,18 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// tingkat pada aturan yang sama.
 		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}", h.Detail)
 
+		// Dokumen klaim — tombol "Lihat Dokumen".
+		//
+		// Satu-satunya tindakan layar kerja yang MEMBACA, sehingga satu-satunya yang dapat
+		// dilayani tanpa menunggu keputusan `P-1`.
+		//
+		// Bersarang DUA tingkat (`klaim/{referensi}/dokumen/{dokumen}`), yaitu batas yang
+		// `10-API-STRATEGY.md` §2 tetapkan. Nomor klaim ikut di jalur bukan demi kerapian:
+		// ia yang membuktikan dokumennya memang milik klaim yang sedang dibuka, dan
+		// pembuktian itu ditegakkan di dalam kueri.
+		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}/dokumen", h.Documents)
+		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}", h.DocumentContent)
+
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
 		// membuat unduhannya dapat dipicu tautan biasa — termasuk dibuka ulang dari
 		// riwayat peramban dengan rentang tanggal yang sama.

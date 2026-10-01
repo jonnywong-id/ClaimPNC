@@ -131,8 +131,27 @@ function stubFetch(answer: (url: string) => Response) {
   })
 }
 
-function stubDefaultFetch(detail: unknown = DETAIL) {
+/** Daftar dokumen contoh — dua berkas, beserta catatan ketidaklengkapan dari server. */
+const DOKUMEN = {
+  dokumen: [
+    {
+      id: 'DOC-0001',
+      nama: 'Surat Keterangan.pdf',
+      kategori: 'Dokumen Klaim',
+      sub_kategori: 'Surat Keterangan',
+      diunggah_pada: '2026-09-02 09:15:00',
+      diunggah_oleh: 'PETUGASCONTOH',
+    },
+  ],
+  catatan: 'Dokumen yang diunggah lewat jalur lama Pega belum tentu muncul di daftar ini.',
+  portal: 'ASM',
+}
+
+function stubDefaultFetch(detail: unknown = DETAIL, dokumen: unknown = DOKUMEN) {
   stubFetch((url) => {
+    // Alamat dokumen diperiksa LEBIH DULU: ia berawalan sama dengan alamat klaim, dan
+    // urutan yang terbalik membuat permintaan dokumen dijawab isi layar kerja.
+    if (url.includes('/dokumen')) return jsonResponse(200, dokumen)
     if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, detail)
     return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
   })
@@ -262,24 +281,48 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.getByRole('columnheader', { name: 'Keterangan' })).toBeInTheDocument()
   })
 
-  it('menggambar tombol dengan nama layar Pega, seluruhnya mati', async () => {
-    // Seluruhnya MENULIS, dan tabelnya masih dimiliki Pega selama masa paralel (`P-1`).
-    // Tombol yang dihilangkan menyembunyikan bahwa tindakannya ada; tombol yang hidup akan
-    // menulis ke tabel yang bukan miliknya.
+  it('menggambar tombol dengan nama layar Pega, dan seluruhnya DAPAT diklik', async () => {
+    // Tombolnya tidak lagi mati. Work Owner melaporkan 2026-10-01 bahwa tombol mati tanpa
+    // tanggapan terbaca sebagai kerusakan — dan memang begitu: tidak ada cara membedakan
+    // "belum dibangun" dari "rusak" bila menekannya tidak menghasilkan apa pun.
     //
-    // NAMANYA dijaga, bukan hanya jumlahnya — dan nama yang dijaga di sini sudah dua kali
-    // keliru. Lihat uji berikutnya untuk "Cetak", yang ternyata nilai parameter.
+    // Yang BELUM berubah adalah akibatnya: tidak satu pun menulis, karena tabelnya masih
+    // dimiliki Pega (`P-1`). Menekannya menjelaskan hal itu dan memberi nomor case-nya.
     stubDefaultFetch()
     renderWorkScreen()
 
     expect(
       await screen.findByRole('button', { name: 'Download Dokumen' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
     for (const label of ['Unggah Dokumen', 'Lihat Dokumen', 'Save', 'Tolak Klaim']) {
-      expect(screen.getByRole('button', { name: label })).toBeDisabled()
+      expect(screen.getByRole('button', { name: label })).toBeEnabled()
     }
+  })
+
+  it('menjawab saat tombol ditekan, dengan alasan dan nomor case — bukan diam', async () => {
+    // Inilah yang membedakannya dari tombol mati: menekannya MENGHASILKAN sesuatu. Nomor
+    // case-nya disertakan karena itu yang dibutuhkan petugas untuk mengerjakan tindakannya
+    // di Pega; tanpanya ia harus kembali ke antrean dan mencarinya lagi.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    const tombol = await screen.findByRole('button', { name: 'Download Dokumen' })
+    expect(tombol).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(tombol)
+
+    expect(tombol).toHaveAttribute('aria-expanded', 'true')
+    // LANGKAHNYA lebih dulu, bukan penolakannya. Petugas yang membuka keterangan ini sedang
+    // mengerjakan klaim; yang dicarinya apa yang harus dilakukan, bukan kenapa tidak bisa.
+    expect(screen.getByText(/Kerjakan tindakan ini di Pega/)).toBeInTheDocument()
+    expect(screen.getAllByText(REFERENSI).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Salin nomor case' })).toBeEnabled()
+
+    // Ditekan lagi, keterangannya tertutup — bukan menumpuk.
+    await userEvent.click(tombol)
+    expect(screen.queryByText(/Kerjakan tindakan ini di Pega/)).not.toBeInTheDocument()
   })
 
   it('tidak menggambar tombol "Cetak", yang ternyata nilai parameter dan bukan tombol', async () => {
@@ -296,20 +339,25 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.queryByRole('button', { name: 'Cetak' })).not.toBeInTheDocument()
   })
 
-  it('menyatakan bahwa "Download Dokumen" MENGUBAH data, bukan mengunduh', async () => {
-    // Rangkaian aksinya di Pega: `InsertMitraPA(tipe="cetak")` lalu `PUCLPost`, dan
-    // `PUCLPost` mengisi `TanggalCetakDokumenPUCL` — kolom yang memindahkan klaim antar tab.
+  it('menyatakan KEDUA akibat "Download Dokumen" — menerbitkan surat DAN memindahkan klaim', async () => {
+    // Keterangannya sudah DUA KALI keliru, ke arah yang berlawanan:
     //
-    // Keterangan versi pertama berbunyi "Mengunduh surat RCL/PUCL klaim ini", dan itu
-    // SALAH dengan cara yang berbahaya: petugas akan mengira tombolnya aman ditekan untuk
-    // melihat-lihat. Namanya tetap dibawa apa adanya (`D-13`); yang diperbaiki keterangannya.
+    //   v1  "Mengunduh surat RCL/PUCL klaim ini."   -> menyembunyikan bahwa ia MENULIS
+    //   v2  "tidak mengunduh apa pun"               -> menyembunyikan bahwa suratnya TERBIT
+    //
+    // Yang benar keduanya. `PUCLPost` memanggil `AttachAsPDFC` (HTMLToPDF -> AttachToWork ->
+    // View) tanpa syarat, sehingga PDF-nya memang terbit dan terbuka; pada langkah lain ia
+    // mengisi `TanggalCetakDokumenPUCL`, sehingga klaimnya berpindah tab.
+    //
+    // Uji ini menahan KEDUA kalimat lama sekaligus.
     stubDefaultFetch()
     renderWorkScreen()
 
     await screen.findByRole('button', { name: 'Download Dokumen' })
 
-    expect(screen.queryByText(/Mengunduh surat/)).not.toBeInTheDocument()
-    expect(screen.getByText(/MENANDAI suratnya sudah dicetak/)).toBeInTheDocument()
+    expect(screen.queryByText(/Mengunduh surat RCL\/PUCL klaim ini/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/tidak mengunduh apa pun/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Menerbitkan PDF surat DAN menandainya sudah dicetak/)).toBeInTheDocument()
   })
 
   it('memilih tombol kirim menurut lini bisnis, bukan menggambar keduanya', async () => {
@@ -333,11 +381,48 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await screen.findByRole('button', { name: 'Download Dokumen' })
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
 
-    expect(screen.getByRole('button', { name: 'Kirim ke PIC Teknik' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Kirim ke PIC Teknik' })).toBeEnabled()
     expect(
       screen.queryByRole('button', { name: 'Kirim Ke Analyst' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tolak Klaim' })).not.toBeInTheDocument()
+  })
+
+  it('"Lihat Dokumen" BENAR-BENAR berjalan — daftarnya ditarik dan berkasnya bertautan', async () => {
+    // Satu-satunya tombol layar kerja yang membaca, sehingga satu-satunya yang tidak
+    // terhalang `P-1`. Yang dijaga di sini tiga hal, dan ketiganya pernah salah di modul
+    // lain: daftarnya baru ditarik SETELAH ditekan, berkasnya dibuka lewat TAUTAN ke alamat
+    // isinya, dan catatan ketidaklengkapan datang dari SERVER.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    // Belum ditekan — daftarnya belum ada.
+    expect(screen.queryByText('Surat Keterangan.pdf')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Lihat Dokumen' }))
+
+    const tautan = await screen.findByRole('link', { name: 'Surat Keterangan.pdf' })
+    expect(tautan).toHaveAttribute(
+      'href',
+      `/api/inbox-rcl-pucl/klaim/${encodeURIComponent(REFERENSI)}/dokumen/DOC-0001`,
+    )
+    expect(screen.getByText(/belum tentu muncul di daftar ini/)).toBeInTheDocument()
+  })
+
+  it('membedakan klaim TANPA dokumen dari daftar yang GAGAL diambil', async () => {
+    // Keduanya terlihat sama bila tidak dinyatakan, padahal yang satu berarti "klaim ini
+    // memang belum berdokumen" dan yang lain "jangan percayai layar ini".
+    stubDefaultFetch(DETAIL, { dokumen: [], catatan: '', portal: 'ASM' })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Lihat Dokumen' }))
+
+    expect(await screen.findByText(/Belum ada dokumen yang terlampir/)).toBeInTheDocument()
   })
 
   it('tidak pernah menggambar "Reminder PUCL", yang syaratnya 1==2', async () => {

@@ -254,6 +254,76 @@ func (r *Repo) Detail(
 	return detail, nil
 }
 
+// Documents mengembalikan dokumen yang terlampir pada satu klaim.
+func (r *Repo) Documents(
+	ctx context.Context,
+	caseNumber string,
+) ([]inboxrclpucl.Document, error) {
+	rows, err := r.db.QueryContext(ctx, query("documents"), caseNumber)
+	if err != nil {
+		return nil, fmt.Errorf("membaca daftar dokumen klaim: %w", err)
+	}
+	defer rows.Close()
+
+	// Dikembalikan sebagai senarai KOSONG, bukan nil, supaya JSON-nya `[]` dan bukan `null`.
+	// Layar membedakan "tidak ada dokumen" dari "daftarnya gagal dibaca", dan `null` membuat
+	// keduanya terlihat sama.
+	documents := []inboxrclpucl.Document{}
+	for rows.Next() {
+		var (
+			id, name, mime         sql.NullString
+			category, subCategory  sql.NullString
+			uploadedAt, uploadedBy sql.NullString
+		)
+		if err := rows.Scan(
+			&id, &name, &mime, &category, &subCategory, &uploadedAt, &uploadedBy,
+		); err != nil {
+			return nil, fmt.Errorf("membaca baris dokumen: %w", err)
+		}
+		documents = append(documents, inboxrclpucl.Document{
+			ID:          id.String,
+			Name:        name.String,
+			MimeType:    mime.String,
+			Category:    category.String,
+			SubCategory: subCategory.String,
+
+			// Dibentuk dengan penggambar yang sama seperti seluruh tanggal modul ini —
+			// `INPUTDATE` pun `TIMESTAMP(6)`. Membiarkannya mentah di sini akan membuat satu
+			// layar menggambar dua bentuk tanggal berdampingan.
+			UploadedAt: inboxrclpucl.DisplayTimeText(uploadedAt.String),
+			UploadedBy: uploadedBy.String,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menutup daftar dokumen: %w", err)
+	}
+	return documents, nil
+}
+
+// DocumentContent mengembalikan isi satu dokumen.
+func (r *Repo) DocumentContent(
+	ctx context.Context,
+	caseNumber, documentID string,
+) (inboxrclpucl.DocumentContent, error) {
+	var (
+		name, mime sql.NullString
+		content    []byte
+	)
+	err := r.db.QueryRowContext(ctx, query("document_content"), documentID, caseNumber).
+		Scan(&name, &mime, &content)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxrclpucl.DocumentContent{}, inboxrclpucl.ErrDocumentNotFound
+	}
+	if err != nil {
+		return inboxrclpucl.DocumentContent{}, fmt.Errorf("membaca isi dokumen: %w", err)
+	}
+	return inboxrclpucl.DocumentContent{
+		Name:     name.String,
+		MimeType: mime.String,
+		Content:  content,
+	}, nil
+}
+
 // CheckTable memastikan tabel DAN kolom yang disentuh modul ini terbaca dari koneksi yang
 // dipakai.
 //

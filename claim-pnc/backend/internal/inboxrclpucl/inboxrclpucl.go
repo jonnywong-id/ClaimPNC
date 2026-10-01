@@ -1046,6 +1046,62 @@ const TrackHidden = TrackCodeNotification
 // menghasilkan keadaan ini, dan itu keterangan yang harus sampai ke pengguna (`R-20`).
 var ErrClaimNotFound = errors.New("inboxrclpucl: klaim tidak ditemukan")
 
+// ErrDocumentNotFound dikembalikan saat dokumen tidak ada, ATAU ada tetapi bukan milik klaim
+// yang diminta.
+//
+// Kedua keadaan itu sengaja TIDAK dibedakan. Membedakannya akan memberi tahu pemanggil bahwa
+// sebuah id dokumen memang ada — keterangan yang tidak dibutuhkan siapa pun yang berhak, dan
+// berguna justru bagi yang tidak.
+var ErrDocumentNotFound = errors.New("inboxrclpucl: dokumen tidak ditemukan")
+
+// Document adalah satu baris daftar dokumen klaim — layar "Lihat Dokumen".
+//
+// # Kolomnya mengikuti dokumen yang BISA dibaca, bukan grid Pega
+//
+// `Section/ViewAttachmentPUCLDetail-Section.xml` menggambar grid dari Report Definition
+// `GCNMGetAllAttachments` pada kelas `Link-Attachment`. Jalur itu bermuara di
+// `PC_DATA_WORKATTACH.PZPVSTREAM`, blob serialisasi Pega — bukan berkas yang dapat
+// diserahkan apa adanya.
+//
+// Yang dipakai `POOLDATA.DATA_ATTACHFILE`, yang menyimpan berkas MENTAH dan tertaut ke objek
+// kerja lewat `IDPEGA`. Pilihan itu diambil dari pembacaan katalog dan data langsung pada
+// 2026-10-01, bukan dari membaca section — lihat kueri `documents`.
+type Document struct {
+	// ID adalah `DATAID`. Ia dipakai sebagai bagian alamat pengambilan isinya.
+	ID string
+
+	// Name adalah nama berkas — `ATTACHNAME`.
+	Name string
+
+	// MimeType adalah `ATTACHMIMETYPE`. Tidak digambar; ia menentukan cara berkasnya
+	// diserahkan.
+	MimeType string
+
+	// Category dan SubCategory adalah nama jenis dokumen, dicari ke master. Bila kodenya
+	// tidak ada di master, KODENYA yang dibawa — bukan kosong.
+	Category    string
+	SubCategory string
+
+	// UploadedAt sudah berbentuk tampilan WIB, sama seperti seluruh tanggal modul ini.
+	UploadedAt string
+
+	// UploadedBy adalah `INPUTOPERATOR`.
+	UploadedBy string
+}
+
+// DocumentContent adalah isi satu dokumen beserta keterangan penyerahannya.
+type DocumentContent struct {
+	Name     string
+	MimeType string
+
+	// Content adalah isi berkasnya, apa adanya dari kolom BLOB.
+	//
+	// Tidak dibungkus base64: pembungkusan itu memanggil `pooldata.base64encode` yang `D-02`
+	// larang, dan membesarkan muatan sepertiga tanpa satu pun manfaat — berkasnya diserahkan
+	// ke peramban sebagai berkas, bukan sebagai teks di dalam JSON.
+	Content []byte
+}
+
 // Repo adalah seam ke antrean RCL/PUCL pada SATU portal.
 //
 // Dideklarasikan DI SINI, di paket yang memakainya — bukan di paket yang memenuhinya. Diisi
@@ -1084,6 +1140,25 @@ type Repo interface {
 	// yang tidak ada dan klaim yang seluruh isiannya kosong terlihat sama di layar, dan
 	// hanya yang pertama yang merupakan kekeliruan.
 	Detail(ctx context.Context, reference string) (ClaimDetail, error)
+
+	// Documents mengembalikan dokumen yang terlampir pada satu klaim.
+	//
+	// Ia melayani tombol "Lihat Dokumen" — satu-satunya tombol layar kerja yang MEMBACA,
+	// sehingga ia satu-satunya yang dapat dibangun tanpa menunggu keputusan `P-1`.
+	//
+	// Klaim tanpa dokumen mengembalikan senarai kosong tanpa galat; itu keadaan yang wajar.
+	Documents(ctx context.Context, caseNumber string) ([]Document, error)
+
+	// DocumentContent mengembalikan isi SATU dokumen.
+	//
+	// Kepemilikannya diperiksa di dalam kueri — dokumennya wajib terbukti milik klaim yang
+	// diminta. Id dokumen dapat ditebak, dan pemeriksaan yang berada di luar kueri dapat
+	// terlewat oleh pemanggil baru.
+	//
+	// Id yang tidak ditemukan ATAU bukan milik klaim itu sama-sama menghasilkan
+	// ErrDocumentNotFound — keduanya tidak dibedakan, supaya jawaban tidak memberi tahu
+	// bahwa sebuah id ada tetapi milik klaim lain.
+	DocumentContent(ctx context.Context, caseNumber, documentID string) (DocumentContent, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

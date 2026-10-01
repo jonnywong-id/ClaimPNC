@@ -24689,3 +24689,231 @@ sudah tidak benar sejak kolomnya ditemukan, dan baru sekarang tersapu.
 
 **Seluruh rule di balik setiap tombol layar kerja Inbox RCL/PUCL kini terbaca.** Tidak ada lagi
 penghalang artefak untuk menulis ulang logikanya — yang tersisa murni keputusan `P-1`.
+
+---
+
+## 128. Inbox RCL/PUCL — tombolnya dapat diklik, dan klaim saya tentang "Download Dokumen" diralat (2026-10-01)
+
+**Laporan Work Owner:** *"tombolnya masih belum bisa diklik tolong perbaiki lagi, sama tombol
+download dokumen analisa lagi pada section SectionPenerimaanDokumenPUCL dan section
+SectionLampiranSuratPUCL."*
+
+### 128.1 RALAT — "Download Dokumen" MEMANG menerbitkan suratnya
+
+§126.3 menyatakan tombol itu *"tidak mengunduh apa pun"*. **Itu salah.** Penelusuran ke dalam
+`PUCLPost` menemukan langkah yang tidak saya periksa sebelumnya:
+
+```
+step 36  Call AttachAsPDFC     when 1==1   -> selalu jalan
+         AttachAsPDFC = Property-Set-HTML -> Call HTMLToPDF -> call AttachToWork -> call View
+step 19  Call pxShowReport     tanpa syarat -> selalu jalan
+```
+
+Jadi PDF suratnya **dibentuk, dilampirkan ke klaim, lalu dibuka**. Namanya tidak menyesatkan
+seperti yang saya tuduhkan.
+
+**Keterangannya sudah dua kali keliru, ke arah yang berlawanan:**
+
+| Versi | Bunyi | Yang disembunyikannya |
+|---|---|---|
+| v1 | "Mengunduh surat RCL/PUCL klaim ini." | bahwa ia **menulis** |
+| v2 (§126.3) | "tidak mengunduh apa pun" | bahwa suratnya **terbit** |
+| **v3** | "Menerbitkan PDF surat DAN menandainya sudah dicetak" | — |
+
+Yang benar **keduanya sekaligus**, dan itulah arti "cetak": menerbitkan surat sambil mencatat
+bahwa ia sudah dicetak. Satu uji kini menahan **kedua** kalimat lama agar tidak kembali.
+
+**Pelajarannya bukan soal tombol ini.** Saya menyimpulkan dari nama parameter (`tipe="cetak"`)
+dan nama kolom (`TanggalCetakDokumenPUCL`) tanpa membuka activity yang dipanggilnya. Itu pola
+kesalahan yang sama dengan menebak caption dari nama tab (§125.1) — menyimpulkan dari petunjuk
+di sekitarnya alih-alih membaca artefaknya.
+
+### 128.2 `ASMForceCaseClose` TIDAK berlaku untuk Download Dokumen
+
+Pemeriksaan pola sempat memperlihatkan `param.Status==""` pada langkah penutupan case — dan
+`Status` kosong adalah tombol Download Dokumen. Membaca kode aksinya membantah itu:
+
+```
+step 51/52  when param.Status==""                             true=3  false=2
+            when param.Status=="0" && .RCL_PUCL==1            true=(jalan) false=3
+```
+
+`true=3` berarti **lewati langkah ini**. Jadi syarat pertama adalah **penjaga** yang
+mengecualikan jalur cetak; penutupan case hanya berlaku untuk **"Tolak Klaim" di jalur RCL**.
+
+Dicatat karena nyaris menjadi klaim ketiga yang salah tentang tombol yang sama — dan kali ini
+yang menahannya adalah memeriksa `WhenTrue`/`WhenFalse`, bukan syaratnya saja.
+
+### 128.3 Peta syarat di dalam `PUCLPost`
+
+| Langkah | Berlaku saat |
+|---|---|
+| `pxShowReport` · `AttachAsPDFC` · `SetUploadDocument` | **selalu** |
+| `SetTicket` (lompatan lateral) | `Status == 1` — kedua tombol Kirim |
+| `ASMCollectAttachments` · `ASMSendsEmailAttachments` | **`IsTravel` saja** |
+| `ASMForceCaseClose` | `Status == "0"` **dan** jalur RCL — Tolak Klaim |
+| `Obj-Save` · `Commit` | **selalu** |
+
+Satu akibat yang perlu dicatat untuk `S-8`: **surel hanya terkirim pada lini Travel.** Klaim PA
+yang dikirim ke Analyst tidak memicu surel apa pun.
+
+### 128.4 "Download Dokumen" hanya ada di SATU section
+
+Diperiksa ulang atas permintaan Work Owner. Daftar rule `pyButtonLabel` tiap section:
+
+| Section | Label |
+|---|---|
+| `SectionLampiranSuratPUCL` | Download Dokumen · Pilih · Tutup Klaim |
+| `SectionPenerimaanDokumenPUCL` | Unggah Dokumen · Lihat Dokumen · Save · Reminder PUCL · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik |
+
+**Tidak ada "Download Dokumen" di `SectionPenerimaanDokumenPUCL`.** Yang ada di sana "Lihat
+Dokumen", dan keduanya berbeda: "Lihat Dokumen" membuka lampiran yang SUDAH ada (`localAction`,
+tanpa activity), sedangkan "Download Dokumen" MENERBITKAN surat baru.
+
+### 128.5 Tombolnya kini DAPAT DIKLIK
+
+Work Owner melaporkan tombol mati terbaca sebagai kerusakan. Itu benar: tombol yang tidak
+menanggapi apa pun tidak dapat dibedakan dari tombol yang rusak, dan orang akan menekannya
+berulang kali.
+
+Kedelapan tombol kini **hidup**. Menekannya membuka keterangan ringkas berisi alasan tindakannya
+belum berjalan, **nomor case klaim**, dan tombol **Salin** — karena nomor itulah yang dibutuhkan
+untuk mengerjakan tindakannya di Pega. Menekan lagi menutupnya.
+
+Yang **tidak** berubah: tidak satu pun menulis. Yang berubah hanya bahwa penolakannya kini
+**terdengar**, bukan diam.
+
+### 128.6 Kenapa tulisnya belum dibangun — buktinya dari repo ini sendiri, bukan dari prinsip
+
+Work Owner meminta tombol dihidupkan sepenuhnya. Sebelum menjawab lagi dengan `P-1`, isi repo
+diperiksa:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Modul yang punya kueri TULIS | banyak — `master*`, `daftar*`, dan **sebagian `inbox*`** |
+| Sasaran tulisnya di modul `inbox*` | **tabel bisnis `POOLDATA`** — `T_CLAIM_PNC`, `M_KOMUNIKASI_PNC`, `PNC_SALVAGE`, … |
+| Modul yang menulis tabel `PC_*` milik engine Pega | **nol** |
+| Modul `inbox*` yang punya **endpoint** tulis | **nol** |
+
+Jadi arah proyek ini memang menuju menulis tabel bisnis `POOLDATA` dari Go — tetapi **belum satu
+pun inbox mengekspos endpoint tulis**, dan **tidak ada yang menyentuh tabel objek kerja**.
+
+Yang menentukan untuk layar ini: **ketujuh tombol tulis berakhir di `Obj-Save` + `Commit` pada
+objek kerja Pega** — termasuk "Save", yang `SaveInputRegisterDetail2`-nya diawali
+`Obj-Refresh-And-Lock` dan diakhiri `Obj-Save`/`Commit`. Jadi ini bukan tujuh keputusan melainkan
+**satu**: apakah `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` boleh ditulis dari Go selama Pega masih
+melayani produksi.
+
+**Kenapa versi separuh lebih buruk daripada tombol yang belum jalan.** Menulis kolomnya saja —
+tanpa `SetTicket`, tanpa `AttachAsPDFC`, tanpa `ASMForceCaseClose`, tanpa `InsertJsonClaimNonMBU`
+— memindahkan klaim antar tab sementara suratnya tidak terbit, tiketnya tidak dipasang, dan
+JSON-nya tidak tersinkron. Kerusakan seperti itu **tidak memunculkan galat**; ia hanya terlihat
+berminggu-minggu kemudian sebagai klaim yang tersangkut.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Boleh/tidaknya Go menulis `PC_ASM_FW_GCNMFW_WORK`** selama masa paralel — satu keputusan yang membuka ketujuh tombol sekaligus | Work Owner + Tim Pega |
+| Bila belum: apakah **"Lihat Dokumen"** dibangun lebih dulu sebagai BACA (butuh lampiran + `GENERAL.GET_TOKEN_STORAGE`) | Work Owner |
+| Alamat Pega untuk tautan "buka di Pega", bila diinginkan | Work Owner + Infra |
+
+---
+
+## 129. Inbox RCL/PUCL — "Lihat Dokumen" BERJALAN, dan jalur tulis diputuskan lewat layanan Pega (2026-10-01)
+
+Dua keputusan Work Owner pada 2026-10-01, keduanya mengikuti rekomendasi yang diajukan.
+
+### 129.1 Jalur tulis: lewat layanan REST Pega, bukan tulis langsung
+
+Pemeriksaan menemukan hal yang belum pernah dipertimbangkan selama empat putaran perdebatan
+`P-1`: **Pega sudah mengekspos layanan REST masuk pada kelas `ASM-FW-GCNMFW-Work-PNC`**, dan
+salah satunya memang menulis data klaim atas permintaan sistem luar.
+
+| Layanan | Activity |
+|---|---|
+| `KomiteAcceptAdjustment` | `CheckKomiteAprove` |
+| `KomiteAcceptAdjustmentPA` | `CheckKomiteAprovePA` |
+| `RecivedDataandAttachmentLelangASMSimasbid` | `ActSalvageSimasbidAsmUpdate` |
+| `RequestCreateClaimCredit2` | `CreateClaimCredit_Service2` |
+
+Jadi pertanyaannya **bukan** "melanggar `P-1` atau tombol mati" — itu pilihan palsu yang saya
+sodorkan tiga kali. Jalan ketiganya: **Go memanggil Pega**, Pega yang menulis.
+
+Keuntungannya nyata dan bukan soal kepatuhan:
+
+1. **`PUCLPost` dipakai apa adanya — 57 step.** Tidak ada `SetTicket`, `AttachAsPDFC`,
+   `ASMForceCaseClose`, surel, atau sinkronisasi `JSON_KLAIM` yang perlu ditiru, dan karena itu
+   tidak ada yang dapat terlewat.
+2. **`P-1` utuh** — Pega tetap penulis tunggal objek kerja.
+3. **Reversibel.** Saat Pega dimatikan, adapter pemanggilnya diganti logika sendiri; seam
+   `ExternalSystem` sudah ada, sehingga domain tidak tersentuh.
+
+Permintaannya ditulis di `permintaan-artefak-pega.md` §12, beserta empat hal yang perlu
+disepakati — terberat **otentikasi**, karena keempat layanan yang ada ber-`pyUseAuthentication=false`
+dan layanan baru ini MENULIS.
+
+### 129.2 "Lihat Dokumen" dibangun sekarang — dan jalurnya dipilih dari bukti
+
+Ia satu-satunya tombol layar kerja yang MEMBACA (`localAction ViewAttachmentPUCL`), sehingga
+tidak terhalang `P-1`.
+
+**Yang ditiru BUKAN jalur Pega-nya.** `Section/ViewAttachmentPUCLDetail-Section.xml` memakai
+Report Definition `GCNMGetAllAttachments` pada kelas `Link-Attachment`, dan jalur itu bermuara
+di `PC_DATA_WORKATTACH.PZPVSTREAM` — blob **serialisasi Pega**, bukan berkas yang dapat
+diserahkan apa adanya.
+
+Katalog dan data dibaca langsung lewat probe sementara, dan memberi jalan yang lebih baik:
+
+| Yang diuji | Hasil |
+|---|---|
+| `PC_LINK_ATTACHMENT` seluruhnya | 131.139 baris |
+| — kolom `CASEID` terisi | **1** baris · tidak dapat dipakai menggabung |
+| — kolom `IMAGEID` terisi | 2.127, dan **0** di antaranya ketemu di `GENERAL.T_STORAGE_IMAGE` |
+| — `PXSTORAGETYPE` | **kosong seluruhnya** → isinya di basis data, bukan penyimpanan luar |
+| `POOLDATA.DATA_ATTACHFILE` | 9.937 baris, `ATTACHFILE` BLOB **berkas mentah** |
+| — `IDPEGA` = `PZINSKEY` objek kerja | **3.915 dari 3.974** yang terisi |
+| — `IDPEGA` = `PYID` (nomor case) | 32 · bukan ini |
+| — `IDPEGA` = kunci `PC_LINK_ATTACHMENT` | 0 · bukan ini |
+
+Jadi `DATA_ATTACHFILE.IDPEGA` menyimpan **kunci objek kerja**, dan berkasnya terbaca apa adanya
+— tanpa membongkar blob Pega, dan tanpa `pooldata.base64encode` yang `D-02` larang.
+
+**Batas yang DINYATAKAN, bukan disembunyikan.** Untuk seluruh klaim PNC, `PC_LINK_ATTACHMENT`
+memuat 12.051 lampiran sementara `DATA_ATTACHFILE` hanya 9.937 baris seluruhnya. Dokumen yang
+HANYA ada di tabel lampiran Pega tidak muncul lewat jalur ini. Layar menyatakan kemungkinan itu
+di bawah daftarnya — kalimatnya datang dari **server**, supaya ia hilang di satu tempat begitu
+jalur Pega ikut terbaca. Arah kegagalan dipilih sadar: **kurang, bukan salah**.
+
+**Yang dibangun:** dua rute (`/klaim/{referensi}/dokumen` dan `.../dokumen/{dokumen}`), dua
+kueri, dua metode seam, pengisi memori, dan komponen daftar di layar. Berkasnya diserahkan
+sebagai **berkas** (`Content-Disposition: inline`), bukan base64 di dalam JSON.
+
+Tiga hal yang dijaga uji: daftarnya baru ditarik **setelah** tombolnya ditekan, berkasnya
+dibuka lewat **tautan** ke alamat isinya, dan klaim **tanpa dokumen** dibedakan dari daftar yang
+**gagal** diambil.
+
+**Kepemilikan ditegakkan DI DALAM kueri**, bukan di lapisan Go: `DATAID` dapat ditebak, dan
+pemeriksaan yang berada di luar kueri dapat terlewat oleh pemanggil baru. Dokumen yang tidak ada
+dan dokumen milik klaim lain sama-sama menghasilkan `ErrDocumentNotFound` — membedakannya akan
+memberi tahu bahwa sebuah id memang ada.
+
+### 129.3 Panel tombol: langkah dulu, alasan belakangan
+
+Work Owner menunjukkan isi panel dan meminta diperbaiki. Susunannya dibalik: yang pertama dibaca
+kini **apa yang harus dikerjakan** beserta nomor case dan tombol salin; alasannya turun ke bawah
+dengan huruf lebih kecil.
+
+Petugas yang membuka keterangan itu sedang mengerjakan klaim — yang dicarinya langkah, bukan
+sebab. Bentuk sebelumnya menaruh dua kalimat yang tidak dapat ditindaklanjuti sebelum satu
+kalimat yang dapat.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Kapan layanan REST §12 tersedia, dan **otentikasi** apa yang dipakainya | Tim Pega + Keamanan Informasi |
+| Perilaku saat `PUCLPost` gagal di tengah — rollback atau tidak | Tim Pega |
+| Idempotensi: tombol ditekan dua kali tidak boleh menerbitkan surat dua kali | Tim Pega |
+| Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` | Tim Pega + Infra |
+| Apakah lampiran yang hanya ada di `PC_DATA_WORKATTACH` perlu ikut terbaca | Work Owner |

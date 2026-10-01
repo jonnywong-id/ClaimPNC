@@ -3,8 +3,10 @@ package inboxrclpuclhttp
 import (
 	"context"
 	"log/slog"
+	"mime"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -137,6 +139,94 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toClaimDetailResponse(detail, active.Alias))
+}
+
+// Documents menangani GET /api/inbox-rcl-pucl/klaim/{referensi}/dokumen.
+//
+// Ia melayani tombol "Lihat Dokumen" — satu-satunya tombol layar kerja yang MEMBACA, dan
+// karena itu satu-satunya yang dapat dibangun tanpa menunggu keputusan `P-1`.
+func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	documents, err := h.service.Documents(
+		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"),
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toDocumentListResponse(documents, active.Alias))
+}
+
+// DocumentContent menangani GET /api/inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}.
+//
+// # Ia menulis BERKAS, bukan JSON
+//
+// Karena itulah yang diharapkan orang yang menekan "Lihat Dokumen": berkasnya terbuka.
+// Membungkusnya base64 di dalam JSON memaksa layar merakit ulang berkasnya sendiri dan
+// membesarkan muatan sepertiga tanpa satu pun manfaat.
+func (h *Handler) DocumentContent(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	document, err := h.service.DocumentContent(
+		r.Context(), active.Alias, caller,
+		chi.URLParam(r, "referensi"),
+		strings.TrimSpace(chi.URLParam(r, "dokumen")),
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", documentContentType(document))
+
+	// `inline`, bukan `attachment`: tombolnya bernama "Lihat Dokumen", dan yang diharapkan
+	// pengguna adalah dokumennya TERBUKA — bukan terunduh ke folder unduhan lalu harus dicari.
+	// Peramban yang tidak dapat menampilkan jenisnya tetap menawarkan unduhan sendiri.
+	w.Header().Set("Content-Disposition", inlineHeader(document.Name))
+
+	// Dokumen milik nasabah TIDAK boleh disimpan perantara mana pun.
+	w.Header().Set("Cache-Control", "no-store")
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(document.Content)
+}
+
+// documentContentType memilih jenis isi yang diumumkan.
+//
+// Urutannya: jenis yang tercatat di basis data, lalu tebakan dari akhiran nama berkas, lalu
+// `application/octet-stream` — yang berarti "unduh saja", bukan "tampilkan".
+func documentContentType(document inboxrclpucl.DocumentContent) string {
+	if mime := strings.TrimSpace(document.MimeType); mime != "" {
+		return mime
+	}
+	if ext := strings.ToLower(filepath.Ext(document.Name)); ext != "" {
+		if guessed := mime.TypeByExtension(ext); guessed != "" {
+			return guessed
+		}
+	}
+	return "application/octet-stream"
+}
+
+// inlineHeader menyusun Content-Disposition.
+//
+// Nama berkas dikutip dan tanda kutip di dalamnya dibuang. Nama berkas berasal dari data —
+// bukan dari kode — dan satu tanda kutip di dalamnya akan memotong header di tempat yang
+// salah.
+func inlineHeader(name string) string {
+	clean := strings.TrimSpace(name)
+	if clean == "" {
+		clean = "dokumen"
+	}
+	clean = strings.NewReplacer(`"`, "", "\r", "", "\n", "").Replace(clean)
+	return `inline; filename="` + clean + `"`
 }
 
 // RejectWrite menjawab aksi tulis yang belum tersedia.

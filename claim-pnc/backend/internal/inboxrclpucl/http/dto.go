@@ -470,3 +470,53 @@ func toListResponse(listed usecase.Listed, portalAlias string) ListResponse {
 		Portal:     portalAlias,
 	}
 }
+
+// DocumentDTO adalah satu baris daftar dokumen klaim.
+//
+// Nama isiannya Indonesia (`D-80`) dan mengikuti judul yang dilihat pengguna, bukan nama
+// kolomnya.
+type DocumentDTO struct {
+	ID           string `json:"id"`
+	Nama         string `json:"nama"`
+	Kategori     string `json:"kategori"`
+	SubKategori  string `json:"sub_kategori"`
+	DiunggahPada string `json:"diunggah_pada"`
+	DiunggahOleh string `json:"diunggah_oleh"`
+}
+
+// DocumentListResponse adalah jawaban daftar dokumen satu klaim.
+type DocumentListResponse struct {
+	Dokumen []DocumentDTO `json:"dokumen"`
+
+	// Catatan menyatakan bahwa daftar ini mungkin TIDAK lengkap.
+	//
+	// Ia dikirim sebagai DATA, bukan ditulis tetap di layar, supaya ia dapat hilang di satu
+	// tempat begitu jalur lampiran bawaan Pega ikut terbaca. Alasannya di kueri `documents`:
+	// dokumen yang hanya ada di tabel lampiran Pega tidak muncul lewat jalur ini, dan daftar
+	// kosong tanpa keterangan terbaca sebagai "klaim ini tidak berdokumen".
+	Catatan string `json:"catatan"`
+
+	Portal string `json:"portal"`
+}
+
+// documentListNote adalah keterangan yang menyertai setiap daftar dokumen.
+const documentListNote = "Dokumen yang diunggah lewat jalur lama Pega belum tentu muncul di " +
+	"daftar ini. Bila dokumen yang Anda cari tidak ada, periksa klaimnya di Pega."
+
+func toDocumentListResponse(
+	documents []inboxrclpucl.Document,
+	portal string,
+) DocumentListResponse {
+	rows := make([]DocumentDTO, 0, len(documents))
+	for _, document := range documents {
+		rows = append(rows, DocumentDTO{
+			ID:           document.ID,
+			Nama:         document.Name,
+			Kategori:     document.Category,
+			SubKategori:  document.SubCategory,
+			DiunggahPada: document.UploadedAt,
+			DiunggahOleh: document.UploadedBy,
+		})
+	}
+	return DocumentListResponse{Dokumen: rows, Catatan: documentListNote, Portal: portal}
+}

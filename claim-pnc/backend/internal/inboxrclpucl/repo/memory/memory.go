@@ -366,6 +366,84 @@ func (s *Store) Detail(
 	return inboxrclpucl.ClaimDetail{}, inboxrclpucl.ErrClaimNotFound
 }
 
+// sampleDocuments adalah dokumen contoh untuk SETIAP klaim yang dikenal penyimpanan memori.
+//
+// Isinya teks pendek, bukan PDF palsu. Yang diuji di atas memori adalah ALUR-nya — daftar
+// tergambar, kepemilikan ditegakkan, berkasnya terserah dengan nama dan jenis yang benar —
+// dan berkas biner palsu tidak menambah satu pun jawaban atas pertanyaan itu.
+var sampleDocuments = []inboxrclpucl.Document{
+	{
+		ID:          "DOC-0001",
+		Name:        "Surat Keterangan.pdf",
+		MimeType:    "application/pdf",
+		Category:    "Dokumen Klaim",
+		SubCategory: "Surat Keterangan",
+		UploadedAt:  "2026-09-02 09:15:00",
+		UploadedBy:  "PETUGASCONTOH",
+	},
+	{
+		ID:          "DOC-0002",
+		Name:        "Kuitansi.jpg",
+		MimeType:    "image/jpeg",
+		Category:    "Dokumen Klaim",
+		SubCategory: "Kuitansi",
+		UploadedAt:  "2026-09-03 14:40:00",
+		UploadedBy:  "PETUGASCONTOH",
+	},
+}
+
+// Documents mengembalikan dokumen contoh milik satu klaim.
+//
+// Klaim yang TIDAK dikenal mengembalikan ErrClaimNotFound, bukan senarai kosong. Keduanya
+// berbeda: yang pertama kekeliruan pemanggil, yang kedua klaim tanpa dokumen — dan hanya yang
+// pertama yang perlu diperbaiki.
+func (s *Store) Documents(
+	_ context.Context,
+	caseNumber string,
+) ([]inboxrclpucl.Document, error) {
+	wanted := strings.TrimSpace(caseNumber)
+
+	for _, candidate := range s.rows {
+		if candidate.WorkClass != inboxrclpucl.WorkClassClaim {
+			continue
+		}
+		if candidate.Item.CaseID != wanted && candidate.Item.Reference != wanted {
+			continue
+		}
+		return append([]inboxrclpucl.Document{}, sampleDocuments...), nil
+	}
+	return nil, inboxrclpucl.ErrClaimNotFound
+}
+
+// DocumentContent mengembalikan isi satu dokumen contoh.
+//
+// Kepemilikannya ditegakkan DI SINI pula, bukan hanya di sisi SQL. Uji yang berjalan di atas
+// memori adalah tempat paling murah untuk menangkap pemanggil yang meminta dokumen milik
+// klaim lain, dan penegakan yang hanya ada di satu sisi membuat uji itu lulus untuk perilaku
+// yang tidak benar.
+func (s *Store) DocumentContent(
+	ctx context.Context,
+	caseNumber, documentID string,
+) (inboxrclpucl.DocumentContent, error) {
+	documents, err := s.Documents(ctx, caseNumber)
+	if err != nil {
+		return inboxrclpucl.DocumentContent{}, err
+	}
+
+	wanted := strings.TrimSpace(documentID)
+	for _, document := range documents {
+		if document.ID != wanted {
+			continue
+		}
+		return inboxrclpucl.DocumentContent{
+			Name:     document.Name,
+			MimeType: document.MimeType,
+			Content:  []byte("isi contoh " + document.ID),
+		}, nil
+	}
+	return inboxrclpucl.DocumentContent{}, inboxrclpucl.ErrDocumentNotFound
+}
+
 // detailOf menyusun isi layar kerja dari satu baris contoh.
 //
 // Ketiga isian TURUNAN dihitung di sini dengan cara yang sama seperti kueri SQL — termasuk

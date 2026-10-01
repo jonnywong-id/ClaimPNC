@@ -339,3 +339,30 @@ export type DateRange = {
   dari: string
   sampai: string
 }
+
+/** Satu baris daftar dokumen klaim — tombol "Lihat Dokumen". */
+export type DocumentRow = {
+  id: string
+  nama: string
+  kategori: string
+  sub_kategori: string
+  diunggah_pada: string
+  diunggah_oleh: string
+}
+
+/** Jawaban daftar dokumen satu klaim. */
+export type DocumentListResponse = {
+  dokumen: DocumentRow[]
+
+  /**
+   * Keterangan bahwa daftarnya mungkin TIDAK lengkap.
+   *
+   * Datang dari SERVER, bukan ditulis di layar: dokumen yang hanya ada di tabel lampiran
+   * bawaan Pega belum terbaca lewat jalur ini, dan daftar kosong tanpa keterangan terbaca
+   * sebagai "klaim ini tidak berdokumen". Begitu jalur itu ikut terbaca, kalimatnya hilang
+   * di satu tempat.
+   */
+  catatan: string
+
+  portal: string
+}

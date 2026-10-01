@@ -300,3 +300,108 @@ func (s *Service) DailyReport(
 		Request:    request,
 	}, nil
 }
+
+// Documents mengembalikan dokumen yang terlampir pada satu klaim.
+//
+// Ia TIDAK mencatat ke log, berbeda dari Detail. Alasannya: yang bernilai ditelusuri adalah
+// siapa membuka ISI dokumen, bukan siapa melihat daftar namanya — dan itu dicatat
+// DocumentContent. Mencatat keduanya menggandakan baris tanpa menambah jawaban.
+func (s *Service) Documents(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxrclpucl.Caller,
+	caseNumber string,
+) ([]inboxrclpucl.Document, error) {
+	repo, key, err := s.documentAccess(portalAlias, caller, caseNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	documents, err := repo.Documents(ctx, key)
+	if err != nil {
+		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("mengambil daftar dokumen klaim %s: %w", key, err)
+	}
+	return documents, nil
+}
+
+// DocumentContent mengembalikan isi satu dokumen.
+func (s *Service) DocumentContent(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxrclpucl.Caller,
+	caseNumber, documentID string,
+) (inboxrclpucl.DocumentContent, error) {
+	repo, key, err := s.documentAccess(portalAlias, caller, caseNumber)
+	if err != nil {
+		return inboxrclpucl.DocumentContent{}, err
+	}
+
+	id := strings.TrimSpace(documentID)
+	if id == "" {
+		return inboxrclpucl.DocumentContent{}, inboxrclpucl.NewValidationError(
+			[]inboxrclpucl.Violation{{
+				Field:   inboxrclpucl.FieldReference,
+				Message: "Dokumen yang diminta tidak disebutkan.",
+			}})
+	}
+
+	document, err := repo.DocumentContent(ctx, key, id)
+	if err != nil {
+		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) ||
+			errors.Is(err, inboxrclpucl.ErrDocumentNotFound) {
+			return inboxrclpucl.DocumentContent{}, err
+		}
+		return inboxrclpucl.DocumentContent{}, fmt.Errorf(
+			"mengambil isi dokumen %s klaim %s: %w", id, key, err)
+	}
+
+	// Pengambilan ISI dokumen dicatat, dan kuncinya ikut.
+	//
+	// Alasannya sama dengan pencatatan Detail, dan lebih kuat: yang berpindah tangan di sini
+	// adalah BERKAS milik nasabah — kuitansi, surat keterangan, kadang dokumen medis pada
+	// lini PA. Yang harus dapat ditelusuri adalah siapa mengambil dokumen mana, bukan
+	// sekadar bahwa seseorang membuka layarnya.
+	if s.logger != nil {
+		s.logger.Info("dokumen klaim RCL/PUCL diambil",
+			"portal", portalAlias,
+			"login", caller.Clean().Login,
+			"klaim", key,
+			"dokumen", id,
+		)
+	}
+
+	return document, nil
+}
+
+// documentAccess memeriksa pemanggil dan nomor case, lalu memilih penyimpanan portalnya.
+//
+// Ia dipisah karena KEDUA rute dokumen memerlukan pemeriksaan yang sama persis, dan
+// menyalinnya dua kali membuat salah satu dapat tertinggal saat yang lain diubah — tepat pada
+// pemeriksaan yang memutuskan siapa boleh mengambil berkas milik nasabah.
+func (s *Service) documentAccess(
+	portalAlias string,
+	caller inboxrclpucl.Caller,
+	caseNumber string,
+) (inboxrclpucl.Repo, string, error) {
+	if caller.Clean().Login == "" {
+		return nil, "", inboxrclpucl.ErrCallerUnknown
+	}
+
+	key := strings.TrimSpace(caseNumber)
+	if key == "" {
+		return nil, "", inboxrclpucl.NewValidationError(
+			[]inboxrclpucl.Violation{{
+				Field:   inboxrclpucl.FieldReference,
+				Message: "Kunci klaim tidak disebutkan.",
+			}})
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, "", err
+	}
+	return repo, key, nil
+}

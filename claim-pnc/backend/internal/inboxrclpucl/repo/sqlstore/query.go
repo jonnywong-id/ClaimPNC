@@ -130,6 +130,17 @@ var flatTableQueries = []string{
 	"list_cetak_surat", "list_kelengkapan_dokumen", "list_klaim_msig", "detail",
 }
 
+// documentColumns adalah alias kueri daftar dokumen.
+//
+// Ia TIDAK masuk flatTableQueries dan itu disengaja: `documents` memang membaca tabel Pega
+// (`PC_ASM_FW_GCNMFW_WORK`) untuk menerjemahkan nomor case menjadi kunci objek kerja, karena
+// `TC_PNC_PUCL` tidak menyimpan kunci itu. Memasukkannya ke daftar penjaga akan membuat uji
+// menuntut hal yang mustahil.
+var documentColumns = []string{
+	"DOCUMENT_ID", "DOCUMENT_NAME", "MIME_TYPE",
+	"CATEGORY_NAME", "SUBCATEGORY_NAME", "UPLOADED_AT", "UPLOADED_BY",
+}
+
 // legacyColumnNames adalah nama kolom Pega yang TIDAK boleh lagi muncul di kueri tabel
 // datar.
 //

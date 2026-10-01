@@ -7,6 +7,7 @@ import { useSession } from '@/app/session'
 import type {
   ClaimDetailResponse,
   DateRange,
+  DocumentListResponse,
   ListResponse,
   MetadataResponse,
 } from './types'
@@ -32,6 +33,9 @@ const keys = {
 
   detail: (portal: string | null, token: string | null, reference: string) =>
     ['inbox-rcl-pucl', 'klaim', portal, token, reference] as const,
+
+  documents: (portal: string | null, token: string | null, reference: string) =>
+    ['inbox-rcl-pucl', 'klaim', portal, token, reference, 'dokumen'] as const,
 }
 
 /**
@@ -264,4 +268,45 @@ function downloadBlob(blob: Blob, filename: string): void {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Hook daftar dokumen satu klaim — tombol "Lihat Dokumen".
+ *
+ * # Kenapa ia hook TERSENDIRI, bukan bagian jawaban layar kerja
+ *
+ * Karena ia tidak selalu dibutuhkan. Layar kerja dibuka setiap kali petugas mengklik nomor
+ * case; daftar dokumennya hanya dilihat sebagian. Menyatukannya akan menarik lampiran setiap
+ * klaim yang dibuka — termasuk yang tidak pernah diperiksa dokumennya.
+ *
+ * `enabled` menahannya sampai tombolnya benar-benar ditekan.
+ */
+export function useRCLPUCLDocuments(reference: string | null, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.documents(portal, token, reference ?? ''),
+    queryFn: () =>
+      callAPI<DocumentListResponse>(
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/dokumen`,
+        { token, portal },
+      ),
+    enabled:
+      enabled && reference !== null && reference !== '' && token !== null && portal !== null,
+
+    // Lampiran bertambah saat petugas mengunggahnya di Pega. Cache-nya sependek layar kerja.
+    staleTime: 15 * 1000,
+  })
+}
+
+/**
+ * Alamat pengambilan ISI satu dokumen.
+ *
+ * Ia BUKAN hook: isinya berkas, bukan JSON, dan yang dibutuhkan layar hanyalah alamatnya —
+ * peramban yang mengambilnya sendiri lewat tautan. Menariknya lewat `callAPI` akan
+ * memaksanya melewati memori JavaScript tanpa satu pun manfaat.
+ */
+export function rclpuclDocumentURL(reference: string, documentID: string): string {
+  return `${PATH}/klaim/${encodeURIComponent(reference)}/dokumen/${encodeURIComponent(documentID)}`
 }

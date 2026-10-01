@@ -5,7 +5,7 @@ import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
-import { useRCLPUCLClaim } from './api'
+import { rclpuclDocumentURL, useRCLPUCLClaim, useRCLPUCLDocuments } from './api'
 import type { ClaimDetailResponse } from './types'
 
 /**
@@ -427,27 +427,35 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
       */}
       <div className="flex flex-wrap gap-3">
         {/*
-          NAMANYA MENYESATKAN, dan namanya tetap dibawa apa adanya (`D-13`).
+          Ia melakukan DUA hal sekaligus, dan keduanya perlu disebut.
 
-          Ia tidak mengunduh apa pun. Rangkaian aksinya `InsertMitraPA(tipe="cetak")` lalu
-          `PUCLPost`, dan `PUCLPost` mengisi `TanggalCetakDokumenPUCL` — kolom yang
-          MEMINDAHKAN klaim dari tab "Cetak Surat" ke tab "Kelengkapan Dokumen".
+          Rangkaiannya `InsertMitraPA(tipe="cetak")` lalu `PUCLPost`. Di dalam `PUCLPost`:
+          `AttachAsPDFC` (HTMLToPDF → AttachToWork → View) MEMBUAT dan membuka PDF suratnya,
+          sementara `TanggalCetakDokumenPUCL` ikut terisi — kolom yang MEMINDAHKAN klaim dari
+          tab "Cetak Surat" ke "Kelengkapan Dokumen".
 
-          Keterangannya menyebut akibat itu dengan tegas. Petugas yang membaca "Download"
-          akan mengira tombolnya aman ditekan untuk melihat-lihat.
+          Keterangan sebelumnya menyatakan tombol ini "tidak mengunduh apa pun". ITU SALAH,
+          dan arahnya berbahaya ke sisi sebaliknya: ia membuat orang mengira suratnya tidak
+          terbit. Yang benar — ia menerbitkan surat DAN memindahkan klaimnya, sehingga bukan
+          tombol lihat-lihat.
+
+          `ASMForceCaseClose` TIDAK berlaku untuknya: syarat `param.Status==""` ber-`true=3`,
+          yaitu melewati langkah itu. Ia hanya jalan untuk "Tolak Klaim" di jalur RCL.
         */}
         {buttons.download_dokumen && (
           <WriteAction
             label="Download Dokumen"
+            caseNumber={detail?.referensi}
             note={
-              'Meski namanya "Download", tombol ini MENANDAI suratnya sudah dicetak — ' +
-              'klaimnya berpindah dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
+              'Menerbitkan PDF surat DAN menandainya sudah dicetak — klaimnya berpindah ' +
+              'dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
             }
           />
         )}
         {buttons.tutup_klaim && (
           <WriteAction
             label="Tutup Klaim"
+            caseNumber={detail?.referensi}
             note="Menutup klaim MSIG — satu-satunya tindakan yang tersedia pada jalur ini."
           />
         )}
@@ -510,13 +518,26 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
       {/* Ketiganya `pyVisible ALWAYS` — selalu digambar, apa pun jalur dan lini bisnisnya. */}
       <div className="flex flex-wrap gap-3">
         {buttons.unggah_dokumen && (
-          <WriteAction label="Unggah Dokumen" note="Melampirkan berkas dokumen ke klaim." />
+          <WriteAction
+            label="Unggah Dokumen"
+            caseNumber={detail?.referensi}
+            note="Melampirkan berkas dokumen ke klaim."
+          />
         )}
-        {buttons.lihat_dokumen && (
-          <WriteAction label="Lihat Dokumen" note="Membuka dokumen yang sudah dilampirkan." />
-        )}
+        {/*
+          SATU-SATUNYA tombol layar ini yang benar-benar berjalan.
+
+          Ia MEMBACA — `localAction ViewAttachmentPUCL` di Pega hanya membuka daftar lampiran,
+          tanpa menyentuh satu pun tabel. Karena itu ia tidak terhalang `P-1`, dan dibangun
+          lebih dulu atas persetujuan Work Owner 2026-10-01.
+        */}
+        {buttons.lihat_dokumen && <ViewDocumentsAction reference={detail?.referensi} />}
         {buttons.save && (
-          <WriteAction label="Save" note="Menyimpan isian tanpa meneruskan klaimnya." />
+          <WriteAction
+            label="Save"
+            caseNumber={detail?.referensi}
+            note="Menyimpan isian tanpa meneruskan klaimnya."
+          />
         )}
       </div>
 
@@ -529,18 +550,21 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
         {buttons.tolak_klaim && (
           <WriteAction
             label="Tolak Klaim"
+            caseNumber={detail?.referensi}
             note="Menolak klaim. Hanya tersedia pada jalur RCL."
           />
         )}
         {buttons.kirim_ke_analyst && (
           <WriteAction
             label="Kirim Ke Analyst"
+            caseNumber={detail?.referensi}
             note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
           />
         )}
         {buttons.kirim_ke_pic_teknik && (
           <WriteAction
             label="Kirim ke PIC Teknik"
+            caseNumber={detail?.referensi}
             note="Meneruskan klaim ke PIC Teknik. Jalur PUCL pada lini Travel."
           />
         )}
@@ -666,13 +690,174 @@ function ReceivedDocumentGrid() {
  * di balik pesan yang baru muncul setelah ditekan: tombol mati tanpa keterangan terbaca
  * sebagai kerusakan, dan petugas akan menekannya berulang kali.
  */
-function WriteAction({ label, note }: { label: string; note: string }) {
+/**
+ * Tombol "Lihat Dokumen" — tombol layar kerja yang BENAR-BENAR berjalan.
+ *
+ * # Kenapa daftarnya baru ditarik saat ditekan
+ *
+ * Karena lampiran tidak selalu diperiksa. Layar kerja dibuka setiap kali nomor case diklik;
+ * dokumennya dilihat sebagian. Menariknya bersama isi layar akan membebani setiap pembukaan
+ * klaim demi sebagian kecil yang membutuhkannya.
+ *
+ * # Kenapa berkasnya dibuka lewat TAUTAN, bukan diambil JavaScript
+ *
+ * Karena isinya berkas, bukan JSON. Peramban sudah tahu cara menampilkan PDF dan gambar;
+ * menariknya lewat JavaScript lebih dulu berarti seluruh berkas melewati memori halaman tanpa
+ * satu pun manfaat, dan menghilangkan penampil bawaan peramban.
+ */
+function ViewDocumentsAction({ reference }: { reference?: string | undefined }) {
+  const [open, setOpen] = useState(false)
+  const documents = useRCLPUCLDocuments(reference ?? null, open)
+
   return (
     <div className="mt-4">
-      <Button tone="kedua" disabled>
+      <Button
+        tone="kedua"
+        aria-expanded={open}
+        disabled={!reference}
+        onClick={() => setOpen((v) => !v)}
+      >
+        Lihat Dokumen
+      </Button>
+      <p className="mt-1 text-xs text-slate-500">Membuka dokumen yang sudah dilampirkan.</p>
+
+      {open && (
+        <div className="mt-2 max-w-xl rounded-kontrol border border-slate-200 bg-white px-3 py-2">
+          {documents.isPending && (
+            <p className="text-xs text-slate-600">Memuat daftar dokumen…</p>
+          )}
+
+          {documents.isError && (
+            <p className="text-xs text-rose-700">
+              Daftar dokumen tidak dapat diambil. {messageOf(documents.error)}
+            </p>
+          )}
+
+          {/*
+            Daftar KOSONG dan daftar GAGAL dibedakan dengan tegas. Keduanya terlihat sama di
+            layar bila tidak dinyatakan, padahal yang satu berarti "klaim ini memang belum
+            berdokumen" dan yang lain "jangan percayai layar ini".
+          */}
+          {documents.data && documents.data.dokumen.length === 0 && (
+            <p className="text-xs text-slate-600">
+              Belum ada dokumen yang terlampir pada klaim ini.
+            </p>
+          )}
+
+          {documents.data && documents.data.dokumen.length > 0 && (
+            <ul className="divide-y divide-slate-100">
+              {documents.data.dokumen.map((document) => (
+                <li key={document.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+                  <a
+                    href={rclpuclDocumentURL(reference ?? '', document.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-biru-700 underline underline-offset-2"
+                  >
+                    {document.nama || document.id}
+                  </a>
+                  <span className="text-xs text-slate-500">
+                    {[document.kategori, document.sub_kategori].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="ml-auto text-xs text-slate-500">
+                    {document.diunggah_pada}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/*
+            Keterangan ketidaklengkapan datang dari SERVER, bukan ditulis di sini: begitu
+            jalur lampiran bawaan Pega ikut terbaca, kalimatnya hilang di satu tempat.
+          */}
+          {documents.data?.catatan && (
+            <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] leading-snug text-slate-500">
+              {documents.data.catatan}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function WriteAction({
+  label,
+  note,
+  caseNumber,
+}: {
+  label: string
+  note: string
+  // `| undefined` eksplisit karena project memakai `exactOptionalPropertyTypes`: detailnya
+  // boleh belum tiba, dan tombolnya tetap digambar.
+  caseNumber?: string | undefined
+}) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  async function salinNomorCase() {
+    if (!caseNumber) return
+    try {
+      await navigator.clipboard.writeText(caseNumber)
+      setCopied(true)
+    } catch {
+      // Penyalinan ditolak peramban — tombolnya tetap menampilkan nomornya supaya
+      // dapat disalin dengan tangan. Kegagalan ini TIDAK dilaporkan sebagai galat:
+      // ia bukan kerusakan, dan pesannya akan mengalihkan perhatian dari nomornya.
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <Button
+        tone="kedua"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((v) => !v)
+          setCopied(false)
+        }}
+      >
         {label}
       </Button>
       <p className="mt-1 text-xs text-slate-500">{note}</p>
+
+      {/*
+        Susunan keterangannya LANGKAH DULU, alasan belakangan.
+
+        Bentuk sebelumnya membuka dengan "Belum dapat dijalankan dari sini" lalu menjelaskan
+        sebabnya, dan baru di baris terakhir menyebut apa yang harus dikerjakan. Itu membuat
+        petugas membaca dua kalimat yang tidak dapat ditindaklanjuti sebelum sampai ke satu
+        kalimat yang dapat — padahal yang dibutuhkannya cuma langkahnya. Sebabnya tetap
+        ditulis, tetapi di bawah dan lebih kecil: ia menjawab "kenapa", dan "kenapa" bukan
+        yang dicari orang yang sedang mengerjakan klaim.
+      */}
+      {open && (
+        <div className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs font-medium text-slate-800">
+            Kerjakan tindakan ini di Pega — salin nomor case, buka klaimnya di sana, lalu
+            tekan tombol yang sama.
+          </p>
+          {caseNumber && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm text-slate-900">{caseNumber}</span>
+              <button
+                type="button"
+                onClick={salinNomorCase}
+                className="rounded-kontrol border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                {copied ? 'Tersalin' : 'Salin nomor case'}
+              </button>
+            </div>
+          )}
+          <p className="mt-2 text-[11px] leading-snug text-slate-500">
+            Tombol ini menyimpan perubahan pada klaim. Selama Pega masih melayani produksi,
+            data klaim hanya boleh diubah dari satu sistem — karena itu tindakannya
+            dikerjakan di sana, bukan di sini.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
