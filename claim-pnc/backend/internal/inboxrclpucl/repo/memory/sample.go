@@ -363,6 +363,8 @@ func SampleRows() []Row {
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
 		WorkClass:        claim,
 		AssignedOperator: "KOMITEPNC",
+		// Antrean lain: proses pengisi tidak memasukkannya ke tabel datar.
+		OutsideFlatTable: true,
 		WorkStatus:       "Open",
 		ExpiryCaseStatus: inboxrclpucl.ExpiryStatusActive,
 		ClaimStatus:      "1149",
@@ -394,6 +396,9 @@ func SampleRows() []Row {
 		TrackCode:        inboxrclpucl.TrackCodePUCL,
 		WorkClass:        claim,
 		AssignedOperator: "PNCADMIN",
+		// Di luar antrean RCL/PUCL: tidak ada di tabel datar, tetapi TETAP ikut laporan
+		// harian lewat cabang kedua UNION — laporan itu membaca tabel Pega.
+		OutsideFlatTable: true,
 		WorkStatus:       "Open",
 		ExpiryCaseStatus: "1",
 		PUCLApprove:      "0",

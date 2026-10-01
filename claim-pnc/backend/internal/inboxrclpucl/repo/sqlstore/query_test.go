@@ -166,13 +166,19 @@ func TestNoFlatTableQueryUsesALegacyColumnName(t *testing.T) {
 	}
 }
 
-func TestEveryListQueryFiltersItsSharedWorkbasket(t *testing.T) {
-	// Gabungan ke PC_ASSIGN_WORKBASKET digantikan kolom pada baris klaimnya sendiri.
-	// Penyaringnya tetap wajib: tanpanya, ketiga tab menampilkan seluruh isi tabel datar
-	// tanpa melihat antrean mana pun.
+func TestNoListQueryFiltersTheQueueAnyMore(t *testing.T) {
+	// Penyaring antrean DIHAPUS 2026-10-01, dan ini uji yang menahannya kembali.
+	//
+	// `TC_PNC_PUCL` tabel khusus RCL/PUCL — setiap barisnya sudah klaim RCL/PUCL menurut
+	// proses pengisinya — sehingga penyaring itu tidak lagi menyeleksi apa pun. Dan datanya
+	// menegaskan: kolom itu berisi NAMA ORANG, bukan nama antrean, sehingga menyaringnya
+	// dengan literal 'RCLPUCL' mengosongkan KETIGA tab.
+	//
+	// Menambahkannya kembali tidak menghasilkan galat — ia hanya membuat layar kosong, dan
+	// kosong itu terbaca seperti antrean yang memang sepi.
 	for _, name := range listQueries {
-		require.Containsf(t, query(name), "p.ASSIGNED_OPERATOR_ID = :1",
-			"kueri %s tidak menyaring akun antreannya", name)
+		require.NotContainsf(t, query(name), "ASSIGNED_OPERATOR_ID",
+			"kueri %s menyaring antrean lagi; kolom itu berisi nama orang", name)
 	}
 }
 
@@ -180,7 +186,7 @@ func TestEveryListQueryExcludesCompletedWork(t *testing.T) {
 	// Penyaringnya `<>`, bukan `=`. Satu tanda yang salah membalik seluruh isi layar: yang
 	// tampil menjadi klaim yang sudah tuntas.
 	for _, name := range listQueries {
-		require.Containsf(t, query(name), "p.STATUS_WORK <> :2",
+		require.Containsf(t, query(name), "p.STATUS_WORK <> :1",
 			"kueri %s tidak mengecualikan pekerjaan yang selesai", name)
 	}
 }
@@ -202,7 +208,7 @@ func TestTheLetterFilterIsInvertedBetweenTabs(t *testing.T) {
 func TestOnlyTheCetakSuratQueryFiltersTheCaseStatus(t *testing.T) {
 	// `STATUS_CASE = '0'` hanya ada di Report Definition tab pertama. Menambahkannya di
 	// tab lain akan menyembunyikan baris yang di Pega terlihat.
-	require.Contains(t, query("list_cetak_surat"), "p.STATUS_CASE = :3")
+	require.Contains(t, query("list_cetak_surat"), "p.STATUS_CASE = :2")
 
 	for _, name := range printedQueries {
 		require.NotContainsf(t, query(name), "STATUS_CASE",
@@ -214,7 +220,7 @@ func TestOnlyThePrintedQueriesFilterTheApprovalFlag(t *testing.T) {
 	require.NotContains(t, query("list_cetak_surat"), "PUCL_APPROVE")
 
 	for _, name := range printedQueries {
-		require.Containsf(t, query(name), "p.PUCL_APPROVE <> :3",
+		require.Containsf(t, query(name), "p.PUCL_APPROVE <> :2",
 			"kueri %s tidak menyaring penanda persetujuan", name)
 	}
 }
@@ -225,7 +231,7 @@ func TestTheMSIGFilterIsInvertedBetweenTheTwoPrintedTabs(t *testing.T) {
 	require.Contains(t, query("list_kelengkapan_dokumen"), "p.MSIG IS NULL")
 	require.NotContains(t, query("list_kelengkapan_dokumen"), "p.MSIG = ")
 
-	require.Contains(t, query("list_klaim_msig"), "p.MSIG = :4")
+	require.Contains(t, query("list_klaim_msig"), "p.MSIG = :3")
 	require.NotContains(t, query("list_klaim_msig"), "p.MSIG IS NULL")
 
 	// Tab pertama tidak menyaringnya sama sekali — Report Definition-nya memang tidak
@@ -313,13 +319,27 @@ func TestEveryPlanBindsAsManyArgumentsAsItsQueryUses(t *testing.T) {
 	}
 }
 
-func TestEveryPlanBindsTheSharedFiltersInTheSameOrder(t *testing.T) {
-	// Dua bind pertama sama di ketiga kueri. Urutan yang tertukar di salah satunya
-	// menyaring akun antrean dengan nama status kerja — dan hasilnya nol baris, bukan galat.
+func TestEveryPlanBindsTheSharedFilterFirst(t *testing.T) {
+	// Sejak penyaring antrean dihapus, bind pertama SAMA di ketiga kueri: status kerja yang
+	// dikecualikan. Urutan yang tertukar menyaring status kerja dengan nilai lain — dan
+	// hasilnya nol baris, bukan galat.
 	for label, entry := range allPlans(t) {
 		args := entry.plan.args(samplePage())
-		require.Equalf(t, inboxrclpucl.RCLPUCLWorkbasket, args[0], "%s bind :1", label)
-		require.Equalf(t, inboxrclpucl.WorkStatusCompleted, args[1], "%s bind :2", label)
+		require.Equalf(t, inboxrclpucl.WorkStatusCompleted, args[0], "%s bind :1", label)
+	}
+}
+
+func TestNoListPlanBindsTheQueueAnyMore(t *testing.T) {
+	// Berpasangan dengan TestNoListQueryFiltersTheQueueAnyMore: yang satu menjaga
+	// kuerinya, yang satu menjaga argumennya.
+	//
+	// Keduanya perlu. Bind yang tertinggal sementara `:n`-nya sudah hilang akan MENGGESER
+	// seluruh penyaring satu posisi — dan di Oracle, bind berlebih tidak selalu ditolak.
+	for label, entry := range allPlans(t) {
+		for i, arg := range entry.plan.args(samplePage()) {
+			require.NotEqualf(t, inboxrclpucl.RCLPUCLWorkbasket, arg,
+				"%s masih mengikat akun antrean pada bind :%d", label, i+1)
+		}
 	}
 }
 
@@ -343,19 +363,19 @@ func TestTheMSIGPlanBindsTheMarkerBeforePagination(t *testing.T) {
 	entry := allPlans(t)["klaim_msig"]
 	args := entry.plan.args(samplePage())
 
-	require.Len(t, args, 6)
-	require.Equal(t, inboxrclpucl.PUCLReturnedToAnalyst, args[2])
-	require.Equal(t, inboxrclpucl.MSIGMarker, args[3])
-	require.Equal(t, 100, args[4], "offset halaman ketiga berukuran 50")
-	require.Equal(t, 50, args[5])
+	require.Len(t, args, 5)
+	require.Equal(t, inboxrclpucl.PUCLReturnedToAnalyst, args[1])
+	require.Equal(t, inboxrclpucl.MSIGMarker, args[2])
+	require.Equal(t, 100, args[3], "offset halaman ketiga berukuran 50")
+	require.Equal(t, 50, args[4])
 }
 
 func TestTheCetakSuratPlanBindsTheCaseStatus(t *testing.T) {
 	entry := allPlans(t)["cetak_surat"]
 	args := entry.plan.args(samplePage())
 
-	require.Len(t, args, 5)
-	require.Equal(t, inboxrclpucl.ExpiryStatusActive, args[2])
+	require.Len(t, args, 4)
+	require.Equal(t, inboxrclpucl.ExpiryStatusActive, args[1])
 }
 
 func TestUnknownTabHasNoQuery(t *testing.T) {

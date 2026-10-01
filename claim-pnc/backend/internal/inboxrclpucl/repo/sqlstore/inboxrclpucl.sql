@@ -34,10 +34,25 @@
 --
 -- BERUBAH, dan ketiganya harus disadari:
 --
---   1. GABUNGAN KE ANTREAN BERSAMA HILANG. `ASSIGNED_OPERATOR_ID` kini kolom pada baris
---      klaimnya sendiri. Akibatnya klaim yang punya DUA penugasan terbuka di antrean yang
---      sama TIDAK LAGI muncul dua kali — `PRIMARY KEY (CLAIMID)` tidak mengizinkannya.
---      Itu selisih terhadap Pega; lihat `docs/ddl/tc_pnc_pucl.sql` §4.
+--   1. PENYARING ANTREAN BERSAMA HILANG SELURUHNYA — bukan hanya gabungannya.
+--
+--      Di Pega, `PXASSIGNEDOPERATORID = 'RCLPUCL'` adalah cara MENEMUKAN klaim RCL/PUCL di
+--      antara seluruh objek kerja. `TC_PNC_PUCL` adalah tabel KHUSUS RCL/PUCL: setiap
+--      barisnya sudah klaim RCL/PUCL menurut proses pengisinya, sehingga penyaring itu
+--      tidak lagi menyeleksi apa pun.
+--
+--      Yang memastikannya bukan penalaran itu melainkan datanya. Dibaca 2026-10-01:
+--      kolomnya berisi **nama orang** (`OPERATOR_ID` bernilai sama persis), bukan nama
+--      antrean. Menyaringnya dengan literal `'RCLPUCL'` karena itu mengosongkan KETIGA tab
+--      — dan itulah yang terjadi sampai hari ini.
+--
+--      Akibat lain yang ikut dari tabelnya: klaim yang punya DUA penugasan terbuka di
+--      antrean yang sama TIDAK LAGI muncul dua kali — `PRIMARY KEY (CLAIMID)` tidak
+--      mengizinkannya. Itu selisih terhadap Pega; lihat `docs/ddl/tc_pnc_pucl.sql` §4.
+--
+--      RISIKO YANG DITERIMA: bila proses pengisi kelak memasukkan baris di luar antrean
+--      RCL/PUCL, tidak ada lagi yang menyaringnya di sini. Pemisahan itu berpindah menjadi
+--      syarat pengisi, sama seperti pemisahan kelas objek kerja pada butir 2.
 --
 --   2. PENYARING KELAS OBJEK KERJA HILANG. `TC_PNC_PUCL` tidak punya `PXOBJCLASS`.
 --      Pemisahan Work-PNC dari Work-ReceiveDocument karena itu menjadi tanggung jawab
@@ -62,11 +77,12 @@
 --                               MSIG IS NULL
 --   list_klaim_msig             sama seperti di atas, tetapi MSIG = :msig
 --
--- Ketiganya ditambah `STATUS_WORK <> :selesai` dan `ASSIGNED_OPERATOR_ID = :antrean`.
+-- Ketiganya ditambah `STATUS_WORK <> :selesai`. Penyaring antrean TIDAK ada lagi — lihat
+-- butir 1 di atas.
 --
 -- Penyaringnya diambil dari `pyFilters` ketiga Report Definition, dan dipastikan ulang
 -- terhadap SQL hasil generate Pega sendiri di `RDB List/ReminderPUCL-SQL.xml` — yang memuat
--- penyaring list_kelengkapan_dokumen kata demi kata, termasuk literal 'RCLPUCL'.
+-- penyaring list_kelengkapan_dokumen kata demi kata.
 --
 -- ============================================================================
 -- PEMETAAN KOLOM — properti Pega -> kolom Pega -> kolom tabel datar -> alias
@@ -221,8 +237,8 @@
 -- hanyalah ISINYA — alamat layar kerja kini memuat `PNC-1865`, bukan
 -- `ASM-FW-GCNMFW-WORK PNC-1865`. Tautan lama berbentuk panjang itu TIDAK akan ditemukan.
 --
--- Bind: :1 akun antrean bersama · :2 status kerja yang dikecualikan
---       :3 nilai STATUS_CASE yang diterima · :4 offset · :5 jumlah baris
+-- Bind: :1 status kerja yang dikecualikan · :2 nilai STATUS_CASE yang diterima
+--       :3 offset · :4 jumlah baris
 SELECT p.CLAIMID                        AS REFERENCE,
        p.CLAIMID                        AS CASE_ID,
        p.POLICY_NO                      AS POLICY_NUMBER,
@@ -236,20 +252,19 @@ SELECT p.CLAIMID                        AS REFERENCE,
        p.TGL_CREATE_PUCL                AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM POOLDATA.TC_PNC_PUCL p
- WHERE p.ASSIGNED_OPERATOR_ID = :1
-   AND p.STATUS_WORK <> :2
+ WHERE p.STATUS_WORK <> :1
    AND p.TGL_CETAK_DOKUMEN_PUCL IS NULL
-   AND p.STATUS_CASE = :3
+   AND p.STATUS_CASE = :2
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
+OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 
 -- name: list_kelengkapan_dokumen
 -- Tab "Kelengkapan Dokumen" — surat sudah dicetak, belum disetujui, bukan jalur MSIG.
 -- — Report Definition/InboxPUCLCetakSurat_RD-RD.xml, pyFilterLogic "A AND B AND C AND D AND E"
 -- — SQL hasil generate-nya ada utuh di RDB List/ReminderPUCL-SQL.xml
 --
--- Bind: :1 akun antrean bersama · :2 status kerja yang dikecualikan
---       :3 nilai PUCL_APPROVE yang dikecualikan · :4 offset · :5 jumlah baris
+-- Bind: :1 status kerja yang dikecualikan · :2 nilai PUCL_APPROVE yang dikecualikan
+--       :3 offset · :4 jumlah baris
 SELECT p.CLAIMID                        AS REFERENCE,
        p.CLAIMID                        AS CASE_ID,
        p.POLICY_NO                      AS POLICY_NUMBER,
@@ -263,13 +278,12 @@ SELECT p.CLAIMID                        AS REFERENCE,
        p.TGL_CREATE_PUCL                AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM POOLDATA.TC_PNC_PUCL p
- WHERE p.ASSIGNED_OPERATOR_ID = :1
-   AND p.STATUS_WORK <> :2
+ WHERE p.STATUS_WORK <> :1
    AND p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
-   AND p.PUCL_APPROVE <> :3
+   AND p.PUCL_APPROVE <> :2
    AND p.MSIG IS NULL
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
+OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 
 -- name: list_klaim_msig
 -- Tab "Klaim MSIG" — sama seperti list_kelengkapan_dokumen, tetapi jalur MSIG.
@@ -287,9 +301,8 @@ OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 -- Kuerinya dibangun apa adanya — keputusan Work Owner 2026-09-23 — dan jarangnya isi tab
 -- ini dinyatakan ke pengguna lewat Tab.Notice, bukan disamarkan.
 --
--- Bind: :1 akun antrean bersama · :2 status kerja yang dikecualikan
---       :3 nilai PUCL_APPROVE yang dikecualikan · :4 penanda jalur MSIG · :5 offset
---       :6 jumlah baris
+-- Bind: :1 status kerja yang dikecualikan · :2 nilai PUCL_APPROVE yang dikecualikan
+--       :3 penanda jalur MSIG · :4 offset · :5 jumlah baris
 SELECT p.CLAIMID                        AS REFERENCE,
        p.CLAIMID                        AS CASE_ID,
        p.POLICY_NO                      AS POLICY_NUMBER,
@@ -303,13 +316,12 @@ SELECT p.CLAIMID                        AS REFERENCE,
        p.TGL_CREATE_PUCL                AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM POOLDATA.TC_PNC_PUCL p
- WHERE p.ASSIGNED_OPERATOR_ID = :1
-   AND p.STATUS_WORK <> :2
+ WHERE p.STATUS_WORK <> :1
    AND p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
-   AND p.PUCL_APPROVE <> :3
-   AND p.MSIG = :4
+   AND p.PUCL_APPROVE <> :2
+   AND p.MSIG = :3
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
+OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: daily_report
 -- LAPORAN HARIAN RCL/PUCL — keluaran tombol ekspor tab "Cetak Surat".
@@ -458,6 +470,30 @@ SELECT COUNT(p.TGL_CETAK_DOKUMEN_PUCL)
      + COUNT(p.KETERANGAN3) AS PROBE
   FROM POOLDATA.TC_PNC_PUCL p
  WHERE 1 = 0
+
+-- name: diagnose_empty
+-- Menjelaskan MENGAPA ketiga tab kosong, dengan angka — bukan dengan dugaan.
+--
+-- # Kenapa ini ada
+--
+-- Ketiga tab yang kosong terbaca persis sama dengan antrean yang memang sepi, dan kedua
+-- keadaan itu menuntut tindakan yang berbeda: yang satu menunggu pekerjaan, yang satu
+-- menunggu perbaikan proses pengisi. Tanpa angka ini, membedakannya menuntut seseorang
+-- membuka SQL*Plus dan menyusun penyaringnya satu per satu.
+--
+-- Setiap kolom menghitung baris yang LOLOS satu penyaring, berdiri sendiri. Penyaring yang
+-- menghasilkan NOL sementara TOTAL tidak nol adalah penyaring yang mengosongkan layar.
+--
+-- Ia tidak menyaring apa pun dan tidak menyentuh satu baris pun di luar penghitungan.
+SELECT COUNT(*)                                                          AS TOTAL_ROWS,
+       COUNT(CASE WHEN p.STATUS_WORK <> :1 THEN 1 END)                   AS BUKAN_SELESAI,
+       COUNT(CASE WHEN p.TGL_CETAK_DOKUMEN_PUCL IS NULL THEN 1 END)      AS BELUM_BERSURAT,
+       COUNT(CASE WHEN p.STATUS_CASE = :2 THEN 1 END)                    AS STATUS_CASE_COCOK,
+       COUNT(CASE WHEN p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL THEN 1 END)  AS SUDAH_BERSURAT,
+       COUNT(CASE WHEN p.PUCL_APPROVE <> :3 THEN 1 END)                  AS MASIH_DI_PUCL,
+       COUNT(CASE WHEN p.MSIG IS NULL THEN 1 END)                        AS BUKAN_MSIG,
+       COUNT(CASE WHEN p.MSIG = :4 THEN 1 END)                           AS JALUR_MSIG
+  FROM POOLDATA.TC_PNC_PUCL p
 
 -- name: check_laporan
 -- Memastikan kedua tabel PEGA yang masih dipakai LAPORAN HARIAN terbaca.

@@ -57,10 +57,27 @@ type Row struct {
 	// penyimpanan memori tidak dapat membuktikan penyaringnya benar-benar dipakai.
 	WorkClass string
 
-	// AssignedOperator adalah pemegang penugasan — `PXASSIGNEDOPERATORID`.
+	// AssignedOperator adalah pemegang penugasan — `ASSIGNED_OPERATOR_ID`.
 	//
-	// Pada antrean bersama, isinya nama AKUN antrean (`RCLPUCL`), bukan nama orang.
+	// Di Pega ia nama AKUN antrean bersama (`RCLPUCL`). Di `TC_PNC_PUCL` yang berjalan ia
+	// berisi NAMA ORANG, dan apa yang SEHARUSNYA diisi masih pertanyaan terbuka. Ia tidak
+	// lagi menyaring apa pun; dipertahankan karena ia bagian dari bentuk barisnya.
 	AssignedOperator string
+
+	// OutsideFlatTable menandai baris yang TIDAK akan ada di `POOLDATA.TC_PNC_PUCL`.
+	//
+	// # Kenapa penanda, bukan disimpulkan dari AssignedOperator
+	//
+	// Karena keanggotaan tabel datar ditentukan PROSES PENGISI, bukan oleh nilai kolom mana
+	// pun. Menyimpulkannya dari nama antrean berarti menghidupkan kembali penyaring yang
+	// baru saja dihapus — dan penyaring itu dihapus justru karena kolomnya tidak menyatakan
+	// antrean.
+	//
+	// Dua baris contoh memakainya, dan keduanya tetap berguna: klaim di antrean LAIN, dan
+	// klaim Personal Accident di luar antrean. Keduanya tidak muncul di tab mana pun karena
+	// memang tidak ada di tabelnya — tetapi yang kedua TETAP ikut laporan harian, yang
+	// membaca tabel Pega dan bukan tabel datar.
+	OutsideFlatTable bool
 
 	// WorkStatus adalah status kerja — `PYSTATUSWORK`.
 	WorkStatus string
@@ -179,7 +196,9 @@ func (s *Store) List(
 		if !matchesWorkClass(candidate) {
 			continue
 		}
-		if !matchesQueue(candidate) {
+		if candidate.OutsideFlatTable {
+			// Bukan di tabel datar, sehingga ketiga tab tidak dapat melihatnya. Ini
+			// menggantikan penyaring antrean yang dulu mengeluarkannya.
 			continue
 		}
 		if !matchesWorkStatus(candidate) {
@@ -444,13 +463,15 @@ func matchesWorkClass(candidate Row) bool {
 	return candidate.WorkClass == inboxrclpucl.WorkClassClaim
 }
 
-// matchesQueue meniru gabungan ke antrean bersama beserta penyaring akunnya.
+// Penyaring antrean bersama DIHAPUS 2026-10-01, mengikuti penyimpanan SQL.
 //
-// Ketiga tab memakai akun yang SAMA (`RCLPUCL`), sehingga penyaring ini tidak bergantung
-// tab sama sekali.
-func matchesQueue(candidate Row) bool {
-	return strings.EqualFold(candidate.AssignedOperator, inboxrclpucl.RCLPUCLWorkbasket)
-}
+// `TC_PNC_PUCL` adalah tabel khusus RCL/PUCL, sehingga penyaring itu tidak lagi menyeleksi
+// apa pun — dan datanya menyimpan NAMA ORANG di kolom itu, bukan nama antrean, sehingga
+// menyaringnya dengan `'RCLPUCL'` mengosongkan ketiga tab.
+//
+// `Row.AssignedOperator` sengaja DIPERTAHANKAN meski tidak lagi menyaring: ia bagian dari
+// bentuk barisnya, dan baris contoh yang kehilangan isian itu akan menyembunyikan bahwa
+// kolomnya ada beserta pertanyaan terbuka tentang apa yang seharusnya diisi.
 
 // matchesWorkStatus meniru `PYSTATUSWORK <> 'Resolved-Completed'`.
 //

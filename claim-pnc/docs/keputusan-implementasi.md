@@ -24280,3 +24280,102 @@ Dicatat supaya tidak dicari lagi.
 | Lima isian sisanya — No Kontrak, Business Unit / Seksi, Email Tertanggung, Tanggal Kelengkapan Dokumen, daftar Tanggal terima Dokumen | Tim Pega |
 | Apakah `daily_report` ikut dipindahkan ke tabel datar (index `IDX02` menunggu keputusan ini) | Work Owner |
 | Apakah tombol tulis dihidupkan (`P-1`) | Work Owner |
+
+---
+
+## 86. Inbox RCL/PUCL — penyaring antrean dihapus, dan kosongnya dijelaskan dengan angka (2026-10-01)
+
+**Laporan Work Owner:** *"datanya kosong, dia ngambil dari table dari CREATE_TABLE_3.SQL
+tolong perbaiki."*
+
+Sumbernya memang sudah benar. Yang mengosongkan layar **dua penyaring**, dan keduanya
+menuntut perlakuan yang berbeda — satu dihapus, satu dipertahankan.
+
+### 86.1 Penyaring antrean DIHAPUS — ia tidak lagi menyeleksi apa pun
+
+Ketiga kueri daftar menyaring `ASSIGNED_OPERATOR_ID = 'RCLPUCL'`. Dibaca 2026-10-01, kolom itu
+berisi **nama orang** (`ESTHERSIMBOLON`), dan `OPERATOR_ID` bernilai sama persis.
+
+Dua alasan menghapusnya, dan yang kedua yang menentukan:
+
+1. **Ia tidak lagi menyeleksi.** Di Pega, `PXASSIGNEDOPERATORID = 'RCLPUCL'` adalah cara
+   MENEMUKAN klaim RCL/PUCL di antara seluruh objek kerja. `TC_PNC_PUCL` adalah tabel KHUSUS
+   RCL/PUCL — setiap barisnya sudah klaim RCL/PUCL menurut proses pengisinya.
+2. **Datanya membuktikan ia salah sasaran.** Kolomnya tidak menyatakan antrean, sehingga
+   membandingkannya dengan literal `'RCLPUCL'` mengosongkan KETIGA tab — tanpa satu pun galat,
+   dan kosongnya terbaca persis seperti antrean yang memang sepi.
+
+**Risiko yang diterima, dan dicatat supaya bukan kejutan:** bila proses pengisi kelak memuat
+baris di luar antrean RCL/PUCL, tidak ada lagi yang menyaringnya di sini. Pemisahan itu
+berpindah menjadi syarat pengisi — sama seperti pemisahan kelas objek kerja, yang sudah
+berpindah ke sana saat `PXOBJCLASS` hilang.
+
+**Penyimpanan memori ikut**, dan modelnya diperbaiki alih-alih disamakan secara dangkal:
+`Row.OutsideFlatTable` menandai baris yang memang TIDAK ada di tabel datar. Menyimpulkannya
+dari nama antrean akan menghidupkan kembali penyaring yang baru saja dihapus — dan penyaring
+itu dihapus justru karena kolomnya tidak menyatakan antrean. Dua baris contoh memakainya, dan
+yang kedua TETAP ikut laporan harian karena laporan itu membaca tabel Pega.
+
+### 86.2 Penyaring kedua DIPERTAHANKAN — ia aturan bisnis, bukan artefak migrasi
+
+Setelah penyaring antrean hilang, ketiga tab **masih kosong**. Baris satu-satunya itu gagal
+setiap tab karena alasan yang berbeda-beda:
+
+| Tab | Penyaring | Nilai baris | Lolos |
+|---|---|---|---|
+| Cetak Surat | `TGL_CETAK_DOKUMEN_PUCL IS NULL` | terisi | tidak |
+| Kelengkapan Dokumen | `MSIG IS NULL` | `MSIG` | tidak |
+| Klaim MSIG | `PUCL_APPROVE <> '1'` | `1` | **tidak** |
+
+Satu-satunya tab yang mungkin memuatnya adalah Klaim MSIG, dan yang menghalanginya
+`PUCL_APPROVE = '1'`.
+
+Work Owner sendiri menjelaskan artinya 2026-09-30: `0` klaim dikirim ke PUCL, `1` PUCL sudah
+mengembalikannya ke Analyst. Baris itu karena itu **memang bukan lagi pekerjaan PUCL**, dan
+tidak terlihat di Pega pula.
+
+**Tidak diubah.** Mengubahnya akan menampilkan klaim yang sudah selesai dari sudut pandang
+PUCL — perubahan aturan bisnis, bukan perbaikan migrasi, dan persis yang `P-5` larang
+dikerjakan sepihak.
+
+### 86.3 Yang dikerjakan sebagai gantinya: kosongnya DIJELASKAN dengan angka
+
+Ketiga tab yang kosong terbaca persis sama dengan antrean yang memang sepi, dan kedua keadaan
+itu menuntut tindakan yang berbeda. `-periksa` kini menghitung berapa baris yang lolos TIAP
+penyaring, satu per satu, dan mencetaknya hanya saat ketiga tab kosong:
+
+```
+Tabelnya BERISI 1 baris, jadi yang mengosongkan layar adalah salah satu penyaring.
+
+  status kerja bukan 'selesai'      1
+  tab 1  surat BELUM dicetak        0
+  tab 1  STATUS_CASE = "0"          1
+  tab 2+3  surat SUDAH dicetak      1
+  tab 2+3  PUCL_APPROVE <> "1"      0     <- inilah yang mengosongkan
+  tab 2  bukan jalur MSIG           0
+  tab 3  jalur MSIG                 1
+```
+
+Tabel yang KOSONG dijawab berbeda — "proses pengisinya belum berjalan di portal ini; yang
+kurang datanya, bukan kuerinya" — karena itu memang keadaan yang lain.
+
+**Kenapa angka, bukan daftar kemungkinan.** Bentuk sebelumnya menyebut dua kemungkinan dan
+menyuruh orang memeriksanya sendiri di SQL*Plus. Sebagian besar yang membaca keluaran itu
+tidak akan melakukannya; angka per penyaring menunjuk langsung.
+
+### 86.4 Apa yang harus diisi supaya baris uji tampil
+
+`-periksa` menyebutkannya sendiri: isikan `PUCL_APPROVE = '0'` pada baris itu, dan ia akan
+muncul di tab **Klaim MSIG** (karena `MSIG = 'MSIG'` dan suratnya sudah dicetak).
+
+Untuk memunculkannya di tab **Cetak Surat**, yang dibutuhkan baris lain: `TGL_CETAK_DOKUMEN_PUCL`
+kosong dan `STATUS_CASE = '0'`.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apa yang SEHARUSNYA diisi `ASSIGNED_OPERATOR_ID`** — nama antrean atau nama orang. Kolomnya kini tidak menyaring apa pun, sehingga jawabannya menentukan apakah penyaringnya perlu kembali dalam bentuk lain | Work Owner + pemilik proses pengisi |
+| Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL` | Tim basis data |
+| Lima isian clipboard sisanya | Tim Pega |
+| Apakah `daily_report` ikut dipindahkan ke tabel datar | Work Owner |

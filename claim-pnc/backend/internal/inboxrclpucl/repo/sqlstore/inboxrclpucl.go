@@ -67,7 +67,6 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 			name: "list_cetak_surat",
 			args: func(p inboxrclpucl.Pagination) []any {
 				return []any{
-					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
 					inboxrclpucl.ExpiryStatusActive,
 					p.Offset(),
@@ -81,7 +80,6 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 			name: "list_kelengkapan_dokumen",
 			args: func(p inboxrclpucl.Pagination) []any {
 				return []any{
-					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
 					inboxrclpucl.PUCLReturnedToAnalyst,
 					p.Offset(),
@@ -98,7 +96,6 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 				// perbedaannya: penanda jalur MSIG. Urutannya disisipkan SEBELUM paginasi,
 				// mengikuti urutan `:n` di berkas .sql.
 				return []any{
-					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
 					inboxrclpucl.PUCLReturnedToAnalyst,
 					inboxrclpucl.MSIGMarker,
@@ -304,6 +301,44 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 				"tab Cetak Surat: %w", err)
 	}
 	return nil
+}
+
+// EmptyDiagnosis menjelaskan mengapa ketiga tab kosong, dengan angka.
+//
+// Setiap isian menghitung baris yang LOLOS satu penyaring, berdiri sendiri. Penyaring yang
+// menghasilkan NOL sementara Total tidak nol adalah yang mengosongkan layar.
+type EmptyDiagnosis struct {
+	Total           int
+	NotCompleted    int
+	WithoutLetter   int
+	CaseStatusMatch int
+	WithLetter      int
+	StillWithPUCL   int
+	NotMSIG         int
+	MSIG            int
+}
+
+// DiagnoseEmpty menghitung berapa baris yang lolos tiap penyaring, satu per satu.
+//
+// Dipanggil `-periksa` HANYA saat ketiga tab kosong. Ketiga tab yang kosong terbaca persis
+// sama dengan antrean yang memang sepi, dan kedua keadaan itu menuntut tindakan yang
+// berbeda — yang satu menunggu pekerjaan, yang satu menunggu perbaikan proses pengisi.
+func (r *Repo) DiagnoseEmpty(ctx context.Context) (EmptyDiagnosis, error) {
+	var d EmptyDiagnosis
+
+	err := r.db.QueryRowContext(ctx, query("diagnose_empty"),
+		inboxrclpucl.WorkStatusCompleted,
+		inboxrclpucl.ExpiryStatusActive,
+		inboxrclpucl.PUCLReturnedToAnalyst,
+		inboxrclpucl.MSIGMarker,
+	).Scan(
+		&d.Total, &d.NotCompleted, &d.WithoutLetter, &d.CaseStatusMatch,
+		&d.WithLetter, &d.StillWithPUCL, &d.NotMSIG, &d.MSIG,
+	)
+	if err != nil {
+		return EmptyDiagnosis{}, fmt.Errorf("menjalankan kueri diagnose_empty: %w", err)
+	}
+	return d, nil
 }
 
 // scanner adalah bentuk minimal yang dibutuhkan pemindai, sehingga keduanya dapat diuji

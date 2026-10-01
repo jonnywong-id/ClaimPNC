@@ -159,7 +159,9 @@
       "Bash(awk '/^CREATE TABLE POOLDATA.TC_PNC_PUCL/,/^\\\\\\);/' claim-pnc/docs/ddl/tc_pnc_pucl.sql)",
       "Bash(gofmt -l ./internal/inboxrclpucl ./cmd/claimpnc)",
       "Bash(timeout 220 go run ./cmd/tmpprobe)",
-      "Bash(gofmt -l internal/inboxrclpucl/repo/sqlstore/query.go internal/inboxrclpucl/repo/memory/memory.go)"
+      "Bash(gofmt -l internal/inboxrclpucl/repo/sqlstore/query.go internal/inboxrclpucl/repo/memory/memory.go)",
+      "Bash(gofmt -w internal/inboxrclpucl/repo/memory/sample.go internal/inboxrclpucl/repo/memory/memory.go)",
+      "Bash(rm -rf cmd/tmpprobe)"
     ],
     "additionalDirectories": [
       "\\tmp"
