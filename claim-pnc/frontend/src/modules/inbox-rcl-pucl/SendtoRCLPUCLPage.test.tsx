@@ -314,15 +314,16 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await userEvent.click(tombol)
 
     expect(tombol).toHaveAttribute('aria-expanded', 'true')
-    // LANGKAHNYA lebih dulu, bukan penolakannya. Petugas yang membuka keterangan ini sedang
-    // mengerjakan klaim; yang dicarinya apa yang harus dilakukan, bukan kenapa tidak bisa.
-    expect(screen.getByText(/Kerjakan tindakan ini di Pega/)).toBeInTheDocument()
+    // LANGKAHNYA lebih dulu, bukan penolakannya, dan ia MENYEBUT nama tombolnya — panelnya
+    // satu untuk seluruh layar, sehingga tanpa nama itu tidak jelas tindakan mana yang
+    // dimaksud.
+    expect(screen.getByText(/di Pega pada klaim/)).toBeInTheDocument()
     expect(screen.getAllByText(REFERENSI).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Salin nomor case' })).toBeEnabled()
 
     // Ditekan lagi, keterangannya tertutup — bukan menumpuk.
     await userEvent.click(tombol)
-    expect(screen.queryByText(/Kerjakan tindakan ini di Pega/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Salin nomor case' })).not.toBeInTheDocument()
   })
 
   it('tidak menggambar tombol "Cetak", yang ternyata nilai parameter dan bukan tombol', async () => {
@@ -386,6 +387,31 @@ describe('layar kerja SendtoRCLPUCL', () => {
       screen.queryByRole('button', { name: 'Kirim Ke Analyst' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tolak Klaim' })).not.toBeInTheDocument()
+  })
+
+  it('membuka paling banyak SATU panel — menekan tombol kedua menutup yang pertama', async () => {
+    // Laporan Work Owner 2026-10-01: menekan dua tombol membuka dua panel sekaligus, dan
+    // karena alasannya sama untuk seluruh tombol, kalimat yang sama tergambar dua kali
+    // berturut-turut.
+    //
+    // Yang dijaga: tombol "Salin nomor case" hanya boleh ada SATU di layar, berapa pun tombol
+    // yang sudah ditekan.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Unggah Dokumen' }))
+    expect(screen.getAllByRole('button', { name: 'Salin nomor case' })).toHaveLength(1)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getAllByRole('button', { name: 'Salin nomor case' })).toHaveLength(1)
+
+    // Berpindah tab menutupnya pula — panel milik tombol yang sudah tidak terlihat tidak
+    // boleh ikut terbawa.
+    await userEvent.click(screen.getByRole('tab', { name: 'Lampiran Surat' }))
+    expect(screen.queryByRole('button', { name: 'Salin nomor case' })).not.toBeInTheDocument()
   })
 
   it('"Lihat Dokumen" BENAR-BENAR berjalan — daftarnya ditarik dan berkasnya bertautan', async () => {

@@ -24917,3 +24917,49 @@ kalimat yang dapat.
 | Idempotensi: tombol ditekan dua kali tidak boleh menerbitkan surat dua kali | Tim Pega |
 | Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` | Tim Pega + Infra |
 | Apakah lampiran yang hanya ada di `PC_DATA_WORKATTACH` perlu ikut terbaca | Work Owner |
+
+---
+
+## 130. Inbox RCL/PUCL — panel tombol: satu untuk seluruh layar, dan alasannya tidak diulang (2026-10-01)
+
+**Laporan Work Owner:** tangkapan layar memperlihatkan **dua panel terbuka sekaligus**, di bawah
+"Unggah Dokumen" dan "Kirim Ke Analyst", masing-masing memuat **tiga baris alasan yang sama
+persis**.
+
+### 130.1 Dua cacat, dan keduanya berasal dari satu salah rancang
+
+Panel dibuat dengan menyimpan keadaan buka-tutup **di dalam tiap tombol**. Akibatnya:
+
+1. **Setiap tombol dapat terbuka sendiri-sendiri**, sehingga menekan empat tombol menghasilkan
+   empat panel bertumpuk.
+2. **Isinya sama untuk setiap tombol**, karena alasannya memang sama — sehingga yang bertumpuk
+   itu kalimat yang identik.
+
+Keduanya bukan dua masalah melainkan satu: keadaan yang berlaku untuk **seluruh layar**
+disimpan **per komponen**.
+
+### 130.2 Yang diperbaiki
+
+**Keadaannya diangkat ke `WorkScreen`** — satu nilai, berisi nama tombol yang panelnya sedang
+terbuka. Membuka satu menutup yang lain dengan sendirinya. Berpindah tab juga menutupnya: panel
+milik tombol yang sudah tidak terlihat tidak boleh ikut terbawa.
+
+Dialirkan lewat **context**, bukan prop. Tombolnya tersebar di dua tab dan empat kelompok;
+mengalirkannya sebagai prop berarti enam perantara yang tidak memakainya sendiri, dan tiap
+perantara adalah satu tempat yang dapat lupa meneruskannya.
+
+**Isinya dipangkas menjadi satu baris**, memuat hanya yang BERBEDA antartombol:
+
+```
+Kerjakan [Kirim Ke Analyst] di Pega pada klaim  PNC-2183  [Salin nomor case]
+```
+
+Ketiga baris alasan dibuang dari sini — ia sudah tertulis **sekali** di kaki layar
+(`tindakan_masih_di_pega`). Menuliskannya lagi di bawah setiap tombol berarti kalimat yang sama
+muncul sampai empat kali pada satu layar.
+
+### 130.3 Yang menahannya supaya tidak kembali
+
+Satu uji baru menuntut tombol **"Salin nomor case" hanya ada SATU** di layar, berapa pun tombol
+yang sudah ditekan — dan **nol** setelah berpindah tab. Jumlah, bukan teks: inilah bentuk cacat
+yang dilaporkan, dan menguji teksnya saja akan lolos untuk dua panel yang isinya kebetulan sama.

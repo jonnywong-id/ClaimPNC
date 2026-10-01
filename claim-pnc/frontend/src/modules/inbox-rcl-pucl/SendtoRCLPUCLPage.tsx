@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
@@ -211,6 +211,10 @@ type WorkTab = 'lampiran' | 'penerimaan'
 function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
   const [tab, setTab] = useState<WorkTab>('lampiran')
 
+  // Nama tombol yang panelnya sedang terbuka. Satu nilai untuk seluruh layar — lihat
+  // WriteActionPanel.
+  const [openAction, setOpenAction] = useState<string | null>(null)
+
   // Tab kedua disembunyikan untuk klaim berstatus Notification, mengikuti syarat pada
   // kontainernya di layar lama. Keputusannya milik SERVER — lihat `types.ts`.
   //
@@ -230,7 +234,14 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
 
   return (
     <>
-      <WorkTabs active={active} onChange={setTab} showsReceipt={showsReceipt} />
+      <WorkTabs
+        active={active}
+        onChange={(next) => {
+          setTab(next)
+          setOpenAction(null)
+        }}
+        showsReceipt={showsReceipt}
+      />
 
       {!showsReceipt && (
         <p className="mt-3 text-xs text-slate-500">
@@ -241,14 +252,44 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
         </p>
       )}
 
-      {active === 'lampiran' ? (
-        <LetterTab detail={detail} />
-      ) : (
-        <ReceiptTab detail={detail} />
-      )}
+      {/*
+        SATU panel keterangan untuk seluruh layar, bukan satu per tombol.
+
+        Sebelumnya tiap tombol menyimpan keadaannya sendiri, sehingga menekan dua tombol
+        membuka DUA panel sekaligus — dan karena alasannya sama untuk semua tombol, kalimat
+        yang sama tergambar dua kali berturut-turut. Work Owner melaporkannya 2026-10-01.
+
+        Keadaannya karena itu diangkat ke sini: membuka satu panel menutup yang lain dengan
+        sendirinya. Berpindah tab juga menutupnya — panel milik tombol yang sudah tidak
+        terlihat tidak boleh ikut terbawa.
+      */}
+      <WriteActionPanel.Provider
+        value={{
+          open: openAction,
+          toggle: (label) => setOpenAction((v) => (v === label ? null : label)),
+        }}
+      >
+        {active === 'lampiran' ? (
+          <LetterTab detail={detail} />
+        ) : (
+          <ReceiptTab detail={detail} />
+        )}
+      </WriteActionPanel.Provider>
     </>
   )
 }
+
+/**
+ * Panel keterangan tindakan yang sedang terbuka — paling banyak SATU di seluruh layar.
+ *
+ * Dipakai lewat context, bukan prop, karena tombolnya tersebar di dua tab dan empat kelompok.
+ * Mengalirkannya sebagai prop berarti enam perantara yang tidak memakainya sendiri, dan tiap
+ * perantara adalah satu tempat yang dapat lupa meneruskannya.
+ */
+const WriteActionPanel = createContext<{
+  open: string | null
+  toggle: (label: string) => void
+}>({ open: null, toggle: () => {} })
 
 /**
  * Kepala tab layar kerja.
@@ -793,7 +834,8 @@ function WriteAction({
   // boleh belum tiba, dan tombolnya tetap digambar.
   caseNumber?: string | undefined
 }) {
-  const [open, setOpen] = useState(false)
+  const panel = useContext(WriteActionPanel)
+  const open = panel.open === label
   const [copied, setCopied] = useState(false)
 
   async function salinNomorCase() {
@@ -815,7 +857,7 @@ function WriteAction({
         tone="kedua"
         aria-expanded={open}
         onClick={() => {
-          setOpen((v) => !v)
+          panel.toggle(label)
           setCopied(false)
         }}
       >
@@ -824,38 +866,28 @@ function WriteAction({
       <p className="mt-1 text-xs text-slate-500">{note}</p>
 
       {/*
-        Susunan keterangannya LANGKAH DULU, alasan belakangan.
+        Panelnya SATU BARIS, dan alasannya TIDAK diulang di sini.
 
-        Bentuk sebelumnya membuka dengan "Belum dapat dijalankan dari sini" lalu menjelaskan
-        sebabnya, dan baru di baris terakhir menyebut apa yang harus dikerjakan. Itu membuat
-        petugas membaca dua kalimat yang tidak dapat ditindaklanjuti sebelum sampai ke satu
-        kalimat yang dapat — padahal yang dibutuhkannya cuma langkahnya. Sebabnya tetap
-        ditulis, tetapi di bawah dan lebih kecil: ia menjawab "kenapa", dan "kenapa" bukan
-        yang dicari orang yang sedang mengerjakan klaim.
+        Bentuk sebelumnya mengulang tiga baris alasan di bawah setiap tombol. Karena alasannya
+        sama untuk seluruh tombol, kalimat yang sama tergambar berkali-kali di satu layar —
+        dan ia sudah tertulis sekali di kaki layar. Yang tersisa di sini hanyalah yang
+        BERBEDA antartombol: nama tindakannya dan nomor case yang perlu disalin.
       */}
       {open && (
-        <div className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-xs font-medium text-slate-800">
-            Kerjakan tindakan ini di Pega — salin nomor case, buka klaimnya di sana, lalu
-            tekan tombol yang sama.
-          </p>
+        <div className="mt-2 flex max-w-md flex-wrap items-center gap-2 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
+          <span className="text-xs text-slate-700">
+            Kerjakan <span className="font-medium">{label}</span> di Pega pada klaim
+          </span>
+          <span className="font-mono text-sm text-slate-900">{caseNumber ?? '—'}</span>
           {caseNumber && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm text-slate-900">{caseNumber}</span>
-              <button
-                type="button"
-                onClick={salinNomorCase}
-                className="rounded-kontrol border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
-              >
-                {copied ? 'Tersalin' : 'Salin nomor case'}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={salinNomorCase}
+              className="rounded-kontrol border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
+            >
+              {copied ? 'Tersalin' : 'Salin nomor case'}
+            </button>
           )}
-          <p className="mt-2 text-[11px] leading-snug text-slate-500">
-            Tombol ini menyimpan perubahan pada klaim. Selama Pega masih melayani produksi,
-            data klaim hanya boleh diubah dari satu sistem — karena itu tindakannya
-            dikerjakan di sana, bukan di sini.
-          </p>
         </div>
       )}
     </div>
