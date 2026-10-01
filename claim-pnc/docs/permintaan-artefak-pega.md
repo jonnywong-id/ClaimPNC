@@ -1949,3 +1949,54 @@ dan dialog "Lihat File" di sistem lama selalu kosong tanpa ada yang melaporkanny
 
 Jawabannya **tidak mengubah kode**: kedua kueri meniru perbandingan yang sama apa adanya
 (`P-5`). Ia hanya menentukan mana dari kedua kalimat di `PlannedDifferences()` yang berlaku.
+
+---
+
+## 11. `InputPerihalRCLPUCL_act` — activity tombol "Pilih" Perihal (2026-10-01)
+
+| | |
+|---|---|
+| **Rule** | `Rule-Obj-Activity` · `InputPerihalRCLPUCL_act` |
+| **Kelas** | `ASM-FW-GCNMFW-Work-PNC` |
+| **Dirujuk dari** | `Section/SectionLampiranSuratPUCL-Section.xml` — tombol "Pilih" di sebelah isian Perihal |
+| **Risiko** | `R-07` (activity dipanggil tetapi tidak diekspor) |
+| **Status** | ✅ **DITERIMA 2026-10-01** — lihat §11.1 |
+
+Ditemukan saat memetakan rangkaian aksi seluruh tombol layar kerja Inbox RCL/PUCL. Seluruh 16
+activity yang dipanggil `PUCLPost` ADA di export; yang satu ini satu-satunya yang tidak.
+
+**Akibatnya terbatas, dan itu dinyatakan supaya prioritasnya tidak dilebihkan:** isian Perihal
+sudah terbaca dari kolom `POOLDATA.TC_PNC_PUCL.PERIHAL`, sehingga yang hilang adalah cara
+MENGUBAH pilihannya — bukan cara menampilkannya. Ia baru menghalangi ketika tombol tulis layar ini
+dihidupkan.
+
+Masternya sendiri sudah diketahui: `POOLDATA.M_PERIHAL_RCLPUCL`, 12 baris, dipasok
+`BrowsePerihalRCLPUCL_RD` yang ADA di export.
+
+### 11.1 Diterima — isinya, dan apa yang ditutupnya
+
+Work Owner menambahkannya 2026-10-01 (57 KB, ruleset `GCNMFW`). **Lima step**, dan tidak satu
+pun menulis ke basis data:
+
+```
+1. Property-Set        Param.pyReportName  := "BrowsePerihalRCLPUCL_RD"
+                       Param.pyReportClass := "ASM-FW-GCNMFW-Int-M_PERIHAL_RCLPUCL"
+2. Call pxShowReport   membuka daftar pilihan sebagai laporan
+3. Property-Set        TempPerihal.ID_PERIHAL / TempPerihal.PERIHAL_NAME
+4. Property-Set        primary.ClaimData.PUCLStatus.Perihal
+                         := pyReportContentPage.pxResults(1).PERIHAL_NAME
+5. Page-Remove         membuang TempPerihal
+```
+
+**Tidak ada `Obj-Save`, `Commit`, maupun `RDB-Save`.** Kata "Commit" yang muncul di berkasnya
+hanyalah `pxCommitDateTime` — metadata kapan rule itu disimpan (2020-03-12), bukan step.
+
+**Dua hal yang ini tutup:**
+
+1. **Tombol "Pilih" adalah BACA**, bukan tulis. Ia bergabung dengan "Lihat Dokumen" sebagai satu
+   dari dua tombol yang tidak terhalang `P-1`. Catatan: ia hanya berguna bersama "Save", yang
+   TETAP terhalang — memilih tanpa dapat menyimpan tidak menyelesaikan apa pun.
+2. **Yang tersimpan pada klaim adalah TEKS perihalnya, bukan kodenya.** `ID_PERIHAL` dibuang
+   bersama halaman sementaranya. Ini membenarkan pembacaan kolom `PERIHAL` apa adanya ke layar
+   (§84.2), dan berarti klaim tidak menyimpan kunci asing ke master — mengubah teks sebuah baris
+   master tidak mengubah klaim yang sudah memakainya.

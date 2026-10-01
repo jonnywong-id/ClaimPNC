@@ -684,6 +684,13 @@ SELECT p.CLAIMID                        AS REFERENCE,
        p.KETERANGAN1                    AS OPENING_NOTE,
        p.KETERANGAN2                    AS BODY_NOTE,
        p.KETERANGAN3                    AS CLOSING_NOTE,
+       -- Kedua kolom berikut TIDAK digambar sebagai isian. Keduanya menentukan TOMBOL mana
+       -- yang muncul: `MSIG` memilih antara "Download Dokumen" dan "Tutup Klaim",
+       -- `GROUPPANEL` memilih antara "Kirim Ke Analyst" (PA) dan "Kirim ke PIC Teknik"
+       -- (Travel). Syaratnya dibaca dari `pyUserData/pyCondition` tiap sel `pxButton` pada
+       -- kedua section, dan ditegakkan di domain — lihat ClaimDetail.Buttons.
+       p.MSIG                           AS MSIG_FLAG,
+       p.GROUPPANEL                     AS GROUP_PANEL,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
                INNER JOIN POOLDATA.T_CLAIM_PNC c

@@ -227,6 +227,13 @@ type ClaimDetailResponse struct {
 	// hidup di dua tempat yang dapat berselisih tanpa ketahuan (`D-15`).
 	ShowsDocumentReceipt bool `json:"tab_penerimaan_dokumen_tampil"`
 
+	// Buttons menyatakan TOMBOL mana yang digambar untuk klaim ini.
+	//
+	// Alasannya sama dengan ShowsDocumentReceipt: syaratnya memakai nilai milik sistem lama
+	// (`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan memeriksanya di React berarti
+	// aturan bisnis hidup di dua tempat.
+	Buttons ScreenButtonsDTO `json:"tombol"`
+
 	// WriteBlocked menyatakan layar ini di Pega adalah layar TULIS.
 	//
 	// Layar memakainya untuk menjelaskan mengapa tidak ada satu pun tombol simpan di sini,
@@ -234,6 +241,35 @@ type ClaimDetailResponse struct {
 	WriteBlocked bool `json:"tindakan_masih_di_pega"`
 
 	Portal string `json:"portal"`
+}
+
+// ScreenButtonsDTO menyatakan tombol mana yang digambar.
+//
+// Nama isiannya memakai NAMA TOMBOL seperti yang terbaca pengguna, bukan nama kondisinya.
+// Orang yang membandingkan tanggapan ini dengan layar Pega berdampingan mencari nama yang
+// tertulis di tombolnya.
+type ScreenButtonsDTO struct {
+	DownloadDocument bool `json:"download_dokumen"`
+	CloseClaim       bool `json:"tutup_klaim"`
+	UploadDocument   bool `json:"unggah_dokumen"`
+	ViewDocument     bool `json:"lihat_dokumen"`
+	Save             bool `json:"save"`
+	RejectClaim      bool `json:"tolak_klaim"`
+	SendToAnalyst    bool `json:"kirim_ke_analyst"`
+	SendToPICTeknik  bool `json:"kirim_ke_pic_teknik"`
+}
+
+func screenButtonsOf(b inboxrclpucl.ScreenButtons) ScreenButtonsDTO {
+	return ScreenButtonsDTO{
+		DownloadDocument: b.DownloadDocument,
+		CloseClaim:       b.CloseClaim,
+		UploadDocument:   b.UploadDocument,
+		ViewDocument:     b.ViewDocument,
+		Save:             b.Save,
+		RejectClaim:      b.RejectClaim,
+		SendToAnalyst:    b.SendToAnalyst,
+		SendToPICTeknik:  b.SendToPICTeknik,
+	}
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -411,6 +447,10 @@ func toClaimDetailResponse(
 		// Syarat tab kedua ditegakkan di sini, bukan di layar. Lihat
 		// `inboxrclpucl.ClaimDetail.ShowsDocumentReceipt`.
 		ShowsDocumentReceipt: detail.ShowsDocumentReceipt(),
+
+		// Susunan tombolnya pun ditegakkan di domain. Lihat
+		// `inboxrclpucl.ClaimDetail.Buttons`.
+		Buttons: screenButtonsOf(detail.Buttons()),
 
 		// Selalu true selama masa paralel. Ia dikirim sebagai isian, bukan ditulis tetap
 		// di layar, supaya ia dapat berubah di satu tempat begitu kepemilikan tabelnya

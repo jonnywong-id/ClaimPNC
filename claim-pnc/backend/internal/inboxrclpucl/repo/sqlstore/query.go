@@ -68,7 +68,11 @@ var reportColumns = []string{
 	"ANALYST_NOTE", "LETTER_PRINTED_AT", "TRACK_CODE", "CLAIM_STATUS", "TOTAL_ROWS",
 }
 
-// detailColumns adalah ke-9 alias yang dikembalikan kueri layar kerja.
+// detailColumns adalah alias yang dikembalikan kueri layar kerja.
+//
+// Jumlahnya SENGAJA tidak ditulis di sini. Ia sudah dua kali bertambah — keempat isian surat
+// 2026-10-01, lalu kedua kolom penentu tombol pada hari yang sama — dan angka di komentar
+// tidak ikut berubah bersamanya. Yang menjaga kelengkapannya adalah uji, bukan kalimat ini.
 //
 // Ia BERBEDA dari listColumns, dan perbedaannya bukan kelalaian — ia mengikuti SECTION,
 // bukan grid:
@@ -90,6 +94,10 @@ var detailColumns = []string{
 	// `TC_PNC_PUCL` yang berjalan — meski tidak ada di `Database/CREATE_TABLE_3.SQL`.
 	// Sebelumnya keempatnya digambar bertanda "di clipboard Pega".
 	"SUBJECT", "OPENING_NOTE", "BODY_NOTE", "CLOSING_NOTE",
+
+	// Kedua kolom ini TIDAK digambar sebagai isian — keduanya menentukan TOMBOL mana yang
+	// muncul. Ditambahkan 2026-10-01; lihat ClaimDetail.Buttons.
+	"MSIG_FLAG", "GROUP_PANEL",
 
 	"FIRST_OBJECT_NAME", "FIRST_PROPOSE_VALUE",
 }

@@ -428,28 +428,66 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "Layar ini MEMBACA saja. Cetak Surat dan Reminder PUCL dikerjakan di Pega, " +
-			"dan akan tetap begitu sampai Pega dimatikan.",
+		Summary: "Layar ini MEMBACA saja. Unggah Dokumen, Save, Tolak Klaim, dan kedua " +
+			"tombol Kirim dikerjakan di Pega, dan akan tetap begitu sampai Pega dimatikan.",
 
-		Detail: "Ini keputusan, bukan pekerjaan yang tertunda. Kelima tindakannya menulis ke " +
+		Detail: "Ini keputusan, bukan pekerjaan yang tertunda. Seluruh tindakannya menulis ke " +
 			"tabel objek kerja dan tabel penugasan, dan kedua tabel itu dibaca ratusan " +
 			"aturan Pega sehingga kepemilikannya tidak berpindah satu layar demi satu layar. " +
 			"Tombolnya tetap digambar supaya keberadaannya terlihat, dan penekanannya " +
-			"menjawab alasan — bukan halaman kosong. Kunci klaim yang dibutuhkan ditampilkan " +
+			"menjawab alasan — bukan halaman kosong. Nomor case yang dibutuhkan ditampilkan " +
 			"di layar kerja supaya tidak perlu dicari.",
 	},
 
 	{
-		Summary: "Sembilan isian di layar kerja tidak dapat diisi dari sini, dan itu bukan " +
+		Summary: "Tombol yang muncul BERBEDA-BEDA menurut jalur klaim dan lini bisnisnya, " +
+			"persis seperti di Pega.",
+
+		Detail: "Tab Lampiran Surat menampilkan \"Download Dokumen\" untuk klaim non-MSIG, " +
+			"dan \"Tutup Klaim\" untuk klaim MSIG berstatus Notification — tidak pernah " +
+			"keduanya, dan untuk klaim MSIG di luar Notification tidak satu pun. Tab " +
+			"Penerimaan Dokumen selalu menampilkan Unggah Dokumen, Lihat Dokumen, dan Save; " +
+			"\"Tolak Klaim\" hanya pada jalur RCL; \"Kirim Ke Analyst\" hanya pada jalur PUCL " +
+			"lini PA, dan \"Kirim ke PIC Teknik\" hanya pada jalur PUCL lini Travel. Jadi " +
+			"tombol yang tidak Anda lihat belum tentu hilang — ia mungkin memang bukan " +
+			"tindakan untuk klaim itu.",
+	},
+
+	{
+		Summary: "Tombol \"Download Dokumen\" tidak mengunduh apa pun — ia menandai surat " +
+			"sudah dicetak, dan klaimnya BERPINDAH tab.",
+
+		Detail: "Namanya dibawa apa adanya dari layar lama, termasuk ketika menyesatkan. Di " +
+			"Pega tombol itu menjalankan aksi bertipe \"cetak\" yang mengisi tanggal cetak " +
+			"dokumen — kolom yang menentukan klaim berada di tab \"Cetak Surat\" atau sudah " +
+			"pindah ke \"Kelengkapan Dokumen\". Jadi ia tindakan yang MENGUBAH data, bukan " +
+			"tombol lihat-lihat, dan itulah sebabnya ia ikut mati di sini. Keterangan di " +
+			"bawah tombolnya menyebut akibat ini supaya tidak ditekan dengan anggapan aman.",
+	},
+
+	{
+		Summary: "Tombol \"Reminder PUCL\" tidak ada di layar kerja, dan di Pega pun " +
+			"sebenarnya tidak pernah muncul.",
+
+		Detail: "Syarat tampilnya di layar lama ditulis \"1==2\" — syarat yang tidak pernah " +
+			"benar. Ia tombol yang dimatikan dengan cara dikarang syaratnya alih-alih " +
+			"dihapus. Yang ditiru adalah perilakunya yang nyata, yaitu tidak muncul; " +
+			"menggambarnya di sini akan menawarkan tindakan yang tidak pernah tersedia. Hal " +
+			"yang sama berlaku pada satu tombol \"Tolak Klaim\" kedua di layar lama.",
+	},
+
+	{
+		Summary: "Lima isian di layar kerja tidak dapat diisi dari sini, dan itu bukan " +
 			"data yang kosong.",
 
-		Detail: "Kesembilannya adalah properti clipboard pada objek kerja Pega — No Kontrak, " +
-			"Business Unit / Seksi, Perihal, ketiga Keterangan, Email Tertanggung, Tanggal " +
-			"Kelengkapan Dokumen, dan daftar Tanggal terima Dokumen. Ia tidak diekspos " +
-			"sebagai kolom tabel, sehingga tidak dapat dibaca dengan kueri biasa selama " +
-			"objek kerjanya masih dimiliki Pega. Isian itu tetap digambar di tempatnya, " +
-			"bertanda, supaya ketiadaannya terlihat alih-alih tersamar sebagai isian yang " +
-			"memang belum diisi.",
+		Detail: "Kelimanya adalah properti clipboard pada objek kerja Pega — No Kontrak, " +
+			"Business Unit / Seksi, Email Tertanggung, Tanggal Kelengkapan Dokumen, dan " +
+			"daftar Tanggal terima Dokumen. Ia tidak diekspos sebagai kolom tabel, sehingga " +
+			"tidak dapat dibaca dengan kueri biasa selama objek kerjanya masih dimiliki Pega. " +
+			"Isian itu tetap digambar di tempatnya, bertanda, supaya ketiadaannya terlihat " +
+			"alih-alih tersamar sebagai isian yang memang belum diisi. Daftarnya semula " +
+			"sembilan; empat di antaranya — Perihal dan ketiga Keterangan — ternyata SUDAH " +
+			"ada sebagai kolom dan kini terbaca.",
 	},
 
 	{

@@ -161,7 +161,10 @@
       "Bash(timeout 220 go run ./cmd/tmpprobe)",
       "Bash(gofmt -l internal/inboxrclpucl/repo/sqlstore/query.go internal/inboxrclpucl/repo/memory/memory.go)",
       "Bash(gofmt -w internal/inboxrclpucl/repo/memory/sample.go internal/inboxrclpucl/repo/memory/memory.go)",
-      "Bash(rm -rf cmd/tmpprobe)"
+      "Bash(rm -rf cmd/tmpprobe)",
+      "Bash(grep -oiE \"download[^<\\\\\"]{0,30}|tutup[^<\\\\\"]{0,30}|cetak[^<\\\\\"]{0,30}\" \"Section/SectionLampiranSuratPUCL-Section.xml\")",
+      "Bash(grep -oE \"^\\\\s{2,}[A-Z_0-9]+\" claim-pnc/docs/ddl/tc_pnc_pucl.sql)",
+      "Bash(awk '{print $NF, $5}')"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -301,9 +301,38 @@ function WorkTabs({
   )
 }
 
-/** Bagian pertama — `SectionLampiranSuratPUCL`. */
+/**
+ * Susunan tombol ketika detailnya belum tiba: TIDAK ADA satu pun.
+ *
+ * Bukan "semuanya" — menggambar tombol lebih dulu lalu menghilangkannya begitu data tiba
+ * membuat layar berkedip, dan sekejap menyatakan tindakan yang ternyata tidak tersedia untuk
+ * klaim itu.
+ */
+const NO_BUTTONS: ClaimDetailResponse['tombol'] = {
+  download_dokumen: false,
+  tutup_klaim: false,
+  unggah_dokumen: false,
+  lihat_dokumen: false,
+  save: false,
+  tolak_klaim: false,
+  kirim_ke_analyst: false,
+  kirim_ke_pic_teknik: false,
+}
+
+/**
+ * Bagian pertama — `SectionLampiranSuratPUCL`.
+ *
+ * # Tombolnya DUA, dan sempat salah satu pun tidak benar
+ *
+ * Versi sebelumnya menggambar satu tombol bernama **"Cetak"**. Nama itu tidak ada di
+ * section-nya: `"cetak"` di sana adalah NILAI PARAMETER (`<pyName>tipe</pyName>`), bukan
+ * caption tombol. Work Owner melaporkannya 2026-10-01, dan penelusuran membenarkan laporan
+ * itu — ketiga sel `pxButton` section ini ber-caption **Pilih** (pemilih Perihal),
+ * **Download Dokumen**, dan **Tutup Klaim**.
+ */
 function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
   const letter = detail?.lampiran_surat
+  const buttons = detail?.tombol ?? NO_BUTTONS
 
   return (
     <>
@@ -351,13 +380,25 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
       />
 
       {/*
-        "Perihal" bukan isian bebas melainkan PILIHAN dari master.
+        "Perihal" bukan isian bebas melainkan PILIHAN dari master
+        `POOLDATA.M_PERIHAL_RCLPUCL` — 12 baris, dibaca langsung 2026-09-30.
 
-        Sel-nya `pxAutoComplete` ber-sumber `.ID_PERIHAL`/`.PERIHAL_NAME`, dan masternya
-        nyata: `POOLDATA.M_PERIHAL_RCLPUCL`, 12 baris, dibaca langsung 2026-09-30. Yang tidak
-        terbaca adalah pilihan MANA yang tersimpan untuk klaim ini — itu ada di clipboard.
-        Dinyatakan supaya "di clipboard Pega" pada isian itu tidak terbaca sebagai isian yang
-        hilang tanpa asal-usul.
+        # Yang disimpan adalah TEKSNYA, bukan kodenya — dan itu kini terbukti
+
+        `Activity/InputPerihalRCLPUCL_act-Act.xml` diterima 2026-10-01 dan menetapkan:
+
+            primary.ClaimData.PUCLStatus.Perihal := pyReportContentPage.pxResults(1).PERIHAL_NAME
+
+        `ID_PERIHAL` hanya mampir ke halaman sementara `TempPerihal`, lalu dibuang
+        `Page-Remove` di langkah terakhir. Jadi klaim TIDAK menyimpan kunci masternya —
+        hanya teks yang terpilih saat itu.
+
+        Dua akibat yang perlu diingat saat master Perihal kelak dibangun: tidak ada kunci
+        asing yang dapat ditelusuri balik, dan mengubah teks sebuah baris master TIDAK
+        mengubah klaim yang sudah memakainya. Keduanya perilaku sistem lama apa adanya.
+
+        Kalimat di bawah ini sebelumnya menyebut Perihal "ada di clipboard". Itu sudah tidak
+        benar sejak kolom `PERIHAL` ditemukan (§84.2), dan sudah diperbaiki.
       */}
       <p className="mt-2 text-xs text-slate-500">
         <span className="font-medium">Perihal</span> dipilih dari daftar baku berisi 12
@@ -379,13 +420,38 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
         </p>
       )}
 
-      <WriteAction
-        label="Cetak"
-        note={
-          'Mengisi tanggal cetak surat, sehingga klaimnya BERPINDAH dari tab "Cetak Surat" ' +
-          'ke tab "Kelengkapan Dokumen".'
-        }
-      />
+      {/*
+        KEDUA tombol ini saling meniadakan — yang satu jalur non-MSIG, yang lain jalur MSIG
+        ber-Notification — sehingga satu klaim tidak pernah menampilkan keduanya. Syaratnya
+        dihitung di server; layar hanya menggambar apa yang dikirimkannya.
+      */}
+      <div className="flex flex-wrap gap-3">
+        {/*
+          NAMANYA MENYESATKAN, dan namanya tetap dibawa apa adanya (`D-13`).
+
+          Ia tidak mengunduh apa pun. Rangkaian aksinya `InsertMitraPA(tipe="cetak")` lalu
+          `PUCLPost`, dan `PUCLPost` mengisi `TanggalCetakDokumenPUCL` — kolom yang
+          MEMINDAHKAN klaim dari tab "Cetak Surat" ke tab "Kelengkapan Dokumen".
+
+          Keterangannya menyebut akibat itu dengan tegas. Petugas yang membaca "Download"
+          akan mengira tombolnya aman ditekan untuk melihat-lihat.
+        */}
+        {buttons.download_dokumen && (
+          <WriteAction
+            label="Download Dokumen"
+            note={
+              'Meski namanya "Download", tombol ini MENANDAI suratnya sudah dicetak — ' +
+              'klaimnya berpindah dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
+            }
+          />
+        )}
+        {buttons.tutup_klaim && (
+          <WriteAction
+            label="Tutup Klaim"
+            note="Menutup klaim MSIG — satu-satunya tindakan yang tersedia pada jalur ini."
+          />
+        )}
+      </div>
 
       <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
     </>
@@ -395,17 +461,33 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
 /**
  * Bagian kedua — `SectionPenerimaanDokumenPUCL`.
  *
- * # Keempat tombolnya diambil dari layar Pega, bukan dikarang
+ * # Section-nya memuat TUJUH tombol, bukan empat
  *
- * Versi sebelumnya menggambar dua tombol, dan salah satunya bernama **"Kirim ke PIC
- * Teknik"** — nama yang tidak ada di layar mana pun. Yang benar **"Kirim Ke Analyst"**, dan
- * itu bukan perbedaan kata: PIC Teknik dan Analyst adalah dua peran yang berbeda, sehingga
- * tombol itu menyatakan klaimnya diteruskan ke orang yang salah.
+ * Empat yang digambar sebelumnya benar namanya, tetapi tiga di antara tujuh belum ada, dan
+ * satu digambar TANPA SYARAT padahal syaratnya menentukan siapa yang menerima klaimnya:
  *
- * Ia sejalan dengan isian di atasnya, yang memang berjudul "Catatan untuk Analyst".
+ * | Tombol               | Syarat `pyCondition`                 |
+ * |----------------------|--------------------------------------|
+ * | Unggah Dokumen       | `ALWAYS`                             |
+ * | Lihat Dokumen        | `ALWAYS`                             |
+ * | Save                 | `ALWAYS`                             |
+ * | Tolak Klaim          | `RCL_PUCL = 1`                       |
+ * | Kirim Ke Analyst     | `RCL_PUCL = 2 && IsPA`               |
+ * | Kirim ke PIC Teknik  | `RCL_PUCL = 2 && IsTravel`           |
+ * | Reminder PUCL        | `1==2` — **tidak pernah digambar**   |
+ *
+ * # "Reminder PUCL" sengaja TIDAK digambar
+ *
+ * Syaratnya `1==2`, yang tidak pernah benar. Ia tombol yang dimatikan dengan cara dikarang
+ * syaratnya alih-alih dihapus — jejak yang lazim pada sistem berumur panjang. Perilaku yang
+ * ditiru adalah perilakunya yang NYATA: tidak muncul. Menggambarnya "supaya lengkap" akan
+ * menambah tindakan yang tidak pernah ada di layar lama (`P-5`).
+ *
+ * Hal yang sama berlaku pada sel "Tolak Klaim" KEDUA, yang syaratnya juga `1==2`.
  */
 function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
   const receipt = detail?.penerimaan_dokumen
+  const buttons = detail?.tombol ?? NO_BUTTONS
 
   return (
     <>
@@ -425,23 +507,46 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
         ]}
       />
 
+      {/* Ketiganya `pyVisible ALWAYS` — selalu digambar, apa pun jalur dan lini bisnisnya. */}
       <div className="flex flex-wrap gap-3">
-        <WriteAction label="Unggah Dokumen" note="Melampirkan berkas dokumen ke klaim." />
-        <WriteAction label="Lihat Dokumen" note="Membuka dokumen yang sudah dilampirkan." />
+        {buttons.unggah_dokumen && (
+          <WriteAction label="Unggah Dokumen" note="Melampirkan berkas dokumen ke klaim." />
+        )}
+        {buttons.lihat_dokumen && (
+          <WriteAction label="Lihat Dokumen" note="Membuka dokumen yang sudah dilampirkan." />
+        )}
+        {buttons.save && (
+          <WriteAction label="Save" note="Menyimpan isian tanpa meneruskan klaimnya." />
+        )}
       </div>
 
+      {/*
+        Ketiga tombol berikut BERSYARAT, dan paling banyak SATU yang muncul: "Tolak Klaim"
+        hanya di jalur RCL, dan kedua tombol "Kirim" hanya di jalur PUCL — yang satu untuk PA,
+        yang lain untuk Travel. Klaim PUCL pada lini selain keduanya tidak menampilkan satu pun.
+      */}
       <div className="flex flex-wrap gap-3">
-        <WriteAction
-          label="Save"
-          note="Menyimpan isian tanpa meneruskan klaimnya."
-        />
-        <WriteAction
-          label="Kirim Ke Analyst"
-          note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
-        />
+        {buttons.tolak_klaim && (
+          <WriteAction
+            label="Tolak Klaim"
+            note="Menolak klaim. Hanya tersedia pada jalur RCL."
+          />
+        )}
+        {buttons.kirim_ke_analyst && (
+          <WriteAction
+            label="Kirim Ke Analyst"
+            note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
+          />
+        )}
+        {buttons.kirim_ke_pic_teknik && (
+          <WriteAction
+            label="Kirim ke PIC Teknik"
+            note="Meneruskan klaim ke PIC Teknik. Jalur PUCL pada lini Travel."
+          />
+        )}
       </div>
 
-      <ScreenFooter detail={detail} actionCount="Keempat tindakan di atas" />
+      <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
     </>
   )
 }

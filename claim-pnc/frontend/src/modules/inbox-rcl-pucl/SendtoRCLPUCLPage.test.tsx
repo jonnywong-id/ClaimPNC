@@ -70,21 +70,50 @@ const DETAIL = {
   penerimaan_dokumen: { komentar_pucl: 'Menunggu kelengkapan dari cabang.' },
   isian_belum_terpetakan: ['No Kontrak', 'Perihal', 'Email Tertanggung'],
   tab_penerimaan_dokumen_tampil: true,
+  /*
+    Susunan tombol KLAIM RCL NON-MSIG, dihitung server dari `pyCondition` tiap `pxButton`:
+    "Download Dokumen" karena bukan jalur MSIG, ketiga tombol `ALWAYS`, dan "Tolak Klaim"
+    karena jalurnya RCL. Kedua tombol "Kirim" milik jalur PUCL, sehingga keduanya mati di
+    sini.
+  */
+  tombol: {
+    download_dokumen: true,
+    tutup_klaim: false,
+    unggah_dokumen: true,
+    lihat_dokumen: true,
+    save: true,
+    tolak_klaim: true,
+    kirim_ke_analyst: false,
+    kirim_ke_pic_teknik: false,
+  },
   tindakan_masih_di_pega: true,
   portal: 'ASM',
 }
 
 /**
- * Klaim berstatus Notification — kode jalur `3`.
+ * Klaim MSIG berstatus Notification — kode jalur `3`.
  *
  * Layar lama menyembunyikan tab "Penerimaan Dokumen" untuk klaim seperti ini, lewat
  * `pyContainerVisibleWhen .ClaimData.PUCLStatus.RCL_PUCL != 3` pada kontainer tab kedua.
  * Keputusannya diambil SERVER; baris contoh ini membawanya apa adanya.
+ *
+ * Ia dibuat MSIG dengan sengaja, karena itulah keadaan yang dilaporkan Work Owner
+ * 2026-09-30: klaim MSIG hanya menampilkan Lampiran Surat. Akibatnya pada tombol: "Download
+ * Dokumen" MATI (jalur MSIG) dan "Tutup Klaim" HIDUP — satu-satunya tindakan yang tersisa.
  */
 const DETAIL_NOTIFICATION = {
   ...DETAIL,
   lampiran_surat: { ...DETAIL.lampiran_surat, rcl_pucl: 'Notification', kode_rcl_pucl: '3' },
   tab_penerimaan_dokumen_tampil: false,
+  tombol: {
+    ...DETAIL.tombol,
+    download_dokumen: false,
+    tutup_klaim: true,
+    unggah_dokumen: false,
+    lihat_dokumen: false,
+    save: false,
+    tolak_klaim: false,
+  },
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -102,9 +131,9 @@ function stubFetch(answer: (url: string) => Response) {
   })
 }
 
-function stubDefaultFetch() {
+function stubDefaultFetch(detail: unknown = DETAIL) {
   stubFetch((url) => {
-    if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+    if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, detail)
     return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
   })
 }
@@ -233,28 +262,95 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.getByRole('columnheader', { name: 'Keterangan' })).toBeInTheDocument()
   })
 
-  it('menggambar kelima tombol tindakan dengan nama layar Pega, seluruhnya mati', async () => {
-    // Kelimanya MENULIS, dan tabelnya masih dimiliki Pega selama masa paralel (`P-1`).
+  it('menggambar tombol dengan nama layar Pega, seluruhnya mati', async () => {
+    // Seluruhnya MENULIS, dan tabelnya masih dimiliki Pega selama masa paralel (`P-1`).
     // Tombol yang dihilangkan menyembunyikan bahwa tindakannya ada; tombol yang hidup akan
     // menulis ke tabel yang bukan miliknya.
     //
-    // NAMANYA dijaga, bukan hanya jumlahnya. Versi sebelumnya menamai satu tombol "Kirim ke
-    // PIC Teknik" — nama yang tidak ada di layar mana pun. Yang benar "Kirim Ke Analyst",
-    // dan itu bukan beda kata: PIC Teknik dan Analyst dua peran yang berbeda, sehingga
-    // tombol itu menyatakan klaimnya diteruskan ke orang yang salah.
+    // NAMANYA dijaga, bukan hanya jumlahnya — dan nama yang dijaga di sini sudah dua kali
+    // keliru. Lihat uji berikutnya untuk "Cetak", yang ternyata nilai parameter.
     stubDefaultFetch()
     renderWorkScreen()
 
-    expect(await screen.findByRole('button', { name: 'Cetak' })).toBeDisabled()
+    expect(
+      await screen.findByRole('button', { name: 'Download Dokumen' }),
+    ).toBeDisabled()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
-    for (const label of ['Unggah Dokumen', 'Lihat Dokumen', 'Save', 'Kirim Ke Analyst']) {
+    for (const label of ['Unggah Dokumen', 'Lihat Dokumen', 'Save', 'Tolak Klaim']) {
       expect(screen.getByRole('button', { name: label })).toBeDisabled()
     }
+  })
 
+  it('tidak menggambar tombol "Cetak", yang ternyata nilai parameter dan bukan tombol', async () => {
+    // `Section/SectionLampiranSuratPUCL-Section.xml` memuat `"cetak"` sebagai NILAI
+    // parameter (`<pyName>tipe</pyName>`), bukan caption. Ketiga sel `pxButton`-nya
+    // ber-caption "Pilih", "Download Dokumen", dan "Tutup Klaim".
+    //
+    // Work Owner melaporkannya 2026-10-01. Uji ini menahannya supaya nama itu tidak kembali
+    // lewat penyuntingan berikutnya.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    expect(screen.queryByRole('button', { name: 'Cetak' })).not.toBeInTheDocument()
+  })
+
+  it('menyatakan bahwa "Download Dokumen" MENGUBAH data, bukan mengunduh', async () => {
+    // Rangkaian aksinya di Pega: `InsertMitraPA(tipe="cetak")` lalu `PUCLPost`, dan
+    // `PUCLPost` mengisi `TanggalCetakDokumenPUCL` — kolom yang memindahkan klaim antar tab.
+    //
+    // Keterangan versi pertama berbunyi "Mengunduh surat RCL/PUCL klaim ini", dan itu
+    // SALAH dengan cara yang berbahaya: petugas akan mengira tombolnya aman ditekan untuk
+    // melihat-lihat. Namanya tetap dibawa apa adanya (`D-13`); yang diperbaiki keterangannya.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+
+    expect(screen.queryByText(/Mengunduh surat/)).not.toBeInTheDocument()
+    expect(screen.getByText(/MENANDAI suratnya sudah dicetak/)).toBeInTheDocument()
+  })
+
+  it('memilih tombol kirim menurut lini bisnis, bukan menggambar keduanya', async () => {
+    // `RCL_PUCL = 2 && IsPA` versus `RCL_PUCL = 2 && IsTravel`. Analyst dan PIC Teknik dua
+    // peran berbeda, sehingga menggambar keduanya menawarkan tindakan yang meneruskan klaim
+    // kepada orang yang salah.
+    //
+    // Klaim contoh di sini PUCL pada lini Travel, sehingga yang benar adalah PIC Teknik.
+    stubDefaultFetch({
+      ...DETAIL,
+      lampiran_surat: { ...DETAIL.lampiran_surat, rcl_pucl: 'PUCL', kode_rcl_pucl: '2' },
+      tombol: {
+        ...DETAIL.tombol,
+        tolak_klaim: false,
+        kirim_ke_analyst: false,
+        kirim_ke_pic_teknik: true,
+      },
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    expect(screen.getByRole('button', { name: 'Kirim ke PIC Teknik' })).toBeDisabled()
     expect(
-      screen.queryByRole('button', { name: 'Kirim ke PIC Teknik' }),
+      screen.queryByRole('button', { name: 'Kirim Ke Analyst' }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tolak Klaim' })).not.toBeInTheDocument()
+  })
+
+  it('tidak pernah menggambar "Reminder PUCL", yang syaratnya 1==2', async () => {
+    // Tombol yang dimatikan dengan cara dikarang syaratnya alih-alih dihapus. Perilakunya
+    // yang NYATA di sistem lama adalah tidak muncul, dan itulah yang ditiru — menggambarnya
+    // "supaya lengkap" menambah tindakan yang tidak pernah ada di layar lama (`P-5`).
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    expect(screen.queryByRole('button', { name: 'Reminder PUCL' })).not.toBeInTheDocument()
   })
 
   it('menjelaskan UP yang berisi nama objek, alih-alih membiarkannya terbaca sebagai kerusakan', async () => {
@@ -326,7 +422,13 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // …dan layarnya tetap tergambar, kosong — KEDUA tabnya, bukan hanya yang terbuka.
     expect(screen.getByRole('tab', { name: 'Lampiran Surat' })).toBeInTheDocument()
     expect(screen.getByText('Status RCL / PUCL / MSIG')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Cetak' })).toBeDisabled()
+
+    // TIDAK ADA satu pun tombol, dan itu disengaja: tombol mana yang berlaku ditentukan
+    // jalur dan lini bisnis klaimnya, dan keduanya justru yang tidak terbaca di sini.
+    // Menggambar seluruhnya "supaya terlihat lengkap" akan menawarkan tindakan yang belum
+    // tentu tersedia untuk klaim ini.
+    expect(screen.queryByRole('button', { name: 'Download Dokumen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tutup Klaim' })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
     expect(screen.getByText('Catatan untuk Analyst')).toBeInTheDocument()

@@ -24379,3 +24379,313 @@ kosong dan `STATUS_CASE = '0'`.
 | Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL` | Tim basis data |
 | Lima isian clipboard sisanya | Tim Pega |
 | Apakah `daily_report` ikut dipindahkan ke tabel datar | Work Owner |
+
+---
+
+## 125. Inbox RCL/PUCL — tombolnya dipetakan ulang dari section, dan syarat tampilnya ditegakkan (2026-10-01)
+
+**Laporan Work Owner:** *"di section SectionLampiranSuratPUCL hanya ada tombol download dokumen
+dan Tutup klaim analisa lagi."*
+
+Laporannya **benar**, dan yang digambar sebelumnya salah dengan cara yang tidak terduga.
+
+### 125.1 "Cetak" bukan nama tombol — ia nilai parameter
+
+Layar kerja menggambar satu tombol bernama **"Cetak"** pada Lampiran Surat. Nama itu tidak ada
+di section-nya. Yang ada:
+
+```xml
+<pyName>tipe</pyName>
+<pyValue>"cetak"</pyValue>
+```
+
+Jadi `"cetak"` adalah **nilai parameter** yang dikirim ke sebuah aksi, bukan caption. Ketiga sel
+`pxButton` section itu ber-caption — dibaca dari `pyLabelPreview` masing-masing sel:
+
+| # | Caption | `pyAction` |
+|---|---|---|
+| 1 | **Pilih** | `refresh` — pemilih Perihal, bersebelahan dengan isiannya |
+| 2 | **Download Dokumen** | `runActivity` |
+| 3 | **Tutup Klaim** | `localAction PreventRejectClaim` |
+
+"Pilih" bukan tombol tindakan melainkan pemilih di sebelah isian Perihal, sehingga yang tersisa
+sebagai tindakan memang **dua**, persis seperti laporan Work Owner.
+
+**Kenapa kekeliruan ini lolos.** Nama "Cetak" masuk akal: tab pertama grid bernama "Cetak Surat",
+dan mengisi tanggal cetak memang memindahkan klaim antar tab. Ia **disimpulkan dari nama tab**,
+bukan dibaca dari section — persis kesalahan yang aturan kerja modul ini larang, dan yang sudah
+terjadi dua kali sebelumnya.
+
+### 125.2 Setiap tombol punya SYARAT TAMPIL, dan syaratnya menentukan uang dan peran
+
+Yang lebih penting daripada nama: tiap sel `pxButton` membawa `pyUserData/pyCondition`. Dibaca
+satu per satu:
+
+| Section | Tombol | Syarat |
+|---|---|---|
+| Lampiran Surat | Download Dokumen | `MSIG != 'MSIG'` |
+| Lampiran Surat | Tutup Klaim | `RCL_PUCL = 3 && MSIG = 'MSIG'` |
+| Penerimaan Dokumen | Unggah Dokumen · Lihat Dokumen · Save | `ALWAYS` |
+| Penerimaan Dokumen | Tolak Klaim | `RCL_PUCL = 1` |
+| Penerimaan Dokumen | Kirim Ke Analyst | `RCL_PUCL = 2 && IsPA` |
+| Penerimaan Dokumen | Kirim ke PIC Teknik | `RCL_PUCL = 2 && IsTravel` |
+| Penerimaan Dokumen | **Reminder PUCL** | **`1==2`** |
+| Penerimaan Dokumen | Tolak Klaim (sel kedua) | **`1==2`** |
+
+`When/IsPA-When.xml` membandingkan Group Panel dengan `"002"`, `When/IsTravel-When.xml` dengan
+`"005"` — keduanya ADA di export, dan keduanya hanya satu perbandingan.
+
+**Dua akibat yang bukan kerapian:**
+
+1. **"Kirim Ke Analyst" digambar TANPA SYARAT** sebelumnya. Di Pega ia hanya muncul pada jalur
+   PUCL lini **PA**; untuk lini **Travel** yang muncul **"Kirim ke PIC Teknik"**. Analyst dan PIC
+   Teknik dua peran berbeda, sehingga layar lama kami menawarkan tindakan yang meneruskan klaim
+   **kepada orang yang salah** pada setiap klaim Travel.
+2. **"Download Dokumen" dan "Tutup Klaim" saling meniadakan.** Satu klaim tidak pernah
+   menampilkan keduanya — dan klaim ber-`MSIG = 'MSIG'` yang jalurnya BUKAN `3` tidak
+   menampilkan satu pun. Itu perilaku sistem lama apa adanya.
+
+### 125.3 "Reminder PUCL" sengaja TIDAK digambar
+
+Syaratnya `1==2` — tidak pernah benar. Ia tombol yang **dimatikan dengan cara dikarang
+syaratnya** alih-alih dihapus; jejak yang lazim pada sistem berumur panjang. Hal yang sama
+berlaku pada satu sel "Tolak Klaim" kedua.
+
+Yang ditiru adalah perilakunya yang **nyata**: tidak muncul. Menggambarnya "supaya lengkap"
+menambah tindakan yang tidak pernah ada di layar lama — tepat yang `P-5` larang.
+
+> Ini sekaligus menutup satu butir pada `PlannedDifferences` yang menyebut "Reminder PUCL"
+> sebagai tindakan yang dikerjakan di Pega. Ia tidak dikerjakan di mana pun.
+
+### 125.4 Syaratnya ditegakkan di DOMAIN, bukan di React
+
+`ClaimDetail.Buttons()` menghitung kedelapannya, dan tanggapan membawanya sebagai isian `tombol`.
+Alasannya sama dengan `ShowsDocumentReceipt`: syaratnya memakai **nilai milik sistem lama**
+(`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan memeriksanya di komponen React berarti satu
+aturan bisnis hidup di dua tempat yang dapat berselisih tanpa ketahuan (`D-15`).
+
+Dua kolom ditambahkan ke kueri `detail` untuk itu — `MSIG` dan `GROUPPANEL`. **Keduanya tidak
+digambar sebagai isian**; keduanya hanya memilih tombol. Keduanya sudah ada di
+`Database/CREATE_TABLE_3.SQL`, sehingga ia **tidak** menambah selisih DDL seperti keempat kolom
+surat pada §84.3.
+
+Satu penjagaan yang mudah terlewat: **tombol tab Penerimaan Dokumen dimatikan seluruhnya ketika
+tabnya sendiri tidak digambar.** Tanpa itu, ketiga tombol ber-`ALWAYS` akan lolos pada klaim
+Notification — layar akan mengumumkan tindakan yang tabnya tidak ada.
+
+### 125.5 Koreksi atas §82.4
+
+Di sana tertulis "Kirim ke PIC Teknik" adalah nama yang **tidak ada di layar mana pun**. **Itu
+keliru** — rule `pyButtonLabel Kirim ke PIC Teknik` ADA di `SectionPenerimaanDokumenPUCL`.
+
+Yang benar dari catatan itu hanyalah bahwa menggambarnya **tanpa syarat** salah: pada klaim PA
+yang tampil memang "Kirim Ke Analyst". Kedua nama benar; yang menentukan adalah lini bisnisnya.
+
+§82.4 sendiri **tidak disunting** — ia rekaman pembacaan saat itu, dan mengubahnya menghapus
+jejak bahwa kami pernah salah. Yang berlaku adalah bab ini.
+
+### 125.6 Tombol tetap MATI — `P-1` belum dicabut
+
+Work Owner meminta tombolnya **dihidupkan** (2026-10-01). Ia **belum dikerjakan**, dan alasannya
+bukan ketidaksiapan kode melainkan kepemilikan tabel.
+
+| Tombol | Yang ditulisnya | Pemilik tabel hari ini |
+|---|---|---|
+| Unggah Dokumen | `PC_LINK_ATTACHMENT`, `PC_DATA_WORKATTACH`, penyimpanan dokumen | **Pega** |
+| Save | objek kerja + `TC_PNC_PUCL` | **Pega** / proses pengisi |
+| Tolak Klaim | objek kerja, status klaim | **Pega** |
+| Kirim Ke Analyst · Kirim ke PIC Teknik | `finishAssignment` — objek kerja **dan** tabel penugasan | **Pega** |
+| Tutup Klaim | objek kerja, lewat `PreventRejectClaim` | **Pega** |
+
+Hanya **Lihat Dokumen** yang bukan tulis. Ia pun belum dapat dihidupkan begitu saja: ia menuntut
+pembacaan lampiran dan token penyimpanan (`GENERAL.GET_TOKEN_STORAGE`), yaitu kemampuan baru —
+bukan sakelar.
+
+Menghidupkan keenam sisanya berarti **dua sistem menulis baris yang sama**, dan `CLAUDE.md`
+menyatakan sendiri bahwa pelanggaran `P-1` *"baru terlihat sebagai data rusak"*. Keputusan yang
+dibutuhkan karena itu bukan "hidupkan tombolnya" melainkan **pemindahan kepemilikan tabel yang
+disebut di atas**, beserta pencabutan `P-1` untuk tabel-tabel itu.
+
+**Satu prasyarat yang sudah tercatat dan tetap berlaku:** sebelum satu pun operasi tulis
+dikerjakan, syarat `TrackHidden` (`RCL_PUCL = 3`) wajib ditegakkan lebih dulu. Itu sudah
+dikerjakan (§83), sehingga prasyaratnya terpenuhi — yang tersisa murni keputusan kepemilikan.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apakah kepemilikan objek kerja dan tabel penugasan dipindahkan untuk layar ini**, sehingga keenam tombol tulis dapat dihidupkan — dan bila ya, Pega berhenti menulisnya pada tanggal berapa | Work Owner + Tim Pega |
+| Apakah "Lihat Dokumen" dibangun lebih dulu sebagai BACA, tanpa menunggu keputusan di atas | Work Owner |
+| Logika activity di balik tiap tombol — sebagian `runActivity` menunjuk rule yang belum ditelusuri | Tim Pega (`R-16`) |
+| Apa yang seharusnya diisi `ASSIGNED_OPERATOR_ID` | Work Owner + pemilik proses pengisi |
+| Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL` | Tim basis data |
+
+---
+
+## 126. Inbox RCL/PUCL — rangkaian aksi tiap tombol terbaca, dan "Download Dokumen" ternyata MENULIS (2026-10-01)
+
+Work Owner mengirim dua tangkapan layar Pega Designer yang memperlihatkan rangkaian aksi tombol
+**"Kirim Ke Analyst"**. Itu menjawab langsung pertanyaan terbuka §125 — *"logika activity di balik
+tiap tombol"* — dan penelusuran lanjutannya memperbaiki satu hal yang baru saja ditulis di §125.6.
+
+### 126.1 Rangkaian aksinya, dibaca dari section
+
+| Tombol | Activity | `tipe` | `Status` | `Finish Assignment` |
+|---|---|---|---|---|
+| Pilih | `InputPerihalRCLPUCL_act` | — | `.RCL_PUCL` | tidak |
+| **Download Dokumen** | `InsertMitraPA` → `PUCLPost` | `"cetak"` | **kosong** | tidak |
+| Save | `SaveInputRegisterDetail2` | — | — | tidak |
+| Reminder PUCL | `ReminderPUCLPA` | — | — | tidak |
+| **Tolak Klaim** | `InsertMitraPA` → `PUCLPost` | `"dokumen"` | **`0`** | tidak |
+| **Kirim Ke Analyst** | `InsertMitraPA` → `PUCLPost` | `"dokumen"` | **`1`** | **ya** |
+| **Kirim ke PIC Teknik** | `InsertHistoryClaimPNC` → `PUCLPost` | — | **`1`** | **ya** |
+
+Unggah Dokumen dan Lihat Dokumen tidak memanggil activity sama sekali — keduanya `localAction`.
+
+**Satu activity menanggung empat tombol.** `PUCLPost` dipanggil Download Dokumen, Tolak Klaim, dan
+kedua tombol Kirim; yang membedakannya hanya parameter **`Status`** — kosong untuk cetak, `0`
+untuk tolak, `1` untuk kirim. Jadi yang perlu ditulis ulang di sistem baru bukan empat alur
+melainkan **satu alur dengan tiga keluaran**.
+
+### 126.2 Isi `PUCLPost` — 57 step, dan ia menyentuh SEMUA kolom penyaring tab
+
+Diurai dari `Activity/PUCLPost-Act.xml`:
+
+```
+Obj-Refresh-And-Lock · 29× Property-Set · 2× Obj-Browse · RDB-List · Obj-Save · Commit
+call SetTicket                          lompatan lateral ke tahap lain
+Call InsertHistoryClaimPNC (2×)         riwayat klaim
+call ASMForceCaseClose (2×)             menutup paksa case
+Call AttachAsPDFC · SetUploadDocument · Work-.DeleteAttachment
+Call ASMCollectAttachments · ASMSendsEmailAttachments · GetEmailCabang   kirim surel berlampiran
+Call HitServiceOSAkseptasiClaimNonMBU   panggilan layanan luar
+call InsertJsonClaimNonMBU_act          tulis JSON_KLAIM
+```
+
+Properti yang ditetapkannya mencakup **seluruh kolom yang dipakai ketiga tab untuk menyaring**:
+
+```
+TanggalCetakDokumenPUCL · PUCLApprove · StatusCase · MSIG
+RCL_PUCL · SendtoAnalystDate · KomentarPUCL · TanggalTerimaDokumenPUCL · KomentarAnalisator
+```
+
+Inilah sebabnya satu penekanan tombol memindahkan klaim antar tab: ia menulis kolom yang menjadi
+dasar penyaringnya.
+
+### 126.3 KOREKSI §125.6 — "Download Dokumen" adalah tombol TULIS
+
+§125.6 menyusun daftar tombol tulis dan **tidak memasukkan "Download Dokumen"**, karena namanya
+terbaca sebagai pembacaan. Itu keliru. Ia menjalankan `InsertMitraPA(tipe="cetak")` —
+`Obj-Refresh-And-Lock`, `Property-Set`, `Call PNCInsertMitraLog_Act`, **`Obj-Save`, `Commit`** —
+lalu `PUCLPost` dengan 57 step di atas.
+
+Daftar tombol yang **tidak boleh dihidupkan selama `P-1` berlaku** karena itu menjadi **tujuh**,
+bukan enam:
+
+| Tombol | Akibat |
+|---|---|
+| **Download Dokumen** | mengisi tanggal cetak → klaim pindah tab · kirim surel · panggil layanan luar |
+| Unggah Dokumen | lampiran + penyimpanan dokumen |
+| Save | objek kerja |
+| Tolak Klaim | `PUCLPost` Status `0` |
+| Kirim Ke Analyst | `PUCLPost` Status `1` + `Finish Assignment` |
+| Kirim ke PIC Teknik | `PUCLPost` Status `1` + `Finish Assignment` |
+| Tutup Klaim | `PreventRejectClaim` |
+
+Hanya **Lihat Dokumen** yang bukan tulis.
+
+**Namanya tetap dibawa apa adanya** (`D-13`), termasuk ketika menyesatkan — tetapi keterangan di
+bawah tombolnya diubah supaya akibatnya tidak tersembunyi di balik kata "Download". Ia ditambahkan
+pula sebagai butir `PlannedDifferences`, dan satu uji menahan keterangan lama agar tidak kembali.
+
+> Ini perangkap **kedua belas** pada modul ini — dan jenisnya sama dengan "Lama Klaim" yang berisi
+> tanggal: judul yang menjanjikan hal lain daripada isinya.
+
+### 126.4 Yang ini TUTUP, dan yang ini BUKA
+
+**Tutup:** seluruh **16 activity** yang dipanggil `PUCLPost` ADA di export — nol yang hilang.
+Logika di balik tombol terberat layar ini karena itu **dapat dibaca utuh**, berbeda dari sebagian
+besar modul ini yang terhalang `R-16`.
+
+**Buka:** `InputPerihalRCLPUCL_act` — activity di balik tombol **"Pilih"** pemilih Perihal —
+**TIDAK ADA di export**. Ia belum pernah tercatat sebagai gap. Akibatnya terbatas: isian Perihal
+sudah terbaca dari kolom `PERIHAL` (§84.2), sehingga yang hilang adalah cara MENGUBAHNYA, bukan
+cara menampilkannya.
+
+Catatan ketelitian: `SetTicket` muncul di daftar panggilan dan berkasnya ada, tetapi
+ruleset-nya `Pega-ProcessEngine` — ia bawaan Pega, bukan rule buatan sendiri, sehingga tidak
+dihitung sebagai gap. Ini menegaskan kembali koreksi yang sudah diambil sebelumnya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Keputusan `P-1` pada §125.6 — kini menyangkut **tujuh** tombol, bukan enam | Work Owner + Tim Pega |
+| `InputPerihalRCLPUCL_act` tidak ada di export | Tim Pega (`R-07`) |
+| Apakah `PUCLPost` ditulis ulang sebagai **satu alur tiga keluaran**, atau dipecah per tombol | Lead Engineer, setelah `P-1` diputuskan |
+
+---
+
+## 127. Inbox RCL/PUCL — `InputPerihalRCLPUCL_act` diterima; tombol "Pilih" ternyata BACA (2026-10-01)
+
+Work Owner menambahkan activity yang §126.4 minta, pada hari yang sama. Gap `R-07` yang baru
+dibuka itu **tertutup**.
+
+### 127.1 Isinya — lima step, nol tulis
+
+```
+1. Property-Set    Param.pyReportName  := "BrowsePerihalRCLPUCL_RD"
+                   Param.pyReportClass := "ASM-FW-GCNMFW-Int-M_PERIHAL_RCLPUCL"
+2. Call pxShowReport
+3. Property-Set    TempPerihal.ID_PERIHAL · TempPerihal.PERIHAL_NAME
+4. Property-Set    primary.ClaimData.PUCLStatus.Perihal
+                     := pyReportContentPage.pxResults(1).PERIHAL_NAME
+5. Page-Remove     TempPerihal
+```
+
+Tidak ada `Obj-Save`, `Commit`, maupun `RDB-Save`. Kata "Commit" di berkasnya hanyalah
+`pxCommitDateTime` — metadata kapan rule disimpan (2020-03-12). Ia **sempat terbaca sebagai
+operasi tulis** pada pemeriksaan pola, dan dibantah dengan memeriksa daftar step-nya; dicatat
+karena pemeriksaan berbasis kata-kunci memang rawan begini.
+
+### 127.2 Akibat pertama: daftar `P-1` berkurang satu
+
+Tombol **"Pilih"** adalah **BACA**. Ia bergabung dengan "Lihat Dokumen" sebagai satu dari dua
+tombol yang tidak terhalang `P-1` — tujuh sisanya tetap terhalang (§126.3).
+
+**Tetapi ia tidak berguna sendirian.** Memilih Perihal hanya mengubah clipboard; yang
+menyimpannya adalah tombol **"Save"**, yang TETAP terhalang. Membangun "Pilih" lebih dulu
+menghasilkan pemilih yang pilihannya hilang saat halaman ditutup. Karena itu ia **tidak**
+diusulkan dikerjakan mendahului keputusan `P-1`.
+
+### 127.3 Akibat kedua: klaim menyimpan TEKS perihal, bukan kodenya
+
+Langkah 4 menegaskannya: yang masuk ke klaim `PERIHAL_NAME`, sedangkan `ID_PERIHAL` hanya mampir
+ke `TempPerihal` lalu dibuang langkah 5.
+
+Ini **membenarkan** pembacaan kolom `POOLDATA.TC_PNC_PUCL.PERIHAL` apa adanya ke layar (§84.2) —
+sebelumnya itu kesimpulan dari nilai yang terbaca, sekarang terbukti dari rule-nya.
+
+Dua akibat yang mengikat perancangan master Perihal kelak:
+
+1. **Tidak ada kunci asing.** Klaim tidak menyimpan `ID_PERIHAL`, sehingga tidak ada jalan
+   menelusuri balik dari klaim ke baris masternya.
+2. **Mengubah teks sebuah baris master TIDAK mengubah klaim yang sudah memakainya.** Perilakunya
+   seperti snapshot. Itu perilaku sistem lama apa adanya, dan **bukan** cacat yang perlu
+   diperbaiki selama `P-5` berlaku.
+
+Komentar di layar yang masih menyebut Perihal "ada di clipboard" ikut diperbaiki — pernyataan itu
+sudah tidak benar sejak kolomnya ditemukan, dan baru sekarang tersapu.
+
+### 127.4 Status gap layar kerja ini
+
+| Rule | Status |
+|---|---|
+| `InsertMitraPA` · `PUCLPost` | ADA |
+| 16 activity yang dipanggil `PUCLPost` | ADA, nol hilang |
+| `SaveInputRegisterDetail2` · `ReminderPUCLPA` | ADA |
+| `InputPerihalRCLPUCL_act` | ✅ **ADA sejak 2026-10-01** |
+| `BrowsePerihalRCLPUCL_RD` | ADA |
+
+**Seluruh rule di balik setiap tombol layar kerja Inbox RCL/PUCL kini terbaca.** Tidak ada lagi
+penghalang artefak untuk menulis ulang logikanya — yang tersisa murni keputusan `P-1`.

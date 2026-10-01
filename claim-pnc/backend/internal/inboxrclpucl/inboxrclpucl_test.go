@@ -511,3 +511,124 @@ func TestTheTrackCodeSurvivesSurroundingSpaces(t *testing.T) {
 	}
 	require.False(t, detail.ShowsDocumentReceipt())
 }
+
+// ---------------------------------------------------------------------------
+// Tombol — syarat tampilnya, dibaca dari `pyUserData/pyCondition` tiap `pxButton`
+// ---------------------------------------------------------------------------
+
+// detailOf menyusun satu klaim dengan jalur, penanda MSIG, dan lini bisnis tertentu.
+func detailOf(track, msig, panel string) inboxrclpucl.ClaimDetail {
+	return inboxrclpucl.ClaimDetail{
+		Letter:     inboxrclpucl.LetterDraft{TrackCode: track},
+		MSIG:       msig,
+		GroupPanel: panel,
+	}
+}
+
+func TestDownloadAndCloseClaimNeverAppearTogether(t *testing.T) {
+	// Syaratnya SALING MENIADAKAN di section-nya:
+	//
+	//	Download Dokumen  .ClaimData.PUCLStatus.MSIG != 'MSIG'
+	//	Tutup Klaim       .ClaimData.PUCLStatus.RCL_PUCL = 3 && .ClaimData.PUCLStatus.MSIG = 'MSIG'
+	//
+	// Keduanya tampil bersamaan berarti salah satu syaratnya terbalik — dan karena "Tutup
+	// Klaim" MENUTUP klaim, tombol yang keliru muncul di sini berakibat nyata.
+	for _, track := range []string{
+		inboxrclpucl.TrackCodeRCL,
+		inboxrclpucl.TrackCodePUCL,
+		inboxrclpucl.TrackCodeNotification,
+		"",
+	} {
+		for _, msig := range []string{"", inboxrclpucl.MSIGMarker, "LAIN"} {
+			b := detailOf(track, msig, "").Buttons()
+			require.Falsef(t, b.DownloadDocument && b.CloseClaim,
+				"jalur %q, MSIG %q: keduanya tidak boleh tampil bersamaan", track, msig)
+		}
+	}
+}
+
+func TestCloseClaimNeedsBothNotificationAndMSIG(t *testing.T) {
+	require.True(t, detailOf(inboxrclpucl.TrackCodeNotification,
+		inboxrclpucl.MSIGMarker, "").Buttons().CloseClaim)
+
+	// Salah satu syarat saja TIDAK cukup. Kedua baris berikut menahan kekeliruan yang paling
+	// mudah terjadi: membaca `&&` sebagai `||`.
+	require.False(t, detailOf(inboxrclpucl.TrackCodeNotification, "", "").Buttons().CloseClaim,
+		"Notification tanpa MSIG tidak menampilkan Tutup Klaim")
+	require.False(t, detailOf(inboxrclpucl.TrackCodePUCL,
+		inboxrclpucl.MSIGMarker, "").Buttons().CloseClaim,
+		"MSIG di luar jalur Notification tidak menampilkan Tutup Klaim")
+}
+
+func TestMSIGClaimOutsideNotificationShowsNeitherLetterButton(t *testing.T) {
+	// Akibat yang mudah terbaca sebagai cacat, padahal perilaku sistem lama apa adanya:
+	// klaim MSIG ber-jalur PUCL gagal KEDUA syarat sekaligus.
+	b := detailOf(inboxrclpucl.TrackCodePUCL, inboxrclpucl.MSIGMarker, "").Buttons()
+	require.False(t, b.DownloadDocument)
+	require.False(t, b.CloseClaim)
+}
+
+func TestSendButtonsFollowTheBusinessLine(t *testing.T) {
+	// `RCL_PUCL = 2 && IsPA` versus `RCL_PUCL = 2 && IsTravel`. Perbedaannya BUKAN kata:
+	// Analyst dan PIC Teknik dua peran berbeda, sehingga tombol yang keliru meneruskan klaim
+	// kepada orang yang salah.
+	pa := detailOf(inboxrclpucl.TrackCodePUCL, "", inboxrclpucl.GroupPanelPA).Buttons()
+	require.True(t, pa.SendToAnalyst)
+	require.False(t, pa.SendToPICTeknik)
+
+	travel := detailOf(inboxrclpucl.TrackCodePUCL, "", inboxrclpucl.GroupPanelTravel).Buttons()
+	require.True(t, travel.SendToPICTeknik)
+	require.False(t, travel.SendToAnalyst)
+
+	// Lini LAIN pada jalur PUCL tidak menampilkan satu pun — dan itu memang yang terjadi di
+	// Pega, karena kedua syaratnya menyebut lini bisnis secara tegas.
+	other := detailOf(inboxrclpucl.TrackCodePUCL, "", "006").Buttons()
+	require.False(t, other.SendToAnalyst)
+	require.False(t, other.SendToPICTeknik)
+
+	// Jalur RCL tidak menampilkan tombol kirim mana pun, berapa pun lini bisnisnya.
+	rcl := detailOf(inboxrclpucl.TrackCodeRCL, "", inboxrclpucl.GroupPanelPA).Buttons()
+	require.False(t, rcl.SendToAnalyst)
+	require.True(t, rcl.RejectClaim, "menolak klaim hanya sah di jalur RCL")
+}
+
+func TestRejectClaimBelongsToTheRCLTrackOnly(t *testing.T) {
+	require.True(t, detailOf(inboxrclpucl.TrackCodeRCL, "", "").Buttons().RejectClaim)
+	require.False(t, detailOf(inboxrclpucl.TrackCodePUCL, "", "").Buttons().RejectClaim)
+}
+
+func TestHidingTheReceiptTabHidesItsButtonsToo(t *testing.T) {
+	// Klaim Notification tidak punya tab "Penerimaan Dokumen" sama sekali. Menyatakan
+	// tombol-tombolnya tetap digambar akan membuat layar mengumumkan tindakan yang tabnya
+	// tidak ada — dan `Save` serta `Unggah Dokumen` ber-`pyVisible ALWAYS`, sehingga tanpa
+	// penjagaan ini keduanya memang akan lolos.
+	b := detailOf(inboxrclpucl.TrackCodeNotification, inboxrclpucl.MSIGMarker, "").Buttons()
+	require.False(t, b.UploadDocument)
+	require.False(t, b.ViewDocument)
+	require.False(t, b.Save)
+	require.False(t, b.RejectClaim)
+	require.False(t, b.SendToAnalyst)
+	require.False(t, b.SendToPICTeknik)
+
+	// Tetapi tombol tab PERTAMA tetap dinilai — justru di sinilah "Tutup Klaim" muncul.
+	require.True(t, b.CloseClaim)
+}
+
+func TestTheThreeAlwaysButtonsAppearOnEveryVisibleReceiptTab(t *testing.T) {
+	// `pyVisible ALWAYS` pada ketiganya. Bila salah satunya kelak diberi syarat tanpa bukti
+	// dari section-nya, uji ini gagal.
+	for _, track := range []string{inboxrclpucl.TrackCodeRCL, inboxrclpucl.TrackCodePUCL} {
+		b := detailOf(track, "", "").Buttons()
+		require.Truef(t, b.UploadDocument, "jalur %q", track)
+		require.Truef(t, b.ViewDocument, "jalur %q", track)
+		require.Truef(t, b.Save, "jalur %q", track)
+	}
+}
+
+func TestButtonConditionsSurviveSurroundingSpaces(t *testing.T) {
+	// Alasannya sama dengan TestTheTrackCodeSurvivesSurroundingSpaces: kolomnya bertipe teks
+	// dan sebagian nilai di Oracle berspasi-rata. `MSIG` dan `GROUPPANEL` pun demikian.
+	b := detailOf(" 2 ", " MSIG ", " 002 ").Buttons()
+	require.True(t, b.SendToAnalyst)
+	require.False(t, b.DownloadDocument, "MSIG berspasi tetap jalur MSIG")
+}

@@ -101,7 +101,9 @@ type Row struct {
 	// punya sesuatu untuk dibuktikan.
 	MSIG string
 
-	// GroupPanel adalah `GROUPPANEL_1` — dipakai HANYA cabang kedua laporan harian.
+	// GroupPanel adalah `GROUPPANEL_1` — dipakai cabang kedua laporan harian, DAN sejak
+	// 2026-10-01 menentukan tombol "Kirim Ke Analyst" (PA) versus "Kirim ke PIC Teknik"
+	// (Travel) di layar kerja.
 	GroupPanel string
 
 	// ClaimStatus adalah `STATUSCLAIM_1` — Status Klaim ber-33 kode `1134`–`1166`
@@ -374,6 +376,12 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 	return inboxrclpucl.ClaimDetail{
 		Reference:   candidate.Item.Reference,
 		ClaimNumber: candidate.Item.CaseID,
+
+		// Keduanya memilih TOMBOL, bukan mengisi isian — sama seperti di sisi Oracle.
+		// Melewatkannya di sini akan membuat uji yang berjalan di atas memori menggambar
+		// susunan tombol yang berbeda dari layar yang sebenarnya.
+		MSIG:       candidate.MSIG,
+		GroupPanel: candidate.GroupPanel,
 
 		Letter: inboxrclpucl.LetterDraft{
 			Track:        inboxrclpucl.TrackOf(candidate.TrackCode),

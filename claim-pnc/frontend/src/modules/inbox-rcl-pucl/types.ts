@@ -310,6 +310,24 @@ export type ClaimDetailResponse = {
    */
   tab_penerimaan_dokumen_tampil: boolean
 
+  /**
+   * Tombol mana yang digambar untuk klaim ini.
+   *
+   * Sama alasannya dengan `tab_penerimaan_dokumen_tampil`: syaratnya memakai nilai milik
+   * sistem lama (`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan menaruh perbandingannya
+   * di layar berarti satu aturan bisnis hidup di dua tempat.
+   */
+  tombol: {
+    download_dokumen: boolean
+    tutup_klaim: boolean
+    unggah_dokumen: boolean
+    lihat_dokumen: boolean
+    save: boolean
+    tolak_klaim: boolean
+    kirim_ke_analyst: boolean
+    kirim_ke_pic_teknik: boolean
+  }
+
   /** Layar ini di Pega adalah layar TULIS; di sini baca saja. */
   tindakan_masih_di_pega: boolean
 

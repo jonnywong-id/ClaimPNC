@@ -450,6 +450,7 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		lossDate, puclNote                sql.NullString
 		subject, openingNote              sql.NullString
 		bodyNote, closingNote             sql.NullString
+		msigFlag, groupPanel              sql.NullString
 		firstObjectName, firstPropose     sql.NullString
 	)
 
@@ -457,6 +458,7 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		&reference, &claimNumber, &trackCode, &analystNote, &policyNumber,
 		&lossDate, &puclNote,
 		&subject, &openingNote, &bodyNote, &closingNote,
+		&msigFlag, &groupPanel,
 		&firstObjectName, &firstPropose,
 	)
 	if err != nil {
@@ -466,6 +468,11 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 	return inboxrclpucl.ClaimDetail{
 		Reference:   reference.String,
 		ClaimNumber: claimNumber.String,
+
+		// Keduanya tidak digambar sebagai isian; keduanya memilih TOMBOL. Lihat
+		// ClaimDetail.Buttons.
+		MSIG:       msigFlag.String,
+		GroupPanel: groupPanel.String,
 
 		Letter: inboxrclpucl.LetterDraft{
 			Track:        inboxrclpucl.TrackOf(trackCode.String),

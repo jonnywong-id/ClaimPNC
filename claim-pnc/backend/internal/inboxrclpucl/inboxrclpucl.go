@@ -482,6 +482,15 @@ const (
 // (`RDB List/GetDataRCVallKlaimPATravel-SQL.xml:10`).
 const GroupPanelPA = "002"
 
+// GroupPanelTravel adalah kode Group Panel Travel.
+//
+// Ia dipakai sebagai syarat tampil tombol "Kirim ke PIC Teknik" pada
+// `Section/SectionPenerimaanDokumenPUCL-Section.xml` lewat When rule `IsTravel`, yang isinya
+// satu perbandingan terhadap `"005"` (`When/IsTravel-When.xml`).
+//
+// Bahwa `005` adalah Travel terbaca di `CONTEXT.md` dan Business Understanding §1.
+const GroupPanelTravel = "005"
+
 // Pagination menyatakan halaman keberapa yang diminta dan sebesar apa.
 //
 // # Kenapa ukuran bawaannya 50
@@ -714,6 +723,154 @@ type ClaimDetail struct {
 
 	// DocumentReceipt adalah bagian "Penerimaan Dokumen".
 	DocumentReceipt DocumentReceipt
+
+	// MSIG adalah penanda jalur MSIG — kolom `MSIG` pada tabel datar.
+	//
+	// Ia dibawa ke layar kerja, bukan hanya dipakai menyaring tab 3, karena DUA tombol
+	// Lampiran Surat bergantung padanya. Lihat ShowsDownloadDocument dan ShowsCloseClaim.
+	MSIG string
+
+	// GroupPanel adalah kode lini bisnis — kolom `GROUPPANEL` pada tabel datar.
+	//
+	// Ia dibawa karena dua tombol Penerimaan Dokumen memilih penerima klaim berdasarkan
+	// lini bisnisnya: PA ke Analyst, Travel ke PIC Teknik. Lihat ShowsSendToAnalyst.
+	GroupPanel string
+}
+
+// ScreenButtons menyatakan tombol mana yang DIGAMBAR untuk sebuah klaim.
+//
+// # Kenapa ia dihitung di domain, bukan di React
+//
+// Karena syaratnya aturan bisnis, bukan tata letak: "Kirim Ke Analyst" dan "Kirim ke PIC
+// Teknik" memilih PENERIMA klaim berdasarkan lini bisnisnya, dan "Tolak Klaim" hanya sah di
+// jalur RCL. Menaruhnya di komponen React akan menyebarkannya ke tempat yang tidak dapat
+// diuji tanpa merender layar, dan menempatkannya di luar jangkauan uji kesetaraan.
+//
+// Seluruh syaratnya dibaca langsung dari `pyUserData/pyCondition` tiap sel `pxButton`,
+// bukan disimpulkan dari nama tombolnya.
+type ScreenButtons struct {
+	// DownloadDocument — "Download Dokumen" pada Lampiran Surat.
+	DownloadDocument bool
+
+	// CloseClaim — "Tutup Klaim" pada Lampiran Surat.
+	CloseClaim bool
+
+	// UploadDocument — "Unggah Dokumen" pada Penerimaan Dokumen. Selalu digambar.
+	UploadDocument bool
+
+	// ViewDocument — "Lihat Dokumen" pada Penerimaan Dokumen. Selalu digambar.
+	ViewDocument bool
+
+	// Save — "Save" pada Penerimaan Dokumen. Selalu digambar.
+	Save bool
+
+	// RejectClaim — "Tolak Klaim" pada Penerimaan Dokumen.
+	RejectClaim bool
+
+	// SendToAnalyst — "Kirim Ke Analyst" pada Penerimaan Dokumen.
+	SendToAnalyst bool
+
+	// SendToPICTeknik — "Kirim ke PIC Teknik" pada Penerimaan Dokumen.
+	SendToPICTeknik bool
+}
+
+// Buttons menghitung tombol yang digambar untuk klaim ini.
+//
+// Tombol bagian Penerimaan Dokumen dikembalikan `false` seluruhnya ketika tabnya sendiri
+// tidak digambar — kalau tidak, layar akan menyatakan tombol yang tabnya tidak ada.
+func (d ClaimDetail) Buttons() ScreenButtons {
+	b := ScreenButtons{
+		DownloadDocument: d.ShowsDownloadDocument(),
+		CloseClaim:       d.ShowsCloseClaim(),
+	}
+	if !d.ShowsDocumentReceipt() {
+		return b
+	}
+	b.UploadDocument = true
+	b.ViewDocument = true
+	b.Save = true
+	b.RejectClaim = d.ShowsRejectClaim()
+	b.SendToAnalyst = d.ShowsSendToAnalyst()
+	b.SendToPICTeknik = d.ShowsSendToPICTeknik()
+	return b
+}
+
+// ShowsDownloadDocument menyatakan tombol "Download Dokumen" digambar.
+//
+//	pyCondition  .ClaimData.PUCLStatus.MSIG != 'MSIG'
+//
+// Jadi ia tombol jalur NON-MSIG. Klaim MSIG tidak mengunduh surat dari layar ini.
+func (d ClaimDetail) ShowsDownloadDocument() bool {
+	return strings.TrimSpace(d.MSIG) != MSIGMarker
+}
+
+// ShowsCloseClaim menyatakan tombol "Tutup Klaim" digambar.
+//
+//	pyCondition  .ClaimData.PUCLStatus.RCL_PUCL = 3 && .ClaimData.PUCLStatus.MSIG = 'MSIG'
+//
+// # Syaratnya menjelaskan satu hal yang semula terbaca ganjil
+//
+// Kode `3` (Notification) MENYEMBUNYIKAN tab "Penerimaan Dokumen" (lihat
+// ShowsDocumentReceipt), sehingga klaim MSIG ber-jalur Notification hanya punya satu tab —
+// dan tanpa tombol ini tidak ada satu pun tindakan yang dapat diselesaikan padanya. "Tutup
+// Klaim" adalah satu-satunya jalan keluarnya, dan itulah sebabnya ia muncul tepat di
+// perpotongan kedua syarat itu.
+//
+// Ia dan "Download Dokumen" SALING MENIADAKAN: yang satu menuntut `MSIG != 'MSIG'`, yang
+// lain `MSIG = 'MSIG'`. Satu klaim tidak pernah menampilkan keduanya.
+//
+// Perhatikan pula akibat yang mudah terlewat: klaim ber-`MSIG = 'MSIG'` yang jalurnya BUKAN
+// `3` tidak menampilkan satu pun dari keduanya. Itu perilaku sistem lama apa adanya, bukan
+// lubang pembacaan.
+func (d ClaimDetail) ShowsCloseClaim() bool {
+	return strings.TrimSpace(d.Letter.TrackCode) == TrackCodeNotification &&
+		strings.TrimSpace(d.MSIG) == MSIGMarker
+}
+
+// ShowsRejectClaim menyatakan tombol "Tolak Klaim" digambar.
+//
+//	pyCondition  .ClaimData.PUCLStatus.RCL_PUCL = 1
+//
+// Jadi menolak klaim hanya sah di jalur **RCL**, bukan PUCL. Itu sejalan dengan artinya:
+// RCL adalah jalur klaim yang ditolak (`CONTEXT.md`).
+//
+// # Ada tombol "Tolak Klaim" KEDUA, dan ia tidak pernah tampil
+//
+// Section-nya memuat dua sel `pxButton` ber-label sama. Yang kedua ber-`pyCondition` **`1==2`**
+// — syarat yang tidak pernah benar. Ia tombol yang dimatikan dengan cara dikarang syaratnya,
+// bukan dihapus; perilakunya di sistem lama adalah TIDAK PERNAH DIGAMBAR, dan itulah yang
+// ditiru. Lihat juga catatan "Reminder PUCL" di bawah.
+func (d ClaimDetail) ShowsRejectClaim() bool {
+	return strings.TrimSpace(d.Letter.TrackCode) == TrackCodeRCL
+}
+
+// ShowsSendToAnalyst menyatakan tombol "Kirim Ke Analyst" digambar.
+//
+//	pyCondition  .ClaimData.PUCLStatus.RCL_PUCL = 2 && IsPA
+//
+// Jadi ia tombol jalur **PUCL** pada lini **Personal Accident** saja.
+func (d ClaimDetail) ShowsSendToAnalyst() bool {
+	return strings.TrimSpace(d.Letter.TrackCode) == TrackCodePUCL &&
+		strings.TrimSpace(d.GroupPanel) == GroupPanelPA
+}
+
+// ShowsSendToPICTeknik menyatakan tombol "Kirim ke PIC Teknik" digambar.
+//
+//	pyCondition  .ClaimData.PUCLStatus.RCL_PUCL = 2 && IsTravel
+//
+// Ia kembaran ShowsSendToAnalyst untuk lini **Travel**, dan perbedaannya BUKAN kata: Analyst
+// dan PIC Teknik dua peran berbeda, sehingga tombol yang salah meneruskan klaim ke orang yang
+// salah.
+//
+// # Ini mengoreksi catatan `keputusan-implementasi.md` §82.4
+//
+// Di sana tertulis "Kirim ke PIC Teknik" adalah nama yang **tidak ada di layar mana pun**.
+// Itu keliru: rule `pyButtonLabel Kirim ke PIC Teknik` ADA di section ini. Yang benar dari
+// catatan itu hanyalah bahwa menggambarnya TANPA syarat — seperti versi sebelumnya — salah,
+// karena pada klaim PA yang tampil memang "Kirim Ke Analyst".
+func (d ClaimDetail) ShowsSendToPICTeknik() bool {
+	return strings.TrimSpace(d.Letter.TrackCode) == TrackCodePUCL &&
+		strings.TrimSpace(d.GroupPanel) == GroupPanelTravel
 }
 
 // ShowsDocumentReceipt menyatakan tab "Penerimaan Dokumen" digambar untuk klaim ini.
