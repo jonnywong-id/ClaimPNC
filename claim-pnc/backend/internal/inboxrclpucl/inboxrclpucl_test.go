@@ -193,16 +193,26 @@ func TestEverySummaryStaysShortEnoughToBeRead(t *testing.T) {
 // Penerjemah jalur
 // ---------------------------------------------------------------------------
 
-func TestTrackOfFollowsTheLegacyCaseWithoutElse(t *testing.T) {
+func TestTrackOfDrawsAllThreeLabelsTheLegacyScreenDraws(t *testing.T) {
 	require.Equal(t, inboxrclpucl.TrackRCL, inboxrclpucl.TrackOf("1"))
 	require.Equal(t, inboxrclpucl.TrackPUCL, inboxrclpucl.TrackOf("2"))
 
-	// `CASE` di sistem lama TANPA `ELSE`, sehingga nilai lain menghasilkan kosong — bukan
-	// kode mentahnya, dan bukan teks pengganti. Sel kosong adalah jawaban yang benar untuk
-	// jalur yang tidak dikenali.
-	require.Empty(t, inboxrclpucl.TrackOf("3"))
+	// Kode `3` menghasilkan "Notification", BUKAN sel kosong.
+	//
+	// Modul ini semula mengosongkannya, meniru `CASE` tanpa `ELSE` pada
+	// `GetReminderPUCL-SQL.xml`. Kueri itu memasok PENGINGAT, bukan grid. Sel grid-nya
+	// sendiri kontrol daftar pilihan (`pxRadioButtons`, Read-only), yang menggambar LABEL
+	// pilihannya — dan label itu hidup di rule Property yang tidak ada di export (`R-16`).
+	//
+	// Yang membuktikannya layar Pega yang berjalan: tab "Klaim MSIG" menggambar
+	// "Notification" untuk PNC-1503, dan baris itu terverifikasi `RCL_PUCL_1 = '3'` di
+	// basis data (2026-09-30).
+	require.Equal(t, inboxrclpucl.TrackNotification, inboxrclpucl.TrackOf("3"))
+
+	// Nilai di LUAR ketiganya tetap kosong. Satu baris di produksi memang berkode kosong.
 	require.Empty(t, inboxrclpucl.TrackOf(""))
 	require.Empty(t, inboxrclpucl.TrackOf("RCL"))
+	require.Empty(t, inboxrclpucl.TrackOf("9"))
 }
 
 func TestTrackOfIgnoresSurroundingSpaces(t *testing.T) {
@@ -451,4 +461,53 @@ func TestDailyReportColumnsDifferFromTheGrid(t *testing.T) {
 	require.False(t, keys[inboxrclpucl.FieldClaimAge],
 		"laporan TIDAK memuat Lama Klaim — kueri lama tidak mengambilnya")
 	require.True(t, keys[inboxrclpucl.FieldReportSentAt])
+}
+
+// ---------------------------------------------------------------------------
+// Tab "Penerimaan Dokumen" — syarat visibilitasnya
+// ---------------------------------------------------------------------------
+
+func TestNotificationClaimsHideTheDocumentReceiptTab(t *testing.T) {
+	// `Section/SendtoRCLPUCL-Section.xml` memasang
+	// `pyContainerVisibleWhen .ClaimData.PUCLStatus.RCL_PUCL != 3` pada kontainer tab
+	// kedua — kontainer ber-`pyTitle Penerimaan Dokumen`.
+	//
+	// Work Owner melaporkan 2026-09-30 bahwa klaim MSIG hanya menampilkan Lampiran Surat,
+	// dan berkas section-nya membenarkan laporan itu.
+	notification := inboxrclpucl.ClaimDetail{
+		Letter: inboxrclpucl.LetterDraft{TrackCode: inboxrclpucl.TrackCodeNotification},
+	}
+	require.False(t, notification.ShowsDocumentReceipt(),
+		"klaim Notification hanya menampilkan Lampiran Surat")
+
+	for _, code := range []string{
+		inboxrclpucl.TrackCodeRCL,
+		inboxrclpucl.TrackCodePUCL,
+		"",
+		"9",
+	} {
+		detail := inboxrclpucl.ClaimDetail{
+			Letter: inboxrclpucl.LetterDraft{TrackCode: code},
+		}
+		require.Truef(t, detail.ShowsDocumentReceipt(),
+			"hanya kode %q yang menyembunyikan tab; kode %q tidak",
+			inboxrclpucl.TrackCodeNotification, code)
+	}
+}
+
+func TestTheHiddenTrackIsTheNotificationCode(t *testing.T) {
+	// Keduanya nama untuk kode yang SAMA, dan dipisah karena menyatakan hal yang berbeda:
+	// yang satu arti kodenya, yang satu akibatnya pada layar. Nilainya wajib tetap sama —
+	// bila salah satunya berubah sendiri, tab yang disembunyikan menjadi tab klaim yang
+	// keliru, tanpa satu pun galat.
+	require.Equal(t, inboxrclpucl.TrackCodeNotification, inboxrclpucl.TrackHidden)
+}
+
+func TestTheTrackCodeSurvivesSurroundingSpaces(t *testing.T) {
+	// Kolomnya bertipe teks dan sebagian nilai di Oracle berspasi-rata, sama seperti yang
+	// sudah ditangani TrackOf.
+	detail := inboxrclpucl.ClaimDetail{
+		Letter: inboxrclpucl.LetterDraft{TrackCode: " 3 "},
+	}
+	require.False(t, detail.ShowsDocumentReceipt())
 }

@@ -245,6 +245,20 @@ export type LetterDraft = {
 
   /** Diturunkan dari `PROPOSE_VALUE` adjustment pertama pada objek pertama. */
   jumlah_tagihan: string
+
+  /**
+   * Keempat isian surat, dibaca dari kolom tabel datar sejak 2026-10-01.
+   *
+   * Sebelumnya keempatnya digambar bertanda "di clipboard Pega", karena kolomnya memang
+   * belum ada. Yang berubah bukan pembacaan kami melainkan tabelnya.
+   *
+   * `perihal` di layar lama adalah PILIHAN dari daftar baku 12 butir; yang tersimpan pada
+   * klaim adalah teksnya.
+   */
+  perihal: string
+  keterangan_pembuka: string
+  keterangan_isi: string
+  keterangan_penutup: string
 }
 
 /**
@@ -282,6 +296,19 @@ export type ClaimDetailResponse = {
    * membacanya petugas klaim.
    */
   isian_belum_terpetakan: string[]
+
+  /**
+   * Tab "Penerimaan Dokumen" digambar untuk klaim ini.
+   *
+   * Bernilai salah untuk klaim berstatus Notification: layar lama menyembunyikan tab itu
+   * lewat syarat pada kontainernya, karena pemberitahuan tidak menunggu dokumen dan tidak
+   * dikirim kembali ke Analyst.
+   *
+   * Datang dari SERVER, bukan disimpulkan dari `kode_rcl_pucl` di sini — kodenya nilai
+   * milik sistem lama, dan membandingkannya di dua tempat membuat keduanya dapat
+   * berselisih tanpa ketahuan.
+   */
+  tab_penerimaan_dokumen_tampil: boolean
 
   /** Layar ini di Pega adalah layar TULIS; di sini baca saja. */
   tindakan_masih_di_pega: boolean

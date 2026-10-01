@@ -170,6 +170,7 @@ const DETAIL = {
   },
   penerimaan_dokumen: { komentar_pucl: 'Menunggu kelengkapan dari cabang.' },
   isian_belum_terpetakan: ['NIK', 'Perihal', 'Email LOD'],
+  tab_penerimaan_dokumen_tampil: true,
   tindakan_masih_di_pega: true,
   portal: 'ASM',
 }

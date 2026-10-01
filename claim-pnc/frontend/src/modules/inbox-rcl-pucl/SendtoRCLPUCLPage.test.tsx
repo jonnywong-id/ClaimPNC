@@ -69,8 +69,22 @@ const DETAIL = {
   },
   penerimaan_dokumen: { komentar_pucl: 'Menunggu kelengkapan dari cabang.' },
   isian_belum_terpetakan: ['No Kontrak', 'Perihal', 'Email Tertanggung'],
+  tab_penerimaan_dokumen_tampil: true,
   tindakan_masih_di_pega: true,
   portal: 'ASM',
+}
+
+/**
+ * Klaim berstatus Notification — kode jalur `3`.
+ *
+ * Layar lama menyembunyikan tab "Penerimaan Dokumen" untuk klaim seperti ini, lewat
+ * `pyContainerVisibleWhen .ClaimData.PUCLStatus.RCL_PUCL != 3` pada kontainer tab kedua.
+ * Keputusannya diambil SERVER; baris contoh ini membawanya apa adanya.
+ */
+const DETAIL_NOTIFICATION = {
+  ...DETAIL,
+  lampiran_surat: { ...DETAIL.lampiran_surat, rcl_pucl: 'Notification', kode_rcl_pucl: '3' },
+  tab_penerimaan_dokumen_tampil: false,
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -127,21 +141,26 @@ afterEach(() => {
 })
 
 describe('layar kerja SendtoRCLPUCL', () => {
-  it('menggambar kedua bagian section, dalam urutan section', async () => {
-    // `Section/SendtoRCLPUCL-Section.xml` menyisipkan Lampiran Surat lebih dulu, baru
-    // Penerimaan Dokumen. Urutannya dibaca dari posisi `pyInclude` di dalam berkasnya.
+  it('menggambar kedua bagian sebagai DUA TAB, dalam urutan section', async () => {
+    // `Section/SendtoRCLPUCL-Section.xml` ber-`pyHeaderType TABBED` dan menyisipkan
+    // Lampiran Surat lebih dulu, baru Penerimaan Dokumen. Urutannya dibaca dari posisi
+    // `pyInclude` di dalam berkasnya.
+    //
+    // Bertumpuk pada satu halaman — bentuk versi sebelumnya — membuat tombol "Cetak" dan
+    // "Kirim Ke Analyst" terlihat bersamaan, padahal di Pega keduanya berada di tahap yang
+    // berbeda dan tidak pernah tampil sekaligus.
     stubDefaultFetch()
     renderWorkScreen()
 
-    expect(await screen.findByText('Lampiran Surat')).toBeInTheDocument()
+    const tabs = await screen.findAllByRole('tab')
+    expect(tabs.map((node) => node.textContent)).toEqual([
+      'Lampiran Surat',
+      'Penerimaan Dokumen',
+    ])
 
-    const headings = screen
-      .getAllByRole('heading', { level: 3 })
-      .map((node) => node.textContent)
-
-    expect(headings.indexOf('Lampiran Surat')).toBeLessThan(
-      headings.indexOf('Penerimaan Dokumen'),
-    )
+    // Tab pertama terbuka lebih dulu, dan isi tab kedua BELUM tergambar.
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByText('Catatan untuk Analyst')).not.toBeInTheDocument()
   })
 
   it('memakai JUDUL ISIAN section, bukan judul kolom grid', async () => {
@@ -152,11 +171,16 @@ describe('layar kerja SendtoRCLPUCL', () => {
 
     expect(await screen.findByText('Status RCL / PUCL / MSIG')).toBeInTheDocument()
     expect(screen.getByText('Catatan dari Analyst')).toBeInTheDocument()
-    expect(screen.getByText('Catatan untuk Analyst')).toBeInTheDocument()
 
     // Judul grid TIDAK boleh muncul di layar kerja.
     expect(screen.queryByText('Deskripsi Analyst')).not.toBeInTheDocument()
     expect(screen.queryByText('Komentar PUCL')).not.toBeInTheDocument()
+
+    // Pasangannya ada di tab kedua. Keduanya sengaja diperiksa berpasangan: yang satu
+    // catatan Analyst UNTUK PUCL, yang satu balasan PUCL UNTUK Analyst, dan menukarnya
+    // membalik arah percakapannya tanpa satu pun galat.
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    expect(screen.getByText('Catatan untuk Analyst')).toBeInTheDocument()
   })
 
   it('TIDAK menggambar isian yang bukan milik section', async () => {
@@ -183,11 +207,15 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.getByText('Keterangan Pembuka')).toBeInTheDocument()
     expect(screen.getByText('Keterangan Isi')).toBeInTheDocument()
     expect(screen.getByText('Keterangan Penutup')).toBeInTheDocument()
-    expect(screen.getByText('Tanggal Kelengkapan Dokumen')).toBeInTheDocument()
 
     // Dan ia terbaca BERBEDA dari isian yang kosong: yang kosong memang belum diisi,
     // yang ini punya nilai tetapi nilainya tidak dapat dibaca dari tabel.
     expect(screen.getAllByText('di clipboard Pega').length).toBeGreaterThan(0)
+
+    // Tiga sisanya ada di tab kedua, dan dua di antaranya WAJIB diisi di layar lama.
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    expect(screen.getByText('Email Tertanggung')).toBeInTheDocument()
+    expect(screen.getByText('Tanggal Kelengkapan Dokumen')).toBeInTheDocument()
   })
 
   it('menggambar grid "Tanggal terima Dokumen" sebagai daftar, bukan satu isian', async () => {
@@ -196,21 +224,37 @@ describe('layar kerja SendtoRCLPUCL', () => {
     stubDefaultFetch()
     renderWorkScreen()
 
-    expect(await screen.findByText('Tanggal terima Dokumen')).toBeInTheDocument()
+    await userEvent.click(
+      await screen.findByRole('tab', { name: 'Penerimaan Dokumen' }),
+    )
+
+    expect(screen.getByText('Tanggal terima Dokumen')).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Tanggal' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Keterangan' })).toBeInTheDocument()
   })
 
-  it('menggambar ketiga tombol tindakan, dan seluruhnya tidak dapat ditekan', async () => {
-    // Ketiganya MENULIS, dan tabelnya masih dimiliki Pega selama masa paralel (`P-1`).
+  it('menggambar kelima tombol tindakan dengan nama layar Pega, seluruhnya mati', async () => {
+    // Kelimanya MENULIS, dan tabelnya masih dimiliki Pega selama masa paralel (`P-1`).
     // Tombol yang dihilangkan menyembunyikan bahwa tindakannya ada; tombol yang hidup akan
     // menulis ke tabel yang bukan miliknya.
+    //
+    // NAMANYA dijaga, bukan hanya jumlahnya. Versi sebelumnya menamai satu tombol "Kirim ke
+    // PIC Teknik" — nama yang tidak ada di layar mana pun. Yang benar "Kirim Ke Analyst",
+    // dan itu bukan beda kata: PIC Teknik dan Analyst dua peran yang berbeda, sehingga
+    // tombol itu menyatakan klaimnya diteruskan ke orang yang salah.
     stubDefaultFetch()
     renderWorkScreen()
 
     expect(await screen.findByRole('button', { name: 'Cetak' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Unggah Dokumen' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Kirim ke PIC Teknik' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    for (const label of ['Unggah Dokumen', 'Lihat Dokumen', 'Save', 'Kirim Ke Analyst']) {
+      expect(screen.getByRole('button', { name: label })).toBeDisabled()
+    }
+
+    expect(
+      screen.queryByRole('button', { name: 'Kirim ke PIC Teknik' }),
+    ).not.toBeInTheDocument()
   })
 
   it('menjelaskan UP yang berisi nama objek, alih-alih membiarkannya terbaca sebagai kerusakan', async () => {
@@ -279,11 +323,13 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // Keadaannya dinyatakan…
     expect(await screen.findByText(/Isi klaim tidak terbaca/)).toBeInTheDocument()
 
-    // …dan layarnya tetap tergambar, kosong.
-    expect(screen.getByText('Lampiran Surat')).toBeInTheDocument()
+    // …dan layarnya tetap tergambar, kosong — KEDUA tabnya, bukan hanya yang terbuka.
+    expect(screen.getByRole('tab', { name: 'Lampiran Surat' })).toBeInTheDocument()
     expect(screen.getByText('Status RCL / PUCL / MSIG')).toBeInTheDocument()
-    expect(screen.getByText('Catatan untuk Analyst')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cetak' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    expect(screen.getByText('Catatan untuk Analyst')).toBeInTheDocument()
   })
 
   it('menggambar kerangka layar sejak permintaan pertama, sebelum datanya tiba', async () => {
@@ -306,5 +352,51 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // Antrean meminta bentuk layarnya begitu ia tergambar; cukup dibuktikan bahwa layar
     // kerja sudah ditinggalkan dan permintaan antrean berangkat membawa tab tersebut.
     expect(screen.queryByText('Lampiran Surat')).not.toBeInTheDocument()
+  })
+})
+
+describe('klaim berstatus Notification', () => {
+  it('hanya menampilkan Lampiran Surat, tanpa tab Penerimaan Dokumen', async () => {
+    // Work Owner melaporkan 2026-09-30: klaim MSIG hanya menampilkan Lampiran Surat.
+    // `Section/SendtoRCLPUCL-Section.xml` membenarkannya —
+    // `pyContainerVisibleWhen .ClaimData.PUCLStatus.RCL_PUCL != 3` terpasang pada
+    // kontainer ber-`pyTitle Penerimaan Dokumen`.
+    stubFetch((url) => {
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL_NOTIFICATION)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'tidak ada' })
+    })
+    renderWorkScreen()
+
+    // Ditunggu DATANYA, bukan kerangkanya. Kerangka layar digambar sejak permintaan
+    // pertama — dengan KEDUA tab, karena status klaimnya belum diketahui — dan memeriksa
+    // sebelum datanya tiba akan menguji keadaan yang memang belum tahu apa-apa.
+    // \, bukan \: kata itu muncul dua kali — sebagai nilai status, dan di
+    // dalam keterangan yang menjelaskan mengapa tabnya hilang.
+    expect((await screen.findAllByText('Notification')).length).toBeGreaterThan(0)
+
+    expect(screen.getByRole('tab', { name: 'Lampiran Surat' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: 'Penerimaan Dokumen' }),
+    ).not.toBeInTheDocument()
+
+    // Isinya pun tidak boleh ikut tergambar di bawah tab pertama.
+    expect(screen.queryByText('Catatan untuk Analyst')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Kirim Ke Analyst' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('menjelaskan MENGAPA tabnya hilang, alih-alih membiarkannya terbaca sebagai kerusakan', async () => {
+    // Tab yang hilang tanpa penjelasan akan dilaporkan sebagai kerusakan — persis
+    // sebaliknya dari yang terjadi: ia justru tanda layarnya setara dengan Pega.
+    stubFetch((url) => {
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL_NOTIFICATION)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'tidak ada' })
+    })
+    renderWorkScreen()
+
+    expect(
+      await screen.findByText(/hanya memiliki\s+Lampiran Surat/),
+    ).toBeInTheDocument()
   })
 })

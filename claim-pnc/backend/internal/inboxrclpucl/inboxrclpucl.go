@@ -96,12 +96,25 @@ import (
 // sebagian tab — berbeda dari modul Inbox Manager Receive / PUCL, tempat sembilan dari
 // enam belas isian hanya berlaku pada salah satu tab.
 type WorkItem struct {
-	// Reference adalah kunci teknis `PZINSKEY`.
+	// Reference adalah kunci yang dipakai membuka layar kerja klaim ini.
 	//
-	// Isinya berbentuk `ASM-FW-GCNMFW-WORK PNC-xxxx`: nama kelas internal Pega tertanam di
-	// dalam kunci data bisnis — utang teknis §4.1 yang `D-22` dan `D-71` hapus untuk klaim
-	// baru. Ia TIDAK digambar sebagai kolom; yang memakainya adalah tautan baris
+	// Ia TIDAK digambar sebagai kolom; yang memakainya adalah tautan baris
 	// (`pzGridOpenAction` di sistem lama) dan tombol rincian di sistem baru.
+	//
+	// # Isinya berubah 2026-10-01, dan ini terlihat di alamat layar
+	//
+	// Sebelumnya ia kunci teknis `PZINSKEY` berbentuk `ASM-FW-GCNMFW-WORK PNC-xxxx` — nama
+	// kelas internal Pega tertanam di dalam kunci data bisnis, utang teknis §4.1 yang `D-22`
+	// dan `D-71` hapus untuk klaim baru.
+	//
+	// Sejak layar ini membaca `POOLDATA.TC_PNC_PUCL`, isinya **nomor case** (`PNC-1865`):
+	// tabel datar itu hanya menyimpan satu kunci, dan kunci itu `PYID`. Akibatnya alamat
+	// layar kerja memuat bentuk pendek, dan tautan lama berbentuk panjang TIDAK akan
+	// ditemukan.
+	//
+	// Ia karena itu bernilai SAMA dengan CaseID. Keduanya tetap dipisah sebagai dua isian:
+	// yang satu kontrak tautan, yang satu kolom yang digambar, dan keduanya dapat kembali
+	// berbeda bila kelak tabel datar menyimpan kunci teknisnya pula.
 	Reference string
 
 	// CaseID — kolom **"Nomor Case"** <- `PYID`.
@@ -146,15 +159,10 @@ type WorkItem struct {
 	// dibawa adalah pemetaan milik layarnya sendiri (`D-13`), dan menyamakan keduanya akan
 	// menampilkan kolom yang salah tanpa satu pun galat.
 	//
-	// Kolomnya menyimpan ANGKA: `1` berarti RCL, `2` berarti PUCL, dan `3` berarti
-	// **Notification** (Work Owner, 2026-09-30). Penerjemahannya ada di kueri sistem lama
-	// apa adanya (`GetReminderPUCL-SQL.xml:7-9`), bukan dikarang di sini — dan `CASE` di
-	// sana hanya mengenal `1` dan `2`, tanpa `ELSE`.
-	//
-	// Karena itu klaim ber-kode `3` digambar dengan sel KOSONG, bukan dengan teks
-	// "Notification". Artinya sekarang diketahui, tetapi menuliskannya berarti menampilkan
-	// teks yang tidak pernah muncul di Pega — dan `P-5` menetapkan perilaku dipertahankan
-	// lebih dulu. Lihat TrackHidden untuk akibat yang lebih besar dari kode ini.
+	// Kolomnya menyimpan ANGKA: `1` RCL, `2` PUCL, `3` **Notification**. Ketiganya
+	// digambar sebagai teks, dan `3` pun punya teksnya sendiri — lihat catatan pada TrackOf
+	// untuk bukti bahwa Pega memang menggambarnya, dan mengapa modul ini sempat
+	// mengosongkannya. Lihat pula TrackHidden untuk akibat yang lebih besar dari kode itu.
 	Track string
 
 	// LetterPrintedAt — kolom **"Tanggal Cetak Surat"** <- `TANGGALCETAKDOKUMENPUCL_1`.
@@ -312,22 +320,49 @@ const WorkStatusCompleted = "Resolved-Completed"
 
 // Jalur penanganan klaim.
 //
-// Kolom `RCL_PUCL_1` menyimpan angka; teks inilah yang digambar. Penerjemahannya ada di
-// `RDB List/GetReminderPUCL-SQL.xml:7-9` apa adanya:
+// Kolom `RCL_PUCL_1` menyimpan angka; teks inilah yang digambar.
+//
+// # DARI MANA TEKSNYA, dan kenapa sumber yang pertama dipakai KELIRU
+//
+// Modul ini semula menerjemahkannya mengikuti `RDB List/GetReminderPUCL-SQL.xml:7-9`:
 //
 //	case when a.RCL_PUCL_1 = '1' then 'RCL'
 //	     when a.RCL_PUCL_1 = '2' then 'PUCL'
 //	End
 //
-// `CASE` itu TANPA `ELSE`, sehingga nilai di luar `1` dan `2` menghasilkan NULL — bukan teks
-// lain. Sel kosong di layar adalah jawaban yang benar untuk jalur yang tidak dikenali, dan
-// itu dibawa apa adanya (`P-5`).
+// `CASE` itu tanpa `ELSE`, sehingga kode `3` menghasilkan sel KOSONG — dan itu direplikasi
+// apa adanya selama beberapa hari.
+//
+// **Kueri itu bukan yang memasok grid.** Ia memasok pengingat PUCL. Sel grid-nya sendiri
+// adalah kontrol daftar pilihan baca-saja —
+//
+//	Section/InboxAJSMSIG_Section-Section.xml
+//	  <pyValue>.ClaimData.PUCLStatus.RCL_PUCL</pyValue>
+//	  <pyFormat>pxRadioButtons</pyFormat>
+//	  <pyEditOptions>Read-only</pyEditOptions>
+//
+// — dan kontrol semacam itu menggambar **label** pilihan yang terpilih, bukan kodenya. Label
+// itu hidup di rule Property `RCL_PUCL`, yang **tidak ada di export**: seluruh folder
+// `Property/` hanya memuat satu berkas, dan bukan yang ini (`R-16`).
+//
+// Jadi teksnya memang tidak dapat dibaca dari artefak mana pun. Yang membuktikannya layar
+// Pega yang berjalan: tab "Klaim MSIG" menggambar **"Notification"** untuk `PNC-1503`, dan
+// baris itu terverifikasi `RCL_PUCL_1 = '3'` di basis data (2026-09-30). Ia sejalan dengan
+// keterangan Work Owner pada tanggal yang sama: `1` RCL · `2` PUCL · `3` Notification.
+//
+// Nilai di luar ketiganya tetap menghasilkan teks KOSONG. Satu baris di produksi memang
+// berkode kosong, dan sel kosong adalah jawaban yang benar untuknya.
 const (
 	// TrackRCL — Rejected Klaim (`CONTEXT.md`).
 	TrackRCL = "RCL"
 
 	// TrackPUCL — Proses Ulang Klaim (`CONTEXT.md`).
 	TrackPUCL = "PUCL"
+
+	// TrackNotification — bukan pekerjaan RCL maupun PUCL, melainkan pemberitahuan.
+	//
+	// Ia jalur yang MENYEMBUNYIKAN layar kerja di Pega; lihat TrackHidden.
+	TrackNotification = "Notification"
 )
 
 // Kode mentah jalur penanganan sebagaimana tersimpan di `RCL_PUCL_1`.
@@ -335,8 +370,9 @@ const (
 // Dikumpulkan sebagai konstanta supaya penerjemah SQL dan penerjemah penyimpanan memori
 // tidak dapat berselisih tanpa ketahuan.
 const (
-	TrackCodeRCL  = "1"
-	TrackCodePUCL = "2"
+	TrackCodeRCL          = "1"
+	TrackCodePUCL         = "2"
+	TrackCodeNotification = "3"
 )
 
 // TrackOf menerjemahkan kode jalur menjadi teks yang digambar grid.
@@ -345,15 +381,17 @@ const (
 // teks yang sama persis — dan uji aturan modul yang berjalan di atas memori hanya menyatakan
 // sesuatu tentang Oracle bila keduanya memakai penerjemah yang sama.
 //
-// Nilai yang tidak dikenali menghasilkan teks KOSONG, meniru `CASE` tanpa `ELSE` di sistem
-// lama. Ia sengaja tidak diganti "—" maupun kode mentahnya: yang pertama milik layar, yang
-// kedua akan menampilkan angka yang tidak berarti apa pun bagi pengguna.
+// Nilai yang tidak dikenali menghasilkan teks KOSONG. Ia sengaja tidak diganti "—" maupun
+// kode mentahnya: yang pertama milik layar, yang kedua akan menampilkan angka yang tidak
+// berarti apa pun bagi pengguna. Satu baris di produksi memang berkode kosong.
 func TrackOf(code string) string {
 	switch strings.TrimSpace(code) {
 	case TrackCodeRCL:
 		return TrackRCL
 	case TrackCodePUCL:
 		return TrackPUCL
+	case TrackCodeNotification:
+		return TrackNotification
 	default:
 		return ""
 	}
@@ -678,6 +716,36 @@ type ClaimDetail struct {
 	DocumentReceipt DocumentReceipt
 }
 
+// ShowsDocumentReceipt menyatakan tab "Penerimaan Dokumen" digambar untuk klaim ini.
+//
+// # Syaratnya nyata, dan letaknya bukan di tempat yang semula dikira
+//
+// `Section/SendtoRCLPUCL-Section.xml` memasang syarat itu pada KONTAINER tab kedua —
+// kontainer ber-`pyTitle Penerimaan Dokumen` yang menyisipkan
+// `SectionPenerimaanDokumenPUCL`:
+//
+//	<pyContainerVisibleWhen>.ClaimData.PUCLStatus.RCL_PUCL != 3</pyContainerVisibleWhen>
+//
+// Jadi kode `3` (Notification) menyembunyikan **satu tab**, bukan seluruh layar kerja.
+//
+// # Ini mengoreksi pembacaan sebelumnya
+//
+// `pyMemo` pada flow action berbunyi *"visibility when .ClaimData.PUCLStatus.RCL_PUCL != 3"*
+// tanpa menyebut apa yang disembunyikannya, dan modul ini membacanya sebagai "seluruh layar"
+// (`keputusan-implementasi.md` §45.2b dan §78 keputusan 5). Work Owner melaporkan 2026-09-30
+// bahwa klaim MSIG **hanya menampilkan Lampiran Surat** — dan penelusuran ke berkas
+// section-nya membenarkan laporan itu, bukan pembacaan kami.
+//
+// # Kenapa ia SEKARANG ditegakkan, padahal 2026-09-24 sengaja tidak
+//
+// Karena yang ditunda saat itu adalah syarat yang dikira memblokir SELURUH layar — menolak
+// membuka klaim. Yang sebenarnya diatur hanyalah tab mana yang digambar, dan itu murni
+// tampilan: ia tidak menolak siapa pun, tidak menyentuh data, dan tidak bertabrakan dengan
+// `P-1`. Menegakkannya membuat layar ini LEBIH setara, bukan kurang.
+func (d ClaimDetail) ShowsDocumentReceipt() bool {
+	return strings.TrimSpace(d.Letter.TrackCode) != TrackHidden
+}
+
 // LetterDraft adalah bagian "Lampiran Surat" — bahan surat RCL/PUCL.
 //
 // # Tiga isiannya DITURUNKAN, bukan disimpan
@@ -740,6 +808,33 @@ type LetterDraft struct {
 	// BillAmount adalah "Jumlah Tagihan" — DITURUNKAN dari `PROPOSE_VALUE` adjustment
 	// pertama pada coverage pertama objek pertama.
 	BillAmount string
+
+	// Keempat isian berikut MENUTUP empat dari sembilan isian yang dulu bertanda
+	// "di clipboard Pega".
+	//
+	// # Kenapa mereka berpindah dari clipboard ke kolom
+	//
+	// Bukan karena pencarian yang lebih teliti. `TC_PNC_PUCL` yang berjalan memang punya
+	// kolomnya — `PERIHAL`, `KETERANGAN1`, `KETERANGAN2`, `KETERANGAN3` — dan terisi.
+	// Dibaca langsung 2026-10-01, dan isinya cocok kata demi kata dengan layar Pega.
+	//
+	// Keempatnya TIDAK ada di `Database/CREATE_TABLE_3.SQL`: berkas itu mendefinisikan 26
+	// kolom, tabelnya punya 30. Lihat catatan pada kueri `detail`.
+
+	// Subject adalah "Perihal" — `PERIHAL`.
+	//
+	// Di Pega ia PILIHAN dari master `POOLDATA.M_PERIHAL_RCLPUCL` (12 baris), digambar
+	// kontrol `pxAutoComplete`. Yang tersimpan pada klaim adalah teksnya, bukan kodenya.
+	Subject string
+
+	// OpeningNote adalah "Keterangan Pembuka" — `KETERANGAN1`.
+	OpeningNote string
+
+	// BodyNote adalah "Keterangan Isi" — `KETERANGAN2`.
+	BodyNote string
+
+	// ClosingNote adalah "Keterangan Penutup" — `KETERANGAN3`.
+	ClosingNote string
 }
 
 // DocumentReceipt adalah bagian "Penerimaan Dokumen".
@@ -766,30 +861,27 @@ type DocumentReceipt struct {
 	PUCLNote string
 }
 
-// TrackHidden adalah kode jalur yang MENYEMBUNYIKAN layar kerja ini di Pega.
+// TrackHidden adalah kode jalur yang menyembunyikan tab "Penerimaan Dokumen" di Pega.
 //
-// Dari `pyMemo` pada rule `SendtoRCLPUCL`: *"visibility when
-// .ClaimData.PUCLStatus.RCL_PUCL != 3"*.
+// Ia sama dengan TrackCodeNotification; dua nama untuk satu kode, karena keduanya menyatakan
+// hal yang berbeda — yang satu ARTI kodenya, yang satu AKIBATNYA pada layar.
 //
-// # Ia SENGAJA TIDAK DITEGAKKAN
+// # Apa persisnya yang disembunyikan
 //
-// Keputusan Work Owner 2026-09-24: **"tidak usah pakai when dulu"**. Layar kerja karena itu
-// terbuka untuk kode jalur apa pun, termasuk `3`.
+// Satu tab, bukan seluruh layar. Syaratnya terpasang pada kontainer tab kedua di
+// `Section/SendtoRCLPUCL-Section.xml`:
 //
-// # Artinya sekarang diketahui: `3` = Notification
+//	<pyContainerVisibleWhen>.ClaimData.PUCLStatus.RCL_PUCL != 3</pyContainerVisibleWhen>
 //
-// Work Owner, 2026-09-30: `1` RCL · `2` PUCL · **`3` Notification**. Itu mengubah bobot
-// keputusan di atas, dan perlu dibaca sebelum satu pun tombol tulis dihidupkan.
+// Lihat ClaimDetail.ShowsDocumentReceipt untuk penegakannya, dan untuk catatan mengapa
+// pembacaan sebelumnya — "menyembunyikan seluruh layar" — keliru.
 //
-// Klaim ber-kode `3` bukan pekerjaan RCL maupun PUCL — ia pemberitahuan. Pega
-// menyembunyikan layar kerjanya justru karena itu. Selama layar di sini **hanya membaca**,
-// membukanya tidak mengubah apa pun dan keputusan Work Owner tetap aman.
+// # Kenapa masuk akal ia begitu
 //
-// Yang berubah begitu tombol tulis hidup: petugas akan dapat mencetak surat atau mengirim
-// pengingat pada klaim yang di Pega tidak pernah bisa dibuka sama sekali — dan itu tidak
-// menghasilkan satu pun galat. Karena itu syarat ini WAJIB diberlakukan kembali sebelum
-// operasi tulis pertama ditambahkan ke Repo, bukan sesudahnya.
-const TrackHidden = "3"
+// Klaim ber-kode `3` bukan pekerjaan RCL maupun PUCL melainkan **pemberitahuan**, sehingga
+// tidak ada dokumen yang ditunggu dan tidak ada yang dikirim kembali ke Analyst. Yang
+// tersisa hanya suratnya.
+const TrackHidden = TrackCodeNotification
 
 // ErrClaimNotFound dikembalikan saat kunci klaim tidak ditemukan di portal yang dipilih.
 //

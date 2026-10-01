@@ -4,64 +4,106 @@
 -- tetap seperti aslinya karena keduanya milik basis data — pengecualian `D-80`, dan
 -- perubahannya menempuh `D-63`.
 --
--- SELURUH tabel yang dibaca berkas ini milik sistem lama. Tidak ada satu pun pernyataan yang
--- menulis, dan memang tidak boleh ada: selama masa paralel setiap tabel hanya boleh ditulis
--- SATU sistem, dan tabel-tabel ini milik Pega (`P-1`).
+-- ============================================================================
+-- DUA SUMBER, DAN BATASNYA TEGAS
+-- ============================================================================
+--
+-- Sejak 2026-10-01 berkas ini membaca DUA kelompok tabel, bukan satu:
+--
+--   POOLDATA.TC_PNC_PUCL              MILIK APLIKASI INI — tabel datar RCL/PUCL
+--                                     ketiga tab + layar kerja
+--                                     DDL: Database/CREATE_TABLE_3.SQL
+--                                          claim-pnc/docs/ddl/tc_pnc_pucl.sql
+--
+--   DATAPEGA.PC_ASM_FW_GCNMFW_WORK    MILIK PEGA — hanya `daily_report`, lihat alasannya
+--   DATAPEGA.PC_ASSIGN_WORKBASKET     pada kueri itu
+--   POOLDATA.T_CLAIM_PNC              MILIK PEGA — kunci teknis klaim
+--   POOLDATA.T_CLAIM_OBJECTLIST       MILIK PEGA — isian turunan layar kerja
+--   POOLDATA.T_CLAIM_ADJUSTMENT       MILIK PEGA — isian turunan layar kerja
+--
+-- Tidak ada satu pun pernyataan yang menulis, dan memang tidak boleh ada: selama masa
+-- paralel setiap tabel hanya boleh ditulis SATU sistem (`P-1`). `TC_PNC_PUCL` pun hanya
+-- DIBACA di sini — yang menulisinya adalah proses pengisi, bukan modul ini.
+--
+-- ============================================================================
+-- APA YANG BERUBAH SAAT TABEL DATAR DIPAKAI, DAN APA YANG TIDAK
+-- ============================================================================
+--
+-- TIDAK BERUBAH: penyaring bisnis ketiga tab, urutan baris, ukuran halaman, kolom yang
+-- digambar, dan judulnya. Ketiganya tetap turunan langsung dari Report Definition-nya.
+--
+-- BERUBAH, dan ketiganya harus disadari:
+--
+--   1. GABUNGAN KE ANTREAN BERSAMA HILANG. `ASSIGNED_OPERATOR_ID` kini kolom pada baris
+--      klaimnya sendiri. Akibatnya klaim yang punya DUA penugasan terbuka di antrean yang
+--      sama TIDAK LAGI muncul dua kali — `PRIMARY KEY (CLAIMID)` tidak mengizinkannya.
+--      Itu selisih terhadap Pega; lihat `docs/ddl/tc_pnc_pucl.sql` §4.
+--
+--   2. PENYARING KELAS OBJEK KERJA HILANG. `TC_PNC_PUCL` tidak punya `PXOBJCLASS`.
+--      Pemisahan Work-PNC dari Work-ReceiveDocument karena itu menjadi tanggung jawab
+--      PROSES PENGISI, bukan kueri ini. Ia tidak dapat ditegakkan dari sini.
+--
+--   3. `REFERENCE` DAN `CASE_ID` KINI BERNILAI SAMA. Tabel lama punya `PZINSKEY` (kunci
+--      teknis) dan `PYID` (nomor case) sebagai dua kolom; tabel datar hanya menyimpan yang
+--      kedua, dengan nama `CLAIMID`. Keduanya tetap dikembalikan sebagai dua alias supaya
+--      kontrak ke layar tidak berubah — lihat catatan pada `list_cetak_surat`.
 --
 -- ============================================================================
 -- SATU ANTREAN, TIGA PARTISI
 -- ============================================================================
 --
--- Ketiga kueri daftar membaca tabel yang SAMA dan antrean bersama yang SAMA. Yang
--- membedakan hanyalah tiga penyaring, dan ketiganya menyangkut perjalanan surat PUCL:
+-- Ketiga kueri daftar membaca tabel yang SAMA. Yang membedakan hanyalah tiga penyaring, dan
+-- ketiganya menyangkut perjalanan surat PUCL:
 --
---   list_cetak_surat            TANGGALCETAKDOKUMENPUCL_1 IS NULL     surat belum dicetak
---                               STATUSCASE_1 = :status
---   list_kelengkapan_dokumen    TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL surat sudah dicetak
---                               PUCLAPPROVE_1 <> :disetujui
---                               MSIG_1 IS NULL
---   list_klaim_msig             sama seperti di atas, tetapi MSIG_1 = :msig
+--   list_cetak_surat            TGL_CETAK_DOKUMEN_PUCL IS NULL     surat belum dicetak
+--                               STATUS_CASE = :status
+--   list_kelengkapan_dokumen    TGL_CETAK_DOKUMEN_PUCL IS NOT NULL surat sudah dicetak
+--                               PUCL_APPROVE <> :disetujui
+--                               MSIG IS NULL
+--   list_klaim_msig             sama seperti di atas, tetapi MSIG = :msig
 --
--- Ketiganya ditambah PYSTATUSWORK <> :selesai dan gabungan ke antrean bersama `RCLPUCL`.
+-- Ketiganya ditambah `STATUS_WORK <> :selesai` dan `ASSIGNED_OPERATOR_ID = :antrean`.
 --
 -- Penyaringnya diambil dari `pyFilters` ketiga Report Definition, dan dipastikan ulang
 -- terhadap SQL hasil generate Pega sendiri di `RDB List/ReminderPUCL-SQL.xml` — yang memuat
 -- penyaring list_kelengkapan_dokumen kata demi kata, termasuk literal 'RCLPUCL'.
 --
 -- ============================================================================
--- PEMETAAN KOLOM — properti Pega -> kolom sebenarnya -> alias di sini
+-- PEMETAAN KOLOM — properti Pega -> kolom Pega -> kolom tabel datar -> alias
 -- ============================================================================
 --
 -- Diambil dari SEL GRID ketiga section (bukan dari pyListFields Report Definition, yang
--- mengambil 17–25 isian sementara yang digambar hanya sembilan), dan nama kolomnya
--- dipastikan lewat `RDB List/ReminderPUCL-SQL.xml` dan `RDB List/GetReminderPUCL-SQL.xml`.
+-- mengambil 17–25 isian sementara yang digambar hanya sembilan).
 --
---   judul kolom          properti Pega                                  kolom          alias
---   -------------------- --------------------------------------------- -------------- -----------------
---   (tidak digambar)     .pzInsKey                                      PZINSKEY       REFERENCE
---   Nomor Case           .pyID                                          PYID           CASE_ID
---   No Polis             .Policy.PolicyNo                               POLICYNO       POLICY_NUMBER
---   Nama Tertanggung     .Policy.QQName                                 QQNAME         INSURED_NAME
---   Tanggal Masuk Inbox  .ClaimData.PUCLStatus.TanggalKirimPUCL         TANGGALKIRIMPUCL_1        INBOX_ENTRY_AT
---   Deskripsi Analyst    .ClaimData.PUCLStatus.KomentarAnalisator       KOMENTARANALISATOR_1      ANALYST_NOTE
---   Status RCL/PUCL      .ClaimData.PUCLStatus.RCL_PUCL                 RCL_PUCL_1                TRACK_CODE
---   Tanggal Cetak Surat  .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL  TANGGALCETAKDOKUMENPUCL_1 LETTER_PRINTED_AT
---   Lama Klaim           .ClaimData.PUCLStatus.LamaKlaim                LAMAKLAIM_1               CLAIM_AGE
---   Status Kadaluarsa    .ClaimData.PUCLStatus.StatusKlaim              STATUSKLAIM_1             EXPIRY_STATUS
+--   judul kolom          kolom Pega                  kolom tabel datar       alias
+--   -------------------- --------------------------- ----------------------- -----------------
+--   (tidak digambar)     PZINSKEY                    — TIDAK ADA             REFERENCE *
+--   Nomor Case           PYID                        CLAIMID                 CASE_ID
+--   No Polis             POLICYNO                    POLICY_NO               POLICY_NUMBER
+--   Nama Tertanggung     QQNAME                      QQ_NAME                 INSURED_NAME
+--   Tanggal Masuk Inbox  TANGGALKIRIMPUCL_1          TGL_KIRIM_PUCL          INBOX_ENTRY_AT
+--   Deskripsi Analyst    KOMENTARANALISATOR_1        KOMENTAR_ANALISATOR     ANALYST_NOTE
+--   Status RCL/PUCL      RCL_PUCL_1                  RCL_PUCL                TRACK_CODE
+--   Tanggal Cetak Surat  TANGGALCETAKDOKUMENPUCL_1   TGL_CETAK_DOKUMEN_PUCL  LETTER_PRINTED_AT
+--   Lama Klaim           LAMAKLAIM_1                 LAMA_KLAIM              CLAIM_AGE
+--   Status Kadaluarsa    STATUSKLAIM_1               STATUS_KLAIM            EXPIRY_STATUS
+--   (pengurut)           PXCREATEDATETIME            TGL_CREATE_PUCL         CREATED_AT
 --
--- DUA BARIS TERAKHIR ADALAH TEMPAT PALING MUDAH SALAH DI SELURUH BERKAS INI.
+--   * REFERENCE kini diisi `CLAIMID` pula. Lihat catatan pada list_cetak_surat.
+--
+-- DUA BARIS YANG PALING MUDAH SALAH DI SELURUH BERKAS INI.
 --
 -- Layar Inbox Manager Receive / PUCL memakai DUA judul yang sama untuk kolom yang BERBEDA:
 --
 --   judul                layar ini        Inbox Manager Receive / PUCL
 --   -------------------- ---------------- ----------------------------
---   Status RCL/PUCL      RCL_PUCL_1       STATUSKLAIM_1
---   Status Kadaluarsa    STATUSKLAIM_1    STATUSCASE_1
+--   Status RCL/PUCL      RCL_PUCL         STATUSKLAIM_1
+--   Status Kadaluarsa    STATUS_KLAIM     STATUSCASE_1
 --
 -- Keduanya diverifikasi dari sel grid section masing-masing. Menyalin pemetaan satu layar ke
 -- layar lain akan menampilkan kolom yang salah TANPA satu pun galat.
 --
--- Perhatikan pula `STATUSCASE_1`: ia MENYARING list_cetak_surat tetapi TIDAK digambar satu
+-- Perhatikan pula `STATUS_CASE`: ia MENYARING list_cetak_surat tetapi TIDAK digambar satu
 -- sel pun di layar ini. Itu perilaku sistem lama apa adanya.
 --
 -- Alias Pega yang TIDAK dibawa (`D-19`), karena tidak satu pun menyatakan isinya:
@@ -83,16 +125,17 @@
 -- KODE JALUR TIDAK DITERJEMAHKAN DI SINI
 -- ============================================================================
 --
--- `RCL_PUCL_1` dikembalikan MENTAH sebagai TRACK_CODE, dan penerjemahannya menjadi "RCL"
--- atau "PUCL" dikerjakan `inboxrclpucl.TrackOf` di lapisan domain.
+-- `RCL_PUCL` dikembalikan MENTAH sebagai TRACK_CODE, dan penerjemahannya menjadi "RCL" atau
+-- "PUCL" dikerjakan `inboxrclpucl.TrackOf` di lapisan domain.
 --
 -- Ini BERBEDA dari modul Inbox Manager Receive / PUCL, yang menuliskan `CASE` penerjemah di
 -- dalam SQL-nya. Yang dipakai di sini adalah pola yang sama dengan `ClaimTypeOf` pada modul
 -- itu, dan alasannya sama: penyimpanan SQL dan penyimpanan memori wajib menghasilkan teks
 -- yang sama persis, dan dua penerjemah di dua tempat dapat menyimpang tanpa ketahuan.
 --
--- Hasilnya identik dengan `CASE` tanpa `ELSE` di sistem lama
--- (`GetReminderPUCL-SQL.xml:7-9`): kode di luar '1' dan '2' menghasilkan teks kosong.
+-- Ketiga kode yang dipakai layar lama punya teksnya sendiri — '1' RCL, '2' PUCL,
+-- '3' Notification — dan kode di luar ketiganya menghasilkan teks kosong. Sumber teksnya
+-- BUKAN `CASE` pada `GetReminderPUCL-SQL.xml`: kueri itu memasok PENGINGAT, bukan grid.
 --
 -- ============================================================================
 -- YANG BERUBAH DARI SISTEM LAMA, DAN KENAPA
@@ -122,37 +165,26 @@
 --    `>= awal AND < akhir + 1 hari`, yang MEMILIH BARIS YANG SAMA PERSIS dan tetap dapat
 --    memakai index. Ia pula portabel ke PostgreSQL, sementara `TRUNC(date)` tidak.
 --
--- 5. GABUNGAN DITULIS SEBAGAI `JOIN`, BUKAN DAFTAR TABEL BERKOMA.
---    `ReminderPUCL-SQL.xml` sudah memakai `INNER JOIN`. Yang diubah hanyalah tempat syarat
---    penyaring ditulis, bukan isinya.
+-- 5. KETIGA TAB TIDAK LAGI MENGGABUNG DUA TABEL. Lihat butir 1 di kepala berkas ini.
 --
 -- ============================================================================
 -- YANG SENGAJA TIDAK BERUBAH — termasuk yang tampak seperti cacat
 -- ============================================================================
 --
--- * URUTAN mengikuti Report Definition apa adanya: `PXCREATEDATETIME DESC, PYID DESC`,
+-- * URUTAN mengikuti Report Definition apa adanya: `TGL_CREATE_PUCL DESC, CLAIMID DESC`,
 --   terbaca dari `ReminderPUCL-SQL.xml` sebagai `ORDER BY 5 DESC, 7 DESC` (kolom ke-5 dan
---   ke-7 pada daftar pilihnya).
+--   ke-7 pada daftar pilihnya, yaitu `PXCREATEDATETIME` lalu `PYID`).
 --
---   Yang harus disadari: `PXCREATEDATETIME` TIDAK digambar di layar ini. Yang digambar
---   sebagai "Tanggal Masuk Inbox" adalah `TANGGALKIRIMPUCL_1`, dan keduanya dapat terpaut
+--   Yang harus disadari: `TGL_CREATE_PUCL` TIDAK digambar di layar lama. Yang digambar
+--   sebagai "Tanggal Masuk Inbox" adalah `TGL_KIRIM_PUCL`, dan keduanya dapat terpaut
 --   berbulan-bulan — sebuah klaim lahir jauh sebelum ia masuk antrean RCL/PUCL. Akibatnya
---   tabel dapat TERBACA tidak urut oleh penggunanya.
+--   tabel dapat TERBACA tidak urut oleh penggunanya, dan karena itu kolomnya DITAMPILKAN
+--   sebagai kolom terakhir (keputusan Work Owner 2026-09-30).
 --
---   Ia tetap tidak diubah. Mengganti kunci urut mengubah baris mana yang ada di halaman
---   pertama, dan itu selisih yang tidak diputuskan siapa pun (`P-5`). Ia dinyatakan ke
---   pengguna lewat PlannedDifferences, bukan diperbaiki sepihak.
---
--- * `INNER JOIN` ke tabel antrean bersama, bukan `EXISTS`. Report Definition-nya memakai
---   gabungan dalam, sehingga objek kerja yang punya DUA penugasan terbuka di antrean yang
---   sama muncul DUA KALI. Itu perilaku sistem lama apa adanya, dan menggantinya dengan
---   `EXISTS` akan mengubah jumlah baris yang terlihat pengguna tanpa satu pun keputusan
---   yang mendasarinya.
---
--- * `PUCLAPPROVE_1 <> :disetujui` TIDAK MENANGKAP NULL, dan itu dibiarkan.
+-- * `PUCL_APPROVE <> :disetujui` TIDAK MENANGKAP NULL, dan itu dibiarkan.
 --   `NULL <> '1'` menghasilkan UNKNOWN — bukan TRUE — di Oracle maupun PostgreSQL, sehingga
 --   klaim yang penanda persetujuannya belum pernah diisi TIDAK muncul di tab Kelengkapan
---   Dokumen maupun Klaim MSIG. Kolomnya hanya punya DUA nilai berbeda di produksi
+--   Dokumen maupun Klaim MSIG. Kolom asalnya hanya punya DUA nilai berbeda di produksi
 --   (`docs/kolom-t-claimlist-admin.md` §B.3), sehingga jumlah baris yang terdampak bisa
 --   besar.
 --
@@ -160,11 +192,11 @@
 --   Pega tidak pernah terlihat. Itu perubahan perilaku pada layar yang sedang diuji
 --   kesetaraannya, dan bukan wewenang berkas ini. Ia dicatat sebagai pertanyaan terbuka.
 --
--- * Pembanding `PUCLAPPROVE_1` diikat sebagai TEKS, mengikuti
+-- * Pembanding `PUCL_APPROVE` diikat sebagai TEKS, mengikuti
 --   `RDB List/CountKlaimPUCL-SQL.xml` yang menulis `<> '1'`. `ReminderPUCL-SQL.xml` menulis
 --   `<> 1` tanpa kutip pada kolom yang sama — dua rule Pega yang tidak sepakat tentang tipe
---   kolomnya sendiri. Yang dipilih bentuk bertanda kutip karena DDL-nya tidak tersedia
---   (`R-08`) dan seluruh kolom ber-akhiran `_1` lain di tabel ini dibaca sebagai teks.
+--   kolomnya sendiri. Yang dipilih bentuk bertanda kutip, dan `CREATE_TABLE_3.SQL` kini
+--   menutup keraguannya: kolomnya `VARCHAR2(5 CHAR)`.
 --
 -- CATATAN PENANDA BIND. Berkas ini memakai gaya Oracle `:n`, sama seperti seluruh modul lain
 -- di aplikasi ini. Ia BELUM portabel ke PostgreSQL yang memakai `$n`; itu utang yang sudah
@@ -178,118 +210,127 @@
 -- dipilih, bukan diganti NULL tetap, supaya ketiga kueri punya bentuk yang sama persis dan
 -- satu pemindai Go dapat melayani ketiganya.
 --
--- Bind: :1 kelas objek kerja · :2 akun antrean bersama · :3 status kerja yang dikecualikan
---       :4 nilai STATUSCASE_1 yang diterima · :5 offset · :6 jumlah baris
-SELECT w.PZINSKEY                       AS REFERENCE,
-       w.PYID                           AS CASE_ID,
-       w.POLICYNO                       AS POLICY_NUMBER,
-       w.QQNAME                         AS INSURED_NAME,
-       w.TANGGALKIRIMPUCL_1             AS INBOX_ENTRY_AT,
-       w.KOMENTARANALISATOR_1           AS ANALYST_NOTE,
-       w.RCL_PUCL_1                     AS TRACK_CODE,
-       w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
-       w.LAMAKLAIM_1                    AS CLAIM_AGE,
-       w.STATUSKLAIM_1                  AS EXPIRY_STATUS,
-       w.PXCREATEDATETIME               AS CREATED_AT,
+-- KENAPA `CLAIMID` DIPILIH DUA KALI, SEBAGAI REFERENCE DAN SEBAGAI CASE_ID
+--
+-- Tabel Pega punya dua kolom untuk dua peran: `PZINSKEY` sebagai kunci teknis yang dipakai
+-- tautan baris, dan `PYID` sebagai nomor case yang digambar. `TC_PNC_PUCL` hanya menyimpan
+-- yang kedua.
+--
+-- Keduanya tetap dikembalikan supaya kontrak ke layar tidak berubah: `REFERENCE` yang
+-- dipakai tombol rincian, `CASE_ID` yang digambar sebagai kolom "Nomor Case". Yang berubah
+-- hanyalah ISINYA — alamat layar kerja kini memuat `PNC-1865`, bukan
+-- `ASM-FW-GCNMFW-WORK PNC-1865`. Tautan lama berbentuk panjang itu TIDAK akan ditemukan.
+--
+-- Bind: :1 akun antrean bersama · :2 status kerja yang dikecualikan
+--       :3 nilai STATUS_CASE yang diterima · :4 offset · :5 jumlah baris
+SELECT p.CLAIMID                        AS REFERENCE,
+       p.CLAIMID                        AS CASE_ID,
+       p.POLICY_NO                      AS POLICY_NUMBER,
+       p.QQ_NAME                        AS INSURED_NAME,
+       p.TGL_KIRIM_PUCL                 AS INBOX_ENTRY_AT,
+       p.KOMENTAR_ANALISATOR            AS ANALYST_NOTE,
+       p.RCL_PUCL                       AS TRACK_CODE,
+       p.TGL_CETAK_DOKUMEN_PUCL         AS LETTER_PRINTED_AT,
+       p.LAMA_KLAIM                     AS CLAIM_AGE,
+       p.STATUS_KLAIM                   AS EXPIRY_STATUS,
+       p.TGL_CREATE_PUCL                AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-               ON b.PXREFOBJECTKEY = w.PZINSKEY
-              AND b.PXOBJCLASS = 'Assign-WorkBasket'
- WHERE w.PXOBJCLASS = :1
-   AND b.PXASSIGNEDOPERATORID = :2
-   AND w.PYSTATUSWORK <> :3
-   AND w.TANGGALCETAKDOKUMENPUCL_1 IS NULL
-   AND w.STATUSCASE_1 = :4
- ORDER BY w.PXCREATEDATETIME DESC, w.PYID DESC
-OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
+  FROM POOLDATA.TC_PNC_PUCL p
+ WHERE p.ASSIGNED_OPERATOR_ID = :1
+   AND p.STATUS_WORK <> :2
+   AND p.TGL_CETAK_DOKUMEN_PUCL IS NULL
+   AND p.STATUS_CASE = :3
+ ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
+OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: list_kelengkapan_dokumen
 -- Tab "Kelengkapan Dokumen" — surat sudah dicetak, belum disetujui, bukan jalur MSIG.
 -- — Report Definition/InboxPUCLCetakSurat_RD-RD.xml, pyFilterLogic "A AND B AND C AND D AND E"
 -- — SQL hasil generate-nya ada utuh di RDB List/ReminderPUCL-SQL.xml
 --
--- Bind: :1 kelas objek kerja · :2 akun antrean bersama · :3 status kerja yang dikecualikan
---       :4 nilai PUCLAPPROVE_1 yang dikecualikan · :5 offset · :6 jumlah baris
-SELECT w.PZINSKEY                       AS REFERENCE,
-       w.PYID                           AS CASE_ID,
-       w.POLICYNO                       AS POLICY_NUMBER,
-       w.QQNAME                         AS INSURED_NAME,
-       w.TANGGALKIRIMPUCL_1             AS INBOX_ENTRY_AT,
-       w.KOMENTARANALISATOR_1           AS ANALYST_NOTE,
-       w.RCL_PUCL_1                     AS TRACK_CODE,
-       w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
-       w.LAMAKLAIM_1                    AS CLAIM_AGE,
-       w.STATUSKLAIM_1                  AS EXPIRY_STATUS,
-       w.PXCREATEDATETIME               AS CREATED_AT,
+-- Bind: :1 akun antrean bersama · :2 status kerja yang dikecualikan
+--       :3 nilai PUCL_APPROVE yang dikecualikan · :4 offset · :5 jumlah baris
+SELECT p.CLAIMID                        AS REFERENCE,
+       p.CLAIMID                        AS CASE_ID,
+       p.POLICY_NO                      AS POLICY_NUMBER,
+       p.QQ_NAME                        AS INSURED_NAME,
+       p.TGL_KIRIM_PUCL                 AS INBOX_ENTRY_AT,
+       p.KOMENTAR_ANALISATOR            AS ANALYST_NOTE,
+       p.RCL_PUCL                       AS TRACK_CODE,
+       p.TGL_CETAK_DOKUMEN_PUCL         AS LETTER_PRINTED_AT,
+       p.LAMA_KLAIM                     AS CLAIM_AGE,
+       p.STATUS_KLAIM                   AS EXPIRY_STATUS,
+       p.TGL_CREATE_PUCL                AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-               ON b.PXREFOBJECTKEY = w.PZINSKEY
-              AND b.PXOBJCLASS = 'Assign-WorkBasket'
- WHERE w.PXOBJCLASS = :1
-   AND b.PXASSIGNEDOPERATORID = :2
-   AND w.PYSTATUSWORK <> :3
-   AND w.TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL
-   AND w.PUCLAPPROVE_1 <> :4
-   AND w.MSIG_1 IS NULL
- ORDER BY w.PXCREATEDATETIME DESC, w.PYID DESC
-OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
+  FROM POOLDATA.TC_PNC_PUCL p
+ WHERE p.ASSIGNED_OPERATOR_ID = :1
+   AND p.STATUS_WORK <> :2
+   AND p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
+   AND p.PUCL_APPROVE <> :3
+   AND p.MSIG IS NULL
+ ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
+OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: list_klaim_msig
 -- Tab "Klaim MSIG" — sama seperti list_kelengkapan_dokumen, tetapi jalur MSIG.
 -- — Report Definition/InboxMISG_RD-RD.xml, pyFilterLogic "A AND B AND C AND D AND E"
 --
--- SATU-SATUNYA perbedaan terhadap kueri di atasnya adalah baris MSIG_1: `IS NULL` menjadi
--- `= :5`. Keduanya sengaja TIDAK disatukan menjadi satu kueri berparameter: penyaring yang
+-- SATU-SATUNYA perbedaan terhadap kueri di atasnya adalah baris MSIG: `IS NULL` menjadi
+-- `= :4`. Keduanya sengaja TIDAK disatukan menjadi satu kueri berparameter: penyaring yang
 -- artinya berbalik menurut nilai bind adalah tempat paling mudah menukar isi dua tab, dan
 -- tidak ada apa pun di layar yang menandakannya bila itu terjadi.
 --
--- KUERI INI NYARIS SELALU MENGEMBALIKAN NOL BARIS, tetapi TIDAK selalu. `MSIG_1` tidak
--- muncul di inventaris kolom terisi yang dibaca dari katalog Oracle pada 2026-09-22
--- (`docs/kolom-t-claimlist-admin.md` §B.3), sementara `PUCLAPPROVE_1`, `STATUSCASE_1`,
--- `RCL_PUCL_1`, dan `TANGGALKIRIMPUCL_1` semuanya ada di sana — sehingga kolom ini sempat
--- dianggap tidak pernah terisi.
---
--- Hitungan langsung pada 2026-09-30 membantahnya: `GROUP BY MSIG_1` di portal ASM
--- mengembalikan 'MSIG' SATU baris dan kosong 7.721 baris. Kolomnya terisi, hanya sangat
--- jarang.
+-- KUERI INI NYARIS SELALU MENGEMBALIKAN NOL BARIS, tetapi TIDAK selalu. Hitungan langsung
+-- pada 2026-09-30 atas kolom asalnya di portal ASM: `GROUP BY MSIG_1` mengembalikan 'MSIG'
+-- SATU baris dan kosong 7.721 baris. Kolomnya terisi, hanya sangat jarang.
 --
 -- Kuerinya dibangun apa adanya — keputusan Work Owner 2026-09-23 — dan jarangnya isi tab
 -- ini dinyatakan ke pengguna lewat Tab.Notice, bukan disamarkan.
 --
--- Bind: :1 kelas objek kerja · :2 akun antrean bersama · :3 status kerja yang dikecualikan
---       :4 nilai PUCLAPPROVE_1 yang dikecualikan · :5 penanda jalur MSIG · :6 offset
---       :7 jumlah baris
-SELECT w.PZINSKEY                       AS REFERENCE,
-       w.PYID                           AS CASE_ID,
-       w.POLICYNO                       AS POLICY_NUMBER,
-       w.QQNAME                         AS INSURED_NAME,
-       w.TANGGALKIRIMPUCL_1             AS INBOX_ENTRY_AT,
-       w.KOMENTARANALISATOR_1           AS ANALYST_NOTE,
-       w.RCL_PUCL_1                     AS TRACK_CODE,
-       w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
-       w.LAMAKLAIM_1                    AS CLAIM_AGE,
-       w.STATUSKLAIM_1                  AS EXPIRY_STATUS,
-       w.PXCREATEDATETIME               AS CREATED_AT,
+-- Bind: :1 akun antrean bersama · :2 status kerja yang dikecualikan
+--       :3 nilai PUCL_APPROVE yang dikecualikan · :4 penanda jalur MSIG · :5 offset
+--       :6 jumlah baris
+SELECT p.CLAIMID                        AS REFERENCE,
+       p.CLAIMID                        AS CASE_ID,
+       p.POLICY_NO                      AS POLICY_NUMBER,
+       p.QQ_NAME                        AS INSURED_NAME,
+       p.TGL_KIRIM_PUCL                 AS INBOX_ENTRY_AT,
+       p.KOMENTAR_ANALISATOR            AS ANALYST_NOTE,
+       p.RCL_PUCL                       AS TRACK_CODE,
+       p.TGL_CETAK_DOKUMEN_PUCL         AS LETTER_PRINTED_AT,
+       p.LAMA_KLAIM                     AS CLAIM_AGE,
+       p.STATUS_KLAIM                   AS EXPIRY_STATUS,
+       p.TGL_CREATE_PUCL                AS CREATED_AT,
        COUNT(*) OVER ()                 AS TOTAL_ROWS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-               ON b.PXREFOBJECTKEY = w.PZINSKEY
-              AND b.PXOBJCLASS = 'Assign-WorkBasket'
- WHERE w.PXOBJCLASS = :1
-   AND b.PXASSIGNEDOPERATORID = :2
-   AND w.PYSTATUSWORK <> :3
-   AND w.TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL
-   AND w.PUCLAPPROVE_1 <> :4
-   AND w.MSIG_1 = :5
- ORDER BY w.PXCREATEDATETIME DESC, w.PYID DESC
-OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
+  FROM POOLDATA.TC_PNC_PUCL p
+ WHERE p.ASSIGNED_OPERATOR_ID = :1
+   AND p.STATUS_WORK <> :2
+   AND p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
+   AND p.PUCL_APPROVE <> :3
+   AND p.MSIG = :4
+ ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
+OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 
 -- name: daily_report
 -- LAPORAN HARIAN RCL/PUCL — keluaran tombol ekspor tab "Cetak Surat".
 -- — Activity/ExportCetakSurat_act-Act.xml menjalankan kueri di bawah lalu pxConvertResultsToCSV
 -- — RDB List/GetDataPUCLRCLForDailyReport-SQL.xml
+--
+-- ============================================================================
+-- SATU-SATUNYA KUERI DI BERKAS INI YANG MASIH MEMBACA TABEL PEGA — DAN ITU DISENGAJA
+-- ============================================================================
+--
+-- Ketiga tab dan layar kerja sudah pindah ke `TC_PNC_PUCL`. Laporan ini TIDAK, dan sebabnya
+-- bukan pekerjaan yang tertunda melainkan ISI YANG BERBEDA.
+--
+-- Cabang keduanya mengambil SELURUH klaim ber-GROUPPANEL '002' (Personal Accident) pada
+-- rentang tanggal itu, **tanpa gabungan antrean bersama sama sekali** — termasuk klaim yang
+-- tidak pernah masuk antrean RCL/PUCL. `TC_PNC_PUCL` berisi antrean RCL/PUCL; klaim PA di
+-- luar antrean itu TIDAK ADA di sana.
+--
+-- Memindahkannya sekarang akan membuat berkas unduhan kehilangan baris TANPA satu pun
+-- galat, dan tidak ada apa pun di layar yang menandakannya. Ia baru dapat pindah bila proses
+-- pengisi dinyatakan memuat klaim PA di luar antrean pula — dan itu belum diputuskan.
 --
 -- ============================================================================
 -- ISI LAPORAN INI TIDAK SAMA DENGAN ISI TABEL DI ATASNYA
@@ -301,9 +342,7 @@ OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 --   * Ia TIDAK menyaring TANGGALCETAKDOKUMENPUCL_1 maupun STATUSCASE_1, sehingga memuat
 --     klaim yang suratnya SUDAH dicetak — yang di layar ada di tab lain.
 --   * Ia TIDAK menyaring PYSTATUSWORK, sehingga memuat klaim yang sudah selesai.
---   * Ia ber-UNION dengan cabang kedua yang mengambil seluruh klaim ber-GROUPPANEL_1 '002'
---     (Personal Accident) pada rentang yang sama, TANPA gabungan antrean bersama sama
---     sekali — sehingga memuat klaim PA yang tidak pernah masuk antrean RCL/PUCL.
+--   * Ia ber-UNION dengan cabang kedua yang dijelaskan di atas.
 --
 -- Keputusan Work Owner 2026-09-23: replikasi apa adanya (`P-5`). Ia dinyatakan ke pengguna
 -- lewat PlannedDifferences, bukan disamarkan.
@@ -374,39 +413,63 @@ SELECT r.REFERENCE,
 OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 -- name: check_rclpucl
--- Dipakai perintah `-periksa`: memastikan kedua tabel yang disentuh modul ini terbaca dari
--- koneksi yang dipakai.
+-- Dipakai perintah `-periksa`: memastikan tabel datar RCL/PUCL terbaca dari koneksi yang
+-- dipakai.
 --
 -- Ia tidak menyentuh satu baris pun — yang diperiksa adalah hak baca dan keberadaan
--- tabelnya, bukan isinya. Keduanya diperiksa sekaligus karena kegagalan yang paling mungkin
--- terjadi bukan "tabel tidak ada" melainkan "hak baca hanya diberikan pada salah satunya".
+-- tabelnya, bukan isinya.
 --
 -- `COUNT(*)` dipakai, bukan sebuah kolom, supaya hasilnya SELALU tepat satu baris meski
 -- penyaringnya tidak meloloskan apa pun — pemanggil karena itu tidak perlu membedakan
 -- "tidak ada baris" dari "gagal dibaca".
+--
+-- TABEL INI BARU DAN AKAN KOSONG SAMPAI PROSES PENGISI BERJALAN. Pemeriksaan ini lolos pada
+-- tabel kosong, dan memang harus begitu: kosong adalah jawaban, tidak-ada adalah kerusakan.
 SELECT COUNT(*) AS PROBE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-               ON b.PXREFOBJECTKEY = w.PZINSKEY
+  FROM POOLDATA.TC_PNC_PUCL p
  WHERE 1 = 0
 
 -- name: check_columns
--- Memastikan kelima kolom PUCL yang MENYARING layar ini benar-benar terbaca.
+-- Memastikan kolom PUCL yang MENYARING layar ini dan yang MENGISI layar kerja terbaca.
 --
 -- Ia terpisah dari check_rclpucl dengan sengaja. Tabelnya sama, tetapi yang diuji berbeda:
 -- di atas keberadaan TABEL, di sini keberadaan KOLOM. Kolom yang tidak ada menghasilkan
 -- galat yang menyebut namanya, dan itulah yang membedakan "modul ini belum dapat dipakai di
 -- sini" dari "antreannya memang kosong".
 --
--- `MSIG_1` ikut diperiksa justru karena ia yang paling diragukan — lihat catatan pada
--- list_klaim_msig. Bila ia TIDAK ADA sebagai kolom, pemeriksaan ini gagal dan sebabnya
--- terbaca; bila ia ADA tetapi kosong, pemeriksaan ini lolos dan kosongnya adalah jawaban.
-SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
-     + COUNT(w.STATUSCASE_1)
-     + COUNT(w.PUCLAPPROVE_1)
-     + COUNT(w.MSIG_1)
-     + COUNT(w.TANGGALKIRIMPUCL_1) AS PROBE
+-- Kelima kolom penyaring diperiksa justru karena nama kolom tabel ini BERBEDA dari nama
+-- kolom Pega yang digantikannya — akhiran `_1` dibuang dan kata dipisah garis bawah. Satu
+-- nama yang tertinggal pada bentuk lama akan gagal dengan ORA-00904 pada permintaan pertama
+-- di produksi, bukan saat build.
+--
+-- KEEMPAT KOLOM ISIAN SURAT IKUT DIPERIKSA, dan alasannya berbeda dari kelima di atas:
+-- `PERIHAL`, `KETERANGAN1`, `KETERANGAN2`, `KETERANGAN3` **tidak ada di
+-- `Database/CREATE_TABLE_3.SQL`**. Tabel yang berjalan memilikinya, berkas DDL-nya tidak —
+-- sehingga portal yang dibuat dari berkas itu akan kehilangan keempatnya, dan `detail`
+-- gagal pada klaim pertama yang dibuka. Di sinilah keadaan itu terbaca lebih dulu.
+SELECT COUNT(p.TGL_CETAK_DOKUMEN_PUCL)
+     + COUNT(p.STATUS_CASE)
+     + COUNT(p.PUCL_APPROVE)
+     + COUNT(p.MSIG)
+     + COUNT(p.TGL_KIRIM_PUCL)
+     + COUNT(p.PERIHAL)
+     + COUNT(p.KETERANGAN1)
+     + COUNT(p.KETERANGAN2)
+     + COUNT(p.KETERANGAN3) AS PROBE
+  FROM POOLDATA.TC_PNC_PUCL p
+ WHERE 1 = 0
+
+-- name: check_laporan
+-- Memastikan kedua tabel PEGA yang masih dipakai LAPORAN HARIAN terbaca.
+--
+-- Terpisah dari check_rclpucl karena yang diperiksa memang milik sistem lain. Sejak ketiga
+-- tab pindah ke tabel datar, kedua tabel ini hanya dipakai `daily_report` — dan bila
+-- keduanya tidak terbaca, yang gagal HANYA tombol unduh tab "Cetak Surat", bukan layarnya.
+-- Galat yang menyebut tabel yang salah menyesatkan orang yang memperbaikinya.
+SELECT COUNT(*) AS PROBE
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
+               ON b.PXREFOBJECTKEY = w.PZINSKEY
  WHERE 1 = 0
 
 -- name: detail
@@ -415,6 +478,34 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 -- — Section/SectionLampiranSuratPUCL-Section.xml      bagian "Lampiran Surat"
 -- — Section/SectionPenerimaanDokumenPUCL-Section.xml  bagian "Penerimaan Dokumen"
 -- — Activity/SetDataLampiranSuratRCLPUCL_Act-Act.xml  asal ketiga isian TURUNAN
+--
+-- ============================================================================
+-- KUNCINYA NOMOR CASE, DAN ANAK KLAIMNYA DICAPAI LEWAT T_CLAIM_PNC
+-- ============================================================================
+--
+-- INI BAGIAN YANG PALING MUDAH SALAH DI SELURUH BERKAS INI, dan kesalahannya TIDAK
+-- menghasilkan galat — hanya layar kerja yang tiga isiannya kosong.
+--
+-- Kolom bernama `CLAIMID` di tiga tabel TIDAK berisi hal yang sama:
+--
+--   POOLDATA.TC_PNC_PUCL.CLAIMID         nomor case      "PNC-1865"
+--   POOLDATA.T_CLAIM_PNC.CLAIMID         kunci teknis    "ASM-FW-GCNMFW-WORK PNC-1865"
+--   POOLDATA.T_CLAIM_OBJECTLIST.CLAIMID  kunci teknis    "ASM-FW-GCNMFW-WORK PNC-1865"
+--   POOLDATA.T_CLAIM_ADJUSTMENT.CLAIMID  kunci teknis    "ASM-FW-GCNMFW-WORK PNC-1865"
+--
+-- Menggabungkan yang pertama langsung dengan ketiga sisanya SELALU mengembalikan nol baris.
+-- Join-nya tetap sah; hanya tidak pernah cocok.
+--
+-- Jembatannya `POOLDATA.T_CLAIM_PNC`, yang memuat KEDUA bentuk: `CLAIMNO` sama dengan
+-- nomor case, `CLAIMID` sama dengan kunci teknis. Pasangan itu dipakai Pega sendiri
+-- (`p.CLAIMNO = A.PYID` pada `inboxadmin`) dan sudah dipakai modul lain di aplikasi ini.
+--
+-- KENAPA LEWAT TABEL, BUKAN MERANGKAI PREFIX-NYA
+--
+-- Menulis `'ASM-FW-GCNMFW-WORK ' || p.CLAIMID` akan bekerja untuk klaim WARISAN dan GAGAL
+-- DIAM-DIAM untuk klaim baru: `D-22` dan `D-71` menghapus prefix itu bagi klaim ber-nomor
+-- `PNCN.YY.xxxx`. Membaca pasangannya dari `T_CLAIM_PNC` benar untuk kedua bentuk, karena
+-- yang dibaca adalah nilainya — bukan tebakan tentang bentuknya.
 --
 -- ============================================================================
 -- TIGA ISIAN DITURUNKAN, BUKAN DIBACA DARI KOLOMNYA SENDIRI
@@ -435,8 +526,8 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 -- "UP" BERISI NAMA OBJEK, DAN ITU MEMANG BENAR — JANGAN "DIPERBAIKI"
 -- ============================================================================
 --
--- PERHATIKAN BARIS PERTAMA DAN KEDUA MENUNJUK EKSPRESI YANG SAMA PERSIS. Kolom "UP" (Uang
--- Pertanggungan) di Pega karena itu berisi NAMA OBJEK, bukan angka.
+-- PERHATIKAN KEDUA EKSPRESI DI ATAS SAMA PERSIS. Kolom "UP" (Uang Pertanggungan) di Pega
+-- karena itu berisi NAMA OBJEK, bukan angka.
 --
 -- Ia terbaca seperti salin-tempel yang keliru, dan pada 2026-09-24 ia memang sempat
 -- "diperbaiki" di berkas ini menjadi `SumTSI` pada coverage pertama — lengkap dengan
@@ -446,11 +537,11 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 -- itu dicabut (`keputusan-implementasi.md` §47.1), dan `P-5` berlaku apa adanya — perilaku
 -- direplikasi KECUALI perbaikannya diputuskan eksplisit, dan untuk yang ini TIDAK.
 --
--- Karena itu kueri `detail` di bawah memilih SATU subkueri nama objek, dan nilainya mengisi
--- DUA isian sekaligus. `POOLDATA.T_CLAIM_OBJECTCOVERAGE` TIDAK disentuh sama sekali, dan
--- satu uji kueri menjaganya tetap begitu — berpasangan dengan satu uji di penyimpanan
--- memori yang menuntut kedua isian SAMA. Dua lapis penahan, karena isian ini sudah dua kali
--- terbaca sebagai cacat.
+-- Karena itu kueri di bawah memilih SATU subkueri nama objek, dan nilainya mengisi DUA isian
+-- sekaligus. `POOLDATA.T_CLAIM_OBJECTCOVERAGE` TIDAK disentuh sama sekali, dan satu uji
+-- kueri menjaganya tetap begitu — berpasangan dengan satu uji di penyimpanan memori yang
+-- menuntut kedua isian SAMA. Dua lapis penahan, karena isian ini sudah dua kali terbaca
+-- sebagai cacat.
 --
 -- ============================================================================
 -- APA ARTI "PERTAMA" DI SINI
@@ -459,101 +550,142 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
 -- Di Pega, `(1)` adalah entri pertama pada page list KLIPBOARD, dan urutannya ditentukan
 -- cara halaman itu dimuat — sesuatu yang TIDAK terbaca dari export mana pun.
 --
--- Di sini "pertama" ditetapkan tegas: `OBJECTID` terkecil untuk objek, lalu `COVERAGEID`
--- dan `ADJUSTMENTID` terkecil untuk adjustment-nya. Itu SELISIH TERENCANA — urutan yang
--- tidak ditetapkan membuat isian surat berubah-ubah antar pemanggilan pada klaim yang punya
--- lebih dari satu objek.
+-- Di sini "pertama" ditetapkan tegas: `OBJECTID` terkecil untuk objek, lalu
+-- `OBJECTCOVERAGEID` dan `ADJUSTMENTID` terkecil untuk adjustment-nya. Itu SELISIH TERENCANA
+-- — urutan yang tidak ditetapkan membuat isian surat berubah-ubah antar pemanggilan pada
+-- klaim yang punya lebih dari satu objek.
+--
+-- PERHATIKAN NAMANYA `OBJECTCOVERAGEID`, BUKAN `COVERAGEID`. Nama pendeknya ditebak saat
+-- modul ini ditulis, dan tebakan itu membuat SETIAP pembukaan layar kerja gagal dengan
+-- `ORA-00904: "J"."COVERAGEID": invalid identifier` — bukan sebagian, melainkan seluruhnya.
+-- Nama yang benar dibaca dari `ALL_TAB_COLUMNS` pada 2026-09-30.
 --
 -- ============================================================================
 -- PEMETAAN KOLOM
 -- ============================================================================
 --
---   isian layar            properti Pega                              kolom
---   ---------------------- ------------------------------------------ --------------------
---   (kunci)                .pzInsKey                                  w.PZINSKEY
---   judul layar            .pyID                                      w.PYID
---   RCL/PUCL               .ClaimData.PUCLStatus.RCL_PUCL             w.RCL_PUCL_1
---   Deskripsi Analyst      .ClaimData.PUCLStatus.KomentarAnalisator   w.KOMENTARANALISATOR_1
---   No Polis               .Policy.PolicyNo                           w.POLICYNO
---   Tanggal Kejadian       .ClaimData.DateOfLoss                      w.DATEOFLOSS_1
---   Tanggal Cetak Surat    .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL w.TANGGALCETAKDOKUMENPUCL_1
---   Tanggal Kirim          .ClaimData.PUCLStatus.TanggalKirimPUCL     w.TANGGALKIRIMPUCL_1
---   Komentar PUCL          .ClaimData.PUCLStatus.KomentarPUCL         w.KOMENTARPUCL_1
---   Nama Peserta           .ClaimData.PUCLStatus.NamaPeserta          TURUNAN (objek pertama)
---   UP                     .ClaimData.PUCLStatus.UP                   TURUNAN (objek pertama — SAMA)
---   Jumlah Tagihan         .ClaimData.PUCLStatus.JumlahTagihan        TURUNAN (adjustment pertama)
+--   isian layar            properti Pega                              kolom tabel datar
+--   ---------------------- ----------------------------------------- ---------------------
+--   (kunci)                .pyID                                     p.CLAIMID
+--   judul layar            .pyID                                     p.CLAIMID
+--   RCL/PUCL               .ClaimData.PUCLStatus.RCL_PUCL            p.RCL_PUCL
+--   Deskripsi Analyst      .ClaimData.PUCLStatus.KomentarAnalisator  p.KOMENTAR_ANALISATOR
+--   No Polis               .Policy.PolicyNo                          p.POLICY_NO
+--   Tanggal Kejadian       .ClaimData.DateOfLoss                     p.DATE_OF_LOSS
+--   Komentar PUCL          .ClaimData.PUCLStatus.KomentarPUCL        p.KOMENTAR_PUCL
+--   Perihal                .ClaimData.PUCLStatus.Perihal             p.PERIHAL
+--   Keterangan Pembuka     .ClaimData.PUCLStatus.Keterangan1         p.KETERANGAN1
+--   Keterangan Isi         .ClaimData.PUCLStatus.Keterangan2         p.KETERANGAN2
+--   Keterangan Penutup     .ClaimData.PUCLStatus.Keterangan3         p.KETERANGAN3
+--   Nama Peserta           .ClaimData.PUCLStatus.NamaPeserta         TURUNAN (objek pertama)
+--   UP                     .ClaimData.PUCLStatus.UP                  TURUNAN (objek pertama — SAMA)
+--   Jumlah Tagihan         .ClaimData.PUCLStatus.JumlahTagihan       TURUNAN (adjustment pertama)
+--
+-- PENYARING KELAS OBJEK KERJA HILANG, dan itu akibat tabelnya — `TC_PNC_PUCL` tidak punya
+-- `PXOBJCLASS`. Perlindungan yang dulu diberikannya (kunci milik kelas lain mengembalikan
+-- baris berkolom PUCL kosong) kini berpindah ke proses pengisi, yang hanya boleh memuat
+-- baris `ASM-FW-GCNMFW-Work-PNC`.
 --
 -- ============================================================================
--- SEMBILAN ISIAN YANG TIDAK PUNYA KOLOM — dan ini BUKAN kelalaian
+-- EMPAT ISIAN CLIPBOARD AKHIRNYA PUNYA KOLOM — dan itu mengubah angka sembilan
 -- ============================================================================
 --
--- NIK · BusinessUnitSeksi · Perihal · Keterangan1 · Keterangan2 · Keterangan3 ·
--- TanggalTerimaDokumenPUCL · EmailLOD, ditambah daftar berulang
+-- `PERIHAL`, `KETERANGAN1`, `KETERANGAN2`, dan `KETERANGAN3` ADA di `TC_PNC_PUCL` yang
+-- berjalan, dan terisi. Dibaca langsung dari katalog dan datanya pada 2026-10-01, dan isinya
+-- cocok kata demi kata dengan layar Pega:
+--
+--   PERIHAL      "Kelengkapan Data Dokumen Klaim Polis Asuransi Kecelakaan Pribadi"
+--   KETERANGAN1  "Sehubungan dengan telah diterimanya dokumen klaim polis Asuransi, ..."
+--   KETERANGAN2  "Kwitansi Asli dari Biaya Konsultasi Dokter(bukan Nota / Invoice / ..."
+--   KETERANGAN3  "Bila dokumen yang diminta tidak dilengkapi atau kelengkapan dokumen ..."
+--
+-- PERHATIKAN KEEMPATNYA TIDAK ADA DI `Database/CREATE_TABLE_3.SQL`. Berkas itu mendefinisikan
+-- 26 kolom; tabel yang berjalan punya 30. DDL di repo tertinggal dari tabelnya, dan selisih
+-- itu BUKAN urusan kerapian: portal lain yang dibuat dari berkas itu akan kehilangan keempat
+-- kolom ini, dan kueri di bawah gagal `ORA-00904` pada permintaan pertama. `check_columns`
+-- memeriksanya supaya keadaan itu terbaca saat `-periksa`, bukan saat pengguna membuka layar.
+--
+-- ============================================================================
+-- LIMA ISIAN YANG TETAP TIDAK PUNYA KOLOM — dan ini BUKAN kelalaian
+-- ============================================================================
+--
+-- NIK ("No Kontrak") · BusinessUnitSeksi · TanggalTerimaDokumenPUCL ("Tanggal Kelengkapan
+-- Dokumen") · EmailLOD ("Email Tertanggung"), ditambah daftar berulang
 -- "Tanggal terima Dokumen / Tanggal / Keterangan" pada bagian kedua.
 --
 -- SEBABNYA BUKAN KOLOM YANG BELUM DITEMUKAN. Work Owner menjelaskan 2026-09-24 bahwa
--- kesembilannya diambil dari **clipboard** Pega (`.ClaimData.PUCLStatus.*`), dan properti
--- clipboard yang tidak dioptimasi memang TIDAK punya kolom sendiri. Mencarinya lagi ke DDL
--- tidak akan menemukannya; yang mengubah keadaan ini hanyalah Tim Pega mengeksposnya
--- (`keputusan-implementasi.md` §47.2 dan §79.3).
---
--- Itu sejalan dengan penelusuran yang sudah dilakukan: seluruh export — `RDB List/`,
--- `Database/*.prc`, `*.fnc`, dan kedua berkas CSV master — tidak memuat satu pun kolomnya,
--- dan inventaris katalog Oracle (`docs/kolom-t-claimlist-admin.md`, 2026-09-22) pun tidak
--- mendaftarkannya, sementara keenam kolom PUCL lain lengkap di sana.
+-- kesembilannya — sebelum keempat di atas muncul — diambil dari **clipboard** Pega
+-- (`.ClaimData.PUCLStatus.*`), dan properti clipboard yang tidak dioptimasi memang TIDAK
+-- punya kolom sendiri. Yang mengubah keadaan ini hanyalah mengeksposnya sebagai kolom, dan
+-- itulah yang sudah terjadi pada keempat isian di atas (`keputusan-implementasi.md` §47.2,
+-- §79.3).
 --
 -- Dua di antaranya patut disebut khusus:
 --
 --   * `ID_PERIHAL` dan `PERIHAL_NAME` pada pemilih "Perihal" BUKAN master Perihal. Kedua
 --     properti itu dipakai ulang untuk hal yang sama sekali berbeda di
---     `RDB List/CheckHoliday_SQL-SQL.xml`, tempat keduanya menampung TANGGAL
---     (`to_date({InputCheckDate.ID_PERIHAL DateTime},'dd/mm/yyyy')`). Itu utang teknis §4.2
---     apa adanya.
+--     `RDB List/CheckHoliday_SQL-SQL.xml`, tempat keduanya menampung TANGGAL. Itu utang
+--     teknis §4.2 apa adanya.
 --   * `TANGGALTERIMADOKUMEN` ADA di export, tetapi pada
 --     `POOLDATA.T_CLAIM_RECIVEDCLAIM` — tabel BERKAS PENERIMAAN DOKUMEN, bukan kolom PUCL
 --     pada objek kerja klaim. Keduanya bernama mirip dan mudah tertukar.
 --
--- Kesembilannya tetap DIGAMBAR di layar, di tempatnya, bertanda "di clipboard Pega" —
+-- Kelimanya tetap DIGAMBAR di layar, di tempatnya, bertanda "di clipboard Pega" —
 -- bukan dihilangkan dan bukan digambar sebagai sel kosong. Sel kosong berarti PETUGAS belum
 -- mengisinya; "di clipboard Pega" berarti nilainya ADA tetapi tidak terbaca dari tabel.
 -- Keduanya menuntut tindakan yang berbeda dari orang yang berbeda. Mengarang isinya
 -- melanggar larangan paling dasar proyek ini.
 --
--- Bind: :1 kunci klaim (PZINSKEY) · :2 kelas objek kerja
-SELECT w.PZINSKEY                       AS REFERENCE,
-       w.PYID                           AS CLAIM_NUMBER,
-       w.RCL_PUCL_1                     AS TRACK_CODE,
-       w.KOMENTARANALISATOR_1           AS ANALYST_NOTE,
-       w.POLICYNO                       AS POLICY_NUMBER,
-       w.DATEOFLOSS_1                   AS LOSS_DATE,
-       w.KOMENTARPUCL_1                 AS PUCL_NOTE,
+-- Bind: :1 nomor case (CLAIMID)
+SELECT p.CLAIMID                        AS REFERENCE,
+       p.CLAIMID                        AS CLAIM_NUMBER,
+       p.RCL_PUCL                       AS TRACK_CODE,
+       p.KOMENTAR_ANALISATOR            AS ANALYST_NOTE,
+       p.POLICY_NO                      AS POLICY_NUMBER,
+       p.DATE_OF_LOSS                   AS LOSS_DATE,
+       p.KOMENTAR_PUCL                  AS PUCL_NOTE,
+       p.PERIHAL                        AS SUBJECT,
+       p.KETERANGAN1                    AS OPENING_NOTE,
+       p.KETERANGAN2                    AS BODY_NOTE,
+       p.KETERANGAN3                    AS CLOSING_NOTE,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
-         WHERE o.CLAIMID = w.PZINSKEY
+               INNER JOIN POOLDATA.T_CLAIM_PNC c
+                       ON c.CLAIMID = o.CLAIMID
+         WHERE c.CLAIMNO = p.CLAIMID
          ORDER BY o.OBJECTID
          FETCH FIRST 1 ROWS ONLY)       AS FIRST_OBJECT_NAME,
        (SELECT j.PROPOSE_VALUE
           FROM POOLDATA.T_CLAIM_ADJUSTMENT j
-         WHERE j.CLAIMID = w.PZINSKEY
+               INNER JOIN POOLDATA.T_CLAIM_PNC c
+                       ON c.CLAIMID = j.CLAIMID
+         WHERE c.CLAIMNO = p.CLAIMID
            AND j.OBJECTID = (SELECT o2.OBJECTID
                                FROM POOLDATA.T_CLAIM_OBJECTLIST o2
-                              WHERE o2.CLAIMID = w.PZINSKEY
+                                    INNER JOIN POOLDATA.T_CLAIM_PNC c2
+                                            ON c2.CLAIMID = o2.CLAIMID
+                              WHERE c2.CLAIMNO = p.CLAIMID
                               ORDER BY o2.OBJECTID
                               FETCH FIRST 1 ROWS ONLY)
-         ORDER BY j.COVERAGEID, j.ADJUSTMENTID
+         ORDER BY j.OBJECTCOVERAGEID, j.ADJUSTMENTID
          FETCH FIRST 1 ROWS ONLY)       AS FIRST_PROPOSE_VALUE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
- WHERE w.PZINSKEY = :1
-   AND w.PXOBJCLASS = :2
+  FROM POOLDATA.TC_PNC_PUCL p
+ WHERE p.CLAIMID = :1
 
 -- name: check_detail
--- Memastikan kedua tabel anak yang dipakai isian TURUNAN terbaca.
+-- Memastikan KETIGA tabel yang dipakai isian TURUNAN terbaca, beserta jembatan kuncinya.
 --
 -- Terpisah dari check_rclpucl karena tabelnya memang berbeda, dan galat yang menyebut tabel
--- yang salah menyesatkan orang yang memperbaikinya. Tanpa keduanya, layar kerja tetap
+-- yang salah menyesatkan orang yang memperbaikinya. Tanpa ketiganya, layar kerja tetap
 -- terbuka tetapi "Nama Peserta", "UP", dan "Jumlah Tagihan" diam-diam kosong.
+--
+-- `T_CLAIM_PNC` ikut diperiksa karena ia JEMBATAN antara nomor case di tabel datar dan kunci
+-- teknis di kedua tabel anak. Tanpa tabel itu, kedua isian turunan tidak dapat dicapai sama
+-- sekali — dan kegagalannya terbaca persis seperti klaim yang memang tidak punya objek.
 SELECT COUNT(*) AS PROBE
-  FROM POOLDATA.T_CLAIM_OBJECTLIST o
+  FROM POOLDATA.T_CLAIM_PNC c
+       INNER JOIN POOLDATA.T_CLAIM_OBJECTLIST o
+               ON o.CLAIMID = c.CLAIMID
        INNER JOIN POOLDATA.T_CLAIM_ADJUSTMENT j
                ON j.CLAIMID = o.CLAIMID
               AND j.OBJECTID = o.OBJECTID

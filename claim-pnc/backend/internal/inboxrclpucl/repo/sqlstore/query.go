@@ -44,9 +44,14 @@ func query(name string) string {
 // scanWorkItem. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat diuji
 // kesesuaiannya di query_test.go.
 //
-// `CREATED_AT` adalah kolom yang MENGURUTKAN ketiga kueri (`ORDER BY PXCREATEDATETIME
-// DESC`). Ia ditambahkan 2026-09-30 atas keputusan Work Owner supaya tabelnya tidak lagi
-// terbaca acak; urutannya sendiri tidak berubah sedikit pun. Lihat WorkItem.CreatedAt.
+// `CREATED_AT` adalah kolom yang MENGURUTKAN ketiga kueri (`ORDER BY TGL_CREATE_PUCL DESC`).
+// Ia ditambahkan 2026-09-30 atas keputusan Work Owner supaya tabelnya tidak lagi terbaca
+// acak; urutannya sendiri tidak berubah sedikit pun. Lihat WorkItem.CreatedAt.
+//
+// `REFERENCE` DAN `CASE_ID` KINI BERNILAI SAMA, keduanya `TC_PNC_PUCL.CLAIMID`. Tabel Pega
+// memisahkan keduanya — `PZINSKEY` kunci teknis, `PYID` nomor case — dan tabel datar hanya
+// menyimpan yang kedua. Kedua alias dipertahankan supaya kontrak ke layar tidak berubah;
+// yang berubah hanyalah isi `REFERENCE`. Lihat catatan pada kueri `list_cetak_surat`.
 var listColumns = []string{
 	"REFERENCE", "CASE_ID", "POLICY_NUMBER", "INSURED_NAME", "INBOX_ENTRY_AT",
 	"ANALYST_NOTE", "TRACK_CODE", "LETTER_PRINTED_AT", "CLAIM_AGE", "EXPIRY_STATUS",
@@ -80,12 +85,55 @@ var reportColumns = []string{
 var detailColumns = []string{
 	"REFERENCE", "CLAIM_NUMBER", "TRACK_CODE", "ANALYST_NOTE", "POLICY_NUMBER",
 	"LOSS_DATE", "PUCL_NOTE",
+
+	// Keempat isian surat, ditambahkan 2026-10-01 setelah kolomnya ditemukan ADA di
+	// `TC_PNC_PUCL` yang berjalan — meski tidak ada di `Database/CREATE_TABLE_3.SQL`.
+	// Sebelumnya keempatnya digambar bertanda "di clipboard Pega".
+	"SUBJECT", "OPENING_NOTE", "BODY_NOTE", "CLOSING_NOTE",
+
 	"FIRST_OBJECT_NAME", "FIRST_PROPOSE_VALUE",
+}
+
+// letterColumnsBeyondTheSharedDDL adalah kolom yang dipakai layar kerja tetapi TIDAK ada di
+// `Database/CREATE_TABLE_3.SQL`.
+//
+// Ia ditulis terpisah supaya selisih antara tabel yang berjalan dan DDL yang dibagikan punya
+// satu tempat yang menyebutkannya, dan supaya uji dapat menuntut keempatnya ikut diperiksa
+// `check_columns`. Begitu DDL-nya disamakan, daftar ini dikosongkan — bukan dihapus diam-diam.
+var letterColumnsBeyondTheSharedDDL = []string{
+	"PERIHAL", "KETERANGAN1", "KETERANGAN2", "KETERANGAN3",
 }
 
 // listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.
 var listQueries = []string{
 	"list_cetak_surat", "list_kelengkapan_dokumen", "list_klaim_msig",
+}
+
+// flatTableQueries adalah kueri yang membaca POOLDATA.TC_PNC_PUCL.
+//
+// Ia ketiga kueri daftar DITAMBAH layar kerja. Dipisah dari listQueries karena yang diuji
+// berbeda: listQueries diuji kesesuaian alias dan penyaringnya, daftar ini diuji bahwa tidak
+// satu pun dari keempatnya tertinggal membaca tabel Pega atau memakai nama kolom bentuk lama.
+//
+// Nama kolom tabel datar BERBEDA dari nama kolom Pega yang digantikannya — akhiran `_1`
+// dibuang dan kata dipisah garis bawah. Satu nama yang tertinggal pada bentuk lama gagal
+// dengan ORA-00904 pada permintaan pertama di produksi, bukan saat build.
+var flatTableQueries = []string{
+	"list_cetak_surat", "list_kelengkapan_dokumen", "list_klaim_msig", "detail",
+}
+
+// legacyColumnNames adalah nama kolom Pega yang TIDAK boleh lagi muncul di kueri tabel
+// datar.
+//
+// Seluruhnya punya padanan bernama lain di `TC_PNC_PUCL`, dan seluruhnya tetap sah di
+// `daily_report` — yang memang masih membaca tabel Pega. Karena itu uji penjaganya berjalan
+// atas flatTableQueries, bukan atas seluruh kueri.
+var legacyColumnNames = []string{
+	"PZINSKEY", "PYID", "PXOBJCLASS", "PXCREATEDATETIME", "PYSTATUSWORK",
+	"PXASSIGNEDOPERATORID", "POLICYNO", "QQNAME",
+	"TANGGALKIRIMPUCL_1", "TANGGALCETAKDOKUMENPUCL_1", "KOMENTARANALISATOR_1",
+	"KOMENTARPUCL_1", "RCL_PUCL_1", "LAMAKLAIM_1", "STATUSKLAIM_1", "STATUSCASE_1",
+	"PUCLAPPROVE_1", "MSIG_1", "DATEOFLOSS_1",
 }
 
 // printedQueries adalah kedua kueri yang menyaring surat SUDAH dicetak.

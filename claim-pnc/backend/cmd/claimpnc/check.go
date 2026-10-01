@@ -3488,18 +3488,24 @@ func checkCauseOfLossDetail(ctx context.Context, primary *sql.DB, print func(str
 // layar ini punya kolom yang IDENTIK — sehingga tidak ada apa pun di antarmuka yang
 // menandakan isinya tertukar:
 //
-//   - Kolom `MSIG_1` nyaris tidak pernah terisi — satu baris dari 7.722 pada portal ASM,
+//   - Kolom `MSIG` nyaris tidak pernah terisi — satu baris dari 7.722 pada portal ASM,
 //     dihitung 2026-09-30. Tab "Klaim MSIG" karena itu nyaris selalu kosong, dan tab
 //     "Kelengkapan Dokumen" menampung selebihnya.
-//   - `PUCLAPPROVE_1 <> '1'` tidak menangkap nilai kosong. Klaim yang penandanya belum
+//   - `PUCL_APPROVE <> '1'` tidak menangkap nilai kosong. Klaim yang penandanya belum
 //     pernah diisi hilang dari DUA tab sekaligus.
 //   - Akun antrean `RCLPUCL`. Bila namanya berubah, KETIGA tab kosong sekaligus.
-//   - `STATUSCASE_1 = '0'`. Artinya tidak diketahui, dan tidak ada master yang
+//   - `STATUS_CASE = '0'`. Artinya tidak diketahui, dan tidak ada master yang
 //     menerjemahkannya di export mana pun. Bila nilainya berbeda di produksi, tab
 //     "Cetak Surat" kosong sementara dua tab lain terisi normal.
 //
 // Keempatnya diperiksa di sini supaya kekeliruannya ketahuan saat `-periksa` dijalankan,
 // bukan saat pengguna melaporkan "tabnya kosong".
+//
+// # Sejak 2026-10-01 ada SEBAB KELIMA yang mengosongkan seluruh layar
+//
+// Ketiga tab dan layar kerja kini membaca `POOLDATA.TC_PNC_PUCL`, tabel datar milik aplikasi
+// ini. Tabel itu BARU, dan ia kosong sampai proses pengisi berjalan — sehingga layar yang
+// kosong di sini belum tentu berarti antreannya kosong. Keduanya dibedakan di bawah.
 func checkRCLPUCL(
 	ctx context.Context,
 	repo *inboxrclpuclsql.Repo,
@@ -3507,16 +3513,17 @@ func checkRCLPUCL(
 ) {
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Inbox RCL/PUCL tidak dapat dibaca: %v", err)
-		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
-		print("            Bila galatnya menyebut TABEL, periksa hak SELECT akun aplikasi")
-		print("            atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan")
-		print("            DATAPEGA.PC_ASSIGN_WORKBASKET.")
-		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
-		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
-		print("            DDL, yang belum pernah diterima (`R-08`).")
+		print("            Bila galatnya menyebut POOLDATA.TC_PNC_PUCL, tabel datarnya belum")
+		print("            dibuat di portal ini — jalankan Database/CREATE_TABLE_3.SQL")
+		print("            (menempuh `D-63`: DBA, atas persetujuan Work Owner).")
+		print("            Bila galatnya menyebut KOLOM tabel itu, periksa namanya terhadap")
+		print("            CREATE_TABLE_3.SQL: akhiran `_1` dibuang dan kata dipisah garis")
+		print("            bawah, sehingga nama bentuk lama gagal dengan ORA-00904.")
+		print("            Bila galatnya menyebut DATAPEGA.*, yang mati HANYA tombol unduh")
+		print("            tab Cetak Surat — ketiga tabnya sendiri tidak lagi membacanya.")
 		return
 	}
-	print("  [ok]    Tabel, kolom penyaring, dan tabel anak Inbox RCL/PUCL dapat dibaca")
+	print("  [ok]    Tabel datar, kolom penyaring, dan tabel anak Inbox RCL/PUCL dapat dibaca")
 	print("            Tabel anak memasok isian LAYAR KERJA yang diturunkan:")
 	print("            T_CLAIM_OBJECTLIST  -> Nama Peserta DAN UP (keduanya ObjectName,")
 	print("                                   dan itu memang benar — dikonfirmasi 2026-09-24),")
@@ -3582,10 +3589,16 @@ func checkRCLPUCL(
 		counts[inboxrclpucl.TabKelengkapanDokumen] == 0 &&
 		counts[inboxrclpucl.TabKlaimMSIG] == 0 {
 		print("  [PERIKSA] KETIGA tab kosong sekaligus.")
-		print("            Periksa apakah akun antrean bersama masih bernama %q.",
+		print("            DUA sebab yang mungkin, dan keduanya terlihat sama di layar:")
+		print("            1. POOLDATA.TC_PNC_PUCL masih kosong — tabelnya baru, dan proses")
+		print("               pengisinya mungkin belum berjalan di portal ini. Hitung:")
+		print("               SELECT COUNT(*) FROM POOLDATA.TC_PNC_PUCL;")
+		print("            2. Akun antrean bersama tidak lagi bernama %q.",
 			inboxrclpucl.RCLPUCLWorkbasket)
-		print("            Ketiga tab memakai akun yang sama, sehingga namanya yang")
-		print("            berubah mengosongkan seluruh layar tanpa satu pun galat.")
+		print("               Ketiga tab memakai akun yang sama, sehingga namanya yang")
+		print("               berubah mengosongkan seluruh layar tanpa satu pun galat.")
+		print("               Hitung: SELECT ASSIGNED_OPERATOR_ID, COUNT(*)")
+		print("                         FROM POOLDATA.TC_PNC_PUCL GROUP BY 1;")
 		return
 	}
 

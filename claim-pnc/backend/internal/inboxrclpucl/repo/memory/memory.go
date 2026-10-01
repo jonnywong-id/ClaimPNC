@@ -122,6 +122,14 @@ type Row struct {
 	// .ProposeValue` — `POOLDATA.T_CLAIM_ADJUSTMENT.PROPOSE_VALUE`.
 	FirstProposeValue string
 
+	// Subject, OpeningNote, BodyNote, ClosingNote meniru `PERIHAL` dan ketiga `KETERANGAN`
+	// pada `TC_PNC_PUCL`. Keempatnya dulu bertanda "di clipboard Pega"; kolomnya ditemukan
+	// ADA pada 2026-10-01.
+	Subject     string
+	OpeningNote string
+	BodyNote    string
+	ClosingNote string
+
 	// PUCLNote adalah `KOMENTARPUCL_1` — satu-satunya isian bagian "Penerimaan Dokumen"
 	// yang punya kolom terverifikasi.
 	PUCLNote string
@@ -359,6 +367,11 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 			SumInsured:  candidate.FirstObjectName,
 
 			BillAmount: candidate.FirstProposeValue,
+
+			Subject:     candidate.Subject,
+			OpeningNote: candidate.OpeningNote,
+			BodyNote:    candidate.BodyNote,
+			ClosingNote: candidate.ClosingNote,
 		},
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{

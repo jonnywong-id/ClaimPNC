@@ -43,7 +43,8 @@ type WorkItemDTO struct {
 
 	// Track adalah jalur penanganan — "RCL" atau "PUCL".
 	//
-	// Kosong bila kode jalurnya tidak dikenali, meniru `CASE` tanpa `ELSE` di sistem lama.
+	// Ketiga kodenya punya teks — "RCL", "PUCL", "Notification". Kosong hanya bila
+	// kodenya sendiri kosong atau di luar ketiganya.
 	// Judul kolomnya berbeda antartab: "Status RCL/PUCL" pada dua tab pertama, "Status"
 	// pada tab Klaim MSIG — dan perbedaan itu datang dari `kolom`, bukan dari sini.
 	Track string `json:"status_rcl_pucl"`
@@ -185,6 +186,13 @@ type LetterDraftDTO struct {
 	SumInsured  string `json:"up"`
 
 	BillAmount string `json:"jumlah_tagihan"`
+
+	// Keempat isian surat, dibaca dari kolom `TC_PNC_PUCL` sejak 2026-10-01. Sebelumnya
+	// keempatnya digambar bertanda "di clipboard Pega".
+	Subject     string `json:"perihal"`
+	OpeningNote string `json:"keterangan_pembuka"`
+	BodyNote    string `json:"keterangan_isi"`
+	ClosingNote string `json:"keterangan_penutup"`
 }
 
 // DocumentReceiptDTO adalah bagian "Penerimaan Dokumen".
@@ -211,6 +219,13 @@ type ClaimDetailResponse struct {
 	// satu tempat begitu kolomnya ditemukan — dan supaya pengguna yang membandingkan kedua
 	// layar berdampingan tahu mana yang belum terbawa alih-alih mengira datanya hilang.
 	UnmappedFields []string `json:"isian_belum_terpetakan"`
+
+	// ShowsDocumentReceipt menyatakan tab "Penerimaan Dokumen" digambar untuk klaim ini.
+	//
+	// Ia DATA dari server, bukan pemeriksaan kode jalur di layar. Kodenya (`3`) adalah nilai
+	// milik sistem lama, dan menaruh perbandingannya di frontend berarti satu nilai bisnis
+	// hidup di dua tempat yang dapat berselisih tanpa ketahuan (`D-15`).
+	ShowsDocumentReceipt bool `json:"tab_penerimaan_dokumen_tampil"`
 
 	// WriteBlocked menyatakan layar ini di Pega adalah layar TULIS.
 	//
@@ -323,39 +338,38 @@ func toPaginationDTO(page inboxrclpucl.Page) PaginationDTO {
 
 // unmappedLetterFields adalah isian layar kerja yang tidak dapat diisi dari kolom tabel.
 //
-// # Sebabnya BUKAN kolom yang hilang
+// # Daftarnya TURUN dari sembilan menjadi lima pada 2026-10-01
 //
-// Work Owner menjelaskan 2026-09-24: kesembilannya diambil dari **clipboard** Pega —
-// `.ClaimData.PUCLStatus.NIK`, `.BusinessUnitSeksi`, `.Perihal`, `.Keterangan1`…`3`,
-// `.ClaimData.EmailLOD`, `.TanggalTerimaDokumenPUCL`, dan daftar `.DateReceivedDocument`.
+// Empat di antaranya — Perihal, Keterangan Pembuka, Keterangan Isi, Keterangan Penutup —
+// ternyata PUNYA kolom di `POOLDATA.TC_PNC_PUCL` yang berjalan (`PERIHAL`, `KETERANGAN1`,
+// `KETERANGAN2`, `KETERANGAN3`), dan terisi. Keempatnya kini dibaca apa adanya.
+//
+// Yang mengubah keadaan bukan pencarian yang lebih teliti melainkan **kolomnya memang baru
+// ada**: `Database/CREATE_TABLE_3.SQL` mendefinisikan 26 kolom, tabel yang berjalan punya 30.
+// Ini persis jalan keluar yang §79.3 sebut sebagai satu-satunya — properti clipboard diekspos
+// menjadi kolom — dan ia sudah ditempuh untuk keempat isian itu.
+//
+// # Kelima yang tersisa, dan sebabnya BUKAN kolom yang hilang
+//
+// `.ClaimData.PUCLStatus.NIK`, `.BusinessUnitSeksi`, `.ClaimData.EmailLOD`,
+// `.TanggalTerimaDokumenPUCL`, dan daftar `.DateReceivedDocument`.
 //
 // Properti clipboard yang tidak dioptimasi TIDAK punya kolom sendiri; nilainya hidup di
 // dalam objek kerja Pega. Itu menjelaskan mengapa pencarian ke seluruh export tidak
 // menemukan satu pun kolomnya, dan mengapa mencarinya lagi tidak akan menemukannya.
 //
-// Akibatnya berbeda dari "kolom belum ditemukan": ini bukan pertanyaan yang dapat dijawab
-// DBA dengan menunjuk kolom, melainkan keadaan yang baru berubah bila propertinya diekspos
-// sebagai kolom, atau bila modul ini kelak memiliki tabelnya sendiri.
+// Satu hipotesis sempat tampak menjanjikan dan GUGUR: `EMAIL_1` pada tabel objek kerja Pega
+// terisi 61 dari 64 baris antrean, berisi daftar alamat berkoma — tetapi pada klaim yang
+// layarnya diperiksa ia memuat SATU alamat sementara Pega menggambar DUA. Memakainya akan
+// menampilkan penerima surat yang salah tanpa satu pun galat.
 //
 // Namanya diambil dari `pyLabelFieldValue` pada sel masing-masing, bukan dari nama properti
 // Pega — yang membacanya petugas klaim. Satu di antaranya patut disadari: label **"No
 // Kontrak"** menempel pada properti `.ClaimData.PUCLStatus.NIK`. Label dan properti di situ
 // memang tidak sejalan, dan yang dibawa adalah LABEL-nya (`D-13`).
-//
-// Kesembilannya juga dicari di SELURUH export — `RDB List/`, `Database/*.prc`, `*.fnc`, dan kedua
-// berkas CSV master — tanpa satu pun kemunculan sebagai kolom. Inventaris katalog Oracle
-// (`docs/kolom-t-claimlist-admin.md`, 2026-09-22) pun tidak mendaftarkannya, sementara
-// keenam kolom PUCL lain lengkap di sana.
-//
-// Ia ditulis sebagai kalimat yang dibaca pengguna, bukan nama properti Pega: yang membacanya
-// petugas klaim, bukan orang yang menelusuri rule.
 var unmappedLetterFields = []string{
 	"No Kontrak",
 	"Business Unit / Seksi",
-	"Perihal",
-	"Keterangan Pembuka",
-	"Keterangan Isi",
-	"Keterangan Penutup",
 	"Email Tertanggung",
 	"Tanggal Kelengkapan Dokumen",
 	"Tanggal terima Dokumen (Tanggal · Keterangan)",
@@ -382,6 +396,10 @@ func toClaimDetailResponse(
 			InsuredName:  detail.Letter.InsuredName,
 			SumInsured:   detail.Letter.SumInsured,
 			BillAmount:   detail.Letter.BillAmount,
+			Subject:      detail.Letter.Subject,
+			OpeningNote:  detail.Letter.OpeningNote,
+			BodyNote:     detail.Letter.BodyNote,
+			ClosingNote:  detail.Letter.ClosingNote,
 		},
 
 		DocumentReceipt: DocumentReceiptDTO{
@@ -389,6 +407,10 @@ func toClaimDetailResponse(
 		},
 
 		UnmappedFields: unmapped,
+
+		// Syarat tab kedua ditegakkan di sini, bukan di layar. Lihat
+		// `inboxrclpucl.ClaimDetail.ShowsDocumentReceipt`.
+		ShowsDocumentReceipt: detail.ShowsDocumentReceipt(),
 
 		// Selalu true selama masa paralel. Ia dikirim sebagai isian, bukan ditulis tetap
 		// di layar, supaya ia dapat berubah di satu tempat begitu kepemilikan tabelnya

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
@@ -14,10 +15,13 @@ import type { ClaimDetailResponse } from './types'
  *
  * Dari ketiga rule yang ditambahkan Work Owner pada 2026-09-24, dibaca langsung:
  *
- *	Section/SendtoRCLPUCL-Section.xml                kontainer; DUA sub-section, urutannya
- *	                                                 Lampiran Surat lalu Penerimaan Dokumen
- *	Section/SectionLampiranSuratPUCL-Section.xml     13 isian + tombol "cetak"
- *	Section/SectionPenerimaanDokumenPUCL-Section.xml grid + 3 isian + 2 tombol
+ *	Section/SendtoRCLPUCL-Section.xml                kontainer BER-TAB (`pyHeaderType
+ *	                                                 TABBED`); dua tab, Lampiran Surat
+ *	                                                 lalu Penerimaan Dokumen
+ *	Section/SectionLampiranSuratPUCL-Section.xml     13 isian + tombol "Cetak"
+ *	Section/SectionPenerimaanDokumenPUCL-Section.xml grid + 3 isian + 4 tombol
+ *	Flow Action/SendtoRCLPUCL-FA.xml                 pra-proses
+ *	                                                 `SetDataLampiranSuratRCLPUCL_Act`
  *
  * Urutan isian dan **judulnya** diambil dari `pyLabelFieldValue` tiap sel, bukan dikarang
  * dan bukan disalin dari judul kolom grid (`D-13`).
@@ -177,42 +181,189 @@ const DI_CLIPBOARD = Symbol('tersimpan di clipboard Pega')
 
 type FieldValue = string | typeof DI_CLIPBOARD
 
+/** Kedua bagian layar kerja, sebagaimana Pega menamainya. */
+type WorkTab = 'lampiran' | 'penerimaan'
+
 /**
  * Kedua bagian layar, digambar menurut section-nya.
  *
- * Dipisah dari komponen halaman supaya `detail` sudah pasti ada — tanpa itu setiap isian
- * harus diperiksa satu per satu, dan pemeriksaan sebanyak itu menyembunyikan bentuk
- * layarnya di antara penjagaan.
+ * # Ia DUA TAB, bukan dua bagian bertumpuk
+ *
+ * Versi sebelumnya menggambar keduanya berurutan pada satu halaman. Itu keliru, dan
+ * buktinya ada di kontainernya sendiri:
+ *
+ *	Section/SendtoRCLPUCL-Section.xml
+ *	  <pyHeaderType>TABBED</pyHeaderType>
+ *	  <pyTabbedHeader>true</pyTabbedHeader>
+ *	  <pyInclude>SectionLampiranSuratPUCL</pyInclude>
+ *	  <pyInclude>SectionPenerimaanDokumenPUCL</pyInclude>
+ *
+ * Bedanya bukan kosmetik. Bertumpuk, petugas melihat tombol "Cetak" dan tombol "Kirim Ke
+ * Analyst" pada satu layar sekaligus — dua tindakan yang di Pega berada di tahap yang
+ * berbeda dan tidak pernah terlihat bersamaan.
+ *
+ * # Kenapa tab-nya TIDAK dibawa ke alamat
+ *
+ * Karena alamat halaman ini sudah membawa tab ANTREAN, yang dipakai tombol kembali. Dua
+ * pengertian "tab" pada satu alamat akan membuat yang satu menimpa yang lain, dan akibatnya
+ * tombol kembali mendarat di antrean yang keliru.
  */
 function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
+  const [tab, setTab] = useState<WorkTab>('lampiran')
+
+  // Tab kedua disembunyikan untuk klaim berstatus Notification, mengikuti syarat pada
+  // kontainernya di layar lama. Keputusannya milik SERVER — lihat `types.ts`.
+  //
+  // Selama isinya belum tiba, tab kedua dianggap ADA: menyembunyikannya lebih dulu akan
+  // membuat tab berkedip muncul-hilang pada setiap klaim yang dibuka, dan kedipan itu
+  // terbaca sebagai kerusakan.
+  //
+  // Disembunyikan HANYA bila server menyatakannya `false` secara tegas — bukan bila
+  // isiannya sekadar tidak ada. Jawaban yang kehilangan isian ini akan menyembunyikan
+  // separuh layar tanpa satu pun galat, dan kegagalan seperti itu tidak dapat dilaporkan
+  // penggunanya: yang terlihat hanyalah tab yang tidak pernah ada.
+  const showsReceipt = detail?.tab_penerimaan_dokumen_tampil !== false
+
+  // Klaim Notification yang dibuka saat tab kedua sedang terpilih dikembalikan ke tab
+  // pertama, bukan dibiarkan menggambar tab yang seharusnya tidak ada.
+  const active: WorkTab = showsReceipt ? tab : 'lampiran'
+
+  return (
+    <>
+      <WorkTabs active={active} onChange={setTab} showsReceipt={showsReceipt} />
+
+      {!showsReceipt && (
+        <p className="mt-3 text-xs text-slate-500">
+          Klaim berstatus <span className="font-medium">Notification</span> hanya memiliki
+          Lampiran Surat. Layar lama menyembunyikan tab &ldquo;Penerimaan Dokumen&rdquo;
+          untuk klaim seperti ini, karena pemberitahuan tidak menunggu dokumen dan tidak
+          dikirim kembali ke Analyst.
+        </p>
+      )}
+
+      {active === 'lampiran' ? (
+        <LetterTab detail={detail} />
+      ) : (
+        <ReceiptTab detail={detail} />
+      )}
+    </>
+  )
+}
+
+/**
+ * Kepala tab layar kerja.
+ *
+ * Judulnya persis `pyCaption` kedua sub-section: "Lampiran Surat" dan "Penerimaan Dokumen"
+ * (`D-13`).
+ */
+function WorkTabs({
+  active,
+  onChange,
+  showsReceipt,
+}: {
+  active: WorkTab
+  onChange: (tab: WorkTab) => void
+  showsReceipt: boolean
+}) {
+  const tabs: { key: WorkTab; label: string }[] = [
+    { key: 'lampiran', label: 'Lampiran Surat' },
+    ...(showsReceipt
+      ? [{ key: 'penerimaan' as const, label: 'Penerimaan Dokumen' }]
+      : []),
+  ]
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Bagian layar kerja RCL/PUCL"
+      className="mt-4 flex gap-1 border-b border-slate-200"
+    >
+      {tabs.map((item) => (
+        <button
+          key={item.key}
+          role="tab"
+          type="button"
+          aria-selected={active === item.key}
+          onClick={() => onChange(item.key)}
+          className={[
+            'rounded-t-kontrol px-4 py-2 text-sm font-medium transition-colors',
+            'duration-150 ease-halus focus:outline-none',
+            'focus-visible:ring-2 focus-visible:ring-blue-500/50',
+            active === item.key
+              ? 'border-b-2 border-blue-600 text-blue-700'
+              : 'border-b-2 border-transparent text-slate-500 hover:text-slate-800',
+          ].join(' ')}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Bagian pertama — `SectionLampiranSuratPUCL`. */
+function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
   const letter = detail?.lampiran_surat
-  const receipt = detail?.penerimaan_dokumen
 
   return (
     <>
       {/*
-        Bagian pertama — `SectionLampiranSuratPUCL`. Ketiga belas isiannya ditulis dalam
-        URUTAN section, bukan urutan yang paling rapi dibaca: petugas yang membandingkan
-        kedua layar berdampingan menelusurinya dari atas ke bawah.
+        Dua isian teratas FULL WIDTH, sisanya berpasangan dua kolom — persis susunan
+        section-nya, dan persis yang terlihat di layar Pega.
+
+        Urutan pasangannya bukan urutan yang paling rapi dibaca melainkan urutan section:
+        kiri UP · No Polis · Nama Peserta · Perihal, kanan No Kontrak · Business Unit /
+        Seksi · Jumlah Tagihan · Tanggal Kejadian. Petugas yang membandingkan kedua layar
+        berdampingan menelusurinya dari atas ke bawah.
       */}
-      <FieldGroup
-        title="Lampiran Surat"
+      {/* Judulnya TIDAK diulang di sini: kepala tab sudah menamainya, dan Pega pun tidak
+          mengulangnya di dalam tab. */}
+      <StackedFields
         fields={[
           ['Status RCL / PUCL / MSIG', letter?.rcl_pucl ?? ''],
           ['Catatan dari Analyst', letter?.deskripsi_analyst ?? ''],
+        ]}
+      />
+
+      <FieldGroup
+        fields={[
           ['UP', letter?.up ?? ''],
           ['No Kontrak', DI_CLIPBOARD],
           ['No Polis', letter?.no_polis ?? ''],
           ['Business Unit / Seksi', DI_CLIPBOARD],
           ['Nama Peserta', letter?.nama_peserta ?? ''],
           ['Jumlah Tagihan', letter?.jumlah_tagihan ?? ''],
-          ['Perihal', DI_CLIPBOARD],
+          ['Perihal', letter?.perihal ?? ''],
           ['Tanggal Kejadian', letter?.tanggal_kejadian ?? ''],
-          ['Keterangan Pembuka', DI_CLIPBOARD],
-          ['Keterangan Isi', DI_CLIPBOARD],
-          ['Keterangan Penutup', DI_CLIPBOARD],
         ]}
       />
+
+      {/*
+        Ketiga Keterangan FULL WIDTH, bukan dua kolom: ketiganya `pxTextArea` di section dan
+        isinya kalimat surat yang panjang — di Pega masing-masing memenuhi satu baris penuh.
+      */}
+      <StackedFields
+        fields={[
+          ['Keterangan Pembuka', letter?.keterangan_pembuka ?? ''],
+          ['Keterangan Isi', letter?.keterangan_isi ?? ''],
+          ['Keterangan Penutup', letter?.keterangan_penutup ?? ''],
+        ]}
+      />
+
+      {/*
+        "Perihal" bukan isian bebas melainkan PILIHAN dari master.
+
+        Sel-nya `pxAutoComplete` ber-sumber `.ID_PERIHAL`/`.PERIHAL_NAME`, dan masternya
+        nyata: `POOLDATA.M_PERIHAL_RCLPUCL`, 12 baris, dibaca langsung 2026-09-30. Yang tidak
+        terbaca adalah pilihan MANA yang tersimpan untuk klaim ini — itu ada di clipboard.
+        Dinyatakan supaya "di clipboard Pega" pada isian itu tidak terbaca sebagai isian yang
+        hilang tanpa asal-usul.
+      */}
+      <p className="mt-2 text-xs text-slate-500">
+        <span className="font-medium">Perihal</span> dipilih dari daftar baku berisi 12
+        pilihan (master Perihal RCL/PUCL). Yang tersimpan pada klaim adalah teks pilihannya,
+        dan itulah yang digambar di atas.
+      </p>
 
       {/*
         Isian yang paling mudah dilaporkan sebagai kerusakan, padahal BUKAN: "UP" berisi nama
@@ -236,47 +387,107 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
         }
       />
 
-      {/* Bagian kedua — `SectionPenerimaanDokumenPUCL`. */}
+      <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
+    </>
+  )
+}
+
+/**
+ * Bagian kedua — `SectionPenerimaanDokumenPUCL`.
+ *
+ * # Keempat tombolnya diambil dari layar Pega, bukan dikarang
+ *
+ * Versi sebelumnya menggambar dua tombol, dan salah satunya bernama **"Kirim ke PIC
+ * Teknik"** — nama yang tidak ada di layar mana pun. Yang benar **"Kirim Ke Analyst"**, dan
+ * itu bukan perbedaan kata: PIC Teknik dan Analyst adalah dua peran yang berbeda, sehingga
+ * tombol itu menyatakan klaimnya diteruskan ke orang yang salah.
+ *
+ * Ia sejalan dengan isian di atasnya, yang memang berjudul "Catatan untuk Analyst".
+ */
+function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
+  const receipt = detail?.penerimaan_dokumen
+
+  return (
+    <>
       <ReceivedDocumentGrid />
 
-      <FieldGroup
-        title="Penerimaan Dokumen"
+      {/*
+        Ketiganya FULL WIDTH di section, dan dua di antaranya WAJIB diisi (`pyRequired`
+        true). Tanda wajibnya dibawa meski layar ini hanya membaca: ia menyatakan bentuk
+        layar lama, dan petugas yang membandingkan keduanya berdampingan mencarinya.
+      */}
+      {/* Judulnya ada di kepala tab, sama seperti di Pega. */}
+      <StackedFields
         fields={[
           ['Email Tertanggung', DI_CLIPBOARD],
-          ['Tanggal Kelengkapan Dokumen', DI_CLIPBOARD],
-          ['Catatan untuk Analyst', receipt?.komentar_pucl ?? ''],
+          ['Tanggal Kelengkapan Dokumen', DI_CLIPBOARD, true],
+          ['Catatan untuk Analyst', receipt?.komentar_pucl ?? '', true],
         ]}
       />
 
       <div className="flex flex-wrap gap-3">
+        <WriteAction label="Unggah Dokumen" note="Melampirkan berkas dokumen ke klaim." />
+        <WriteAction label="Lihat Dokumen" note="Membuka dokumen yang sudah dilampirkan." />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
         <WriteAction
-          label="Unggah Dokumen"
-          note="Melampirkan berkas dokumen ke klaim."
+          label="Save"
+          note="Menyimpan isian tanpa meneruskan klaimnya."
         />
         <WriteAction
-          label="Kirim ke PIC Teknik"
-          note="Meneruskan klaim kembali ke PIC Teknik setelah dokumennya lengkap."
+          label="Kirim Ke Analyst"
+          note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
         />
       </div>
 
+      <ScreenFooter detail={detail} actionCount="Keempat tindakan di atas" />
+    </>
+  )
+}
+
+/**
+ * Kaki layar — kunci klaim, sifat baca-saja, dan daftar isian clipboard.
+ *
+ * Dipakai KEDUA tab, bukan hanya salah satunya. Petugas yang membuka tab "Penerimaan
+ * Dokumen" lebih dulu tetap membutuhkan kunci klaimnya untuk mengerjakan tindakannya di
+ * Pega, dan tetap perlu tahu tombolnya mati karena keputusan — bukan karena rusak.
+ */
+function ScreenFooter({
+  detail,
+  actionCount,
+}: {
+  detail: ClaimDetailResponse | null
+  actionCount: string
+}) {
+  return (
+    <>
       {/*
-        Kunci teknisnya ditampilkan dengan sengaja, meski ia BUKAN isian di section mana
-        pun. Ia yang dipakai petugas membuka klaim yang sama di Pega, dan ia pula parameter
-        `inskey` yang dikirim tautan aslinya.
+        Ditampilkan dengan sengaja, meski ia BUKAN isian di section mana pun: ia yang dipakai
+        petugas membuka klaim yang sama di Pega untuk mengerjakan tindakannya.
+
+        LABELNYA BERUBAH 2026-10-01, karena ISINYA berubah. Sebelumnya ia kunci teknis Pega
+        (`ASM-FW-GCNMFW-WORK PNC-1865`) — parameter `inskey` yang dikirim tautan aslinya.
+        Sejak layar ini membaca POOLDATA.TC_PNC_PUCL, yang tersedia hanyalah NOMOR CASE
+        (`PNC-1865`): tabel datar itu tidak menyimpan kunci teknisnya.
+
+        Labelnya disesuaikan alih-alih dibiarkan, karena petugas MENYALIN nilai ini ke Pega.
+        Memanggilnya "kunci klaim" sementara isinya nomor case akan membuat ia ditempelkan ke
+        tempat yang tidak menerimanya, lalu dilaporkan sebagai kerusakan.
       */}
       {detail && (
         <p className="mt-6 border-t border-slate-200 pt-3 text-xs text-slate-600">
-          Kunci klaim: <span className="font-mono text-slate-900">{detail.referensi}</span>
+          Nomor Case: <span className="font-mono text-slate-900">{detail.referensi}</span>
         </p>
       )}
 
       {detail?.tindakan_masih_di_pega && (
         <div className="mt-3 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs text-slate-700">
-            <span className="font-medium">Layar ini baca saja.</span> Ketiga tindakan di atas
+            <span className="font-medium">Layar ini baca saja.</span> {actionCount}{' '}
             MENYIMPAN data, dan selama Pega dan sistem baru berjalan berdampingan data klaim
-            hanya boleh diubah dari satu sistem. Kerjakan tindakannya di Pega memakai kunci
-            di atas.
+            hanya boleh diubah dari satu sistem. Kerjakan tindakannya di Pega, cari klaimnya
+            dengan Nomor Case di atas.
           </p>
         </div>
       )}
@@ -313,6 +524,17 @@ function ReceivedDocumentGrid() {
       <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
         Tanggal terima Dokumen
       </h3>
+      {/*
+        Kedua tautan "Tambah" dan "Hapus" ADA di layar lama, di atas grid. Ia digambar
+        mati — sama alasannya dengan kelima tombol tindakan: menghilangkannya
+        menyembunyikan bahwa daftar ini dapat diisi, dan menghidupkannya menulis ke objek
+        kerja yang masih dimiliki Pega (`P-1`).
+      */}
+      <p className="mt-2 flex gap-4 text-xs text-slate-400">
+        <span>+ Tambah</span>
+        <span>Hapus</span>
+      </p>
+
       <table className="mt-2 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
@@ -351,39 +573,87 @@ function WriteAction({ label, note }: { label: string; note: string }) {
 }
 
 /**
- * Sekelompok isian bertumpuk, dengan judul bagiannya.
+ * Satu isian: judul, nilai, dan penanda wajib.
+ *
+ * Penanda wajib dibawa dari `pyRequired` pada sel-nya. Layar ini hanya membaca, sehingga
+ * tidak ada yang divalidasi — tetapi ia bagian dari BENTUK layar lama, dan petugas yang
+ * membandingkan keduanya berdampingan mencarinya.
+ */
+type Field = [label: string, value: FieldValue, required?: boolean]
+
+/**
+ * Sekelompok isian dalam DUA KOLOM, berpasangan kiri-kanan menurut urutan section.
  *
  * Isian yang hidup di clipboard Pega digambar dengan penanda tersendiri — bukan tanda pisah.
  * Tanda pisah sudah dipakai untuk "kosong", dan kedua keadaan itu berbeda sama sekali: yang
  * kosong memang belum diisi petugas, yang di clipboard punya nilai tetapi nilainya tidak
  * dapat dibaca dari tabel.
  */
-function FieldGroup({ title, fields }: { title: string; fields: [string, FieldValue][] }) {
+function FieldGroup({ title, fields }: { title?: string; fields: Field[] }) {
   return (
     <div className="mt-6">
-      <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-        {title}
-      </h3>
+      {title && (
+        <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          {title}
+        </h3>
+      )}
       <dl className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-        {fields.map(([label, value]) => (
-          <div key={label} className="flex flex-col">
-            <dt className="text-xs font-medium text-slate-500">{label}</dt>
-            <dd
-              className={
-                value === DI_CLIPBOARD
-                  ? 'text-sm text-slate-400 italic'
-                  : 'text-sm text-slate-900'
-              }
-            >
-              {value === DI_CLIPBOARD
-                ? 'di clipboard Pega'
-                : value === ''
-                  ? '—'
-                  : value}
-            </dd>
-          </div>
+        {fields.map((field) => (
+          <FieldRow key={field[0]} field={field} />
         ))}
       </dl>
+    </div>
+  )
+}
+
+/**
+ * Sekelompok isian FULL WIDTH, satu per baris.
+ *
+ * Dipakai isian yang di section berupa `pxTextArea` atau menempati satu baris penuh —
+ * Status, Catatan dari Analyst, ketiga Keterangan, dan ketiga isian Penerimaan Dokumen.
+ * Memaksanya ke dua kolom akan memotong kalimat surat yang panjang menjadi kolom sempit,
+ * dan itu bukan bentuk layar lama.
+ */
+function StackedFields({ title, fields }: { title?: string; fields: Field[] }) {
+  return (
+    <div className="mt-6">
+      {title && (
+        <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          {title}
+        </h3>
+      )}
+      <dl className="mt-2 grid gap-y-3">
+        {fields.map((field) => (
+          <FieldRow key={field[0]} field={field} />
+        ))}
+      </dl>
+    </div>
+  )
+}
+
+/** Satu baris isian, dipakai kedua susunan supaya keduanya tidak dapat menyimpang. */
+function FieldRow({ field }: { field: Field }) {
+  const [label, value, required] = field
+
+  return (
+    <div className="flex flex-col">
+      <dt className="text-xs font-medium text-slate-500">
+        {label}
+        {required && (
+          <span className="ml-0.5 text-amber-600" title="Wajib diisi di layar lama">
+            *
+          </span>
+        )}
+      </dt>
+      <dd
+        className={
+          value === DI_CLIPBOARD
+            ? 'text-sm text-slate-400 italic'
+            : 'text-sm text-slate-900'
+        }
+      >
+        {value === DI_CLIPBOARD ? 'di clipboard Pega' : value === '' ? '—' : value}
+      </dd>
     </div>
   )
 }

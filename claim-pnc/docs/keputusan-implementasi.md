@@ -23798,3 +23798,485 @@ yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status tr
 dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
 baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.
 >>>>>>> dev
+
+---
+
+## 82. Inbox RCL/PUCL — layar kerja diperbaiki, dan dua replikasi yang ternyata keliru (2026-09-30)
+
+**Latar:** Work Owner melaporkan galat saat Nomor Case diklik, mengirim enam tangkapan layar
+Pega, dan meminta Flow Action `SendtoRCLPUCL` dianalisis lalu layarnya disesuaikan.
+
+### 82.1 Galatnya satu nama kolom yang ditebak
+
+Layar kerja **gagal untuk SETIAP klaim**, bukan sebagian:
+
+```
+ORA-00904: "J"."COVERAGEID": invalid identifier
+```
+
+`POOLDATA.T_CLAIM_ADJUSTMENT` tidak punya kolom `COVERAGEID`. Namanya
+**`OBJECTCOVERAGEID`** — dibaca dari `ALL_TAB_COLUMNS` pada 2026-09-30. Nama pendeknya
+ditebak saat modul ini ditulis, karena DDL-nya tidak pernah diterima (`R-08`).
+
+**Kenapa ia lolos sampai sekarang.** `-periksa` memeriksa `List` ketiga tab tetapi **tidak
+pernah memanggil `Detail`**, dan uji kuerinya hanya menuntut ada `ORDER BY` — bukan nama
+kolomnya. Dua penjaga, dan tidak satu pun menyentuh jalur yang rusak.
+
+Uji kueri diperketat: ia kini menyebut `OBJECTCOVERAGEID` **dan menolak** `j.COVERAGEID`.
+Bentuk lamanya akan lolos dengan nama kolom apa pun.
+
+### 82.2 Kode jalur `3` TERNYATA digambar "Notification" — replikasi kami yang keliru
+
+Modul ini mengosongkan sel untuk kode `3`, meniru `CASE` tanpa `ELSE` pada
+`RDB List/GetReminderPUCL-SQL.xml`. **Tangkapan layar Pega menunjukkan "Notification".**
+
+Kami yang salah, dan sebabnya jelas begitu ditelusuri:
+
+| | |
+|---|---|
+| Yang kami pakai | `CASE` pada `GetReminderPUCL-SQL.xml` — kueri yang memasok **pengingat**, bukan grid |
+| Yang sebenarnya memasok sel | kontrol daftar pilihan baca-saja: `pyValue .ClaimData.PUCLStatus.RCL_PUCL` · `pyFormat pxRadioButtons` · `pyEditOptions Read-only` |
+| Yang digambar kontrol itu | **label** pilihan terpilih, bukan kodenya |
+| Di mana labelnya hidup | rule Property `RCL_PUCL` — **tidak ada di export**; seluruh folder `Property/` hanya memuat satu berkas (`R-16`) |
+
+Jadi teksnya memang tidak dapat dibaca dari artefak mana pun. Yang membuktikannya layar yang
+berjalan, dan itu diperkuat data: `PNC-1503` terverifikasi `RCL_PUCL_1 = '3'` dan
+`MSIG_1 = 'MSIG'`; sebaran kodenya `1`→2 baris, `2`→60, `3`→1, kosong→1.
+
+`TrackOf` kini memetakan `3` → **"Notification"**, dan kode di luar ketiganya tetap kosong —
+satu baris di produksi memang berkode kosong.
+
+> **Ini bertentangan dengan brief yang saya terima**, yang menyebutnya perangkap dan melarang
+> menuliskan "Notification" di grid. Larangan itu berdiri di atas premis bahwa `CASE`
+> tersebut memasok grid, dan premis itu tidak benar. Tangkapan layar sistem yang sedang
+> direplikasi mengalahkan simpulan kami dari kueri yang berbeda.
+
+### 82.3 Layar kerja ternyata DUA TAB, bukan dua bagian bertumpuk
+
+`Section/SendtoRCLPUCL-Section.xml` ber-`pyHeaderType TABBED` dan `pyTabbedHeader true`.
+Modul ini menggambar keduanya berurutan pada satu halaman.
+
+Bedanya bukan kosmetik: bertumpuk, petugas melihat tombol **"Cetak"** dan **"Kirim Ke
+Analyst"** pada satu layar sekaligus — dua tindakan yang di Pega berada di tahap berbeda dan
+tidak pernah tampil bersamaan.
+
+Tab-nya sengaja **tidak dibawa ke alamat**: alamat halaman ini sudah membawa tab ANTREAN yang
+dipakai tombol kembali, dan dua pengertian "tab" pada satu alamat akan membuat yang satu
+menimpa yang lain.
+
+### 82.4 Satu tombol menyebut peran yang SALAH
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Tombol | "Kirim ke PIC Teknik" | **"Kirim Ke Analyst"** |
+| Jumlah tombol Penerimaan Dokumen | 2 | **4** — Unggah Dokumen · Lihat Dokumen · Save · Kirim Ke Analyst |
+
+Nama lama tidak ada di layar mana pun. Ia bukan beda kata: **PIC Teknik dan Analyst dua peran
+yang berbeda**, sehingga tombol itu menyatakan klaimnya diteruskan ke orang yang salah — dan
+ia berdiri tepat di bawah isian berjudul "Catatan untuk **Analyst**".
+
+Uji kini menjaga **nama** kelima tombol, bukan jumlahnya, dan menolak nama lamanya secara
+eksplisit.
+
+### 82.5 Bentuk layar disesuaikan ke tangkapan layar
+
+| Hal | Perubahan |
+|---|---|
+| Status dan Catatan dari Analyst | jadi **satu baris penuh**, bukan dua kolom — keduanya `pxTextArea`/penuh di section |
+| Ketiga Keterangan | jadi **satu baris penuh**; memaksanya ke kolom sempit memotong kalimat surat |
+| Delapan isian tengah | tetap dua kolom, pasangannya persis urutan section: kiri UP · No Polis · Nama Peserta · Perihal, kanan No Kontrak · Business Unit / Seksi · Jumlah Tagihan · Tanggal Kejadian |
+| Tanggal Kelengkapan Dokumen · Catatan untuk Analyst | diberi tanda **wajib**, dari `pyRequired true` |
+| Grid Tanggal terima Dokumen | ditambah tautan mati **"+ Tambah"** dan **"Hapus"**, yang ada di layar lama |
+| Judul bagian | **tidak diulang** di dalam tab — kepala tab sudah menamainya, sama seperti di Pega |
+
+### 82.6 "Perihal" bukan isian bebas — masternya ADA
+
+Sel-nya `pxAutoComplete` ber-sumber `.ID_PERIHAL`/`.PERIHAL_NAME`, dan masternya nyata:
+**`POOLDATA.M_PERIHAL_RCLPUCL`**, 12 baris, dibaca langsung 2026-09-30 — misalnya
+*"Kelengkapan Data dan Dokumen Klaim Polis Asuransi Kecelakaan Diri"* dan *"Pemberitahuan
+Penundaan Proses Klaim…"*.
+
+Yang **tidak** terbaca adalah pilihan MANA yang tersimpan untuk sebuah klaim: itu ada di
+clipboard. Layar menyatakan keduanya, supaya "di clipboard Pega" pada isian itu tidak terbaca
+sebagai isian yang hilang tanpa asal-usul.
+
+Tabel kedua yang ikut ditemukan: `POOLDATA.CLHS_LOG_NOTIF_PUCL` (27 baris) — log notifikasi
+PUCL, belum dianalisis dan belum dipakai.
+
+### 82.7 Penghalang utama modul ini AKHIRNYA terbukti, bukan lagi diduga
+
+§79.3 menyatakan kesembilan isian clipboard tidak punya kolom, berdasarkan **pencarian di
+export**. Kini terbukti dari **katalog basis data**: `PERIHAL_1`, `KETERANGAN1_1`,
+`EMAILLOD_1`, `NIK_1`, `BUSINESSUNITSEKSI_1` — tidak satu pun ada. Pencarian pola
+`%PERIHAL%`, `%KETERANGAN%`, `%EMAIL%`, `%NIK%`, `%TERIMADOKUMEN%`, `%TAGIHAN%`, `%PESERTA%`,
+`%KONTRAK%`, `%LOD%` pada `PC_ASM_FW_GCNMFW_WORK` mengembalikan **empat** kolom, dan tidak
+satu pun milik layar ini.
+
+Permintaan ke Tim Pega karena itu **tidak berubah**, tetapi dasarnya naik dari "tidak ditemukan
+di export" menjadi "tidak ada di tabelnya".
+
+### 82.8 Satu isian yang perlu ditelusuri lebih lanjut — tidak dikerjakan
+
+`POOLDATA.T_CLAIM_ADJUSTMENT` punya kolom **`CONTRACTNO`**, dan layar kerja punya isian
+**"No Kontrak"**. Menggodanya menyambungkan keduanya.
+
+**Tidak dilakukan.** Sel "No Kontrak" terikat `.ClaimData.PUCLStatus.NIK` — properti yang
+labelnya memang tidak sejalan dengan namanya (§46.2 sudah mencatatnya). Menyambungkannya ke
+`CONTRACTNO` atas dasar kemiripan nama adalah persis jenis tebakan yang membuat `COVERAGEID`
+lolos ke produksi. Ia dicatat sebagai pertanyaan, bukan dikerjakan.
+
+### 82.9 Pelajaran: dua penjaga yang tidak menyentuh jalur yang rusak
+
+Galat §81.1 hidup berhari-hari di jalur yang **setiap** pemakaian layar kerja lewati. Yang
+seharusnya menangkapnya:
+
+| Penjaga | Kenapa tidak menangkapnya |
+|---|---|
+| `-periksa` | memanggil `List`, tidak pernah `Detail` |
+| uji kueri | menuntut ada `ORDER BY`, bukan nama kolomnya |
+
+Keduanya sudah diperbaiki. Yang layak dibawa: uji yang memeriksa **bentuk** kueri tidak
+menggantikan uji yang memeriksa **namanya**, dan pemeriksa kesehatan yang tidak menempuh
+seluruh jalur hanya menyatakan sesuatu tentang jalur yang ditempuhnya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Sembilan properti `.ClaimData.PUCLStatus.*` dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega |
+| Apakah "No Kontrak" memang `T_CLAIM_ADJUSTMENT.CONTRACTNO`, atau benar-benar properti clipboard `.NIK` | Tim Pega + Work Owner |
+| Dari mana isi Keterangan Pembuka / Isi / Penutup — masternya tidak ada di `M_PERIHAL_RCLPUCL` | Tim Pega |
+| Apakah tautan "buka di Pega" dikehendaki; bila ya, alamat portal per entitas | Work Owner + Tim Infra |
+
+---
+
+## 83. Inbox RCL/PUCL — tab kedua disembunyikan untuk Notification, dan satu hipotesis yang gugur (2026-09-30)
+
+**Latar:** tiga keluhan Work Owner atas layar kerja — *"MSIG hanya Lampiran surat saja"*,
+*"masih banyak kosong"*, dan *"tombol tidak aktif"*. Ketiganya terdengar seperti satu
+permintaan, tetapi jawabannya berbeda-beda: satu cacat nyata, satu penghalang yang kini
+terbukti dua kali, satu keputusan yang bukan milik saya.
+
+### 83.1 "MSIG hanya Lampiran Surat" — laporan Work Owner BENAR, pembacaan kami yang keliru
+
+`Section/SendtoRCLPUCL-Section.xml` baris 1527, pada kontainer ber-`pyTitle` **"Penerimaan
+Dokumen"** (baris 1567) yang menyisipkan `SectionPenerimaanDokumenPUCL` (baris 1844):
+
+```xml
+<pyContainerVisibleWhen>.ClaimData.PUCLStatus.RCL_PUCL != 3</pyContainerVisibleWhen>
+```
+
+Jadi kode `3` (Notification) menyembunyikan **satu tab**, bukan seluruh layar kerja.
+
+**Yang dikoreksi.** `pyMemo` pada flow action hanya berbunyi *"visibility when
+.ClaimData.PUCLStatus.RCL_PUCL != 3"* tanpa menyebut apa yang disembunyikan, dan modul ini
+membacanya sebagai **seluruh layar** — tertulis begitu di §45.2b dan §78 keputusan 5.
+Keduanya keliru, dan yang membantahnya laporan Work Owner ditambah berkas section-nya
+sendiri.
+
+**Akibatnya pada keputusan lama.** §78 keputusan 5 memagari syarat ini sebagai *"wajib
+diberlakukan sebelum operasi tulis pertama"*, atas dasar bahwa membukanya berarti mengerjakan
+klaim yang di Pega tidak pernah bisa dibuka. Dasar itu gugur: klaimnya **memang dapat
+dibuka** di Pega, hanya satu tabnya yang hilang.
+
+Karena itu syaratnya **ditegakkan sekarang**, bukan ditunda. Ia murni tampilan — tidak
+menolak siapa pun, tidak menyentuh data, tidak bertabrakan dengan `P-1` — dan menegakkannya
+membuat layar ini LEBIH setara, bukan kurang.
+
+Terverifikasi terhadap Oracle: `PNC-1503` (satu-satunya baris MSIG) → status `Notification`,
+tab kedua **tidak digambar**; `PNC-2183` dan `PNC-2107` → `PUCL`, tab kedua digambar.
+
+**Keputusannya milik SERVER**, dikirim sebagai `tab_penerimaan_dokumen_tampil`. Membandingkan
+kode `3` di frontend berarti satu nilai bisnis hidup di dua tempat yang dapat berselisih
+(`D-15`).
+
+**Satu cacat yang tertangkap saat menulis ujinya**, dan layak dicatat karena kelasnya
+berbahaya: penjaga pertama berbunyi `detail ? detail.tab_penerimaan_dokumen_tampil : true`,
+sehingga jawaban yang **kehilangan** isian itu — bukan menyatakannya salah — ikut
+menyembunyikan tab. Separuh layar hilang tanpa satu pun galat, dan penggunanya tidak punya
+apa pun untuk dilaporkan selain "tabnya tidak ada". Diganti `!== false`: disembunyikan hanya
+bila server menyatakannya tegas.
+
+### 83.2 "Masih banyak kosong" — penghalangnya kini terbukti DUA KALI
+
+Kesembilan isian clipboard tetap tidak dapat diisi, dan dasarnya menguat dari "tidak ditemukan
+di export" (§79.3) menjadi dua bukti langsung:
+
+| Bukti | Hasil |
+|---|---|
+| Katalog Oracle | `PERIHAL_1`, `KETERANGAN1_1`, `EMAILLOD_1`, `NIK_1`, `BUSINESSUNITSEKSI_1` **tidak ada**. Pencarian pola `%PERIHAL%`, `%KETERANGAN%`, `%EMAIL%`, `%NIK%`, `%TERIMADOKUMEN%`, `%TAGIHAN%`, `%PESERTA%`, `%KONTRAK%`, `%LOD%` mengembalikan **4 kolom**, tak satu pun milik layar ini |
+| Hipotesis `EMAIL_1` | **gugur** — lihat di bawah |
+
+**Hipotesis yang gugur, dan kenapa ia dicatat.** `EMAIL_1` ada di tabel objek kerja, terisi
+**61 dari 64** baris antrean RCL/PUCL, isinya daftar alamat berkoma — persis bentuk "Email
+Tertanggung" di layar Pega. Sangat meyakinkan.
+
+Ia diuji terhadap klaim yang tangkapan layarnya dikirim Work Owner (`PNC-2183`):
+
+| | Pega | `EMAIL_1` |
+|---|---|---|
+| Jumlah alamat | **2** | **1** |
+| Panjang nama | 10 dan 10 huruf | 7 huruf |
+
+**Tidak cocok.** Konvensi penamaan Pega pun menyalahkannya: `.ClaimData.EmailLOD` yang
+dioptimasi akan menjadi `EMAILLOD_1`, bukan `EMAIL_1`.
+
+Memakainya akan menampilkan **penerima surat yang salah** pada layar penyusun surat — dan
+karena isinya tetap berupa alamat surel yang masuk akal, tidak akan ada satu pun galat.
+
+> Nilai surel tidak direproduksi di sini maupun di berkas mana pun; yang dibandingkan hanya
+> jumlah dan panjangnya (`D-69`).
+
+**Dua jalur lain yang ikut ditutup:** `SUBJECTEMAIL_1` dan `KETERANGAN_1` **0 dari 64** terisi
+— bukan Perihal maupun Keterangan layar ini. `POOLDATA.CLHS_LOG_NOTIF_PUCL` milik kelas objek
+kerja lain (`ASM-CLH-WORK GCH-*`), bukan klaim PNC. `T_CLAIM_ADJUSTMENT.CONTRACTNO` kosong
+pada klaim yang diperiksa, sehingga "No Kontrak" tetap tidak berdasar disambungkan ke sana.
+
+**Yang TIDAK kosong, dan memang bekerja:** `KOMENTARPUCL_1` ("Catatan untuk Analyst") terisi
+**37 dari 64**. Kosongnya pada `PNC-2107` bukan cacat pemetaan — layar Pega pun menggambarnya
+kosong untuk klaim itu.
+
+### 83.3 "Tombol tidak aktif" — itu `P-1`, dan keputusannya bukan milik saya
+
+Kelima tombol menulis ke `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan `PC_ASSIGN_WORKBASKET`. Selama
+masa paralel, setiap tabel hanya boleh ditulis SATU sistem, dan kedua tabel itu milik Pega —
+dibaca 116 aturan Pega untuk yang pertama saja.
+
+Menghidupkannya **bukan pekerjaan teknis melainkan keputusan kepemilikan tabel**, dan §78
+keputusan 6 sudah menetapkan layar ini membaca saja sampai Pega dimatikan. Mengubahnya
+menuntut keputusan Work Owner yang menyebut tabel mana yang berpindah kepemilikan — bukan
+penilaian saya sendiri.
+
+Diajukan sebagai pertanyaan, tidak dikerjakan.
+
+### 83.4 Pelajaran: keluhan yang terdengar satu, jawabannya tiga
+
+Ketiga keluhan datang dalam satu kalimat dan terasa seperti satu permintaan — "layarnya belum
+benar, perbaiki". Jawabannya ternyata berada di tiga kelas yang berbeda:
+
+| Keluhan | Kelasnya | Hasil |
+|---|---|---|
+| MSIG hanya Lampiran Surat | **cacat kami** | diperbaiki |
+| Banyak isian kosong | **penghalang pihak lain** | terbukti, tidak dapat diperbaiki dari sini |
+| Tombol tidak aktif | **keputusan yang belum diambil** | diajukan |
+
+Menjawab ketiganya dengan satu kalimat — entah "sudah diperbaiki" atau "itu terhalang" —
+akan salah pada dua dari tiga. Yang pertama pantas diperbaiki tanpa bertanya; yang kedua
+pantas dilaporkan dengan angka; yang ketiga pantas ditanyakan, bukan diputuskan sendiri.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apakah tombol tulis dihidupkan** — menuntut perpindahan kepemilikan `PC_ASM_FW_GCNMFW_WORK` dan `PC_ASSIGN_WORKBASKET` (`P-1`) | Work Owner |
+| Sembilan properti `.ClaimData.PUCLStatus.*` dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega |
+| Dari mana isi Keterangan Pembuka / Isi / Penutup — tidak ada di `M_PERIHAL_RCLPUCL` maupun di kolom mana pun | Tim Pega |
+| Apakah tautan "buka di Pega" dikehendaki; bila ya, alamat portal per entitas | Work Owner + Tim Infra |
+
+---
+
+## 84. Inbox RCL/PUCL — ketiga tab dan layar kerja pindah ke tabel datar `TC_PNC_PUCL` (2026-10-01)
+
+Permintaan Work Owner: *"Inbox RCL/PUCL tidak baca dari RD InboxPUCL_RD, sekarang dia membaca
+data dari CREATE_TABLE_3.SQL, dan untuk data yang ada di lampiran surat dan penerimaan dokumen
+juga."*
+
+DDL-nya **ditulis Work Owner sendiri** (`Database/CREATE_TABLE_3.SQL`, 26 kolom + PK).
+`claim-pnc/docs/ddl/tc_pnc_pucl.sql` menyalinnya apa adanya dan menambahkan pemetaannya ke
+ketiga Report Definition; bila keduanya berselisih, berkas Work Owner yang berlaku.
+
+### 84.1 Yang pindah, dan yang sengaja tidak
+
+| Kueri | Sumber sesudahnya |
+|---|---|
+| `list_cetak_surat` · `list_kelengkapan_dokumen` · `list_klaim_msig` | `POOLDATA.TC_PNC_PUCL` |
+| `detail` — Lampiran Surat + Penerimaan Dokumen | `POOLDATA.TC_PNC_PUCL` |
+| `daily_report` | **tetap** `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` |
+
+Laporan harian tidak ikut, dan sebabnya bukan pekerjaan yang tertunda melainkan **isi yang
+berbeda**: cabang keduanya mengambil seluruh klaim Personal Accident pada rentang itu **tanpa
+gabungan antrean sama sekali**, termasuk klaim yang tidak pernah masuk antrean RCL/PUCL.
+Klaim seperti itu tidak ada di tabel datar. Memindahkannya sekarang membuat berkas unduhan
+kehilangan baris tanpa satu pun galat.
+
+### 84.2 Tiga selisih yang lahir dari bentuk tabelnya, bukan dari pilihan di sini
+
+> **Dikonfirmasi Work Owner 2026-10-01:** *"PXOBJCLASS memang dihapus, dan PZINSKEY pakai
+> CLAIMID saja."* Baris kedua dan ketiga tabel di bawah karena itu **bukan pertanyaan
+> terbuka** — keduanya bentuk tabel yang dikehendaki. Yang dicatat adalah akibatnya, supaya
+> tidak ditemukan belakangan sebagai kejutan.
+
+| Selisih | Sebabnya | Akibatnya |
+|---|---|---|
+| Klaim berpenugasan ganda tidak lagi muncul dua kali | `PRIMARY KEY (CLAIMID)` menggantikan `INNER JOIN` | jumlah baris dapat berkurang; **belum dihitung** |
+| Penyaring kelas objek kerja hilang | tabel datar tidak punya `PXOBJCLASS` | pemisahan Work-PNC dari Work-ReceiveDocument berpindah ke **proses pengisi** |
+| Alamat layar kerja memuat `PNC-1865`, bukan `ASM-FW-GCNMFW-WORK PNC-1865` | tabel datar hanya menyimpan satu kunci, dan kunci itu `PYID` | tautan lama berbentuk panjang tidak ditemukan |
+
+Yang ketiga menyentuh layar, bukan hanya kueri: kaki layar kerja menampilkan nilai itu dan
+menyuruh petugas memakainya di Pega. Labelnya diubah dari **"Kunci klaim"** menjadi **"Nomor
+Case"**, dan kalimat ajakannya dari *"memakai kunci di atas"* menjadi *"cari klaimnya dengan
+Nomor Case di atas"*. Membiarkannya berarti menyuruh orang menempelkan nilai ke tempat yang
+tidak menerimanya, lalu melaporkannya sebagai kerusakan.
+
+### 84.3 Jebakan terbesar: tiga kolom bernama `CLAIMID` yang isinya berbeda
+
+```
+POOLDATA.TC_PNC_PUCL.CLAIMID         nomor case      PNC-1865
+POOLDATA.T_CLAIM_PNC.CLAIMID         kunci teknis    ASM-FW-GCNMFW-WORK PNC-1865
+POOLDATA.T_CLAIM_OBJECTLIST.CLAIMID  kunci teknis    ASM-FW-GCNMFW-WORK PNC-1865
+```
+
+Menggabungkan yang pertama langsung dengan dua sisanya **selalu mengembalikan nol baris**.
+Join-nya tetap sah; hanya tidak pernah cocok — dan nol baris di sini terbaca persis seperti
+klaim yang memang tidak punya objek. "Nama Peserta", "UP", dan "Jumlah Tagihan" akan kosong
+tanpa satu pun galat.
+
+Jembatannya `T_CLAIM_PNC`, yang memuat **kedua** bentuk: `CLAIMNO` sama dengan nomor case,
+`CLAIMID` sama dengan kunci teknis. Pasangan itu dipakai Pega sendiri (`p.CLAIMNO = A.PYID`)
+dan sudah dipakai modul lain di aplikasi ini.
+
+**Merangkai prefix-nya sendiri ditolak**, meski lebih pendek. `'ASM-FW-GCNMFW-WORK ' || …`
+benar untuk klaim warisan dan **gagal diam-diam** untuk klaim ber-nomor `PNCN.YY.xxxx`, yang
+`D-22` dan `D-71` bebaskan dari prefix itu. Membaca pasangannya dari tabel benar untuk kedua
+bentuk, karena yang dibaca nilainya — bukan tebakan tentang bentuknya. Satu uji menahannya
+lahir kembali (`TestDetailReachesTheChildTablesThroughTClaimPNC`).
+
+### 84.4 Dua uji baru yang menahan kelas kesalahan, bukan satu kesalahan
+
+| Uji | Menahan |
+|---|---|
+| `TestEveryFlatTableQueryReadsTheFlatTable` | satu kueri tertinggal membaca tabel Pega — tetap berjalan, hasilnya masuk akal, tidak ada yang menandakannya |
+| `TestNoFlatTableQueryUsesALegacyColumnName` | nama kolom bentuk lama (`_1`, tanpa garis bawah) — gagal ORA-00904 di permintaan pertama **di produksi**, bukan saat build |
+
+Yang kedua lahir dari pelajaran yang sudah dibayar: `OBJECTCOVERAGEID` yang ditebak menjadi
+`COVERAGEID` membuat **setiap** pembukaan layar kerja gagal (§47). Penggantian nama kolom
+menyeluruh adalah kesempatan yang sama persis untuk mengulanginya 19 kali sekaligus.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Proses pengisi `TC_PNC_PUCL`** — siapa menulisnya, seberapa sering berjalan; tanpanya ketiga tab kosong | Work Owner |
+| Syarat pengisi: hanya `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'`, satu baris per klaim, aturan pemenang bila penugasan ganda | Work Owner |
+| ~~Apakah `PXOBJCLASS` dan `PZINSKEY` memang tidak dibawa~~ | **tertutup 2026-10-01** — ya, keduanya |
+| Berapa klaim berpenugasan ganda di produksi — menentukan apakah selisih §84.2 nyata atau hipotetis | DBA |
+| Apakah laporan harian ikut pindah; bila ya, pengisi harus memuat klaim PA di luar antrean | Work Owner |
+
+---
+
+## 85. Inbox RCL/PUCL — layar kerja pindah ke tabel datar, dan empat isian clipboard akhirnya terisi (2026-10-01)
+
+**Permintaan Work Owner:** *"Untuk Lampiran surat dan penerimaan dokumen baca dari folder
+database CREATE_TABLE_3.SQL … jangan baca dari RD lagi untuk INBOX RCL/PUCL."*
+
+### 85.1 Keadaan sebelum: ketiga tab sudah pindah, layar kerja baru separuh
+
+| Kueri | Membaca |
+|---|---|
+| ketiga kueri daftar | `POOLDATA.TC_PNC_PUCL` ✅ |
+| `detail` | `TC_PNC_PUCL` **+** `T_CLAIM_PNC` + `T_CLAIM_OBJECTLIST` + `T_CLAIM_ADJUSTMENT` |
+| `daily_report` | masih tabel Pega |
+
+Jadi yang diminta menyangkut `detail`. Ketiga tab memang sudah tidak lagi bersandar pada
+`InboxPUCL_RD`.
+
+### 85.2 Temuan yang mengubah lingkupnya: tabel yang BERJALAN punya 30 kolom, DDL di repo 26
+
+`Database/CREATE_TABLE_3.SQL` mendefinisikan 26 kolom. Katalog Oracle menunjukkan
+`POOLDATA.TC_PNC_PUCL` punya **30**. Empat yang tidak ada di berkas itu:
+
+```
+PERIHAL        KETERANGAN1        KETERANGAN2        KETERANGAN3
+```
+
+**Keempatnya adalah empat dari sembilan isian yang selama ini bertanda "di clipboard Pega".**
+
+Isinya dibaca langsung, dan cocok **kata demi kata** dengan tangkapan layar Pega yang dikirim
+Work Owner:
+
+| Kolom | Isi baris `PNC-2183` |
+|---|---|
+| `PERIHAL` | "Kelengkapan Data Dokumen Klaim Polis Asuransi Kecelakaan Pribadi" |
+| `KETERANGAN1` | "Sehubungan dengan telah diterimanya dokumen klaim polis Asuransi, …" |
+| `KETERANGAN2` | "Kwitansi Asli dari Biaya Konsultasi Dokter(bukan Nota / Invoice / …" |
+| `KETERANGAN3` | "Bila dokumen yang diminta tidak dilengkapi atau kelengkapan dokumen …" |
+
+Ini **persis jalan keluar yang §79.3 sebut sebagai satu-satunya**: properti clipboard diekspos
+menjadi kolom. Ia sudah ditempuh — tanpa pemberitahuan, dan tanpa masuk ke berkas DDL yang
+dibagikan.
+
+**Daftar isian tak terpetakan karena itu turun dari sembilan menjadi lima:** No Kontrak ·
+Business Unit / Seksi · Email Tertanggung · Tanggal Kelengkapan Dokumen · daftar Tanggal
+terima Dokumen.
+
+### 85.3 Selisih DDL itu BUKAN urusan kerapian
+
+Portal lain yang tabelnya dibuat dari `CREATE_TABLE_3.SQL` akan kehilangan keempat kolom itu,
+dan `detail` gagal **ORA-00904 pada klaim PERTAMA yang dibuka** — bukan saat build, bukan pada
+seluruh layar, melainkan hanya ketika seseorang mengklik sebuah baris.
+
+Tiga hal dikerjakan supaya keadaan itu tidak menunggu laporan pengguna:
+
+1. `check_columns` ikut menyentuh keempatnya, sehingga `-periksa` yang menyebut namanya.
+2. `letterColumnsBeyondTheSharedDDL` menamai selisihnya di satu tempat, dan dua uji menuntut
+   keempatnya dibaca `detail` **dan** diperiksa `check_columns`.
+3. `docs/ddl/tc_pnc_pucl.sql` disamakan dengan tabel yang berjalan, beserta catatan mengapa
+   selisihnya wajib ditutup.
+
+`Database/CREATE_TABLE_3.SQL` sendiri **tidak disunting** — ia artefak tim basis data, bukan
+dokumen kami.
+
+### 85.4 Tiga isian yang TETAP diturunkan, dan itu bukan sisa migrasi
+
+"Nama Peserta", "UP", dan "Jumlah Tagihan" tidak ada di `TC_PNC_PUCL`. Ketiganya tetap
+diturunkan dari `T_CLAIM_OBJECTLIST` dan `T_CLAIM_ADJUSTMENT` lewat jembatan
+`T_CLAIM_PNC.CLAIMNO`.
+
+Satu uji menahannya supaya penghapusannya menempuh keputusan: membuang subkuerinya akan
+mengosongkan tiga isian surat tanpa satu pun galat.
+
+### 85.5 Kenapa ketiga tab KOSONG, dan kenapa itu bukan cacat kode
+
+Tabelnya berisi **satu baris**. Baris itu gagal **dua penyaring yang berdiri sendiri**:
+
+| Penyaring | Nilai baris | Lolos? |
+|---|---|---|
+| `ASSIGNED_OPERATOR_ID = 'RCLPUCL'` | `ESTHERSIMBOLON` | **tidak** |
+| `STATUS_WORK <> 'Resolved-Completed'` | `New` | ya |
+| tab 1 `TGL_CETAK_DOKUMEN_PUCL IS NULL` | terisi | tidak |
+| tab 1 `STATUS_CASE = '0'` | `0` | ya |
+| tab 2/3 `TGL_CETAK_DOKUMEN_PUCL IS NOT NULL` | terisi | ya |
+| tab 2/3 `PUCL_APPROVE <> '1'` | `1` | **tidak** |
+| tab 3 `MSIG = 'MSIG'` | `MSIG` | ya |
+
+Dua yang gagal keduanya **replikasi setia penyaring Pega**, bukan tambahan kami. Membetulkan
+salah satunya saja tidak cukup: memperbaiki antreannya tetap menyisakan `PUCL_APPROVE = '1'`
+yang mengeluarkannya dari tab 2 dan 3.
+
+**Penyaringnya TIDAK diubah.** Mengubahnya berarti memutuskan sendiri bahwa antrean bersama
+bukan lagi batas layar ini — keputusan kepemilikan data, bukan penyesuaian kode. Ia diangkat
+sebagai pertanyaan.
+
+Satu catatan yang memperjelas asalnya: `docs/ddl/tc_pnc_pucl.sql` sendiri menulis
+`ASSIGNED_OPERATOR_ID` sebagai *"nama ANTREAN BERSAMA, bukan nama orang; 'RCLPUCL'"*. Data
+yang ada menyimpan nama orang, dan `OPERATOR_ID` pun bernilai sama. Jadi yang menyimpang
+bukan kueri melainkan pengisinya — atau niat kolomnya yang berubah tanpa tercatat.
+
+### 85.6 Satu berkas yang ternyata sudah benar
+
+Work Owner menyorot blok index ber-nama kolom Pega (`PXOBJCLASS`, `PXASSIGNEDOPERATORID`, …)
+pada `docs/ddl/tc_pnc_pucl.sql`. Blok itu **sudah tidak ada**; berkas yang berlaku memuat
+`TC_PNC_PUCL_IDX01` dengan nama kolom tabel datar, sama persis dengan `CREATE_TABLE_3.SQL`.
+Sorotan itu berasal dari versi sebelumnya.
+
+Dicatat supaya tidak dicari lagi.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **`ASSIGNED_OPERATOR_ID` diisi nama ANTREAN (`RCLPUCL`) atau nama ORANG?** Selama berisi nama orang, ketiga tab kosong | Work Owner + pemilik proses pengisi |
+| Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL`, supaya portal lain tidak gagal ORA-00904 | Tim basis data |
+| Lima isian sisanya — No Kontrak, Business Unit / Seksi, Email Tertanggung, Tanggal Kelengkapan Dokumen, daftar Tanggal terima Dokumen | Tim Pega |
+| Apakah `daily_report` ikut dipindahkan ke tabel datar (index `IDX02` menunggu keputusan ini) | Work Owner |
+| Apakah tombol tulis dihidupkan (`P-1`) | Work Owner |

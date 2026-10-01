@@ -11,8 +11,9 @@ import (
 
 // Repo membaca antrean RCL/PUCL dari SATU basis data entitas.
 //
-// Tidak ada satu pun operasi yang menulis. Seluruh tabel yang dibacanya milik sistem lama,
-// dan selama masa paralel setiap tabel hanya boleh ditulis satu sistem (`P-1`).
+// Tidak ada satu pun operasi yang menulis — termasuk ke `POOLDATA.TC_PNC_PUCL`, yang milik
+// aplikasi ini tetapi diisi PROSES PENGISI, bukan modul ini. Tabel sisanya milik Pega, dan
+// selama masa paralel setiap tabel hanya boleh ditulis satu sistem (`P-1`).
 type Repo struct {
 	db *sql.DB
 }
@@ -50,6 +51,15 @@ type plan struct {
 // persetujuan — adalah NILAI BISNIS, dan `D-15` melarangnya tertanam di dalam kode. Di sini
 // alasannya lebih tajam daripada kerapian: satu nilai yang salah mengosongkan seluruh layar
 // tanpa satu pun galat, dan tidak ada apa pun di antarmuka yang menandakannya.
+//
+// # Kenapa kelas objek kerja TIDAK lagi diikat
+//
+// `POOLDATA.TC_PNC_PUCL` tidak punya `PXOBJCLASS`. Pemisahan klaim dari berkas penerimaan
+// dokumen — yang di tabel Pega ditegakkan penyaring itu — berpindah menjadi syarat PROSES
+// PENGISI, yang hanya boleh memuat baris `ASM-FW-GCNMFW-Work-PNC`.
+//
+// `inboxrclpucl.WorkClassClaim` karena itu tidak lagi muncul di sini. Ia TETAP dipakai
+// DailyReport, yang masih membaca tabel Pega — lihat catatan pada kueri `daily_report`.
 func planFor(q inboxrclpucl.Query) (plan, error) {
 	switch q.Tab.Code {
 	case inboxrclpucl.TabCetakSurat:
@@ -57,7 +67,6 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 			name: "list_cetak_surat",
 			args: func(p inboxrclpucl.Pagination) []any {
 				return []any{
-					inboxrclpucl.WorkClassClaim,
 					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
 					inboxrclpucl.ExpiryStatusActive,
@@ -72,7 +81,6 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 			name: "list_kelengkapan_dokumen",
 			args: func(p inboxrclpucl.Pagination) []any {
 				return []any{
-					inboxrclpucl.WorkClassClaim,
 					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
 					inboxrclpucl.PUCLReturnedToAnalyst,
@@ -90,7 +98,6 @@ func planFor(q inboxrclpucl.Query) (plan, error) {
 				// perbedaannya: penanda jalur MSIG. Urutannya disisipkan SEBELUM paginasi,
 				// mengikuti urutan `:n` di berkas .sql.
 				return []any{
-					inboxrclpucl.WorkClassClaim,
 					inboxrclpucl.RCLPUCLWorkbasket,
 					inboxrclpucl.WorkStatusCompleted,
 					inboxrclpucl.PUCLReturnedToAnalyst,
@@ -217,27 +224,28 @@ func (r *Repo) DailyReport(
 
 // Detail mengambil isi layar kerja RCL/PUCL untuk satu klaim.
 //
-// # Kenapa kelas objek kerja ikut disaring
+// # Kuncinya kini NOMOR CASE, bukan kunci teknis Pega
 //
-// Karena `PZINSKEY` memang unik, tetapi penyaring kelas menutup satu kelas kekeliruan yang
-// tidak menghasilkan galat: kunci milik kelas objek kerja LAIN yang kebetulan sampai ke
-// sini akan mengembalikan baris yang kolom PUCL-nya seluruhnya kosong — terbaca persis
-// seperti klaim RCL/PUCL yang belum diisi.
+// `POOLDATA.TC_PNC_PUCL` dikunci `CLAIMID`, yang berisi nomor case (`PNC-1865`) — bukan
+// `PZINSKEY` berbentuk `ASM-FW-GCNMFW-WORK PNC-1865`. Nilai yang sampai ke sini adalah
+// `WorkItem.Reference`, yang dipasok ketiga kueri daftar dari kolom yang sama persis,
+// sehingga keduanya tidak dapat menyimpang.
+//
+// Penyaring kelas objek kerja hilang bersama kolomnya; perlindungan yang dulu diberikannya
+// berpindah ke proses pengisi. Lihat catatan pada planFor.
 //
 // # Kenapa "tidak ditemukan" dibedakan dari "kosong"
 //
 // Klaim yang tidak ada dan klaim yang seluruh isiannya kosong terlihat SAMA di layar, dan
-// hanya yang pertama yang merupakan kekeliruan. Yang paling mungkin menyebabkannya: kunci
-// yang benar dibuka pada PORTAL YANG SALAH — dan itu keterangan yang harus sampai ke
-// pengguna, bukan layar kosong tanpa sebab (`R-20`).
+// hanya yang pertama yang merupakan kekeliruan. Dua hal yang paling mungkin menyebabkannya:
+// kunci yang benar dibuka pada PORTAL YANG SALAH (`R-20`), dan klaim yang belum disalin
+// proses pengisi ke tabel datar. Keduanya keterangan yang harus sampai ke pengguna, bukan
+// layar kosong tanpa sebab.
 func (r *Repo) Detail(
 	ctx context.Context,
 	reference string,
 ) (inboxrclpucl.ClaimDetail, error) {
-	row := r.db.QueryRowContext(ctx, query("detail"),
-		reference,
-		inboxrclpucl.WorkClassClaim,
-	)
+	row := r.db.QueryRowContext(ctx, query("detail"), reference)
 
 	detail, err := scanDetail(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -263,23 +271,37 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_rclpucl")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK atau "+
-				"DATAPEGA.PC_ASSIGN_WORKBASKET: %w", err)
+			"membaca POOLDATA.TC_PNC_PUCL — tabel datar RCL/PUCL; bila ia belum dibuat, "+
+				"jalankan Database/CREATE_TABLE_3.SQL lebih dulu: %w", err)
 	}
 	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca kolom penyaring PUCL (TANGGALCETAKDOKUMENPUCL_1, STATUSCASE_1, "+
-				"PUCLAPPROVE_1, MSIG_1, TANGGALKIRIMPUCL_1): %w", err)
+			"membaca kolom penyaring POOLDATA.TC_PNC_PUCL (TGL_CETAK_DOKUMEN_PUCL, "+
+				"STATUS_CASE, PUCL_APPROVE, MSIG, TGL_KIRIM_PUCL): %w", err)
 	}
 
-	// Kedua tabel anak diperiksa TERPISAH: tanpa keduanya, layar kerja tetap terbuka
+	// Ketiga tabel anak diperiksa TERPISAH: tanpa ketiganya, layar kerja tetap terbuka
 	// tetapi "Nama Peserta", "UP", dan "Jumlah Tagihan" diam-diam kosong — dan kosong
 	// adalah keadaan yang sah bagi klaim tanpa objek, sehingga tidak dapat dibedakan dari
 	// kerusakan.
+	//
+	// `T_CLAIM_PNC` ikut karena ia JEMBATAN dari nomor case ke kunci teknis; tanpanya kedua
+	// isian turunan tidak dapat dicapai sama sekali.
 	if err := r.db.QueryRowContext(ctx, query("check_detail")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca POOLDATA.T_CLAIM_OBJECTLIST atau "+
+			"membaca POOLDATA.T_CLAIM_PNC, POOLDATA.T_CLAIM_OBJECTLIST, atau "+
 				"POOLDATA.T_CLAIM_ADJUSTMENT: %w", err)
+	}
+
+	// Kedua tabel Pega diperiksa PALING AKHIR dan terpisah, karena kegagalannya paling
+	// SEMPIT akibatnya: sejak ketiga tab pindah ke tabel datar, keduanya hanya dipakai
+	// laporan harian. Yang gagal karenanya hanyalah tombol unduh tab "Cetak Surat" — bukan
+	// layarnya.
+	if err := r.db.QueryRowContext(ctx, query("check_laporan")).Scan(&ignored); err != nil {
+		return fmt.Errorf(
+			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK atau "+
+				"DATAPEGA.PC_ASSIGN_WORKBASKET — keduanya hanya dipakai laporan harian "+
+				"tab Cetak Surat: %w", err)
 	}
 	return nil
 }
@@ -304,9 +326,10 @@ type scanner interface {
 //
 // # Kenapa waktu ikut dipindai sebagai teks, dan DI MANA ia dibentuk
 //
-// Bentuk yang dikembalikan driver bergantung pada tipe kolomnya, dan DDL tabel Pega tidak
-// tersedia (`R-08`). Memindainya sebagai `sql.NullString` membuat nilainya sampai ke sini
-// apa adanya alih-alih gagal dipindai pada baris pertama di produksi.
+// Bentuk yang dikembalikan driver bergantung pada tipe kolomnya. Memindainya sebagai
+// `sql.NullString` membuat nilainya sampai ke sini apa adanya alih-alih gagal dipindai pada
+// baris pertama di produksi — dan itu tetap berlaku sesudah pindah ke tabel datar, yang
+// kolom waktunya pun `TIMESTAMP(6)`.
 //
 // Pemformatannya dikerjakan `inboxrclpucl.DisplayTimeText`, di sini — bukan di layar, dan
 // bukan dengan `TO_CHAR` di dalam SQL.
@@ -320,10 +343,12 @@ type scanner interface {
 //     bawah: penyimpanan SQL dan penyimpanan memori WAJIB menghasilkan teks yang sama
 //     persis, dan itu hanya terjamin bila keduanya memakai penggambar yang sama.
 //
-// Terverifikasi terhadap Oracle 2026-09-30: `TANGGALKIRIMPUCL_1`, `LAMAKLAIM_1`,
-// `TANGGALCETAKDOKUMENPUCL_1`, dan `PXCREATEDATETIME` seluruhnya `TIMESTAMP(6)`, dan driver
-// mengembalikannya sebagai teks ISO ber-offset (`2025-06-13T14:41:01.532+07:00`) — bentuk
-// yang tidak pernah muncul di layar Pega.
+// Terverifikasi terhadap Oracle 2026-09-30 pada tabel Pega: `TANGGALKIRIMPUCL_1`,
+// `LAMAKLAIM_1`, `TANGGALCETAKDOKUMENPUCL_1`, dan `PXCREATEDATETIME` seluruhnya
+// `TIMESTAMP(6)`, dan driver mengembalikannya sebagai teks ISO ber-offset
+// (`2025-06-13T14:41:01.532+07:00`) — bentuk yang tidak pernah muncul di layar Pega.
+// Keempat padanannya di `TC_PNC_PUCL` — `TGL_KIRIM_PUCL`, `LAMA_KLAIM`,
+// `TGL_CETAK_DOKUMEN_PUCL`, `TGL_CREATE_PUCL` — bertipe sama persis.
 func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 	var (
 		reference, caseID, policyNumber sql.NullString
@@ -358,8 +383,8 @@ func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 		// `CASE` di dalam SQL akan membuat kedua pengisi seam punya dua penerjemah yang
 		// dapat menyimpang tanpa ketahuan.
 		//
-		// Hasilnya identik dengan `CASE` tanpa `ELSE` di sistem lama: kode yang tidak
-		// dikenali menghasilkan teks kosong.
+		// Ketiga kodenya punya teks — RCL, PUCL, Notification; yang di luar ketiganya
+		// menghasilkan teks kosong.
 		Track: inboxrclpucl.TrackOf(trackCode.String),
 
 		LetterPrintedAt: inboxrclpucl.DisplayTimeText(letterPrintedAt.String),
@@ -388,12 +413,15 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		reference, claimNumber, trackCode sql.NullString
 		analystNote, policyNumber         sql.NullString
 		lossDate, puclNote                sql.NullString
+		subject, openingNote              sql.NullString
+		bodyNote, closingNote             sql.NullString
 		firstObjectName, firstPropose     sql.NullString
 	)
 
 	err := row.Scan(
 		&reference, &claimNumber, &trackCode, &analystNote, &policyNumber,
 		&lossDate, &puclNote,
+		&subject, &openingNote, &bodyNote, &closingNote,
 		&firstObjectName, &firstPropose,
 	)
 	if err != nil {
@@ -410,10 +438,9 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 			AnalystNote:  analystNote.String,
 			PolicyNumber: policyNumber.String,
 
-			// `DATEOFLOSS_1` pun `TIMESTAMP(6)` (terverifikasi 2026-09-30), sehingga ia
-			// dibentuk dengan penggambar yang sama. Membiarkannya mentah di sini sementara
-			// keempat isian tanggal grid dibentuk akan membuat satu layar menggambar dua
-			// bentuk tanggal berdampingan.
+			// `DATE_OF_LOSS` pun `TIMESTAMP(6)`, sehingga ia dibentuk dengan penggambar yang
+			// sama. Membiarkannya mentah di sini sementara keempat isian tanggal grid
+			// dibentuk akan membuat satu layar menggambar dua bentuk tanggal berdampingan.
 			LossDate: inboxrclpucl.DisplayTimeText(lossDate.String),
 
 			// Kedua isian diisi dari SATU sumber, dan itu memang benar.
@@ -430,6 +457,13 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 			SumInsured:  firstObjectName.String,
 
 			BillAmount: firstPropose.String,
+
+			// Keempatnya dibaca APA ADANYA dari tabel datar — tidak diturunkan, tidak
+			// diterjemahkan. Lihat catatan pada `inboxrclpucl.LetterDraft.Subject`.
+			Subject:     subject.String,
+			OpeningNote: openingNote.String,
+			BodyNote:    bodyNote.String,
+			ClosingNote: closingNote.String,
 		},
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{

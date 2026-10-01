@@ -469,16 +469,16 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "Layar kerja terbuka untuk SEMUA klaim di antrean ini, termasuk klaim " +
-			"Notification yang di Pega tidak dapat dibuka.",
+		Summary: "Klaim berstatus Notification hanya punya tab \"Lampiran Surat\" — tab " +
+			"\"Penerimaan Dokumen\" memang tidak ada untuknya, sama seperti di layar lama.",
 
-		Detail: "Layar lama menyembunyikannya bagi klaim berkode jalur ketiga, dan Work " +
-			"Owner menjelaskan 2026-09-30 apa arti ketiga kodenya: 1 RCL, 2 PUCL, " +
-			"3 Notification. Klaim Notification karena itu bukan pekerjaan RCL maupun PUCL — " +
-			"dan di sini ia tetap dapat dibuka, karena keputusan Work Owner 2026-09-24 " +
-			"menunda pemberlakuan syaratnya. Selama layar ini hanya MEMBACA, membukanya " +
-			"tidak mengubah apa pun. Syarat itu wajib diberlakukan kembali sebelum tombol " +
-			"tulis mana pun dihidupkan.",
+		Detail: "Ketiga kode jalurnya: 1 RCL, 2 PUCL, 3 Notification (dijelaskan Work " +
+			"Owner 2026-09-30). Klaim Notification bukan pekerjaan RCL maupun PUCL " +
+			"melainkan pemberitahuan, sehingga tidak ada dokumen yang ditunggu dan tidak " +
+			"ada yang dikirim kembali ke Analyst — dan layar lama menyembunyikan tab itu " +
+			"justru karena itu. Syaratnya dibaca dari kontainer tab kedua di berkas " +
+			"layarnya, dan ditegakkan di sini pula. Klaimnya sendiri TETAP dapat dibuka, " +
+			"sama seperti di layar lama; yang disembunyikan hanya satu tab.",
 	},
 
 	// ---- Yang hanya terlihat bila kedua layar DIBANDINGKAN --------------------------

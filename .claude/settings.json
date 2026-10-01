@@ -143,7 +143,23 @@
       "Bash(gofmt -l /tmp/m.go)",
       "Bash(gofmt -d /tmp/m.go)",
       "Bash(gofmt -l /tmp/h.go)",
-      "Bash(gofmt /tmp/m.go)"
+      "Bash(gofmt /tmp/m.go)",
+      "Bash(timeout 200 go run ./cmd/tmpprobe)",
+      "Bash(APP_ALAMAT=:8099 ./claimpnc.exe)",
+      "Bash(curl -s -o /dev/null -w \"health/live  -> %{http_code}\\\\n\" http://127.0.0.1:8099/health/live)",
+      "Bash(curl -s -o /dev/null -w \"health/ready -> %{http_code}\\\\n\" http://127.0.0.1:8099/health/ready)",
+      "Bash(curl -s -o /dev/null -w \"halaman SPA  -> %{http_code}\\\\n\" http://127.0.0.1:8099/)",
+      "Bash(curl -s -o /dev/null -w \"localhost /health/live -> %{http_code}\\\\n\" http://localhost:8099/health/live)",
+      "Bash(curl -s http://localhost:8099/health/live)",
+      "Bash(curl -s http://127.0.0.1:8099/health/live)",
+      "Bash(sed -i 's/v\\\\[:90\\\\] + \"…\"/v[:90] + \"...\"/' cmd/tmpprobe/main.go)",
+      "Bash(grep -rn \"TANPA \\\\`ELSE\\\\`\\\\|tanpa \\\\`ELSE\\\\`\\\\|sel KOSONG\\\\|sel kosong\\\\|GetReminderPUCL-SQL.xml:7-9\" backend/internal/inboxrclpucl/ frontend/src/modules/inbox-rcl-pucl/)",
+      "Bash(PENYIMPANAN=oracle timeout 250 go run ./cmd/claimpnc -periksa)",
+      "Bash(awk '/^CREATE TABLE/,/^\\\\\\);/' tc_pnc_pucl.sql)",
+      "Bash(awk '/^CREATE TABLE POOLDATA.TC_PNC_PUCL/,/^\\\\\\);/' claim-pnc/docs/ddl/tc_pnc_pucl.sql)",
+      "Bash(gofmt -l ./internal/inboxrclpucl ./cmd/claimpnc)",
+      "Bash(timeout 220 go run ./cmd/tmpprobe)",
+      "Bash(gofmt -l internal/inboxrclpucl/repo/sqlstore/query.go internal/inboxrclpucl/repo/memory/memory.go)"
     ],
     "additionalDirectories": [
       "\\tmp"
