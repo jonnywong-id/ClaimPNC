@@ -5,15 +5,25 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"claim-pnc/internal/inboxrclpucl"
 )
 
 // Repo membaca antrean RCL/PUCL dari SATU basis data entitas.
 //
-// Tidak ada satu pun operasi yang menulis — termasuk ke `POOLDATA.TC_PNC_PUCL`, yang milik
-// aplikasi ini tetapi diisi PROSES PENGISI, bukan modul ini. Tabel sisanya milik Pega, dan
-// selama masa paralel setiap tabel hanya boleh ditulis satu sistem (`P-1`).
+// # Satu operasi menulis, dan hanya satu
+//
+// ReturnToAnalyst menandai klaim selesai dikerjakan PUCL pada `POOLDATA.TC_PNC_PUCL` — tabel
+// milik APLIKASI INI. Seluruh method lain hanya membaca.
+//
+// Tabel `DATAPEGA` tidak pernah disentuh untuk menulis, dan itu bukan kebetulan: selama masa
+// paralel setiap tabel hanya boleh ditulis satu sistem (`P-1`), dan tabel engine Pega milik
+// Pega.
+//
+// Catatan yang pernah berdiri di sini — bahwa `TC_PNC_PUCL` pun tidak ditulis karena diisi
+// PROSES PENGISI — berlaku sampai 2026-10-01 dan kini dicabut untuk satu kolom: `PUCL_APPROVE`
+// ditulis modul ini, karena ia penanda PERPINDAHAN, bukan data yang dimuat pengisi.
 type Repo struct {
 	db *sql.DB
 }
@@ -322,6 +332,37 @@ func (r *Repo) DocumentContent(
 		MimeType: mime.String,
 		Content:  content,
 	}, nil
+}
+
+// ReturnToAnalyst menandai klaim sudah selesai dikerjakan PUCL.
+//
+// SATU-SATUNYA method di berkas ini yang MENULIS, dan yang ditulisnya `POOLDATA.TC_PNC_PUCL`
+// — tabel milik aplikasi ini, bukan tabel engine Pega. Lihat seam Repo.ReturnToAnalyst untuk
+// alasan lengkapnya.
+//
+// `caller` TIDAK ditulis ke tabel: `TC_PNC_PUCL` tidak punya kolom pelaku, dan menambah kolom
+// menempuh `D-63` (permintaan tertulis, persetujuan Work Owner, pelaksanaan DBA). Pelakunya
+// tetap tercatat — di jejak log usecase, bersama nomor klaim dan portalnya.
+func (r *Repo) ReturnToAnalyst(ctx context.Context, reference, caller string) error {
+	_ = caller
+
+	if _, err := r.db.ExecContext(ctx, query("return_to_analyst"),
+		strings.TrimSpace(reference),
+		inboxrclpucl.PUCLReturnedToAnalyst,
+	); err != nil {
+		return fmt.Errorf("menandai klaim %s selesai di PUCL: %w", reference, err)
+	}
+
+	// Jumlah baris terpengaruh SENGAJA tidak diperiksa.
+	//
+	// Nol baris berarti salah satu dari dua hal, dan keduanya BUKAN kerusakan: klaimnya tidak
+	// ada, atau penandanya sudah bernilai sama. Yang pertama sudah ditolak jauh sebelum sampai
+	// ke sini — PerformAction MEMBACA klaimnya lebih dulu. Yang tersisa pada praktiknya
+	// hanyalah penandaan ulang, dan itu keberhasilan, bukan kegagalan.
+	//
+	// Memeriksanya lalu menyatakan galat akan membuat klik kedua pada jaringan lambat terbaca
+	// sebagai kerusakan, padahal keadaan akhirnya persis yang diminta pengguna.
+	return nil
 }
 
 // CheckTable memastikan tabel DAN kolom yang disentuh modul ini terbaca dari koneksi yang

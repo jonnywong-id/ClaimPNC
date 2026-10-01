@@ -453,6 +453,24 @@ func (s *Store) DocumentContent(
 	return inboxrclpucl.DocumentContent{}, inboxrclpucl.ErrDocumentNotFound
 }
 
+// ReturnToAnalyst menandai klaim selesai dikerjakan PUCL.
+//
+// Ia MENGUBAH baris di tempatnya, bukan mengembalikan salinan. Itu disengaja: pengisi ini
+// menopang uji yang memeriksa klaim benar-benar KELUAR dari antrean sesudah tombolnya ditekan,
+// dan penyimpanan yang tidak berubah akan membuat uji seperti itu lolos tanpa membuktikan apa
+// pun.
+func (s *Store) ReturnToAnalyst(_ context.Context, reference, _ string) error {
+	wanted := strings.TrimSpace(reference)
+	for i := range s.rows {
+		if s.rows[i].Item.Reference != wanted {
+			continue
+		}
+		s.rows[i].PUCLApprove = inboxrclpucl.PUCLReturnedToAnalyst
+		return nil
+	}
+	return inboxrclpucl.ErrClaimNotFound
+}
+
 // detailOf menyusun isi layar kerja dari satu baris contoh.
 //
 // Ketiga isian TURUNAN dihitung di sini dengan cara yang sama seperti kueri SQL — termasuk

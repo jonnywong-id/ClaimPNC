@@ -1258,6 +1258,37 @@ type Repo interface {
 	// ErrDocumentNotFound — keduanya tidak dibedakan, supaya jawaban tidak memberi tahu
 	// bahwa sebuah id ada tetapi milik klaim lain.
 	DocumentContent(ctx context.Context, caseNumber, documentID string) (DocumentContent, error)
+
+	// ReturnToAnalyst menandai klaim SUDAH SELESAI dikerjakan PUCL.
+	//
+	// Ia menulis `PUCLAPPROVE_1 = PUCLReturnedToAnalyst` pada `POOLDATA.TC_PNC_PUCL`, dan
+	// itulah satu-satunya hal yang mengeluarkan klaim dari tab 2 dan 3 layar ini.
+	//
+	// # Kenapa ini BUKAN pelanggaran `P-1`
+	//
+	// `TC_PNC_PUCL` adalah tabel milik APLIKASI INI, bukan tabel engine Pega — lihat kepala
+	// `inboxrclpucl.sql`. Tidak ada tabel `DATAPEGA` yang disentuh.
+	//
+	// # Kenapa klaimnya TIDAK hilang tanpa sampai ke siapa pun
+	//
+	// Kekhawatiran itu pernah ditulis di tempat ini, dan ia **gugur oleh data**. Klaim RCL/PUCL
+	// sudah memegang baris `PC_ASSIGN_WORKLIST` Register_Flow-nya sendiri, dan pemegang baris
+	// itu adalah PIC Teknik klaim tersebut — `PXASSIGNEDOPERATORID` sama persis dengan
+	// `USERTEKNIS_1` pada objek kerjanya. Menandai klaim selesai di PUCL karena itu
+	// MENGEMBALIKANNYA kepada PIC Teknik yang memang sudah memegangnya, bukan melenyapkannya.
+	//
+	// Work Owner menegaskan tujuan itu pada 2026-10-01: *"balik ke PIC Teknik"*. Arti
+	// nilainya sendiri sudah ditetapkan 2026-09-30 — lihat PUCLReturnedToAnalyst.
+	//
+	// # Yang TIDAK dikerjakannya
+	//
+	// Baris `PC_ASSIGN_WORKBASKET` milik antrean `RCLPUCL` **dibiarkan**. Menghapusnya adalah
+	// tindakan yang tidak dapat dipulihkan atas tabel Pega, dan tidak dibutuhkan agar layar
+	// ini benar. Akibatnya disadari dan dicatat: selama masa paralel, klaimnya masih terlihat
+	// di antrean RCL/PUCL milik Pega sampai Pega sendiri menyelesaikannya.
+	//
+	// Kunci yang tidak ditemukan menghasilkan ErrClaimNotFound.
+	ReturnToAnalyst(ctx context.Context, reference, caller string) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.
@@ -1397,9 +1428,17 @@ type ClaimActionCommand struct {
 // `PC_ASSIGN_WORKLIST`, dan **hanya lewat baris itu klaim sampai ke Analyst**: inbox Analyst
 // membaca `PC_ASM_FW_GCNMFW_WORK` INNER JOIN `PC_ASSIGN_WORKLIST`.
 //
-// Menulis `PUCL_APPROVE = '1'` dari sini akan membuat klaim HILANG dari antrean PUCL tanpa
-// sampai ke siapa pun — klaim yang berhenti bergerak tanpa satu pun galat. Karena itu
-// pengisinya memanggil Pega, bukan menulis sendiri.
+// KOREKSI 2026-10-01 — kekhawatiran di bawah ini GUGUR untuk kedua tombol Kirim.
+//
+// Di tempat ini sebelumnya tertulis bahwa menulis `PUCL_APPROVE = '1'` akan membuat klaim
+// HILANG tanpa sampai ke siapa pun. Pemeriksaan basis data membuktikan sebaliknya: klaim
+// RCL/PUCL **sudah** memegang baris `PC_ASSIGN_WORKLIST` Register_Flow-nya, dan pemegangnya
+// adalah PIC Teknik klaim itu sendiri (`PXASSIGNEDOPERATORID` = `USERTEKNIS_1`). Menandainya
+// selesai mengembalikan klaim kepada PIC Teknik — tujuan yang ditegaskan Work Owner.
+//
+// Karena itu kedua tombol Kirim TIDAK lagi melewati seam ini; keduanya memakai
+// Repo.ReturnToAnalyst. Yang tersisa di seam ini adalah tindakan yang memang menuntut Pega:
+// "Download Dokumen" (membuat PDF dan mengirim email), "Tolak Klaim", dan "Save".
 //
 // Saat Pega dimatikan, pengisi ini diganti logika kami sendiri; yang memakainya tidak berubah.
 type ClaimActions interface {

@@ -465,6 +465,26 @@ func (s *Service) PerformAction(
 		return inboxrclpucl.ErrActionNotAvailable
 	}
 
+	// KEDUA tombol Kirim ditangani SENDIRI, tanpa menunggu layanan Pega.
+	//
+	// Yang keduanya lakukan adalah menandai klaim selesai dikerjakan PUCL, dan penandanya
+	// hidup di `TC_PNC_PUCL` — tabel milik aplikasi ini. Klaimnya kembali kepada PIC Teknik
+	// yang SUDAH memegang baris penugasannya; lihat Repo.ReturnToAnalyst.
+	//
+	// Ketiga tindakan lain tetap menempuh Pega, dan bukan karena kehati-hatian melainkan
+	// karena isinya: "Download Dokumen" membuat PDF dan mengirim email berlampiran, "Tolak
+	// Klaim" dan "Save" menyentuh isian yang tidak dibaca layar ini.
+	if kind == inboxrclpucl.ActionSendToAnalyst || kind == inboxrclpucl.ActionSendToPICTeknik {
+		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return err
+			}
+			return fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		}
+		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
+		return nil
+	}
+
 	if s.actions == nil {
 		return inboxrclpucl.ErrPegaServiceUnavailable
 	}
@@ -487,18 +507,24 @@ func (s *Service) PerformAction(
 		return fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
 	}
 
-	// Setiap tindakan yang MENGUBAH klaim dicatat, dan pelakunya ikut.
-	//
-	// Ia satu-satunya jalur tulis modul ini. Jejaknya bukan kelengkapan melainkan satu-satunya
-	// cara mengetahui siapa mengerjakan apa pada klaim mana — `D-59` menjadikan jejak audit
-	// kontrol pengimbang tunggal, karena tidak ada pemisahan tugas.
-	if s.logger != nil {
-		s.logger.Info("tindakan klaim RCL/PUCL dijalankan",
-			"portal", portalAlias,
-			"login", cleanCaller.Login,
-			"klaim", detail.ClaimNumber,
-			"tindakan", string(kind),
-		)
-	}
+	s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
 	return nil
+}
+
+// logAction mencatat satu tindakan yang MENGUBAH klaim, beserta pelakunya.
+//
+// Dipakai KEDUA jalur tulis — yang ditangani sendiri maupun yang menempuh Pega — supaya
+// jejaknya tidak bergantung pada jalur mana yang kebetulan dipakai. Jejak ini bukan
+// kelengkapan melainkan satu-satunya cara mengetahui siapa mengerjakan apa pada klaim mana:
+// `D-59` menjadikan jejak audit kontrol pengimbang tunggal, karena tidak ada pemisahan tugas.
+func (s *Service) logAction(portalAlias, login, claimNumber string, kind inboxrclpucl.ClaimActionKind) {
+	if s.logger == nil {
+		return
+	}
+	s.logger.Info("tindakan klaim RCL/PUCL dijalankan",
+		"portal", portalAlias,
+		"login", login,
+		"klaim", claimNumber,
+		"tindakan", string(kind),
+	)
 }

@@ -25831,3 +25831,142 @@ Tombol ini akan tetap 503 sampai salah satu terjadi — dan keduanya **bukan kep
 | Petugas mengerjakan PUCL di Pega sampai Pega dimatikan | Work Owner | Keadaan yang berlaku hari ini |
 
 Yang **tidak** ada: jalan ketiga yang dapat kami tempuh sendiri.
+
+---
+
+## 143. Jalur tulis langsung ditempuh sampai mentok — ia MENIMPA penugasan hidup (2026-10-01)
+
+Work Owner memilih **"kami tulis sendiri dua tabel Pega"**, menerima pelanggaran `P-1` secara
+sadar. Jalur itu ditempuh. Hasilnya: **tindakannya bukan menyisipkan baris, melainkan menimpa
+penugasan yang sedang dipegang petugas lain** — dan itu di luar yang disetujui.
+
+### 143.1 Yang ditemukan, berurutan
+
+Seluruhnya dari pembacaan langsung, bukan dugaan:
+
+| # | Temuan | Sumber |
+|---|---|---|
+| 1 | Inbox Analyst menyaring `ISCOMPLIANCETRANSFER_1 = '2'` **dan** butuh baris `PC_ASSIGN_WORKLIST` | `inboxanalystdoctor/repo/sqlstore/*.sql` |
+| 2 | `PZPVSTREAM` **boleh kosong**; hanya `PZINSKEY` yang wajib | `ALL_TAB_COLUMNS`, 56 kolom |
+| 3 | Connector flow action `SendtoRCLPUCL` menuju **`End1`** — alurnya BERAKHIR, bukan berpindah ke Analyst | `Flow/Register_Flow.xml` |
+| 4 | Yang memindahkan klaim adalah **`SetTicket`**, dan ia berjalan **hanya saat `Status==1`** | `PUCLPost` langkah 17, prekondisi `param.Status==1` |
+| 5 | `Assignment6` = workbasket `RCLPUCL` — tahap tempat klaim PUCL menunggu | Flow + basis data, cocok |
+| 6 | Tahap Analyst ber-`pyRouteTo = Custom` → router activity, dan **router itu hilang dari export** (`R-04`) | Flow |
+| 7 | **`PZINSKEY` adalah PRIMARY KEY**, berbentuk `ASSIGN-WORKLIST <kunci klaim>!REGISTER_FLOW` | `ALL_CONSTRAINTS` |
+| 8 | Klaim PUCL itu **sudah punya** baris worklist Register_Flow — `Assignment5`, status `New`, milik seorang petugas bernama | basis data |
+
+### 143.2 Kenapa ini menghentikan pekerjaan, bukan memperlambatnya
+
+Temuan 7 dan 8 bersama berarti: slot `…!REGISTER_FLOW` pada tabel worklist **sudah terisi**.
+Menyisipkan penugasan Analyst akan melanggar primary key. Satu-satunya cara melanjutkan adalah
+**menghapus atau menimpa baris yang ada** — baris yang hari ini menjadi pekerjaan seorang petugas
+pada tahap yang berbeda.
+
+Yang disetujui Work Owner adalah `INSERT` + `UPDATE`, dengan risiko "Pega mungkin gagal membuka
+penugasan". Yang sebenarnya dituntut adalah **`DELETE` atas pekerjaan orang lain**, dan akibatnya
+berbeda jenis: bukan satu klaim yang mungkin bermasalah, melainkan satu tugas yang **hilang dari
+layar petugas yang memegangnya**, tanpa pesan apa pun.
+
+Ditambah temuan 6: bahkan bila penimpaan itu disetujui, **kepada siapa klaim diberikan tidak dapat
+diturunkan** — routernya hilang dari export, dan tidak ada kolom basis data yang menyimpannya.
+`TC_PNC_PUCL.ASSIGNED_OPERATOR_ID` berisi pemegang SEKARANG, bukan tujuan.
+
+### 143.3 Yang TIDAK dikerjakan, dan alasannya
+
+Tidak satu baris pun ditulis ke basis data. Penimpaan penugasan hidup **sukar dipulihkan** —
+baris yang dihapus membawa `PZPVSTREAM`, dan isinya tidak dapat kami bentuk ulang. Persetujuan
+yang ada tidak mencakup akibat ini karena akibat ini belum diketahui saat persetujuan diminta.
+
+### 143.4 Dua hal yang dibutuhkan untuk melanjutkan
+
+| Yang dibutuhkan | Dari siapa |
+|---|---|
+| Izin menimpa baris worklist Register_Flow yang sudah ada — beserta sikap atas tugas yang hilang | Work Owner |
+| **Operator tujuan**: siapa yang menerima klaim PUCL yang dikirim ke Analyst | Work Owner / Tim Pega (`R-04`) |
+
+Keduanya pertanyaan bisnis, bukan teknis. Begitu terjawab, sisa pekerjaannya satu adapter dengan
+satu transaksi — bentuk barisnya sudah terbaca lengkap dari data nyata.
+
+---
+
+## 144. "Kirim Ke Analyst" BERJALAN — dan ia tidak menyentuh satu pun tabel Pega (2026-10-01)
+
+**Jawaban Work Owner:** *"1. ikuti alurnya saja · 2. balik ke PICTEKNIK"*.
+
+Jawaban kedua yang membongkar seluruh kebuntuan. Sampai §143 saya mencari **ke mana** klaim harus
+dikirim, dan menyimpulkan penerimanya tidak dapat diturunkan karena routernya hilang (`R-04`).
+Pertanyaannya salah: klaimnya tidak pergi ke mana-mana — ia **kembali** kepada orang yang sudah
+memegangnya.
+
+### 144.1 Bukti yang menutup perkaranya
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Pemegang baris `PC_ASSIGN_WORKLIST` Register_Flow klaim PUCL | seorang petugas bernama |
+| `USERTEKNIS_1` pada objek kerja klaim yang sama | **orang yang sama persis** |
+| `ASSIGNED_OPERATOR_ID` pada `TC_PNC_PUCL` | orang yang sama |
+
+Klaim RCL/PUCL **sudah** memegang baris penugasannya, dan pemegangnya adalah PIC Teknik klaim itu.
+Tidak ada yang perlu disisipkan, tidak ada yang perlu ditimpa, tidak ada yang perlu dihapus.
+
+### 144.2 Premis saya sendiri yang GUGUR
+
+Tertulis di `ClaimActions` sejak modul ini dibangun:
+
+> *"Menulis `PUCL_APPROVE = '1'` dari sini akan membuat klaim HILANG dari antrean PUCL tanpa
+> sampai ke siapa pun — klaim yang berhenti bergerak tanpa satu pun galat."*
+
+**Tidak benar.** Klaimnya tidak hilang; ia kembali ke PIC Teknik. Kalimat itulah yang selama ini
+memaksa seluruh tindakan menunggu layanan Pega yang belum dibangun — satu dugaan yang tidak pernah
+diuji, menahan tombol yang sebenarnya sudah bisa berjalan.
+
+Yang membuatnya runtuh bukan pembacaan ulang yang lebih teliti, melainkan **satu kalimat Work
+Owner** dan **satu kueri**.
+
+### 144.3 Yang dikerjakan
+
+Satu pernyataan, pada tabel milik aplikasi ini:
+
+```sql
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET PUCL_APPROVE = :2
+ WHERE TRIM(CLAIMID) = TRIM(:1)
+   AND (PUCL_APPROVE <> :2 OR PUCL_APPROVE IS NULL)
+```
+
+Arti nilainya sudah ditetapkan Work Owner 2026-09-30: `'1'` = *"PUCL kirim ke Analyst"*.
+Penyaring terakhir membuatnya **idempoten** — klik ganda tidak menulis dua kali.
+
+**`P-1` TIDAK dilanggar.** `TC_PNC_PUCL` milik aplikasi ini; tidak ada tabel `DATAPEGA` yang
+disentuh. Izin menulis tabel Pega yang Work Owner berikan **tidak jadi dipakai** — ternyata tidak
+dibutuhkan.
+
+Letaknya di seam `Repo`, bukan adapter tersendiri, supaya pemilihan portal (`ADR-0030`) tetap
+ditempuh jalur yang sama dengan pembacaan.
+
+### 144.4 Selisih terhadap Pega — dinyatakan, bukan disembunyikan
+
+Ditambahkan ke `PlannedDifferences`, sehingga tergambar di layar:
+
+| Yang Pega kerjakan | Di sini |
+|---|---|
+| membuat PDF, mengirim email berlampiran ke cabang | **tidak** |
+| menulis tiga baris riwayat | **tidak** |
+| menghapus baris `PC_ASSIGN_WORKBASKET` | **tidak** — penghapusan tabel Pega tidak dapat dipulihkan |
+| menandai klaim selesai di PUCL | **ya** |
+
+Akibat yang disadari: klaimnya keluar dari antrean layar ini, tetapi **masih terlihat di antrean
+RCL/PUCL milik Pega** selama masa paralel.
+
+### 144.5 Yang TETAP menempuh Pega
+
+`cetak` (Download Dokumen — membuat PDF dan mengirim email), `tolak`, dan `save`. Ketiganya
+menyentuh hal yang benar-benar hanya Pega punya, dan ketiganya tetap menjawab 503 sampai
+`ActionClaimPUCL` dibangun.
+
+### 144.6 Penjaganya
+
+Empat uji baru di `usecase`, dan yang pertama membuktikan **akibatnya**, bukan pemanggilannya:
+klaim yang tadinya tergambar di tab Kelengkapan Dokumen **hilang dari daftar** sesudah tombolnya
+ditekan. Satu uji lain menjalankan tombolnya **tanpa pengisi seam Pega sama sekali** — keadaan
+nyata hari ini.

@@ -891,3 +891,42 @@ SELECT a.ATTACHNAME     AS DOCUMENT_NAME,
                  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
                 WHERE w.PZINSKEY = a.IDPEGA
                   AND TRIM(w.PYID) = TRIM(:2))
+
+-- name: return_to_analyst
+-- Menandai klaim SUDAH SELESAI dikerjakan PUCL — tombol "Kirim Ke Analyst" dan
+-- "Kirim ke PIC Teknik".
+--
+-- # Satu-satunya pernyataan yang MENULIS di berkas ini
+--
+-- Dan ia menulis `TC_PNC_PUCL`, tabel milik APLIKASI INI — bukan tabel `DATAPEGA`. Tidak ada
+-- satu pun tabel engine Pega yang disentuh, sehingga `P-1` tidak dilanggar.
+--
+-- # Kenapa hanya SATU kolom
+--
+-- Karena hanya kolom itu yang menentukan apa yang dilihat petugas. `PUCLAPPROVE_1` adalah
+-- penyaring tab 2 dan tab 3 (`PUCL_APPROVE <> :disetujui`); mengubahnya menjadi `'1'`
+-- mengeluarkan klaim dari antrean PUCL. Kolom lain yang disentuh `PUCLPost` — tanggal cetak,
+-- komentar analisator — TIDAK ikut ditulis karena tidak satu pun menentukan perpindahan ini,
+-- dan menulis kolom yang tidak perlu adalah perubahan data yang tidak dapat dibenarkan.
+--
+-- # Kenapa klaimnya tidak hilang entah ke mana
+--
+-- Klaim RCL/PUCL sudah memegang baris `PC_ASSIGN_WORKLIST` Register_Flow-nya, dan pemegang
+-- baris itu adalah PIC Teknik klaim tersebut. Menandainya selesai mengembalikan klaim kepada
+-- orang yang memang sudah memegangnya.
+--
+-- # Kenapa penyaringnya menolak baris yang SUDAH ditandai
+--
+-- `PUCLAPPROVE_1 <> :2 OR PUCLAPPROVE_1 IS NULL` membuat pernyataan ini IDEMPOTEN: menekan
+-- tombol dua kali tidak menulis dua kali, dan jumlah baris terpengaruh membedakan "baru saja
+-- dikerjakan" dari "sudah dikerjakan sebelumnya". Tanpa itu, klik ganda pada jaringan lambat
+-- terbaca sebagai dua perpindahan.
+--
+-- `IS NULL` ikut diterima karena `NULL <> '1'` menghasilkan UNKNOWN, bukan TRUE — klaim yang
+-- penandanya belum pernah diisi akan terlewat tanpa itu.
+--
+-- Bind: :1 nomor klaim · :2 nilai "sudah kembali ke Analyst"
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET PUCL_APPROVE = :2
+ WHERE TRIM(CLAIMID) = TRIM(:1)
+   AND (PUCL_APPROVE <> :2 OR PUCL_APPROVE IS NULL)

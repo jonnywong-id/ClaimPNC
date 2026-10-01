@@ -176,11 +176,17 @@
       "Bash(grep -rn \"bin/claimpnc\\\\|bin\\\\\\\\\\\\\\\\claimpnc\" --include=*.md --include=*.json --include=*.ps1 --include=*.bat .)",
       "Bash(awk '{print $6,$7,$8}')",
       "Bash(gofmt -w internal/inboxrclpucl/adapter/pega/)",
-      "Bash(awk '{print $NF,$5}')"
+      "Bash(awk '{print $NF,$5}')",
+      "Bash(cd \"C:/Users/User/Documents/Migrasi Pega Ke Golang/ClaimPNC/claim-pnc/backend\" && sed -n '200,250p' internal/inboxanalystdoctor/repo/sqlstore/*.sql | grep -nE \"a\\\\.[A-Z_]+|w\\\\.[A-Z_]+|WHERE|AND|JOIN|FROM\" | head -30)",
+      "Bash(perl -0pi -e 's/fmt\\\\.Printf\\\\\\(\"  %-34s %s\\\\n\", c, t\\\\\\)/fmt.Printf\\(\"  %-34s %s\\\\\\\\n\", c, t\\)/' main.go)",
+      "Bash(gofmt -w main.go)",
+      "Bash(gofmt -w internal/inboxrclpucl/usecase/)",
+      "Bash(awk '{print $NF, $7, $8}')"
     ],
     "additionalDirectories": [
       "\\tmp",
-      "C:\\Users\\User\\Documents\\Migrasi Pega Ke Golang\\ClaimPNC\\claim-pnc\\backend\\usecase"
+      "C:\\Users\\User\\Documents\\Migrasi Pega Ke Golang\\ClaimPNC\\claim-pnc\\backend\\usecase",
+      "C:\\Users\\User\\Documents\\Migrasi Pega Ke Golang\\ClaimPNC\\claim-pnc\\backend\\internal\\inboxanalystdoctor\\repo\\sqlstore"
     ]
   }
 }

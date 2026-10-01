@@ -375,6 +375,22 @@ var PlannedDifferences = []Difference{
 	// ---- Yang ditemui saat MEMAKAI layar -------------------------------------------
 
 	{
+		Summary: "Kedua tombol \"Kirim\" memindahkan klaim, tetapi TIDAK mengirim email, " +
+			"tidak membuat PDF, dan tidak menutup penugasan di Pega.",
+		Detail: "Di Pega, tombolnya menempuh `PUCLPost` — 69 langkah yang antara lain " +
+			"membuat PDF, mengirim email berlampiran ke cabang, menulis tiga baris " +
+			"riwayat, dan menyelesaikan penugasan lewat flow action `SendtoRCLPUCL`. " +
+			"Di sini yang dikerjakan hanya INTINYA: klaim ditandai selesai di PUCL, " +
+			"sehingga kembali kepada PIC Teknik yang sudah memegang baris penugasannya.\n\n" +
+			"Akibat yang harus disadari selama masa paralel: klaimnya KELUAR dari antrean " +
+			"RCL/PUCL layar ini, tetapi MASIH TERLIHAT di antrean RCL/PUCL milik Pega — " +
+			"baris `PC_ASSIGN_WORKBASKET` sengaja tidak dihapus, karena penghapusan tabel " +
+			"Pega tidak dapat dipulihkan dan tidak dibutuhkan agar layar ini benar.\n\n" +
+			"Email dan PDF yang biasanya menyertai perpindahan ini TIDAK terkirim. Bila " +
+			"keduanya dibutuhkan, jalankan tindakannya di Pega.",
+	},
+
+	{
 		Summary: "Kedua isian tanggal di tab \"Cetak Surat\" tidak menyaring tabel di " +
 			"bawahnya. Keduanya hanya dipakai tombol unduh.",
 
