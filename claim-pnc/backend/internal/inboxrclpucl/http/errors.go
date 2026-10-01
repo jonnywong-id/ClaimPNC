@@ -102,6 +102,28 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"Masuk ulang lalu coba lagi.",
 		}, true
 
+	case errors.Is(err, inboxrclpucl.ErrPegaServiceUnavailable):
+		// 503, bukan 500. Keduanya "gagal" bagi mesin, tetapi menuntut orang yang BERBEDA:
+		// 500 berarti tim pengembang harus memperbaiki kode, 503 berarti layanan Pega belum
+		// tersedia dan yang bertindak adalah Tim Pega serta Infra.
+		//
+		// Pesannya menyebutkan itu, karena petugas yang membacanya tidak punya cara lain
+		// mengetahui ke mana laporannya harus pergi.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: "layanan_pega_belum_tersedia",
+			Message: "Tindakan ini dijalankan oleh Pega, dan layanannya belum tersambung. " +
+				"Sementara itu kerjakan di Pega; salin nomor case-nya dari layar ini.",
+		}, true
+
+	case errors.Is(err, inboxrclpucl.ErrActionNotAvailable):
+		// 409, bukan 403. Bukan soal kewenangan pemanggil melainkan KEADAAN klaimnya:
+		// tombolnya memang tidak digambar untuk jalur dan lini bisnis klaim ini.
+		return http.StatusConflict, ErrorResponse{
+			Code: "tindakan_tidak_tersedia",
+			Message: "Tindakan ini tidak berlaku untuk klaim ini. Tombolnya hanya muncul " +
+				"pada jalur PUCL lini Personal Accident.",
+		}, true
+
 	case errors.Is(err, inboxrclpucl.ErrClaimNotFound):
 		// 404, dan pesannya menyebut PORTAL.
 		//

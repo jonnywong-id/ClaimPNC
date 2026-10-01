@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -309,4 +309,32 @@ export function useRCLPUCLDocuments(reference: string | null, enabled: boolean) 
  */
 export function rclpuclDocumentURL(reference: string, documentID: string): string {
   return `${PATH}/klaim/${encodeURIComponent(reference)}/dokumen/${encodeURIComponent(documentID)}`
+}
+
+/**
+ * Hook tindakan "Kirim Ke Analyst".
+ *
+ * # Ia satu-satunya pemanggilan modul ini yang MENGUBAH klaim
+ *
+ * Karena itu ia mutation, bukan query: ia tidak boleh diulang sendiri saat jaringan goyah, dan
+ * hasilnya tidak boleh di-cache. `retry` sudah dimatikan di pembentuk QueryClient.
+ *
+ * Setelah berhasil, isi klaim dan daftar antrean dibatalkan supaya keduanya ditarik ulang —
+ * klaim yang sudah diteruskan TIDAK boleh tetap terlihat di tab yang baru saja ditinggalkannya.
+ */
+export function useKirimKeAnalyst(reference: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: () =>
+      callAPI<{ pesan: string }>(
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/kirim-analyst`,
+        { token, portal, metode: 'POST' },
+      ),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-rcl-pucl'] })
+    },
+  })
 }

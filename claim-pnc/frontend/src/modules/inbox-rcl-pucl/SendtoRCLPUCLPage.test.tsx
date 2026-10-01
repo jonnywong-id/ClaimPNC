@@ -467,6 +467,63 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.queryByText(/Baru baris pertama yang terbaca/)).not.toBeInTheDocument()
   })
 
+  it('"Kirim Ke Analyst" MENJALANKAN tindakannya, bukan menolak', async () => {
+    // Ia satu-satunya tombol yang benar-benar bekerja. Yang dijaga: permintaannya POST ke
+    // alamat klaimnya, dan keberhasilannya dinyatakan — bukan diam.
+    let dipanggil = ''
+    stubFetch((url) => {
+      if (url.includes('/kirim-analyst')) {
+        dipanggil = url
+        return jsonResponse(200, { pesan: 'Klaim diteruskan ke Analyst.' })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH))
+        return jsonResponse(200, {
+          ...DETAIL,
+          lampiran_surat: { ...DETAIL.lampiran_surat, rcl_pucl: 'PUCL', kode_rcl_pucl: '2' },
+          tombol: { ...DETAIL.tombol, tolak_klaim: false, kirim_ke_analyst: true },
+        })
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Ke Analyst' }))
+
+    expect(await screen.findByText('Klaim diteruskan ke Analyst.')).toBeInTheDocument()
+    expect(dipanggil).toContain('/kirim-analyst')
+  })
+
+  it('menggambar ALASAN saat layanan Pega belum tersambung', async () => {
+    // Peladen menjawab 503 dengan kalimat yang menyebut langkah penggantinya. Layar
+    // menggambarnya APA ADANYA — menuliskannya ulang di sini berarti dua kalimat yang dapat
+    // berselisih, dan yang di layar bukan yang dikirim peladen.
+    stubFetch((url) => {
+      if (url.includes('/kirim-analyst')) {
+        return jsonResponse(503, {
+          kode: 'layanan_pega_belum_tersedia',
+          pesan: 'Tindakan ini dijalankan oleh Pega, dan layanannya belum tersambung.',
+        })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH))
+        return jsonResponse(200, {
+          ...DETAIL,
+          lampiran_surat: { ...DETAIL.lampiran_surat, rcl_pucl: 'PUCL', kode_rcl_pucl: '2' },
+          tombol: { ...DETAIL.tombol, tolak_klaim: false, kirim_ke_analyst: true },
+        })
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Ke Analyst' }))
+
+    expect(await screen.findByText(/layanannya belum tersambung/)).toBeInTheDocument()
+  })
+
   it('membuka paling banyak SATU panel — menekan tombol kedua menutup yang pertama', async () => {
     // Laporan Work Owner 2026-10-01: menekan dua tombol membuka dua panel sekaligus, dan
     // karena alasannya sama untuk seluruh tombol, kalimat yang sama tergambar dua kali

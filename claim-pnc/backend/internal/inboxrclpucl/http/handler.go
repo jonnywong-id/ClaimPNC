@@ -229,6 +229,29 @@ func inlineHeader(name string) string {
 	return `inline; filename="` + clean + `"`
 }
 
+// SendToAnalyst menangani POST /api/inbox-rcl-pucl/klaim/{referensi}/kirim-analyst.
+//
+// Satu-satunya rute modul ini yang MENGUBAH klaim. Ia tidak menulis satu baris pun sendiri:
+// yang menulis adalah Pega, lewat layanannya — lihat `inboxrclpucl.ClaimActions`.
+func (h *Handler) SendToAnalyst(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	err := h.service.SendToAnalyst(
+		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"),
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, map[string]string{
+		"pesan": "Klaim diteruskan ke Analyst.",
+	})
+}
+
 // RejectWrite menjawab aksi tulis yang belum tersedia.
 //
 // Ia sengaja BUKAN 404. Layar lama punya dua tindakan yang menulis — mencetak surat

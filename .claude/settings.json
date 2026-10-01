@@ -169,7 +169,12 @@
       "Bash(grep -vE \"^--\\( |$\\)\")",
       "Bash(gofmt -w internal/inboxrclpucl/repo/sqlstore/inboxrclpucl.go)",
       "Bash(cd \"C:/Users/User/Documents/Migrasi Pega Ke Golang/ClaimPNC/claim-pnc/backend/internal/inboxrclpucl\" && sed -n '171,215p' usecase/*.go && echo \"=== routes ===\" && sed -n '54,90p' http/routes.go)",
-      "Bash(grep -vE \"^\\\\s*$\")"
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(sed -i 's/h chi.Handler, mw ...func\\(chi.Handler\\) chi.Handler/h http.Handler, mw ...func\\(http.Handler\\) http.Handler/; s|\"github.com/go-chi/chi/v5\"|\"net/http\"\\\\n\\\\n\\\\t\"github.com/go-chi/chi/v5\"|' /tmp/rt_test.go)",
+      "Bash(cp /tmp/rt_test.go internal/inboxrclpucl/http/zz_rt_test.go)",
+      "Bash(awk '{print \"bin/claimpnc.exe :\",$6,$7,$8}')",
+      "Bash(grep -rn \"bin/claimpnc\\\\|bin\\\\\\\\\\\\\\\\claimpnc\" --include=*.md --include=*.json --include=*.ps1 --include=*.bat .)",
+      "Bash(awk '{print $6,$7,$8}')"
     ],
     "additionalDirectories": [
       "\\tmp",

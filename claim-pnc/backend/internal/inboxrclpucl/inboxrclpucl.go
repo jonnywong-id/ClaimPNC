@@ -1277,3 +1277,79 @@ type Repo interface {
 // Ia fungsi, bukan map yang sudah jadi, supaya kegagalan memilih portal terbaca pada saat
 // permintaan datang — bukan diputuskan sekali saat aplikasi start.
 type RepoSelector func(portalAlias string) (Repo, error)
+
+// ---------------------------------------------------------------------------
+// Tindakan tulis — seam ke Pega
+// ---------------------------------------------------------------------------
+
+// ErrActionNotAvailable dikembalikan saat tindakan diminta untuk klaim yang tombolnya memang
+// TIDAK digambar.
+//
+// Ia penjagaan sisi peladen, bukan pengulangan pemeriksaan layar: tombol yang tidak tampak
+// tetap dapat dipanggil langsung lewat alamatnya, dan `PUCLPost` tidak menolak klaim yang
+// jalurnya keliru — ia mengerjakannya.
+var ErrActionNotAvailable = errors.New("inboxrclpucl: tindakan tidak tersedia untuk klaim ini")
+
+// ErrPegaServiceUnavailable dikembalikan saat layanan Pega belum tersedia atau tidak dapat
+// dihubungi.
+//
+// Ia DIBEDAKAN dari galat lain dengan sengaja: pemanggil perlu menyatakan "belum tersambung"
+// alih-alih "gagal", karena keduanya menuntut tindakan dari orang yang berbeda — yang pertama
+// Tim Pega dan Infra, yang kedua tim pengembang.
+var ErrPegaServiceUnavailable = errors.New("inboxrclpucl: layanan Pega belum tersedia")
+
+// SendToAnalystCommand adalah permintaan menjalankan tindakan "Kirim Ke Analyst".
+//
+// # Kenapa ketiga parameter dibawa, bukan dicari ulang di sisi Pega
+//
+// Karena `PUCLPost` menerimanya sebagai parameter, dan nilainya menentukan BARIS mana yang
+// disetujui: langkah 11 menyetujui `AdjustmentList(<LAST>)` yang `CoverageID`-nya sama dengan
+// `param.idCov`. Mencarinya ulang di sisi lain berarti dua tempat dapat memilih baris yang
+// berbeda untuk satu klaim yang sama.
+type SendToAnalystCommand struct {
+	// CaseNumber adalah nomor case — `PYID` di Pega.
+	CaseNumber string
+
+	// Ketiga parameter tersembunyi, dari kolom `ID_OBJECT`, `ID_COVERAGE`, `ID_ADJUSTMENT`.
+	IDObject     string
+	IDCoverage   string
+	IDAdjustment string
+
+	// Note adalah "Catatan untuk Analyst" — `KomentarPUCL`.
+	Note string
+
+	// Caller adalah petugas yang menekan tombolnya. Pega mencatat pelaku pada objek kerja,
+	// dan tanpa ini jejaknya akan menunjuk akun integrasi, bukan orangnya.
+	Caller string
+}
+
+// ClaimActions adalah seam ke tindakan yang MENULIS pada klaim.
+//
+// # Kenapa seam, dan kenapa pengisinya Pega
+//
+// "Kirim Ke Analyst" di Pega menempuh tiga hal — `InsertMitraPA`, `PUCLPost` 57 langkah, dan
+// `Finish Assignment`. Yang ketiga membuat baris penugasan baru di `PC_ASSIGN_WORKLIST`, dan
+// **hanya lewat baris itulah klaim sampai ke Analyst**: inbox Analyst membaca
+// `PC_ASM_FW_GCNMFW_WORK` INNER JOIN `PC_ASSIGN_WORKLIST`.
+//
+// Menulis `PUCL_APPROVE = '1'` dari sini akan membuat klaim HILANG dari antrean PUCL tanpa
+// sampai ke siapa pun — klaim yang berhenti bergerak tanpa satu pun galat. Karena itu
+// pengisinya memanggil Pega, bukan menulis sendiri.
+//
+// Saat Pega dimatikan, pengisi ini diganti logika kami sendiri; yang memakainya tidak berubah.
+type ClaimActions interface {
+	// SendToAnalyst menjalankan tindakan "Kirim Ke Analyst" pada satu klaim.
+	//
+	// Mengembalikan ErrPegaServiceUnavailable bila layanannya belum tersedia.
+	SendToAnalyst(ctx context.Context, cmd SendToAnalystCommand) error
+}
+
+// CanSendToAnalyst menyatakan tindakan ini sah untuk klaim yang sedang dibuka.
+//
+// Syaratnya sama persis dengan syarat tampil tombolnya — `RCL_PUCL = 2 && IsPA` — dan sengaja
+// diturunkan dari Buttons(), bukan ditulis ulang. Dua pemeriksaan yang terpisah dapat
+// berselisih, dan selisihnya berarti tombol yang tampak tetapi ditolak, atau yang lebih buruk:
+// tindakan yang berjalan padahal tombolnya tidak pernah ada.
+func (d ClaimDetail) CanSendToAnalyst() bool {
+	return d.Buttons().SendToAnalyst
+}

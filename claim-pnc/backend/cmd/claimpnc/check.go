@@ -3530,9 +3530,14 @@ func checkRCLPUCL(
 	print("            T_CLAIM_OBJECTLIST  -> Nama Peserta DAN UP (keduanya ObjectName,")
 	print("                                   dan itu memang benar — dikonfirmasi 2026-09-24),")
 	print("            T_CLAIM_ADJUSTMENT  -> Jumlah Tagihan.")
-	print("            Perihal dan ketiga Keterangan kini dibaca dari TC_PNC_PUCL — kolomnya")
-	print("            ADA di tabel yang berjalan meski belum ada di CREATE_TABLE_3.SQL.")
-	print("            LIMA isian sisanya properti clipboard Pega; ia tidak punya kolom,")
+	print("            TUJUH kolom dibaca dari TC_PNC_PUCL meski BELUM ada di")
+	print("            CREATE_TABLE_3.SQL: PERIHAL, KETERANGAN1..3, dan ketiga parameter")
+	print("            tindakan ID_OBJECT, ID_COVERAGE, ID_ADJUSTMENT. Portal yang tabelnya")
+	print("            dibuat dari berkas DDL bersama akan gagal ORA-00904 pada klaim")
+	print("            PERTAMA yang dibuka — bukan saat build.")
+	print("            Email Tertanggung dibaca dari T_CLAIM_PNC.EMAIL_LOD, digabung lewat")
+	print("            CLAIMNO — BUKAN CLAIMID, yang di tabel itu berawalan kunci Pega.")
+	print("            TIGA isian sisanya properti clipboard Pega; ia tidak punya kolom,")
 	print("            sehingga tidak ada yang perlu diperiksa di sini.")
 
 	page := inboxrclpucl.Pagination{Page: 1, Size: 5}

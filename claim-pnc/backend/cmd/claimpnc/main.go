@@ -215,6 +215,7 @@ import (
 	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
 	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
 	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
+	inboxrclpuclpega "claim-pnc/internal/inboxrclpucl/adapter/pega"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
@@ -4121,6 +4122,19 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	rclPUCLService, err := inboxrclpuclusecase.NewService(
 		inboxrclpuclusecase.Options{
 			RepoSelector: store.rclPUCLSelector,
+
+			// Pemanggil layanan Pega untuk tindakan "Kirim Ke Analyst".
+			//
+			// Alamatnya dari `PEGA_LAYANAN_KLAIM`, dan KOSONG adalah keadaan yang sah hari
+			// ini: layanannya belum dibangun (`permintaan-artefak-pega.md` §12). Alamat
+			// kosong membuat tindakannya dijawab 503 dengan keterangan yang menyebut siapa
+			// yang harus bertindak — bukan membuat aplikasi gagal menyala.
+			Actions: inboxrclpuclpega.NewClient(inboxrclpuclpega.Config{
+				BaseURL:  strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM")),
+				Path:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM_PATH")),
+				User:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_PENGGUNA")),
+				Password: os.Getenv("PEGA_LAYANAN_SANDI"),
+			}),
 
 			// Logger WAJIB, dengan alasan yang sama seperti modul di atasnya DITAMBAH
 			// satu: antrean layar ini bersama, sehingga tidak ada penyaring kepemilikan

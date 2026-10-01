@@ -30,12 +30,21 @@ import (
 // Service melayani modul Inbox RCL/PUCL.
 type Service struct {
 	repoSelector inboxrclpucl.RepoSelector
+	actions      inboxrclpucl.ClaimActions
 	logger       *slog.Logger
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
 	RepoSelector inboxrclpucl.RepoSelector
+
+	// Actions adalah pengisi tindakan tulis. Boleh nil.
+	//
+	// Nil BUKAN kekeliruan tatanan melainkan keadaan yang sah: layanan Pega yang
+	// menjalankannya belum dibangun (`permintaan-artefak-pega.md` §12). Permintaan tindakan
+	// lalu dijawab ErrPegaServiceUnavailable — bukan panik, dan bukan layar yang gagal
+	// digambar.
+	Actions inboxrclpucl.ClaimActions
 
 	// Logger boleh nil; bila nil, jejaknya tidak ditulis dan tidak ada yang gagal karenanya.
 	Logger *slog.Logger
@@ -46,7 +55,11 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("inboxrclpucl/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, logger: o.Logger}, nil
+	return &Service{
+		repoSelector: o.RepoSelector,
+		actions:      o.Actions,
+		logger:       o.Logger,
+	}, nil
 }
 
 // Metadata adalah keterangan layar yang tidak bergantung isi antrean.
@@ -404,4 +417,86 @@ func (s *Service) documentAccess(
 		return nil, "", err
 	}
 	return repo, key, nil
+}
+
+// SendToAnalyst menjalankan tindakan "Kirim Ke Analyst" pada satu klaim.
+//
+// # Urutannya: baca dulu, baru kirim
+//
+// Klaimnya dibaca lebih dulu karena tiga hal yang dibutuhkan tindakan ini hanya ada di sana —
+// ketiga parameter tersembunyi, catatan untuk Analyst, dan syarat apakah tombolnya memang
+// digambar. Mengirimkannya dari layar akan membuat sisi peladen memercayai nilai yang dapat
+// disusun siapa pun.
+func (s *Service) SendToAnalyst(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxrclpucl.Caller,
+	reference string,
+) error {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" {
+		return inboxrclpucl.ErrCallerUnknown
+	}
+
+	key := strings.TrimSpace(reference)
+	if key == "" {
+		return inboxrclpucl.NewValidationError([]inboxrclpucl.Violation{{
+			Field:   inboxrclpucl.FieldReference,
+			Message: "Kunci klaim tidak disebutkan.",
+		}})
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return err
+	}
+
+	detail, err := repo.Detail(ctx, key)
+	if err != nil {
+		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+			return err
+		}
+		return fmt.Errorf("membaca klaim %s sebelum kirim ke analyst: %w", key, err)
+	}
+
+	// Syaratnya diturunkan dari tombolnya, bukan ditulis ulang — lihat
+	// `inboxrclpucl.ClaimDetail.CanSendToAnalyst`.
+	if !detail.CanSendToAnalyst() {
+		return inboxrclpucl.ErrActionNotAvailable
+	}
+
+	if s.actions == nil {
+		return inboxrclpucl.ErrPegaServiceUnavailable
+	}
+
+	err = s.actions.SendToAnalyst(ctx, inboxrclpucl.SendToAnalystCommand{
+		CaseNumber:   detail.ClaimNumber,
+		IDObject:     detail.ActionParameters.IDObject,
+		IDCoverage:   detail.ActionParameters.IDCoverage,
+		IDAdjustment: detail.ActionParameters.IDAdjustment,
+		Note:         detail.DocumentReceipt.PUCLNote,
+		Caller:       cleanCaller.Login,
+	})
+	if err != nil {
+		// Ketidaktersediaan diteruskan APA ADANYA supaya transport dapat mengenalinya dan
+		// menjawab dengan kalimat yang menyebut siapa yang harus bertindak.
+		if errors.Is(err, inboxrclpucl.ErrPegaServiceUnavailable) {
+			return err
+		}
+		return fmt.Errorf("mengirim klaim %s ke analyst: %w", key, err)
+	}
+
+	// Tindakan yang MENGUBAH klaim dicatat, dan pelakunya ikut.
+	//
+	// Ia satu-satunya jalur tulis modul ini. Jejaknya karena itu bukan kelengkapan melainkan
+	// satu-satunya cara mengetahui siapa meneruskan klaim mana — `D-59` menjadikan jejak audit
+	// kontrol pengimbang tunggal, karena tidak ada pemisahan tugas.
+	if s.logger != nil {
+		s.logger.Info("klaim RCL/PUCL dikirim ke Analyst",
+			"portal", portalAlias,
+			"login", cleanCaller.Login,
+			"klaim", detail.ClaimNumber,
+		)
+	}
+	return nil
 }

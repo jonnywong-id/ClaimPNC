@@ -2179,3 +2179,173 @@ mesinnya sendiri.
 
 Keempat objek basis data itu tetap dibutuhkan saat logikanya kelak ditulis ulang di Go — setelah
 Pega dimatikan — meski hari ini dijalankan Pega lewat layanan.
+
+### 12.8 SPESIFIKASI rule Service REST — siap dikerjakan
+
+Ditulis atas permintaan Work Owner 2026-10-01, supaya Tim Pega tidak perlu menebak bentuknya.
+
+**Yang perlu diluruskan lebih dulu:** `PUCLPost` adalah **ACTIVITY**, dan ia **sudah ada**. Yang
+diminta di sini adalah rule **Service REST** yang mengeksposnya lewat HTTP — lapisan yang belum
+ada, bukan activity baru.
+
+```
+Activity PUCLPost            SUDAH ADA   <- mengerjakan tindakannya
+Rule Service REST            BELUM ADA   <- yang diminta di sini
+Alamat layanannya            menyusul    <- diisi ke PEGA_LAYANAN_KLAIM di sisi Go
+```
+
+#### a. Identitas rule
+
+| Hal | Usulan | Catatan |
+|---|---|---|
+| Kelas | `ASM-FW-GCNMFW-Work-PNC` | sama dengan keempat layanan yang sudah ada |
+| Nama paket layanan | **`ASMFWGCNMFWWORKPNC`** | TERBACA dari kunci rule keempat layanan yang ada — lihat §12.9. Layanan baru ini bergabung ke paket yang sama |
+| `pyResourcePath` | **`ActionClaimPUCL`** | dinamai menurut TINDAKANNYA, seperti keempat layanan yang ada. **Bukan** `PUCLPost` — itu nama ACTIVITY |
+| Metode HTTP | **`POST`** | ia menimbulkan akibat; tidak boleh `GET` |
+| Jenis isi | `application/json` | |
+
+Alamat yang kami pakai menjadi:
+
+```
+POST  https://<host-pega>/prweb/api/ASMFWGCNMFWWORKPNC/<versi>/ActionClaimPUCL
+```
+
+Bagian sampai `<versi>` itulah yang kami isikan ke `PEGA_LAYANAN_KLAIM`; `/ActionClaimPUCL`
+ditambahkan aplikasi sendiri, dan dapat diubah lewat `PEGA_LAYANAN_KLAIM_PATH` tanpa menyentuh
+kode.
+
+#### b. Badan permintaan
+
+Nama isiannya sengaja memakai **nama parameter `PUCLPost` apa adanya**, supaya tidak ada
+terjemahan yang dapat salah di antara dua pihak.
+
+| Isian | Tipe | Isi | Dari |
+|---|---|---|---|
+| `caseNumber` | teks | nomor case, mis. `PNC-2183` | `PYID` |
+| `Status` | teks | **`"1"`** = kirim · `"0"` = tolak · `""` = cetak | parameter `PUCLPost` |
+| `idObj` | teks | parameter `idObj` | kolom `TC_PNC_PUCL.ID_OBJECT` |
+| `idCov` | teks | parameter `idCov` | kolom `ID_COVERAGE` |
+| `idAdj` | teks | parameter `idAdj` | kolom `ID_ADJUSTMENT` |
+| `tipe` | teks | **`"dokumen"`** untuk tombol Kirim · `"cetak"` untuk Download Dokumen | parameter `InsertMitraPA` |
+| `note` | teks | "Catatan untuk Analyst" | `KomentarPUCL` |
+| `caller` | teks | login petugas yang menekan tombolnya | — |
+
+`caller` ikut karena Pega mencatat pelaku pada objek kerja. Tanpanya jejaknya menunjuk **akun
+integrasi**, bukan orangnya — dan `D-59` menjadikan jejak audit kontrol pengimbang tunggal
+karena tidak ada pemisahan tugas.
+
+#### c. Yang harus DICAPAI layanan — bukan caranya
+
+Caranya diserahkan kepada Tim Pega, karena ketiganya operasi mesin Pega yang tidak dapat kami
+baca dari export (§12.7). Yang kami butuhkan adalah hasilnya:
+
+1. Jalankan **`InsertMitraPA`** dengan `tipe` yang dikirim.
+2. Jalankan **`PUCLPost`** dengan `Status`, `idObj`, `idCov`, `idAdj`.
+3. **Selesaikan penugasannya** — `Finish Assignment`, seperti tombol di layar.
+
+Butir 3 yang paling menentukan, dan mohon tidak dilewatkan: inbox Analyst membaca
+`PC_ASM_FW_GCNMFW_WORK` **INNER JOIN `PC_ASSIGN_WORKLIST`**, sehingga klaim sampai ke Analyst
+**hanya** lewat baris penugasan baru. Tanpa butir 3, klaim hilang dari antrean PUCL tanpa sampai
+ke siapa pun — dan tidak ada galat yang memunculkannya.
+
+#### d. Bentuk jawaban
+
+| Keadaan | Kode | Badan |
+|---|---|---|
+| Berhasil | `200` | bebas; kami tidak membacanya |
+| Permintaan tidak sah — klaim tidak ada, parameter kurang | `400` / `404` | pesan singkat |
+| Gagal di dalam Pega | `500` | pesan singkat |
+
+Kami sudah membedakan ketiganya: `5xx` dan gagal terhubung dijawab **"layanan belum tersambung"**
+(yang bertindak Tim Pega dan Infra), sedangkan `4xx` dijawab sebagai **kesalahan permintaan kami**.
+Menyatukan keduanya akan menyuruh orang menunggu pihak yang salah.
+
+#### e. Otentikasi — mohon JANGAN mengikuti yang sudah ada
+
+Keempat layanan yang ada ber-**`pyUseAuthentication=false`**. Untuk layanan ini hal itu **tidak
+memadai**: ia meneruskan klaim dan menyentuh nilai uang, sementara keempat yang ada sebagian
+hanya membaca.
+
+Usulan: **Basic Auth** atau **OAuth 2.0 client credentials** dengan akun layanan tersendiri —
+bukan akun operator. Bentuk akhirnya kami ikuti; yang kami minta adalah **bukan tanpa
+otentikasi**. Keputusannya milik Keamanan Informasi (`ADR-0008`).
+
+#### f. Dua hal yang perlu disepakati bersama
+
+| Hal | Kenapa |
+|---|---|
+| **Idempotensi** | Tombol yang tertekan dua kali tidak boleh meneruskan klaim dua kali. Bila Pega tidak menjamin ini, kami kirimkan kunci idempotensi — mohon diberitahukan isiannya |
+| **Lingkungan uji** | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |
+
+#### g. Yang sudah SIAP di sisi kami
+
+Adapter, seam, rute, dan tombolnya sudah dibangun dan teruji terhadap peladen tiruan. Begitu
+layanannya ada dan alamatnya diisi ke `PEGA_LAYANAN_KLAIM`, tombolnya bekerja **tanpa satu baris
+kode pun berubah**.
+
+Bila nama paket atau resource path berbeda dari usulan di atas, yang berubah di sisi kami hanya
+**satu baris** di `internal/inboxrclpucl/adapter/pega/pega.go`.
+
+### 12.9 Nama layanannya — BELUM ADA, dan inilah identitas yang diusulkan
+
+Pertanyaan Work Owner 2026-10-01: *"service apa namanya yang kurang?"*
+
+**Tidak ada layanan yang hilang.** Keempat layanan yang ada lengkap; yang diminta adalah layanan
+**KELIMA**, yang belum pernah dibuat — sehingga namanya belum ada, dan harus ditetapkan.
+
+#### Identitas keempat layanan yang SUDAH ada
+
+Dibaca dari `pzInsKey` masing-masing berkas. Bentuknya:
+`RULE-SERVICE-REST <paket> <kelas>!<resource>`
+
+| Paket | Kelas | Resource | Activity |
+|---|---|---|---|
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `KomiteAcceptAdjustment` | `CheckKomiteAprove` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `KomiteAcceptAdjustmentPA` | `CheckKomiteAprovePA` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `RecivedDataandAttachmentLelangASMSimasbid` | `ActSalvageSimasbidAsmUpdate` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `RequestCreateClaimCredit2` | `CreateClaimCredit_Service2` |
+
+Keempatnya satu paket: **`ASMFWGCNMFWWORKPNC`**.
+
+#### Identitas layanan KELIMA yang diminta
+
+| Hal | Usulan |
+|---|---|
+| Rule | `Rule-Service-REST` |
+| Paket | **`ASMFWGCNMFWWORKPNC`** — bergabung ke yang sudah ada, bukan paket baru |
+| Kelas | **`ASM-FW-GCNMFW-Work-PNC`** |
+| **Resource (nama layanannya)** | **`ActionClaimPUCL`** |
+| Metode | `POST` |
+| Activity yang dijalankan | `InsertMitraPA` → `PUCLPost` → `Finish Assignment` |
+
+Kunci rule-nya menjadi:
+
+```
+RULE-SERVICE-REST  ASMFWGCNMFWWORKPNC  ASM-FW-GCNMFW-WORK-PNC!ACTIONCLAIMPUCL
+```
+
+#### Kenapa BUKAN dinamai `PUCLPost`
+
+Usulan pertama kami memakai nama itu, dan **Work Owner menolaknya 2026-10-01 — dengan benar**:
+`PUCLPost` adalah nama **ACTIVITY**, dan memakainya untuk layanan menghasilkan dua rule bernama
+sama di Pega, berbeda hanya pada jenis rule-nya:
+
+```
+Rule-Obj-Activity    PUCLPost      <- sudah ada, yang mengerjakan tindakannya
+Rule-Service-REST    …!PUCLPOST    <- akan dibuat
+```
+
+Siapa pun yang kelak membaca log, mencari rule, atau menelusuri galat harus membedakan keduanya
+dari jenis rule-nya saja. Itu biaya yang tidak perlu dibayar untuk sebuah nama.
+
+Keempat layanan yang ada dinamai menurut **tindakannya**, bukan menurut activity yang
+dijalankannya — `KomiteAcceptAdjustment` menjalankan `CheckKomiteAprove`,
+`RequestCreateClaimCredit2` menjalankan `CreateClaimCredit_Service2`. Usulan kami mengikuti
+kebiasaan itu.
+
+Namanya menyebut **tindakan**, bukan satu tombol, karena satu layanan ini melayani **empat
+tombol** — yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Nama seperti
+`KirimKeAnalystPUCL` akan menyesatkan ketika layanan yang sama dipakai tombol Tolak Klaim.
+
+Apa pun namanya, di sisi kami ia **satu baris konfigurasi** (`PEGA_LAYANAN_KLAIM_PATH`) — bukan
+perubahan kode.

@@ -25271,3 +25271,210 @@ pertama yang dibuka** — bukan saat build, dan bukan pada seluruh layar.
 | Pertanyaan | Pemilik |
 |---|---|
 | Ketujuh kolom di luar `CREATE_TABLE_3.SQL` dimasukkan ke berkas itu | Tim basis data |
+
+---
+
+## 135. Inbox RCL/PUCL — "Kirim Ke Analyst" dibangun penuh; tersisa satu alamat (2026-10-01)
+
+**Permintaan Work Owner:** *"perbaiki sampai bisa kirim analyst."*
+
+### 135.1 Satu bukti yang menentukan BENTUK pemecahannya
+
+Sebelum menulis apa pun, satu hal diperiksa: **bagaimana klaim sampai ke Analyst?**
+
+```
+internal/inboxanalystdoctor/repo/sqlstore/*.sql
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
+```
+
+Inbox Analyst menemukan klaim lewat **baris penugasan**, dan baris itu dibuat mesin alur kerja
+Pega saat `Finish Assignment` berjalan.
+
+**Akibatnya menutup satu jalan yang tampak paling mudah.** Menulis `PUCL_APPROVE = '1'` ke tabel
+datar akan membuat klaim **hilang dari antrean PUCL tanpa sampai ke siapa pun** — klaim yang
+berhenti bergerak, tanpa satu pun galat, dan baru ketahuan saat seseorang menanyakannya.
+
+Ditambah dua hal yang ikut terbukti: `SendtoAnalystDate` **tidak punya kolom** di tabel datar,
+dan persetujuan tingkat adjustment (`AdjustmentList(<LAST>)`, langkah 11 `PUCLPost`) hidup di
+objek kerja.
+
+Jadi penulisan sebagian **tidak memenuhi permintaannya sendiri**: ia tidak mengirim ke Analyst.
+
+### 135.2 Yang dibangun — jalur yang benar-benar mengirim
+
+| Lapisan | Isi |
+|---|---|
+| Seam `ClaimActions` | `SendToAnalyst(ctx, cmd)` · galat `ErrPegaServiceUnavailable` dan `ErrActionNotAvailable` |
+| Adapter `adapter/pega` | POST ke layanan Pega dengan nama parameter **`PUCLPost` apa adanya** — `Status`, `idObj`, `idCov`, `idAdj`, `tipe` |
+| Usecase | membaca klaim dulu, menegakkan syarat, memanggil seam, mencatat jejak |
+| Transport | `POST /klaim/{referensi}/kirim-analyst` · 503 untuk belum tersambung, 409 untuk tidak berlaku |
+| Layar | tombol menjalankan tindakannya; keadaan berjalan, berhasil, dan gagal digambar |
+
+**`Status = "1"`** — nilai itulah yang membedakan "kirim" dari "cetak" (kosong) dan "tolak"
+(`0`), dan ketiganya terbaca dari rangkaian aksi tombolnya di section.
+
+**Ketiga parameter dibawa dari peladen, bukan dari layar.** Nilainya menentukan BARIS mana yang
+disetujui — langkah 11 menyetujui `AdjustmentList(<LAST>)` yang `CoverageID`-nya sama dengan
+`param.idCov`. Menerimanya dari layar berarti memercayai nilai yang dapat disusun siapa pun.
+
+**Syarat tampil tombolnya ditegakkan ULANG di peladen**, dan diturunkan dari `Buttons()` —
+bukan ditulis ulang. Tombol yang tidak tampak tetap dapat dipanggil lewat alamatnya, dan
+`PUCLPost` tidak menolak klaim yang jalurnya keliru: ia mengerjakannya.
+
+### 135.3 Tiga pembedaan yang dijaga uji
+
+| Keadaan | Jawaban | Kenapa dibedakan |
+|---|---|---|
+| Alamat layanan kosong · tidak dapat dihubungi · 5xx | **503** `layanan_pega_belum_tersedia` | yang bertindak **Tim Pega dan Infra** |
+| Layanan menjawab **4xx** | galat biasa | permintaannya SAMPAI dan ditolak — yang salah **permintaan kita** |
+| Klaim di luar jalur PUCL/PA | **409** `tindakan_tidak_tersedia` | bukan kewenangan, melainkan keadaan klaimnya |
+
+Yang pertama dan kedua paling mudah disatukan, dan menyatukannya akan menyuruh orang menunggu
+Tim Pega padahal cacatnya ada di kita.
+
+### 135.4 Apa yang kurang sekarang: SATU alamat
+
+```
+PEGA_LAYANAN_KLAIM=
+```
+
+Alamat kosong adalah keadaan yang **sah**, bukan kekeliruan tatanan: aplikasi tetap menyala,
+layar tetap digambar, dan hanya tindakannya yang dijawab 503 beserta langkah penggantinya.
+
+Begitu Tim Pega menyediakan layanannya (`permintaan-artefak-pega.md` §12) dan alamatnya diisi,
+tombolnya bekerja **tanpa satu baris kode pun berubah**.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Layanan REST §12 — dan **otentikasinya**, karena empat layanan Pega yang ada ber-`pyUseAuthentication=false` | Tim Pega + Keamanan Informasi |
+| Bentuk kontrak akhir: nama jalur dan badan permintaannya diusulkan sepihak di §12.1, dan dapat disesuaikan | Tim Pega |
+| "Unggah Dokumen" — menuntut `PZPVSTREAM`, format serialisasi internal Pega (§12.7) | Tim Pega |
+
+---
+
+## 136. Inbox RCL/PUCL — penyambungan "Kirim Ke Analyst" menjadi MURNI konfigurasi (2026-10-01)
+
+**Penegasan Work Owner:** *"pas klik Kirim Ke Analyst dia menjalankan Activity InsertMitraPA,
+PUCLPost dan Finish Assignment. Ikuti apa adanya yang ada di Pega saja."*
+
+Rangkaian itu memang yang dibaca dari `SectionPenerimaanDokumenPUCL` (§126.1), dan jalur
+pemanggilnya sudah dibangun penuh (§135). Yang tersisa hanyalah alamat layanannya.
+
+### 136.1 Satu kemungkinan yang diperiksa dan GUGUR
+
+Pega dapat menjalankan activity langsung lewat URL tanpa rule layanan baru. Bila itu
+memungkinkan di sini, permintaan ke Tim Pega tidak diperlukan sama sekali.
+
+Diperiksa pada kedua activity:
+
+| Activity | `pyActivityType` | `pyUsage` | Penanda boleh dipanggil dari URL |
+|---|---|---|---|
+| `InsertMitraPA` | `ACTIVITY` | `FLOW` | **tidak ada di export** |
+| `PUCLPost` | `ACTIVITY` | `FLOW` | **tidak ada di export** |
+
+Kebolehan memanggil activity dari URL adalah **tatanan Pega**, bukan isi rule — ia tidak terbaca
+dari export, dan menebaknya berarti membangun jalur yang mungkin ditolak di produksi. Rule
+Service REST karena itu tetap dibutuhkan.
+
+Dicatat supaya kemungkinan ini tidak diperiksa ulang dari nol.
+
+### 136.2 Yang dikerjakan: menghapus "satu baris kode" yang tersisa
+
+§135.4 menutup dengan *"bila nama paketnya berbeda, yang berubah hanya satu baris kode"*. Satu
+baris pun terlalu banyak: ia menuntut perubahan kode, bangun ulang, dan rilis — untuk **satu
+kata** yang ditentukan pihak lain.
+
+Keempatnya kini konfigurasi:
+
+| Variabel | Isi | Kosong berarti |
+|---|---|---|
+| `PEGA_LAYANAN_KLAIM` | alamat dasar sampai nomor versi | layanan belum tersambung → 503 |
+| `PEGA_LAYANAN_KLAIM_PATH` | `pyResourcePath` | `PUCLPost` — nama yang kami usulkan |
+| `PEGA_LAYANAN_PENGGUNA` · `PEGA_LAYANAN_SANDI` | Basic Auth | dikirim **tanpa** otentikasi |
+
+Satu kehalusan yang ikut diuji: tanpa kredensial, header `Authorization` **tidak dikirim sama
+sekali** — bukan dikirim kosong. Sebagian peladen menolak header kosong sebagai kredensial yang
+SALAH, dan galatnya lalu terbaca seperti sandi yang keliru.
+
+### 136.3 Keadaan sekarang
+
+| Lapisan | Status |
+|---|---|
+| Seam · adapter · usecase · rute · tombol | ✅ selesai dan teruji |
+| Activity `InsertMitraPA`, `PUCLPost`, `Finish Assignment` | ✅ ada di Pega |
+| **Rule Service REST yang mengeksposnya** | ❌ **belum ada** — satu-satunya yang kurang |
+| Spesifikasinya | ✅ `permintaan-artefak-pega.md` §12.8, siap dikerjakan |
+
+Begitu Tim Pega membuat rule itu dan alamatnya diisi, tombolnya bekerja — **tanpa perubahan
+kode, tanpa bangun ulang.**
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Rule Service REST §12.8 — dan **otentikasinya** | Tim Pega + Keamanan Informasi |
+| Pega staging yang dapat ditembak dari luar, untuk mengujinya | Tim Pega + Infra |
+
+---
+
+## 137. Inbox RCL/PUCL — "Alamat API tidak dikenal": rutenya benar, binary-nya yang lama (2026-10-01)
+
+**Laporan Work Owner:** menekan "Kirim Ke Analyst" menjawab
+*"Alamat API tidak dikenal: /api/inbox-rcl-pucl/klaim/PNC-2183/kirim-analyst"*.
+
+### 137.1 Yang diperiksa lebih dulu: apakah rutenya memang tidak terdaftar
+
+Pesan itu datang dari `apiNotFound` di `internal/platform/httpserver/server.go` — chi benar-benar
+tidak menemukan rutenya, bukan kekeliruan alamat di sisi layar.
+
+Daftar rute yang terpasang ditelusuri `chi.Walk`:
+
+```
+GET  /inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}
+POST /inbox-rcl-pucl/klaim/{referensi}/kirim-analyst      <- ADA
+```
+
+Jadi pendaftarannya **benar**. Yang salah ada di tempat lain.
+
+### 137.2 Sebabnya — dan ini kekeliruan saya
+
+Ada **DUA** binary, dan yang berjalan bukan yang saya bangun:
+
+| Berkas | Tanggal | Memuat rute `kirim-analyst` |
+|---|---|---|
+| `backend/claimpnc.exe` | 1 Okt | **ya** |
+| `backend/bin/claimpnc.exe` | **29 Sep** | **tidak** |
+
+Sepanjang sesi ini saya melaporkan *"binary dibangun ulang"* belasan kali, dan setiap kali benar
+— tetapi ke `backend/claimpnc.exe`, yaitu jalur yang `catatan-pengembangan.md` dokumentasikan.
+Yang dijalankan ternyata `backend/bin/claimpnc.exe`, dan ia tidak pernah ikut terbarui.
+
+**Laporan "sudah dibangun ulang" karena itu benar tetapi menyesatkan**: ia menyiratkan aplikasi
+yang berjalan sudah memuat perubahannya, padahal tidak. Pelajarannya bukan soal rute ini — ia
+berlaku untuk SELURUH perubahan backend sepanjang sesi: yang terlihat di layar hanyalah
+perubahan frontend, karena frontend dijalankan Vite dev server.
+
+**Keduanya kini dibangun**, dan keduanya diperiksa memuat rutenya.
+
+### 137.3 Uji yang ditambahkan — dan batas kejujurannya
+
+`TestSeluruhRuteTerdaftar` menelusuri rute terpasang dan menuntut ketujuhnya ada, ditambah
+`TestTindakanTulisBukanGET` yang menjaga metodenya.
+
+**Uji ini TIDAK dapat menangkap binary lama** — tidak ada uji yang bisa. Yang ia lakukan adalah
+**mempersempit penyebabnya menjadi satu kemungkinan**: bila uji lulus sementara layar menjawab
+"Alamat API tidak dikenal", maka yang berjalan pasti bukan kode ini. Itu yang mahal saat sedang
+mencari, dan itulah nilainya.
+
+Rute yang hilang tidak menghasilkan satu pun galat saat build. Ia menghasilkan pesan yang
+terbaca persis seperti **salah ketik di sisi frontend**, sehingga yang dicari orang adalah tempat
+yang keliru.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Mana jalur binary yang berlaku** — `backend/claimpnc.exe` (terdokumentasi) atau `backend/bin/claimpnc.exe` (yang dijalankan)? Dua jalur berarti satu di antaranya akan basi lagi | Work Owner |

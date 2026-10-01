@@ -5,7 +5,12 @@ import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
-import { rclpuclDocumentURL, useRCLPUCLClaim, useRCLPUCLDocuments } from './api'
+import {
+  rclpuclDocumentURL,
+  useKirimKeAnalyst,
+  useRCLPUCLClaim,
+  useRCLPUCLDocuments,
+} from './api'
 import type { ClaimDetailResponse } from './types'
 
 /**
@@ -598,13 +603,14 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
             note="Menolak klaim. Hanya tersedia pada jalur RCL."
           />
         )}
-        {buttons.kirim_ke_analyst && (
-          <WriteAction
-            label="Kirim Ke Analyst"
-            caseNumber={detail?.referensi}
-            note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
-          />
-        )}
+        {/*
+          SATU-SATUNYA tombol yang benar-benar MENJALANKAN tindakannya.
+
+          Ia tidak menulis sendiri: permintaannya diteruskan ke Pega, karena klaim sampai ke
+          Analyst HANYA lewat baris penugasan yang dibuat mesin alur kerja Pega. Selama
+          layanannya belum tersambung, peladen menjawab 503 dan pesannya digambar apa adanya.
+        */}
+        {buttons.kirim_ke_analyst && <SendToAnalystAction reference={detail?.referensi} />}
         {buttons.kirim_ke_pic_teknik && (
           <WriteAction
             label="Kirim ke PIC Teknik"
@@ -855,6 +861,48 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
             </p>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Tombol "Kirim Ke Analyst" — satu-satunya tindakan yang benar-benar dijalankan.
+ *
+ * # Kenapa ia tidak memakai panel WriteAction
+ *
+ * Karena ia bukan penolakan melainkan tindakan. Yang perlu digambar adalah keadaannya —
+ * sedang berjalan, berhasil, atau gagal beserta alasannya — bukan langkah pengganti.
+ *
+ * Saat GAGAL karena layanan Pega belum tersambung, pesan peladen sudah memuat langkah
+ * penggantinya ("kerjakan di Pega; salin nomor case"), sehingga tidak diulang di sini.
+ */
+function SendToAnalystAction({ reference }: { reference?: string | undefined }) {
+  const kirim = useKirimKeAnalyst(reference ?? null)
+
+  return (
+    <div className="mt-4">
+      <Button
+        tone="kedua"
+        disabled={!reference || kirim.isPending}
+        onClick={() => kirim.mutate()}
+      >
+        {kirim.isPending ? 'Mengirim…' : 'Kirim Ke Analyst'}
+      </Button>
+      <p className="mt-1 text-xs text-slate-500">
+        Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap.
+      </p>
+
+      {kirim.isSuccess && (
+        <p className="mt-2 max-w-md rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-slate-700">
+          Klaim diteruskan ke Analyst.
+        </p>
+      )}
+
+      {kirim.isError && (
+        <p className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-slate-700">
+          {messageOf(kirim.error)}
+        </p>
       )}
     </div>
   )
