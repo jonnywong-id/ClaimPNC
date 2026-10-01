@@ -157,6 +157,17 @@ type AreaOptionsResponse struct {
 	Option []AreaOptionDTO `json:"pilihan"`
 }
 
+// CauseOfLossOptionDTO adalah satu pilihan Penyebab Kerugian: id D_COL_ID, nama DESCRIPTION.
+type CauseOfLossOptionDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"nama"`
+}
+
+// CauseOfLossOptionsResponse adalah jawaban GET /api/registrasi/penyebab-kerugian.
+type CauseOfLossOptionsResponse struct {
+	Option []CauseOfLossOptionDTO `json:"pilihan"`
+}
+
 // ClaimDTO adalah klaim sebagaimana dilihat layar.
 type ClaimDTO struct {
 	ID     string    `json:"id"`

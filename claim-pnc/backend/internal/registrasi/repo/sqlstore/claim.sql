@@ -270,11 +270,18 @@ VALUES (:1, :2, :3, :4, :5, :6, :7)
 -- Penjodohan ke pohon memakai OBJECTID dan OBJECTCOVERAGEID — kolom yang memang ada di
 -- tabel ini — bukan urutan objek/coverage. Pemanggil menerjemahkannya lewat daftar objek
 -- yang sudah dibacanya lebih dulu.
-SELECT OBJECTID, OBJECTCOVERAGEID, URUTAN, TREATYTYPE, TREATYNAME,
-       ROUND(SHAREPERCENTAGE * 10000)
-  FROM POOLDATA.T_CLAIM_SPREADING
- WHERE CLAIMID = :1
- ORDER BY OBJECTID, OBJECTCOVERAGEID, URUTAN
+--
+-- Nama treaty yang kosong dilengkapi dari master REINSURANCETYPE: klaim yang dibuka sebelum
+-- nama treaty ikut diisi menyimpan TREATYNAME kosong, dan baris spreading tidak pernah
+-- di-UPDATE (lihat spreading_sisip).
+SELECT s.OBJECTID, s.OBJECTCOVERAGEID, s.URUTAN, s.TREATYTYPE,
+       COALESCE(TRIM(s.TREATYNAME), r.NOTE),
+       ROUND(s.SHAREPERCENTAGE * 10000)
+  FROM POOLDATA.T_CLAIM_SPREADING s
+  LEFT JOIN POOLDATA.REINSURANCETYPE r
+         ON CAST(r.ID AS VARCHAR(20)) = TRIM(s.TREATYTYPE)
+ WHERE s.CLAIMID = :1
+ ORDER BY s.OBJECTID, s.OBJECTCOVERAGEID, s.URUTAN
 
 -- name: klaim_cari_ganda
 -- Pemeriksaan klaim ganda.

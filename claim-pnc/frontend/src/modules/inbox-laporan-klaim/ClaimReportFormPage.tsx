@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
+import { DateField } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { centsToRupiah, rupiahToCents } from '@/components/format'
@@ -178,12 +179,11 @@ export function ClaimReportFormPage() {
         }}
       >
         <Group title="Dokumen masuk">
-          <Field
+          <DateField
             id="tanggal_terima_dokumen"
             label="Tanggal Terima Dokumen"
-            type="date"
             value={values.tanggal_terima_dokumen}
-            onChange={(e) => set('tanggal_terima_dokumen', e.target.value)}
+            onChange={(v) => set('tanggal_terima_dokumen', v)}
             error={violation['tanggal_terima_dokumen']}
             disabled={!editable}
           />
@@ -275,12 +275,11 @@ export function ClaimReportFormPage() {
               </p>
             ))}
           </div>
-          <Field
+          <DateField
             id="tanggal_kejadian"
             label="Tanggal Kejadian"
-            type="date"
             value={values.tanggal_kejadian}
-            onChange={(e) => set('tanggal_kejadian', e.target.value)}
+            onChange={(v) => set('tanggal_kejadian', v)}
             error={violation['tanggal_kejadian']}
             disabled={!editable}
           />

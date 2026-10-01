@@ -97,3 +97,31 @@ func TestNextReceiverIDFollowsHighestNumber(t *testing.T) {
 	require.Equal(t, "1", registrasi.NextReceiverID(nil))
 	require.Equal(t, "4", registrasi.NextReceiverID([]registrasi.Receiver{{ID: "1"}, {ID: "3"}, {ID: "x"}}))
 }
+
+// GetDataBankMaster langkah 7: rekening yang belum terdaftar di master Kasir ditolak dengan
+// pesan Pega, dan penerima tidak disimpan.
+func TestSaveReceiverRejectsAccountNotInCashier(t *testing.T) {
+	l := setup(t)
+	task, _ := l.acceptedForDLA(t)
+	l.cashier.Unregistered = map[string]bool{"1234567890": true}
+	_, err := l.service.SaveReceiver(context.Background(), usecase.ReceiverCommand{
+		ClaimID: task.ClaimID, TaskID: task.ID, ReceiverID: "1", AccountNo: "1234567890", Email: "a@contoh.internal",
+	}, l.caller)
+	violation(t, err, registrasi.ViolationReceiverNotInCashier)
+}
+
+// GetDataPenerimaKlaim hanya memakai rekening APPROVAL = '1'; rekening '0' ditolak dengan
+// pesan "No Rekening Sedang Proses Approval".
+func TestSaveReceiverRejectsAccountPendingApproval(t *testing.T) {
+	l := setup(t)
+	l.accounts.Add(registrasi.BankAccount{Number: "5550001", Name: "PT MENUNGGU", BankName: "BANK CONTOH", BankID: "001", Approval: "0"})
+	task, _ := l.acceptedForDLA(t)
+	_, err := l.service.SaveReceiver(context.Background(), usecase.ReceiverCommand{
+		ClaimID: task.ClaimID, TaskID: task.ID, ReceiverID: "1", AccountNo: "5550001", Email: "a@contoh.internal",
+	}, l.caller)
+	violation(t, err, registrasi.ViolationReceiverNotApproved)
+	var validation *registrasi.ValidationError
+	require.True(t, errors.As(err, &validation))
+	first, _ := validation.First()
+	require.Equal(t, "No Rekening Sedang Proses Approval", first.Message)
+}

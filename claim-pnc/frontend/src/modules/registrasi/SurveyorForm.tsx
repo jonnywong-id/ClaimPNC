@@ -8,6 +8,7 @@ import { useSession } from '@/app/session'
 
 import { useCurrencies, violationsFrom } from './api'
 import { AcceptanceButtons } from './AcceptanceButtons'
+import { LODTypeSelect } from './LODTypeSelect'
 import { CommitteeStatus, TransferCommitteeButton } from './Committee'
 import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
@@ -601,13 +602,18 @@ function SettlementGrid({
             <Fragment key={n}>
             <tr className="border-b border-slate-100 align-top">
               <td className="p-2">
-                {/* `.PDFType` baca saja (ShowAdjustment_sect, sel pertama kolom Adjustment):
-                    jenis LOD terakhir yang dicetak lewat Print LOD. */}
-                {s.nama_tipe_pdf_lod && (
-                  <span className="mb-1 block text-xs text-slate-700" title="Tipe PDF">
-                    {s.nama_tipe_pdf_lod}
-                  </span>
-                )}
+                {/* `.PDFType` (ShowAdjustment_sect, sel pertama kolom Adjustment): dropdown Tipe LOD. */}
+                <LODTypeSelect
+                  claimID={claimID}
+                  taskID={taskID}
+                  object={object}
+                  coverage={coverage}
+                  adjustment={n + 1}
+                  line={s}
+                  groupPanel={groupPanel}
+                  businessType={businessType}
+                  lockedReason={lockedReason}
+                />
                 <button
                   type="button"
                   aria-expanded={open === n}
@@ -661,6 +667,7 @@ function SettlementGrid({
                     spreading={spreading}
                     travel={travel}
                     nonMBU={nonMBU}
+                    address={{ claimID, taskID, object, coverage, adjustment: n + 1 }}
                   />
                 </td>
               </tr>

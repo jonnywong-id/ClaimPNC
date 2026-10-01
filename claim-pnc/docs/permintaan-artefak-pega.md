@@ -1440,3 +1440,86 @@ kerusakan.
 | `GetYearDashboardOS` | Ia mengisi daftar pilihan tahun, dan tab Outstanding tidak punya penyaring periode — ketiga kuerinya tidak menyaring tanggal sama sekali |
 | `ShowApproveProgressKlaim` beserta sub-tab "Approval Progress Klaim" | Kontainernya ber-`pyContainerVisibleWhen = 1==2` di Pega — sudah mati di sana, dan tidak dibawa |
 | Kolom tambahan untuk kesembilan antrean persetujuan | Seluruhnya POOLDATA dan seluruh kolomnya sudah ada |
+
+## 9. Adjustment, Akseptasi, Draft Persetujuan, dan Transfer Kasir (2026-10-01) — ke **Tim Pega**
+
+Diperiksa terhadap export per 2026-10-01. Sebuah rule dihitung ADA hanya bila berkas
+definisinya sendiri ada (nama berkas atau `pyRuleName` miliknya) — bukan sekadar disebut.
+
+### 9.1 Rule yang HILANG
+
+| # | Rule | Jenis | Dirujuk di | Akibat bagi aplikasi baru |
+|---|---|---|---|---|
+| 1 | `ValidationAdjustment` | Activity | `Section/ShowAdjustment_sect.xml` (aksi dropdown Tipe LOD dan isian adjustment) | Pemeriksaan saat Tipe LOD/adjustment diubah tidak dibawa |
+| 2 | `SetShareAsmWhenPilihAdjustment` | Activity | `Section/ShowAdjustment_sect.xml:3600`, `:3713` | Bila ia mengubah Share ASM saat Tipe LOD dipilih, perilaku itu belum ada |
+| 3 | `IsAnalisator` | When | `Section/ShowAdjustment_sect.xml` (baca-saja dropdown), `InputAdjustment_sect`, beberapa activity salvage/investigator | Pembatasan peran Analisator belum ditegakkan |
+| 4 | `ValidasiTransferKasir_dialog` | Flow Action | `Section/InputAdjustment_sect.xml` (tombol Transfer Kasir) | Dialog Transfer Kasir dibangun ulang sebagai ringkasan konfirmasi (keputusan Work Owner) |
+| 5 | `DokumentBeforeTFManager` | Activity | `Activity/TransferToKasir_act-act.xml` | Jalur persetujuan leader / manajer sebelum Transfer Kasir belum dibangun |
+| 6 | `UpdateChasierIDTablePembayaran` | Connect SQL (`@baseclass`) | `TransferToKasir_act`, `TransferToKasir_act_Leader`, `InsertDataAkseptasiToLeader` | Pembaruan CaseID Kasir pada tabel pembayaran (jalur leader) belum dibangun |
+| 7 | `GetDataBankMaster` | Activity | `Section/InputReceiver_sect.xml` (isian No Rekening penerima) | Pemetaan rekening → penerima direkonstruksi dari data, bukan dari rule |
+| 8 | `IsServerSyariah` | When | `Data Transform/SetDataEmail-DT.xml`, `Activity/SpreadingDataProtection-Act.xml` | Pembeda portal Syariah belum punya baseline |
+| 9 | `IsDevelopmentServer` | When | sejumlah activity | Tidak dibawa (perilaku berbasis hostname dilarang, Steering §3.4) |
+
+### 9.2 Objek basis data yang hilang — ke **DBA**
+
+| Objek | Dirujuk di | Catatan |
+|---|---|---|
+| `PKG_KONVERSI_JSONKLAIM` | `TransferToKasir_act` (dua pemeriksaan sebelum transfer) | Tidak dipanggil aplikasi baru (`D-02`); isinya tetap perlu dibaca untuk tahu apa yang diperiksa |
+
+### 9.3 Koreksi atas catatan sebelumnya — rule ini ternyata ADA
+
+Catatan terdahulu (B-10, `catatan-pengembangan.md`) menyebut beberapa rule hilang; export kini
+memuatnya: `InsertLogKasir_act`, `SendAttachmenttoCashier_act`, `SetDataEmailTertanggung`,
+`DownloadProposeAdjustment`, `PrintLODdanEmail` (section), `SendAutoLodKeTertanggungPA` (HTML),
+`IsMarineHull`, `SetSignaturePA`, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU_act`.
+Yang perlu dibaca ulang karena kini tersedia: `SendAttachmenttoCashier_act` (pengiriman berkas ke
+Kasir) dan `PrintLODdanEmail` + `DownloadProposeAdjustment` (kirim email LOD).
+
+### 9.4 Pembaruan 2026-10-01 — setelah 8 berkas diterima
+
+**Diterima dan sudah dibawa:** `SetShareAsmWhenPilihAdjustment` (dropdown Tipe LOD kini mengubah
+ExGratia dan Share ASM baris), `GetDataBankMaster` (pemeriksaan "Norekening Belum Terdaftar Di
+Sistem Kasir", dikendalikan KASIR_CEK_REKENING), `IsServerSyariah` / `IsDevelopmentServer`
+(diganti portal dan pengaturan lingkungan — tidak membandingkan nama server).
+
+**Diterima, dibaca, belum dibangun:** `ValidationAdjustment` (aksi tombol Tambah adjustment, 918 KB —
+bukan aksi dropdown), `DokumentBeforeTFManager` (jalur persetujuan atasan), `IsAnalisator`
+(workgroup `KlaimAnalisator`; butuh pemetaan login ke operator Pega).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di |
+|---|---|---|
+| `Sec_dialogValidasiTransfer` | Section | `Flow Action/ValidasiTransferKasir_dialog-FA.xml` — isi dialog Transfer Pembayaran |
+| `Pre_AlertTransferkasir` | Activity | idem, pra-proses dialog |
+| `GetDataPenerimaKlaim` | Connect SQL | `GetDataBankMaster` langkah 4 |
+| `GetDataBankMasterRekening` | Connect SQL | `GetDataBankMaster` langkah 9 (PA: "No Rekening Sedang Proses Approval") |
+| `UpdateChasierIDTablePembayaran` | Connect SQL | `TransferToKasir_act`, `TransferToKasir_act_Leader` |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` |
+
+### 9.5 Pembaruan 2026-10-01 (kedua) — setelah 5 berkas diterima
+
+**Dibawa:** `GetDataPenerimaKlaim` (hanya rekening `APPROVAL = '1'`; rekening `'0'` ditolak "No
+Rekening Sedang Proses Approval"), `GetDataBankMasterRekening`, `Pre_AlertTransferkasir` (kalimat
+konfirmasi dialog), `Sec_dialogValidasiTransfer` (judul "Transfer Pembayaran", tombol "Transfer To
+Kasir" / "Batal").
+
+**Dibaca, tidak dibangun:** `UpdateChasierIDTablePembayaran` — milik jalur persetujuan atasan
+(memanggil prosedur `POOLDATA.INSERT_AKSEPTASI_TO_LEADER`, `D-02`).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di | Untuk |
+|---|---|---|---|
+| `GetdataFacoutJoinPlacement` | Activity | `Sec_dialogValidasiTransfer` (defer load tabel `ListFacoutFlonting`) | Daftar DLA Fac-out pada dialog — "Pilih Fac-out Tidak Dibayar" |
+| `JoinPlacement` | Property (local list) | `Sec_dialogValidasiTransfer` (dropdown "Tipe Transfer Kasir", bawaan `1`; tabel tampil bila 2 atau 3) | Label pilihan Tipe Transfer Kasir |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` | Dua pemeriksaan sebelum transfer |
+
+### 9.6 Pembaruan 2026-10-01 (ketiga) — `GetdataFacoutJoinPlacement` dan `JoinPlacement` diterima
+
+**Dibawa:** dropdown "Tipe Transfer Kasir" (1 Pembayaran Biasa, 2 Join Placement, 3 Fronting) dan
+tabel "Pilih Fac-out Tidak Dibayar" (DLA FAC OUT nomor akseptasi itu, `GetDLAHistoryManager`).
+Fac-out yang dicentang menjadi baris TAllPaymentData tambahan: NoTrans = No DLA, Nett = Nilai Bayar
+× -1 (`TransferCashierDataASM_act` cabang ListOfPlacement).
+
+**Masih HILANG:** `PKG_KONVERSI_JSONKLAIM` (Package DB, ke DBA) — dua pemeriksaan sebelum Transfer Kasir.

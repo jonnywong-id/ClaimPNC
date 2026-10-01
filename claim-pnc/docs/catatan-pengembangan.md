@@ -31576,3 +31576,142 @@ dan `UpdateChasierIDTablePembayaran` tidak ada di export); dua pemeriksaan proce
 `PKG_KONVERSI_JSONKLAIM` (tidak ada di export, D-02); pengiriman berkas ke Kasir
 (`SendAttachmenttoCashier_2`); baris progres "Auto ProgressTransfer Kasir" (kodenya bergantung
 `.KomiteType` yang tidak ada di model ini); syarat tombol berbasis nama server.
+
+## 112. Print Draft Persetujuan dan tombol di detail adjustment; perbaikan Inbox Outstanding (2026-09-30)
+
+**Masukan Work Owner:** tombol "Transfer Kasir" dipindah ke dalam data adjustment seperti layar
+Pega, dan tombol "Print" di sampingnya mencetak Draft akseptasi seperti Pega.
+
+**Letak tombol** (`Section/InputAdjustment_sect.xml`): Nomor Akseptasi tampil bila
+`.AcceptationStatusLOD == '1' && .AcceptedNo != ''`; PRINT bila `.AcceptedNo != ''`; Transfer
+Kasir bila `.PaymentType != '3' && .AcceptedNo != ''`, mati bila `.TransferCashierStatus == '1'`.
+Transfer Kasir dikeluarkan dari kolom Akseptasi grid (`AcceptanceButtons`) dan pindah ke komponen
+`AcceptanceNumber` di `SettlementDetail`. Detail kini juga menampilkan Status Persetujuan LOD dan
+Case ID Kasir.
+
+**Draft Persetujuan** (`PrintPDFAcceptanceNote` + `HTML/AcceptanceNotePDF-html.xml`, dibandingkan
+dengan contoh PDF): `registrasi/acceptancenote.go`, `acceptancenotepdf/`,
+`usecase/acceptancenote.go`, POST `/api/registrasi/klaim/{id}/akseptasi/draft`. Nama berkas
+`DraftPersetujuan_NO.<nomor>.pdf`. Pemetaan terbaca setelah pasangan PropertiesName/Value
+dicocokkan per rowdata — pembacaan pertama tergeser: Claim Accepted = GrossValue, (ASM) =
+AdjustmentValue, Location of Loss = `ClaimData.Location`, penanda tangan = KomiteAccepted,
+tanggal = AcceptedDate ("Jakarta, dd MMMM yyyy", in_ID). Spreading = share × nilai / 100; rincian
+QS (10003/10019) = share × PCT × nilai / 100 dari `searchQSReins2_SQL` (PCT pecahan, mis. `,400`).
+Tipe 7 dicetak sebagai Adjuster Fee (Pega mengubahnya menjadi 4 sebelum template). Premium Paid On
+dari layanan premi (`InstallmentNo`, `PaymentDate`, `PaymentAmount` > 0) dan
+`Quotation.StatusBusiness` (1 New Business, 2 Endorsement, 3 Renewal). Tanda tangan
+`SetSignatureNonMBU` kategori IsAkseptasi (DHARMANTO hanya untuk PLA/DLA).
+
+**Tidak dibawa:** `InsertJsonClaimNonMBU_act` (D-02), `HitServiceOSAkseptasiClaimNonMBU`,
+`GenerateDLAListAdjustment` (DLA terbit saat daftar Print DLA dibuka), lampiran AcceptanceNote,
+email Draft Akseptasi, `SendEmailAccCollection`, logo kop, baris Nomor Kontrak, centang "ASM bayar
+full" (`.ASMFull`, tidak punya kolom), dan penggantian Policy Condition Fire lewat
+`BrowseOldIDCoverage` (parameternya `TempEstimasi.AccountNo` tidak diisi activity ini). Tata letak
+Travel dan PA ditolak dengan pesan jelas. Layanan premi yang gagal tidak menggagalkan cetak —
+Premium Paid On kosong.
+
+**Unduhan:** `unduhBerkas` kini membawa `detail` galat 422 seperti `callAPI`, sehingga alasan
+penolakan Print DLA, Print LOD, dan Draft Persetujuan tampil, bukan hanya "Validasi gagal".
+
+**Inbox Outstanding:** tab "Documents not complete" berlencana 7 tetapi daftarnya kosong karena
+kode domain (`belum-lengkap`, `lengkap`) dikirim apa adanya ke SQL yang menguji `'BELUM'` dan
+`'LENGKAP'`. `statusArgs` kini menerjemahkannya; tes regresi ditambahkan.
+
+## 113. Transfer Kasir ditolak HTTP 400 — bentuk badan disamakan dengan yang diterima Kasir (2026-10-01)
+
+Submit Transfer Kasir PNCN.26.0014 dijawab Kasir HTTP 400, lalu tampil sebagai "cashier system
+could not be reached" karena isi jawaban dibuang. Pembanding: tiga badan "Log Kasir" terakhir di
+POOLDATA.CLAIM_SERVICE_LOG yang dijawab Success (hanya bentuknya yang dibaca, nilainya tidak).
+Bedanya: Pega mengirim Nett, Deductible, dan KaliDeduct sebagai ANGKA JSON, dan tidak mengirim
+DOL maupun Panel. `CashierPayment` disamakan (json.Number; DOL/Panel `json:"-"`). Jawaban non-2xx
+yang berpesan (ResponseMessage, ResponseMessageData, atau Message) kini diteruskan sebagai
+penolakan sehingga alasannya tampil di dialog; yang tanpa pesan dicatat bersama 300 karakter
+pertama jawabannya.
+
+Kredensial: rule Pega memuat header Basic Auth tertanam yang TIDAK disalin (ADR-0025). Bila Kasir
+menuntutnya, isi KASIR_USER dan KASIR_PASSWORD di backend/.env.
+
+## 114. Log layanan Kasir ke CLAIM_SERVICE_LOG; GL.T_ALL_PAYMENT bukan milik aplikasi ini (2026-10-01)
+
+**CLAIM_SERVICE_LOG** kini ditulis untuk setiap pemanggilan Kasir (CATEGORYSERVICE "Log Kasir",
+SERVICEID = nomor klaim, SERVICEREF = nomor akseptasi, JSONIN = badan terkirim, JSONOUT = jawaban
+utuh atau galat). Satu INSERT setelah Kasir menjawab, ID = MAX(ID)+1 seperti `QueryLogServiceClaim`;
+tanpa UPDATE (Steering §8). Gagal menulis log tidak membatalkan transfer — dicatat di jejak audit.
+
+**GL.T_ALL_PAYMENT** tidak ditulis aplikasi ini, dan itu disengaja. `TransferToKasir_act` langkah 74
+memanggil prosedur `gl.pkg_pelunasan_kasir.p_insert_all_payment_kasir` (`TransferToKasir_sql`) —
+pemanggilan prosedur dilarang `D-02`, dan tabel itu milik sistem Kasir/GL (`P-1`). Baris di sana
+dibuat layanan Kasir (`insertAllPaymentKasirBasicAuth`) di basis datanya sendiri. Layanan yang
+terdaftar untuk ASM adalah server **dev** (`sm-service-asmdev`), sehingga barisnya tidak ada di
+GL.T_ALL_PAYMENT@ASMD — sama dengan transfer Pega dari server dev (A26…25913: 0 baris di ASMD).
+
+## 115. Input Register: tanggal DD/MM/YYYY, Nama Treaty dan Penyebab Kerugian terisi (2026-10-01)
+
+**Tanggal.** Tanggal kejadian, Tanggal lapor, dan Tanggal terima dokumen memakai `DateField`
+(placeholder DD/MM/YYYY), sama dengan Input Receive Document; nilai yang dikirim tetap ISO.
+
+**Nama Treaty kosong** karena dokumen polis (CoverageList[].SpreadingList[]) hanya menyimpan
+`TreatyType` — kuncinya: PremiNet, PremiumSpreaded, SharePercentage, TSISpreaded, TreatyType,
+TreatyYear. Dropdown Pega menampilkan NOTE master `POOLDATA.REINSURANCETYPE` (ORS, FAC-OUT, …).
+Kini nama itu diisi saat objek dibentuk dari polis (`jenis_treaty_nama`), dan `spreading_daftar`
+melengkapi TREATYNAME yang kosong dari master yang sama — klaim PNCN lama ikut tampil benar tanpa
+UPDATE pada T_CLAIM_SPREADING.
+
+**Penyebab Kerugian tidak ada di dokumen polis** — CoverageList polis tidak punya kunci apa pun
+untuknya, dan di Pega isian ini autocomplete yang dipilih petugas (`ViewCoverageGridContent`,
+sumber `BrowseCouseOfLoss_Business` atas `V_D_CAUSE_OF_LOSS_BUSINESS`, parameter kode bisnis
+polis). Report definition itu hilang dari export; penyaringnya disimpulkan dari view (BISNISID,
+STS_AKTIF = '1'). Isiannya kini dropdown dari view itu (`GET /api/registrasi/penyebab-kerugian`),
+dan terisi sendiri HANYA bila kode bisnis polis punya tepat satu pilihan — saat klaim dibuka
+maupun di layar. Pada data 2026-10-01 hanya 10 kode bisnis yang demikian; kebanyakan punya puluhan
+pilihan, sehingga memilih otomatis berarti menebak.
+
+Nilai yang disimpan adalah D_COL_ID. Klaim lama yang CAUSEOFLOSSID-nya berisi teks bebas (mis.
+"ACCIDENT") tetap menampilkan teks itu sebagai pilihan agar tidak terhapus diam-diam.
+
+## 116. Form AcceptationLOD terisi sesuai AcceptationLOD_PreAct (2026-10-01)
+
+Endpoint baru `POST /api/registrasi/klaim/{id}/akseptasi/awal` menghitung isian awal form
+(`registrasi.DefaultAcceptance`), dan form mengisinya sekali saat dibuka tanpa menimpa isian yang
+sudah diubah petugas.
+
+| Langkah PreAct | Yang dibawa |
+|---|---|
+| 7–8 | Dropdown **Tipe Akseptasi Klaim** (baru di form): 1 Indemnity, 2 Interim, 3 Reinstatement, 4 Adjuster Fee |
+| 11–13 | Tipe Akseptasi = Tipe Pembayaran baris. Langkah 12 mengisi "1" untuk tipe 1/3/5, tetapi transisinya *continue* (`WhenTrue=2`, `WhenTruePrms=Currency` tertinggal tanpa aksi), sehingga langkah 13 selalu menimpanya |
+| 14–16 (Non-MBU) | **Nama Komite Akseptasi** = anggota komite terakhir (urut jenjang) yang menyetujui; **Nilai LOD** = Gross × Share ASM / 100 |
+| 15 | Komite beranggota ≥ 2 → satu Operator ID yang ditulis di dalam rule. Di sini pengaturan `AKSEPTASI_KOMITE_BERJENJANG` (`D-15`); kosong = anggota terakhir yang menyetujui |
+| 17 (Non-MBU) | Lokasi kejadian kosong → "Location kosong !! Tidak dapat melakukan akseptasi", tampil di form DAN menolak Submit |
+
+Tidak dibawa: langkah 9–10 (isian SLIK OJK `SurveyOJKKlaim` — belum ada di form; integrasi SLIK
+tertunda, lihat `acceptance.go`), langkah 18 `CekProteksiCurreny` (**hilang dari export**), dan
+langkah 19–20 (daftar lampiran tersimpan di dalam form).
+
+## 117. Unggah akseptasi gagal "File name sudah ada" — nama berkas dibuat unik seperti Pega (2026-10-01)
+
+Submit akseptasi PNCN.26.17 gagal dengan ORA-20009 dari trigger `GENERAL.TBIU_STORAGE_IMAGE`
+(ASMD). Trigger itu menolak FILENAME yang sudah ada di SELURUH `T_STORAGE_IMAGE` — lintas klaim
+dan aplikasi. Berkas bernama sama sudah pernah diunggah untuk PNCN.26.0014 (2026-09-30), sehingga
+unggahan kedua ditolak SETELAH berkasnya terkirim ke penyimpanan.
+
+Pega tidak pernah mengirim nama asli: keempat pemanggil `InsertDokumenPNC`
+(`SetAdjustmentAcceptation` 57.4, `UploadDocumentToGoogleStorage`, `CNMUpdateMasterRekening_act`,
+`ASMSendsEmailAttachments_PDF`) membentuk
+`@CurrentDate("yyMdhm-sS","Asia/Jakarta") + "-" + <DOC_COL_ID> + "-" + <nama>`, dan nama itu pula
+yang menjadi ATTACHNAME. `registrasi.UploadFileName` menirunya dan dipakai unggahan akseptasi dan
+Unggah Dokumen. Penggantian png/jpg → avif pada nama tidak dibawa (konversi ditentukan modul
+dokumen penunjang dari ekstensi).
+
+Unggahan langsung modul dokumen penunjang (endpoint miliknya sendiri, layar Input Req Protection /
+Inbox Accept) kini memakai pola yang sama lewat `dokumenpenunjang.NamaUnggah`, dengan isian
+`jenis_dokumen` sebagai ID jenis dokumen (Work Owner, 2026-10-01). Dengan itu ketiga jalur unggah ke
+penyimpanan memakai nama Pega.
+
+## 118. "Total share spreading tidak 100%" pada klaim berjaminan dua — total kini per jaminan (2026-10-01)
+
+Klaim dengan dua jaminan (100% FAC-OUT; 2,5% BPPDAN + 97,5% FAC-OUT) ditolak karena
+`Claim.TotalSpreading` menjumlahkan SELURUH jaminan (200%). Pega memeriksa per jaminan:
+`InputRegister_act` 37.3.1 mereset `local.totalspreading := 0` di dalam loop ObjectCoverageList,
+37.3.5.9 menambahkan share, dan 37.3.6 memeriksanya masih di dalam loop yang sama — sama dengan
+invarian `I-1`. Total kini `Coverage.TotalSpreading`, diperiksa per jaminan (pesan sekali), dan
+ringkasan layar Input Register menampilkan jaminan mana yang belum 100%.

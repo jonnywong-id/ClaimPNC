@@ -22323,3 +22323,11 @@ portal dan TYPESERVICE; kredensial dari KASIR_USER / KASIR_PASSWORD; hanya syara
 yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status transfer dibaca
 dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
 baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.
+
+## 125. Print Draft Persetujuan diunduh langsung, tanpa efek samping Pega (2026-09-30)
+
+Tombol PRINT di samping Nomor Akseptasi hanya membentuk PDF Draft Persetujuan dan mengunduhnya,
+sama dengan keputusan Print DLA. Langkah lain `PrintPDFAcceptanceNote` — konversi JSON,
+Outstanding Acceptance, penerbitan DLA, lampiran, dan email — tidak dijalankan; yang ditulis hanya
+jejak audit `DRAFT_AKSEPTASI_CETAK`. Tata letak Travel dan Personal Accident belum dibangun.
+Transfer Kasir dipindah dari grid ke detail adjustment, sesuai letaknya di `InputAdjustment_sect`.

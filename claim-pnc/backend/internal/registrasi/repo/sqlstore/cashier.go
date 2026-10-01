@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -45,6 +46,31 @@ func (s *CashierStore) Log(ctx context.Context, e registrasi.CashierLog) error {
 	if _, err := executorFrom(ctx, s.db).ExecContext(ctx, loadQuery("kasir_log"),
 		e.AcceptedNo, emptyTextAsNil(e.ClaimNumber), emptyTextAsNil(e.PIC), e.Status, emptyTextAsNil(e.Reason)); err != nil {
 		return fmt.Errorf("registrasi/sqlstore: menulis log kasir: %w", err)
+	}
+	return nil
+}
+
+// AccountRegistered memenuhi registrasi.CashierStore.
+func (s *CashierStore) AccountRegistered(ctx context.Context, accountNo, bankID string) (bool, error) {
+	var n int
+	if err := s.db.QueryRowContext(ctx, loadQuery("kasir_rekening_terdaftar"),
+		strings.TrimSpace(accountNo), strings.TrimSpace(bankID)).Scan(&n); err != nil {
+		return false, fmt.Errorf("registrasi/sqlstore: memeriksa rekening di Kasir: %w", err)
+	}
+	return n > 0, nil
+}
+
+// LogService menulis satu baris CLAIM_SERVICE_LOG. JSONIN adalah badan yang dikirim ke Kasir —
+// json.Marshal atas muatan yang sama dengan cashierlink, sehingga isinya sama persis.
+func (s *CashierStore) LogService(ctx context.Context, e registrasi.CashierServiceLog) error {
+	body, err := json.Marshal(e.Request)
+	if err != nil {
+		return err
+	}
+	if _, err := executorFrom(ctx, s.db).ExecContext(ctx, loadQuery("kasir_log_layanan"),
+		e.ClaimNumber, string(body), emptyTextAsNil(e.Response), registrasi.CashierServiceLogCategory,
+		emptyTextAsNil(e.AcceptedNo)); err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menulis log layanan kasir: %w", err)
 	}
 	return nil
 }

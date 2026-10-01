@@ -241,6 +241,18 @@ SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
 -- lima report definition Pega hilang dari export; tabel sumbernya dipastikan dengan
 -- menelusuri satu contoh nyata dari layar Pega sampai ke kode posnya.
 
+-- name: penyebab_kerugian_bisnis
+--
+-- Pilihan Penyebab Kerugian satu kode bisnis — pengganti BrowseCouseOfLoss_Business yang
+-- hilang dari export. Satu D_COL_ID dapat muncul lebih dari sekali untuk bisnis yang sama
+-- bila view-nya menggandakan baris; DISTINCT menjaga daftar tetap satu baris per pilihan.
+SELECT DISTINCT CAST(D_COL_ID AS VARCHAR(20)), DESCRIPTION
+  FROM POOLDATA.V_D_CAUSE_OF_LOSS_BUSINESS
+ WHERE CAST(BISNISID AS VARCHAR(20)) = :1
+   AND STS_AKTIF = '1'
+   AND DESCRIPTION IS NOT NULL
+ ORDER BY DESCRIPTION
+
 -- name: wilayah_negara
 SELECT ID, COUNTRY, CAST(NULL AS VARCHAR(10))
   FROM POOLDATA.COUNTRY

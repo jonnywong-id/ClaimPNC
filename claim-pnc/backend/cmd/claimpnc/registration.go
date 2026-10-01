@@ -12,8 +12,9 @@ import (
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/registrasi"
-	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/acceptancenotepdf"
 	"claim-pnc/internal/registrasi/dlapdf"
+	"claim-pnc/internal/registrasi/facesheetpdf"
 	"claim-pnc/internal/registrasi/lodpdf"
 	"claim-pnc/internal/registrasi/plapdf"
 	"claim-pnc/internal/registrasi/repo/cashierlink"
@@ -58,17 +59,21 @@ func assembleRegistration(
 	documents registrasi.DocumentUploader,
 	catalog premiumlink.ServiceCatalog,
 	cashier config.Cashier,
+	acceptanceCommittee string,
 ) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
 
 	options := registrasiusecase.Options{
-		IDGenerator:       idGenerator,
-		Clock:             clock,
-		FaceSheetRenderer: facesheetpdf.Renderer{},
-		PLARenderer:       plapdf.Renderer{},
-		DLARenderer:       dlapdf.Renderer{},
-		LODRenderer:       lodpdf.Renderer{},
+		IDGenerator:            idGenerator,
+		Clock:                  clock,
+		FaceSheetRenderer:      facesheetpdf.Renderer{},
+		PLARenderer:            plapdf.Renderer{},
+		DLARenderer:            dlapdf.Renderer{},
+		AcceptanceNoteRenderer: acceptancenotepdf.Renderer{},
+		LODRenderer:            lodpdf.Renderer{},
+
+		AcceptanceMultiLevelCommittee: acceptanceCommittee,
 	}
 
 	if db != nil {
@@ -85,6 +90,7 @@ func assembleRegistration(
 		options.Assigner = registrasisql.NewAssigner(db)
 		options.ClaimReportLink = registrasisql.NewClaimReportLink(db)
 		options.AreaDirectory = registrasisql.NewAreaDirectory(db)
+		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)
 		options.PolicyItems = registrasisql.NewPolicyItems(db)
 		options.CurrencyDirectory = registrasisql.NewCurrencyDirectory(db)
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
@@ -93,6 +99,7 @@ func assembleRegistration(
 		options.PLA = registrasisql.NewPLAStore(db)
 		options.DLA = registrasisql.NewDLAStore(db)
 		options.Cashier = registrasisql.NewCashierStore(db)
+		options.CashierAccountCheck = cashier.CheckAccount
 		options.Groups = registrasisql.NewGroupStore(db)
 		options.Inbox = registrasisql.NewInboxEntryStore(db)
 		options.Accounts = registrasisql.NewAccountDirectory(db)
@@ -154,6 +161,7 @@ func assembleRegistration(
 		options.Assigner = registrasimemory.NewAssigner(registrasimemory.SampleTeams())
 		options.ClaimReportLink = registrasimemory.NewClaimReportLink()
 		options.AreaDirectory = registrasimemory.NewAreaDirectory()
+		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)
 		options.PolicyItems = registrasimemory.NewPolicyItems(registrasimemory.SamplePolicyItems())
 		options.CurrencyDirectory = registrasimemory.CurrencyDirectory{}
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)

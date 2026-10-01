@@ -8,6 +8,8 @@ import {
   AreaLevel,
   RegistrationErrorCode,
   type AreaOptionsResponse,
+  type CauseOfLossOptionsResponse,
+  type AcceptanceDefaults,
   type Violation,
   type RegisterRequest,
   type FlowResponse,
@@ -162,6 +164,26 @@ export function useAreaOptions(level: AreaLevel, parent: string) {
     queryFn: () =>
       callAPI<AreaOptionsResponse>(
         `/api/registrasi/wilayah/${level}?induk=${encodeURIComponent(parent)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Pilihan Penyebab Kerugian menurut kode bisnis polis — pengganti autocomplete Pega
+ * BrowseCouseOfLoss_Business. Kode bisnis kosong tidak memanggil server.
+ */
+export function useCauseOfLossOptions(businessCode: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'penyebab-kerugian', businessCode, token],
+    enabled: businessCode !== '',
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<CauseOfLossOptionsResponse>(
+        `/api/registrasi/penyebab-kerugian?bisnis=${encodeURIComponent(businessCode)}`,
         { token, portal },
       ),
   })
@@ -468,6 +490,25 @@ export function usePrintDLA(claimID: string) {
   })
 }
 
+/**
+ * Tombol PRINT di samping Nomor Akseptasi — PDF Draft Persetujuan (`PrintPDFAcceptanceNote`).
+ * Badannya sama dengan Transfer Kasir: tugas beserta objek, jaminan, dan adjustment.
+ */
+export function usePrintAcceptanceNote(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: CashierRequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/draft`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
 /** Isi dialog konfirmasi Transfer Kasir (penerima, rekening, nilai nett, galat pertama). */
 export function useCashierPreview(claimID: string) {
   const token = useSession((state) => state.token)
@@ -535,6 +576,69 @@ export function useLODTypes(claimID: string) {
 }
 
 /**
+ * Pilihan dropdown Tipe LOD kolom Adjustment — daftar yang sama dengan dialog Print LOD
+ * (`SetTypePDFAdjustment`), dimuat sekali per tugas karena tidak berbeda antarbaris.
+ */
+export function useLODTypeOptions(claimID: string, taskID: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'lod-tipe', claimID, taskID, token],
+    enabled: enabled && taskID !== '',
+    staleTime: 5 * 60_000,
+    queryFn: () =>
+      callAPI<LODDialog>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`, {
+        metode: 'POST',
+        body: { tugas_id: taskID, objek: 1, jaminan: 1, adjustment: 1 },
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Isian awal form AcceptationLOD satu baris adjustment (POST …/akseptasi/awal). */
+export function useAcceptanceDefaults(
+  claimID: string,
+  address: { tugas_id: string; objek: number; jaminan: number; adjustment: number },
+) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'akseptasi-awal', claimID, address, token],
+    staleTime: 0,
+    queryFn: () =>
+      callAPI<AcceptanceDefaults>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/awal`, {
+        metode: 'POST',
+        body: address,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Menyimpan pilihan dropdown Tipe LOD (PDFTYPE) satu baris adjustment, lalu memuat ulang klaim. */
+export function useSetLODType(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: LODRequest) =>
+      callAPI<unknown>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/pilih`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/**
  * Print LOD — mengunduh PDF Letter of Discharge satu baris adjustment. Mencetak menulis
  * PDFTYPE dan PRINTLOD_DATE baris itu, sehingga klaim dimuat ulang: kolom Adjustment grid dan
  * form AcceptationLOD menampilkan Tipe PDF dan Tanggal Cetak LOD yang baru.
@@ -564,6 +668,8 @@ export type AcceptanceInput = {
   objek: number
   jaminan: number
   adjustment: number
+  /** `.TipeAkseptasi` — terisi dari AcceptationLOD_PreAct, dapat diubah. */
+  tipe_akseptasi?: string
   persetujuan_tertanggung: string
   tanggal_terima_lod: string
   tanggal_boleh_bayar: string

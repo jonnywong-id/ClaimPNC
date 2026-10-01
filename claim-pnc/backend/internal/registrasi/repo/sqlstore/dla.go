@@ -142,12 +142,13 @@ func (s *DLAStore) Treaty(ctx context.Context, businessCode string, year int, tr
 			return out, fmt.Errorf("registrasi/sqlstore: membaca QS treaty: %w", err)
 		}
 		for qs.Next() {
-			var pct sql.NullString
-			if err := qs.Scan(&pct); err != nil {
+			var pct, name sql.NullString
+			if err := qs.Scan(&pct, &name); err != nil {
 				_ = qs.Close()
 				return out, err
 			}
 			out.QSPct = trimmed(pct) // baris terakhir yang dipakai
+			out.QSParts = append(out.QSParts, registrasi.TreatyQSPart{Name: trimmed(name), Pct: trimmed(pct)})
 		}
 		_ = qs.Close()
 		if err := qs.Err(); err != nil {
@@ -249,12 +250,13 @@ func parseDLAPolicy(body []byte) (registrasi.DLAPolicy, error) {
 		return registrasi.DLAPolicy{}, fmt.Errorf("registrasi/sqlstore: dokumen polis tidak terbaca: %w", err)
 	}
 	p := registrasi.DLAPolicy{
-		CaseID:       field(doc, "CaseID"),
-		SumOfTSI:     registrasi.DecimalOf(field(doc, "SumOfTSI")),
-		TypeOfCoins:  field(doc, "TypeOfCoins"),
-		Syariah:      field(doc, "SyariahStatus") == "1",
-		BusinessCode: field(object(doc, "Quotation"), "BusinessCode"),
-		TSISpreaded:  map[string]*big.Rat{},
+		CaseID:         field(doc, "CaseID"),
+		SumOfTSI:       registrasi.DecimalOf(field(doc, "SumOfTSI")),
+		TypeOfCoins:    field(doc, "TypeOfCoins"),
+		Syariah:        field(doc, "SyariahStatus") == "1",
+		BusinessCode:   field(object(doc, "Quotation"), "BusinessCode"),
+		StatusBusiness: field(object(doc, "Quotation"), "StatusBusiness"),
+		TSISpreaded:    map[string]*big.Rat{},
 	}
 	if v := field(object(doc, "OfferFacIn"), "PercentShare"); v != "" {
 		p.OfferFacInShare = registrasi.DecimalOf(v)

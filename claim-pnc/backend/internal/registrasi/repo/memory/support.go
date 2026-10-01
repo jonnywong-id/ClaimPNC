@@ -66,8 +66,12 @@ func SamplePolicies(now time.Time) []registrasi.Policy {
 	spk := base("POL-SPK-0004", registrasi.LineMiscellaneous, "SPK", "PT Contoh Kredit Sejahtera")
 	spk.CreditGuarantee = true
 
+	// Kode bisnis karangan; pilihan Penyebab Kerugian contohnya ada di AreaDirectory.
+	fire := base("POL-FIRE-0001", registrasi.LineFire, "Fire", "PT Contoh Industri Nusantara")
+	fire.BusinessCode = "10013"
+
 	return []registrasi.Policy{
-		base("POL-FIRE-0001", registrasi.LineFire, "Fire", "PT Contoh Industri Nusantara"),
+		fire,
 		base("POL-PA-0002", registrasi.LinePersonalAccident, "PersonalAccident", "Contoh Karyawan Bersama"),
 		base("POL-TRV-0003", registrasi.LineTravel, "Travel", "Contoh Wisata Mandiri"),
 		spk,

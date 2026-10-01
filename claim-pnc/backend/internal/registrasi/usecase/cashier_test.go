@@ -109,3 +109,67 @@ func TestTransferCashierRequiresAcceptance(t *testing.T) {
 	_, err := l.service.PreviewCashierTransfer(context.Background(), cashierCommand(task), l.caller)
 	violation(t, err, registrasi.ViolationCashierNotAllowed)
 }
+
+// Setiap pemanggilan Kasir dicatat ke CLAIM_SERVICE_LOG — jawaban utuh sebagai JSONOUT.
+func TestTransferCashierWritesServiceLog(t *testing.T) {
+	l := setup(t)
+	task := l.readyForCashier(t)
+	l.cashier.Reply = registrasi.CashierReply{ResponseMessage: "SUCCESS", CaseIDCashier: "ECR-1", Body: `{"ResponseMessage":"SUCCESS"}`}
+	claim, err := l.service.TransferCashier(context.Background(), cashierCommand(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, l.cashier.ServiceLogs, 1)
+	log := l.cashier.ServiceLogs[0]
+	require.Equal(t, claim.Number, log.ClaimNumber)
+	require.Equal(t, claim.InsuredItem[0].Coverage[0].Settlement[0].AcceptedNo, log.AcceptedNo)
+	require.Equal(t, `{"ResponseMessage":"SUCCESS"}`, log.Response)
+	require.Len(t, log.Request.TAllPaymentData, 1)
+}
+
+// Kasir tidak menjawab: tetap dicatat, JSONOUT berisi galatnya.
+func TestTransferCashierLogsUnavailable(t *testing.T) {
+	l := setup(t)
+	task := l.readyForCashier(t)
+	l.cashier.Err = errors.New("timeout")
+	_, err := l.service.TransferCashier(context.Background(), cashierCommand(task), l.caller)
+	require.ErrorIs(t, err, usecase.ErrCashierUnavailable)
+	require.Len(t, l.cashier.ServiceLogs, 1)
+	require.Contains(t, l.cashier.ServiceLogs[0].Response, "timeout")
+}
+
+// Log yang gagal ditulis TIDAK membatalkan transfer yang sudah diterima Kasir.
+func TestTransferCashierSurvivesServiceLogFailure(t *testing.T) {
+	l := setup(t)
+	task := l.readyForCashier(t)
+	l.cashier.Reply = registrasi.CashierReply{ResponseMessage: "SUCCESS", CaseIDCashier: "ECR-1"}
+	l.cashier.ServiceLogErr = errors.New("ORA-00001")
+	_, err := l.service.TransferCashier(context.Background(), cashierCommand(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, l.cashier.Marked, 1)
+}
+
+// Dialog menampilkan DLA FAC OUT; Fronting dengan satu centang menambah satu baris negatif.
+func TestTransferCashierUnpaidFacOut(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task := l.readyForCashier(t)
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	l.dla.Saved = append(l.dla.Saved, registrasi.DLA{
+		ClaimID: claim.ID, ObjectID: claim.InsuredItem[0].ID, CoverageSeq: 1, AdjustmentSeq: 1,
+		Number: "H261000000000000001", Type: registrasi.DLATypeFacOut, Recipient: "REAS UJI", Value: "2500.00", Printed: true,
+	})
+	l.cashier.Reply = registrasi.CashierReply{ResponseMessage: "SUCCESS", CaseIDCashier: "ECR-1"}
+
+	preview, err := l.service.PreviewCashierTransfer(ctx, cashierCommand(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, preview.FacOut, 1)
+
+	cmd := cashierCommand(task)
+	cmd.TransferType, cmd.UnpaidFacOut = registrasi.CashierTransferFronting, []string{"H261000000000000001"}
+	_, err = l.service.TransferCashier(ctx, cmd, l.caller)
+	require.NoError(t, err)
+	rows := l.cashier.Payloads[0].TAllPaymentData
+	require.Len(t, rows, 2)
+	require.Equal(t, "H261000000000000001", rows[1].NoTrans)
+	require.Equal(t, "-2500.00", string(rows[1].Nett))
+}

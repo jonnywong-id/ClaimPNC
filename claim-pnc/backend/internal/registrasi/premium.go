@@ -31,8 +31,10 @@ type PremiumQuery struct {
 
 // PremiumInstallment adalah satu baris `PaymentData.Payment.ListInstallment`.
 type PremiumInstallment struct {
+	Number        string // InstallmentNo — kolom pertama Premium Paid On Draft Persetujuan
 	DueDate       time.Time
-	PaymentDate   string // teks apa adanya; yang dinilai Pega hanya kosong atau tidak
+	PaymentDate   string    // teks apa adanya; yang dinilai Pega hanya kosong atau tidak
+	PaidAt        time.Time // PaymentDate yang terbaca; nol bila bentuknya tidak dikenali
 	PaymentAmount string
 }
 

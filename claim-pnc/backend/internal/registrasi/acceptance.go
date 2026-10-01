@@ -170,6 +170,9 @@ type AcceptanceCheck struct {
 	Files     int // jumlah berkas unggahan "Unggah Dokumen Persetujuan LOD"
 	// OtherDLA adalah T_DLALIST adjustment lain klaim ini yang Persetujuan Tertanggung-nya 1.
 	OtherDLA []AcceptanceDLAState
+	// Location adalah ClaimData.Location — Non-MBU tanpa lokasi ditolak
+	// (`AcceptationLOD_PreAct` langkah 17).
+	Location string
 }
 
 // ValidateAcceptance memeriksa isian form dan aturan Simpan. Pega berhenti pada pesan
@@ -192,6 +195,10 @@ func ValidateAcceptance(line SettlementLine, p Policy, f AcceptanceForm, c Accep
 	}
 	if p.Line.IsNonMBU() && !f.HasLODValue {
 		v.add(ViolationAcceptanceRequired, "nilai_lod", msgAcceptanceBlank)
+	}
+
+	if p.Line.IsNonMBU() && strings.TrimSpace(c.Location) == "" {
+		v.add(ViolationAcceptanceLocation, "akseptasi", MsgAcceptanceLocation)
 	}
 
 	// Langkah 8 — dilewati untuk Travel.
@@ -261,6 +268,8 @@ type AcceptanceSource interface {
 	// (`AutoPrintPDFDraftLOD` langkah 1: `.PrintDateLOD == ""` → CurrentDateTime), PDFTYPE
 	// diisi jenis yang dicetak.
 	RecordLODPrint(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, printedAt time.Time, lodType string) error
+	// SetLODType menyimpan PDFTYPE baris — dropdown Tipe LOD kolom Adjustment.
+	SetLODType(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, lodType string) error
 	// Fields membaca tujuh isian migrasi 0013 ke baris.
 	Fields(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, line *SettlementLine) error
 	// OtherDLA membaca T_DLALIST adjustment lain klaim itu yang Persetujuan Tertanggung-nya 1.

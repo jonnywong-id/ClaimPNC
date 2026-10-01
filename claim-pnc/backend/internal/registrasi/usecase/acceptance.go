@@ -72,7 +72,7 @@ func (l *Service) AcceptSettlement(ctx context.Context, p AcceptanceCommand, by 
 		return registrasi.Claim{}, err
 	}
 	receiver, err := registrasi.ValidateAcceptance(*line, claim.Policy, form, registrasi.AcceptanceCheck{
-		Receivers: claim.Receiver, Files: len(p.Files), OtherDLA: otherDLA,
+		Receivers: claim.Receiver, Files: len(p.Files), OtherDLA: otherDLA, Location: claim.Location,
 	})
 	if err != nil {
 		return registrasi.Claim{}, err
@@ -215,15 +215,17 @@ func (l *Service) uploadAcceptanceFiles(ctx context.Context, app string, claim r
 		if chosen == nil {
 			return nil, fmt.Errorf("%w: %q", registrasi.ErrDocumentTypeUnknown, f.DocumentTypeID)
 		}
+		// Nama unik seperti SetAdjustmentAcceptation langkah 57.4 — lihat UploadFileName.
+		name := registrasi.UploadFileName(l.clock.Now(), chosen.ID, f.FileName)
 		imageID, err := l.documents.Upload(ctx, registrasi.DocumentFile{
-			Portal: app, ClaimNumber: claim.Number, FileName: f.FileName, Content: f.Content, By: by.Identity,
+			Portal: app, ClaimNumber: claim.Number, FileName: name, Content: f.Content, By: by.Identity,
 		})
 		if err != nil {
 			return nil, err
 		}
 		rows = append(rows, registrasi.NewAttachment{
 			ClaimKey:    claim.Keys().Prefixed,
-			Name:        registrasi.Truncate(f.FileName, registrasi.AttachmentNameMaxLength),
+			Name:        registrasi.Truncate(name, registrasi.AttachmentNameMaxLength),
 			Note:        registrasi.Truncate(f.Note, registrasi.AttachmentNoteMaxLength),
 			Extension:   registrasi.AttachmentExtension(f.FileName),
 			ImageID:     imageID,

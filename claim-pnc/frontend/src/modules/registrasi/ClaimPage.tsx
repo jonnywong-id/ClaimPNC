@@ -1,7 +1,9 @@
 import { forwardRef, useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import {
+  Controller,
   useFieldArray,
   useForm,
+  useWatch,
   type Control,
   type UseFormRegister,
   type UseFormSetValue,
@@ -11,6 +13,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
+import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
 import { SelectField } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
@@ -24,6 +27,7 @@ import {
   useSaveRegister,
   useSaveDraft,
   useAreaOptions,
+  useCauseOfLossOptions,
   violationsFrom,
   messagesByField,
 } from './api'
@@ -36,6 +40,7 @@ import {
   CustomerPrinciple,
   type Area,
   type AreaOption,
+  type CauseOfLossOption,
   type Claim,
   type Violation,
   type RegisterRequest,
@@ -292,6 +297,13 @@ type RegisterFormValues = {
   objek: InsuredItemInput[]
 }
 
+/** Ketiga isian tanggal Data kejadian, berformat DD/MM/YYYY; nilainya tetap ISO. */
+const DATE_FIELDS = [
+  ['tanggal_kejadian', 'Tanggal kejadian'],
+  ['tanggal_lapor', 'Tanggal lapor'],
+  ['tanggal_terima_dokumen', 'Tanggal terima dokumen'],
+] as const
+
 /** Kode hubungan pelapor yang menuntut keterangan tambahan (langkah 28 sistem lama). */
 const HUBUNGAN_LAIN_LAIN = '7'
 
@@ -387,12 +399,17 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <Section title="Data kejadian">
         <div className="grid gap-4 sm:grid-cols-3">
-          <FormField id="tanggal_kejadian" label="Tanggal kejadian" type="date"
-            failure={fieldErrors['tanggal_kejadian']} {...register('tanggal_kejadian')} />
-          <FormField id="tanggal_lapor" label="Tanggal lapor" type="date"
-            failure={fieldErrors['tanggal_lapor']} {...register('tanggal_lapor')} />
-          <FormField id="tanggal_terima_dokumen" label="Tanggal terima dokumen" type="date"
-            failure={fieldErrors['tanggal_terima_dokumen']} {...register('tanggal_terima_dokumen')} />
+          {DATE_FIELDS.map(([name, label]) => (
+            <Controller
+              key={name}
+              control={control}
+              name={name}
+              render={({ field }) => (
+                <DateField id={name} label={label} value={field.value} onChange={field.onChange}
+                  error={fieldErrors[name]} />
+              )}
+            />
+          ))}
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -463,6 +480,8 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
               index={i}
               control={control}
               register={register}
+              setValue={setValue}
+              businessCode={klaim.polis.kode_bisnis ?? ''}
               onRemove={() => objek.remove(i)}
             />
           ))}
@@ -743,11 +762,15 @@ function InsuredItemEditor({
   index,
   control,
   register,
+  setValue,
+  businessCode,
   onRemove,
 }: {
   index: number
   control: Control<RegisterFormValues>
   register: UseFormRegister<RegisterFormValues>
+  setValue: UseFormSetValue<RegisterFormValues>
+  businessCode: string
   onRemove: () => void
 }) {
   const coverage = useFieldArray({ control, name: `objek.${index}.coverage` })
@@ -768,6 +791,8 @@ function InsuredItemEditor({
             index={j}
             control={control}
             register={register}
+            setValue={setValue}
+            businessCode={businessCode}
             onRemove={() => coverage.remove(j)}
           />
         ))}
@@ -798,23 +823,43 @@ function CoverageEditor({
   index,
   control,
   register,
+  setValue,
+  businessCode,
   onRemove,
 }: {
   itemIndex: number
   index: number
   control: Control<RegisterFormValues>
   register: UseFormRegister<RegisterFormValues>
+  setValue: UseFormSetValue<RegisterFormValues>
+  businessCode: string
   onRemove: () => void
 }) {
   const nama = `objek.${itemIndex}.coverage.${index}` as const
   const spreading = useFieldArray({ control, name: `${nama}.spreading` })
+  const cause = useWatch({ control, name: `${nama}.penyebab_kerugian` })
+  const causes = useCauseOfLossOptions(businessCode)
+  const causeOptions = causes.data?.pilihan ?? []
+
+  // Kode bisnis yang pilihannya tepat satu tidak perlu dipilih petugas — pilihan itu
+  // langsung diisi. Lebih dari satu pilihan tetap menunggu petugas.
+  const only = causeOptions.length === 1 ? causeOptions[0]!.id : ''
+  useEffect(() => {
+    if (only !== '' && !cause) setValue(`${nama}.penyebab_kerugian`, only, { shouldDirty: true })
+  }, [only, cause, nama, setValue])
 
   return (
     <div className="rounded border border-slate-200 bg-white p-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <FormField id={`${nama}-id`} label="Kode coverage" {...register(`${nama}.id`)} />
         <FormField id={`${nama}-nama`} label="Nama coverage" {...register(`${nama}.nama`)} />
-        <FormField id={`${nama}-sebab`} label="Penyebab kerugian" {...register(`${nama}.penyebab_kerugian`)} />
+        <SelectField
+          id={`${nama}-sebab`}
+          label="Penyebab kerugian"
+          options={causeSelectOptions(causeOptions, cause)}
+          emptyText={causes.isFetching ? 'Memuat…' : '— pilih —'}
+          {...register(`${nama}.penyebab_kerugian`)}
+        />
         <FormField id={`${nama}-tsi`} label="TSI" inputMode="decimal" {...register(`${nama}.tsi`)} />
       </div>
 
@@ -880,32 +925,43 @@ function CoverageEditor({
 }
 
 /**
+ * Pilihan Penyebab Kerugian untuk dropdown. Nilai tersimpan yang tidak ada di daftar —
+ * misalnya teks yang diketik sebelum isian ini menjadi dropdown — tetap ditampilkan,
+ * supaya membuka ulang klaim lama tidak diam-diam mengosongkannya.
+ */
+export function causeSelectOptions(options: CauseOfLossOption[], current: string | undefined) {
+  const list = options.map((o) => ({ value: o.id, label: o.nama }))
+  if (current && !options.some((o) => o.id === current)) list.unshift({ value: current, label: current })
+  return list
+}
+
+/**
  * Ringkasan total share, ditampilkan sebelum petugas menekan Simpan.
  *
  * Ia BUKAN validasi — penolakan tetap milik server. Ia perhitungan yang sama yang sudah
  * ada di layar, ditunjukkan lebih awal, supaya petugas tidak perlu menekan Simpan untuk
  * tahu totalnya belum 100%.
+ *
+ * Totalnya PER JAMINAN, sama dengan server (`InputRegister_act` 37.3.1 mereset total di
+ * dalam loop coverage): dua jaminan masing-masing 100% sudah benar.
  */
 function SpreadingSummary({ values }: { values: InsuredItemInput[] | undefined }) {
   if (!values || values.length === 0) return null
 
-  let totalE4 = 0
   let count = 0
   let totalTSI = 0
+  const offside: string[] = []
 
-  for (const o of values) {
-    for (const c of o.coverage ?? []) {
+  values.forEach((o, i) => {
+    ;(o.coverage ?? []).forEach((c, j) => {
       totalTSI += rupiahToCents(c.tsi || '0') || 0
-      for (const s of c.spreading ?? []) {
-        if (s.dihapus) continue
-        const num = Number((s.share || '0').replace(',', '.'))
-        if (!Number.isNaN(num)) totalE4 += Math.round(num * 10_000)
-        count += 1
+      const totalE4 = coverageShareE4(c)
+      count += (c.spreading ?? []).filter((s) => !s.dihapus).length
+      if (totalE4 < 999_999 || totalE4 > 1_000_001) {
+        offside.push(`Objek ${i + 1} · ${c.id || `jaminan ${j + 1}`}: ${formatPercent(totalE4)}`)
       }
-    }
-  }
-
-  const hundred = totalE4 >= 999_999 && totalE4 <= 1_000_001
+    })
+  })
 
   return (
     <section className="rounded border border-slate-200 p-4 text-sm">
@@ -915,16 +971,32 @@ function SpreadingSummary({ values }: { values: InsuredItemInput[] | undefined }
         <Row label="Total TSI" value={formatRupiah(totalTSI)} />
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Total share
+            Total share per jaminan
           </dt>
-          <dd className={hundred ? 'text-sm text-slate-900' : 'text-sm font-medium text-red-700'}>
-            {formatPercent(totalE4)}
-            {!hundred && ' — belum 100%'}
-          </dd>
+          {offside.length === 0 ? (
+            <dd className="text-sm text-slate-900">100% di setiap jaminan</dd>
+          ) : (
+            offside.map((line) => (
+              <dd key={line} className="text-sm font-medium text-red-700">
+                {line} — belum 100%
+              </dd>
+            ))
+          )}
         </div>
       </dl>
     </section>
   )
+}
+
+/** Total share satu jaminan dalam persen × 10.000, baris bertanda hapus tidak dihitung. */
+export function coverageShareE4(c: CoverageInput): number {
+  let total = 0
+  for (const s of c.spreading ?? []) {
+    if (s.dihapus) continue
+    const num = Number((s.share || '0').replace(',', '.'))
+    if (!Number.isNaN(num)) total += Math.round(num * 10_000)
+  }
+  return total
 }
 
 // ── Terjemahan antara bentuk layar dan bentuk API ──────────────────────────────────

@@ -346,6 +346,28 @@ export type AreaOptionsResponse = {
   pilihan: AreaOption[]
 }
 
+/**
+ * Isian awal form AcceptationLOD (AcceptationLOD_PreAct): Tipe Akseptasi beserta pilihannya,
+ * Nama Komite Akseptasi, Nilai LOD (Non-MBU saja), dan peringatan yang menolak akseptasi.
+ */
+export type AcceptanceDefaults = {
+  tipe_akseptasi: string
+  pilihan_tipe_akseptasi: { id: string; nama: string }[]
+  nama_komite_akseptasi: string
+  nilai_lod_sen?: number
+  peringatan: string[]
+}
+
+/** Satu pilihan Penyebab Kerugian: id D_COL_ID, nama DESCRIPTION. */
+export type CauseOfLossOption = {
+  id: string
+  nama: string
+}
+
+export type CauseOfLossOptionsResponse = {
+  pilihan: CauseOfLossOption[]
+}
+
 /** Negara yang membuka isian Kota sampai Kode Pos (kondisi Country = 'INDONESIA'). */
 export const COUNTRY_INDONESIA = 'INDONESIA'
 
@@ -606,6 +628,10 @@ export type CashierRequest = {
   objek: number
   jaminan: number
   adjustment: number
+  /** "Tipe Transfer Kasir": 1 Pembayaran Biasa, 2 Join Placement, 3 Fronting. */
+  tipe_transfer?: string
+  /** No DLA FAC OUT yang dicentang "Pilih Fac-out Tidak Dibayar". */
+  fac_out_tidak_dibayar?: string[]
 }
 
 /** Isi dialog konfirmasi Transfer Kasir; masalah berisi galat validasi pertama. */
@@ -618,6 +644,12 @@ export type CashierPreview = {
   nilai_nett_sen: number
   mata_uang: string
   masalah: string
+  /** Kalimat konfirmasi Pega (Pre_AlertTransferkasir). */
+  konfirmasi: string
+  /** Pilihan "Tipe Transfer Kasir" (property JoinPlacement). */
+  tipe_transfer: { id: string; nama: string }[]
+  /** DLA FAC OUT adjustment ini (GetdataFacoutJoinPlacement). */
+  fac_out: { nomor_dla: string; nama_facout: string; nilai_bayar: string; mata_uang: string }[]
 }
 
 export type DLAListResponse = {

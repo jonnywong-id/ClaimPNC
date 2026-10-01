@@ -79,8 +79,9 @@ SELECT a.RP
 
 -- name: dla_treaty_qs
 --
--- searchQSReins2_SQL: persen QS. Pega mengambil baris TERAKHIR hasil tanpa urutan.
-SELECT REPLACE(a.PCT, ',', '.')
+-- searchQSReins2_SQL: persen QS. DLA mengambil baris TERAKHIR hasil tanpa urutan; Draft
+-- Persetujuan mencetak seluruh baris dengan REINSTYPENAME-nya (QS (OR), QS (R/I)).
+SELECT REPLACE(a.PCT, ',', '.'), a.REINSTYPENAME
   FROM POOLDATA.PROPORTIONALARRG a
  WHERE a.TREATYYEAR = :1 AND a.PARENTREINSTYPEID = :2 AND a.TREATYGROUPID = :3
    AND a.PCT IS NOT NULL AND a.TREATYDESCID = '10001'

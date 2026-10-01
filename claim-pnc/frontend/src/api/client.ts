@@ -369,14 +369,21 @@ export async function unduhBerkas(
   }
 
   if (!response.ok) {
+    // Pelanggaran validasi ikut dibawa seperti callAPI — tanpa itu penolakan 422 hanya
+    // terbaca "Validasi gagal", dan alasan sebenarnya (mis. Print DLA, Draft Persetujuan)
+    // tidak pernah sampai ke layar.
     const content = (await readJSON(response)) as {
       kode?: string
       pesan?: string
+      detail?: unknown
+      field?: unknown
     } | null
     throw new APIError(
       content?.kode ?? ErrorCode.internalError,
       content?.pesan ?? 'Berkas tidak dapat diunduh.',
       response.status,
+      Array.isArray(content?.detail) ? (content.detail as FieldViolation[]) : [],
+      fieldMap(content?.field),
     )
   }
 
