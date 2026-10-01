@@ -267,7 +267,44 @@ export type LetterDraft = {
  * Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali —
  * yang menjelaskan ketiadaannya adalah `isian_belum_terpetakan`.
  */
+/** Satu baris grid "Tanggal Terima Dokumen". */
+export type ReceivedDate = {
+  tanggal: string
+  keterangan: string
+}
+
 export type DocumentReceipt = {
+  /**
+   * Grid "Tanggal Terima Dokumen" — paling banyak SATU baris.
+   *
+   * Daftarnya page list Pega tanpa tabel; hanya baris pertamanya yang diekspos sebagai
+   * kolom. Lihat `tanggal_terima_dokumen_sebagian`.
+   */
+  tanggal_terima_dokumen: ReceivedDate[]
+
+  /**
+   * Daftar di atas MUNGKIN tidak lengkap.
+   *
+   * Datang dari server supaya ia hilang di satu tempat begitu baris kedua dan seterusnya
+   * terbaca lewat layanan Pega.
+   */
+  tanggal_terima_dokumen_sebagian: boolean
+
+  /**
+   * "Tanggal Kelengkapan Dokumen" — dari `TGL_TERIMA_DOKUMEN_PUCL`.
+   *
+   * Sudah berbentuk tampilan; layar tidak memformat ulang apa pun.
+   */
+  tanggal_kelengkapan_dokumen: string
+
+  /**
+   * "Email Tertanggung" — dari `T_CLAIM_PNC.EMAIL_LOD`.
+   *
+   * Kolomnya ADA tetapi kosong pada seluruh baris produksi (dihitung 2026-10-01), sehingga
+   * isian ini akan tergambar kosong. Itu keadaan DATA, bukan isian yang belum terpetakan.
+   */
+  email_tertanggung: string
+
   /**
    * Judulnya di layar **"Catatan untuk Analyst"**, bukan "Komentar PUCL".
    *

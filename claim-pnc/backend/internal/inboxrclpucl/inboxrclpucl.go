@@ -1016,6 +1016,50 @@ type DocumentReceipt struct {
 	// Satu-satunya isian bagian ini yang punya kolom terverifikasi; ia muncul di
 	// `RDB List/ReminderPUCL-SQL.xml` sebagai `KOMENTARPUCL_1`.
 	PUCLNote string
+
+	// CompleteAt adalah **"Tanggal Kelengkapan Dokumen"** — isian WAJIB di section.
+	//
+	// Properti section-nya `TanggalTerimaDokumenPUCL`, dan kolomnya
+	// `POOLDATA.TC_PNC_PUCL.TGL_TERIMA_DOKUMEN_PUCL` (`TIMESTAMP(6)`). Ditetapkan Work Owner
+	// 2026-10-01; sebelumnya isian ini digambar bertanda "di clipboard Pega".
+	//
+	// Sudah berbentuk tampilan WIB, sama seperti seluruh tanggal modul ini.
+	CompleteAt string
+
+	// InsuredEmail adalah **"Email Tertanggung"**.
+	//
+	// Properti section-nya `EmailLod`, dan satu-satunya isian layar kerja yang diambil dari
+	// LUAR tabel datar: `POOLDATA.T_CLAIM_PNC.EMAIL_LOD`, digabung lewat nomor case.
+	//
+	// # Kolomnya ADA tetapi KOSONG di seluruh baris
+	//
+	// Dihitung langsung 2026-10-01: `EMAIL_LOD` terisi pada **0 dari 2.206** baris
+	// `T_CLAIM_PNC`. Jadi isian ini akan tergambar kosong, dan itu bukan kekeliruan
+	// penyambungan — datanya memang belum pernah diisi.
+	//
+	// Dinyatakan di sini supaya kekosongannya tidak dilaporkan sebagai cacat kode, dan supaya
+	// penelusurannya mengarah ke proses yang MENGISI kolom itu.
+	InsuredEmail string
+
+	// ReceivedDates adalah grid **"Tanggal Terima Dokumen"** — kolom Tanggal dan Keterangan.
+	//
+	// # Paling banyak SATU baris, dan itu batas DATA, bukan batas rancangan
+	//
+	// Grid-nya terikat page list `.ClaimData.PUCLStatus.DateReceivedDocument` berkelas
+	// `ASM-FW-GCNMFW-Data-DateReceivedDocument`. Katalog Oracle dicari 2026-10-01: tidak ada
+	// tabel bernama mirip itu, dan tidak ada satu pun tabel yang memuat `DATERECEIVED`
+	// bersama `REMARKS`. Daftarnya memang hidup di dalam blob objek kerja.
+	//
+	// Yang terbaca hanyalah BARIS PERTAMANYA, lewat dua kolom hasil ekspos pada tabel objek
+	// kerja — pola akhiran `_1` yang sama dengan `RCL_PUCL_1` dan `MSIG_1`:
+	//
+	//	RECEIVEDDATE_1  terisi 4.156 dari 7.723 · panjang maksimum 23
+	//	KETERANGAN_1    terisi    85            · panjang maksimum 32
+	//
+	// Bentuknya tetap SENARAI meski isinya paling banyak satu, karena itulah bentuk gridnya
+	// di layar lama. Begitu baris kedua dan seterusnya terbaca — lewat layanan Pega pada
+	// `permintaan-artefak-pega.md` §12 — isinya bertambah tanpa mengubah kontrak.
+	ReceivedDates []ReceivedDocumentDate
 }
 
 // TrackHidden adalah kode jalur yang menyembunyikan tab "Penerimaan Dokumen" di Pega.
@@ -1053,6 +1097,31 @@ var ErrClaimNotFound = errors.New("inboxrclpucl: klaim tidak ditemukan")
 // sebuah id dokumen memang ada — keterangan yang tidak dibutuhkan siapa pun yang berhak, dan
 // berguna justru bagi yang tidak.
 var ErrDocumentNotFound = errors.New("inboxrclpucl: dokumen tidak ditemukan")
+
+// ReceivedDocumentDate adalah satu baris grid "Tanggal Terima Dokumen".
+//
+// Kedua isiannya adalah kolom grid di `SectionPenerimaanDokumenPUCL`: `.DateReceived` dengan
+// judul **"Tanggal"**, dan `.Remarks` dengan judul **"Keterangan"**.
+type ReceivedDocumentDate struct {
+	// Date sudah berbentuk tampilan WIB.
+	Date string
+
+	// Note adalah kolom "Keterangan". Ia sering kosong — kolomnya terisi pada 85 dari 7.723
+	// baris — dan barisnya tetap digambar selama tanggalnya ada.
+	Note string
+}
+
+// ReceivedDatesOf menyusun grid "Tanggal Terima Dokumen" dari baris pertamanya.
+//
+// Baris yang tanggalnya KOSONG tidak dibentuk sama sekali, meski keterangannya terisi: grid
+// tanpa baris berarti daftarnya memang kosong, sedangkan satu baris bertanggal kosong terbaca
+// sebagai entri yang ada tetapi belum diisi. Keduanya menuntut tindakan yang berbeda.
+func ReceivedDatesOf(date, note string) []ReceivedDocumentDate {
+	if strings.TrimSpace(date) == "" {
+		return nil
+	}
+	return []ReceivedDocumentDate{{Date: date, Note: note}}
+}
 
 // Document adalah satu baris daftar dokumen klaim — layar "Lihat Dokumen".
 //

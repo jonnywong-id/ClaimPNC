@@ -24963,3 +24963,177 @@ muncul sampai empat kali pada satu layar.
 Satu uji baru menuntut tombol **"Salin nomor case" hanya ada SATU** di layar, berapa pun tombol
 yang sudah ditekan — dan **nol** setelah berpindah tab. Jumlah, bukan teks: inilah bentuk cacat
 yang dilaporkan, dan menguji teksnya saja akan lolos untuk dua panel yang isinya kebetulan sama.
+
+---
+
+## 131. Inbox RCL/PUCL — dua isian clipboard terpetakan, dan tiga koreksi atas pemetaannya (2026-10-01)
+
+**Penetapan Work Owner:** gabungkan `POOLDATA.T_CLAIM_PNC` untuk `EMAIL_LOD`, ambil sisanya dari
+`POOLDATA.TC_PNC_PUCL`, gabungkan **lewat `CLAIMID` saja**, dan isi "Tanggal Kelengkapan Dokumen"
+dari `TGL_TERIMA_DOKUMEN_PUCL`.
+
+Dijalankan — dengan **tiga koreksi** yang ditemukan sebelum kuerinya ditulis. Ketiganya dibaca
+langsung dari katalog dan data Oracle 2026-10-01, bukan disimpulkan.
+
+### 131.1 `CLAIMID = CLAIMID` mengembalikan NOL baris
+
+| Yang diuji | Cocok |
+|---|---|
+| `c.CLAIMID = p.CLAIMID` | **0** |
+| `c.CLAIMNO = p.CLAIMID` | **1** dari 1 |
+
+Sebabnya terbaca dari strukturnya:
+
+| | |
+|---|---|
+| `T_CLAIM_PNC.CLAIMID` berawalan `ASM-FW-GCNMFW-WORK ` | **2.170 dari 2.206** |
+| `TC_PNC_PUCL.CLAIMID` berawalan sama | **0** |
+
+Jadi **dua kolom bernama sama menyimpan hal yang berbeda**: yang di tabel Pega membawa kunci
+teknis berawalan nama kelas (utang teknis §4.1 `CLAUDE.md`), yang di tabel datar membawa nomor
+case polos. Yang menyimpan nomor case di `T_CLAIM_PNC` adalah **`CLAIMNO`**.
+
+**Maksud keputusannya dijalankan** — satu kunci saja, yaitu penanda klaim. Yang dikoreksi hanya
+kolom mana yang benar-benar menyimpannya. Memakai `CLAIMID` apa adanya akan mengosongkan isian
+itu **tanpa satu pun galat**.
+
+### 131.2 Dua nama kolom tidak ada
+
+| Disebut | Yang ada | Di tabel |
+|---|---|---|
+| `USER_TEKNIK` | **`USER_TEKNIS`** | `TC_PNC_PUCL` |
+| `EMAILLOD` | **`EMAIL_LOD`** | `T_CLAIM_PNC` |
+
+Yang kedua sejalan dengan tulisan Work Owner sendiri (`EMAIL_LOD = EMAILLOD`), yaitu nama kolom
+di kiri dan nama properti Pega di kanan.
+
+### 131.3 Enam kolom tidak dirujuk section mana pun
+
+Dari delapan yang disebut, hanya dua yang menjadi isian layar kerja. Dihitung dari kedua berkas
+section:
+
+| Properti | `SectionLampiranSuratPUCL` | `SectionPenerimaanDokumenPUCL` |
+|---|---|---|
+| `EmailLod` | — | **4×** → "Email Tertanggung" |
+| `TanggalTerimaDokumenPUCL` | — | **3×** → "Tanggal Kelengkapan Dokumen" |
+| `DateOfLoss` | **3×** | — | sudah terpasang sebagai "Tanggal Kejadian" |
+| `SOBName` · `QQName` · `BusinessName` · `BranchName` · `StatusClaim` · `NoPolis` · `PICTeknik` | **0** | **0** |
+
+`NOPOLIS` dan `DATEOFLOSS` memang sudah dibaca dari tabel datar sejak §84. Keenam sisanya
+**tidak digambar layar kerja** — keduanya tidak punya sel di section mana pun. Ia diangkat
+sebagai pertanyaan alih-alih ditambahkan ke layar: menambah isian yang tidak ada di layar lama
+melanggar `D-13`.
+
+### 131.4 Yang dikerjakan
+
+```
+TGL_TERIMA_DOKUMEN_PUCL  ->  "Tanggal Kelengkapan Dokumen"   (tabel datar)
+T_CLAIM_PNC.EMAIL_LOD    ->  "Email Tertanggung"             (subkueri, gabung CLAIMNO)
+```
+
+Daftar isian tak terpetakan karena itu menyusut lagi — **sembilan → lima (§84.2) → tiga**. Yang
+tersisa: No Kontrak, Business Unit / Seksi, dan daftar Tanggal terima Dokumen.
+
+### 131.5 `EMAIL_LOD` ADA tetapi KOSONG di seluruh baris
+
+Dihitung langsung: terisi pada **0 dari 2.206** baris `T_CLAIM_PNC`.
+
+Jadi "Email Tertanggung" akan tergambar **kosong**, dan itu **bukan** kekeliruan penyambungan.
+Dinyatakan di tipe domain, di DTO, dan di contoh uji — contohnya sengaja dibuat kosong, supaya
+yang diuji adalah keadaan yang benar-benar akan terjadi.
+
+Perbedaannya penting dan dijaga: isian itu **tidak** masuk daftar "belum terpetakan". Yang belum
+terpetakan menuntut pencarian ke Tim Pega; yang kosong menuntut penelusuran ke proses yang
+mengisi kolomnya. Mencampurnya mengirim orang ke pihak yang salah.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Keenam kolom yang tidak dirujuk section** — `SOB_NAME`, `QQ_NAME`, `BUSINESS_NAME`, `BRANCH_NAME`, `STATUS_CLAIM`, `USER_TEKNIS` — hendak digambar di isian yang mana? Menambahkannya sendiri melanggar `D-13` | Work Owner |
+| Proses mana yang mengisi `T_CLAIM_PNC.EMAIL_LOD`, dan mengapa kosong di seluruh baris | Work Owner + pemilik proses pengisi |
+
+---
+
+## 132. Inbox RCL/PUCL — grid "Tanggal Terima Dokumen" terisi sebagian (2026-10-01)
+
+**Laporan Work Owner:** grid itu masih kosong dengan keterangan *"Daftarnya tersimpan di
+clipboard Pega, bukan sebagai kolom tabel."*
+
+### 132.1 Keterangan itu benar — tetapi hanya separuh
+
+Grid-nya terikat page list **`.ClaimData.PUCLStatus.DateReceivedDocument`** berkelas
+`ASM-FW-GCNMFW-Data-DateReceivedDocument`, dengan kolom `.DateReceived` ("Tanggal") dan
+`.Remarks` ("Keterangan"). Catatan: **"Keterangan" adalah label kolom** (`pyType LABEL`), bukan
+properti terikat — yang terikat `.Remarks`.
+
+Katalog Oracle dicari 2026-10-01:
+
+| Yang dicari | Hasil |
+|---|---|
+| Tabel bernama mirip `DateReceivedDocument` | **tidak ada** |
+| Tabel yang punya `DATERECEIVED` **dan** `REMARKS` | **tidak ada** |
+
+Jadi daftarnya memang hidup di dalam blob objek kerja. **Tetapi baris pertamanya diekspos**
+sebagai kolom pada tabel objek kerja — pola akhiran `_1` yang sama dengan `RCL_PUCL_1` dan
+`MSIG_1`:
+
+| Kolom | Terisi | Panjang maksimum |
+|---|---:|---:|
+| `RECEIVEDDATE_1` | **4.156 dari 7.723** | 23 |
+| `KETERANGAN_1` | 85 | 32 |
+
+Panjang maksimum 23 itu yang memastikan keduanya **bukan daftar berdelimiter** — hanya cukup
+untuk satu timestamp.
+
+### 132.2 Yang dikerjakan
+
+Grid digambar dengan **satu baris**, dan layar menyatakan bahwa baris kedua dan seterusnya belum
+terbaca. Arah kegagalan sama dengan daftar dokumen: **kurang, bukan salah**.
+
+Keterangan "baru baris pertama" digambar **hanya saat ada barisnya**. Pada daftar kosong ia
+menyesatkan — terbaca sebagai "mungkin ada yang tersembunyi", padahal kemungkinan terbesarnya
+daftarnya memang kosong. Keduanya ditahan uji terpisah.
+
+**"+ Tambah" dan "Hapus"** sebelumnya digambar sebagai teks abu-abu yang tidak menanggapi apa
+pun — bentuk yang tidak dapat dibedakan dari tautan rusak. Keduanya kini memakai panel yang sama
+dengan tombol tindakan lain.
+
+### 132.3 Penjaga kueri DIPERSEMPIT, bukan dilemahkan
+
+Dua uji penjaga gagal begitu `detail` membaca `PC_ASM_FW_GCNMFW_WORK`, dan **itu benar** — mereka
+memang ada untuk menangkap kueri tabel datar yang tertinggal membaca tabel Pega. Kelas cacat itu
+nyata: kueri yang tertinggal **tetap berjalan** dan mengembalikan baris yang terbaca masuk akal.
+
+Melonggarkan penjaganya akan menghapus perlindungan itu untuk **seluruh** kueri. Yang dipakai:
+`pegaReadsAllowedIn` menyebut kueri mana boleh membaca kolom Pega apa, satu per satu:
+
+```go
+var pegaReadsAllowedIn = map[string][]string{
+	"detail": {"RECEIVEDDATE_1", "KETERANGAN_1", "PYID"},
+}
+```
+
+Ditambah satu tuntutan baru: kueri yang diberi pengecualian **tetap wajib** ber-`FROM
+POOLDATA.TC_PNC_PUCL p` sebagai sumber utamanya. Jadi tabel Pega hanya boleh disubkueri, bukan
+menjadi sumbernya.
+
+Begitu layanan Pega (§12) mengembalikan daftarnya utuh, isian itu dikosongkan dan subkuerinya
+dibuang.
+
+### 132.4 Status tombol tulis — tidak berubah, dan itu bukan kelalaian
+
+"Kirim Ke Analyst" dan "Unggah Dokumen" **masih belum berjalan**. Jalurnya sudah diputuskan
+(§129.1): lewat layanan REST Pega, yang permintaannya tertulis di `permintaan-artefak-pega.md`
+§12 dan **menunggu Tim Pega**.
+
+Tidak ada yang dapat dikerjakan dari sisi ini sampai layanan itu ada — selain yang sudah: tombolnya
+dapat diklik dan menjawab dengan langkahnya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Layanan REST §12 — kapan tersedia, dan otentikasinya apa | Tim Pega + Keamanan Informasi |
+| Apakah baris kedua dan seterusnya grid ini perlu terbaca, atau satu baris sudah memadai | Work Owner |
+| Keenam kolom §131.3 yang tidak dirujuk section mana pun | Work Owner |

@@ -67,8 +67,18 @@ const DETAIL = {
     up: 'Objek Contoh Satu',
     jumlah_tagihan: '15000000',
   },
-  penerimaan_dokumen: { komentar_pucl: 'Menunggu kelengkapan dari cabang.' },
-  isian_belum_terpetakan: ['No Kontrak', 'Perihal', 'Email Tertanggung'],
+  penerimaan_dokumen: {
+    komentar_pucl: 'Menunggu kelengkapan dari cabang.',
+    tanggal_kelengkapan_dokumen: '2026-09-05 11:20:00',
+    // SATU baris, seperti di Oracle: daftarnya page list tanpa tabel, dan hanya baris
+    // pertamanya yang diekspos sebagai kolom.
+    tanggal_terima_dokumen: [{ tanggal: '2026-09-04 10:05:00', keterangan: 'Dokumen awal' }],
+    tanggal_terima_dokumen_sebagian: true,
+    // Sengaja KOSONG: kolom `EMAIL_LOD` ada tetapi belum terisi pada seluruh baris
+    // produksi, sehingga inilah keadaan yang sebenarnya akan digambar.
+    email_tertanggung: '',
+  },
+  isian_belum_terpetakan: ['No Kontrak', 'Business Unit / Seksi'],
   tab_penerimaan_dokumen_tampil: true,
   /*
     Susunan tombol KLAIM RCL NON-MSIG, dihitung server dari `pyCondition` tiap `pxButton`:
@@ -387,6 +397,67 @@ describe('layar kerja SendtoRCLPUCL', () => {
       screen.queryByRole('button', { name: 'Kirim Ke Analyst' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tolak Klaim' })).not.toBeInTheDocument()
+  })
+
+  it('menggambar isian yang kolomnya BARU ditemukan, bukan tanda "di clipboard Pega"', async () => {
+    // Ditetapkan Work Owner 2026-10-01: "Tanggal Kelengkapan Dokumen" dari
+    // `TC_PNC_PUCL.TGL_TERIMA_DOKUMEN_PUCL`, "Email Tertanggung" dari
+    // `T_CLAIM_PNC.EMAIL_LOD` yang digabung lewat nomor case.
+    //
+    // Yang dijaga BUKAN hanya nilainya tergambar, melainkan bahwa tandanya HILANG. Isian yang
+    // tetap bertanda padahal kolomnya sudah ada akan membuat orang mencarinya lagi ke Tim
+    // Pega — pencarian yang tidak akan menemukan apa pun.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    expect(screen.getByText('2026-09-05 11:20:00')).toBeInTheDocument()
+
+    // Hanya DUA isian yang masih bertanda — keduanya di tab Lampiran Surat, bukan di sini.
+    expect(screen.queryAllByText('di clipboard Pega')).toHaveLength(0)
+  })
+
+  it('menggambar grid "Tanggal Terima Dokumen" beserta batas keterbacaannya', async () => {
+    // Daftarnya page list `.ClaimData.PUCLStatus.DateReceivedDocument` yang TIDAK punya
+    // tabel; hanya baris pertamanya yang diekspos lewat `RECEIVEDDATE_1`/`KETERANGAN_1`.
+    //
+    // Yang dijaga: barisnya tergambar, DAN batasnya dinyatakan. Grid yang menampilkan satu
+    // baris tanpa keterangan akan terbaca sebagai daftar yang utuh.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    expect(screen.getByText('2026-09-04 10:05:00')).toBeInTheDocument()
+    expect(screen.getByText('Dokumen awal')).toBeInTheDocument()
+    expect(screen.getByText(/Baru baris pertama yang terbaca/)).toBeInTheDocument()
+
+    // Kalimat lama yang menyatakan DAFTARNYA tidak terbaca sama sekali TIDAK boleh kembali.
+    // Pola dipersempit ke kata "Daftarnya": kaki layar memakai kalimat serupa untuk ISIAN
+    // yang memang masih di clipboard, dan itu benar.
+    expect(screen.queryByText(/Daftarnya tersimpan di clipboard Pega/)).not.toBeInTheDocument()
+  })
+
+  it('tidak menyatakan "baru baris pertama" ketika daftarnya memang KOSONG', async () => {
+    // Pada daftar kosong, keterangan itu menyesatkan: ia terbaca sebagai "mungkin ada yang
+    // tersembunyi", padahal kemungkinan terbesarnya daftarnya memang kosong.
+    stubDefaultFetch({
+      ...DETAIL,
+      penerimaan_dokumen: {
+        ...DETAIL.penerimaan_dokumen,
+        tanggal_terima_dokumen: [],
+      },
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    expect(screen.getByText(/Belum ada tanggal terima dokumen/)).toBeInTheDocument()
+    expect(screen.queryByText(/Baru baris pertama yang terbaca/)).not.toBeInTheDocument()
   })
 
   it('membuka paling banyak SATU panel — menekan tombol kedua menutup yang pertama', async () => {

@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -141,8 +142,18 @@ func TestEveryFlatTableQueryReadsTheFlatTable(t *testing.T) {
 		text := query(name)
 		require.Containsf(t, text, "POOLDATA.TC_PNC_PUCL",
 			"kueri %s tidak membaca tabel datar", name)
-		require.NotContainsf(t, text, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
-			"kueri %s masih membaca tabel objek kerja Pega", name)
+
+		// Tabel objek kerja Pega hanya boleh dibaca kueri yang disebut `pegaReadsAllowedIn`,
+		// dan HANYA lewat subkueri — bukan sebagai sumber utamanya. Penjagaannya: `FROM`
+		// terluar wajib tabel datar.
+		if _, allowed := pegaReadsAllowedIn[name]; !allowed {
+			require.NotContainsf(t, text, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+				"kueri %s masih membaca tabel objek kerja Pega", name)
+		} else {
+			require.Containsf(t, text, "FROM POOLDATA.TC_PNC_PUCL p",
+				"kueri %s boleh menyubkueri tabel Pega, tetapi sumber utamanya tetap "+
+					"harus tabel datar", name)
+		}
 		require.NotContainsf(t, text, "PC_ASSIGN_WORKBASKET",
 			"kueri %s masih menggabung tabel penugasan Pega", name)
 		require.NotContainsf(t, text, "PC_ASSIGN_WORKLIST",
@@ -159,6 +170,10 @@ func TestNoFlatTableQueryUsesALegacyColumnName(t *testing.T) {
 	for _, name := range flatTableQueries {
 		text := query(name)
 		for _, column := range legacyColumnNames {
+			if slices.Contains(pegaReadsAllowedIn[name], column) {
+				// Kolom yang memang HANYA ada di tabel Pega, dan pemakaiannya diputuskan.
+				continue
+			}
 			require.NotContainsf(t, text, column,
 				"kueri %s memakai nama kolom Pega %s; tabel datar menamainya lain",
 				name, column)

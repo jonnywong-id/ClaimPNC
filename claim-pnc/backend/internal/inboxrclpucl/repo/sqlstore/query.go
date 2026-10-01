@@ -99,6 +99,14 @@ var detailColumns = []string{
 	// muncul. Ditambahkan 2026-10-01; lihat ClaimDetail.Buttons.
 	"MSIG_FLAG", "GROUP_PANEL",
 
+	// Kedua isian tab Penerimaan Dokumen yang sebelumnya bertanda "di clipboard Pega".
+	// Ditambahkan 2026-10-01 atas penetapan Work Owner; lihat catatan di kueri `detail`.
+	"DOCUMENT_COMPLETE_AT", "INSURED_EMAIL",
+
+	// Baris PERTAMA grid "Tanggal Terima Dokumen". Daftarnya page list tanpa tabel; hanya
+	// baris pertamanya yang diekspos sebagai kolom. Lihat catatan di kueri `detail`.
+	"RECEIVED_DATE_FIRST", "RECEIVED_NOTE_FIRST",
+
 	"FIRST_OBJECT_NAME", "FIRST_PROPOSE_VALUE",
 }
 
@@ -128,6 +136,27 @@ var listQueries = []string{
 // dengan ORA-00904 pada permintaan pertama di produksi, bukan saat build.
 var flatTableQueries = []string{
 	"list_cetak_surat", "list_kelengkapan_dokumen", "list_klaim_msig", "detail",
+}
+
+// pegaReadsAllowedIn menyebut kueri tabel datar yang BOLEH tetap membaca tabel Pega, beserta
+// apa yang dibacanya.
+//
+// # Kenapa pengecualian BERNAMA, bukan penjaga yang dilonggarkan
+//
+// Karena penjaganya menangkap kelas cacat yang nyata: kueri tabel datar yang tertinggal
+// membaca tabel Pega TETAP berjalan dan tetap mengembalikan baris yang terbaca masuk akal,
+// sehingga tidak ada apa pun yang menandakannya. Melonggarkan penjaganya menghapus
+// perlindungan itu untuk seluruh kueri; menyebut pengecualiannya satu per satu hanya
+// menghapusnya untuk yang memang diputuskan.
+//
+// Satu-satunya isiannya hari ini adalah `detail`, yang membaca DUA kolom hasil ekspos baris
+// pertama page list "Tanggal Terima Dokumen". Keduanya tidak ada di tabel datar, dan
+// katalognya sudah dicari — lihat catatan pada kueri `detail`.
+//
+// Begitu layanan Pega (`permintaan-artefak-pega.md` §12) mengembalikan daftar itu utuh,
+// isian ini dikosongkan dan subkuerinya dibuang.
+var pegaReadsAllowedIn = map[string][]string{
+	"detail": {"RECEIVEDDATE_1", "KETERANGAN_1", "PYID"},
 }
 
 // documentColumns adalah alias kueri daftar dokumen.

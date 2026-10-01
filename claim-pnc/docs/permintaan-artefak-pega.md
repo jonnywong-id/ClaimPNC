@@ -2051,3 +2051,131 @@ sudah ada di arsitektur (`ExternalSystem`), sehingga penggantian itu tidak menye
 | Perilaku saat gagal | `PUCLPost` mengirim surel dan memanggil layanan luar. Layanan harus menyatakan apakah kegagalan di tengah menghasilkan rollback |
 | Idempotensi | Tombol yang ditekan dua kali tidak boleh menerbitkan surat dua kali (`10-API-STRATEGY.md` §7) |
 | Lingkungan uji | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |
+
+### 12.4 Apa yang KURANG, per tombol
+
+Ditelusuri 2026-10-01 sampai ke activity terdalamnya. Keduanya berhenti di tempat yang sama —
+**penulisan tabel milik Pega** — tetapi lewat jalan yang berbeda.
+
+**Kirim Ke Analyst** menuntut tiga hal:
+
+| # | Yang dijalankan | Menulis |
+|---|---|---|
+| 1 | `InsertMitraPA(tipe="dokumen")` | `Obj-Refresh-And-Lock` → `Obj-Save` → `Commit` pada objek kerja |
+| 2 | `PUCLPost(Status=1, idObj, idCov, idAdj)` | 57 step: `SetTicket`, `AttachAsPDFC`, surel, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU`, lalu `Obj-Save` + `Commit` |
+| 3 | **`Finish Assignment`** | menyelesaikan penugasan dan meneruskan klaim — `PC_ASSIGN_*` |
+
+Butir 3 yang paling berat: ia **mesin alur kerja Pega**, dan sistem baru tidak punya padanannya.
+
+**Unggah Dokumen** menuntut dua hal:
+
+| # | Yang dijalankan | Menulis |
+|---|---|---|
+| 1 | `GCNMSaveAttachments` → `SaveAllAttachments` (bawaan Pega) | `PC_LINK_ATTACHMENT` + `PC_DATA_WORKATTACH` |
+| 2 | `SetCategoryAttachment` | 18 step, `Obj-Open-By-Handle` → `Obj-Save` → `Commit` **dua kali** |
+
+Perhatikan: ia **tidak** menulis `POOLDATA.DATA_ATTACHFILE` secara langsung. Jadi menyisipkan
+baris ke tabel itu dari Go **tidak** akan membuat lampirannya terlihat di Pega — ia hanya akan
+membuat kedua sistem menyimpan daftar yang berbeda.
+
+### 12.5 Urutan yang diusulkan — satu layanan dulu, bukan semuanya
+
+| Tahap | Layanan | Tombol yang hidup | Alasan urutannya |
+|---|---|---|---|
+| **1** | `PUCLPost` + `InsertMitraPA` | **empat** — Download Dokumen · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik | Keempatnya memakai activity yang SAMA; yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Satu layanan menghidupkan empat tombol |
+| **2** | Unggah lampiran | Unggah Dokumen | Mekanismenya berbeda — unggah berkas, bukan pemanggilan parameter — sehingga ia pekerjaan tersendiri |
+| **3** | `SaveInputRegisterDetail2` | Save | Paling ringan akibatnya: tidak meneruskan klaim, tidak mengirim surel |
+
+Tahap 1 memberi hasil terbesar per satuan kerja, dan tahap 2 tidak menahannya.
+
+### 12.6 Yang dapat dikerjakan tim pengembang SEBELUM layanannya ada
+
+Tiga hal, dan ketiganya tidak menunggu siapa pun:
+
+1. **Adapter pemanggil** di balik seam `ExternalSystem`, dibangun terhadap kontrak yang diusulkan
+   §12.1 — sehingga saat layanannya tiba yang berubah hanyalah alamatnya.
+2. **Penyambungan tombol** di layar kerja, memakai adapter itu.
+3. **Fake adapter** untuk pengujian, sehingga alurnya teruji penuh tanpa Pega.
+
+Yang **tidak** dapat dikerjakan sebelum layanannya ada: pembuktian bahwa hasilnya setara dengan
+Pega. Itu menuntut Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8`
+(`ADR-0027`), dan masih belum dikonfirmasi.
+
+### 12.7 Audit lengkap pohon pemanggilan — apa yang KURANG untuk replikasi apa adanya
+
+Diminta Work Owner 2026-10-01: *"ikuti apa adanya yang ada di Pega sampai bisa kirim analyst dan
+unggah dokumen; jika ada act atau yang lain kurang tolong beritahu."*
+
+Pohon pemanggilan ditelusuri dari tujuh akar — `InsertMitraPA`, `PUCLPost`, `GCNMSaveAttachments`,
+`SetCategoryAttachment`, `SetPreAttachmentPNC`, `SaveAttachmentOPPNC`,
+`SaveInputRegisterDetail2` — sampai habis: **92 activity**.
+
+#### Lapisan 1 — Activity: NOL yang kurang
+
+| | |
+|---|---|
+| Activity di pohon | **92** |
+| Ada di export | 75 — **31 buatan sendiri**, 44 bawaan Pega |
+| Hilang | 17, dan **seluruhnya bawaan Pega** |
+
+Ketujuh belas yang hilang adalah internal report wizard (`pzPopulateReport`,
+`pzPrepareReportWizard`, `pzGetPropsForTreeGrid`, …). **Tidak satu pun dipakai jalur tulis**, dan
+tidak satu pun rule buatan sendiri.
+
+#### Lapisan 2 — Rule Connect-SQL: SATU yang kurang
+
+15 rule dirujuk, 14 ada.
+
+| Rule | Dipanggil | Jalur |
+|---|---|---|
+| **`InsertDominanFactor`** | `SaveDominanFactor` | tombol **Save** |
+
+#### Lapisan 3 — Objek basis data: EMPAT yang kurang
+
+| Objek | Dipanggil | Jalur |
+|---|---|---|
+| **`CLOBTOBLOB`** | `PEGA_JSON_KLAIM_PNC`, `PEGA_LOGJSON_LOG` | **Kirim Ke Analyst** |
+| **`POOLDATA.CONVERT_PEGA_DATE`** | `PEGA_CONVERT_JSONKLAIM_PNC` | Save |
+| **`UPDATE_PENGKINIANDATA`** | `UPDATEINSERT_PENGKINIANDATA` | Save |
+| **`MBU.F_VALIDASI_KLAIM_PENGKINIAN`** | `Validasiklaimpengkiniandata_sql_gcnm` | Save |
+
+Yang sempat terbaca sebagai kurang tetapi **bukan**: `GET_STRING`, `GET_ARRAY`, `GET_OBJECT`
+adalah metode tipe JSON Oracle (`l_jsonObject.GET_STRING(...)`); `BASE64_ENCODE` muncul di dalam
+komentar sebagai `utl_encode.base64_encode`; dan belasan nama lain adalah **tabel**
+(`T_CLAIM_*`, `PNC_CHRONOLOGYTAT`, `JSON_KLAIM`, `LOG_TABLE_JSON`).
+
+#### Lapisan 4 — yang TIDAK dapat diminta sebagai rule, dan inilah penghalang sebenarnya
+
+Ketiga operasi berikut **ada** di export, tetapi isinya memanggil **mesin Pega**, bukan logika
+bisnis yang dapat dibaca dan ditulis ulang:
+
+| Operasi | Isinya | Menulis |
+|---|---|---|
+| `SaveAllAttachments` | `Call pzSaveAllAttachmentsDD` + **2 step Java mentah** | `PC_LINK_ATTACHMENT`, `PC_DATA_WORKATTACH` — termasuk **`PZPVSTREAM`**, blob serialisasi internal Pega |
+| `SetTicket` | metode platform **`Obj-Set-Tickets`** + 1 step Java | penanda lompatan lateral pada objek kerja |
+| `Finish Assignment` / `pzUpdateAndDeleteAssignments` | 1 step Java + `Obj-Open-By-Handle` | `PC_ASSIGN_WORKLIST` / `PC_ASSIGN_WORKBASKET` |
+
+**Akibatnya tegas:**
+
+- **Unggah Dokumen** — tidak ada satu pun artefak yang kurang, tetapi menulis lampiran yang
+  **dapat dibaca Pega** menuntut membentuk `PZPVSTREAM` dalam format serialisasi internal Pega.
+  Format itu tidak terdokumentasi di export mana pun, dan tidak dapat diminta sebagai rule.
+- **Kirim Ke Analyst** — selain `CLOBTOBLOB`, ia menuntut padanan `Finish Assignment` dan
+  `SetTicket`. Keduanya operasi mesin alur kerja, bukan aturan bisnis.
+
+Jadi yang menghalangi replikasi apa adanya **bukan artefak yang kurang** — hanya lima objek yang
+kurang, dan empat di antaranya di jalur tombol Save. Yang menghalangi adalah **tiga operasi mesin
+Pega** yang hasil kerjanya ada di dalam platform, bukan di dalam rule.
+
+Inilah tepatnya yang dihindari jalur layanan REST §12: Pega menjalankan ketiganya sendiri, dengan
+mesinnya sendiri.
+
+#### Yang tetap diminta meski jalur layanan dipilih
+
+| # | Objek | Kepada |
+|---|---|---|
+| 1 | `CLOBTOBLOB` · `CONVERT_PEGA_DATE` · `UPDATE_PENGKINIANDATA` · `MBU.F_VALIDASI_KLAIM_PENGKINIAN` | DBA |
+| 2 | Rule `InsertDominanFactor` | Tim Pega |
+
+Keempat objek basis data itu tetap dibutuhkan saat logikanya kelak ditulis ulang di Go — setelah
+Pega dimatikan — meski hari ini dijalankan Pega lewat layanan.

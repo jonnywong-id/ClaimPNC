@@ -691,6 +691,68 @@ SELECT p.CLAIMID                        AS REFERENCE,
        -- kedua section, dan ditegakkan di domain — lihat ClaimDetail.Buttons.
        p.MSIG                           AS MSIG_FLAG,
        p.GROUPPANEL                     AS GROUP_PANEL,
+       -- "Tanggal Kelengkapan Dokumen" pada tab Penerimaan Dokumen.
+       --
+       -- Properti section-nya `TanggalTerimaDokumenPUCL` (3 kemunculan di
+       -- `SectionPenerimaanDokumenPUCL`), dan kolomnya ADA di tabel datar — sehingga isian ini
+       -- TIDAK lagi bertanda "di clipboard Pega". Ditetapkan Work Owner 2026-10-01.
+       p.TGL_TERIMA_DOKUMEN_PUCL        AS DOCUMENT_COMPLETE_AT,
+       -- "Email Tertanggung" pada tab yang sama — properti `EmailLod` (4 kemunculan).
+       --
+       -- ========================================================================
+       -- SATU-SATUNYA isian yang diambil dari LUAR tabel datar, dan gabungannya
+       -- memakai CLAIMNO — BUKAN CLAIMID
+       -- ========================================================================
+       -- Work Owner menetapkan "ngelink pakai CLAIMID saja". Dijalankan apa adanya, gabungan
+       -- itu mengembalikan NOL baris. Dihitung langsung 2026-10-01:
+       --
+       --   T_CLAIM_PNC.CLAIMID berawalan 'ASM-FW-GCNMFW-WORK '   2.170 dari 2.206
+       --   TC_PNC_PUCL.CLAIMID berawalan sama                         0
+       --   c.CLAIMID = p.CLAIMID                                      0 cocok
+       --   c.CLAIMNO = p.CLAIMID                                      1 cocok  <- ini
+       --
+       -- Jadi KEDUA kolom bernama `CLAIMID` menyimpan hal yang BERBEDA: yang di tabel Pega
+       -- membawa kunci teknis berawalan nama kelas (utang teknis §4.1 `CLAUDE.md`), yang di
+       -- tabel datar membawa nomor case polos. Yang menyimpan nomor case di `T_CLAIM_PNC`
+       -- adalah `CLAIMNO`.
+       --
+       -- Maksud keputusannya tetap dijalankan — SATU kunci saja, yaitu penanda klaim; yang
+       -- dikoreksi hanya kolom mana yang benar-benar menyimpannya.
+       (SELECT c.EMAIL_LOD
+          FROM POOLDATA.T_CLAIM_PNC c
+         WHERE TRIM(c.CLAIMNO) = TRIM(p.CLAIMID)
+         FETCH FIRST 1 ROWS ONLY)       AS INSURED_EMAIL,
+       -- Grid "TANGGAL TERIMA DOKUMEN" — BARIS PERTAMA saja.
+       --
+       -- ========================================================================
+       -- Daftarnya page list, dan page list itu TIDAK punya tabel
+       -- ========================================================================
+       -- Grid-nya terikat `.ClaimData.PUCLStatus.DateReceivedDocument` berkelas
+       -- `ASM-FW-GCNMFW-Data-DateReceivedDocument`, dengan kolom `.DateReceived` dan
+       -- `.Remarks`. Katalog Oracle dicari 2026-10-01: TIDAK ADA tabel bernama mirip itu, dan
+       -- tidak ada satu pun tabel yang punya `DATERECEIVED` bersama `REMARKS`. Jadi daftarnya
+       -- memang hidup di dalam blob objek kerja.
+       --
+       -- Yang ADA adalah DUA kolom hasil ekspos BARIS PERTAMANYA pada tabel objek kerja —
+       -- pola akhiran `_1` yang sama dengan `RCL_PUCL_1`, `MSIG_1`, `LAMAKLAIM_1`:
+       --
+       --   RECEIVEDDATE_1  terisi 4.156 dari 7.723 · panjang maksimum 23 (satu timestamp)
+       --   KETERANGAN_1    terisi    85            · panjang maksimum 32
+       --
+       -- Panjang maksimum itu yang memastikan keduanya BUKAN daftar berdelimiter: 23 karakter
+       -- hanya cukup untuk satu timestamp.
+       --
+       -- Karena itu grid digambar dengan SATU baris, dan layar menyatakan bahwa baris kedua
+       -- dan seterusnya tidak terbaca. Arah kegagalannya sama dengan daftar dokumen: KURANG,
+       -- bukan salah.
+       (SELECT w.RECEIVEDDATE_1
+          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+         WHERE TRIM(w.PYID) = TRIM(p.CLAIMID)
+         FETCH FIRST 1 ROWS ONLY)       AS RECEIVED_DATE_FIRST,
+       (SELECT w.KETERANGAN_1
+          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+         WHERE TRIM(w.PYID) = TRIM(p.CLAIMID)
+         FETCH FIRST 1 ROWS ONLY)       AS RECEIVED_NOTE_FIRST,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
                INNER JOIN POOLDATA.T_CLAIM_PNC c

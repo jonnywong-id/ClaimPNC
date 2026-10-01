@@ -168,7 +168,8 @@
       "Bash(grep -vE \"^--$\")",
       "Bash(grep -vE \"^--\\( |$\\)\")",
       "Bash(gofmt -w internal/inboxrclpucl/repo/sqlstore/inboxrclpucl.go)",
-      "Bash(cd \"C:/Users/User/Documents/Migrasi Pega Ke Golang/ClaimPNC/claim-pnc/backend/internal/inboxrclpucl\" && sed -n '171,215p' usecase/*.go && echo \"=== routes ===\" && sed -n '54,90p' http/routes.go)"
+      "Bash(cd \"C:/Users/User/Documents/Migrasi Pega Ke Golang/ClaimPNC/claim-pnc/backend/internal/inboxrclpucl\" && sed -n '171,215p' usecase/*.go && echo \"=== routes ===\" && sed -n '54,90p' http/routes.go)",
+      "Bash(grep -vE \"^\\\\s*$\")"
     ],
     "additionalDirectories": [
       "\\tmp",

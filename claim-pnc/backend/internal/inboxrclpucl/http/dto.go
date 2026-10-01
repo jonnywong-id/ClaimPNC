@@ -197,12 +197,33 @@ type LetterDraftDTO struct {
 
 // DocumentReceiptDTO adalah bagian "Penerimaan Dokumen".
 //
-// Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali — dan
-// itu disengaja: mengirim isian kosong yang tidak punya sumber akan membuat layar mengira
-// datanya memang belum diisi, padahal kolomnya yang belum ditemukan. Yang menjelaskan
-// ketiadaannya adalah `UnmappedFields`.
+// TIGA dari empat isiannya kini punya kolom. Yang tersisa tanpa sumber hanyalah daftar
+// "Tanggal terima Dokumen", dan ketiadaannya dijelaskan `UnmappedFields` — bukan dikirim
+// sebagai isian kosong, yang akan membuat layar mengira datanya memang belum diisi.
 type DocumentReceiptDTO struct {
 	PUCLNote string `json:"komentar_pucl"`
+
+	// CompleteAt — "Tanggal Kelengkapan Dokumen", dari `TGL_TERIMA_DOKUMEN_PUCL`.
+	CompleteAt string `json:"tanggal_kelengkapan_dokumen"`
+
+	// ReceivedDates — grid "Tanggal Terima Dokumen".
+	//
+	// Paling banyak SATU baris: daftarnya page list tanpa tabel, dan hanya baris pertamanya
+	// yang diekspos sebagai kolom. Lihat `inboxrclpucl.DocumentReceipt.ReceivedDates`.
+	ReceivedDates []ReceivedDateDTO `json:"tanggal_terima_dokumen"`
+
+	// ReceivedDatesPartial menyatakan daftar di atas MUNGKIN tidak lengkap.
+	//
+	// Dikirim sebagai data, bukan ditulis tetap di layar, supaya ia hilang di satu tempat
+	// begitu baris kedua dan seterusnya terbaca lewat layanan Pega.
+	ReceivedDatesPartial bool `json:"tanggal_terima_dokumen_sebagian"`
+
+	// InsuredEmail — "Email Tertanggung", dari `T_CLAIM_PNC.EMAIL_LOD`.
+	//
+	// Kolomnya ADA tetapi kosong pada seluruh 2.206 baris (dihitung 2026-10-01), sehingga
+	// isian ini akan tergambar kosong. Itu keadaan DATA, bukan isian yang belum terpetakan —
+	// karena itu ia TIDAK masuk `UnmappedFields`.
+	InsuredEmail string `json:"email_tertanggung"`
 }
 
 // ClaimDetailResponse adalah jawaban GET /api/inbox-rcl-pucl/klaim/{referensi}.
@@ -270,6 +291,24 @@ func screenButtonsOf(b inboxrclpucl.ScreenButtons) ScreenButtonsDTO {
 		SendToAnalyst:    b.SendToAnalyst,
 		SendToPICTeknik:  b.SendToPICTeknik,
 	}
+}
+
+// ReceivedDateDTO adalah satu baris grid "Tanggal Terima Dokumen".
+//
+// Nama isiannya mengikuti JUDUL KOLOM yang dibaca pengguna, bukan nama properti Pega.
+type ReceivedDateDTO struct {
+	Tanggal    string `json:"tanggal"`
+	Keterangan string `json:"keterangan"`
+}
+
+func receivedDatesOf(rows []inboxrclpucl.ReceivedDocumentDate) []ReceivedDateDTO {
+	// Senarai KOSONG, bukan nil, supaya JSON-nya `[]` dan bukan `null`. Layar membedakan
+	// "daftarnya kosong" dari "isiannya tidak ada".
+	out := make([]ReceivedDateDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ReceivedDateDTO{Tanggal: row.Date, Keterangan: row.Note})
+	}
+	return out
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -403,11 +442,12 @@ func toPaginationDTO(page inboxrclpucl.Page) PaginationDTO {
 // Pega — yang membacanya petugas klaim. Satu di antaranya patut disadari: label **"No
 // Kontrak"** menempel pada properti `.ClaimData.PUCLStatus.NIK`. Label dan properti di situ
 // memang tidak sejalan, dan yang dibawa adalah LABEL-nya (`D-13`).
+// Daftarnya menyusut dua kali: dari sembilan menjadi lima saat keempat kolom surat ditemukan
+// (§84.2), lalu menjadi TIGA pada 2026-10-01 saat "Email Tertanggung" dan "Tanggal
+// Kelengkapan Dokumen" ikut terpetakan atas penetapan Work Owner.
 var unmappedLetterFields = []string{
 	"No Kontrak",
 	"Business Unit / Seksi",
-	"Email Tertanggung",
-	"Tanggal Kelengkapan Dokumen",
 	"Tanggal terima Dokumen (Tanggal · Keterangan)",
 }
 
@@ -439,7 +479,11 @@ func toClaimDetailResponse(
 		},
 
 		DocumentReceipt: DocumentReceiptDTO{
-			PUCLNote: detail.DocumentReceipt.PUCLNote,
+			PUCLNote:             detail.DocumentReceipt.PUCLNote,
+			ReceivedDates:        receivedDatesOf(detail.DocumentReceipt.ReceivedDates),
+			ReceivedDatesPartial: true,
+			CompleteAt:           detail.DocumentReceipt.CompleteAt,
+			InsuredEmail:         detail.DocumentReceipt.InsuredEmail,
 		},
 
 		UnmappedFields: unmapped,

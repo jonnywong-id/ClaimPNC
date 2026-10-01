@@ -480,7 +480,9 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 		},
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{
-			PUCLNote: candidate.PUCLNote,
+			// Satu baris, seperti di Oracle: hanya baris pertama page list yang terbaca.
+			ReceivedDates: inboxrclpucl.ReceivedDatesOf("2026-09-04 10:05:00", "Dokumen awal"),
+			PUCLNote:      candidate.PUCLNote,
 		},
 	}
 }

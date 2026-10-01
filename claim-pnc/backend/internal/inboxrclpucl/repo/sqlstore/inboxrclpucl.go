@@ -521,6 +521,8 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		subject, openingNote              sql.NullString
 		bodyNote, closingNote             sql.NullString
 		msigFlag, groupPanel              sql.NullString
+		documentCompleteAt, insuredEmail  sql.NullString
+		receivedDateFirst, receivedNote   sql.NullString
 		firstObjectName, firstPropose     sql.NullString
 	)
 
@@ -529,6 +531,8 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		&lossDate, &puclNote,
 		&subject, &openingNote, &bodyNote, &closingNote,
 		&msigFlag, &groupPanel,
+		&documentCompleteAt, &insuredEmail,
+		&receivedDateFirst, &receivedNote,
 		&firstObjectName, &firstPropose,
 	)
 	if err != nil {
@@ -580,6 +584,19 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{
 			PUCLNote: puclNote.String,
+
+			// Keduanya sebelumnya digambar bertanda "di clipboard Pega". Kolomnya ternyata
+			// ADA — `TGL_TERIMA_DOKUMEN_PUCL` di tabel datar, `EMAIL_LOD` di `T_CLAIM_PNC`.
+			CompleteAt:   inboxrclpucl.DisplayTimeText(documentCompleteAt.String),
+			InsuredEmail: insuredEmail.String,
+
+			// Baris pertama grid "Tanggal Terima Dokumen". Baris kosong TIDAK dibentuk:
+			// grid tanpa baris berarti daftarnya memang kosong, dan satu baris kosong
+			// terbaca sebagai entri yang ada tetapi tak terisi.
+			ReceivedDates: inboxrclpucl.ReceivedDatesOf(
+				inboxrclpucl.DisplayTimeText(receivedDateFirst.String),
+				receivedNote.String,
+			),
 		},
 	}, nil
 }

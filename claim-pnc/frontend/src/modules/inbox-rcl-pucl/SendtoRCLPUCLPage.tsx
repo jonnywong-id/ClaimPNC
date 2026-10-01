@@ -540,7 +540,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
 
   return (
     <>
-      <ReceivedDocumentGrid />
+      <ReceivedDocumentGrid detail={detail} />
 
       {/*
         Ketiganya FULL WIDTH di section, dan dua di antaranya WAJIB diisi (`pyRequired`
@@ -550,8 +550,11 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
       {/* Judulnya ada di kepala tab, sama seperti di Pega. */}
       <StackedFields
         fields={[
-          ['Email Tertanggung', DI_CLIPBOARD],
-          ['Tanggal Kelengkapan Dokumen', DI_CLIPBOARD, true],
+          // Keduanya TIDAK lagi bertanda "di clipboard Pega": kolomnya ditemukan 2026-10-01.
+          // "Email Tertanggung" akan sering tergambar kosong — kolomnya ada tetapi belum
+          // pernah terisi, dan itu keadaan data, bukan isian yang hilang.
+          ['Email Tertanggung', receipt?.email_tertanggung ?? ''],
+          ['Tanggal Kelengkapan Dokumen', receipt?.tanggal_kelengkapan_dokumen ?? '', true],
           ['Catatan untuk Analyst', receipt?.komentar_pucl ?? '', true],
         ]}
       />
@@ -688,22 +691,35 @@ function ScreenFooter({
  * bentuk di layar ini yang tidak dapat diwakili sebuah isian, dan menghapusnya akan
  * menyembunyikan bahwa layar lama memuat DAFTAR di sini — bukan satu tanggal.
  */
-function ReceivedDocumentGrid() {
+function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }) {
+  const rows = detail?.penerimaan_dokumen?.tanggal_terima_dokumen ?? []
+  const partial = detail?.penerimaan_dokumen?.tanggal_terima_dokumen_sebagian === true
+
   return (
     <div className="mt-6">
       <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
         Tanggal terima Dokumen
       </h3>
       {/*
-        Kedua tautan "Tambah" dan "Hapus" ADA di layar lama, di atas grid. Ia digambar
-        mati — sama alasannya dengan kelima tombol tindakan: menghilangkannya
-        menyembunyikan bahwa daftar ini dapat diisi, dan menghidupkannya menulis ke objek
-        kerja yang masih dimiliki Pega (`P-1`).
+        "Tambah" dan "Hapus" ADA di layar lama, di atas grid. Keduanya MENULIS ke objek kerja
+        yang masih dimiliki Pega (`P-1`), sehingga keduanya memakai panel yang sama dengan
+        tombol tindakan lain: dapat diklik, dan menjawab dengan langkahnya.
+
+        Sebelumnya keduanya digambar sebagai teks abu-abu yang tidak menanggapi apa pun —
+        bentuk yang tidak dapat dibedakan dari tautan rusak.
       */}
-      <p className="mt-2 flex gap-4 text-xs text-slate-400">
-        <span>+ Tambah</span>
-        <span>Hapus</span>
-      </p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        <WriteAction
+          label="+ Tambah"
+          caseNumber={detail?.referensi}
+          note="Menambah satu baris tanggal terima dokumen."
+        />
+        <WriteAction
+          label="Hapus"
+          caseNumber={detail?.referensi}
+          note="Menghapus baris yang dipilih."
+        />
+      </div>
 
       <table className="mt-2 w-full border-collapse text-sm">
         <thead>
@@ -713,13 +729,34 @@ function ReceivedDocumentGrid() {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td colSpan={2} className="py-2 text-xs text-slate-400 italic">
-              Daftarnya tersimpan di clipboard Pega, bukan sebagai kolom tabel.
-            </td>
-          </tr>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={2} className="py-2 text-xs text-slate-500">
+                Belum ada tanggal terima dokumen yang tercatat pada klaim ini.
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, index) => (
+              <tr key={`${row.tanggal}-${index}`} className="border-b border-slate-100">
+                <td className="py-1.5 text-slate-900">{row.tanggal}</td>
+                <td className="py-1.5 text-slate-700">{row.keterangan || '—'}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
+
+      {/*
+        Keterangan ketidaklengkapan datang dari SERVER, dan digambar HANYA saat ada barisnya.
+        Pada daftar yang kosong ia menyesatkan: yang terbaca akan menjadi "mungkin ada yang
+        tersembunyi" padahal kemungkinan terbesarnya daftarnya memang kosong.
+      */}
+      {partial && rows.length > 0 && (
+        <p className="mt-1 text-[11px] leading-snug text-slate-500">
+          Baru baris pertama yang terbaca. Bila di Pega ada baris berikutnya, ia belum muncul
+          di sini.
+        </p>
+      )}
     </div>
   )
 }
