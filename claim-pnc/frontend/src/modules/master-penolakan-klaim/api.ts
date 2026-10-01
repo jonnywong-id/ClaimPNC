@@ -87,8 +87,8 @@ export function useCreateRejection() {
     mutationFn: (input: RejectionInput) =>
       callAPI<RejectionResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
-      void client.invalidateQueries({ queryKey: parentKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: parentKey(portal, token) })
     },
   })
 }
@@ -121,8 +121,8 @@ export function useUpdateRejection() {
     // pengajuan keduanya diterbitkan server, dan petugas lain dapat mengubah baris yang
     // sama pada saat bersamaan.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
-      void client.invalidateQueries({ queryKey: parentKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: parentKey(portal, token) })
     },
   })
 }

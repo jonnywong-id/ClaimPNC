@@ -158,7 +158,7 @@ export function useDecideProtection() {
         { metode: 'PUT', body: { keputusan: decision }, token, portal },
       ),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all })
     },
   })
 }

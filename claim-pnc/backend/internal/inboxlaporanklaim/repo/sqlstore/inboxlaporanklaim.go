@@ -409,8 +409,6 @@ func calendarDate(t time.Time) any {
 	return clock.DateWIB(t)
 }
 
-
-
 // Insert menerbitkan nomor lalu menyimpan berkas baru — ke tabel milik aplikasi ini.
 //
 // Keduanya berjalan di dalam SATU transaksi. Ini pengecualian yang disadari terhadap

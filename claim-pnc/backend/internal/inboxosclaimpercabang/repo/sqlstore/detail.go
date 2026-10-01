@@ -66,9 +66,9 @@ func (r *Repo) detailHeader(
 	branchCode, claimNumber string,
 ) (inboxosclaimpercabang.Detail, bool, error) {
 	var (
-		detail                                       inboxosclaimpercabang.Detail
-		number, key, business, occupation            sql.NullString
-		chronology, recommendation, note             sql.NullString
+		detail                            inboxosclaimpercabang.Detail
+		number, key, business, occupation sql.NullString
+		chronology, recommendation, note  sql.NullString
 		sumInsured, estimation            any
 		registerDate                      sql.NullTime
 	)

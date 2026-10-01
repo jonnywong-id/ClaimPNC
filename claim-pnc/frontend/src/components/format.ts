@@ -96,7 +96,7 @@ export function formatDateTimeWIB(iso: string | undefined): string {
  * menolaknya lebih baik daripada nol yang tampak sah.
  */
 export function rupiahToCents(text: string): number {
-  const clean = text.trim().replace(/\./g, '').replace(',', '.')
+  const clean = text.trim().replaceAll('.', '').replace(',', '.')
   if (clean === '') return 0
   const num = Number(clean)
   if (Number.isNaN(num)) return Number.NaN

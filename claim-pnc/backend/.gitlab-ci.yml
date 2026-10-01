@@ -1,0 +1,72 @@
+# Pipeline backend Claim PNC.
+#
+# Scanning SonarQube TIDAK didefinisikan di sini: ia diurus konfigurasi CI/CD GitLab
+# kantor. Job test menyimpan laporan coverage sebagai artefak supaya dapat dibaca.
+stages:
+  - verify
+  - test
+  - build
+
+default:
+  image: golang:1.27
+  interruptible: true
+
+variables:
+  GOPATH: "$CI_PROJECT_DIR/.go"
+  GOCACHE: "$CI_PROJECT_DIR/.go-build"
+  GOLANGCI_LINT_VERSION: "v2.14.0"
+
+.go-cache: &go-cache
+  cache:
+    key:
+      files: [go.sum]
+    paths: [.go/pkg/mod/, .go-build/]
+
+fmt-vet:
+  stage: verify
+  <<: *go-cache
+  script:
+    # gofmt -l mencetak berkas yang belum terformat; keluaran kosong berarti lulus.
+    # Lewat xargs, karena daftar 1.500+ berkas melampaui batas panjang argumen shell.
+    - unformatted="$(git ls-files -z '*.go' | xargs -0 gofmt -l)"
+    - test -z "$unformatted" || { echo "$unformatted"; exit 1; }
+    - go vet ./...
+
+golangci-lint:
+  stage: verify
+  image: golangci/golangci-lint:${GOLANGCI_LINT_VERSION}
+  <<: *go-cache
+  script:
+    # Lapisan pemblokir: hanya bug (lihat .golangci.yml).
+    - golangci-lint run ./...
+
+golangci-lint-warnings:
+  stage: verify
+  image: golangci/golangci-lint:${GOLANGCI_LINT_VERSION}
+  <<: *go-cache
+  # Maintainability dan security hotspot: dilaporkan, tidak memblokir pipeline.
+  allow_failure: true
+  script:
+    - golangci-lint run -c .golangci-warnings.yml --max-issues-per-linter 0 --max-same-issues 0 ./...
+
+test:
+  stage: test
+  <<: *go-cache
+  script:
+    # -race butuh cgo; image golang resmi sudah membawa gcc.
+    - CGO_ENABLED=1 go test -race -count=1 -covermode=atomic -coverprofile=coverage.out -json ./... > test-report.json
+    - go tool cover -func=coverage.out | tail -1
+  coverage: '/total:\s+\(statements\)\s+([\d.]+)%/'
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths: [coverage.out, test-report.json]
+
+build:
+  stage: build
+  <<: *go-cache
+  script:
+    - CGO_ENABLED=0 go build -trimpath -o claimpnc ./cmd/claimpnc
+  artifacts:
+    expire_in: 1 week
+    paths: [claimpnc]

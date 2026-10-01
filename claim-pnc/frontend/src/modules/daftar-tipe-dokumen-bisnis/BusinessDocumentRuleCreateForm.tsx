@@ -424,7 +424,7 @@ export function BusinessDocumentRuleCreateForm({
                       value={String(rule.minimum_dokumen)}
                       onChange={(event) =>
                         updateRule(index, {
-                          minimum_dokumen: Number(event.target.value.replace(/[^0-9]/g, '')) || 0,
+                          minimum_dokumen: Number(event.target.value.replaceAll(/[^0-9]/g, '')) || 0,
                         })
                       }
                     />

@@ -1,5 +1,4 @@
-import { ErrorCode } from './types'
-import type { FieldViolation } from './types'
+import { ErrorCode, type FieldViolation } from './types'
 
 /**
  * Galat dari API dalam bentuk yang dapat diperiksa layar.
@@ -475,6 +474,6 @@ function fileNameFromHeader(value: string | null): string {
   const cocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(value)
   if (!cocok?.[1]) return cadangan
 
-  const nama = decodeURIComponent(cocok[1]).replace(/[\/]/g, '').trim()
+  const nama = decodeURIComponent(cocok[1]).replaceAll('/', '').trim()
   return nama === '' ? cadangan : nama
 }

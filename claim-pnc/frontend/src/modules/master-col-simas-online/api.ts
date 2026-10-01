@@ -116,7 +116,7 @@ export function useCreateCauseOfLoss() {
     // pada saat yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi
     // tabel yang sebenarnya.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }
@@ -139,8 +139,8 @@ export function useUpdateCauseOfLoss() {
     // membuka kembali baris yang sama akan menampilkan pemetaan bisnis sebelum
     // perubahan — dan pengguna akan mengira penyimpanannya gagal.
     onSuccess: (_result, variables) => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
-      void client.invalidateQueries({ queryKey: detailKey(variables.id, portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: detailKey(variables.id, portal, token) })
     },
   })
 }

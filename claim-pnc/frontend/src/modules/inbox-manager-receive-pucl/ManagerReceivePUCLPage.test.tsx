@@ -206,7 +206,7 @@ function stubDefaultFetch(rows: WorkItem[] = [BARIS_RECEIVE], tab: Tab = TAB_REC
 
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun.
-    const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab')
+    const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
     const answered = wanted === TAB_RCLPUCL.kode ? TAB_RCLPUCL : tab
 
     const baris = answered.kode === TAB_RCLPUCL.kode ? [BARIS_RCLPUCL] : rows

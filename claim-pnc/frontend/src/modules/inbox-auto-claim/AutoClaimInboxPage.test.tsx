@@ -218,7 +218,7 @@ function defaultReply(upload?: (call: Call) => Reply, premium?: (call: Call) => 
     // sehingga uji penyaring hanya dapat memeriksa URL-nya. Cacat berupa "permintaannya
     // terkirim tetapi tabelnya tidak berubah" — persis yang dilaporkan Work Owner —
     // TIDAK DAPAT ditangkap stub seperti itu.
-    const filter = new URL(call.url, 'http://uji').searchParams.get('perusahaan') ?? ''
+    const filter = new URL(call.url, 'https://uji').searchParams.get('perusahaan') ?? ''
     if (filter === '') return { body: BATCH_LIST }
 
     const batch = BATCH_LIST.batch.filter((b) => b.kode_perusahaan === filter)
@@ -894,7 +894,7 @@ describe('tab Cek Premi', () => {
     expect(result).toHaveTextContent('Kredit Utama Sejahtera')
 
     const call = calls.find((c) => c.url.startsWith('/api/inbox-auto-claim/cek-premi?'))
-    const query = new URL(call?.url ?? '', 'http://uji').searchParams
+    const query = new URL(call?.url ?? '', 'https://uji').searchParams
     expect(query.get('kode_bisnis')).toBe('10104')
     expect(query.get('kode_sumber_bisnis')).toBe('KRDU')
     expect(call?.header['X-Portal']).toBe('ASM')

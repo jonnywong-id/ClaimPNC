@@ -174,7 +174,7 @@ function IsiLayar() {
    * memakai `form` berarti menyusun sesuatu yang belum pernah dilihat pelapor.
    */
   function prosesDataKlaim() {
-    void jalankanTulis('proses', () => proses(terkirim))
+    jalankanTulis('proses', () => proses(terkirim))
   }
 
   async function unggahBerkas(berkas: File) {
@@ -192,7 +192,7 @@ function IsiLayar() {
    * `SubmitFiltered` di backend.
    */
   function kirimKeSlik() {
-    void jalankanTulis('kirim', () => kirimSlik(terkirim))
+    jalankanTulis('kirim', () => kirimSlik(terkirim))
   }
 
   if (keterangan.isError) {
@@ -280,11 +280,11 @@ function IsiLayar() {
           <Button type="submit" tone="utama">
             Cari Data
           </Button>
-          <Button type="button" tone="kedua" onClick={() => void unduh(() => ekspor(terkirim))}>
+          <Button type="button" tone="kedua" onClick={() => { unduh(() => ekspor(terkirim)) }}>
             Export Data
           </Button>
           {form.segmen === 'D01' && (
-            <Button type="button" tone="halus" onClick={() => void unduh(formatFile)}>
+            <Button type="button" tone="halus" onClick={() => { unduh(formatFile) }}>
               Format File
             </Button>
           )}
@@ -362,7 +362,7 @@ function IsiLayar() {
           tabIndex={-1}
           onChange={(event) => {
             const berkas = event.target.files?.[0]
-            if (berkas) void unggahBerkas(berkas)
+            if (berkas) unggahBerkas(berkas)
           }}
         />
 

@@ -121,13 +121,11 @@ function defaultReply(mutation?: (call: Call) => Reply) {
     if (call.url.startsWith('/api/master/auto-claim/client')) return { body: CLIENTS }
 
     if (call.method === 'GET') {
-      const status = new URL(call.url, 'http://x').searchParams.get('status') ?? '1'
-      const committeeOnly =
-        new URL(call.url, 'http://x').searchParams.get('komite_saya') === 'true'
+      const status = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
 
       let rows: unknown[] = []
       if (status === '1') rows = [APPROVED, APPROVED_BUT_BLOCKED]
-      if (status === '0') rows = committeeOnly ? [PENDING] : [PENDING]
+      if (status === '0') rows = [PENDING]
       if (status === '2') rows = []
 
       return { body: { auto_claim: rows, status, portal: 'ASM' } }

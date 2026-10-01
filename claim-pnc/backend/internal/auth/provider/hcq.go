@@ -151,17 +151,17 @@ type responsHCQ struct {
 			Name    string `json:"Name"`
 		} `json:"Person"`
 		Placement struct {
-			BranchName   string `json:"BranchName"`
-			BranchCode   string `json:"BranchCode"`
+			BranchName string `json:"BranchName"`
+			BranchCode string `json:"BranchCode"`
 			// DetailBranchCode adalah `LDC_ID` pada `GENERAL.LST_DET_CABANG@asmd`
 			// (Work Owner, 2026-09-28). Ia yang menerjemahkan identitas pegawai
 			// menjadi kode cabang yang dipakai data klaim.
 			DetailBranchCode string `json:"DetailBranchCode"`
-			PositionName string `json:"PositionName"`
-			Company      string `json:"pyCompany"`
-			Name         string `json:"Name"`
-			NIK          string `json:"NIK"`
-			IsActive     *bool  `json:"IsActive"`
+			PositionName     string `json:"PositionName"`
+			Company          string `json:"pyCompany"`
+			Name             string `json:"Name"`
+			NIK              string `json:"NIK"`
+			IsActive         *bool  `json:"IsActive"`
 		} `json:"Placement"`
 	} `json:"EmpResponse"`
 	Login string `json:"Login"`
@@ -205,17 +205,17 @@ func (h *HCQ) Verify(ctx context.Context, k auth.Credential) (auth.Profile, erro
 		// NIK dan nama diambil dari Person lebih dulu; Placement dipakai sebagai
 		// cadangan karena kedua blok memuat field yang sama dan pada sebagian respons
 		// hanya salah satunya terisi.
-		Identity:       firstNonEmpty(orang.NIK, penempatan.NIK),
-		Name:           firstNonEmpty(orang.Name, penempatan.Name),
-		Kind:           auth.Employee,
-		Login:          firstNonEmpty(orang.Login, response.Login, k.Username),
-		Email:          strings.TrimSpace(orang.Email),
-		Company:        firstNonEmpty(orang.Company, penempatan.Company),
-		Branch:         strings.TrimSpace(penempatan.BranchName),
-		BranchCode:     strings.TrimSpace(penempatan.BranchCode),
+		Identity:         firstNonEmpty(orang.NIK, penempatan.NIK),
+		Name:             firstNonEmpty(orang.Name, penempatan.Name),
+		Kind:             auth.Employee,
+		Login:            firstNonEmpty(orang.Login, response.Login, k.Username),
+		Email:            strings.TrimSpace(orang.Email),
+		Company:          firstNonEmpty(orang.Company, penempatan.Company),
+		Branch:           strings.TrimSpace(penempatan.BranchName),
+		BranchCode:       strings.TrimSpace(penempatan.BranchCode),
 		DetailBranchCode: strings.TrimSpace(penempatan.DetailBranchCode),
-		Position:       strings.TrimSpace(penempatan.PositionName),
-		ActiveAtSource: penempatan.IsActive,
+		Position:         strings.TrimSpace(penempatan.PositionName),
+		ActiveAtSource:   penempatan.IsActive,
 	}
 	if err := profile.Check(); err != nil {
 		// HCQ menjawab "berhasil" tetapi tidak menyertakan NIK atau nama. Meneruskannya

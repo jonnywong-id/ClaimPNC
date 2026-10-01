@@ -176,14 +176,14 @@ export function useKomunikasiCabangReply() {
       ),
 
     onSuccess: (_result, input) => {
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: keys.detail(portal, token, input.komunikasi),
       })
 
       // SELURUH daftar modul ini, bukan hanya tab dan halaman yang sedang terbuka: barisnya
       // meninggalkan satu tab dan masuk ke tab lain, dan halaman berapa ia mendarat tidak
       // dapat diketahui dari sini.
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: ['inbox-komunikasi-cabang', 'daftar'],
       })
     },
@@ -213,10 +213,10 @@ export function useKomunikasiCabangFinish() {
       ),
 
     onSuccess: (_result, komunikasi) => {
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: keys.detail(portal, token, komunikasi),
       })
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: ['inbox-komunikasi-cabang', 'daftar'],
       })
     },
@@ -279,7 +279,7 @@ export function useKomunikasiCabangSendMessage() {
       }),
 
     onSuccess: () => {
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: ['inbox-komunikasi-cabang', 'daftar'],
       })
     },

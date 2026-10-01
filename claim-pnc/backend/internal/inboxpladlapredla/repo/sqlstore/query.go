@@ -15,8 +15,10 @@
 //	"and trunc(a.tgldla)>=to_date('" + PLADLA.AnalystTransferDate + "','dd/mm/yyyy') …"
 //
 // Satu tanda kutip yang diketik pengguna sudah cukup mengubah arti kueri di sana. Dan
-// karena kotak tanggalnya pun dirangkai sebagai teks, isian kosong menghasilkan
-// `to_date(”,'dd/mm/yyyy')` — yang ditolak Oracle, bukan diabaikan.
+// karena kotak tanggalnya pun dirangkai sebagai teks, isian kosong menghasilkan potongan
+// berikut — yang ditolak Oracle, bukan diabaikan:
+//
+//	to_date('','dd/mm/yyyy')
 package sqlstore
 
 import (

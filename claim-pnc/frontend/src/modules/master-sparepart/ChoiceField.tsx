@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { compareCodeUnits } from '@/lib/sort'
 
 /**
  * ChoiceField adalah isian yang nilainya dipilih dari daftar, dengan jalan keluar berupa
@@ -75,7 +76,7 @@ export function ChoiceField({
   // Nilai yang sedang dipegang TETAP muncul sebagai pilihan meski tidak ada di daftar —
   // baris lama dapat memuat nilai yang belum pernah dipakai baris lain, dan menyembunyikannya
   // akan mengosongkan isian hanya karena barisnya dibuka.
-  const options = [...new Set([...known, ...(value !== '' ? [value] : [])])].sort()
+  const options = [...new Set([...known, ...(value !== '' ? [value] : [])])].sort(compareCodeUnits)
   const isTyping = value !== '' && !known.includes(value)
 
   function pick(picked: string) {

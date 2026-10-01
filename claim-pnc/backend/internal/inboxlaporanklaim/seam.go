@@ -71,10 +71,13 @@ type Caller struct {
 // ada di HRD, dan DB Link dapat sedang tidak dapat dihubungi. Pemanggil WAJIB
 // memperlakukannya sebagai "tanpa batas cabang", bukan sebagai "tidak ada berkas".
 //
-// Sistem lama memang berperilaku sebaliknya: ia merangkai `branch where ID=''` lalu
-// menampilkan daftar kosong. Perilaku itu TIDAK direplikasi, dan itu keputusan sadar —
-// `ID=''` bukan aturan bisnis melainkan akibat perangkaian teks `{ASIS:}` yang tidak
-// pernah memeriksa hasilnya. Daftar kosong yang tidak menjelaskan dirinya adalah kegagalan
+// Sistem lama memang berperilaku sebaliknya: ia merangkai potongan berikut lalu
+// menampilkan daftar kosong.
+//
+//	branch where ID=''
+//
+// Perilaku itu TIDAK direplikasi, dan itu keputusan sadar — `ID` yang kosong bukan aturan
+// bisnis melainkan akibat perangkaian teks `{ASIS:}` yang tidak pernah memeriksa hasilnya. Daftar kosong yang tidak menjelaskan dirinya adalah kegagalan
 // yang paling mahal ditemukan.
 type BranchResolver interface {
 	Resolve(ctx context.Context, login string) (code string, resolved bool, err error)
@@ -83,8 +86,8 @@ type BranchResolver interface {
 // Clean memangkas spasi setiap isian identitas.
 func (c Caller) Clean() Caller {
 	return Caller{
-		Login:      strings.TrimSpace(c.Login),
-		Name:       strings.TrimSpace(c.Name),
+		Login: strings.TrimSpace(c.Login),
+		Name:  strings.TrimSpace(c.Name),
 	}
 }
 

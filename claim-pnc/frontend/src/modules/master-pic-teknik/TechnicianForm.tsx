@@ -206,7 +206,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
   } = register('id_operator')
 
   function handleOperatorIDBlur(event: FocusEvent<HTMLInputElement>) {
-    void onBlurOperatorID(event)
+    onBlurOperatorID(event)
     searchDirectory()
   }
 

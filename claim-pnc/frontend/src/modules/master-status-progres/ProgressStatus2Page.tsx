@@ -224,7 +224,7 @@ export function ProgressStatus2Page() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
           <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>

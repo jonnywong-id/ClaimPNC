@@ -164,7 +164,7 @@ export function useCreateWorkshop() {
     mutationFn: (input: WorkshopInput) =>
       callAPI<WorkshopResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
 }
@@ -190,7 +190,7 @@ export function useSaveWorkshop() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
 }
@@ -217,7 +217,7 @@ export function useDecideWorkshop() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
 }
@@ -276,7 +276,7 @@ export function useUploadWorkshopDocument() {
     onSuccess: () => {
       // Daftar ikut disegarkan: DOKUMENID adalah kolom barisnya, sehingga baris yang
       // tampil di grid pun berubah — bukan hanya isi dialognya.
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
 }

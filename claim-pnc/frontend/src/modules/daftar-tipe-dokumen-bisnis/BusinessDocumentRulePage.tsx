@@ -200,7 +200,7 @@ export function BusinessDocumentRulePage() {
           status_wajib: values.status_wajib,
           // Diubah menjadi angka di sini, bukan di dalam form — lihat komentar skema di
           // BusinessDocumentRuleForm.
-          minimum_dokumen: Number(values.minimum_dokumen.replace(/[^0-9]/g, '')) || 0,
+          minimum_dokumen: Number(values.minimum_dokumen.replaceAll(/[^0-9]/g, '')) || 0,
         },
       },
       { onSuccess: closeForm },
@@ -302,8 +302,8 @@ export function BusinessDocumentRulePage() {
           <Button
             tone="kedua"
             onClick={() => {
-              void businesses.refetch()
-              if (selectedBusiness !== null) void rules.refetch()
+              businesses.refetch()
+              if (selectedBusiness !== null) rules.refetch()
             }}
             disabled={businesses.isFetching}
           >

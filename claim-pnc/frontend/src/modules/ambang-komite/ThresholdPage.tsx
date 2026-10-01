@@ -151,8 +151,8 @@ export function ThresholdPage() {
           <Button
             tone="kedua"
             onClick={() => {
-              void list.refetch()
-              void integrity.refetch()
+              list.refetch()
+              integrity.refetch()
             }}
             disabled={list.isFetching}
           >

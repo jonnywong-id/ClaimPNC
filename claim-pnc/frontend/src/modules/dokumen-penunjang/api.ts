@@ -103,7 +103,7 @@ export function useUnggahDokumen(nomorKlaim: string | null) {
       // dan respons unggah dapat mengembalikannya kosong. Menyisipkan hasil itu apa adanya
       // menampilkan baris tanpa tautan yang tidak akan pernah terisi sampai halaman dimuat
       // ulang.
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: keys.list(portal, token, nomor),
       })
     },

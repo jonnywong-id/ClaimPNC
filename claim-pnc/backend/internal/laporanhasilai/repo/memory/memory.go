@@ -222,7 +222,9 @@ func toDomain(one Row) laporanhasilai.Row {
 	}
 }
 
-// claimNumberOf meniru `CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END`.
+// claimNumberOf meniru ekspresi berikut:
+//
+//	CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END
 func claimNumberOf(one Row) string {
 	if strings.TrimSpace(one.CommitteeStep) != "1" {
 		return ""

@@ -136,7 +136,7 @@ export function useSendToPostAudit() {
       }),
 
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-compliance', 'daftar'] })
+      client.invalidateQueries({ queryKey: ['inbox-compliance', 'daftar'] })
     },
   })
 }

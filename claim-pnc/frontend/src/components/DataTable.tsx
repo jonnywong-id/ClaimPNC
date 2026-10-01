@@ -541,7 +541,7 @@ export function DataTable<T>({
               {shown.map((b) => {
                 const kunci = rowKey(b)
                 const isi = expandedRow?.(b) ?? null
-                const bisaDibuka = isi !== null && isi !== undefined && isi !== false
+                const bisaDibuka = isi != null && isi !== false
                 const terbuka = bisaDibuka && expanded === kunci
 
                 return (

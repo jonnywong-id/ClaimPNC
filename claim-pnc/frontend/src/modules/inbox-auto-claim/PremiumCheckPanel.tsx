@@ -45,7 +45,7 @@ export function PremiumCheckPanel() {
     if (business === '' || source === '') return
     if (pair !== null && pair.bisnis === business && pair.sumber === source) {
       // Pasangan yang sama ditekan lagi: premi dapat berubah sejak pemeriksaan terakhir.
-      void check.refetch()
+      check.refetch()
       return
     }
     setPair({ bisnis: business, sumber: source })

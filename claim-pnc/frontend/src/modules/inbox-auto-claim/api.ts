@@ -140,9 +140,9 @@ export function useRefreshAutoClaim() {
   return {
     isFetching: fetching > 0,
     refresh: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
-      void client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
-      void client.invalidateQueries({ queryKey: ['inbox-auto-claim-detail'] })
+      client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
+      client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
+      client.invalidateQueries({ queryKey: ['inbox-auto-claim-detail'] })
     },
   }
 }
@@ -219,11 +219,11 @@ export function useUploadAutoClaim(source: string) {
     // baru dapat muncul di halaman mana pun tergantung urutannya, dan nomor batch
     // diterbitkan server sehingga layar tidak dapat menebak di mana ia akan muncul.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
+      client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
       // Ringkasan ikut disegarkan. Tanpa ini, grafik dan tabel ringkasan tetap
       // menampilkan angka sebelum unggahan — dan selisihnya dengan grid yang sudah
       // diperbarui terbaca sebagai kerusakan, bukan sebagai data basi.
-      void client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
+      client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
     },
   })
 }

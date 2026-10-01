@@ -464,7 +464,8 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 	if err != nil {
 		return fmt.Errorf("registrasi/sqlstore: membaca tahap klaim dari tugasnya: %w", err)
 	}
-	for baris.Next() {
+	// Hanya baris pertama yang dibaca — tugas terbuka tertua (urutan DIBUAT_PADA, ID).
+	if baris.Next() {
 		var (
 			id, klaimID, nomor, tahap, antrean, workbasket, pemilik sql.NullString
 			dibuat, diambil, selesai                                sql.NullTime
@@ -476,7 +477,6 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 			return fmt.Errorf("registrasi/sqlstore: membaca tugas terbuka: %w", err)
 		}
 		k.CurrentStage = tahap.String
-		break
 	}
 	if err := baris.Err(); err != nil {
 		_ = baris.Close()

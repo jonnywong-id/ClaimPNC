@@ -155,8 +155,8 @@ import (
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
-	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimpremium "claim-pnc/internal/inboxautoclaim/premium"
+	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
 	inboxbandinghargasalvagehttp "claim-pnc/internal/inboxbandinghargasalvage/http"
@@ -1062,6 +1062,10 @@ func run() error {
 	// Master Dokumen Travel. Seperti Master Status Progres, tabelnya ada di basis data
 	// SETIAP entitas — rutenya karena itu memasang pemeriksaan portal sendiri di dalam
 	// Mount.
+	// DILAPORKAN, BELUM DIPERBAIKI: galat NewHandler ini tidak pernah diperiksa — ia
+	// tertimpa galat berikutnya. Memeriksanya mengubah perilaku start (aplikasi berhenti
+	// alih-alih jalan dengan handler nil), jadi menunggu keputusan Work Owner.
+	//nolint:staticcheck // SA4006 — lihat catatan di atas.
 	travelDocumentHandler, err := masterdokumentravelhttp.NewHandler(masterdokumentravelhttp.Options{
 		Service:       assembly.masterDokumenTravel,
 		Logger:        logger,
@@ -3912,7 +3916,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	extra, err := buildExtraServices(store, logger)
+	// DILAPORKAN, BELUM DIPERBAIKI: galat buildExtraServices tidak pernah diperiksa — ia
+	// tertimpa baris berikutnya. Memeriksanya mengubah perilaku start, jadi menunggu
+	// keputusan Work Owner.
+	extra, err := buildExtraServices(store, logger) //nolint:ineffassign,staticcheck // lihat catatan di atas.
 	workshopService, err := masterbengkelusecase.NewService(masterbengkelusecase.Options{
 		RepoSelector: store.workshopSelector,
 	})

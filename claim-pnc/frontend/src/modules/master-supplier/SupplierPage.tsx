@@ -257,7 +257,7 @@ export function SupplierPage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Caption tombolnya mengikuti layar lama apa adanya (D-13):
               `Harness/MasterSupplier-Harness.xml` memakai "Refresh" dan "New Supplier". */}
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>

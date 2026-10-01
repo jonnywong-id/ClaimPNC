@@ -11,9 +11,9 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/dlapdf"
 	"claim-pnc/internal/registrasi/facesheetpdf"
 	"claim-pnc/internal/registrasi/lodpdf"
-	"claim-pnc/internal/registrasi/dlapdf"
 	"claim-pnc/internal/registrasi/plapdf"
 	"claim-pnc/internal/registrasi/repo/memory"
 	"claim-pnc/internal/registrasi/usecase"

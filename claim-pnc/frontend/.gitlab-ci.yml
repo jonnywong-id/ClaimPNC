@@ -1,0 +1,68 @@
+# Pipeline frontend Claim PNC.
+#
+# Scanning SonarQube TIDAK didefinisikan di sini: ia diurus konfigurasi CI/CD GitLab
+# kantor. Job test menyimpan laporan coverage sebagai artefak supaya dapat dibaca.
+stages:
+  - verify
+  - test
+  - build
+
+default:
+  image: node:24
+  interruptible: true
+
+variables:
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+
+.npm-install: &npm-install
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+  before_script:
+    - npm ci --no-audit --no-fund --prefer-offline
+
+typecheck:
+  stage: verify
+  <<: *npm-install
+  script:
+    - npm run typecheck
+
+lint:
+  stage: verify
+  <<: *npm-install
+  cache:
+    key:
+      files: [package-lock.json, tools/lint/package-lock.json]
+    paths: [.npm/]
+  script:
+    - npm run lint:install
+    - npm run lint
+
+test:
+  stage: test
+  <<: *npm-install
+  script:
+    - npm run test:coverage
+  # Angka "Lines" dari ringkasan text-summary Vitest.
+  coverage: '/Lines\s*:\s*([\d.]+)%/'
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths: [coverage/]
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+build:
+  stage: build
+  <<: *npm-install
+  script:
+    # vite.config.ts menulis ke ../backend/spa/dist untuk pengembangan lokal (satu
+    # checkout berisi backend dan frontend). Di repo frontend yang berdiri sendiri, hasil
+    # build diarahkan ke dist/ supaya dapat diambil sebagai artefak.
+    - npx vite build --outDir dist --emptyOutDir
+  artifacts:
+    expire_in: 1 week
+    paths: [dist/]

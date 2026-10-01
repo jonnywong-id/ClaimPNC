@@ -89,7 +89,7 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
         <div className="flex flex-wrap gap-2">
           <Button
             tone="halus"
-            onClick={() => void template.mutate()}
+            onClick={() => { template.mutate() }}
             disabled={template.isPending}
           >
             {template.isPending ? 'Menyiapkan…' : 'Unduh format'}

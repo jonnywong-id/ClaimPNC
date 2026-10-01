@@ -7,9 +7,8 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { useSelectedPortal } from '@/app/portal'
 
-import { useAutoClaimList, useSaveAutoClaim } from './api'
+import { useAutoClaimList, useCreateAutoClaim, useSaveAutoClaim } from './api'
 import { AutoClaimForm, type AutoClaimFormValues } from './AutoClaimForm'
-import { useCreateAutoClaim } from './api'
 
 /**
  * Empat tab, sama persis dengan layar lama.
@@ -358,7 +357,7 @@ export function AutoClaimPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>

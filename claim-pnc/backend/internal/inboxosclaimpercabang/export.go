@@ -41,7 +41,6 @@ type ExportRow struct {
 	// terjemahan `grouppanel`. Keduanya berdampingan di berkas dan mudah tertukar.
 	PolicyBusinessName string
 
-
 	// ReserveClaimFull adalah jumlah estimasi apa adanya — `SUM(estimationvalue)`, tanpa
 	// kurs dan tanpa porsi ASM.
 	//

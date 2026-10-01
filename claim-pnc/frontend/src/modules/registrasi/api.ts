@@ -107,7 +107,7 @@ export function useStartClaim() {
     mutationFn: (content: { nomor_polis: string }) =>
       callAPI<ClaimResponse>('/api/registrasi/klaim', { metode: 'POST', body: content, token, portal }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
     },
   })
 }
@@ -122,8 +122,8 @@ export function useSaveRegister() {
     mutationFn: (content: RegisterRequest) =>
       callAPI<ClaimResponse>('/api/registrasi/register', { metode: 'POST', body: content, token, portal }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -141,7 +141,7 @@ export function useSaveDraft() {
     mutationFn: (content: RegisterRequest) =>
       callAPI<ClaimResponse>('/api/registrasi/register/simpan', { metode: 'POST', body: content, token, portal }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -185,8 +185,8 @@ export function useSaveEstimate(simpan: boolean) {
         portal,
       }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -229,8 +229,8 @@ export function useClaimTask() {
     mutationFn: (taskID: string) =>
       callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { metode: 'POST', token, portal }),
     onSuccess: (tugas) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
     },
   })
 }
@@ -250,8 +250,8 @@ export function useCompleteStage() {
         portal,
       }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -269,7 +269,7 @@ export function violationsFrom(failure: unknown): Violation[] {
 
   return failure.detail.filter(
     (p): p is Violation =>
-      typeof p === 'object' && p !== null && 'kode' in p && 'field' in p && 'pesan' in p,
+      typeof p === 'object' && p != null && 'kode' in p && 'field' in p && 'pesan' in p,
   )
 }
 
@@ -349,7 +349,7 @@ export function useUploadDocument(claimID: string) {
       })
     },
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
     },
   })
 }
@@ -377,7 +377,7 @@ export function useFaceSheet(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }
@@ -499,7 +499,7 @@ export function useTransferCashier(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }
@@ -553,7 +553,7 @@ export function usePrintLOD(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }
@@ -600,8 +600,8 @@ export function useAcceptSettlement(claimID: string) {
       })
     },
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
     },
   })
 }
@@ -621,7 +621,7 @@ export function useAddSettlement(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }
@@ -677,8 +677,8 @@ export function useTransferCommittee(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      void apiClient.invalidateQueries({ queryKey: committeeKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: committeeKey })
     },
   })
 }
@@ -721,8 +721,8 @@ export function useDecideCommittee() {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: committeeKey })
-      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
+      apiClient.invalidateQueries({ queryKey: committeeKey })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
     },
   })
 }
@@ -742,7 +742,7 @@ export function useSaveReceiver(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }

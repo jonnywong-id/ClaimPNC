@@ -74,7 +74,7 @@ function installFetch(map: (call: Call) => Reply) {
 function defaultReply(mutation?: (call: Call) => Reply) {
   return (call: Call): Reply => {
     if (call.method === 'GET') {
-      const status = new URL(call.url, 'http://x').searchParams.get('status') ?? '1'
+      const status = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
 
       let rows: unknown[] = []
       if (status === '1') rows = [APPROVED]

@@ -200,8 +200,8 @@ export function SurveyInboxPage() {
           sedangMengambil={daftar.isFetching}
           galat={daftar.isError ? pesanGalat(daftar.error) : null}
           onMuatUlang={() => {
-            void daftar.refetch()
-            void jumlahTab.refetch()
+            daftar.refetch()
+            jumlahTab.refetch()
           }}
           bukaKlaim={bukaKlaim}
         />
@@ -217,7 +217,7 @@ export function SurveyInboxPage() {
           sedangMemuat={kpi.isPending}
           sedangMengambil={kpi.isFetching}
           galat={kpi.isError ? pesanGalat(kpi.error) : null}
-          onMuatUlang={() => void kpi.refetch()}
+          onMuatUlang={() => { kpi.refetch() }}
         />
       )}
 

@@ -224,12 +224,15 @@ type Row struct {
 //
 // # Cabang `else` DIPERTAHANKAN kosong, dan itu berbeda dari modul komite
 //
-// Kueri layar ini menutup `CASE`-nya dengan `ELSE ''` — kode yang tidak dikenal
+// Kueri layar ini menutup `CASE`-nya dengan string kosong — kode yang tidak dikenal
 // menghasilkan sel kosong. Di modul `komite`, rule lamanya justru menutup dengan
 // `ELSE 'DITOLAK'`, sehingga kasus yang belum diputuskan terbaca sudah ditolak; modul itu
 // menolak menirunya karena akibatnya menyesatkan pada sebuah daftar pekerjaan.
 //
-// Di sini tidak ada yang perlu ditolak: `ELSE ''` sudah jujur — ia tidak mengaku tahu.
+// Di sini tidak ada yang perlu ditolak: penutup berikut sudah jujur — ia tidak mengaku tahu.
+//
+//	ELSE ''
+//
 // Yang ditiru adalah kuerinya sendiri, bukan pola dari layar lain.
 func CommitteeLabel(code string) string {
 	switch strings.TrimSpace(code) {

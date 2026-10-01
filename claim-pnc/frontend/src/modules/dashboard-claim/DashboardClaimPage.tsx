@@ -150,8 +150,8 @@ export function DashboardClaimPage() {
             <Button
               tone="kedua"
               onClick={() => {
-                void ringkasan.refetch()
-                if (tile !== null) void telusur.refetch()
+                ringkasan.refetch()
+                if (tile !== null) telusur.refetch()
               }}
               disabled={ringkasan.isFetching}
             >

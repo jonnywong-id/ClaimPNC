@@ -110,7 +110,7 @@ export function useCreateSparepart() {
     mutationFn: (input: SparepartInput) =>
       callAPI<SparepartResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-sparepart'] })
     },
   })
 }
@@ -136,7 +136,7 @@ export function useSaveSparepart() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-sparepart'] })
     },
   })
 }
@@ -165,7 +165,7 @@ export function useDecideSparepart() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-sparepart'] })
     },
   })
 }

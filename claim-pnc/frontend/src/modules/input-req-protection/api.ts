@@ -162,7 +162,7 @@ export function useCreateProtection() {
     mutationFn: (values: ProtectionFields) =>
       callAPI<ProtectionDetail>(PATH, { metode: 'POST', body: values, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all })
     },
   })
 }
@@ -188,7 +188,7 @@ export function useUpdateProtection() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all })
     },
   })
 }

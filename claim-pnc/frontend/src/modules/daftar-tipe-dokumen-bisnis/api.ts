@@ -185,7 +185,7 @@ export function useCreateBusinessDocumentRule() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
+      client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
     },
   })
 }
@@ -208,8 +208,8 @@ export function useUpdateBusinessDocumentRule() {
     // membuka kembali baris yang sama akan menampilkan isi sebelum perubahan — dan
     // pengguna akan mengira penyimpanannya gagal.
     onSuccess: (_result, variables) => {
-      void client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
-      void client.invalidateQueries({ queryKey: ruleKey(variables.id, portal, token) })
+      client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
+      client.invalidateQueries({ queryKey: ruleKey(variables.id, portal, token) })
     },
   })
 }
@@ -236,7 +236,7 @@ export function useAddBusinessDocumentRuleCoverage() {
         portal,
       }),
     onSuccess: (_result, variables) => {
-      void client.invalidateQueries({ queryKey: ruleKey(variables.id, portal, token) })
+      client.invalidateQueries({ queryKey: ruleKey(variables.id, portal, token) })
     },
   })
 }
