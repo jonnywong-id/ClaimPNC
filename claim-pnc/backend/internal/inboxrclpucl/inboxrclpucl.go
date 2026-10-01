@@ -730,6 +730,9 @@ type ClaimDetail struct {
 	// Lampiran Surat bergantung padanya. Lihat ShowsDownloadDocument dan ShowsCloseClaim.
 	MSIG string
 
+	// ActionParameters adalah parameter tersembunyi yang dikirim ke `PUCLPost`.
+	ActionParameters ActionParameters
+
 	// GroupPanel adalah kode lini bisnis — kolom `GROUPPANEL` pada tabel datar.
 	//
 	// Ia dibawa karena dua tombol Penerimaan Dokumen memilih penerima klaim berdasarkan
@@ -1097,6 +1100,33 @@ var ErrClaimNotFound = errors.New("inboxrclpucl: klaim tidak ditemukan")
 // sebuah id dokumen memang ada — keterangan yang tidak dibutuhkan siapa pun yang berhak, dan
 // berguna justru bagi yang tidak.
 var ErrDocumentNotFound = errors.New("inboxrclpucl: dokumen tidak ditemukan")
+
+// ActionParameters adalah parameter TERSEMBUNYI yang dikirim layar ke `PUCLPost`.
+//
+// Ketiganya sel tanpa label di `SectionPenerimaanDokumenPUCL` —
+// `.ClaimData.PUCLStatus.IDObject`, `.IDCoverage`, dan `.IDAdjustment` — dan ketiganya ikut
+// pada setiap tombol yang memanggil `PUCLPost`: Download Dokumen, Tolak Klaim, dan kedua
+// tombol Kirim.
+//
+// Ia TIDAK digambar di layar, sama seperti di Pega. Yang membawanya ke sini adalah jalur
+// tulis yang sedang disiapkan — lihat `permintaan-artefak-pega.md` §12.
+//
+// # Nilai penampung sudah DICABUT
+//
+// Pada 2026-10-01 ketiganya sempat bernilai tetap `"1"` karena kolomnya belum ada. Work Owner
+// menambahkan `ID_OBJECT`, `ID_COVERAGE`, dan `ID_ADJUSTMENT` ke `POOLDATA.TC_PNC_PUCL` pada
+// hari yang sama, dan sejak itu ketiganya dibaca dari kolomnya. Konstanta penampung beserta
+// pembentuk dan uji penjaganya dihapus — bukan disisakan bernilai `false`.
+type ActionParameters struct {
+	// IDObject — `.ClaimData.PUCLStatus.IDObject`, kolom `ID_OBJECT`.
+	IDObject string
+
+	// IDCoverage — `.ClaimData.PUCLStatus.IDCoverage`, kolom `ID_COVERAGE`.
+	IDCoverage string
+
+	// IDAdjustment — `.ClaimData.PUCLStatus.IDAdjustment`, kolom `ID_ADJUSTMENT`.
+	IDAdjustment string
+}
 
 // ReceivedDocumentDate adalah satu baris grid "Tanggal Terima Dokumen".
 //

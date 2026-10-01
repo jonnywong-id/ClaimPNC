@@ -354,6 +354,21 @@ export type ClaimDetailResponse = {
    * sistem lama (`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan menaruh perbandingannya
    * di layar berarti satu aturan bisnis hidup di dua tempat.
    */
+  /**
+   * Parameter tersembunyi yang dikirim ke `PUCLPost` saat tombol tindakan ditekan.
+   *
+   * TIDAK digambar — ketiganya sel tanpa label di Pega pula. Ia ada di kontrak karena jalur
+   * tulis yang sedang disiapkan membutuhkannya.
+   *
+   * Dibaca dari kolom `ID_OBJECT`, `ID_COVERAGE`, dan `ID_ADJUSTMENT` pada tabel datar.
+   * Isian `sementara` yang sempat ada dicabut bersama nilai penampungnya.
+   */
+  parameter_tindakan: {
+    id_object: string
+    id_coverage: string
+    id_adjustment: string
+  }
+
   tombol: {
     download_dokumen: boolean
     tutup_klaim: boolean

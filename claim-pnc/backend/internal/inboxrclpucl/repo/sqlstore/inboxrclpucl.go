@@ -522,6 +522,7 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		bodyNote, closingNote             sql.NullString
 		msigFlag, groupPanel              sql.NullString
 		documentCompleteAt, insuredEmail  sql.NullString
+		idObject, idCoverage, idAdj       sql.NullString
 		receivedDateFirst, receivedNote   sql.NullString
 		firstObjectName, firstPropose     sql.NullString
 	)
@@ -531,7 +532,9 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		&lossDate, &puclNote,
 		&subject, &openingNote, &bodyNote, &closingNote,
 		&msigFlag, &groupPanel,
-		&documentCompleteAt, &insuredEmail,
+		&documentCompleteAt,
+		&idObject, &idCoverage, &idAdj,
+		&insuredEmail,
 		&receivedDateFirst, &receivedNote,
 		&firstObjectName, &firstPropose,
 	)
@@ -547,6 +550,13 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 		// ClaimDetail.Buttons.
 		MSIG:       msigFlag.String,
 		GroupPanel: groupPanel.String,
+
+		// Dibaca dari kolomnya sejak 2026-10-01; nilai penampung `"1"` dicabut.
+		ActionParameters: inboxrclpucl.ActionParameters{
+			IDObject:     idObject.String,
+			IDCoverage:   idCoverage.String,
+			IDAdjustment: idAdj.String,
+		},
 
 		Letter: inboxrclpucl.LetterDraft{
 			Track:        inboxrclpucl.TrackOf(trackCode.String),

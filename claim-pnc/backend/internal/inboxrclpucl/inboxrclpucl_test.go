@@ -632,3 +632,27 @@ func TestButtonConditionsSurviveSurroundingSpaces(t *testing.T) {
 	require.True(t, b.SendToAnalyst)
 	require.False(t, b.DownloadDocument, "MSIG berspasi tetap jalur MSIG")
 }
+
+// ---------------------------------------------------------------------------
+// Parameter tindakan — dibaca dari kolomnya
+// ---------------------------------------------------------------------------
+
+func TestActionParametersAreNotInterchangeable(t *testing.T) {
+	// Ketiganya sempat bernilai SAMA (`"1"`) sebagai penampung, 2026-10-01. Selama nilainya
+	// sama, menukar `idObj` dengan `idAdj` tidak membuat satu pun uji gagal — dan `PUCLPost`
+	// tidak menolak nilai yang tertukar: ia mengerjakannya pada baris klaim yang keliru.
+	//
+	// Uji ini menahan pertukaran itu dengan menuntut ketiganya dibawa APA ADANYA, dari isian
+	// yang berbeda-beda.
+	detail := inboxrclpucl.ClaimDetail{
+		ActionParameters: inboxrclpucl.ActionParameters{
+			IDObject:     "OBJ-7",
+			IDCoverage:   "COV-8",
+			IDAdjustment: "ADJ-9",
+		},
+	}
+
+	require.Equal(t, "OBJ-7", detail.ActionParameters.IDObject)
+	require.Equal(t, "COV-8", detail.ActionParameters.IDCoverage)
+	require.Equal(t, "ADJ-9", detail.ActionParameters.IDAdjustment)
+}

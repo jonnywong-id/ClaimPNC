@@ -269,6 +269,9 @@ CREATE TABLE POOLDATA.TC_PNC_PUCL
   BUSINESS_NAME           VARCHAR2(100 CHAR),              -- tidak digambar grid ini
   BRANCH_NAME             VARCHAR2(100 CHAR),              -- tidak digambar grid ini
   SOB_NAME                VARCHAR2(100 CHAR),              -- tidak digambar grid ini
+  ID_OBJECT               VARCHAR2(100 CHAR),              -- parameter PUCLPost; BELUM di CREATE_TABLE_3.SQL
+  ID_COVERAGE             VARCHAR2(100 CHAR),              -- idem
+  ID_ADJUSTMENT           VARCHAR2(100 CHAR),              -- idem
   GROUPPANEL              VARCHAR2(10 CHAR),               -- laporan harian saja; ejaan tanpa garis bawah, §1
   USER_TEKNIS             VARCHAR2(128 CHAR),              -- "Nama PIC Teknik"; tidak digambar grid ini
   PNC_STATUS              VARCHAR2(50 CHAR),               -- tidak digambar grid ini

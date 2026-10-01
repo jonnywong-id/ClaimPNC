@@ -25137,3 +25137,137 @@ dapat diklik dan menjawab dengan langkahnya.
 | Layanan REST §12 — kapan tersedia, dan otentikasinya apa | Tim Pega + Keamanan Informasi |
 | Apakah baris kedua dan seterusnya grid ini perlu terbaca, atau satu baris sudah memadai | Work Owner |
 | Keenam kolom §131.3 yang tidak dirujuk section mana pun | Work Owner |
+
+---
+
+## 133. Inbox RCL/PUCL — tiga parameter tindakan dipasang sebagai NILAI PENAMPUNG (2026-10-01)
+
+**Penetapan Work Owner:** *"untuk IDObject, IDCoverage, IDAdjustment set 1 saja dulu, nanti saya
+kirim untuk kolomnya."*
+
+### 133.1 Apa ketiganya
+
+Sel **tanpa label** di `SectionPenerimaanDokumenPUCL` — `.ClaimData.PUCLStatus.IDObject`,
+`.IDCoverage`, `.IDAdjustment` — yang ikut pada **setiap** tombol yang memanggil `PUCLPost`:
+Download Dokumen, Tolak Klaim, dan kedua tombol Kirim. Di Pega ketiganya tidak digambar, dan di
+sini pun tidak.
+
+### 133.2 Dipasang sebagai konstanta bernama, bukan `"1"` di tempatnya
+
+```go
+const ActionParameterPlaceholder = "1"
+func ProvisionalActionParameters() ActionParameters
+```
+
+Alasannya satu kalimat: **`"1"` yang tersebar di tiga tempat tidak dapat dibedakan dari nilai
+yang memang benar bernilai satu.** Dengan nama ini setiap pemakaiannya menyatakan dirinya
+sementara, dan mencarinya cukup sekali.
+
+Pembentuknya dipakai **kedua** pengisi seam — SQL maupun memori — supaya keduanya tidak dapat
+menyimpang, dan supaya penggantiannya kelak cukup di satu tempat.
+
+Kuerinya **tidak** disentuh. Menambahkan kolom tebakan ke `detail` akan membuat tebakan itu
+terlihat seperti pemetaan yang sudah diputuskan.
+
+### 133.3 Penanda `Provisional` adalah DATA, bukan tebakan dari nilainya
+
+Kontrak membawa `sementara: true`, dan nilainya **tidak** disimpulkan dengan membandingkan isinya
+terhadap `"1"`.
+
+Sebabnya: kolom yang sebenarnya kelak **boleh** berisi `1`. Menyimpulkannya dari nilai akan
+membuat nilai yang sah tertandai sementara selamanya — dan penanda yang tidak pernah padam sama
+tidak bergunanya dengan penanda yang tidak pernah menyala. Satu uji menahannya.
+
+### 133.4 Yang membuat penampung ini tidak dapat lolos diam-diam
+
+`TestActionParametersAreStillProvisional` **sengaja gagal** begitu kolom sebenarnya dipasang, dan
+pesannya menyebutkan apa yang harus dikerjakan:
+
+```
+1. Pastikan ketiganya memang sudah dibaca dari kolom, bukan dari penampung.
+2. Hapus `ActionParameterPlaceholder` beserta `ProvisionalActionParameters`.
+3. Hapus uji ini.
+Jangan sekadar mengubah nilai yang diharapkan.
+```
+
+**Kenapa penjagaannya seketat ini.** `PUCLPost` tidak menolak nilai yang salah — ia
+mengerjakannya pada objek, coverage, dan adjustment yang **keliru**. Penampung yang lolos ke
+jalur tulis karena itu bukan cacat tampilan melainkan tindakan pada baris klaim yang salah, dan
+tidak ada galat yang akan memunculkannya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Kolom mana yang memasok `IDObject`, `IDCoverage`, dan `IDAdjustment`** | Work Owner — akan dikirim |
+
+---
+
+## 134. Inbox RCL/PUCL — ketiga parameter tindakan dibaca dari kolomnya; penampung DICABUT (2026-10-01)
+
+Work Owner menambahkan `ID_OBJECT`, `ID_COVERAGE`, dan `ID_ADJUSTMENT` ke
+`POOLDATA.TC_PNC_PUCL` pada hari yang sama dengan pemasangan penampungnya (§133). Dibaca
+langsung sebelum kueri diubah: ketiganya `VARCHAR2(100)`, nullable, dan terisi pada baris yang
+ada.
+
+### 134.1 Penampungnya dicabut SELURUHNYA, bukan disisakan
+
+Uji penjaga §133.4 menuntut tiga langkah, dan ketiganya dikerjakan:
+
+| Langkah | Hasil |
+|---|---|
+| Pastikan dibaca dari kolom | kueri `detail` membaca ketiganya |
+| Hapus `ActionParameterPlaceholder` dan `ProvisionalActionParameters` | dihapus |
+| Hapus uji penjaganya | dihapus, diganti uji lain — lihat §134.3 |
+
+Isian kontrak **`sementara`** ikut dicabut. Kemarin ia dibela dengan alasan "selalu dikirim
+supaya klien lama tidak salah menganggapnya `false`"; alasan itu berlaku untuk **masa
+peralihan**, dan masa itu sudah lewat. Isian yang selamanya bernilai `false` tidak menyatakan
+apa pun, dan membiarkannya membuat orang mengira masih ada yang menunggu diputuskan.
+
+### 134.2 Uji urutan alias menangkap satu cacat senyap
+
+Ketiga kolom disisipkan di berkas `.sql` **sebelum** `INSURED_EMAIL`, tetapi di `detailColumns`
+ditulis **sesudahnya** — dan pemindainya mengikuti yang kedua.
+
+Akibatnya bila lolos: `INSURED_EMAIL` terbaca ke `IDObject`, dan ketiga parameter bergeser satu
+posisi. **Tidak ada galat yang muncul** — ketiganya `VARCHAR2`, sehingga Oracle menerimanya, dan
+layar menggambar email di tempat yang tidak terlihat.
+
+`TestDetailReturnsItsOwnAliases` menangkapnya seketika. Dicatat karena inilah gunanya menuntut
+urutan **berkas SQL = daftar alias = urutan pemindai** sama persis, dan karena kelas cacat ini
+akan terulang setiap kali kolom disisipkan di tengah.
+
+### 134.3 Uji penggantinya menjaga hal yang BERBEDA
+
+Yang lama menjaga bahwa nilainya masih penampung. Yang baru menjaga bahwa ketiganya **tidak
+tertukar**:
+
+```go
+IDObject "OBJ-7" · IDCoverage "COV-8" · IDAdjustment "ADJ-9"
+```
+
+Alasannya datang dari sejarahnya sendiri: selama ketiganya bernilai sama (`"1"`), menukar
+`idObj` dengan `idAdj` **tidak membuat satu pun uji gagal**. Baris contoh di penyimpanan memori
+karena itu juga diisi nilai yang berbeda-beda — bukan nilai yang sama.
+
+Ini bukan kehati-hatian berlebihan: `PUCLPost` tidak menolak parameter yang tertukar. Ia
+mengerjakannya pada objek, coverage, dan adjustment yang **keliru**.
+
+### 134.4 Selisih DDL bertambah tiga
+
+Ketiganya **belum ada di `Database/CREATE_TABLE_3.SQL`** — keadaan yang sama persis dengan
+keempat kolom surat (§84.3), dan ditangani dengan cara yang sama:
+
+- masuk `letterColumnsBeyondTheSharedDDL`, sehingga `-periksa` menyebut namanya;
+- ikut disentuh `check_columns`;
+- `docs/ddl/tc_pnc_pucl.sql` disamakan dengan tabel yang berjalan.
+
+Tanpa itu, portal yang tabelnya dibuat dari berkas DDL bersama akan gagal **ORA-00904 pada klaim
+pertama yang dibuka** — bukan saat build, dan bukan pada seluruh layar.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Ketujuh kolom di luar `CREATE_TABLE_3.SQL` dimasukkan ke berkas itu | Tim basis data |

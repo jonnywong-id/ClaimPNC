@@ -86,6 +86,13 @@ const DETAIL = {
     karena jalurnya RCL. Kedua tombol "Kirim" milik jalur PUCL, sehingga keduanya mati di
     sini.
   */
+  // Ketiganya sengaja BERBEDA: nilai yang sama membuat ketiganya tertukar tanpa satu pun
+  // uji gagal, dan `PUCLPost` tidak menolak parameter yang tertukar.
+  parameter_tindakan: {
+    id_object: 'OBJ-01',
+    id_coverage: 'COV-01',
+    id_adjustment: 'ADJ-01',
+  },
   tombol: {
     download_dokumen: true,
     tutup_klaim: false,

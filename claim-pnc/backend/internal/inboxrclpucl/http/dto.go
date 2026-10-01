@@ -255,6 +255,12 @@ type ClaimDetailResponse struct {
 	// aturan bisnis hidup di dua tempat.
 	Buttons ScreenButtonsDTO `json:"tombol"`
 
+	// ActionParameters adalah parameter tersembunyi yang dikirim layar ke `PUCLPost`.
+	//
+	// Ia TIDAK digambar — sama seperti di Pega, ketiganya sel tanpa label. Yang
+	// membawanya ke kontrak adalah jalur tulis yang sedang disiapkan.
+	ActionParameters ActionParametersDTO `json:"parameter_tindakan"`
+
 	// WriteBlocked menyatakan layar ini di Pega adalah layar TULIS.
 	//
 	// Layar memakainya untuk menjelaskan mengapa tidak ada satu pun tombol simpan di sini,
@@ -309,6 +315,25 @@ func receivedDatesOf(rows []inboxrclpucl.ReceivedDocumentDate) []ReceivedDateDTO
 		out = append(out, ReceivedDateDTO{Tanggal: row.Date, Keterangan: row.Note})
 	}
 	return out
+}
+
+// ActionParametersDTO adalah parameter tersembunyi tombol tindakan.
+//
+// Isian `sementara` yang sempat ada DICABUT bersama nilai penampungnya: isian yang selamanya
+// bernilai `false` tidak menyatakan apa pun, dan membiarkannya membuat orang mengira masih ada
+// yang menunggu diputuskan.
+type ActionParametersDTO struct {
+	IDObject     string `json:"id_object"`
+	IDCoverage   string `json:"id_coverage"`
+	IDAdjustment string `json:"id_adjustment"`
+}
+
+func actionParametersOf(p inboxrclpucl.ActionParameters) ActionParametersDTO {
+	return ActionParametersDTO{
+		IDObject:     p.IDObject,
+		IDCoverage:   p.IDCoverage,
+		IDAdjustment: p.IDAdjustment,
+	}
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -494,7 +519,8 @@ func toClaimDetailResponse(
 
 		// Susunan tombolnya pun ditegakkan di domain. Lihat
 		// `inboxrclpucl.ClaimDetail.Buttons`.
-		Buttons: screenButtonsOf(detail.Buttons()),
+		Buttons:          screenButtonsOf(detail.Buttons()),
+		ActionParameters: actionParametersOf(detail.ActionParameters),
 
 		// Selalu true selama masa paralel. Ia dikirim sebagai isian, bukan ditulis tetap
 		// di layar, supaya ia dapat berubah di satu tempat begitu kepemilikan tabelnya

@@ -467,7 +467,10 @@ SELECT COUNT(p.TGL_CETAK_DOKUMEN_PUCL)
      + COUNT(p.PERIHAL)
      + COUNT(p.KETERANGAN1)
      + COUNT(p.KETERANGAN2)
-     + COUNT(p.KETERANGAN3) AS PROBE
+     + COUNT(p.KETERANGAN3)
+     + COUNT(p.ID_OBJECT)
+     + COUNT(p.ID_COVERAGE)
+     + COUNT(p.ID_ADJUSTMENT) AS PROBE
   FROM POOLDATA.TC_PNC_PUCL p
  WHERE 1 = 0
 
@@ -697,6 +700,23 @@ SELECT p.CLAIMID                        AS REFERENCE,
        -- `SectionPenerimaanDokumenPUCL`), dan kolomnya ADA di tabel datar — sehingga isian ini
        -- TIDAK lagi bertanda "di clipboard Pega". Ditetapkan Work Owner 2026-10-01.
        p.TGL_TERIMA_DOKUMEN_PUCL        AS DOCUMENT_COMPLETE_AT,
+       -- Ketiga parameter TERSEMBUNYI yang dikirim ke `PUCLPost` pada setiap tombol yang
+       -- memanggilnya: Download Dokumen, Tolak Klaim, dan kedua tombol Kirim.
+       --
+       -- Sel-nya di `SectionPenerimaanDokumenPUCL` tidak berlabel —
+       -- `.ClaimData.PUCLStatus.IDObject`, `.IDCoverage`, `.IDAdjustment` — dan tidak digambar
+       -- di layar, sama seperti di Pega.
+       --
+       -- Ketiganya DITAMBAHKAN Work Owner ke `TC_PNC_PUCL` pada 2026-10-01, menggantikan nilai
+       -- penampung `"1"` yang dipakai sehari sebelumnya. Dibaca langsung: `VARCHAR2(100)`,
+       -- ketiganya terisi pada baris yang ada.
+       --
+       -- Ketiganya BELUM ada di `Database/CREATE_TABLE_3.SQL` — selisih yang sama dengan
+       -- keempat kolom surat (§84.3), dan ditangani dengan cara yang sama lewat
+       -- `letterColumnsBeyondTheSharedDDL`.
+       p.ID_OBJECT                      AS ACTION_ID_OBJECT,
+       p.ID_COVERAGE                    AS ACTION_ID_COVERAGE,
+       p.ID_ADJUSTMENT                  AS ACTION_ID_ADJUSTMENT,
        -- "Email Tertanggung" pada tab yang sama — properti `EmailLod` (4 kemunculan).
        --
        -- ========================================================================

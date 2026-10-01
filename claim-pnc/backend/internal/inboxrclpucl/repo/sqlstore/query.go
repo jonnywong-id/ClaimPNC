@@ -101,7 +101,16 @@ var detailColumns = []string{
 
 	// Kedua isian tab Penerimaan Dokumen yang sebelumnya bertanda "di clipboard Pega".
 	// Ditambahkan 2026-10-01 atas penetapan Work Owner; lihat catatan di kueri `detail`.
-	"DOCUMENT_COMPLETE_AT", "INSURED_EMAIL",
+	"DOCUMENT_COMPLETE_AT",
+
+	// Ketiga parameter tersembunyi tombol tindakan. Ditambahkan 2026-10-01 setelah kolomnya
+	// dibuat Work Owner; sebelumnya ketiganya memakai nilai penampung.
+	//
+	// Urutannya WAJIB sama dengan urutan kolom di berkas .sql dan dengan urutan pemindai
+	// scanDetail — ketiganya disisipkan SEBELUM INSURED_EMAIL, bukan sesudahnya.
+	"ACTION_ID_OBJECT", "ACTION_ID_COVERAGE", "ACTION_ID_ADJUSTMENT",
+
+	"INSURED_EMAIL",
 
 	// Baris PERTAMA grid "Tanggal Terima Dokumen". Daftarnya page list tanpa tabel; hanya
 	// baris pertamanya yang diekspos sebagai kolom. Lihat catatan di kueri `detail`.
@@ -118,6 +127,11 @@ var detailColumns = []string{
 // `check_columns`. Begitu DDL-nya disamakan, daftar ini dikosongkan — bukan dihapus diam-diam.
 var letterColumnsBeyondTheSharedDDL = []string{
 	"PERIHAL", "KETERANGAN1", "KETERANGAN2", "KETERANGAN3",
+
+	// Ketiganya dibuat Work Owner 2026-10-01 dan BELUM masuk `CREATE_TABLE_3.SQL` pula.
+	// Portal yang tabelnya dibuat dari berkas itu akan gagal ORA-00904 pada klaim pertama
+	// yang dibuka — bukan saat build.
+	"ID_OBJECT", "ID_COVERAGE", "ID_ADJUSTMENT",
 }
 
 // listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.

@@ -114,6 +114,9 @@ func SampleRows() []Row {
 		FirstObjectName:   "Objek Contoh Satu",
 		FirstProposeValue: "15000000",
 		PUCLNote:          "Menunggu kelengkapan dari cabang.",
+		IDObject:          "OBJ-01",
+		IDCoverage:        "COV-01",
+		IDAdjustment:      "ADJ-01",
 	})
 
 	at2, text2 := sent(11)
@@ -203,6 +206,9 @@ func SampleRows() []Row {
 		FirstObjectName:   "Objek Contoh Empat",
 		FirstProposeValue: "8750000",
 		PUCLNote:          "Surat sudah dikirim ke tertanggung.",
+		IDObject:          "OBJ-02",
+		IDCoverage:        "COV-02",
+		IDAdjustment:      "ADJ-02",
 	})
 
 	at5, text5 := sent(14)

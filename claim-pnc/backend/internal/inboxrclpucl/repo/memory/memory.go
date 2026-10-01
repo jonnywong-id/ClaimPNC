@@ -149,9 +149,18 @@ type Row struct {
 	BodyNote    string
 	ClosingNote string
 
-	// PUCLNote adalah `KOMENTARPUCL_1` — satu-satunya isian bagian "Penerimaan Dokumen"
-	// yang punya kolom terverifikasi.
+	// PUCLNote adalah `KOMENTARPUCL_1` — isian "Catatan untuk Analyst".
 	PUCLNote string
+
+	// IDObject, IDCoverage, IDAdjustment meniru `ID_OBJECT`, `ID_COVERAGE`, dan
+	// `ID_ADJUSTMENT` — parameter tersembunyi yang dikirim ke `PUCLPost`.
+	//
+	// Baris contoh mengisinya dengan nilai yang BERBEDA satu sama lain, dengan sengaja:
+	// ketiganya sempat bernilai sama (`"1"`) sebagai penampung, dan nilai yang sama membuat
+	// ketiganya tertukar tanpa satu pun uji gagal.
+	IDObject     string
+	IDCoverage   string
+	IDAdjustment string
 
 	// SentAt adalah `TANGGALKIRIMPUCL_1` sebagai waktu — dasar penyaring dan pengurutan
 	// LAPORAN HARIAN.
@@ -460,6 +469,13 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 		// susunan tombol yang berbeda dari layar yang sebenarnya.
 		MSIG:       candidate.MSIG,
 		GroupPanel: candidate.GroupPanel,
+
+		// Sama persis dengan sisi Oracle: dibaca dari barisnya, bukan nilai tetap.
+		ActionParameters: inboxrclpucl.ActionParameters{
+			IDObject:     candidate.IDObject,
+			IDCoverage:   candidate.IDCoverage,
+			IDAdjustment: candidate.IDAdjustment,
+		},
 
 		Letter: inboxrclpucl.LetterDraft{
 			Track:        inboxrclpucl.TrackOf(candidate.TrackCode),
