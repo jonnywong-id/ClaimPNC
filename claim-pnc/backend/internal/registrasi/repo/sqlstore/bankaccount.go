@@ -19,11 +19,11 @@ func NewAccountDirectory(db *sql.DB) *AccountDirectory { return &AccountDirector
 // FindAccount mengembalikan rekening bernomor itu, atau registrasi.ErrAccountNotFound.
 func (d *AccountDirectory) FindAccount(ctx context.Context, number string) (registrasi.BankAccount, error) {
 	var (
-		no, name, bank, branch, address, bankID, email, phone sql.NullString
-		cashier, committee                                    sql.NullTime
+		no, name, bank, branch, address, bankID, email, phone, approval sql.NullString
+		cashier, committee                                              sql.NullTime
 	)
 	err := d.db.QueryRowContext(ctx, loadQuery("rekening_ambil"), strings.TrimSpace(number)).
-		Scan(&no, &name, &bank, &branch, &address, &bankID, &email, &phone, &cashier, &committee)
+		Scan(&no, &name, &bank, &branch, &address, &bankID, &email, &phone, &cashier, &committee, &approval)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.BankAccount{}, registrasi.ErrAccountNotFound
 	}
@@ -36,5 +36,6 @@ func (d *AccountDirectory) FindAccount(ctx context.Context, number string) (regi
 		Address: strings.TrimSpace(address.String), BankID: strings.TrimSpace(bankID.String),
 		Email: strings.TrimSpace(email.String), Telephone: strings.TrimSpace(phone.String),
 		CashierApprovedAt: cashier.Time, CommitteeApprovedAt: committee.Time,
+		Approval: strings.TrimSpace(approval.String),
 	}, nil
 }

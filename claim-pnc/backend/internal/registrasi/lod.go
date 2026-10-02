@@ -148,6 +148,78 @@ func CanPrintLOD(line SettlementLine, p Policy) error {
 	return nil
 }
 
+// CanChooseLODType memeriksa dropdown `.PDFType` kolom Adjustment `ShowAdjustment_sect`.
+//
+// Tampil bila `GroupPanel != '002' && GroupPanel != '005' && BusinessType != 'Bonding'`.
+// Pega membuatnya baca-saja bila `.AcceptanceStatus != ” || IsAnalisator`; di aplikasi ini
+// jenis LOD baru dipakai SETELAH komite menyetujui (Print LOD), sehingga ia tetap dapat
+// diubah sampai Persetujuan / Akseptasi diisi — keputusan 2026-10-01. Syarat peran
+// Analisator belum dibawa: `IsAnalisator` tidak ada di export.
+func CanChooseLODType(line SettlementLine, p Policy) error {
+	if p.Line == LinePersonalAccident || p.Line == LineTravel || p.BusinessType == "Bonding" {
+		return lodViolation(ViolationLODNotAllowed, "Tipe LOD is not used for this policy.")
+	}
+	if strings.TrimSpace(line.AcceptanceLODStatus) != "" || strings.TrimSpace(line.AcceptedNo) != "" {
+		return lodViolation(ViolationLODNotAllowed, "Tipe LOD can no longer be changed after Persetujuan / Akseptasi.")
+	}
+	return nil
+}
+
+// Jenis LOD Ex Gratia yang mengubah baris adjustment saat dipilih.
+const (
+	LODExGratiaWithoutCoMember = "12"
+	LODExGratiaWithCoMember    = "15"
+)
+
+// ApplyLODType menerapkan `SetShareAsmWhenPilihAdjustment` — aksi dropdown Tipe LOD:
+//
+//   - langkah 6: jenis 12 atau 15 → `.ExGratia := 1`;
+//   - langkah 7: jenis 12 → `.ShareASM := 100`, selesai;
+//   - langkah 8: CoinsList polis kosong → `.ShareASM := 100`, selesai;
+//   - langkah 9–11: jenis 15 → `.ShareASM` = PercentShare anggota CoinsList perusahaan sendiri
+//     ("ASURANSI SINAR MAS", atau "ASURANSI SIMAS INSURTECH" pada portal ASI).
+//
+// Jenis lain tidak mengubah apa pun. Nilai turunannya dihitung ulang dengan rumus yang sama
+// dengan Tambah adjustment (ComputeSettlementLine): Value = Gross × ShareASM, NILAIAKSEPTASI.
+// Penjumlahan EstimationValue tipe 4 pada langkah 11–12 tidak dipakai apa pun dan tidak dibawa.
+//
+// Penyimpangan yang disadari: bila perusahaan sendiri tidak ada di CoinsList, Pega mengisi
+// ShareASM dengan nilai kosong (nol); di sini Share ASM dibiarkan seperti semula.
+func ApplyLODType(line *SettlementLine, lodType, portal, typeOfCoins string, coins []PLACoinsMember) bool {
+	kind := strings.TrimSpace(lodType)
+	changed := false
+	if kind == LODExGratiaWithoutCoMember || kind == LODExGratiaWithCoMember {
+		changed = !line.ExGratia
+		line.ExGratia = true
+	}
+	share, set := line.ShareASM, false
+	listed := false
+	for _, m := range coins {
+		listed = listed || strings.TrimSpace(m.Name) != ""
+	}
+	switch {
+	case kind == LODExGratiaWithoutCoMember, !listed:
+		share, set = PercentFull, true
+	case kind == LODExGratiaWithCoMember:
+		own := OwnCompanyOf(portal)
+		for _, m := range coins {
+			if strings.Contains(strings.ToUpper(m.Name), own) && m.HasShare {
+				share, set = m.Share, true
+			}
+		}
+	}
+	if set && share != line.ShareASM {
+		line.ShareASM = share
+		line.Value = line.Gross.Share(share)
+		line.Accepted = line.Gross
+		if c := strings.TrimSpace(typeOfCoins); c == "1" || c == "F" {
+			line.Accepted = line.Value
+		}
+		changed = true
+	}
+	return changed
+}
+
 // LODMember adalah satu baris tabel co member: nama, share, dan bagiannya.
 type LODMember struct {
 	Name    string

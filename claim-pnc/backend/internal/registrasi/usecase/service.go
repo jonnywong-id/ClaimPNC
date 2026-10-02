@@ -37,42 +37,46 @@ type Caller struct {
 type Service struct {
 	flow registrasi.Definition
 
-	claim          registrasi.ClaimRepo
-	task           registrasi.TaskRepo
-	policy         registrasi.PolicyRepo
-	number         registrasi.NumberIssuer
-	parameter      registrasi.Parameter
-	rate           registrasi.ExchangeRateSource
-	assigner       registrasi.Assigner
-	notifier       registrasi.Notifier
-	audit          registrasi.AuditRecorder
-	reportLink     registrasi.ClaimReportLink
-	area           registrasi.AreaDirectory
-	items          registrasi.PolicyItemSource
-	currency       registrasi.CurrencyDirectory
-	options        registrasi.ItemOptionSource
-	records        registrasi.ClaimRecordSource
-	faceSheet      registrasi.FaceSheetSource
-	renderer       registrasi.FaceSheetRenderer
-	pla            registrasi.PLASource
-	plaRenderer    registrasi.PLARenderer
-	dla            registrasi.DLASource
-	dlaRenderer    registrasi.DLARenderer
-	cashier        registrasi.CashierStore
-	cashierGateway registrasi.CashierGateway
-	lodRenderer    registrasi.LODRenderer
-	acceptance     registrasi.AcceptanceSource
-	premium        registrasi.PremiumService
-	groups         registrasi.GroupSource
-	inbox          registrasi.InboxMirror
-	accounts       registrasi.AccountDirectory
-	tiering        registrasi.CommitteeTiering
-	committees     registrasi.CommitteeStore
-	documents      registrasi.DocumentUploader
-	attachments    registrasi.AttachmentStore
-	id             registrasi.IDGenerator
-	unit           registrasi.UnitOfWork
-	clock          clock.Clock
+	claim                  registrasi.ClaimRepo
+	task                   registrasi.TaskRepo
+	policy                 registrasi.PolicyRepo
+	number                 registrasi.NumberIssuer
+	parameter              registrasi.Parameter
+	rate                   registrasi.ExchangeRateSource
+	assigner               registrasi.Assigner
+	notifier               registrasi.Notifier
+	audit                  registrasi.AuditRecorder
+	reportLink             registrasi.ClaimReportLink
+	area                   registrasi.AreaDirectory
+	causeOfLoss            registrasi.CauseOfLossDirectory
+	items                  registrasi.PolicyItemSource
+	currency               registrasi.CurrencyDirectory
+	options                registrasi.ItemOptionSource
+	records                registrasi.ClaimRecordSource
+	faceSheet              registrasi.FaceSheetSource
+	renderer               registrasi.FaceSheetRenderer
+	pla                    registrasi.PLASource
+	plaRenderer            registrasi.PLARenderer
+	dla                    registrasi.DLASource
+	dlaRenderer            registrasi.DLARenderer
+	acceptanceNoteRenderer registrasi.AcceptanceNoteRenderer
+	cashierAccountCheck    bool
+	acceptanceMultiLevel   string
+	cashier                registrasi.CashierStore
+	cashierGateway         registrasi.CashierGateway
+	lodRenderer            registrasi.LODRenderer
+	acceptance             registrasi.AcceptanceSource
+	premium                registrasi.PremiumService
+	groups                 registrasi.GroupSource
+	inbox                  registrasi.InboxMirror
+	accounts               registrasi.AccountDirectory
+	tiering                registrasi.CommitteeTiering
+	committees             registrasi.CommitteeStore
+	documents              registrasi.DocumentUploader
+	attachments            registrasi.AttachmentStore
+	id                     registrasi.IDGenerator
+	unit                   registrasi.UnitOfWork
+	clock                  clock.Clock
 
 	validateOnReturn bool
 }
@@ -90,6 +94,9 @@ type Options struct {
 	AuditRecorder      registrasi.AuditRecorder
 	ClaimReportLink    registrasi.ClaimReportLink
 	AreaDirectory      registrasi.AreaDirectory
+
+	// CauseOfLoss membaca pilihan Penyebab Kerugian per kode bisnis polis.
+	CauseOfLoss registrasi.CauseOfLossDirectory
 
 	// PolicyItems membaca objek, coverage, dan spreading polis untuk klaim yang baru
 	// dibuka (CallActivityInputRegister).
@@ -115,6 +122,15 @@ type Options struct {
 	// DLA menerbitkan dan membaca Definite Loss Advice; DLARenderer membentuk dokumennya.
 	DLA         registrasi.DLASource
 	DLARenderer registrasi.DLARenderer
+	// AcceptanceNoteRenderer membentuk PDF Draft Persetujuan (tombol PRINT Nomor Akseptasi).
+	AcceptanceNoteRenderer registrasi.AcceptanceNoteRenderer
+	// CashierAccountCheck menyalakan pemeriksaan rekening penerima di master Kasir
+	// (KASIR_CEK_REKENING).
+	CashierAccountCheck bool
+	// AcceptanceMultiLevelCommittee adalah Nama Komite Akseptasi untuk baris yang
+	// komitenya beranggota dua atau lebih (AKSEPTASI_KOMITE_BERJENJANG) — di Pega Operator ID
+	// tetap di AcceptationLOD_PreAct langkah 15. Kosong: anggota terakhir yang menyetujui.
+	AcceptanceMultiLevelCommittee string
 	// Cashier membaca kode bank dan menulis log serta status Transfer Kasir; CashierGateway
 	// mengirim pembayaran ke sistem Kasir.
 	Cashier        registrasi.CashierStore
@@ -195,6 +211,7 @@ func NewService(o Options) (*Service, error) {
 	check("PerekamAudit", o.AuditRecorder != nil)
 	check("TautanLaporan", o.ClaimReportLink != nil)
 	check("DirektoriWilayah", o.AreaDirectory != nil)
+	check("PenyebabKerugian", o.CauseOfLoss != nil)
 	check("ObjekPolis", o.PolicyItems != nil)
 	check("DirektoriMataUang", o.CurrencyDirectory != nil)
 	check("PilihanItem", o.ItemOptions != nil)
@@ -205,6 +222,7 @@ func NewService(o Options) (*Service, error) {
 	check("PembentukPLA", o.PLARenderer != nil)
 	check("DLA", o.DLA != nil)
 	check("PembentukDLA", o.DLARenderer != nil)
+	check("PembentukDraftPersetujuan", o.AcceptanceNoteRenderer != nil)
 	check("Kasir", o.Cashier != nil)
 	check("LayananKasir", o.CashierGateway != nil)
 	check("PembentukLOD", o.LODRenderer != nil)
@@ -226,44 +244,48 @@ func NewService(o Options) (*Service, error) {
 	}
 
 	return &Service{
-		flow:             registrasi.RegisterFlow(),
-		claim:            o.ClaimRepo,
-		task:             o.TaskRepo,
-		policy:           o.PolicyRepo,
-		number:           o.NumberIssuer,
-		parameter:        o.Parameter,
-		rate:             o.ExchangeRateSource,
-		assigner:         o.Assigner,
-		notifier:         o.Notifier,
-		audit:            o.AuditRecorder,
-		reportLink:       o.ClaimReportLink,
-		area:             o.AreaDirectory,
-		items:            o.PolicyItems,
-		currency:         o.CurrencyDirectory,
-		options:          o.ItemOptions,
-		records:          o.ClaimRecords,
-		faceSheet:        o.FaceSheet,
-		renderer:         o.FaceSheetRenderer,
-		pla:              o.PLA,
-		plaRenderer:      o.PLARenderer,
-		dla:              o.DLA,
-		dlaRenderer:      o.DLARenderer,
-		cashier:          o.Cashier,
-		cashierGateway:   o.CashierGateway,
-		lodRenderer:      o.LODRenderer,
-		acceptance:       o.Acceptance,
-		premium:          o.Premium,
-		groups:           o.Groups,
-		inbox:            o.Inbox,
-		accounts:         o.Accounts,
-		tiering:          o.CommitteeTiering,
-		committees:       o.Committees,
-		documents:        o.Documents,
-		attachments:      o.Attachments,
-		id:               o.IDGenerator,
-		unit:             o.UnitOfWork,
-		clock:            o.Clock,
-		validateOnReturn: o.ValidateOnReturn,
+		flow:                   registrasi.RegisterFlow(),
+		claim:                  o.ClaimRepo,
+		task:                   o.TaskRepo,
+		policy:                 o.PolicyRepo,
+		number:                 o.NumberIssuer,
+		parameter:              o.Parameter,
+		rate:                   o.ExchangeRateSource,
+		assigner:               o.Assigner,
+		notifier:               o.Notifier,
+		audit:                  o.AuditRecorder,
+		reportLink:             o.ClaimReportLink,
+		area:                   o.AreaDirectory,
+		causeOfLoss:            o.CauseOfLoss,
+		items:                  o.PolicyItems,
+		currency:               o.CurrencyDirectory,
+		options:                o.ItemOptions,
+		records:                o.ClaimRecords,
+		faceSheet:              o.FaceSheet,
+		renderer:               o.FaceSheetRenderer,
+		pla:                    o.PLA,
+		plaRenderer:            o.PLARenderer,
+		dla:                    o.DLA,
+		dlaRenderer:            o.DLARenderer,
+		acceptanceNoteRenderer: o.AcceptanceNoteRenderer,
+		cashierAccountCheck:    o.CashierAccountCheck,
+		acceptanceMultiLevel:   o.AcceptanceMultiLevelCommittee,
+		cashier:                o.Cashier,
+		cashierGateway:         o.CashierGateway,
+		lodRenderer:            o.LODRenderer,
+		acceptance:             o.Acceptance,
+		premium:                o.Premium,
+		groups:                 o.Groups,
+		inbox:                  o.Inbox,
+		accounts:               o.Accounts,
+		tiering:                o.CommitteeTiering,
+		committees:             o.Committees,
+		documents:              o.Documents,
+		attachments:            o.Attachments,
+		id:                     o.IDGenerator,
+		unit:                   o.UnitOfWork,
+		clock:                  o.Clock,
+		validateOnReturn:       o.ValidateOnReturn,
 	}, nil
 }
 

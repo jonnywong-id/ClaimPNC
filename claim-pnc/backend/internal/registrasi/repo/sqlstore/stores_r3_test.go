@@ -83,16 +83,16 @@ func TestAccountDirectoryFind(t *testing.T) {
 	ctx := context.Background()
 	approved := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
 	mock.ExpectQuery(be4Q("rekening_ambil")).WithArgs("123").
-		WillReturnRows(sqlmock.NewRows(be4Cols(10)).
-			AddRow(" 123 ", " PT A ", " BANK ", " JKT ", " JL ", " 001 ", " a@b ", " 08 ", nil, approved))
+		WillReturnRows(sqlmock.NewRows(be4Cols(11)).
+			AddRow(" 123 ", " PT A ", " BANK ", " JKT ", " JL ", " 001 ", " a@b ", " 08 ", nil, approved, " 1 "))
 	got, err := d.FindAccount(ctx, " 123 ")
 	require.NoError(t, err)
 	require.Equal(t, registrasi.BankAccount{
 		Number: "123", Name: "PT A", BankName: "BANK", Branch: "JKT", Address: "JL", BankID: "001",
-		Email: "a@b", Telephone: "08", CommitteeApprovedAt: approved,
+		Email: "a@b", Telephone: "08", CommitteeApprovedAt: approved, Approval: "1",
 	}, got)
 
-	mock.ExpectQuery(be4Q("rekening_ambil")).WillReturnRows(sqlmock.NewRows(be4Cols(10)))
+	mock.ExpectQuery(be4Q("rekening_ambil")).WillReturnRows(sqlmock.NewRows(be4Cols(11)))
 	_, err = d.FindAccount(ctx, "x")
 	require.ErrorIs(t, err, registrasi.ErrAccountNotFound)
 
@@ -370,29 +370,29 @@ func TestFaceSheetStoreCoinsuranceAndFac(t *testing.T) {
 	s := NewFaceSheetStore(db)
 	ctx := context.Background()
 
-	mock.ExpectQuery(be4Q("polis_koasuransi")).WithArgs("POL").
+	mock.ExpectQuery(be4Q("polis_koasuransi")).WithArgs("POL", "1").
 		WillReturnRows(sqlmock.NewRows(be4Cols(3)).AddRow(" Y ", " ASM ", "60").AddRow("N", "B", "x"))
-	rows, err := s.Coinsurance(ctx, " POL ")
+	rows, err := s.Coinsurance(ctx, " POL ", " 1 ")
 	require.NoError(t, err)
 	require.Equal(t, []registrasi.CoinsuranceRow{
 		{Leader: "Y", CoinsName: "ASM", PercentShare: 600_000, HasShare: true},
 		{Leader: "N", CoinsName: "B"},
 	}, rows)
 	r3RowFailures(t, mock, "polis_koasuransi", 3, func() error {
-		_, err := s.Coinsurance(ctx, "POL")
+		_, err := s.Coinsurance(ctx, "POL", "1")
 		return err
 	})
 
-	mock.ExpectQuery(be4Q("cfs_fac_offer")).WithArgs("POL").
+	mock.ExpectQuery(be4Q("cfs_fac_offer")).WithArgs("POL", "1").
 		WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow(" RE A ", "25.5").AddRow("RE B", ""))
-	fac, err := s.FacReinsurers(ctx, " POL ")
+	fac, err := s.FacReinsurers(ctx, " POL ", " 1 ")
 	require.NoError(t, err)
 	require.Equal(t, []registrasi.FacReinsurer{
 		{Name: "RE A", Share: 255_000, HasShare: true},
 		{Name: "RE B"},
 	}, fac)
 	r3RowFailures(t, mock, "cfs_fac_offer", 2, func() error {
-		_, err := s.FacReinsurers(ctx, "POL")
+		_, err := s.FacReinsurers(ctx, "POL", "1")
 		return err
 	})
 	require.NoError(t, mock.ExpectationsWereMet())

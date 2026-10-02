@@ -93,7 +93,8 @@ func TestDLAReinsuranceCase(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Treaty QS membaca grup, reasuradur, limit, lalu persentase QS baris terakhir.
+// Treaty QS membaca grup, reasuradur, limit, lalu bagian QS: persentase baris terakhir dan
+// seluruh bagian beserta namanya.
 func TestDLATreatyQS(t *testing.T) {
 	db, mock := be4DB(t)
 	s := NewDLAStore(db)
@@ -102,12 +103,13 @@ func TestDLATreatyQS(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" 40 ", " RE A ", " 9 ", " QS "))
 	mock.ExpectQuery(be4Q("dla_treaty_limit")).WithArgs("10003", "2026", "G1").WillReturnRows(sqlmock.NewRows([]string{"l"}).AddRow(" 1000 "))
 	mock.ExpectQuery(be4Q("dla_treaty_qs")).WithArgs("2026", "10003", "G1").
-		WillReturnRows(sqlmock.NewRows([]string{"p"}).AddRow("10").AddRow(" 20 "))
+		WillReturnRows(sqlmock.NewRows([]string{"p", "n"}).AddRow("10", " ASM ").AddRow(" 20 ", "RE A"))
 	got, err := s.Treaty(context.Background(), "10140", 2026, "10003")
 	require.NoError(t, err)
 	require.Equal(t, registrasi.TreatyArrangement{
 		Reinsurers: []registrasi.TreatyReinsurer{{PctShare: "40", Name: "RE A", ID: "9", TypeName: "QS"}},
 		Limit:      "1000", QSPct: "20",
+		QSParts: []registrasi.TreatyQSPart{{Name: "ASM", Pct: "10"}, {Name: "RE A", Pct: "20"}},
 	}, got)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -169,13 +171,13 @@ func TestDLATreatyFailures(t *testing.T) {
 			group(m)
 			reas(m)
 			limit(m)
-			m.ExpectQuery(be4Q("dla_treaty_qs")).WillReturnRows(sqlmock.NewRows([]string{"a", "b"}).AddRow("1", "2"))
-		}, "sql: expected 2 destination arguments"},
+			m.ExpectQuery(be4Q("dla_treaty_qs")).WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c"}).AddRow("1", "2", "3"))
+		}, "sql: expected 3 destination arguments"},
 		{"qs baris", func(m sqlmock.Sqlmock) {
 			group(m)
 			reas(m)
 			limit(m)
-			m.ExpectQuery(be4Q("dla_treaty_qs")).WillReturnRows(sqlmock.NewRows([]string{"p"}).AddRow("1").RowError(0, be4Boom))
+			m.ExpectQuery(be4Q("dla_treaty_qs")).WillReturnRows(sqlmock.NewRows([]string{"p", "n"}).AddRow("1", "A").RowError(0, be4Boom))
 		}, be4Boom.Error()},
 	}
 	for _, c := range cases {
@@ -257,32 +259,56 @@ func TestDLASaveAndMarkPrinted(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Dokumen polis DLA dibaca dari kolom teks, atau BLOB bila teksnya kosong.
+// Polis DLA: dokumen POLICYDATA sebagai dasar, lalu kolom T_GENERAL, T_OFFERFACIN,
+// T_SPREADINGLIST, T_COINSLIST, dan T_FACOFFER menimpanya bila terisi.
 func TestDLAPolicyDocument(t *testing.T) {
 	db, mock := be4DB(t)
 	s := NewDLAStore(db)
 	ctx := context.Background()
+	rest := func() {
+		mock.ExpectQuery(be4Q("pla_koasuransi")).WithArgs("POL", "1").WillReturnRows(sqlmock.NewRows(be4Cols(5)))
+		mock.ExpectQuery(be4Q("dla_fac_offer")).WithArgs("POL", "1").WillReturnRows(sqlmock.NewRows(be4Cols(2)))
+	}
 
+	// Dokumen saja: tabel kosong.
 	mock.ExpectQuery(be4Q("dla_polis_dokumen")).WithArgs("POL").
-		WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow(`{"CaseID":"C1","TypeOfCoins":"2"}`, nil))
-	p, err := s.Policy(ctx, " POL ")
+		WillReturnRows(sqlmock.NewRows(be4Cols(1)).AddRow(`{"CaseID":"C1","TypeOfCoins":"2"}`))
+	mock.ExpectQuery(be4Q("dla_polis_kepala")).WithArgs("POL", "1").WillReturnRows(sqlmock.NewRows(be4Cols(7)))
+	mock.ExpectQuery(be4Q("dla_offer_facin")).WithArgs("POL", "1").WillReturnRows(sqlmock.NewRows(be4Cols(1)))
+	mock.ExpectQuery(be4Q("dla_spreading")).WithArgs("POL", "1").WillReturnRows(sqlmock.NewRows(be4Cols(3)))
+	rest()
+	p, err := s.Policy(ctx, " POL ", " 1 ")
 	require.NoError(t, err)
 	require.Equal(t, "C1", p.CaseID)
 	require.Equal(t, "2", p.TypeOfCoins)
 
-	mock.ExpectQuery(be4Q("dla_polis_dokumen")).WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow(nil, []byte(`{"CaseID":"C2"}`)))
-	p, err = s.Policy(ctx, "POL")
+	// Tabel menimpa dokumen.
+	mock.ExpectQuery(be4Q("dla_polis_dokumen")).WithArgs("POL").WillReturnRows(sqlmock.NewRows(be4Cols(1)))
+	mock.ExpectQuery(be4Q("dla_polis_kepala")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(7)).AddRow(" C2 ", "1000", "1", "1", "006", "A", nil))
+	mock.ExpectQuery(be4Q("dla_offer_facin")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(1)).AddRow("25"))
+	mock.ExpectQuery(be4Q("dla_spreading")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(3)).AddRow("10001", "500", "0").AddRow("10002", "9", "1"))
+	rest()
+	p, err = s.Policy(ctx, "POL", "1")
 	require.NoError(t, err)
 	require.Equal(t, "C2", p.CaseID)
-
-	mock.ExpectQuery(be4Q("dla_polis_dokumen")).WillReturnRows(sqlmock.NewRows(be4Cols(2)))
-	p, err = s.Policy(ctx, "POL")
-	require.NoError(t, err)
-	require.Equal(t, registrasi.DLAPolicy{}, p)
+	require.Equal(t, "1", p.TypeOfCoins)
+	require.True(t, p.Syariah)
+	require.Equal(t, "006", p.BusinessCode)
+	require.Equal(t, "A", p.StatusBusiness)
+	require.Contains(t, p.TSISpreaded, "10001")
+	require.NotContains(t, p.TSISpreaded, "10002")
 
 	mock.ExpectQuery(be4Q("dla_polis_dokumen")).WillReturnError(be4Boom)
-	_, err = s.Policy(ctx, "POL")
+	_, err = s.Policy(ctx, "POL", "1")
 	require.ErrorContains(t, err, `membaca dokumen polis "POL"`)
+
+	mock.ExpectQuery(be4Q("dla_polis_dokumen")).WillReturnRows(sqlmock.NewRows(be4Cols(1)))
+	mock.ExpectQuery(be4Q("dla_polis_kepala")).WillReturnError(be4Boom)
+	_, err = s.Policy(ctx, "POL", "1")
+	require.ErrorContains(t, err, "membaca T_GENERAL")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -298,16 +324,16 @@ func TestWallDateHelpers(t *testing.T) {
 func TestPLACoinsMembers(t *testing.T) {
 	db, mock := be4DB(t)
 	s := NewPLAStore(db)
-	mock.ExpectQuery(be4Q("pla_koasuransi")).WithArgs("POL").
+	mock.ExpectQuery(be4Q("pla_koasuransi")).WithArgs("POL", "1").
 		WillReturnRows(sqlmock.NewRows(be4Cols(5)).AddRow(" C0 ", " ASM ", "true", "70", "0").AddRow("C1", "B", "false", "", "1"))
-	got, err := s.CoinsMembers(context.Background(), " POL ")
+	got, err := s.CoinsMembers(context.Background(), " POL ", " 1 ")
 	require.NoError(t, err)
 	require.Equal(t, []registrasi.PLACoinsMember{
 		{ID: "C0", Name: "ASM", Leader: true, Share: 700_000, HasShare: true},
 		{ID: "C1", Name: "B", Deleted: true},
 	}, got)
 	r3RowFailures(t, mock, "pla_koasuransi", 5, func() error {
-		_, err := s.CoinsMembers(context.Background(), "POL")
+		_, err := s.CoinsMembers(context.Background(), "POL", "1")
 		return err
 	})
 	require.NoError(t, mock.ExpectationsWereMet())

@@ -2,10 +2,10 @@ import { type ReactNode, useEffect, useState } from 'react'
 
 import { APIError, simpanBerkas } from '@/api/client'
 
-import { formatDateTimeWIB, rupiahToCents } from '@/components/format'
+import { DateInput } from '@/components/DateField'
+import { centsToRupiah, formatDateTimeWIB, rupiahToCents } from '@/components/format'
 
-import { type LODType, useAcceptSettlement, useDocuments, useLODTypes, usePrintLOD, violationsFrom } from './api'
-import { CashierDialog } from './CashierDialog'
+import { type LODType, useAcceptSettlement, useAcceptanceDefaults, useDocuments, useLODTypes, usePrintLOD, violationsFrom } from './api'
 import { DLADialog } from './DLADialog'
 import { PaymentType, type Receiver, type Settlement } from './types'
 
@@ -39,6 +39,9 @@ import { PaymentType, type Receiver, type Settlement } from './types'
  * - **Print DLA**: hanya dapat dilakukan setelah akseptasi (keputusan Work Owner), karena daftar
  *   DLA diterbitkan saat nomor akseptasi terbit — ikut menunggu proses akseptasi.
  *
+ * Transfer Kasir TIDAK di sini: di Pega tombolnya ada di detail adjustment, di samping Nomor
+ * Akseptasi (`InputAdjustment_sect`) — lihat AcceptanceNumber.
+ *
  * Teks tambahan di luar Pega berbahasa Inggris (`D-80`); label mengikuti Pega.
  */
 export function AcceptanceButtons({
@@ -63,7 +66,7 @@ export function AcceptanceButtons({
   businessType: string
   receivers: Receiver[]
 }) {
-  const [open, setOpen] = useState<'lod' | 'accept' | 'dla' | 'kasir' | null>(null)
+  const [open, setOpen] = useState<'lod' | 'accept' | 'dla' | null>(null)
   const rules = acceptanceRules(line, groupPanel, businessType)
   if (!rules.visible) return null
 
@@ -71,7 +74,8 @@ export function AcceptanceButtons({
 
   return (
     <div className="space-y-1">
-      <div className="flex flex-wrap gap-2">
+      {/* Satu baris, tidak dilipat: Print DLA selalu di kanan Persetujuan / Akseptasi. */}
+      <div className="flex flex-nowrap items-center gap-2">
         <ActionButton label="Print LOD" disabled={rules.printLODDisabled} onClick={() => setOpen('lod')} />
         <ActionButton
           label="Persetujuan / Akseptasi"
@@ -83,17 +87,11 @@ export function AcceptanceButtons({
           disabled={rules.printDLADisabled}
           onClick={() => setOpen('dla')}
         />
-        {rules.cashierVisible && (
-          <ActionButton
-            label="Transfer Kasir"
-            disabled={rules.cashierDisabled}
-            onClick={() => setOpen('kasir')}
-          />
-        )}
       </div>
-      {open === 'lod' && <PrintLODDialog claimID={claimID} address={address} onClose={() => setOpen(null)} />}
+      {open === 'lod' && (
+        <PrintLODDialog claimID={claimID} address={address} initialType={line.tipe_pdf_lod ?? ''} onClose={() => setOpen(null)} />
+      )}
       {open === 'dla' && <DLADialog claimID={claimID} address={address} onClose={() => setOpen(null)} />}
-      {open === 'kasir' && <CashierDialog claimID={claimID} address={address} onClose={() => setOpen(null)} />}
       {open === 'accept' && (
         <AcceptationForm
           claimID={claimID}
@@ -114,7 +112,7 @@ function ActionButton({ label, disabled, onClick }: { label: string; disabled: b
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded border border-blue-400 px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
+      className="whitespace-nowrap rounded border border-blue-400 px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
     >
       {label}
     </button>
@@ -181,15 +179,18 @@ function Popup({
 function PrintLODDialog({
   claimID,
   address,
+  initialType,
   onClose,
 }: {
   claimID: string
   address: { tugas_id: string; objek: number; jaminan: number; adjustment: number }
+  /** Tipe LOD yang dipilih pada dropdown kolom Adjustment (PDFTYPE); kosong bila belum. */
+  initialType: string
   onClose: () => void
 }) {
   const types = useLODTypes(claimID)
   const print = usePrintLOD(claimID)
-  const [choice, setChoice] = useState('')
+  const [choice, setChoice] = useState(initialType)
   const [email, setEmail] = useState('')
   const [insured, setInsured] = useState('')
   const [note, setNote] = useState('')
@@ -337,7 +338,9 @@ function AcceptationForm({
   const nonMBU = ['003', '004', '006', '009'].includes(groupPanel)
   const save = useAcceptSettlement(claimID)
   const documents = useDocuments(claimID)
+  const defaults = useAcceptanceDefaults(claimID, address)
   const [form, setForm] = useState({
+    tipe: '',
     persetujuan: '',
     tanggalTerimaLOD: '',
     tanggalBolehBayar: '',
@@ -348,6 +351,20 @@ function AcceptationForm({
     beritaAcara: '',
   })
   const [files, setFiles] = useState<{ berkas: File | null; jenisDokumen: string }[]>([])
+
+  // AcceptationLOD_PreAct: Tipe Akseptasi, Nama Komite Akseptasi, dan Nilai LOD sudah terisi
+  // saat form dibuka. Diisi sekali, dan hanya isian yang masih kosong — isian yang sudah
+  // diubah petugas tidak ditimpa.
+  const initial = defaults.data
+  useEffect(() => {
+    if (!initial) return
+    setForm((f) => ({
+      ...f,
+      tipe: f.tipe || initial.tipe_akseptasi,
+      komite: f.komite || initial.nama_komite_akseptasi,
+      nilaiLOD: f.nilaiLOD || (initial.nilai_lod_sen !== undefined ? centsToRupiah(initial.nilai_lod_sen) : ''),
+    }))
+  }, [initial])
   const [invalid, setInvalid] = useState<string | null>(null)
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm({ ...form, [key]: e.target.value })
@@ -366,6 +383,7 @@ function AcceptationForm({
       {
         isian: {
           ...address,
+          tipe_akseptasi: form.tipe,
           persetujuan_tertanggung: form.persetujuan,
           tanggal_terima_lod: form.tanggalTerimaLOD,
           tanggal_boleh_bayar: form.tanggalBolehBayar,
@@ -387,6 +405,22 @@ function AcceptationForm({
   return (
     <Popup title="AcceptationLOD" titleID="judul-akseptasi-lod" busy={save.isPending} onClose={onClose} wide>
       <div className="space-y-3">
+        {(defaults.data?.peringatan ?? []).map((w) => (
+          <p key={w} role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {w}
+          </p>
+        ))}
+        <label className={caption}>
+          Tipe Akseptasi Klaim
+          <select value={form.tipe} onChange={set('tipe')} className={field}>
+            <option value="">-- Pilih --</option>
+            {(defaults.data?.pilihan_tipe_akseptasi ?? []).map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.nama}
+              </option>
+            ))}
+          </select>
+        </label>
         <div>
           <span className={caption}>Tipe PDF</span>
           <p className="text-sm text-slate-900">{line.nama_tipe_pdf_lod || '—'}</p>
@@ -399,11 +433,11 @@ function AcceptationForm({
           <>
             <label className={caption}>
               Tanggal Terima LOD{required}
-              <input type="date" value={form.tanggalTerimaLOD} onChange={set('tanggalTerimaLOD')} className={field} />
+              <DateInput value={form.tanggalTerimaLOD} onChange={(v) => setForm({ ...form, tanggalTerimaLOD: v })} className={field} />
             </label>
             <label className={caption}>
               Tanggal Boleh Bayar{required}
-              <input type="date" value={form.tanggalBolehBayar} onChange={set('tanggalBolehBayar')} className={field} />
+              <DateInput value={form.tanggalBolehBayar} onChange={(v) => setForm({ ...form, tanggalBolehBayar: v })} className={field} />
             </label>
           </>
         )}
@@ -546,8 +580,6 @@ export type AcceptanceRules = {
   printLODDisabled: boolean
   acceptDisabled: boolean
   printDLADisabled: boolean
-  cashierVisible: boolean
-  cashierDisabled: boolean
 }
 
 /** Aturan tampil/mati ketiga tombol — lihat komentar AcceptanceButtons. */
@@ -573,9 +605,5 @@ export function acceptanceRules(
       type === PaymentType.AdjusterFee,
     acceptDisabled: lod === '0' || accepted !== '' || status === '2',
     printDLADisabled: lod !== '1' || status === '2',
-    // Transfer Kasir (InputAdjustment_sect): tampil bila bukan salvage dan Nomor Akseptasi
-    // terisi; mati bila sudah pernah ditransfer ke Kasir.
-    cashierVisible: type !== PaymentType.Salvage && accepted !== '',
-    cashierDisabled: line.sudah_transfer_kasir === true,
   }
 }

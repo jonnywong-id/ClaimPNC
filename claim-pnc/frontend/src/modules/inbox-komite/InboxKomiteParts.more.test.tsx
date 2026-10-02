@@ -762,7 +762,7 @@ describe('InboxKomitePage', () => {
     await user.click(screen.getByRole('button', { name: 'Sebelumnya' }))
     expect(await screen.findByText('Menampilkan 1–1 dari 30 kasus.')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Tgl input dari'), '2026-09-01')
+    await user.type(screen.getByLabelText('Tgl input dari'), '01/09/2026')
     await user.click(screen.getByRole('button', { name: 'Bersihkan' }))
     expect(screen.getByLabelText('Tgl input dari')).toHaveValue('')
     expect(screen.queryByRole('button', { name: 'Bersihkan' })).not.toBeInTheDocument()

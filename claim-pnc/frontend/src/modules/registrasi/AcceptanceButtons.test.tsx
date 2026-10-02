@@ -40,33 +40,6 @@ describe('aturan tombol akseptasi', () => {
     expect(r.printDLADisabled).toBe(false)
   })
 
-  it('Transfer Kasir: tampil bila bernomor akseptasi dan bukan salvage, mati bila sudah transfer', () => {
-    expect(acceptanceRules(line({}), '006', 'Fire').cashierVisible).toBe(false)
-    const accepted = acceptanceRules(line({ nomor_akseptasi: 'A26' }), '006', 'Fire')
-    expect(accepted.cashierVisible).toBe(true)
-    expect(accepted.cashierDisabled).toBe(false)
-    expect(acceptanceRules(line({ nomor_akseptasi: 'A26', tipe_pembayaran: '3' }), '006', 'Fire').cashierVisible).toBe(false)
-    expect(acceptanceRules(line({ nomor_akseptasi: 'A26', sudah_transfer_kasir: true }), '006', 'Fire').cashierDisabled).toBe(true)
-  })
-
-  it('Transfer Kasir membuka dialog konfirmasi dengan ringkasan pembayaran', async () => {
-    vi.stubGlobal('fetch', () =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({ nomor_akseptasi: 'A26', penerima: 'PT PENERIMA', nomor_rekening: '123', nama_bank: 'BANK', email: 'e@x', nilai_nett_sen: 150000, mata_uang: 'IDR', masalah: '' }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      ),
-    )
-    const user = userEvent.setup()
-    mount({ status_akseptasi_lod: '1', nomor_akseptasi: 'A26' })
-    await user.click(screen.getByRole('button', { name: 'Transfer Kasir' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Transfer Kasir' })
-    expect(await within(dialog).findByText('PT PENERIMA')).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Submit' })).toBeEnabled()
-    vi.unstubAllGlobals()
-  })
-
   it('LOD tidak disetujui (0): Persetujuan dan Print DLA mati', () => {
     const r = acceptanceRules(line({ status_akseptasi_lod: '0' }), '006', 'Fire')
     expect(r.acceptDisabled).toBe(true)
@@ -163,6 +136,16 @@ describe('tombol akseptasi', () => {
         const docs = { kategori: [{ kode: '10067', nama: 'PAYMENT', dokumen: [{ id: '14904', jenis_id: '10067', nama: 'KWITANSI', wajib: false, minimal: '0', terunggah: 0 }] }], berkas: [] }
         return Promise.resolve(new Response(JSON.stringify(docs), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       }
+      if (url.endsWith('/akseptasi/awal')) {
+        const initial = {
+          tipe_akseptasi: '2',
+          pilihan_tipe_akseptasi: [{ id: '1', nama: 'Indemnity' }, { id: '2', nama: 'Interim' }],
+          nama_komite_akseptasi: 'KOMITEUJI',
+          nilai_lod_sen: 400_000_000,
+          peringatan: [],
+        }
+        return Promise.resolve(new Response(JSON.stringify(initial), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
       posted.push({ url, form: init?.body as FormData })
       return Promise.resolve(new Response(JSON.stringify({ klaim: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     })
@@ -173,10 +156,15 @@ describe('tombol akseptasi', () => {
     const form = screen.getByRole('dialog', { name: 'AcceptationLOD' })
     expect(within(form).getByRole('group', { name: /^Persetujuan Tertanggung/ })).toBeInTheDocument()
     await user.click(within(form).getByLabelText('Setuju'))
-    await user.type(within(form).getByLabelText('Tanggal Terima LOD *'), '2026-09-01')
-    await user.type(within(form).getByLabelText('Tanggal Boleh Bayar *'), '2026-09-02')
+    await user.type(within(form).getByLabelText('Tanggal Terima LOD *'), '01/09/2026')
+    await user.type(within(form).getByLabelText('Tanggal Boleh Bayar *'), '02/09/2026')
+    // AcceptationLOD_PreAct: Tipe Akseptasi, Nama Komite, dan Nilai LOD sudah terisi.
+    await waitFor(() => expect(within(form).getByLabelText('Tipe Akseptasi Klaim')).toHaveValue('2'))
+    expect(within(form).getByLabelText('Nama Komite Akseptasi')).toHaveValue('KOMITEUJI')
+    expect(within(form).getByLabelText('Nilai LOD *')).toHaveValue('4000000,00')
+    await user.clear(within(form).getByLabelText('Nilai LOD *'))
     await user.type(within(form).getByLabelText('Nilai LOD *'), '5.000.000')
-    await user.selectOptions(within(form).getAllByRole('combobox')[0]!, 'R1')
+    await user.selectOptions(within(form).getByLabelText(/^Penerima Klaim/), 'R1')
     await user.click(within(form).getByRole('button', { name: 'Select file(s)' }))
     await within(form).findByRole('option', { name: 'PAYMENT — KWITANSI' })
     await user.selectOptions(within(form).getByLabelText('Jenis dokumen 1'), '14904')
@@ -188,8 +176,9 @@ describe('tombol akseptasi', () => {
     expect(posted[0]!.url).toBe('/api/registrasi/klaim/klaim-1/akseptasi')
     const isian = JSON.parse(posted[0]!.form.get('isian') as string)
     expect(isian).toMatchObject({
-      tugas_id: 'tugas-1', objek: 1, jaminan: 2, adjustment: 3, persetujuan_tertanggung: '1',
+      tugas_id: 'tugas-1', objek: 1, jaminan: 2, adjustment: 3, tipe_akseptasi: '2', persetujuan_tertanggung: '1',
       tanggal_terima_lod: '2026-09-01', tanggal_boleh_bayar: '2026-09-02', nilai_lod_sen: 500_000_000, penerima: 'R1',
+      nama_komite_akseptasi: 'KOMITEUJI',
     })
     expect(posted[0]!.form.getAll('jenis_dokumen')).toEqual(['14904'])
     expect((posted[0]!.form.get('berkas') as File).name).toBe('lod.pdf')

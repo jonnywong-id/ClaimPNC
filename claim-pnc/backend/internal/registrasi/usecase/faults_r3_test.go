@@ -1,6 +1,7 @@
 package usecase_test
 
 import (
+	"claim-pnc/internal/registrasi/acceptancenotepdf"
 	"context"
 	"errors"
 	"sync"
@@ -210,11 +211,11 @@ func (w fDLA) Previous(ctx context.Context, c, code string) (registrasi.DLAPrevi
 	return w.DLASource.Previous(ctx, c, code)
 }
 
-func (w fDLA) Policy(ctx context.Context, n string) (registrasi.DLAPolicy, error) {
+func (w fDLA) Policy(ctx context.Context, n, prodKe string) (registrasi.DLAPolicy, error) {
 	if err := w.f.hit("DLA.Policy"); err != nil {
 		return registrasi.DLAPolicy{}, err
 	}
-	return w.DLASource.Policy(ctx, n)
+	return w.DLASource.Policy(ctx, n, prodKe)
 }
 
 func (w fDLA) ReinsuranceCase(ctx context.Context) (map[string]string, error) {
@@ -257,11 +258,11 @@ type fPLA struct {
 	f *faults
 }
 
-func (w fPLA) CoinsMembers(ctx context.Context, p string) ([]registrasi.PLACoinsMember, error) {
+func (w fPLA) CoinsMembers(ctx context.Context, p, prodKe string) ([]registrasi.PLACoinsMember, error) {
 	if err := w.f.hit("PLA.CoinsMembers"); err != nil {
 		return nil, err
 	}
-	return w.PLASource.CoinsMembers(ctx, p)
+	return w.PLASource.CoinsMembers(ctx, p, prodKe)
 }
 
 func (w fPLA) Recipient(ctx context.Context, code, name string) (registrasi.PLARecipientInfo, error) {
@@ -388,11 +389,11 @@ func (w fAcceptance) AddProgress(ctx context.Context, p registrasi.ProgressUpdat
 	return w.AcceptanceSource.AddProgress(ctx, p)
 }
 
-func (w fAcceptance) PolicyCaseID(ctx context.Context, p string) (string, error) {
+func (w fAcceptance) PolicyCaseID(ctx context.Context, p, prodKe string) (string, error) {
 	if err := w.f.hit("Acc.PolicyCaseID"); err != nil {
 		return "", err
 	}
-	return w.AcceptanceSource.PolicyCaseID(ctx, p)
+	return w.AcceptanceSource.PolicyCaseID(ctx, p, prodKe)
 }
 
 func (w fAcceptance) OpenProtectionApproved(ctx context.Context, p, c, n string) (bool, error) {
@@ -520,18 +521,18 @@ func (w fFaceSheet) OperatorName(ctx context.Context, id string) (string, error)
 	return w.FaceSheetSource.OperatorName(ctx, id)
 }
 
-func (w fFaceSheet) Coinsurance(ctx context.Context, p string) ([]registrasi.CoinsuranceRow, error) {
+func (w fFaceSheet) Coinsurance(ctx context.Context, p, prodKe string) ([]registrasi.CoinsuranceRow, error) {
 	if err := w.f.hit("FS.Coinsurance"); err != nil {
 		return nil, err
 	}
-	return w.FaceSheetSource.Coinsurance(ctx, p)
+	return w.FaceSheetSource.Coinsurance(ctx, p, prodKe)
 }
 
-func (w fFaceSheet) FacReinsurers(ctx context.Context, p string) ([]registrasi.FacReinsurer, error) {
+func (w fFaceSheet) FacReinsurers(ctx context.Context, p, prodKe string) ([]registrasi.FacReinsurer, error) {
 	if err := w.f.hit("FS.FacReinsurers"); err != nil {
 		return nil, err
 	}
-	return w.FaceSheetSource.FacReinsurers(ctx, p)
+	return w.FaceSheetSource.FacReinsurers(ctx, p, prodKe)
 }
 
 func (w fFaceSheet) LastRevision(ctx context.Context, c, o string, cs int) (int, bool, error) {
@@ -857,42 +858,44 @@ func faultySetup(t *testing.T) (environment, *faults) {
 	items := fPolicyItems{policyItems, f}
 	cash := fCashier{cashier, f}
 	service, err := usecase.NewService(usecase.Options{
-		ClaimRepo:          fClaimRepo{store, f},
-		TaskRepo:           fTaskRepo{store.TaskRepo(), f},
-		PolicyRepo:         fPolicy{memory.NewPolicyStore(memory.SamplePolicies(fixed.Now())...), f},
-		NumberIssuer:       fNumber{memory.NewNumberIssuer(), f},
-		Parameter:          fParameter{parameter, f},
-		ExchangeRateSource: fRate{memory.NewExchangeRateSource(), f},
-		Assigner:           fAssigner{memory.NewAssigner(testTeams()), f},
-		Notifier:           fNotifier{store, f},
-		AuditRecorder:      fAudit{store, f},
-		ClaimReportLink:    fLink{link, f},
-		AreaDirectory:      fArea{memory.NewAreaDirectory(), f},
-		PolicyItems:        items,
-		CurrencyDirectory:  fCurrency{memory.CurrencyDirectory{}, f},
-		ItemOptions:        items,
-		ClaimRecords:       rec,
-		FaceSheet:          fFaceSheet{memory.NewFaceSheet(), f},
-		FaceSheetRenderer:  fFSRender{facesheetpdf.Renderer{}, f},
-		PLA:                fPLA{pla, f},
-		PLARenderer:        fPLARender{plapdf.Renderer{}, f},
-		DLA:                fDLA{dla, f},
-		DLARenderer:        fDLARender{dlapdf.Renderer{}, f},
-		Cashier:            cash,
-		CashierGateway:     cashier,
-		LODRenderer:        fLODRender{lodpdf.Renderer{}, f},
-		Acceptance:         fAcceptance{acceptance, f},
-		Premium:            fPremium{premium, f},
-		Groups:             fGroups{groups, f},
-		Inbox:              fInbox{inbox, f},
-		Accounts:           fAccounts{memory.NewAccounts(), f},
-		CommitteeTiering:   fTiering{memory.NewCommitteeTiering(), f},
-		Committees:         fCommittees{memory.NewCommittees(), f},
-		Documents:          fUploader{uploader, f},
-		Attachments:        rec,
-		IDGenerator:        memory.IDGenerator{},
-		UnitOfWork:         fUnit{store, f},
-		Clock:              fixed,
+		CauseOfLoss:            memory.NewAreaDirectory(),
+		AcceptanceNoteRenderer: acceptancenotepdf.Renderer{},
+		ClaimRepo:              fClaimRepo{store, f},
+		TaskRepo:               fTaskRepo{store.TaskRepo(), f},
+		PolicyRepo:             fPolicy{memory.NewPolicyStore(memory.SamplePolicies(fixed.Now())...), f},
+		NumberIssuer:           fNumber{memory.NewNumberIssuer(), f},
+		Parameter:              fParameter{parameter, f},
+		ExchangeRateSource:     fRate{memory.NewExchangeRateSource(), f},
+		Assigner:               fAssigner{memory.NewAssigner(testTeams()), f},
+		Notifier:               fNotifier{store, f},
+		AuditRecorder:          fAudit{store, f},
+		ClaimReportLink:        fLink{link, f},
+		AreaDirectory:          fArea{memory.NewAreaDirectory(), f},
+		PolicyItems:            items,
+		CurrencyDirectory:      fCurrency{memory.CurrencyDirectory{}, f},
+		ItemOptions:            items,
+		ClaimRecords:           rec,
+		FaceSheet:              fFaceSheet{memory.NewFaceSheet(), f},
+		FaceSheetRenderer:      fFSRender{facesheetpdf.Renderer{}, f},
+		PLA:                    fPLA{pla, f},
+		PLARenderer:            fPLARender{plapdf.Renderer{}, f},
+		DLA:                    fDLA{dla, f},
+		DLARenderer:            fDLARender{dlapdf.Renderer{}, f},
+		Cashier:                cash,
+		CashierGateway:         cashier,
+		LODRenderer:            fLODRender{lodpdf.Renderer{}, f},
+		Acceptance:             fAcceptance{acceptance, f},
+		Premium:                fPremium{premium, f},
+		Groups:                 fGroups{groups, f},
+		Inbox:                  fInbox{inbox, f},
+		Accounts:               fAccounts{memory.NewAccounts(), f},
+		CommitteeTiering:       fTiering{memory.NewCommitteeTiering(), f},
+		Committees:             fCommittees{memory.NewCommittees(), f},
+		Documents:              fUploader{uploader, f},
+		Attachments:            rec,
+		IDGenerator:            memory.IDGenerator{},
+		UnitOfWork:             fUnit{store, f},
+		Clock:                  fixed,
 	})
 	require.NoError(t, err)
 

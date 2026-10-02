@@ -270,6 +270,9 @@ type ClaimSummary struct {
 	// CurrencyCode adalah kode mata uang klaim (IDR, USD) hasil lookup `POOLDATA.CURRENCY`
 	// atas Currency — isi baris RESERVES.
 	CurrencyCode string
+
+	// ProdKe adalah PRODKE snapshot polis klaim — kunci T_COINSLIST dan T_FACOFFER.
+	ProdKe string
 }
 
 // CoverageAnalysis adalah satu baris `POOLDATA.T_CLAIM_OBJECTCOVERAGE`.

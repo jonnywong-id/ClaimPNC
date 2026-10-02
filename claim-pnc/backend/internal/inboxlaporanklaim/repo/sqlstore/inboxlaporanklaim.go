@@ -323,6 +323,10 @@ func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport)
 		emptyToNil(report.DamageDetail),
 		emptyToNil(report.Reason),
 		emptyToNil(report.NotRegisteredNote),
+		emptyToNil(report.GroupPanel),
+		emptyToNil(report.InsuredEmail),
+		emptyToNil(report.DriverLicense),
+		emptyToNil(report.ReportSource),
 		report.ID,
 	)
 	if err != nil {
@@ -743,6 +747,9 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		chronology, damageDetail     sql.NullString
 		notRegisteredNote            sql.NullString
 
+		groupPanel, insuredEmail    sql.NullString
+		driverLicense, reportSource sql.NullString
+
 		lastMessage sql.NullString
 	)
 
@@ -754,6 +761,7 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		&receivedDate, &reporterEmail, &reporterPhone, &courierName,
 		&estimateValue, &lossLocation, &chronology, &damageDetail,
 		&notRegisteredNote, &documentCount,
+		&groupPanel, &insuredEmail, &driverLicense, &reportSource,
 		&lastMessage,
 	); err != nil {
 		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca baris detail: %w", err)
@@ -789,6 +797,10 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		DamageDetail:      text(damageDetail),
 		NotRegisteredNote: text(notRegisteredNote),
 		DocumentCount:     int(documentCount.Int64),
+		GroupPanel:        text(groupPanel),
+		InsuredEmail:      text(insuredEmail),
+		DriverLicense:     text(driverLicense),
+		ReportSource:      text(reportSource),
 		LastMessage:       text(lastMessage),
 	}
 	report.ID = strings.TrimSpace(report.ID)
@@ -847,9 +859,9 @@ var _ inboxlaporanklaim.Repo = (*Repo)(nil)
 //
 // Tabel itu milik sistem polis dan hanya dibaca; tidak ada satu pun penulisan dari sini.
 func (r *Repo) FindPolicy(ctx context.Context, number string) (inboxlaporanklaim.Policy, bool, error) {
-	var insured, businessCode, businessName, reference, panel, syariah sql.NullString
+	var insured, businessCode, businessName, reference, panel, syariah, leader sql.NullString
 	err := r.db.QueryRowContext(ctx, getQuery("claim_report_policy_find"), number).
-		Scan(&insured, &businessCode, &businessName, &reference, &panel, &syariah)
+		Scan(&insured, &businessCode, &businessName, &reference, &panel, &syariah, &leader)
 	if err == sql.ErrNoRows {
 		return inboxlaporanklaim.Policy{}, false, nil
 	}
@@ -864,6 +876,7 @@ func (r *Repo) FindPolicy(ctx context.Context, number string) (inboxlaporanklaim
 		BusinessName:    text(businessName),
 		ReferenceNumber: text(reference),
 		GroupPanel:      text(panel),
+		Leader:          text(leader),
 		// Pega membandingkan SYARIAHSTATUS==1; kolomnya teks, dan nilai kosong berarti
 		// bukan Syariah.
 		Syariah: text(syariah) == "1",

@@ -24185,8 +24185,6 @@ portal dan TYPESERVICE; kredensial dari KASIR_USER / KASIR_PASSWORD; hanya syara
 yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status transfer dibaca
 dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
 baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.
-=======
->>>>>>> a0dd97c8a5a398ebf3dc1be788637af4e5d76ad7
 
 ## 64. Inbox Auto Claim: grid muat satu layar, rincian pop-up, dan proteksi unggahan lanjutan (2026-09-29)
 
@@ -24273,4 +24271,11 @@ Tab keempat layar lama (`InboxAutoClaim-Harness.xml` :50640) kini dibangun, sete
 
 **Verifikasi Oracle (`-periksa`):** 206 bisnis, 9 sumber bisnis. Kueri total klaim berjalan, termasuk penjumlahan pada pasangan yang benar-benar punya klaim sukses. Nilai dan kode tidak dicetak.
 **Belum:** layanan `getPaymentDataSumbis` belum pernah dipanggil dari aplikasi baru. Bentuk jawabannya disimpulkan dari pemetaan Pega (`TotalPremiumPaid`, tingkat atas atau di dalam `PaymentData`).
->>>>>>> jonny-backup
+
+## 125. Print Draft Persetujuan diunduh langsung, tanpa efek samping Pega (2026-09-30)
+
+Tombol PRINT di samping Nomor Akseptasi hanya membentuk PDF Draft Persetujuan dan mengunduhnya,
+sama dengan keputusan Print DLA. Langkah lain `PrintPDFAcceptanceNote` — konversi JSON,
+Outstanding Acceptance, penerbitan DLA, lampiran, dan email — tidak dijalankan; yang ditulis hanya
+jejak audit `DRAFT_AKSEPTASI_CETAK`. Tata letak Travel dan Personal Accident belum dibangun.
+Transfer Kasir dipindah dari grid ke detail adjustment, sesuai letaknya di `InputAdjustment_sect`.

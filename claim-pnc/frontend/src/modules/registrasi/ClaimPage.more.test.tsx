@@ -182,27 +182,28 @@ describe('keadaan klaim', () => {
 })
 
 describe('tahap tanpa formulir', () => {
-  const AT_INVESTIGATOR = response(
-    { tahap_kini: 'investigator' },
-    { tahap: 'investigator', nama_tahap: 'Investigator', tindakan_keluar: 'InputInvestigator' },
+  // Investigator kini memakai formulir Surveyor (InputInvestigator); Compliance belum punya formulir.
+  const AT_COMPLIANCE = response(
+    { tahap_kini: 'compliance' },
+    { tahap: 'compliance', nama_tahap: 'Compliance', tindakan_keluar: 'InputCompliance' },
   )
 
   it('menutup tahap lalu menampilkan percabangan yang dilewati', async () => {
-    installFetch(AT_INVESTIGATOR, (url) =>
+    installFetch(AT_COMPLIANCE, (url) =>
       url === '/api/registrasi/tugas/tugas-1/selesai'
-        ? json(200, { ...AT_INVESTIGATOR, jejak_keputusan: ['Bukan PA', 'Bukan Travel'] })
+        ? json(200, { ...AT_COMPLIANCE, jejak_keputusan: ['Bukan PA', 'Bukan Travel'] })
         : undefined,
     )
     show()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Selesaikan (InputInvestigator)' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Selesaikan (InputCompliance)' }))
     expect(await screen.findByText('Percabangan yang dilewati')).toBeInTheDocument()
     expect(screen.getByText('Bukan Travel')).toBeInTheDocument()
-    expect(calls.find((c) => c.url.endsWith('/selesai'))?.body).toEqual({ action: 'InputInvestigator', kembali: false })
+    expect(calls.find((c) => c.url.endsWith('/selesai'))?.body).toEqual({ action: 'InputCompliance', kembali: false })
   })
 
   it('mengirim Back dan menampilkan galat penutupan tahap', async () => {
-    installFetch(AT_INVESTIGATOR, (url) =>
+    installFetch(AT_COMPLIANCE, (url) =>
       url === '/api/registrasi/tugas/tugas-1/selesai'
         ? json(409, { kode: 'tugas_sudah_selesai', pesan: 'Tugas sudah selesai.' })
         : undefined,
@@ -216,14 +217,14 @@ describe('tahap tanpa formulir', () => {
   })
 
   it('tidak menampilkan percabangan bila server tidak mengirimnya', async () => {
-    installFetch(AT_INVESTIGATOR, (url) =>
-      url === '/api/registrasi/tugas/tugas-1/selesai' ? json(200, { ...AT_INVESTIGATOR, jejak_keputusan: [] }) : undefined,
+    installFetch(AT_COMPLIANCE, (url) =>
+      url === '/api/registrasi/tugas/tugas-1/selesai' ? json(200, { ...AT_COMPLIANCE, jejak_keputusan: [] }) : undefined,
     )
     show()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Selesaikan (InputInvestigator)' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Selesaikan (InputCompliance)' }))
     await waitFor(() => expect(calls.some((c) => c.url.endsWith('/selesai'))).toBe(true))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Selesaikan (InputInvestigator)' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Selesaikan (InputCompliance)' })).toBeEnabled())
     expect(screen.queryByText('Percabangan yang dilewati')).not.toBeInTheDocument()
   })
 })
@@ -257,7 +258,8 @@ describe('Input Register', () => {
     await userEvent.type(screen.getByLabelText('Sebutkan hubungannya'), 'Kerabat')
     await userEvent.click(screen.getByRole('radio', { name: 'SUSPICIOUS' }))
     await userEvent.type(screen.getByLabelText('Komentar Suspicious'), 'Mencurigakan')
-    await userEvent.click(screen.getByRole('radio', { name: 'YES' }))
+    // Ex-Gratia hanya tampil untuk PA (ClaimSurvey-sect.xml); klaim ini Fire.
+    expect(screen.queryByRole('radio', { name: 'YES' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('checkbox', { name: 'Transfer Compliance' }))
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
 
@@ -266,7 +268,6 @@ describe('Input Register', () => {
       pelapor: { hubungan: 7, hubungan_lainnya: 'Kerabat' },
       prinsip_mengenal_nasabah: '2',
       komentar_suspicious: 'Mencurigakan',
-      ex_gratia: true,
       transfer_compliance: true,
       kembali: false,
       mata_uang: 'USD',

@@ -197,3 +197,54 @@ func TestCommitteeRejectClosesCommitteePosition(t *testing.T) {
 	require.Equal(t, "24", l.acceptance.Progress[0].Progress2)
 	require.Equal(t, registrasi.AcceptanceProgressDone, l.acceptance.Progress[0].Position)
 }
+
+// Dropdown Tipe LOD menyimpan PDFTYPE saja — tanggal cetak tetap kosong.
+func TestSetLODTypeStoresType(t *testing.T) {
+	l := setup(t)
+	task, _ := l.approvedClaim(t)
+	_, err := l.service.SetLODType(context.Background(), usecase.LODCommand{
+		ClaimID: task.ClaimID, TaskID: task.ID, Object: 1, Coverage: 1, Adjustment: 1, Type: "15",
+	}, l.caller)
+	require.NoError(t, err)
+	require.Len(t, l.acceptance.LODPrint, 1)
+	for _, p := range l.acceptance.LODPrint {
+		require.Equal(t, "15", p.Type)
+		require.True(t, p.PrintedAt.IsZero())
+	}
+}
+
+// Setelah Persetujuan / Akseptasi, Tipe LOD tidak dapat diubah; jenis yang tidak dikenal ditolak.
+func TestSetLODTypeRules(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task, _ := l.approvedClaim(t)
+	_, err := l.service.SetLODType(ctx, usecase.LODCommand{
+		ClaimID: task.ClaimID, TaskID: task.ID, Object: 1, Coverage: 1, Adjustment: 1, Type: "99",
+	}, l.caller)
+	violation(t, err, registrasi.ViolationLODTypeUnknown)
+
+	_, err = l.service.AcceptSettlement(ctx, acceptance(task, registrasi.LODAgreed), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.SetLODType(ctx, usecase.LODCommand{
+		ClaimID: task.ClaimID, TaskID: task.ID, Object: 1, Coverage: 1, Adjustment: 1, Type: "4",
+	}, l.caller)
+	violation(t, err, registrasi.ViolationLODNotAllowed)
+}
+
+// Tipe 12 (Ex Gratia tanpa Co Member) menjadikan Share ASM 100% dan baris Ex Gratia.
+func TestSetLODTypeExGratiaSetsFullShare(t *testing.T) {
+	l := setup(t)
+	task, claim := l.approvedClaim(t)
+	l.dla.Policies[claim.Policy.Number] = registrasi.DLAPolicy{Coins: []registrasi.PLACoinsMember{
+		{ID: "1", Name: "PT ASURANSI SINAR MAS", Share: registrasi.Percent(575_000), HasShare: true},
+		{ID: "2", Name: "KOASURADUR UJI", Share: registrasi.Percent(425_000), HasShare: true},
+	}}
+	saved, err := l.service.SetLODType(context.Background(), usecase.LODCommand{
+		ClaimID: task.ClaimID, TaskID: task.ID, Object: 1, Coverage: 1, Adjustment: 1, Type: "12",
+	}, l.caller)
+	require.NoError(t, err)
+	line := saved.InsuredItem[0].Coverage[0].Settlement[0]
+	require.True(t, line.ExGratia)
+	require.Equal(t, registrasi.PercentFull, line.ShareASM)
+	require.Equal(t, line.Gross, line.Value)
+}

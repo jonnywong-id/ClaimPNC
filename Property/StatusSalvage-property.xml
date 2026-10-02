@@ -1,0 +1,386 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceVal/>
+<pxInsId>!STATUSSALVAGE</pxInsId>
+<pyIsJavaPage/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDataObject/>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyRuleStarts/>
+<pyStatus/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRefLocalizedValue/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleParamsStreamName/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pxInstanceLockedRuleSetVersion/>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzInsKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyReflectStatus>true</pyReflectStatus>
+<pyDataRetrievalType/>
+<pyMaxLength/>
+<pyTableProperty/>
+<pyOptimizeForThisClass/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyDescription/>
+<pySerializeJavaObject/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateDateTime>20240118T090543.038 GMT</pxUpdateDateTime>
+<pyRelativePath/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!STATUSSALVAGE</pxInsName>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20210615T103316.581 GMT</pzOriginalInstanceKey>
+<pyIsReference>false</pyIsReference>
+<pxInstanceLockedBy/>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyLabelOld>StatusSalvage</pyLabelOld>
+<pyTableClass/>
+<pyColumnInclusion/>
+<pxCommitDateTime>20240207T113147.000 GMT</pxCommitDateTime>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pyFieldClass/>
+<pzEntryCode>stN</pzEntryCode>
+<pyUsage/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyColumnIndexed/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyCircumstanceDate/>
+<pxInstanceLockedDateTime/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCheckInRuleSet/>
+<pyIsAssociation/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pzChecksum>475480884</pzChecksum>
+<pySpecialtyComponentData/>
+<pyExpectedSize/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyEditValidate/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyPropertyMode>String</pyPropertyMode>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pySpecial>false</pySpecial>
+<pyLocalize>false</pyLocalize>
+<pyJavaObjectClass/>
+<pyPageClass/>
+<pyJavaStream/>
+<pzIndexCount>16</pzIndexCount>
+<pxCreateDateTime>20240105T104832.541 GMT</pxCreateDateTime>
+<pyWorkKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxSaveDateTime>20240118T090543.078 GMT</pxSaveDateTime>
+<pyPropertyName>StatusSalvage</pyPropertyName>
+<pxInstanceLockedRuleSet/>
+<pyLabel>StatusSalvage</pyLabel>
+<pyRuleEnds/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyMemo>DONE</pyMemo>
+<pyTemplate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyIsManualReference/>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pyFormPost/>
+<pyTemplateInputBox/>
+<pyIsGateway/>
+<pyDocumentTitle/>
+<pyOnObjChange/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceType/>
+<pyDeletedObject/>
+<pyIsLightweight>false</pyIsLightweight>
+<pyGatewayClass/>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pyInterface/>
+<pyFieldName/>
+<pyMethodStatus/>
+<pyOptimizeForDecendents/>
+<pyComparator/>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyIsTransient/>
+<pyTableAggregate/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyTableSelector/>
+<pxTabLabel>StatusSalvage</pxTabLabel>
+<pyStreamName>pxTextInput</pyStreamName>
+<pyRuleSetVersion>01-02-99</pyRuleSetVersion>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzDocumentKey>
+<pyTemporaryObject/>
+<pyIsFromManageChangeLP/>
+<pxMoveFromSystem/>
+<pxInstanceLockedKey/>
+<pyStringType>Text</pyStringType>
+<pxMergeSynchronized>20210615T103639.146 GMT</pxMergeSynchronized>
+<pxInstanceLockedCreateDateTime/>
+<pyHistoryObject/>
+<pyShowJavaWindowName>GeneratedJava20261002T012703.135 GMT</pyShowJavaWindowName>
+<pyRuleName>StatusSalvage</pyRuleName>
+<pyCircumstanceDateProp/>
+<pxMoveImportDateTime>20240207T113146.329 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyTableOption>PromptList</pyTableOption>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxHostId>jboss1037</pxHostId>
+<pyWindowTitle/>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyCircumstanceProp/>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyRuleAccessWhen/>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pyOnInput/>
+<pyRuleFormStatusTime>20261002T012703.092 GMT</pyRuleFormStatusTime>
+<pzStatus>valid</pzStatus>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+<pyKeyCaption/>
+<pyKeyValue/>
+</rowdata>
+</pyTableKeys>
+<pyToolBarSettings>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyCheckIn>false</pyCheckIn>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyForward>true</pyForward>
+<pyRefresh>true</pyRefresh>
+<pyDelete>false</pyDelete>
+<pyPreview>true</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyCompareVersion/>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-99 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20210615T103316.581 GMT</pzInsKey>
+<pyLabel>01-01-92 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStandardValue>1</pyStandardValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyLocalizedValue>Tidak ada salvage</pyLocalizedValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStandardValue>2</pyStandardValue>
+<pyLocalizedValue>Salvage sudah diterima</pyLocalizedValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLocalizedValue>Ekonomis</pyLocalizedValue>
+<pyStandardValue>3</pyStandardValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyStandardValue>4</pyStandardValue>
+<pyLocalizedValue>Tidak Ekonomis</pyLocalizedValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyLocalizedValue>TBA</pyLocalizedValue>
+<pyStandardValue>5</pyStandardValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+</pyPromptTableList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pyRuleName>pyCaption Ekonomis</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!EKONOMIS</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption Salvage sudah diterima</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!SALVAGE SUDAH DITERIMA</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleFamilyName>PYCAPTION!TIDAK EKONOMIS</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption Tidak Ekonomis</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!TIDAK ADA SALVAGE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>pyCaption Tidak ada salvage</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleFamilyName>PYCAPTION!TBA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA STATUSSALVAGE #20240105T104832.541 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption TBA</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>Tidak Ada Salvage</pyLabel>
+<pxObjClass>@baseclass</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxCreateDateTime>20210615T103458.303 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyLabel>Salvage Sudah diterima</pyLabel>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxObjClass>@baseclass</pxObjClass>
+</rowdata>
+</pyListValues>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">Tidak Ada Salvage</rowdata>
+<rowdata REPEATINGINDEX="2">Salvage Sudah diterima</rowdata>
+</pyTableList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pxSubscript>none</pxSubscript>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyqualifierpagegroup>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+</pagedata>

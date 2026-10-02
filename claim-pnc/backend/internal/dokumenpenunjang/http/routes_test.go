@@ -164,8 +164,11 @@ func TestUploadPassesTheFileAndCaller(t *testing.T) {
 	require.Len(t, service.uploaded, 1)
 	cmd := service.uploaded[0]
 	require.Equal(t, "ASM", cmd.PortalAlias)
+	// Nama berkas diberi awalan waktu dan jenis dokumen seperti Pega (NamaUnggah).
+	require.Regexp(t, `^\d+-\d+-KTP-foto\.png$`, cmd.Request.FileName)
+	cmd.Request.FileName = ""
 	require.Equal(t, dokumenpenunjang.UploadRequest{
-		ClaimNumber: "PNC-1", FileName: "foto.png", DocumentType: "KTP",
+		ClaimNumber: "PNC-1", DocumentType: "KTP",
 		Content: []byte("isi"), By: "BUDI",
 	}, cmd.Request)
 }

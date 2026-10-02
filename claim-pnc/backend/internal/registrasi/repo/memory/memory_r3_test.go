@@ -329,7 +329,7 @@ func TestAcceptanceMemory(t *testing.T) {
 	s.CaseIDs = map[string]string{"POL": "CASE"}
 	s.OpenProtection = map[string]bool{"POL": true}
 	s.TravelClients = map[string]string{"POL": "AGEN"}
-	caseID, _ := s.PolicyCaseID(bg, "POL")
+	caseID, _ := s.PolicyCaseID(bg, "POL", "1")
 	approved, _ := s.OpenProtectionApproved(bg, "POL", "K1", "N1")
 	client, _ := s.TravelClientName(bg, "POL")
 	require.Equal(t, "CASE", caseID)
@@ -442,8 +442,8 @@ func TestFaceSheetMemory(t *testing.T) {
 	f.Reinsurer["POL"] = []registrasi.FacReinsurer{{Name: "R"}}
 	name, _ := f.CauseOfLossName(bg, "1")
 	op, _ := f.OperatorName(bg, "NIK1")
-	co, _ := f.Coinsurance(bg, "POL")
-	re, _ := f.FacReinsurers(bg, "POL")
+	co, _ := f.Coinsurance(bg, "POL", "1")
+	re, _ := f.FacReinsurers(bg, "POL", "1")
 	require.Equal(t, "API", name)
 	require.Equal(t, "Budi", op)
 	require.Len(t, co, 1)
@@ -465,7 +465,7 @@ func TestPLAMemory(t *testing.T) {
 	s := NewPLA()
 	s.Coins["POL"] = []registrasi.PLACoinsMember{{ID: "C1"}}
 	s.Recipients["C1"] = registrasi.PLARecipientInfo{Email: "e@x"}
-	coins, _ := s.CoinsMembers(bg, "POL")
+	coins, _ := s.CoinsMembers(bg, "POL", "1")
 	info, _ := s.Recipient(bg, "C1", "")
 	require.Len(t, coins, 1)
 	require.Equal(t, "e@x", info.Email)
@@ -511,7 +511,7 @@ func TestDLAMemory(t *testing.T) {
 	s.Treaties["10008"] = registrasi.TreatyArrangement{Limit: "1"}
 	s.Pre = []registrasi.DLA{{ClaimID: "K1", ObjectID: "O", CoverageSeq: 1, AdjustmentSeq: 1, Number: "PRE"}, {ClaimID: "K2"}}
 
-	p, _ := s.Policy(bg, "POL")
+	p, _ := s.Policy(bg, "POL", "1")
 	require.Equal(t, "C", p.CaseID)
 	cases, _ := s.ReinsuranceCase(bg)
 	cases["10008"] = "diubah"

@@ -85,7 +85,12 @@ func (h *HTTP) Transfer(ctx context.Context, app, service string, payload regist
 	}
 	reply := Parse(raw)
 	if resp.StatusCode/100 != 2 && !reply.Accepted() {
-		return registrasi.CashierReply{}, fmt.Errorf("cashierlink: kasir menjawab HTTP %d", resp.StatusCode)
+		// Penolakan yang BERPESAN diteruskan sebagai jawaban, supaya alasannya sampai ke layar
+		// (CashierRejectedError) — bukan dilaporkan sebagai Kasir yang tidak terjangkau.
+		if reply.ResponseMessage != "" {
+			return reply, nil
+		}
+		return registrasi.CashierReply{}, fmt.Errorf("cashierlink: kasir menjawab HTTP %d: %s", resp.StatusCode, snippet(reply.Raw))
 	}
 	return reply, nil
 }
@@ -97,8 +102,14 @@ func Parse(raw []byte) registrasi.CashierReply {
 		ResponseMsg     any `json:"ResponseMsg"`
 		CaseIDCashier   any `json:"CaseIDCashier"`
 		NoTransClaim    any `json:"NoTransClaim"`
+		// ResponseDataList memuat pesan per baris; dipakai bila pesan utamanya kosong.
+		ResponseDataList []struct {
+			ResponseMessageData any `json:"ResponseMessageData"`
+		} `json:"ResponseDataList"`
+		// Jawaban galat ASP.NET Web API memakai Message.
+		Message any `json:"Message"`
 	}
-	out := registrasi.CashierReply{Raw: strings.TrimSpace(string(raw))}
+	out := registrasi.CashierReply{Raw: strings.TrimSpace(string(raw)), Body: string(raw)}
 	if len(out.Raw) > 500 {
 		out.Raw = out.Raw[:500]
 	}
@@ -109,9 +120,25 @@ func Parse(raw []byte) registrasi.CashierReply {
 	if out.ResponseMessage == "" {
 		out.ResponseMessage = text(a.ResponseMsg)
 	}
+	for _, d := range a.ResponseDataList {
+		if out.ResponseMessage == "" {
+			out.ResponseMessage = text(d.ResponseMessageData)
+		}
+	}
+	if out.ResponseMessage == "" {
+		out.ResponseMessage = text(a.Message)
+	}
 	out.CaseIDCashier = text(a.CaseIDCashier)
 	out.NoTransClaim = text(a.NoTransClaim)
 	return out
+}
+
+// snippet memotong jawaban mentah untuk log galat.
+func snippet(s string) string {
+	if len(s) > 300 {
+		return s[:300]
+	}
+	return s
 }
 
 func text(v any) string {

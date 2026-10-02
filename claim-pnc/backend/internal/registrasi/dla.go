@@ -158,8 +158,10 @@ type DLASource interface {
 	// Previous membaca DLA terakhir kepada seorang penerima pada klaim yang sama.
 	Previous(ctx context.Context, claimID, recipientCode string) (DLAPrevious, bool, error)
 
-	// Policy membaca bahan DLA dari dokumen polis.
-	Policy(ctx context.Context, policyNumber string) (DLAPolicy, error)
+	// Policy membaca bahan DLA polis pada PRODKE snapshot klaim: kepala polis dan
+	// SpreadingList dari dokumen polis, CoinsList dari T_COINSLIST, FacOfferList dari
+	// T_FACOFFER.
+	Policy(ctx context.Context, policyNumber, prodKe string) (DLAPolicy, error)
 	// ReinsuranceCase membaca REINSURANCETYPE.TYPE per kode treaty.
 	ReinsuranceCase(ctx context.Context) (map[string]string, error)
 	// Treaty membaca pengaturan treaty (`GetTreatyGroupID`, `SelectTreatyReinsurer`,
@@ -213,7 +215,9 @@ type DLAPolicy struct {
 	Syariah         bool
 	BusinessCode    string
 	StartYear       int
-	FacOffer        []FacOffer
+	// StatusBusiness adalah Quotation.StatusBusiness: 1 New Business, 2 Endorsement, 3 Renewal.
+	StatusBusiness string
+	FacOffer       []FacOffer
 	// TSISpreaded per kode treaty dari SpreadingList polis — bahan FACOBSRB.
 	TSISpreaded map[string]*big.Rat
 }
@@ -263,6 +267,14 @@ type TreatyArrangement struct {
 	Reinsurers []TreatyReinsurer
 	Limit      string // proportionalarrg RP (treatydescid 10003); kosong bila tidak ada
 	QSPct      string // searchQSReins2 PCT baris terakhir (pecahan); kosong bila tidak ada
+	// QSParts adalah SELURUH baris searchQSReins2 — rincian QS (OR) / QS (R/I) Draft Persetujuan.
+	QSParts []TreatyQSPart
+}
+
+// TreatyQSPart adalah satu baris searchQSReins2_SQL: REINSTYPENAME dan PCT (pecahan).
+type TreatyQSPart struct {
+	Name string
+	Pct  string
 }
 
 // ---- gerbang ---------------------------------------------------------------------------

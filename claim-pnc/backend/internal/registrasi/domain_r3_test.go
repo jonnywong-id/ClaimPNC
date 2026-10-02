@@ -401,7 +401,7 @@ func TestValidateAcceptance(t *testing.T) {
 	form := registrasi.AcceptanceForm{
 		LODStatus: registrasi.LODAgreed, ReceiveDate: at, PayableDate: at, LODValue: 500, HasLODValue: true, ReceiverID: "1",
 	}
-	r, err := registrasi.ValidateAcceptance(approvedLine(), fire, form, registrasi.AcceptanceCheck{Receivers: receivers, Files: 1})
+	r, err := registrasi.ValidateAcceptance(approvedLine(), fire, form, registrasi.AcceptanceCheck{Receivers: receivers, Files: 1, Location: "Jakarta"})
 	require.NoError(t, err)
 	require.Equal(t, "Budi", r.Name)
 
@@ -427,7 +427,7 @@ func TestValidateAcceptance(t *testing.T) {
 
 	// Non-MBU tanpa nilai LOD, dan Travel tanpa tanggal tetap sah.
 	_, err = registrasi.ValidateAcceptance(approvedLine(), fire, registrasi.AcceptanceForm{LODStatus: "1", ReceiveDate: at, PayableDate: at, ReceiverID: "1"},
-		registrasi.AcceptanceCheck{Receivers: receivers, Files: 1})
+		registrasi.AcceptanceCheck{Receivers: receivers, Files: 1, Location: "Jakarta"})
 	require.Equal(t, []registrasi.ViolationCode{registrasi.ViolationAcceptanceRequired}, violationCodes(t, err))
 	_, err = registrasi.ValidateAcceptance(approvedLine(), registrasi.Policy{Line: registrasi.LineTravel},
 		registrasi.AcceptanceForm{LODStatus: "0", ReceiverID: "1", LODValue: 9_999, HasLODValue: true},

@@ -172,9 +172,11 @@ func TestAssignerLightestTechnician(t *testing.T) {
 	}
 
 	claim := registrasi.Claim{Policy: registrasi.Policy{Line: registrasi.LineFire}}
+	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC.
 	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnRows(sqlmock.NewRows([]string{"o"}))
-	_, err := a.Assign(ctx, technical, claim, "NIK1")
-	require.ErrorContains(t, err, `tidak ada petugas teknis aktif untuk lini "NONMBU"`)
+	got, err := a.Assign(ctx, technical, claim, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, got)
 
 	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnError(be4Boom)
 	_, err = a.Assign(ctx, technical, claim, "NIK1")
@@ -224,6 +226,7 @@ func TestPolicyItemsItems(t *testing.T) {
 	cov := `{"CoverageList":[{"Coverage":"11022","CoverageNote":"ICC C","TSI":"100"}]}`
 	mock.ExpectQuery(be4Q("polis_objek_cargo")).WithArgs("POL", "1").
 		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" OBJ1 ", " Kargo ", " Laut ", cov))
+	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow("10001", "OR"))
 	got, err = p.Items(ctx, registrasi.Policy{Number: " POL ", ProdKe: " 1 ", Line: registrasi.LineMarineCargo})
 	require.NoError(t, err)
 	require.Len(t, got, 1)
@@ -262,6 +265,15 @@ func TestPolicyItemsPropertyCoverages(t *testing.T) {
 	b := `{"CoverageList":[{"Coverage":"C1","TSI":"10"},{"Coverage":"C2","TSI":"20"}]}`
 	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1", "IDX1").
 		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(a).AddRow(b))
+	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnError(be4Boom)
+	_, err := p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca nama treaty")
+
+	mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" IDX1 ", " OBJ1 ", " Gudang ", " Jakarta "))
+	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1", "IDX1").
+		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(a).AddRow(b))
+	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnRows(sqlmock.NewRows(be4Cols(2)))
 	got, err := p.Items(ctx, fire)
 	require.NoError(t, err)
 	require.Len(t, got, 1)

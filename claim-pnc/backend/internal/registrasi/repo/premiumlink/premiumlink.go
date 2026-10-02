@@ -109,6 +109,7 @@ type answer struct {
 	AgingAmount json.RawMessage `json:"AgingAmount"`
 	Payment     struct {
 		ListInstallment []struct {
+			InstallmentNo json.RawMessage `json:"InstallmentNo"`
 			DueDate       json.RawMessage `json:"DueDate"`
 			PaymentDate   json.RawMessage `json:"PaymentDate"`
 			PaymentAmount json.RawMessage `json:"PaymentAmount"`
@@ -136,7 +137,8 @@ func Parse(body []byte) (registrasi.PremiumStatement, error) {
 			return registrasi.PremiumStatement{}, err
 		}
 		out.Installments = append(out.Installments, registrasi.PremiumInstallment{
-			DueDate: due, PaymentDate: text(i.PaymentDate), PaymentAmount: text(i.PaymentAmount),
+			Number: text(i.InstallmentNo), DueDate: due, PaymentDate: text(i.PaymentDate), PaymentAmount: text(i.PaymentAmount),
+			PaidAt: paidAt(text(i.PaymentDate)),
 		})
 	}
 	return out, nil
@@ -153,6 +155,16 @@ func text(raw json.RawMessage) string {
 		return strings.TrimSpace(v)
 	}
 	return s
+}
+
+// paidAt membaca PaymentDate dengan bentuk yang sama dengan DueDate. Bentuk yang tidak dikenali
+// bukan galat — pemeriksaan premi hanya menilai kosong atau tidaknya teks itu.
+func paidAt(v string) time.Time {
+	t, err := date(v)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
 }
 
 // date membaca DueDate. Kosong menjadi waktu nol — cicilan tanpa jatuh tempo dianggap sudah

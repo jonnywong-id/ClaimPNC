@@ -199,9 +199,12 @@ describe('DocumentTab', () => {
 
     const formulir = (await screen.findByText('Formulir Klaim')).closest('tr')!
     expect(within(formulir).getByText('Ya')).toBeInTheDocument()
-    // Minimal kosong ditulis 0, berdampingan dengan jumlah terunggah yang juga 0.
-    expect(within(formulir).getAllByText('0')).toHaveLength(2)
+    // Minimal kosong ditulis 0; jumlah terunggah dibawa tombol Lihat dokumen.
+    expect(within(formulir).getByText('0')).toBeInTheDocument()
+    expect(within(formulir).getByRole('button', { name: 'Lihat dokumen (0)' })).toBeInTheDocument()
     expect(within(screen.getByText('Foto Kerugian').closest('tr')!).getByText('Tidak')).toBeInTheDocument()
+    // Setiap kategori adalah sub-tab tersendiri; kategori tanpa dokumen menulis "Data Tidak Ada".
+    await userEvent.click(screen.getByRole('tab', { name: 'Dokumen Kosong' }))
     expect(screen.getByText('Data Tidak Ada')).toBeInTheDocument()
 
     const empty = screen.getByText('(tanpa nama)').closest('tr')!

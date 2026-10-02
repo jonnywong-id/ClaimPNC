@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
+import { DateField } from '@/components/DateField'
 import { ReloadIcon, ScaleIcon } from '@/components/Icon'
 
 import { InboxTabs } from './InboxTabs'
@@ -409,22 +409,10 @@ function RangeFilter({
     <div className="rounded-kartu border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-44">
-          <Field
-            id="tgl-input-dari"
-            label="Tgl input dari"
-            type="date"
-            value={from}
-            onChange={(e) => onChange(e.target.value, to)}
-          />
+          <DateField id="tgl-input-dari" label="Tgl input dari" value={from} onChange={(v) => onChange(v, to)} />
         </div>
         <div className="w-44">
-          <Field
-            id="tgl-input-sampai"
-            label="Tgl input sampai"
-            type="date"
-            value={to}
-            onChange={(e) => onChange(from, e.target.value)}
-          />
+          <DateField id="tgl-input-sampai" label="Tgl input sampai" value={to} onChange={(v) => onChange(from, v)} />
         </div>
         {(from !== '' || to !== '') && (
           <Button tone="halus" onClick={() => onChange('', '')}>

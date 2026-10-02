@@ -82,6 +82,19 @@ func (s *Acceptance) RecordLODPrint(_ context.Context, claimID, objectID string,
 	return nil
 }
 
+func (s *Acceptance) SetLODType(_ context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, lodType string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.LODPrint == nil {
+		s.LODPrint = map[string]LODPrint{}
+	}
+	key := lineKey(claimID, objectID, coverageSeq, adjustmentSeq)
+	p := s.LODPrint[key]
+	p.Type = lodType
+	s.LODPrint[key] = p
+	return nil
+}
+
 func (s *Acceptance) Fields(_ context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, line *registrasi.SettlementLine) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -138,7 +151,7 @@ func (s *Acceptance) AddProgress(_ context.Context, p registrasi.ProgressUpdate)
 	return nil
 }
 
-func (s *Acceptance) PolicyCaseID(_ context.Context, policy string) (string, error) {
+func (s *Acceptance) PolicyCaseID(_ context.Context, policy, _ string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.CaseIDs[policy], nil

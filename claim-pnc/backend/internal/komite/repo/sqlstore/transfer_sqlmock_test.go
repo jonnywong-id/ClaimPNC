@@ -61,13 +61,13 @@ func caseRows(key string) func() *sqlmock.Rows {
 
 var claimColumns = []string{
 	"DOL", "REG", "LOC", "CHRONO", "STATUS", "RECOMM", "SHARE", "COINS", "CUR", "GRATIA", "COUNT",
-	"NO", "POLICY", "INSURED", "BUSINESS", "BRANCH", "SOB", "ROLE", "PANEL", "CURCODE",
+	"NO", "POLICY", "INSURED", "BUSINESS", "BRANCH", "SOB", "ROLE", "PANEL", "CURCODE", "PRODKE",
 }
 
 func claimRows() *sqlmock.Rows {
 	return sqlmock.NewRows(claimColumns).AddRow(
 		at, at, "Jakarta", "kronologi", "1147", "setuju", "50", "PT Ko", "IDR", "0", 1,
-		"PNC-1", "POL-1", "PT A", "FIRE", "Jakarta", "Direct", "Leader", "006", "IDR")
+		"PNC-1", "POL-1", "PT A", "FIRE", "Jakarta", "Direct", "Leader", "006", "IDR", "1")
 }
 
 var coverageColumns = []string{
@@ -129,7 +129,7 @@ func legacySteps() []step {
 		{"transfer_dominant_factors", factorRows},
 		{"transfer_attachments", attachmentRows},
 		{"transfer_history_legacy", entryRows},
-		{"transfer_policy", policyRows},
+		{"transfer_policy_dokumen", policyRows},
 		{"transfer_coinsurance", coinsuranceRows},
 		{"transfer_fac_offer", facOfferRows},
 	}
@@ -249,11 +249,33 @@ func TestFindTransferOfANewCaseUsesItsOwnHeader(t *testing.T) {
 	require.Equal(t, "006", detail.GroupPanel)
 	require.False(t, detail.HasClaim)
 
-	// Polis yang tidak ada tetap membaca koasuransi dan fac offer, tetapi HasPolicy palsu.
-	steps := legacySteps()
-	steps[10] = step{"transfer_policy", noPolicy}
-	steps[11] = step{"transfer_coinsurance", empty("A", "B", "C")}
-	steps[12] = step{"transfer_fac_offer", empty("A", "B")}
+	// Dokumen tanpa periode: T_GENERAL (DATE jam dinding WIB) menjadi cadangan.
+	wib := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	steps := append(legacySteps()[:10],
+		step{"transfer_policy_dokumen", noPolicy},
+		step{"transfer_policy", func() *sqlmock.Rows {
+			return sqlmock.NewRows([]string{"START", "END"}).AddRow(wib, wib)
+		}},
+		step{"transfer_coinsurance", empty("A", "B", "C")},
+		step{"transfer_fac_offer", empty("A", "B")})
+	expectSteps(mock, steps)
+	detail, err = repo.FindTransfer(context.Background(), "K-1")
+	require.NoError(t, err)
+	require.True(t, detail.HasPolicy)
+	require.Equal(t, time.Date(2025, 12, 31, 17, 0, 0, 0, time.UTC), detail.Policy.Start)
+
+	expectSteps(mock, append(legacySteps()[:10], step{"transfer_policy_dokumen", noPolicy}))
+	mock.ExpectQuery(exact("transfer_policy")).WillReturnError(errDB)
+	_, err = repo.FindTransfer(context.Background(), "K-1")
+	require.ErrorContains(t, err, "membaca T_GENERAL polis")
+
+	// Polis yang tidak ada di dokumen maupun T_GENERAL tetap membaca koasuransi dan fac offer,
+	// tetapi HasPolicy palsu.
+	steps = append(legacySteps()[:10],
+		step{"transfer_policy_dokumen", noPolicy},
+		step{"transfer_policy", noPolicy},
+		step{"transfer_coinsurance", empty("A", "B", "C")},
+		step{"transfer_fac_offer", empty("A", "B")})
 	expectSteps(mock, steps)
 	detail, err = repo.FindTransfer(context.Background(), "K-1")
 	require.NoError(t, err)
@@ -290,7 +312,7 @@ func TestFindTransferRejectsUnreadableRows(t *testing.T) {
 	bad := func() *sqlmock.Rows { return sqlmock.NewRows([]string{"A"}).AddRow("x") }
 	steps := legacySteps()
 	for i := range steps {
-		if steps[i].name == "transfer_case" || steps[i].name == "transfer_policy" {
+		if steps[i].name == "transfer_case" || steps[i].name == "transfer_policy_dokumen" {
 			continue
 		}
 		t.Run(steps[i].name, func(t *testing.T) {
@@ -309,7 +331,7 @@ func TestFindTransferReportsIterationErrors(t *testing.T) {
 	steps := legacySteps()
 	for i := range steps {
 		switch steps[i].name {
-		case "transfer_case", "transfer_policy", "transfer_committee", "transfer_claim":
+		case "transfer_case", "transfer_policy_dokumen", "transfer_committee", "transfer_claim":
 			continue
 		}
 		t.Run(steps[i].name, func(t *testing.T) {

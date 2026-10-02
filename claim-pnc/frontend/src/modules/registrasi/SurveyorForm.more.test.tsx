@@ -123,7 +123,7 @@ function claim(extra: Partial<Claim> = {}, polis: Partial<Claim['polis']> = {}):
               } as never,
             ],
             adjustment: [
-              settlement({ status_akseptasi: '1', nilai_akseptasi_sen: 30_000, nama_tipe_pdf_lod: 'LOD Final' }),
+              settlement({ status_akseptasi: '1', nilai_akseptasi_sen: 30_000, tipe_pdf_lod: '15', nama_tipe_pdf_lod: 'LOD Final' }),
               settlement({ tipe_pembayaran: '4', nama_tipe_pembayaran: 'Adjuster Fee', status_akseptasi: '1', nilai_akseptasi_sen: 12_000 }),
               settlement({ status_akseptasi: '', nilai_akseptasi_sen: 99_900 }),
             ],
@@ -190,7 +190,12 @@ describe('bagian atas', () => {
     expect(screen.getByRole('button', { name: 'Kirim ke Marketing' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Kirim ke Admin' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Survey' })).not.toBeInTheDocument()
-    // Nama status tidak ada, kodenya yang ditampilkan.
+    // Status Klaim tidak tampil untuk Travel (layout !IsTravel).
+    expect(screen.queryByLabelText('Status Klaim')).not.toBeInTheDocument()
+  })
+
+  it('lini lain menampilkan kode Status Klaim bila namanya tidak ada', () => {
+    wrap(<SurveyorForm klaim={claim({ status_klaim: '1147' })} tugas={task()} />)
     expect(screen.getByRole('option', { name: '1147' })).toBeInTheDocument()
   })
 
@@ -200,7 +205,8 @@ describe('bagian atas', () => {
     expect(screen.getByRole('heading', { name: 'InputSurveyorPA' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kirim ke Admin' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kirim ke Marketing' })).not.toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '—' })).toBeInTheDocument()
+    // Status Klaim tidak tampil untuk PA (sel !IsPA).
+    expect(screen.queryByLabelText('Status Klaim')).not.toBeInTheDocument()
   })
 
   it.each([
@@ -274,7 +280,8 @@ describe('grid Adjustment', () => {
     expect(objectRow).toHaveTextContent('300,00')
     expect(objectRow).toHaveTextContent('120,00')
     expect(await within(objectRow).findByText('Rupiah')).toBeInTheDocument()
-    expect(screen.getByTitle('Tipe PDF')).toHaveTextContent('LOD Final')
+    // Tipe PDF (.PDFType) kini dropdown Tipe LOD; pilihan tercetak tetap tampil.
+    expect(screen.getAllByRole('option', { name: 'LOD Final' }).length).toBeGreaterThan(0)
 
     const empty = screen.getByRole('table', { name: 'Adjustment Kosong' })
     expect(within(empty).getByText('Data Tidak Ada')).toBeInTheDocument()

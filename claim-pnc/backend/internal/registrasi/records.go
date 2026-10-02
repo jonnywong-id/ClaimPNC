@@ -133,16 +133,30 @@ type ClaimRecordSource interface {
 	Communications(ctx context.Context, keys RecordKeys) ([]Communication, error)
 }
 
-// DocumentCategories adalah urutan kategori tab Unggah Dokumen, mengikuti
-// `Section/ViewUploadDocument-Section.xml`: TempRegister, TempSurvey, TempCommitee,
-// TempPayment, TempCollectingDoc. SALVAGE punya layarnya sendiri dan tidak tampil di sini.
+// DocumentCategories adalah urutan sub-tab Unggah Dokumen, mengikuti
+// `Section/InputRegister-sect.xml` — judul tab dan halaman sumbernya:
+//
+//	PENDAFTARAN        TempRegister       BrowseRegister_upload
+//	SURVEI             TempSurvey         BrowseSurvey_upload
+//	DOKUMEN LAIN-LAIN  TempCollectingDoc  BrowseCollectingDoc_upload
+//	PEMBAYARAN         TempPayment        BrowsePayment_upload
+//	KOMITE             TempCommitee       BrowseCommitee_upload
+//	SALVAGE            TempSalvage        BrowseSalvage_upload
+//
+// Kondisi tampil per lini (Travel, PA) milik layar; checklist selalu memuat keenamnya.
 var DocumentCategories = []struct{ Code, Label string }{
-	{"REGISTER", "Register"},
-	{"SURVEY", "Survey"},
-	{"COMMITEE", "Committee"},
-	{"PAYMENT", "Payment"},
-	{"COLLECTING DOCUMENT", "Collecting Document"},
+	{"REGISTER", "PENDAFTARAN"},
+	{"SURVEY", "SURVEI"},
+	{"COLLECTING DOCUMENT", "DOKUMEN LAIN-LAIN"},
+	{"PAYMENT", "PEMBAYARAN"},
+	{"COMMITEE", "KOMITE"},
+	{"SALVAGE", "SALVAGE"},
 }
+
+// alwaysRequiredCollecting adalah jenis dokumen DOKUMEN LAIN-LAIN yang selalu wajib,
+// apa pun STS_WAJIB dan kelompok itemnya — cabang CASE pertama
+// `RDB List/BrowseCollectingDoc_upload-SQL.xml` (`DOC_TYPE_DT_ID='14805'/'14938' THEN 'Ya'`).
+var alwaysRequiredCollecting = map[string]bool{"14805": true, "14938": true}
 
 // DocumentRow adalah satu baris checklist dokumen.
 type DocumentRow struct {
@@ -212,6 +226,9 @@ func DocumentChecklist(claim Claim, types []DocumentType, files []Attachment) []
 			}
 		}
 		code := strings.ToUpper(strings.TrimSpace(t.Category))
+		if code == "COLLECTING DOCUMENT" && alwaysRequiredCollecting[strings.TrimSpace(t.ID)] {
+			required = true
+		}
 		byCategory[code] = append(byCategory[code], DocumentRow{
 			Type: t, Required: required, Uploaded: uploaded[strings.TrimSpace(t.ID)],
 		})

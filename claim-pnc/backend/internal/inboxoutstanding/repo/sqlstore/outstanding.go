@@ -213,8 +213,18 @@ func filterArgs(f inboxoutstanding.Filter) []any {
 //
 // Terpisah dari filterArgs karena ringkasan memakai KESEMBILAN BELAS yang pertama saja
 // sampai :14 — ia sengaja tidak menyaring status, supaya seluruh irisan tetap terlihat.
+//
+// Kode domain ("lengkap", "belum-lengkap") diterjemahkan ke penanda yang diuji SQL
+// ('LENGKAP', 'BELUM'). Sebelumnya kode domain dikirim apa adanya, sehingga tidak satu pun
+// cabang SQL cocok: lencana tab menghitung 7 klaim, tetapi daftarnya kosong.
 func statusArgs(f inboxoutstanding.Filter) []any {
-	status := nilIfEmpty(string(f.DocumentStatus))
+	var status any
+	switch f.DocumentStatus {
+	case inboxoutstanding.StatusComplete:
+		status = "LENGKAP"
+	case inboxoutstanding.StatusIncomplete:
+		status = "BELUM"
+	}
 	return []any{
 		status, // :15 IS NULL
 		status, // :16 uji LENGKAP

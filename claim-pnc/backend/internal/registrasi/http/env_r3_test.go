@@ -2,6 +2,7 @@ package registrasihttp_test
 
 import (
 	"bytes"
+	"claim-pnc/internal/registrasi/acceptancenotepdf"
 	"context"
 	"encoding/json"
 	"errors"
@@ -85,12 +86,14 @@ func newHTTPEnv(t *testing.T) httpEnv {
 	groups := &switchGroups{groups: memory.Groups{}}
 
 	service, err := usecase.NewService(usecase.Options{
-		ClaimRepo:          store,
-		TaskRepo:           store.TaskRepo(),
-		PolicyRepo:         memory.NewPolicyStore(memory.SamplePolicies(fixed.Now())...),
-		NumberIssuer:       memory.NewNumberIssuer(),
-		Parameter:          memory.NewParameter(),
-		ExchangeRateSource: memory.NewExchangeRateSource(),
+		CauseOfLoss:            memory.NewAreaDirectory(),
+		AcceptanceNoteRenderer: acceptancenotepdf.Renderer{},
+		ClaimRepo:              store,
+		TaskRepo:               store.TaskRepo(),
+		PolicyRepo:             memory.NewPolicyStore(memory.SamplePolicies(fixed.Now())...),
+		NumberIssuer:           memory.NewNumberIssuer(),
+		Parameter:              memory.NewParameter(),
+		ExchangeRateSource:     memory.NewExchangeRateSource(),
 		Assigner: memory.NewAssigner(map[string][]string{
 			registrasi.RouterPNCAdmin:     {testOperator},
 			registrasi.RouterPNCTechnical: {testOperator},

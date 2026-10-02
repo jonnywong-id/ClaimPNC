@@ -255,6 +255,11 @@ type ClaimReport struct {
 	DamageDetail      string // .ReceiveDocument.RincianKerusakan   — "Rincian Kerusakan"
 	NotRegisteredNote string // .ReceiveDocument.NotRegistNote     — "Keterangan Belum Registrasi"
 
+	GroupPanel    string // GROUPPANEL       — Group Panel polis saat berkas disimpan
+	InsuredEmail  string // EMAILTERTANGGUNG — .ReceiveDocument.EmailLOD, "Email Tertanggung" (PA)
+	DriverLicense string // SIMPENGENDARA    — .ReceiveDocument.SIM (PA)
+	ReportSource  string // RESOURCES        — .ReceiveDocument.Resource, "Source Of Reports"
+
 	// DocumentCount adalah Total Jumlah Dokumen — `.ReceiveDocument.NumberOfDocument`.
 	//
 	// Ia hanya ANGKA. Rincian dokumennya — nama, jenis, jumlah per baris, dan tautan

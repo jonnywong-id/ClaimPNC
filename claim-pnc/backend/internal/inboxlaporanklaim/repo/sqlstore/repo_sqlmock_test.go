@@ -42,14 +42,15 @@ var listColumns = []string{
 	"position", "origin", "aging_value", "last_message",
 }
 
-// detailColumns adalah ketiga puluh kolom yang dibaca scanDetailRow, berurutan.
+// detailColumns adalah ketiga puluh empat kolom yang dibaca scanDetailRow, berurutan.
 var detailColumns = []string{
 	"id", "claim_number", "assignment_ref", "policy_number", "insured_name",
 	"reporter_name", "business_name", "reference_number", "date_of_loss", "created_at",
 	"created_by", "branch_code", "branch_name", "aging_at", "reason", "email_subject",
 	"position", "origin", "aging_value", "received_date", "reporter_email",
 	"reporter_phone", "courier_name", "estimate_value", "loss_location", "chronology",
-	"damage_detail", "not_registered_note", "document_count", "last_message",
+	"damage_detail", "not_registered_note", "document_count",
+	"group_panel", "insured_email", "driver_license", "report_source", "last_message",
 }
 
 func toValues(argument []any) []driver.Value {
@@ -324,7 +325,7 @@ func detailRow(id string) *sqlmock.Rows {
 		" "+id+" ", nil, nil, "POL1", "Insured", "Pelapor", "Fire", "REF1",
 		nil, nil, "OP1", "1001", "Jakarta", nil, "alasan", "subj",
 		"Not Transferred", "claimpnc", nil, received, "a@x", "0812", "kurir",
-		int64(800000000), "lokasi", "kronologi", "rincian", "catatan", int64(3), "pesan")
+		int64(800000000), "lokasi", "kronologi", "rincian", "catatan", int64(3), " 006 ", "t@x", "SIM1", "Telepon", "pesan")
 }
 
 // Nomor berawalan RCVN dibaca lewat jalur berkas sendiri, bukan jalur warisan.
@@ -429,7 +430,7 @@ func TestUpdateWritesReportThenUpdatesClaimRow(t *testing.T) {
 	// Tanggal terima dikirim sebagai teks ISO; teks kosong menjadi NULL; estimasi int64.
 	mock.ExpectExec(pattern("claim_report_update")).
 		WithArgs("2026-09-02", report.DateOfLoss, "Budi", nil, nil, nil, "POL1", nil, nil,
-			int64(150000), nil, "subj", nil, nil, nil, nil, "RCVN.26.5").
+			int64(150000), nil, "subj", nil, nil, nil, nil, nil, nil, nil, nil, "RCVN.26.5").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	// Tanggal kalender dipotong ke tengah malam WIB sebelum diikat.
 	mock.ExpectExec(pattern("claim_report_pnc_update")).
@@ -452,7 +453,7 @@ func TestUpdateInsertsClaimRowWhenMissing(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(pattern("claim_report_update")).
 		WithArgs(nil, nil, "Budi", nil, nil, nil, "POL1", nil, nil,
-			int64(150000), nil, "subj", nil, nil, nil, nil, "RCVN.26.5").
+			int64(150000), nil, "subj", nil, nil, nil, nil, nil, nil, nil, nil, "RCVN.26.5").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(pattern("claim_report_pnc_update")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(pattern("claim_report_pnc_insert")).
@@ -709,22 +710,22 @@ func TestFindPolicy(t *testing.T) {
 		repo, mock, _ := newMock(t)
 		mock.ExpectQuery(pattern("claim_report_policy_find")).
 			WithArgs("POL1").
-			WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f"}).
-				AddRow(" Insured ", "B1", "Fire", "REF", "006", "1"))
+			WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g"}).
+				AddRow(" Insured ", "B1", "Fire", "REF", "006", "1", " ASM "))
 		policy, found, err := repo.FindPolicy(context.Background(), "POL1")
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, inboxlaporanklaim.Policy{
 			Number: "POL1", InsuredName: "Insured", BusinessCode: "B1", BusinessName: "Fire",
-			ReferenceNumber: "REF", GroupPanel: "006", Syariah: true,
+			ReferenceNumber: "REF", GroupPanel: "006", Leader: "ASM", Syariah: true,
 		}, policy)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 	t.Run("not syariah when blank", func(t *testing.T) {
 		repo, mock, _ := newMock(t)
 		mock.ExpectQuery(pattern("claim_report_policy_find")).
-			WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f"}).
-				AddRow("I", nil, nil, nil, nil, nil))
+			WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g"}).
+				AddRow("I", nil, nil, nil, nil, nil, nil))
 		policy, found, err := repo.FindPolicy(context.Background(), "POL1")
 		require.NoError(t, err)
 		require.True(t, found)
@@ -734,7 +735,7 @@ func TestFindPolicy(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		repo, mock, _ := newMock(t)
 		mock.ExpectQuery(pattern("claim_report_policy_find")).
-			WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f"}))
+			WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g"}))
 		_, found, err := repo.FindPolicy(context.Background(), "POL1")
 		require.NoError(t, err)
 		require.False(t, found)

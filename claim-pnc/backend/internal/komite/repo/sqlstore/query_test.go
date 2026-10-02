@@ -30,6 +30,7 @@ func TestSeluruhKueriYangDipakaiAda(t *testing.T) {
 		"transfer_check_table",
 		"transfer_case_new",
 		"transfer_policy",
+		"transfer_policy_dokumen",
 		"transfer_coinsurance",
 		"transfer_fac_offer",
 		"transfer_spreading",

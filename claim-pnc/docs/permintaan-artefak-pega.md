@@ -1949,3 +1949,303 @@ dan dialog "Lihat File" di sistem lama selalu kosong tanpa ada yang melaporkanny
 
 Jawabannya **tidak mengubah kode**: kedua kueri meniru perbandingan yang sama apa adanya
 (`P-5`). Ia hanya menentukan mana dari kedua kalimat di `PlannedDifferences()` yang berlaku.
+
+## 12. Adjustment, Akseptasi, Draft Persetujuan, dan Transfer Kasir (2026-10-01) — ke **Tim Pega**
+
+Diperiksa terhadap export per 2026-10-01. Sebuah rule dihitung ADA hanya bila berkas
+definisinya sendiri ada (nama berkas atau `pyRuleName` miliknya) — bukan sekadar disebut.
+
+### 12.1 Rule yang HILANG
+
+| # | Rule | Jenis | Dirujuk di | Akibat bagi aplikasi baru |
+|---|---|---|---|---|
+| 1 | `ValidationAdjustment` | Activity | `Section/ShowAdjustment_sect.xml` (aksi dropdown Tipe LOD dan isian adjustment) | Pemeriksaan saat Tipe LOD/adjustment diubah tidak dibawa |
+| 2 | `SetShareAsmWhenPilihAdjustment` | Activity | `Section/ShowAdjustment_sect.xml:3600`, `:3713` | Bila ia mengubah Share ASM saat Tipe LOD dipilih, perilaku itu belum ada |
+| 3 | `IsAnalisator` | When | `Section/ShowAdjustment_sect.xml` (baca-saja dropdown), `InputAdjustment_sect`, beberapa activity salvage/investigator | Pembatasan peran Analisator belum ditegakkan |
+| 4 | `ValidasiTransferKasir_dialog` | Flow Action | `Section/InputAdjustment_sect.xml` (tombol Transfer Kasir) | Dialog Transfer Kasir dibangun ulang sebagai ringkasan konfirmasi (keputusan Work Owner) |
+| 5 | `DokumentBeforeTFManager` | Activity | `Activity/TransferToKasir_act-act.xml` | Jalur persetujuan leader / manajer sebelum Transfer Kasir belum dibangun |
+| 6 | `UpdateChasierIDTablePembayaran` | Connect SQL (`@baseclass`) | `TransferToKasir_act`, `TransferToKasir_act_Leader`, `InsertDataAkseptasiToLeader` | Pembaruan CaseID Kasir pada tabel pembayaran (jalur leader) belum dibangun |
+| 7 | `GetDataBankMaster` | Activity | `Section/InputReceiver_sect.xml` (isian No Rekening penerima) | Pemetaan rekening → penerima direkonstruksi dari data, bukan dari rule |
+| 8 | `IsServerSyariah` | When | `Data Transform/SetDataEmail-DT.xml`, `Activity/SpreadingDataProtection-Act.xml` | Pembeda portal Syariah belum punya baseline |
+| 9 | `IsDevelopmentServer` | When | sejumlah activity | Tidak dibawa (perilaku berbasis hostname dilarang, Steering §3.4) |
+
+### 12.2 Objek basis data yang hilang — ke **DBA**
+
+| Objek | Dirujuk di | Catatan |
+|---|---|---|
+| `PKG_KONVERSI_JSONKLAIM` | `TransferToKasir_act` (dua pemeriksaan sebelum transfer) | Tidak dipanggil aplikasi baru (`D-02`); isinya tetap perlu dibaca untuk tahu apa yang diperiksa |
+
+### 12.3 Koreksi atas catatan sebelumnya — rule ini ternyata ADA
+
+Catatan terdahulu (B-10, `catatan-pengembangan.md`) menyebut beberapa rule hilang; export kini
+memuatnya: `InsertLogKasir_act`, `SendAttachmenttoCashier_act`, `SetDataEmailTertanggung`,
+`DownloadProposeAdjustment`, `PrintLODdanEmail` (section), `SendAutoLodKeTertanggungPA` (HTML),
+`IsMarineHull`, `SetSignaturePA`, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU_act`.
+Yang perlu dibaca ulang karena kini tersedia: `SendAttachmenttoCashier_act` (pengiriman berkas ke
+Kasir) dan `PrintLODdanEmail` + `DownloadProposeAdjustment` (kirim email LOD).
+
+### 12.4 Pembaruan 2026-10-01 — setelah 8 berkas diterima
+
+**Diterima dan sudah dibawa:** `SetShareAsmWhenPilihAdjustment` (dropdown Tipe LOD kini mengubah
+ExGratia dan Share ASM baris), `GetDataBankMaster` (pemeriksaan "Norekening Belum Terdaftar Di
+Sistem Kasir", dikendalikan KASIR_CEK_REKENING), `IsServerSyariah` / `IsDevelopmentServer`
+(diganti portal dan pengaturan lingkungan — tidak membandingkan nama server).
+
+**Diterima, dibaca, belum dibangun:** `ValidationAdjustment` (aksi tombol Tambah adjustment, 918 KB —
+bukan aksi dropdown), `DokumentBeforeTFManager` (jalur persetujuan atasan), `IsAnalisator`
+(workgroup `KlaimAnalisator`; butuh pemetaan login ke operator Pega).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di |
+|---|---|---|
+| `Sec_dialogValidasiTransfer` | Section | `Flow Action/ValidasiTransferKasir_dialog-FA.xml` — isi dialog Transfer Pembayaran |
+| `Pre_AlertTransferkasir` | Activity | idem, pra-proses dialog |
+| `GetDataPenerimaKlaim` | Connect SQL | `GetDataBankMaster` langkah 4 |
+| `GetDataBankMasterRekening` | Connect SQL | `GetDataBankMaster` langkah 9 (PA: "No Rekening Sedang Proses Approval") |
+| `UpdateChasierIDTablePembayaran` | Connect SQL | `TransferToKasir_act`, `TransferToKasir_act_Leader` |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` |
+
+### 12.5 Pembaruan 2026-10-01 (kedua) — setelah 5 berkas diterima
+
+**Dibawa:** `GetDataPenerimaKlaim` (hanya rekening `APPROVAL = '1'`; rekening `'0'` ditolak "No
+Rekening Sedang Proses Approval"), `GetDataBankMasterRekening`, `Pre_AlertTransferkasir` (kalimat
+konfirmasi dialog), `Sec_dialogValidasiTransfer` (judul "Transfer Pembayaran", tombol "Transfer To
+Kasir" / "Batal").
+
+**Dibaca, tidak dibangun:** `UpdateChasierIDTablePembayaran` — milik jalur persetujuan atasan
+(memanggil prosedur `POOLDATA.INSERT_AKSEPTASI_TO_LEADER`, `D-02`).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di | Untuk |
+|---|---|---|---|
+| `GetdataFacoutJoinPlacement` | Activity | `Sec_dialogValidasiTransfer` (defer load tabel `ListFacoutFlonting`) | Daftar DLA Fac-out pada dialog — "Pilih Fac-out Tidak Dibayar" |
+| `JoinPlacement` | Property (local list) | `Sec_dialogValidasiTransfer` (dropdown "Tipe Transfer Kasir", bawaan `1`; tabel tampil bila 2 atau 3) | Label pilihan Tipe Transfer Kasir |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` | Dua pemeriksaan sebelum transfer |
+
+### 12.6 Pembaruan 2026-10-01 (ketiga) — `GetdataFacoutJoinPlacement` dan `JoinPlacement` diterima
+
+**Dibawa:** dropdown "Tipe Transfer Kasir" (1 Pembayaran Biasa, 2 Join Placement, 3 Fronting) dan
+tabel "Pilih Fac-out Tidak Dibayar" (DLA FAC OUT nomor akseptasi itu, `GetDLAHistoryManager`).
+Fac-out yang dicentang menjadi baris TAllPaymentData tambahan: NoTrans = No DLA, Nett = Nilai Bayar
+× -1 (`TransferCashierDataASM_act` cabang ListOfPlacement).
+
+**Masih HILANG:** `PKG_KONVERSI_JSONKLAIM` (Package DB, ke DBA) — dua pemeriksaan sebelum Transfer Kasir.
+
+---
+
+## 13. Isi kolom `POOLDATA.T_GENERAL.CURRENCY` (2026-10-01) — ke **DBA**
+
+| | |
+|---|---|
+| **Status** | **Diminta** |
+| **Ditujukan ke** | DBA — pelaksana. Persetujuan: Work Owner (`D-63`). Tabel ini ditulis sistem polis, sehingga pemilik datanya perlu ikut diberi tahu |
+| **Menghalangi** | registrasi klaim atas polis yang kolom mata uangnya kosong — klaim ditolak karena kurs tidak ditemukan |
+| **Jenis perubahan** | **hanya mengisi kolom yang KOSONG** (UPDATE) — lihat §13.0 |
+
+### 13.0 Dua batas yang mengikat (Work Owner, 2026-10-01)
+
+1. **Tidak ada perubahan struktur tabel.** Tidak ada `CREATE`, `ALTER`, `DROP`, `TRUNCATE`,
+   index, trigger, maupun tabel cadangan di basis data. Cadangan untuk rollback disimpan sebagai
+   **berkas di luar basis data** (§13.4 langkah 2).
+2. **Tidak menimpa data yang sudah ada.** Yang diubah hanya sel `CURRENCY` yang **kosong (NULL)**
+   pada saat UPDATE dijalankan. Kolom lain dan baris yang `CURRENCY`-nya sudah terisi tidak disentuh.
+   Rollback pun hanya mengosongkan sel yang **masih berisi nilai yang kita isi** — bila sejak itu
+   sudah diubah pihak lain, sel itu dibiarkan.
+
+### 13.1 Kenapa diminta
+
+Aplikasi Claim PNC yang baru tidak lagi membaca data polis dari kolom
+`POOLDATA.JSON_POLIS.DATA_JSONBLOB`. Mata uang polis kini dibaca dari `T_GENERAL.CURRENCY` menurut
+`NOPOLIS` + `PRODKE`, dengan `JSON_POLIS.POLICYDATA` sebagai cadangan.
+
+Kolom `CURRENCY` ternyata **kosong pada hampir seluruh baris yang dibuat sebelum 2025**. Bila
+polisnya juga tidak punya `POLICYDATA` (dokumennya hanya ada di `DATA_JSONBLOB`), mata uang polis
+menjadi kosong, kurs tidak dapat dicari, dan registrasi klaim **ditolak**.
+
+### 13.2 Ukuran — dihitung 2026-10-01
+
+| Lingkup | Baris T_GENERAL | `CURRENCY` kosong | Dapat diisi dari dokumen polis |
+|---|---:|---:|---:|
+| seluruh tabel | 201.582 | **167.528** | — (dihitung DBA, §13.4 langkah 1) |
+| polis yang punya klaim di `T_CLAIM_PNC` | 233 | **214** | **210** |
+
+Sebaran per tahun `TGL_INPUT` — kolom ini baru terisi teratur sejak 2025:
+
+| Tahun | Baris | Kosong |
+|---|---:|---:|
+| 2018–2019 | 132 | 110 |
+| 2020 | 8.636 | 8.435 |
+| 2021 | 33.776 | 33.327 |
+| 2022 | 23.302 | 22.132 |
+| 2023 | 72.587 | 72.190 |
+| 2024 | 4.795 | 4.112 |
+| 2025 | 7.379 | 3 |
+| 2026 | 23.620 | 12 |
+| `TGL_INPUT` kosong | 27.355 | 27.207 |
+
+### 13.3 Isi yang diminta
+
+`CURRENCY` diisi dengan **kode mata uang polis dari dokumen polis pada PRODKE yang sama** — nilai
+`$.Currency` dari `JSON_POLIS.POLICYDATA`, atau dari `JSON_POLIS.DATA_JSONBLOB` bila POLICYDATA
+kosong. Bentuknya **kode angka** (`10026` = IDR, `10001` = USD), sama dengan baris 2025 ke atas
+yang sudah terisi dan sama dengan `POOLDATA.M_CURRENCYSTANDARD.ID`. **Bukan** simbol `IDR`/`USD`.
+
+Aturannya:
+
+1. Hanya baris yang `CURRENCY`-nya **kosong (NULL)**. Baris yang sudah terisi tidak disentuh,
+   dan hanya kolom `CURRENCY` yang diubah.
+2. Pasangan kunci: `T_GENERAL.NOPOLIS = JSON_POLIS.NOPOLIS` **dan**
+   `T_GENERAL.PRODKE = JSON_POLIS.PRODKE`.
+3. Bila satu PRODKE punya lebih dari satu baris `JSON_POLIS`, yang dipakai **baris terbaru menurut
+   `TGL_INPUT`**.
+4. Baris yang dokumennya tidak memuat `$.Currency` **dibiarkan kosong** — jangan diisi nilai bawaan
+   seperti IDR. Mengisi bawaan akan mengonversi klaim valuta asing dengan kurs yang salah.
+
+### 13.4 Langkah yang diusulkan
+
+Kueri di bawah adalah **usulan**. DBA bebas menyesuaikan cara pelaksanaannya selama hasilnya sama.
+
+**Langkah 1 — hitung baris yang akan berubah:**
+
+```sql
+SELECT COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+**Langkah 2 — cadangan untuk rollback, sebagai BERKAS (bukan tabel):**
+
+Hasil kueri ini diekspor ke berkas CSV di luar basis data (spool SQL*Plus, SQL Developer, atau alat
+lain yang biasa dipakai DBA). Isinya daftar sel yang **akan** diisi beserta nilai yang akan diisikan
+— itulah satu-satunya bahan rollback. **Tidak ada tabel cadangan yang dibuat.**
+
+```sql
+SELECT ROWIDTOCHAR(g.ROWID) AS RID, g.NOPOLIS, g.PRODKE,
+       (SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+          FROM POOLDATA.JSON_POLIS p
+         WHERE p.NOPOLIS = g.NOPOLIS
+           AND TO_CHAR(p.PRODKE) = g.PRODKE
+           AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+         ORDER BY p.TGL_INPUT DESC
+         FETCH FIRST 1 ROWS ONLY) AS CURRENCY_BARU
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Jumlah barisnya wajib sama dengan hasil langkah 1.
+
+**Langkah 3 — isi kolomnya:**
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = (
+         SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+           FROM POOLDATA.JSON_POLIS p
+          WHERE p.NOPOLIS = g.NOPOLIS
+            AND TO_CHAR(p.PRODKE) = g.PRODKE
+            AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+          ORDER BY p.TGL_INPUT DESC
+          FETCH FIRST 1 ROWS ONLY)
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Penyaring `g.CURRENCY IS NULL` di UPDATE itulah yang menjamin data yang sudah ada tidak tertimpa:
+bila sebuah sel terisi oleh proses lain di antara langkah 2 dan 3, UPDATE melewatinya. Akibatnya
+jumlah baris yang diperbarui boleh **lebih kecil** dari langkah 1, tetapi **tidak boleh lebih besar**
+— bila lebih besar, batalkan (`ROLLBACK`) sebelum `COMMIT`.
+
+Dengan 167.528 baris kandidat, DBA dapat memecahnya per tahun `TGL_INPUT` (§13.2) bila perlu;
+setiap potongan tetap memakai penyaring `g.CURRENCY IS NULL`.
+
+**Langkah 4 — periksa hasil:**
+
+```sql
+SELECT g.CURRENCY, COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ GROUP BY g.CURRENCY
+ ORDER BY 2 DESC;
+```
+
+Semua nilai baru harus berupa kode yang ada di `POOLDATA.M_CURRENCYSTANDARD.ID`.
+
+### 13.5 Rollback
+
+Dijalankan per baris berkas CSV langkah 2 (`:rid` dan `:nilai` dari kolom `RID` dan
+`CURRENCY_BARU`):
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = NULL
+ WHERE g.ROWID = CHARTOROWID(:rid)
+   AND g.CURRENCY = :nilai;
+```
+
+Syarat `g.CURRENCY = :nilai` membuat rollback **tidak menimpa** perubahan pihak lain: sel yang sejak
+pengisian sudah diubah nilainya dibiarkan apa adanya. Berkas CSV disimpan sampai Work Owner
+menyatakan hasilnya diterima. Berkas itu memuat nomor polis, sehingga disimpan sesuai aturan data
+nasabah (`D-69`) dan **tidak** dimasukkan ke repository.
+
+### 13.6 Yang perlu dikonfirmasi sebelum dijalankan
+
+| # | Pertanyaan | Kepada |
+|---|---|---|
+| 1 | Apakah ada proses sistem polis yang **membaca** `T_GENERAL.CURRENCY` dan perilakunya berubah bila kolom yang kosong menjadi terisi? | pemilik sistem polis (GISFW) |
+| 2 | Apakah ada proses yang **menimpa** `T_GENERAL` dari dokumen polis (konversi ulang) sehingga isian ini kembali kosong? | DBA / pemilik sistem polis |
+| 3 | Mengikuti `D-63`, perubahan diuji dengan menjalankan Pega dan aplikasi baru bersamaan setelah pengisian | tim pengembang + DBA |
+
+> **Bukan bagian permintaan ini:** periode polis (`STARTDATE`/`ENDDATE`). Kolom itu terisi, tetapi
+> **tidak mengikuti endorsemen** — perbaikannya butuh keputusan tersendiri, bukan pengisian kolom kosong.
+
+---
+
+## 14. Rule yang tidak ditemukan di Pega (2026-10-02) — **ditutup**
+
+| | |
+|---|---|
+| **Status** | **Ditutup** — Tim Pega menambahkan 51 rule ke export (2026-10-01 dan 2026-10-02); rule di bawah **dicari di Pega dan tidak ditemukan** |
+| **Akibat** | jangan diminta ulang; perilaku yang bergantung padanya **direkonstruksi atau tidak dibawa**, dan dicatat di catatan pengembangan |
+
+### 14.1 Rule Pega
+
+| Rule | Jenis | Dipakai untuk | Perlakuan di aplikasi baru |
+|---|---|---|---|
+| `InputInvestigator` | Section | layar flow action tahap Investigator (PA) | bingkai `ClaimSurvey_sect`, tab Investigasi lebih dulu (catatan #125) |
+| `ValidasiTransferKasir_dialog` | Section | dialog validasi Transfer Kasir (flow action-nya ada) | isi dialog direkonstruksi dari flow action dan activity-nya |
+| `SendToPIC` | Ticket | lompatan ke Send To PIC dari Input Estimasi | `SendToPICTravel` ada; `SendToPIC` tidak dibawa sampai ada pemakainya |
+| `setToRegister_ticket` | Ticket | lompatan kembali ke Input Register | ditangani tombol Back alur Register |
+| `UploadDataSlinkOJK` | Activity | unggah data SLIK OJK | belum dibangun; butuh keputusan bentuk berkas |
+| `InboxKlaimNonPropAdmin` | RDB | daftar Inbox Klaim Non-Prop admin | kueri tab yang ada dipakai |
+
+### 14.2 Objek basis data — **tetap ke DBA**
+
+Objek berikut bukan rule Pega, sehingga wajar tidak ditemukan di Pega. Source-nya ada di basis data:
+
+`PKG_KONVERSI_JSONKLAIM` (termasuk `Proteksi_PNC_TBI_Kasir` dan `Cek_Nilai_Akseptasi_PNC` untuk pemeriksaan
+Transfer Kasir) · `MODULKLAIMMASKING` · `SET_ATTACHFILETEMPSALVAGE` · `UPDATEPREMIUMTEMPLATE` ·
+`UPDATE_LOG_KONVERSI` · `GETNEWID` · `PKG_COUNTER_PRODUCTION` · `PROCESSQUEUEDIRECT`.
+
+Penarikannya cukup dengan `ALL_SOURCE` seperti `19-GAP-EXPORT-DETAIL.md` bagian *Cara Meminta ke DBA*.

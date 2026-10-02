@@ -273,7 +273,7 @@ describe('penyaring', () => {
     renderPage()
     await screen.findByText('PT Harapan Sentosa')
 
-    await userEvent.type(screen.getByLabelText('Tgl input dari'), '2026-09-01')
+    await userEvent.type(screen.getByLabelText('Tgl input dari'), '01/09/2026')
 
     await waitFor(() => {
       expect(lastListCall()?.url).toContain('dari=2026-09-01')
@@ -287,8 +287,8 @@ describe('penyaring', () => {
     renderPage()
     await screen.findByText('PT Harapan Sentosa')
 
-    await userEvent.type(screen.getByLabelText('Tgl input dari'), '2026-09-20')
-    await userEvent.type(screen.getByLabelText('Tgl input sampai'), '2026-09-01')
+    await userEvent.type(screen.getByLabelText('Tgl input dari'), '20/09/2026')
+    await userEvent.type(screen.getByLabelText('Tgl input sampai'), '01/09/2026')
 
     expect(
       await screen.findByText(/Tanggal sampai tidak boleh lebih awal/),

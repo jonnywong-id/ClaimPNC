@@ -421,3 +421,21 @@ func TestFormatRupiah(t *testing.T) {
 	require.Equal(t, "Rp 0,00", registrasi.FormatRupiah(0))
 	require.Equal(t, "Rp 1.234,56", registrasi.FormatRupiah(registrasi.Money(123_456)))
 }
+
+// Total share 100% berlaku PER JAMINAN (`InputRegister_act` 37.3.1 mereset totalnya di dalam
+// loop coverage). Dua jaminan masing-masing 100% — total keseluruhan 200% — sah; satu
+// jaminan yang tidak 100% tetap ditolak meski jaminan lain benar.
+func TestSpreadingTotalIsPerCoverage(t *testing.T) {
+	k := validClaim()
+	k.InsuredItem[0].Coverage = append(k.InsuredItem[0].Coverage, registrasi.Coverage{
+		ID: "CVG-2", CauseOfLoss: "11817", TSI: registrasi.Rupiah(500_000_000),
+		Spreading: []registrasi.Spreading{
+			{TreatyKind: "10010", Name: "BPPDAN", Share: 25_000},
+			{TreatyKind: "10008", Name: "Treaty", Share: 975_000},
+		},
+	})
+	require.NoError(t, registrasi.Validate(k, parts()))
+
+	k.InsuredItem[0].Coverage[1].Spreading[1].Share = 900_000
+	require.True(t, violations(t, registrasi.Validate(k, parts())).Has(registrasi.ViolationSpreadingTotalNot100))
+}

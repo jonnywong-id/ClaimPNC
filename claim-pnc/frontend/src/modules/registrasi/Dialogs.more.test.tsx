@@ -102,16 +102,16 @@ describe('CashierDialog', () => {
     expect(screen.getAllByText('—')).toHaveLength(4)
     expect(screen.getByText(/IDR 1\.234,56/)).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Transfer To Kasir' }))
     expect(await screen.findByText('Berhasil ditransfer ke Kasir.')).toBeInTheDocument()
-    expect(calls.find((c) => c.url === `${BASE}/kasir`)?.body).toEqual(ADDRESS)
-    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
+    expect(calls.find((c) => c.url === `${BASE}/kasir`)?.body).toEqual({ ...ADDRESS, tipe_transfer: '1', fac_out_tidak_dibayar: [] })
+    expect(screen.queryByRole('button', { name: 'Transfer To Kasir' })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Tutup' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('menahan Submit bila pratinjau menyebut masalah, dan menutup lewat Escape', async () => {
+  it('menahan Transfer To Kasir bila pratinjau menyebut masalah, dan menutup lewat Escape', async () => {
     installFetch((url) =>
       url === `${BASE}/kasir/pratinjau`
         ? json(200, { ...PREVIEW, penerima: 'PT Contoh', nomor_rekening: '123', nama_bank: 'BANK', email: 'a@contoh.example', masalah: 'Rekening belum disetujui.' })
@@ -122,7 +122,7 @@ describe('CashierDialog', () => {
 
     expect(await screen.findByText('Rekening belum disetujui.')).toBeInTheDocument()
     expect(screen.getByText('PT Contoh')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Transfer To Kasir' })).toBeDisabled()
 
     fireEvent.keyDown(document, { key: 'Enter' })
     expect(onClose).not.toHaveBeenCalled()
@@ -139,7 +139,7 @@ describe('CashierDialog', () => {
 
     expect(await screen.findByText('Transfer Kasir belum dapat diproses')).toBeInTheDocument()
     expect(screen.getByText(text)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Transfer To Kasir' })).toBeDisabled()
   })
 
   it('menampilkan galat pengiriman', async () => {
@@ -150,9 +150,9 @@ describe('CashierDialog', () => {
     })
     wrap(<CashierDialog claimID="klaim-1" address={ADDRESS} onClose={() => {}} />)
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Submit' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Transfer To Kasir' }))
     expect(await screen.findByText('Tidak dapat menghubungi server Claim PNC.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Batal' })).toBeEnabled()
   })
 })
 

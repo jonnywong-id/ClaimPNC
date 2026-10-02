@@ -4,6 +4,7 @@ import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { rupiahToCents } from '@/components/format'
 
+import { AcceptanceNumber } from './AcceptanceNumber'
 import { useAddSettlement, usePreviewSettlement, violationsFrom } from './api'
 import {
   PaymentType,
@@ -393,6 +394,9 @@ function Text({
   )
 }
 
+/** Label pilihan Persetujuan Tertanggung pada form AcceptationLOD. */
+const LOD_STATUS: Record<string, string> = { '1': 'Setuju', '0': 'Tidak Setuju' }
+
 const RISK_NAMES: Record<string, string> = Object.fromEntries(RISK_OPTIONS.map((o) => [o.value, o.label]))
 
 /**
@@ -402,6 +406,10 @@ const RISK_NAMES: Record<string, string> = Object.fromEntries(RISK_OPTIONS.map((
  * Nilai Salvage B, Nilai Interim, dan komponen fee adjuster tidak punya kolom di
  * T_CLAIM_ADJUSTMENT; yang tersimpan hanya Nilai Nett Pembayaran hasilnya, sehingga
  * ketiganya tampil —— pada baris yang dimuat ulang.
+ *
+ * Nomor Akseptasi beserta tombol PRINT dan Transfer Kasir tampil di kolom kanan, seperti
+ * InputAdjustment_sect (lihat AcceptanceNumber). Status Persetujuan LOD dan Case ID Kasir dibaca
+ * dari STATUSAKSEPTASILOD dan IDCHASIER.
  */
 export function SettlementDetail({
   line,
@@ -410,6 +418,7 @@ export function SettlementDetail({
   spreading,
   travel,
   nonMBU,
+  address,
 }: {
   line: Settlement
   currencyName: string
@@ -418,6 +427,8 @@ export function SettlementDetail({
   spreading: Spreading[]
   travel: boolean
   nonMBU: boolean
+  /** Tugas dan letak baris ini (berbasis 1) — untuk tombol PRINT dan Transfer Kasir. */
+  address?: { claimID: string; taskID: string; object: number; coverage: number; adjustment: number }
 }) {
   const pt = line.tipe_pembayaran
   const proposeBased = pt === PaymentType.Final || pt === PaymentType.Interim || pt === PaymentType.Adjustment
@@ -442,7 +453,7 @@ export function SettlementDetail({
           )}
           {fee && <Display label="Nilai Adjuster Fee">{money(line.nilai_asm_sen)}</Display>}
           <Display label="Nilai Nett Pembayaran">{money(line.nilai_gross_sen)}</Display>
-          {!travel && <Display label="Status Persetujuan LOD">{EMPTY}</Display>}
+          {!travel && <Display label="Status Persetujuan LOD">{LOD_STATUS[line.status_akseptasi_lod ?? ''] ?? EMPTY}</Display>}
           {nonMBU && (
             <Display label="Tanggal Transfer LOD" small>
               {EMPTY}
@@ -462,6 +473,7 @@ export function SettlementDetail({
           {proposeBased && nonMBU && <Display label="Nilai Interim">{optional(line.nilai_interim_sen)}</Display>}
           <Display label="Share ASM (%)">{percent.format(line.share_asm / 10_000)}</Display>
           {proposeBased && <Display label="Nilai Yang Dibayarkan ASM">{money(line.nilai_asm_sen)}</Display>}
+          {line.case_id_kasir && <Display label="Case ID Kasir">{line.case_id_kasir}</Display>}
           {nonMBU && (
             <Display label="Status Lunas" small>
               {EMPTY}
@@ -471,6 +483,16 @@ export function SettlementDetail({
             <Display label="Tanggal Bayar Kasir" small>
               {EMPTY}
             </Display>
+          )}
+          {address && (
+            <AcceptanceNumber
+              claimID={address.claimID}
+              taskID={address.taskID}
+              object={address.object}
+              coverage={address.coverage}
+              adjustment={address.adjustment}
+              line={line}
+            />
           )}
         </div>
       </div>
