@@ -37,7 +37,8 @@ import (
 //
 // Yang membatasi taruhannya, dan keduanya perlu disebut apa adanya:
 //
-//   - Modul ini MEMBACA saja. Tidak ada satu pun aksi yang mengubah data.
+//   - Modul ini SEBAGIAN BESAR membaca. Empat jalur menulis — tindakan klaim, unggah
+//     dokumen, dan keduanya hanya menyentuh tabel milik aplikasi ini.
 //   - Setiap pembukaan DICATAT — bukan hanya yang mencurigakan. Lihat usecase.List, dan
 //     usecase.DailyReport yang mencatat rentang tanggalnya pula.
 //
@@ -76,6 +77,24 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// ia yang membuktikan dokumennya memang milik klaim yang sedang dibuka, dan
 		// pembuktian itu ditegakkan di dalam kueri.
 		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}/dokumen", h.Documents)
+
+		// Unggah dokumen — tombol "Unggah Dokumen".
+		//
+		// POST ke alamat DAFTARNYA, bukan ke alamat tindakan: ia MEMBUAT sumber daya baru di
+		// bawah koleksi itu, dan itulah arti POST pada sebuah koleksi
+		// (`10-API-STRATEGY.md` §2). Jawabannya `201` beserta baris yang baru dibuat.
+		//
+		// Ia TIDAK ikut ke `/tindakan/{aksi}` karena muatannya berbeda jenis — berkas, bukan
+		// JSON. Satu alamat yang menerima dua bentuk badan permintaan memaksa pemanggil
+		// menebak mana yang berlaku.
+		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/dokumen", h.UploadDocument)
+
+		// Pilihan kolom "Category" pada dialog unggah.
+		//
+		// TIDAK bersarang di bawah sebuah klaim: isinya master jenis dokumen, sama bagi
+		// setiap klaim. Menyarangkannya akan menyiratkan ia berbeda per klaim, dan layar
+		// lalu menariknya ulang setiap kali klaim dibuka.
+		perPortal.Get("/inbox-rcl-pucl/kategori-dokumen", h.DocumentCategories)
 		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}", h.DocumentContent)
 
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
@@ -98,11 +117,9 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// akibat kedua. Alamatnya bersarang pada klaimnya karena yang diubah adalah klaim
 		// itu, bukan sumber daya tersendiri.
 		//
-		// Ia tidak menulis satu baris pun sendiri — yang menulis Pega, lewat layanannya.
-		// Alasannya bukan `P-1` melainkan klaim yang berhenti bergerak: inbox Analyst
-		// membaca `PC_ASM_FW_GCNMFW_WORK` INNER JOIN `PC_ASSIGN_WORKLIST`, sehingga klaim
-		// sampai ke Analyst HANYA lewat baris penugasan yang dibuat mesin alur kerja Pega
-		// ketika flow action `SendtoRCLPUCL` diserahkan.
+		// EMPAT dari lima tindakan ditangani sendiri, dan seluruhnya menulis
+		// `POOLDATA.TC_PNC_PUCL` — tabel milik aplikasi ini, bukan tabel engine Pega.
+		// Yang tersisa menempuh layanan Pega hanyalah "Tolak Klaim".
 		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}", h.PerformAction)
 
 		// Aksi tulis sistem lama yang BELUM punya jalur. Rutenya ADA supaya tindakan di layar

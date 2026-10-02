@@ -677,6 +677,7 @@ SELECT COUNT(*) AS PROBE
 --
 -- Bind: :1 nomor case (CLAIMID)
 SELECT p.CLAIMID                        AS REFERENCE,
+       p.QQ_NAME                        AS INSURED_PARTY,
        p.CLAIMID                        AS CLAIM_NUMBER,
        p.RCL_PUCL                       AS TRACK_CODE,
        p.KOMENTAR_ANALISATOR            AS ANALYST_NOTE,
@@ -847,6 +848,16 @@ SELECT COUNT(*) AS PROBE
 -- Layar menyatakan kemungkinan itu alih-alih menampilkan daftar kosong seolah klaimnya
 -- memang tidak berdokumen. Arah kegagalannya dipilih sadar: KURANG, bukan salah.
 --
+-- ============================================================================
+-- DAN SEBALIKNYA: ADA BARIS YANG PEGA TIDAK PERNAH TAMPILKAN
+-- ============================================================================
+-- Dibandingkan langsung 2026-10-02 pada satu klaim: `PC_LINK_ATTACHMENT` memuat 4 lampiran
+-- (`PUCL`, `PUCL`, `Adjustment`, `ClaimFaceSheet`), sementara `DATA_ATTACHFILE` memuat 9 —
+-- enam di antaranya bernama `duplicated.JPG` berkategori `10064`.
+--
+-- Keenamnya TIDAK pernah tergambar di layar Pega. Kolom `PEGA_VISIBLE` di bawah menandainya,
+-- dan lapisan atas yang memutuskan apa yang digambar.
+--
 -- Nama kategori dicari lewat LEFT JOIN, mengikuti alasan yang sama seperti `inboxpladla`:
 -- satu kode yang tidak ada di master tidak boleh MENYEMBUNYIKAN dokumennya.
 --
@@ -857,12 +868,37 @@ SELECT a.DATAID                                     AS DOCUMENT_ID,
        COALESCE(t.TYPE_DOCUMENT, a.CATEGORY)        AS CATEGORY_NAME,
        COALESCE(dt.DETAIL_DOCUMENT, a.SUB_CATEGORY) AS SUBCATEGORY_NAME,
        a.INPUTDATE                                  AS UPLOADED_AT,
-       a.INPUTOPERATOR                              AS UPLOADED_BY
+       a.INPUTOPERATOR                              AS UPLOADED_BY,
+
+       -- Apakah barisnya TERGAMBAR di layar lampiran Pega.
+       --
+       -- `GCNMGetAllAttachments` berjalan di kelas `Link-Attachment` dan menyaring atas
+       -- `pyCategory` — yang isinya NAMA kategori lampiran (`Notification`, `LOD`,
+       -- `ClaimFaceSheet`). Baris yang `CATEGORY`-nya kode angka (`10064`) berasal dari
+       -- mekanisme LAIN, dan penyaring itu tidak akan pernah mencocokkannya.
+       --
+       -- Dibandingkan terhadap daftar nama yang SAMA dengan pemilih kategori dialog unggah,
+       -- bukan terhadap daftar yang ditulis di sini: kategori yang ditawarkan dropdown
+       -- tidak boleh membuat barisnya hilang dari daftar.
+       --
+       -- Dirakit sebagai LEFT JOIN ke himpunan nama, bukan `EXISTS` per baris. Bentuk
+       -- `EXISTS` diukur 2026-10-02 dan memakan **1,7 detik** untuk 9 baris: ia menyapu
+       -- tabel lampiran Pega sekali untuk SETIAP baris. Himpunannya dihitung sekali.
+       CASE WHEN k.CATEGORY_NAME IS NOT NULL
+            THEN 1 ELSE 0 END                       AS PEGA_VISIBLE
   FROM POOLDATA.DATA_ATTACHFILE a
   LEFT JOIN POOLDATA.V_LST_DOC_TYPE t
          ON t.ID = a.CATEGORY
   LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC dt
          ON dt.ID = a.SUB_CATEGORY
+  LEFT JOIN (SELECT DISTINCT TRIM(l.PYCATEGORY) AS CATEGORY_NAME
+               FROM DATAPEGA.PC_LINK_ATTACHMENT l
+                    INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK wk
+                            ON wk.PZINSKEY = l.PXLINKEDREFFROM
+              WHERE wk.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+                AND l.PYCATEGORY IS NOT NULL
+                AND TRIM(l.PYCATEGORY) IS NOT NULL) k
+         ON k.CATEGORY_NAME = TRIM(a.CATEGORY)
  WHERE a.ATTACHFILE IS NOT NULL
    AND EXISTS (SELECT 1
                  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
@@ -915,18 +951,324 @@ SELECT a.ATTACHNAME     AS DOCUMENT_NAME,
 -- baris itu adalah PIC Teknik klaim tersebut. Menandainya selesai mengembalikan klaim kepada
 -- orang yang memang sudah memegangnya.
 --
--- # Kenapa penyaringnya menolak baris yang SUDAH ditandai
+-- # Urutan penandanya WAJIB menaik, dan tiap penanda muncul SEKALI
 --
--- `PUCLAPPROVE_1 <> :2 OR PUCLAPPROVE_1 IS NULL` membuat pernyataan ini IDEMPOTEN: menekan
--- tombol dua kali tidak menulis dua kali, dan jumlah baris terpengaruh membedakan "baru saja
--- dikerjakan" dari "sudah dikerjakan sebelumnya". Tanpa itu, klik ganda pada jaringan lambat
--- terbaca sebagai dua perpindahan.
+-- Bentuk pertama pernyataan ini menulis `SET PUCL_APPROVE = :2 WHERE … :1`, dengan `:2`
+-- muncul DUA KALI. Penggerak Oracle yang dipakai mengikat argumen menurut URUTAN KEMUNCULAN
+-- penanda, bukan menurut angkanya — sehingga nomor klaim masuk ke kolom penanda, penyaringnya
+-- membandingkan `CLAIMID` dengan `'1'`, dan pernyataannya mengenai NOL baris.
 --
--- `IS NULL` ikut diterima karena `NULL <> '1'` menghasilkan UNKNOWN, bukan TRUE — klaim yang
--- penandanya belum pernah diisi akan terlewat tanpa itu.
+-- Kegagalannya SENYAP: layar tetap menjawab "Klaim diteruskan ke Analyst", sementara klaimnya
+-- tidak bergerak sedikit pun. Ditemukan 2026-10-01 oleh Work Owner, bukan oleh uji.
 --
--- Bind: :1 nomor klaim · :2 nilai "sudah kembali ke Analyst"
+-- Perangkap ini sudah tercatat di berkas yang sama — lihat catatan pada `daily_report`, yang
+-- MENGIKAT rentang tanggalnya dua kali alih-alih mengulang penandanya.
+--
+-- # Kenapa TIDAK ada lagi penyaring "hanya bila nilainya berbeda"
+--
+-- Bentuk pertama menyaring `PUCL_APPROVE <> :2` supaya penulisan ulang tidak terjadi. Itu
+-- membuat NOL baris berarti DUA hal — klaim tidak ada, atau sudah ditandai — sehingga jumlah
+-- baris tidak dapat dipakai menilai keberhasilan. Justru itulah yang menyembunyikan cacat di
+-- atas.
+--
+-- Tanpa penyaring itu, menulis nilai yang sama dua kali tetap tidak berakibat apa-apa pada
+-- DATA, dan NOL baris kini berarti SATU hal saja: klaimnya tidak ada. Itu dapat dilaporkan.
+--
+-- # TIGA kolom, bukan satu
+--
+-- Bentuk pertama hanya menulis `PUCL_APPROVE`, karena hanya itu yang dipakai kueri inbox
+-- sebagai penyaring. Itu cara mencari yang salah arah: kolom yang tidak menyaring apa pun
+-- menjadi tidak terlihat, padahal ia yang menjawab "klaim ini sekarang di mana".
+--
+-- Pembacaan ulang `Activity/PUCLPost-Act.xml` menemukan ketiganya:
+--
+--	langkah  4   .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL := @CurrentDateTime()
+--	langkah 15   .ClaimData.PUCLStatus.PUCLApprove             := 1
+--	langkah 15   .ClaimData.StatusClaim                        := "1151"
+--	langkah 51   .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL := @CurrentDateTime()
+--
+-- `1151` berarti **"Analyst"** menurut master `POOLDATA.V_STS_CLAIM` — jadi tombolnya
+-- MENYATAKAN klaim berpindah tangan, bukan sekadar mengosongkan antrean.
+--
+-- Langkah 4 dan 51 keduanya menyetel tanggal cetak, dan keduanya berjalan untuk tombol Kirim
+-- — bukan hanya untuk "Download Dokumen". Ditiru apa adanya (`P-5`), meski akibatnya kolom
+-- "Tanggal Cetak Surat" ikut tersetel saat klaim dikirim.
+--
+-- `CURRENT_TIMESTAMP`, bukan `SYSDATE` — portabel ke PostgreSQL (`09-DATABASE-STRATEGY` §4).
+--
+-- Bind: :1 nilai "sudah kembali ke Analyst" · :2 Status Klaim "Analyst" · :3 nomor klaim
 UPDATE POOLDATA.TC_PNC_PUCL
-   SET PUCL_APPROVE = :2
- WHERE TRIM(CLAIMID) = TRIM(:1)
-   AND (PUCL_APPROVE <> :2 OR PUCL_APPROVE IS NULL)
+   SET PUCL_APPROVE           = :1,
+       STATUS_CLAIM           = :2,
+       TGL_CETAK_DOKUMEN_PUCL = CURRENT_TIMESTAMP
+ WHERE TRIM(CLAIMID) = TRIM(:3)
+
+-- name: save_receipt
+-- Menyimpan kedua isian Penerimaan Dokumen yang dapat diketik — tombol "Save".
+--
+-- # Kenapa hanya dua kolom
+--
+-- Karena hanya dua sel section yang `pyReadOnly false` DAN hidup di tabel ini. Yang ketiga,
+-- Email Tertanggung, ada di `POOLDATA.T_CLAIM_PNC.EMAIL_LOD` — tabel lain yang modul ini tidak
+-- tulis. Lihat `inboxrclpucl.ReceiptInput`.
+--
+-- # Kenapa TIDAK ikut menyentuh PUCL_APPROVE
+--
+-- Karena "Save" di layar lama memang tidak memanggil `PUCLPost` sama sekali — ia menempuh
+-- `SaveInputRegisterDetail2`, yang berakhir pada `Obj-Save`. Menyimpan BUKAN memindahkan;
+-- klaimnya tetap menjadi pekerjaan PUCL sesudahnya.
+--
+-- Bind: :1 catatan untuk Analyst · :2 tanggal kelengkapan dokumen · :3 nomor klaim
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET KOMENTAR_PUCL          = :1,
+       TGL_TERIMA_DOKUMEN_PUCL = :2
+ WHERE TRIM(CLAIMID) = TRIM(:3)
+
+-- name: mark_letter_printed
+-- Menandai surat RCL/PUCL sudah diterbitkan — tombol "Download Dokumen".
+--
+-- # Ketiga kolomnya, dan dari mana nomor langkahnya
+--
+--	langkah  4   .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL := @CurrentDateTime()
+--	langkah 17   .ClaimData.PUCLStatus.StatusCase              := param.statusCase  -- "1"
+--	langkah 17   .ClaimData.StatusClaim                        := "1157"
+--	langkah 51   .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL := @CurrentDateTime()
+--
+-- `1157` berarti "Document Waiting RCL/PUCL" menurut master — klaimnya menunggu kelengkapan
+-- dokumen, tepat menggambarkan tahap sesudah suratnya dicetak.
+--
+-- # Kolom tanggal inilah yang MEMINDAHKAN klaim
+--
+-- Penyaring tab "Cetak Surat" adalah `TGL_CETAK_DOKUMEN_PUCL IS NULL`. Mengisinya memindahkan
+-- klaim ke tab "Kelengkapan Dokumen" — dan itulah akibat yang dirasakan petugas, bukan PDF-nya.
+--
+-- `PUCL_APPROVE` TIDAK disentuh: langkah 15 dan 16 berprekondisi `param.Status` 1 atau 0,
+-- sementara "Download Dokumen" mengirimnya KOSONG. Klaimnya tetap menjadi pekerjaan PUCL.
+--
+-- Bind: :1 penanda sudah dicetak · :2 Status Klaim "Document Waiting" · :3 nomor klaim
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET TGL_CETAK_DOKUMEN_PUCL = CURRENT_TIMESTAMP,
+       STATUS_CASE            = :1,
+       STATUS_CLAIM           = :2
+ WHERE TRIM(CLAIMID) = TRIM(:3)
+
+-- name: work_object_key
+-- Kunci objek kerja Pega milik satu klaim — `PZINSKEY`.
+--
+-- Dibutuhkan unggahan: `DATA_ATTACHFILE.IDPEGA` menyimpan kunci itu, dan kueri `documents`
+-- menggabungkannya kembali lewat kolom yang sama. Baris yang `IDPEGA`-nya tidak cocok tidak
+-- akan pernah muncul di daftar dokumen klaimnya.
+--
+-- Ia MEMBACA tabel Pega, dan itu sah: `P-1` membatasi yang MENULIS.
+--
+-- Bind: :1 nomor klaim
+SELECT w.PZINSKEY AS WORK_KEY
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+ WHERE TRIM(w.PYID) = TRIM(:1)
+   AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ FETCH FIRST 1 ROWS ONLY
+
+-- name: next_attachment_number
+-- Nomor urut berikutnya untuk `DATAID` sebuah lampiran.
+--
+-- `SET_ATTACHMENT_64BIT.prc` menyusun `DATAID` begini:
+--
+--	select_sequence('ATTACHFILE_SEQ');
+--	count_ATTACH := ATTACHFILE_SEQ.nextval;
+--	INSERT INTO C_COUNTER_ATTACHMENT (KEY, YEAR, RUNNO) VALUES (new_uuid, to_char(sysdate,'yy'), count_ATTACH);
+--	SELECT year || lpad(runno,10,'0') INTO tDATAID FROM C_COUNTER_ATTACHMENT WHERE key = pkey;
+--
+-- Yang ditiru NOMOR dan BENTUKNYA, bukan cara mengambilnya kembali: `DATAID` disusun di Go
+-- dari kedua nilai di bawah, sehingga tidak perlu membaca ulang baris yang baru disisipkan.
+--
+-- `select_sequence` TIDAK dipanggil — ia tidak ada di antara 62 berkas `Database/` yang
+-- diterima (§150). Namanya menyiratkan ia menyiapkan sequence-nya; bila ternyata ia mengatur
+-- ulang penomoran tiap tahun, `DATAID` kami tetap unik karena memuat tahunnya.
+SELECT TO_CHAR(CURRENT_DATE, 'RR') AS YEAR_TWO,
+       ATTACHFILE_SEQ.NEXTVAL      AS RUN_NO
+  FROM DUAL
+
+-- name: insert_attachment_counter
+-- Baris pencacah lampiran — ditiru dari `SET_ATTACHMENT_64BIT.prc`.
+--
+-- Ia TIDAK dibaca modul ini sama sekali; `DATAID` sudah disusun di Go. Ia tetap ditulis
+-- karena procedure aslinya menulisnya, dan tabel pencacah yang berlubang akan menyesatkan
+-- siapa pun yang kelak menelusuri penomoran lampiran.
+--
+-- Bind: :1 kunci baris · :2 dua digit tahun · :3 nomor urut
+INSERT INTO C_COUNTER_ATTACHMENT (KEY, YEAR, RUNNO) VALUES (:1, :2, :3)
+
+-- name: insert_attachment
+-- Satu baris lampiran klaim.
+--
+-- # Kenapa ISINYA ditulis ke kolom BLOB
+--
+-- `DATA_ATTACHFILE` menampung DUA mekanisme, dan Pega membaca keduanya. `GetAttachmentFromDB_Sql`
+-- mengambil `ATTACHFILE` maupun `IMAGEID` dari baris yang sama, dengan
+-- `CASE WHEN attachfile IS NULL THEN NULL ELSE pooldata.base64encode(attachfile) END` —
+-- percabangan itu ADA justru karena kedua keadaan memang terjadi.
+--
+-- Unggahan Pega hari ini menempuh mekanisme kedua: berkasnya naik ke layanan penyimpanan luar
+-- dan hanya `IMAGEID` yang tersimpan. Jalur itu TIDAK dapat kami tempuh — nama host
+-- layanannya tidak dapat diterjemahkan dari peladen ini, dan `general.T_FOLDER_STORAGE`
+-- serta `general.T_STORAGE_IMAGE` tidak terlihat oleh akun basis data kami (§154).
+--
+-- Yang ditempuh karena itu mekanisme PERTAMA, yang seluruhnya berada di tabel yang dapat kami
+-- akses — dan yang masih dibaca Pega.
+--
+-- `IMAGEID` sengaja tidak diisi — ia milik mekanisme kedua. `CATEGORY` DIISI sejak
+-- 2026-10-02, berupa NAMA kategori lampiran yang dipilih petugas; kosong hanya bila ia tidak
+-- memilih apa pun.
+--
+-- `SUB_CATEGORY` tidak diisi: dialog `SetUploadDocPUCL` di Pega pun hanya punya SATU pemilih.
+--
+-- Bind: :1 dataid · :2 pelaku · :3 nama berkas · :4 keterangan · :5 jenis isi · :6 isi ·
+--       :7 kunci objek kerja
+INSERT INTO POOLDATA.DATA_ATTACHFILE
+       (DATAID, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
+        ATTACHMIMETYPE, ATTACHFILE, IDPEGA, CATEGORY)
+VALUES (:1, CURRENT_TIMESTAMP, :2, :3, :4, :5, :6, :7, :8)
+
+-- name: document_categories
+-- Pilihan kolom "Category" pada dialog unggah.
+--
+-- # Kenapa dari tabel lampiran Pega, bukan dari master jenis dokumen
+--
+-- Karena di Pega pilihan ini adalah KATEGORI LAMPIRAN, bukan jenis dokumen. Nilainya berupa
+-- nama (`AcceptanceNote`, `ClaimFaceSheet`, `LOD`), dan yang mendefinisikannya adalah rule
+-- `Rule-Obj-AttachmentCategory` — tipe rule yang TIDAK ADA di export sama sekali (`R-16`).
+--
+-- Karena rule-nya tidak ada, daftarnya diturunkan dari kategori yang BENAR-BENAR DIPAKAI
+-- lampiran klaim PNC. Batasnya satu, dan nyata: kategori yang sudah didefinisikan tetapi
+-- belum pernah dipakai TIDAK muncul.
+--
+-- `V_LST_DOC_TYPE` — yang ditunjuk `BrowseLstDocType_RD` — diperiksa dan TIDAK dapat dipakai:
+-- isinya 7 baris, 6 di antaranya tanpa nama sama sekali.
+--
+-- Pengurutannya `UPPER(...)` supaya `AttachAIFILE` dan `ATTACHTEMPS` bersebelahan, persis
+-- seperti di layar lama. Mengurutkan apa adanya menaruh seluruh nama berhuruf besar lebih
+-- dulu, dan daftarnya tidak lagi terbaca sebagai daftar yang sama.
+--
+-- MEMBACA tabel engine Pega, tidak menulisnya — `P-1` melarang menulis, bukan membaca.
+SELECT TRIM(a.PYCATEGORY) AS CATEGORY_NAME
+  FROM DATAPEGA.PC_LINK_ATTACHMENT a
+  JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w ON w.PZINSKEY = a.PXLINKEDREFFROM
+ WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND a.PYCATEGORY IS NOT NULL
+   AND TRIM(a.PYCATEGORY) IS NOT NULL
+ GROUP BY TRIM(a.PYCATEGORY)
+ ORDER BY UPPER(TRIM(a.PYCATEGORY))
+
+-- name: insert_history
+-- Menulis SATU baris riwayat klaim — pengganti `InsertHistoryClaimPNC`.
+--
+-- # Dari mana pernyataan ini berasal
+--
+-- Dari procedure-nya, BUKAN dari rule yang memanggilnya. `Database/
+-- PEGA_JSON_INSERT_HISTORY_CLAIM_PNC.prc` memuat satu pernyataan, dan inilah dia:
+--
+--	INSERT INTO LIST_HISTORY_CLAIM_PNC (CASEID, CREATEDATETIME, STATUSNOTE, USERUPDATE)
+--	VALUES (CaseID, CURRENT_TIMESTAMP, StatusNote, UserUpdate);
+--
+-- Logikanya naik ke Go sesuai `D-02`; procedure-nya tidak dipanggil.
+--
+-- # Nama parameter di rule Pega tidak boleh dipercaya
+--
+-- `RDB List/InsertHistoryClaimPNC-SQL.xml` memanggilnya dengan nama properti clipboard
+-- `POLICY_NO`, `BUSINESS_CODE`, `BRANCH_CODE` — dan pemetaannya POSISIONAL, bukan menurut
+-- nama. Posisi 1 adalah CaseID, bukan nomor polis. Membaca namanya akan menulis nomor polis
+-- ke kolom `CASEID`, dan barisnya tersimpan rapi di tempat yang salah tanpa satu pun galat.
+--
+-- # `CASEID` berisi `PZINSKEY`, bukan nomor klaim
+--
+-- `PUCLPost` langkah 35 mengirim `caseID = pyWorkPage.pzInsKey`, yang berbentuk
+-- `ASM-FW-GCNMFW-WORK PNC-xxxx`. Pemanggil membacanya lebih dulu lewat `work_object_key`.
+--
+-- # Kenapa `P-1` tidak dilanggar
+--
+-- `LIST_HISTORY_CLAIM_PNC` tabel bisnis `POOLDATA`, bukan tabel engine Pega. Ia pun tidak
+-- dibaca satu rule pun di seluruh export — hanya ditulis. Baris yang kami tambahkan
+-- berdampingan dengan baris Pega, tidak menimpanya.
+--
+-- `CURRENT_TIMESTAMP`, bukan `SYSDATE` — portabel ke PostgreSQL, dan procedure-nya pun
+-- memakai `CURRENT_TIMESTAMP`.
+--
+-- Bind: :1 PZINSKEY objek kerja · :2 teks riwayat · :3 pelaku
+INSERT INTO POOLDATA.LIST_HISTORY_CLAIM_PNC (CASEID, CREATEDATETIME, STATUSNOTE, USERUPDATE)
+VALUES (:1, CURRENT_TIMESTAMP, :2, :3)
+
+-- name: technical_pic
+-- PIC Teknik klaim beserta kunci objek kerjanya.
+--
+-- Keduanya dibaca SEKALIGUS karena keduanya dibutuhkan perpindahan tahap, dan membacanya
+-- dua kali membuka celah: nilainya dapat berubah di antara kedua pembacaan.
+--
+-- # Sumbernya `PICTEKNIK`, BUKAN `USERTEKNIS_1`
+--
+-- Bentuk pertama pernyataan ini membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK.USERTEKNIS_1`.
+-- Work Owner mengoreksinya 2026-10-02: **`USERTEKNIS_1` diambil dari `PICTEKNIK`**, dan
+-- export membuktikannya — kolomnya dialiaskan tepat begitu:
+--
+--	POOLDATA.T_CLAIM_PNC.PICTEKNIK  AS "UserTeknis"
+--	  `RDB List/GcnmSalvageData_OS_SQL-SQL.xml`, `GcnmSalvageData_ekonomisdanTba-SQL.xml`
+--
+-- Jadi `USERTEKNIS_1` adalah SALINAN yang Pega ekspos dari properti clipboard, sementara
+-- `PICTEKNIK` adalah tempat nilainya benar-benar tinggal. Membaca salinan berarti bergantung
+-- pada Pega sempat menuliskannya — dan klaim yang dibuka aplikasi ini tidak melewati Pega.
+--
+-- Ini contoh lain dari alias menyesatkan yang `D-19` tetapkan untuk tidak dibawa: nama kolom
+-- dan nama alias di sistem lama memang tidak saling menjelaskan.
+--
+-- # Kenapa LEFT JOIN, bukan INNER
+--
+-- Supaya klaim yang tidak punya baris `T_CLAIM_PNC` tetap terbaca dan ditolak dengan sebab
+-- yang benar — "PIC Teknik tidak diketahui" — alih-alih menghilang menjadi "klaim tidak
+-- ditemukan". Keduanya keadaan yang berbeda, dan menyatukannya menyesatkan penelusuran.
+--
+-- Keduanya MEMBACA, dan itu sah: `P-1` membatasi yang MENULIS.
+--
+-- Bind: :1 nomor klaim
+SELECT w.PZINSKEY   AS WORK_KEY,
+       c.PICTEKNIK  AS TECHNICAL_PIC
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+  LEFT JOIN POOLDATA.T_CLAIM_PNC c
+         ON TRIM(c.CLAIMNO) = TRIM(w.PYID)
+ WHERE TRIM(w.PYID) = TRIM(:1)
+
+-- name: close_open_tasks
+-- Menutup SELURUH tugas klaim yang masih terbuka — langkah "Finish Assignment".
+--
+-- # Kenapa seluruhnya, bukan satu
+--
+-- Karena yang hendak dipastikan adalah keadaan SESUDAHNYA: klaim ini tidak lagi menjadi
+-- pekerjaan siapa pun di tahap lama. Menutup "tugas terbuka pertama" meninggalkan sisanya
+-- bila ternyata ada lebih dari satu, dan sisa itu membuat klaim tetap tergambar di inbox
+-- lama tanpa satu pun galat.
+--
+-- Tugas TIDAK dihapus — `SELESAI_PADA` yang diisi. Riwayat siapa mengerjakan apa adalah
+-- bagian jejak audit klaim (`D-66`, `D-59`).
+--
+-- Nol baris BUKAN galat: klaim yang dimulai di Pega belum pernah punya tugas di tabel ini.
+--
+-- Bind: :1 waktu selesai · :2 alasan · :3 nomor klaim
+UPDATE CPNC_TUGAS
+   SET SELESAI_PADA   = :1,
+       ALASAN_SELESAI = :2
+ WHERE NOMOR_KLAIM    = :3
+   AND SELESAI_PADA IS NULL
+
+-- name: open_task
+-- Membuka satu tugas baru pada sebuah tahap — akibat lompatan ticket.
+--
+-- `KLAIM_ID` diisi kunci objek kerja Pega (`PZINSKEY`), sama seperti kolom `IDPEGA` pada
+-- tabel lampiran. Ia yang menautkan tugas ke klaimnya pada data yang sudah ada.
+--
+-- `DIAMBIL_PADA` diisi bersamaan dengan `PEMILIK`: tugas Worklist sudah bertuan sejak lahir,
+-- sehingga tidak ada yang perlu "mengambilnya" (`D-26`).
+--
+-- Bind: :1 id · :2 klaim id · :3 nomor klaim · :4 tahap · :5 antrean · :6 pemilik
+--       :7 dibuat pada · :8 diambil pada
+INSERT INTO CPNC_TUGAS
+       (ID, KLAIM_ID, NOMOR_KLAIM, TAHAP, ANTREAN, WORKBASKET, PEMILIK,
+        DIBUAT_PADA, DIAMBIL_PADA, SELESAI_PADA, ALASAN_SELESAI)
+VALUES (:1, :2, :3, :4, :5, NULL, :6, :7, :8, NULL, NULL)

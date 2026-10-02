@@ -137,7 +137,9 @@ type actionPlan struct {
 	status     string // parameter `Status` pada PUCLPost
 	tipe       string // parameter `tipe` pada InsertMitraPA
 	statusCase string // parameter `statusCase` pada PUCLPost
-	statusNote string // parameter `statusNote` pada InsertHistoryClaimPNC
+
+	// `statusNote` TIDAK ada di sini: ia diambil dari `inboxrclpucl.HistoryNoteFor` supaya
+	// teksnya satu sumber dengan jalur yang ditangani sendiri.
 }
 
 // plans memetakan tindakan menjadi parameter keempat activity Pega.
@@ -155,9 +157,11 @@ type actionPlan struct {
 //	                     2 PUCLPost(Status="0", idObj, idCov, idAdj)
 //	                     3 refresh currentharness  — BUKAN Finish Assignment
 //
-//	Kirim Ke Analyst     1 InsertMitraPA(tipe="dokumen")
+//	Kirim Ke Analyst     1 InsertMitraPA(tipe="dokumen")        pyAction=runActivity
 //	                     2 PUCLPost(Status="1", idObj, idCov, idAdj)
+//	                                                            pyAction=refresh ← SECTION
 //	                     3 Finish Assignment → flow action SendtoRCLPUCL
+//	                                                            pyAction=finishAssignment
 //
 //	Kirim ke PIC Teknik  1 PUCLPost(Status="1", idObj, idCov, idAdj)      ← PUCLPost DULU
 //	                     2 InsertHistoryClaimPNC(statusNote="send by PUCL to PIC Teknis")
@@ -175,16 +179,87 @@ type actionPlan struct {
 //
 // Spasi di ujung "Wait for Complete PUCL Document " ADA di Pega dan dipertahankan (`P-5`).
 // Ia terbawa ke kolom riwayat apa adanya, dan membuangnya mengubah data yang tersimpan.
+//
+// # Ketiga langkah di atas BUKAN seluruh rangkaiannya
+//
+// Keduanya memanggil activity lain di dalamnya, dan rantai itu baru terbaca utuh 2026-10-02
+// setelah Work Owner menyebutkan dua belas activity yang benar-benar berjalan. Ditelusuri
+// dari elemen `pyStepsActivityName` tiap berkas:
+//
+//	InsertMitraPA  → PNCInsertMitraLog_Act   (langkah 2, hanya bila IsDokLengkap sudah "1")
+//	PUCLPost       → GetLinkAppClaim         (langkah 3)
+//	               → currencyAct             (langkah 8)
+//	               → SetTicket               (langkah 17, hanya Status==1)
+//	               → SetSignaturePA          (langkah 18, hanya IsPA) → BrowseSignature ×3
+//	               → AttachAsPDFC            (langkah 27, prekondisi `1==1` — SELALU)
+//	                   → HTMLToPDF · AttachToWork → CallVirusCheck · View
+//	               → SetUploadDocument       (langkah 29)
+//	               → InsertHistoryClaimPNC   (langkah 35)
+//	Finish Assignment → Register_Flow → PNCTeknikRouter
+//
+// # URUTANNYA wajib, dan terbalik berarti klaim DITUTUP
+//
+// Shape `RCL/PUCL` (`Assignment6`) di `Register_Flow` punya **tepat satu** konektor keluar,
+// tanpa syarat, dan tujuannya **`End1`** — `Data-MO-Event-End`, akhir flow:
+//
+//	Assignment6  --SendtoRCLPUCL-->  End1
+//
+// Yang menyelamatkan klaim dari berakhir adalah `SetTicket(SendtoAnalysator)` pada langkah 17,
+// yang berjalan LEBIH DULU dan melompatkan flow ke `Assignment5` (Send To Analis). Menyerahkan
+// flow action tanpa `PUCLPost` berjalan lebih dulu **menutup klaim**.
+//
+// Flow action yang sama dipakai dua konektor dengan akibat berlawanan — dari `Assignment5` ia
+// MEMASUKKAN klaim ke RCL/PUCL, dari `Assignment6` ia MENGAKHIRI flow. Namanya menyesatkan di
+// tempat kedua.
+//
+// Satu akibat untuk siapa pun yang hendak memakai API assignment bawaan Pega sebagai jalan
+// pintas: `Flow Action/SendtoRCLPUCL-FA.xml` **tidak memuat `pyPostProcessingActivity` sama
+// sekali**. `PUCLPost` melekat pada TOMBOL, bukan pada flow action — sehingga memanggil flow
+// action lewat API melewati `PUCLPost` seluruhnya, dan klaimnya berakhir di `End1`.
+//
+// # Di mana `PUCLPost` dipasang — terbaca dari `pyBehaviors` tombolnya
+//
+// Ketiga aksinya berurutan pada event `click`, dan JENIS aksinya berbeda-beda:
+//
+//	1  pyAction = runActivity        pyActivity = InsertMitraPA
+//	2  pyAction = refresh            pyActivity = PUCLPost   pyTarget = thisSection
+//	3  pyAction = finishAssignment   (tanpa activity)
+//
+// Langkah 2 adalah **Refresh Section yang menjalankan activity lebih dulu** — bukan
+// `runActivity`. Perbedaannya penting untuk satu hal: ia berarti `PUCLPost` MEMANG punya
+// permukaan HTTP, yaitu alamat yang ditembak peramban saat tombolnya ditekan.
+//
+// Permukaan itu tetap tidak dapat kami pakai, tetapi sebabnya BUKAN "tidak ada jalan masuk":
+//
+//   - ia menuntut sesi Pega terautentikasi sebagai operator yang berwenang;
+//   - ia menuntut clipboard yang SUDAH memuat klaimnya pada `pyWorkPage` — di Pega itu
+//     terjadi karena pengguna membuka klaimnya lebih dulu;
+//   - dan ia alamat internal peramban, bukan kontrak — ia boleh berubah antarversi Pega
+//     tanpa pemberitahuan.
+//
+// Jadi yang kurang bukan artefak melainkan **satu pintu yang sah**: rule Pega yang
+// menjalankan `PUCLPost` dan dapat dipanggil dari luar.
+//
+// # Dua hal yang dikoreksi dari catatan sebelumnya, keduanya terbaca dari XML
+//
+//   - Teks riwayat "Kirim Ke Analyst" adalah **"Send by PUCL to Analyst"** — nilai
+//     `<statusNote>` pada langkah 35. Yang sebelumnya tercatat, "PUCL send to ANALYST",
+//     adalah `pyStepsDescription` langkah itu, bukan parameternya.
+//   - `InsertJsonClaimNonMBU_act` **TIDAK berjalan** pada "Kirim Ke Analyst". Prekondisinya
+//     `param.Status==0 && .ClaimData.PUCLStatus.RCL_PUCL==1` — jalur Tolak Klaim pada RCL.
+//
+// `PNCTeknikRouter` tidak ada di export (`R-04`), sehingga aturan penugasannya tidak terbaca.
+// `statusNote` TIDAK ditulis di sini melainkan diambil dari `inboxrclpucl.HistoryNoteFor`.
+// Teks yang sama dipakai jalur yang ditangani sendiri, dan dua salinan akan dapat berselisih
+// tanpa ada yang menyadarinya — selisihnya baru terlihat sebagai dua baris riwayat berbeda
+// untuk tombol yang sama.
 var plans = map[inboxrclpucl.ClaimActionKind]actionPlan{
-	inboxrclpucl.ActionPrintLetter: {
-		status: "", tipe: "cetak", statusCase: "1",
-		statusNote: "Wait for Complete PUCL Document ",
-	},
+	inboxrclpucl.ActionPrintLetter:   {status: "", tipe: "cetak", statusCase: "1"},
 	inboxrclpucl.ActionRejectClaim:   {status: "0", tipe: "dokumen"},
 	inboxrclpucl.ActionSendToAnalyst: {status: "1", tipe: "dokumen"},
 	inboxrclpucl.ActionSendToPICTeknik: {
 		// Tanpa `tipe`: jalur ini memakai `InsertHistoryClaimPNC`, bukan `InsertMitraPA`.
-		status: "1", statusNote: "send by PUCL to PIC Teknis",
+		status: "1",
 	},
 	// ActionSave sengaja TIDAK ada di peta ini — ia tidak memanggil `PUCLPost` maupun
 	// `InsertMitraPA`, sehingga keempat parameternya kosong.
@@ -236,9 +311,11 @@ func (c *Client) Perform(
 		IDAdjustment: cmd.IDAdjustment,
 		Tipe:         plan.tipe,
 		StatusCase:   plan.statusCase,
-		StatusNote:   plan.statusNote,
-		Note:         cmd.Note,
-		Caller:       cmd.Caller,
+
+		// Dari domain, bukan dari `plans` — satu sumber untuk kedua jalur.
+		StatusNote: inboxrclpucl.HistoryNoteFor(cmd.Kind),
+		Note:       cmd.Note,
+		Caller:     cmd.Caller,
 	})
 	if err != nil {
 		return fmt.Errorf("menyusun permintaan tindakan %s: %w", cmd.Kind, err)

@@ -219,6 +219,7 @@ import (
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
+	"claim-pnc/internal/inboxrclpucl/suratpdf"
 	inboxrclpuclusecase "claim-pnc/internal/inboxrclpucl/usecase"
 	inboxreceivetkahttp "claim-pnc/internal/inboxreceivetka/http"
 	inboxreceivetkanotif "claim-pnc/internal/inboxreceivetka/notification"
@@ -4135,6 +4136,13 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 				User:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_PENGGUNA")),
 				Password: os.Getenv("PEGA_LAYANAN_SANDI"),
 			}),
+
+			// Perender surat RCL/PUCL — tombol "Download Dokumen".
+			//
+			// Susunannya mengikuti templat `HTML/SuratPUCL-HTML.xml` yang dikirim Work
+			// Owner 2026-10-02. Tanpa pemasangan ini tombolnya hanya memindahkan klaim
+			// antartab, dan tidak satu berkas pun terbit.
+			Letters: suratpdf.Renderer{},
 
 			// Logger WAJIB, dengan alasan yang sama seperti modul di atasnya DITAMBAH
 			// satu: antrean layar ini bersama, sehingga tidak ada penyaring kepemilikan

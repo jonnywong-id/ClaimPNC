@@ -25,12 +25,15 @@ import (
 	"strings"
 
 	"claim-pnc/internal/inboxrclpucl"
+	"claim-pnc/internal/platform/clock"
 )
 
 // Service melayani modul Inbox RCL/PUCL.
 type Service struct {
 	repoSelector inboxrclpucl.RepoSelector
 	actions      inboxrclpucl.ClaimActions
+	letters      inboxrclpucl.LetterRenderer
+	clock        clock.Clock
 	logger       *slog.Logger
 }
 
@@ -46,6 +49,19 @@ type Options struct {
 	// digambar.
 	Actions inboxrclpucl.ClaimActions
 
+	// Letters membentuk PDF surat RCL/PUCL. Boleh nil.
+	//
+	// Nil berarti "Download Dokumen" hanya memindahkan klaim antartab tanpa menerbitkan
+	// berkas — perilaku modul ini sebelum templat `SuratPUCL` diterima 2026-10-02. Ia tidak
+	// menggagalkan tindakannya, karena perpindahan tab itulah yang menghambat petugas.
+	Letters inboxrclpucl.LetterRenderer
+
+	// Clock boleh nil; bila nil dipakai jam sistem.
+	//
+	// Ia dibutuhkan surat, bukan daftar: tanggal dan nomor surat lahir saat tombolnya
+	// ditekan. Seam-nya ada supaya keduanya dapat diuji tanpa menebak waktu.
+	Clock clock.Clock
+
 	// Logger boleh nil; bila nil, jejaknya tidak ditulis dan tidak ada yang gagal karenanya.
 	Logger *slog.Logger
 }
@@ -55,9 +71,15 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("inboxrclpucl/usecase: RepoSelector wajib diisi")
 	}
+	jam := o.Clock
+	if jam == nil {
+		jam = clock.System{}
+	}
 	return &Service{
 		repoSelector: o.RepoSelector,
 		actions:      o.Actions,
+		letters:      o.Letters,
+		clock:        jam,
 		logger:       o.Logger,
 	}, nil
 }
@@ -433,15 +455,16 @@ func (s *Service) PerformAction(
 	caller inboxrclpucl.Caller,
 	reference string,
 	kind inboxrclpucl.ClaimActionKind,
-) error {
+	input inboxrclpucl.ReceiptInput,
+) (*inboxrclpucl.Document, error) {
 	cleanCaller := caller.Clean()
 	if cleanCaller.Login == "" {
-		return inboxrclpucl.ErrCallerUnknown
+		return nil, inboxrclpucl.ErrCallerUnknown
 	}
 
 	key := strings.TrimSpace(reference)
 	if key == "" {
-		return inboxrclpucl.NewValidationError([]inboxrclpucl.Violation{{
+		return nil, inboxrclpucl.NewValidationError([]inboxrclpucl.Violation{{
 			Field:   inboxrclpucl.FieldReference,
 			Message: "Kunci klaim tidak disebutkan.",
 		}})
@@ -449,20 +472,20 @@ func (s *Service) PerformAction(
 
 	repo, err := s.repoSelector(portalAlias)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	detail, err := repo.Detail(ctx, key)
 	if err != nil {
 		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
-			return err
+			return nil, err
 		}
-		return fmt.Errorf("membaca klaim %s sebelum tindakan %s: %w", key, kind, err)
+		return nil, fmt.Errorf("membaca klaim %s sebelum tindakan %s: %w", key, kind, err)
 	}
 
 	// Syaratnya diturunkan dari tombolnya, bukan ditulis ulang — lihat ClaimDetail.Allows.
 	if !detail.Allows(kind) {
-		return inboxrclpucl.ErrActionNotAvailable
+		return nil, inboxrclpucl.ErrActionNotAvailable
 	}
 
 	// KEDUA tombol Kirim ditangani SENDIRI, tanpa menunggu layanan Pega.
@@ -474,19 +497,141 @@ func (s *Service) PerformAction(
 	// Ketiga tindakan lain tetap menempuh Pega, dan bukan karena kehati-hatian melainkan
 	// karena isinya: "Download Dokumen" membuat PDF dan mengirim email berlampiran, "Tolak
 	// Klaim" dan "Save" menyentuh isian yang tidak dibaca layar ini.
-	if kind == inboxrclpucl.ActionSendToAnalyst || kind == inboxrclpucl.ActionSendToPICTeknik {
-		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+	// "Save" ditangani SENDIRI pula, dan ia menyimpan apa yang DIKETIK petugas.
+	//
+	// Di layar lama tombolnya menempuh `SaveInputRegisterDetail2`, yang berakhir pada
+	// `Obj-Save` — dan `Obj-Save` menyimpan seluruh objek kerja, termasuk isian yang baru saja
+	// diposkan form. Activity itu sendiri TIDAK menyebut satu pun isian Penerimaan Dokumen;
+	// yang disebutnya adalah Pengkinian Data (KTP, email, telepon) dan `RemarkRecommendation`.
+	//
+	// Jadi yang perlu ditiru bukan activity-nya melainkan AKIBATNYA: kedua isian wajib
+	// tersimpan. Lihat inboxrclpucl.ReceiptInput.
+	if kind == inboxrclpucl.ActionSave {
+		if err := repo.SaveReceipt(ctx, key, input, cleanCaller.Login); err != nil {
 			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
-				return err
+				return nil, err
 			}
-			return fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+			var invalid *inboxrclpucl.ValidationError
+			if errors.As(err, &invalid) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menyimpan isian klaim %s: %w", key, err)
 		}
 		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
-		return nil
+		return nil, nil
+	}
+
+	// "Download Dokumen" — menandai surat tercetak, lalu MENERBITKAN suratnya.
+	//
+	// Keduanya dikerjakan sendiri, tanpa menempuh layanan Pega. Yang pertama memindahkan
+	// klaim dari tab "Cetak Surat" ke "Kelengkapan Dokumen" — itulah yang menghambat
+	// petugas bila tidak dikerjakan. Yang kedua melampirkan PDF suratnya sehingga ia muncul
+	// di "Lihat Dokumen", persis seperti `PUCLPost` melampirkannya di Pega.
+	//
+	// Urutannya penting: penandaan DULU, penerbitan kemudian. Bila penerbitannya gagal,
+	// klaimnya tetap berpindah tab dan petugas dapat mencetak ulang — sedangkan urutan
+	// terbalik membuat kegagalan penandaan meninggalkan surat tanpa klaim yang berpindah.
+	if kind == inboxrclpucl.ActionPrintLetter {
+		if err := repo.MarkLetterPrinted(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menandai surat klaim %s sudah dicetak: %w", key, err)
+		}
+		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
+		s.recordHistory(ctx, repo, portalAlias, detail, kind, cleanCaller.Login)
+
+		doc, err := s.issueLetter(ctx, repo, detail, cleanCaller.Login)
+		if err != nil {
+			// Kegagalan menerbitkan surat TIDAK membatalkan tindakannya. Klaimnya sudah
+			// berpindah tab, dan mengembalikan galat di sini akan membuat petugas menekan
+			// tombolnya lagi — tanpa akibat, karena penandaannya sudah terjadi.
+			s.logLetterFailure(portalAlias, cleanCaller.Login, detail.ClaimNumber, err)
+			return nil, nil
+		}
+		return doc, nil
+	}
+
+	// KEDUA tombol Kirim menempuh TIGA langkah, dan urutannya bagian dari kebenarannya.
+	//
+	// # 1. Isian disimpan LEBIH DULU, dan kegagalannya membatalkan seluruhnya
+	//
+	// `PUCLPost` langkah 10 menulis `KomentarPUCL` ke baris `AdjustmentList` bersamaan dengan
+	// penandaan "Setuju" — artinya catatan yang diketik petugas memang ikut tersimpan oleh
+	// tombol Kirim, bukan hanya oleh "Save". Dan keduanya `pyRequired` di section, sehingga
+	// Finish Assignment di Pega MENOLAK form yang salah satunya kosong.
+	//
+	// Sampai 2026-10-02 modul ini membuang isian itu: badan permintaan hanya dibaca untuk
+	// "save". Petugas yang mengetik catatan lalu langsung menekan Kirim kehilangan catatannya
+	// tanpa satu pun galat — dan Analyst menerima klaim tanpa tahu apa yang berubah, persis
+	// akibat yang disebut ReceiptInput.Note.
+	//
+	// Validasinya tidak ditulis ulang di sini: Repo.SaveReceipt sudah memanggil
+	// ReceiptInput.Validate, sehingga aturan wajibnya hidup di SATU tempat untuk kedua jalur.
+	//
+	// # 2. Penandaan, lalu 3. penerbitan surat
+	//
+	// Urutan yang sama dengan "Download Dokumen", dan alasannya sama: bila penerbitan gagal,
+	// klaimnya tetap berpindah dan petugas tidak terhalang.
+	if kind == inboxrclpucl.ActionSendToAnalyst || kind == inboxrclpucl.ActionSendToPICTeknik {
+		if err := repo.SaveReceipt(ctx, key, input, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			var invalid *inboxrclpucl.ValidationError
+			if errors.As(err, &invalid) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menyimpan isian klaim %s sebelum %s: %w", key, kind, err)
+		}
+
+		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		}
+
+		// Perpindahan tahap — langkah yang BENAR-BENAR memindahkan klaim.
+		//
+		// Ia meniru `SetTicket(SendtoAnalysator)` pada `PUCLPost` langkah 17, ditambah
+		// penutupan tugas lama yang di Pega dikerjakan Finish Assignment. Tanpanya klaim
+		// hanya berubah penanda: keluar dari layar ini, tetapi tidak menjadi pekerjaan
+		// siapa pun.
+		//
+		// Kegagalannya DIKEMBALIKAN, berbeda dari riwayat dan surat. Keduanya pelengkap;
+		// yang ini tujuan tombolnya. Melaporkan berhasil sementara klaimnya tidak bergerak
+		// adalah kegagalan senyap yang sudah pernah terjadi di layar ini.
+		if err := repo.MoveToSendToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) ||
+				errors.Is(err, inboxrclpucl.ErrTechnicalPICUnknown) {
+				return nil, err
+			}
+			return nil, fmt.Errorf(
+				"memindahkan klaim %s ke tahap Send To Analis: %w", key, err)
+		}
+
+		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
+		s.recordHistory(ctx, repo, portalAlias, detail, kind, cleanCaller.Login)
+
+		// Surat diterbitkan di sini pula, bukan hanya pada "Download Dokumen".
+		//
+		// `PUCLPost` langkah 27 memanggil `AttachAsPDFC` berprekondisi `1==1` — SELALU,
+		// berapa pun `param.Status`. Nama berkasnya ditentukan langkah 20–24 dari jalur
+		// klaimnya (`RCL_PUCL`), bukan dari tombol yang ditekan.
+		//
+		// `detail` sengaja dipakai apa adanya meski dibaca sebelum penyimpanan di atas:
+		// surat ini tidak memuat satu pun dari kedua isian itu — lihat issueLetter.
+		doc, err := s.issueLetter(ctx, repo, detail, cleanCaller.Login)
+		if err != nil {
+			s.logLetterFailure(portalAlias, cleanCaller.Login, detail.ClaimNumber, err)
+			return nil, nil
+		}
+		return doc, nil
 	}
 
 	if s.actions == nil {
-		return inboxrclpucl.ErrPegaServiceUnavailable
+		return nil, inboxrclpucl.ErrPegaServiceUnavailable
 	}
 
 	err = s.actions.Perform(ctx, inboxrclpucl.ClaimActionCommand{
@@ -502,13 +647,13 @@ func (s *Service) PerformAction(
 		// Ketidaktersediaan diteruskan APA ADANYA supaya transport dapat mengenalinya dan
 		// menjawab dengan kalimat yang menyebut siapa yang harus bertindak.
 		if errors.Is(err, inboxrclpucl.ErrPegaServiceUnavailable) {
-			return err
+			return nil, err
 		}
-		return fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		return nil, fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
 	}
 
 	s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
-	return nil
+	return nil, nil
 }
 
 // logAction mencatat satu tindakan yang MENGUBAH klaim, beserta pelakunya.
@@ -527,4 +672,228 @@ func (s *Service) logAction(portalAlias, login, claimNumber string, kind inboxrc
 		"klaim", claimNumber,
 		"tindakan", string(kind),
 	)
+}
+
+// DocumentCategories mengembalikan pilihan kolom "Category" pada dialog unggah.
+//
+// TIDAK dicatat ke jejak audit, dan itu disengaja: ia tidak menyentuh satu pun data klaim —
+// isinya master jenis dokumen yang sama bagi setiap petugas. Mencatatnya akan menenggelamkan
+// catatan pembukaan klaim yang justru menjadi kontrol pengimbang `D-59`.
+func (s *Service) DocumentCategories(
+	ctx context.Context,
+	portalAlias string,
+) ([]inboxrclpucl.DocumentCategory, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	categories, err := repo.DocumentCategories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("membaca kategori dokumen: %w", err)
+	}
+	return categories, nil
+}
+
+// issueLetter membentuk PDF surat RCL/PUCL lalu melampirkannya ke klaim.
+//
+// # Kenapa ia melampirkan, bukan sekadar mengembalikan berkasnya
+//
+// Karena di Pega surat itu MENJADI LAMPIRAN KLAIM — `PUCLPost` menempuh `AttachAsPDFC` lalu
+// `SetUploadDocument`, dan sesudahnya ia terbaca di daftar lampiran. Mengembalikannya ke
+// peramban saja akan membuat berkasnya hilang begitu petugas menutup tabnya, dan klaim yang
+// suratnya sudah terbit tidak dapat dibedakan dari yang belum.
+//
+// # Satu selisih yang disengaja: yang senama TIDAK dibuang
+//
+// `PUCLPost` membuang lampiran bernama sama lebih dulu ("search attachment for delete if
+// same name"), sehingga satu klaim hanya punya satu `PUCL.pdf`. Itu TIDAK ditiru: `D-66`
+// menetapkan tidak ada penghapusan fisik data bernilai bisnis, dan
+// `POOLDATA.DATA_ATTACHFILE` tidak punya kolom penanda hapus — sehingga penghapusan lunak
+// pun belum mungkin.
+//
+// Akibatnya mencetak ulang menambah baris baru, bukan menimpa. Daftarnya terurut terbaru di
+// atas, jadi yang berlaku tetap yang teratas.
+func (s *Service) issueLetter(
+	ctx context.Context,
+	repo inboxrclpucl.Repo,
+	detail inboxrclpucl.ClaimDetail,
+	caller string,
+) (*inboxrclpucl.Document, error) {
+	if s.letters == nil {
+		return nil, errors.New("perender surat tidak dipasang")
+	}
+
+	now := s.clock.Now()
+	nama := inboxrclpucl.LetterFileNameFor(detail.Letter.Track)
+
+	isi, err := s.letters.Render(inboxrclpucl.LetterDocument{
+		LetterDate: inboxrclpucl.NewLetterDate(now),
+
+		// Nomor surat memuat KATEGORI lampirannya, dan di Pega itu `Param.category` —
+		// parameter yang dikirim tombolnya. Nilainya tetap `Notification`.
+		LetterNumber: inboxrclpucl.NewLetterNumber(now, inboxrclpucl.LetterCategory),
+
+		Recipient: detail.Letter.InsuredParty,
+
+		// Ketiga isian berikut sengaja KOSONG, dan barisnya tetap digambar. Lihat suratpdf.
+		RecipientAddress: "",
+		ContractNumber:   "",
+		BusinessUnit:     "",
+
+		SumInsured:   detail.Letter.SumInsured,
+		PolicyNumber: detail.Letter.PolicyNumber,
+		InsuredName:  detail.Letter.InsuredName,
+		BillAmount:   detail.Letter.BillAmount,
+		LossDate:     detail.Letter.LossDate,
+
+		Subject:     detail.Letter.Subject,
+		OpeningNote: detail.Letter.OpeningNote,
+		BodyNote:    detail.Letter.BodyNote,
+		ClosingNote: detail.Letter.ClosingNote,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("membentuk surat klaim %s: %w", detail.ClaimNumber, err)
+	}
+
+	doc, err := repo.AddDocument(ctx, detail.Reference, inboxrclpucl.UploadedDocument{
+		Name: nama,
+
+		// Akhiran telanjang, bukan jenis media: itulah bentuk yang dipakai seluruh baris
+		// `ATTACHMIMETYPE` yang ditulis Pega (§158.2).
+		MimeType: "pdf",
+		Category: inboxrclpucl.LetterCategory,
+		Content:  isi,
+	}, caller)
+	if err != nil {
+		return nil, fmt.Errorf("melampirkan surat klaim %s: %w", detail.ClaimNumber, err)
+	}
+
+	if s.logger != nil {
+		s.logger.Info("surat rcl/pucl diterbitkan",
+			"klaim", detail.ClaimNumber,
+			"berkas", nama,
+			"dokumen", doc.ID,
+			"oleh", caller)
+	}
+	return &doc, nil
+}
+
+// recordHistory menulis satu baris riwayat klaim, meniru `InsertHistoryClaimPNC`.
+//
+// # Kenapa kegagalannya TIDAK dikembalikan
+//
+// Karena tindakannya sendiri sudah berhasil dan klaimnya sudah berpindah. Mengembalikan galat
+// di sini akan membuat petugas menekan tombolnya lagi — tanpa akibat pada penandaan, tetapi
+// menambah satu baris riwayat lagi. Kegagalannya dicatat sebagai peringatan.
+//
+// # Kenapa tetap dikerjakan meski "hanya" riwayat
+//
+// `D-59` menetapkan tidak ada pemisahan tugas, sehingga jejak audit menjadi **satu-satunya
+// kontrol pengimbang**. Baris ini yang menjawab "siapa meneruskan klaim ini, kapan" pada
+// sistem yang tidak mencegah siapa pun melakukannya.
+func (s *Service) recordHistory(
+	ctx context.Context,
+	repo inboxrclpucl.Repo,
+	portalAlias string,
+	detail inboxrclpucl.ClaimDetail,
+	kind inboxrclpucl.ClaimActionKind,
+	caller string,
+) {
+	// Teks kosong berarti tindakan ini memang TIDAK menulis riwayat di Pega — "Tolak Klaim"
+	// dan "Save". Lihat inboxrclpucl.HistoryNoteFor.
+	note := inboxrclpucl.HistoryNoteFor(kind)
+	if note == "" {
+		return
+	}
+
+	if err := repo.RecordHistory(ctx, detail.Reference, note, caller); err != nil {
+		if s.logger != nil {
+			s.logger.Warn("riwayat klaim rcl/pucl gagal ditulis",
+				"portal", portalAlias,
+				"oleh", caller,
+				"klaim", detail.ClaimNumber,
+				"tindakan", string(kind),
+				"sebab", err)
+		}
+	}
+}
+
+// logLetterFailure mencatat surat yang gagal terbit.
+//
+// Dicatat sebagai peringatan, bukan galat: tindakannya sendiri berhasil, dan klaimnya sudah
+// berpindah tab. Yang gagal hanya berkasnya, dan petugas dapat mencetak ulang.
+func (s *Service) logLetterFailure(portalAlias, login, claimNumber string, err error) {
+	if s.logger == nil {
+		return
+	}
+	s.logger.Warn("surat rcl/pucl gagal diterbitkan",
+		"portal", portalAlias,
+		"oleh", login,
+		"klaim", claimNumber,
+		"sebab", err)
+}
+
+// UploadDocument melampirkan satu berkas ke klaim// UploadDocument melampirkan satu berkas ke klaim — tombol "Unggah Dokumen".
+//
+// # Kenapa ia operasi tersendiri, bukan salah satu `aksi`
+//
+// Karena muatannya berbeda jenis: keempat tindakan lain mengirim JSON kecil, yang ini mengirim
+// BERKAS. Memaksanya ke jalur yang sama berarti satu alamat yang menerima dua bentuk badan
+// permintaan, dan pemanggil harus menebak mana yang berlaku.
+//
+// Ia juga satu-satunya yang mengembalikan sesuatu — baris dokumen yang baru tersimpan —
+// sehingga layar dapat menggambarnya tanpa menarik ulang seluruh daftar.
+func (s *Service) UploadDocument(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxrclpucl.Caller,
+	reference string,
+	upload inboxrclpucl.UploadedDocument,
+) (inboxrclpucl.Document, error) {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" {
+		return inboxrclpucl.Document{}, inboxrclpucl.ErrCallerUnknown
+	}
+
+	key := strings.TrimSpace(reference)
+	if key == "" {
+		return inboxrclpucl.Document{}, inboxrclpucl.NewValidationError(
+			[]inboxrclpucl.Violation{{
+				Field:   inboxrclpucl.FieldReference,
+				Message: "Kunci klaim tidak disebutkan.",
+			}})
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxrclpucl.Document{}, err
+	}
+
+	doc, err := repo.AddDocument(ctx, key, upload, cleanCaller.Login)
+	if err != nil {
+		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+			return inboxrclpucl.Document{}, err
+		}
+		var invalid *inboxrclpucl.ValidationError
+		if errors.As(err, &invalid) {
+			return inboxrclpucl.Document{}, err
+		}
+		return inboxrclpucl.Document{},
+			fmt.Errorf("mengunggah dokumen klaim %s: %w", key, err)
+	}
+
+	// Unggahan DICATAT bersama nama berkasnya. Ia menambah data pada klaim, dan `D-59`
+	// menjadikan jejak audit satu-satunya kontrol pengimbang.
+	if s.logger != nil {
+		s.logger.Info("dokumen klaim RCL/PUCL diunggah",
+			"portal", portalAlias,
+			"login", cleanCaller.Login,
+			"klaim", key,
+			"dokumen", doc.ID,
+			"berkas", doc.Name,
+			"bita", len(upload.Content),
+		)
+	}
+	return doc, nil
 }

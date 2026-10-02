@@ -42,8 +42,13 @@ func TestSeluruhRuteTerdaftar(t *testing.T) {
 		"GET /inbox-rcl-pucl/klaim/{referensi}/dokumen",
 		"GET /inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}",
 
-		// Satu-satunya rute yang MENGUBAH klaim. POST, bukan GET.
+		// Kedua rute yang MENGUBAH klaim. Keduanya POST, bukan GET.
 		"POST /inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}",
+
+		// Unggah dokumen: POST ke alamat DAFTARNYA, karena ia membuat sumber daya baru di
+		// bawah koleksi itu — bukan menjalankan tindakan bernama.
+		"POST /inbox-rcl-pucl/klaim/{referensi}/dokumen",
+		"GET /inbox-rcl-pucl/kategori-dokumen",
 	} {
 		require.Truef(t, terpasang[wajib], "rute %q tidak terdaftar", wajib)
 	}

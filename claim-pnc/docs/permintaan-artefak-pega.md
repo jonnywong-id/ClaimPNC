@@ -2421,3 +2421,103 @@ tombol** — yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Na
 
 Apa pun namanya, di sisi kami ia **satu baris konfigurasi** (`PEGA_LAYANAN_KLAIM_PATH`) — bukan
 perubahan kode.
+
+---
+
+## 12.9 Ticket yang WAJIB dilepas `ActionClaimPUCL` (2026-10-02)
+
+Ditambahkan sesudah rantai ticket-nya terlacak penuh dari export. Tanpa butir ini, layanan
+yang dibangun akan menandai klaim selesai **tanpa memindahkannya** — persis keadaan yang
+berjalan sekarang.
+
+### Yang harus dikerjakan layanan, berurutan
+
+| # | Isi | Sumber |
+|---|---|---|
+| 1 | Jalankan `PUCLPost` dengan `Status = 1` | tombol Kirim di `SectionLampiranSuratPUCL` |
+| 2 | Langkah 17-nya melepas ticket **`SendtoAnalysator`**, berprekondisi `param.Status==1` | `PUCLPost` langkah 17, `<Ticket>SendtoAnalysator</Ticket>` |
+| 3 | Ticket itu menempel pada shape ber-`pyUseCaseName = SendToAnalis` | `Register_Flow`, `pyTicketShapes` |
+| 4 | Shape itu `pyImplementation = WorkList`, router `PNCTeknikRouter` | idem |
+
+### Peta ticket Register_Flow, terbaca dari `pyTicketShapes`
+
+| Ticket | Shape tujuan |
+|---|---|
+| `SendtoPUCL` | **`RCLPUCL`** — yang memasukkan klaim ke antrean ini |
+| `SendtoAnalysator` | **`SendToAnalis`** |
+| `SendToInvestigator` | `Investigator` |
+| `CompliancePNC` | `Compliance` |
+| `RCLDokter` | `RCLDokter` |
+| `SendToPICTravel` | `Assignment` (Compliance) |
+| `setToRegister_ticket` | `InputRegister` |
+
+### ⚠ URUTANNYA WAJIB — terbalik berarti klaim DITUTUP, bukan dikirim
+
+Ditambahkan 2026-10-02 sesudah `Register_Flow` dibaca shape demi shape. **Ini butir terpenting
+di seluruh §12**, dan ia tidak terbaca dari rangkaian tombol mana pun.
+
+Shape `RCL/PUCL` (`Assignment6`) punya **tepat satu konektor keluar**:
+
+| Dari | Flow action | Ke |
+|---|---|---|
+| `Assignment6` — RCL/PUCL | **`SendtoRCLPUCL`** | **`End1`** — `Data-MO-Event-End`, **akhir Register_Flow** |
+
+Tanpa syarat: `pyTaskWhen` konektor itu **kosong**.
+
+Jadi **menyerahkan flow action `SendtoRCLPUCL` dari antrean RCL/PUCL MENGAKHIRI flow.** Yang
+menyelamatkan klaim dari berakhir adalah `SetTicket(SendtoAnalysator)` pada `PUCLPost`
+langkah 17, yang berjalan **lebih dulu** dan melompatkan flow ke `Assignment5`.
+
+| Urutan | Akibat |
+|---|---|
+| `PUCLPost` (melepas ticket) **lalu** serahkan flow action | klaim berada di `Send To Analis` ✅ |
+| serahkan flow action **tanpa** `PUCLPost` lebih dulu | klaim **berakhir di `End1`** ❌ |
+| `PUCLPost` dengan `Status ≠ 1` | ticket **tidak** dilepas (prekondisi `param.Status==1`) — lalu flow action menutup klaim ❌ |
+
+**Flow action yang sama dipakai dua konektor berbeda**, dan akibatnya berlawanan:
+
+| Dari | Flow action | Ke |
+|---|---|---|
+| `Assignment5` — Send To Analis | `SendtoRCLPUCL` | `Decision7` → **masuk** ke RCL/PUCL |
+| `Assignment6` — RCL/PUCL | `SendtoRCLPUCL` | `End1` — **keluar dari flow** |
+
+Namanya menyesatkan di tempat kedua: ia tidak "mengirim ke RCL/PUCL", ia mengakhiri.
+
+### ⚠ API assignment bawaan Pega TIDAK dapat dipakai sebagai jalan pintas
+
+Terlihat masuk akal — `PUT /api/v1/assignments/{id}/actions/SendtoRCLPUCL` menjalankan flow
+action lewat mesin alur sendiri, sehingga `PZPVSTREAM` dibentuk Pega. **Tetapi ia akan
+menutup klaim**, karena:
+
+> `Flow Action/SendtoRCLPUCL-FA.xml` memuat `pyPreProcessingActivity =
+> SetDataLampiranSuratRCLPUCL_Act`, dan **tidak memuat elemen `pyPostProcessingActivity` sama
+> sekali**.
+
+`PUCLPost` **melekat pada TOMBOL** (rangkaian `pyBehaviors` di `SectionLampiranSuratPUCL`),
+bukan pada flow action. Memanggil flow action lewat API karena itu **melewati `PUCLPost`
+seluruhnya** — ticket tidak pernah dilepas, dan konektor di atas membawa klaim ke `End1`.
+
+Inilah sebabnya layanan `ActionClaimPUCL` harus menjalankan **rangkaian tombolnya**, bukan
+sekadar menyerahkan flow action.
+
+### Kenapa ini tidak dapat kami kerjakan sendiri
+
+Dicoba pada 2026-10-02, dan **dicabut pada hari yang sama**: menyisipkan penugasan ke
+`PC_ASSIGN_WORKLIST` tanpa `PZPVSTREAM` membuat satu klaim tidak dapat dibuka lagi di Pega.
+Dari **105.616** baris penugasan Pega, **nol** yang kolom itu kosong.
+
+Melepas ticket adalah pekerjaan mesin alur Pega. Ia tidak dapat ditiru dengan menulis baris
+tabel.
+
+### Kenapa baris RCL/PUCL tertinggal, dan kenapa itu BUKAN cacat modul kami
+
+Karena `SetTicket` melompatkan flow ke `Assignment5` **sementara assignment `Assignment6`
+masih terbuka**. Flow sudah tidak berada di shape itu, sehingga barisnya menjadi yatim — dan
+Pega menandainya sendiri **`Error: Flow Not At Task`**.
+
+Buktinya ada pada data Pega sendiri, sebelum modul ini ada: **16 dari 63** klaim di antrean
+`RCLPUCL` sudah berstatus `1151` (Analyst). Jadi yang benar dikatakan: perilaku ini **melekat
+pada rancangan alurnya**, bukan akibat modul kami.
+
+Bila Tim Pega hendak sekalian membereskannya, yang dibutuhkan adalah menutup assignment
+`Assignment6` **sebelum** ticket dilepas — bukan sesudahnya.

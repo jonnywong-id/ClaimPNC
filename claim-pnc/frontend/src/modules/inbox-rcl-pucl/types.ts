@@ -416,5 +416,18 @@ export type DocumentListResponse = {
    */
   catatan: string
 
+  /**
+   * Jumlah lampiran klaim yang TIDAK digambar.
+   *
+   * Daftar ini mengikuti penyaring `GCNMGetAllAttachments`, report definition di balik
+   * tombol "Lihat Dokumen" di Pega: ia menyaring atas nama kategori lampiran, sehingga baris
+   * berkategori kode angka — yang berasal dari mekanisme lain — tidak pernah tergambar di
+   * sana pula.
+   *
+   * Angkanya dinyatakan di layar. Daftar yang diam-diam lebih pendek adalah kegagalan yang
+   * tidak menghasilkan satu pun galat.
+   */
+  disaring: number
+
   portal: string
 }

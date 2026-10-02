@@ -656,3 +656,30 @@ func TestActionParametersAreNotInterchangeable(t *testing.T) {
 	require.Equal(t, "COV-8", detail.ActionParameters.IDCoverage)
 	require.Equal(t, "ADJ-9", detail.ActionParameters.IDAdjustment)
 }
+
+func TestWaktuBentukPegaDigambarSebagaiWIB(t *testing.T) {
+	// `RECEIVEDDATE_1` menyimpan bentuk INTERNAL Pega, bukan timestamp. Sampai 2026-10-01 ia
+	// sampai ke layar apa adanya — Work Owner melaporkannya dengan tangkapan layar berisi
+	// `20240911T143500.000 GMT` di dalam grid.
+	//
+	// Pergeseran +7 ikut dijaga: seluruh waktu Pega disimpan GMT dan digambar WIB. Tanpa uji
+	// ini, kekeliruan zona menghasilkan jam yang masuk akal tetapi SALAH tujuh jam — kelas
+	// kesalahan yang tidak pernah terlihat sebagai kerusakan.
+	for _, c := range []struct{ raw, want string }{
+		{"20240911T143500.000 GMT", "11/09/2024 21:35"},
+		{"20240911T143500 GMT", "11/09/2024 21:35"},
+		{"20241231T170000.000 GMT", "01/01/2025 00:00"}, // menyeberang pergantian tahun
+		{"", ""},
+		{"2026-09-04 10:05:00", "2026-09-04 10:05:00"}, // bentuk lain: apa adanya
+	} {
+		require.Equalf(t, c.want, inboxrclpucl.DisplayPegaTime(c.raw), "masukan %q", c.raw)
+	}
+}
+
+func TestGridTanggalTerimaDokumenMemakaiBentukTampilan(t *testing.T) {
+	// Penggambarnya dipakai di SATU tempat, dan uji ini yang memastikan ia benar-benar
+	// dilewati — bukan hanya tersedia.
+	rows := inboxrclpucl.ReceivedDatesOf("20240911T143500.000 GMT", "Dokumen awal")
+	require.Len(t, rows, 1)
+	require.Equal(t, "11/09/2024 21:35", rows[0].Date)
+}

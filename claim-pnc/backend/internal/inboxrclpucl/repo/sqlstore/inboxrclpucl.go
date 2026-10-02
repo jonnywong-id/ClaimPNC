@@ -2,10 +2,13 @@ package sqlstore
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/inboxrclpucl"
 )
@@ -22,8 +25,10 @@ import (
 // Pega.
 //
 // Catatan yang pernah berdiri di sini — bahwa `TC_PNC_PUCL` pun tidak ditulis karena diisi
-// PROSES PENGISI — berlaku sampai 2026-10-01 dan kini dicabut untuk satu kolom: `PUCL_APPROVE`
-// ditulis modul ini, karena ia penanda PERPINDAHAN, bukan data yang dimuat pengisi.
+// PROSES PENGISI — berlaku sampai 2026-10-01 dan kini dicabut untuk TIGA kolom:
+// `PUCL_APPROVE`, `STATUS_CLAIM`, dan `TGL_CETAK_DOKUMEN_PUCL`. Ketiganya penanda
+// PERPINDAHAN, bukan data yang dimuat pengisi, dan ketiganya ditulis `PUCLPost` di Pega —
+// lihat kueri `return_to_analyst` untuk nomor langkahnya.
 type Repo struct {
 	db *sql.DB
 }
@@ -284,9 +289,11 @@ func (r *Repo) Documents(
 			id, name, mime         sql.NullString
 			category, subCategory  sql.NullString
 			uploadedAt, uploadedBy sql.NullString
+			pegaVisible            sql.NullInt64
 		)
 		if err := rows.Scan(
 			&id, &name, &mime, &category, &subCategory, &uploadedAt, &uploadedBy,
+			&pegaVisible,
 		); err != nil {
 			return nil, fmt.Errorf("membaca baris dokumen: %w", err)
 		}
@@ -302,6 +309,8 @@ func (r *Repo) Documents(
 			// layar menggambar dua bentuk tanggal berdampingan.
 			UploadedAt: inboxrclpucl.DisplayTimeText(uploadedAt.String),
 			UploadedBy: uploadedBy.String,
+
+			PegaVisible: pegaVisible.Int64 == 1,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -336,33 +345,271 @@ func (r *Repo) DocumentContent(
 
 // ReturnToAnalyst menandai klaim sudah selesai dikerjakan PUCL.
 //
-// SATU-SATUNYA method di berkas ini yang MENULIS, dan yang ditulisnya `POOLDATA.TC_PNC_PUCL`
-// — tabel milik aplikasi ini, bukan tabel engine Pega. Lihat seam Repo.ReturnToAnalyst untuk
-// alasan lengkapnya.
+// Yang ditulisnya HANYA `POOLDATA.TC_PNC_PUCL` — tabel milik aplikasi ini.
+//
+// # Ia pernah memindahkan penugasan di Pega, dan itu MERUSAK satu klaim
+//
+// Pada 2026-10-02 fungsi ini sempat menyisipkan penugasan `Send To Analis` ke
+// `DATAPEGA.PC_ASSIGN_WORKLIST` lalu membuang penugasan workbasket RCL/PUCL — meniru alur
+// Pega. Akibatnya klaim `PNC-2067` tidak dapat dibuka lagi di Pega:
+//
+//	Unable to open an instance using the given inputs:
+//	ASSIGN-WORKBASKET ASM-FW-GCNMFW-WORK PNC-2067!REGISTER_FLOW
+//
+// Sebabnya baris yang kami tulis tidak memuat `PZPVSTREAM`. Kolom itu nullable di katalog,
+// dan dari situ disimpulkan ia boleh dikosongkan — padahal dari **105.616** baris penugasan
+// Pega, **nol** yang berbentuk begitu. Nullable berarti basis data mengizinkannya, bukan
+// berarti Pega menerimanya.
+//
+// Klaimnya sudah dipulihkan, dan seluruh kode penulisnya DIHAPUS — bukan sekadar dimatikan.
+// Kode mati yang menulis tabel Pega adalah jebakan bagi sesi berikutnya. Analisis alurnya
+// tersimpan di `keputusan-implementasi.md` §161–§163, dan penjaganya ada di
+// TestNoQueryWritesToPegaTables.
+//
+// Menghidupkannya kembali menuntut satu hal yang belum ada: cara membentuk `PZPVSTREAM` yang
+// Pega terima. Perpindahan tahap yang sebenarnya menunggu `ActionClaimPUCL` dari Tim Pega.
 //
 // `caller` TIDAK ditulis ke tabel: `TC_PNC_PUCL` tidak punya kolom pelaku, dan menambah kolom
 // menempuh `D-63` (permintaan tertulis, persetujuan Work Owner, pelaksanaan DBA). Pelakunya
 // tetap tercatat — di jejak log usecase, bersama nomor klaim dan portalnya.
 func (r *Repo) ReturnToAnalyst(ctx context.Context, reference, caller string) error {
-	_ = caller
-
-	if _, err := r.db.ExecContext(ctx, query("return_to_analyst"),
-		strings.TrimSpace(reference),
+	// Urutan argumen mengikuti URUTAN KEMUNCULAN penanda di pernyataannya — nilai lebih dulu
+	// (`SET`), baru nomor klaim (`WHERE`). Lihat catatan panjang pada kueri `return_to_analyst`:
+	// menukarnya menghasilkan kegagalan yang SENYAP, bukan galat.
+	res, err := r.db.ExecContext(ctx, query("return_to_analyst"),
 		inboxrclpucl.PUCLReturnedToAnalyst,
-	); err != nil {
+		inboxrclpucl.StatusClaimAnalyst,
+		strings.TrimSpace(reference),
+	)
+	if err != nil {
 		return fmt.Errorf("menandai klaim %s selesai di PUCL: %w", reference, err)
 	}
 
-	// Jumlah baris terpengaruh SENGAJA tidak diperiksa.
+	// Jumlah baris DIPERIKSA, dan nol dinyatakan sebagai kegagalan.
 	//
-	// Nol baris berarti salah satu dari dua hal, dan keduanya BUKAN kerusakan: klaimnya tidak
-	// ada, atau penandanya sudah bernilai sama. Yang pertama sudah ditolak jauh sebelum sampai
-	// ke sini — PerformAction MEMBACA klaimnya lebih dulu. Yang tersisa pada praktiknya
-	// hanyalah penandaan ulang, dan itu keberhasilan, bukan kegagalan.
+	// Bentuk sebelumnya mengabaikannya dengan alasan yang terdengar masuk akal — "nol berarti
+	// sudah ditandai, dan itu keberhasilan". Alasan itu KELIRU dan berbiaya: ia membuat
+	// pernyataan yang tidak mengenai satu baris pun tetap dilaporkan berhasil, sehingga cacat
+	// urutan bind di atas hidup sampai Work Owner menemukannya dari layar.
 	//
-	// Memeriksanya lalu menyatakan galat akan membuat klik kedua pada jaringan lambat terbaca
-	// sebagai kerusakan, padahal keadaan akhirnya persis yang diminta pengguna.
+	// Pernyataannya kini tidak lagi menyaring nilai saat ini, sehingga nol baris berarti SATU
+	// hal: klaimnya tidak ada. Itu memang ErrClaimNotFound.
+	terpengaruh, err := res.RowsAffected()
+	if err != nil {
+		// Penggerak yang tidak dapat melaporkan jumlah baris bukan alasan menyatakan gagal —
+		// pernyataannya sudah dijalankan tanpa galat. Yang hilang hanya kemampuan menilainya.
+		return nil
+	}
+	if terpengaruh == 0 {
+		return inboxrclpucl.ErrClaimNotFound
+	}
+
+	// Penugasan di Pega TIDAK disentuh — lihat catatan di kepala fungsi ini.
 	return nil
+}
+
+// SaveReceipt menyimpan kedua isian Penerimaan Dokumen yang diketik petugas.
+//
+// Ia TIDAK menyentuh `PUCL_APPROVE`: "Save" di layar lama tidak memanggil `PUCLPost` sama
+// sekali, sehingga menyimpan bukan memindahkan — klaimnya tetap menjadi pekerjaan PUCL.
+//
+// `caller` tidak ditulis ke tabel; `TC_PNC_PUCL` tidak punya kolom pelaku. Pelakunya tercatat
+// di jejak log usecase, bersama nomor klaim dan portalnya.
+func (r *Repo) SaveReceipt(
+	ctx context.Context,
+	reference string,
+	in inboxrclpucl.ReceiptInput,
+	caller string,
+) error {
+	_ = caller
+
+	at, err := in.Validate()
+	if err != nil {
+		return err
+	}
+
+	res, err := r.db.ExecContext(ctx, query("save_receipt"),
+		strings.TrimSpace(in.Note),
+		at,
+		strings.TrimSpace(reference),
+	)
+	if err != nil {
+		return fmt.Errorf("menyimpan isian penerimaan dokumen klaim %s: %w", reference, err)
+	}
+
+	// Nol baris berarti klaimnya tidak ada — lihat alasan lengkapnya pada ReturnToAnalyst.
+	terpengaruh, err := res.RowsAffected()
+	if err != nil {
+		return nil
+	}
+	if terpengaruh == 0 {
+		return inboxrclpucl.ErrClaimNotFound
+	}
+	return nil
+}
+
+// MarkLetterPrinted menandai surat RCL/PUCL sudah diterbitkan.
+//
+// Ia TIDAK menyentuh `PUCL_APPROVE`: "Download Dokumen" mengirim `Status` kosong, sehingga
+// kedua langkah yang menulisnya di `PUCLPost` terlewati. Klaimnya tetap pekerjaan PUCL — yang
+// berpindah hanyalah TAB-nya.
+func (r *Repo) MarkLetterPrinted(ctx context.Context, reference, caller string) error {
+	_ = caller
+
+	res, err := r.db.ExecContext(ctx, query("mark_letter_printed"),
+		inboxrclpucl.StatusCasePrinted,
+		inboxrclpucl.StatusClaimWaitingDocument,
+		strings.TrimSpace(reference),
+	)
+	if err != nil {
+		return fmt.Errorf("menandai surat klaim %s sudah dicetak: %w", reference, err)
+	}
+
+	terpengaruh, err := res.RowsAffected()
+	if err != nil {
+		return nil
+	}
+	if terpengaruh == 0 {
+		return inboxrclpucl.ErrClaimNotFound
+	}
+	return nil
+}
+
+// AddDocument melampirkan satu berkas ke klaim — tombol "Unggah Dokumen".
+//
+// # Satu transaksi, tiga pernyataan
+//
+// Nomor urut diambil, baris pencacah disisipkan, lalu lampirannya. Ketiganya dibungkus satu
+// transaksi supaya kegagalan di tengah tidak meninggalkan pencacah yang bertambah tanpa
+// lampiran — tepat jenis selisih yang `D-68` lepaskan dari procedure ber-sembilan-`COMMIT`.
+//
+// # Kenapa kunci objek kerja dibaca lebih dulu
+//
+// `DATA_ATTACHFILE.IDPEGA` menyimpan `PZINSKEY` objek kerja, dan kueri `documents`
+// menggabungkannya kembali lewat kolom itu. Baris yang `IDPEGA`-nya salah tersimpan dengan
+// baik dan TIDAK PERNAH muncul di daftar dokumen klaimnya — kegagalan yang tidak menghasilkan
+// satu pun galat.
+func (r *Repo) AddDocument(
+	ctx context.Context,
+	reference string,
+	upload inboxrclpucl.UploadedDocument,
+	caller string,
+) (inboxrclpucl.Document, error) {
+	if err := upload.Validate(); err != nil {
+		return inboxrclpucl.Document{}, err
+	}
+
+	key := strings.TrimSpace(reference)
+
+	var workKey string
+	err := r.db.QueryRowContext(ctx, query("work_object_key"), key).Scan(&workKey)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxrclpucl.Document{}, inboxrclpucl.ErrClaimNotFound
+	}
+	if err != nil {
+		return inboxrclpucl.Document{}, fmt.Errorf(
+			"membaca kunci objek kerja klaim %s: %w", reference, err)
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return inboxrclpucl.Document{}, fmt.Errorf("memulai transaksi unggahan: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var year string
+	var runNo int64
+	if err := tx.QueryRowContext(ctx, query("next_attachment_number")).
+		Scan(&year, &runNo); err != nil {
+		return inboxrclpucl.Document{}, fmt.Errorf("mengambil nomor lampiran: %w", err)
+	}
+
+	// Bentuk `DATAID` ditiru PERSIS: dua digit tahun diikuti nomor urut berlebar sepuluh
+	// dengan nol di depan — `year || lpad(runno,10,'0')` pada procedure aslinya.
+	dataID := fmt.Sprintf("%s%010d", year, runNo)
+
+	// Kunci baris pencacah. Procedure aslinya memakai `new_uuid` dari basis data; di sini
+	// dibentuk di Go, karena nilainya tidak pernah dibaca lagi — ia hanya membedakan satu
+	// baris pencacah dari yang lain.
+	counterKey := fmt.Sprintf("%s-%d", dataID, time.Now().UnixNano())
+
+	if _, err := tx.ExecContext(ctx, query("insert_attachment_counter"),
+		counterKey, year, runNo); err != nil {
+		return inboxrclpucl.Document{}, fmt.Errorf("menulis pencacah lampiran: %w", err)
+	}
+
+	// Kategori disimpan apa adanya sebagai NAMA, bukan diterjemahkan menjadi kode. Itulah
+	// bentuk yang dipakai Pega pada `PC_LINK_ATTACHMENT.PYCATEGORY`, dan kolom ini pun sudah
+	// memuat nilai berupa teks pada baris yang ditulis jalur lain.
+	//
+	// `nil`, bukan string kosong, ketika petugas tidak memilih: kolom yang KOSONG dan kolom
+	// yang BERISI teks nol-panjang tidak dapat dibedakan lagi sesudah tersimpan.
+	// Kategori KOSONG disimpan sebagai `File`, bukan dibiarkan kosong.
+	//
+	// `File` adalah kategori lampiran bawaan Pega, dan dialognya pun menggambarnya terpilih
+	// pada baris yang belum disentuh. Membiarkannya kosong punya akibat yang tidak terduga
+	// sejak daftar dokumen menyaring menurut `GCNMGetAllAttachments`: baris tanpa kategori
+	// tidak cocok dengan satu pun nama kategori lampiran, sehingga berkas yang baru saja
+	// diunggah petugas LANGSUNG HILANG dari daftarnya.
+	kategori := strings.TrimSpace(upload.Category)
+	if kategori == "" {
+		kategori = inboxrclpucl.DefaultAttachmentCategory
+	}
+
+	if _, err := tx.ExecContext(ctx, query("insert_attachment"),
+		dataID,
+		strings.TrimSpace(caller),
+		strings.TrimSpace(upload.Name),
+		strings.TrimSpace(upload.Note),
+		strings.TrimSpace(upload.MimeType),
+		upload.Content,
+		workKey,
+		kategori,
+	); err != nil {
+		return inboxrclpucl.Document{}, fmt.Errorf(
+			"menyimpan lampiran klaim %s: %w", reference, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return inboxrclpucl.Document{}, fmt.Errorf("menutup transaksi unggahan: %w", err)
+	}
+
+	return inboxrclpucl.Document{
+		ID:         dataID,
+		Name:       strings.TrimSpace(upload.Name),
+		MimeType:   strings.TrimSpace(upload.MimeType),
+		UploadedBy: strings.TrimSpace(caller),
+	}, nil
+}
+
+// DocumentCategories mengembalikan pilihan kolom "Category" pada dialog unggah.
+func (r *Repo) DocumentCategories(
+	ctx context.Context,
+) ([]inboxrclpucl.DocumentCategory, error) {
+	rows, err := r.db.QueryContext(ctx, query("document_categories"))
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri document_categories: %w", err)
+	}
+	defer rows.Close()
+
+	// Senarai KOSONG, bukan nil: ia diserahkan apa adanya ke JSON, dan nil tergambar `null`
+	// sementara layar mengharapkan larik.
+	result := []inboxrclpucl.DocumentCategory{}
+	for rows.Next() {
+		var name sql.NullString
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("membaca baris document_categories: %w", err)
+		}
+		bersih := strings.TrimSpace(name.String)
+		result = append(result, inboxrclpucl.DocumentCategory{
+			Value: bersih,
+			Label: bersih,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil document_categories: %w", err)
+	}
+	return result, nil
 }
 
 // CheckTable memastikan tabel DAN kolom yang disentuh modul ini terbaca dari koneksi yang
@@ -556,20 +803,22 @@ func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 // tidak mengembalikan baris. Itu keadaan yang sah — bukan kegagalan.
 func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 	var (
-		reference, claimNumber, trackCode sql.NullString
-		analystNote, policyNumber         sql.NullString
-		lossDate, puclNote                sql.NullString
-		subject, openingNote              sql.NullString
-		bodyNote, closingNote             sql.NullString
-		msigFlag, groupPanel              sql.NullString
-		documentCompleteAt, insuredEmail  sql.NullString
-		idObject, idCoverage, idAdj       sql.NullString
-		receivedDateFirst, receivedNote   sql.NullString
-		firstObjectName, firstPropose     sql.NullString
+		reference, insuredParty          sql.NullString
+		claimNumber, trackCode           sql.NullString
+		analystNote, policyNumber        sql.NullString
+		lossDate, puclNote               sql.NullString
+		subject, openingNote             sql.NullString
+		bodyNote, closingNote            sql.NullString
+		msigFlag, groupPanel             sql.NullString
+		documentCompleteAt, insuredEmail sql.NullString
+		idObject, idCoverage, idAdj      sql.NullString
+		receivedDateFirst, receivedNote  sql.NullString
+		firstObjectName, firstPropose    sql.NullString
 	)
 
 	err := row.Scan(
-		&reference, &claimNumber, &trackCode, &analystNote, &policyNumber,
+		&reference, &insuredParty,
+		&claimNumber, &trackCode, &analystNote, &policyNumber,
 		&lossDate, &puclNote,
 		&subject, &openingNote, &bodyNote, &closingNote,
 		&msigFlag, &groupPanel,
@@ -631,6 +880,10 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 			OpeningNote: openingNote.String,
 			BodyNote:    bodyNote.String,
 			ClosingNote: closingNote.String,
+
+			// Penerima surat. Hanya dipakai saat mencetak, dan sengaja TIDAK digambar di
+			// layar kerja: section-nya tidak memuat isian itu (`D-13`).
+			InsuredParty: strings.TrimSpace(insuredParty.String),
 		},
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{
@@ -692,4 +945,107 @@ func scanReportRow(row scanner) (inboxrclpucl.DailyReportRow, int, error) {
 
 		ClaimStatus: claimStatus.String,
 	}, int(total.Int64), nil
+}
+
+// RecordHistory menulis satu baris riwayat klaim.
+//
+// Ia membaca `PZINSKEY` lebih dulu karena kolom `CASEID` menyimpan kunci objek kerja, bukan
+// nomor klaim — lihat catatan pada kueri `insert_history`.
+func (r *Repo) RecordHistory(ctx context.Context, reference, statusNote, caller string) error {
+	note := strings.TrimRight(statusNote, "\x00")
+	if strings.TrimSpace(note) == "" {
+		// Tindakan yang memang tidak menulis riwayat — "Tolak Klaim" dan "Save". Bukan galat.
+		return nil
+	}
+
+	key := strings.TrimSpace(reference)
+
+	var workKey string
+	err := r.db.QueryRowContext(ctx, query("work_object_key"), key).Scan(&workKey)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxrclpucl.ErrClaimNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("membaca kunci objek kerja klaim %s: %w", reference, err)
+	}
+
+	// Spasi di ujung teks riwayat TIDAK dipangkas — ia ada di Pega dan ikut tersimpan.
+	if _, err := r.db.ExecContext(ctx, query("insert_history"),
+		workKey, note, strings.TrimSpace(caller),
+	); err != nil {
+		return fmt.Errorf("menulis riwayat klaim %s: %w", reference, err)
+	}
+	return nil
+}
+
+// MoveToSendToAnalyst memindahkan klaim ke tahap Send To Analis.
+//
+// Ketiga pernyataannya berada dalam SATU transaksi, dan itu bukan kehati-hatian berlebihan:
+// tugas lama yang tertutup tanpa tugas baru terbuka membuat klaim hilang dari setiap inbox —
+// tidak lagi pekerjaan PUCL, dan belum menjadi pekerjaan siapa pun. Itu kegagalan yang jauh
+// lebih buruk daripada tombol yang menolak.
+func (r *Repo) MoveToSendToAnalyst(ctx context.Context, reference, caller string) error {
+	key := strings.TrimSpace(reference)
+
+	var workKey, pic string
+	var picNull sql.NullString
+	err := r.db.QueryRowContext(ctx, query("technical_pic"), key).Scan(&workKey, &picNull)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxrclpucl.ErrClaimNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("membaca PIC Teknik klaim %s: %w", reference, err)
+	}
+	pic = strings.TrimSpace(picNull.String)
+	if pic == "" {
+		// Tugas Worklist WAJIB bertuan sejak lahir (`D-26`). Tugas tanpa pemilik pada
+		// antrean yang bukan antrean bersama tidak akan muncul di inbox siapa pun — klaim
+		// hilang tanpa galat. Menolak di sini membuat sebabnya terbaca.
+		return inboxrclpucl.ErrTechnicalPICUnknown
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("memulai transaksi perpindahan tahap: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	now := time.Now().UTC()
+
+	// Nol baris BUKAN galat — klaim yang dimulai di Pega belum pernah punya tugas di sini.
+	if _, err := tx.ExecContext(ctx, query("close_open_tasks"),
+		now, inboxrclpucl.TicketSendToAnalyst, key,
+	); err != nil {
+		return fmt.Errorf("menutup tugas terbuka klaim %s: %w", reference, err)
+	}
+
+	if _, err := tx.ExecContext(ctx, query("open_task"),
+		newTaskID(), workKey, key,
+		inboxrclpucl.StageSendToAnalyst, inboxrclpucl.QueueWorklist, pic,
+		now, now,
+	); err != nil {
+		return fmt.Errorf("membuka tugas Send To Analis klaim %s: %w", reference, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("menyimpan perpindahan tahap klaim %s: %w", reference, err)
+	}
+	return nil
+}
+
+// newTaskID membangkitkan pengenal tugas 128 bit dalam heksadesimal.
+//
+// Bentuknya sama dengan pembangkit pengenal modul lain, supaya baris yang ditulis modul ini
+// tidak dapat dibedakan dari baris yang ditulis modul alur — keduanya mengisi tabel yang sama.
+//
+// Acak, bukan berurut: pengenal tugas tidak punya makna bisnis, dan nomor berurut akan
+// membocorkan berapa banyak tugas yang sudah dibuat.
+func newTaskID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand tidak gagal pada sistem yang sehat. Melanjutkan dengan pengenal yang
+		// dapat ditebak lebih berbahaya daripada berhenti.
+		panic("inboxrclpucl/sqlstore: sumber acak tidak tersedia: " + err.Error())
+	}
+	return hex.EncodeToString(b[:])
 }

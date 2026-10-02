@@ -566,6 +566,12 @@ type DocumentListResponse struct {
 	// kosong tanpa keterangan terbaca sebagai "klaim ini tidak berdokumen".
 	Catatan string `json:"catatan"`
 
+	// Disaring adalah JUMLAH lampiran klaim yang tidak digambar karena tidak tergambar pula
+	// di layar Pega. Lihat toDocumentListResponse.
+	//
+	// Dikirim sebagai angka, bukan disembunyikan: petugas berhak tahu daftarnya dipersempit.
+	Disaring int `json:"disaring"`
+
 	Portal string `json:"portal"`
 }
 
@@ -573,20 +579,80 @@ type DocumentListResponse struct {
 const documentListNote = "Dokumen yang diunggah lewat jalur lama Pega belum tentu muncul di " +
 	"daftar ini. Bila dokumen yang Anda cari tidak ada, periksa klaimnya di Pega."
 
+// toDocumentListResponse menyusun daftar dokumen yang DIGAMBAR layar.
+//
+// # Penyaringnya mengikuti `GCNMGetAllAttachments`
+//
+// Report definition di balik "Lihat Dokumen" berjalan di kelas `Link-Attachment` dan
+// menyaring atas `pyCategory` — yang isinya NAMA kategori lampiran. Baris yang `CATEGORY`-nya
+// kode angka berasal dari mekanisme lain, dan penyaring itu tidak pernah mencocokkannya.
+//
+// Dibandingkan langsung pada satu klaim 2026-10-02: layar Pega menggambar **4** lampiran,
+// sementara daftar kami menggambar **9** — enam di antaranya bernama `duplicated.JPG`
+// berkategori `10064`, yang tidak pernah tergambar di Pega sama sekali.
+//
+// # Yang disaring tetap DIHITUNG dan dinyatakan
+//
+// Daftar yang diam-diam lebih pendek adalah kegagalan yang tidak menghasilkan satu pun galat:
+// dokumen yang dicari petugas hilang, dan tidak ada yang memberi tahu bahwa ia disembunyikan.
+// Karena itu jumlahnya ikut dikirim, dan layar menyebutkannya.
 func toDocumentListResponse(
 	documents []inboxrclpucl.Document,
 	portal string,
 ) DocumentListResponse {
 	rows := make([]DocumentDTO, 0, len(documents))
+	disaring := 0
 	for _, document := range documents {
-		rows = append(rows, DocumentDTO{
-			ID:           document.ID,
-			Nama:         document.Name,
-			Kategori:     document.Category,
-			SubKategori:  document.SubCategory,
-			DiunggahPada: document.UploadedAt,
-			DiunggahOleh: document.UploadedBy,
-		})
+		if !document.PegaVisible {
+			disaring++
+			continue
+		}
+		rows = append(rows, documentDTO(document))
 	}
-	return DocumentListResponse{Dokumen: rows, Catatan: documentListNote, Portal: portal}
+	return DocumentListResponse{
+		Dokumen:  rows,
+		Disaring: disaring,
+		Catatan:  documentListNote,
+		Portal:   portal,
+	}
+}
+
+// saveReceiptRequest adalah badan permintaan tombol "Save".
+//
+// Nama isiannya berbahasa Indonesia mengikuti `D-80`: nama field JSON adalah KONTRAK dengan
+// layar, bukan nama internal, dan seluruh modul lain memakai bahasa yang sama.
+//
+// Hanya DUA isian, bukan tiga. "Email Tertanggung" juga dapat diketik di layar lama, tetapi ia
+// hidup di `POOLDATA.T_CLAIM_PNC.EMAIL_LOD` — tabel lain yang modul ini tidak tulis. Lihat
+// `inboxrclpucl.ReceiptInput`.
+type saveReceiptRequest struct {
+	Note       string `json:"catatan_untuk_analyst"`
+	CompleteAt string `json:"tanggal_kelengkapan_dokumen"`
+}
+
+// documentDTO menyusun satu baris dokumen.
+//
+// Dipisah dari toDocumentListResponse sejak unggahan mengembalikan SATU baris: dua penyusun
+// yang menulis isian yang sama adalah dua tempat yang dapat berselisih.
+func documentDTO(document inboxrclpucl.Document) DocumentDTO {
+	return DocumentDTO{
+		ID:           document.ID,
+		Nama:         document.Name,
+		Kategori:     document.Category,
+		SubKategori:  document.SubCategory,
+		DiunggahPada: document.UploadedAt,
+		DiunggahOleh: document.UploadedBy,
+	}
+}
+
+// documentCategoryDTO adalah satu pilihan kolom "Category" pada dialog unggah.
+//
+// Nama fieldnya Indonesia karena ia KONTRAK, bukan nama internal (`D-80`).
+type documentCategoryDTO struct {
+	// Nilai adalah yang dikirim balik saat mengunggah, dan yang tersimpan.
+	Nilai string `json:"nilai"`
+
+	// Nama adalah yang dibaca petugas. Untuk sekarang selalu sama dengan Nilai — teks
+	// tampilannya hidup di rule yang tidak diekspor (`R-16`).
+	Nama string `json:"nama"`
 }

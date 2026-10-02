@@ -156,7 +156,9 @@ func TestTiapTindakanMengirimParameterPUCLPostYangBENAR(t *testing.T) {
 	}{
 		{inboxrclpucl.ActionPrintLetter, "", "cetak", "1", "Wait for Complete PUCL Document "},
 		{inboxrclpucl.ActionRejectClaim, "0", "dokumen", "", ""},
-		{inboxrclpucl.ActionSendToAnalyst, "1", "dokumen", "", ""},
+		// Huruf besar pada "Send" — berbeda dari "send by PUCL to PIC Teknis" di bawahnya,
+		// dan keduanya ditiru persis dari `<statusNote>` masing-masing langkah.
+		{inboxrclpucl.ActionSendToAnalyst, "1", "dokumen", "", "Send by PUCL to Analyst"},
 		// Tanpa `tipe`: jalur ini memakai `InsertHistoryClaimPNC`, bukan `InsertMitraPA`.
 		{inboxrclpucl.ActionSendToPICTeknik, "1", "", "", "send by PUCL to PIC Teknis"},
 		{inboxrclpucl.ActionSave, "", "", "", ""},

@@ -86,7 +86,9 @@ package inboxrclpucl
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 )
 
 // WorkItem adalah satu baris pada grid — satu klaim RCL/PUCL yang menunggu tindakan.
@@ -451,6 +453,48 @@ const (
 	// tab 2 maupun 3 — ia tidak terlihat di tab mana pun. Kueri hitungnya dicetak
 	// `-periksa`.
 	PUCLReturnedToAnalyst = "1"
+
+	// StatusClaimAnalyst adalah Status Klaim yang IKUT ditulis kedua tombol Kirim.
+	//
+	// # Dari mana angkanya, dan kenapa ia bukan tebakan
+	//
+	// `Activity/PUCLPost-Act.xml` langkah 15, berprekondisi `param.Status==1`, berketerangan
+	// **"jika KIRIM KE ANALYSt PUCLAPPROVE ke set 1"**, menetapkan DUA properti sekaligus:
+	//
+	//	.ClaimData.PUCLStatus.PUCLApprove  :=  1
+	//	.ClaimData.StatusClaim             :=  "1151"
+	//
+	// Artinya terbaca langsung dari master `POOLDATA.V_STS_CLAIM`: **`1151` = "Analyst"**.
+	// Jadi tombolnya tidak hanya mengeluarkan klaim dari antrean PUCL — ia MENYATAKAN klaim
+	// itu kini berada di tangan Analyst.
+	//
+	// # Kenapa ini sempat terlewat
+	//
+	// Karena penandanya dicari dari arah yang salah: dari kueri inbox, yang hanya menyaring
+	// `PUCL_APPROVE`. Kolom yang TIDAK dipakai menyaring apa pun karena itu tidak terlihat —
+	// padahal ia yang menjawab "klaim ini sekarang di mana" pada laporan harian.
+	//
+	// # Berlaku untuk KEDUA tombol Kirim
+	//
+	// Langkah 15 berprekondisi `param.Status==1`, dan "Kirim ke PIC Teknik" mengirim `Status`
+	// yang sama. Jadi klaim yang dikirim ke PIC Teknik pun berstatus "Analyst". Itu terbaca
+	// janggal, tetapi itulah yang dikerjakan sistem lama — prekondisinya memang pada
+	// `Status`, bukan pada tombolnya (`P-5`).
+	StatusClaimAnalyst = "1151"
+
+	// StatusCasePrinted dan StatusClaimWaitingDocument ditulis tombol "Download Dokumen".
+	//
+	// `Activity/PUCLPost-Act.xml` langkah 17, berprekondisi `param.statusCase==1`,
+	// berketerangan **"jika sudah DOWNLOAD DOKUMEN set STATUSCase = 1"**:
+	//
+	//	.ClaimData.PUCLStatus.StatusCase  :=  param.statusCase   // "1"
+	//	.ClaimData.StatusClaim            :=  "1157"
+	//
+	// `1157` berarti **"Document Waiting RCL/PUCL"** menurut master `POOLDATA.V_STS_CLAIM` —
+	// klaimnya menunggu kelengkapan dokumen. Itu tepat menggambarkan tahap sesudah suratnya
+	// dicetak.
+	StatusCasePrinted          = "1"
+	StatusClaimWaitingDocument = "1157"
 
 	// PUCLWithPUCL adalah nilai `PUCLAPPROVE_1` yang MENAHAN klaim di tab 2 dan 3.
 	//
@@ -995,6 +1039,228 @@ type LetterDraft struct {
 
 	// ClosingNote adalah "Keterangan Penutup" — `KETERANGAN3`.
 	ClosingNote string
+
+	// InsuredParty adalah penerima surat — baris "Kepada Yth." pada `SuratPUCL`.
+	//
+	// Di Pega ia dirakit dari dua properti polis: `Customer_C.pyCompany` bila tertanggungnya
+	// badan hukum (digambar berawalan "PT."), atau `Customer_P.pyFirstName` bila perorangan.
+	// Snapshot polis belum terbawa modul ini, sehingga yang dipakai `TC_PNC_PUCL.QQ_NAME` —
+	// nama tertanggung pada klaim itu sendiri.
+	//
+	// Awalan "PT." karena itu TIDAK ditambahkan: tanpa properti pembedanya, menambahkannya
+	// berarti menyebut perorangan sebagai badan hukum pada surat yang keluar ke cabang.
+	InsuredParty string
+}
+
+// LetterDocument adalah isi surat RCL/PUCL yang hendak dicetak.
+//
+// # Kenapa ia tipe tersendiri, bukan LetterDraft apa adanya
+//
+// Karena keduanya menjawab pertanyaan berbeda. `LetterDraft` adalah APA YANG TERSIMPAN pada
+// klaim; ini adalah APA YANG TERCETAK — termasuk tanggal dan nomor surat yang baru lahir saat
+// tombolnya ditekan, dan tidak tersimpan di mana pun sebelumnya.
+//
+// Memakai satu tipe untuk keduanya membuat perender bergantung pada isian yang tidak
+// dicetaknya, dan membuat layar kerja membawa isian yang hanya berarti saat mencetak.
+type LetterDocument struct {
+	// LetterDate adalah tanggal surat — "dd MMMM yyyy" dalam WIB.
+	LetterDate string
+
+	// LetterNumber adalah nomor surat, dirakit dari waktu sistem. Lihat NewLetterNumber.
+	LetterNumber string
+
+	// Recipient dan RecipientAddress adalah blok "Kepada Yth.".
+	Recipient        string
+	RecipientAddress string
+
+	// Ketujuh berikut adalah tabel pertama surat, berurutan seperti di templat.
+	SumInsured     string
+	ContractNumber string
+	PolicyNumber   string
+	BusinessUnit   string
+	InsuredName    string
+	BillCurrency   string
+	BillAmount     string
+	LossDate       string
+
+	// Subject dan ketiga keterangan adalah badan suratnya.
+	Subject     string
+	OpeningNote string
+	BodyNote    string
+	ClosingNote string
+
+	// Nama kedua penanda tangan. Kosong untuk sekarang — lihat suratpdf.
+	SignerLeftName  string
+	SignerRightName string
+}
+
+// Nama berkas dan kategori surat yang diterbitkan, mengikuti Pega apa adanya.
+//
+// `PUCLPost` langkah 20–22 menetapkan `param.PDFName` dari JALUR klaim, dan ketiganya berbeda:
+//
+//	langkah 20  IsPA && RCL_PUCL==2   "PUCL"+".pdf"
+//	langkah 21  IsPA && RCL_PUCL==1   "RCL"+".pdf"
+//	langkah 22  IsPA && RCL_PUCL==3   "Notification"+".pdf"   — dan MSIG := "MSIG"
+//
+// Ketiganya memakai templat yang SAMA (`param.HTMLStream := "SuratPUCL"`); yang berbeda hanya
+// nama berkasnya. Jalur Travel (langkah 23–24) memakai templat `SuratPUCL_TRAVEL` dengan nama
+// berkas yang sama persis.
+//
+// Seluruhnya dilampirkan berkategori `Notification`.
+const (
+	LetterFileNamePUCL = "PUCL.pdf"
+	LetterFileNameRCL  = "RCL.pdf"
+
+	// LetterFileNameNotification — jalur ketiga, `RCL_PUCL = '3'`.
+	//
+	// Namanya kebetulan sama dengan LetterCategory, dan keduanya TIDAK disatukan: yang satu
+	// nama berkas, yang satu kategori lampiran. Menyatukannya membuat perubahan pada salah
+	// satu diam-diam mengubah yang lain.
+	LetterFileNameNotification = "Notification.pdf"
+
+	LetterCategory = "Notification"
+
+	// DefaultAttachmentCategory adalah kategori lampiran bawaan Pega.
+	//
+	// Dipakai ketika petugas tidak memilih apa pun. Lihat Repo.AddDocument.
+	DefaultAttachmentCategory = "File"
+)
+
+// namaBulan adalah nama bulan Indonesia untuk tanggal surat.
+//
+// Pega memakai `@CurrentDate("MMMM","WIB")`, yang mengikuti locale JVM-nya. Suratnya
+// berbahasa Indonesia seluruhnya, jadi nama bulannya pun. Bila ternyata JVM produksi
+// berlocale Inggris, inilah satu-satunya tempat yang perlu berubah.
+var namaBulan = [...]string{
+	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+	"Juli", "Agustus", "September", "Oktober", "November", "Desember",
+}
+
+// Alur Register — nilai yang WAJIB sama persis dengan modul `registrasi`.
+//
+// Tugas yang ditulis modul ini dibaca inbox modul lain, dan keduanya mencocokkan kolom
+// `TAHAP` sebagai teks. Satu huruf yang berbeda membuat tugasnya tersimpan dengan baik dan
+// TIDAK PERNAH muncul di inbox mana pun — kegagalan yang tidak menghasilkan satu pun galat.
+//
+// Nilainya disalin dari `registrasi/flow.go`, dan sengaja TIDAK diimpor dari sana: tidak satu
+// pun modul di aplikasi ini mengimpor modul lain, dan membuka pengecualian untuk tiga
+// konstanta akan menautkan dua modul yang selama ini berdiri sendiri.
+const (
+	// StageRCLPUCL — `Assignment6`, tahap yang klaimnya sedang dikerjakan layar ini.
+	StageRCLPUCL = "rcl-pucl"
+
+	// StageSendToAnalyst — `Assignment5`, tujuan ticket `SendtoAnalysator`.
+	StageSendToAnalyst = "kirim-analis"
+
+	// QueueWorklist — tahap Send To Analis dipegang SATU orang, bukan antrean bersama.
+	QueueWorklist = "WORKLIST"
+
+	// TicketSendToAnalyst adalah nama ticket yang dilepas `PUCLPost` langkah 17.
+	//
+	// Ia dicatat sebagai alasan penutupan tugas lama, bukan dipakai sebagai penyaring —
+	// supaya riwayat tugas menyebut APA yang memindahkannya, dan jejaknya dapat dilacak
+	// kembali ke rule Pega yang sama.
+	TicketSendToAnalyst = "SendtoAnalysator"
+)
+
+// Teks riwayat yang ditulis tiap tombol — parameter `statusNote` `InsertHistoryClaimPNC`.
+//
+// Ketiganya disalin APA ADANYA dari Pega, termasuk yang terbaca tidak rapi:
+//
+//   - spasi di ujung "Wait for Complete PUCL Document " ADA di Pega dan dipertahankan
+//     (`P-5`). Ia terbawa ke kolom riwayat, dan membuangnya mengubah data yang tersimpan.
+//   - "Send by PUCL to Analyst" berawalan huruf BESAR, "send by PUCL to PIC Teknis" huruf
+//     kecil. Menyeragamkannya terlihat seperti kerapian dan sebenarnya mengubah data.
+//
+// Sumbernya berbeda, dan itu sebab perbedaan gayanya: yang pertama dan ketiga dari rangkaian
+// TOMBOL di section, yang kedua dari `<statusNote>` `PUCLPost` langkah 35.
+const (
+	HistoryNotePrintLetter   = "Wait for Complete PUCL Document "
+	HistoryNoteSendToAnalyst = "Send by PUCL to Analyst"
+	HistoryNoteSendToPIC     = "send by PUCL to PIC Teknis"
+)
+
+// HistoryNoteFor memilih teks riwayat satu tindakan. Kosong berarti tindakan itu TIDAK
+// menulis riwayat — "Tolak Klaim" dan "Save" memang tidak.
+//
+// Ia di paket domain, bukan di adapter, karena DUA jalur memakainya: jalur yang ditangani
+// sendiri dan jalur yang menempuh layanan Pega. Dua salinan akan dapat berselisih, dan
+// selisihnya baru terlihat sebagai dua baris riwayat berbeda untuk tombol yang sama.
+func HistoryNoteFor(kind ClaimActionKind) string {
+	switch kind {
+	case ActionPrintLetter:
+		return HistoryNotePrintLetter
+	case ActionSendToAnalyst:
+		return HistoryNoteSendToAnalyst
+	case ActionSendToPICTeknik:
+		return HistoryNoteSendToPIC
+	default:
+		return ""
+	}
+}
+
+// LetterFileNameFor memilih nama berkas surat menurut jalur klaimnya.
+//
+// Jalur yang TIDAK dikenali — termasuk satu baris produksi yang kodenya kosong — jatuh ke
+// `PUCL.pdf`. Itu bukan pilihan sembarang: layar ini adalah antrean PUCL, dan berkas bernama
+// sesuatu lebih berguna daripada tindakan yang gagal karena jalurnya tidak terbaca.
+func LetterFileNameFor(track string) string {
+	// Dibandingkan tanpa memandang besar-kecil huruf, seperti bentuk sebelumnya: nilainya
+	// berasal dari TrackOf yang sudah baku, tetapi pemanggil baru dapat saja memberi teks
+	// yang diketik.
+	switch {
+	case strings.EqualFold(strings.TrimSpace(track), TrackRCL):
+		return LetterFileNameRCL
+	case strings.EqualFold(strings.TrimSpace(track), TrackNotification):
+		return LetterFileNameNotification
+	default:
+		return LetterFileNamePUCL
+	}
+}
+
+// NewLetterDate menggambar tanggal surat — "dd MMMM yyyy".
+func NewLetterDate(now time.Time) string {
+	t := now.In(wib)
+	return fmt.Sprintf("%02d %s %04d", t.Day(), namaBulan[int(t.Month())-1], t.Year())
+}
+
+// NewLetterNumber merakit nomor surat.
+//
+// # Bentuknya ditiru PERSIS, termasuk yang terbaca aneh
+//
+// `PUCLPost` merakitnya dari sembilan penetapan properti bernama menyesatkan — `BankCIF`,
+// `BLNumber`, `BookNo`, `CoverNo`, `AccountNo`, `CedingCo` — yang seluruhnya berisi potongan
+// WAKTU SISTEM, bukan data bank maupun reasuransi:
+//
+//	{hh}{mm}{ss}/{kategori}.CL.AHID.ASM/{MM}/{yyyy}
+//
+// Jamnya **12 jam**, bukan 24: Pega memakai `@CurrentDate("hh","WIB")`, dan `hh` pada format
+// Java adalah jam 01–12. Surat yang terbit pukul 14.05 karena itu bernomor berawalan `0205`.
+// Itu ditiru apa adanya (`P-5`), bukan "diperbaiki" menjadi 24 jam.
+//
+// Akibatnya nomor surat TIDAK unik: dua surat berjarak 12 jam tepat pada bulan yang sama
+// menghasilkan nomor yang sama persis. Dicatat, tidak diubah.
+func NewLetterNumber(now time.Time, category string) string {
+	t := now.In(wib)
+
+	jam := t.Hour() % 12
+	if jam == 0 {
+		jam = 12
+	}
+
+	return fmt.Sprintf("%02d%02d%02d/%s.CL.AHID.ASM/%02d/%04d",
+		jam, t.Minute(), t.Second(),
+		strings.TrimSpace(category),
+		int(t.Month()), t.Year())
+}
+
+// LetterRenderer membentuk PDF surat RCL/PUCL.
+//
+// Seam, bukan pemanggilan langsung: domain menyatakan APA yang dicetak, dan bagaimana ia
+// menjadi PDF adalah urusan adapter. Uji aturan surat karena itu dapat berjalan tanpa
+// membentuk satu berkas pun.
+type LetterRenderer interface {
+	Render(LetterDocument) ([]byte, error)
 }
 
 // DocumentReceipt adalah bagian "Penerimaan Dokumen".
@@ -1093,6 +1359,19 @@ const TrackHidden = TrackCodeNotification
 // menghasilkan keadaan ini, dan itu keterangan yang harus sampai ke pengguna (`R-20`).
 var ErrClaimNotFound = errors.New("inboxrclpucl: klaim tidak ditemukan")
 
+// ErrTechnicalPICUnknown dikembalikan saat klaim hendak dipindahkan ke tahap Send To Analis
+// tetapi PIC Tekniknya tidak diketahui.
+//
+// # Kenapa MENOLAK, bukan membuat tugas tanpa pemilik
+//
+// Karena tahap Send To Analis adalah Worklist, dan tugas Worklist wajib bertuan sejak lahir
+// (`D-26`). Tugas tanpa pemilik pada antrean yang bukan antrean bersama tidak akan muncul di
+// inbox siapa pun — klaimnya hilang dari semua layar tanpa satu pun galat.
+//
+// Menolak membuat sebabnya terbaca, dan klaimnya tetap di antrean PUCL tempat ia sekarang.
+var ErrTechnicalPICUnknown = errors.New(
+	"inboxrclpucl: PIC Teknik klaim tidak diketahui")
+
 // ErrDocumentNotFound dikembalikan saat dokumen tidak ada, ATAU ada tetapi bukan milik klaim
 // yang diminta.
 //
@@ -1150,7 +1429,50 @@ func ReceivedDatesOf(date, note string) []ReceivedDocumentDate {
 	if strings.TrimSpace(date) == "" {
 		return nil
 	}
-	return []ReceivedDocumentDate{{Date: date, Note: note}}
+	return []ReceivedDocumentDate{{Date: DisplayPegaTime(date), Note: note}}
+}
+
+// pegaTimeLayouts adalah bentuk waktu yang DISIMPAN PEGA sebagai teks.
+//
+// `RECEIVEDDATE_1` bukan kolom TIMESTAMP melainkan VARCHAR2 berisi bentuk internal Pega —
+// `20240911T143500.000 GMT`. Ia sampai ke layar APA ADANYA sampai 2026-10-01, dan terbaca
+// sebagai kerusakan oleh siapa pun yang melihatnya.
+var pegaTimeLayouts = []string{
+	"20060102T150405.000 GMT",
+	"20060102T150405 GMT",
+	"20060102T150405.000Z",
+	"20060102T150405Z",
+}
+
+// wib adalah zona tampilan. Seluruh waktu Pega disimpan GMT dan DIGAMBAR +7 — lihat `F-5`
+// dan utang teknis 4.4 pada `03-CURRENT-ARCHITECTURE`.
+//
+// Pergeserannya ditulis TETAP, bukan lewat time.LoadLocation, karena basis data zona waktu
+// tidak selalu tersedia pada peladen Windows — dan kegagalannya diam: time.LoadLocation
+// mengembalikan UTC, sehingga seluruh jam tergambar tujuh jam lebih awal tanpa satu pun galat.
+var wib = time.FixedZone("WIB", 7*60*60)
+
+// DisplayPegaTime mengubah waktu bentuk Pega menjadi bentuk yang dibaca petugas.
+//
+// Keluarannya `dd/MM/yyyy HH:mm` dalam WIB — bentuk yang sama persis dengan layar lama
+// (`D-13`), sehingga kedua layar dapat dibandingkan berdampingan tanpa menghitung sendiri.
+//
+// Nilai yang TIDAK dikenali dikembalikan APA ADANYA, bukan dikosongkan. Teks yang tidak
+// terbaca mesin tetap dapat dibaca manusia dan tetap dapat dilaporkan; mengosongkannya
+// menghapus satu-satunya petunjuk bahwa ada bentuk yang belum ditangani.
+func DisplayPegaTime(raw string) string {
+	clean := strings.TrimSpace(raw)
+	if clean == "" {
+		return ""
+	}
+	for _, layout := range pegaTimeLayouts {
+		at, err := time.Parse(layout, clean)
+		if err != nil {
+			continue
+		}
+		return at.In(wib).Format("02/01/2006 15:04")
+	}
+	return clean
 }
 
 // Document adalah satu baris daftar dokumen klaim — layar "Lihat Dokumen".
@@ -1186,6 +1508,18 @@ type Document struct {
 
 	// UploadedBy adalah `INPUTOPERATOR`.
 	UploadedBy string
+
+	// PegaVisible menyatakan apakah barisnya TERGAMBAR di layar lampiran Pega.
+	//
+	// `GCNMGetAllAttachments` — report definition di balik "Lihat Dokumen" — berjalan di
+	// kelas `Link-Attachment` dan menyaring atas `pyCategory`, yang isinya NAMA kategori
+	// lampiran. Baris yang `CATEGORY`-nya kode angka berasal dari mekanisme lain dan tidak
+	// pernah muncul di sana.
+	//
+	// Dibawa sebagai penanda, bukan disaring di dalam kueri, supaya lapisan atas dapat
+	// MENGHITUNG yang tidak tergambar lalu menyatakannya. Daftar yang diam-diam lebih
+	// pendek adalah kegagalan yang tidak menghasilkan satu pun galat.
+	PegaVisible bool
 }
 
 // DocumentContent adalah isi satu dokumen beserta keterangan penyerahannya.
@@ -1289,6 +1623,221 @@ type Repo interface {
 	//
 	// Kunci yang tidak ditemukan menghasilkan ErrClaimNotFound.
 	ReturnToAnalyst(ctx context.Context, reference, caller string) error
+
+	// RecordHistory menulis SATU baris riwayat klaim — `InsertHistoryClaimPNC`.
+	//
+	// # Kenapa ia akhirnya dapat dikerjakan
+	//
+	// Catatan sebelumnya menyatakan riwayat tidak dapat ditulis karena "modul ini tidak punya
+	// tabel riwayat klaim". **Itu keliru**, dan terbukti keliru saat rangkaian activity-nya
+	// ditelusuri 2026-10-02: `Database/PEGA_JSON_INSERT_HISTORY_CLAIM_PNC.prc` memuat satu
+	// pernyataan, dan tabelnya ada:
+	//
+	//	INSERT INTO LIST_HISTORY_CLAIM_PNC (CASEID, CREATEDATETIME, STATUSNOTE, USERUPDATE)
+	//	VALUES (CaseID, CURRENT_TIMESTAMP, StatusNote, UserUpdate);
+	//
+	// Ia tabel bisnis `POOLDATA`, bukan tabel engine Pega — sehingga `P-1` tidak dilanggar.
+	//
+	// # Nama parameter di rule Pega MENYESATKAN
+	//
+	// `RDB List/InsertHistoryClaimPNC-SQL.xml` memanggilnya dengan nama properti clipboard
+	// `POLICY_NO`, `BUSINESS_CODE`, `BRANCH_CODE`, `BRANCH_NAME out` — dan tidak satu pun
+	// berarti apa yang namanya katakan. Pemetaannya POSISIONAL:
+	//
+	//	posisi 1  POLICY_NO     -> CaseID
+	//	posisi 2  BUSINESS_CODE -> StatusNote
+	//	posisi 3  BRANCH_CODE   -> UserUpdate
+	//	posisi 4  BRANCH_NAME   -> ErrMsg (keluaran)
+	//
+	// Membaca namanya dan bukan procedure-nya akan menulis nomor polis ke kolom CASEID.
+	// Ini contoh lain dari alias menyesatkan yang `D-19` tetapkan untuk tidak dibawa.
+	//
+	// # Yang ditulis sebagai CaseID
+	//
+	// `pzInsKey` objek kerja, bukan nomor klaim — `PUCLPost` langkah 35 mengirim
+	// `caseID = pyWorkPage.pzInsKey`. Bentuknya `ASM-FW-GCNMFW-WORK PNC-xxxx`, dan menulis
+	// nomor telanjang akan membuat barisnya tidak sebaris dengan yang ditulis Pega.
+	//
+	// Kegagalannya TIDAK membatalkan tindakan pemanggil: riwayat yang gagal ditulis tidak
+	// menghalangi klaim berpindah, dan menggagalkan seluruh tindakan karenanya akan membuat
+	// petugas menekan tombolnya lagi — tanpa akibat, karena penandaannya sudah terjadi.
+	RecordHistory(ctx context.Context, reference, statusNote, caller string) error
+
+	// MoveToSendToAnalyst memindahkan klaim ke tahap **Send To Analis** pada alur Register.
+	//
+	// # Inilah yang benar-benar MEMINDAHKAN klaim
+	//
+	// Ketiga penulisan lain — `PUCL_APPROVE`, `STATUS_CLAIM`, riwayat — hanya mencatat
+	// keadaan. Yang membuat klaim berhenti menjadi pekerjaan PUCL dan mulai menjadi
+	// pekerjaan PIC Teknik adalah TUGASNYA, dan tugas hidup di `POOLDATA.CPNC_TUGAS`.
+	//
+	// # Ia meniru `SetTicket`, bukan konektor alur
+	//
+	// `PUCLPost` langkah 17 melepas ticket `SendtoAnalysator`, dan ticket itu menempel pada
+	// shape `Send To Analis` (`Assignment5`). Itu **lompatan lateral** — klaim berpindah ke
+	// tahap yang bukan tahap berikutnya menurut konektor.
+	//
+	// Konektor keluar shape RCL/PUCL sendiri menuju akhir flow, dan ia TIDAK PERNAH
+	// dievaluasi pada jalur ini: ticket sudah melompat lebih dulu. Itu sebabnya tombolnya
+	// meneruskan klaim alih-alih menutupnya.
+	//
+	// # Siapa pemiliknya
+	//
+	// PIC Teknik klaim itu sendiri, dibaca dari **`POOLDATA.T_CLAIM_PNC.PICTEKNIK`**.
+	//
+	// Tahap ini dirutekan `PNCTeknikRouter`, yang tidak ada di export (`R-04`) — tetapi
+	// akibatnya terukur: dari 338 baris tahap teknis, pemegang tugasnya sama dengan PIC
+	// Teknik klaimnya pada 320.
+	//
+	// Kolomnya `PICTEKNIK`, BUKAN `USERTEKNIS_1`. Yang kedua adalah salinan yang Pega ekspos
+	// dari properti clipboard `ClaimData.UserTeknis`, dan export menunjukkan asalnya apa
+	// adanya: `PICTEKNIK AS "UserTeknis"`. Membaca salinan berarti bergantung pada Pega
+	// sempat menuliskannya — dan klaim yang dibuka aplikasi ini tidak melewati Pega.
+	//
+	// Pengisi seam membacanya sendiri; ia tidak diteruskan dari layar, karena nilai yang
+	// disusun pemanggil dapat disusun siapa pun.
+	//
+	// # Dua tombol, SATU tujuan
+	//
+	// "Kirim Ke Analyst" dan "Kirim ke PIC Teknik" sama-sama menempuh `PUCLPost` dengan
+	// `Status = 1`, dan prekondisi langkah 17 hanya menguji itu. Keduanya karena itu melepas
+	// ticket yang sama dan berakhir di tahap yang sama.
+	//
+	// Klaim yang tidak punya tugas terbuka TETAP memperoleh tugas baru — bukan galat. Itu
+	// keadaan yang wajar selama masa paralel: klaim yang dimulai di Pega belum pernah punya
+	// tugas di tabel ini.
+	MoveToSendToAnalyst(ctx context.Context, reference, caller string) error
+
+	// SaveReceipt menyimpan kedua isian Penerimaan Dokumen yang DAPAT DIKETIK petugas.
+	//
+	// Ia melayani tombol "Save". Lihat ReceiptInput untuk apa yang disimpan dan kenapa hanya
+	// dua, serta Repo.ReturnToAnalyst untuk alasan `P-1` tidak dilanggar.
+	//
+	// Kunci yang tidak ditemukan menghasilkan ErrClaimNotFound.
+	SaveReceipt(ctx context.Context, reference string, in ReceiptInput, caller string) error
+
+	// AddDocument melampirkan satu berkas ke klaim — tombol "Unggah Dokumen".
+	//
+	// Mengembalikan baris dokumen yang baru tersimpan, supaya pemanggil dapat menggambarnya
+	// tanpa menarik ulang seluruh daftar.
+	//
+	// Kunci klaim yang tidak ditemukan menghasilkan ErrClaimNotFound.
+	AddDocument(
+		ctx context.Context,
+		reference string,
+		upload UploadedDocument,
+		caller string,
+	) (Document, error)
+
+	// DocumentCategories mengembalikan pilihan kolom "Category" pada dialog unggah.
+	//
+	// Daftar KOSONG bukan galat: ia berarti masternya belum diisi, dan layar menggambarnya
+	// sebagai dropdown tanpa pilihan — bukan gagal membuka dialognya.
+	DocumentCategories(ctx context.Context) ([]DocumentCategory, error)
+
+	// MarkLetterPrinted menandai surat RCL/PUCL sudah diterbitkan — tombol "Download Dokumen".
+	//
+	// Ia MEMINDAHKAN klaim dari tab "Cetak Surat" ke "Kelengkapan Dokumen", karena penyaring
+	// tab pertama adalah `TGL_CETAK_DOKUMEN_PUCL IS NULL`.
+	//
+	// Ia TIDAK menerbitkan PDF suratnya. Lihat PlannedDifferences untuk alasannya.
+	//
+	// Kunci yang tidak ditemukan menghasilkan ErrClaimNotFound.
+	MarkLetterPrinted(ctx context.Context, reference, caller string) error
+}
+
+// ReceiptInput adalah isian Penerimaan Dokumen yang diketik petugas.
+//
+// # Kenapa hanya DUA, padahal section punya TIGA isian yang dapat diketik
+//
+// `Section/SectionPenerimaanDokumenPUCL-Section.xml` memuat tiga sel ber-`pyReadOnly false`:
+//
+//	.ClaimData.EmailLOD                              pxTextInput  wajib=false
+//	.ClaimData.PUCLStatus.TanggalTerimaDokumenPUCL   pxDateTime   wajib=TRUE
+//	.ClaimData.PUCLStatus.KomentarPUCL               pxTextArea   wajib=TRUE
+//
+// Kedua yang WAJIB hidup di `POOLDATA.TC_PNC_PUCL`, tabel milik aplikasi ini. Yang ketiga —
+// Email Tertanggung — hidup di `POOLDATA.T_CLAIM_PNC.EMAIL_LOD`, tabel LAIN yang modul ini
+// tidak pernah tulis. Karena itu ia digambar hanya-baca di layar: isian yang dapat diketik
+// tetapi diam-diam tidak tersimpan jauh lebih buruk daripada isian yang jelas tidak dapat
+// diketik.
+type ReceiptInput struct {
+	// Note adalah "Catatan untuk Analyst" — `KomentarPUCL`. WAJIB, mengikuti `pyRequired`.
+	//
+	// Ia yang dibaca Analyst saat klaim kembali kepadanya, sehingga klaim yang dikirim tanpa
+	// catatan membuat Analyst menerima pekerjaan tanpa tahu apa yang berubah.
+	Note string
+
+	// CompleteAt adalah "Tanggal Kelengkapan Dokumen" — `TanggalTerimaDokumenPUCL`. WAJIB.
+	//
+	// Dibawa sebagai TEKS, bukan time.Time, supaya lapisan transport tidak perlu menebak
+	// bentuknya dan supaya pesan kesalahannya dapat menyebut nilai yang benar-benar diketik.
+	// Penafsirannya dikerjakan Parse di bawah.
+	CompleteAt string
+}
+
+// receiptLayouts adalah bentuk tanggal yang diterima, berurutan dari yang paling mungkin.
+//
+// `datetime-local` pada peramban mengirim `2006-01-02T15:04`; layar lama menggambarnya sebagai
+// `dd/MM/yyyy HH:mm`. Keduanya diterima supaya nilai yang disalin petugas dari Pega tidak
+// ditolak hanya karena bentuknya.
+var receiptLayouts = []string{
+	"2006-01-02T15:04:05",
+	"2006-01-02T15:04",
+	"2006-01-02 15:04:05",
+	"2006-01-02 15:04",
+	"02/01/2006 15:04:05",
+	"02/01/2006 15:04",
+	"2006-01-02",
+	"02/01/2006",
+}
+
+// Validate memeriksa kedua isian wajib dan menafsirkan tanggalnya.
+//
+// Seluruh pelanggaran dikembalikan SEKALIGUS, bukan berhenti pada yang pertama — meniru Pega
+// yang menampilkan semua pesan bersamaan (`P-5`, `11-CROSSCUTTING` §1.2).
+func (in ReceiptInput) Validate() (time.Time, error) {
+	violations := []Violation{}
+
+	if strings.TrimSpace(in.Note) == "" {
+		violations = append(violations, Violation{
+			Field:   "catatan_untuk_analyst",
+			Message: "Catatan untuk Analyst wajib diisi.",
+		})
+	}
+
+	var at time.Time
+	raw := strings.TrimSpace(in.CompleteAt)
+	if raw == "" {
+		violations = append(violations, Violation{
+			Field:   "tanggal_kelengkapan_dokumen",
+			Message: "Tanggal Kelengkapan Dokumen wajib diisi.",
+		})
+	} else {
+		parsed, ok := parseReceiptTime(raw)
+		if !ok {
+			violations = append(violations, Violation{
+				Field: "tanggal_kelengkapan_dokumen",
+				Message: "Tanggal Kelengkapan Dokumen tidak terbaca. " +
+					"Pakai bentuk dd/mm/yyyy jj:mm.",
+			})
+		}
+		at = parsed
+	}
+
+	if len(violations) > 0 {
+		return time.Time{}, NewValidationError(violations)
+	}
+	return at, nil
+}
+
+func parseReceiptTime(raw string) (time.Time, bool) {
+	for _, layout := range receiptLayouts {
+		if at, err := time.Parse(layout, raw); err == nil {
+			return at, true
+		}
+	}
+	return time.Time{}, false
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.
@@ -1479,4 +2028,95 @@ func (d ClaimDetail) Allows(kind ClaimActionKind) bool {
 	default:
 		return false
 	}
+}
+
+// UploadedDocument adalah satu berkas yang diunggah petugas lewat "Unggah Dokumen".
+type UploadedDocument struct {
+	// Name adalah nama berkasnya — `ATTACHNAME`.
+	Name string
+
+	// MimeType adalah jenis isinya — `ATTACHMIMETYPE`.
+	//
+	// Pega menyimpannya APA ADANYA dan sering berupa ekstensi saja (`pdf`), bukan jenis MIME
+	// lengkap — terbaca dari lima baris terbaru `DATA_ATTACHFILE`. Yang dikirim layar
+	// diteruskan tanpa diubah; menormalkannya akan membuat baris kami berbeda bentuk dari
+	// baris Pega pada kolom yang sama (`P-5`).
+	MimeType string
+
+	// Note adalah keterangan — `ATTACHNOTE`. Boleh kosong.
+	Note string
+
+	// Content adalah isi berkasnya.
+	Content []byte
+
+	// Category adalah pilihan kolom "Category" — nama kategori lampiran.
+	//
+	// Kosong berarti petugas tidak memilih apa pun, dan kolom kategorinya dibiarkan kosong.
+	Category string
+}
+
+// MaxDocumentSize membatasi besar satu berkas unggahan.
+//
+// # Kenapa ada batas, dan kenapa segini
+//
+// Isinya disimpan sebagai BLOB di dalam basis data, dan seluruhnya melewati memori aplikasi
+// lebih dulu — baik saat diunggah maupun saat diunduh. Tanpa batas, satu berkas besar menahan
+// memori peladen sebesar dirinya sendiri, dikali jumlah petugas yang mengunggah bersamaan.
+//
+// 10 MiB dipilih karena dokumen klaim yang nyata adalah surat dan kwitansi hasil pindai; lima
+// baris terbaru `DATA_ATTACHFILE` seluruhnya `pdf`. Angkanya dapat dinaikkan bila ternyata
+// kurang — yang tidak dapat diperbaiki belakangan adalah ketiadaan batas sama sekali.
+const MaxDocumentSize = 10 << 20
+
+// Validate memeriksa berkas yang diunggah.
+//
+// Seluruh pelanggaran dikembalikan SEKALIGUS, meniru Pega yang menampilkan semua pesan
+// bersamaan (`P-5`).
+func (u UploadedDocument) Validate() error {
+	violations := []Violation{}
+
+	if strings.TrimSpace(u.Name) == "" {
+		violations = append(violations, Violation{
+			Field:   "berkas",
+			Message: "Nama berkas tidak terbaca.",
+		})
+	}
+	if len(u.Content) == 0 {
+		violations = append(violations, Violation{
+			Field:   "berkas",
+			Message: "Berkasnya kosong.",
+		})
+	}
+	if len(u.Content) > MaxDocumentSize {
+		violations = append(violations, Violation{
+			Field:   "berkas",
+			Message: "Berkas melebihi 10 MB.",
+		})
+	}
+
+	if len(violations) > 0 {
+		return NewValidationError(violations)
+	}
+	return nil
+}
+
+// DocumentCategory adalah satu pilihan kolom "Category" pada dialog unggah.
+//
+// Di Pega ia KATEGORI LAMPIRAN (`AcceptanceNote`, `ClaimFaceSheet`, `LOD`), bukan jenis
+// dokumen. Yang mendefinisikannya rule `Rule-Obj-AttachmentCategory`, dan tipe rule itu tidak
+// ada di export sama sekali (`R-16`) — daftarnya karena itu diturunkan dari kategori yang
+// benar-benar dipakai lampiran klaim PNC.
+type DocumentCategory struct {
+	// Value adalah yang TERSIMPAN di `DATA_ATTACHFILE.CATEGORY`.
+	Value string
+
+	// Label adalah yang DIBACA petugas.
+	//
+	// Untuk sekarang selalu sama dengan Value. Di Pega keduanya berbeda — layar lama
+	// menggambar "Acceptance Note" untuk nilai `AcceptanceNote` — tetapi teks itu hidup di
+	// rule yang tidak diekspor, dan mengarangnya dengan memecah huruf besar akan mengubah
+	// `ATTACHTEMPS` menjadi sesuatu yang tidak pernah ada di layar mana pun.
+	//
+	// Dipisahkan sejak awal supaya ketika rule-nya tiba, yang berubah hanya pengisiannya.
+	Label string
 }

@@ -87,7 +87,10 @@ var reportColumns = []string{
 //     bukan apa yang kebetulan sudah ada di tangan (`D-13`).
 
 var detailColumns = []string{
-	"REFERENCE", "CLAIM_NUMBER", "TRACK_CODE", "ANALYST_NOTE", "POLICY_NUMBER",
+	// `INSURED_PARTY` (`QQ_NAME`) disisipkan tepat SESUDAH `REFERENCE`, sesuai urutannya di
+	// berkas .sql. Ia penerima surat — baris "Kepada Yth." pada templat `SuratPUCL`.
+	"REFERENCE", "INSURED_PARTY",
+	"CLAIM_NUMBER", "TRACK_CODE", "ANALYST_NOTE", "POLICY_NUMBER",
 	"LOSS_DATE", "PUCL_NOTE",
 
 	// Keempat isian surat, ditambahkan 2026-10-01 setelah kolomnya ditemukan ADA di
@@ -182,6 +185,9 @@ var pegaReadsAllowedIn = map[string][]string{
 var documentColumns = []string{
 	"DOCUMENT_ID", "DOCUMENT_NAME", "MIME_TYPE",
 	"CATEGORY_NAME", "SUBCATEGORY_NAME", "UPLOADED_AT", "UPLOADED_BY",
+
+	// Penanda apakah barisnya tergambar di layar lampiran Pega — lihat kueri `documents`.
+	"PEGA_VISIBLE",
 }
 
 // legacyColumnNames adalah nama kolom Pega yang TIDAK boleh lagi muncul di kueri tabel

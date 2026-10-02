@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
@@ -6,12 +7,14 @@ import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
 import {
-  rclpuclDocumentURL,
+  useBukaDokumen,
   useRCLPUCLClaim,
   useRCLPUCLDocuments,
   useTindakanKlaim,
+  useKategoriDokumen,
+  useUnggahDokumen,
 } from './api'
-import type { TindakanKlaim } from './api'
+import type { IsianPenerimaanDokumen, TindakanKlaim } from './api'
 import type { ClaimDetailResponse } from './types'
 
 /**
@@ -278,7 +281,7 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
         {active === 'lampiran' ? (
           <LetterTab detail={detail} />
         ) : (
-          <ReceiptTab detail={detail} />
+          <ReceiptTab key={detail?.referensi ?? 'kosong'} detail={detail} />
         )}
       </WriteActionPanel.Provider>
     </>
@@ -394,39 +397,41 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
       */}
       {/* Judulnya TIDAK diulang di sini: kepala tab sudah menamainya, dan Pega pun tidak
           mengulangnya di dalam tab. */}
-      <StackedFields
-        fields={[
-          ['Status RCL / PUCL / MSIG', letter?.rcl_pucl ?? ''],
-          ['Catatan dari Analyst', letter?.deskripsi_analyst ?? ''],
-        ]}
-      />
+      <Panel>
+        {/* Keduanya TANPA kotak — di Pega pun keduanya teks polos di bawah judulnya. */}
+        <StackedFields
+          fields={[
+            ['Status RCL / PUCL / MSIG', letter?.rcl_pucl ?? ''],
+            ['Catatan dari Analyst', letter?.deskripsi_analyst ?? ''],
+          ]}
+        />
 
-      <FieldGroup
-        fields={[
-          ['UP', letter?.up ?? ''],
-          ['No Kontrak', DI_CLIPBOARD],
-          ['No Polis', letter?.no_polis ?? ''],
-          ['Business Unit / Seksi', DI_CLIPBOARD],
-          ['Nama Peserta', letter?.nama_peserta ?? ''],
-          ['Jumlah Tagihan', letter?.jumlah_tagihan ?? ''],
-          ['Perihal', letter?.perihal ?? ''],
-          ['Tanggal Kejadian', letter?.tanggal_kejadian ?? ''],
-        ]}
-      />
+        <FieldGroup
+          fields={[
+            ['UP', letter?.up ?? '', false, 'kotak'],
+            ['No Kontrak', DI_CLIPBOARD, false, 'kotak'],
+            ['No Polis', letter?.no_polis ?? '', false, 'kotak'],
+            ['Business Unit / Seksi', DI_CLIPBOARD, false, 'kotak'],
+            ['Nama Peserta', letter?.nama_peserta ?? '', false, 'kotak'],
+            ['Jumlah Tagihan', letter?.jumlah_tagihan ?? '', false, 'kotak'],
+            ['Perihal', letter?.perihal ?? '', false, 'pilihan'],
+            ['Tanggal Kejadian', letter?.tanggal_kejadian ?? '', false, 'tanggal'],
+          ]}
+        />
 
-      {/*
+        {/*
         Ketiga Keterangan FULL WIDTH, bukan dua kolom: ketiganya `pxTextArea` di section dan
         isinya kalimat surat yang panjang — di Pega masing-masing memenuhi satu baris penuh.
       */}
-      <StackedFields
-        fields={[
-          ['Keterangan Pembuka', letter?.keterangan_pembuka ?? ''],
-          ['Keterangan Isi', letter?.keterangan_isi ?? ''],
-          ['Keterangan Penutup', letter?.keterangan_penutup ?? ''],
-        ]}
-      />
+        <StackedFields
+          fields={[
+            ['Keterangan Pembuka', letter?.keterangan_pembuka ?? '', false, 'area'],
+            ['Keterangan Isi', letter?.keterangan_isi ?? '', false, 'area'],
+            ['Keterangan Penutup', letter?.keterangan_penutup ?? '', false, 'area'],
+          ]}
+        />
 
-      {/*
+        {/*
         "Perihal" bukan isian bebas melainkan PILIHAN dari master
         `POOLDATA.M_PERIHAL_RCLPUCL` — 12 baris, dibaca langsung 2026-09-30.
 
@@ -447,33 +452,34 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
         Kalimat di bawah ini sebelumnya menyebut Perihal "ada di clipboard". Itu sudah tidak
         benar sejak kolom `PERIHAL` ditemukan (§84.2), dan sudah diperbaiki.
       */}
-      <p className="mt-2 text-xs text-slate-500">
-        <span className="font-medium">Perihal</span> dipilih dari daftar baku berisi 12
-        pilihan (master Perihal RCL/PUCL). Yang tersimpan pada klaim adalah teks pilihannya,
-        dan itulah yang digambar di atas.
-      </p>
+        <p className="mt-2 text-xs text-slate-500">
+          <span className="font-medium">Perihal</span> dipilih dari daftar baku berisi 12
+          pilihan (master Perihal RCL/PUCL). Yang tersimpan pada klaim adalah teks
+          pilihannya, dan itulah yang digambar di atas.
+        </p>
 
-      {/*
+        {/*
         Isian yang paling mudah dilaporkan sebagai kerusakan, padahal BUKAN: "UP" berisi nama
         objek, sama dengan "Nama Peserta", karena kedua penetapan di activity Pega menunjuk
         ekspresi yang sama — dan Work Owner menegaskan itu memang benar. Dinyatakan di
         tempat, bukan hanya di dokumen, karena di sinilah pengguna akan bertanya.
       */}
-      {letter && letter.up !== '' && letter.up === letter.nama_peserta && (
-        <p className="mt-2 text-xs text-slate-500">
-          Kolom <span className="font-medium">UP</span> berisi nama objek yang sama dengan
-          Nama Peserta. Itu bukan kekeliruan tampilan — keduanya memang diisi dari sumber
-          yang sama di sistem lama.
-        </p>
-      )}
+        {letter && letter.up !== '' && letter.up === letter.nama_peserta && (
+          <p className="mt-2 text-xs text-slate-500">
+            Kolom <span className="font-medium">UP</span> berisi nama objek yang sama
+            dengan Nama Peserta. Itu bukan kekeliruan tampilan — keduanya memang diisi
+            dari sumber yang sama di sistem lama.
+          </p>
+        )}
 
-      {/*
+        {/*
         KEDUA tombol ini saling meniadakan — yang satu jalur non-MSIG, yang lain jalur MSIG
         ber-Notification — sehingga satu klaim tidak pernah menampilkan keduanya. Syaratnya
         dihitung di server; layar hanya menggambar apa yang dikirimkannya.
       */}
-      <div className="flex flex-wrap gap-3">
-        {/*
+        {/* Tombolnya di KANAN BAWAH panel, mengikuti layar lama. */}
+        <div className="flex flex-wrap justify-end gap-3">
+          {/*
           Ia melakukan DUA hal sekaligus, dan keduanya perlu disebut.
 
           Rangkaiannya `InsertMitraPA(tipe="cetak")` lalu `PUCLPost`. Di dalam `PUCLPost`:
@@ -489,25 +495,26 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
           `ASMForceCaseClose` TIDAK berlaku untuknya: syarat `param.Status==""` ber-`true=3`,
           yaitu melewati langkah itu. Ia hanya jalan untuk "Tolak Klaim" di jalur RCL.
         */}
-        {buttons.download_dokumen && (
-          <ClaimAction
-            label="Download Dokumen"
-            aksi="cetak"
-            reference={detail?.referensi}
-            note={
-              'Menerbitkan PDF surat DAN menandainya sudah dicetak — klaimnya berpindah ' +
-              'dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
-            }
-          />
-        )}
-        {buttons.tutup_klaim && (
-          <WriteAction
-            label="Tutup Klaim"
-            caseNumber={detail?.referensi}
-            note="Menutup klaim MSIG — satu-satunya tindakan yang tersedia pada jalur ini."
-          />
-        )}
-      </div>
+          {buttons.download_dokumen && (
+            <ClaimAction
+              label="Download Dokumen"
+              aksi="cetak"
+              reference={detail?.referensi}
+              note={
+                'Menerbitkan surat RCL/PUCL, melampirkannya ke klaim, lalu mengunduhnya. ' +
+                'Klaimnya berpindah dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
+              }
+            />
+          )}
+          {buttons.tutup_klaim && (
+            <WriteAction
+              label="Tutup Klaim"
+              caseNumber={detail?.referensi}
+              note="Menutup klaim MSIG — satu-satunya tindakan yang tersedia pada jalur ini."
+            />
+          )}
+        </div>
+      </Panel>
 
       <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
     </>
@@ -545,92 +552,167 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
   const receipt = detail?.penerimaan_dokumen
   const buttons = detail?.tombol ?? NO_BUTTONS
 
+  // Kedua isian WAJIB disimpan sebagai keadaan layar, bukan dibaca langsung dari `detail`.
+  //
+  // Alasannya tombol "Save": ia mengirim apa yang DIKETIK petugas, dan nilai yang diketik
+  // belum ada di `detail` sampai tersimpan. Menggambarnya langsung dari `detail` membuat
+  // isiannya tidak dapat diubah sama sekali — persis keadaan sampai 2026-10-01.
+  //
+  // Penyemaiannya memakai KUNCI REMOUNT, bukan useEffect: pemanggil memberi `key` berisi
+  // kunci klaim, sehingga komponen ini lahir kembali — beserta nilai awalnya — setiap kali
+  // klaim yang dibuka berganti atau isinya baru tiba. useEffect yang menyamakan keadaan
+  // dengan prop akan menimpa ketikan petugas setiap kali data disegarkan di latar.
+  const [note, setNote] = useState(receipt?.komentar_pucl ?? '')
+  const [completeAt, setCompleteAt] = useState(
+    untukIsianWaktu(receipt?.tanggal_kelengkapan_dokumen ?? ''),
+  )
+
   return (
     <>
-      <ReceivedDocumentGrid detail={detail} />
+      <Panel>
+        <ReceivedDocumentGrid detail={detail} />
 
-      {/*
+        {/*
         Ketiganya FULL WIDTH di section, dan dua di antaranya WAJIB diisi (`pyRequired`
         true). Tanda wajibnya dibawa meski layar ini hanya membaca: ia menyatakan bentuk
         layar lama, dan petugas yang membandingkan keduanya berdampingan mencarinya.
       */}
-      {/* Judulnya ada di kepala tab, sama seperti di Pega. */}
-      <StackedFields
-        fields={[
-          // Keduanya TIDAK lagi bertanda "di clipboard Pega": kolomnya ditemukan 2026-10-01.
-          // "Email Tertanggung" akan sering tergambar kosong — kolomnya ada tetapi belum
-          // pernah terisi, dan itu keadaan data, bukan isian yang hilang.
-          ['Email Tertanggung', receipt?.email_tertanggung ?? ''],
-          ['Tanggal Kelengkapan Dokumen', receipt?.tanggal_kelengkapan_dokumen ?? '', true],
-          ['Catatan untuk Analyst', receipt?.komentar_pucl ?? '', true],
-        ]}
-      />
-
-      {/* Ketiganya `pyVisible ALWAYS` — selalu digambar, apa pun jalur dan lini bisnisnya. */}
-      <div className="flex flex-wrap gap-3">
-        {buttons.unggah_dokumen && (
-          <WriteAction
-            label="Unggah Dokumen"
-            caseNumber={detail?.referensi}
-            note="Melampirkan berkas dokumen ke klaim."
-          />
-        )}
+        {/* Judulnya ada di kepala tab, sama seperti di Pega. */}
         {/*
+          "Email Tertanggung" HANYA-BACA, dua isian di bawahnya DAPAT DIKETIK.
+
+          Pembedaannya bukan selera melainkan tempat datanya: kedua isian wajib hidup di
+          `TC_PNC_PUCL`, tabel milik aplikasi ini, sementara Email Tertanggung hidup di
+          `T_CLAIM_PNC.EMAIL_LOD` — tabel lain yang modul ini tidak tulis.
+
+          Menggambarnya dapat diketik lalu diam-diam tidak menyimpannya jauh lebih buruk
+          daripada menggambarnya jelas tidak dapat diketik.
+
+          Ia akan sering tergambar kosong: kolomnya ada tetapi belum pernah terisi pada
+          seluruh baris produksi. Itu keadaan data, bukan isian yang hilang.
+        */}
+        <StackedFields
+          fields={[
+            ['Email Tertanggung', receipt?.email_tertanggung ?? '', false, 'kotak'],
+          ]}
+        />
+
+        <EditableField
+          label="Tanggal Kelengkapan Dokumen"
+          required
+          value={completeAt}
+          onChange={setCompleteAt}
+          type="datetime-local"
+        />
+
+        <EditableField
+          label="Catatan untuk Analyst"
+          required
+          value={note}
+          onChange={setNote}
+          type="area"
+        />
+
+        {/*
+        Susunan tombolnya mengikuti layar lama: "Unggah Dokumen" dan "Lihat Dokumen" di KIRI
+        bawah, "Save" dan tombol Kirim di KANAN bawah, pada BARIS YANG SAMA.
+
+        Sebelumnya keenamnya tergambar sebagai dua baris rata kiri. Petugas yang membandingkan
+        kedua layar berdampingan mencari tombol Kirim di sudut kanan, dan tidak menemukannya.
+      */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-3">
+            {buttons.unggah_dokumen && (
+              <UploadDocumentAction reference={detail?.referensi} />
+            )}
+            {/*
           SATU-SATUNYA tombol layar ini yang benar-benar berjalan.
 
           Ia MEMBACA — `localAction ViewAttachmentPUCL` di Pega hanya membuka daftar lampiran,
           tanpa menyentuh satu pun tabel. Karena itu ia tidak terhalang `P-1`, dan dibangun
           lebih dulu atas persetujuan Work Owner 2026-10-01.
         */}
-        {buttons.lihat_dokumen && <ViewDocumentsAction reference={detail?.referensi} />}
-        {buttons.save && (
-          <ClaimAction
-            label="Save"
-            aksi="save"
-            reference={detail?.referensi}
-            note="Menyimpan isian tanpa meneruskan klaimnya."
-          />
-        )}
-      </div>
+            {buttons.lihat_dokumen && (
+              <ViewDocumentsAction reference={detail?.referensi} />
+            )}
+          </div>
 
-      {/*
-        Ketiga tombol berikut BERSYARAT, dan paling banyak SATU yang muncul: "Tolak Klaim"
+          {/*
+        Kelompok KANAN. "Save" ikut di sini, bukan bersama kedua tombol dokumen, karena di
+        layar lama ia berdampingan dengan tombol Kirim — keduanya menutup pekerjaan, sementara
+        kedua tombol kiri mengurus lampirannya.
+
+        Ketiga tombol Kirim/Tolak BERSYARAT, dan paling banyak SATU yang muncul: "Tolak Klaim"
         hanya di jalur RCL, dan kedua tombol "Kirim" hanya di jalur PUCL — yang satu untuk PA,
         yang lain untuk Travel. Klaim PUCL pada lini selain keduanya tidak menampilkan satu pun.
       */}
-      <div className="flex flex-wrap gap-3">
-        {buttons.tolak_klaim && (
-          <ClaimAction
-            label="Tolak Klaim"
-            aksi="tolak"
-            reference={detail?.referensi}
-            note="Menolak klaim. Hanya tersedia pada jalur RCL."
-          />
-        )}
-        {/*
-          SATU-SATUNYA tombol yang benar-benar MENJALANKAN tindakannya.
+          <div className="flex flex-wrap justify-end gap-3">
+            {buttons.save && (
+              <ClaimAction
+                label="Save"
+                aksi="save"
+                reference={detail?.referensi}
+                isian={{
+                  catatan_untuk_analyst: note,
+                  tanggal_kelengkapan_dokumen: completeAt,
+                }}
+                note="Menyimpan kedua isian di atas tanpa meneruskan klaimnya."
+              />
+            )}
+            {buttons.tolak_klaim && (
+              <ClaimAction
+                label="Tolak Klaim"
+                aksi="tolak"
+                reference={detail?.referensi}
+                note="Menolak klaim. Hanya tersedia pada jalur RCL."
+              />
+            )}
+              {/*
+          Kedua tombol Kirim MEMBAWA kedua isian di atas, sama seperti "Save".
 
-          Ia tidak menulis sendiri: permintaannya diteruskan ke Pega, karena klaim sampai ke
-          Analyst HANYA lewat baris penugasan yang dibuat mesin alur kerja Pega. Selama
-          layanannya belum tersambung, peladen menjawab 503 dan pesannya digambar apa adanya.
+          Di Pega ketiganya mem-posting form yang sama: Finish Assignment mengirim seluruh
+          isian flow action, sehingga `PUCLPost` langkah 10 dapat menuliskan `KomentarPUCL`
+          bersama penandaan klaimnya. Tombol Kirim yang tidak membawa isian akan MEMBUANG
+          catatan yang baru saja diketik petugas — dan Analyst menerima klaim tanpa tahu apa
+          yang berubah.
+
+          Keduanya juga `pyRequired`, sehingga peladen MENOLAK yang kosong. Yang memeriksanya
+          peladen, bukan layar: aturannya hidup di satu tempat.
+
+          Suratnya ikut terbit dan melampir ke klaim — `AttachAsPDFC` berprekondisi `1==1` —
+          tetapi TIDAK dibuka di tab baru. Hanya "Download Dokumen" yang mengunduh.
         */}
-        {buttons.kirim_ke_analyst && (
-          <ClaimAction
-            label="Kirim Ke Analyst"
-            aksi="kirim-analyst"
-            reference={detail?.referensi}
-            note="Meneruskan klaim kembali ke Analyst setelah dokumennya lengkap."
-          />
-        )}
-        {buttons.kirim_ke_pic_teknik && (
-          <ClaimAction
-            label="Kirim ke PIC Teknik"
-            aksi="kirim-pic-teknik"
-            reference={detail?.referensi}
-            note="Meneruskan klaim ke PIC Teknik. Jalur PUCL pada lini Travel."
-          />
-        )}
-      </div>
+            {buttons.kirim_ke_analyst && (
+              <ClaimAction
+                label="Kirim Ke Analyst"
+                aksi="kirim-analyst"
+                warna="oranye"
+                reference={detail?.referensi}
+                isian={{
+                  catatan_untuk_analyst: note,
+                  tanggal_kelengkapan_dokumen: completeAt,
+                }}
+                bukaBerkas={false}
+                note="Menyimpan kedua isian, melampirkan surat, lalu meneruskan klaim kembali ke Analyst."
+              />
+            )}
+            {buttons.kirim_ke_pic_teknik && (
+              <ClaimAction
+                label="Kirim ke PIC Teknik"
+                aksi="kirim-pic-teknik"
+                warna="oranye"
+                reference={detail?.referensi}
+                isian={{
+                  catatan_untuk_analyst: note,
+                  tanggal_kelengkapan_dokumen: completeAt,
+                }}
+                bukaBerkas={false}
+                note="Menyimpan kedua isian, melampirkan surat, lalu meneruskan klaim ke PIC Teknik. Jalur PUCL pada lini Travel."
+              />
+            )}
+          </div>
+        </div>
+      </Panel>
 
       <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
     </>
@@ -676,9 +758,9 @@ function ScreenFooter({
         <div className="mt-3 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs text-slate-700">
             <span className="font-medium">Layar ini baca saja.</span> {actionCount}{' '}
-            MENYIMPAN data, dan selama Pega dan sistem baru berjalan berdampingan data klaim
-            hanya boleh diubah dari satu sistem. Kerjakan tindakannya di Pega, cari klaimnya
-            dengan Nomor Case di atas.
+            MENYIMPAN data, dan selama Pega dan sistem baru berjalan berdampingan data
+            klaim hanya boleh diubah dari satu sistem. Kerjakan tindakannya di Pega, cari
+            klaimnya dengan Nomor Case di atas.
           </p>
         </div>
       )}
@@ -694,7 +776,8 @@ function ScreenFooter({
           <p className="mt-1 text-xs text-slate-500">
             Kesembilannya properti clipboard pada objek kerja Pega, bukan kolom tabel,
             sehingga nilainya tidak dapat dibaca dari sini selama objek kerjanya masih
-            dimiliki Pega. Isian ini tetap digambar di tempatnya supaya keadaannya terlihat.
+            dimiliki Pega. Isian ini tetap digambar di tempatnya supaya keadaannya
+            terlihat.
           </p>
         </div>
       )}
@@ -710,54 +793,107 @@ function ScreenFooter({
  * menyembunyikan bahwa layar lama memuat DAFTAR di sini — bukan satu tanggal.
  */
 function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }) {
-  const rows = detail?.penerimaan_dokumen?.tanggal_terima_dokumen ?? []
   const partial = detail?.penerimaan_dokumen?.tanggal_terima_dokumen_sebagian === true
 
-  return (
-    <div className="mt-6">
-      <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-        Tanggal terima Dokumen
-      </h3>
-      {/*
-        "Tambah" dan "Hapus" ADA di layar lama, di atas grid. Keduanya MENULIS ke objek kerja
-        yang masih dimiliki Pega (`P-1`), sehingga keduanya memakai panel yang sama dengan
-        tombol tindakan lain: dapat diklik, dan menjawab dengan langkahnya.
+  // Barisnya KEADAAN LAYAR, bukan dibaca langsung dari `detail`.
+  //
+  // Di Pega, "✚ Tambah" dan "Hapus" adalah operasi SISI KLIEN pada page list di clipboard —
+  // terverifikasi dari section: `pyAction addRow` tanpa satu pun `pyActivity`, dan `deleteRow`
+  // tidak ada sama sekali. Tidak ada permintaan ke peladen saat keduanya ditekan; yang
+  // menyimpannya adalah tombol "Save", lewat `Obj-Save`.
+  //
+  // Keadaannya disemai lewat KUNCI REMOUNT pada pemanggilnya, sama seperti kedua isian di
+  // bawah grid — lihat ReceiptTab.
+  const [rows, setRows] = useState<ReceivedRow[]>(() =>
+    (detail?.penerimaan_dokumen?.tanggal_terima_dokumen ?? []).map((row) => ({
+      tanggal: untukIsianWaktu(row.tanggal),
+      keterangan: row.keterangan,
+    })),
+  )
 
-        Sebelumnya keduanya digambar sebagai teks abu-abu yang tidak menanggapi apa pun —
-        bentuk yang tidak dapat dibedakan dari tautan rusak.
+  function ubah(index: number, bagian: Partial<ReceivedRow>) {
+    setRows((lama) => lama.map((row, i) => (i === index ? { ...row, ...bagian } : row)))
+  }
+
+  return (
+    // Grid-nya punya BINGKAINYA SENDIRI di layar lama — kotak di dalam kotak, bukan sekadar
+    // tabel yang mengambang di atas isian di bawahnya.
+    <div className="rounded-sm border border-slate-300 p-4">
+      <h3 className="text-[13px] font-semibold text-slate-800">Tanggal terima Dokumen</h3>
+
+      {/*
+        Keduanya TAUTAN BIRU di layar lama, bukan tombol berbingkai — "✚ Tambah" dan "Hapus"
+        berdampingan tepat di atas tabelnya.
+
+        Keduanya BEKERJA, dan itu bukan kelonggaran: di Pega pun keduanya tidak memanggil apa
+        pun. Catatan lama di tempat ini menyatakan keduanya "MENULIS ke objek kerja yang masih
+        dimiliki Pega" — itu TIDAK terbukti, dan dicabut 2026-10-02.
+
+        "Hapus" membuang baris TERAKHIR. Pega membuang baris yang sedang dipilih, dan grid ini
+        belum punya pemilihan baris; membuang yang terakhir memasangkannya dengan "Tambah"
+        yang menyisipkan di belakang (`pyPosition AFTER`).
       */}
-      <div className="mt-1 flex flex-wrap gap-2">
-        <WriteAction
-          label="+ Tambah"
-          caseNumber={detail?.referensi}
-          note="Menambah satu baris tanggal terima dokumen."
-        />
-        <WriteAction
-          label="Hapus"
-          caseNumber={detail?.referensi}
-          note="Menghapus baris yang dipilih."
-        />
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setRows((lama) => [...lama, { tanggal: '', keterangan: '' }])}
+          className="text-sm font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+        >
+          ✚ Tambah
+        </button>
+        <button
+          type="button"
+          disabled={rows.length === 0}
+          onClick={() => setRows((lama) => lama.slice(0, -1))}
+          className="text-sm font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+        >
+          Hapus
+        </button>
       </div>
 
       <table className="mt-2 w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-            <th className="py-1.5 font-medium">Tanggal</th>
-            <th className="py-1.5 font-medium">Keterangan</th>
+          <tr className="border-b border-slate-300 text-left text-[13px] text-slate-800">
+            <th className="w-1/2 py-1.5 font-semibold">Tanggal</th>
+            <th className="py-1.5 font-semibold">Keterangan</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr>
-              <td colSpan={2} className="py-2 text-xs text-slate-500">
-                Belum ada tanggal terima dokumen yang tercatat pada klaim ini.
+            <tr className="border-b border-slate-200">
+              {/*
+                "Data Tidak Ada" — kalimat layar lama APA ADANYA (`D-13`), bukan kalimat kami
+                sendiri. Yang sebelumnya tertulis di sini menjelaskan keadaannya dengan lebih
+                panjang, dan justru karena itu tidak lagi terbaca sebagai layar yang sama.
+              */}
+              <td colSpan={2} className="py-2 text-sm text-slate-400">
+                Data Tidak Ada
               </td>
             </tr>
           ) : (
             rows.map((row, index) => (
-              <tr key={`${row.tanggal}-${index}`} className="border-b border-slate-100">
-                <td className="py-1.5 text-slate-900">{row.tanggal}</td>
-                <td className="py-1.5 text-slate-700">{row.keterangan || '—'}</td>
+              // Kuncinya INDEKS, bukan isinya. Baris baru lahir kosong, sehingga dua baris
+              // kosong akan berbagi kunci yang sama bila isinya dipakai — dan React lalu
+              // menggambar ulang isian yang sedang diketik.
+              <tr key={index} className="border-b border-slate-100">
+                <td className="py-1.5 pr-3">
+                  <input
+                    type="datetime-local"
+                    aria-label={`Tanggal baris ${index + 1}`}
+                    value={row.tanggal}
+                    onChange={(e) => ubah(index, { tanggal: e.target.value })}
+                    className="w-full rounded-sm border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                </td>
+                <td className="py-1.5">
+                  <input
+                    type="text"
+                    aria-label={`Keterangan baris ${index + 1}`}
+                    value={row.keterangan}
+                    onChange={(e) => ubah(index, { keterangan: e.target.value })}
+                    className="w-full rounded-sm border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                </td>
               </tr>
             ))
           )}
@@ -765,18 +901,33 @@ function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }
       </table>
 
       {/*
-        Keterangan ketidaklengkapan datang dari SERVER, dan digambar HANYA saat ada barisnya.
-        Pada daftar yang kosong ia menyesatkan: yang terbaca akan menjadi "mungkin ada yang
-        tersembunyi" padahal kemungkinan terbesarnya daftarnya memang kosong.
+        DUA keterangan, dan keduanya menyatakan hal yang berbeda.
+
+        Yang pertama datang dari SERVER dan menyangkut apa yang TERBACA; yang kedua menyangkut
+        apa yang TERSIMPAN. Menggabungkannya akan membuat batas pembacaan dan batas penyimpanan
+        terbaca sebagai satu masalah, padahal pemiliknya berbeda.
       */}
       {partial && rows.length > 0 && (
         <p className="mt-1 text-[11px] leading-snug text-slate-500">
-          Baru baris pertama yang terbaca. Bila di Pega ada baris berikutnya, ia belum muncul
-          di sini.
+          Baru baris pertama yang terbaca. Bila di Pega ada baris berikutnya, ia belum
+          muncul di sini.
         </p>
       )}
+
+      <p className="mt-1 text-[11px] leading-snug text-amber-700">
+        Perubahan pada daftar ini <span className="font-medium">belum tersimpan</span> —
+        ia hilang saat layar dimuat ulang. Tempat simpannya menunggu tabel yang sudah
+        diminta (<span className="font-mono">TC_PNC_PUCL_TERIMA_DOKUMEN</span>).
+      </p>
     </div>
   )
+}
+
+/** Satu baris grid "Tanggal terima Dokumen", sebagaimana diketik di layar. */
+type ReceivedRow = {
+  // Berbentuk `YYYY-MM-DDTHH:mm`, yaitu yang diterima `datetime-local`.
+  tanggal: string
+  keterangan: string
 }
 
 /**
@@ -786,6 +937,294 @@ function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }
  * di balik pesan yang baru muncul setelah ditekan: tombol mati tanpa keterangan terbaca
  * sebagai kerusakan, dan petugas akan menekannya berulang kali.
  */
+/**
+ * Tombol "Unggah Dokumen" — membuka dialog `SetUploadDocPUCL`.
+ *
+ * # Bentuknya dari mana
+ *
+ * Dari flow action `SetUploadDocPUCL`, yang merantai empat section:
+ *
+ *	SetUploadDoc_Detl -> ASMAttachContentScreen -> ASMAttachFilesScreen
+ *	                  -> ASMAttachments -> ASMAttachFileList
+ *
+ * Yang terakhir memuat grid-nya: page list `dragDropFileUpload.pxResults`, berkolom **Name**
+ * (`pxTextInput`), **File**, dan **Category** (`pxDropdown`), beserta ikon buang per baris.
+ *
+ * # Dua hal yang membedakannya dari versi pertama modul ini
+ *
+ * Versi pertama (2026-10-02 pagi) mengunggah SEKETIKA begitu berkas dipilih, tanpa dialog.
+ * Itu lebih sedikit langkah, tetapi BUKAN bentuk layar lama — dan `D-13` menetapkan tata
+ * letak mengikuti Pega supaya petugas tidak perlu belajar ulang.
+ *
+ * Yang hilang karenanya ada dua, dan keduanya nyata: berkas dapat dipilih BANYAK sekaligus,
+ * dan namanya dapat diubah SEBELUM dikirim. Keduanya kembali di sini.
+ */
+function UploadDocumentAction({ reference }: { reference?: string | undefined }) {
+  const [terbuka, setTerbuka] = useState(false)
+
+  return (
+    <div className="mt-4">
+      <Button tone="utama" disabled={!reference} onClick={() => setTerbuka(true)}>
+        Unggah Dokumen
+      </Button>
+      <p className="mt-1 text-xs text-slate-500">Melampirkan berkas dokumen ke klaim.</p>
+
+      {/*
+        Dialognya dilahirkan hanya saat terbuka, bukan disembunyikan dengan CSS: keadaannya —
+        daftar berkas yang dipilih — harus bersih setiap kali dibuka, dan kelahiran ulang
+        menjaminnya tanpa satu baris kode pembersih.
+      */}
+      {terbuka && reference && (
+        <UploadDocumentDialog reference={reference} onClose={() => setTerbuka(false)} />
+      )}
+    </div>
+  )
+}
+
+/** Satu baris pada grid dialog unggah. */
+type UploadRow = {
+  berkas: File
+  // Nama yang DAPAT diketik ulang — kolom "Name". Bawaannya nama berkasnya sendiri.
+  nama: string
+  // Pilihan kolom "Category" — nama kategori lampiran.
+  //
+  // Kosong berarti "belum disentuh petugas", BUKAN "tanpa kategori": yang berlaku lalu
+  // bawaannya, persis seperti di Pega. Lihat `bawaanKategori`.
+  kategori: string
+}
+
+function UploadDocumentDialog({
+  reference,
+  onClose,
+}: {
+  reference: string
+  onClose: () => void
+}) {
+  const pilih = useRef<HTMLInputElement>(null)
+  const [rows, setRows] = useState<UploadRow[]>([])
+  const [gagal, setGagal] = useState<string | null>(null)
+  const unggah = useUnggahDokumen(reference)
+  const kategori = useKategoriDokumen()
+
+  /**
+   * Kategori bawaan, mengikuti Pega.
+   *
+   * Layar lama menggambar **"File"** terpilih pada baris yang belum disentuh — itulah
+   * kategori lampiran bawaan Pega, dan 37 baris lampiran klaim PNC memang tersimpan
+   * dengannya.
+   *
+   * Catatan saya sebelumnya menyatakan bawaannya sengaja dikosongkan supaya tidak menebak.
+   * Itu keliru: bukan tebakan, melainkan perilaku yang terbukti — dan dicabut 2026-10-02.
+   *
+   * Dipilih dari daftar yang BENAR-BENAR termuat, bukan ditulis mati: menampilkan nilai
+   * terpilih yang tidak ada di dalam daftarnya membuat dropdown tergambar kosong.
+   */
+  const bawaanKategori =
+    (kategori.data?.kategori ?? []).find((pilihan) => pilihan.nilai === 'File')?.nilai ??
+    ''
+
+  const kategoriBaris = (row: UploadRow) => row.kategori || bawaanKategori
+
+  async function submit() {
+    setGagal(null)
+    try {
+      // Berurutan, bukan serentak. Ketiga pernyataan basis data tiap unggahan mengambil nomor
+      // dari sequence yang sama; mengirimnya serentak tidak salah, tetapi membuat urutan
+      // nomor lampiran tidak lagi sejalan dengan urutan yang dilihat petugas di dialog.
+      for (const row of rows) {
+        await unggah.mutateAsync({
+          berkas: row.berkas,
+          nama: row.nama,
+          kategori: kategoriBaris(row),
+        })
+      }
+      onClose()
+    } catch (error) {
+      // Dialognya TIDAK ditutup saat gagal: berkas yang sudah dipilih akan hilang, dan
+      // petugas harus memilihnya lagi satu per satu tanpa tahu mana yang sudah masuk.
+      setGagal(messageOf(error))
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="SetUploadDocPUCL"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+    >
+      <div className="flex max-h-full w-full max-w-3xl flex-col rounded-sm border border-slate-300 bg-white shadow-xl">
+        {/* Kepala: judul flow action-nya APA ADANYA, beserta silang penutup. */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <h2 className="text-[15px] text-slate-800">SetUploadDocPUCL</h2>
+          <button
+            type="button"
+            aria-label="Tutup"
+            onClick={onClose}
+            className="text-xl leading-none text-slate-400 hover:text-slate-700"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto px-5 py-8">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => pilih.current?.click()}
+              className="rounded-sm border border-blue-400 px-3 py-1 text-sm text-blue-700 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+            >
+              Select file(s)
+            </button>
+          </div>
+
+          {/*
+            `multiple` mengikuti layar lama — kendalinya `pzMultiFilePath`, dan judul tombolnya
+            sendiri berbunyi "file(s)".
+
+            `value` dikosongkan sesudah dipilih supaya berkas yang SAMA dapat dipilih lagi;
+            tanpa itu `change` tidak terpicu pada pilihan kedua dan tombolnya terlihat rusak.
+          */}
+          <input
+            ref={pilih}
+            type="file"
+            multiple
+            className="hidden"
+            aria-label="Berkas yang diunggah"
+            onChange={(e) => {
+              const dipilih = Array.from(e.target.files ?? [])
+              e.target.value = ''
+              setRows((lama) => [
+                ...lama,
+                ...dipilih.map((berkas) => ({
+                  berkas,
+                  nama: berkas.name,
+                  kategori: '',
+                })),
+              ])
+            }}
+          />
+
+          {rows.length > 0 && (
+            <table className="mt-6 w-full border-collapse text-sm">
+              <thead>
+                <tr className="text-left text-[13px] font-semibold text-slate-800">
+                  <th className="w-1/3 pb-1">Name</th>
+                  <th className="w-1/3 pb-1">File</th>
+                  <th className="pb-1">Category</th>
+                  <th className="w-8 pb-1" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  // Kuncinya INDEKS: dua berkas bernama sama dapat dipilih bersamaan, dan
+                  // kunci berbasis nama akan membuat React menggambar ulang isian yang sedang
+                  // diketik.
+                  <tr key={index}>
+                    <td className="py-1 pr-2">
+                      <input
+                        type="text"
+                        aria-label={`Name baris ${index + 1}`}
+                        value={row.nama}
+                        onChange={(e) =>
+                          setRows((lama) =>
+                            lama.map((r, i) =>
+                              i === index ? { ...r, nama: e.target.value } : r,
+                            ),
+                          )
+                        }
+                        className="w-full rounded-sm border border-slate-300 bg-sky-50 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </td>
+                    <td className="truncate py-1 pr-2 text-sm text-slate-700">
+                      {row.berkas.name}
+                    </td>
+                    <td className="py-1 pr-2">
+                      {/*
+                        Daftarnya KATEGORI LAMPIRAN, bukan jenis dokumen — `AcceptanceNote`,
+                        `ClaimFaceSheet`, `LOD`, dan seterusnya. Yang mendefinisikannya rule
+                        `Rule-Obj-AttachmentCategory`, dan tipe rule itu tidak ada di export
+                        sama sekali (`R-16`), sehingga daftarnya diturunkan dari kategori yang
+                        benar-benar dipakai lampiran klaim PNC — 30 baris.
+
+                        Catatan di tempat ini sempat menyebut `V_LST_DET_TYPE_DOC` dengan 159
+                        barisnya. Itu salah sasaran: view itu memuat nama DOKUMEN, bukan
+                        kategori lampiran. Dicabut 2026-10-02.
+                      */}
+                      <select
+                        aria-label={`Category baris ${index + 1}`}
+                        className="w-full rounded-sm border border-slate-300 bg-sky-50 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                        value={kategoriBaris(row)}
+                        onChange={(e) =>
+                          setRows((lama) =>
+                            lama.map((r, i) =>
+                              i === index ? { ...r, kategori: e.target.value } : r,
+                            ),
+                          )
+                        }
+                      >
+                        {/*
+                          "Select.." adalah teks layar lama APA ADANYA (`D-13`), bukan kalimat
+                          kami sendiri. Pilihannya TETAP ADA sesudah daftarnya termuat:
+                          kategori tidak wajib di layar lama, dan menghapusnya memaksa petugas
+                          memilih sesuatu yang mungkin tidak ia ketahui.
+                        */}
+                        <option value="">
+                          {kategori.isPending
+                            ? 'Memuat kategori…'
+                            : kategori.isError
+                              ? 'Kategori gagal dimuat — muat ulang halaman'
+                              : 'Select..'}
+                        </option>
+                        {(kategori.data?.kategori ?? []).map((pilihan) => (
+                          <option key={pilihan.nilai} value={pilihan.nilai}>
+                            {pilihan.nama}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-1 text-right">
+                      <button
+                        type="button"
+                        aria-label={`Buang baris ${index + 1}`}
+                        onClick={() =>
+                          setRows((lama) => lama.filter((_, i) => i !== index))
+                        }
+                        className="text-slate-400 hover:text-red-600"
+                      >
+                        🗑
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {gagal && (
+            <p className="mt-3 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-slate-700">
+              {gagal}
+            </p>
+          )}
+        </div>
+
+        {/* Kaki: Cancel di KIRI, Submit di KANAN — dan Submit berwarna oranye, seperti di Pega. */}
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-100 px-5 py-3">
+          <Button tone="kedua" onClick={onClose} disabled={unggah.isPending}>
+            Cancel
+          </Button>
+          <OrangeButton
+            disabled={rows.length === 0 || unggah.isPending}
+            onClick={() => void submit()}
+          >
+            {unggah.isPending ? 'Mengunggah…' : 'Submit'}
+          </OrangeButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * Tombol "Lihat Dokumen" — tombol layar kerja yang BENAR-BENAR berjalan.
  *
@@ -798,12 +1237,20 @@ function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }
  * # Kenapa berkasnya dibuka lewat TAUTAN, bukan diambil JavaScript
  *
  * Karena isinya berkas, bukan JSON. Peramban sudah tahu cara menampilkan PDF dan gambar;
- * menariknya lewat JavaScript lebih dulu berarti seluruh berkas melewati memori halaman tanpa
- * satu pun manfaat, dan menghilangkan penampil bawaan peramban.
+ * Isinya DIAMBIL lewat JavaScript, lalu diserahkan ke tab baru sebagai blob.
+ *
+ * Catatan sebelumnya di tempat ini menyatakan sebaliknya — bahwa berkasnya cukup ditautkan
+ * supaya tidak melewati memori halaman. Itu mengabaikan satu hal yang menentukan: alamatnya
+ * menuntut header, dan navigasi peramban tidak membawa header. Tautan semacam itu tidak
+ * pernah membuka dokumennya. Dicabut 2026-10-02.
+ *
+ * Biaya yang disadari: berkasnya memang melewati memori halaman. Penampil bawaan peramban
+ * TETAP dipakai — yang diserahkan ke tab baru adalah blob beserta jenis isinya.
  */
 function ViewDocumentsAction({ reference }: { reference?: string | undefined }) {
   const [open, setOpen] = useState(false)
   const documents = useRCLPUCLDocuments(reference ?? null, open)
+  const bukaDokumen = useBukaDokumen(reference ?? null)
 
   return (
     <div className="mt-4">
@@ -815,7 +1262,9 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
       >
         Lihat Dokumen
       </Button>
-      <p className="mt-1 text-xs text-slate-500">Membuka dokumen yang sudah dilampirkan.</p>
+      <p className="mt-1 text-xs text-slate-500">
+        Membuka dokumen yang sudah dilampirkan.
+      </p>
 
       {open && (
         <div className="mt-2 max-w-xl rounded-kontrol border border-slate-200 bg-white px-3 py-2">
@@ -843,17 +1292,44 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
           {documents.data && documents.data.dokumen.length > 0 && (
             <ul className="divide-y divide-slate-100">
               {documents.data.dokumen.map((document) => (
-                <li key={document.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-                  <a
-                    href={rclpuclDocumentURL(reference ?? '', document.id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-medium text-biru-700 underline underline-offset-2"
+                <li
+                  key={document.id}
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                >
+                  {/*
+                    TOMBOL, bukan tautan — dan itu bukan pilihan gaya.
+
+                    Alamat isinya menuntut header `Authorization` dan `X-Portal`, sedangkan
+                    navigasi peramban tidak membawa header apa pun. Tautan `<a href>` karena
+                    itu selalu membuka `{"kode":"sesi_tidak_sah"}` mentah, tidak pernah
+                    dokumennya. Diperbaiki 2026-10-02.
+
+                    Tab-nya dibuka DI SINI, masih di dalam penanganan klik: `window.open`
+                    sesudah `await` diblokir penghalang pop-up.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tab = window.open('', '_blank')
+                      void bukaDokumen
+                        .mutateAsync({
+                          id: document.id,
+                          nama: document.nama || document.id,
+                          tab,
+                        })
+                        .catch(() => {
+                          // Pesannya digambar dari `bukaDokumen.error` di bawah daftar;
+                          // yang ditangkap di sini hanya penolakan yang tidak tertangani.
+                        })
+                    }}
+                    className="text-left text-sm font-medium text-biru-700 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                   >
                     {document.nama || document.id}
-                  </a>
+                  </button>
                   <span className="text-xs text-slate-500">
-                    {[document.kategori, document.sub_kategori].filter(Boolean).join(' · ')}
+                    {[document.kategori, document.sub_kategori]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                   <span className="ml-auto text-xs text-slate-500">
                     {document.diunggah_pada}
@@ -867,8 +1343,37 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
             Keterangan ketidaklengkapan datang dari SERVER, bukan ditulis di sini: begitu
             jalur lampiran bawaan Pega ikut terbaca, kalimatnya hilang di satu tempat.
           */}
-          {documents.data?.catatan && (
+          {/*
+            Kegagalan membuka SATU dokumen dinyatakan terpisah dari kegagalan menarik
+            DAFTARNYA. Keduanya berbeda sebabnya, dan menggabungkannya membuat petugas
+            mengira seluruh daftarnya tidak dapat dipercaya padahal hanya satu berkas yang
+            bermasalah.
+          */}
+          {bukaDokumen.isError && (
+            <p className="mt-2 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-slate-700">
+              {messageOf(bukaDokumen.error)}
+            </p>
+          )}
+
+          {/*
+            Yang DISARING dinyatakan apa adanya, lengkap dengan alasannya.
+
+            Daftar ini mengikuti penyaring `GCNMGetAllAttachments` — report definition di
+            balik tombol yang sama di Pega. Lampiran berkategori kode angka tidak pernah
+            tergambar di sana, dan sejak 2026-10-02 tidak tergambar di sini pula.
+
+            Jumlahnya disebut, bukan disembunyikan: daftar yang diam-diam lebih pendek
+            membuat petugas mencari dokumen yang sebenarnya ada.
+          */}
+          {(documents.data?.disaring ?? 0) > 0 && (
             <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] leading-snug text-slate-500">
+              {documents.data?.disaring} lampiran lama tidak ditampilkan — seluruhnya
+              tidak tergambar di layar Pega pula.
+            </p>
+          )}
+
+          {documents.data?.catatan && (
+            <p className="mt-2 text-[11px] leading-snug text-slate-500">
               {documents.data.catatan}
             </p>
           )}
@@ -897,23 +1402,87 @@ function ClaimAction({
   note,
   aksi,
   reference,
+  isian,
+  warna = 'biru',
+  bukaBerkas = true,
 }: {
   label: string
   note: string
   aksi: TindakanKlaim
   reference?: string | undefined
+
+  // isian diisi TIGA tombol — "Save" dan kedua tombol Kirim — karena ketiganya membawa apa
+  // yang DIKETIK petugas. "Download Dokumen" dan "Tolak Klaim" memanggil tanpa badan, dan
+  // peladen pun hanya membacanya untuk ketiga yang pertama (lihat `carriesReceipt`).
+  isian?: IsianPenerimaanDokumen | undefined
+
+  // bukaBerkas menyatakan surat yang terbit juga DIBUKA di tab baru.
+  //
+  // Hanya "Download Dokumen" yang membukanya — namanya pun berjanji begitu. Kedua tombol
+  // Kirim menerbitkan surat yang sama dan MELAMPIRKANNYA, persis seperti `AttachAsPDFC` di
+  // Pega, tetapi tidak mengunduhkannya: petugas yang menekan "Kirim" bermaksud meneruskan
+  // klaim, bukan membuka berkas. Suratnya tetap dapat diambil lewat "Lihat Dokumen".
+  bukaBerkas?: boolean
+
+  // Warna tombolnya mengikuti layar lama (`D-13`), bukan nada sistem desain kami.
+  //
+  // Di Pega, "Kirim Ke Analyst" ORANYE sementara "Save" dan "Download Dokumen" biru tua.
+  // Perbedaan itu bukan hiasan: oranye menandai tindakan yang MEMINDAHKAN klaim ke tangan
+  // orang lain, dan petugas mengenalinya dari warna sebelum membaca tulisannya.
+  //
+  // `Button` tidak diberi nada baru untuk ini. Nada adalah kosakata sistem desain yang
+  // dipakai puluhan layar, dan oranye di sini hanya berlaku karena layar lama memakainya.
+  warna?: 'biru' | 'oranye'
 }) {
   const tindakan = useTindakanKlaim(reference ?? null, aksi)
+  const bukaDokumen = useBukaDokumen(reference ?? null)
+
+  /**
+   * Menjalankan tindakannya, lalu MENGUNDUH berkas yang dihasilkannya bila diminta.
+   *
+   * TIGA tindakan menghasilkan berkas — "Download Dokumen" dan kedua tombol Kirim — karena
+   * `PUCLPost` memanggil `AttachAsPDFC` berprekondisi `1==1`. Peladen menerbitkan surat
+   * RCL/PUCL, melampirkannya ke klaim, dan mengembalikan baris lampirannya.
+   *
+   * Yang MEMBUKANYA hanya "Download Dokumen"; lihat `bukaBerkas`.
+   *
+   * Unduhannya menempuh alamat ISI DOKUMEN yang sudah ada, bukan alamat baru yang
+   * mengembalikan berkas dari jalur tindakan. Dengan begitu surat yang baru terbit dan surat
+   * lama diambil lewat jalan yang sama persis — termasuk pemeriksaan kepemilikan klaimnya.
+   */
+  async function jalankan() {
+    const hasil = await tindakan.mutateAsync(isian)
+    const surat = hasil.dokumen
+    if (!surat || !bukaBerkas) return
+
+    // Tab dibuka lebih dulu, masih di dalam rantai klik — lihat useBukaDokumen.
+    const tab = window.open('', '_blank')
+    await bukaDokumen
+      .mutateAsync({ id: surat.id, nama: surat.nama || surat.id, tab })
+      .catch(() => {
+        // Suratnya SUDAH melampir ke klaim; gagal membukanya bukan gagal menerbitkannya.
+        // Petugas tetap dapat mengambilnya lewat "Lihat Dokumen".
+      })
+  }
 
   return (
     <div className="mt-4">
-      <Button
-        tone="kedua"
-        disabled={!reference || tindakan.isPending}
-        onClick={() => tindakan.mutate()}
-      >
-        {tindakan.isPending ? 'Menjalankan…' : label}
-      </Button>
+      {warna === 'oranye' ? (
+        <OrangeButton
+          disabled={!reference || tindakan.isPending}
+          onClick={() => void jalankan().catch(() => {})}
+        >
+          {tindakan.isPending ? 'Menjalankan…' : label}
+        </OrangeButton>
+      ) : (
+        <Button
+          tone="utama"
+          disabled={!reference || tindakan.isPending}
+          onClick={() => void jalankan().catch(() => {})}
+        >
+          {tindakan.isPending ? 'Menjalankan…' : label}
+        </Button>
+      )}
       <p className="mt-1 text-xs text-slate-500">{note}</p>
 
       {tindakan.isSuccess && (
@@ -974,33 +1543,47 @@ function WriteAction({
   const panel = useContext(WriteActionPanel)
   const open = panel.open === label
 
+  // Varian TAUTAN dibuang 2026-10-02, bersama panel kedua tautan grid. Keduanya kini bekerja
+  // sendiri — lihat ReceivedDocumentGrid — sehingga tidak ada lagi yang memakainya, dan jalur
+  // yang tidak dipakai siapa pun adalah jalur yang tidak pernah teruji.
   return (
     <div className="mt-4">
-      <Button
-        tone="kedua"
-        aria-expanded={open}
-        onClick={() => panel.toggle(label)}
-      >
+      <Button tone="kedua" aria-expanded={open} onClick={() => panel.toggle(label)}>
         {label}
       </Button>
       <p className="mt-1 text-xs text-slate-500">{note}</p>
 
-      {/*
-        Panelnya SATU BARIS, dan alasannya TIDAK diulang di sini.
+      {open && <ActionNote label={label} caseNumber={caseNumber} />}
+    </div>
+  )
+}
 
-        Bentuk sebelumnya mengulang tiga baris alasan di bawah setiap tombol. Karena alasannya
-        sama untuk seluruh tombol, kalimat yang sama tergambar berkali-kali di satu layar —
-        dan ia sudah tertulis sekali di kaki layar. Yang tersisa di sini hanyalah yang
-        BERBEDA antartombol: nama tindakannya dan nomor case yang perlu disalin.
-      */}
-      {open && (
-        <div className="mt-2 flex max-w-md flex-wrap items-center gap-2 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
-          <span className="text-xs text-slate-700">
-            Kerjakan <span className="font-medium">{label}</span> di Pega pada klaim
-          </span>
-          <CopyCaseNumber caseNumber={caseNumber} />
-        </div>
-      )}
+/**
+ * Panel keterangan satu tindakan yang belum dapat dijalankan dari sini.
+ *
+ * # Kenapa ia terpisah dari WriteAction
+ *
+ * Karena LETAKNYA berbeda menurut bentuk tombolnya. Tombol berbingkai menggambarnya tepat di
+ * bawah dirinya; tautan di dalam baris alat menggambarnya di bawah SELURUH baris, supaya
+ * barisnya tidak terdorong melebar.
+ *
+ * Isinya satu baris, dan alasan panjangnya TIDAK diulang di sini: ia sudah tertulis sekali di
+ * kaki layar. Yang tersisa hanyalah yang BERBEDA antartombol — nama tindakannya dan nomor
+ * case yang perlu disalin.
+ */
+function ActionNote({
+  label,
+  caseNumber,
+}: {
+  label: string
+  caseNumber?: string | undefined
+}) {
+  return (
+    <div className="mt-2 flex max-w-md flex-wrap items-center gap-2 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
+      <span className="text-xs text-slate-700">
+        Kerjakan <span className="font-medium">{label}</span> di Pega pada klaim
+      </span>
+      <CopyCaseNumber caseNumber={caseNumber} />
     </div>
   )
 }
@@ -1062,7 +1645,26 @@ function CopyCaseNumber({ caseNumber }: { caseNumber?: string | undefined }) {
  * tidak ada yang divalidasi — tetapi ia bagian dari BENTUK layar lama, dan petugas yang
  * membandingkan keduanya berdampingan mencarinya.
  */
-type Field = [label: string, value: FieldValue, required?: boolean]
+type Field = [label: string, value: FieldValue, required?: boolean, kind?: FieldKind]
+
+/**
+ * Bentuk sebuah isian di layar lama — dan karenanya di layar ini (`D-13`).
+ *
+ * Layar lama menggambar hampir seluruh isiannya sebagai KOTAK MASUKAN, bukan sebagai teks
+ * biasa. Perbedaannya bukan selera: petugas membaca layar ini berdampingan dengan Pega, dan
+ * deretan teks polos tidak terbaca sebagai layar yang sama.
+ *
+ * Kotaknya tetap HANYA DIBACA — layar ini tidak menyunting apa pun. Yang ditiru bentuknya,
+ * bukan kemampuannya.
+ *
+ *   `teks`     tanpa kotak — dipakai dua isian teratas Lampiran Surat, yang di Pega pun
+ *              digambar sebagai teks polos di bawah judulnya
+ *   `kotak`    kotak satu baris
+ *   `area`     kotak tinggi untuk kalimat panjang (`pxTextArea` di section)
+ *   `pilihan`  kotak dengan tanda daftar pilihan — "Perihal"
+ *   `tanggal`  kotak dengan tanda kalender — "Tanggal Kejadian", "Tanggal Kelengkapan"
+ */
+type FieldKind = 'teks' | 'kotak' | 'area' | 'pilihan' | 'tanggal'
 
 /**
  * Sekelompok isian dalam DUA KOLOM, berpasangan kiri-kanan menurut urutan section.
@@ -1072,6 +1674,103 @@ type Field = [label: string, value: FieldValue, required?: boolean]
  * kosong memang belum diisi petugas, yang di clipboard punya nilai tetapi nilainya tidak
  * dapat dibaca dari tabel.
  */
+/**
+ * Satu isian yang DAPAT DIKETIK, berbentuk sama dengan kotak hanya-baca di sebelahnya.
+ *
+ * # Kenapa bentuknya sengaja MIRIP yang hanya-baca
+ *
+ * Karena di layar lama ketiganya memang terlihat sama — yang membedakan hanya dapat atau
+ * tidaknya diketik, bukan bingkainya. Membedakannya secara mencolok akan membuat layar ini
+ * tidak lagi terbaca sebagai layar yang sama (`D-13`).
+ *
+ * Yang TIDAK disamakan: isian ini menyala saat difokus. Tanpa itu, petugas tidak punya
+ * petunjuk mana yang dapat diisi selain mencobanya satu per satu.
+ */
+function EditableField({
+  label,
+  value,
+  onChange,
+  required,
+  type,
+}: {
+  label: string
+  value: string
+  onChange: (next: string) => void
+  required?: boolean
+  type: 'teks' | 'area' | 'datetime-local'
+}) {
+  const kelas = [
+    'mt-1 w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5',
+    'text-sm text-slate-900',
+    'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
+  ].join(' ')
+
+  return (
+    <div className="mt-6 flex flex-col">
+      <label className="text-[13px] font-semibold text-slate-800">
+        {label}
+        {required && <span className="ml-0.5 text-red-500">*</span>}
+
+        {type === 'area' ? (
+          <textarea
+            className={`${kelas} min-h-[72px]`}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ) : (
+          <input
+            type={type === 'datetime-local' ? 'datetime-local' : 'text'}
+            className={kelas}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
+      </label>
+    </div>
+  )
+}
+
+/**
+ * Mengubah tanggal apa adanya dari peladen menjadi bentuk yang diterima `datetime-local`.
+ *
+ * Peladen mengirimnya sebagaimana tersimpan — antara lain `2026-10-01 18:03:00` atau
+ * ber-zona waktu. `datetime-local` hanya menerima `YYYY-MM-DDTHH:mm`, dan nilai yang tidak
+ * cocok DIABAIKAN DIAM-DIAM oleh peramban: isiannya tergambar kosong seolah tanggalnya
+ * belum pernah diisi.
+ *
+ * Nilai yang tidak dapat dikenali dikembalikan KOSONG, bukan apa adanya — isian kosong
+ * jujur menyatakan "silakan pilih", sementara nilai yang ditolak peramban berbohong.
+ */
+function untukIsianWaktu(raw: string): string {
+  const bersih = raw.trim()
+  if (bersih === '') return ''
+
+  // `2026-10-01T18:03…` atau `2026-10-01 18:03…` — keduanya dipotong di menit.
+  const cocok = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(bersih)
+  if (cocok) return `${cocok[1]}T${cocok[2]}`
+
+  // `2026-10-01` saja — jam diisi awal hari, sama seperti bawaan peramban.
+  const tanggalSaja = /^(\d{4}-\d{2}-\d{2})$/.exec(bersih)
+  if (tanggalSaja) return `${tanggalSaja[1]}T00:00`
+
+  // `11/09/2024 21:35` — bentuk TAMPILAN yang dikirim peladen untuk grid.
+  //
+  // Ia perlu diterima sejak baris grid dapat diketik: tanpa ini, tanggal yang SUDAH ada
+  // tergambar kosong pada isiannya, dan petugas menyangka datanya hilang.
+  const tampilan = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}:\d{2}))?/.exec(bersih)
+  if (tampilan) {
+    return `${tampilan[3]}-${tampilan[2]}-${tampilan[1]}T${tampilan[4] ?? '00:00'}`
+  }
+
+  return ''
+}
+
+function Panel({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-4 rounded-sm border border-slate-300 bg-white p-5">{children}</div>
+  )
+}
+
 function FieldGroup({ title, fields }: { title?: string; fields: Field[] }) {
   return (
     <div className="mt-6">
@@ -1116,27 +1815,98 @@ function StackedFields({ title, fields }: { title?: string; fields: Field[] }) {
 
 /** Satu baris isian, dipakai kedua susunan supaya keduanya tidak dapat menyimpang. */
 function FieldRow({ field }: { field: Field }) {
-  const [label, value, required] = field
+  const [label, value, required, kind = 'teks'] = field
+
+  const teks =
+    value === DI_CLIPBOARD ? 'di clipboard Pega' : value === '' ? '' : String(value)
+  const kosong = value === DI_CLIPBOARD || value === ''
 
   return (
     <div className="flex flex-col">
-      <dt className="text-xs font-medium text-slate-500">
+      {/*
+        Label di layar lama BERWARNA GELAP dan setebal teks biasa, bukan abu-abu kecil
+        berhuruf besar. Bentuk sebelumnya membuat label terbaca sebagai keterangan tambahan,
+        padahal di Pega ia judul isiannya.
+      */}
+      <dt className="text-[13px] font-semibold text-slate-800">
         {label}
         {required && (
-          <span className="ml-0.5 text-amber-600" title="Wajib diisi di layar lama">
+          <span className="ml-0.5 text-red-500" title="Wajib diisi di layar lama">
             *
           </span>
         )}
       </dt>
-      <dd
-        className={
-          value === DI_CLIPBOARD
-            ? 'text-sm text-slate-400 italic'
-            : 'text-sm text-slate-900'
-        }
-      >
-        {value === DI_CLIPBOARD ? 'di clipboard Pega' : value === '' ? '—' : value}
+
+      <dd className="mt-1">
+        {kind === 'teks' ? (
+          <span
+            className={
+              kosong ? 'text-sm text-slate-400 italic' : 'text-sm text-slate-900'
+            }
+          >
+            {kosong ? teks || '—' : teks}
+          </span>
+        ) : (
+          <FieldBox kind={kind} teks={teks} kosong={kosong} />
+        )}
       </dd>
+    </div>
+  )
+}
+
+/**
+ * Kotak isian HANYA-BACA yang meniru bentuk masukan di layar lama.
+ *
+ * # Kenapa bukan `<input readOnly>`
+ *
+ * Karena ia akan dapat difokus dan disorot papan ketik seolah dapat disunting, dan pembaca
+ * layar akan mengumumkannya sebagai isian. Layar ini tidak menyunting apa pun; yang ditiru
+ * adalah BENTUKNYA, bukan kemampuannya. Nilainya karena itu tetap digambar sebagai teks di
+ * dalam kotak.
+ *
+ * Isian kosong tetap menggambar KOTAKNYA, bukan tanda pisah. Di Pega kotaknya memang ada dan
+ * kosong — menghilangkannya akan membuat susunan dua kolom bergeser dan tidak lagi sejajar
+ * dengan layar lama.
+ */
+function FieldBox({
+  kind,
+  teks,
+  kosong,
+}: {
+  kind: FieldKind
+  teks: string
+  kosong: boolean
+}) {
+  const dasar = [
+    'w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5',
+    'text-sm text-slate-900',
+  ].join(' ')
+
+  if (kind === 'area') {
+    return (
+      <div className={`${dasar} min-h-[72px] whitespace-pre-wrap`}>
+        {kosong ? <span className="text-slate-400 italic">{teks}</span> : teks}
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${dasar} flex items-center justify-between gap-2`}>
+      <span className={kosong ? 'truncate text-slate-400 italic' : 'truncate'}>
+        {teks}
+      </span>
+
+      {/* Tanda daftar pilihan dan tanda kalender — keduanya ada di layar lama. */}
+      {kind === 'pilihan' && (
+        <span aria-hidden className="text-[10px] text-blue-600">
+          ▾
+        </span>
+      )}
+      {kind === 'tanggal' && (
+        <span aria-hidden className="text-xs text-slate-500">
+          🗓
+        </span>
+      )}
     </div>
   )
 }
@@ -1151,4 +1921,47 @@ function FieldRow({ field }: { field: Field }) {
 function messageOf(error: unknown): string {
   if (error instanceof APIError) return error.message
   return 'Sambungan ke peladen gagal. Coba lagi beberapa saat lagi.'
+}
+
+/**
+ * Tombol ORANYE layar lama — "Submit" pada dialog unggah, dan kedua tombol "Kirim".
+ *
+ * # Kenapa ia TIDAK menumpang `Button` dengan className
+ *
+ * Karena bentuk sebelumnya menghasilkan tombol yang TIDAK TERBACA: `Button` bernada `kedua`
+ * memasang `bg-white text-slate-700`, dan className menambahkan `bg-orange-500 text-white`.
+ * Keduanya berkekhususan SAMA, sehingga yang menang ditentukan urutan kelasnya di dalam CSS
+ * — bukan urutan penulisannya di atribut. Hasilnya latar putih dengan tulisan putih, dan
+ * tombolnya tergambar kosong. Work Owner melaporkannya dengan tangkapan layar 2026-10-02.
+ *
+ * Tombol ini karena itu menulis kelasnya sendiri dari nol: tidak ada kelas yang perlu
+ * dikalahkan, sehingga tidak ada yang bergantung pada urutan.
+ */
+function OrangeButton({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: ReactNode
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        'inline-flex items-center justify-center rounded-kontrol px-3.5 py-2',
+        'text-sm font-medium whitespace-nowrap select-none',
+        'bg-orange-500 text-white shadow-aksen',
+        'transition-colors duration-150 hover:bg-orange-600 active:bg-orange-700',
+        'focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/35',
+        'disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none',
+        'disabled:hover:bg-orange-500',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  )
 }

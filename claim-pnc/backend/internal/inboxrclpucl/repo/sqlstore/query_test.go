@@ -683,3 +683,117 @@ func TestDetailStillDerivesTheThreeFieldsTheFlatTableDoesNotHold(t *testing.T) {
 	require.Contains(t, text, "AS FIRST_OBJECT_NAME")
 	require.Contains(t, text, "AS FIRST_PROPOSE_VALUE")
 }
+
+// TestPenandaBindSetiapKueriMenaikDanTidakBerulang menjaga cacat 2026-10-01 tidak terulang.
+//
+// # Apa yang pernah terjadi
+//
+// Kueri `return_to_analyst` ditulis `SET PUCL_APPROVE = :2 … WHERE TRIM(CLAIMID) = TRIM(:1)`,
+// dengan `:2` muncul dua kali. Penggerak Oracle yang dipakai mengikat argumen menurut URUTAN
+// KEMUNCULAN penanda, bukan menurut angkanya — sehingga nomor klaim masuk ke kolom penanda
+// dan pernyataannya mengenai NOL baris.
+//
+// Kegagalannya SENYAP: layar tetap menjawab "Klaim diteruskan ke Analyst". Tidak ada satu pun
+// uji yang menangkapnya, karena seluruh uji tindakan berjalan di atas penyimpanan memori yang
+// tidak punya penanda bind sama sekali.
+//
+// # Kenapa penjaganya pada TEKS kueri, bukan pada perilaku
+//
+// Karena perilakunya hanya muncul di hadapan penggerak Oracle yang sebenarnya, dan uji yang
+// menuntut basis data nyata tidak dijalankan di setiap merge. Teks kuerinya tersedia tanpa
+// basis data, dan aturannya dapat dinilai tanpa menjalankan apa pun.
+func TestPenandaBindSetiapKueriMenaikDanTidakBerulang(t *testing.T) {
+	penanda := regexp.MustCompile(`:(\d+)`)
+
+	for name, text := range queries {
+		urut := []int{}
+		for _, m := range penanda.FindAllStringSubmatch(text, -1) {
+			n := 0
+			for _, c := range m[1] {
+				n = n*10 + int(c-'0')
+			}
+			urut = append(urut, n)
+		}
+		if len(urut) == 0 {
+			continue
+		}
+
+		// Menaik SATU per satu, mulai dari 1. Aturan ini sekaligus melarang pengulangan:
+		// penanda yang muncul dua kali membuat urutannya tidak lagi menaik.
+		for i, n := range urut {
+			require.Equalf(t, i+1, n,
+				"kueri %q: penanda bind ke-%d adalah :%d, seharusnya :%d — "+
+					"penggerak mengikat menurut URUTAN KEMUNCULAN, bukan menurut angkanya. "+
+					"Nilai yang dibutuhkan dua kali DIIKAT dua kali, bukan ditulis ulang "+
+					"penandanya (lihat kueri daily_report).",
+				name, i+1, n, i+1)
+		}
+	}
+}
+
+// TestNoQueryWritesToPegaTables menjaga agar modul ini TIDAK PERNAH menulis tabel engine Pega.
+//
+// # Kenapa penjaga ini ada
+//
+// Pada 2026-10-02 modul ini sempat menyisipkan penugasan ke `DATAPEGA.PC_ASSIGN_WORKLIST` dan
+// membuang baris `DATAPEGA.PC_ASSIGN_WORKBASKET`, meniru alur Pega. Akibatnya satu klaim
+// **tidak dapat dibuka lagi di Pega** — baris yang kami tulis tidak memuat `PZPVSTREAM`, dan
+// dari 105.616 baris penugasan Pega tidak satu pun berbentuk begitu.
+//
+// Kodenya sudah dihapus. Penjaga ini yang mencegahnya kembali — `P-1` menetapkan tabel Pega
+// ditulis Pega, dan pelanggarannya tidak menghasilkan galat apa pun di sisi kami: ia
+// menghasilkan klaim yang macet di sisi sana.
+//
+// # Membaca TETAP boleh
+//
+// Modul ini memang membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` untuk menerjemahkan nomor case
+// menjadi kunci objek kerja, dan `PC_LINK_ATTACHMENT` untuk penyaring daftar dokumen. `P-1`
+// melarang menulis, bukan membaca.
+func TestNoQueryWritesToPegaTables(t *testing.T) {
+	for name, text := range queries {
+		upper := strings.ToUpper(text)
+
+		// Baris komentar dibuang lebih dulu: penjelasan BOLEH menyebut tabel Pega, dan
+		// justru harus — catatan yang tidak boleh menyebut penyebabnya tidak menjelaskan
+		// apa pun.
+		var pernyataan strings.Builder
+		for _, baris := range strings.Split(upper, "\n") {
+			if strings.HasPrefix(strings.TrimSpace(baris), "--") {
+				continue
+			}
+			pernyataan.WriteString(baris)
+			pernyataan.WriteString("\n")
+		}
+		sql := pernyataan.String()
+
+		menulis := strings.Contains(sql, "INSERT INTO") ||
+			strings.Contains(sql, "UPDATE ") ||
+			strings.Contains(sql, "DELETE FROM")
+		if !menulis {
+			continue
+		}
+
+		require.NotContainsf(t, sql, "DATAPEGA.",
+			"kueri %s MENULIS dan menyebut tabel Pega. Modul ini tidak boleh menulis "+
+				"tabel engine Pega (`P-1`); lihat §163 — pelanggarannya membuat klaim "+
+				"tidak dapat dibuka lagi di Pega", name)
+	}
+}
+
+// TestNoPegaAssignmentQueryRemains menjaga agar ketiga kueri pemindah penugasan tidak kembali.
+//
+// Namanya disebut satu per satu, bukan dicari polanya: yang dijaga bukan gaya penamaan
+// melainkan TIGA kueri tertentu yang terbukti merusak. Nama yang sama kembali muncul berarti
+// seseorang menghidupkan ulang §162 tanpa membaca §163.
+func TestNoPegaAssignmentQueryRemains(t *testing.T) {
+	for _, nama := range []string{
+		"worklist_slot",
+		"move_assignment_to_stage",
+		"remove_workbasket_assignment",
+	} {
+		_, ada := queries[nama]
+		require.Falsef(t, ada,
+			"kueri %q sudah dihapus pada 2026-10-02 karena merusak klaim di Pega (§163). "+
+				"Menghidupkannya menuntut cara membentuk PZPVSTREAM yang Pega terima", nama)
+	}
+}
