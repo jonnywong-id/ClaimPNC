@@ -90,7 +90,7 @@ func (l *Service) dlaIssuedOrNew(ctx context.Context, sc dlaScope, by Caller) (D
 	if len(list) > 0 {
 		return DLAList{DLA: list, Warning: dlaWarnings(list)}, nil
 	}
-	policy, err := l.dla.Policy(ctx, sc.claim.Policy.Number)
+	policy, err := l.dla.Policy(ctx, sc.claim.Policy.Number, sc.claim.Policy.ProdKe)
 	if err != nil {
 		return DLAList{}, err
 	}

@@ -51,6 +51,12 @@ type RegisterCommand struct {
 	CustomerPrinciple string
 	SuspiciousComment string
 
+	// Isian InputRegisterDetail2_sect.
+	EmailLOD             string
+	RemarkRecommendation string
+	SubjectEmail         string
+	SalvageStatus        string
+
 	EstimateValue registrasi.Money
 	Currency      string
 	SLIKNumber    string
@@ -351,6 +357,10 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 		k.CustomerPrinciple = registrasi.CustomerPrincipleNormal
 	}
 	k.SuspiciousComment = p.SuspiciousComment
+	k.EmailLOD = p.EmailLOD
+	k.RemarkRecommendation = p.RemarkRecommendation
+	k.SubjectEmail = p.SubjectEmail
+	k.SalvageStatus = p.SalvageStatus
 
 	k.EstimateValue = p.EstimateValue
 	if p.Currency != "" {

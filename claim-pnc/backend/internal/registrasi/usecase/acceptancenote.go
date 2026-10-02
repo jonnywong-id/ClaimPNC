@@ -50,7 +50,7 @@ func (l *Service) PrintAcceptanceNote(ctx context.Context, p AcceptanceNoteComma
 	if err != nil {
 		return AcceptanceNoteResult{}, err
 	}
-	policyDoc, err := l.dla.Policy(ctx, claim.Policy.Number)
+	policyDoc, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return AcceptanceNoteResult{}, err
 	}
@@ -188,7 +188,7 @@ func (l *Service) acceptanceNoteReceiver(ctx context.Context, claim registrasi.C
 // PaymentAmount-nya > 0. Layanan yang tidak dapat dihubungi TIDAK menggagalkan cetak — Pega
 // mencetak dari clipboard, dan cicilan kosong berarti bagian itu kosong.
 func (l *Service) acceptanceNoteInstallments(ctx context.Context, claim registrasi.Claim) []registrasi.AcceptanceNoteInstallment {
-	caseID, err := l.acceptance.PolicyCaseID(ctx, claim.Policy.Number)
+	caseID, err := l.acceptance.PolicyCaseID(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return nil
 	}

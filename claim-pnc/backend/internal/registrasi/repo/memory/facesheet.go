@@ -41,13 +41,13 @@ func (f *FaceSheet) OperatorName(_ context.Context, id string) (string, error) {
 	return f.Operator[id], nil
 }
 
-func (f *FaceSheet) Coinsurance(_ context.Context, policy string) ([]registrasi.CoinsuranceRow, error) {
+func (f *FaceSheet) Coinsurance(_ context.Context, policy, _ string) ([]registrasi.CoinsuranceRow, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.CoMember[policy], nil
 }
 
-func (f *FaceSheet) FacReinsurers(_ context.Context, policy string) ([]registrasi.FacReinsurer, error) {
+func (f *FaceSheet) FacReinsurers(_ context.Context, policy, _ string) ([]registrasi.FacReinsurer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.Reinsurer[policy], nil

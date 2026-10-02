@@ -1523,3 +1523,220 @@ Fac-out yang dicentang menjadi baris TAllPaymentData tambahan: NoTrans = No DLA,
 × -1 (`TransferCashierDataASM_act` cabang ListOfPlacement).
 
 **Masih HILANG:** `PKG_KONVERSI_JSONKLAIM` (Package DB, ke DBA) — dua pemeriksaan sebelum Transfer Kasir.
+
+---
+
+## 10. Isi kolom `POOLDATA.T_GENERAL.CURRENCY` (2026-10-01) — ke **DBA**
+
+| | |
+|---|---|
+| **Status** | **Diminta** |
+| **Ditujukan ke** | DBA — pelaksana. Persetujuan: Work Owner (`D-63`). Tabel ini ditulis sistem polis, sehingga pemilik datanya perlu ikut diberi tahu |
+| **Menghalangi** | registrasi klaim atas polis yang kolom mata uangnya kosong — klaim ditolak karena kurs tidak ditemukan |
+| **Jenis perubahan** | **hanya mengisi kolom yang KOSONG** (UPDATE) — lihat §10.0 |
+
+### 10.0 Dua batas yang mengikat (Work Owner, 2026-10-01)
+
+1. **Tidak ada perubahan struktur tabel.** Tidak ada `CREATE`, `ALTER`, `DROP`, `TRUNCATE`,
+   index, trigger, maupun tabel cadangan di basis data. Cadangan untuk rollback disimpan sebagai
+   **berkas di luar basis data** (§10.4 langkah 2).
+2. **Tidak menimpa data yang sudah ada.** Yang diubah hanya sel `CURRENCY` yang **kosong (NULL)**
+   pada saat UPDATE dijalankan. Kolom lain dan baris yang `CURRENCY`-nya sudah terisi tidak disentuh.
+   Rollback pun hanya mengosongkan sel yang **masih berisi nilai yang kita isi** — bila sejak itu
+   sudah diubah pihak lain, sel itu dibiarkan.
+
+### 10.1 Kenapa diminta
+
+Aplikasi Claim PNC yang baru tidak lagi membaca data polis dari kolom
+`POOLDATA.JSON_POLIS.DATA_JSONBLOB`. Mata uang polis kini dibaca dari `T_GENERAL.CURRENCY` menurut
+`NOPOLIS` + `PRODKE`, dengan `JSON_POLIS.POLICYDATA` sebagai cadangan.
+
+Kolom `CURRENCY` ternyata **kosong pada hampir seluruh baris yang dibuat sebelum 2025**. Bila
+polisnya juga tidak punya `POLICYDATA` (dokumennya hanya ada di `DATA_JSONBLOB`), mata uang polis
+menjadi kosong, kurs tidak dapat dicari, dan registrasi klaim **ditolak**.
+
+### 10.2 Ukuran — dihitung 2026-10-01
+
+| Lingkup | Baris T_GENERAL | `CURRENCY` kosong | Dapat diisi dari dokumen polis |
+|---|---:|---:|---:|
+| seluruh tabel | 201.582 | **167.528** | — (dihitung DBA, §10.4 langkah 1) |
+| polis yang punya klaim di `T_CLAIM_PNC` | 233 | **214** | **210** |
+
+Sebaran per tahun `TGL_INPUT` — kolom ini baru terisi teratur sejak 2025:
+
+| Tahun | Baris | Kosong |
+|---|---:|---:|
+| 2018–2019 | 132 | 110 |
+| 2020 | 8.636 | 8.435 |
+| 2021 | 33.776 | 33.327 |
+| 2022 | 23.302 | 22.132 |
+| 2023 | 72.587 | 72.190 |
+| 2024 | 4.795 | 4.112 |
+| 2025 | 7.379 | 3 |
+| 2026 | 23.620 | 12 |
+| `TGL_INPUT` kosong | 27.355 | 27.207 |
+
+### 10.3 Isi yang diminta
+
+`CURRENCY` diisi dengan **kode mata uang polis dari dokumen polis pada PRODKE yang sama** — nilai
+`$.Currency` dari `JSON_POLIS.POLICYDATA`, atau dari `JSON_POLIS.DATA_JSONBLOB` bila POLICYDATA
+kosong. Bentuknya **kode angka** (`10026` = IDR, `10001` = USD), sama dengan baris 2025 ke atas
+yang sudah terisi dan sama dengan `POOLDATA.M_CURRENCYSTANDARD.ID`. **Bukan** simbol `IDR`/`USD`.
+
+Aturannya:
+
+1. Hanya baris yang `CURRENCY`-nya **kosong (NULL)**. Baris yang sudah terisi tidak disentuh,
+   dan hanya kolom `CURRENCY` yang diubah.
+2. Pasangan kunci: `T_GENERAL.NOPOLIS = JSON_POLIS.NOPOLIS` **dan**
+   `T_GENERAL.PRODKE = JSON_POLIS.PRODKE`.
+3. Bila satu PRODKE punya lebih dari satu baris `JSON_POLIS`, yang dipakai **baris terbaru menurut
+   `TGL_INPUT`**.
+4. Baris yang dokumennya tidak memuat `$.Currency` **dibiarkan kosong** — jangan diisi nilai bawaan
+   seperti IDR. Mengisi bawaan akan mengonversi klaim valuta asing dengan kurs yang salah.
+
+### 10.4 Langkah yang diusulkan
+
+Kueri di bawah adalah **usulan**. DBA bebas menyesuaikan cara pelaksanaannya selama hasilnya sama.
+
+**Langkah 1 — hitung baris yang akan berubah:**
+
+```sql
+SELECT COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+**Langkah 2 — cadangan untuk rollback, sebagai BERKAS (bukan tabel):**
+
+Hasil kueri ini diekspor ke berkas CSV di luar basis data (spool SQL*Plus, SQL Developer, atau alat
+lain yang biasa dipakai DBA). Isinya daftar sel yang **akan** diisi beserta nilai yang akan diisikan
+— itulah satu-satunya bahan rollback. **Tidak ada tabel cadangan yang dibuat.**
+
+```sql
+SELECT ROWIDTOCHAR(g.ROWID) AS RID, g.NOPOLIS, g.PRODKE,
+       (SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+          FROM POOLDATA.JSON_POLIS p
+         WHERE p.NOPOLIS = g.NOPOLIS
+           AND TO_CHAR(p.PRODKE) = g.PRODKE
+           AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+         ORDER BY p.TGL_INPUT DESC
+         FETCH FIRST 1 ROWS ONLY) AS CURRENCY_BARU
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Jumlah barisnya wajib sama dengan hasil langkah 1.
+
+**Langkah 3 — isi kolomnya:**
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = (
+         SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+           FROM POOLDATA.JSON_POLIS p
+          WHERE p.NOPOLIS = g.NOPOLIS
+            AND TO_CHAR(p.PRODKE) = g.PRODKE
+            AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+          ORDER BY p.TGL_INPUT DESC
+          FETCH FIRST 1 ROWS ONLY)
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Penyaring `g.CURRENCY IS NULL` di UPDATE itulah yang menjamin data yang sudah ada tidak tertimpa:
+bila sebuah sel terisi oleh proses lain di antara langkah 2 dan 3, UPDATE melewatinya. Akibatnya
+jumlah baris yang diperbarui boleh **lebih kecil** dari langkah 1, tetapi **tidak boleh lebih besar**
+— bila lebih besar, batalkan (`ROLLBACK`) sebelum `COMMIT`.
+
+Dengan 167.528 baris kandidat, DBA dapat memecahnya per tahun `TGL_INPUT` (§10.2) bila perlu;
+setiap potongan tetap memakai penyaring `g.CURRENCY IS NULL`.
+
+**Langkah 4 — periksa hasil:**
+
+```sql
+SELECT g.CURRENCY, COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ GROUP BY g.CURRENCY
+ ORDER BY 2 DESC;
+```
+
+Semua nilai baru harus berupa kode yang ada di `POOLDATA.M_CURRENCYSTANDARD.ID`.
+
+### 10.5 Rollback
+
+Dijalankan per baris berkas CSV langkah 2 (`:rid` dan `:nilai` dari kolom `RID` dan
+`CURRENCY_BARU`):
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = NULL
+ WHERE g.ROWID = CHARTOROWID(:rid)
+   AND g.CURRENCY = :nilai;
+```
+
+Syarat `g.CURRENCY = :nilai` membuat rollback **tidak menimpa** perubahan pihak lain: sel yang sejak
+pengisian sudah diubah nilainya dibiarkan apa adanya. Berkas CSV disimpan sampai Work Owner
+menyatakan hasilnya diterima. Berkas itu memuat nomor polis, sehingga disimpan sesuai aturan data
+nasabah (`D-69`) dan **tidak** dimasukkan ke repository.
+
+### 10.6 Yang perlu dikonfirmasi sebelum dijalankan
+
+| # | Pertanyaan | Kepada |
+|---|---|---|
+| 1 | Apakah ada proses sistem polis yang **membaca** `T_GENERAL.CURRENCY` dan perilakunya berubah bila kolom yang kosong menjadi terisi? | pemilik sistem polis (GISFW) |
+| 2 | Apakah ada proses yang **menimpa** `T_GENERAL` dari dokumen polis (konversi ulang) sehingga isian ini kembali kosong? | DBA / pemilik sistem polis |
+| 3 | Mengikuti `D-63`, perubahan diuji dengan menjalankan Pega dan aplikasi baru bersamaan setelah pengisian | tim pengembang + DBA |
+
+> **Bukan bagian permintaan ini:** periode polis (`STARTDATE`/`ENDDATE`). Kolom itu terisi, tetapi
+> **tidak mengikuti endorsemen** — perbaikannya butuh keputusan tersendiri, bukan pengisian kolom kosong.
+
+---
+
+## 11. Rule yang tidak ditemukan di Pega (2026-10-02) — **ditutup**
+
+| | |
+|---|---|
+| **Status** | **Ditutup** — Tim Pega menambahkan 51 rule ke export (2026-10-01 dan 2026-10-02); rule di bawah **dicari di Pega dan tidak ditemukan** |
+| **Akibat** | jangan diminta ulang; perilaku yang bergantung padanya **direkonstruksi atau tidak dibawa**, dan dicatat di catatan pengembangan |
+
+### 11.1 Rule Pega
+
+| Rule | Jenis | Dipakai untuk | Perlakuan di aplikasi baru |
+|---|---|---|---|
+| `InputInvestigator` | Section | layar flow action tahap Investigator (PA) | bingkai `ClaimSurvey_sect`, tab Investigasi lebih dulu (catatan #125) |
+| `ValidasiTransferKasir_dialog` | Section | dialog validasi Transfer Kasir (flow action-nya ada) | isi dialog direkonstruksi dari flow action dan activity-nya |
+| `SendToPIC` | Ticket | lompatan ke Send To PIC dari Input Estimasi | `SendToPICTravel` ada; `SendToPIC` tidak dibawa sampai ada pemakainya |
+| `setToRegister_ticket` | Ticket | lompatan kembali ke Input Register | ditangani tombol Back alur Register |
+| `UploadDataSlinkOJK` | Activity | unggah data SLIK OJK | belum dibangun; butuh keputusan bentuk berkas |
+| `InboxKlaimNonPropAdmin` | RDB | daftar Inbox Klaim Non-Prop admin | kueri tab yang ada dipakai |
+
+### 11.2 Objek basis data — **tetap ke DBA**
+
+Objek berikut bukan rule Pega, sehingga wajar tidak ditemukan di Pega. Source-nya ada di basis data:
+
+`PKG_KONVERSI_JSONKLAIM` (termasuk `Proteksi_PNC_TBI_Kasir` dan `Cek_Nilai_Akseptasi_PNC` untuk pemeriksaan
+Transfer Kasir) · `MODULKLAIMMASKING` · `SET_ATTACHFILETEMPSALVAGE` · `UPDATEPREMIUMTEMPLATE` ·
+`UPDATE_LOG_KONVERSI` · `GETNEWID` · `PKG_COUNTER_PRODUCTION` · `PROCESSQUEUEDIRECT`.
+
+Penarikannya cukup dengan `ALL_SOURCE` seperti `19-GAP-EXPORT-DETAIL.md` bagian *Cara Meminta ke DBA*.

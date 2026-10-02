@@ -151,7 +151,7 @@ func (s *Acceptance) AddProgress(_ context.Context, p registrasi.ProgressUpdate)
 	return nil
 }
 
-func (s *Acceptance) PolicyCaseID(_ context.Context, policy string) (string, error) {
+func (s *Acceptance) PolicyCaseID(_ context.Context, policy, _ string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.CaseIDs[policy], nil

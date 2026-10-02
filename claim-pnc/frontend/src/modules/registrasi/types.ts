@@ -391,6 +391,11 @@ export type Claim = {
   wilayah: Area
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
+  /** Isian InputRegisterDetail2_sect: EMAIL_LOD, REMARKRECOMENDATION, SUBJECTEMAIL, STSSALVAGE. */
+  email_lod?: string
+  rekomendasi?: string
+  subjek_email?: string
+  status_salvage?: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string
@@ -486,6 +491,10 @@ export type RegisterRequest = {
   wilayah: Area
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
+  email_lod: string
+  rekomendasi: string
+  subjek_email: string
+  status_salvage: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string

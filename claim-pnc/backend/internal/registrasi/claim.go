@@ -406,6 +406,17 @@ type Claim struct {
 	// SuspiciousComment hanya tampil — dan hanya bermakna — bila CustomerPrinciple "2".
 	SuspiciousComment string
 
+	// Isian tab Input Register (`Section/InputRegisterDetail2_sect.xml`).
+	//
+	// EmailLOD — `ClaimData.EmailLOD` (EMAIL_LOD), hanya tampil untuk PA (Group Panel 002).
+	// RemarkRecommendation — `ClaimData.RemarkRecommendation` (REMARKRECOMENDATION) dan
+	// SubjectEmail — `ClaimData.SubjectEmail` (SUBJECTEMAIL), keduanya hanya selain PA.
+	// SalvageStatus — `ClaimData.StatusSalvage` (STSSALVAGE), kode 1–5.
+	EmailLOD             string
+	RemarkRecommendation string
+	SubjectEmail         string
+	SalvageStatus        string
+
 	EstimateValue Money
 	Currency      string
 

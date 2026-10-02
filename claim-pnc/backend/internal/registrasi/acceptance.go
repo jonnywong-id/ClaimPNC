@@ -287,7 +287,7 @@ type AcceptanceSource interface {
 	AddProgress(ctx context.Context, p ProgressUpdate) error
 
 	// PolicyCaseID membaca Policy.CaseID dokumen polis (parameter caseId layanan premi).
-	PolicyCaseID(ctx context.Context, policyNumber string) (string, error)
+	PolicyCaseID(ctx context.Context, policyNumber, prodKe string) (string, error)
 	// OpenProtectionApproved: ada Open Protection premi (TypePro 2) yang disetujui.
 	OpenProtectionApproved(ctx context.Context, policyNumber, claimID, claimNumber string) (bool, error)
 	// TravelClientName membaca CLIENTNAME agen leader polis (`BrowseClientNameTravel_SQL`).

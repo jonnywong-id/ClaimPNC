@@ -28,9 +28,14 @@ func NewPLAStore(db *sql.DB) *PLAStore { return &PLAStore{db: db} }
 
 var _ registrasi.PLASource = (*PLAStore)(nil)
 
-// CoinsMembers membaca CoinsList dokumen polis.
-func (s *PLAStore) CoinsMembers(ctx context.Context, policyNumber string) ([]registrasi.PLACoinsMember, error) {
-	rows, err := s.db.QueryContext(ctx, loadQuery("pla_koasuransi"), strings.TrimSpace(policyNumber))
+// CoinsMembers membaca T_COINSLIST polis pada PRODKE-nya.
+func (s *PLAStore) CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]registrasi.PLACoinsMember, error) {
+	return coinsMembers(ctx, s.db, policyNumber, prodKe)
+}
+
+// coinsMembers dipakai bersama PLA dan DLA: keduanya membaca CoinsList yang sama.
+func coinsMembers(ctx context.Context, db *sql.DB, policyNumber, prodKe string) ([]registrasi.PLACoinsMember, error) {
+	rows, err := db.QueryContext(ctx, loadQuery("pla_koasuransi"), strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe))
 	if err != nil {
 		return nil, fmt.Errorf("registrasi/sqlstore: membaca CoinsList polis %q: %w", policyNumber, err)
 	}

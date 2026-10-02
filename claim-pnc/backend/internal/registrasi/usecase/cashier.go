@@ -91,7 +91,7 @@ func (l *Service) cashierScopeOf(ctx context.Context, p CashierCommand, by Calle
 		}
 	}
 
-	policy, err := l.dla.Policy(ctx, claim.Policy.Number)
+	policy, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return cashierScope{}, err
 	}

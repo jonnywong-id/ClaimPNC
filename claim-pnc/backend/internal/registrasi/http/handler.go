@@ -460,6 +460,11 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		},
 		CustomerPrinciple: b.CustomerPrinciple,
 		SuspiciousComment: b.SuspiciousComment,
+
+		EmailLOD:             b.EmailLOD,
+		RemarkRecommendation: b.RemarkRecommendation,
+		SubjectEmail:         b.SubjectEmail,
+		SalvageStatus:        b.SalvageStatus,
 		Reporter: registrasi.Reporter{
 			Name:          b.Reporter.Name,
 			Phone:         b.Reporter.Phone,
@@ -568,6 +573,11 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		},
 		CustomerPrinciple: k.CustomerPrinciple,
 		SuspiciousComment: k.SuspiciousComment,
+
+		EmailLOD:             k.EmailLOD,
+		RemarkRecommendation: k.RemarkRecommendation,
+		SubjectEmail:         k.SubjectEmail,
+		SalvageStatus:        k.SalvageStatus,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,

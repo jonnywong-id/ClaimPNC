@@ -80,7 +80,7 @@ func (l *Service) PrintLOD(ctx context.Context, p LODCommand, by Caller) (LODRes
 		return LODResult{}, registrasi.ErrLODTemplateMissing()
 	}
 
-	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number)
+	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return LODResult{}, err
 	}
@@ -147,7 +147,7 @@ func (l *Service) SetLODType(ctx context.Context, p LODCommand, by Caller) (regi
 	object := claim.InsuredItem[p.Object-1]
 
 	// SetShareAsmWhenPilihAdjustment: jenis Ex Gratia mengubah ExGratia dan Share ASM baris.
-	policy, err := l.dla.Policy(ctx, claim.Policy.Number)
+	policy, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return registrasi.Claim{}, err
 	}

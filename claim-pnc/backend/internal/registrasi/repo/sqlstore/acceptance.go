@@ -238,17 +238,24 @@ func (s *AcceptanceStore) AddProgress(ctx context.Context, p registrasi.Progress
 	return nil
 }
 
-// PolicyCaseID membaca Policy.CaseID polis.
-func (s *AcceptanceStore) PolicyCaseID(ctx context.Context, policyNumber string) (string, error) {
-	var v sql.NullString
-	err := s.db.QueryRowContext(ctx, loadQuery("premi_polis_caseid"), policyNumber).Scan(&v)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
+// PolicyCaseID membaca Policy.CaseID polis pada PRODKE klaim: T_GENERAL lebih dulu, dokumen
+// POLICYDATA sebagai cadangan.
+func (s *AcceptanceStore) PolicyCaseID(ctx context.Context, policyNumber, prodKe string) (string, error) {
+	number, prodKe := strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe)
+	for _, name := range []string{"premi_polis_caseid", "premi_polis_caseid_dokumen"} {
+		var v sql.NullString
+		err := s.db.QueryRowContext(ctx, loadQuery(name), number, prodKe).Scan(&v)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return "", fmt.Errorf("registrasi/sqlstore: membaca CaseID polis: %w", err)
+		}
+		if id := trimmed(v); id != "" {
+			return id, nil
+		}
 	}
-	if err != nil {
-		return "", fmt.Errorf("registrasi/sqlstore: membaca CaseID polis: %w", err)
-	}
-	return trimmed(v), nil
+	return "", nil
 }
 
 // OpenProtectionApproved memeriksa Open Protection premi yang disetujui.

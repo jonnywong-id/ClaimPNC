@@ -158,7 +158,7 @@ func (l *Service) AcceptSettlement(ctx context.Context, p AcceptanceCommand, by 
 
 // checkPremium adalah `SetAdjustmentAcceptation` langkah 36–49.
 func (l *Service) checkPremium(ctx context.Context, app string, claim registrasi.Claim, line registrasi.SettlementLine, now time.Time) error {
-	caseID, err := l.acceptance.PolicyCaseID(ctx, claim.Policy.Number)
+	caseID, err := l.acceptance.PolicyCaseID(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return err
 	}

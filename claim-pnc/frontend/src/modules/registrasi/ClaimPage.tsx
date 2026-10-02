@@ -50,14 +50,27 @@ import {
 /** Pengenal tahap Input Register, satu-satunya tahap yang isiannya dimiliki modul ini. */
 const TAHAP_INPUT_REGISTER = 'input-register'
 
+/** Group Panel (`.Policy.Quotation.GroupPanel`) — penentu kondisi tampil InputRegisterDetail2_sect. */
+const PANEL_PA = '002'
+const PANEL_TRAVEL = '005'
+
 /** Tahap Input Estimasi (Non-MBU dan Travel), yang isiannya dimiliki EstimateForm. */
 const TAHAP_INPUT_ESTIMASI = ['estimasi-admin', 'estimasi-travel']
 
 /**
- * Tahap yang menerima klaim dari Kirim PIC Teknik — Choose Surveyor (Non-MBU) dan Send To
- * PIC Teknik (Travel). Keduanya layar InputSurveyor, yang dimiliki SurveyorForm.
+ * Tahap yang ditutup flow action InputSurveyor — layar SurveyorForm:
+ *
+ *   pilih-surveyor    Choose Surveyor (Non-MBU, Assignment3)
+ *   kirim-pic-teknik  Send To PIC Teknik (Travel, Assignment8)
+ *   estimasi-pa       Estimation (PA, Assignment4)
+ *   kirim-analis      Send To Analis (PA, Assignment5)
+ *
+ * Ditambah tahap Investigator (PA, Assignment11, workbasket InvestigatorPNC) yang ditutup flow
+ * action InputInvestigator. Section flow action itu (`InputInvestigator`) tidak ada di export,
+ * sehingga ia memakai bingkai ClaimSurvey_sect yang sama dan keluar lewat Submit/Back:
+ * Register_Flow Estimation → Investigator → Send To Analis.
  */
-const TAHAP_INPUT_SURVEYOR = ['pilih-surveyor', 'kirim-pic-teknik']
+const TAHAP_INPUT_SURVEYOR = ['pilih-surveyor', 'kirim-pic-teknik', 'estimasi-pa', 'investigator', 'kirim-analis']
 
 /**
  * Layar kerja satu klaim.
@@ -114,7 +127,14 @@ export function ClaimPage() {
       {content.tugas && atInputEstimate && (
         <EstimateForm key={content.tugas.id} klaim={content.klaim} tugas={content.tugas} />
       )}
-      {content.tugas && atInputRegister && <FormRegister klaim={content.klaim} tugas={content.tugas} />}
+      {content.tugas && atInputRegister && (
+        <SurveyorForm
+          key={content.tugas.id}
+          klaim={content.klaim}
+          tugas={content.tugas}
+          registerTab={<FormRegister klaim={content.klaim} tugas={content.tugas} />}
+        />
+      )}
 
       {!content.tugas && content.klaim.tahap_kini !== '' && (
         <p className="mt-6 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -295,14 +315,12 @@ type RegisterFormValues = {
   status_pucl: string
   transfer_compliance: boolean
   objek: InsuredItemInput[]
+  // Isian InputRegisterDetail2_sect yang tersimpan (T_CLAIM_PNC).
+  email_lod: string
+  rekomendasi: string
+  subjek_email: string
+  status_salvage: string
 }
-
-/** Ketiga isian tanggal Data kejadian, berformat DD/MM/YYYY; nilainya tetap ISO. */
-const DATE_FIELDS = [
-  ['tanggal_kejadian', 'Tanggal kejadian'],
-  ['tanggal_lapor', 'Tanggal lapor'],
-  ['tanggal_terima_dokumen', 'Tanggal terima dokumen'],
-] as const
 
 /** Kode hubungan pelapor yang menuntut keterangan tambahan (langkah 28 sistem lama). */
 const HUBUNGAN_LAIN_LAIN = '7'
@@ -340,10 +358,32 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const fieldErrors = messagesByField(violations)
   const hubungan = watch('pelapor_hubungan')
 
+  // Kondisi tampil InputRegisterDetail2_sect.
+  const panel = klaim.polis.lini
+  const pa = panel === PANEL_PA
+  const travel = panel === PANEL_TRAVEL
+  // Tanggal Terima Dokumen: IsTravelPA. Tetap ditampilkan bila server menolaknya, supaya
+  // petugas dapat memperbaikinya.
+  const showDateReceived = pa || travel || Boolean(fieldErrors['tanggal_terima_dokumen'])
+
+  // Isian tanpa kolom di T_CLAIM_PNC — tampil sesuai section, belum tersimpan.
+  const [unsaved, setUnsaved] = useState({
+    sim: '', rawat_inap: false, tanggal_keluar_rawat_inap: '', no_ktp: '', dominan: '', catatan_analis: '',
+  })
+  const setUnsavedField = (name: keyof typeof unsaved, value: string | boolean) =>
+    setUnsaved((current) => ({ ...current, [name]: value }))
+
+  const visible = (content: RegisterFormValues): RegisterFormValues => ({
+    ...content,
+    email_lod: pa ? content.email_lod : '',
+    rekomendasi: pa ? '' : content.rekomendasi,
+    subjek_email: pa ? '' : content.subjek_email,
+  })
+
   const submit = (content: RegisterFormValues, kembali: boolean) => {
     setViolations([])
     draft.reset()
-    save.mutate(toRequest(content, tugas.id, kembali), {
+    save.mutate(toRequest(visible(content), tugas.id, kembali), {
       onError: (failure) => setViolations(violationsFrom(failure)),
     })
   }
@@ -352,7 +392,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const saveOnly = (content: RegisterFormValues) => {
     setViolations([])
     save.reset()
-    draft.mutate(toRequest(content, tugas.id, false))
+    draft.mutate(toRequest(visible(content), tugas.id, false))
   }
 
   const busy = save.isPending || draft.isPending
@@ -397,23 +437,123 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         <ErrorMessage title="Isian belum tersimpan" description={errorMessage(draft.error)} tone="gangguan" />
       )}
 
-      <Section title="Data kejadian">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {DATE_FIELDS.map(([name, label]) => (
-            <Controller
-              key={name}
-              control={control}
-              name={name}
-              render={({ field }) => (
-                <DateField id={name} label={label} value={field.value} onChange={field.onChange}
-                  error={fieldErrors[name]} />
-              )}
-            />
-          ))}
+      {/*
+        Isian tab Input Register ClaimSurvey_sect = Section/InputRegisterDetail2_sect.xml,
+        dengan kondisi tampilnya: PA (Group Panel 002) dan Travel (005) berbeda dari lini
+        lain. Isian yang section-nya (InputRegister) tidak ada di export — objek, nilai
+        estimasi, SLIK, kronologi — berada di bagian terpisah di bawahnya.
+      */}
+      <Section title="Input Register">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Controller control={control} name="tanggal_lapor" render={({ field }) => (
+            <DateField id="tanggal_lapor" label="Tanggal Lapor" value={field.value} onChange={field.onChange}
+              error={fieldErrors['tanggal_lapor']} />
+          )} />
+          <FormField id="pelapor_nama" label="Nama Pelapor" {...register('pelapor_nama')} />
+          {pa && (
+            <TextAreaField id="email_lod" label="EmailLOD" rows={2} {...register('email_lod')} />
+          )}
+          {pa && (
+            <UnsavedField id="sim" label="SIM Pengendara" value={unsaved.sim}
+              onChange={(v) => setUnsavedField('sim', v)} />
+          )}
+          <FormField id="pelapor_telepon" label="No. Telepon Pelapor" {...register('pelapor_telepon')} />
+          {!travel && (
+            <FormField id="rcv_id" label="RCV_ID" readOnly {...register('rcv_id')} />
+          )}
+          {showDateReceived && (
+            <Controller control={control} name="tanggal_terima_dokumen" render={({ field }) => (
+              <DateField id="tanggal_terima_dokumen" label="Tanggal Terima Dokumen" value={field.value}
+                onChange={field.onChange} error={fieldErrors['tanggal_terima_dokumen']} />
+            )} />
+          )}
+          <Controller control={control} name="tanggal_kejadian" render={({ field }) => (
+            <DateField id="tanggal_kejadian" label="Tanggal Kejadian / Tanggal Masuk Rawat Inap" value={field.value}
+              onChange={field.onChange} error={fieldErrors['tanggal_kejadian']} />
+          )} />
         </div>
 
+        {pa && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={unsaved.rawat_inap}
+                  onChange={(e) => setUnsavedField('rawat_inap', e.target.checked)} />
+                Rawat Inap
+              </label>
+            </div>
+            {unsaved.rawat_inap && (
+              <UnsavedField id="tanggal_keluar_rawat_inap" label="Tanggal Keluar Rawat Inap" type="date"
+                value={unsaved.tanggal_keluar_rawat_inap}
+                onChange={(v) => setUnsavedField('tanggal_keluar_rawat_inap', v)} />
+            )}
+          </div>
+        )}
+
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <UnsavedField id="no_ktp" label="No KTP" value={unsaved.no_ktp}
+            onChange={(v) => setUnsavedField('no_ktp', v)} />
+          <FormField id="pelapor_alamat" label="Alamat" {...register('pelapor_alamat')} />
+        </div>
+      </Section>
+
+      <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors}
+        showExGratia={pa} />
+
+      <Section title="Status dan catatan">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField id="status_salvage" label="Status Salvage" options={SALVAGE_STATUS_OPTIONS}
+            emptyText="— pilih —" {...register('status_salvage')} />
+          <UnsavedField id="dominan" label="Dominan Factor" value={unsaved.dominan}
+            onChange={(v) => setUnsavedField('dominan', v)} />
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {!pa && (
+            <TextAreaField id="rekomendasi" label="Remarks Recommendation" rows={3} {...register('rekomendasi')} />
+          )}
+          {pa && (
+            <UnsavedField id="catatan_analis" label="Catatan Ke Analyst" multiline value={unsaved.catatan_analis}
+              onChange={(v) => setUnsavedField('catatan_analis', v)} />
+          )}
+          {!pa && (
+            <TextAreaField id="subjek_email" label="Subject Email" rows={3} {...register('subjek_email')} />
+          )}
+        </div>
+      </Section>
+
+      <Section title="Log Transfer Klaim">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-100 text-left text-xs text-slate-700">
+              <th className="p-2">Tanggal</th>
+              <th className="p-2">User</th>
+              <th className="p-2">Catatan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={3} className="p-2 text-xs text-slate-500">
+                No transfer log yet: its data source is not built.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </Section>
+
+      {/* ── Isian dari section InputRegister — tidak ada di export ───────────────── */}
+      <Section title="Data registrasi lainnya">
+        <p className="mb-3 text-xs text-slate-500">
+          These fields come from the Pega InputRegister section, which is not in the export. They are needed to register the claim.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
           <FormField id="user_teknis" label="PIC Teknik" {...register('user_teknis')} />
+          <FormField id="pelapor_email" label="Email" type="email" {...register('pelapor_email')} />
+          <FormField id="pelapor_hubungan" label="Kode hubungan dengan tertanggung"
+            inputMode="numeric" {...register('pelapor_hubungan')} />
+          {hubungan === HUBUNGAN_LAIN_LAIN && (
+            <FormField id="hubungan_lainnya" label="Sebutkan hubungannya"
+              failure={fieldErrors['hubungan_lainnya']} {...register('pelapor_hubungan_lainnya')} />
+          )}
         </div>
 
         <div className="mt-4">
@@ -427,25 +567,8 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             {...register('kronologi')}
           />
         </div>
-      </Section>
 
-      <Section title="Pelapor">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField id="pelapor_nama" label="Nama pelapor" {...register('pelapor_nama')} />
-          <FormField id="pelapor_telepon" label="Telepon" {...register('pelapor_telepon')} />
-          <FormField id="pelapor_email" label="Email" type="email" {...register('pelapor_email')} />
-          <FormField id="pelapor_alamat" label="Alamat" {...register('pelapor_alamat')} />
-          <FormField id="pelapor_hubungan" label="Kode hubungan dengan tertanggung"
-            inputMode="numeric" {...register('pelapor_hubungan')} />
-          {hubungan === HUBUNGAN_LAIN_LAIN && (
-            <FormField id="hubungan_lainnya" label="Sebutkan hubungannya"
-              failure={fieldErrors['hubungan_lainnya']} {...register('pelapor_hubungan_lainnya')} />
-          )}
-        </div>
-      </Section>
-
-      <Section title="Nilai dan kelengkapan">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <FormField id="nilai_estimasi" label="Nilai estimasi klaim" inputMode="decimal"
             failure={fieldErrors['nilai_estimasi']} {...register('nilai_estimasi')} />
           <FormField id="mata_uang" label="Mata uang" {...register('mata_uang')} />
@@ -454,7 +577,6 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <FormField id="rcv_id" label="ID Receive Document" {...register('rcv_id')} />
           <FormField id="status_pucl" label="Status RCL/PUCL" inputMode="numeric" {...register('status_pucl')} />
           <div className="flex items-end gap-6 pb-2">
             <Toggle label="Transfer Compliance" {...register('transfer_compliance')} />
@@ -497,8 +619,6 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       </Section>
 
       <SpreadingSummary values={watch('objek')} />
-
-      <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors} />
 
       {/*
         Susunan tombol mengikuti layar tahap Pega: Cancel dan Back di kiri, Save dan Next
@@ -561,11 +681,14 @@ function LossLocationSection({
   watch,
   setValue,
   fieldErrors,
+  showExGratia,
 }: {
   register: UseFormRegister<RegisterFormValues>
   watch: UseFormWatch<RegisterFormValues>
   setValue: UseFormSetValue<RegisterFormValues>
   fieldErrors: Record<string, string>
+  /** Ex Gratia — sel `isPA_PNC` pada InputRegisterDetail2_sect. */
+  showExGratia: boolean
 }) {
   const w = watch('wilayah')
   const indonesia = (w.negara ?? '').toUpperCase() === COUNTRY_INDONESIA
@@ -643,15 +766,17 @@ function LossLocationSection({
             { value: CustomerPrinciple.Suspicious, label: 'SUSPICIOUS' },
           ]}
         />
-        <RadioGroup
-          label="Ex Gratia"
-          name="ex_gratia"
-          register={register}
-          options={[
-            { value: 'YES', label: 'YES' },
-            { value: 'NO', label: 'NO' },
-          ]}
-        />
+        {showExGratia && (
+          <RadioGroup
+            label="Ex Gratia"
+            name="ex_gratia"
+            register={register}
+            options={[
+              { value: 'YES', label: 'YES' },
+              { value: 'NO', label: 'NO' },
+            ]}
+          />
+        )}
       </div>
 
       {suspicious && (
@@ -728,6 +853,44 @@ function RadioGroup({
         ))}
       </div>
     </fieldset>
+  )
+}
+
+/** Status Salvage — local list Property/StatusSalvage-property.xml (pyPromptTableList). */
+const SALVAGE_STATUS_OPTIONS = [
+  { value: '1', label: 'Tidak ada salvage' },
+  { value: '2', label: 'Salvage sudah diterima' },
+  { value: '3', label: 'Ekonomis' },
+  { value: '4', label: 'Tidak Ekonomis' },
+  { value: '5', label: 'TBA' },
+]
+
+/**
+ * Isian InputRegisterDetail2_sect yang belum punya kolom di T_CLAIM_PNC (SIM Pengendara,
+ * Rawat Inap, No KTP, Dominan Factor, Catatan Ke Analyst). Tampil sesuai section, tetapi
+ * nilainya hanya di layar — tidak dikirim ke server.
+ */
+function UnsavedField({
+  id, label, value, onChange, type = 'text', multiline = false,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  multiline?: boolean
+}) {
+  const className = 'mt-1 w-full rounded border border-dashed border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none'
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>
+      {multiline ? (
+        <textarea id={id} rows={3} className={className} value={value} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <input id={id} type={type} className={className} value={value} onChange={(e) => onChange(e.target.value)} />
+      )}
+      <p className="mt-1 text-xs text-amber-700">Not saved yet: no column for this field in T_CLAIM_PNC.</p>
+    </div>
   )
 }
 
@@ -1038,6 +1201,10 @@ function fromClaim(klaim: Claim): RegisterFormValues {
     // NORMAL adalah bawaan layar Pega (pyDefaultValue 1).
     prinsip_mengenal_nasabah: klaim.prinsip_mengenal_nasabah || CustomerPrinciple.Normal,
     komentar_suspicious: klaim.komentar_suspicious ?? '',
+    email_lod: klaim.email_lod ?? '',
+    rekomendasi: klaim.rekomendasi ?? '',
+    subjek_email: klaim.subjek_email ?? '',
+    status_salvage: klaim.status_salvage ?? '',
     status_pucl: klaim.status_pucl ? String(klaim.status_pucl) : '0',
     transfer_compliance: klaim.transfer_compliance,
     objek: klaim.objek.map((o) => ({
@@ -1086,6 +1253,12 @@ function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean
     // Komentar hanya bermakna bila SUSPICIOUS; isian yang tersembunyi tidak dikirim.
     komentar_suspicious:
       content.prinsip_mengenal_nasabah === CustomerPrinciple.Suspicious ? content.komentar_suspicious : '',
+    // Isian yang tersembunyi menurut lini tidak dikirim: EmailLOD hanya PA, Remarks
+    // Recommendation dan Subject Email hanya selain PA (kondisi InputRegisterDetail2_sect).
+    email_lod: content.email_lod,
+    rekomendasi: content.rekomendasi,
+    subjek_email: content.subjek_email,
+    status_salvage: content.status_salvage,
     user_teknis: content.user_teknis,
     rcv_id: content.rcv_id,
     status_pucl: Number(content.status_pucl) || 0,

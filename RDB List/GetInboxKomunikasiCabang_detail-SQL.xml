@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETINBOXKOMUNIKASICABANG #20210426T234613.114 GMT</pzOriginalInstanceKey>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyLabelOld>GetInboxKomunikasiCabang_detail</pyLabelOld>
+<pyCircumstanceVal/>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleStarts/>
+<pyWindowTitle/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleEnds/>
+<pyJavaStream/>
+<pyCircumstanceDefinition/>
+<pyRelativePath/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetInboxKomunikasiCabang_detail</pxTabLabel>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDeleteMemo>sonw</pyDeleteMemo>
+<pyBaseRule>false</pyBaseRule>
+<pyHandlerFlow/>
+<pyStreamName/>
+<pyLabel>GetInboxKomunikasiCabang_detail</pyLabel>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pyRequestType>GetInboxKomunikasiCabang_detail</pyRequestType>
+<pxInstanceLockedCreateDateTime/>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETINBOXKOMUNIKASICABANG_DETAIL #20210430T001228.305 GMT</pzDocumentKey>
+<pyCircumstanceProp/>
+<pySaveSQL/>
+<pyDescription/>
+<pxHostId>jboss2146</pxHostId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyMethodStatus/>
+<pyCircumstanceType/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETINBOXKOMUNIKASICABANG_DETAIL #20210430T001228.305 GMT</pzInsKey>
+<pyIsFromManageChangeLP/>
+<pyInterface/>
+<pyTemplate/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetInboxKomunikasiCabang_detail</pyRuleName>
+<pyRuleFormStatusTime>20261002T012005.745 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedRuleSet/>
+<pyUsage/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyFormPost/>
+<pySpecialtyComponentData/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDocumentTitle/>
+<pyWorkKey/>
+<pyShowJavaWindowName>GeneratedJava20261002T012005.767 GMT</pyShowJavaWindowName>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pxMoveFromSystem/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>SELECT createddate AS "CloseClaimDate",
+       MESSAGE AS "Email",
+       sender AS "UserName",
+       komunikasiid AS "City",
+       Kodecabang as"CityID"
+from pooldata.m_komunikasi_cabang where komunikasiid = {TempView2.City}</pyBrowseSQL>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETINBOXKOMUNIKASICABANG_DETAIL</pxInsName>
+<pyRuleSetVersion>01-01-92</pyRuleSetVersion>
+<pxInstanceLockedBy/>
+<pxUpdateDateTime>20210504T015652.994 GMT</pxUpdateDateTime>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETINBOXKOMUNIKASICABANG_DETAIL</pxInsId>
+<pzChecksum>-1718899149</pzChecksum>
+<pyCircumstanceDate/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyCircumstanceDateProp/>
+<pxSaveDateTime>20210504T015653.018 GMT</pxSaveDateTime>
+<pxCommitDateTime>20210627T052623.000 GMT</pxCommitDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedKey/>
+<pyDeleteSQL/>
+<pzRuleSetVersionPatch>92</pzRuleSetVersionPatch>
+<pxOriginalCreateSystemID/>
+<pyDeletedObject/>
+<pyRuleParamsStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateDateTime>20210430T001228.305 GMT</pxCreateDateTime>
+<pyStatus/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyOpenSQL/>
+<pxMoveImportDateTime>20210627T052623.648 GMT</pxMoveImportDateTime>
+<pxOriginalCreateDateTime/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyMemo>done</pyMemo>
+<pxOriginalCreateOpName/>
+<pyTemplateInputBox/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyRecover>false</pyRecover>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-92 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETINBOXKOMUNIKASICABANG_DETAIL #20210430T001228.305 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

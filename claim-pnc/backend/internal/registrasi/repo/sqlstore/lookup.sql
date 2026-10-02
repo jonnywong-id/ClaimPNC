@@ -45,101 +45,121 @@ SELECT CURRENCYVALUE
 
 -- name: polis_ambil
 --
--- Snapshot polis diambil dari dokumen JSON milik GISFW (`D-04`).
+-- Snapshot polis (`D-04`).
 --
--- # Kenapa dari JSON_POLIS, bukan dari tabel polis
+-- # Sumbernya TABEL polis, dokumen hanya cadangan (Work Owner, 2026-10-01)
 --
--- Data polis dimiliki tim lain (`D-03`), dan satu-satunya bentuk yang tersedia di basis
--- data ini adalah dokumennya. Seluruh field yang dibutuhkan terbukti ada: GroupPanel,
--- BusinessCode, BranchCode muncul di 200 dari 200 dokumen yang diperiksa 2026-09-24.
+-- Data polis tidak lagi dibaca dari JSON_POLIS.DATA_JSONBLOB. Urutannya per kolom:
 --
--- # Kenapa baris terbaru yang diambil
+--   1. tabel polis menurut NOPOLIS + PRODKE — T_GENERAL (kepala polis), T_OFFERFACIN
+--      (CedingCoName, OfferFacIn.PercentShare), T_GENERAL_DELIVERYADDRESSLIST (alamat);
+--   2. bila kolom tabelnya kosong atau barisnya tidak ada: dokumen JSON_POLIS.POLICYDATA.
 --
--- Satu nomor polis dapat muncul lebih dari sekali — endorsement, perpanjangan, atau
--- konversi ulang. Yang dipakai registrasi adalah keadaan polis TERAKHIR yang tercatat.
+-- Cadangan ke POLICYDATA tetap perlu. Terverifikasi 2026-10-01 pada polis klaim: T_GENERAL
+-- ada untuk 32 dari 37 PRODKE, kolom CURRENCY dan TYPEOFCOINS kosong pada sebagian besar
+-- baris lama, dan T_GENERAL_DELIVERYADDRESSLIST kosong untuk 37 dari 37.
 --
--- JSON_VALUE dipakai, bukan penguraian di Go: ia portabel ke PostgreSQL 17+ (`D-24`),
--- dan membaca sepuluh field tanpa mengangkut CLOB berukuran puluhan kilobyte ke aplikasi.
--- # DUA kolom memuat dokumennya, dan TIDAK ADA yang lengkap
+-- # PRODKE — versi terbaru, sama dengan Pega
 --
--- Terverifikasi 2026-09-24 atas 211.590 baris:
+-- PRODKE adalah PRODKE TERBESAR polis itu di T_GENERAL — persis RDB List/
+-- BroswsePolisByPolicyNo-SQL.xml:23 (`PRODKE = (SELECT MAX(TO_NUMBER(PRODKE)) FROM T_GENERAL
+-- ...)`), kueri yang mengisi daftar polis layar View Polis (SearchPolicy) dan yang dipakai
+-- Input Receive Document (`claim_report_policy_find`). Dengan begitu RCVN dan PNCN membaca
+-- versi polis yang sama.
 --
---   POLICYDATA (CLOB)     terisi pada 168.298
---   DATA_JSONBLOB (BLOB)  terisi pada 197.687
---   keduanya kosong       pada  13.732
+-- Bila polis tidak punya baris T_GENERAL, PRODKE terbesar JSON_POLIS yang ber-POLICYDATA
+-- dipakai. Bukan lagi "baris JSON_POLIS terbaru menurut TGL_INPUT": urutan input tidak sama
+-- dengan urutan versi, dan dokumen dapat dikonversi ulang setelah versi berikutnya terbit.
 --
--- Membaca salah satu saja menolak polis yang sebenarnya ada. Versi pertama kueri ini
--- hanya membaca POLICYDATA, dan akibatnya tombol Register Klaim menjawab galat umum
--- untuk 29.389 polis yang dokumennya hanya ada di BLOB.
+-- Dokumen POLICYDATA cadangan diambil dari baris JSON_POLIS PRODKE yang SAMA (Pega
+-- BrowsePolis-SQL.xml:86 `a.prodke = {TempPolis.ProdKe}`), terbaru menurut TGL_INPUT.
 --
--- # Kenapa POLICYDATA didahulukan
+-- Bind: :1 dan :2 sama-sama nomor polis — pengikatan posisi Oracle menuntut satu nilai per
+-- kemunculan.
 --
--- Pada 168.127 baris keduanya terisi, dan pada 199 dari 200 contoh keduanya menyebut
--- nomor polis yang sama. Mendahulukan POLICYDATA membuat polis yang SUDAH terbaca
--- sebelumnya tetap terbaca sama persis; perubahan ini hanya MENAMBAH yang tadinya
--- gagal. Satu contoh yang berbeda dicatat sebagai pertanyaan terbuka — mana yang benar
--- saat keduanya tidak sepakat belum diketahui.
+-- # Periode
 --
-SELECT
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.PolicyNo'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.PolicyNo')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.GroupPanel'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.GroupPanel')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessType'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BusinessType')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessName'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BusinessName')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.StartDateTime'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.StartDateTime')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.EndDateTime'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.EndDateTime')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.TypeOfPolicy'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.TypeOfPolicy')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.TheInsured'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.TheInsured')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.QQName'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.QQName')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BranchCode'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BranchCode')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.SpreadingStatus'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.SpreadingStatus')),
+-- Dua kolom terakhir adalah T_GENERAL.STARTDATE/ENDDATE (DATE jam dinding WIB) — CADANGAN
+-- teks Pega StartDateTime/EndDateTime dokumen. Periode SATU-SATUNYA yang mendahulukan
+-- dokumen: T_GENERAL tidak mengikuti endorsemen (lihat PolicyRepo.Get).
+WITH versi AS (
+    SELECT v.NOPOLIS, v.PRODKE
+      FROM (SELECT g.NOPOLIS, TRIM(g.PRODKE) AS PRODKE, 1 AS SUMBER
+              FROM POOLDATA.T_GENERAL g
+             WHERE g.NOPOLIS = :1
+            UNION ALL
+            SELECT p.NOPOLIS, CAST(p.PRODKE AS VARCHAR(30)), 2
+              FROM POOLDATA.JSON_POLIS p
+             WHERE p.NOPOLIS = :2
+               AND p.POLICYDATA IS NOT NULL) v
+     ORDER BY v.SUMBER, CAST(v.PRODKE AS DECIMAL(20)) DESC
+     FETCH FIRST 1 ROWS ONLY
+),
+dok AS (
+    SELECT v.NOPOLIS, v.PRODKE,
+           (SELECT p.POLICYDATA
+              FROM POOLDATA.JSON_POLIS p
+             WHERE p.NOPOLIS = v.NOPOLIS
+               AND CAST(p.PRODKE AS VARCHAR(30)) = v.PRODKE
+               AND p.POLICYDATA IS NOT NULL
+             ORDER BY p.TGL_INPUT DESC
+             FETCH FIRST 1 ROWS ONLY) AS POLICYDATA
+      FROM versi v
+),
+gen AS (
+    SELECT g.*,
+           ROW_NUMBER() OVER (ORDER BY CASE WHEN g.TGL_INPUT IS NULL THEN 1 ELSE 0 END,
+                                       g.TGL_INPUT DESC) AS RN
+      FROM POOLDATA.T_GENERAL g
+     WHERE g.NOPOLIS = (SELECT NOPOLIS FROM dok) AND g.PRODKE = (SELECT PRODKE FROM dok)
+),
+fac AS (
+    SELECT o.CEDINGNAME, CAST(o.PERCENTSHARE AS VARCHAR(50)) AS PERCENTSHARE,
+           ROW_NUMBER() OVER (ORDER BY CASE WHEN o.TGL_INSERT IS NULL THEN 1 ELSE 0 END,
+                                       o.TGL_INSERT DESC) AS RN
+      FROM POOLDATA.T_OFFERFACIN o
+     WHERE o.POLICYNO = (SELECT NOPOLIS FROM dok)
+       AND o.PRODKE = (SELECT PRODKE FROM dok)
+),
+alamat AS (
+    SELECT a.ADDRESS,
+           ROW_NUMBER() OVER (ORDER BY a.ADDRESSTYPE) AS RN
+      FROM POOLDATA.T_GENERAL_DELIVERYADDRESSLIST a
+     WHERE a.NOPOLIS = (SELECT NOPOLIS FROM dok)
+       AND a.PRODKE = (SELECT PRODKE FROM dok)
+)
+SELECT COALESCE(g.NOPOLIS, JSON_VALUE(d.POLICYDATA, '$.PolicyNo'), d.NOPOLIS),
+       COALESCE(g.GROUPPANEL, JSON_VALUE(d.POLICYDATA, '$.Quotation.GroupPanel')),
+       COALESCE(g.BUSINESSTYPE, JSON_VALUE(d.POLICYDATA, '$.Quotation.BusinessType')),
+       COALESCE(g.BUSINESSNAME, JSON_VALUE(d.POLICYDATA, '$.Quotation.BusinessName')),
+       JSON_VALUE(d.POLICYDATA, '$.StartDateTime'),
+       JSON_VALUE(d.POLICYDATA, '$.EndDateTime'),
+       COALESCE(g.TYPEOFPOLICY, JSON_VALUE(d.POLICYDATA, '$.TypeOfPolicy')),
+       COALESCE(g.CURRENCY, JSON_VALUE(d.POLICYDATA, '$.Currency')),
+       COALESCE(g.THEINSURED, JSON_VALUE(d.POLICYDATA, '$.TheInsured' RETURNING VARCHAR2(4000))),
+       COALESCE(g.QQNAME, JSON_VALUE(d.POLICYDATA, '$.QQName' RETURNING VARCHAR2(4000))),
+       COALESCE(g.BRANCHCODE, JSON_VALUE(d.POLICYDATA, '$.Quotation.BranchCode')),
+       COALESCE(CAST(g.FINISHEDSPREADING AS VARCHAR(10)), JSON_VALUE(d.POLICYDATA, '$.SpreadingStatus')),
        -- Sembilan jalur berikut diisi Pega ke T_CLAIM_PNC saat klaim dibuat
-       -- (PEGA_CONVERT_JSONKLAIM_PNC.prc baris 317-373). Terverifikasi 2026-09-26 pada
-       -- 300 dokumen terbaru: tujuh terisi 296-300, CedingCoName dan OfferFacIn hanya
-       -- ada pada polis fakultatif masuk, PolicyLeader hanya pada polis member.
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessCode'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BusinessCode')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BranchName'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BranchName')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.SourceOfBusiness'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.SourceOfBusiness')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.SobName'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.SobName')),
-       -- PRODKE dari KOLOM lebih dulu, isi dokumen hanya cadangan. Terverifikasi
-       -- 2026-09-26 terhadap 119 klaim Pega: dua klaim mencatat PRODKE yang hanya ada di
-       -- kolom — isi dokumennya tertinggal satu versi endorsemen.
-       COALESCE(CAST(p.PRODKE AS VARCHAR(30)),
-                JSON_VALUE(p.POLICYDATA, '$.ProdKe'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.ProdKe')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.PolicyLeader'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.PolicyLeader')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.TypeOfCoins'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.TypeOfCoins')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.CedingCoName'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.CedingCoName')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.OfferFacIn.PercentShare'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.OfferFacIn.PercentShare')),
+       -- (PEGA_CONVERT_JSONKLAIM_PNC.prc baris 317-373).
+       COALESCE(g.BUSINESSCODE, JSON_VALUE(d.POLICYDATA, '$.Quotation.BusinessCode')),
+       COALESCE(g.BRANCHNAME, JSON_VALUE(d.POLICYDATA, '$.Quotation.BranchName')),
+       COALESCE(g.SOURCEOFBUSINESS, JSON_VALUE(d.POLICYDATA, '$.Quotation.SourceOfBusiness')),
+       COALESCE(g.SOBNAME, JSON_VALUE(d.POLICYDATA, '$.Quotation.SobName')),
+       d.PRODKE,
+       COALESCE(g.LEADERPOLICYCOAS, JSON_VALUE(d.POLICYDATA, '$.PolicyLeader')),
+       COALESCE(g.TYPEOFCOINS, JSON_VALUE(d.POLICYDATA, '$.TypeOfCoins')),
+       COALESCE(f.CEDINGNAME, JSON_VALUE(d.POLICYDATA, '$.CedingCoName')),
+       COALESCE(f.PERCENTSHARE, JSON_VALUE(d.POLICYDATA, '$.OfferFacIn.PercentShare')),
        -- Alamat penerima klaim bawaan: InputRegister_act mengisi ReceiverClaim.Address
        -- dari .Policy.DeliveryAddressList(1).ASMAddress.
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.DeliveryAddressList[0].ASMAddress'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.DeliveryAddressList[0].ASMAddress'))
-  FROM POOLDATA.JSON_POLIS p
- WHERE p.NOPOLIS = :1
-   AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
- ORDER BY p.TGL_INPUT DESC
- FETCH FIRST 1 ROWS ONLY
+       COALESCE(a.ADDRESS, JSON_VALUE(d.POLICYDATA, '$.DeliveryAddressList[0].ASMAddress')),
+       g.STARTDATE,
+       g.ENDDATE
+  FROM dok d
+  LEFT JOIN gen g ON g.RN = 1
+  LEFT JOIN fac f ON f.RN = 1
+  LEFT JOIN alamat a ON a.RN = 1
 
 -- name: parameter_ambil
 --
@@ -202,36 +222,17 @@ UPDATE POOLDATA.MST_USER_TEKNIK
 
 -- name: polis_koasuransi
 --
--- Baris CoinsList dokumen polis, untuk DeriveCoinsurance. Dokumen yang dipakai sama
--- dengan polis_ambil: baris JSON_POLIS terbaru, POLICYDATA lebih dulu, DATA_JSONBLOB
--- bila POLICYDATA kosong. Kedua kolomnya berbeda tipe (CLOB dan BLOB), sehingga
--- keduanya tidak dapat digabung COALESCE sebelum JSON_TABLE — karena itu dua cabang.
+-- Baris koasuransi polis, untuk DeriveCoinsurance.
 --
--- CoinsList hanya ada pada sebagian kecil polis (12 dari 300 terbaru). Tanpanya kueri
--- ini mengembalikan nol baris, dan DeriveCoinsurance memberi bawaan Pega.
-WITH terbaru AS (
-    SELECT p.POLICYDATA, p.DATA_JSONBLOB
-      FROM POOLDATA.JSON_POLIS p
-     WHERE p.NOPOLIS = :1
-       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
-     ORDER BY p.TGL_INPUT DESC
-     FETCH FIRST 1 ROWS ONLY
-)
-SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.POLICYDATA, '$.CoinsList[*]' COLUMNS (
-           LEADER        VARCHAR(10)  PATH '$.Leader',
-           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
-           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
- WHERE t.POLICYDATA IS NOT NULL
-UNION ALL
-SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.DATA_JSONBLOB, '$.CoinsList[*]' COLUMNS (
-           LEADER        VARCHAR(10)  PATH '$.Leader',
-           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
-           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
- WHERE t.POLICYDATA IS NULL
+-- Sumbernya POOLDATA.T_COINSLIST menurut NOPOLIS dan PRODKE snapshot klaim (Work Owner,
+-- 2026-10-01: data polis tidak dibaca dari JSON_POLIS.DATA_JSONBLOB bila ada tabelnya).
+-- Kolomnya padanan CoinsList dokumen polis: COINSID, COINSNAME, LEADER ('true'/'false'),
+-- PERCENT_SHARE, FLAGDELETE. PRODKE yang tidak punya baris berarti polis tanpa koasuransi.
+SELECT c.LEADER, c.COINSNAME, c.PERCENT_SHARE
+  FROM POOLDATA.T_COINSLIST c
+ WHERE c.NOPOLIS = :1
+   AND c.PRODKE = :2
+ ORDER BY c.COINSID
 
 -- ============================================================================
 -- WILAYAH KEJADIAN — daftar pilihan bertingkat layar Input Register

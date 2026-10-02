@@ -187,6 +187,11 @@ type ClaimDTO struct {
 	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
 	SuspiciousComment string  `json:"komentar_suspicious"`
 
+	EmailLOD             string `json:"email_lod"`
+	RemarkRecommendation string `json:"rekomendasi"`
+	SubjectEmail         string `json:"subjek_email"`
+	SalvageStatus        string `json:"status_salvage"`
+
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
 	SLIKNumber         string `json:"nomor_slik"`
@@ -271,6 +276,11 @@ type RegisterRequest struct {
 	Area              AreaDTO `json:"wilayah"`
 	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
 	SuspiciousComment string  `json:"komentar_suspicious"`
+
+	EmailLOD             string `json:"email_lod"`
+	RemarkRecommendation string `json:"rekomendasi"`
+	SubjectEmail         string `json:"subjek_email"`
+	SalvageStatus        string `json:"status_salvage"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
