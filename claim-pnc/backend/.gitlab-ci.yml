@@ -44,10 +44,26 @@ golangci-lint-warnings:
   stage: verify
   image: golangci/golangci-lint:${GOLANGCI_LINT_VERSION}
   <<: *go-cache
-  # Maintainability dan security hotspot: dilaporkan, tidak memblokir pipeline.
+  # Maintainability dan security hotspot: DILAPORKAN, tidak memblokir pipeline.
+  #
+  # --issues-exit-code=0 membuat job hijau walau ada temuan — temuan adalah peringatan,
+  # bukan kegagalan. Seluruhnya tetap tercetak di log job, dan juga dikirim sebagai laporan
+  # Code Quality supaya tampil di merge request. allow_failure tetap dipasang untuk
+  # kegagalan yang BUKAN temuan (mis. kode tidak dapat dikompilasi oleh linter).
   allow_failure: true
   script:
-    - golangci-lint run -c .golangci-warnings.yml --max-issues-per-linter 0 --max-same-issues 0 ./...
+    - >-
+      golangci-lint run -c .golangci-warnings.yml
+      --issues-exit-code=0
+      --max-issues-per-linter 0 --max-same-issues 0
+      --output.text.path stdout
+      --output.code-climate.path gl-code-quality-report.json
+      ./...
+  artifacts:
+    when: always
+    expire_in: 1 week
+    reports:
+      codequality: gl-code-quality-report.json
 
 test:
   stage: test

@@ -28,3 +28,4 @@ test-report.json
 .go-build/
 .sonar/
 .scannerwork/
+gl-code-quality-report.json

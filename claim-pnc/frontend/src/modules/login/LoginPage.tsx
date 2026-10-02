@@ -224,10 +224,6 @@ function BrandPanel() {
             komite, akseptasi, dan pemberitahuan reasuransi.
           </p>
         </div>
-
-        <p className="hidden text-xs text-blue-200/80 lg:block">
-          Akses terbatas pada pengguna terdaftar. Setiap changes hasValue bisnis tercatat.
-        </p>
       </div>
     </aside>
   )

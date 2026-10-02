@@ -451,7 +451,10 @@ describe('TambahSalvageForm', () => {
       }
       return jsonResponse(201, { id_salvage: '1', jumlah_detail_item: 1, pesan: 'ok', portal: 'ASM' })
     })
-    const user = userEvent.setup()
+    // Lima belas isian diketik huruf demi huruf. Jeda bawaan user-event di antara ketukan
+    // membuat test ini melewati batas waktu di runner CI yang sibuk; tanpa jeda, setiap
+    // ketukan tetap dikirim sebagai event terpisah — yang diuji tidak berkurang.
+    const user = userEvent.setup({ delay: null })
     const { onSaved, onClose, file } = show()
 
     expect(screen.getByText(/Belum ada item/)).toBeInTheDocument()
