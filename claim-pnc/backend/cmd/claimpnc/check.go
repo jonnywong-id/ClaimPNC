@@ -3678,18 +3678,26 @@ func checkCauseOfLossDetail(ctx context.Context, primary *sql.DB, print func(str
 // layar ini punya kolom yang IDENTIK — sehingga tidak ada apa pun di antarmuka yang
 // menandakan isinya tertukar:
 //
-//   - Kolom `MSIG_1` nyaris tidak pernah terisi — satu baris dari 7.722 pada portal ASM,
+//   - Kolom `MSIG` nyaris tidak pernah terisi — satu baris dari 7.722 pada portal ASM,
 //     dihitung 2026-09-30. Tab "Klaim MSIG" karena itu nyaris selalu kosong, dan tab
 //     "Kelengkapan Dokumen" menampung selebihnya.
-//   - `PUCLAPPROVE_1 <> '1'` tidak menangkap nilai kosong. Klaim yang penandanya belum
+//   - `PUCL_APPROVE <> '1'` tidak menangkap nilai kosong. Klaim yang penandanya belum
 //     pernah diisi hilang dari DUA tab sekaligus.
-//   - Akun antrean `RCLPUCL`. Bila namanya berubah, KETIGA tab kosong sekaligus.
-//   - `STATUSCASE_1 = '0'`. Artinya tidak diketahui, dan tidak ada master yang
+//   - Penyaring antrean DIHAPUS 2026-10-01: kolomnya berisi nama orang, bukan nama
+//     antrean, sehingga menyaringnya mengosongkan ketiga tab. `TC_PNC_PUCL` tabel khusus
+//     RCL/PUCL, jadi penyaring itu tidak lagi menyeleksi apa pun.
+//   - `STATUS_CASE = '0'`. Artinya tidak diketahui, dan tidak ada master yang
 //     menerjemahkannya di export mana pun. Bila nilainya berbeda di produksi, tab
 //     "Cetak Surat" kosong sementara dua tab lain terisi normal.
 //
 // Keempatnya diperiksa di sini supaya kekeliruannya ketahuan saat `-periksa` dijalankan,
 // bukan saat pengguna melaporkan "tabnya kosong".
+//
+// # Sejak 2026-10-01 ada SEBAB KELIMA yang mengosongkan seluruh layar
+//
+// Ketiga tab dan layar kerja kini membaca `POOLDATA.TC_PNC_PUCL`, tabel datar milik aplikasi
+// ini. Tabel itu BARU, dan ia kosong sampai proses pengisi berjalan — sehingga layar yang
+// kosong di sini belum tentu berarti antreannya kosong. Keduanya dibedakan di bawah.
 func checkRCLPUCL(
 	ctx context.Context,
 	repo *inboxrclpuclsql.Repo,
@@ -3697,22 +3705,30 @@ func checkRCLPUCL(
 ) {
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Inbox RCL/PUCL tidak dapat dibaca: %v", err)
-		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
-		print("            Bila galatnya menyebut TABEL, periksa hak SELECT akun aplikasi")
-		print("            atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan")
-		print("            DATAPEGA.PC_ASSIGN_WORKBASKET.")
-		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
-		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
-		print("            DDL, yang belum pernah diterima (`R-08`).")
+		print("            Bila galatnya menyebut POOLDATA.TC_PNC_PUCL, tabel datarnya belum")
+		print("            dibuat di portal ini — jalankan Database/CREATE_TABLE_3.SQL")
+		print("            (menempuh `D-63`: DBA, atas persetujuan Work Owner).")
+		print("            Bila galatnya menyebut KOLOM tabel itu, periksa namanya terhadap")
+		print("            CREATE_TABLE_3.SQL: akhiran `_1` dibuang dan kata dipisah garis")
+		print("            bawah, sehingga nama bentuk lama gagal dengan ORA-00904.")
+		print("            Bila galatnya menyebut DATAPEGA.*, yang mati HANYA tombol unduh")
+		print("            tab Cetak Surat — ketiga tabnya sendiri tidak lagi membacanya.")
 		return
 	}
-	print("  [ok]    Tabel, kolom penyaring, dan tabel anak Inbox RCL/PUCL dapat dibaca")
+	print("  [ok]    Tabel datar, kolom penyaring, dan tabel anak Inbox RCL/PUCL dapat dibaca")
 	print("            Tabel anak memasok isian LAYAR KERJA yang diturunkan:")
 	print("            T_CLAIM_OBJECTLIST  -> Nama Peserta DAN UP (keduanya ObjectName,")
 	print("                                   dan itu memang benar — dikonfirmasi 2026-09-24),")
 	print("            T_CLAIM_ADJUSTMENT  -> Jumlah Tagihan.")
-	print("            Sembilan isian lain adalah properti clipboard Pega; ia tidak punya")
-	print("            kolom, sehingga tidak ada yang perlu diperiksa di sini.")
+	print("            TUJUH kolom dibaca dari TC_PNC_PUCL meski BELUM ada di")
+	print("            CREATE_TABLE_3.SQL: PERIHAL, KETERANGAN1..3, dan ketiga parameter")
+	print("            tindakan ID_OBJECT, ID_COVERAGE, ID_ADJUSTMENT. Portal yang tabelnya")
+	print("            dibuat dari berkas DDL bersama akan gagal ORA-00904 pada klaim")
+	print("            PERTAMA yang dibuka — bukan saat build.")
+	print("            Email Tertanggung dibaca dari T_CLAIM_PNC.EMAIL_LOD, digabung lewat")
+	print("            CLAIMNO — BUKAN CLAIMID, yang di tabel itu berawalan kunci Pega.")
+	print("            TIGA isian sisanya properti clipboard Pega; ia tidak punya kolom,")
+	print("            sehingga tidak ada yang perlu diperiksa di sini.")
 
 	page := inboxrclpucl.Pagination{Page: 1, Size: 5}
 	counts := map[string]int{}
@@ -3772,10 +3788,7 @@ func checkRCLPUCL(
 		counts[inboxrclpucl.TabKelengkapanDokumen] == 0 &&
 		counts[inboxrclpucl.TabKlaimMSIG] == 0 {
 		print("  [PERIKSA] KETIGA tab kosong sekaligus.")
-		print("            Periksa apakah akun antrean bersama masih bernama %q.",
-			inboxrclpucl.RCLPUCLWorkbasket)
-		print("            Ketiga tab memakai akun yang sama, sehingga namanya yang")
-		print("            berubah mengosongkan seluruh layar tanpa satu pun galat.")
+		reportEmptyRCLPUCL(ctx, repo, print)
 		return
 	}
 
@@ -3835,6 +3848,64 @@ func checkRCLPUCL(
 		print("            direplikasi dari Pega dengan sengaja; periksa sebarannya:")
 		print("            SELECT PUCLAPPROVE_1, COUNT(*) FROM")
 		print("             DATAPEGA.PC_ASM_FW_GCNMFW_WORK GROUP BY PUCLAPPROVE_1;")
+	}
+}
+
+// reportEmptyRCLPUCL menjelaskan ketiga tab yang kosong DENGAN ANGKA.
+//
+// # Kenapa angka, bukan daftar kemungkinan
+//
+// Karena daftar kemungkinan menyuruh orang memeriksanya satu per satu di SQL*Plus, dan
+// sebagian besar yang membaca keluaran ini tidak akan melakukannya. Angka per penyaring
+// menunjuk langsung penyaring mana yang mengosongkan layar.
+//
+// Penyaring yang menghasilkan NOL sementara tabelnya BERISI adalah jawabannya. Tabel yang
+// kosong adalah jawaban yang berbeda, dan keduanya terbaca sama di layar.
+func reportEmptyRCLPUCL(
+	ctx context.Context,
+	repo *inboxrclpuclsql.Repo,
+	print func(string, ...any),
+) {
+	d, err := repo.DiagnoseEmpty(ctx)
+	if err != nil {
+		print("            Sebabnya tidak dapat dihitung: %v", err)
+		return
+	}
+
+	if d.Total == 0 {
+		print("            POOLDATA.TC_PNC_PUCL KOSONG — nol baris.")
+		print("            Tabelnya baru, dan proses pengisinya tampaknya belum berjalan di")
+		print("            portal ini. Yang kurang DATA-nya, bukan kuerinya.")
+		return
+	}
+
+	print("            Tabelnya BERISI %d baris, jadi yang mengosongkan layar adalah salah",
+		d.Total)
+	print("            satu penyaring. Berapa baris yang lolos tiap penyaring, satu per satu:")
+	print("")
+	print("              status kerja bukan 'selesai'      %d", d.NotCompleted)
+	print("              tab 1  surat BELUM dicetak        %d", d.WithoutLetter)
+	print("              tab 1  STATUS_CASE = %-4q         %d",
+		inboxrclpucl.ExpiryStatusActive, d.CaseStatusMatch)
+	print("              tab 2+3  surat SUDAH dicetak      %d", d.WithLetter)
+	print("              tab 2+3  PUCL_APPROVE <> %-4q     %d",
+		inboxrclpucl.PUCLReturnedToAnalyst, d.StillWithPUCL)
+	print("              tab 2  bukan jalur MSIG           %d", d.NotMSIG)
+	print("              tab 3  jalur MSIG                 %d", d.MSIG)
+	print("")
+	print("            Penyaring yang bernilai NOL di atas itulah yang mengosongkan tabnya.")
+	print("            Seluruhnya replikasi penyaring Pega, bukan tambahan aplikasi ini —")
+	print("            jadi baris yang tertolak memang tidak terlihat di Pega pula.")
+
+	if d.StillWithPUCL == 0 {
+		print("")
+		print("            PERHATIKAN `PUCL_APPROVE <> %q` meloloskan NOL baris.",
+			inboxrclpucl.PUCLReturnedToAnalyst)
+		print("            Nilai %q berarti PUCL SUDAH mengembalikan klaimnya ke Analyst",
+			inboxrclpucl.PUCLReturnedToAnalyst)
+		print("            (Work Owner, 2026-09-30), sehingga klaim itu memang bukan lagi")
+		print("            pekerjaan PUCL. Bila baris uji dimaksudkan tampil, isikan %q.",
+			inboxrclpucl.PUCLWithPUCL)
 	}
 }
 

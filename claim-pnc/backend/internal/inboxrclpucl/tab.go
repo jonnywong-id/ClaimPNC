@@ -375,6 +375,79 @@ var PlannedDifferences = []Difference{
 	// ---- Yang ditemui saat MEMAKAI layar -------------------------------------------
 
 	{
+		Summary: "\"Download Dokumen\" memindahkan klaim ke tab \"Kelengkapan Dokumen\", " +
+			"tetapi TIDAK menerbitkan berkas PDF suratnya.",
+		Detail: "Rangkaian aslinya tiga langkah: `InsertMitraPA(tipe=\"cetak\")`, " +
+			"`PUCLPost(Status=\"\", statusCase=\"1\")`, lalu `InsertHistoryClaimPNC`.\n\n" +
+			"YANG DIKERJAKAN DI SINI:\n" +
+			"  · TGL_CETAK_DOKUMEN_PUCL = kini (langkah 4 dan 51) — INILAH yang " +
+			"memindahkan klaimnya, karena penyaring tab \"Cetak Surat\" adalah kolom ini " +
+			"masih kosong\n" +
+			"  · STATUS_CASE = 1               (langkah 17)\n" +
+			"  · STATUS_CLAIM = 1157           (langkah 17) — \"Document Waiting RCL/PUCL\"\n\n" +
+			"YANG TIDAK DIKERJAKAN:\n" +
+			"  · `AttachAsPDFC` — membuat PDF surat dan melampirkannya. DUA penghalang, " +
+			"bukan satu: templat suratnya (`SuratPUCL`) TIDAK ADA di export — folder " +
+			"`HTML/` memuat 30 berkas dan tidak satu pun surat RCL/PUCL — dan lampiran " +
+			"Pega tidak disimpan di basis data melainkan di layanan penyimpanan luar.\n" +
+			"  · `InsertHistoryClaimPNC` — riwayat \"Wait for Complete PUCL Document\".\n" +
+			"  · `IsCetakSurat = 1` dari `InsertMitraPA`.\n\n" +
+			"Perpindahan tabnya tetap dikerjakan, karena itulah yang menghambat petugas: " +
+			"tanpa itu klaimnya tertahan di tab pertama selamanya. Suratnya dicetak di Pega.",
+	},
+
+	{
+		Summary: "Kedua tombol \"Kirim\" MEMINDAHKAN klaim ke tahap Send To Analis, " +
+			"beserta isian, surat, dan riwayatnya — tetapi baris antrean lama di Pega " +
+			"tidak ikut ditutup.",
+		Detail: "Rangkaian aslinya tiga langkah: `InsertMitraPA(tipe=\"dokumen\")`, " +
+			"`PUCLPost(Status=\"1\")`, lalu penyerahan flow action `SendtoRCLPUCL` " +
+			"(di layar: Finish Assignment). Nomor langkah di bawah mengikuti " +
+			"`REPEATINGINDEX` pada `PUCLPost`, yaitu nomor yang terbaca di designer Pega.\n\n" +
+			"YANG DIKERJAKAN DI SINI:\n" +
+			"  · KOMENTAR_PUCL dan TGL_TERIMA_DOKUMEN_PUCL disimpan lebih dulu — " +
+			"`PUCLPost` langkah 10 menulis `KomentarPUCL` bersama tindakannya, dan " +
+			"keduanya `pyRequired` sehingga kosong DITOLAK, seperti Finish Assignment.\n" +
+			"  · PUCL_APPROVE = 1             (langkah 11)\n" +
+			"  · STATUS_CLAIM = 1151          (langkah 11) — \"Analyst\" menurut master\n" +
+			"  · TGL_CETAK_DOKUMEN_PUCL = kini (langkah 4 dan 30)\n" +
+			"  · PDF surat diterbitkan dan dilampirkan — `AttachAsPDFC` langkah 27 " +
+			"berprekondisi `1==1`, jadi ia berjalan untuk SETIAP tombol, bukan hanya " +
+			"\"Download Dokumen\". Namanya mengikuti jalur klaim (langkah 20-22): " +
+			"PUCL.pdf · RCL.pdf · Notification.pdf.\n" +
+			"  · Satu baris riwayat \"Send by PUCL to Analyst\" pada " +
+			"`LIST_HISTORY_CLAIM_PNC` — `InsertHistoryClaimPNC` langkah 35.\n" +
+			"  · PERPINDAHAN TAHAP: tugas lama ditutup dan tugas baru dibuka pada tahap " +
+			"`kirim-analis` di `CPNC_TUGAS`, bertuan PIC Teknik klaim. Ini meniru " +
+			"`SetTicket(SendtoAnalysator)` langkah 17 ditambah Finish Assignment — dan " +
+			"inilah yang membuat klaim menjadi pekerjaan orang lain, bukan sekadar " +
+			"berubah penanda.\n\n" +
+			"YANG TIDAK DIKERJAKAN, masing-masing dengan alasannya:\n" +
+			"  · `SendtoAnalystDate` (langkah 30) — tidak punya kolom di tabel datar.\n" +
+			"  · `PUCLApprove = \"Setuju\"` pada baris AdjustmentList klaim (langkah 10).\n" +
+			"  · `IsDokLengkap = 1` — ia properti clipboard objek kerja Pega, tersimpan " +
+			"di `PZPVSTREAM` dan TIDAK punya kolom tabel di mana pun.\n" +
+			"  · `PNCInsertMitraLog_Act` — catatan TAT ke `PNC_CHRONOLOGYTAT` lewat " +
+			"procedure `INSERT_PNCCHRONOLOGYTAT` (163 baris, memakai jam kerja lewat DB " +
+			"Link). Menulis ulangnya adalah pekerjaan modul TAT, bukan modul ini. Ia pun " +
+			"hanya berjalan bila `IsDokLengkap` SUDAH bernilai 1 sebelumnya.\n" +
+			"  · Baris antrean `RCLPUCL` milik PEGA tidak dihapus. Menulis tabel " +
+			"penugasan Pega sudah terbukti merusak satu klaim, sehingga baris itu " +
+			"dibiarkan. Akibatnya klaim yang sama masih tergambar di antrean RCL/PUCL " +
+			"Pega — tidak menghalangi apa pun, dan tidak perlu dikerjakan ulang di sana.\n\n" +
+			"Satu lampiran PUCL.pdf TAMBAHAN muncul bila petugas sudah menekan " +
+			"\"Download Dokumen\" lebih dulu. Pega membuang yang senama (langkah 25-26); " +
+			"itu TIDAK ditiru karena `D-66` melarang penghapusan fisik. Daftarnya terurut " +
+			"terbaru di atas, jadi yang berlaku tetap yang teratas.\n\n" +
+			"Akibat yang harus disadari selama masa paralel: klaimnya KELUAR dari antrean " +
+			"RCL/PUCL layar ini, tetapi MASIH TERLIHAT di antrean RCL/PUCL milik Pega — " +
+			"baris `PC_ASSIGN_WORKBASKET` sengaja tidak dihapus, karena penghapusan tabel " +
+			"Pega tidak dapat dipulihkan dan tidak dibutuhkan agar layar ini benar.\n\n" +
+			"Email ke cabang TIDAK terkirim — tetapi itu BUKAN selisih untuk klaim PA: " +
+			"keempat langkah emailnya (31-34) berprekondisi `IsTravel`.",
+	},
+
+	{
 		Summary: "Kedua isian tanggal di tab \"Cetak Surat\" tidak menyaring tabel di " +
 			"bawahnya. Keduanya hanya dipakai tombol unduh.",
 
@@ -428,28 +501,116 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "Layar ini MEMBACA saja. Cetak Surat dan Reminder PUCL dikerjakan di Pega, " +
-			"dan akan tetap begitu sampai Pega dimatikan.",
+		Summary: "Satu tombol masih dikerjakan di Pega: \"Tolak Klaim\". Tujuh lainnya " +
+			"berjalan di sini.",
 
-		Detail: "Ini keputusan, bukan pekerjaan yang tertunda. Kelima tindakannya menulis ke " +
-			"tabel objek kerja dan tabel penugasan, dan kedua tabel itu dibaca ratusan " +
-			"aturan Pega sehingga kepemilikannya tidak berpindah satu layar demi satu layar. " +
-			"Tombolnya tetap digambar supaya keberadaannya terlihat, dan penekanannya " +
-			"menjawab alasan — bukan halaman kosong. Kunci klaim yang dibutuhkan ditampilkan " +
-			"di layar kerja supaya tidak perlu dicari.",
+		Detail: "Download Dokumen, Save, Unggah Dokumen, kedua tombol Kirim, serta ✚ " +
+			"Tambah dan Hapus berjalan penuh. \"Tolak Klaim\" menempuh layanan Pega, dan " +
+			"layanan itu belum dibangun. Tombolnya tetap digambar supaya keberadaannya " +
+			"terlihat, dan penekanannya menjawab alasan, bukan halaman kosong.",
 	},
 
 	{
-		Summary: "Sembilan isian di layar kerja tidak dapat diisi dari sini, dan itu bukan " +
+		Summary: "Kedua tombol Kirim TIDAK memindahkan penugasan di Pega; klaim tetap " +
+			"terlihat di antrean RCL/PUCL milik Pega.",
+
+		Detail: "Pemindahan penugasan sempat dipasang 2026-10-02 dan DICABUT hari itu juga: " +
+			"ia membuat satu klaim tidak dapat dibuka lagi di Pega. Sebabnya baris " +
+			"penugasan yang kami tulis tidak memuat PZPVSTREAM, dan dari 105.616 baris " +
+			"penugasan Pega tidak satu pun berbentuk begitu — kolomnya nullable di katalog, " +
+			"tetapi Pega tidak menerimanya. Klaim yang terdampak sudah dipulihkan. " +
+			"Yang dikerjakan tombol ini sekarang: menandai klaim selesai di TC_PNC_PUCL " +
+			"saja, sehingga ia keluar dari antrean layar ini tetapi masih terlihat di " +
+			"antrean RCL/PUCL milik Pega — bergabung dengan 16 klaim yang sudah " +
+			"berkeadaan sama sebelum modul ini ada. Perpindahan yang sebenarnya menunggu " +
+			"Service REST ActionClaimPUCL dari Tim Pega.",
+	},
+
+	{
+		Summary: "Surat RCL/PUCL terbit dengan tiga baris KOSONG, dan surat lama tidak " +
+			"dibuang saat dicetak ulang.",
+
+		Detail: "Susunan dan seluruh kalimat tetapnya disalin dari templat Pega " +
+			"HTML/SuratPUCL yang dikirim Work Owner 2026-10-02. Tiga baris tergambar kosong " +
+			"karena datanya tidak ada di basis data mana pun — Nomor Kontrak, Unit Bisnis / " +
+			"Seksi, dan nama kedua penanda tangan; ketiganya hidup di clipboard Pega. " +
+			"Barisnya tetap digambar supaya kekosongannya terlihat. Kop logo juga belum " +
+			"tergambar: berkas gambarnya tidak ada di export. Selisih kedua: Pega membuang " +
+			"lampiran bernama sama sebelum melampirkan yang baru, sehingga satu klaim hanya " +
+			"punya satu PUCL.pdf. Itu tidak ditiru karena D-66 melarang penghapusan fisik " +
+			"dan tabel lampirannya tidak punya kolom penanda hapus; mencetak ulang karena " +
+			"itu menambah baris, dan yang berlaku adalah yang teratas.",
+	},
+
+	{
+		Summary: "Dialog unggah menyimpan kategori lampiran yang dipilih; nama kategorinya " +
+			"ditampilkan apa adanya, bukan diberi label seperti di Pega.",
+
+		Detail: "Kolom \"Category\" berisi KATEGORI LAMPIRAN — AcceptanceNote, " +
+			"ClaimFaceSheet, LOD, dan seterusnya — bukan jenis dokumen. Yang " +
+			"mendefinisikannya rule Rule-Obj-AttachmentCategory, dan tipe rule itu tidak ada " +
+			"di export sama sekali (R-16), sehingga daftarnya diturunkan dari kategori yang " +
+			"benar-benar dipakai lampiran klaim PNC: 30 baris. Dua akibatnya nyata. " +
+			"Pertama, kategori yang sudah didefinisikan tetapi belum pernah dipakai TIDAK " +
+			"muncul. Kedua, yang digambar adalah NAMA kategorinya (AcceptanceNote), " +
+			"sedangkan Pega menggambar labelnya (\"Acceptance Note\") — teks label itu " +
+			"hidup di rule yang tidak diekspor, dan mengarangnya dengan memecah huruf besar " +
+			"akan menghasilkan teks yang tidak pernah ada di layar mana pun. Bawaannya " +
+			"\"File\", mengikuti Pega. Lampiran yang telanjur tersimpan tanpa kategori " +
+			"dibiarkan apa adanya.",
+	},
+
+	{
+		Summary: "Tombol yang muncul BERBEDA-BEDA menurut jalur klaim dan lini bisnisnya, " +
+			"persis seperti di Pega.",
+
+		Detail: "Tab Lampiran Surat menampilkan \"Download Dokumen\" untuk klaim non-MSIG, " +
+			"dan \"Tutup Klaim\" untuk klaim MSIG berstatus Notification — tidak pernah " +
+			"keduanya, dan untuk klaim MSIG di luar Notification tidak satu pun. Tab " +
+			"Penerimaan Dokumen selalu menampilkan Unggah Dokumen, Lihat Dokumen, dan Save; " +
+			"\"Tolak Klaim\" hanya pada jalur RCL; \"Kirim Ke Analyst\" hanya pada jalur PUCL " +
+			"lini PA, dan \"Kirim ke PIC Teknik\" hanya pada jalur PUCL lini Travel. Jadi " +
+			"tombol yang tidak Anda lihat belum tentu hilang — ia mungkin memang bukan " +
+			"tindakan untuk klaim itu.",
+	},
+
+	{
+		Summary: "Tombol \"Download Dokumen\" melakukan DUA hal: menerbitkan PDF suratnya, " +
+			"DAN menandainya sudah dicetak sehingga klaimnya berpindah tab.",
+
+		Detail: "Di Pega tombol itu menjalankan aksi bertipe \"cetak\". Surat memang terbit — " +
+			"PDF-nya dibentuk, dilampirkan ke klaim, lalu dibuka. Tetapi pada langkah yang " +
+			"sama tanggal cetak dokumen ikut terisi, dan kolom itulah yang menentukan klaim " +
+			"berada di tab \"Cetak Surat\" atau sudah pindah ke \"Kelengkapan Dokumen\". Jadi " +
+			"ia bukan tombol lihat-lihat: sekali ditekan, klaimnya berpindah. Itu sebabnya ia " +
+			"ikut terhalang di sini. Yang TIDAK terjadi padanya adalah penutupan klaim — " +
+			"langkah itu dilewati untuk jalur cetak, dan hanya berlaku pada \"Tolak Klaim\" " +
+			"di jalur RCL.",
+	},
+
+	{
+		Summary: "Tombol \"Reminder PUCL\" tidak ada di layar kerja, dan di Pega pun " +
+			"sebenarnya tidak pernah muncul.",
+
+		Detail: "Syarat tampilnya di layar lama ditulis \"1==2\" — syarat yang tidak pernah " +
+			"benar. Ia tombol yang dimatikan dengan cara dikarang syaratnya alih-alih " +
+			"dihapus. Yang ditiru adalah perilakunya yang nyata, yaitu tidak muncul; " +
+			"menggambarnya di sini akan menawarkan tindakan yang tidak pernah tersedia. Hal " +
+			"yang sama berlaku pada satu tombol \"Tolak Klaim\" kedua di layar lama.",
+	},
+
+	{
+		Summary: "Lima isian di layar kerja tidak dapat diisi dari sini, dan itu bukan " +
 			"data yang kosong.",
 
-		Detail: "Kesembilannya adalah properti clipboard pada objek kerja Pega — No Kontrak, " +
-			"Business Unit / Seksi, Perihal, ketiga Keterangan, Email Tertanggung, Tanggal " +
-			"Kelengkapan Dokumen, dan daftar Tanggal terima Dokumen. Ia tidak diekspos " +
-			"sebagai kolom tabel, sehingga tidak dapat dibaca dengan kueri biasa selama " +
-			"objek kerjanya masih dimiliki Pega. Isian itu tetap digambar di tempatnya, " +
-			"bertanda, supaya ketiadaannya terlihat alih-alih tersamar sebagai isian yang " +
-			"memang belum diisi.",
+		Detail: "Kelimanya adalah properti clipboard pada objek kerja Pega — No Kontrak, " +
+			"Business Unit / Seksi, Email Tertanggung, Tanggal Kelengkapan Dokumen, dan " +
+			"daftar Tanggal terima Dokumen. Ia tidak diekspos sebagai kolom tabel, sehingga " +
+			"tidak dapat dibaca dengan kueri biasa selama objek kerjanya masih dimiliki Pega. " +
+			"Isian itu tetap digambar di tempatnya, bertanda, supaya ketiadaannya terlihat " +
+			"alih-alih tersamar sebagai isian yang memang belum diisi. Daftarnya semula " +
+			"sembilan; empat di antaranya — Perihal dan ketiga Keterangan — ternyata SUDAH " +
+			"ada sebagai kolom dan kini terbaca.",
 	},
 
 	{
@@ -469,16 +630,16 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "Layar kerja terbuka untuk SEMUA klaim di antrean ini, termasuk klaim " +
-			"Notification yang di Pega tidak dapat dibuka.",
+		Summary: "Klaim berstatus Notification hanya punya tab \"Lampiran Surat\" — tab " +
+			"\"Penerimaan Dokumen\" memang tidak ada untuknya, sama seperti di layar lama.",
 
-		Detail: "Layar lama menyembunyikannya bagi klaim berkode jalur ketiga, dan Work " +
-			"Owner menjelaskan 2026-09-30 apa arti ketiga kodenya: 1 RCL, 2 PUCL, " +
-			"3 Notification. Klaim Notification karena itu bukan pekerjaan RCL maupun PUCL — " +
-			"dan di sini ia tetap dapat dibuka, karena keputusan Work Owner 2026-09-24 " +
-			"menunda pemberlakuan syaratnya. Selama layar ini hanya MEMBACA, membukanya " +
-			"tidak mengubah apa pun. Syarat itu wajib diberlakukan kembali sebelum tombol " +
-			"tulis mana pun dihidupkan.",
+		Detail: "Ketiga kode jalurnya: 1 RCL, 2 PUCL, 3 Notification (dijelaskan Work " +
+			"Owner 2026-09-30). Klaim Notification bukan pekerjaan RCL maupun PUCL " +
+			"melainkan pemberitahuan, sehingga tidak ada dokumen yang ditunggu dan tidak " +
+			"ada yang dikirim kembali ke Analyst — dan layar lama menyembunyikan tab itu " +
+			"justru karena itu. Syaratnya dibaca dari kontainer tab kedua di berkas " +
+			"layarnya, dan ditegakkan di sini pula. Klaimnya sendiri TETAP dapat dibuka, " +
+			"sama seperti di layar lama; yang disembunyikan hanya satu tab.",
 	},
 
 	// ---- Yang hanya terlihat bila kedua layar DIBANDINGKAN --------------------------

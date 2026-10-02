@@ -15,7 +15,13 @@ import (
 )
 
 // failingRepo adalah pengisi seam yang selalu gagal dengan galat yang ditentukan.
+//
+// inboxrclpucl.Repo disematkan dan SENGAJA dibiarkan nil: uji di berkas ini hanya menyentuh
+// jalur baca. Metode lain akan panic bila kelak dipanggil — lebih jujur daripada mengembalikan
+// galat yang sama, karena fake ini memang tidak dirancang untuk jalur itu.
 type failingRepo struct {
+	inboxrclpucl.Repo
+
 	err error
 }
 

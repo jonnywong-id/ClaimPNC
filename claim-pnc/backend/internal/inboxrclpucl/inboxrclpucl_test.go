@@ -193,16 +193,26 @@ func TestEverySummaryStaysShortEnoughToBeRead(t *testing.T) {
 // Penerjemah jalur
 // ---------------------------------------------------------------------------
 
-func TestTrackOfFollowsTheLegacyCaseWithoutElse(t *testing.T) {
+func TestTrackOfDrawsAllThreeLabelsTheLegacyScreenDraws(t *testing.T) {
 	require.Equal(t, inboxrclpucl.TrackRCL, inboxrclpucl.TrackOf("1"))
 	require.Equal(t, inboxrclpucl.TrackPUCL, inboxrclpucl.TrackOf("2"))
 
-	// `CASE` di sistem lama TANPA `ELSE`, sehingga nilai lain menghasilkan kosong — bukan
-	// kode mentahnya, dan bukan teks pengganti. Sel kosong adalah jawaban yang benar untuk
-	// jalur yang tidak dikenali.
-	require.Empty(t, inboxrclpucl.TrackOf("3"))
+	// Kode `3` menghasilkan "Notification", BUKAN sel kosong.
+	//
+	// Modul ini semula mengosongkannya, meniru `CASE` tanpa `ELSE` pada
+	// `GetReminderPUCL-SQL.xml`. Kueri itu memasok PENGINGAT, bukan grid. Sel grid-nya
+	// sendiri kontrol daftar pilihan (`pxRadioButtons`, Read-only), yang menggambar LABEL
+	// pilihannya — dan label itu hidup di rule Property yang tidak ada di export (`R-16`).
+	//
+	// Yang membuktikannya layar Pega yang berjalan: tab "Klaim MSIG" menggambar
+	// "Notification" untuk PNC-1503, dan baris itu terverifikasi `RCL_PUCL_1 = '3'` di
+	// basis data (2026-09-30).
+	require.Equal(t, inboxrclpucl.TrackNotification, inboxrclpucl.TrackOf("3"))
+
+	// Nilai di LUAR ketiganya tetap kosong. Satu baris di produksi memang berkode kosong.
 	require.Empty(t, inboxrclpucl.TrackOf(""))
 	require.Empty(t, inboxrclpucl.TrackOf("RCL"))
+	require.Empty(t, inboxrclpucl.TrackOf("9"))
 }
 
 func TestTrackOfIgnoresSurroundingSpaces(t *testing.T) {
@@ -451,4 +461,225 @@ func TestDailyReportColumnsDifferFromTheGrid(t *testing.T) {
 	require.False(t, keys[inboxrclpucl.FieldClaimAge],
 		"laporan TIDAK memuat Lama Klaim — kueri lama tidak mengambilnya")
 	require.True(t, keys[inboxrclpucl.FieldReportSentAt])
+}
+
+// ---------------------------------------------------------------------------
+// Tab "Penerimaan Dokumen" — syarat visibilitasnya
+// ---------------------------------------------------------------------------
+
+func TestNotificationClaimsHideTheDocumentReceiptTab(t *testing.T) {
+	// `Section/SendtoRCLPUCL-Section.xml` memasang
+	// `pyContainerVisibleWhen .ClaimData.PUCLStatus.RCL_PUCL != 3` pada kontainer tab
+	// kedua — kontainer ber-`pyTitle Penerimaan Dokumen`.
+	//
+	// Work Owner melaporkan 2026-09-30 bahwa klaim MSIG hanya menampilkan Lampiran Surat,
+	// dan berkas section-nya membenarkan laporan itu.
+	notification := inboxrclpucl.ClaimDetail{
+		Letter: inboxrclpucl.LetterDraft{TrackCode: inboxrclpucl.TrackCodeNotification},
+	}
+	require.False(t, notification.ShowsDocumentReceipt(),
+		"klaim Notification hanya menampilkan Lampiran Surat")
+
+	for _, code := range []string{
+		inboxrclpucl.TrackCodeRCL,
+		inboxrclpucl.TrackCodePUCL,
+		"",
+		"9",
+	} {
+		detail := inboxrclpucl.ClaimDetail{
+			Letter: inboxrclpucl.LetterDraft{TrackCode: code},
+		}
+		require.Truef(t, detail.ShowsDocumentReceipt(),
+			"hanya kode %q yang menyembunyikan tab; kode %q tidak",
+			inboxrclpucl.TrackCodeNotification, code)
+	}
+}
+
+func TestTheHiddenTrackIsTheNotificationCode(t *testing.T) {
+	// Keduanya nama untuk kode yang SAMA, dan dipisah karena menyatakan hal yang berbeda:
+	// yang satu arti kodenya, yang satu akibatnya pada layar. Nilainya wajib tetap sama —
+	// bila salah satunya berubah sendiri, tab yang disembunyikan menjadi tab klaim yang
+	// keliru, tanpa satu pun galat.
+	require.Equal(t, inboxrclpucl.TrackCodeNotification, inboxrclpucl.TrackHidden)
+}
+
+func TestTheTrackCodeSurvivesSurroundingSpaces(t *testing.T) {
+	// Kolomnya bertipe teks dan sebagian nilai di Oracle berspasi-rata, sama seperti yang
+	// sudah ditangani TrackOf.
+	detail := inboxrclpucl.ClaimDetail{
+		Letter: inboxrclpucl.LetterDraft{TrackCode: " 3 "},
+	}
+	require.False(t, detail.ShowsDocumentReceipt())
+}
+
+// ---------------------------------------------------------------------------
+// Tombol — syarat tampilnya, dibaca dari `pyUserData/pyCondition` tiap `pxButton`
+// ---------------------------------------------------------------------------
+
+// detailOf menyusun satu klaim dengan jalur, penanda MSIG, dan lini bisnis tertentu.
+func detailOf(track, msig, panel string) inboxrclpucl.ClaimDetail {
+	return inboxrclpucl.ClaimDetail{
+		Letter:     inboxrclpucl.LetterDraft{TrackCode: track},
+		MSIG:       msig,
+		GroupPanel: panel,
+	}
+}
+
+func TestDownloadAndCloseClaimNeverAppearTogether(t *testing.T) {
+	// Syaratnya SALING MENIADAKAN di section-nya:
+	//
+	//	Download Dokumen  .ClaimData.PUCLStatus.MSIG != 'MSIG'
+	//	Tutup Klaim       .ClaimData.PUCLStatus.RCL_PUCL = 3 && .ClaimData.PUCLStatus.MSIG = 'MSIG'
+	//
+	// Keduanya tampil bersamaan berarti salah satu syaratnya terbalik — dan karena "Tutup
+	// Klaim" MENUTUP klaim, tombol yang keliru muncul di sini berakibat nyata.
+	for _, track := range []string{
+		inboxrclpucl.TrackCodeRCL,
+		inboxrclpucl.TrackCodePUCL,
+		inboxrclpucl.TrackCodeNotification,
+		"",
+	} {
+		for _, msig := range []string{"", inboxrclpucl.MSIGMarker, "LAIN"} {
+			b := detailOf(track, msig, "").Buttons()
+			require.Falsef(t, b.DownloadDocument && b.CloseClaim,
+				"jalur %q, MSIG %q: keduanya tidak boleh tampil bersamaan", track, msig)
+		}
+	}
+}
+
+func TestCloseClaimNeedsBothNotificationAndMSIG(t *testing.T) {
+	require.True(t, detailOf(inboxrclpucl.TrackCodeNotification,
+		inboxrclpucl.MSIGMarker, "").Buttons().CloseClaim)
+
+	// Salah satu syarat saja TIDAK cukup. Kedua baris berikut menahan kekeliruan yang paling
+	// mudah terjadi: membaca `&&` sebagai `||`.
+	require.False(t, detailOf(inboxrclpucl.TrackCodeNotification, "", "").Buttons().CloseClaim,
+		"Notification tanpa MSIG tidak menampilkan Tutup Klaim")
+	require.False(t, detailOf(inboxrclpucl.TrackCodePUCL,
+		inboxrclpucl.MSIGMarker, "").Buttons().CloseClaim,
+		"MSIG di luar jalur Notification tidak menampilkan Tutup Klaim")
+}
+
+func TestMSIGClaimOutsideNotificationShowsNeitherLetterButton(t *testing.T) {
+	// Akibat yang mudah terbaca sebagai cacat, padahal perilaku sistem lama apa adanya:
+	// klaim MSIG ber-jalur PUCL gagal KEDUA syarat sekaligus.
+	b := detailOf(inboxrclpucl.TrackCodePUCL, inboxrclpucl.MSIGMarker, "").Buttons()
+	require.False(t, b.DownloadDocument)
+	require.False(t, b.CloseClaim)
+}
+
+func TestSendButtonsFollowTheBusinessLine(t *testing.T) {
+	// `RCL_PUCL = 2 && IsPA` versus `RCL_PUCL = 2 && IsTravel`. Perbedaannya BUKAN kata:
+	// Analyst dan PIC Teknik dua peran berbeda, sehingga tombol yang keliru meneruskan klaim
+	// kepada orang yang salah.
+	pa := detailOf(inboxrclpucl.TrackCodePUCL, "", inboxrclpucl.GroupPanelPA).Buttons()
+	require.True(t, pa.SendToAnalyst)
+	require.False(t, pa.SendToPICTeknik)
+
+	travel := detailOf(inboxrclpucl.TrackCodePUCL, "", inboxrclpucl.GroupPanelTravel).Buttons()
+	require.True(t, travel.SendToPICTeknik)
+	require.False(t, travel.SendToAnalyst)
+
+	// Lini LAIN pada jalur PUCL tidak menampilkan satu pun — dan itu memang yang terjadi di
+	// Pega, karena kedua syaratnya menyebut lini bisnis secara tegas.
+	other := detailOf(inboxrclpucl.TrackCodePUCL, "", "006").Buttons()
+	require.False(t, other.SendToAnalyst)
+	require.False(t, other.SendToPICTeknik)
+
+	// Jalur RCL tidak menampilkan tombol kirim mana pun, berapa pun lini bisnisnya.
+	rcl := detailOf(inboxrclpucl.TrackCodeRCL, "", inboxrclpucl.GroupPanelPA).Buttons()
+	require.False(t, rcl.SendToAnalyst)
+	require.True(t, rcl.RejectClaim, "menolak klaim hanya sah di jalur RCL")
+}
+
+func TestRejectClaimBelongsToTheRCLTrackOnly(t *testing.T) {
+	require.True(t, detailOf(inboxrclpucl.TrackCodeRCL, "", "").Buttons().RejectClaim)
+	require.False(t, detailOf(inboxrclpucl.TrackCodePUCL, "", "").Buttons().RejectClaim)
+}
+
+func TestHidingTheReceiptTabHidesItsButtonsToo(t *testing.T) {
+	// Klaim Notification tidak punya tab "Penerimaan Dokumen" sama sekali. Menyatakan
+	// tombol-tombolnya tetap digambar akan membuat layar mengumumkan tindakan yang tabnya
+	// tidak ada — dan `Save` serta `Unggah Dokumen` ber-`pyVisible ALWAYS`, sehingga tanpa
+	// penjagaan ini keduanya memang akan lolos.
+	b := detailOf(inboxrclpucl.TrackCodeNotification, inboxrclpucl.MSIGMarker, "").Buttons()
+	require.False(t, b.UploadDocument)
+	require.False(t, b.ViewDocument)
+	require.False(t, b.Save)
+	require.False(t, b.RejectClaim)
+	require.False(t, b.SendToAnalyst)
+	require.False(t, b.SendToPICTeknik)
+
+	// Tetapi tombol tab PERTAMA tetap dinilai — justru di sinilah "Tutup Klaim" muncul.
+	require.True(t, b.CloseClaim)
+}
+
+func TestTheThreeAlwaysButtonsAppearOnEveryVisibleReceiptTab(t *testing.T) {
+	// `pyVisible ALWAYS` pada ketiganya. Bila salah satunya kelak diberi syarat tanpa bukti
+	// dari section-nya, uji ini gagal.
+	for _, track := range []string{inboxrclpucl.TrackCodeRCL, inboxrclpucl.TrackCodePUCL} {
+		b := detailOf(track, "", "").Buttons()
+		require.Truef(t, b.UploadDocument, "jalur %q", track)
+		require.Truef(t, b.ViewDocument, "jalur %q", track)
+		require.Truef(t, b.Save, "jalur %q", track)
+	}
+}
+
+func TestButtonConditionsSurviveSurroundingSpaces(t *testing.T) {
+	// Alasannya sama dengan TestTheTrackCodeSurvivesSurroundingSpaces: kolomnya bertipe teks
+	// dan sebagian nilai di Oracle berspasi-rata. `MSIG` dan `GROUPPANEL` pun demikian.
+	b := detailOf(" 2 ", " MSIG ", " 002 ").Buttons()
+	require.True(t, b.SendToAnalyst)
+	require.False(t, b.DownloadDocument, "MSIG berspasi tetap jalur MSIG")
+}
+
+// ---------------------------------------------------------------------------
+// Parameter tindakan — dibaca dari kolomnya
+// ---------------------------------------------------------------------------
+
+func TestActionParametersAreNotInterchangeable(t *testing.T) {
+	// Ketiganya sempat bernilai SAMA (`"1"`) sebagai penampung, 2026-10-01. Selama nilainya
+	// sama, menukar `idObj` dengan `idAdj` tidak membuat satu pun uji gagal — dan `PUCLPost`
+	// tidak menolak nilai yang tertukar: ia mengerjakannya pada baris klaim yang keliru.
+	//
+	// Uji ini menahan pertukaran itu dengan menuntut ketiganya dibawa APA ADANYA, dari isian
+	// yang berbeda-beda.
+	detail := inboxrclpucl.ClaimDetail{
+		ActionParameters: inboxrclpucl.ActionParameters{
+			IDObject:     "OBJ-7",
+			IDCoverage:   "COV-8",
+			IDAdjustment: "ADJ-9",
+		},
+	}
+
+	require.Equal(t, "OBJ-7", detail.ActionParameters.IDObject)
+	require.Equal(t, "COV-8", detail.ActionParameters.IDCoverage)
+	require.Equal(t, "ADJ-9", detail.ActionParameters.IDAdjustment)
+}
+
+func TestWaktuBentukPegaDigambarSebagaiWIB(t *testing.T) {
+	// `RECEIVEDDATE_1` menyimpan bentuk INTERNAL Pega, bukan timestamp. Sampai 2026-10-01 ia
+	// sampai ke layar apa adanya — Work Owner melaporkannya dengan tangkapan layar berisi
+	// `20240911T143500.000 GMT` di dalam grid.
+	//
+	// Pergeseran +7 ikut dijaga: seluruh waktu Pega disimpan GMT dan digambar WIB. Tanpa uji
+	// ini, kekeliruan zona menghasilkan jam yang masuk akal tetapi SALAH tujuh jam — kelas
+	// kesalahan yang tidak pernah terlihat sebagai kerusakan.
+	for _, c := range []struct{ raw, want string }{
+		{"20240911T143500.000 GMT", "11/09/2024 21:35"},
+		{"20240911T143500 GMT", "11/09/2024 21:35"},
+		{"20241231T170000.000 GMT", "01/01/2025 00:00"}, // menyeberang pergantian tahun
+		{"", ""},
+		{"2026-09-04 10:05:00", "2026-09-04 10:05:00"}, // bentuk lain: apa adanya
+	} {
+		require.Equalf(t, c.want, inboxrclpucl.DisplayPegaTime(c.raw), "masukan %q", c.raw)
+	}
+}
+
+func TestGridTanggalTerimaDokumenMemakaiBentukTampilan(t *testing.T) {
+	// Penggambarnya dipakai di SATU tempat, dan uji ini yang memastikan ia benar-benar
+	// dilewati — bukan hanya tersedia.
+	rows := inboxrclpucl.ReceivedDatesOf("20240911T143500.000 GMT", "Dokumen awal")
+	require.Len(t, rows, 1)
+	require.Equal(t, "11/09/2024 21:35", rows[0].Date)
 }

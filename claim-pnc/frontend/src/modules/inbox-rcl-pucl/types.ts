@@ -245,6 +245,20 @@ export type LetterDraft = {
 
   /** Diturunkan dari `PROPOSE_VALUE` adjustment pertama pada objek pertama. */
   jumlah_tagihan: string
+
+  /**
+   * Keempat isian surat, dibaca dari kolom tabel datar sejak 2026-10-01.
+   *
+   * Sebelumnya keempatnya digambar bertanda "di clipboard Pega", karena kolomnya memang
+   * belum ada. Yang berubah bukan pembacaan kami melainkan tabelnya.
+   *
+   * `perihal` di layar lama adalah PILIHAN dari daftar baku 12 butir; yang tersimpan pada
+   * klaim adalah teksnya.
+   */
+  perihal: string
+  keterangan_pembuka: string
+  keterangan_isi: string
+  keterangan_penutup: string
 }
 
 /**
@@ -253,7 +267,44 @@ export type LetterDraft = {
  * Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali —
  * yang menjelaskan ketiadaannya adalah `isian_belum_terpetakan`.
  */
+/** Satu baris grid "Tanggal Terima Dokumen". */
+export type ReceivedDate = {
+  tanggal: string
+  keterangan: string
+}
+
 export type DocumentReceipt = {
+  /**
+   * Grid "Tanggal Terima Dokumen" — paling banyak SATU baris.
+   *
+   * Daftarnya page list Pega tanpa tabel; hanya baris pertamanya yang diekspos sebagai
+   * kolom. Lihat `tanggal_terima_dokumen_sebagian`.
+   */
+  tanggal_terima_dokumen: ReceivedDate[]
+
+  /**
+   * Daftar di atas MUNGKIN tidak lengkap.
+   *
+   * Datang dari server supaya ia hilang di satu tempat begitu baris kedua dan seterusnya
+   * terbaca lewat layanan Pega.
+   */
+  tanggal_terima_dokumen_sebagian: boolean
+
+  /**
+   * "Tanggal Kelengkapan Dokumen" — dari `TGL_TERIMA_DOKUMEN_PUCL`.
+   *
+   * Sudah berbentuk tampilan; layar tidak memformat ulang apa pun.
+   */
+  tanggal_kelengkapan_dokumen: string
+
+  /**
+   * "Email Tertanggung" — dari `T_CLAIM_PNC.EMAIL_LOD`.
+   *
+   * Kolomnya ADA tetapi kosong pada seluruh baris produksi (dihitung 2026-10-01), sehingga
+   * isian ini akan tergambar kosong. Itu keadaan DATA, bukan isian yang belum terpetakan.
+   */
+  email_tertanggung: string
+
   /**
    * Judulnya di layar **"Catatan untuk Analyst"**, bukan "Komentar PUCL".
    *
@@ -283,6 +334,52 @@ export type ClaimDetailResponse = {
    */
   isian_belum_terpetakan: string[]
 
+  /**
+   * Tab "Penerimaan Dokumen" digambar untuk klaim ini.
+   *
+   * Bernilai salah untuk klaim berstatus Notification: layar lama menyembunyikan tab itu
+   * lewat syarat pada kontainernya, karena pemberitahuan tidak menunggu dokumen dan tidak
+   * dikirim kembali ke Analyst.
+   *
+   * Datang dari SERVER, bukan disimpulkan dari `kode_rcl_pucl` di sini — kodenya nilai
+   * milik sistem lama, dan membandingkannya di dua tempat membuat keduanya dapat
+   * berselisih tanpa ketahuan.
+   */
+  tab_penerimaan_dokumen_tampil: boolean
+
+  /**
+   * Tombol mana yang digambar untuk klaim ini.
+   *
+   * Sama alasannya dengan `tab_penerimaan_dokumen_tampil`: syaratnya memakai nilai milik
+   * sistem lama (`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan menaruh perbandingannya
+   * di layar berarti satu aturan bisnis hidup di dua tempat.
+   */
+  /**
+   * Parameter tersembunyi yang dikirim ke `PUCLPost` saat tombol tindakan ditekan.
+   *
+   * TIDAK digambar — ketiganya sel tanpa label di Pega pula. Ia ada di kontrak karena jalur
+   * tulis yang sedang disiapkan membutuhkannya.
+   *
+   * Dibaca dari kolom `ID_OBJECT`, `ID_COVERAGE`, dan `ID_ADJUSTMENT` pada tabel datar.
+   * Isian `sementara` yang sempat ada dicabut bersama nilai penampungnya.
+   */
+  parameter_tindakan: {
+    id_object: string
+    id_coverage: string
+    id_adjustment: string
+  }
+
+  tombol: {
+    download_dokumen: boolean
+    tutup_klaim: boolean
+    unggah_dokumen: boolean
+    lihat_dokumen: boolean
+    save: boolean
+    tolak_klaim: boolean
+    kirim_ke_analyst: boolean
+    kirim_ke_pic_teknik: boolean
+  }
+
   /** Layar ini di Pega adalah layar TULIS; di sini baca saja. */
   tindakan_masih_di_pega: boolean
 
@@ -293,4 +390,44 @@ export type ClaimDetailResponse = {
 export type DateRange = {
   dari: string
   sampai: string
+}
+
+/** Satu baris daftar dokumen klaim — tombol "Lihat Dokumen". */
+export type DocumentRow = {
+  id: string
+  nama: string
+  kategori: string
+  sub_kategori: string
+  diunggah_pada: string
+  diunggah_oleh: string
+}
+
+/** Jawaban daftar dokumen satu klaim. */
+export type DocumentListResponse = {
+  dokumen: DocumentRow[]
+
+  /**
+   * Keterangan bahwa daftarnya mungkin TIDAK lengkap.
+   *
+   * Datang dari SERVER, bukan ditulis di layar: dokumen yang hanya ada di tabel lampiran
+   * bawaan Pega belum terbaca lewat jalur ini, dan daftar kosong tanpa keterangan terbaca
+   * sebagai "klaim ini tidak berdokumen". Begitu jalur itu ikut terbaca, kalimatnya hilang
+   * di satu tempat.
+   */
+  catatan: string
+
+  /**
+   * Jumlah lampiran klaim yang TIDAK digambar.
+   *
+   * Daftar ini mengikuti penyaring `GCNMGetAllAttachments`, report definition di balik
+   * tombol "Lihat Dokumen" di Pega: ia menyaring atas nama kategori lampiran, sehingga baris
+   * berkategori kode angka — yang berasal dari mekanisme lain — tidak pernah tergambar di
+   * sana pula.
+   *
+   * Angkanya dinyatakan di layar. Daftar yang diam-diam lebih pendek adalah kegagalan yang
+   * tidak menghasilkan satu pun galat.
+   */
+  disaring: number
+
+  portal: string
 }

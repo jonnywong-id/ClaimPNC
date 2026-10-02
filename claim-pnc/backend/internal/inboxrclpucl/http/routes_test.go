@@ -30,7 +30,14 @@ const testPortal = "ASM"
 // fakeRepo adalah pengisi seam yang perilakunya ditentukan tiap uji.
 //
 // Fungsi yang dibiarkan nil menghasilkan jawaban kosong yang sah.
+//
+// inboxrclpucl.Repo disematkan dan SENGAJA dibiarkan nil: uji di berkas ini hanya menyentuh
+// jalur baca (daftar, layar kerja, ekspor). Metode lain — dokumen dan seluruh jalur tulis —
+// akan panic bila kelak dipanggil, dan itu yang dikehendaki. Memberinya jawaban kosong akan
+// membuat uji baru lulus tanpa benar-benar memakai pengisi seam apa pun.
 type fakeRepo struct {
+	inboxrclpucl.Repo
+
 	list   func(q inboxrclpucl.Query, p inboxrclpucl.Pagination) (inboxrclpucl.Page, error)
 	report func(rng inboxrclpucl.DateRange, p inboxrclpucl.Pagination) ([]inboxrclpucl.DailyReportRow, int, error)
 	detail func(reference string) (inboxrclpucl.ClaimDetail, error)
@@ -419,7 +426,10 @@ func TestDetailReturnsTheWorkScreenOfOneClaim(t *testing.T) {
 	require.NotEmpty(t, body.LampiranSurat.NoPolis)
 	// "UP" diisi dari sumber yang sama dengan "Nama Peserta" — perilaku Pega apa adanya.
 	require.Equal(t, body.LampiranSurat.NamaPeserta, body.LampiranSurat.UP)
-	require.Len(t, body.BelumTerpetakan, 9)
+	// TIGA, bukan sembilan. Daftarnya menyusut dua kali — lihat unmappedLetterFields:
+	// empat isian surat ternyata punya kolom di `TC_PNC_PUCL`, lalu "Email Tertanggung" dan
+	// "Tanggal Kelengkapan Dokumen" ikut terpetakan atas penetapan Work Owner.
+	require.Len(t, body.BelumTerpetakan, 3)
 	require.Contains(t, body.BelumTerpetakan, "No Kontrak")
 	require.True(t, body.MasihDiPega)
 	require.Equal(t, testPortal, body.Portal)
