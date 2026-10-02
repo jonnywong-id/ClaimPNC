@@ -8,7 +8,7 @@ stages:
   - build
 
 default:
-  image: node:24
+  image: node:26
   interruptible: true
 
 variables:
