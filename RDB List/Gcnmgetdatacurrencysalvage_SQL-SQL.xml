@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHistoryObject>false</pyHistoryObject>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateDateTime>20211022T040707.891 GMT</pxCreateDateTime>
+<pxCommitDateTime>20211221T124059.000 GMT</pxCommitDateTime>
+<pxOriginalCreateOperator/>
+<pxMoveFromSystem/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!GCNMGETDATACURRENCYSALVAGE_SQL #20211022T040707.891 GMT</pzDocumentKey>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceType/>
+<pyInterface/>
+<pyWorkKey/>
+<pyStreamName/>
+<pyCircumstanceVal/>
+<pyRelativePath/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDateProp/>
+<pyCheckInRuleSet/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRWAccess>ASM</pyRWAccess>
+<pyTemplate/>
+<pxInstanceLockedKey/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxSiblingCount/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pySaveSQL/>
+<pyTemporaryObject/>
+<pxInstanceLockedCreateDateTime/>
+<pyDeleteSQL/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyCircumstanceTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxSaveDateTime>20211022T080714.644 GMT</pxSaveDateTime>
+<pxOriginalCreateSystemID/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!GCNMSETSALVAGEDATA_SQL #20211019T091821.146 GMT</pzOriginalInstanceKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzChecksum>207320995</pzChecksum>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!ASM!GCNMGETDATACURRENCYSALVAGE_SQL</pxInsName>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedRuleSet/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabelOld>Gcnmgetdatacurrencysalvage_SQL</pyLabelOld>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData ASM Gcnmgetdatacurrencysalvage_SQL</pxTabLabel>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!ASM!GCNMGETDATACURRENCYSALVAGE_SQL</pxInsId>
+<pyJavaStream/>
+<pyOpenSQL/>
+<pxHostId>jboss1040</pxHostId>
+<pyRuleFormStatusTime>20261003T054230.063 GMT</pyRuleFormStatusTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDate/>
+<pyShowJavaWindowName>GeneratedJava20261003T054230.092 GMT</pyShowJavaWindowName>
+<pyDocumentTitle/>
+<pyRuleParamsStreamName/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxMoveImportDateTime>20211221T124058.025 GMT</pxMoveImportDateTime>
+<pyWindowTitle/>
+<pySpecialtyComponentData/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData ASM Gcnmgetdatacurrencysalvage_SQL</pyRuleName>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyUsage/>
+<pxOriginalCreateDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedBy/>
+<pyDeletedObject/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyBrowseSQL>select currency as "CityID" ,(select currency from POOLDATA.CURRENCY b where A.CURRENCY = B.ID) as "City" from POOLDATA.T_CLAIM_ADJUSTMENT a where claimid = {tempQuery.CaseID}</pyBrowseSQL>
+<pxUpdateDateTime>20211022T080714.633 GMT</pxUpdateDateTime>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyLabel>Gcnmgetdatacurrencysalvage_SQL</pyLabel>
+<pyRuleStarts/>
+<pxInstanceLockedDateTime/>
+<pyHandlerFlow/>
+<pzRuleSetVersionPatch>95</pzRuleSetVersionPatch>
+<pyRuleEnds/>
+<pxOriginalCreateOpName/>
+<pyStatus/>
+<pyCircumstanceProp/>
+<pyMethodStatus/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplateInputBox/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMemo>get currency</pyMemo>
+<pyDescription/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleSetVersion>01-01-95</pyRuleSetVersion>
+<pyRequestType>Gcnmgetdatacurrencysalvage_SQL</pyRequestType>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!GCNMGETDATACURRENCYSALVAGE_SQL #20211022T040707.891 GMT</pzInsKey>
+<pyCircumstanceDefinition/>
+<pyFormPost/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pyRefresh>true</pyRefresh>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyCheckIn>false</pyCheckIn>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!GCNMGETDATACURRENCYSALVAGE_SQL #20211022T040707.891 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

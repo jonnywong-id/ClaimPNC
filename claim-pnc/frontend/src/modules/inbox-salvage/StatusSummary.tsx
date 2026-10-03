@@ -1,3 +1,4 @@
+import { SalvageDonut } from './SalvageDonut'
 import type { StatusCount } from './types'
 
 type Props = {
@@ -30,6 +31,13 @@ type Props = {
  * berjalan dan dibaca orang setiap hari.
  *
  * Keterangannya ada di `selisih_terencana`, yang digambar halaman ini di bawah tabel.
+ *
+ * # Grafik di kiri, tabel di kanan
+ *
+ * Susunan itu disalin dari layar lama, dan keduanya memang satu kesatuan: grafiknya
+ * menjawab "sebarannya bagaimana", tabelnya menjawab "berapa tepatnya, dan bawa saya ke
+ * sana". Pada layar sempit keduanya bertumpuk — grafik lebih dulu, karena ia yang terbaca
+ * sekilas.
  */
 export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
   if (isLoading) {
@@ -46,77 +54,81 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
   if (rows.length === 0) return null
 
   return (
-    <div className="overflow-x-auto rounded-kartu border border-slate-200 bg-white">
-      <table
-        className="w-full min-w-max text-sm"
-        aria-label="Ringkasan jumlah pengajuan per status salvage"
-      >
-        <caption className="sr-only">
-          Ringkasan jumlah pengajuan per status salvage. Pilih satu baris untuk membuka
-          daftarnya.
-        </caption>
+    <div className="flex flex-wrap items-start justify-center gap-8 rounded-kartu border border-slate-200 bg-white p-4">
+      <SalvageDonut rows={rows} />
 
-        <thead className="bg-slate-50 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
-          <tr>
-            <th scope="col" className="px-4 py-2.5">
-              Status Salvage
-            </th>
-            <th scope="col" className="px-4 py-2.5 text-right">
-              Jumlah
-            </th>
-          </tr>
-        </thead>
+      <div className="min-w-0 grow overflow-x-auto sm:max-w-md">
+        <table
+          className="w-full min-w-max text-sm"
+          aria-label="Ringkasan jumlah pengajuan per status salvage"
+        >
+          <caption className="sr-only">
+            Ringkasan jumlah pengajuan per status salvage. Pilih satu baris untuk membuka
+            daftarnya.
+          </caption>
 
-        <tbody className="divide-y divide-slate-100">
-          {rows.map((row) => {
-            // Baris yang TIDAK menuju daftar mana pun digambar sebagai teks biasa, bukan
-            // tombol yang tidak melakukan apa-apa. Satu baris memang begitu — "Tidak
-            // Terjual", yang di Pega pun tidak punya tab.
-            const reachable = Boolean(row.daftar)
-            const selected = reachable && row.daftar === active
+          <thead className="bg-slate-50 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
+            <tr>
+              <th scope="col" className="px-4 py-2.5">
+                Status Salvage
+              </th>
+              <th scope="col" className="px-4 py-2.5 text-right">
+                Jumlah
+              </th>
+            </tr>
+          </thead>
 
-            return (
-              <tr
-                key={row.status_salvage}
-                className={selected ? 'bg-blue-50' : undefined}
-              >
-                <th scope="row" className="px-4 py-2 text-left font-normal">
-                  {reachable ? (
-                    <button
-                      type="button"
-                      onClick={() => onSelect(row.daftar ?? '')}
-                      aria-current={selected ? 'true' : undefined}
-                      className={[
-                        'rounded-kontrol px-1 text-left',
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                        selected
-                          ? 'font-semibold text-blue-700'
-                          : 'text-blue-700 hover:underline',
-                      ].join(' ')}
-                    >
-                      {row.status_salvage}
-                    </button>
-                  ) : (
-                    <span
-                      className="px-1 text-slate-600"
-                      title={
-                        'Baris ini tidak punya daftar sendiri — di Pega pun tidak ada ' +
-                        'tab yang menerimanya.'
-                      }
-                    >
-                      {row.status_salvage}
-                    </span>
-                  )}
-                </th>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row) => {
+              // Baris yang TIDAK menuju daftar mana pun digambar sebagai teks biasa, bukan
+              // tombol yang tidak melakukan apa-apa. Satu baris memang begitu — "Tidak
+              // Terjual", yang di Pega pun tidak punya tab.
+              const reachable = Boolean(row.daftar)
+              const selected = reachable && row.daftar === active
 
-                <td className="px-4 py-2 text-right tabular-nums text-slate-900">
-                  {row.jumlah.toLocaleString('id-ID')}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+              return (
+                <tr
+                  key={row.status_salvage}
+                  className={selected ? 'bg-blue-50' : undefined}
+                >
+                  <th scope="row" className="px-4 py-2 text-left font-normal">
+                    {reachable ? (
+                      <button
+                        type="button"
+                        onClick={() => onSelect(row.daftar ?? '')}
+                        aria-current={selected ? 'true' : undefined}
+                        className={[
+                          'rounded-kontrol px-1 text-left',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                          selected
+                            ? 'font-semibold text-blue-700'
+                            : 'text-blue-700 hover:underline',
+                        ].join(' ')}
+                      >
+                        {row.status_salvage}
+                      </button>
+                    ) : (
+                      <span
+                        className="px-1 text-slate-600"
+                        title={
+                          'Baris ini tidak punya daftar sendiri — di Pega pun tidak ada ' +
+                          'tab yang menerimanya.'
+                        }
+                      >
+                        {row.status_salvage}
+                      </span>
+                    )}
+                  </th>
+
+                  <td className="px-4 py-2 text-right tabular-nums text-slate-900">
+                    {row.jumlah.toLocaleString('id-ID')}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

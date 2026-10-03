@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/inboxsalvage"
 )
@@ -307,6 +308,19 @@ func (r *Repo) Detail(ctx context.Context, salvageID string) (inboxsalvage.Detai
 	}
 	detail.History = history
 
+	// Pilihan objek dan coverage dibaca DI SINI PULA, bukan hanya pada jalur nomor klaim.
+	//
+	// Sebabnya satu daftar membuka FORM, bukan panel baca: "Rejected Checker" berisi
+	// pengajuan yang dikembalikan checker kepada PIC untuk diperbaiki, dan memperbaikinya
+	// berarti kedua autocomplete itu harus terisi. Barisnya membawa ID PENGAJUAN, sehingga
+	// jalur inilah yang dilaluinya.
+	objects, coverages, err := r.claimChoices(ctx, detail.ClaimNo)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+	detail.ObjectChoices = objects
+	detail.CoverageChoices = coverages
+
 	return detail, nil
 }
 
@@ -386,6 +400,19 @@ func (r *Repo) DetailByClaim(
 	}
 	base.History = history
 
+	// Pilihan objek dan coverage dibaca pada KEDUA cabang pula, dan justru cabang "belum
+	// punya pengajuan" yang paling membutuhkannya: itulah cabang yang membuka form
+	// "Menambahkan Data Salvage", tempat kedua autocomplete-nya digambar.
+	//
+	// Sebelum ini form itu tidak dapat disimpan sama sekali pada jalur tersebut — kedua
+	// kolomnya terkunci dan kosong, sementara keduanya wajib diisi (lihat form.Validate).
+	objects, coverages, err := r.claimChoices(ctx, clean)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+	base.ObjectChoices = objects
+	base.CoverageChoices = coverages
+
 	salvageID, err := r.latestSalvageOfClaim(ctx, clean)
 	if err != nil {
 		return inboxsalvage.Detail{}, err
@@ -420,8 +447,415 @@ func (r *Repo) DetailByClaim(
 	}
 	detail.Items = items
 	detail.History = base.History
+	detail.ObjectChoices = base.ObjectChoices
+	detail.CoverageChoices = base.CoverageChoices
 
 	return detail, nil
+}
+
+// claimChoices membaca isi kedua autocomplete form "Menambahkan Data Salvage".
+//
+// # Kenapa dua kueri, bukan satu gabungan
+//
+// Karena hubungannya satu-ke-banyak: satu objek punya beberapa coverage. Menggabungkannya
+// akan mengulang baris objek sebanyak coverage-nya, lalu memaksa kode di sini membuang
+// duplikatnya — pekerjaan yang tidak dibutuhkan untuk dua daftar yang masing-masing berisi
+// segelintir baris.
+//
+// # Klaim tanpa objek BUKAN galat
+//
+// Keduanya mengembalikan senarai KOSONG, bukan nil dan bukan galat. Kedua kolomnya
+// menerima ketikan bebas — `pyAllowFreeFormInput=true` di layar lama — sehingga form tetap
+// dapat diisi, hanya tanpa bantuan daftar.
+func (r *Repo) claimChoices(
+	ctx context.Context,
+	claimNo string,
+) ([]inboxsalvage.ObjectChoice, []inboxsalvage.CoverageChoice, error) {
+	objects, err := r.claimObjects(ctx, claimNo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	coverages, err := r.claimCoverages(ctx, claimNo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return objects, coverages, nil
+}
+
+// AttachDocument menyimpan satu berkas lampiran beserta penautnya ke pengajuan salvage.
+//
+// # Keenam langkahnya SATU transaksi
+//
+// Di sistem lama tiap langkah menutup transaksinya sendiri — kedua procedure lampiran
+// ber-`COMMIT` di dalam, dan `InsertToSalvageDoc_SQL` menambah satu lagi. Akibatnya
+// kegagalan di langkah keempat meninggalkan isi berkas tanpa keterangan, dan tidak ada
+// yang memulihkannya.
+//
+// Di sini keenamnya dibungkus satu transaksi (`D-68`). `COMMIT` di dalam teks kueri lama
+// karena itu tidak dibawa — yang dibawa hanya pemanggilan procedure-nya.
+//
+// # Urutannya mengikuti `SaveFilePenunjangBySalvage`
+//
+//  1. `GenerateimageID`     — ID gambar, penaut isi dengan keterangannya
+//  2. `GetNamaFile`         — awalan nama berkas
+//  3. `CountSalvage`        — urutan berkas ke berapa pada klaim ini
+//  4. `SaveAttachmentToDBTemp_Sql` — ISI berkas
+//  5. `SaveAttachmentToDB_Sql`     — KETERANGAN berkas
+//  6. `GetDocumentData` + `InsertToSalvageDoc_SQL` — penaut ke pengajuan salvage
+//
+// Langkah histori disisipkan di antara 5 dan 6, mengikuti `PNCSaveAttachmentToDB` yang
+// menjalankan keduanya berurutan.
+func (r *Repo) AttachDocument(
+	ctx context.Context,
+	doc inboxsalvage.DocumentUpload,
+) (inboxsalvage.AttachedDocument, error) {
+	clean := doc.Clean()
+	if err := clean.Validate(); err != nil {
+		return inboxsalvage.AttachedDocument{}, err
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: memulai transaksi lampiran: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// IMAGEID dibangkitkan di Go, bukan di basis data — lihat inboxsalvage.NewImageID.
+	imageID := inboxsalvage.NewImageID(time.Now())
+
+	storedName, err := r.storedNameOf(ctx, tx, clean)
+	if err != nil {
+		return inboxsalvage.AttachedDocument{}, err
+	}
+
+	pegaKey := PegaWorkKeyPrefix + clean.ClaimNo
+
+	// Isi berkas lebih dulu, keterangannya kemudian — urutan `SaveFilePenunjangBySalvage`.
+	//
+	// DATAID yang dikembalikan penyimpan ISI sengaja DIBUANG: ia bukan yang dipakai
+	// penaut salvage. Yang dipakai adalah DATAID milik keterangannya, dibaca kembali
+	// lewat IMAGEID di langkah terakhir.
+	var contentID, contentErr sql.NullString
+	_, err = tx.ExecContext(ctx, query("attachment_content"),
+		clean.MimeType,                 // :1  PHOTOMIME
+		storedName,                     // :2  PHOTONOTE  — kueri lama mengisinya nama berkas
+		storedName,                     // :3  PHOTONAME
+		inboxsalvage.DocumentCommand,   // :4 COMAND
+		clean.Operator,                 // :5  INPUTOPERATOR
+		imageID,                        // :6  PHOTOID
+		nullIfEmpty(clean.Category),    // :7 PHOTOCATEGORY
+		nullIfEmpty(clean.SubCategory), // :8 PHOTOSUBCATEGORY
+		pegaKey,                        // :9  IDPEGA
+		clean.Content64,                // :10 PHOTO
+		sql.Out{Dest: &contentID},
+		sql.Out{Dest: &contentErr},
+	)
+	if err != nil {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: menyimpan isi lampiran: %w", err)
+	}
+	if message := strings.TrimSpace(contentErr.String); message != "" {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: menyimpan isi lampiran ditolak: %s", message)
+	}
+
+	var metaID, metaErr sql.NullString
+	_, err = tx.ExecContext(ctx, query("attachment_meta"),
+		clean.MimeType,
+		storedName,
+		storedName,
+		inboxsalvage.DocumentCommand,
+		clean.Operator,
+		imageID,
+		nullIfEmpty(clean.Category),
+		nullIfEmpty(clean.SubCategory),
+		pegaKey,
+		sql.Out{Dest: &metaID},
+		sql.Out{Dest: &metaErr},
+	)
+	if err != nil {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: menyimpan keterangan lampiran: %w", err)
+	}
+	if message := strings.TrimSpace(metaErr.String); message != "" {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: menyimpan keterangan lampiran ditolak: %s", message)
+	}
+
+	// DATAID keterangan dibaca ULANG lewat IMAGEID, bukan diambil dari parameter keluar.
+	//
+	// Begitulah `InsertToSalvageDocument` melakukannya — ia menjalankan `GetDocumentData`
+	// lebih dulu. Membaca ulang juga membuktikan barisnya benar-benar ada sebelum
+	// penautnya ditulis.
+	dataID, attachName, err := r.attachmentByImage(ctx, tx, imageID)
+	if err != nil {
+		return inboxsalvage.AttachedDocument{}, err
+	}
+
+	_, err = tx.ExecContext(ctx, query("attachment_history"),
+		dataID,                         // :1 DATAID
+		clean.ClaimNo,                  // :2 NOKLAIM
+		clean.Operator,                 // :3 INPUTOPERATOR
+		attachName,                     // :4 ATTACHNAME dan ATTACHNOTE
+		clean.MimeType,                 // :5 ATTACHMIMETYPE
+		nullIfEmpty(metaID.String),     // :6 MESSAGE
+		nullIfEmpty(clean.Category),    // :7 CATRGORY
+		nullIfEmpty(clean.SubCategory), // :8 GCNMCATEGORY
+		nullIfEmpty(clean.SubCategory), // :9 GCNMTYPE
+	)
+	if err != nil {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: menulis histori lampiran: %w", err)
+	}
+
+	result := inboxsalvage.AttachedDocument{
+		DataID:     dataID,
+		ImageID:    imageID,
+		StoredName: storedName,
+	}
+
+	// Penaut salvage DILEWATI bila pengajuannya belum punya ID.
+	//
+	// Itu terjadi pada form pengajuan BARU: berkas diunggah sebelum Submit, sehingga
+	// `IDSALVAGE` memang belum terbit. Lampirannya tetap menempel ke klaimnya lewat
+	// `IDPEGA`, dan itu bukan kegagalan.
+	if clean.SalvageID != "" {
+		var linkResult sql.NullString
+		_, err = tx.ExecContext(ctx, query("salvage_document_link"),
+			dataID,
+			clean.ClaimNo,
+			clean.SalvageID,
+			attachName,
+			clean.Operator,
+			nullIfEmpty(clean.Category),
+			nullIfEmpty(clean.SubCategory),
+			sql.Out{Dest: &linkResult},
+		)
+		if err != nil {
+			return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+				"inboxsalvage/sqlstore: menautkan lampiran ke salvage: %w", err)
+		}
+		result.LinkedToSalvage = true
+	}
+
+	if err := tx.Commit(); err != nil {
+		return inboxsalvage.AttachedDocument{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: menyimpan transaksi lampiran: %w", err)
+	}
+
+	return result, nil
+}
+
+// storedNameOf menyusun nama berkas yang BENAR-BENAR tersimpan.
+//
+// Bentuknya mengikuti `SetFileNameSalvage`:
+//
+//	<awalan>-<nomor klaim>-<urutan>.<ekstensi>
+//
+// # Bila awalannya tidak terbaca, nama ASLI yang dipakai
+//
+// Awalan datang dari `LST_TYPE_DOC_BUSINESS.NAMAFILE`, dicari dengan jenis dokumen — dan
+// modal unggahan salvage TIDAK punya pemilih jenis dokumen sama sekali, sehingga
+// pencariannya sering tidak menghasilkan apa-apa.
+//
+// Pada keadaan itu nama aslinya dipakai, dibersihkan dari karakter yang tidak aman.
+// Alternatifnya — awalan kosong — menghasilkan nama berbentuk `-PNC-123-1.pdf` yang
+// menyembunyikan asal berkasnya dari siapa pun yang membacanya di daftar lampiran.
+func (r *Repo) storedNameOf(
+	ctx context.Context,
+	tx *sql.Tx,
+	doc inboxsalvage.DocumentUpload,
+) (string, error) {
+	prefix := ""
+	if doc.SubCategory != "" {
+		var found sql.NullString
+		row := tx.QueryRowContext(ctx, query("attachment_name_prefix"), doc.SubCategory)
+		switch err := row.Scan(&found); {
+		case errors.Is(err, sql.ErrNoRows):
+			// Jenis dokumen tanpa baris master BUKAN galat — lihat catatan di atas.
+		case err != nil:
+			return "", fmt.Errorf("membaca awalan nama berkas: %w", err)
+		default:
+			prefix = strings.TrimSpace(found.String)
+		}
+	}
+
+	if prefix == "" {
+		prefix = inboxsalvage.SafeFileName(doc.FileName)
+	}
+
+	sequence, err := r.attachmentSequence(ctx, tx, doc)
+	if err != nil {
+		return "", err
+	}
+
+	name := fmt.Sprintf("%s-%s-%d", prefix, doc.ClaimNo, sequence)
+	if doc.MimeType != "" {
+		name += "." + doc.MimeType
+	}
+	return name, nil
+}
+
+// attachmentSequence menghitung berkas ke berapa ini pada klaimnya.
+//
+// `SetFileNameSalvage` memulai dari `0` lalu menambah `1`, sehingga berkas pertama
+// bernomor `1`.
+func (r *Repo) attachmentSequence(
+	ctx context.Context,
+	tx *sql.Tx,
+	doc inboxsalvage.DocumentUpload,
+) (int, error) {
+	var existing int
+	row := tx.QueryRowContext(ctx, query("attachment_sequence_of_claim"),
+		doc.ClaimNo, nullIfEmpty(doc.Category), nullIfEmpty(doc.SubCategory))
+	if err := row.Scan(&existing); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 1, nil
+		}
+		return 0, fmt.Errorf("menghitung lampiran klaim %q: %w", doc.ClaimNo, err)
+	}
+	return existing + 1, nil
+}
+
+// attachmentByImage membaca keterangan lampiran lewat IMAGEID.
+func (r *Repo) attachmentByImage(
+	ctx context.Context,
+	tx *sql.Tx,
+	imageID string,
+) (string, string, error) {
+	var dataID, attachName sql.NullString
+
+	row := tx.QueryRowContext(ctx, query("attachment_by_image"), imageID)
+	if err := row.Scan(&dataID, &attachName); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Keterangan baru saja disisipkan; tidak adanya berarti procedure menolak
+			// tanpa mengisi pesan galatnya. Dinyatakan sebagai galat, bukan dilewati:
+			// tanpa DATAID, penaut salvage akan menunjuk baris yang tidak ada.
+			return "", "", fmt.Errorf(
+				"inboxsalvage/sqlstore: keterangan lampiran %q tidak terbaca setelah disimpan",
+				imageID)
+		}
+		return "", "", fmt.Errorf("membaca keterangan lampiran: %w", err)
+	}
+
+	return strings.TrimSpace(dataID.String), strings.TrimSpace(attachName.String), nil
+}
+
+// Currencies membaca pilihan dropdown "Mata Uang" dari `POOLDATA.CURRENCY`.
+//
+// Baris kembar DIBUANG: tabelnya menyimpan satu baris per NEGARA, sehingga mata uang yang
+// dipakai beberapa negara muncul berulang kali. Yang dipilih pengguna adalah kodenya, dan
+// kode yang sama tercantum dua kali hanya membingungkan.
+func (r *Repo) Currencies(
+	ctx context.Context,
+) ([]inboxsalvage.CurrencyOption, error) {
+	rows, err := r.db.QueryContext(ctx, query("currency_options"))
+	if err != nil {
+		return nil, fmt.Errorf("membaca POOLDATA.CURRENCY: %w", err)
+	}
+	defer rows.Close()
+
+	options := []inboxsalvage.CurrencyOption{}
+	seen := map[string]bool{}
+
+	for rows.Next() {
+		var code sql.NullString
+		if err := rows.Scan(&code); err != nil {
+			return nil, fmt.Errorf("memindai pilihan mata uang: %w", err)
+		}
+
+		clean := strings.ToUpper(strings.TrimSpace(code.String))
+		if clean == "" || seen[clean] {
+			continue
+		}
+		seen[clean] = true
+
+		options = append(options, inboxsalvage.CurrencyOption{Code: clean, Label: clean})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("membaca pilihan mata uang: %w", err)
+	}
+
+	return options, nil
+}
+
+// claimObjects membaca objek pertanggungan milik satu klaim.
+func (r *Repo) claimObjects(
+	ctx context.Context,
+	claimNo string,
+) ([]inboxsalvage.ObjectChoice, error) {
+	rows, err := r.db.QueryContext(ctx, query("claim_objects"), PegaWorkKeyPrefix, claimNo)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"membaca POOLDATA.T_CLAIM_OBJECTLIST untuk klaim %q: %w", claimNo, err)
+	}
+	defer rows.Close()
+
+	choices := []inboxsalvage.ObjectChoice{}
+	for rows.Next() {
+		var id, name sql.NullString
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("memindai objek klaim %q: %w", claimNo, err)
+		}
+
+		choice := inboxsalvage.ObjectChoice{
+			ID:   strings.TrimSpace(id.String),
+			Name: strings.TrimSpace(name.String),
+		}
+
+		// Baris tanpa nama DIBUANG. Yang dibaca pengguna hanyalah namanya; pilihan tanpa
+		// nama tergambar sebagai baris kosong yang tidak dapat dibedakan satu sama lain,
+		// dan memilihnya menyimpan nama kosong — yang justru ditolak validasi form.
+		if choice.Name == "" {
+			continue
+		}
+
+		choices = append(choices, choice)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("membaca objek klaim %q: %w", claimNo, err)
+	}
+
+	return choices, nil
+}
+
+// claimCoverages membaca coverage milik satu klaim.
+func (r *Repo) claimCoverages(
+	ctx context.Context,
+	claimNo string,
+) ([]inboxsalvage.CoverageChoice, error) {
+	rows, err := r.db.QueryContext(ctx, query("claim_coverages"), PegaWorkKeyPrefix, claimNo)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"membaca POOLDATA.T_CLAIM_OBJECTCOVERAGE untuk klaim %q: %w", claimNo, err)
+	}
+	defer rows.Close()
+
+	choices := []inboxsalvage.CoverageChoice{}
+	for rows.Next() {
+		var id, name sql.NullString
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("memindai coverage klaim %q: %w", claimNo, err)
+		}
+
+		choice := inboxsalvage.CoverageChoice{
+			ID:   strings.TrimSpace(id.String),
+			Name: strings.TrimSpace(name.String),
+		}
+		if choice.Name == "" {
+			continue
+		}
+
+		choices = append(choices, choice)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("membaca coverage klaim %q: %w", claimNo, err)
+	}
+
+	return choices, nil
 }
 
 // claimHeader membaca isian yang berasal dari klaim, bukan dari pengajuan.
@@ -734,6 +1168,19 @@ func (r *Repo) Create(ctx context.Context, form inboxsalvage.Form) (string, erro
 		affected, err := result.RowsAffected()
 		if err == nil && affected == 0 {
 			return "", inboxsalvage.ErrRowNotFound
+		}
+	}
+
+	// Menyunting MENGGANTI daftar barang, bukan menambahkannya.
+	//
+	// Itu mekanisme layar lama apa adanya — lihat delete_salvage_detail. Tanpa langkah
+	// ini, menyunting pengajuan berbarang tiga lalu menekan Submit menghasilkan enam
+	// baris, dan barisnya membawa nilai uang.
+	if form.Mode == inboxsalvage.FormModeUpdate {
+		_, err := tx.ExecContext(
+			ctx, query("delete_salvage_detail"), form.ClaimNo, salvageID)
+		if err != nil {
+			return "", fmt.Errorf("inboxsalvage/sqlstore: delete_salvage_detail: %w", err)
 		}
 	}
 

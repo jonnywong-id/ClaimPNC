@@ -2,7 +2,10 @@ package inboxsalvagehttp
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -80,7 +83,8 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	meta := h.service.Metadata(r.Context(), active.Alias)
+	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(meta, active.Alias))
 }
 
 // List menangani GET /api/inbox-salvage.
@@ -404,4 +408,144 @@ func (h *Handler) detail(
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias))
+}
+
+// maxDocumentBody membatasi SELURUH badan permintaan unggah dokumen.
+//
+// Ia lima berkas kali 1 MB, ditambah kelonggaran untuk penanda batas multipart dan isian
+// teksnya. Batas per berkas ditegakkan terpisah — lihat AttachDocuments.
+const maxDocumentBody = inboxsalvage.MaxDocumentPerUpload*inboxsalvage.MaxDocumentSizeBytes +
+	512*1024
+
+// AttachDocuments menangani POST /api/inbox-salvage/dokumen.
+//
+// # Apa yang digantikan
+//
+// Modal `UploadDocument_Salvage` beserta pasca-prosesnya,
+// `Activity/SaveFilePenunjangBySalvage-Act.xml`.
+//
+// # Berbeda dari Upload, yang ini BENAR-BENAR menyimpan
+//
+// Keduanya menerima berkas dan mudah tertukar. `Upload` membaca CSV lalu mengembalikan
+// isinya ke layar tanpa menyentuh basis data; yang ini menulis berkasnya ke
+// `TEMP_DATA_ATTACHFILE`, `DATA_ATTACHFILE`, histori, dan penaut salvage.
+//
+// # Base64 disusun DI SINI, bukan di layar
+//
+// `GCNMUploadResult64` mengubah berkas menjadi base64 sebagai langkah pertama. Di sini
+// pengubahan itu terjadi di server, bukan di peramban: mengirim base64 dari layar
+// membengkakkan permintaan sepertiga tanpa satu pun manfaat, dan membuat batas ukuran per
+// berkas diukur terhadap angka yang bukan ukuran berkasnya.
+func (h *Handler) AttachDocuments(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentBody)
+
+	if err := r.ParseMultipartForm(maxDocumentBody); err != nil {
+		h.writeError(w, r, inboxsalvage.NewValidationError([]inboxsalvage.Violation{{
+			Field:   inboxsalvage.FieldFormFile,
+			Message: "Berkas tidak terbaca, atau seluruhnya melebihi batas unggahan.",
+		}}))
+		return
+	}
+
+	claimNo := strings.TrimSpace(r.FormValue("nomor_klaim"))
+	salvageID := strings.TrimSpace(r.FormValue("id_salvage"))
+	category := strings.TrimSpace(r.FormValue("kategori"))
+	subCategory := strings.TrimSpace(r.FormValue("sub_kategori"))
+
+	if claimNo == "" {
+		h.writeError(w, r, inboxsalvage.NewValidationError([]inboxsalvage.Violation{{
+			Field:   inboxsalvage.FieldFormClaimNo,
+			Message: "Nomor Klaim harus diisi.",
+		}}))
+		return
+	}
+
+	headers := r.MultipartForm.File["berkas"]
+	if len(headers) == 0 {
+		h.writeError(w, r, inboxsalvage.ErrNoDocument)
+		return
+	}
+	if len(headers) > inboxsalvage.MaxDocumentPerUpload {
+		h.writeError(w, r, inboxsalvage.ErrTooManyDocuments)
+		return
+	}
+
+	docs := make([]inboxsalvage.DocumentUpload, 0, len(headers))
+	for _, header := range headers {
+		// Ukuran diperiksa SEBELUM berkasnya dibaca. `header.Size` sudah diketahui dari
+		// penguraian multipart, sehingga berkas kelebihan ditolak tanpa pernah masuk
+		// memori.
+		if header.Size > inboxsalvage.MaxDocumentSizeBytes {
+			h.writeError(w, r, inboxsalvage.ErrDocumentTooLarge)
+			return
+		}
+
+		opened, err := header.Open()
+		if err != nil {
+			h.writeError(w, r, fmt.Errorf("membuka berkas %q: %w", header.Filename, err))
+			return
+		}
+
+		content, err := io.ReadAll(opened)
+		_ = opened.Close()
+		if err != nil {
+			h.writeError(w, r, fmt.Errorf("membaca berkas %q: %w", header.Filename, err))
+			return
+		}
+
+		docs = append(docs, inboxsalvage.DocumentUpload{
+			ClaimNo:     claimNo,
+			SalvageID:   salvageID,
+			FileName:    header.Filename,
+			MimeType:    extensionOf(header.Filename),
+			Content64:   base64.StdEncoding.EncodeToString(content),
+			Category:    category,
+			SubCategory: subCategory,
+		})
+	}
+
+	saved, err := h.service.AttachDocuments(r.Context(), active.Alias, caller, docs)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	rows := make([]AttachedDocumentDTO, 0, len(saved.Items))
+	for _, item := range saved.Items {
+		rows = append(rows, AttachedDocumentDTO{
+			DataID:          item.DataID,
+			ImageID:         item.ImageID,
+			StoredName:      item.StoredName,
+			LinkedToSalvage: item.LinkedToSalvage,
+		})
+	}
+
+	message := fmt.Sprintf("%d dokumen tersimpan.", len(rows))
+	if salvageID == "" {
+		message += " Dokumen menempel pada klaimnya; penautan ke pengajuan salvage " +
+			"terjadi setelah pengajuannya tersimpan dan punya nomor."
+	}
+
+	h.writeJSON(w, r, http.StatusOK, AttachDocumentsResponse{
+		Documents: rows,
+		Message:   message,
+		Portal:    active.Alias,
+	})
+}
+
+// extensionOf mengambil ekstensi berkas TANPA titiknya.
+//
+// `SetFileNameSalvage` merangkai `"." + Param.FileMimeType`, sehingga yang dibutuhkannya
+// `pdf` — bukan `.pdf` dan bukan `application/pdf`.
+func extensionOf(fileName string) string {
+	dot := strings.LastIndex(fileName, ".")
+	if dot < 0 || dot == len(fileName)-1 {
+		return ""
+	}
+	return strings.ToLower(fileName[dot+1:])
 }
