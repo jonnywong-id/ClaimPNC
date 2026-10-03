@@ -124,8 +124,8 @@ type surveyDTO struct {
 	TanggalSurvei string `json:"tanggal_survei"`
 	TanggalTugas  string `json:"tanggal_tugas"`
 
-	StatusSurvei  string `json:"status_survei"`
-	StatusProses  string `json:"status_proses"`
+	StatusSurvei string `json:"status_survei"`
+	StatusProses string `json:"status_proses"`
 }
 
 // listResponse adalah jawaban GET /dashboard-claim/{tile}.

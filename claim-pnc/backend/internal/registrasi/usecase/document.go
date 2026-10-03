@@ -62,10 +62,12 @@ func (l *Service) UploadDocument(
 		return registrasi.Attachment{}, fmt.Errorf("%w: %q", registrasi.ErrDocumentTypeUnknown, p.DocumentTypeID)
 	}
 
+	// Nama unik seperti UploadDocumentToGoogleStorage — lihat registrasi.UploadFileName.
+	name := registrasi.UploadFileName(l.clock.Now(), chosen.ID, p.FileName)
 	imageID, err := l.documents.Upload(ctx, registrasi.DocumentFile{
 		Portal:      portalOf(p.Portal, claim.Portal),
 		ClaimNumber: claim.Number,
-		FileName:    p.FileName,
+		FileName:    name,
 		Content:     p.Content,
 		By:          by.Identity,
 	})
@@ -76,7 +78,7 @@ func (l *Service) UploadDocument(
 	now := l.clock.Now().UTC()
 	row := registrasi.NewAttachment{
 		ClaimKey:    claim.Keys().Prefixed,
-		Name:        registrasi.Truncate(p.FileName, registrasi.AttachmentNameMaxLength),
+		Name:        registrasi.Truncate(name, registrasi.AttachmentNameMaxLength),
 		Note:        registrasi.Truncate(p.Note, registrasi.AttachmentNoteMaxLength),
 		Extension:   registrasi.AttachmentExtension(p.FileName),
 		ImageID:     imageID,

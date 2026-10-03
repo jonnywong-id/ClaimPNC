@@ -68,7 +68,27 @@ type Column struct {
 
 	// Note adalah keterangan yang ditempelkan pada judul, kosong bila tidak ada.
 	Note string
+
+	// Available menyatakan kolom ini benar-benar terisi dari data.
+	//
+	// Kolom yang TIDAK tersedia tetap digambar — `D-13` menetapkan bentuk layar mengikuti
+	// Pega, dan menghapus tiga dari tiga belas kolom akan membuat pengguna yang hafal
+	// layarnya mengira isinya hilang. Yang berubah: judulnya menyatakan sebabnya lewat Note,
+	// alih-alih menampilkan sel kosong yang terbaca sebagai "data belum diisi".
+	Available bool
 }
+
+// Kedua kolom yang belum tersedia punya SEBAB YANG BERBEDA, dan teksnya karena itu terpisah.
+//
+// Menyatukannya pernah dicoba — satu konstanta bersama — dan hasilnya menyesatkan: keduanya
+// terbaca menunggu hal yang sama, padahal yang satu menunggu `ALTER` dari DBA dan yang satu
+// lagi menunggu jalur pengisian dari Tim Pega.
+const (
+	columnNotAdded = "BELUM TERSEDIA. Kolomnya belum ada di POOLDATA.T_SURVEYORLIST."
+
+	columnAddedButEmpty = "BELUM TERSEDIA. Kolomnya sudah ada di POOLDATA.T_SURVEYORLIST " +
+		"tetapi seluruh barisnya masih kosong — menunggu jalur pengisian dari Tim Pega."
+)
 
 // columns adalah ketiga belas kolom layar, dalam urutan tampilnya.
 //
@@ -78,30 +98,49 @@ var columns = []Column{
 	{
 		Key:   "appointment_no",
 		Title: "Appointment No",
-		Note: "Diambil dari kolom `ADJUSTERPIC_1`. Pemetaannya belum dikonfirmasi DBA — " +
-			"nama kolomnya berbunyi \"PIC\", bukan nomor janji.",
+		Note: columnNotAdded + " Padanan Pega-nya `ADJUSTERPIC_1`, yang menurut " +
+			"`ExportDataDetailKlaim-SQL.xml` berisi NAMA adjuster eksternal — bukan nomor " +
+			"penugasan. Bila itu benar, isinya sudah dibawa SURVEYOR_NAME dan kolom ini " +
+			"tidak perlu ditambahkan sama sekali.",
+		Available: false,
 	},
-	{Key: "reference_no", Title: "Reference No"},
-	{Key: "claim_no", Title: "Claim No"},
-	{Key: "policy_no", Title: "Policy No"},
-	{Key: "insured_name", Title: "Insured Name"},
-	{Key: "cob", Title: "COB"},
+	{
+		Key:       "reference_no",
+		Title:     "Reference No",
+		Note:      columnAddedButEmpty + " Kolomnya `REFNO`.",
+		Available: false,
+	},
+	{Key: "claim_no", Title: "Claim No", Available: true},
+	{Key: "policy_no", Title: "Policy No", Available: true},
+	{Key: "insured_name", Title: "Insured Name", Available: true},
+	{Key: "cob", Title: "COB", Available: true},
 	{
 		Key:   "cause_of_loss",
 		Title: "Cause Of Loss",
 		Note: "Diambil dari kolom `LOSSTYPE`. Kueri Pega yang mengisinya hilang dari " +
 			"export, sehingga pemetaannya belum dapat dibuktikan.",
+		Available: true,
 	},
-	{Key: "location", Title: "Location"},
-	{Key: "pic_asm", Title: "PIC ASM"},
-	{Key: "pic_loss_adjuster", Title: "PIC Loss Adjuster"},
-	{Key: "date_of_loss", Title: "Date of Loss"},
+	{Key: "location", Title: "Location", Available: true},
+	{Key: "pic_asm", Title: "PIC ASM", Available: true},
+	{Key: "pic_loss_adjuster", Title: "PIC Loss Adjuster", Available: true},
+	{Key: "date_of_loss", Title: "Date of Loss", Available: true},
 	{
 		Key:   "aging",
 		Title: "Aging",
-		Note:  "Dibaca dari kolom `AGING`, bukan dihitung. Kosong berarti belum dihitung.",
+		Note: "DIHITUNG dari tanggal janji survei dicatat (`TGLINPUT`) terhadap tanggal WIB " +
+			"hari ini, bukan dibaca dari kolom. Kosong berarti tanggal masuknya tidak ada, " +
+			"dan itu berbeda dari nol hari.",
+		Available: true,
 	},
-	{Key: "status_asm", Title: "Status ASM"},
+	{
+		Key:   "status_asm",
+		Title: "Status ASM",
+		Note: "Diambil dari `STS_SURVEY` pada langkah terakhir jejak perkembangan survei. " +
+			"Kolom itu terbukti membawa domain `ADJUSTERSTATUS_1` — sebarannya di produksi " +
+			"memuat `Final Report`, `Invoice Fee`, dan `Close Case`.",
+		Available: true,
+	},
 }
 
 // Columns menyerahkan salinan daftar kolom.
@@ -116,6 +155,16 @@ type TabInfo struct {
 	Key   inboxsurvey.Tab
 	Title string
 	Note  string
+
+	// Available menyatakan tab ini dapat dihitung dari data yang ada hari ini.
+	//
+	// Diambil dari domain, bukan ditulis tangan di sini — satu daftar yang disalin akan
+	// tertinggal saat kolomnya tiba, dan tab yang tampak tersedia padahal bukan menghasilkan
+	// daftar kosong yang terbaca sebagai "tidak ada pekerjaan".
+	Available bool
+
+	// UnavailableReason menyebut kenapa tab ini belum dapat dihitung, kosong bila ia bisa.
+	UnavailableReason string
 }
 
 // tabs adalah ketujuh tab, dalam urutan tampilnya di section.
@@ -123,6 +172,8 @@ type TabInfo struct {
 // Judulnya apa adanya dari `Section/InboxSurvey_section-Section.xml`, yang menuliskannya
 // sebagai teks tebal: Outstanding · Invoice · Close · ALL · Not answered communication ·
 // Not replied from ASM · Replied from ASM.
+//
+// Ketujuhnya TETAP digambar, termasuk yang belum dapat dihitung — lihat Column.Available.
 var tabs = []TabInfo{
 	{
 		Key:   inboxsurvey.TabOutstanding,
@@ -163,10 +214,17 @@ var tabs = []TabInfo{
 	},
 }
 
-// TabsInfo menyerahkan salinan daftar tab.
+// TabsInfo menyerahkan salinan daftar tab, beserta ketersediaan tiap tab.
+//
+// Ketersediaannya DIHITUNG di sini dari domain, bukan disimpan di dalam `tabs`. Menyimpannya
+// berarti dua daftar yang harus disamakan dengan tangan, dan yang satu akan tertinggal.
 func TabsInfo() []TabInfo {
-	result := make([]TabInfo, len(tabs))
-	copy(result, tabs)
+	result := make([]TabInfo, 0, len(tabs))
+	for _, tab := range tabs {
+		tab.Available = tab.Key.Available()
+		tab.UnavailableReason = inboxsurvey.UnavailableReason(tab.Key)
+		result = append(result, tab)
+	}
 	return result
 }
 
@@ -207,29 +265,38 @@ func KPIColumns() []KPIColumn {
 // layarnya — bukan hanya oleh orang yang membaca kodenya.
 func PlannedDifferences() []string {
 	return []string{
-		"Sumber datanya BERGESER. Layar lama membaca objek kerja `Work-SurveyClaim` di " +
-			"tabel Pega; tabel penggantinya tidak memuat satu pun baris jenis itu, sehingga " +
-			"baris di sini digerakkan `T_SURVEYORLIST` dan header klaimnya diambil dari " +
-			"`T_CLAIMLIST_ADMIN`. Keputusan Work Owner 2026-09-28.",
+		"Sumber datanya BERGESER DUA KALI. Layar lama membaca objek kerja `Work-SurveyClaim` " +
+			"di tabel engine Pega, yang dicabut dari pemakaian (Work Owner 2026-09-28). " +
+			"Penggantinya yang pertama, `T_CLAIMLIST_ADMIN`, hanya memuat klaim yang tugasnya " +
+			"berada di antrean Admin — sehingga survei yang SEDANG BERJALAN justru terbuang. " +
+			"Sejak 2026-09-29 baris digerakkan `T_SURVEYORLIST`, header klaimnya diambil dari " +
+			"`POOLDATA.T_CLAIM_PNC`, dan isian milik objek kerja survei dari tabel cermin " +
+			"`POOLDATA.T_CLAIM_SURVEY_DATAPEGA`.",
 
-		"Tab Close memakai status adjuster `Close Case`, bukan status alur kerja " +
-			"`Resolved-Completed` milik objek survei — kolom itu tidak ada di tabel " +
-			"penggantinya. Keduanya berkorelasi tetapi tidak sama: survei berstatus Close " +
-			"Case yang objek kerjanya belum ditutup akan muncul di sini, sementara di layar " +
-			"lama tidak.",
+		"Satu baris per BERKAS SURVEI, yaitu langkah TERAKHIR jejak perkembangannya. " +
+			"`POOLDATA.T_SURVEYORLIST` menyimpan satu baris per perubahan status — diukur di " +
+			"produksi 2026-09-29: 17.641 baris untuk 2.448 berkas survei, rata-rata 7,21 " +
+			"langkah, terberat 176 langkah pada satu berkas. Menampilkan seluruhnya akan " +
+			"membuat satu Claim No berulang tujuh kali rata-rata.",
 
-		"Status adjuster dan Reference No berlaku PER KLAIM, bukan per janji survei. Di " +
-			"layar lama keduanya melekat pada tiap objek survei. Klaim dengan dua janji " +
-			"survei berstatus berbeda karena itu menampilkan status yang sama pada kedua " +
-			"barisnya.",
+		"Kolom Status ASM diambil dari `STS_SURVEY` pada langkah terakhir, bukan dari kolom " +
+			"status adjuster milik objek kerja. Keduanya terbukti membawa domain yang sama — " +
+			"sebaran nilainya memuat `Final Report`, `Invoice Fee`, dan `Close Case` — tetapi " +
+			"kesamaannya belum pernah diuji baris per baris.",
+
+		"Kolom Aging DIHITUNG, bukan dibaca. Layar lama membacanya dari kolom `AGING` pada " +
+			"tabel datar; di sini ia umur janji survei sejak dicatat, dihitung terhadap " +
+			"tanggal WIB. Keduanya berbeda jauh pada klaim lama yang surveinya baru " +
+			"ditugaskan kemarin — dan yang dihitung di sini menjawab pertanyaan yang " +
+			"sebenarnya diajukan adjuster.",
 
 		"Halaman dipotong basis data, bukan setelah seluruh baris ditarik. Layar lama " +
 			"menarik semuanya lalu menomori halamannya di memori dengan ukuran 15 baris; " +
 			"di sini ukurannya 25 dan pemotongannya terjadi sebelum baris meninggalkan " +
 			"basis data.",
 
-		"Kotak cari Claim No dan Reference No dikerjakan SERVER. Layar lama menyaringnya " +
-			"di klipboard, sehingga hasilnya hanya menyentuh halaman yang sedang terbuka.",
+		"Kotak cari Claim No dikerjakan SERVER. Layar lama menyaringnya di klipboard, " +
+			"sehingga hasilnya hanya menyentuh halaman yang sedang terbuka.",
 	}
 }
 
@@ -240,14 +307,39 @@ func PlannedDifferences() []string {
 // keterbatasan yang selesai dapat dihapus tanpa menyentuh keputusan yang masih berlaku.
 func Limitations() []string {
 	return []string{
+		"EMPAT dari tujuh tab dan DUA dari tiga belas kolom belum dapat diisi, dan sebabnya " +
+			"BUKAN kolom yang tidak ada. Per 2026-09-30 `ADJUSTERACCEPT`, `REFNO`, dan " +
+			"`PYSTATUSWORK` SUDAH ditambahkan ke `POOLDATA.T_SURVEYORLIST` — tetapi seluruh " +
+			"17.641 barisnya masih kosong. Yang ditunggu sekarang adalah jalur PENGISIANNYA " +
+			"dari Tim Pega, bukan `ALTER` berikutnya dari DBA.",
+
+		"Kolom yang ADA tetapi KOSONG lebih berbahaya daripada kolom yang tidak ada, dan " +
+			"itulah alasan tab-tab itu ditahan alih-alih dihidupkan. Tab Outstanding " +
+			"menyaring `ADJUSTERACCEPT IS NULL`: dengan kolom yang seluruhnya kosong ia " +
+			"menampilkan SELURUH antrean sebagai belum dikonfirmasi adjuster — terisi wajar, " +
+			"angkanya masuk akal, isinya salah. Tab ALL dan Invoice sebaliknya, kosong sama " +
+			"sekali, yang terbaca sebagai tidak ada pekerjaan.",
+
+		"Satu kolom masih benar-benar belum ada: `ADJUSTERPIC` untuk \"Appointment No\". " +
+			"Padanannya di Pega berisi NAMA adjuster eksternal, bukan nomor penugasan, " +
+			"sehingga kemungkinan besar kolom itu tidak perlu ditambahkan sama sekali — " +
+			"`SURVEYOR_NAME` sudah membawanya. Menunggu keputusan Work Owner.",
+
+		"Berkas survei yang SUDAH ditutup atau dibatalkan di Pega masih ikut ditampilkan. " +
+			"Penyaringnya sudah terpasang dan akan menyala SENDIRI begitu `PYSTATUSWORK` " +
+			"terisi — tidak ada perubahan kode yang dibutuhkan. Diukur di produksi " +
+			"2026-09-29: 1.070 dari 2.448 berkas survei sudah berstatus tutup.",
+
+		"Kotak cari kehilangan satu kolom. Layar lama mencari pada Claim No DAN Reference " +
+			"No; yang kedua ikut tertunda bersama kolomnya.",
+
 		"Empat kueri tab layar lama HILANG dari export — `BrowseOSLostAdjuster`, " +
 			"`BrowseConfirmLostAdjuster`, `BrowseCommunicationLostAdjuster`, dan " +
 			"`BrowseCloseLostAdjuster`. Penyaring ketujuh tab dipulihkan dari " +
 			"`CountOSLostAdjuster` yang menghitung keranjang yang sama; daftar kolom dan " +
 			"urutannya mengikuti `BrowseLossAdjuster`.",
 
-		"Dua pemetaan kolom menunggu konfirmasi DBA: \"Appointment No\" ke `ADJUSTERPIC_1` " +
-			"dan \"Cause Of Loss\" ke `LOSSTYPE`.",
+		"Satu pemetaan kolom menunggu konfirmasi DBA: \"Cause Of Loss\" ke `LOSSTYPE`.",
 
 		"Membuka baris untuk mengerjakan surveinya belum tersedia. Di layar lama tautannya " +
 			"membuka penugasan `Surveyor_Flow`, dan flow itu tidak ada di export — " +
@@ -268,6 +360,11 @@ type Metadata struct {
 	Limitations        []string
 
 	// DefaultTab adalah tab yang terbuka saat layar dibuka pertama kali.
+	//
+	// Ia tab bawaan yang BENAR-BENAR dapat dihitung, bukan DefaultTab domain apa adanya.
+	// Bawaan domain adalah Outstanding, dan Outstanding termasuk yang belum dapat dihitung —
+	// membuka layar di sana membuat kesan pertama setiap pengguna berupa layar tanpa isi, dan
+	// kesan itu bertahan meski tab lain berisi.
 	DefaultTab inboxsurvey.Tab
 
 	// PageSize adalah ukuran halaman bawaan.
@@ -285,7 +382,7 @@ func (s *Service) Metadata() Metadata {
 		KPIColumns:         KPIColumns(),
 		PlannedDifferences: PlannedDifferences(),
 		Limitations:        Limitations(),
-		DefaultTab:         inboxsurvey.DefaultTab,
+		DefaultTab:         inboxsurvey.DefaultAvailableTab(),
 		PageSize:           inboxsurvey.DefaultLimit,
 	}
 }

@@ -86,6 +86,9 @@ type SourceCoverage struct {
 // SourceSpreading adalah satu baris SpreadingList.
 type SourceSpreading struct {
 	TreatyType string
+	// TreatyName adalah NOTE master REINSURANCETYPE untuk TreatyType itu (ORS, FAC-OUT, …).
+	// Dokumen polis tidak menyimpan nama treaty; pengisi seam yang melengkapinya.
+	TreatyName string
 	Share      Percent
 	Deleted    bool // FlagDelete = "1"
 }
@@ -199,7 +202,7 @@ func mergeSpreading(rows []SourceSpreading) []Spreading {
 			continue
 		}
 		index[kind] = len(result)
-		result = append(result, Spreading{TreatyKind: kind, Share: r.Share})
+		result = append(result, Spreading{TreatyKind: kind, Name: strings.TrimSpace(r.TreatyName), Share: r.Share})
 	}
 	kept := result[:0]
 	for _, s := range result {

@@ -12,7 +12,9 @@ import (
 
 // cilegon adalah permintaan untuk cabang contoh yang paling banyak isinya.
 func cilegon() inboxosclaimpercabang.Query {
-	return inboxosclaimpercabang.Query{BranchCode: "100099", BranchName: "CILEGON"}
+	return inboxosclaimpercabang.Query{
+		Branch: inboxosclaimpercabang.Branch{Code: "100099", Name: "CILEGON"},
+	}
 }
 
 func allPages(t *testing.T, store *memory.Store) []inboxosclaimpercabang.WorkItem {
@@ -43,7 +45,7 @@ func TestBranchIsAHardBoundaryNotAFilterHint(t *testing.T) {
 	store := memory.NewSampleStore()
 
 	other, err := store.List(t.Context(),
-		inboxosclaimpercabang.Query{BranchCode: "100059"},
+		inboxosclaimpercabang.Query{Branch: inboxosclaimpercabang.Branch{Code: "100059"}},
 		inboxosclaimpercabang.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 
@@ -58,7 +60,7 @@ func TestUnknownBranchReturnsNothingWithoutError(t *testing.T) {
 	store := memory.NewSampleStore()
 
 	page, err := store.List(t.Context(),
-		inboxosclaimpercabang.Query{BranchCode: "999999"},
+		inboxosclaimpercabang.Query{Branch: inboxosclaimpercabang.Branch{Code: "999999"}},
 		inboxosclaimpercabang.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 	require.Empty(t, page.Items)
@@ -102,16 +104,39 @@ func TestPaginationDoesNotRepeatOrSkipRows(t *testing.T) {
 	require.Equal(t, 3, total, "ada baris yang terlewat saat dipaginasi")
 }
 
-func TestBranchNameIsKnownOnlyForRegisteredBranches(t *testing.T) {
+func TestBranchOfTranslatesTheDetailCodeIntoTheClaimCode(t *testing.T) {
+	// Inilah langkah yang bila salah menghasilkan layar KOSONG tanpa satu pun galat: kode yang
+	// dikirim HCQ (`078`) bukan kode yang dipakai baris klaim (`100099`).
 	store := memory.NewSampleStore()
 
-	name, known, err := store.BranchName(t.Context(), "100099")
+	branch, known, err := store.BranchOf(t.Context(), "078")
 	require.NoError(t, err)
 	require.True(t, known)
-	require.Equal(t, "CILEGON", name)
+	require.Equal(t, "100099", branch.Code, "kode rinci harus diterjemahkan, bukan diteruskan")
+	require.Equal(t, "CILEGON", branch.Name)
+}
 
-	_, known, err = store.BranchName(t.Context(), "999999")
+func TestClaimCodePassedAsDetailCodeIsNotAccepted(t *testing.T) {
+	// Menyerahkan kode klaim (6 digit) ke tempat kode rinci (3 digit) adalah kekeliruan yang
+	// paling mungkin terjadi, karena keduanya sama-sama disebut "kode cabang". Ia harus
+	// DITOLAK, bukan diam-diam berhasil.
+	store := memory.NewSampleStore()
+
+	_, known, err := store.BranchOf(t.Context(), "100099")
+	require.NoError(t, err)
+	require.False(t, known, "kode klaim bukan kode cabang rinci")
+}
+
+func TestUnknownOrEmptyDetailCodeIsNotAnError(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	_, known, err := store.BranchOf(t.Context(), "999")
 	require.NoError(t, err, "kode yang tidak dikenal bukan galat")
+	require.False(t, known)
+
+	// Pengguna non-karyawan tidak membawa kode cabang sama sekali.
+	_, known, err = store.BranchOf(t.Context(), "")
+	require.NoError(t, err, "kode kosong bukan galat")
 	require.False(t, known)
 }
 
@@ -161,7 +186,7 @@ func TestDominantFactorsAreScopedToTheBranchAndKeepTheirOrder(t *testing.T) {
 		"urutan faktor berubah; ia harus mengikuti idx_dominanfactor apa adanya")
 
 	other, err := store.DominantFactors(t.Context(),
-		inboxosclaimpercabang.Query{BranchCode: "100059"})
+		inboxosclaimpercabang.Query{Branch: inboxosclaimpercabang.Branch{Code: "100059"}})
 	require.NoError(t, err)
 	require.NotContains(t, other, "CLAIM-0002",
 		"faktor cabang lain ikut terbawa")

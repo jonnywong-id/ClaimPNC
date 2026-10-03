@@ -93,6 +93,30 @@ type WorkItem struct {
 	// PolicyNumber adalah nomor polis — `c.nopolis`, berjudul "Policy No".
 	PolicyNumber string
 
+	// InsuredName adalah nama tertanggung — `t_general.theinsured`, berjudul "Nama Insured".
+	//
+	// # Kolom ini KOSONG di layar lama, dan di sini diisi
+	//
+	// `Section/InboxOutstandingperCabang_Section-Section.xml` menggambar kolom berjudul
+	// "Nama Insured" yang terikat pada `.InsuredName`, tetapi **tidak satu pun rule yang
+	// mengisinya**: `GetDataOutstandingperCabang` tidak mengembalikannya (nol kemunculan),
+	// dan `OutstandingperCabang_PreAct` tidak menyetelnya (nol kemunculan). Kolom itu karena
+	// itu selalu kosong di Pega.
+	//
+	// Nilainya diisi di sini karena sumbernya sudah terbukti ada dan sudah dipakai: kueri
+	// ekspor layar yang SAMA membacanya dari `t_general.theinsured` pada perpanjangan polis
+	// terbaru. Kolom yang selalu kosong tidak melayani siapa pun, sedangkan berkas ekspornya
+	// selama ini memuat nama itu — sehingga layar dan berkasnya justru saling bertentangan.
+	//
+	// Ini selisih terhadap Pega, dan dinyatakan lewat PlannedDifferences (`D-54`). Bila Work
+	// Owner memilih mengosongkannya demi kesetaraan, yang berubah satu ekspresi di .sql.
+	//
+	// Diambil dari perpanjangan polis TERBARU — `prodke` terbesar sebagai ANGKA — dengan
+	// urutan yang IDENTIK dengan subkueri PolicyBusinessName pada baris ekspor. Mengubah
+	// salah satunya memasangkan nama bisnis satu perpanjangan dengan nama tertanggung
+	// perpanjangan lain, dan tidak ada satu pun gejala yang menandainya.
+	InsuredName string
+
 	// ClaimNumber adalah nomor klaim — `c.claimno`, berjudul "Claim No".
 	//
 	// Ia kunci baris dan yang dikirim tombol "Detail" sebagai parameter `Inskey`.
@@ -343,6 +367,26 @@ var PlannedDifferences = []string{
 	"Penanda progres mandek memakai tiga catatan progres terakhir menurut waktunya saja. " +
 		"Sistem lama memakai urutan penyimpanan fisik baris sebagai pemisah ketika dua " +
 		"catatan berwaktu sama, dan urutan itu tidak dapat direproduksi di luar Oracle.",
+
+	// Selisih yang paling besar akibatnya, dan karena itu ditulis paling tegas. Ia bukan
+	// perbedaan angka melainkan perbedaan ARTI layar, dan pengguna yang tidak diberi tahu akan
+	// menyimpulkan klaimnya hilang.
+	"Sumber klaim outstanding dipindahkan ke POOLDATA.T_CLAIMLIST_ADMIN, dan tabel itu " +
+		"memuat kumpulan klaim yang BERBEDA dari sebelumnya — bukan lebih sedikit, melainkan " +
+		"berbeda. Diukur pada data hari ini: 443 dari 953 klaim outstanding yang tampil. " +
+		"Dari 517 yang tidak tampil, 167 sedang di tahap Send To Analis, 136 di Estimation, " +
+		"81 di Choose Surveyor, 45 tanpa penugasan terbuka, 37 di View Polis, dan 19 di " +
+		"Send To PIC Teknik.",
+
+	"Kolom \"Nama Insured\" terisi di sini. Di layar lama kolom itu digambar tetapi SELALU " +
+		"kosong — tidak satu pun rule mengisinya, meski berkas ekspor layar yang sama " +
+		"memuat nama tertanggung dari sumber yang sekarang dipakai kolom ini.",
+
+	// Dinyatakan supaya petugas yang tahu cabangnya tetapi tertolak tidak menyimpulkan
+	// haknya dicabut.
+	"Cabang ditentukan dari kode cabang rinci yang dikirim sistem autentikasi HCQ, bukan dari " +
+		"kolom telepon operator seperti sistem lama. Petugas yang di HCQ belum punya kode " +
+		"cabang rinci karena itu ditolak dengan pesan, bukan diberi daftar kosong.",
 }
 
 // Pagination menyatakan halaman keberapa yang diminta dan sebesar apa.

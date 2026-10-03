@@ -196,7 +196,7 @@ export function SurveyorTypePage() {
             <>
               <Button
                 tone="kedua"
-                onClick={() => void list.refetch()}
+                onClick={() => { list.refetch() }}
                 disabled={list.isFetching}
               >
                 <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />

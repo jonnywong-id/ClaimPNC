@@ -45,7 +45,7 @@ func query(name string) string {
 // tempat itu dapat diuji kesesuaiannya di query_test.go.
 var listColumns = []string{
 	"BRANCH_NAME", "BRANCH_CODE", "BUSINESS_SOURCE", "BUSINESS_NAME",
-	"POLICY_NUMBER", "CLAIM_NUMBER", "REGISTER_DATE", "LOSS_DATE",
+	"POLICY_NUMBER", "INSURED_NAME", "CLAIM_NUMBER", "REGISTER_DATE", "LOSS_DATE",
 	"REMARK_RECOMMENDATION", "ESTIMATION_VALUE", "LAST_PROGRESS_AT",
 	"PROGRESS_STATUS_1", "PROGRESS_STATUS_2", "TECHNICAL_PIC", "PROGRESS_NOTE",
 	"ADJUSTER_NAME", "CAUSE_OF_LOSS", "CHRONOLOGY", "PROGRESS_STALLED",
@@ -58,7 +58,7 @@ var listColumns = []string{
 // alias `list` sebagai AWALAN persis, dan bahwa tambahannya tepat yang disebut di sini. Tanpa
 // yang kedua, menghapus satu kolom treaty tetap lolos uji awalan.
 var exportOnlyColumns = []string{
-	"CLAIM_KEY", "POLICY_BUSINESS_NAME", "INSURED_NAME",
+	"CLAIM_KEY", "POLICY_BUSINESS_NAME",
 	"RESERVE_CLAIM_FULL", "RESERVE_CLAIM_ASM", "COINSURANCE",
 	"SHARE_OR", "SHARE_FACOUT", "SHARE_FACOB", "SHARE_QS",
 	"SHARE_FSPL", "SHARE_SSPL", "SHARE_ER1", "SHARE_ER2",

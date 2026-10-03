@@ -42,6 +42,10 @@ type TaskDTO struct {
 	// memakainya untuk mengunci isian — kewenangannya tetap diperiksa server.
 	Workable bool `json:"dapat_dikerjakan"`
 
+	// Analyst menyatakan pemanggil anggota grup Analyst (When `IsAnalisator`) — dipakai layar
+	// untuk aturan tampil/baca-saja `InputAdjustment_sect`. Hanya terisi pada respons satu klaim.
+	Analyst bool `json:"analis,omitempty"`
+
 	CreatedAt string `json:"dibuat_pada"`
 }
 
@@ -78,6 +82,10 @@ type CoverageDTO struct {
 
 	// Adjustment adalah AdjustmentList jaminan ini — hanya dikirim server.
 	Adjustment []SettlementDTO `json:"adjustment,omitempty"`
+
+	// AnalystTransferred: jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya
+	// dikirim server; tombolnya tidak tampil lagi pada jaminan ini.
+	AnalystTransferred bool `json:"sudah_transfer_analis,omitempty"`
 }
 
 // InsuredItemDTO adalah satu objek pertanggungan.
@@ -86,6 +94,11 @@ type InsuredItemDTO struct {
 	Name     string        `json:"nama"`
 	Location string        `json:"lokasi"`
 	Coverage []CoverageDTO `json:"coverage"`
+
+	// Pekerjaan dan tanggal lahir peserta PA (baca saja); tanggal YYYY-MM-DD, kosong bila tidak
+	// dapat dibaca.
+	Job         string `json:"pekerjaan,omitempty"`
+	DateOfBirth string `json:"tanggal_lahir,omitempty"`
 }
 
 // ReporterDTO adalah orang yang melaporkan kejadian.
@@ -116,6 +129,13 @@ type PolicyDTO struct {
 	// CoinsRole LEADER_MEMBER. Layar memakainya untuk kondisi IsNoCoins tombol Print PLA.
 	CoinsType string `json:"jenis_koasuransi"`
 	CoinsRole string `json:"peran_koasuransi"`
+
+	// Isian DATA TERTANGGUNG KLAIM tab Register (InputRegisterDetail): Nama Sumbis
+	// (Quotation.SobName), Nama Bisnis (Quotation.BusinessName), dan kode cabang untuk kondisi
+	// Tgl Terima HCDKP.
+	SourceOfBusinessName string `json:"nama_sumbis"`
+	BusinessName         string `json:"nama_bisnis"`
+	BranchCode           string `json:"kode_cabang"`
 }
 
 // ReceiverDTO adalah satu penerima klaim — kolom T_CLAIM_RECEIVER.
@@ -157,6 +177,17 @@ type AreaOptionsResponse struct {
 	Option []AreaOptionDTO `json:"pilihan"`
 }
 
+// CauseOfLossOptionDTO adalah satu pilihan Penyebab Kerugian: id D_COL_ID, nama DESCRIPTION.
+type CauseOfLossOptionDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"nama"`
+}
+
+// CauseOfLossOptionsResponse adalah jawaban GET /api/registrasi/penyebab-kerugian.
+type CauseOfLossOptionsResponse struct {
+	Option []CauseOfLossOptionDTO `json:"pilihan"`
+}
+
 // ClaimDTO adalah klaim sebagaimana dilihat layar.
 type ClaimDTO struct {
 	ID     string    `json:"id"`
@@ -176,6 +207,11 @@ type ClaimDTO struct {
 	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
 	SuspiciousComment string  `json:"komentar_suspicious"`
 
+	EmailLOD             string `json:"email_lod"`
+	RemarkRecommendation string `json:"rekomendasi"`
+	SubjectEmail         string `json:"subjek_email"`
+	SalvageStatus        string `json:"status_salvage"`
+
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
 	SLIKNumber         string `json:"nomor_slik"`
@@ -194,9 +230,13 @@ type ClaimDTO struct {
 	// Keempat status di bawah sengaja dikirim terpisah dan dinamai berbeda. `ADR-0018`
 	// menetapkan keempatnya konsep yang berbeda, dan yang membuatnya sering tertukar di
 	// sistem lama adalah namanya — bukan jumlahnya.
-	ProcessStatus          string `json:"status_proses"`
-	ClaimStatus            string `json:"status_klaim"`
-	ClaimStatusName        string `json:"status_klaim_nama"`
+	ProcessStatus   string `json:"status_proses"`
+	ClaimStatus     string `json:"status_klaim"`
+	ClaimStatusName string `json:"status_klaim_nama"`
+
+	// AnalystTransferred menyatakan klaim sudah pernah ditransfer ke Analyst
+	// (ANALYST_TRANSFERDATE terisi) — tombol "Transfer ke Analyst" tidak tampil lagi.
+	AnalystTransferred     bool   `json:"sudah_transfer_analis"`
 	ClaimFlag              string `json:"flag_klaim"`
 	ProgressPositionStatus string `json:"status_posisi_progres"`
 
@@ -261,6 +301,11 @@ type RegisterRequest struct {
 	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
 	SuspiciousComment string  `json:"komentar_suspicious"`
 
+	EmailLOD             string `json:"email_lod"`
+	RemarkRecommendation string `json:"rekomendasi"`
+	SubjectEmail         string `json:"subjek_email"`
+	SalvageStatus        string `json:"status_salvage"`
+
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
 	SLIKNumber         string `json:"nomor_slik"`
@@ -281,6 +326,19 @@ type RegisterRequest struct {
 type CompleteRequest struct {
 	Action string `json:"tindakan"`
 	Return bool   `json:"kembali"`
+}
+
+// TransferToAnalystRequest adalah badan POST /api/registrasi/tugas/{id}/transfer-analis — jaminan
+// yang tombol "Transfer ke Analyst"-nya ditekan (`setTicketToAnalyst(CoverageID, ObjectID)`).
+type TransferToAnalystRequest struct {
+	ObjectID   string `json:"objek_id"`
+	CoverageID string `json:"coverage_id"`
+}
+
+// SendToInputorRequest adalah badan POST /api/registrasi/tugas/{id}/kirim-inputor — isi modal
+// "Kirim ke Inputor" (`Section/AnalystRemarks_sect`).
+type SendToInputorRequest struct {
+	Note string `json:"catatan"`
 }
 
 // ClaimResponse adalah klaim beserta keadaan alurnya.

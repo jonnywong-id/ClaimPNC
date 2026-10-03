@@ -9,6 +9,7 @@ rule XML Pega**.
 | `md2html.js` | **Pustaka bersama** — pengubah Markdown → HTML bergaya. Dipakai ketiga generator; tidak dijalankan langsung |
 | `build-steering.js` | Menyusun **`docs/Steering/STEERING.md`** dari 16 bab sumber + 7 lampiran, lalu menulis HTML-nya |
 | `build-adr.js` | Menyusun **`docs/ADR/ADR.md`** dari `docs/ADR/README.md` + `docs/ADR/00NN-*.md`, lalu menulis HTML-nya |
+| `build-ticketing.js` | Menyusun **`docs/ticketing/TICKETING.md`** dari `docs/ticketing/README.md` + `<modul>/spec.md` + `<modul>/issues/*.md` + `INVENTARIS-HARNESS.md`, lalu menulis HTML-nya |
 | `md2doc.js` | Mengubah **satu** berkas Markdown menjadi HTML bergaya — dipakai untuk `docs/BRD/BRD.md`, yang tidak punya generator sendiri |
 | `build-inventaris-harness.js` | Membangun ulang **tabel** di `docs/Steering/22-INVENTARIS-HARNESS.md` langsung dari direktori `Harness/`, sehingga daftar 74 harness tidak dapat menyimpang dari export. Prosa di atas tabel tidak disentuh |
 | `html2docx.ps1` | Mengubah HTML menjadi `.docx` lewat otomasi Microsoft Word |
@@ -52,6 +53,19 @@ node docs/tools/build-adr.js "<ROOT>" "%TEMP%\ADR.html"
 ```powershell
 powershell -File docs\tools\html2docx.ps1 -HtmlPath "$env:TEMP\ADR.html" -DocxPath "docs\ADR\ADR.docx" -Title 'ADR - Migrasi Aplikasi Claim PNC ke Golang'
 ```
+
+### Ticketing
+
+```bash
+node docs/tools/build-ticketing.js "<ROOT>" "%TEMP%\TICKETING.html"
+```
+
+```powershell
+powershell -File docs\tools\html2docx.ps1 -HtmlPath "$env:TEMP\TICKETING.html" -DocxPath "docs\ticketing\Ticketing Claim PNC.docx" -Title 'Ticketing - Migrasi Aplikasi Claim PNC'
+```
+
+Jalankan ulang setiap kali ada tiket atau `spec.md` yang berubah. `TICKETING.md` adalah hasil
+bangunan — jangan disunting langsung.
 
 ### BRD
 

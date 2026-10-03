@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxTabLabel>@baseclass GCNM UpdateChasierIDTablePembayaran</pxTabLabel>
+<pyCircumstanceDateProp/>
+<pyCheckInRuleSet/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleStarts/>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyOpenSQL/>
+<pyCircumstanceDefinition/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyInterface/>
+<pxSaveDateTime>20240614T091627.966 GMT</pxSaveDateTime>
+<pyTemplateInputBox/>
+<pyRequestType>UpdateChasierIDTablePembayaran</pyRequestType>
+<pySaveSQL>update pooldata.T_CLAIM_ADJUSTMENT set IDCHASIER={Insertinheritance.NIK} where claimid={Insertinheritance.CaseID} and noakseptasi={Insertinheritance.NoKTP}</pySaveSQL>
+<pxInstanceLockedKey/>
+<pyHandlerFlow/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateSystemID/>
+<pxUpdateDateTime>20240614T091627.957 GMT</pxUpdateDateTime>
+<pyDeletedObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsFromManageChangeLP/>
+<pyLabel>UpdateChasierIDTablePembayaran</pyLabel>
+<pxOriginalCreateOperator/>
+<pyMethodStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalCreateOpName/>
+<pyValueChanged>false</pyValueChanged>
+<pyDocumentTitle/>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceType/>
+<pyLabelOld>UpdateChasierIDTablePembayaran</pyLabelOld>
+<pyRelativePath/>
+<pxInstanceLockedDateTime/>
+<pyWindowTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxInstanceLockedRuleSet/>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pyTemplate/>
+<pyBrowseSQL>BEGIN 
+  POOLDATA.INSERT_AKSEPTASI_TO_LEADER({TempInsertLeaderAksep.FlagASO},{TempInsertLeaderAksep.ClaimID},{TempInsertLeaderAksep.NoKTP},{TempInsertLeaderAksep.UserTeknis},{TempInsertLeaderAksep.DateOfLoss DateTime},{TempInsertLeaderAksep.LOGIN},{TempInsertLeaderAksep.NoteKasir},{TempInsertLeaderAksep.FlagModulKTP},{TempInsertLeaderAksep.Notes},{TempInsertLeaderAksep.pyNote out});
+END;</pyBrowseSQL>
+<pxCreateDateTime>20240614T091555.206 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pyJavaStream/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxHostId>jboss10362</pxHostId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemporaryObject/>
+<pxInsId>@BASECLASS!GCNM!UPDATECHASIERIDTABLEPEMBAYARAN</pxInsId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceVal/>
+<pyDescription/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyWorkKey/>
+<pyMemo>dones</pyMemo>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSiblingCount/>
+<pyStreamName/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20240614T091555.206 GMT</pzInsKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDeleteSQL/>
+<pxMoveImportDateTime>20240715T114352.418 GMT</pxMoveImportDateTime>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzDocumentKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20240614T091555.206 GMT</pzDocumentKey>
+<pyCircumstanceProp/>
+<pyShowJavaWindowName>GeneratedJava20261001T041222.896 GMT</pyShowJavaWindowName>
+<pyRuleName>@baseclass GCNM UpdateChasierIDTablePembayaran</pyRuleName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatusTime>20261001T041222.869 GMT</pyRuleFormStatusTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pzChecksum>-166360236</pzChecksum>
+<pxCommitDateTime>20240715T114352.000 GMT</pxCommitDateTime>
+<pyUsage/>
+<pySpecialtyComponentData/>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM #20230412T042425.049 GMT</pzOriginalInstanceKey>
+<pyRuleEnds/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDate/>
+<pyClassName>@baseclass</pyClassName>
+<pxInstanceLockedRuleSetVersion/>
+<pxMergeSynchronized>20240429T080733.845 GMT</pxMergeSynchronized>
+<pxInsName>@BASECLASS!GCNM!UPDATECHASIERIDTABLEPEMBAYARAN</pxInsName>
+<pyFormPost/>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyDelete>false</pyDelete>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20240614T091555.206 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-05 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20240427T081014.008 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20240122T022848.532 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-02-99 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20231109T034005.338 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-02-08 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATECHASIERIDTABLEPEMBAYARAN #20231109T030502.671 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -41,14 +41,6 @@ type ExportRow struct {
 	// terjemahan `grouppanel`. Keduanya berdampingan di berkas dan mudah tertukar.
 	PolicyBusinessName string
 
-	// InsuredName adalah nama tertanggung — `t_general.theinsured`, dari perpanjangan polis
-	// yang sama dengan PolicyBusinessName.
-	//
-	// Kedua subkueri WAJIB memakai urutan yang identik. Mengubah salah satunya akan
-	// memasangkan nama bisnis satu perpanjangan dengan nama tertanggung perpanjangan lain,
-	// dan tidak ada satu pun gejala yang menandainya.
-	InsuredName string
-
 	// ReserveClaimFull adalah jumlah estimasi apa adanya — `SUM(estimationvalue)`, tanpa
 	// kurs dan tanpa porsi ASM.
 	//

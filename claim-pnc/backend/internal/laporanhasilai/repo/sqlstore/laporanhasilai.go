@@ -278,7 +278,9 @@ func scanRow(row rowScanner) (laporanhasilai.Row, error) {
 	}, nil
 }
 
-// claimNumberOf meniru `CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END`.
+// claimNumberOf meniru ekspresi berikut:
+//
+//	CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END
 //
 // # Kenapa diturunkan di Go, bukan di SQL
 //

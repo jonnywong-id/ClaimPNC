@@ -16,9 +16,9 @@ import (
 //
 //   - nomor akseptasi terbit SAMA SEPERTI PEGA — juga bila Persetujuan Tertanggung = 0;
 //     hanya pengisian isian akseptasi dan Status Klaim 1161 yang menuntut persetujuan = 1;
-//   - PA (Group Panel 002) menunggu: akseptasinya berlanjut ke Transfer Kasir
-//     (`TransferToKasir_act`) yang bergantung pada paket `gl.pkg_pelunasan_kasir` yang tidak
-//     ada di export;
+//   - PA (Group Panel 002) diakseptasi seperti lini lain. Pega langsung menjalankan Transfer Kasir
+//     sesudahnya (langkah 113 `TransferToKasir_act WHEN IsPA`), tetapi Work Owner menetapkan
+//     (2026-10-03) Transfer Kasir HANYA lewat tombol Transfer Kasir — tidak pernah otomatis;
 //   - Outstanding Acceptance (`OsAkseptasiKlaim`, `HitServiceOSAkseptasiClaimNonMBU`) dan SLIK
 //     OJK (`InsertDataSlinkManualyStepF06_1`) tidak dibangun — dicatat sebagai integrasi
 //     tertunda.
@@ -82,7 +82,6 @@ const (
 	ViolationAcceptanceAttachment ViolationCode = "akseptasi_lampiran"
 	ViolationAcceptanceDLA        ViolationCode = "akseptasi_dla"
 	ViolationAcceptancePremium    ViolationCode = "akseptasi_premi"
-	ViolationAcceptancePA         ViolationCode = "akseptasi_pa"
 )
 
 const (
@@ -91,7 +90,6 @@ const (
 	msgAcceptanceHasNumber  = "Sudah Ada Nomor Akseptasi"
 	msgAcceptanceAttachment = "Lampiran Kosong, Harus Upload File"
 	msgAcceptancePremium    = "Premi belum lunas, tidak bisa akseptasi adjustment."
-	msgAcceptancePA         = "Acceptance for Personal Accident is not available yet: it continues to the cashier transfer (TransferToKasir_act), which depends on package gl.pkg_pelunasan_kasir that is not in the Pega export."
 	msgAcceptanceNotAllowed = "Persetujuan / Akseptasi is not available for this adjustment."
 )
 
@@ -101,7 +99,7 @@ func acceptanceViolation(code ViolationCode, field, message string) error {
 
 // CanAccept adalah aturan tombol Persetujuan / Akseptasi `ShowAdjustment_sect`: tampil bila
 // adjustment disetujui komite, mati bila Persetujuan Tertanggung 0, nomor akseptasi sudah
-// terisi, atau komite menolak (`.AcceptanceStatus == 2`). PA ditolak di sini atas keputusan Work Owner.
+// terisi, atau komite menolak (`.AcceptanceStatus == 2`).
 func CanAccept(line SettlementLine, p Policy) error {
 	if strings.TrimSpace(line.AcceptanceStatus) != DecisionApprove ||
 		strings.TrimSpace(line.AcceptanceLODStatus) == LODDisagreed {
@@ -110,9 +108,6 @@ func CanAccept(line SettlementLine, p Policy) error {
 	// `SetAdjustmentAcceptation` langkah 24: "Sudah Ada Nomor Akseptasi" pada .UploadNoteLOD.
 	if strings.TrimSpace(line.AcceptedNo) != "" {
 		return acceptanceViolation(ViolationAcceptanceNumbered, "berita_acara", msgAcceptanceHasNumber)
-	}
-	if p.Line == LinePersonalAccident {
-		return acceptanceViolation(ViolationAcceptancePA, "akseptasi", msgAcceptancePA)
 	}
 	return nil
 }
@@ -170,6 +165,9 @@ type AcceptanceCheck struct {
 	Files     int // jumlah berkas unggahan "Unggah Dokumen Persetujuan LOD"
 	// OtherDLA adalah T_DLALIST adjustment lain klaim ini yang Persetujuan Tertanggung-nya 1.
 	OtherDLA []AcceptanceDLAState
+	// Location adalah ClaimData.Location — Non-MBU tanpa lokasi ditolak
+	// (`AcceptationLOD_PreAct` langkah 17).
+	Location string
 }
 
 // ValidateAcceptance memeriksa isian form dan aturan Simpan. Pega berhenti pada pesan
@@ -192,6 +190,10 @@ func ValidateAcceptance(line SettlementLine, p Policy, f AcceptanceForm, c Accep
 	}
 	if p.Line.IsNonMBU() && !f.HasLODValue {
 		v.add(ViolationAcceptanceRequired, "nilai_lod", msgAcceptanceBlank)
+	}
+
+	if p.Line.IsNonMBU() && strings.TrimSpace(c.Location) == "" {
+		v.add(ViolationAcceptanceLocation, "akseptasi", MsgAcceptanceLocation)
 	}
 
 	// Langkah 8 — dilewati untuk Travel.
@@ -261,6 +263,8 @@ type AcceptanceSource interface {
 	// (`AutoPrintPDFDraftLOD` langkah 1: `.PrintDateLOD == ""` → CurrentDateTime), PDFTYPE
 	// diisi jenis yang dicetak.
 	RecordLODPrint(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, printedAt time.Time, lodType string) error
+	// SetLODType menyimpan PDFTYPE baris — dropdown Tipe LOD kolom Adjustment.
+	SetLODType(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, lodType string) error
 	// Fields membaca tujuh isian migrasi 0013 ke baris.
 	Fields(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, line *SettlementLine) error
 	// OtherDLA membaca T_DLALIST adjustment lain klaim itu yang Persetujuan Tertanggung-nya 1.
@@ -278,7 +282,7 @@ type AcceptanceSource interface {
 	AddProgress(ctx context.Context, p ProgressUpdate) error
 
 	// PolicyCaseID membaca Policy.CaseID dokumen polis (parameter caseId layanan premi).
-	PolicyCaseID(ctx context.Context, policyNumber string) (string, error)
+	PolicyCaseID(ctx context.Context, policyNumber, prodKe string) (string, error)
 	// OpenProtectionApproved: ada Open Protection premi (TypePro 2) yang disetujui.
 	OpenProtectionApproved(ctx context.Context, policyNumber, claimID, claimNumber string) (bool, error)
 	// TravelClientName membaca CLIENTNAME agen leader polis (`BrowseClientNameTravel_SQL`).

@@ -72,7 +72,7 @@ export function useCreateTravelDocument() {
     // baris pada saat yang sama — daftar yang disusun sendiri di peramban akan berbeda
     // dari isi tabel yang sebenarnya.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }
@@ -92,7 +92,7 @@ export function useUpdateTravelDocument() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }

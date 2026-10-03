@@ -51,7 +51,7 @@ func (l *Service) TransferCommittee(ctx context.Context, p CommitteeTransferComm
 		return CommitteeTransferResult{}, fmt.Errorf("%w: tugas %s bukan milik klaim %s", registrasi.ErrInvalidAction, p.TaskID, p.ClaimID)
 	}
 	if !settlementStages[task.Stage] {
-		return CommitteeTransferResult{}, registrasi.ErrStageMismatch
+		return CommitteeTransferResult{}, fmt.Errorf("%w: %q", registrasi.ErrNotAvailableAtStage, task.Stage)
 	}
 	if !l.canWork(task, by) {
 		return CommitteeTransferResult{}, registrasi.ErrNotTaskOwner

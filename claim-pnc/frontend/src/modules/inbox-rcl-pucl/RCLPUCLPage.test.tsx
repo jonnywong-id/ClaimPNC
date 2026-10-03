@@ -193,7 +193,7 @@ function stubDefaultFetch(rows: WorkItem[] = [BARIS]) {
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun — dan di
     // layar ini bahayanya lebih besar, karena ketiga tab menggambar kolom yang identik.
-    const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab')
+    const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
     const answered =
       wanted === TAB_MSIG.kode
         ? TAB_MSIG
@@ -439,7 +439,7 @@ describe('perpindahan tab', () => {
     stubFetch((url) => {
       if (url === TAB_PATH) return jsonResponse(200, METADATA)
 
-      const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab')
+      const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
       const answered = wanted === TAB_MSIG.kode ? TAB_MSIG : TAB_CETAK
 
       return jsonResponse(200, {

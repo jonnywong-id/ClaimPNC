@@ -89,6 +89,19 @@ func (s *AcceptanceStore) RecordLODPrint(ctx context.Context, claimID, objectID 
 	return nil
 }
 
+// SetLODType memenuhi registrasi.AcceptanceSource.
+func (s *AcceptanceStore) SetLODType(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, lodType string) error {
+	res, err := executorFrom(ctx, s.db).ExecContext(ctx, loadQuery("lod_tipe_simpan"),
+		emptyTextAsNil(lodType), claimID, objectID, strconv.Itoa(coverageSeq), strconv.Itoa(adjustmentSeq))
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menyimpan Tipe LOD: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return fmt.Errorf("registrasi/sqlstore: baris adjustment %s/%d/%d tidak ditemukan", objectID, coverageSeq, adjustmentSeq)
+	}
+	return nil
+}
+
 // Fields membaca tujuh isian akseptasi migrasi 0013 ke baris.
 func (s *AcceptanceStore) Fields(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, line *registrasi.SettlementLine) error {
 	var (
@@ -225,17 +238,24 @@ func (s *AcceptanceStore) AddProgress(ctx context.Context, p registrasi.Progress
 	return nil
 }
 
-// PolicyCaseID membaca Policy.CaseID polis.
-func (s *AcceptanceStore) PolicyCaseID(ctx context.Context, policyNumber string) (string, error) {
-	var v sql.NullString
-	err := s.db.QueryRowContext(ctx, loadQuery("premi_polis_caseid"), policyNumber).Scan(&v)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
+// PolicyCaseID membaca Policy.CaseID polis pada PRODKE klaim: T_GENERAL lebih dulu, dokumen
+// POLICYDATA sebagai cadangan.
+func (s *AcceptanceStore) PolicyCaseID(ctx context.Context, policyNumber, prodKe string) (string, error) {
+	number, prodKe := strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe)
+	for _, name := range []string{"premi_polis_caseid", "premi_polis_caseid_dokumen"} {
+		var v sql.NullString
+		err := s.db.QueryRowContext(ctx, loadQuery(name), number, prodKe).Scan(&v)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return "", fmt.Errorf("registrasi/sqlstore: membaca CaseID polis: %w", err)
+		}
+		if id := trimmed(v); id != "" {
+			return id, nil
+		}
 	}
-	if err != nil {
-		return "", fmt.Errorf("registrasi/sqlstore: membaca CaseID polis: %w", err)
-	}
-	return trimmed(v), nil
+	return "", nil
 }
 
 // OpenProtectionApproved memeriksa Open Protection premi yang disetujui.

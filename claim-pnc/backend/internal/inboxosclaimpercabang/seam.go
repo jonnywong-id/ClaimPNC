@@ -73,6 +73,20 @@ type Repo interface {
 	// tetap datar berapa pun jumlah barisnya.
 	ListForExport(ctx context.Context, query Query, page Pagination) (ExportPage, error)
 
+	// FindDetail mengambil seluruh isi popup untuk SATU klaim milik cabang pada query.
+	//
+	// # Cabang ikut menjadi penyaring, dan itu bukan kehati-hatian berlebihan
+	//
+	// Layar lamanya tidak menyaring karena popup hanya dapat dibuka dari baris yang sudah
+	// tampil. Endpoint HTTP tidak punya pembatas itu: nomor klaim dapat ditebak atau
+	// diperoleh dari mana saja. Tanpa penyaring ini, popup menjadi jalan memutar yang
+	// membocorkan nama tertanggung dan nilai uang antarbadan hukum (`R-20`).
+	//
+	// Nilai kedua false berarti klaim itu tidak ada, atau ada tetapi bukan milik cabang
+	// tersebut. Keduanya sengaja tidak dibedakan: membedakannya memberi tahu pemanggil
+	// bahwa sebuah nomor klaim memang ada di cabang lain.
+	FindDetail(ctx context.Context, query Query, claimNumber string) (Detail, bool, error)
+
 	// DominantFactors mengembalikan faktor dominan setiap klaim outstanding satu cabang,
 	// dikunci nomor internal klaim (`T_CLAIM_PNC.CLAIMID`).
 	//

@@ -24,6 +24,16 @@ func NewRepo(db *sql.DB) *Repo {
 
 // List mengambil satu halaman satu tab.
 //
+// # Tab yang belum dapat dihitung dicegat DI SINI, sebelum menyentuh basis data
+//
+// Empat dari tujuh tab bergantung pada kolom yang tidak ada di tabel mana pun yang dibaca
+// modul ini (lihat inboxsurvey.UnavailableReason). Untuk keempatnya, kueri dilewati dan
+// halaman kosong dikembalikan.
+//
+// Ini bukan penyamaran: layar TIDAK membaca kosongnya sebagai "tidak ada pekerjaan", karena
+// jawaban metadata sudah lebih dulu menyatakan tab itu belum tersedia beserta sebabnya.
+// Melewati kuerinya membuat perjalanan yang pasti sia-sia tidak pernah dilakukan.
+//
 // # Satu perjalanan, bukan dua
 //
 // Jumlah seluruh baris ikut dibawa kueri yang sama lewat `COUNT(*) OVER ()`. Kueri kedua
@@ -43,13 +53,14 @@ func (r *Repo) List(
 
 	result := inboxsurvey.Page{Tasks: []inboxsurvey.SurveyTask{}}
 
+	if !clean.Tab.Available() {
+		return result, nil
+	}
+
 	rows, err := r.db.QueryContext(ctx, query("list_tasks"),
 		scopeValue(identity.Scope),
 		string(clean.Tab),
 		identity.Login,
-		inboxsurvey.AdjusterConfirmed,
-		inboxsurvey.StatusInvoiceFee,
-		inboxsurvey.StatusCloseCase,
 		inboxsurvey.CommunicationOpen,
 		inboxsurvey.CommunicationAnswered,
 		keyword(clean.Search),
@@ -76,10 +87,17 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// Counts menghitung isi ketujuh tab sekaligus.
+// Counts menghitung isi tab yang DAPAT dihitung, sekaligus.
 //
-// Urutan yang dikembalikan mengikuti inboxsurvey.Tabs(), dan itu bukan kebetulan: layar
-// menggambar bilah tab dari urutan ini, bukan dari urutannya sendiri.
+// # Kenapa tidak ketujuhnya
+//
+// Empat tab bergantung pada kolom yang tidak ada. Mengembalikan nol untuk keempatnya akan
+// menyatakan "tab ini kosong", padahal yang benar adalah "tab ini belum dapat dihitung" —
+// dan nol yang keliru tidak pernah dilaporkan siapa pun sebagai kerusakan.
+//
+// Yang dikembalikan karena itu HANYA tab tersedia, dan pemanggil di lapisan aplikasi yang
+// menyatukannya dengan daftar tab lengkap. Urutannya tetap mengikuti inboxsurvey.Tabs():
+// layar menggambar bilah tab dari urutan itu, bukan dari urutannya sendiri.
 func (r *Repo) Counts(
 	ctx context.Context,
 	identity inboxsurvey.SurveyorIdentity,
@@ -87,14 +105,11 @@ func (r *Repo) Counts(
 	row := r.db.QueryRowContext(ctx, query("count_tabs"),
 		scopeValue(identity.Scope),
 		identity.Login,
-		inboxsurvey.AdjusterConfirmed,
-		inboxsurvey.StatusInvoiceFee,
-		inboxsurvey.StatusCloseCase,
 		inboxsurvey.CommunicationOpen,
 		inboxsurvey.CommunicationAnswered,
 	)
 
-	// SELURUH tujuh dibaca sebagai NullInt64, bukan int.
+	// Ketiganya dibaca sebagai NullInt64, bukan int.
 	//
 	// `SUM(...)` atas himpunan KOSONG mengembalikan NULL di Oracle, bukan nol — dan itu
 	// persis keadaan seorang surveyor yang belum punya pekerjaan sama sekali. Membaca
@@ -109,13 +124,26 @@ func (r *Repo) Counts(
 		return nil, fmt.Errorf("membaca hasil kueri count_tabs: %w", err)
 	}
 
-	tabs := inboxsurvey.Tabs()
-	result := make([]inboxsurvey.TabCount, 0, len(tabs))
-	for i, tab := range tabs {
+	result := make([]inboxsurvey.TabCount, 0, len(countColumns))
+	next := 0
+	for _, tab := range inboxsurvey.Tabs() {
+		if !tab.Available() {
+			continue
+		}
+		if next >= len(counts) {
+			// Jumlah kolom kueri lebih sedikit daripada jumlah tab tersedia. Itu berarti
+			// kueri dan domain sudah tidak sejalan, dan diam-diam memotong daftarnya akan
+			// menampilkan angka milik tab lain pada tab ini.
+			return nil, fmt.Errorf(
+				"kueri count_tabs mengembalikan %d kolom, sementara ada lebih banyak tab tersedia",
+				len(counts),
+			)
+		}
 		result = append(result, inboxsurvey.TabCount{
 			Tab:   tab,
-			Total: int(counts[i].Int64),
+			Total: int(counts[next].Int64),
 		})
+		next++
 	}
 	return result, nil
 }
@@ -232,41 +260,40 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 	var (
 		task inboxsurvey.SurveyTask
 
-		surveyID          sql.NullString
-		claimID           sql.NullString
-		surveyIndex       sql.NullString
-		appointmentNumber sql.NullString
-		referenceNumber   sql.NullString
-		claimNumber       sql.NullString
-		policyNumber      sql.NullString
-		insuredName       sql.NullString
-		classOfBusiness   sql.NullString
-		causeOfLoss       sql.NullString
-		location          sql.NullString
-		technicalPIC      sql.NullString
-		adjusterPIC       sql.NullString
-		dateOfLoss        sql.NullTime
-		agingDays         sql.NullInt64
-		asmStatus         sql.NullString
-		surveyorType      sql.NullString
-		surveyStatus      sql.NullString
-		total             int
+		surveyID        sql.NullString
+		claimID         sql.NullString
+		surveyIndex     sql.NullString
+		claimNumber     sql.NullString
+		policyNumber    sql.NullString
+		insuredName     sql.NullString
+		classOfBusiness sql.NullString
+		causeOfLoss     sql.NullString
+		location        sql.NullString
+		technicalPIC    sql.NullString
+		adjusterPIC     sql.NullString
+		dateOfLoss      sql.NullTime
+		createdAt       sql.NullTime
+		asmStatus       sql.NullString
+		surveyorType    sql.NullString
+		total           int
 	)
 
 	// SELURUH kolom teks dibaca sebagai NullString, termasuk yang "pasti terisi".
 	//
-	// Itu bukan kehati-hatian berlebihan. `docs/kolom-t-claimlist-admin.md` mencatat 63 dari
-	// 186 kolom tabel itu TIDAK PERNAH diisi, dan kolom yang terisi pun tidak punya
-	// constraint NOT NULL. `T_SURVEYORLIST` lebih longgar lagi: `INSERT_SURVEYORLIST.prc`
-	// menyisipkan tujuh belas kolom tanpa satu pun pemeriksaan. Membaca langsung ke string
-	// akan menghasilkan galat pemindaian pada satu baris warisan, dan galat itu menjatuhkan
-	// SELURUH halaman — bukan satu sel.
+	// Itu bukan kehati-hatian berlebihan. Kolom `T_CLAIM_PNC` tidak punya constraint NOT NULL
+	// yang terbaca dari mana pun — DDL-nya belum ada (`R-08`). `T_SURVEYORLIST` lebih longgar
+	// lagi: `INSERT_SURVEYORLIST.prc` menyisipkan tujuh belas kolom tanpa satu pun pemeriksaan.
+	// Membaca langsung ke string akan menghasilkan galat pemindaian pada satu baris warisan,
+	// dan galat itu menjatuhkan SELURUH halaman — bukan satu sel.
+	//
+	// AppointmentNumber dan ReferenceNumber TIDAK ada di sini: kolomnya belum ada di tabel
+	// cermin, sehingga kueri pun tidak mengambilnya — menuliskannya menghasilkan ORA-00904
+	// yang menjatuhkan SELURUH layar, bukan sel kosong. Keduanya tetap ada sebagai field agar
+	// kolomnya tetap tergambar di layar sebagai isian yang belum terbawa.
 	if err := rows.Scan(
 		&surveyID,
 		&claimID,
 		&surveyIndex,
-		&appointmentNumber,
-		&referenceNumber,
 		&claimNumber,
 		&policyNumber,
 		&insuredName,
@@ -276,10 +303,9 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 		&technicalPIC,
 		&adjusterPIC,
 		&dateOfLoss,
-		&agingDays,
+		&createdAt,
 		&asmStatus,
 		&surveyorType,
-		&surveyStatus,
 		&total,
 	); err != nil {
 		return inboxsurvey.SurveyTask{}, 0, err
@@ -288,8 +314,6 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 	task.SurveyID = surveyID.String
 	task.ClaimID = claimID.String
 	task.SurveyIndex = surveyIndex.String
-	task.AppointmentNumber = appointmentNumber.String
-	task.ReferenceNumber = referenceNumber.String
 	task.ClaimNumber = claimNumber.String
 	task.PolicyNumber = policyNumber.String
 	task.InsuredName = insuredName.String
@@ -300,19 +324,18 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 	task.AdjusterPIC = adjusterPIC.String
 	task.ASMStatus = asmStatus.String
 	task.SurveyorType = surveyorType.String
-	task.SurveyStatus = surveyStatus.String
 
 	if dateOfLoss.Valid {
 		task.DateOfLoss = dateOfLoss.Time
 	}
 
-	// Aging NULL dibiarkan sebagai penunjuk kosong, TIDAK dijadikan nol.
+	// CreatedAt NULL dibiarkan sebagai waktu kosong, dan itu BUKAN kelalaian.
 	//
-	// Nol hari dan "belum dihitung" adalah dua keadaan berbeda, dan menyamakannya akan
-	// menampilkan angka "0" pada baris yang sebenarnya tidak punya angka.
-	if agingDays.Valid {
-		days := int(agingDays.Int64)
-		task.AgingDays = &days
+	// Ia dasar perhitungan Aging, dan SurveyTask.AgingDays menjawab waktu kosong dengan
+	// penunjuk kosong — bukan dengan nol hari. Nol hari dan "tidak dapat dihitung" adalah dua
+	// keadaan berbeda; menyamakannya menampilkan angka yang terlihat sah dan salah.
+	if createdAt.Valid {
+		task.CreatedAt = createdAt.Time
 	}
 
 	return task, total, nil

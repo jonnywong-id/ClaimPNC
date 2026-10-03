@@ -71,7 +71,7 @@ func (s *DLA) Previous(_ context.Context, claimID, code string) (registrasi.DLAP
 	return last, found, nil
 }
 
-func (s *DLA) Policy(_ context.Context, number string) (registrasi.DLAPolicy, error) {
+func (s *DLA) Policy(_ context.Context, number, _ string) (registrasi.DLAPolicy, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.Policies[number], nil

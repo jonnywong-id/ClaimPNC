@@ -33,6 +33,11 @@ var (
 	ErrTaskAlreadyDone    = errors.New("registrasi: tugas sudah selesai")
 	ErrInvalidAction      = errors.New("registrasi: tindakan tidak berlaku pada tahap ini")
 	ErrStageMismatch      = errors.New("registrasi: klaim tidak sedang berada di tahap itu")
+
+	// ErrNotAvailableAtStage: klaim berada di tahap yang benar menurut tugasnya, tetapi fitur
+	// yang diminta tidak dimiliki layar tahap itu (mis. grid Adjustment di luar tahap
+	// InputSurveyor). Berbeda dari ErrStageMismatch, memuat ulang layar tidak mengubah apa pun.
+	ErrNotAvailableAtStage = errors.New("registrasi: fitur tidak tersedia pada tahap ini")
 )
 
 // ErrExchangeRateNotFound dikembalikan bila kurs mata uang pada tanggal kejadian belum
@@ -101,10 +106,15 @@ const (
 	ViolationSendNeedsFaceSheet      ViolationCode = "kirim_pic_belum_cfs"
 	ViolationReceiverAccountEmpty    ViolationCode = "rekening_penerima_kosong"
 	ViolationReceiverAccountUnknown  ViolationCode = "rekening_penerima_tidak_terdaftar"
+	ViolationReceiverNotInCashier    ViolationCode = "rekening_penerima_belum_di_kasir"
+	ViolationReceiverNotApproved     ViolationCode = "rekening_penerima_belum_disetujui"
 	ViolationReceiverEmailEmpty      ViolationCode = "email_penerima_kosong"
 	ViolationCommitteeTransferred    ViolationCode = "komite_sudah_ditransfer"
 	ViolationCommitteeIncomplete     ViolationCode = "adjustment_belum_lengkap"
 	ViolationCommitteeNoApprover     ViolationCode = "komite_tanpa_penyetuju"
+	ViolationNoteTooLong             ViolationCode = "catatan_terlalu_panjang"
+	ViolationAnalystTransferred      ViolationCode = "sudah_transfer_analis"
+	ViolationAnalystNotAllowed       ViolationCode = "transfer_analis_tidak_berlaku"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

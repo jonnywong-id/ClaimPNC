@@ -21,7 +21,7 @@ const (
 	// SampleMemberLogin adalah anggota di bawah leader di atas.
 	SampleMemberLogin = "ADJMEMBER"
 
-	// SampleInternalLogin adalah surveyor INTERNAL — `SURVEYORTYPE_1 = "1"`.
+	// SampleInternalLogin adalah surveyor INTERNAL — `SURVEYTYPE = "1"`.
 	//
 	// Ia ada supaya keputusan Work Owner 2026-09-28 dapat dibuktikan: layar ini melayani
 	// DUA populasi, dan yang membedakan keduanya adalah identitas yang masuk — bukan
@@ -33,6 +33,12 @@ const (
 	// Tanpa baris seperti ini, ErrNotSurveyor tidak dapat dibuktikan berbeda dari antrean
 	// kosong — dan itu persis perbedaan yang paling mudah hilang.
 	SampleOutsiderLogin = "BUKANSURVEYOR"
+
+	// SampleOtherSender adalah pengirim pesan dari PIHAK LAIN — petugas teknis ASM.
+	//
+	// Ia yang membedakan tab "belum dijawab" dari "belum dibalas ASM": keduanya berstatus
+	// pesan sama, dan HANYA arah pengirimnya yang berbeda.
+	SampleOtherSender = "PICTEKNIK1"
 )
 
 // Nama surveyor contoh.
@@ -48,15 +54,9 @@ const (
 )
 
 // at membentuk waktu UTC, supaya contoh terbaca dan urutannya mudah diperiksa dengan mata.
-func at(year int, month time.Month, date int) time.Time {
-	return time.Date(year, month, date, 0, 0, 0, 0, time.UTC)
+func at(year int, month time.Month, date, hour int) time.Time {
+	return time.Date(year, month, date, hour, 0, 0, 0, time.UTC)
 }
-
-// days mengembalikan penunjuk ke sebuah angka hari.
-//
-// Kolom Aging boleh NULL, dan NULL berbeda artinya dari nol. Pembantu ini ada supaya baris
-// yang memang punya angka dapat ditulis seringkas baris yang tidak.
-func days(value int) *int { return &value }
 
 // SampleSurveyors adalah isi `POOLDATA.MST_LOGIN_SURVEYOR` contoh.
 //
@@ -78,6 +78,15 @@ var SampleSurveyors = []SurveyorRecord{
 // nama tertanggung, dan nomor klaim di sini seluruhnya karangan yang bentuknya saja
 // menyerupai aslinya.
 //
+// # Kenapa hampir seluruh baris punya pesan
+//
+// Karena HANYA ketiga tab komunikasi yang dapat dihitung hari ini. Baris tanpa pesan tidak
+// muncul di tab mana pun, sehingga contoh tanpa pesan tidak dapat membuktikan apa pun tentang
+// cakupan, urutan, maupun pencarian.
+//
+// Satu baris SENGAJA dibiarkan tanpa pesan (`SRV-0006`) — ia yang membuktikan penyaring tab
+// benar-benar menyaring, bukan meloloskan semuanya.
+//
 // # Apa yang sengaja dibuat pada contohnya
 //
 // Ia tidak sekadar "beberapa baris": setiap penyaring memperoleh baris yang membuatnya dapat
@@ -86,66 +95,58 @@ var SampleSurveyors = []SurveyorRecord{
 //   - Satu baris milik `SampleNearMissName`, yang namanya MEMUAT nama leader sebagai awalan.
 //     Bila pembatas cakupan hilang, baris itu bocor ke antrean leader.
 //   - Satu baris milik anggota. Bila hierarki leader hilang, leader tidak melihatnya.
-//   - Satu baris milik surveyor INTERNAL, `SURVEYORTYPE_1 = "1"`.
-//   - Satu baris ber-`AdjusterAccept` kosong (Outstanding) dan satu ber-"1" (ALL).
-//   - Satu baris ber-`AdjusterAccept = "0"` yang TIDAK masuk tab mana pun — lawan Outstanding
-//     adalah IS NULL, bukan <> "1", dan itu hanya terlihat bila ada baris seperti ini.
-//   - Satu baris berstatus `Invoice Fee` dan satu berstatus `Close Case`.
+//   - Satu baris milik surveyor INTERNAL, `SURVEYTYPE = "1"`.
 //   - Tiga baris berkomunikasi: dari pihak lain, dari diri sendiri belum dibalas, dan sudah
-//     dibalas.
-//   - Satu baris ber-Aging kosong, supaya "belum dihitung" dapat dibedakan dari nol hari.
-//     Ia ditaruh pada baris yang BENAR-BENAR tampil di sebuah tab — baris ber-`AdjusterAccept
-//     = "0"` tidak masuk tab mana pun, sehingga menaruhnya di sana akan membuat keadaan itu
-//     tidak pernah sampai ke layar dan tidak pernah teruji.
+//     dibalas — ketiganya menempati tab yang berbeda.
+//   - Satu baris ber-`CreatedAt` KOSONG, supaya "umur belum dapat dihitung" dapat dibedakan
+//     dari nol hari. Ia ditaruh pada baris yang BENAR-BENAR tampil di sebuah tab; baris yang
+//     tidak tampil di tab mana pun tidak pernah sampai ke layar dan tidak pernah teruji.
 //   - Dua baris berwaktu input SAMA PERSIS, sehingga pemutus seri dapat diperiksa.
 var SampleRecords = []Record{
 	{
-		AdjusterAccept: "",
-		InputAt:        "2026-09-01 08:00",
+		// `CreatedAt` sengaja dibiarkan kosong — umurnya tidak dapat dihitung, dan itu BERBEDA
+		// dari nol hari. Ia tetap punya pesan supaya benar-benar tampil di sebuah tab.
+		Messages: []Message{
+			{Status: inboxsurvey.CommunicationOpen, Sender: SampleOtherSender},
+		},
 		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0001",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0101",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0001",
-			ReferenceNumber:   "REF-0001",
-			ClaimNumber:       "PNCN.26.0101",
-			PolicyNumber:      "26.004.2026.00101",
-			InsuredName:       "Rangga Contoh",
-			ClassOfBusiness:   "Marine Cargo",
-			CauseOfLoss:       "Kerusakan Muatan",
-			Location:          "Pelabuhan Tanjung Priok",
-			TechnicalPIC:      "PICTEKNIK1",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.August, 20),
-			AgingDays:         nil, // Aging belum dihitung — berbeda dari nol hari.
-			ASMStatus:         "Survey Scheduled",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "0",
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0001",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0101",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0101",
+			PolicyNumber:    "26.004.2026.00101",
+			InsuredName:     "Rangga Contoh",
+			ClassOfBusiness: "Marine Cargo",
+			CauseOfLoss:     "Kerusakan Muatan",
+			Location:        "Pelabuhan Tanjung Priok",
+			TechnicalPIC:    SampleOtherSender,
+			AdjusterPIC:     SampleLeaderName,
+			DateOfLoss:      at(2026, time.August, 20, 0),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Waiting Claim Document",
 		},
 	},
 	{
 		// Milik ANGGOTA. Leader harus melihatnya; anggota lain tidak.
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-02 09:30",
+		Messages: []Message{
+			{Status: inboxsurvey.CommunicationOpen, Sender: SampleOtherSender},
+		},
 		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0002",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0102",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0002",
-			ReferenceNumber:   "REF-0002",
-			ClaimNumber:       "PNCN.26.0102",
-			PolicyNumber:      "26.006.2026.00102",
-			InsuredName:       "Melati Contoh",
-			ClassOfBusiness:   "Fire",
-			CauseOfLoss:       "Kebakaran",
-			Location:          "Bekasi",
-			TechnicalPIC:      "PICTEKNIK2",
-			AdjusterPIC:       SampleMemberName,
-			DateOfLoss:        at(2026, time.August, 25),
-			AgingDays:         days(3),
-			ASMStatus:         "Interim Report",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "0",
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0002",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0102",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0102",
+			PolicyNumber:    "26.006.2026.00102",
+			InsuredName:     "Melati Contoh",
+			ClassOfBusiness: "Fire",
+			CauseOfLoss:     "Kebakaran",
+			Location:        "Bekasi",
+			TechnicalPIC:    "PICTEKNIK2",
+			AdjusterPIC:     SampleMemberName,
+			DateOfLoss:      at(2026, time.August, 25, 0),
+			CreatedAt:       at(2026, time.September, 2, 9),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Survey",
 		},
 	},
 	{
@@ -153,218 +154,165 @@ var SampleRecords = []Record{
 		//
 		// Bila pembatas cakupan hilang, baris ini muncul di antrean leader — dan tampak
 		// wajar, karena seluruh kolomnya terisi.
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-03 10:00",
-		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0003",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0103",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0003",
-			ReferenceNumber:   "REF-0003",
-			ClaimNumber:       "PNCN.26.0103",
-			PolicyNumber:      "26.003.2026.00103",
-			InsuredName:       "Dimas Contoh",
-			ClassOfBusiness:   "Aneka",
-			CauseOfLoss:       "Kehilangan",
-			Location:          "Surabaya",
-			TechnicalPIC:      "PICTEKNIK3",
-			AdjusterPIC:       SampleNearMissName,
-			DateOfLoss:        at(2026, time.August, 26),
-			AgingDays:         days(2),
-			ASMStatus:         "Survey Scheduled",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "0",
-		},
-	},
-	{
-		// Berstatus Invoice Fee — tab Invoice.
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-04 11:15",
-		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0004",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0104",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0004",
-			ReferenceNumber:   "REF-0004",
-			ClaimNumber:       "PNCN.26.0104",
-			PolicyNumber:      "26.002.2026.00104",
-			InsuredName:       "Rahmat Contoh",
-			ClassOfBusiness:   "Personal Accident",
-			CauseOfLoss:       "Kecelakaan",
-			Location:          "Bandung",
-			TechnicalPIC:      "PICTEKNIK1",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.July, 30),
-			AgingDays:         days(30),
-			ASMStatus:         inboxsurvey.StatusInvoiceFee,
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "1",
-		},
-	},
-	{
-		// Berstatus Close Case — tab Close.
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-05 12:00",
-		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0005",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0105",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0005",
-			ReferenceNumber:   "REF-0005",
-			ClaimNumber:       "PNCN.26.0105",
-			PolicyNumber:      "26.005.2026.00105",
-			InsuredName:       "Ayu Contoh",
-			ClassOfBusiness:   "Travel",
-			CauseOfLoss:       "Pembatalan Perjalanan",
-			Location:          "Denpasar",
-			TechnicalPIC:      "PICTEKNIK2",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.July, 10),
-			AgingDays:         days(55),
-			ASMStatus:         inboxsurvey.StatusCloseCase,
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "1",
-		},
-	},
-	{
-		// `AdjusterAccept = "0"`, dan itu BUKAN salah ketik.
-		//
-		// Lawan tab Outstanding adalah `IS NULL`, bukan `<> "1"`. Baris ini karena itu tidak
-		// masuk tab Outstanding MAUPUN tab ALL — dan tanpa baris seperti ini, perbedaan
-		// kedua predikat itu tidak dapat dibuktikan sama sekali.
-		AdjusterAccept: "0",
-		InputAt:        "2026-09-06 13:00",
-		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0006",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0106",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0006",
-			ReferenceNumber:   "REF-0006",
-			ClaimNumber:       "PNCN.26.0106",
-			PolicyNumber:      "26.003.2026.00106",
-			InsuredName:       "Hendra Contoh",
-			ClassOfBusiness:   "Aneka",
-			CauseOfLoss:       "Kerusakan Mesin",
-			Location:          "Semarang",
-			TechnicalPIC:      "PICTEKNIK3",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.August, 28),
-			AgingDays:         days(1),
-			ASMStatus:         "Survey Scheduled",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "0",
-		},
-	},
-	{
-		// Ada pesan TERBUKA dari pihak lain — tab "Not answered communication".
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-07 14:00",
 		Messages: []Message{
-			{Status: inboxsurvey.CommunicationOpen, Sender: "PICTEKNIK1"},
+			{Status: inboxsurvey.CommunicationOpen, Sender: SampleOtherSender},
 		},
 		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0007",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0107",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0007",
-			ReferenceNumber:   "REF-0007",
-			ClaimNumber:       "PNCN.26.0107",
-			PolicyNumber:      "26.004.2026.00107",
-			InsuredName:       "Nadia Contoh",
-			ClassOfBusiness:   "Marine Cargo",
-			CauseOfLoss:       "Kerusakan Muatan",
-			Location:          "Makassar",
-			TechnicalPIC:      "PICTEKNIK1",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.August, 18),
-			AgingDays:         days(10),
-			ASMStatus:         "Interim Report",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "0",
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0003",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0103",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0103",
+			PolicyNumber:    "26.003.2026.00103",
+			InsuredName:     "Dimas Contoh",
+			ClassOfBusiness: "Aneka",
+			CauseOfLoss:     "Kehilangan",
+			Location:        "Surabaya",
+			TechnicalPIC:    "PICTEKNIK3",
+			AdjusterPIC:     SampleNearMissName,
+			DateOfLoss:      at(2026, time.August, 26, 0),
+			CreatedAt:       at(2026, time.September, 3, 10),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Initial Advice",
 		},
 	},
 	{
 		// Pesan dari DIRI SENDIRI, belum dibalas — tab "Not replied from ASM".
-		//
-		// Waktu inputnya SAMA PERSIS dengan baris berikutnya, supaya pemutus seri dapat
-		// diperiksa.
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-08 15:00",
 		Messages: []Message{
 			{Status: inboxsurvey.CommunicationOpen, Sender: SampleLeaderLogin},
 		},
 		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0008",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0108",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0008",
-			ReferenceNumber:   "REF-0008",
-			ClaimNumber:       "PNCN.26.0108",
-			PolicyNumber:      "26.006.2026.00108",
-			InsuredName:       "Fajar Contoh",
-			ClassOfBusiness:   "Fire",
-			CauseOfLoss:       "Kebakaran",
-			Location:          "Medan",
-			TechnicalPIC:      "PICTEKNIK2",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.August, 15),
-			AgingDays:         days(13),
-			ASMStatus:         "Preliminary Advice",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "0",
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0004",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0104",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0104",
+			PolicyNumber:    "26.002.2026.00104",
+			InsuredName:     "Rahmat Contoh",
+			ClassOfBusiness: "Personal Accident",
+			CauseOfLoss:     "Kecelakaan",
+			Location:        "Bandung",
+			TechnicalPIC:    SampleOtherSender,
+			AdjusterPIC:     SampleLeaderName,
+			DateOfLoss:      at(2026, time.July, 30, 0),
+			CreatedAt:       at(2026, time.September, 4, 11),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Preliminary Advice",
 		},
 	},
 	{
 		// Pesan dari diri sendiri yang SUDAH dibalas — tab "Replied from ASM".
-		AdjusterAccept: inboxsurvey.AdjusterConfirmed,
-		InputAt:        "2026-09-08 15:00",
 		Messages: []Message{
 			{Status: inboxsurvey.CommunicationAnswered, Sender: SampleLeaderLogin},
 		},
 		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0009",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0109",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0009",
-			ReferenceNumber:   "REF-0009",
-			ClaimNumber:       "PNCN.26.0109",
-			PolicyNumber:      "26.003.2026.00109",
-			InsuredName:       "Gilang Contoh",
-			ClassOfBusiness:   "Aneka",
-			CauseOfLoss:       "Kehilangan",
-			Location:          "Palembang",
-			TechnicalPIC:      "PICTEKNIK3",
-			AdjusterPIC:       SampleLeaderName,
-			DateOfLoss:        at(2026, time.August, 12),
-			AgingDays:         days(16),
-			ASMStatus:         "Final Report",
-			SurveyorType:      inboxsurvey.SurveyorTypeLossAdjuster,
-			SurveyStatus:      "1",
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0005",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0105",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0105",
+			PolicyNumber:    "26.005.2026.00105",
+			InsuredName:     "Ayu Contoh",
+			ClassOfBusiness: "Travel",
+			CauseOfLoss:     "Pembatalan Perjalanan",
+			Location:        "Denpasar",
+			TechnicalPIC:    "PICTEKNIK2",
+			AdjusterPIC:     SampleLeaderName,
+			DateOfLoss:      at(2026, time.July, 10, 0),
+			CreatedAt:       at(2026, time.September, 5, 12),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Interim Report",
 		},
 	},
 	{
-		// Milik surveyor INTERNAL — `SURVEYORTYPE_1 = "1"`.
-		AdjusterAccept: "",
-		InputAt:        "2026-09-09 16:00",
+		// TANPA pesan sama sekali, dan itu bukan kelalaian.
+		//
+		// Ketiga tab yang dapat dihitung seluruhnya berbasis komunikasi, sehingga baris ini
+		// tidak muncul di tab mana pun. Ia yang membuktikan penyaring tab benar-benar
+		// menyaring — tanpa baris seperti ini, penyaring yang meloloskan segalanya akan lulus
+		// setiap uji di sini.
 		Task: inboxsurvey.SurveyTask{
-			SurveyID:          "ASM-FW-GCNMFW-WORK SRV-0010",
-			ClaimID:           "ASM-FW-GCNMFW-WORK PNCN.26.0110",
-			SurveyIndex:       "1",
-			AppointmentNumber: "APP-0010",
-			ReferenceNumber:   "REF-0010",
-			ClaimNumber:       "PNCN.26.0110",
-			PolicyNumber:      "26.002.2026.00110",
-			InsuredName:       "Intan Contoh",
-			ClassOfBusiness:   "Personal Accident",
-			CauseOfLoss:       "Kecelakaan",
-			Location:          "Yogyakarta",
-			TechnicalPIC:      "PICTEKNIK1",
-			AdjusterPIC:       SampleInternalName,
-			DateOfLoss:        at(2026, time.September, 1),
-			AgingDays:         days(6),
-			ASMStatus:         "Survey Scheduled",
-			SurveyorType:      inboxsurvey.SurveyorTypeInternal,
-			SurveyStatus:      "0",
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0006",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0106",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0106",
+			PolicyNumber:    "26.003.2026.00106",
+			InsuredName:     "Hendra Contoh",
+			ClassOfBusiness: "Aneka",
+			CauseOfLoss:     "Kerusakan Mesin",
+			Location:        "Semarang",
+			TechnicalPIC:    "PICTEKNIK3",
+			AdjusterPIC:     SampleLeaderName,
+			DateOfLoss:      at(2026, time.August, 28, 0),
+			CreatedAt:       at(2026, time.September, 6, 13),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Draft Final Report",
+		},
+	},
+	{
+		// Berwaktu input SAMA PERSIS dengan baris berikutnya, supaya pemutus seri teruji.
+		Messages: []Message{
+			{Status: inboxsurvey.CommunicationOpen, Sender: SampleOtherSender},
+		},
+		Task: inboxsurvey.SurveyTask{
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0007",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0107",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0107",
+			PolicyNumber:    "26.004.2026.00107",
+			InsuredName:     "Nadia Contoh",
+			ClassOfBusiness: "Marine Cargo",
+			CauseOfLoss:     "Kerusakan Muatan",
+			Location:        "Makassar",
+			TechnicalPIC:    SampleOtherSender,
+			AdjusterPIC:     SampleLeaderName,
+			DateOfLoss:      at(2026, time.August, 18, 0),
+			CreatedAt:       at(2026, time.September, 8, 15),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Final Report",
+		},
+	},
+	{
+		// Waktu input sama dengan baris sebelumnya; urutannya ditentukan pemutus seri.
+		Messages: []Message{
+			{Status: inboxsurvey.CommunicationOpen, Sender: SampleOtherSender},
+		},
+		Task: inboxsurvey.SurveyTask{
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0008",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0108",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0108",
+			PolicyNumber:    "26.006.2026.00108",
+			InsuredName:     "Fajar Contoh",
+			ClassOfBusiness: "Fire",
+			CauseOfLoss:     "Kebakaran",
+			Location:        "Medan",
+			TechnicalPIC:    "PICTEKNIK2",
+			AdjusterPIC:     SampleLeaderName,
+			DateOfLoss:      at(2026, time.August, 15, 0),
+			CreatedAt:       at(2026, time.September, 8, 15),
+			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
+			ASMStatus:       "Invoice Fee",
+		},
+	},
+	{
+		// Milik surveyor INTERNAL — `SURVEYTYPE = "1"`.
+		Messages: []Message{
+			{Status: inboxsurvey.CommunicationOpen, Sender: SampleOtherSender},
+		},
+		Task: inboxsurvey.SurveyTask{
+			SurveyID:        "ASM-FW-GCNMFW-WORK SRV-0010",
+			ClaimID:         "ASM-FW-GCNMFW-WORK PNCN.26.0110",
+			SurveyIndex:     "1",
+			ClaimNumber:     "PNCN.26.0110",
+			PolicyNumber:    "26.002.2026.00110",
+			InsuredName:     "Intan Contoh",
+			ClassOfBusiness: "Personal Accident",
+			CauseOfLoss:     "Kecelakaan",
+			Location:        "Yogyakarta",
+			TechnicalPIC:    SampleOtherSender,
+			AdjusterPIC:     SampleInternalName,
+			DateOfLoss:      at(2026, time.September, 1, 0),
+			CreatedAt:       at(2026, time.September, 9, 16),
+			SurveyorType:    inboxsurvey.SurveyorTypeInternal,
+			ASMStatus:       "Waiting Confirmation",
 		},
 	},
 }

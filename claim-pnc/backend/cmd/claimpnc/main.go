@@ -155,6 +155,7 @@ import (
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
+	inboxautoclaimpremium "claim-pnc/internal/inboxautoclaim/premium"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
@@ -1063,6 +1064,10 @@ func run() error {
 	// Master Dokumen Travel. Seperti Master Status Progres, tabelnya ada di basis data
 	// SETIAP entitas — rutenya karena itu memasang pemeriksaan portal sendiri di dalam
 	// Mount.
+	// DILAPORKAN, BELUM DIPERBAIKI: galat NewHandler ini tidak pernah diperiksa — ia
+	// tertimpa galat berikutnya. Memeriksanya mengubah perilaku start (aplikasi berhenti
+	// alih-alih jalan dengan handler nil), jadi menunggu keputusan Work Owner.
+	//nolint:staticcheck // SA4006 — lihat catatan di atas.
 	travelDocumentHandler, err := masterdokumentravelhttp.NewHandler(masterdokumentravelhttp.Options{
 		Service:       assembly.masterDokumenTravel,
 		Logger:        logger,
@@ -3913,7 +3918,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	extra, err := buildExtraServices(store, logger)
+	// DILAPORKAN, BELUM DIPERBAIKI: galat buildExtraServices tidak pernah diperiksa — ia
+	// tertimpa baris berikutnya. Memeriksanya mengubah perilaku start, jadi menunggu
+	// keputusan Work Owner.
+	extra, err := buildExtraServices(store, logger) //nolint:ineffassign,staticcheck // lihat catatan di atas.
 	workshopService, err := masterbengkelusecase.NewService(masterbengkelusecase.Options{
 		RepoSelector: store.workshopSelector,
 	})
@@ -3987,6 +3995,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	autoClaimService, err := inboxautoclaimusecase.NewService(inboxautoclaimusecase.Options{
 		RepoSelector: store.autoClaimSelector,
+		Premium:      buildPremiumChecker(store.legacy, logger),
 	})
 	if err != nil {
 		store.close()
@@ -4482,7 +4491,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee)
 		if err != nil {
 			store.close()
 			return assembly{}, err
@@ -8415,4 +8424,26 @@ func caseStudySelectorMemory(primaryAlias string) casestudyclaim.RepoSelector {
 		store[clean] = fresh
 		return fresh, nil
 	}
+}
+
+// buildPremiumChecker menyusun pemeriksa premi unggahan Inbox Auto Claim.
+//
+// Tanpa koneksi basis data (mode memori), alamat layanan pada POOLDATA.GCNM_CONNECT_REST
+// tidak dapat dibaca, sehingga yang dipakai tiruan yang menjawab LUNAS — sama dengan
+// penerbit virtual account. Dengan koneksi, alamatnya dibaca per portal:
+// `APP = <alias portal> AND TYPESERVICE = 'PREMI'` (Work Owner 2026-09-29).
+func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxautoclaim.PremiumChecker {
+	if legacy == nil {
+		logger.Warn("cek premi unggahan memakai jawaban tiruan (selalu lunas)",
+			slog.String("modul", "inboxautoclaim"),
+			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga alamat layanan pada POOLDATA.GCNM_CONNECT_REST tidak dapat dibaca"),
+		)
+		return inboxautoclaimpremium.NewFake()
+	}
+	checker, err := inboxautoclaimpremium.NewPega(inboxautoclaimpremium.Options{Catalog: legacy})
+	if err != nil {
+		// Hanya terjadi bila katalognya nil — sudah disaring di atas.
+		panic(err)
+	}
+	return checker
 }

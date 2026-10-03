@@ -38,6 +38,8 @@ export type Task = {
    * M_LOGIN_GROUP_PNC. Dikirim hanya pada respons satu klaim.
    */
   dapat_dikerjakan?: boolean
+  /** Pemanggil anggota grup Analyst (When `IsAnalisator`). Dikirim hanya pada respons satu klaim. */
+  analis?: boolean
 }
 
 export type Spreading = {
@@ -60,6 +62,8 @@ export type Coverage = {
   item?: ObjectItem[]
   /** AdjustmentList — diisi tombol Tambah di tahap InputSurveyor. */
   adjustment?: Settlement[]
+  /** Jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya dikirim server. */
+  sudah_transfer_analis?: boolean
 }
 
 /** Kode Tipe Pembayaran (PAYMENTTYPE). */
@@ -182,6 +186,8 @@ export type SettlementRequest = {
   tugas_id: string
   objek: number
   jaminan: number
+  /** Nomor baris (berbasis 1) yang diubah — hanya rute ubah. */
+  adjustment?: number
   tipe_pembayaran: string
   mata_uang: string
   nilai_propose_sen: Cents
@@ -245,6 +251,9 @@ export type InsuredItem = {
   nama: string
   lokasi: string
   coverage: Coverage[]
+  /** Pekerjaan dan tanggal lahir (YYYY-MM-DD) peserta PA — T_PERSONLIST polis, baca saja. */
+  pekerjaan?: string
+  tanggal_lahir?: string
 }
 
 /** Satu penerima klaim. */
@@ -305,7 +314,32 @@ export type Policy = {
   /** TYPEOFCOINS: 0 tanpa koasuransi, 1 member, 2 leader, F fac in. */
   jenis_koasuransi?: string
   peran_koasuransi?: string
+  /** Quotation.SobName dan Quotation.BusinessName — DATA TERTANGGUNG KLAIM. */
+  nama_sumbis?: string
+  nama_bisnis?: string
+  kode_cabang?: string
 }
+
+/** Satu baris grid Telephone dan Email (CIFData ASMTelfax). */
+export type InsuredPhone = { jenis: string; nama_jenis: string; kode: string; nomor: string; ekstensi: string }
+
+/** Satu alamat tertanggung dari CIF polis (CIFData.AddressList). */
+export type InsuredAddress = {
+  jenis: string
+  nama_jenis: string
+  alamat: string
+  kota: string
+  nama_kota: string
+  kecamatan: string
+  nama_kecamatan: string
+  kelurahan: string
+  nama_kelurahan: string
+  kode_pos: string
+  telepon: InsuredPhone[]
+}
+
+/** GET /api/registrasi/klaim/{id}/tertanggung. */
+export type InsuredResponse = { no_ktp: string; alamat: InsuredAddress[] }
 
 /**
  * Wilayah kejadian — bagian bawah layar Input Register Pega
@@ -346,6 +380,28 @@ export type AreaOptionsResponse = {
   pilihan: AreaOption[]
 }
 
+/**
+ * Isian awal form AcceptationLOD (AcceptationLOD_PreAct): Tipe Akseptasi beserta pilihannya,
+ * Nama Komite Akseptasi, Nilai LOD (Non-MBU saja), dan peringatan yang menolak akseptasi.
+ */
+export type AcceptanceDefaults = {
+  tipe_akseptasi: string
+  pilihan_tipe_akseptasi: { id: string; nama: string }[]
+  nama_komite_akseptasi: string
+  nilai_lod_sen?: number
+  peringatan: string[]
+}
+
+/** Satu pilihan Penyebab Kerugian: id D_COL_ID, nama DESCRIPTION. */
+export type CauseOfLossOption = {
+  id: string
+  nama: string
+}
+
+export type CauseOfLossOptionsResponse = {
+  pilihan: CauseOfLossOption[]
+}
+
 /** Negara yang membuka isian Kota sampai Kode Pos (kondisi Country = 'INDONESIA'). */
 export const COUNTRY_INDONESIA = 'INDONESIA'
 
@@ -369,6 +425,11 @@ export type Claim = {
   wilayah: Area
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
+  /** Isian InputRegisterDetail2_sect: EMAIL_LOD, REMARKRECOMENDATION, SUBJECTEMAIL, STSSALVAGE. */
+  email_lod?: string
+  rekomendasi?: string
+  subjek_email?: string
+  status_salvage?: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string
@@ -390,6 +451,8 @@ export type Claim = {
   status_klaim: string
   /** Nama Status Klaim dari master V_STS_CLAIM, mis. "Register". */
   status_klaim_nama?: string
+  /** Klaim sudah pernah ditransfer ke Analyst (ANALYST_TRANSFERDATE terisi). */
+  sudah_transfer_analis?: boolean
   flag_klaim: string
   status_posisi_progres: string
 
@@ -464,6 +527,10 @@ export type RegisterRequest = {
   wilayah: Area
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
+  email_lod: string
+  rekomendasi: string
+  subjek_email: string
+  status_salvage: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string
@@ -537,6 +604,8 @@ export type Communication = {
   balasan: string
   penjawab: string
   tanggal_balasan: string
+  /** COMMUNICATE_FROM; "SENDTOINPUTOR" untuk catatan tombol Kirim ke Inputor. */
+  kanal?: string
 }
 export type ProgressResponse = { progres: ProgressEntry[]; komunikasi: Communication[] }
 
@@ -606,6 +675,10 @@ export type CashierRequest = {
   objek: number
   jaminan: number
   adjustment: number
+  /** "Tipe Transfer Kasir": 1 Pembayaran Biasa, 2 Join Placement, 3 Fronting. */
+  tipe_transfer?: string
+  /** No DLA FAC OUT yang dicentang "Pilih Fac-out Tidak Dibayar". */
+  fac_out_tidak_dibayar?: string[]
 }
 
 /** Isi dialog konfirmasi Transfer Kasir; masalah berisi galat validasi pertama. */
@@ -618,6 +691,12 @@ export type CashierPreview = {
   nilai_nett_sen: number
   mata_uang: string
   masalah: string
+  /** Kalimat konfirmasi Pega (Pre_AlertTransferkasir). */
+  konfirmasi: string
+  /** Pilihan "Tipe Transfer Kasir" (property JoinPlacement). */
+  tipe_transfer: { id: string; nama: string }[]
+  /** DLA FAC OUT adjustment ini (GetdataFacoutJoinPlacement). */
+  fac_out: { nomor_dla: string; nama_facout: string; nilai_bayar: string; mata_uang: string }[]
 }
 
 export type DLAListResponse = {

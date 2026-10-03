@@ -144,8 +144,8 @@ export function useInboxManagerDecide() {
       }),
 
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['inbox-manager', 'daftar'] })
-      void queryClient.invalidateQueries({ queryKey: ['inbox-manager', 'ringkasan'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-manager', 'daftar'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-manager', 'ringkasan'] })
     },
   })
 }

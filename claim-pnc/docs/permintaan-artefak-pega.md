@@ -1950,6 +1950,306 @@ dan dialog "Lihat File" di sistem lama selalu kosong tanpa ada yang melaporkanny
 Jawabannya **tidak mengubah kode**: kedua kueri meniru perbandingan yang sama apa adanya
 (`P-5`). Ia hanya menentukan mana dari kedua kalimat di `PlannedDifferences()` yang berlaku.
 
+## 12. Adjustment, Akseptasi, Draft Persetujuan, dan Transfer Kasir (2026-10-01) — ke **Tim Pega**
+
+Diperiksa terhadap export per 2026-10-01. Sebuah rule dihitung ADA hanya bila berkas
+definisinya sendiri ada (nama berkas atau `pyRuleName` miliknya) — bukan sekadar disebut.
+
+### 12.1 Rule yang HILANG
+
+| # | Rule | Jenis | Dirujuk di | Akibat bagi aplikasi baru |
+|---|---|---|---|---|
+| 1 | `ValidationAdjustment` | Activity | `Section/ShowAdjustment_sect.xml` (aksi dropdown Tipe LOD dan isian adjustment) | Pemeriksaan saat Tipe LOD/adjustment diubah tidak dibawa |
+| 2 | `SetShareAsmWhenPilihAdjustment` | Activity | `Section/ShowAdjustment_sect.xml:3600`, `:3713` | Bila ia mengubah Share ASM saat Tipe LOD dipilih, perilaku itu belum ada |
+| 3 | `IsAnalisator` | When | `Section/ShowAdjustment_sect.xml` (baca-saja dropdown), `InputAdjustment_sect`, beberapa activity salvage/investigator | Pembatasan peran Analisator belum ditegakkan |
+| 4 | `ValidasiTransferKasir_dialog` | Flow Action | `Section/InputAdjustment_sect.xml` (tombol Transfer Kasir) | Dialog Transfer Kasir dibangun ulang sebagai ringkasan konfirmasi (keputusan Work Owner) |
+| 5 | `DokumentBeforeTFManager` | Activity | `Activity/TransferToKasir_act-act.xml` | Jalur persetujuan leader / manajer sebelum Transfer Kasir belum dibangun |
+| 6 | `UpdateChasierIDTablePembayaran` | Connect SQL (`@baseclass`) | `TransferToKasir_act`, `TransferToKasir_act_Leader`, `InsertDataAkseptasiToLeader` | Pembaruan CaseID Kasir pada tabel pembayaran (jalur leader) belum dibangun |
+| 7 | `GetDataBankMaster` | Activity | `Section/InputReceiver_sect.xml` (isian No Rekening penerima) | Pemetaan rekening → penerima direkonstruksi dari data, bukan dari rule |
+| 8 | `IsServerSyariah` | When | `Data Transform/SetDataEmail-DT.xml`, `Activity/SpreadingDataProtection-Act.xml` | Pembeda portal Syariah belum punya baseline |
+| 9 | `IsDevelopmentServer` | When | sejumlah activity | Tidak dibawa (perilaku berbasis hostname dilarang, Steering §3.4) |
+
+### 12.2 Objek basis data yang hilang — ke **DBA**
+
+| Objek | Dirujuk di | Catatan |
+|---|---|---|
+| `PKG_KONVERSI_JSONKLAIM` | `TransferToKasir_act` (dua pemeriksaan sebelum transfer) | Tidak dipanggil aplikasi baru (`D-02`); isinya tetap perlu dibaca untuk tahu apa yang diperiksa |
+
+### 12.3 Koreksi atas catatan sebelumnya — rule ini ternyata ADA
+
+Catatan terdahulu (B-10, `catatan-pengembangan.md`) menyebut beberapa rule hilang; export kini
+memuatnya: `InsertLogKasir_act`, `SendAttachmenttoCashier_act`, `SetDataEmailTertanggung`,
+`DownloadProposeAdjustment`, `PrintLODdanEmail` (section), `SendAutoLodKeTertanggungPA` (HTML),
+`IsMarineHull`, `SetSignaturePA`, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU_act`.
+Yang perlu dibaca ulang karena kini tersedia: `SendAttachmenttoCashier_act` (pengiriman berkas ke
+Kasir) dan `PrintLODdanEmail` + `DownloadProposeAdjustment` (kirim email LOD).
+
+### 12.4 Pembaruan 2026-10-01 — setelah 8 berkas diterima
+
+**Diterima dan sudah dibawa:** `SetShareAsmWhenPilihAdjustment` (dropdown Tipe LOD kini mengubah
+ExGratia dan Share ASM baris), `GetDataBankMaster` (pemeriksaan "Norekening Belum Terdaftar Di
+Sistem Kasir", dikendalikan KASIR_CEK_REKENING), `IsServerSyariah` / `IsDevelopmentServer`
+(diganti portal dan pengaturan lingkungan — tidak membandingkan nama server).
+
+**Diterima, dibaca, belum dibangun:** `ValidationAdjustment` (aksi tombol Tambah adjustment, 918 KB —
+bukan aksi dropdown), `DokumentBeforeTFManager` (jalur persetujuan atasan), `IsAnalisator`
+(workgroup `KlaimAnalisator`; butuh pemetaan login ke operator Pega).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di |
+|---|---|---|
+| `Sec_dialogValidasiTransfer` | Section | `Flow Action/ValidasiTransferKasir_dialog-FA.xml` — isi dialog Transfer Pembayaran |
+| `Pre_AlertTransferkasir` | Activity | idem, pra-proses dialog |
+| `GetDataPenerimaKlaim` | Connect SQL | `GetDataBankMaster` langkah 4 |
+| `GetDataBankMasterRekening` | Connect SQL | `GetDataBankMaster` langkah 9 (PA: "No Rekening Sedang Proses Approval") |
+| `UpdateChasierIDTablePembayaran` | Connect SQL | `TransferToKasir_act`, `TransferToKasir_act_Leader` |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` |
+
+### 12.5 Pembaruan 2026-10-01 (kedua) — setelah 5 berkas diterima
+
+**Dibawa:** `GetDataPenerimaKlaim` (hanya rekening `APPROVAL = '1'`; rekening `'0'` ditolak "No
+Rekening Sedang Proses Approval"), `GetDataBankMasterRekening`, `Pre_AlertTransferkasir` (kalimat
+konfirmasi dialog), `Sec_dialogValidasiTransfer` (judul "Transfer Pembayaran", tombol "Transfer To
+Kasir" / "Batal").
+
+**Dibaca, tidak dibangun:** `UpdateChasierIDTablePembayaran` — milik jalur persetujuan atasan
+(memanggil prosedur `POOLDATA.INSERT_AKSEPTASI_TO_LEADER`, `D-02`).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di | Untuk |
+|---|---|---|---|
+| `GetdataFacoutJoinPlacement` | Activity | `Sec_dialogValidasiTransfer` (defer load tabel `ListFacoutFlonting`) | Daftar DLA Fac-out pada dialog — "Pilih Fac-out Tidak Dibayar" |
+| `JoinPlacement` | Property (local list) | `Sec_dialogValidasiTransfer` (dropdown "Tipe Transfer Kasir", bawaan `1`; tabel tampil bila 2 atau 3) | Label pilihan Tipe Transfer Kasir |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` | Dua pemeriksaan sebelum transfer |
+
+### 12.6 Pembaruan 2026-10-01 (ketiga) — `GetdataFacoutJoinPlacement` dan `JoinPlacement` diterima
+
+**Dibawa:** dropdown "Tipe Transfer Kasir" (1 Pembayaran Biasa, 2 Join Placement, 3 Fronting) dan
+tabel "Pilih Fac-out Tidak Dibayar" (DLA FAC OUT nomor akseptasi itu, `GetDLAHistoryManager`).
+Fac-out yang dicentang menjadi baris TAllPaymentData tambahan: NoTrans = No DLA, Nett = Nilai Bayar
+× -1 (`TransferCashierDataASM_act` cabang ListOfPlacement).
+
+**Masih HILANG:** `PKG_KONVERSI_JSONKLAIM` (Package DB, ke DBA) — dua pemeriksaan sebelum Transfer Kasir.
+
+---
+
+## 13. Isi kolom `POOLDATA.T_GENERAL.CURRENCY` (2026-10-01) — ke **DBA**
+
+| | |
+|---|---|
+| **Status** | **Diminta** |
+| **Ditujukan ke** | DBA — pelaksana. Persetujuan: Work Owner (`D-63`). Tabel ini ditulis sistem polis, sehingga pemilik datanya perlu ikut diberi tahu |
+| **Menghalangi** | registrasi klaim atas polis yang kolom mata uangnya kosong — klaim ditolak karena kurs tidak ditemukan |
+| **Jenis perubahan** | **hanya mengisi kolom yang KOSONG** (UPDATE) — lihat §13.0 |
+
+### 13.0 Dua batas yang mengikat (Work Owner, 2026-10-01)
+
+1. **Tidak ada perubahan struktur tabel.** Tidak ada `CREATE`, `ALTER`, `DROP`, `TRUNCATE`,
+   index, trigger, maupun tabel cadangan di basis data. Cadangan untuk rollback disimpan sebagai
+   **berkas di luar basis data** (§13.4 langkah 2).
+2. **Tidak menimpa data yang sudah ada.** Yang diubah hanya sel `CURRENCY` yang **kosong (NULL)**
+   pada saat UPDATE dijalankan. Kolom lain dan baris yang `CURRENCY`-nya sudah terisi tidak disentuh.
+   Rollback pun hanya mengosongkan sel yang **masih berisi nilai yang kita isi** — bila sejak itu
+   sudah diubah pihak lain, sel itu dibiarkan.
+
+### 13.1 Kenapa diminta
+
+Aplikasi Claim PNC yang baru tidak lagi membaca data polis dari kolom
+`POOLDATA.JSON_POLIS.DATA_JSONBLOB`. Mata uang polis kini dibaca dari `T_GENERAL.CURRENCY` menurut
+`NOPOLIS` + `PRODKE`, dengan `JSON_POLIS.POLICYDATA` sebagai cadangan.
+
+Kolom `CURRENCY` ternyata **kosong pada hampir seluruh baris yang dibuat sebelum 2025**. Bila
+polisnya juga tidak punya `POLICYDATA` (dokumennya hanya ada di `DATA_JSONBLOB`), mata uang polis
+menjadi kosong, kurs tidak dapat dicari, dan registrasi klaim **ditolak**.
+
+### 13.2 Ukuran — dihitung 2026-10-01
+
+| Lingkup | Baris T_GENERAL | `CURRENCY` kosong | Dapat diisi dari dokumen polis |
+|---|---:|---:|---:|
+| seluruh tabel | 201.582 | **167.528** | — (dihitung DBA, §13.4 langkah 1) |
+| polis yang punya klaim di `T_CLAIM_PNC` | 233 | **214** | **210** |
+
+Sebaran per tahun `TGL_INPUT` — kolom ini baru terisi teratur sejak 2025:
+
+| Tahun | Baris | Kosong |
+|---|---:|---:|
+| 2018–2019 | 132 | 110 |
+| 2020 | 8.636 | 8.435 |
+| 2021 | 33.776 | 33.327 |
+| 2022 | 23.302 | 22.132 |
+| 2023 | 72.587 | 72.190 |
+| 2024 | 4.795 | 4.112 |
+| 2025 | 7.379 | 3 |
+| 2026 | 23.620 | 12 |
+| `TGL_INPUT` kosong | 27.355 | 27.207 |
+
+### 13.3 Isi yang diminta
+
+`CURRENCY` diisi dengan **kode mata uang polis dari dokumen polis pada PRODKE yang sama** — nilai
+`$.Currency` dari `JSON_POLIS.POLICYDATA`, atau dari `JSON_POLIS.DATA_JSONBLOB` bila POLICYDATA
+kosong. Bentuknya **kode angka** (`10026` = IDR, `10001` = USD), sama dengan baris 2025 ke atas
+yang sudah terisi dan sama dengan `POOLDATA.M_CURRENCYSTANDARD.ID`. **Bukan** simbol `IDR`/`USD`.
+
+Aturannya:
+
+1. Hanya baris yang `CURRENCY`-nya **kosong (NULL)**. Baris yang sudah terisi tidak disentuh,
+   dan hanya kolom `CURRENCY` yang diubah.
+2. Pasangan kunci: `T_GENERAL.NOPOLIS = JSON_POLIS.NOPOLIS` **dan**
+   `T_GENERAL.PRODKE = JSON_POLIS.PRODKE`.
+3. Bila satu PRODKE punya lebih dari satu baris `JSON_POLIS`, yang dipakai **baris terbaru menurut
+   `TGL_INPUT`**.
+4. Baris yang dokumennya tidak memuat `$.Currency` **dibiarkan kosong** — jangan diisi nilai bawaan
+   seperti IDR. Mengisi bawaan akan mengonversi klaim valuta asing dengan kurs yang salah.
+
+### 13.4 Langkah yang diusulkan
+
+Kueri di bawah adalah **usulan**. DBA bebas menyesuaikan cara pelaksanaannya selama hasilnya sama.
+
+**Langkah 1 — hitung baris yang akan berubah:**
+
+```sql
+SELECT COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+**Langkah 2 — cadangan untuk rollback, sebagai BERKAS (bukan tabel):**
+
+Hasil kueri ini diekspor ke berkas CSV di luar basis data (spool SQL*Plus, SQL Developer, atau alat
+lain yang biasa dipakai DBA). Isinya daftar sel yang **akan** diisi beserta nilai yang akan diisikan
+— itulah satu-satunya bahan rollback. **Tidak ada tabel cadangan yang dibuat.**
+
+```sql
+SELECT ROWIDTOCHAR(g.ROWID) AS RID, g.NOPOLIS, g.PRODKE,
+       (SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+          FROM POOLDATA.JSON_POLIS p
+         WHERE p.NOPOLIS = g.NOPOLIS
+           AND TO_CHAR(p.PRODKE) = g.PRODKE
+           AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+         ORDER BY p.TGL_INPUT DESC
+         FETCH FIRST 1 ROWS ONLY) AS CURRENCY_BARU
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Jumlah barisnya wajib sama dengan hasil langkah 1.
+
+**Langkah 3 — isi kolomnya:**
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = (
+         SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+           FROM POOLDATA.JSON_POLIS p
+          WHERE p.NOPOLIS = g.NOPOLIS
+            AND TO_CHAR(p.PRODKE) = g.PRODKE
+            AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+          ORDER BY p.TGL_INPUT DESC
+          FETCH FIRST 1 ROWS ONLY)
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Penyaring `g.CURRENCY IS NULL` di UPDATE itulah yang menjamin data yang sudah ada tidak tertimpa:
+bila sebuah sel terisi oleh proses lain di antara langkah 2 dan 3, UPDATE melewatinya. Akibatnya
+jumlah baris yang diperbarui boleh **lebih kecil** dari langkah 1, tetapi **tidak boleh lebih besar**
+— bila lebih besar, batalkan (`ROLLBACK`) sebelum `COMMIT`.
+
+Dengan 167.528 baris kandidat, DBA dapat memecahnya per tahun `TGL_INPUT` (§13.2) bila perlu;
+setiap potongan tetap memakai penyaring `g.CURRENCY IS NULL`.
+
+**Langkah 4 — periksa hasil:**
+
+```sql
+SELECT g.CURRENCY, COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ GROUP BY g.CURRENCY
+ ORDER BY 2 DESC;
+```
+
+Semua nilai baru harus berupa kode yang ada di `POOLDATA.M_CURRENCYSTANDARD.ID`.
+
+### 13.5 Rollback
+
+Dijalankan per baris berkas CSV langkah 2 (`:rid` dan `:nilai` dari kolom `RID` dan
+`CURRENCY_BARU`):
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = NULL
+ WHERE g.ROWID = CHARTOROWID(:rid)
+   AND g.CURRENCY = :nilai;
+```
+
+Syarat `g.CURRENCY = :nilai` membuat rollback **tidak menimpa** perubahan pihak lain: sel yang sejak
+pengisian sudah diubah nilainya dibiarkan apa adanya. Berkas CSV disimpan sampai Work Owner
+menyatakan hasilnya diterima. Berkas itu memuat nomor polis, sehingga disimpan sesuai aturan data
+nasabah (`D-69`) dan **tidak** dimasukkan ke repository.
+
+### 13.6 Yang perlu dikonfirmasi sebelum dijalankan
+
+| # | Pertanyaan | Kepada |
+|---|---|---|
+| 1 | Apakah ada proses sistem polis yang **membaca** `T_GENERAL.CURRENCY` dan perilakunya berubah bila kolom yang kosong menjadi terisi? | pemilik sistem polis (GISFW) |
+| 2 | Apakah ada proses yang **menimpa** `T_GENERAL` dari dokumen polis (konversi ulang) sehingga isian ini kembali kosong? | DBA / pemilik sistem polis |
+| 3 | Mengikuti `D-63`, perubahan diuji dengan menjalankan Pega dan aplikasi baru bersamaan setelah pengisian | tim pengembang + DBA |
+
+> **Bukan bagian permintaan ini:** periode polis (`STARTDATE`/`ENDDATE`). Kolom itu terisi, tetapi
+> **tidak mengikuti endorsemen** — perbaikannya butuh keputusan tersendiri, bukan pengisian kolom kosong.
+
+---
+
+## 14. Rule yang tidak ditemukan di Pega (2026-10-02) — **ditutup**
+
+| | |
+|---|---|
+| **Status** | **Ditutup** — Tim Pega menambahkan 51 rule ke export (2026-10-01 dan 2026-10-02); rule di bawah **dicari di Pega dan tidak ditemukan** |
+| **Akibat** | jangan diminta ulang; perilaku yang bergantung padanya **direkonstruksi atau tidak dibawa**, dan dicatat di catatan pengembangan |
+
+### 14.1 Rule Pega
+
+| Rule | Jenis | Dipakai untuk | Perlakuan di aplikasi baru |
+|---|---|---|---|
+| `InputInvestigator` | Section | layar flow action tahap Investigator (PA) | bingkai `ClaimSurvey_sect`, tab Investigasi lebih dulu (catatan #125) |
+| `ValidasiTransferKasir_dialog` | Section | dialog validasi Transfer Kasir (flow action-nya ada) | isi dialog direkonstruksi dari flow action dan activity-nya |
+| `SendToPIC` | Ticket | lompatan ke Send To PIC dari Input Estimasi | `SendToPICTravel` ada; `SendToPIC` tidak dibawa sampai ada pemakainya |
+| `setToRegister_ticket` | Ticket | lompatan kembali ke Input Register | ditangani tombol Back alur Register |
+| `UploadDataSlinkOJK` | Activity | unggah data SLIK OJK | belum dibangun; butuh keputusan bentuk berkas |
+| `InboxKlaimNonPropAdmin` | RDB | daftar Inbox Klaim Non-Prop admin | kueri tab yang ada dipakai |
+
+### 14.2 Objek basis data — **tetap ke DBA**
+
+Objek berikut bukan rule Pega, sehingga wajar tidak ditemukan di Pega. Source-nya ada di basis data:
+
+`PKG_KONVERSI_JSONKLAIM` (termasuk `Proteksi_PNC_TBI_Kasir` dan `Cek_Nilai_Akseptasi_PNC` untuk pemeriksaan
+Transfer Kasir) · `MODULKLAIMMASKING` · `SET_ATTACHFILETEMPSALVAGE` · `UPDATEPREMIUMTEMPLATE` ·
+`UPDATE_LOG_KONVERSI` · `GETNEWID` · `PKG_COUNTER_PRODUCTION` · `PROCESSQUEUEDIRECT`.
+
+Penarikannya cukup dengan `ALL_SOURCE` seperti `19-GAP-EXPORT-DETAIL.md` bagian *Cara Meminta ke DBA*.
+
 ---
 
 ## 11. `InputPerihalRCLPUCL_act` — activity tombol "Pilih" Perihal (2026-10-01)
@@ -2521,3 +2821,247 @@ pada rancangan alurnya**, bukan akibat modul kami.
 
 Bila Tim Pega hendak sekalian membereskannya, yang dibutuhkan adalah menutup assignment
 `Assignment6` **sebelum** ticket dilepas — bukan sesudahnya.
+
+## 15. Tombol "Kirim ke Inputor" — local action `AnalystRemarks` (2026-10-03) — ke **Tim Pega**
+
+| | |
+|---|---|
+| **Status** | **Terbuka** — tombol tampil tetapi mati sampai artefak diterima (Work Owner, 2026-10-03) |
+| **Dipakai di** | `Section/ClaimSurvey_sect.xml` baris 5957: tombol "Kirim ke Inputor" (`!isAnalystPA_PNC`) membuka local action `AnalystRemarks` di modal (`pyLocalAction=AnalystRemarks`, kelas `ASM-FW-GCNMFW-Work-PNC`) |
+| **Menghalangi** | seluruh tombol baris atas layar InputSurveyor (Estimation PA, Choose Surveyor, Send To PIC Teknik, Send To Analis), kecuali Detail Premi |
+
+### 15.1 Rule yang diminta
+
+Seluruh tombol baris atas `ClaimSurvey_sect` membuka local action di modal. Dari 11 local action itu hanya
+`DetailPremi` (`Flow Action/DetailPremi_FA.xml`) yang ada di export; sepuluh lainnya hilang. Semuanya berkelas
+`ASM-FW-GCNMFW-Work-PNC`. Untuk setiap flow action diminta juga **section yang dirender dan activity pra/pasca-
+prosesnya** — namanya baru terbaca setelah flow action diterima.
+
+| # | Flow Action (local action) | Tombol | Baris `ClaimSurvey_sect.xml` |
+|---|---|---|---|
+| 1 | `AnalystRemarks` | **Kirim ke Inputor** | 5982 |
+| 2 | `AnalystRemarks_PA` | Kirim ke Inputor PA | 6219 |
+| 3 | `AnalystRemarksToInvest` | Kirim ke Investigator | 7652 |
+| 4 | `AnalystDoctor_act` | Kirim ke Analyst (Dokter) | 4894 |
+| 5 | `ComplianceDialog` | Kirim ke Compliance | 5544 |
+| 6 | `KomentarRCLPUCL` | Kirim ke RCL/PUCL | 5158 |
+| 7 | `SendToAdmin` | Kirim ke Admin | 7223 |
+| 8 | `PreventRejectClaim` | Tutup Klaim | 8598 |
+| 9 | `ReopenClaim` | Reopen Klaim | 9543 |
+| 10 | `DetailClaimInquiry` | Claim Inquiry | 2313 |
+
+Urutan prioritas: **#1** (diminta Work Owner 2026-10-03), lalu #2–#3 karena bersaudara dengan #1, lalu sisanya.
+
+### 15.2 Yang sudah diputuskan sebelum artefak datang
+
+- **Catatan disimpan sebagai baris riwayat komunikasi** (`POOLDATA.M_KOMUNIKASI_PNC`, tab Progress Claim &
+  Komunikasi), **bukan** menimpa `ClaimData.Remark` — supaya catatan lama tidak hilang dan ada jejaknya
+  (Work Owner, 2026-10-03).
+- Apakah Submit juga mengembalikan tugas ke Inputor **menunggu isi `AnalystRemarks`**. Catatan: pada PA,
+  tahap Estimation sudah dirutekan `PNCAdminRouter` (Inputor), sehingga "kembali ke Inputor" dari tahap itu
+  tidak memindahkan tugas ke orang lain.
+
+### 15.3 Pembaruan 2026-10-03 — 10 flow action diterima, section-nya belum
+
+Kesepuluh flow action §15.1 sudah ada di `Flow Action/`. Isinya ternyata **hampir kosong**: semuanya hanya
+merender satu section, dan tujuh dari sepuluh **tanpa activity** pra/pasca-proses sama sekali — termasuk
+`AnalystRemarks`. Isian modal dan tombolnya berada di section, sehingga **section-lah yang menentukan** apa yang
+disimpan dan apakah tugas berpindah. Tanpanya tombol tetap belum dapat dibangun.
+
+**Section yang diminta** (semua kelas `ASM-FW-GCNMFW-Work-PNC`):
+
+| # | Section | Dirender oleh flow action | Tombol |
+|---|---|---|---|
+| 1 | `AnalystRemarks_sect` | `AnalystRemarks` | **Kirim ke Inputor** |
+| 2 | `AnalystRemarks_sect_PA` | `AnalystRemarks_PA` | Kirim ke Inputor PA |
+| 3 | `AnalystRemarksInvest_sect` | `AnalystRemarksToInvest` | Kirim ke Investigator |
+| 4 | `AnalystDokter_Sect` | `AnalystDoctor_act` | Kirim ke Analyst (Dokter) |
+| 5 | `ComplianceDialogSect` | `ComplianceDialog` | Kirim ke Compliance |
+| 6 | `SectionPUCL` | `KomentarRCLPUCL` | Kirim ke RCL/PUCL |
+| 7 | `SendToAdmin` (Section) | `SendToAdmin` | Kirim ke Admin |
+| 8 | `PreventRejectClaim` (Section) | `PreventRejectClaim` | Tutup Klaim |
+| 9 | `ReopenClaim` (Section) | `ReopenClaim` | Reopen Klaim |
+| 10 | `DetailClaimInquiry` (Section) | `DetailClaimInquiry` | Claim Inquiry |
+
+#7–#10 bernama **sama** dengan flow action-nya: yang diminta adalah rule **Section** (`Rule-HTML-Section`), bukan
+flow action yang sudah diterima.
+
+**Activity yang dirujuk flow action:**
+
+| Activity | Dirujuk sebagai | Status |
+|---|---|---|
+| `SetPreAttachmentPNC` | pra-proses `AnalystDoctor_act` | **ada** |
+| `CloseClaim` | local action activity `PreventRejectClaim` dan `ReopenClaim` | **hilang** — diminta |
+| `SetStatusReopen` | pra-proses `ReopenClaim` | **hilang** — diminta |
+
+Seperti sebelumnya, ekspor section sebaiknya memakai *include dependent rules*, karena tombol di dalam section
+memanggil activity yang namanya baru terbaca dari section itu.
+
+### 15.4 Pembaruan 2026-10-03 (kedua) — 10 section diterima; Kirim ke Inputor dibangun
+
+Kesepuluh section §15.3 sudah ada di `Section/`. Tombol **Kirim ke Inputor** dibangun (catatan pengembangan #130).
+
+**Masih hilang — tidak menahan Kirim ke Inputor:**
+
+| Rule | Jenis | Dirujuk oleh | Akibat |
+|---|---|---|---|
+| `sendToInputor_act` | Activity | tombol Kirim di `AnalystRemarks_sect`, `AnalystRemarks_sect_PA`, `AnalystRemarksInvest_sect` (parameter `sendToInvest` = `SENDTOINPUTOR` / `SENDINVEST`) | isinya tidak diketahui; tombol dibangun tanpa efek sampingnya (status klaim tidak diubah) |
+| `CloseClaim` | Activity | local action `PreventRejectClaim`, `ReopenClaim` | menahan Tutup Klaim dan Reopen Klaim |
+| `SetStatusReopen` | Activity | pra-proses `ReopenClaim` | menahan Reopen Klaim |
+
+---
+
+## 16. Isi bingkai Input Register — `Section/InputRegister-sect.xml` (2026-10-03) — ke **Tim Pega**
+
+| | |
+|---|---|
+| **Status** | **Terbuka** — bingkai tab sudah dibangun; isi tab Register dan Kuisioner menunggu artefak (Work Owner, 2026-10-03) |
+| **Dipakai di** | tahap Input Register (flow action `InputRegister`), semua lini |
+
+### 16.1 Rule yang diminta
+
+| # | Rule | Jenis | Dirujuk di `InputRegister-sect.xml` | Yang dibutuhkan darinya |
+|---|---|---|---|---|
+| 1 | `InputRegisterDetail` | Section | tab **Register** (`!IsPNCReceive && TempData.StatusClaim != 1`) | tata letak tab Register — bagian **DATA TERTANGGUNG KLAIM** (No Polis, Cari Polis, Nama Tertanggung, Nama Sumbis, Nama Bisnis, Tanggal Mulai/Akhir Polis, No KTP) dan urutan blok di bawahnya |
+| 2 | `QuestionnaireClaim` | Section | tab **Kuisioner** (`!IsTravel && !IsPNCReceive && ...`) | seluruh isi tab Kuisioner |
+| 3 | `Sec_maskingdocument_klaim` | Section | tab Unggah Dokumen, sub-tab PENDAFTARAN dan DOKUMEN TRAVEL | tampilan dokumen bermasker |
+| 4 | `ValidasiForPengkinianDataNasabah` | Section/When | blok `TempData.StatusClaim == 1` (mengganti seluruh tab) | layar validasi pengkinian data nasabah |
+| 5 | `ValidasiForPengkinianData_Act` | Activity | dijalankan tombol **Save** dan **Next** | validasi pengkinian data sebelum simpan |
+
+Diminta dengan opsi *include dependent rules*: section #1 kemungkinan menyertakan section lain (mis.
+`InputRegisterDetail2_sect` dan `InputAddress_PNC_Klaim`, yang sudah ada) dan memanggil activity untuk tombol Cari Polis.
+
+### 16.2 Yang sudah ada dan dipakai sementara
+
+- `InputRegisterDetail2_sect` — formulir Input Register yang sekarang tampil di tab Register.
+- `InputAddress_PNC_Klaim` — blok **Alamat · Telephone dan Email · Pengkinian Data** (di `InputRegisterDetail2_sect`
+  hanya untuk `IsPA`). **Belum dibangun**: data alamat/telepon/pengkinian polis belum dipetakan ke tabel; ditunggu
+  bersama #1 supaya letaknya mengikuti `InputRegisterDetail`.
+- `UploadDocument`, `PNCProgressKomunikasi_Sec` — tab Unggah Dokumen dan Progress Claim & Komunikasi.
+
+### 16.3 Pembaruan 2026-10-03 — kelima rule diterima
+
+Kelima rule §16.1 sudah ada. Tab Register dan Kuisioner dibangun (catatan pengembangan #132).
+
+**Masih kurang — tidak menahan tab Register:**
+
+| Rule | Jenis | Dirujuk oleh | Akibat |
+|---|---|---|---|
+| `PremiumPaid`, `LossProtection` (`ClaimData.QuestionnaireData`) | Property | radio button Premi Dibayar dan Hilangnya Perlindungan di `QuestionnaireClaim` | pilihannya tidak diketahui; sementara isian teks |
+| `UpdateDataForPengkinianData_Act` | Activity | `ValidasiForPengkinianDataNasabah` | layar validasi pengkinian data (TempData.StatusClaim == 1) belum dibangun |
+| `PopUpMaskingData` | Flow Action | `Sec_maskingdocument_klaim` | tampilan dokumen bermasker belum dibangun |
+
+---
+
+## 17. Sub-tab Adjustment & Akseptasi layar InputSurveyor (2026-10-03) — ke **Tim Pega**
+
+| | |
+|---|---|
+| **Status** | **Terbuka** |
+| **Dipakai di** | `Section/InputEstimasi-sect.xml` tab "Adjustment & Akseptasi" → `ShowObjectAdj` (layar ClaimSurvey_sect, tahap Estimation PA, Choose Surveyor, Send To PIC Teknik, Send To Analis) |
+
+### 17.1 Rule yang diminta
+
+| # | Rule | Jenis | Yang dibutuhkan darinya |
+|---|---|---|---|
+| 1 | `ShowObjectAdj` | Section | grid objek versi dapat diubah per lini — untuk PA: Nama Objek, Pekerjaan, Tanggal Lahir, Currency, Nilai Estimasi, Nilai Akseptasi Klaim; aksi baris (pyEditAction) yang membuka coverage |
+| 2 | section/flow action aksi baris `ShowObjectAdj` (nama terbaca setelah #1 diterima) | Section / Flow Action | baris coverage: Nama Coverage, Penyebab Kerugian (dapat diubah), Mata Uang, TSI, Print PLA, **Transfer ke Analyst**, Tambah Jaminan |
+| 3 | `ViewCoverageAdj` | Section / Flow Action | versi baca baris coverage (aksi baris `ViewShowObjectAdj`) |
+| 4 | `TransferKomite` | Section | kolom Transfer Komite di grid `ShowAdjustment` (`!IsTravel`) |
+
+Diminta dengan *include dependent rules*: tombol Transfer ke Analyst dan Tambah Jaminan memanggil activity yang namanya baru terbaca dari #2.
+
+### 17.2 Yang sudah ada
+
+`ViewShowObjectAdj` (versi baca grid objek), `ShowAdjustment` (grid adjustment), `InputAdjustment` (editor adjustment — isian PA: Nilai Pengajuan Tertanggung, Nilai Pengajuan, Lama Hari Rawat Inap, Resiko Sendiri PA, Status Aksep Analyst), `PNCTombolDLA`, `CatatanToAnalyst_Section`.
+
+### 17.3 Khusus tombol **Transfer ke Analyst** (2026-10-03)
+
+Teks "Transfer ke Analyst" tidak muncul di satu pun XML export: tombolnya berada di baris coverage (§17.1 #2). Yang diminta:
+
+| # | Rule | Jenis | Alasan |
+|---|---|---|---|
+| 1 | `ShowObjectAdj` | Section | menyebut nama aksi baris (pyEditAction) yang memuat tombol |
+| 2 | aksi baris `ShowObjectAdj` (nama dari #1) | Section / Flow Action | letak tombol, kondisi tampil, dan aksi yang dijalankan |
+| 3 | activity yang dijalankan tombol (nama dari #2) | Activity | apa yang diubah saat transfer; dugaan: mengisi `IsTransferAnalisator` lalu `SetTicket(SendtoAnalysator)` — **belum terbukti** |
+| 4 | `IsAnalisatorTransfer` | When | dirujuk `ValidationAdjustment`, `SetAdjustmentSalvage_act`, `SetStatusInvestigator_Act` |
+| 5 | `isAnalistorTransfer` | When | dirujuk `InputAdjustment` (Lama Hari Rawat Inap dapat diubah) |
+| 6 | `isTranferAnalysator` | When | dirujuk `SetListComiteeClaimPerObjAdj`, `SetListComiteeClaimService` |
+| 7 | `IsTransferAnalisator` | Property | definisi penanda transfer (nilai dan artinya) |
+
+**Sudah ada:** Ticket `SendtoAnalysator` (tujuan tahap Send To Analis), activity `setAnalysatorPA_act`, When `IsAnalisator`, activity `ValidationAdjustment`.
+
+### 17.4 Pembaruan 2026-10-03 — `ShowObjectAdj` diterima; tombol Transfer ke Analyst masih tertahan
+
+Diterima: `ShowObjectAdj` (Section), `isAnalistorTransfer` (When — `.IsAnalisatorTransfer = 1` pada baris **adjustment**), `IsTransferAnalisator` (Property, teks, kelas ClaimData). Grid objek PA dibangun dari `ShowObjectAdj` (catatan pengembangan #133).
+
+**Masih diminta — menahan tombol Transfer ke Analyst:**
+
+| # | Rule | Jenis | Alasan |
+|---|---|---|---|
+| 1 | **`CoverageAdj`** | Flow Action **dan** Section | aksi baris (`pyEditAction`) keempat grid `ShowObjectAdj` — baris coverage tempat tombol Transfer ke Analyst, Print PLA, dan Tambah Jaminan berada |
+| 2 | activity yang dijalankan tombol Transfer ke Analyst | Activity | namanya terbaca dari #1 |
+| 3 | `IsAnalisatorTransfer` | When | dirujuk `ValidationAdjustment`, `SetAdjustmentSalvage_act`, `SetStatusInvestigator_Act` |
+| 4 | `isTranferAnalysator` | When | dirujuk `SetListComiteeClaimPerObjAdj`, `SetListComiteeClaimService` |
+
+### 17.5 Pembaruan 2026-10-03 (kedua) — `CoverageAdj` diterima; yang tersisa `ObjectCoverageAdj`
+
+Flow action `CoverageAdj` (kelas `ASM-FW-GCNMFW-Data-Object`) diterima: ia **hanya** merender section **`ObjectCoverageAdj`**, tanpa activity pra/pasca. When `IsAnalisatorTransfer` dan `isTranferAnalysator` **tidak ditemukan di Pega** (Work Owner, 2026-10-03) — **ditutup**, tidak diminta ulang.
+
+**Masih diminta (Work Owner memilih menunggu, bukan merekonstruksi):**
+
+| Rule | Jenis | Kelas | Alasan |
+|---|---|---|---|
+| **`ObjectCoverageAdj`** | Section (`Rule-HTML-Section`) | `ASM-FW-GCNMFW-Data-Object` | baris coverage sub-tab Adjustment & Akseptasi: Nama Coverage, Penyebab Kerugian, Mata Uang, TSI, Print PLA, **Transfer ke Analyst**, Tambah Jaminan. Teks "Transfer ke Analyst" tidak ada di XML export mana pun, sehingga tombolnya hanya dapat dibangun dari section ini |
+
+Diekspor dengan *include dependent rules* supaya activity tombol ikut. Section `ObjectCoverage_sect` yang ada adalah baris coverage layar Input Estimasi (Download CFS, Print PLA), **bukan** pengganti.
+
+### 17.6 Pembaruan 2026-10-03 (ketiga) — `ObjectCoverageAdj` diterima; tombol ada di `TrfKomiteButton`
+
+`ObjectCoverageAdj` diterima. Teks "Transfer ke Analyst" juga tidak ada di section ini: baris coverage PA, Travel, dan lini lain sama-sama **menyertakan section `TrfKomiteButton`** — di sanalah tombol transfer berada.
+
+| Rule | Jenis | Kelas | Alasan |
+|---|---|---|---|
+| **`TrfKomiteButton`** | Section | kemungkinan `ASM-FW-GCNMFW-Data-ObjectCoverage` — kelas baris `.ObjectCoverageList` tempat ia disertakan; bila tidak ketemu, cari tanpa filter kelas | tombol transfer per jaminan — label (Transfer ke Analyst untuk PA), kondisi tampil, dan activity yang dijalankan |
+
+Diekspor dengan *include dependent rules*.
+
+Yang sudah terbaca dari `ObjectCoverageAdj` (baris coverage PA): Nama Coverage (dapat diubah, `ShowCoverage`/`SetspreadingtoCoverage`), Penyebab Kerugian (`setCauseOfLossID_act`, `IsAnalisator`), Mata Uang, TSI, Download Claim Face Sheet (`IsAnalisator || IsPHK`), Print PLA (`PrintPLA_PAPHK`), Tambah Jaminan (`ShowCoverage` "add"); aksi baris `AdjustmentList`.
+
+### 17.7 Pembaruan 2026-10-03 (keempat) — `TrfKomiteButton` diterima; tombol dibangun
+
+`TrfKomiteButton` (kelas `ASM-FW-GCNMFW-Data-ObjectCoverage`) diterima, dan tombol **Transfer ke Analyst** sudah dibangun
+(catatan pengembangan #135). Rule pendukungnya sudah ada di export: `ClaimComitee_OC` (flow action dan section),
+`PreClaimComitee_OC`, `setTicketToAnalyst`, When `IsPHK` dan `IsAnalisator`.
+
+**Masih kurang — tidak menahan tombol Kirim Analyst:**
+
+| Rule | Jenis | Dirujuk oleh | Akibat |
+|---|---|---|---|
+| `IsDisableButton` | When | tombol Transfer Klaim ke Komite (`TrfKomiteButton`) | kondisi nonaktif tombol itu tidak diketahui |
+| `SetRejectAnalysator` | Activity | tombol Tolak (`TrfKomiteButton`, kondisi `1=2` sehingga tidak pernah tampil) | tidak berdampak |
+
+## 18. Claim Face Sheet untuk lini PA — estimasi PA (2026-10-03) — ke **Tim Pega**
+
+Tombol Download Claim Face Sheet pada baris jaminan PA (`ObjectCoverageAdj`) memanggil `DownloadClaimFaceSheet_act`.
+Untuk PA, estimasi yang dicetak berasal dari `.EstimationList` jaminan, yang **dibentuk `NewEstimationPA`** — dipanggil
+`ValidationAdjustment` step 15 (`IsPA` dan AdjustmentList tidak kosong). Klaim PA tidak melewati tahap Input Estimasi,
+sehingga tanpa aktivitas itu jaminan PA tidak punya estimasi dan Claim Face Sheet ditolak ("Tidak ada estimasi baru untuk
+dibuatkan Claim Face Sheet.").
+
+| Rule | Jenis | Dirujuk oleh | Akibat bila tidak ada |
+|---|---|---|---|
+| **`NewEstimationPA`** | Activity | `ValidationAdjustment` step 15 | cara estimasi PA dibentuk (dari nilai mana, mata uang, tanggal, tipe) tidak diketahui — **Claim Face Sheet PA tidak dapat dibuat** |
+| `CekNilaiEstimasiDanAkseptasiTKAPA` | Activity | `DownloadClaimFaceSheet_act` step 48 (`IsPA`, TKA = 1) | pemeriksaan nilai estimasi/akseptasi TKA pada CFS PA tidak dibawa |
+
+Yang sudah diketahui dari rule lain: `SetNilaiResikoSendiri` step 32 mengisi `.EstimationValue := .ProposeValue` (Nilai
+Pengajuan) pada PA yang belum CFS, dan `DownloadClaimFaceSheet_act` step 51 memakai `AdjustmentList(<last>).ProposeValue`
+sebagai cadangan untuk jaminan PHK. Keduanya mengarah ke Nilai Pengajuan adjustment sebagai sumber estimasi PA, tetapi
+tidak cukup untuk menulis `NewEstimationPA` tanpa menebak.
+
+Mohon diekspor dengan **include dependent rules**.
+
+### 18.1 Pembaruan 2026-10-03 — kedua rule diterima
+
+`NewEstimationPA` dan `CekNilaiEstimasiDanAkseptasiTKAPA` sudah ada. Claim Face Sheet PA dibangun (catatan pengembangan
+#139). Tidak ada rule tambahan yang menahan.

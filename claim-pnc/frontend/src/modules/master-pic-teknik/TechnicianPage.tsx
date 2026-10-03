@@ -235,7 +235,7 @@ export function TechnicianPage() {
           error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
           actions={
             <>
-              <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+              <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
                 <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
                 {list.isFetching ? 'Memuat…' : 'Refresh'}
               </Button>

@@ -34,10 +34,20 @@ type CallerReader func(ctx context.Context) (Caller, bool)
 type Handler struct {
 	service    *usecase.Service
 	caller     CallerReader
+	clock      inboxsurvey.Clock
 	location   *time.Location
 	writeJSON  JSONWriter
 	writeError ErrorWriter
 }
+
+// systemClock membaca jam mesin.
+//
+// Ia satu-satunya tempat jam mesin dibaca pada modul ini, dan ia dapat DIGANTI lewat Options —
+// itulah yang membuat kolom Aging dapat diuji tanpa bergantung hari saat uji dijalankan
+// (`F-5`).
+type systemClock struct{}
+
+func (systemClock) Now() time.Time { return time.Now() }
 
 // Options adalah bahan pembentuk Handler.
 type Options struct {
@@ -50,6 +60,12 @@ type Options struct {
 
 	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
 	Location *time.Location
+
+	// Clock adalah seam ke waktu. Kosong berarti jam mesin.
+	//
+	// Ia dibutuhkan kolom Aging, yang DIHITUNG dari tanggal janji survei dicatat terhadap
+	// tanggal WIB hari ini — bukan dibaca dari kolom.
+	Clock inboxsurvey.Clock
 
 	Logger    *slog.Logger
 	WriteJSON JSONWriter
@@ -66,9 +82,15 @@ func NewHandler(o Options) *Handler {
 		location = jakarta()
 	}
 
+	clock := o.Clock
+	if clock == nil {
+		clock = systemClock{}
+	}
+
 	return &Handler{
 		service:    o.Service,
 		caller:     o.GetCaller,
+		clock:      clock,
 		location:   location,
 		writeJSON:  o.WriteJSON,
 		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
@@ -118,7 +140,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias, h.location))
+	h.writeJSON(w, r, http.StatusOK,
+		toListResponse(listed, active.Alias, h.clock.Now(), h.location))
 }
 
 // Counts menangani GET /api/inbox-survey/jumlah-tab.

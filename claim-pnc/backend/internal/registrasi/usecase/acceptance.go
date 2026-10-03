@@ -72,7 +72,7 @@ func (l *Service) AcceptSettlement(ctx context.Context, p AcceptanceCommand, by 
 		return registrasi.Claim{}, err
 	}
 	receiver, err := registrasi.ValidateAcceptance(*line, claim.Policy, form, registrasi.AcceptanceCheck{
-		Receivers: claim.Receiver, Files: len(p.Files), OtherDLA: otherDLA,
+		Receivers: claim.Receiver, Files: len(p.Files), OtherDLA: otherDLA, Location: claim.Location,
 	})
 	if err != nil {
 		return registrasi.Claim{}, err
@@ -153,12 +153,15 @@ func (l *Service) AcceptSettlement(ctx context.Context, p AcceptanceCommand, by 
 	if err != nil {
 		return registrasi.Claim{}, err
 	}
+
+	// Transfer Kasir TIDAK dijalankan di sini, juga untuk PA (Pega langkah 113): Work Owner menetapkan
+	// (2026-10-03) transfer ke Kasir hanya lewat tombol Transfer Kasir.
 	return result, nil
 }
 
 // checkPremium adalah `SetAdjustmentAcceptation` langkah 36–49.
 func (l *Service) checkPremium(ctx context.Context, app string, claim registrasi.Claim, line registrasi.SettlementLine, now time.Time) error {
-	caseID, err := l.acceptance.PolicyCaseID(ctx, claim.Policy.Number)
+	caseID, err := l.acceptance.PolicyCaseID(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return err
 	}
@@ -215,15 +218,17 @@ func (l *Service) uploadAcceptanceFiles(ctx context.Context, app string, claim r
 		if chosen == nil {
 			return nil, fmt.Errorf("%w: %q", registrasi.ErrDocumentTypeUnknown, f.DocumentTypeID)
 		}
+		// Nama unik seperti SetAdjustmentAcceptation langkah 57.4 — lihat UploadFileName.
+		name := registrasi.UploadFileName(l.clock.Now(), chosen.ID, f.FileName)
 		imageID, err := l.documents.Upload(ctx, registrasi.DocumentFile{
-			Portal: app, ClaimNumber: claim.Number, FileName: f.FileName, Content: f.Content, By: by.Identity,
+			Portal: app, ClaimNumber: claim.Number, FileName: name, Content: f.Content, By: by.Identity,
 		})
 		if err != nil {
 			return nil, err
 		}
 		rows = append(rows, registrasi.NewAttachment{
 			ClaimKey:    claim.Keys().Prefixed,
-			Name:        registrasi.Truncate(f.FileName, registrasi.AttachmentNameMaxLength),
+			Name:        registrasi.Truncate(name, registrasi.AttachmentNameMaxLength),
 			Note:        registrasi.Truncate(f.Note, registrasi.AttachmentNoteMaxLength),
 			Extension:   registrasi.AttachmentExtension(f.FileName),
 			ImageID:     imageID,

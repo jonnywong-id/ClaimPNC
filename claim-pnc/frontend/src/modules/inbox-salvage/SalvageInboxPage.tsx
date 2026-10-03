@@ -359,7 +359,7 @@ export function SalvageInboxPage() {
                 <Button
                   type="button"
                   tone="kedua"
-                  onClick={() => void list.refetch()}
+                  onClick={() => { list.refetch() }}
                   disabled={list.isFetching}
                 >
                   Refresh

@@ -13,9 +13,14 @@ import (
 type Cashier struct {
 	mu sync.Mutex
 
-	Banks  map[string]string // nama bank → LBG_ID
-	Logs   []registrasi.CashierLog
-	Marked []CashierMark
+	Banks map[string]string // nama bank → LBG_ID
+	Logs  []registrasi.CashierLog
+	// Unregistered adalah rekening yang TIDAK terdaftar di Kasir; selebihnya terdaftar.
+	Unregistered map[string]bool
+	// ServiceLogs merekam LogService; ServiceLogErr membuatnya gagal.
+	ServiceLogs   []registrasi.CashierServiceLog
+	ServiceLogErr error
+	Marked        []CashierMark
 
 	Reply    registrasi.CashierReply
 	Err      error
@@ -50,6 +55,22 @@ func (c *Cashier) Log(_ context.Context, e registrasi.CashierLog) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.Logs = append(c.Logs, e)
+	return nil
+}
+
+func (c *Cashier) AccountRegistered(_ context.Context, accountNo, _ string) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return !c.Unregistered[accountNo], nil
+}
+
+func (c *Cashier) LogService(_ context.Context, e registrasi.CashierServiceLog) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ServiceLogErr != nil {
+		return c.ServiceLogErr
+	}
+	c.ServiceLogs = append(c.ServiceLogs, e)
 	return nil
 }
 

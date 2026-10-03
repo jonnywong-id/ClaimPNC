@@ -228,8 +228,12 @@ func TestAReversedRangeIsRejected(t *testing.T) {
 
 // Rentang yang hanya berbatas satu sisi DITERIMA.
 //
-// Pega tidak mengenal keadaan ini — isian kosong di sana dirangkai menjadi
-// `to_date(”,'dd/mm/yyyy')` lalu ditolak Oracle. Di sini ia sah, dan itu selisih yang
+// Pega tidak mengenal keadaan ini — isian kosong di sana dirangkai menjadi potongan
+// berikut lalu ditolak Oracle:
+//
+//	to_date('','dd/mm/yyyy')
+//
+// Di sini ia sah, dan itu selisih yang
 // sudah dinyatakan.
 func TestAHalfOpenRangeIsAccepted(t *testing.T) {
 	onlyFrom, err := inboxpladlapredla.NewQuery(inboxpladlapredla.QueryInput{

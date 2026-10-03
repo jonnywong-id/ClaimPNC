@@ -9,146 +9,170 @@
 -- SATU sistem, dan tabel-tabel ini milik Pega (`P-1`).
 --
 -- ============================================================================
--- YANG HARUS DIBACA DBA LEBIH DULU
+-- A. DUA TABEL, DAN PERAN MASING-MASING
 -- ============================================================================
 --
--- ## A. SUMBER DATANYA BERGESER DARI PEGA, DAN ITU KEPUTUSAN — BUKAN KELALAIAN
+--   POOLDATA.T_SURVEYORLIST   menggerakkan baris   (JEJAK PERKEMBANGAN survei)
+--   POOLDATA.T_CLAIM_PNC      header klaim         (satu baris per KLAIM)
 --
--- Di Pega, SELURUH kueri layar ini membaca:
+-- disambung `c.CLAIMID = s.PNCCASEID` — persis seperti
+-- `RDB List/BroswseKlaimByNoSurvey-SQL.xml` menyambungkannya.
 --
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK  WHERE PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+-- Di Pega, SELURUH kueri layar ini membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan
+-- `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`, ditambah `DATAPEGA.PC_ASSIGN_WORKLIST`.
+-- Kedua tabel DATAPEGA itu **dicabut dari pemakaian** (Work Owner 2026-09-28).
 --
--- Tetapi `POOLDATA.T_CLAIMLIST_ADMIN` — tabel yang Work Owner tetapkan menggantikan tabel
--- DATAPEGA — **tidak memuat satu pun baris `Work-SurveyClaim`**. Isinya 870 `Work-PNC` dan
--- 142 `Work-ReceiveDocument`; sudah diverifikasi langsung ke basis data dan tercatat di
--- `internal/inboxoutstanding/inboxoutstanding.go`.
+-- ## Dua tabel yang sempat dipakai dan sudah dilepas
 --
--- Keputusan Work Owner 2026-09-28:
+-- `POOLDATA.T_CLAIMLIST_ADMIN` (dilepas 2026-09-29) — tabel datar itu hanya memuat klaim yang
+-- tugasnya berada di antrean Admin, salah satu labelnya Choose Surveyor. Survei yang SEDANG
+-- BERJALAN berarti klaimnya sudah MELEWATI tahap itu, sehingga `INNER JOIN` ke sana membuang
+-- justru baris yang dicari layar ini. Cacat seperti itu tidak menghasilkan galat: layarnya
+-- terisi sebagian, dan tampak wajar.
 --
---   POOLDATA.T_SURVEYORLIST    menggerakkan baris  (satu baris per JANJI SURVEI)
---   POOLDATA.T_CLAIMLIST_ADMIN menyediakan header  (satu baris per KLAIM)
---
--- Kunci sambungnya `s.PNCCASEID = k.PZINSKEY`, dan itu BUKAN tebakan —
--- `RDB List/BroswseKlaimByNoSurvey-SQL.xml` memakainya persis begitu:
---
---   where CLAIMID = (select pnccaseid from t_surveyorlist
---                     where caseid = 'ASM-FW-GCNMFW-WORK ' || {InputData.CARI4})
---
--- ## B. AKIBAT YANG HARUS DISADARI — DUA BUTIR GRANULARITAS
---
--- 1. `ADJUSTERACCEPT_1`, `ADJUSTERSTATUS_1`, `REFNO_1`, dan `ADJUSTERPIC_1` hidup di
---    `T_CLAIMLIST_ADMIN`, yaitu PER KLAIM. Di Pega keempatnya ada pada objek SurveyClaim,
---    yaitu PER JANJI SURVEI.
---
---    Akibatnya: klaim dengan DUA janji survei yang statusnya berbeda akan menampilkan
---    status yang sama pada kedua barisnya. Itu tidak menghasilkan galat, dan tidak terlihat
---    di layar — ia hanya salah. Bila kelak terbukti mengganggu, penyelesaiannya adalah
---    meminta kolom-kolom itu ikut dipindahkan ke `T_SURVEYORLIST`, BUKAN menebaknya di sini.
---
--- 2. `T_SURVEYORLIST.STS_SURVEY` TIDAK dipakai menyaring apa pun. Nilainya tidak terbaca
---    dari export — hanya `'1'` yang muncul satu kali — sehingga memakainya berarti menebak.
---    Ia tetap DIBACA supaya domainnya terlihat dari data nyata, dan tab Close dapat
---    dikoreksi bila ternyata ia acuan yang benar.
---
--- ## C. DUA KOLOM BELUM TERKONFIRMASI — DAN `-periksa` YANG MENEMUKANNYA
---
---   ADJUSTERPIC_1   dipetakan ke kolom "Appointment No"   ** PERLU KONFIRMASI **
---   LOSSTYPE        dipetakan ke kolom "Cause Of Loss"    ** PERLU KONFIRMASI **
---
--- `ADJUSTERPIC_1` NAMANYA berbunyi "PIC", bukan nomor janji. Yang memetakannya ke
--- "Appointment No" adalah rantai berikut, dan rantai itu putus di satu tempat:
---
---   Section/InboxSurvey_section-Section.xml   "Appointment No"  <- properti `.City`
---   RDB List/BrowseLossAdjuster-SQL.xml       `a.AdjusterPIC_1 as "City"`
---
--- Yang putus: alias itu milik `BrowseLossAdjuster`, sedangkan yang benar-benar mengisi grid
--- adalah salah satu dari EMPAT Browse rule yang HILANG dari export (lihat §D). Jadi
--- pemetaannya masuk akal tetapi belum terbukti.
---
--- `LOSSTYPE` dipilih karena `BrowseLossAdjuster` tidak mengambil Cause Of Loss sama sekali,
--- dan `LOSSTYPE` adalah satu-satunya kolom pada tabel penggerak yang menyatakan jenis
--- kerugian (`Database/INSERT_SURVEYORLIST.prc`, parameter `TLOSSTYPE`).
---
--- Satu kueri katalog menutup keduanya:
---
---   SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, NUM_DISTINCT
---     FROM ALL_TAB_COLUMNS
---    WHERE OWNER = 'POOLDATA'
---      AND ((TABLE_NAME = 'T_CLAIMLIST_ADMIN' AND COLUMN_NAME LIKE '%ADJUSTER%')
---        OR (TABLE_NAME = 'T_SURVEYORLIST'    AND COLUMN_NAME LIKE '%LOSS%'));
---
--- BILA KOLOMNYA TIDAK ADA, kueri di bawah gagal dengan ORA-00904 yang MENYEBUT NAMA
--- KOLOMNYA. Itu disengaja. Alternatifnya — menghilangkan kolomnya supaya kuerinya jalan —
--- akan menampilkan dua sel kosong tanpa seorang pun tahu kenapa.
---
--- ## D. EMPAT KUERI TAB HILANG DARI EXPORT (`R-16`)
---
--- `Activity/SetTempLostAdjuster-Act.xml` memanggil empat rule yang tidak satu pun ada:
---
---   BrowseOSLostAdjuster · BrowseConfirmLostAdjuster
---   BrowseCommunicationLostAdjuster · BrowseCloseLostAdjuster
---
--- Diperiksa lewat isi `pyRuleName`, bukan lewat nama berkas.
---
--- Yang menyelamatkan modul ini: **predikat keempatnya tetap terbaca**, karena
--- `RDB List/CountOSLostAdjuster-SQL.xml` menghitung ketujuh keranjang yang sama dalam SATU
--- kueri lewat tujuh `SUM(CASE WHEN …)`. Kueri `count_tabs` di bawah adalah penerjemahan
--- langsung darinya, keranjang demi keranjang.
---
--- Yang TIDAK terbaca hanyalah daftar SELECT dan urutan masing-masing Browse rule. Untuk itu
--- `BrowseLossAdjuster` menjadi rujukan terdekat.
+-- `POOLDATA.T_CLAIM_SURVEY_DATAPEGA` (dilepas 2026-09-30, keputusan Work Owner) — tabel cermin
+-- objek kerja Pega. Ia sempat disambung `LEFT JOIN` untuk membawa `STATUSWORK`, tetapi tabelnya
+-- **belum pernah terisi satu baris pun**: penjaganya di `Database/INSERT_SURVEYORLIST.prc:65-66`
+-- membandingkan satu kolom `pzinskey` dengan DUA parameter berbeda (`= TCASEID` dan
+-- `= TPNCCASEID`), sehingga tidak pernah terpenuhi.
 --
 -- ============================================================================
--- PEMETAAN KOLOM — judul di layar -> properti Pega -> kolom sebenarnya
+-- B. `T_SURVEYORLIST` ADALAH JEJAK PERKEMBANGAN, BUKAN DAFTAR PENUGASAN
+-- ============================================================================
+--
+-- Ini pemahaman yang paling menentukan bentuk kueri di bawah, dan ia **salah dibaca dua kali**
+-- sebelum diukur.
+--
+-- `INDEX_SURVEY` adalah nomor urut LANGKAH, dan nilainya bertambah tiap perubahan status:
+--
+--   Activity/SetSurveyorList-Act.xml
+--     TempSurvey.IdxSurveyResults := @if(Param.IndexSurvey=="", local.index+1, Param.IndexSurvey)
+--     childPageSurveyClaim.SurveyData.SurveyList(<LAST>).IdxSurveyResults := local.index+1
+--
+--   RDB List/GetDataProgressSurvey-SQL.xml     -- dibaca kembali sebagai RIWAYAT
+--     order by to_number(index_survey) asc
+--
+-- Diukur di produksi 2026-09-29:
+--
+--   2.448 berkas survei  ->  17.641 baris     rata-rata 7,21 langkah per berkas
+--   69,1% berkas punya lebih dari satu baris; terburuk SATU berkas = 176 baris
+--
+-- Layar Pega menampilkan **satu baris per berkas survei**. Tanpa penyaringan, layar ini akan
+-- menampilkan tujuh baris untuk setiap satu yang benar, dengan Claim No berulang.
+--
+-- Karena itu kueri daftar mengambil **langkah TERAKHIR** tiap berkas — lihat CATATAN 3.
+--
+-- ## `STS_SURVEY` adalah `ADJUSTERSTATUS_1`
+--
+-- Terbukti dari sebaran nilainya di produksi: ketiga nilai yang dipakai Pega sebagai penyaring
+-- ada di sana dengan jumlah yang nyata — `Final Report` 1.466, `Invoice Fee` 1.069,
+-- `Close Case` 316 — berdampingan dengan seluruh tahapan hidup survei.
+--
+-- Pernyataan sebelumnya bahwa kolom ini hanya berisi `"On Progress"` **dicabut**: itu hanya
+-- satu dari 22 nilai, dan penulis lainnya berada di luar export (`R-01`, `R-16`).
+--
+-- Kolom "Status ASM" karena itu diisi `s.STS_SURVEY` pada langkah terakhir.
+--
+-- ============================================================================
+-- C. APA YANG BELUM TERBAWA
+-- ============================================================================
+--
+-- Empat isian masih menunggu, seluruhnya milik objek kerja `Work-SurveyClaim`. Namanya di
+-- `T_SURVEYORLIST` TANPA akhiran `_1` — akhiran itu artefak perataan Pega:
+--
+--   kolom             menghidupkan                                       keadaan 2026-09-30
+--   ----------------- -------------------------------------------------- ------------------
+--   ADJUSTERACCEPT    tab Outstanding, ALL, dan Invoice                   ADA, masih KOSONG
+--   REFNO             kolom "Reference No" dan setengah kotak cari        ADA, masih KOSONG
+--   PYSTATUSWORK      tab Close, dan penyaring "berkas masih terbuka"     ADA, masih KOSONG
+--   ADJUSTERPIC       kolom "Appointment No"                              belum ditambahkan
+--
+-- Kueri di bawah **belum membaca satu pun**, dan itu berlaku untuk keempatnya — termasuk
+-- ketiga yang sudah ada. Alasannya berbeda untuk masing-masing:
+--
+--   yang BELUM ADA    menuliskannya menghasilkan ORA-00904, yang menjatuhkan SELURUH layar
+--   yang ADA & KOSONG membacanya menghasilkan jawaban yang salah tanpa galat apa pun
+--
+-- Yang kedua lebih berbahaya. `ADJUSTERACCEPT IS NULL` bernilai benar untuk seluruh 17.641
+-- baris, sehingga tab Outstanding akan menampilkan seluruh antrean sebagai belum dikonfirmasi
+-- adjuster — terisi wajar, dan salah. Karena itu keduanya sama-sama ditahan sampai
+-- `claimpnc -periksa` melaporkan keterisiannya. Lihat `docs/permintaan-kolom-t-surveyorlist.md`.
+--
+-- ## Kenapa `STS_SURVEY` tidak dapat menggantikan `PYSTATUSWORK`
+--
+-- Diuji langsung, dan gagal. Dari 1.070 berkas yang sudah `Resolved-*` di Pega, hanya 308
+-- (28,8%) berakhir di `Close Case`/`Reject Case`:
+--
+--   Resolved-Completed -> Invoice Fee 497 · Close Case 301 · Final Report 95 · On Progress 45
+--   Resolved-Rejected  -> On Progress 42 · (kosong) 22 · Reject Case **0 dari 70**
+--
+-- `Invoice Fee` adalah langkah terakhir pekerjaan adjuster — ia menagih, lalu berkasnya
+-- ditutup petugas ASM. Adjuster tidak pernah mencatat "Close Case" sendiri.
+--
+-- Memakai `STS_SURVEY = 'Close Case'` sebagai pengganti tab Close akan menampilkan 307 dari
+-- 1.000 berkas — kehilangan 69%. Itu bukan selisih terencana melainkan tab yang rusak, dan
+-- penggantinya **dicabut**.
+--
+-- ============================================================================
+-- PEMETAAN KOLOM — judul di layar -> kolom sebenarnya
 -- ============================================================================
 --
 -- Judul dari `Section/InboxSurvey_section-Section.xml`; properti dari daftar Property-Set
--- pada `Activity/SetTempLostAdjuster-Act.xml`; kolom dari kedua tabel penggerak.
+-- pada `Activity/SetTempLostAdjuster-Act.xml`.
 --
---   judul di layar      properti Pega            kolom                        alias
---   ------------------- ------------------------ ---------------------------- -------------------
---   Appointment No      .City                    k.ADJUSTERPIC_1  **?**       APPOINTMENT_NUMBER
---   Reference No        .AlasanDokterRejectRCL   k.REFNO_1                    REFERENCE_NUMBER
---   Claim No            .UserName                k.PYID                       CLAIM_NUMBER
---   Policy No           .Country                 k.POLICYNO                   POLICY_NUMBER
---   Insured Name        .AnalystDoctorRemaks     k.QQNAME                     INSURED_NAME
---   COB                 .KomiteStatus            k.BUSINESSNAME               CLASS_OF_BUSINESS
---   Cause Of Loss       .CauseOfLoss             s.LOSSTYPE  **?**            CAUSE_OF_LOSS
---   Location            .Location                s.LOCATION_SURVEY            LOCATION
---   PIC ASM             .UserTeknis              k.USERTEKNIS_1               TECHNICAL_PIC
---   PIC Loss Adjuster   .AnaylstRemarks          s.SURVEYOR_NAME              ADJUSTER_PIC
---   Date of Loss        .DateOfLoss              k.DATEOFLOSS_1               DATE_OF_LOSS
---   Aging               .CPLValidDate            k.AGING                      AGING_DAYS
---   Status ASM          .UserAdmin               k.ADJUSTERSTATUS_1           ASM_STATUS
+--   judul di layar      properti Pega            kolom sekarang            alias
+--   ------------------- ------------------------ ------------------------- -------------------
+--   Appointment No      .City                    — ADJUSTERPIC belum ada   —
+--   Reference No        .AlasanDokterRejectRCL   — REFNO ada, kosong       —
+--   Claim No            .UserName                c.CLAIMNO                 CLAIM_NUMBER
+--   Policy No           .Country                 c.NOPOLIS                 POLICY_NUMBER
+--   Insured Name        .AnalystDoctorRemaks     c.QQNAME                  INSURED_NAME
+--   COB                 .KomiteStatus            c.BUSINESSNAME            CLASS_OF_BUSINESS
+--   Cause Of Loss       .CauseOfLoss             s.LOSSTYPE  **?**         CAUSE_OF_LOSS
+--   Location            .Location                s.LOCATION_SURVEY         LOCATION
+--   PIC ASM             .UserTeknis              c.PICTEKNIK               TECHNICAL_PIC
+--   PIC Loss Adjuster   .AnaylstRemarks          s.SURVEYOR_NAME  = *      ADJUSTER_PIC
+--   Date of Loss        .DateOfLoss              c.DATEOFLOSS              DATE_OF_LOSS
+--   Aging               .CPLValidDate            dihitung dari s.TGLINPUT  CREATED_AT
+--   Status ASM          .UserAdmin               s.STS_SURVEY              ASM_STATUS
 --
---   tidak digambar      —                        s.CASEID                     SURVEY_ID
---   tidak digambar      —                        s.PNCCASEID                  CLAIM_ID
---   tidak digambar      —                        s.INDEX_SURVEY               SURVEY_INDEX
---   tidak digambar      —                        s.SURVEYTYPE                 SURVEYOR_TYPE
---   tidak digambar      —                        s.STS_SURVEY                 SURVEY_STATUS
+--   tidak digambar      —                        s.CASEID                  SURVEY_ID
+--   tidak digambar      —                        s.PNCCASEID               CLAIM_ID
+--   tidak digambar      —                        s.INDEX_SURVEY            SURVEY_INDEX
+--   tidak digambar      —                        s.SURVEYTYPE              SURVEYOR_TYPE
 --
--- CATATAN "SURVEYOR_TYPE". Ia dibaca dari `s.SURVEYTYPE`, BUKAN dari `k.SURVEYORTYPE_1`, dan
--- itu bukan sekadar pilihan gaya: `SURVEYTYPE` berlaku PER JANJI SURVEI sementara kolom pada
--- tabel klaim berlaku per klaim. Keduanya memang nilai yang sama, dan jalur penulisnya
--- terbaca utuh:
+-- CATATAN `= *` pada "PIC Loss Adjuster". `s.SURVEYOR_NAME` adalah padanan `SURVEYORNAME_1`
+-- milik objek kerja — **kolom yang SAMA, orang yang sama**. Karena itu `SURVEYORNAME_1` TIDAK
+-- perlu diminta.
 --
---   newWorkCover.ClaimData.SurveyData.SurveyorType   properti yang menjadi SURVEYORTYPE_1
---     -> Param.SurveyType         Activity/KomitePost_Survey-Act.xml:14950
---     -> TempSurvey.SurveyorType  Activity/SetSurveyorList-Act.xml:657
---     -> TSRVTYPE                 RDB List/CallProcedureInsertSurvey-SQL.xml
---     -> SURVEYTYPE               Database/INSERT_SURVEYORLIST.prc:32
+-- Kolom itu dialiaskan TIGA nama berbeda di tiga rule, dan tidak satu pun mencerminkan isinya:
 --
--- Klaim dengan DUA janji survei berjenis berbeda — satu internal, satu loss adjuster —
--- karena itu menampilkan jenis yang benar pada masing-masing barisnya.
+--   BrowseOSLossAdjusterPIC  SURVEYORNAME_1 AS "AnaylstRemarks"   <- yang dipakai section
+--   BrowseLossAdjuster       SURVEYORNAME_1 AS "CountryID"
+--   BrowseInternalSurveyor   SURVEYORNAME_1 AS "CountryID" DAN as "ComplianceRemark"
 --
--- CATATAN "Claim No". Di Pega isinya `@substring(.CaseID,19,30)` — PZINSKEY dipotong mulai
--- karakter ke-19 untuk membuang awalan `ASM-FW-GCNMFW-WORK `. Di sini `k.PYID` dipakai
--- langsung: ia SUDAH nomor klaim yang terbaca manusia, dan memotong string adalah cara
--- sistem lama mengatasi ketiadaan kolom itu — bukan aturan bisnis yang perlu dibawa.
+-- Yang mengikat kolom layar adalah `.AnaylstRemarks`, terbaca dari
+-- `Section/InboxSurvey_section-Section.xml`. Jadi "PIC Loss Adjuster" = `SURVEYORNAME_1`.
 --
--- CATATAN "Aging". Kolom `AGING` bertipe NUMBER dan SUDAH dipakai `inboxoutstanding`. Ia
--- DIBACA, bukan dihitung — berbeda dari `inboxanalystdoctor` yang menghitung umur tugas
--- sendiri karena Report Definition-nya tidak menyediakan angkanya.
+-- ## Penyaringan langkah terakhir yang membuat keduanya BENAR-BENAR sama
+--
+-- `T_SURVEYORLIST` adalah jejak perkembangan, sehingga `SURVEYOR_NAME` dapat berbeda antar
+-- langkah bila surveyornya diganti di tengah jalan. Objek kerja hanya punya SATU
+-- `SURVEYORNAME_1` — yang berlaku sekarang.
+--
+-- Mengambil langkah TERAKHIR membuat keduanya sepadan. Dan karena penyaring cakupan dipasang
+-- SESUDAH penyaringan itu (lihat CATATAN 3), surveyor yang sudah diganti tidak lagi melihat
+-- berkas itu — persis perilaku Pega, yang menyaring atas keadaan objek kerja hari ini.
+--
+-- CATATAN "Aging". Ia DIHITUNG di Go dari `s.TGLINPUT`, bukan dibaca — `AGING` adalah kolom
+-- tabel datar yang sudah tidak dipakai. Perhitungannya TIDAK dilakukan di SQL: "hari" yang
+-- dimaksud pengguna adalah hari WIB sementara kolomnya UTC, dan menaruh konversi zona waktu di
+-- dalam SQL adalah cara paling cepat menyebarkannya ke tempat yang lupa melakukannya — persis
+-- cacat `Set7Hours` sistem lama.
+--
+-- CATATAN "Cause Of Loss". `s.LOSSTYPE` masih dugaan: kueri Pega yang mengisinya hilang dari
+-- export (`R-16`), dan `LOSSTYPE` adalah satu-satunya kolom pada tabel penggerak yang
+-- menyatakan jenis kerugian (`INSERT_SURVEYORLIST.prc`, parameter `TLOSSTYPE`).
 --
 -- ============================================================================
 -- CATATAN 1 — BATAS KEWENANGAN MEMAKAI DAFTAR NAMA, DAN ITU PUNYA HARGA
@@ -159,219 +183,185 @@
 -- anggotanya, bukan hanya miliknya.
 --
 -- Daftar berpanjang berubah tidak dapat dijadikan `IN (:1, :2, …)` yang jumlah bind-nya
--- tetap. Yang dipakai di sini:
+-- tetap. Yang dipakai:
 --
 --   INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
 --
 -- dengan `:1` berbentuk `|NAMA SATU|NAMA DUA|`. Nilainya TETAP lewat parameter binding —
--- tidak ada satu pun nama yang dirangkai ke teks SQL, sehingga larangan perangkaian
--- (`08-TECHNICAL-STRATEGY.md` §4.3) tetap utuh.
+-- tidak ada satu pun nama yang dirangkai ke teks SQL.
 --
--- Harganya: `INSTR` tidak dapat memakai indeks pada `SURVEYOR_NAME`. Itu diterima karena
--- cakupan seorang leader berjumlah belasan, bukan ribuan, dan karena alternatifnya —
--- merangkai daftar `IN` dari nama — adalah persis celah `{ASIS:...}` yang sedang dihapus.
+-- Harganya: `INSTR` tidak dapat memakai indeks pada `SURVEYOR_NAME`. Diterima karena cakupan
+-- seorang leader berjumlah belasan, dan karena alternatifnya adalah persis celah
+-- `{ASIS:...}` yang sedang dihapus.
 --
 -- Pembatas `|` dipasang di KEDUA sisi tiap nama supaya "BUDI" tidak cocok dengan "BUDIONO".
--- Tanpa itu, seorang surveyor akan melihat pekerjaan surveyor lain yang namanya kebetulan
--- memuat namanya.
 --
 -- ============================================================================
 -- CATATAN 2 — PENCOCOKAN MEMAKAI UPPER, DAN KENAPA
 -- ============================================================================
 --
--- `11-SECURITY.md` §3.1 mencatat kapitalisasi identitas di sistem lama TIDAK terjaga — nama
--- access group yang sama muncul dalam dua bentuk (`ViewClaimPNC`/`VIEWCLAIMPNC`). Nama
+-- `11-SECURITY.md` §3.1 mencatat kapitalisasi identitas di sistem lama TIDAK terjaga. Nama
 -- surveyor diketik manusia ke dua tabel berbeda (`MST_LOGIN_SURVEYOR.NAMA` dan
 -- `T_SURVEYORLIST.SURVEYOR_NAME`), sehingga perbandingan persis akan membuat antrean tampak
 -- KOSONG bagi sebagian pengguna — dan antrean kosong tidak pernah dilaporkan sebagai
 -- kerusakan.
 --
--- `TRIM` ikut dipakai karena kedua kolom diisi tanpa constraint apa pun.
---
 -- ============================================================================
--- CATATAN 3 — URUTANNYA MENAIK, DAN ITU DISENGAJA
+-- CATATAN 3 — CARA MEMILIH LANGKAH TERAKHIR, DAN KENAPA BUKAN `TO_NUMBER`
 -- ============================================================================
 --
--- `BrowseLossAdjuster` dan `BrowseInternalSurveyor` keduanya memakai
--- `ORDER BY a.pxCreateDateTime ASC` — yang TERTUA lebih dulu. Itu urutan antrean kerja:
--- pekerjaan yang paling lama menunggu berada di atas.
+--   ROW_NUMBER() OVER (PARTITION BY s.CASEID
+--                      ORDER BY LPAD(TRIM(s.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+--                               s.TGLINPUT DESC NULLS LAST)
 --
--- Ia BERBEDA dari inbox lain di aplikasi ini, yang menurun. Perbedaannya dibawa, bukan
--- diseragamkan (`P-5`).
+-- Tiga keputusan di dalam satu klausa itu:
 --
--- Satu rule memang menyalahi: `BrowseOSLossAdjusterPIC` memakai `desc`. Rule itu melayani
--- layar PIC ASM, bukan layar ini.
+--   `LPAD`, bukan `TO_NUMBER`.  `INDEX_SURVEY` bertipe TEKS, dan `to_number` khas Oracle —
+--      PostgreSQL menuntut format mask, sehingga memakainya melanggar `D-20`. `LPAD` ada di
+--      keduanya, dan mengurutkan `'9'` sebelum `'10'` dengan benar. Ia juga TIDAK dapat gagal
+--      pada nilai yang bukan angka, sedangkan `TO_NUMBER` menjatuhkan seluruh layar dengan
+--      ORA-01722 pada satu baris warisan yang cacat.
 --
--- Pemutus serinya `CASEID` lalu `INDEX_SURVEY` — tanpanya, dua janji survei yang diinput
--- pada detik yang sama berpindah-pindah urutan antar halaman.
+--   `NULLS LAST` disebut TEGAS.  Bawaan Oracle untuk `DESC` adalah `NULLS FIRST` — tanpa itu,
+--      baris ber-`INDEX_SURVEY` kosong akan terpilih sebagai "langkah terakhir".
+--
+--   Penyaring cakupan TIDAK ditaruh di dalam partisi.  Kalau nama surveyor berganti di tengah
+--      jalan, menyaring lebih dulu akan memilih langkah terakhir MILIK SURVEYOR ITU, bukan
+--      langkah terakhir berkasnya. Tabelnya 17.641 baris, sehingga memindai seluruhnya murah.
 --
 -- ============================================================================
--- YANG BERUBAH DARI SISTEM LAMA
+-- CATATAN 4 — URUTANNYA MENAIK, DAN ITU DISENGAJA
 -- ============================================================================
 --
--- 1. PAGINASI DIKERJAKAN BASIS DATA. `SetTempLostAdjuster` menyetel `.PageSize = 15` lalu
---    menomori halaman di klipboard. Di sini halamannya dipotong
---    `OFFSET … FETCH NEXT … ROWS ONLY` sebelum baris meninggalkan basis data.
+-- `BrowseLossAdjuster` dan `BrowseInternalSurveyor` keduanya `ORDER BY … ASC` — yang TERTUA
+-- lebih dulu. Itu urutan antrean kerja. Ia BERBEDA dari inbox lain di aplikasi ini yang
+-- menurun, dan perbedaannya dibawa (`P-5`).
 --
--- 2. JUMLAH SELURUH BARIS DIHITUNG `COUNT(*) OVER ()`. Satu perjalanan, bukan dua.
+-- Pemutus serinya `CASEID` — sesudah penyaringan langkah terakhir, tepat satu baris tersisa
+-- per berkas survei, sehingga `INDEX_SURVEY` tidak lagi diperlukan sebagai pemutus.
 --
--- 3. TAB CLOSE MEMAKAI `ADJUSTERSTATUS_1 = 'Close Case'`, bukan
---    `PYSTATUSWORK = 'Resolved-Completed'` milik objek SurveyClaim — kolom itu tidak ada di
---    tabel penggerak. Selisih terencana, dinyatakan ke pengguna (`D-54`).
---
--- 4. NILAI SELALU LEWAT PARAMETER BINDING, termasuk ketiga nilai `ADJUSTERSTATUS_1` dan
---    kedua nilai `KOMUNIKASISTATUS`. `D-15` melarang nilai bisnis tertanam di kode, dan
---    tertanam di dalam teks SQL adalah bentuk paling sulit ditemukannya.
---
--- CATATAN PENANDA BIND. Berkas ini memakai gaya Oracle `:n`, sama seperti seluruh modul lain
--- di aplikasi ini. Ia BELUM portabel ke PostgreSQL yang memakai `$n`; itu utang yang sudah
--- ada sebelum modul ini.
+-- CATATAN PENANDA BIND. Berkas ini memakai gaya Oracle `:n`, sama seperti seluruh modul lain.
+-- Ia BELUM portabel ke PostgreSQL yang memakai `$n`.
 
 -- name: list_tasks
--- Satu halaman satu tab.
+-- Satu halaman satu tab, satu baris per BERKAS SURVEI.
+--
+-- HANYA tab yang dapat dihitung yang sampai ke sini. Keempat tab yang membutuhkan
+-- `ADJUSTERACCEPT` atau `PYSTATUSWORK` dicegat lebih dulu di Go (`Tab.Available`).
 --
 -- Bind:
 --   :1  cakupan nama surveyor, berbentuk `|NAMA SATU|NAMA DUA|`  (lihat CATATAN 1)
 --   :2  tab yang dibuka — nilai inboxsurvey.Tab
 --   :3  login pemanggil, dipakai ketiga tab komunikasi
---   :4  ADJUSTERACCEPT_1 yang berarti sudah dikonfirmasi  -> "1"
---   :5  ADJUSTERSTATUS_1 tab Invoice                      -> "Invoice Fee"
---   :6  ADJUSTERSTATUS_1 tab Close                        -> "Close Case"
---   :7  KOMUNIKASISTATUS terbuka                          -> "0"
---   :8  KOMUNIKASISTATUS sudah dijawab                    -> "1"
---   :9  kata kunci pencarian, atau NULL bila kotak carinya kosong
---   :10 offset
---   :11 jumlah baris
-SELECT s.CASEID                AS SURVEY_ID,
-       s.PNCCASEID             AS CLAIM_ID,
-       s.INDEX_SURVEY          AS SURVEY_INDEX,
-       k.ADJUSTERPIC_1         AS APPOINTMENT_NUMBER,
-       k.REFNO_1               AS REFERENCE_NUMBER,
-       k.PYID                  AS CLAIM_NUMBER,
-       k.POLICYNO              AS POLICY_NUMBER,
-       k.QQNAME                AS INSURED_NAME,
-       k.BUSINESSNAME          AS CLASS_OF_BUSINESS,
-       s.LOSSTYPE              AS CAUSE_OF_LOSS,
-       s.LOCATION_SURVEY       AS LOCATION,
-       k.USERTEKNIS_1          AS TECHNICAL_PIC,
-       s.SURVEYOR_NAME         AS ADJUSTER_PIC,
-       k.DATEOFLOSS_1          AS DATE_OF_LOSS,
-       k.AGING                 AS AGING_DAYS,
-       k.ADJUSTERSTATUS_1      AS ASM_STATUS,
-       s.SURVEYTYPE            AS SURVEYOR_TYPE,
-       s.STS_SURVEY            AS SURVEY_STATUS,
-       COUNT(*) OVER ()        AS TOTAL_ROWS
-  FROM POOLDATA.T_SURVEYORLIST s
-       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN k
-               ON k.PZINSKEY = s.PNCCASEID
- WHERE k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+--   :4  KOMUNIKASISTATUS terbuka        -> "0"
+--   :5  KOMUNIKASISTATUS sudah dijawab  -> "1"
+--   :6  kata kunci pencarian, atau NULL bila kotak carinya kosong
+--   :7  offset
+--   :8  jumlah baris
+SELECT s.CASEID            AS SURVEY_ID,
+       s.PNCCASEID         AS CLAIM_ID,
+       s.INDEX_SURVEY      AS SURVEY_INDEX,
+       c.CLAIMNO           AS CLAIM_NUMBER,
+       c.NOPOLIS           AS POLICY_NUMBER,
+       c.QQNAME            AS INSURED_NAME,
+       c.BUSINESSNAME      AS CLASS_OF_BUSINESS,
+       s.LOSSTYPE          AS CAUSE_OF_LOSS,
+       s.LOCATION_SURVEY   AS LOCATION,
+       c.PICTEKNIK         AS TECHNICAL_PIC,
+       s.SURVEYOR_NAME     AS ADJUSTER_PIC,
+       c.DATEOFLOSS        AS DATE_OF_LOSS,
+       s.TGLINPUT          AS CREATED_AT,
+       s.STS_SURVEY        AS ASM_STATUS,
+       s.SURVEYTYPE        AS SURVEYOR_TYPE,
+       COUNT(*) OVER ()    AS TOTAL_ROWS
+  FROM (SELECT t.*,
+               ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                  ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           t.TGLINPUT DESC NULLS LAST) AS STEP_RANK
+          FROM POOLDATA.T_SURVEYORLIST t) s
+       INNER JOIN POOLDATA.T_CLAIM_PNC c
+               ON c.CLAIMID = s.PNCCASEID
+ WHERE s.STEP_RANK = 1
    AND INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
-   AND ((:2 = 'outstanding'
-         AND k.ADJUSTERACCEPT_1 IS NULL)
-     OR (:2 = 'all'
-         AND k.ADJUSTERACCEPT_1 = :4)
-     OR (:2 = 'invoice'
-         AND k.ADJUSTERACCEPT_1 = :4
-         AND k.ADJUSTERSTATUS_1 = :5)
-     OR (:2 = 'close'
-         AND k.ADJUSTERSTATUS_1 = :6)
-     OR (:2 = 'belum-dijawab'
+   AND ((:2 = 'belum-dijawab'
          AND EXISTS (SELECT 1
                        FROM POOLDATA.M_KOMUNIKASI_PNC kom
                       WHERE kom.CASEID = s.CASEID
-                        AND kom.KOMUNIKASISTATUS = :7
+                        AND kom.KOMUNIKASISTATUS = :4
                         AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:3))))
      OR (:2 = 'belum-dibalas-asm'
          AND EXISTS (SELECT 1
                        FROM POOLDATA.M_KOMUNIKASI_PNC kom
                       WHERE kom.CASEID = s.CASEID
-                        AND kom.KOMUNIKASISTATUS = :7
+                        AND kom.KOMUNIKASISTATUS = :4
                         AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:3))))
      OR (:2 = 'sudah-dibalas-asm'
          AND EXISTS (SELECT 1
                        FROM POOLDATA.M_KOMUNIKASI_PNC kom
                       WHERE kom.CASEID = s.CASEID
-                        AND kom.KOMUNIKASISTATUS = :8
+                        AND kom.KOMUNIKASISTATUS = :5
                         AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:3)))))
-   AND (:9 IS NULL
-        OR UPPER(k.PYID) LIKE '%' || UPPER(:9) || '%'
-        OR UPPER(k.REFNO_1) LIKE '%' || UPPER(:9) || '%')
- ORDER BY s.TGLINPUT, s.CASEID, s.INDEX_SURVEY
-OFFSET :10 ROWS FETCH NEXT :11 ROWS ONLY
+   AND (:6 IS NULL
+        OR UPPER(c.CLAIMNO) LIKE '%' || UPPER(:6) || '%')
+ ORDER BY s.TGLINPUT, s.CASEID
+OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
 
 -- name: count_tabs
--- Jumlah baris KETUJUH tab sekaligus, dalam satu perjalanan.
+-- Jumlah berkas survei pada ketiga tab komunikasi, dalam satu perjalanan.
 --
--- Ia penerjemahan langsung `RDB List/CountOSLostAdjuster-SQL.xml`, yang menghitung seluruh
--- keranjang dengan tujuh `SUM(CASE WHEN …)` di atas satu pemindaian.
+-- Keempat tab lain TIDAK dihitung di sini — kolom penggeraknya belum ada. Mengembalikan nol
+-- untuk keempatnya akan menyatakan "tab ini kosong", padahal yang benar adalah "tab ini belum
+-- dapat dihitung". Perbedaannya disampaikan Go, bukan disamarkan menjadi angka nol.
 --
--- # Kenapa satu kueri, bukan tujuh
---
--- Karena bilah tab digambar SEKALIGUS. Tujuh perjalanan akan membaca gabungan yang sama
--- tujuh kali, dan gabungan itulah bagian yang mahal — bukan penjumlahannya.
+-- Penyaring langkah terakhir SAMA PERSIS dengan list_tasks. Kalau berbeda, bilah tab akan
+-- menyebut angka yang tidak sesuai isi tabnya — dan itu meruntuhkan kepercayaan pada seluruh
+-- layar.
 --
 -- Bind:
 --   :1  cakupan nama surveyor
 --   :2  login pemanggil
---   :3  ADJUSTERACCEPT_1 yang berarti sudah dikonfirmasi  -> "1"
---   :4  ADJUSTERSTATUS_1 tab Invoice                      -> "Invoice Fee"
---   :5  ADJUSTERSTATUS_1 tab Close                        -> "Close Case"
---   :6  KOMUNIKASISTATUS terbuka                          -> "0"
---   :7  KOMUNIKASISTATUS sudah dijawab                    -> "1"
-SELECT SUM(CASE WHEN k.ADJUSTERACCEPT_1 IS NULL THEN 1 ELSE 0 END)
-          AS COUNT_OUTSTANDING,
-       SUM(CASE WHEN k.ADJUSTERACCEPT_1 = :3
-                 AND k.ADJUSTERSTATUS_1 = :4 THEN 1 ELSE 0 END)
-          AS COUNT_INVOICE,
-       SUM(CASE WHEN k.ADJUSTERSTATUS_1 = :5 THEN 1 ELSE 0 END)
-          AS COUNT_CLOSE,
-       SUM(CASE WHEN k.ADJUSTERACCEPT_1 = :3 THEN 1 ELSE 0 END)
-          AS COUNT_ALL,
-       SUM(CASE WHEN EXISTS (SELECT 1
+--   :3  KOMUNIKASISTATUS terbuka        -> "0"
+--   :4  KOMUNIKASISTATUS sudah dijawab  -> "1"
+SELECT SUM(CASE WHEN EXISTS (SELECT 1
                                FROM POOLDATA.M_KOMUNIKASI_PNC kom
                               WHERE kom.CASEID = s.CASEID
-                                AND kom.KOMUNIKASISTATUS = :6
+                                AND kom.KOMUNIKASISTATUS = :3
                                 AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:2)))
                 THEN 1 ELSE 0 END)
           AS COUNT_NOT_ANSWERED,
        SUM(CASE WHEN EXISTS (SELECT 1
                                FROM POOLDATA.M_KOMUNIKASI_PNC kom
                               WHERE kom.CASEID = s.CASEID
-                                AND kom.KOMUNIKASISTATUS = :6
+                                AND kom.KOMUNIKASISTATUS = :3
                                 AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:2)))
                 THEN 1 ELSE 0 END)
           AS COUNT_NOT_REPLIED,
        SUM(CASE WHEN EXISTS (SELECT 1
                                FROM POOLDATA.M_KOMUNIKASI_PNC kom
                               WHERE kom.CASEID = s.CASEID
-                                AND kom.KOMUNIKASISTATUS = :7
+                                AND kom.KOMUNIKASISTATUS = :4
                                 AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:2)))
                 THEN 1 ELSE 0 END)
           AS COUNT_REPLIED
-  FROM POOLDATA.T_SURVEYORLIST s
-       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN k
-               ON k.PZINSKEY = s.PNCCASEID
- WHERE k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+  FROM (SELECT t.*,
+               ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                  ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           t.TGLINPUT DESC NULLS LAST) AS STEP_RANK
+          FROM POOLDATA.T_SURVEYORLIST t) s
+       INNER JOIN POOLDATA.T_CLAIM_PNC c
+               ON c.CLAIMID = s.PNCCASEID
+ WHERE s.STEP_RANK = 1
    AND INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
 
 -- name: resolve_surveyor
 -- Jembatan identitas: login pemanggil menjadi identitas surveyor.
 --
--- Ia penerjemahan langsung `RDB List/GetLoginLeaderSurveyor-SQL.xml`:
+-- Penerjemahan langsung `RDB List/GetLoginLeaderSurveyor-SQL.xml`:
 --
 --   select loginleader from pooldata.mst_login_surveyor
 --    where login = {OperatorID.pyUserIdentifier}
 --
 -- ditambah `NAMA`, yang di Pega diambil `GetLoginMemberSurveyor` dari tabel yang sama.
---
--- # Lapisannya DUA, sesuai keputusan Work Owner 2026-09-28
---
---   M_LOGIN_PNC.LOGIN_ID        master pengguna aplikasi — siapa yang boleh masuk
---   MST_LOGIN_SURVEYOR.LOGIN    data surveyor            — siapa dia di data survei
---
--- Keduanya dicocokkan pada nilai login yang sama. Kueri ini membaca lapisan KEDUA saja;
--- lapisan pertama sudah dilewati saat pengguna berhasil masuk, dan mengulang pemeriksaannya
--- di sini hanya menambah satu gabungan tanpa menambah satu pun jaminan.
 --
 -- Bind:
 --   :1  login pemanggil
@@ -385,14 +375,8 @@ SELECT m.LOGIN        AS SURVEYOR_LOGIN,
 -- name: resolve_members
 -- Nama seluruh surveyor yang berada di bawah seorang leader.
 --
--- Dipakai HANYA bila pemanggil ternyata seorang leader. Itulah yang membuat kueri antrean
--- membandingkan dengan DAFTAR, bukan satu nama — sama seperti `IN {ASIS:TempOperator.CityID}`
--- di sistem lama.
---
--- # Kenapa dicocokkan pada LOGINLEADER, bukan pada NAMA
---
--- Karena `LOGINLEADER` menyimpan LOGIN leadernya, bukan namanya — terbaca dari
--- `GetLoginLeaderSurveyor` yang membandingkannya dengan `OperatorID.pyUserIdentifier`.
+-- Dicocokkan pada `LOGINLEADER`, bukan pada `NAMA`: kolom itu menyimpan LOGIN atasan — terbaca
+-- dari `GetLoginLeaderSurveyor` yang membandingkannya dengan `OperatorID.pyUserIdentifier`.
 --
 -- Bind:
 --   :1  login leader
@@ -403,22 +387,17 @@ SELECT m.NAMA AS SURVEYOR_NAME
 -- name: kpi_by_adjuster
 -- Ringkasan KPI dikelompokkan per adjuster.
 --
--- Penerjemahan `RDB List/GetSummaryKPIAdjuster-SQL.xml` dan
--- `GetSummaryKPIAdjusterALL-SQL.xml`, yang berbeda hanya pada penyaring `tipe`: yang pertama
--- menerimanya dari pemanggil, yang kedua mematok `'FINAL'`. Keduanya disatukan di sini
--- karena badan kuerinya identik — yang berbeda hanya nilai yang dikirim ke `:2`.
+-- Penerjemahan `GetSummaryKPIAdjuster-SQL.xml` dan `GetSummaryKPIAdjusterALL-SQL.xml`, yang
+-- berbeda hanya pada penyaring `tipe`.
 --
--- # `to_number` dibawa, dan itu memberi tahu sesuatu
---
--- Sistem lama menulis `round(avg(to_number(surveylap)),2)`. Adanya `to_number` menyiratkan
--- kolomnya bertipe TEKS di basis data. Ia dibawa apa adanya: menghilangkannya akan gagal
--- dengan ORA-01722 pada baris pertama yang tidak berisi angka, dan kegagalan itu justru
--- keterangan yang berguna.
+-- `to_number` dibawa apa adanya: adanya fungsi itu di sistem lama menyiratkan kolomnya
+-- bertipe TEKS. Menghilangkannya akan gagal ORA-01722 pada baris pertama yang bukan angka —
+-- dan kegagalan itu justru keterangan yang berguna.
 --
 -- Bind:
 --   :1  cakupan nama surveyor
 --   :2  nilai kolom `tipe`, atau NULL untuk seluruh kategori
---   :3  tahun `to_char(tanggal,'yyyy')`, atau NULL untuk seluruh tahun
+--   :3  tahun, atau NULL untuk seluruh tahun
 SELECT d.ADJUSTER                                    AS GROUP_KEY,
        ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2)         AS SURVEY_SCHEDULING,
        ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2)   AS IMMEDIATE_ADVICE,
@@ -439,19 +418,11 @@ SELECT d.ADJUSTER                                    AS GROUP_KEY,
 -- name: kpi_by_year
 -- Ringkasan KPI dikelompokkan per TAHUN.
 --
--- Penerjemahan `RDB List/GetSummaryKPIAdjusterKuartal-SQL.xml`, yang mengelompokkan
--- `group by to_char(tanggal,'yyyy')`.
+-- Penerjemahan `GetSummaryKPIAdjusterKuartal-SQL.xml`. Namanya menyebut kuartal,
+-- pengelompokannya `to_char(tanggal,'yyyy')` — per TAHUN. Perilakunya yang dibawa, bukan
+-- namanya (`P-5`).
 --
--- # Namanya menyebut kuartal, pengelompokannya per tahun
---
--- Itu isi rule-nya apa adanya. Nama rule menyesatkan sejak di Pega; perilakunya yang dibawa,
--- bukan namanya (`P-5`). Bila yang dikehendaki memang per kuartal, itu perubahan perilaku
--- yang menempuh persetujuan — bukan perbaikan diam-diam di sini.
---
--- Bind:
---   :1  cakupan nama surveyor
---   :2  nilai kolom `tipe`, atau NULL untuk seluruh kategori
---   :3  tahun, atau NULL untuk seluruh tahun
+-- Bind: sama dengan kpi_by_adjuster.
 SELECT TO_CHAR(d.TANGGAL, 'yyyy')                    AS GROUP_KEY,
        ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2)         AS SURVEY_SCHEDULING,
        ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2)   AS IMMEDIATE_ADVICE,
@@ -470,57 +441,100 @@ SELECT TO_CHAR(d.TANGGAL, 'yyyy')                    AS GROUP_KEY,
  ORDER BY TO_CHAR(d.TANGGAL, 'yyyy') DESC
 
 -- name: check_tables
--- Dipakai perintah `-periksa`: memastikan KEEMPAT tabel terbaca dari koneksi yang dipakai.
+-- Dipakai perintah `-periksa`: memastikan ketiga tabel terbaca dari koneksi yang dipakai.
 --
--- Ia tidak menyentuh satu baris pun — yang diperiksa hak baca dan keberadaan tabelnya, bukan
--- isinya. Keempatnya diperiksa sekaligus karena kegagalan yang paling mungkin terjadi bukan
--- "tabel tidak ada" melainkan "hak baca hanya diberikan pada sebagian".
---
--- `POOLDATA.T_SURVEYORLIST` yang paling patut diperhatikan: ia tabel yang BELUM pernah
--- dibaca modul mana pun di aplikasi ini.
+-- `POOLDATA.T_SURVEYORLIST` yang paling patut diperhatikan: ia tabel yang BELUM pernah dibaca
+-- modul mana pun di aplikasi ini, sehingga hak bacanya belum pernah terbukti.
 SELECT COUNT(*) AS PROBE
   FROM POOLDATA.T_SURVEYORLIST s
-       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN k
-               ON k.PZINSKEY = s.PNCCASEID
+       INNER JOIN POOLDATA.T_CLAIM_PNC c
+               ON c.CLAIMID = s.PNCCASEID
        INNER JOIN POOLDATA.MST_LOGIN_SURVEYOR m
                ON UPPER(TRIM(m.NAMA)) = UPPER(TRIM(s.SURVEYOR_NAME))
  WHERE 1 = 0
 
 -- name: check_columns
--- Dipakai perintah `-periksa`: memastikan kolom yang BELUM terkonfirmasi memang ada.
+-- Dipakai perintah `-periksa`: memastikan setiap kolom yang dibaca kueri daftar memang ada.
 --
--- Ia terpisah dari check_tables dengan sengaja. Keduanya gagal karena sebab yang sangat
--- berbeda — yang satu hak baca, yang satu nama kolom yang belum dipastikan DBA — dan galat
--- yang menyebut sebab yang salah akan mengirim orang yang memperbaikinya ke arah keliru.
+-- Terpisah dari check_tables dengan sengaja — keduanya gagal karena sebab yang berbeda, dan
+-- galat yang menyebut sebab yang salah mengirim orang yang memperbaikinya ke arah keliru.
 --
 -- `WHERE 1 = 0` membuat Oracle tetap MEM-PARSE seluruh kolom tanpa membaca satu baris pun.
 -- Parsing itulah yang menghasilkan ORA-00904 bila namanya salah.
 --
--- Yang diperiksa di sini BUKAN hanya kedua kolom yang diragukan. Kolom tab ikut masuk —
--- `ADJUSTERACCEPT_1` dan `ADJUSTERSTATUS_1` — karena keduanya menentukan ISI setiap tab, dan
--- tab yang kolomnya hilang akan gagal seluruhnya, bukan menampilkan satu sel kosong.
-SELECT COUNT(k.ADJUSTERPIC_1)     AS PROBE_APPOINTMENT,
-       COUNT(k.ADJUSTERACCEPT_1)  AS PROBE_ACCEPT,
-       COUNT(k.ADJUSTERSTATUS_1)  AS PROBE_STATUS,
-       COUNT(k.REFNO_1)           AS PROBE_REFERENCE,
-       COUNT(k.AGING)             AS PROBE_AGING,
-       COUNT(k.PXOBJCLASS)        AS PROBE_OBJECT_CLASS,
-       COUNT(s.SURVEYTYPE)        AS PROBE_SURVEYOR_TYPE,
+-- Kolom `T_CLAIM_PNC` ikut diperiksa meski tabelnya sudah dipakai modul lain: penamaannya
+-- BERBEDA JAUH dari tabel datar (`CLAIMNO` bukan `PYID`, `NOPOLIS` bukan `POLICYNO`,
+-- `PICTEKNIK` bukan `USERTEKNIS_1`), dan salah satu saja menjatuhkan seluruh layar.
+SELECT COUNT(c.CLAIMID)           AS PROBE_CLAIM_ID,
+       COUNT(c.CLAIMNO)           AS PROBE_CLAIM_NO,
+       COUNT(c.NOPOLIS)           AS PROBE_POLICY_NO,
+       COUNT(c.QQNAME)            AS PROBE_INSURED,
+       COUNT(c.BUSINESSNAME)      AS PROBE_COB,
+       COUNT(c.PICTEKNIK)         AS PROBE_TECHNICAL_PIC,
+       COUNT(c.DATEOFLOSS)        AS PROBE_DATE_OF_LOSS,
        COUNT(s.LOSSTYPE)          AS PROBE_CAUSE_OF_LOSS,
        COUNT(s.LOCATION_SURVEY)   AS PROBE_LOCATION,
-       COUNT(s.STS_SURVEY)        AS PROBE_SURVEY_STATUS,
-       COUNT(s.INDEX_SURVEY)      AS PROBE_SURVEY_INDEX
+       COUNT(s.SURVEYTYPE)        AS PROBE_SURVEYOR_TYPE,
+       COUNT(s.STS_SURVEY)        AS PROBE_ASM_STATUS,
+       COUNT(s.INDEX_SURVEY)      AS PROBE_SURVEY_INDEX,
+       COUNT(s.TGLINPUT)          AS PROBE_CREATED_AT
   FROM POOLDATA.T_SURVEYORLIST s
-       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN k
-               ON k.PZINSKEY = s.PNCCASEID
+       INNER JOIN POOLDATA.T_CLAIM_PNC c
+               ON c.CLAIMID = s.PNCCASEID
  WHERE 1 = 0
 
--- name: check_kpi
--- Dipakai perintah `-periksa`: memastikan tabel KPI beserta kesembilan kolom angkanya ada.
+-- name: check_new_columns
+-- Dipakai perintah `-periksa`: melaporkan kolom mana dari keempatnya yang SUDAH ada.
 --
--- Terpisah dari kedua pemeriksaan di atas karena tab KPI dapat hidup atau mati SENDIRI:
--- `POOLDATA.DETAIL_KPI_ADJUSTER` diisi `Database/INSERT_KPIADJUSTER.prc`, dan ketiadaannya
--- tidak menghalangi tab INBOX sama sekali.
+-- # Kenapa lewat katalog, bukan `SELECT COUNT(kolom) … WHERE 1=0`
+--
+-- Probe berbasis parsing bersifat SEMUA-ATAU-TIDAK: satu kolom yang belum ada menghasilkan
+-- ORA-00904, dan ketiga kolom lain yang sudah ada ikut terbaca sebagai belum ada. Itu persis
+-- keadaan 2026-09-30 — dua dari empat kolom tiba lebih dulu, dan probe lama tidak dapat
+-- menunjukkannya.
+--
+-- Katalog melaporkan per kolom, dan tidak dapat gagal karena kolomnya tidak ada.
+--
+-- CATATAN NAMA. Kolom yang ditambahkan 2026-09-30 TANPA akhiran `_1` — `ADJUSTERACCEPT`, bukan
+-- `ADJUSTERACCEPT_1`. Akhiran itu artefak perataan Pega, dan menghilangkannya memang lebih
+-- bersih; yang penting nama di sini mengikuti nama SEBENARNYA di basis data.
+SELECT COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERACCEPT' THEN 1 END) AS HAS_ACCEPT,
+       COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERPIC'    THEN 1 END) AS HAS_APPOINTMENT,
+       COUNT(CASE WHEN COLUMN_NAME = 'REFNO'          THEN 1 END) AS HAS_REFERENCE,
+       COUNT(CASE WHEN COLUMN_NAME = 'PYSTATUSWORK'   THEN 1 END) AS HAS_WORK_STATUS
+  FROM ALL_TAB_COLUMNS
+ WHERE OWNER = 'POOLDATA'
+   AND TABLE_NAME = 'T_SURVEYORLIST'
+
+-- name: check_filled_columns
+-- Dipakai perintah `-periksa`: menghitung berapa baris kolom yang SUDAH ADA benar-benar terisi.
+--
+-- # Kenapa TERPISAH dari check_new_columns
+--
+-- Karena keduanya diperbaiki langkah yang berbeda: kolom ditambahkan DBA lewat `ALTER`,
+-- sedangkan isinya ditulis procedure. Menyatukannya membuat "kolomnya sudah ada tetapi masih
+-- kosong" terbaca sebagai siap — dan menghidupkan tab atas dasar itu menghasilkan tab kosong
+-- yang terbaca sebagai "tidak ada pekerjaan".
+--
+-- Yang paling menentukan `FILLED_ACCEPT`: tab Outstanding menyaring `ADJUSTERACCEPT IS NULL`,
+-- sehingga kolom yang ADA tetapi SELURUHNYA kosong akan menampilkan **seluruh antrean** sebagai
+-- "belum dikonfirmasi adjuster". Itu cacat diam — layarnya terisi wajar dan isinya salah.
+--
+-- Ia HANYA memuat kolom yang sudah ada per 2026-09-30 — `ADJUSTERACCEPT`, `REFNO`, dan
+-- `PYSTATUSWORK`. `ADJUSTERPIC` belum ditambahkan, dan menuliskannya di sini akan membuat kueri
+-- ini gagal seluruhnya, termasuk untuk ketiga kolom yang justru ingin diukur. Yang melaporkan
+-- ketiadaan sebuah kolom adalah `check_new_columns`, lewat katalog.
+SELECT COUNT(*)                 AS TOTAL_ROWS,
+       COUNT(s.ADJUSTERACCEPT)  AS FILLED_ACCEPT,
+       COUNT(s.REFNO)           AS FILLED_REFERENCE,
+       COUNT(s.PYSTATUSWORK)    AS FILLED_WORK_STATUS
+  FROM POOLDATA.T_SURVEYORLIST s
+
+-- name: check_kpi
+-- Dipakai perintah `-periksa`: memastikan tabel KPI beserta kolom angkanya ada.
+--
+-- Terpisah karena tab KPI dapat hidup atau mati SENDIRI: `POOLDATA.DETAIL_KPI_ADJUSTER` diisi
+-- `Database/INSERT_KPIADJUSTER.prc`, dan ketiadaannya tidak menghalangi tab INBOX.
 SELECT COUNT(d.ADJUSTER)          AS PROBE_ADJUSTER,
        COUNT(d.TIPE)              AS PROBE_TYPE,
        COUNT(d.TANGGAL)           AS PROBE_DATE,

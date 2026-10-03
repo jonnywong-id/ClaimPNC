@@ -175,7 +175,7 @@ export function useSaveArchive() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all })
     },
   })
 }
@@ -201,7 +201,7 @@ export function useSendToBranch() {
       }),
     retry: false,
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all })
     },
   })
 }

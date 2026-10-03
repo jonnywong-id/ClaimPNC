@@ -253,7 +253,7 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
  * tanpa membuktikan apa pun.
  */
 function penyaringOf(url: string) {
-  const params = new URL(url, 'http://uji.invalid').searchParams
+  const params = new URL(url, 'https://uji.invalid').searchParams
   return {
     tipe_report: params.get('tipe_report') ?? '',
     adjuster: params.get('adjuster') ?? '',

@@ -50,7 +50,7 @@ func (l *Service) SaveReceiver(ctx context.Context, p ReceiverCommand, by Caller
 		return registrasi.Claim{}, fmt.Errorf("%w: tugas %s bukan milik klaim %s", registrasi.ErrInvalidAction, p.TaskID, p.ClaimID)
 	}
 	if !settlementStages[task.Stage] {
-		return registrasi.Claim{}, registrasi.ErrStageMismatch
+		return registrasi.Claim{}, fmt.Errorf("%w: %q", registrasi.ErrNotAvailableAtStage, task.Stage)
 	}
 	if !l.canWork(task, by) {
 		return registrasi.Claim{}, registrasi.ErrNotTaskOwner
@@ -126,8 +126,32 @@ func (l *Service) checkReceiver(ctx context.Context, p ReceiverCommand) (registr
 	} else {
 		found, err := l.accounts.FindAccount(ctx, number)
 		switch {
+		case err == nil && !found.AccountApproved():
+			// GetDataPenerimaKlaim hanya memakai rekening APPROVAL = '1'. Pesan "sedang proses
+			// approval" disalin dari langkah 11 (jalur PA); Pega memakainya hanya untuk PA, di
+			// sini untuk semua lini supaya rekening yang ditolak diam-diam mendapat alasannya.
+			message := "Account number is not approved in Master Rekening"
+			if strings.TrimSpace(found.Approval) == "0" {
+				message = "No Rekening Sedang Proses Approval"
+			}
+			violations = append(violations, registrasi.Violation{
+				Code: registrasi.ViolationReceiverNotApproved, Field: "nomor_rekening", Message: message,
+			})
 		case err == nil:
 			account = found
+			if l.cashierAccountCheck {
+				registered, err := l.cashier.AccountRegistered(ctx, number, found.BankID)
+				if err != nil {
+					return registrasi.BankAccount{}, err
+				}
+				if !registered {
+					// Pesan Pega apa adanya (`GetDataBankMaster` langkah 7).
+					violations = append(violations, registrasi.Violation{
+						Code: registrasi.ViolationReceiverNotInCashier, Field: "nomor_rekening",
+						Message: "Norekening Belum Terdaftar Di Sistem Kasir",
+					})
+				}
+			}
 		case errors.Is(err, registrasi.ErrAccountNotFound):
 			violations = append(violations, registrasi.Violation{
 				Code: registrasi.ViolationReceiverAccountUnknown, Field: "nomor_rekening",

@@ -222,7 +222,7 @@ function startSession() {
 /** listCalls mengambil permintaan daftar saja, membuang kelima lookup. */
 function listCalls() {
   return calls.filter(
-    (c) => c.method === 'GET' && new URL(c.url, 'http://x').pathname === '/api/master/supplier',
+    (c) => c.method === 'GET' && new URL(c.url, 'https://x').pathname === '/api/master/supplier',
   )
 }
 

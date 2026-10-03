@@ -117,7 +117,7 @@ type PLADocument struct {
 
 // PLASource adalah seam ke data PLA: CoinsList, master penerima, nomor, dan T_PLALIST.
 type PLASource interface {
-	CoinsMembers(ctx context.Context, policyNumber string) ([]PLACoinsMember, error)
+	CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]PLACoinsMember, error)
 	Recipient(ctx context.Context, code, name string) (PLARecipientInfo, error)
 	Previous(ctx context.Context, claimID, recipientCode string) (PLAPrevious, bool, error)
 

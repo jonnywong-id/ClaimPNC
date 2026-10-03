@@ -1,18 +1,22 @@
-import { Fragment, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate, formatPercent } from '@/components/format'
 
+import { simpanBerkas } from '@/api/client'
 import { useSession } from '@/app/session'
 
-import { useCurrencies, violationsFrom } from './api'
+import { useCauseOfLossOptions, useClaimTask, useCompleteStage, useCurrencies, useFaceSheet, usePrepareSettlement, violationsFrom } from './api'
 import { AcceptanceButtons } from './AcceptanceButtons'
+import { LODTypeSelect } from './LODTypeSelect'
 import { CommitteeStatus, TransferCommitteeButton } from './Committee'
-import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
+import { DocumentTab, InvestigationTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
 import { ReceiverTab } from './ReceiverTab'
+import { SendToInputorDialog } from './SendToInputor'
 import { SettlementDetail, SettlementEditor } from './SettlementEditor'
+import { TransferToAnalystDialog, isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
 import {
   EstimationType,
   PaymentType,
@@ -34,9 +38,13 @@ function claimEstimate(c: Coverage): number {
 
 /**
  * Layar tahap **InputSurveyor** — flow action `InputSurveyor` di atas section
- * `Section/ClaimSurvey_sect.xml`. Dipakai tahap Choose Surveyor (Non-MBU, Assignment3) dan
- * Send To PIC Teknik (Travel, Assignment8), yang keduanya menerima klaim dari tombol
- * Kirim PIC Teknik pada Input Estimasi.
+ * `Section/ClaimSurvey_sect.xml`. Dipakai tahap Choose Surveyor (Non-MBU, Assignment3),
+ * Send To PIC Teknik (Travel, Assignment8), serta Estimation (Assignment4) dan Send To
+ * Analis (Assignment5) untuk PA — keempatnya ditutup flow action InputSurveyor.
+ *
+ * Perbedaan PA (Group Panel 002) menurut section: Status Klaim tidak tampil (`!IsPA`), tab
+ * Survey dan Kirim ke Admin tidak tampil, tab Investigasi tampil (isinya `TabInvestigasi`
+ * tidak ada di export), dan Submit/Back memajukan tahap (StageSubmit).
  *
  * # Yang ditampilkan, dan dari mana
  *
@@ -68,11 +76,28 @@ function claimEstimate(c: Coverage): number {
 
 const NOT_BUILT = 'Proses tombol ini belum dibangun.'
 
-const TABS = ['Input Register', 'Estimasi & Adjustment', 'Survey', 'Unggah Dokumen', 'Progress Claim & Komunikasi'] as const
+const TABS = ['Input Register', 'Estimasi & Adjustment', 'Survey', 'Investigasi', 'Unggah Dokumen', 'Progress Claim & Komunikasi'] as const
 type Tab = (typeof TABS)[number]
 
-const SUB_TABS = ['Estimasi Pembayaran', 'Penerima Klaim', 'Adjustment & Akseptasi'] as const
+/**
+ * Sub-tab Estimasi & Adjustment — `Section/InputEstimasi-sect.xml`:
+ *
+ *   Estimasi Pembayaran       !isPA_PNC   InputEstimasiDetail
+ *   Catatan Untuk Analyst     IsPA        CatatanToAnalyst_Section
+ *   Catatan Untuk PIC Teknik  IsTravel    CatatanToAnalyst_Section
+ *   Penerima Klaim            —           ShowReceiver (tidak di export; dari ViewShowReceiver)
+ *   (pyLabel)                 IsHE        ShowObjectHEPICTeknis — tidak di export, tidak dibawa
+ *   Adjustment & Akseptasi    —           ShowObjectAdj (tidak di export; dari ViewShowObjectAdj)
+ */
+const SUB_TABS = ['Estimasi Pembayaran', 'Catatan Untuk Analyst', 'Catatan Untuk PIC Teknik', 'Penerima Klaim', 'Adjustment & Akseptasi'] as const
 type SubTab = (typeof SUB_TABS)[number]
+
+function subTabVisible(t: SubTab, panel: string): boolean {
+  if (t === 'Estimasi Pembayaran') return panel !== PANEL_PA
+  if (t === 'Catatan Untuk Analyst') return panel === PANEL_PA
+  if (t === 'Catatan Untuk PIC Teknik') return panel === PANEL_TRAVEL
+  return true
+}
 
 /** Group Panel (`.Policy.Quotation.GroupPanel`). */
 const PANEL_PA = '002'
@@ -113,58 +138,92 @@ function surveyVisible(klaim: Claim): boolean {
  * (PNCKomiteTeknik di M_LOGIN_GROUP_PNC); selebihnya server menolak (ErrNotTaskOwner) —
  * layar menyatakannya lebih dulu alih-alih membiarkan petugas mengisi lalu ditolak.
  */
-function ownerNotice(tugas: Task, identity: string): string | null {
+/** Flow action tahap Investigator (Register_Flow Assignment11). */
+const ACTION_INPUT_INVESTIGATOR = 'InputInvestigator'
+
+export function ownerNotice(tugas: Task, identity: string, register: boolean): string | null {
   // Server menilai kewenangan: pemilik, atau pemegang grup tahap (M_LOGIN_GROUP_PNC).
   if (tugas.dapat_dikerjakan === true) return null
   if (tugas.dapat_dikerjakan === undefined && (tugas.pemilik === '' || tugas.pemilik === identity)) return null
+  if (tugas.tindakan_keluar === ACTION_INPUT_INVESTIGATOR) {
+    return `Tugas ini berada di antrean ${tugas.pemilik || 'Investigator'}. Hanya anggota grup Investigator yang dapat mengerjakannya.`
+  }
+  if (register) return `Tugas ini milik ${tugas.pemilik}. Hanya pemilik tugas atau anggota grup tahap ini yang dapat menyimpan isian Input Register.`
   return `Tugas ini milik ${tugas.pemilik}. Hanya pemilik tugas atau anggota grup PIC Teknik yang dapat menambah adjustment.`
 }
 
+/**
+ * Bingkai ClaimSurvey_sect untuk tahap yang ditutup flow action InputSurveyor/InputInvestigator.
+ * Tab Input Register di sini tampilan baca (RegisterView); tahap Input Register sendiri memakai
+ * bingkai InputRegister-sect (InputRegisterFrame).
+ */
 export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const identity = useSession((state) => state.user?.identitas ?? '')
-  const notice = ownerNotice(tugas, identity)
-  const [tab, setTab] = useState<Tab>('Estimasi & Adjustment')
+  const notice = ownerNotice(tugas, identity, false)
+  // Tahap Investigator membuka tab Investigasi lebih dulu.
+  const investigator = tugas.tindakan_keluar === ACTION_INPUT_INVESTIGATOR && klaim.polis.lini === PANEL_PA
+  const [tab, setTab] = useState<Tab>(investigator ? 'Investigasi' : 'Estimasi & Adjustment')
   const [subTab, setSubTab] = useState<SubTab>('Adjustment & Akseptasi')
   const currencies = useCurrencies()
   const currencyList = currencies.data?.pilihan ?? []
 
   const panel = klaim.polis.lini
   const travel = panel === PANEL_TRAVEL
+  const pa = panel === PANEL_PA
   const notTravelPA = panel !== PANEL_TRAVEL && panel !== PANEL_PA
-  const tabs = TABS.filter((t) => t !== 'Survey' || surveyVisible(klaim))
+  // Survey: (isMarineCargo || isAneka || isFire). Investigasi: GroupPanel = 002.
+  const tabs = TABS.filter((t) => (t !== 'Survey' || surveyVisible(klaim)) && (t !== 'Investigasi' || pa))
 
-  const buttons: { label: string; strong?: boolean; visible: boolean }[] = [
+  const [sendingToInputor, setSendingToInputor] = useState(false)
+  // Kirim ke Inputor: local action AnalystRemarks (ClaimSurvey_sect, `!isAnalystPA_PNC`).
+  const canSendToInputor = notice === null && !tugas.dapat_diambil
+
+  const buttons: { label: string; strong?: boolean; visible: boolean; onClick?: () => void }[] = [
     { label: 'Detail Premi', visible: true },
     { label: 'Detail Polis', visible: true },
     { label: 'Riwayat Klaim', visible: true },
-    { label: 'Kirim ke Inputor', strong: true, visible: true },
+    {
+      label: 'Kirim ke Inputor',
+      strong: true,
+      visible: true,
+      ...(canSendToInputor ? { onClick: () => setSendingToInputor(true) } : {}),
+    },
     { label: 'Kirim ke Marketing', strong: true, visible: travel },
     { label: 'Kirim ke Admin', strong: true, visible: notTravelPA },
     { label: 'Tutup Klaim', visible: true },
   ]
 
   return (
-    <section className="mt-6 rounded border border-slate-200 p-4" aria-label="InputSurveyor">
+    <section className="mt-6 rounded border border-slate-200 p-4" aria-label={tugas.tindakan_keluar || 'InputSurveyor'}>
       <h2 className="text-sm text-slate-700">{tugas.tindakan_keluar || 'InputSurveyor'}</h2>
-      {notice && (
-        <p className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
-          {notice} Layar ini dapat dibaca, tetapi isiannya tidak dapat disimpan.
-        </p>
+      {tugas.dapat_diambil ? (
+        <ClaimTaskNotice tugas={tugas} />
+      ) : (
+        notice && (
+          <p className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+            {notice} Layar ini dapat dibaca, tetapi isiannya tidak dapat disimpan.
+          </p>
+        )
       )}
 
       {/* ── Bagian atas ClaimSurvey ─────────────────────────────────────────────── */}
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-        <label className="block text-xs font-semibold text-slate-800">
-          Status Klaim
-          <select
-            disabled
-            aria-label="Status Klaim"
-            value={klaim.status_klaim}
-            className="mt-1 block w-52 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm font-normal"
-          >
-            <option value={klaim.status_klaim}>{klaim.status_klaim_nama || klaim.status_klaim || '—'}</option>
-          </select>
-        </label>
+        {/* Status Klaim: layout `!IsTravel`, sel `!IsPA` — tidak tampil untuk Travel maupun PA. */}
+        {!travel && !pa ? (
+          <label className="block text-xs font-semibold text-slate-800">
+            Status Klaim
+            <select
+              disabled
+              aria-label="Status Klaim"
+              value={klaim.status_klaim}
+              className="mt-1 block w-52 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm font-normal"
+            >
+              <option value={klaim.status_klaim}>{klaim.status_klaim_nama || klaim.status_klaim || '—'}</option>
+            </select>
+          </label>
+        ) : (
+          <span />
+        )}
         <div className="flex flex-wrap gap-2">
           {buttons
             .filter((b) => b.visible)
@@ -172,8 +231,9 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
               <button
                 key={b.label}
                 type="button"
-                disabled
-                title={NOT_BUILT}
+                disabled={!b.onClick}
+                title={b.onClick ? undefined : NOT_BUILT}
+                onClick={b.onClick}
                 className={[
                   'rounded px-2 py-1 text-sm disabled:opacity-60',
                   b.strong ? 'bg-orange-500 text-white' : 'border border-blue-300 text-blue-700',
@@ -185,6 +245,10 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
       </div>
 
+      {sendingToInputor && (
+        <SendToInputorDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setSendingToInputor(false)} />
+      )}
+
       <dl className="mt-4 grid gap-4 sm:grid-cols-3">
         <Field label="Catatan dari Inputor" note="Belum tersimpan: POOLDATA.T_CLAIM_PNC belum punya kolom untuk catatan ini." />
         <Field label="Status Pembayaran Premi" note="Diambil saat Detail Premi dibuka, yang belum dibangun." />
@@ -192,22 +256,129 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       </dl>
 
       {/* ── Tab ─────────────────────────────────────────────────────────────────── */}
-      <TabList items={tabs} current={tab} onSelect={setTab} label="Tab InputSurveyor" />
+      <TabList items={tabs} current={tab} onSelect={setTab} label={`Tab ${tugas.tindakan_keluar || 'InputSurveyor'}`} />
 
       {tab === 'Input Register' && <RegisterView klaim={klaim} />}
       {tab === 'Survey' && <SurveyTab claimID={klaim.id} />}
-      {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} />}
+      {tab === 'Investigasi' && <InvestigationTab claimID={klaim.id} />}
+      {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} line={klaim.polis.lini} />}
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
 
       {tab === 'Estimasi & Adjustment' && (
         <div>
-          <TabList items={SUB_TABS} current={subTab} onSelect={setSubTab} label="Sub-tab Estimasi & Adjustment" />
+          <TabList items={SUB_TABS.filter((t) => subTabVisible(t, panel))} current={subTab} onSelect={setSubTab} label="Sub-tab Estimasi & Adjustment" />
+          {(subTab === 'Catatan Untuk Analyst' || subTab === 'Catatan Untuk PIC Teknik') && <AnalystNotes travel={travel} />}
           {subTab === 'Estimasi Pembayaran' && <EstimateView klaim={klaim} tugas={tugas} currencies={currencyList} lockedReason={notice} />}
           {subTab === 'Penerima Klaim' && <ReceiverTab klaim={klaim} tugas={tugas} lockedReason={notice} />}
           {subTab === 'Adjustment & Akseptasi' && <AdjustmentView klaim={klaim} tugas={tugas} identity={identity} currencies={currencyList} />}
         </div>
       )}
+
+      {pa && <StageSubmit tugas={tugas} locked={notice !== null || tugas.dapat_diambil} />}
     </section>
+  )
+}
+
+/**
+ * Submit dan Back flow action InputSurveyor untuk tahap PA (Estimation, Send To Analis).
+ *
+ * Di Pega, tahap PA keluar lewat Submit flow action ini (Estimation → Investigator, Send To
+ * Analis → keputusan RCLDokter/PUCL/Compliance). Tombol analis PA di baris atas
+ * (Kirim ke Inputor PA, Kirim ke Investigator) bergantung When `isAnalystPA_PNC` yang tidak
+ * ada di export, sehingga tanpa tombol ini klaim PA tidak dapat maju dari layar.
+ */
+function StageSubmit({ tugas, locked }: { tugas: Task; locked: boolean }) {
+  const done = useCompleteStage()
+  const go = (kembali: boolean) => done.mutate({ taskID: tugas.id, action: tugas.tindakan_keluar, kembali })
+  return (
+    <div className="mt-6 border-t border-slate-200 pt-4">
+      {done.isError && (
+        <p role="alert" className="mb-3 text-sm text-red-700">
+          {done.error instanceof Error ? done.error.message : 'Tahap tidak dapat ditutup.'}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-between gap-3">
+        <button
+          type="button"
+          disabled={done.isPending || locked}
+          onClick={() => go(true)}
+          className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          disabled={done.isPending || locked}
+          onClick={() => go(false)}
+          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+        >
+          {done.isPending ? 'Memproses…' : 'Submit'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Tugas Workbasket (mis. Investigator, antrean InvestigatorPNC) lahir tanpa pemilik, dan server
+ * menolak menutupnya sebelum diambil. Tombol Ambil di sini sama dengan tombol Ambil di inbox.
+ */
+function ClaimTaskNotice({ tugas }: { tugas: Task }) {
+  const take = useClaimTask()
+  return (
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+      <span>
+        Tugas ini masih di antrean {tugas.antrean || 'bersama'}. Ambil tugas lebih dulu supaya tahap dapat ditutup.
+        {take.isError && <span className="block text-red-700">{take.error instanceof Error ? take.error.message : 'Tugas tidak dapat diambil.'}</span>}
+      </span>
+      <button
+        type="button"
+        disabled={take.isPending}
+        onClick={() => take.mutate(tugas.id)}
+        className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+      >
+        {take.isPending ? 'Mengambil…' : 'Ambil'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * `Section/CatatanToAnalyst_Section-Section.xml` — tiga grid baca dari page list work object
+ * Pega (`ClaimData.ComplianceList`, `ClaimData.PUCLStatus.DateReceivedDocument`,
+ * `ClaimData.AnalystDoctorList`). Ketiganya TIDAK tersimpan di tabel mana pun, dan nol dari 3.000
+ * dokumen JSON_KLAIM terbaru memuatnya (2026-10-02); grid ditampilkan kosong sampai tahap
+ * Compliance, PUCL, dan Analyst Doctor dibangun di aplikasi ini.
+ */
+function AnalystNotes({ travel }: { travel: boolean }) {
+  const grids: [string, string][] = [
+    ['Catatan Dari Compliance', 'ClaimData.ComplianceList'],
+    ['Tanggal Terima Dokumen PUCL', 'ClaimData.PUCLStatus.DateReceivedDocument'],
+    ['Komentar Dari Analyst Doctor', 'ClaimData.AnalystDoctorList'],
+  ]
+  return (
+    <div className="mt-3 space-y-4" aria-label="Catatan Untuk Analyst">
+      {grids.map(([title, source]) => (
+        <table key={title} className="w-full border-collapse text-sm">
+          <caption className="mb-1 text-left text-xs font-semibold text-slate-700">{title}</caption>
+          <Head columns={['Tanggal', 'Komentar']} />
+          <tbody>
+            <tr>
+              <td colSpan={2} className="p-2 text-xs text-slate-500" title={`Pega page list ${source}`}>
+                Data Tidak Ada
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      ))}
+      <dl className="grid gap-4 sm:grid-cols-2">
+        <Field label="Pilihan Compliance" note="ClaimData.PilihanCompliance — set by the Compliance stage, not built yet." />
+        {/* `IsPA && IsAnalisator || IsTravel`: IsAnalisator tidak ada di export, jadi hanya Travel. */}
+        {travel && <Field label="Tanggal terima dokumen PUCL" note="ClaimData.PUCLStatus.TanggalTerimaDokumenPUCL — set by the PUCL stage, not built yet." />}
+        <Field label="Komentar PUCL" note="ClaimData.PUCLStatus.KomentarPUCL — set by the PUCL stage, not built yet." />
+        <Field label="Alasan Dokter Reject RCL" note="ClaimData.AlasanDokterRejectRCL — set by the RCL Dokter stage, not built yet." />
+      </dl>
+    </div>
   )
 }
 
@@ -222,7 +393,7 @@ function Field({ label, note }: { label: string; note: string }) {
   )
 }
 
-function TabList<T extends string>({
+export function TabList<T extends string>({
   items,
   current,
   onSelect,
@@ -425,6 +596,12 @@ function acceptedTotals(o: Claim['objek'][number]): { klaim: number; adjuster: n
   return { klaim, adjuster }
 }
 
+/** Tanggal lahir grid objek PA ditulis seperti Pega: dd/MM/yy (mis. 24/05/89). */
+function shortDate(iso: string | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '')
+  return m ? `${m[3]}/${m[2]}/${m[1]!.slice(2)}` : '—'
+}
+
 function AdjustmentView({
   klaim,
   tugas,
@@ -438,14 +615,52 @@ function AdjustmentView({
 }) {
   // Jaminan yang baris isian Tambah-nya sedang terbuka.
   const [addFor, setAddFor] = useState<{ i: number; j: number } | null>(null)
-  const lockedReason = ownerNotice(tugas, identity)
+  // Jaminan yang modal "Transfer ke Analyst"-nya sedang terbuka.
+  const [analystFor, setAnalystFor] = useState<{ objekID: string; coverageID: string; name: string } | null>(null)
+  // Baris adjustment yang baru tersimpan pertama kali — dibuka di grid supaya isiannya dapat diteruskan.
+  const [openFor, setOpenFor] = useState<{ i: number; j: number; n: number } | null>(null)
+  // Tambah: ValidationAdjustment lebih dulu. PA pada jaminan tanpa adjustment mendapat estimasi
+  // NewEstimationPA (TSI) sehingga Claim Face Sheet dapat dibuat.
+  const prepare = usePrepareSettlement(klaim.id)
+  const [prepareFor, setPrepareFor] = useState<{ i: number; j: number } | null>(null)
+  const startAdd = (i: number, j: number) => {
+    if (!pa) {
+      setAddFor({ i, j })
+      return
+    }
+    prepare.reset()
+    setPrepareFor({ i, j })
+    prepare.mutate({ tugas_id: tugas.id, objek: i + 1, jaminan: j + 1 }, { onSuccess: () => setAddFor({ i, j }) })
+  }
+  const lockedReason = ownerNotice(tugas, identity, false)
+  // Download Claim Face Sheet pada baris jaminan PA.
+  const faceSheet = useFaceSheet(klaim.id)
+  const faceSheetViolations = violationsFrom(faceSheet.error)
+  // Jaminan yang tombol Download Claim Face Sheet-nya terakhir diklik — pesannya tampil di bawah baris itu.
+  const [faceSheetFor, setFaceSheetFor] = useState<{ i: number; j: number } | null>(null)
   const policyCurrency = currencyName(klaim.polis.mata_uang, currencies)
+  // Grid objek ShowObjectAdj per lini: IsPA — Nama Objek, Pekerjaan, Tanggal Lahir, Currency, Nilai
+  // Estimasi (.NilaiOSKalim), Nilai Akseptasi Klaim; selain itu (!IsTravelPA && !IsHE) — Nama Objek,
+  // Lokasi, Currency, Nilai Akseptasi Klaim, Nilai Akseptasi Adjuster.
+  const pa = klaim.polis.lini === PANEL_PA
+  // Baris coverage ObjectCoverageAdj: IsPA menambah Penyebab Kerugian (nama dari master sebab kerugian).
+  const causes = useCauseOfLossOptions(pa ? klaim.polis.kode_bisnis ?? '' : '')
+  const causeName = (id: string) => causes.data?.pilihan.find((o) => o.id === id)?.nama ?? id
+  // Baris coverage ObjectCoverageAdj kontainer IsPA, sel demi sel: CoverageNote · CauseOfLoss · Currency · SumTSI ·
+  // Download Claim Face Sheet · Print PLA · include TrfKomiteButton · (kosong). Judul kolomnya apa adanya di XML —
+  // termasuk "TSI" kedua di atas Print PLA — dan sel judul terakhir memuat tombol Tambah Jaminan.
+  const coverageColumns = pa
+    ? ['', 'Nama Coverage', 'Penyebab Kerugian', 'Mata Uang', 'TSI', '', 'TSI', '', '']
+    : ['', 'Nama Coverage', 'Mata Uang', 'TSI']
+  const columns = pa
+    ? ['', 'Nama Objek', 'Pekerjaan', 'Tanggal Lahir', 'Currency', 'Nilai Estimasi', 'Nilai Akseptasi Klaim']
+    : ['', 'Nama Objek', 'Lokasi', 'Currency', 'Nilai Akseptasi Klaim', 'Nilai Akseptasi Adjuster']
 
   return (
     <NoObjects klaim={klaim}>
       <table className="mt-3 w-full border-collapse text-sm">
         <caption className="sr-only">Adjustment dan akseptasi</caption>
-        <Head columns={['', 'Nama Objek', 'Lokasi', 'Currency', 'Nilai Akseptasi Klaim', 'Nilai Akseptasi Adjuster']} />
+        <Head columns={columns} />
         <tbody>
           {klaim.objek.map((o, i) => {
             const totals = acceptedTotals(o)
@@ -454,28 +669,139 @@ function AdjustmentView({
                 <tr className="border-b border-slate-200 align-top">
                   <td className="p-2">{i + 1}</td>
                   <td className="p-2">{o.nama || o.id}</td>
-                  <td className="p-2">{o.lokasi || '—'}</td>
-                  <td className="p-2">{policyCurrency}</td>
-                  <td className="p-2 text-right">{formatAmount(totals.klaim)}</td>
-                  <td className="p-2 text-right">{formatAmount(totals.adjuster)}</td>
+                  {pa ? (
+                    <>
+                      <td className="p-2">{o.pekerjaan || '—'}</td>
+                      <td className="p-2">{shortDate(o.tanggal_lahir)}</td>
+                      <td className="p-2">{policyCurrency}</td>
+                      <td className="p-2 text-right">{formatAmount(o.coverage.reduce((sum, c) => sum + claimEstimate(c), 0))}</td>
+                      <td className="p-2 text-right">{formatAmount(totals.klaim)}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="p-2">{o.lokasi || '—'}</td>
+                      <td className="p-2">{policyCurrency}</td>
+                      <td className="p-2 text-right">{formatAmount(totals.klaim)}</td>
+                      <td className="p-2 text-right">{formatAmount(totals.adjuster)}</td>
+                    </>
+                  )}
                 </tr>
                 <tr>
-                  <td colSpan={6} className="p-2">
+                  <td colSpan={columns.length} className="p-2">
                     <div className="rounded border border-slate-300 p-2">
                       <table className="w-full border-collapse text-sm">
                         <caption className="sr-only">Jaminan {o.nama}</caption>
-                        <Head columns={['', 'Nama Coverage', 'Mata Uang', 'TSI']} />
+                        {pa ? (
+                          <thead>
+                            <tr className="bg-slate-100 text-left text-xs text-slate-700">
+                              {coverageColumns.slice(0, -1).map((h, k) => (
+                                <th key={k} className={['p-2', h === 'TSI' ? 'text-right' : ''].join(' ')}>
+                                  {h}
+                                </th>
+                              ))}
+                              <th className="p-2 text-right">
+                                {/* Tambah Jaminan: addRow + ShowCoverage(StatusPA="add") — belum dibangun. */}
+                                <button
+                                  type="button"
+                                  disabled
+                                  title={NOT_BUILT}
+                                  className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 disabled:opacity-60"
+                                >
+                                  Tambah Jaminan
+                                </button>
+                              </th>
+                            </tr>
+                          </thead>
+                        ) : (
+                          <Head columns={coverageColumns} />
+                        )}
                         <tbody>
                           {o.coverage.map((c, j) => (
                             <Fragment key={j}>
                               <tr className="border-b border-slate-100">
                                 <td className="p-2">{j + 1}</td>
                                 <td className="p-2">{c.nama || c.id}</td>
+                                {pa && <td className="p-2">{c.penyebab_kerugian ? causeName(c.penyebab_kerugian) : '—'}</td>}
                                 <td className="p-2">{policyCurrency}</td>
                                 <td className="p-2 text-right">{formatAmount(c.tsi_sen)}</td>
+                                {pa && (
+                                  <>
+                                    <td className="p-2">
+                                      {/* Download Claim Face Sheet: `IsAnalisator || IsPHK` → DownloadClaimFaceSheet_act (rute CFS). */}
+                                      {(tugas.analis === true || isPHKCoverage(c.id)) && (
+                                        <button
+                                          type="button"
+                                          disabled={lockedReason !== null || faceSheet.isPending}
+                                          title={lockedReason ?? undefined}
+                                          onClick={() => {
+                                            faceSheet.reset()
+                                            setFaceSheetFor({ i, j })
+                                            faceSheet.mutate({ tugas_id: tugas.id, objek: i + 1, jaminan: j + 1 }, { onSuccess: (file) => simpanBerkas(file) })
+                                          }}
+                                          className="whitespace-nowrap rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 disabled:opacity-60"
+                                        >
+                                          {faceSheet.isPending && faceSheetFor?.i === i && faceSheetFor.j === j ? 'Mengunduh…' : 'Download Claim Face Sheet'}
+                                        </button>
+                                      )}
+                                    </td>
+                                    <td className="p-2">
+                                      {/* Print PLA: local action PrintPLA_PAPHK, nonaktif bila `IsNoCoins || !isCFS` — belum dibangun. */}
+                                      <button
+                                        type="button"
+                                        disabled
+                                        title={NOT_BUILT}
+                                        className="rounded bg-slate-300 px-2 py-1 text-xs text-white disabled:opacity-80"
+                                      >
+                                        Print PLA
+                                      </button>
+                                    </td>
+                                    <td className="p-2">
+                                      {showTransferToAnalyst(klaim, tugas.tahap, o, j) && (
+                                        <button
+                                          type="button"
+                                          disabled={lockedReason !== null}
+                                          title={lockedReason ?? undefined}
+                                          onClick={() => setAnalystFor({ objekID: o.id, coverageID: c.id, name: c.nama })}
+                                          className="whitespace-nowrap rounded bg-orange-500 px-2 py-1 text-xs text-white disabled:opacity-60"
+                                        >
+                                          Transfer ke Analyst
+                                        </button>
+                                      )}
+                                    </td>
+                                    <td className="p-2" />
+                                  </>
+                                )}
                               </tr>
+                              {prepare.isError && prepareFor?.i === i && prepareFor.j === j && (
+                                <tr>
+                                  <td colSpan={coverageColumns.length} className="p-2">
+                                    <ErrorMessage
+                                      tone="penolakan"
+                                      title="Adjustment belum dapat ditambahkan"
+                                      description={prepare.error instanceof Error ? prepare.error.message : 'Terjadi kesalahan.'}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              {faceSheet.isError && faceSheetFor?.i === i && faceSheetFor.j === j && (
+                                <tr>
+                                  <td colSpan={coverageColumns.length} className="p-2">
+                                    <ErrorMessage
+                                      tone="penolakan"
+                                      title="Claim Face Sheet belum dapat diunduh"
+                                      description={
+                                        faceSheetViolations.length > 0
+                                          ? faceSheetViolations.map((v) => v.pesan).join(' ')
+                                          : faceSheet.error instanceof Error
+                                            ? faceSheet.error.message
+                                            : 'Terjadi kesalahan.'
+                                      }
+                                    />
+                                  </td>
+                                </tr>
+                              )}
                               <tr>
-                                <td colSpan={4} className="p-2">
+                                <td colSpan={coverageColumns.length} className="p-2">
                                   <SettlementGrid
                                     claimID={klaim.id}
                                     taskID={tugas.id}
@@ -491,7 +817,30 @@ function AdjustmentView({
                                     groupPanel={klaim.polis.lini}
                                     businessType={klaim.polis.jenis_bisnis}
                                     receivers={klaim.penerima_klaim ?? []}
-                                    onAdd={() => setAddFor({ i, j })}
+                                    exGratia={klaim.ex_gratia}
+                                    autoOpen={openFor?.i === i && openFor.j === j ? openFor.n : null}
+                                    editable={(n, s) =>
+                                      lockedReason === null && s.status_akseptasi === '' && !s.komite_id && !s.sudah_transfer_kasir ? (
+                                        <SettlementEditor
+                                          key={n}
+                                          claimID={klaim.id}
+                                          taskID={tugas.id}
+                                          object={i + 1}
+                                          coverage={j + 1}
+                                          policyCurrency={klaim.polis.mata_uang}
+                                          currencies={currencies}
+                                          travel={klaim.polis.lini === PANEL_TRAVEL}
+                                          nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                          pa={pa}
+                                          exGratia={klaim.ex_gratia}
+                                          analyst={tugas.analis === true}
+                                          analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
+                                          existing={{ index: n, line: s }}
+                                          onClose={() => {}}
+                                        />
+                                      ) : null
+                                    }
+                                    onAdd={() => startAdd(i, j)}
                                     lockedReason={lockedReason}
                                     editor={
                                       addFor?.i === i && addFor.j === j ? (
@@ -504,6 +853,14 @@ function AdjustmentView({
                                           currencies={currencies}
                                           travel={klaim.polis.lini === PANEL_TRAVEL}
                                           nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                          pa={pa}
+                                          exGratia={klaim.ex_gratia}
+                                          analyst={tugas.analis === true}
+                                          analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
+                                          onCreated={(n) => {
+                                            setAddFor(null)
+                                            setOpenFor({ i, j, n })
+                                          }}
                                           onClose={() => setAddFor(null)}
                                         />
                                       ) : null
@@ -523,6 +880,16 @@ function AdjustmentView({
           })}
         </tbody>
       </table>
+      {analystFor && (
+        <TransferToAnalystDialog
+          claimID={klaim.id}
+          taskID={tugas.id}
+          objekID={analystFor.objekID}
+          coverageID={analystFor.coverageID}
+          coverageName={analystFor.name}
+          onClose={() => setAnalystFor(null)}
+        />
+      )}
     </NoObjects>
   )
 }
@@ -542,6 +909,9 @@ function SettlementGrid({
   groupPanel,
   businessType,
   receivers,
+  exGratia,
+  autoOpen = null,
+  editable,
   onAdd,
   editor,
   lockedReason,
@@ -563,6 +933,12 @@ function SettlementGrid({
   businessType: string
   /** Penerima klaim — pilihan Penerima Klaim form Persetujuan / Akseptasi. */
   receivers: Receiver[]
+  /** Klaim Ex Gratia (`pyWorkPage.ClaimData.ExGratia`). */
+  exGratia: boolean
+  /** Baris (berbasis 0) yang dibuka otomatis — baris yang baru tersimpan pertama kali. */
+  autoOpen?: number | null
+  /** Form isian untuk baris yang masih dapat diubah (`.AcceptanceStatus == ''`), atau null. */
+  editable?: (n: number, line: Settlement) => ReactNode | null
   onAdd: () => void
   /** Baris isian adjustment baru, bila tombol Tambah jaminan ini sedang dibuka. */
   editor: ReactNode
@@ -571,6 +947,9 @@ function SettlementGrid({
 }) {
   // Baris adjustment yang sedang dibuka untuk dilihat kembali.
   const [open, setOpen] = useState<number | null>(null)
+  useEffect(() => {
+    if (autoOpen !== null) setOpen(autoOpen)
+  }, [autoOpen])
   return (
     <table className="w-full border-collapse border border-slate-200 text-sm">
       <caption className="sr-only">Adjustment {name}</caption>
@@ -601,13 +980,18 @@ function SettlementGrid({
             <Fragment key={n}>
             <tr className="border-b border-slate-100 align-top">
               <td className="p-2">
-                {/* `.PDFType` baca saja (ShowAdjustment_sect, sel pertama kolom Adjustment):
-                    jenis LOD terakhir yang dicetak lewat Print LOD. */}
-                {s.nama_tipe_pdf_lod && (
-                  <span className="mb-1 block text-xs text-slate-700" title="Tipe PDF">
-                    {s.nama_tipe_pdf_lod}
-                  </span>
-                )}
+                {/* `.PDFType` (ShowAdjustment_sect, sel pertama kolom Adjustment): dropdown Tipe LOD. */}
+                <LODTypeSelect
+                  claimID={claimID}
+                  taskID={taskID}
+                  object={object}
+                  coverage={coverage}
+                  adjustment={n + 1}
+                  line={s}
+                  groupPanel={groupPanel}
+                  businessType={businessType}
+                  lockedReason={lockedReason}
+                />
                 <button
                   type="button"
                   aria-expanded={open === n}
@@ -654,6 +1038,7 @@ function SettlementGrid({
             {open === n && (
               <tr>
                 <td colSpan={5} className="p-2">
+                  {editable?.(n, s) ?? (
                   <SettlementDetail
                     line={s}
                     currencyName={currencyName(s.mata_uang, currencies)}
@@ -661,7 +1046,11 @@ function SettlementGrid({
                     spreading={spreading}
                     travel={travel}
                     nonMBU={nonMBU}
+                    pa={groupPanel === PANEL_PA}
+                    exGratia={exGratia}
+                    address={{ claimID, taskID, object, coverage, adjustment: n + 1 }}
                   />
+                  )}
                 </td>
               </tr>
             )}

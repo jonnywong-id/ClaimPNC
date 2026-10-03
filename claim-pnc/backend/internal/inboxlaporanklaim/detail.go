@@ -15,11 +15,11 @@ import (
 //	Section/ViewInputReceiveDocument_sec-Section.xml     label dan properti terikatnya
 //	Database/PROCINSERTDATARECIVEDKLAIM.prc              kolom yang benar-benar disimpan
 //
-// Section `InputReceiveDocument` yang dirender flow action itu **tidak ada di export**
-// (bagian dari ±242 rule hilang, `R-16`). Yang dipakai sebagai gantinya adalah
-// `ViewInputReceiveDocument_sec` — varian tampil dari form yang sama, yang memuat label
-// dan properti terikat yang sama persis. Itu bukti terbaik yang tersedia, dan
-// keterbatasannya dicatat di sini alih-alih ditutupi.
+// Section `InputReceiveDocument` yang dirender flow action itu semula **tidak ada di
+// export** (`R-16`), sehingga versi pertama memakai `ViewInputReceiveDocument_sec`.
+// `Section/InputReceiveDocument_sect.xml` kemudian dikirim, dan empat isiannya yang belum
+// ada ditambahkan (2026-10-01): Group Panel, Email Tertanggung dan SIM (khusus PA), serta
+// Source Of Reports — lihat field di akhir Detail.
 //
 // # Tiga blok form yang TIDAK ada di sini, dan alasannya
 //
@@ -77,6 +77,13 @@ type Detail struct {
 	NotRegisteredNote string
 
 	DocumentCount int
+
+	// Empat isian dari Section/InputReceiveDocument_sect.xml yang tidak ada di
+	// ViewInputReceiveDocument_sec. Kolomnya dipetakan Rcv_ProcInsertRecivedDocument.
+	GroupPanel    string // CityID          -> GROUPPANEL (Group Panel polis; 002 = PA)
+	InsuredEmail  string // .EmailLOD       -> EMAILTERTANGGUNG — "Email Tertanggung", hanya PA
+	DriverLicense string // .SIM            -> SIMPENGENDARA — hanya PA
+	ReportSource  string // .Resource       -> RESOURCES — "Source Of Reports"
 }
 
 // Lebar maksimum setiap isian teks, mengikuti kolom yang dibuat migrasi 0004.
@@ -95,6 +102,11 @@ const (
 	MaxSubjectLength   = 1000
 	MaxNoteLength      = 1000
 	MaxNarrativeLength = 4000
+
+	// Lebar kolom T_CLAIM_RECIVEDCLAIM untuk empat isian InputReceiveDocument_sect.
+	MaxGroupPanelLength    = 10
+	MaxDriverLicenseLength = 25
+	MaxReportSourceLength  = 100
 
 	// MaxDocumentCount adalah batas atas yang masuk akal untuk satu berkas laporan.
 	//
@@ -124,6 +136,10 @@ func (d Detail) Clean() Detail {
 	clean.DamageDetail = strings.TrimSpace(d.DamageDetail)
 	clean.Reason = strings.TrimSpace(d.Reason)
 	clean.NotRegisteredNote = strings.TrimSpace(d.NotRegisteredNote)
+	clean.GroupPanel = strings.TrimSpace(d.GroupPanel)
+	clean.InsuredEmail = strings.TrimSpace(d.InsuredEmail)
+	clean.DriverLicense = strings.TrimSpace(d.DriverLicense)
+	clean.ReportSource = strings.TrimSpace(d.ReportSource)
 	return clean
 }
 
@@ -157,6 +173,10 @@ func (d Detail) Check() error {
 		{"rincian_kerusakan", "Rincian Kerusakan", d.DamageDetail, MaxNarrativeLength},
 		{"alasan", "Keterangan Belum Transfer", d.Reason, MaxNoteLength},
 		{"keterangan_belum_registrasi", "Keterangan Belum Registrasi", d.NotRegisteredNote, MaxNoteLength},
+		{"group_panel", "Group Panel", d.GroupPanel, MaxGroupPanelLength},
+		{"email_tertanggung", "Email Tertanggung", d.InsuredEmail, MaxEmailLength},
+		{"sim_pengendara", "SIM Pengendara", d.DriverLicense, MaxDriverLicenseLength},
+		{"sumber_laporan", "Source Of Reports", d.ReportSource, MaxReportSourceLength},
 	}
 
 	for _, l := range limit {
@@ -219,6 +239,10 @@ func DetailOf(r ClaimReport) Detail {
 		Reason:            r.Reason,
 		NotRegisteredNote: r.NotRegisteredNote,
 		DocumentCount:     r.DocumentCount,
+		GroupPanel:        r.GroupPanel,
+		InsuredEmail:      r.InsuredEmail,
+		DriverLicense:     r.DriverLicense,
+		ReportSource:      r.ReportSource,
 	}
 }
 
@@ -247,5 +271,9 @@ func (d Detail) Apply(r ClaimReport) ClaimReport {
 	result.Reason = d.Reason
 	result.NotRegisteredNote = d.NotRegisteredNote
 	result.DocumentCount = d.DocumentCount
+	result.GroupPanel = d.GroupPanel
+	result.InsuredEmail = d.InsuredEmail
+	result.DriverLicense = d.DriverLicense
+	result.ReportSource = d.ReportSource
 	return result
 }

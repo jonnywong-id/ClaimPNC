@@ -3,6 +3,7 @@ package memory_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -65,7 +66,8 @@ func TestLeaderMelihatPekerjaanAnggotanya(t *testing.T) {
 	require.Contains(t, leader.Scope, memory.SampleMemberName)
 
 	// PNCN.26.0102 milik anggota, dan leader harus melihatnya.
-	require.Contains(t, numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabAll)),
+	require.Contains(t,
+		numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered)),
 		"PNCN.26.0102")
 }
 
@@ -79,8 +81,9 @@ func TestAnggotaTidakMelihatPekerjaanLeader(t *testing.T) {
 	require.False(t, member.IsLeader)
 	require.Equal(t, []string{memory.SampleMemberName}, member.Scope)
 
-	require.NotContains(t, numbers(list(t, memory.SampleMemberLogin, inboxsurvey.TabAll)),
-		"PNCN.26.0103")
+	require.Equal(t, []string{"PNCN.26.0102"},
+		numbers(list(t, memory.SampleMemberLogin, inboxsurvey.TabNotAnswered)),
+		"anggota hanya melihat barisnya sendiri")
 }
 
 // TestNamaBerawalanSamaTidakIkutTerbawa menguji pembatas cakupan.
@@ -88,7 +91,8 @@ func TestAnggotaTidakMelihatPekerjaanLeader(t *testing.T) {
 // `SampleNearMissName` memuat `SampleLeaderName` sebagai awalan. Bila pencocokannya sebagian,
 // baris miliknya bocor ke antrean leader — terisi wajar, tanpa satu pun tanda.
 func TestNamaBerawalanSamaTidakIkutTerbawa(t *testing.T) {
-	require.NotContains(t, numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabAll)),
+	require.NotContains(t,
+		numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered)),
 		"PNCN.26.0103", "baris itu milik surveyor lain yang namanya berawalan sama")
 }
 
@@ -97,46 +101,10 @@ func TestNamaBerawalanSamaTidakIkutTerbawa(t *testing.T) {
 // Layar ini melayani DUA populasi, dan yang membedakannya adalah identitas yang masuk — bukan
 // penyaring yang dipilih pengguna.
 func TestSurveyorInternalMelihatAntreannyaSendiri(t *testing.T) {
-	page := list(t, memory.SampleInternalLogin, inboxsurvey.TabOutstanding)
+	page := list(t, memory.SampleInternalLogin, inboxsurvey.TabNotAnswered)
 
 	require.Equal(t, []string{"PNCN.26.0110"}, numbers(page))
 	require.Equal(t, inboxsurvey.SurveyorTypeInternal, page.Tasks[0].SurveyorType)
-}
-
-// TestTabOutstandingMemakaiIsNull adalah uji yang paling mudah terbalik.
-//
-// Data contoh memuat satu baris ber-`AdjusterAccept = "0"`. Di Pega baris seperti itu tidak
-// masuk tab mana pun, karena lawan Outstanding adalah IS NULL — bukan <> "1".
-func TestTabOutstandingMemakaiIsNull(t *testing.T) {
-	outstanding := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabOutstanding))
-	all := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabAll))
-
-	require.Contains(t, outstanding, "PNCN.26.0101")
-	require.NotContains(t, outstanding, "PNCN.26.0106", "baris itu bernilai \"0\", bukan NULL")
-	require.NotContains(t, all, "PNCN.26.0106")
-}
-
-// TestTabInvoiceAdalahIrisanBukanKeranjangTersendiri.
-//
-// `SetTempLostAdjuster` MENAMBAHKAN penyaring status di atas penyaring Confirm, tidak
-// menggantikannya. Baris Invoice karena itu muncul di tab ALL juga.
-func TestTabInvoiceAdalahIrisanBukanKeranjangTersendiri(t *testing.T) {
-	invoice := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabInvoice))
-	all := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabAll))
-
-	require.Equal(t, []string{"PNCN.26.0104"}, invoice)
-	require.Contains(t, all, "PNCN.26.0104")
-}
-
-// TestTabCloseMemakaiStatusAdjuster mengunci selisih terencana.
-//
-// Di Pega tab ini memakai status ALUR KERJA objek survei; di sini ia memakai
-// `ADJUSTERSTATUS_1 = 'Close Case'` karena kolom itulah yang tersedia.
-func TestTabCloseMemakaiStatusAdjuster(t *testing.T) {
-	page := list(t, memory.SampleLeaderLogin, inboxsurvey.TabClose)
-
-	require.Equal(t, []string{"PNCN.26.0105"}, numbers(page))
-	require.Equal(t, inboxsurvey.StatusCloseCase, page.Tasks[0].ASMStatus)
 }
 
 // TestKetigaTabKomunikasiTidakTertukar adalah uji yang paling berharga di berkas ini.
@@ -145,17 +113,62 @@ func TestTabCloseMemakaiStatusAdjuster(t *testing.T) {
 // tiga layar yang sama-sama masuk akal, sehingga tidak ada seorang pun yang akan
 // melaporkannya.
 func TestKetigaTabKomunikasiTidakTertukar(t *testing.T) {
-	require.Equal(t, []string{"PNCN.26.0107"},
-		numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered)),
-		"pesan dari pihak LAIN yang belum dijawab")
+	notAnswered := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered))
+	notReplied := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotReplied))
+	replied := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabReplied))
 
-	require.Equal(t, []string{"PNCN.26.0108"},
-		numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotReplied)),
+	// Pesan dari pihak LAIN yang belum dijawab. Termasuk baris milik anggota.
+	require.Equal(t,
+		[]string{"PNCN.26.0101", "PNCN.26.0102", "PNCN.26.0107", "PNCN.26.0108"},
+		notAnswered, "pesan dari pihak LAIN yang belum dijawab")
+
+	require.Equal(t, []string{"PNCN.26.0104"}, notReplied,
 		"pesan dari DIRI SENDIRI yang belum dibalas")
 
-	require.Equal(t, []string{"PNCN.26.0109"},
-		numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabReplied)),
+	require.Equal(t, []string{"PNCN.26.0105"}, replied,
 		"pesan dari diri sendiri yang SUDAH dibalas")
+
+	// Ketiganya harus SALING LEPAS — satu baris tidak boleh muncul di dua tab sekaligus.
+	for _, ref := range notReplied {
+		require.NotContains(t, notAnswered, ref)
+		require.NotContains(t, replied, ref)
+	}
+}
+
+// TestBarisTanpaPesanTidakMunculDiTabManaPun membuktikan penyaring tab benar-benar menyaring.
+//
+// Ketiga tab yang dapat dihitung seluruhnya berbasis komunikasi. Tanpa uji ini, penyaring yang
+// meloloskan segalanya akan lulus setiap uji lain di berkas ini.
+func TestBarisTanpaPesanTidakMunculDiTabManaPun(t *testing.T) {
+	for _, tab := range inboxsurvey.Tabs() {
+		require.NotContainsf(t, numbers(list(t, memory.SampleLeaderLogin, tab)),
+			"PNCN.26.0106", "baris tanpa pesan muncul di tab %q", tab)
+	}
+}
+
+// TestTabYangBelumTersediaMengembalikanHalamanKosong mengunci pencegatan di Repo.List.
+//
+// Keempat tab itu bergantung pada kolom yang tidak ada. Mengembalikan halaman kosong BUKAN
+// penyamaran: metadata layar sudah lebih dulu menyatakan tab itu belum tersedia beserta
+// sebabnya, sehingga kosongnya tidak pernah terbaca sebagai "tidak ada pekerjaan".
+func TestTabYangBelumTersediaMengembalikanHalamanKosong(t *testing.T) {
+	hasUnavailable := false
+
+	for _, tab := range inboxsurvey.Tabs() {
+		if tab.Available() {
+			continue
+		}
+		hasUnavailable = true
+
+		page := list(t, memory.SampleLeaderLogin, tab)
+		require.Emptyf(t, page.Tasks, "tab %q belum tersedia tetapi mengembalikan baris", tab)
+		require.Zerof(t, page.Total, "tab %q belum tersedia tetapi mengembalikan jumlah", tab)
+	}
+
+	// Bila kelak keempat kolomnya tiba, uji ini kehilangan isinya. Kegagalan di sini adalah
+	// TANDA BAIK: hidupkan tabnya dan hapus uji ini, jangan longgarkan.
+	require.True(t, hasUnavailable,
+		"tidak ada lagi tab yang belum tersedia — hidupkan keempat tab dan hapus uji ini")
 }
 
 // TestUrutanMenaikDenganPemutusSeri mengunci urutan antrean kerja.
@@ -163,21 +176,15 @@ func TestKetigaTabKomunikasiTidakTertukar(t *testing.T) {
 // Yang tertua lebih dulu, sesuai `ORDER BY … ASC` pada kedua Browse rule yang ada. Dua baris
 // contoh berwaktu input SAMA PERSIS, sehingga pemutus serinya ikut teruji.
 func TestUrutanMenaikDenganPemutusSeri(t *testing.T) {
-	page, err := memory.NewSampleStore().List(
-		context.Background(),
-		identity(t, memory.SampleLeaderLogin),
-		inboxsurvey.Filter{Tab: inboxsurvey.TabAll, Limit: 100},
-	)
-	require.NoError(t, err)
-
-	got := numbers(page)
+	got := numbers(list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered))
 	require.NotEmpty(t, got)
 
-	// PNCN.26.0104 (2026-09-04) mendahului PNCN.26.0105 (2026-09-05).
-	require.Less(t, indexOf(got, "PNCN.26.0104"), indexOf(got, "PNCN.26.0105"))
+	// PNCN.26.0102 (2026-09-02) mendahului PNCN.26.0107 (2026-09-08).
+	require.Less(t, indexOf(got, "PNCN.26.0102"), indexOf(got, "PNCN.26.0107"))
 
-	// Keduanya berwaktu sama; SRV-0008 mendahului SRV-0009 lewat pemutus seri.
-	require.Less(t, indexOf(got, "PNCN.26.0108"), indexOf(got, "PNCN.26.0109"))
+	// PNCN.26.0107 dan PNCN.26.0108 berwaktu SAMA PERSIS; urutannya ditentukan pemutus seri
+	// CASEID — SRV-0007 mendahului SRV-0008.
+	require.Less(t, indexOf(got, "PNCN.26.0107"), indexOf(got, "PNCN.26.0108"))
 }
 
 // TestTabTidakDikenalJatuhKeBawaan mengunci Filter.Normalize.
@@ -196,43 +203,70 @@ func TestTabTidakDikenalJatuhKeBawaan(t *testing.T) {
 		numbers(page))
 }
 
-// TestPencarianMenyentuhClaimNoDanReferenceNo.
+// TestPencarianMenyentuhClaimNo.
 //
-// Kedua kolom itu, bukan karangan: `SetTempLostAdjuster` menyusun penyaring carinya atas
-// kunci klaim dan `REFNO_1`.
-func TestPencarianMenyentuhClaimNoDanReferenceNo(t *testing.T) {
+// HANYA Claim No, sama dengan kuerinya. Di Pega ia mencari pada dua kolom — yang kedua
+// `REFNO_1`, dan kolom itu belum tersedia di tabel mana pun yang dibaca modul ini.
+func TestPencarianMenyentuhClaimNo(t *testing.T) {
 	store := memory.NewSampleStore()
 	who := identity(t, memory.SampleLeaderLogin)
 
-	byClaim, err := store.List(context.Background(), who,
-		inboxsurvey.Filter{Tab: inboxsurvey.TabAll, Search: "0104", Limit: 100})
+	byClaim, err := store.List(context.Background(), who, inboxsurvey.Filter{
+		Tab: inboxsurvey.TabNotAnswered, Search: "0107", Limit: 100,
+	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"PNCN.26.0104"}, numbers(byClaim))
+	require.Equal(t, []string{"PNCN.26.0107"}, numbers(byClaim))
 
-	// `REF-0005` milik klaim `PNCN.26.0105` — keduanya sengaja BERBEDA nomornya, supaya uji
-	// ini benar-benar membuktikan kolom Reference No ikut dicari dan bukan kebetulan cocok
-	// dengan nomor klaimnya.
-	byReference, err := store.List(context.Background(), who,
-		inboxsurvey.Filter{Tab: inboxsurvey.TabAll, Search: "ref-0005", Limit: 100})
+	// Huruf kecil harus tetap cocok dengan nomor klaim berhuruf besar.
+	lowerCase, err := store.List(context.Background(), who, inboxsurvey.Filter{
+		Tab: inboxsurvey.TabNotAnswered, Search: "pncn.26.0107", Limit: 100,
+	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"PNCN.26.0105"}, numbers(byReference),
+	require.Equal(t, []string{"PNCN.26.0107"}, numbers(lowerCase),
 		"pencarian harus tidak peka huruf besar-kecil")
 }
 
-// TestAgingKosongBukanNolHari.
+// TestUmurTidakDapatDihitungBukanNolHari.
 //
-// Kolom `AGING` boleh NULL, dan NULL berbeda artinya dari nol. Menyamakannya akan
-// menampilkan "0" pada baris yang sebenarnya tidak punya angka.
-func TestAgingKosongBukanNolHari(t *testing.T) {
-	page := list(t, memory.SampleLeaderLogin, inboxsurvey.TabOutstanding)
+// `TGLINPUT` boleh kosong, dan "tidak dapat dihitung" berbeda artinya dari nol hari.
+// Menyamakannya akan menampilkan "0" pada baris yang sebenarnya tidak punya angka.
+func TestUmurTidakDapatDihitungBukanNolHari(t *testing.T) {
+	page := list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered)
+	now := time.Date(2026, time.September, 10, 3, 0, 0, 0, time.UTC)
 
 	for _, task := range page.Tasks {
 		if task.ClaimNumber == "PNCN.26.0101" {
-			require.Nil(t, task.AgingDays)
+			require.Nil(t, task.AgingDays(now, time.UTC))
 			return
 		}
 	}
-	t.Fatal("baris ber-Aging kosong tidak ditemukan di data contoh")
+	t.Fatal("baris tanpa tanggal masuk tidak ditemukan di data contoh")
+}
+
+// TestUmurDihitungTerhadapTanggalWIB mengunci alasan zona waktu ikut masuk.
+//
+// Baris SRV-0002 masuk 2026-09-02 pukul 09.00 UTC. Dilihat pada 2026-09-03 pukul 01.00 UTC —
+// yang di WIB sudah 2026-09-03 pukul 08.00 — umurnya SATU hari, bukan nol.
+//
+// Perbedaannya tidak akan terlihat pada baris yang sudah berumur berminggu-minggu; ia hanya
+// terlihat pada baris yang baru masuk, dan itulah baris yang paling sering dilihat orang.
+func TestUmurDihitungTerhadapTanggalWIB(t *testing.T) {
+	wib := time.FixedZone("WIB", 7*60*60)
+	now := time.Date(2026, time.September, 3, 1, 0, 0, 0, time.UTC)
+
+	page := list(t, memory.SampleLeaderLogin, inboxsurvey.TabNotAnswered)
+
+	for _, task := range page.Tasks {
+		if task.ClaimNumber != "PNCN.26.0102" {
+			continue
+		}
+
+		age := task.AgingDays(now, wib)
+		require.NotNil(t, age)
+		require.Equal(t, 1, *age, "selisihnya 16 jam, tetapi tanggal WIB-nya sudah berganti")
+		return
+	}
+	t.Fatal("baris PNCN.26.0102 tidak ditemukan di data contoh")
 }
 
 // TestJumlahTabSepadanDenganIsiTabnya.
@@ -246,7 +280,15 @@ func TestJumlahTabSepadanDenganIsiTabnya(t *testing.T) {
 
 	counts, err := store.Counts(context.Background(), who)
 	require.NoError(t, err)
-	require.Len(t, counts, len(inboxsurvey.Tabs()))
+
+	// Hanya tab TERSEDIA yang dihitung — bukan ketujuhnya.
+	tersedia := 0
+	for _, tab := range inboxsurvey.Tabs() {
+		if tab.Available() {
+			tersedia++
+		}
+	}
+	require.Len(t, counts, tersedia)
 
 	for _, count := range counts {
 		page, err := store.List(context.Background(), who,

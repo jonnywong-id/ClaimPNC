@@ -105,3 +105,44 @@ func TestBuildCashierPayload(t *testing.T) {
 		t.Fatalf("muatan salah: %+v", p)
 	}
 }
+
+// Kalimat Pre_AlertTransferkasir: investasi → INVESTMENT, selain itu KASIR.
+func TestCashierConfirmation(t *testing.T) {
+	if got := CashierConfirmation("A26", CashierServicePaid); got != "Apakah Anda Yakin Akseptasi : A26 DiTransfer Ke KASIR?" {
+		t.Fatalf("kasir = %q", got)
+	}
+	if got := CashierConfirmation("A26", CashierServiceInvest); got != "Apakah Anda Yakin Akseptasi : A26 DiTransfer Ke INVESTMENT?" {
+		t.Fatalf("investasi = %q", got)
+	}
+}
+
+// Fac-out "tidak dibayar": hanya Join Placement/Fronting, hanya DLA FAC OUT adjustment itu,
+// dan tiap pilihan menjadi baris tambahan bernilai negatif.
+func TestUnpaidFacOut(t *testing.T) {
+	available := CashierFacOuts([]DLA{
+		{Number: "H26-1", Type: DLATypeFacOut, Recipient: "REAS A", Value: "1500.25"},
+		{Number: "J26-1", Type: DLATypeCoins, Recipient: "KOAS B", Value: "10"},
+	})
+	if len(available) != 1 {
+		t.Fatalf("FAC OUT = %+v", available)
+	}
+	if got, err := ChooseUnpaidFacOut("1", []string{"H26-1"}, available); err != nil || got != nil {
+		t.Fatalf("Pembayaran Biasa mengabaikan centang: %v %v", got, err)
+	}
+	if _, err := ChooseUnpaidFacOut("2", []string{"J26-1"}, available); err == nil {
+		t.Fatal("DLA COINS tidak boleh dipilih")
+	}
+	got, err := ChooseUnpaidFacOut("3", []string{"H26-1"}, available)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("Fronting: %v %v", got, err)
+	}
+	p := CashierPayload{TAllPaymentData: []CashierPayment{{NoTrans: "A26", Nett: "100.00", AccountNo: "1"}}}
+	AddUnpaidFacOut(&p, got)
+	if len(p.TAllPaymentData) != 2 {
+		t.Fatalf("baris = %d", len(p.TAllPaymentData))
+	}
+	row := p.TAllPaymentData[1]
+	if row.NoTrans != "H26-1" || row.Nett != "-1500.25" || row.AccountNo != "1" {
+		t.Fatalf("baris fac-out = %+v", row)
+	}
+}

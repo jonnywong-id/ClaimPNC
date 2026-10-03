@@ -55,6 +55,27 @@ func (h *Handler) LODTypes(w http.ResponseWriter, r *http.Request, claimID strin
 	h.writeResponse(w, r, http.StatusOK, out)
 }
 
+// SetLODType menangani POST …/klaim/{klaimID}/lod/pilih — dropdown Tipe LOD kolom Adjustment.
+func (h *Handler) SetLODType(w http.ResponseWriter, r *http.Request, claimID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body LODRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	claim, err := h.service.SetLODType(r.Context(), usecase.LODCommand{
+		ClaimID: claimID, TaskID: body.TaskID, Object: body.Object, Coverage: body.Coverage,
+		Adjustment: body.Adjustment, Type: body.Type,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(claim)})
+}
+
 // PrintLOD menangani POST …/klaim/{klaimID}/lod — mengunduh PDF Letter of Discharge.
 func (h *Handler) PrintLOD(w http.ResponseWriter, r *http.Request, claimID string) {
 	caller, ok := h.callerOf(w, r)

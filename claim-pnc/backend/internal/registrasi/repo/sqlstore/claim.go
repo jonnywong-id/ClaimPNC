@@ -113,6 +113,13 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 		emptyTextAsNil(k.Area.PostalCode),
 		emptyTextAsNil(k.CustomerPrinciple),
 		emptyTextAsNil(k.SuspiciousComment),
+
+		// Isian InputRegisterDetail2_sect.
+		emptyTextAsNil(k.EmailLOD),
+		emptyTextAsNil(k.RemarkRecommendation),
+		emptyTextAsNil(k.SubjectEmail),
+		emptyTextAsNil(k.SalvageStatus),
+		registerMoment(k.AnalystTransferredAt),
 		k.ID,
 	}
 
@@ -157,6 +164,7 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 			if err := upsert(ctx, exec,
 				"coverage_perbarui", []any{
 					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq, emptyTextAsNil(c.Name),
+					flag(c.AnalystTransferred), flag(c.AnalystTransferred), flag(c.AnalystTransferred),
 					k.ID, itemSeq, coverageSeq},
 				"coverage_sisip", []any{
 					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq, now,
@@ -315,6 +323,9 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		city, cityID, district, districtID       sql.NullString
 		rw, rwID, postalCode                     sql.NullString
 		customerPrinciple, suspiciousComment     sql.NullString
+		emailLOD, recommendation, subjectEmail   sql.NullString
+		salvageStatus                            sql.NullString
+		analystTransferredAt                     sql.NullTime
 	)
 
 	row := exec.QueryRowContext(ctx, loadQuery(queryName), value)
@@ -333,6 +344,8 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&coinsName, &coinsRole, &shareASM, &policyLeader,
 		&country, &countryID, &province, &provinceID, &city, &cityID, &district, &districtID,
 		&rw, &rwID, &postalCode, &customerPrinciple, &suspiciousComment,
+		&emailLOD, &recommendation, &subjectEmail, &salvageStatus,
+		&analystTransferredAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
@@ -395,6 +408,13 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	}
 	k.CustomerPrinciple = customerPrinciple.String
 	k.SuspiciousComment = suspiciousComment.String
+	k.EmailLOD = emailLOD.String
+	k.RemarkRecommendation = recommendation.String
+	k.SubjectEmail = subjectEmail.String
+	k.SalvageStatus = strings.TrimSpace(salvageStatus.String)
+	if analystTransferredAt.Valid {
+		k.AnalystTransferredAt = analystTransferredAt.Time
+	}
 
 	k.Policy.Coinsurance = registrasi.Coinsurance{
 		Name:     coinsName.String,
@@ -464,7 +484,8 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 	if err != nil {
 		return fmt.Errorf("registrasi/sqlstore: membaca tahap klaim dari tugasnya: %w", err)
 	}
-	for baris.Next() {
+	// Hanya baris pertama yang dibaca — tugas terbuka tertua (urutan DIBUAT_PADA, ID).
+	if baris.Next() {
 		var (
 			id, klaimID, nomor, tahap, antrean, workbasket, pemilik sql.NullString
 			dibuat, diambil, selesai                                sql.NullTime
@@ -476,7 +497,6 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 			return fmt.Errorf("registrasi/sqlstore: membaca tugas terbuka: %w", err)
 		}
 		k.CurrentStage = tahap.String
-		break
 	}
 	if err := baris.Err(); err != nil {
 		_ = baris.Close()
@@ -524,15 +544,19 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			seq            int
 			itemID         string
 			name, location sql.NullString
+			job, birth     sql.NullString
 		)
-		if err := row.Scan(&seq, &itemID, &name, &location); err != nil {
+		if err := row.Scan(&seq, &itemID, &name, &location, &job, &birth); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris objek: %w", err)
 		}
 		itemIndex[seq] = len(k.InsuredItem)
 		// Spreading menunjuk objeknya lewat OBJECTID, bukan lewat urutan; peta ini yang
 		// menerjemahkannya kembali. Lihat spreading_daftar.
 		objectSeqByID[strings.TrimSpace(itemID)] = seq
-		k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{ID: itemID, Name: name.String, Location: location.String})
+		k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{
+			ID: itemID, Name: name.String, Location: location.String,
+			Job: strings.TrimSpace(job.String), DateOfBirth: strings.TrimSpace(birth.String),
+		})
 	}
 	if err := row.Err(); err != nil {
 		return fmt.Errorf("registrasi/sqlstore: menelusuri objek: %w", err)
@@ -552,8 +576,9 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			coverageID, cause sql.NullString
 			coverageName      sql.NullString
 			tsi               sql.NullInt64
+			analystFlag       sql.NullInt64
 		)
-		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi, &coverageName); err != nil {
+		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi, &coverageName, &analystFlag); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris coverage: %w", err)
 		}
 		i, ok := itemIndex[itemSeq]
@@ -569,6 +594,8 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			Name:        coverageName.String,
 			CauseOfLoss: cause.String,
 			TSI:         registrasi.Money(tsi.Int64),
+
+			AnalystTransferred: analystFlag.Valid && analystFlag.Int64 == 1,
 		})
 	}
 	if err := coverageRow.Err(); err != nil {
@@ -755,6 +782,14 @@ func registerMoment(t time.Time) any {
 		return nil
 	}
 	return t.In(clock.ZoneWIB)
+}
+
+// flag mengubah penanda menjadi 1 atau 0 untuk kolom NUMBER penanda warisan.
+func flag(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func timeOrNil(t time.Time) any {

@@ -156,7 +156,7 @@ export function RecoveryPage() {
                 // Panel dibiarkan TERBUKA supaya nomor yang baru terbit tetap terlihat dan
                 // dapat disalin. Daftar principal sudah dimuat ulang oleh hook-nya, jadi
                 // principal baru itu langsung dapat dipilih pada form entri.
-                void principal.refetch()
+                principal.refetch()
               }}
             />
           )}
@@ -186,8 +186,8 @@ export function RecoveryPage() {
                 <Button
                   tone="kedua"
                   onClick={() => {
-                    void form.refetch()
-                    void principal.refetch()
+                    form.refetch()
+                    principal.refetch()
                     refreshList()
                   }}
                   disabled={form.isFetching || principal.isFetching}

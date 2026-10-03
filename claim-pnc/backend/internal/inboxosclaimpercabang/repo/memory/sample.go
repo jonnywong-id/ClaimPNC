@@ -65,6 +65,7 @@ func NewSampleStore() *Store {
 					BusinessSource:  "BANK CONTOH CILEGON",
 					BusinessName:    "Aneka",
 					PolicyNumber:    "12000000000001",
+					InsuredName:     "PT CONTOH SATU",
 					ClaimNumber:     "PNC-9001",
 					RegisterDate:    day(2024, time.January, 15),
 					LossDate:        day(2024, time.January, 10),
@@ -82,12 +83,57 @@ func NewSampleStore() *Store {
 				},
 				ClaimKey:           "CLAIM-0001",
 				PolicyBusinessName: "PT CONTOH SATU",
-				InsuredName:        "PT CONTOH SATU",
 				ReserveClaimFull:   money.FromRupiah(250_000),
 				ReserveClaimASM:    money.FromRupiah(200_000),
 				Coinsurance:        money.FromRupiah(50_000),
 				TreatyShares: inboxosclaimpercabang.TreatyShares{
 					OR: money.FromRupiah(150_000), QS: money.FromRupiah(50_000),
+				},
+			},
+			// Baris ini membawa isi popup yang LENGKAP: dua objek, dua catatan progres, dan
+			// dua pesan — satu internal, satu dari adjuster luar. Pasangan internal/eksternal
+			// itu yang membuktikan penandanya benar-benar dibaca, bukan selalu bernilai sama.
+			detail: inboxosclaimpercabang.Detail{
+				Occupation:      "PERKANTORAN",
+				TotalSumInsured: money.FromRupiah(5_000_000),
+				Objects: []inboxosclaimpercabang.DetailObject{
+					{Name: "GUDANG A", Location: "JL CONTOH NO 1, CILEGON"},
+					{Name: "GUDANG B", Location: "JL CONTOH NO 2, CILEGON"},
+				},
+				ProgressHistory: []inboxosclaimpercabang.DetailProgress{
+					{
+						RecordedAt:     moment(2024, time.February, 1, 9),
+						ClaimNumber:    "PNC-9001",
+						Status1:        "SURVEY",
+						Status2:        "HASIL SURVEY BELUM ADA",
+						EnteredBy:      "PICCONTOHSATU",
+						NextFollowUpAt: day(2024, time.February, 8),
+						Status:         "OPEN",
+						Note:           "Menunggu hasil survei",
+					},
+					{
+						RecordedAt:  moment(2024, time.January, 16, 10),
+						ClaimNumber: "PNC-9001",
+						Status1:     "REGISTER",
+						EnteredBy:   "ADMINCONTOH",
+						Note:        "Klaim diregistrasi",
+					},
+				},
+				AdjusterMessages: []inboxosclaimpercabang.DetailMessage{
+					{
+						SenderName: "PICCONTOHSATU",
+						SentAt:     moment(2024, time.February, 2, 8),
+						Message:    "Mohon kirimkan laporan survei.",
+						RepliedAt:  moment(2024, time.February, 3, 11),
+						Reply:      "Laporan sedang disusun.",
+						Internal:   true,
+					},
+					{
+						SenderName: "PT ADJUSTER CONTOH",
+						SentAt:     moment(2024, time.February, 5, 15),
+						Message:    "Dokumen pendukung belum lengkap.",
+						Internal:   false,
+					},
 				},
 			},
 		},
@@ -100,6 +146,7 @@ func NewSampleStore() *Store {
 					BusinessSource:  "AGEN CONTOH",
 					BusinessName:    "PA",
 					PolicyNumber:    "12000000000002",
+					InsuredName:     "PT CONTOH DUA",
 					ClaimNumber:     "PNC-9002",
 					RegisterDate:    day(2026, time.September, 20),
 					LossDate:        day(2026, time.September, 18),
@@ -117,11 +164,40 @@ func NewSampleStore() *Store {
 				},
 				ClaimKey:           "CLAIM-0002",
 				PolicyBusinessName: "PT CONTOH DUA",
-				InsuredName:        "PT CONTOH DUA",
 				ReserveClaimFull:   money.FromRupiah(1_500_000),
 				ReserveClaimASM:    money.FromRupiah(1_500_000),
 				Coinsurance:        money.Zero,
 				TreatyShares:       inboxosclaimpercabang.TreatyShares{OR: money.FromRupiah(1_500_000)},
+			},
+			// Baris PA sengaja memakai kolom objek yang BERBEDA — nama peserta, status,
+			// KTP/Paspor, tanggal lahir — supaya varian kolom kedua ikut terbukti bekerja.
+			// Bila kedua baris contoh memakai kolom yang sama, uji tidak pernah membuktikan
+			// layar memilih variannya.
+			detail: inboxosclaimpercabang.Detail{
+				Occupation:      "",
+				TotalSumInsured: money.FromRupiah(50_000),
+				Objects: []inboxosclaimpercabang.DetailObject{
+					{
+						Name:              "BUDI CONTOH",
+						DateOfBirth:       day(1990, time.March, 17),
+						IDCard:            "3200000000000001",
+						ParticipantStatus: "KARYAWAN",
+						Job:               "TEKNISI",
+					},
+				},
+				ProgressHistory: []inboxosclaimpercabang.DetailProgress{
+					{
+						RecordedAt:  moment(2026, time.September, 25, 14),
+						ClaimNumber: "PNC-9002",
+						Status1:     "ACCEPTATION",
+						Status2:     "AUTO PROGRESS",
+						EnteredBy:   "PICCONTOHDUA",
+						Note:        "Progres tidak berubah tiga kali berturut-turut",
+					},
+				},
+				// Tanpa satu pun pesan. Grid kosong harus terbaca sebagai "belum ada
+				// komunikasi", bukan sebagai kegagalan memuat.
+				AdjusterMessages: []inboxosclaimpercabang.DetailMessage{},
 			},
 		},
 		{

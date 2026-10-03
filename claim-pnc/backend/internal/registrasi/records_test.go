@@ -75,3 +75,41 @@ func TestUploadedCountsOnlyStoredFilesBySubCategory(t *testing.T) {
 		}
 	}
 }
+
+func TestCategoriesFollowInputRegisterSubTabs(t *testing.T) {
+	got := DocumentChecklist(Claim{}, nil, nil)
+	want := []string{"PENDAFTARAN", "SURVEI", "DOKUMEN LAIN-LAIN", "PEMBAYARAN", "KOMITE", "SALVAGE"}
+	if len(got) != len(want) {
+		t.Fatalf("jumlah sub-tab = %d, mau %d", len(got), len(want))
+	}
+	for i, c := range got {
+		if c.Label != want[i] {
+			t.Fatalf("sub-tab %d = %q, mau %q", i, c.Label, want[i])
+		}
+	}
+}
+
+func TestCollectingDocumentAlwaysRequiredTypes(t *testing.T) {
+	types := []DocumentType{
+		{Category: "COLLECTING DOCUMENT", ID: "14805", Name: "A", RequiredRaw: "0"},
+		{Category: "COLLECTING DOCUMENT", ID: "14938", Name: "B", RequiredRaw: "0"},
+		{Category: "COLLECTING DOCUMENT", ID: "14999", Name: "C", RequiredRaw: "0"},
+		{Category: "SALVAGE", ID: "14805", Name: "D", RequiredRaw: "0"},
+	}
+	claim := checklistClaim(LineFire, ObjectItem{Name: "BUILDING", Group: "BUILDING(S)"}, "X")
+	var collecting, salvage []DocumentRow
+	for _, c := range DocumentChecklist(claim, types, nil) {
+		switch c.Code {
+		case "COLLECTING DOCUMENT":
+			collecting = c.Row
+		case "SALVAGE":
+			salvage = c.Row
+		}
+	}
+	if !collecting[0].Required || !collecting[1].Required || collecting[2].Required {
+		t.Fatalf("14805/14938 wajib, lainnya mengikuti STS_WAJIB: %+v", collecting)
+	}
+	if len(salvage) != 1 || salvage[0].Required {
+		t.Fatalf("SALVAGE dimuat dan pengecualiannya hanya DOKUMEN LAIN-LAIN: %+v", salvage)
+	}
+}

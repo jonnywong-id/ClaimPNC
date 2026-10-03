@@ -237,9 +237,9 @@ export function useBandingHargaSalvageDecide() {
       }),
 
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'daftar'] })
-      void client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'ringkas'] })
-      void client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'riwayat'] })
+      client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'daftar'] })
+      client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'ringkas'] })
+      client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'riwayat'] })
     },
   })
 }

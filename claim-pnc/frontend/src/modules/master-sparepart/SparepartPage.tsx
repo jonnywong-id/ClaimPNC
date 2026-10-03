@@ -9,6 +9,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 
 import { useCreateSparepart, useDecideSparepart, useSaveSparepart, useSparepartList } from './api'
 import { SparepartForm, type SparepartFormValues } from './SparepartForm'
+import { compareCodeUnits } from '@/lib/sort'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -181,7 +182,7 @@ export function SparepartPage() {
         const value = row[column]
         if (value !== '') unique.add(value)
       }
-      collected[column] = [...unique].sort()
+      collected[column] = [...unique].sort(compareCodeUnits)
     }
     return collected
   }, [rows])
@@ -341,7 +342,7 @@ export function SparepartPage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>

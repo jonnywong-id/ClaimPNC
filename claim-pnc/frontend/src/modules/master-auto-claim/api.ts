@@ -151,7 +151,7 @@ export function useCreateAutoClaim() {
     mutationFn: (input: AutoClaimInput) =>
       callAPI<AutoClaimResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-auto-claim'] })
+      client.invalidateQueries({ queryKey: ['master-auto-claim'] })
     },
   })
 }
@@ -179,7 +179,7 @@ export function useSaveAutoClaim() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-auto-claim'] })
+      client.invalidateQueries({ queryKey: ['master-auto-claim'] })
     },
   })
 }

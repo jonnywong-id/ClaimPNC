@@ -70,8 +70,8 @@ export function CompanyBrowser({ source, table }: Props) {
   }
 
   return (
-    <div className="mt-5 grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <aside className="flex flex-col overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut lg:max-h-[calc(100vh-12rem)]">
+    <div className="mt-5 grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] 2xl:grid-cols-[18rem_minmax(0,1fr)]">
+      <aside className="flex flex-col overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:self-start">
         <div className="flex items-center justify-between px-4 pt-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             Perusahaan
@@ -128,7 +128,7 @@ export function CompanyBrowser({ source, table }: Props) {
         ) : (
           <nav
             aria-label="Daftar perusahaan"
-            className="max-h-80 overflow-y-auto pb-2 lg:max-h-none"
+            className="max-h-64 overflow-y-auto pb-2 sm:max-h-80 lg:max-h-none lg:min-h-0 lg:flex-1"
           >
             <ul>
               {visible.map((c) => (

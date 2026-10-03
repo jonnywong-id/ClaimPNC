@@ -76,7 +76,47 @@ func (p *PolicyItems) Items(ctx context.Context, policy registrasi.Policy) ([]re
 		}
 		result[i].Coverage = coverage
 	}
+
+	names, err := p.treatyNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nameTreaties(result, names)
 	return result, nil
+}
+
+// treatyNames membaca NOTE master REINSURANCETYPE per ID — nama yang ditampilkan dropdown
+// Nama Treaty Pega (BrowseReinsuranceType_RD, prompt .Note, nilai .ID). Dokumen polis hanya
+// menyimpan TreatyType, sehingga tanpa ini kolom Nama Treaty klaim baru selalu kosong.
+func (p *PolicyItems) treatyNames(ctx context.Context) (map[string]string, error) {
+	rows, err := p.db.QueryContext(ctx, loadQuery("jenis_treaty_nama"))
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca nama treaty: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	names := map[string]string{}
+	for rows.Next() {
+		var id, note sql.NullString
+		if err := rows.Scan(&id, &note); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris nama treaty: %w", err)
+		}
+		names[text(id)] = text(note)
+	}
+	return names, rows.Err()
+}
+
+// nameTreaties mengisi TreatyName setiap baris spreading dari peta nama treaty.
+func nameTreaties(items []registrasi.SourceItem, names map[string]string) {
+	for i := range items {
+		for j := range items[i].Coverage {
+			for k := range items[i].Coverage[j].Spreading {
+				s := &items[i].Coverage[j].Spreading[k]
+				if s.TreatyName == "" {
+					s.TreatyName = names[strings.TrimSpace(s.TreatyType)]
+				}
+			}
+		}
+	}
 }
 
 // propertyCoverages menggabungkan coverage seluruh baris satu INDEXOBJECT.

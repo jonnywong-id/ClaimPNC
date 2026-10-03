@@ -27,7 +27,12 @@ type WorkItemDTO struct {
 	BusinessSource string `json:"sumbis"`
 	BusinessName   string `json:"cob"`
 	PolicyNumber   string `json:"no_polis"`
-	ClaimNumber    string `json:"no_klaim"`
+
+	// InsuredName KOSONG di layar Pega — kolomnya digambar, tetapi tidak satu pun rule
+	// mengisinya. Di sini diisi dari sumber yang sudah dipakai berkas ekspor layar yang sama.
+	// Lihat inboxosclaimpercabang.WorkItem.InsuredName.
+	InsuredName string `json:"nama_insured"`
+	ClaimNumber string `json:"no_klaim"`
 
 	// Kedua tanggal dikirim sebagai teks ISO, atau kosong bila memang tidak ada.
 	//
@@ -150,6 +155,7 @@ func toWorkItemDTO(item inboxosclaimpercabang.WorkItem) WorkItemDTO {
 		BusinessSource:  item.BusinessSource,
 		BusinessName:    item.BusinessName,
 		PolicyNumber:    item.PolicyNumber,
+		InsuredName:     item.InsuredName,
 		ClaimNumber:     item.ClaimNumber,
 		RegisterDate:    isoDate(item.RegisterDate),
 		LossDate:        isoDate(item.LossDate),

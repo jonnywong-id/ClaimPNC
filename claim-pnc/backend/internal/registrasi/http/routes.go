@@ -74,6 +74,9 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/lod/tipe", func(w http.ResponseWriter, r *http.Request) {
 			h.LODTypes(w, r, chi.URLParam(r, "klaimID"))
 		})
+		sub.Post("/klaim/{klaimID}/lod/pilih", func(w http.ResponseWriter, r *http.Request) {
+			h.SetLODType(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Post("/klaim/{klaimID}/lod", func(w http.ResponseWriter, r *http.Request) {
 			h.PrintLOD(w, r, chi.URLParam(r, "klaimID"))
 		})
@@ -91,6 +94,14 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/dla", func(w http.ResponseWriter, r *http.Request) {
 			h.DLA(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol PRINT di samping Nomor Akseptasi: PDF Draft Persetujuan (PrintPDFAcceptanceNote).
+		sub.Post("/klaim/{klaimID}/akseptasi/draft", func(w http.ResponseWriter, r *http.Request) {
+			h.AcceptanceNote(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Isian awal form AcceptationLOD (AcceptationLOD_PreAct).
+		sub.Post("/klaim/{klaimID}/akseptasi/awal", func(w http.ResponseWriter, r *http.Request) {
+			h.AcceptanceDefaults(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Tombol Persetujuan / Akseptasi: Simpan form AcceptationLOD (SetAdjustmentAcceptation).
 		sub.Post("/klaim/{klaimID}/akseptasi", func(w http.ResponseWriter, r *http.Request) {
 			h.AcceptSettlement(w, r, chi.URLParam(r, "klaimID"))
@@ -101,6 +112,14 @@ func Mount(r chi.Router, h *Handler) {
 		})
 		sub.Post("/klaim/{klaimID}/adjustment", func(w http.ResponseWriter, r *http.Request) {
 			h.AddSettlement(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol Tambah: ValidationAdjustment (PA: estimasi NewEstimationPA).
+		sub.Post("/klaim/{klaimID}/adjustment/tambah", func(w http.ResponseWriter, r *http.Request) {
+			h.PrepareSettlement(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Perubahan isian baris yang sudah ada: hitung, periksa, simpan (SetNilaiResikoSendiri).
+		sub.Post("/klaim/{klaimID}/adjustment/ubah", func(w http.ResponseWriter, r *http.Request) {
+			h.UpdateSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
 		// Transfer Komite pada baris Adjustment, dan putusan anggota komite.
 		sub.Post("/klaim/{klaimID}/adjustment/komite", func(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +140,10 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/penerima", func(w http.ResponseWriter, r *http.Request) {
 			h.SaveReceiver(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Data tertanggung (CIF polis) untuk tab Register. Hanya membaca.
+		sub.Get("/klaim/{klaimID}/tertanggung", func(w http.ResponseWriter, r *http.Request) {
+			h.Insured(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Get("/klaim/{klaimID}/progres", func(w http.ResponseWriter, r *http.Request) {
 			h.Progress(w, r, chi.URLParam(r, "klaimID"))
 		})
@@ -131,11 +154,23 @@ func Mount(r chi.Router, h *Handler) {
 			h.AreaOptions(w, r, chi.URLParam(r, "tingkat"))
 		})
 
+		// Pilihan Penyebab Kerugian per kode bisnis polis. Hanya membaca master.
+		sub.Get("/penyebab-kerugian", h.CauseOfLossOptions)
+
 		sub.Post("/tugas/{tugasID}/ambil", func(w http.ResponseWriter, r *http.Request) {
 			h.ClaimTask(w, r, chi.URLParam(r, "tugasID"))
 		})
 		sub.Post("/tugas/{tugasID}/selesai", func(w http.ResponseWriter, r *http.Request) {
 			h.CompleteTask(w, r, chi.URLParam(r, "tugasID"))
+		})
+		// Tombol "Transfer ke Analyst" (TrfKomiteButton → modal ClaimComitee_OC → Kirim Analyst).
+		sub.Post("/tugas/{tugasID}/transfer-analis", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferToAnalyst(w, r, chi.URLParam(r, "tugasID"))
+		})
+
+		// Tombol "Kirim ke Inputor": catatan analis lalu lompat ke Input Register.
+		sub.Post("/tugas/{tugasID}/kirim-inputor", func(w http.ResponseWriter, r *http.Request) {
+			h.SendToInputor(w, r, chi.URLParam(r, "tugasID"))
 		})
 	})
 }

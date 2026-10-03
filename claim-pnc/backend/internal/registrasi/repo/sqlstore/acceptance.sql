@@ -39,6 +39,13 @@ UPDATE POOLDATA.T_CLAIM_ADJUSTMENT
    SET PRINTLOD_DATE = COALESCE(PRINTLOD_DATE, :1), PDFTYPE = :2
  WHERE CLAIMID = :3 AND OBJECTID = :4 AND OBJECTCOVERAGEID = :5 AND ADJUSTMENTID = :6
 
+-- name: lod_tipe_simpan
+--
+-- Dropdown Tipe LOD kolom Adjustment (`.PDFType`, ShowAdjustment_sect): PDFTYPE saja.
+UPDATE POOLDATA.T_CLAIM_ADJUSTMENT
+   SET PDFTYPE = :1
+ WHERE CLAIMID = :2 AND OBJECTID = :3 AND OBJECTCOVERAGEID = :4 AND ADJUSTMENTID = :5
+
 -- name: akseptasi_isian_simpan
 --
 -- Kolom migrasi 0013.
@@ -138,12 +145,25 @@ SELECT COALESCE(MAX(g.ID_UPDATE), 0) + 1, :1, :2, :3, :4, NULL, NULL, :5, :6, :7
 
 -- name: premi_polis_caseid
 --
--- Policy.CaseID untuk parameter caseId layanan premi (GetStatusPremi langkah 3), dari
--- dokumen polis yang sama dengan polis_ambil.
-SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.CaseID'), JSON_VALUE(p.DATA_JSONBLOB, '$.CaseID'))
+-- Policy.CaseID untuk parameter caseId layanan premi (GetStatusPremi langkah 3), pada PRODKE
+-- SNAPSHOT KLAIM — versi polis yang sama dengan saat klaim diregistrasi. Dari T_GENERAL.IDPEGA;
+-- nol baris berarti `premi_polis_caseid_dokumen` yang dipakai. DATA_JSONBLOB tidak dibaca.
+SELECT g.IDPEGA
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.NOPOLIS = :1
+   AND TRIM(g.PRODKE) = :2
+   AND g.IDPEGA IS NOT NULL
+ ORDER BY CASE WHEN g.TGL_INPUT IS NULL THEN 1 ELSE 0 END, g.TGL_INPUT DESC
+ FETCH FIRST 1 ROWS ONLY
+
+-- name: premi_polis_caseid_dokumen
+--
+-- Cadangan: $.CaseID dokumen POLICYDATA pada PRODKE klaim yang sama.
+SELECT JSON_VALUE(p.POLICYDATA, '$.CaseID')
   FROM POOLDATA.JSON_POLIS p
  WHERE p.NOPOLIS = :1
-   AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+   AND CAST(p.PRODKE AS VARCHAR(30)) = :2
+   AND p.POLICYDATA IS NOT NULL
  ORDER BY p.TGL_INPUT DESC
  FETCH FIRST 1 ROWS ONLY
 

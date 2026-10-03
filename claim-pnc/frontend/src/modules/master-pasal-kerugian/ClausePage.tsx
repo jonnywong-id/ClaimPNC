@@ -260,7 +260,7 @@ export function ClausePage() {
       ) : (
         <>
           <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+            <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
               {list.isFetching ? 'Memuat…' : 'Refresh'}
             </Button>
             <Button tone="utama" onClick={openCreate} disabled={isFormOpen && editedID === null}>

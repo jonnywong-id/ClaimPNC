@@ -188,7 +188,85 @@ describe('layar kerja klaim', () => {
     expect(stages).toHaveTextContent('Input Register')
     expect(stages).toHaveTextContent('Choose Surveyor')
     // Tahap berjalan ditandai untuk pembaca layar, bukan hanya dengan warna.
-    expect(screen.getByText('Input Register')).toHaveAttribute('aria-current', 'step')
+    expect(within(stages).getByText('Input Register')).toHaveAttribute('aria-current', 'step')
+  })
+
+  // InputRegister-sect.xml: Register · Kuisioner (!IsTravel) · Unggah Dokumen (!IsTravel) · Progress,
+  // untuk semua lini (Work Owner, 2026-10-03). Tab Register memuat formulir InputRegisterDetail2
+  // sampai section InputRegisterDetail diterima.
+  it('memakai bingkai InputRegister dengan isian Input Register untuk lini selain PA', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+
+    const tabs = await screen.findByRole('tablist', { name: 'Tab InputRegister' })
+    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(
+      ['Register', 'Kuisioner', 'Unggah Dokumen', 'Progress Claim & Komunikasi'])
+    expect(within(tabs).getByRole('tab', { name: 'Register' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(tabs).queryByRole('tab', { name: 'Estimasi & Adjustment' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kirim ke Inputor' })).not.toBeInTheDocument()
+
+    // InputRegisterDetail: DATA TERTANGGUNG KLAIM dan Email Tertanggung hanya IsPA; isian ClaimSurvey
+    // (InputRegisterDetail2: Remarks Recommendation, Subject Email, Status Salvage) tidak tampil di sini.
+    expect(screen.queryByRole('region', { name: 'DATA TERTANGGUNG KLAIM' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Email Pelapor')).toBeInTheDocument()
+    expect(screen.getByLabelText('Status Pelapor')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Email Tertanggung')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Remarks Recommendation')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Status Salvage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Detail Ekspedisi')).not.toBeInTheDocument()
+
+    // Tab Kuisioner = Section/QuestionnaireClaim.
+    await userEvent.setup().click(within(tabs).getByRole('tab', { name: 'Kuisioner' }))
+    expect(screen.getByLabelText('Nama Kepentingan')).toBeVisible()
+    expect(screen.getByLabelText('Hilangnya Perlindungan')).toBeVisible()
+    expect(screen.queryByLabelText('Catatan Ke Analyst')).not.toBeInTheDocument()
+    // Ex Gratia (isPA_PNC) dan Tanggal Terima Dokumen (IsTravelPA) tidak tampil untuk Fire.
+    expect(screen.queryByText('Ex Gratia')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Tanggal Terima Dokumen')).not.toBeInTheDocument()
+  })
+
+  it('menyembunyikan Kuisioner dan Unggah Dokumen untuk Travel (!IsTravel)', async () => {
+    const travel = { ...CLAIM, klaim: { ...CLAIM.klaim, polis: { ...CLAIM.klaim.polis, lini: '005', nama_lini: 'Travel' } } }
+    stubFetch(() => ({ body: travel, status: 200 }))
+    const base = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      url === '/api/registrasi/klaim/klaim-1'
+        ? Promise.resolve(new Response(JSON.stringify(travel), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : base(url, init))
+    mount(<ClaimPage />)
+
+    const tabs = await screen.findByRole('tablist', { name: 'Tab InputRegister' })
+    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Register', 'Progress Claim & Komunikasi'])
+  })
+
+  it('menampilkan isian khusus PA menurut InputRegisterDetail', async () => {
+    const pa = { ...CLAIM, klaim: { ...CLAIM.klaim, polis: { ...CLAIM.klaim.polis, lini: '002', nama_lini: 'Personal Accident' } } }
+    stubFetch(() => ({ body: pa, status: 200 }))
+    const base = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      url === '/api/registrasi/klaim/klaim-1'
+        ? Promise.resolve(new Response(JSON.stringify(pa), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : base(url, init))
+    mount(<ClaimPage />)
+
+    const tabs = await screen.findByRole('tablist', { name: 'Tab InputRegister' })
+    expect(within(tabs).getByRole('tab', { name: 'Kuisioner' })).toBeInTheDocument()
+    expect(within(tabs).queryByRole('tab', { name: 'Investigasi' })).not.toBeInTheDocument()
+
+    expect(screen.getByRole('region', { name: 'DATA TERTANGGUNG KLAIM' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/No KTP/)).toBeInTheDocument()
+    expect(screen.getByText('Detail Ekspedisi')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email Tertanggung')).toBeInTheDocument()
+    expect(screen.getByLabelText('Catatan Ke Analyst')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tanggal Terima Dokumen')).toBeInTheDocument()
+    expect(screen.getByText('Ex Gratia')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Remarks Recommendation')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Subject Email')).not.toBeInTheDocument()
+
+    // Tanggal Keluar Rawat Inap hanya setelah Rawat Inap dicentang.
+    expect(screen.queryByLabelText('Tanggal Keluar Rawat Inap')).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByLabelText('Apakah Melakukan Rawat Inap ?'))
+    expect(screen.getByLabelText('Tanggal Keluar Rawat Inap')).toBeInTheDocument()
   })
 
   it('mengirim uang sebagai sen dan share sebagai persen dikali sepuluh ribu', async () => {
@@ -239,7 +317,7 @@ describe('layar kerja klaim', () => {
     const slik = await screen.findByLabelText('Nomor SLIK')
     await waitFor(() => expect(slik).toHaveAttribute('aria-invalid', 'true'))
 
-    const report = screen.getByLabelText('Tanggal lapor')
+    const report = screen.getByLabelText('Tanggal Lapor')
     expect(report).toHaveAttribute('aria-invalid', 'true')
 
     expect(screen.getByText('2 ketentuan belum terpenuhi:')).toBeInTheDocument()
@@ -367,8 +445,9 @@ describe('tahap Input Estimasi', () => {
     },
     dokumen: {
       kategori: [
-        { kode: 'REGISTER', nama: 'Register', dokumen: [{ id: '14901', jenis_id: '10064', nama: 'PELAPORAN KLAIM', wajib: true, minimal: '1', terunggah: 2 }] },
-        { kode: 'SURVEY', nama: 'Survey', dokumen: [] },
+        { kode: 'REGISTER', nama: 'PENDAFTARAN', dokumen: [{ id: '14901', jenis_id: '10064', nama: 'PELAPORAN KLAIM', wajib: true, minimal: '1', terunggah: 2 }] },
+        { kode: 'SURVEY', nama: 'SURVEI', dokumen: [] },
+        { kode: 'SALVAGE', nama: 'SALVAGE', dokumen: [] },
       ],
       berkas: [
         {
@@ -503,6 +582,111 @@ describe('tahap Input Estimasi', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Penerima Klaim' }))
     expect(screen.getByRole('columnheader', { name: 'Alamat' })).toBeInTheDocument()
+
+    // Kirim ke Inputor (local action AnalystRemarks) membuka modal catatan.
+    await user.click(screen.getByRole('button', { name: 'Kirim ke Inputor' }))
+    expect(screen.getByRole('dialog', { name: 'Kirim ke Inputor' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: 'Kirim ke Inputor' })).not.toBeInTheDocument()
+  })
+
+  // Tahap Estimation PA (Assignment4) ditutup flow action InputSurveyor — layar ClaimSurvey_sect
+  // dengan perbedaan PA: tanpa Status Klaim (!IsPA), tanpa Survey dan Kirim ke Admin, dengan tab
+  // Investigasi, serta Submit/Back untuk memajukan tahap.
+  // Register_Flow: Estimation PA → Investigator (Assignment11, workbasket InvestigatorPNC) →
+  // Send To Analis. Investigator ditutup flow action InputInvestigator, dengan bingkai
+  // ClaimSurvey_sect yang sama dan tab Investigasi terbuka lebih dulu.
+  it('Investigator PA memakai layar ClaimSurvey dan menutup tahap dengan InputInvestigator', async () => {
+    let completed: { url: string; body: unknown } | null = null
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim, tahap_kini: 'investigator',
+        polis: { ...AT_ESTIMATE.klaim.polis, lini: '002', nama_lini: 'Personal Accident', jenis_bisnis: 'PersonalAccident' },
+      },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'investigator', nama_tahap: 'Investigator', tindakan_keluar: 'InputInvestigator' },
+    })
+    const base = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      if (url.endsWith('/selesai')) {
+        completed = { url, body: init?.body ? JSON.parse(init.body as string) : null }
+        return Promise.resolve(new Response(JSON.stringify(AT_ESTIMATE), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return base(url, init)
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('region', { name: 'InputInvestigator' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Investigasi' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByLabelText('Status Klaim')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() => expect(completed).not.toBeNull())
+    expect(completed!.body).toMatchObject({ action: 'InputInvestigator', kembali: false })
+  })
+
+  it('tugas Investigator di antrean harus diambil sebelum Submit', async () => {
+    let took = ''
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim, tahap_kini: 'investigator',
+        polis: { ...AT_ESTIMATE.klaim.polis, lini: '002', nama_lini: 'Personal Accident', jenis_bisnis: 'PersonalAccident' },
+      },
+      tugas: {
+        ...AT_ESTIMATE.tugas, tahap: 'investigator', nama_tahap: 'Investigator', tindakan_keluar: 'InputInvestigator',
+        antrean: 'InvestigatorPNC', pemilik: '', dapat_diambil: true,
+      },
+    })
+    const base = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      if (url.endsWith('/ambil')) {
+        took = url
+        return Promise.resolve(new Response(JSON.stringify({ ...AT_ESTIMATE.tugas, klaim_id: 'klaim-1' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return base(url, init)
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByText(/masih di antrean InvestigatorPNC/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Ambil' }))
+    await waitFor(() => expect(took.endsWith('/ambil')).toBe(true))
+  })
+
+  it('Estimation PA menampilkan layar InputSurveyor versi PA', async () => {
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim, tahap_kini: 'estimasi-pa',
+        polis: { ...AT_ESTIMATE.klaim.polis, lini: '002', nama_lini: 'Personal Accident', jenis_bisnis: 'PersonalAccident' },
+      },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'estimasi-pa', nama_tahap: 'Estimation', tindakan_keluar: 'InputSurveyor' },
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('region', { name: 'InputSurveyor' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Status Klaim')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kirim ke Admin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Survey' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled()
+
+    await user.click(screen.getByRole('tab', { name: 'Investigasi' }))
+    // TabInvestigasi-sect.xml: hanya "Hasil investigasi" (Input Investigasi bersyarat 1=2).
+    expect(await screen.findByRole('tab', { name: 'Hasil investigasi' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Input Investigasi' })).not.toBeInTheDocument()
+    expect(screen.getByText('Tanggal Investigasi')).toBeInTheDocument()
+
+    // InputEstimasi-sect.xml: PA tanpa Estimasi Pembayaran, dengan Catatan Untuk Analyst.
+    await user.click(screen.getByRole('tab', { name: 'Estimasi & Adjustment' }))
+    expect(screen.queryByRole('tab', { name: 'Estimasi Pembayaran' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Catatan Untuk Analyst' }))
+    expect(screen.getByText('Catatan Dari Compliance')).toBeInTheDocument()
+    expect(screen.getByText('Komentar Dari Analyst Doctor')).toBeInTheDocument()
   })
 
   // Sub-tab Estimasi Pembayaran InputSurveyor adalah section InputEstimasiDetail yang sama
@@ -582,11 +766,12 @@ describe('tahap Input Estimasi', () => {
     const row = await screen.findByRole('button', { name: /Adjustment 1/ })
     expect(row).toHaveAttribute('aria-expanded', 'false')
     await user.click(row)
-    const detail = screen.getByRole('group', { name: 'Detail adjustment Interim' })
-    expect(within(detail).getByText('Lainnya')).toBeInTheDocument()
-    expect(within(detail).getByText('65,0000')).toBeInTheDocument()
+    // Baris yang belum diakseptasi tetap dapat diubah (InputAdjustment: nonaktif hanya bila AcceptanceStatus != '').
+    const detail = screen.getByRole('group', { name: 'Ubah adjustment 1' })
+    expect(within(detail).getByLabelText('Tipe Resiko Sendiri')).toHaveValue('3')
+    expect(within(detail).getByRole('button', { name: 'Hapus' })).toBeDisabled()
     await user.click(row)
-    expect(screen.queryByRole('group', { name: 'Detail adjustment Interim' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Ubah adjustment 1' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Penerima Klaim' }))
     expect(screen.getByRole('cell', { name: 'TERTANGGUNG UJI' })).toBeInTheDocument()
@@ -725,9 +910,10 @@ describe('tahap Input Estimasi', () => {
 
   // Tombol Tambah membuka baris isian di dalam grid Adjustment dan mengirimnya ke rute adjustment.
   it('Tambah pada grid Adjustment mengirim isian adjustment', async () => {
+    // Klaim Ex Gratia: tabel treaty adjustment hanya tampil di kontainer `.ExGratia = 1`.
     const atSurveyor = {
       ...AT_ESTIMATE,
-      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor' },
+      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor', ex_gratia: true },
       tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
     }
     let sent: { url: string; body: unknown } | null = null
@@ -747,7 +933,24 @@ describe('tahap Input Estimasi', () => {
         }
       } else if (url.endsWith('/adjustment')) {
         sent = { url, body: init?.body ? JSON.parse(init.body as string) : null }
-        body = atSurveyor
+        // Isian belum lengkap ditolak (seperti SetNilaiResikoSendiri); lengkap tersimpan sebagai baris 1.
+        const complete = (sent.body as { persen_resiko?: number } | null)?.persen_resiko
+        if (!complete) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ kode: 'validasi_gagal', pesan: 'x', detail: [{ kode: 'a', field: '', pesan: 'Tipe Resiko Harus Diisi' }] }), {
+              status: 422,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+        }
+        const cov = atSurveyor.klaim.objek[0]!
+        body = {
+          ...atSurveyor,
+          klaim: {
+            ...atSurveyor.klaim,
+            objek: [{ ...cov, coverage: [{ ...cov.coverage[0]!, adjustment: [{ tipe_pembayaran: '1', nama_tipe_pembayaran: 'Final', status_akseptasi: '' }] }] }],
+          },
+        }
       } else if (url === '/api/registrasi/alur') body = ALUR
       else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }] }
       else if (url.startsWith('/api/registrasi/klaim/')) body = atSurveyor
@@ -768,7 +971,8 @@ describe('tahap Input Estimasi', () => {
     expect(await within(row).findByText('9.000.000,00')).toBeInTheDocument()
     expect(within(row).getByText('34,5000')).toBeInTheDocument()
     expect(within(row).getByRole('cell', { name: 'QS' })).toBeInTheDocument()
-    await user.click(within(row).getByRole('button', { name: 'Simpan' }))
+    // Tanpa Simpan: isian yang ditinggalkan langsung disimpan.
+    await user.tab()
 
     await waitFor(() => expect(sent).not.toBeNull())
     expect(sent!.body).toMatchObject({
@@ -957,12 +1161,35 @@ describe('tahap Input Estimasi', () => {
     expect(screen.getByText('Ya')).toBeInTheDocument()
     expect(screen.getByText('laporan.pdf')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unggah Dokumen' })).toBeEnabled()
+    // Sub-tab InputRegister-sect.xml: SALVAGE tampil selain Travel dan PA.
+    const docTabs = screen.getByRole('tablist', { name: 'Kategori dokumen' })
+    expect(within(docTabs).getByRole('tab', { name: 'PENDAFTARAN' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(docTabs).getByRole('tab', { name: 'SALVAGE' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Lihat dokumen (2)' }))
+    expect(screen.getAllByText(/laporan\.pdf/).length).toBeGreaterThan(1)
 
     await user.click(screen.getByRole('tab', { name: 'Progress Claim & Komunikasi' }))
     expect(await screen.findByText('Auto Create Register')).toBeInTheDocument()
     expect(screen.getByText('POLIS BELUM ADA')).toBeInTheDocument()
     expect(screen.getByText('Mohon laporan survey')).toBeInTheDocument()
     expect(screen.getByText('Sudah dikirim')).toBeInTheDocument()
+  })
+
+  it('sub-tab Unggah Dokumen mengikuti lini: PA tanpa SALVAGE, Travel hanya DOKUMEN TRAVEL', async () => {
+    const cases: [string, string[], string[]][] = [
+      ['002', ['PENDAFTARAN', 'SURVEI'], ['SALVAGE', 'DOKUMEN TRAVEL']],
+      ['005', ['DOKUMEN TRAVEL'], ['PENDAFTARAN', 'SALVAGE']],
+    ]
+    for (const [lini, expectTabs, absent] of cases) {
+      stubEstimate({ ...AT_ESTIMATE, klaim: { ...AT_ESTIMATE.klaim, polis: { ...AT_ESTIMATE.klaim.polis, lini } } })
+      const view = mount(<ClaimPage />)
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('tab', { name: 'Unggah Dokumen' }))
+      const docTabs = await screen.findByRole('tablist', { name: 'Kategori dokumen' })
+      for (const t of expectTabs) expect(within(docTabs).getByRole('tab', { name: t })).toBeInTheDocument()
+      for (const t of absent) expect(within(docTabs).queryByRole('tab', { name: t })).not.toBeInTheDocument()
+      view.unmount()
+    }
   })
 
   // Tombol Unggah Dokumen: berkas, jenis dokumen baris itu, dan catatan dikirim multipart.

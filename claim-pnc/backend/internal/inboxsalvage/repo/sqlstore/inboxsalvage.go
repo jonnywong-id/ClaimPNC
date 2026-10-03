@@ -1349,8 +1349,12 @@ func nullIfEmpty(value string) any {
 
 // numberOrNull mengirim NULL alih-alih teks kosong untuk kolom bertipe angka.
 //
-// Isian kosong TIDAK boleh dikirim sebagai `""`: `TO_NUMBER(”)` gagal di Oracle dengan
-// `ORA-01722`, dan galat itu sampai ke pengguna sebagai kegagalan mentah.
+// Isian kosong TIDAK boleh dikirim sebagai `""`, karena ekspresi berikut gagal di Oracle
+// dengan `ORA-01722`:
+//
+//	TO_NUMBER('')
+//
+// dan galat itu sampai ke pengguna sebagai kegagalan mentah.
 //
 // Nilainya sendiri tetap dikirim sebagai TEKS, bukan sebagai `float64`. `D-51` menetapkan
 // nilai uang disimpan presisi penuh; mengubahnya menjadi bilangan pecahan biner di sini

@@ -54,9 +54,9 @@ func FromProfile(p Profile, sekarang time.Time) User {
 
 		DetailBranchCode: p.DetailBranchCode,
 
-		Active: true,
-		CreatedAt:  sekarang,
-		UpdatedAt:  sekarang,
+		Active:    true,
+		CreatedAt: sekarang,
+		UpdatedAt: sekarang,
 	}
 }
 

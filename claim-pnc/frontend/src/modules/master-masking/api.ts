@@ -157,7 +157,7 @@ export function useSaveMasking() {
       // Seluruh daftar dimuat ulang dari server, bukan disunting di cache. Pada
       // penambahan, ID barunya hanya diketahui server; dan karena penyaring ikut di dalam
       // kunci, baris baru bisa saja tidak cocok dengan penyaring yang sedang aktif.
-      void client.invalidateQueries({ queryKey: ['master-masking'] })
+      client.invalidateQueries({ queryKey: ['master-masking'] })
     },
   })
 }
@@ -182,7 +182,7 @@ export function useSetMaskingStatus() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-masking'] })
+      client.invalidateQueries({ queryKey: ['master-masking'] })
     },
   })
 }

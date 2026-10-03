@@ -469,7 +469,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       </div>
 
       {tab === 'Survey' && <SurveyTab claimID={klaim.id} />}
-      {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} />}
+      {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} line={klaim.polis.lini} />}
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
 
       {tab === 'Estimasi Pembayaran' && (

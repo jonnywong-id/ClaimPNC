@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/platform/clock"
@@ -204,6 +205,7 @@ func (h *Handler) ViewClaim(w http.ResponseWriter, r *http.Request, claimID stri
 	if summary.Task != nil {
 		t := taskDTO(*summary.Task, h.service.Flow())
 		t.Workable = h.service.CanWork(*summary.Task, caller)
+		t.Analyst = registrasi.IsAnalyst(caller.Roles)
 		response.Task = &t
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
@@ -302,6 +304,25 @@ func (h *Handler) AreaOptions(w http.ResponseWriter, r *http.Request, level stri
 	h.writeResponse(w, r, http.StatusOK, AreaOptionsResponse{Option: body})
 }
 
+// CauseOfLossOptions menangani GET /api/registrasi/penyebab-kerugian?bisnis=….
+//
+// bisnis adalah kode bisnis polis (Quotation.BusinessCode) — parameter id autocomplete Pega.
+func (h *Handler) CauseOfLossOptions(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+	option, err := h.service.CauseOfLossOptions(r.Context(), r.URL.Query().Get("bisnis"))
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	body := make([]CauseOfLossOptionDTO, 0, len(option))
+	for _, o := range option {
+		body = append(body, CauseOfLossOptionDTO{ID: o.ID, Name: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, CauseOfLossOptionsResponse{Option: body})
+}
+
 // ClaimTask menangani POST /api/registrasi/tugas/{taskID}/ambil.
 func (h *Handler) ClaimTask(w http.ResponseWriter, r *http.Request, taskID string) {
 	caller, ok := h.callerOf(w, r)
@@ -350,6 +371,65 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request, taskID st
 	h.writeResponse(w, r, http.StatusOK, response)
 }
 
+// SendToInputor menangani POST /api/registrasi/tugas/{taskID}/kirim-inputor.
+func (h *Handler) SendToInputor(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body SendToInputorRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.SendToInputor(r.Context(), usecase.SendToInputorCommand{
+		TaskID: taskID,
+		Note:   body.Note,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// TransferToAnalyst menangani POST /api/registrasi/tugas/{taskID}/transfer-analis.
+func (h *Handler) TransferToAnalyst(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body TransferToAnalystRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.TransferToAnalyst(r.Context(), usecase.TransferToAnalystCommand{
+		TaskID:     taskID,
+		ObjectID:   body.ObjectID,
+		CoverageID: body.CoverageID,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
 // ── Terjemahan antara bentuk wire dan tipe modul ─────────────────────────────────
 
 const dateLayout = "2006-01-02"
@@ -368,6 +448,18 @@ func parseDate(s, name string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("%s harus berformat YYYY-MM-DD", name)
 	}
 	return t, nil
+}
+
+// birthDate menormalkan ASMDATEOFBIRTH T_PERSONLIST — yyyymmdd atau dd/mm/yyyy — menjadi
+// YYYY-MM-DD. Bentuk lain dikosongkan, bukan ditebak.
+func birthDate(raw string) string {
+	raw = strings.TrimSpace(raw)
+	for _, layout := range []string{"20060102", "02/01/2006"} {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t.Format(dateLayout)
+		}
+	}
+	return ""
 }
 
 func formatDate(t time.Time) string {
@@ -441,6 +533,11 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		},
 		CustomerPrinciple: b.CustomerPrinciple,
 		SuspiciousComment: b.SuspiciousComment,
+
+		EmailLOD:             b.EmailLOD,
+		RemarkRecommendation: b.RemarkRecommendation,
+		SubjectEmail:         b.SubjectEmail,
+		SalvageStatus:        b.SalvageStatus,
 		Reporter: registrasi.Reporter{
 			Name:          b.Reporter.Name,
 			Phone:         b.Reporter.Phone,
@@ -485,10 +582,12 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 	insuredItem := make([]InsuredItemDTO, 0, len(k.InsuredItem))
 	for _, o := range k.InsuredItem {
 		item := InsuredItemDTO{
-			ID:       o.ID,
-			Name:     o.Name,
-			Location: o.Location,
-			Coverage: make([]CoverageDTO, 0, len(o.Coverage)),
+			ID:          o.ID,
+			Name:        o.Name,
+			Location:    o.Location,
+			Coverage:    make([]CoverageDTO, 0, len(o.Coverage)),
+			Job:         o.Job,
+			DateOfBirth: birthDate(o.DateOfBirth),
 		}
 		for _, c := range o.Coverage {
 			cov := CoverageDTO{
@@ -499,6 +598,8 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 				Spreading:   make([]SpreadingDTO, 0, len(c.Spreading)),
 				Item:        itemDTO(c.Item),
 				Adjustment:  settlementDTO(c.Settlement),
+
+				AnalystTransferred: c.AnalystTransferred,
 			}
 			for _, s := range c.Spreading {
 				cov.Spreading = append(cov.Spreading, SpreadingDTO{
@@ -532,6 +633,10 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			CreditGuarantee: k.Policy.CreditGuarantee,
 			CoinsType:       k.Policy.TypeOfCoins,
 			CoinsRole:       k.Policy.Coinsurance.Role,
+
+			SourceOfBusinessName: k.Policy.SourceOfBusinessName,
+			BusinessName:         k.Policy.BusinessName,
+			BranchCode:           k.Policy.BranchCode,
 		},
 		Receiver:     receiverDTO(k.Receiver),
 		DateOfLoss:   formatDate(k.DateOfLoss),
@@ -549,6 +654,11 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		},
 		CustomerPrinciple: k.CustomerPrinciple,
 		SuspiciousComment: k.SuspiciousComment,
+
+		EmailLOD:             k.EmailLOD,
+		RemarkRecommendation: k.RemarkRecommendation,
+		SubjectEmail:         k.SubjectEmail,
+		SalvageStatus:        k.SalvageStatus,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,
@@ -569,6 +679,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		ProcessStatus:          string(k.ProcessStatus),
 		ClaimStatus:            string(k.ClaimStatus),
 		ClaimStatusName:        k.ClaimStatusName,
+		AnalystTransferred:     !k.AnalystTransferredAt.IsZero(),
 		ClaimFlag:              string(k.ClaimFlag),
 		ProgressPositionStatus: string(k.ProgressPositionStatus),
 		CurrentStage:           k.CurrentStage,

@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSaveDateTime>20230510T083707.063 GMT</pxSaveDateTime>
+<pyCircumstanceDate/>
+<pyDeleteSQL/>
+<pyRuleParamsStreamName/>
+<pyTemporaryObject/>
+<pxInstanceLockedRuleSetVersion/>
+<pySaveSQL/>
+<pyHandlerFlow/>
+<pyUsage/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETTOTALTUNAIHARIANPAFORTKA</pxInsName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETTOTALTUNAIHARIANPAFORTKA #20230416T120352.709 GMT</pzDocumentKey>
+<pzChecksum>-835939183</pzChecksum>
+<pyCircumstanceType/>
+<pyCircumstanceProp/>
+<pxSiblingCount/>
+<pxInstanceLockedKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyInterface/>
+<pyDocumentTitle/>
+<pyJavaStream/>
+<pyStreamName/>
+<pyRuleStarts/>
+<pyRuleSetVersion>01-02-05</pyRuleSetVersion>
+<pxInstanceLockedCreateDateTime/>
+<pxHostId>jboss10403</pxHostId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHistoryObject>false</pyHistoryObject>
+<pyOpenSQL/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyFormPost/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStatus/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxOriginalCreateOpName/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetTotalTunaiHarianPAForTKA</pyRuleName>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20261003T090451.854 GMT</pyShowJavaWindowName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyIsFromManageChangeLP/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDeletedObject/>
+<pyCheckInRuleSet/>
+<pxMoveFromSystem/>
+<pyDescription/>
+<pyRequestType>GetTotalTunaiHarianPAForTKA</pyRequestType>
+<pyLabelOld>Get Total Tunai Harian PA For TKA</pyLabelOld>
+<pyLabel>Get Total Tunai Harian PA For TKA</pyLabel>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxInstanceLockedRuleSet/>
+<pyRelativePath/>
+<pyWorkKey/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxOriginalCreateSystemID/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyMemo>done</pyMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyMethodStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateDateTime>20230416T120352.709 GMT</pxCreateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETTOTALTUNAIHARIANPA #20230412T095804.740 GMT</pzOriginalInstanceKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxUpdateDateTime>20230510T083707.054 GMT</pxUpdateDateTime>
+<pyTempText>saved</pyTempText>
+<pxCommitDateTime>20230512T104417.000 GMT</pxCommitDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzRuleSetVersionPatch>05</pzRuleSetVersionPatch>
+<pxInstanceLockedBy/>
+<pxMoveImportDateTime>20230512T104416.908 GMT</pxMoveImportDateTime>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyCircumstanceVal/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETTOTALTUNAIHARIANPAFORTKA #20230416T120352.709 GMT</pzInsKey>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pySpecialtyComponentData/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETTOTALTUNAIHARIANPAFORTKA</pxInsId>
+<pyRuleFormStatusTime>20261003T090451.823 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplate/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyCircumstanceTemplate/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetTotalTunaiHarianPAForTKA</pxTabLabel>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyTemplateInputBox/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDateProp/>
+<pyCircumstanceDefinition/>
+<pyRuleEnds/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyBrowseSQL>SELECT SUM (C.NILAIAKSEPTASI*C.CURRENCYVALUE) AS "Country"
+  FROM POOLDATA.T_CLAIM_ADJUSTMENT c
+ WHERE     (STATUSAKSEPTASI NOT IN ('2') OR STATUSAKSEPTASI IS NULL)
+       AND (STATUSAKSEPTASILOD IS NULL OR STATUSAKSEPTASILOD != '0')
+       AND claimid IN
+              (SELECT a.claimid
+                 FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE a,
+                      POOLDATA.T_CLAIM_PNC b
+                WHERE (A.COVERAGEID = {TempCariAksep.District} AND B.NOPOLIS = {TempCariAksep.NPWP}) and a.claimid = b.claimid and A.OBJECTID = {TempCariAksep.Other})</pyBrowseSQL>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWindowTitle/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRulePage>
+</pyRulePage>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>false</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pySave>false</pySave>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-05 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETTOTALTUNAIHARIANPAFORTKA #20230416T120352.709 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

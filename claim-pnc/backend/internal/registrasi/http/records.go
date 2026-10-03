@@ -95,6 +95,9 @@ type CommunicationDTO struct {
 	Reply       string `json:"balasan"`
 	ReplierName string `json:"penjawab"`
 	RepliedAt   string `json:"tanggal_balasan"`
+
+	// Channel adalah COMMUNICATE_FROM; "SENDTOINPUTOR" untuk catatan tombol Kirim ke Inputor.
+	Channel string `json:"kanal"`
 }
 
 // ProgressResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/progres.
@@ -188,7 +191,65 @@ func (h *Handler) Progress(w http.ResponseWriter, r *http.Request, claimID strin
 		body.Communication = append(body.Communication, CommunicationDTO{
 			CaseID: c.CaseID, ID: c.ID, SentAt: formatMoment(c.SentAt), SenderName: c.SenderName,
 			Message: c.Message, Reply: c.Reply, ReplierName: c.ReplierName, RepliedAt: formatMoment(c.RepliedAt),
+			Channel: c.Channel,
 		})
+	}
+	h.writeResponse(w, r, http.StatusOK, body)
+}
+
+// InsuredPhoneDTO adalah satu baris grid Telephone dan Email.
+type InsuredPhoneDTO struct {
+	Type      string `json:"jenis"`
+	TypeName  string `json:"nama_jenis"`
+	Code      string `json:"kode"`
+	Number    string `json:"nomor"`
+	Extension string `json:"ekstensi"`
+}
+
+// InsuredAddressDTO adalah satu alamat tertanggung dari CIF polis.
+type InsuredAddressDTO struct {
+	Type         string            `json:"jenis"`
+	TypeName     string            `json:"nama_jenis"`
+	Address      string            `json:"alamat"`
+	City         string            `json:"kota"`
+	CityName     string            `json:"nama_kota"`
+	District     string            `json:"kecamatan"`
+	DistrictName string            `json:"nama_kecamatan"`
+	RW           string            `json:"kelurahan"`
+	RWName       string            `json:"nama_kelurahan"`
+	ZipCode      string            `json:"kode_pos"`
+	Phones       []InsuredPhoneDTO `json:"telepon"`
+}
+
+// InsuredResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/tertanggung.
+type InsuredResponse struct {
+	IDCard    string              `json:"no_ktp"`
+	Addresses []InsuredAddressDTO `json:"alamat"`
+}
+
+// Insured menangani GET /api/registrasi/klaim/{klaimID}/tertanggung.
+func (h *Handler) Insured(w http.ResponseWriter, r *http.Request, claimID string) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+	p, err := h.service.InsuredProfile(r.Context(), claimID)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	body := InsuredResponse{IDCard: p.IDCard, Addresses: make([]InsuredAddressDTO, 0, len(p.Addresses))}
+	for _, a := range p.Addresses {
+		dto := InsuredAddressDTO{
+			Type: a.Type, TypeName: a.TypeName, Address: a.Address, City: a.City, CityName: a.CityName,
+			District: a.District, DistrictName: a.DistrictName, RW: a.RW, RWName: a.RWName, ZipCode: a.ZipCode,
+			Phones: make([]InsuredPhoneDTO, 0, len(a.Phones)),
+		}
+		for _, t := range a.Phones {
+			dto.Phones = append(dto.Phones, InsuredPhoneDTO{
+				Type: t.Type, TypeName: t.TypeName, Code: t.Code, Number: t.Number, Extension: t.Extension,
+			})
+		}
+		body.Addresses = append(body.Addresses, dto)
 	}
 	h.writeResponse(w, r, http.StatusOK, body)
 }

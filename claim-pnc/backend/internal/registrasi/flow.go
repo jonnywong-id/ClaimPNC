@@ -222,6 +222,16 @@ func (d Definition) Stage(id string) (Stage, bool) {
 	return s.Stage, true
 }
 
+// StageByTicket mengambil tahap yang menjadi TUJUAN Ticket rule bernama itu (Stage.LateralJump).
+func (d Definition) StageByTicket(ticket string) (Stage, bool) {
+	for _, s := range d.node {
+		if s.Kind == NodeStage && s.Stage.LateralJump != "" && s.Stage.LateralJump == ticket {
+			return s.Stage, true
+		}
+	}
+	return Stage{}, false
+}
+
 // Stages mengembalikan seluruh tahap, terurut tetap berdasarkan pengenalnya.
 //
 // Urutannya sengaja tidak mengikuti urutan alur: alur ini bercabang, sehingga "urutan"
