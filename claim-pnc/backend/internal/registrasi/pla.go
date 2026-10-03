@@ -117,7 +117,7 @@ type PLADocument struct {
 
 // PLASource adalah seam ke data PLA: CoinsList, master penerima, nomor, dan T_PLALIST.
 type PLASource interface {
-	CoinsMembers(ctx context.Context, policyNumber string) ([]PLACoinsMember, error)
+	CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]PLACoinsMember, error)
 	Recipient(ctx context.Context, code, name string) (PLARecipientInfo, error)
 	Previous(ctx context.Context, claimID, recipientCode string) (PLAPrevious, bool, error)
 
@@ -133,6 +133,10 @@ type PLASource interface {
 
 	// Signature membaca penanda tangan PLA sebuah entitas (POOLDATA.MTTD).
 	Signature(ctx context.Context, entity string) (name string, png []byte, err error)
+
+	// LODEmails membaca bahan isian Email LOD: email tertanggung dari pengkinian data
+	// klaim dan email PIC teknik. Kosong bila tidak ada barisnya.
+	LODEmails(ctx context.Context, claimNumber, technicalPIC string) (insured, pic string, err error)
 }
 
 // PLARenderer mengubah PLA menjadi dokumen yang diunduh.

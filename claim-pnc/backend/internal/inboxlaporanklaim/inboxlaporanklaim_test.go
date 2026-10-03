@@ -110,21 +110,13 @@ func TestLegacyAssignmentKeyOnlyForLegacyRows(t *testing.T) {
 	}
 }
 
-func TestReportNumberIsZeroPaddedSoTextOrderMatchesIssueOrder(t *testing.T) {
-	// D-71 butir 2 mencatat cacat ini pada nomor klaim: tanpa pemadatan, ".10" mendahului
-	// ".9" saat diurutkan sebagai teks. Ia diketahui sebelum baris pertama terbit di sini,
-	// sehingga tidak dibawa.
-	ninth := inboxlaporanklaim.FormatReportNumber(2026, 9)
-	tenth := inboxlaporanklaim.FormatReportNumber(2026, 10)
-
-	if ninth != "RCVN.26.0009" {
-		t.Fatalf("nomor kesembilan = %q, ingin RCVN.26.0009", ninth)
-	}
-	if tenth != "RCVN.26.0010" {
-		t.Fatalf("nomor kesepuluh = %q, ingin RCVN.26.0010", tenth)
-	}
-	if !(ninth < tenth) {
-		t.Fatalf("urutan teks %q >= %q — pengurutan tidak lagi sesuai urutan penerbitan", ninth, tenth)
+func TestReportNumberIsNotZeroPadded(t *testing.T) {
+	// Work Owner, 2026-09-29: RCVN.26.1 lalu RCVN.26.2 — nomor urut bertambah tanpa nol
+	// di depan.
+	for seq, want := range map[int64]string{1: "RCVN.26.1", 2: "RCVN.26.2", 10: "RCVN.26.10"} {
+		if got := inboxlaporanklaim.FormatReportNumber(2026, seq); got != want {
+			t.Fatalf("nomor ke-%d = %q, ingin %q", seq, got, want)
+		}
 	}
 }
 
@@ -351,3 +343,19 @@ func TestSeamProvidesNoDeleteOperation(t *testing.T) {
 }
 
 type fakeRepo struct{}
+
+func TestRegisteredReportIsNoLongerEditable(t *testing.T) {
+	// Work Owner, 2026-09-29: RCVN yang sudah menjadi PNCN terkunci.
+	open := inboxlaporanklaim.ClaimReport{ID: "RCVN.26.1", Origin: inboxlaporanklaim.OriginNew}
+	if !open.Editable() {
+		t.Fatal("RCVN tanpa nomor klaim harus dapat disunting")
+	}
+	open.ClaimNumber = "PNCN.26.15"
+	if open.Editable() {
+		t.Fatal("RCVN yang sudah bernomor klaim tidak boleh dapat disunting")
+	}
+	legacy := inboxlaporanklaim.ClaimReport{ID: "RCV-0002", Origin: inboxlaporanklaim.OriginLegacy}
+	if legacy.Editable() {
+		t.Fatal("berkas Pega tidak boleh dapat disunting")
+	}
+}

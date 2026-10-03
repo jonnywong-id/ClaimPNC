@@ -406,6 +406,17 @@ type Claim struct {
 	// SuspiciousComment hanya tampil — dan hanya bermakna — bila CustomerPrinciple "2".
 	SuspiciousComment string
 
+	// Isian tab Input Register (`Section/InputRegisterDetail2_sect.xml`).
+	//
+	// EmailLOD — `ClaimData.EmailLOD` (EMAIL_LOD), hanya tampil untuk PA (Group Panel 002).
+	// RemarkRecommendation — `ClaimData.RemarkRecommendation` (REMARKRECOMENDATION) dan
+	// SubjectEmail — `ClaimData.SubjectEmail` (SUBJECTEMAIL), keduanya hanya selain PA.
+	// SalvageStatus — `ClaimData.StatusSalvage` (STSSALVAGE), kode 1–5.
+	EmailLOD             string
+	RemarkRecommendation string
+	SubjectEmail         string
+	SalvageStatus        string
+
 	EstimateValue Money
 	Currency      string
 
@@ -492,17 +503,21 @@ func (k Claim) AllCoverages() []Coverage {
 	return result
 }
 
-// TotalSpreading menjumlahkan share seluruh baris spreading yang tidak ditandai
-// terhapus, pada seluruh coverage seluruh objek.
-func (k Claim) TotalSpreading() Percent {
+// TotalSpreading menjumlahkan share baris spreading coverage ini yang tidak ditandai
+// terhapus.
+//
+// Totalnya PER COVERAGE, bukan per klaim: `InputRegister_act` langkah 37.3.1 mereset
+// `local.totalspreading := 0` di dalam loop ObjectCoverageList, menambahkannya di 37.3.5.9,
+// dan memeriksanya di 37.3.6 — masih di dalam loop yang sama. Invarian `I-1` menyatakan
+// hal yang sama. Klaim berobjek/berjaminan lebih dari satu karena itu berjumlah 100% di
+// SETIAP jaminan, bukan 100% secara keseluruhan.
+func (c Coverage) TotalSpreading() Percent {
 	var total Percent
-	for _, c := range k.AllCoverages() {
-		for _, s := range c.Spreading {
-			if s.Removed {
-				continue
-			}
-			total += s.Share
+	for _, s := range c.Spreading {
+		if s.Removed {
+			continue
 		}
+		total += s.Share
 	}
 	return total
 }

@@ -50,5 +50,14 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// activity. Ia tidak mengubah apa pun, dan menjadikannya GET membuat unduhannya
 		// dapat dipicu tautan biasa — termasuk dibuka ulang dari riwayat peramban.
 		perPortal.Get("/inbox-os-claim-per-cabang/ekspor", h.Export)
+
+		// Popup Detail. Ia didaftarkan SETELAH `/ekspor` dengan sengaja: chi mencocokkan
+		// jalur harfiah lebih dulu daripada parameter, tetapi menaruhnya berurutan begini
+		// membuat urutan itu terbaca oleh siapa pun yang menyuntingnya kemudian.
+		//
+		// Nomor klaim ada di JALUR karena ia menentukan sumber daya mana yang diminta, bukan
+		// cara menyaringnya (`10-API-STRATEGY.md` §2). Bersarangnya satu tingkat — batas yang
+		// ditetapkan bab itu dua.
+		perPortal.Get("/inbox-os-claim-per-cabang/{nomor}", h.Detail)
 	})
 }

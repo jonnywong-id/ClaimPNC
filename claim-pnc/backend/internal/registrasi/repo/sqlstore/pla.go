@@ -28,9 +28,14 @@ func NewPLAStore(db *sql.DB) *PLAStore { return &PLAStore{db: db} }
 
 var _ registrasi.PLASource = (*PLAStore)(nil)
 
-// CoinsMembers membaca CoinsList dokumen polis.
-func (s *PLAStore) CoinsMembers(ctx context.Context, policyNumber string) ([]registrasi.PLACoinsMember, error) {
-	rows, err := s.db.QueryContext(ctx, loadQuery("pla_koasuransi"), strings.TrimSpace(policyNumber))
+// CoinsMembers membaca T_COINSLIST polis pada PRODKE-nya.
+func (s *PLAStore) CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]registrasi.PLACoinsMember, error) {
+	return coinsMembers(ctx, s.db, policyNumber, prodKe)
+}
+
+// coinsMembers dipakai bersama PLA dan DLA: keduanya membaca CoinsList yang sama.
+func coinsMembers(ctx context.Context, db *sql.DB, policyNumber, prodKe string) ([]registrasi.PLACoinsMember, error) {
+	rows, err := db.QueryContext(ctx, loadQuery("pla_koasuransi"), strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe))
 	if err != nil {
 		return nil, fmt.Errorf("registrasi/sqlstore: membaca CoinsList polis %q: %w", policyNumber, err)
 	}
@@ -214,6 +219,33 @@ func (s *PLAStore) Signature(ctx context.Context, id string) (string, []byte, er
 		png, _ = base64.StdEncoding.DecodeString(doc.TTDWeb)
 	}
 	return trimmed(name), png, nil
+}
+
+// LODEmails membaca email tertanggung (pengkinian data) dan email PIC teknik.
+func (s *PLAStore) LODEmails(ctx context.Context, claimNumber, technicalPIC string) (string, string, error) {
+	insured, err := s.firstText(ctx, "lod_email_tertanggung", claimNumber)
+	if err != nil {
+		return "", "", err
+	}
+	pic := ""
+	if strings.TrimSpace(technicalPIC) != "" {
+		if pic, err = s.firstText(ctx, "lod_email_pic", technicalPIC); err != nil {
+			return "", "", err
+		}
+	}
+	return insured, pic, nil
+}
+
+func (s *PLAStore) firstText(ctx context.Context, query, key string) (string, error) {
+	var v sql.NullString
+	err := s.db.QueryRowContext(ctx, loadQuery(query), key).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("registrasi/sqlstore: %s: %w", query, err)
+	}
+	return trimmed(v), nil
 }
 
 // wallWIB menafsirkan DATE jam dinding WIB dari basis data sebagai waktu WIB.

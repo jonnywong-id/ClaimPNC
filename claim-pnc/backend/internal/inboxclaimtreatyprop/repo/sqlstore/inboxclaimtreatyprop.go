@@ -39,38 +39,30 @@ type plan struct {
 //
 // # Kenapa pemilihannya fungsi, bukan peta dari kode tab
 //
-// Karena tab pertama dilayani DUA kueri yang berbeda, dan yang memilih di antara keduanya
-// bukan kode tabnya melainkan keadaan checkbox "See All Claim". Peta dari kode tab akan
-// menyembunyikan percabangan itu di tempat yang tidak terbaca.
+// Karena argumen bind tiap kueri disusun di sini pula, dan fungsi menaruh nama kueri
+// berdampingan dengan urutan argumennya. Peta dari kode tab akan memisahkan keduanya.
+//
+// # Kenapa argumennya kini SAMA persis
+//
+// Karena kedua Report Definition-nya pun sama persis kecuali kelasnya: keduanya tidak punya
+// filter apa pun selain kondisi join, sehingga satu-satunya nilai yang diikat adalah kelas
+// objek kerja. Kueri "See All Claim" yang dulu ada dihapus — ia tidak lagi punya lawan untuk
+// ditukar, karena tab Admin sendiri sudah tidak menyaring pemanggil.
 func planFor(q inboxclaimtreatyprop.Query) (plan, error) {
+	byWorkClass := func(_ inboxclaimtreatyprop.Query, p inboxclaimtreatyprop.Pagination) []any {
+		return []any{
+			inboxclaimtreatyprop.WorkClass,
+			p.Offset(),
+			p.Normalize().Size,
+		}
+	}
+
 	switch q.Tab.Code {
 	case inboxclaimtreatyprop.TabWorkList:
-		if q.ScopedToCaller() {
-			return plan{
-				name: "list_worklist",
-				args: func(q inboxclaimtreatyprop.Query, p inboxclaimtreatyprop.Pagination) []any {
-					return []any{q.Caller.Login, p.Offset(), p.Normalize().Size}
-				},
-			}, nil
-		}
-		return plan{
-			name: "list_worklist_all",
-			args: func(_ inboxclaimtreatyprop.Query, p inboxclaimtreatyprop.Pagination) []any {
-				return []any{p.Offset(), p.Normalize().Size}
-			},
-		}, nil
+		return plan{name: "list_worklist", args: byWorkClass}, nil
 
 	case inboxclaimtreatyprop.TabTechnical:
-		return plan{
-			name: "list_workbasket",
-			args: func(_ inboxclaimtreatyprop.Query, p inboxclaimtreatyprop.Pagination) []any {
-				return []any{
-					inboxclaimtreatyprop.TechnicalWorkbasket,
-					p.Offset(),
-					p.Normalize().Size,
-				}
-			},
-		}, nil
+		return plan{name: "list_workbasket", args: byWorkClass}, nil
 
 	default:
 		// Tab terhalang seharusnya sudah ditolak NewQuery. Kalau ia sampai ke sini,
@@ -143,7 +135,8 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_worklist")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASSIGN_WORKLIST atau POOLDATA.JSON_KLAIM: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKLIST atau "+
+				"DATAPEGA.PC_ASM_FW_GCNMFW_WORK: %w", err)
 	}
 	if err := r.db.QueryRowContext(ctx, query("check_workbasket")).Scan(&ignored); err != nil {
 		return fmt.Errorf("membaca DATAPEGA.PC_ASSIGN_WORKBASKET: %w", err)
@@ -162,15 +155,17 @@ type scanner interface {
 // Urutannya WAJIB sama dengan resultColumns dan dengan urutan kolom di
 // inboxclaimtreatyprop.sql. Ketiganya dijaga query_test.go.
 //
-// Seluruh kolom teks dipindai lewat tipe yang mengizinkan NULL. Itu bukan kehati-hatian
-// berlebih: gabungan ke JSON_KLAIM adalah LEFT JOIN, sehingga penugasan yang klaimnya belum
-// punya baris di sana mengembalikan NULL pada SELURUH kolom JSON sekaligus.
+// Seluruh kolom teks dipindai lewat tipe yang mengizinkan NULL. Gabungannya memang INNER —
+// sehingga barisnya pasti punya objek kerja — tetapi KOLOMNYA sendiri boleh kosong: kolom
+// terekspos pada objek kerja Pega diisi ketika propertinya diisi, dan klaim lama banyak yang
+// belum. SUBJECTIVITY bahkan SELALU NULL, karena nama kolomnya belum diketahui.
 func scanWorkItem(row scanner) (inboxclaimtreatyprop.WorkItem, int, error) {
 	var (
 		workKey, reference, claimID, assignedOperator sql.NullString
 		masterID, policyNumber, lossDate              sql.NullString
 		businessName, businessSource                  sql.NullString
 		cedingCompany, insuredName, subjectivity      sql.NullString
+		lastUpdateOperator, claimStatus               sql.NullString
 		total                                         sql.NullInt64
 	)
 
@@ -178,24 +173,26 @@ func scanWorkItem(row scanner) (inboxclaimtreatyprop.WorkItem, int, error) {
 		&workKey, &reference, &claimID, &assignedOperator,
 		&masterID, &policyNumber, &lossDate,
 		&businessName, &businessSource, &cedingCompany, &insuredName,
-		&subjectivity, &total,
+		&subjectivity, &lastUpdateOperator, &claimStatus, &total,
 	)
 	if err != nil {
 		return inboxclaimtreatyprop.WorkItem{}, 0, err
 	}
 
 	return inboxclaimtreatyprop.WorkItem{
-		WorkKey:          workKey.String,
-		Reference:        reference.String,
-		ClaimID:          claimID.String,
-		AssignedOperator: assignedOperator.String,
-		MasterID:         masterID.String,
-		PolicyNumber:     policyNumber.String,
-		LossDate:         lossDate.String,
-		BusinessName:     businessName.String,
-		BusinessSource:   businessSource.String,
-		CedingCompany:    cedingCompany.String,
-		InsuredName:      insuredName.String,
-		Subjectivity:     subjectivity.String,
+		WorkKey:            workKey.String,
+		Reference:          reference.String,
+		ClaimID:            claimID.String,
+		AssignedOperator:   assignedOperator.String,
+		MasterID:           masterID.String,
+		PolicyNumber:       policyNumber.String,
+		LossDate:           lossDate.String,
+		BusinessName:       businessName.String,
+		BusinessSource:     businessSource.String,
+		CedingCompany:      cedingCompany.String,
+		InsuredName:        insuredName.String,
+		Subjectivity:       subjectivity.String,
+		LastUpdateOperator: lastUpdateOperator.String,
+		ClaimStatus:        claimStatus.String,
 	}, int(total.Int64), nil
 }

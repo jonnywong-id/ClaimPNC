@@ -11,7 +11,10 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/acceptancenotepdf"
+	"claim-pnc/internal/registrasi/dlapdf"
 	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/lodpdf"
 	"claim-pnc/internal/registrasi/plapdf"
 	"claim-pnc/internal/registrasi/repo/memory"
 	"claim-pnc/internal/registrasi/usecase"
@@ -23,7 +26,7 @@ import (
 // sesering yang dibutuhkan.
 
 // regexpNomorKlaim adalah bentuk nomor klaim yang sah: PNCN.YY.xxxx (`D-71`).
-const regexpNomorKlaim = `^PNCN\.\d{2}\.\d{4}$`
+const regexpNomorKlaim = `^PNCN\.\d{2}\.[1-9]\d*$`
 
 const (
 	firePolicy = "POL-FIRE-0001"
@@ -48,15 +51,23 @@ func testTeams() map[string][]string {
 }
 
 type environment struct {
-	service   *usecase.Service
-	store     *memory.Store
-	parameter *memory.Parameter
-	link      *memory.ClaimReportLink
-	clock     *clock.Fixed
-	pla       *memory.PLA
-	groups    memory.Groups
-	inbox     *memory.InboxEntries
-	caller    usecase.Caller
+	service    *usecase.Service
+	store      *memory.Store
+	parameter  *memory.Parameter
+	link       *memory.ClaimReportLink
+	clock      *clock.Fixed
+	pla        *memory.PLA
+	dla        *memory.DLA
+	cashier    *memory.Cashier
+	groups     memory.Groups
+	inbox      *memory.InboxEntries
+	records    *memory.ClaimRecords
+	uploader   *memory.DocumentUploader
+	acceptance *memory.Acceptance
+	premium    *memory.Premium
+	accounts   *memory.Accounts
+	areas      *memory.AreaDirectory
+	caller     usecase.Caller
 }
 
 func setup(t *testing.T, roles ...string) environment {
@@ -68,49 +79,77 @@ func setup(t *testing.T, roles ...string) environment {
 	link := memory.NewClaimReportLink()
 	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
 	pla := memory.NewPLA()
+	dla := memory.NewDLA()
+	cashier := memory.NewCashier()
 	groups := memory.Groups{}
 	inbox := memory.NewInboxEntries()
+	records := memory.SampleClaimRecords()
+	uploader := &memory.DocumentUploader{}
+	acceptance := memory.NewAcceptance()
+	premium := memory.NewPremium()
+	accounts := memory.NewAccounts()
+	areas := memory.NewAreaDirectory()
 
 	service, err := usecase.NewService(usecase.Options{
-		ClaimRepo:          store,
-		TaskRepo:           store.TaskRepo(),
-		PolicyRepo:         memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
-		NumberIssuer:       memory.NewNumberIssuer(),
-		Parameter:          parameter,
-		ExchangeRateSource: memory.NewExchangeRateSource(),
-		Assigner:           memory.NewAssigner(testTeams()),
-		Notifier:           store,
-		AuditRecorder:      store,
-		ClaimReportLink:    link,
-		AreaDirectory:      memory.NewAreaDirectory(),
-		PolicyItems:        policyItems,
-		CurrencyDirectory:  memory.CurrencyDirectory{},
-		ItemOptions:        policyItems,
-		ClaimRecords:       memory.SampleClaimRecords(),
-		FaceSheet:          memory.NewFaceSheet(),
-		FaceSheetRenderer:  facesheetpdf.Renderer{},
-		PLA:                pla,
-		PLARenderer:        plapdf.Renderer{},
-		Groups:             groups,
-		Inbox:              inbox,
-		Accounts:           memory.NewAccounts(),
-		CommitteeTiering:   memory.NewCommitteeTiering(),
-		Committees:         memory.NewCommittees(),
-		IDGenerator:        memory.IDGenerator{},
-		UnitOfWork:         store,
-		Clock:              clock,
+		ClaimRepo:              store,
+		TaskRepo:               store.TaskRepo(),
+		PolicyRepo:             memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
+		NumberIssuer:           memory.NewNumberIssuer(),
+		Parameter:              parameter,
+		ExchangeRateSource:     memory.NewExchangeRateSource(),
+		Assigner:               memory.NewAssigner(testTeams()),
+		Notifier:               store,
+		AuditRecorder:          store,
+		ClaimReportLink:        link,
+		AreaDirectory:          areas,
+		CauseOfLoss:            areas,
+		PolicyItems:            policyItems,
+		CurrencyDirectory:      memory.CurrencyDirectory{},
+		ItemOptions:            policyItems,
+		ClaimRecords:           records,
+		FaceSheet:              memory.NewFaceSheet(),
+		FaceSheetRenderer:      facesheetpdf.Renderer{},
+		PLA:                    pla,
+		PLARenderer:            plapdf.Renderer{},
+		DLA:                    dla,
+		DLARenderer:            dlapdf.Renderer{},
+		AcceptanceNoteRenderer: acceptancenotepdf.Renderer{},
+		Cashier:                cashier,
+		CashierGateway:         cashier,
+		CashierAccountCheck:    true,
+		LODRenderer:            lodpdf.Renderer{},
+		Acceptance:             acceptance,
+		Premium:                premium,
+		Groups:                 groups,
+		Inbox:                  inbox,
+		Accounts:               accounts,
+		CommitteeTiering:       memory.NewCommitteeTiering(),
+		Committees:             memory.NewCommittees(),
+		Documents:              uploader,
+		Attachments:            records,
+		IDGenerator:            memory.IDGenerator{},
+		UnitOfWork:             store,
+		Clock:                  clock,
 	})
 	require.NoError(t, err)
 
 	return environment{
-		service:   service,
-		store:     store,
-		parameter: parameter,
-		link:      link,
-		clock:     clock,
-		pla:       pla,
-		groups:    groups,
-		inbox:     inbox,
+		service:    service,
+		store:      store,
+		parameter:  parameter,
+		link:       link,
+		clock:      clock,
+		pla:        pla,
+		dla:        dla,
+		cashier:    cashier,
+		groups:     groups,
+		inbox:      inbox,
+		records:    records,
+		uploader:   uploader,
+		acceptance: acceptance,
+		premium:    premium,
+		accounts:   accounts,
+		areas:      areas,
 		caller: usecase.Caller{
 			Identity:   testOperator,
 			Name:       "Petugas Uji",
@@ -271,7 +310,7 @@ func TestRegistrationUntilNumberIssued(t *testing.T) {
 	result, err := l.service.SaveRegister(context.Background(), validInput(task.ID), l.caller)
 	require.NoError(t, err)
 
-	require.Regexp(t, `^PNCN\.26\.\d{4}$`, result.Claim.Number)
+	require.Regexp(t, `^PNCN\.26\.[1-9]\d*$`, result.Claim.Number)
 	require.Equal(t, registrasi.StatusRegistered, result.Claim.ClaimStatus)
 	require.Equal(t, registrasi.ProcessRunning, result.Claim.ProcessStatus)
 
@@ -477,34 +516,46 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 
 	groups := memory.Groups{}
 	inbox := memory.NewInboxEntries()
+	records := memory.SampleClaimRecords()
 	service, err := usecase.NewService(usecase.Options{
-		ClaimRepo:          store,
-		TaskRepo:           store.TaskRepo(),
-		PolicyRepo:         memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
-		NumberIssuer:       memory.NewNumberIssuer(),
-		Parameter:          memory.NewParameter(),
-		ExchangeRateSource: memory.NewExchangeRateSource(),
-		Assigner:           memory.NewAssigner(testTeams()),
-		Notifier:           failSend{},
-		AuditRecorder:      store,
-		ClaimReportLink:    memory.NewClaimReportLink(),
-		AreaDirectory:      memory.NewAreaDirectory(),
-		PolicyItems:        policyItems,
-		CurrencyDirectory:  memory.CurrencyDirectory{},
-		ItemOptions:        policyItems,
-		ClaimRecords:       memory.SampleClaimRecords(),
-		FaceSheet:          memory.NewFaceSheet(),
-		FaceSheetRenderer:  facesheetpdf.Renderer{},
-		PLA:                memory.NewPLA(),
-		PLARenderer:        plapdf.Renderer{},
-		Groups:             groups,
-		Inbox:              inbox,
-		Accounts:           memory.NewAccounts(),
-		CommitteeTiering:   memory.NewCommitteeTiering(),
-		Committees:         memory.NewCommittees(),
-		IDGenerator:        memory.IDGenerator{},
-		UnitOfWork:         store,
-		Clock:              clock,
+		ClaimRepo:              store,
+		TaskRepo:               store.TaskRepo(),
+		PolicyRepo:             memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
+		NumberIssuer:           memory.NewNumberIssuer(),
+		Parameter:              memory.NewParameter(),
+		ExchangeRateSource:     memory.NewExchangeRateSource(),
+		Assigner:               memory.NewAssigner(testTeams()),
+		Notifier:               failSend{},
+		AuditRecorder:          store,
+		ClaimReportLink:        memory.NewClaimReportLink(),
+		AreaDirectory:          memory.NewAreaDirectory(),
+		CauseOfLoss:            memory.NewAreaDirectory(),
+		PolicyItems:            policyItems,
+		CurrencyDirectory:      memory.CurrencyDirectory{},
+		ItemOptions:            policyItems,
+		ClaimRecords:           records,
+		FaceSheet:              memory.NewFaceSheet(),
+		FaceSheetRenderer:      facesheetpdf.Renderer{},
+		PLA:                    memory.NewPLA(),
+		PLARenderer:            plapdf.Renderer{},
+		DLA:                    memory.NewDLA(),
+		DLARenderer:            dlapdf.Renderer{},
+		AcceptanceNoteRenderer: acceptancenotepdf.Renderer{},
+		Cashier:                memory.NewCashier(),
+		CashierGateway:         memory.NewCashier(),
+		LODRenderer:            lodpdf.Renderer{},
+		Acceptance:             memory.NewAcceptance(),
+		Premium:                memory.NewPremium(),
+		Groups:                 groups,
+		Inbox:                  inbox,
+		Accounts:               memory.NewAccounts(),
+		CommitteeTiering:       memory.NewCommitteeTiering(),
+		Committees:             memory.NewCommittees(),
+		Documents:              &memory.DocumentUploader{},
+		Attachments:            records,
+		IDGenerator:            memory.IDGenerator{},
+		UnitOfWork:             store,
+		Clock:                  clock,
 	})
 	require.NoError(t, err)
 
@@ -708,6 +759,24 @@ func TestRegisterKlaimJumpsStraightToInputRegister(t *testing.T) {
 			"klaim dari Register Klaim harus melompat ke Input Register")
 		require.Equal(t, registrasi.StageInputRegister, hasil.Task.Stage)
 		require.Regexp(t, regexpNomorKlaim, hasil.Claim.Number)
+	})
+
+	// Work Owner, 2026-09-29: berkas RCVN yang sudah menjadi PNCN tidak dapat diregistrasi
+	// lagi. Tanpa penolakan ini terbit PNCN kedua dan NOKLAIM berkasnya tertimpa.
+	t.Run("berkas RCV yang sudah bernomor klaim ditolak", func(t *testing.T) {
+		l := setup(t)
+
+		first, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.1",
+		}, l.caller)
+		require.NoError(t, err)
+
+		_, err = l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.1",
+		}, l.caller)
+		var registered *registrasi.ReportAlreadyRegisteredError
+		require.ErrorAs(t, err, &registered)
+		require.Equal(t, first.Claim.Number, registered.ClaimNumber)
 	})
 
 	t.Run("tanpa berkas RCV, tugas pertama tetap View Polis", func(t *testing.T) {

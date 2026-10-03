@@ -176,8 +176,10 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	dokumen, err := h.service.Upload(r.Context(), usecase.UploadCommand{
 		PortalAlias: alias,
 		Request: dokumenpenunjang.UploadRequest{
-			ClaimNumber:  nomor,
-			FileName:     namaBerkasDari(keterangan.Filename),
+			ClaimNumber: nomor,
+			// Nama unik seperti Pega — lihat dokumenpenunjang.NamaUnggah.
+			FileName: dokumenpenunjang.NamaUnggah(time.Now(), strings.TrimSpace(r.FormValue("jenis_dokumen")),
+				namaBerkasDari(keterangan.Filename)),
 			DocumentType: strings.TrimSpace(r.FormValue("jenis_dokumen")),
 			Content:      isi,
 			By:           strings.TrimSpace(pemanggil.Login),

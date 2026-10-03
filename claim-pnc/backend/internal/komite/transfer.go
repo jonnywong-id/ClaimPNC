@@ -105,6 +105,33 @@ type TransferDetail struct {
 	// itu kelak terisi, dan supaya layar dapat menyatakan dengan jujur bahwa cabang itu
 	// TIDAK DAPAT dinilai, alih-alih diam-diam menganggapnya salah.
 	BusinessType string
+
+	// Policy adalah dokumen polis terbaru di `JSON_POLIS` — periode, CoinsList, dan
+	// FacOfferList. HasPolicy salah bila dokumennya tidak ditemukan.
+	//
+	// Pega membacanya dari snapshot polis yang dibekukan bersama klaim; yang dibaca di sini
+	// baris TERBARU, sama dengan yang dipakai registrasi saat klaim dibuat (`D-04`).
+	Policy    PolicyFacts
+	HasPolicy bool
+
+	// Spreading adalah seluruh baris `T_CLAIM_SPREADING` milik klaimnya. Dipilah per baris
+	// adjustment oleh SpreadingFor.
+	Spreading []SpreadingShare
+
+	// DominantFactors adalah nama faktor dominan klaim — `KomiteClaimData.DominanFactorList`.
+	DominantFactors []string
+
+	// Attachments adalah lampiran klaimnya — isi tab "Lampiran Dokumen".
+	Attachments []Attachment
+
+	// Members adalah "Daftar Komite": seluruh anggota case ini, urut jenjang.
+	Members []CommitteeEntry
+
+	// History adalah "History of Previous Adjustment Committees": anggota case komite LAIN
+	// milik klaim yang sama. Pega membacanya dari `ComiteeClaim` baris adjustment
+	// (`ShowKomiteViewContent` langkah 41); di sini dari case komite yang menaungi klaim itu —
+	// per klaim, bukan per baris adjustment.
+	History []CommitteeEntry
 }
 
 // Judul menyusun judul layar persis seperti `Section/ShowTransfer` menyusunnya.
@@ -227,6 +254,25 @@ type ClaimSummary struct {
 	CoinsName string
 	Currency  string
 	ExGratia  string
+
+	// Medan kepala kolom kiri `ShowTransferDetail` — `.Policy.*` dan `.CoverID`. Pega
+	// membacanya dari snapshot polis; `T_CLAIM_PNC` menyimpan salinan yang sama saat klaim
+	// dibuat (`PEGA_CONVERT_JSONKLAIM_PNC.prc` baris 317–373 dan registrasi `claim.sql`).
+	ClaimNumber      string // CLAIMNO            -> CLAIM No.
+	PolicyNumber     string // NOPOLIS            -> POLICY No.
+	InsuredName      string // QQNAME             -> INSURED
+	BusinessName     string // BUSINESSNAME       -> CLASS OF INSURANCE, INTEREST INSURED
+	BranchName       string // BRANCHNAME         -> BRANCH
+	SourceOfBusiness string // SOBNAME            -> SOURCE OF BUSINESS
+	CoinsRole        string // LEADER_MEMBER
+	GroupPanel       string // GROUPPANEL
+
+	// CurrencyCode adalah kode mata uang klaim (IDR, USD) hasil lookup `POOLDATA.CURRENCY`
+	// atas Currency — isi baris RESERVES.
+	CurrencyCode string
+
+	// ProdKe adalah PRODKE snapshot polis klaim — kunci T_COINSLIST dan T_FACOFFER.
+	ProdKe string
 }
 
 // CoverageAnalysis adalah satu baris `POOLDATA.T_CLAIM_OBJECTCOVERAGE`.
@@ -303,6 +349,29 @@ type AdjustmentLine struct {
 	Currency    string
 	PaymentType string
 
+	// CurrencyCode adalah kode Currency (IDR, USD) dari `POOLDATA.CURRENCY` — kolom
+	// "Currency" pada List Spreading dan CO MEMBER (`Local.currencyshare` di Pega).
+	CurrencyCode string
+
+	// AdjusterFee adalah `LOSS_ADJUSTER_FEE` — nilai komite bila Type 4 atau 7.
+	AdjusterFee money.Money
+
+	// Bahan tabel Claim Adjustment — lihat breakdown.go.
+	AdjustmentID string
+	TotalClaim   money.Money // TOTAL_CLAIM — ProposeAdjustmentValue
+	LOCPercent   string      // LOC
+	RiskType     string      // INDIVIDUAL_RISK_TYPE
+	RiskPercent  string      // INDIVIDUAL_RISK_PERCENT
+
+	// Estimation adalah Σ T_CLAIM_ESTIMASI coverage yang sama (jenis 1, atau 2 untuk fee
+	// adjuster). HasEstimation salah bila coverage itu tidak punya baris estimasi.
+	Estimation    money.Money
+	HasEstimation bool
+
+	// InterimPaid adalah Σ GROSSVALUE baris Interim yang sudah diakseptasi pada coverage yang
+	// sama, di luar baris ini — `registrasi.InterimPaid`.
+	InterimPaid money.Money
+
 	// Keenam nilai uang di bawah `money.Money`, tidak pernah float — `I-12` menetapkan
 	// nilai uang disimpan presisi penuh dan dibulatkan hanya saat ditampilkan.
 	GrossValue     money.Money
@@ -356,6 +425,10 @@ type CommitteeRecord struct {
 
 	DecidedAt time.Time
 	Outcome   Outcome
+
+	// CreatedAt adalah `MIN(DATEOFCOMMITE_CREATE)` — "CREATE COMITEE DATE", yang di Pega
+	// `.pxCreateDateTime` case komite.
+	CreatedAt time.Time
 }
 
 // CommitteeKindOf menurunkan "Tipe Komite" dari dua kolom `T_CLAIM_KOMITE_LIST`.

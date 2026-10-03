@@ -43,7 +43,8 @@ type WorkItemDTO struct {
 
 	// Track adalah jalur penanganan — "RCL" atau "PUCL".
 	//
-	// Kosong bila kode jalurnya tidak dikenali, meniru `CASE` tanpa `ELSE` di sistem lama.
+	// Ketiga kodenya punya teks — "RCL", "PUCL", "Notification". Kosong hanya bila
+	// kodenya sendiri kosong atau di luar ketiganya.
 	// Judul kolomnya berbeda antartab: "Status RCL/PUCL" pada dua tab pertama, "Status"
 	// pada tab Klaim MSIG — dan perbedaan itu datang dari `kolom`, bukan dari sini.
 	Track string `json:"status_rcl_pucl"`
@@ -52,11 +53,34 @@ type WorkItemDTO struct {
 	// justru itulah arti tab tersebut.
 	LetterPrintedAt string `json:"tanggal_cetak_surat"`
 
-	// ClaimAge dikirim sebagai TEKS, bukan angka. Satuannya tidak diketahui: tidak satu pun
-	// kueri di export menghitungnya, dan tidak ada DDL yang menyatakan tipenya (`R-08`).
+	// ClaimAge dikirim sebagai TEKS TANGGAL, bukan angka dan bukan durasi.
+	//
+	// Judulnya menyebut durasi; isinya **tanggal kirim untuk proses PUCL** (Work Owner,
+	// 2026-09-30), dan kolomnya terverifikasi bertipe `TIMESTAMP(6)` di Oracle. Judulnya
+	// tetap dibawa apa adanya (`D-13`); yang dibentuk hanya isinya, oleh
+	// `inboxrclpucl.DisplayTimeText` di penyimpanan.
 	ClaimAge string `json:"lama_klaim"`
 
 	ExpiryStatus string `json:"status_kadaluarsa"`
+
+	// CreatedAt adalah kolom yang MENGURUTKAN tabel ini — `PXCREATEDATETIME`.
+	//
+	// Ia tidak ada di layar lama. Ditambahkan 2026-09-30 atas keputusan Work Owner supaya
+	// tabelnya tidak lagi terbaca acak; urutan barisnya sendiri tidak berubah sedikit pun.
+	CreatedAt string `json:"tanggal_dibuat"`
+}
+
+// DifferenceDTO adalah satu selisih terhadap Pega yang sudah diputuskan.
+//
+// Dua bagian, karena pembacanya dua: `ringkas` untuk petugas klaim yang sedang memakai
+// layar, `rincian` untuk penguji kesetaraan yang sedang mencari pemetaan `P-5`-nya. Layar
+// menggambar yang pertama dan menyembunyikan yang kedua di balik satu ketukan.
+//
+// Keduanya SELALU dikirim. Mengirim `rincian` hanya saat diminta akan menuntut satu
+// permintaan tambahan per butir, padahal seluruh isinya teks tetap yang sudah ada di memori.
+type DifferenceDTO struct {
+	Summary string `json:"ringkas"`
+	Detail  string `json:"rincian"`
 }
 
 // ColumnDTO adalah satu kolom grid.
@@ -110,7 +134,7 @@ type MetadataResponse struct {
 	ReportColumns []ColumnDTO `json:"kolom_laporan"`
 
 	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
+	PlannedDifferences []DifferenceDTO `json:"selisih_terencana"`
 
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal
 	// yang sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
@@ -151,26 +175,55 @@ type LetterDraftDTO struct {
 	PolicyNumber string `json:"no_polis"`
 	LossDate     string `json:"tanggal_kejadian"`
 
-	// InsuredName dan SumInsured sama-sama DITURUNKAN dari anak klaim, tetapi dari kolom
-	// yang BERBEDA — dan itu selisih terencana terhadap Pega, tempat keduanya diisi dari
-	// ekspresi yang sama persis sehingga "UP" ikut berisi nama objek.
+	// InsuredName dan SumInsured DITURUNKAN dari kolom yang SAMA — nama objek pertama —
+	// dan itu BUKAN selisih, melainkan perilaku Pega apa adanya.
 	//
-	// `up` karena itu berisi ANGKA di sini. Lihat `inboxrclpucl.LetterDraft.SumInsured`
-	// untuk keputusannya dan bukti sumbernya.
+	// `up` karena itu berisi NAMA OBJEK, bukan angka. Ia terbaca seperti salin-tempel yang
+	// keliru dan sempat "diperbaiki" menjadi nilai pertanggungan pada 2026-09-24; Work
+	// Owner meralatnya hari itu juga, dan perbaikannya dicabut seluruhnya. Lihat
+	// `inboxrclpucl.LetterDraft.SumInsured`.
 	InsuredName string `json:"nama_peserta"`
 	SumInsured  string `json:"up"`
 
 	BillAmount string `json:"jumlah_tagihan"`
+
+	// Keempat isian surat, dibaca dari kolom `TC_PNC_PUCL` sejak 2026-10-01. Sebelumnya
+	// keempatnya digambar bertanda "di clipboard Pega".
+	Subject     string `json:"perihal"`
+	OpeningNote string `json:"keterangan_pembuka"`
+	BodyNote    string `json:"keterangan_isi"`
+	ClosingNote string `json:"keterangan_penutup"`
 }
 
 // DocumentReceiptDTO adalah bagian "Penerimaan Dokumen".
 //
-// Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali — dan
-// itu disengaja: mengirim isian kosong yang tidak punya sumber akan membuat layar mengira
-// datanya memang belum diisi, padahal kolomnya yang belum ditemukan. Yang menjelaskan
-// ketiadaannya adalah `UnmappedFields`.
+// TIGA dari empat isiannya kini punya kolom. Yang tersisa tanpa sumber hanyalah daftar
+// "Tanggal terima Dokumen", dan ketiadaannya dijelaskan `UnmappedFields` — bukan dikirim
+// sebagai isian kosong, yang akan membuat layar mengira datanya memang belum diisi.
 type DocumentReceiptDTO struct {
 	PUCLNote string `json:"komentar_pucl"`
+
+	// CompleteAt — "Tanggal Kelengkapan Dokumen", dari `TGL_TERIMA_DOKUMEN_PUCL`.
+	CompleteAt string `json:"tanggal_kelengkapan_dokumen"`
+
+	// ReceivedDates — grid "Tanggal Terima Dokumen".
+	//
+	// Paling banyak SATU baris: daftarnya page list tanpa tabel, dan hanya baris pertamanya
+	// yang diekspos sebagai kolom. Lihat `inboxrclpucl.DocumentReceipt.ReceivedDates`.
+	ReceivedDates []ReceivedDateDTO `json:"tanggal_terima_dokumen"`
+
+	// ReceivedDatesPartial menyatakan daftar di atas MUNGKIN tidak lengkap.
+	//
+	// Dikirim sebagai data, bukan ditulis tetap di layar, supaya ia hilang di satu tempat
+	// begitu baris kedua dan seterusnya terbaca lewat layanan Pega.
+	ReceivedDatesPartial bool `json:"tanggal_terima_dokumen_sebagian"`
+
+	// InsuredEmail — "Email Tertanggung", dari `T_CLAIM_PNC.EMAIL_LOD`.
+	//
+	// Kolomnya ADA tetapi kosong pada seluruh 2.206 baris (dihitung 2026-10-01), sehingga
+	// isian ini akan tergambar kosong. Itu keadaan DATA, bukan isian yang belum terpetakan —
+	// karena itu ia TIDAK masuk `UnmappedFields`.
+	InsuredEmail string `json:"email_tertanggung"`
 }
 
 // ClaimDetailResponse adalah jawaban GET /api/inbox-rcl-pucl/klaim/{referensi}.
@@ -188,6 +241,26 @@ type ClaimDetailResponse struct {
 	// layar berdampingan tahu mana yang belum terbawa alih-alih mengira datanya hilang.
 	UnmappedFields []string `json:"isian_belum_terpetakan"`
 
+	// ShowsDocumentReceipt menyatakan tab "Penerimaan Dokumen" digambar untuk klaim ini.
+	//
+	// Ia DATA dari server, bukan pemeriksaan kode jalur di layar. Kodenya (`3`) adalah nilai
+	// milik sistem lama, dan menaruh perbandingannya di frontend berarti satu nilai bisnis
+	// hidup di dua tempat yang dapat berselisih tanpa ketahuan (`D-15`).
+	ShowsDocumentReceipt bool `json:"tab_penerimaan_dokumen_tampil"`
+
+	// Buttons menyatakan TOMBOL mana yang digambar untuk klaim ini.
+	//
+	// Alasannya sama dengan ShowsDocumentReceipt: syaratnya memakai nilai milik sistem lama
+	// (`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan memeriksanya di React berarti
+	// aturan bisnis hidup di dua tempat.
+	Buttons ScreenButtonsDTO `json:"tombol"`
+
+	// ActionParameters adalah parameter tersembunyi yang dikirim layar ke `PUCLPost`.
+	//
+	// Ia TIDAK digambar — sama seperti di Pega, ketiganya sel tanpa label. Yang
+	// membawanya ke kontrak adalah jalur tulis yang sedang disiapkan.
+	ActionParameters ActionParametersDTO `json:"parameter_tindakan"`
+
 	// WriteBlocked menyatakan layar ini di Pega adalah layar TULIS.
 	//
 	// Layar memakainya untuk menjelaskan mengapa tidak ada satu pun tombol simpan di sini,
@@ -195,6 +268,72 @@ type ClaimDetailResponse struct {
 	WriteBlocked bool `json:"tindakan_masih_di_pega"`
 
 	Portal string `json:"portal"`
+}
+
+// ScreenButtonsDTO menyatakan tombol mana yang digambar.
+//
+// Nama isiannya memakai NAMA TOMBOL seperti yang terbaca pengguna, bukan nama kondisinya.
+// Orang yang membandingkan tanggapan ini dengan layar Pega berdampingan mencari nama yang
+// tertulis di tombolnya.
+type ScreenButtonsDTO struct {
+	DownloadDocument bool `json:"download_dokumen"`
+	CloseClaim       bool `json:"tutup_klaim"`
+	UploadDocument   bool `json:"unggah_dokumen"`
+	ViewDocument     bool `json:"lihat_dokumen"`
+	Save             bool `json:"save"`
+	RejectClaim      bool `json:"tolak_klaim"`
+	SendToAnalyst    bool `json:"kirim_ke_analyst"`
+	SendToPICTeknik  bool `json:"kirim_ke_pic_teknik"`
+}
+
+func screenButtonsOf(b inboxrclpucl.ScreenButtons) ScreenButtonsDTO {
+	return ScreenButtonsDTO{
+		DownloadDocument: b.DownloadDocument,
+		CloseClaim:       b.CloseClaim,
+		UploadDocument:   b.UploadDocument,
+		ViewDocument:     b.ViewDocument,
+		Save:             b.Save,
+		RejectClaim:      b.RejectClaim,
+		SendToAnalyst:    b.SendToAnalyst,
+		SendToPICTeknik:  b.SendToPICTeknik,
+	}
+}
+
+// ReceivedDateDTO adalah satu baris grid "Tanggal Terima Dokumen".
+//
+// Nama isiannya mengikuti JUDUL KOLOM yang dibaca pengguna, bukan nama properti Pega.
+type ReceivedDateDTO struct {
+	Tanggal    string `json:"tanggal"`
+	Keterangan string `json:"keterangan"`
+}
+
+func receivedDatesOf(rows []inboxrclpucl.ReceivedDocumentDate) []ReceivedDateDTO {
+	// Senarai KOSONG, bukan nil, supaya JSON-nya `[]` dan bukan `null`. Layar membedakan
+	// "daftarnya kosong" dari "isiannya tidak ada".
+	out := make([]ReceivedDateDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ReceivedDateDTO{Tanggal: row.Date, Keterangan: row.Note})
+	}
+	return out
+}
+
+// ActionParametersDTO adalah parameter tersembunyi tombol tindakan.
+//
+// Isian `sementara` yang sempat ada DICABUT bersama nilai penampungnya: isian yang selamanya
+// bernilai `false` tidak menyatakan apa pun, dan membiarkannya membuat orang mengira masih ada
+// yang menunggu diputuskan.
+type ActionParametersDTO struct {
+	IDObject     string `json:"id_object"`
+	IDCoverage   string `json:"id_coverage"`
+	IDAdjustment string `json:"id_adjustment"`
+}
+
+func actionParametersOf(p inboxrclpucl.ActionParameters) ActionParametersDTO {
+	return ActionParametersDTO{
+		IDObject:     p.IDObject,
+		IDCoverage:   p.IDCoverage,
+		IDAdjustment: p.IDAdjustment,
+	}
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -223,6 +362,7 @@ func toWorkItemDTO(item inboxrclpucl.WorkItem) WorkItemDTO {
 		LetterPrintedAt: item.LetterPrintedAt,
 		ClaimAge:        item.ClaimAge,
 		ExpiryStatus:    item.ExpiryStatus,
+		CreatedAt:       item.CreatedAt,
 	}
 }
 
@@ -269,8 +409,13 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
+	differences := make([]DifferenceDTO, 0, len(meta.PlannedDifferences))
+	for _, difference := range meta.PlannedDifferences {
+		differences = append(differences, DifferenceDTO{
+			Summary: difference.Summary,
+			Detail:  difference.Detail,
+		})
+	}
 
 	return MetadataResponse{
 		Tabs:               tabs,
@@ -293,41 +438,41 @@ func toPaginationDTO(page inboxrclpucl.Page) PaginationDTO {
 
 // unmappedLetterFields adalah isian layar kerja yang tidak dapat diisi dari kolom tabel.
 //
-// # Sebabnya BUKAN kolom yang hilang
+// # Daftarnya TURUN dari sembilan menjadi lima pada 2026-10-01
 //
-// Work Owner menjelaskan 2026-09-24: kesembilannya diambil dari **clipboard** Pega —
-// `.ClaimData.PUCLStatus.NIK`, `.BusinessUnitSeksi`, `.Perihal`, `.Keterangan1`…`3`,
-// `.ClaimData.EmailLOD`, `.TanggalTerimaDokumenPUCL`, dan daftar `.DateReceivedDocument`.
+// Empat di antaranya — Perihal, Keterangan Pembuka, Keterangan Isi, Keterangan Penutup —
+// ternyata PUNYA kolom di `POOLDATA.TC_PNC_PUCL` yang berjalan (`PERIHAL`, `KETERANGAN1`,
+// `KETERANGAN2`, `KETERANGAN3`), dan terisi. Keempatnya kini dibaca apa adanya.
+//
+// Yang mengubah keadaan bukan pencarian yang lebih teliti melainkan **kolomnya memang baru
+// ada**: `Database/CREATE_TABLE_3.SQL` mendefinisikan 26 kolom, tabel yang berjalan punya 30.
+// Ini persis jalan keluar yang §79.3 sebut sebagai satu-satunya — properti clipboard diekspos
+// menjadi kolom — dan ia sudah ditempuh untuk keempat isian itu.
+//
+// # Kelima yang tersisa, dan sebabnya BUKAN kolom yang hilang
+//
+// `.ClaimData.PUCLStatus.NIK`, `.BusinessUnitSeksi`, `.ClaimData.EmailLOD`,
+// `.TanggalTerimaDokumenPUCL`, dan daftar `.DateReceivedDocument`.
 //
 // Properti clipboard yang tidak dioptimasi TIDAK punya kolom sendiri; nilainya hidup di
 // dalam objek kerja Pega. Itu menjelaskan mengapa pencarian ke seluruh export tidak
 // menemukan satu pun kolomnya, dan mengapa mencarinya lagi tidak akan menemukannya.
 //
-// Akibatnya berbeda dari "kolom belum ditemukan": ini bukan pertanyaan yang dapat dijawab
-// DBA dengan menunjuk kolom, melainkan keadaan yang baru berubah bila propertinya diekspos
-// sebagai kolom, atau bila modul ini kelak memiliki tabelnya sendiri.
+// Satu hipotesis sempat tampak menjanjikan dan GUGUR: `EMAIL_1` pada tabel objek kerja Pega
+// terisi 61 dari 64 baris antrean, berisi daftar alamat berkoma — tetapi pada klaim yang
+// layarnya diperiksa ia memuat SATU alamat sementara Pega menggambar DUA. Memakainya akan
+// menampilkan penerima surat yang salah tanpa satu pun galat.
 //
 // Namanya diambil dari `pyLabelFieldValue` pada sel masing-masing, bukan dari nama properti
 // Pega — yang membacanya petugas klaim. Satu di antaranya patut disadari: label **"No
 // Kontrak"** menempel pada properti `.ClaimData.PUCLStatus.NIK`. Label dan properti di situ
 // memang tidak sejalan, dan yang dibawa adalah LABEL-nya (`D-13`).
-//
-// Kesembilannya juga dicari di SELURUH export — `RDB List/`, `Database/*.prc`, `*.fnc`, dan kedua
-// berkas CSV master — tanpa satu pun kemunculan sebagai kolom. Inventaris katalog Oracle
-// (`docs/kolom-t-claimlist-admin.md`, 2026-09-22) pun tidak mendaftarkannya, sementara
-// keenam kolom PUCL lain lengkap di sana.
-//
-// Ia ditulis sebagai kalimat yang dibaca pengguna, bukan nama properti Pega: yang membacanya
-// petugas klaim, bukan orang yang menelusuri rule.
+// Daftarnya menyusut dua kali: dari sembilan menjadi lima saat keempat kolom surat ditemukan
+// (§84.2), lalu menjadi TIGA pada 2026-10-01 saat "Email Tertanggung" dan "Tanggal
+// Kelengkapan Dokumen" ikut terpetakan atas penetapan Work Owner.
 var unmappedLetterFields = []string{
 	"No Kontrak",
 	"Business Unit / Seksi",
-	"Perihal",
-	"Keterangan Pembuka",
-	"Keterangan Isi",
-	"Keterangan Penutup",
-	"Email Tertanggung",
-	"Tanggal Kelengkapan Dokumen",
 	"Tanggal terima Dokumen (Tanggal · Keterangan)",
 }
 
@@ -352,13 +497,30 @@ func toClaimDetailResponse(
 			InsuredName:  detail.Letter.InsuredName,
 			SumInsured:   detail.Letter.SumInsured,
 			BillAmount:   detail.Letter.BillAmount,
+			Subject:      detail.Letter.Subject,
+			OpeningNote:  detail.Letter.OpeningNote,
+			BodyNote:     detail.Letter.BodyNote,
+			ClosingNote:  detail.Letter.ClosingNote,
 		},
 
 		DocumentReceipt: DocumentReceiptDTO{
-			PUCLNote: detail.DocumentReceipt.PUCLNote,
+			PUCLNote:             detail.DocumentReceipt.PUCLNote,
+			ReceivedDates:        receivedDatesOf(detail.DocumentReceipt.ReceivedDates),
+			ReceivedDatesPartial: true,
+			CompleteAt:           detail.DocumentReceipt.CompleteAt,
+			InsuredEmail:         detail.DocumentReceipt.InsuredEmail,
 		},
 
 		UnmappedFields: unmapped,
+
+		// Syarat tab kedua ditegakkan di sini, bukan di layar. Lihat
+		// `inboxrclpucl.ClaimDetail.ShowsDocumentReceipt`.
+		ShowsDocumentReceipt: detail.ShowsDocumentReceipt(),
+
+		// Susunan tombolnya pun ditegakkan di domain. Lihat
+		// `inboxrclpucl.ClaimDetail.Buttons`.
+		Buttons:          screenButtonsOf(detail.Buttons()),
+		ActionParameters: actionParametersOf(detail.ActionParameters),
 
 		// Selalu true selama masa paralel. Ia dikirim sebagai isian, bukan ditulis tetap
 		// di layar, supaya ia dapat berubah di satu tempat begitu kepemilikan tabelnya
@@ -377,4 +539,120 @@ func toListResponse(listed usecase.Listed, portalAlias string) ListResponse {
 		Pagination: toPaginationDTO(listed.Page),
 		Portal:     portalAlias,
 	}
+}
+
+// DocumentDTO adalah satu baris daftar dokumen klaim.
+//
+// Nama isiannya Indonesia (`D-80`) dan mengikuti judul yang dilihat pengguna, bukan nama
+// kolomnya.
+type DocumentDTO struct {
+	ID           string `json:"id"`
+	Nama         string `json:"nama"`
+	Kategori     string `json:"kategori"`
+	SubKategori  string `json:"sub_kategori"`
+	DiunggahPada string `json:"diunggah_pada"`
+	DiunggahOleh string `json:"diunggah_oleh"`
+}
+
+// DocumentListResponse adalah jawaban daftar dokumen satu klaim.
+type DocumentListResponse struct {
+	Dokumen []DocumentDTO `json:"dokumen"`
+
+	// Catatan menyatakan bahwa daftar ini mungkin TIDAK lengkap.
+	//
+	// Ia dikirim sebagai DATA, bukan ditulis tetap di layar, supaya ia dapat hilang di satu
+	// tempat begitu jalur lampiran bawaan Pega ikut terbaca. Alasannya di kueri `documents`:
+	// dokumen yang hanya ada di tabel lampiran Pega tidak muncul lewat jalur ini, dan daftar
+	// kosong tanpa keterangan terbaca sebagai "klaim ini tidak berdokumen".
+	Catatan string `json:"catatan"`
+
+	// Disaring adalah JUMLAH lampiran klaim yang tidak digambar karena tidak tergambar pula
+	// di layar Pega. Lihat toDocumentListResponse.
+	//
+	// Dikirim sebagai angka, bukan disembunyikan: petugas berhak tahu daftarnya dipersempit.
+	Disaring int `json:"disaring"`
+
+	Portal string `json:"portal"`
+}
+
+// documentListNote adalah keterangan yang menyertai setiap daftar dokumen.
+const documentListNote = "Dokumen yang diunggah lewat jalur lama Pega belum tentu muncul di " +
+	"daftar ini. Bila dokumen yang Anda cari tidak ada, periksa klaimnya di Pega."
+
+// toDocumentListResponse menyusun daftar dokumen yang DIGAMBAR layar.
+//
+// # Penyaringnya mengikuti `GCNMGetAllAttachments`
+//
+// Report definition di balik "Lihat Dokumen" berjalan di kelas `Link-Attachment` dan
+// menyaring atas `pyCategory` — yang isinya NAMA kategori lampiran. Baris yang `CATEGORY`-nya
+// kode angka berasal dari mekanisme lain, dan penyaring itu tidak pernah mencocokkannya.
+//
+// Dibandingkan langsung pada satu klaim 2026-10-02: layar Pega menggambar **4** lampiran,
+// sementara daftar kami menggambar **9** — enam di antaranya bernama `duplicated.JPG`
+// berkategori `10064`, yang tidak pernah tergambar di Pega sama sekali.
+//
+// # Yang disaring tetap DIHITUNG dan dinyatakan
+//
+// Daftar yang diam-diam lebih pendek adalah kegagalan yang tidak menghasilkan satu pun galat:
+// dokumen yang dicari petugas hilang, dan tidak ada yang memberi tahu bahwa ia disembunyikan.
+// Karena itu jumlahnya ikut dikirim, dan layar menyebutkannya.
+func toDocumentListResponse(
+	documents []inboxrclpucl.Document,
+	portal string,
+) DocumentListResponse {
+	rows := make([]DocumentDTO, 0, len(documents))
+	disaring := 0
+	for _, document := range documents {
+		if !document.PegaVisible {
+			disaring++
+			continue
+		}
+		rows = append(rows, documentDTO(document))
+	}
+	return DocumentListResponse{
+		Dokumen:  rows,
+		Disaring: disaring,
+		Catatan:  documentListNote,
+		Portal:   portal,
+	}
+}
+
+// saveReceiptRequest adalah badan permintaan tombol "Save".
+//
+// Nama isiannya berbahasa Indonesia mengikuti `D-80`: nama field JSON adalah KONTRAK dengan
+// layar, bukan nama internal, dan seluruh modul lain memakai bahasa yang sama.
+//
+// Hanya DUA isian, bukan tiga. "Email Tertanggung" juga dapat diketik di layar lama, tetapi ia
+// hidup di `POOLDATA.T_CLAIM_PNC.EMAIL_LOD` — tabel lain yang modul ini tidak tulis. Lihat
+// `inboxrclpucl.ReceiptInput`.
+type saveReceiptRequest struct {
+	Note       string `json:"catatan_untuk_analyst"`
+	CompleteAt string `json:"tanggal_kelengkapan_dokumen"`
+}
+
+// documentDTO menyusun satu baris dokumen.
+//
+// Dipisah dari toDocumentListResponse sejak unggahan mengembalikan SATU baris: dua penyusun
+// yang menulis isian yang sama adalah dua tempat yang dapat berselisih.
+func documentDTO(document inboxrclpucl.Document) DocumentDTO {
+	return DocumentDTO{
+		ID:           document.ID,
+		Nama:         document.Name,
+		Kategori:     document.Category,
+		SubKategori:  document.SubCategory,
+		DiunggahPada: document.UploadedAt,
+		DiunggahOleh: document.UploadedBy,
+	}
+}
+
+// documentCategoryDTO adalah satu pilihan kolom "Category" pada dialog unggah.
+//
+// Nama fieldnya Indonesia karena ia KONTRAK, bukan nama internal (`D-80`).
+type documentCategoryDTO struct {
+	// Nilai adalah yang dikirim balik saat mengunggah, dan yang tersimpan.
+	Nilai string `json:"nilai"`
+
+	// Nama adalah yang dibaca petugas. Untuk sekarang selalu sama dengan Nilai — teks
+	// tampilannya hidup di rule yang tidak diekspor (`R-16`).
+	Nama string `json:"nama"`
 }

@@ -383,18 +383,30 @@ function SupportingDocumentModal({
  *
  * Kosong menjadi tanda pisah, bukan "Invalid Date": baris warisan boleh tidak punya
  * INSERTDATE, dan itu bukan kesalahan yang perlu diteriakkan di setiap barisnya.
+ *
+ * Jamnya selalu WIB, bukan zona waktu komputer pengguna — `Asia/Jakarta` disebut namanya,
+ * sama seperti layar lain, supaya pengguna di zona lain melihat jam yang sama.
  */
 function formatInputDate(raw: string): string {
   if (raw === '') return '—'
   const waktu = new Date(raw)
   if (Number.isNaN(waktu.getTime())) return '—'
 
-  const dua = (angka: number) => String(angka).padStart(2, '0')
-  return (
-    `${dua(waktu.getDate())}/${dua(waktu.getMonth() + 1)}/${waktu.getFullYear()} ` +
-    `${dua(waktu.getHours())}:${dua(waktu.getMinutes())}`
+  const bagian = Object.fromEntries(
+    INPUT_DATE_FORMAT.formatToParts(waktu).map((part) => [part.type, part.value]),
   )
+  return `${bagian.day}/${bagian.month}/${bagian.year} ${bagian.hour}:${bagian.minute}`
 }
+
+const INPUT_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Jakarta',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
 
 function DocumentErrorMessage({ error }: { error: unknown }) {
   if (error instanceof NetworkError) {

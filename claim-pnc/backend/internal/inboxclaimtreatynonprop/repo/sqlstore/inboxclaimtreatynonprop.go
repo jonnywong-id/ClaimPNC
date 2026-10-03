@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 )
@@ -199,18 +200,17 @@ type scanner interface {
 // berlebih: kedua gabungan adalah LEFT JOIN, sehingga penugasan yang objek kerjanya atau
 // baris JSON_KLAIM-nya belum ada mengembalikan NULL pada seluruh kolom tabel itu sekaligus.
 //
-// AGING_DAYS ikut dipindai lewat tipe ber-NULL dengan alasan yang sama: ia dihitung dari
-// `b.PXCREATEDATETIME`, sehingga baris tanpa pasangan objek kerja menghasilkan NULL, bukan
-// nol. Keduanya dibedakan di layar — umur nol hari berbeda artinya dari umur yang tidak
-// diketahui.
+// WORK_CREATED_AT dipindai lewat `sql.NullTime` dengan alasan yang sama, dan darinya DUA
+// isian diturunkan sekaligus: teks kolom "Status" dan umur pekerjaan. Baris tanpa pasangan
+// objek kerja karena itu menghasilkan teks kosong dan umur nol, bukan tanggal tahun satu.
 func scanWorkItem(row scanner) (inboxclaimtreatynonprop.WorkItem, int, error) {
 	var (
 		reference, claimID, assignedOperator   sql.NullString
 		masterID, jsonMasterID, policyNumber   sql.NullString
 		lossDate, businessName, businessSource sql.NullString
-		cedingCompany, insuredName, status     sql.NullString
+		cedingCompany, insuredName             sql.NullString
 		createOperator, lastUpdateOperator     sql.NullString
-		agingDays                              sql.NullInt64
+		workCreatedAt                          sql.NullTime
 		total                                  sql.NullInt64
 	)
 
@@ -218,7 +218,7 @@ func scanWorkItem(row scanner) (inboxclaimtreatynonprop.WorkItem, int, error) {
 		&reference, &claimID, &assignedOperator,
 		&masterID, &jsonMasterID, &policyNumber, &lossDate,
 		&businessName, &businessSource, &cedingCompany, &insuredName,
-		&status, &agingDays, &createOperator, &lastUpdateOperator,
+		&workCreatedAt, &createOperator, &lastUpdateOperator,
 		&total,
 	)
 	if err != nil {
@@ -226,20 +226,33 @@ func scanWorkItem(row scanner) (inboxclaimtreatynonprop.WorkItem, int, error) {
 	}
 
 	return inboxclaimtreatynonprop.WorkItem{
-		Reference:          reference.String,
-		ClaimID:            claimID.String,
-		AssignedOperator:   assignedOperator.String,
-		MasterID:           masterID.String,
-		JSONMasterID:       jsonMasterID.String,
-		PolicyNumber:       policyNumber.String,
-		LossDate:           lossDate.String,
-		BusinessName:       businessName.String,
-		BusinessSource:     businessSource.String,
-		CedingCompany:      cedingCompany.String,
-		InsuredName:        insuredName.String,
-		Status:             status.String,
-		AgingDays:          int(agingDays.Int64),
+		Reference:        reference.String,
+		ClaimID:          claimID.String,
+		AssignedOperator: assignedOperator.String,
+		MasterID:         masterID.String,
+		JSONMasterID:     jsonMasterID.String,
+		PolicyNumber:     policyNumber.String,
+		LossDate:         lossDate.String,
+		BusinessName:     businessName.String,
+		BusinessSource:   businessSource.String,
+		CedingCompany:    cedingCompany.String,
+		InsuredName:      insuredName.String,
+		// Waktu yang NULL menghasilkan teks KOSONG, bukan tanggal tahun satu — lihat
+		// FormatPegaDateTime. Ia terjadi pada baris penugasan yang objek kerjanya tidak
+		// punya pasangan, dan LEFT JOIN membuat keadaan itu mungkin.
+		CreatedAt: inboxclaimtreatynonprop.FormatPegaDateTime(workCreatedAt.Time),
+		// Umur dihitung DI SINI, bukan di SQL. Padanan portabel `TRUNC` tidak memangkas jam
+		// di Oracle, sehingga selisihnya berupa pecahan hari yang bahkan tidak dapat
+		// dipindai ke bilangan bulat — lihat catatan 5 di kepala berkas .sql.
+		AgingDays:          inboxclaimtreatynonprop.AgingDaysSince(workCreatedAt.Time, now()),
 		CreateOperator:     createOperator.String,
 		LastUpdateOperator: lastUpdateOperator.String,
 	}, int(total.Int64), nil
 }
+
+// now adalah sumber waktu pemindai, dipisah supaya uji dapat mematoknya.
+//
+// Ia variabel paket, bukan isian Repo: pemindainya fungsi bebas yang diuji tanpa Repo sama
+// sekali, dan menambahkan penerima hanya demi jam akan memaksa seluruh pemanggil membawa
+// sesuatu yang tidak dipakainya.
+var now = time.Now

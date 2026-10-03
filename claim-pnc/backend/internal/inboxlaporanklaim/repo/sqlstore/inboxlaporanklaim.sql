@@ -577,6 +577,12 @@ SELECT s.report_id,
        s.damage_detail,
        s.not_registered_note,
        s.document_count,
+       -- Keempat isian InputReceiveDocument_sect hanya dibaca dari berkas terbitan
+       -- aplikasi ini (claim_report_get_own_body); berkas warisan tidak mengisinya.
+       CAST(NULL AS VARCHAR(10))   AS group_panel,
+       CAST(NULL AS VARCHAR(1000)) AS insured_email,
+       CAST(NULL AS VARCHAR(25))   AS driver_license,
+       CAST(NULL AS VARCHAR(100))  AS report_source,
        CAST(NULL AS VARCHAR(4000)) AS last_message
   FROM source s
  WHERE s.report_id = :1
@@ -610,9 +616,10 @@ SELECT DISTINCT br.basterritory
 --
 -- # Kenapa MAX aman dipakai di sini
 --
--- Nomor berbentuk `RCVN.YY.0001` — lebar tetap dan dipadatkan nol, sehingga urutan teks
--- sama dengan urutan angka. Penyaring membatasi pada TAHUN yang diminta, jadi pergantian
--- tahun tidak membuat deretnya melompat.
+-- Nomor berbentuk `RCVN.YY.n` tanpa nol di depan (sejak 2026-09-29; sebelumnya
+-- `RCVN.YY.0001`). MAX diambil atas TO_NUMBER, bukan atas teks, sehingga kedua bentuk
+-- terbaca benar. Penyaring membatasi pada TAHUN yang diminta, jadi pergantian tahun tidak
+-- membuat deretnya melompat.
 --
 -- # Satu bentuk lain ikut dihitung, dan alasannya
 --
@@ -719,8 +726,12 @@ UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
        KRONOLOGIKEJADIAN    = :13,
        RINCIANKERUSAKAN     = :14,
        ALASANBLMTRANSFER    = :15,
-       KETERANGANBLMREGIST  = :16
- WHERE CLAIMID = :17
+       KETERANGANBLMREGIST  = :16,
+       GROUPPANEL           = :17,
+       EMAILTERTANGGUNG     = :18,
+       SIMPENGENDARA        = :19,
+       RESOURCES            = :20
+ WHERE CLAIMID = :21
    AND CLAIMID LIKE 'RCVN%'
 
 -- ============================================================================
@@ -855,6 +866,10 @@ SELECT r.claimid             AS report_id,
        r.rinciankerusakan    AS damage_detail,
        r.keteranganblmregist AS not_registered_note,
        CAST(NULL AS NUMBER)  AS document_count,
+       r.grouppanel          AS group_panel,
+       r.emailtertanggung    AS insured_email,
+       r.simpengendara       AS driver_license,
+       r.resources           AS report_source,
        CAST(NULL AS VARCHAR(4000)) AS last_message
   FROM POOLDATA.T_CLAIM_RECIVEDCLAIM r
   LEFT JOIN POOLDATA.BUSINESS b2
@@ -885,7 +900,7 @@ SELECT CLAIMID, NOPOLIS, QQNAME, DATEOFLOSS, REPORTDATE, REPORTERNAME, NO_HP,
 --      pertama hasil kueri, dan di sini pun demikian.
 --
 -- Hanya kolom yang dipakai form yang dibaca.
-SELECT QQNAME, BUSINESSCODE, BUSINESSNAME, REFNO, GROUPPANEL, SYARIAHSTATUS
+SELECT QQNAME, BUSINESSCODE, BUSINESSNAME, REFNO, GROUPPANEL, SYARIAHSTATUS, LEADERPOLICYCOAS
   FROM POOLDATA.T_GENERAL
  WHERE NOPOLIS = :1
  ORDER BY TO_NUMBER(PRODKE) DESC

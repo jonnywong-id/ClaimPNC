@@ -291,6 +291,11 @@ type ClaimReportSnapshot struct {
 	// Ia dibawa untuk DIPERIKSA, bukan dipakai: pemanggil sudah menyebut nomor polis,
 	// dan keduanya harus sama. Berbeda berarti berkas dan klaim menunjuk polis yang lain.
 	PolicyNumber string
+
+	// ClaimNumber ← NOKLAIM: nomor klaim yang sudah terbit dari berkas ini. Terisi berarti
+	// berkasnya sudah diregistrasi, dan Register Klaim kedua ditolak (Work Owner,
+	// 2026-09-29) — tanpa itu terbit PNCN kedua dan NOKLAIM berkasnya tertimpa.
+	ClaimNumber string
 }
 
 type ClaimReportLink interface {
@@ -305,6 +310,17 @@ type ClaimReportLink interface {
 	// Tanpa ini, klaim lahir kosong dan petugas mengetik ulang seluruh isi berkas yang
 	// baru saja diisinya — di Pega tidak demikian, dan itu terlihat langsung di layar.
 	Snapshot(ctx context.Context, reportID string) (ClaimReportSnapshot, error)
+}
+
+// ReportAlreadyRegisteredError: berkas Receive Document sudah punya nomor klaim, sehingga
+// Register Klaim kedua ditolak (Work Owner, 2026-09-29).
+type ReportAlreadyRegisteredError struct {
+	ReportID    string
+	ClaimNumber string
+}
+
+func (e *ReportAlreadyRegisteredError) Error() string {
+	return "registrasi: laporan " + e.ReportID + " sudah diregistrasi sebagai klaim " + e.ClaimNumber
 }
 
 // AreaLevel adalah satu tingkat daftar pilihan wilayah kejadian.
@@ -346,4 +362,35 @@ type AreaOption struct {
 // NATIONNAME cocok. Report definition aslinya hilang, sehingga ini inferensi dari data.
 type AreaDirectory interface {
 	Options(ctx context.Context, level AreaLevel, parent string) ([]AreaOption, error)
+}
+
+// CauseOfLossOption adalah satu pilihan Penyebab Kerugian: ID-nya `D_COL_ID` (yang
+// disimpan klaim di CAUSEOFLOSSID), Name-nya `DESCRIPTION` (yang dilihat petugas).
+type CauseOfLossOption struct {
+	ID   string
+	Name string
+}
+
+// CauseOfLossDirectory membaca pilihan Penyebab Kerugian sebuah kode bisnis polis.
+//
+// Di Pega isian ini autocomplete ber-sumber `BrowseCouseOfLoss_Business` atas kelas
+// `ASM-FW-GCNMFW-Int-V_D_CAUSE_OF_LOSS_BUSINESS`, ber-parameter `id` =
+// `Policy.Quotation.BusinessCode` (`Section/ViewCoverageGridContent-Section.xml`). Report
+// definition-nya HILANG dari export (`R-16`), sehingga penyaringnya disimpulkan dari
+// view-nya: BISNISID = kode bisnis, STS_AKTIF = '1'.
+//
+// Penyebab kerugian TIDAK ada di dokumen polis — CoverageList polis tidak punya kunci
+// apa pun untuknya (diperiksa 2026-10-01). Ia dipilih petugas; yang dapat diisi otomatis
+// hanyalah kode bisnis yang pilihannya tepat satu.
+type CauseOfLossDirectory interface {
+	CauseOfLossOptions(ctx context.Context, businessCode string) ([]CauseOfLossOption, error)
+}
+
+// SingleCauseOfLoss mengembalikan satu-satunya pilihan, atau false bila pilihannya kosong
+// atau lebih dari satu — saat itu petugas yang memilih.
+func SingleCauseOfLoss(options []CauseOfLossOption) (CauseOfLossOption, bool) {
+	if len(options) != 1 {
+		return CauseOfLossOption{}, false
+	}
+	return options[0], true
 }

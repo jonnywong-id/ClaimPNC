@@ -302,6 +302,25 @@ func (h *Handler) AreaOptions(w http.ResponseWriter, r *http.Request, level stri
 	h.writeResponse(w, r, http.StatusOK, AreaOptionsResponse{Option: body})
 }
 
+// CauseOfLossOptions menangani GET /api/registrasi/penyebab-kerugian?bisnis=….
+//
+// bisnis adalah kode bisnis polis (Quotation.BusinessCode) — parameter id autocomplete Pega.
+func (h *Handler) CauseOfLossOptions(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+	option, err := h.service.CauseOfLossOptions(r.Context(), r.URL.Query().Get("bisnis"))
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	body := make([]CauseOfLossOptionDTO, 0, len(option))
+	for _, o := range option {
+		body = append(body, CauseOfLossOptionDTO{ID: o.ID, Name: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, CauseOfLossOptionsResponse{Option: body})
+}
+
 // ClaimTask menangani POST /api/registrasi/tugas/{taskID}/ambil.
 func (h *Handler) ClaimTask(w http.ResponseWriter, r *http.Request, taskID string) {
 	caller, ok := h.callerOf(w, r)
@@ -441,6 +460,11 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		},
 		CustomerPrinciple: b.CustomerPrinciple,
 		SuspiciousComment: b.SuspiciousComment,
+
+		EmailLOD:             b.EmailLOD,
+		RemarkRecommendation: b.RemarkRecommendation,
+		SubjectEmail:         b.SubjectEmail,
+		SalvageStatus:        b.SalvageStatus,
 		Reporter: registrasi.Reporter{
 			Name:          b.Reporter.Name,
 			Phone:         b.Reporter.Phone,
@@ -549,6 +573,11 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		},
 		CustomerPrinciple: k.CustomerPrinciple,
 		SuspiciousComment: k.SuspiciousComment,
+
+		EmailLOD:             k.EmailLOD,
+		RemarkRecommendation: k.RemarkRecommendation,
+		SubjectEmail:         k.SubjectEmail,
+		SalvageStatus:        k.SalvageStatus,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,

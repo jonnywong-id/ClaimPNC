@@ -57,6 +57,7 @@ func loadSettlement(
 		return fmt.Errorf("registrasi/sqlstore: membaca adjustment: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
+	var pending []lodPending
 	for rows.Next() {
 		var (
 			objectID, coverageID, adjustmentID, paymentType, currency, riskType sql.NullString
@@ -64,11 +65,16 @@ func loadSettlement(
 			rate, propose, loc, salvageA, riskPercent, riskValue                sql.NullInt64
 			gross, share, value, accepted, submitted                            sql.NullInt64
 			transferredAt, decidedAt                                            sql.NullTime
+			lodStatus, receiverID, receiverName, lodType                        sql.NullString
+			acceptedAt, printedAt, receivedAt, cashierAt                        sql.NullTime
+			cashierCase                                                         sql.NullString
 		)
 		if err := rows.Scan(&objectID, &coverageID, &adjustmentID, &paymentType, &currency,
 			&rate, &propose, &loc, &salvageA, &riskType, &riskPercent, &riskValue, &gross,
 			&share, &value, &accepted, &submitted, &exGratia, &chronology, &notes, &status,
-			&acceptedNo, &committeeCase, &transferredAt, &decidedAt); err != nil {
+			&acceptedNo, &committeeCase, &transferredAt, &decidedAt, &lodStatus,
+			&acceptedAt, &receiverID, &receiverName, &printedAt, &receivedAt, &lodType,
+			&cashierAt, &cashierCase); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris adjustment: %w", err)
 		}
 		c := coverageAt(strings.TrimSpace(objectID.String), strings.TrimSpace(coverageID.String))
@@ -96,10 +102,40 @@ func loadSettlement(
 			AcceptanceStatus: strings.TrimSpace(status.String),
 			AcceptedNo:       strings.TrimSpace(acceptedNo.String),
 
+			AcceptanceLODStatus: strings.TrimSpace(lodStatus.String),
+
 			CommitteeCaseID:        strings.TrimSpace(committeeCase.String),
 			CommitteeTransferredAt: transferredAt.Time,
 			CommitteeDecidedAt:     decidedAt.Time,
+
+			CashierTransferredAt: wallWIB(cashierAt.Time),
+			CashierCaseID:        strings.TrimSpace(cashierCase.String),
+
+			// Isian akseptasi yang kolomnya sudah ada; tujuh kolom migrasi 0013 dibaca terpisah
+			// (AcceptanceStore.Fields).
+			Acceptance: registrasi.Acceptance{
+				Form: registrasi.AcceptanceForm{
+					LODStatus:   strings.TrimSpace(lodStatus.String),
+					ReceiverID:  strings.TrimSpace(receiverID.String),
+					PrintDate:   wallWIB(printedAt.Time),
+					ReceiveDate: wallWIB(receivedAt.Time),
+				},
+				ReceiverName: strings.TrimSpace(receiverName.String),
+				AcceptedAt:   wallWIB(acceptedAt.Time),
+				LODType:      strings.TrimSpace(lodType.String),
+			},
 		})
+		if needsDocumentLOD(c.Settlement[len(c.Settlement)-1]) {
+			pending = append(pending, lodPending{
+				coverage: c, index: len(c.Settlement) - 1,
+				objectID: objectID.String, coverageID: coverageID.String, adjustmentID: adjustmentID.String,
+			})
+		}
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	// Baris ditutup lebih dulu: kueri dokumen dapat berjalan di koneksi transaksi yang sama.
+	_ = rows.Close()
+	return fillLODFromDocument(ctx, exec, claimID, pending)
 }

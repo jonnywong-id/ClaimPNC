@@ -88,7 +88,11 @@ func TestKueriTulisMemakaiParameterBinding(t *testing.T) {
 
 // TestEkspresiKeunikanNamaSamaDenganNameKey adalah uji terpenting di berkas ini.
 //
-// Ekspresi `UPPER(REPLACE(NAME, ' ', ”))` di SQL harus sama artinya dengan
+// Ekspresi SQL berikut
+//
+//	UPPER(REPLACE(NAME, ' ', ''))
+//
+// harus sama artinya dengan
 // mastersurveyors.NameKey di Go DAN dengan indeks unik pada migrasi 0004. Bila ketiganya
 // tidak sepakat, aplikasi akan menerima nama yang kemudian ditolak basis data — dan
 // pengguna melihat galat 500 alih-alih pesan yang dapat ditindaklanjuti.

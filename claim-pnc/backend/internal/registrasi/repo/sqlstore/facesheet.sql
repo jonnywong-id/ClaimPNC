@@ -27,30 +27,22 @@ SELECT l.LOGIN_NAME
 
 -- name: cfs_fac_offer
 --
--- FacOfferList dokumen polis — baris REINS FAC OUT MEMBER SHARE. Dokumennya sama dengan
--- polis_koasuransi; dua cabang karena POLICYDATA (CLOB) dan DATA_JSONBLOB (BLOB) tidak
--- dapat digabung sebelum JSON_TABLE.
-WITH terbaru AS (
-    SELECT p.POLICYDATA, p.DATA_JSONBLOB
-      FROM POOLDATA.JSON_POLIS p
-     WHERE p.NOPOLIS = :1
-       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
-     ORDER BY p.TGL_INPUT DESC
-     FETCH FIRST 1 ROWS ONLY
-)
+-- Fac Offer polis — baris REINS FAC OUT MEMBER SHARE.
+--
+-- Sumbernya POOLDATA.T_FACOFFER menurut POLICYNO dan PRODKE snapshot klaim (Work Owner,
+-- 2026-10-01). Satu baris per reasuradur, tetapi JSONDATA setiap baris memuat SELURUH
+-- FacOfferList polis — karena itu hanya entri yang ReinsurerID-nya sama dengan
+-- REINSURER_ID baris itu yang diambil; tanpa saringan itu reasuradur terhitung berkali-kali.
 SELECT jt.REINSURER_NAME, jt.PCT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.POLICYDATA, '$.FacOfferList[*]' COLUMNS (
+  FROM POOLDATA.T_FACOFFER f,
+       JSON_TABLE(f.JSONDATA, '$.FacOfferList[*]' COLUMNS (
+           REINSURER_ID   VARCHAR(50)  PATH '$.ReinsurerID',
            REINSURER_NAME VARCHAR(200) PATH '$.ReinsurerName',
            PCT_SHARE      VARCHAR(50)  PATH '$.PctShareForAllObj')) jt
- WHERE t.POLICYDATA IS NOT NULL
-UNION ALL
-SELECT jt.REINSURER_NAME, jt.PCT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.DATA_JSONBLOB, '$.FacOfferList[*]' COLUMNS (
-           REINSURER_NAME VARCHAR(200) PATH '$.ReinsurerName',
-           PCT_SHARE      VARCHAR(50)  PATH '$.PctShareForAllObj')) jt
- WHERE t.POLICYDATA IS NULL
+ WHERE f.POLICYNO = :1
+   AND f.PRODKE = :2
+   AND TRIM(jt.REINSURER_ID) = TRIM(f.REINSURER_ID)
+ ORDER BY f.REINSURER_ID
 
 -- name: cfs_revisi_terakhir
 SELECT MAX(REVISI)

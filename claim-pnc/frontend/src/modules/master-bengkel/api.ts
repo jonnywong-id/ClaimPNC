@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { callAPI } from '@/api/client'
+import { callAPI, unduhBerkas, uploadAPI, type DownloadedFile } from '@/api/client'
 import type {
   WorkshopBankListResponse,
   WorkshopBranchListResponse,
   WorkshopCityListResponse,
   WorkshopDecisionInput,
   WorkshopDecisionResponse,
+  WorkshopDocumentResponse,
   WorkshopInput,
   WorkshopListResponse,
   WorkshopResponse,
@@ -163,7 +164,7 @@ export function useCreateWorkshop() {
     mutationFn: (input: WorkshopInput) =>
       callAPI<WorkshopResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
 }
@@ -189,7 +190,7 @@ export function useSaveWorkshop() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
 }
@@ -216,7 +217,81 @@ export function useDecideWorkshop() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
     },
   })
+}
+
+/** Kunci cache dokumen satu bengkel. */
+const documentKey = (portal: string | null, token: string | null, id: string) =>
+  ['master-bengkel', 'dokumen', portal, token, id] as const
+
+/**
+ * Hook metadata dokumen yang tertaut pada satu bengkel.
+ *
+ * Padanan `Activity/GetDetailDocument`, yang membaca `DOKUMENID` dari barisnya lalu
+ * mengambil lampirannya.
+ *
+ * 404 adalah jawaban yang WAJAR di sini — bengkel yang belum pernah dilampiri. Karena itu
+ * percobaan ulang dimatikan: mengulang permintaan yang sudah pasti 404 hanya menunda
+ * layarnya tanpa mengubah hasilnya.
+ */
+export function useWorkshopDocument(id: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: documentKey(portal, token, id),
+    queryFn: () =>
+      callAPI<WorkshopDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}/dokumen`, {
+        token,
+        portal,
+      }),
+    enabled: enabled && id !== '' && token !== null && portal !== null,
+    retry: false,
+  })
+}
+
+/**
+ * Hook unggah dokumen.
+ *
+ * Berkasnya dikirim sebagai `multipart/form-data` lewat uploadAPI — bukan `fetch` sendiri,
+ * sesuai aturan "tidak ada fetch di dalam komponen".
+ *
+ * `BENGKEL_HE` hanya punya SATU kolom `DOKUMENID`, sehingga unggahan berikutnya
+ * MENGGANTIKAN tautan yang sebelumnya. Itu perilaku Pega, bukan penyederhanaan.
+ */
+export function useUploadWorkshopDocument() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, berkas }: { id: string; berkas: File }) =>
+      uploadAPI<WorkshopDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}/dokumen`, {
+        berkas,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      // Daftar ikut disegarkan: DOKUMENID adalah kolom barisnya, sehingga baris yang
+      // tampil di grid pun berubah — bukan hanya isi dialognya.
+      client.invalidateQueries({ queryKey: ['master-bengkel'] })
+    },
+  })
+}
+
+/**
+ * unduhDokumenBengkel mengambil isi berkasnya, bukan metadatanya.
+ *
+ * Ia BUKAN hook: unduhan adalah tindakan sesaat yang dipicu tombol, dan menaruhnya di
+ * cache TanStack Query berarti menyimpan berkas beberapa megabyte di memori tanpa satu pun
+ * yang membacanya lagi.
+ */
+export async function unduhDokumenBengkel(
+  id: string,
+  token: string | null,
+  portal: string | null,
+): Promise<DownloadedFile> {
+  return unduhBerkas(`${ROUTE}/${encodeURIComponent(id)}/dokumen/berkas`, { token, portal })
 }

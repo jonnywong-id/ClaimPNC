@@ -270,6 +270,9 @@ func (s *Service) Save(
 	if existing.Origin == inboxlaporanklaim.OriginLegacy {
 		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrReadOnlyOrigin
 	}
+	if existing.Registered() {
+		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrAlreadyRegistered
+	}
 
 	cleanDetail := detail.Clean()
 	if err := cleanDetail.Check(); err != nil {

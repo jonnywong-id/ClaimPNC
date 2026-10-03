@@ -71,16 +71,32 @@ export type WorkItem = {
   tanggal_cetak_surat: string
 
   /**
-   * Kolom "Lama Klaim", dikirim sebagai TEKS.
+   * Kolom "Lama Klaim", dikirim sebagai teks TANGGAL.
    *
-   * Satuannya tidak diketahui: tidak satu pun kueri di export menghitungnya, dan tidak ada
-   * DDL yang menyatakan tipenya (`R-08`). Menambahkan kata "hari" di layar berarti
-   * menetapkan satuan yang belum pernah dipastikan.
+   * Judulnya menyebut durasi; isinya **tanggal kirim untuk proses PUCL** (Work Owner,
+   * 2026-09-30), dan kolomnya terverifikasi bertipe timestamp di Oracle. Judulnya tetap
+   * dibawa apa adanya (`D-13`); yang dibentuk hanya isinya, dan itu dikerjakan SERVER —
+   * layar tidak memformat ulang apa pun, supaya tabel dan berkas ekspor tidak dapat
+   * menggambar isian yang sama dengan dua bentuk yang berbeda.
+   *
+   * Isinya akan sering terbaca SAMA dengan `tanggal_masuk_inbox`: keduanya ditulis pada
+   * langkah yang sama dan hanya terpaut milidetik. Itu keadaan di Pega, bukan kekeliruan.
    */
   lama_klaim: string
 
   /** Kolom "Status Kadaluarsa". Sumbernya BUKAN kolom yang dipakai menyaring tab pertama. */
   status_kadaluarsa: string
+
+  /**
+   * Kolom "Tanggal Dibuat" — kolom yang MENGURUTKAN tabel ini.
+   *
+   * Ia tidak ada di layar lama. Ditambahkan 2026-09-30 atas keputusan Work Owner supaya
+   * tabelnya tidak lagi terbaca acak: yang tampil sebagai "Tanggal Masuk Inbox" adalah
+   * tanggal pengiriman RCL/PUCL, sementara yang mengurutkan adalah tanggal ini.
+   *
+   * Urutan barisnya sendiri TIDAK berubah — hanya kolomnya yang kini terlihat.
+   */
+  tanggal_dibuat: string
 }
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
@@ -96,6 +112,24 @@ export type TabColumn = {
 export type ReportColumn = {
   kunci: string
   judul: string
+}
+
+/**
+ * Satu selisih terhadap layar lama yang sudah diputuskan.
+ *
+ * # Kenapa dua bagian
+ *
+ * Karena pembacanya dua. `ringkas` untuk petugas klaim yang sedang memakai layar — satu
+ * kalimat, tanpa nama artefak Pega, tanpa nomor keputusan, tanpa tanggal. `rincian` untuk
+ * penguji kesetaraan yang sedang mencari pemetaan `P-5`-nya.
+ *
+ * Sebelum dipisah, keduanya ditulis menjadi satu dan panel ini berisi 1.114 kata — lebih
+ * panjang daripada tabel yang dijelaskannya, sehingga tidak dibaca siapa pun. Panel yang
+ * tidak dibaca tidak mencegah laporan kerusakan palsu yang menjadi alasan keberadaannya.
+ */
+export type PlannedDifference = {
+  ringkas: string
+  rincian: string
 }
 
 /** Satu tab beserta bentuk gridnya. */
@@ -156,7 +190,7 @@ export type MetadataResponse = {
   kolom_laporan: ReportColumn[]
 
   /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel. */
-  selisih_terencana: string[]
+  selisih_terencana: PlannedDifference[]
 
   portal: string
 }
@@ -211,6 +245,20 @@ export type LetterDraft = {
 
   /** Diturunkan dari `PROPOSE_VALUE` adjustment pertama pada objek pertama. */
   jumlah_tagihan: string
+
+  /**
+   * Keempat isian surat, dibaca dari kolom tabel datar sejak 2026-10-01.
+   *
+   * Sebelumnya keempatnya digambar bertanda "di clipboard Pega", karena kolomnya memang
+   * belum ada. Yang berubah bukan pembacaan kami melainkan tabelnya.
+   *
+   * `perihal` di layar lama adalah PILIHAN dari daftar baku 12 butir; yang tersimpan pada
+   * klaim adalah teksnya.
+   */
+  perihal: string
+  keterangan_pembuka: string
+  keterangan_isi: string
+  keterangan_penutup: string
 }
 
 /**
@@ -219,7 +267,44 @@ export type LetterDraft = {
  * Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali —
  * yang menjelaskan ketiadaannya adalah `isian_belum_terpetakan`.
  */
+/** Satu baris grid "Tanggal Terima Dokumen". */
+export type ReceivedDate = {
+  tanggal: string
+  keterangan: string
+}
+
 export type DocumentReceipt = {
+  /**
+   * Grid "Tanggal Terima Dokumen" — paling banyak SATU baris.
+   *
+   * Daftarnya page list Pega tanpa tabel; hanya baris pertamanya yang diekspos sebagai
+   * kolom. Lihat `tanggal_terima_dokumen_sebagian`.
+   */
+  tanggal_terima_dokumen: ReceivedDate[]
+
+  /**
+   * Daftar di atas MUNGKIN tidak lengkap.
+   *
+   * Datang dari server supaya ia hilang di satu tempat begitu baris kedua dan seterusnya
+   * terbaca lewat layanan Pega.
+   */
+  tanggal_terima_dokumen_sebagian: boolean
+
+  /**
+   * "Tanggal Kelengkapan Dokumen" — dari `TGL_TERIMA_DOKUMEN_PUCL`.
+   *
+   * Sudah berbentuk tampilan; layar tidak memformat ulang apa pun.
+   */
+  tanggal_kelengkapan_dokumen: string
+
+  /**
+   * "Email Tertanggung" — dari `T_CLAIM_PNC.EMAIL_LOD`.
+   *
+   * Kolomnya ADA tetapi kosong pada seluruh baris produksi (dihitung 2026-10-01), sehingga
+   * isian ini akan tergambar kosong. Itu keadaan DATA, bukan isian yang belum terpetakan.
+   */
+  email_tertanggung: string
+
   /**
    * Judulnya di layar **"Catatan untuk Analyst"**, bukan "Komentar PUCL".
    *
@@ -249,6 +334,52 @@ export type ClaimDetailResponse = {
    */
   isian_belum_terpetakan: string[]
 
+  /**
+   * Tab "Penerimaan Dokumen" digambar untuk klaim ini.
+   *
+   * Bernilai salah untuk klaim berstatus Notification: layar lama menyembunyikan tab itu
+   * lewat syarat pada kontainernya, karena pemberitahuan tidak menunggu dokumen dan tidak
+   * dikirim kembali ke Analyst.
+   *
+   * Datang dari SERVER, bukan disimpulkan dari `kode_rcl_pucl` di sini — kodenya nilai
+   * milik sistem lama, dan membandingkannya di dua tempat membuat keduanya dapat
+   * berselisih tanpa ketahuan.
+   */
+  tab_penerimaan_dokumen_tampil: boolean
+
+  /**
+   * Tombol mana yang digambar untuk klaim ini.
+   *
+   * Sama alasannya dengan `tab_penerimaan_dokumen_tampil`: syaratnya memakai nilai milik
+   * sistem lama (`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan menaruh perbandingannya
+   * di layar berarti satu aturan bisnis hidup di dua tempat.
+   */
+  /**
+   * Parameter tersembunyi yang dikirim ke `PUCLPost` saat tombol tindakan ditekan.
+   *
+   * TIDAK digambar — ketiganya sel tanpa label di Pega pula. Ia ada di kontrak karena jalur
+   * tulis yang sedang disiapkan membutuhkannya.
+   *
+   * Dibaca dari kolom `ID_OBJECT`, `ID_COVERAGE`, dan `ID_ADJUSTMENT` pada tabel datar.
+   * Isian `sementara` yang sempat ada dicabut bersama nilai penampungnya.
+   */
+  parameter_tindakan: {
+    id_object: string
+    id_coverage: string
+    id_adjustment: string
+  }
+
+  tombol: {
+    download_dokumen: boolean
+    tutup_klaim: boolean
+    unggah_dokumen: boolean
+    lihat_dokumen: boolean
+    save: boolean
+    tolak_klaim: boolean
+    kirim_ke_analyst: boolean
+    kirim_ke_pic_teknik: boolean
+  }
+
   /** Layar ini di Pega adalah layar TULIS; di sini baca saja. */
   tindakan_masih_di_pega: boolean
 
@@ -259,4 +390,44 @@ export type ClaimDetailResponse = {
 export type DateRange = {
   dari: string
   sampai: string
+}
+
+/** Satu baris daftar dokumen klaim — tombol "Lihat Dokumen". */
+export type DocumentRow = {
+  id: string
+  nama: string
+  kategori: string
+  sub_kategori: string
+  diunggah_pada: string
+  diunggah_oleh: string
+}
+
+/** Jawaban daftar dokumen satu klaim. */
+export type DocumentListResponse = {
+  dokumen: DocumentRow[]
+
+  /**
+   * Keterangan bahwa daftarnya mungkin TIDAK lengkap.
+   *
+   * Datang dari SERVER, bukan ditulis di layar: dokumen yang hanya ada di tabel lampiran
+   * bawaan Pega belum terbaca lewat jalur ini, dan daftar kosong tanpa keterangan terbaca
+   * sebagai "klaim ini tidak berdokumen". Begitu jalur itu ikut terbaca, kalimatnya hilang
+   * di satu tempat.
+   */
+  catatan: string
+
+  /**
+   * Jumlah lampiran klaim yang TIDAK digambar.
+   *
+   * Daftar ini mengikuti penyaring `GCNMGetAllAttachments`, report definition di balik
+   * tombol "Lihat Dokumen" di Pega: ia menyaring atas nama kategori lampiran, sehingga baris
+   * berkategori kode angka — yang berasal dari mekanisme lain — tidak pernah tergambar di
+   * sana pula.
+   *
+   * Angkanya dinyatakan di layar. Daftar yang diam-diam lebih pendek adalah kegagalan yang
+   * tidak menghasilkan satu pun galat.
+   */
+  disaring: number
+
+  portal: string
 }

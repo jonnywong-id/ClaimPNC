@@ -6,35 +6,17 @@
 
 -- name: pla_koasuransi
 --
--- CoinsList dokumen polis beserta CoinsID dan FlagDelete. Dokumennya sama dengan
--- polis_koasuransi; dua cabang karena POLICYDATA (CLOB) dan DATA_JSONBLOB (BLOB).
-WITH terbaru AS (
-    SELECT p.POLICYDATA, p.DATA_JSONBLOB
-      FROM POOLDATA.JSON_POLIS p
-     WHERE p.NOPOLIS = :1
-       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
-     ORDER BY p.TGL_INPUT DESC
-     FETCH FIRST 1 ROWS ONLY
-)
-SELECT jt.COINS_ID, jt.COINS_NAME, jt.LEADER, jt.PERCENT_SHARE, jt.FLAG_DELETE
-  FROM terbaru t,
-       JSON_TABLE(t.POLICYDATA, '$.CoinsList[*]' COLUMNS (
-           COINS_ID      VARCHAR(50)  PATH '$.CoinsID',
-           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
-           LEADER        VARCHAR(10)  PATH '$.Leader',
-           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare',
-           FLAG_DELETE   VARCHAR(10)  PATH '$.FlagDelete')) jt
- WHERE t.POLICYDATA IS NOT NULL
-UNION ALL
-SELECT jt.COINS_ID, jt.COINS_NAME, jt.LEADER, jt.PERCENT_SHARE, jt.FLAG_DELETE
-  FROM terbaru t,
-       JSON_TABLE(t.DATA_JSONBLOB, '$.CoinsList[*]' COLUMNS (
-           COINS_ID      VARCHAR(50)  PATH '$.CoinsID',
-           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
-           LEADER        VARCHAR(10)  PATH '$.Leader',
-           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare',
-           FLAG_DELETE   VARCHAR(10)  PATH '$.FlagDelete')) jt
- WHERE t.POLICYDATA IS NULL
+-- Koasuransi polis beserta CoinsID dan penanda hapus.
+--
+-- Sumbernya POOLDATA.T_COINSLIST menurut NOPOLIS dan PRODKE snapshot klaim (Work Owner,
+-- 2026-10-01: data polis tidak dibaca dari JSON_POLIS.DATA_JSONBLOB bila ada tabelnya).
+-- Kolomnya padanan CoinsList dokumen polis: COINSID, COINSNAME, LEADER ('true'/'false'),
+-- PERCENT_SHARE, FLAGDELETE. PRODKE yang tidak punya baris berarti polis tanpa koasuransi.
+SELECT c.COINSID, c.COINSNAME, c.LEADER, c.PERCENT_SHARE, c.FLAGDELETE
+  FROM POOLDATA.T_COINSLIST c
+ WHERE c.NOPOLIS = :1
+   AND c.PRODKE = :2
+ ORDER BY c.COINSID
 
 -- name: pla_penerima
 --
@@ -96,3 +78,21 @@ SELECT m.NAME, m.JSONDATA
 UPDATE POOLDATA.T_PLALIST
    SET NOTES = :1, ISPLA = '1'
  WHERE CLAIMID = :2 AND NOPLA = :3 AND REVISI = :4
+
+-- name: lod_email_tertanggung
+--
+-- Isian Email LOD (`SetDataEmailTertanggung` ← `ClaimData.Email`), yang diisi
+-- `GetDataPengkinianDataTertanggung` dari `GetDataPengkinianData_SQLF`: OLDEMAIL baris
+-- pengkinian data klaim itu. Pega mengambil baris pertama tanpa urutan.
+SELECT u.OLDEMAIL
+  FROM POOLDATA.UPDATE_PENGKINIANDATA u
+ WHERE u.PYID = :1
+ FETCH FIRST 1 ROWS ONLY
+
+-- name: lod_email_pic
+--
+-- `ClaimData.UserTeknisEmail` — `BrowseEmailUserTeknis` (InputRegister_act langkah 67-68).
+SELECT t.EMAIL
+  FROM POOLDATA.MST_USER_TEKNIK t
+ WHERE t.OPERATOR_ID = :1
+ FETCH FIRST 1 ROWS ONLY

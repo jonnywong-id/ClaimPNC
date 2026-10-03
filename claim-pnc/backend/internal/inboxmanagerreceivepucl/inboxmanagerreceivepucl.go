@@ -489,6 +489,10 @@ func Slice(all []WorkItem, page Pagination) Page {
 // (`P-1`), sehingga aksi tulis apa pun di sini akan membuat dua sistem menulis tabel yang
 // sama.
 //
+// Layar kerja penerimaan dokumen TIDAK mengubah keadaan itu, dan sebabnya lebih keras
+// daripada `P-1`: isian yang dapat disunting di sana hidup di dalam blob objek kerja Pega
+// dan tidak punya kolom yang dapat ditulis SQL sama sekali. Lihat WriteAction.
+//
 // Operasi yang tidak tersedia di seam ini tidak dapat dipakai kode yang ditulis kemudian
 // tanpa keputusan sadar.
 type Repo interface {
@@ -497,6 +501,17 @@ type Repo interface {
 	// Paginasi diserahkan ke pengisi seam, bukan dikerjakan pemanggil, supaya pengisi SQL
 	// dapat memotongnya di basis data. Pengisi memori memakai Slice untuk hasil yang sama.
 	List(ctx context.Context, query Query, page Pagination) (Page, error)
+
+	// Document mengembalikan isi LAYAR KERJA penerimaan dokumen untuk satu berkas.
+	//
+	// Kuncinya `PZINSKEY` — nilai yang sama yang di Pega dikirim sebagai parameter `kunci`
+	// ke `SetAssignmentInboxReceive_act` lalu dipakai Open Assignment.
+	//
+	// Berkas yang tidak ada WAJIB menghasilkan ErrDocumentNotFound, bukan ReceiveDocument
+	// kosong. Layar kerja yang menggambar seluruh isiannya kosong tidak dapat dibedakan dari
+	// berkas yang memang belum diisi apa pun — dan pada layar yang 16 isiannya memang
+	// terhalang, itu tidak akan pernah terlihat sebagai kekeliruan.
+	Document(ctx context.Context, reference string) (ReceiveDocument, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

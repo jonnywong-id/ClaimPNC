@@ -3,10 +3,13 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/money"
 )
 
@@ -38,6 +41,10 @@ func (r *TransferRepo) FindTransfer(
 	if err != nil {
 		return komite.TransferDetail{}, err
 	}
+	members, err := r.entries(ctx, "transfer_members", caseID)
+	if err != nil {
+		return komite.TransferDetail{}, err
+	}
 
 	record, found, err := r.committee(ctx, caseID)
 	if err != nil {
@@ -49,12 +56,23 @@ func (r *TransferRepo) FindTransfer(
 		return komite.TransferDetail{}, err
 	}
 
+	// Case yang dibentuk aplikasi ini tidak punya baris kerja Pega; kepalanya di
+	// TC_PNC_KOMITE. Hanya dicoba untuk nomor KMTN supaya portal yang belum punya tabel itu
+	// tetap dapat membuka case Pega.
+	if strings.TrimSpace(kunciKlaim) == "" && isNewCase(caseID) {
+		panel, bisnis, kunciKlaim, err = r.newCaseContext(ctx, caseID)
+		if err != nil {
+			return komite.TransferDetail{}, err
+		}
+	}
+
 	detail := komite.TransferDetail{
 		Lines:              lines,
 		Committee:          record,
 		HasCommitteeRecord: found,
 		GroupPanel:         panel,
 		BusinessType:       bisnis,
+		Members:            members,
 	}
 
 	// Tanpa kunci klaim, blok klaim dan coverage tidak dapat dibaca — tetapi rincian
@@ -71,7 +89,283 @@ func (r *TransferRepo) FindTransfer(
 	if err != nil {
 		return komite.TransferDetail{}, err
 	}
+	detail.Spreading, err = r.spreading(ctx, kunciKlaim)
+	if err != nil {
+		return komite.TransferDetail{}, err
+	}
+	detail.DominantFactors, err = r.dominantFactors(ctx, kunciKlaim)
+	if err != nil {
+		return komite.TransferDetail{}, err
+	}
+	detail.Attachments, err = r.attachments(ctx, kunciKlaim)
+	if err != nil {
+		return komite.TransferDetail{}, err
+	}
+
+	// Case KMTN dinaungi TC_PNC_KOMITE, case Pega dinaungi baris kerja Pega; satu klaim
+	// hanya punya salah satunya, dan tabel TC_PNC_KOMITE tidak disentuh untuk case Pega.
+	historyQuery := "transfer_history_legacy"
+	if isNewCase(caseID) {
+		historyQuery = "transfer_history_new"
+	}
+	detail.History, err = r.entries(ctx, historyQuery, kunciKlaim, caseID)
+	if err != nil {
+		return komite.TransferDetail{}, err
+	}
+
+	if polis := strings.TrimSpace(detail.Claim.PolicyNumber); polis != "" {
+		detail.Policy, detail.HasPolicy, err = r.policy(ctx, polis, strings.TrimSpace(detail.Claim.ProdKe))
+		if err != nil {
+			return komite.TransferDetail{}, err
+		}
+	}
 	return detail, nil
+}
+
+// isNewCase menyatakan nomor case dibentuk aplikasi ini — "KMTN.YY.n" atau bentuk lama
+// "KMTN-00001". Nomor Pega berawalan "KMT-".
+func isNewCase(caseID string) bool {
+	id := strings.ToUpper(strings.TrimSpace(caseID))
+	return strings.HasPrefix(id, "KMTN.") || strings.HasPrefix(id, "KMTN-")
+}
+
+// newCaseContext membaca padanan caseContext dari TC_PNC_KOMITE.
+func (r *TransferRepo) newCaseContext(
+	ctx context.Context,
+	caseID string,
+) (string, string, string, error) {
+	var panel, bisnis, kunciKlaim any
+	err := r.db.QueryRowContext(ctx, query("transfer_case_new"), caseID).
+		Scan(&panel, &bisnis, &kunciKlaim)
+	if err != nil {
+		return "", "", "", fmt.Errorf(
+			"komite/sqlstore: membaca kepala case komite %s: %w", caseID, err)
+	}
+	return toText(panel), toText(bisnis), toText(kunciKlaim), nil
+}
+
+// policy membaca periode polis dari dokumen polis terbaru, koasuransi dari T_COINSLIST, dan
+// Fac Offer dari T_FACOFFER — keduanya pada PRODKE snapshot klaim.
+func (r *TransferRepo) policy(
+	ctx context.Context,
+	policyNumber, prodKe string,
+) (komite.PolicyFacts, bool, error) {
+	var facts komite.PolicyFacts
+
+	// Periode mendahulukan dokumen POLICYDATA, T_GENERAL hanya cadangan: T_GENERAL tidak
+	// mengikuti endorsemen — terverifikasi 2026-10-01, satu PRODKE endorsemen tercatat 2019–2020
+	// di T_GENERAL sementara dokumennya 2024, dan klaim 2024 atas polis itu hanya sah menurut
+	// dokumen.
+	var start, end sql.NullString
+	err := r.db.QueryRowContext(ctx, query("transfer_policy_dokumen"), policyNumber).Scan(&start, &end)
+	found := err == nil
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca dokumen polis: %w", err)
+	}
+	facts.Start, facts.End = parsePegaTime(start.String), parsePegaTime(end.String)
+	if facts.Start.IsZero() || facts.End.IsZero() {
+		var tableStart, tableEnd sql.NullTime
+		err := r.db.QueryRowContext(ctx, query("transfer_policy"), policyNumber, prodKe).Scan(&tableStart, &tableEnd)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca T_GENERAL polis: %w", err)
+		}
+		found = found || err == nil
+		if facts.Start.IsZero() {
+			facts.Start = wibDate(tableStart)
+		}
+		if facts.End.IsZero() {
+			facts.End = wibDate(tableEnd)
+		}
+	}
+
+	rows, err := r.db.QueryContext(ctx, query("transfer_coinsurance"), policyNumber, prodKe)
+	if err != nil {
+		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca koasuransi: %w", err)
+	}
+	for rows.Next() {
+		var leader, name, pct sql.NullString
+		if err := rows.Scan(&leader, &name, &pct); err != nil {
+			_ = rows.Close()
+			return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: baris koasuransi: %w", err)
+		}
+		facts.Coinsurance = append(facts.Coinsurance, komite.CoinsuranceShare{
+			Name:    strings.TrimSpace(name.String),
+			Leader:  strings.EqualFold(strings.TrimSpace(leader.String), "true"),
+			Percent: strings.TrimSpace(pct.String),
+		})
+	}
+	if err := closeRows(rows); err != nil {
+		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: menelusuri koasuransi: %w", err)
+	}
+
+	rows, err = r.db.QueryContext(ctx, query("transfer_fac_offer"), policyNumber, prodKe)
+	if err != nil {
+		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca fac offer: %w", err)
+	}
+	for rows.Next() {
+		var name, pct sql.NullString
+		if err := rows.Scan(&name, &pct); err != nil {
+			_ = rows.Close()
+			return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: baris fac offer: %w", err)
+		}
+		facts.FacOffers = append(facts.FacOffers, komite.FacOffer{
+			ReinsurerName: strings.TrimSpace(name.String),
+			Percent:       strings.TrimSpace(pct.String),
+		})
+	}
+	if err := closeRows(rows); err != nil {
+		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: menelusuri fac offer: %w", err)
+	}
+	return facts, found, nil
+}
+
+func (r *TransferRepo) spreading(ctx context.Context, kunciKlaim string) ([]komite.SpreadingShare, error) {
+	rows, err := r.db.QueryContext(ctx, query("transfer_spreading"), kunciKlaim)
+	if err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: membaca spreading %s: %w", kunciKlaim, err)
+	}
+	var hasil []komite.SpreadingShare
+	for rows.Next() {
+		var objectID, coverageID, treaty, name, pct any
+		if err := rows.Scan(&objectID, &coverageID, &treaty, &name, &pct); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("komite/sqlstore: baris spreading: %w", err)
+		}
+		hasil = append(hasil, komite.SpreadingShare{
+			ObjectID:   toText(objectID),
+			CoverageID: toText(coverageID),
+			TreatyType: toText(treaty),
+			TreatyName: toText(name),
+			Percent:    toText(pct),
+		})
+	}
+	if err := closeRows(rows); err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: menelusuri spreading: %w", err)
+	}
+	return hasil, nil
+}
+
+func (r *TransferRepo) dominantFactors(ctx context.Context, kunciKlaim string) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, query("transfer_dominant_factors"), kunciKlaim)
+	if err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: membaca faktor dominan %s: %w", kunciKlaim, err)
+	}
+	var hasil []string
+	for rows.Next() {
+		var name sql.NullString
+		if err := rows.Scan(&name); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("komite/sqlstore: baris faktor dominan: %w", err)
+		}
+		if n := strings.TrimSpace(name.String); n != "" {
+			hasil = append(hasil, n)
+		}
+	}
+	if err := closeRows(rows); err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: menelusuri faktor dominan: %w", err)
+	}
+	return hasil, nil
+}
+
+// legacyPrefix adalah prefix kelas Pega pada kunci klaim warisan (`D-22`).
+const legacyPrefix = "ASM-FW-GCNMFW-WORK "
+
+func (r *TransferRepo) attachments(ctx context.Context, kunciKlaim string) ([]komite.Attachment, error) {
+	nomor := strings.TrimSpace(strings.TrimPrefix(kunciKlaim, legacyPrefix))
+	rows, err := r.db.QueryContext(ctx, query("transfer_attachments"),
+		kunciKlaim, nomor, legacyPrefix+nomor)
+	if err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: membaca lampiran %s: %w", kunciKlaim, err)
+	}
+	var hasil []komite.Attachment
+	for rows.Next() {
+		var id, name, note, category, by sql.NullString
+		var at sql.NullTime
+		if err := rows.Scan(&id, &name, &note, &category, &by, &at); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("komite/sqlstore: baris lampiran: %w", err)
+		}
+		hasil = append(hasil, komite.Attachment{
+			ID:       strings.TrimSpace(id.String),
+			Name:     strings.TrimSpace(name.String),
+			Note:     strings.TrimSpace(note.String),
+			Category: strings.TrimSpace(category.String),
+			InputBy:  strings.TrimSpace(by.String),
+			InputAt:  at.Time,
+		})
+	}
+	if err := closeRows(rows); err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: menelusuri lampiran: %w", err)
+	}
+	return hasil, nil
+}
+
+// entries membaca baris anggota komite (Daftar Komite atau History) — keduanya berbentuk
+// sama: nama, jenjang, status, catatan, tanggal, Komite ID.
+func (r *TransferRepo) entries(ctx context.Context, name string, args ...any) ([]komite.CommitteeEntry, error) {
+	rows, err := r.db.QueryContext(ctx, query(name), args...)
+	if err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: membaca %s: %w", name, err)
+	}
+	var hasil []komite.CommitteeEntry
+	for rows.Next() {
+		var member, tier, status, note, caseID any
+		var at sql.NullTime
+		if err := rows.Scan(&member, &tier, &status, &note, &at, &caseID); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("komite/sqlstore: baris %s: %w", name, err)
+		}
+		level, _ := toInt(tier)
+		hasil = append(hasil, komite.CommitteeEntry{
+			CaseID:     toText(caseID),
+			MemberName: toText(member),
+			Tier:       level,
+			Status:     toText(status),
+			Note:       toText(note),
+			DecidedAt:  at.Time,
+		})
+	}
+	if err := closeRows(rows); err != nil {
+		return nil, fmt.Errorf("komite/sqlstore: menelusuri %s: %w", name, err)
+	}
+	return hasil, nil
+}
+
+// closeRows menutup rows dan mengembalikan galat penelusurannya bila ada.
+func closeRows(rows *sql.Rows) error {
+	iterErr := rows.Err()
+	closeErr := rows.Close()
+	if iterErr != nil {
+		return iterErr
+	}
+	return closeErr
+}
+
+// parsePegaTime membaca cap waktu berbentuk Pega: `20260801T050000.000 GMT`.
+//
+// Sama dengan pengurai di registrasi/sqlstore. Bentuk yang tidak dikenali menjadi waktu
+// kosong — layar menampilkannya "—", bukan tanggal tahun 1.
+// wibDate membaca kolom DATE jam dinding WIB (T_GENERAL.STARTDATE/ENDDATE) sebagai instan
+// UTC — setara teks Pega dokumen polis. Komponen jamnya dibaca apa adanya.
+func wibDate(t sql.NullTime) time.Time {
+	if !t.Valid || t.Time.IsZero() {
+		return time.Time{}
+	}
+	v := t.Time
+	return time.Date(v.Year(), v.Month(), v.Day(), v.Hour(), v.Minute(), v.Second(), 0, clock.ZoneWIB).UTC()
+}
+
+func parsePegaTime(text string) time.Time {
+	clean := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "GMT"))
+	if clean == "" {
+		return time.Time{}
+	}
+	for _, layout := range []string{"20060102T150405.000", "20060102T150405", "20060102"} {
+		if t, err := time.Parse(layout, clean); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
 }
 
 // caseContext membaca medan baris kerja yang tidak ada di kedua tabel nilai.
@@ -105,11 +399,17 @@ func (r *TransferRepo) claim(
 		status, recommendation     any
 		share, coins, mata, gratia any
 		count                      int
+
+		claimNo, polis, insured, bisnis   any
+		cabang, sob, peran, panel, kodeMU any
+		prodKe                            any
 	)
 
 	err := r.db.QueryRowContext(ctx, query("transfer_claim"), kunciKlaim).Scan(
 		&dol, &register, &location, &chronology, &status,
 		&recommendation, &share, &coins, &mata, &gratia, &count,
+		&claimNo, &polis, &insured, &bisnis, &cabang, &sob, &peran, &panel, &kodeMU,
+		&prodKe,
 	)
 	if err != nil {
 		return komite.ClaimSummary{}, false, fmt.Errorf(
@@ -130,6 +430,17 @@ func (r *TransferRepo) claim(
 		CoinsName:      toText(coins),
 		Currency:       toText(mata),
 		ExGratia:       toText(gratia),
+
+		ClaimNumber:      toText(claimNo),
+		PolicyNumber:     toText(polis),
+		InsuredName:      toText(insured),
+		BusinessName:     toText(bisnis),
+		BranchName:       toText(cabang),
+		SourceOfBusiness: toText(sob),
+		CoinsRole:        toText(peran),
+		GroupPanel:       toText(panel),
+		CurrencyCode:     toText(kodeMU),
+		ProdKe:           toText(prodKe),
 	}, true, nil
 }
 
@@ -221,14 +532,14 @@ func (r *TransferRepo) committee(
 	var (
 		name, tier, kindCode, paymentType, note any
 		claimValue, shareASM                    any
-		decidedAt                               sql.NullTime
+		decidedAt, createdAt                    sql.NullTime
 		approve                                 any
 		count                                   int
 	)
 
 	err := r.db.QueryRowContext(ctx, query("transfer_committee"), caseID).Scan(
 		&name, &tier, &kindCode, &paymentType, &note,
-		&claimValue, &shareASM, &decidedAt, &approve, &count,
+		&claimValue, &shareASM, &decidedAt, &approve, &count, &createdAt,
 	)
 	if err != nil {
 		return komite.CommitteeRecord{}, false, fmt.Errorf(
@@ -268,6 +579,7 @@ func (r *TransferRepo) committee(
 		ASMShare:   toText(shareASM),
 		DecidedAt:  decidedAt.Time,
 		Outcome:    legacyOutcome(toText(approve)),
+		CreatedAt:  createdAt.Time,
 	}, true, nil
 }
 
@@ -303,6 +615,10 @@ func scanAdjustment(row scanner) (komite.AdjustmentLine, error) {
 		salvage, sharePct, shareValue any
 		individualRisk                any
 		exGratia, notes, cause        any
+		currencyCode, adjusterFee     any
+		adjustmentID, totalClaim, loc any
+		riskType, riskPct             any
+		estimation, interim           any
 	)
 
 	if err := row.Scan(
@@ -310,6 +626,8 @@ func scanAdjustment(row scanner) (komite.AdjustmentLine, error) {
 		&currency, &paymentType,
 		&gross, &propose, &accepted, &salvage, &sharePct, &shareValue,
 		&individualRisk, &exGratia, &notes, &cause,
+		&currencyCode, &adjusterFee,
+		&adjustmentID, &totalClaim, &loc, &riskType, &riskPct, &estimation, &interim,
 	); err != nil {
 		return komite.AdjustmentLine{}, err
 	}
@@ -346,6 +664,22 @@ func scanAdjustment(row scanner) (komite.AdjustmentLine, error) {
 	if err != nil {
 		return komite.AdjustmentLine{}, err
 	}
+	feeValue, err := uang("fee adjuster", adjusterFee)
+	if err != nil {
+		return komite.AdjustmentLine{}, err
+	}
+	totalValue, err := uang("total klaim", totalClaim)
+	if err != nil {
+		return komite.AdjustmentLine{}, err
+	}
+	estimationValue, err := uang("estimasi", estimation)
+	if err != nil {
+		return komite.AdjustmentLine{}, err
+	}
+	interimValue, err := uang("interim", interim)
+	if err != nil {
+		return komite.AdjustmentLine{}, err
+	}
 
 	line := komite.AdjustmentLine{
 		// Prefix kelas Pega dibuang di sini juga, dengan alasan yang sama seperti pada
@@ -357,8 +691,19 @@ func scanAdjustment(row scanner) (komite.AdjustmentLine, error) {
 		AcceptanceNo: toText(acceptanceNo),
 		AcceptedAt:   acceptedAt.Time,
 
-		Currency:    toText(currency),
-		PaymentType: toText(paymentType),
+		Currency:     toText(currency),
+		PaymentType:  toText(paymentType),
+		CurrencyCode: toText(currencyCode),
+		AdjusterFee:  feeValue,
+
+		AdjustmentID:  toText(adjustmentID),
+		TotalClaim:    totalValue,
+		LOCPercent:    toText(loc),
+		RiskType:      toText(riskType),
+		RiskPercent:   toText(riskPct),
+		Estimation:    estimationValue,
+		HasEstimation: estimation != nil,
+		InterimPaid:   interimValue,
 
 		GrossValue:     grossValue,
 		ProposeValue:   proposeValue,

@@ -450,7 +450,7 @@ export function ReceiveTKAInboxPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>
+          <Button tone="kedua" onClick={() => { inbox.refetch() }} disabled={inbox.isFetching}>
             {inbox.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>

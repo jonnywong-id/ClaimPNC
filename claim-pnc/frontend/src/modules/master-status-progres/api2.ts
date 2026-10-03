@@ -92,7 +92,7 @@ export function useCreateProgressStatus2() {
     // yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi tabel yang
     // sebenarnya.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey2(portal, token) })
+      client.invalidateQueries({ queryKey: listKey2(portal, token) })
     },
   })
 }
@@ -123,7 +123,7 @@ export function useUpdateProgressStatus2() {
     // Daftar dimuat ulang dari server, bukan disunting di tempat: bila induk berpindah,
     // nama induk yang disalin server bisa berbeda dari yang ada di layar.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey2(portal, token) })
+      client.invalidateQueries({ queryKey: listKey2(portal, token) })
     },
   })
 }

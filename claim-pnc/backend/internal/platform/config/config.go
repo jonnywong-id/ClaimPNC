@@ -93,8 +93,13 @@ type Config struct {
 	HCQ             HCQ
 	Cashier         Cashier
 	VirtualAccount  VirtualAccount
-	SMTP            SMTP
-	DocumentStorage DocumentStorage
+	// AcceptanceCommittee adalah Nama Komite Akseptasi yang terisi pada form AcceptationLOD
+	// bila komite adjustment beranggota dua atau lebih (AKSEPTASI_KOMITE_BERJENJANG). Pega
+	// menuliskan satu Operator ID di dalam rule (AcceptationLOD_PreAct langkah 15); di sini
+	// ia pengaturan (D-15). Kosong: anggota komite terakhir yang menyetujui.
+	AcceptanceCommittee string
+	SMTP                SMTP
+	DocumentStorage     DocumentStorage
 
 	// PrimaryPortal adalah alias portal yang basis datanya melayani hal-hal yang
 	// dibutuhkan SEBELUM pengguna memilih portal: daftar portal (M_PORTAL_PNC),
@@ -247,6 +252,12 @@ type Cashier struct {
 	User        string
 	Password    string
 	Timeout     time.Duration
+
+	// CheckAccount menyalakan pemeriksaan "No Rekening terdaftar di sistem Kasir"
+	// (`GetDataBankMaster` langkah 5–7) saat penerima klaim disimpan. Pega melewatinya di
+	// server dev dengan MEMBANDINGKAN NAMA SERVER; di sini pengaturan eksplisit
+	// KASIR_CEK_REKENING (Steering §3.4). Bawaannya menyala di staging dan produksi.
+	CheckAccount bool
 }
 
 // Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
@@ -360,6 +371,18 @@ type DocumentStorage struct {
 	// berkas PNG, JPG, JPEG, dan PDF, yaitu yang memang menempuh konversi. Berkas lain
 	// tetap terunggah.
 	ConverterURL string
+
+	// SkipConversion (KONVERSI_GAMBAR_LEWATI) melewati konversi AVIF: PNG, JPG, JPEG, dan PDF
+	// diunggah apa adanya dengan ekstensi aslinya. Penyimpangan sementara dari Pega
+	// (`Convert_Avif`) atas keputusan Work Owner 2026-09-30; padam secara baku.
+	SkipConversion bool
+
+	// AccessCode (PENYIMPANAN_DOKUMEN_KODE_AKSES) adalah kode akses terdaftar untuk folder
+	// aplikasi ini, dikirim sebagai `KodeString`. Kosong = token sekali pakai dibuat dan
+	// dicatat ke GENERAL.GCP_IMAGE seperti `GET_TOKEN_STORAGE`. Diisi bila layanan
+	// penyimpanan menuntut kode yang didaftarkan pemiliknya — layanan menolak token sekali
+	// pakai dengan "invalid kodestring data" (2026-09-30). Rahasia: tidak pernah dicatat.
+	AccessCode string
 
 	// Timeout membatasi satu unggahan maupun satu konversi. Kosong berarti 60 detik.
 	Timeout time.Duration
@@ -670,11 +693,12 @@ func Load() (Config, error) {
 			Timeout:  hcqTimeout,
 		},
 		Cashier: Cashier{
-			RegisterURL: strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
-			UpdateURL:   strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
-			User:        strings.TrimSpace(os.Getenv("KASIR_USER")),
-			Password:    os.Getenv("KASIR_PASSWORD"),
-			Timeout:     cashierTimeout,
+			RegisterURL:  strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
+			UpdateURL:    strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
+			User:         strings.TrimSpace(os.Getenv("KASIR_USER")),
+			Password:     os.Getenv("KASIR_PASSWORD"),
+			Timeout:      cashierTimeout,
+			CheckAccount: cashierCheckAccount(env),
 		},
 		// Bawaannya `tiruan`, dan itu disengaja: menyalakannya menerbitkan rekening
 		// sungguhan. Lihat VirtualAccount untuk alasan lengkapnya.
@@ -684,10 +708,13 @@ func Load() (Config, error) {
 			Password: os.Getenv("VIRTUAL_ACCOUNT_SANDI"),
 			Timeout:  virtualAccountTimeout,
 		},
+		AcceptanceCommittee: strings.TrimSpace(os.Getenv("AKSEPTASI_KOMITE_BERJENJANG")),
 		DocumentStorage: DocumentStorage{
-			BaseURL:      get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
-			ConverterURL: get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
-			Timeout:      documentStorageTimeout,
+			BaseURL:        get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
+			ConverterURL:   get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
+			SkipConversion: isTrue(os.Getenv("KONVERSI_GAMBAR_LEWATI")),
+			AccessCode:     strings.TrimSpace(os.Getenv("PENYIMPANAN_DOKUMEN_KODE_AKSES")),
+			Timeout:        documentStorageTimeout,
 		},
 		SMTP: SMTP{
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
@@ -993,6 +1020,15 @@ func defaultStorage(l Environment) string {
 //
 // Nilai yang tidak dikenali dianggap PADAM. Kegagalan yang aman pada penanda seperti ini
 // adalah tetap menjaga, bukan terlanjur membuka.
+// cashierCheckAccount membaca KASIR_CEK_REKENING; kosong berarti mengikuti lingkungan —
+// menyala di staging dan produksi, mati di development dan test.
+func cashierCheckAccount(env Environment) bool {
+	if v := strings.TrimSpace(os.Getenv("KASIR_CEK_REKENING")); v != "" {
+		return isTrue(v)
+	}
+	return env == Production || env == Staging
+}
+
 func isTrue(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "1", "true", "ya", "yes", "on":

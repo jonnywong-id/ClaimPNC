@@ -8,6 +8,8 @@ import {
   AreaLevel,
   RegistrationErrorCode,
   type AreaOptionsResponse,
+  type CauseOfLossOptionsResponse,
+  type AcceptanceDefaults,
   type Violation,
   type RegisterRequest,
   type FlowResponse,
@@ -22,6 +24,10 @@ import {
   type FaceSheetRequest,
   type PLARequest,
   type PLAListResponse,
+  type DLARequest,
+  type DLAListResponse,
+  type CashierRequest,
+  type CashierPreview,
   type SettlementRequest,
   type SettlementPreviewResponse,
   type BankAccount,
@@ -103,7 +109,7 @@ export function useStartClaim() {
     mutationFn: (content: { nomor_polis: string }) =>
       callAPI<ClaimResponse>('/api/registrasi/klaim', { metode: 'POST', body: content, token, portal }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
     },
   })
 }
@@ -118,8 +124,8 @@ export function useSaveRegister() {
     mutationFn: (content: RegisterRequest) =>
       callAPI<ClaimResponse>('/api/registrasi/register', { metode: 'POST', body: content, token, portal }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -137,7 +143,7 @@ export function useSaveDraft() {
     mutationFn: (content: RegisterRequest) =>
       callAPI<ClaimResponse>('/api/registrasi/register/simpan', { metode: 'POST', body: content, token, portal }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -164,6 +170,26 @@ export function useAreaOptions(level: AreaLevel, parent: string) {
 }
 
 /**
+ * Pilihan Penyebab Kerugian menurut kode bisnis polis — pengganti autocomplete Pega
+ * BrowseCouseOfLoss_Business. Kode bisnis kosong tidak memanggil server.
+ */
+export function useCauseOfLossOptions(businessCode: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'penyebab-kerugian', businessCode, token],
+    enabled: businessCode !== '',
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<CauseOfLossOptionsResponse>(
+        `/api/registrasi/penyebab-kerugian?bisnis=${encodeURIComponent(businessCode)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
  * Tahap Input Estimasi. `simpan` menyimpan tanpa menutup tahap (Save); tanpanya tahap
  * ditutup — Next, atau Back bila `kembali`.
  */
@@ -181,8 +207,8 @@ export function useSaveEstimate(simpan: boolean) {
         portal,
       }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -225,8 +251,8 @@ export function useClaimTask() {
     mutationFn: (taskID: string) =>
       callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { metode: 'POST', token, portal }),
     onSuccess: (tugas) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
     },
   })
 }
@@ -246,8 +272,8 @@ export function useCompleteStage() {
         portal,
       }),
     onSuccess: (result) => {
-      void apiClient.invalidateQueries({ queryKey: inboxKey })
-      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
   })
 }
@@ -265,7 +291,7 @@ export function violationsFrom(failure: unknown): Violation[] {
 
   return failure.detail.filter(
     (p): p is Violation =>
-      typeof p === 'object' && p !== null && 'kode' in p && 'field' in p && 'pesan' in p,
+      typeof p === 'object' && p != null && 'kode' in p && 'field' in p && 'pesan' in p,
   )
 }
 
@@ -312,6 +338,44 @@ export function useDocuments(claimID: string, enabled = true) {
   return useClaimRecord<DocumentsResponse>(claimID, 'dokumen', enabled)
 }
 
+/** Bahan satu unggahan dari baris checklist. */
+export interface UploadDocumentInput {
+  /** DOC_TYPE_DT_ID baris checklist. */
+  jenisDokumen: string
+  berkas: File
+  catatan?: string
+}
+
+/**
+ * Tombol Unggah Dokumen pada satu baris checklist. Dikirim multipart; jawabannya checklist
+ * yang sudah diperbarui, dan tab Unggah Dokumen dimuat ulang dari server.
+ */
+export function useUploadDocument(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: UploadDocumentInput) => {
+      const form = new FormData()
+      // Nama bagian `berkas`, `jenis_dokumen`, dan `catatan` harus sama dengan yang dibaca
+      // handler (UploadDocument).
+      form.append('berkas', input.berkas, input.berkas.name)
+      form.append('jenis_dokumen', input.jenisDokumen)
+      if (input.catatan?.trim()) form.append('catatan', input.catatan.trim())
+      return callAPI<DocumentsResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen`, {
+        metode: 'POST',
+        body: form,
+        token,
+        portal,
+      })
+    },
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
+  })
+}
+
 /** Tab Progress Claim & Komunikasi. */
 export function useProgressRecords(claimID: string, enabled = true) {
   return useClaimRecord<ProgressResponse>(claimID, 'progres', enabled)
@@ -335,7 +399,7 @@ export function useFaceSheet(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }
@@ -391,6 +455,263 @@ export function usePrintPLA(claimID: string) {
   })
 }
 
+/**
+ * Membuka layar PrintDLA: menerbitkan DLA adjustment itu (bila belum) lalu mengembalikan
+ * daftarnya. Mutasi, bukan kueri, karena membukanya dapat menerbitkan nomor.
+ */
+export function useDLAList(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: DLARequest) =>
+      callAPI<DLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla/daftar`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** PRINT (satu nomor) dan Print All DLA — PDF, atau ZIP bila lebih dari satu. */
+export function usePrintDLA(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: DLARequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/**
+ * Tombol PRINT di samping Nomor Akseptasi — PDF Draft Persetujuan (`PrintPDFAcceptanceNote`).
+ * Badannya sama dengan Transfer Kasir: tugas beserta objek, jaminan, dan adjustment.
+ */
+export function usePrintAcceptanceNote(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: CashierRequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/draft`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Isi dialog konfirmasi Transfer Kasir (penerima, rekening, nilai nett, galat pertama). */
+export function useCashierPreview(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: CashierRequest) =>
+      callAPI<CashierPreview>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir/pratinjau`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Submit Transfer Kasir — mengirim pembayaran ke sistem Kasir (TransferToKasir_act). */
+export function useTransferCashier(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: CashierRequest) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Alamat satu baris adjustment untuk dialog Print LOD. Indeks berbasis 1. */
+export type LODRequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  tipe_pdf?: string
+}
+
+export type LODType = { id: string; nama: string; tersedia: boolean }
+
+/** Isi awal dialog Print LOD — pilihan Tipe PDF dan isian section PrintLODdanEmail. */
+export type LODDialog = { tipe: LODType[]; email_lod: string; nama_tertanggung: string }
+
+/** Isi awal dialog Print LOD (`SetTypePDFAdjustment`, `SetDataEmailTertanggung`). */
+export function useLODTypes(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: LODRequest) =>
+      callAPI<LODDialog>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/**
+ * Pilihan dropdown Tipe LOD kolom Adjustment — daftar yang sama dengan dialog Print LOD
+ * (`SetTypePDFAdjustment`), dimuat sekali per tugas karena tidak berbeda antarbaris.
+ */
+export function useLODTypeOptions(claimID: string, taskID: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'lod-tipe', claimID, taskID, token],
+    enabled: enabled && taskID !== '',
+    staleTime: 5 * 60_000,
+    queryFn: () =>
+      callAPI<LODDialog>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`, {
+        metode: 'POST',
+        body: { tugas_id: taskID, objek: 1, jaminan: 1, adjustment: 1 },
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Isian awal form AcceptationLOD satu baris adjustment (POST …/akseptasi/awal). */
+export function useAcceptanceDefaults(
+  claimID: string,
+  address: { tugas_id: string; objek: number; jaminan: number; adjustment: number },
+) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'akseptasi-awal', claimID, address, token],
+    staleTime: 0,
+    queryFn: () =>
+      callAPI<AcceptanceDefaults>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/awal`, {
+        metode: 'POST',
+        body: address,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Menyimpan pilihan dropdown Tipe LOD (PDFTYPE) satu baris adjustment, lalu memuat ulang klaim. */
+export function useSetLODType(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: LODRequest) =>
+      callAPI<unknown>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/pilih`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/**
+ * Print LOD — mengunduh PDF Letter of Discharge satu baris adjustment. Mencetak menulis
+ * PDFTYPE dan PRINTLOD_DATE baris itu, sehingga klaim dimuat ulang: kolom Adjustment grid dan
+ * form AcceptationLOD menampilkan Tipe PDF dan Tanggal Cetak LOD yang baru.
+ */
+export function usePrintLOD(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: LODRequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Isian form Persetujuan / Akseptasi (AcceptationLOD_Sect). Tanggal YYYY-MM-DD. */
+export type AcceptanceInput = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  /** `.TipeAkseptasi` — terisi dari AcceptationLOD_PreAct, dapat diubah. */
+  tipe_akseptasi?: string
+  persetujuan_tertanggung: string
+  tanggal_terima_lod: string
+  tanggal_boleh_bayar: string
+  nilai_lod_sen?: number
+  penerima: string
+  nama_komite_akseptasi: string
+  catatan_penerima: string
+  berita_acara: string
+}
+
+/** Satu berkas "Unggah Dokumen Persetujuan LOD" beserta jenis dokumennya (DOC_TYPE_DT_ID). */
+export type AcceptanceFileInput = { berkas: File; jenisDokumen: string }
+
+/** Simpan form Persetujuan / Akseptasi — menerbitkan nomor akseptasi (SetAdjustmentAcceptation). */
+export function useAcceptSettlement(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ isian, berkas }: { isian: AcceptanceInput; berkas: AcceptanceFileInput[] }) => {
+      const form = new FormData()
+      // Nama bagian harus sama dengan yang dibaca handler (AcceptSettlement).
+      form.append('isian', JSON.stringify(isian))
+      for (const f of berkas) {
+        form.append('berkas', f.berkas, f.berkas.name)
+        form.append('jenis_dokumen', f.jenisDokumen)
+      }
+      return callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi`, {
+        metode: 'POST',
+        body: form,
+        token,
+        portal,
+      })
+    },
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
+  })
+}
+
 /** Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor). */
 export function useAddSettlement(claimID: string) {
   const token = useSession((state) => state.token)
@@ -406,7 +727,7 @@ export function useAddSettlement(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }
@@ -462,8 +783,8 @@ export function useTransferCommittee(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      void apiClient.invalidateQueries({ queryKey: committeeKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: committeeKey })
     },
   })
 }
@@ -506,8 +827,8 @@ export function useDecideCommittee() {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: committeeKey })
-      void apiClient.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
+      apiClient.invalidateQueries({ queryKey: committeeKey })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
     },
   })
 }
@@ -527,7 +848,7 @@ export function useSaveReceiver(claimID: string) {
         portal,
       }),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }

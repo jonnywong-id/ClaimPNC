@@ -169,7 +169,7 @@ export function useCreateSalvage() {
       }),
 
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-salvage'] })
+      client.invalidateQueries({ queryKey: ['inbox-salvage'] })
     },
   })
 }

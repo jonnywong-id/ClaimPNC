@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"claim-pnc/internal/dokumenpenunjang"
 )
@@ -22,10 +24,17 @@ import (
 // Modul pemanggilnya tetap tidak saling mengimpor: keduanya memanggil modul INI, bukan satu
 // sama lain.
 type Service struct {
-	repos     dokumenpenunjang.RepoSelector
-	storage   dokumenpenunjang.Storage
-	converter dokumenpenunjang.Converter
-	clock     dokumenpenunjang.Clock
+	repos      dokumenpenunjang.RepoSelector
+	storage    dokumenpenunjang.Storage
+	converter  dokumenpenunjang.Converter
+	clock      dokumenpenunjang.Clock
+	skip       bool
+	accessCode string
+
+	// lastImageAt adalah waktu ImageID terakhir. GenerateImageID bergantung pada milidetik;
+	// dua berkas satu Submit tidak boleh berbagi kunci, jadi waktunya dijaga selalu maju.
+	mu          sync.Mutex
+	lastImageAt time.Time
 }
 
 // Options adalah bahan pembentuk Service.
@@ -34,6 +43,17 @@ type Options struct {
 	Storage   dokumenpenunjang.Storage
 	Converter dokumenpenunjang.Converter
 	Clock     dokumenpenunjang.Clock
+
+	// SkipConversion melewati konversi AVIF (KONVERSI_GAMBAR_LEWATI): berkas diunggah apa
+	// adanya. Converter tetap wajib diisi supaya menyalakan kembali konversi cukup dengan
+	// mematikan penanda ini.
+	SkipConversion bool
+
+	// AccessCode adalah kode akses terdaftar (PENYIMPANAN_DOKUMEN_KODE_AKSES). Diisi: kode
+	// itu yang dikirim sebagai KodeString dan tidak ada token sekali pakai yang dicatat —
+	// aplikasi lain yang berhasil mengunggah (mis. folder Klaim MBU) tidak punya satu pun
+	// baris GCP_IMAGE. Kosong: perilaku `GET_TOKEN_STORAGE`.
+	AccessCode string
 }
 
 // NewService membentuk Service; ketiga bahannya WAJIB.
@@ -60,10 +80,12 @@ func NewService(o Options) (*Service, error) {
 		return nil, errors.New("dokumenpenunjang/usecase: Clock wajib diisi")
 	}
 	return &Service{
-		repos:     o.Repos,
-		storage:   o.Storage,
-		converter: o.Converter,
-		clock:     o.Clock,
+		repos:      o.Repos,
+		storage:    o.Storage,
+		converter:  o.Converter,
+		clock:      o.Clock,
+		skip:       o.SkipConversion,
+		accessCode: strings.TrimSpace(o.AccessCode),
 	}, nil
 }
 
@@ -88,7 +110,8 @@ type UploadCommand struct {
 // Langkah 1 mendahului karena ia mengubah ISI dan TIPE berkasnya, dan kegagalannya
 // membatalkan seluruh unggahan. Langkah 2 mendahului karena namanya ikut terkirim. Langkah
 // 3 mendahului langkah 4 karena ia yang mencatat siapa yang mengunggah. Langkah 5 menyusul
-// langkah 4 karena `IMAGEID` diterbitkan layanan, bukan oleh kita.
+// langkah 4 karena `IMAGEID` diterbitkan sesudah unggah (`GenerateImageID`), dan hanya
+// bila layanan menjawab dengan URLImage.
 //
 // # Langkah 5 dijalankan, dan alasannya bukan sekadar meniru
 //
@@ -120,7 +143,7 @@ func (s *Service) Upload(
 	isi := permintaan.Content
 	ekstensi := dokumenpenunjang.EkstensiDari(permintaan.FileName)
 
-	if dokumenpenunjang.PerluKonversi(ekstensi) {
+	if dokumenpenunjang.PerluKonversi(ekstensi) && !s.skip {
 		dikonversi, err := s.converter.Convert(ctx, isi)
 		if err != nil {
 			return dokumenpenunjang.Document{}, fmt.Errorf("%w: %v",
@@ -144,8 +167,12 @@ func (s *Service) Upload(
 	}
 
 	pengunggah := strings.TrimSpace(permintaan.By)
-	if err := repo.CatatAksesUnggah(ctx, folderAplikasi, pengunggah); err != nil {
-		return dokumenpenunjang.Document{}, err
+	kodeAkses := s.accessCode
+	if kodeAkses == "" {
+		kodeAkses, err = repo.CatatAksesUnggah(ctx, folderAplikasi, pengunggah)
+		if err != nil {
+			return dokumenpenunjang.Document{}, err
+		}
 	}
 
 	saat := s.clock.Now()
@@ -157,6 +184,7 @@ func (s *Service) Upload(
 	hasil, err := s.storage.Upload(ctx, dokumenpenunjang.PerintahUnggah{
 		NamaAplikasi: folderAplikasi,
 		Pengunggah:   pengunggah,
+		KodeAkses:    kodeAkses,
 		NomorKlaim:   nomorKlaim,
 		Folder:       folder,
 		NamaBerkas:   namaBersih,
@@ -167,16 +195,12 @@ func (s *Service) Upload(
 		return dokumenpenunjang.Document{}, fmt.Errorf("%w: %v",
 			dokumenpenunjang.ErrUnggahGagal, err)
 	}
-	if strings.TrimSpace(hasil.ImageID) == "" {
-		// Layanan menjawab berhasil tanpa memberi kunci. Metadatanya tidak dapat dicatat,
-		// dan tanpa kunci berkasnya juga tidak dapat ditemukan lagi — jadi ini kegagalan,
-		// bukan keberhasilan sebagian.
-		return dokumenpenunjang.Document{}, fmt.Errorf(
-			"%w: layanan tidak mengembalikan ImageID", dokumenpenunjang.ErrUnggahGagal)
-	}
+	// Kuncinya diterbitkan di sini, sesudah unggah — `GenerateImageID` pada Pega
+	// (`InsertDokumenPNC` :4216, :4448). Respons layanan tidak dibaca untuk itu.
+	imageID := dokumenpenunjang.NewImageID(s.imageTime())
 
 	dokumen := dokumenpenunjang.Document{
-		ImageID:      strings.TrimSpace(hasil.ImageID),
+		ImageID:      imageID,
 		FileName:     namaBersih,
 		URL:          strings.TrimSpace(hasil.URL),
 		ExpiresAt:    hasil.ExpiresAt,
@@ -210,6 +234,18 @@ func (s *Service) Upload(
 	}
 
 	return dokumen, nil
+}
+
+// imageTime memberi waktu penerbit ImageID yang selalu maju minimal satu milidetik.
+func (s *Service) imageTime() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	at := s.clock.Now().Truncate(time.Millisecond)
+	if !at.After(s.lastImageAt) {
+		at = s.lastImageAt.Add(time.Millisecond)
+	}
+	s.lastImageAt = at
+	return at
 }
 
 // List mengembalikan dokumen sebuah klaim.

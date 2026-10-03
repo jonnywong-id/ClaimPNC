@@ -3,7 +3,9 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 )
@@ -27,8 +29,8 @@ func NewRepo(db *sql.DB) *Repo {
 //
 // Argumen paginasi disusun di sini pula, bukan ditambahkan pemanggil, supaya urutan bind
 // setiap kueri hidup di satu tempat bersama namanya — dua kueri dengan jumlah bind berbeda
-// adalah tempat paling mudah salah urut. Di modul ini bedanya nyata: kedua kueri Receive
-// memakai tiga bind, kueri RCL/PUCL memakai empat.
+// adalah tempat paling mudah salah urut. Di modul ini bedanya nyata: kueri Receive memakai
+// dua bind, kueri RCL/PUCL memakai empat.
 type plan struct {
 	// name adalah nama kueri di berkas .sql.
 	name string
@@ -46,30 +48,15 @@ type plan struct {
 // separuhnya di satu tempat dan separuh lagi di tempat lain.
 func planFor(q inboxmanagerreceivepucl.Query) (plan, error) {
 	switch q.Tab.Code {
-	case inboxmanagerreceivepucl.TabReceivePA:
+	case inboxmanagerreceivepucl.TabReceive:
 		return plan{
-			name: "list_receive_pa",
+			name: "list_receive",
 			args: func(p inboxmanagerreceivepucl.Pagination) []any {
-				return []any{
-					inboxmanagerreceivepucl.GroupPanelPA,
-					p.Offset(),
-					p.Normalize().Size,
-				}
-			},
-		}, nil
-
-	case inboxmanagerreceivepucl.TabReceiveNonMBU:
-		return plan{
-			name: "list_receive_non_mbu",
-			args: func(p inboxmanagerreceivepucl.Pagination) []any {
-				// Bind yang SAMA dengan kueri PA, dan itu disengaja: yang berbeda adalah
-				// arah pembandingnya di dalam kueri (`=` versus `<>`), bukan nilainya.
-				// Dengan begitu kode Group Panel PA hidup di satu tempat saja.
-				return []any{
-					inboxmanagerreceivepucl.GroupPanelPA,
-					p.Offset(),
-					p.Normalize().Size,
-				}
+				// Kode Group Panel TIDAK lagi menjadi bind: penyaringnya kini
+				// `GROUPPANEL_1 IS NOT NULL`, gabungan tepat dari kedua penyaring grid lama.
+				// Kodenya tetap dipakai — oleh scanWorkItem, untuk menurunkan kolom
+				// "Jenis Klaim" yang kini memikul pembedaan PA versus NONMBU.
+				return []any{p.Offset(), p.Normalize().Size}
 			},
 		}, nil
 
@@ -144,6 +131,101 @@ func (r *Repo) List(
 	// satu perjalanan tambahan pada setiap permintaan yang normal.
 
 	return result, nil
+}
+
+// Document mengambil isi layar kerja penerimaan dokumen untuk satu berkas.
+//
+// Kuncinya `PZINSKEY` — nilai yang sama yang di Pega dikirim ke `SetAssignmentInboxReceive_act`
+// lalu dipakai Open Assignment.
+//
+// Berkas yang tidak ada menghasilkan ErrDocumentNotFound, bukan ReceiveDocument kosong:
+// pada layar yang 16 isiannya memang terhalang, berkas yang tidak ada akan tergambar persis
+// seperti berkas yang ada tetapi belum diisi.
+func (r *Repo) Document(
+	ctx context.Context,
+	reference string,
+) (inboxmanagerreceivepucl.ReceiveDocument, error) {
+	row := r.db.QueryRowContext(ctx, query("detail_receive_document"), reference)
+
+	doc, err := scanDocument(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxmanagerreceivepucl.ReceiveDocument{},
+			inboxmanagerreceivepucl.ErrDocumentNotFound
+	}
+	if err != nil {
+		return inboxmanagerreceivepucl.ReceiveDocument{},
+			fmt.Errorf("membaca berkas penerimaan dokumen: %w", err)
+	}
+	return doc, nil
+}
+
+// scanDocument memindai satu baris menjadi ReceiveDocument.
+//
+// Urutannya WAJIB sama dengan urutan kolom `detail_receive_document` di
+// inboxmanagerreceivepucl.sql; query_test.go menjaganya.
+//
+// Seluruh kolom dipindai lewat tipe yang mengizinkan NULL. Itu bukan kehati-hatian berlebih:
+// gabungan ke tabel cermin adalah `LEFT JOIN`, sehingga ke-13 kolom yang berasal darinya
+// memang NULL untuk berkas yang belum punya pasangan di sana — dan berkas seperti itu justru
+// yang paling perlu terbuka.
+func scanDocument(row scanner) (inboxmanagerreceivepucl.ReceiveDocument, error) {
+	var (
+		reference, caseID, claimNumber        sql.NullString
+		groupPanel, workStatus, createdAt     sql.NullString
+		receivedAt, senderName, senderEmail   sql.NullString
+		senderPhone, courierName, insuredName sql.NullString
+		policyNumber, lossDate, referenceNo   sql.NullString
+		insuredEmail, lossLocation, licence   sql.NullString
+		chronology, damageDetail              sql.NullString
+		transferReason, emailSubject          sql.NullString
+		notRegisteredNote                     sql.NullString
+	)
+
+	err := row.Scan(
+		&reference, &caseID, &claimNumber, &groupPanel, &workStatus,
+		&createdAt, &receivedAt, &senderName, &senderEmail, &senderPhone,
+		&courierName, &insuredName, &policyNumber, &lossDate, &referenceNo,
+		&insuredEmail, &lossLocation, &licence, &chronology, &damageDetail,
+		&transferReason, &emailSubject, &notRegisteredNote,
+	)
+	if err != nil {
+		return inboxmanagerreceivepucl.ReceiveDocument{}, err
+	}
+
+	doc := inboxmanagerreceivepucl.ReceiveDocument{
+		Reference:        reference.String,
+		CaseID:           caseID.String,
+		ClaimNumber:      claimNumber.String,
+		WorkStatus:       workStatus.String,
+		CreatedAt:        createdAt.String,
+		ReceivedAt:       receivedAt.String,
+		SenderName:       senderName.String,
+		SenderEmail:      senderEmail.String,
+		SenderPhone:      senderPhone.String,
+		CourierName:      courierName.String,
+		InsuredName:      insuredName.String,
+		PolicyNumber:     policyNumber.String,
+		LossDate:         lossDate.String,
+		ReferenceNumber:  referenceNo.String,
+		InsuredEmail:     insuredEmail.String,
+		LossLocation:     lossLocation.String,
+		DriverLicence:    licence.String,
+		Chronology:       chronology.String,
+		DamageDetail:     damageDetail.String,
+		TransferReason:   transferReason.String,
+		EmailSubject:     emailSubject.String,
+		NotRegisteredNot: notRegisteredNote.String,
+	}
+
+	// Jenis Klaim DITURUNKAN di sini, sama seperti pada scanWorkItem, supaya kedua pengisi
+	// seam menghasilkan teks yang sama persis. Group Panel kosong dibiarkan kosong alih-alih
+	// diisi "NONMBU" — berkas yang Group Panel-nya kosong memang tidak muncul di grid mana
+	// pun, dan menyebutnya NONMBU di layar kerja akan bertentangan dengan itu.
+	if groupPanel.Valid && strings.TrimSpace(groupPanel.String) != "" {
+		doc.ClaimType = inboxmanagerreceivepucl.ClaimTypeOf(groupPanel.String)
+	}
+
+	return doc, nil
 }
 
 // CheckTable memastikan keempat tabel yang disentuh modul ini terbaca dari koneksi yang

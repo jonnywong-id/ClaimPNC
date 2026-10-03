@@ -31,6 +31,14 @@ const (
 	FieldCedingCompany  = "ceding_co"
 	FieldInsuredName    = "nama_tertanggung"
 	FieldSubjectivity   = "subjectivity"
+
+	// Kedua isian berikut TIDAK bersumber dari export — lihat kepala
+	// inboxclaimtreatyprop.go. Namanya mengikuti ARTI kolomnya, bukan judulnya: judul
+	// "Status Claim ID" menyesatkan (isinya status alur kerja Pega, bukan Status Klaim
+	// berkode `1134`–`1166`), dan nama kontrak yang ikut menyesatkan akan menularkan salah
+	// arti itu ke setiap pemakainya.
+	FieldLastUpdate  = "operator_pengubah"
+	FieldClaimStatus = "status_kerja"
 )
 
 // Kode tab.
@@ -54,8 +62,9 @@ const (
 
 // DefaultTab adalah tab yang terbuka saat layar pertama dibuka.
 //
-// "Work List Treatyin Propotional", karena hanya tab inilah yang isinya MILIK pemanggil.
-// Membuka layar pada antrean bersama akan menampilkan pekerjaan orang lain lebih dulu.
+// "Prop Treaty-in Admin", karena itulah satu-satunya pilihan yang SELALU ada di dropdown
+// Pega — `FilterWorkBasket_Act` menambahkannya tanpa syarat, sedangkan pilihan Teknik hanya
+// menyusul bila pemanggil anggota antreannya.
 const DefaultTab = TabWorkList
 
 // Tab adalah satu antrean kerja pada layar Inbox Claim Treaty Prop.
@@ -63,8 +72,22 @@ type Tab struct {
 	// Code adalah kode tab, kontrak modul ini sendiri.
 	Code string
 
-	// Name adalah judul tab yang dibaca pengguna, mengikuti `D-13`.
+	// Name adalah teks PILIHAN pada dropdown pemilih antrean.
+	//
+	// Ia diambil dari `Data Transform/FilterWorkBasket_Act-DT.xml`, yang menyusun daftar
+	// pilihan dropdown itu: `CARI2` adalah labelnya, `CARI1` nilainya. Jangan tertukar
+	// dengan GridTitle di bawah — keduanya teks yang berbeda di layar yang sama.
 	Name string
+
+	// GridTitle adalah judul KONTAINER grid yang digambar sesudah dropdown.
+	//
+	// Ia teks yang sama sekali berbeda dari Name, dan keduanya tampil bersamaan:
+	// dropdown-nya bertuliskan "Prop Treaty-in Admin", sementara grid di bawahnya berjudul
+	// "Work List Treatyin Propotional". Menyamakan keduanya — yang sempat dilakukan di
+	// sini — membuat judul grid hilang dan pilihan dropdown tidak dikenali pengguna.
+	//
+	// KOSONG pada tab yang Blocked: tidak ada grid yang digambar di sana.
+	GridTitle string
 
 	// Description menjelaskan isi antreannya dalam satu kalimat. Sistem lama tidak punya
 	// keterangan seperti ini; ia ditambahkan karena judul seperti "Work Teknik Treatyin"
@@ -78,17 +101,22 @@ type Tab struct {
 
 	// ScopedToCaller menyatakan kuerinya menyaring menurut pengguna yang login.
 	//
-	// Hanya tab pertama begitu, dan itulah yang membuatnya "antrean saya". Penyaringnya
-	// `PXASSIGNEDOPERATORID = {OperatorID.pyUserIdentifier}` pada
-	// `RDB List/GetClaimTreaty_SQL-SQL.xml`.
+	// SELURUHNYA false sejak sumber datanya berpindah ke Report Definition: tidak satu pun
+	// dari kedua RD punya filter `pxAssignedOperatorID`. Isian ini DIPERTAHANKAN — bukan
+	// dihapus — karena ia yang menjaga agar penyaring itu tidak kembali diam-diam: sekali
+	// ada tab yang menyatakannya true, kueri dan penyimpanan memori wajib menyaring.
+	//
+	// Di ketiga rule Connect-SQL yang dulu dipakai, penyaringnya
+	// `PXASSIGNEDOPERATORID = {OperatorID.pyUserIdentifier}`.
 	ScopedToCaller bool
 
 	// SupportsSeeAll menyatakan checkbox "See All Claim" berlaku pada tab ini.
 	//
-	// Di sistem lama ia properti `SearchWorkbasket.CARI43`, dan mencentangnya menukar
-	// kueri dari `GetClaimTreaty_SQL` menjadi `GetClaimTreatyAllAdmin_SQL` — yang
-	// menghapus penyaring operator. Ia HANYA berlaku pada tab pertama; pada tab Teknik
-	// kedua kueri itu tidak pernah dipanggil.
+	// SELURUHNYA false, dan alasannya mengikuti ScopedToCaller: checkbox yang melepas
+	// penyaring tidak punya apa pun untuk dilepas pada tab yang memang tidak menyaring.
+	//
+	// Di sistem lama ia properti `SearchWorkbasket.CARI43`, dan mencentangnya menukar kueri
+	// dari `GetClaimTreaty_SQL` menjadi `GetClaimTreatyAllAdmin_SQL`.
 	SupportsSeeAll bool
 
 	// Blocked menyatakan tab ini digambar tetapi belum dapat diisi.
@@ -119,6 +147,13 @@ var (
 	colBusinessSource = Column{Key: FieldBusinessSource, Title: "Source Of Business"}
 	colCedingCompany  = Column{Key: FieldCedingCompany, Title: "Ceding Co Name"}
 	colInsuredName    = Column{Key: FieldInsuredName, Title: "Insured Name"}
+
+	// Judul kedua kolom terakhir ditulis PERSIS seperti di Pega produksi, termasuk
+	// "Last update" yang huruf besarnya tidak konsisten dengan tujuh judul di kirinya, dan
+	// "Status Claim ID" yang menyebut ID padahal isinya status. `D-13` menetapkan tampilan
+	// meniru Pega; merapikan judulnya berarti pengguna mencari kolom yang tidak ada.
+	colLastUpdate  = Column{Key: FieldLastUpdate, Title: "Last update"}
+	colClaimStatus = Column{Key: FieldClaimStatus, Title: "Status Claim ID"}
 )
 
 // tabs adalah ketiga tab beserta kolomnya, berurutan seperti tampilnya.
@@ -130,43 +165,78 @@ var tabs = []Tab{
 	{
 		Code: TabWorkList,
 
+		// Teks pilihan dropdown, dari `FilterWorkBasket_Act` langkah 2:
+		// `Operator.pxResults(<APPEND>).CARI2 := "Prop Treaty-in Admin"`, dengan
+		// `CARI1 := ""` sebagai nilainya.
+		Name: "Prop Treaty-in Admin",
+
 		// Salah eja "Propotional" DIPERTAHANKAN. Ia tertulis begitu di section
 		// (`<pyValue>Work List Treatyin Propotional</pyValue>`), dan `D-13` menetapkan
 		// tampilan meniru Pega supaya pengguna tidak perlu belajar ulang. Membetulkannya
-		// menjadi "Proportional" akan membuat tab ini tidak dikenali pengguna yang
+		// menjadi "Proportional" akan membuat grid ini tidak dikenali pengguna yang
 		// mencarinya, dan itu harga yang lebih mahal daripada satu huruf yang hilang.
-		Name: "Work List Treatyin Propotional",
+		GridTitle: "Work List Treatyin Propotional",
 
-		Description: "Klaim treaty proporsional yang ditugaskan kepada Anda. " +
-			"Centang \"See All Claim\" untuk melihat penugasan seluruh petugas.",
+		Description: "Seluruh penugasan klaim treaty proporsional di entitas ini — " +
+			"bukan hanya milik Anda. Report Definition InboxKlaimPropAdmin tidak " +
+			"menyaring menurut petugas.",
 		Columns: []Column{
 			colClaimID, colMasterID, colPolicyNumber, colLossDate,
 			colBusinessName, colBusinessSource, colCedingCompany, colInsuredName,
+			colLastUpdate, colClaimStatus,
 		},
-		ScopedToCaller: true,
-		SupportsSeeAll: true,
+		// KEDUANYA false sejak sumbernya berpindah ke Report Definition.
+		//
+		// `InboxKlaimPropAdmin` tidak punya satu pun filter selain kondisi join: tidak ada
+		// `pxAssignedOperatorID = <pemanggil>`, dan keenam parameternya dideklarasikan
+		// tetapi tidak dirujuk di mana pun. Tab ini karena itu TIDAK menyaring pemanggil.
+		//
+		// Dan karena tidak menyaring, checkbox "See All Claim" tidak punya apa pun untuk
+		// dilepas. Menggambarnya tetap akan menjadi kontrol yang tidak mengubah apa pun —
+		// lebih buruk daripada kontrol yang tidak ada.
+		ScopedToCaller: false,
+		SupportsSeeAll: false,
 	},
 	{
 		Code: TabTechnical,
 
-		// Judulnya di section berakhir dengan satu spasi
+		// Teks pilihan dropdown, dari `FilterWorkBasket_Act` langkah terakhir: baris yang
+		// `CARI1`-nya bernilai `"TreatyinPNCTeknik"` dilabeli
+		// `CARI2 := "Prop Treaty-in Teknik"`.
+		Name: "Prop Treaty-in Teknik",
+
+		// Judul kontainernya di section berakhir dengan satu spasi
 		// (`<pyValue>Work Teknik Treatyin </pyValue>`). Spasi itu TIDAK dibawa: ia
 		// artefak pengetikan, bukan teks yang dibaca pengguna, dan membawanya hanya
 		// membuat pembandingan judul gagal tanpa alasan yang terbaca.
-		Name: "Work Teknik Treatyin",
+		GridTitle: "Work Teknik Treatyin",
 
-		Description: "Antrean bersama PIC Teknik treaty — belum diambil siapa pun.",
+		Description: "Seluruh antrean bersama klaim treaty proporsional — belum diambil " +
+			"siapa pun. Report Definition InboxKlaimPropTeknik tidak menyaring menurut " +
+			"nama antrean. Di Pega PILIHANNYA hanya muncul bagi petugas yang terdaftar " +
+			"sebagai anggota antrean TreatyinPNCTeknik; di sini ia terlihat oleh semua " +
+			"(TKT-F3-004).",
 		Columns: []Column{
 			colClaimID, colMasterID, colPolicyNumber, colLossDate,
 			colBusinessName, colBusinessSource, colCedingCompany, colInsuredName,
 			// HANYA tab ini yang punya kolom Subjectivity: hanya kueri Teknik yang
 			// membawanya.
 			{Key: FieldSubjectivity, Title: "Subjectivity"},
+
+			// Kedua kolom terakhir tetap di UJUNG, sesudah Subjectivity, supaya urutan
+			// delapan kolom pertama sama persis di kedua tab. Di Pega produksi tab ini
+			// tidak terlihat, jadi urutannya di sini ditetapkan agar konsisten — bukan
+			// ditiru dari layar yang tidak ada gambarnya.
+			colLastUpdate, colClaimStatus,
 		},
 	},
 	{
-		Code:        TabCommittee,
-		Name:        "Komite Treaty ASM",
+		Code: TabCommittee,
+
+		// Judul kontainernya di section. Ia TIDAK punya teks pilihan dropdown yang dapat
+		// dibaca — lihat BlockedReason.
+		Name: "Komite Treaty ASM",
+
 		Description: "Antrean persetujuan komite treaty.",
 
 		// Tidak ada kolom, karena tidak ada grid yang digambar. Menyebut kolomnya di sini
@@ -179,10 +249,14 @@ var tabs = []Tab{
 			"nilai dari properti di dalam BLOB objek kerja — antara lain No Klaim, " +
 			"Insured, dan Ceding Co — bukan dari kolom tabel. Tidak satu pun nama itu " +
 			"muncul di seluruh SQL sistem lama, dan DDL tabelnya belum tersedia (R-08), " +
-			"sehingga tidak ada cara membacanya tanpa menebak.",
+			"sehingga tidak ada cara membacanya tanpa menebak. Di Pega ia juga bukan " +
+			"pilihan pada dropdown ini melainkan pada DROPDOWN KEDUA yang hanya tampil " +
+			"bagi anggota komite, dan daftar pilihan dropdown itu (Operator1.pxResults) " +
+			"pun tidak punya rule pembangun di export (R-16).",
 
 		BlockedOwner: "DBA — dibutuhkan DDL DATAPEGA.PC_ASM_FW_GCNMFW_WORK beserta " +
-			"pemetaan properti KomiteClaimData ke kolomnya.",
+			"pemetaan properti KomiteClaimData ke kolomnya. Ditambah Tim Pega, untuk " +
+			"rule yang mengisi Operator1.pxResults.",
 	},
 }
 
@@ -218,6 +292,26 @@ func FindTab(code string) (Tab, bool) {
 // ke salah satu butir `P-5`, atau dinyatakan sebagai bug (`D-54`). Butir di bawah adalah
 // pemetaan itu, sudah tertulis di muka alih-alih dicari setelah selisihnya muncul.
 var PlannedDifferences = []string{
+	"Kolom bisnis dibaca dari KOLOM TEREKSPOS pada objek kerja, bukan dari dokumen JSON " +
+		"POOLDATA.JSON_KLAIM. Itu mengikuti Report Definition InboxKlaimPropAdmin dan " +
+		"InboxKlaimPropTeknik yang memasok kedua grid di Pega produksi. Kedua sumber itu " +
+		"dapat berbeda isinya, sehingga baris yang dulu terisi dapat menjadi kosong dan " +
+		"sebaliknya.",
+
+	"Antrean \"Prop Treaty-in Admin\" menampilkan SELURUH penugasan klaim treaty di " +
+		"entitas ini, bukan hanya milik Anda. Report Definition-nya tidak menyaring " +
+		"menurut petugas, dan karena itu checkbox \"See All Claim\" dihapus — ia tidak " +
+		"lagi punya penyaring untuk dilepas.",
+
+	"Antrean \"Prop Treaty-in Teknik\" menampilkan seluruh antrean bersama klaim treaty, " +
+		"tidak lagi disaring ke akun TreatyinPNCTeknik saja. Report Definition-nya tidak " +
+		"menyaring menurut nama antrean.",
+
+	"Kolom \"Subjectivity\" pada antrean Teknik SELALU kosong. Report Definition " +
+		"mengambilnya dari properti IsSubjectivity, tetapi nama kolom terekspos properti " +
+		"itu tidak dapat ditemukan di export — dan menebaknya akan menggagalkan seluruh " +
+		"kueri, bukan satu kolom.",
+
 	"Kolom \"Date Of Loss\" pada tab Work Teknik Treatyin kini TERISI. Di sistem lama ia " +
 		"selalu kosong: kueri antrean teknik menaruh tanggalnya di kolom CARI13 " +
 		"sementara sel gridnya membaca CARI10. Perbaikan ini disetujui Work Owner " +
@@ -226,6 +320,32 @@ var PlannedDifferences = []string{
 	"Tombol \"Create Claim Treaty Prop\" belum membuat klaim. Selama Pega dan sistem " +
 		"baru berjalan berdampingan, tabel objek kerja hanya boleh ditulis satu sistem " +
 		"(P-1), dan tabel itu masih dimiliki Pega. Buat klaim treaty baru lewat Pega.",
+
+	"Kolom \"Last update\" dan \"Status Claim ID\" dibaca dari PXUPDATEOPERATOR dan " +
+		"PYSTATUSWORK pada tabel objek kerja — persis seperti Report Definition " +
+		"menyebutnya (WorkPage.pxUpdateOperator dan WorkPage.pyStatusWork).",
+
+	"\"Status Claim ID\" berisi status ALUR KERJA Pega (\"New\", \"Pending\", …), bukan " +
+		"Status Klaim berkode 1134–1166 milik master V_STS_CLAIM. Judulnya menyesatkan " +
+		"sejak di Pega dan dipertahankan apa adanya (D-13); yang tidak dipertahankan " +
+		"adalah salah artinya — nilainya tidak diterjemahkan ke label master mana pun.",
+
+	"Pilihan \"Prop Treaty-in Teknik\" SELALU terlihat. Di Pega ia hanya muncul bagi " +
+		"petugas yang terdaftar sebagai anggota antrean TreatyinPNCTeknik — " +
+		"FilterWorkBasket_Act menyusunnya dari OperatorID.pyWorkBasketList. Penugasan " +
+		"operator ke antrean itu tidak ada di basis data maupun di export, sehingga " +
+		"keanggotaannya belum dapat diperiksa (TKT-F3-004). Melihat pilihannya bukan " +
+		"berarti dapat mengambil pekerjaannya: layar ini membaca saja.",
+
+	"Pilihan \"Choose\" menampilkan antrean yang sama dengan \"Prop Treaty-in Admin\", " +
+		"bukan layar kosong. Itu perilaku Pega, bukan cacat: keduanya bernilai sama " +
+		"(CARI1 kosong), sehingga pemeriksaan yang memilih antrean teknik gagal pada " +
+		"keduanya dan yang tampil adalah antrean admin.",
+
+	"Nomor klaim pada kolom pertama menjadi TAUTAN ke layar Outstanding Claim, " +
+		"menggantikan tombol \"Lihat Detail Klaim\" di kolom terakhir. Itu mengikuti Pega " +
+		"produksi, tempat Claim ID sendirilah yang menjalankan Flow Action " +
+		"OutstandingClaim.",
 
 	"Urutan baris ditetapkan tegas menurut tanggal penugasan terbaru. Kueri antrean " +
 		"teknik di sistem lama tidak mengurutkan hasilnya sama sekali — dapat dibiarkan " +

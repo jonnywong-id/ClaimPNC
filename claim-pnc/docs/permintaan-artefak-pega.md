@@ -1440,3 +1440,1384 @@ kerusakan.
 | `GetYearDashboardOS` | Ia mengisi daftar pilihan tahun, dan tab Outstanding tidak punya penyaring periode — ketiga kuerinya tidak menyaring tanggal sama sekali |
 | `ShowApproveProgressKlaim` beserta sub-tab "Approval Progress Klaim" | Kontainernya ber-`pyContainerVisibleWhen = 1==2` di Pega — sudah mati di sana, dan tidak dibawa |
 | Kolom tambahan untuk kesembilan antrean persetujuan | Seluruhnya POOLDATA dan seluruh kolomnya sudah ada |
+
+---
+
+## 9. Inbox RCL/PUCL — `MENU_ID 61`
+
+Bab ini ditujukan ke **Tim Pega**, dan isinya **satu permintaan**.
+
+Sepuluh pertanyaan modul ini diajukan pada 2026-09-30. **Sembilan sudah ditutup** pemilik
+bisnis pada hari yang sama — sebagian dengan menjelaskan arti kolomnya, sebagian dengan
+memutuskan mengikuti sistem lama apa adanya. Tidak ada satu pun permintaan ke DBA yang
+tersisa dari modul ini.
+
+### 9.1 Sembilan isian yang tidak punya kolom
+
+Layar kerja RCL/PUCL memuat tujuh belas isian. **Delapan** dapat diisi; **sembilan** tidak,
+dan sebabnya bukan data yang kosong melainkan **tempat penyimpanannya**.
+
+Kesembilannya tersimpan sebagai properti clipboard pada objek kerja — dijelaskan Work Owner
+pada 2026-09-24 — dan properti clipboard yang tidak dioptimasi tidak punya kolom tabel,
+sehingga tidak dapat dibaca kueri biasa selama objek kerjanya masih dimiliki sistem lama:
+
+| Isian di layar | Properti |
+|---|---|
+| No Kontrak | `.ClaimData.PUCLStatus.NIK` |
+| Business Unit / Seksi | `.ClaimData.PUCLStatus.*` |
+| Perihal | `.ClaimData.PUCLStatus.*` |
+| Keterangan (tiga isian) | `.ClaimData.PUCLStatus.*` |
+| Email Tertanggung | `.ClaimData.PUCLStatus.*` |
+| Tanggal Kelengkapan Dokumen | `.ClaimData.PUCLStatus.*` |
+| Tanggal terima Dokumen (daftar) | `.ClaimData.PUCLStatus.*` |
+
+**Yang diminta:** kesembilan properti itu **dioptimasi menjadi kolom** (*Optimize for
+reporting*), lalu **nama kolom hasilnya** dikirimkan kepada kami.
+
+Nama kolomnya perlu disebutkan, bukan hanya optimasinya dijalankan: nama kolom hasil optimasi
+tidak selalu sama dengan nama propertinya, dan menebaknya menghasilkan kueri yang gagal
+seluruhnya — bukan satu isian yang kosong.
+
+### 9.2 Kenapa ini tidak dapat digantung
+
+Keberhasilan setiap layar diukur dengan membandingkan hasilnya terhadap sistem lama. Selama
+kesembilan isian ini tidak dapat dibaca, layar RCL/PUCL **tidak akan pernah dapat dinyatakan
+setara** — bukan karena ada yang salah, melainkan karena sembilan isiannya memang tidak
+terbaca.
+
+Layarnya tetap dapat dipakai hari ini; yang tertahan adalah pernyataan selesainya. Karena itu
+permintaan ini berada di jalur kritis kelulusan modul, dan kami meminta **tanggal komitmen
+tertulis** — bukan sekadar konfirmasi bahwa permintaannya diterima.
+
+Keputusan Work Owner 2026-09-30 memilih jalur ini secara sadar, di antara dua kemungkinan:
+mengekspos propertinya, atau mengeluarkan kesembilan isian itu dari lingkup. Yang dipilih
+**mengekspos**, sehingga layarnya benar-benar setara dan bukan setara-dengan-pengecualian.
+
+### 9.3 Sementara menunggu
+
+Kesembilan isian tetap **digambar di tempatnya** dengan penanda tersendiri — bukan
+dihilangkan, dan bukan pula digambar sebagai sel kosong.
+
+Perbedaannya bukan kosmetik. Sel kosong berarti **petugas belum mengisinya**; penanda ini
+berarti **nilainya ada tetapi tidak terbaca dari tabel**. Keduanya menuntut tindakan dari
+orang yang berbeda, dan menyamakannya membuat yang satu tersamar sebagai yang lain.
+
+### 9.4 Yang TIDAK perlu dikirim — dicatat supaya tidak diminta berulang
+
+Seluruh baris di bawah ini **sudah ditutup** dan tidak memerlukan artefak, kueri, maupun
+jawaban dari siapa pun.
+
+| Hal | Sebabnya ditutup |
+|---|---|
+| Arti `MSIG_1`, `PUCLAPPROVE_1`, `LAMAKLAIM_1`, `RCL_PUCL_1` | dijelaskan Work Owner 2026-09-30 |
+| Arti `STATUSCASE_1` | Work Owner memutuskan mengikuti sistem lama apa adanya |
+| Jumlah klaim bersurat yang penandanya kosong | keputusan 2026-09-30: ikuti sistem lama apa adanya; penyaringnya tidak diubah |
+| Apakah `MSIG_1` pernah terisi | nilai pembandingnya disalin dari Report Definition, bukan ditebak — tab ini kosong di sini persis bila ia kosong juga di sistem lama |
+| Apakah `LAMAKLAIM_1` sama isinya dengan `TANGGALKIRIMPUCL_1` | bila sama pun, kedua kolom tetap digambar — duplikasinya ada di sistem lama |
+| Rule Section `SendtoRCLPUCL` | sudah diterima 2026-09-24 |
+| Report Definition ketiga antrean | ketiganya ada di export dan sudah terbaca utuh |
+
+### 9.5 Dua baris §9.4 yang kini punya jawaban terukur — tidak mengubah permintaannya
+
+Keduanya ditutup pada 2026-09-30 dengan alasan yang benar: perilakunya mengikuti sistem lama,
+sehingga jawabannya tidak dapat mengubah apa pun. Angkanya kemudian **terbaca sendiri** saat
+modul ini dijalankan terhadap Oracle pada hari yang sama, dan dicatat di sini supaya tidak
+ditanyakan lagi:
+
+| Hal | Angkanya |
+|---|---|
+| Apakah `MSIG_1` pernah terisi | **Ya, sekali.** `GROUP BY MSIG_1` pada portal ASM: `MSIG` 1 baris, kosong 7.721 baris. Dugaan "tidak pernah terisi" terbantah |
+| Apakah `LAMAKLAIM_1` sama dengan `TANGGALKIRIMPUCL_1` | **Nyaris.** Keduanya ditulis pada langkah yang sama dan terpaut milidetik; 61 baris sama persis, 25 berbeda. Setelah digambar sampai satuan detik, keduanya kerap identik |
+
+Keduanya **tidak mengubah satu baris kode pun** — penyaring dan kolomnya memang sudah
+mengikuti sistem lama. Yang berubah hanya keterangan di layar, yang sebelumnya menyatakan tab
+MSIG "kemungkinan besar kosong" dan kini menyatakan isinya sangat sedikit.
+
+---
+
+## 10. Inbox RCL/PUCL — alamat portal Pega untuk tautan "buka di Pega"
+
+Bab ini **bukan** ditujukan ke Tim Pega. Pemiliknya **Work Owner + Tim Infra**, dan isinya
+satu keputusan konfigurasi — bukan artefak.
+
+### 10.1 Apa yang dibutuhkan, dan untuk apa
+
+Layar Inbox RCL/PUCL dan layar kerjanya **membaca saja** sampai sistem lama dimatikan
+(keputusan 2026-09-30). Kelima tombol tindakannya digambar tetapi mati, dan petugas
+mengerjakan tindakannya di sistem lama memakai kunci klaim yang sudah ditampilkan layar kerja.
+
+Yang diusulkan: kelima tombol itu membuka klaim yang sama **langsung di sistem lama**,
+sehingga langkah mencari klaimnya hilang.
+
+### 10.2 Kenapa ia belum dapat dikerjakan
+
+**Tidak ada satu pun alamat portal sistem lama di konfigurasi maupun di basis data.**
+Diperiksa langsung pada 2026-09-30:
+
+- Berkas konfigurasi aplikasi tidak memuatnya sama sekali.
+- `POOLDATA.GCNM_CONNECT_REST` — tempat aplikasi ini membaca alamat layanan per portal, pola
+  yang sama dengan alamat layanan HCQ — memuat **hanya alamat layanan REST**
+  (`…/prweb/PRRestService/…`, `…/resources/restws/…`). Tidak satu pun barisnya alamat portal
+  yang dapat dibuka orang.
+
+Sebagian baris itu memang memuat nama host sistem lama, tetapi **menurunkan alamat portal dari
+alamat layanan REST berarti menebak** — dan host-nya sendiri tidak sepakat: baris untuk
+layanan yang sama kadang menunjuk host produksi, kadang host pengembangan.
+
+### 10.3 Yang diminta diputuskan
+
+1. **Apakah tautan "buka di Pega" memang dikehendaki** pada layar yang baca-saja.
+2. Bila ya: **alamat portal sistem lama per entitas**, beserta **bentuk tautan yang membuka
+   satu klaim** dari kunci `pzInsKey` yang sudah ditampilkan layar.
+3. **Di mana alamat itu disimpan.** Usul kami: satu baris baru di `POOLDATA.GCNM_CONNECT_REST`
+   per portal — pola yang sudah dipakai alamat layanan HCQ, sehingga perpindahan alamat
+   menjadi perubahan data oleh DBA, bukan rilis ulang aplikasi.
+
+**Variabel lingkungan baru sengaja TIDAK dibuat** sambil menunggu. Alamat per entitas adalah
+keputusan konfigurasi milik pemilik lingkungan, bukan milik satu modul — dan membuatnya lebih
+dulu akan menetapkan tempat penyimpanannya tanpa ada yang memutuskannya.
+
+## 9. Inbox Banding Harga Salvage — `MENU_ID 72`, `InboxRequestSalvage` (2026-09-29)
+
+### 9.1 Tujuh artefak sudah DITERIMA pada hari yang sama
+
+Diminta bertahap dalam tiga putaran, karena setiap berkas yang datang memunculkan rujukan ke
+berkas berikutnya. Dicatat supaya urutan itu terbaca bila kelak ada layar sejenis:
+
+| Artefak | Ditemukan dari | Isi yang dibawa |
+|---|---|---|
+| `Section/InboxReqSalvageASM-Section.xml` | rujukan di harness | DUA grid, kolomnya, kotak Cari |
+| `Activity/GCNMCountRequestSalvage_act-Act.xml` | rujukan di harness | tabel ringkas; label dari `Local.LOOP` |
+| `Activity/SetReqSalvage_Act-Act.xml` | `pyActivity` di section | pemasok kedua grid, paginasi, penyaring bernama orang |
+| `RDB List/CountRequestSalvage_Sql-SQL.xml` | rujukan di activity pencacah | pencacah Request dan total paginasi |
+| `RDB List/CountHistoryReqSalvage_Sql-SQL.xml` | idem | pencacah History |
+| `RDB List/DataReqSalvage_SQL-SQL.xml` | rujukan di `SetReqSalvage_Act` | kueri grid Request |
+| `RDB List/HistoryReqSalvage_SQL-SQL.xml` | idem | kueri grid History |
+
+**Pelajaran untuk permintaan berikutnya:** harness saja tidak cukup untuk menyatakan apa yang
+kurang. Ia hanya menyebut section teratas; rantai sesungguhnya baru terbaca setelah section itu
+dibuka, lalu activity-nya, lalu rule SQL-nya. Meminta "harness beserta seluruh rule yang
+dirujuknya secara berantai" akan memangkas tiga putaran menjadi satu.
+
+### 9.2 TIGA artefak yang MASIH kurang
+
+| # | Artefak | Yang tertahan karenanya |
+|---|---|---|
+| 1 | `Section/ButtonApproveRejectedRequest-Section.xml` | Kolom **Action** — tombol Approve dan Reject banding. Kolom mana yang ditulisnya pada `T_CLAIM_CHEKER_SALVAGE` dan nilai apa yang disetelnya tidak diketahui, sehingga tombolnya tidak digambar sama sekali |
+| 2 | `Flow Action/DetailHistoryRequestSalvage-FA.xml` | Panel rincian satu baris pada grid **History Cheker** |
+| 3 | Rule SQL yang dipanggil nomor 1 | Belum diketahui namanya — ia baru terbaca setelah section-nya ada |
+
+Padanannya yang ADA di export dan dapat dipakai sebagai pembanding bentuk:
+`Section/ButtonApproveRejectedChecker-Section.xml`, yang memuat `pyButtonLabel Approve`,
+`pyButtonLabel REJECTED`, dan `pyButtonLabel Lihat File`. Ia **bukan** rule yang dicari — ia
+milik grid Checker pada layar Inbox Salvage — tetapi bentuknya menunjukkan apa yang diharapkan.
+
+### 9.3 Satu permintaan ke DBA, bukan ke Tim Pega
+
+**DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`**, beserta beberapa baris contoh.
+
+Tabel ini **nol kemunculan** di seluruh export selain di dalam satu potongan SQL yang dirangkai
+`Activity/SetReqSalvage_Act` — ia bahkan tidak muncul sebagai nama tabel pada rule SQL mana pun
+sebelum keempat rule di 9.1 diterima. Akibatnya seluruh nama kolom modul ini disimpulkan dari
+teks kueri, dan **satu di antaranya disimpulkan dari nama properti grid**:
+
+| Kolom | Dari mana namanya diketahui |
+|---|---|
+| `NOKLAIM`, `IDSALVAGE`, `IDDETAILSALVAGE`, `NAMAKOMITE` | disebut kueri |
+| `NAMABARANG`, `HARGABARANG`, `HARGAREQUEST`, `ALASANREQUEST` | disebut kueri |
+| `TGLREQUEST`, `TGLAPPROVE`, `STATUSAPPROVE` | disebut kueri |
+| **`NOTEKOMITE`** | **disimpulkan dari `.NoteKomite`, properti kolom "Note Checker"** |
+
+Yang dibutuhkan dari DDL ada tiga, dan ketiganya berakibat nyata:
+
+1. **Apakah `NOTEKOMITE` benar-benar ada.** Bila tidak, kuerinya gagal seluruhnya — bukan
+   mengosongkan satu kolom. `check_table` sudah menyebut kedua belas kolomnya satu per satu
+   supaya kekeliruan itu terbaca saat aplikasi start, tetapi DDL menutupnya lebih awal.
+2. **Tipe `HARGABARANG` dan `HARGAREQUEST`.** Keduanya nilai uang; bila ternyata `VARCHAR2`,
+   perbandingan dan pengurutan apa pun terhadapnya menjadi leksikografis (`I-12`).
+3. **Apakah `TGL_REQUEST` (dengan garis bawah) ada.** `CountRequestSalvage_Sql` menutup
+   `SELECT COUNT(1)` dengan `ORDER BY TGL_REQUEST DESC`, dan ejaan itu **nol kemunculan** di
+   mana pun selain baris tersebut. Klausanya dibuang di sistem baru (selisih terencana nomor
+   3); DDL memastikan pembuangan itu memang benar dan bukan menutupi kolom yang nyata.
+
+### 9.4 Yang TIDAK kami butuhkan — dicatat supaya tidak diminta berulang
+
+| Hal | Alasan |
+|---|---|
+| `Section/TambahData_Salvage` | Sudah dipakai modul Inbox Salvage; tombol "Tambah" di layar ini membuka form yang sama, dan tidak digandakan |
+| `pxChart` pada tabel ringkas | Harness menggambar isi yang sama dua kali — tabel dan diagram. Dua baris angka tidak memerlukan grafik |
+| `When/IsGCNMUser` | Sudah ada di export, dan isinya `compareTwoValues(1, "=", 2)` — sakelar "jangan tampilkan ini", bukan pemeriksaan peran |
+
+### 9.5 Koreksi atas 9.2 — kedua artefak itu SUDAH diterima, dan keduanya cangkang pula (2026-09-29)
+
+`Section/ButtonApproveRejectedRequest-Section.xml` dan
+`Flow Action/DetailHistoryRequestSalvage-FA.xml` diterima pada hari yang sama. Bagian 9.2 di
+atas **tidak disunting** — ia merekam keadaan saat permintaan itu diajukan; yang berlaku
+sekarang adalah bagian ini.
+
+**Keduanya ternyata cangkang, persis seperti harness-nya.** Masing-masing menunjuk rule
+berikutnya yang belum ada, sehingga putaran permintaan bertambah menjadi **empat**.
+
+#### Yang kini DIKETAHUI dari `ButtonApproveRejectedRequest`
+
+Kedua tombol memanggil satu activity, `ApprovalCheckerSalvage`, dengan lima isian yang sama:
+
+| Parameter | Nilai | Kolom sebenarnya |
+|---|---|---|
+| `statusapprove` | `1` pada dua titik panggil, `0` pada dua titik lain | `STATUSAPPROVE` |
+| `noteapprove` | `.NoteKomite` | `NOTEKOMITE` — catatan yang diketik komite |
+| `iddetailsalvage` | `.ClientName` | `IDDETAILSALVAGE` |
+| `idsalvage` | `.ClaimNo` | `IDSALVAGE` |
+| `hargarequest` | `.Email` | `HARGAREQUEST` |
+
+**Ketiga baris terakhir meneguhkan peta kolom modul ini dari sumber yang berbeda** — berguna,
+dan dicatat. Ditambah satu hal yang sebelumnya hanya tertulis di `.NoteKomite`: kolom
+`NOTEKOMITE` memang **ada dan ditulis**, sehingga dugaan pada 9.3 butir 1 menguat.
+
+Ditemukan pula tombol ketiga, **"Lihat File"**, yang membuka local action
+`DokumenBandingSalvage`.
+
+#### Yang MASIH tidak diketahui, dan itu yang menahan
+
+1. **Kolom mana yang ditulis `ApprovalCheckerSalvage`**, dan apakah ia juga menyentuh
+   `TGLAPPROVE`, `PNC_SALVAGE.STSTRANSFER`, atau `HISTORY_KOMUNIKASI_SALVAGE`.
+2. **Arti `statusapprove = 0`.** Pada `T_CLAIM_KOMITE_LIST` kode yang sama berarti **MENUNGGU**
+   (`RDB List/CountAIDiterima_SQL`: `0` = MENUNGGU, `1` = DITERIMA, `2` = DITOLAK), sementara
+   di layar ini penolakan mestinya memindahkan barisnya ke History — dan grid History menuntut
+   `STATUSAPPROVE IS NOT NULL`. Kedua bacaan itu tidak dapat dipilih tanpa membaca activity-nya,
+   dan memilih yang salah berarti banding yang ditolak **tidak pernah hilang dari antrean** atau
+   sebaliknya **hilang tanpa pernah diputus**.
+
+#### Empat artefak yang diminta sekarang
+
+| # | Artefak | Yang tertahan karenanya | Pemilik |
+|---|---|---|---|
+| 1 | `Activity/ApprovalCheckerSalvage-Act.xml` | **Tombol Approve dan Reject.** Ini yang paling menahan — tanpa isinya, keputusan atas nilai uang tidak dapat ditulis | Tim Pega |
+| 2 | `Section/DetailHistReqSalvage-Section.xml` | Isi panel rincian baris History | Tim Pega |
+| 3 | `Activity/ShowDtlHistoryReqSalvage_Act-Act.xml` | Pemasok panel itu — flow action-nya mengirim nomor klaim (`ClaimID`) | Tim Pega |
+| 4 | `DokumenBandingSalvage` (local action / section) | Tombol "Lihat File" pada kolom Action | Tim Pega |
+
+Ditambah yang belum berubah: **DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`** ke DBA (lihat 9.3).
+
+#### Pelajaran yang mengubah cara meminta
+
+Empat putaran untuk satu layar, dan tiap putaran hanya membuka satu lapis:
+
+```
+Harness -> Section -> Activity -> rule SQL
+                   -> Section tombol -> Activity penulis
+                   -> Flow Action     -> Section + Activity pemasoknya
+```
+
+Permintaan yang tepat bukan menyebut berkasnya satu per satu, melainkan:
+**"harness ini beserta SELURUH rule yang dirujuknya secara berantai, sampai tidak ada lagi
+rujukan yang menggantung"** — yakni export berbasis Product rule dengan
+*include dependent rules*, persis yang `D-39` tetapkan.
+
+### 9.6 Putaran kelima (2026-09-29, malam) — tiga artefak diterima, enam rule terdalam masih kurang
+
+`ApprovalCheckerSalvage`, `DetailHistReqSalvage`, dan `ShowDtlHistoryReqSalvage_Act` diterima.
+Bagian 9.5 tidak disunting; yang berlaku adalah bagian ini.
+
+#### Pertanyaan terbesar pada 9.5 TERJAWAB
+
+`ApprovalCheckerSalvage` langkah 11 menyusun harganya begini:
+
+```
+SalvagePrice = @if(statusapprove == "1", hargarequest, hargasalvage)
+```
+
+Artinya **`1` = Approve** (harga tandingan balai lelang diterima) dan **`0` = Reject** (harga
+semula dipertahankan). Dugaan `0` = MENUNGGU — yang berlaku pada `T_CLAIM_KOMITE_LIST` — GUGUR.
+
+Ikut terbaca: `SalvageStatus := "2"`, `ApprovalStatus := statusapprove`,
+`ApprovalUser := <komite>`, `ApprovalNote := noteapprove`, dan satu parameter keenam yang
+tidak dikirim tombolnya — `hargasalvage`.
+
+Panel rincian History pun kini terpetakan lengkap — tujuh kolom, dikunci nomor klaim:
+
+| Judul | Properti Pega |
+|---|---|
+| Tgl Approve | `.DateOfLoss` |
+| Detail Object | `.Notes` |
+| Nama Barang | `.CityID` |
+| Harga Barang | `.ContractNo` |
+| Harga Request | `.BranchID` |
+| Jawaban Checker | `.AgentID` |
+| Nama Checker | `.ClaimID` |
+
+#### Enam rule yang MASIH kurang — seluruhnya rule terdalam
+
+| # | Artefak | Yang tertahan |
+|---|---|---|
+| 1 | `RDB List/UpdateDataReqSalvage-SQL.xml` | bagian tulis Approve/Reject |
+| 2 | `RDB List/UpdateDokReqSalvage-SQL.xml` | jalur Reject (`TempInsert.City == "0"`) |
+| 3 | `RDB List/UpdateHargaSalvage-SQL.xml` | harga pada detail salvage |
+| 4 | `Connect REST/SendData_SalvageSimasBid-REST.xml` | **mengirim keputusan KEMBALI ke balai lelang** |
+| 5 | `RDB List/DetailHistReqSalvage_SQL-SQL.xml` | isi panel rincian History |
+| 6 | `DokumenBandingSalvage` | tombol "Lihat File" |
+
+#### Satu pertanyaan yang BELUM terjawab dan berakibat langsung
+
+**Siapa yang menyetel `TGLAPPROVE`.** Satu-satunya `UPDATE` yang terbaca langsung — dirangkai
+sebagai teks pada langkah 5 — hanya menyetel `STATUSAPPROVE`, dan justru menyaring
+`TGLAPPROVE IS NULL`:
+
+```
+UPDATE POOLDATA.T_CLAIM_CHEKER_SALVAGE
+   SET STATUSAPPROVE = '<status>'
+ WHERE NAMAKOMITE = 'DANIELLISWANDI'        <- nama orang, tertanam di dalam teks SQL
+   AND IDDETAILSALVAGE = '<id>'
+   AND TGLAPPROVE IS NULL
+```
+
+Padahal grid Request menyaring `TGLAPPROVE IS NULL` dan grid History menuntutnya TERISI. Bila
+tidak ada rule lain yang mengisinya, banding yang sudah diputus **tidak berpindah ke History
+dan tidak hilang dari Request**. Dugaan terkuat: `UpdateDataReqSalvage` yang mengisinya — dan
+itu salah satu dari enam yang diminta.
+
+Dicatat pula: `NAMAKOMITE='DANIELLISWANDI'` tertanam di dalam teks SQL yang dirangkai — nama
+orang kelima yang menentukan perilaku di layar ini, dan satu lagi titik `{Asis}` yang tidak
+dibawa.
+
+#### Permintaan yang seharusnya diajukan sejak awal
+
+Ini putaran **kelima**. Sepuluh artefak sudah diterima, enam masih kurang, dan setiap putaran
+hanya membuka satu lapis. Permintaan yang tepat bukan menyebut berkas satu per satu melainkan:
+
+> **Export berbasis Product rule untuk harness `InboxRequestSalvage`, dengan opsi
+> *include dependent rules* dinyalakan** — persis yang `D-39` tetapkan untuk seluruh gap
+> export.
+
+### 9.7 Putaran ketujuh — yang tersisa setelah jalur tulis selesai
+
+Tanggal: 2026-09-30. Seluruh artefak **rule Pega** yang menahan tombol Approve dan Reject sudah
+diterima, dan tombolnya dibangun. Bagian ini mencatat apa yang **masih** kurang, kepada siapa,
+dan apa yang tertahan karenanya — supaya permintaan berikutnya tidak salah sasaran.
+
+#### Putaran keenam, yang tidak sempat dicatat tersendiri
+
+Nomor bagian melompat dari putaran kelima ke ketujuh, dan itu bukan kekeliruan penomoran:
+putaran **keenam** diterima dan langsung dikerjakan pada hari yang sama, sehingga catatannya
+masuk ke `catatan-pengembangan.md` §84.3 tanpa sempat menjadi bagian tersendiri di sini.
+Dicatat di sini supaya daftar penerimaannya tetap utuh — kelima rule yang tiba pada putaran itu:
+
+| Rule | Apa yang akhirnya terbaca |
+|---|---|
+| `UpdateDataReqSalvage` | nama kolom catatan komite yang sebenarnya — **`NOTEAPPROVE`**, bukan `NOTEKOMITE`; dan bahwa `TGLAPPROVE` diisi `sysdate` di pernyataan yang sama |
+| `UpdateDokReqSalvage` | penandaan dokumen saat ditolak, beserta penyaringnya yang tampak keliru (§107.2) |
+| `UpdateHargaSalvage` | penerapan harga ke `DETAIL_PNC_SALVAGE.HARGAITEM` |
+| `DetailHistReqSalvage_SQL` | ketujuh kolom panel rincian beserta terjemahan kode putusannya |
+| `SendData_SalvageSimasBid` | bahwa layanan pengirimannya menunjuk host **dev** tanpa autentikasi (§107.1) |
+
+Yang pertama layak digarisbawahi: nama kolom `NOTEKOMITE` sempat **disimpulkan** dari nama
+properti Pega `.NoteKomite`, dan kueri dengan nama itu akan gagal seluruhnya dengan
+`ORA-00904`. Ia bukan cacat tampilan melainkan layar yang tidak dapat dibuka sama sekali —
+bukti bahwa nama kolom tidak boleh disimpulkan dari nama properti.
+
+#### Yang masih kurang, dan kepada siapa
+
+| # | Yang diminta | Kepada | Yang tertahan |
+|---|---|---|---|
+| 1 | `Activity/LihatDokRequestSalvage` **dan** `Section/DokBandingHargaSalvage` | **Tim Pega** | tombol "Lihat File" pada kolom Action |
+| 2 | **DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`** — tipe, panjang, index, constraint | **DBA** | lihat di bawah |
+| 3 | **Alamat produksi** layanan balai lelang beserta cara autentikasinya | **Work Owner + tim integrasi** | pengiriman keputusan ke balai lelang |
+| 4 | Rule yang MENULIS `HISTORY_KOMUNIKASI_SALVAGE.MESSAGE_PNC` | **Tim Pega** | balasan ke balai lelang |
+
+#### Kenapa DDL tabel checker kini lebih mendesak daripada sebelumnya
+
+Selama modul ini hanya membaca, tipe kolom hanya memengaruhi tampilan. Sejak ia **menulis**,
+tiga kolom menjadi penentu benar-tidaknya sebuah keputusan tersimpan:
+
+| Kolom | Yang belum diketahui | Akibat bila tebakannya salah |
+|---|---|---|
+| `STATUSAPPROVE` | teks atau angka | Ditulis `'1'` ke kolom `NUMBER` dapat terbaca kembali sebagai `"1.0"`. Perapian sudah dipasang di `normalizeDecisionCode`, tetapi ia menambal **pembacaan**, bukan penulisan |
+| `TGLAPPROVE` | `DATE` atau `TIMESTAMP` | `CURRENT_TIMESTAMP` ke kolom `DATE` memangkas jamnya. Pengurutan riwayat per hari menjadi tidak menentu |
+| `NOTEAPPROVE` | panjang maksimum | Catatan yang melebihi batas ditolak Oracle saat disimpan — pengguna kehilangan putusan yang baru ia tulis, tanpa peringatan sebelumnya |
+
+Yang terakhir paling layak diminta lebih dulu: ia satu-satunya yang akibatnya **terlihat
+pengguna sebagai kegagalan**, dan satu-satunya yang dapat dicegah dengan batas panjang di
+layar.
+
+Kueri untuk DBA:
+
+```sql
+SELECT column_name, data_type, data_length, data_precision, data_scale, nullable
+  FROM all_tab_columns
+ WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIM_CHEKER_SALVAGE'
+ ORDER BY column_id;
+```
+
+#### Satu permintaan yang TIDAK diajukan, dan alasannya
+
+Sempat terpikir meminta isi `POOLDATA.SALAVAGEDOCUMENT` untuk membuktikan bahwa penyaring
+`UpdateDokReqSalvage` memang tidak pernah mencocokkan apa pun. Itu **tidak diminta**: Work
+Owner sudah memutuskan menirunya apa adanya (§107.2), sehingga jawabannya — cocok atau tidak —
+tidak mengubah satu baris kode pun. Permintaan yang jawabannya tidak mengubah apa pun hanya
+membebani pihak lain.
+
+Ia layak diminta kembali **bila** perbaikan penyaringnya kelak dipertimbangkan.
+
+#### Catatan atas bentuk permintaan
+
+Putaran keenam menutup seluruh rule yang menahan, dan itu karena permintaannya akhirnya
+diajukan sebagai **satu daftar berdasarkan rujukan di dalam activity**, bukan berkas per
+berkas. Empat butir di atas berasal dari **tiga pihak berbeda**, sehingga tidak dapat digabung
+menjadi satu permintaan — tetapi masing-masing sudah disertai alasan dan akibatnya, supaya
+penerimanya dapat menilai urgensinya sendiri.
+
+Yang tetap berlaku sebagai bentuk permintaan yang benar kepada Tim Pega:
+
+> **Export berbasis Product rule untuk harness `InboxRequestSalvage`, dengan opsi
+> *include dependent rules* dinyalakan** (`D-39`).
+
+#### Koreksi 2026-09-30 — `DokumenBandingSalvage` sudah diterima, dan ia cangkang
+
+Butir 1 pada tabel di atas **berubah sasarannya**, dan itu perlu dicatat karena inilah kekeliruan
+yang sudah tiga kali memboroskan satu putaran di layar ini.
+
+`Flow Action/DokumenBandingSalvage-FA.xml` diterima. Membacanya membuktikan ia **tidak memuat
+apa pun yang dapat dibangun**:
+
+| Bagian | Isi | Status |
+|---|---|---|
+| `<pyPreProcessingActivity>` | `LihatDokRequestSalvage` — yang memuat daftar dokumennya | **tidak ada di export** |
+| `pxRuleReferences` ber-`Rule-HTML-Section` | `DokBandingHargaSalvage` — yang menggambarnya | **tidak ada di export** |
+
+Parameter pra-aktivitasnya terbaca, dan ia memakai pemetaan alias yang sama dengan tombol
+Approve/Reject: `IDsalvage ← .ClaimNo`, `iddetailsalvage ← .ClientName`.
+
+**Pola yang sudah berulang, dan layak dijadikan aturan permintaan.** Tiga artefak layar ini
+diterima "lengkap" lalu ternyata cangkang: harness-nya, section tombolnya, dan kini flow
+action-nya. Ketiganya terbaca utuh tanpa satu pun galat — yang hilang justru bagian yang bekerja.
+
+Sebelum sebuah berkas dinyatakan menutup permintaan, dua elemen ini wajib dibaca lebih dulu:
+
+```
+<pyPreProcessingActivity>                      nama activity pemasoknya
+pxRuleReferences  ber-Rule-HTML-Section        nama section yang menggambarnya
+```
+
+Itu pula alasan `D-39` menetapkan permintaan yang benar adalah **export berbasis Product rule
+dengan *include dependent rules***, bukan daftar berkas — daftar berkas hanya dapat menyebut
+lapis yang sudah diketahui.
+
+### 9.8 Putaran kesembilan (2026-09-30) — tidak ada lagi artefak Pega yang menahan
+
+`LihatDokRequestSalvage` dan `DokBandingHargaSalvage` diterima, dan keduanya menutup lapis
+terakhir. Tombol "Lihat File" dibangun.
+
+#### Butir 1 pada tabel §9.7 DITUTUP
+
+Satu rule tetap tidak ada — `GetAttachmentReqSalvage` — dan ia **tidak diminta**, karena
+jawabannya sudah pasti tanpa berkasnya:
+
+| Yang diketahui | Dari mana |
+|---|---|
+| kelasnya `ASM-FW-GCNMFW-Int-DATA_ATTACHFILE` | `pxRuleReferences` pada activity |
+| kuncinya `pyID`, diisi `IDDOC` | langkah `TempInputParamAttach.pyID := .ClaimID` |
+| tiga kolom yang dibaca hasilnya | langkah Property-Set sesudahnya |
+| kueri yang sama sudah berjalan | `internal/inboxpladla/repo/sqlstore/detail.sql` |
+
+Meminta berkas yang isinya sudah tertentukan hanya membebani pihak lain tanpa mengubah satu
+baris kode.
+
+#### Yang MASIH kurang, dan kepada siapa
+
+| # | Yang diminta | Kepada | Yang tertahan |
+|---|---|---|---|
+| 1 | **DDL `POOLDATA.T_CLAIM_CHEKER_SALVAGE`** — terutama panjang `NOTEAPPROVE` | **DBA** | catatan komite yang melebihi batas ditolak saat disimpan |
+| 2 | **Alamat produksi** layanan balai lelang + autentikasinya | **Work Owner + tim integrasi** | pengiriman keputusan ke balai lelang |
+| 3 | Rule yang MENULIS `HISTORY_KOMUNIKASI_SALVAGE.MESSAGE_PNC` | **Tim Pega** | balasan ke balai lelang |
+
+#### Satu pertanyaan untuk DBA, bukan untuk Tim Pega
+
+Kolom `POOLDATA.SALAVAGEDOCUMENT.NOKLAIM` **berisi id DETAIL salvage**, bukan nomor klaim —
+disimpulkan dari dua rule yang membandingkannya begitu, salah satunya kueri baca yang hasilnya
+terlihat pengguna. Konfirmasinya satu kueri:
+
+```sql
+SELECT DISTINCT NOKLAIM
+  FROM POOLDATA.SALAVAGEDOCUMENT
+ WHERE TIPEDOCSALVAGE = 'Request Banding Harga Salvage'
+   AND ROWNUM <= 20;
+```
+
+Bila nilainya berbentuk `<nomor klaim>/<n>`, kesimpulan di atas benar dan nama kolomnya yang
+menyesatkan. Bila berbentuk nomor klaim polos, maka kedua rule itu memang tidak pernah cocok —
+dan dialog "Lihat File" di sistem lama selalu kosong tanpa ada yang melaporkannya.
+
+Jawabannya **tidak mengubah kode**: kedua kueri meniru perbandingan yang sama apa adanya
+(`P-5`). Ia hanya menentukan mana dari kedua kalimat di `PlannedDifferences()` yang berlaku.
+
+## 12. Adjustment, Akseptasi, Draft Persetujuan, dan Transfer Kasir (2026-10-01) — ke **Tim Pega**
+
+Diperiksa terhadap export per 2026-10-01. Sebuah rule dihitung ADA hanya bila berkas
+definisinya sendiri ada (nama berkas atau `pyRuleName` miliknya) — bukan sekadar disebut.
+
+### 12.1 Rule yang HILANG
+
+| # | Rule | Jenis | Dirujuk di | Akibat bagi aplikasi baru |
+|---|---|---|---|---|
+| 1 | `ValidationAdjustment` | Activity | `Section/ShowAdjustment_sect.xml` (aksi dropdown Tipe LOD dan isian adjustment) | Pemeriksaan saat Tipe LOD/adjustment diubah tidak dibawa |
+| 2 | `SetShareAsmWhenPilihAdjustment` | Activity | `Section/ShowAdjustment_sect.xml:3600`, `:3713` | Bila ia mengubah Share ASM saat Tipe LOD dipilih, perilaku itu belum ada |
+| 3 | `IsAnalisator` | When | `Section/ShowAdjustment_sect.xml` (baca-saja dropdown), `InputAdjustment_sect`, beberapa activity salvage/investigator | Pembatasan peran Analisator belum ditegakkan |
+| 4 | `ValidasiTransferKasir_dialog` | Flow Action | `Section/InputAdjustment_sect.xml` (tombol Transfer Kasir) | Dialog Transfer Kasir dibangun ulang sebagai ringkasan konfirmasi (keputusan Work Owner) |
+| 5 | `DokumentBeforeTFManager` | Activity | `Activity/TransferToKasir_act-act.xml` | Jalur persetujuan leader / manajer sebelum Transfer Kasir belum dibangun |
+| 6 | `UpdateChasierIDTablePembayaran` | Connect SQL (`@baseclass`) | `TransferToKasir_act`, `TransferToKasir_act_Leader`, `InsertDataAkseptasiToLeader` | Pembaruan CaseID Kasir pada tabel pembayaran (jalur leader) belum dibangun |
+| 7 | `GetDataBankMaster` | Activity | `Section/InputReceiver_sect.xml` (isian No Rekening penerima) | Pemetaan rekening → penerima direkonstruksi dari data, bukan dari rule |
+| 8 | `IsServerSyariah` | When | `Data Transform/SetDataEmail-DT.xml`, `Activity/SpreadingDataProtection-Act.xml` | Pembeda portal Syariah belum punya baseline |
+| 9 | `IsDevelopmentServer` | When | sejumlah activity | Tidak dibawa (perilaku berbasis hostname dilarang, Steering §3.4) |
+
+### 12.2 Objek basis data yang hilang — ke **DBA**
+
+| Objek | Dirujuk di | Catatan |
+|---|---|---|
+| `PKG_KONVERSI_JSONKLAIM` | `TransferToKasir_act` (dua pemeriksaan sebelum transfer) | Tidak dipanggil aplikasi baru (`D-02`); isinya tetap perlu dibaca untuk tahu apa yang diperiksa |
+
+### 12.3 Koreksi atas catatan sebelumnya — rule ini ternyata ADA
+
+Catatan terdahulu (B-10, `catatan-pengembangan.md`) menyebut beberapa rule hilang; export kini
+memuatnya: `InsertLogKasir_act`, `SendAttachmenttoCashier_act`, `SetDataEmailTertanggung`,
+`DownloadProposeAdjustment`, `PrintLODdanEmail` (section), `SendAutoLodKeTertanggungPA` (HTML),
+`IsMarineHull`, `SetSignaturePA`, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU_act`.
+Yang perlu dibaca ulang karena kini tersedia: `SendAttachmenttoCashier_act` (pengiriman berkas ke
+Kasir) dan `PrintLODdanEmail` + `DownloadProposeAdjustment` (kirim email LOD).
+
+### 12.4 Pembaruan 2026-10-01 — setelah 8 berkas diterima
+
+**Diterima dan sudah dibawa:** `SetShareAsmWhenPilihAdjustment` (dropdown Tipe LOD kini mengubah
+ExGratia dan Share ASM baris), `GetDataBankMaster` (pemeriksaan "Norekening Belum Terdaftar Di
+Sistem Kasir", dikendalikan KASIR_CEK_REKENING), `IsServerSyariah` / `IsDevelopmentServer`
+(diganti portal dan pengaturan lingkungan — tidak membandingkan nama server).
+
+**Diterima, dibaca, belum dibangun:** `ValidationAdjustment` (aksi tombol Tambah adjustment, 918 KB —
+bukan aksi dropdown), `DokumentBeforeTFManager` (jalur persetujuan atasan), `IsAnalisator`
+(workgroup `KlaimAnalisator`; butuh pemetaan login ke operator Pega).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di |
+|---|---|---|
+| `Sec_dialogValidasiTransfer` | Section | `Flow Action/ValidasiTransferKasir_dialog-FA.xml` — isi dialog Transfer Pembayaran |
+| `Pre_AlertTransferkasir` | Activity | idem, pra-proses dialog |
+| `GetDataPenerimaKlaim` | Connect SQL | `GetDataBankMaster` langkah 4 |
+| `GetDataBankMasterRekening` | Connect SQL | `GetDataBankMaster` langkah 9 (PA: "No Rekening Sedang Proses Approval") |
+| `UpdateChasierIDTablePembayaran` | Connect SQL | `TransferToKasir_act`, `TransferToKasir_act_Leader` |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` |
+
+### 12.5 Pembaruan 2026-10-01 (kedua) — setelah 5 berkas diterima
+
+**Dibawa:** `GetDataPenerimaKlaim` (hanya rekening `APPROVAL = '1'`; rekening `'0'` ditolak "No
+Rekening Sedang Proses Approval"), `GetDataBankMasterRekening`, `Pre_AlertTransferkasir` (kalimat
+konfirmasi dialog), `Sec_dialogValidasiTransfer` (judul "Transfer Pembayaran", tombol "Transfer To
+Kasir" / "Batal").
+
+**Dibaca, tidak dibangun:** `UpdateChasierIDTablePembayaran` — milik jalur persetujuan atasan
+(memanggil prosedur `POOLDATA.INSERT_AKSEPTASI_TO_LEADER`, `D-02`).
+
+**Masih HILANG:**
+
+| Rule | Jenis | Dirujuk di | Untuk |
+|---|---|---|---|
+| `GetdataFacoutJoinPlacement` | Activity | `Sec_dialogValidasiTransfer` (defer load tabel `ListFacoutFlonting`) | Daftar DLA Fac-out pada dialog — "Pilih Fac-out Tidak Dibayar" |
+| `JoinPlacement` | Property (local list) | `Sec_dialogValidasiTransfer` (dropdown "Tipe Transfer Kasir", bawaan `1`; tabel tampil bila 2 atau 3) | Label pilihan Tipe Transfer Kasir |
+| `PKG_KONVERSI_JSONKLAIM` | Package DB (ke DBA) | `TransferToKasir_act` | Dua pemeriksaan sebelum transfer |
+
+### 12.6 Pembaruan 2026-10-01 (ketiga) — `GetdataFacoutJoinPlacement` dan `JoinPlacement` diterima
+
+**Dibawa:** dropdown "Tipe Transfer Kasir" (1 Pembayaran Biasa, 2 Join Placement, 3 Fronting) dan
+tabel "Pilih Fac-out Tidak Dibayar" (DLA FAC OUT nomor akseptasi itu, `GetDLAHistoryManager`).
+Fac-out yang dicentang menjadi baris TAllPaymentData tambahan: NoTrans = No DLA, Nett = Nilai Bayar
+× -1 (`TransferCashierDataASM_act` cabang ListOfPlacement).
+
+**Masih HILANG:** `PKG_KONVERSI_JSONKLAIM` (Package DB, ke DBA) — dua pemeriksaan sebelum Transfer Kasir.
+
+---
+
+## 13. Isi kolom `POOLDATA.T_GENERAL.CURRENCY` (2026-10-01) — ke **DBA**
+
+| | |
+|---|---|
+| **Status** | **Diminta** |
+| **Ditujukan ke** | DBA — pelaksana. Persetujuan: Work Owner (`D-63`). Tabel ini ditulis sistem polis, sehingga pemilik datanya perlu ikut diberi tahu |
+| **Menghalangi** | registrasi klaim atas polis yang kolom mata uangnya kosong — klaim ditolak karena kurs tidak ditemukan |
+| **Jenis perubahan** | **hanya mengisi kolom yang KOSONG** (UPDATE) — lihat §13.0 |
+
+### 13.0 Dua batas yang mengikat (Work Owner, 2026-10-01)
+
+1. **Tidak ada perubahan struktur tabel.** Tidak ada `CREATE`, `ALTER`, `DROP`, `TRUNCATE`,
+   index, trigger, maupun tabel cadangan di basis data. Cadangan untuk rollback disimpan sebagai
+   **berkas di luar basis data** (§13.4 langkah 2).
+2. **Tidak menimpa data yang sudah ada.** Yang diubah hanya sel `CURRENCY` yang **kosong (NULL)**
+   pada saat UPDATE dijalankan. Kolom lain dan baris yang `CURRENCY`-nya sudah terisi tidak disentuh.
+   Rollback pun hanya mengosongkan sel yang **masih berisi nilai yang kita isi** — bila sejak itu
+   sudah diubah pihak lain, sel itu dibiarkan.
+
+### 13.1 Kenapa diminta
+
+Aplikasi Claim PNC yang baru tidak lagi membaca data polis dari kolom
+`POOLDATA.JSON_POLIS.DATA_JSONBLOB`. Mata uang polis kini dibaca dari `T_GENERAL.CURRENCY` menurut
+`NOPOLIS` + `PRODKE`, dengan `JSON_POLIS.POLICYDATA` sebagai cadangan.
+
+Kolom `CURRENCY` ternyata **kosong pada hampir seluruh baris yang dibuat sebelum 2025**. Bila
+polisnya juga tidak punya `POLICYDATA` (dokumennya hanya ada di `DATA_JSONBLOB`), mata uang polis
+menjadi kosong, kurs tidak dapat dicari, dan registrasi klaim **ditolak**.
+
+### 13.2 Ukuran — dihitung 2026-10-01
+
+| Lingkup | Baris T_GENERAL | `CURRENCY` kosong | Dapat diisi dari dokumen polis |
+|---|---:|---:|---:|
+| seluruh tabel | 201.582 | **167.528** | — (dihitung DBA, §13.4 langkah 1) |
+| polis yang punya klaim di `T_CLAIM_PNC` | 233 | **214** | **210** |
+
+Sebaran per tahun `TGL_INPUT` — kolom ini baru terisi teratur sejak 2025:
+
+| Tahun | Baris | Kosong |
+|---|---:|---:|
+| 2018–2019 | 132 | 110 |
+| 2020 | 8.636 | 8.435 |
+| 2021 | 33.776 | 33.327 |
+| 2022 | 23.302 | 22.132 |
+| 2023 | 72.587 | 72.190 |
+| 2024 | 4.795 | 4.112 |
+| 2025 | 7.379 | 3 |
+| 2026 | 23.620 | 12 |
+| `TGL_INPUT` kosong | 27.355 | 27.207 |
+
+### 13.3 Isi yang diminta
+
+`CURRENCY` diisi dengan **kode mata uang polis dari dokumen polis pada PRODKE yang sama** — nilai
+`$.Currency` dari `JSON_POLIS.POLICYDATA`, atau dari `JSON_POLIS.DATA_JSONBLOB` bila POLICYDATA
+kosong. Bentuknya **kode angka** (`10026` = IDR, `10001` = USD), sama dengan baris 2025 ke atas
+yang sudah terisi dan sama dengan `POOLDATA.M_CURRENCYSTANDARD.ID`. **Bukan** simbol `IDR`/`USD`.
+
+Aturannya:
+
+1. Hanya baris yang `CURRENCY`-nya **kosong (NULL)**. Baris yang sudah terisi tidak disentuh,
+   dan hanya kolom `CURRENCY` yang diubah.
+2. Pasangan kunci: `T_GENERAL.NOPOLIS = JSON_POLIS.NOPOLIS` **dan**
+   `T_GENERAL.PRODKE = JSON_POLIS.PRODKE`.
+3. Bila satu PRODKE punya lebih dari satu baris `JSON_POLIS`, yang dipakai **baris terbaru menurut
+   `TGL_INPUT`**.
+4. Baris yang dokumennya tidak memuat `$.Currency` **dibiarkan kosong** — jangan diisi nilai bawaan
+   seperti IDR. Mengisi bawaan akan mengonversi klaim valuta asing dengan kurs yang salah.
+
+### 13.4 Langkah yang diusulkan
+
+Kueri di bawah adalah **usulan**. DBA bebas menyesuaikan cara pelaksanaannya selama hasilnya sama.
+
+**Langkah 1 — hitung baris yang akan berubah:**
+
+```sql
+SELECT COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+**Langkah 2 — cadangan untuk rollback, sebagai BERKAS (bukan tabel):**
+
+Hasil kueri ini diekspor ke berkas CSV di luar basis data (spool SQL*Plus, SQL Developer, atau alat
+lain yang biasa dipakai DBA). Isinya daftar sel yang **akan** diisi beserta nilai yang akan diisikan
+— itulah satu-satunya bahan rollback. **Tidak ada tabel cadangan yang dibuat.**
+
+```sql
+SELECT ROWIDTOCHAR(g.ROWID) AS RID, g.NOPOLIS, g.PRODKE,
+       (SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+          FROM POOLDATA.JSON_POLIS p
+         WHERE p.NOPOLIS = g.NOPOLIS
+           AND TO_CHAR(p.PRODKE) = g.PRODKE
+           AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                        JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+         ORDER BY p.TGL_INPUT DESC
+         FETCH FIRST 1 ROWS ONLY) AS CURRENCY_BARU
+  FROM POOLDATA.T_GENERAL g
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Jumlah barisnya wajib sama dengan hasil langkah 1.
+
+**Langkah 3 — isi kolomnya:**
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = (
+         SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency'))
+           FROM POOLDATA.JSON_POLIS p
+          WHERE p.NOPOLIS = g.NOPOLIS
+            AND TO_CHAR(p.PRODKE) = g.PRODKE
+            AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                         JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL
+          ORDER BY p.TGL_INPUT DESC
+          FETCH FIRST 1 ROWS ONLY)
+ WHERE g.CURRENCY IS NULL
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.JSON_POLIS p
+                WHERE p.NOPOLIS = g.NOPOLIS
+                  AND TO_CHAR(p.PRODKE) = g.PRODKE
+                  AND COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                               JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')) IS NOT NULL);
+```
+
+Penyaring `g.CURRENCY IS NULL` di UPDATE itulah yang menjamin data yang sudah ada tidak tertimpa:
+bila sebuah sel terisi oleh proses lain di antara langkah 2 dan 3, UPDATE melewatinya. Akibatnya
+jumlah baris yang diperbarui boleh **lebih kecil** dari langkah 1, tetapi **tidak boleh lebih besar**
+— bila lebih besar, batalkan (`ROLLBACK`) sebelum `COMMIT`.
+
+Dengan 167.528 baris kandidat, DBA dapat memecahnya per tahun `TGL_INPUT` (§13.2) bila perlu;
+setiap potongan tetap memakai penyaring `g.CURRENCY IS NULL`.
+
+**Langkah 4 — periksa hasil:**
+
+```sql
+SELECT g.CURRENCY, COUNT(*)
+  FROM POOLDATA.T_GENERAL g
+ GROUP BY g.CURRENCY
+ ORDER BY 2 DESC;
+```
+
+Semua nilai baru harus berupa kode yang ada di `POOLDATA.M_CURRENCYSTANDARD.ID`.
+
+### 13.5 Rollback
+
+Dijalankan per baris berkas CSV langkah 2 (`:rid` dan `:nilai` dari kolom `RID` dan
+`CURRENCY_BARU`):
+
+```sql
+UPDATE POOLDATA.T_GENERAL g
+   SET g.CURRENCY = NULL
+ WHERE g.ROWID = CHARTOROWID(:rid)
+   AND g.CURRENCY = :nilai;
+```
+
+Syarat `g.CURRENCY = :nilai` membuat rollback **tidak menimpa** perubahan pihak lain: sel yang sejak
+pengisian sudah diubah nilainya dibiarkan apa adanya. Berkas CSV disimpan sampai Work Owner
+menyatakan hasilnya diterima. Berkas itu memuat nomor polis, sehingga disimpan sesuai aturan data
+nasabah (`D-69`) dan **tidak** dimasukkan ke repository.
+
+### 13.6 Yang perlu dikonfirmasi sebelum dijalankan
+
+| # | Pertanyaan | Kepada |
+|---|---|---|
+| 1 | Apakah ada proses sistem polis yang **membaca** `T_GENERAL.CURRENCY` dan perilakunya berubah bila kolom yang kosong menjadi terisi? | pemilik sistem polis (GISFW) |
+| 2 | Apakah ada proses yang **menimpa** `T_GENERAL` dari dokumen polis (konversi ulang) sehingga isian ini kembali kosong? | DBA / pemilik sistem polis |
+| 3 | Mengikuti `D-63`, perubahan diuji dengan menjalankan Pega dan aplikasi baru bersamaan setelah pengisian | tim pengembang + DBA |
+
+> **Bukan bagian permintaan ini:** periode polis (`STARTDATE`/`ENDDATE`). Kolom itu terisi, tetapi
+> **tidak mengikuti endorsemen** — perbaikannya butuh keputusan tersendiri, bukan pengisian kolom kosong.
+
+---
+
+## 14. Rule yang tidak ditemukan di Pega (2026-10-02) — **ditutup**
+
+| | |
+|---|---|
+| **Status** | **Ditutup** — Tim Pega menambahkan 51 rule ke export (2026-10-01 dan 2026-10-02); rule di bawah **dicari di Pega dan tidak ditemukan** |
+| **Akibat** | jangan diminta ulang; perilaku yang bergantung padanya **direkonstruksi atau tidak dibawa**, dan dicatat di catatan pengembangan |
+
+### 14.1 Rule Pega
+
+| Rule | Jenis | Dipakai untuk | Perlakuan di aplikasi baru |
+|---|---|---|---|
+| `InputInvestigator` | Section | layar flow action tahap Investigator (PA) | bingkai `ClaimSurvey_sect`, tab Investigasi lebih dulu (catatan #125) |
+| `ValidasiTransferKasir_dialog` | Section | dialog validasi Transfer Kasir (flow action-nya ada) | isi dialog direkonstruksi dari flow action dan activity-nya |
+| `SendToPIC` | Ticket | lompatan ke Send To PIC dari Input Estimasi | `SendToPICTravel` ada; `SendToPIC` tidak dibawa sampai ada pemakainya |
+| `setToRegister_ticket` | Ticket | lompatan kembali ke Input Register | ditangani tombol Back alur Register |
+| `UploadDataSlinkOJK` | Activity | unggah data SLIK OJK | belum dibangun; butuh keputusan bentuk berkas |
+| `InboxKlaimNonPropAdmin` | RDB | daftar Inbox Klaim Non-Prop admin | kueri tab yang ada dipakai |
+
+### 14.2 Objek basis data — **tetap ke DBA**
+
+Objek berikut bukan rule Pega, sehingga wajar tidak ditemukan di Pega. Source-nya ada di basis data:
+
+`PKG_KONVERSI_JSONKLAIM` (termasuk `Proteksi_PNC_TBI_Kasir` dan `Cek_Nilai_Akseptasi_PNC` untuk pemeriksaan
+Transfer Kasir) · `MODULKLAIMMASKING` · `SET_ATTACHFILETEMPSALVAGE` · `UPDATEPREMIUMTEMPLATE` ·
+`UPDATE_LOG_KONVERSI` · `GETNEWID` · `PKG_COUNTER_PRODUCTION` · `PROCESSQUEUEDIRECT`.
+
+Penarikannya cukup dengan `ALL_SOURCE` seperti `19-GAP-EXPORT-DETAIL.md` bagian *Cara Meminta ke DBA*.
+
+---
+
+## 11. `InputPerihalRCLPUCL_act` — activity tombol "Pilih" Perihal (2026-10-01)
+
+| | |
+|---|---|
+| **Rule** | `Rule-Obj-Activity` · `InputPerihalRCLPUCL_act` |
+| **Kelas** | `ASM-FW-GCNMFW-Work-PNC` |
+| **Dirujuk dari** | `Section/SectionLampiranSuratPUCL-Section.xml` — tombol "Pilih" di sebelah isian Perihal |
+| **Risiko** | `R-07` (activity dipanggil tetapi tidak diekspor) |
+| **Status** | ✅ **DITERIMA 2026-10-01** — lihat §11.1 |
+
+Ditemukan saat memetakan rangkaian aksi seluruh tombol layar kerja Inbox RCL/PUCL. Seluruh 16
+activity yang dipanggil `PUCLPost` ADA di export; yang satu ini satu-satunya yang tidak.
+
+**Akibatnya terbatas, dan itu dinyatakan supaya prioritasnya tidak dilebihkan:** isian Perihal
+sudah terbaca dari kolom `POOLDATA.TC_PNC_PUCL.PERIHAL`, sehingga yang hilang adalah cara
+MENGUBAH pilihannya — bukan cara menampilkannya. Ia baru menghalangi ketika tombol tulis layar ini
+dihidupkan.
+
+Masternya sendiri sudah diketahui: `POOLDATA.M_PERIHAL_RCLPUCL`, 12 baris, dipasok
+`BrowsePerihalRCLPUCL_RD` yang ADA di export.
+
+### 11.1 Diterima — isinya, dan apa yang ditutupnya
+
+Work Owner menambahkannya 2026-10-01 (57 KB, ruleset `GCNMFW`). **Lima step**, dan tidak satu
+pun menulis ke basis data:
+
+```
+1. Property-Set        Param.pyReportName  := "BrowsePerihalRCLPUCL_RD"
+                       Param.pyReportClass := "ASM-FW-GCNMFW-Int-M_PERIHAL_RCLPUCL"
+2. Call pxShowReport   membuka daftar pilihan sebagai laporan
+3. Property-Set        TempPerihal.ID_PERIHAL / TempPerihal.PERIHAL_NAME
+4. Property-Set        primary.ClaimData.PUCLStatus.Perihal
+                         := pyReportContentPage.pxResults(1).PERIHAL_NAME
+5. Page-Remove         membuang TempPerihal
+```
+
+**Tidak ada `Obj-Save`, `Commit`, maupun `RDB-Save`.** Kata "Commit" yang muncul di berkasnya
+hanyalah `pxCommitDateTime` — metadata kapan rule itu disimpan (2020-03-12), bukan step.
+
+**Dua hal yang ini tutup:**
+
+1. **Tombol "Pilih" adalah BACA**, bukan tulis. Ia bergabung dengan "Lihat Dokumen" sebagai satu
+   dari dua tombol yang tidak terhalang `P-1`. Catatan: ia hanya berguna bersama "Save", yang
+   TETAP terhalang — memilih tanpa dapat menyimpan tidak menyelesaikan apa pun.
+2. **Yang tersimpan pada klaim adalah TEKS perihalnya, bukan kodenya.** `ID_PERIHAL` dibuang
+   bersama halaman sementaranya. Ini membenarkan pembacaan kolom `PERIHAL` apa adanya ke layar
+   (§84.2), dan berarti klaim tidak menyimpan kunci asing ke master — mengubah teks sebuah baris
+   master tidak mengubah klaim yang sudah memakainya.
+
+---
+
+## 12. PERMINTAAN LAYANAN REST — `PUCLPost` dan `SaveInputRegisterDetail2` (2026-10-01)
+
+| | |
+|---|---|
+| **Jenis** | Bukan permintaan artefak — **permintaan membangun layanan** |
+| **Kepada** | Tim Pega |
+| **Diputuskan** | Work Owner, 2026-10-01 |
+| **Kelas** | `ASM-FW-GCNMFW-Work-PNC` |
+
+### 12.1 Yang diminta
+
+Ekspos kedua activity berikut sebagai **Service REST masuk**, dengan pola yang sama seperti
+empat layanan yang sudah berjalan di `Service REST/`:
+
+| Activity | Parameter | Dipakai tombol |
+|---|---|---|
+| `InsertMitraPA` lalu `PUCLPost` | `tipe` · `Status` · `idObj` · `idCov` · `idAdj` | Download Dokumen (`Status` kosong) · Tolak Klaim (`0`) · Kirim Ke Analyst (`1`) · Kirim ke PIC Teknik (`1`) |
+| `SaveInputRegisterDetail2` | isian Penerimaan Dokumen | Save |
+
+Ditambah penyelesaian penugasan (`Finish Assignment`) untuk kedua tombol Kirim, karena itu
+bagian dari rangkaian aksinya di layar.
+
+### 12.2 Kenapa LAYANAN, bukan tulis langsung dari Go
+
+Tiga alasan, dan ketiganya diperiksa sebelum diusulkan:
+
+1. **`P-1` tetap utuh.** Pega tetap satu-satunya yang menulis objek kerja. Tidak ada dua
+   sistem menulis baris yang sama selama masa paralel.
+2. **`PUCLPost` dipakai APA ADANYA — 57 step.** Menulis ulangnya di Go menuntut meniru
+   `SetTicket`, `AttachAsPDFC`, `ASMForceCaseClose`, pengiriman surel, panggilan
+   `HitServiceOSAkseptasiClaimNonMBU`, dan sinkronisasi `JSON_KLAIM`. Satu langkah yang
+   terlewat **tidak memunculkan galat** — ia hanya terlihat berminggu-minggu kemudian sebagai
+   klaim yang tersangkut.
+3. **Polanya sudah ada di aplikasi ini.** `Service REST/` memuat empat layanan pada kelas yang
+   sama, dan salah satunya (`ActSalvageSimasbidAsmUpdate`) memang **menulis** data klaim atas
+   permintaan sistem luar. Jadi ini bukan mekanisme baru.
+
+Saat Pega kelak dimatikan, adapter pemanggil layanan ini diganti logika kami sendiri. Seam-nya
+sudah ada di arsitektur (`ExternalSystem`), sehingga penggantian itu tidak menyentuh domain.
+
+### 12.3 Yang perlu disepakati bersama permintaan ini
+
+| Hal | Catatan |
+|---|---|
+| **Otentikasi** | Keempat layanan yang ada ber-`pyUseAuthentication=false`. Layanan BARU ini menulis data klaim, sehingga perlakuan yang sama **tidak memadai** — lihat `D-73` dan `ADR-0008` |
+| Perilaku saat gagal | `PUCLPost` mengirim surel dan memanggil layanan luar. Layanan harus menyatakan apakah kegagalan di tengah menghasilkan rollback |
+| Idempotensi | Tombol yang ditekan dua kali tidak boleh menerbitkan surat dua kali (`10-API-STRATEGY.md` §7) |
+| Lingkungan uji | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |
+
+### 12.4 Apa yang KURANG, per tombol
+
+Ditelusuri 2026-10-01 sampai ke activity terdalamnya. Keduanya berhenti di tempat yang sama —
+**penulisan tabel milik Pega** — tetapi lewat jalan yang berbeda.
+
+**Kirim Ke Analyst** menuntut tiga hal:
+
+| # | Yang dijalankan | Menulis |
+|---|---|---|
+| 1 | `InsertMitraPA(tipe="dokumen")` | `Obj-Refresh-And-Lock` → `Obj-Save` → `Commit` pada objek kerja |
+| 2 | `PUCLPost(Status=1, idObj, idCov, idAdj)` | 57 step: `SetTicket`, `AttachAsPDFC`, surel, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU`, lalu `Obj-Save` + `Commit` |
+| 3 | **`Finish Assignment`** | menyelesaikan penugasan dan meneruskan klaim — `PC_ASSIGN_*` |
+
+Butir 3 yang paling berat: ia **mesin alur kerja Pega**, dan sistem baru tidak punya padanannya.
+
+**Unggah Dokumen** menuntut dua hal:
+
+| # | Yang dijalankan | Menulis |
+|---|---|---|
+| 1 | `GCNMSaveAttachments` → `SaveAllAttachments` (bawaan Pega) | `PC_LINK_ATTACHMENT` + `PC_DATA_WORKATTACH` |
+| 2 | `SetCategoryAttachment` | 18 step, `Obj-Open-By-Handle` → `Obj-Save` → `Commit` **dua kali** |
+
+Perhatikan: ia **tidak** menulis `POOLDATA.DATA_ATTACHFILE` secara langsung. Jadi menyisipkan
+baris ke tabel itu dari Go **tidak** akan membuat lampirannya terlihat di Pega — ia hanya akan
+membuat kedua sistem menyimpan daftar yang berbeda.
+
+### 12.5 Urutan yang diusulkan — satu layanan dulu, bukan semuanya
+
+| Tahap | Layanan | Tombol yang hidup | Alasan urutannya |
+|---|---|---|---|
+| **1** | `PUCLPost` + `InsertMitraPA` | **empat** — Download Dokumen · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik | Keempatnya memakai activity yang SAMA; yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Satu layanan menghidupkan empat tombol |
+| **2** | Unggah lampiran | Unggah Dokumen | Mekanismenya berbeda — unggah berkas, bukan pemanggilan parameter — sehingga ia pekerjaan tersendiri |
+| **3** | `SaveInputRegisterDetail2` | Save | Paling ringan akibatnya: tidak meneruskan klaim, tidak mengirim surel |
+
+Tahap 1 memberi hasil terbesar per satuan kerja, dan tahap 2 tidak menahannya.
+
+### 12.6 Yang dapat dikerjakan tim pengembang SEBELUM layanannya ada
+
+Tiga hal, dan ketiganya tidak menunggu siapa pun:
+
+1. **Adapter pemanggil** di balik seam `ExternalSystem`, dibangun terhadap kontrak yang diusulkan
+   §12.1 — sehingga saat layanannya tiba yang berubah hanyalah alamatnya.
+2. **Penyambungan tombol** di layar kerja, memakai adapter itu.
+3. **Fake adapter** untuk pengujian, sehingga alurnya teruji penuh tanpa Pega.
+
+Yang **tidak** dapat dikerjakan sebelum layanannya ada: pembuktian bahwa hasilnya setara dengan
+Pega. Itu menuntut Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8`
+(`ADR-0027`), dan masih belum dikonfirmasi.
+
+### 12.7 Audit lengkap pohon pemanggilan — apa yang KURANG untuk replikasi apa adanya
+
+Diminta Work Owner 2026-10-01: *"ikuti apa adanya yang ada di Pega sampai bisa kirim analyst dan
+unggah dokumen; jika ada act atau yang lain kurang tolong beritahu."*
+
+Pohon pemanggilan ditelusuri dari tujuh akar — `InsertMitraPA`, `PUCLPost`, `GCNMSaveAttachments`,
+`SetCategoryAttachment`, `SetPreAttachmentPNC`, `SaveAttachmentOPPNC`,
+`SaveInputRegisterDetail2` — sampai habis: **92 activity**.
+
+#### Lapisan 1 — Activity: NOL yang kurang
+
+| | |
+|---|---|
+| Activity di pohon | **92** |
+| Ada di export | 75 — **31 buatan sendiri**, 44 bawaan Pega |
+| Hilang | 17, dan **seluruhnya bawaan Pega** |
+
+Ketujuh belas yang hilang adalah internal report wizard (`pzPopulateReport`,
+`pzPrepareReportWizard`, `pzGetPropsForTreeGrid`, …). **Tidak satu pun dipakai jalur tulis**, dan
+tidak satu pun rule buatan sendiri.
+
+#### Lapisan 2 — Rule Connect-SQL: SATU yang kurang
+
+15 rule dirujuk, 14 ada.
+
+| Rule | Dipanggil | Jalur |
+|---|---|---|
+| **`InsertDominanFactor`** | `SaveDominanFactor` | tombol **Save** |
+
+#### Lapisan 3 — Objek basis data: EMPAT yang kurang
+
+| Objek | Dipanggil | Jalur |
+|---|---|---|
+| **`CLOBTOBLOB`** | `PEGA_JSON_KLAIM_PNC`, `PEGA_LOGJSON_LOG` | **Kirim Ke Analyst** |
+| **`POOLDATA.CONVERT_PEGA_DATE`** | `PEGA_CONVERT_JSONKLAIM_PNC` | Save |
+| **`UPDATE_PENGKINIANDATA`** | `UPDATEINSERT_PENGKINIANDATA` | Save |
+| **`MBU.F_VALIDASI_KLAIM_PENGKINIAN`** | `Validasiklaimpengkiniandata_sql_gcnm` | Save |
+
+Yang sempat terbaca sebagai kurang tetapi **bukan**: `GET_STRING`, `GET_ARRAY`, `GET_OBJECT`
+adalah metode tipe JSON Oracle (`l_jsonObject.GET_STRING(...)`); `BASE64_ENCODE` muncul di dalam
+komentar sebagai `utl_encode.base64_encode`; dan belasan nama lain adalah **tabel**
+(`T_CLAIM_*`, `PNC_CHRONOLOGYTAT`, `JSON_KLAIM`, `LOG_TABLE_JSON`).
+
+#### Lapisan 4 — yang TIDAK dapat diminta sebagai rule, dan inilah penghalang sebenarnya
+
+Ketiga operasi berikut **ada** di export, tetapi isinya memanggil **mesin Pega**, bukan logika
+bisnis yang dapat dibaca dan ditulis ulang:
+
+| Operasi | Isinya | Menulis |
+|---|---|---|
+| `SaveAllAttachments` | `Call pzSaveAllAttachmentsDD` + **2 step Java mentah** | `PC_LINK_ATTACHMENT`, `PC_DATA_WORKATTACH` — termasuk **`PZPVSTREAM`**, blob serialisasi internal Pega |
+| `SetTicket` | metode platform **`Obj-Set-Tickets`** + 1 step Java | penanda lompatan lateral pada objek kerja |
+| `Finish Assignment` / `pzUpdateAndDeleteAssignments` | 1 step Java + `Obj-Open-By-Handle` | `PC_ASSIGN_WORKLIST` / `PC_ASSIGN_WORKBASKET` |
+
+**Akibatnya tegas:**
+
+- **Unggah Dokumen** — tidak ada satu pun artefak yang kurang, tetapi menulis lampiran yang
+  **dapat dibaca Pega** menuntut membentuk `PZPVSTREAM` dalam format serialisasi internal Pega.
+  Format itu tidak terdokumentasi di export mana pun, dan tidak dapat diminta sebagai rule.
+- **Kirim Ke Analyst** — selain `CLOBTOBLOB`, ia menuntut padanan `Finish Assignment` dan
+  `SetTicket`. Keduanya operasi mesin alur kerja, bukan aturan bisnis.
+
+Jadi yang menghalangi replikasi apa adanya **bukan artefak yang kurang** — hanya lima objek yang
+kurang, dan empat di antaranya di jalur tombol Save. Yang menghalangi adalah **tiga operasi mesin
+Pega** yang hasil kerjanya ada di dalam platform, bukan di dalam rule.
+
+Inilah tepatnya yang dihindari jalur layanan REST §12: Pega menjalankan ketiganya sendiri, dengan
+mesinnya sendiri.
+
+#### Yang tetap diminta meski jalur layanan dipilih
+
+| # | Objek | Kepada |
+|---|---|---|
+| 1 | `CLOBTOBLOB` · `CONVERT_PEGA_DATE` · `UPDATE_PENGKINIANDATA` · `MBU.F_VALIDASI_KLAIM_PENGKINIAN` | DBA |
+| 2 | Rule `InsertDominanFactor` | Tim Pega |
+
+Keempat objek basis data itu tetap dibutuhkan saat logikanya kelak ditulis ulang di Go — setelah
+Pega dimatikan — meski hari ini dijalankan Pega lewat layanan.
+
+### 12.8 SPESIFIKASI rule Service REST — siap dikerjakan
+
+Ditulis atas permintaan Work Owner 2026-10-01, supaya Tim Pega tidak perlu menebak bentuknya.
+
+**Yang perlu diluruskan lebih dulu:** `PUCLPost` adalah **ACTIVITY**, dan ia **sudah ada**. Yang
+diminta di sini adalah rule **Service REST** yang mengeksposnya lewat HTTP — lapisan yang belum
+ada, bukan activity baru.
+
+```
+Activity PUCLPost            SUDAH ADA   <- mengerjakan tindakannya
+Rule Service REST            BELUM ADA   <- yang diminta di sini
+Alamat layanannya            menyusul    <- diisi ke PEGA_LAYANAN_KLAIM di sisi Go
+```
+
+#### a. Identitas rule
+
+| Hal | Usulan | Catatan |
+|---|---|---|
+| Kelas | `ASM-FW-GCNMFW-Work-PNC` | sama dengan keempat layanan yang sudah ada |
+| Nama paket layanan | **`ASMFWGCNMFWWORKPNC`** | TERBACA dari kunci rule keempat layanan yang ada — lihat §12.9. Layanan baru ini bergabung ke paket yang sama |
+| `pyResourcePath` | **`ActionClaimPUCL`** | dinamai menurut TINDAKANNYA, seperti keempat layanan yang ada. **Bukan** `PUCLPost` — itu nama ACTIVITY |
+| Metode HTTP | **`POST`** | ia menimbulkan akibat; tidak boleh `GET` |
+| Jenis isi | `application/json` | |
+
+Alamat yang kami pakai menjadi:
+
+```
+POST  https://<host-pega>/prweb/api/ASMFWGCNMFWWORKPNC/<versi>/ActionClaimPUCL
+```
+
+Bagian sampai `<versi>` itulah yang kami isikan ke `PEGA_LAYANAN_KLAIM`; `/ActionClaimPUCL`
+ditambahkan aplikasi sendiri, dan dapat diubah lewat `PEGA_LAYANAN_KLAIM_PATH` tanpa menyentuh
+kode.
+
+#### b. Badan permintaan
+
+Nama isiannya sengaja memakai **nama parameter `PUCLPost` apa adanya**, supaya tidak ada
+terjemahan yang dapat salah di antara dua pihak.
+
+| Isian | Tipe | Isi | Dari |
+|---|---|---|---|
+| `aksi` | teks | `cetak` · `tolak` · `kirim-analyst` · `kirim-pic-teknik` · `save` | tombol yang ditekan |
+| `caseNumber` | teks | nomor case, mis. `PNC-2183` | `PYID` |
+| `Status` | teks | **`"1"`** = kirim · `"0"` = tolak · `""` = cetak | parameter `PUCLPost` |
+| `idObj` | teks | parameter `idObj` | kolom `TC_PNC_PUCL.ID_OBJECT` |
+| `idCov` | teks | parameter `idCov` | kolom `ID_COVERAGE` |
+| `idAdj` | teks | parameter `idAdj` | kolom `ID_ADJUSTMENT` |
+| `tipe` | teks | **`"dokumen"`** untuk tombol Kirim · `"cetak"` untuk Download Dokumen | parameter `InsertMitraPA` |
+| `note` | teks | "Catatan untuk Analyst" | `KomentarPUCL` |
+| `caller` | teks | login petugas yang menekan tombolnya | — |
+
+`caller` ikut karena Pega mencatat pelaku pada objek kerja. Tanpanya jejaknya menunjuk **akun
+integrasi**, bukan orangnya — dan `D-59` menjadikan jejak audit kontrol pengimbang tunggal
+karena tidak ada pemisahan tugas.
+
+#### b.1 `aksi` menentukan rangkaian activity
+
+Satu layanan melayani **lima tombol**. Yang membedakan bukan hanya `Status` — "save" memakai
+activity yang berbeda sama sekali:
+
+| `aksi` | `Status` | `tipe` | `statusCase` | `statusNote` | Finish Assignment |
+|---|---|---|---|---|---|
+| `cetak` | *(kosong)* | `cetak` | `1` | `Wait for Complete PUCL Document ` | tidak |
+| `tolak` | `0` | `dokumen` | — | — | tidak |
+| `kirim-analyst` | `1` | `dokumen` | — | — | **ya** |
+| `kirim-pic-teknik` | `1` | *(kosong)* | — | `send by PUCL to PIC Teknis` | **ya** |
+| `save` | — | — | — | — | tidak |
+
+> Spasi di ujung `Wait for Complete PUCL Document ` **ada di Pega** dan mohon dipertahankan apa
+> adanya. Ia terbawa ke kolom riwayat, dan membuangnya mengubah data yang tersimpan (`P-5`).
+
+**Urutan langkahnya BERBEDA per tombol, dan urutan itu bagian dari kontrak.** Dibaca apa adanya
+dari `pyBehaviors` tiap tombol:
+
+| `aksi` | 1 | 2 | 3 |
+|---|---|---|---|
+| `cetak` | `InsertMitraPA` | `PUCLPost` | `InsertHistoryClaimPNC` |
+| `tolak` | `InsertMitraPA` | `PUCLPost` | *refresh harness — bukan Finish Assignment* |
+| `kirim-analyst` | `InsertMitraPA` | `PUCLPost` | **Finish Assignment** |
+| `kirim-pic-teknik` | **`PUCLPost`** | `InsertHistoryClaimPNC` | **Finish Assignment** |
+| `save` | `SaveInputRegisterDetail2` | — | — |
+
+Tiga hal yang mudah terbaca terbalik, dan ketiganya pernah salah di catatan kami sendiri:
+
+- **`kirim-pic-teknik` menjalankan `PUCLPost` LEBIH DULU**, baru `InsertHistoryClaimPNC`. Pada
+  `cetak` urutannya justru kebalikannya.
+- **`tolak` TIDAK menyelesaikan penugasan.** Ia hanya menyegarkan harness, sehingga klaimnya
+  tetap di tangan petugas yang sama.
+- **`cetak` punya TIGA langkah, bukan dua** — langkah ketiganya menulis riwayat.
+
+`InsertHistoryClaimPNC` juga menerima `caseID`, yang di layar diisi `pyWorkPage.pzInsKey`. Kami
+**tidak** mengirimkannya: `pzInsKey` adalah kunci internal Pega, dan layanan dapat menurunkannya
+sendiri dari `caseNumber`. Mohon dikonfirmasi bila anggapan itu keliru.
+
+`Status` tetap dikirim selain `aksi` supaya layanan dapat meneruskannya apa adanya ke
+`PUCLPost` tanpa memetakan ulang.
+
+#### c. Yang harus DICAPAI layanan — bukan caranya
+
+Caranya diserahkan kepada Tim Pega, karena ketiganya operasi mesin Pega yang tidak dapat kami
+baca dari export (§12.7). Yang kami butuhkan adalah hasilnya:
+
+1. Jalankan ketiga langkah `aksi` itu **dalam urutan pada tabel §12.8b** — urutannya berbeda
+   per tombol, dan bukan detail yang boleh diseragamkan.
+2. Teruskan parameternya apa adanya: `tipe`, `Status`, `statusCase`, `statusNote`, `idObj`,
+   `idCov`, `idAdj`.
+3. Untuk `kirim-analyst` dan `kirim-pic-teknik`, langkah terakhirnya adalah **menyerahkan flow
+   action `SendtoRCLPUCL`** pada penugasan klaim itu — inilah yang di layar terlihat sebagai
+   `Finish Assignment`.
+
+```
+Rule   RULE-OBJ-FLOWACTION  ASM-FW-GCNMFW-WORK-PNC  SENDTORCLPUCL
+Kelas  ASM-FW-GCNMFW-Work-PNC
+Flow   Register_Flow
+```
+
+Butir 3 yang paling menentukan, dan mohon tidak dilewatkan: inbox Analyst membaca
+`PC_ASM_FW_GCNMFW_WORK` **INNER JOIN `PC_ASSIGN_WORKLIST`**, sehingga klaim sampai ke Analyst
+**hanya** lewat baris penugasan baru. Tanpa butir 3, klaim hilang dari antrean PUCL tanpa sampai
+ke siapa pun — dan tidak ada galat yang memunculkannya.
+
+> **Jalan pintas yang sudah ditanyakan dan TIDAK ada.** Butir 3 adalah penyerahan flow action
+> biasa, sehingga pada prinsipnya dapat dilayani API standar Pega tanpa rule baru:
+>
+> ```
+> POST /prweb/api/v1/assignments/{assignmentID}/actions/SendtoRCLPUCL
+> ```
+>
+> Work Owner menjawab **tidak ada** (2026-10-01): `/prweb/api/v1/` tidak tersedia, dan tidak ada
+> akun layanan untuknya. **Ketiga butir karena itu tetap masuk lingkup layanan ini** — tidak ada
+> satu pun yang dapat kami panggil sendiri.
+>
+> Dicatat di sini supaya pertanyaannya tidak diajukan ulang, dan supaya jelas bahwa butir 3
+> **bukan** permintaan yang berlebihan.
+>
+> Ditambah satu hal yang berlaku meski API itu kelak diaktifkan: butir 1 dan 2 tetap tidak dapat
+> dikerjakannya, karena keduanya rangkaian aksi TOMBOL, bukan pra/pasca-proses flow action.
+> Diperiksa langsung — `SendtoRCLPUCL` hanya punya
+> `pyPreProcessingActivity = SetDataLampiranSuratRCLPUCL_Act`, tanpa pasca-proses.
+
+#### d. Bentuk jawaban
+
+| Keadaan | Kode | Badan |
+|---|---|---|
+| Berhasil | `200` | bebas; kami tidak membacanya |
+| Permintaan tidak sah — klaim tidak ada, parameter kurang | `400` / `404` | pesan singkat |
+| Gagal di dalam Pega | `500` | pesan singkat |
+
+Kami sudah membedakan ketiganya: `5xx` dan gagal terhubung dijawab **"layanan belum tersambung"**
+(yang bertindak Tim Pega dan Infra), sedangkan `4xx` dijawab sebagai **kesalahan permintaan kami**.
+Menyatukan keduanya akan menyuruh orang menunggu pihak yang salah.
+
+#### e. Otentikasi — mohon JANGAN mengikuti yang sudah ada
+
+Keempat layanan yang ada ber-**`pyUseAuthentication=false`**. Untuk layanan ini hal itu **tidak
+memadai**: ia meneruskan klaim dan menyentuh nilai uang, sementara keempat yang ada sebagian
+hanya membaca.
+
+Usulan: **Basic Auth** atau **OAuth 2.0 client credentials** dengan akun layanan tersendiri —
+bukan akun operator. Bentuk akhirnya kami ikuti; yang kami minta adalah **bukan tanpa
+otentikasi**. Keputusannya milik Keamanan Informasi (`ADR-0008`).
+
+#### f. Dua hal yang perlu disepakati bersama
+
+| Hal | Kenapa |
+|---|---|
+| **Idempotensi** | Tombol yang tertekan dua kali tidak boleh meneruskan klaim dua kali. Bila Pega tidak menjamin ini, kami kirimkan kunci idempotensi — mohon diberitahukan isiannya |
+| **Lingkungan uji** | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |
+
+#### g. Yang sudah SIAP di sisi kami
+
+Adapter, seam, rute, dan tombolnya sudah dibangun dan teruji terhadap peladen tiruan. Begitu
+layanannya ada dan alamatnya diisi ke `PEGA_LAYANAN_KLAIM`, tombolnya bekerja **tanpa satu baris
+kode pun berubah**.
+
+Bila nama paket atau resource path berbeda dari usulan di atas, yang berubah di sisi kami hanya
+**satu baris** di `internal/inboxrclpucl/adapter/pega/pega.go`.
+
+### 12.9 Nama layanannya — BELUM ADA, dan inilah identitas yang diusulkan
+
+Pertanyaan Work Owner 2026-10-01: *"service apa namanya yang kurang?"*
+
+**Tidak ada layanan yang hilang.** Keempat layanan yang ada lengkap; yang diminta adalah layanan
+**KELIMA**, yang belum pernah dibuat — sehingga namanya belum ada, dan harus ditetapkan.
+
+#### Identitas keempat layanan yang SUDAH ada
+
+Dibaca dari `pzInsKey` masing-masing berkas. Bentuknya:
+`RULE-SERVICE-REST <paket> <kelas>!<resource>`
+
+| Paket | Kelas | Resource | Activity |
+|---|---|---|---|
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `KomiteAcceptAdjustment` | `CheckKomiteAprove` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `KomiteAcceptAdjustmentPA` | `CheckKomiteAprovePA` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `RecivedDataandAttachmentLelangASMSimasbid` | `ActSalvageSimasbidAsmUpdate` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `RequestCreateClaimCredit2` | `CreateClaimCredit_Service2` |
+
+Keempatnya satu paket: **`ASMFWGCNMFWWORKPNC`**.
+
+#### Identitas layanan KELIMA yang diminta
+
+| Hal | Usulan |
+|---|---|
+| Rule | `Rule-Service-REST` |
+| Paket | **`ASMFWGCNMFWWORKPNC`** — bergabung ke yang sudah ada, bukan paket baru |
+| Kelas | **`ASM-FW-GCNMFW-Work-PNC`** |
+| **Resource (nama layanannya)** | **`ActionClaimPUCL`** |
+| Metode | `POST` |
+| Activity yang dijalankan | `InsertMitraPA` → `PUCLPost` → `Finish Assignment` |
+
+Kunci rule-nya menjadi:
+
+```
+RULE-SERVICE-REST  ASMFWGCNMFWWORKPNC  ASM-FW-GCNMFW-WORK-PNC!ACTIONCLAIMPUCL
+```
+
+#### Kenapa BUKAN dinamai `PUCLPost`
+
+Usulan pertama kami memakai nama itu, dan **Work Owner menolaknya 2026-10-01 — dengan benar**:
+`PUCLPost` adalah nama **ACTIVITY**, dan memakainya untuk layanan menghasilkan dua rule bernama
+sama di Pega, berbeda hanya pada jenis rule-nya:
+
+```
+Rule-Obj-Activity    PUCLPost      <- sudah ada, yang mengerjakan tindakannya
+Rule-Service-REST    …!PUCLPOST    <- akan dibuat
+```
+
+Siapa pun yang kelak membaca log, mencari rule, atau menelusuri galat harus membedakan keduanya
+dari jenis rule-nya saja. Itu biaya yang tidak perlu dibayar untuk sebuah nama.
+
+Keempat layanan yang ada dinamai menurut **tindakannya**, bukan menurut activity yang
+dijalankannya — `KomiteAcceptAdjustment` menjalankan `CheckKomiteAprove`,
+`RequestCreateClaimCredit2` menjalankan `CreateClaimCredit_Service2`. Usulan kami mengikuti
+kebiasaan itu.
+
+Namanya menyebut **tindakan**, bukan satu tombol, karena satu layanan ini melayani **empat
+tombol** — yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Nama seperti
+`KirimKeAnalystPUCL` akan menyesatkan ketika layanan yang sama dipakai tombol Tolak Klaim.
+
+Apa pun namanya, di sisi kami ia **satu baris konfigurasi** (`PEGA_LAYANAN_KLAIM_PATH`) — bukan
+perubahan kode.
+
+---
+
+## 12.9 Ticket yang WAJIB dilepas `ActionClaimPUCL` (2026-10-02)
+
+Ditambahkan sesudah rantai ticket-nya terlacak penuh dari export. Tanpa butir ini, layanan
+yang dibangun akan menandai klaim selesai **tanpa memindahkannya** — persis keadaan yang
+berjalan sekarang.
+
+### Yang harus dikerjakan layanan, berurutan
+
+| # | Isi | Sumber |
+|---|---|---|
+| 1 | Jalankan `PUCLPost` dengan `Status = 1` | tombol Kirim di `SectionLampiranSuratPUCL` |
+| 2 | Langkah 17-nya melepas ticket **`SendtoAnalysator`**, berprekondisi `param.Status==1` | `PUCLPost` langkah 17, `<Ticket>SendtoAnalysator</Ticket>` |
+| 3 | Ticket itu menempel pada shape ber-`pyUseCaseName = SendToAnalis` | `Register_Flow`, `pyTicketShapes` |
+| 4 | Shape itu `pyImplementation = WorkList`, router `PNCTeknikRouter` | idem |
+
+### Peta ticket Register_Flow, terbaca dari `pyTicketShapes`
+
+| Ticket | Shape tujuan |
+|---|---|
+| `SendtoPUCL` | **`RCLPUCL`** — yang memasukkan klaim ke antrean ini |
+| `SendtoAnalysator` | **`SendToAnalis`** |
+| `SendToInvestigator` | `Investigator` |
+| `CompliancePNC` | `Compliance` |
+| `RCLDokter` | `RCLDokter` |
+| `SendToPICTravel` | `Assignment` (Compliance) |
+| `setToRegister_ticket` | `InputRegister` |
+
+### ⚠ URUTANNYA WAJIB — terbalik berarti klaim DITUTUP, bukan dikirim
+
+Ditambahkan 2026-10-02 sesudah `Register_Flow` dibaca shape demi shape. **Ini butir terpenting
+di seluruh §12**, dan ia tidak terbaca dari rangkaian tombol mana pun.
+
+Shape `RCL/PUCL` (`Assignment6`) punya **tepat satu konektor keluar**:
+
+| Dari | Flow action | Ke |
+|---|---|---|
+| `Assignment6` — RCL/PUCL | **`SendtoRCLPUCL`** | **`End1`** — `Data-MO-Event-End`, **akhir Register_Flow** |
+
+Tanpa syarat: `pyTaskWhen` konektor itu **kosong**.
+
+Jadi **menyerahkan flow action `SendtoRCLPUCL` dari antrean RCL/PUCL MENGAKHIRI flow.** Yang
+menyelamatkan klaim dari berakhir adalah `SetTicket(SendtoAnalysator)` pada `PUCLPost`
+langkah 17, yang berjalan **lebih dulu** dan melompatkan flow ke `Assignment5`.
+
+| Urutan | Akibat |
+|---|---|
+| `PUCLPost` (melepas ticket) **lalu** serahkan flow action | klaim berada di `Send To Analis` ✅ |
+| serahkan flow action **tanpa** `PUCLPost` lebih dulu | klaim **berakhir di `End1`** ❌ |
+| `PUCLPost` dengan `Status ≠ 1` | ticket **tidak** dilepas (prekondisi `param.Status==1`) — lalu flow action menutup klaim ❌ |
+
+**Flow action yang sama dipakai dua konektor berbeda**, dan akibatnya berlawanan:
+
+| Dari | Flow action | Ke |
+|---|---|---|
+| `Assignment5` — Send To Analis | `SendtoRCLPUCL` | `Decision7` → **masuk** ke RCL/PUCL |
+| `Assignment6` — RCL/PUCL | `SendtoRCLPUCL` | `End1` — **keluar dari flow** |
+
+Namanya menyesatkan di tempat kedua: ia tidak "mengirim ke RCL/PUCL", ia mengakhiri.
+
+### ⚠ API assignment bawaan Pega TIDAK dapat dipakai sebagai jalan pintas
+
+Terlihat masuk akal — `PUT /api/v1/assignments/{id}/actions/SendtoRCLPUCL` menjalankan flow
+action lewat mesin alur sendiri, sehingga `PZPVSTREAM` dibentuk Pega. **Tetapi ia akan
+menutup klaim**, karena:
+
+> `Flow Action/SendtoRCLPUCL-FA.xml` memuat `pyPreProcessingActivity =
+> SetDataLampiranSuratRCLPUCL_Act`, dan **tidak memuat elemen `pyPostProcessingActivity` sama
+> sekali**.
+
+`PUCLPost` **melekat pada TOMBOL** (rangkaian `pyBehaviors` di `SectionLampiranSuratPUCL`),
+bukan pada flow action. Memanggil flow action lewat API karena itu **melewati `PUCLPost`
+seluruhnya** — ticket tidak pernah dilepas, dan konektor di atas membawa klaim ke `End1`.
+
+Inilah sebabnya layanan `ActionClaimPUCL` harus menjalankan **rangkaian tombolnya**, bukan
+sekadar menyerahkan flow action.
+
+### Kenapa ini tidak dapat kami kerjakan sendiri
+
+Dicoba pada 2026-10-02, dan **dicabut pada hari yang sama**: menyisipkan penugasan ke
+`PC_ASSIGN_WORKLIST` tanpa `PZPVSTREAM` membuat satu klaim tidak dapat dibuka lagi di Pega.
+Dari **105.616** baris penugasan Pega, **nol** yang kolom itu kosong.
+
+Melepas ticket adalah pekerjaan mesin alur Pega. Ia tidak dapat ditiru dengan menulis baris
+tabel.
+
+### Kenapa baris RCL/PUCL tertinggal, dan kenapa itu BUKAN cacat modul kami
+
+Karena `SetTicket` melompatkan flow ke `Assignment5` **sementara assignment `Assignment6`
+masih terbuka**. Flow sudah tidak berada di shape itu, sehingga barisnya menjadi yatim — dan
+Pega menandainya sendiri **`Error: Flow Not At Task`**.
+
+Buktinya ada pada data Pega sendiri, sebelum modul ini ada: **16 dari 63** klaim di antrean
+`RCLPUCL` sudah berstatus `1151` (Analyst). Jadi yang benar dikatakan: perilaku ini **melekat
+pada rancangan alurnya**, bukan akibat modul kami.
+
+Bila Tim Pega hendak sekalian membereskannya, yang dibutuhkan adalah menutup assignment
+`Assignment6` **sebelum** ticket dilepas — bukan sesudahnya.

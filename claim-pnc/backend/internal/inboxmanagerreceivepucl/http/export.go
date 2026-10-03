@@ -214,16 +214,14 @@ func cellValue(item inboxmanagerreceivepucl.WorkItem, key string) string {
 
 // exportFilename menyusun nama berkas yang menyebut tab asalnya.
 //
-// Tanpa itu, tiga unduhan dari tiga tab menghasilkan tiga berkas bernama sama di folder
-// unduhan — dan yang berikutnya menimpa yang sebelumnya pada sebagian peramban. Di layar ini
-// akibatnya lebih buruk daripada biasa: ketiga berkas punya kolom yang berbeda, sehingga
-// yang tertimpa tidak dapat dikenali dari isinya.
+// Tanpa itu, unduhan dari kedua tab menghasilkan berkas bernama sama di folder unduhan — dan
+// yang berikutnya menimpa yang sebelumnya pada sebagian peramban. Di layar ini akibatnya
+// lebih buruk daripada biasa: kedua berkas punya kolom yang berbeda, sehingga yang tertimpa
+// tidak dapat dikenali dari isinya.
 func exportFilename(tab inboxmanagerreceivepucl.Tab) string {
 	switch tab.Code {
-	case inboxmanagerreceivepucl.TabReceivePA:
-		return "receive-pa.csv"
-	case inboxmanagerreceivepucl.TabReceiveNonMBU:
-		return "receive-nonmbu.csv"
+	case inboxmanagerreceivepucl.TabReceive:
+		return "receive.csv"
 	case inboxmanagerreceivepucl.TabRCLPUCL:
 		return "rcl-pucl.csv"
 	default:

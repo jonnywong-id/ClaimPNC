@@ -125,6 +125,12 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		if err != nil {
 			return StartResult{}, fmt.Errorf("registrasi/usecase: membaca isi laporan: %w", err)
 		}
+		// Berkas yang sudah bernomor klaim tidak diregistrasi lagi: tanpa penolakan ini
+		// terbit PNCN kedua dan NOKLAIM berkasnya tertimpa (Work Owner, 2026-09-29).
+		if isi.ClaimNumber != "" {
+			return StartResult{}, &registrasi.ReportAlreadyRegisteredError{
+				ReportID: claim.RCVID, ClaimNumber: isi.ClaimNumber}
+		}
 		applyReport(&claim, isi)
 	}
 
@@ -139,6 +145,23 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		return StartResult{}, fmt.Errorf("registrasi/usecase: membaca objek polis: %w", err)
 	}
 	claim.InsuredItem = registrasi.BuildInsuredItems(policy, claim.DateOfLoss, source)
+
+	// Penyebab Kerugian tidak ada di dokumen polis; petugas memilihnya dari daftar kode
+	// bisnis polis. Bila daftar itu hanya berisi satu pilihan, pilihan itulah yang diisi —
+	// petugas tidak perlu memilih sesuatu yang tidak punya alternatif.
+	causes, err := l.causeOfLoss.CauseOfLossOptions(ctx, policy.BusinessCode)
+	if err != nil {
+		return StartResult{}, fmt.Errorf("registrasi/usecase: membaca pilihan penyebab kerugian: %w", err)
+	}
+	if only, ok := registrasi.SingleCauseOfLoss(causes); ok {
+		for i := range claim.InsuredItem {
+			for j := range claim.InsuredItem[i].Coverage {
+				if claim.InsuredItem[i].Coverage[j].CauseOfLoss == "" {
+					claim.InsuredItem[i].Coverage[j].CauseOfLoss = only.ID
+				}
+			}
+		}
+	}
 
 	recipients, err := l.assigner.Assign(ctx, firstStage, claim, by.Identity)
 	if err != nil {

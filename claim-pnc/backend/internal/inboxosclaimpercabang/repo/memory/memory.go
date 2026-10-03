@@ -48,6 +48,12 @@ type row struct {
 	// outstanding meniru penyaring
 	// `pystatuswork NOT IN ('Resolved-Rejected', 'Resolved-Completed')`.
 	outstanding bool
+
+	// detail memuat yang HANYA tampil di popup — objek, riwayat progres, dan komunikasi.
+	//
+	// Ia melekat pada baris, bukan disimpan sebagai peta tersendiri, supaya baris yang tidak
+	// lolos penyaring cabang tidak punya isi popup yang dapat diambil tanpa melewatinya.
+	detail inboxosclaimpercabang.Detail
 }
 
 // NewStore membentuk penyimpanan kosong.

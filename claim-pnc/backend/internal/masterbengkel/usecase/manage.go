@@ -17,12 +17,22 @@ import (
 // Service adalah pintu masuk seluruh perkara master bengkel.
 type Service struct {
 	repoSelector masterbengkel.RepoSelector
+
+	// clock memasok waktu unggah dokumen. Opsional — lihat Options.Clock.
+	clock masterbengkel.Clock
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
 	// RepoSelector memilih penyimpanan milik satu portal entitas. Wajib.
 	RepoSelector masterbengkel.RepoSelector
+
+	// Clock memasok waktu unggah dokumen (`F-5`).
+	//
+	// Opsional, dan berjam sistem bila tidak diisi. Ia tidak diwajibkan karena seluruh
+	// jalur lain modul ini tidak menyentuh waktu sama sekali — mewajibkannya berarti
+	// memaksa setiap perakitan menyediakan sesuatu yang hanya satu fitur butuhkan.
+	Clock masterbengkel.Clock
 }
 
 // NewService membentuk layanan dan menolak bahan yang tidak lengkap.
@@ -33,7 +43,7 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("masterbengkel/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector}, nil
+	return &Service{repoSelector: o.RepoSelector, clock: o.Clock}, nil
 }
 
 // Actor adalah pengguna yang sedang melakukan sesuatu.

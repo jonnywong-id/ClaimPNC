@@ -15,6 +15,12 @@ func (l *Service) AreaOptions(ctx context.Context, level registrasi.AreaLevel, p
 	return l.area.Options(ctx, level, parent)
 }
 
+// CauseOfLossOptions membaca pilihan Penyebab Kerugian sebuah kode bisnis polis. Seperti
+// AreaOptions, ia hanya membaca master.
+func (l *Service) CauseOfLossOptions(ctx context.Context, businessCode string) ([]registrasi.CauseOfLossOption, error) {
+	return l.causeOfLoss.CauseOfLossOptions(ctx, businessCode)
+}
+
 // SaveDraft menyimpan isian Input Register TANPA menutup tahapnya — tombol Save.
 //
 // # Apa bedanya dengan SaveRegister

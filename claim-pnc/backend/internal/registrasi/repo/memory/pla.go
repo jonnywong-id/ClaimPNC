@@ -17,6 +17,9 @@ type PLA struct {
 	Recipients map[string]registrasi.PLARecipientInfo
 	Saved      []registrasi.PLA
 	counter    int64
+
+	InsuredEmails map[string]string // per nomor klaim
+	PICEmails     map[string]string // per operator PIC teknik
 }
 
 // NewPLA membentuk penyimpanan PLA kosong.
@@ -24,7 +27,7 @@ func NewPLA() *PLA {
 	return &PLA{Coins: map[string][]registrasi.PLACoinsMember{}, Recipients: map[string]registrasi.PLARecipientInfo{}}
 }
 
-func (s *PLA) CoinsMembers(_ context.Context, policy string) ([]registrasi.PLACoinsMember, error) {
+func (s *PLA) CoinsMembers(_ context.Context, policy, _ string) ([]registrasi.PLACoinsMember, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.Coins[policy], nil
@@ -96,5 +99,11 @@ func (s *PLA) UpdateNote(_ context.Context, claimID, number string, revision int
 }
 
 func (s *PLA) Signature(_ context.Context, _ string) (string, []byte, error) { return "", nil, nil }
+
+func (s *PLA) LODEmails(_ context.Context, claimNumber, pic string) (string, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.InsuredEmails[claimNumber], s.PICEmails[pic], nil
+}
 
 var _ registrasi.PLASource = (*PLA)(nil)

@@ -1,12 +1,14 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import type {
+  DocumentRow,
   ClaimDetailResponse,
   DateRange,
+  DocumentListResponse,
   ListResponse,
   MetadataResponse,
 } from './types'
@@ -32,6 +34,9 @@ const keys = {
 
   detail: (portal: string | null, token: string | null, reference: string) =>
     ['inbox-rcl-pucl', 'klaim', portal, token, reference] as const,
+
+  documents: (portal: string | null, token: string | null, reference: string) =>
+    ['inbox-rcl-pucl', 'klaim', portal, token, reference, 'dokumen'] as const,
 }
 
 /**
@@ -264,4 +269,249 @@ function downloadBlob(blob: Blob, filename: string): void {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Hook daftar dokumen satu klaim — tombol "Lihat Dokumen".
+ *
+ * # Kenapa ia hook TERSENDIRI, bukan bagian jawaban layar kerja
+ *
+ * Karena ia tidak selalu dibutuhkan. Layar kerja dibuka setiap kali petugas mengklik nomor
+ * case; daftar dokumennya hanya dilihat sebagian. Menyatukannya akan menarik lampiran setiap
+ * klaim yang dibuka — termasuk yang tidak pernah diperiksa dokumennya.
+ *
+ * `enabled` menahannya sampai tombolnya benar-benar ditekan.
+ */
+export function useRCLPUCLDocuments(reference: string | null, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.documents(portal, token, reference ?? ''),
+    queryFn: () =>
+      callAPI<DocumentListResponse>(
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/dokumen`,
+        { token, portal },
+      ),
+    enabled:
+      enabled &&
+      reference !== null &&
+      reference !== '' &&
+      token !== null &&
+      portal !== null,
+
+    // Lampiran bertambah saat petugas mengunggahnya di Pega. Cache-nya sependek layar kerja.
+    staleTime: 15 * 1000,
+  })
+}
+
+/** Alamat pengambilan ISI satu dokumen. */
+function rclpuclDocumentURL(reference: string, documentID: string): string {
+  return `${PATH}/klaim/${encodeURIComponent(reference)}/dokumen/${encodeURIComponent(documentID)}`
+}
+
+/**
+ * Membuka ISI satu dokumen klaim.
+ *
+ * # Kenapa bukan tautan biasa
+ *
+ * Versi pertama menggambar `<a href target="_blank">` ke alamat isinya. Itu **tidak pernah
+ * dapat bekerja**: navigasi peramban TIDAK membawa header, sementara alamat ini menuntut
+ * dua — `Authorization` dan `X-Portal`. Yang terbuka karena itu bukan dokumennya melainkan
+ * `{"kode":"sesi_tidak_sah"}` mentah di tab baru.
+ *
+ * Sebabnya sudah tertulis di berkas ini sejak awal, pada `useExportRCLPUCL`, dan tautan
+ * dokumen dibuat tanpa membacanya. Menaruh token di dalam alamat tetap ditolak dengan alasan
+ * yang sama: nilai di URL ikut tercatat di riwayat peramban, log proxy, dan header Referer —
+ * dan isi dokumen klaim memuat data nasabah.
+ *
+ * # Kenapa tab-nya dibuka pemanggil, bukan di sini
+ *
+ * Karena `window.open` yang dipanggil SESUDAH `await` kehilangan kaitannya dengan klik, dan
+ * penghalang pop-up memblokirnya. Pemanggil membukanya lebih dulu — masih di dalam
+ * penanganan klik — lalu menyerahkannya ke sini untuk diisi.
+ *
+ * Bila tab-nya tetap tidak terbuka (`null`), berkasnya **diunduh**, bukan dibiarkan hilang
+ * tanpa kabar.
+ */
+export function useBukaDokumen(reference: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: async ({ id, nama, tab }: PembukaanDokumen) => {
+      const header: Record<string, string> = {}
+      if (token) header['Authorization'] = `Bearer ${token}`
+      if (portal) header[HEADER_PORTAL] = portal
+
+      const response = await fetch(rclpuclDocumentURL(reference ?? '', id), {
+        headers: header,
+      })
+
+      if (!response.ok) {
+        // Tab kosongnya DITUTUP saat gagal. Membiarkannya menganga membuat petugas
+        // menunggu halaman yang tidak akan pernah terisi.
+        tab?.close()
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string
+        } | null
+        throw new Error(body?.pesan ?? 'Dokumen tidak dapat diambil.')
+      }
+
+      const blob = await response.blob()
+      if (!tab) {
+        downloadBlob(blob, nama || id)
+        return
+      }
+
+      const url = URL.createObjectURL(blob)
+      tab.location.href = url
+
+      // Dicabut setelah jeda, BUKAN seketika: tab barunya belum sempat memuat isinya, dan
+      // mencabutnya langsung menghasilkan halaman kosong. Tanpa pencabutan sama sekali,
+      // blob-nya dipegang peramban sampai tab induknya ditutup.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    },
+  })
+}
+
+/** Satu dokumen yang hendak dibuka, beserta tab yang sudah disiapkan pemanggil. */
+export type PembukaanDokumen = {
+  id: string
+  nama: string
+  tab: Window | null
+}
+
+/** Tindakan klaim yang dikenali peladen. */
+export type TindakanKlaim =
+  'cetak' | 'tolak' | 'kirim-analyst' | 'kirim-pic-teknik' | 'save'
+
+/**
+ * Hook tindakan klaim.
+ *
+ * # Ia satu-satunya pemanggilan modul ini yang MENGUBAH klaim
+ *
+ * Karena itu ia mutation, bukan query: ia tidak boleh diulang sendiri saat jaringan goyah, dan
+ * hasilnya tidak boleh di-cache. `retry` sudah dimatikan di pembentuk QueryClient.
+ *
+ * Setelah berhasil, isi klaim dan daftar antrean dibatalkan supaya keduanya ditarik ulang —
+ * klaim yang sudah diteruskan TIDAK boleh tetap terlihat di tab yang baru saja ditinggalkannya.
+ */
+export function useTindakanKlaim(reference: string | null, aksi: TindakanKlaim) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    // Badan permintaan diisi TIGA tombol — "Save" dan kedua tombol Kirim — karena ketiganya
+    // membawa kedua isian Penerimaan Dokumen. Di Pega ketiganya mem-posting form yang sama.
+    // "Download Dokumen" dan "Tolak Klaim" memanggilnya tanpa argumen, dan peladen pun hanya
+    // membaca badan untuk ketiga yang pertama.
+    mutationFn: (isian?: IsianPenerimaanDokumen) =>
+      callAPI<{ pesan: string; dokumen?: DocumentRow }>(
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/tindakan/${aksi}`,
+        isian === undefined
+          ? { token, portal, metode: 'POST' }
+          : { token, portal, metode: 'POST', body: isian },
+      ),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-rcl-pucl'] })
+    },
+  })
+}
+
+/**
+ * Isian Penerimaan Dokumen yang dikirim tombol "Save" dan kedua tombol Kirim.
+ *
+ * Nama isiannya berbahasa Indonesia karena ia KONTRAK dengan peladen, bukan nama internal
+ * (`D-80`). Keduanya wajib di layar lama (`pyRequired true`); yang memeriksanya peladen,
+ * supaya aturannya hidup di satu tempat.
+ */
+export type IsianPenerimaanDokumen = {
+  catatan_untuk_analyst: string
+  tanggal_kelengkapan_dokumen: string
+}
+
+/**
+ * Mengunggah satu berkas sebagai lampiran klaim — tombol "Unggah Dokumen".
+ *
+ * # Kenapa FormData, bukan JSON ber-base64
+ *
+ * Karena base64 membesarkan muatan sepertiga tanpa satu pun manfaat, dan seluruhnya tetap
+ * melewati memori halaman. `callAPI` mengirim `FormData` apa adanya dan TIDAK memasang
+ * `Content-Type` sendiri — peramban yang memasangnya, lengkap dengan boundary.
+ */
+export function useUnggahDokumen(reference: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ berkas, nama, kategori }: UnggahanDokumen) => {
+      const muatan = new FormData()
+      muatan.append('berkas', berkas)
+      // Nama DAPAT berbeda dari nama berkasnya — kolom "Name" pada dialog Pega adalah isian
+      // tersendiri, terpisah dari kolom "File" yang hanya menampilkan nama aslinya.
+      muatan.append('nama', nama)
+      // Namanya apa adanya — itulah bentuk yang dipakai Pega pada `PYCATEGORY`.
+      if (kategori) muatan.append('kategori', kategori)
+      return callAPI<{ pesan: string; dokumen: DocumentRow }>(
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/dokumen`,
+        { token, portal, metode: 'POST', body: muatan },
+      )
+    },
+    onSuccess: () => {
+      // Daftar dokumennya disegarkan, bukan ditambahi sendiri: yang menyusun barisnya adalah
+      // peladen, dan menyalin susunannya di sini akan menjadi dua tempat yang dapat berselisih.
+      void client.invalidateQueries({
+        queryKey: keys.documents(portal, token, reference ?? ''),
+      })
+    },
+  })
+}
+
+/** Satu berkas beserta nama yang diketik petugas pada kolom "Name". */
+export type UnggahanDokumen = {
+  berkas: File
+  nama: string
+  // Pilihan kolom "Category" — nama kategori lampiran.
+  //
+  // Kosong berarti petugas tidak memilih apa pun; kolom kategorinya dibiarkan kosong.
+  kategori: string
+}
+
+/**
+ * Pilihan kolom "Category" pada dialog unggah.
+ *
+ * # Kenapa daftarnya ditarik terpisah, bukan ikut di dalam detail klaim
+ *
+ * Karena isinya MASTER jenis dokumen — sama bagi setiap klaim, 159 baris, dan berubah jauh
+ * lebih jarang daripada klaimnya. Menitipkannya pada detail berarti menariknya ulang setiap
+ * kali satu klaim dibuka.
+ *
+ * `staleTime` panjang karena alasan yang sama. Ia tetap per portal: masternya hidup di basis
+ * data entitas, dan satu badan hukum boleh memakai daftar yang berbeda (`ADR-0030`).
+ */
+export function useKategoriDokumen() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['inbox-rcl-pucl', 'kategori-dokumen', portal, token],
+    enabled: Boolean(token && portal),
+    staleTime: 30 * 60 * 1000,
+    queryFn: () =>
+      callAPI<{ kategori: KategoriDokumen[] }>(`${PATH}/kategori-dokumen`, {
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Satu pilihan kolom "Category" — kategori lampiran. */
+export type KategoriDokumen = {
+  // Yang dikirim balik saat mengunggah, dan yang tersimpan.
+  nilai: string
+  // Yang dibaca petugas. Untuk sekarang selalu sama dengan `nilai`.
+  nama: string
 }

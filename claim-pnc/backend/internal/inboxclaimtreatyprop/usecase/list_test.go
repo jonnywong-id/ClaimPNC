@@ -83,29 +83,34 @@ func TestKeteranganLayarTidakMenyentuhPenyimpanan(t *testing.T) {
 	require.NotEmpty(t, meta.PlannedDifferences)
 }
 
-func TestAntreanMilikSendiriHanyaMemuatPekerjaanPemanggil(t *testing.T) {
+func TestAntreanAdminMemuatPekerjaanSeluruhPetugas(t *testing.T) {
+	// Report Definition `InboxKlaimPropAdmin` TIDAK menyaring menurut petugas, sehingga
+	// tabnya memuat seluruh penugasan klaim treaty di entitas itu — termasuk milik
+	// ADMINTREATY2.
 	listed := list(t, newService(t), "ADMINTREATY1",
 		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabWorkList})
 
-	// Terbaru lebih dulu: CLMP-1002 ditugaskan 20 September, CLMP-1001 pada 18 September.
-	require.Equal(t, []string{"CLMP-1002", "CLMP-1001"}, claimIDs(listed.Page))
-	require.Equal(t, 2, listed.Page.Total)
+	// Terbaru lebih dulu: CLMP-1002 (20 Sep), CLMP-1003 (19 Sep), CLMP-1001 (18 Sep).
+	require.Equal(t, []string{"CLMP-1002", "CLMP-1003", "CLMP-1001"}, claimIDs(listed.Page))
+	require.Equal(t, 3, listed.Page.Total)
 }
 
-func TestLihatSemuaMemunculkanPekerjaanPetugasLain(t *testing.T) {
+func TestLihatSemuaTidakMengubahApaPun(t *testing.T) {
+	// Centangnya tidak lagi punya penyaring untuk dilepas. Permintaan yang masih
+	// mengirimnya — klien lama — DILAYANI dengan hasil yang sama, bukan ditolak.
 	service := newService(t)
 
-	milik := list(t, service, "ADMINTREATY1",
+	tanpa := list(t, service, "ADMINTREATY1",
 		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabWorkList})
-	require.NotContains(t, claimIDs(milik.Page), "CLMP-1003")
 
-	semua := list(t, service, "ADMINTREATY1", inboxclaimtreatyprop.QueryInput{
+	dengan := list(t, service, "ADMINTREATY1", inboxclaimtreatyprop.QueryInput{
 		Tab:    inboxclaimtreatyprop.TabWorkList,
 		SeeAll: true,
 	})
-	require.Contains(t, claimIDs(semua.Page), "CLMP-1003",
-		"CLMP-1003 milik ADMINTREATY2 dan hanya muncul dengan See All Claim")
-	require.Equal(t, 3, semua.Page.Total)
+
+	require.Equal(t, claimIDs(tanpa.Page), claimIDs(dengan.Page))
+	require.Equal(t, tanpa.Page.Total, dengan.Page.Total)
+	require.False(t, dengan.Query.SeeAll)
 }
 
 func TestAntreanTeknikTidakBergantungSiapaYangMasuk(t *testing.T) {
@@ -119,24 +124,26 @@ func TestAntreanTeknikTidakBergantungSiapaYangMasuk(t *testing.T) {
 	dua := list(t, service, "SIAPAPUN",
 		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabTechnical})
 
-	require.Equal(t, []string{"CLMP-2001", "CLMP-2002"}, claimIDs(satu.Page))
+	require.Equal(t, []string{"CLMP-3001", "CLMP-2001", "CLMP-2002"}, claimIDs(satu.Page))
 	require.Equal(t, claimIDs(satu.Page), claimIDs(dua.Page))
 }
 
-func TestAntreanTeknikHanyaMemuatAkunAntreanTeknik(t *testing.T) {
-	// Baris contoh `CLMP-3001` berada di workbasket tetapi milik antrean LAIN. Ia harus
-	// tersaring — membuktikan penyaring nama akun berjalan, bukan sekadar "ada di
-	// workbasket".
+func TestAntreanTeknikMemuatSeluruhAntreanBersama(t *testing.T) {
+	// Baris contoh `CLMP-3001` berada di workbasket tetapi milik antrean LAIN, bukan
+	// `TreatyinPNCTeknik`. Ia harus MUNCUL: Report Definition `InboxKlaimPropTeknik` tidak
+	// menyaring menurut nama antrean.
+	//
+	// Perannya berbalik dari sebelumnya, dan itu disengaja — lihat catatan di sample.go.
 	listed := list(t, newService(t), "ADMINTREATY1",
 		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabTechnical})
 
-	require.NotContains(t, claimIDs(listed.Page), "CLMP-3001")
+	require.Contains(t, claimIDs(listed.Page), "CLMP-3001")
 }
 
 func TestPekerjaanBukanTreatyTersaringDiSeluruhTab(t *testing.T) {
-	// Penyaring `PXREFOBJECTKEY LIKE '%CLMP%'` yang memisahkan objek kerja klaim treaty
-	// dari objek kerja lain di tabel penugasan yang sama. Baris contoh `PNC-9001` ada di
-	// worklist milik ADMINTREATY1 dan tetap tidak boleh muncul.
+	// Pembatas `w.PXOBJCLASS` yang memisahkan objek kerja klaim treaty dari objek kerja
+	// lain di tabel penugasan yang sama. Baris contoh `PNC-9001` ada di worklist milik
+	// ADMINTREATY1 dan tetap tidak boleh muncul.
 	service := newService(t)
 
 	for _, input := range []inboxclaimtreatyprop.QueryInput{
@@ -149,17 +156,26 @@ func TestPekerjaanBukanTreatyTersaringDiSeluruhTab(t *testing.T) {
 	}
 }
 
-func TestKolomSubjectivityHanyaTerisiDiAntreanTeknik(t *testing.T) {
+func TestKolomSubjectivitySelaluKosong(t *testing.T) {
+	// Report Definition MEMILIH `WorkPage.ClaimData.IsSubjectivity`, tetapi nama kolom
+	// tereksposnya tidak dapat ditemukan di export — dan menebaknya menggagalkan seluruh
+	// kueri dengan ORA-00904, bukan satu kolom.
+	//
+	// Kolomnya tetap digambar karena Pega produksi punya; isinya yang belum ada. Uji ini
+	// menjaga agar penyimpanan memori tidak diam-diam mengisinya, yang akan membuat uji
+	// modul menyatakan hal yang tidak benar tentang Oracle.
 	service := newService(t)
 
-	teknik := list(t, service, "ADMINTREATY1",
-		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabTechnical})
-	require.Equal(t, "1", teknik.Page.Items[0].Subjectivity)
-
-	worklist := list(t, service, "ADMINTREATY1",
-		inboxclaimtreatyprop.QueryInput{Tab: inboxclaimtreatyprop.TabWorkList})
-	for _, item := range worklist.Page.Items {
-		require.Empty(t, item.Subjectivity)
+	for _, input := range []inboxclaimtreatyprop.QueryInput{
+		{Tab: inboxclaimtreatyprop.TabWorkList},
+		{Tab: inboxclaimtreatyprop.TabTechnical},
+	} {
+		listed := list(t, service, "ADMINTREATY1", input)
+		require.NotEmpty(t, listed.Page.Items)
+		for _, item := range listed.Page.Items {
+			require.Emptyf(t, item.Subjectivity,
+				"tab %s mengisi Subjectivity; kuerinya mengirim NULL", input.Tab)
+		}
 	}
 }
 

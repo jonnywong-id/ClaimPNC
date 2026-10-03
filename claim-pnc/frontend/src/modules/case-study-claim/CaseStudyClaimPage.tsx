@@ -306,7 +306,7 @@ function buildColumns(columns: Column[]): TableColumn<CaseStudyRow>[] {
 function cellText(row: CaseStudyRow, column: Column): string {
   const value = row[column.kunci as keyof CaseStudyRow]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   switch (column.jenis) {
     case 'uang':

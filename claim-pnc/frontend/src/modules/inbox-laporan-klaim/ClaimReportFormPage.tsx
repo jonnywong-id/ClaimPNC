@@ -3,9 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
+import { DateField } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
-import { centsToRupiah, rupiahToCents } from '@/components/format'
+import { centsToRupiah, formatDate, rupiahToCents } from '@/components/format'
 
 import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
 import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupResponse } from './types'
@@ -53,7 +54,22 @@ export function ClaimReportFormPage() {
     setEstimateText(centsToRupiah(berkas.data.isian.estimasi_kerugian))
   }, [berkas.data])
 
-  const editable = berkas.data?.dapat_disunting ?? false
+  const [initialLookup, setInitialLookup] = useState(false)
+  useEffect(() => {
+    const number = berkas.data?.isian?.nomor_polis?.trim() ?? ''
+    if (initialLookup || number === '') return
+    setInitialLookup(true)
+    polis.mutate(number, { onSuccess: (result) => setPolicyResult(result) })
+  }, [berkas.data, initialLookup, polis])
+
+  // Isian khusus lini (InputReceiveDocument_sect): Group Panel polis yang tersimpan, atau
+  // hasil pencarian polis terakhir.
+  const panel = (policyResult?.group_panel || values.group_panel || '').trim()
+  const hasPolicy = values.nomor_polis.trim() !== ''
+  const pa = panel === '002'
+
+  const registered = berkas.data?.sudah_diregistrasi ?? false
+  const editable = (berkas.data?.dapat_disunting ?? false) && !registered
   const violation = simpan.error instanceof APIError ? simpan.error.violations() : {}
 
   // Tombol yang menulis berkas dimatikan untuk polis Syariah atau bukan PNC — di layar lama
@@ -93,6 +109,7 @@ export function ClaimReportFormPage() {
           tertanggung: result.tertanggung,
           nama_bisnis: result.nama_bisnis,
           nomor_rujukan: result.nomor_rujukan,
+          group_panel: result.group_panel,
         }))
       },
       onError: () => setLookedUpNumber(null),
@@ -125,7 +142,17 @@ export function ClaimReportFormPage() {
 
   return (
     <FormFrame id={id} report={berkas.data?.laporan.posisi}>
-      {!editable && (
+      {registered && (
+        <p
+          className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
+          role="status"
+        >
+          This Receive Document is already registered as claim{' '}
+          <strong>{berkas.data?.laporan.nomor_klaim}</strong> and can no longer be changed.
+        </p>
+      )}
+
+      {!editable && !registered && (
         <div className="mt-4">
           <ErrorMessage
             title="Berkas ini hanya dapat dibaca"
@@ -167,12 +194,12 @@ export function ClaimReportFormPage() {
         }}
       >
         <Group title="Dokumen masuk">
-          <Field
+          <ReadOnly label="Tanggal Input Dokumen" value={formatDate(berkas.data?.laporan.tanggal_masuk ?? '')} />
+          <DateField
             id="tanggal_terima_dokumen"
             label="Tanggal Terima Dokumen"
-            type="date"
             value={values.tanggal_terima_dokumen}
-            onChange={(e) => set('tanggal_terima_dokumen', e.target.value)}
+            onChange={(v) => set('tanggal_terima_dokumen', v)}
             error={violation['tanggal_terima_dokumen']}
             disabled={!editable}
           />
@@ -251,7 +278,7 @@ export function ClaimReportFormPage() {
                 Data polis tidak dapat dibaca: {messageOf(polis.error)}
               </p>
             )}
-            {policyResult?.pesan.map((notice) => (
+            {(policyResult?.pesan ?? []).map((notice) => (
               <p
                 key={notice.kode}
                 role="alert"
@@ -264,15 +291,18 @@ export function ClaimReportFormPage() {
               </p>
             ))}
           </div>
-          <Field
+          <DateField
             id="tanggal_kejadian"
             label="Tanggal Kejadian"
-            type="date"
             value={values.tanggal_kejadian}
-            onChange={(e) => set('tanggal_kejadian', e.target.value)}
+            onChange={(v) => set('tanggal_kejadian', v)}
             error={violation['tanggal_kejadian']}
             disabled={!editable}
           />
+          {/* .Policy.PolicyLeader — tampil bila Nomor Polis terisi dan lini bukan PA (002) atau Travel (005). */}
+          {hasPolicy && panel !== '' && panel !== '002' && panel !== '005' && (
+            <ReadOnly label="Polis Leader" value={policyResult?.polis_leader ?? ''} />
+          )}
           <Field
             id="tertanggung"
             label="Nama Tertanggung"
@@ -316,6 +346,29 @@ export function ClaimReportFormPage() {
             disabled={!editable}
             hint="Angka yang disebut pelapor; bukan nilai klaim."
           />
+          <TextArea
+            id="sumber_laporan"
+            label="Source Of Reports"
+            value={values.sumber_laporan}
+            onChange={(value) => set('sumber_laporan', value)}
+            maxLength={FIELD_LIMIT.sumber}
+            error={violation['sumber_laporan']}
+            disabled={!editable}
+            rows={2}
+          />
+          {/* .ReceiveDocument.EmailLOD — hanya PA, setelah Nomor Polis terisi. */}
+          {hasPolicy && pa && (
+            <Field
+              id="email_tertanggung"
+              label="Email Tertanggung"
+              type="email"
+              value={values.email_tertanggung}
+              onChange={(e) => set('email_tertanggung', e.target.value)}
+              maxLength={FIELD_LIMIT.email}
+              error={violation['email_tertanggung']}
+              disabled={!editable}
+            />
+          )}
           <Field
             id="lokasi_kejadian"
             label="Lokasi Kejadian"
@@ -325,6 +378,22 @@ export function ClaimReportFormPage() {
             error={violation['lokasi_kejadian']}
             disabled={!editable}
           />
+          {/*
+            .ReceiveDocument.SIM — hanya PA. Labelnya di section "Lokasi Kejadian" (salah
+            salin di Pega): isinya disimpan ke SIMPENGENDARA (Rcv_ProcInsertRecivedDocument),
+            lebar 25. Diberi label "SIM Pengendara" atas permintaan Work Owner, 2026-10-01.
+          */}
+          {pa && (
+            <Field
+              id="sim_pengendara"
+              label="SIM Pengendara"
+              value={values.sim_pengendara}
+              onChange={(e) => set('sim_pengendara', e.target.value)}
+              maxLength={FIELD_LIMIT.sim}
+              error={violation['sim_pengendara']}
+              disabled={!editable}
+            />
+          )}
           <Field
             id="subjek_email"
             label="Subject Email"
@@ -404,20 +473,27 @@ export function ClaimReportFormPage() {
 
             Ia diperiksa di `useRegisterClaim`, satu tempat, supaya pesan penolakannya sama
             dari mana pun pendaftaran dimulai.
+
+            # Tidak digambar sama sekali setelah berkas menjadi klaim
+
+            Work Owner, 2026-09-29: Simpan dan Register Klaim tidak dimunculkan bila RCVN
+            sudah punya PNCN. Server juga menolak Register Klaim kedua.
           */}
-          <Button
-            type="button"
-            tone="kedua"
-            disabled={!editable || daftar.isPending || policyBlocked}
-            onClick={() =>
-              daftar.mutate(
-                { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
-                { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
-              )
-            }
-          >
-            {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
-          </Button>
+          {!registered && (
+            <Button
+              type="button"
+              tone="kedua"
+              disabled={!editable || daftar.isPending || policyBlocked}
+              onClick={() =>
+                daftar.mutate(
+                  { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
+                  { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
+                )
+              }
+            >
+              {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
+            </Button>
+          )}
 
           <Button
             type="button"
@@ -507,6 +583,18 @@ function Group({
  * penandaan aria-nya dijaga sama dengan `Field` supaya form tidak terlihat seperti
  * dirakit dari dua aplikasi berbeda.
  */
+/** ReadOnly menampilkan isian baca saja dengan label seperti Field. */
+function ReadOnly({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="block text-sm font-medium text-slate-700">{label}</span>
+      <p className="mt-1 min-h-[42px] rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900">
+        {value || '—'}
+      </p>
+    </div>
+  )
+}
+
 function TextArea({
   id,
   label,

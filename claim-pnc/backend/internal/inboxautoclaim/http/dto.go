@@ -214,10 +214,6 @@ type UploadTemplateResponse struct {
 	// KolomTanggal menyebut kolom yang wajib berformat dd/mm/yyyy pada tab ini.
 	KolomTanggal []string `json:"kolom_tanggal"`
 
-	// TitikRibuan benar bila titik pada nilai klaim DIBUANG (tab Kredit), bukan dibaca
-	// sebagai desimal.
-	TitikRibuan bool `json:"titik_ribuan"`
-
 	BatasBaris int `json:"batas_baris"`
 }
 
@@ -381,4 +377,28 @@ func toPageDTO(request inboxautoclaim.PageRequest, total int) PageDTO {
 		Total:        total,
 		TotalHalaman: totalPage,
 	}
+}
+
+// PremiumCheckChoicesResponse adalah isi kedua isian tab Cek Premi.
+type PremiumCheckChoicesResponse struct {
+	// Bisnis dari POOLDATA.BUSINESS: kode = ID, nama = NOTE.
+	Bisnis []CompanyDTO `json:"bisnis"`
+
+	// SumberBisnis dari Master Auto Claim yang disetujui: kode = INISIALID,
+	// nama = NAMA_PENERIMA.
+	SumberBisnis []CompanyDTO `json:"sumber_bisnis"`
+
+	Portal string `json:"portal"`
+}
+
+// PremiumCheckResponse adalah hasil tombol Cek Premi.
+//
+// Kedua angka dikirim sebagai teks presisi penuh (I-12); layar yang memberi pemisah
+// ribuan. TotalKlaim kosong berarti belum ada klaim Sukses Klaim untuk pasangan ini.
+type PremiumCheckResponse struct {
+	KodeBisnis       string `json:"kode_bisnis"`
+	KodeSumberBisnis string `json:"kode_sumber_bisnis"`
+	TotalPremi       string `json:"total_premi"`
+	TotalKlaim       string `json:"total_klaim"`
+	Portal           string `json:"portal"`
 }

@@ -152,6 +152,11 @@ type SingleResponse struct {
 	// ke layar berarti satu aturan hidup di dua tempat.
 	DapatDisunting bool `json:"dapat_disunting"`
 
+	// SudahDiregistrasi: berkas ini sudah menjadi klaim (nomor klaimnya di
+	// `laporan.nomor_klaim`). Layar memakainya untuk menyembunyikan Simpan dan Register
+	// Klaim serta menjelaskan kenapa isiannya terkunci.
+	SudahDiregistrasi bool `json:"sudah_diregistrasi"`
+
 	Portal string `json:"portal"`
 }
 
@@ -188,6 +193,11 @@ type DetailDTO struct {
 	KeteranganBelumRegistrasi string `json:"keterangan_belum_registrasi"`
 
 	JumlahDokumen int `json:"jumlah_dokumen"`
+
+	GroupPanel       string `json:"group_panel"`
+	EmailTertanggung string `json:"email_tertanggung"`
+	SIMPengendara    string `json:"sim_pengendara"`
+	SumberLaporan    string `json:"sumber_laporan"`
 }
 
 // SaveRequest adalah badan permintaan penyimpanan form.
@@ -217,6 +227,10 @@ func toDetailDTO(d inboxlaporanklaim.Detail) DetailDTO {
 		Alasan:                    d.Reason,
 		KeteranganBelumRegistrasi: d.NotRegisteredNote,
 		JumlahDokumen:             d.DocumentCount,
+		GroupPanel:                d.GroupPanel,
+		EmailTertanggung:          d.InsuredEmail,
+		SIMPengendara:             d.DriverLicense,
+		SumberLaporan:             d.ReportSource,
 	}
 }
 
@@ -245,6 +259,10 @@ func toDetail(r SaveRequest) inboxlaporanklaim.Detail {
 		Reason:            r.Alasan,
 		NotRegisteredNote: r.KeteranganBelumRegistrasi,
 		DocumentCount:     r.JumlahDokumen,
+		GroupPanel:        r.GroupPanel,
+		InsuredEmail:      r.EmailTertanggung,
+		DriverLicense:     r.SIMPengendara,
+		ReportSource:      r.SumberLaporan,
 	}
 }
 

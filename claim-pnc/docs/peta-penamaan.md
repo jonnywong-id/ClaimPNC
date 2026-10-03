@@ -3758,7 +3758,6 @@ Klaim" — mengetik saja tidak cukup.
 
 Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).
 
-<<<<<<< HEAD
 ## My Work — antrean Surveyor / Loss Adjuster (MENU_ID 50)
 
 ### Ketiga belas kolomnya
@@ -3769,22 +3768,66 @@ pada `Activity/SetTempLostAdjuster-Act.xml`, **bukan** dari alias SQL-nya yang m
 
 | Judul di layar | Properti Pega | Kolom basis data | Nama Go | Field JSON |
 |---|---|---|---|---|
-| Appointment No | `.City` | `k.ADJUSTERPIC_1` **?** | `AppointmentNumber` | `appointment_no` |
-| Reference No | `.AlasanDokterRejectRCL` | `k.REFNO_1` | `ReferenceNumber` | `reference_no` |
-| Claim No | `.UserName` | `k.PYID` | `ClaimNumber` | `claim_no` |
-| Policy No | `.Country` | `k.POLICYNO` | `PolicyNumber` | `policy_no` |
-| Insured Name | `.AnalystDoctorRemaks` | `k.QQNAME` | `InsuredName` | `insured_name` |
-| COB | `.KomiteStatus` | `k.BUSINESSNAME` | `ClassOfBusiness` | `cob` |
+| Appointment No | `.City` | **— belum tersedia** | `AppointmentNumber` | `appointment_no` |
+| Reference No | `.AlasanDokterRejectRCL` | **— belum tersedia** | `ReferenceNumber` | `reference_no` |
+| Claim No | `.UserName` | `c.CLAIMNO` | `ClaimNumber` | `claim_no` |
+| Policy No | `.Country` | `c.NOPOLIS` | `PolicyNumber` | `policy_no` |
+| Insured Name | `.AnalystDoctorRemaks` | `c.QQNAME` | `InsuredName` | `insured_name` |
+| COB | `.KomiteStatus` | `c.BUSINESSNAME` | `ClassOfBusiness` | `cob` |
 | Cause Of Loss | `.CauseOfLoss` | `s.LOSSTYPE` **?** | `CauseOfLoss` | `cause_of_loss` |
 | Location | `.Location` | `s.LOCATION_SURVEY` | `Location` | `location` |
-| PIC ASM | `.UserTeknis` | `k.USERTEKNIS_1` | `TechnicalPIC` | `pic_asm` |
-| PIC Loss Adjuster | `.AnaylstRemarks` | `s.SURVEYOR_NAME` | `AdjusterPIC` | `pic_loss_adjuster` |
-| Date of Loss | `.DateOfLoss` | `k.DATEOFLOSS_1` | `DateOfLoss` | `date_of_loss` |
-| Aging | `.CPLValidDate` | `k.AGING` | `AgingDays` | `aging` |
-| Status ASM | `.UserAdmin` | `k.ADJUSTERSTATUS_1` | `ASMStatus` | `status_asm` |
+| PIC ASM | `.UserTeknis` | `c.PICTEKNIK` | `TechnicalPIC` | `pic_asm` |
+| PIC Loss Adjuster | `.AnaylstRemarks` | `s.SURVEYOR_NAME` = `SURVEYORNAME_1` | `AdjusterPIC` | `pic_loss_adjuster` |
+| Date of Loss | `.DateOfLoss` | `c.DATEOFLOSS` | `DateOfLoss` | `date_of_loss` |
+| Aging | `.CPLValidDate` | **dihitung** dari `s.TGLINPUT` | `CreatedAt` → `AgingDays()` | `aging` |
+| Status ASM | `.UserAdmin` | `s.STS_SURVEY` langkah terakhir | `ASMStatus` | `status_asm` |
 
-`s` = `POOLDATA.T_SURVEYORLIST` · `k` = `POOLDATA.T_CLAIMLIST_ADMIN`
+`s` = `POOLDATA.T_SURVEYORLIST` · `c` = `POOLDATA.T_CLAIM_PNC` ·
+`d` = `POOLDATA.T_CLAIM_SURVEY_DATAPEGA`
 **?** = pemetaan belum dikonfirmasi DBA, dipasang di kueri `check_columns`.
+
+#### Perubahan 2026-09-29 — tabel header berpindah, dan tidak satu pun namanya sama
+
+Work Owner memindahkan tabel header dari `T_CLAIMLIST_ADMIN` ke `POOLDATA.T_CLAIM_PNC`,
+disambung `c.CLAIMID = s.PNCCASEID` — pasangan yang `BroswseKlaimByNoSurvey-SQL.xml` pakai
+persis begitu. Alasannya: tabel datar itu hanya memuat klaim yang tugasnya berada di antrean
+Admin, sehingga survei yang SEDANG BERJALAN justru terbuang.
+
+| Tabel datar (lama) | Tabel klaim (berlaku) |
+|---|---|
+| `PZINSKEY` | `CLAIMID` |
+| `PYID` | `CLAIMNO` |
+| `POLICYNO` | `NOPOLIS` |
+| `DATEOFLOSS_1` | `DATEOFLOSS` |
+| `USERTEKNIS_1` | `PICTEKNIK` |
+| `PYSTATUSWORK` | `STATUSWORK` |
+| `PXOBJCLASS` | — tidak ada, dan tidak perlu |
+
+Salah satu saja menjatuhkan seluruh layar dengan ORA-00904; dijaga uji
+`TestKolomHeaderMemakaiNamaTabelKlaim`.
+
+#### Perubahan 2026-09-29 (lanjutan) — tabel cermin masuk, dan Status ASM hidup
+
+Tiga lapis sumbernya sekarang:
+
+| Alias | Tabel | Butir | Menyumbang |
+|---|---|---|---|
+| `s` | `T_SURVEYORLIST` | satu baris per **perubahan status** | penggerak baris, Cause Of Loss, Location, PIC Loss Adjuster, Aging, **Status ASM** |
+| `c` | `T_CLAIM_PNC` | satu baris per **klaim** | Claim No, Policy No, Insured Name, COB, PIC ASM, Date of Loss |
+| `d` | `T_CLAIM_SURVEY_DATAPEGA` | satu baris per **berkas survei** | `STATUSWORK`, dan kelak Appointment No + Reference No |
+
+Kueri mengambil **langkah terakhir** tiap berkas survei (`ROW_NUMBER()` per `CASEID`), dan
+menyambung `d` dengan **`LEFT JOIN`** supaya baris cermin yang belum tertulis menghasilkan kolom
+kosong, bukan berkas yang lenyap dari antrean.
+
+**`STS_SURVEY` adalah `ADJUSTERSTATUS_1`.** Sebarannya di produksi memuat ketiga nilai yang
+dipakai Pega sebagai penyaring: `Final Report` 1.466, `Invoice Fee` 1.069, `Close Case` 316.
+Kolom "Status ASM" karena itu **terisi**, dan `ADJUSTERSTATUS_1` gugur dari daftar permintaan.
+
+**DUA kolom masih belum tersedia** — `ADJUSTERPIC_1` dan `REFNO_1` — ditambah `ADJUSTERACCEPT_1`
+yang tidak digambar tetapi menggerakkan tiga tab. Ketiganya milik objek kerja `Work-SurveyClaim`
+dan diminta ditambahkan ke **tabel cermin**, bukan ke `T_SURVEYORLIST` — tabel itu memberi makan
+KPI adjuster dan menyimpan 7 baris per berkas.
 
 **Alias Pega yang TIDAK dibawa**, seluruhnya dari `BrowseLossAdjuster-SQL.xml`:
 
@@ -3799,24 +3842,64 @@ pada `Activity/SetTempLostAdjuster-Act.xml`, **bukan** dari alias SQL-nya yang m
 Tidak satu pun dari tujuh alias itu mencerminkan isinya. Nama di sistem baru mengikuti
 padanan Inggris yang benar (`D-19`, `D-80`).
 
+#### `SURVEYORNAME_1` = `ADJUSTER_PIC` — satu kolom, TIGA alias
+
+Baris keempat di atas adalah kasus terburuknya: kolom yang sama dialiaskan tiga nama berbeda
+di tiga rule, dan yang menjadi kolom layar justru alias yang paling menyesatkan.
+
+| Rule | Alias |
+|---|---|
+| `BrowseOSLossAdjusterPIC` | `SURVEYORNAME_1 AS "AnaylstRemarks"` ← **ini yang diikat section** |
+| `BrowseLossAdjuster` | `SURVEYORNAME_1 AS "CountryID"` |
+| `BrowseInternalSurveyor` | `SURVEYORNAME_1 AS "CountryID"` **dan** `as "ComplianceRemark"` |
+
+Kolom layar **"PIC Loss Adjuster"** mengikat `.AnaylstRemarks`, sehingga ia memang
+`SURVEYORNAME_1` — bukan catatan analis, bukan ID negara, bukan catatan compliance.
+
+**Akibat yang menghemat satu permintaan:** `SURVEYORNAME_1` **tidak perlu** diminta ke tabel
+cermin. Padanannya `T_SURVEYORLIST.SURVEYOR_NAME` sudah dibaca, dan ia juga yang dipakai
+menyaring cakupan — keduanya wajib kolom yang sama, karena menyaring dengan satu kolom lalu
+menggambar kolom lain akan menampilkan nama yang tidak menjelaskan kenapa barisnya muncul.
+
+**Penyaringan langkah terakhir yang membuat keduanya benar-benar sepadan.** `T_SURVEYORLIST`
+adalah jejak perkembangan, sehingga `SURVEYOR_NAME` dapat berbeda antar langkah bila surveyornya
+diganti; objek kerja hanya punya satu `SURVEYORNAME_1` — yang berlaku sekarang. Karena penyaring
+cakupan dipasang SESUDAH penyaringan langkah terakhir, surveyor yang sudah diganti tidak lagi
+melihat berkas itu, persis seperti Pega.
+
 ### Ketujuh tab
 
 Kunci tab berbahasa Indonesia karena ia **kontrak** yang muncul di URL (`D-80`); judulnya
 tetap Inggris karena ia **teks yang dilihat pengguna** (`D-13`).
 
-| Judul di layar | Kunci (URL) | Konstanta Go |
-|---|---|---|
-| Outstanding | `outstanding` | `TabOutstanding` |
-| Invoice | `invoice` | `TabInvoice` |
-| Close | `close` | `TabClose` |
-| ALL | `all` | `TabAll` |
-| Not answered communication | `belum-dijawab` | `TabNotAnswered` |
-| Not replied from ASM | `belum-dibalas-asm` | `TabNotReplied` |
-| Replied from ASM | `sudah-dibalas-asm` | `TabReplied` |
+| Judul di layar | Kunci (URL) | Konstanta Go | Tersedia |
+|---|---|---|---|
+| Outstanding | `outstanding` | `TabOutstanding` | **belum** — butuh `ADJUSTERACCEPT_1` |
+| Invoice | `invoice` | `TabInvoice` | **belum** — butuh `ADJUSTERACCEPT_1` |
+| Close | `close` | `TabClose` | **belum** — kolom `STATUSWORK` ada, tabelnya kosong |
+| ALL | `all` | `TabAll` | **belum** — butuh `ADJUSTERACCEPT_1` |
+| Not answered communication | `belum-dijawab` | `TabNotAnswered` | ya |
+| Not replied from ASM | `belum-dibalas-asm` | `TabNotReplied` | ya |
+| Replied from ASM | `sudah-dibalas-asm` | `TabReplied` | ya |
 
 **"ALL" bukan seluruh baris.** `CountOSLostAdjuster` menghitungnya sebagai
 `ADJUSTERACCEPT_1 = '1'` — hanya yang sudah dikonfirmasi adjuster. Penamaannya menyesatkan
 sejak di Pega, dan nama itu dibawa apa adanya.
+
+Keempat tab yang belum tersedia **tetap digambar** dan menyebut sebabnya (`D-13`); kunci URL dan
+konstanta Go-nya tidak berubah, sehingga menghidupkannya kelak tidak menyentuh penamaan.
+
+#### Tiga nama ketersediaan, dan kenapa berbahasa Inggris
+
+| Nama Go | Isinya | Field JSON |
+|---|---|---|
+| `Tab.Available()` | tab ini dapat dihitung hari ini | `tersedia` |
+| `UnavailableReason(tab)` | sebabnya, kosong bila tersedia | `alasan_tak_tersedia` |
+| `DefaultAvailableTab()` | tab bawaan yang benar-benar dapat dihitung | — (isi `tab_bawaan`) |
+
+Ketiganya sempat ditulis `Tersedia`, `AlasanTakTersedia`, `DefaultTabTersedia` dan dikoreksi
+sebelum selesai: `D-80` menetapkan nama di dalam kode berbahasa Inggris. **Field JSON-nya tetap
+Indonesia** karena ia kontrak yang dibaca layar — perbedaan perlakuan itu disengaja.
 
 ### Kesembilan angka KPI
 
@@ -3847,7 +3930,30 @@ pernah dilaporkan siapa pun sebagai kerusakan.
 
 `LOGINLEADER` menyimpan **LOGIN atasan**, bukan namanya. Kolom kosong berarti orang itu
 sendiri yang menjadi puncak.
-=======
+
+### Tiga lapis yang mudah tertukar — dan satu kata yang dilarang
+
+Kata **"objek"** di modul ini **hanya** berarti Objek Pertanggungan (`CONTEXT.md`). Objek kerja
+Pega disebut **"berkas survei"** atau dengan nama teknisnya, tidak pernah "objek survei".
+
+| Lapis | Kunci | Isinya |
+|---|---|---|
+| Klaim | `T_SURVEYORLIST.PNCCASEID` = `T_CLAIM_PNC.CLAIMID` | satu klaim |
+| **Berkas survei** | `T_SURVEYORLIST.CASEID` = `pzInsKey` objek `Work-SurveyClaim` | satu penugasan survei |
+| Survei ke-N | `T_SURVEYORLIST.INDEX_SURVEY` | **nomor urut survei**, bertambah tiap survei baru |
+
+`INDEX_SURVEY` **bukan** penanda Objek Pertanggungan dan **bukan** kunjungan. Buktinya:
+
+```
+SetSurveyorList        : IdxSurveyResults := local.index+1   -- bertambah
+                         childPageSurveyClaim.SurveyData.SurveyList(<LAST>).IdxSurveyResults
+GetDataProgressSurvey  : order by to_number(index_survey) asc  -- dibaca sebagai riwayat
+```
+
+Hanya **satu** survei yang berjalan per berkas survei; sisanya sudah dibatalkan (Work Owner,
+2026-09-29). Yang berjalan dikenali dari `PYSTATUSWORK NOT IN ('Resolved-Completed',
+'Resolved-Rejected')` — kolom yang **belum ada** di `T_SURVEYORLIST`, direkam di
+`inboxsurvey.ClosedWorkStatuses()`.
 ---
 
 ## Tambahan 2026-09-24 — modul Inbox Komunikasi Cabang (`inboxkomunikasicabang`)
@@ -4693,4 +4799,298 @@ membedakan keduanya.
 Isi modulnya berbahasa Inggris (`D-80`): `Tab`, `Counter`, `QueueRow`, `DashboardCell`,
 `Decision`, `Verdict`. Nama field JSON tetap Indonesia karena ia kontrak: `kode`, `nama`,
 `jenis`, `kunci`, `sel`, `pencacah`, `tidak_tersedia`, `alasan_setuju_ditahan`.
->>>>>>> dev
+
+---
+
+## Tambahan 2026-09-30 — modul Outstanding Claim (`outstandingclaim`)
+
+Rincian satu klaim treaty proporsional. Di Pega ia BUKAN butir menu melainkan **Flow Action**
+`OutstandingClaim` pada kelas `ASM-FW-GCNMFW-Work-ClaimTreaty`, dengan layar
+`Section/OutstandingClaim-Section.xml`.
+
+### Nama folder
+
+| Lapisan | Bentuk |
+|---|---|
+| Backend | `internal/outstandingclaim` — paket `outstandingclaim` |
+| Frontend | `src/modules/outstanding-claim` |
+
+Nama modulnya **berbahasa Inggris**, bukan Indonesia seperti `master-rekening`. `D-81`
+menetapkan folder modul memakai nama modul yang disebut Work Owner; di sini yang disebut Work
+Owner adalah nama Flow Action dan section-nya sendiri — `OutstandingClaim` — bukan nama bisnis
+berbahasa Indonesia. Mengindonesiakannya menjadi `klaim-outstanding` akan memutus penelusuran
+ke rule Pega yang menjadi satu-satunya sumbernya.
+
+### Properti Pega → kunci kontrak
+
+Seluruh isian di layar ini terikat ke `.ClaimData.*` atau `.TreatyInMaster.*`. Yang pertama
+tersimpan sebagai dokumen JSON di `POOLDATA.JSON_KLAIM.DATA_JSONBLOB`; jalur `$.X` pada
+dokumen itu adalah `.ClaimData.X` di klipboard.
+
+| Properti Pega | Jalur dokumen | Kunci kontrak | Judul di layar |
+|---|---|---|---|
+| `.ClaimData.IDMaster` | `IDMaster` | `id_master` | Treaty ID |
+| `.ClaimData.QuotationData.BusinessName` | `QuotationData.BusinessName` | `class_of_business` | Class Of Business |
+| `.ClaimData.YearofAccount` | `YearofAccount` | `year_of_account` | Treaty Year |
+| `.ClaimData.PolicyData.PolicyNo` | `PolicyData.PolicyNo` | `policy_no` | Policy No |
+| `.ClaimData.PolicyNo` | `PolicyNo` | `policy_no_ceding` | Policy No Ceding |
+| `.ClaimData.DateReceived` | `DateReceived` | `received_date` | Received Date |
+| `.ClaimData.Email` | `Email` | `reporter_email` | Reporter Email |
+| `.ClaimData.Location` | `Location` | `location_of_loss` | Location of Loss |
+| `.ClaimData.PostalCode` | `PostalCode` | `zip_code` | Zip Code |
+| `.ClaimData.Amount` | `Amount` | `deductible_percent` | % |
+| `.ClaimData.IBNR` | `IBNR` | `ibnr_idr` | IBNR in IDR |
+| `.TreatyInMaster.*` (8 isian) | — | — | **terhalang** |
+
+Perhatikan tiga pasangan yang mudah tertukar: `.ClaimData.PolicyNo` adalah nomor polis
+**Ceding**, sedangkan nomor polis ASM ada di `.ClaimData.PolicyData.PolicyNo`;
+`.ClaimData.Amount` adalah **persentase** deductible, bukan nilainya
+(`.ClaimData.DeductibleValue`); dan `.ClaimData.IBNR` adalah total IBNR dalam IDR, sedangkan
+`.IBNR` di dalam baris grid adalah IBNR per baris.
+
+### Sumber grid → kode grid
+
+Diambil dari `pyPageListProperty` tiap grid di section.
+
+| `pyPageListProperty` | Jalur dokumen | Kode grid |
+|---|---|---|
+| `.ClaimData.InterestList` | `InterestList` | `interest_list` |
+| `.ClaimData.TotalInterestInsured` | `TotalInterestInsured` | `interest_total` |
+| `pyWorkPage.ClaimData.ListClaimAmount` | `ListClaimAmount` | `claim_amount` |
+| `.ClaimData.SpreadingRisk` | `SpreadingRisk` | `spreading_risk` |
+| `.ClaimData.EstimationList` | `EstimationList` | `estimation_list` |
+| `.ClaimData.ListTotalEstimation` | `ListTotalEstimation` | `estimation_total` |
+| `.ClaimData.SpreadingClaim` | `SpreadingClaim` | `spreading_claim` |
+| `.ClaimData.SpreadingBreakQS` | `SpreadingBreakQS` | `spreading_break_qs` |
+| `AttachCategory.pxResults` | — | `attachment` — **terhalang** |
+| `pyWorkPage.ClaimData.SuggestList` | `SuggestList` | `suggestion` |
+
+### Judul yang sengaja TIDAK dirapikan (`D-13`)
+
+| Di Pega | Yang benar | Dipakai |
+|---|---|---|
+| `Geoss Estimate Treaty (100%)` | Gross | **Geoss** |
+| `Esstimation ASM` | Estimation | **Esstimation** |
+| `TERITORIAL SCOPE` | Territorial | **TERITORIAL** |
+| `StartDateTreaty` | Start Date Treaty | **StartDateTreaty** |
+| `.TypeDeductible` | (sel tanpa label) | **`.TypeDeductible`** |
+| `Class Of Business` dipakai DUA isian berbeda | — | **keduanya** |
+
+### Tambahan pada modul Inbox Claim Treaty Prop
+
+| Kolom di layar | Asal | Kunci kontrak |
+|---|---|---|
+| Last update | `w.PXUPDATEOPERATOR` | `operator_pengubah` |
+| Status Claim ID | `w.PYSTATUSWORK` | `status_kerja` |
+
+Kunci kontraknya **`status_kerja`, bukan `status_klaim`**: isinya status alur kerja Pega,
+bukan Status Klaim berkode `1134`–`1166` milik master `V_STS_CLAIM`. Judul kolomnya
+menyesatkan sejak di Pega dan dipertahankan (`D-13`); nama kontraknya tidak ikut menularkan
+salah arti itu.
+
+---
+
+## Koreksi 2026-09-30 — dua teks berbeda pada Inbox Claim Treaty Prop
+
+Judul pilihan dropdown dan judul kontainer grid adalah teks yang **berbeda** dan tampil
+**bersamaan**. Keduanya sempat tertukar; `Tab` sekarang membawa keduanya.
+
+| Kode tab | `nama` — pilihan dropdown | `judul_grid` — judul kontainer |
+|---|---|---|
+| `1` | `Prop Treaty-in Admin` | `Work List Treatyin Propotional` |
+| `2` | `Prop Treaty-in Teknik` | `Work Teknik Treatyin` |
+| `3` | `Komite Treaty ASM` | *(kosong — terhalang)* |
+
+**Asalnya berbeda pula:** kolom kiri dari `Data Transform/FilterWorkBasket_Act-DT.xml`
+(properti `CARI2`), kolom kanan dari `Section/InboxClaimTreaty_Section-Section.xml`.
+
+Nilai yang diposting dropdown adalah `CARI1`, bukan kode tab kami:
+
+| Pilihan | `CARI1` di Pega | kode tab di sini |
+|---|---|---|
+| `Choose` | `""` | `""` → jatuh ke tab bawaan |
+| `Prop Treaty-in Admin` | `""` | `1` |
+| `Prop Treaty-in Teknik` | `"TreatyinPNCTeknik"` | `2` |
+
+Dua pilihan pertama bernilai **sama** di Pega — itu bukan salah baca, dan layar meniru
+perilakunya.
+
+## Tambahan 2026-09-29 — modul Inbox Banding Harga Salvage (`inboxbandinghargasalvage`)
+
+`MENU_ID 72`, harness `InboxRequestSalvage`. Layar TERSENDIRI, bukan tab pada Inbox Salvage
+(`MENU_ID 71`): tabel intinya `POOLDATA.T_CLAIM_CHEKER_SALVAGE`, bukan `PNC_SALVAGE`.
+
+### Kenapa peta ini lebih panjang dari biasanya
+
+Karena di layar ini **satu nama properti berarti dua hal berbeda pada dua grid**. Ia bukan
+sekadar alias yang buruk; ia alias yang artinya berpindah di dalam satu layar:
+
+| Properti Pega | Grid Request | Grid History |
+|---|---|---|
+| `.Email` | `HARGAREQUEST` — nilai uang | `JENISSALVAGE` — jenis barang |
+| `.AgentID` | `HARGABARANG` — nilai uang | `LOKASISALVAGE` — lokasi |
+| `.BranchName` | `NAMABARANG` — nama barang | `PIC` — nama orang |
+
+### Grid "Request Banding Harga" (`tipe=1`, `FlagASO==1`)
+
+Sumber: `RDB List/DataReqSalvage_SQL`, seluruhnya dari `POOLDATA.T_CLAIM_CHEKER_SALVAGE`.
+
+| Judul di layar | Properti Pega | Kolom sebenarnya | Alias SQL | Field JSON |
+|---|---|---|---|---|
+| Tanggal Request | `.TglTerimaSalvage` | `TGLREQUEST` | `REQUEST_DATE` | `tanggal_request` |
+| No Klaim | `.ClaimID` | `NOKLAIM` | `CLAIM_NO` | `no_klaim` |
+| Detail Object (!) | `.ClientName` | `IDDETAILSALVAGE` | `DETAIL_OBJECT` | `detail_object` |
+| Nama Barang | `.BranchName` | `NAMABARANG` | `ITEM_NAME` | `nama_barang` |
+| Harga Barang | `.AgentID` | `HARGABARANG` | `ITEM_PRICE` | `harga_barang` |
+| Harga Request | `.Email` | `HARGAREQUEST` | `REQUEST_PRICE` | `harga_request` |
+| Note Request | `.BranchID` | `ALASANREQUEST` | `REQUEST_NOTE` | `note_request` |
+| Aging | `.AgingAmount` | (dihitung) | `AGING_DAYS` | `aging` |
+| Note Checker | `.NoteKomite` | `NOTEKOMITE` | `CHECKER_NOTE` | `note_checker` |
+| Action | — | — | — | (tidak dibangun) |
+| (tidak digambar) | — | `IDSALVAGE` | `SALVAGE_ID` | `id_salvage` |
+| (tidak digambar) | — | `NAMAKOMITE` | `COMMITTEE_NAME` | `nama_komite` |
+
+Tanda (!) pada **Detail Object**: judulnya menjanjikan rincian objek, isinya ID baris detail
+salvage. Judul dipertahankan (`D-13`), nama isiannya menyebut apa adanya (`D-19`).
+
+`NOTEKOMITE` adalah satu-satunya kolom yang keberadaannya **belum terbukti dari rule mana pun**
+— ia disimpulkan dari nama properti gridnya, karena kueri lama tidak pernah memilihnya. Karena
+itu `check_table` menyebutkannya secara eksplisit.
+
+### Grid "History Cheker" (`tipe=2`, `FlagASO==2`)
+
+Sumber: `RDB List/HistoryReqSalvage_SQL`, seluruhnya dari `POOLDATA.PNC_SALVAGE`.
+
+| Judul di layar | Properti Pega | Kolom sebenarnya | Alias SQL | Field JSON |
+|---|---|---|---|---|
+| No Klaim | `.ClaimID` | `NOKLAIM` | `CLAIM_NO` | `no_klaim` |
+| Object Name (!) | `.Email` | `JENISSALVAGE` | `SALVAGE_TYPE` | `object_name` |
+| Lokasi Salvage | `.AgentID` | `LOKASISALVAGE` | `SALVAGE_LOCATION` | `lokasi_salvage` |
+| PIC | `.BranchName` | `PIC` | `PIC` | `pic` |
+
+Tanda (!) pada **Object Name**: isinya JENIS SALVAGE, bukan nama objek. Nama field JSON-nya
+sengaja `object_name` — ia mengikuti judul kolom yang dibaca pengguna, sebagaimana kontrak API
+lain di aplikasi ini.
+
+### Label tabel ringkas
+
+Diambil harfiah dari `Local.LOOP` pada `Activity/GCNMCountRequestSalvage_act` langkah 9 dan 11:
+
+| Label | Kode tab |
+|---|---|
+| `Request Banding Harga` | `request-banding-harga` |
+| `History Cheker` | `history-cheker` |
+
+Salah ketik **"Cheker"** dipertahankan — itulah yang dibaca pengguna hari ini (`D-13`), sama
+seperti "Assesment" pada Inbox Service Center. Satu uji menjaganya agar tidak dibetulkan tanpa
+sadar.
+
+### Nama Go dan frontend
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `internal/inboxbandinghargasalvage` — nama modul bisnis, huruf kecil tanpa tanda hubung (`D-81`) |
+| Folder frontend | `src/modules/inbox-banding-harga-salvage` — `kebab-case` (`D-81`) |
+| Rute | `/inbox-banding-harga-salvage` |
+| Awalan API | `/api/inbox-banding-harga-salvage` |
+
+Isi modulnya berbahasa Inggris (`D-80`): `AppealRow`, `Reviewer`, `Tab`, `Column`, `Summary`,
+`SummaryRow`, `Query`, `Pagination`. Nama field JSON tetap Indonesia karena ia kontrak:
+`no_klaim`, `harga_request`, `note_checker`, `aging`, `antrean`, `selisih_terencana`.
+
+Satu nama Go yang sengaja berbahasa Indonesia: berkas `komite.go` beserta konstanta
+`operatorMaria`, `operatorBambang`, `operatorDaniel`, `operatorWulan`. Ia memuat aturan bernama
+orang yang ditiru dari Pega, dan namanya menyebut peran yang dimaksud rule-nya — bukan istilah
+domain baru.
+
+#### Jalur tulis — tombol Approve dan Reject (2026-09-30)
+
+Peta kolom untuk `POOLDATA.T_CLAIM_CHEKER_SALVAGE` pada pernyataan yang MENULIS. Alias Pega
+sengaja dicantumkan, karena di layar ini alias itulah yang menyesatkan.
+
+| Kolom Oracle | Properti Pega pengirim | Nama Go | Field JSON |
+|---|---|---|---|
+| `STATUSAPPROVE` | `statusapprove` (`"1"`/`"0"`) | `DecisionCommand.Status` | `setujui` (boolean) |
+| `NOTEAPPROVE` | `.NoteKomite` — **nama propertinya menyesatkan** | `DecisionCommand.Note` | `catatan` |
+| `TGLAPPROVE` | `sysdate` di dalam pernyataannya | — (`CURRENT_TIMESTAMP`) | — |
+| `IDDETAILSALVAGE` | `.ClientName` | `DecisionCommand.DetailObject` | `detail_object` |
+| `IDSALVAGE` | `.ClaimNo` | `DecisionCommand.SalvageID` | `id_salvage` |
+| `HARGAREQUEST` | `.Email` | `DecisionCommand.RequestPrice` | `harga_request` |
+| `NAMAKOMITE` | `TempInsert.AgentID` | `DecisionCommand.Reviewer.Name` | — (dari sesi) |
+
+**Empat alias yang wajib dibaca dua kali.** `.Email` berisi **harga**, `.ClaimNo` berisi **ID
+salvage** (bukan nomor klaim), `.ClientName` berisi **ID detail salvage**, dan `.NoteKomite`
+menulis kolom **`NOTEAPPROVE`** — bukan `NOTEKOMITE`, yang justru milik `T_CLAIM_KOMITE_LIST`.
+
+Yang terakhir sempat ditulis keliru di kueri modul ini karena **disimpulkan dari nama
+propertinya**. Kuerinya akan gagal seluruhnya dengan `ORA-00904`. Sejak diperbaiki, nama
+`NOTEKOMITE` **ditolak satu uji** di paket `sqlstore` supaya tidak muncul kembali.
+
+Dua tabel lain yang ikut ditulis, beserta batasnya:
+
+| Tabel | Kolom | Batas |
+|---|---|---|
+| `POOLDATA.SALAVAGEDOCUMENT` | `IDBALAILELANG` | ditulis hanya saat banding DITOLAK |
+| `POOLDATA.DETAIL_PNC_SALVAGE` | **`HARGAITEM` saja** | tabel milik modul Inbox Salvage; batas ditetapkan Work Owner (`keputusan-implementasi.md` §107.3) dan dijaga uji |
+
+Nama Go yang bertambah di modul ini, seluruhnya Inggris (`D-80`): `DecisionInput`,
+`DecisionCommand`, `DecisionResult`, `Writer`, `WriterSelector`, `PlanDecision`. Nama field
+JSON tetap Indonesia karena ia kontrak: `setujui`, `catatan`, `tersimpan`,
+`harga_diterapkan`, `dokumen_ditandai`, `pesan`.
+
+Satu berkas frontend baru: `DecisionConfirm.tsx` — nama komponen Inggris, folder modulnya tetap
+`inbox-banding-harga-salvage` (`D-81`).
+
+#### Dialog "Lihat File" (2026-09-30)
+
+| Kolom Oracle | Properti Pega | Nama Go | Field JSON |
+|---|---|---|---|
+| `SALAVAGEDOCUMENT.IDDOC` | `.ClaimID` pada hasil kueri pertama | `DocumentRow.ID` | `id` |
+| `DATA_ATTACHFILE.ATTACHNAME` | `.ATTACHNAME` | `DocumentRow.Name` | `nama` |
+| `SALAVAGEDOCUMENT.TGLINS` | `.DateOfLoss`, lalu disalin ke `.INPUTDATE` | `DocumentRow.UploadedAt` | `tanggal_unggah` |
+| `DATA_ATTACHFILE.ATTACHMIMETYPE` | `.ATTACHMIMETYPE` | `DocumentContent.MIMEType` | — (header HTTP) |
+| `DATA_ATTACHFILE.ATTACHFILE` | `.ATTACHFILE` | `DocumentContent.Content` | — (badan respons) |
+| — | `.ATTACHNOTE` | `DocumentCategory` | `kategori` |
+
+**Empat alias yang menyesatkan di dialog ini saja:**
+
+- `.ClaimID` berisi **IDDOC**, bukan nomor klaim.
+- `.DateOfLoss` berisi **TGLINS** dokumen, bukan tanggal kejadian.
+- `.INPUTDATE` disalin dari `TGLINS`, **bukan** dari kolom `INPUTDATE` tabel lampiran.
+- `.ATTACHNOTE` **tidak dibaca dari basis data sama sekali** — activity mengisinya konstanta
+  `"BandingHarga"` untuk setiap baris.
+
+**Satu nama kolom basis data yang menyesatkan:** `SALAVAGEDOCUMENT.NOKLAIM` berisi **id detail
+salvage**, bukan nomor klaim. Karena itu `DocumentQuery.DetailObject`-lah yang dibandingkan
+dengannya, dan nama field di memori sengaja `DetailObject` — bukan `ClaimNo` — supaya kekeliruan
+nama kolomnya tidak menular ke kode baru.
+
+Nama Go yang bertambah: `DocumentRow`, `DocumentContent`, `DocumentQuery`, `DocumentReader`,
+`DocumentReaderSelector`, `DocumentCategory`, `ErrDocumentNotFound`. Frontend:
+`DocumentPanel.tsx`, `AppealDocument`, `DocumentScope`.
+
+## Dokumen lampiran Master Bengkel — `POOLDATA.DATA_ATTACHFILE`
+
+Tabel lampiran bersama: Master Bengkel, Master Panel, dan Master Sparepart menulis ke tabel
+yang sama lewat procedure yang sama. Pemetaan di bawah dipakai modul Master Bengkel.
+
+| Kolom basis data | Nama di kode (Inggris, `D-80`) | Nama field JSON (kontrak, tetap Indonesia) |
+|---|---|---|
+| `DATAID` | `Document.ID` | `id_dokumen` |
+| `ATTACHNAME` | `Document.Name` | `nama_berkas` |
+| `ATTACHNOTE` | `Document.Note` | — tidak dikirim; jalur ini tidak pernah mengisinya |
+| `ATTACHMIMETYPE` | `Document.MimeType` | `tipe_media` |
+| `ATTACHFILE` | `Document.Content` | — dikirim sebagai berkas, bukan field JSON |
+| `INPUTOPERATOR` | `Document.UploadedBy` | `diunggah_oleh` |
+| `INPUTDATE` | `Document.UploadedAt` | `diunggah_pada` |
+| `BENGKEL_HE.DOKUMENID` | `Workshop.DocumentID` | `id_dokumen` pada baris bengkel |
+
+**Empat kolom yang sengaja tidak dipetakan**, karena jalur Master Bengkel tidak pernah
+mengisinya: `IMAGEID`, `CATEGORY`, `SUB_CATEGORY`, dan `IDPEGA`. Yang terakhir adalah
+`pyWorkPage.pzInsKey` — kunci teknis Pega yang `D-22` larang dibawa ke data bisnis.
+
+**Satu nama yang menyesatkan dan wajib diingat:** pada jalur simpan master bengkel,
+properti **`ACCOUNT_ID`** membawa **muatan JSON**, bukan nomor rekening —
+`RDB List/UpdateBengkelHE-SQL.xml` mengirimnya sebagai CLOB ke `PEGA_M_BENGKEL_HE`. Nomor
+rekening yang sesungguhnya ada di kolom `NO_ACCOUNT`.
+>>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904

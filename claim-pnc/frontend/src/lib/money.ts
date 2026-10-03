@@ -154,7 +154,8 @@ export function parseRupiah(input: string): string | null {
 
   cleaned = cleaned.replace(/^Rp\s*/i, '')
   // Spasi dan spasi-tak-terputus kadang ikut saat pengguna menyalin dari layar lain.
-  cleaned = cleaned.replace(/[\s ]/g, '')
+  // `\s` di JavaScript sudah mencakup spasi-tak-terputus (U+00A0).
+  cleaned = cleaned.replaceAll(/\s/g, '')
 
   const negative = cleaned.startsWith('-')
   if (negative || cleaned.startsWith('+')) cleaned = cleaned.slice(1)

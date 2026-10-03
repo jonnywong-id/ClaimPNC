@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import { CloseIcon, LogoutIcon, MenuIcon, ShieldIcon, SidebarIcon } from '@/components/Icon'
 import { Button } from '@/components/Button'
@@ -71,57 +72,77 @@ export function PageShell({ children }: { children: ReactNode }) {
     }
   }
 
+  // Wadah gulir isi halaman. Posisi gulirnya dikembalikan ke atas setiap berpindah
+  // halaman — sebelumnya jendela yang digulir, dan halaman baru terbuka di tengah bila
+  // halaman sebelumnya sedang tergulir ke bawah.
+  const scrollArea = useRef<HTMLDivElement>(null)
+  const { pathname } = useLocation()
+  useEffect(() => {
+    scrollArea.current?.scrollTo?.({ top: 0 })
+  }, [pathname])
+
   return (
-    // pt-16 memberi tempat bagi bilah atas yang kini `fixed`.
-    <div className="min-h-screen bg-slate-50 pt-16">
+    /*
+      Isi halaman TIDAK lagi lewat di belakang bilah atas (permintaan Work Owner
+      2026-09-29). Yang digulir kini wadah di BAWAH bilah atas, bukan jendela: batang
+      gulirnya mulai di bawah bilah atas, dan baris tabel tidak pernah tampak samar di
+      balik bilah yang tembus pandang.
+
+      h-screen + pt-16 (border-box) menyisakan tepat tinggi layar dikurangi bilah atas
+      untuk wadah gulir `flex-1`.
+    */
+    <div className="flex h-screen flex-col bg-slate-50 pt-16">
       <TopBar onOpenMenu={() => setDrawerOpen(true)} />
 
-      <div className="mx-auto flex max-w-[100rem]">
-        {/* Kolom menu tetap pada layar lebar. `sticky` membuatnya tinggal di tempat saat
+      <div ref={scrollArea} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex max-w-[100rem]">
+          {/* Kolom menu tetap pada layar lebar. `sticky` membuatnya tinggal di tempat saat
             isi halaman digulir — pada tabel panjang, menggulir kembali ke atas hanya
-            untuk berpindah menu adalah gesekan yang tidak perlu. */}
-        <aside
-          className={[
-            'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex',
-            'transition-[width] duration-200 ease-halus',
-            collapsed ? 'w-16' : 'w-64',
-          ].join(' ')}
-        >
-          <div
-            className={['flex px-3 pt-3', collapsed ? 'justify-center' : 'justify-end'].join(' ')}
+            untuk berpindah menu adalah gesekan yang tidak perlu. `top-0` kini diukur
+            dari wadah gulir, yang sudah berada di bawah bilah atas. */}
+          <aside
+            className={[
+              'sticky top-0 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex',
+              'transition-[width] duration-200 ease-halus',
+              collapsed ? 'w-16' : 'w-64',
+            ].join(' ')}
           >
-            <button
-              type="button"
-              onClick={() => changeCollapsed(!collapsed)}
-              aria-label={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
-              aria-expanded={!collapsed}
-              title={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
-              className={[
-                'flex h-9 w-9 items-center justify-center rounded-kontrol border border-slate-200 text-slate-600',
-                'transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-900',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
-              ].join(' ')}
+            <div
+              className={['flex px-3 pt-3', collapsed ? 'justify-center' : 'justify-end'].join(' ')}
             >
-              <SidebarIcon className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1">
-            <Sidebar
-              collapsed={collapsed}
-              requestedGroup={requestedGroup}
-              onExpandGroup={(id) => {
-                changeCollapsed(false)
-                setRequestedGroup((previous) => ({ id, seq: (previous?.seq ?? 0) + 1 }))
-              }}
-            />
-          </div>
-        </aside>
+              <button
+                type="button"
+                onClick={() => changeCollapsed(!collapsed)}
+                aria-label={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
+                aria-expanded={!collapsed}
+                title={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
+                className={[
+                  'flex h-9 w-9 items-center justify-center rounded-kontrol border border-slate-200 text-slate-600',
+                  'transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-900',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                ].join(' ')}
+              >
+                <SidebarIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1">
+              <Sidebar
+                collapsed={collapsed}
+                requestedGroup={requestedGroup}
+                onExpandGroup={(id) => {
+                  changeCollapsed(false)
+                  setRequestedGroup((previous) => ({ id, seq: (previous?.seq ?? 0) + 1 }))
+                }}
+              />
+            </div>
+          </aside>
 
-        {drawerOpen && <MenuDrawer onClose={() => setDrawerOpen(false)} />}
+          {drawerOpen && <MenuDrawer onClose={() => setDrawerOpen(false)} />}
 
-        {/* min-w-0 mencegah tabel lebar memaksa seluruh halaman melebar — tanpa itu,
+          {/* min-w-0 mencegah tabel lebar memaksa seluruh halaman melebar — tanpa itu,
             gulir mendatar milik DataTable tidak berfungsi. */}
-        <main className="min-w-0 flex-1 pb-16">{children}</main>
+          <main className="min-w-0 flex-1 pb-16">{children}</main>
+        </div>
       </div>
     </div>
   )
@@ -168,9 +189,8 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       `fixed`, bukan `sticky` (permintaan Work Owner 2026-09-28: bilah atas tetap di
       tempat saat layar digulir). `sticky` berhenti bekerja begitu salah satu wadah di
       atasnya memakai overflow; `fixed` tidak bergantung pada wadah apa pun. Tempatnya
-      dicadangkan `pt-16` pada PageShell.
-
-      `backdrop-blur` membuat isi yang lewat di belakangnya tetap terbaca samar.
+      dicadangkan `pt-16` pada PageShell, dan sejak 2026-09-29 isi halaman digulir di
+      wadah tersendiri di bawahnya sehingga tidak pernah lewat di belakang bilah ini.
     */
     <header className="fixed inset-x-0 top-0 z-30 h-16 border-b border-slate-200 bg-white/85 shadow-lembut backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[100rem] items-center justify-between gap-4 px-4">

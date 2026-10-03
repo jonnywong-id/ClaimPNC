@@ -24,11 +24,24 @@
 //	Activity/GetDataTreatyin_Act-Act.xml           pemilih kueri per peran + "See All Claim"
 //	Activity/GetDataTreatyin_Actkomite-Act.xml     varian komite dari activity yang sama
 //	Activity/GetDataInboxTreaty_act-Act.xml        penentu mode komite (lihat di bawah)
+//	Data Transform/FilterWorkBasket_Act-DT.xml     ISI dropdown pemilih antrean
 //	RDB List/GetClaimTreaty_SQL-SQL.xml            worklist milik pemanggil
 //	RDB List/GetClaimTreatyAllAdmin_SQL-SQL.xml    worklist seluruh petugas
 //	RDB List/GetClaimTreatyTeknik_SQL-SQL.xml      workbasket `TreatyinPNCTeknik`
 //	Report Definition/WorkListKomite2-RD.xml       antrean komite (terhalang, lihat tab.go)
 //	Report Definition/InboxKomiteTreaty_RD-RD.xml  antrean komite (terhalang, lihat tab.go)
+//
+// # DUA kolom yang TIDAK bersumber dari export
+//
+// "Last update" dan "Status Claim ID" tidak ada di satu pun berkas di atas: grid worklist di
+// section hanya punya delapan kolom, dan ketiga kuerinya tidak memilih kolom operator
+// pengubah maupun status. Keduanya terlihat pada Pega PRODUKSI, yang sudah berubah sejak
+// export diambil (`R-09`).
+//
+// Asal keduanya karena itu DITETAPKAN Work Owner 2026-09-29 — `PXUPDATEOPERATOR` dan
+// `PYSTATUSWORK` pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK — dan bukan hasil pembacaan rule.
+// Alasannya ada di WorkItem.LastUpdateOperator. Itulah tabel KETIGA yang dibaca modul ini,
+// dan satu-satunya yang ditambahkan tanpa dasar export.
 //
 // # Layar lama punya DUA MODE, dan pemisahnya bukan tombol
 //
@@ -49,6 +62,32 @@
 // Pembacaan itu sejalan dengan yang sudah ditetapkan modul Master Surveyors: kolom
 // `OPERATOR_ID` pada EMAILKOMITE memang identitas anggota komite
 // (`internal/mastersurveyors/committee/resolver.go`).
+//
+// # Pemilih antreannya DROPDOWN, dan isinya bukan judul kontainer
+//
+// Di layar produksi, yang memilih antrean adalah satu `pxDropdown` yang terikat ke
+// `SearchWorkbasket.CARI1`. Daftar pilihannya BUKAN judul kontainer grid melainkan halaman
+// klipboard `Operator.pxResults`, yang disusun `Data Transform/FilterWorkBasket_Act-DT.xml`:
+//
+//	CARI2 (label)             CARI1 (nilai)        kapan muncul
+//	"Prop Treaty-in Admin"    ""                   selalu
+//	"Prop Treaty-in Teknik"   "TreatyinPNCTeknik"  hanya bila pemanggil ANGGOTA antrean itu
+//	"Choose"                  ""                   entri kosong bawaan dropdown
+//
+// Dua hal yang mudah terlewat dan keduanya tercatat di Tab:
+//
+//   - Label pilihan dan judul grid adalah teks yang BERBEDA dan tampil BERSAMAAN. Dropdown
+//     bertuliskan "Prop Treaty-in Admin", grid di bawahnya berjudul "Work List Treatyin
+//     Propotional". Karena itu Tab punya Name DAN GridTitle.
+//   - "Choose" dan "Prop Treaty-in Admin" BERNILAI SAMA (`CARI1` kosong), sehingga keduanya
+//     menampilkan antrean yang sama. Itu perilaku Pega, bukan cacat.
+//
+// Memilih menjalankan `postValue` lalu `refresh` dengan activity `GetDataTreatyin_Act` —
+// yang di sini menjadi permintaan ulang daftar ke server, bukan pemuatan ulang halaman.
+//
+// Mode komite punya DROPDOWN KEDUA yang terpisah: sumbernya `Operator1.pxResults` dan
+// refresh-nya menjalankan `GetDataTreatyin_Actkomite`. Tidak satu pun rule di export mengisi
+// `Operator1.pxResults` (`R-16`), sehingga daftar pilihannya pun tidak dapat dibaca.
 //
 // # Kenapa modul ini punya TIGA tab, bukan dua mode
 //
@@ -178,6 +217,45 @@ type WorkItem struct {
 	// sekali. Karena itu kolomnya hanya digambar pada tab Work Teknik Treatyin, dan pada
 	// tab lain isian ini memang kosong — bukan hilang.
 	Subjectivity string
+
+	// LastUpdateOperator adalah petugas yang TERAKHIR mengubah objek kerjanya —
+	// `PXUPDATEOPERATOR` pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK, berjudul "Last update".
+	//
+	// # Ia TIDAK ada di export, dan itu perlu dibaca sebelum dipercaya
+	//
+	// Grid `Work List Treatyin Propotional` pada
+	// `Section/InboxClaimTreaty_Section-Section.xml` hanya punya DELAPAN kolom, berakhir di
+	// "Insured Name", dan tidak satu pun dari ketiga kueri `GetClaimTreaty*_SQL` memilih
+	// kolom operator pengubah maupun status. Kolom ini — beserta ClaimStatus di bawah —
+	// terlihat pada Pega PRODUKSI yang sudah berubah sejak export diambil (`R-09`).
+	//
+	// Asalnya karena itu DITETAPKAN Work Owner 2026-09-29, bukan dibaca dari rule. Yang
+	// dipilih adalah kolom yang sama dengan yang sudah dipakai modul saudaranya untuk judul
+	// yang sama — `inboxclaimtreatynonprop.WorkItem.LastUpdateOperator` juga membaca
+	// `PXUPDATEOPERATOR` pada tabel objek kerja yang sama. Dengan begitu dua layar yang
+	// bersebelahan di menu tidak mengartikan "Last update" secara berbeda.
+	//
+	// Ia BUKAN `PXASSIGNEDOPERATORID`: yang itu menyatakan siapa yang MEMEGANG pekerjaan
+	// sekarang, bukan siapa yang terakhir mengubahnya, dan sudah dibawa isian tersendiri di
+	// atas.
+	LastUpdateOperator string
+
+	// ClaimStatus adalah status objek kerja klaimnya — `PYSTATUSWORK` pada
+	// DATAPEGA.PC_ASM_FW_GCNMFW_WORK, berjudul "Status Claim ID".
+	//
+	// Nilainya teks apa adanya dari Pega — "New", "Pending", dan seterusnya — dan TIDAK
+	// diterjemahkan maupun dipetakan ke master status klaim. Dua alasan:
+	//
+	//   * `PYSTATUSWORK` adalah status ALUR KERJA Pega, bukan Status Klaim berkode
+	//     `1134`–`1166` yang dimiliki master `V_STS_CLAIM`. Keduanya konsep berbeda
+	//     (`D-18`), dan memetakan yang satu ke label yang lain akan menampilkan arti yang
+	//     salah tanpa satu pun galat.
+	//   * judul kolomnya di Pega produksi memang "Status Claim ID", dan `D-13` menetapkan
+	//     tampilan meniru Pega — termasuk judul yang menyesatkan.
+	//
+	// Asalnya sama dengan LastUpdateOperator: ditetapkan Work Owner 2026-09-29, bukan
+	// dibaca dari rule.
+	ClaimStatus string
 }
 
 // Caller adalah identitas petugas yang mengirim permintaan.
@@ -210,6 +288,21 @@ func (c Caller) Clean() Caller {
 // Ia tetap dikumpulkan sebagai konstanta, bukan disebar ke dalam SQL dan penyimpanan
 // memori masing-masing, supaya keduanya tidak dapat berselisih tanpa ketahuan.
 const TechnicalWorkbasket = "TreatyinPNCTeknik"
+
+// WorkClass adalah kelas objek kerja klaim treaty proporsional.
+//
+// Nilainya dibaca dari `pyJoinClassName` pada kedua Report Definition: keduanya JOIN ke
+// `ASM-FW-GCNMFW-Work-ClaimTreaty`, dan JOIN ke sebuah kelas di Pega membatasi barisnya ke
+// kelas itu.
+//
+// Ia yang MENGGANTIKAN penyaring `PXREFOBJECTKEY LIKE '%CLMP%'` pada ketiga kueri lama.
+// Perbedaannya bukan gaya: `LIKE` mencocokkan pola di tengah teks kunci — yang kebetulan
+// bekerja karena nomor klaim treaty berawalan `CLMP` — sedangkan kelas objek kerja adalah
+// pembatas yang memang menyatakan jenis klaimnya.
+//
+// Dikumpulkan sebagai konstanta, bukan disebar ke dalam SQL dan penyimpanan memori
+// masing-masing, supaya keduanya tidak dapat berselisih tanpa ketahuan.
+const WorkClass = "ASM-FW-GCNMFW-Work-ClaimTreaty"
 
 // Pagination menyatakan halaman keberapa yang diminta dan sebesar apa.
 //

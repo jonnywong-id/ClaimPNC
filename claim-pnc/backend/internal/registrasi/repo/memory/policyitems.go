@@ -34,7 +34,7 @@ func SamplePolicyItems() map[string][]registrasi.SourceItem {
 			ID: id, Name: name, Location: "Lokasi contoh",
 			Coverage: []registrasi.SourceCoverage{{
 				Code: code, Name: coverageName, TSI: registrasi.Rupiah(tsi),
-				Spreading: []registrasi.SourceSpreading{{TreatyType: "10001", Share: registrasi.PercentFull}},
+				Spreading: []registrasi.SourceSpreading{{TreatyType: "10001", TreatyName: "OR", Share: registrasi.PercentFull}},
 			}},
 		}}
 	}

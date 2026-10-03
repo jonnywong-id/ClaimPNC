@@ -28,6 +28,9 @@ type Policy struct {
 	ReferenceNumber string
 	GroupPanel      string
 
+	// Leader adalah Polis Leader — LEADERPOLICYCOAS, `.Policy.PolicyLeader` di form.
+	Leader string
+
 	// Syariah adalah `SYARIAHSTATUS = 1`. Polis Syariah tidak dilaporkan lewat aplikasi
 	// ini (langkah 8 dan 9).
 	Syariah bool

@@ -262,8 +262,11 @@ const (
 //
 // # Ini SELISIH terhadap Pega, dan disengaja
 //
-// Di Pega `TempView.CityID` mulai KOSONG, dan seluruh wadah isinya bersyarat
-// `TempView.CityID!=''`. Artinya layar Pega mula-mula menggambar tabel ringkas saja —
+// Di Pega `TempView.CityID` mulai KOSONG, dan seluruh wadah isinya bersyarat:
+//
+//	TempView.CityID!=''
+//
+// Artinya layar Pega mula-mula menggambar tabel ringkas saja —
 // tidak satu pun daftar — sampai pengguna menekan salah satu angkanya.
 //
 // Membuka tab pertama secara langsung menghemat satu klik yang tidak menyampaikan apa pun,

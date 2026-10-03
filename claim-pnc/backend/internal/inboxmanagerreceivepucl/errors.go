@@ -28,6 +28,19 @@ var (
 	// pengguna, dan hanya yang pertama yang memberi tahu apa yang harus dilakukannya.
 	ErrWriteNotAvailable = errors.New(
 		"inboxmanagerreceivepucl: modul ini belum menulis apa pun")
+
+	// ErrReferenceRequired berarti layar kerja diminta tanpa menyebut berkas mana.
+	ErrReferenceRequired = errors.New(
+		"inboxmanagerreceivepucl: kunci berkas penerimaan dokumen wajib disebut")
+
+	// ErrDocumentNotFound berarti tidak ada berkas penerimaan dokumen dengan kunci itu.
+	//
+	// Ia DIBEDAKAN dari berkas yang isiannya kosong, dan pembedaan itu bukan kerapian: pada
+	// layar yang 16 isiannya memang terhalang, berkas yang tidak ada akan tergambar persis
+	// seperti berkas yang ada tetapi belum diisi. Tanpa galat ini, kunci yang salah ketik
+	// menghasilkan layar yang tampak wajar.
+	ErrDocumentNotFound = errors.New(
+		"inboxmanagerreceivepucl: berkas penerimaan dokumen tidak ditemukan")
 )
 
 // Nama isian yang dapat ditunjuk sebuah pelanggaran validasi.

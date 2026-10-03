@@ -455,6 +455,9 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `POST` | `/api/master/bengkel` | wajib | **wajib** | 33 isian; `ID_BENGKEL` diterbitkan server → `201` |
 | `PUT` | `/api/master/bengkel/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval |
 | `POST` | `/api/master/bengkel/keputusan` | wajib | **wajib** | `{id_bengkel: [...], status}` — keputusan **borongan**, paling banyak 200 baris |
+| `POST` | `/api/master/bengkel/{id}/dokumen` | wajib | **wajib** | unggah lampiran (`multipart`, bagian `berkas`); maksimum 10 MB; pdf · jpg · png · csv · xls · xlsx → `201` |
+| `GET` | `/api/master/bengkel/{id}/dokumen` | wajib | **wajib** | metadata lampiran; `berisi=false` menandai dokumen warisan Pega yang isinya tidak pernah tersimpan |
+| `GET` | `/api/master/bengkel/{id}/dokumen/berkas` | wajib | **wajib** | isi berkasnya, bukan JSON; `404 dokumen_tanpa_isi` bila dokumennya warisan |
 | `GET` | `/api/master/bengkel/cabang` | wajib | **wajib** | daftar cabang; `GENERAL.LST_USER_ASURANSI` + `LST_DET_CABANG` |
 | `GET` | `/api/master/bengkel/kota` | wajib | **wajib** | lookup `CITY`; saringan `cari`, minimal 2 huruf |
 | `GET` | `/api/master/bengkel/bank` | wajib | **wajib** | daftar bank dari `GENERAL.LST_BANK_GROUP` |

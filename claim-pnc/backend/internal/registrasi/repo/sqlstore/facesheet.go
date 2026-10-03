@@ -58,14 +58,14 @@ func (s *FaceSheetStore) OperatorName(ctx context.Context, operatorID string) (s
 	return "", rows.Err()
 }
 
-// Coinsurance membaca CoinsList dokumen polis.
-func (s *FaceSheetStore) Coinsurance(ctx context.Context, policyNumber string) ([]registrasi.CoinsuranceRow, error) {
-	return s.policy.coinsurance(ctx, s.db, strings.TrimSpace(policyNumber))
+// Coinsurance membaca T_COINSLIST polis pada PRODKE-nya.
+func (s *FaceSheetStore) Coinsurance(ctx context.Context, policyNumber, prodKe string) ([]registrasi.CoinsuranceRow, error) {
+	return s.policy.coinsurance(ctx, s.db, strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe))
 }
 
-// FacReinsurers membaca FacOfferList dokumen polis.
-func (s *FaceSheetStore) FacReinsurers(ctx context.Context, policyNumber string) ([]registrasi.FacReinsurer, error) {
-	rows, err := s.db.QueryContext(ctx, loadQuery("cfs_fac_offer"), strings.TrimSpace(policyNumber))
+// FacReinsurers membaca T_FACOFFER polis pada PRODKE-nya.
+func (s *FaceSheetStore) FacReinsurers(ctx context.Context, policyNumber, prodKe string) ([]registrasi.FacReinsurer, error) {
+	rows, err := s.db.QueryContext(ctx, loadQuery("cfs_fac_offer"), strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe))
 	if err != nil {
 		return nil, fmt.Errorf("registrasi/sqlstore: membaca fac offer polis %q: %w", policyNumber, err)
 	}

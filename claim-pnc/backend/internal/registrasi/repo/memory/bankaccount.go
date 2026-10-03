@@ -21,11 +21,11 @@ func NewAccounts() *Accounts {
 	a.Add(registrasi.BankAccount{
 		Number: "1234567890", Name: "PT CONTOH PENERIMA", BankName: "BANK CONTOH", Branch: "JAKARTA",
 		Address: "JL. CONTOH NO. 1", BankID: "001", Email: "penerima@contoh.internal",
-		CommitteeApprovedAt: time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC),
+		CommitteeApprovedAt: time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC), Approval: "1",
 	})
 	a.Add(registrasi.BankAccount{
 		Number: "9876543210", Name: "CV CONTOH KEDUA", BankName: "BANK CONTOH", Branch: "SURABAYA",
-		Address: "JL. CONTOH NO. 2", BankID: "001",
+		Address: "JL. CONTOH NO. 2", BankID: "001", Approval: "1",
 	})
 	return a
 }

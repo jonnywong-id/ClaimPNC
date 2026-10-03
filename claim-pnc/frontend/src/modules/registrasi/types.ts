@@ -104,6 +104,16 @@ export type Settlement = {
   catatan: string
   status_akseptasi: string
   nomor_akseptasi: string
+  /** STATUSAKSEPTASILOD — `.AcceptationStatusLOD`: "" belum, "1" disetujui, "0" tidak. */
+  status_akseptasi_lod?: string
+  /** Print LOD terakhir (PRINTLOD_DATE, RFC3339) dan jenisnya (PDFTYPE) — baca saja di form akseptasi. */
+  tanggal_cetak_lod?: string
+  tipe_pdf_lod?: string
+  nama_tipe_pdf_lod?: string
+  /** Transfer Kasir: TRANSFER_CASHIER_DATE, IDCHASIER, dan penanda sudah ditransfer. */
+  tanggal_transfer_kasir?: string
+  case_id_kasir?: string
+  sudah_transfer_kasir?: boolean
   /** Terisi begitu baris ditransfer ke komite (CASEIDKOMITE); baris itu tidak dapat ditransfer ulang. */
   komite_id?: string
   tanggal_transfer_komite?: string
@@ -336,6 +346,28 @@ export type AreaOptionsResponse = {
   pilihan: AreaOption[]
 }
 
+/**
+ * Isian awal form AcceptationLOD (AcceptationLOD_PreAct): Tipe Akseptasi beserta pilihannya,
+ * Nama Komite Akseptasi, Nilai LOD (Non-MBU saja), dan peringatan yang menolak akseptasi.
+ */
+export type AcceptanceDefaults = {
+  tipe_akseptasi: string
+  pilihan_tipe_akseptasi: { id: string; nama: string }[]
+  nama_komite_akseptasi: string
+  nilai_lod_sen?: number
+  peringatan: string[]
+}
+
+/** Satu pilihan Penyebab Kerugian: id D_COL_ID, nama DESCRIPTION. */
+export type CauseOfLossOption = {
+  id: string
+  nama: string
+}
+
+export type CauseOfLossOptionsResponse = {
+  pilihan: CauseOfLossOption[]
+}
+
 /** Negara yang membuka isian Kota sampai Kode Pos (kondisi Country = 'INDONESIA'). */
 export const COUNTRY_INDONESIA = 'INDONESIA'
 
@@ -359,6 +391,11 @@ export type Claim = {
   wilayah: Area
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
+  /** Isian InputRegisterDetail2_sect: EMAIL_LOD, REMARKRECOMENDATION, SUBJECTEMAIL, STSSALVAGE. */
+  email_lod?: string
+  rekomendasi?: string
+  subjek_email?: string
+  status_salvage?: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string
@@ -454,6 +491,10 @@ export type RegisterRequest = {
   wilayah: Area
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
+  email_lod: string
+  rekomendasi: string
+  subjek_email: string
+  status_salvage: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string
@@ -560,4 +601,69 @@ export type PLAListResponse = {
   revisi_cfs: number
   baru_terbit: number
   pla: PLARow[]
+}
+
+/**
+ * Alamat satu baris adjustment untuk dialog Print DLA. Indeks berbasis 1. Nomor memilih satu
+ * DLA untuk dicetak (kosong = seluruhnya); catatan berisi REMARKS per nomor yang belum dicetak.
+ */
+export type DLARequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  nomor?: string
+  catatan?: Record<string, string>
+  sesuai_polis?: boolean
+}
+
+/** Satu baris grid layar PrintDLA. */
+export type DLARow = {
+  nomor: string
+  penerima: string
+  tipe: string
+  catatan: string
+  email: string
+  tanggal: string
+  nilai: string
+  mata_uang: string
+  sudah_cetak: boolean
+  sudah_kirim: boolean
+}
+
+/** Alamat satu baris adjustment untuk Transfer Kasir. Indeks berbasis 1. */
+export type CashierRequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+  /** "Tipe Transfer Kasir": 1 Pembayaran Biasa, 2 Join Placement, 3 Fronting. */
+  tipe_transfer?: string
+  /** No DLA FAC OUT yang dicentang "Pilih Fac-out Tidak Dibayar". */
+  fac_out_tidak_dibayar?: string[]
+}
+
+/** Isi dialog konfirmasi Transfer Kasir; masalah berisi galat validasi pertama. */
+export type CashierPreview = {
+  nomor_akseptasi: string
+  penerima: string
+  nomor_rekening: string
+  nama_bank: string
+  email: string
+  nilai_nett_sen: number
+  mata_uang: string
+  masalah: string
+  /** Kalimat konfirmasi Pega (Pre_AlertTransferkasir). */
+  konfirmasi: string
+  /** Pilihan "Tipe Transfer Kasir" (property JoinPlacement). */
+  tipe_transfer: { id: string; nama: string }[]
+  /** DLA FAC OUT adjustment ini (GetdataFacoutJoinPlacement). */
+  fac_out: { nomor_dla: string; nama_facout: string; nilai_bayar: string; mata_uang: string }[]
+}
+
+export type DLAListResponse = {
+  baru_terbit: number
+  ex_gratia: boolean
+  peringatan: string[]
+  dla: DLARow[]
 }

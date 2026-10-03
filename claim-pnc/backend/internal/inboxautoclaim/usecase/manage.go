@@ -11,6 +11,8 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
 
 	"claim-pnc/internal/inboxautoclaim"
 )
@@ -18,12 +20,18 @@ import (
 // Service adalah pintu masuk seluruh perkara Inbox Auto Claim.
 type Service struct {
 	repoSelector inboxautoclaim.RepoSelector
+	premium      inboxautoclaim.PremiumChecker
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
 	// RepoSelector memilih penyimpanan milik satu portal entitas. Wajib.
 	RepoSelector inboxautoclaim.RepoSelector
+
+	// Premium memeriksa status premi setiap baris unggahan. Wajib: Work Owner menetapkan
+	// (2026-09-29) SEMUA baris di ketiga tab dicek preminya, sehingga rakitan tanpa
+	// pemeriksa premi harus gagal saat start — bukan diam-diam meloloskan setiap baris.
+	Premium inboxautoclaim.PremiumChecker
 }
 
 // NewService membentuk layanan dan menolak bahan yang tidak lengkap.
@@ -34,7 +42,10 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("inboxautoclaim/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector}, nil
+	if o.Premium == nil {
+		return nil, errors.New("inboxautoclaim/usecase: pemeriksa premi wajib diisi")
+	}
+	return &Service{repoSelector: o.RepoSelector, premium: o.Premium}, nil
 }
 
 // requireSource menolak tab yang tidak dikenal, termasuk NILAI KOSONG.
@@ -77,6 +88,47 @@ func (s *Service) ListCompany(ctx context.Context, portalAlias string) ([]inboxa
 		return nil, err
 	}
 	return repo.ListCompany(ctx)
+}
+
+// PremiumCheckChoices mengembalikan isi kedua isian tab Cek Premi.
+func (s *Service) PremiumCheckChoices(ctx context.Context, portalAlias string) (inboxautoclaim.PremiumCheckChoices, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxautoclaim.PremiumCheckChoices{}, err
+	}
+	return repo.PremiumCheckChoices(ctx)
+}
+
+// CheckPremiumTotal menjalankan tombol Cek Premi: total premi terbayar dari layanan REST,
+// lalu total klaim Kredit yang sudah Sukses Klaim dari basis data.
+//
+// Urutannya mengikuti `CekPremi-Act` (layanan dulu, kueri kemudian). Layanan yang gagal
+// menghentikan seluruhnya dengan ErrPremiumServiceUnavailable — menampilkan Total Klaim
+// tanpa Total Premi mengundang petugas membandingkan angka dengan nol.
+func (s *Service) CheckPremiumTotal(
+	ctx context.Context,
+	portalAlias string,
+	query inboxautoclaim.PremiumCheckQuery,
+) (inboxautoclaim.PremiumCheckResult, error) {
+	clean, err := query.Clean()
+	if err != nil {
+		return inboxautoclaim.PremiumCheckResult{}, err
+	}
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxautoclaim.PremiumCheckResult{}, err
+	}
+
+	paid, err := s.premium.PremiumPaidBySource(ctx, portalAlias, clean)
+	if err != nil {
+		return inboxautoclaim.PremiumCheckResult{}, fmt.Errorf("%w: %v", inboxautoclaim.ErrPremiumServiceUnavailable, err)
+	}
+
+	claim, err := repo.SucceededClaimTotal(ctx, clean)
+	if err != nil {
+		return inboxautoclaim.PremiumCheckResult{}, err
+	}
+	return inboxautoclaim.PremiumCheckResult{PremiumPaid: paid, ClaimTotal: claim}, nil
 }
 
 // SummarizeCompany mengembalikan ringkasan jumlah batch per perusahaan.
@@ -228,12 +280,12 @@ func (s *Service) Export(
 // grid. Baris seperti itu dikembalikan sebagai Rejected supaya pengunggah tahu, bukan
 // disimpan ke tempat yang tidak dapat dilihat siapa pun.
 //
-// # Dua pemeriksaan yang BELUM dapat dijalankan
+// # Periode polis dan premi (2026-09-29)
 //
-// "Tanggal kejadian tidak dalam range polis" menuntut periode polis dari snapshot (B-1),
-// dan "Premi belum lunas" menuntut `CekPremiAutoKlaim` yang belum ada di export. Baris
-// yang seharusnya gagal karena keduanya akan LOLOS di sini dan diteruskan ke pemrosesan.
-// Konsekuensinya dicatat di docs/keputusan-implementasi.md §18.
+// Periode, status, dan mata uang polis dibaca dari T_GENERAL; status premi dari layanan
+// `CekPremiAutoKlaim` untuk SEMUA baris (lihat checkPremium). Yang masih BELUM dibawa dari
+// tab Kredit: "Tidak bisa input adjustment" dan "Objek belum ada Outstanding" (alur
+// akseptasi) — lihat docs/keputusan-implementasi.md §64.
 func (s *Service) Upload(
 	ctx context.Context,
 	portalAlias string,
@@ -255,7 +307,13 @@ func (s *Service) Upload(
 
 	var (
 		line     []inboxautoclaim.UploadLine
+		policy   []inboxautoclaim.PolicyDetail
 		rejected []inboxautoclaim.RejectedRow
+
+		// Kontrak Kredit yang sudah muncul di berkas ini. Pega menyisipkan per baris, sehingga
+		// baris kedua berkontrak sama tertangkap `CekObjekNotDouble`; di sini seluruh berkas
+		// disimpan sekaligus di akhir, jadi baris kembar di dalam berkas dicatat sendiri.
+		seenContract = map[string]bool{}
 	)
 
 	for _, r := range row {
@@ -285,13 +343,27 @@ func (s *Service) Upload(
 			continue
 		}
 
+		if source == inboxautoclaim.SourceKredit && resolved.Message == "" {
+			key := resolved.CompanyCode + "\x00" + strings.ToUpper(strings.TrimSpace(r.ContractNo))
+			if seenContract[key] {
+				resolved.Message = inboxautoclaim.MessageAlreadyClaimed
+			}
+			seenContract[key] = true
+		}
+
 		line = append(line, inboxautoclaim.UploadLine{
 			Row:         r,
 			CompanyCode: resolved.CompanyCode,
 			CompanyName: resolved.CompanyName,
 			ProductSeq:  resolved.ProductSeq,
+			CurrencyID:  resolved.CurrencyID,
 			Message:     resolved.Message,
 		})
+		policy = append(policy, resolved.Policy)
+	}
+
+	if err := s.checkPremium(ctx, repo, portalAlias, source, line, policy); err != nil {
+		return inboxautoclaim.UploadResult{}, err
 	}
 
 	if len(line) == 0 {
@@ -363,13 +435,139 @@ func (s *Service) resolve(
 	}
 	resolution.ProductSeq = productSeq
 
-	// Proteksi tanggal MENGIKUTI TAB — hanya ANEKA yang membandingkan tanggal lapor dengan
-	// tanggal kejadian. Kredit tidak punya kedua tanggal itu, Travel tidak punya tanggal
-	// lapor (lihat inboxautoclaim.CheckRowForSource).
-	if message, _ := inboxautoclaim.CheckRowForSource(source, row); message != "" {
-		resolution.Message = message
+	// Data polis dari T_GENERAL — pengganti snapshot JSON yang sudah tidak dipakai.
+	detail, found, err := repo.FindPolicyDetail(ctx, row.PolicyNo, productSeq)
+	if err != nil {
+		return inboxautoclaim.Resolution{}, err
+	}
+	if !found {
+		resolution.Message = inboxautoclaim.MessagePolicyNotFound
+		return resolution, nil
+	}
+	resolution.Policy = detail
+
+	// Mata uang tidak pernah menggagalkan baris: kode yang tidak dikenal hanya membuat
+	// kolom CURRENCY kosong, sama seperti sebelum pencarian ini ada.
+	if currencyID, known, err := repo.CurrencyID(ctx, detail.Currency); err != nil {
+		return inboxautoclaim.Resolution{}, err
+	} else if known {
+		resolution.CurrencyID = currencyID
+	}
+
+	switch source {
+	case inboxautoclaim.SourceKredit:
+		// "Sudah Klaim" — kontrak yang sama sudah pernah diunggah dan belum gagal.
+		claimed, err := repo.ContractClaimed(ctx, company.Code, strings.ToUpper(row.ContractNo))
+		if err != nil {
+			return inboxautoclaim.Resolution{}, err
+		}
+		if claimed {
+			resolution.Message = inboxautoclaim.MessageAlreadyClaimed
+		}
+	case inboxautoclaim.SourceAneka:
+		// Urutan tanggal lebih dulu (Other :4936), lalu periode polis KHUSUS produk hewan
+		// (Other :5005).
+		if message, _ := inboxautoclaim.CheckRowForSource(source, row); message != "" {
+			resolution.Message = message
+		} else if detail.BusinessCode == inboxautoclaim.PetBusinessCode && !detail.Covers(row.DateOfLoss) {
+			resolution.Message = inboxautoclaim.MessageLossOutsidePolicy
+		}
+	case inboxautoclaim.SourceTravel:
+		// Travel tidak punya tanggal lapor; yang diperiksa hanya periode polis (:5647).
+		if !detail.Covers(row.DateOfLoss) {
+			resolution.Message = inboxautoclaim.MessageLossOutsidePolicyTravel
+		}
 	}
 	return resolution, nil
+}
+
+// premiumWorkers membatasi pemanggilan layanan premi yang berjalan bersamaan.
+//
+// Satu berkas dapat memuat ribuan baris. Memanggil satu per satu membuat unggahan menunggu
+// menit-an; memanggil semuanya sekaligus membanjiri layanan milik sistem lain. Delapan
+// adalah kompromi yang menjaga keduanya.
+const premiumWorkers = 8
+
+// checkPremium menjalankan cek premi untuk setiap baris yang masih lolos, lalu pemeriksaan
+// yang dalam urutan Pega berada SESUDAH premi.
+//
+// # Aturannya (keputusan Work Owner 2026-09-29)
+//
+//   - SEMUA baris di ketiga tab dicek — tidak dibatasi Source of Business seperti Pega.
+//   - Layanan mati, belum terdaftar, atau jawabannya tak terbaca → MessagePremiumCheckFailed.
+//   - Belum lunas (`AgingAmount` kosong atau > 1) → MessagePremiumUnpaid; KECUALI di tab
+//     Travel dan ANEKA bila polis punya Open Protection tipe 3 di T_CLAIM_OPENPROTECTION.
+//   - Tab Kredit: sesudah premi lolos, polis yang dibatalkan → MessagePolicyCancelled
+//     (urutan InsertKlaimToTable_Kredit: premi :8471 lalu batal :9301).
+//
+// Layanan dipanggil SEKALI per pasangan (polis, prodke): satu berkas lazim memuat polis
+// yang sama berulang, dan jawabannya tidak berubah dalam satu unggahan.
+func (s *Service) checkPremium(
+	ctx context.Context,
+	repo inboxautoclaim.Repo,
+	portalAlias string,
+	source inboxautoclaim.Source,
+	line []inboxautoclaim.UploadLine,
+	policy []inboxautoclaim.PolicyDetail,
+) error {
+	type outcome struct {
+		answer inboxautoclaim.PremiumAnswer
+		err    error
+	}
+
+	unique := map[inboxautoclaim.PremiumQuery]*outcome{}
+	for _, l := range line {
+		if l.Accepted() {
+			unique[inboxautoclaim.PremiumQuery{PolicyNo: l.Row.PolicyNo, ProductSeq: l.ProductSeq}] = &outcome{}
+		}
+	}
+
+	var (
+		wait  sync.WaitGroup
+		slots = make(chan struct{}, premiumWorkers)
+	)
+	for query, result := range unique {
+		wait.Add(1)
+		slots <- struct{}{}
+		go func(query inboxautoclaim.PremiumQuery, result *outcome) {
+			defer wait.Done()
+			defer func() { <-slots }()
+			result.answer, result.err = s.premium.CheckPremium(ctx, portalAlias, query)
+		}(query, result)
+	}
+	wait.Wait()
+
+	for index := range line {
+		l := &line[index]
+		if !l.Accepted() {
+			continue
+		}
+		result := unique[inboxautoclaim.PremiumQuery{PolicyNo: l.Row.PolicyNo, ProductSeq: l.ProductSeq}]
+
+		switch {
+		case result.err != nil:
+			l.Message = inboxautoclaim.MessagePremiumCheckFailed
+			continue
+		case result.answer.Unpaid():
+			exempt := false
+			if source != inboxautoclaim.SourceKredit {
+				protected, err := repo.HasOpenProtection(ctx, l.Row.PolicyNo, inboxautoclaim.OpenProtectionPremiumType)
+				if err != nil {
+					return err
+				}
+				exempt = protected
+			}
+			if !exempt {
+				l.Message = inboxautoclaim.MessagePremiumUnpaid
+				continue
+			}
+		}
+
+		if source == inboxautoclaim.SourceKredit && policy[index].Cancelled() {
+			l.Message = inboxautoclaim.MessagePolicyCancelled
+		}
+	}
+	return nil
 }
 
 // EnsurePortalReady memeriksa portal dapat dilayani tanpa menyentuh satu baris pun.

@@ -29,7 +29,7 @@ type FaceSheetResult struct {
 // Dokumen dibentuk SEBELUM transaksi dibuka: bila pembentukannya gagal, tidak ada estimasi
 // yang terkunci tanpa dokumennya pernah sampai ke petugas.
 func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by Caller) (FaceSheetResult, error) {
-	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate})
+	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate, alsoAction: registrasi.ActionInputSurveyor})
 	if err != nil {
 		return FaceSheetResult{}, err
 	}
@@ -111,10 +111,10 @@ func (l *Service) faceSheetInput(ctx context.Context, claim registrasi.Claim, p 
 	if in.Policy, err = l.policy.Get(ctx, claim.Policy.Number); err != nil {
 		return in, err
 	}
-	if in.CoMember, err = l.faceSheet.Coinsurance(ctx, claim.Policy.Number); err != nil {
+	if in.CoMember, err = l.faceSheet.Coinsurance(ctx, claim.Policy.Number, claim.Policy.ProdKe); err != nil {
 		return in, err
 	}
-	if in.Reinsurer, err = l.faceSheet.FacReinsurers(ctx, claim.Policy.Number); err != nil {
+	if in.Reinsurer, err = l.faceSheet.FacReinsurers(ctx, claim.Policy.Number, claim.Policy.ProdKe); err != nil {
 		return in, err
 	}
 	cause := claim.InsuredItem[p.Object-1].Coverage[p.Coverage-1].CauseOfLoss

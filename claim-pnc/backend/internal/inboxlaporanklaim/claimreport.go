@@ -250,10 +250,15 @@ type ClaimReport struct {
 	// menghitung apa pun di modul ini.
 	EstimateValue Money
 
-	LossLocation     string // .ReceiveDocument.LokasiKejadian     — "Lokasi Kejadian"
-	Chronology       string // .ReceiveDocument.KronologisKejadian — "Kronologis Kejadian"
-	DamageDetail     string // .ReceiveDocument.RincianKerusakan   — "Rincian Kerusakan"
+	LossLocation      string // .ReceiveDocument.LokasiKejadian     — "Lokasi Kejadian"
+	Chronology        string // .ReceiveDocument.KronologisKejadian — "Kronologis Kejadian"
+	DamageDetail      string // .ReceiveDocument.RincianKerusakan   — "Rincian Kerusakan"
 	NotRegisteredNote string // .ReceiveDocument.NotRegistNote     — "Keterangan Belum Registrasi"
+
+	GroupPanel    string // GROUPPANEL       — Group Panel polis saat berkas disimpan
+	InsuredEmail  string // EMAILTERTANGGUNG — .ReceiveDocument.EmailLOD, "Email Tertanggung" (PA)
+	DriverLicense string // SIMPENGENDARA    — .ReceiveDocument.SIM (PA)
+	ReportSource  string // RESOURCES        — .ReceiveDocument.Resource, "Source Of Reports"
 
 	// DocumentCount adalah Total Jumlah Dokumen — `.ReceiveDocument.NumberOfDocument`.
 	//
@@ -277,6 +282,10 @@ type ClaimReport struct {
 	// Origin menyebut tabel asal baris ini. Lihat Origin.
 	Origin Origin
 }
+
+// Editable menyatakan isian berkas boleh disimpan dari sini: milik aplikasi ini (P-1) dan
+// belum menjadi klaim (Work Owner, 2026-09-29).
+func (r ClaimReport) Editable() bool { return r.Origin == OriginNew && !r.Registered() }
 
 // AgingDays menghitung umur berkas dalam hari penuh terhadap waktu acuan.
 //

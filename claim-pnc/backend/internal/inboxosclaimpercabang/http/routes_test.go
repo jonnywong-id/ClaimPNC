@@ -37,10 +37,12 @@ var testNow = time.Date(2026, time.September, 28, 5, 0, 0, 0, time.UTC)
 // testServer membentuk server dengan pemanggil yang punya cabang.
 func testServer(t *testing.T) http.Handler {
 	t.Helper()
+	// "078" adalah kode cabang RINCI CILEGON — yang dikirim HCQ. Barisnya sendiri berkode
+	// "100099", dan perbedaan itu sengaja: bila kode diteruskan tanpa diterjemahkan, uji di
+	// berkas ini gagal seketika alih-alih lulus dengan daftar kosong.
 	return buildServer(t, oscabanghttp.Caller{
-		Login:      "PETUGAS1",
-		BranchCode: "100099",
-		BranchName: "DARI SESI",
+		Login:            "PETUGAS1",
+		DetailBranchCode: "078",
 	}, true)
 }
 
@@ -53,7 +55,6 @@ func buildServer(t *testing.T, caller oscabanghttp.Caller, known bool) http.Hand
 		// Pemilih mengabaikan alias: yang diuji di berkas ini adalah lapisan transport,
 		// bukan pemilihan basis data per entitas. Pemilihan itu diuji di usecase.
 		RepoSelector: func(string) (inboxosclaimpercabang.Repo, error) { return store, nil },
-		Branches:     inboxosclaimpercabang.CallerBranch{},
 		Clock:        clock.FixedAt(testNow),
 	})
 	require.NoError(t, err)
@@ -233,6 +234,23 @@ func TestCallerWithoutBranchGetsTheLegacyNoticeNotAnEmptyList(t *testing.T) {
 	require.Equal(t, "cabang_tidak_diketahui", body["kode"])
 	require.Equal(t, inboxosclaimpercabang.BranchUnknownNotice, body["pesan"],
 		"pesannya harus sama persis dengan yang dibaca pengguna di Pega")
+}
+
+func TestClaimBranchCodeSentAsDetailCodeGetsTheSameNoticeNotOtherBranchRows(t *testing.T) {
+	// Jembatan dari modul auth punya DUA field bernama "cabang" di profil yang sama, dan hanya
+	// satu yang benar di sini. Bila yang keliru diteruskan, layar tidak menghasilkan galat —
+	// ia hanya berhenti menemukan baris, dan itu terbaca sebagai "tidak ada pekerjaan".
+	server := buildServer(t, oscabanghttp.Caller{
+		Login:            "PETUGAS1",
+		DetailBranchCode: "100099", // kode klaim, bukan kode rinci
+	}, true)
+
+	recorder := get(t, server, "/api/inbox-os-claim-per-cabang")
+	require.Equal(t, http.StatusConflict, recorder.Code,
+		"kode yang salah ruang harus ditolak, bukan menghasilkan daftar kosong")
+
+	body := decode(t, recorder)
+	require.Equal(t, "cabang_tidak_diketahui", body["kode"])
 }
 
 func TestPaginationIsReportedBack(t *testing.T) {

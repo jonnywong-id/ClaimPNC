@@ -119,7 +119,7 @@ export function useCreateClaimReport() {
     // lencana kesembilan tab ikut berubah — daftar yang disusun sendiri di peramban akan
     // berbeda dari isi tabel yang sebenarnya.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
     },
   })
 }
@@ -188,8 +188,8 @@ export function useSaveClaimReport(id: string) {
     // menampilkannya. Mengisi nomor polis atau tanggal kejadian mengubah apa yang
     // tergambar di grid, dan daftar yang tidak dimuat ulang akan menampilkan isi lama.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim-berkas', portal, token, id] })
-      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim-berkas', portal, token, id] })
+      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
     },
   })
 }
@@ -311,7 +311,7 @@ export function useRegisterClaim() {
     // Daftar laporan dimuat ulang: begitu klaim terbit, NOKLAIM pada baris RCV terisi dan
     // berkasnya berpindah keluar dari tab Not Transferred.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
     },
   })
 }

@@ -139,7 +139,7 @@ export function useCreateClause() {
     mutationFn: (input: ClauseInput) =>
       callAPI<ClauseResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
+      client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
     },
   })
 }
@@ -165,8 +165,8 @@ export function useUpdateClause() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
-      void client.invalidateQueries({ queryKey: ['master-pasal-kerugian-detail'] })
+      client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
+      client.invalidateQueries({ queryKey: ['master-pasal-kerugian-detail'] })
     },
   })
 }
@@ -197,8 +197,8 @@ export function useDeleteClause() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
-      void client.invalidateQueries({ queryKey: ['master-pasal-kerugian-detail'] })
+      client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
+      client.invalidateQueries({ queryKey: ['master-pasal-kerugian-detail'] })
     },
   })
 }

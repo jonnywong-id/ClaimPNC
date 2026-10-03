@@ -176,30 +176,93 @@ func TestAwalanKlaimMenyaringLayarSaudara(t *testing.T) {
 	}
 }
 
-// Status menyatakan ANTREAN, bukan status klaim: seluruh baris satu tab memakai teks yang
-// sama, dan teksnya berbeda antar tab.
+// Kolom berjudul "Status" berisi WAKTU objek kerja dibuat, bukan teks tetap per antrean.
 //
-// Ia diuji karena kedua teks itu literal di dalam kueri, bukan data — dan hal yang tidak
-// datang dari data adalah hal yang paling mudah tertinggal saat kuerinya disunting.
-func TestStatusMengikutiAntrean(t *testing.T) {
+// Bentuknya notasi internal Pega — itulah yang terbaca di layar lama — dan ia SAMA untuk
+// kedua antrean, karena sumbernya satu kolom yang sama. Versi sebelumnya mengisinya dengan
+// "Estimation"/"Acceptation", yang tidak pernah digambar sel mana pun di Pega.
+func TestKolomStatusBerisiWaktuPembuatanObjekKerja(t *testing.T) {
 	store := memory.NewSampleStore()
 
-	admin := listAll(t, store, newQuery(
-		t, inboxclaimtreatynonprop.TabAdmin, false, false, callerAdmin1))
-	for _, item := range admin.Items {
-		if item.Status != inboxclaimtreatynonprop.StatusEstimation {
-			t.Fatalf("status baris %q di tab Admin = %q, ingin %q",
-				item.ClaimID, item.Status, inboxclaimtreatynonprop.StatusEstimation)
+	// Waktu baris contoh dipatok di `sample.go`: CLMNP-1001 dibuat 2026-09-18 pukul 03:00
+	// UTC, dan CLMNP-2001 pada 2026-09-17 di jam yang sama.
+	want := map[string]string{
+		"CLMNP-1001": "20260918T030000.000 GMT",
+		"CLMNP-2001": "20260917T030000.000 GMT",
+	}
+
+	seen := map[string]string{}
+	for _, code := range []string{
+		inboxclaimtreatynonprop.TabAdmin,
+		inboxclaimtreatynonprop.TabTechnical,
+	} {
+		page := listAll(t, store, newQuery(t, code, false, false, callerAdmin1))
+		for _, item := range page.Items {
+			seen[item.ClaimID] = item.CreatedAt
 		}
 	}
 
-	technical := listAll(t, store, newQuery(
-		t, inboxclaimtreatynonprop.TabTechnical, false, false, callerAdmin1))
-	for _, item := range technical.Items {
-		if item.Status != inboxclaimtreatynonprop.StatusAcceptation {
-			t.Fatalf("status baris %q di tab Teknik = %q, ingin %q",
-				item.ClaimID, item.Status, inboxclaimtreatynonprop.StatusAcceptation)
+	for id, text := range want {
+		if seen[id] != text {
+			t.Fatalf("kolom Status baris %q = %q, ingin %q", id, seen[id], text)
 		}
+	}
+}
+
+// Waktu yang tidak diketahui menghasilkan teks KOSONG, bukan tanggal tahun satu.
+//
+// Baris penugasan yang objek kerjanya tidak punya pasangan mengembalikan NULL — dan LEFT
+// JOIN membuat keadaan itu mungkin. "00010101T000000.000 GMT" di layar terbaca sebagai data
+// rusak, bukan sebagai data yang memang tidak ada.
+func TestWaktuKosongTidakMenjadiTanggalTahunSatu(t *testing.T) {
+	if got := inboxclaimtreatynonprop.FormatPegaDateTime(time.Time{}); got != "" {
+		t.Fatalf("waktu nol = %q, ingin teks kosong", got)
+	}
+}
+
+// Umur dihitung terhadap TANGGAL WIB, bukan tanggal UTC.
+//
+// Ini yang membedakannya dari `TRUNC(SYSDATE)` pada basis data yang berjalan di zona WIB.
+// Memakai UTC akan membuat pekerjaan yang dibuat sebelum pukul 07:00 WIB terhitung satu hari
+// lebih tua — kelas cacat yang sama dengan penyesuaian 7 jam manual di sistem lama (`R-12`).
+func TestUmurDihitungTerhadapTanggalWIB(t *testing.T) {
+	// 2026-09-18 pukul 02:00 UTC = 09:00 WIB, masih tanggal 18 di kedua zona.
+	// 2026-09-18 pukul 20:00 UTC = 03:00 WIB tanggal 19 — di sinilah keduanya berbeda.
+	created := time.Date(2026, time.September, 18, 20, 0, 0, 0, time.UTC)
+	now := time.Date(2026, time.September, 19, 20, 0, 0, 0, time.UTC)
+
+	// Menurut WIB keduanya jatuh pada 19 dan 20 September: selisihnya satu hari.
+	if got := inboxclaimtreatynonprop.AgingDaysSince(created, now); got != 1 {
+		t.Fatalf("umur = %d hari, ingin 1 hari kalender WIB", got)
+	}
+}
+
+// Umur tidak pernah negatif, dan waktu yang tidak diketahui berumur nol.
+//
+// Umur negatif tidak punya arti bagi pembaca grid dan hanya akan terbaca sebagai kerusakan.
+func TestUmurTidakPernahNegatif(t *testing.T) {
+	now := time.Date(2026, time.September, 19, 3, 0, 0, 0, time.UTC)
+	besok := now.AddDate(0, 0, 1)
+
+	if got := inboxclaimtreatynonprop.AgingDaysSince(besok, now); got != 0 {
+		t.Fatalf("umur objek kerja bertanggal besok = %d, ingin 0", got)
+	}
+	if got := inboxclaimtreatynonprop.AgingDaysSince(time.Time{}, now); got != 0 {
+		t.Fatalf("umur waktu nol = %d, ingin 0", got)
+	}
+}
+
+// Notasi waktunya SELALU UTC, sesuai akhiran "GMT" yang ditulisnya sendiri.
+//
+// Menulis waktu lokal dengan akhiran GMT akan menggeser setiap baris tujuh jam tanpa satu
+// pun tanda — kelas cacat yang sama dengan penambahan 7 jam manual di sistem lama (`R-12`).
+func TestNotasiWaktuSelaluUTC(t *testing.T) {
+	jakarta := time.FixedZone("WIB", 7*60*60)
+	at := time.Date(2026, time.September, 18, 10, 0, 0, 0, jakarta)
+
+	want := "20260918T030000.000 GMT"
+	if got := inboxclaimtreatynonprop.FormatPegaDateTime(at); got != want {
+		t.Fatalf("waktu WIB = %q, ingin %q", got, want)
 	}
 }
 

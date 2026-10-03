@@ -14,6 +14,7 @@ package memory
 
 import (
 	"context"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -49,6 +50,9 @@ type Repo struct {
 	// now memberi tanggal proses pada baris yang baru disisipkan. Ia dapat diganti uji
 	// supaya tanggalnya tetap dan hasilnya dapat diperiksa.
 	now func() string
+
+	// business meniru POOLDATA.BUSINESS untuk isian Nama Bisnis tab Cek Premi: ID -> NOTE.
+	business map[string]string
 }
 
 // PolicyRow adalah hasil pencarian polis yang ditiru penyimpanan memori.
@@ -59,7 +63,17 @@ type PolicyRow struct {
 
 	// ProductSeq kosong berarti polisnya tidak ditemukan di JSON_POLIS.
 	ProductSeq string
+
+	// Detail meniru baris T_GENERAL. Nilai kosong berarti periode tidak terbaca —
+	// PolicyDetail.Covers menganggapnya mencakup.
+	Detail inboxautoclaim.PolicyDetail
+
+	// OpenProtection meniru T_CLAIM_OPENPROTECTION: tipe proteksi yang dimiliki polis.
+	OpenProtection []string
 }
+
+// currencyID meniru POOLDATA.CURRENCY: kode mata uang -> ID-nya.
+var currencyID = map[string]string{"IDR": "1", "USD": "2"}
 
 // NewRepo membentuk penyimpanan memori beserta isi awalnya.
 func NewRepo(master map[string]string, policy map[string]PolicyRow, line ...inboxautoclaim.Line) *Repo {
@@ -81,10 +95,11 @@ func NewRepo(master map[string]string, policy map[string]PolicyRow, line ...inbo
 	//
 	// Pemanggil yang memaksudkan tab lain memakai Seed.
 	return &Repo{
-		line:   map[inboxautoclaim.Source][]inboxautoclaim.Line{inboxautoclaim.SourceAneka: append([]inboxautoclaim.Line(nil), line...)},
-		master: masterCopy,
-		policy: policyCopy,
-		now:    func() string { return "19/09/2026" },
+		line:     map[inboxautoclaim.Source][]inboxautoclaim.Line{inboxautoclaim.SourceAneka: append([]inboxautoclaim.Line(nil), line...)},
+		master:   masterCopy,
+		policy:   policyCopy,
+		now:      func() string { return "19/09/2026" },
+		business: map[string]string{},
 	}
 }
 
@@ -275,6 +290,128 @@ func (r *Repo) FindPolicyProductSeq(_ context.Context, policyNo string) (string,
 	return row.ProductSeq, true, nil
 }
 
+// FindPolicyDetail meniru pembacaan T_GENERAL.
+func (r *Repo) FindPolicyDetail(_ context.Context, policyNo, productSeq string) (inboxautoclaim.PolicyDetail, bool, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	row, exists := r.policy[strings.ToUpper(strings.TrimSpace(policyNo))]
+	if !exists || row.ProductSeq == "" || row.ProductSeq != strings.TrimSpace(productSeq) {
+		return inboxautoclaim.PolicyDetail{}, false, nil
+	}
+	return row.Detail, true, nil
+}
+
+// CurrencyID meniru GetIDCurrencyByNote.
+func (r *Repo) CurrencyID(_ context.Context, code string) (string, bool, error) {
+	id, exists := currencyID[strings.ToUpper(strings.TrimSpace(code))]
+	return id, exists, nil
+}
+
+// ContractClaimed meniru CekObjekNotDouble atas tab Kredit.
+//
+// Nomor kontrak Kredit disimpan di kolom yang sama dengan yang dibaca rincian sebagai
+// NOASURANSI — di fake ini `CauseOfLoss` (lihat InsertUpload).
+func (r *Repo) ContractClaimed(_ context.Context, companyCode, contractNo string) (bool, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	contract := strings.ToUpper(strings.TrimSpace(contractNo))
+	if contract == "" {
+		return false, nil
+	}
+	for _, l := range r.line[inboxautoclaim.SourceKredit] {
+		if l.CompanyCode != strings.TrimSpace(companyCode) || strings.ToUpper(l.CauseOfLoss) != contract {
+			continue
+		}
+		if l.Message == "" || l.Message == inboxautoclaim.MessageSuccess {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// HasOpenProtection meniru T_CLAIM_OPENPROTECTION.
+func (r *Repo) HasOpenProtection(_ context.Context, policyNo, protectionType string) (bool, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	for _, kind := range r.policy[strings.ToUpper(strings.TrimSpace(policyNo))].OpenProtection {
+		if kind == strings.TrimSpace(protectionType) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// SetBusiness mengisi tiruan POOLDATA.BUSINESS (ID -> NOTE) untuk tab Cek Premi.
+func (r *Repo) SetBusiness(business map[string]string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	for id, note := range business {
+		r.business[strings.TrimSpace(id)] = note
+	}
+}
+
+// PremiumCheckChoices meniru auto_claim_premium_business dan auto_claim_premium_source.
+//
+// Master memori tidak menyimpan kolom APPROVAL; seluruh isinya dianggap disetujui.
+func (r *Repo) PremiumCheckChoices(_ context.Context) (inboxautoclaim.PremiumCheckChoices, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	toChoice := func(source map[string]string) []inboxautoclaim.Choice {
+		result := make([]inboxautoclaim.Choice, 0, len(source))
+		for code, name := range source {
+			result = append(result, inboxautoclaim.Choice{Code: code, Name: name})
+		}
+		sort.Slice(result, func(a, b int) bool {
+			if result[a].Name != result[b].Name {
+				return result[a].Name < result[b].Name
+			}
+			return result[a].Code < result[b].Code
+		})
+		return result
+	}
+	return inboxautoclaim.PremiumCheckChoices{
+		Business:         toChoice(r.business),
+		SourceOfBusiness: toChoice(r.master),
+	}, nil
+}
+
+// SucceededClaimTotal meniru auto_claim_premium_claim_total: jumlah nilai klaim Kredit
+// yang Sukses Klaim, yang polisnya (T_GENERAL) cocok dengan bisnis dan sumber bisnis.
+// Teks kosong bila tidak ada baris, seperti SUM atas nol baris.
+func (r *Repo) SucceededClaimTotal(_ context.Context, query inboxautoclaim.PremiumCheckQuery) (string, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	total := new(big.Rat)
+	found := false
+	for _, line := range r.line[inboxautoclaim.SourceKredit] {
+		if line.Message != inboxautoclaim.MessageSuccess {
+			continue
+		}
+		detail := r.policy[strings.ToUpper(strings.TrimSpace(line.PolicyNo))].Detail
+		if detail.BusinessCode != query.BusinessCode || detail.SourceOfBusiness != query.SourceOfBusiness {
+			continue
+		}
+		amount, ok := new(big.Rat).SetString(strings.TrimSpace(line.ClaimAmount))
+		if !ok {
+			continue
+		}
+		total.Add(total, amount)
+		found = true
+	}
+	if !found {
+		return "", nil
+	}
+	if total.IsInt() {
+		return total.Num().String(), nil
+	}
+	return strings.TrimRight(total.FloatString(4), "0"), nil
+}
+
 // InsertUpload menambahkan baris unggahan beserta nomor batch barunya.
 func (r *Repo) InsertUpload(
 	_ context.Context,
@@ -315,7 +452,7 @@ func (r *Repo) InsertUpload(
 				AcceptanceNo:  l.Message,
 				Message:       l.Message,
 				ClaimAmount:   l.Row.ClaimAmount,
-				CauseOfLoss:   l.Row.CauseOfLoss,
+				CauseOfLoss:   referenceFor(source, l.Row),
 				DateOfLoss:    l.Row.DateOfLoss,
 				ReportDate:    l.Row.ReportDate,
 				ProcessedDate: processedDate,
@@ -324,8 +461,7 @@ func (r *Repo) InsertUpload(
 				ObjectName:    l.Row.ObjectName,
 				FlagNoPayout:  l.Row.FlagNoPayout,
 				UploadedBy:    uploadedBy,
-				// Currency sengaja kosong: Pega mengambilnya dari snapshot polis, dan
-				// modul ini belum dapat membacanya (menunggu B-1).
+				Currency:      l.CurrencyID,
 			})
 
 			reference.Rows++
@@ -479,3 +615,13 @@ func asNumber(value string) (int, bool) {
 }
 
 var _ inboxautoclaim.Repo = (*Repo)(nil)
+
+// referenceFor meniru kolom yang dibaca rincian sebagai "No Objek": COL_ID (penyebab
+// kerugian) di ANEKA, NOASURANSI (nomor kontrak, huruf besar) di Kredit — lihat
+// sqlstore/columns.go.
+func referenceFor(source inboxautoclaim.Source, row inboxautoclaim.UploadRow) string {
+	if source == inboxautoclaim.SourceKredit {
+		return strings.ToUpper(strings.TrimSpace(row.ContractNo))
+	}
+	return row.CauseOfLoss
+}

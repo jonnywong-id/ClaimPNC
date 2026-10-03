@@ -25,6 +25,7 @@ type PolicyResponse struct {
 	NamaBisnis  string `json:"nama_bisnis"`
 	NomorRujuk  string `json:"nomor_rujukan"`
 	GroupPanel  string `json:"group_panel"`
+	PolisLeader string `json:"polis_leader"`
 	Syariah     bool   `json:"syariah"`
 
 	Pesan     []PolicyNoticeDTO `json:"pesan"`
@@ -65,6 +66,7 @@ func (h *Handler) Policy(w http.ResponseWriter, r *http.Request) {
 		NamaBisnis:  result.Policy.BusinessName,
 		NomorRujuk:  result.Policy.ReferenceNumber,
 		GroupPanel:  result.Policy.GroupPanel,
+		PolisLeader: result.Policy.Leader,
 		Syariah:     result.Policy.Syariah,
 		Pesan:       notice,
 		Memblokir:   blocked,

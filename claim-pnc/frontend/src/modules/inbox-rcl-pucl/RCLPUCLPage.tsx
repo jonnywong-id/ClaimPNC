@@ -11,7 +11,14 @@ import { formatDate } from '@/components/format'
 
 import { RCLPUCLTabs } from './RCLPUCLTabs'
 import { useExportRCLPUCL, useRCLPUCLList, useRCLPUCLMetadata } from './api'
-import type { DateRange, ReportColumn, Tab, TabColumn, WorkItem } from './types'
+import type {
+  DateRange,
+  PlannedDifference,
+  ReportColumn,
+  Tab,
+  TabColumn,
+  WorkItem,
+} from './types'
 
 /**
  * Inbox RCL/PUCL — menu `MENU_ID 61`, pengganti harness `RCLPUCL_Harness`.
@@ -393,7 +400,7 @@ function BlockedNotice({ tab }: { tab: Tab }) {
 }
 
 /**
- * Keterangan kedua tindakan yang ada di layar lama tetapi belum tersedia di sini.
+ * Keterangan kedua tindakan yang ada di layar lama dan DIKERJAKAN di Pega.
  *
  * # Kenapa dinyatakan, bukan dibiarkan hilang begitu saja
  *
@@ -402,22 +409,27 @@ function BlockedNotice({ tab }: { tab: Tab }) {
  * penjelasan akan dilaporkan sebagai kerusakan, dan penggunanya tidak akan tahu ia masih
  * harus mengerjakannya lewat Pega.
  *
- * Keduanya MENULIS ke objek kerja klaim, dan selama masa paralel tabel itu hanya boleh
- * ditulis satu sistem (`P-1`). Mencetak surat bahkan memindahkan klaimnya antartab.
+ * # Kenapa "dikerjakan di Pega", bukan "belum tersedia"
+ *
+ * Karena ia KEPUTUSAN, bukan pekerjaan yang tertunda (Work Owner, 2026-09-30). Kedua tabel
+ * yang disentuhnya dibaca ratusan aturan Pega, sehingga kepemilikannya tidak berpindah satu
+ * layar demi satu layar (`P-1`). "Belum tersedia" menjanjikan tombol yang akan hidup pada
+ * rilis berikutnya; yang benar adalah tombol itu hidup ketika Pega dimatikan.
  */
 function WriteActionsNotice() {
   return (
     <section className="mt-6 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3">
       <h2 className="text-sm font-medium text-amber-900">
-        Yang masih dikerjakan lewat Pega
+        Yang dikerjakan lewat Pega
       </h2>
       <p className="mt-2 text-xs text-slate-700">
         <span className="font-medium">Cetak Surat</span> dan{' '}
-        <span className="font-medium">Reminder PUCL</span> belum tersedia di sini. Keduanya
-        mengubah data klaim — mencetak surat bahkan memindahkan klaimnya dari tab
-        &ldquo;Cetak Surat&rdquo; ke &ldquo;Kelengkapan Dokumen&rdquo; — dan selama Pega
+        <span className="font-medium">Reminder PUCL</span> dikerjakan di Pega, bukan di
+        sini. Keduanya mengubah data klaim — mencetak surat bahkan memindahkan klaimnya dari
+        tab &ldquo;Cetak Surat&rdquo; ke &ldquo;Kelengkapan Dokumen&rdquo; — dan selama Pega
         dan sistem baru berjalan berdampingan, data klaim hanya boleh diubah dari satu
-        sistem. Layar ini untuk memantau dan mengunduh; tindakannya kerjakan di Pega.
+        sistem. Layar ini untuk memantau dan mengunduh, dan akan tetap begitu sampai Pega
+        dimatikan.
       </p>
     </section>
   )
@@ -460,11 +472,18 @@ function WriteActionsNotice() {
  * grid. Work Owner menambahkan ketiga rule yang hilang pada 2026-09-24 — induknya beserta
  * kedua sub-section-nya — sehingga isinya kini terbaca dari bukti, bukan ditebak.
  *
- * # Kenapa PANEL, bukan halaman tujuan
+ * # Kenapa HALAMAN TERSENDIRI, bukan panel di bawah tabel
  *
- * Karena yang dibuka bukan halaman baru melainkan tahap alur kerja klaim yang sama, dan
- * petugas kembali ke antreannya begitu selesai. Panel di halaman yang sama menjaga daftar
- * tetap di tempatnya — nomor halaman, tab, dan rentang tanggalnya tidak hilang.
+ * Karena di Pega yang terbuka bukan pratinjau baris melainkan klaim pada tahap alur
+ * kerjanya, untuk dikerjakan. Panel di bawah tabel menyiratkan yang pertama.
+ *
+ * Konsekuensinya ditangani bersamaan: berpindah halaman melepas komponen antrean, sehingga
+ * tab dan nomor halaman pindah ke ALAMAT — bukan hidup di `useState`. Tanpa itu, petugas
+ * yang membuka satu klaim dari halaman ketiga tab kedua mendarat kembali di tab pertama
+ * halaman pertama.
+ *
+ * Rentang tanggal sengaja TIDAK ikut ke alamat: ia hanya dipakai tombol ekspor dan tidak
+ * menyaring tabel, sehingga membawanya akan menyiratkan ia bagian dari apa yang dilihat.
  *
  * Mengarahkannya ke layar View Claim akan keliru: `ViewTempDetailClaim` memang ada, tetapi
  * dibuka `PNCInboxAdmin`, `PNCSearchKlaim`, `InboxManagerReopen1_Sec`, dan
@@ -497,10 +516,17 @@ function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) =>
  *
  * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, tiga hal akan
  * dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar
- * berdampingan: tab "Klaim MSIG" yang kosong, isian tanggal yang tidak menyaring tabel,
- * dan berkas ekspor yang isinya berbeda dari tabel.
+ * berdampingan: tab "Klaim MSIG" yang nyaris kosong, isian tanggal yang tidak menyaring
+ * tabel, dan berkas ekspor yang isinya berbeda dari tabel.
+ *
+ * # Panel ini sempat dihapus pada 2026-09-30, lalu DIKEMBALIKAN pada hari yang sama
+ *
+ * Work Owner meminta menghapusnya, lalu meralatnya sebelum perubahannya dipakai. Ia karena
+ * itu tetap digambar apa adanya. Dicatat di sini supaya penghapusan berikutnya menempuh
+ * keputusan, bukan diulang atas nama merapikan layar yang panjang —
+ * `keputusan-implementasi.md` §80.9.
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: { lines: PlannedDifference[] }) {
   if (lines.length === 0) return null
 
   return (
@@ -508,9 +534,37 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
       <h2 className="text-sm font-medium text-slate-800">
         Yang berbeda dari layar lama, dan itu disengaja
       </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
+
+      <ul className="mt-2 space-y-2 text-xs text-slate-600">
         {lines.map((line) => (
-          <li key={line}>{line}</li>
+          <li key={line.ringkas}>
+            {/*
+              `details` bawaan peramban, bukan buka-tutup yang ditulis sendiri.
+              Isinya tetap ada di halaman saat tertutup, sehingga pencarian peramban
+              (Ctrl+F) dan pembaca layar tetap menemukannya — dan tidak ada state yang
+              dapat menyimpang antara apa yang tergambar dan apa yang dikirim server.
+            */}
+            <details className="group">
+              <summary
+                className={[
+                  'flex cursor-pointer list-none items-start gap-2',
+                  'rounded-kontrol text-slate-700 marker:content-none',
+                  'hover:text-slate-900',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                ].join(' ')}
+              >
+                <span
+                  aria-hidden="true"
+                  className="mt-px shrink-0 text-slate-400 transition-transform duration-150 ease-halus group-open:rotate-90"
+                >
+                  ›
+                </span>
+                <span>{line.ringkas}</span>
+              </summary>
+
+              <p className="mt-1 pl-5 text-slate-500">{line.rincian}</p>
+            </details>
+          </li>
         ))}
       </ul>
     </section>
@@ -563,7 +617,7 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
   return isDate(text) ? formatDate(text) : text

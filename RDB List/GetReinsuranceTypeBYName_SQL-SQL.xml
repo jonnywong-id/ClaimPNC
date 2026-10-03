@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxSaveDateTime>20240205T015857.038 GMT</pxSaveDateTime>
+<pxInstanceLockedDateTime/>
+<pyRuleEnds/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedRuleSet/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportDateTime>20240207T113205.176 GMT</pxMoveImportDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSetVersion>01-02-99</pyRuleSetVersion>
+<pyRuleParamsStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pySaveSQL/>
+<pyHistoryObject/>
+<pyCircumstanceVal/>
+<pyCircumstanceProp/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyStatus/>
+<pyRuleStarts/>
+<pyWorkKey/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyDeleteSQL/>
+<pyOpenSQL/>
+<pyBaseRule>false</pyBaseRule>
+<pySpecialtyComponentData/>
+<pyFormPost/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxCommitDateTime>20240207T113205.000 GMT</pxCommitDateTime>
+<pxInsName>ASM-FW-GISFW-INT-REINSURANCETYPE!GCNM!GETREINSURANCETYPEBYNAME_SQL</pxInsName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-REINSURANCETYPE GCNM!GETREINSURANCETYPEBYNAME_SQL #20240128T033757.968 GMT</pzDocumentKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRequestType>GetReinsuranceTypeBYName_SQL</pyRequestType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRelativePath/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedCreateDateTime/>
+<pyIsFromManageChangeLP/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDeletedObject/>
+<pyCircumstanceTemplate/>
+<pyLabelOld>GetReinsuranceTypeBYName_SQL</pyLabelOld>
+<pyCircumstanceDateProp/>
+<pyDocumentTitle/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pyInterface/>
+<pxInstanceLockedBy/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pxTabLabel>ASM-FW-GISFW-Int-REINSURANCETYPE GCNM GetReinsuranceTypeBYName_SQL</pxTabLabel>
+<pyHandlerFlow/>
+<pxInsId>ASM-FW-GISFW-INT-REINSURANCETYPE!GCNM!GETREINSURANCETYPEBYNAME_SQL</pxInsId>
+<pyDescription/>
+<pyTemplate/>
+<pyTemplateInputBox/>
+<pxMoveFromSystem/>
+<pyCircumstanceType/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateDateTime>20240128T033757.968 GMT</pxCreateDateTime>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRuleFormStatusTime>20260930T044322.250 GMT</pyRuleFormStatusTime>
+<pxUpdateDateTime>20240205T015857.012 GMT</pxUpdateDateTime>
+<pyWindowTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyUsage/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyClassName>ASM-FW-GISFW-Int-REINSURANCETYPE</pyClassName>
+<pyJavaStream/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-REINSURANCETYPE GCNM!GETREINSURANCETYPEBYNAME_SQL #20240128T033757.968 GMT</pzOriginalInstanceKey>
+<pxHostId>jboss1037</pxHostId>
+<pyRuleName>ASM-FW-GISFW-Int-REINSURANCETYPE GCNM GetReinsuranceTypeBYName_SQL</pyRuleName>
+<pyLabel>GetReinsuranceTypeBYName_SQL</pyLabel>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-REINSURANCETYPE GCNM!GETREINSURANCETYPEBYNAME_SQL #20240128T033757.968 GMT</pzInsKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pyBrowseSQL>select ID ,NOTE as "Note" from REINSURANCETYPE  where type ='4' and note ={InputSpreading.CARI1}</pyBrowseSQL>
+<pyCircumstanceDate/>
+<pzChecksum>48078394</pzChecksum>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyShowJavaWindowName>GeneratedJava20260930T044322.267 GMT</pyShowJavaWindowName>
+<pyMemo>done</pyMemo>
+<pyStreamName/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyRecover>false</pyRecover>
+<pyVersionSecure>true</pyVersionSecure>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyShowJava>false</pyShowJava>
+<pyPreview>false</pyPreview>
+<pyFavorites>true</pyFavorites>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-REINSURANCETYPE GCNM!GETREINSURANCETYPEBYNAME_SQL #20240128T033757.968 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-02-99 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

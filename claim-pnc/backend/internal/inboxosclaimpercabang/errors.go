@@ -25,7 +25,25 @@ var (
 	// pertama berarti tidak ada pekerjaan dan yang kedua berarti layar tidak dapat bekerja.
 	ErrBranchUnknown = errors.New(
 		"inboxosclaimpercabang: cabang pemanggil tidak dapat ditentukan")
+
+	// ErrClaimNotFound berarti klaim yang diminta tidak ada DI CABANG PEMANGGIL.
+	//
+	// Kedua sebabnya sengaja tidak dibedakan — klaim yang memang tidak ada, dan klaim yang
+	// ada tetapi milik cabang lain. Membedakannya membuat endpoint ini dapat dipakai
+	// memastikan sebuah nomor klaim ada di cabang lain, cukup dengan membaca pesannya
+	// (`R-20`).
+	ErrClaimNotFound = errors.New(
+		"inboxosclaimpercabang: klaim tidak ditemukan pada cabang pemanggil")
 )
+
+// ClaimNotFoundNotice adalah pesan yang dibaca pengguna ketika klaimnya tidak ditemukan.
+//
+// Ia TIDAK ada padanannya di Pega — popup lama hanya dapat dibuka dari baris yang sudah
+// tampil, sehingga keadaan ini tidak pernah terjadi di sana. Karena tidak ada teks lama yang
+// dapat ditiru (`D-13`), teksnya ditulis baru dalam bahasa Indonesia dan menyebutkan tindak
+// lanjutnya, bukan hanya menyatakan kegagalan.
+const ClaimNotFoundNotice = "Klaim tidak ditemukan pada cabang Anda. " +
+	"Muat ulang daftar, lalu buka kembali dari barisnya."
 
 // BranchUnknownNotice adalah pesan yang dibaca pengguna ketika cabangnya tidak diketahui.
 //

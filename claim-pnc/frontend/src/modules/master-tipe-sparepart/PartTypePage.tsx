@@ -200,7 +200,7 @@ export function PartTypePage() {
     // Daftar pilihan disegarkan setiap kali form dibuka. Ia bercache panjang karena jarang
     // berubah, dan justru karena itu ia dapat basi tepat pada saat ia dipakai — kategori
     // yang ditolak sejak halaman dibuka akan tetap tampak dapat dipilih.
-    void options.refetch()
+    options.refetch()
   }
 
   function openEdit(row: PartType) {
@@ -208,7 +208,7 @@ export function PartTypePage() {
     save.reset()
     setAdding(false)
     setEditing(row)
-    void options.refetch()
+    options.refetch()
   }
 
   function toggle(id: string) {
@@ -342,7 +342,7 @@ export function PartTypePage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>

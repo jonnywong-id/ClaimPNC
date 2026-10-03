@@ -157,6 +157,17 @@ type AreaOptionsResponse struct {
 	Option []AreaOptionDTO `json:"pilihan"`
 }
 
+// CauseOfLossOptionDTO adalah satu pilihan Penyebab Kerugian: id D_COL_ID, nama DESCRIPTION.
+type CauseOfLossOptionDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"nama"`
+}
+
+// CauseOfLossOptionsResponse adalah jawaban GET /api/registrasi/penyebab-kerugian.
+type CauseOfLossOptionsResponse struct {
+	Option []CauseOfLossOptionDTO `json:"pilihan"`
+}
+
 // ClaimDTO adalah klaim sebagaimana dilihat layar.
 type ClaimDTO struct {
 	ID     string    `json:"id"`
@@ -175,6 +186,11 @@ type ClaimDTO struct {
 	Area              AreaDTO `json:"wilayah"`
 	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
 	SuspiciousComment string  `json:"komentar_suspicious"`
+
+	EmailLOD             string `json:"email_lod"`
+	RemarkRecommendation string `json:"rekomendasi"`
+	SubjectEmail         string `json:"subjek_email"`
+	SalvageStatus        string `json:"status_salvage"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
@@ -260,6 +276,11 @@ type RegisterRequest struct {
 	Area              AreaDTO `json:"wilayah"`
 	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
 	SuspiciousComment string  `json:"komentar_suspicious"`
+
+	EmailLOD             string `json:"email_lod"`
+	RemarkRecommendation string `json:"rekomendasi"`
+	SubjectEmail         string `json:"subjek_email"`
+	SalvageStatus        string `json:"status_salvage"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`

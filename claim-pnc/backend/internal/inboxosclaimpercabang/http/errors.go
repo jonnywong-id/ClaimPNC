@@ -16,6 +16,7 @@ import (
 const (
 	CodeCallerUnknown = "profil_pemanggil_tidak_lengkap"
 	CodeBranchUnknown = "cabang_tidak_diketahui"
+	CodeClaimNotFound = "klaim_tidak_ditemukan"
 	CodeInternalError = "galat_internal"
 )
 
@@ -92,6 +93,17 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		return http.StatusConflict, ErrorResponse{
 			Code:    CodeBranchUnknown,
 			Message: inboxosclaimpercabang.BranchUnknownNotice,
+		}, true
+
+	case errors.Is(err, inboxosclaimpercabang.ErrClaimNotFound):
+		// 404, dan pesannya SENGAJA tidak menyebut apakah nomor itu ada di cabang lain.
+		//
+		// Membedakan "tidak ada" dari "milik cabang lain" akan menjadikan endpoint ini alat
+		// untuk memastikan sebuah nomor klaim ada di badan hukum lain, cukup dengan membaca
+		// pesannya (`R-20`). Perbedaannya tetap terekam, tetapi hanya di log server.
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeClaimNotFound,
+			Message: inboxosclaimpercabang.ClaimNotFoundNotice,
 		}, true
 
 	default:

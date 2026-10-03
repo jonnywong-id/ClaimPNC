@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { type ReactNode } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -47,8 +47,19 @@ import type { Tab, TabColumn, WorkItem } from './types'
  * keduanya menyimpang tanpa ketahuan.
  */
 export function ManagerReceivePUCLPage() {
-  const [tabCode, setTabCode] = useState('')
-  const [page, setPage] = useState(1)
+  // Tab dan nomor halaman hidup di ALAMAT, bukan di state komponen.
+  //
+  // Alasannya satu dan nyata: mengklik nomor case membuka layar kerja di rute lain, dan
+  // komponen ini dilepas. State yang hanya ada di memori akan hilang, sehingga petugas yang
+  // kembali dari sebuah berkas mendarat di tab pertama halaman pertama — padahal ia sedang
+  // mengerjakan halaman ketiga. Pada antrean yang dibuka berpuluh kali sehari, itu bukan
+  // ketidaknyamanan kecil.
+  const [params, setParams] = useSearchParams()
+
+  const tabCode = params.get('tab') ?? ''
+  const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
+
+  const navigate = useNavigate()
 
   const portal = useSelectedPortal((state) => state.alias)
   const meta = useManagerReceivePUCLMetadata()
@@ -70,8 +81,27 @@ export function ManagerReceivePUCLPage() {
    * menampilkan tabel kosong yang terbaca seperti antrean yang memang kosong.
    */
   function selectTab(code: string) {
-    setTabCode(code)
-    setPage(1)
+    setParams({ tab: code, halaman: '1' }, { replace: true })
+  }
+
+  /** Berpindah halaman, menjaga tab yang sedang terbuka. */
+  function setPage(next: number) {
+    setParams({ tab: active, halaman: String(next) }, { replace: true })
+  }
+
+  /**
+   * Membuka LAYAR KERJA penerimaan dokumen — yang di Pega dijalankan Open Assignment.
+   *
+   * Tab dan halaman ikut ke alamat tujuan supaya tombol kembali mendarat di tempat yang
+   * sama. Kuncinya dikodekan: `pzInsKey` memuat SPASI
+   * (`ASM-FW-GCNMFW-WORK RCV-900001`), dan spasi mentah di dalam alamat bukan alamat yang
+   * sah.
+   */
+  function openDocument(row: WorkItem) {
+    const back = new URLSearchParams({ tab: active, halaman: String(page) })
+    navigate(
+      `/inbox-manager-receive-pucl/dokumen/${encodeURIComponent(row.referensi)}?${back}`,
+    )
   }
 
   if (portal === null) {
@@ -119,7 +149,9 @@ export function ManagerReceivePUCLPage() {
           ) : (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+                columns={columnsFor(tab, (row) => (
+                  <CaseLink item={row} onOpen={openDocument} />
+                ))}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.no_case}`}
                 title={tab.nama}
@@ -257,27 +289,65 @@ function BlockedNotice({ tab }: { tab: Tab }) {
 }
 
 /**
- * Tombol rincian.
+ * Tautan pada kolom nomor case.
  *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
- * belum dibangun. Tombolnya tetap dibangun mengikuti modul inbox lain, dan tujuannya
- * diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
+ * # Kenapa TAUTAN pada nomor case, bukan tombol di ujung baris
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega. Dengan begitu menyalakan layar rincian
- * kelak tidak menuntut perubahan kontrak API modul ini.
+ * Karena begitulah layar lama. `Section/InboxManagerReceive_Section-Section.xml` menggambar
+ * sel nomor case pada kedua grid Receive sebagai `pyUIElement = link` ber-`pyLabel = .pyID`,
+ * dan `D-13` menetapkan tampilan mengikuti Pega.
+ *
+ * Versi pertama modul ini keliru di sini: nomor case digambar sebagai teks biasa, dan di
+ * ujung baris ditambahkan kolom tombol "Lihat Detail" yang **tidak ada di Pega sama sekali**
+ * — menunjuk rute `/view-claim/…` milik modul lain yang belum dibangun. Itu bukan sekadar
+ * beda tampilan: kolom yang tidak pernah ada membuat pengguna mengira ada dua cara berbeda
+ * membuka baris, dan menggeser lebar seluruh kolom lain.
+ *
+ * # Apa yang sebenarnya terjadi saat diklik di Pega
+ *
+ * Tiga perilaku berurutan pada sel yang sama:
+ *
+ *   1. `runActivity`    `SetAssignmentInboxReceive_act`, parameter `kunci = .pzInsKey`
+ *   2. `refresh`        thisSection
+ *   3. `openAssignment` `pyInsKey = TempIns.pyNote`
+ *
+ * Activity-nya sendiri nyaris kosong — `pyUsage = FLOW`, satu `Property-Set` ke
+ * `TempIns.pyNote`. Ia kait pra-proses; yang bekerja adalah **Open Assignment** bawaan Pega,
+ * yang membuka berkas penerimaan dokumen pada tahap alur kerjanya saat itu — dan flow action
+ * yang menunggu di sana adalah `InputReceiveDocument`.
+ *
+ * # Hanya tab Receive
+ *
+ * `buka_layar_kerja` datang dari server, dan hanya tab Receive yang membawanya. Di layar lama
+ * pun perilaku klik hanya dipasang pada kedua grid Receive; nomor case di grid RCL/PUCL
+ * bukan tautan sama sekali.
  */
-function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.no_case
+function CaseLink({
+  item,
+  onOpen,
+}: {
+  item: WorkItem
+  onOpen: (row: WorkItem) => void
+}) {
+  if (item.no_case === '') return <span className="text-slate-400">—</span>
+
+  // Tanpa kunci teknis, Open Assignment tidak punya apa pun untuk dibuka. Nomornya tetap
+  // digambar sebagai teks alih-alih sebagai tautan yang pasti gagal.
+  if (item.referensi === '') return <span>{item.no_case}</span>
 
   return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
+      title={`Buka berkas ${item.no_case}`}
+      className={[
+        'rounded-kontrol text-left font-medium text-blue-700 underline-offset-2',
+        'transition-colors duration-150 ease-halus hover:underline',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+      ].join(' ')}
     >
-      Lihat Detail
-    </Button>
+      {item.no_case}
+    </button>
   )
 }
 
@@ -310,26 +380,32 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
- * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol,
- * dan backend tidak tahu apa pun tentang rute antarmuka.
+ * # TIDAK ada kolom aksi tambahan
+ *
+ * Layar lama tidak punya satu pun, dan versi pertama modul ini keliru menambahkannya. Yang
+ * membuka baris adalah **tautan pada sel nomor case** — itulah bentuknya di kedua grid
+ * Receive (`D-13`).
+ *
+ * `value` tetap mengembalikan TEKS polos meski selnya digambar sebagai tautan. Keduanya
+ * dipisah dengan sengaja oleh `DataTable`: yang dicari dan diurutkan adalah teksnya, yang
+ * dilihat pengguna adalah gambarnya. Menyatukannya akan membuat pengurutan menelusuri markup
+ * alih-alih nomor case.
  */
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-  }))
+function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+  return tab.kolom.map((column) => {
+    const base: Column<WorkItem> = {
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => cellText(row, column),
+    }
 
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
+    // Hanya tab Receive yang nomor case-nya membuka layar kerja. Penandanya datang dari
+    // server, bukan disimpulkan dari kode tab di sini.
+    if (column.kunci === 'no_case' && tab.buka_layar_kerja) {
+      return { ...base, render: openCase }
+    }
+    return base
   })
-
-  return columns
 }
 
 /**
@@ -349,7 +425,7 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
   return isDate(text) ? formatDate(text) : text

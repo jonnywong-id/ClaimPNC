@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { APIError, callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -9,7 +9,7 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
-import { TreatyTabs } from './TreatyTabs'
+import { TreatyViewSelect } from './TreatyViewSelect'
 import { useClaimTreatyPropList, useClaimTreatyPropMetadata } from './api'
 import {
   EMPTY_FILTER,
@@ -34,10 +34,27 @@ import {
  *
  * # Susunan layar, dan dari mana bentuknya
  *
- * Diambil dari `Section/InboxClaimTreaty_Section-Section.xml` apa adanya: bilah tab,
- * tombol pembuat klaim, checkbox "See All Claim", lalu grid berhalaman. Nama kolom TIDAK
+ * Mengikuti layar Pega PRODUKSI, yang dibandingkan berdampingan bersama Work Owner pada
+ * 2026-09-29: judul "Claim Treatyin In Progress", tombol pembuat klaim, dropdown pemilih
+ * antrean, lalu grid berjudul "Work List Treatyin Propotional". Nama kolom TIDAK
  * diterjemahkan — `D-13` menetapkan tampilan meniru Pega, dan itulah teks yang selama ini
  * dibaca pengguna.
+ *
+ * Bentuk itu berbeda dari `Section/InboxClaimTreaty_Section-Section.xml` di export pada dua
+ * hal, dan keduanya karena Pega produksi sudah berubah sesudah export diambil (`R-09`):
+ * pemilih antreannya DROPDOWN alih-alih bilah tab, dan gridnya punya SEPULUH kolom alih-alih
+ * delapan — "Last update" dan "Status Claim ID" menyusul di ujung.
+ *
+ * # Nomor klaim adalah TAUTAN, bukan tombol di kolom terakhir
+ *
+ * Di Pega produksi, mengklik Claim ID menjalankan Flow Action `OutstandingClaim` dan
+ * menggambar `Section/OutstandingClaim-Section.xml`. Layar itu dibangun sebagai modul
+ * tersendiri (`modules/outstanding-claim`), dan tautan di sini menunjuk ke sana.
+ *
+ * Tombol "Lihat Detail Klaim" di kolom terakhir karena itu DIHAPUS: ia menunjuk penampung
+ * `/view-claim/:referensi` yang memang belum punya isi, sementara tautan nomor klaim
+ * menunjuk layar yang sudah ada. Membiarkan keduanya berarti dua jalan dari satu baris ke
+ * dua layar yang berbeda, dan yang satu buntu.
  *
  * # Kenapa kolomnya datang dari server
  *
@@ -108,7 +125,7 @@ export function ClaimTreatyPropPage() {
   return (
     <PageFrame>
       <div className="mt-4">
-        <TreatyTabs tabs={tabs} active={active} onSelect={selectTab} />
+        <TreatyViewSelect tabs={tabs} active={active} onSelect={selectTab} />
       </div>
 
       {tab && (
@@ -127,10 +144,13 @@ export function ClaimTreatyPropPage() {
 
               <div className="mt-4">
                 <DataTable<WorkItem>
-                  columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+                  columns={columnsFor(tab)}
                   rows={list.data?.baris ?? []}
                   rowKey={(row) => `${row.referensi}|${row.claim_id}`}
-                  title={tab.nama}
+                  // Judul GRID, bukan teks pilihan dropdown. Keduanya tampil bersamaan
+                  // dan berbunyi berbeda: dropdown "Prop Treaty-in Admin", grid "Work
+                  // List Treatyin Propotional".
+                  title={tab.judul_grid ?? tab.nama}
                   // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA
                   // halaman yang sedang terbuka, sehingga pengguna dapat diberi tahu
                   // "tidak ada" untuk baris yang sebenarnya ada di halaman berikutnya.
@@ -175,7 +195,15 @@ function PageFrame({ children }: { children: ReactNode }) {
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Claim Treaty Prop</h1>
+          {/*
+            Judulnya "Claim Treatyin In Progress", bukan nama menunya. Itulah judul
+            kontainer di `Section/InboxClaimTreaty_Section-Section.xml` dan itu pula yang
+            terbaca di Pega produksi (`D-13`). Nama menunya — "Inbox Claim Treaty Prop" —
+            tetap terlihat di menu kiri, tempat pengguna memilihnya.
+          */}
+          <h1 className="text-xl font-semibold text-slate-900">
+            Claim Treatyin In Progress
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
             Antrean klaim treaty proporsional — klaim yang dialihkan perusahaan asuransi
             lain (Ceding Co) kepada ASM sebagai penanggung ulang.
@@ -310,27 +338,39 @@ function FilterBar({
 }
 
 /**
- * Tombol rincian klaim.
+ * Nomor klaim sebagai tautan ke layar Outstanding Claim.
  *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri
- * yang belum dibangun. Tombolnya tetap dibangun mengikuti Inbox Admin, dan tujuannya
- * diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
+ * Di Pega produksi, mengklik Claim ID menjalankan Flow Action `OutstandingClaim` dan
+ * menggambar `Section/OutstandingClaim-Section.xml`. Di sini ia tautan biasa ke rute yang
+ * melayani layar itu.
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega. Dengan begitu menyalakan layar
- * rincian kelak tidak menuntut perubahan kontrak API modul ini.
+ * # Yang dikirim adalah nomor klaim, bukan kunci teknis Pega
+ *
+ * Alamatnya terbaca orang (`/outstanding-claim/CLMP-70`), dapat disalin ke percakapan, dan
+ * tidak membocorkan bentuk kunci internal Pega ke bilah alamat. Kunci teknisnya tetap
+ * dikirim server pada setiap baris, sehingga beralih memakainya kelak tidak menuntut
+ * perubahan kontrak.
+ *
+ * # Baris tanpa nomor klaim tidak menjadi tautan
+ *
+ * Tautan yang alamatnya kosong tetap dapat diklik dan membawa pengguna ke layar yang pasti
+ * gagal. Yang digambar untuk baris seperti itu adalah tanda pisah yang sama dengan sel
+ * kosong lain.
  */
-function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.claim_id
+function ClaimIDLink({ item }: { item: WorkItem }) {
+  if (item.claim_id === '') return <span className="text-slate-400">—</span>
 
   return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+    <Link
+      to={`/outstanding-claim/${encodeURIComponent(item.claim_id)}`}
+      className={[
+        'font-medium text-blue-700 underline-offset-2 hover:underline',
+        'focus:outline-none focus-visible:rounded-kontrol',
+        'focus-visible:ring-2 focus-visible:ring-blue-500/50',
+      ].join(' ')}
     >
-      Lihat Detail Klaim
-    </Button>
+      {item.claim_id}
+    </Link>
   )
 }
 
@@ -406,26 +446,26 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
- * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol,
- * dan backend tidak tahu apa pun tentang rute antarmuka.
+ * SELURUH kolom datang dari server, tanpa kolom aksi tambahan di ujung. Yang membawa
+ * pengguna ke rincian klaim adalah nomor klaim di kolom pertama — lihat ClaimIDLink.
+ *
+ * Kolom pertama itu tetap punya `value` berupa teks polos. `Column.value` adalah yang
+ * dicari dan diurutkan, sedangkan `render` yang dilihat; menyatukannya akan membuat
+ * pengurutan menelusuri markup tautannya, bukan nomornya.
  */
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-  }))
+function columnsFor(tab: Tab): Column<WorkItem>[] {
+  return tab.kolom.map((column) => {
+    const base: Column<WorkItem> = {
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => cellText(row, column),
+    }
 
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
+    if (column.kunci === 'claim_id') {
+      return { ...base, render: (row) => <ClaimIDLink item={row} /> }
+    }
+    return base
   })
-
-  return columns
 }
 
 /**
@@ -441,7 +481,7 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
  */
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
   return isDate(text) ? formatDate(text) : text

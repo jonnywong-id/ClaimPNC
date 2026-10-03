@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/usecase"
 )
 
 // Kode galat modul registrasi.
@@ -27,15 +28,55 @@ const (
 	CodeAccountNotFound      = "rekening_tidak_ditemukan"
 	CodeCommitteeNotFound    = "komite_tidak_ditemukan"
 	CodeNotCommitteeTurn     = "bukan_giliran_komite"
+	CodeReportRegistered     = "laporan_sudah_diregistrasi"
+	CodeDocumentUpload       = "unggah_dokumen_gagal"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
+	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
+	CodeCashierUnavailable   = "kasir_tidak_terhubung"
+	CodeCashierRejected      = "kasir_menolak"
 )
 
 // mapError memilih status HTTP dan badan respons untuk sebuah galat.
 func mapError(err error) (int, ErrorResponse) {
 	var validation *registrasi.ValidationError
+	var registered *registrasi.ReportAlreadyRegisteredError
+	var upload *registrasi.DocumentUploadError
+	var cashierRejected *usecase.CashierRejectedError
 
 	switch {
+	case errors.As(err, &upload):
+		status := map[registrasi.UploadFailure]int{
+			registrasi.UploadInvalid:       http.StatusBadRequest,
+			registrasi.UploadTooLarge:      http.StatusRequestEntityTooLarge,
+			registrasi.UploadUnavailable:   http.StatusBadGateway,
+			registrasi.UploadHalfDone:      http.StatusInternalServerError,
+			registrasi.UploadMisconfigured: http.StatusInternalServerError,
+		}[upload.Kind]
+		if status == 0 {
+			status = http.StatusInternalServerError
+		}
+		return status, ErrorResponse{Code: CodeDocumentUpload, Message: upload.Message}
+
+	case errors.Is(err, registrasi.ErrDocumentTypeUnknown):
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeDocumentUpload,
+			Message: "This document type is not in the checklist of this claim's line of business.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentFileEmpty):
+		return http.StatusBadRequest, ErrorResponse{
+			Code:    CodeDocumentUpload,
+			Message: "Berkas kosong. Pilih berkas yang berisi lalu unggah ulang.",
+		}
+
+	case errors.As(err, &registered):
+		// 409: berkasnya sudah menjadi klaim; menekan Register Klaim lagi tidak sah.
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeReportRegistered,
+			Message: "This Receive Document is already registered as claim " + registered.ClaimNumber + ".",
+		}
+
 	case errors.As(err, &validation):
 		// 422, bukan 400: badan permintaan terbaca dengan benar dan bentuknya sah —
 		// yang ditolak adalah ISINYA menurut aturan bisnis. Membedakan keduanya
@@ -125,6 +166,25 @@ func mapError(err error) (int, ErrorResponse) {
 		return http.StatusBadRequest, ErrorResponse{
 			Code:    CodeInvalidAction,
 			Message: "Tindakan itu tidak berlaku pada tahap ini.",
+		}
+
+	case errors.Is(err, usecase.ErrCashierUnavailable):
+		// Kasir tidak menjawab atau alamatnya belum terdaftar: tidak ada yang ditandai terkirim.
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodeCashierUnavailable,
+			Message: "The cashier system could not be reached, so nothing was transferred. Try again, or report it to the administrator.",
+		}
+
+	case errors.As(err, &cashierRejected):
+		// Jawaban Kasir tanpa CaseIDCashier: pesannya ditampilkan apa adanya, seperti Pega.
+		return http.StatusUnprocessableEntity, ErrorResponse{Code: CodeCashierRejected, Message: cashierRejected.Message}
+
+	case errors.Is(err, usecase.ErrPremiumUnavailable):
+		// Status premi yang tidak terbaca MENAHAN akseptasi (Pega tidak menangani
+		// kegagalan layanannya). Rinciannya masuk log.
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodePremiumUnavailable,
+			Message: "The premium status could not be checked, so the acceptance was not saved. Try again, or report it to the administrator.",
 		}
 
 	case errors.Is(err, registrasi.ErrExchangeRateNotFound):

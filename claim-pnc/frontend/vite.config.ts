@@ -27,6 +27,15 @@ logger.error = (pesan, opsi) => {
   cetakGalat(pesan, opsi)
 }
 
+// Test dijalankan dalam zona waktu pengguna, WIB.
+//
+// Sebagian layar memformat tanggal memakai zona waktu MESIN (mis. OutstandingTable), dan
+// expectation test-nya ditulis dalam WIB. Tanpa baris ini test lulus di laptop ber-WIB tetapi
+// gagal di runner CI yang ber-UTC — `10:49 WIB` tampil sebagai `03:49`. Ditetapkan di sini,
+// di proses utama, supaya diwarisi seluruh worker Vitest. Hanya saat Vitest berjalan:
+// `vite dev` dan `vite build` tidak tersentuh.
+if (process.env.VITEST) process.env.TZ = 'Asia/Jakarta'
+
 // Hasil build masuk ke backend/spa/dist, lalu disematkan ke binary Go (ADR-0002).
 // Tidak ada runtime Node.js di produksi.
 export default defineConfig({
@@ -103,5 +112,33 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Batas bawaan 5 detik terlalu ketat untuk runner CI yang berbagi CPU: pada mesin yang
+    // sibuk, test layar yang lulus dalam 1 detik dapat melampaui 5 detik dan gagal palsu.
+    testTimeout: 20_000,
+    // Keluaran konsol (terutama peringatan `act(...)` dari React) hanya dicetak untuk test
+    // yang GAGAL. Dicetak untuk semua test, ia melampaui batas log GitLab 4 MB, sehingga
+    // log terpotong tepat sebelum bagian yang menyebut test mana yang gagal.
+    silent: 'passed-only',
+    coverage: {
+      provider: 'v8',
+      // lcov dibaca SonarQube (sonar.javascript.lcov.reportPaths); cobertura dibaca GitLab
+      // untuk menandai baris tercakup di merge request; text-summary untuk log job.
+      reporter: ['text-summary', 'lcov', 'cobertura'],
+      reportsDirectory: 'coverage',
+      // Ditulis juga saat ada test gagal, supaya angka coverage tidak hilang dari log job
+      // tepat ketika ia paling dibutuhkan untuk menelusuri masalahnya.
+      reportOnFailure: true,
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        // Berkas test dan setup-nya bukan kode aplikasi.
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        // Deklarasi tipe tidak menghasilkan kode yang dijalankan.
+        'src/**/*.d.ts',
+        // Entry point: hanya memasang <App /> ke #akar. Seluruh isinya dijalankan peramban,
+        // bukan oleh test — App sendiri tercakup lewat test komponennya.
+        'src/main.tsx',
+      ],
+    },
   },
 })

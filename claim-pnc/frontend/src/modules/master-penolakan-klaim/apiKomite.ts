@@ -47,7 +47,7 @@ export function useCreateCommitteeRejection() {
     // diterbitkan server dari isi tabel, dan petugas lain dapat menambah baris pada saat
     // yang sama.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }
@@ -72,7 +72,7 @@ export function useUpdateCommitteeRejection() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }
