@@ -183,16 +183,7 @@ type Filter struct {
 
 	// ComplianceStatus adalah pilihan radio "Status Compliance".
 	//
-	// # Kenapa ia string bebas, dan itu bukan kelalaian
-	//
-	// Daftar pilihannya TIDAK ADA di export: radionya ber-`pyListSource` `associated`,
-	// dan rule Property tempat daftarnya hidup tidak ikut dikirim — tidak ada satu pun
-	// direktori Property di export ini (`R-16`). Pencarian ke seluruh Activity, RDB List,
-	// dan When rule juga tidak menemukan satu pun perbandingan terhadap nilainya.
-	//
-	// Mengarang daftarnya berarti menampilkan pilihan yang mungkin tidak ada di data, dan
-	// laporan yang selalu kosong tanpa satu pun tanda. Ia karena itu diteruskan apa
-	// adanya, dan pertanyaannya ditujukan ke Tim Pega.
+	// Nilai sahnya ada di ComplianceStatusOptions — bukan lagi string bebas.
 	ComplianceStatus string
 
 	// BusinessCode adalah kode bisnis terpilih pada panel Klaim Per Bisnis.
@@ -259,4 +250,60 @@ func (r Report) Validate(f Filter) []Violation {
 	}
 
 	return v
+}
+
+
+// ComplianceStatusOption adalah satu pilihan radio "Status Compliance".
+type ComplianceStatusOption struct {
+	// Code adalah nilai yang DISIMPAN dan dikirim ke penyaring — "0", "1", atau "2".
+	Code string
+
+	// Label adalah teks yang dilihat pengguna.
+	Label string
+}
+
+// ComplianceStatusOptions adalah ketiga pilihan radio "Status Compliance".
+//
+// # Dari mana daftarnya
+//
+// Dari rule `Property/ComplienceStatus_property.xml` — kelas
+// `ASM-FW-GCNMFW-Data-Adjustment`, `pyTableOption = PromptList`. Perhatikan ejaannya:
+// **Complience**, bukan Compliance. Itu salah ketik yang ada di Pega dan dipertahankan
+// di sana; di sini hanya dirujuk, tidak ditiru.
+//
+// # Yang disimpan adalah KODENYA, bukan labelnya
+//
+// Tiap pilihan punya `pyStandardValue` (yang disimpan) dan `pyLocalizedValue` (yang
+// ditampilkan). Yang masuk ke penyaring adalah `pyStandardValue` — "0", "1", "2".
+//
+// Ini menyelesaikan satu kejanggalan yang sempat terlihat seperti cacat. Isian di layar
+// memakai properti `ComplienceStatus` dengan label "Valid / Bayar", sedangkan datanya
+// tersimpan di `PilihanCompliance` dengan label "Bayar / Valid" — kata-katanya TERBALIK.
+// Perbandingannya tetap cocok karena yang dibandingkan kodenya, bukan katanya.
+//
+// # Kenapa hanya TIGA, sedangkan data punya EMPAT
+//
+// `PilihanCompliance` punya nilai keempat, `3` = "Lain-Lain". Isian penyaringnya tidak
+// menawarkannya. Akibatnya klaim ber-"Lain-Lain" tidak dapat dicari lewat penyaring ini —
+// dan itu perilaku Pega, bukan kekurangan di sini.
+var ComplianceStatusOptions = []ComplianceStatusOption{
+	{Code: "0", Label: "Fraud / ditolak"},
+	{Code: "1", Label: "Valid / Bayar"},
+	{Code: "2", Label: "Post Audit / Bayar"},
+}
+
+// ValidComplianceStatus menyatakan sebuah nilai ada di daftar pilihan.
+//
+// Kosong dianggap SAH: ia berarti "seluruh status", dan begitulah radio yang belum
+// dipilih berperilaku di layar lama.
+func ValidComplianceStatus(value string) bool {
+	if value == "" {
+		return true
+	}
+	for _, option := range ComplianceStatusOptions {
+		if option.Code == value {
+			return true
+		}
+	}
+	return false
 }

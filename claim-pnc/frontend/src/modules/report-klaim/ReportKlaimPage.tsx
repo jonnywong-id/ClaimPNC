@@ -57,21 +57,16 @@ export function ReportKlaimPage() {
     return null
   }, [catalog.data, dipilih])
 
-  // Daftar bisnis hanya ditarik ketika kartu yang membutuhkannya sedang dipilih. Ia
-  // dapat berisi ratusan baris, dan 27 dari 28 panel tidak memakainya.
+  // Daftar bisnis ditarik ketika kartu yang membutuhkannya tersorot, ATAU ketika pengguna
+  // menyentuh dropdown-nya sendiri. Ia dapat berisi ratusan baris, dan 27 dari 28 panel
+  // tidak memakainya — jadi ia tetap tidak ditarik saat layar dibuka.
+  //
+  // Syarat keduanya ada karena isiannya kini SELALU dapat dibuka (lihat FilterBar): tanpa
+  // itu, pengguna yang membuka dropdown tanpa menyorot kartunya lebih dulu akan menemukan
+  // daftar kosong — dan daftar kosong tidak dapat dibedakan dari "tidak ada bisnis".
+  const [bisnisDiminta, setBisnisDiminta] = useState(false)
   const perluBisnis = laporanTerpilih?.penyaring.bisnis === true
-  const businessOptions = useBusinessOptions(perluBisnis)
-
-  // Penyaring yang AKTIF adalah milik kartu yang sedang dipilih. Sebelum satu kartu pun
-  // dipilih, seluruh isian aktif — pengguna sering mengisi rentang tanggal lebih dulu,
-  // baru memilih laporannya.
-  const aktif: Report['penyaring'] = laporanTerpilih?.penyaring ?? {
-    rentang_tanggal: true,
-    lini_bisnis: true,
-    status_compliance: true,
-    bisnis: false,
-    rincian: true,
-  }
+  const businessOptions = useBusinessOptions(perluBisnis || bisnisDiminta)
 
   function unduh(laporan: Report, aksi: string) {
     setDipilih(laporan.kode)
@@ -114,10 +109,12 @@ export function ReportKlaimPage() {
       <FilterBar
         filter={filter}
         setFilter={setFilter}
-        aktif={aktif}
         liniBisnis={catalog.data?.lini_bisnis ?? []}
+        statusCompliance={catalog.data?.status_compliance ?? []}
+        pelanggaran={pelanggaranOf(exportReport.error)}
         bisnis={businessOptions.data?.bisnis ?? []}
-        bisnisMemuat={perluBisnis && businessOptions.isPending}
+        bisnisMemuat={(perluBisnis || bisnisDiminta) && businessOptions.isPending}
+        mintaBisnis={() => setBisnisDiminta(true)}
       />
 
       {exportReport.isError && (
@@ -163,10 +160,14 @@ export function ReportKlaimPage() {
 type FilterBarProps = {
   filter: ReportFilter
   setFilter: (next: ReportFilter) => void
-  aktif: Report['penyaring']
   liniBisnis: { nilai: string; nama: string }[]
+  statusCompliance: { nilai: string; nama: string }[]
+  /** Pesan per isian dari penolakan terakhir, dikunci nama isiannya. */
+  pelanggaran: Record<string, string>
   bisnis: { kode: string; nama: string }[]
   bisnisMemuat: boolean
+  /** Dipanggil saat pengguna menyentuh dropdown Bisnis, untuk menarik daftarnya. */
+  mintaBisnis: () => void
 }
 
 /**
@@ -177,9 +178,37 @@ type FilterBarProps = {
  * Klaim Per Bisnis, satu-satunya panel yang memakainya.
  *
  * Memindahkannya ke atas bersama yang lain adalah penyesuaian bentuk, bukan perubahan
- * perilaku: ia tetap hanya berlaku pada panel itu, dan pada panel lain ia dinonaktifkan.
+ * perilaku: ia tetap hanya dibaca oleh panel yang memakainya.
+ *
+ * # Kenapa tidak ada isian yang dinonaktifkan di sini
+ *
+ * Sebelumnya setiap isian dinonaktifkan bila kartu yang sedang TERSOROT tidak memakainya.
+ * Niatnya menuntun; akibatnya menjebak, dan laporannya masuk 2026-10-01: "dropdown Bisnis
+ * dan Status Compliance tidak selalu bisa dibuka".
+ *
+ * Sebabnya, kartu tersorot berubah karena TIGA hal — kursor melintasinya, fokus papan
+ * ketik masuk, dan tombol Export ditekan — dan tidak pernah dibersihkan. Dua akibatnya:
+ *
+ *   - Kursor yang bergerak ke arah dropdown melintasi kartu lain, dan dropdown itu mati
+ *     tepat sebelum disentuh.
+ *   - Sesudah satu Export ditekan, sorotannya melekat, sehingga isian yang tidak dipakai
+ *     laporan itu tetap mati sampai kartu lain kebetulan tersorot.
+ *
+ * Menautkan *dapat-tidaknya diisi* pada posisi kursor adalah kesalahannya. Isian karena
+ * itu kini SELALU dapat diisi — yang juga lebih dekat ke layar Pega (`D-13`), yang
+ * menampilkan kelima isiannya hidup setiap saat. Isian yang tidak dipakai sebuah laporan
+ * diabaikan peladen, persis seperti di Pega.
  */
-function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat }: FilterBarProps) {
+function FilterBar({
+  filter,
+  setFilter,
+  liniBisnis,
+  statusCompliance,
+  pelanggaran,
+  bisnis,
+  bisnisMemuat,
+  mintaBisnis,
+}: FilterBarProps) {
   const ubah = (bagian: Partial<ReportFilter>) => setFilter({ ...filter, ...bagian })
 
   return (
@@ -190,7 +219,7 @@ function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat 
           label="Dari"
           type="date"
           value={filter.dari}
-          disabled={!aktif.rentang_tanggal}
+          error={pelanggaran["dari"]}
           onChange={(e) => ubah({ dari: e.target.value })}
         />
         <Field
@@ -198,14 +227,13 @@ function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat 
           label="Sampai"
           type="date"
           value={filter.sampai}
-          disabled={!aktif.rentang_tanggal}
+          error={pelanggaran["sampai"]}
           onChange={(e) => ubah({ sampai: e.target.value })}
         />
         <SelectField
           id="lini"
           label="Treaty"
           value={filter.lini}
-          disabled={!aktif.lini_bisnis}
           options={liniBisnis
             .filter((l) => l.nilai !== '')
             .map((l) => ({ value: l.nilai, label: l.nama }))}
@@ -216,7 +244,9 @@ function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat 
           id="bisnis"
           label="Bisnis"
           value={filter.bisnis}
-          disabled={!aktif.bisnis || bisnisMemuat}
+          disabled={bisnisMemuat}
+          onFocus={mintaBisnis}
+          onMouseDown={mintaBisnis}
           options={bisnis.map((b) => ({ value: b.kode, label: b.nama }))}
           emptyText={bisnisMemuat ? 'Memuat…' : '----- Pilih -----'}
           onChange={(e) => ubah({ bisnis: e.target.value })}
@@ -224,24 +254,24 @@ function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat 
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-6">
-        <Field
+        {/*
+          Nilai yang dikirim adalah KODENYA ("0", "1", "2"), bukan labelnya. Daftarnya
+          berasal dari rule Property ComplienceStatus — perhatikan ejaannya, "Complience",
+          salah ketik yang memang ada di Pega dan hanya dirujuk di sini.
+        */}
+        <SelectField
           id="status_compliance"
           label="Status Compliance"
           value={filter.status_compliance}
-          disabled={!aktif.status_compliance}
-          hint="Daftar pilihannya tidak ada di export Pega; isikan kodenya bila diketahui."
+          options={statusCompliance.map((s) => ({ value: s.nilai, label: s.nama }))}
+          emptyText="----- Pilih -----"
           onChange={(e) => ubah({ status_compliance: e.target.value })}
           className="max-w-xs"
         />
-        <label
-          className={`flex items-center gap-2 pb-2 text-sm ${
-            aktif.rincian ? 'text-slate-700' : 'text-slate-400'
-          }`}
-        >
+        <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
           <input
             type="checkbox"
             checked={filter.rincian}
-            disabled={!aktif.rincian}
             onChange={(e) => ubah({ rincian: e.target.checked })}
             className="h-4 w-4 rounded border-slate-300"
           />
@@ -316,7 +346,26 @@ function ReportCard({ laporan, sedangDiunduh, onExport, onFocus }: CardProps) {
 }
 
 function messageOf(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
+  if (failure instanceof APIError) {
+    // Pesan ringkasnya DIGANTI daftar isian yang kurang, bukan ditambahi.
+    //
+    // # Kenapa
+    //
+    // Peladen mengirim keduanya: ringkasan "Ada isian yang belum benar." dan rincian per
+    // isian "Tanggal Dari wajib diisi.". Sebelumnya hanya ringkasannya yang tampil, dan
+    // ringkasan itu TIDAK dapat ditindaklanjuti — pengguna melihat penolakan tanpa tahu
+    // isian mana yang dimaksud, pada layar yang punya lima isian dan 28 tombol.
+    //
+    // Tombolnya pun jauh dari pesannya: kartu yang ditekan bisa berada jauh di bawah,
+    // sementara pesannya muncul di atas. Tanpa menyebut nama isiannya, pengguna harus
+    // menebak.
+    //
+    // Ringkasannya dibuang karena rinciannya sudah memuat seluruh isinya — menampilkan
+    // keduanya hanya menambah satu baris yang tidak memberi tahu apa pun.
+    const perIsian = Object.values(failure.violations())
+    if (perIsian.length > 0) return perIsian.join(' ')
+    return failure.message
+  }
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
 }
@@ -330,4 +379,17 @@ function messageOf(failure: unknown): string {
 function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
   if (failure instanceof APIError && failure.status < 500) return 'penolakan'
   return 'gangguan'
+}
+
+/**
+ * pelanggaranOf mengambil pesan PER ISIAN dari sebuah penolakan.
+ *
+ * Dipakai menandai isiannya sendiri, bukan hanya menampilkan pesan di atas layar.
+ * Pada layar dengan lima isian dan 28 tombol, pesan yang tidak menunjuk isiannya
+ * memaksa pengguna menebak — dan tombol yang ditekan sering berada jauh di bawah
+ * tempat pesannya muncul.
+ */
+function pelanggaranOf(failure: unknown): Record<string, string> {
+  if (failure instanceof APIError) return failure.violations()
+  return {}
 }

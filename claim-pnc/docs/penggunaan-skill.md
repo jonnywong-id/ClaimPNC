@@ -11173,3 +11173,118 @@ membaca kode, melainkan dari melihat **berapa banyak case** yang jatuh ke cabang
 Angka yang membuatnya terlihat: **148 dari 189**. Sebuah cabang yang dilalui mayoritas
 bukan cabang pengecualian.
 >>>>>>> dev
+
+## Sesi 2026-10-01 — Report Klaim: tiga kartu terakhir dan cacat unduhan
+
+### Skill yang dipakai
+
+| Skill | Kenapa | Keluaran | Manfaat nyata |
+|---|---|---|---|
+| `mattpocock-skills:domain-modeling` | Istilah "status compliance" ternyata menunjuk dua properti Pega berbeda dengan daftar pilihan berbeda | `ComplianceStatusOption{Code, Label}` dengan tiga pilihan, kode sebagai nilai tersimpan | Mencegah dropdown yang menyimpan **label**, bukan kode — cacat yang baru terlihat saat laporan tidak menemukan baris apa pun |
+| `mattpocock-skills:codebase-design` | Penyaring daftar mitra tidak muat ke dalam `plan` yang ada | Seam baru `keepBuilder`: disiapkan sekali, dipakai per baris | Satu titik tambahan pada `plan`, bukan cabang khusus Mitra yang tersebar di `Stream` |
+| `mattpocock-skills:diagnosing-bugs` | "Semua ekspor gagal kecuali satu" — gejala yang tampak menyeluruh | Pola kegagalan dipetakan ke satu pembeda: laporan mana yang **tidak menuntut periode** | Menunjuk tepat ke `unduhBerkas`, bukan ke 27 laporan satu per satu |
+
+### Pelajaran yang diambil, bukan sekadar dicatat
+
+**Gejala menyeluruh yang punya satu pengecualian adalah petunjuk, bukan kebisingan.**
+"Semua gagal kecuali DATA REGIST SIMAS ONLINE" langsung menyempitkan ruang pencarian: apa
+yang membedakan satu itu dari 27 lainnya? Jawabannya — `Uses: 0`, satu-satunya laporan
+tanpa penyaring periode — langsung menunjuk ke validasi, bukan ke kueri.
+
+**Kesalahan saya berulang dengan pola yang sama: menyimpulkan dari nama.** Tiga koreksi
+Compliance (tabel salah, "Optimize for Reporting" salah, properti salah) semuanya berasal
+dari membaca nama dan menduga isinya. Yang mengoreksi ketiganya adalah **berkas yang
+dikirim Work Owner**, bukan pembacaan ulang yang lebih teliti. Ini pengulangan pelajaran
+yang sama dari sesi Report KPI.
+
+**Uji penjaga yang menolak pekerjaan saya adalah uji yang bekerja.** Empat kali tertolak;
+empat kali saya menambahkan pengecualian **bernama dan beralasan**, bukan melonggarkan
+penjaganya. Satu di antaranya — `kueriDenganJamTampil` — bahkan dibuat **lebih ketat**
+daripada pengecualian yang sudah ada: ia memeriksa bahwa kueri yang dikecualikan memang
+memuat `HH24:MI:SS`, sehingga pengecualiannya tidak dapat dipakai untuk `TO_CHAR` lain.
+
+**Uji yang mematok angka tetap akan menua.** Uji "berapa laporan terhalang" harus disunting
+setiap kali satu kartu dibuka. Menggantinya dengan `kodeTerhalang(t)` yang menghitung
+sendiri membuat uji itu tetap bermakna tanpa pemeliharaan — dan menghapus godaan menyunting
+angkanya agar lulus.
+
+**Dua diagnosis saya dibantah oleh uji, bukan oleh pembacaan kode.** "Jebakan penyaring"
+yang saya yakini dibantah `userEvent.hover`; perubahannya saya batalkan dan sarannya saya
+cabut. Sebelumnya, assertion `findByText` saya sendiri gagal bukan karena kode salah,
+melainkan karena pesannya **sengaja** tampil dua kali. Keduanya pengingat bahwa menjalankan
+ujinya lebih murah daripada meyakinkan diri sendiri.
+
+### Disiplin perkakas yang ditegakkan ulang
+
+Heredoc di dalam perintah shell **kembali merusak** isi yang memuat backtick dan kutip —
+untuk ketiga kalinya di proyek ini. Aturannya ditegakkan tanpa perkecualian: **isi panjang
+ditulis ke berkas scratchpad lebih dulu**, lalu disalin. Tidak ada heredoc sebaris lagi.
+
+## Sesi 2026-10-01 (lanjutan) — dropdown yang mati dan galat yang bisu
+
+### Skill yang dipakai
+
+| Skill | Kenapa | Keluaran | Manfaat nyata |
+|---|---|---|---|
+| `mattpocock-skills:diagnosing-bugs` | Dua gejala dilaporkan bersamaan dan tampak satu masalah | Dipisah menjadi dua sebab berbeda: satu keadaan UI, satu galat basis data | Yang deterministik selesai hari ini alih-alih ikut tertahan oleh yang menunggu Oracle |
+| `mattpocock-skills:codebase-design` | Penonaktifan isian tersebar di lima tempat, dikendalikan satu keadaan | Keadaan `dipilih` dicabut dari jalur *editability*, disisakan hanya untuk prefetch | Lima `disabled` hilang sekaligus; tidak ada lagi keadaan tersembunyi yang mengatur isian |
+
+### Hipotesis yang dibuat jatuh, dan kenapa itu hasil yang baik
+
+Pola gejalanya tajam: **seluruh ekspor gagal kecuali satu, dan yang satu itu satu-satunya
+tanpa parameter bind**. Dari situ saya menyusun hipotesis yang dapat dibantah — jumlah
+bind tidak sejajar dengan parameternya — dan yang terpenting, **dapat diuji tanpa Oracle**.
+
+Hipotesisnya **terbantah**: 168 subtest, semuanya cocok.
+
+Itu bukan pekerjaan sia-sia. Tiga hal yang didapat:
+
+1. Satu kelas cacat tercoret dari daftar curiga secara **terbukti**, bukan secara perasaan.
+2. Penjaganya tetap tinggal, dan ia menutup kelas cacat yang paling mahal ditemukan di
+   tempat lain — tidak tertangkap kompilator, tidak tertangkap basis data palsu, baru
+   muncul sebagai ORA-01008 di tangan pengguna.
+3. Ruang pencarian menyempit ke satu tempat: pesan ORA-nya sendiri.
+
+Pelajarannya: **hipotesis yang dapat dibantah secara murah lebih berharga daripada tebakan
+yang terdengar masuk akal.** Saya sempat hendak "memperkuat penanganan galat" tanpa menguji
+apa pun; itu akan menyembunyikan ketidaktahuan di balik pekerjaan yang terlihat produktif.
+
+### Menyatakan yang belum diketahui, bukan menutupinya
+
+Saya **belum** menemukan sebab `galat_internal`-nya, dan itu ditulis apa adanya di
+`catatan-pengembangan.md` §27.2 — termasuk dugaan terkuat saya, **dengan label dugaan**.
+
+Godaannya nyata: menyajikan perbaikan penanganan galat seolah ia perbaikan cacatnya.
+Keduanya berbeda, dan mencampurnya akan membuat Work Owner mengira masalahnya selesai lalu
+menemukan sendiri bahwa tidak.
+
+### Memperbaiki sebab, bukan gejala — dan tahu bedanya
+
+Dua perbaikan sesi ini duduk di tempat yang berbeda:
+
+| Perbaikan | Jenis |
+|---|---|
+| Penonaktifan isian dicabut | **Sebab** — keadaan yang mengaturnya memang tidak seharusnya mengatur itu |
+| `ErrQueryFailed` + ID permintaan | **Bukan perbaikan cacatnya** — ia membuat cacat berikutnya *dapat ditemukan* |
+
+Yang kedua tetap layak dikerjakan, tetapi tidak boleh dihitung sebagai penyelesaian.
+
+### Dua kekangan yang saling bertarik, dan tidak boleh dikorbankan salah satunya
+
+Membuat galat basis data "berbicara" berhadapan langsung dengan larangan membocorkan
+detail internal (`11-CROSSCUTTING.md` §1.2 aturan 5). Jalan pintasnya adalah mengirim
+pesan ORA ke layar — mudah, dan salah: ia menyebut nama tabel dan kolom.
+
+Jalan keluarnya **ID permintaan**: tidak berarti apa-apa bagi penyerang, menunjuk tepat
+satu baris log bagi yang berhak. Dan ia dikunci uji yang menuntut **kedua arah sekaligus**
+— ID terkirim, `ORA-` dan nama tabel tidak, tetapi keduanya ADA di log. Uji yang hanya
+memeriksa satu arah akan lolos terhadap perbaikan yang salah.
+
+### Uji lama yang harus berbalik arah
+
+`menonaktifkan isian yang tidak berlaku pada kartu yang disorot` mengunci perilaku yang
+hari ini dicabut. Ia **ditulis ulang beserta alasan pembalikannya**, bukan dihapus.
+
+Uji yang dihapus tanpa jejak mengundang perilakunya kembali — orang berikutnya akan
+mengira pencabutannya kelalaian. Uji yang berbalik arah dengan alasan tertulis
+menyampaikan bahwa itu keputusan.

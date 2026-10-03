@@ -59,3 +59,32 @@ SELECT tanggal
  WHERE tanggal >= :1
    AND tanggal <= :2
  ORDER BY tanggal
+
+
+-- name: report_mitra_logins
+--
+-- Daftar login petugas yang terdaftar sebagai MITRA.
+--
+-- Asal: gabungan `general.lst_mitra@asmd.sinarmas.co.id` pada
+-- `RDB List/ExportDetailMitraReport-SQL.xml`.
+--
+-- Tanpa bind.
+--
+-- # Ia PENYARING, bukan pelengkap kolom
+--
+-- Di kueri asli, tabel ini digabung INNER JOIN tanpa satu pun kolomnya diambil:
+-- `a.userassign = b.login_aplikasi`. Gabungan itu membatasi laporan pada petugas mitra.
+--
+-- Karena itu daftar ini TIDAK boleh diperlakukan seperti kolom bersumber DB Link di
+-- modul lain, yang cukup dikosongkan bila koneksinya tidak ada. Bila daftar ini gagal
+-- dibaca, laporannya DITOLAK — lihat Repo.mitraLogins. Menjalankannya tanpa penyaring
+-- akan memasukkan seluruh petugas ke laporan produktivitas mitra, dan berkasnya tetap
+-- terlihat wajar.
+--
+-- # Tanpa akhiran DB Link
+--
+-- `general.lst_mitra@asmd.sinarmas.co.id` menjadi `general.lst_mitra`, karena koneksi
+-- inilah yang sudah menunjuk basis data itu.
+SELECT login_aplikasi
+  FROM general.lst_mitra
+ WHERE login_aplikasi IS NOT NULL

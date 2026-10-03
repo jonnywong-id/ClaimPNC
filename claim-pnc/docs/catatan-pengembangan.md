@@ -31371,3 +31371,265 @@ Mode `-periksa` kini melaporkan **keempat** tabel rincian, bukan dua.
 Ditambahkan `TestKunciKlaimDiambilBerPrefix` — uji yang paling berharga di berkas itu,
 karena cacat yang diperbaikinya **tidak pernah menampilkan galat**.
 >>>>>>> dev
+
+## 26. Report Klaim: tiga kartu kelabu terakhir, dan ekspor yang tidak pernah terunduh (2026-10-01)
+
+### 26.1 Apa yang dikerjakan
+
+Dua hal yang kelihatannya terpisah, tetapi ditemukan dalam satu sesi:
+
+1. **Tiga laporan terakhir yang masih kelabu** — Mitra, Adjuster, dan Compliance — dibuka.
+2. **Seluruh tombol ekspor ternyata gagal mengunduh**, kecuali satu. Sebabnya bukan pada
+   laporannya, melainkan pada lapisan API bersama.
+
+### 26.2 Report Mitra — "kueri belum ditulis" ternyata salah dibaca sendiri
+
+Kartu Mitra bertuliskan "kueri belum ditulis", dan saya sempat membacanya sebagai *rule
+Pega-nya hilang dari export*. Itu keliru: `RDB List/ExportDetailMitraReport-SQL.xml`
+**ada**. Yang belum ditulis adalah kode Go-nya.
+
+Rule itu membaca `GENERAL.LST_MITRA@ASMD` — satu-satunya objek remote pada laporan ini —
+untuk mendapatkan daftar login mitra, lalu memakai daftar itu sebagai penyaring.
+
+**Keputusan:** daftar login diambil lewat sambungan `ANEKA_<PORTAL_ALIAS>_*` (kueri
+`report_mitra_logins` di `reportklaim_aneka.sql`), bukan lewat DB link, karena ia **bukan
+sub-kueri** — ia berdiri sendiri dan hasilnya dipakai sebagai penyaring di sisi Go. Ini
+mengikuti ketetapan yang sama dengan Report KPI.
+
+**Yang baru pada arsitekturnya:** `plan` mendapat satu bidang baru, `keep keepBuilder`.
+Ia dipanggil **sekali sebelum kueri utama** untuk menyiapkan penyaring, lalu dipakai per
+baris sesudah `derive`. Tanpa itu, penyaringan daftar mitra harus dilakukan di dalam SQL —
+dan itu menuntut DB link yang sudah diputuskan tidak dipakai.
+
+`mitraKeep` **menolak permintaan**, bukan mengembalikan nol baris, pada tiga keadaan:
+sambungan ANEKA tidak tersedia, pembacaan gagal, atau daftarnya kosong. Alasannya: laporan
+kosong dan laporan yang sumber penyaringnya mati **terlihat sama di layar**, dan yang
+kedua adalah kegagalan yang harus dilaporkan. `ErrMitraListUnavailable` ada untuk itu.
+
+### 26.3 Report Adjuster — disusun dari kebalikan kueri inbox
+
+Tidak ada rule ekspor khusus Adjuster di export. Yang ada adalah kueri **inbox terbuka**.
+Laporannya karena itu disusun sebagai **kebalikannya**, dengan tiga penyimpulan yang saya
+nyatakan terbuka, bukan disembunyikan sebagai detail:
+
+| # | Penyimpulan | Kenapa belum pasti |
+|---|---|---|
+| 1 | Baris laporan = kebalikan penyaring inbox terbuka | Tidak ada rule ekspor yang membuktikannya |
+| 2 | Rentang tanggal memakai tanggal penugasan | Inbox tidak memfilter tanggal sama sekali |
+| 3 | Urutan kolom mengikuti grid inbox | Tidak ada grid ekspor untuk dibandingkan |
+
+**Yang dibutuhkan untuk menutupnya:** satu orang berakses Pega menjalankan Report Adjuster
+untuk periode pendek, lalu hasilnya dibandingkan kolom per kolom. Sampai itu terjadi,
+laporan ini **lulus secara fungsional tetapi belum lulus uji kesetaraan** (`D-53`).
+
+### 26.4 Report Compliance — tiga koreksi atas diri sendiri
+
+Laporan ini yang paling banyak membuat saya salah, dan ketiganya layak dicatat karena
+polanya sama: **saya menyimpulkan dari nama, bukan dari isi**.
+
+| # | Yang saya katakan | Yang benar |
+|---|---|---|
+| 1 | Kolom tanggal compliance ada di `PC_ASM_FW_GCNMFW_WORK` | Ada di **`POOLDATA.T_CLAIM_PNC`** |
+| 2 | `ComplianceRemarks`/`ComplianceDate` perlu "Optimize for Reporting" | Keduanya di dalam **page list** — yang dibutuhkan **Declare Index** |
+| 3 | Dropdown status memakai `PilihanCompliance` (4 pilihan) | Layarnya memakai **`ComplienceStatus`** — **3 pilihan**, dan yang **disimpan adalah kodenya** |
+
+Koreksi ketiga baru terjadi setelah Work Owner melampirkan
+`Property/ComplienceStatus_property.xml`. Pelajaran yang diambil: pada Pega,
+`pyStandardValue` adalah yang **tersimpan** dan `pyLocalizedValue` yang **tampil** — dan
+dua properti yang namanya mirip dapat memiliki daftar pilihan yang berbeda.
+
+Satu temuan yang menutup kemungkinan jalan pintas terakhir: **`Work-Compliance` tidak punya
+tabel sendiri** — ia anggota class group. Jadi tidak ada tabel yang bisa dibaca langsung,
+dan kolom tanggalnya memang harus datang dari `T_CLAIM_PNC`.
+
+**Status pilihan di `filter.go`** ditulis sebagai data, bukan konstanta tersebar:
+
+| Nilai tersimpan | Yang tampil |
+|---|---|
+| `0` | Fraud / ditolak |
+| `1` | Valid / Bayar |
+| `2` | Post Audit / Bayar |
+
+Tombolnya diberi label **"Export Data Compliance (tanpa penyaring status)"** supaya
+perbedaannya terhadap layar Pega terbaca dari tombolnya sendiri, bukan hanya dari dokumen.
+
+### 26.5 Cacat ekspor: rinciannya sampai di peramban, lalu dibuang
+
+Gejala yang dilaporkan: *"yang bisa cuma DATA REGIST SIMAS ONLINE, sisanya tidak bisa"*.
+
+Jawabannya ada di badan responsnya sendiri:
+
+```json
+{"kode":"validasi_gagal","pesan":"Ada isian yang belum benar.",
+ "detail":[{"isian":"dari","pesan":"Tanggal Dari wajib diisi."}]}
+```
+
+Dan pada layarnya, isian Dari/Sampai memang kosong. `REPORT DATA REGIST SIMAS ON LINE`
+adalah **satu-satunya laporan yang tidak menuntut periode** — itulah sebabnya hanya ia yang
+berhasil. Polanya cocok persis.
+
+**Jadi peladen sudah benar.** Yang rusak ada di tiga tempat, dan ketiganya di lapisan
+bersama:
+
+| Lapis | Cacat |
+|---|---|
+| `src/api/client.ts` — `unduhBerkas` | Membentuk `APIError` **tanpa meneruskan `detail` maupun `field`**. Rinciannya dibuang di situ |
+| `src/api/client.ts` — `violations()` | Hanya mengenali kunci `field` dan `kolom`; peladen mengirim **`isian`** |
+| `ReportKlaimPage.tsx` | Menampilkan ringkasan (`pesan`), bukan rincian per isian |
+
+Ketiganya diperbaiki. Pesannya kini tampil **dua kali dengan sengaja** — sekali sebagai
+pesan di atas layar, sekali melekat pada isiannya lewat `aria-invalid`. Pada layar berisi
+lima isian dan 28 tombol, pesan yang tidak menunjuk isiannya memaksa pengguna menebak, dan
+tombol yang ditekan sering berada jauh di bawah tempat pesannya muncul.
+
+Pesan sandaran `unduhBerkas` juga kini menyebut **kode HTTP**-nya, supaya kegagalan tanpa
+badan JSON tetap dapat ditelusuri.
+
+> **Ini cacat lintas modul, bukan cacat Report Klaim.** `unduhBerkas` dipakai setiap layar
+> yang mengunduh berkas. Setiap penolakan validasi di jalur unduhan, di modul mana pun,
+> selama ini kehilangan rinciannya.
+
+### 26.6 Satu diagnosis saya yang salah, dan dibantah oleh ujinya sendiri
+
+Saya sempat menyatakan ada "jebakan penyaring": menekan tombol laporan tanpa penyaring akan
+menonaktifkan isian tanggal secara permanen, sehingga pengguna harus "menekan dua kali".
+
+**Itu salah.** Uji yang memakai `userEvent.hover` membuktikan pemilihan laporan terjadi pada
+`onMouseEnter`/`onFocusCapture`, bukan pada klik — jadi tidak ada jebakan. Perubahan yang
+sudah saya buat atas dasar diagnosis itu **dibatalkan**, dan saran "tekan dua kali" dicabut.
+
+### 26.7 Uji penjaga yang menangkap pilihan saya sendiri
+
+Empat kali uji penjaga milik repo ini menolak perubahan saya. Dalam keempatnya saya
+**menambahkan pengecualian bernama beralasan**, bukan melemahkan penjaganya:
+
+| Penjaga | Yang ditangkap | Pengecualian yang ditambahkan |
+|---|---|---|
+| Larangan `TO_CHAR` | Kueri Mitra memformat jam tampil | `kueriDenganJamTampil` — **terpisah** dari pengecualian DB link, dan ia **memeriksa** kueri yang dikecualikan memang memuat `HH24:MI:SS` |
+| Kueri yatim | `report_mitra_logins` tidak dirujuk `plans` | Masuk daftar izin, karena ia memang dipanggil `keep`, bukan `plans` |
+| Kolom tanpa sumber | `Remark`, `NoteKasir` pada Compliance | Masuk `kolomTanpaSumber` |
+| Jumlah laporan terhalang | Uji mematok angka tetap | Diubah menjadi **dinamis** (`kodeTerhalang`), supaya tidak perlu disunting tiap kartu dibuka |
+
+Ditambah satu uji baru: `TestSetiapLaporanSiapPunyaKueri` — menolak kartu yang bertanda
+`Ready()` tetapi tidak punya entri di `plans`. Inilah yang mencegah terulangnya kartu hijau
+yang tombolnya tidak melakukan apa pun.
+
+### 26.8 Yang masih dibutuhkan dari pihak lain
+
+| Kepada | Yang diminta | Menghalangi |
+|---|---|---|
+| **Tim Pega** | Declare Index pada `ComplianceRemarks` dan `ComplianceDate` | Penyaring status Compliance per baris |
+| **Tim Pega / siapa pun berakses Pega** | Menjalankan Report Adjuster untuk periode pendek, lalu kirim hasilnya | Uji kesetaraan `D-53` untuk Adjuster |
+| **Tim Infra** | Lingkungan tersambung Oracle + keluaran `claimpnc.exe -periksa` | Verifikasi seluruh kueri terhadap basis data nyata |
+| **DBA** | Tipe `NEXT_FOLLOWUP`; keberadaan `GROUPBISNISID`; apakah `general.hrd_lbr` terbaca tanpa DB link | Penyempurnaan tiga kueri |
+
+### 26.9 Catatan keadaan repo
+
+`catatan-pengembangan.md` dan `penggunaan-skill.md` memuat **penanda konflik merge yang
+belum diselesaikan** (`<<<<<<<` / `>>>>>>> dev`) — 10 dan 9 baris. Penanda itu **bukan dari
+sesi ini** dan **tidak saya sentuh**: menyelesaikan merge orang lain diam-diam akan
+menghapus jejak salah satu sisinya. Bagian ini ditambahkan sesudahnya.
+
+## 27. Dua cacat lanjutan Report Klaim: dropdown yang mati, dan galat yang bisu (2026-10-01)
+
+Dilaporkan sesudah §26: *"saat sudah memilih tanggal tetap tidak bisa download"* dengan
+badan respons `{"kode":"galat_internal","pesan":"Terjadi kesalahan pada sistem."}`, dan
+*"dropdown bisnis dan status compliance tidak selalu bisa dibuka dalam setiap kondisi"*.
+
+Dua gejala, dua sebab yang berbeda, dan hanya satu yang dapat saya tutup sepenuhnya.
+
+### 27.1 Dropdown yang mati — SELESAI
+
+Sebabnya deterministik dan ada di satu keadaan: `dipilih`, yaitu kartu yang sedang
+tersorot. Ia menentukan isian mana yang `disabled`, dan ia di-set oleh **tiga** hal —
+`onMouseEnter`, `onFocus`, dan tombol Export — lalu **tidak pernah dibersihkan**.
+
+Dua akibatnya, keduanya persis seperti yang dilaporkan:
+
+| Keadaan | Akibat |
+|---|---|
+| Kursor bergerak ke arah dropdown dan melintasi kartu lain | Dropdown mati **tepat sebelum disentuh** |
+| Satu tombol Export sudah ditekan | Sorotannya **melekat**; isian yang tidak dipakai laporan itu tetap mati sampai kartu lain kebetulan tersorot |
+
+**Keputusan: penonaktifan itu dicabut seluruhnya.** Menautkan *dapat-tidaknya sebuah isian
+diisi* pada **posisi kursor** adalah kesalahan rancangan, bukan parameter yang perlu
+disetel. Isian kini selalu hidup.
+
+Yang menguatkan keputusan ini: penonaktifan itu **pilihan saya sendiri**, bukan tuntutan
+Pega. Harness Pega menampilkan kelima isiannya hidup setiap saat, dan isian yang tidak
+dipakai sebuah laporan diabaikan begitu saja. Jadi mencabutnya **lebih dekat** ke `D-13`,
+bukan menjauh.
+
+**Satu akibat yang wajib ditangani bersamaan.** Daftar Bisnis dulu hanya ditarik saat
+kartu yang memakainya tersorot. Dengan dropdown-nya kini selalu dapat dibuka, pengguna
+yang membukanya langsung akan menemukan **daftar kosong** — dan daftar kosong tidak dapat
+dibedakan dari "tidak ada bisnis". Karena itu daftarnya kini ditarik oleh **dua** pemicu:
+kartunya tersorot, **atau** dropdown-nya disentuh (`onFocus`/`onMouseDown`). Ia tetap
+tidak ditarik saat layar dibuka — 27 dari 28 panel tidak memakainya.
+
+**Satu uji lama berbalik arah.** `menonaktifkan isian yang tidak berlaku pada kartu yang
+disorot` mengunci perilaku yang baru saja dicabut. Ia **ditulis ulang, bukan dihapus**,
+beserta alasan pembalikannya — supaya tidak ada yang mengembalikan perilaku itu karena
+mengira pencabutannya kelalaian.
+
+### 27.2 Galat yang bisu — SEBAB BELUM DITEMUKAN, tetapi tidak lagi buntu
+
+Ini harus dinyatakan terus terang: **saya belum menemukan sebab `galat_internal`-nya.**
+
+Yang sudah dipastikan, dan karenanya **tidak perlu dicurigai lagi**:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Gaya penanda bind | `:1`, `:2` — **benar** untuk Oracle; nol tanda `?` di seluruh berkas `.sql` |
+| Tipe tanggal | `time.Time`, bukan string — **benar** untuk godror |
+| **Jumlah bind terhadap parameter** | **cocok seluruhnya** — dibuktikan uji baru, 168 subtest |
+| Sambungan, driver, portal, otentikasi, jalur CSV | **sehat** — `DATA REGIST SIMAS ONLINE` berhasil lewat jalur yang sama |
+
+Hipotesis terkuat saya adalah ketidakcocokan jumlah bind, karena satu-satunya laporan yang
+berhasil adalah satu-satunya yang **tidak punya bind sama sekali**. Hipotesis itu diuji dan
+**terbantah**. `TestJumlahBindCocokDenganParameter` ditinggalkan sebagai penjaga tetap: ia
+memeriksa setiap rencana pada setiap lini bisnis, dan ia menutup kelas cacat yang tidak
+tertangkap kompilator maupun basis data palsu, dan baru muncul sebagai ORA-01008 ketika
+seseorang menekan tombolnya.
+
+**Sebabnya hanya Oracle yang tahu — dan pesannya tidak pernah sampai ke siapa pun.** Itu
+cacat tersendiri, dan itulah yang diperbaiki:
+
+| Sebelum | Sesudah |
+|---|---|
+| Galat Oracle jatuh ke penulis galat umum | Ditandai `ErrQueryFailed`, ditangani modul sendiri |
+| Kode `galat_internal` — sama dengan cacat pemrograman mana pun | Kode `laporan_gagal_dijalankan` — sebab dan tindakannya berbeda |
+| Tanpa ID permintaan | **ID permintaan ada di pesannya**, menunjuk tepat satu baris log |
+| Pesan ORA hanya di konsol, tanpa nama kueri | Dicatat beserta **kode laporan dan nama kuerinya** |
+
+Pesan ORA **tetap tidak dikirim ke peramban**: ia menyebut nama tabel dan kolom
+(`11-CROSSCUTTING.md` §1.2 aturan 5). ID permintaan adalah jembatan yang aman — tidak
+berarti apa-apa bagi penyerang, menunjuk tepat satu baris log bagi yang berhak membacanya.
+
+Rantainya dibungkus **dua** `%w` sekaligus, supaya penanda **dan** galat aslinya sama-sama
+terbaca. Itu mudah rusak tanpa terlihat — mengganti salah satunya menjadi `%v` memutus satu
+sisi dan gagal diam-diam — sehingga ia dikunci `TestRantaiGalatMemuatKeduanya`.
+
+### 27.3 Langkah berikutnya untuk menutup 27.2
+
+Satu langkah, dan hanya satu: **tekan ulang satu tombol Export, lalu kirimkan pesan dari
+konsol `claimpnc.exe`** — barisnya kini bertanda `laporan ditolak basis data` dan memuat
+`ORA-…`, kode laporan, serta nama kuerinya. Dengan baris itu, sebabnya dapat ditentukan
+dalam satu langkah, bukan ditebak.
+
+Dugaan yang paling mungkin, berdasar pengetahuan hari ini — dan **belum diperiksa**:
+objek yang dirujuk tidak ada atau tidak dapat dibaca oleh pengguna basis data aplikasi
+(`ORA-00942`). Ia cocok dengan polanya, karena `report_regist_simas_online` membaca objek
+yang berbeda dari dua puluh tujuh laporan lainnya. Tetapi ia **dugaan**, dan saya
+mencatatnya sebagai dugaan.
+
+### 27.4 Uji yang ditambahkan
+
+| Uji | Yang dikunci |
+|---|---|
+| `TestJumlahBindCocokDenganParameter` | Penanda `:N` sejajar dengan parameter, pada setiap rencana × setiap lini bisnis, dan penomorannya rapat |
+| `TestPenolakanBasisDataDijawabDenganKodeSendiri` | Kode dan ID permintaan **terkirim**; pesan ORA dan nama tabel **tidak** — tetapi ada di log |
+| `TestGalatLainTetapDiteruskan` | Penanda baru tidak menelan galat lain |
+| `TestRantaiGalatMemuatKeduanya` | Dua `%w` tetap utuh |
+| `isian penyaring tetap hidup apa pun kartu yang tersorot` | Pencabutan penonaktifan, lewat hover **dan** lewat Export |
+| `menarik pilihan bisnis saat dropdown-nya disentuh` | Daftar bisnis tidak kosong saat dropdown dibuka langsung |

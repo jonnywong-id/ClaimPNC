@@ -1266,6 +1266,21 @@ export type DocumentTypeInput = {
 export type FieldViolation = {
   field?: string
   kolom?: string
+
+  /**
+   * Nama ketiga untuk hal yang sama — dipakai modul Report Klaim.
+   *
+   * Ditemukan 2026-10-01 karena akibatnya: pelanggarannya SELALU terbuang. `violations()`
+   * hanya mengenali `field` dan `kolom`, sehingga rincian "Tanggal Dari wajib diisi."
+   * tidak pernah sampai ke layar — yang tampil hanya ringkasan "Ada isian yang belum
+   * benar.", yang tidak dapat ditindaklanjuti.
+   *
+   * Tiga nama untuk satu hal adalah utang yang `TKT-F1-004` tutup dengan menyeragamkan
+   * kontraknya. Sampai itu terjadi, ketiganya dibaca di sini — dan pembacaan inilah yang
+   * membuat layar tidak perlu tahu modul mana memakai nama yang mana.
+   */
+  isian?: string
+
   pesan: string
 }
 
