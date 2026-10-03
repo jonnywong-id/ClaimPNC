@@ -31,8 +31,8 @@ function tugas(partial: Partial<TugasSurvei> = {}): TugasSurvei {
 
     // Keduanya SELALU kosong dari server hari ini — kolom asalnya belum ada di T_SURVEYORLIST.
     // Data uji meniru itu apa adanya; mengisinya akan membuat uji lulus atas keadaan yang
-    // tidak pernah terjadi. Status ASM TIDAK termasuk — kolom itu kini terisi.
-    appointment_no: '',
+    // tidak pernah terjadi. Status ASM dan Appointment No TIDAK termasuk — keduanya terisi.
+    appointment_no: 'SRV-0101',
     reference_no: '',
 
     claim_no: 'PNCN.26.0101',
@@ -45,7 +45,7 @@ function tugas(partial: Partial<TugasSurvei> = {}): TugasSurvei {
     pic_loss_adjuster: 'BUDI',
     date_of_loss: '2026-08-20',
     aging: 8,
-    status_asm: 'Preliminary Advice',
+    status_asm: 'LEADER',
     jenis_surveyor: '2',
     ...partial,
   }
@@ -71,16 +71,11 @@ function identitas(partial: Partial<IdentitasSurveyor> = {}): IdentitasSurveyor 
 const keteranganResponse: KeteranganResponse = {
   portal: 'ASM',
   kolom: [
-    {
-      kunci: 'appointment_no',
-      judul: 'Appointment No',
-      keterangan: 'BELUM TERSEDIA. Kolomnya belum ada di POOLDATA.T_SURVEYORLIST.',
-      tersedia: false,
-    },
+    { kunci: 'appointment_no', judul: 'Appointment No', tersedia: true },
     {
       kunci: 'reference_no',
       judul: 'Reference No',
-      keterangan: 'BELUM TERSEDIA. Kolomnya sudah ada tetapi seluruh barisnya masih kosong.',
+      keterangan: 'BELUM TERSEDIA. Kolom REFNO sudah ada tetapi masih kosong.',
       tersedia: false,
     },
     { kunci: 'claim_no', judul: 'Claim No', tersedia: true },
@@ -101,7 +96,7 @@ const keteranganResponse: KeteranganResponse = {
     {
       kunci: 'status_asm',
       judul: 'Status ASM',
-      keterangan: 'Diambil dari STS_SURVEY pada langkah terakhir.',
+      keterangan: 'Peran koasuransi ASM: LEADER atau MEMBER.',
       tersedia: true,
     },
   ],
@@ -301,13 +296,14 @@ it('menggambar ketiga belas judul kolom dari keterangan server', async () => {
   await screen.findByText('PNCN.26.0101')
 
   for (const judul of [
-    // Keduanya BELUM TERSEDIA, dan judulnya menyatakan itu. Tanpa penanda, kolom yang SELALU
-    // kosong tidak dapat dibedakan dari kolom yang kebetulan kosong pada halaman ini.
-    'Appointment No · belum tersedia',
+    // BELUM TERSEDIA, dan judulnya menyatakan itu. Tanpa penanda, kolom yang SELALU kosong
+    // tidak dapat dibedakan dari kolom yang kebetulan kosong pada halaman ini.
     'Reference No · belum tersedia',
 
-    // Status ASM TERSEDIA sejak 2026-09-29 — judulnya polos, tanpa penanda.
+    // Keduanya TERSEDIA — judulnya polos, tanpa penanda. Status ASM sejak 2026-09-29,
+    // Appointment No sejak 2026-10-03 setelah terbukti diturunkan dari CASEID.
     'Status ASM',
+    'Appointment No',
 
     'Claim No',
     'Policy No',
@@ -402,11 +398,14 @@ it('menandai sel kolom yang belum tersedia', async () => {
 
   await screen.findByText('PNCN.26.0101')
 
-  // DUA kolom belum tersedia, dan seluruh selnya bertanda.
-  expect(screen.getAllByText('belum tersedia').length).toBeGreaterThanOrEqual(2)
+  // SATU kolom belum tersedia — Reference No — dan seluruh selnya bertanda.
+  expect(screen.getAllByText('belum tersedia').length).toBeGreaterThanOrEqual(1)
 
   // Status ASM TIDAK bertanda — kolomnya terisi, dan nilainya digambar apa adanya.
-  expect(screen.getAllByText('Preliminary Advice').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('LEADER').length).toBeGreaterThan(0)
+
+  // Appointment No juga TIDAK bertanda, dan nomornya benar-benar tergambar.
+  expect(screen.getByText('SRV-0101')).toBeInTheDocument()
 })
 
 /**

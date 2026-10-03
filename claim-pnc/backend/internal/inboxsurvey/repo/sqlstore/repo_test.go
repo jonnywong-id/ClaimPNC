@@ -361,12 +361,18 @@ func TestCheckNewColumnsReportsPresence(t *testing.T) {
 	repo := NewRepo(db)
 
 	mock.ExpectQuery(query("check_new_columns")).
-		WillReturnRows(sqlmock.NewRows([]string{"A", "B", "C", "D"}).AddRow(1, 0, 2, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"A", "B", "C", "D", "E"}).AddRow(1, 0, 2, 1, 0))
 	cols, err := repo.CheckNewColumns(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, NewColumns{Accept: true, Reference: true, WorkStatus: true}, cols)
+	require.Equal(t, NewColumns{
+		Accept: true, Reference: false, WorkStatus: true,
+		AdjusterPIC: true, SurveyLocation: false,
+	}, cols)
 	require.False(t, cols.All())
-	require.True(t, NewColumns{Accept: true, Appointment: true, Reference: true, WorkStatus: true}.All())
+	require.True(t, NewColumns{
+		Accept: true, Reference: true, WorkStatus: true,
+		AdjusterPIC: true, SurveyLocation: true,
+	}.All())
 
 	mock.ExpectQuery(query("check_new_columns")).WillReturnError(errors.New("ora"))
 	_, err = repo.CheckNewColumns(context.Background())
@@ -379,10 +385,14 @@ func TestCheckFilledColumns(t *testing.T) {
 	repo := NewRepo(db)
 
 	mock.ExpectQuery(query("check_filled_columns")).
-		WillReturnRows(sqlmock.NewRows([]string{"A", "B", "C", "D"}).AddRow(100, 0, 3, 4))
+		WillReturnRows(sqlmock.NewRows([]string{"A", "B", "C", "D", "E", "F"}).
+			AddRow(100, 0, 3, 4, 5, 6))
 	filled, err := repo.CheckFilledColumns(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, FilledColumns{TotalRows: 100, Reference: 3, WorkStatus: 4}, filled)
+	require.Equal(t, FilledColumns{
+		TotalRows: 100, Accept: 0, Reference: 3, WorkStatus: 4,
+		AdjusterPIC: 5, SurveyLocation: 6,
+	}, filled)
 
 	mock.ExpectQuery(query("check_filled_columns")).WillReturnError(errors.New("ora"))
 	_, err = repo.CheckFilledColumns(context.Background())

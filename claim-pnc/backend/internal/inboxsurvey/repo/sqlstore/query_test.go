@@ -249,19 +249,25 @@ func TestKeempatKolomAdjusterTidakDibacaKueriDaftar(t *testing.T) {
 	}
 }
 
-// TestKueriPemeriksaMenyebutKetigaKolomYangDitunggu adalah kebalikan uji di atasnya.
+// TestKueriPemeriksaMenyebutKelimaKolomYangDitunggu adalah kebalikan uji di atasnya.
 //
-// `check_missing_columns` SENGAJA dirancang gagal hari ini. Ia satu-satunya cara mengetahui
-// kolomnya sudah tiba tanpa mencobanya secara kebetulan.
+// # Kenapa LIMA, dan kenapa angkanya pernah berubah dua kali
 //
-// `STATUSWORK` sengaja TIDAK diuji di sini: kolomnya sudah ada, yang belum adalah ISINYA —
-// dan keterisian tidak dapat diuji dengan parsing. Itu tugas `check_mirror_rows`.
-func TestKueriPemeriksaMenyebutKeempatKolomYangDitunggu(t *testing.T) {
+// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTERPIC` dicoret sebagai asal
+// "Appointment No" (nomornya ternyata `CASEID`), lalu LIMA setelah keempat kueri tab tiba dan
+// `ADJUSTERPIC` kembali — kali ini sebagai asal "PIC Loss Adjuster", kolom yang berbeda —
+// bersama `RESCHEDULELOCATION`.
+//
+// Setiap perubahan bersandar pada satu pengukuran. Uji ini menjaga daftarnya tetap sama dengan
+// apa yang benar-benar ditunggu: menanyakan kolom yang tidak perlu membuat `-periksa`
+// melaporkan modul belum siap padahal siap, dan melewatkan yang perlu menyembunyikan
+// penghalang.
+func TestKueriPemeriksaMenyebutKelimaKolomYangDitunggu(t *testing.T) {
 	text := strings.ToUpper(query("check_new_columns"))
 
-	// Nama TANPA akhiran `_1` — itu nama sebenarnya di basis data sejak 2026-09-30.
+	// Nama TANPA akhiran `_1` — itu nama sebenarnya di basis data.
 	for _, kolom := range []string{
-		"ADJUSTERACCEPT", "ADJUSTERPIC", "REFNO", "PYSTATUSWORK",
+		"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK", "ADJUSTERPIC", "RESCHEDULELOCATION",
 	} {
 		require.Containsf(t, text, kolom, "kueri pemeriksa tidak menanyakan %s", kolom)
 	}
@@ -319,19 +325,28 @@ func TestPICLossAdjusterAdalahSurveyorName(t *testing.T) {
 	require.NotContains(t, strings.ToUpper(text), "SURVEYORNAME_1")
 }
 
-// TestStatusASMDibacaDariJejakPerkembangan mengunci temuan 2026-09-29.
+// TestStatusASMAdalahPeranKoasuransi mengunci koreksi 2026-10-03.
 //
-// `STS_SURVEY` terbukti membawa domain `ADJUSTERSTATUS_1`: sebarannya di produksi memuat
-// ketiga nilai yang dipakai Pega sebagai penyaring — `Final Report` 1.466, `Invoice Fee` 1.069,
-// `Close Case` 316.
+// # Apa yang dikunci, dan kenapa
 //
-// Uji ini mencegah kolomnya kembali dikosongkan karena seseorang mengira `ADJUSTERSTATUS_1`
-// masih ditunggu.
-func TestStatusASMDibacaDariJejakPerkembangan(t *testing.T) {
+// Kolom berjudul "Status ASM" **bukan status**. `ASMSTATUS_1` hanya bernilai `LEADER`,
+// `MEMBER`, atau kosong — ia peran koasuransi ASM pada klaim itu.
+//
+// `T_CLAIM_PNC.LEADER_MEMBER` membawanya, diukur di produksi dengan **nol pertentangan** pada
+// 17.633 baris. Uji ini mencegah kolomnya kembali diisi `STS_SURVEY`, yang merupakan status
+// perkembangan adjuster dan **tidak pernah digambar Pega di grid ini** — `AdjusterStatus_1`
+// dialiaskan `"CauseOfLossID"`, dan properti itu bukan salah satu dari 13 sel data.
+//
+// Uji sebelumnya di tempat ini mengunci yang SEBALIKNYA, lengkap dengan alasan yang terdengar
+// meyakinkan. Itu uji yang mengunci perilaku keliru — jenis yang lebih buruk daripada tidak
+// ada uji, karena ia membuat kekeliruan tampak disengaja.
+func TestStatusASMAdalahPeranKoasuransi(t *testing.T) {
 	text := query("list_tasks")
 
-	require.Contains(t, text, "s.STS_SURVEY        AS ASM_STATUS")
+	require.Contains(t, text, "c.LEADER_MEMBER     AS ASM_STATUS")
+	require.NotContains(t, text, "AS ASM_STATUS,\n       s.STS_SURVEY")
 	require.NotContains(t, strings.ToUpper(text), "ADJUSTERSTATUS_1")
+	require.NotContains(t, strings.ToUpper(text), "ASMSTATUS")
 }
 
 // TestHanyaTabTersediaPunyaCabangDiKueriDaftar menjaga kedua arah sekaligus.
@@ -447,19 +462,43 @@ func TestRingkasanTahunanDikelompokkanPerTahun(t *testing.T) {
 	require.NotContains(t, text, "GROUP BY D.ADJUSTER")
 }
 
-// TestUrutanDaftarMenaik mengunci CATATAN 4 pada berkas .sql.
+// TestUrutanDaftarMenurun mengunci CATATAN 4 pada berkas .sql.
 //
-// `BrowseLossAdjuster` dan `BrowseInternalSurveyor` keduanya `ORDER BY … ASC` — yang tertua
-// lebih dulu, urutan antrean kerja. Ia BERBEDA dari inbox lain di aplikasi ini yang menurun,
-// dan perbedaannya dibawa (`P-5`).
+// # Uji ini sempat mengunci yang SEBALIKNYA
+//
+// Sampai 2026-10-03 ia bernama `TestUrutanDaftarMenaik` dan menolak `DESC`, atas alasan
+// "`BrowseLossAdjuster` dan `BrowseInternalSurveyor` keduanya ASC". Alasan itu runtuh begitu
+// keempat kueri tab diterima: **kedua kueri itu bukan penggerak grid ini**, dan keempat yang
+// sebenarnya memakai `ROW_NUMBER() OVER (ORDER BY a.pxcreatedatetime DESC)`.
+//
+// Dicatat karena pelajarannya lebih mahal daripada perbaikannya: sebuah uji yang mengunci
+// perilaku ke sumber yang salah **lebih buruk daripada tidak ada uji** — ia membuat perilaku
+// yang keliru tampak disengaja, dan menolak perbaikannya.
 //
 // Pemutus serinya `CASEID` saja: sesudah penyaringan langkah terakhir, tepat satu baris
 // tersisa per berkas survei, sehingga `INDEX_SURVEY` tidak lagi diperlukan.
-func TestUrutanDaftarMenaik(t *testing.T) {
+func TestUrutanDaftarMenurun(t *testing.T) {
 	text := strings.ToUpper(query("list_tasks"))
 
-	require.Contains(t, text, "ORDER BY S.TGLINPUT, S.CASEID\n")
-	require.NotContains(t, text, "ORDER BY S.TGLINPUT DESC")
+	require.Contains(t, text, "ORDER BY S.TGLINPUT DESC NULLS LAST, S.CASEID DESC\n")
+}
+
+// TestCauseOfLossDibacaDariCoverageKlaim mengunci asal kolom "Cause Of Loss".
+//
+// Keempat kueri tab memakai subquery yang sama persis:
+//
+//	(select causeofloss from pooldata.t_claim_objectcoverage
+//	  where a.caseid_1 = claimid fetch next 1 row only)
+//
+// BUKAN `T_SURVEYORLIST.LOSSTYPE`, yang dipakai sampai 2026-10-03 atas dugaan — dan sempat
+// ditandai "menunggu konfirmasi DBA" padahal buktinya ada di kueri yang belum dibuka.
+func TestCauseOfLossDibacaDariCoverageKlaim(t *testing.T) {
+	text := strings.ToUpper(query("list_tasks"))
+
+	require.Contains(t, text, "POOLDATA.T_CLAIM_OBJECTCOVERAGE")
+	require.Contains(t, text, "FETCH NEXT 1 ROW ONLY")
+	require.NotContains(t, text, "S.LOSSTYPE",
+		"LOSSTYPE bukan asal Cause Of Loss; lihat keempat kueri tab")
 }
 
 // TestTidakAdaPerangkaianNilaiKeTeksSQL menutup celah `{ASIS:...}` warisan.
@@ -519,21 +558,6 @@ func TestNamaKolomTanpaAkhiranPerataanPega(t *testing.T) {
 	}
 }
 
-// TestKeterisianDiukurUntukSeluruhKolomYangSudahAda menutup celah yang paling mudah terlewat.
-//
-// Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom yang tidak ada — dan pada tab
-// Outstanding ia lebih berbahaya, karena `ADJUSTERACCEPT IS NULL` bernilai benar untuk SELURUH
-// antrean. Satu kolom yang tiba tanpa ikut diukur di sini akan terbaca siap.
-func TestKeterisianDiukurUntukSeluruhKolomYangSudahAda(t *testing.T) {
-	text := strings.ToUpper(query("check_filled_columns"))
-
-	for _, column := range []string{"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK"} {
-		require.Containsf(t, text, "COUNT(S."+column+")",
-			"kolom %s sudah ada di POOLDATA.T_SURVEYORLIST tetapi keterisiannya tidak diukur",
-			column)
-	}
-}
-
 // TestTidakAdaCarriageReturnDiTeksKueri menutup cacat yang bergantung pada MESIN, bukan kode.
 //
 // Repository ini ber-`core.autocrlf=true`: berkas `.sql` yang sama ber-LF di satu checkout dan
@@ -547,5 +571,24 @@ func TestTidakAdaCarriageReturnDiTeksKueri(t *testing.T) {
 	for name, text := range queries {
 		require.NotContainsf(t, text, "\r",
 			"kueri %s memuat carriage return; splitByName seharusnya membuangnya", name)
+	}
+}
+
+// TestKeterisianDiukurUntukKelimaKolom menutup celah yang paling mudah terlewat.
+//
+// Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom yang tidak ada — dan pada tab
+// Outstanding ia lebih berbahaya, karena `ADJUSTERACCEPT IS NULL` bernilai benar untuk SELURUH
+// antrean. Satu kolom yang tiba tanpa ikut diukur di sini akan terbaca siap.
+//
+// Kelimanya sudah ada di basis data per 2026-10-03, dan seluruhnya masih kosong.
+func TestKeterisianDiukurUntukKelimaKolom(t *testing.T) {
+	text := strings.ToUpper(query("check_filled_columns"))
+
+	for _, column := range []string{
+		"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK", "ADJUSTERPIC", "RESCHEDULELOCATION",
+	} {
+		require.Containsf(t, text, "COUNT(S."+column+")",
+			"kolom %s sudah ada di POOLDATA.T_SURVEYORLIST tetapi keterisiannya tidak diukur",
+			column)
 	}
 }

@@ -4206,15 +4206,17 @@ func checkInboxSurvey(
 		}
 		return "belum"
 	}
-	print("  [catat] Keempat kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:")
-	print("            ADJUSTERACCEPT %s · ADJUSTERPIC %s · REFNO %s · PYSTATUSWORK %s",
-		ada(columns.Accept), ada(columns.Appointment),
-		ada(columns.Reference), ada(columns.WorkStatus))
+	print("  [catat] Kelima kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:")
+	print("            ADJUSTERACCEPT %s · PYSTATUSWORK %s · REFNO %s",
+		ada(columns.Accept), ada(columns.WorkStatus), ada(columns.Reference))
+	print("            ADJUSTERPIC %s · RESCHEDULELOCATION %s",
+		ada(columns.AdjusterPIC), ada(columns.SurveyLocation))
 
 	if !columns.All() {
 		print("            Yang belum ada menahan: tab Outstanding/ALL/Invoice (ADJUSTERACCEPT),")
-		print("            tab Close dan penyaring berkas tutup (PYSTATUSWORK), kolom")
-		print("            Appointment No (ADJUSTERPIC), kolom Reference No (REFNO).")
+		print("            tab Close dan penyaring berkas tutup (PYSTATUSWORK), setengah kotak")
+		print("            cari dan kolom Reference No (REFNO), kolom PIC Loss Adjuster")
+		print("            (ADJUSTERPIC), dan kolom Location (RESCHEDULELOCATION).")
 		print("            Perubahan skema menempuh D-63 — lihat")
 		print("            docs/permintaan-kolom-t-surveyorlist.md")
 	}
@@ -4237,7 +4239,20 @@ func checkInboxSurvey(
 
 	print("  [catat] Keterisian, dari %d baris: ADJUSTERACCEPT %d · REFNO %d · PYSTATUSWORK %d",
 		filled.TotalRows, filled.Accept, filled.Reference, filled.WorkStatus)
+	print("            ADJUSTERPIC %d · RESCHEDULELOCATION %d",
+		filled.AdjusterPIC, filled.SurveyLocation)
 
+	if filled.AdjusterPIC == 0 {
+		print("  [BELUM] ADJUSTERPIC ADA tetapi SELURUHNYA kosong")
+		print("            Kolom PIC Loss Adjuster tetap menggambar SURVEYOR_NAME sebagai")
+		print("            pengganti. Diukur 2026-10-03: pada 1.796 berkas adjuster eksternal")
+		print("            itu ORANG YANG BERBEDA, bukan nama lain untuk orang yang sama.")
+	}
+	if filled.SurveyLocation == 0 {
+		print("  [BELUM] RESCHEDULELOCATION ADA tetapi SELURUHNYA kosong")
+		print("            Kolom Location tetap menggambar LOCATION_SURVEY sebagai pengganti —")
+		print("            berbeda dari Pega pada 660 dari 2.427 berkas.")
+	}
 	if filled.WorkStatus == 0 {
 		print("  [BELUM] PYSTATUSWORK ADA tetapi SELURUHNYA kosong")
 		print("            Tab Close belum dapat dihitung, dan berkas survei yang sudah ditutup")

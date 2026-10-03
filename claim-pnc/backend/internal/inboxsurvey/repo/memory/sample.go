@@ -123,7 +123,7 @@ var SampleRecords = []Record{
 			AdjusterPIC:     SampleLeaderName,
 			DateOfLoss:      at(2026, time.August, 20, 0),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Waiting Claim Document",
+			ASMStatus:       "LEADER",
 		},
 	},
 	{
@@ -146,7 +146,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.August, 25, 0),
 			CreatedAt:       at(2026, time.September, 2, 9),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Survey",
+			ASMStatus:       "LEADER",
 		},
 	},
 	{
@@ -172,7 +172,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.August, 26, 0),
 			CreatedAt:       at(2026, time.September, 3, 10),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Initial Advice",
+			ASMStatus:       "MEMBER",
 		},
 	},
 	{
@@ -195,7 +195,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.July, 30, 0),
 			CreatedAt:       at(2026, time.September, 4, 11),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Preliminary Advice",
+			ASMStatus:       "LEADER",
 		},
 	},
 	{
@@ -218,7 +218,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.July, 10, 0),
 			CreatedAt:       at(2026, time.September, 5, 12),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Interim Report",
+			ASMStatus:       "LEADER",
 		},
 	},
 	{
@@ -243,7 +243,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.August, 28, 0),
 			CreatedAt:       at(2026, time.September, 6, 13),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Draft Final Report",
+			ASMStatus:       "MEMBER",
 		},
 	},
 	{
@@ -266,7 +266,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.August, 18, 0),
 			CreatedAt:       at(2026, time.September, 8, 15),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Final Report",
+			ASMStatus:       "LEADER",
 		},
 	},
 	{
@@ -289,7 +289,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.August, 15, 0),
 			CreatedAt:       at(2026, time.September, 8, 15),
 			SurveyorType:    inboxsurvey.SurveyorTypeLossAdjuster,
-			ASMStatus:       "Invoice Fee",
+			ASMStatus:       "LEADER",
 		},
 	},
 	{
@@ -312,7 +312,7 @@ var SampleRecords = []Record{
 			DateOfLoss:      at(2026, time.September, 1, 0),
 			CreatedAt:       at(2026, time.September, 9, 16),
 			SurveyorType:    inboxsurvey.SurveyorTypeInternal,
-			ASMStatus:       "Waiting Confirmation",
+			ASMStatus:       "LEADER",
 		},
 	},
 }

@@ -28786,3 +28786,215 @@ Ini contoh keempat alias menyesatkan di modul ini, sesudah `POLICY_NO`→`CaseID
 `InsertHistoryClaimPNC` (§168.1). Polanya sama setiap kali: **nama di rule Pega tidak
 menjelaskan isinya**, dan yang menjawab hanya membaca sumber aslinya.
 >>>>>>> bb4c4f9114ef077bf2502c7305ba090482d3ab9c
+
+### K-105.23 Pemetaan judul-ke-kolom bergeser satu — "Appointment No" ternyata sudah di tangan
+
+**Tanggal** 2026-10-03 · **Pemicu** Work Owner melihat layar Pega berjalan · **Sifat** koreksi
+pemetaan, dan pencabutan satu permintaan ke Tim Pega
+
+**Apa yang terjadi.** Setelah berhari-hari kolom "Appointment No" dinyatakan menunggu
+`ADJUSTERPIC` dari Tim Pega, Work Owner membuka layar Pega dan melaporkan isinya: **`SRV-xxx`**.
+Nomor berkas survei — bukan nama adjuster.
+
+**Akar kekeliruannya ada dua, dan keduanya berlapis.**
+
+*Pertama, rujukan dikira sumber.* Pemetaan judul-ke-kolom disusun dari
+`BrowseLossAdjuster-SQL.xml` dan `BrowseInternalSurveyor-SQL.xml`, padahal **keempat kueri yang
+benar-benar dipakai tab hilang dari export** (`R-16`) — hal yang sudah tercatat di kepala modul
+ini sejak awal, lalu dilupakan saat memetakan kolom. Rujukan terdekat dipakai seolah ia sumber.
+
+*Kedua, dua parameter tautan terhitung sebagai kolom.* Grid punya 13 judul dan 15 sel ber-
+`pyValue`; dua di antaranya `Embed-NameValuePair` — parameter yang membangun
+`"ASSIGN-WORKLIST " + … + "!Surveyor_Flow"`, bukan kolom. Menghitungnya menggeser seluruh
+pemetaan satu kolom.
+
+**Cara pemetaan ditegakkan ulang, dan kenapa cara ini lebih kuat.** Bukan dengan menghitung
+ulang — itu cara yang sama yang sudah gagal — melainkan dengan **tiga jangkar yang tidak
+bergantung urutan**: judul yang namanya persis sama dengan propertinya.
+
+```
+"Cause Of Loss" <-> .CauseOfLoss     "Location" <-> .Location     "Date of Loss" <-> .DateOfLoss
+```
+
+Ketiganya jatuh tepat pada posisi 7, 8, dan 11. Pergeseran satu kolom akan memindahkan ketiganya
+sekaligus, sehingga kecocokan ini tidak mungkin kebetulan.
+
+**Yang diputuskan.**
+
+| Hal | Sebelum | Sesudah |
+|---|---|---|
+| Asal "Appointment No" | `ADJUSTERPIC_1` (nama adjuster) | **`CASEID` dipotong 19 karakter** |
+| Ketersediaannya | menunggu Tim Pega | **hidup sekarang** |
+| `ADJUSTERPIC` | diminta ke Tim Pega | **dicoret — tidak pernah diperlukan** |
+| Asal "Reference No" | `REFNO_1` | **belum diketahui** |
+| `REFNO` | untuk kolom layar + kotak cari | **kotak cari saja** |
+
+`SurveyTask.AppointmentNo()` menurunkannya dari `SurveyID`, bukan menyimpannya sebagai field
+tersendiri — satu nilai, satu sumber. Pega melakukan hal yang sama di
+`SetTempLostAdjuster-Act.xml:6197` lewat `@substring(.CaseID,19,30)`, dan `"ASM-FW-GCNMFW-WORK "`
+memang tepat 19 karakter.
+
+**Satu selisih yang disengaja terhadap Pega.** Pega memotong **membabi buta** pada posisi 19;
+modul ini memakai `TrimPrefix`, yang hanya memotong bila prefiksnya memang ada. Pada data yang
+bentuknya menyimpang Pega memotong di tengah, sedangkan modul ini mengembalikannya apa adanya —
+dan di situlah selisihnya justru dibutuhkan.
+
+**Kenapa `REFNO_1` juga keliru.** Ia memang diambil kedua kueri rujukan, tetapi dialiaskan
+**`"Province"`**, dan `.Province` tidak termasuk 13 sel data grid — diambil lalu tidak pernah
+digambar.
+
+**Pelajarannya, dan ini yang pantas diingat.** Tiga hari dihabiskan menalar tentang kolom yang
+datanya **sudah ada di tangan sejak awal**, dan yang mematahkannya bukan pembacaan ulang yang
+lebih teliti melainkan **satu kalimat dari orang yang melihat layarnya**. Ketika export tidak
+lengkap, satu pandangan ke sistem berjalan mengalahkan penalaran sepanjang apa pun.
+
+**Bukti** `Section/InboxSurvey_section-Section.xml` (13 judul · 15 `pyValue` · 2
+`Embed-NameValuePair`) · `Activity/SetTempLostAdjuster-Act.xml:6197` ·
+`RDB List/BrowseLossAdjuster-SQL.xml:53` · `RDB List/BrowseInternalSurveyor-SQL.xml:96`
+
+### K-105.24 Lima kueri tab diterima — pemetaan disusun ulang, lima hal terbukti keliru
+
+**Tanggal** 2026-10-03 · **Pemicu** Work Owner menambahkan 5 RDB yang hilang · **Sifat**
+koreksi menyeluruh atas pemetaan kolom
+
+**Apa yang diterima.** `BrowseConfirmLostAdjuster`, `BrowseCommunicationLostAdjuster`,
+`BrowseCloseLostAdjuster`, `CountConfirmLostAdjuster`, `CountCommunicationLostAdjuster` —
+bersama `BrowseOSLostAdjuster` yang ternyata ada sejak awal, keenamnya menggenapi penggerak
+grid layar ini.
+
+**Temuan pertama, dan ia menutup satu dugaan besar.** Keempat browse memakai **daftar alias
+yang IDENTIK**. Dugaan bahwa tiap tab mungkin punya daftar kolomnya sendiri — yang membuat
+seluruh pemetaan hanya berlaku untuk satu tab — **gugur**. Satu pemetaan berlaku untuk tujuh
+tab.
+
+**Lima hal yang terbukti keliru, seluruhnya berakar pada satu kesalahan yang sama:**
+
+| Hal | Dipakai | Pega sebenarnya |
+|---|---|---|
+| Urutan daftar | `ORDER BY TGLINPUT` **menaik** | `ORDER BY pxcreatedatetime` **menurun** |
+| Cause Of Loss | `s.LOSSTYPE` | subquery `t_claim_objectcoverage.causeofloss` |
+| Location | `s.LOCATION_SURVEY` | `a.RescheduleLocation_1` |
+| PIC Loss Adjuster | `s.SURVEYOR_NAME` | `a.ADJUSTERPIC_1` |
+| Status ASM | `s.STS_SURVEY` | `a.ASMSTATUS_1` |
+
+Akarnya: pemetaan disusun dari `BrowseLossAdjuster` dan `BrowseInternalSurveyor` — **dua kueri
+yang tidak menggerakkan grid ini** — lalu ditulis ke kode dan dokumen seolah terbukti.
+
+**Satu dugaan yang terbukti BENAR, dan pencabutannya yang salah.** "Reference No" memang
+berasal dari `REFNO_1` (`a.REFNO_1 AS "UserName"` di keempat kueri). Pencabutan 2026-10-03 pagi
+— atas dasar `REFNO_1` dialiaskan `"Province"` di kueri rujukan — **dibatalkan**.
+
+**Yang diperbaiki sekarang.** Urutan menjadi menurun; Cause Of Loss membaca
+`T_CLAIM_OBJECTCOVERAGE` lewat subquery yang sama persis; Reference No dipulihkan ke `REFNO`.
+
+**Yang TIDAK diperbaiki, dan sebabnya.** Location, PIC Loss Adjuster, dan Status ASM menyentuh
+kolom yang **tidak punya padanan pasti** di `T_SURVEYORLIST`. Status ASM yang paling berat:
+`ASMSTATUS_1` bernilai seperti `MEMBER`, sedangkan `STS_SURVEY` berisi progres adjuster, dan
+tabel itu **tidak punya kolom ASMSTATUS sama sekali** (`INSERT_SURVEYORLIST.prc:31-32`).
+Menukarnya berarti mengubah apa yang dilihat pengguna, dan itu keputusan Work Owner.
+
+**Satu uji yang lebih buruk daripada tidak ada uji.** `TestUrutanDaftarMenaik` mengunci urutan
+menaik ke sumber yang salah. Uji semacam itu **membuat perilaku keliru tampak disengaja dan
+menolak perbaikannya** — ia harus dibaca sebagai peringatan, bukan sekadar uji yang perlu
+diperbarui.
+
+**Catatan nama yang menyesatkan.** `BrowseOSLostAdjuster` menyaring `AdjusterAccept_1 = '1'`
+(tab ALL), sedangkan `BrowseConfirmLostAdjuster` menyaring `IS NULL` (tab Outstanding) —
+**namanya tertukar terhadap predikatnya**. Predikat modul ini diambil dari
+`CountOSLostAdjuster`, sehingga tidak terpengaruh.
+
+**Bukti** keempat berkas `RDB List/Browse*LostAdjuster-SQL.xml` · `CountOSLostAdjuster-SQL.xml` ·
+`Database/INSERT_SURVEYORLIST.prc:31-32` · `RDB List/GetDataCaseSurveyALL-SQL.xml`
+
+### K-105.25 Kolom "pengganti" — keadaan ketiga yang `Available` tidak dapat nyatakan
+
+**Tanggal** 2026-10-03 · **Pemicu** tiga kolom terbukti berbeda dari Pega, tetapi tabelnya tidak
+punya padanan · **Sifat** penambahan konsep, bukan penambahan fitur
+
+**Persoalannya.** Setelah keempat kueri tab diterima, tiga kolom terbukti membaca kolom objek
+kerja yang **`POOLDATA.T_SURVEYORLIST` tidak punya sama sekali**:
+
+| Judul layar | Pega | di sini |
+|---|---|---|
+| Status ASM | `a.ASMSTATUS_1` | `s.STS_SURVEY` |
+| PIC Loss Adjuster | `a.ADJUSTERPIC_1` | `s.SURVEYOR_NAME` |
+| Location | `a.RescheduleLocation_1` | `s.LOCATION_SURVEY` |
+
+Dua jalan yang tersedia, dan **keduanya buruk**:
+
+- menandainya `Available: false` → menyembunyikan data yang benar-benar ada dan berguna;
+- membiarkannya polos → menyamarkan selisih yang menyentuh `P-5`.
+
+**Yang diputuskan.** Keadaan ketiga: `Column.Substitute`. Kolomnya **tetap terisi dan terbaca**,
+tetapi judulnya ditandai `· pengganti` dan keterangannya menyebut kolom Pega yang digantikannya.
+
+**Kenapa dua bendera, bukan satu enum tiga nilai.** `Available` sudah dipakai layar untuk
+memutuskan menggambar sel atau menggambar penanda kosong. Mengubahnya menjadi enum menyentuh
+seluruh pemakainya; menambah bendera kedua tidak menyentuh satu pun. Keduanya memang pertanyaan
+berbeda — "ada isinya?" dan "isinya sama dengan Pega?" — dan sebuah kolom dapat menjawab ya pada
+yang pertama dan tidak pada yang kedua.
+
+**Kenapa `pengganti` memakai `omitempty` sedangkan `tersedia` tidak.** Kolom setara adalah
+keadaan normal — sepuluh dari tiga belas. Mengirimkannya pada setiap kolom hanya menambah derau.
+`tersedia` sebaliknya: tanpa nilai eksplisit, kolom yang field-nya lupa diisi akan terbaca sama
+dengan kolom yang memang tidak tersedia, dan layar akan menandai seluruhnya.
+
+**Yang menyertainya.** Ketiga kolom Pega diminta ke Tim Pega — `ASMSTATUS`, `ADJUSTERPIC`,
+`RESCHEDULELOCATION`. Catatan: `ADJUSTERPIC` **kembali diminta setelah sempat dicoret**, tetapi
+untuk kolom yang berbeda: ia memang bukan asal "Appointment No", melainkan asal "PIC Loss
+Adjuster".
+
+**Bukti** `Database/INSERT_SURVEYORLIST.prc:31-32`, `:38-52` (daftar kolom tabel) ·
+`Activity/SetSurveyorList-Act.xml` (apa yang mengisi tiap kolom) ·
+`RDB List/Browse*LostAdjuster-SQL.xml` (apa yang digambar Pega)
+
+### K-105.26 "Status ASM" adalah peran koasuransi — `LEADER_MEMBER` menggantikan kolom baru
+
+**Tanggal** 2026-10-03 · **Pemicu** usulan Work Owner · **Sifat** koreksi kolom, dan pencabutan
+satu permintaan
+
+**Usulannya datang dari Work Owner**, bukan dari analisis: *"kalau member leader itu bisa pakai
+t_claim_pnc leadermember"*. Itu menghentikan permintaan kolom `ASMSTATUS` yang sudah sempat
+diajukan sehari sebelumnya.
+
+**Apa yang terbukti.** Kolom berjudul "Status ASM" **bukan status**. `ASMSTATUS_1` hanya bernilai
+`LEADER`, `MEMBER`, atau kosong, dan `SetTempLostAdjuster` menggambarnya lewat
+`@If(.UserAdmin=="", "LEADER", .UserAdmin)`. Yang dijawabnya: ASM bertindak sebagai leader atau
+member pada klaim itu.
+
+Diukur di produksi, **nol pertentangan** pada 17.633 baris:
+
+| `LEADER_MEMBER` | `ASMSTATUS_1` | baris |
+|---|---|---:|
+| LEADER | LEADER | 15.125 |
+| LEADER | (kosong) | 1.444 |
+| MEMBER | MEMBER | 1.054 |
+| MEMBER | (kosong) | 10 |
+
+**Yang diputuskan.** `ASM_STATUS` dibaca dari `c.LEADER_MEMBER`, bukan `s.STS_SURVEY`.
+Permintaan kolom `ASMSTATUS` **dicabut**.
+
+**Selisih yang diterima: 10 baris (0,06%).** Pada baris ber-`LEADER_MEMBER = MEMBER` yang
+`ASMSTATUS_1`-nya kosong, Pega menggambar `LEADER` karena nilai kosong jatuh ke bawaan. Modul
+baru menggambar `MEMBER` — **lebih tepat daripada layar lama**, dan dicatat sebagai selisih
+terencana alih-alih ditiru.
+
+**Akibat yang harus disadari.** Status perkembangan adjuster (`STS_SURVEY`) **tidak lagi
+digambar**. Itu memang perilaku Pega — `AdjusterStatus_1` dialiaskan `"CauseOfLossID"` dan bukan
+salah satu dari 13 sel data grid. Kolomnya tetap dibaca saat tab Invoice dihidupkan, sebagai
+penyaring.
+
+**Dua dugaan saya yang gugur sekaligus**, dan keduanya pernah saya kunci dengan uji:
+
+1. `STS_SURVEY` adalah isi kolom "Status ASM" — salah; ia tidak pernah digambar Pega.
+2. Kolom `ASMSTATUS` perlu ditambahkan — salah; `LEADER_MEMBER` sudah ada sejak awal.
+
+**Pola yang pantas ditiru, dan ini intinya.** Sebelum meminta kolom baru, **cari kolom yang sudah
+ada**. Dua permintaan gugur hari ini dengan cara itu — `ADJUSTERPIC` untuk "Appointment No"
+(ternyata `CASEID`) dan `ASMSTATUS` (ternyata `LEADER_MEMBER`) — dan keduanya ditemukan Work
+Owner, bukan saya.
+
+**Bukti** `RDB List/Browse*LostAdjuster-SQL.xml` (`a.ASMSTATUS_1 AS "UserAdmin"`) ·
+`Activity/SetTempLostAdjuster-Act.xml` (`@If(.UserAdmin=="","LEADER",…)`) ·
+`RDB List/GetOSKomiteNonMBU-SQL.xml` (`b.LEADER_MEMBER = 'LEADER'`) · pengukuran produksi
+2026-10-03

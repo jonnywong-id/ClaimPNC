@@ -34572,3 +34572,232 @@ perilaku sebelumnya — menugaskan pekerjaan dokter ke orang yang bukan dokter. 
 router membaca dokter terpilih.
 
 Pengisi memori (`repo/memory`) diselaraskan dengan pengisi SQL; uji `assigner_test.go`.
+
+### 84.18 Pemetaan kolom bergeser satu — dan nomornya sudah di tangan sejak awal (2026-10-03)
+
+Work Owner membuka layar Pega dan menyebut satu hal: kolom **"Appointment No"** berisi
+**`SRV-xxx`**. Itu meruntuhkan tiga hari penalaran saya dalam satu kalimat.
+
+#### Dua lapis kekeliruan
+
+**Rujukan dikira sumber.** Pemetaan judul-ke-kolom saya susun dari `BrowseLossAdjuster` dan
+`BrowseInternalSurveyor` — padahal **keempat kueri yang benar-benar dipakai tab hilang dari
+export** (`R-16`). Saya menulis fakta itu sendiri di kepala modul ini, lalu melupakannya saat
+memetakan kolom.
+
+**Parameter tautan terhitung sebagai kolom.** Grid punya 13 judul tetapi 15 sel ber-`pyValue`;
+dua di antaranya `Embed-NameValuePair` — parameter yang membangun
+`"ASSIGN-WORKLIST " + … + "!Surveyor_Flow"`. Menghitungnya menggeser seluruh pemetaan satu kolom.
+
+#### Cara menegakkannya ulang — dan kenapa bukan dengan menghitung ulang
+
+Menghitung ulang adalah cara yang sama yang sudah gagal. Yang dipakai: **tiga jangkar yang tidak
+bergantung urutan** — judul yang namanya persis sama dengan propertinya.
+
+```
+"Cause Of Loss" <-> .CauseOfLoss    "Location" <-> .Location    "Date of Loss" <-> .DateOfLoss
+```
+
+Ketiganya jatuh pada posisi 7, 8, dan 11 sekaligus. Pergeseran satu kolom memindahkan ketiganya
+berbarengan, jadi kecocokan itu tidak mungkin kebetulan.
+
+#### Yang berubah
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| "Appointment No" | menunggu `ADJUSTERPIC` dari Tim Pega | **hidup** — `CASEID` dipotong 19 karakter |
+| `ADJUSTERPIC` | diminta | **dicoret, tidak pernah diperlukan** |
+| "Reference No" | dari `REFNO_1` | **asalnya belum diketahui** |
+| `REFNO` | kolom layar + kotak cari | **kotak cari saja** |
+
+Pega memperoleh nomornya dengan `@substring(.CaseID,19,30)`, dan `"ASM-FW-GCNMFW-WORK "` memang
+tepat 19 karakter. `SurveyTask.AppointmentNo()` melakukan hal yang sama — tetapi dengan
+`TrimPrefix`, sehingga nilai yang bentuknya menyimpang dikembalikan utuh alih-alih dipotong di
+tengah.
+
+#### Pelajarannya
+
+Tiga hari dihabiskan menalar tentang kolom yang **datanya sudah ada di tangan sejak awal**. Yang
+mematahkannya bukan pembacaan ulang yang lebih teliti, melainkan satu pandangan ke sistem yang
+berjalan.
+
+Ketika export tidak lengkap, satu kalimat dari orang yang melihat layarnya mengalahkan penalaran
+sepanjang apa pun. Rincian di `K-105.23`.
+
+### 84.19 Lima kueri tab tiba — satu pemetaan ternyata keliru di lima tempat (2026-10-03)
+
+Work Owner menambahkan kelima RDB yang hilang. Bersama `BrowseOSLostAdjuster` yang ternyata ada
+sejak awal, penggerak grid layar ini akhirnya lengkap.
+
+#### Yang langsung tertutup
+
+Keempat browse memakai **daftar alias yang identik**. Dugaan bahwa tiap tab mungkin punya daftar
+kolom sendiri — yang membatasi seluruh pemetaan saya pada satu tab — **gugur**. Satu pemetaan
+berlaku untuk tujuh tab.
+
+#### Lima yang keliru
+
+| Hal | Saya pakai | Pega |
+|---|---|---|
+| Urutan daftar | `TGLINPUT` menaik | `pxcreatedatetime` **menurun** |
+| Cause Of Loss | `s.LOSSTYPE` | subquery `t_claim_objectcoverage.causeofloss` |
+| Location | `s.LOCATION_SURVEY` | `a.RescheduleLocation_1` |
+| PIC Loss Adjuster | `s.SURVEYOR_NAME` | `a.ADJUSTERPIC_1` |
+| Status ASM | `s.STS_SURVEY` | `a.ASMSTATUS_1` |
+
+Satu akar: pemetaan disusun dari `BrowseLossAdjuster` dan `BrowseInternalSurveyor` — dua kueri
+yang tidak menggerakkan grid ini.
+
+#### Satu yang ternyata benar, dan pencabutannya yang salah
+
+"Reference No" memang dari `REFNO_1`. Pencabutan pagi harinya saya batalkan.
+
+#### Diperbaiki sekarang
+
+Urutan menurun · Cause Of Loss lewat subquery yang sama persis · Reference No kembali ke `REFNO`.
+
+#### Ditahan, menunggu keputusan
+
+Location, PIC Loss Adjuster, dan Status ASM. Ketiganya menyentuh kolom tanpa padanan pasti di
+`T_SURVEYORLIST` — dan Status ASM yang terberat: tabel itu tidak punya kolom `ASMSTATUS` sama
+sekali.
+
+#### Pelajaran yang paling mahal
+
+`TestUrutanDaftarMenaik` **mengunci perilaku keliru ke sumber yang salah**, lengkap dengan
+komentar yang menjelaskan kenapa itu disengaja. Uji semacam itu lebih buruk daripada tidak ada
+uji: ia membuat kekeliruan tampak sebagai keputusan, dan menolak perbaikannya.
+
+Yang membuatnya mungkin bukan kecerobohan menulis uji, melainkan kecerobohan sebelum itu —
+memakai rujukan terdekat sebagai sumber, lalu menguncinya. Rincian di `K-105.24`.
+
+### 84.20 Tiga kolom tanpa padanan — penanda "pengganti" (2026-10-03)
+
+Sisa dari §84.19. Ketiga kolom yang terbukti berbeda ternyata **tidak punya padanan sama sekali**
+di `T_SURVEYORLIST` — bukan soal salah pilih kolom, melainkan kolomnya tidak ada.
+
+Ditelusuri sampai penulisnya, bukan ditebak:
+
+```
+INSERT_SURVEYORLIST.prc        17 kolom bisnis + 3 yang baru. Tidak ada ASMSTATUS,
+                               ADJUSTERPIC, maupun RESCHEDULELOCATION.
+SetSurveyorList-Act.xml        LOCATION_SURVEY <- Param.ObjName
+                               SURVEYOR_NAME   <- TempSurvey.SurveyorName
+                               STS_SURVEY      <- TempSurvey.AdjusterStatus
+```
+
+Baris terakhir sekaligus **membuktikan** `STS_SURVEY = AdjusterStatus_1` — yang selama ini hanya
+disimpulkan dari kemiripan sebaran nilai (`K-105.19`). Sekarang terbaca dari penulisnya.
+
+#### Dua jalan yang sama-sama buruk
+
+Menandainya belum tersedia menyembunyikan data yang berguna. Membiarkannya polos menyamarkan
+selisih. Keduanya ditolak.
+
+#### Keadaan ketiga
+
+`Column.Substitute` → judul bertanda `· pengganti`, keterangan menyebut kolom Pega yang
+digantikannya. Kolomnya tetap terbaca, selisihnya tetap terlihat.
+
+Ini jenis cacat yang paling sering lolos: **sel terisi, angkanya masuk akal, dan bukan angka
+yang sama**. `Available` tidak pernah dapat menyatakannya, karena ia menjawab pertanyaan lain.
+
+#### Yang diminta ke Tim Pega
+
+`ASMSTATUS`, `ADJUSTERPIC`, `RESCHEDULELOCATION`. `ADJUSTERPIC` **kembali diminta setelah sempat
+dicoret** — tetapi untuk kolom yang berbeda: ia bukan asal "Appointment No", melainkan asal "PIC
+Loss Adjuster". Rincian di `K-105.25`.
+
+### 84.21 Dua permintaan kolom gugur karena kolomnya sudah ada (2026-10-03)
+
+Work Owner menahan permintaan kolom ketiga dengan satu pertanyaan — *"ini jadi mau tambah kolom
+ke t_surveyorlist lagi?"* — lalu memberi usulan yang menyelesaikannya: *"kalau member leader itu
+bisa pakai t_claim_pnc leadermember"*.
+
+Diukur, dan benar. **Nol pertentangan pada 17.633 baris:**
+
+```
+LEADER_MEMBER  ASMSTATUS_1    baris
+LEADER         LEADER        15.125
+LEADER         (kosong)       1.444
+MEMBER         MEMBER         1.054
+MEMBER         (kosong)          10
+```
+
+Sepuluh baris terakhir satu-satunya selisih (0,06%) — di sana modul baru justru lebih tepat
+daripada Pega, yang menjatuhkan nilai kosong ke `LEADER`.
+
+#### Yang gugur hari ini
+
+| Permintaan | Gugur karena |
+|---|---|
+| `ADJUSTERPIC` untuk "Appointment No" | nomornya ternyata `CASEID` dipotong prefix |
+| `ASMSTATUS` | `T_CLAIM_PNC.LEADER_MEMBER` sudah membawanya |
+
+**Keduanya ditemukan Work Owner, bukan saya.** Yang pertama lewat melihat layar, yang kedua lewat
+mengenali kolom yang sudah ada.
+
+#### Yang bertahan
+
+`ADJUSTERPIC` untuk **"PIC Loss Adjuster"** — kolom yang berbeda, dan terukur:
+
+```
+2.463 berkas · ADJUSTERPIC_1 terisi 1.820 · SURVEYORNAME_1 terisi 2.422 · keduanya sama: 3
+SURVEYOR_NAME cocok SURVEYORNAME_1 17.198/17.238 · cocok ADJUSTERPIC_1 0
+```
+
+Dua orang yang berbeda, bukan dua nama untuk satu orang.
+
+#### Pelajarannya
+
+**Cari kolom yang sudah ada sebelum meminta yang baru.** Tiga ronde permintaan kolom, dan dua di
+antaranya tidak perlu sama sekali. Yang menghentikannya bukan analisis yang lebih teliti — tetapi
+orang yang mengenal datanya. Rincian di `K-105.26`.
+
+### 84.22 Kelima kolom lengkap — tinggal pengisiannya (2026-10-03)
+
+```sql
+ALTER TABLE t_surveyorlist ADD (
+  adjusterpic        VARCHAR2(150),
+  RescheduleLocation VARCHAR2(1500 CHAR)
+);
+```
+
+Dengan ini `POOLDATA.T_SURVEYORLIST` memuat **kelima** kolom yang ditunggu modul ini:
+
+| Kolom | Menghidupkan | Ada | Terisi |
+|---|---|:---:|:---:|
+| `ADJUSTERACCEPT` | tab Outstanding, ALL, Invoice | ✅ | ❌ |
+| `PYSTATUSWORK` | tab Close, penyaring berkas tutup | ✅ | ❌ |
+| `REFNO` | kolom Reference No, setengah kotak cari | ✅ | ❌ |
+| `ADJUSTERPIC` | kolom PIC Loss Adjuster | ✅ | ❌ |
+| `RESCHEDULELOCATION` | kolom Location | ✅ | ❌ |
+
+**Tidak ada `ALTER` lagi yang diminta.** Yang tersisa satu hal: **jalur pengisiannya** — backfill
+sekali jalan dari `PC_ASM_FW_GCNMFW_WORK`, ditambah pemutakhiran saat status objek kerja berubah.
+
+#### Yang dipasang sekarang
+
+`check_new_columns` dan `check_filled_columns` diperluas ke lima kolom, dan `-periksa`
+melaporkan keduanya terpisah. Dua baris `[BELUM]` baru menyebut akibat nyatanya, bukan sekadar
+"kosong":
+
+```
+[BELUM] ADJUSTERPIC ADA tetapi SELURUHNYA kosong
+          ... pada 1.796 berkas adjuster eksternal itu ORANG YANG BERBEDA
+[BELUM] RESCHEDULELOCATION ADA tetapi SELURUHNYA kosong
+          ... berbeda dari Pega pada 660 dari 2.427 berkas
+```
+
+#### Yang TIDAK dipasang
+
+Sumber kedua kolom layar **belum ditukar**. Menukarnya sekarang mengubah kolom yang hari ini
+terisi menjadi kosong — lebih buruk daripada pengganti yang ditandai. Penanda `· pengganti`
+tetap, dan hilang sendiri begitu `-periksa` melaporkan keterisiannya.
+
+#### Catatan penomoran, diperiksa dan tidak disentuh
+
+Work Owner menanyakan apakah Go sudah menerbitkan `SRVN.YY.xxxx` seperti `PNCN`/`OPCN`.
+**Belum, dan memang belum perlu** — modul ini hanya membaca (dikunci
+`TestSeluruhKueriHanyaMembaca`), dan yang membuat berkas survei adalah `Surveyor_Flow` di Pega
+yang tidak ada di export. Tidak ada sequence dibuat, tidak ada generator ditulis.
