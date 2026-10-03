@@ -338,7 +338,7 @@ export function OutstandingPage() {
             <>
               <Button
                 tone="halus"
-                onClick={() => void list.refetch()}
+                onClick={() => { list.refetch() }}
                 disabled={list.isFetching || portal === null}
               >
                 <ReloadIcon className="h-4 w-4" />
@@ -357,7 +357,7 @@ export function OutstandingPage() {
               */}
               <Button
                 tone="kedua"
-                onClick={() => void download()}
+                onClick={() => { download() }}
                 disabled={downloading || portal === null}
                 title="Unduh seluruh klaim berjalan dalam lini bisnis Anda — bukan hanya isi layar ini"
               >

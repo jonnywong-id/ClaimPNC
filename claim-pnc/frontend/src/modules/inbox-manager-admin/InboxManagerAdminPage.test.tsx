@@ -190,7 +190,7 @@ function stubDefaultFetch(rows: WorkItem[] = [BARIS], meta: MetadataResponse = M
 
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun.
-    const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab')
+    const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
     const answered =
       wanted === TAB_TRAVEL.kode
         ? TAB_TRAVEL

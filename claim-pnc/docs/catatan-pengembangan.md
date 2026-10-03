@@ -8863,9 +8863,6 @@ satu baris di `app/menu/registry.ts`, satu rute di `app/App.tsx`, dan tipe di
 `<<<<<<<` pembuka dan tanpa isi di antaranya**:
 
 ```
->>>>>>> Stashed changes
-=======
->>>>>>> master
 ```
 
 Ketiganya juga ada di HEAD, jadi ia **bukan akibat pekerjaan sesi ini** — sisa resolusi
@@ -31909,7 +31906,6 @@ menyelesaikannya.
 Ini kedua kalinya kelas cacat yang sama menyerang di tempat yang sama: pada 2026-09-22
 sebabnya header `Cache-Control` yang terpasang di cabang yang salah. Keduanya punya sidik
 yang sama — **perubahan yang sudah benar tampak tidak terjadi, tanpa jejak galat apa pun.**
-=======
 ### 21.12 Koreksi 2026-09-29 — satu rule yang saya nyatakan hilang ternyata ADA
 
 Saat menjawab permintaan Work Owner menyebutkan **tipe rule** dari artefak yang perlu
@@ -34134,3 +34130,445 @@ Diperbaiki di pemuat modul ini, dikunci `TestTidakAdaCarriageReturnDiTeksKueri`.
 **58 modul lain punya pemuat yang sama dan tidak diperbaiki** — dilaporkan, sesuai Fokus Penuh.
 Dua di antaranya sudah merah hari ini: `inboxpladla` dan `inboxservicecenter`. Rinciannya dan
 usulan satu baris `.gitattributes` yang menutup semuanya ada di `K-105.22`.
+## 64. Inbox Auto Claim: tampilan satu layar, pop-up rincian, proteksi unggahan lanjutan (2026-09-29)
+
+**Permintaan Work Owner:** layout dinamis & mobile friendly, grid kanan terbaca satu layar, Detail sebagai pop-up; melanjutkan proteksi unggahan (DATA_JSONBLOB tidak dipakai, dua berkas RDB List baru, alamat cek premi dari GCNM_CONNECT_REST per portal, lokasi hardcode operator).
+
+**Pertanyaan konfirmasi (dijawab):** cakupan cek premi → semua baris ketiga tab · layanan mati → baris ditandai gagal · Open Protection tipe 3 membebaskan di Travel/ANEKA · sumber Open Protection → `T_CLAIM_OPENPROTECTION`.
+
+**Perubahan:** frontend `CompanyBatches.tsx`, `CompanyBrowser.tsx`, `UploadForm.tsx`, `DataTable.tsx` (`dense`), `Icon.tsx` (`DownloadIcon`), `api/types.ts`; backend domain `policy.go` baru, `upload.go`, `inboxautoclaim.go` (4 metode Repo); usecase `manage.go` (tahap premi); adapter `premium/` baru (Pega + Fake); sqlstore 4 kueri baru; memori; `cmd/claimpnc` (perakitan + 2 pemeriksaan `-periksa`). Tidak ada perubahan skema.
+
+**Kendala:** (1) aturan titik nilai klaim Kredit kemarin keliru — langkah Pega-nya bersyarat satu operator; dicabut. (2) galat jaringan Go membocorkan IP:port layanan — ditangkap uji, pesan disaring. (3) `APP` SMI berakhiran baris baru. (4) `T_GENERAL.CURRENCY` kosong. (5) `main.go` ber-CRLF membuat penggantian teks via perl gagal diam-diam — dipakai Edit.
+
+**Verifikasi:** seluruh paket Inbox Auto Claim lulus; 3 sabotase membuktikan uji premi, Open Protection, dan kontrak ganda dapat merah; `-periksa` Oracle: keempat kueri baru berjalan di ketiga tab; frontend 65/65, `tsc` dan build bersih. Kegagalan uji di `inboxosclaimpercabang`, `inboxpladla`, `inboxservicecenter` berasal dari commit lain, bukan perubahan ini.
+
+## 65. Inbox Auto Claim: letak tombol dan gulir di bawah bilah atas (2026-09-29)
+
+Upload Data Klaim pindah ke panel tab; Proses Klaim dan Generate DLA menjadi tombol per baris batch (nonaktif, mesin belum dibangun); panel catatan "belum tersedia" dibuang; Cek Premi tetap satu baris keterangan karena ia tab keempat dengan layanan `GetPremiumPaid_SPK` yang belum dibangun. `PageShell` kini menggulir wadah di bawah bilah atas, bukan jendela; `sticky` menu kiri dan daftar perusahaan disesuaikan ke wadah itu. Uji diperbarui (tombol Upload dicari di dalam `tabpanel`; uji baru untuk tombol per batch). Frontend 66/66, `tsc` dan build bersih. Belum diperiksa di peramban.
+
+## 66. Inbox Auto Claim: tab Cek Premi (2026-09-29)
+
+Tab keempat Cek Premi dibangun (lihat keputusan-implementasi §66).
+- **Backend:**
+  - domain `premiumcheck.go`;
+  - `PremiumChecker.PremiumPaidBySource` (Pega + Fake; jalur panggil HTTP disatukan di `Pega.call`);
+  - `Repo.PremiumCheckChoices` / `SucceededClaimTotal` (sqlstore + memori + data contoh);
+  - usecase `CheckPremiumTotal`;
+  - dua rute GET dan kode galat `layanan_premi_gagal` (502);
+  - pemeriksaan `-periksa` untuk katalog `PREMI-API`, kolom `POOLDATA.BUSINESS`, dan ketiga kueri.
+- **Frontend:** `PremiumCheckPanel` sebagai tab keempat (tanpa tombol Upload); baris "Cek Premi belum tersedia" dibuang.
+- **Uji:** Go (pega_test, manage_test, routes_test) lulus; frontend 69/69; `tsc` dan build bersih.
+- Saat verifikasi, drive C tinggal 32 MB sehingga link Go gagal. Build/uji dijalankan dengan `GOTMPDIR`/`GOCACHE` sementara di drive D, lalu foldernya dihapus.
+
+## 112. Print Draft Persetujuan dan tombol di detail adjustment; perbaikan Inbox Outstanding (2026-09-30)
+
+**Masukan Work Owner:** tombol "Transfer Kasir" dipindah ke dalam data adjustment seperti layar
+Pega, dan tombol "Print" di sampingnya mencetak Draft akseptasi seperti Pega.
+
+**Letak tombol** (`Section/InputAdjustment_sect.xml`): Nomor Akseptasi tampil bila
+`.AcceptationStatusLOD == '1' && .AcceptedNo != ''`; PRINT bila `.AcceptedNo != ''`; Transfer
+Kasir bila `.PaymentType != '3' && .AcceptedNo != ''`, mati bila `.TransferCashierStatus == '1'`.
+Transfer Kasir dikeluarkan dari kolom Akseptasi grid (`AcceptanceButtons`) dan pindah ke komponen
+`AcceptanceNumber` di `SettlementDetail`. Detail kini juga menampilkan Status Persetujuan LOD dan
+Case ID Kasir.
+
+**Draft Persetujuan** (`PrintPDFAcceptanceNote` + `HTML/AcceptanceNotePDF-html.xml`, dibandingkan
+dengan contoh PDF): `registrasi/acceptancenote.go`, `acceptancenotepdf/`,
+`usecase/acceptancenote.go`, POST `/api/registrasi/klaim/{id}/akseptasi/draft`. Nama berkas
+`DraftPersetujuan_NO.<nomor>.pdf`. Pemetaan terbaca setelah pasangan PropertiesName/Value
+dicocokkan per rowdata — pembacaan pertama tergeser: Claim Accepted = GrossValue, (ASM) =
+AdjustmentValue, Location of Loss = `ClaimData.Location`, penanda tangan = KomiteAccepted,
+tanggal = AcceptedDate ("Jakarta, dd MMMM yyyy", in_ID). Spreading = share × nilai / 100; rincian
+QS (10003/10019) = share × PCT × nilai / 100 dari `searchQSReins2_SQL` (PCT pecahan, mis. `,400`).
+Tipe 7 dicetak sebagai Adjuster Fee (Pega mengubahnya menjadi 4 sebelum template). Premium Paid On
+dari layanan premi (`InstallmentNo`, `PaymentDate`, `PaymentAmount` > 0) dan
+`Quotation.StatusBusiness` (1 New Business, 2 Endorsement, 3 Renewal). Tanda tangan
+`SetSignatureNonMBU` kategori IsAkseptasi (DHARMANTO hanya untuk PLA/DLA).
+
+**Tidak dibawa:** `InsertJsonClaimNonMBU_act` (D-02), `HitServiceOSAkseptasiClaimNonMBU`,
+`GenerateDLAListAdjustment` (DLA terbit saat daftar Print DLA dibuka), lampiran AcceptanceNote,
+email Draft Akseptasi, `SendEmailAccCollection`, logo kop, baris Nomor Kontrak, centang "ASM bayar
+full" (`.ASMFull`, tidak punya kolom), dan penggantian Policy Condition Fire lewat
+`BrowseOldIDCoverage` (parameternya `TempEstimasi.AccountNo` tidak diisi activity ini). Tata letak
+Travel dan PA ditolak dengan pesan jelas. Layanan premi yang gagal tidak menggagalkan cetak —
+Premium Paid On kosong.
+
+**Unduhan:** `unduhBerkas` kini membawa `detail` galat 422 seperti `callAPI`, sehingga alasan
+penolakan Print DLA, Print LOD, dan Draft Persetujuan tampil, bukan hanya "Validasi gagal".
+
+**Inbox Outstanding:** tab "Documents not complete" berlencana 7 tetapi daftarnya kosong karena
+kode domain (`belum-lengkap`, `lengkap`) dikirim apa adanya ke SQL yang menguji `'BELUM'` dan
+`'LENGKAP'`. `statusArgs` kini menerjemahkannya; tes regresi ditambahkan.
+
+## 113. Transfer Kasir ditolak HTTP 400 — bentuk badan disamakan dengan yang diterima Kasir (2026-10-01)
+
+Submit Transfer Kasir PNCN.26.0014 dijawab Kasir HTTP 400, lalu tampil sebagai "cashier system
+could not be reached" karena isi jawaban dibuang. Pembanding: tiga badan "Log Kasir" terakhir di
+POOLDATA.CLAIM_SERVICE_LOG yang dijawab Success (hanya bentuknya yang dibaca, nilainya tidak).
+Bedanya: Pega mengirim Nett, Deductible, dan KaliDeduct sebagai ANGKA JSON, dan tidak mengirim
+DOL maupun Panel. `CashierPayment` disamakan (json.Number; DOL/Panel `json:"-"`). Jawaban non-2xx
+yang berpesan (ResponseMessage, ResponseMessageData, atau Message) kini diteruskan sebagai
+penolakan sehingga alasannya tampil di dialog; yang tanpa pesan dicatat bersama 300 karakter
+pertama jawabannya.
+
+Kredensial: rule Pega memuat header Basic Auth tertanam yang TIDAK disalin (ADR-0025). Bila Kasir
+menuntutnya, isi KASIR_USER dan KASIR_PASSWORD di backend/.env.
+
+## 114. Log layanan Kasir ke CLAIM_SERVICE_LOG; GL.T_ALL_PAYMENT bukan milik aplikasi ini (2026-10-01)
+
+**CLAIM_SERVICE_LOG** kini ditulis untuk setiap pemanggilan Kasir (CATEGORYSERVICE "Log Kasir",
+SERVICEID = nomor klaim, SERVICEREF = nomor akseptasi, JSONIN = badan terkirim, JSONOUT = jawaban
+utuh atau galat). Satu INSERT setelah Kasir menjawab, ID = MAX(ID)+1 seperti `QueryLogServiceClaim`;
+tanpa UPDATE (Steering §8). Gagal menulis log tidak membatalkan transfer — dicatat di jejak audit.
+
+**GL.T_ALL_PAYMENT** tidak ditulis aplikasi ini, dan itu disengaja. `TransferToKasir_act` langkah 74
+memanggil prosedur `gl.pkg_pelunasan_kasir.p_insert_all_payment_kasir` (`TransferToKasir_sql`) —
+pemanggilan prosedur dilarang `D-02`, dan tabel itu milik sistem Kasir/GL (`P-1`). Baris di sana
+dibuat layanan Kasir (`insertAllPaymentKasirBasicAuth`) di basis datanya sendiri. Layanan yang
+terdaftar untuk ASM adalah server **dev** (`sm-service-asmdev`), sehingga barisnya tidak ada di
+GL.T_ALL_PAYMENT@ASMD — sama dengan transfer Pega dari server dev (A26…25913: 0 baris di ASMD).
+
+## 115. Input Register: tanggal DD/MM/YYYY, Nama Treaty dan Penyebab Kerugian terisi (2026-10-01)
+
+**Tanggal.** Tanggal kejadian, Tanggal lapor, dan Tanggal terima dokumen memakai `DateField`
+(placeholder DD/MM/YYYY), sama dengan Input Receive Document; nilai yang dikirim tetap ISO.
+
+**Nama Treaty kosong** karena dokumen polis (CoverageList[].SpreadingList[]) hanya menyimpan
+`TreatyType` — kuncinya: PremiNet, PremiumSpreaded, SharePercentage, TSISpreaded, TreatyType,
+TreatyYear. Dropdown Pega menampilkan NOTE master `POOLDATA.REINSURANCETYPE` (ORS, FAC-OUT, …).
+Kini nama itu diisi saat objek dibentuk dari polis (`jenis_treaty_nama`), dan `spreading_daftar`
+melengkapi TREATYNAME yang kosong dari master yang sama — klaim PNCN lama ikut tampil benar tanpa
+UPDATE pada T_CLAIM_SPREADING.
+
+**Penyebab Kerugian tidak ada di dokumen polis** — CoverageList polis tidak punya kunci apa pun
+untuknya, dan di Pega isian ini autocomplete yang dipilih petugas (`ViewCoverageGridContent`,
+sumber `BrowseCouseOfLoss_Business` atas `V_D_CAUSE_OF_LOSS_BUSINESS`, parameter kode bisnis
+polis). Report definition itu hilang dari export; penyaringnya disimpulkan dari view (BISNISID,
+STS_AKTIF = '1'). Isiannya kini dropdown dari view itu (`GET /api/registrasi/penyebab-kerugian`),
+dan terisi sendiri HANYA bila kode bisnis polis punya tepat satu pilihan — saat klaim dibuka
+maupun di layar. Pada data 2026-10-01 hanya 10 kode bisnis yang demikian; kebanyakan punya puluhan
+pilihan, sehingga memilih otomatis berarti menebak.
+
+Nilai yang disimpan adalah D_COL_ID. Klaim lama yang CAUSEOFLOSSID-nya berisi teks bebas (mis.
+"ACCIDENT") tetap menampilkan teks itu sebagai pilihan agar tidak terhapus diam-diam.
+
+## 116. Form AcceptationLOD terisi sesuai AcceptationLOD_PreAct (2026-10-01)
+
+Endpoint baru `POST /api/registrasi/klaim/{id}/akseptasi/awal` menghitung isian awal form
+(`registrasi.DefaultAcceptance`), dan form mengisinya sekali saat dibuka tanpa menimpa isian yang
+sudah diubah petugas.
+
+| Langkah PreAct | Yang dibawa |
+|---|---|
+| 7–8 | Dropdown **Tipe Akseptasi Klaim** (baru di form): 1 Indemnity, 2 Interim, 3 Reinstatement, 4 Adjuster Fee |
+| 11–13 | Tipe Akseptasi = Tipe Pembayaran baris. Langkah 12 mengisi "1" untuk tipe 1/3/5, tetapi transisinya *continue* (`WhenTrue=2`, `WhenTruePrms=Currency` tertinggal tanpa aksi), sehingga langkah 13 selalu menimpanya |
+| 14–16 (Non-MBU) | **Nama Komite Akseptasi** = anggota komite terakhir (urut jenjang) yang menyetujui; **Nilai LOD** = Gross × Share ASM / 100 |
+| 15 | Komite beranggota ≥ 2 → satu Operator ID yang ditulis di dalam rule. Di sini pengaturan `AKSEPTASI_KOMITE_BERJENJANG` (`D-15`); kosong = anggota terakhir yang menyetujui |
+| 17 (Non-MBU) | Lokasi kejadian kosong → "Location kosong !! Tidak dapat melakukan akseptasi", tampil di form DAN menolak Submit |
+
+Tidak dibawa: langkah 9–10 (isian SLIK OJK `SurveyOJKKlaim` — belum ada di form; integrasi SLIK
+tertunda, lihat `acceptance.go`), langkah 18 `CekProteksiCurreny` (**hilang dari export**), dan
+langkah 19–20 (daftar lampiran tersimpan di dalam form).
+
+## 117. Unggah akseptasi gagal "File name sudah ada" — nama berkas dibuat unik seperti Pega (2026-10-01)
+
+Submit akseptasi PNCN.26.17 gagal dengan ORA-20009 dari trigger `GENERAL.TBIU_STORAGE_IMAGE`
+(ASMD). Trigger itu menolak FILENAME yang sudah ada di SELURUH `T_STORAGE_IMAGE` — lintas klaim
+dan aplikasi. Berkas bernama sama sudah pernah diunggah untuk PNCN.26.0014 (2026-09-30), sehingga
+unggahan kedua ditolak SETELAH berkasnya terkirim ke penyimpanan.
+
+Pega tidak pernah mengirim nama asli: keempat pemanggil `InsertDokumenPNC`
+(`SetAdjustmentAcceptation` 57.4, `UploadDocumentToGoogleStorage`, `CNMUpdateMasterRekening_act`,
+`ASMSendsEmailAttachments_PDF`) membentuk
+`@CurrentDate("yyMdhm-sS","Asia/Jakarta") + "-" + <DOC_COL_ID> + "-" + <nama>`, dan nama itu pula
+yang menjadi ATTACHNAME. `registrasi.UploadFileName` menirunya dan dipakai unggahan akseptasi dan
+Unggah Dokumen. Penggantian png/jpg → avif pada nama tidak dibawa (konversi ditentukan modul
+dokumen penunjang dari ekstensi).
+
+Unggahan langsung modul dokumen penunjang (endpoint miliknya sendiri, layar Input Req Protection /
+Inbox Accept) kini memakai pola yang sama lewat `dokumenpenunjang.NamaUnggah`, dengan isian
+`jenis_dokumen` sebagai ID jenis dokumen (Work Owner, 2026-10-01). Dengan itu ketiga jalur unggah ke
+penyimpanan memakai nama Pega.
+
+## 118. "Total share spreading tidak 100%" pada klaim berjaminan dua — total kini per jaminan (2026-10-01)
+
+Klaim dengan dua jaminan (100% FAC-OUT; 2,5% BPPDAN + 97,5% FAC-OUT) ditolak karena
+`Claim.TotalSpreading` menjumlahkan SELURUH jaminan (200%). Pega memeriksa per jaminan:
+`InputRegister_act` 37.3.1 mereset `local.totalspreading := 0` di dalam loop ObjectCoverageList,
+37.3.5.9 menambahkan share, dan 37.3.6 memeriksanya masih di dalam loop yang sama — sama dengan
+invarian `I-1`. Total kini `Coverage.TotalSpreading`, diperiksa per jaminan (pesan sekali), dan
+ringkasan layar Input Register menampilkan jaminan mana yang belum 100%.
+
+## 119. Input Receive Document disamakan dengan InputReceiveDocument_sect (2026-10-01)
+
+`Section/InputReceiveDocument_sect.xml` — section yang benar-benar dirender flow action — kini ada
+di export. Form semula dibangun dari `ViewInputReceiveDocument_sec`. Yang ditambahkan:
+
+| Isian | Properti | Tampil bila | Kolom T_CLAIM_RECIVEDCLAIM |
+|---|---|---|---|
+| Tanggal Input Dokumen | `.pxCreateDateTime` (baca saja) | selalu | TANGGALINPUTDOKUMEN |
+| Polis Leader | `.Policy.PolicyLeader` (baca saja) | Nomor Polis terisi dan Group Panel bukan 002/005 | — (T_GENERAL.LEADERPOLICYCOAS) |
+| Source Of Reports | `.ReceiveDocument.Resource` | selalu | RESOURCES |
+| **Email Tertanggung** | `.ReceiveDocument.EmailLOD` | **PA**: Nomor Polis terisi dan Group Panel 002 | EMAILTERTANGGUNG |
+| **Lokasi Kejadian** (SIM) | `.ReceiveDocument.SIM` | **PA**: Group Panel 002 | SIMPENGENDARA |
+| (tersembunyi) | CityID — Group Panel polis | — | GROUPPANEL |
+
+Pemetaan kolom dari `RDB List/Rcv_ProcInsertRecivedDocument-SQL.xml`. Label isian SIM di section
+"Lokasi Kejadian" (salah salin di Pega); atas permintaan Work Owner (2026-10-01) diberi label
+**"SIM Pengendara"**. Polis Leader dibaca dari lookup polis, juga
+sekali saat berkas berpolis dibuka.
+
+Tidak dibawa: **No Ref Broker** (`.ReceiveDocument.RefNoBroker`, tidak ada kolomnya), dropdown
+**Alasan Belum Transfer** (sumber `TempNote.pxResults` tidak ada di export; isian teks lama tetap),
+banner `WarningBroker`, grid dokumen, serta penyembunyian isian menurut access group pembuat
+(`.ReceiveDocument.pyLabel` eksternal/internal — Estimasi Kerugian di section hanya tampil untuk
+pembuat eksternal; perilaku itu belum diterapkan, Estimasi tetap tampil).
+
+## 120. Layar InputSurveyor untuk PA — Estimation dan Send To Analis (2026-10-01)
+
+Tahap Estimation PA (`Assignment4`) dan Send To Analis (`Assignment5`) ditutup flow action
+`InputSurveyor` (`Flow Action/InputSurveyor-FA.xml`: section InputSurveyor, `InputSurveyor_PreAct`,
+`InputSurveyor_PostAct`) — sama dengan Choose Surveyor Non-MBU. Keduanya kini memakai `SurveyorForm`
+(layar `ClaimSurvey_sect`), menggantikan tombol "Selesaikan (InputSurveyor)" umum.
+
+Perbedaan PA dari `ClaimSurvey_sect` yang diterapkan:
+
+| Bagian | Kondisi di section | Untuk PA |
+|---|---|---|
+| Status Klaim | layout `!IsTravel`, sel `!IsPA` | tidak tampil (juga Travel) |
+| Tab Survey | `(isMarineCargo \|\| isAneka \|\| isFire)` | tidak tampil |
+| Tab **Investigasi** | `GroupPanel = 002 && !IsPNCReceive` | tampil — isinya `TabInvestigasi` **tidak ada di export**, tab menyatakannya |
+| Kirim ke Admin | `IsNotTravelPA` | tidak tampil |
+| Kirim ke Inputor PA · Kirim ke Investigator · Kirim ke Compliance | `isAnalystPA_PNC` | tidak — When itu **tidak ada di export** |
+
+**Submit / Back** ditambahkan HANYA untuk PA: tanpa tombol analis PA, klaim PA tidak dapat maju
+dari layar (Estimation → Investigator). Choose Surveyor Non-MBU tidak berubah — catatan #74 tetap
+berlaku.
+
+## 121. Koasuransi dari T_COINSLIST dan Fac Offer dari T_FACOFFER, menurut NOPOLIS + PRODKE (2026-10-01)
+
+Permintaan Work Owner: data polis tidak dibaca dari `JSON_POLIS.DATA_JSONBLOB` bila ada tabelnya.
+Koasuransi kini dari `POOLDATA.T_COINSLIST` dan Fac Offer dari `POOLDATA.T_FACOFFER`, keduanya
+dikunci **nomor polis + PRODKE snapshot klaim** (`T_CLAIM_PNC.PRODKE`), bukan lagi "dokumen polis
+terbaru menurut TGL_INPUT".
+
+| Kueri | Dipakai | Sumber baru |
+|---|---|---|
+| registrasi `polis_koasuransi` | snapshot polis (DeriveCoinsurance), Claim Face Sheet | T_COINSLIST |
+| registrasi `pla_koasuransi` | PLA, LOD, DLA | T_COINSLIST |
+| registrasi `cfs_fac_offer` | Claim Face Sheet | T_FACOFFER |
+| registrasi `dla_fac_offer` (baru) | DLA (Fac Out) | T_FACOFFER |
+| komite `transfer_coinsurance` · `transfer_fac_offer` | Detail Transfer komite | T_COINSLIST · T_FACOFFER |
+
+**T_FACOFFER:** satu baris per reasuradur, tetapi `JSONDATA` setiap baris memuat SELURUH
+`FacOfferList` polis. Hanya entri yang `ReinsurerID`-nya sama dengan `REINSURER_ID` baris itu
+yang diambil; tanpa saringan itu reasuradur terhitung sebanyak jumlah baris.
+
+Seam yang berubah tanda tangannya (menerima `prodKe`): `FaceSheetSource.Coinsurance/FacReinsurers`,
+`PLASource.CoinsMembers`, `DLASource.Policy`. Komite: `transfer_claim` membaca `MAX(p.PRODKE)` ke
+`ClaimSummary.ProdKe`. Diverifikasi ke Oracle 2026-10-01.
+
+**Yang masih dari dokumen polis (JSON_POLIS POLICYDATA, cadangan DATA_JSONBLOB):** kepala snapshot
+`polis_ambil`, `premi_polis_caseid`, kepala dan SpreadingList `dla_polis_dokumen`, periode
+`transfer_policy`, serta kueri inbox auto claim, inbox treaty prop/non-prop, dan laporan klaim.
+
+**Risiko yang diterima:** klaim yang PRODKE-nya kosong, atau PRODKE-nya tidak punya baris di kedua
+tabel, kini terbaca **tanpa koasuransi / tanpa Fac Offer** — padahal dokumen terbarunya mungkin
+memuatnya. Kecocokan pada klaim yang diperiksa: T_FACOFFER 34 dari 37, T_COINSLIST 5 dari 10.
+
+## 122. JSON_POLIS.DATA_JSONBLOB tidak dibaca lagi — tabel polis, cadangan POLICYDATA (2026-10-01)
+
+Lanjutan #121. Keputusan Work Owner: DATA_JSONBLOB **dihapus seluruhnya** (opsi "Remove
+completely" — bukan hibrida). Urutan sumber per kolom: tabel polis menurut NOPOLIS + PRODKE,
+lalu dokumen `JSON_POLIS.POLICYDATA`. DATA_JSONBLOB tidak dibaca, termasuk sebagai penyaring baris.
+
+| Kueri | Sumber baru |
+|---|---|
+| registrasi `polis_ambil` | T_GENERAL (kepala), T_OFFERFACIN (CedingCoName, OfferFacIn), T_GENERAL_DELIVERYADDRESSLIST (alamat) |
+| registrasi `premi_polis_caseid` | T_GENERAL.IDPEGA |
+| registrasi `dla_polis_dokumen` + `dla_polis_kepala` · `dla_offer_facin` · `dla_spreading` | POLICYDATA saja; T_GENERAL, T_OFFERFACIN, T_SPREADINGLIST menimpa |
+| komite `transfer_policy_dokumen` + `transfer_policy` | POLICYDATA lalu T_GENERAL.STARTDATE/ENDDATE |
+| reportklaim `report_klaim_per_bisnis` | ClientID dari T_GENERAL.CLIENTID (dulu CIFData Customer_P/Customer_C) |
+
+**PRODKE** tetap dari kolom `JSON_POLIS.PRODKE` baris terbaru menurut TGL_INPUT; baris dipakai bila
+POLICYDATA-nya ada ATAU T_GENERAL punya baris untuk PRODKE-nya. T_GENERAL dapat memuat lebih dari
+satu baris per PRODKE — yang terbaru menurut TGL_INPUT dipakai.
+
+**Periode satu-satunya yang mendahulukan dokumen:** T_GENERAL tidak mengikuti endorsemen —
+satu PRODKE endorsemen tercatat 2019–2020 di T_GENERAL sementara dokumennya 2024, dan klaim 2024
+polis itu hanya sah menurut dokumen. T_GENERAL.STARTDATE/ENDDATE (DATE jam dinding WIB, 12:00)
+dibaca sebagai instan UTC lewat `wibDate`.
+
+**Akibat yang diterima Work Owner** — diukur 2026-10-01 pada 33 polis klaim setahun terakhir; 16 di
+antaranya dokumennya HANYA di DATA_JSONBLOB:
+
+| Keadaan | Polis |
+|---|---:|
+| tidak ditemukan sama sekali (tanpa POLICYDATA, tanpa T_GENERAL) | 1 |
+| **Currency kosong** → registrasi ditolak karena kurs tidak ada (`D-48`) | 10 |
+| periode dari T_GENERAL (tanpa dokumen; bisa tertinggal endorsemen) | 15 |
+| SpreadingStatus kosong → spreading dianggap belum tersedia | 6 |
+| TypeOfPolicy kosong | 2 |
+| alamat penerima kosong (T_GENERAL_DELIVERYADDRESSLIST kosong 37/37) | semua tanpa POLICYDATA |
+
+Yang masih membaca DATA_JSONBLOB di modul lain adalah **JSON_KLAIM**, bukan JSON_POLIS
+(inbox treaty prop/non-prop, report_tat, report_ai_klaim, adjustment_lod_dokumen) — di luar lingkup.
+
+## 123. PRODKE polis saat RCVN dan PNCN = versi terbaru, sama dengan Pega (2026-10-01)
+
+Pega memilih versi polis lewat `RDB List/BroswsePolisByPolicyNo-SQL.xml:23`:
+`PRODKE = (SELECT MAX(TO_NUMBER(PRODKE)) FROM T_GENERAL ...)` — kueri yang mengisi daftar polis
+View Polis (`SearchPolicy`) dan Input Receive Document. Dokumen polis lalu dibaca pada PRODKE itu
+(`BrowsePolis-SQL.xml:86`).
+
+| Alur | Sebelum | Sekarang |
+|---|---|---|
+| RCVN — `claim_report_policy_find` | PRODKE terbesar T_GENERAL | tidak berubah (sudah sama dengan Pega) |
+| PNCN — `polis_ambil` | baris JSON_POLIS **terbaru menurut TGL_INPUT** | **PRODKE terbesar T_GENERAL**; tanpa T_GENERAL: PRODKE terbesar JSON_POLIS ber-POLICYDATA |
+| PNCN — dokumen cadangan POLICYDATA | baris terbaru apa pun PRODKE-nya | baris JSON_POLIS dengan PRODKE **yang sama** |
+| `premi_polis_caseid` | baris JSON_POLIS terbaru | PRODKE **snapshot klaim** (T_GENERAL, lalu POLICYDATA) |
+
+Urutan TGL_INPUT bukan urutan versi: dokumen dapat dikonversi ulang setelah versi berikutnya terbit.
+Pada 36 polis klaim yang diperiksa 2026-10-01, hasil keduanya sama untuk 34; 2 tanpa baris T_GENERAL.
+
+Proses sesudah registrasi (DLA, PLA, LOD, CFS, komite, premi) memakai PRODKE yang disimpan di
+`T_CLAIM_PNC.PRODKE` saat PNCN dibuat — versi polis klaim tidak bergeser bila polis diendors kemudian.
+
+Tidak diikuti: penyaring `EDMType not in ('1','2')` pada BrowsePolis — dicatat sebagai pertanyaan
+terbuka; bila versi terbaru bertipe EDM 1/2, Pega tidak menemukan dokumennya sedangkan aplikasi ini
+tetap memakai versi itu.
+
+## 124. Tahap Input Register memakai bingkai ClaimSurvey_sect, isian PA dan selain PA (2026-10-01)
+
+Keputusan Work Owner: (1) bingkai `ClaimSurvey_sect` penuh — sama dengan layar InputSurveyor —
+dengan tab Input Register terbuka lebih dulu dan dapat diubah; (2) isian tanpa kolom tampil tetapi
+belum tersimpan; (3) isian di luar section tetap ada, di bagian terpisah.
+
+Tab Input Register ClaimSurvey_sect berisi `Section/InputRegisterDetail2_sect.xml`. Kondisi tampilnya:
+
+| Isian | Kondisi Pega | PA | Selain PA | Tersimpan |
+|---|---|:-:|:-:|---|
+| Tanggal Lapor, Nama Pelapor, No. Telepon Pelapor | — | ✓ | ✓ | ya |
+| EmailLOD | `GroupPanel=='002'` | ✓ | — | EMAIL_LOD |
+| SIM Pengendara | `GroupPanel=='002'` | ✓ | — | **belum** — tidak ada kolom |
+| RCV_ID (baca saja) | `!IsTravel` | ✓ | ✓ (kecuali Travel) | ya |
+| Tanggal Terima Dokumen | `IsTravelPA` | ✓ | hanya Travel | ya — tetap tampil bila server menolaknya |
+| Tanggal Kejadian / Tanggal Masuk Rawat Inap | — | ✓ | ✓ | ya |
+| Rawat Inap · Tanggal Keluar Rawat Inap | `isPA_PNC` · `SelectRawatInap` | ✓ | — | **belum** |
+| No KTP | — | ✓ | ✓ | **belum** |
+| Negara … Kode Pos | `Country='INDONESIA'` | ✓ | ✓ | ya |
+| Ex Gratia | `isPA_PNC` | ✓ | — | ya |
+| Status Salvage | — | ✓ | ✓ | STSSALVAGE |
+| Dominan Factor | — | ✓ | ✓ | **belum** |
+| Remarks Recommendation · Subject Email | `GroupPanel != 002` | — | ✓ | REMARKRECOMENDATION · SUBJECTEMAIL |
+| Catatan Ke Analyst | `isPA_PNC` | ✓ | — | **belum** |
+| Log Transfer Klaim | — | ✓ | ✓ | baca saja; sumber datanya belum dibangun |
+
+Tidak dibawa: PIC KBRU (`Resources=='KBRU'` — sumber Resources tidak ada di klaim), Pengkinian Data
+(kontainer `1==2`, tidak pernah tampil), Alasan Terima/Tolak · Lainya · Kata Kunci (dipicu
+perbandingan hostname — dilarang `12-CROSSCUTTING` §3.4), masking No KTP/telepon (`FlagMasking*`
+tidak ada di klaim).
+
+**Status Salvage:** label pilihannya ada di property rule `ClaimData.StatusSalvage` yang tidak ada di
+export; dropdown menampilkan kode 1–5 (nilai STSSALVAGE yang terpakai di data). Label perlu dari Tim Pega.
+
+**Bagian "Data registrasi lainnya"** memuat isian section `InputRegister` yang tidak ada di export tetapi
+dibutuhkan registrasi: PIC Teknik, Email dan hubungan pelapor, Kronologi, nilai estimasi, mata uang,
+Nomor SLIK, Status RCL/PUCL, Transfer Compliance, lalu Objek pertanggungan dan ringkasan spreading.
+
+Formulir tetap terpasang saat berpindah tab, sehingga isian yang belum disimpan tidak hilang.
+
+## 125. Tahap Investigator PA — flow action InputInvestigator (2026-10-01)
+
+`Flow/Register_Flow.xml` jalur PA: **Estimation** (Assignment4, InputSurveyor) → **Investigator**
+(Assignment11, workbasket `InvestigatorPNC`, flow action `InputInvestigator`) → **Send To Analis**
+(Assignment5). Backend sudah memodelkannya (`flow_register.go`, `StageInvestigator`); layar sebelumnya
+hanya tombol "Selesaikan" umum.
+
+Section flow action `InputInvestigator` **tidak ada di export** (`Section/InputInvestigator_Section`
+adalah inbox Investigator, bukan section flow action). Sesuai permintaan Work Owner, tahap ini memakai
+bingkai `ClaimSurvey_sect` yang sama dengan Input Surveyor: tab **Investigasi** terbuka lebih dulu, lalu
+Submit/Back menutup tahap dengan tindakan `InputInvestigator`.
+
+Tugas Workbasket lahir tanpa pemilik dan server menolak menutupnya sebelum diambil; layar kini memuat
+tombol **Ambil** (sama dengan inbox) dan Submit terkunci sampai tugas diambil.
+
+Belum dibawa: `PresetInvestigation` (mengisi `SurveyList(1).TanggalInvestigasi` = saat ini) dan local
+action `SetStatusInvestigator_Act` (`SurveyStatus` dan `PNCStatus` = 5, penanda per jaminan) — keduanya
+nilai clipboard work object yang belum punya padanan penyimpanan. Isi tab Investigasi (`TabInvestigasi`)
+juga tidak ada di export.
+
+## 126. Tab Unggah Dokumen mengikuti InputRegister-sect.xml; Status Salvage berlabel (2026-10-02)
+
+Export bertambah 51 rule (bab 14 `permintaan-artefak-pega.md`). `Section/InputRegister-sect.xml` ternyata
+bingkai empat tab (Register · Kuisioner · Unggah Dokumen · Progress) — bukan ClaimSurvey_sect. Keputusan
+Work Owner: **bingkai ClaimSurvey tetap dipakai** pada tahap Input Register; section ini dipakai untuk tab
+Unggah Dokumen. Isi tab Register (`InputRegisterDetail`) dan Kuisioner (`QuestionnaireClaim`) tetap tidak
+ada di export.
+
+**Tab Unggah Dokumen** (dipakai Input Register, Input Estimasi, dan InputSurveyor) kini sub-tab:
+
+| Sub-tab | Kondisi | Sumber Pega |
+|---|---|---|
+| PENDAFTARAN · SURVEI · DOKUMEN LAIN-LAIN · PEMBAYARAN · KOMITE | `!IsTravel` | `BrowseRegister/Survey/CollectingDoc/Payment/Commitee_upload` |
+| SALVAGE | `!IsTravelPA` | `BrowseSalvage_upload` — **baru dimuat** |
+| DOKUMEN TRAVEL | `IsTravel` | `BrowseDocumentTravel_Rd` — **tidak ada di export**; tab menyatakannya |
+
+Kolom mengikuti section: Kategori · Wajib Unggah · Minimal Unggah · Unggah Dokumen · Lihat dokumen (jumlah
+berkas, membuka daftar berkas jenis itu) · Ubah Kategori Dok (belum dibangun).
+
+**Aturan wajib baru:** `BrowseCollectingDoc_upload` memaksa `DOC_TYPE_DT_ID` 14805 dan 14938 wajib apa pun
+STS_WAJIB-nya; kini diterapkan `registrasi.DocumentChecklist` (`alwaysRequiredCollecting`).
+
+**Status Salvage** memakai label `Property/StatusSalvage-property.xml`: 1 Tidak ada salvage · 2 Salvage sudah
+diterima · 3 Ekonomis · 4 Tidak Ekonomis · 5 TBA.
+
+## 127. Sub-tab InputEstimasi, tab Investigasi, dan When isAnalystPA_PNC (2026-10-02)
+
+**Estimasi & Adjustment** mengikuti `Section/InputEstimasi-sect.xml`:
+
+| Sub-tab | Kondisi | Section |
+|---|---|---|
+| Estimasi Pembayaran | `!isPA_PNC` — kini **tersembunyi untuk PA** | InputEstimasiDetail |
+| Catatan Untuk Analyst | `IsPA` — **baru** | CatatanToAnalyst_Section |
+| Catatan Untuk PIC Teknik | `IsTravel` — **baru** | CatatanToAnalyst_Section |
+| Penerima Klaim · Adjustment & Akseptasi | — | ShowReceiver · ShowObjectAdj tidak di export (tetap dari varian View*) |
+| (pyLabel) | `IsHE` | ShowObjectHEPICTeknis tidak di export — **tidak dibawa** |
+
+`CatatanToAnalyst_Section`: grid Catatan Dari Compliance · Tanggal Terima Dokumen PUCL · Komentar Dari Analyst
+Doctor, dari page list work object (`ComplianceList`, `PUCLStatus.DateReceivedDocument`, `AnalystDoctorList`).
+Tidak tersimpan di tabel, dan **0 dari 3.000** dokumen JSON_KLAIM terbaru memuatnya (2026-10-02) — grid
+tampil kosong sampai tahap Compliance/PUCL/Analyst Doctor dibangun.
+
+**Investigasi** (PA) mengikuti `TabInvestigasi-sect.xml`: "Input Investigasi" bersyarat `1=2` (tidak pernah
+tampil); "Hasil investigasi" = grid `isPA_PNC` pada `ViewHasilSurvey` atas `ClaimData.SurveyResults`
+(T_SURVEYORLIST): Tanggal Investigasi · Nama Peserta · Lokasi Objek · Status.
+
+**Detail Polis & Riwayat Klaim** (`ViewHistoryClaim`) tidak dibangun: kondisi tabnya di ClaimSurvey_sect
+`!IsPNCReceive && 1==2` — Pega tidak pernah menampilkannya.
+
+**isAnalystPA_PNC** = `GroupPanel = "002" AND ClaimData.PUCLStatus.IsKomiteTransfer_PNC = "1"`. Penandanya diisi
+`SetStatusInvestigator_Act`, `KomitePost_Adjustment`, `SetListComiteeClaimPerObjAdj` di work object dan belum
+punya kolom; tombol analis PA tetap tersembunyi.
+
+## 128. Router penugasan disamakan dengan Pega (2026-10-02)
+
+Ketiga router kini ada di export (`R-04` terjawab). Isinya satu-dua langkah `Property-Set Param.AssignTo`:
+
+| Router | Pega | Aplikasi ini — sebelum | Sesudah |
+|---|---|---|---|
+| `PNCAdminRouter` | `ClaimData.UserAdmin` | pembuat klaim (ADMINKLAIM) | **tidak berubah** — UserAdmin diisi Pega dengan pembuat klaim |
+| `PNCTeknikRouter` | `ClaimData.UserTeknis`; kosong → **`ServicePNC`** | PIC klaim, lalu beban teringan; tanpa petugas → **galat** | tanpa petugas → **`ServicePNC`** |
+| `RouterRCLDokter` | `ClaimData.NamaDokterRCL` | **PIC Teknik beban teringan (keliru)** | **`ServicePNC`** |
+
+`ServicePNC` adalah operator penampung "kasus belum ditugaskan" (ada di DATAPEGA.PR_OPERATORS):
+`BrowseCaseNotAssigned` membacanya dan agent `TransferAllCaseNotAssigned` membagikannya ulang.
+Konstanta: `registrasi.OperatorUnassigned`.
+
+**RCL Dokter diparkir di ServicePNC — keputusan sementara, bukan perilaku Pega.** `NamaDokterRCL` tidak diisi
+rule mana pun di export (hanya laporan yang membacanya; Pega menyimpannya di
+`T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`), dan layar memilih dokter RCL belum ada. Memberikannya ke PIC Teknik —
+perilaku sebelumnya — menugaskan pekerjaan dokter ke orang yang bukan dokter. Setelah pemilihan dokter dibangun,
+router membaca dokter terpilih.
+
+Pengisi memori (`repo/memory`) diselaraskan dengan pengisi SQL; uji `assigner_test.go`.

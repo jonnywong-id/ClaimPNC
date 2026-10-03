@@ -116,7 +116,7 @@ function defaultReply(mutation?: (call: Call) => Reply) {
     if (call.url.startsWith('/api/master/panel/pilihan')) return { body: OPTIONS }
 
     if (call.method === 'GET') {
-      const status = new URL(call.url, 'http://x').searchParams.get('status') ?? '1'
+      const status = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
 
       let rows: unknown[] = []
       if (status === '1') rows = [APPROVED]
@@ -544,7 +544,7 @@ describe('paginasi', () => {
   function installMany(count: number, status = '1') {
     installFetch((call) => {
       if (call.url.startsWith('/api/master/panel/pilihan')) return { body: OPTIONS }
-      const wanted = new URL(call.url, 'http://x').searchParams.get('status') ?? '1'
+      const wanted = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
       const rows = wanted === status ? manyRows(count, status) : []
       return { body: { panel: rows, status: wanted, portal: 'ASM' } }
     })

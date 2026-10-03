@@ -152,8 +152,8 @@ export function useSaveTechnician() {
       //
       // Menonaktifkan petugas juga MENGHILANGKAN barisnya dari daftar; cache yang disunting
       // sendiri tidak akan mencerminkan itu.
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
-      void client.invalidateQueries({ queryKey: ['master-pic-teknik', 'satu'] })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: ['master-pic-teknik', 'satu'] })
     },
   })
 }

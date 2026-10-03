@@ -164,7 +164,7 @@ export function useCreateCauseOfLossDetail() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['detail-penyebab'] })
+      client.invalidateQueries({ queryKey: ['detail-penyebab'] })
     },
   })
 }
@@ -191,7 +191,7 @@ export function useSaveCauseOfLossDetail() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['detail-penyebab'] })
+      client.invalidateQueries({ queryKey: ['detail-penyebab'] })
     },
   })
 }

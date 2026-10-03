@@ -1,0 +1,61 @@
+# golangci-lint v2 — backend Claim PNC, lapisan PERINGATAN (job allow_failure).
+#
+# Lapisan pemblokir (bug) ada di .golangci.yml. Berkas ini memuat pemeriksaan
+# maintainability dan security hotspot: temuannya dilaporkan, tidak memblokir pipeline.
+#
+# Linter di luar set bawaan dipilih karena masing-masing memeriksa hal yang SAMA dengan
+# aturan SonarQube untuk Go, sehingga temuan Sonar terlihat lebih dulu di pipeline:
+#
+#   gocognit      go:S3776  Cognitive Complexity > 15
+#   goconst       go:S1192  literal string yang diulang
+#   revive        go:S107   parameter > 7 · go:S1186 fungsi/blok kosong
+#   gocritic      go:S1871 / go:S3923  cabang kondisi yang badannya identik
+#   dupl          duplikasi blok kode (metrik Duplications)
+#   gosec         aturan keamanan (Security / Security Hotspot)
+version: "2"
+
+run:
+  timeout: 10m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - gocognit
+    - goconst
+    - revive
+    - gocritic
+    - dupl
+    - gosec
+  settings:
+    gocognit:
+      min-complexity: 15
+    goconst:
+      min-len: 5
+      min-occurrences: 3
+    revive:
+      rules:
+        - name: argument-limit
+          arguments: [7]
+        - name: empty-block
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - dupBranchBody
+        - dupSubExpr
+        - badCond
+    dupl:
+      threshold: 150
+  exclusions:
+    generated: lax
+    paths:
+      - spa/dist
+    rules:
+      # Test tabel dan tiruan memang mengulang literal yang sama per kasus — Sonar pun
+      # memperlakukan berkas test sebagai test, bukan sumber, untuk metrik ini.
+      - path: _test\.go
+        linters: [goconst, dupl, gocognit]
+
+formatters:
+  enable:
+    - gofmt

@@ -28,6 +28,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -57,10 +58,27 @@ type Row struct {
 	// penyimpanan memori tidak dapat membuktikan penyaringnya benar-benar dipakai.
 	WorkClass string
 
-	// AssignedOperator adalah pemegang penugasan — `PXASSIGNEDOPERATORID`.
+	// AssignedOperator adalah pemegang penugasan — `ASSIGNED_OPERATOR_ID`.
 	//
-	// Pada antrean bersama, isinya nama AKUN antrean (`RCLPUCL`), bukan nama orang.
+	// Di Pega ia nama AKUN antrean bersama (`RCLPUCL`). Di `TC_PNC_PUCL` yang berjalan ia
+	// berisi NAMA ORANG, dan apa yang SEHARUSNYA diisi masih pertanyaan terbuka. Ia tidak
+	// lagi menyaring apa pun; dipertahankan karena ia bagian dari bentuk barisnya.
 	AssignedOperator string
+
+	// OutsideFlatTable menandai baris yang TIDAK akan ada di `POOLDATA.TC_PNC_PUCL`.
+	//
+	// # Kenapa penanda, bukan disimpulkan dari AssignedOperator
+	//
+	// Karena keanggotaan tabel datar ditentukan PROSES PENGISI, bukan oleh nilai kolom mana
+	// pun. Menyimpulkannya dari nama antrean berarti menghidupkan kembali penyaring yang
+	// baru saja dihapus — dan penyaring itu dihapus justru karena kolomnya tidak menyatakan
+	// antrean.
+	//
+	// Dua baris contoh memakainya, dan keduanya tetap berguna: klaim di antrean LAIN, dan
+	// klaim Personal Accident di luar antrean. Keduanya tidak muncul di tab mana pun karena
+	// memang tidak ada di tabelnya — tetapi yang kedua TETAP ikut laporan harian, yang
+	// membaca tabel Pega dan bukan tabel datar.
+	OutsideFlatTable bool
 
 	// WorkStatus adalah status kerja — `PYSTATUSWORK`.
 	WorkStatus string
@@ -84,8 +102,22 @@ type Row struct {
 	// punya sesuatu untuk dibuktikan.
 	MSIG string
 
-	// GroupPanel adalah `GROUPPANEL_1` — dipakai HANYA cabang kedua laporan harian.
+	// GroupPanel adalah `GROUPPANEL_1` — dipakai cabang kedua laporan harian, DAN sejak
+	// 2026-10-01 menentukan tombol "Kirim Ke Analyst" (PA) versus "Kirim ke PIC Teknik"
+	// (Travel) di layar kerja.
 	GroupPanel string
+
+	// TechnicalPIC adalah `POOLDATA.T_CLAIM_PNC.PICTEKNIK` — penerima tugas tahap Send To
+	// Analis.
+	//
+	// Kolomnya `PICTEKNIK`, bukan `USERTEKNIS_1`: yang kedua salinan yang Pega ekspos, dan
+	// export mengaliaskannya apa adanya sebagai `PICTEKNIK AS "UserTeknis"`.
+	//
+	// Ia TIDAK digambar layar mana pun, dan tetap disimpan di sini karena tombol Kirim
+	// membutuhkannya: tanpa PIC Teknik, tugas Worklist yang dibuat tidak akan bertuan dan
+	// klaimnya hilang dari setiap inbox. Satu baris contoh sengaja mengosongkannya supaya
+	// penolakan itu ikut teruji.
+	TechnicalPIC string
 
 	// ClaimStatus adalah `STATUSCLAIM_1` — Status Klaim ber-33 kode `1134`–`1166`
 	// (`R-06`), digambar HANYA di laporan harian.
@@ -122,9 +154,33 @@ type Row struct {
 	// .ProposeValue` — `POOLDATA.T_CLAIM_ADJUSTMENT.PROPOSE_VALUE`.
 	FirstProposeValue string
 
-	// PUCLNote adalah `KOMENTARPUCL_1` — satu-satunya isian bagian "Penerimaan Dokumen"
-	// yang punya kolom terverifikasi.
+	// Subject, OpeningNote, BodyNote, ClosingNote meniru `PERIHAL` dan ketiga `KETERANGAN`
+	// pada `TC_PNC_PUCL`. Keempatnya dulu bertanda "di clipboard Pega"; kolomnya ditemukan
+	// ADA pada 2026-10-01.
+	Subject     string
+	OpeningNote string
+	BodyNote    string
+	ClosingNote string
+
+	// PUCLNote adalah `KOMENTARPUCL_1` — isian "Catatan untuk Analyst".
 	PUCLNote string
+
+	// DocumentCompleteAt adalah `TGL_TERIMA_DOKUMEN_PUCL` — "Tanggal Kelengkapan Dokumen".
+	//
+	// Ia DAPAT DIKETIK petugas, sama seperti PUCLNote, dan keduanya yang disimpan tombol
+	// "Save". Disimpan sebagai TEKS apa adanya supaya uji dapat membandingkan nilai yang
+	// dikirim layar dengan nilai yang tersimpan tanpa melewati penafsiran tanggal.
+	DocumentCompleteAt string
+
+	// IDObject, IDCoverage, IDAdjustment meniru `ID_OBJECT`, `ID_COVERAGE`, dan
+	// `ID_ADJUSTMENT` — parameter tersembunyi yang dikirim ke `PUCLPost`.
+	//
+	// Baris contoh mengisinya dengan nilai yang BERBEDA satu sama lain, dengan sengaja:
+	// ketiganya sempat bernilai sama (`"1"`) sebagai penampung, dan nilai yang sama membuat
+	// ketiganya tertukar tanpa satu pun uji gagal.
+	IDObject     string
+	IDCoverage   string
+	IDAdjustment string
 
 	// SentAt adalah `TANGGALKIRIMPUCL_1` sebagai waktu — dasar penyaring dan pengurutan
 	// LAPORAN HARIAN.
@@ -141,6 +197,29 @@ type Row struct {
 // membaca, dan tidak ada satu pun operasi yang menulis.
 type Store struct {
 	rows []Row
+
+	// uploaded menyimpan dokumen yang diunggah LEWAT penyimpanan ini, terpisah dari contoh
+	// bawaan. Dipisah supaya uji dapat membedakan "sudah ada sejak awal" dari "baru saja
+	// diunggah" — keduanya terlihat sama bila digabung.
+	uploaded map[string][]inboxrclpucl.Document
+
+	// history menyimpan baris riwayat per nomor klaim — pengganti `LIST_HISTORY_CLAIM_PNC`.
+	//
+	// Disimpan supaya uji aturan dapat membuktikan riwayatnya BENAR-BENAR ditulis, bukan
+	// sekadar bahwa pemanggilannya tidak menghasilkan galat. Keduanya terlihat sama dari luar.
+	history map[string][]HistoryEntry
+
+	// moved menyimpan tugas yang dibuka perpindahan tahap, per nomor klaim.
+	moved map[string]MovedTask
+}
+
+// HistoryEntry adalah satu baris riwayat klaim di penyimpanan memori.
+type HistoryEntry struct {
+	// Note adalah `STATUSNOTE` — disimpan APA ADANYA, termasuk spasi di ujungnya.
+	Note string
+
+	// Caller adalah `USERUPDATE`.
+	Caller string
 }
 
 // NewStore membentuk penyimpanan berisi baris yang diberikan.
@@ -171,7 +250,9 @@ func (s *Store) List(
 		if !matchesWorkClass(candidate) {
 			continue
 		}
-		if !matchesQueue(candidate) {
+		if candidate.OutsideFlatTable {
+			// Bukan di tabel datar, sehingga ketiga tab tidak dapat melihatnya. Ini
+			// menggantikan penyaring antrean yang dulu mengeluarkannya.
 			continue
 		}
 		if !matchesWorkStatus(candidate) {
@@ -337,6 +418,220 @@ func (s *Store) Detail(
 	return inboxrclpucl.ClaimDetail{}, inboxrclpucl.ErrClaimNotFound
 }
 
+// sampleDocuments adalah dokumen contoh untuk SETIAP klaim yang dikenal penyimpanan memori.
+//
+// Isinya teks pendek, bukan PDF palsu. Yang diuji di atas memori adalah ALUR-nya — daftar
+// tergambar, kepemilikan ditegakkan, berkasnya terserah dengan nama dan jenis yang benar —
+// dan berkas biner palsu tidak menambah satu pun jawaban atas pertanyaan itu.
+// sampleDocuments adalah dokumen contoh satu klaim.
+//
+// Baris KETIGA sengaja ber-PegaVisible false: ia meniru lampiran yang ada di tabel berkas
+// tetapi TIDAK pernah tergambar di layar Pega — keadaan yang nyata, dan yang menjadi sebab
+// daftar kami sempat dua kali lebih panjang daripada daftar Pega.
+//
+// Tanpa satu baris seperti itu, penyaring `GCNMGetAllAttachments` tidak pernah teruji.
+var sampleDocuments = []inboxrclpucl.Document{
+	{
+		ID:          "DOC-0001",
+		Name:        "Surat Keterangan.pdf",
+		MimeType:    "application/pdf",
+		Category:    "Dokumen Klaim",
+		SubCategory: "Surat Keterangan",
+		UploadedAt:  "2026-09-02 09:15:00",
+		UploadedBy:  "PETUGASCONTOH",
+		PegaVisible: true,
+	},
+	{
+		ID:          "DOC-0002",
+		Name:        "Kuitansi.jpg",
+		MimeType:    "image/jpeg",
+		Category:    "Dokumen Klaim",
+		SubCategory: "Kuitansi",
+		UploadedAt:  "2026-09-03 14:40:00",
+		UploadedBy:  "PETUGASCONTOH",
+		PegaVisible: true,
+	},
+	{
+		ID:          "DOC-0003",
+		Name:        "duplicated.JPG",
+		MimeType:    "image/jpeg",
+		Category:    "10064",
+		SubCategory: "KARTU KELUARGA",
+		UploadedAt:  "2024-09-11 21:47:00",
+		UploadedBy:  "PETUGASLAMA",
+		PegaVisible: false,
+	},
+}
+
+// Documents mengembalikan dokumen contoh milik satu klaim.
+//
+// Klaim yang TIDAK dikenal mengembalikan ErrClaimNotFound, bukan senarai kosong. Keduanya
+// berbeda: yang pertama kekeliruan pemanggil, yang kedua klaim tanpa dokumen — dan hanya yang
+// pertama yang perlu diperbaiki.
+func (s *Store) Documents(
+	_ context.Context,
+	caseNumber string,
+) ([]inboxrclpucl.Document, error) {
+	wanted := strings.TrimSpace(caseNumber)
+
+	for _, candidate := range s.rows {
+		if candidate.WorkClass != inboxrclpucl.WorkClassClaim {
+			continue
+		}
+		if candidate.Item.CaseID != wanted && candidate.Item.Reference != wanted {
+			continue
+		}
+		if extra, ada := s.uploaded[wanted]; ada {
+			return append(append([]inboxrclpucl.Document{}, sampleDocuments...), extra...), nil
+		}
+		return append([]inboxrclpucl.Document{}, sampleDocuments...), nil
+	}
+	return nil, inboxrclpucl.ErrClaimNotFound
+}
+
+// AddDocument melampirkan satu berkas ke klaim.
+//
+// Ia MENYIMPAN unggahannya, bukan sekadar menjawab berhasil: uji yang memeriksa daftar
+// dokumen sesudah unggahan harus dapat melihatnya. Penyimpanan yang melupakannya akan
+// membuat uji seperti itu lulus tanpa membuktikan apa pun.
+func (s *Store) AddDocument(
+	ctx context.Context,
+	reference string,
+	upload inboxrclpucl.UploadedDocument,
+	caller string,
+) (inboxrclpucl.Document, error) {
+	if err := upload.Validate(); err != nil {
+		return inboxrclpucl.Document{}, err
+	}
+	if _, err := s.Documents(ctx, reference); err != nil {
+		return inboxrclpucl.Document{}, err
+	}
+
+	wanted := strings.TrimSpace(reference)
+	if s.uploaded == nil {
+		s.uploaded = map[string][]inboxrclpucl.Document{}
+	}
+	doc := inboxrclpucl.Document{
+		ID:         fmt.Sprintf("UP-%03d", len(s.uploaded[wanted])+1),
+		Name:       strings.TrimSpace(upload.Name),
+		MimeType:   strings.TrimSpace(upload.MimeType),
+		Category:   strings.TrimSpace(upload.Category),
+		UploadedBy: strings.TrimSpace(caller),
+
+		// Yang diunggah LEWAT LAYAR INI selalu tergambar: kategorinya diambil dari daftar
+		// kategori lampiran, dan yang kosong pun disimpan sebagai `File`.
+		PegaVisible: true,
+	}
+	s.uploaded[wanted] = append(s.uploaded[wanted], doc)
+	return doc, nil
+}
+
+// DocumentCategories mengembalikan contoh pilihan kolom "Category".
+//
+// Isinya TIGA baris contoh, bukan salinan daftar sebenarnya: yang diuji di sini adalah
+// jalurnya — apakah daftarnya sampai ke layar — bukan isinya, yang diturunkan dari lampiran
+// yang benar-benar ada dan bertambah tanpa menyentuh kode ini.
+func (s *Store) DocumentCategories(
+	_ context.Context,
+) ([]inboxrclpucl.DocumentCategory, error) {
+	return []inboxrclpucl.DocumentCategory{
+		{Value: "AcceptanceNote", Label: "AcceptanceNote"},
+		{Value: "ClaimFaceSheet", Label: "ClaimFaceSheet"},
+		{Value: "LOD", Label: "LOD"},
+	}, nil
+}
+
+// DocumentContent mengembalikan isi satu dokumen contoh.
+//
+// Kepemilikannya ditegakkan DI SINI pula, bukan hanya di sisi SQL. Uji yang berjalan di atas
+// memori adalah tempat paling murah untuk menangkap pemanggil yang meminta dokumen milik
+// klaim lain, dan penegakan yang hanya ada di satu sisi membuat uji itu lulus untuk perilaku
+// yang tidak benar.
+func (s *Store) DocumentContent(
+	ctx context.Context,
+	caseNumber, documentID string,
+) (inboxrclpucl.DocumentContent, error) {
+	documents, err := s.Documents(ctx, caseNumber)
+	if err != nil {
+		return inboxrclpucl.DocumentContent{}, err
+	}
+
+	wanted := strings.TrimSpace(documentID)
+	for _, document := range documents {
+		if document.ID != wanted {
+			continue
+		}
+		return inboxrclpucl.DocumentContent{
+			Name:     document.Name,
+			MimeType: document.MimeType,
+			Content:  []byte("isi contoh " + document.ID),
+		}, nil
+	}
+	return inboxrclpucl.DocumentContent{}, inboxrclpucl.ErrDocumentNotFound
+}
+
+// ReturnToAnalyst menandai klaim selesai dikerjakan PUCL.
+//
+// Ia MENGUBAH baris di tempatnya, bukan mengembalikan salinan. Itu disengaja: pengisi ini
+// menopang uji yang memeriksa klaim benar-benar KELUAR dari antrean sesudah tombolnya ditekan,
+// dan penyimpanan yang tidak berubah akan membuat uji seperti itu lolos tanpa membuktikan apa
+// pun.
+func (s *Store) ReturnToAnalyst(_ context.Context, reference, _ string) error {
+	wanted := strings.TrimSpace(reference)
+	for i := range s.rows {
+		if s.rows[i].Item.Reference != wanted {
+			continue
+		}
+		s.rows[i].PUCLApprove = inboxrclpucl.PUCLReturnedToAnalyst
+		return nil
+	}
+	return inboxrclpucl.ErrClaimNotFound
+}
+
+// SaveReceipt menyimpan kedua isian Penerimaan Dokumen yang diketik petugas.
+//
+// Ia MENGUBAH baris di tempatnya, sama seperti ReturnToAnalyst, supaya uji dapat membuktikan
+// nilainya benar-benar tersimpan — bukan sekadar permintaannya diterima.
+func (s *Store) SaveReceipt(
+	_ context.Context,
+	reference string,
+	in inboxrclpucl.ReceiptInput,
+	_ string,
+) error {
+	if _, err := in.Validate(); err != nil {
+		return err
+	}
+
+	wanted := strings.TrimSpace(reference)
+	for i := range s.rows {
+		if s.rows[i].Item.Reference != wanted {
+			continue
+		}
+		s.rows[i].PUCLNote = strings.TrimSpace(in.Note)
+		s.rows[i].DocumentCompleteAt = strings.TrimSpace(in.CompleteAt)
+		return nil
+	}
+	return inboxrclpucl.ErrClaimNotFound
+}
+
+// MarkLetterPrinted menandai surat RCL/PUCL sudah diterbitkan.
+//
+// Ketiga kolomnya diubah di tempatnya supaya uji dapat membuktikan klaimnya BENAR-BENAR
+// berpindah tab — bukan sekadar permintaannya diterima.
+func (s *Store) MarkLetterPrinted(_ context.Context, reference, _ string) error {
+	wanted := strings.TrimSpace(reference)
+	for i := range s.rows {
+		if s.rows[i].Item.Reference != wanted {
+			continue
+		}
+		s.rows[i].Item.LetterPrintedAt = time.Now().Format("2006-01-02 15:04:05")
+		s.rows[i].ExpiryCaseStatus = inboxrclpucl.StatusCasePrinted
+		s.rows[i].ClaimStatus = inboxrclpucl.StatusClaimWaitingDocument
+		return nil
+	}
+	return inboxrclpucl.ErrClaimNotFound
+}
+
 // detailOf menyusun isi layar kerja dari satu baris contoh.
 //
 // Ketiga isian TURUNAN dihitung di sini dengan cara yang sama seperti kueri SQL — termasuk
@@ -347,6 +642,19 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 	return inboxrclpucl.ClaimDetail{
 		Reference:   candidate.Item.Reference,
 		ClaimNumber: candidate.Item.CaseID,
+
+		// Keduanya memilih TOMBOL, bukan mengisi isian — sama seperti di sisi Oracle.
+		// Melewatkannya di sini akan membuat uji yang berjalan di atas memori menggambar
+		// susunan tombol yang berbeda dari layar yang sebenarnya.
+		MSIG:       candidate.MSIG,
+		GroupPanel: candidate.GroupPanel,
+
+		// Sama persis dengan sisi Oracle: dibaca dari barisnya, bukan nilai tetap.
+		ActionParameters: inboxrclpucl.ActionParameters{
+			IDObject:     candidate.IDObject,
+			IDCoverage:   candidate.IDCoverage,
+			IDAdjustment: candidate.IDAdjustment,
+		},
 
 		Letter: inboxrclpucl.LetterDraft{
 			Track:        inboxrclpucl.TrackOf(candidate.TrackCode),
@@ -359,10 +667,18 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 			SumInsured:  candidate.FirstObjectName,
 
 			BillAmount: candidate.FirstProposeValue,
+
+			Subject:     candidate.Subject,
+			OpeningNote: candidate.OpeningNote,
+			BodyNote:    candidate.BodyNote,
+			ClosingNote: candidate.ClosingNote,
 		},
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{
-			PUCLNote: candidate.PUCLNote,
+			// Satu baris, seperti di Oracle: hanya baris pertama page list yang terbaca.
+			ReceivedDates: inboxrclpucl.ReceivedDatesOf("2026-09-04 10:05:00", "Dokumen awal"),
+			PUCLNote:      candidate.PUCLNote,
+			CompleteAt:    candidate.DocumentCompleteAt,
 		},
 	}
 }
@@ -431,13 +747,15 @@ func matchesWorkClass(candidate Row) bool {
 	return candidate.WorkClass == inboxrclpucl.WorkClassClaim
 }
 
-// matchesQueue meniru gabungan ke antrean bersama beserta penyaring akunnya.
+// Penyaring antrean bersama DIHAPUS 2026-10-01, mengikuti penyimpanan SQL.
 //
-// Ketiga tab memakai akun yang SAMA (`RCLPUCL`), sehingga penyaring ini tidak bergantung
-// tab sama sekali.
-func matchesQueue(candidate Row) bool {
-	return strings.EqualFold(candidate.AssignedOperator, inboxrclpucl.RCLPUCLWorkbasket)
-}
+// `TC_PNC_PUCL` adalah tabel khusus RCL/PUCL, sehingga penyaring itu tidak lagi menyeleksi
+// apa pun — dan datanya menyimpan NAMA ORANG di kolom itu, bukan nama antrean, sehingga
+// menyaringnya dengan `'RCLPUCL'` mengosongkan ketiga tab.
+//
+// `Row.AssignedOperator` sengaja DIPERTAHANKAN meski tidak lagi menyaring: ia bagian dari
+// bentuk barisnya, dan baris contoh yang kehilangan isian itu akan menyembunyikan bahwa
+// kolomnya ada beserta pertanyaan terbuka tentang apa yang seharusnya diisi.
 
 // matchesWorkStatus meniru `PYSTATUSWORK <> 'Resolved-Completed'`.
 //
@@ -542,4 +860,99 @@ func withinRange(at, from, to time.Time) bool {
 		return false
 	}
 	return at.Before(to.AddDate(0, 0, 1))
+}
+
+// RecordHistory menulis satu baris riwayat klaim.
+//
+// Teks riwayatnya disimpan APA ADANYA — spasi di ujung "Wait for Complete PUCL Document "
+// tidak dipangkas, karena ia ada di Pega dan ikut tersimpan di sana (`P-5`).
+func (s *Store) RecordHistory(_ context.Context, reference, statusNote, caller string) error {
+	if strings.TrimSpace(statusNote) == "" {
+		// Tindakan yang memang tidak menulis riwayat. Bukan galat.
+		return nil
+	}
+
+	key := strings.TrimSpace(reference)
+	ada := false
+	for i := range s.rows {
+		if s.rows[i].Item.Reference == key {
+			ada = true
+			break
+		}
+	}
+	if !ada {
+		return inboxrclpucl.ErrClaimNotFound
+	}
+
+	if s.history == nil {
+		s.history = map[string][]HistoryEntry{}
+	}
+	s.history[key] = append(s.history[key], HistoryEntry{
+		Note:   statusNote,
+		Caller: strings.TrimSpace(caller),
+	})
+	return nil
+}
+
+// History mengembalikan baris riwayat satu klaim — hanya untuk uji.
+func (s *Store) History(reference string) []HistoryEntry {
+	return s.history[strings.TrimSpace(reference)]
+}
+
+// MovedTask adalah tugas yang dibuka perpindahan tahap — hanya untuk uji.
+type MovedTask struct {
+	Stage string
+	Queue string
+	Owner string
+}
+
+// MoveToSendToAnalyst memindahkan klaim ke tahap Send To Analis.
+//
+// Meniru `SetTicket(SendtoAnalysator)`: tugas tahap lama ditutup, tugas baru dibuka pada
+// tahap tujuan dengan PIC Teknik klaim sebagai pemiliknya.
+func (s *Store) MoveToSendToAnalyst(_ context.Context, reference, _ string) error {
+	key := strings.TrimSpace(reference)
+
+	for i := range s.rows {
+		if s.rows[i].Item.Reference != key {
+			continue
+		}
+
+		pic := strings.TrimSpace(s.rows[i].TechnicalPIC)
+		if pic == "" {
+			// Tugas Worklist wajib bertuan sejak lahir — lihat ErrTechnicalPICUnknown.
+			return inboxrclpucl.ErrTechnicalPICUnknown
+		}
+
+		if s.moved == nil {
+			s.moved = map[string]MovedTask{}
+		}
+		s.moved[key] = MovedTask{
+			Stage: inboxrclpucl.StageSendToAnalyst,
+			Queue: inboxrclpucl.QueueWorklist,
+			Owner: pic,
+		}
+		return nil
+	}
+	return inboxrclpucl.ErrClaimNotFound
+}
+
+// MovedTaskOf mengembalikan tugas yang dibuka untuk sebuah klaim — hanya untuk uji.
+func (s *Store) MovedTaskOf(reference string) (MovedTask, bool) {
+	t, ok := s.moved[strings.TrimSpace(reference)]
+	return t, ok
+}
+
+// ClearTechnicalPIC mengosongkan PIC Teknik sebuah klaim — hanya untuk uji.
+//
+// Ia ada supaya penolakan "PIC Teknik tidak diketahui" dapat diuji tanpa menyiapkan baris
+// contoh tersendiri — baris contoh yang sengaja cacat mudah terpakai uji lain tanpa sengaja.
+func (s *Store) ClearTechnicalPIC(reference string) {
+	key := strings.TrimSpace(reference)
+	for i := range s.rows {
+		if s.rows[i].Item.Reference == key {
+			s.rows[i].TechnicalPIC = ""
+			return
+		}
+	}
 }

@@ -10,6 +10,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { useCreateWorkshop, useDecideWorkshop, useSaveWorkshop, useWorkshopList } from './api'
 import { DocumentPanel } from './DocumentPanel'
 import { WorkshopForm, type WorkshopFormValues } from './WorkshopForm'
+import { compareCodeUnits } from '@/lib/sort'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -170,7 +171,7 @@ export function WorkshopPage() {
         const value = row[column]
         if (value !== '') unique.add(value)
       }
-      collected[column] = [...unique].sort()
+      collected[column] = [...unique].sort(compareCodeUnits)
     }
     return collected
   }, [rows])
@@ -363,7 +364,7 @@ export function WorkshopPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>

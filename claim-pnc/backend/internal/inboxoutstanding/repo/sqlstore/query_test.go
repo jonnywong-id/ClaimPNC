@@ -271,3 +271,17 @@ func TestTidakAdaPolaSQLYangDilarang(t *testing.T) {
 		}
 	}
 }
+
+// Kode status domain wajib diterjemahkan ke penanda yang diuji SQL. Mengirim kode domain
+// apa adanya membuat tab "Documents not complete" berlencana 7 tetapi daftarnya kosong.
+func TestStatusDokumenDiterjemahkanKePenandaSQL(t *testing.T) {
+	for status, want := range map[inboxoutstanding.DocumentStatus]string{
+		inboxoutstanding.StatusComplete:   "LENGKAP",
+		inboxoutstanding.StatusIncomplete: "BELUM",
+	} {
+		args := statusArgs(inboxoutstanding.Filter{DocumentStatus: status})
+		require.Equal(t, []any{want, want, want}, args, "status %s", status)
+		require.Contains(t, query("my_inbox_list"), "'"+want+"'", "SQL harus menguji %s", want)
+	}
+	require.Equal(t, []any{nil, nil, nil}, statusArgs(inboxoutstanding.Filter{}))
+}

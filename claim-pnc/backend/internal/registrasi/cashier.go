@@ -2,6 +2,7 @@ package registrasi
 
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 	"strings"
 	"time"
@@ -81,6 +82,103 @@ func CanTransferCashier(line SettlementLine) error {
 		return &ValidationError{Violation: []Violation{{Code: ViolationCashierTransferred, Field: "kasir", Message: msgCashierTransferred}}}
 	}
 	return nil
+}
+
+// Tipe Transfer Kasir — property `JoinPlacement` (prompt list) pada dialog Transfer Pembayaran.
+const (
+	CashierTransferRegular       = "1" // Pembayaran Biasa (bawaan)
+	CashierTransferJoinPlacement = "2" // Join Placement
+	CashierTransferFronting      = "3" // Fronting
+)
+
+// CashierTransferTypes adalah pilihan "Tipe Transfer Kasir", urutan property `JoinPlacement`.
+var CashierTransferTypes = []LODType{
+	{CashierTransferRegular, "Pembayaran Biasa"},
+	{CashierTransferJoinPlacement, "Join Placement"},
+	{CashierTransferFronting, "Fronting"},
+}
+
+// CashierFacOut adalah satu baris tabel "Pilih Fac-out Tidak Dibayar" — `GetdataFacoutJoinPlacement`:
+// DLA bertipe FAC OUT pada nomor akseptasi itu (No DLA, Nama Facout, Nilai Bayar).
+type CashierFacOut struct {
+	Number    string // NODLA — .KomunikasiID
+	Reinsurer string // DLAREINSURER — .NameOfBank
+	Value     string // NILAIDLA — .AdjusterFeeValue
+	Currency  string
+}
+
+// CashierFacOuts memilih DLA FAC OUT dari daftar DLA adjustment.
+func CashierFacOuts(list []DLA) []CashierFacOut {
+	var out []CashierFacOut
+	for _, d := range list {
+		if strings.TrimSpace(d.Type) == DLATypeFacOut {
+			out = append(out, CashierFacOut{Number: d.Number, Reinsurer: d.Recipient, Value: d.Value, Currency: d.Currency})
+		}
+	}
+	return out
+}
+
+// Kode pelanggaran pilihan Fac-out.
+const ViolationCashierFacOut ViolationCode = "kasir_fac_out"
+
+// ChooseUnpaidFacOut memeriksa pilihan dialog: Tipe Transfer Kasir wajib salah satu pilihan;
+// tabel Fac-out hanya berlaku untuk Join Placement dan Fronting (`.JoinPlacement==2 || ==3`),
+// dan setiap nomor yang dicentang harus DLA FAC OUT adjustment itu.
+func ChooseUnpaidFacOut(kind string, chosen []string, available []CashierFacOut) ([]CashierFacOut, error) {
+	kind = strings.TrimSpace(kind)
+	if kind == "" {
+		kind = CashierTransferRegular
+	}
+	if kind != CashierTransferRegular && kind != CashierTransferJoinPlacement && kind != CashierTransferFronting {
+		return nil, &ValidationError{Violation: []Violation{{Code: ViolationCashierFacOut, Field: "tipe_transfer", Message: "Choose a Tipe Transfer Kasir."}}}
+	}
+	if kind == CashierTransferRegular {
+		return nil, nil
+	}
+	byNumber := map[string]CashierFacOut{}
+	for _, f := range available {
+		byNumber[strings.TrimSpace(f.Number)] = f
+	}
+	var out []CashierFacOut
+	for _, n := range chosen {
+		f, ok := byNumber[strings.TrimSpace(n)]
+		if !ok {
+			return nil, &ValidationError{Violation: []Violation{{Code: ViolationCashierFacOut, Field: "fac_out_tidak_dibayar",
+				Message: "DLA " + n + " is not a FAC OUT DLA of this adjustment."}}}
+		}
+		out = append(out, f)
+	}
+	return out, nil
+}
+
+// AddUnpaidFacOut menambahkan satu baris TAllPaymentData per Fac-out yang tidak dibayar —
+// `TransferCashierDataASM_act` cabang ListOfPlacement (`.IsDLA=="true"`): baris yang sama
+// dengan baris utama, NoTrans = No DLA dan Nett = Nilai Bayar × -1.
+func AddUnpaidFacOut(p *CashierPayload, unpaid []CashierFacOut) {
+	if len(p.TAllPaymentData) == 0 {
+		return
+	}
+	base := p.TAllPaymentData[0]
+	for _, f := range unpaid {
+		row := base
+		row.NoTrans = strings.TrimSpace(f.Number)
+		v := decimalOf(f.Value)
+		row.Nett = json.Number(new(big.Rat).Neg(v).FloatString(2))
+		row.IsJurnalMemorial = ""
+		p.TAllPaymentData = append(p.TAllPaymentData, row)
+	}
+}
+
+// CashierConfirmation adalah kalimat konfirmasi dialog "Transfer Pembayaran" —
+// `Pre_AlertTransferkasir`: TypeTransfer 2 (layanan investasi) → "INVESTMENT", selain itu
+// "KASIR". Cabang TypeAtasan = 1 ("… DiTransfer Ke LEADER ?") milik jalur persetujuan atasan
+// yang belum dibangun.
+func CashierConfirmation(acceptedNo, service string) string {
+	target := "KASIR"
+	if service == CashierServiceInvest {
+		target = "INVESTMENT"
+	}
+	return "Apakah Anda Yakin Akseptasi : " + strings.TrimSpace(acceptedNo) + " DiTransfer Ke " + target + "?"
 }
 
 // CashierReceiver adalah penerima pembayaran beserta data rekening masternya
@@ -177,35 +275,42 @@ func ValidateCashier(c CashierCheck) error {
 
 // CashierPayment adalah satu baris TAllPaymentData — nama field sama dengan halaman
 // BRISurfPNC yang diserialisasi `SetJSONPage` (`TransferCashierDataASM_act` langkah 14).
+//
+// # Bentuknya mengikuti badan yang DITERIMA Kasir, bukan susunan activity
+//
+// Badan yang dicatat Pega di POOLDATA.CLAIM_SERVICE_LOG (jenis "Log Kasir", dijawab
+// "Success") memuat Nett, Deductible, dan KaliDeduct sebagai ANGKA JSON, dan tidak memuat DOL
+// maupun Panel — meski `TransferCashierDataASM_act` mengisi keduanya pada halaman. Kasir
+// menolak (HTTP 400) badan yang mengirim ketiga angka itu sebagai teks.
 type CashierPayment struct {
-	NoTrans          string `json:"NoTrans"`
-	LbuId            string `json:"LbuId"`
-	LdcId            string `json:"LdcId"`
-	AccountNo        string `json:"AccountNo"`
-	LbgID            string `json:"LbgID"`
-	TglAksep         string `json:"TglAksep"`
-	TglLOD           string `json:"TglLOD"`
-	TglBolehBayar    string `json:"TglBolehBayar"`
-	Nett             string `json:"Nett"`
-	LkuId            string `json:"LkuId"`
-	LjtdId           string `json:"LjtdId"`
-	NoKlaim          string `json:"NoKlaim"`
-	AcceptType       string `json:"AcceptType"`
-	Deductible       string `json:"Deductible"`
-	KaliDeduct       string `json:"KaliDeduct"`
-	Kepada           string `json:"Kepada"`
-	Email            string `json:"Email"`
-	StsSyariah       string `json:"StsSyariah"`
-	StsDsa           string `json:"StsDsa"`
-	CompanyName      string `json:"CompanyName"`
-	NoPolis          string `json:"NoPolis"`
-	Note             string `json:"Note"`
-	StsAp            string `json:"StsAp"`
-	NoHP             string `json:"NoHP"`
-	DOL              string `json:"DOL"`
-	Panel            string `json:"Panel"`
-	UserInput        string `json:"UserInput"`
-	IsJurnalMemorial string `json:"IsJurnalMemorial,omitempty"`
+	NoTrans          string      `json:"NoTrans"`
+	LbuId            string      `json:"LbuId"`
+	LdcId            string      `json:"LdcId"`
+	AccountNo        string      `json:"AccountNo"`
+	LbgID            string      `json:"LbgID"`
+	TglAksep         string      `json:"TglAksep"`
+	TglLOD           string      `json:"TglLOD"`
+	TglBolehBayar    string      `json:"TglBolehBayar"`
+	Nett             json.Number `json:"Nett"`
+	LkuId            string      `json:"LkuId"`
+	LjtdId           string      `json:"LjtdId"`
+	NoKlaim          string      `json:"NoKlaim"`
+	AcceptType       string      `json:"AcceptType"`
+	Deductible       json.Number `json:"Deductible"`
+	KaliDeduct       json.Number `json:"KaliDeduct"`
+	Kepada           string      `json:"Kepada"`
+	Email            string      `json:"Email"`
+	StsSyariah       string      `json:"StsSyariah"`
+	StsDsa           string      `json:"StsDsa"`
+	CompanyName      string      `json:"CompanyName"`
+	NoPolis          string      `json:"NoPolis"`
+	Note             string      `json:"Note"`
+	StsAp            string      `json:"StsAp"`
+	NoHP             string      `json:"NoHP"`
+	DOL              string      `json:"-"` // diisi activity, tidak sampai ke Kasir
+	Panel            string      `json:"-"` // idem
+	UserInput        string      `json:"UserInput"`
+	IsJurnalMemorial string      `json:"IsJurnalMemorial,omitempty"`
 }
 
 // CashierPayload adalah badan permintaan ke Kasir.
@@ -256,10 +361,10 @@ func BuildCashierPayload(line SettlementLine, r CashierReceiver, nett Money, f C
 		NoTrans: line.AcceptedNo, LbuId: f.BusinessCode, LdcId: f.BranchCode, AccountNo: r.AccountNo,
 		LbgID: f.BankGroupID, TglAksep: CashierDate(line.Acceptance.AcceptedAt),
 		TglLOD: CashierDate(line.Acceptance.Form.ReceiveDate), TglBolehBayar: CashierDate(now),
-		Nett: big.NewRat(int64(nett), 100).FloatString(2), LkuId: line.Currency, LjtdId: "D0031",
+		Nett: json.Number(big.NewRat(int64(nett), 100).FloatString(2)), LkuId: line.Currency, LjtdId: "D0031",
 		NoKlaim: f.ClaimNumber, AcceptType: line.PaymentType,
-		Deductible: big.NewRat(int64(line.RiskValue), 100).FloatString(2),
-		KaliDeduct: plainDecimal(percentRat(line.RiskPercent)),
+		Deductible: json.Number(big.NewRat(int64(line.RiskValue), 100).FloatString(2)),
+		KaliDeduct: json.Number(plainDecimal(percentRat(line.RiskPercent))),
 		Kepada:     r.Name, Email: strings.ReplaceAll(email, ",", ";"),
 		StsSyariah: syariah, StsDsa: stsDsa, CompanyName: CashierCompany(f.Portal), NoPolis: f.PolicyNumber,
 		Note: line.Acceptance.Form.MinutesNote, StsAp: "0", NoHP: r.Telephone,
@@ -276,7 +381,8 @@ type CashierReply struct {
 	ResponseMessage string
 	CaseIDCashier   string
 	NoTransClaim    string
-	Raw             string
+	Raw             string // dipotong 500 karakter — bahan pesan
+	Body            string // jawaban utuh — JSONOUT log layanan
 }
 
 // Accepted menyatakan Kasir menerima pembayaran (`TransferToKasir_act` :14863).
@@ -326,4 +432,27 @@ type CashierStore interface {
 	Log(ctx context.Context, entry CashierLog) error
 	// MarkTransferred mengisi TRANSFER_CASHIER_DATE (bila kosong) dan IDCHASIER.
 	MarkTransferred(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, at time.Time, caseID string) error
+	// AccountRegistered menyatakan rekening terdaftar aktif di master rekening Kasir
+	// (COLLECTION.LST_ACCOUNT@ASMD, berdasarkan ACCOUNT_NO dan LBG_ID).
+	AccountRegistered(ctx context.Context, accountNo, bankID string) (bool, error)
+	// LogService menulis satu baris POOLDATA.CLAIM_SERVICE_LOG jenis "Log Kasir".
+	LogService(ctx context.Context, entry CashierServiceLog) error
+}
+
+// CashierServiceLogCategory adalah CATEGORYSERVICE log Kasir (`TransferCashierDataASM_act`:
+// Param.jenis := "Log Kasir").
+const CashierServiceLogCategory = "Log Kasir"
+
+// CashierServiceLog adalah satu baris POOLDATA.CLAIM_SERVICE_LOG: SERVICEID = nomor klaim
+// (pyID), SERVICEREF = nomor akseptasi, JSONIN = badan yang dikirim, JSONOUT = jawaban Kasir
+// (atau galatnya bila Kasir tidak menjawab).
+//
+// Pega menyisipkan JSONIN lebih dulu lalu meng-UPDATE JSONOUT (`InsertUpdateLogService`,
+// `UpdateLogServiceClaim`). Di sini satu INSERT setelah Kasir menjawab: Steering §8 menolak
+// UPDATE pada tabel log ini, dan isi akhirnya sama.
+type CashierServiceLog struct {
+	ClaimNumber string
+	AcceptedNo  string
+	Request     CashierPayload
+	Response    string
 }

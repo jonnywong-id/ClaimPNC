@@ -116,7 +116,9 @@ func TestRowsOutsideTheGateAreExcluded(t *testing.T) {
 
 // TestClaimNumberIsBlankOnLaterCommitteeSteps mengunci keputusan Work Owner 2026-09-26.
 //
-// Padanan `CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END`.
+// Padanan ekspresi berikut:
+//
+//	CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END
 func TestClaimNumberIsBlankOnLaterCommitteeSteps(t *testing.T) {
 	service := serviceWithSample(t)
 

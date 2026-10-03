@@ -31,6 +31,12 @@ SELECT INDEXOBJECT, MAX(OBJECTNO), MAX(OBJECTNAME), MAX(ASMADDRESS)
  GROUP BY INDEXOBJECT
  ORDER BY INDEXOBJECT
 
+-- name: jenis_treaty_nama
+--
+-- Nama treaty per ID — master yang sama dengan dropdown Nama Treaty Pega.
+SELECT CAST(ID AS VARCHAR(20)), NOTE
+  FROM POOLDATA.REINSURANCETYPE
+
 -- name: polis_coverage_property
 SELECT TO_CLOB(COVERAGELIST)
   FROM POOLDATA.T_PROPERTYLIST

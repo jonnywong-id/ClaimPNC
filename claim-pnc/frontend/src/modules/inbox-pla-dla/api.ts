@@ -283,13 +283,13 @@ export function useBalasKomunikasi(kunci: string) {
       ),
 
     onSuccess: () => {
-      void client.invalidateQueries({
+      client.invalidateQueries({
         queryKey: keys.detail(portal, token, kunci),
       })
       // Daftar induk ikut berubah: percakapan yang dijawab berpindah dari tab
       // "Terkirim — Belum Dijawab" ke "Terkirim — Sudah Dijawab".
-      void client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'baris'] })
-      void client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'ringkas'] })
+      client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'baris'] })
+      client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'ringkas'] })
     },
   })
 }

@@ -104,7 +104,7 @@ function columnsFor(columns: DecisionColumn[]): Column<Decision>[] {
 
 function valueOf(row: Decision, column: DecisionColumn): string {
   const raw = row[column.kunci]
-  if (raw === null || raw === undefined) return ''
+  if (raw == null) return ''
   return String(raw)
 }
 

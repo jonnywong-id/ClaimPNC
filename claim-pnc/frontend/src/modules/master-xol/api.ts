@@ -147,9 +147,9 @@ export function useSaveXOL() {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan,
       // nomornya hanya diketahui server — menebaknya di klien akan menampilkan nomor yang
       // salah sampai muat ulang berikutnya.
-      void client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) })
       if (variables.id) {
-        void client.invalidateQueries({ queryKey: key.detail(portal, token, variables.id) })
+        client.invalidateQueries({ queryKey: key.detail(portal, token, variables.id) })
       }
     },
   })
@@ -170,7 +170,7 @@ export function useDeleteXOL() {
     mutationFn: (id: string) =>
       callAPI<void>(`${ROUTES}/${encodeURIComponent(id)}`, { metode: 'DELETE', token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) })
     },
   })
 }
@@ -202,7 +202,7 @@ export function useDeleteXOLChild() {
       return callAPI<void>(path, { metode: 'DELETE', token, portal })
     },
     onSuccess: (_result, fields) => {
-      void client.invalidateQueries({ queryKey: key.detail(portal, token, fields.masterID) })
+      client.invalidateQueries({ queryKey: key.detail(portal, token, fields.masterID) })
     },
   })
 }

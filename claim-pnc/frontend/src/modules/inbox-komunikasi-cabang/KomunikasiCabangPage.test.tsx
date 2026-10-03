@@ -240,6 +240,12 @@ function stubDefaultFetch(branch: BranchScope = CABANG_TERBACA) {
         portal: 'ASM',
       })
     }
+    // Aksi balas dan selesai berada DI BAWAH alamat detail, jadi harus dijawab lebih dulu —
+    // bila tidak, keduanya ikut menerima jawaban detail yang `pesan`-nya berupa daftar, dan
+    // layar mencoba menggambar daftar itu sebagai teks.
+    if (url.endsWith('/balas') || url.endsWith('/selesai')) {
+      return jsonResponse(200, { komunikasi: 'KOM-9001', pesan: 'Tersimpan.', portal: 'ASM' })
+    }
     if (url.startsWith(DETAIL_PATH)) return jsonResponse(200, DETAIL)
     if (url.startsWith(EXPORT_PATH)) {
       return new Response('Tanggal\n2026-09-10\n', {
@@ -254,7 +260,7 @@ function stubDefaultFetch(branch: BranchScope = CABANG_TERBACA) {
 
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun.
-    const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab')
+    const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
     const answered = wanted === TAB_SUDAH.kode ? TAB_SUDAH : TAB_BELUM
     const baris = answered.kode === TAB_SUDAH.kode ? [BARIS_DIJAWAB] : [BARIS]
 
@@ -410,7 +416,7 @@ describe('perpindahan tab', () => {
     await userEvent.click(screen.getByRole('tab', { name: /Sudah Dijawab/ }))
     await screen.findByRole('columnheader', { name: 'Jawaban Terakhir' })
 
-    const url = new URL(lastListCall()?.url ?? '', 'http://uji.invalid')
+    const url = new URL(lastListCall()?.url ?? '', 'https://uji.invalid')
     expect(url.searchParams.get('tab')).toBe(TAB_SUDAH.kode)
   })
 

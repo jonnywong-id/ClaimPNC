@@ -142,12 +142,13 @@ func (s *DLAStore) Treaty(ctx context.Context, businessCode string, year int, tr
 			return out, fmt.Errorf("registrasi/sqlstore: membaca QS treaty: %w", err)
 		}
 		for qs.Next() {
-			var pct sql.NullString
-			if err := qs.Scan(&pct); err != nil {
+			var pct, name sql.NullString
+			if err := qs.Scan(&pct, &name); err != nil {
 				_ = qs.Close()
 				return out, err
 			}
 			out.QSPct = trimmed(pct) // baris terakhir yang dipakai
+			out.QSParts = append(out.QSParts, registrasi.TreatyQSPart{Name: trimmed(name), Pct: trimmed(pct)})
 		}
 		_ = qs.Close()
 		if err := qs.Err(); err != nil {
@@ -220,22 +221,159 @@ func nullWallDate(t time.Time) any {
 
 // ---- dokumen polis ---------------------------------------------------------------------
 
-// Policy membaca bahan DLA dari dokumen polis terbaru.
-func (s *DLAStore) Policy(ctx context.Context, policyNumber string) (registrasi.DLAPolicy, error) {
+// Policy membaca bahan DLA polis. Kepala polis dan SpreadingList masih dari dokumen polis
+// terbaru (belum ada tabel padanannya); CoinsList dari T_COINSLIST dan FacOfferList dari
+// T_FACOFFER, keduanya pada PRODKE snapshot klaim.
+func (s *DLAStore) Policy(ctx context.Context, policyNumber, prodKe string) (registrasi.DLAPolicy, error) {
+	number, prodKe := strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe)
 	var text sql.NullString
-	var blob []byte
-	err := s.db.QueryRowContext(ctx, loadQuery("dla_polis_dokumen"), strings.TrimSpace(policyNumber)).Scan(&text, &blob)
-	if errors.Is(err, sql.ErrNoRows) {
-		return registrasi.DLAPolicy{}, nil
-	}
-	if err != nil {
+	p := registrasi.DLAPolicy{TSISpreaded: map[string]*big.Rat{}}
+	err := s.db.QueryRowContext(ctx, loadQuery("dla_polis_dokumen"), number).Scan(&text)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
 		return registrasi.DLAPolicy{}, fmt.Errorf("registrasi/sqlstore: membaca dokumen polis %q: %w", policyNumber, err)
+	case text.String != "":
+		if p, err = parseDLAPolicy([]byte(text.String)); err != nil {
+			return registrasi.DLAPolicy{}, err
+		}
 	}
-	body := []byte(text.String)
-	if !text.Valid || text.String == "" {
-		body = blob
+	if err := s.policyHeader(ctx, &p, number, prodKe); err != nil {
+		return registrasi.DLAPolicy{}, err
 	}
-	return parseDLAPolicy(body)
+	if err := s.policySpreading(ctx, &p, number, prodKe); err != nil {
+		return registrasi.DLAPolicy{}, err
+	}
+	if p.Coins, err = coinsMembers(ctx, s.db, policyNumber, prodKe); err != nil {
+		return registrasi.DLAPolicy{}, err
+	}
+	if p.FacOffer, err = s.facOffers(ctx, policyNumber, prodKe); err != nil {
+		return registrasi.DLAPolicy{}, err
+	}
+	return p, nil
+}
+
+// policyHeader menimpa kepala polis dokumen dengan kolom T_GENERAL dan T_OFFERFACIN yang
+// terisi — tabel lebih dulu, dokumen hanya cadangan (Work Owner, 2026-10-01).
+func (s *DLAStore) policyHeader(ctx context.Context, p *registrasi.DLAPolicy, number, prodKe string) error {
+	var caseID, sumTSI, coins, syariah, business, status sql.NullString
+	var start sql.NullTime
+	err := s.db.QueryRowContext(ctx, loadQuery("dla_polis_kepala"), number, prodKe).
+		Scan(&caseID, &sumTSI, &coins, &syariah, &business, &status, &start)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
+		return fmt.Errorf("registrasi/sqlstore: membaca T_GENERAL polis %q: %w", number, err)
+	default:
+		if v := trimmed(caseID); v != "" {
+			p.CaseID = v
+		}
+		if v := trimmed(sumTSI); v != "" {
+			p.SumOfTSI = registrasi.DecimalOf(v)
+		}
+		if v := trimmed(coins); v != "" {
+			p.TypeOfCoins = v
+		}
+		if v := trimmed(syariah); v != "" {
+			p.Syariah = v == "1"
+		}
+		if v := trimmed(business); v != "" {
+			p.BusinessCode = v
+		}
+		if v := trimmed(status); v != "" {
+			p.StatusBusiness = v
+		}
+		// Tahun mulai: dokumen lebih dulu (T_GENERAL tidak mengikuti endorsemen).
+		if t := wibDate(start); p.StartYear == 0 && !t.IsZero() {
+			p.StartYear = t.In(clock.ZoneWIB).Year()
+		}
+	}
+
+	var share sql.NullString
+	err = s.db.QueryRowContext(ctx, loadQuery("dla_offer_facin"), number, prodKe).Scan(&share)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
+		return fmt.Errorf("registrasi/sqlstore: membaca T_OFFERFACIN polis %q: %w", number, err)
+	default:
+		if v := trimmed(share); v != "" {
+			p.OfferFacInShare = registrasi.DecimalOf(v)
+		}
+	}
+	return nil
+}
+
+// policySpreading mengganti TSISpreaded dokumen dengan T_SPREADINGLIST bila tabel itu punya
+// baris untuk PRODKE-nya: TSISpreaded pertama per TreatyType, FlagDelete = '1' dilewati —
+// aturan yang sama dengan collectSpreading.
+func (s *DLAStore) policySpreading(ctx context.Context, p *registrasi.DLAPolicy, number, prodKe string) error {
+	rows, err := s.db.QueryContext(ctx, loadQuery("dla_spreading"), number, prodKe)
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: membaca T_SPREADINGLIST polis %q: %w", number, err)
+	}
+	defer func() { _ = rows.Close() }()
+	table := map[string]*big.Rat{}
+	any := false
+	for rows.Next() {
+		var kind, tsi, deleted sql.NullString
+		if err := rows.Scan(&kind, &tsi, &deleted); err != nil {
+			return fmt.Errorf("registrasi/sqlstore: membaca baris T_SPREADINGLIST: %w", err)
+		}
+		any = true
+		k := trimmed(kind)
+		if _, seen := table[k]; k != "" && !seen && trimmed(deleted) != "1" {
+			table[k] = registrasi.DecimalOf(trimmed(tsi))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if any {
+		p.TSISpreaded = table
+	}
+	return nil
+}
+
+// facOffers membaca T_FACOFFER: satu baris per reasuradur, JSONDATA memuat seluruh
+// FacOfferList, sehingga yang diambil hanya entri milik REINSURER_ID baris itu.
+func (s *DLAStore) facOffers(ctx context.Context, policyNumber, prodKe string) ([]registrasi.FacOffer, error) {
+	rows, err := s.db.QueryContext(ctx, loadQuery("dla_fac_offer"), strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe))
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca T_FACOFFER polis %q: %w", policyNumber, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []registrasi.FacOffer
+	for rows.Next() {
+		var id, body sql.NullString
+		if err := rows.Scan(&id, &body); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris T_FACOFFER: %w", err)
+		}
+		f, ok, err := parseFacOfferRow(trimmed(id), []byte(body.String))
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, f)
+		}
+	}
+	return out, rows.Err()
+}
+
+// parseFacOfferRow mengambil entri FacOfferList yang ReinsurerID-nya sama dengan baris.
+func parseFacOfferRow(reinsurerID string, body []byte) (registrasi.FacOffer, bool, error) {
+	if len(body) == 0 {
+		return registrasi.FacOffer{}, false, nil
+	}
+	var doc jsonMap
+	if err := json.Unmarshal(body, &doc); err != nil {
+		return registrasi.FacOffer{}, false, fmt.Errorf("registrasi/sqlstore: JSONDATA T_FACOFFER %s tidak terbaca: %w", reinsurerID, err)
+	}
+	for _, o := range list(doc, "FacOfferList") {
+		if field(o, "ReinsurerID") == reinsurerID {
+			return parseFacOffer(o), true, nil
+		}
+	}
+	return registrasi.FacOffer{}, false, nil
 }
 
 type jsonMap = map[string]any
@@ -249,12 +387,13 @@ func parseDLAPolicy(body []byte) (registrasi.DLAPolicy, error) {
 		return registrasi.DLAPolicy{}, fmt.Errorf("registrasi/sqlstore: dokumen polis tidak terbaca: %w", err)
 	}
 	p := registrasi.DLAPolicy{
-		CaseID:       field(doc, "CaseID"),
-		SumOfTSI:     registrasi.DecimalOf(field(doc, "SumOfTSI")),
-		TypeOfCoins:  field(doc, "TypeOfCoins"),
-		Syariah:      field(doc, "SyariahStatus") == "1",
-		BusinessCode: field(object(doc, "Quotation"), "BusinessCode"),
-		TSISpreaded:  map[string]*big.Rat{},
+		CaseID:         field(doc, "CaseID"),
+		SumOfTSI:       registrasi.DecimalOf(field(doc, "SumOfTSI")),
+		TypeOfCoins:    field(doc, "TypeOfCoins"),
+		Syariah:        field(doc, "SyariahStatus") == "1",
+		BusinessCode:   field(object(doc, "Quotation"), "BusinessCode"),
+		StatusBusiness: field(object(doc, "Quotation"), "StatusBusiness"),
+		TSISpreaded:    map[string]*big.Rat{},
 	}
 	if v := field(object(doc, "OfferFacIn"), "PercentShare"); v != "" {
 		p.OfferFacInShare = registrasi.DecimalOf(v)
@@ -262,35 +401,32 @@ func parseDLAPolicy(body []byte) (registrasi.DLAPolicy, error) {
 	if t := parsePegaDateTime(field(doc, "StartDateTime")); !t.IsZero() {
 		p.StartYear = t.In(clock.ZoneWIB).Year()
 	}
-	for _, c := range list(doc, "CoinsList") {
-		share, ok := parsePercent(field(c, "PercentShare"))
-		p.Coins = append(p.Coins, registrasi.PLACoinsMember{
-			ID: field(c, "CoinsID"), Name: field(c, "CoinsName"), Leader: field(c, "Leader") == "true",
-			Share: share, HasShare: ok, Deleted: field(c, "FlagDelete") == "1",
-		})
-	}
-	for _, o := range list(doc, "FacOfferList") {
-		offered := field(o, "TotalOffered")
-		f := registrasi.FacOffer{
-			ReinsurerName: field(o, "ReinsurerName"), ReinsurerID: field(o, "ReinsurerID"),
-			Deleted: field(o, "FlagDelete") == "1", OfferedMissing: offered == "" || offered == "0",
-		}
-		for _, x := range list(o, "PropertyList") {
-			f.Property = append(f.Property, registrasi.FacObject{ObjectNo: field(x, "ObjectNo"), Coverage: facCoverages(x)})
-		}
-		for _, x := range list(o, "AnekaList") {
-			f.Aneka = append(f.Aneka, registrasi.FacObject{
-				ObjectName: field(x, "ObjectName"), SumTSIAneka: field(x, "SumTSIObjectAneka"), Coverage: facCoverages(x)})
-		}
-		for _, x := range list(o, "CargoList") {
-			f.Cargo = append(f.Cargo, registrasi.FacObject{
-				GoodID: field(x, "GoodID"), GoodNote: field(x, "GoodNote"), IndexObject: field(x, "IndexObject"),
-				Coverage: facCoverages(x)})
-		}
-		p.FacOffer = append(p.FacOffer, f)
-	}
+	// CoinsList dan FacOfferList tidak dibaca dari sini — lihat Policy.
 	collectSpreading(doc, p.TSISpreaded, 0)
 	return p, nil
+}
+
+// parseFacOffer mengurai satu entri FacOfferList; bentuknya berbeda per Group Panel
+// (PropertyList, AnekaList, CargoList).
+func parseFacOffer(o jsonMap) registrasi.FacOffer {
+	offered := field(o, "TotalOffered")
+	f := registrasi.FacOffer{
+		ReinsurerName: field(o, "ReinsurerName"), ReinsurerID: field(o, "ReinsurerID"),
+		Deleted: field(o, "FlagDelete") == "1", OfferedMissing: offered == "" || offered == "0",
+	}
+	for _, x := range list(o, "PropertyList") {
+		f.Property = append(f.Property, registrasi.FacObject{ObjectNo: field(x, "ObjectNo"), Coverage: facCoverages(x)})
+	}
+	for _, x := range list(o, "AnekaList") {
+		f.Aneka = append(f.Aneka, registrasi.FacObject{
+			ObjectName: field(x, "ObjectName"), SumTSIAneka: field(x, "SumTSIObjectAneka"), Coverage: facCoverages(x)})
+	}
+	for _, x := range list(o, "CargoList") {
+		f.Cargo = append(f.Cargo, registrasi.FacObject{
+			GoodID: field(x, "GoodID"), GoodNote: field(x, "GoodNote"), IndexObject: field(x, "IndexObject"),
+			Coverage: facCoverages(x)})
+	}
+	return f
 }
 
 func facCoverages(x jsonMap) []registrasi.FacCoverage {

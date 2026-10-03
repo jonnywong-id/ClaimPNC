@@ -4,6 +4,9 @@
 *.exe~
 backend/claimpnc
 
+# Log saat aplikasi dijalankan lokal
+*.log
+
 # Hasil build SPA — dihasilkan `npm run build` di frontend/, disematkan saat go build.
 # .gitkeep sengaja ikut supaya `go build ./...` tetap jalan pada clone yang bersih:
 # direktif go:embed menuntut folder dist ada, walau isinya belum dibangun.

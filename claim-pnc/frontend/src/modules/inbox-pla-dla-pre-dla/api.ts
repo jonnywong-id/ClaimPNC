@@ -312,7 +312,7 @@ export function useKirimPreDLA(claimKey: string) {
       ),
 
     onSuccess: () => {
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: keys.cetak(portal, token, claimKey),
       })
     },
@@ -362,10 +362,10 @@ export function useKirimSurat(tab: string, claimKey: string) {
       ),
 
     onSuccess: () => {
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: keys.documents(portal, token, tab, claimKey),
       })
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: ['inbox-pla-dla-pre-dla', 'baris'],
       })
     },

@@ -1,9 +1,8 @@
 import { useState } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
-import type { CauseOfLoss } from '@/api/types'
+import { ErrorCode, type CauseOfLoss } from '@/api/types'
 import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
-import { ErrorCode } from '@/api/types'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
 import { Button } from '@/components/Button'
@@ -209,7 +208,7 @@ export function CauseOfLossPage() {
                   diseragamkan di seluruh modul master. */}
               <Button
                 tone="kedua"
-                onClick={() => void list.refetch()}
+                onClick={() => { list.refetch() }}
                 disabled={list.isFetching}
               >
                 <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />

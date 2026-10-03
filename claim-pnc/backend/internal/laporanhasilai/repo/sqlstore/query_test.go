@@ -275,8 +275,9 @@ func selectedColumns(text string) []string {
 
 // TestClaimNumberBlankingFollowsCommitteeStep mengunci aturan pengosongan nomor klaim.
 //
-// Padanan `CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END`, yang Work Owner
-// putuskan untuk ditiru pada 2026-09-26.
+// Padanan ekspresi berikut, yang Work Owner putuskan untuk ditiru pada 2026-09-26:
+//
+//	CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END
 func TestClaimNumberBlankingFollowsCommitteeStep(t *testing.T) {
 	require.Equal(t, "PNCN.26.0001", claimNumberOf("1", "PNCN.26.0001"))
 	require.Equal(t, "PNCN.26.0001", claimNumberOf(" 1 ", " PNCN.26.0001 "),

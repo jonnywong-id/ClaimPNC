@@ -718,6 +718,30 @@ type Repo interface {
 	// Nilai kedua false bila polisnya tidak ada di JSON_POLIS.
 	FindPolicyProductSeq(ctx context.Context, policyNo string) (string, bool, error)
 
+	// FindPolicyDetail membaca data polis yang dibutuhkan pemeriksaan unggahan dari
+	// POOLDATA.T_GENERAL. Nilai kedua false bila baris polis/prodke itu tidak ada.
+	FindPolicyDetail(ctx context.Context, policyNo, productSeq string) (PolicyDetail, bool, error)
+
+	// CurrencyID menerjemahkan kode mata uang polis menjadi ID POOLDATA.CURRENCY
+	// (RDB List/GetIDCurrencyByNote-SQL.xml). Nilai kedua false bila kodenya tidak dikenal.
+	CurrencyID(ctx context.Context, code string) (string, bool, error)
+
+	// ContractClaimed menyatakan nomor kontrak Kredit ini sudah diunggah untuk
+	// perusahaan yang sama dan belum gagal (RDB List/CekObjekNotDouble-SQL.xml).
+	ContractClaimed(ctx context.Context, companyCode, contractNo string) (bool, error)
+
+	// HasOpenProtection menyatakan polis punya Open Protection bertipe tertentu di
+	// POOLDATA.T_CLAIM_OPENPROTECTION — pengganti Report Definition Pega
+	// `InboxOpenProtectionKredit_RD` (Work Owner 2026-09-29).
+	HasOpenProtection(ctx context.Context, policyNo, protectionType string) (bool, error)
+
+	// PremiumCheckChoices mengembalikan isi kedua isian tab Cek Premi.
+	PremiumCheckChoices(ctx context.Context) (PremiumCheckChoices, error)
+
+	// SucceededClaimTotal menjumlahkan nilai klaim Kredit yang sudah Sukses Klaim untuk
+	// satu pasangan bisnis + sumber bisnis. Teks kosong bila tidak ada baris.
+	SucceededClaimTotal(ctx context.Context, query PremiumCheckQuery) (string, error)
+
 	// InsertUpload menyimpan seluruh baris dalam SATU transaksi dan mengembalikan batch
 	// yang terbentuk.
 	//

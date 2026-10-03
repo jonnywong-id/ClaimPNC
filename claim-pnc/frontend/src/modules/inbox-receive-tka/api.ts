@@ -96,7 +96,7 @@ export function useCompleteReceiveTKA() {
         portal,
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: listKey(portal, token) })
+      queryClient.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }

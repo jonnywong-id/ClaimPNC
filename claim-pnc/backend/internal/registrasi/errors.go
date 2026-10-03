@@ -101,6 +101,8 @@ const (
 	ViolationSendNeedsFaceSheet      ViolationCode = "kirim_pic_belum_cfs"
 	ViolationReceiverAccountEmpty    ViolationCode = "rekening_penerima_kosong"
 	ViolationReceiverAccountUnknown  ViolationCode = "rekening_penerima_tidak_terdaftar"
+	ViolationReceiverNotInCashier    ViolationCode = "rekening_penerima_belum_di_kasir"
+	ViolationReceiverNotApproved     ViolationCode = "rekening_penerima_belum_disetujui"
 	ViolationReceiverEmailEmpty      ViolationCode = "email_penerima_kosong"
 	ViolationCommitteeTransferred    ViolationCode = "komite_sudah_ditransfer"
 	ViolationCommitteeIncomplete     ViolationCode = "adjustment_belum_lengkap"

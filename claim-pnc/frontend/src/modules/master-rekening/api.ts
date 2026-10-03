@@ -127,7 +127,7 @@ export function useSubmitAccount() {
     mutationFn: (values: AccountFields) =>
       callAPI<Account>(ROUTES, { metode: 'POST', body: bodyOf(values), token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-rekening'] })
+      client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
   })
 }
@@ -149,7 +149,7 @@ export function useUpdateAccount() {
         { metode: 'PUT', body: bodyOf(values), token, portal },
       ),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-rekening'] })
+      client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
   })
 }
@@ -180,7 +180,7 @@ export function useDecideAccount() {
     onSuccess: () => {
       // Seluruh tab ikut disegarkan: satu keputusan memindahkan baris dari tab
       // "Waiting Approval" ke tab "Approve" atau "Reject" sekaligus.
-      void client.invalidateQueries({ queryKey: ['master-rekening'] })
+      client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
   })
 }

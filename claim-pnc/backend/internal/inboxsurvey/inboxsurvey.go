@@ -518,13 +518,11 @@ type SurveyTask struct {
 	// Penulis lainnya berada di luar export (`R-01`, `R-16`).
 	ASMStatus string
 
-
 	// SurveyorType adalah `SURVEYORTYPE_1` — `"1"` internal, `"2"` loss adjuster.
 	//
 	// Tidak digambar sebagai kolom. Dibawa supaya jawaban API dapat menjelaskan dirinya
 	// sendiri: antrean yang tampak salah isi hampir selalu salah di sini.
 	SurveyorType string
-
 }
 
 // AgingDays adalah kolom **"Aging"** — sudah berapa hari janji survei ini menunggu.

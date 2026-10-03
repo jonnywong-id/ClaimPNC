@@ -226,7 +226,7 @@ export function ReasMemberPage() {
           {/* SATU tombol, dan itu memang satu-satunya yang ada di harness lamanya:
               `pyButtonLabel Refresh` pada Section/ListMemberReas. Captionnya dipakai apa
               adanya (D-13). */}
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>

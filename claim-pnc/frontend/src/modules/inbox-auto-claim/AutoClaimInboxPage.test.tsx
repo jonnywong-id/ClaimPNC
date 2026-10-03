@@ -33,7 +33,6 @@ const TEMPLATE = {
   kolom_wajib: ['policyno', 'claimamount', 'dateofloss', 'reportdate'],
   kolom_opsional: ['causeofloss', 'keyword', 'alasanklaim'],
   kolom_tanggal: ['dateofloss', 'reportdate'],
-  titik_ribuan: false,
   batas_baris: 5000,
 }
 
@@ -176,8 +175,33 @@ const SUMMARY = {
 }
 
 /** defaultReply melayani kelima GET; unggahan dijawab pemanggil lewat `upload`. */
-function defaultReply(upload?: (call: Call) => Reply) {
+const PREMIUM_CHOICES = {
+  bisnis: [
+    { kode: '10104', nama: 'Asuransi Kredit' },
+    { kode: '10105', nama: 'Asuransi Kredit Mikro' },
+  ],
+  sumber_bisnis: [{ kode: 'KRDU', nama: 'Kredit Utama Sejahtera' }],
+  portal: 'ASM',
+}
+
+function defaultReply(upload?: (call: Call) => Reply, premium?: (call: Call) => Reply) {
   return (call: Call): Reply => {
+    // Rute Cek Premi dicocokkan SEBELUM pola rincian batch — /cek-premi/pilihan juga
+    // berbentuk dua segmen.
+    if (call.url.startsWith('/api/inbox-auto-claim/cek-premi/pilihan'))
+      return { body: PREMIUM_CHOICES }
+    if (call.url.startsWith('/api/inbox-auto-claim/cek-premi')) {
+      if (premium) return premium(call)
+      return {
+        body: {
+          kode_bisnis: '10104',
+          kode_sumber_bisnis: 'KRDU',
+          total_premi: '150000000',
+          total_klaim: '24000000.50',
+          portal: 'ASM',
+        },
+      }
+    }
     if (call.url.startsWith('/api/inbox-auto-claim/tab')) return { body: TABS }
     if (call.url.startsWith('/api/inbox-auto-claim/ringkasan')) return { body: SUMMARY }
     if (call.url.startsWith('/api/inbox-auto-claim/format-unggahan')) return { body: TEMPLATE }
@@ -194,7 +218,7 @@ function defaultReply(upload?: (call: Call) => Reply) {
     // sehingga uji penyaring hanya dapat memeriksa URL-nya. Cacat berupa "permintaannya
     // terkirim tetapi tabelnya tidak berubah" — persis yang dilaporkan Work Owner —
     // TIDAK DAPAT ditangkap stub seperti itu.
-    const filter = new URL(call.url, 'http://uji').searchParams.get('perusahaan') ?? ''
+    const filter = new URL(call.url, 'https://uji').searchParams.get('perusahaan') ?? ''
     if (filter === '') return { body: BATCH_LIST }
 
     const batch = BATCH_LIST.batch.filter((b) => b.kode_perusahaan === filter)
@@ -206,6 +230,12 @@ function defaultReply(upload?: (call: Call) => Reply) {
       },
     }
   }
+}
+
+async function uploadButton() {
+  return within(await screen.findByRole('tabpanel')).getByRole('button', {
+    name: 'Upload Data Klaim',
+  })
 }
 
 function show() {
@@ -378,13 +408,30 @@ describe('daftar perusahaan di kiri', () => {
     }
   })
 
-  it('menampilkan ketiga tombol yang mesinnya belum dibangun dalam keadaan nonaktif', async () => {
+  it('menaruh Upload Data Klaim di dalam panel tab, bukan di kepala halaman', async () => {
     installFetch(defaultReply())
     show()
 
-    for (const label of ['Proses Klaim', 'Generate DLA', 'Cek Premi']) {
-      expect(screen.getByRole('button', { name: label })).toBeDisabled()
-    }
+    const panel = await screen.findByRole('tabpanel')
+    expect(within(panel).getByRole('button', { name: 'Upload Data Klaim' })).toBeInTheDocument()
+    // Panel diberi nama oleh tab yang aktif.
+    const active = screen.getByRole('tab', { selected: true })
+    expect(panel).toHaveAttribute('aria-labelledby', active.id)
+  })
+
+  it('menaruh Proses Klaim dan Generate DLA per batch, nonaktif, tanpa panel catatan', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table', { name: 'Batch Mitra Finansial Nusantara' })
+    const proses = await within(table).findAllByRole('button', { name: /^Proses klaim batch / })
+    const dla = within(table).getAllByRole('button', { name: /^Generate DLA batch / })
+    expect(proses.length).toBeGreaterThan(0)
+    expect(dla).toHaveLength(proses.length)
+    for (const button of [...proses, ...dla]) expect(button).toBeDisabled()
+
+    expect(screen.queryByRole('region', { name: 'Belum tersedia di aplikasi ini' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cek Premi' })).toBeNull()
   })
 })
 
@@ -400,26 +447,27 @@ describe('batch perusahaan di kanan', () => {
     expect(await companyButton('Mitra Finansial Nusantara')).toHaveAttribute('aria-current', 'true')
   })
 
-  it('grid batch 9 kolom tampil DI SAMPING daftar, tanpa jendela sembulan', async () => {
+  it('grid batch ringkas tampil DI SAMPING daftar, tanpa kolom perusahaan', async () => {
+    // Muat satu layar (Work Owner 2026-09-29): KODE dan Nama Perusahaan sudah di kepala
+    // panel, Di Upload digabung ke Diproses.
     installFetch(defaultReply())
     show()
 
     const grid = await openCompany('Mitra Finansial Nusantara')
-    for (const kolom of [
-      'KODE',
-      'Nama Perusahaan',
+    const kepala = within(grid)
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent)
+    expect(kepala).toEqual([
       'Batch',
       'Tgl Proses',
-      'Di Upload',
       'Diproses',
       'Berhasil',
       'Gagal',
       'User Upload',
-    ]) {
-      expect(
-        within(grid).getByRole('columnheader', { name: new RegExp(kolom) }),
-      ).toBeInTheDocument()
-    }
+      'Aksi',
+    ])
+    // Pasangan diproses / diunggah tetap terbaca di satu sel.
+    expect(within(grid).getAllByText('/ 4').length).toBeGreaterThan(0)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     // Grid ada di panel kanan, BUKAN di dalam daftar kiri.
@@ -453,13 +501,14 @@ describe('batch perusahaan di kanan', () => {
         ),
       ).toHaveLength(3),
     ) // 1 judul + 2 batch MFIN
-    expect(within(grid).queryByText('Kode ZZZZ perlu didaftarkan')).not.toBeInTheDocument()
+    expect(screen.queryByText(/kode ZZZZ perlu didaftarkan/)).not.toBeInTheDocument()
     expect(within(grid).getByText('+2 menunggu')).toBeInTheDocument()
 
     await openCompany('ZZZZ')
     expect(screen.queryByRole('table', { name: 'Batch Mitra Finansial Nusantara' })).toBeNull()
     const lain = screen.getByRole('table', { name: 'Batch ZZZZ' })
-    expect(await within(lain).findByText('Kode ZZZZ perlu didaftarkan')).toBeInTheDocument()
+    expect(lain).toBeInTheDocument()
+    expect(await screen.findByText(/kode ZZZZ perlu didaftarkan/)).toBeInTheDocument()
     expect(await companyButton('ZZZZ')).toHaveAttribute('aria-current', 'true')
   })
 
@@ -498,20 +547,37 @@ describe('batch perusahaan di kanan', () => {
 })
 
 describe('rincian batch', () => {
-  it('membuka rincian di panel kanan dan menampilkan hasilnya', async () => {
+  it('membuka rincian sebagai POP-UP dan menampilkan hasilnya', async () => {
+    // Permintaan Work Owner 2026-09-29: Detail dibuka sebagai pop-up, bukan di bawah grid.
     installFetch(defaultReply())
     show()
 
     await openCompany('Mitra Finansial Nusantara')
     await userEvent.click(await screen.findByRole('button', { name: 'Detail batch 1 MFIN' }))
 
-    expect(await screen.findByRole('heading', { name: /Rincian batch 1/ })).toBeInTheDocument()
-    expect(await screen.findByText('PNCN.26.101')).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: 'Rincian batch 1' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(
+      await within(dialog).findByRole('heading', { name: /Rincian batch 1/ }),
+    ).toBeInTheDocument()
+    expect(await within(dialog).findByText('PNCN.26.101')).toBeInTheDocument()
+    expect(within(dialog).getByText('Penyebab kerugian tidak ditemukan')).toBeInTheDocument()
+  })
 
-    const detail = screen.getAllByRole('table').at(-1) as HTMLElement
-    const panel = screen.getByRole('region', { name: 'Batch perusahaan terpilih' })
-    expect(panel.contains(detail)).toBe(true)
-    expect(within(detail).getByText('Penyebab kerugian tidak ditemukan')).toBeInTheDocument()
+  it('pop-up rincian tertutup dengan Escape dan dengan tombol Tutup rincian', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await openCompany('Mitra Finansial Nusantara')
+    await userEvent.click(await screen.findByRole('button', { name: 'Detail batch 1 MFIN' }))
+    await screen.findByRole('dialog', { name: 'Rincian batch 1' })
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Detail batch 1 MFIN' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rincian batch 1' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tutup rincian' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('menampilkan nilai uang dengan pemisah ribuan tanpa mengubah desimalnya', async () => {
@@ -532,7 +598,7 @@ describe('unggah berkas klaim', () => {
     show()
 
     await screen.findByRole('tablist', { name: 'Jenis klaim' })
-    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
+    await userEvent.click(await uploadButton())
 
     const dialog = await screen.findByRole('dialog', { name: 'Upload Data Klaim' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
@@ -554,7 +620,7 @@ describe('unggah berkas klaim', () => {
     installFetch(defaultReply())
     show()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
+    await userEvent.click(await uploadButton())
 
     expect(await screen.findByRole('heading', { name: 'Upload Data Klaim' })).toBeInTheDocument()
     expect(screen.getByText(/policyno, claimamount, dateofloss, reportdate/)).toBeInTheDocument()
@@ -566,7 +632,7 @@ describe('unggah berkas klaim', () => {
     installFetch(defaultReply())
     show()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
+    await userEvent.click(await uploadButton())
 
     expect(
       await screen.findByText(/Kode perusahaan, nomor produk, dan mata uang/),
@@ -596,7 +662,7 @@ describe('unggah berkas klaim', () => {
     )
     show()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
+    await userEvent.click(await uploadButton())
 
     const file = new File(['policyno,claimamount\nP1,1.00\n'], 'klaim.csv', { type: 'text/csv' })
     await userEvent.upload(screen.getByLabelText('Berkas CSV'), file)
@@ -646,7 +712,7 @@ describe('unggah berkas klaim', () => {
     )
     show()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
+    await userEvent.click(await uploadButton())
     const file = new File(['policyno,claimamount\nP1,1.00\n'], 'klaim.csv', { type: 'text/csv' })
     await userEvent.upload(screen.getByLabelText('Berkas CSV'), file)
     await userEvent.click(screen.getByRole('button', { name: 'Unggah' }))
@@ -687,7 +753,7 @@ describe('unggah berkas klaim', () => {
     )
     show()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
+    await userEvent.click(await uploadButton())
 
     const file = new File(['inisialid\n\n'], 'klaim.csv', { type: 'text/csv' })
     await userEvent.upload(screen.getByLabelText('Berkas CSV'), file)
@@ -712,7 +778,7 @@ describe('portal belum dipilih', () => {
 })
 
 describe('tab jenis klaim', () => {
-  it('menampilkan ketiga tab dengan Asuransi Kredit terbuka lebih dulu', async () => {
+  it('menampilkan ketiga tab data ditambah Cek Premi, dengan Asuransi Kredit terbuka lebih dulu', async () => {
     installFetch(defaultReply())
     show()
 
@@ -720,7 +786,7 @@ describe('tab jenis klaim', () => {
     const nama = within(tablist)
       .getAllByRole('tab')
       .map((t) => t.textContent)
-    expect(nama).toEqual(['Asuransi Kredit', 'ANEKA', 'Travel'])
+    expect(nama).toEqual(['Asuransi Kredit', 'ANEKA', 'Travel', 'Cek Premi'])
     expect(within(tablist).getByRole('tab', { name: 'Asuransi Kredit' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -790,5 +856,72 @@ describe('tab jenis klaim', () => {
     await userEvent.click(within(tablist).getByRole('tab', { name: 'Travel' }))
 
     expect(await screen.findByText('Sumber: POOLDATA.TMP_BATCH_AUTO_TRAVEL')).toBeInTheDocument()
+  })
+})
+
+describe('tab Cek Premi', () => {
+  async function openPremiumTab() {
+    await userEvent.click(await screen.findByRole('tab', { name: 'Cek Premi' }))
+    return screen.findByRole('tabpanel')
+  }
+
+  it('menjadi tab keempat tanpa tombol Upload', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const tabs = await screen.findAllByRole('tab')
+    expect(tabs.at(-1)).toHaveTextContent('Cek Premi')
+
+    const panel = await openPremiumTab()
+    expect(within(panel).queryByRole('button', { name: 'Upload Data Klaim' })).toBeNull()
+    expect(within(panel).getByRole('button', { name: 'Cek Premi' })).toBeDisabled()
+  })
+
+  it('mengirim kedua kode dan menampilkan total premi serta total klaim', async () => {
+    installFetch(defaultReply())
+    show()
+    const panel = await openPremiumTab()
+
+    const business = within(panel).getByLabelText('Nama Bisnis')
+    await waitFor(() => expect(business).toBeEnabled())
+    await userEvent.selectOptions(business, '10104')
+    await userEvent.selectOptions(within(panel).getByLabelText('Sumber Bisnis'), 'KRDU')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Cek Premi' }))
+
+    const result = await within(panel).findByRole('region', { name: 'Hasil cek premi' })
+    expect(result).toHaveTextContent('150.000.000')
+    expect(result).toHaveTextContent('24.000.000,50')
+    expect(result).toHaveTextContent('Kredit Utama Sejahtera')
+
+    const call = calls.find((c) => c.url.startsWith('/api/inbox-auto-claim/cek-premi?'))
+    const query = new URL(call?.url ?? '', 'https://uji').searchParams
+    expect(query.get('kode_bisnis')).toBe('10104')
+    expect(query.get('kode_sumber_bisnis')).toBe('KRDU')
+    expect(call?.header['X-Portal']).toBe('ASM')
+  })
+
+  it('menyebut layanan yang mati alih-alih menampilkan angka', async () => {
+    installFetch(
+      defaultReply(undefined, () => ({
+        status: 502,
+        body: {
+          kode: 'layanan_premi_gagal',
+          pesan: 'Layanan cek premi tidak dapat dihubungi. Coba lagi beberapa saat lagi.',
+        },
+      })),
+    )
+    show()
+    const panel = await openPremiumTab()
+
+    const business = within(panel).getByLabelText('Nama Bisnis')
+    await waitFor(() => expect(business).toBeEnabled())
+    await userEvent.selectOptions(business, '10104')
+    await userEvent.selectOptions(within(panel).getByLabelText('Sumber Bisnis'), 'KRDU')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Cek Premi' }))
+
+    expect(
+      await within(panel).findByText(/Layanan cek premi tidak dapat dihubungi/),
+    ).toBeInTheDocument()
+    expect(within(panel).queryByRole('region', { name: 'Hasil cek premi' })).toBeNull()
   })
 })

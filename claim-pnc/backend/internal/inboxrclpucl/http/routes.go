@@ -37,7 +37,8 @@ import (
 //
 // Yang membatasi taruhannya, dan keduanya perlu disebut apa adanya:
 //
-//   - Modul ini MEMBACA saja. Tidak ada satu pun aksi yang mengubah data.
+//   - Modul ini SEBAGIAN BESAR membaca. Empat jalur menulis — tindakan klaim, unggah
+//     dokumen, dan keduanya hanya menyentuh tabel milik aplikasi ini.
 //   - Setiap pembukaan DICATAT — bukan hanya yang mencurigakan. Lihat usecase.List, dan
 //     usecase.DailyReport yang mencatat rentang tanggalnya pula.
 //
@@ -66,6 +67,36 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// tingkat pada aturan yang sama.
 		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}", h.Detail)
 
+		// Dokumen klaim — tombol "Lihat Dokumen".
+		//
+		// Satu-satunya tindakan layar kerja yang MEMBACA, sehingga satu-satunya yang dapat
+		// dilayani tanpa menunggu keputusan `P-1`.
+		//
+		// Bersarang DUA tingkat (`klaim/{referensi}/dokumen/{dokumen}`), yaitu batas yang
+		// `10-API-STRATEGY.md` §2 tetapkan. Nomor klaim ikut di jalur bukan demi kerapian:
+		// ia yang membuktikan dokumennya memang milik klaim yang sedang dibuka, dan
+		// pembuktian itu ditegakkan di dalam kueri.
+		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}/dokumen", h.Documents)
+
+		// Unggah dokumen — tombol "Unggah Dokumen".
+		//
+		// POST ke alamat DAFTARNYA, bukan ke alamat tindakan: ia MEMBUAT sumber daya baru di
+		// bawah koleksi itu, dan itulah arti POST pada sebuah koleksi
+		// (`10-API-STRATEGY.md` §2). Jawabannya `201` beserta baris yang baru dibuat.
+		//
+		// Ia TIDAK ikut ke `/tindakan/{aksi}` karena muatannya berbeda jenis — berkas, bukan
+		// JSON. Satu alamat yang menerima dua bentuk badan permintaan memaksa pemanggil
+		// menebak mana yang berlaku.
+		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/dokumen", h.UploadDocument)
+
+		// Pilihan kolom "Category" pada dialog unggah.
+		//
+		// TIDAK bersarang di bawah sebuah klaim: isinya master jenis dokumen, sama bagi
+		// setiap klaim. Menyarangkannya akan menyiratkan ia berbeda per klaim, dan layar
+		// lalu menariknya ulang setiap kali klaim dibuka.
+		perPortal.Get("/inbox-rcl-pucl/kategori-dokumen", h.DocumentCategories)
+		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}", h.DocumentContent)
+
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
 		// membuat unduhannya dapat dipicu tautan biasa — termasuk dibuka ulang dari
 		// riwayat peramban dengan rentang tanggal yang sama.
@@ -76,13 +107,23 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// di Pega pun tombolnya satu dan sama, hanya activity di baliknya yang berbeda.
 		perPortal.Get("/inbox-rcl-pucl/ekspor", h.Export)
 
-		// Aksi tulis sistem lama. Rutenya ADA supaya tindakan di layar menjawab dengan
-		// alasan, bukan dengan "halaman tidak ditemukan" — lihat Handler.RejectWrite.
+		// Tindakan klaim — satu-satunya rute yang MENGUBAH klaim.
 		//
-		// Dua yang nyata di layar ini: mencetak surat PUCL/RCL, yang mengisi
-		// `TANGGALCETAKDOKUMENPUCL_1` sehingga klaimnya BERPINDAH tab, dan mengirim
-		// Reminder PUCL. Keduanya menyentuh tabel yang selama masa paralel masih dimiliki
-		// Pega (`P-1`).
+		// SATU rute untuk lima tindakan (`cetak`, `tolak`, `kirim-analyst`,
+		// `kirim-pic-teknik`, `save`), karena di Pega pun keempat tombol pertama memanggil
+		// activity yang SAMA; yang membedakan hanya parameternya.
+		//
+		// POST, bukan GET: ia menimbulkan akibat, dan akibatnya tidak dapat diulang tanpa
+		// akibat kedua. Alamatnya bersarang pada klaimnya karena yang diubah adalah klaim
+		// itu, bukan sumber daya tersendiri.
+		//
+		// EMPAT dari lima tindakan ditangani sendiri, dan seluruhnya menulis
+		// `POOLDATA.TC_PNC_PUCL` — tabel milik aplikasi ini, bukan tabel engine Pega.
+		// Yang tersisa menempuh layanan Pega hanyalah "Tolak Klaim".
+		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}", h.PerformAction)
+
+		// Aksi tulis sistem lama yang BELUM punya jalur. Rutenya ADA supaya tindakan di layar
+		// menjawab dengan alasan, bukan dengan "halaman tidak ditemukan".
 		perPortal.Post("/inbox-rcl-pucl/tindakan", h.RejectWrite)
 	})
 }

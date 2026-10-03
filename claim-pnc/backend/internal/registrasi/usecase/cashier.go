@@ -25,6 +25,11 @@ type CashierCommand struct {
 	Object     int
 	Coverage   int
 	Adjustment int
+
+	// TransferType adalah "Tipe Transfer Kasir" (`.JoinPlacement`); kosong berarti Pembayaran Biasa.
+	TransferType string
+	// UnpaidFacOut adalah No DLA FAC OUT yang dicentang "Pilih Fac-out Tidak Dibayar".
+	UnpaidFacOut []string
 }
 
 // CashierPreview adalah isi dialog konfirmasi Transfer Kasir.
@@ -35,6 +40,10 @@ type CashierPreview struct {
 	Currency   string
 	// Problem adalah galat validasi pertama; kosong bila siap ditransfer.
 	Problem string
+	// Confirmation adalah kalimat Pre_AlertTransferkasir.
+	Confirmation string
+	// FacOut adalah isi tabel "Pilih Fac-out Tidak Dibayar" (GetdataFacoutJoinPlacement).
+	FacOut []registrasi.CashierFacOut
 }
 
 type cashierScope struct {
@@ -46,6 +55,7 @@ type cashierScope struct {
 	nett     registrasi.Money
 	check    registrasi.CashierCheck
 	bankID   string
+	facOut   []registrasi.CashierFacOut
 }
 
 func (l *Service) cashierScopeOf(ctx context.Context, p CashierCommand, by Caller) (cashierScope, error) {
@@ -81,7 +91,7 @@ func (l *Service) cashierScopeOf(ctx context.Context, p CashierCommand, by Calle
 		}
 	}
 
-	policy, err := l.dla.Policy(ctx, claim.Policy.Number)
+	policy, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return cashierScope{}, err
 	}
@@ -103,7 +113,8 @@ func (l *Service) cashierScopeOf(ctx context.Context, p CashierCommand, by Calle
 	}
 	return cashierScope{
 		claim: claim, object: object, line: *line, receiver: receiver, policy: policy, nett: nett, bankID: bankID,
-		check: registrasi.CashierCheck{Line: *line, Receiver: receiver, Nett: nett, BankFound: found, DLAPrinted: printed},
+		facOut: registrasi.CashierFacOuts(dla),
+		check:  registrasi.CashierCheck{Line: *line, Receiver: receiver, Nett: nett, BankFound: found, DLAPrinted: printed},
 	}, nil
 }
 
@@ -120,6 +131,9 @@ func (l *Service) PreviewCashierTransfer(ctx context.Context, p CashierCommand, 
 	out := CashierPreview{
 		AcceptedNo: sc.line.AcceptedNo, Receiver: sc.receiver, Nett: sc.nett,
 		Currency: firstText(names[sc.line.Currency], sc.line.Currency),
+		Confirmation: registrasi.CashierConfirmation(sc.line.AcceptedNo,
+			registrasi.CashierService(sc.claim.Portal, sc.policy.Syariah, sc.nett, sc.line.Rate)),
+		FacOut: sc.facOut,
 	}
 	var validation *registrasi.ValidationError
 	if err := registrasi.ValidateCashier(sc.check); errors.As(err, &validation) {
@@ -141,6 +155,10 @@ func (l *Service) TransferCashier(ctx context.Context, p CashierCommand, by Call
 	if err := registrasi.ValidateCashier(sc.check); err != nil {
 		return registrasi.Claim{}, err
 	}
+	unpaid, err := registrasi.ChooseUnpaidFacOut(p.TransferType, p.UnpaidFacOut, sc.facOut)
+	if err != nil {
+		return registrasi.Claim{}, err
+	}
 	_, pic, err := l.pla.LODEmails(ctx, sc.claim.Number, sc.claim.TechnicalPIC)
 	if err != nil {
 		return registrasi.Claim{}, err
@@ -153,9 +171,24 @@ func (l *Service) TransferCashier(ctx context.Context, p CashierCommand, by Call
 		DateOfLoss: sc.claim.DateOfLoss, CauseOfLoss: coverage.CauseOfLoss, Syariah: sc.policy.Syariah,
 		ExGratia: sc.claim.ExGratia, User: by.Identity, PICEmail: pic, BankGroupID: sc.bankID,
 	}, now)
+	registrasi.AddUnpaidFacOut(&payload, unpaid)
 	service := registrasi.CashierService(sc.claim.Portal, sc.policy.Syariah, sc.nett, sc.line.Rate)
 
 	reply, err := l.cashierGateway.Transfer(ctx, sc.claim.Portal, service, payload)
+
+	// Log layanan ditulis untuk SETIAP pemanggilan, berhasil atau tidak — seperti Pega yang
+	// mencatat JSONIN sebelum memanggil. Gagal menulis log TIDAK membatalkan transfer: Kasir
+	// sudah menerima pembayaran, dan membatalkan di sini membuka jalan transfer ganda.
+	response := reply.Body
+	if err != nil {
+		response = err.Error()
+	}
+	logNote := ""
+	if logErr := l.cashier.LogService(ctx, registrasi.CashierServiceLog{
+		ClaimNumber: sc.claim.Number, AcceptedNo: sc.line.AcceptedNo, Request: payload, Response: response,
+	}); logErr != nil {
+		logNote = "; log layanan gagal ditulis: " + logErr.Error()
+	}
 	if err != nil {
 		return registrasi.Claim{}, fmt.Errorf("%w: %v", ErrCashierUnavailable, err)
 	}
@@ -188,8 +221,8 @@ func (l *Service) TransferCashier(ctx context.Context, p CashierCommand, by Call
 		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "KASIR_TRANSFER", Actor: by.Identity, At: now,
-			Note: fmt.Sprintf("Transfer Kasir %s — objek %d jaminan %d adjustment %d, layanan %s, CaseIDCashier %s",
-				sc.line.AcceptedNo, p.Object, p.Coverage, p.Adjustment, service, reply.CaseID()),
+			Note: fmt.Sprintf("Transfer Kasir %s — objek %d jaminan %d adjustment %d, layanan %s, CaseIDCashier %s, Fac-out tidak dibayar %d%s",
+				sc.line.AcceptedNo, p.Object, p.Coverage, p.Adjustment, service, reply.CaseID(), len(unpaid), logNote),
 		})
 	})
 	if err != nil {

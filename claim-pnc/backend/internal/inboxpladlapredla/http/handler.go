@@ -299,7 +299,9 @@ func readFilter(r *http.Request) (inboxpladlapredla.QueryInput, error) {
 // readDate mengurai satu batas rentang dari parameter query.
 //
 // Kosong berarti tidak menyaring, dan itu BUKAN galat — berbeda dari Pega, tempat isian
-// kosong tetap dirangkai menjadi `to_date(”,'dd/mm/yyyy')` lalu ditolak Oracle.
+// kosong tetap dirangkai menjadi potongan berikut lalu ditolak Oracle:
+//
+//	to_date('','dd/mm/yyyy')
 //
 // Yang DITOLAK adalah isian yang terisi tetapi tidak terbaca. Membetulkannya diam-diam
 // menjadi "tidak menyaring" akan menampilkan seluruh antrean kepada pengguna yang

@@ -458,6 +458,15 @@ main:not(main main) {
   min-height: calc(100vh - 4rem);
 }
 
+/* Halaman tanpa bilah atas — halaman masuk — memakai `min-h-screen` dan harus tetap
+   setinggi layar PENUH. Tanpa aturan ini, `calc(100vh - 4rem)` di atas (tanpa lapisan,
+   sehingga menang atas utilitas Tailwind) memendekkannya 4rem, dan latar navy tubuh
+   halaman tampil sebagai jalur gelap di bawah panel biru dan putih. Spesifisitas
+   atributnya mengalahkan `main:not(main main)`. */
+main[class~="min-h-screen"] {
+  min-height: 100vh;
+}
+
 /* Lepaskan lapisan kaca di dalam area konten. Daftar selektornya SAMA dengan lapisan
    kaca di atas, supaya spesifisitas aturan ini selalu lebih tinggi. */
 main

@@ -119,7 +119,7 @@ export function DokumenPenunjangPanel({
               // menjadi labelnya. Tanpa nama sama sekali, pembaca layar mengumumkannya
               // hanya sebagai "file upload".
               aria-label="Pilih berkas untuk diunggah"
-              onChange={(e) => void pilihBerkas(e.target.files?.[0] ?? null)}
+              onChange={(e) => { pilihBerkas(e.target.files?.[0] ?? null) }}
               disabled={unggah.isPending}
             />
             <Button

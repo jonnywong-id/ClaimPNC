@@ -135,7 +135,7 @@ export function ProtectionForm({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-5">
+    <form onSubmit={(event) => { submit(event) }} className="space-y-5">
       {generalFailure && (
         <ErrorMessage
           title="Permintaan tidak dapat disimpan"

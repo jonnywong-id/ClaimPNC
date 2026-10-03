@@ -173,7 +173,7 @@ export function useDecideSurveyor() {
  * ditandai usang, bukan ditukar isinya.
  */
 function invalidateAll(client: ReturnType<typeof useQueryClient>) {
-  void client.invalidateQueries({ queryKey: ['master-surveyor'] })
+  client.invalidateQueries({ queryKey: ['master-surveyor'] })
 }
 
 /** Menyatakan satu surveyor masih menunggu keputusan komite. */

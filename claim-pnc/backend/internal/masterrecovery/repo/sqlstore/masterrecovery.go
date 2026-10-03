@@ -509,7 +509,7 @@ func newCounterKey() (string, error) {
 // Perbedaannya nyata di Oracle untuk kolom teks — keduanya memang sama di sana — tetapi ia
 // tetap dipakai supaya baris yang ditulis modul ini tidak berbeda bentuk dari baris yang
 // ditulis procedure lama, dan supaya perilakunya tidak berubah saat basis datanya kelak
-// berpindah ke PostgreSQL, tempat ” dan NULL BERBEDA.
+// berpindah ke PostgreSQL, tempat string kosong dan NULL BERBEDA.
 func nullable(value string) any {
 	if strings.TrimSpace(value) == "" {
 		return nil

@@ -104,7 +104,7 @@ export function useCreatePartType() {
     mutationFn: (input: PartTypeInput) =>
       callAPI<PartTypeResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
     },
   })
 }
@@ -133,7 +133,7 @@ export function useSavePartType() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
     },
   })
 }
@@ -162,7 +162,7 @@ export function useDecidePartType() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
     },
   })
 }

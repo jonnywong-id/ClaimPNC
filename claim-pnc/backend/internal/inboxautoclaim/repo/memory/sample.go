@@ -23,6 +23,9 @@ func SampleMaster() map[string]string {
 	}
 }
 
+// berlaku2026 adalah data polis yang periodenya mencakup seluruh tahun 2026, bermata uang IDR.
+var berlaku2026 = inboxautoclaim.PolicyDetail{StartDate: "01/01/2026", EndDate: "31/12/2026", Currency: "IDR"}
+
 // SamplePolicy meniru hasil pencarian polis pada rantai unggah.
 //
 // Di basis data ia dua kueri berbeda — `GetReceiverClaimAsuransiKredit` atas T_GENERAL dan
@@ -36,11 +39,35 @@ func SampleMaster() map[string]string {
 //	perusahaan kosong                -> baris DITOLAK, tidak disimpan sama sekali
 //	prodke kosong                    -> baris disimpan bertanda "No Polis tidak di temukan"
 //	polis tidak terdaftar sama sekali -> sama dengan perusahaan kosong
+//
+// Empat polis tambahan (…600 sampai …603) menguji periode polis, produk hewan, polis
+// batal, dan Open Protection.
 func SamplePolicy() map[string]PolicyRow {
 	return map[string]PolicyRow{
-		"0100120260500": {CompanyCode: "MFIN", ProductSeq: "1"},
-		"0100120260501": {CompanyCode: "MFIN", ProductSeq: "2"},
-		"0200120260500": {CompanyCode: "BPRC", ProductSeq: "1"},
+		"0100120260500": {CompanyCode: "MFIN", ProductSeq: "1", Detail: berlaku2026},
+		"0100120260501": {CompanyCode: "MFIN", ProductSeq: "2", Detail: berlaku2026},
+		"0200120260500": {CompanyCode: "BPRC", ProductSeq: "1", Detail: berlaku2026},
+		// Polis baris Kredit yang Sukses Klaim; bisnis dan sumber bisnisnya dipakai contoh
+		// tab Cek Premi (Total Klaim).
+		"0300120260101": {CompanyCode: "KRDU", ProductSeq: "1", Detail: inboxautoclaim.PolicyDetail{
+			StartDate: "01/01/2026", EndDate: "31/12/2026", BusinessCode: "10104", SourceOfBusiness: "KRDU",
+		}},
+
+		// Polis yang periodenya sudah lewat — tanggal kejadian 2026 berada di luarnya.
+		"0100120260600": {CompanyCode: "MFIN", ProductSeq: "1", Detail: inboxautoclaim.PolicyDetail{
+			StartDate: "01/01/2025", EndDate: "31/12/2025", Currency: "IDR",
+		}},
+		// Produk hewan (10166) dengan periode yang sudah lewat — ANEKA memeriksanya.
+		"0100120260601": {CompanyCode: "MFIN", ProductSeq: "1", Detail: inboxautoclaim.PolicyDetail{
+			StartDate: "01/01/2025", EndDate: "31/12/2025", BusinessCode: inboxautoclaim.PetBusinessCode,
+		}},
+		// Polis yang sudah dibatalkan.
+		"0100120260602": {CompanyCode: "MFIN", ProductSeq: "1", Detail: inboxautoclaim.PolicyDetail{
+			StartDate: "01/01/2026", EndDate: "31/12/2026", StatusBusiness: "3", FlagEdmBatal: "1",
+		}},
+		// Polis ber-Open Protection tipe 3 — membebaskan premi belum lunas di Travel/ANEKA.
+		"0100120260603": {CompanyCode: "MFIN", ProductSeq: "1", Detail: berlaku2026,
+			OpenProtection: []string{inboxautoclaim.OpenProtectionPremiumType}},
 
 		// Polis ada di T_GENERAL tetapi sumber bisnisnya tidak menunjuk perusahaan
 		// rekanan yang aktif.
@@ -238,5 +265,14 @@ func NewSampleRepo() *Repo {
 	repo := NewRepo(SampleMaster(), SamplePolicy(), SampleLines()...)
 	repo.Seed(inboxautoclaim.SourceKredit, SampleKreditLines()...)
 	repo.Seed(inboxautoclaim.SourceTravel, SampleTravelLines()...)
+	repo.SetBusiness(SampleBusiness())
 	return repo
+}
+
+// SampleBusiness adalah isi contoh POOLDATA.BUSINESS (ID -> NOTE) untuk tab Cek Premi.
+func SampleBusiness() map[string]string {
+	return map[string]string{
+		"10104": "Asuransi Kredit",
+		"10105": "Asuransi Kredit Mikro",
+	}
 }

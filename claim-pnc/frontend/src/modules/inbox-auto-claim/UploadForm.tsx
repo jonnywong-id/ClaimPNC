@@ -140,26 +140,17 @@ export function UploadForm({ source, sourceLabel, onClose, onUploaded }: Props) 
               <span className="font-mono">{template.data.kolom_opsional.join(', ')}</span>
             </p>
             <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
-              {/* Kolom tanggal dan arti titik BERBEDA per tab, dan keduanya datang dari
-                  server: berkas Kredit tidak punya tanggal kejadian/lapor, dan di sana
-                  titik pada nilai klaim dibuang sebagai pemisah ribuan. */}
+              {/* Kolom tanggal BERBEDA per tab dan datang dari server: berkas Kredit tidak
+                  punya tanggal kejadian/lapor, Travel tidak punya tanggal lapor. */}
               <li>
                 <span className="font-mono">{template.data.kolom_tanggal.join(', ')}</span>{' '}
                 berformat <span className="font-mono">dd/mm/yyyy</span>, misalnya{' '}
                 <span className="font-mono">17/09/2026</span>.
               </li>
-              {template.data.titik_ribuan ? (
-                <li>
-                  Titik pada nilai klaim dianggap pemisah ribuan dan dibuang —{' '}
-                  <span className="font-mono">12.500.000</span> dibaca{' '}
-                  <span className="font-mono">12500000</span>.
-                </li>
-              ) : (
-                <li>
-                  Nilai klaim tanpa pemisah ribuan; pakai titik untuk desimal —{' '}
-                  <span className="font-mono">12500000.00</span>.
-                </li>
-              )}
+              <li>
+                Nilai klaim tanpa pemisah ribuan; pakai titik untuk desimal —{' '}
+                <span className="font-mono">12500000.00</span>.
+              </li>
               <li>Pemisah kolom boleh koma atau titik koma.</li>
               <li>
                 Paling banyak {template.data.batas_baris.toLocaleString('id-ID')} baris sekali

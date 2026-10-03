@@ -124,7 +124,7 @@ export function useDecide() {
       // keputusan memindahkan kasus dari satu kotak ke kotak lain dan mengubah lencana
       // keduanya. Menyunting cache satu kotak akan membuat angkanya tidak cocok dengan
       // isi kotak lain.
-      void client.invalidateQueries({ queryKey: keys.all(token) })
+      client.invalidateQueries({ queryKey: keys.all(token) })
     },
   })
 }
@@ -227,7 +227,7 @@ export function useDecideKmtn(caseID: string) {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keys.all(token) })
+      client.invalidateQueries({ queryKey: keys.all(token) })
     },
   })
 }

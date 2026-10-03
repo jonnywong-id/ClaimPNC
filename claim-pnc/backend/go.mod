@@ -3,6 +3,7 @@ module claim-pnc
 go 1.27.1
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/sijms/go-ora/v2 v2.8.24

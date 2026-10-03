@@ -334,9 +334,9 @@ func scanExportRow(row scanner) (inboxosclaimpercabang.ExportRow, int, error) {
 		progressNote, adjusterName, causeOfLoss, chronology  sql.NullString
 		progressStalled                                      sql.NullInt64
 
-		claimKey, policyBusinessName sql.NullString
-		reserveFull, reserveASM, coinsurance      any
-		shares                                    [24]any
+		claimKey, policyBusinessName         sql.NullString
+		reserveFull, reserveASM, coinsurance any
+		shares                               [24]any
 
 		total sql.NullInt64
 	)

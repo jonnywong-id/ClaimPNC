@@ -217,17 +217,13 @@ function BrandPanel() {
           <h2 className="text-3xl font-semibold leading-tight tracking-tight">
             Penanganan klaim
             <br />
-            non-motor, satu tempat.
+            PNC (Non MBU)
           </h2>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-blue-100">
             Dari laporan kerugian sampai pembayaran ganti rugi — registrasi, survei,
             komite, akseptasi, dan pemberitahuan reasuransi.
           </p>
         </div>
-
-        <p className="hidden text-xs text-blue-200/80 lg:block">
-          Akses terbatas pada pengguna terdaftar. Setiap changes hasValue bisnis tercatat.
-        </p>
       </div>
     </aside>
   )

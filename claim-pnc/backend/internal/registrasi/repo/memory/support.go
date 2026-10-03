@@ -66,8 +66,12 @@ func SamplePolicies(now time.Time) []registrasi.Policy {
 	spk := base("POL-SPK-0004", registrasi.LineMiscellaneous, "SPK", "PT Contoh Kredit Sejahtera")
 	spk.CreditGuarantee = true
 
+	// Kode bisnis karangan; pilihan Penyebab Kerugian contohnya ada di AreaDirectory.
+	fire := base("POL-FIRE-0001", registrasi.LineFire, "Fire", "PT Contoh Industri Nusantara")
+	fire.BusinessCode = "10013"
+
 	return []registrasi.Policy{
-		base("POL-FIRE-0001", registrasi.LineFire, "Fire", "PT Contoh Industri Nusantara"),
+		fire,
 		base("POL-PA-0002", registrasi.LinePersonalAccident, "PersonalAccident", "Contoh Karyawan Bersama"),
 		base("POL-TRV-0003", registrasi.LineTravel, "Travel", "Contoh Wisata Mandiri"),
 		spk,
@@ -320,6 +324,12 @@ func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, claim regis
 		return registrasi.Assignee{Operator: caller}, nil
 	}
 
+	// Sama seperti pengisi SQL: RouterRCLDokter diparkir di ServicePNC selama dokter RCL
+	// belum dapat dipilih.
+	if stage.Router == registrasi.RouterRCLDoctor {
+		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
+	}
+
 	// Sama seperti pengisi SQL: PIC Teknik yang sudah tercatat di klaim dihormati.
 	if pic := registrasi.AssignedTechnicalPIC(stage, claim); pic != "" {
 		return registrasi.Assignee{Operator: pic}, nil
@@ -329,6 +339,10 @@ func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, claim regis
 	defer p.mu.Unlock()
 
 	candidates := p.teams[stage.Router]
+	// PNCTeknikRouter tanpa petugas: ServicePNC, sama seperti pengisi SQL.
+	if len(candidates) == 0 && stage.Router == registrasi.RouterPNCTechnical {
+		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
+	}
 	if len(candidates) == 0 {
 		// Aturan routing yang belum punya daftar petugas mengembalikan tugas kepada
 		// caller, bukan membuang tugasnya. Klaim yang tidak punya penerima adalah

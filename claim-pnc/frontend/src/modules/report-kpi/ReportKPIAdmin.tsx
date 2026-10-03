@@ -326,7 +326,7 @@ function adminColumns(
 function adminCellText(row: AdminDetailRow, key: string): string {
   const value = row[key as keyof AdminDetailRow]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
   if (typeof value === 'number') return String(round2(value))
   return value
 }

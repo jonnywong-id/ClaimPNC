@@ -85,7 +85,7 @@ export function useSubmitInputAcceptation(claimID: string) {
     // status, dan seluruh grid hasil hitungan. Rinciannya diambil ulang alih-alih ditebak
     // dari muatan yang dikirim.
     onSuccess: () => {
-      void client.invalidateQueries({
+      client.invalidateQueries({
         queryKey: keys.detail(portal, token, claimID),
       })
     },

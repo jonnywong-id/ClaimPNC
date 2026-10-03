@@ -308,10 +308,15 @@ func validateSpreading(v *collector, k Claim) {
 		}
 	}
 
-	total := k.TotalSpreading()
-	if total < spreadingLowerBound || total > spreadingUpperBound {
-		v.add(ViolationSpreadingTotalNot100, "spreading",
-			"Total share spreading tidak 100%. Silakan cek spreading kembali")
+	// Diperiksa per jaminan (langkah 37.3.6 di dalam loop coverage). Pesannya satu kali saja
+	// berapa pun jaminan yang tidak 100% — teksnya sama untuk semuanya.
+	for _, c := range k.AllCoverages() {
+		total := c.TotalSpreading()
+		if total < spreadingLowerBound || total > spreadingUpperBound {
+			v.add(ViolationSpreadingTotalNot100, "spreading",
+				"Total share spreading tidak 100%. Silakan cek spreading kembali")
+			break
+		}
 	}
 }
 

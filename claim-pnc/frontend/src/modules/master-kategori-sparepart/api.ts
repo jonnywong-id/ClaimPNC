@@ -79,7 +79,7 @@ export function useCreatePartCategory() {
     mutationFn: (input: PartCategoryInput) =>
       callAPI<PartCategoryResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
     },
   })
 }
@@ -105,7 +105,7 @@ export function useSavePartCategory() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
     },
   })
 }
@@ -134,7 +134,7 @@ export function useDecidePartCategory() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
     },
   })
 }

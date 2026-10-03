@@ -201,6 +201,13 @@ type Resolution struct {
 	CompanyName string
 	ProductSeq  string
 
+	// Policy adalah data polis dari T_GENERAL; kosong bila polisnya tidak ditemukan.
+	Policy PolicyDetail
+
+	// CurrencyID adalah ID POOLDATA.CURRENCY untuk mata uang polis; kosong bila tidak
+	// dikenal.
+	CurrencyID string
+
 	// Message berisi pesan kegagalan bila pencariannya tidak lengkap; kosong bila lolos.
 	Message string
 }
@@ -211,6 +218,10 @@ type UploadLine struct {
 	CompanyCode string
 	CompanyName string
 	ProductSeq  string
+
+	// CurrencyID ditulis ke kolom CURRENCY — ID POOLDATA.CURRENCY, bukan kodenya,
+	// mengikuti Pega (`GetIDCurrencyByNote` lalu `.ID`). Kosong berarti NULL.
+	CurrencyID string
 
 	// Message kosong berarti baris lolos dan akan diproses menjadi klaim. Terisi berarti
 	// baris tetap disisipkan tetapi langsung terhitung GAGAL di grid.
@@ -320,7 +331,7 @@ func ParseUpload(tab Source, source io.Reader) ([]UploadRow, error) {
 			// panjang supaya tidak diubah menjadi notasi ilmiah.
 			PolicyNo: strings.ToUpper(strings.NewReplacer(".", "", "'", "").
 				Replace(pick(line, index, ColumnPolicyNo))),
-			ClaimAmount:  claimAmountFor(tab, pick(line, index, ColumnClaimAmount)),
+			ClaimAmount:  pick(line, index, ColumnClaimAmount),
 			DateOfLoss:   pick(line, index, ColumnDateOfLoss),
 			ReportDate:   pick(line, index, ColumnReportDate),
 			CauseOfLoss:  pick(line, index, ColumnCauseOfLoss),
@@ -448,17 +459,14 @@ func CheckRowForSource(source Source, row UploadRow) (message string, rejected b
 	}
 }
 
-// claimAmountFor menormalkan nilai klaim sesuai tab.
+// # Nilai klaim TIDAK dibuang titiknya — koreksi 2026-09-29
 //
-// Tab Kredit MEMBUANG titik dari nilai klaim (@replaceAll(.ClaimAmount,".",""), K:3966):
-// di berkas Kredit titik adalah pemisah ribuan. Tab lain memakai titik sebagai desimal.
-// Perbedaannya direplikasi apa adanya (P-5), dan pop-up unggahan menyebutkannya.
-func claimAmountFor(source Source, value string) string {
-	if source == SourceKredit {
-		return strings.ReplaceAll(value, ".", "")
-	}
-	return value
-}
+// Versi 2026-09-28 membuang titik dari nilai klaim untuk SEMUA pengunggah tab Kredit,
+// dengan dasar `@replaceAll(.ClaimAmount,".","")` (InsertKlaimToTable_Kredit :3966).
+// Langkah itu ternyata BERSYARAT: ia hanya berjalan bila
+// `OperatorID.pyUserIdentifier=="DONNYSULISTYOMANURUNG"` (:4025). Pengunggah lain membaca
+// titik sebagai desimal — sama dengan tab lain. Perilaku khusus satu operator itu adalah
+// hardcode yang menunggu keputusan Work Owner (D-15), sehingga TIDAK ditiru di sini.
 
 // CheckDateOrder memeriksa tanggal lapor tidak mendahului tanggal kejadian.
 //

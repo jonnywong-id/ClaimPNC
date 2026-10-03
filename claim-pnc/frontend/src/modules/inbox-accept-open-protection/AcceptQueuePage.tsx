@@ -339,14 +339,14 @@ export function AcceptQueuePage() {
                   <>
                     <Button
                       tone="utama"
-                      onClick={() => void submit('setuju')}
+                      onClick={() => { submit('setuju') }}
                       disabled={decide.isPending}
                     >
                       {decide.isPending ? 'Menyimpan…' : 'Setujui'}
                     </Button>
                     <Button
                       tone="kedua"
-                      onClick={() => void submit('tolak')}
+                      onClick={() => { submit('tolak') }}
                       disabled={decide.isPending}
                     >
                       Tolak
@@ -403,7 +403,7 @@ export function AcceptQueuePage() {
           actions={
             <Button
               tone="halus"
-              onClick={() => void list.refetch()}
+              onClick={() => { list.refetch() }}
               disabled={list.isFetching || portal === null}
             >
               <ReloadIcon className="h-4 w-4" />

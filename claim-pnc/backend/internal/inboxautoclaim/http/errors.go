@@ -32,6 +32,9 @@ const (
 	// tidak ada satu pun baris yang dapat ditunjuk. Yang perlu diperbaiki pengguna
 	// adalah berkasnya, bukan sebuah kolom.
 	CodeEmptyUpload = "unggahan_kosong"
+
+	// CodePremiumServiceDown: layanan total premi (Cek Premi) tidak dapat dihubungi.
+	CodePremiumServiceDown = "layanan_premi_gagal"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
@@ -88,6 +91,14 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Code:    CodeValidationFailed,
 			Message: "Ada baris yang belum benar. Perbaiki berkasnya lalu unggah lagi.",
 			Detail:  detail,
+		}, true
+
+	case errors.Is(err, inboxautoclaim.ErrPremiumServiceUnavailable):
+		// 502: permintaannya benar, sistem di belakang kita yang gagal. Galatnya tetap
+		// dicatat (status >= 500), pesannya tidak memuat alamat layanan.
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodePremiumServiceDown,
+			Message: "Layanan cek premi tidak dapat dihubungi. Coba lagi beberapa saat lagi.",
 		}, true
 
 	case errors.Is(err, inboxautoclaim.ErrBatchNotFound):

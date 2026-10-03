@@ -12,11 +12,11 @@ import (
 func TestNumberFormatFollowsTheSample(t *testing.T) {
 	cases := map[string]string{
 		FormatMoney(registrasi.Rupiah(610_175_716_556)): "610.175.716.556",
-		FormatMoney(registrasi.Money(2_650_000_049)):     "26.500.000",
-		FormatMoney(0):                                   "0",
-		FormatPercent(70_175):                            "7,018",
-		FormatPercent(570_000):                           "57",
-		FormatPercent(47_500):                            "4,75",
+		FormatMoney(registrasi.Money(2_650_000_049)):    "26.500.000",
+		FormatMoney(0):         "0",
+		FormatPercent(70_175):  "7,018",
+		FormatPercent(570_000): "57",
+		FormatPercent(47_500):  "4,75",
 	}
 	for got, want := range cases {
 		if got != want {

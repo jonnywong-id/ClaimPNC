@@ -15,6 +15,9 @@ import (
 // memperlihatkan hal yang sama dengan yang akan dilihat petugas.
 type AreaDirectory struct {
 	option map[string][]registrasi.AreaOption
+
+	// Causes adalah pilihan Penyebab Kerugian per kode bisnis polis. Isinya karangan.
+	Causes map[string][]registrasi.CauseOfLossOption
 }
 
 // NewAreaDirectory membentuk master wilayah contoh.
@@ -36,6 +39,11 @@ func NewAreaDirectory() *AreaDirectory {
 		},
 		key(registrasi.AreaVillage, "10000925"): {
 			{ID: "10004326", Name: "KEL. CATURTUNGGAL", PostalCode: "55281"},
+		},
+	}, Causes: map[string][]registrasi.CauseOfLossOption{
+		"10013": {
+			{ID: "11997", Name: "FIRE - OPEN FLAME"},
+			{ID: "12010", Name: "FIRE - SHORT CIRCUIT"},
 		},
 	}}
 }
@@ -59,4 +67,16 @@ func (d *AreaDirectory) Options(_ context.Context, level registrasi.AreaLevel, p
 	return out, nil
 }
 
-var _ registrasi.AreaDirectory = (*AreaDirectory)(nil)
+// CauseOfLossOptions memenuhi seam CauseOfLossDirectory.
+func (d *AreaDirectory) CauseOfLossOptions(_ context.Context, businessCode string) ([]registrasi.CauseOfLossOption, error) {
+	code := strings.TrimSpace(businessCode)
+	if code == "" {
+		return []registrasi.CauseOfLossOption{}, nil
+	}
+	return append([]registrasi.CauseOfLossOption{}, d.Causes[code]...), nil
+}
+
+var (
+	_ registrasi.AreaDirectory        = (*AreaDirectory)(nil)
+	_ registrasi.CauseOfLossDirectory = (*AreaDirectory)(nil)
+)

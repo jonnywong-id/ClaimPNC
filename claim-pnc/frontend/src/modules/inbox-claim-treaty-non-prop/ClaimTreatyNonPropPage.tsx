@@ -594,7 +594,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
     return String(value)
   }
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
   return isDate(text) ? formatDate(text) : text

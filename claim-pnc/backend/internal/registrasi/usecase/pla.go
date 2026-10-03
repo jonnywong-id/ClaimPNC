@@ -203,7 +203,7 @@ func (l *Service) PrintPLA(ctx context.Context, p PLACommand, by Caller) (PLARes
 // issueCoinsPLA menerbitkan satu PLA per anggota koasuransi dalam satu transaksi.
 func (l *Service) issueCoinsPLA(ctx context.Context, claim registrasi.Claim, object registrasi.InsuredItem,
 	coverage registrasi.Coverage, coverageSeq, revision int, names, ids map[string]string, by Caller) ([]registrasi.PLA, error) {
-	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number)
+	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return nil, err
 	}

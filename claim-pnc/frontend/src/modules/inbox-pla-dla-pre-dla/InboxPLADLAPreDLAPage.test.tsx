@@ -147,7 +147,7 @@ function installFetch(map: (call: Call) => Reply) {
  * kalimatnya melainkan bahwa layar menggambar alasan MILIK tombol yang ditekan.
  */
 function tolakan(url: string): { kode: string; pesan: string } {
-  const tindakan = new URL(url, 'http://contoh').searchParams.get('tindakan')
+  const tindakan = new URL(url, 'https://contoh').searchParams.get('tindakan')
 
   const alasan: Record<string, string> = {
     'unggah-penunjang':
