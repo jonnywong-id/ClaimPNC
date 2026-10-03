@@ -24187,3 +24187,46 @@ yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status tr
 dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
 baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.
 >>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904
+
+### K-105.22 `\r` ikut terkirim ke Oracle — pemuat kueri membuangnya, 58 modul lain dilaporkan
+
+**Tanggal** 2026-10-03 · **Pemicu** `TestUrutanDaftarMenaik` merah tanpa ada kode yang berubah ·
+**Sifat** koreksi cacat
+
+**Apa yang terjadi.** Uji yang hijau pada 2026-09-30 menjadi merah pada 2026-10-03 **tanpa satu
+baris pun disunting**. Sebabnya bukan kode melainkan **checkout**: repository ini
+ber-`core.autocrlf=true`, sehingga berkas `.sql` yang sudah ter-commit dituliskan ulang dengan
+CRLF di pohon kerja. `splitByName` memecah isinya pada `"\n"`, sehingga setiap baris menyisakan
+`\r` di ujungnya.
+
+**Kenapa ia berbahaya justru karena tidak pernah gagal.** Oracle memperlakukan `\r` sebagai
+spasi putih, jadi kuerinya tetap jalan dan hasilnya benar. Cacatnya hanya menampakkan diri saat
+SQL dicetak ke log atau dibandingkan dengan teks yang diharapkan — artinya ia dapat hidup
+bertahun-tahun, dan yang menemukannya pertama kali adalah uji yang terlihat "rewel soal spasi".
+
+Yang membuatnya pantas dicatat: **hijau-merahnya bergantung pada mesin, bukan pada isi
+berkas.** Dua orang menjalankan uji yang sama atas commit yang sama dan memperoleh hasil
+berbeda. Itu jenis kegagalan yang paling mahal dipercaya, karena godaan pertamanya adalah
+menyalahkan ujinya.
+
+**Yang diperbaiki.** `splitByName` modul ini menormalkan `\r\n` menjadi `\n` sebelum memecah,
+dan `TestTidakAdaCarriageReturnDiTeksKueri` menguncinya.
+
+**Yang DILAPORKAN, bukan diperbaiki.** Pemuat yang sama disalin ke **59 modul** `repo/sqlstore`,
+dan tidak satu pun membuang `\r`. Seluruhnya mengirim `\r` ke Oracle hari ini. Dua di antaranya
+sudah merah karena ujinya kebetulan membandingkan teks SQL:
+
+| Modul | Uji yang merah |
+|---|---|
+| `inboxpladla` | `TestTheReplyStatementIsPortable` |
+| `inboxservicecenter` | `TestUrutanKolomRincianSamaDenganSELECT` |
+
+Keduanya **tidak disentuh** — Fokus Penuh menetapkan hanya modul ini yang dikerjakan, dan cacat
+di luar lingkup dilaporkan apa adanya. Perbaikannya sepele dan sama persis dengan yang di atas,
+tetapi ia menyentuh 59 berkas dan itu keputusan Work Owner, bukan keputusan saya.
+
+Alternatif yang lebih murah dan layak dipertimbangkan: satu baris `*.sql text eol=lf` di
+`.gitattributes` menutup seluruh 59 sekaligus, tanpa menyentuh satu berkas Go pun.
+
+**Bukti** `git config core.autocrlf` → `true` · `file` atas berkas `.sql` → `CRLF line
+terminators` · `grep -rl 'func splitByName' internal/*/repo/sqlstore/query.go` → 59

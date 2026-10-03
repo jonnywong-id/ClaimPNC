@@ -533,3 +533,19 @@ func TestKeterisianDiukurUntukSeluruhKolomYangSudahAda(t *testing.T) {
 			column)
 	}
 }
+
+// TestTidakAdaCarriageReturnDiTeksKueri menutup cacat yang bergantung pada MESIN, bukan kode.
+//
+// Repository ini ber-`core.autocrlf=true`: berkas `.sql` yang sama ber-LF di satu checkout dan
+// ber-CRLF di checkout lain. `\r` yang tersisa ikut terkirim ke Oracle — diperlakukan sebagai
+// spasi putih, sehingga kuerinya TETAP JALAN dan cacatnya tidak pernah menampakkan diri selain
+// lewat uji yang membandingkan teks.
+//
+// Itu sudah terjadi: uji urutan `ORDER BY` merah pada satu mesin dan hijau pada mesin lain,
+// dengan isi berkas yang sama persis.
+func TestTidakAdaCarriageReturnDiTeksKueri(t *testing.T) {
+	for name, text := range queries {
+		require.NotContainsf(t, text, "\r",
+			"kueri %s memuat carriage return; splitByName seharusnya membuangnya", name)
+	}
+}

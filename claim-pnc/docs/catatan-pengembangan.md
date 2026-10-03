@@ -23360,11 +23360,9 @@ Pola `{ASIS:…}` adalah perangkaian SQL dari nilai, yang dilarang tanpa perkecu
 (`08-TECHNICAL-STRATEGY.md` §4.3). Menggantinya dengan subkueri menutup celahnya **sekaligus**
 menghapus perulangan per baris survei.
 
-**5. Varian kolom grid objek dipilih di LAYAR, bukan di kueri.** Grid punya tiga varian di Pega,
-dipilih when rule `IsPA`, `IsTravel`, `IsAneka`, dan `IsMarineCargo` — dan **keempatnya tidak ada
-di export** (`R-16`). Peladen karena itu mengirim seluruh kolom ketiga varian, dan pemilihannya
-dikerjakan layar dari lini bisnis. Menaruh tebakan itu di SQL akan menguncinya; di layar ia dapat
-diperbaiki tanpa menyentuh penyimpanan begitu keempat rule tiba.
+**5. Varian kolom grid objek dipilih di LAYAR, bukan di kueri.** Grid punya tiga varian di Pega.
+Peladen mengirim seluruh kolom ketiganya, dan pemilihannya dikerjakan layar dari lini bisnis —
+menaruhnya di SQL akan menguncinya. Pemetaannya dikoreksi pada §42.13b.
 
 #### Cacat layar lama yang direplikasi dengan sadar
 
@@ -23453,6 +23451,72 @@ di ketiga lapisan (penyimpanan, usecase, transport) · popup menolak klaim caban
 "tidak ditemukan" tidak menyebut cabang lain · nilai uang dikirim sebagai teks · cap waktu popup
 membawa jam · varian kolom objek berbeda antara PA dan lini lain · Escape dan tombol Tutup
 menutup popup.
+
+### 42.13b Varian kolom objek TERTUKAR, dan when rule-nya ternyata ADA (2026-09-30)
+
+Sisiran ulang popup — cara yang sama yang menemukan "Nama Insured" — membuka **dua kekeliruan
+saya** pada serahan kedua.
+
+**Kekeliruan 1: saya menyatakan when rule pemilih varian tidak ada di export. Salah.**
+Kelimanya ada:
+
+| Rule | Berkas | Kondisi |
+|---|---|---|
+| `IsPA` | `When/IsPA-When.xml` | `pyWorkPage.Policy.Quotation.GroupPanel = "002"` |
+| `IsTravel` | `When/IsTravel-When.xml` | `Kode Bisnis = "77"` |
+| `IsAneka` | `When/IsAneka-When.xml` | Kode Bisnis = 24 | 18 | 17 | 10 | 07 | 06 |
+| `IsMarineCargo` | `When/IsMarineCargo-When.xml` | **IDENTIK dengan `IsAneka`** |
+| `IsFire` | `When/IsFire-When.xml` | **kosong** — "Double click to add condition" |
+
+Saya menuliskan "tidak ada di export" tanpa pernah mencari berkasnya. Yang benar-benar hilang
+adalah lima when rule **menu** pada `R-16` — bukan kelima ini.
+
+**Kekeliruan 2: pemetaan variannya tertukar.** Posisi rujukan when rule di dalam section
+menunjukkan pasangannya, dan urutannya tidak ambigu:
+
+| Rujukan when rule (posisi) | Susunan kolom yang mengikutinya |
+|---|---|
+| `IsAneka` · `IsMarineCargo` · `IsFire` @136.5k | **Lokasi Object** @167.4k — varian A |
+| `IsPA` @209.9k | **Pekerjaan** @246.5k — varian B |
+| `IsTravel` @292.0k | **Nama Peserta** @327.9k — varian C |
+
+Implementasi saya memberi **PA dan Travel varian yang sama** (Nama Peserta · Status ·
+KTP/Paspor · Tanggal Lahir). Itu varian **Travel**; PA seharusnya Nama Objek · Pekerjaan ·
+Tanggal lahir.
+
+Seperti kolom yang hilang, tertukarnya **tidak menghasilkan galat apa pun** — grid tetap
+terisi, hanya kolomnya milik lini lain.
+
+**Setelah koreksi:**
+
+| Lini | Kolom |
+|---|---|
+| PA | Nama Objek · Pekerjaan · Tanggal lahir |
+| Travel | Nama Peserta · Status · KTP/Paspor · Tanggal Lahir |
+| Aneka · Marine Cargo · Fire · selebihnya | Nama Objek · Lokasi Object |
+
+Ejaan "Tanggal lahir" (PA) dan "Tanggal Lahir" (Travel) memang berbeda di layar lama; keduanya
+dibawa apa adanya (`D-13`).
+
+**Yang masih tebakan, dan sekarang dinyatakan sebagai tebakan.** Hanya `IsPA` yang dapat
+dipetakan tepat — `GroupPanel = "002"` sama persis dengan `cob` bernilai `"PA"`. `IsTravel`
+menyaring **Kode Bisnis** `"77"`, bukan Group Panel, sedangkan layar ini memakai `cob`
+`"Travel"` hasil terjemahan `grouppanel = 005`; keduanya **belum dibuktikan menunjuk himpunan
+klaim yang sama**. `DetailPlannedDifferences` sudah diperbarui menyebut selisih itu apa adanya,
+menggantikan kalimat lama yang keliru.
+
+`IsAneka` dan `IsMarineCargo` bersyarat identik dan `IsFire` tanpa syarat — ketiganya tidak
+dapat saling dibedakan, dan memang tidak perlu: ketiganya mengarah ke varian yang sama.
+
+**Penjaga baru:** satu uji per varian, dan tiap uji menegaskan kolom milik varian lain **tidak**
+muncul. Tanpa penegasan negatif itu, dua varian dapat runtuh menjadi satu sambil tetap lulus.
+
+**Pelajaran, dan ini pengulangan dari §42.12b.** Dua kali dalam dua hari saya menyatakan
+sesuatu "tidak ada di export" atau "16 kolom" tanpa memeriksanya — dan dua kali pernyataan itu
+salah. Yang menemukan keduanya bukan uji, melainkan **menyisir artefak sumber satu per satu**.
+Sisiran itu layak dijadikan langkah tetap sebelum menyatakan sebuah modul selesai, bukan
+setelah ditanya.
+
 
 ## 48. Sesi kedua puluh empat — modul Inbox Komunikasi Cabang (2026-09-24)
 
@@ -34051,3 +34115,22 @@ dan `UpdateChasierIDTablePembayaran` tidak ada di export); dua pemeriksaan proce
 `PKG_KONVERSI_JSONKLAIM` (tidak ada di export, D-02); pengiriman berkas ke Kasir
 (`SendAttachmenttoCashier_2`); baris progres "Auto ProgressTransfer Kasir" (kodenya bergantung
 `.KomiteType` yang tidak ada di model ini); syarat tombol berbasis nama server.
+
+### 84.17 Uji merah tanpa kode berubah — `\r` dari checkout (2026-10-03)
+
+Saat memeriksa apakah modul ini sudah selesai, `TestUrutanDaftarMenaik` **merah** — padahal
+tidak satu baris pun disunting sejak ia hijau pada 2026-09-30.
+
+Penyebabnya bukan kode, melainkan **checkout**. `core.autocrlf=true`, berkasnya sudah
+ter-commit, dan pohon kerja menuliskannya ulang dengan CRLF. `splitByName` memecah pada `"\n"`,
+sehingga setiap baris SQL menyisakan `\r`.
+
+Oracle memperlakukan `\r` sebagai spasi putih — kueri tetap jalan, hasilnya benar. Yang pertama
+menampakkannya justru uji yang membandingkan teks, dan godaan pertamanya adalah menyalahkan
+ujinya. Hijau-merahnya **bergantung pada mesin**, bukan pada isi berkas.
+
+Diperbaiki di pemuat modul ini, dikunci `TestTidakAdaCarriageReturnDiTeksKueri`.
+
+**58 modul lain punya pemuat yang sama dan tidak diperbaiki** — dilaporkan, sesuai Fokus Penuh.
+Dua di antaranya sudah merah hari ini: `inboxpladla` dan `inboxservicecenter`. Rinciannya dan
+usulan satu baris `.gitattributes` yang menutup semuanya ada di `K-105.22`.

@@ -106,8 +106,21 @@ func loadQueries() map[string]string {
 
 // splitByName memisahkan isi berkas menjadi pernyataan bernama, membuang baris komentar
 // supaya yang dikirim ke basis data hanyalah SQL-nya.
+//
+// # Kenapa carriage return dibuang lebih dulu
+//
+// Repository ini ber-`core.autocrlf=true`, sehingga berkas `.sql` yang sama berisi LF di satu
+// mesin dan CRLF di mesin lain — tergantung checkout, bukan tergantung isinya. Tanpa pembuangan
+// ini, setiap baris SQL berakhir dengan `\r` yang ikut terkirim ke Oracle.
+//
+// Oracle memperlakukannya sebagai spasi putih sehingga kuerinya tetap jalan, dan justru itu
+// yang membuatnya berbahaya: ia tidak pernah gagal, hanya muncul saat SQL dicetak ke log atau
+// dibandingkan dengan teks yang diharapkan. Uji urutan `ORDER BY` modul ini sempat merah karena
+// persis itu — pada mesin yang checkout-nya CRLF, bukan karena kuerinya berubah.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	result := map[string]string{}
 	name := ""
