@@ -5,6 +5,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import type {
+  AttachDocumentsResponse,
   CountsResponse,
   CreateRequest,
   CreateResponse,
@@ -252,6 +253,96 @@ export function useExportSalvage() {
 
       const blob = await response.blob()
       downloadBlob(blob, filenameOf(response) ?? 'inbox-salvage.csv')
+    },
+  })
+}
+
+/**
+ * Hook pencarian klaim pada form **"Menambahkan Data Salvage"**.
+ *
+ * # Apa yang digantikan
+ *
+ * Perilaku kolom **Nomor Klaim** pada `Section/TambahData_Salvage-Section.xml`. Kolom itu
+ * bukan kotak teks biasa: setiap perubahan isinya menjalankan `postValue` lalu `refresh`
+ * yang memanggil `SetDataDetailSalvage_act` dengan `tipe=1` dan `CaseeID` berisi nomor
+ * yang diketik (`:2165-2190`). Hasilnya mengisi kedua autocomplete di bawahnya.
+ *
+ * Di sini pemanggilan itu menjadi satu permintaan ke rute yang parameternya sama persis —
+ * `/inbox-salvage/klaim/{nomor}` — yang mengembalikan pilihan objek, pilihan coverage, dan
+ * riwayat pengajuan klaim itu sekaligus.
+ *
+ * # Kenapa TIDAK dicoba ulang, dan kenapa cache-nya panjang
+ *
+ * `404` di sini adalah JAWABAN, bukan gangguan: nomor klaim yang tidak ada adalah hal yang
+ * lazim diketik orang. Mengulanginya tiga kali hanya menunda pesan "tidak ditemukan"
+ * selama beberapa detik, dan selama itu kolomnya tampak menggantung.
+ *
+ * Cache-nya panjang karena objek dan coverage sebuah klaim tidak berubah selama form
+ * terbuka. Petugas yang mengoreksi satu huruf lalu mengembalikannya tidak perlu menunggu
+ * permintaan kedua.
+ */
+export function useSalvageClaimLookup(claimNo: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  const clean = claimNo.trim()
+
+  return useQuery({
+    queryKey: keys.detail(portal, token, 'klaim', clean),
+    queryFn: () =>
+      callAPI<DetailResponse>(`${PATH}/klaim/${encodeURIComponent(clean)}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && clean !== '',
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook tombol **Submit** pada modal "UploadDocument_Salvage".
+ *
+ * # Ia BERBEDA dari useUploadSalvageDetail, dan keduanya mudah tertukar
+ *
+ * Keduanya mengirim berkas. Yang satu membaca CSV lalu mengembalikan isinya ke tabel di
+ * dalam form tanpa menyentuh basis data; yang INI benar-benar menyimpan — berkasnya masuk
+ * ke `TEMP_DATA_ATTACHFILE`, keterangannya ke `DATA_ATTACHFILE`, dan penautnya ke
+ * `SALAVAGEDOCUMENT`.
+ *
+ * # Berkas dikirim MENTAH, bukan base64
+ *
+ * Pengubahan ke base64 — yang di Pega dikerjakan `GCNMUploadResult64` — terjadi di
+ * server. Mengirimnya dari sini membengkakkan permintaan sepertiga tanpa satu pun
+ * manfaat, dan membuat batas 1 MB per berkas diukur terhadap angka yang bukan ukuran
+ * berkasnya.
+ *
+ * # Tidak ada cache yang dibatalkan
+ *
+ * Daftar salvage tidak memuat lampiran, sehingga tidak ada jawaban tersimpan yang menjadi
+ * usang karenanya.
+ */
+export function useAttachSalvageDocuments() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (input: {
+      nomor_klaim: string
+      id_salvage: string
+      berkas: File[]
+    }) => {
+      const body = new FormData()
+      body.append('nomor_klaim', input.nomor_klaim)
+      body.append('id_salvage', input.id_salvage)
+      for (const file of input.berkas) body.append('berkas', file)
+
+      return callAPI<AttachDocumentsResponse>(`${PATH}/dokumen`, {
+        token,
+        portal,
+        metode: 'POST',
+        body,
+      })
     },
   })
 }

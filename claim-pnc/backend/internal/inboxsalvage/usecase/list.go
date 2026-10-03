@@ -76,13 +76,34 @@ type Metadata struct {
 
 	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
 	PlannedDifferences []string
+
+	// CurrencyOptions adalah isi daftar pilihan "Mata Uang" pada form Tambah.
+	//
+	// Berbeda dari isian lain di struct ini, ia dibaca dari BASIS DATA — `POOLDATA.CURRENCY`,
+	// tabel yang sama yang dibaca Report Definition `SelectCurrency_RD` di layar lama.
+	//
+	// KOSONG bila tabelnya tidak terbaca, dan itu bukan galat: lihat Metadata().
+	CurrencyOptions []inboxsalvage.CurrencyOption
 }
 
 // Metadata menyerahkan keterangan layar.
 //
-// Ia tidak menyentuh basis data sama sekali dan tidak bergantung portal: daftar tab dan
-// kolomnya sama di seluruh entitas, karena ia bentuk layar, bukan data entitas.
-func (s *Service) Metadata() Metadata {
+// # Kenapa ia kini menerima ctx dan portal
+//
+// Karena satu isiannya BUKAN bentuk layar melainkan data entitas: pilihan "Mata Uang"
+// dibaca dari `POOLDATA.CURRENCY`, dan tabel itu hidup di database portal yang sedang
+// dipilih. Sisanya tetap konstanta.
+//
+// # Kenapa kegagalan membacanya TIDAK menggagalkan Metadata
+//
+// Karena kolom "Mata Uang" adalah satu isian dari tujuh belas, sementara Metadata adalah
+// jawaban yang menentukan apakah layar ini dapat digambar sama sekali. Menjadikannya galat
+// berarti satu master yang tidak terbaca menutup seluruh Inbox Salvage — kelas kegagalan
+// yang sudah pernah terjadi di modul ini dan tidak boleh diulang.
+//
+// Yang terjadi sebagai gantinya: daftarnya kosong, kolomnya tetap digambar tanpa tanda
+// wajib, dan sebabnya ditulis ke jejak log supaya tidak hilang diam-diam.
+func (s *Service) Metadata(ctx context.Context, portalAlias string) Metadata {
 	columns := make([]string, 0,
 		len(inboxsalvage.RequiredUploadColumn)+len(inboxsalvage.OptionalUploadColumn))
 	columns = append(columns, inboxsalvage.RequiredUploadColumn...)
@@ -94,7 +115,42 @@ func (s *Service) Metadata() Metadata {
 		StatusOptions:      inboxsalvage.StatusOptions(),
 		UploadColumns:      columns,
 		PlannedDifferences: inboxsalvage.PlannedDifferences,
+		CurrencyOptions:    s.currencies(ctx, portalAlias),
 	}
+}
+
+// currencies membaca pilihan mata uang, dan MENELAN kegagalannya ke dalam jejak log.
+//
+// Penelanan itu disengaja dan dibatasi di satu tempat ini saja — lihat alasannya pada
+// Metadata. Ia satu-satunya tempat di modul ini yang memperlakukan galat basis data
+// sebagai keadaan yang dapat dilanjutkan.
+func (s *Service) currencies(
+	ctx context.Context,
+	portalAlias string,
+) []inboxsalvage.CurrencyOption {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		s.log(ctx, "pilihan mata uang dilewati: portal tidak dapat dipilih",
+			"portal", portalAlias, "galat", err.Error())
+		return []inboxsalvage.CurrencyOption{}
+	}
+
+	options, err := repo.Currencies(ctx)
+	if err != nil {
+		s.log(ctx, "pilihan mata uang tidak terbaca",
+			"portal", portalAlias, "galat", err.Error())
+		return []inboxsalvage.CurrencyOption{}
+	}
+
+	return options
+}
+
+// log menulis satu baris jejak bila logger tersedia.
+func (s *Service) log(ctx context.Context, message string, attrs ...any) {
+	if s.logger == nil {
+		return
+	}
+	s.logger.WarnContext(ctx, message, attrs...)
 }
 
 // Listed adalah isi satu daftar beserta permintaan yang benar-benar dipakai.
@@ -310,4 +366,74 @@ func (s *Service) Create(
 	}
 
 	return Created{SalvageID: salvageID, ItemCount: len(form.Items)}, nil
+}
+
+// AttachedDocuments adalah hasil satu permintaan unggah, satu baris per berkas.
+type AttachedDocuments struct {
+	Items []inboxsalvage.AttachedDocument
+}
+
+// AttachDocuments menyimpan berkas-berkas dari modal "UploadDocument_Salvage".
+//
+// # Kenapa satu per satu, bukan sekaligus
+//
+// Karena begitulah layar lama: `SaveFilePenunjangBySalvage` memutari
+// `dragDropFileUpload.pxResults` dan menjalankan seluruh rantai simpan untuk SETIAP
+// berkas. Nomor urut nama berkasnya pun dihitung ulang tiap putaran, sehingga menggabung
+// keduanya menjadi satu transaksi akan mengubah penomorannya.
+//
+// # Berkas pertama yang gagal MENGHENTIKAN sisanya
+//
+// Yang sudah tersimpan tidak ditarik kembali — tiap berkas punya transaksinya sendiri,
+// sama seperti di Pega. Pemanggil diberi tahu berapa yang berhasil, supaya pengguna tahu
+// mana yang perlu diulang alih-alih mengunggah semuanya lagi.
+func (s *Service) AttachDocuments(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxsalvage.Caller,
+	docs []inboxsalvage.DocumentUpload,
+) (AttachedDocuments, error) {
+	if len(docs) == 0 {
+		return AttachedDocuments{}, inboxsalvage.ErrNoDocument
+	}
+	if len(docs) > inboxsalvage.MaxDocumentPerUpload {
+		return AttachedDocuments{}, inboxsalvage.ErrTooManyDocuments
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return AttachedDocuments{}, err
+	}
+
+	result := AttachedDocuments{Items: []inboxsalvage.AttachedDocument{}}
+
+	for index, doc := range docs {
+		doc.Operator = caller.Clean().Login
+
+		saved, err := repo.AttachDocument(ctx, doc)
+		if err != nil {
+			return result, fmt.Errorf("menyimpan dokumen ke-%d: %w", index+1, err)
+		}
+		result.Items = append(result.Items, saved)
+
+		// Setiap dokumen dicatat, dan alasannya sama dengan pencatatan penyimpanan
+		// pengajuan: tidak ada pemisahan tugas formal (`D-59`), sehingga jejak adalah
+		// satu-satunya kontrol pengimbang.
+		//
+		// Nama berkas dan nomor klaim TIDAK dicatat — keduanya dapat memuat nama
+		// tertanggung (`D-69`). Yang dicatat adalah ID yang menunjuk barisnya.
+		if s.logger != nil {
+			s.logger.Info(
+				"dokumen salvage disimpan",
+				slog.String("modul", "inbox-salvage"),
+				slog.String("data_id", saved.DataID),
+				slog.String("image_id", saved.ImageID),
+				slog.Bool("tertaut_salvage", saved.LinkedToSalvage),
+				slog.String("pemanggil", caller.Login),
+				slog.String("portal", portalAlias),
+			)
+		}
+	}
+
+	return result, nil
 }

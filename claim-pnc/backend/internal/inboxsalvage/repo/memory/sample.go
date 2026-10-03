@@ -1,5 +1,7 @@
 package memory
 
+import "claim-pnc/internal/inboxsalvage"
+
 // Data contoh modul Inbox Salvage.
 //
 // # Aturan yang mengikat berkas ini
@@ -85,6 +87,23 @@ func sampleClaims() []Claim {
 			LossDate:     "2026-09-12",
 			ObjectName:   "Ruko Dua Lantai",
 			WorkStatus:   "Open",
+
+			// DUA objek, dan coverage yang BERULANG di antara keduanya.
+			//
+			// Inilah klaim yang membuka form "Menambahkan Data Salvage", sehingga ia pula
+			// yang harus membawa keadaan yang paling mudah terlewat: kueri coverage tidak
+			// menyaring objek sama sekali, sehingga dua objek berjaminan sama
+			// menghasilkan baris kembar — `COVERAGEID` dan namanya sama persis. Yang
+			// membuang pengulangannya adalah layar, bukan kueri.
+			Objects: []inboxsalvage.ObjectChoice{
+				{ID: "1", Name: "Isi Ruko"},
+				{ID: "2", Name: "Ruko Dua Lantai"},
+			},
+			Coverages: []inboxsalvage.CoverageChoice{
+				{ID: "10002", Name: "Gempa Bumi"},
+				{ID: "10001", Name: "Kebakaran"},
+				{ID: "10001", Name: "Kebakaran"},
+			},
 		},
 		{
 			ClaimNo:      "PNC-2041",
@@ -93,8 +112,21 @@ func sampleClaims() []Claim {
 			LossDate:     "2026-08-14",
 			ObjectName:   "Gudang Blok C",
 			WorkStatus:   "Open",
+
+			Objects: []inboxsalvage.ObjectChoice{
+				{ID: "1", Name: "Gudang Blok C"},
+			},
+			Coverages: []inboxsalvage.CoverageChoice{
+				{ID: "10005", Name: "Property All Risk"},
+			},
 		},
 		{
+			// SENGAJA tanpa objek maupun coverage.
+			//
+			// Klaim yang objeknya belum terisi memang ada — modul Inbox Investigator
+			// mencatat keadaan yang sama. Baris ini membuktikan form tetap dapat diisi di
+			// atasnya: kedua kolomnya menerima ketikan bebas, sama seperti
+			// `pyAllowFreeFormInput=true` di layar lama.
 			ClaimNo:      "PNC-2042",
 			PIC:          sampleOtherPIC,
 			BusinessName: "Marine Cargo",

@@ -144,6 +144,14 @@ type TabDTO struct {
 	// sebagai kunci. Menyimpulkannya di layar berarti pengetahuan yang sama hidup di dua
 	// tempat, dan yang satu akan tertinggal.
 	DetailKey string `json:"kunci_rincian"`
+
+	// OpensEditForm menyatakan tombol Detail daftar ini membuka FORM SUNTING, bukan panel
+	// baca.
+	//
+	// Satu daftar saja: "Rejected Checker" berisi pengajuan yang checker kembalikan
+	// kepada PIC, dan satu-satunya tindakan yang masuk akal di sana adalah menyunting
+	// lalu mengirim ulang.
+	OpensEditForm bool `json:"membuka_form_sunting"`
 }
 
 func toTabDTO(tab inboxsalvage.Tab) TabDTO {
@@ -157,14 +165,15 @@ func toTabDTO(tab inboxsalvage.Tab) TabDTO {
 	}
 
 	return TabDTO{
-		Code:        tab.Code,
-		Name:        tab.Name,
-		Description: tab.Description,
-		Columns:     columns,
-		SearchLabel: tab.SearchLabel,
-		SearchExact: tab.SearchExact,
-		Notice:      tab.Notice,
-		DetailKey:   string(inboxsalvage.DetailKeyOf(tab.Family)),
+		Code:          tab.Code,
+		Name:          tab.Name,
+		Description:   tab.Description,
+		Columns:       columns,
+		SearchLabel:   tab.SearchLabel,
+		SearchExact:   tab.SearchExact,
+		Notice:        tab.Notice,
+		DetailKey:     string(inboxsalvage.DetailKeyOf(tab.Family)),
+		OpensEditForm: tab.OpensEditForm,
 	}
 }
 
@@ -179,7 +188,14 @@ type MetadataResponse struct {
 	Tabs          []TabDTO          `json:"daftar"`
 	DefaultTab    string            `json:"daftar_bawaan"`
 	StatusOptions []StatusOptionDTO `json:"pilihan_status_salvage"`
-	UploadColumns []string          `json:"kolom_berkas_unggahan"`
+
+	// CurrencyOptions adalah isi dropdown "Mata Uang" pada form Tambah.
+	//
+	// KOSONG bila `POOLDATA.CURRENCY` tidak terbaca. Layar menggambar kolomnya tanpa isi
+	// dan tanpa tanda wajib — bukan menolak membuka layar.
+	CurrencyOptions []StatusOptionDTO `json:"pilihan_mata_uang"`
+
+	UploadColumns []string `json:"kolom_berkas_unggahan"`
 
 	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
 	//
@@ -206,10 +222,17 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		options = append(options, StatusOptionDTO{Code: option.Code, Label: option.Label})
 	}
 
+	currencies := make([]StatusOptionDTO, 0, len(meta.CurrencyOptions))
+	for _, option := range meta.CurrencyOptions {
+		currencies = append(currencies,
+			StatusOptionDTO{Code: option.Code, Label: option.Label})
+	}
+
 	return MetadataResponse{
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
 		StatusOptions:      options,
+		CurrencyOptions:    currencies,
 		UploadColumns:      meta.UploadColumns,
 		PlannedDifferences: meta.PlannedDifferences,
 		Portal:             portalAlias,
@@ -516,6 +539,18 @@ type DetailResponse struct {
 	ObjectName   string `json:"nama_object"`
 	CoverageName string `json:"nama_coverage"`
 
+	// ObjectID dan CoverageID adalah penunjuk ke objek dan coverage pengajuan ini.
+	//
+	// Keduanya BARU dikirim sejak form "Menambahkan Data Salvage" benar-benar mengisinya.
+	// Sebelumnya keduanya dibaca dari basis data lalu dibuang di lapisan ini, sehingga
+	// layar tidak pernah dapat mengirimkannya kembali saat menyimpan — dan setiap
+	// pengajuan yang dibuat modul ini tersimpan tanpa penunjuk objek maupun coverage.
+	//
+	// Keduanya TIDAK digambar sebagai isian. Yang membacanya adalah form, untuk memilih
+	// ulang baris yang sama pada kedua autocomplete.
+	ObjectID   string `json:"id_object"`
+	CoverageID string `json:"id_coverage"`
+
 	// AcceptedValue adalah "Nilai Salvage". Kolom yang sama menentukan "Status Lelang"
 	// pada grid; di panel ini ia digambar sebagai nilai.
 	AcceptedValue string `json:"nilai_salvage"`
@@ -547,7 +582,32 @@ type DetailResponse struct {
 	// Salvage". Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
 	History []HistoryRowDTO `json:"riwayat"`
 
+	// ObjectChoices dan CoverageChoices adalah ISI kedua autocomplete pada form
+	// "Menambahkan Data Salvage".
+	//
+	// Keduanya milik KLAIM, bukan milik pengajuan — lihat inboxsalvage.Detail. Pada jalur
+	// `/pengajuan/{id}` keduanya kosong, dan itu benar: panel rincian tidak menggambar
+	// form.
+	ObjectChoices   []ObjectChoiceDTO   `json:"pilihan_objek"`
+	CoverageChoices []CoverageChoiceDTO `json:"pilihan_coverage"`
+
 	Portal string `json:"portal"`
+}
+
+// ObjectChoiceDTO adalah satu pilihan autocomplete "Nama Object".
+type ObjectChoiceDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"nama"`
+}
+
+// CoverageChoiceDTO adalah satu pilihan autocomplete "Nama Coverage".
+//
+// Bentuknya sama persis dengan ObjectChoiceDTO. Keduanya TIDAK disatukan menjadi satu
+// tipe: keduanya kebetulan sebentuk hari ini, dan menyatukannya akan membuat perubahan
+// pada salah satunya diam-diam mengubah yang lain.
+type CoverageChoiceDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"nama"`
 }
 
 func toDetailResponse(detail inboxsalvage.Detail, portalAlias string) DetailResponse {
@@ -578,6 +638,22 @@ func toDetailResponse(detail inboxsalvage.Detail, portalAlias string) DetailResp
 		})
 	}
 
+	objectChoices := make([]ObjectChoiceDTO, 0, len(detail.ObjectChoices))
+	for _, choice := range detail.ObjectChoices {
+		objectChoices = append(objectChoices, ObjectChoiceDTO{
+			ID:   choice.ID,
+			Name: choice.Name,
+		})
+	}
+
+	coverageChoices := make([]CoverageChoiceDTO, 0, len(detail.CoverageChoices))
+	for _, choice := range detail.CoverageChoices {
+		coverageChoices = append(coverageChoices, CoverageChoiceDTO{
+			ID:   choice.ID,
+			Name: choice.Name,
+		})
+	}
+
 	return DetailResponse{
 		SalvageID:            detail.SalvageID,
 		ClaimNo:              detail.ClaimNo,
@@ -599,6 +675,8 @@ func toDetailResponse(detail inboxsalvage.Detail, portalAlias string) DetailResp
 		Currency:             detail.Currency,
 		ObjectName:           detail.ObjectName,
 		CoverageName:         detail.CoverageName,
+		ObjectID:             detail.ObjectID,
+		CoverageID:           detail.CoverageID,
 		AcceptedValue:        detail.AcceptedValue,
 		Email:                detail.Email,
 		OfferValue:           detail.OfferValue,
@@ -611,6 +689,33 @@ func toDetailResponse(detail inboxsalvage.Detail, portalAlias string) DetailResp
 		LegacyBeforeJuly2023: detail.LegacyBeforeJuly2023,
 		Items:                items,
 		History:              history,
+		ObjectChoices:        objectChoices,
+		CoverageChoices:      coverageChoices,
 		Portal:               portalAlias,
 	}
+}
+
+// AttachedDocumentDTO adalah satu dokumen yang berhasil tersimpan.
+type AttachedDocumentDTO struct {
+	// DataID adalah kunci baris keterangan pada `DATA_ATTACHFILE`.
+	DataID string `json:"data_id"`
+
+	// ImageID menautkan keterangan dengan isi berkasnya, yang disimpan di tabel lain.
+	ImageID string `json:"image_id"`
+
+	// StoredName adalah nama berkas yang BENAR-BENAR tersimpan — bukan nama aslinya.
+	StoredName string `json:"nama_tersimpan"`
+
+	// LinkedToSalvage menyatakan baris penaut ke pengajuan salvage ikut ditulis.
+	//
+	// Salah pada form pengajuan BARU: di sana berkas diunggah sebelum Submit, sehingga
+	// pengajuannya belum punya nomor.
+	LinkedToSalvage bool `json:"tertaut_salvage"`
+}
+
+// AttachDocumentsResponse adalah hasil satu permintaan unggah dokumen.
+type AttachDocumentsResponse struct {
+	Documents []AttachedDocumentDTO `json:"dokumen"`
+	Message   string                `json:"pesan"`
+	Portal    string                `json:"portal"`
 }
