@@ -24279,3 +24279,14 @@ sama dengan keputusan Print DLA. Langkah lain `PrintPDFAcceptanceNote` — konve
 Outstanding Acceptance, penerbitan DLA, lampiran, dan email — tidak dijalankan; yang ditulis hanya
 jejak audit `DRAFT_AKSEPTASI_CETAK`. Tata letak Travel dan Personal Accident belum dibangun.
 Transfer Kasir dipindah dari grid ke detail adjustment, sesuai letaknya di `InputAdjustment_sect`.
+
+## 141. Transfer Kasir hanya manual — juga untuk PA (2026-10-03)
+
+**Keputusan Work Owner:** transfer ke Kasir **hanya boleh** lewat tombol Transfer Kasir. Tidak ada transfer otomatis, untuk
+lini mana pun.
+
+Ini **menyimpang dari Pega** secara sengaja: `SetAdjustmentAcceptation` langkah 113 menjalankan `TransferToKasir_act WHEN
+IsPA` langsung sesudah akseptasi. Aplikasi ini mengakseptasi PA seperti lini lain dan berhenti di situ.
+
+Klaim PNCN.26.26 sudah terlanjur ditransfer otomatis (2026-10-03, sebelum keputusan ini) — transfernya tidak dibatalkan
+aplikasi; pembatalan di sisi Kasir bukan wewenang aplikasi ini.

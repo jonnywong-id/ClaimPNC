@@ -131,10 +131,25 @@ SELECT k.CASEID,
        k.REPLYMESSAGE,
        k.REPLYFROMNAME,
        k.CREATEDATEREPLY,
-       k.KOMUNIKASISTATUS
+       k.KOMUNIKASISTATUS,
+       k.COMMUNICATE_FROM
   FROM POOLDATA.M_KOMUNIKASI_PNC k
  WHERE k.CASEID IN (SELECT s.CASEID
                       FROM POOLDATA.T_SURVEYORLIST s
                      WHERE s.PNCCASEID IN (:1, :2, :3))
     OR k.CASECLAIM IN (:4, :5, :6)
  ORDER BY k.CREATEDDATE DESC, k.KOMUNIKASIID DESC
+
+-- name: komunikasi_sisip
+--
+-- Catatan tombol "Kirim ke Inputor" (`Section/AnalystRemarks_sect`). Percakapan tingkat klaim
+-- menyimpan kunci klaim di CASEID dan CASECLAIM sekaligus. KOMUNIKASIID (`KOMUNIKASI_SEQ`) dan
+-- CREATEDDATE (`sysdate`) diisi default kolom — tidak disebut di sini, sama seperti
+-- `inboxkomunikasicabang` `message_insert`.
+--
+-- Bind: :1 CASEID · :2 CASECLAIM · :3 pengirim (login) · :4 nama pengirim · :5 isi pesan
+--       :6 status · :7 tujuan (login Inputor) · :8 kanal (COMMUNICATE_FROM)
+INSERT INTO POOLDATA.M_KOMUNIKASI_PNC
+       (CASEID, CASECLAIM, SENDER, SENDERNAME, MESSAGE, KOMUNIKASISTATUS,
+        COMMUNICATE_TO, COMMUNICATE_FROM)
+VALUES (:1, :2, :3, :4, :5, :6, :7, :8)

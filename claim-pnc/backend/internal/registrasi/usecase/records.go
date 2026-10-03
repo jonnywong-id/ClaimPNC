@@ -70,3 +70,18 @@ func (l *Service) ProgressRecords(ctx context.Context, claimID string) (Progress
 	}
 	return ProgressView{Progress: progress, Communication: talk}, nil
 }
+
+// InsuredProfile membaca data tertanggung (CIF polis) untuk tab Register: No KTP bawaan dan blok
+// Alamat · Telephone dan Email. Penyimpanan polis yang tidak dapat membaca CIF menghasilkan profil
+// kosong.
+func (l *Service) InsuredProfile(ctx context.Context, claimID string) (registrasi.InsuredProfile, error) {
+	claim, err := l.claim.Get(ctx, claimID)
+	if err != nil {
+		return registrasi.InsuredProfile{}, err
+	}
+	source, ok := l.policy.(registrasi.InsuredProfileSource)
+	if !ok {
+		return registrasi.InsuredProfile{}, nil
+	}
+	return source.InsuredProfile(ctx, claim.Policy.Number, claim.Policy.ProdKe)
+}

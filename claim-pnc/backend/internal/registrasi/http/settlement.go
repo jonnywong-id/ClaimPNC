@@ -105,11 +105,14 @@ type SettlementRequest struct {
 	VATType         string `json:"tipe_vat"`
 	Chronology      string `json:"kronologi"`
 	Notes           string `json:"catatan"`
+
+	// Adjustment adalah nomor baris (berbasis 1) yang diubah — hanya rute ubah.
+	Adjustment int `json:"adjustment,omitempty"`
 }
 
 func (b SettlementRequest) command(claimID string) usecase.SettlementCommand {
 	return usecase.SettlementCommand{
-		ClaimID: claimID, TaskID: b.TaskID, Object: b.Object, Coverage: b.Coverage,
+		ClaimID: claimID, TaskID: b.TaskID, Object: b.Object, Coverage: b.Coverage, Adjustment: b.Adjustment,
 		Input: registrasi.SettlementInput{
 			PaymentType: b.PaymentType, Currency: b.Currency,
 			Propose: registrasi.Money(b.ProposeCents), Submitted: registrasi.Money(b.SubmittedCents),
@@ -139,6 +142,44 @@ func (h *Handler) AddSettlement(w http.ResponseWriter, r *http.Request, claimID 
 		return
 	}
 	claim, err := h.service.AddSettlement(r.Context(), body.command(claimID), caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(claim)})
+}
+
+// PrepareSettlement menangani POST …/klaim/{klaimID}/adjustment/tambah — tombol Tambah
+// (`ValidationAdjustment`; PA: `NewEstimationPA`). Badannya cukup tugas, objek, dan jaminan.
+func (h *Handler) PrepareSettlement(w http.ResponseWriter, r *http.Request, claimID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body SettlementRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	claim, err := h.service.PrepareSettlement(r.Context(), body.command(claimID), caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(claim)})
+}
+
+// UpdateSettlement menangani POST …/klaim/{klaimID}/adjustment/ubah — isian baris yang sudah ada
+// berubah: dihitung, diperiksa, lalu disimpan (`SetNilaiResikoSendiri`).
+func (h *Handler) UpdateSettlement(w http.ResponseWriter, r *http.Request, claimID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body SettlementRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	claim, err := h.service.UpdateSettlement(r.Context(), body.command(claimID), caller)
 	if err != nil {
 		h.failure(w, r, err)
 		return

@@ -73,7 +73,19 @@ function wrap(children: ReactNode) {
   return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
 }
 
-function editor(props: { travel?: boolean; nonMBU?: boolean; onClose?: () => void } = {}) {
+function editor(
+  props: {
+    travel?: boolean
+    nonMBU?: boolean
+    exGratia?: boolean
+    pa?: boolean
+    analyst?: boolean
+    analystTransfer?: boolean
+    existing?: { index: number; line: Settlement }
+    onCreated?: (index: number) => void
+    onClose?: () => void
+  } = {},
+) {
   return (
     <SettlementEditor
       claimID="klaim-1"
@@ -87,6 +99,12 @@ function editor(props: { travel?: boolean; nonMBU?: boolean; onClose?: () => voi
       ]}
       travel={props.travel ?? false}
       nonMBU={props.nonMBU ?? false}
+      exGratia={props.exGratia ?? false}
+      pa={props.pa ?? false}
+      analyst={props.analyst ?? false}
+      analystTransfer={props.analystTransfer ?? false}
+      {...(props.existing ? { existing: props.existing } : {})}
+      {...(props.onCreated ? { onCreated: props.onCreated } : {})}
       onClose={props.onClose ?? (() => {})}
     />
   )
@@ -106,6 +124,48 @@ afterEach(() => {
 })
 
 describe('SettlementEditor', () => {
+  // InputAdjustment_sect: LOC dan Salvage A/B di kontainer !IsPATRAVEL; Lama hari rawat inap dan Status Aksep
+  // Analysator IsPA; tabel treaty hanya di kontainer .ExGratia = 1.
+  it('lini PA: tanpa LOC dan Salvage, dengan Lama Hari Rawat Inap; tabel treaty hanya Ex Gratia', async () => {
+    installFetch((url) =>
+      url === `${BASE}/hitung`
+        ? json(200, {
+            adjustment: line({ tipe_pembayaran: '2' }),
+            spreading: [{ jenis_treaty: '10007', nama: 'OR', share: 1_000_000, dihapus: false, objek_fac_offer: '' }],
+          })
+        : undefined,
+    )
+    wrap(editor({ pa: true }))
+
+    // Baris PA baru bertipe Interim, baca saja bagi selain Analyst.
+    expect(screen.queryByRole('combobox', { name: 'Tipe Pembayaran' })).not.toBeInTheDocument()
+    expect(screen.getByText('Interim')).toBeInTheDocument()
+    // Kontainer IsPA: Nilai Pengajuan Tertanggung dan Nilai Pengajuan; Total Klaim (.ProposeAdjustmentValue)
+    // hanya pada baris isAnalistorTransfer.
+    expect(screen.getByLabelText('Nilai Pengajuan Tertanggung')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nilai Pengajuan')).toBeEnabled()
+    expect(screen.queryByLabelText('Total Klaim')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Lack Of Document (%)')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Nilai Salvage A')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Nilai Salvage B')).not.toBeInTheDocument()
+    expect(screen.getByText('Lama Hari Rawat Inap')).toBeInTheDocument()
+    expect(screen.getByText('Status Aksep Analysator')).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Spreading jaminan' })).not.toBeInTheDocument()
+  })
+
+  // isAnalistorTransfer (jaminan PHK) memunculkan Nilai Propose Adjustment; IsAnalisator membuka Tipe Pembayaran
+  // dan menonaktifkan Nilai Pengajuan.
+  it('lini PA: Total Klaim untuk baris isAnalistorTransfer, Tipe Pembayaran terbuka bagi Analyst', () => {
+    installFetch(() => undefined)
+    const { unmount } = wrap(editor({ pa: true, analystTransfer: true }))
+    expect(screen.getByLabelText('Total Klaim')).toBeInTheDocument()
+    unmount()
+
+    wrap(editor({ pa: true, analyst: true }))
+    expect(screen.getByRole('combobox', { name: 'Tipe Pembayaran' })).toHaveValue('2')
+    expect(screen.getByLabelText('Nilai Pengajuan')).toBeDisabled()
+  })
+
   it('menghitung Adjuster Fee dari Professional Fee, Survey Expenses, dan VAT', async () => {
     installFetch((url) =>
       url === `${BASE}/hitung`
@@ -115,7 +175,7 @@ describe('SettlementEditor', () => {
           })
         : undefined,
     )
-    wrap(editor({ nonMBU: true }))
+    wrap(editor({ nonMBU: true, exGratia: true }))
 
     await userEvent.selectOptions(screen.getByLabelText('Mata Uang'), 'USD')
     await userEvent.selectOptions(screen.getByLabelText('Tipe Pembayaran'), '4')
@@ -202,10 +262,13 @@ describe('SettlementEditor', () => {
     await userEvent.selectOptions(screen.getByLabelText('Tipe Resiko Sendiri'), '1')
     await waitFor(() => expect(previews().length).toBeGreaterThan(0))
     const before = previews().length
+    const saves = calls.filter((c) => c.url === BASE).length
     await userEvent.type(screen.getByLabelText('Persen Resiko Sendiri (%)'), 'abc')
+    await userEvent.tab()
 
     expect(await screen.findByText('Angka tidak valid.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Simpan' })).toBeDisabled()
+    // Isian rusak tidak disimpan.
+    expect(calls.filter((c) => c.url === BASE).length).toBe(saves)
     // Hitungan terakhir yang terkirim tetap hitungan sebelum isian rusak.
     expect(previews().length).toBe(before)
   })
@@ -220,7 +283,7 @@ describe('SettlementEditor', () => {
           pesan: 'x',
           detail: [{ kode: 'a', field: '', pesan: 'Nilai melebihi sisa TSI.' }],
         }),
-      title: 'Adjustment belum dapat ditambahkan',
+      title: 'Adjustment belum tersimpan',
       text: 'Nilai melebihi sisa TSI.',
     },
     {
@@ -234,30 +297,47 @@ describe('SettlementEditor', () => {
       name: 'jaringan putus saat menyimpan',
       path: BASE,
       answer: (): Answer => 'putus',
-      title: 'Adjustment belum dapat ditambahkan',
+      title: 'Adjustment belum tersimpan',
       text: 'Tidak dapat menghubungi server Claim PNC.',
     },
   ])('menampilkan galat: $name', async ({ path, answer, title, text }) => {
     installFetch((url) => (url === path ? answer() : undefined))
     wrap(editor())
 
+    // Pilihan berubah: dihitung dan langsung disimpan (SetNilaiResikoSendiri).
     await userEvent.selectOptions(screen.getByLabelText('Tipe Pembayaran'), '1')
-    if (path === BASE) await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText(title)).toBeInTheDocument()
     expect(screen.getByText(text)).toBeInTheDocument()
   })
 
-  it('menutup editor setelah tersimpan dan lewat Batal', async () => {
-    installFetch(() => undefined)
+  // Pega tidak punya Simpan/Batal: perubahan isian langsung disimpan; Hapus menutup baris yang belum tersimpan.
+  it('menyimpan baris baru begitu isian berubah, tanpa Simpan dan Batal', async () => {
+    installFetch((url) => (url === BASE ? json(200, { klaim: { objek: [{ coverage: [{ adjustment: [line()] }] }] } }) : undefined))
+    const onCreated = vi.fn()
     const onClose = vi.fn()
-    wrap(editor({ onClose }))
+    wrap(editor({ onCreated, onClose }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'Batal' }))
+    expect(screen.queryByRole('button', { name: 'Simpan' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Batal' })).not.toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText('Tipe Pembayaran'), '1')
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(0))
+    expect(calls.find((c) => c.url === BASE)?.body).toMatchObject({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, tipe_pembayaran: '1' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus' }))
     expect(onClose).toHaveBeenCalledTimes(1)
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(2))
-    expect(calls.find((c) => c.url === BASE)?.body).toMatchObject({ tugas_id: 'tugas-1', objek: 1, jaminan: 1 })
+  })
+
+  it('baris tersimpan: perubahan disimpan ulang lewat rute ubah; Hapus menunggu kolom DIHAPUS_PADA', async () => {
+    installFetch(() => undefined)
+    wrap(editor({ existing: { index: 0, line: line({ tipe_resiko: '3' }) } }))
+
+    expect(screen.getByLabelText('Total Klaim')).toHaveValue('1000,00')
+    expect(screen.getByRole('button', { name: 'Hapus' })).toBeDisabled()
+    await userEvent.clear(screen.getByLabelText('Total Klaim'))
+    await userEvent.type(screen.getByLabelText('Total Klaim'), '2000')
+    await userEvent.tab()
+    await waitFor(() => expect(calls.find((c) => c.url === `${BASE}/ubah`)?.body).toMatchObject({ adjustment: 1, nilai_propose_sen: 200_000 }))
   })
 })
 
@@ -290,6 +370,7 @@ describe('SettlementDetail', () => {
         spreading={[{ jenis_treaty: '10008', nama: 'Treaty', share: 400_000, dihapus: false, objek_fac_offer: '' }]}
         travel={false}
         nonMBU
+        exGratia
       />,
     )
 
