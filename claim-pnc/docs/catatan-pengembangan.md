@@ -34771,6 +34771,6 @@ Seluruh aktivitas yang dipanggil `TransferToKasir_act` ada di export — tidak a
 dengan lini lain): `DownloadDLA` otomatis langkah 105 (PA berkoasuransi), `PNCInsertMitraLog_Act`, Outstanding Acceptance,
 dan SLIK OJK.
 
-**Pembaruan #140 (2026-10-03): Transfer Kasir otomatis PA dicabut** atas keputusan Work Owner (keputusan-implementasi §141).
+**Pembaruan #140 (2026-10-03): Transfer Kasir otomatis PA dicabut** atas keputusan Work Owner (keputusan-implementasi §170).
 `AcceptSettlement` tidak lagi memanggil `TransferCashier`; galat `akseptasi_tersimpan_kasir_gagal` dihapus. Akseptasi PA tetap
 dibuka (penahanan `gl.pkg_pelunasan_kasir` tetap dicabut); transfer dilakukan manual lewat tombol Transfer Kasir.
