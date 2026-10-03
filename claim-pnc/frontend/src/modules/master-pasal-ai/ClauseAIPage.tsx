@@ -129,7 +129,7 @@ export function ClauseAIPage() {
     setDraft('')
     setKeyword('')
     setPage(1)
-    void list.refetch()
+    list.refetch()
   }
 
   /*

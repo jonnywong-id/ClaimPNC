@@ -321,7 +321,7 @@ export function ProtectionListPage() {
             <>
               <Button
                 tone="halus"
-                onClick={() => void list.refetch()}
+                onClick={() => { list.refetch() }}
                 disabled={list.isFetching || portal === null}
               >
                 <ReloadIcon className="h-4 w-4" />

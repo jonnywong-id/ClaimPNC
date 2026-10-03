@@ -8,6 +8,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { GroupingPage } from './GroupingPage'
+import { compareCodeUnits } from '@/lib/sort'
 
 /**
  * Daftar Panel dan Tipe Kendaraan, persis seperti yang dijawab endpoint `/pilihan`.
@@ -163,11 +164,11 @@ function defaultReply(mutation?: (call: Call) => Reply) {
       return { body: OPTIONS }
     }
     if (call.url.startsWith('/api/master/grouping-sparepart/sisi')) {
-      const panel = new URL(call.url, 'http://x').searchParams.get('id_panel') ?? ''
+      const panel = new URL(call.url, 'https://x').searchParams.get('id_panel') ?? ''
       return { body: { sisi: SIDES[panel] ?? [], portal: 'ASM' } }
     }
     if (call.url.startsWith('/api/master/grouping-sparepart/sparepart')) {
-      const number = new URL(call.url, 'http://x').searchParams.get('nomor') ?? ''
+      const number = new URL(call.url, 'https://x').searchParams.get('nomor') ?? ''
       const found = PARTS[number]
       if (!found) {
         return {
@@ -183,7 +184,7 @@ function defaultReply(mutation?: (call: Call) => Reply) {
     }
 
     if (call.method === 'GET') {
-      const status = new URL(call.url, 'http://x').searchParams.get('status') ?? '1'
+      const status = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
 
       let rows: unknown[] = []
       if (status === '1') rows = [APPROVED, APPROVED_SAME_GROUP]
@@ -325,14 +326,14 @@ describe('GroupingPage', () => {
 
   it('keputusan borongan mengirim SATU permintaan berisi seluruh baris tercentang', async () => {
     installFetch(
-      defaultReply((call) => ({
+      defaultReply(() => ({
         body: {
           jumlah_berubah: 1,
           status: '1',
           status_label: 'Approve',
           portal: 'ASM',
         },
-        status: call.method === 'POST' ? 200 : 200,
+        status: 200,
       })),
     )
     show()
@@ -477,7 +478,7 @@ describe('GroupingPage', () => {
 
       const body = created?.body as Record<string, unknown>
       // Kedelapan isian yang memang dikirim.
-      expect(Object.keys(body).sort()).toEqual(
+      expect(Object.keys(body).sort(compareCodeUnits)).toEqual(
         [
           'catatan',
           'grouping_dengan_no_rangka',
@@ -487,7 +488,7 @@ describe('GroupingPage', () => {
           'nomor_sparepart',
           'sisi',
           'tipe_kendaraan',
-        ].sort(),
+        ].sort(compareCodeUnits),
       )
       // Nama panelnya ikut, bukan hanya kodenya: NAMA_PANEL yang menjadi anggota kunci alami.
       expect(body['nama_panel']).toBe('BUMPER DEPAN')

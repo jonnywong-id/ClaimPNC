@@ -180,7 +180,7 @@ export function useCreateGrouping() {
     mutationFn: (input: GroupingInput) =>
       callAPI<GroupingResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
     },
   })
 }
@@ -205,7 +205,7 @@ export function useSaveGrouping() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
     },
   })
 }
@@ -233,7 +233,7 @@ export function useDecideGrouping() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
+      client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
     },
   })
 }

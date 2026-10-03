@@ -926,7 +926,7 @@ describe('dialog Lihat File', () => {
 
     await waitFor(() => expect(documentCall()).toBeDefined())
 
-    const url = new URL(documentCall()!.url, 'http://uji.invalid')
+    const url = new URL(documentCall()!.url, 'https://uji.invalid')
     expect(url.pathname).toBe(DOKUMEN_PATH)
     expect(url.searchParams.get('detail_object')).toBe('PNC-0451/1')
     expect(url.searchParams.get('id_salvage')).toBe('451')
@@ -951,7 +951,7 @@ describe('dialog Lihat File', () => {
     const tautan = await screen.findByRole('link', { name: 'penawaran-balai-lelang.pdf' })
     expect(tautan).toHaveAttribute('download', 'penawaran-balai-lelang.pdf')
 
-    const href = new URL(tautan.getAttribute('href')!, 'http://uji.invalid')
+    const href = new URL(tautan.getAttribute('href')!, 'https://uji.invalid')
     expect(href.pathname).toBe(`${DOKUMEN_PATH}/9001`)
     expect(href.searchParams.get('detail_object')).toBe('PNC-0451/1')
   })

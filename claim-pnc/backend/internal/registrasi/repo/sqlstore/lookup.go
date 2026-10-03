@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -134,14 +135,16 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		prodKe, policyLeader, typeOfCoins         sql.NullString
 		cedingName, facShare                      sql.NullString
 		deliveryAddress                           sql.NullString
+		tableStart, tableEnd                      sql.NullTime
 	)
-	err := exec.QueryRowContext(ctx, loadQuery("polis_ambil"), number).Scan(
+	err := exec.QueryRowContext(ctx, loadQuery("polis_ambil"), number, number).Scan(
 		&no, &panel, &businessCode, &businessName,
 		&start, &end, &policyKind, &currency,
 		&insured, &qqName, &branch, &spreading,
 		&quoBusinessCode, &branchName, &sob, &sobName,
 		&prodKe, &policyLeader, &typeOfCoins,
 		&cedingName, &facShare, &deliveryAddress,
+		&tableStart, &tableEnd,
 	)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -157,18 +160,22 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		name = strings.TrimSpace(qqName.String)
 	}
 
-	rows, err := r.coinsurance(ctx, exec, number)
+	rows, err := r.coinsurance(ctx, exec, number, strings.TrimSpace(prodKe.String))
 	if err != nil {
 		return registrasi.Policy{}, err
 	}
 	fac, facKnown := parsePercent(facShare.String)
 
 	return registrasi.Policy{
-		Number:        fallback(no.String, number),
-		Line:          registrasi.LineOfBusiness(strings.TrimSpace(panel.String)),
-		BusinessType:  strings.TrimSpace(businessCode.String),
-		CoverageStart: parsePegaTime(start.String),
-		CoverageEnd:   parsePegaTime(end.String),
+		Number:       fallback(no.String, number),
+		Line:         registrasi.LineOfBusiness(strings.TrimSpace(panel.String)),
+		BusinessType: strings.TrimSpace(businessCode.String),
+		// Periode mendahulukan dokumen POLICYDATA, T_GENERAL hanya cadangan: T_GENERAL tidak
+		// mengikuti endorsemen — terverifikasi 2026-10-01, satu PRODKE endorsemen tercatat 2019–2020
+		// di T_GENERAL sementara dokumennya 2024, dan klaim 2024 atas polis itu hanya sah menurut
+		// dokumen.
+		CoverageStart: orTime(parsePegaTime(start.String), wibDate(tableStart)),
+		CoverageEnd:   orTime(parsePegaTime(end.String), wibDate(tableEnd)),
 
 		// TypeOfPolicy membawa jenis polis; polis DEKLARASI dikenali dari nilainya.
 		// Nilai persisnya belum dikonfirmasi pemilik bisnis, sehingga pembandingannya
@@ -210,10 +217,10 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 	}, nil
 }
 
-// coinsurance membaca baris CoinsList dokumen polis. Nol baris adalah keadaan biasa:
-// sebagian besar polis tidak berkoasuransi, dan DeriveCoinsurance memberi bawaan Pega.
-func (r *PolicyRepo) coinsurance(ctx context.Context, exec executor, number string) ([]registrasi.CoinsuranceRow, error) {
-	baris, err := exec.QueryContext(ctx, loadQuery("polis_koasuransi"), number)
+// coinsurance membaca baris T_COINSLIST polis pada PRODKE-nya. Nol baris adalah keadaan
+// biasa: sebagian besar polis tidak berkoasuransi, dan DeriveCoinsurance memberi bawaan Pega.
+func (r *PolicyRepo) coinsurance(ctx context.Context, exec executor, number, prodKe string) ([]registrasi.CoinsuranceRow, error) {
+	baris, err := exec.QueryContext(ctx, loadQuery("polis_koasuransi"), number, prodKe)
 	if err != nil {
 		return nil, fmt.Errorf("registrasi/sqlstore: membaca koasuransi polis %q: %w", number, err)
 	}
@@ -286,6 +293,25 @@ func parsePegaTime(text string) time.Time {
 		}
 	}
 	return time.Time{}
+}
+
+// wibDate membaca kolom DATE jam dinding WIB (T_GENERAL.STARTDATE/ENDDATE, mis. 12:00 WIB)
+// sebagai instan UTC — setara teks Pega "...T050000.000 GMT" pada dokumen polis. Komponen
+// jamnya dibaca apa adanya, tidak bergantung zona waktu sesi driver.
+func wibDate(t sql.NullTime) time.Time {
+	if !t.Valid || t.Time.IsZero() {
+		return time.Time{}
+	}
+	v := t.Time
+	return time.Date(v.Year(), v.Month(), v.Day(), v.Hour(), v.Minute(), v.Second(), 0, clock.ZoneWIB).UTC()
+}
+
+// orTime mengembalikan a bila terisi, selain itu b.
+func orTime(a, b time.Time) time.Time {
+	if !a.IsZero() {
+		return a
+	}
+	return b
 }
 
 // isDeclarationPolicy menyatakan apakah jenis polis adalah Polis Deklarasi.
@@ -411,11 +437,16 @@ func (p *Parameter) read(ctx context.Context, id string, into any) error {
 
 // ── Assigner ─────────────────────────────────────────────────────────────────────
 
-// Assigner memilih penerima tugas dari POOLDATA.MST_USER_TEKNIK.
+// Assigner memilih penerima tugas menurut router Pega (`Activity/*Router-act.xml`, diterima
+// 2026-10-01):
 //
-// Algoritmanya dipulihkan dari `RDB List/BrowsePICRandomTeam-SQL.xml` — beban paling
-// sedikit mendapat tugas berikutnya — karena ketiga router yang dipakai alur ini
-// (PNCAdminRouter, PNCTeknikRouter, RouterRCLDokter) tidak ada di export (`R-04`).
+//	PNCAdminRouter    Param.AssignTo = ClaimData.UserAdmin (pembuat klaim, ADMINKLAIM)
+//	PNCTeknikRouter   Param.AssignTo = ClaimData.UserTeknis; kosong -> "ServicePNC"
+//	RouterRCLDokter   Param.AssignTo = ClaimData.NamaDokterRCL
+//
+// UserTeknis di Pega diisi lebih awal oleh `getRandomTeam_act` (beban paling sedikit,
+// `BrowsePICRandomTeam-SQL.xml`); di sini pemilihan beban itu dilakukan saat tahap teknis
+// pertama, lalu dicatat kembali ke klaim (AdoptTechnicalPIC).
 type Assigner struct {
 	db *sql.DB
 }
@@ -466,6 +497,15 @@ func (a *Assigner) Assign(
 	// membuka klaim yang baru saja dibuatnya sendiri.
 	//
 	// ADMINKLAIM di basis data adalah kolom yang sama dengan CreatedBy di sini.
+	// RouterRCLDokter menugaskan ke ClaimData.NamaDokterRCL. Tidak ada rule di export yang
+	// mengisinya (hanya laporan yang membacanya; Pega menyimpannya di
+	// T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1), dan layar pemilihan dokter RCL belum ada di aplikasi
+	// ini. Sampai itu ada, tugas diparkir di ServicePNC — antrean "belum ditugaskan" — bukan
+	// diberikan ke PIC Teknik yang bukan dokter.
+	if stage.Router == registrasi.RouterRCLDoctor {
+		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
+	}
+
 	if stage.Router == registrasi.RouterPNCAdmin {
 		admin := strings.TrimSpace(claim.CreatedBy)
 		if admin == "" {
@@ -491,11 +531,10 @@ func (a *Assigner) Assign(
 	err := exec.QueryRowContext(ctx, loadQuery("pic_teknik_paling_ringan"), line).Scan(&operator)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		// Tidak ada petugas aktif untuk lini ini. Mengembalikan pemanggil sebagai
-		// penerima akan menyembunyikan lubang master di balik perilaku yang tampak
-		// normal; yang benar adalah kegagalan yang menyebutkan lininya.
-		return registrasi.Assignee{}, fmt.Errorf(
-			"registrasi/sqlstore: tidak ada petugas teknis aktif untuk lini %q di POOLDATA.MST_USER_TEKNIK", line)
+		// Tidak ada petugas aktif untuk lini ini: PNCTeknikRouter langkah 2 — UserTeknis
+		// kosong — menugaskan ke ServicePNC, antrean "belum ditugaskan" yang dibagikan ulang
+		// agent TransferAllCaseNotAssigned. Tugas tidak dibuang dan tidak jatuh ke pemanggil.
+		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
 	case err != nil:
 		return registrasi.Assignee{}, fmt.Errorf("registrasi/sqlstore: memilih petugas teknis: %w", err)
 	}

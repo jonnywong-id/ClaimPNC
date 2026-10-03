@@ -105,9 +105,10 @@ type FaceSheetSource interface {
 	// OperatorName membaca nama operator (M_LOGIN_PNC.LOGIN_NAME); kosong bila tidak ada.
 	OperatorName(ctx context.Context, operatorID string) (string, error)
 
-	// Coinsurance dan FacReinsurers membaca CoinsList dan FacOfferList dokumen polis.
-	Coinsurance(ctx context.Context, policyNumber string) ([]CoinsuranceRow, error)
-	FacReinsurers(ctx context.Context, policyNumber string) ([]FacReinsurer, error)
+	// Coinsurance dan FacReinsurers membaca T_COINSLIST dan T_FACOFFER pada PRODKE
+	// snapshot klaim.
+	Coinsurance(ctx context.Context, policyNumber, prodKe string) ([]CoinsuranceRow, error)
+	FacReinsurers(ctx context.Context, policyNumber, prodKe string) ([]FacReinsurer, error)
 
 	// LastRevision mengembalikan nomor revisi terakhir sebuah jaminan.
 	LastRevision(ctx context.Context, claimID, objectID string, coverageSeq int) (int, bool, error)

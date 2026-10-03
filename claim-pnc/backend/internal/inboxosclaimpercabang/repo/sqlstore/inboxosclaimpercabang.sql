@@ -40,7 +40,7 @@
 -- `PZINSKEY`, yang sama isinya dengan `T_CLAIM_PNC.CLAIMID`, dan ia UNIK di tabel itu
 -- (1.023 baris, 1.023 nilai berbeda) sehingga tidak menggandakan baris.
 --
--- ### Yang berubah bukan bentuk kuerinya, melainkan JUMLAH BARIS DI LAYAR
+-- ### Yang berubah bukan bentuk kuerinya, melainkan HIMPUNAN KLAIM DI LAYAR
 --
 -- Diukur langsung, penyaring dan gabungan lain sama persis:
 --
@@ -48,14 +48,56 @@
 --   lewat POOLDATA.T_CLAIMLIST_ADMIN       443 baris
 --   tidak ada di T_CLAIMLIST_ADMIN         517 klaim
 --
--- Sebabnya bukan data yang basi. `T_CLAIMLIST_ADMIN` hanya memuat klaim yang tugasnya sedang
--- berada di ANTREAN ADMIN — seluruh isinya empat label saja:
+-- Sebabnya bukan data yang basi — baris terbaru tabel itu bertanggal hari pengukuran.
+-- Keduanya **himpunan yang berbeda**, dan masing-masing punya ratusan baris yang tidak ada di
+-- yang lain.
 --
---   Input Register 351 · Choose Surveyor 340 · Input Estimasi 182 · InputReceiveDocument 142
+-- #### Arah pertama: 517 klaim outstanding yang tidak ada di T_CLAIMLIST_ADMIN
 --
--- Klaim yang sedang di PIC Teknik, Komite, Survey, atau Compliance tidak ada di sana. Artinya
--- layar ini berubah arti: dari "seluruh klaim outstanding satu cabang" menjadi "klaim
--- outstanding yang masih di tahap Admin".
+-- Tahap penugasan terbukanya, dihitung per klaim:
+--
+--   Send To Analis 167 · Estimation 136 · Choose Surveyor 81 · tanpa penugasan 45
+--   View Polis 37 · Send To PIC Teknik 19 · Input Estimasi 12 · Input Register 10
+--   FixCorrespondence 6 · InputPanel 3 · Review Klaim OCR 1
+--
+-- Yang menguasai angka adalah tahap **Analis dan Estimator** — 303 klaim, 59% dari 517.
+--
+-- Dan `T_CLAIMLIST_ADMIN` **tidak sekadar terbatas empat label**, meski isinya memang hanya
+-- empat (Input Register 351 · Choose Surveyor 340 · Input Estimasi 182 ·
+-- InputReceiveDocument 142). Dipilah menurut apakah tahapnya termasuk keempatnya:
+--
+--   seluruh tugasnya DI LUAR empat label itu           411 klaim
+--   seluruh tugasnya JUSTRU empat label itu            103 klaim   <-- tetap tidak ada
+--   campuran                                             3 klaim
+--
+-- Seratus tiga klaim duduk di label yang tabel itu memang bawa, namun barisnya tetap tidak
+-- ada. Tabelnya karena itu **tidak lengkap**, bukan hanya bersempit lingkup.
+--
+-- #### Arah kedua: 453 baris tabel itu yang tidak dapat ditampilkan — dan itu BUKAN kemunduran
+--
+-- Dari 874 baris Work-PNC outstanding di `T_CLAIMLIST_ADMIN`:
+--
+--   PZINSKEY tidak ada di T_CLAIM_PNC   371
+--   registerdate NULL                    59
+--   branchcode NULL                      23
+--   cocok penuh                         421
+--
+-- Ketiga sebab itu **berlaku sama persis pada sumber lama**, karena tabel penggiring kedua
+-- kueri adalah `T_CLAIM_PNC` — bukan tabel penugasan. Klaim tanpa baris di sana tidak pernah
+-- muncul, sumber tabel apa pun yang dipakai. Diukur:
+--
+--   DATAPEGA outstanding Work-PNC            1.985 baris, 1.062 punya baris T_CLAIM_PNC
+--   T_CLAIMLIST_ADMIN outstanding Work-PNC     874 baris,   503 punya baris T_CLAIM_PNC
+--
+-- Sumber lama justru membuang LEBIH BANYAK (923 berbanding 371) dengan sebab yang sama.
+--
+-- Ketiga ratus tujuh puluh satu yatim itu seluruhnya **klaim PNC** (`PYID` berbentuk
+-- `PNC-nnnn`, bukan `RCV-nnnn`) dan seluruhnya ada di DATAPEGA. Tahapnya Input Register 294 ·
+-- Input Estimasi 57 · Choose Surveyor 20 — pola klaim yang case-nya sudah dibuat tetapi
+-- registrasinya belum pernah disubmit, sehingga `T_CLAIM_PNC` belum ditulis.
+--
+-- Karena itu ia **tidak dinyatakan sebagai selisih** ke pengguna: tidak ada yang berubah bagi
+-- mereka.
 --
 -- Itu selisih perilaku, bukan pemeliharaan. Ia dinyatakan lewat
 -- inboxosclaimpercabang.PlannedDifferences supaya pengguna yang membandingkan kedua layar
@@ -204,19 +246,23 @@
 -- Kode dan nama diambil dari SATU baris. Mengambilnya lewat dua kueri membuka kemungkinan
 -- judul layar menyebut cabang yang berbeda dari cabang barisnya.
 --
+-- ### Kenapa `FETCH NEXT 1 ROWS ONLY` tetap dipasang meski OLDID terbukti unik
+--
+-- Keunikan itu terbaca dari ISI tabel hari ini, bukan dari constraint di katalog. Tanpa
+-- pembatas, satu baris kembar yang masuk kelak akan membuat pemindai baris tunggal gagal —
+-- layar mati total — alih-alih mengambil salah satunya.
+--
+-- ### `TRIM` di kedua sisi, dan itu bukan kehati-hatian berlebihan
+--
+-- `OLDID` bertipe VARCHAR2 dan diisi sistem lama; kode dari HCQ datang lewat JSON. Satu spasi
+-- di ujung salah satunya cukup membuat seluruh pemanggil cabang itu tertolak, dan pesan yang
+-- muncul menyuruh mereka menghubungi Tim IT — bukan menunjuk spasinya.
+--
 -- Bind: :1 kode cabang rinci (DetailBranchCode)
 SELECT a.id         AS BRANCH_CODE,
        a.branchname AS BRANCH_NAME
   FROM POOLDATA.BRANCH a
  WHERE TRIM(a.oldid) = TRIM(:1)
- FETCH NEXT 1 ROWS ONLY` ditambahkan: `BRANCH.ID` tidak punya jaminan unik yang terbaca dari
--- katalog, dan dua baris berkode sama akan membuat pemindai baris tunggal gagal alih-alih
--- mengambil salah satunya.
---
--- Bind: :1 kode cabang
-SELECT a.branchname AS BRANCH_NAME
-  FROM POOLDATA.BRANCH a
- WHERE a.id = :1
  FETCH NEXT 1 ROWS ONLY
 
 -- name: list
@@ -236,6 +282,11 @@ SELECT c.branchname                                   AS BRANCH_NAME,
           ELSE c.grouppanel
        END                                            AS BUSINESS_NAME,
        c.nopolis                                      AS POLICY_NUMBER,
+       (SELECT t.theinsured
+          FROM POOLDATA.T_GENERAL t
+         WHERE t.nopolis = c.nopolis
+         ORDER BY CAST(TRIM(t.prodke) AS NUMERIC) DESC
+         FETCH FIRST 1 ROW ONLY)                      AS INSURED_NAME,
        c.claimno                                      AS CLAIM_NUMBER,
        c.registerdate                                 AS REGISTER_DATE,
        c.dateofloss                                   AS LOSS_DATE,
@@ -354,6 +405,11 @@ SELECT c.branchname                                   AS BRANCH_NAME,
           ELSE c.grouppanel
        END                                            AS BUSINESS_NAME,
        c.nopolis                                      AS POLICY_NUMBER,
+       (SELECT t.theinsured
+          FROM POOLDATA.T_GENERAL t
+         WHERE t.nopolis = c.nopolis
+         ORDER BY CAST(TRIM(t.prodke) AS NUMERIC) DESC
+         FETCH FIRST 1 ROW ONLY)                      AS INSURED_NAME,
        c.claimno                                      AS CLAIM_NUMBER,
        c.registerdate                                 AS REGISTER_DATE,
        c.dateofloss                                   AS LOSS_DATE,
@@ -379,11 +435,6 @@ SELECT c.branchname                                   AS BRANCH_NAME,
          WHERE t.nopolis = c.nopolis
          ORDER BY CAST(TRIM(t.prodke) AS NUMERIC) DESC
          FETCH FIRST 1 ROW ONLY)                      AS POLICY_BUSINESS_NAME,
-       (SELECT t.theinsured
-          FROM POOLDATA.T_GENERAL t
-         WHERE t.nopolis = c.nopolis
-         ORDER BY CAST(TRIM(t.prodke) AS NUMERIC) DESC
-         FETCH FIRST 1 ROW ONLY)                      AS INSURED_NAME,
        ROUND(COALESCE(e.reserves_plain, 0) * 100)     AS RESERVE_CLAIM_FULL,
        ROUND(COALESCE(e.reserves, 0) * (c.shareasm / 100) * 100)
                                                       AS RESERVE_CLAIM_ASM,
@@ -597,4 +648,262 @@ SELECT COUNT(*) AS READABLE
        LEFT JOIN POOLDATA.T_CLAIM_DOMINANFACTOR d ON d.claimid = c.claimid
        LEFT JOIN POOLDATA.M_DOMINAN_FACTOR f ON f.id = d.id_dominanfactor
        LEFT JOIN treaty_loss@asmd.sinarmas.co.id tr ON tr.no_klaim = c.claimno
+ WHERE 1 = 0
+
+-- ============================================================================
+-- POPUP DETAIL — empat kueri
+-- ============================================================================
+--
+-- Asalnya `Harness/View_DetailKlaimCabang_Harness-Harness.xml` +
+-- `Section/DetailKlaimCabang_Sect-Section.xml`, diisi
+-- `Activity/ViewStatusProgressCabang_act-Act.xml` (15 langkah).
+--
+-- ### Sistem lama membacanya lewat CLIPBOARD; di sini dibaca dari tabel
+--
+-- Langkah 3 menjalankan `Obj-Open-By-Handle` atas `"ASM-FW-GCNMFW-WORK " + param.Inskey`,
+-- yang memuat SELURUH pohon klaim ke memori Pega — klaim, objek, coverage, survei, adjustment
+-- — lalu langkah-langkah berikutnya memungutnya dari sana. Go tidak punya padanan itu, dan
+-- memuatnya pun tidak diinginkan: popup hanya menggambar sebagian kecilnya.
+--
+-- Karena itu keempat kueri di bawah membaca TEPAT yang digambar, tidak lebih.
+--
+-- ### SEMUANYA menyaring cabang, termasuk yang menerima nomor klaim
+--
+-- Popup lama tidak menyaring karena ia hanya dapat dibuka dari baris yang sudah tampil.
+-- Endpoint HTTP tidak punya pembatas itu. Tanpa penyaring cabang, popup menjadi jalan memutar
+-- yang membocorkan nama tertanggung dan nilai uang antarbadan hukum (`R-20`).
+--
+-- Ketiga kueri anak menerima `CLAIMID`, bukan nomor klaim. Kuncinya sudah dipastikan milik
+-- cabang pemanggil oleh detail_header, dan `CLAIMID` unik sedangkan `CLAIMNO` tidak.
+
+-- name: detail_header
+-- Delapan nilai ringkasan pada kepala popup, untuk satu klaim milik satu cabang.
+--
+-- ### Penyaringnya sama persis dengan kueri daftar, dan itu disengaja
+--
+-- Cabang, `registerdate IS NOT NULL`, dan penyaring outstanding ketiganya diulang di sini.
+-- Bila popup lebih longgar daripada daftarnya, akan ada klaim yang tidak tampil di layar
+-- tetapi isinya tetap dapat dibaca lewat nomor.
+--
+-- ### "Total Sum Insured" dan "Occupation" diambil dari SATU objek, bukan seluruhnya
+--
+-- Di Pega, `local.idxobj` disetel di dalam perulangan atas `ObjectList` (langkah 4) sehingga
+-- nilainya berakhir pada objek TERAKHIR; langkah 6 dan 7 lalu mengisi `TempDetail.TSI` dan
+-- `TempDetail.Occupation` dari objek itu saja. Label "Total Sum Insured" karena itu
+-- menyesatkan — angkanya bukan total. Perilakunya direplikasi (`P-5`).
+--
+-- "Objek terakhir" di Pega berarti baris terakhir pada clipboard, dan urutan itu tidak dapat
+-- direproduksi: `URUTAN` terisi pada **4 dari 2.610 baris** dan `OBJECTINDEX` pada **0**.
+-- Yang dipakai `OBJECTID` terbesar — satu-satunya kolom yang terisi pada seluruh baris.
+-- Selisihnya dinyatakan lewat DetailPlannedDifferences.
+--
+-- ### Occupation menempuh dua jalur, dan keduanya kosong pada data hari ini
+--
+-- Langkah 6 memakai `OCCUPATIONNAME` objek; langkah 10 mencarinya lewat `OCCUPATIONID` ke
+-- tabel `OCCUPATION`. Diukur langsung: **keduanya NULL pada seluruh 2.610 baris**, sehingga
+-- nilai ini akan kosong di lingkungan ini. Jalurnya tetap dibangun karena produksi dapat
+-- berbeda, dan kekosongannya dilaporkan — bukan disamarkan menjadi tanda hubung.
+--
+-- Jalur ketiga milik Pega — langkah 8, lewat `CoverageList(1).DeductibleList(1)` — TIDAK
+-- dibawa: daftar deductible tidak punya tabel yang terbaca dari export.
+--
+-- Bind: :1 kode cabang · :2 nomor klaim
+SELECT c.claimno                                AS CLAIM_NUMBER,
+       c.claimid                                AS CLAIM_KEY,
+       CASE
+          WHEN c.grouppanel = '002' THEN 'PA'
+          WHEN c.grouppanel = '003' THEN 'Aneka'
+          WHEN c.grouppanel = '004' THEN 'Marine Cargo'
+          WHEN c.grouppanel = '005' THEN 'Travel'
+          WHEN c.grouppanel = '006' THEN 'Fire'
+          ELSE c.grouppanel
+       END                                      AS BUSINESS_NAME,
+       COALESCE(obj.occupationname, occ.notes)  AS OCCUPATION,
+       ROUND(COALESCE(cvg.sumtsi, 0) * 100)     AS TOTAL_SUM_INSURED,
+       c.kronologi                              AS CHRONOLOGY,
+       ROUND(COALESCE(e.reserves, 0) * 100)     AS ESTIMATION_VALUE,
+       c.registerdate                           AS REGISTER_DATE,
+       c.remarkrecomendation                    AS REMARK_RECOMMENDATION,
+       p.keterangan                             AS PROGRESS_NOTE
+  FROM POOLDATA.T_CLAIM_PNC c
+       JOIN POOLDATA.T_CLAIMLIST_ADMIN w
+            ON c.claimid = w.pzinskey
+           AND w.pystatuswork NOT IN ('Resolved-Rejected', 'Resolved-Completed')
+           AND w.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+       LEFT JOIN (SELECT claimid, objectid, occupationname, occupationid
+                    FROM (SELECT o.claimid,
+                                 o.objectid,
+                                 o.occupationname,
+                                 o.occupationid,
+                                 ROW_NUMBER() OVER (PARTITION BY o.claimid
+                                                        ORDER BY o.objectid DESC) rn
+                            FROM POOLDATA.T_CLAIM_OBJECTLIST o)
+                   WHERE rn = 1) obj
+            ON obj.claimid = c.claimid
+       LEFT JOIN OCCUPATION occ
+            ON occ.id = obj.occupationid
+       LEFT JOIN (SELECT claimid, objectid, sumtsi
+                    FROM (SELECT v.claimid,
+                                 v.objectid,
+                                 v.sumtsi,
+                                 ROW_NUMBER() OVER (PARTITION BY v.claimid, v.objectid
+                                                        ORDER BY v.objectcoverageid DESC) rn
+                            FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE v)
+                   WHERE rn = 1) cvg
+            ON cvg.claimid = c.claimid
+           AND cvg.objectid = obj.objectid
+       LEFT JOIN (  SELECT claimid, SUM(estimationvalue) AS reserves
+                      FROM POOLDATA.T_CLAIM_ESTIMASI
+                  GROUP BY claimid) e
+            ON e.claimid = c.claimid
+       LEFT JOIN (SELECT pnccaseid, keterangan
+                    FROM (SELECT g.pnccaseid,
+                                 g.keterangan,
+                                 ROW_NUMBER() OVER (PARTITION BY g.pnccaseid
+                                                        ORDER BY g.tgl_input DESC) rn
+                            FROM POOLDATA.GCNM_PROGRESS_CLAIM g
+                           WHERE g.status_progress1 IS NOT NULL)
+                   WHERE rn = 1) p
+            ON p.pnccaseid = c.claimno
+ WHERE c.registerdate IS NOT NULL
+   AND c.branchcode = :1
+   AND c.claimno = :2
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: detail_objects
+-- Isi grid objek pertanggungan.
+--
+-- SELURUH kolom ketiga varian dikembalikan sekaligus. Yang memilih varian di Pega adalah when
+-- rule `IsAneka`, `IsTravel`, `IsPA`, dan `IsMarineCargo` — dan **keempatnya tidak ada di
+-- export** (`R-16`). Memilihnya di sini berarti menebak; memilihnya di layar dari lini bisnis
+-- dapat diperbaiki tanpa menyentuh penyimpanan begitu keempat when rule tiba.
+--
+-- `LOKASI`, bukan `OBJECTLOCATION`. Properti Pega bernama `.ObjectLocation`, tetapi kolom
+-- dengan nama itu TIDAK ADA di `T_CLAIM_OBJECTLIST` — diverifikasi ke katalog.
+--
+-- Urutannya `OBJECTID`, satu-satunya kolom yang terisi pada seluruh baris. Lihat catatan
+-- detail_header.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+SELECT o.objectname              AS OBJECT_NAME,
+       o.lokasi                  AS OBJECT_LOCATION,
+       o.objectjob               AS OBJECT_JOB,
+       o.dateofbirth             AS OBJECT_DATE_OF_BIRTH,
+       o.objectidcard            AS OBJECT_ID_CARD,
+       o.objectparticipantstatus AS OBJECT_PARTICIPANT_STATUS
+  FROM POOLDATA.T_CLAIM_OBJECTLIST o
+ WHERE o.claimid = :1
+ ORDER BY o.objectid ASC
+
+-- name: detail_progress
+-- Isi grid riwayat progres klaim.
+-- — RDB List/GetCommunicationList-SQL.xml
+--
+-- ### Status Progress 1 dibaca dari tabel yang BERBEDA dari kueri daftar
+--
+-- Di sini `GCNM_MST_PROGRESS_KLAIM`; pada kueri daftar `GCNM_MST_PROGRESS`. Itu bukan salah
+-- salin — kueri lamanya memang memakai tabel yang berbeda di kedua tempat, dan keduanya
+-- dibawa apa adanya (`P-5`).
+--
+-- Gabungan ke `GCNM_MST_PROGRESS` untuk Status Progress 2 menempuh DUA kolom sekaligus,
+-- `ID_MST` dan `ID_PROGRESS`. Menghilangkan salah satunya mengubah baris mana yang cocok.
+--
+-- Kunci penyaringnya `PNCCASEID`, yang pada tabel ini berisi NOMOR klaim — bukan `CLAIMID`.
+-- Kueri lama menyetel `TempSearch.CARI1 := param.Inskey`, dan `Inskey` diisi `.ClaimNo`.
+--
+-- Bind: :1 nomor klaim
+SELECT a.tgl_input     AS RECORDED_AT,
+       a.pnccaseid     AS CLAIM_NUMBER,
+       b.sts_progress1 AS PROGRESS_STATUS_1,
+       c.sts_progress2 AS PROGRESS_STATUS_2,
+       a.user_input    AS ENTERED_BY,
+       a.next_followup AS NEXT_FOLLOW_UP_AT,
+       a.status        AS PROGRESS_STATUS,
+       a.keterangan    AS PROGRESS_NOTE
+  FROM POOLDATA.GCNM_PROGRESS_CLAIM a
+       LEFT JOIN POOLDATA.GCNM_MST_PROGRESS_KLAIM b
+            ON a.status_progress1 = b.id_progress
+       LEFT JOIN POOLDATA.GCNM_MST_PROGRESS c
+            ON a.status_progress2 = c.id_mst
+           AND b.id_progress = c.id_progress
+ WHERE a.pnccaseid = :1
+ ORDER BY a.tgl_input DESC
+
+-- name: detail_messages
+-- Isi grid "KOMUNIKASI DENGAN LOSS ADJUSTER".
+-- — RDB List/GetInboxKomunikasi_OS_Cabang-SQL.xml
+--
+-- ### Kueri lama merangkai daftar kunci sebagai TEKS, dan itu celah injeksi
+--
+-- Langkah 12 memutari `SurveyResults` merangkai `getkomunikasi.M_SURVEY_ID` menjadi
+-- `'a','b','c'`, langkah 13 menambahkan `pzInsKey`, lalu kuerinya menyisipkannya mentah:
+--
+--   WHERE a.caseid in ({ASIS:getkomunikasi.D_SURVEY_ID})
+--
+-- Pola `{ASIS:…}` adalah perangkaian SQL dari nilai, yang dilarang tanpa perkecualian
+-- (`08-TECHNICAL-STRATEGY.md` §4.3). Di sini daftar itu menjadi SUBKUERI, sehingga tidak ada
+-- satu pun nilai yang menyentuh teks SQL — sekaligus menghapus perjalanan per baris survei.
+--
+-- ### INTERNAL vs EXTERNAL dibawa, tetapi tidak lagi menentukan urutan
+--
+-- Kueri lama memecah hasilnya menjadi tiga UNION ALL — pesan internal, pesan eksternal, dan
+-- balasan — lalu mengurutkannya. Di sini satu baris membawa pesan DAN balasannya sekaligus,
+-- persis seperti tabelnya menyimpannya, dan penandanya dikirim sebagai kolom. Layar yang
+-- menempatkannya di sisi kiri atau kanan.
+--
+-- `ROWNUM` pada kueri lama dipakai mengambil satu nama pengirim internal untuk SELURUH baris
+-- — sehingga semua baris menampilkan nama yang sama. Itu tidak dibawa: setiap baris membawa
+-- nama pengirimnya sendiri.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID), dipakai dua kali → :1 dan :2
+SELECT k.sendername      AS SENDER_NAME,
+       k.createddate     AS SENT_AT,
+       k.message         AS MESSAGE,
+       k.createdatereply AS REPLIED_AT,
+       k.replymessage    AS REPLY,
+       CASE
+          WHEN k.sender IN (SELECT u.operator_id
+                              FROM POOLDATA.MST_USER_TEKNIK u
+                             WHERE u.sts_aktif = '1')
+          THEN 1 ELSE 0
+       END               AS IS_INTERNAL
+  FROM POOLDATA.M_KOMUNIKASI_PNC k
+ WHERE k.caseid = :1
+    OR k.caseid IN (SELECT s.caseid
+                      FROM POOLDATA.T_SURVEYORLIST s
+                     WHERE s.pnccaseid = :2)
+ ORDER BY k.createddate DESC
+
+-- name: detail_dominant_factors
+-- Faktor dominan satu klaim, sudah berurut.
+-- — RDB List/GetDataDominanFactorListOS-SQL.xml
+--
+-- Kueri lama merangkainya dengan `LISTAGG`, yang tidak ada di PostgreSQL 17+, sementara
+-- padanan yang dianjurkan `09-DATABASE-STRATEGY.md` §4 — `STRING_AGG` — tidak ada di Oracle
+-- 19c. Tidak ada satu bentuk pun yang berjalan di keduanya, sehingga perangkaiannya pindah ke
+-- Go. Alasan lengkapnya di kepala berkas ini.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+SELECT m.name AS FACTOR_NAME
+  FROM POOLDATA.T_CLAIM_DOMINANFACTOR d
+       JOIN POOLDATA.M_DOMINAN_FACTOR m
+            ON m.id = d.id_dominanfactor
+ WHERE d.claimid = :1
+ ORDER BY d.idx_dominanfactor ASC
+
+-- name: check_detail_tables
+-- Memastikan tabel yang HANYA dipakai popup Detail terbaca dari koneksi yang dipakai.
+--
+-- Dipanggil perintah `-periksa`. Ia tidak menyentuh satu baris pun.
+--
+-- Terpisah dari check_tables supaya kegagalannya terbaca sebagai kegagalan POPUP, bukan
+-- sebagai kegagalan daftar. Yang pertama membuat satu tombol tidak bekerja; yang kedua
+-- menghentikan seluruh layar cabang.
+SELECT COUNT(*) AS READABLE
+  FROM POOLDATA.T_CLAIM_OBJECTLIST o
+       LEFT JOIN POOLDATA.T_CLAIM_OBJECTCOVERAGE v ON v.claimid = o.claimid
+       LEFT JOIN OCCUPATION occ ON occ.id = o.occupationid
+       LEFT JOIN POOLDATA.GCNM_MST_PROGRESS_KLAIM b ON b.id_progress = o.claimid
+       LEFT JOIN POOLDATA.M_KOMUNIKASI_PNC k ON k.caseid = o.claimid
+       LEFT JOIN POOLDATA.MST_USER_TEKNIK u ON u.operator_id = k.sender
  WHERE 1 = 0

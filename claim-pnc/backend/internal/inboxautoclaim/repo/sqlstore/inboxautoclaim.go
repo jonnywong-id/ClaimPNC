@@ -326,6 +326,131 @@ func (r *Repo) FindPolicyProductSeq(ctx context.Context, policyNo string) (strin
 	return clean, clean != "", nil
 }
 
+// FindPolicyDetail membaca data polis dari POOLDATA.T_GENERAL.
+//
+// STARTDATE/ENDDATE diformat menjadi dd/mm/yyyy di Go, TANPA konversi zona waktu — sama
+// dengan TGLPROSES (lihat formatDate): yang dibandingkan adalah tanggal yang tertulis.
+func (r *Repo) FindPolicyDetail(ctx context.Context, policyNo, productSeq string) (inboxautoclaim.PolicyDetail, bool, error) {
+	row := r.db.QueryRowContext(ctx, getQueryFor(inboxautoclaim.DefaultSource, "auto_claim_policy_detail"),
+		strings.TrimSpace(policyNo), strings.TrimSpace(productSeq))
+
+	var (
+		start, end                                       sql.NullTime
+		business, status, cancelled, currency, sob, pane sql.NullString
+	)
+	switch err := row.Scan(&start, &end, &business, &status, &cancelled, &currency, &sob, &pane); {
+	case err == sql.ErrNoRows:
+		return inboxautoclaim.PolicyDetail{}, false, nil
+	case err != nil:
+		return inboxautoclaim.PolicyDetail{}, false, fmt.Errorf("inboxautoclaim/sqlstore: membaca data polis: %w", err)
+	}
+	return inboxautoclaim.PolicyDetail{
+		StartDate:        formatDate(start),
+		EndDate:          formatDate(end),
+		BusinessCode:     strings.TrimSpace(business.String),
+		StatusBusiness:   strings.TrimSpace(status.String),
+		FlagEdmBatal:     strings.TrimSpace(cancelled.String),
+		Currency:         strings.TrimSpace(currency.String),
+		SourceOfBusiness: strings.TrimSpace(sob.String),
+		GroupPanel:       strings.TrimSpace(pane.String),
+	}, true, nil
+}
+
+// CurrencyID menerjemahkan kode mata uang menjadi ID POOLDATA.CURRENCY.
+func (r *Repo) CurrencyID(ctx context.Context, code string) (string, bool, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return "", false, nil
+	}
+	var id sql.NullString
+	switch err := r.db.QueryRowContext(ctx, getQueryFor(inboxautoclaim.DefaultSource, "auto_claim_currency_id"), code).Scan(&id); {
+	case err == sql.ErrNoRows:
+		return "", false, nil
+	case err != nil:
+		return "", false, fmt.Errorf("inboxautoclaim/sqlstore: mencari mata uang: %w", err)
+	}
+	clean := strings.TrimSpace(id.String)
+	return clean, clean != "", nil
+}
+
+// ContractClaimed menyatakan kontrak Kredit sudah diunggah dan belum gagal.
+func (r *Repo) ContractClaimed(ctx context.Context, companyCode, contractNo string) (bool, error) {
+	contractNo = strings.ToUpper(strings.TrimSpace(contractNo))
+	if contractNo == "" {
+		return false, nil
+	}
+	return r.exists(ctx, "auto_claim_contract_claimed", "memeriksa kontrak ganda",
+		strings.TrimSpace(companyCode), contractNo, inboxautoclaim.MessageSuccess)
+}
+
+// HasOpenProtection menyatakan polis punya Open Protection bertipe tertentu.
+func (r *Repo) HasOpenProtection(ctx context.Context, policyNo, protectionType string) (bool, error) {
+	return r.exists(ctx, "auto_claim_open_protection", "memeriksa open protection",
+		strings.TrimSpace(policyNo), strings.TrimSpace(protectionType))
+}
+
+// PremiumCheckChoices membaca isi kedua isian tab Cek Premi.
+func (r *Repo) PremiumCheckChoices(ctx context.Context) (inboxautoclaim.PremiumCheckChoices, error) {
+	business, err := r.choices(ctx, "auto_claim_premium_business", "daftar bisnis")
+	if err != nil {
+		return inboxautoclaim.PremiumCheckChoices{}, err
+	}
+	source, err := r.choices(ctx, "auto_claim_premium_source", "daftar sumber bisnis")
+	if err != nil {
+		return inboxautoclaim.PremiumCheckChoices{}, err
+	}
+	return inboxautoclaim.PremiumCheckChoices{Business: business, SourceOfBusiness: source}, nil
+}
+
+// SucceededClaimTotal menjumlahkan nilai klaim Kredit yang sudah Sukses Klaim.
+func (r *Repo) SucceededClaimTotal(ctx context.Context, query inboxautoclaim.PremiumCheckQuery) (string, error) {
+	var total sql.NullString
+	err := r.db.QueryRowContext(ctx, getQueryFor(inboxautoclaim.DefaultSource, "auto_claim_premium_claim_total"),
+		inboxautoclaim.MessageSuccess, query.BusinessCode, query.SourceOfBusiness).Scan(&total)
+	if err != nil {
+		return "", fmt.Errorf("inboxautoclaim/sqlstore: menjumlahkan klaim sukses: %w", err)
+	}
+	return strings.TrimSpace(total.String), nil
+}
+
+// choices membaca kueri dua kolom (kode, nama) menjadi pilihan isian.
+func (r *Repo) choices(ctx context.Context, name, action string) ([]inboxautoclaim.Choice, error) {
+	rows, err := r.db.QueryContext(ctx, getQueryFor(inboxautoclaim.DefaultSource, name))
+	if err != nil {
+		return nil, fmt.Errorf("inboxautoclaim/sqlstore: membaca %s: %w", action, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []inboxautoclaim.Choice
+	for rows.Next() {
+		var code, label sql.NullString
+		if err := rows.Scan(&code, &label); err != nil {
+			return nil, fmt.Errorf("inboxautoclaim/sqlstore: membaca %s: %w", action, err)
+		}
+		clean := strings.TrimSpace(code.String)
+		if clean == "" {
+			continue
+		}
+		result = append(result, inboxautoclaim.Choice{Code: clean, Name: strings.TrimSpace(label.String)})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("inboxautoclaim/sqlstore: menelusuri %s: %w", action, err)
+	}
+	return result, nil
+}
+
+// exists menjalankan kueri `SELECT 1 … FETCH NEXT 1 ROWS ONLY` dan menyatakan ada/tidaknya.
+func (r *Repo) exists(ctx context.Context, name, action string, argument ...any) (bool, error) {
+	var marker sql.NullInt64
+	switch err := r.db.QueryRowContext(ctx, getQueryFor(inboxautoclaim.DefaultSource, name), argument...).Scan(&marker); {
+	case err == sql.ErrNoRows:
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("inboxautoclaim/sqlstore: %s: %w", action, err)
+	}
+	return true, nil
+}
+
 // InsertUpload menyimpan seluruh baris unggahan dalam SATU transaksi.
 //
 // # Kenapa satu transaksi untuk seluruh berkas
@@ -457,10 +582,10 @@ func insertStatement(
 			l.Row.PolicyNo,
 			nullable(l.ProductSeq),
 			uploadedBy,
-			mark, // IDPEGA
-			mark, // ACCEPTNO
-			mark, // TMP_MESSAGE
-			nil,  // CURRENCY — dari snapshot polis, menunggu B-1
+			mark,                   // IDPEGA
+			mark,                   // ACCEPTNO
+			mark,                   // TMP_MESSAGE
+			nullable(l.CurrencyID), // CURRENCY — ID POOLDATA.CURRENCY dari T_GENERAL.CURRENCY
 			l.Row.ClaimAmount,
 			// Huruf besar mengikuti `@toUpperCase(ContractNo)` (K:4424-4431) — dan
 			// pencocokan hasilnya di Pega memakai upper(NOASURANSI).
@@ -479,7 +604,7 @@ func insertStatement(
 			mark, // NOAKSEPTASI
 			mark, // TMP_MESSAGE
 			l.Row.DateOfLoss,
-			nil, // CURRENCY
+			nullable(l.CurrencyID), // CURRENCY
 			l.Row.ClaimAmount,
 			nullable(l.Row.FlagNoPayout),
 			nullable(l.Row.ReportDescription),
@@ -494,7 +619,7 @@ func insertStatement(
 			mark, // IDPEGA
 			l.Row.DateOfLoss,
 			l.Row.ReportDate,
-			nil, // CURRENCY
+			nullable(l.CurrencyID), // CURRENCY
 			nullable(l.Row.CauseOfLoss),
 			l.Row.ClaimAmount,
 			nullable(l.Row.Reason),

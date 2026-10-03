@@ -35,26 +35,34 @@ func query(name string) string {
 	return text
 }
 
-// taskColumns adalah ke-19 alias yang dikembalikan kueri daftar.
+// taskColumns adalah ke-16 alias yang dikembalikan kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxsurvey.sql dan dengan urutan pemindai
 // scanTask. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat diuji
 // kesesuaiannya di query_test.go — satu kolom yang bergeser akan memindahkan nomor polis ke
 // kolom nama tertanggung tanpa menghasilkan galat apa pun.
+//
+// `APPOINTMENT_NUMBER` dan `REFERENCE_NUMBER` TIDAK ada di sini: kolom asalnya belum ada di
+// `POOLDATA.T_SURVEYORLIST`. Keduanya tetap menjadi field pada inboxsurvey.SurveyTask supaya
+// kolomnya tetap tergambar di layar sebagai isian yang belum terbawa — lihat kepala
+// inboxsurvey.sql bagian C.
 var taskColumns = []string{
-	"SURVEY_ID", "CLAIM_ID", "SURVEY_INDEX", "APPOINTMENT_NUMBER", "REFERENCE_NUMBER",
+	"SURVEY_ID", "CLAIM_ID", "SURVEY_INDEX",
 	"CLAIM_NUMBER", "POLICY_NUMBER", "INSURED_NAME", "CLASS_OF_BUSINESS", "CAUSE_OF_LOSS",
-	"LOCATION", "TECHNICAL_PIC", "ADJUSTER_PIC", "DATE_OF_LOSS", "AGING_DAYS",
-	"ASM_STATUS", "SURVEYOR_TYPE", "SURVEY_STATUS", "TOTAL_ROWS",
+	"LOCATION", "TECHNICAL_PIC", "ADJUSTER_PIC", "DATE_OF_LOSS", "CREATED_AT",
+	"ASM_STATUS", "SURVEYOR_TYPE", "TOTAL_ROWS",
 }
 
-// countColumns adalah ketujuh alias kueri penghitung tab, dalam urutan tampil tab.
+// countColumns adalah alias kueri penghitung tab, dalam urutan tampil tab.
 //
-// Urutannya WAJIB sama dengan inboxsurvey.Tabs(). Satu kolom yang bergeser akan menukar
-// jumlah tab Invoice dengan tab Close — dua angka yang sama-sama masuk akal, sehingga
-// tertukarnya tidak akan disadari siapa pun.
+// HANYA tab yang dapat dihitung ada di sini — keempat tab yang bergantung pada kolom adjuster
+// tidak dihitung sama sekali, karena angka nol akan terbaca sebagai "tab ini kosong" alih-alih
+// "tab ini belum dapat dihitung".
+//
+// Urutannya WAJIB sama dengan urutan tab tersedia pada inboxsurvey.Tabs(). Satu kolom yang
+// bergeser akan menukar jumlah tab "belum dibalas ASM" dengan "sudah dibalas ASM" — dua angka
+// yang sama-sama masuk akal, sehingga tertukarnya tidak akan disadari siapa pun.
 var countColumns = []string{
-	"COUNT_OUTSTANDING", "COUNT_INVOICE", "COUNT_CLOSE", "COUNT_ALL",
 	"COUNT_NOT_ANSWERED", "COUNT_NOT_REPLIED", "COUNT_REPLIED",
 }
 

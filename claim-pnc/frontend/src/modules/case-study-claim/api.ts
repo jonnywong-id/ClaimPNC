@@ -174,7 +174,7 @@ export function useSaveRemark() {
       ),
 
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['case-study-claim', 'daftar'] })
+      client.invalidateQueries({ queryKey: ['case-study-claim', 'daftar'] })
     },
   })
 }

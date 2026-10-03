@@ -41,9 +41,15 @@ const (
 // RouterRCLDoctor. Namanya tetap dibawa supaya seam Penugasan punya sesuatu yang dapat
 // diisi begitu logikanya diketahui, alih-alih menamai ulang dan kehilangan jejaknya.
 const (
-	RouterPNCAdmin        = "PNCAdminRouter"
-	RouterPNCTechnical    = "PNCTeknikRouter"
-	RouterRCLDoctor       = "RouterRCLDokter"
+	RouterPNCAdmin     = "PNCAdminRouter"
+	RouterPNCTechnical = "PNCTeknikRouter"
+	RouterRCLDoctor    = "RouterRCLDokter"
+
+	// OperatorUnassigned adalah operator penampung "kasus belum ditugaskan" — `ServicePNC`
+	// (DATAPEGA.PR_OPERATORS). `Activity/PNCTeknikRouter-act.xml` langkah 2 menugaskan ke sini
+	// bila `ClaimData.UserTeknis` kosong; `BrowseCaseNotAssigned` membacanya dan agent
+	// `TransferAllCaseNotAssigned` membagikannya ulang.
+	OperatorUnassigned    = "ServicePNC"
 	RouterCurrentOperator = "ToCurrentOperator"
 	RouterToWorklist      = "ToWorkList"
 	RouterToWorkbasket    = "ToWorkbasket"

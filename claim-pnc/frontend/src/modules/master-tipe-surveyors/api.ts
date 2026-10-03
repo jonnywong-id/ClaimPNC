@@ -90,7 +90,7 @@ export function useSaveSurveyorType() {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan, kode
       // barunya hanya diketahui server — menebaknya di klien akan menampilkan kode yang
       // salah sampai muat ulang berikutnya.
-      void client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }

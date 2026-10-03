@@ -57,14 +57,41 @@
 // ## 1. Sumber datanya BUKAN tabel yang dipakai inbox lain
 //
 // Seluruh kueri layar ini di Pega membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan
-// `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`. Tetapi `POOLDATA.T_CLAIMLIST_ADMIN` —
-// tabel yang Work Owner tetapkan sebagai penggantinya — **tidak memuat satu pun baris
-// `Work-SurveyClaim`**; isinya 870 `Work-PNC` dan 142 `Work-ReceiveDocument`, sudah
-// diverifikasi langsung ke basis data dan tercatat di `inboxoutstanding.go`.
+// `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`. Tabel itu dicabut dari pemakaian
+// (keputusan Work Owner 2026-09-28), dan `POOLDATA.T_CLAIMLIST_ADMIN` — penggantinya yang
+// pertama — **tidak memuat satu pun baris `Work-SurveyClaim`**; isinya 870 `Work-PNC` dan
+// 142 `Work-ReceiveDocument`, diverifikasi langsung ke basis data.
 //
-// Keputusan Work Owner 2026-09-28: baris digerakkan **`POOLDATA.T_SURVEYORLIST`**, header
-// klaimnya diambil dari `T_CLAIMLIST_ADMIN` lewat `PNCCASEID -> PZINSKEY`. Kunci itu bukan
-// tebakan — `RDB List/BroswseKlaimByNoSurvey-SQL.xml` memakainya persis begitu.
+// Keputusan Work Owner 2026-09-29 menggeser sumbernya sekali lagi:
+//
+//	POOLDATA.T_SURVEYORLIST   menggerakkan baris  (satu baris per JANJI SURVEI)
+//	POOLDATA.T_CLAIM_PNC      menyediakan header  (satu baris per KLAIM)
+//
+// disambung `c.CLAIMID = s.PNCCASEID`. Kunci itu bukan tebakan —
+// `RDB List/BroswseKlaimByNoSurvey-SQL.xml` menyambungkan keduanya persis begitu.
+//
+// Kenapa bukan tetap di `T_CLAIMLIST_ADMIN`: tabel datar itu hanya memuat klaim yang tugasnya
+// berada di antrean Admin — empat label, salah satunya Choose Surveyor. Survei yang SEDANG
+// BERJALAN berarti klaimnya sudah MELEWATI tahap itu, sehingga `INNER JOIN` ke sana membuang
+// justru baris yang dicari layar ini. Layarnya akan terisi sebagian, dan tampak wajar.
+//
+// ### Akibat yang harus terlihat: isian yang belum tersedia
+//
+// Empat nilai layar berasal dari objek kerja `Work-SurveyClaim`, yang di Pega diratakan ke
+// `PC_ASM_FW_GCNMFW_WORK` dengan akhiran `_1`. Di `T_SURVEYORLIST` akhiran itu TIDAK dipakai,
+// dan penamaan itulah yang berlaku di sini:
+//
+//	Pega                 T_SURVEYORLIST    keadaan per 2026-09-30
+//	ADJUSTERSTATUS_1     STS_SURVEY        ADA dan TERISI — tidak lagi menghalangi
+//	ADJUSTERACCEPT_1     ADJUSTERACCEPT    ADA, seluruh barisnya masih KOSONG
+//	REFNO_1              REFNO             ADA, seluruh barisnya masih KOSONG
+//	PYSTATUSWORK         PYSTATUSWORK      ADA, seluruh barisnya masih KOSONG
+//	ADJUSTERPIC_1        —                 belum ditambahkan
+//
+// **Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom yang tidak ada**, dan pada tab
+// Outstanding ia justru lebih berbahaya: penyaringnya `ADJUSTERACCEPT IS NULL` bernilai benar
+// untuk SELURUH antrean, sehingga tabnya terisi wajar dan isinya salah. Karena itu keduanya
+// sama-sama menahan tab — lihat UnavailableReason.
 //
 // ## 2. EMPAT kueri tab HILANG dari export
 //
@@ -102,6 +129,27 @@ const (
 	//
 	// `BrowseLossAdjuster-SQL.xml` dan `GetDataCaseSurveyALL-SQL.xml` keduanya mematoknya.
 	SurveyorTypeLossAdjuster = "2"
+
+	// SurveyorTypeThree dan SurveyorTypeFour ADA, dan itu ditemukan terlambat.
+	//
+	// Dua rule ekspor menyaring `SURVEYORTYPE_1 IN ('2','3','4')` lalu mengambil
+	// `Adjusterpic_1` — artinya ketiganya diperlakukan sebagai adjuster, bukan hanya `'2'`:
+	//
+	//	RDB List/ExportDataDetailKlaim-SQL.xml
+	//	RDB List/ExportDataKomitesKlaimNONMBU-SQL.xml
+	//
+	// Katalog kolom mencatat `SURVEYORTYPE_1` punya **4 nilai berbeda**, sejalan dengan itu.
+	//
+	// ARTI keduanya TIDAK terbaca dari export — tidak satu pun rule memberinya label. Karena
+	// itu keduanya dinamai menurut nilainya, bukan menurut dugaan artinya: nama yang
+	// mengarang akan dipercaya pembaca berikutnya.
+	//
+	// Modul ini TIDAK menyaring dengan jenis surveyor — ia hanya menampilkannya — sehingga
+	// ketiadaan arti keduanya belum berakibat. Ia akan berakibat pada modul pertama yang
+	// menyaring dengannya, dan keempatnya ditulis di sini supaya model dua-populasi tidak
+	// terlanjur dipakai.
+	SurveyorTypeThree = "3"
+	SurveyorTypeFour  = "4"
 )
 
 // Nilai `ADJUSTERSTATUS_1` — kolom yang digambar sebagai **"Status ASM"** sekaligus yang
@@ -148,8 +196,8 @@ const (
 	StatusInvoiceFee = "Invoice Fee"
 )
 
-// AdjusterConfirmed adalah nilai `ADJUSTERACCEPT_1` yang berarti adjuster SUDAH menerima
-// penugasan.
+// AdjusterConfirmed adalah nilai `ADJUSTERACCEPT` — `ADJUSTERACCEPT_1` di Pega — yang berarti
+// adjuster SUDAH menerima penugasan.
 //
 // Ia membelah antrean menjadi dua tab yang berlawanan, dan pembelahannya terbaca dari
 // `CountOSLostAdjuster`:
@@ -161,6 +209,57 @@ const (
 // atau teks kosong — dan kolomnya punya 2 nilai berbeda di produksi, sehingga baris seperti
 // itu mungkin ada. Yang dibawa adalah predikat Pega apa adanya (`P-5`).
 const AdjusterConfirmed = "1"
+
+// Status alur kerja berkas survei — kolom `PYSTATUSWORK` milik objek `Work-SurveyClaim`.
+//
+// # Kenapa dua nilai ini yang paling penting di seluruh berkas ini
+//
+// Karena ia **penentu baris mana yang sedang berjalan**, bukan sekadar penggerak satu tab.
+//
+// Satu berkas survei dapat memiliki beberapa baris di `POOLDATA.T_SURVEYORLIST`: kolom
+// `INDEX_SURVEY` adalah nomor urut survei ke-berapa, dan nilainya BERTAMBAH setiap kali survei
+// baru ditambahkan — terbaca dari `Activity/SetSurveyorList-Act.xml`:
+//
+//	TempSurvey.IdxSurveyResults := @if(Param.IndexSurvey=="", local.index+1, Param.IndexSurvey)
+//	childPageSurveyClaim.SurveyData.SurveyList(<LAST>).IdxSurveyResults := local.index+1
+//
+// dan dibaca kembali sebagai riwayat oleh `RDB List/GetDataProgressSurvey-SQL.xml`
+// (`order by to_number(index_survey) asc`).
+//
+// Work Owner menegaskan 2026-09-29: **hanya SATU survei yang berjalan**; bila ada lebih dari
+// satu, sisanya sudah dibatalkan — dan yang berjalan dikenali dari **status Pega-nya yang
+// bukan `Resolved-Completed` maupun `Resolved-Rejected`**.
+//
+// # Ini yang menutup cacat penggandaan baris
+//
+// Kedua Browse rule yang tersisa memasang penyaring itu di tingkat teratas:
+//
+//	BrowseLossAdjuster-SQL.xml:    A.PYSTATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')
+//	BrowseInternalSurveyor-SQL.xml: idem
+//	CountOSLostAdjuster-SQL.xml:   idem pada ENAM tab, dan `= 'Resolved-Completed'` pada tab Close
+//
+// Tanpa kolom itu, antrean menampilkan **seluruh riwayat survei**, termasuk yang sudah
+// dibatalkan — satu berkas survei tampil beberapa kali dengan Claim No yang sama berulang.
+// Itu keadaan yang berlaku hari ini, dan dinyatakan lewat Limitations (`D-54`).
+//
+// Kolomnya BELUM ADA di `POOLDATA.T_SURVEYORLIST`. Kedua nilai di bawah ditulis sekarang supaya
+// predikatnya terekam dan siap dipasang begitu kolomnya tiba — bukan digali ulang dari awal.
+const (
+	// StatusWorkCompleted — berkas survei selesai. Menggerakkan tab Close di Pega.
+	StatusWorkCompleted = "Resolved-Completed"
+
+	// StatusWorkRejected — berkas survei ditolak atau dibatalkan.
+	StatusWorkRejected = "Resolved-Rejected"
+)
+
+// ClosedWorkStatuses menyerahkan status yang berarti berkas survei SUDAH tidak berjalan.
+//
+// Dikembalikan sebagai daftar, bukan dua konstanta terpisah, supaya pemanggil tidak dapat
+// memasang salah satunya dan lupa yang lain — kelalaian yang menghasilkan antrean yang
+// memuat survei batal tanpa satu pun galat.
+func ClosedWorkStatuses() []string {
+	return []string{StatusWorkCompleted, StatusWorkRejected}
+}
 
 // Status komunikasi — kolom `KOMUNIKASISTATUS` pada `POOLDATA.M_KOMUNIKASI_PNC`.
 //
@@ -251,6 +350,72 @@ func Tabs() []Tab {
 	return result
 }
 
+// UnavailableReason menyatakan kenapa sebuah tab BELUM dapat dihitung, atau kosong bila ia
+// dapat dihitung.
+//
+// # Kenapa ini ada, dan kenapa tabnya tetap digambar
+//
+// Keempat tab di bawah bergantung pada kolom yang BELUM DAPAT DIPERCAYA. Per 2026-09-30
+// kolomnya sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST` lewat `ALTER`, tetapi **belum ada
+// yang mengisinya**: seluruh 17.641 baris bernilai NULL.
+//
+// Tabnya TETAP digambar, dan itu disengaja. `D-13` menetapkan bentuk layar mengikuti Pega;
+// menghapus empat dari tujuh tab akan membuat pengguna yang hafal layarnya mengira fiturnya
+// hilang. Yang berubah hanyalah: tab itu MENJELASKAN kenapa ia kosong, alih-alih
+// menampilkan daftar kosong yang terbaca sebagai "tidak ada pekerjaan".
+//
+// Perbedaan itu yang menentukan. Daftar kosong tidak pernah dilaporkan siapa pun sebagai
+// kerusakan; tab yang menyebut sebabnya akan.
+//
+// # Kenapa teksnya menyebut "belum terisi", bukan "belum ada"
+//
+// Karena keduanya diperbaiki orang yang berbeda. Kolom ditambahkan DBA lewat satu `ALTER`;
+// isinya ditulis Tim Pega lewat jalur pemutakhiran saat status objek kerja berubah. Pesan yang
+// menyebut sebab yang salah akan mengirim orang yang memperbaikinya ke arah yang keliru — dan
+// pernah persis begitu: teks lama masih menyebut `ADJUSTERACCEPT_1` (nama Pega, berakhiran
+// `_1`) padahal kolom yang ditambahkan bernama `ADJUSTERACCEPT`, sehingga kolom yang SUDAH ada
+// terbaca sebagai belum ada.
+func UnavailableReason(t Tab) string {
+	switch t {
+	case TabOutstanding, TabAll, TabInvoice:
+		return "Kolom ADJUSTERACCEPT sudah ada di POOLDATA.T_SURVEYORLIST tetapi seluruh " +
+			"barisnya masih kosong. Menghitung tab ini sekarang akan menampilkan seluruh " +
+			"antrean sebagai belum dikonfirmasi adjuster."
+
+	case TabClose:
+		return "Kolom PYSTATUSWORK sudah ada di POOLDATA.T_SURVEYORLIST tetapi seluruh " +
+			"barisnya masih kosong, sehingga berkas yang sudah tutup belum dapat dibedakan."
+
+	default:
+		return ""
+	}
+}
+
+// Available menyatakan apakah tab ini dapat dihitung dari data yang ada hari ini.
+func (t Tab) Available() bool { return UnavailableReason(t) == "" }
+
+// DefaultAvailableTab mengembalikan tab bawaan yang BENAR-BENAR dapat dihitung.
+//
+// # Kenapa bukan langsung DefaultTab
+//
+// Karena DefaultTab adalah Outstanding, dan Outstanding termasuk yang belum dapat dihitung.
+// Membuka layar pada tab yang pasti kosong akan membuat kesan pertama setiap pengguna adalah
+// layar tanpa isi — dan kesan itu bertahan meski enam tab lain berisi.
+//
+// Begitu kolomnya tiba, fungsi ini kembali mengembalikan DefaultTab dengan sendirinya, tanpa
+// satu baris pun disunting.
+func DefaultAvailableTab() Tab {
+	if DefaultTab.Available() {
+		return DefaultTab
+	}
+	for _, t := range tabOrder {
+		if t.Available() {
+			return t
+		}
+	}
+	return DefaultTab
+}
+
 // Valid menyatakan apakah tab ini dikenal.
 func (t Tab) Valid() bool {
 	for _, known := range tabOrder {
@@ -282,7 +447,7 @@ type SurveyTask struct {
 
 	// ClaimID adalah `T_SURVEYORLIST.PNCCASEID` — kunci klaim induknya.
 	//
-	// Inilah yang menyambung ke `T_CLAIMLIST_ADMIN.PZINSKEY`. Tidak digambar; dipakai tautan
+	// Inilah yang menyambung ke `POOLDATA.T_CLAIM_PNC.CLAIMID`. Tidak digambar; dipakai tautan
 	// baris untuk membuka klaimnya.
 	ClaimID string
 
@@ -292,12 +457,27 @@ type SurveyTask struct {
 	// tidak dapat dibedakan di layar maupun saat menelusuri keluhan.
 	SurveyIndex string
 
-	AppointmentNumber string // "Appointment No"   <- ADJUSTERPIC_1  ** PERLU KONFIRMASI **
-	ReferenceNumber   string // "Reference No"     <- REFNO_1
-	ClaimNumber       string // "Claim No"         <- PYID
-	PolicyNumber      string // "Policy No"        <- POLICYNO
-	InsuredName       string // "Insured Name"     <- QQNAME
-	ClassOfBusiness   string // "COB"              <- BUSINESSNAME
+	// AppointmentNumber dan ReferenceNumber BELUM TERSEDIA, dengan sebab yang BERBEDA.
+	//
+	//	ReferenceNumber   -> T_SURVEYORLIST.REFNO   kolomnya ADA, isinya masih kosong
+	//	AppointmentNumber -> belum ada kolomnya sama sekali
+	//
+	// Keduanya TIDAK dihapus dari tipe ini. Menghapusnya akan menghilangkan kolomnya dari
+	// layar, dan isian yang belum terbawa harus TERLIHAT — bukan tersamar sebagai layar yang
+	// sudah setara.
+	//
+	// Satu catatan untuk AppointmentNumber: judul "Appointment No" di Pega menggambar
+	// `AdjusterPIC_1`, dan `ExportDataDetailKlaim-SQL.xml` membuktikan kolom itu berisi **nama
+	// adjuster eksternal**, bukan nomor penugasan. Bila itu benar, isinya menggandakan kolom
+	// "PIC Loss Adjuster" di sebelahnya dan `T_SURVEYORLIST.SURVEYOR_NAME` sudah membawanya —
+	// lihat `docs/permintaan-kolom-t-surveyorlist.md` §4.
+	AppointmentNumber string // "Appointment No"  ** BELUM ADA KOLOMNYA **
+	ReferenceNumber   string // "Reference No"    <- REFNO ** ADA, MASIH KOSONG **
+
+	ClaimNumber     string // "Claim No"      <- T_CLAIM_PNC.CLAIMNO
+	PolicyNumber    string // "Policy No"     <- T_CLAIM_PNC.NOPOLIS
+	InsuredName     string // "Insured Name"  <- T_CLAIM_PNC.QQNAME
+	ClassOfBusiness string // "COB"           <- T_CLAIM_PNC.BUSINESSNAME
 
 	// CauseOfLoss — kolom **"Cause Of Loss"**.
 	//
@@ -313,27 +493,29 @@ type SurveyTask struct {
 	// penggeraknya adalah `LOCATION_SURVEY`.
 	Location string
 
-	TechnicalPIC string // "PIC ASM"            <- USERTEKNIS_1
-	AdjusterPIC  string // "PIC Loss Adjuster"  <- SURVEYOR_NAME
+	TechnicalPIC string // "PIC ASM"            <- T_CLAIM_PNC.PICTEKNIK
+	AdjusterPIC  string // "PIC Loss Adjuster"  <- T_SURVEYORLIST.SURVEYOR_NAME
 
-	// DateOfLoss — kolom **"Date of Loss"** <- DATEOFLOSS_1.
+	// DateOfLoss — kolom **"Date of Loss"** <- T_CLAIM_PNC.DATEOFLOSS.
 	DateOfLoss time.Time
 
-	// AgingDays — kolom **"Aging"** <- kolom `AGING`, bertipe NUMBER.
+	// CreatedAt adalah `T_SURVEYORLIST.TGLINPUT` — kapan janji survei ini dicatat.
 	//
-	// DIBACA, bukan dihitung. Berbeda dari `inboxanalystdoctor` dan `inboxcloseclaim` yang
-	// menghitung umur tugas sendiri karena Report Definition-nya tidak menyediakannya —
-	// di sini kolomnya ADA dan sudah dipakai modul `inboxoutstanding`.
-	//
-	// Penunjuk, bukan nilai: kolomnya boleh NULL, dan nol hari berbeda artinya dari "belum
-	// dihitung". Menyamakan keduanya akan menampilkan "0" pada baris yang sebenarnya tidak
-	// punya angka.
-	AgingDays *int
+	// Ia kunci urutan antrean, DAN dasar kolom Aging. Tidak digambar sendiri.
+	CreatedAt time.Time
 
-	// ASMStatus — kolom **"Status ASM"** <- ADJUSTERSTATUS_1.
+	// ASMStatus — kolom **"Status ASM"** <- `T_SURVEYORLIST.STS_SURVEY` pada langkah terakhir.
 	//
-	// Ia juga yang menggerakkan tab Invoice dan tab Close. Digambar DAN menyaring; itu
-	// disengaja, dan justru membuat kedua tab dapat diperiksa dengan mata oleh pengguna.
+	// # Ia TERSEDIA, dan itu berubah pada 2026-09-29
+	//
+	// `STS_SURVEY` terbukti membawa domain `ADJUSTERSTATUS_1`. Sebaran nilainya di produksi
+	// memuat ketiga nilai yang dipakai Pega sebagai penyaring, dengan jumlah yang nyata:
+	// `Final Report` 1.466 · `Invoice Fee` 1.069 · `Close Case` 316 — berdampingan dengan
+	// seluruh tahapan hidup survei dari `Waiting Claim Document` sampai `Close Case`.
+	//
+	// Pernyataan sebelumnya bahwa kolom ini hanya berisi `"On Progress"` DICABUT: itu satu
+	// dari 22 nilai, dan disimpulkan dari satu-satunya penulis yang kebetulan ada di export.
+	// Penulis lainnya berada di luar export (`R-01`, `R-16`).
 	ASMStatus string
 
 	// SurveyorType adalah `SURVEYORTYPE_1` — `"1"` internal, `"2"` loss adjuster.
@@ -341,14 +523,58 @@ type SurveyTask struct {
 	// Tidak digambar sebagai kolom. Dibawa supaya jawaban API dapat menjelaskan dirinya
 	// sendiri: antrean yang tampak salah isi hampir selalu salah di sini.
 	SurveyorType string
+}
 
-	// SurveyStatus adalah `T_SURVEYORLIST.STS_SURVEY`.
-	//
-	// Tidak digambar, dan TIDAK dipakai menyaring. Nilainya tidak terbaca dari export —
-	// hanya `'1'` yang muncul satu kali — sehingga memakainya sebagai penyaring berarti
-	// menebak. Ia dibawa apa adanya supaya domainnya dapat dibaca dari data nyata saat
-	// `-periksa` dijalankan, dan tab Close dapat dikoreksi bila ternyata ia acuan yang benar.
-	SurveyStatus string
+// AgingDays adalah kolom **"Aging"** — sudah berapa hari janji survei ini menunggu.
+//
+// # DIHITUNG, bukan dibaca — dan itu berubah dari sebelumnya
+//
+// Semula kolom ini dibaca dari `T_CLAIMLIST_ADMIN.AGING`. Sesudah pindah ke
+// `POOLDATA.T_CLAIM_PNC`, kolom itu tidak ada lagi — `AGING` adalah kolom tabel datar, bukan
+// kolom tabel klaim.
+//
+// Yang dipakai sekarang: umur janji survei sejak `TGLINPUT`. Preseden menghitungnya sudah ada
+// dan sudah disetujui Work Owner — `inboxcloseclaim.DurationDays` dan
+// `inboxanalystdoctor.DurationDays`.
+//
+// Ia juga LEBIH TEPAT untuk layar ini daripada `AGING`: yang ditanyakan seorang adjuster
+// adalah "sudah berapa lama SURVEI ini menunggu saya", bukan "sudah berapa lama KLAIMNYA
+// berjalan". Keduanya berbeda jauh pada klaim yang surveinya baru ditugaskan kemarin.
+//
+// # Kenapa terhadap TANGGAL, bukan selisih jam dibagi 24
+//
+// Janji yang masuk pukul 23.00 dan dilihat pukul 01.00 keesokan harinya sudah berumur SATU
+// HARI bagi pengguna, meski selisihnya dua jam. Membagi selisih jam akan mengembalikan nol.
+//
+// # Kenapa zona waktu ikut masuk
+//
+// Waktu disimpan UTC sedangkan "hari" yang dimaksud pengguna adalah hari WIB. Tanpa konversi,
+// janji yang masuk antara pukul 00.00 dan 07.00 WIB dihitung satu hari lebih tua. Keduanya
+// diserahkan pemanggil lewat parameter, bukan dibaca dari jam sistem — supaya dapat diuji
+// tanpa bergantung mesin (`F-5`).
+func (t SurveyTask) AgingDays(now time.Time, location *time.Location) *int {
+	if t.CreatedAt.IsZero() {
+		// Tanpa tanggal masuk, umurnya tidak dapat dihitung — dan itu BERBEDA dari nol hari.
+		// Penunjuk kosong yang membedakannya; menjadikannya 0 akan menampilkan angka yang
+		// terlihat sah dan salah.
+		return nil
+	}
+	if location == nil {
+		location = time.UTC
+	}
+
+	mulai := t.CreatedAt.In(location)
+	kini := now.In(location)
+
+	hariMulai := time.Date(mulai.Year(), mulai.Month(), mulai.Day(), 0, 0, 0, 0, location)
+	hariKini := time.Date(kini.Year(), kini.Month(), kini.Day(), 0, 0, 0, 0, location)
+
+	hari := int(hariKini.Sub(hariMulai).Hours() / 24)
+	if hari < 0 {
+		// Tanggal masuk di masa depan adalah data yang cacat, bukan umur negatif.
+		hari = 0
+	}
+	return &hari
 }
 
 // SurveyorIdentity adalah hasil jembatan identitas — siapa pemanggil di mata data survei.
@@ -395,15 +621,18 @@ type Filter struct {
 	// Tab adalah keranjang yang sedang dibuka. Kosong berarti DefaultTab.
 	Tab Tab
 
-	// Search mencari pada Claim No dan Reference No.
+	// Search mencari pada Claim No.
 	//
-	// Kedua kolom itu, bukan karangan: `SetTempLostAdjuster` menyusun penyaring carinya
+	// Di Pega ia mencari pada DUA kolom — `SetTempLostAdjuster` menyusun penyaring carinya
 	// sebagai
 	//
 	//	"AND (a.pzinskey LIKE '%" + TempLaporan.CaseID + "%' OR A.REFNO_1 LIKE '%…%')"
 	//
-	// Di sini `pzinskey` digantikan nomor klaim yang terbaca manusia — pengguna mengetik
-	// `PNC-1865`, bukan `ASM-FW-GCNMFW-WORK PNC-1865`.
+	// Yang dibawa hanya yang pertama, dengan `pzinskey` digantikan nomor klaim yang terbaca
+	// manusia: pengguna mengetik `PNC-1865`, bukan `ASM-FW-GCNMFW-WORK PNC-1865`. Bagian
+	// `REFNO_1` GUGUR karena kolomnya belum tersedia — lihat SurveyTask.ReferenceNumber. Ia
+	// kembali begitu kolomnya tiba, dan sampai saat itu selisihnya dinyatakan lewat
+	// Limitations, bukan disamarkan.
 	Search string
 
 	Limit  int

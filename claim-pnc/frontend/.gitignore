@@ -1,0 +1,20 @@
+# Dependensi — dipasang ulang dengan `npm ci` dari package-lock.json.
+node_modules/
+
+# Hasil build dan laporan uji
+dist/
+coverage/
+*.tsbuildinfo
+
+# Rahasia. `.env.example` tetap terlacak bila kelak dibuat.
+.env
+.env.*
+!.env.example
+
+# Log saat aplikasi dijalankan lokal
+*.log
+
+# Artefak CI dan analisis lokal
+.npm/
+.sonar/
+.scannerwork/

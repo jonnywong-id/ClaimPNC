@@ -196,7 +196,7 @@ function stubDefaultFetch(options?: {
 
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun.
-    const wanted = new URL(url, 'http://uji.invalid').searchParams.get('tab') ?? '1'
+    const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab') ?? '1'
 
     const body: ListResponse =
       wanted === TAB_BENGKEL.kode

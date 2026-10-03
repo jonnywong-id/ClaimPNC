@@ -122,7 +122,7 @@ export function DocumentPanel({ workshop, onClose }: { workshop: Workshop; onClo
             uploadedBy={attached.diunggah_oleh}
             uploadedAt={attached.diunggah_pada}
             isDownloading={isDownloading}
-            onDownload={() => void download()}
+            onDownload={() => { download() }}
           />
         ) : (
           <p className="text-sm text-slate-600">Bengkel ini belum punya dokumen terlampir.</p>

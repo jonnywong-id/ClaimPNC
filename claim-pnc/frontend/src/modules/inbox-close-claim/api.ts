@@ -161,7 +161,7 @@ export function useAjukanPermintaan() {
     onSuccess: () => {
       // Seluruh halaman daftar diperbarui, bukan hanya yang sedang terbuka: baris yang sama
       // dapat terlihat pada halaman lain dengan penyaring yang berbeda.
-      void client.invalidateQueries({ queryKey: ['inbox-close-claim', 'daftar'] })
+      client.invalidateQueries({ queryKey: ['inbox-close-claim', 'daftar'] })
     },
   })
 }

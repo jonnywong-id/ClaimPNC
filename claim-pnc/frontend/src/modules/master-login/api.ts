@@ -70,7 +70,7 @@ export function useCreateSurveyorLogin() {
     mutationFn: (input: SurveyorLoginInput) =>
       callAPI<SurveyorLoginResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-login'] })
+      client.invalidateQueries({ queryKey: ['master-login'] })
     },
   })
 }
@@ -100,7 +100,7 @@ export function useSaveSurveyorLogin() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-login'] })
+      client.invalidateQueries({ queryKey: ['master-login'] })
     },
   })
 }

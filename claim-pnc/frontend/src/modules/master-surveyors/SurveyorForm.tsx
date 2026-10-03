@@ -180,7 +180,7 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
           : 'Surveyor baru masuk ke antrean komite dan belum dapat ditugaskan sebelum disetujui.'}
       </p>
 
-      <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="mt-5 space-y-4" noValidate>
+      <form onSubmit={(e) => { handleSubmit(onSubmit)(e) }} className="mt-5 space-y-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="kode_tipe"

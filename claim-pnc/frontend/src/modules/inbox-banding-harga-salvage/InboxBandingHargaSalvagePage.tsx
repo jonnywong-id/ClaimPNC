@@ -161,8 +161,8 @@ export function InboxBandingHargaSalvagePage() {
    * baru saja diperbaiki dari layar lama.
    */
   function refreshAll() {
-    void list.refetch()
-    void summary.refetch()
+    list.refetch()
+    summary.refetch()
   }
 
   if (portal === null) {
@@ -575,7 +575,7 @@ function rowKeyFor(tab: Tab): (row: AppealRow) => string {
 /** valueOf mengambil teks polos satu sel — yang dicari dan diurutkan DataTable. */
 function valueOf(row: AppealRow, column: TabColumn): string {
   const raw = row[column.kunci]
-  if (raw === null || raw === undefined) return ''
+  if (raw == null) return ''
   return String(raw)
 }
 

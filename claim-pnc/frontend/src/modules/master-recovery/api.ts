@@ -135,7 +135,7 @@ export function useIssueVirtualAccount() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keyOf('principal', portal, token) })
+      client.invalidateQueries({ queryKey: keyOf('principal', portal, token) })
     },
   })
 }
@@ -197,10 +197,10 @@ export function useSaveRecovery() {
     mutationFn: (body: RecoveryInput) =>
       callAPI<RecoverySaveResponse>(`${ROUTE}/`, { metode: 'POST', body, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: keyOf('form', portal, token) })
+      client.invalidateQueries({ queryKey: keyOf('form', portal, token) })
       // Tab Outstanding ikut dimuat ulang supaya batch yang baru disimpan langsung
       // terlihat. Di layar lama, hal ini menuntut petugas menekan Refresh sendiri.
-      void client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
+      client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
     },
   })
 }
@@ -316,7 +316,7 @@ export function useRefreshRecoveryList() {
   const client = useQueryClient()
 
   return () => {
-    void client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
+    client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
   }
 }
 

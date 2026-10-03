@@ -28,6 +28,10 @@ const ISIAN_KOSONG = {
   alasan: '',
   keterangan_belum_registrasi: '',
   jumlah_dokumen: 0,
+  group_panel: '',
+  email_tertanggung: '',
+  sim_pengendara: '',
+  sumber_laporan: '',
 }
 
 function berkas(over: Record<string, unknown> = {}) {
@@ -168,6 +172,48 @@ describe('form Input Receive Document', () => {
     ]) {
       expect(await screen.findByLabelText(label)).toBeInTheDocument()
     }
+  })
+
+  // InputReceiveDocument_sect: Email Tertanggung dan isian SIM hanya untuk PA (002);
+  // Polis Leader hanya untuk lini selain PA dan Travel.
+  it('polis PA menampilkan isian khusus PA dan menyimpannya', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? { body: polis({ nomor_polis: 'POL-PA-1', ditemukan: true, group_panel: '002', polis_leader: 'LEADER UJI' }) }
+        : { body: berkas() },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Nomor Polis'), 'POL-PA-1')
+    await userEvent.tab()
+    await userEvent.type(await screen.findByLabelText('Email Tertanggung'), 'tertanggung@contoh.internal')
+    expect(screen.getAllByLabelText('Lokasi Kejadian')).toHaveLength(1)
+    await userEvent.type(screen.getByLabelText('SIM Pengendara'), 'SIM-001')
+    expect(screen.queryByText('Polis Leader')).toBeNull()
+    await userEvent.type(screen.getByLabelText('Source Of Reports'), 'Email')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true))
+    const saved = calls.find((c) => c.method === 'PUT')?.body as Record<string, unknown>
+    expect(saved).toMatchObject({
+      group_panel: '002', email_tertanggung: 'tertanggung@contoh.internal',
+      sim_pengendara: 'SIM-001', sumber_laporan: 'Email',
+    })
+  })
+
+  it('polis non-PA menampilkan Polis Leader dan menyembunyikan isian PA', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? { body: polis({ nomor_polis: 'POL-FIRE-1', ditemukan: true, group_panel: '006', polis_leader: 'LEADER UJI' }) }
+        : { body: berkas() },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Nomor Polis'), 'POL-FIRE-1')
+    await userEvent.tab()
+    expect(await screen.findByText('LEADER UJI')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Email Tertanggung')).toBeNull()
+    expect(screen.queryByLabelText('SIM Pengendara')).toBeNull()
   })
 
   it('mengirim seluruh isian sebagai PUT, dan uang dalam sen', async () => {

@@ -3,12 +3,14 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/inboxautoclaim/premium"
 	"claim-pnc/internal/inboxautoclaim/repo/memory"
 	"claim-pnc/internal/inboxautoclaim/usecase"
 )
@@ -20,8 +22,17 @@ var errPortalTidakSiap = errors.New("portal belum siap")
 // layananContoh menyusun layanan di atas penyimpanan memori berisi data contoh.
 func layananContoh(t *testing.T) (*usecase.Service, *memory.Repo) {
 	t.Helper()
+	service, repo, _ := layananDenganPremi(t)
+	return service, repo
+}
+
+// layananDenganPremi sama dengan layananContoh, ditambah pemeriksa premi tiruannya supaya
+// uji dapat mengatur jawaban layanan premi per polis.
+func layananDenganPremi(t *testing.T) (*usecase.Service, *memory.Repo, *premium.Fake) {
+	t.Helper()
 
 	repo := memory.NewSampleRepo()
+	checker := premium.NewFake()
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector: func(alias string) (inboxautoclaim.Repo, error) {
 			if strings.ToUpper(alias) != "ASM" {
@@ -29,9 +40,10 @@ func layananContoh(t *testing.T) (*usecase.Service, *memory.Repo) {
 			}
 			return repo, nil
 		},
+		Premium: checker,
 	})
 	require.NoError(t, err)
-	return service, repo
+	return service, repo, checker
 }
 
 // barisUnggahan menyusun satu baris berkas yang bentuknya sudah benar.
@@ -550,6 +562,7 @@ func TestKodePerusahaanDicocokkanApaAdanyaTanpaDiubahBesarKecilHurufnya(t *testi
 	)
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector: func(string) (inboxautoclaim.Repo, error) { return repo, nil },
+		Premium:      premium.NewFake(),
 	})
 	require.NoError(t, err)
 
@@ -709,4 +722,207 @@ func TestRingkasanTiapTabBerbeda(t *testing.T) {
 	require.NotEqual(t, kodePerTab[inboxautoclaim.SourceAneka], kodePerTab[inboxautoclaim.SourceKredit])
 	require.NotEqual(t, kodePerTab[inboxautoclaim.SourceAneka], kodePerTab[inboxautoclaim.SourceTravel])
 	require.NotEqual(t, kodePerTab[inboxautoclaim.SourceKredit], kodePerTab[inboxautoclaim.SourceTravel])
+}
+
+// ---------------------------------------------------------------------------
+// Periode polis, polis batal, kontrak ganda, dan cek premi (2026-09-29)
+// ---------------------------------------------------------------------------
+
+// barisTab menyusun satu baris yang bentuknya sah untuk tab yang disebut.
+func barisTab(source inboxautoclaim.Source, nomor int, polis string) inboxautoclaim.UploadRow {
+	row := inboxautoclaim.UploadRow{LineNumber: nomor, PolicyNo: polis, ClaimAmount: "100.00"}
+	switch source {
+	case inboxautoclaim.SourceKredit:
+		row.ContractNo = fmt.Sprintf("KTR-%d", nomor)
+		row.ReportType = "KLAIM"
+	case inboxautoclaim.SourceTravel:
+		row.DateOfLoss = "01/04/2026"
+		row.ReportDescription = "Bagasi hilang di bandara"
+	default:
+		row.DateOfLoss = "01/04/2026"
+		row.ReportDate = "02/04/2026"
+		row.CauseOfLoss = "12002"
+	}
+	return row
+}
+
+// pesanUnggah mengunggah baris lalu mengembalikan pesan setiap baris yang tersimpan,
+// diurutkan menurut nomor polis (urutan rincian).
+func pesanUnggah(
+	t *testing.T,
+	service *usecase.Service,
+	source inboxautoclaim.Source,
+	row ...inboxautoclaim.UploadRow,
+) []string {
+	t.Helper()
+	ctx := context.Background()
+
+	hasil, err := service.Upload(ctx, "ASM", source, row, "ADMINPNC")
+	require.NoError(t, err)
+
+	var pesan []string
+	for _, b := range hasil.Batch {
+		page, err := service.ListLine(ctx, "ASM", inboxautoclaim.LineQuery{
+			Source: source, CompanyCode: b.CompanyCode, BatchNumber: b.BatchNumber,
+			Page: inboxautoclaim.PageRequest{Number: 1, Size: 100},
+		})
+		require.NoError(t, err)
+		for _, l := range page.Item {
+			pesan = append(pesan, l.Message)
+		}
+	}
+	return pesan
+}
+
+func TestPremiDicekUntukSemuaBarisDiKetigaTab(t *testing.T) {
+	// Keputusan Work Owner 2026-09-29: SEMUA baris, tidak dibatasi Source of Business.
+	for _, source := range inboxautoclaim.AllSource() {
+		service, _, checker := layananDenganPremi(t)
+		checker.SetAging("0100120260500", "5")
+
+		pesan := pesanUnggah(t, service, source, barisTab(source, 2, "0100120260500"))
+		require.Equal(t, []string{inboxautoclaim.MessagePremiumUnpaid}, pesan, "tab %s", source)
+	}
+}
+
+func TestLayananPremiDipanggilSekaliPerPolis(t *testing.T) {
+	service, _, checker := layananDenganPremi(t)
+
+	pesanUnggah(t, service, inboxautoclaim.SourceAneka,
+		barisTab(inboxautoclaim.SourceAneka, 2, "0100120260500"),
+		barisTab(inboxautoclaim.SourceAneka, 3, "0100120260500"),
+		barisTab(inboxautoclaim.SourceAneka, 4, "0200120260500"),
+	)
+	require.Equal(t, 2, checker.Calls())
+}
+
+func TestLayananPremiMatiMenandaiBarisGagalBukanMenolakUnggahan(t *testing.T) {
+	// Keputusan Work Owner 2026-09-29: baris tetap tersimpan dengan pesan gagal.
+	service, _, checker := layananDenganPremi(t)
+	checker.SetUnreachable("0100120260500")
+
+	pesan := pesanUnggah(t, service, inboxautoclaim.SourceKredit,
+		barisTab(inboxautoclaim.SourceKredit, 2, "0100120260500"))
+	require.Equal(t, []string{inboxautoclaim.MessagePremiumCheckFailed}, pesan)
+}
+
+func TestOpenProtectionTipe3MembebaskanPremiDiTravelDanAneka(t *testing.T) {
+	// Polis …603 punya Open Protection tipe 3 di T_CLAIM_OPENPROTECTION.
+	for _, source := range []inboxautoclaim.Source{inboxautoclaim.SourceTravel, inboxautoclaim.SourceAneka} {
+		service, _, checker := layananDenganPremi(t)
+		checker.SetAging("0100120260603", "5")
+
+		pesan := pesanUnggah(t, service, source, barisTab(source, 2, "0100120260603"))
+		require.Equal(t, []string{""}, pesan, "tab %s: premi dibebaskan", source)
+	}
+
+	// Kredit TIDAK mengenal pengecualian ini (Kredit :8382 langsung menandai).
+	service, _, checker := layananDenganPremi(t)
+	checker.SetAging("0100120260603", "5")
+	pesan := pesanUnggah(t, service, inboxautoclaim.SourceKredit,
+		barisTab(inboxautoclaim.SourceKredit, 2, "0100120260603"))
+	require.Equal(t, []string{inboxautoclaim.MessagePremiumUnpaid}, pesan)
+}
+
+func TestPeriodePolisDiperiksaDiTravel(t *testing.T) {
+	service, _, _ := layananDenganPremi(t)
+	pesan := pesanUnggah(t, service, inboxautoclaim.SourceTravel,
+		barisTab(inboxautoclaim.SourceTravel, 2, "0100120260600"))
+	require.Equal(t, []string{inboxautoclaim.MessageLossOutsidePolicyTravel}, pesan)
+}
+
+func TestPeriodePolisDiAnekaHanyaUntukProdukHewan(t *testing.T) {
+	service, _, _ := layananDenganPremi(t)
+
+	// Produk hewan di luar periode -> gagal.
+	pesan := pesanUnggah(t, service, inboxautoclaim.SourceAneka,
+		barisTab(inboxautoclaim.SourceAneka, 2, "0100120260601"))
+	require.Equal(t, []string{inboxautoclaim.MessageLossOutsidePolicy}, pesan)
+
+	// Produk lain di luar periode -> TIDAK diperiksa di ANEKA.
+	pesan = pesanUnggah(t, service, inboxautoclaim.SourceAneka,
+		barisTab(inboxautoclaim.SourceAneka, 2, "0100120260600"))
+	require.Equal(t, []string{""}, pesan)
+}
+
+func TestPolisBatalDitandaiDiKreditSetelahPremiLolos(t *testing.T) {
+	service, _, checker := layananDenganPremi(t)
+
+	pesan := pesanUnggah(t, service, inboxautoclaim.SourceKredit,
+		barisTab(inboxautoclaim.SourceKredit, 2, "0100120260602"))
+	require.Equal(t, []string{inboxautoclaim.MessagePolicyCancelled}, pesan)
+
+	// Urutan Pega: premi (:8471) lebih dulu dari batal (:9301).
+	checker.SetAging("0100120260602", "5")
+	row := barisTab(inboxautoclaim.SourceKredit, 3, "0100120260602")
+	pesan = pesanUnggah(t, service, inboxautoclaim.SourceKredit, row)
+	require.Equal(t, []string{inboxautoclaim.MessagePremiumUnpaid}, pesan)
+}
+
+func TestKontrakKreditYangSamaDitandaiSudahKlaim(t *testing.T) {
+	service, _, _ := layananDenganPremi(t)
+
+	pertama := barisTab(inboxautoclaim.SourceKredit, 2, "0100120260500")
+	kembar := barisTab(inboxautoclaim.SourceKredit, 3, "0100120260500")
+	kembar.ContractNo = strings.ToLower(pertama.ContractNo) // beda huruf, kontrak sama
+
+	// Kembar di dalam berkas yang sama.
+	pesan := pesanUnggah(t, service, inboxautoclaim.SourceKredit, pertama, kembar)
+	require.ElementsMatch(t, []string{"", inboxautoclaim.MessageAlreadyClaimed}, pesan)
+
+	// Diunggah ulang di berkas berikutnya.
+	pesan = pesanUnggah(t, service, inboxautoclaim.SourceKredit, pertama)
+	require.Equal(t, []string{inboxautoclaim.MessageAlreadyClaimed}, pesan)
+}
+
+func TestMataUangDiisiDariPolis(t *testing.T) {
+	// T_GENERAL.CURRENCY "IDR" -> ID POOLDATA.CURRENCY, bukan dikosongkan seperti dulu.
+	service, _, _ := layananDenganPremi(t)
+	ctx := context.Background()
+
+	hasil, err := service.Upload(ctx, "ASM", inboxautoclaim.SourceAneka,
+		[]inboxautoclaim.UploadRow{barisTab(inboxautoclaim.SourceAneka, 2, "0100120260500")}, "ADMINPNC")
+	require.NoError(t, err)
+	page, err := service.ListLine(ctx, "ASM", inboxautoclaim.LineQuery{
+		Source: inboxautoclaim.SourceAneka, CompanyCode: "MFIN", BatchNumber: hasil.Batch[0].BatchNumber,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "1", page.Item[0].Currency)
+}
+
+func TestCekPremiMenjumlahkanHanyaKlaimSuksesPasanganYangDipilih(t *testing.T) {
+	service, _, checker := layananDenganPremi(t)
+	checker.SetPremiumPaid("KRDU", "10104", "150000000")
+
+	result, err := service.CheckPremiumTotal(context.Background(), "ASM",
+		inboxautoclaim.PremiumCheckQuery{BusinessCode: " 10104 ", SourceOfBusiness: "KRDU"})
+	require.NoError(t, err)
+	require.Equal(t, "150000000", result.PremiumPaid)
+	require.Equal(t, "24000000", result.ClaimTotal)
+
+	// Bisnis lain: belum ada klaim sukses — kosong, bukan nol palsu dari baris lain.
+	result, err = service.CheckPremiumTotal(context.Background(), "ASM",
+		inboxautoclaim.PremiumCheckQuery{BusinessCode: "10105", SourceOfBusiness: "KRDU"})
+	require.NoError(t, err)
+	require.Equal(t, "", result.ClaimTotal)
+}
+
+func TestCekPremiMelaporkanKeduaIsianKosongSekaligus(t *testing.T) {
+	service, _, checker := layananDenganPremi(t)
+
+	_, err := service.CheckPremiumTotal(context.Background(), "ASM", inboxautoclaim.PremiumCheckQuery{})
+	var validation *inboxautoclaim.ValidationError
+	require.ErrorAs(t, err, &validation)
+	require.Len(t, validation.Violation, 2)
+	require.Zero(t, checker.Calls(), "layanan tidak dipanggil untuk isian kosong")
+}
+
+func TestCekPremiSaatLayananMatiTidakMenampilkanTotalKlaimSendirian(t *testing.T) {
+	service, _, checker := layananDenganPremi(t)
+	checker.SetTotalUnreachable()
+
+	result, err := service.CheckPremiumTotal(context.Background(), "ASM",
+		inboxautoclaim.PremiumCheckQuery{BusinessCode: "10104", SourceOfBusiness: "KRDU"})
+	require.ErrorIs(t, err, inboxautoclaim.ErrPremiumServiceUnavailable)
+	require.Empty(t, result.ClaimTotal)
 }

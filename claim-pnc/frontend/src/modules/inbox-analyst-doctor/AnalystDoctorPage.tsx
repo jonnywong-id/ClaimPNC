@@ -128,7 +128,7 @@ export function AnalystDoctorPage() {
           actions={
             <Button
               tone="halus"
-              onClick={() => void daftar.refetch()}
+              onClick={() => { daftar.refetch() }}
               disabled={daftar.isFetching}
             >
               <ReloadIcon className="h-4 w-4" />

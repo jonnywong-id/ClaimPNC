@@ -386,7 +386,7 @@ export function CloseClaimPage() {
             <>
               <Button
                 tone="halus"
-                onClick={() => void daftar.refetch()}
+                onClick={() => { daftar.refetch() }}
                 disabled={daftar.isFetching || portal === null}
               >
                 <ReloadIcon className="h-4 w-4" />
@@ -394,7 +394,7 @@ export function CloseClaimPage() {
               </Button>
               <Button
                 tone="kedua"
-                onClick={() => void unduh()}
+                onClick={() => { unduh() }}
                 disabled={sedangUnduh || portal === null || total === 0}
                 title={total === 0 ? 'Tidak ada baris untuk diunduh.' : 'Unduh seluruh hasil sebagai CSV'}
               >

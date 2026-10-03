@@ -240,7 +240,9 @@ SELECT MAX(p.DATEOFLOSS),
        MAX(p.SOBNAME),
        MAX(p.LEADER_MEMBER),
        MAX(p.GROUPPANEL),
-       MAX(m.CURRENCY)
+       MAX(m.CURRENCY),
+       -- PRODKE snapshot polis: kunci T_COINSLIST dan T_FACOFFER.
+       MAX(p.PRODKE)
   FROM POOLDATA.T_CLAIM_PNC p
   LEFT JOIN POOLDATA.CURRENCY m
          ON m.ID = p.CURRENCY
@@ -293,76 +295,60 @@ SELECT c.OBJECTID,
 
 -- name: transfer_policy
 --
--- Periode pertanggungan — `.Policy.StartDateTime` S/D `.Policy.EndDateTime`.
+-- Periode pertanggungan — `.Policy.StartDateTime` S/D `.Policy.EndDateTime` — dari
+-- T_GENERAL.STARTDATE/ENDDATE (DATE jam dinding WIB) pada NOPOLIS + PRODKE klaim. T_GENERAL
+-- dapat memuat lebih dari satu baris per PRODKE; yang terbaru menurut TGL_INPUT dipakai.
+-- CADANGAN `transfer_policy_dokumen`: dokumen didahulukan karena T_GENERAL tidak mengikuti
+-- endorsemen.
+SELECT g.STARTDATE, g.ENDDATE
+  FROM (SELECT x.*, ROW_NUMBER() OVER (ORDER BY CASE WHEN x.TGL_INPUT IS NULL THEN 1 ELSE 0 END,
+                                       x.TGL_INPUT DESC) AS RN
+          FROM POOLDATA.T_GENERAL x
+         WHERE x.NOPOLIS = :1
+           AND x.PRODKE = :2) g
+ WHERE g.RN = 1
+
+
+-- name: transfer_policy_dokumen
 --
--- Dokumen yang dipakai sama dengan registrasi `polis_ambil`: baris JSON_POLIS terbaru,
--- POLICYDATA lebih dulu, DATA_JSONBLOB bila POLICYDATA kosong. Nilainya teks Pega
--- (`20260801T050000.000 GMT`) dan diurai di Go.
-SELECT COALESCE(JSON_VALUE(p.POLICYDATA, '$.StartDateTime'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.StartDateTime')),
-       COALESCE(JSON_VALUE(p.POLICYDATA, '$.EndDateTime'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.EndDateTime'))
+-- Periode utama: teks Pega (`20260801T050000.000 GMT`) dokumen POLICYDATA terbaru.
+-- DATA_JSONBLOB tidak dibaca (Work Owner, 2026-10-01); bila kosong, `transfer_policy`.
+SELECT JSON_VALUE(p.POLICYDATA, '$.StartDateTime'),
+       JSON_VALUE(p.POLICYDATA, '$.EndDateTime')
   FROM POOLDATA.JSON_POLIS p
  WHERE p.NOPOLIS = :1
-   AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+   AND p.POLICYDATA IS NOT NULL
  ORDER BY p.TGL_INPUT DESC
  FETCH FIRST 1 ROWS ONLY
 
 
 -- name: transfer_coinsurance
 --
--- CoinsList polis — sumber LEADER dan CO MEMBER. Salinan registrasi `polis_koasuransi`:
--- dua cabang karena POLICYDATA (CLOB) dan DATA_JSONBLOB (BLOB) tidak dapat digabung
--- COALESCE sebelum JSON_TABLE.
-WITH terbaru AS (
-    SELECT p.POLICYDATA, p.DATA_JSONBLOB
-      FROM POOLDATA.JSON_POLIS p
-     WHERE p.NOPOLIS = :1
-       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
-     ORDER BY p.TGL_INPUT DESC
-     FETCH FIRST 1 ROWS ONLY
-)
-SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.POLICYDATA, '$.CoinsList[*]' COLUMNS (
-           LEADER        VARCHAR(10)  PATH '$.Leader',
-           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
-           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
- WHERE t.POLICYDATA IS NOT NULL
-UNION ALL
-SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.DATA_JSONBLOB, '$.CoinsList[*]' COLUMNS (
-           LEADER        VARCHAR(10)  PATH '$.Leader',
-           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
-           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
- WHERE t.POLICYDATA IS NULL
+-- Koasuransi polis — sumber LEADER dan CO MEMBER. Dari POOLDATA.T_COINSLIST menurut NOPOLIS
+-- dan PRODKE snapshot klaim (Work Owner, 2026-10-01: data polis tidak dibaca dari
+-- JSON_POLIS.DATA_JSONBLOB bila ada tabelnya). Padanan registrasi `polis_koasuransi`.
+SELECT c.LEADER, c.COINSNAME, c.PERCENT_SHARE
+  FROM POOLDATA.T_COINSLIST c
+ WHERE c.NOPOLIS = :1
+   AND c.PRODKE = :2
+ ORDER BY c.COINSID
 
 
 -- name: transfer_fac_offer
 --
--- FacOfferList polis — baris "List Reas Fac-Out". Salinan registrasi `cfs_fac_offer`.
-WITH terbaru AS (
-    SELECT p.POLICYDATA, p.DATA_JSONBLOB
-      FROM POOLDATA.JSON_POLIS p
-     WHERE p.NOPOLIS = :1
-       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
-     ORDER BY p.TGL_INPUT DESC
-     FETCH FIRST 1 ROWS ONLY
-)
+-- Fac Offer polis — baris "List Reas Fac-Out". Dari POOLDATA.T_FACOFFER menurut POLICYNO dan
+-- PRODKE snapshot klaim. JSONDATA setiap baris memuat SELURUH FacOfferList, sehingga hanya
+-- entri milik REINSURER_ID baris itu yang diambil. Padanan registrasi `cfs_fac_offer`.
 SELECT jt.REINSURER_NAME, jt.PCT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.POLICYDATA, '$.FacOfferList[*]' COLUMNS (
+  FROM POOLDATA.T_FACOFFER f,
+       JSON_TABLE(f.JSONDATA, '$.FacOfferList[*]' COLUMNS (
+           REINSURER_ID   VARCHAR(50)  PATH '$.ReinsurerID',
            REINSURER_NAME VARCHAR(200) PATH '$.ReinsurerName',
            PCT_SHARE      VARCHAR(50)  PATH '$.PctShareForAllObj')) jt
- WHERE t.POLICYDATA IS NOT NULL
-UNION ALL
-SELECT jt.REINSURER_NAME, jt.PCT_SHARE
-  FROM terbaru t,
-       JSON_TABLE(t.DATA_JSONBLOB, '$.FacOfferList[*]' COLUMNS (
-           REINSURER_NAME VARCHAR(200) PATH '$.ReinsurerName',
-           PCT_SHARE      VARCHAR(50)  PATH '$.PctShareForAllObj')) jt
- WHERE t.POLICYDATA IS NULL
+ WHERE f.POLICYNO = :1
+   AND f.PRODKE = :2
+   AND TRIM(jt.REINSURER_ID) = TRIM(f.REINSURER_ID)
+ ORDER BY f.REINSURER_ID
 
 
 -- name: transfer_spreading

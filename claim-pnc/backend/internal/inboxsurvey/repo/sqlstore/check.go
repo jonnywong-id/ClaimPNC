@@ -7,15 +7,17 @@ import (
 
 // Pemeriksaan yang dijalankan perintah `-periksa`.
 //
-// Ketiganya TERPISAH, dan pemisahannya bukan kerapian. Ketiganya gagal karena sebab yang
+// Kelimanya TERPISAH, dan pemisahannya bukan kerapian. Masing-masing gagal karena sebab yang
 // sangat berbeda:
 //
-//	CheckTables   hak baca, atau tabel yang belum pernah dipakai modul mana pun
-//	CheckColumns  nama kolom yang belum dipastikan DBA
-//	CheckKPI      tabel yang diisi procedure terpisah, dan boleh saja belum ada
+//	CheckTables          hak baca, atau tabel yang belum pernah dipakai modul mana pun
+//	CheckColumns         nama kolom yang belum dipastikan DBA
+//	CheckMissingColumns  kolom yang MEMANG belum ada — gagalnya diharapkan
+//	CheckFilledColumns   kolomnya ada, tetapi isinya belum ditulis procedure
+//	CheckKPI             tabel yang diisi procedure terpisah, dan boleh saja belum ada
 //
 // Galat yang menyebut sebab yang salah akan mengirim orang yang memperbaikinya ke arah yang
-// keliru — dan pada modul ini ketiganya diperbaiki oleh orang yang berbeda.
+// keliru — dan pada modul ini masing-masing diperbaiki oleh orang yang berbeda.
 
 // CheckTables memastikan ketiga tabel modul ini terbaca dari koneksi yang dipakai.
 //
@@ -31,24 +33,111 @@ func (r *Repo) CheckTables(ctx context.Context) error {
 
 // CheckColumns memastikan kolom yang menentukan isi layar memang ada.
 //
-// Dua di antaranya BELUM terkonfirmasi DBA — `ADJUSTERPIC_1` yang dipetakan ke "Appointment
-// No", dan `LOSSTYPE` yang dipetakan ke "Cause Of Loss". Kolom tab ikut diperiksa karena
-// tab yang kolomnya hilang gagal SELURUHNYA, bukan menampilkan satu sel kosong.
+// Kolom `T_CLAIM_PNC` ikut diperiksa meski tabelnya sudah dipakai modul lain: penamaannya
+// BERBEDA JAUH dari tabel datar yang dipakai sebelumnya — `CLAIMNO` bukan `PYID`, `NOPOLIS`
+// bukan `POLICYNO`, `PICTEKNIK` bukan `USERTEKNIS_1` — dan salah satu saja menjatuhkan seluruh
+// layar dengan ORA-00904.
+//
+// Satu kolom BELUM terkonfirmasi DBA: `LOSSTYPE` yang dipetakan ke "Cause Of Loss". Kueri yang
+// mengisinya di Pega hilang dari export (`R-16`).
 func (r *Repo) CheckColumns(ctx context.Context) error {
-	probes := make([]any, 11)
-	values := make([]int, 11)
+	probes := make([]any, 13)
+	values := make([]int, 13)
 	for i := range values {
 		probes[i] = &values[i]
 	}
 
 	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(probes...); err != nil {
 		return fmt.Errorf(
-			"kolom antrean survei pada POOLDATA.T_SURVEYORLIST / POOLDATA.T_CLAIMLIST_ADMIN "+
-				"tidak dapat dibaca. Dua di antaranya belum dikonfirmasi DBA — "+
-				"ADJUSTERPIC_1 untuk \"Appointment No\" dan LOSSTYPE untuk \"Cause Of "+
-				"Loss\" — lihat kepala inboxsurvey.sql §C: %w", err)
+			"kolom antrean survei pada POOLDATA.T_SURVEYORLIST / POOLDATA.T_CLAIM_PNC tidak "+
+				"dapat dibaca. Perhatikan penamaan kolom klaim yang BERBEDA dari tabel datar "+
+				"(CLAIMNO bukan PYID, NOPOLIS bukan POLICYNO, PICTEKNIK bukan USERTEKNIS_1), "+
+				"dan LOSSTYPE untuk \"Cause Of Loss\" yang belum dikonfirmasi DBA — lihat "+
+				"kepala inboxsurvey.sql: %w", err)
 	}
 	return nil
+}
+
+// NewColumns menyatakan kolom mana dari keempat yang ditunggu sudah ada.
+type NewColumns struct {
+	Accept      bool
+	Appointment bool
+	Reference   bool
+	WorkStatus  bool
+}
+
+// All menyatakan keempatnya sudah ada.
+func (c NewColumns) All() bool {
+	return c.Accept && c.Appointment && c.Reference && c.WorkStatus
+}
+
+// CheckNewColumns melaporkan kolom mana dari keempatnya yang sudah ada.
+//
+// # Kenapa lewat katalog, bukan probe parsing
+//
+// Probe berbasis `SELECT COUNT(kolom) … WHERE 1=0` bersifat SEMUA-ATAU-TIDAK: satu kolom yang
+// belum ada menghasilkan ORA-00904, dan kolom lain yang sudah ada ikut terbaca sebagai belum
+// ada. Itu persis keadaan 2026-09-30 — dua dari empat kolom tiba lebih dulu, dan probe lama
+// tidak dapat menunjukkan mana yang sudah.
+//
+// Keberadaan kolom **bukan** berarti terisi. Keterisian diukur CheckFilledColumns.
+func (r *Repo) CheckNewColumns(ctx context.Context) (NewColumns, error) {
+	var accept, appointment, reference, workStatus int
+
+	err := r.db.QueryRowContext(ctx, query("check_new_columns")).
+		Scan(&accept, &appointment, &reference, &workStatus)
+	if err != nil {
+		return NewColumns{}, fmt.Errorf(
+			"membaca katalog kolom POOLDATA.T_SURVEYORLIST: %w", err)
+	}
+
+	return NewColumns{
+		Accept:      accept > 0,
+		Appointment: appointment > 0,
+		Reference:   reference > 0,
+		WorkStatus:  workStatus > 0,
+	}, nil
+}
+
+// FilledColumns adalah hasil pengukuran keterisian kolom yang SUDAH ADA.
+//
+// Hanya memuat kolom yang ada per 2026-09-30. `ADJUSTERPIC` belum ditambahkan, sehingga tidak
+// dapat diukur — CheckNewColumns yang melaporkan ketiadaannya.
+type FilledColumns struct {
+	TotalRows  int
+	Accept     int
+	Reference  int
+	WorkStatus int
+}
+
+// CheckFilledColumns menghitung berapa baris kolom yang sudah ada BENAR-BENAR terisi.
+//
+// # Kenapa TERPISAH dari CheckNewColumns
+//
+// Karena keduanya diperbaiki langkah yang berbeda: kolom ditambahkan DBA lewat `ALTER`,
+// sedangkan isinya ditulis procedure. Menyatukannya membuat "kolomnya sudah ada tetapi masih
+// kosong" terbaca sebagai siap.
+//
+// # Kenapa nol pada Accept adalah keadaan yang PALING berbahaya
+//
+// Tab Outstanding menyaring `ADJUSTERACCEPT IS NULL`. Kolom yang ADA tetapi seluruhnya kosong
+// akan menampilkan **seluruh antrean** sebagai "belum dikonfirmasi adjuster" — layar terisi
+// wajar, angkanya masuk akal, dan isinya salah. Itu cacat diam, dan pengukuran ini satu-satunya
+// yang menangkapnya sebelum pengguna melihatnya.
+func (r *Repo) CheckFilledColumns(ctx context.Context) (FilledColumns, error) {
+	var result FilledColumns
+
+	err := r.db.QueryRowContext(ctx, query("check_filled_columns")).Scan(
+		&result.TotalRows,
+		&result.Accept,
+		&result.Reference,
+		&result.WorkStatus,
+	)
+	if err != nil {
+		return FilledColumns{}, fmt.Errorf(
+			"menghitung keterisian kolom POOLDATA.T_SURVEYORLIST: %w", err)
+	}
+	return result, nil
 }
 
 // CheckKPI memastikan tabel KPI beserta kesembilan kolom angkanya ada.

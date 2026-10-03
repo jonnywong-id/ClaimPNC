@@ -155,6 +155,7 @@ import (
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
+	inboxautoclaimpremium "claim-pnc/internal/inboxautoclaim/premium"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
@@ -215,9 +216,11 @@ import (
 	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
 	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
 	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
+	inboxrclpuclpega "claim-pnc/internal/inboxrclpucl/adapter/pega"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
+	"claim-pnc/internal/inboxrclpucl/suratpdf"
 	inboxrclpuclusecase "claim-pnc/internal/inboxrclpucl/usecase"
 	inboxreceivetkahttp "claim-pnc/internal/inboxreceivetka/http"
 	inboxreceivetkanotif "claim-pnc/internal/inboxreceivetka/notification"
@@ -1061,6 +1064,10 @@ func run() error {
 	// Master Dokumen Travel. Seperti Master Status Progres, tabelnya ada di basis data
 	// SETIAP entitas — rutenya karena itu memasang pemeriksaan portal sendiri di dalam
 	// Mount.
+	// DILAPORKAN, BELUM DIPERBAIKI: galat NewHandler ini tidak pernah diperiksa — ia
+	// tertimpa galat berikutnya. Memeriksanya mengubah perilaku start (aplikasi berhenti
+	// alih-alih jalan dengan handler nil), jadi menunggu keputusan Work Owner.
+	//nolint:staticcheck // SA4006 — lihat catatan di atas.
 	travelDocumentHandler, err := masterdokumentravelhttp.NewHandler(masterdokumentravelhttp.Options{
 		Service:       assembly.masterDokumenTravel,
 		Logger:        logger,
@@ -3911,7 +3918,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	extra, err := buildExtraServices(store, logger)
+	// DILAPORKAN, BELUM DIPERBAIKI: galat buildExtraServices tidak pernah diperiksa — ia
+	// tertimpa baris berikutnya. Memeriksanya mengubah perilaku start, jadi menunggu
+	// keputusan Work Owner.
+	extra, err := buildExtraServices(store, logger) //nolint:ineffassign,staticcheck // lihat catatan di atas.
 	workshopService, err := masterbengkelusecase.NewService(masterbengkelusecase.Options{
 		RepoSelector: store.workshopSelector,
 	})
@@ -3985,6 +3995,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	autoClaimService, err := inboxautoclaimusecase.NewService(inboxautoclaimusecase.Options{
 		RepoSelector: store.autoClaimSelector,
+		Premium:      buildPremiumChecker(store.legacy, logger),
 	})
 	if err != nil {
 		store.close()
@@ -4121,6 +4132,26 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	rclPUCLService, err := inboxrclpuclusecase.NewService(
 		inboxrclpuclusecase.Options{
 			RepoSelector: store.rclPUCLSelector,
+
+			// Pemanggil layanan Pega untuk tindakan "Kirim Ke Analyst".
+			//
+			// Alamatnya dari `PEGA_LAYANAN_KLAIM`, dan KOSONG adalah keadaan yang sah hari
+			// ini: layanannya belum dibangun (`permintaan-artefak-pega.md` §12). Alamat
+			// kosong membuat tindakannya dijawab 503 dengan keterangan yang menyebut siapa
+			// yang harus bertindak — bukan membuat aplikasi gagal menyala.
+			Actions: inboxrclpuclpega.NewClient(inboxrclpuclpega.Config{
+				BaseURL:  strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM")),
+				Path:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM_PATH")),
+				User:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_PENGGUNA")),
+				Password: os.Getenv("PEGA_LAYANAN_SANDI"),
+			}),
+
+			// Perender surat RCL/PUCL — tombol "Download Dokumen".
+			//
+			// Susunannya mengikuti templat `HTML/SuratPUCL-HTML.xml` yang dikirim Work
+			// Owner 2026-10-02. Tanpa pemasangan ini tombolnya hanya memindahkan klaim
+			// antartab, dan tidak satu berkas pun terbit.
+			Letters: suratpdf.Renderer{},
 
 			// Logger WAJIB, dengan alasan yang sama seperti modul di atasnya DITAMBAH
 			// satu: antrean layar ini bersama, sehingga tidak ada penyaring kepemilikan
@@ -4460,7 +4491,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee)
 		if err != nil {
 			store.close()
 			return assembly{}, err
@@ -8393,4 +8424,26 @@ func caseStudySelectorMemory(primaryAlias string) casestudyclaim.RepoSelector {
 		store[clean] = fresh
 		return fresh, nil
 	}
+}
+
+// buildPremiumChecker menyusun pemeriksa premi unggahan Inbox Auto Claim.
+//
+// Tanpa koneksi basis data (mode memori), alamat layanan pada POOLDATA.GCNM_CONNECT_REST
+// tidak dapat dibaca, sehingga yang dipakai tiruan yang menjawab LUNAS — sama dengan
+// penerbit virtual account. Dengan koneksi, alamatnya dibaca per portal:
+// `APP = <alias portal> AND TYPESERVICE = 'PREMI'` (Work Owner 2026-09-29).
+func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxautoclaim.PremiumChecker {
+	if legacy == nil {
+		logger.Warn("cek premi unggahan memakai jawaban tiruan (selalu lunas)",
+			slog.String("modul", "inboxautoclaim"),
+			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga alamat layanan pada POOLDATA.GCNM_CONNECT_REST tidak dapat dibaca"),
+		)
+		return inboxautoclaimpremium.NewFake()
+	}
+	checker, err := inboxautoclaimpremium.NewPega(inboxautoclaimpremium.Options{Catalog: legacy})
+	if err != nil {
+		// Hanya terjadi bila katalognya nil — sudah disaring di atas.
+		panic(err)
+	}
+	return checker
 }

@@ -109,7 +109,7 @@ export function useCreatePanel() {
     mutationFn: (input: PanelInput) =>
       callAPI<PanelResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ['master-panel'] })
     },
   })
 }
@@ -135,7 +135,7 @@ export function useSavePanel() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ['master-panel'] })
     },
   })
 }
@@ -163,7 +163,7 @@ export function useDecidePanel() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ['master-panel'] })
     },
   })
 }

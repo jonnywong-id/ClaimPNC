@@ -22,11 +22,13 @@ func TestCommitteeLabelFollowsTheLegacyCase(t *testing.T) {
 	require.Equal(t, "MENUNGGU", laporanhasilai.CommitteeLabel("0"))
 }
 
-// TestUnknownCommitteeCodeStaysBlank membuktikan cabang `ELSE ''` dipertahankan.
+// TestUnknownCommitteeCodeStaysBlank membuktikan cabang string kosong dipertahankan:
+//
+//	ELSE ''
 //
 // Kode yang tidak dikenal menghasilkan sel kosong, bukan "DITOLAK". Modul `komite` memang
 // MENOLAK meniru pola `ELSE 'DITOLAK'` dari rule lain — tetapi kueri layar ini sejak awal
-// sudah menutup dengan `ELSE ''`, dan itulah yang ditiru di sini.
+// sudah menutup dengan string kosong, dan itulah yang ditiru di sini.
 func TestUnknownCommitteeCodeStaysBlank(t *testing.T) {
 	require.Equal(t, "", laporanhasilai.CommitteeLabel(""))
 	require.Equal(t, "", laporanhasilai.CommitteeLabel("9"))

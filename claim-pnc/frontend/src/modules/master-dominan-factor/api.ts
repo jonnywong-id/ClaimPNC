@@ -81,7 +81,7 @@ export function useSaveDominantFactor() {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan,
       // nomornya hanya diketahui server — menebaknya di klien akan menampilkan nomor
       // yang salah sampai muat ulang berikutnya.
-      void client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) })
     },
   })
 }

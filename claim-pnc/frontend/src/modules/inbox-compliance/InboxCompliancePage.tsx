@@ -499,7 +499,7 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
 

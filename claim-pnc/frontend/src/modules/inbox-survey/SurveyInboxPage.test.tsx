@@ -28,8 +28,13 @@ function tugas(partial: Partial<TugasSurvei> = {}): TugasSurvei {
     survei_id: 'ASM-FW-GCNMFW-WORK SRV-0001',
     klaim_id: 'ASM-FW-GCNMFW-WORK PNCN.26.0101',
     index_survei: '1',
-    appointment_no: 'APP-0001',
-    reference_no: 'REF-0001',
+
+    // Keduanya SELALU kosong dari server hari ini — kolom asalnya belum ada di T_SURVEYORLIST.
+    // Data uji meniru itu apa adanya; mengisinya akan membuat uji lulus atas keadaan yang
+    // tidak pernah terjadi. Status ASM TIDAK termasuk — kolom itu kini terisi.
+    appointment_no: '',
+    reference_no: '',
+
     claim_no: 'PNCN.26.0101',
     policy_no: '26.004.2026.00101',
     insured_name: 'Rangga Contoh',
@@ -40,9 +45,8 @@ function tugas(partial: Partial<TugasSurvei> = {}): TugasSurvei {
     pic_loss_adjuster: 'BUDI',
     date_of_loss: '2026-08-20',
     aging: 8,
-    status_asm: 'Survey Scheduled',
+    status_asm: 'Preliminary Advice',
     jenis_surveyor: '2',
-    status_survei: '0',
     ...partial,
   }
 }
@@ -70,42 +74,84 @@ const keteranganResponse: KeteranganResponse = {
     {
       kunci: 'appointment_no',
       judul: 'Appointment No',
-      keterangan: 'Pemetaannya belum dikonfirmasi DBA.',
+      keterangan: 'BELUM TERSEDIA. Kolomnya belum ada di POOLDATA.T_SURVEYORLIST.',
+      tersedia: false,
     },
-    { kunci: 'reference_no', judul: 'Reference No' },
-    { kunci: 'claim_no', judul: 'Claim No' },
-    { kunci: 'policy_no', judul: 'Policy No' },
-    { kunci: 'insured_name', judul: 'Insured Name' },
-    { kunci: 'cob', judul: 'COB' },
-    { kunci: 'cause_of_loss', judul: 'Cause Of Loss' },
-    { kunci: 'location', judul: 'Location' },
-    { kunci: 'pic_asm', judul: 'PIC ASM' },
-    { kunci: 'pic_loss_adjuster', judul: 'PIC Loss Adjuster' },
-    { kunci: 'date_of_loss', judul: 'Date of Loss' },
-    { kunci: 'aging', judul: 'Aging', keterangan: 'Dibaca, bukan dihitung.' },
-    { kunci: 'status_asm', judul: 'Status ASM' },
+    {
+      kunci: 'reference_no',
+      judul: 'Reference No',
+      keterangan: 'BELUM TERSEDIA. Kolomnya sudah ada tetapi seluruh barisnya masih kosong.',
+      tersedia: false,
+    },
+    { kunci: 'claim_no', judul: 'Claim No', tersedia: true },
+    { kunci: 'policy_no', judul: 'Policy No', tersedia: true },
+    { kunci: 'insured_name', judul: 'Insured Name', tersedia: true },
+    { kunci: 'cob', judul: 'COB', tersedia: true },
+    { kunci: 'cause_of_loss', judul: 'Cause Of Loss', tersedia: true },
+    { kunci: 'location', judul: 'Location', tersedia: true },
+    { kunci: 'pic_asm', judul: 'PIC ASM', tersedia: true },
+    { kunci: 'pic_loss_adjuster', judul: 'PIC Loss Adjuster', tersedia: true },
+    { kunci: 'date_of_loss', judul: 'Date of Loss', tersedia: true },
+    {
+      kunci: 'aging',
+      judul: 'Aging',
+      keterangan: 'Dihitung dari tanggal janji survei dicatat.',
+      tersedia: true,
+    },
+    {
+      kunci: 'status_asm',
+      judul: 'Status ASM',
+      keterangan: 'Diambil dari STS_SURVEY pada langkah terakhir.',
+      tersedia: true,
+    },
   ],
+
+  // Keempat tab pertama BELUM TERSEDIA — kolom penggeraknya belum ada di T_SURVEYORLIST.
+  // Data uji meniru itu apa adanya, karena di situlah cacat layar paling mungkin muncul.
   tab: [
-    { kunci: 'outstanding', judul: 'Outstanding' },
-    { kunci: 'invoice', judul: 'Invoice' },
-    { kunci: 'close', judul: 'Close' },
-    { kunci: 'all', judul: 'ALL' },
-    { kunci: 'belum-dijawab', judul: 'Not answered communication' },
-    { kunci: 'belum-dibalas-asm', judul: 'Not replied from ASM' },
-    { kunci: 'sudah-dibalas-asm', judul: 'Replied from ASM' },
+    {
+      kunci: 'outstanding',
+      judul: 'Outstanding',
+      tersedia: false,
+      alasan_tak_tersedia: 'Kolom ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong.',
+    },
+    {
+      kunci: 'invoice',
+      judul: 'Invoice',
+      tersedia: false,
+      alasan_tak_tersedia: 'Kolom ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong.',
+    },
+    {
+      kunci: 'close',
+      judul: 'Close',
+      tersedia: false,
+      alasan_tak_tersedia: 'Kolom PYSTATUSWORK sudah ada tetapi seluruh barisnya masih kosong.',
+    },
+    {
+      kunci: 'all',
+      judul: 'ALL',
+      tersedia: false,
+      alasan_tak_tersedia: 'Kolom ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong.',
+    },
+    { kunci: 'belum-dijawab', judul: 'Not answered communication', tersedia: true },
+    { kunci: 'belum-dibalas-asm', judul: 'Not replied from ASM', tersedia: true },
+    { kunci: 'sudah-dibalas-asm', judul: 'Replied from ASM', tersedia: true },
   ],
   kolom_kpi: [
-    { kunci: 'penjadwalan_survey', judul: 'PENJADWALAN SURVEY' },
-    { kunci: 'immediate_advice', judul: 'IMMEDIATE ADVICE' },
-    { kunci: 'preliminary_advice', judul: 'PRELIMINARY ADVICE' },
-    { kunci: 'interim_report', judul: 'INTERIM REPORT' },
-    { kunci: 'update_progress', judul: 'UPDATE PROGRESS' },
-    { kunci: 'tanggapan_komunikasi', judul: 'TANGGAPAN KOMUNIKASI' },
-    { kunci: 'propose_adjustment', judul: 'PROPOSE ADJUSTMENT' },
-    { kunci: 'final_report', judul: 'FINAL REPORT' },
-    { kunci: 'nilai', judul: 'NILAI' },
+    { kunci: 'penjadwalan_survey', judul: 'PENJADWALAN SURVEY', tersedia: true },
+    { kunci: 'immediate_advice', judul: 'IMMEDIATE ADVICE', tersedia: true },
+    { kunci: 'preliminary_advice', judul: 'PRELIMINARY ADVICE', tersedia: true },
+    { kunci: 'interim_report', judul: 'INTERIM REPORT', tersedia: true },
+    { kunci: 'update_progress', judul: 'UPDATE PROGRESS', tersedia: true },
+    { kunci: 'tanggapan_komunikasi', judul: 'TANGGAPAN KOMUNIKASI', tersedia: true },
+    { kunci: 'propose_adjustment', judul: 'PROPOSE ADJUSTMENT', tersedia: true },
+    { kunci: 'final_report', judul: 'FINAL REPORT', tersedia: true },
+    { kunci: 'nilai', judul: 'NILAI', tersedia: true },
   ],
-  tab_bawaan: 'outstanding',
+
+  // Tab bawaan adalah tab TERSEDIA pertama, bukan Outstanding. Server yang memutuskannya
+  // (`inboxsurvey.DefaultAvailableTab`), dan data uji meniru keputusannya.
+  tab_bawaan: 'belum-dijawab',
   jenis_kpi: ['outstanding', 'final', 'kuartal'],
   ukuran_halaman: 25,
   selisih_terencana: ['Tab Close memakai status adjuster Close Case.'],
@@ -115,12 +161,11 @@ const keteranganResponse: KeteranganResponse = {
 const jumlahTabResponse: JumlahTabResponse = {
   portal: 'ASM',
   identitas: identitas(),
+  // HANYA tab tersedia yang dihitung server. Keempat tab lain tidak muncul di sini sama
+  // sekali — angka nol akan menyatakan "tab ini kosong", padahal yang benar adalah "tab ini
+  // belum dapat dihitung".
   tab: [
-    { kunci: 'outstanding', total: 3 },
-    { kunci: 'invoice', total: 1 },
-    { kunci: 'close', total: 2 },
-    { kunci: 'all', total: 6 },
-    { kunci: 'belum-dijawab', total: 1 },
+    { kunci: 'belum-dijawab', total: 4 },
     { kunci: 'belum-dibalas-asm', total: 1 },
     { kunci: 'sudah-dibalas-asm', total: 1 },
   ],
@@ -134,7 +179,7 @@ function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
     total: 1,
     lewati: 0,
     batas: 25,
-    tab: 'outstanding',
+    tab: 'belum-dijawab',
     cari: '',
     ...partial,
   }
@@ -256,8 +301,14 @@ it('menggambar ketiga belas judul kolom dari keterangan server', async () => {
   await screen.findByText('PNCN.26.0101')
 
   for (const judul of [
-    'Appointment No',
-    'Reference No',
+    // Keduanya BELUM TERSEDIA, dan judulnya menyatakan itu. Tanpa penanda, kolom yang SELALU
+    // kosong tidak dapat dibedakan dari kolom yang kebetulan kosong pada halaman ini.
+    'Appointment No · belum tersedia',
+    'Reference No · belum tersedia',
+
+    // Status ASM TERSEDIA sejak 2026-09-29 — judulnya polos, tanpa penanda.
+    'Status ASM',
+
     'Claim No',
     'Policy No',
     'Insured Name',
@@ -268,7 +319,6 @@ it('menggambar ketiga belas judul kolom dari keterangan server', async () => {
     'PIC Loss Adjuster',
     'Date of Loss',
     'Aging',
-    'Status ASM',
   ]) {
     // getAllByText, bukan getByText: `DataTable` menggambar judul DUA KALI — sebagai `<th>`
     // pada tampilan meja, dan sebagai label sel pada tampilan kartu di layar sempit.
@@ -276,40 +326,148 @@ it('menggambar ketiga belas judul kolom dari keterangan server', async () => {
   }
 })
 
-it('menggambar ketujuh tab beserta jumlahnya', async () => {
+/**
+ * Ketujuh tab digambar, masing-masing membawa KEADAANNYA di dalam namanya.
+ *
+ * Angkanya menyatu dengan nama — `Not answered communication (4)` — bukan digambar sebagai
+ * lencana tersendiri. Itu akibat memakai `TabBar` bersama, yang tidak menyediakan slot
+ * lencana; menambahkannya berarti mengubah komponen yang sudah dipakai layar lain.
+ *
+ * Tab yang BELUM TERSEDIA memakai slot yang sama untuk menyatakan keadaannya. Tanpa penanda
+ * itu, tab tersebut tampil polos dengan daftar kosong — dan daftar kosong terbaca sebagai
+ * "tidak ada pekerjaan", yang tidak pernah dilaporkan siapa pun sebagai kerusakan.
+ *
+ * Yang diuji tetap: ketujuh tab ADA, dan angkanya datang dari rute `/jumlah-tab` yang
+ * TERPISAH — bukan dari jawaban daftar.
+ */
+it('menggambar ketujuh tab beserta jumlah atau keadaannya', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0101')
 
-  for (const judul of [
-    'Outstanding',
-    'Invoice',
-    'Close',
-    'ALL',
-    'Not answered communication',
-    'Not replied from ASM',
-    'Replied from ASM',
+  for (const nama of [
+    'Outstanding (belum tersedia)',
+    'Invoice (belum tersedia)',
+    'Close (belum tersedia)',
+    'ALL (belum tersedia)',
+    'Not answered communication (4)',
+    'Not replied from ASM (1)',
+    'Replied from ASM (1)',
   ]) {
-    expect(screen.getAllByText(judul).length).toBeGreaterThan(0)
+    expect(screen.getByRole('tab', { name: nama })).toBeInTheDocument()
   }
+})
 
-  // Angka pada bilah tab datang dari rute TERSENDIRI, bukan dari jawaban daftar.
-  expect(screen.getByText('6')).toBeInTheDocument()
+/**
+ * Tab yang belum tersedia MENGGANTI tabelnya dengan sebabnya, bukan menampilkannya kosong.
+ *
+ * Ini perbedaan yang menentukan. Daftar kosong terbaca sebagai "tidak ada pekerjaan untuk
+ * saya", dan pembacaan itu salah — yang benar adalah kolom penggeraknya belum ada di basis
+ * data. Yang pertama tidak pernah dilaporkan siapa pun; yang kedua akan.
+ *
+ * Tabnya TETAP dapat dipilih, dan itu disengaja: tab yang dimatikan tanpa penjelasan sama
+ * membingungkannya dengan tab kosong.
+ */
+it('menjelaskan sebabnya saat tab yang belum tersedia dibuka', async () => {
+  stubFetch(daftarResponse())
+  renderPage()
+
+  await screen.findByText('PNCN.26.0101')
+
+  await userEvent.click(screen.getByRole('tab', { name: /^Outstanding/ }))
+
+  expect(await screen.findByText(/Tab Outstanding belum dapat ditampilkan/)).toBeInTheDocument()
+  // Nama kolomnya WAJIB terbaca apa adanya — `ADJUSTERACCEPT`, bukan `ADJUSTERACCEPT_1`.
+  // Akhiran `_1` milik tabel datar Pega, dan pernah membuat kolom yang SUDAH ditambahkan
+  // terbaca sebagai belum ada oleh orang yang menambahkannya.
+  expect(
+    screen.getByText(/ADJUSTERACCEPT sudah ada tetapi seluruh barisnya masih kosong/),
+  ).toBeInTheDocument()
+
+  // Tabelnya TIDAK digambar — bukan digambar kosong.
+  expect(screen.queryByText('PNCN.26.0101')).not.toBeInTheDocument()
+})
+
+/**
+ * Kolom yang belum tersedia menyatakan keadaannya di SELNYA juga, bukan hanya di judulnya.
+ *
+ * Em dash pada kolom yang SELALU kosong tidak dapat dibedakan dari em dash pada baris yang
+ * kebetulan kosong, dan sebab keduanya berbeda jauh: yang satu menunggu Tim Pega, yang lain
+ * menunggu petugas mengisi.
+ */
+it('menandai sel kolom yang belum tersedia', async () => {
+  stubFetch(daftarResponse())
+  renderPage()
+
+  await screen.findByText('PNCN.26.0101')
+
+  // DUA kolom belum tersedia, dan seluruh selnya bertanda.
+  expect(screen.getAllByText('belum tersedia').length).toBeGreaterThanOrEqual(2)
+
+  // Status ASM TIDAK bertanda — kolomnya terisi, dan nilainya digambar apa adanya.
+  expect(screen.getAllByText('Preliminary Advice').length).toBeGreaterThan(0)
+})
+
+/**
+ * Kegagalan penghitung tab HARUS terlihat pengguna.
+ *
+ * Ini saudara kembar dari cacat `/keterangan` di bawah, dan ia SEMPAT TERLEWAT: perbaikan
+ * pertama hanya menutup satu dari dua. Tanpa pesan ini, tab tampil tanpa angka dan pengguna
+ * tidak dapat membedakan "tab ini memang kosong" dari "angkanya gagal diambil".
+ *
+ * Bedanya dengan `/keterangan`: kegagalan di sini TIDAK menutup layar. Daftarnya tetap
+ * terbaca, sehingga yang benar adalah pemberitahuan di dalam layar — bukan pengganti seluruh
+ * layar.
+ */
+it('memberi tahu pengguna saat jumlah per tab gagal diambil', async () => {
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+    calls.push({ url, init })
+
+    if (url.includes('/keterangan')) {
+      return Promise.resolve(jsonResponse(200, keteranganResponse))
+    }
+    if (url.includes('/jumlah-tab')) {
+      return Promise.resolve(jsonResponse(500, { kode: 'galat_internal', pesan: 'rusak' }))
+    }
+    return Promise.resolve(jsonResponse(200, daftarResponse()))
+  })
+  renderPage()
+
+  expect(
+    await screen.findByText(/Jumlah pekerjaan per tab tidak dapat diambil/),
+  ).toBeInTheDocument()
+
+  // Daftarnya sendiri TETAP terbaca — kegagalan penghitung tidak boleh menutup layar.
+  //
+  // `findByText`, bukan `getByText`: penghitung gagal lebih cepat daripada daftar selesai
+  // dimuat, sehingga pemeriksaan serentak di sini akan menguji urutan kedatangan jaringan,
+  // bukan perilaku layarnya.
+  expect(await screen.findByText('PNCN.26.0101')).toBeInTheDocument()
+
+  // Dan tabnya tetap dapat dipakai, hanya tanpa angka.
+  expect(
+    screen.getByRole('tab', { name: 'Not answered communication' }),
+  ).toBeInTheDocument()
 })
 
 /**
  * Tab bawaan datang dari server, bukan ditulis tetap di layar.
  *
  * Yang menentukan tab mana yang terbuka pertama kali adalah keputusan yang tercatat di domain
- * (`inboxsurvey.DefaultTab`). Menuliskannya juga di layar akan membuat keduanya dapat berbeda
- * tanpa ada yang menyadarinya.
+ * (`inboxsurvey.DefaultAvailableTab`). Menuliskannya juga di layar akan membuat keduanya dapat
+ * berbeda tanpa ada yang menyadarinya.
+ *
+ * Perhatikan tab bawaannya BUKAN Outstanding. Bawaan layar lama adalah Outstanding, dan
+ * Outstanding termasuk yang belum dapat dihitung — membuka layar di sana akan membuat kesan
+ * pertama setiap pengguna berupa layar tanpa isi, dan kesan itu bertahan meski tab lain
+ * berisi. Server yang memutuskannya, layar hanya mengikutinya.
  */
 it('membuka tab bawaan dari keterangan server', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
-  await waitFor(() => expect(urlDaftar()).toContain('tab=outstanding'))
+  await waitFor(() => expect(urlDaftar()).toContain('tab=belum-dijawab'))
 })
 
 /**
@@ -326,22 +484,25 @@ it('mengosongkan pencarian saat berpindah tab', async () => {
   await screen.findByText('PNCN.26.0101')
 
   const kotak = screen.getByLabelText(/Cari Claim No/i)
-  await userEvent.type(kotak, 'REF-0001')
-  await waitFor(() => expect(urlDaftar()).toContain('cari=REF-0001'))
+  await userEvent.type(kotak, 'PNCN.26.0101')
+  await waitFor(() => expect(urlDaftar()).toContain('cari=PNCN'))
 
-  await userEvent.click(screen.getByRole('tab', { name: /^Close/ }))
+  // Berpindah ke tab TERSEDIA yang lain — tab yang belum tersedia tidak menjalankan
+  // permintaan daftar sama sekali, sehingga tidak dapat membuktikan pencariannya dikosongkan.
+  await userEvent.click(screen.getByRole('tab', { name: /^Replied from ASM/ }))
 
-  await waitFor(() => expect(urlDaftar()).toContain('tab=close'))
+  await waitFor(() => expect(urlDaftar()).toContain('tab=sudah-dibalas-asm'))
   expect(urlDaftar()).not.toContain('cari=')
 })
 
 /**
  * Aging `null` dan `0` digambar BERBEDA, dan itu inti kolomnya.
  *
- * Kolom `AGING` boleh kosong. Menggambar keduanya sama akan menampilkan "0 hari" pada baris
- * yang sebenarnya belum pernah dihitung — angka yang terlihat sah dan salah.
+ * `null` berarti tanggal janji surveinya tidak ada, sehingga umurnya tidak dapat dihitung.
+ * Menggambar keduanya sama akan menampilkan "0 hari" pada baris yang sebenarnya tidak punya
+ * angka — angka yang terlihat sah dan salah.
  */
-it('membedakan Aging yang belum dihitung dari nol hari', async () => {
+it('membedakan Aging yang tidak dapat dihitung dari nol hari', async () => {
   stubFetch(
     daftarResponse({
       data: [
@@ -360,7 +521,7 @@ it('membedakan Aging yang belum dihitung dari nol hari', async () => {
   await screen.findByText('PNCN.26.0102')
 
   expect(screen.getByText('0 hari')).toBeInTheDocument()
-  expect(screen.getByText('belum dihitung')).toBeInTheDocument()
+  expect(screen.getByText('tidak dapat dihitung')).toBeInTheDocument()
 })
 
 /**

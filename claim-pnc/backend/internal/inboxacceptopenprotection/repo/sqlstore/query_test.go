@@ -172,7 +172,7 @@ func kolomTerpilih(t *testing.T, nama string) []string {
 	require.Greater(t, akhir, mulai, "kueri %q tidak berbentuk SELECT … FROM", nama)
 
 	var hasil []string
-	for _, bagian := range pisahKomaTeratas(teks[mulai+len("SELECT "):akhir]) {
+	for _, bagian := range pisahKomaTeratas(teks[mulai+len("SELECT ") : akhir]) {
 		bagian = strings.TrimSpace(bagian)
 		if bagian == "" {
 			continue

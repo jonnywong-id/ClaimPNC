@@ -102,6 +102,38 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"Masuk ulang lalu coba lagi.",
 		}, true
 
+	case errors.Is(err, inboxrclpucl.ErrPegaServiceUnavailable):
+		// 503, bukan 500. Keduanya "gagal" bagi mesin, tetapi menuntut orang yang BERBEDA:
+		// 500 berarti tim pengembang harus memperbaiki kode, 503 berarti layanan Pega belum
+		// tersedia dan yang bertindak adalah Tim Pega serta Infra.
+		//
+		// Pesannya menyebutkan itu, karena petugas yang membacanya tidak punya cara lain
+		// mengetahui ke mana laporannya harus pergi.
+		//
+		// Pesannya menyebut APA yang ditunggu, bukan sekadar "belum tersambung". Petugas yang
+		// menekan tombol ini sudah menanyakannya berkali-kali, dan jawaban yang tidak menyebut
+		// penghalangnya terbaca seperti kerusakan yang seharusnya sudah diperbaiki.
+		//
+		// Nomor case TIDAK lagi disebut di kalimat ini. Dulu ia berbunyi "salin nomor case-nya
+		// dari layar ini", padahal nomornya hanya ada di kaki layar — kalimat yang benar
+		// berujung pada gulir mencari. Layar kini menggambar nomornya tepat di bawah pesan ini
+		// (`CopyCaseNumber`), sehingga menyebutnya di sini hanya mengulang apa yang terlihat.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: "layanan_pega_belum_tersedia",
+			Message: "Tindakan ini dijalankan oleh Pega, dan layanannya belum dibangun — " +
+				"yang ditunggu rule Service REST `ActionClaimPUCL` dari Tim Pega. " +
+				"Sementara itu tindakan ini dikerjakan di Pega.",
+		}, true
+
+	case errors.Is(err, inboxrclpucl.ErrActionNotAvailable):
+		// 409, bukan 403. Bukan soal kewenangan pemanggil melainkan KEADAAN klaimnya:
+		// tombolnya memang tidak digambar untuk jalur dan lini bisnis klaim ini.
+		return http.StatusConflict, ErrorResponse{
+			Code: "tindakan_tidak_tersedia",
+			Message: "Tindakan ini tidak berlaku untuk klaim ini. Tombolnya hanya muncul " +
+				"pada jalur PUCL lini Personal Accident.",
+		}, true
+
 	case errors.Is(err, inboxrclpucl.ErrClaimNotFound):
 		// 404, dan pesannya menyebut PORTAL.
 		//

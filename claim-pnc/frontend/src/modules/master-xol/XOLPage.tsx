@@ -1,8 +1,7 @@
 import { useState } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
-import type { XOL } from '@/api/types'
-import { ErrorCode } from '@/api/types'
+import { ErrorCode, type XOL } from '@/api/types'
 import { AddIcon, EditIcon, ReloadIcon, TrashIcon } from '@/components/Icon'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
@@ -247,7 +246,7 @@ export function XOLPage() {
           error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
           actions={
             <>
-              <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+              <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
                 <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
                 {list.isFetching ? 'Memuat…' : 'Muat ulang'}
               </Button>

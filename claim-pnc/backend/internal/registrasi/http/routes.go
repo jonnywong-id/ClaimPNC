@@ -74,6 +74,9 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/lod/tipe", func(w http.ResponseWriter, r *http.Request) {
 			h.LODTypes(w, r, chi.URLParam(r, "klaimID"))
 		})
+		sub.Post("/klaim/{klaimID}/lod/pilih", func(w http.ResponseWriter, r *http.Request) {
+			h.SetLODType(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Post("/klaim/{klaimID}/lod", func(w http.ResponseWriter, r *http.Request) {
 			h.PrintLOD(w, r, chi.URLParam(r, "klaimID"))
 		})
@@ -90,6 +93,14 @@ func Mount(r chi.Router, h *Handler) {
 		})
 		sub.Post("/klaim/{klaimID}/dla", func(w http.ResponseWriter, r *http.Request) {
 			h.DLA(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol PRINT di samping Nomor Akseptasi: PDF Draft Persetujuan (PrintPDFAcceptanceNote).
+		sub.Post("/klaim/{klaimID}/akseptasi/draft", func(w http.ResponseWriter, r *http.Request) {
+			h.AcceptanceNote(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Isian awal form AcceptationLOD (AcceptationLOD_PreAct).
+		sub.Post("/klaim/{klaimID}/akseptasi/awal", func(w http.ResponseWriter, r *http.Request) {
+			h.AcceptanceDefaults(w, r, chi.URLParam(r, "klaimID"))
 		})
 		// Tombol Persetujuan / Akseptasi: Simpan form AcceptationLOD (SetAdjustmentAcceptation).
 		sub.Post("/klaim/{klaimID}/akseptasi", func(w http.ResponseWriter, r *http.Request) {
@@ -130,6 +141,9 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/wilayah/{tingkat}", func(w http.ResponseWriter, r *http.Request) {
 			h.AreaOptions(w, r, chi.URLParam(r, "tingkat"))
 		})
+
+		// Pilihan Penyebab Kerugian per kode bisnis polis. Hanya membaca master.
+		sub.Get("/penyebab-kerugian", h.CauseOfLossOptions)
 
 		sub.Post("/tugas/{tugasID}/ambil", func(w http.ResponseWriter, r *http.Request) {
 			h.ClaimTask(w, r, chi.URLParam(r, "tugasID"))

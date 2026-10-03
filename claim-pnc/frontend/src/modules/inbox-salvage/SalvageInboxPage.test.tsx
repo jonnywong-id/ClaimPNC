@@ -278,7 +278,7 @@ function stubDefaultFetch() {
     // Daftar yang diminta menentukan bentuk jawabannya. Menjawab daftar yang sama untuk
     // setiap permintaan akan membuat uji perpindahan daftar lulus tanpa membuktikan apa
     // pun — dan di layar ini bahayanya besar, karena beberapa daftar memang mirip.
-    const address = new URL(url, 'http://uji.invalid')
+    const address = new URL(url, 'https://uji.invalid')
     const wanted = address.searchParams.get('daftar')
     const search = address.searchParams.get('cari') ?? ''
 

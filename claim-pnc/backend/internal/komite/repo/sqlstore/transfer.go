@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/money"
 )
 
@@ -113,7 +114,7 @@ func (r *TransferRepo) FindTransfer(
 	}
 
 	if polis := strings.TrimSpace(detail.Claim.PolicyNumber); polis != "" {
-		detail.Policy, detail.HasPolicy, err = r.policy(ctx, polis)
+		detail.Policy, detail.HasPolicy, err = r.policy(ctx, polis, strings.TrimSpace(detail.Claim.ProdKe))
 		if err != nil {
 			return komite.TransferDetail{}, err
 		}
@@ -143,23 +144,41 @@ func (r *TransferRepo) newCaseContext(
 	return toText(panel), toText(bisnis), toText(kunciKlaim), nil
 }
 
-// policy membaca periode, CoinsList, dan FacOfferList dokumen polis terbaru.
+// policy membaca periode polis dari dokumen polis terbaru, koasuransi dari T_COINSLIST, dan
+// Fac Offer dari T_FACOFFER — keduanya pada PRODKE snapshot klaim.
 func (r *TransferRepo) policy(
 	ctx context.Context,
-	policyNumber string,
+	policyNumber, prodKe string,
 ) (komite.PolicyFacts, bool, error) {
 	var facts komite.PolicyFacts
 
+	// Periode mendahulukan dokumen POLICYDATA, T_GENERAL hanya cadangan: T_GENERAL tidak
+	// mengikuti endorsemen — terverifikasi 2026-10-01, satu PRODKE endorsemen tercatat 2019–2020
+	// di T_GENERAL sementara dokumennya 2024, dan klaim 2024 atas polis itu hanya sah menurut
+	// dokumen.
 	var start, end sql.NullString
-	err := r.db.QueryRowContext(ctx, query("transfer_policy"), policyNumber).Scan(&start, &end)
+	err := r.db.QueryRowContext(ctx, query("transfer_policy_dokumen"), policyNumber).Scan(&start, &end)
 	found := err == nil
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca polis: %w", err)
+		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca dokumen polis: %w", err)
 	}
-	facts.Start = parsePegaTime(start.String)
-	facts.End = parsePegaTime(end.String)
+	facts.Start, facts.End = parsePegaTime(start.String), parsePegaTime(end.String)
+	if facts.Start.IsZero() || facts.End.IsZero() {
+		var tableStart, tableEnd sql.NullTime
+		err := r.db.QueryRowContext(ctx, query("transfer_policy"), policyNumber, prodKe).Scan(&tableStart, &tableEnd)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca T_GENERAL polis: %w", err)
+		}
+		found = found || err == nil
+		if facts.Start.IsZero() {
+			facts.Start = wibDate(tableStart)
+		}
+		if facts.End.IsZero() {
+			facts.End = wibDate(tableEnd)
+		}
+	}
 
-	rows, err := r.db.QueryContext(ctx, query("transfer_coinsurance"), policyNumber)
+	rows, err := r.db.QueryContext(ctx, query("transfer_coinsurance"), policyNumber, prodKe)
 	if err != nil {
 		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca koasuransi: %w", err)
 	}
@@ -179,7 +198,7 @@ func (r *TransferRepo) policy(
 		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: menelusuri koasuransi: %w", err)
 	}
 
-	rows, err = r.db.QueryContext(ctx, query("transfer_fac_offer"), policyNumber)
+	rows, err = r.db.QueryContext(ctx, query("transfer_fac_offer"), policyNumber, prodKe)
 	if err != nil {
 		return komite.PolicyFacts{}, false, fmt.Errorf("komite/sqlstore: membaca fac offer: %w", err)
 	}
@@ -326,6 +345,16 @@ func closeRows(rows *sql.Rows) error {
 //
 // Sama dengan pengurai di registrasi/sqlstore. Bentuk yang tidak dikenali menjadi waktu
 // kosong — layar menampilkannya "—", bukan tanggal tahun 1.
+// wibDate membaca kolom DATE jam dinding WIB (T_GENERAL.STARTDATE/ENDDATE) sebagai instan
+// UTC — setara teks Pega dokumen polis. Komponen jamnya dibaca apa adanya.
+func wibDate(t sql.NullTime) time.Time {
+	if !t.Valid || t.Time.IsZero() {
+		return time.Time{}
+	}
+	v := t.Time
+	return time.Date(v.Year(), v.Month(), v.Day(), v.Hour(), v.Minute(), v.Second(), 0, clock.ZoneWIB).UTC()
+}
+
 func parsePegaTime(text string) time.Time {
 	clean := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "GMT"))
 	if clean == "" {
@@ -373,12 +402,14 @@ func (r *TransferRepo) claim(
 
 		claimNo, polis, insured, bisnis   any
 		cabang, sob, peran, panel, kodeMU any
+		prodKe                            any
 	)
 
 	err := r.db.QueryRowContext(ctx, query("transfer_claim"), kunciKlaim).Scan(
 		&dol, &register, &location, &chronology, &status,
 		&recommendation, &share, &coins, &mata, &gratia, &count,
 		&claimNo, &polis, &insured, &bisnis, &cabang, &sob, &peran, &panel, &kodeMU,
+		&prodKe,
 	)
 	if err != nil {
 		return komite.ClaimSummary{}, false, fmt.Errorf(
@@ -409,6 +440,7 @@ func (r *TransferRepo) claim(
 		CoinsRole:        toText(peran),
 		GroupPanel:       toText(panel),
 		CurrencyCode:     toText(kodeMU),
+		ProdKe:           toText(prodKe),
 	}, true, nil
 }
 

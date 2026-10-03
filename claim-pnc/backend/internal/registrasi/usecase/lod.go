@@ -80,7 +80,7 @@ func (l *Service) PrintLOD(ctx context.Context, p LODCommand, by Caller) (LODRes
 		return LODResult{}, registrasi.ErrLODTemplateMissing()
 	}
 
-	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number)
+	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return LODResult{}, err
 	}
@@ -125,6 +125,61 @@ func (l *Service) PrintLOD(ctx context.Context, p LODCommand, by Caller) (LODRes
 		FileName: fmt.Sprintf("LOD_%s_%d_%d_%d.pdf", strings.ReplaceAll(claim.Number, ".", ""), p.Object, p.Coverage, p.Adjustment),
 		Content:  content,
 	}, nil
+}
+
+// SetLODType menyimpan pilihan dropdown Tipe LOD kolom Adjustment, lalu memuat ulang klaim.
+func (l *Service) SetLODType(ctx context.Context, p LODCommand, by Caller) (registrasi.Claim, error) {
+	claim, _, err := l.lodTask(ctx, p.ClaimID, p.TaskID, by)
+	if err != nil {
+		return registrasi.Claim{}, err
+	}
+	line, err := settlementAt(&claim, p.Object, p.Coverage, p.Adjustment)
+	if err != nil {
+		return registrasi.Claim{}, err
+	}
+	if err := registrasi.CanChooseLODType(*line, claim.Policy); err != nil {
+		return registrasi.Claim{}, err
+	}
+	kind := strings.TrimSpace(p.Type)
+	if kind != "" && registrasi.LODTypeName(kind) == "" {
+		return registrasi.Claim{}, registrasi.ErrLODTypeUnknown()
+	}
+	object := claim.InsuredItem[p.Object-1]
+
+	// SetShareAsmWhenPilihAdjustment: jenis Ex Gratia mengubah ExGratia dan Share ASM baris.
+	policy, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe)
+	if err != nil {
+		return registrasi.Claim{}, err
+	}
+	before := line.ShareASM
+	changed := registrasi.ApplyLODType(line, kind, claim.Portal, claim.Policy.TypeOfCoins, policy.Coins)
+
+	err = l.unit.Run(ctx, func(ctx context.Context) error {
+		if changed {
+			if err := l.claim.Save(ctx, claim); err != nil {
+				return err
+			}
+		}
+		if err := l.acceptance.SetLODType(ctx, claim.ID, object.ID, p.Coverage, p.Adjustment, kind); err != nil {
+			return err
+		}
+		note := fmt.Sprintf("Tipe LOD objek %d jaminan %d adjustment %d: %s", p.Object, p.Coverage, p.Adjustment, firstText(kind, "(kosong)"))
+		if line.ShareASM != before {
+			note += fmt.Sprintf("; Share ASM %s%% → %s%%", percentText(before), percentText(line.ShareASM))
+		}
+		return l.audit.Record(ctx, registrasi.AuditTrail{
+			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "LOD_TIPE", Actor: by.Identity, At: l.clock.Now().UTC(), Note: note,
+		})
+	})
+	if err != nil {
+		return registrasi.Claim{}, err
+	}
+	return l.claim.Get(ctx, claim.ID)
+}
+
+// percentText menulis persen e4 tanpa nol di belakang: 575000 → "57.5".
+func percentText(p registrasi.Percent) string {
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.4f", float64(p)/10_000), "0"), ".")
 }
 
 // lodTask memeriksa tugas InputSurveyor pemanggil pada klaim itu.

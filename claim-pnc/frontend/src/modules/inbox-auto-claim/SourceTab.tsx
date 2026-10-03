@@ -1,5 +1,13 @@
 import type { AutoClaimTab } from '@/api/types'
 
+/** Id panel isi tab — satu panel yang isinya berganti mengikuti tab aktif. */
+export const PANEL_ID = 'panel-jenis-klaim'
+
+/** Id tombol tab, dirujuk panel lewat `aria-labelledby`. */
+export function tabId(kode: string): string {
+  return `tab-jenis-klaim-${kode}`
+}
+
 type Props = {
   tab: AutoClaimTab[]
   selected: string
@@ -46,9 +54,11 @@ export function SourceTab({ tab, selected, onSelect }: Props) {
         return (
           <button
             key={t.kode}
+            id={tabId(t.kode)}
             role="tab"
             type="button"
             aria-selected={aktif}
+            aria-controls={aktif ? PANEL_ID : undefined}
             // Hanya tab yang aktif yang dapat di-Tab-kan; panah memindahkan yang lain.
             // Itu pola papan ketik baku untuk tablist, dan tanpa itu pengguna papan ketik
             // harus menekan Tab melewati setiap tab sebelum sampai ke isinya.

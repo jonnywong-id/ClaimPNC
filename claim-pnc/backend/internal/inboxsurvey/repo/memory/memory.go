@@ -14,10 +14,21 @@
 // Karena kalau tidak, uji yang lulus di sini tidak menyatakan apa pun tentang yang berjalan
 // di Oracle. Yang ditiru apa adanya:
 //
-//	cakupan nama surveyor        batas kewenangan, termasuk anggota bagi leader
-//	ketujuh predikat tab         persis seperti count_tabs dan list_tasks
-//	urutan TGLINPUT MENAIK       yang tertua lebih dulu — urutan antrean kerja
-//	pencarian Claim No / Ref No  tidak peka huruf besar-kecil
+//	cakupan nama surveyor       batas kewenangan, termasuk anggota bagi leader
+//	predikat tab yang TERSEDIA  persis seperti count_tabs dan list_tasks
+//	urutan TGLINPUT MENAIK      yang tertua lebih dulu — urutan antrean kerja
+//	pencarian Claim No          tidak peka huruf besar-kecil
+//
+// # Empat tab TIDAK ditiru, dan itu disengaja
+//
+// Tab Outstanding, ALL, Invoice, dan Close bergantung pada kolom yang tidak ada di tabel mana
+// pun yang dibaca modul ini (lihat inboxsurvey.UnavailableReason). Menirunya di sini akan
+// menghasilkan uji yang LULUS atas perilaku yang di Oracle tidak pernah terjadi — bentuk
+// pengujian yang paling menyesatkan, karena ia memberi rasa aman tanpa menjamin apa pun.
+//
+// Predikat keempatnya tidak hilang: ia terbaca dari konstanta inboxsurvey.AdjusterConfirmed,
+// StatusInvoiceFee, dan StatusCloseCase beserta penjelasannya, siap dipakai kembali begitu
+// kolomnya tiba.
 package memory
 
 import (
@@ -30,24 +41,10 @@ import (
 
 // Record adalah satu baris contoh beserta kolom yang TIDAK ditampilkan tetapi menyaring.
 //
-// Ketiga kolom penyaring itu sengaja tidak masuk `inboxsurvey.SurveyTask`: tidak satu pun
-// sampai ke layar, dan menaruhnya di tipe domain akan membuat orang menduga ia bagian dari
-// kontrak.
+// Kolom penyaringnya sengaja tidak masuk `inboxsurvey.SurveyTask`: ia tidak sampai ke layar,
+// dan menaruhnya di tipe domain akan membuat orang menduga ia bagian dari kontrak.
 type Record struct {
 	Task inboxsurvey.SurveyTask
-
-	// AdjusterAccept adalah `ADJUSTERACCEPT_1`.
-	//
-	// Kosong berarti NULL — tab Outstanding. Bernilai "1" berarti sudah dikonfirmasi.
-	// Perhatikan lawannya IS NULL, bukan <> "1": baris bernilai "0" tidak masuk tab mana pun,
-	// dan itu perilaku Pega apa adanya.
-	AdjusterAccept string
-
-	// InputAt adalah `TGLINPUT` — kunci urutan, dan hanya itu.
-	//
-	// Teks berbentuk YYYY-MM-DD HH:MM supaya urutannya dapat diperiksa dengan mata saat
-	// membaca data contoh, tanpa memanggil apa pun.
-	InputAt string
 
 	// Messages adalah isi `POOLDATA.M_KOMUNIKASI_PNC` untuk baris ini.
 	Messages []Message
@@ -162,6 +159,11 @@ func (s *Store) List(
 ) (inboxsurvey.Page, error) {
 	clean := f.Normalize()
 
+	// Tab yang belum dapat dihitung dicegat di sini, sama seperti sqlstore.Repo.List.
+	if !clean.Tab.Available() {
+		return inboxsurvey.Page{Tasks: []inboxsurvey.SurveyTask{}}, nil
+	}
+
 	matched := []Record{}
 	for _, record := range s.records {
 		if !inScope(record, identity.Scope) {
@@ -180,8 +182,9 @@ func (s *Store) List(
 	// Pemutus serinya CASEID lalu INDEX_SURVEY, tanpanya dua janji survei yang diinput pada
 	// waktu yang sama berpindah-pindah urutan antar halaman.
 	sort.SliceStable(matched, func(i, j int) bool {
-		if matched[i].InputAt != matched[j].InputAt {
-			return matched[i].InputAt < matched[j].InputAt
+		left, right := matched[i].Task.CreatedAt, matched[j].Task.CreatedAt
+		if !left.Equal(right) {
+			return left.Before(right)
 		}
 		if matched[i].Task.SurveyID != matched[j].Task.SurveyID {
 			return matched[i].Task.SurveyID < matched[j].Task.SurveyID
@@ -201,7 +204,11 @@ func (s *Store) List(
 	return page, nil
 }
 
-// Counts menghitung isi ketujuh tab sekaligus.
+// Counts menghitung isi tab yang DAPAT dihitung, sekaligus.
+//
+// Tab yang belum tersedia TIDAK dikembalikan sama sekali — sama seperti sqlstore.Repo.Counts.
+// Mengembalikan nol untuknya akan menyatakan "tab ini kosong", padahal yang benar adalah "tab
+// ini belum dapat dihitung".
 func (s *Store) Counts(
 	_ context.Context,
 	identity inboxsurvey.SurveyorIdentity,
@@ -210,6 +217,10 @@ func (s *Store) Counts(
 	result := make([]inboxsurvey.TabCount, 0, len(tabs))
 
 	for _, tab := range tabs {
+		if !tab.Available() {
+			continue
+		}
+
 		total := 0
 		for _, record := range s.records {
 			if inScope(record, identity.Scope) && inTab(record, tab, identity.Login) {
@@ -306,25 +317,11 @@ func nameInScope(name string, scope []string) bool {
 
 // inTab menyatakan baris ini termasuk keranjang tab tertentu.
 //
-// Ketujuh predikatnya ditiru dari `count_tabs` dan `list_tasks`, keranjang demi keranjang.
+// Hanya tab TERSEDIA yang punya cabang, ditiru dari `count_tabs` dan `list_tasks` keranjang
+// demi keranjang. Tab lain jatuh ke `default` dan mengembalikan false — bukan karena terlupa,
+// melainkan karena kolom penggeraknya tidak ada; lihat kepala paket.
 func inTab(record Record, tab inboxsurvey.Tab, login string) bool {
-	accept := strings.TrimSpace(record.AdjusterAccept)
-	status := strings.TrimSpace(record.Task.ASMStatus)
-
 	switch tab {
-	case inboxsurvey.TabOutstanding:
-		return accept == ""
-
-	case inboxsurvey.TabAll:
-		return accept == inboxsurvey.AdjusterConfirmed
-
-	case inboxsurvey.TabInvoice:
-		return accept == inboxsurvey.AdjusterConfirmed &&
-			status == inboxsurvey.StatusInvoiceFee
-
-	case inboxsurvey.TabClose:
-		return status == inboxsurvey.StatusCloseCase
-
 	case inboxsurvey.TabNotAnswered:
 		return hasMessage(record, inboxsurvey.CommunicationOpen, login, false)
 
@@ -361,15 +358,18 @@ func hasMessage(record Record, status, login string, fromCaller bool) bool {
 	return false
 }
 
-// matchesSearch mencocokkan kata kunci ke Claim No dan Reference No.
+// matchesSearch mencocokkan kata kunci ke Claim No.
+//
+// HANYA Claim No, sama dengan kuerinya. Di Pega ia mencari pada dua kolom — yang kedua
+// `REFNO_1`, dan kolom itu belum tersedia. Menirunya di sini akan menghasilkan uji yang lulus
+// atas pencarian yang di Oracle tidak pernah terjadi.
 func matchesSearch(record Record, search string) bool {
 	if search == "" {
 		return true
 	}
 	needle := strings.ToUpper(search)
 
-	return strings.Contains(strings.ToUpper(record.Task.ClaimNumber), needle) ||
-		strings.Contains(strings.ToUpper(record.Task.ReferenceNumber), needle)
+	return strings.Contains(strings.ToUpper(record.Task.ClaimNumber), needle)
 }
 
 // accumulate menjumlahkan kesembilan angka KPI.

@@ -444,6 +444,64 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// PremiumCheckChoices menangani GET /inbox-auto-claim/cek-premi/pilihan.
+func (h *Handler) PremiumCheckChoices(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	choices, err := h.service.PremiumCheckChoices(r.Context(), active.Alias)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	toDTO := func(list []inboxautoclaim.Choice) []CompanyDTO {
+		result := make([]CompanyDTO, 0, len(list))
+		for _, c := range list {
+			result = append(result, CompanyDTO{Kode: c.Code, Nama: c.Name})
+		}
+		return result
+	}
+	h.writeResponse(w, r, http.StatusOK, PremiumCheckChoicesResponse{
+		Bisnis:       toDTO(choices.Business),
+		SumberBisnis: toDTO(choices.SourceOfBusiness),
+		Portal:       active.Alias,
+	})
+}
+
+// CheckPremium menangani GET /inbox-auto-claim/cek-premi?kode_bisnis=…&kode_sumber_bisnis=….
+//
+// GET, bukan POST: tombolnya hanya MEMBACA — tidak ada yang disimpan. Layanan Pega di
+// belakangnya memang dipanggil dengan POST, tetapi itu urusan adaptor, bukan kontrak layar.
+func (h *Handler) CheckPremium(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	query := inboxautoclaim.PremiumCheckQuery{
+		BusinessCode:     r.URL.Query().Get("kode_bisnis"),
+		SourceOfBusiness: r.URL.Query().Get("kode_sumber_bisnis"),
+	}
+	result, err := h.service.CheckPremiumTotal(r.Context(), active.Alias, query)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	h.writeResponse(w, r, http.StatusOK, PremiumCheckResponse{
+		KodeBisnis:       strings.TrimSpace(query.BusinessCode),
+		KodeSumberBisnis: strings.TrimSpace(query.SourceOfBusiness),
+		TotalPremi:       result.PremiumPaid,
+		TotalKlaim:       result.ClaimTotal,
+		Portal:           active.Alias,
+	})
+}
+
 // UploadTemplate menangani GET /inbox-auto-claim/format-unggahan?sumber=<tab>.
 //
 // Rutenya TIDAK dipasangi pemeriksaan portal: bentuk berkas sama untuk setiap entitas,
@@ -462,7 +520,6 @@ func (h *Handler) UploadTemplate(w http.ResponseWriter, r *http.Request) {
 		KolomWajib:    required,
 		KolomOpsional: optional,
 		KolomTanggal:  inboxautoclaim.DateColumnFor(source),
-		TitikRibuan:   source == inboxautoclaim.SourceKredit,
 		BatasBaris:    inboxautoclaim.MaxUploadRow,
 	})
 }
@@ -536,6 +593,8 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox-auto-claim/perusahaan", h.ListCompany)
 		perPortal.Get("/inbox-auto-claim/ringkasan", h.Summarize)
 		perPortal.Post("/inbox-auto-claim/unggah", h.Upload)
+		perPortal.Get("/inbox-auto-claim/cek-premi", h.CheckPremium)
+		perPortal.Get("/inbox-auto-claim/cek-premi/pilihan", h.PremiumCheckChoices)
 		perPortal.Get("/inbox-auto-claim/{kode}/{batch}", h.ListLine)
 		perPortal.Get("/inbox-auto-claim/{kode}/{batch}/ekspor", h.Export)
 	})

@@ -725,3 +725,109 @@ SELECT A.INISIALID
 SELECT A.ID
   FROM POOLDATA.CURRENCY A
  WHERE 1 = 0
+
+-- name: auto_claim_policy_detail
+--
+-- Data polis untuk pemeriksaan unggahan: periode, produk, status batal, mata uang.
+--
+-- Pega membacanya dari `JSON_POLIS.DATA_JSONBLOB` lewat `BrowsePolisForKredit` lalu
+-- `adoptJSONObject`. Kolom itu SUDAH TIDAK DIPAKAI (Work Owner 2026-09-29); katalog Oracle
+-- membuktikan T_GENERAL memuat seluruh field yang dibaca activity lama:
+--
+--   TempPNC2.Policy.StartDateTime / EndDateTime   -> STARTDATE / ENDDATE (DATE)
+--   Policy.Quotation.BusinessCode                 -> BUSINESSCODE
+--   Policy.Quotation.StatusBusiness, FlagEdmBatal -> STATUSBUSINESS, FLAGEDMBATAL
+--   Policy.Currency                               -> CURRENCY
+--   Policy.Quotation.SourceOfBusiness, GroupPanel -> SOURCEOFBUSINESS, GROUPPANEL
+SELECT B.STARTDATE,
+       B.ENDDATE,
+       B.BUSINESSCODE,
+       B.STATUSBUSINESS,
+       B.FLAGEDMBATAL,
+       B.CURRENCY,
+       B.SOURCEOFBUSINESS,
+       B.GROUPPANEL
+  FROM POOLDATA.T_GENERAL B
+ WHERE B.NOPOLIS = :1
+   AND B.PRODKE = :2
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: auto_claim_currency_id
+--
+-- Kode mata uang polis -> ID POOLDATA.CURRENCY. Asal: RDB List/GetIDCurrencyByNote-SQL.xml
+-- (`select ID from pooldata.currency where CURRENCY = …`). Kolom CURRENCY tabel batch
+-- menyimpan ID-nya, bukan kodenya.
+SELECT C.ID
+  FROM POOLDATA.CURRENCY C
+ WHERE C.CURRENCY = :1
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: auto_claim_contract_claimed
+--
+-- "Sudah Klaim" tab Kredit. Asal: RDB List/CekObjekNotDouble-SQL.xml —
+-- `WHERE AGENID = … AND NOASURANSI = … and (tmp_message is null or tmp_message='Sukses Klaim')`.
+--
+-- NOASURANSI dibandingkan dalam huruf besar di KEDUA sisi: sisip Pega menulisnya huruf
+-- besar (`@toUpperCase(ContractNo)`), tetapi baris lama belum tentu seragam, dan penanda hasil
+-- Pega pun mencocokkan `upper(NOASURANSI)`.
+SELECT 1
+  FROM POOLDATA.TMP_BATCH_CLAIM_KREDIT A
+ WHERE A.AGENID = :1
+   AND UPPER(A.NOASURANSI) = :2
+   AND (A.TMP_MESSAGE IS NULL OR A.TMP_MESSAGE = :3)
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: auto_claim_open_protection
+--
+-- Open Protection bertipe tertentu untuk satu polis — pengecualian "premi belum lunas" di
+-- tab Travel dan ANEKA. Pega memakai Report Definition `InboxOpenProtectionKredit_RD`
+-- (tidak ada di export) dengan dua saringan, PolicyNo dan TypePro; Work Owner menetapkan
+-- (2026-09-29) penggantinya tabel ini. Saringannya dua itu saja, sama dengan parameter Pega.
+SELECT 1
+  FROM POOLDATA.T_CLAIM_OPENPROTECTION P
+ WHERE P.POLICY_NO = :1
+   AND P.PROTECTION_TYPE_ID = :2
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: auto_claim_premium_business
+--
+-- Pilihan "Nama Bisnis" tab Cek Premi. Asal: Report Definition `BrowseBusiness_RD` (kelas
+-- ASM-FW-GISFW-Int-BUSINESS = POOLDATA.BUSINESS), dipakai autocomplete pada
+-- `InboxAutoClaim-Harness.xml` :51712 — yang tampil `.Note`, yang dikirim `.ID`. Ketiga
+-- saringan RD (ID, Note, Group) tidak diisi harness, jadi seluruh baris.
+SELECT B.ID,
+       B.NOTE
+  FROM POOLDATA.BUSINESS B
+ ORDER BY B.NOTE, B.ID
+
+-- name: auto_claim_premium_source
+--
+-- Pilihan "Sumber Bisnis" tab Cek Premi. Asal: `BrowseAutoKlaim_act` → RDB List/
+-- BrowseAutoKlaim-SQL.xml dengan `approval = '1'` (parameter stsapprove harness :52328;
+-- parameter komite kosong, sehingga saringan KOMITE tidak dipasang).
+--
+-- Satu INISIALID dapat muncul di lebih dari satu baris master (lihat
+-- auto_claim_company_summary); di sini dikelompokkan supaya pilihannya tidak kembar.
+SELECT A.INISIALID,
+       MIN(A.NAMA_PENERIMA) AS NAMA_PENERIMA
+  FROM POOLDATA.M_AUTO_CLAIM_PNC A
+ WHERE A.APPROVAL = '1'
+ GROUP BY A.INISIALID
+ ORDER BY MIN(A.NAMA_PENERIMA), A.INISIALID
+
+-- name: auto_claim_premium_claim_total
+--
+-- "Total Klaim" tab Cek Premi: jumlah nilai klaim Kredit yang sudah Sukses Klaim untuk
+-- satu pasangan bisnis + sumber bisnis.
+--
+-- Asal: InboxAutoClaim/GetTotalKlaimCreditValue_API-SQL.xml (diserahkan Work Owner
+-- 2026-09-29) — versi yang menyaring lewat T_GENERAL. Versi lama di RDB List menyisipkan
+-- klausa mentah `{ASIS:TempServices.BookNo}` dan tidak dipakai.
+SELECT SUM(A.NILAIKLAIM)
+  FROM POOLDATA.TMP_BATCH_CLAIM_KREDIT A
+ WHERE A.TMP_MESSAGE = :1
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.T_GENERAL G
+                WHERE G.NOPOLIS = A.NOPOLIS
+                  AND G.BUSINESSCODE = :2
+                  AND G.SOURCEOFBUSINESS = :3)

@@ -129,7 +129,7 @@ export function KomiteCasePage() {
       </header>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        <Button tone="kedua" onClick={() => void detail.refetch()} disabled={detail.isFetching}>
+        <Button tone="kedua" onClick={() => { detail.refetch() }} disabled={detail.isFetching}>
           <ReloadIcon className={`h-4 w-4 ${detail.isFetching ? 'animate-spin' : ''}`} />
           {detail.isFetching ? 'Memuat…' : 'Muat ulang'}
         </Button>

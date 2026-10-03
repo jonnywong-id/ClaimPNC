@@ -33,6 +33,15 @@ type TaskDTO struct {
 	// menelusuri keluhan.
 	IndexSurvei string `json:"index_survei"`
 
+	// AppointmentNo dan ReferenceNo SELALU kosong hari ini.
+	//
+	// Kolom asalnya milik objek kerja `Work-SurveyClaim`, dan diminta ditambahkan ke
+	// `POOLDATA.T_SURVEYORLIST`. Keduanya TETAP dikirim supaya kolomnya tetap
+	// tergambar; keterangan `tersedia: false` pada metadata kolom yang menyatakan sebabnya,
+	// sehingga sel kosong tidak terbaca sebagai "data belum diisi".
+	//
+	// `StatusASM` TIDAK lagi termasuk: `STS_SURVEY` terbukti membawa domain `ADJUSTERSTATUS_1`,
+	// sehingga kolom itu kini terisi.
 	AppointmentNo   string `json:"appointment_no"`
 	ReferenceNo     string `json:"reference_no"`
 	ClaimNo         string `json:"claim_no"`
@@ -51,10 +60,11 @@ type TaskDTO struct {
 	// sistem lama, yang menambah tujuh jam manual di 118 titik pada 36 activity (`R-12`).
 	DateOfLoss string `json:"date_of_loss"`
 
-	// Aging adalah kolom "Aging" — DIBACA dari kolom `AGING`, bukan dihitung.
+	// Aging adalah kolom "Aging" — DIHITUNG dari tanggal janji survei dicatat, bukan dibaca.
 	//
-	// Penunjuk, bukan angka: `null` berarti belum dihitung, dan itu berbeda dari nol hari.
-	// Menyamakannya akan menampilkan "0" pada baris yang sebenarnya tidak punya angka.
+	// Penunjuk, bukan angka: `null` berarti tanggal masuknya tidak ada sehingga umurnya tidak
+	// dapat dihitung, dan itu berbeda dari nol hari. Menyamakannya akan menampilkan "0" pada
+	// baris yang sebenarnya tidak punya angka.
 	Aging *int `json:"aging"`
 
 	StatusASM string `json:"status_asm"`
@@ -64,12 +74,6 @@ type TaskDTO struct {
 	// Tidak digambar sebagai kolom. Dikirim supaya antrean yang tampak salah isi dapat
 	// ditelusuri tanpa membuka basis data.
 	JenisSurveyor string `json:"jenis_surveyor"`
-
-	// StatusSurvei adalah `STS_SURVEY`, dibawa apa adanya dan TIDAK dipakai menyaring.
-	//
-	// Nilainya tidak terbaca dari export. Ia dikirim supaya domainnya terlihat dari data
-	// nyata, dan tab Close dapat dikoreksi bila ternyata ia acuan yang benar.
-	StatusSurvei string `json:"status_survei"`
 }
 
 // ColumnDTO adalah satu judul kolom.
@@ -77,6 +81,13 @@ type ColumnDTO struct {
 	Kunci      string `json:"kunci"`
 	Judul      string `json:"judul"`
 	Keterangan string `json:"keterangan,omitempty"`
+
+	// Tersedia menyatakan kolom ini benar-benar terisi dari data.
+	//
+	// Ia dikirim untuk SETIAP kolom, termasuk yang bernilai `true` — bukan `omitempty`.
+	// Dengan `omitempty`, kolom tersedia dan kolom yang field-nya lupa diisi akan terbaca
+	// sama oleh layar, dan layar akan menandai seluruh kolom sebagai belum tersedia.
+	Tersedia bool `json:"tersedia"`
 }
 
 // TabDTO adalah satu tab beserta judulnya.
@@ -84,6 +95,16 @@ type TabDTO struct {
 	Kunci      string `json:"kunci"`
 	Judul      string `json:"judul"`
 	Keterangan string `json:"keterangan,omitempty"`
+
+	// Tersedia menyatakan tab ini dapat dihitung dari data yang ada hari ini.
+	//
+	// Tab yang TIDAK tersedia tetap digambar — `D-13` menetapkan bentuk layar mengikuti Pega.
+	// Yang berubah: layar menandainya dan menyebut sebabnya, alih-alih menampilkan daftar
+	// kosong yang terbaca sebagai "tidak ada pekerjaan".
+	Tersedia bool `json:"tersedia"`
+
+	// AlasanTakTersedia menyebut sebabnya, kosong bila tabnya tersedia.
+	AlasanTakTersedia string `json:"alasan_tak_tersedia,omitempty"`
 }
 
 // IdentityDTO adalah identitas surveyor pemanggil.
@@ -198,21 +219,30 @@ type ErrorResponse struct {
 func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataResponse {
 	columns := make([]ColumnDTO, 0, len(meta.Columns))
 	for _, c := range meta.Columns {
-		columns = append(columns, ColumnDTO{Kunci: c.Key, Judul: c.Title, Keterangan: c.Note})
+		columns = append(columns, ColumnDTO{
+			Kunci:      c.Key,
+			Judul:      c.Title,
+			Keterangan: c.Note,
+			Tersedia:   c.Available,
+		})
 	}
 
 	tabList := make([]TabDTO, 0, len(meta.Tabs))
 	for _, t := range meta.Tabs {
 		tabList = append(tabList, TabDTO{
-			Kunci:      string(t.Key),
-			Judul:      t.Title,
-			Keterangan: t.Note,
+			Kunci:             string(t.Key),
+			Judul:             t.Title,
+			Keterangan:        t.Note,
+			Tersedia:          t.Available,
+			AlasanTakTersedia: t.UnavailableReason,
 		})
 	}
 
+	// Kolom KPI seluruhnya tersedia — tabel `DETAIL_KPI_ADJUSTER` memuat kesembilan angkanya.
+	// Bila tabelnya sendiri tidak ada, yang kosong adalah datanya, bukan kolomnya.
 	kpi := make([]ColumnDTO, 0, len(meta.KPIColumns))
 	for _, c := range meta.KPIColumns {
-		kpi = append(kpi, ColumnDTO{Kunci: c.Key, Judul: c.Title})
+		kpi = append(kpi, ColumnDTO{Kunci: c.Key, Judul: c.Title, Tersedia: true})
 	}
 
 	return MetadataResponse{
@@ -259,10 +289,15 @@ func toIdentityDTO(identity inboxsurvey.SurveyorIdentity) IdentityDTO {
 //
 // `loc` diserahkan pemanggil, bukan dibaca dari jam sistem di sini: ia yang menentukan
 // tanggal yang dilihat pengguna, dan memusatkannya adalah cara menghindari cacat `Set7Hours`.
-func toListResponse(listed usecase.Listed, portalAlias string, loc *time.Location) ListResponse {
+func toListResponse(
+	listed usecase.Listed,
+	portalAlias string,
+	now time.Time,
+	loc *time.Location,
+) ListResponse {
 	data := make([]TaskDTO, 0, len(listed.Page.Tasks))
 	for _, task := range listed.Page.Tasks {
-		data = append(data, toTaskDTO(task, loc))
+		data = append(data, toTaskDTO(task, now, loc))
 	}
 
 	return ListResponse{
@@ -278,7 +313,11 @@ func toListResponse(listed usecase.Listed, portalAlias string, loc *time.Locatio
 }
 
 // toTaskDTO mengubah satu tugas menjadi bentuk yang dibaca layar.
-func toTaskDTO(task inboxsurvey.SurveyTask, loc *time.Location) TaskDTO {
+//
+// `now` dan `loc` keduanya diserahkan pemanggil, bukan dibaca dari jam sistem di sini. Kolom
+// Aging dihitung terhadap TANGGAL WIB, sehingga keduanya menentukan angka yang dilihat
+// pengguna — dan angka yang bergantung pada jam mesin tidak dapat diuji (`F-5`).
+func toTaskDTO(task inboxsurvey.SurveyTask, now time.Time, loc *time.Location) TaskDTO {
 	return TaskDTO{
 		SurveiID:        task.SurveyID,
 		KlaimID:         task.ClaimID,
@@ -294,10 +333,9 @@ func toTaskDTO(task inboxsurvey.SurveyTask, loc *time.Location) TaskDTO {
 		PICASM:          task.TechnicalPIC,
 		PICLossAdjuster: task.AdjusterPIC,
 		DateOfLoss:      formatDate(task.DateOfLoss, loc),
-		Aging:           task.AgingDays,
+		Aging:           task.AgingDays(now, loc),
 		StatusASM:       task.ASMStatus,
 		JenisSurveyor:   task.SurveyorType,
-		StatusSurvei:    task.SurveyStatus,
 	}
 }
 

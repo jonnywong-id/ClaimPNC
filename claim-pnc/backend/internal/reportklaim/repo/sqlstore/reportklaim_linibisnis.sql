@@ -153,13 +153,14 @@ SELECT a.userinput          AS "EDMNO",
 -- Bind:
 --   :1  kode bisnis terpilih   dari autocomplete "Bisnis"
 --
--- # Dua anak-kueri JSON ditulis ulang, bukan disalin
+-- # Dua anak-kueri ditulis ulang, bukan disalin
 --
--- Kueri aslinya membaca JSON dengan notasi titik khas Oracle
--- (`d.DATA_JSONBLOB.CIFData.Customer_P.ASMClientID`). Notasi itu tidak ada di
--- PostgreSQL. Penggantinya `JSON_VALUE` dengan jalur SQL/JSON standar — sintaks yang
--- SAMA di Oracle 12c+ dan PostgreSQL 17+, dan justru itulah sebab `D-24` menetapkan
--- PostgreSQL 17 sebagai syarat mengikat.
+-- Kueri aslinya membaca ClientID dari dokumen polis
+-- (`d.DATA_JSONBLOB.CIFData.Customer_P/Customer_C.ASMClientID`). Sejak 2026-10-01 data
+-- polis tidak dibaca dari DATA_JSONBLOB: ClientID diambil dari T_GENERAL.CLIENTID pada
+-- NOPOLIS + PRODKE. Terverifikasi sama dengan Customer_P (atau Customer_C bila Customer_P
+-- kosong) pada 10 dari 10 contoh. Customer_C yang BERBEDA dari Customer_P tidak lagi ikut
+-- dicocokkan. FETCH FIRST 1 mencegah galat bila T_GENERAL punya lebih dari satu baris.
 SELECT a.noklaim   AS "ClaimNo",
        a.nopolis   AS "PolicyNo",
        a.begindate AS "City",
@@ -178,22 +179,20 @@ SELECT a.noklaim   AS "ClaimNo",
        END AS "StatusClaim",
        (SELECT c.telfaxnumber
           FROM t_mclienttelfax c
-          JOIN JSON_POLIS d
-            ON c.clientid IN (
-                 JSON_VALUE(d.data_jsonblob, '$.CIFData.Customer_P.ASMClientID'),
-                 JSON_VALUE(d.data_jsonblob, '$.CIFData.Customer_C.ASMClientID'))
+          JOIN T_GENERAL d
+            ON c.clientid = d.CLIENTID
          WHERE d.nopolis = a.nopolis
            AND c.telfaxtype = '6'
-           AND REPLACE(d.prodke, ' ', '') = REPLACE(a.prod_ke, ' ', '')) AS "NewEmail",
+           AND REPLACE(d.prodke, ' ', '') = REPLACE(a.prod_ke, ' ', '')
+         FETCH FIRST 1 ROWS ONLY) AS "NewEmail",
        (SELECT c.telfaxnumber
           FROM t_mclienttelfax c
-          JOIN JSON_POLIS d
-            ON c.clientid IN (
-                 JSON_VALUE(d.data_jsonblob, '$.CIFData.Customer_P.ASMClientID'),
-                 JSON_VALUE(d.data_jsonblob, '$.CIFData.Customer_C.ASMClientID'))
+          JOIN T_GENERAL d
+            ON c.clientid = d.CLIENTID
          WHERE d.nopolis = a.nopolis
            AND c.telfaxtype = '4'
-           AND REPLACE(d.prodke, ' ', '') = REPLACE(a.prod_ke, ' ', '')) AS "NewTelpTertanggung"
+           AND REPLACE(d.prodke, ' ', '') = REPLACE(a.prod_ke, ' ', '')
+         FETCH FIRST 1 ROWS ONLY) AS "NewTelpTertanggung"
   FROM pooldata.pega_dashboardpnc a
  WHERE EXISTS (SELECT 1
                  FROM pooldata.t_claim_pnc p

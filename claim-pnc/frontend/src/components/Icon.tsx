@@ -277,3 +277,14 @@ export function ClipboardIcon(props: Props) {
     </Base>
   )
 }
+
+/** Unduh — tombol ekspor berkas. */
+export function DownloadIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M12 4v11" />
+      <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+      <path d="M5 19.5h14" />
+    </Base>
+  )
+}

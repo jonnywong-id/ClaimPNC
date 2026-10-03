@@ -442,7 +442,7 @@ function isAging(key: TabColumn['kunci']): boolean {
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   if (isAging(column.kunci)) return `${value} hari`
 

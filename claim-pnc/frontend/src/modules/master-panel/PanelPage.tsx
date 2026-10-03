@@ -9,6 +9,7 @@ import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
 import { useCreatePanel, useDecidePanel, usePanelList, useSavePanel } from './api'
 import { PanelForm, type PanelFormValues } from './PanelForm'
+import { compareCodeUnits } from '@/lib/sort'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -200,7 +201,7 @@ export function PanelPage() {
         const value = row[column]
         if (value !== '') unique.add(value)
       }
-      collected[column] = [...unique].sort()
+      collected[column] = [...unique].sort(compareCodeUnits)
     }
     return collected
   }, [rows])
@@ -362,7 +363,7 @@ export function PanelPage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>

@@ -617,7 +617,7 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
   return isDate(text) ? formatDate(text) : text

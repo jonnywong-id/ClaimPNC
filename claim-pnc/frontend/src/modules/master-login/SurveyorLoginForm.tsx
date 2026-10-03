@@ -51,7 +51,7 @@ const MAX_ADDRESS_LENGTH = 250
  * satu berubah sendirian, pengguna melihat login yang bukan yang tersimpan.
  */
 export function deriveLogin(name: string): string {
-  return name.trim().replace(/[ .,-]/g, '')
+  return name.trim().replaceAll(/[ .,-]/g, '')
 }
 
 const schema = z.object({

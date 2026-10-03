@@ -88,7 +88,7 @@ export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
         <Button
           type="button"
           tone="utama"
-          onClick={() => void submit('1')}
+          onClick={() => { submit('1') }}
           disabled={decide.isPending}
         >
           {decide.isPending ? 'Menyimpan…' : 'Setujui'}
@@ -96,7 +96,7 @@ export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
         <Button
           type="button"
           tone="kedua"
-          onClick={() => void submit('2')}
+          onClick={() => { submit('2') }}
           disabled={decide.isPending}
         >
           Tolak

@@ -8128,6 +8128,73 @@ endpoint, dan uji terhadap layanan penyimpanan sungguhan. Keempatnya tercatat di
 `catatan-pengembangan.md` §39.10 sebagai daftar, bukan disembunyikan sebagai "selesai".
 
 ## My Work — antrean Surveyor / Loss Adjuster (2026-09-28)
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | menekan setiap premis ke bukti, lalu mengajukan yang tidak terbukti sebagai pertanyaan | **5 pertanyaan**, seluruhnya dijawab Work Owner; satu di antaranya **mengoreksi premis pertanyaan saya sendiri** |
+| `mattpocock-skills:domain-modeling` | saat menyusun tipe domain | menolak alias Pega yang menyesatkan | 13 alias dibongkar; `Tab` menjadi tipe tertutup, bukan teks bebas |
+| `mattpocock-skills:codebase-design` | saat menetapkan seam | memisahkan `Directory` dari `Repo` | jembatan identitas dapat berubah di satu tempat tanpa menyentuh antrean |
+
+### `grilling` — empat kali mencegah pekerjaan yang salah arah
+
+1. **Sumber data.** Saya hampir memakai `T_CLAIMLIST_ADMIN` begitu saja karena itu tabel yang
+   dipakai inbox lain. Pemeriksaan ke `inboxoutstanding.go` menemukan catatan verifikasi:
+   tabel itu berisi **0** baris `Work-SurveyClaim`. Seluruh modul akan menampilkan layar
+   kosong yang tampak wajar.
+
+2. **Empat kueri tab hilang.** Diperiksa lewat isi `pyRuleName`, **bukan nama berkas** —
+   pelajaran dari sesi sebelumnya bahwa nama berkas export Pega tidak dapat dipercaya.
+   Keempatnya memang tidak ada. Tetapi pencarian lanjutan menemukan `CountOSLostAdjuster`
+   menghitung ketujuh keranjang yang sama, sehingga predikatnya **tetap terbaca** — blokir
+   berubah menjadi keterbatasan.
+
+3. **Jembatan identitas.** Saya sempat menawarkan `M_LOGIN_PNC` sebagai kandidat kepada Work
+   Owner. Sebelum jawabannya diterapkan, saya menemukan `GetLoginLeaderSurveyor-SQL.xml` yang
+   membuktikan Pega memakai `MST_LOGIN_SURVEYOR.LOGIN`. **Koreksi atas premis pertanyaan saya
+   sendiri disampaikan lebih dulu**, bukan dilewatkan diam-diam.
+
+4. **Pertanyaan balik Work Owner** — "apakah sama dengan `sts_survey` Close Case?" — dijawab
+   dengan bukti, bukan ingatan. `GetDataCaseSurveyALL-SQL.xml` membuktikan "Close Case" adalah
+   nilai `ADJUSTERSTATUS_1`, **bukan** `STS_SURVEY`. Penelusuran lanjutan sampai ke penulisnya
+   menguatkannya: `STS_SURVEY` diisi `"On Progress"` lewat `KomitePost_Survey:15158`.
+
+### `domain-modeling` — alias yang dibongkar
+
+    a.POLICYNO         AS "CityID"       ia NOMOR POLIS, bukan ID kota
+    a.QQNAME           AS "Country"      ia NAMA TERTANGGUNG, bukan negara
+    a.REFNO_1          AS "Province"     ia NOMOR REFERENSI, bukan provinsi
+    a.SURVEYORNAME_1   AS "CountryID"    ia NAMA SURVEYOR
+    a.USERTEKNIS_1     AS "District"     ia PIC TEKNIK
+    a.AdjusterStatus_1 AS "ProvinceID"   ia STATUS ADJUSTER
+    a.PYSTATUSWORK     AS "NamaSurveyor" ia STATUS ALUR KERJA
+
+Tidak satu pun dari ketujuhnya mencerminkan isinya. Pemetaan yang benar dipulihkan dari daftar
+Property-Set pada `SetTempLostAdjuster`, bukan ditebak dari aliasnya.
+
+`Tab` dibuat sebagai **tipe tertutup**, bukan teks bebas — ketujuh tab menjawab pertanyaan
+berbeda atas tabel yang sama, sehingga tab yang salah menghasilkan layar yang **terisi wajar
+dengan isi yang keliru**, bukan galat.
+
+### Kesalahan saya sendiri, tertangkap uji
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| `members()` membandingkan **nama** dengan **login** untuk membuang duplikat | pembacaan ulang sebelum uji ditulis; diperbaiki menjadi dua parameter terpisah |
+| Data contoh menaruh Aging kosong pada baris ber-`AdjusterAccept = "0"` | uji gagal — baris itu **sengaja** tidak masuk tab mana pun, sehingga keadaan itu tidak pernah sampai ke layar |
+| Uji mencari `ref-0105` padahal Reference No-nya `REF-0005` | uji gagal; nomor referensi dan nomor klaim memang dibuat berbeda supaya kolomnya benar-benar teruji |
+| Komentar memuat `INSTR('', …)` | `gofmt` mengubahnya menjadi tanda kutip tipografis; kalimatnya ditulis ulang |
+
+Dua yang pertama satu pola: **data contoh yang dirancang membuktikan satu hal dipakai
+membuktikan hal lain.**
+
+### Yang sengaja TIDAK dikerjakan, dan dinyatakan
+
+Membuka baris untuk **mengerjakan** surveinya. Di Pega tautannya membuka
+`ASSIGN-WORKLIST <pyID>!Surveyor_Flow`; `Flow/` hanya memuat empat flow dan itu bukan salah
+satunya. Dicatat sebagai keterbatasan yang TAMPIL DI LAYAR, bukan disembunyikan sebagai
+"selesai".
+
 # Penggunaan Skill — Sesi 2026-09-24 (modul Inbox Komunikasi Cabang)
 
 ## Ringkasan
@@ -8237,6 +8304,9 @@ gagal — dan dapat pula **lulus** — karena sebab yang bukan yang diuji.
 ---
 
 ## Sesi 2026-09-24 (lanjutan) — menghidupkan aksi tulis Inbox Komunikasi Cabang
+
+
+---
 
 ### Skill yang dipakai
 
@@ -9968,7 +10038,6 @@ apa yang benar-benar terjadi.
 
 | Skill | Kapan ia akan menolong | Kenapa tidak dipakai di sesi ini |
 |---|---|---|
-<<<<<<< HEAD
 | `mattpocock-skills:domain-modeling` | Menajamkan istilah domain yang kabur, menulis `CONTEXT.md` | Sesi ini memang menemukan tiga alias yang menyesatkan — `Medicare` yang berarti progres mandek, `TanggalTerlambat` yang berarti tanggal progres terakhir, `PICRekanan` yang berarti PIC Teknik. Tetapi penajamannya **tidak menuntut pemodelan**: artinya terbaca langsung dari activity dan kueri yang menghasilkannya, dan padanan Indonesianya sudah ada di `CONTEXT.md` (PIC Teknik, Outstanding). Yang dikerjakan adalah **membaca bukti**, bukan menyusun kosakata baru — dan tidak satu pun istilah baru ditambahkan ke `CONTEXT.md` |
 | `mattpocock-skills:codebase-design` | Menempatkan seam, memutuskan kedalaman modul dan batas antarmuka | Kosakatanya sudah terpakai di `docs/Steering/04-FUTURE-ARCHITECTURE.md`, dan seam yang dibutuhkan modul ini **sudah punya preseden langsung di repo**: `BranchResolver` di `inboxlaporanklaim` dan pola `RepoSelector` yang dipakai 20-an modul. Keputusan seam di sini adalah **mengikuti preseden**, bukan merancang yang baru |
 | `mattpocock-skills:tdd` | Membangun fitur test-first dengan siklus merah-hijau-refactor | Uji ditulis berdampingan dengan kode, dan yang menjadi spesifikasi adalah **artefak Pega** — bukan daftar acceptance criteria yang perlu diterjemahkan lebih dulu. Siklus formalnya tidak menambah apa pun di atas itu. Empat uji memang **gagal lebih dulu** dan menangkap kesalahan nyata (lihat catatan-pengembangan §42.9), tetapi itu hasil menulis uji yang tegas — bukan hasil urutan merah-hijau |
@@ -10005,7 +10074,6 @@ activity 340 KB) — adalah kandidat pertama yang benar-benar layak untuk
 **`mattpocock-skills:codebase-design`**. Harness sebesar itu kemungkinan memuat beberapa
 bagian yang berdiri sendiri, dan keputusan memecahnya menjadi berapa modul adalah persis
 keputusan kedalaman yang kosakata skill tersebut bantu tajamkan.
-=======
 | `mattpocock-skills:grilling` | Menekan asumsi sampai patah sebelum menjadi blueprint | **Yang paling hampir dipakai di sesi ini.** Empat asumsi memang perlu ditekan, dan tiga di antaranya patah — nama `SetAssignmentInboxReg_act` yang menyiratkan penugasan padahal tidak menulis apa pun, deskripsi Report Definition yang menyebut penyaring yang tidak ada, dan `pyPosition` yang punya padanan tetapi artinya berbeda. Ketiganya patah lewat **pembacaan export**, bukan lewat ronde pertanyaan bertingkat: jawabannya ada di dalam berkas, dan yang dibutuhkan adalah membacanya sampai habis. Empat hal yang benar-benar menuntut keputusan manusia diajukan langsung bersama rekomendasi dan pilihan, tanpa ronde |
 | `mattpocock-skills:codebase-design` | Merancang modul dalam, menempatkan seam, memutuskan batas antarmuka | Bentuk modulnya **mengikuti pola yang sudah ada** — `inboxadmin` dan `inboxmanagerreceivepucl`, keduanya layar inbox bertab dengan seam yang sama persis: satu paket domain yang mendeklarasikan seamnya sendiri, `usecase/`, dua adapter `repo/`, dan `http/`. Satu keputusan kedalaman yang nyata muncul — apakah `FormatElapsed` diimpor dari modul lain atau ditulis ulang — dan itu dijawab aturan yang sudah ada (`08-TECHNICAL-STRATEGY.md` §2: modul tidak saling mengimpor), bukan oleh kosakata baru |
 | `mattpocock-skills:domain-modeling` | Menyusun atau menajamkan kosakata domain, menulis `CONTEXT.md` | Layak dipertimbangkan, dan hampir dipakai — modul ini memperkenalkan satu istilah yang belum ada di `CONTEXT.md`: **unit organisasi penugasan** (`AdminPNC`, `AdminPA`, `AdminTRAVEL`). Yang membuatnya tidak perlu: istilahnya **tidak ambigu di sumbernya** — nilainya literal di section, artinya tegas dari satu kolom. Yang menolong di sini bukan penajaman kosakata melainkan **pembacaan bukti**, dan itulah yang dikerjakan. Usulan menambahkan istilahnya ke `CONTEXT.md` dicatat di bawah |
@@ -10609,6 +10677,44 @@ ketelitian saya saat menyalinnya. Uji itu gagal bila satu karakter pun menyimpan
 
 ---
 
+### Sisir ulang modul — skill `front-review` (2026-09-28)
+
+**Kenapa dipakai.** Work Owner meminta modulnya diperiksa, bukan diringkas. Skill ini membagi
+peninjauan antarmuka menjadi **dua poros yang tidak boleh digabung** — Consistency dan UX —
+karena sebuah perubahan dapat lulus satu poros dan gagal poros yang lain.
+
+**Cara dipakai.** Keduanya dijalankan sebagai sub-agen **paralel**, masing-masing di bawah 400
+kata, supaya konteks yang satu tidak mencemari yang lain. Skill ini memang meminta demikian.
+
+**Hasil yang dipakai, dan yang diverifikasi ulang.** Laporan agen TIDAK diterima apa adanya —
+dua temuan paling berkonsekuensi saya periksa sendiri lebih dulu:
+
+| Klaim agen | Hasil verifikasi saya |
+|---|---|
+| `src/components/TabBar.tsx` ada dan tidak dipakai | **BENAR** — ada, bertanggal 28 Sep 17:14, API-nya cocok field-per-field dengan `TabLayar` |
+| "enam modul memakainya" | **KELIRU** — hanya **dua** yang mengimpornya; enam lainnya punya salinan sendiri |
+| Input tanpa `bg-white` keluar dari tema | **BENAR** — `styles.css:281` terbukti memuat selector itu |
+
+**Manfaat nyata.** Dua cacat yang tidak saya temukan sendiri: bilah tab bersama yang tidak
+dipakai, dan isian yang transparan di tema gelap. Poros UX juga menemukan **saudara kembar**
+dari cacat yang baru saja saya perbaiki — kegagalan `/jumlah-tab` yang tidak terlihat,
+sementara saya hanya menutup `/keterangan`.
+
+**Batas yang dihormati.** Skill ini **menandai, tidak membedah** — temuan aksesibilitas
+diserahkan ke `fixing-accessibility`, temuan duplikasi ke `front-refactor`. Kontras
+`text-slate-400` dan target sentuh < 44px karena itu TIDAK diperbaiki di sini: keduanya
+berlaku di 22 modul, dan menambalnya di satu layar justru membuat layar itu berbeda sendiri.
+
+### Kesalahan saya sendiri pada sisir ulang ini
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Memperbaiki `/keterangan` saja, melewatkan `/jumlah-tab` yang cacatnya PERSIS SAMA | poros UX skill `front-review` |
+| Menyatakan modul "sudah baik" sebelum memeriksa antarmukanya | Work Owner bertanya "apakah sudah baik" — dan jawabannya ternyata belum |
+| Melewatkan penyaring `PXOBJCLASS` yang pelajarannya sudah dibayar di `inboxmanagerreceivepucl` | sisir ulang sendiri |
+
+Ketiganya satu pola: **menyatakan selesai sebelum memeriksa lapisan yang belum disentuh.**
+
 ## Sesi 2026-09-28 (putaran ketiga) — koreksi sumber data Inbox Komite
 
 **Skill khusus yang dipanggil: tidak ada.** Sama seperti dua putaran sebelumnya, dan alasannya sama:
@@ -10795,6 +10901,80 @@ sebelum divalidasi**. Yang berbeda: ketiganya tertangkap sebelum sampai ke kode 
 3. **Dua temuan menyangkut modul yang sudah jadi** dan sengaja tidak disentuh:
    `SPAREPART_HE` yang rusak, dan `PXASSIGNEDORGUNIT` yang praktis kosong. Keduanya di
    `permintaan-artefak-pega.md`.
+<<<<<<< HEAD
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-28 (modul Inbox OS Claim per Cabang, `MENU_ID 69`)
+
+# Penggunaan Skill — Sesi 2026-09-29 (Inbox OS Claim per Cabang: dua koreksi + popup Detail)
+
+Lanjutan sesi 2026-09-28. Tiga pekerjaan: cabang diambil dari `detailbranchcode` HCQ, sumber
+outstanding dipindah ke `T_CLAIMLIST_ADMIN`, dan popup Detail dibangun.
+
+## Yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasil yang benar-benar keluar darinya |
+|---|---|---|---|
+| `mattpocock-skills:domain-modeling` | sebelum menyentuh satu berkas pun | menguji apakah `BranchCode` pada profil benar-benar kode yang dipakai baris klaim | **Bukan.** Yang dikirim HCQ 3 digit, yang dipakai klaim 6 digit. Tanpa disiplin "silangkan pernyataan dengan kode", nama field-nya akan dipercaya — dan layarnya kosong tanpa satu pun galat. Ini melahirkan tipe `Branch{Code, Name}` dan seam `BranchOf`, menggantikan `BranchName` yang mengembalikan teks saja |
+| `mattpocock-skills:codebase-design` | saat memutuskan di mana terjemahan cabang tinggal | apakah terjemahan itu seam tersendiri (`BranchResolver`) atau bagian `Repo` | **Bagian `Repo`.** Kosakata *depth* menjawabnya: terjemahan itu satu pembacaan master, dan seam tersendiri memaksa pemanggil tahu urutan dua langkah. Seam `BranchResolver` dan tipe `CallerBranch` **dihapus** |
+| `mattpocock-skills:grilling` | pada diri sendiri, saat hendak menyalin `GetInboxKomunikasi_OS_Cabang` apa adanya | menanyakan "apa yang dilakukan `{ASIS:getkomunikasi.D_SURVEY_ID}`?" | Ia daftar kunci yang dirangkai sebagai **teks** lewat perulangan Pega. Menjadikannya subkueri menutup celah injeksi sekaligus menghapus perulangan per baris survei |
+| `mattpocock-skills:grilling` | saat `T_CLAIMLIST_ADMIN` sudah terpasang dan ujinya hijau | menanyakan "kenapa 517 baris hilang — datanya basi, atau tabelnya memang beda isi?" | **Beda isi.** Tabel itu hanya memuat empat label tugas Admin. Layarnya berubah arti, bukan berkurang barisnya — dan itu fakta yang harus sampai ke Work Owner, bukan angka yang dicatat lalu dilupakan |
+| `mattpocock-skills:codebase-design` | saat merancang `FindDetail` | apakah keempat kueri anak boleh berjalan paralel dengan kepalanya | **Tidak.** Kepala yang menegakkan batas cabang; menjalankan anaknya lebih dulu berarti membaca isi klaim sebelum diketahui ia milik siapa (`R-20`). Urutannya menjadi bagian kontrak seam, ditulis di komentarnya |
+
+## Yang TIDAK dipakai, dan sebabnya
+
+| Skill | Sebab |
+|---|---|
+| `mattpocock-skills:tdd` | Bentuk seam-nya ditentukan artefak Pega yang sudah ada, bukan ditemukan lewat uji. Ujinya ditulis **bersamaan**, dan itu dicatat apa adanya alih-alih diklaim TDD |
+| `mattpocock-skills:diagnosing-bugs` | Tidak ada cacat yang ditelusuri. Dua kegagalan uji yang muncul (`inboxpladla`, `inboxservicecenter`) milik modul lain, sudah ada sebelum sesi ini, dan **sengaja tidak disentuh** |
+| `mattpocock-skills:research` | Seluruh fakta ada di dalam repositori dan di basis data dev. Tidak satu pun klaim di sesi ini bersumber dari luar |
+| `front-review`, `ui-ux-pro-max` | Popup memakai komponen bersama yang sudah ada apa adanya — `DataTable`, `Button`, `ErrorMessage`. Tidak ada komponen baru yang perlu ditinjau konsistensinya |
+
+## Pelajaran yang layak dibawa ke modul berikutnya
+
+1. **Dua field bernama "cabang" pada satu profil adalah perangkap yang tidak berbunyi.**
+   `BranchCode` dan `DetailBranchCode` sama-sama terbaca sebagai "kode cabang", dan yang salah
+   menghasilkan **daftar kosong**, bukan galat. Penjaganya ditambahkan di tiga lapisan sekaligus
+   — penyimpanan, usecase, dan transport — masing-masing menolak kode klaim yang dikirim sebagai
+   kode rinci. Satu penjaga di satu lapisan tidak cukup untuk cacat yang diam.
+
+2. **Pemisah XML harus sadar kedalaman sebelum dipercaya.** Pemisah `<rowdata>` polos memecah
+   15 langkah activity menjadi 130 potongan kosong, dan potongan kosong **tidak terlihat
+   salah** — ia hanya tampak seperti activity yang stepnya tidak berisi apa-apa. Alat baca yang
+   hasilnya sunyi lebih berbahaya daripada yang gagal.
+
+3. **Angka yang benar belum tentu jawaban yang benar.** "517 baris hilang" sudah terukur sejak
+   sesi sebelumnya dan sudah disampaikan. Yang baru ditemukan sesi ini adalah **sebabnya** —
+   empat label tugas Admin — dan itulah yang mengubah kalimatnya dari "barisnya berkurang"
+   menjadi "layarnya berubah arti". Ukuran tanpa sebab belum siap dipakai mengambil keputusan.
+
+4. **Popup yang di Pega aman karena tidak dapat dibuka sendiri, di HTTP tidak aman.** Setiap
+   layar detail yang dipindahkan menuntut penyaring yang di layar lamanya tidak pernah ditulis,
+   karena di sana batasnya datang dari cara membukanya. Ini akan berulang pada setiap modul
+   yang punya tombol Detail.
+
+## Lanjutan 2026-09-29 — pertanyaan "sudah selesai?" menemukan satu kolom hilang
+
+Work Owner bertanya apakah modul ini selesai. Sebelum menjawab, `mattpocock-skills:grilling`
+dipakai **pada diri sendiri**: bukan "apakah saya merasa selesai", melainkan "apa yang
+dituntut harness, dan sudahkah tiap butirnya ada?".
+
+Jawabannya: **belum**. Kolom **Nama Insured** terlewat sepenuhnya — 16 kolom di section, 15 di
+implementasi. Kolom hilang tidak menghasilkan galat apa pun; ia hanya tabel yang tampak wajar
+tanpa satu kolom.
+
+| Skill | Untuk apa | Hasil |
+|---|---|---|
+| `grilling` (pada diri sendiri) | menolak menjawab "selesai" sebelum mencocokkan ke sumbernya | menemukan kolom yang hilang, dan menemukan bahwa di Pega kolom itu **selalu kosong** |
+| `domain-modeling` | menguji apakah `.InsuredName` benar-benar terisi di Pega | **Tidak.** Nol kemunculan di kueri grid dan di PreAct; hanya kueri ekspor yang membacanya. Layar dan berkasnya saling bertentangan sejak awal |
+
+**Pelajaran, dan ini yang paling layak dibawa.** Komentar berkas saya menyatakan "grid 16
+kolom" sejak serahan pertama — angkanya benar, tetapi saya **tidak pernah menghitung kolom
+yang saya tulis**. Pernyataan jumlah yang tidak diuji tidak menjaga apa pun. Penjaganya
+sekarang satu uji yang mencocokkan keenam belas judul beserta urutannya, dan itulah yang akan
+menangkap kolom hilang berikutnya.
+=======
 <<<<<<< HEAD
 
 ---
@@ -11534,3 +11714,4 @@ pemanggilnya.
 beserta seluruh rule yang dirujuknya secara berantai"*. Permintaan sesi ini tetap menempuh
 **empat putaran**; tanpa catatan itu kemungkinan lebih.
 >>>>>>> dev
+>>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904

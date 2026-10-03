@@ -19,7 +19,9 @@ import (
 )
 
 // Uploader mengisi registrasi.DocumentUploader.
-type Uploader struct{ service *dokumenpenunjangusecase.Service }
+type Uploader struct {
+	service *dokumenpenunjangusecase.Service
+}
 
 // New membentuk Uploader di atas layanan dokumen penunjang.
 func New(service *dokumenpenunjangusecase.Service) *Uploader { return &Uploader{service: service} }

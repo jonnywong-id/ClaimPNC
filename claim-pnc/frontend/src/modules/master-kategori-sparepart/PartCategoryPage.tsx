@@ -298,7 +298,7 @@ export function PartCategoryPage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>

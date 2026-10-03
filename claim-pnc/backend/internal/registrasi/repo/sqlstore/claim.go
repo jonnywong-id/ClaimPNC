@@ -113,6 +113,12 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 		emptyTextAsNil(k.Area.PostalCode),
 		emptyTextAsNil(k.CustomerPrinciple),
 		emptyTextAsNil(k.SuspiciousComment),
+
+		// Isian InputRegisterDetail2_sect.
+		emptyTextAsNil(k.EmailLOD),
+		emptyTextAsNil(k.RemarkRecommendation),
+		emptyTextAsNil(k.SubjectEmail),
+		emptyTextAsNil(k.SalvageStatus),
 		k.ID,
 	}
 
@@ -315,6 +321,8 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		city, cityID, district, districtID       sql.NullString
 		rw, rwID, postalCode                     sql.NullString
 		customerPrinciple, suspiciousComment     sql.NullString
+		emailLOD, recommendation, subjectEmail   sql.NullString
+		salvageStatus                            sql.NullString
 	)
 
 	row := exec.QueryRowContext(ctx, loadQuery(queryName), value)
@@ -333,6 +341,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&coinsName, &coinsRole, &shareASM, &policyLeader,
 		&country, &countryID, &province, &provinceID, &city, &cityID, &district, &districtID,
 		&rw, &rwID, &postalCode, &customerPrinciple, &suspiciousComment,
+		&emailLOD, &recommendation, &subjectEmail, &salvageStatus,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
@@ -395,6 +404,10 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	}
 	k.CustomerPrinciple = customerPrinciple.String
 	k.SuspiciousComment = suspiciousComment.String
+	k.EmailLOD = emailLOD.String
+	k.RemarkRecommendation = recommendation.String
+	k.SubjectEmail = subjectEmail.String
+	k.SalvageStatus = strings.TrimSpace(salvageStatus.String)
 
 	k.Policy.Coinsurance = registrasi.Coinsurance{
 		Name:     coinsName.String,
@@ -464,7 +477,8 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 	if err != nil {
 		return fmt.Errorf("registrasi/sqlstore: membaca tahap klaim dari tugasnya: %w", err)
 	}
-	for baris.Next() {
+	// Hanya baris pertama yang dibaca — tugas terbuka tertua (urutan DIBUAT_PADA, ID).
+	if baris.Next() {
 		var (
 			id, klaimID, nomor, tahap, antrean, workbasket, pemilik sql.NullString
 			dibuat, diambil, selesai                                sql.NullTime
@@ -476,7 +490,6 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 			return fmt.Errorf("registrasi/sqlstore: membaca tugas terbuka: %w", err)
 		}
 		k.CurrentStage = tahap.String
-		break
 	}
 	if err := baris.Err(); err != nil {
 		_ = baris.Close()

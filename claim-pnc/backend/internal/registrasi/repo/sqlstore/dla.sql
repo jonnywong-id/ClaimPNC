@@ -37,16 +37,69 @@ SELECT d.NODLA, d.TGLDLA
  ORDER BY d.TGLDLA DESC
  FETCH FIRST 1 ROWS ONLY
 
+-- name: dla_fac_offer
+--
+-- Fac Offer polis untuk DLA (DLAFacout_act): JSONDATA per reasuradur, diurai di Go karena
+-- bentuk FacOfferList berbeda per Group Panel.
+--
+-- Sumbernya POOLDATA.T_FACOFFER menurut POLICYNO dan PRODKE snapshot klaim (Work Owner,
+-- 2026-10-01). Satu baris per reasuradur, tetapi JSONDATA setiap baris memuat SELURUH
+-- FacOfferList polis — karena itu hanya entri yang ReinsurerID-nya sama dengan
+-- REINSURER_ID baris itu yang diambil; tanpa saringan itu reasuradur terhitung berkali-kali.
+SELECT f.REINSURER_ID, f.JSONDATA
+  FROM POOLDATA.T_FACOFFER f
+ WHERE f.POLICYNO = :1
+   AND f.PRODKE = :2
+ ORDER BY f.REINSURER_ID
+
 -- name: dla_polis_dokumen
 --
--- Dokumen polis terbaru — sumber CoinsList, FacOfferList, SpreadingList, dan kepala polis.
--- Diurai di Go karena bentuk FacOfferList berbeda per Group Panel.
-SELECT p.POLICYDATA, p.DATA_JSONBLOB
+-- Dokumen polis terbaru (POLICYDATA saja) — cadangan kepala polis dan SpreadingList bila
+-- tabelnya kosong. DATA_JSONBLOB tidak dibaca (Work Owner, 2026-10-01). CoinsList dan
+-- FacOfferList tidak dibaca dari dokumen ini: keduanya dari T_COINSLIST dan T_FACOFFER.
+SELECT p.POLICYDATA
   FROM POOLDATA.JSON_POLIS p
  WHERE p.NOPOLIS = :1
-   AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+   AND p.POLICYDATA IS NOT NULL
  ORDER BY p.TGL_INPUT DESC
  FETCH FIRST 1 ROWS ONLY
+
+-- name: dla_polis_kepala
+--
+-- Kepala polis DLA dari T_GENERAL pada NOPOLIS + PRODKE klaim: CaseID, SumOfTSI, TypeOfCoins,
+-- SyariahStatus, Quotation.BusinessCode/StatusBusiness, StartDateTime. T_GENERAL dapat
+-- memuat lebih dari satu baris per PRODKE; yang terbaru menurut TGL_INPUT dipakai. Nol baris
+-- atau kolom kosong berarti isi dokumen yang dipakai.
+SELECT g.IDPEGA, g.SUMOFTSI, g.TYPEOFCOINS, g.SYARIAHSTATUS, g.BUSINESSCODE,
+       g.STATUSBUSINESS, g.STARTDATE
+  FROM (SELECT x.*, ROW_NUMBER() OVER (ORDER BY CASE WHEN x.TGL_INPUT IS NULL THEN 1 ELSE 0 END,
+                                       x.TGL_INPUT DESC) AS RN
+          FROM POOLDATA.T_GENERAL x
+         WHERE x.NOPOLIS = :1
+           AND x.PRODKE = :2) g
+ WHERE g.RN = 1
+
+-- name: dla_offer_facin
+--
+-- OfferFacIn.PercentShare polis dari T_OFFERFACIN pada POLICYNO + PRODKE klaim.
+SELECT CAST(o.PERCENTSHARE AS VARCHAR(50))
+  FROM (SELECT x.*, ROW_NUMBER() OVER (ORDER BY CASE WHEN x.TGL_INSERT IS NULL THEN 1 ELSE 0 END,
+                                       x.TGL_INSERT DESC) AS RN
+          FROM POOLDATA.T_OFFERFACIN x
+         WHERE x.POLICYNO = :1
+           AND x.PRODKE = :2) o
+ WHERE o.RN = 1
+
+-- name: dla_spreading
+--
+-- SpreadingList polis dari T_SPREADINGLIST pada NOPOLIS + PRODKE — padanan collectSpreading
+-- atas dokumen: TSISpreaded pertama per TreatyType, baris FlagDelete = '1' dilewati. Urutan
+-- mengikuti indeks objek, jaminan, lalu spreading. Nol baris berarti dokumen yang dipakai.
+SELECT s.TREATYTYPE, CAST(s.TSISPREADED AS VARCHAR(60)), s.FLAGDELETE
+  FROM POOLDATA.T_SPREADINGLIST s
+ WHERE s.NOPOLIS = :1
+   AND s.PRODKE = :2
+ ORDER BY s.INDEXOBJECT, s.INDEXCOVERAGE, s.INDEXSPREADING
 
 -- name: dla_jenis_reas
 --
@@ -79,8 +132,9 @@ SELECT a.RP
 
 -- name: dla_treaty_qs
 --
--- searchQSReins2_SQL: persen QS. Pega mengambil baris TERAKHIR hasil tanpa urutan.
-SELECT REPLACE(a.PCT, ',', '.')
+-- searchQSReins2_SQL: persen QS. DLA mengambil baris TERAKHIR hasil tanpa urutan; Draft
+-- Persetujuan mencetak seluruh baris dengan REINSTYPENAME-nya (QS (OR), QS (R/I)).
+SELECT REPLACE(a.PCT, ',', '.'), a.REINSTYPENAME
   FROM POOLDATA.PROPORTIONALARRG a
  WHERE a.TREATYYEAR = :1 AND a.PARENTREINSTYPEID = :2 AND a.TREATYGROUPID = :3
    AND a.PCT IS NOT NULL AND a.TREATYDESCID = '10001'

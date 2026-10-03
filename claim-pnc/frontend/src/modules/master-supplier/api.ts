@@ -193,8 +193,8 @@ export function useCreateSupplier() {
     mutationFn: (input: SupplierInput) =>
       callAPI<SupplierResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-supplier'] })
-      void client.invalidateQueries({ queryKey: ['master-supplier-sandi'] })
+      client.invalidateQueries({ queryKey: ['master-supplier'] })
+      client.invalidateQueries({ queryKey: ['master-supplier-sandi'] })
     },
   })
 }
@@ -220,8 +220,8 @@ export function useSaveSupplier() {
         portal,
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-supplier'] })
-      void client.invalidateQueries({ queryKey: ['master-supplier-sandi'] })
+      client.invalidateQueries({ queryKey: ['master-supplier'] })
+      client.invalidateQueries({ queryKey: ['master-supplier-sandi'] })
     },
   })
 }

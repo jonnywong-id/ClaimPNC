@@ -133,6 +133,30 @@ func TestListQueriesPaginateOrderAndCount(t *testing.T) {
 	}
 }
 
+func TestBranchIsResolvedThroughTheOldCodeNotTheClaimCode(t *testing.T) {
+	// Kode yang dikirim HCQ (`DetailBranchCode`) berpasangan dengan `OLDID`, BUKAN dengan `ID`.
+	// Menyaring `WHERE id = :1` akan berjalan tanpa galat dan mengembalikan nol baris untuk
+	// setiap pemanggil — layar yang selalu menolak, tanpa satu pun tanda sebabnya.
+	text := strings.ToUpper(query("branch_of"))
+
+	require.Contains(t, text, "A.OLDID",
+		"branch_of tidak menerjemahkan lewat OLDID; kode dari HCQ tidak akan pernah cocok")
+	require.NotContains(t, text, "WHERE A.ID",
+		"branch_of menyaring lewat ID, yang bukan ruang kode milik HCQ")
+	require.Contains(t, text, "A.ID",
+		"branch_of tidak mengembalikan kode klaim, sehingga daftarnya tidak dapat disaring")
+}
+
+func TestNoQueryTouchesThePegaEngineTableAnymore(t *testing.T) {
+	// Sumber klaim outstanding dipindah ke POOLDATA (`D-21`). Satu kueri yang tertinggal di
+	// tabel engine Pega membuat layar dan berkas ekspornya memuat kumpulan klaim yang BERBEDA
+	// — dan keduanya sama-sama terisi, sehingga selisihnya tidak terbaca sebagai kerusakan.
+	for name, text := range queries {
+		require.NotContainsf(t, strings.ToUpper(text), "DATAPEGA.",
+			"kueri %s masih membaca tabel engine Pega", name)
+	}
+}
+
 func TestEveryQueryThatReadsClaimsFiltersByBranch(t *testing.T) {
 	// Batas data layar ini SELURUHNYA cabang. Kueri yang lupa menyaringnya tidak
 	// menghasilkan satu pun galat — ia menampilkan klaim seluruh cabang, terisi dan tampak
@@ -255,4 +279,80 @@ func TestBothPolicySubqueriesUseTheSameOrder(t *testing.T) {
 	order := "ORDER BY CAST(TRIM(t.prodke) AS NUMERIC) DESC"
 	require.Equal(t, 2, strings.Count(query("list_export"), order),
 		"kedua subkueri T_GENERAL tidak memakai urutan yang identik")
+}
+
+func TestDetailHeaderKeepsTheSameBoundariesAsTheList(t *testing.T) {
+	// Popup memuat nama tertanggung, kronologi, dan nilai uang. Bila penyaringnya lebih
+	// longgar daripada daftarnya, akan ada klaim yang tidak tampil di layar tetapi isinya
+	// tetap dapat dibaca lewat nomor — dan itu kebocoran antarbadan hukum (`R-20`).
+	text := query("detail_header")
+	upper := strings.ToUpper(text)
+
+	require.Contains(t, text, "c.branchcode = :1",
+		"detail_header tidak menyaring cabang; popup menjadi jalan memutar batas data")
+	require.Contains(t, text, "c.claimno = :2",
+		"detail_header tidak menyaring nomor klaim")
+	require.Contains(t, upper, "'RESOLVED-REJECTED'",
+		"detail_header kehilangan penyaring outstanding")
+	require.Contains(t, upper, "'RESOLVED-COMPLETED'",
+		"detail_header kehilangan penyaring outstanding")
+	require.Contains(t, text, "c.registerdate IS NOT NULL",
+		"detail_header kehilangan penyaring registerdate")
+}
+
+func TestDetailChildQueriesAreKeyedNotBrowsable(t *testing.T) {
+	// Keempat kueri anak menerima kunci klaim, bukan kode cabang, karena batas cabangnya
+	// sudah ditegakkan detail_header. Yang WAJIB dijaga: tak satu pun boleh berjalan tanpa
+	// kunci — kueri tanpa WHERE akan mengembalikan isi seluruh tabel.
+	for _, name := range []string{
+		"detail_objects", "detail_progress", "detail_messages", "detail_dominant_factors",
+	} {
+		require.Containsf(t, strings.ToUpper(query(name)), "WHERE",
+			"kueri %s tidak punya penyaring sama sekali", name)
+		require.Containsf(t, query(name), ":1",
+			"kueri %s tidak menerima kunci klaim", name)
+	}
+}
+
+func TestAdjusterMessagesNoLongerBuildTheKeyListAsText(t *testing.T) {
+	// Kueri lama merangkai daftar kunci menjadi teks lalu menyisipkannya mentah dengan
+	// `{ASIS:getkomunikasi.D_SURVEY_ID}`. Di sini daftar itu harus berupa SUBKUERI, sehingga
+	// tidak ada satu pun nilai yang menyentuh teks SQL.
+	text := strings.ToUpper(query("detail_messages"))
+
+	require.Contains(t, text, "SELECT S.CASEID",
+		"daftar kunci survei tidak dibaca lewat subkueri")
+	require.Contains(t, text, "POOLDATA.T_SURVEYORLIST",
+		"kueri pesan adjuster tidak lagi membaca daftar survei klaim")
+}
+
+func TestInsuredNameIsReadByBothListAndExport(t *testing.T) {
+	// Kolom "Nama Insured" digambar section lama tetapi TIDAK PERNAH diisi rule mana pun —
+	// `GetDataOutstandingperCabang` tidak mengembalikannya dan `OutstandingperCabang_PreAct`
+	// tidak menyetelnya. Di sini ia diisi, dan kedua kueri WAJIB membacanya dari sumber yang
+	// sama persis: bila keduanya berbeda, layar dan berkas ekspornya menyebut nama
+	// tertanggung yang berlainan untuk klaim yang sama.
+	for _, name := range listQueries {
+		require.Containsf(t, query(name), "SELECT t.theinsured",
+			"kueri %s tidak membaca nama tertanggung", name)
+		require.Containsf(t, query(name), "CAST(TRIM(t.prodke) AS NUMERIC) DESC",
+			"kueri %s memakai urutan perpanjangan polis yang berbeda", name)
+	}
+
+	// Posisinya di antara nomor polis dan nomor klaim, sama dengan section lama.
+	aliases := aliasesOf("list")
+	polis, insured, klaim := indexOf(aliases, "POLICY_NUMBER"),
+		indexOf(aliases, "INSURED_NAME"), indexOf(aliases, "CLAIM_NUMBER")
+	require.Equal(t, polis+1, insured, "INSURED_NAME tidak tepat setelah POLICY_NUMBER")
+	require.Equal(t, insured+1, klaim, "CLAIM_NUMBER tidak tepat setelah INSURED_NAME")
+}
+
+// indexOf mengembalikan posisi sebuah alias, atau -1.
+func indexOf(all []string, want string) int {
+	for i, got := range all {
+		if got == want {
+			return i
+		}
+	}
+	return -1
 }

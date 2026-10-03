@@ -69,3 +69,55 @@ func TestParseReply(t *testing.T) {
 		t.Fatalf("bukan JSON salah: %+v", r)
 	}
 }
+
+// Bentuk badan mengikuti log Pega yang diterima Kasir: Nett, Deductible, KaliDeduct berupa
+// angka JSON; DOL dan Panel tidak ikut.
+func TestTransferSendsNumbersWithoutDOLAndPanel(t *testing.T) {
+	var raw []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ = io.ReadAll(r.Body)
+		_, _ = w.Write([]byte(`{"ResponseMessage":"Success","CaseIDCashier":"ECR-2"}`))
+	}))
+	defer srv.Close()
+	h := New(catalog{"ASM/KASIRPAID": srv.URL}, "", "", nil)
+	_, err := h.Transfer(context.Background(), "ASM", "KASIRPAID", registrasi.CashierPayload{
+		TAllPaymentData: []registrasi.CashierPayment{{Nett: "2500000.00", Deductible: "0.00", KaliDeduct: "0", DOL: "01-09-2026", Panel: "X"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		TAllPaymentData []map[string]any `json:"TAllPaymentData"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	row := got.TAllPaymentData[0]
+	for _, k := range []string{"Nett", "Deductible", "KaliDeduct"} {
+		if _, ok := row[k].(float64); !ok {
+			t.Errorf("%s bukan angka: %#v", k, row[k])
+		}
+	}
+	for _, k := range []string{"DOL", "Panel"} {
+		if _, ok := row[k]; ok {
+			t.Errorf("%s tidak boleh terkirim", k)
+		}
+	}
+}
+
+// HTTP 400 berpesan diteruskan sebagai jawaban (penolakan), bukan "tidak terjangkau".
+func TestTransferPassesRejectionMessage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"ResponseCode":"0","ResponseMessage":"Rekening tidak terdaftar"}`))
+	}))
+	defer srv.Close()
+	reply, err := New(catalog{"ASM/KASIRPAID": srv.URL}, "", "", nil).
+		Transfer(context.Background(), "ASM", "KASIRPAID", registrasi.CashierPayload{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply.Accepted() || reply.ResponseMessage != "Rekening tidak terdaftar" {
+		t.Fatalf("jawaban = %+v", reply)
+	}
+}

@@ -49,12 +49,18 @@ type BankAccount struct {
 	BankID    string // BANKID
 	Email     string // EMAIL
 	Telephone string // TELP
+	// Approval adalah APPROVAL: "1" disetujui, "0" sedang proses approval, "2" lainnya.
+	// `GetDataPenerimaKlaim` hanya memakai rekening "1".
+	Approval string
 
 	// CashierApprovedAt dan CommitteeApprovedAt adalah TANGGALAPPROVEKASIR dan
 	// TANGGALAPPROVEKOMITE; nol bila belum diisi.
 	CashierApprovedAt   time.Time
 	CommitteeApprovedAt time.Time
 }
+
+// AccountApproved menyatakan rekening dapat dipakai sebagai penerima klaim (APPROVAL = '1').
+func (a BankAccount) AccountApproved() bool { return strings.TrimSpace(a.Approval) == "1" }
 
 // ApplyAccount mengisi penerima dari rekening master: No Rekening, Nama, Nama Bank, dan
 // Alamat — keempatnya baca-saja di InputReceiver, jadi hanya master yang mengisinya.

@@ -17,13 +17,13 @@ import {
   useKomunikasiCabangList,
   useKomunikasiCabangMetadata,
 } from './api'
-import { isActionField } from './types'
-import type {
-  BranchScope,
-  Conversation,
-  ExportColumn,
-  Tab,
-  TabColumn,
+import {
+  isActionField,
+  type BranchScope,
+  type Conversation,
+  type ExportColumn,
+  type Tab,
+  type TabColumn,
 } from './types'
 
 /**
@@ -166,7 +166,7 @@ export function KomunikasiCabangPage() {
       exportable={(list.data?.paginasi.total ?? 0) > 0}
       exportColumns={meta.data?.kolom_ekspor ?? []}
       branch={list.data?.batas_cabang}
-      onRefresh={() => void list.refetch()}
+      onRefresh={() => { list.refetch() }}
       // `isRefetching`, BUKAN `isFetching`: yang kedua juga bernilai benar selama pemuatan
       // PERTAMA, sehingga tombolnya berbunyi "Menyegarkan…" sebelum seorang pun menekannya —
       // menyatakan sesuatu sedang dikerjakan atas perintah pengguna, padahal tidak.
@@ -776,7 +776,7 @@ function cellText(row: Conversation, column: TabColumn): string {
 
   const value = row[column.kunci]
 
-  if (value === null || value === undefined || value === '') return '—'
+  if (value == null || value === '') return '—'
 
   const text = String(value)
   return isDate(text) ? formatDate(text) : text

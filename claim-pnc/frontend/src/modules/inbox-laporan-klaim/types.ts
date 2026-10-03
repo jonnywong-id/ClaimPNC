@@ -155,6 +155,16 @@ export type ClaimReportDetail = {
   keterangan_belum_registrasi: string
 
   jumlah_dokumen: number
+
+  /**
+   * Empat isian Section/InputReceiveDocument_sect.xml. group_panel adalah Group Panel polis
+   * (GROUPPANEL) — penentu isian khusus PA (002); email_tertanggung dan sim_pengendara
+   * hanya tampil untuk PA.
+   */
+  group_panel: string
+  email_tertanggung: string
+  sim_pengendara: string
+  sumber_laporan: string
 }
 
 export type ClaimReportResponse = {
@@ -198,6 +208,10 @@ export const EMPTY_DETAIL: ClaimReportDetail = {
   rincian_kerusakan: '',
   alasan: '',
   keterangan_belum_registrasi: '',
+  group_panel: '',
+  email_tertanggung: '',
+  sim_pengendara: '',
+  sumber_laporan: '',
   jumlah_dokumen: 0,
 }
 
@@ -220,6 +234,8 @@ export const FIELD_LIMIT = {
   catatan: 1000,
   narasi: 4000,
   jumlahDokumen: 9999,
+  sim: 25,
+  sumber: 100,
 } as const
 
 /** Penyaring yang dipilih pengguna di layar. */
@@ -310,6 +326,8 @@ export type PolicyLookupResponse = {
   nama_bisnis: string
   nomor_rujukan: string
   group_panel: string
+  /** LEADERPOLICYCOAS — "Polis Leader", baca saja. */
+  polis_leader?: string
   syariah: boolean
   pesan: PolicyNotice[]
   memblokir: boolean
