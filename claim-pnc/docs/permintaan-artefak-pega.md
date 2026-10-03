@@ -2252,6 +2252,576 @@ Penarikannya cukup dengan `ALL_SOURCE` seperti `19-GAP-EXPORT-DETAIL.md` bagian 
 
 ---
 
+## 11. `InputPerihalRCLPUCL_act` — activity tombol "Pilih" Perihal (2026-10-01)
+
+| | |
+|---|---|
+| **Rule** | `Rule-Obj-Activity` · `InputPerihalRCLPUCL_act` |
+| **Kelas** | `ASM-FW-GCNMFW-Work-PNC` |
+| **Dirujuk dari** | `Section/SectionLampiranSuratPUCL-Section.xml` — tombol "Pilih" di sebelah isian Perihal |
+| **Risiko** | `R-07` (activity dipanggil tetapi tidak diekspor) |
+| **Status** | ✅ **DITERIMA 2026-10-01** — lihat §11.1 |
+
+Ditemukan saat memetakan rangkaian aksi seluruh tombol layar kerja Inbox RCL/PUCL. Seluruh 16
+activity yang dipanggil `PUCLPost` ADA di export; yang satu ini satu-satunya yang tidak.
+
+**Akibatnya terbatas, dan itu dinyatakan supaya prioritasnya tidak dilebihkan:** isian Perihal
+sudah terbaca dari kolom `POOLDATA.TC_PNC_PUCL.PERIHAL`, sehingga yang hilang adalah cara
+MENGUBAH pilihannya — bukan cara menampilkannya. Ia baru menghalangi ketika tombol tulis layar ini
+dihidupkan.
+
+Masternya sendiri sudah diketahui: `POOLDATA.M_PERIHAL_RCLPUCL`, 12 baris, dipasok
+`BrowsePerihalRCLPUCL_RD` yang ADA di export.
+
+### 11.1 Diterima — isinya, dan apa yang ditutupnya
+
+Work Owner menambahkannya 2026-10-01 (57 KB, ruleset `GCNMFW`). **Lima step**, dan tidak satu
+pun menulis ke basis data:
+
+```
+1. Property-Set        Param.pyReportName  := "BrowsePerihalRCLPUCL_RD"
+                       Param.pyReportClass := "ASM-FW-GCNMFW-Int-M_PERIHAL_RCLPUCL"
+2. Call pxShowReport   membuka daftar pilihan sebagai laporan
+3. Property-Set        TempPerihal.ID_PERIHAL / TempPerihal.PERIHAL_NAME
+4. Property-Set        primary.ClaimData.PUCLStatus.Perihal
+                         := pyReportContentPage.pxResults(1).PERIHAL_NAME
+5. Page-Remove         membuang TempPerihal
+```
+
+**Tidak ada `Obj-Save`, `Commit`, maupun `RDB-Save`.** Kata "Commit" yang muncul di berkasnya
+hanyalah `pxCommitDateTime` — metadata kapan rule itu disimpan (2020-03-12), bukan step.
+
+**Dua hal yang ini tutup:**
+
+1. **Tombol "Pilih" adalah BACA**, bukan tulis. Ia bergabung dengan "Lihat Dokumen" sebagai satu
+   dari dua tombol yang tidak terhalang `P-1`. Catatan: ia hanya berguna bersama "Save", yang
+   TETAP terhalang — memilih tanpa dapat menyimpan tidak menyelesaikan apa pun.
+2. **Yang tersimpan pada klaim adalah TEKS perihalnya, bukan kodenya.** `ID_PERIHAL` dibuang
+   bersama halaman sementaranya. Ini membenarkan pembacaan kolom `PERIHAL` apa adanya ke layar
+   (§84.2), dan berarti klaim tidak menyimpan kunci asing ke master — mengubah teks sebuah baris
+   master tidak mengubah klaim yang sudah memakainya.
+
+---
+
+## 12. PERMINTAAN LAYANAN REST — `PUCLPost` dan `SaveInputRegisterDetail2` (2026-10-01)
+
+| | |
+|---|---|
+| **Jenis** | Bukan permintaan artefak — **permintaan membangun layanan** |
+| **Kepada** | Tim Pega |
+| **Diputuskan** | Work Owner, 2026-10-01 |
+| **Kelas** | `ASM-FW-GCNMFW-Work-PNC` |
+
+### 12.1 Yang diminta
+
+Ekspos kedua activity berikut sebagai **Service REST masuk**, dengan pola yang sama seperti
+empat layanan yang sudah berjalan di `Service REST/`:
+
+| Activity | Parameter | Dipakai tombol |
+|---|---|---|
+| `InsertMitraPA` lalu `PUCLPost` | `tipe` · `Status` · `idObj` · `idCov` · `idAdj` | Download Dokumen (`Status` kosong) · Tolak Klaim (`0`) · Kirim Ke Analyst (`1`) · Kirim ke PIC Teknik (`1`) |
+| `SaveInputRegisterDetail2` | isian Penerimaan Dokumen | Save |
+
+Ditambah penyelesaian penugasan (`Finish Assignment`) untuk kedua tombol Kirim, karena itu
+bagian dari rangkaian aksinya di layar.
+
+### 12.2 Kenapa LAYANAN, bukan tulis langsung dari Go
+
+Tiga alasan, dan ketiganya diperiksa sebelum diusulkan:
+
+1. **`P-1` tetap utuh.** Pega tetap satu-satunya yang menulis objek kerja. Tidak ada dua
+   sistem menulis baris yang sama selama masa paralel.
+2. **`PUCLPost` dipakai APA ADANYA — 57 step.** Menulis ulangnya di Go menuntut meniru
+   `SetTicket`, `AttachAsPDFC`, `ASMForceCaseClose`, pengiriman surel, panggilan
+   `HitServiceOSAkseptasiClaimNonMBU`, dan sinkronisasi `JSON_KLAIM`. Satu langkah yang
+   terlewat **tidak memunculkan galat** — ia hanya terlihat berminggu-minggu kemudian sebagai
+   klaim yang tersangkut.
+3. **Polanya sudah ada di aplikasi ini.** `Service REST/` memuat empat layanan pada kelas yang
+   sama, dan salah satunya (`ActSalvageSimasbidAsmUpdate`) memang **menulis** data klaim atas
+   permintaan sistem luar. Jadi ini bukan mekanisme baru.
+
+Saat Pega kelak dimatikan, adapter pemanggil layanan ini diganti logika kami sendiri. Seam-nya
+sudah ada di arsitektur (`ExternalSystem`), sehingga penggantian itu tidak menyentuh domain.
+
+### 12.3 Yang perlu disepakati bersama permintaan ini
+
+| Hal | Catatan |
+|---|---|
+| **Otentikasi** | Keempat layanan yang ada ber-`pyUseAuthentication=false`. Layanan BARU ini menulis data klaim, sehingga perlakuan yang sama **tidak memadai** — lihat `D-73` dan `ADR-0008` |
+| Perilaku saat gagal | `PUCLPost` mengirim surel dan memanggil layanan luar. Layanan harus menyatakan apakah kegagalan di tengah menghasilkan rollback |
+| Idempotensi | Tombol yang ditekan dua kali tidak boleh menerbitkan surat dua kali (`10-API-STRATEGY.md` §7) |
+| Lingkungan uji | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |
+
+### 12.4 Apa yang KURANG, per tombol
+
+Ditelusuri 2026-10-01 sampai ke activity terdalamnya. Keduanya berhenti di tempat yang sama —
+**penulisan tabel milik Pega** — tetapi lewat jalan yang berbeda.
+
+**Kirim Ke Analyst** menuntut tiga hal:
+
+| # | Yang dijalankan | Menulis |
+|---|---|---|
+| 1 | `InsertMitraPA(tipe="dokumen")` | `Obj-Refresh-And-Lock` → `Obj-Save` → `Commit` pada objek kerja |
+| 2 | `PUCLPost(Status=1, idObj, idCov, idAdj)` | 57 step: `SetTicket`, `AttachAsPDFC`, surel, `HitServiceOSAkseptasiClaimNonMBU`, `InsertJsonClaimNonMBU`, lalu `Obj-Save` + `Commit` |
+| 3 | **`Finish Assignment`** | menyelesaikan penugasan dan meneruskan klaim — `PC_ASSIGN_*` |
+
+Butir 3 yang paling berat: ia **mesin alur kerja Pega**, dan sistem baru tidak punya padanannya.
+
+**Unggah Dokumen** menuntut dua hal:
+
+| # | Yang dijalankan | Menulis |
+|---|---|---|
+| 1 | `GCNMSaveAttachments` → `SaveAllAttachments` (bawaan Pega) | `PC_LINK_ATTACHMENT` + `PC_DATA_WORKATTACH` |
+| 2 | `SetCategoryAttachment` | 18 step, `Obj-Open-By-Handle` → `Obj-Save` → `Commit` **dua kali** |
+
+Perhatikan: ia **tidak** menulis `POOLDATA.DATA_ATTACHFILE` secara langsung. Jadi menyisipkan
+baris ke tabel itu dari Go **tidak** akan membuat lampirannya terlihat di Pega — ia hanya akan
+membuat kedua sistem menyimpan daftar yang berbeda.
+
+### 12.5 Urutan yang diusulkan — satu layanan dulu, bukan semuanya
+
+| Tahap | Layanan | Tombol yang hidup | Alasan urutannya |
+|---|---|---|---|
+| **1** | `PUCLPost` + `InsertMitraPA` | **empat** — Download Dokumen · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik | Keempatnya memakai activity yang SAMA; yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Satu layanan menghidupkan empat tombol |
+| **2** | Unggah lampiran | Unggah Dokumen | Mekanismenya berbeda — unggah berkas, bukan pemanggilan parameter — sehingga ia pekerjaan tersendiri |
+| **3** | `SaveInputRegisterDetail2` | Save | Paling ringan akibatnya: tidak meneruskan klaim, tidak mengirim surel |
+
+Tahap 1 memberi hasil terbesar per satuan kerja, dan tahap 2 tidak menahannya.
+
+### 12.6 Yang dapat dikerjakan tim pengembang SEBELUM layanannya ada
+
+Tiga hal, dan ketiganya tidak menunggu siapa pun:
+
+1. **Adapter pemanggil** di balik seam `ExternalSystem`, dibangun terhadap kontrak yang diusulkan
+   §12.1 — sehingga saat layanannya tiba yang berubah hanyalah alamatnya.
+2. **Penyambungan tombol** di layar kerja, memakai adapter itu.
+3. **Fake adapter** untuk pengujian, sehingga alurnya teruji penuh tanpa Pega.
+
+Yang **tidak** dapat dikerjakan sebelum layanannya ada: pembuktian bahwa hasilnya setara dengan
+Pega. Itu menuntut Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8`
+(`ADR-0027`), dan masih belum dikonfirmasi.
+
+### 12.7 Audit lengkap pohon pemanggilan — apa yang KURANG untuk replikasi apa adanya
+
+Diminta Work Owner 2026-10-01: *"ikuti apa adanya yang ada di Pega sampai bisa kirim analyst dan
+unggah dokumen; jika ada act atau yang lain kurang tolong beritahu."*
+
+Pohon pemanggilan ditelusuri dari tujuh akar — `InsertMitraPA`, `PUCLPost`, `GCNMSaveAttachments`,
+`SetCategoryAttachment`, `SetPreAttachmentPNC`, `SaveAttachmentOPPNC`,
+`SaveInputRegisterDetail2` — sampai habis: **92 activity**.
+
+#### Lapisan 1 — Activity: NOL yang kurang
+
+| | |
+|---|---|
+| Activity di pohon | **92** |
+| Ada di export | 75 — **31 buatan sendiri**, 44 bawaan Pega |
+| Hilang | 17, dan **seluruhnya bawaan Pega** |
+
+Ketujuh belas yang hilang adalah internal report wizard (`pzPopulateReport`,
+`pzPrepareReportWizard`, `pzGetPropsForTreeGrid`, …). **Tidak satu pun dipakai jalur tulis**, dan
+tidak satu pun rule buatan sendiri.
+
+#### Lapisan 2 — Rule Connect-SQL: SATU yang kurang
+
+15 rule dirujuk, 14 ada.
+
+| Rule | Dipanggil | Jalur |
+|---|---|---|
+| **`InsertDominanFactor`** | `SaveDominanFactor` | tombol **Save** |
+
+#### Lapisan 3 — Objek basis data: EMPAT yang kurang
+
+| Objek | Dipanggil | Jalur |
+|---|---|---|
+| **`CLOBTOBLOB`** | `PEGA_JSON_KLAIM_PNC`, `PEGA_LOGJSON_LOG` | **Kirim Ke Analyst** |
+| **`POOLDATA.CONVERT_PEGA_DATE`** | `PEGA_CONVERT_JSONKLAIM_PNC` | Save |
+| **`UPDATE_PENGKINIANDATA`** | `UPDATEINSERT_PENGKINIANDATA` | Save |
+| **`MBU.F_VALIDASI_KLAIM_PENGKINIAN`** | `Validasiklaimpengkiniandata_sql_gcnm` | Save |
+
+Yang sempat terbaca sebagai kurang tetapi **bukan**: `GET_STRING`, `GET_ARRAY`, `GET_OBJECT`
+adalah metode tipe JSON Oracle (`l_jsonObject.GET_STRING(...)`); `BASE64_ENCODE` muncul di dalam
+komentar sebagai `utl_encode.base64_encode`; dan belasan nama lain adalah **tabel**
+(`T_CLAIM_*`, `PNC_CHRONOLOGYTAT`, `JSON_KLAIM`, `LOG_TABLE_JSON`).
+
+#### Lapisan 4 — yang TIDAK dapat diminta sebagai rule, dan inilah penghalang sebenarnya
+
+Ketiga operasi berikut **ada** di export, tetapi isinya memanggil **mesin Pega**, bukan logika
+bisnis yang dapat dibaca dan ditulis ulang:
+
+| Operasi | Isinya | Menulis |
+|---|---|---|
+| `SaveAllAttachments` | `Call pzSaveAllAttachmentsDD` + **2 step Java mentah** | `PC_LINK_ATTACHMENT`, `PC_DATA_WORKATTACH` — termasuk **`PZPVSTREAM`**, blob serialisasi internal Pega |
+| `SetTicket` | metode platform **`Obj-Set-Tickets`** + 1 step Java | penanda lompatan lateral pada objek kerja |
+| `Finish Assignment` / `pzUpdateAndDeleteAssignments` | 1 step Java + `Obj-Open-By-Handle` | `PC_ASSIGN_WORKLIST` / `PC_ASSIGN_WORKBASKET` |
+
+**Akibatnya tegas:**
+
+- **Unggah Dokumen** — tidak ada satu pun artefak yang kurang, tetapi menulis lampiran yang
+  **dapat dibaca Pega** menuntut membentuk `PZPVSTREAM` dalam format serialisasi internal Pega.
+  Format itu tidak terdokumentasi di export mana pun, dan tidak dapat diminta sebagai rule.
+- **Kirim Ke Analyst** — selain `CLOBTOBLOB`, ia menuntut padanan `Finish Assignment` dan
+  `SetTicket`. Keduanya operasi mesin alur kerja, bukan aturan bisnis.
+
+Jadi yang menghalangi replikasi apa adanya **bukan artefak yang kurang** — hanya lima objek yang
+kurang, dan empat di antaranya di jalur tombol Save. Yang menghalangi adalah **tiga operasi mesin
+Pega** yang hasil kerjanya ada di dalam platform, bukan di dalam rule.
+
+Inilah tepatnya yang dihindari jalur layanan REST §12: Pega menjalankan ketiganya sendiri, dengan
+mesinnya sendiri.
+
+#### Yang tetap diminta meski jalur layanan dipilih
+
+| # | Objek | Kepada |
+|---|---|---|
+| 1 | `CLOBTOBLOB` · `CONVERT_PEGA_DATE` · `UPDATE_PENGKINIANDATA` · `MBU.F_VALIDASI_KLAIM_PENGKINIAN` | DBA |
+| 2 | Rule `InsertDominanFactor` | Tim Pega |
+
+Keempat objek basis data itu tetap dibutuhkan saat logikanya kelak ditulis ulang di Go — setelah
+Pega dimatikan — meski hari ini dijalankan Pega lewat layanan.
+
+### 12.8 SPESIFIKASI rule Service REST — siap dikerjakan
+
+Ditulis atas permintaan Work Owner 2026-10-01, supaya Tim Pega tidak perlu menebak bentuknya.
+
+**Yang perlu diluruskan lebih dulu:** `PUCLPost` adalah **ACTIVITY**, dan ia **sudah ada**. Yang
+diminta di sini adalah rule **Service REST** yang mengeksposnya lewat HTTP — lapisan yang belum
+ada, bukan activity baru.
+
+```
+Activity PUCLPost            SUDAH ADA   <- mengerjakan tindakannya
+Rule Service REST            BELUM ADA   <- yang diminta di sini
+Alamat layanannya            menyusul    <- diisi ke PEGA_LAYANAN_KLAIM di sisi Go
+```
+
+#### a. Identitas rule
+
+| Hal | Usulan | Catatan |
+|---|---|---|
+| Kelas | `ASM-FW-GCNMFW-Work-PNC` | sama dengan keempat layanan yang sudah ada |
+| Nama paket layanan | **`ASMFWGCNMFWWORKPNC`** | TERBACA dari kunci rule keempat layanan yang ada — lihat §12.9. Layanan baru ini bergabung ke paket yang sama |
+| `pyResourcePath` | **`ActionClaimPUCL`** | dinamai menurut TINDAKANNYA, seperti keempat layanan yang ada. **Bukan** `PUCLPost` — itu nama ACTIVITY |
+| Metode HTTP | **`POST`** | ia menimbulkan akibat; tidak boleh `GET` |
+| Jenis isi | `application/json` | |
+
+Alamat yang kami pakai menjadi:
+
+```
+POST  https://<host-pega>/prweb/api/ASMFWGCNMFWWORKPNC/<versi>/ActionClaimPUCL
+```
+
+Bagian sampai `<versi>` itulah yang kami isikan ke `PEGA_LAYANAN_KLAIM`; `/ActionClaimPUCL`
+ditambahkan aplikasi sendiri, dan dapat diubah lewat `PEGA_LAYANAN_KLAIM_PATH` tanpa menyentuh
+kode.
+
+#### b. Badan permintaan
+
+Nama isiannya sengaja memakai **nama parameter `PUCLPost` apa adanya**, supaya tidak ada
+terjemahan yang dapat salah di antara dua pihak.
+
+| Isian | Tipe | Isi | Dari |
+|---|---|---|---|
+| `aksi` | teks | `cetak` · `tolak` · `kirim-analyst` · `kirim-pic-teknik` · `save` | tombol yang ditekan |
+| `caseNumber` | teks | nomor case, mis. `PNC-2183` | `PYID` |
+| `Status` | teks | **`"1"`** = kirim · `"0"` = tolak · `""` = cetak | parameter `PUCLPost` |
+| `idObj` | teks | parameter `idObj` | kolom `TC_PNC_PUCL.ID_OBJECT` |
+| `idCov` | teks | parameter `idCov` | kolom `ID_COVERAGE` |
+| `idAdj` | teks | parameter `idAdj` | kolom `ID_ADJUSTMENT` |
+| `tipe` | teks | **`"dokumen"`** untuk tombol Kirim · `"cetak"` untuk Download Dokumen | parameter `InsertMitraPA` |
+| `note` | teks | "Catatan untuk Analyst" | `KomentarPUCL` |
+| `caller` | teks | login petugas yang menekan tombolnya | — |
+
+`caller` ikut karena Pega mencatat pelaku pada objek kerja. Tanpanya jejaknya menunjuk **akun
+integrasi**, bukan orangnya — dan `D-59` menjadikan jejak audit kontrol pengimbang tunggal
+karena tidak ada pemisahan tugas.
+
+#### b.1 `aksi` menentukan rangkaian activity
+
+Satu layanan melayani **lima tombol**. Yang membedakan bukan hanya `Status` — "save" memakai
+activity yang berbeda sama sekali:
+
+| `aksi` | `Status` | `tipe` | `statusCase` | `statusNote` | Finish Assignment |
+|---|---|---|---|---|---|
+| `cetak` | *(kosong)* | `cetak` | `1` | `Wait for Complete PUCL Document ` | tidak |
+| `tolak` | `0` | `dokumen` | — | — | tidak |
+| `kirim-analyst` | `1` | `dokumen` | — | — | **ya** |
+| `kirim-pic-teknik` | `1` | *(kosong)* | — | `send by PUCL to PIC Teknis` | **ya** |
+| `save` | — | — | — | — | tidak |
+
+> Spasi di ujung `Wait for Complete PUCL Document ` **ada di Pega** dan mohon dipertahankan apa
+> adanya. Ia terbawa ke kolom riwayat, dan membuangnya mengubah data yang tersimpan (`P-5`).
+
+**Urutan langkahnya BERBEDA per tombol, dan urutan itu bagian dari kontrak.** Dibaca apa adanya
+dari `pyBehaviors` tiap tombol:
+
+| `aksi` | 1 | 2 | 3 |
+|---|---|---|---|
+| `cetak` | `InsertMitraPA` | `PUCLPost` | `InsertHistoryClaimPNC` |
+| `tolak` | `InsertMitraPA` | `PUCLPost` | *refresh harness — bukan Finish Assignment* |
+| `kirim-analyst` | `InsertMitraPA` | `PUCLPost` | **Finish Assignment** |
+| `kirim-pic-teknik` | **`PUCLPost`** | `InsertHistoryClaimPNC` | **Finish Assignment** |
+| `save` | `SaveInputRegisterDetail2` | — | — |
+
+Tiga hal yang mudah terbaca terbalik, dan ketiganya pernah salah di catatan kami sendiri:
+
+- **`kirim-pic-teknik` menjalankan `PUCLPost` LEBIH DULU**, baru `InsertHistoryClaimPNC`. Pada
+  `cetak` urutannya justru kebalikannya.
+- **`tolak` TIDAK menyelesaikan penugasan.** Ia hanya menyegarkan harness, sehingga klaimnya
+  tetap di tangan petugas yang sama.
+- **`cetak` punya TIGA langkah, bukan dua** — langkah ketiganya menulis riwayat.
+
+`InsertHistoryClaimPNC` juga menerima `caseID`, yang di layar diisi `pyWorkPage.pzInsKey`. Kami
+**tidak** mengirimkannya: `pzInsKey` adalah kunci internal Pega, dan layanan dapat menurunkannya
+sendiri dari `caseNumber`. Mohon dikonfirmasi bila anggapan itu keliru.
+
+`Status` tetap dikirim selain `aksi` supaya layanan dapat meneruskannya apa adanya ke
+`PUCLPost` tanpa memetakan ulang.
+
+#### c. Yang harus DICAPAI layanan — bukan caranya
+
+Caranya diserahkan kepada Tim Pega, karena ketiganya operasi mesin Pega yang tidak dapat kami
+baca dari export (§12.7). Yang kami butuhkan adalah hasilnya:
+
+1. Jalankan ketiga langkah `aksi` itu **dalam urutan pada tabel §12.8b** — urutannya berbeda
+   per tombol, dan bukan detail yang boleh diseragamkan.
+2. Teruskan parameternya apa adanya: `tipe`, `Status`, `statusCase`, `statusNote`, `idObj`,
+   `idCov`, `idAdj`.
+3. Untuk `kirim-analyst` dan `kirim-pic-teknik`, langkah terakhirnya adalah **menyerahkan flow
+   action `SendtoRCLPUCL`** pada penugasan klaim itu — inilah yang di layar terlihat sebagai
+   `Finish Assignment`.
+
+```
+Rule   RULE-OBJ-FLOWACTION  ASM-FW-GCNMFW-WORK-PNC  SENDTORCLPUCL
+Kelas  ASM-FW-GCNMFW-Work-PNC
+Flow   Register_Flow
+```
+
+Butir 3 yang paling menentukan, dan mohon tidak dilewatkan: inbox Analyst membaca
+`PC_ASM_FW_GCNMFW_WORK` **INNER JOIN `PC_ASSIGN_WORKLIST`**, sehingga klaim sampai ke Analyst
+**hanya** lewat baris penugasan baru. Tanpa butir 3, klaim hilang dari antrean PUCL tanpa sampai
+ke siapa pun — dan tidak ada galat yang memunculkannya.
+
+> **Jalan pintas yang sudah ditanyakan dan TIDAK ada.** Butir 3 adalah penyerahan flow action
+> biasa, sehingga pada prinsipnya dapat dilayani API standar Pega tanpa rule baru:
+>
+> ```
+> POST /prweb/api/v1/assignments/{assignmentID}/actions/SendtoRCLPUCL
+> ```
+>
+> Work Owner menjawab **tidak ada** (2026-10-01): `/prweb/api/v1/` tidak tersedia, dan tidak ada
+> akun layanan untuknya. **Ketiga butir karena itu tetap masuk lingkup layanan ini** — tidak ada
+> satu pun yang dapat kami panggil sendiri.
+>
+> Dicatat di sini supaya pertanyaannya tidak diajukan ulang, dan supaya jelas bahwa butir 3
+> **bukan** permintaan yang berlebihan.
+>
+> Ditambah satu hal yang berlaku meski API itu kelak diaktifkan: butir 1 dan 2 tetap tidak dapat
+> dikerjakannya, karena keduanya rangkaian aksi TOMBOL, bukan pra/pasca-proses flow action.
+> Diperiksa langsung — `SendtoRCLPUCL` hanya punya
+> `pyPreProcessingActivity = SetDataLampiranSuratRCLPUCL_Act`, tanpa pasca-proses.
+
+#### d. Bentuk jawaban
+
+| Keadaan | Kode | Badan |
+|---|---|---|
+| Berhasil | `200` | bebas; kami tidak membacanya |
+| Permintaan tidak sah — klaim tidak ada, parameter kurang | `400` / `404` | pesan singkat |
+| Gagal di dalam Pega | `500` | pesan singkat |
+
+Kami sudah membedakan ketiganya: `5xx` dan gagal terhubung dijawab **"layanan belum tersambung"**
+(yang bertindak Tim Pega dan Infra), sedangkan `4xx` dijawab sebagai **kesalahan permintaan kami**.
+Menyatukan keduanya akan menyuruh orang menunggu pihak yang salah.
+
+#### e. Otentikasi — mohon JANGAN mengikuti yang sudah ada
+
+Keempat layanan yang ada ber-**`pyUseAuthentication=false`**. Untuk layanan ini hal itu **tidak
+memadai**: ia meneruskan klaim dan menyentuh nilai uang, sementara keempat yang ada sebagian
+hanya membaca.
+
+Usulan: **Basic Auth** atau **OAuth 2.0 client credentials** dengan akun layanan tersendiri —
+bukan akun operator. Bentuk akhirnya kami ikuti; yang kami minta adalah **bukan tanpa
+otentikasi**. Keputusannya milik Keamanan Informasi (`ADR-0008`).
+
+#### f. Dua hal yang perlu disepakati bersama
+
+| Hal | Kenapa |
+|---|---|
+| **Idempotensi** | Tombol yang tertekan dua kali tidak boleh meneruskan klaim dua kali. Bila Pega tidak menjamin ini, kami kirimkan kunci idempotensi — mohon diberitahukan isiannya |
+| **Lingkungan uji** | Dibutuhkan Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` (`ADR-0027`) |
+
+#### g. Yang sudah SIAP di sisi kami
+
+Adapter, seam, rute, dan tombolnya sudah dibangun dan teruji terhadap peladen tiruan. Begitu
+layanannya ada dan alamatnya diisi ke `PEGA_LAYANAN_KLAIM`, tombolnya bekerja **tanpa satu baris
+kode pun berubah**.
+
+Bila nama paket atau resource path berbeda dari usulan di atas, yang berubah di sisi kami hanya
+**satu baris** di `internal/inboxrclpucl/adapter/pega/pega.go`.
+
+### 12.9 Nama layanannya — BELUM ADA, dan inilah identitas yang diusulkan
+
+Pertanyaan Work Owner 2026-10-01: *"service apa namanya yang kurang?"*
+
+**Tidak ada layanan yang hilang.** Keempat layanan yang ada lengkap; yang diminta adalah layanan
+**KELIMA**, yang belum pernah dibuat — sehingga namanya belum ada, dan harus ditetapkan.
+
+#### Identitas keempat layanan yang SUDAH ada
+
+Dibaca dari `pzInsKey` masing-masing berkas. Bentuknya:
+`RULE-SERVICE-REST <paket> <kelas>!<resource>`
+
+| Paket | Kelas | Resource | Activity |
+|---|---|---|---|
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `KomiteAcceptAdjustment` | `CheckKomiteAprove` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `KomiteAcceptAdjustmentPA` | `CheckKomiteAprovePA` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `RecivedDataandAttachmentLelangASMSimasbid` | `ActSalvageSimasbidAsmUpdate` |
+| `ASMFWGCNMFWWORKPNC` | `ASM-FW-GCNMFW-Work-PNC` | `RequestCreateClaimCredit2` | `CreateClaimCredit_Service2` |
+
+Keempatnya satu paket: **`ASMFWGCNMFWWORKPNC`**.
+
+#### Identitas layanan KELIMA yang diminta
+
+| Hal | Usulan |
+|---|---|
+| Rule | `Rule-Service-REST` |
+| Paket | **`ASMFWGCNMFWWORKPNC`** — bergabung ke yang sudah ada, bukan paket baru |
+| Kelas | **`ASM-FW-GCNMFW-Work-PNC`** |
+| **Resource (nama layanannya)** | **`ActionClaimPUCL`** |
+| Metode | `POST` |
+| Activity yang dijalankan | `InsertMitraPA` → `PUCLPost` → `Finish Assignment` |
+
+Kunci rule-nya menjadi:
+
+```
+RULE-SERVICE-REST  ASMFWGCNMFWWORKPNC  ASM-FW-GCNMFW-WORK-PNC!ACTIONCLAIMPUCL
+```
+
+#### Kenapa BUKAN dinamai `PUCLPost`
+
+Usulan pertama kami memakai nama itu, dan **Work Owner menolaknya 2026-10-01 — dengan benar**:
+`PUCLPost` adalah nama **ACTIVITY**, dan memakainya untuk layanan menghasilkan dua rule bernama
+sama di Pega, berbeda hanya pada jenis rule-nya:
+
+```
+Rule-Obj-Activity    PUCLPost      <- sudah ada, yang mengerjakan tindakannya
+Rule-Service-REST    …!PUCLPOST    <- akan dibuat
+```
+
+Siapa pun yang kelak membaca log, mencari rule, atau menelusuri galat harus membedakan keduanya
+dari jenis rule-nya saja. Itu biaya yang tidak perlu dibayar untuk sebuah nama.
+
+Keempat layanan yang ada dinamai menurut **tindakannya**, bukan menurut activity yang
+dijalankannya — `KomiteAcceptAdjustment` menjalankan `CheckKomiteAprove`,
+`RequestCreateClaimCredit2` menjalankan `CreateClaimCredit_Service2`. Usulan kami mengikuti
+kebiasaan itu.
+
+Namanya menyebut **tindakan**, bukan satu tombol, karena satu layanan ini melayani **empat
+tombol** — yang membedakan hanya parameter `Status` (kosong · `0` · `1`). Nama seperti
+`KirimKeAnalystPUCL` akan menyesatkan ketika layanan yang sama dipakai tombol Tolak Klaim.
+
+Apa pun namanya, di sisi kami ia **satu baris konfigurasi** (`PEGA_LAYANAN_KLAIM_PATH`) — bukan
+perubahan kode.
+
+---
+
+## 12.9 Ticket yang WAJIB dilepas `ActionClaimPUCL` (2026-10-02)
+
+Ditambahkan sesudah rantai ticket-nya terlacak penuh dari export. Tanpa butir ini, layanan
+yang dibangun akan menandai klaim selesai **tanpa memindahkannya** — persis keadaan yang
+berjalan sekarang.
+
+### Yang harus dikerjakan layanan, berurutan
+
+| # | Isi | Sumber |
+|---|---|---|
+| 1 | Jalankan `PUCLPost` dengan `Status = 1` | tombol Kirim di `SectionLampiranSuratPUCL` |
+| 2 | Langkah 17-nya melepas ticket **`SendtoAnalysator`**, berprekondisi `param.Status==1` | `PUCLPost` langkah 17, `<Ticket>SendtoAnalysator</Ticket>` |
+| 3 | Ticket itu menempel pada shape ber-`pyUseCaseName = SendToAnalis` | `Register_Flow`, `pyTicketShapes` |
+| 4 | Shape itu `pyImplementation = WorkList`, router `PNCTeknikRouter` | idem |
+
+### Peta ticket Register_Flow, terbaca dari `pyTicketShapes`
+
+| Ticket | Shape tujuan |
+|---|---|
+| `SendtoPUCL` | **`RCLPUCL`** — yang memasukkan klaim ke antrean ini |
+| `SendtoAnalysator` | **`SendToAnalis`** |
+| `SendToInvestigator` | `Investigator` |
+| `CompliancePNC` | `Compliance` |
+| `RCLDokter` | `RCLDokter` |
+| `SendToPICTravel` | `Assignment` (Compliance) |
+| `setToRegister_ticket` | `InputRegister` |
+
+### ⚠ URUTANNYA WAJIB — terbalik berarti klaim DITUTUP, bukan dikirim
+
+Ditambahkan 2026-10-02 sesudah `Register_Flow` dibaca shape demi shape. **Ini butir terpenting
+di seluruh §12**, dan ia tidak terbaca dari rangkaian tombol mana pun.
+
+Shape `RCL/PUCL` (`Assignment6`) punya **tepat satu konektor keluar**:
+
+| Dari | Flow action | Ke |
+|---|---|---|
+| `Assignment6` — RCL/PUCL | **`SendtoRCLPUCL`** | **`End1`** — `Data-MO-Event-End`, **akhir Register_Flow** |
+
+Tanpa syarat: `pyTaskWhen` konektor itu **kosong**.
+
+Jadi **menyerahkan flow action `SendtoRCLPUCL` dari antrean RCL/PUCL MENGAKHIRI flow.** Yang
+menyelamatkan klaim dari berakhir adalah `SetTicket(SendtoAnalysator)` pada `PUCLPost`
+langkah 17, yang berjalan **lebih dulu** dan melompatkan flow ke `Assignment5`.
+
+| Urutan | Akibat |
+|---|---|
+| `PUCLPost` (melepas ticket) **lalu** serahkan flow action | klaim berada di `Send To Analis` ✅ |
+| serahkan flow action **tanpa** `PUCLPost` lebih dulu | klaim **berakhir di `End1`** ❌ |
+| `PUCLPost` dengan `Status ≠ 1` | ticket **tidak** dilepas (prekondisi `param.Status==1`) — lalu flow action menutup klaim ❌ |
+
+**Flow action yang sama dipakai dua konektor berbeda**, dan akibatnya berlawanan:
+
+| Dari | Flow action | Ke |
+|---|---|---|
+| `Assignment5` — Send To Analis | `SendtoRCLPUCL` | `Decision7` → **masuk** ke RCL/PUCL |
+| `Assignment6` — RCL/PUCL | `SendtoRCLPUCL` | `End1` — **keluar dari flow** |
+
+Namanya menyesatkan di tempat kedua: ia tidak "mengirim ke RCL/PUCL", ia mengakhiri.
+
+### ⚠ API assignment bawaan Pega TIDAK dapat dipakai sebagai jalan pintas
+
+Terlihat masuk akal — `PUT /api/v1/assignments/{id}/actions/SendtoRCLPUCL` menjalankan flow
+action lewat mesin alur sendiri, sehingga `PZPVSTREAM` dibentuk Pega. **Tetapi ia akan
+menutup klaim**, karena:
+
+> `Flow Action/SendtoRCLPUCL-FA.xml` memuat `pyPreProcessingActivity =
+> SetDataLampiranSuratRCLPUCL_Act`, dan **tidak memuat elemen `pyPostProcessingActivity` sama
+> sekali**.
+
+`PUCLPost` **melekat pada TOMBOL** (rangkaian `pyBehaviors` di `SectionLampiranSuratPUCL`),
+bukan pada flow action. Memanggil flow action lewat API karena itu **melewati `PUCLPost`
+seluruhnya** — ticket tidak pernah dilepas, dan konektor di atas membawa klaim ke `End1`.
+
+Inilah sebabnya layanan `ActionClaimPUCL` harus menjalankan **rangkaian tombolnya**, bukan
+sekadar menyerahkan flow action.
+
+### Kenapa ini tidak dapat kami kerjakan sendiri
+
+Dicoba pada 2026-10-02, dan **dicabut pada hari yang sama**: menyisipkan penugasan ke
+`PC_ASSIGN_WORKLIST` tanpa `PZPVSTREAM` membuat satu klaim tidak dapat dibuka lagi di Pega.
+Dari **105.616** baris penugasan Pega, **nol** yang kolom itu kosong.
+
+Melepas ticket adalah pekerjaan mesin alur Pega. Ia tidak dapat ditiru dengan menulis baris
+tabel.
+
+### Kenapa baris RCL/PUCL tertinggal, dan kenapa itu BUKAN cacat modul kami
+
+Karena `SetTicket` melompatkan flow ke `Assignment5` **sementara assignment `Assignment6`
+masih terbuka**. Flow sudah tidak berada di shape itu, sehingga barisnya menjadi yatim — dan
+Pega menandainya sendiri **`Error: Flow Not At Task`**.
+
+Buktinya ada pada data Pega sendiri, sebelum modul ini ada: **16 dari 63** klaim di antrean
+`RCLPUCL` sudah berstatus `1151` (Analyst). Jadi yang benar dikatakan: perilaku ini **melekat
+pada rancangan alurnya**, bukan akibat modul kami.
+
+Bila Tim Pega hendak sekalian membereskannya, yang dibutuhkan adalah menutup assignment
+`Assignment6` **sebelum** ticket dilepas — bukan sesudahnya.
+
 ## 15. Tombol "Kirim ke Inputor" — local action `AnalystRemarks` (2026-10-03) — ke **Tim Pega**
 
 | | |

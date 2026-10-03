@@ -38,10 +38,11 @@ func listRows() *sqlmock.Rows {
 func TestListRunsTheTabQueryWithItsBindsAndMapsTheRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
+	// Bind-nya EMPAT, bukan enam: kueri daftar tidak lagi menggabung tabel objek kerja Pega,
+	// melainkan membaca `POOLDATA.TC_PNC_PUCL` sendirian. `WorkClassClaim` dan
+	// `RCLPUCLWorkbasket` karena itu tidak lagi diikat di sini.
 	mock.ExpectQuery(exactly("list_cetak_surat")).
 		WithArgs(
-			inboxrclpucl.WorkClassClaim,
-			inboxrclpucl.RCLPUCLWorkbasket,
 			inboxrclpucl.WorkStatusCompleted,
 			inboxrclpucl.ExpiryStatusActive,
 			50, // halaman 2 × 50
@@ -85,8 +86,6 @@ func TestListOfTheMSIGTabBindsTheMarker(t *testing.T) {
 
 	mock.ExpectQuery(exactly("list_klaim_msig")).
 		WithArgs(
-			inboxrclpucl.WorkClassClaim,
-			inboxrclpucl.RCLPUCLWorkbasket,
 			inboxrclpucl.WorkStatusCompleted,
 			inboxrclpucl.PUCLReturnedToAnalyst,
 			inboxrclpucl.MSIGMarker,
@@ -111,8 +110,6 @@ func TestListOfTheKelengkapanDokumenTabRunsItsOwnQuery(t *testing.T) {
 
 	mock.ExpectQuery(exactly("list_kelengkapan_dokumen")).
 		WithArgs(
-			inboxrclpucl.WorkClassClaim,
-			inboxrclpucl.RCLPUCLWorkbasket,
 			inboxrclpucl.WorkStatusCompleted,
 			inboxrclpucl.PUCLReturnedToAnalyst,
 			0,
@@ -286,11 +283,26 @@ func TestDailyReportWrapsARowIterationFailure(t *testing.T) {
 func TestDetailReadsTheClaimByKeyAndWorkClass(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
+	// SATU bind, bukan dua: kueri `detail` membaca tabel datar dengan kuncinya sendiri dan
+	// tidak lagi menyaring kelas objek kerja Pega.
+	//
+	// Urutan nilainya WAJIB sama dengan detailColumns dan scanDetail — lihat catatan di
+	// query.go. Yang diperiksa uji ini tetap pemetaannya, bukan isi kolom yang baru.
 	mock.ExpectQuery(exactly("detail")).
-		WithArgs("ASM-FW-GCNMFW-WORK PNC-1", inboxrclpucl.WorkClassClaim).
+		WithArgs("ASM-FW-GCNMFW-WORK PNC-1").
 		WillReturnRows(sqlmock.NewRows(detailColumns).
-			AddRow("ASM-FW-GCNMFW-WORK PNC-1", "PNC-1", "2", "catatan", "POL-1",
-				"2026-08-01T00:00:00+07:00", "komentar pucl", "Objek Pertama", "1500000"))
+			AddRow(
+				"ASM-FW-GCNMFW-WORK PNC-1", "PT Tertanggung",
+				"PNC-1", "2", "catatan", "POL-1",
+				"2026-08-01T00:00:00+07:00", "komentar pucl",
+				"perihal", "pembuka", "isi", "penutup",
+				nil, "003",
+				"2026-08-05T00:00:00+07:00",
+				"OBJ-1", "CVG-1", "ADJ-1",
+				"tertanggung@contoh.example",
+				"2026-08-03T00:00:00+07:00", "lengkap",
+				"Objek Pertama", "1500000",
+			))
 
 	detail, err := repo.Detail(context.Background(), "ASM-FW-GCNMFW-WORK PNC-1")
 	require.NoError(t, err)
@@ -341,12 +353,16 @@ func expectProbe(mock sqlmock.Sqlmock, name string) {
 	mock.ExpectQuery(exactly(name)).WillReturnRows(sqlmock.NewRows([]string{"X"}).AddRow(1))
 }
 
-func TestCheckTableRunsTheThreeProbes(t *testing.T) {
+// EMPAT probe, bukan tiga. Yang keempat — `check_laporan` — ditambahkan saat ketiga tab
+// pindah ke tabel datar: kedua tabel Pega tinggal dipakai laporan harian, sehingga
+// kegagalannya diperiksa terpisah dan PALING AKHIR karena akibatnya paling sempit.
+func TestCheckTableRunsEveryProbe(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
 	expectProbe(mock, "check_rclpucl")
 	expectProbe(mock, "check_columns")
 	expectProbe(mock, "check_detail")
+	expectProbe(mock, "check_laporan")
 
 	require.NoError(t, repo.CheckTable(context.Background()))
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -359,7 +375,9 @@ func TestCheckTableNamesTheTablesWhenTheFirstProbeFails(t *testing.T) {
 
 	err := repo.CheckTable(context.Background())
 	require.ErrorIs(t, err, sql.ErrConnDone)
-	require.ErrorContains(t, err, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
+	// Probe pertama kini menyebut TABEL DATAR, bukan tabel Pega — yang terakhirlah yang
+	// menyebut DATAPEGA; lihat TestCheckTableNamesThePegaTablesWhenTheReportProbeFails.
+	require.ErrorContains(t, err, "POOLDATA.TC_PNC_PUCL")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -372,7 +390,25 @@ func TestCheckTableNamesTheColumnsWhenTheColumnProbeFails(t *testing.T) {
 
 	err := repo.CheckTable(context.Background())
 	require.ErrorIs(t, err, cause)
-	require.ErrorContains(t, err, "TANGGALCETAKDOKUMENPUCL_1")
+	require.ErrorContains(t, err, "TGL_CETAK_DOKUMEN_PUCL")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Kegagalan probe KEEMPAT wajib menyebut kedua tabel Pega, karena yang rusak karenanya
+// hanyalah tombol unduh tab "Cetak Surat" — bukan layarnya, dan pesannya yang membedakan.
+func TestCheckTableNamesThePegaTablesWhenTheReportProbeFails(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	cause := errors.New("ORA-00942")
+
+	expectProbe(mock, "check_rclpucl")
+	expectProbe(mock, "check_columns")
+	expectProbe(mock, "check_detail")
+	mock.ExpectQuery(exactly("check_laporan")).WillReturnError(cause)
+
+	err := repo.CheckTable(context.Background())
+	require.ErrorIs(t, err, cause)
+	require.ErrorContains(t, err, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
+	require.ErrorContains(t, err, "DATAPEGA.PC_ASSIGN_WORKBASKET")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

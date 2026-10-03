@@ -102,6 +102,7 @@ func SampleRows() []Row {
 		ExpiryCaseStatus: inboxrclpucl.ExpiryStatusActive,
 		ClaimStatus:      "1142",
 		GroupPanel:       "006",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-3 * time.Hour),
 		SentAt:           at1,
 
@@ -114,6 +115,9 @@ func SampleRows() []Row {
 		FirstObjectName:   "Objek Contoh Satu",
 		FirstProposeValue: "15000000",
 		PUCLNote:          "Menunggu kelengkapan dari cabang.",
+		IDObject:          "OBJ-01",
+		IDCoverage:        "COV-01",
+		IDAdjustment:      "ADJ-01",
 	})
 
 	at2, text2 := sent(11)
@@ -136,6 +140,7 @@ func SampleRows() []Row {
 		ExpiryCaseStatus: inboxrclpucl.ExpiryStatusActive,
 		ClaimStatus:      "1164",
 		GroupPanel:       "004",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-2 * time.Hour),
 		SentAt:           at2,
 
@@ -170,6 +175,7 @@ func SampleRows() []Row {
 		ExpiryCaseStatus: "1",
 		ClaimStatus:      "1142",
 		GroupPanel:       "003",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-90 * time.Minute),
 		SentAt:           at3,
 	})
@@ -196,6 +202,7 @@ func SampleRows() []Row {
 		PUCLApprove:      "0",
 		ClaimStatus:      "1142",
 		GroupPanel:       "006",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-75 * time.Minute),
 		SentAt:           at4,
 
@@ -203,6 +210,9 @@ func SampleRows() []Row {
 		FirstObjectName:   "Objek Contoh Empat",
 		FirstProposeValue: "8750000",
 		PUCLNote:          "Surat sudah dikirim ke tertanggung.",
+		IDObject:          "OBJ-02",
+		IDCoverage:        "COV-02",
+		IDAdjustment:      "ADJ-02",
 	})
 
 	at5, text5 := sent(14)
@@ -226,6 +236,7 @@ func SampleRows() []Row {
 		PUCLApprove:      "0",
 		ClaimStatus:      "1164",
 		GroupPanel:       "005",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-60 * time.Minute),
 		SentAt:           at5,
 	})
@@ -252,6 +263,7 @@ func SampleRows() []Row {
 		PUCLApprove:      inboxrclpucl.PUCLReturnedToAnalyst,
 		ClaimStatus:      "1163",
 		GroupPanel:       "006",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-50 * time.Minute),
 		SentAt:           at6,
 	})
@@ -286,6 +298,7 @@ func SampleRows() []Row {
 		PUCLApprove:      "",
 		ClaimStatus:      "1142",
 		GroupPanel:       "003",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-45 * time.Minute),
 		SentAt:           at7,
 	})
@@ -317,6 +330,7 @@ func SampleRows() []Row {
 		MSIG:             inboxrclpucl.MSIGMarker,
 		ClaimStatus:      "1164",
 		GroupPanel:       "006",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-40 * time.Minute),
 		SentAt:           at8,
 	})
@@ -342,6 +356,7 @@ func SampleRows() []Row {
 		ExpiryCaseStatus: inboxrclpucl.ExpiryStatusActive,
 		ClaimStatus:      "1163",
 		GroupPanel:       "006",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-30 * time.Minute),
 		SentAt:           at9,
 	})
@@ -363,10 +378,13 @@ func SampleRows() []Row {
 		TrackCode:        inboxrclpucl.TrackCodeRCL,
 		WorkClass:        claim,
 		AssignedOperator: "KOMITEPNC",
+		// Antrean lain: proses pengisi tidak memasukkannya ke tabel datar.
+		OutsideFlatTable: true,
 		WorkStatus:       "Open",
 		ExpiryCaseStatus: inboxrclpucl.ExpiryStatusActive,
 		ClaimStatus:      "1149",
 		GroupPanel:       "006",
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-20 * time.Minute),
 		SentAt:           at10,
 	})
@@ -394,11 +412,15 @@ func SampleRows() []Row {
 		TrackCode:        inboxrclpucl.TrackCodePUCL,
 		WorkClass:        claim,
 		AssignedOperator: "PNCADMIN",
+		// Di luar antrean RCL/PUCL: tidak ada di tabel datar, tetapi TETAP ikut laporan
+		// harian lewat cabang kedua UNION — laporan itu membaca tabel Pega.
+		OutsideFlatTable: true,
 		WorkStatus:       "Open",
 		ExpiryCaseStatus: "1",
 		PUCLApprove:      "0",
 		ClaimStatus:      "1147",
 		GroupPanel:       inboxrclpucl.GroupPanelPA,
+		TechnicalPIC:     "ESTHERSIMBOLON",
 		CreatedAt:        base.Add(-10 * time.Minute),
 		SentAt:           at11,
 	})

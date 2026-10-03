@@ -24280,7 +24280,4467 @@ Outstanding Acceptance, penerbitan DLA, lampiran, dan email — tidak dijalankan
 jejak audit `DRAFT_AKSEPTASI_CETAK`. Tata letak Travel dan Personal Accident belum dibangun.
 Transfer Kasir dipindah dari grid ke detail adjustment, sesuai letaknya di `InputAdjustment_sect`.
 
-## 141. Transfer Kasir hanya manual — juga untuk PA (2026-10-03)
+---
+
+## 82. Inbox RCL/PUCL — layar kerja diperbaiki, dan dua replikasi yang ternyata keliru (2026-09-30)
+
+**Latar:** Work Owner melaporkan galat saat Nomor Case diklik, mengirim enam tangkapan layar
+Pega, dan meminta Flow Action `SendtoRCLPUCL` dianalisis lalu layarnya disesuaikan.
+
+### 82.1 Galatnya satu nama kolom yang ditebak
+
+Layar kerja **gagal untuk SETIAP klaim**, bukan sebagian:
+
+```
+ORA-00904: "J"."COVERAGEID": invalid identifier
+```
+
+`POOLDATA.T_CLAIM_ADJUSTMENT` tidak punya kolom `COVERAGEID`. Namanya
+**`OBJECTCOVERAGEID`** — dibaca dari `ALL_TAB_COLUMNS` pada 2026-09-30. Nama pendeknya
+ditebak saat modul ini ditulis, karena DDL-nya tidak pernah diterima (`R-08`).
+
+**Kenapa ia lolos sampai sekarang.** `-periksa` memeriksa `List` ketiga tab tetapi **tidak
+pernah memanggil `Detail`**, dan uji kuerinya hanya menuntut ada `ORDER BY` — bukan nama
+kolomnya. Dua penjaga, dan tidak satu pun menyentuh jalur yang rusak.
+
+Uji kueri diperketat: ia kini menyebut `OBJECTCOVERAGEID` **dan menolak** `j.COVERAGEID`.
+Bentuk lamanya akan lolos dengan nama kolom apa pun.
+
+### 82.2 Kode jalur `3` TERNYATA digambar "Notification" — replikasi kami yang keliru
+
+Modul ini mengosongkan sel untuk kode `3`, meniru `CASE` tanpa `ELSE` pada
+`RDB List/GetReminderPUCL-SQL.xml`. **Tangkapan layar Pega menunjukkan "Notification".**
+
+Kami yang salah, dan sebabnya jelas begitu ditelusuri:
+
+| | |
+|---|---|
+| Yang kami pakai | `CASE` pada `GetReminderPUCL-SQL.xml` — kueri yang memasok **pengingat**, bukan grid |
+| Yang sebenarnya memasok sel | kontrol daftar pilihan baca-saja: `pyValue .ClaimData.PUCLStatus.RCL_PUCL` · `pyFormat pxRadioButtons` · `pyEditOptions Read-only` |
+| Yang digambar kontrol itu | **label** pilihan terpilih, bukan kodenya |
+| Di mana labelnya hidup | rule Property `RCL_PUCL` — **tidak ada di export**; seluruh folder `Property/` hanya memuat satu berkas (`R-16`) |
+
+Jadi teksnya memang tidak dapat dibaca dari artefak mana pun. Yang membuktikannya layar yang
+berjalan, dan itu diperkuat data: `PNC-1503` terverifikasi `RCL_PUCL_1 = '3'` dan
+`MSIG_1 = 'MSIG'`; sebaran kodenya `1`→2 baris, `2`→60, `3`→1, kosong→1.
+
+`TrackOf` kini memetakan `3` → **"Notification"**, dan kode di luar ketiganya tetap kosong —
+satu baris di produksi memang berkode kosong.
+
+> **Ini bertentangan dengan brief yang saya terima**, yang menyebutnya perangkap dan melarang
+> menuliskan "Notification" di grid. Larangan itu berdiri di atas premis bahwa `CASE`
+> tersebut memasok grid, dan premis itu tidak benar. Tangkapan layar sistem yang sedang
+> direplikasi mengalahkan simpulan kami dari kueri yang berbeda.
+
+### 82.3 Layar kerja ternyata DUA TAB, bukan dua bagian bertumpuk
+
+`Section/SendtoRCLPUCL-Section.xml` ber-`pyHeaderType TABBED` dan `pyTabbedHeader true`.
+Modul ini menggambar keduanya berurutan pada satu halaman.
+
+Bedanya bukan kosmetik: bertumpuk, petugas melihat tombol **"Cetak"** dan **"Kirim Ke
+Analyst"** pada satu layar sekaligus — dua tindakan yang di Pega berada di tahap berbeda dan
+tidak pernah tampil bersamaan.
+
+Tab-nya sengaja **tidak dibawa ke alamat**: alamat halaman ini sudah membawa tab ANTREAN yang
+dipakai tombol kembali, dan dua pengertian "tab" pada satu alamat akan membuat yang satu
+menimpa yang lain.
+
+### 82.4 Satu tombol menyebut peran yang SALAH
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Tombol | "Kirim ke PIC Teknik" | **"Kirim Ke Analyst"** |
+| Jumlah tombol Penerimaan Dokumen | 2 | **4** — Unggah Dokumen · Lihat Dokumen · Save · Kirim Ke Analyst |
+
+Nama lama tidak ada di layar mana pun. Ia bukan beda kata: **PIC Teknik dan Analyst dua peran
+yang berbeda**, sehingga tombol itu menyatakan klaimnya diteruskan ke orang yang salah — dan
+ia berdiri tepat di bawah isian berjudul "Catatan untuk **Analyst**".
+
+Uji kini menjaga **nama** kelima tombol, bukan jumlahnya, dan menolak nama lamanya secara
+eksplisit.
+
+### 82.5 Bentuk layar disesuaikan ke tangkapan layar
+
+| Hal | Perubahan |
+|---|---|
+| Status dan Catatan dari Analyst | jadi **satu baris penuh**, bukan dua kolom — keduanya `pxTextArea`/penuh di section |
+| Ketiga Keterangan | jadi **satu baris penuh**; memaksanya ke kolom sempit memotong kalimat surat |
+| Delapan isian tengah | tetap dua kolom, pasangannya persis urutan section: kiri UP · No Polis · Nama Peserta · Perihal, kanan No Kontrak · Business Unit / Seksi · Jumlah Tagihan · Tanggal Kejadian |
+| Tanggal Kelengkapan Dokumen · Catatan untuk Analyst | diberi tanda **wajib**, dari `pyRequired true` |
+| Grid Tanggal terima Dokumen | ditambah tautan mati **"+ Tambah"** dan **"Hapus"**, yang ada di layar lama |
+| Judul bagian | **tidak diulang** di dalam tab — kepala tab sudah menamainya, sama seperti di Pega |
+
+### 82.6 "Perihal" bukan isian bebas — masternya ADA
+
+Sel-nya `pxAutoComplete` ber-sumber `.ID_PERIHAL`/`.PERIHAL_NAME`, dan masternya nyata:
+**`POOLDATA.M_PERIHAL_RCLPUCL`**, 12 baris, dibaca langsung 2026-09-30 — misalnya
+*"Kelengkapan Data dan Dokumen Klaim Polis Asuransi Kecelakaan Diri"* dan *"Pemberitahuan
+Penundaan Proses Klaim…"*.
+
+Yang **tidak** terbaca adalah pilihan MANA yang tersimpan untuk sebuah klaim: itu ada di
+clipboard. Layar menyatakan keduanya, supaya "di clipboard Pega" pada isian itu tidak terbaca
+sebagai isian yang hilang tanpa asal-usul.
+
+Tabel kedua yang ikut ditemukan: `POOLDATA.CLHS_LOG_NOTIF_PUCL` (27 baris) — log notifikasi
+PUCL, belum dianalisis dan belum dipakai.
+
+### 82.7 Penghalang utama modul ini AKHIRNYA terbukti, bukan lagi diduga
+
+§79.3 menyatakan kesembilan isian clipboard tidak punya kolom, berdasarkan **pencarian di
+export**. Kini terbukti dari **katalog basis data**: `PERIHAL_1`, `KETERANGAN1_1`,
+`EMAILLOD_1`, `NIK_1`, `BUSINESSUNITSEKSI_1` — tidak satu pun ada. Pencarian pola
+`%PERIHAL%`, `%KETERANGAN%`, `%EMAIL%`, `%NIK%`, `%TERIMADOKUMEN%`, `%TAGIHAN%`, `%PESERTA%`,
+`%KONTRAK%`, `%LOD%` pada `PC_ASM_FW_GCNMFW_WORK` mengembalikan **empat** kolom, dan tidak
+satu pun milik layar ini.
+
+Permintaan ke Tim Pega karena itu **tidak berubah**, tetapi dasarnya naik dari "tidak ditemukan
+di export" menjadi "tidak ada di tabelnya".
+
+### 82.8 Satu isian yang perlu ditelusuri lebih lanjut — tidak dikerjakan
+
+`POOLDATA.T_CLAIM_ADJUSTMENT` punya kolom **`CONTRACTNO`**, dan layar kerja punya isian
+**"No Kontrak"**. Menggodanya menyambungkan keduanya.
+
+**Tidak dilakukan.** Sel "No Kontrak" terikat `.ClaimData.PUCLStatus.NIK` — properti yang
+labelnya memang tidak sejalan dengan namanya (§46.2 sudah mencatatnya). Menyambungkannya ke
+`CONTRACTNO` atas dasar kemiripan nama adalah persis jenis tebakan yang membuat `COVERAGEID`
+lolos ke produksi. Ia dicatat sebagai pertanyaan, bukan dikerjakan.
+
+### 82.9 Pelajaran: dua penjaga yang tidak menyentuh jalur yang rusak
+
+Galat §81.1 hidup berhari-hari di jalur yang **setiap** pemakaian layar kerja lewati. Yang
+seharusnya menangkapnya:
+
+| Penjaga | Kenapa tidak menangkapnya |
+|---|---|
+| `-periksa` | memanggil `List`, tidak pernah `Detail` |
+| uji kueri | menuntut ada `ORDER BY`, bukan nama kolomnya |
+
+Keduanya sudah diperbaiki. Yang layak dibawa: uji yang memeriksa **bentuk** kueri tidak
+menggantikan uji yang memeriksa **namanya**, dan pemeriksa kesehatan yang tidak menempuh
+seluruh jalur hanya menyatakan sesuatu tentang jalur yang ditempuhnya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Sembilan properti `.ClaimData.PUCLStatus.*` dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega |
+| Apakah "No Kontrak" memang `T_CLAIM_ADJUSTMENT.CONTRACTNO`, atau benar-benar properti clipboard `.NIK` | Tim Pega + Work Owner |
+| Dari mana isi Keterangan Pembuka / Isi / Penutup — masternya tidak ada di `M_PERIHAL_RCLPUCL` | Tim Pega |
+| Apakah tautan "buka di Pega" dikehendaki; bila ya, alamat portal per entitas | Work Owner + Tim Infra |
+
+---
+
+## 83. Inbox RCL/PUCL — tab kedua disembunyikan untuk Notification, dan satu hipotesis yang gugur (2026-09-30)
+
+**Latar:** tiga keluhan Work Owner atas layar kerja — *"MSIG hanya Lampiran surat saja"*,
+*"masih banyak kosong"*, dan *"tombol tidak aktif"*. Ketiganya terdengar seperti satu
+permintaan, tetapi jawabannya berbeda-beda: satu cacat nyata, satu penghalang yang kini
+terbukti dua kali, satu keputusan yang bukan milik saya.
+
+### 83.1 "MSIG hanya Lampiran Surat" — laporan Work Owner BENAR, pembacaan kami yang keliru
+
+`Section/SendtoRCLPUCL-Section.xml` baris 1527, pada kontainer ber-`pyTitle` **"Penerimaan
+Dokumen"** (baris 1567) yang menyisipkan `SectionPenerimaanDokumenPUCL` (baris 1844):
+
+```xml
+<pyContainerVisibleWhen>.ClaimData.PUCLStatus.RCL_PUCL != 3</pyContainerVisibleWhen>
+```
+
+Jadi kode `3` (Notification) menyembunyikan **satu tab**, bukan seluruh layar kerja.
+
+**Yang dikoreksi.** `pyMemo` pada flow action hanya berbunyi *"visibility when
+.ClaimData.PUCLStatus.RCL_PUCL != 3"* tanpa menyebut apa yang disembunyikan, dan modul ini
+membacanya sebagai **seluruh layar** — tertulis begitu di §45.2b dan §78 keputusan 5.
+Keduanya keliru, dan yang membantahnya laporan Work Owner ditambah berkas section-nya
+sendiri.
+
+**Akibatnya pada keputusan lama.** §78 keputusan 5 memagari syarat ini sebagai *"wajib
+diberlakukan sebelum operasi tulis pertama"*, atas dasar bahwa membukanya berarti mengerjakan
+klaim yang di Pega tidak pernah bisa dibuka. Dasar itu gugur: klaimnya **memang dapat
+dibuka** di Pega, hanya satu tabnya yang hilang.
+
+Karena itu syaratnya **ditegakkan sekarang**, bukan ditunda. Ia murni tampilan — tidak
+menolak siapa pun, tidak menyentuh data, tidak bertabrakan dengan `P-1` — dan menegakkannya
+membuat layar ini LEBIH setara, bukan kurang.
+
+Terverifikasi terhadap Oracle: `PNC-1503` (satu-satunya baris MSIG) → status `Notification`,
+tab kedua **tidak digambar**; `PNC-2183` dan `PNC-2107` → `PUCL`, tab kedua digambar.
+
+**Keputusannya milik SERVER**, dikirim sebagai `tab_penerimaan_dokumen_tampil`. Membandingkan
+kode `3` di frontend berarti satu nilai bisnis hidup di dua tempat yang dapat berselisih
+(`D-15`).
+
+**Satu cacat yang tertangkap saat menulis ujinya**, dan layak dicatat karena kelasnya
+berbahaya: penjaga pertama berbunyi `detail ? detail.tab_penerimaan_dokumen_tampil : true`,
+sehingga jawaban yang **kehilangan** isian itu — bukan menyatakannya salah — ikut
+menyembunyikan tab. Separuh layar hilang tanpa satu pun galat, dan penggunanya tidak punya
+apa pun untuk dilaporkan selain "tabnya tidak ada". Diganti `!== false`: disembunyikan hanya
+bila server menyatakannya tegas.
+
+### 83.2 "Masih banyak kosong" — penghalangnya kini terbukti DUA KALI
+
+Kesembilan isian clipboard tetap tidak dapat diisi, dan dasarnya menguat dari "tidak ditemukan
+di export" (§79.3) menjadi dua bukti langsung:
+
+| Bukti | Hasil |
+|---|---|
+| Katalog Oracle | `PERIHAL_1`, `KETERANGAN1_1`, `EMAILLOD_1`, `NIK_1`, `BUSINESSUNITSEKSI_1` **tidak ada**. Pencarian pola `%PERIHAL%`, `%KETERANGAN%`, `%EMAIL%`, `%NIK%`, `%TERIMADOKUMEN%`, `%TAGIHAN%`, `%PESERTA%`, `%KONTRAK%`, `%LOD%` mengembalikan **4 kolom**, tak satu pun milik layar ini |
+| Hipotesis `EMAIL_1` | **gugur** — lihat di bawah |
+
+**Hipotesis yang gugur, dan kenapa ia dicatat.** `EMAIL_1` ada di tabel objek kerja, terisi
+**61 dari 64** baris antrean RCL/PUCL, isinya daftar alamat berkoma — persis bentuk "Email
+Tertanggung" di layar Pega. Sangat meyakinkan.
+
+Ia diuji terhadap klaim yang tangkapan layarnya dikirim Work Owner (`PNC-2183`):
+
+| | Pega | `EMAIL_1` |
+|---|---|---|
+| Jumlah alamat | **2** | **1** |
+| Panjang nama | 10 dan 10 huruf | 7 huruf |
+
+**Tidak cocok.** Konvensi penamaan Pega pun menyalahkannya: `.ClaimData.EmailLOD` yang
+dioptimasi akan menjadi `EMAILLOD_1`, bukan `EMAIL_1`.
+
+Memakainya akan menampilkan **penerima surat yang salah** pada layar penyusun surat — dan
+karena isinya tetap berupa alamat surel yang masuk akal, tidak akan ada satu pun galat.
+
+> Nilai surel tidak direproduksi di sini maupun di berkas mana pun; yang dibandingkan hanya
+> jumlah dan panjangnya (`D-69`).
+
+**Dua jalur lain yang ikut ditutup:** `SUBJECTEMAIL_1` dan `KETERANGAN_1` **0 dari 64** terisi
+— bukan Perihal maupun Keterangan layar ini. `POOLDATA.CLHS_LOG_NOTIF_PUCL` milik kelas objek
+kerja lain (`ASM-CLH-WORK GCH-*`), bukan klaim PNC. `T_CLAIM_ADJUSTMENT.CONTRACTNO` kosong
+pada klaim yang diperiksa, sehingga "No Kontrak" tetap tidak berdasar disambungkan ke sana.
+
+**Yang TIDAK kosong, dan memang bekerja:** `KOMENTARPUCL_1` ("Catatan untuk Analyst") terisi
+**37 dari 64**. Kosongnya pada `PNC-2107` bukan cacat pemetaan — layar Pega pun menggambarnya
+kosong untuk klaim itu.
+
+### 83.3 "Tombol tidak aktif" — itu `P-1`, dan keputusannya bukan milik saya
+
+Kelima tombol menulis ke `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan `PC_ASSIGN_WORKBASKET`. Selama
+masa paralel, setiap tabel hanya boleh ditulis SATU sistem, dan kedua tabel itu milik Pega —
+dibaca 116 aturan Pega untuk yang pertama saja.
+
+Menghidupkannya **bukan pekerjaan teknis melainkan keputusan kepemilikan tabel**, dan §78
+keputusan 6 sudah menetapkan layar ini membaca saja sampai Pega dimatikan. Mengubahnya
+menuntut keputusan Work Owner yang menyebut tabel mana yang berpindah kepemilikan — bukan
+penilaian saya sendiri.
+
+Diajukan sebagai pertanyaan, tidak dikerjakan.
+
+### 83.4 Pelajaran: keluhan yang terdengar satu, jawabannya tiga
+
+Ketiga keluhan datang dalam satu kalimat dan terasa seperti satu permintaan — "layarnya belum
+benar, perbaiki". Jawabannya ternyata berada di tiga kelas yang berbeda:
+
+| Keluhan | Kelasnya | Hasil |
+|---|---|---|
+| MSIG hanya Lampiran Surat | **cacat kami** | diperbaiki |
+| Banyak isian kosong | **penghalang pihak lain** | terbukti, tidak dapat diperbaiki dari sini |
+| Tombol tidak aktif | **keputusan yang belum diambil** | diajukan |
+
+Menjawab ketiganya dengan satu kalimat — entah "sudah diperbaiki" atau "itu terhalang" —
+akan salah pada dua dari tiga. Yang pertama pantas diperbaiki tanpa bertanya; yang kedua
+pantas dilaporkan dengan angka; yang ketiga pantas ditanyakan, bukan diputuskan sendiri.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apakah tombol tulis dihidupkan** — menuntut perpindahan kepemilikan `PC_ASM_FW_GCNMFW_WORK` dan `PC_ASSIGN_WORKBASKET` (`P-1`) | Work Owner |
+| Sembilan properti `.ClaimData.PUCLStatus.*` dioptimasi menjadi kolom, beserta nama kolomnya | Tim Pega |
+| Dari mana isi Keterangan Pembuka / Isi / Penutup — tidak ada di `M_PERIHAL_RCLPUCL` maupun di kolom mana pun | Tim Pega |
+| Apakah tautan "buka di Pega" dikehendaki; bila ya, alamat portal per entitas | Work Owner + Tim Infra |
+
+---
+
+## 84. Inbox RCL/PUCL — ketiga tab dan layar kerja pindah ke tabel datar `TC_PNC_PUCL` (2026-10-01)
+
+Permintaan Work Owner: *"Inbox RCL/PUCL tidak baca dari RD InboxPUCL_RD, sekarang dia membaca
+data dari CREATE_TABLE_3.SQL, dan untuk data yang ada di lampiran surat dan penerimaan dokumen
+juga."*
+
+DDL-nya **ditulis Work Owner sendiri** (`Database/CREATE_TABLE_3.SQL`, 26 kolom + PK).
+`claim-pnc/docs/ddl/tc_pnc_pucl.sql` menyalinnya apa adanya dan menambahkan pemetaannya ke
+ketiga Report Definition; bila keduanya berselisih, berkas Work Owner yang berlaku.
+
+### 84.1 Yang pindah, dan yang sengaja tidak
+
+| Kueri | Sumber sesudahnya |
+|---|---|
+| `list_cetak_surat` · `list_kelengkapan_dokumen` · `list_klaim_msig` | `POOLDATA.TC_PNC_PUCL` |
+| `detail` — Lampiran Surat + Penerimaan Dokumen | `POOLDATA.TC_PNC_PUCL` |
+| `daily_report` | **tetap** `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` |
+
+Laporan harian tidak ikut, dan sebabnya bukan pekerjaan yang tertunda melainkan **isi yang
+berbeda**: cabang keduanya mengambil seluruh klaim Personal Accident pada rentang itu **tanpa
+gabungan antrean sama sekali**, termasuk klaim yang tidak pernah masuk antrean RCL/PUCL.
+Klaim seperti itu tidak ada di tabel datar. Memindahkannya sekarang membuat berkas unduhan
+kehilangan baris tanpa satu pun galat.
+
+### 84.2 Tiga selisih yang lahir dari bentuk tabelnya, bukan dari pilihan di sini
+
+> **Dikonfirmasi Work Owner 2026-10-01:** *"PXOBJCLASS memang dihapus, dan PZINSKEY pakai
+> CLAIMID saja."* Baris kedua dan ketiga tabel di bawah karena itu **bukan pertanyaan
+> terbuka** — keduanya bentuk tabel yang dikehendaki. Yang dicatat adalah akibatnya, supaya
+> tidak ditemukan belakangan sebagai kejutan.
+
+| Selisih | Sebabnya | Akibatnya |
+|---|---|---|
+| Klaim berpenugasan ganda tidak lagi muncul dua kali | `PRIMARY KEY (CLAIMID)` menggantikan `INNER JOIN` | jumlah baris dapat berkurang; **belum dihitung** |
+| Penyaring kelas objek kerja hilang | tabel datar tidak punya `PXOBJCLASS` | pemisahan Work-PNC dari Work-ReceiveDocument berpindah ke **proses pengisi** |
+| Alamat layar kerja memuat `PNC-1865`, bukan `ASM-FW-GCNMFW-WORK PNC-1865` | tabel datar hanya menyimpan satu kunci, dan kunci itu `PYID` | tautan lama berbentuk panjang tidak ditemukan |
+
+Yang ketiga menyentuh layar, bukan hanya kueri: kaki layar kerja menampilkan nilai itu dan
+menyuruh petugas memakainya di Pega. Labelnya diubah dari **"Kunci klaim"** menjadi **"Nomor
+Case"**, dan kalimat ajakannya dari *"memakai kunci di atas"* menjadi *"cari klaimnya dengan
+Nomor Case di atas"*. Membiarkannya berarti menyuruh orang menempelkan nilai ke tempat yang
+tidak menerimanya, lalu melaporkannya sebagai kerusakan.
+
+### 84.3 Jebakan terbesar: tiga kolom bernama `CLAIMID` yang isinya berbeda
+
+```
+POOLDATA.TC_PNC_PUCL.CLAIMID         nomor case      PNC-1865
+POOLDATA.T_CLAIM_PNC.CLAIMID         kunci teknis    ASM-FW-GCNMFW-WORK PNC-1865
+POOLDATA.T_CLAIM_OBJECTLIST.CLAIMID  kunci teknis    ASM-FW-GCNMFW-WORK PNC-1865
+```
+
+Menggabungkan yang pertama langsung dengan dua sisanya **selalu mengembalikan nol baris**.
+Join-nya tetap sah; hanya tidak pernah cocok — dan nol baris di sini terbaca persis seperti
+klaim yang memang tidak punya objek. "Nama Peserta", "UP", dan "Jumlah Tagihan" akan kosong
+tanpa satu pun galat.
+
+Jembatannya `T_CLAIM_PNC`, yang memuat **kedua** bentuk: `CLAIMNO` sama dengan nomor case,
+`CLAIMID` sama dengan kunci teknis. Pasangan itu dipakai Pega sendiri (`p.CLAIMNO = A.PYID`)
+dan sudah dipakai modul lain di aplikasi ini.
+
+**Merangkai prefix-nya sendiri ditolak**, meski lebih pendek. `'ASM-FW-GCNMFW-WORK ' || …`
+benar untuk klaim warisan dan **gagal diam-diam** untuk klaim ber-nomor `PNCN.YY.xxxx`, yang
+`D-22` dan `D-71` bebaskan dari prefix itu. Membaca pasangannya dari tabel benar untuk kedua
+bentuk, karena yang dibaca nilainya — bukan tebakan tentang bentuknya. Satu uji menahannya
+lahir kembali (`TestDetailReachesTheChildTablesThroughTClaimPNC`).
+
+### 84.4 Dua uji baru yang menahan kelas kesalahan, bukan satu kesalahan
+
+| Uji | Menahan |
+|---|---|
+| `TestEveryFlatTableQueryReadsTheFlatTable` | satu kueri tertinggal membaca tabel Pega — tetap berjalan, hasilnya masuk akal, tidak ada yang menandakannya |
+| `TestNoFlatTableQueryUsesALegacyColumnName` | nama kolom bentuk lama (`_1`, tanpa garis bawah) — gagal ORA-00904 di permintaan pertama **di produksi**, bukan saat build |
+
+Yang kedua lahir dari pelajaran yang sudah dibayar: `OBJECTCOVERAGEID` yang ditebak menjadi
+`COVERAGEID` membuat **setiap** pembukaan layar kerja gagal (§47). Penggantian nama kolom
+menyeluruh adalah kesempatan yang sama persis untuk mengulanginya 19 kali sekaligus.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Proses pengisi `TC_PNC_PUCL`** — siapa menulisnya, seberapa sering berjalan; tanpanya ketiga tab kosong | Work Owner |
+| Syarat pengisi: hanya `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'`, satu baris per klaim, aturan pemenang bila penugasan ganda | Work Owner |
+| ~~Apakah `PXOBJCLASS` dan `PZINSKEY` memang tidak dibawa~~ | **tertutup 2026-10-01** — ya, keduanya |
+| Berapa klaim berpenugasan ganda di produksi — menentukan apakah selisih §84.2 nyata atau hipotetis | DBA |
+| Apakah laporan harian ikut pindah; bila ya, pengisi harus memuat klaim PA di luar antrean | Work Owner |
+
+---
+
+## 85. Inbox RCL/PUCL — layar kerja pindah ke tabel datar, dan empat isian clipboard akhirnya terisi (2026-10-01)
+
+**Permintaan Work Owner:** *"Untuk Lampiran surat dan penerimaan dokumen baca dari folder
+database CREATE_TABLE_3.SQL … jangan baca dari RD lagi untuk INBOX RCL/PUCL."*
+
+### 85.1 Keadaan sebelum: ketiga tab sudah pindah, layar kerja baru separuh
+
+| Kueri | Membaca |
+|---|---|
+| ketiga kueri daftar | `POOLDATA.TC_PNC_PUCL` ✅ |
+| `detail` | `TC_PNC_PUCL` **+** `T_CLAIM_PNC` + `T_CLAIM_OBJECTLIST` + `T_CLAIM_ADJUSTMENT` |
+| `daily_report` | masih tabel Pega |
+
+Jadi yang diminta menyangkut `detail`. Ketiga tab memang sudah tidak lagi bersandar pada
+`InboxPUCL_RD`.
+
+### 85.2 Temuan yang mengubah lingkupnya: tabel yang BERJALAN punya 30 kolom, DDL di repo 26
+
+`Database/CREATE_TABLE_3.SQL` mendefinisikan 26 kolom. Katalog Oracle menunjukkan
+`POOLDATA.TC_PNC_PUCL` punya **30**. Empat yang tidak ada di berkas itu:
+
+```
+PERIHAL        KETERANGAN1        KETERANGAN2        KETERANGAN3
+```
+
+**Keempatnya adalah empat dari sembilan isian yang selama ini bertanda "di clipboard Pega".**
+
+Isinya dibaca langsung, dan cocok **kata demi kata** dengan tangkapan layar Pega yang dikirim
+Work Owner:
+
+| Kolom | Isi baris `PNC-2183` |
+|---|---|
+| `PERIHAL` | "Kelengkapan Data Dokumen Klaim Polis Asuransi Kecelakaan Pribadi" |
+| `KETERANGAN1` | "Sehubungan dengan telah diterimanya dokumen klaim polis Asuransi, …" |
+| `KETERANGAN2` | "Kwitansi Asli dari Biaya Konsultasi Dokter(bukan Nota / Invoice / …" |
+| `KETERANGAN3` | "Bila dokumen yang diminta tidak dilengkapi atau kelengkapan dokumen …" |
+
+Ini **persis jalan keluar yang §79.3 sebut sebagai satu-satunya**: properti clipboard diekspos
+menjadi kolom. Ia sudah ditempuh — tanpa pemberitahuan, dan tanpa masuk ke berkas DDL yang
+dibagikan.
+
+**Daftar isian tak terpetakan karena itu turun dari sembilan menjadi lima:** No Kontrak ·
+Business Unit / Seksi · Email Tertanggung · Tanggal Kelengkapan Dokumen · daftar Tanggal
+terima Dokumen.
+
+### 85.3 Selisih DDL itu BUKAN urusan kerapian
+
+Portal lain yang tabelnya dibuat dari `CREATE_TABLE_3.SQL` akan kehilangan keempat kolom itu,
+dan `detail` gagal **ORA-00904 pada klaim PERTAMA yang dibuka** — bukan saat build, bukan pada
+seluruh layar, melainkan hanya ketika seseorang mengklik sebuah baris.
+
+Tiga hal dikerjakan supaya keadaan itu tidak menunggu laporan pengguna:
+
+1. `check_columns` ikut menyentuh keempatnya, sehingga `-periksa` yang menyebut namanya.
+2. `letterColumnsBeyondTheSharedDDL` menamai selisihnya di satu tempat, dan dua uji menuntut
+   keempatnya dibaca `detail` **dan** diperiksa `check_columns`.
+3. `docs/ddl/tc_pnc_pucl.sql` disamakan dengan tabel yang berjalan, beserta catatan mengapa
+   selisihnya wajib ditutup.
+
+`Database/CREATE_TABLE_3.SQL` sendiri **tidak disunting** — ia artefak tim basis data, bukan
+dokumen kami.
+
+### 85.4 Tiga isian yang TETAP diturunkan, dan itu bukan sisa migrasi
+
+"Nama Peserta", "UP", dan "Jumlah Tagihan" tidak ada di `TC_PNC_PUCL`. Ketiganya tetap
+diturunkan dari `T_CLAIM_OBJECTLIST` dan `T_CLAIM_ADJUSTMENT` lewat jembatan
+`T_CLAIM_PNC.CLAIMNO`.
+
+Satu uji menahannya supaya penghapusannya menempuh keputusan: membuang subkuerinya akan
+mengosongkan tiga isian surat tanpa satu pun galat.
+
+### 85.5 Kenapa ketiga tab KOSONG, dan kenapa itu bukan cacat kode
+
+Tabelnya berisi **satu baris**. Baris itu gagal **dua penyaring yang berdiri sendiri**:
+
+| Penyaring | Nilai baris | Lolos? |
+|---|---|---|
+| `ASSIGNED_OPERATOR_ID = 'RCLPUCL'` | `ESTHERSIMBOLON` | **tidak** |
+| `STATUS_WORK <> 'Resolved-Completed'` | `New` | ya |
+| tab 1 `TGL_CETAK_DOKUMEN_PUCL IS NULL` | terisi | tidak |
+| tab 1 `STATUS_CASE = '0'` | `0` | ya |
+| tab 2/3 `TGL_CETAK_DOKUMEN_PUCL IS NOT NULL` | terisi | ya |
+| tab 2/3 `PUCL_APPROVE <> '1'` | `1` | **tidak** |
+| tab 3 `MSIG = 'MSIG'` | `MSIG` | ya |
+
+Dua yang gagal keduanya **replikasi setia penyaring Pega**, bukan tambahan kami. Membetulkan
+salah satunya saja tidak cukup: memperbaiki antreannya tetap menyisakan `PUCL_APPROVE = '1'`
+yang mengeluarkannya dari tab 2 dan 3.
+
+**Penyaringnya TIDAK diubah.** Mengubahnya berarti memutuskan sendiri bahwa antrean bersama
+bukan lagi batas layar ini — keputusan kepemilikan data, bukan penyesuaian kode. Ia diangkat
+sebagai pertanyaan.
+
+Satu catatan yang memperjelas asalnya: `docs/ddl/tc_pnc_pucl.sql` sendiri menulis
+`ASSIGNED_OPERATOR_ID` sebagai *"nama ANTREAN BERSAMA, bukan nama orang; 'RCLPUCL'"*. Data
+yang ada menyimpan nama orang, dan `OPERATOR_ID` pun bernilai sama. Jadi yang menyimpang
+bukan kueri melainkan pengisinya — atau niat kolomnya yang berubah tanpa tercatat.
+
+### 85.6 Satu berkas yang ternyata sudah benar
+
+Work Owner menyorot blok index ber-nama kolom Pega (`PXOBJCLASS`, `PXASSIGNEDOPERATORID`, …)
+pada `docs/ddl/tc_pnc_pucl.sql`. Blok itu **sudah tidak ada**; berkas yang berlaku memuat
+`TC_PNC_PUCL_IDX01` dengan nama kolom tabel datar, sama persis dengan `CREATE_TABLE_3.SQL`.
+Sorotan itu berasal dari versi sebelumnya.
+
+Dicatat supaya tidak dicari lagi.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **`ASSIGNED_OPERATOR_ID` diisi nama ANTREAN (`RCLPUCL`) atau nama ORANG?** Selama berisi nama orang, ketiga tab kosong | Work Owner + pemilik proses pengisi |
+| Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL`, supaya portal lain tidak gagal ORA-00904 | Tim basis data |
+| Lima isian sisanya — No Kontrak, Business Unit / Seksi, Email Tertanggung, Tanggal Kelengkapan Dokumen, daftar Tanggal terima Dokumen | Tim Pega |
+| Apakah `daily_report` ikut dipindahkan ke tabel datar (index `IDX02` menunggu keputusan ini) | Work Owner |
+| Apakah tombol tulis dihidupkan (`P-1`) | Work Owner |
+
+---
+
+## 86. Inbox RCL/PUCL — penyaring antrean dihapus, dan kosongnya dijelaskan dengan angka (2026-10-01)
+
+**Laporan Work Owner:** *"datanya kosong, dia ngambil dari table dari CREATE_TABLE_3.SQL
+tolong perbaiki."*
+
+Sumbernya memang sudah benar. Yang mengosongkan layar **dua penyaring**, dan keduanya
+menuntut perlakuan yang berbeda — satu dihapus, satu dipertahankan.
+
+### 86.1 Penyaring antrean DIHAPUS — ia tidak lagi menyeleksi apa pun
+
+Ketiga kueri daftar menyaring `ASSIGNED_OPERATOR_ID = 'RCLPUCL'`. Dibaca 2026-10-01, kolom itu
+berisi **nama orang** (`ESTHERSIMBOLON`), dan `OPERATOR_ID` bernilai sama persis.
+
+Dua alasan menghapusnya, dan yang kedua yang menentukan:
+
+1. **Ia tidak lagi menyeleksi.** Di Pega, `PXASSIGNEDOPERATORID = 'RCLPUCL'` adalah cara
+   MENEMUKAN klaim RCL/PUCL di antara seluruh objek kerja. `TC_PNC_PUCL` adalah tabel KHUSUS
+   RCL/PUCL — setiap barisnya sudah klaim RCL/PUCL menurut proses pengisinya.
+2. **Datanya membuktikan ia salah sasaran.** Kolomnya tidak menyatakan antrean, sehingga
+   membandingkannya dengan literal `'RCLPUCL'` mengosongkan KETIGA tab — tanpa satu pun galat,
+   dan kosongnya terbaca persis seperti antrean yang memang sepi.
+
+**Risiko yang diterima, dan dicatat supaya bukan kejutan:** bila proses pengisi kelak memuat
+baris di luar antrean RCL/PUCL, tidak ada lagi yang menyaringnya di sini. Pemisahan itu
+berpindah menjadi syarat pengisi — sama seperti pemisahan kelas objek kerja, yang sudah
+berpindah ke sana saat `PXOBJCLASS` hilang.
+
+**Penyimpanan memori ikut**, dan modelnya diperbaiki alih-alih disamakan secara dangkal:
+`Row.OutsideFlatTable` menandai baris yang memang TIDAK ada di tabel datar. Menyimpulkannya
+dari nama antrean akan menghidupkan kembali penyaring yang baru saja dihapus — dan penyaring
+itu dihapus justru karena kolomnya tidak menyatakan antrean. Dua baris contoh memakainya, dan
+yang kedua TETAP ikut laporan harian karena laporan itu membaca tabel Pega.
+
+### 86.2 Penyaring kedua DIPERTAHANKAN — ia aturan bisnis, bukan artefak migrasi
+
+Setelah penyaring antrean hilang, ketiga tab **masih kosong**. Baris satu-satunya itu gagal
+setiap tab karena alasan yang berbeda-beda:
+
+| Tab | Penyaring | Nilai baris | Lolos |
+|---|---|---|---|
+| Cetak Surat | `TGL_CETAK_DOKUMEN_PUCL IS NULL` | terisi | tidak |
+| Kelengkapan Dokumen | `MSIG IS NULL` | `MSIG` | tidak |
+| Klaim MSIG | `PUCL_APPROVE <> '1'` | `1` | **tidak** |
+
+Satu-satunya tab yang mungkin memuatnya adalah Klaim MSIG, dan yang menghalanginya
+`PUCL_APPROVE = '1'`.
+
+Work Owner sendiri menjelaskan artinya 2026-09-30: `0` klaim dikirim ke PUCL, `1` PUCL sudah
+mengembalikannya ke Analyst. Baris itu karena itu **memang bukan lagi pekerjaan PUCL**, dan
+tidak terlihat di Pega pula.
+
+**Tidak diubah.** Mengubahnya akan menampilkan klaim yang sudah selesai dari sudut pandang
+PUCL — perubahan aturan bisnis, bukan perbaikan migrasi, dan persis yang `P-5` larang
+dikerjakan sepihak.
+
+### 86.3 Yang dikerjakan sebagai gantinya: kosongnya DIJELASKAN dengan angka
+
+Ketiga tab yang kosong terbaca persis sama dengan antrean yang memang sepi, dan kedua keadaan
+itu menuntut tindakan yang berbeda. `-periksa` kini menghitung berapa baris yang lolos TIAP
+penyaring, satu per satu, dan mencetaknya hanya saat ketiga tab kosong:
+
+```
+Tabelnya BERISI 1 baris, jadi yang mengosongkan layar adalah salah satu penyaring.
+
+  status kerja bukan 'selesai'      1
+  tab 1  surat BELUM dicetak        0
+  tab 1  STATUS_CASE = "0"          1
+  tab 2+3  surat SUDAH dicetak      1
+  tab 2+3  PUCL_APPROVE <> "1"      0     <- inilah yang mengosongkan
+  tab 2  bukan jalur MSIG           0
+  tab 3  jalur MSIG                 1
+```
+
+Tabel yang KOSONG dijawab berbeda — "proses pengisinya belum berjalan di portal ini; yang
+kurang datanya, bukan kuerinya" — karena itu memang keadaan yang lain.
+
+**Kenapa angka, bukan daftar kemungkinan.** Bentuk sebelumnya menyebut dua kemungkinan dan
+menyuruh orang memeriksanya sendiri di SQL*Plus. Sebagian besar yang membaca keluaran itu
+tidak akan melakukannya; angka per penyaring menunjuk langsung.
+
+### 86.4 Apa yang harus diisi supaya baris uji tampil
+
+`-periksa` menyebutkannya sendiri: isikan `PUCL_APPROVE = '0'` pada baris itu, dan ia akan
+muncul di tab **Klaim MSIG** (karena `MSIG = 'MSIG'` dan suratnya sudah dicetak).
+
+Untuk memunculkannya di tab **Cetak Surat**, yang dibutuhkan baris lain: `TGL_CETAK_DOKUMEN_PUCL`
+kosong dan `STATUS_CASE = '0'`.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apa yang SEHARUSNYA diisi `ASSIGNED_OPERATOR_ID`** — nama antrean atau nama orang. Kolomnya kini tidak menyaring apa pun, sehingga jawabannya menentukan apakah penyaringnya perlu kembali dalam bentuk lain | Work Owner + pemilik proses pengisi |
+| Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL` | Tim basis data |
+| Lima isian clipboard sisanya | Tim Pega |
+| Apakah `daily_report` ikut dipindahkan ke tabel datar | Work Owner |
+
+---
+
+## 125. Inbox RCL/PUCL — tombolnya dipetakan ulang dari section, dan syarat tampilnya ditegakkan (2026-10-01)
+
+**Laporan Work Owner:** *"di section SectionLampiranSuratPUCL hanya ada tombol download dokumen
+dan Tutup klaim analisa lagi."*
+
+Laporannya **benar**, dan yang digambar sebelumnya salah dengan cara yang tidak terduga.
+
+### 125.1 "Cetak" bukan nama tombol — ia nilai parameter
+
+Layar kerja menggambar satu tombol bernama **"Cetak"** pada Lampiran Surat. Nama itu tidak ada
+di section-nya. Yang ada:
+
+```xml
+<pyName>tipe</pyName>
+<pyValue>"cetak"</pyValue>
+```
+
+Jadi `"cetak"` adalah **nilai parameter** yang dikirim ke sebuah aksi, bukan caption. Ketiga sel
+`pxButton` section itu ber-caption — dibaca dari `pyLabelPreview` masing-masing sel:
+
+| # | Caption | `pyAction` |
+|---|---|---|
+| 1 | **Pilih** | `refresh` — pemilih Perihal, bersebelahan dengan isiannya |
+| 2 | **Download Dokumen** | `runActivity` |
+| 3 | **Tutup Klaim** | `localAction PreventRejectClaim` |
+
+"Pilih" bukan tombol tindakan melainkan pemilih di sebelah isian Perihal, sehingga yang tersisa
+sebagai tindakan memang **dua**, persis seperti laporan Work Owner.
+
+**Kenapa kekeliruan ini lolos.** Nama "Cetak" masuk akal: tab pertama grid bernama "Cetak Surat",
+dan mengisi tanggal cetak memang memindahkan klaim antar tab. Ia **disimpulkan dari nama tab**,
+bukan dibaca dari section — persis kesalahan yang aturan kerja modul ini larang, dan yang sudah
+terjadi dua kali sebelumnya.
+
+### 125.2 Setiap tombol punya SYARAT TAMPIL, dan syaratnya menentukan uang dan peran
+
+Yang lebih penting daripada nama: tiap sel `pxButton` membawa `pyUserData/pyCondition`. Dibaca
+satu per satu:
+
+| Section | Tombol | Syarat |
+|---|---|---|
+| Lampiran Surat | Download Dokumen | `MSIG != 'MSIG'` |
+| Lampiran Surat | Tutup Klaim | `RCL_PUCL = 3 && MSIG = 'MSIG'` |
+| Penerimaan Dokumen | Unggah Dokumen · Lihat Dokumen · Save | `ALWAYS` |
+| Penerimaan Dokumen | Tolak Klaim | `RCL_PUCL = 1` |
+| Penerimaan Dokumen | Kirim Ke Analyst | `RCL_PUCL = 2 && IsPA` |
+| Penerimaan Dokumen | Kirim ke PIC Teknik | `RCL_PUCL = 2 && IsTravel` |
+| Penerimaan Dokumen | **Reminder PUCL** | **`1==2`** |
+| Penerimaan Dokumen | Tolak Klaim (sel kedua) | **`1==2`** |
+
+`When/IsPA-When.xml` membandingkan Group Panel dengan `"002"`, `When/IsTravel-When.xml` dengan
+`"005"` — keduanya ADA di export, dan keduanya hanya satu perbandingan.
+
+**Dua akibat yang bukan kerapian:**
+
+1. **"Kirim Ke Analyst" digambar TANPA SYARAT** sebelumnya. Di Pega ia hanya muncul pada jalur
+   PUCL lini **PA**; untuk lini **Travel** yang muncul **"Kirim ke PIC Teknik"**. Analyst dan PIC
+   Teknik dua peran berbeda, sehingga layar lama kami menawarkan tindakan yang meneruskan klaim
+   **kepada orang yang salah** pada setiap klaim Travel.
+2. **"Download Dokumen" dan "Tutup Klaim" saling meniadakan.** Satu klaim tidak pernah
+   menampilkan keduanya — dan klaim ber-`MSIG = 'MSIG'` yang jalurnya BUKAN `3` tidak
+   menampilkan satu pun. Itu perilaku sistem lama apa adanya.
+
+### 125.3 "Reminder PUCL" sengaja TIDAK digambar
+
+Syaratnya `1==2` — tidak pernah benar. Ia tombol yang **dimatikan dengan cara dikarang
+syaratnya** alih-alih dihapus; jejak yang lazim pada sistem berumur panjang. Hal yang sama
+berlaku pada satu sel "Tolak Klaim" kedua.
+
+Yang ditiru adalah perilakunya yang **nyata**: tidak muncul. Menggambarnya "supaya lengkap"
+menambah tindakan yang tidak pernah ada di layar lama — tepat yang `P-5` larang.
+
+> Ini sekaligus menutup satu butir pada `PlannedDifferences` yang menyebut "Reminder PUCL"
+> sebagai tindakan yang dikerjakan di Pega. Ia tidak dikerjakan di mana pun.
+
+### 125.4 Syaratnya ditegakkan di DOMAIN, bukan di React
+
+`ClaimDetail.Buttons()` menghitung kedelapannya, dan tanggapan membawanya sebagai isian `tombol`.
+Alasannya sama dengan `ShowsDocumentReceipt`: syaratnya memakai **nilai milik sistem lama**
+(`RCL_PUCL`, `MSIG`, Group Panel `002`/`005`), dan memeriksanya di komponen React berarti satu
+aturan bisnis hidup di dua tempat yang dapat berselisih tanpa ketahuan (`D-15`).
+
+Dua kolom ditambahkan ke kueri `detail` untuk itu — `MSIG` dan `GROUPPANEL`. **Keduanya tidak
+digambar sebagai isian**; keduanya hanya memilih tombol. Keduanya sudah ada di
+`Database/CREATE_TABLE_3.SQL`, sehingga ia **tidak** menambah selisih DDL seperti keempat kolom
+surat pada §84.3.
+
+Satu penjagaan yang mudah terlewat: **tombol tab Penerimaan Dokumen dimatikan seluruhnya ketika
+tabnya sendiri tidak digambar.** Tanpa itu, ketiga tombol ber-`ALWAYS` akan lolos pada klaim
+Notification — layar akan mengumumkan tindakan yang tabnya tidak ada.
+
+### 125.5 Koreksi atas §82.4
+
+Di sana tertulis "Kirim ke PIC Teknik" adalah nama yang **tidak ada di layar mana pun**. **Itu
+keliru** — rule `pyButtonLabel Kirim ke PIC Teknik` ADA di `SectionPenerimaanDokumenPUCL`.
+
+Yang benar dari catatan itu hanyalah bahwa menggambarnya **tanpa syarat** salah: pada klaim PA
+yang tampil memang "Kirim Ke Analyst". Kedua nama benar; yang menentukan adalah lini bisnisnya.
+
+§82.4 sendiri **tidak disunting** — ia rekaman pembacaan saat itu, dan mengubahnya menghapus
+jejak bahwa kami pernah salah. Yang berlaku adalah bab ini.
+
+### 125.6 Tombol tetap MATI — `P-1` belum dicabut
+
+Work Owner meminta tombolnya **dihidupkan** (2026-10-01). Ia **belum dikerjakan**, dan alasannya
+bukan ketidaksiapan kode melainkan kepemilikan tabel.
+
+| Tombol | Yang ditulisnya | Pemilik tabel hari ini |
+|---|---|---|
+| Unggah Dokumen | `PC_LINK_ATTACHMENT`, `PC_DATA_WORKATTACH`, penyimpanan dokumen | **Pega** |
+| Save | objek kerja + `TC_PNC_PUCL` | **Pega** / proses pengisi |
+| Tolak Klaim | objek kerja, status klaim | **Pega** |
+| Kirim Ke Analyst · Kirim ke PIC Teknik | `finishAssignment` — objek kerja **dan** tabel penugasan | **Pega** |
+| Tutup Klaim | objek kerja, lewat `PreventRejectClaim` | **Pega** |
+
+Hanya **Lihat Dokumen** yang bukan tulis. Ia pun belum dapat dihidupkan begitu saja: ia menuntut
+pembacaan lampiran dan token penyimpanan (`GENERAL.GET_TOKEN_STORAGE`), yaitu kemampuan baru —
+bukan sakelar.
+
+Menghidupkan keenam sisanya berarti **dua sistem menulis baris yang sama**, dan `CLAUDE.md`
+menyatakan sendiri bahwa pelanggaran `P-1` *"baru terlihat sebagai data rusak"*. Keputusan yang
+dibutuhkan karena itu bukan "hidupkan tombolnya" melainkan **pemindahan kepemilikan tabel yang
+disebut di atas**, beserta pencabutan `P-1` untuk tabel-tabel itu.
+
+**Satu prasyarat yang sudah tercatat dan tetap berlaku:** sebelum satu pun operasi tulis
+dikerjakan, syarat `TrackHidden` (`RCL_PUCL = 3`) wajib ditegakkan lebih dulu. Itu sudah
+dikerjakan (§83), sehingga prasyaratnya terpenuhi — yang tersisa murni keputusan kepemilikan.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apakah kepemilikan objek kerja dan tabel penugasan dipindahkan untuk layar ini**, sehingga keenam tombol tulis dapat dihidupkan — dan bila ya, Pega berhenti menulisnya pada tanggal berapa | Work Owner + Tim Pega |
+| Apakah "Lihat Dokumen" dibangun lebih dulu sebagai BACA, tanpa menunggu keputusan di atas | Work Owner |
+| Logika activity di balik tiap tombol — sebagian `runActivity` menunjuk rule yang belum ditelusuri | Tim Pega (`R-16`) |
+| Apa yang seharusnya diisi `ASSIGNED_OPERATOR_ID` | Work Owner + pemilik proses pengisi |
+| Keempat kolom surat dimasukkan ke `Database/CREATE_TABLE_3.SQL` | Tim basis data |
+
+---
+
+## 126. Inbox RCL/PUCL — rangkaian aksi tiap tombol terbaca, dan "Download Dokumen" ternyata MENULIS (2026-10-01)
+
+Work Owner mengirim dua tangkapan layar Pega Designer yang memperlihatkan rangkaian aksi tombol
+**"Kirim Ke Analyst"**. Itu menjawab langsung pertanyaan terbuka §125 — *"logika activity di balik
+tiap tombol"* — dan penelusuran lanjutannya memperbaiki satu hal yang baru saja ditulis di §125.6.
+
+### 126.1 Rangkaian aksinya, dibaca dari section
+
+| Tombol | Activity | `tipe` | `Status` | `Finish Assignment` |
+|---|---|---|---|---|
+| Pilih | `InputPerihalRCLPUCL_act` | — | `.RCL_PUCL` | tidak |
+| **Download Dokumen** | `InsertMitraPA` → `PUCLPost` | `"cetak"` | **kosong** | tidak |
+| Save | `SaveInputRegisterDetail2` | — | — | tidak |
+| Reminder PUCL | `ReminderPUCLPA` | — | — | tidak |
+| **Tolak Klaim** | `InsertMitraPA` → `PUCLPost` | `"dokumen"` | **`0`** | tidak |
+| **Kirim Ke Analyst** | `InsertMitraPA` → `PUCLPost` | `"dokumen"` | **`1`** | **ya** |
+| **Kirim ke PIC Teknik** | `InsertHistoryClaimPNC` → `PUCLPost` | — | **`1`** | **ya** |
+
+Unggah Dokumen dan Lihat Dokumen tidak memanggil activity sama sekali — keduanya `localAction`.
+
+**Satu activity menanggung empat tombol.** `PUCLPost` dipanggil Download Dokumen, Tolak Klaim, dan
+kedua tombol Kirim; yang membedakannya hanya parameter **`Status`** — kosong untuk cetak, `0`
+untuk tolak, `1` untuk kirim. Jadi yang perlu ditulis ulang di sistem baru bukan empat alur
+melainkan **satu alur dengan tiga keluaran**.
+
+### 126.2 Isi `PUCLPost` — 57 step, dan ia menyentuh SEMUA kolom penyaring tab
+
+Diurai dari `Activity/PUCLPost-Act.xml`:
+
+```
+Obj-Refresh-And-Lock · 29× Property-Set · 2× Obj-Browse · RDB-List · Obj-Save · Commit
+call SetTicket                          lompatan lateral ke tahap lain
+Call InsertHistoryClaimPNC (2×)         riwayat klaim
+call ASMForceCaseClose (2×)             menutup paksa case
+Call AttachAsPDFC · SetUploadDocument · Work-.DeleteAttachment
+Call ASMCollectAttachments · ASMSendsEmailAttachments · GetEmailCabang   kirim surel berlampiran
+Call HitServiceOSAkseptasiClaimNonMBU   panggilan layanan luar
+call InsertJsonClaimNonMBU_act          tulis JSON_KLAIM
+```
+
+Properti yang ditetapkannya mencakup **seluruh kolom yang dipakai ketiga tab untuk menyaring**:
+
+```
+TanggalCetakDokumenPUCL · PUCLApprove · StatusCase · MSIG
+RCL_PUCL · SendtoAnalystDate · KomentarPUCL · TanggalTerimaDokumenPUCL · KomentarAnalisator
+```
+
+Inilah sebabnya satu penekanan tombol memindahkan klaim antar tab: ia menulis kolom yang menjadi
+dasar penyaringnya.
+
+### 126.3 KOREKSI §125.6 — "Download Dokumen" adalah tombol TULIS
+
+§125.6 menyusun daftar tombol tulis dan **tidak memasukkan "Download Dokumen"**, karena namanya
+terbaca sebagai pembacaan. Itu keliru. Ia menjalankan `InsertMitraPA(tipe="cetak")` —
+`Obj-Refresh-And-Lock`, `Property-Set`, `Call PNCInsertMitraLog_Act`, **`Obj-Save`, `Commit`** —
+lalu `PUCLPost` dengan 57 step di atas.
+
+Daftar tombol yang **tidak boleh dihidupkan selama `P-1` berlaku** karena itu menjadi **tujuh**,
+bukan enam:
+
+| Tombol | Akibat |
+|---|---|
+| **Download Dokumen** | mengisi tanggal cetak → klaim pindah tab · kirim surel · panggil layanan luar |
+| Unggah Dokumen | lampiran + penyimpanan dokumen |
+| Save | objek kerja |
+| Tolak Klaim | `PUCLPost` Status `0` |
+| Kirim Ke Analyst | `PUCLPost` Status `1` + `Finish Assignment` |
+| Kirim ke PIC Teknik | `PUCLPost` Status `1` + `Finish Assignment` |
+| Tutup Klaim | `PreventRejectClaim` |
+
+Hanya **Lihat Dokumen** yang bukan tulis.
+
+**Namanya tetap dibawa apa adanya** (`D-13`), termasuk ketika menyesatkan — tetapi keterangan di
+bawah tombolnya diubah supaya akibatnya tidak tersembunyi di balik kata "Download". Ia ditambahkan
+pula sebagai butir `PlannedDifferences`, dan satu uji menahan keterangan lama agar tidak kembali.
+
+> Ini perangkap **kedua belas** pada modul ini — dan jenisnya sama dengan "Lama Klaim" yang berisi
+> tanggal: judul yang menjanjikan hal lain daripada isinya.
+
+### 126.4 Yang ini TUTUP, dan yang ini BUKA
+
+**Tutup:** seluruh **16 activity** yang dipanggil `PUCLPost` ADA di export — nol yang hilang.
+Logika di balik tombol terberat layar ini karena itu **dapat dibaca utuh**, berbeda dari sebagian
+besar modul ini yang terhalang `R-16`.
+
+**Buka:** `InputPerihalRCLPUCL_act` — activity di balik tombol **"Pilih"** pemilih Perihal —
+**TIDAK ADA di export**. Ia belum pernah tercatat sebagai gap. Akibatnya terbatas: isian Perihal
+sudah terbaca dari kolom `PERIHAL` (§84.2), sehingga yang hilang adalah cara MENGUBAHNYA, bukan
+cara menampilkannya.
+
+Catatan ketelitian: `SetTicket` muncul di daftar panggilan dan berkasnya ada, tetapi
+ruleset-nya `Pega-ProcessEngine` — ia bawaan Pega, bukan rule buatan sendiri, sehingga tidak
+dihitung sebagai gap. Ini menegaskan kembali koreksi yang sudah diambil sebelumnya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Keputusan `P-1` pada §125.6 — kini menyangkut **tujuh** tombol, bukan enam | Work Owner + Tim Pega |
+| `InputPerihalRCLPUCL_act` tidak ada di export | Tim Pega (`R-07`) |
+| Apakah `PUCLPost` ditulis ulang sebagai **satu alur tiga keluaran**, atau dipecah per tombol | Lead Engineer, setelah `P-1` diputuskan |
+
+---
+
+## 127. Inbox RCL/PUCL — `InputPerihalRCLPUCL_act` diterima; tombol "Pilih" ternyata BACA (2026-10-01)
+
+Work Owner menambahkan activity yang §126.4 minta, pada hari yang sama. Gap `R-07` yang baru
+dibuka itu **tertutup**.
+
+### 127.1 Isinya — lima step, nol tulis
+
+```
+1. Property-Set    Param.pyReportName  := "BrowsePerihalRCLPUCL_RD"
+                   Param.pyReportClass := "ASM-FW-GCNMFW-Int-M_PERIHAL_RCLPUCL"
+2. Call pxShowReport
+3. Property-Set    TempPerihal.ID_PERIHAL · TempPerihal.PERIHAL_NAME
+4. Property-Set    primary.ClaimData.PUCLStatus.Perihal
+                     := pyReportContentPage.pxResults(1).PERIHAL_NAME
+5. Page-Remove     TempPerihal
+```
+
+Tidak ada `Obj-Save`, `Commit`, maupun `RDB-Save`. Kata "Commit" di berkasnya hanyalah
+`pxCommitDateTime` — metadata kapan rule disimpan (2020-03-12). Ia **sempat terbaca sebagai
+operasi tulis** pada pemeriksaan pola, dan dibantah dengan memeriksa daftar step-nya; dicatat
+karena pemeriksaan berbasis kata-kunci memang rawan begini.
+
+### 127.2 Akibat pertama: daftar `P-1` berkurang satu
+
+Tombol **"Pilih"** adalah **BACA**. Ia bergabung dengan "Lihat Dokumen" sebagai satu dari dua
+tombol yang tidak terhalang `P-1` — tujuh sisanya tetap terhalang (§126.3).
+
+**Tetapi ia tidak berguna sendirian.** Memilih Perihal hanya mengubah clipboard; yang
+menyimpannya adalah tombol **"Save"**, yang TETAP terhalang. Membangun "Pilih" lebih dulu
+menghasilkan pemilih yang pilihannya hilang saat halaman ditutup. Karena itu ia **tidak**
+diusulkan dikerjakan mendahului keputusan `P-1`.
+
+### 127.3 Akibat kedua: klaim menyimpan TEKS perihal, bukan kodenya
+
+Langkah 4 menegaskannya: yang masuk ke klaim `PERIHAL_NAME`, sedangkan `ID_PERIHAL` hanya mampir
+ke `TempPerihal` lalu dibuang langkah 5.
+
+Ini **membenarkan** pembacaan kolom `POOLDATA.TC_PNC_PUCL.PERIHAL` apa adanya ke layar (§84.2) —
+sebelumnya itu kesimpulan dari nilai yang terbaca, sekarang terbukti dari rule-nya.
+
+Dua akibat yang mengikat perancangan master Perihal kelak:
+
+1. **Tidak ada kunci asing.** Klaim tidak menyimpan `ID_PERIHAL`, sehingga tidak ada jalan
+   menelusuri balik dari klaim ke baris masternya.
+2. **Mengubah teks sebuah baris master TIDAK mengubah klaim yang sudah memakainya.** Perilakunya
+   seperti snapshot. Itu perilaku sistem lama apa adanya, dan **bukan** cacat yang perlu
+   diperbaiki selama `P-5` berlaku.
+
+Komentar di layar yang masih menyebut Perihal "ada di clipboard" ikut diperbaiki — pernyataan itu
+sudah tidak benar sejak kolomnya ditemukan, dan baru sekarang tersapu.
+
+### 127.4 Status gap layar kerja ini
+
+| Rule | Status |
+|---|---|
+| `InsertMitraPA` · `PUCLPost` | ADA |
+| 16 activity yang dipanggil `PUCLPost` | ADA, nol hilang |
+| `SaveInputRegisterDetail2` · `ReminderPUCLPA` | ADA |
+| `InputPerihalRCLPUCL_act` | ✅ **ADA sejak 2026-10-01** |
+| `BrowsePerihalRCLPUCL_RD` | ADA |
+
+**Seluruh rule di balik setiap tombol layar kerja Inbox RCL/PUCL kini terbaca.** Tidak ada lagi
+penghalang artefak untuk menulis ulang logikanya — yang tersisa murni keputusan `P-1`.
+
+---
+
+## 128. Inbox RCL/PUCL — tombolnya dapat diklik, dan klaim saya tentang "Download Dokumen" diralat (2026-10-01)
+
+**Laporan Work Owner:** *"tombolnya masih belum bisa diklik tolong perbaiki lagi, sama tombol
+download dokumen analisa lagi pada section SectionPenerimaanDokumenPUCL dan section
+SectionLampiranSuratPUCL."*
+
+### 128.1 RALAT — "Download Dokumen" MEMANG menerbitkan suratnya
+
+§126.3 menyatakan tombol itu *"tidak mengunduh apa pun"*. **Itu salah.** Penelusuran ke dalam
+`PUCLPost` menemukan langkah yang tidak saya periksa sebelumnya:
+
+```
+step 36  Call AttachAsPDFC     when 1==1   -> selalu jalan
+         AttachAsPDFC = Property-Set-HTML -> Call HTMLToPDF -> call AttachToWork -> call View
+step 19  Call pxShowReport     tanpa syarat -> selalu jalan
+```
+
+Jadi PDF suratnya **dibentuk, dilampirkan ke klaim, lalu dibuka**. Namanya tidak menyesatkan
+seperti yang saya tuduhkan.
+
+**Keterangannya sudah dua kali keliru, ke arah yang berlawanan:**
+
+| Versi | Bunyi | Yang disembunyikannya |
+|---|---|---|
+| v1 | "Mengunduh surat RCL/PUCL klaim ini." | bahwa ia **menulis** |
+| v2 (§126.3) | "tidak mengunduh apa pun" | bahwa suratnya **terbit** |
+| **v3** | "Menerbitkan PDF surat DAN menandainya sudah dicetak" | — |
+
+Yang benar **keduanya sekaligus**, dan itulah arti "cetak": menerbitkan surat sambil mencatat
+bahwa ia sudah dicetak. Satu uji kini menahan **kedua** kalimat lama agar tidak kembali.
+
+**Pelajarannya bukan soal tombol ini.** Saya menyimpulkan dari nama parameter (`tipe="cetak"`)
+dan nama kolom (`TanggalCetakDokumenPUCL`) tanpa membuka activity yang dipanggilnya. Itu pola
+kesalahan yang sama dengan menebak caption dari nama tab (§125.1) — menyimpulkan dari petunjuk
+di sekitarnya alih-alih membaca artefaknya.
+
+### 128.2 `ASMForceCaseClose` TIDAK berlaku untuk Download Dokumen
+
+Pemeriksaan pola sempat memperlihatkan `param.Status==""` pada langkah penutupan case — dan
+`Status` kosong adalah tombol Download Dokumen. Membaca kode aksinya membantah itu:
+
+```
+step 51/52  when param.Status==""                             true=3  false=2
+            when param.Status=="0" && .RCL_PUCL==1            true=(jalan) false=3
+```
+
+`true=3` berarti **lewati langkah ini**. Jadi syarat pertama adalah **penjaga** yang
+mengecualikan jalur cetak; penutupan case hanya berlaku untuk **"Tolak Klaim" di jalur RCL**.
+
+Dicatat karena nyaris menjadi klaim ketiga yang salah tentang tombol yang sama — dan kali ini
+yang menahannya adalah memeriksa `WhenTrue`/`WhenFalse`, bukan syaratnya saja.
+
+### 128.3 Peta syarat di dalam `PUCLPost`
+
+| Langkah | Berlaku saat |
+|---|---|
+| `pxShowReport` · `AttachAsPDFC` · `SetUploadDocument` | **selalu** |
+| `SetTicket` (lompatan lateral) | `Status == 1` — kedua tombol Kirim |
+| `ASMCollectAttachments` · `ASMSendsEmailAttachments` | **`IsTravel` saja** |
+| `ASMForceCaseClose` | `Status == "0"` **dan** jalur RCL — Tolak Klaim |
+| `Obj-Save` · `Commit` | **selalu** |
+
+Satu akibat yang perlu dicatat untuk `S-8`: **surel hanya terkirim pada lini Travel.** Klaim PA
+yang dikirim ke Analyst tidak memicu surel apa pun.
+
+### 128.4 "Download Dokumen" hanya ada di SATU section
+
+Diperiksa ulang atas permintaan Work Owner. Daftar rule `pyButtonLabel` tiap section:
+
+| Section | Label |
+|---|---|
+| `SectionLampiranSuratPUCL` | Download Dokumen · Pilih · Tutup Klaim |
+| `SectionPenerimaanDokumenPUCL` | Unggah Dokumen · Lihat Dokumen · Save · Reminder PUCL · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik |
+
+**Tidak ada "Download Dokumen" di `SectionPenerimaanDokumenPUCL`.** Yang ada di sana "Lihat
+Dokumen", dan keduanya berbeda: "Lihat Dokumen" membuka lampiran yang SUDAH ada (`localAction`,
+tanpa activity), sedangkan "Download Dokumen" MENERBITKAN surat baru.
+
+### 128.5 Tombolnya kini DAPAT DIKLIK
+
+Work Owner melaporkan tombol mati terbaca sebagai kerusakan. Itu benar: tombol yang tidak
+menanggapi apa pun tidak dapat dibedakan dari tombol yang rusak, dan orang akan menekannya
+berulang kali.
+
+Kedelapan tombol kini **hidup**. Menekannya membuka keterangan ringkas berisi alasan tindakannya
+belum berjalan, **nomor case klaim**, dan tombol **Salin** — karena nomor itulah yang dibutuhkan
+untuk mengerjakan tindakannya di Pega. Menekan lagi menutupnya.
+
+Yang **tidak** berubah: tidak satu pun menulis. Yang berubah hanya bahwa penolakannya kini
+**terdengar**, bukan diam.
+
+### 128.6 Kenapa tulisnya belum dibangun — buktinya dari repo ini sendiri, bukan dari prinsip
+
+Work Owner meminta tombol dihidupkan sepenuhnya. Sebelum menjawab lagi dengan `P-1`, isi repo
+diperiksa:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Modul yang punya kueri TULIS | banyak — `master*`, `daftar*`, dan **sebagian `inbox*`** |
+| Sasaran tulisnya di modul `inbox*` | **tabel bisnis `POOLDATA`** — `T_CLAIM_PNC`, `M_KOMUNIKASI_PNC`, `PNC_SALVAGE`, … |
+| Modul yang menulis tabel `PC_*` milik engine Pega | **nol** |
+| Modul `inbox*` yang punya **endpoint** tulis | **nol** |
+
+Jadi arah proyek ini memang menuju menulis tabel bisnis `POOLDATA` dari Go — tetapi **belum satu
+pun inbox mengekspos endpoint tulis**, dan **tidak ada yang menyentuh tabel objek kerja**.
+
+Yang menentukan untuk layar ini: **ketujuh tombol tulis berakhir di `Obj-Save` + `Commit` pada
+objek kerja Pega** — termasuk "Save", yang `SaveInputRegisterDetail2`-nya diawali
+`Obj-Refresh-And-Lock` dan diakhiri `Obj-Save`/`Commit`. Jadi ini bukan tujuh keputusan melainkan
+**satu**: apakah `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` boleh ditulis dari Go selama Pega masih
+melayani produksi.
+
+**Kenapa versi separuh lebih buruk daripada tombol yang belum jalan.** Menulis kolomnya saja —
+tanpa `SetTicket`, tanpa `AttachAsPDFC`, tanpa `ASMForceCaseClose`, tanpa `InsertJsonClaimNonMBU`
+— memindahkan klaim antar tab sementara suratnya tidak terbit, tiketnya tidak dipasang, dan
+JSON-nya tidak tersinkron. Kerusakan seperti itu **tidak memunculkan galat**; ia hanya terlihat
+berminggu-minggu kemudian sebagai klaim yang tersangkut.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Boleh/tidaknya Go menulis `PC_ASM_FW_GCNMFW_WORK`** selama masa paralel — satu keputusan yang membuka ketujuh tombol sekaligus | Work Owner + Tim Pega |
+| Bila belum: apakah **"Lihat Dokumen"** dibangun lebih dulu sebagai BACA (butuh lampiran + `GENERAL.GET_TOKEN_STORAGE`) | Work Owner |
+| Alamat Pega untuk tautan "buka di Pega", bila diinginkan | Work Owner + Infra |
+
+---
+
+## 129. Inbox RCL/PUCL — "Lihat Dokumen" BERJALAN, dan jalur tulis diputuskan lewat layanan Pega (2026-10-01)
+
+Dua keputusan Work Owner pada 2026-10-01, keduanya mengikuti rekomendasi yang diajukan.
+
+### 129.1 Jalur tulis: lewat layanan REST Pega, bukan tulis langsung
+
+Pemeriksaan menemukan hal yang belum pernah dipertimbangkan selama empat putaran perdebatan
+`P-1`: **Pega sudah mengekspos layanan REST masuk pada kelas `ASM-FW-GCNMFW-Work-PNC`**, dan
+salah satunya memang menulis data klaim atas permintaan sistem luar.
+
+| Layanan | Activity |
+|---|---|
+| `KomiteAcceptAdjustment` | `CheckKomiteAprove` |
+| `KomiteAcceptAdjustmentPA` | `CheckKomiteAprovePA` |
+| `RecivedDataandAttachmentLelangASMSimasbid` | `ActSalvageSimasbidAsmUpdate` |
+| `RequestCreateClaimCredit2` | `CreateClaimCredit_Service2` |
+
+Jadi pertanyaannya **bukan** "melanggar `P-1` atau tombol mati" — itu pilihan palsu yang saya
+sodorkan tiga kali. Jalan ketiganya: **Go memanggil Pega**, Pega yang menulis.
+
+Keuntungannya nyata dan bukan soal kepatuhan:
+
+1. **`PUCLPost` dipakai apa adanya — 57 step.** Tidak ada `SetTicket`, `AttachAsPDFC`,
+   `ASMForceCaseClose`, surel, atau sinkronisasi `JSON_KLAIM` yang perlu ditiru, dan karena itu
+   tidak ada yang dapat terlewat.
+2. **`P-1` utuh** — Pega tetap penulis tunggal objek kerja.
+3. **Reversibel.** Saat Pega dimatikan, adapter pemanggilnya diganti logika sendiri; seam
+   `ExternalSystem` sudah ada, sehingga domain tidak tersentuh.
+
+Permintaannya ditulis di `permintaan-artefak-pega.md` §12, beserta empat hal yang perlu
+disepakati — terberat **otentikasi**, karena keempat layanan yang ada ber-`pyUseAuthentication=false`
+dan layanan baru ini MENULIS.
+
+### 129.2 "Lihat Dokumen" dibangun sekarang — dan jalurnya dipilih dari bukti
+
+Ia satu-satunya tombol layar kerja yang MEMBACA (`localAction ViewAttachmentPUCL`), sehingga
+tidak terhalang `P-1`.
+
+**Yang ditiru BUKAN jalur Pega-nya.** `Section/ViewAttachmentPUCLDetail-Section.xml` memakai
+Report Definition `GCNMGetAllAttachments` pada kelas `Link-Attachment`, dan jalur itu bermuara
+di `PC_DATA_WORKATTACH.PZPVSTREAM` — blob **serialisasi Pega**, bukan berkas yang dapat
+diserahkan apa adanya.
+
+Katalog dan data dibaca langsung lewat probe sementara, dan memberi jalan yang lebih baik:
+
+| Yang diuji | Hasil |
+|---|---|
+| `PC_LINK_ATTACHMENT` seluruhnya | 131.139 baris |
+| — kolom `CASEID` terisi | **1** baris · tidak dapat dipakai menggabung |
+| — kolom `IMAGEID` terisi | 2.127, dan **0** di antaranya ketemu di `GENERAL.T_STORAGE_IMAGE` |
+| — `PXSTORAGETYPE` | **kosong seluruhnya** → isinya di basis data, bukan penyimpanan luar |
+| `POOLDATA.DATA_ATTACHFILE` | 9.937 baris, `ATTACHFILE` BLOB **berkas mentah** |
+| — `IDPEGA` = `PZINSKEY` objek kerja | **3.915 dari 3.974** yang terisi |
+| — `IDPEGA` = `PYID` (nomor case) | 32 · bukan ini |
+| — `IDPEGA` = kunci `PC_LINK_ATTACHMENT` | 0 · bukan ini |
+
+Jadi `DATA_ATTACHFILE.IDPEGA` menyimpan **kunci objek kerja**, dan berkasnya terbaca apa adanya
+— tanpa membongkar blob Pega, dan tanpa `pooldata.base64encode` yang `D-02` larang.
+
+**Batas yang DINYATAKAN, bukan disembunyikan.** Untuk seluruh klaim PNC, `PC_LINK_ATTACHMENT`
+memuat 12.051 lampiran sementara `DATA_ATTACHFILE` hanya 9.937 baris seluruhnya. Dokumen yang
+HANYA ada di tabel lampiran Pega tidak muncul lewat jalur ini. Layar menyatakan kemungkinan itu
+di bawah daftarnya — kalimatnya datang dari **server**, supaya ia hilang di satu tempat begitu
+jalur Pega ikut terbaca. Arah kegagalan dipilih sadar: **kurang, bukan salah**.
+
+**Yang dibangun:** dua rute (`/klaim/{referensi}/dokumen` dan `.../dokumen/{dokumen}`), dua
+kueri, dua metode seam, pengisi memori, dan komponen daftar di layar. Berkasnya diserahkan
+sebagai **berkas** (`Content-Disposition: inline`), bukan base64 di dalam JSON.
+
+Tiga hal yang dijaga uji: daftarnya baru ditarik **setelah** tombolnya ditekan, berkasnya
+dibuka lewat **tautan** ke alamat isinya, dan klaim **tanpa dokumen** dibedakan dari daftar yang
+**gagal** diambil.
+
+**Kepemilikan ditegakkan DI DALAM kueri**, bukan di lapisan Go: `DATAID` dapat ditebak, dan
+pemeriksaan yang berada di luar kueri dapat terlewat oleh pemanggil baru. Dokumen yang tidak ada
+dan dokumen milik klaim lain sama-sama menghasilkan `ErrDocumentNotFound` — membedakannya akan
+memberi tahu bahwa sebuah id memang ada.
+
+### 129.3 Panel tombol: langkah dulu, alasan belakangan
+
+Work Owner menunjukkan isi panel dan meminta diperbaiki. Susunannya dibalik: yang pertama dibaca
+kini **apa yang harus dikerjakan** beserta nomor case dan tombol salin; alasannya turun ke bawah
+dengan huruf lebih kecil.
+
+Petugas yang membuka keterangan itu sedang mengerjakan klaim — yang dicarinya langkah, bukan
+sebab. Bentuk sebelumnya menaruh dua kalimat yang tidak dapat ditindaklanjuti sebelum satu
+kalimat yang dapat.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Kapan layanan REST §12 tersedia, dan **otentikasi** apa yang dipakainya | Tim Pega + Keamanan Informasi |
+| Perilaku saat `PUCLPost` gagal di tengah — rollback atau tidak | Tim Pega |
+| Idempotensi: tombol ditekan dua kali tidak boleh menerbitkan surat dua kali | Tim Pega |
+| Pega staging yang dapat ditembak dari luar — prasyarat yang sama dengan `S-8` | Tim Pega + Infra |
+| Apakah lampiran yang hanya ada di `PC_DATA_WORKATTACH` perlu ikut terbaca | Work Owner |
+
+---
+
+## 130. Inbox RCL/PUCL — panel tombol: satu untuk seluruh layar, dan alasannya tidak diulang (2026-10-01)
+
+**Laporan Work Owner:** tangkapan layar memperlihatkan **dua panel terbuka sekaligus**, di bawah
+"Unggah Dokumen" dan "Kirim Ke Analyst", masing-masing memuat **tiga baris alasan yang sama
+persis**.
+
+### 130.1 Dua cacat, dan keduanya berasal dari satu salah rancang
+
+Panel dibuat dengan menyimpan keadaan buka-tutup **di dalam tiap tombol**. Akibatnya:
+
+1. **Setiap tombol dapat terbuka sendiri-sendiri**, sehingga menekan empat tombol menghasilkan
+   empat panel bertumpuk.
+2. **Isinya sama untuk setiap tombol**, karena alasannya memang sama — sehingga yang bertumpuk
+   itu kalimat yang identik.
+
+Keduanya bukan dua masalah melainkan satu: keadaan yang berlaku untuk **seluruh layar**
+disimpan **per komponen**.
+
+### 130.2 Yang diperbaiki
+
+**Keadaannya diangkat ke `WorkScreen`** — satu nilai, berisi nama tombol yang panelnya sedang
+terbuka. Membuka satu menutup yang lain dengan sendirinya. Berpindah tab juga menutupnya: panel
+milik tombol yang sudah tidak terlihat tidak boleh ikut terbawa.
+
+Dialirkan lewat **context**, bukan prop. Tombolnya tersebar di dua tab dan empat kelompok;
+mengalirkannya sebagai prop berarti enam perantara yang tidak memakainya sendiri, dan tiap
+perantara adalah satu tempat yang dapat lupa meneruskannya.
+
+**Isinya dipangkas menjadi satu baris**, memuat hanya yang BERBEDA antartombol:
+
+```
+Kerjakan [Kirim Ke Analyst] di Pega pada klaim  PNC-2183  [Salin nomor case]
+```
+
+Ketiga baris alasan dibuang dari sini — ia sudah tertulis **sekali** di kaki layar
+(`tindakan_masih_di_pega`). Menuliskannya lagi di bawah setiap tombol berarti kalimat yang sama
+muncul sampai empat kali pada satu layar.
+
+### 130.3 Yang menahannya supaya tidak kembali
+
+Satu uji baru menuntut tombol **"Salin nomor case" hanya ada SATU** di layar, berapa pun tombol
+yang sudah ditekan — dan **nol** setelah berpindah tab. Jumlah, bukan teks: inilah bentuk cacat
+yang dilaporkan, dan menguji teksnya saja akan lolos untuk dua panel yang isinya kebetulan sama.
+
+---
+
+## 131. Inbox RCL/PUCL — dua isian clipboard terpetakan, dan tiga koreksi atas pemetaannya (2026-10-01)
+
+**Penetapan Work Owner:** gabungkan `POOLDATA.T_CLAIM_PNC` untuk `EMAIL_LOD`, ambil sisanya dari
+`POOLDATA.TC_PNC_PUCL`, gabungkan **lewat `CLAIMID` saja**, dan isi "Tanggal Kelengkapan Dokumen"
+dari `TGL_TERIMA_DOKUMEN_PUCL`.
+
+Dijalankan — dengan **tiga koreksi** yang ditemukan sebelum kuerinya ditulis. Ketiganya dibaca
+langsung dari katalog dan data Oracle 2026-10-01, bukan disimpulkan.
+
+### 131.1 `CLAIMID = CLAIMID` mengembalikan NOL baris
+
+| Yang diuji | Cocok |
+|---|---|
+| `c.CLAIMID = p.CLAIMID` | **0** |
+| `c.CLAIMNO = p.CLAIMID` | **1** dari 1 |
+
+Sebabnya terbaca dari strukturnya:
+
+| | |
+|---|---|
+| `T_CLAIM_PNC.CLAIMID` berawalan `ASM-FW-GCNMFW-WORK ` | **2.170 dari 2.206** |
+| `TC_PNC_PUCL.CLAIMID` berawalan sama | **0** |
+
+Jadi **dua kolom bernama sama menyimpan hal yang berbeda**: yang di tabel Pega membawa kunci
+teknis berawalan nama kelas (utang teknis §4.1 `CLAUDE.md`), yang di tabel datar membawa nomor
+case polos. Yang menyimpan nomor case di `T_CLAIM_PNC` adalah **`CLAIMNO`**.
+
+**Maksud keputusannya dijalankan** — satu kunci saja, yaitu penanda klaim. Yang dikoreksi hanya
+kolom mana yang benar-benar menyimpannya. Memakai `CLAIMID` apa adanya akan mengosongkan isian
+itu **tanpa satu pun galat**.
+
+### 131.2 Dua nama kolom tidak ada
+
+| Disebut | Yang ada | Di tabel |
+|---|---|---|
+| `USER_TEKNIK` | **`USER_TEKNIS`** | `TC_PNC_PUCL` |
+| `EMAILLOD` | **`EMAIL_LOD`** | `T_CLAIM_PNC` |
+
+Yang kedua sejalan dengan tulisan Work Owner sendiri (`EMAIL_LOD = EMAILLOD`), yaitu nama kolom
+di kiri dan nama properti Pega di kanan.
+
+### 131.3 Enam kolom tidak dirujuk section mana pun
+
+Dari delapan yang disebut, hanya dua yang menjadi isian layar kerja. Dihitung dari kedua berkas
+section:
+
+| Properti | `SectionLampiranSuratPUCL` | `SectionPenerimaanDokumenPUCL` |
+|---|---|---|
+| `EmailLod` | — | **4×** → "Email Tertanggung" |
+| `TanggalTerimaDokumenPUCL` | — | **3×** → "Tanggal Kelengkapan Dokumen" |
+| `DateOfLoss` | **3×** | — | sudah terpasang sebagai "Tanggal Kejadian" |
+| `SOBName` · `QQName` · `BusinessName` · `BranchName` · `StatusClaim` · `NoPolis` · `PICTeknik` | **0** | **0** |
+
+`NOPOLIS` dan `DATEOFLOSS` memang sudah dibaca dari tabel datar sejak §84. Keenam sisanya
+**tidak digambar layar kerja** — keduanya tidak punya sel di section mana pun. Ia diangkat
+sebagai pertanyaan alih-alih ditambahkan ke layar: menambah isian yang tidak ada di layar lama
+melanggar `D-13`.
+
+### 131.4 Yang dikerjakan
+
+```
+TGL_TERIMA_DOKUMEN_PUCL  ->  "Tanggal Kelengkapan Dokumen"   (tabel datar)
+T_CLAIM_PNC.EMAIL_LOD    ->  "Email Tertanggung"             (subkueri, gabung CLAIMNO)
+```
+
+Daftar isian tak terpetakan karena itu menyusut lagi — **sembilan → lima (§84.2) → tiga**. Yang
+tersisa: No Kontrak, Business Unit / Seksi, dan daftar Tanggal terima Dokumen.
+
+### 131.5 `EMAIL_LOD` ADA tetapi KOSONG di seluruh baris
+
+Dihitung langsung: terisi pada **0 dari 2.206** baris `T_CLAIM_PNC`.
+
+Jadi "Email Tertanggung" akan tergambar **kosong**, dan itu **bukan** kekeliruan penyambungan.
+Dinyatakan di tipe domain, di DTO, dan di contoh uji — contohnya sengaja dibuat kosong, supaya
+yang diuji adalah keadaan yang benar-benar akan terjadi.
+
+Perbedaannya penting dan dijaga: isian itu **tidak** masuk daftar "belum terpetakan". Yang belum
+terpetakan menuntut pencarian ke Tim Pega; yang kosong menuntut penelusuran ke proses yang
+mengisi kolomnya. Mencampurnya mengirim orang ke pihak yang salah.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Keenam kolom yang tidak dirujuk section** — `SOB_NAME`, `QQ_NAME`, `BUSINESS_NAME`, `BRANCH_NAME`, `STATUS_CLAIM`, `USER_TEKNIS` — hendak digambar di isian yang mana? Menambahkannya sendiri melanggar `D-13` | Work Owner |
+| Proses mana yang mengisi `T_CLAIM_PNC.EMAIL_LOD`, dan mengapa kosong di seluruh baris | Work Owner + pemilik proses pengisi |
+
+---
+
+## 132. Inbox RCL/PUCL — grid "Tanggal Terima Dokumen" terisi sebagian (2026-10-01)
+
+**Laporan Work Owner:** grid itu masih kosong dengan keterangan *"Daftarnya tersimpan di
+clipboard Pega, bukan sebagai kolom tabel."*
+
+### 132.1 Keterangan itu benar — tetapi hanya separuh
+
+Grid-nya terikat page list **`.ClaimData.PUCLStatus.DateReceivedDocument`** berkelas
+`ASM-FW-GCNMFW-Data-DateReceivedDocument`, dengan kolom `.DateReceived` ("Tanggal") dan
+`.Remarks` ("Keterangan"). Catatan: **"Keterangan" adalah label kolom** (`pyType LABEL`), bukan
+properti terikat — yang terikat `.Remarks`.
+
+Katalog Oracle dicari 2026-10-01:
+
+| Yang dicari | Hasil |
+|---|---|
+| Tabel bernama mirip `DateReceivedDocument` | **tidak ada** |
+| Tabel yang punya `DATERECEIVED` **dan** `REMARKS` | **tidak ada** |
+
+Jadi daftarnya memang hidup di dalam blob objek kerja. **Tetapi baris pertamanya diekspos**
+sebagai kolom pada tabel objek kerja — pola akhiran `_1` yang sama dengan `RCL_PUCL_1` dan
+`MSIG_1`:
+
+| Kolom | Terisi | Panjang maksimum |
+|---|---:|---:|
+| `RECEIVEDDATE_1` | **4.156 dari 7.723** | 23 |
+| `KETERANGAN_1` | 85 | 32 |
+
+Panjang maksimum 23 itu yang memastikan keduanya **bukan daftar berdelimiter** — hanya cukup
+untuk satu timestamp.
+
+### 132.2 Yang dikerjakan
+
+Grid digambar dengan **satu baris**, dan layar menyatakan bahwa baris kedua dan seterusnya belum
+terbaca. Arah kegagalan sama dengan daftar dokumen: **kurang, bukan salah**.
+
+Keterangan "baru baris pertama" digambar **hanya saat ada barisnya**. Pada daftar kosong ia
+menyesatkan — terbaca sebagai "mungkin ada yang tersembunyi", padahal kemungkinan terbesarnya
+daftarnya memang kosong. Keduanya ditahan uji terpisah.
+
+**"+ Tambah" dan "Hapus"** sebelumnya digambar sebagai teks abu-abu yang tidak menanggapi apa
+pun — bentuk yang tidak dapat dibedakan dari tautan rusak. Keduanya kini memakai panel yang sama
+dengan tombol tindakan lain.
+
+### 132.3 Penjaga kueri DIPERSEMPIT, bukan dilemahkan
+
+Dua uji penjaga gagal begitu `detail` membaca `PC_ASM_FW_GCNMFW_WORK`, dan **itu benar** — mereka
+memang ada untuk menangkap kueri tabel datar yang tertinggal membaca tabel Pega. Kelas cacat itu
+nyata: kueri yang tertinggal **tetap berjalan** dan mengembalikan baris yang terbaca masuk akal.
+
+Melonggarkan penjaganya akan menghapus perlindungan itu untuk **seluruh** kueri. Yang dipakai:
+`pegaReadsAllowedIn` menyebut kueri mana boleh membaca kolom Pega apa, satu per satu:
+
+```go
+var pegaReadsAllowedIn = map[string][]string{
+	"detail": {"RECEIVEDDATE_1", "KETERANGAN_1", "PYID"},
+}
+```
+
+Ditambah satu tuntutan baru: kueri yang diberi pengecualian **tetap wajib** ber-`FROM
+POOLDATA.TC_PNC_PUCL p` sebagai sumber utamanya. Jadi tabel Pega hanya boleh disubkueri, bukan
+menjadi sumbernya.
+
+Begitu layanan Pega (§12) mengembalikan daftarnya utuh, isian itu dikosongkan dan subkuerinya
+dibuang.
+
+### 132.4 Status tombol tulis — tidak berubah, dan itu bukan kelalaian
+
+"Kirim Ke Analyst" dan "Unggah Dokumen" **masih belum berjalan**. Jalurnya sudah diputuskan
+(§129.1): lewat layanan REST Pega, yang permintaannya tertulis di `permintaan-artefak-pega.md`
+§12 dan **menunggu Tim Pega**.
+
+Tidak ada yang dapat dikerjakan dari sisi ini sampai layanan itu ada — selain yang sudah: tombolnya
+dapat diklik dan menjawab dengan langkahnya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Layanan REST §12 — kapan tersedia, dan otentikasinya apa | Tim Pega + Keamanan Informasi |
+| Apakah baris kedua dan seterusnya grid ini perlu terbaca, atau satu baris sudah memadai | Work Owner |
+| Keenam kolom §131.3 yang tidak dirujuk section mana pun | Work Owner |
+
+---
+
+## 133. Inbox RCL/PUCL — tiga parameter tindakan dipasang sebagai NILAI PENAMPUNG (2026-10-01)
+
+**Penetapan Work Owner:** *"untuk IDObject, IDCoverage, IDAdjustment set 1 saja dulu, nanti saya
+kirim untuk kolomnya."*
+
+### 133.1 Apa ketiganya
+
+Sel **tanpa label** di `SectionPenerimaanDokumenPUCL` — `.ClaimData.PUCLStatus.IDObject`,
+`.IDCoverage`, `.IDAdjustment` — yang ikut pada **setiap** tombol yang memanggil `PUCLPost`:
+Download Dokumen, Tolak Klaim, dan kedua tombol Kirim. Di Pega ketiganya tidak digambar, dan di
+sini pun tidak.
+
+### 133.2 Dipasang sebagai konstanta bernama, bukan `"1"` di tempatnya
+
+```go
+const ActionParameterPlaceholder = "1"
+func ProvisionalActionParameters() ActionParameters
+```
+
+Alasannya satu kalimat: **`"1"` yang tersebar di tiga tempat tidak dapat dibedakan dari nilai
+yang memang benar bernilai satu.** Dengan nama ini setiap pemakaiannya menyatakan dirinya
+sementara, dan mencarinya cukup sekali.
+
+Pembentuknya dipakai **kedua** pengisi seam — SQL maupun memori — supaya keduanya tidak dapat
+menyimpang, dan supaya penggantiannya kelak cukup di satu tempat.
+
+Kuerinya **tidak** disentuh. Menambahkan kolom tebakan ke `detail` akan membuat tebakan itu
+terlihat seperti pemetaan yang sudah diputuskan.
+
+### 133.3 Penanda `Provisional` adalah DATA, bukan tebakan dari nilainya
+
+Kontrak membawa `sementara: true`, dan nilainya **tidak** disimpulkan dengan membandingkan isinya
+terhadap `"1"`.
+
+Sebabnya: kolom yang sebenarnya kelak **boleh** berisi `1`. Menyimpulkannya dari nilai akan
+membuat nilai yang sah tertandai sementara selamanya — dan penanda yang tidak pernah padam sama
+tidak bergunanya dengan penanda yang tidak pernah menyala. Satu uji menahannya.
+
+### 133.4 Yang membuat penampung ini tidak dapat lolos diam-diam
+
+`TestActionParametersAreStillProvisional` **sengaja gagal** begitu kolom sebenarnya dipasang, dan
+pesannya menyebutkan apa yang harus dikerjakan:
+
+```
+1. Pastikan ketiganya memang sudah dibaca dari kolom, bukan dari penampung.
+2. Hapus `ActionParameterPlaceholder` beserta `ProvisionalActionParameters`.
+3. Hapus uji ini.
+Jangan sekadar mengubah nilai yang diharapkan.
+```
+
+**Kenapa penjagaannya seketat ini.** `PUCLPost` tidak menolak nilai yang salah — ia
+mengerjakannya pada objek, coverage, dan adjustment yang **keliru**. Penampung yang lolos ke
+jalur tulis karena itu bukan cacat tampilan melainkan tindakan pada baris klaim yang salah, dan
+tidak ada galat yang akan memunculkannya.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Kolom mana yang memasok `IDObject`, `IDCoverage`, dan `IDAdjustment`** | Work Owner — akan dikirim |
+
+---
+
+## 134. Inbox RCL/PUCL — ketiga parameter tindakan dibaca dari kolomnya; penampung DICABUT (2026-10-01)
+
+Work Owner menambahkan `ID_OBJECT`, `ID_COVERAGE`, dan `ID_ADJUSTMENT` ke
+`POOLDATA.TC_PNC_PUCL` pada hari yang sama dengan pemasangan penampungnya (§133). Dibaca
+langsung sebelum kueri diubah: ketiganya `VARCHAR2(100)`, nullable, dan terisi pada baris yang
+ada.
+
+### 134.1 Penampungnya dicabut SELURUHNYA, bukan disisakan
+
+Uji penjaga §133.4 menuntut tiga langkah, dan ketiganya dikerjakan:
+
+| Langkah | Hasil |
+|---|---|
+| Pastikan dibaca dari kolom | kueri `detail` membaca ketiganya |
+| Hapus `ActionParameterPlaceholder` dan `ProvisionalActionParameters` | dihapus |
+| Hapus uji penjaganya | dihapus, diganti uji lain — lihat §134.3 |
+
+Isian kontrak **`sementara`** ikut dicabut. Kemarin ia dibela dengan alasan "selalu dikirim
+supaya klien lama tidak salah menganggapnya `false`"; alasan itu berlaku untuk **masa
+peralihan**, dan masa itu sudah lewat. Isian yang selamanya bernilai `false` tidak menyatakan
+apa pun, dan membiarkannya membuat orang mengira masih ada yang menunggu diputuskan.
+
+### 134.2 Uji urutan alias menangkap satu cacat senyap
+
+Ketiga kolom disisipkan di berkas `.sql` **sebelum** `INSURED_EMAIL`, tetapi di `detailColumns`
+ditulis **sesudahnya** — dan pemindainya mengikuti yang kedua.
+
+Akibatnya bila lolos: `INSURED_EMAIL` terbaca ke `IDObject`, dan ketiga parameter bergeser satu
+posisi. **Tidak ada galat yang muncul** — ketiganya `VARCHAR2`, sehingga Oracle menerimanya, dan
+layar menggambar email di tempat yang tidak terlihat.
+
+`TestDetailReturnsItsOwnAliases` menangkapnya seketika. Dicatat karena inilah gunanya menuntut
+urutan **berkas SQL = daftar alias = urutan pemindai** sama persis, dan karena kelas cacat ini
+akan terulang setiap kali kolom disisipkan di tengah.
+
+### 134.3 Uji penggantinya menjaga hal yang BERBEDA
+
+Yang lama menjaga bahwa nilainya masih penampung. Yang baru menjaga bahwa ketiganya **tidak
+tertukar**:
+
+```go
+IDObject "OBJ-7" · IDCoverage "COV-8" · IDAdjustment "ADJ-9"
+```
+
+Alasannya datang dari sejarahnya sendiri: selama ketiganya bernilai sama (`"1"`), menukar
+`idObj` dengan `idAdj` **tidak membuat satu pun uji gagal**. Baris contoh di penyimpanan memori
+karena itu juga diisi nilai yang berbeda-beda — bukan nilai yang sama.
+
+Ini bukan kehati-hatian berlebihan: `PUCLPost` tidak menolak parameter yang tertukar. Ia
+mengerjakannya pada objek, coverage, dan adjustment yang **keliru**.
+
+### 134.4 Selisih DDL bertambah tiga
+
+Ketiganya **belum ada di `Database/CREATE_TABLE_3.SQL`** — keadaan yang sama persis dengan
+keempat kolom surat (§84.3), dan ditangani dengan cara yang sama:
+
+- masuk `letterColumnsBeyondTheSharedDDL`, sehingga `-periksa` menyebut namanya;
+- ikut disentuh `check_columns`;
+- `docs/ddl/tc_pnc_pucl.sql` disamakan dengan tabel yang berjalan.
+
+Tanpa itu, portal yang tabelnya dibuat dari berkas DDL bersama akan gagal **ORA-00904 pada klaim
+pertama yang dibuka** — bukan saat build, dan bukan pada seluruh layar.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Ketujuh kolom di luar `CREATE_TABLE_3.SQL` dimasukkan ke berkas itu | Tim basis data |
+
+---
+
+## 135. Inbox RCL/PUCL — "Kirim Ke Analyst" dibangun penuh; tersisa satu alamat (2026-10-01)
+
+**Permintaan Work Owner:** *"perbaiki sampai bisa kirim analyst."*
+
+### 135.1 Satu bukti yang menentukan BENTUK pemecahannya
+
+Sebelum menulis apa pun, satu hal diperiksa: **bagaimana klaim sampai ke Analyst?**
+
+```
+internal/inboxanalystdoctor/repo/sqlstore/*.sql
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
+```
+
+Inbox Analyst menemukan klaim lewat **baris penugasan**, dan baris itu dibuat mesin alur kerja
+Pega saat `Finish Assignment` berjalan.
+
+**Akibatnya menutup satu jalan yang tampak paling mudah.** Menulis `PUCL_APPROVE = '1'` ke tabel
+datar akan membuat klaim **hilang dari antrean PUCL tanpa sampai ke siapa pun** — klaim yang
+berhenti bergerak, tanpa satu pun galat, dan baru ketahuan saat seseorang menanyakannya.
+
+Ditambah dua hal yang ikut terbukti: `SendtoAnalystDate` **tidak punya kolom** di tabel datar,
+dan persetujuan tingkat adjustment (`AdjustmentList(<LAST>)`, langkah 11 `PUCLPost`) hidup di
+objek kerja.
+
+Jadi penulisan sebagian **tidak memenuhi permintaannya sendiri**: ia tidak mengirim ke Analyst.
+
+### 135.2 Yang dibangun — jalur yang benar-benar mengirim
+
+| Lapisan | Isi |
+|---|---|
+| Seam `ClaimActions` | `SendToAnalyst(ctx, cmd)` · galat `ErrPegaServiceUnavailable` dan `ErrActionNotAvailable` |
+| Adapter `adapter/pega` | POST ke layanan Pega dengan nama parameter **`PUCLPost` apa adanya** — `Status`, `idObj`, `idCov`, `idAdj`, `tipe` |
+| Usecase | membaca klaim dulu, menegakkan syarat, memanggil seam, mencatat jejak |
+| Transport | `POST /klaim/{referensi}/kirim-analyst` · 503 untuk belum tersambung, 409 untuk tidak berlaku |
+| Layar | tombol menjalankan tindakannya; keadaan berjalan, berhasil, dan gagal digambar |
+
+**`Status = "1"`** — nilai itulah yang membedakan "kirim" dari "cetak" (kosong) dan "tolak"
+(`0`), dan ketiganya terbaca dari rangkaian aksi tombolnya di section.
+
+**Ketiga parameter dibawa dari peladen, bukan dari layar.** Nilainya menentukan BARIS mana yang
+disetujui — langkah 11 menyetujui `AdjustmentList(<LAST>)` yang `CoverageID`-nya sama dengan
+`param.idCov`. Menerimanya dari layar berarti memercayai nilai yang dapat disusun siapa pun.
+
+**Syarat tampil tombolnya ditegakkan ULANG di peladen**, dan diturunkan dari `Buttons()` —
+bukan ditulis ulang. Tombol yang tidak tampak tetap dapat dipanggil lewat alamatnya, dan
+`PUCLPost` tidak menolak klaim yang jalurnya keliru: ia mengerjakannya.
+
+### 135.3 Tiga pembedaan yang dijaga uji
+
+| Keadaan | Jawaban | Kenapa dibedakan |
+|---|---|---|
+| Alamat layanan kosong · tidak dapat dihubungi · 5xx | **503** `layanan_pega_belum_tersedia` | yang bertindak **Tim Pega dan Infra** |
+| Layanan menjawab **4xx** | galat biasa | permintaannya SAMPAI dan ditolak — yang salah **permintaan kita** |
+| Klaim di luar jalur PUCL/PA | **409** `tindakan_tidak_tersedia` | bukan kewenangan, melainkan keadaan klaimnya |
+
+Yang pertama dan kedua paling mudah disatukan, dan menyatukannya akan menyuruh orang menunggu
+Tim Pega padahal cacatnya ada di kita.
+
+### 135.4 Apa yang kurang sekarang: SATU alamat
+
+```
+PEGA_LAYANAN_KLAIM=
+```
+
+Alamat kosong adalah keadaan yang **sah**, bukan kekeliruan tatanan: aplikasi tetap menyala,
+layar tetap digambar, dan hanya tindakannya yang dijawab 503 beserta langkah penggantinya.
+
+Begitu Tim Pega menyediakan layanannya (`permintaan-artefak-pega.md` §12) dan alamatnya diisi,
+tombolnya bekerja **tanpa satu baris kode pun berubah**.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Layanan REST §12 — dan **otentikasinya**, karena empat layanan Pega yang ada ber-`pyUseAuthentication=false` | Tim Pega + Keamanan Informasi |
+| Bentuk kontrak akhir: nama jalur dan badan permintaannya diusulkan sepihak di §12.1, dan dapat disesuaikan | Tim Pega |
+| "Unggah Dokumen" — menuntut `PZPVSTREAM`, format serialisasi internal Pega (§12.7) | Tim Pega |
+
+---
+
+## 136. Inbox RCL/PUCL — penyambungan "Kirim Ke Analyst" menjadi MURNI konfigurasi (2026-10-01)
+
+**Penegasan Work Owner:** *"pas klik Kirim Ke Analyst dia menjalankan Activity InsertMitraPA,
+PUCLPost dan Finish Assignment. Ikuti apa adanya yang ada di Pega saja."*
+
+Rangkaian itu memang yang dibaca dari `SectionPenerimaanDokumenPUCL` (§126.1), dan jalur
+pemanggilnya sudah dibangun penuh (§135). Yang tersisa hanyalah alamat layanannya.
+
+### 136.1 Satu kemungkinan yang diperiksa dan GUGUR
+
+Pega dapat menjalankan activity langsung lewat URL tanpa rule layanan baru. Bila itu
+memungkinkan di sini, permintaan ke Tim Pega tidak diperlukan sama sekali.
+
+Diperiksa pada kedua activity:
+
+| Activity | `pyActivityType` | `pyUsage` | Penanda boleh dipanggil dari URL |
+|---|---|---|---|
+| `InsertMitraPA` | `ACTIVITY` | `FLOW` | **tidak ada di export** |
+| `PUCLPost` | `ACTIVITY` | `FLOW` | **tidak ada di export** |
+
+Kebolehan memanggil activity dari URL adalah **tatanan Pega**, bukan isi rule — ia tidak terbaca
+dari export, dan menebaknya berarti membangun jalur yang mungkin ditolak di produksi. Rule
+Service REST karena itu tetap dibutuhkan.
+
+Dicatat supaya kemungkinan ini tidak diperiksa ulang dari nol.
+
+### 136.2 Yang dikerjakan: menghapus "satu baris kode" yang tersisa
+
+§135.4 menutup dengan *"bila nama paketnya berbeda, yang berubah hanya satu baris kode"*. Satu
+baris pun terlalu banyak: ia menuntut perubahan kode, bangun ulang, dan rilis — untuk **satu
+kata** yang ditentukan pihak lain.
+
+Keempatnya kini konfigurasi:
+
+| Variabel | Isi | Kosong berarti |
+|---|---|---|
+| `PEGA_LAYANAN_KLAIM` | alamat dasar sampai nomor versi | layanan belum tersambung → 503 |
+| `PEGA_LAYANAN_KLAIM_PATH` | `pyResourcePath` | `PUCLPost` — nama yang kami usulkan |
+| `PEGA_LAYANAN_PENGGUNA` · `PEGA_LAYANAN_SANDI` | Basic Auth | dikirim **tanpa** otentikasi |
+
+Satu kehalusan yang ikut diuji: tanpa kredensial, header `Authorization` **tidak dikirim sama
+sekali** — bukan dikirim kosong. Sebagian peladen menolak header kosong sebagai kredensial yang
+SALAH, dan galatnya lalu terbaca seperti sandi yang keliru.
+
+### 136.3 Keadaan sekarang
+
+| Lapisan | Status |
+|---|---|
+| Seam · adapter · usecase · rute · tombol | ✅ selesai dan teruji |
+| Activity `InsertMitraPA`, `PUCLPost`, `Finish Assignment` | ✅ ada di Pega |
+| **Rule Service REST yang mengeksposnya** | ❌ **belum ada** — satu-satunya yang kurang |
+| Spesifikasinya | ✅ `permintaan-artefak-pega.md` §12.8, siap dikerjakan |
+
+Begitu Tim Pega membuat rule itu dan alamatnya diisi, tombolnya bekerja — **tanpa perubahan
+kode, tanpa bangun ulang.**
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Rule Service REST §12.8 — dan **otentikasinya** | Tim Pega + Keamanan Informasi |
+| Pega staging yang dapat ditembak dari luar, untuk mengujinya | Tim Pega + Infra |
+
+---
+
+## 137. Inbox RCL/PUCL — "Alamat API tidak dikenal": rutenya benar, binary-nya yang lama (2026-10-01)
+
+**Laporan Work Owner:** menekan "Kirim Ke Analyst" menjawab
+*"Alamat API tidak dikenal: /api/inbox-rcl-pucl/klaim/PNC-2183/kirim-analyst"*.
+
+### 137.1 Yang diperiksa lebih dulu: apakah rutenya memang tidak terdaftar
+
+Pesan itu datang dari `apiNotFound` di `internal/platform/httpserver/server.go` — chi benar-benar
+tidak menemukan rutenya, bukan kekeliruan alamat di sisi layar.
+
+Daftar rute yang terpasang ditelusuri `chi.Walk`:
+
+```
+GET  /inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}
+POST /inbox-rcl-pucl/klaim/{referensi}/kirim-analyst      <- ADA
+```
+
+Jadi pendaftarannya **benar**. Yang salah ada di tempat lain.
+
+### 137.2 Sebabnya — dan ini kekeliruan saya
+
+Ada **DUA** binary, dan yang berjalan bukan yang saya bangun:
+
+| Berkas | Tanggal | Memuat rute `kirim-analyst` |
+|---|---|---|
+| `backend/claimpnc.exe` | 1 Okt | **ya** |
+| `backend/bin/claimpnc.exe` | **29 Sep** | **tidak** |
+
+Sepanjang sesi ini saya melaporkan *"binary dibangun ulang"* belasan kali, dan setiap kali benar
+— tetapi ke `backend/claimpnc.exe`, yaitu jalur yang `catatan-pengembangan.md` dokumentasikan.
+Yang dijalankan ternyata `backend/bin/claimpnc.exe`, dan ia tidak pernah ikut terbarui.
+
+**Laporan "sudah dibangun ulang" karena itu benar tetapi menyesatkan**: ia menyiratkan aplikasi
+yang berjalan sudah memuat perubahannya, padahal tidak. Pelajarannya bukan soal rute ini — ia
+berlaku untuk SELURUH perubahan backend sepanjang sesi: yang terlihat di layar hanyalah
+perubahan frontend, karena frontend dijalankan Vite dev server.
+
+**Keduanya kini dibangun**, dan keduanya diperiksa memuat rutenya.
+
+### 137.3 Uji yang ditambahkan — dan batas kejujurannya
+
+`TestSeluruhRuteTerdaftar` menelusuri rute terpasang dan menuntut ketujuhnya ada, ditambah
+`TestTindakanTulisBukanGET` yang menjaga metodenya.
+
+**Uji ini TIDAK dapat menangkap binary lama** — tidak ada uji yang bisa. Yang ia lakukan adalah
+**mempersempit penyebabnya menjadi satu kemungkinan**: bila uji lulus sementara layar menjawab
+"Alamat API tidak dikenal", maka yang berjalan pasti bukan kode ini. Itu yang mahal saat sedang
+mencari, dan itulah nilainya.
+
+Rute yang hilang tidak menghasilkan satu pun galat saat build. Ia menghasilkan pesan yang
+terbaca persis seperti **salah ketik di sisi frontend**, sehingga yang dicari orang adalah tempat
+yang keliru.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Mana jalur binary yang berlaku** — `backend/claimpnc.exe` (terdokumentasi) atau `backend/bin/claimpnc.exe` (yang dijalankan)? Dua jalur berarti satu di antaranya akan basi lagi | Work Owner |
+
+---
+
+## 138. Inbox RCL/PUCL — empat tombol tersambung, satu tidak bisa (2026-10-01)
+
+**Permintaan Work Owner:** perbaiki **Unggah Dokumen**, **Save**, dan **Download Dokumen**.
+
+Ketiganya diperiksa terpisah, dan jawabannya tidak sama.
+
+### 138.1 Dua di antaranya ternyata TERCAKUP layanan yang sudah diminta
+
+| Tombol | Yang dijalankan | Butuh mesin Pega? |
+|---|---|---|
+| **Download Dokumen** | `InsertMitraPA(cetak)` → `PUCLPost(Status="")` | activity saja |
+| **Save** | `SaveInputRegisterDetail2` | activity saja |
+| **Unggah Dokumen** | `SaveAllAttachments` (bawaan Pega) | **ya** — `PZPVSTREAM` |
+
+Dua yang pertama hanya memanggil activity, sama seperti "Kirim Ke Analyst". Jadi keduanya
+dilayani **layanan yang sama** — tidak perlu permintaan tambahan ke Tim Pega.
+
+### 138.2 Seam digeneralisasi: satu jalur untuk LIMA tindakan
+
+Semula `SendToAnalyst` satu metode. Kini `Perform(cmd)` dengan `ClaimActionKind`:
+
+| `aksi` | Activity | `Status` | `tipe` | Finish Assignment |
+|---|---|---|---|---|
+| `cetak` | `InsertMitraPA` → `PUCLPost` | *(kosong)* | `cetak` | tidak |
+| `tolak` | `InsertMitraPA` → `PUCLPost` | `0` | `dokumen` | tidak |
+| `kirim-analyst` | `InsertMitraPA` → `PUCLPost` | `1` | `dokumen` | **ya** |
+| `kirim-pic-teknik` | `InsertHistoryClaimPNC` → `PUCLPost` | `1` | *(kosong)* | **ya** |
+| `save` | `SaveInputRegisterDetail2` | — | — | tidak |
+
+**Kenapa satu seam, bukan satu metode per tombol.** Karena di Pega pun begitu: empat tombol
+memanggil activity yang SAMA, dan yang membedakan hanya parameter. Satu metode per tombol akan
+menyalin rangkaian yang sama empat kali, dan menyembunyikan bahwa keempatnya satu jalur.
+
+Rutenya ikut menjadi satu: `POST /klaim/{referensi}/tindakan/{aksi}`. Tindakan yang tidak
+dikenali dijawab **404 sebelum menyentuh layanan Pega** — meneruskan teks apa pun ke sana
+berarti layar dapat menyuruh Pega mengerjakan hal yang tidak pernah ada tombolnya.
+
+**`aksi` dikirim SELAIN `Status`**, dan itu bukan ganda: `Status` hanya membedakan ketiga
+tindakan `PUCLPost`, sementara `save` memakai activity yang berbeda sama sekali. Menyandikan
+semuanya ke dalam `Status` menuntut layanan menebak.
+
+Satu uji menahan pemetaan parameternya per tindakan. Nilai yang tertukar membuat Pega
+mengerjakan tindakan yang **berbeda** — mencetak surat alih-alih meneruskan klaim — dan
+`PUCLPost` tidak menolaknya.
+
+### 138.3 Pesan berhasil datang dari PELADEN, dan menyebut akibatnya
+
+Bukan "berhasil", melainkan apa yang terjadi pada klaimnya:
+
+```
+cetak          "Surat diterbitkan dan ditandai sudah dicetak.
+                Klaimnya berpindah ke tab Kelengkapan Dokumen."
+kirim-analyst  "Klaim diteruskan ke Analyst."
+save           "Isian disimpan. Klaimnya tetap di antrean ini."
+```
+
+Petugas perlu tahu klaimnya berpindah ke mana — itu yang menentukan apakah masih ada yang harus
+dikerjakan. Kalimatnya di peladen, bukan di layar, karena akibatnya milik tindakan — bukan milik
+tampilan.
+
+### 138.4 "Unggah Dokumen" TIDAK disambungkan, dan itu keputusan
+
+Ia menuntut **unggahan berkas** dan **mesin lampiran Pega**: `SaveAllAttachments` menulis
+`PC_LINK_ATTACHMENT` dan `PC_DATA_WORKATTACH` termasuk `PZPVSTREAM`, blob serialisasi internal
+Pega yang tidak terdokumentasi di export mana pun (§12.7).
+
+Menyambungkannya ke alamat tindakan yang sama akan membuat Pega menerima tindakan yang tidak
+pernah ada. Ia karena itu tetap memakai panel "kerjakan di Pega", dan **satu uji menahan** supaya
+ia tidak ikut tersambung diam-diam.
+
+### 138.5 Keadaan sekarang
+
+| Tombol | Status |
+|---|---|
+| Download Dokumen · Tolak Klaim · Kirim Ke Analyst · Kirim ke PIC Teknik · Save | ✅ tersambung — menunggu alamat layanan |
+| Lihat Dokumen | ✅ **berjalan penuh** (baca) |
+| Unggah Dokumen · Tutup Klaim · + Tambah · Hapus | panel "kerjakan di Pega" |
+
+Lima dari sembilan tombol akan hidup begitu `PEGA_LAYANAN_KLAIM` diisi — **tanpa perubahan kode**.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| Rule Service REST `ActionClaimPUCL` — kini melayani **lima** tindakan, bukan satu | Tim Pega |
+| "Unggah Dokumen" — menuntut mekanisme unggah berkas tersendiri | Tim Pega |
+| "Tutup Klaim" — `localAction PreventRejectClaim`, belum ditelusuri | Lead Engineer |
+
+---
+
+## 139. Langkah ketiga layanan dinamai flow action-nya, bukan "Finish Assignment" (2026-10-01)
+
+**Koreksi Work Owner:** *"yang Finish Assignment itu menjalankan flow action SendtoRCLPUCL"*.
+
+Sampai §138, spesifikasi layanan dan komentar kode menyebut langkah ketiga sebagai
+**"Finish Assignment, seperti tombol di layar"**. Itu tidak salah, tetapi **tidak cukup tepat
+untuk dikerjakan orang lain** — dan di dokumen permintaan, ketidaktepatan itu berbiaya.
+
+### 139.1 Kenapa "Finish Assignment" kurang tepat
+
+`Finish Assignment` adalah **nama tombol**, bukan nama rule. Satu tombol Finish Assignment
+menyerahkan **flow action mana pun yang sedang berlaku** pada penugasan itu — jadi menyebut
+namanya saja menyerahkan kepada Tim Pega untuk menebak flow action yang mana.
+
+Yang dijalankan tombol ini satu dan tertentu, terverifikasi dari export:
+
+```
+pzInsKey     RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-WORK-PNC SENDTORCLPUCL
+pxInsName    ASM-FW-GCNMFW-WORK-PNC!SENDTORCLPUCL
+pyClassName  ASM-FW-GCNMFW-Work-PNC
+pyRuleName   SendtoRCLPUCL
+dirujuk      Flow/Register_Flow.xml
+```
+
+### 139.2 Akibat yang tidak terduga: lingkup permintaan bisa MENGECIL
+
+Menamai langkahnya membuat satu hal terlihat yang sebelumnya tertutup oleh kata "Finish
+Assignment": **penyerahan flow action adalah hal yang sudah dapat dilakukan API standar Pega**,
+tanpa rule baru.
+
+```
+POST /prweb/api/v1/assignments/{assignmentID}/actions/SendtoRCLPUCL
+```
+
+Bila `/prweb/api/v1/` aktif, layanan baru cukup mengerjakan **butir 1 dan 2**
+(`InsertMitraPA` + `PUCLPost`); butir 3 kami panggil sendiri.
+
+**Yang tetap TIDAK dapat dikerjakan API standar** — dan ini yang membuat layanan baru tetap
+diperlukan — adalah butir 1 dan 2. Keduanya rangkaian aksi **tombol**, bukan pra/pasca-proses
+flow action. Diperiksa langsung: `SendtoRCLPUCL` hanya punya
+`pyPreProcessingActivity = SetDataLampiranSuratRCLPUCL_Act`, **tanpa pasca-proses**. Menyerahkan
+flow action itu lewat API standar akan melewatkan `InsertMitraPA` dan `PUCLPost` seluruhnya —
+klaim berpindah, tetapi datanya tidak tertulis.
+
+Ini kebalikan dari kekeliruan §138: di sana jalur yang terlihat mudah ternyata melewatkan
+langkah. Di sini langkah yang terlihat menuntut rule baru ternyata **sudah ada jalurnya** — asal
+dua langkah lainnya tetap lewat layanan.
+
+### 139.3 Yang disunting
+
+| Berkas | Perubahan |
+|---|---|
+| `permintaan-artefak-pega.md` §12.8c | Butir 3 menyebut rule, kelas, dan flow-nya; ditambah catatan API standar |
+| `inboxrclpucl.go` | Komentar `ActionSendToAnalyst` dan `ClaimActions` |
+| `adapter/pega/pega.go` | Tabel `parameterFor` dan komentar `resourceActionClaimPUCL` |
+| `http/routes.go` | Komentar rute tindakan |
+
+**Tidak ada perubahan perilaku.** Kode yang berjalan tidak berubah satu baris pun — yang berubah
+adalah ketepatan apa yang kami minta dan apa yang kami jelaskan.
+
+### Yang masih terbuka
+
+| Pertanyaan | Pemilik |
+|---|---|
+| **Apakah `/prweb/api/v1/` aktif**, dan adakah akun layanan untuknya? Jawabannya mengubah lingkup `ActionClaimPUCL` | Tim Pega |
+
+---
+
+## 140. API standar Pega tidak tersedia — ketiga langkah tetap masuk lingkup (2026-10-01)
+
+Menutup pertanyaan terbuka §139.
+
+**Jawaban Work Owner:** *"tidak ada"* — `/prweb/api/v1/` tidak aktif, dan tidak ada akun layanan
+untuknya.
+
+### 140.1 Akibatnya
+
+Kemungkinan memperkecil lingkup yang §139 angkat **gugur**. Layanan `ActionClaimPUCL` tetap harus
+mengerjakan **ketiga** langkah:
+
+| # | Langkah | Dapatkah kami panggil sendiri? |
+|---|---|---|
+| 1 | `InsertMitraPA` (atau `InsertHistoryClaimPNC` untuk Travel) | tidak — rangkaian aksi tombol |
+| 2 | `PUCLPost` | tidak — rangkaian aksi tombol |
+| 3 | serahkan flow action `SendtoRCLPUCL` | **tidak** — API standar tidak tersedia |
+
+Butir 1 dan 2 memang tidak pernah mungkin, apa pun jawabannya — keduanya rangkaian aksi **tombol**,
+bukan pra/pasca-proses flow action. Yang berubah hanya butir 3.
+
+### 140.2 Yang tidak berubah
+
+**Kode tidak disentuh.** Jalur yang dibangun §138 sudah menempuh satu layanan untuk ketiga
+langkah; andai API standar tersedia, yang berubah hanyalah pembagian pekerjaan di seberang —
+bukan bentuk pemanggilan dari sini. Jadi jawaban ini **menutup pertanyaan tanpa menuntut
+perubahan apa pun di modul**.
+
+Itu bukan kebetulan: seam `ClaimActions` sengaja menyatakan **tindakan**, bukan langkah. Modul
+ini tidak pernah tahu satu tindakan ditempuh satu panggilan atau tiga.
+
+### 140.3 Yang disunting
+
+`permintaan-artefak-pega.md` §12.8c — catatan "mungkin memperkecil pekerjaan" diganti dengan
+jawabannya, supaya pertanyaannya tidak diajukan ulang dan supaya jelas butir 3 **bukan**
+permintaan yang berlebihan.
+
+---
+
+## 141. Rangkaian aksi tiap tombol dibaca ulang dari section — tiga catatan kami SALAH (2026-10-01)
+
+**Permintaan Work Owner:** *"1,2,3 dijalankan pas klik kirim ke analyst, ikuti apa saja yang ada
+di Pega"*.
+
+`pyBehaviors` kedelapan tombol dibaca utuh dari `SectionPenerimaanDokumenPUCL` dan
+`SectionLampiranSuratPUCL`. Rangkaian untuk **Kirim Ke Analyst terbukti benar** seperti yang
+sudah kami catat — tetapi tiga tombol lain **tidak**.
+
+### 141.1 Rangkaian yang sebenarnya
+
+| Tombol | 1 | 2 | 3 |
+|---|---|---|---|
+| Download Dokumen | `InsertMitraPA(tipe="cetak")` | `PUCLPost(Status="", statusCase="1")` | `InsertHistoryClaimPNC` |
+| Tolak Klaim | `InsertMitraPA(tipe="dokumen")` | `PUCLPost(Status="0")` | *refresh harness* |
+| **Kirim Ke Analyst** | `InsertMitraPA(tipe="dokumen")` | `PUCLPost(Status="1")` | **Finish Assignment** |
+| Kirim ke PIC Teknik | **`PUCLPost(Status="1")`** | `InsertHistoryClaimPNC` | **Finish Assignment** |
+| Save | `SaveInputRegisterDetail2` | — | — |
+
+Ketiganya memakai `idObj`/`idCov`/`idAdj` dari `.ClaimData.PUCLStatus.*`.
+
+### 141.2 Tiga hal yang kami catat keliru
+
+| # | Catatan kami | Yang sebenarnya |
+|---|---|---|
+| 1 | "Kirim ke PIC Teknik: `InsertHistoryClaimPNC` → `PUCLPost`" | **Terbalik.** `PUCLPost` DULU, baru `InsertHistoryClaimPNC` |
+| 2 | "Download Dokumen: dua langkah" | **Tiga.** Langkah ketiganya menulis riwayat, dan ada `statusCase="1"` yang tak pernah kami catat |
+| 3 | Tabel §12.8b menyiratkan `tolak` setara `cetak` | `tolak` **menyegarkan harness**; ia tidak menyelesaikan penugasan — klaimnya tetap di tangan petugas yang sama |
+
+Nomor 1 yang paling berbahaya bila lolos: `PUCLPost` mengubah status klaim, dan
+`InsertHistoryClaimPNC` menulis riwayat. Menjalankannya terbalik menghasilkan riwayat yang
+mendahului perubahan yang dicatatnya — urutan jejak audit yang salah, tanpa satu pun galat.
+
+### 141.3 Dua parameter yang tidak pernah kami kirim
+
+`statusCase` dan `statusNote`. Keduanya ditambahkan ke badan permintaan.
+
+`statusNote` berisi teks yang **berbeda per tombol**, dan salah satunya —
+`"Wait for Complete PUCL Document "` — **berakhir dengan spasi**. Spasi itu ada di Pega dan
+dipertahankan (`P-5`): ia terbawa ke kolom riwayat apa adanya, dan membuangnya mengubah data yang
+tersimpan. Uji `TestTiapTindakanMengirimParameterPUCLPostYangBENAR` menjaganya, termasuk spasinya.
+
+**Keduanya dikirim dari sini, bukan ditanam di layanan.** Alasannya: bila layanan menanamnya,
+perubahan satu kata menuntut rilis Pega; dan dua tempat yang memuat nilai sama dapat berbeda tanpa
+ada yang menyadarinya.
+
+### 141.4 Satu hal yang TIDAK kami kirim, dan alasannya
+
+`InsertHistoryClaimPNC` juga menerima `caseID`, yang di layar diisi `pyWorkPage.pzInsKey`. Itu
+**kunci internal Pega**, dan `D-22`/`D-71` justru melarang kunci semacam itu bocor ke data bisnis
+kami. Layanan dapat menurunkannya sendiri dari `caseNumber`. Dicatat di spesifikasi sebagai
+anggapan yang mohon dikoreksi bila keliru.
+
+### 141.5 Temuan sampingan: nama local action ketiga tombol sisa
+
+Terbaca sekalian, dan menutup satu pertanyaan terbuka §138:
+
+| Tombol | Local action |
+|---|---|
+| Unggah Dokumen | `SetUploadDocPUCL` |
+| Lihat Dokumen | `ViewAttachmentPUCL` — sudah dibangun sebagai baca |
+| Tutup Klaim | `PreventRejectClaim` |
+
+"Unggah Dokumen" karena itu bukan lagi "menuntut mekanisme yang belum diketahui" — namanya sudah
+ada. Yang belum ada tinggal isinya.
+
+### 141.6 Yang disunting
+
+`adapter/pega/pega.go` (`plans` menggantikan `parameterFor`, dua isian baru) ·
+`adapter/pega/pega_test.go` (penjaga keempat parameter) · `permintaan-artefak-pega.md` §12.8b–c
+(tabel urutan per tombol).
+
+**Perilaku tombol Kirim Ke Analyst tidak berubah** — ia memang sudah benar. Yang diperbaiki tiga
+tombol lain dan kelengkapan parameternya.
+
+---
+
+## 142. "Kirim Ke Analyst" TIDAK dapat dibuat berjalan dari sini — dibuktikan, bukan diduga (2026-10-01)
+
+**Keluhan Work Owner:** *"masih tidak bisa, tolong perbaiki dengan benar"*, disertai tangkapan
+layar panel 503.
+
+Sampai sekarang kesimpulan "harus lewat Pega" bersandar pada **satu** bukti: inbox Analyst membaca
+`PC_ASM_FW_GCNMFW_WORK INNER JOIN PC_ASSIGN_WORKLIST`. Itu cukup untuk menduga, **tidak cukup untuk
+menyatakan**. Karena itu `Activity/PUCLPost-Act.xml` dibaca langsung.
+
+### 142.1 Apa yang sebenarnya dikerjakan `PUCLPost`
+
+**69 langkah**, dan yang menentukan ada di ujungnya:
+
+```
+66  Obj-Refresh-And-Lock          mengunci objek kerja Pega
+68  Obj-Save                      MENULIS PC_ASM_FW_GCNMFW_WORK
+69  Commit
+```
+
+`pyWorkPage` disebut **43 kali**. Di antara 69 langkah itu juga ada:
+
+| Langkah | Isi |
+|---|---|
+| 48 | `AttachAsPDFC` — membuat PDF dan melampirkannya ke klaim |
+| 52–55 | `GetEmailCabang` → `ASMCollectAttachments` → `ASMSendsEmailAttachments` — **mengirim email berlampiran** |
+| 35 | `SetTicket` — lompatan lateral alur kerja Pega |
+| 56–58 | tiga penulisan riwayat |
+| 62 | `HitServiceOSAkseptasiClaimNonMBU` — memanggil sistem lain |
+| 63–64 | `ASMForceCaseClose` dua kali |
+
+### 142.2 Kenapa ini menutup perkaranya
+
+Menjalankan tombol ini dari sini berarti **menulis `PC_ASM_FW_GCNMFW_WORK`** — tabel yang `P-1`
+nyatakan milik Pega selama masa paralel, dan yang barisnya memuat `PZPVSTREAM`, blob serialisasi
+Pega yang tidak dapat kami bentuk dari luar. Ditambah mengirim email, membuat PDF, dan memanggil
+`SetTicket` serta `ASMForceCaseClose` — keduanya operasi mesin alur kerja, bukan operasi data.
+
+Bukan "sulit". **Tidak mungkin dari luar Pega**, dan sekarang itu pernyataan berbukti.
+
+Keempat Service REST yang sudah ada diperiksa sekalian — `KomiteAcceptAdjustment`,
+`KomiteAcceptAdjustmentPA`, `RecivedDataandAttachmentLelangASMSimasbid`,
+`RequestCreateClaimCredit2` — **tidak satu pun** menyentuh jalur PUCL.
+
+### 142.3 Yang BISA diperbaiki, dan diperbaiki
+
+Tombolnya tidak bisa berjalan, tetapi panelnya **buruk**, dan itu kesalahan kami:
+
+> "Sementara itu kerjakan di Pega; salin nomor case-nya **dari layar ini**."
+
+Nomor case-nya hanya ada di **kaki layar**. Kalimat yang benar berujung pada gulir mencari.
+
+| Sebelum | Sesudah |
+|---|---|
+| Pesan menyuruh menyalin, nomornya jauh di bawah | Nomor case + tombol **Salin nomor case** tepat di bawah pesan |
+| "layanannya belum tersambung" — tidak menyebut apa yang ditunggu | "belum dibangun — yang ditunggu rule Service REST `ActionClaimPUCL` dari Tim Pega" |
+
+Komponen `CopyCaseNumber` dipisahkan dan kini dipakai **dua** tempat: panel tombol yang belum
+dibangun (`WriteAction`) dan panel galat tombol yang sudah dibangun (`ClaimAction`).
+
+**Hanya untuk kode `layanan_pega_belum_tersedia`.** Galat kewenangan atau "tindakan tidak berlaku"
+TIDAK selesai dengan mengerjakannya di Pega, dan menawarkan nomor case di sana mengarahkan petugas
+menempuh jalan yang tidak menyelesaikan apa pun. Diuji lewat **kode**, bukan teks pesan — kode
+adalah kontrak, pesan boleh diperbaiki kapan saja.
+
+Dua uji baru menjaga keduanya: nomor case **muncul** pada 503, dan **tidak muncul** pada 409.
+
+### 142.4 Yang perlu diputuskan di luar tim ini
+
+Tombol ini akan tetap 503 sampai salah satu terjadi — dan keduanya **bukan keputusan teknis**:
+
+| Jalan | Pemilik | Catatan |
+|---|---|---|
+| Tim Pega membangun `ActionClaimPUCL` | Tim Pega | Spesifikasi lengkap sudah siap di `permintaan-artefak-pega.md` §12.8 |
+| Petugas mengerjakan PUCL di Pega sampai Pega dimatikan | Work Owner | Keadaan yang berlaku hari ini |
+
+Yang **tidak** ada: jalan ketiga yang dapat kami tempuh sendiri.
+
+---
+
+## 143. Jalur tulis langsung ditempuh sampai mentok — ia MENIMPA penugasan hidup (2026-10-01)
+
+Work Owner memilih **"kami tulis sendiri dua tabel Pega"**, menerima pelanggaran `P-1` secara
+sadar. Jalur itu ditempuh. Hasilnya: **tindakannya bukan menyisipkan baris, melainkan menimpa
+penugasan yang sedang dipegang petugas lain** — dan itu di luar yang disetujui.
+
+### 143.1 Yang ditemukan, berurutan
+
+Seluruhnya dari pembacaan langsung, bukan dugaan:
+
+| # | Temuan | Sumber |
+|---|---|---|
+| 1 | Inbox Analyst menyaring `ISCOMPLIANCETRANSFER_1 = '2'` **dan** butuh baris `PC_ASSIGN_WORKLIST` | `inboxanalystdoctor/repo/sqlstore/*.sql` |
+| 2 | `PZPVSTREAM` **boleh kosong**; hanya `PZINSKEY` yang wajib | `ALL_TAB_COLUMNS`, 56 kolom |
+| 3 | Connector flow action `SendtoRCLPUCL` menuju **`End1`** — alurnya BERAKHIR, bukan berpindah ke Analyst | `Flow/Register_Flow.xml` |
+| 4 | Yang memindahkan klaim adalah **`SetTicket`**, dan ia berjalan **hanya saat `Status==1`** | `PUCLPost` langkah 17, prekondisi `param.Status==1` |
+| 5 | `Assignment6` = workbasket `RCLPUCL` — tahap tempat klaim PUCL menunggu | Flow + basis data, cocok |
+| 6 | Tahap Analyst ber-`pyRouteTo = Custom` → router activity, dan **router itu hilang dari export** (`R-04`) | Flow |
+| 7 | **`PZINSKEY` adalah PRIMARY KEY**, berbentuk `ASSIGN-WORKLIST <kunci klaim>!REGISTER_FLOW` | `ALL_CONSTRAINTS` |
+| 8 | Klaim PUCL itu **sudah punya** baris worklist Register_Flow — `Assignment5`, status `New`, milik seorang petugas bernama | basis data |
+
+### 143.2 Kenapa ini menghentikan pekerjaan, bukan memperlambatnya
+
+Temuan 7 dan 8 bersama berarti: slot `…!REGISTER_FLOW` pada tabel worklist **sudah terisi**.
+Menyisipkan penugasan Analyst akan melanggar primary key. Satu-satunya cara melanjutkan adalah
+**menghapus atau menimpa baris yang ada** — baris yang hari ini menjadi pekerjaan seorang petugas
+pada tahap yang berbeda.
+
+Yang disetujui Work Owner adalah `INSERT` + `UPDATE`, dengan risiko "Pega mungkin gagal membuka
+penugasan". Yang sebenarnya dituntut adalah **`DELETE` atas pekerjaan orang lain**, dan akibatnya
+berbeda jenis: bukan satu klaim yang mungkin bermasalah, melainkan satu tugas yang **hilang dari
+layar petugas yang memegangnya**, tanpa pesan apa pun.
+
+Ditambah temuan 6: bahkan bila penimpaan itu disetujui, **kepada siapa klaim diberikan tidak dapat
+diturunkan** — routernya hilang dari export, dan tidak ada kolom basis data yang menyimpannya.
+`TC_PNC_PUCL.ASSIGNED_OPERATOR_ID` berisi pemegang SEKARANG, bukan tujuan.
+
+### 143.3 Yang TIDAK dikerjakan, dan alasannya
+
+Tidak satu baris pun ditulis ke basis data. Penimpaan penugasan hidup **sukar dipulihkan** —
+baris yang dihapus membawa `PZPVSTREAM`, dan isinya tidak dapat kami bentuk ulang. Persetujuan
+yang ada tidak mencakup akibat ini karena akibat ini belum diketahui saat persetujuan diminta.
+
+### 143.4 Dua hal yang dibutuhkan untuk melanjutkan
+
+| Yang dibutuhkan | Dari siapa |
+|---|---|
+| Izin menimpa baris worklist Register_Flow yang sudah ada — beserta sikap atas tugas yang hilang | Work Owner |
+| **Operator tujuan**: siapa yang menerima klaim PUCL yang dikirim ke Analyst | Work Owner / Tim Pega (`R-04`) |
+
+Keduanya pertanyaan bisnis, bukan teknis. Begitu terjawab, sisa pekerjaannya satu adapter dengan
+satu transaksi — bentuk barisnya sudah terbaca lengkap dari data nyata.
+
+---
+
+## 144. "Kirim Ke Analyst" BERJALAN — dan ia tidak menyentuh satu pun tabel Pega (2026-10-01)
+
+**Jawaban Work Owner:** *"1. ikuti alurnya saja · 2. balik ke PICTEKNIK"*.
+
+Jawaban kedua yang membongkar seluruh kebuntuan. Sampai §143 saya mencari **ke mana** klaim harus
+dikirim, dan menyimpulkan penerimanya tidak dapat diturunkan karena routernya hilang (`R-04`).
+Pertanyaannya salah: klaimnya tidak pergi ke mana-mana — ia **kembali** kepada orang yang sudah
+memegangnya.
+
+### 144.1 Bukti yang menutup perkaranya
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Pemegang baris `PC_ASSIGN_WORKLIST` Register_Flow klaim PUCL | seorang petugas bernama |
+| `USERTEKNIS_1` pada objek kerja klaim yang sama | **orang yang sama persis** |
+| `ASSIGNED_OPERATOR_ID` pada `TC_PNC_PUCL` | orang yang sama |
+
+Klaim RCL/PUCL **sudah** memegang baris penugasannya, dan pemegangnya adalah PIC Teknik klaim itu.
+Tidak ada yang perlu disisipkan, tidak ada yang perlu ditimpa, tidak ada yang perlu dihapus.
+
+### 144.2 Premis saya sendiri yang GUGUR
+
+Tertulis di `ClaimActions` sejak modul ini dibangun:
+
+> *"Menulis `PUCL_APPROVE = '1'` dari sini akan membuat klaim HILANG dari antrean PUCL tanpa
+> sampai ke siapa pun — klaim yang berhenti bergerak tanpa satu pun galat."*
+
+**Tidak benar.** Klaimnya tidak hilang; ia kembali ke PIC Teknik. Kalimat itulah yang selama ini
+memaksa seluruh tindakan menunggu layanan Pega yang belum dibangun — satu dugaan yang tidak pernah
+diuji, menahan tombol yang sebenarnya sudah bisa berjalan.
+
+Yang membuatnya runtuh bukan pembacaan ulang yang lebih teliti, melainkan **satu kalimat Work
+Owner** dan **satu kueri**.
+
+### 144.3 Yang dikerjakan
+
+Satu pernyataan, pada tabel milik aplikasi ini:
+
+```sql
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET PUCL_APPROVE = :2
+ WHERE TRIM(CLAIMID) = TRIM(:1)
+   AND (PUCL_APPROVE <> :2 OR PUCL_APPROVE IS NULL)
+```
+
+Arti nilainya sudah ditetapkan Work Owner 2026-09-30: `'1'` = *"PUCL kirim ke Analyst"*.
+Penyaring terakhir membuatnya **idempoten** — klik ganda tidak menulis dua kali.
+
+**`P-1` TIDAK dilanggar.** `TC_PNC_PUCL` milik aplikasi ini; tidak ada tabel `DATAPEGA` yang
+disentuh. Izin menulis tabel Pega yang Work Owner berikan **tidak jadi dipakai** — ternyata tidak
+dibutuhkan.
+
+Letaknya di seam `Repo`, bukan adapter tersendiri, supaya pemilihan portal (`ADR-0030`) tetap
+ditempuh jalur yang sama dengan pembacaan.
+
+### 144.4 Selisih terhadap Pega — dinyatakan, bukan disembunyikan
+
+Ditambahkan ke `PlannedDifferences`, sehingga tergambar di layar:
+
+| Yang Pega kerjakan | Di sini |
+|---|---|
+| membuat PDF, mengirim email berlampiran ke cabang | **tidak** |
+| menulis tiga baris riwayat | **tidak** |
+| menghapus baris `PC_ASSIGN_WORKBASKET` | **tidak** — penghapusan tabel Pega tidak dapat dipulihkan |
+| menandai klaim selesai di PUCL | **ya** |
+
+Akibat yang disadari: klaimnya keluar dari antrean layar ini, tetapi **masih terlihat di antrean
+RCL/PUCL milik Pega** selama masa paralel.
+
+### 144.5 Yang TETAP menempuh Pega
+
+`cetak` (Download Dokumen — membuat PDF dan mengirim email), `tolak`, dan `save`. Ketiganya
+menyentuh hal yang benar-benar hanya Pega punya, dan ketiganya tetap menjawab 503 sampai
+`ActionClaimPUCL` dibangun.
+
+### 144.6 Penjaganya
+
+Empat uji baru di `usecase`, dan yang pertama membuktikan **akibatnya**, bukan pemanggilannya:
+klaim yang tadinya tergambar di tab Kelengkapan Dokumen **hilang dari daftar** sesudah tombolnya
+ditekan. Satu uji lain menjalankan tombolnya **tanpa pengisi seam Pega sama sekali** — keadaan
+nyata hari ini.
+
+---
+
+## 145. Urutan penanda bind terbalik — tombolnya melapor berhasil tanpa menulis apa pun (2026-10-01)
+
+**Laporan Work Owner:** klaim yang sudah dikirim ke Analyst **seharusnya hilang** dari inbox,
+tetapi masih ada. Layarnya menjawab *"Klaim diteruskan ke Analyst."*
+
+Pemeriksaan basis data: `PUCL_APPROVE` masih `'0'`. **Pernyataannya tidak mengenai satu baris pun.**
+
+### 145.1 Sebabnya
+
+Kueri yang saya tulis di §144:
+
+```sql
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET PUCL_APPROVE = :2            -- penanda PERTAMA yang muncul
+ WHERE TRIM(CLAIMID) = TRIM(:1)
+   AND (PUCL_APPROVE <> :2 OR PUCL_APPROVE IS NULL)
+```
+
+Penggerak Oracle yang dipakai mengikat argumen menurut **urutan kemunculan** penanda, bukan
+menurut angkanya. Argumen `(nomor klaim, nilai)` karena itu terpasang terbalik: nomor klaim masuk
+ke kolom penanda, dan penyaringnya membandingkan `CLAIMID` dengan `'1'`. Nol baris.
+
+**Perangkap ini sudah tercatat di berkas yang sama**, pada kueri `daily_report`:
+
+> *"Menulis penanda bind yang sama dua kali akan bergantung pada cara driver menafsirkan penanda
+> berulang."*
+
+Saya menulis catatan itu, lalu melanggarnya.
+
+### 145.2 Kenapa tidak ada yang menangkapnya
+
+Dua keputusan saya sendiri, dan keduanya terdengar masuk akal saat ditulis:
+
+| Keputusan | Akibatnya |
+|---|---|
+| Jumlah baris terpengaruh **sengaja tidak diperiksa**, karena "nol berarti sudah ditandai, dan itu keberhasilan" | Pernyataan yang tidak mengenai apa pun **dilaporkan berhasil** |
+| Seluruh uji tindakan berjalan di atas penyimpanan **memori** | Penyimpanan memori tidak punya penanda bind sama sekali — tidak ada yang dapat ditangkapnya |
+
+Yang pertama lebih berat. Alasan "idempoten, jadi tidak perlu diperiksa" **menghapus satu-satunya
+isyarat** bahwa ada yang salah. Yang menemukannya akhirnya adalah Work Owner, dari layar.
+
+### 145.3 Perbaikannya — tiga, bukan satu
+
+**1. Urutan penandanya dibetulkan**, dan penyaring "hanya bila nilainya berbeda" **dihapus**:
+
+```sql
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET PUCL_APPROVE = :1
+ WHERE TRIM(CLAIMID) = TRIM(:2)
+```
+
+Menulis nilai yang sama dua kali tetap tidak berakibat pada data, dan sekarang **nol baris berarti
+satu hal saja**: klaimnya tidak ada.
+
+**2. Jumlah baris DIPERIKSA.** Nol menghasilkan `ErrClaimNotFound`, bukan jawaban berhasil.
+
+**3. Penjaga baru** `TestPenandaBindSetiapKueriMenaikDanTidakBerulang` menuntut penanda bind
+setiap kueri **menaik satu per satu mulai dari `:1`** — aturan yang sekaligus melarang
+pengulangan. Ia dijalankan terhadap **seluruh** kueri modul ini, bukan hanya yang baru.
+
+Penjaganya **dibuktikan menangkap**: kueri sengaja dikembalikan ke bentuk cacatnya, uji gagal
+dengan menyebut kueri dan posisi penandanya, lalu dipulihkan.
+
+Penjaganya bekerja pada **teks kueri**, bukan pada perilaku, karena perilakunya hanya muncul di
+hadapan penggerak Oracle sebenarnya — dan uji yang menuntut basis data nyata tidak berjalan di
+setiap merge.
+
+### 145.4 Pelajaran yang layak dibawa ke modul lain
+
+Setiap penulisan yang mengabaikan jumlah baris terpengaruh **dapat gagal tanpa suara**. Di modul
+ini sekarang ada satu penulisan, dan ia memeriksanya. Modul lain yang menulis sebaiknya diperiksa
+dengan pertanyaan yang sama.
+
+---
+
+## 146. Tampilan layar kerja disamakan dengan layar Pega (2026-10-01)
+
+**Permintaan Work Owner:** dua tangkapan layar Pega — tab Lampiran Surat dan Penerimaan Dokumen —
+dengan satu kalimat: *"ikuti seperti gambar yang saya kirim"*. Ini penerapan `D-13`: alur dan tata
+letak mengikuti layar lama supaya petugas tidak perlu belajar ulang.
+
+### 146.1 Yang berbeda, dan kenapa itu berarti
+
+Perbedaan terbesarnya bukan warna melainkan **bentuk isian**:
+
+| Hal | Sebelum | Sesudah |
+|---|---|---|
+| Isian | teks polos di bawah label abu-abu kecil | **kotak masukan** berbingkai, label gelap setebal teks biasa |
+| Kalimat panjang (`pxTextArea`) | satu baris teks | **kotak tinggi** |
+| "Perihal" | teks | kotak bertanda **daftar pilihan** |
+| Tanggal | teks | kotak bertanda **kalender** |
+| Tanda wajib | `*` kuning | `*` **merah** |
+| Isi tab | mengambang | di dalam **panel berbingkai** |
+| Grid Tanggal terima Dokumen | tabel polos | **kotak tersendiri** di dalam panel |
+| "Tambah" / "Hapus" | tombol berbingkai | **tautan biru** `✚ Tambah` · `Hapus` |
+| Daftar kosong | "Belum ada tanggal terima dokumen yang tercatat…" | **"Data Tidak Ada"** — kalimat layar lama |
+| Tombol | dua baris rata kiri | **kiri**: Unggah/Lihat · **kanan**: Save + Kirim, satu baris |
+| "Kirim Ke Analyst" | abu-abu | **oranye**, seperti di Pega |
+
+Deretan teks polos **tidak terbaca sebagai layar yang sama** ketika dibandingkan berdampingan,
+dan itu persis yang `D-13` hendak cegah.
+
+### 146.2 Dua hal yang sengaja TIDAK ditiru
+
+| Hal | Alasan |
+|---|---|
+| Kotaknya **bukan** `<input readOnly>` | Ia akan dapat difokus dan diumumkan pembaca layar sebagai isian. Layar ini tidak menyunting apa pun — yang ditiru BENTUKNYA, bukan kemampuannya |
+| Oranye **tidak** menjadi nada baru `Button` | Nada adalah kosakata sistem desain yang dipakai puluhan layar. Oranye di sini berlaku karena layar lama memakainya, bukan karena ia pantas umum |
+
+Dua isian teratas Lampiran Surat — Status dan Catatan dari Analyst — **tetap tanpa kotak**, karena
+di Pega pun keduanya teks polos di bawah judulnya.
+
+### 146.3 Kejadian Prettier yang perlu dicatat
+
+Menjalankan `npx prettier --write` memformat ulang **seluruh berkas** menjadi tanda kutip ganda
+dan titik koma — **project ini tidak punya berkas tatanan Prettier**, sehingga ia memakai bawaan
+yang bertentangan dengan gaya kode yang ada.
+
+Dipulihkan dengan `--single-quote --no-semi --print-width 90`, yang menghasilkan selisih terkecil
+terhadap gaya aslinya.
+
+> **Usulan:** tambahkan `.prettierrc` berisi ketiga pilihan itu. Tanpanya, siapa pun yang
+> menjalankan Prettier akan mengubah gaya seluruh berkas yang disentuhnya — dan selisih sebesar
+> itu menyembunyikan perubahan yang sebenarnya.
+
+### 146.4 Penjaganya
+
+Satu uji disesuaikan: kalimat daftar kosong kini **"Data Tidak Ada"**, dan ujinya menyebut alasan
+perubahannya supaya tidak "diperbaiki" kembali menjadi kalimat kami sendiri.
+
+Seluruh 58 uji frontend lolos, `tsc --noEmit` bersih.
+
+---
+
+## 147. Analisis ulang ketiga langkah "Kirim Ke Analyst" — §144 menulis sepertiganya (2026-10-01)
+
+**Permintaan Work Owner:** *"untuk kirim analyst itu dia menjalankan activity InsertMitraPA,
+PUCLPost, dan Finish Assignment menjalankan flow action SendtoRCLPUCL — tolong analisa lebih baik
+lagi."*
+
+Benar. §144 menyimpulkan "hanya `PUCL_APPROVE` yang penting" dengan cara mencari yang **salah
+arah**: dari kueri inbox, yang memang hanya menyaring kolom itu. Kolom yang tidak dipakai
+menyaring apa pun karena itu tidak terlihat.
+
+### 147.1 Kekeliruan metode yang menyebabkannya
+
+Pembacaan pertama memakai tag `pyPropertyName`/`pyPropertyValue` dan tidak menemukan satu pun
+penetapan, lalu disimpulkan "parameter Property-Set tidak ada di export".
+
+**Salah.** Parameternya ADA, di tag bernama **`PropertiesName`/`PropertiesValue`** — huruf besar,
+tanpa awalan `py`. Satu nama tag yang keliru menyembunyikan seluruh isi activity 69 langkah.
+
+Yang membuka jalan adalah `pyStepsDescription`, yang ditulis pengembang aslinya dalam bahasa
+Indonesia — antara lain **"jika KIRIM KE ANALYSt PUCLAPPROVE ke set 1"**.
+
+### 147.2 Yang sebenarnya dikerjakan, per langkah
+
+Untuk `Status=1`, `RCL_PUCL=2` (PUCL), lini PA — dengan prekondisi tiap langkah dinilai:
+
+| # | Langkah | Isi |
+|---|---|---|
+| 4 | Property-Set | `TanggalCetakDokumenPUCL := @CurrentDateTime()` |
+| 13/14 | Property-Set | `AdjustmentList(<LAST>).PUCLStatus.PUCLApprove := "Setuju"` + `KomentarPUCL` |
+| **15** | Property-Set | **`PUCLApprove := 1`** dan **`StatusClaim := "1151"`** |
+| 34 | Property-Set | `isComplianceTransfer := ""` |
+| 35 | call `SetTicket` | lompatan lateral — **inilah yang memindahkan penugasan** |
+| 36 | call `SetSignaturePA` | tanda tangan otomatis PA |
+| 48 | call `AttachAsPDFC` | **membuat dan melampirkan PDF surat** (`1==1`) |
+| 51 | Property-Set | `TanggalCetakDokumenPUCL := kini` · `SendtoAnalystDate := kini` |
+| 56 | call `InsertHistoryClaimPNC` | riwayat "PUCL send to ANALYST" |
+| 68–69 | `Obj-Save` + `Commit` | menulis objek kerja Pega |
+
+**Email TIDAK terkirim untuk PA.** Keempat langkah emailnya (52–55) berprekondisi `IsTravel`.
+§144 menyebut "tidak mengirim email" sebagai selisih — untuk klaim PA itu **bukan selisih**.
+
+`InsertMitraPA` (7 langkah): `tipe="dokumen"` menyetel `IsDokLengkap := "1"`, dan menulis catatan
+mitra **bila penandanya sudah bernilai 1 sebelumnya** — pemeriksaannya (langkah 1–2) berjalan
+SEBELUM penetapannya (langkah 3–4).
+
+### 147.3 Temuan yang paling berarti
+
+**`StatusClaim := "1151"`**, dan master `POOLDATA.V_STS_CLAIM` menyatakan **`1151` = "Analyst"**.
+
+Jadi tombolnya tidak sekadar mengosongkan antrean — ia **menyatakan klaim kini berada di tangan
+Analyst**. Kolom itu ada di `TC_PNC_PUCL` sebagai `STATUS_CLAIM`, dan §144 tidak menulisnya.
+
+Dua hal lain yang menguatkan jawaban Work Owner *"balik ke PIC Teknik"*:
+
+- **`isComplianceTransfer := ""`** (langkah 34) — penanda transfer ke Analyst Doctor
+  DIKOSONGKAN, bukan diisi. Klaimnya karena itu tidak menuju inbox Analyst Doctor melainkan
+  kembali ke alur normal.
+- Kolom `ISCOMPLIANCETRANSFER_1` yang dipakai kueri `inboxanalystdoctor` **tidak ada** di basis
+  data ini. Modul itu tidak akan berjalan di lingkungan ini — di luar lingkup modul ini, tetapi
+  perlu diketahui pemiliknya.
+
+### 147.4 Yang diperbaiki
+
+Kueri `return_to_analyst` kini menulis **tiga** kolom, bukan satu:
+
+```sql
+SET PUCL_APPROVE           = :1,
+    STATUS_CLAIM           = :2,      -- 1151 = Analyst
+    TGL_CETAK_DOKUMEN_PUCL = CURRENT_TIMESTAMP
+```
+
+`CURRENT_TIMESTAMP`, bukan `SYSDATE` — portabel ke PostgreSQL. Penanda bind tetap menaik satu per
+satu, dijaga `TestPenandaBindSetiapKueriMenaikDanTidakBerulang`.
+
+Konstanta `StatusClaimAnalyst` membawa buktinya di komentar, termasuk catatan bahwa langkah 15
+berprekondisi `param.Status==1` sehingga **"Kirim ke PIC Teknik" pun menghasilkan status
+"Analyst"** — terbaca janggal, tetapi itulah perilaku sistem lama (`P-5`).
+
+### 147.5 Yang tetap TIDAK dikerjakan — kini disebut satu per satu di layar
+
+`PlannedDifferences` tidak lagi berbunyi "tidak mengirim email, tidak membuat PDF". Ia kini
+menyebut kelimanya beserta alasan: `AttachAsPDFC`, `InsertHistoryClaimPNC`, penandaan
+`AdjustmentList` "Setuju", `IsDokLengkap` + catatan mitra, dan `SetTicket`.
+
+Perbedaannya bukan kerapian: daftar yang samar membuat orang mengira yang hilang hanya email,
+padahal yang hilang termasuk **lampiran PDF surat** dan **satu baris riwayat**.
+
+---
+
+## 148. Tombol "Save" bekerja — dan akarnya bukan tombolnya, melainkan isian yang tak dapat diketik (2026-10-01)
+
+**Laporan Work Owner:** tombol "Save" menjawab *"layanannya belum dibangun — yang ditunggu rule
+Service REST `ActionClaimPUCL`"*.
+
+### 148.1 Apa yang `SaveInputRegisterDetail2` sebenarnya kerjakan
+
+Dibaca utuh — 31 langkah — dan hasilnya **tidak menyebut satu pun isian Penerimaan Dokumen**.
+Yang disebutnya:
+
+| Langkah | Isi |
+|---|---|
+| 5–18 | validasi dan penyetelan **Pengkinian Data**: `NoKTP`, `NewEmail`, `NewTelpTertanggung` |
+| 20 | `UpdateDataForPengkinianData_Act` |
+| 21 | `SaveDominanFactor` |
+| 23 | `RemarkRecommendation` |
+| **24–25** | **`Obj-Save` + `Commit`** |
+| 26–27 | sisip JSON klaim bila `RemarkRecommendation` terisi |
+
+Jadi yang membuat isian PUCL tersimpan **bukan activity-nya**, melainkan **`Obj-Save` di langkah
+24**: Pega sudah memindahkan isian form ke clipboard sebelum activity berjalan, dan `Obj-Save`
+menyimpan seluruh objek kerja.
+
+**Artinya "Save" menyimpan apa yang DIKETIK petugas** — dan di situlah akar masalahnya.
+
+### 148.2 Akar yang sebenarnya
+
+Layar kita menggambar **ketiga** isian Penerimaan Dokumen sebagai kotak **hanya-baca**. Jadi
+"Save" memang tidak punya apa pun untuk disimpan; meneruskannya ke layanan Pega hanya membuat
+ketiadaan itu terbaca sebagai layanan yang belum ada.
+
+`Section/SectionPenerimaanDokumenPUCL-Section.xml` menyatakan sebaliknya — ketiganya
+`pyReadOnly false`:
+
+```
+.ClaimData.EmailLOD                             pxTextInput  wajib=false
+.ClaimData.PUCLStatus.TanggalTerimaDokumenPUCL  pxDateTime   wajib=TRUE
+.ClaimData.PUCLStatus.KomentarPUCL              pxTextArea   wajib=TRUE
+```
+
+Akibat yang lebih berat daripada tombolnya: **"Catatan untuk Analyst" WAJIB diisi sebelum klaim
+dikirim**, dan petugas tidak pernah dapat mengisinya. Klaim yang dikirim selama ini membawa
+catatan apa adanya dari Pega, bukan catatan petugas yang mengerjakannya.
+
+### 148.3 Yang dikerjakan
+
+**DUA isian menjadi dapat diketik**, keduanya yang wajib, keduanya hidup di `TC_PNC_PUCL`:
+
+```sql
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET KOMENTAR_PUCL           = :1,
+       TGL_TERIMA_DOKUMEN_PUCL = :2
+ WHERE TRIM(CLAIMID) = TRIM(:3)
+```
+
+Ia **tidak menyentuh `PUCL_APPROVE`**: "Save" di layar lama tidak memanggil `PUCLPost` sama
+sekali. Menyimpan bukan memindahkan — klaimnya tetap menjadi pekerjaan PUCL sesudahnya, dan ada
+ujinya.
+
+**Isian ketiga — "Email Tertanggung" — sengaja TETAP hanya-baca.** Ia hidup di
+`POOLDATA.T_CLAIM_PNC.EMAIL_LOD`, tabel lain yang modul ini tidak tulis. Isian yang dapat diketik
+lalu diam-diam tidak tersimpan jauh lebih buruk daripada isian yang jelas tidak dapat diketik.
+
+Validasinya di peladen, dan **kedua pelanggaran dikembalikan sekaligus** — meniru Pega yang
+menampilkan semua pesan bersamaan (`P-5`).
+
+### 148.4 Dua jebakan antarmuka yang ditangani
+
+| Jebakan | Penanganan |
+|---|---|
+| `datetime-local` **mengabaikan diam-diam** nilai yang bukan `YYYY-MM-DDTHH:mm` — isiannya tergambar kosong seolah tanggalnya belum pernah diisi | `untukIsianWaktu` memendekkan nilai dari peladen; yang tidak dikenali dikembalikan KOSONG, karena isian kosong jujur sementara nilai yang ditolak peramban berbohong |
+| `useEffect` yang menyamakan keadaan dengan prop akan **menimpa ketikan petugas** setiap kali data disegarkan di latar | Penyemaiannya memakai **kunci remount** (`key={detail.referensi}`), bukan useEffect |
+
+### 148.5 Penjaganya
+
+Empat uji baru. Yang terpenting membuktikan **nilai yang diketik sampai ke badan permintaan** —
+bukan sekadar tombolnya terkirim, karena pemeriksaan itu akan lulus meski yang dikirim nilai lama.
+Satu uji lain membuktikan menyimpan **tidak** mengeluarkan klaim dari antrean.
+
+Satu uji lama disesuaikan: tanggalnya kini nilai isian, bukan teks.
+
+Seluruh uji Go dan 59 uji frontend lolos.
+
+---
+
+## 149. Waktu bentuk Pega tergambar mentah, dan panel memecah baris alat (2026-10-01)
+
+Dua cacat dari satu tangkapan layar Work Owner.
+
+### 149.1 `20240911T143500.000 GMT` sampai ke layar apa adanya
+
+`RECEIVEDDATE_1` **bukan kolom TIMESTAMP** melainkan `VARCHAR2` berisi bentuk internal Pega.
+Modul ini meneruskannya tanpa diterjemahkan, sehingga grid "Tanggal terima Dokumen" menggambar
+teks mesin.
+
+Yang memperburuk: komentar pada `ReceivedDocumentDate.Date` sudah berbunyi *"sudah berbentuk
+tampilan WIB"* — **janji yang tidak pernah ditepati kode mana pun**. Komentar yang salah lebih
+berbahaya daripada tidak ada komentar: ia menghentikan pemeriksaan.
+
+**Diperbaiki** dengan `DisplayPegaTime`, yang menafsirkan keempat bentuk teks Pega lalu
+menggambarnya `dd/MM/yyyy HH:mm` **dalam WIB** — bentuk yang sama persis dengan layar lama
+(`D-13`), sehingga kedua layar dapat dibandingkan tanpa menghitung sendiri.
+
+Dua keputusan di dalamnya:
+
+| Hal | Keputusan |
+|---|---|
+| Pergeseran WIB | **tetap `+7` jam**, bukan `time.LoadLocation`. Basis data zona waktu tidak selalu ada pada peladen Windows, dan kegagalannya DIAM: `LoadLocation` mengembalikan UTC, sehingga seluruh jam tergambar tujuh jam lebih awal tanpa satu pun galat |
+| Nilai tak dikenali | dikembalikan **apa adanya**, bukan dikosongkan. Teks yang tidak terbaca mesin tetap terbaca manusia dan tetap dapat dilaporkan; mengosongkannya menghapus satu-satunya petunjuk bahwa ada bentuk yang belum ditangani |
+
+Ujinya menjaga pergeserannya secara eksplisit, termasuk satu kasus yang **menyeberang pergantian
+tahun** (`20241231T170000.000 GMT` → `01/01/2025 00:00`). Tanpa itu, kekeliruan zona menghasilkan
+jam yang masuk akal tetapi salah tujuh jam — kesalahan yang tidak pernah terlihat sebagai
+kerusakan.
+
+### 149.2 Panel keterangan memecah baris "✚ Tambah · Hapus"
+
+Panelnya digambar DI DALAM pembungkus tautannya, dan pembungkus itu anggota baris lentur.
+Begitu panelnya terbuka, lebarnya mendorong "Hapus" sampai ke ujung kanan.
+
+**Diperbaiki** dengan memisahkan panelnya menjadi `ActionNote`, lalu menggambarnya **di bawah
+seluruh baris** untuk bentuk tautan — `GridActionNote` menanyakan sendiri tautan mana yang
+terbuka, alih-alih menerimanya sebagai prop, supaya daftar nama tautannya tidak perlu disalin
+ke dua tempat.
+
+Ujinya menjaga **letaknya**, bukan keberadaannya: ia memastikan panel **bukan keturunan** baris
+alat. Memeriksa "panelnya muncul" saja akan lulus pada bentuk yang rusak itu pula.
+
+Dua kekeliruan saya saat menulis ujinya, keduanya tentang DOM yang saya duga tanpa memeriksa:
+setiap tautan ternyata punya pembungkusnya sendiri sehingga barisnya satu tingkat lebih atas,
+dan teks "Kerjakan" ternyata ada juga di kaki layar sehingga panelnya harus dikenali dari tombol
+"Salin nomor case".
+
+### 149.3 "Unggah Dokumen" TIDAK diperbaiki, dan itu keputusan
+
+Panelnya masih muncul, dan itu bukan kelalaian. Mengunggah dokumen menuntut tempat menyimpan
+berkasnya, dan jalur Pega bermuara di `PC_DATA_WORKATTACH.PZPVSTREAM` — blob serialisasi internal
+yang tidak dapat kami bentuk.
+
+Satu jalan yang terlihat mungkin dan **sengaja tidak diambil**: menulis langsung ke
+`POOLDATA.DATA_ATTACHFILE`, tabel yang "Lihat Dokumen" baca. Berkasnya akan muncul di layar ini
+— tetapi **tidak di Pega**, yang membaca lampiran lewat `PC_LINK_ATTACHMENT`. Unggahan yang hanya
+terlihat di satu sistem lebih buruk daripada unggahan yang jelas belum ada: petugas mengira
+dokumennya sudah terlampir.
+
+Tetap terbuka, pemiliknya Tim Pega.
+
+---
+
+## 150. Rantai unggah dokumen Pega ditelusuri utuh — dan ia menyentuh dua tabel milik bersama (2026-10-01)
+
+**Permintaan Work Owner:** *"perbaiki sampai bisa unggah dokumen, ikuti apa adanya di Pega."*
+
+Ditelusuri utuh, dari tombol sampai ke tempat berkasnya berada. Hasilnya mengoreksi §149.3 **dan**
+menemukan dua hal yang membuat penerapannya tidak dapat diambil sepihak.
+
+### 150.1 Rantainya, lengkap
+
+```
+tombol "Unggah Dokumen"
+  └─ localAction SetUploadDocPUCL          (section SetUploadDoc_Detl)
+       └─ InsertDokumenPNC                 24 langkah
+            1. Convert_Avif                PNG/JPG/JPEG/PDF → AVIF  (layanan luar #1)
+            2. GetAppFolder-SQL            SELECT NAMA_FOLDER FROM general.T_FOLDER_STORAGE
+                                           WHERE APLIKASI = 'KLAIMPNC'
+            3. POST {storage}/api/v1/upload                          (layanan luar #2)
+                 { UserInput, NoClaim, App, Folder:"Doc/YYYY/MM/",
+                   NamaFile, Image:<base64>, MimeType, Durasi:0 }
+                 → { ImageID, URLImage, appfolder, exp }
+            4. InsertDataPNCStorage-SQL    INSERT general.t_storage_image
+            5. PNCSaveAttachmentToDB       → SET_ATTACHMENT_64BIT
+                                           → INSERT pooldata.data_attachfile
+```
+
+Bentuk permintaan dan jawabannya **terbaca penuh** dari pemetaan Connect REST
+(`pyMapFromKey DocAPI_JSON.JSON`, `pyMapToKey DocAPI_Return.ServiceReturn`), dan isi
+`SET_ATTACHMENT_64BIT` terbaca langsung dari `Database/SET_ATTACHMENT_64BIT.prc`.
+
+### 150.2 Koreksi atas §149.3
+
+Di sana tertulis bahwa unggahan Pega bermuara di `PC_DATA_WORKATTACH.PZPVSTREAM`. **Keliru** —
+jalur PUCL tidak menyentuhnya sama sekali; ia memakai `POOLDATA.DATA_ATTACHFILE`, tabel yang
+layar ini sudah baca.
+
+Tetapi kesimpulan praktisnya **tidak berubah**, dan alasannya berbeda dari yang saya duga.
+
+### 150.3 Temuan yang mengubah segalanya: berkasnya TIDAK ada di basis data
+
+`SET_ATTACHMENT_64BIT` **tidak menerima bita berkas sama sekali** — kolom `ATTACHFILE` tidak ikut
+di dalam `INSERT`-nya. Dibuktikan ke data: lima baris terbaru `DATA_ATTACHFILE` semuanya
+ber-`ATTACHFILE` **kosong** dan ber-`IMAGEID` terisi (32 heksadesimal).
+
+Berkasnya hidup di **layanan penyimpanan luar**, dan `DATA_ATTACHFILE` hanya menyimpan
+penunjuknya.
+
+> **Akibat langsung pada fitur yang sudah berjalan:** tombol "Lihat Dokumen" kami mengambil isi
+> dari kolom `ATTACHFILE`. Untuk dokumen yang diunggah lewat jalur ini — yaitu seluruh yang baru
+> — kolom itu **kosong**, sehingga unduhannya kosong. Ini cacat yang sudah ada, ditemukan hari
+> ini, dan belum diperbaiki.
+>
+> Pega mengambilnya dengan cara lain: `GetURLAndEXPDate-SQL` membaca URL bertanda tangan dari
+> `general.t_storage_image`, dan bila `EXPDATE` sudah lewat ia meminta URL baru ke layanan
+> penyimpanan (bawaan 3600 detik).
+
+### 150.4 Dua hal yang membuat penerapan sepihak TIDAK aman
+
+| Hal | Kenapa |
+|---|---|
+| **`C_COUNTER_ATTACHMENT` + `ATTACHFILE_SEQ`** | Penghasil `DATAID` dipakai **lintas aplikasi**, bukan hanya Claim PNC. Ia juga memanggil `select_sequence('ATTACHFILE_SEQ')` — pembantu yang tidak ada di antara 62 berkas `Database/` yang diterima. Menulis penomoran bersama dengan tiruan yang tidak sama persis merusak penomoran untuk SEMUA pemakainya |
+| **`general.t_storage_image` dan `general.T_FOLDER_STORAGE`** | Skema `GENERAL` adalah milik bersama lintas sistem, bukan milik aplikasi ini. `P-1` berlaku, dan pemiliknya belum ditanya |
+
+Keduanya berbeda sifat dari `TC_PNC_PUCL`, yang memang milik aplikasi ini — itulah sebabnya
+§144 dan §148 dapat dikerjakan tanpa bertanya, dan ini tidak.
+
+### 150.5 Jalan pintas yang ADA dan sengaja TIDAK diambil
+
+Menulis bita berkas langsung ke `DATA_ATTACHFILE.ATTACHFILE`, kolom BLOB yang masih ada dan
+masih dibaca unduhan kami. Unggahannya akan bekerja **di layar ini**, hari ini, tanpa layanan
+luar mana pun.
+
+Ia tidak diambil karena **Pega tidak akan melihatnya**: penampil Pega membaca `IMAGEID` lewat
+`general.t_storage_image`, dan baris tanpa `IMAGEID` tidak punya URL untuk dibuka. Selama masa
+paralel, dokumen yang terlihat di satu sistem dan tidak di sistem lain lebih berbahaya daripada
+tombol yang jelas belum ada — petugas mengira dokumennya sudah terlampir.
+
+### 150.6 Yang dibutuhkan untuk menyelesaikannya
+
+| Yang dibutuhkan | Dari siapa |
+|---|---|
+| **Alamat layanan penyimpanan dokumen** — jalur `/api/v1/upload` sudah diketahui, dan `pyUseAuthentication=false` sehingga tanpa kredensial | Tim Infra |
+| Izin menulis `general.t_storage_image` dan membaca `general.T_FOLDER_STORAGE` | Pemilik skema GENERAL |
+| **`select_sequence`** — pembantu yang dipanggil `SET_ATTACHMENT_64BIT`, tidak ada di berkas yang diterima | DBA |
+| Keputusan: apakah konversi AVIF (layanan luar kedua) ikut ditiru, atau berkas asli disimpan apa adanya | Work Owner |
+
+Begitu keempatnya ada, sisanya tinggal menulis — bentuk permintaan, bentuk jawaban, dan kedua
+`INSERT`-nya sudah terbaca seluruhnya dan tercatat di §150.1.
+
+---
+
+## 151. "Download Dokumen" memindahkan klaim — PDF-nya tidak, dan templatnya memang tidak ada (2026-10-01)
+
+**Laporan Work Owner:** tombol "Download Dokumen" menjawab 503.
+
+### 151.1 Apa yang tombolnya ubah
+
+Dari §147, rangkaiannya `InsertMitraPA(tipe="cetak")` → `PUCLPost(Status="", statusCase="1")` →
+`InsertHistoryClaimPNC`. Di dalam `PUCLPost`, dengan `Status` KOSONG dan `statusCase="1"`:
+
+| Langkah | Isi |
+|---|---|
+| 4 dan 51 | `TanggalCetakDokumenPUCL := @CurrentDateTime()` |
+| 17 | `StatusCase := "1"` dan `StatusClaim := "1157"` |
+| 15, 16 | **terlewat** — keduanya berprekondisi `Status` 1 atau 0 |
+| 48 | `AttachAsPDFC` — membuat PDF surat dan melampirkannya |
+
+`1157` berarti **"Document Waiting RCL/PUCL"** menurut master — klaimnya menunggu kelengkapan
+dokumen, tepat menggambarkan tahap sesudah suratnya dicetak.
+
+Ketiga kolomnya ada di `TC_PNC_PUCL`, dan **`TGL_CETAK_DOKUMEN_PUCL` yang memindahkan klaim**:
+penyaring tab "Cetak Surat" adalah kolom itu masih kosong.
+
+### 151.2 PDF-nya TIDAK dapat dibuat, dan itu bukan soal kemauan
+
+Dua penghalang, keduanya terbukti:
+
+| Penghalang | Bukti |
+|---|---|
+| **Templat suratnya tidak ada di export** | `param.HTMLStream := "SuratPUCL"` / `"SuratPUCL_TRAVEL"`, tetapi folder `HTML/` memuat **30 berkas dan tidak satu pun surat RCL/PUCL**. Bagian dari `R-16` |
+| **Lampiran tidak disimpan di basis data** | §150 — berkas hidup di layanan penyimpanan luar, `ATTACHFILE` kosong pada seluruh baris baru |
+
+### 151.3 Yang dikerjakan, dan kenapa tetap berguna
+
+Perpindahan tabnya. Itulah yang **menghambat petugas**: tanpa itu klaimnya tertahan di tab
+"Cetak Surat" selamanya, dan tidak ada tombol lain yang memindahkannya.
+
+`PUCL_APPROVE` **tidak** disentuh — langkah 15 dan 16 terlewat karena `Status` kosong. Klaimnya
+tetap menjadi pekerjaan PUCL; yang berpindah hanyalah tabnya.
+
+### 151.4 Keterangan tombolnya sudah TIGA KALI keliru
+
+Dicatat karena polanya lebih berguna daripada kalimatnya:
+
+| Versi | Bunyinya | Yang disembunyikan |
+|---|---|---|
+| v1 | "Mengunduh surat RCL/PUCL klaim ini." | bahwa ia **menulis** |
+| v2 | "tidak mengunduh apa pun" | bahwa klaimnya **berpindah** |
+| v3 | "Menerbitkan PDF surat DAN menandainya sudah dicetak" | bahwa PDF-nya **tidak terbit di sini** |
+
+v3 benar tentang **Pega** dan salah tentang **layar ini** — kekeliruan yang muncul justru karena
+analisis §147 yang lebih dalam. Membaca Pega dengan benar tidak cukup; yang dijanjikan ke
+pengguna adalah apa yang **layar ini** kerjakan.
+
+Janji yang tidak ditepati adalah cacat yang paling mahal di layar ini: petugas akan mencari
+berkas yang tidak pernah dibuat. Ujinya kini menahan **ketiga** kalimat lama sekaligus.
+
+Pesan berhasilnya pun menyebutkan batasnya: *"Berkas PDF suratnya belum dapat diterbitkan dari
+sini — cetak suratnya di Pega bila dibutuhkan."*
+
+### 151.5 Keadaan kelima tombol sesudah ini
+
+| Tombol | Keadaan |
+|---|---|
+| Download Dokumen | **berjalan** — memindahkan klaim; PDF tidak terbit |
+| Kirim Ke Analyst · Kirim ke PIC Teknik | **berjalan** (§144, §147) |
+| Save | **berjalan** (§148) |
+| Lihat Dokumen | berjalan untuk dokumen lama; **unduhan dokumen baru kosong** (§150.3) |
+| Tolak Klaim | masih menempuh layanan Pega |
+| Unggah Dokumen · Tutup Klaim | masih panel keterangan (§150) |
+
+---
+
+## 152. "✚ Tambah" dan "Hapus" ternyata TIDAK memanggil apa pun di Pega (2026-10-02)
+
+**Laporan Work Owner:** kedua tautan di atas grid masih menjawab dengan panel keterangan.
+
+### 152.1 Anggapan lama yang keliru
+
+Sejak tautan ini dibuat dapat ditekan, keterangannya berbunyi *"Keduanya MENULIS ke objek kerja
+yang masih dimiliki Pega (`P-1`)"*. Itu **tidak terbukti** — dan sekarang terbukti sebaliknya.
+
+Dibaca langsung dari `Section/SectionPenerimaanDokumenPUCL-Section.xml`:
+
+| Yang dicari | Hasil |
+|---|---|
+| `pyAction addRow` | **ada, satu**, ber-`Embed-SelectedContextAPI-AddRow`, `pyPosition AFTER` |
+| `pyActivity` pada aksi itu | **TIDAK ADA** |
+| `pyAction deleteRow` | **tidak ada sama sekali** di section |
+
+Keduanya **operasi sisi klien**: menambah atau membuang baris pada page list di clipboard.
+Tidak ada permintaan ke peladen, tidak ada activity, tidak ada tulis.
+
+**Yang menyimpannya adalah tombol "Save"** — lewat `Obj-Save`, yang memetik seluruh objek kerja
+beserta page list-nya. Persis pola yang sudah ditemukan di §148.
+
+### 152.2 Kenapa keduanya tetap belum dapat dikerjakan
+
+Bukan karena menulis, melainkan karena **daftarnya belum punya tempat simpan di sisi kita**.
+
+| Tempat | Kenapa bukan di situ |
+|---|---|
+| `PC_ASM_FW_GCNMFW_WORK.RECEIVEDDATE_1` / `KETERANGAN_1` | milik Pega (`P-1`), dan hanya menampung **satu** baris — sisanya hidup di dalam objek kerja |
+| `TC_PNC_PUCL.TGL_TERIMA_DOKUMEN_PUCL` | itu isian **"Tanggal Kelengkapan Dokumen"**, satu nilai tunggal di bawah grid — bukan daftarnya |
+
+Menerapkannya tanpa tempat simpan berarti baris yang ditambah petugas **hilang saat layar dimuat
+ulang**. Kehilangan data yang terlihat seperti berhasil lebih buruk daripada tombol yang jelas
+belum ada — alasan yang sama dengan §150.5.
+
+### 152.3 Yang diminta, dan sudah siap dijalankan
+
+Satu tabel kecil **milik aplikasi ini**, bukan milik Pega:
+`docs/ddl/tc_pnc_pucl_terima_dokumen.sql` — `(CLAIMID, URUTAN)` sebagai kunci, ditambah tanggal,
+keterangan, dan jejak pelaku.
+
+Ia berbeda sifat dari penghalang §150: di sana yang dituntut adalah **tabel milik bersama** dan
+**layanan luar**; di sini tabelnya milik kita sendiri, tidak dibaca sistem mana pun, dan
+rollback-nya satu baris `DROP TABLE` yang tidak menyentuh Pega.
+
+Menempuh `D-63`: permintaan tertulis (berkas DDL itu) → **persetujuan Work Owner** → pelaksanaan
+DBA → verifikasi dengan menjalankan Pega dan Go bersamaan.
+
+### 152.4 Begitu tabelnya ada
+
+Sisanya tinggal menulis, dan bentuknya sudah diketahui seluruhnya:
+
+- "✚ Tambah" dan "Hapus" mengubah daftar **di layar** — persis seperti Pega, tanpa permintaan ke
+  peladen.
+- "Save" menyimpannya bersama kedua isian yang sudah disimpannya sekarang (§148), dalam satu
+  transaksi.
+- Grid menggambar **seluruh** baris, bukan hanya yang pertama — sehingga keterangan "Baru baris
+  pertama yang terbaca" ikut hilang.
+
+Yang terakhir itu bonus yang tidak diduga: batas "hanya baris pertama" bukan batas Pega melainkan
+batas **kolom terekspos**. Dengan tabel sendiri, batas itu tidak ikut terbawa.
+
+---
+
+## 153. "✚ Tambah" dan "Hapus" bekerja — persis seperti di section (2026-10-02)
+
+**Permintaan Work Owner:** *"pas klik Tambah keluar tanggal dan keterangan, ketika Hapus kolom
+tanggal dan keterangan tidak muncul — buatkan seperti itu, ikuti seperti sectionnya."*
+
+Itu persis perilaku yang §152 temukan di section, dan kini dikerjakan.
+
+### 153.1 Yang dibangun
+
+| Tautan | Perilaku |
+|---|---|
+| **✚ Tambah** | menambah satu baris berisi isian **Tanggal** dan **Keterangan**, keduanya kosong |
+| **Hapus** | membuang baris **terakhir**; mati sendiri ketika daftarnya habis |
+
+Kedua selnya **dapat diketik**, mengikuti section: `.DateReceived` dan `.Remarks` sama-sama
+`pyReadOnly false` dan `pyRequired false`. Baris yang sudah ada pun ikut dapat diketik — bukan
+hanya baris baru.
+
+Tidak ada permintaan ke peladen saat keduanya ditekan, dan itu bukan penyederhanaan: di Pega pun
+tidak ada. `pyAction addRow` berdiri **tanpa satu pun `pyActivity`**, dan `deleteRow` tidak ada
+sama sekali di section.
+
+### 153.2 Dua keputusan kecil yang perlu disebut
+
+| Hal | Keputusan |
+|---|---|
+| **"Hapus" membuang yang MANA** | baris **terakhir**. Pega membuang baris yang sedang dipilih, dan grid ini belum punya pemilihan baris; membuang yang terakhir memasangkannya dengan "Tambah" yang menyisipkan di belakang (`pyPosition AFTER`) |
+| **Kunci baris React** | **indeks**, bukan isinya. Baris baru lahir kosong, sehingga dua baris kosong akan berbagi kunci yang sama bila isinya dipakai — dan React lalu menggambar ulang isian yang sedang diketik |
+
+### 153.3 Satu jebakan yang nyaris terlewat
+
+Peladen mengirim tanggal grid dalam bentuk **tampilan** `11/09/2024 21:35` sejak §149. Isian
+`datetime-local` hanya menerima `YYYY-MM-DDTHH:mm`, dan **mengabaikan diam-diam** nilai yang
+tidak cocok.
+
+Tanpa penanganan, tanggal yang SUDAH ADA akan tergambar kosong pada isiannya — dan petugas
+menyangka datanya hilang. `untukIsianWaktu` karena itu kini menerima bentuk tampilan itu pula.
+
+### 153.4 Yang BELUM, dan dinyatakan di layar
+
+Perubahan pada daftar ini **belum tersimpan** — ia hilang saat layar dimuat ulang. Tempat
+simpannya menunggu tabel yang sudah diminta di §152
+(`docs/ddl/tc_pnc_pucl_terima_dokumen.sql`).
+
+Keterangan itu digambar **di bawah grid, berwarna peringatan**, terpisah dari keterangan "baru
+baris pertama yang terbaca". Keduanya sengaja tidak digabung: yang satu menyangkut apa yang
+**terbaca**, yang lain apa yang **tersimpan**, dan pemiliknya berbeda.
+
+Menyembunyikannya bukan pilihan. Daftar yang dapat diubah lalu diam-diam tidak tersimpan adalah
+kehilangan data yang terlihat seperti berhasil.
+
+### 153.5 Yang ikut dibuang
+
+Varian **tautan** pada `WriteAction`, beserta `GridActionNote` — keduanya dibuat kemarin untuk
+menampung panel kedua tautan ini, dan kini tidak ada lagi yang memakainya. Jalur yang tidak
+dipakai siapa pun adalah jalur yang tidak pernah teruji.
+
+Dua uji lama ikut diganti: yang menjaga **letak panel** (panelnya sudah tidak ada) dan yang
+menjaga sel grid sebagai **teks** (kini nilai isian).
+
+---
+
+## 154. "Unggah Dokumen" bekerja — lewat mekanisme PERTAMA tabel yang sama (2026-10-02)
+
+**Permintaan Work Owner:** *"perbaiki unggah dokumen, ikuti apa adanya seperti di Pega di proses
+upload file."*
+
+### 154.1 Jalur Pega hari ini TIDAK dapat ditempuh — dibuktikan, bukan diduga
+
+Rantainya sudah ditelusuri utuh di §150. Ketiga dependensinya diuji satu per satu:
+
+| Yang diuji | Hasil |
+|---|---|
+| Nama host layanan penyimpanan | **DNS gagal** — `no such host` dari mesin ini |
+| `general.T_FOLDER_STORAGE` | **ORA-00942** — tidak terlihat oleh akun basis data kami |
+| `general.T_STORAGE_IMAGE` | **ORA-00942** — idem |
+| `POOLDATA.DATA_ATTACHFILE` | terbaca, 9.939 baris |
+| `C_COUNTER_ATTACHMENT` | terbaca, 10.546 baris |
+| `ATTACHFILE_SEQ` | ada (`ORA-08002` = belum dipakai di sesi ini, bukan tidak ada) |
+
+Tiga dari enam tidak tersedia. Membangun jalur itu berarti menulis kode yang **tidak dapat
+dijalankan maupun diverifikasi**.
+
+### 154.2 Koreksi atas §150.5 — klaim saya terlalu keras
+
+Di sana tertulis bahwa menulis bita ke `DATA_ATTACHFILE.ATTACHFILE` akan membuat berkasnya
+**"tidak terlihat di Pega"**. **Tidak benar.**
+
+`RDB List/GetAttachmentFromDB_Sql-SQL.xml` mengambil **`ATTACHFILE` DAN `IMAGEID` dari baris yang
+sama**:
+
+```sql
+select (CASE WHEN attachfile IS NULL THEN NULL
+             ELSE pooldata.base64encode(attachfile) END) AS "ATTACHFILE",
+       …, IMAGEID AS "IMAGEID"
+  from pooldata.data_attachfile where dataid = …
+```
+
+Percabangan `CASE WHEN attachfile IS NULL` **ada justru karena kedua keadaan memang terjadi**.
+Rule itu dipakai sepuluh activity, termasuk `GetDetailDocument`. Tabel itu menampung **dua
+mekanisme**, dan Pega membaca keduanya — baris lama memakai BLOB, baris baru memakai `IMAGEID`.
+
+Kesimpulan §150.5 dicabut. Yang ditempuh sekarang adalah **mekanisme pertama**: bita masuk ke
+`ATTACHFILE`, seluruhnya di dalam tabel yang dapat kami akses.
+
+### 154.3 Yang dibangun
+
+```
+POST /inbox-rcl-pucl/klaim/{referensi}/dokumen      multipart, isian "berkas"
+  └─ SELECT PZINSKEY            dari PC_ASM_FW_GCNMFW_WORK  (membaca tabel Pega — sah)
+  └─ satu transaksi:
+       SELECT TO_CHAR(CURRENT_DATE,'RR'), ATTACHFILE_SEQ.NEXTVAL FROM DUAL
+       INSERT C_COUNTER_ATTACHMENT (KEY, YEAR, RUNNO)
+       INSERT POOLDATA.DATA_ATTACHFILE (DATAID, …, ATTACHFILE, IDPEGA)
+```
+
+`DATAID` disusun **persis** seperti procedure aslinya — `year || lpad(runno,10,'0')` — tetapi
+dibentuk di Go, sehingga baris yang baru disisipkan tidak perlu dibaca ulang.
+
+Dua pembantu basis data **tidak** dipanggil: `new_uuid` (diganti kunci bentukan Go; nilainya tak
+pernah dibaca lagi) dan `select_sequence` (tidak ada di antara 62 berkas `Database/` yang
+diterima — §150). Bila ternyata ia mengatur ulang penomoran tiap tahun, `DATAID` kami tetap unik
+karena memuat tahunnya.
+
+Ketiga pernyataan dibungkus **satu transaksi**: kegagalan di tengah tidak boleh meninggalkan
+pencacah yang bertambah tanpa lampiran.
+
+### 154.4 Empat keputusan kecil
+
+| Hal | Keputusan |
+|---|---|
+| **multipart, bukan JSON ber-base64** | base64 membesarkan muatan sepertiga tanpa manfaat, dan seluruhnya tetap melewati memori |
+| **Batas 10 MiB, ditegakkan DUA KALI** | `MaxBytesReader` di HTTP melindungi memori dari badan yang mengaku kecil lalu mengirim besar; `Validate` di domain menjaga aturannya berlaku bagi pemanggil lain |
+| **Jenis isi dari EKSTENSI, bukan header peramban** | baris Pega menyimpan `pdf`, bukan `application/pdf`. Bentuk yang berbeda pada kolom yang sama membuat baris kami tidak sebangun (`P-5`) |
+| **`IMAGEID`, `CATEGORY`, `SUB_CATEGORY` kosong** | yang pertama milik mekanisme kedua; dua sisanya datang dari pemilih kategori yang layar ini belum punya |
+
+### 154.5 Selisih yang harus disadari
+
+Berkas yang kami unggah **tidak naik ke layanan penyimpanan**, sehingga jalur penampil Pega yang
+meminta URL bertanda tangan tidak menemukannya. Yang menemukannya adalah jalur BLOB — rule yang
+sama, cabang yang lain.
+
+`Convert_Avif` juga tidak ditiru: ia layanan luar kedua, dan menyimpan berkas ASLI lebih setia
+pada apa yang diunggah petugas daripada hasil konversi yang tidak dapat kami verifikasi.
+
+### 154.6 Yang ikut berubah di layar
+
+Tombolnya tidak lagi membuka panel keterangan melainkan **pemilih berkas peramban**; memilih
+berkas langsung mengunggahnya. Nilai isiannya dikosongkan sesudah dipilih supaya berkas yang
+**sama** dapat dipilih lagi — tanpa itu, `change` tidak terpicu pada pilihan kedua dan tombolnya
+terlihat rusak.
+
+Tiga uji lama ikut berubah: dua yang memakai "Unggah Dokumen" sebagai contoh tombol berpanel
+dipindah ke "Tutup Klaim", dan satu — "membuka paling banyak SATU panel" — **dibuang**, karena
+kini hanya satu tombol yang memakai panel itu.
+
+### 154.7 Keadaan kedelapan tombol
+
+| Berjalan | Belum |
+|---|---|
+| Download Dokumen · Kirim Ke Analyst · Kirim ke PIC Teknik · Save · **Unggah Dokumen** · ✚ Tambah · Hapus | Tolak Klaim *(lewat layanan Pega)* · Tutup Klaim |
+
+"✚ Tambah" dan "Hapus" bekerja di layar tetapi belum tersimpan — menunggu tabel §152.
+
+---
+
+## 155. Unggah dokumen memakai dialog `SetUploadDocPUCL`, bukan unggah seketika (2026-10-02)
+
+**Work Owner mengirim dua tangkapan layar dialog Pega-nya** — keadaan kosong dan keadaan sesudah
+berkas dipilih.
+
+Versi yang dibangun §154 mengunggah **seketika** begitu berkas dipilih, tanpa dialog. Itu lebih
+sedikit langkah, tetapi **bukan bentuk layar lama** — dan `D-13` menetapkan tata letak mengikuti
+Pega supaya petugas tidak perlu belajar ulang.
+
+### 155.1 Bentuknya dari mana
+
+Flow action `SetUploadDocPUCL` merantai empat section, ditelusuri satu per satu:
+
+```
+SetUploadDoc_Detl → ASMAttachContentScreen → ASMAttachFilesScreen
+                  → ASMAttachments → ASMAttachFileList
+```
+
+Yang terakhir memuat grid-nya: page list `dragDropFileUpload.pxResults`, berkolom **Name**
+(`pxTextInput`), **File**, dan **Category** (`pxDropdown`), beserta ikon buang per baris.
+Kendali pemilih berkasnya `pzMultiFilePath` — **banyak berkas sekaligus**.
+
+### 155.2 Dua kemampuan yang HILANG di versi pertama, dan kembali di sini
+
+| Kemampuan | Kenapa nyata |
+|---|---|
+| **Banyak berkas sekaligus** | judul tombolnya sendiri berbunyi "Select file(s)". Petugas yang mengunggah lima dokumen harus mengulanginya lima kali pada versi pertama |
+| **Nama dapat diubah sebelum dikirim** | kolom "Name" adalah isian TERSENDIRI, terpisah dari kolom "File" yang hanya menampilkan nama aslinya. Yang tersimpan sebagai `ATTACHNAME` adalah kolom Name |
+
+Unggahan kini berjalan saat **Submit**, bukan saat berkas dipilih.
+
+### 155.3 Empat keputusan kecil
+
+| Hal | Keputusan |
+|---|---|
+| **Jenis isi tetap dari nama berkas ASLI** | petugas boleh menamai ulang lampirannya tanpa ekstensi; menebaknya dari nama ketikan akan menyimpan jenis kosong pada berkas yang jelas PDF |
+| **Unggahan berurutan, bukan serentak** | ketiganya mengambil nomor dari sequence yang sama; serentak tidak salah, tetapi membuat urutan nomor lampiran tidak sejalan dengan urutan yang dilihat petugas |
+| **Dialog TIDAK ditutup saat gagal** | berkas yang sudah dipilih akan hilang, dan petugas harus memilihnya lagi satu per satu tanpa tahu mana yang sudah masuk |
+| **Dialog dilahirkan saat dibuka, bukan disembunyikan CSS** | daftar berkasnya harus bersih setiap kali dibuka, dan kelahiran ulang menjaminnya tanpa kode pembersih |
+
+### 155.4 Kolom Category: digambar, belum tersimpan
+
+Pilihannya **satu** — `File` — dan itu bukan penyederhanaan: layar lama pun menggambar satu
+nilai. Sumber daftarnya tidak dapat ditelusuri dari export; `ASMClaimAttachmentCategory` ternyata
+section **thumbnail**, bukan pemasok pilihan.
+
+Nilainya **belum tersimpan**: `DATA_ATTACHFILE.CATEGORY` berisi **kode** (`10067`), bukan teks,
+dan masternya belum dipetakan. Dinyatakan sebaris di bawah tabelnya — dropdown yang terlihat
+bekerja tetapi diam-diam tidak menyimpan adalah janji yang tidak ditepati.
+
+### 155.5 Penjaganya
+
+Tiga uji, dan ketiganya menjaga hal yang berbeda:
+
+- Memilih berkas **belum** mengirim apa pun; **Submit** yang mengirim — beserta alamat, metode,
+  dan bukti berkasnya ikut di badan permintaan.
+- **Banyak berkas** masuk sebagai banyak baris, dan membuang baris pertama menaikkan baris
+  kedua — yang dibuang memang yang ditunjuk.
+- **Cancel** menutup dialog **tanpa mengirim apa pun**. Kegagalan seperti itu tidak terlihat di
+  layar; yang terlihat hanya dialognya tertutup.
+
+---
+
+## 156. Kolom "Category" diisi master jenis dokumen, dan pasangannya dicari di peladen (2026-10-02)
+
+**Keluhan Work Owner:** *"categorynya masih kosong"* — dropdown "Category" pada dialog
+`SetUploadDocPUCL` hanya memuat satu pilihan mati bertuliskan "File".
+
+### 156.1 Catatan saya sendiri di tempat itu ternyata salah
+
+Komentar yang saya tulis pada §155 berbunyi:
+
+> Sumber daftarnya tidak dapat ditelusuri dari export — `ASMClaimAttachmentCategory` ternyata
+> section thumbnail, bukan pemasok pilihan.
+
+Itu **tidak benar**, dan saya berhenti mencari terlalu cepat. Sumbernya ada, satu section lebih
+dalam di rantai yang sudah saya telusuri sendiri:
+
+`Section/ASMAttachFileList-Section.xml` — dropdown-nya ber-`pyListSource reportdefinition`,
+`pySourceName BrowseLstDocType_RD`, dengan teks yang digambar `.DETAIL_DOCUMENT` dan nilai
+`.TYPE_DOCUMENT`.
+
+### 156.2 Report definition-nya menunjuk view yang salah untuk keperluan ini
+
+Kelas `BrowseLstDocType_RD` adalah `ASM-FW-GCNMFW-Int-V_LST_DOC_TYPE`. Pemeriksaan langsung ke
+basis data menunjukkan view itu **tidak terpakai sebagai daftar pilihan**:
+
+| View | Kolom teks | Isi untuk kode yang benar-benar dipakai lampiran |
+|---|---|---|
+| `POOLDATA.V_LST_DOC_TYPE` | `TYPE_DOCUMENT` | **kosong** untuk `10064`–`10069`; hanya `10070` berisi teks |
+| `POOLDATA.V_LST_DET_TYPE_DOC` | `DETAIL_DOCUMENT` | **159 baris** bernama lengkap |
+
+Baris lampiran yang nyata memakai pasangan `CATEGORY` = `10064`/`10066` dengan `SUB_CATEGORY` =
+`14893`/`14901`/`14932`/`14895`/`14964` — dan nilai `SUB_CATEGORY` itu **ada di
+`V_LST_DET_TYPE_DOC.ID`**, bukan di view satunya.
+
+**Yang dipakai karena itu `V_LST_DET_TYPE_DOC`.** Ini **selisih terhadap Pega** pada sumber
+daftarnya, dan dinyatakan di sini apa adanya, bukan disembunyikan: mengikuti `BrowseLstDocType_RD`
+apa adanya akan menggambar dropdown berisi baris-baris **tanpa teks**, yaitu persis keluhan yang
+sedang diperbaiki.
+
+### 156.3 Pasangan kategori dicari DI PELADEN, bukan diterima berpasangan
+
+Layar mengirim **satu nilai** — `kategori`, yaitu `V_LST_DET_TYPE_DOC.ID`. Jenis dokumen
+induknya dicari lagi lewat kueri `document_category_type`, **di dalam transaksi yang sama**
+dengan penyisipan lampirannya.
+
+Menerima keduanya dari layar lebih sedikit kode dan satu kueri lebih hemat. Yang
+ditukar dengannya: pasangan yang keliru **tersimpan rapi tanpa satu pun galat**, dan baru
+terlihat ketika seseorang menyaring laporan menurut jenis dokumen — berbulan-bulan kemudian,
+tanpa cara mengetahui baris mana yang terdampak.
+
+Kategori yang tidak dikenal **ditolak** sebagai galat validasi, bukan disimpan apa adanya.
+
+### 156.4 Memilih kategori TIDAK wajib
+
+`pyRequired` tidak terpasang pada dropdown itu di layar lama. Pilihan kosong karena itu **tetap
+ada** sesudah daftarnya termuat, dan lampiran tanpa kategori tersimpan dengan kedua kolomnya
+kosong.
+
+Bawaannya pun **kosong, bukan baris pertama daftar**. Menebakkan satu kategori berarti ratusan
+lampiran tersimpan dengan jenis yang tidak pernah dipilih siapa pun — lebih buruk daripada
+kosong, karena kosong setidaknya jujur.
+
+### 156.5 Daftarnya ditarik terpisah, tidak dititipkan pada detail klaim
+
+Alamatnya `GET /inbox-rcl-pucl/kategori-dokumen` — **tanpa nomor klaim**. Isinya master, sama
+bagi setiap klaim dan setiap petugas; menyarangkannya di bawah sebuah klaim akan menyiratkan ia
+berbeda per klaim, dan layar lalu menariknya ulang setiap kali satu klaim dibuka.
+
+Tetap **di balik pemeriksaan portal**: masternya hidup di basis data entitas, dan satu badan
+hukum boleh memakai daftar jenis dokumen yang berbeda (`ADR-0030`).
+
+**Tidak dicatat ke jejak audit**, berbeda dari setiap pembacaan klaim. Ia tidak menyentuh satu
+pun data klaim, dan mencatatnya akan menenggelamkan catatan pembukaan klaim yang justru menjadi
+kontrol pengimbang `D-59`.
+
+### 156.6 Tombol Submit tidak terbaca sama sekali
+
+Pada tangkapan layar yang sama, tombol **Submit tergambar kosong** — kotak oranye tanpa tulisan.
+
+Sebabnya bukan teksnya hilang. `Button tone="kedua"` memasang `bg-white text-slate-700`;
+menambahkan `bg-orange-500 text-white` lewat `className` memberi **kekhususan yang sama**,
+sehingga yang menang ditentukan **urutan deklarasi di berkas CSS**, bukan urutan di atribut.
+Yang menang `text-slate-700` di atas `bg-orange-500` — putih di atas putih.
+
+Diperbaiki dengan `OrangeButton` yang menulis kelasnya **sendiri dari nol**, bukan menimpa kelas
+tombol lain. Dipakai pula oleh kedua tombol Kirim, yang terkena hal yang sama.
+
+### 156.7 Yang dijaga uji
+
+Satu uji baru, menjaga **dua** hal yang keduanya pernah salah:
+
+1. Daftarnya datang dari master — dibuktikan dengan mencari `option` bernama salah satu baris
+   master, bukan sekadar memastikan dropdown-nya ada.
+2. Pilihannya **ikut terkirim** di badan permintaan.
+
+Yang kedua dibuktikan menggigit: melumpuhkan satu baris `muatan.append('kategori', …)` membuat
+uji itu gagal dengan `expected '' to be '14889'`.
+
+Tanpa butir kedua, dropdown yang tampil rapi tetapi tidak terkirim akan lulus — dan itu
+kegagalan yang tidak menghasilkan satu pun galat.
+
+### 156.8 "Kategori gagal dimuat" — peladennya yang usang, bukan kuerinya
+
+Sesudah §156.1–§156.7 selesai, dropdown-nya masih berbunyi **"Kategori gagal dimuat"**.
+
+Kuerinya tidak bersalah. Pemanggilan langsung `Repo.DocumentCategories` terhadap koneksi yang
+sama dengan aplikasi mengembalikan **159 baris**. Yang salah adalah **peladen yang sedang
+berjalan**: prosesnya hidup sejak pukul 08.20 dari `go run .\cmd\claimpnc`, sementara rutenya
+ditambahkan pukul 09.25. Alamat yang belum ada menjawab `404`, dan layar menggambarnya sebagai
+kegagalan memuat.
+
+**Yang memperpanjang salah paham ini: `go run` tidak memakai berkas binary mana pun di
+repositori.** Ia membangun ke direktori sementara. Sepanjang sesi ini saya membangun ulang
+`bin/claimpnc.exe` dan `claimpnc.exe` dan menyatakannya selesai — padahal **bukan keduanya yang
+melayani permintaan**. Membangun ulang binary tidak pernah memuat ulang peladen yang berjalan
+lewat `go run`; yang memuatnya hanyalah menjalankan ulang perintah itu.
+
+Dibuktikan sesudah dimuat ulang, dengan membandingkan dua alamat:
+
+| Alamat | Jawaban |
+|---|---|
+| `/api/inbox-rcl-pucl/kategori-dokumen` | **401** — ada, menuntut sesi |
+| `/api/inbox-rcl-pucl/alamat-yang-tidak-ada` | **404** |
+
+Perbandingannya yang membuktikan, bukan `401` itu sendiri: bila alamat yang tidak ada pun
+menjawab `401`, jawaban itu tidak mengatakan apa-apa tentang keberadaan rutenya.
+
+Teksnya juga diperbaiki menjadi **"Kategori gagal dimuat — muat ulang halaman"**. Yang lama
+menyatakan ada yang salah tanpa menyebut satu pun langkah yang dapat ditempuh petugas.
+
+---
+
+## 157. Kolom "Category" adalah KATEGORI LAMPIRAN — mencabut §156 (2026-10-02)
+
+**Koreksi Work Owner:** tangkapan layar dropdown Pega yang sebenarnya, disertai
+*"buat seperti ini aja jangan terlalu besar"*. Isinya: `Select..`, `Acceptance Note`,
+`Adjuster Appointed`, `Adjuster Fee`, `Adjustment`, `Adjustment LOD`, `AnalystDoctorNote`,
+`AttachAIFILE`, `ATTACHTEMPS`, `ClaimFaceSheet`, `ComplianceNote`, `DLA`, `Document Travel`,
+`DokumenPolis`, `File`, `InfoDeadline`, `InvestigasiReport`, `LampiranAnalystDoctor`, `LOD`,
+`LossAdjuster`, … — **belasan nama pendek**, bukan 159 nama dokumen sepanjang satu kalimat.
+
+### 157.1 §156 salah sasaran, dan tangkapan layar itu yang membuktikannya
+
+§156 menyimpulkan daftarnya adalah **jenis dokumen** dari `V_LST_DET_TYPE_DOC` (159 baris),
+dengan pasangan `CATEGORY`/`SUB_CATEGORY` numerik. Itu **keliru seluruhnya**.
+
+Yang benar: kolom itu adalah **kategori lampiran** Pega. Dua pemeriksaan membuktikannya, dan
+keduanya seharusnya saya lakukan sebelum §156 ditulis:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `AnalystDoctorNote` di seluruh export | **nol kemunculan** — ia `Rule-Obj-AttachmentCategory`, tipe rule yang memang tidak pernah diekspor (`R-16`) |
+| `DATAPEGA.PC_LINK_ATTACHMENT.PYCATEGORY` | memuat **persis** nama-nama itu: `AcceptanceNote`, `AdjusterAppointed`, `AdjusterFee`, `Adjustment`, `ATTACHTEMPS`, … |
+
+### 157.2 `V_LST_DOC_TYPE` tidak dapat dipakai, meski RD-nya menunjuk ke sana
+
+`BrowseLstDocType_RD` berkelas `ASM-FW-GCNMFW-Int-V_LST_DOC_TYPE`, tanpa filter, urut
+`TYPE_DOCUMENT` ASC. Viewnya diperiksa langsung:
+
+- **7 baris** seluruhnya;
+- **6 di antaranya `TYPE_DOCUMENT` kosong**;
+- satu-satunya yang bernama berisi `"Dokumen"`, dan `STS_PROSES`-nya `"Beres deh"`.
+
+Mengikuti RD apa adanya karena itu menggambar dropdown berisi enam baris **tanpa teks** —
+bukan daftar pada tangkapan layar. §156 menolak view ini dengan alasan yang benar, lalu
+berpindah ke view yang salah.
+
+### 157.3 Daftarnya diturunkan dari lampiran yang benar-benar ada
+
+Karena rule-nya tidak ada di export, daftarnya diambil dari kategori yang **sudah dipakai**
+lampiran klaim PNC:
+
+```sql
+SELECT TRIM(a.PYCATEGORY) ... FROM DATAPEGA.PC_LINK_ATTACHMENT a
+  JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w ON w.PZINSKEY = a.PXLINKEDREFFROM
+ WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ GROUP BY TRIM(a.PYCATEGORY) ORDER BY UPPER(TRIM(a.PYCATEGORY))
+```
+
+Hasilnya **30 baris dalam ±120 ms**, urut persis seperti layar lama. `MEMBACA` tabel engine
+Pega — `P-1` melarang menulis, bukan membaca, dan modul ini sudah membaca
+`PC_ASM_FW_GCNMFW_WORK` sejak awal.
+
+Pengurutannya `UPPER(...)`, bukan apa adanya: tanpa itu seluruh nama berhuruf besar berkumpul
+di depan, dan `AttachAIFILE` tidak lagi bersebelahan dengan `ATTACHTEMPS`.
+
+**Dua batas yang harus disebut apa adanya:**
+
+1. **Kategori yang sudah didefinisikan tetapi belum pernah dipakai tidak muncul.** Delapan
+   nama pada tangkapan layar — antara lain `AnalystDoctorNote`, `AttachAIFILE`,
+   `ComplianceNote`, `LossAdjuster` — tidak ada di data ini, sehingga tidak ikut tergambar.
+2. **Yang digambar NAMA, bukan label.** Pega menggambar `"Acceptance Note"` untuk nilai
+   `AcceptanceNote`; teks itu hidup di rule yang tidak diekspor. Memecah huruf besar untuk
+   menirunya akan mengubah `ATTACHTEMPS` menjadi sesuatu yang tidak pernah ada di layar mana
+   pun, jadi namanya ditampilkan apa adanya.
+
+Keduanya tertutup sekaligus bila `Rule-Obj-AttachmentCategory` ikut pada export ulang `D-39`.
+`DocumentCategory` karena itu sudah memisahkan `Value` dari `Label` sejak sekarang, meski
+keduanya masih sama — supaya yang berubah nanti hanya pengisiannya.
+
+### 157.4 Bawaannya "File", bukan kosong — §156.4 dicabut
+
+§156.4 menetapkan bawaannya kosong, dengan alasan "menebakkan satu kategori berarti ratusan
+lampiran tersimpan dengan jenis yang tidak pernah dipilih siapa pun".
+
+**Itu bukan tebakan, melainkan perilaku yang terbukti.** Layar lama menggambar `File` terpilih
+pada baris yang belum disentuh — `File` adalah kategori lampiran bawaan Pega, dan **37 baris**
+lampiran klaim PNC memang tersimpan dengannya. `P-5` menuntut perilakunya ditiru.
+
+Bawaan itu diambil **dari daftar yang benar-benar termuat**, bukan ditulis mati: menampilkan
+nilai terpilih yang tidak ada di dalam daftarnya membuat dropdown tergambar kosong — persis
+cacat yang baru saja diperbaiki.
+
+Teks pilihan kosongnya `"Select.."`, kalimat layar lama apa adanya (`D-13`).
+
+### 157.5 Yang tersimpan: nama, pada satu kolom saja
+
+`DATA_ATTACHFILE.CATEGORY` diisi **nama kategorinya apa adanya** — bentuk yang sama dengan
+`PC_LINK_ATTACHMENT.PYCATEGORY`, dan kolom itu pun sudah memuat nilai berupa teks pada baris
+yang ditulis jalur lain (`Foto Lampiran`, `PELAPORANKLAIM`).
+
+`SUB_CATEGORY` **tidak lagi diisi**: dialog `SetUploadDocPUCL` di Pega hanya punya **satu**
+pemilih, sehingga mengisi dua kolom berarti mengarang nilai untuk yang kedua. Kueri
+`document_category_type` yang §156.3 perkenalkan ikut dihapus.
+
+Ketika petugas tidak memilih, yang dikirim ke basis data `NULL`, bukan string kosong — kolom
+yang kosong dan kolom yang berisi teks nol-panjang tidak dapat dibedakan lagi sesudah
+tersimpan.
+
+### 157.6 Uji penjaganya ikut berubah, dan tetap menggigit
+
+Dua pernyataan yang dijaga: bawaannya `File`, dan pilihannya ikut terkirim apa adanya.
+Keduanya dibuktikan menggigit — melumpuhkan perhitungan bawaan membuat ujinya gagal.
+
+---
+
+## 158. "Lihat Dokumen" — dua cacat, dan satu uji yang melindungi keduanya (2026-10-02)
+
+**Keluhan Work Owner:** membuka dokumen menghasilkan
+`{"kode":"sesi_tidak_sah","pesan":"Sesi tidak sah. Silakan masuk kembali."}`.
+
+### 158.1 Cacat pertama: tautan tidak dapat membawa header
+
+Nama dokumen digambar sebagai `<a href={...} target="_blank">` ke alamat isi dokumen.
+
+Alamat itu menuntut **dua** header — `Authorization` dan `X-Portal` — sedangkan **navigasi
+peramban tidak membawa header apa pun**. Yang terbuka karena itu bukan dokumennya melainkan
+jawaban `401` mentah. Ia **tidak pernah dapat bekerja**; bukan sesi yang kedaluwarsa.
+
+**Sebabnya sudah tertulis di berkas yang sama sejak awal**, pada `useExportRCLPUCL`:
+
+> *Karena `<a href>` dan `window.open` TIDAK membawa header — dan endpoint ini menuntut dua.*
+
+Tautan dokumen ditulis tanpa membacanya, dan komentar di atas fungsinya bahkan membenarkan
+tautan itu dengan alasan "supaya berkasnya tidak melewati memori halaman" — alasan yang benar
+untuk pertanyaan yang salah.
+
+**Perbaikannya** memakai pola yang sudah ada: ambil dengan `fetch` ber-header, jadikan Blob,
+serahkan ke tab baru. Menaruh token di dalam alamat tetap ditolak dengan alasan yang sama
+seperti pada ekspor — nilai di URL tercatat di riwayat peramban, log proxy, dan header
+`Referer`, sedangkan isi dokumen memuat data nasabah.
+
+**Tab-nya dibuka pemanggil, bukan di dalam hook.** `window.open` yang dipanggil sesudah
+`await` kehilangan kaitannya dengan klik dan diblokir penghalang pop-up. Bila tab-nya tetap
+tidak terbuka, berkasnya **diunduh** — bukan hilang tanpa kabar.
+
+### 158.2 Cacat kedua: jenis isinya bukan jenis media
+
+Sesudah 158.1 diperbaiki, dokumennya **masih tidak akan tampil**.
+
+`DATA_ATTACHFILE.ATTACHMIMETYPE` tidak berisi jenis media. Ia berisi **akhiran telanjang**,
+dan **tidak satu pun** dari 21 nilai berbedanya memuat tanda `/`:
+
+| Nilai | Baris |
+|---|---:|
+| `jpeg` | 2.951 |
+| `pdf` | 1.969 |
+| `jpg` · `PNG` · `png` · `JPG` | 3.406 |
+| `xlsx` · `csv` · `jfif` · `docx` · … | sisanya |
+
+`documentContentType` mengembalikannya apa adanya, sehingga peladen mengirim
+`Content-Type: pdf`. **Peladen tidak menghasilkan satu pun galat** — permintaannya berhasil,
+isinya terkirim utuh, dan yang gagal hanya penggambarannya di peramban.
+
+Pemetaannya kini lewat **tabel sendiri**, bukan `mime.TypeByExtension` saja: di Windows
+fungsi itu membaca **registry mesin**, sehingga jenis isi yang diumumkan peladen akan
+bergantung pada mesin tempat ia berjalan. Dokumen yang tampil di satu lingkungan lalu terunduh
+begitu saja di lingkungan lain, tanpa penjelasan. Tabel bawaan tetap dipakai sebagai cadangan
+terakhir.
+
+`jfif` ikut masuk tabel karena ia muncul **116 kali** dan tidak dikenali tabel bawaan mana pun.
+
+### 158.3 Sekalian: `inline` hanya untuk jenis yang aman digambar
+
+Berkas yang diunggah petugas disajikan dari **asal yang sama** dengan aplikasi. Satu berkas
+`.html` atau `.svg` yang digambar sebagai halaman karena itu dapat menjalankan skrip atas nama
+petugas yang sedang masuk — dan yang menentukan jenisnya adalah **nama berkas yang
+diunggah**, sehingga pemilihnya adalah pengunggah.
+
+`Content-Disposition: inline` kini hanya untuk PDF, gambar, dan teks biasa; selebihnya
+`attachment`. Ditambah `X-Content-Type-Options: nosniff`, karena yang menjalankan skrip adalah
+**penafsiran peramban**, bukan pengumuman kami.
+
+Jalur yang dipakai layar sendiri aman tanpa itu — blob URL berasal dari asal buram. Pengerasan
+ini untuk alamatnya, yang dapat ditembak langsung.
+
+### 158.4 Uji lamanya LULUS, dan itu bagian dari persoalan
+
+Uji yang ada memeriksa `href` tautan itu:
+
+```ts
+expect(tautan).toHaveAttribute('href', `/api/.../dokumen/DOC-0001`)
+```
+
+Ia membuktikan **alamatnya benar**, dan tidak pernah membuktikan **alamatnya dapat dibuka**.
+Justru yang kedua itulah yang gagal. Pemeriksaan terhadap bentuk, bukan terhadap akibat, lulus
+sepanjang bentuknya rapi.
+
+Penggantinya memeriksa akibat: permintaannya benar-benar berangkat, **dengan**
+`Authorization: Bearer …` dan `X-Portal`. Ditambah dua uji Go untuk 158.2 dan 158.3.
+
+Ketiganya dibuktikan menggigit — mengembalikan perilaku lama membuat masing-masing gagal
+(`expected "application/pdf", actual "pdf"`; `expected null to be 'Bearer token-uji'`).
+
+---
+
+## 159. "Download Dokumen" menerbitkan surat dan melampirkannya (2026-10-02)
+
+**Permintaan Work Owner:** *"pas download surat filenya masuk di lihat dokumen"* — berkas hasil
+Download Dokumen harus terbaca di "Lihat Dokumen".
+
+### 159.1 Apa yang sebenarnya dijalankan tombol itu di Pega
+
+Ditelusuri dari `Section/SectionLampiranSuratPUCL-Section.xml`. Rantai kliknya tiga:
+
+| # | Tindakan | Isi |
+|---|---|---|
+| 1 | `runActivity` | **`InsertMitraPA(tipe="cetak")`** — activity yang SAMA dengan Kirim Ke Analyst, hanya beda parameter. Isinya hanya mencatat mitra dan menyimpan; **tidak membuat berkas apa pun** |
+| 2 | `refresh` | **`PUCLPost(... statusCase="1")`** — **di sinilah suratnya lahir** |
+| 3 | `runActivity` | `InsertHistoryClaimPNC(statusNote="Wait for Complete PUCL Document ")` |
+
+Langkah `PUCLPost` yang menerbitkan surat, menurut `pyStepsDescription`-nya sendiri:
+
+```
+26  Property-Set-HTML        set HTML SuratPUCL PA / SuratRCL PA / SuratMSIG PA / … Travel
+35  Call Work-.DeleteAttachment   search attachment for delete if same name
+36  Call AttachAsPDFC             attach dokumen
+38  Call SetUploadDocument        Set category dokumen PUCL
+```
+
+Nama berkasnya `"PUCL"+".pdf"` atau `"RCL"+".pdf"`; kategorinya **`Notification`** — dan
+kategori itu **terverifikasi ada** di `PC_LINK_ATTACHMENT.PYCATEGORY` untuk klaim PNC.
+
+### 159.2 Templatnya semula tidak ada, lalu dikirim Work Owner
+
+`HTML/` memuat 30 berkas dan **nol** bernama Surat; `Sample Form/` 17 berkas, seluruhnya LOD.
+Surat yang sudah dicetak Pega pun tidak dapat dibaca: isinya di `PC_DATA_WORKATTACH.PZPVSTREAM`,
+blob internal Pega. Saya inflate-nya — berhasil (zlib), tetapi **nol potongan terbaca** dari
+11.296 bita.
+
+Pertanyaannya karena itu diajukan ke Work Owner, dan jawabannya **mengirim artefaknya**:
+`HTML/SuratPUCL-HTML.xml` (2026-10-02 10.18). Isinya ada di `pySourceStream`, 149 baris,
+dengan 27 placeholder `pega:reference`.
+
+### 159.3 Nama-nama placeholder-nya menyesatkan, dan itu terdekode dari `PUCLPost`
+
+Ini bagian yang paling mudah salah dibaca. Enam properti bernama seperti data bank dan
+reasuransi ternyata **potongan waktu sistem**:
+
+| Placeholder | Isi sebenarnya |
+|---|---|
+| `TempPUCL.BrokerRe` · `BrokerReName` · `CabId` | `dd` · `MMMM` · `yyyy` → **tanggal surat** |
+| `TempPUCL.BankCIF` · `BLNumber` · `BookNo` | `hh` · `mm` · `ss` |
+| `TempPUCL.CoverNo` | `Param.category` |
+| `TempPUCL.AccountNo` · `CedingCo` | `MM` · `yyyy` |
+| `TempPUCL.CedingCompany` | **Tanggal Kejadian** (`DateOfLoss` + 7 jam) |
+
+Jadi baris kedua surat adalah **nomor surat**:
+
+```
+{hh}{mm}{ss}/{kategori}.CL.AHID.ASM/{MM}/{yyyy}
+```
+
+**Jamnya 12-jam, bukan 24.** Pega memakai `@CurrentDate("hh","WIB")`, dan `hh` pada format Java
+adalah jam 01–12. Surat yang terbit pukul 14.05 bernomor berawalan `0205`. Ditiru apa adanya
+(`P-5`), dengan akibat yang dicatat: **nomor surat tidak unik** — dua surat berjarak tepat 12
+jam pada bulan yang sama bernomor sama persis. Uji `TestNomorSuratMemakaiJamDuaBelasJam`
+menahannya supaya tidak ada yang "memperbaikinya" tanpa menyadari ia mengubah nomor yang keluar
+ke cabang.
+
+### 159.4 Tiga baris tergambar KOSONG, dan barisnya tetap ada
+
+| Baris | Sebabnya |
+|---|---|
+| **Nomor Kontrak** (`PUCLStatus.NIK`) | tidak punya kolom di tabel mana pun — dicari di `TC_PNC_PUCL` (34 kolom), `PC_ASM_FW_GCNMFW_WORK`, dan `T_CLAIM_PNC` |
+| **Unit Bisnis / Seksi** | idem |
+| **Nama penanda tangan** (`SIGNATURE_NAME`) | bukan kolom `POOLDATA.M_SIGNATURE1`, yang hanya punya `SIGNATURE_ID`, `JSONDATA`, `NIK`, `LOGIN_APLIKASI` |
+
+Ketiganya hidup di clipboard Pega. Barisnya **tetap digambar beserta labelnya**: baris yang
+hilang membuat surat terbaca seolah memang tidak punya isian itu, sedangkan baris kosong
+menunjukkan ada yang belum terbawa.
+
+Gambar tanda tangannya sendiri **ada** — `M_SIGNATURE1` id `00924` memuat 4.755 bita, dan
+`LOGIN_APLIKASI`-nya cocok dengan nama pada komentar templat. Belum dipasang karena id-nya
+di-hardcode di Pega dan `D-15` menuntutnya menjadi master data, serta karena nama penanda
+tangannya belum ada — blok tanda tangan setengah terisi lebih menyesatkan daripada yang kosong.
+
+Logo `webweb/LogoASM.PNG` juga tidak ada di export.
+
+### 159.5 Satu selisih yang disengaja: yang senama TIDAK dibuang
+
+`PUCLPost` membuang lampiran bernama sama lebih dulu, sehingga satu klaim hanya punya satu
+`PUCL.pdf`. **Itu tidak ditiru.** `D-66` menetapkan tidak ada penghapusan fisik data bernilai
+bisnis, dan `POOLDATA.DATA_ATTACHFILE` **tidak punya kolom penanda hapus** — sehingga
+penghapusan lunak pun belum mungkin.
+
+Akibatnya mencetak ulang menambah baris, bukan menimpa. Daftarnya terurut terbaru di atas,
+jadi yang berlaku tetap yang teratas. Menambahkan kolom penanda menempuh `D-63`.
+
+### 159.6 Urutan yang dipilih, dan kenapa
+
+Penandaan **dulu**, penerbitan kemudian — dan kegagalan menerbitkan **tidak** membatalkan
+tindakannya:
+
+- perpindahan tab itulah yang menghambat petugas; menggagalkan seluruh tindakan karena
+  berkasnya gagal akan menahan klaim di tab pertama selamanya;
+- urutan terbalik membuat kegagalan penandaan meninggalkan surat tanpa klaim yang berpindah.
+
+Kegagalan berkasnya dicatat sebagai **peringatan**, bukan galat, dan kalimat di layar
+menyesuaikan diri.
+
+### 159.7 Unduhannya menempuh alamat yang sudah ada
+
+Peladen mengembalikan **baris lampirannya**, dan layar mengambil berkasnya lewat alamat **isi
+dokumen** — alamat yang sama dengan "Lihat Dokumen". Dengan begitu surat yang baru terbit dan
+surat lama diambil lewat jalan yang sama persis, termasuk pemeriksaan kepemilikan klaimnya.
+Tidak ada alamat baru yang mengembalikan berkas dari jalur tindakan.
+
+### 159.8 Keterangan tombolnya sudah EMPAT kali keliru
+
+| Versi | Bunyi | Salahnya |
+|---|---|---|
+| v1 | "Mengunduh surat RCL/PUCL klaim ini." | menyembunyikan bahwa ia MENULIS |
+| v2 | "tidak mengunduh apa pun" | menyembunyikan bahwa klaim PINDAH |
+| v3 | "Menerbitkan PDF surat DAN menandainya…" | menjanjikan PDF yang belum terbit |
+| v4 | "Berkas PDF-nya belum diterbitkan dari sini" | **menyangkal PDF yang sudah terbit** |
+
+v4 benar sampai pagi 2026-10-02 dan salah sejak templatnya tiba. Arah kelirunya berbahaya: ia
+membuat petugas mengira surat tidak terbit, lalu mencetaknya lagi di Pega — dan klaim mendapat
+dua surat. Ujinya kini menahan **keempatnya** sekaligus.
+
+### 159.9 Kesalahan saya pada sesi ini: uji yang hilang
+
+Saat memperbaiki galat kompilasi, saya menjalankan `git checkout --` pada
+`internal/inboxrclpucl/usecase/action_test.go`. Berkas itu memuat perubahan **yang belum
+ter-commit**, dan perintah itu membuangnya — termasuk uji tombol "Save".
+
+Berkasnya saya tulis ulang beserta cakupan yang hilang, ditambah tiga uji baru untuk surat.
+Yang tidak dapat saya pulihkan adalah kata-kata persis uji lamanya.
+
+Pelajarannya satu kalimat: **`git checkout --` pada berkas yang belum di-commit adalah
+penghapusan, bukan pembatalan.** Yang seharusnya saya lakukan adalah menyunting galatnya
+langsung.
+
+---
+
+## 160. "Lihat Dokumen" mengikuti penyaring `GCNMGetAllAttachments` (2026-10-02)
+
+**Penetapan Work Owner:** *"ikuti penyaring seperti RD GCNMGetAllAttachments"*, menjawab
+pengamatan bahwa daftar itu seharusnya memuat surat dari Download Dokumen dan berkas dari
+Unggah Dokumen saja.
+
+### 160.1 Daftar kami dua kali lebih panjang daripada daftar Pega
+
+Dibandingkan langsung pada satu klaim:
+
+| Sumber | Baris |
+|---|---:|
+| `DATAPEGA.PC_LINK_ATTACHMENT` — yang dibaca RD | **4** (`PUCL`, `PUCL`, `Adjustment`, `ClaimFaceSheet`) |
+| `POOLDATA.DATA_ATTACHFILE` — yang dibaca kami | **9** |
+
+Keenam selisihnya bernama `duplicated.JPG` berkategori `10064`, dan **tidak satu pun pernah
+tergambar di layar Pega**. Kami menampilkan baris yang layar lamanya sendiri sembunyikan.
+
+### 160.2 Penyaring RD-nya, dibaca apa adanya
+
+`GCNMGetAllAttachments` berkelas **`Link-Attachment`**, `pyMaxRecords=500`, dengan logika
+`A AND C AND D AND (B OR E)`:
+
+| | Kondisi |
+|---|---|
+| A | `.pyCategory = Param.category` |
+| B | `.pxLinkedRefFrom = Param.inskey` |
+| C | `.GCNMCategory = Param.GCNMCategory` |
+| D | `.GCNMType = Param.GCNMType` |
+| E | `.pyLabel = Param.inskey` |
+
+`Flow Action/ViewAttachmentPUCL` tidak punya pra-pemrosesan dan tidak mengirim satu parameter
+pun, sehingga `A`, `C`, dan `D` berparameter kosong — dan Pega mengabaikan kondisi berparameter
+kosong. Yang tersisa `B OR E`: lampiran milik objek kerja itu.
+
+**Yang menentukan bukan kondisinya, melainkan KELASNYA.** `pyCategory` pada `Link-Attachment`
+berisi **nama kategori lampiran** — `Notification`, `LOD`, `ClaimFaceSheet`. Baris yang
+`CATEGORY`-nya **kode angka** berasal dari mekanisme lain (`V_LST_DOC_TYPE`), dan penyaring itu
+tidak akan pernah mencocokkannya.
+
+Itulah penyaringnya, dan itulah yang ditiru: **baris yang kategorinya bukan nama kategori
+lampiran tidak digambar.**
+
+### 160.3 Himpunan namanya diambil dari data, bukan ditulis di kode
+
+Dibandingkan terhadap himpunan yang **sama** dengan pemilih kategori dialog unggah (§157) —
+nama kategori yang benar-benar dipakai lampiran klaim PNC. Alasannya satu kalimat: **kategori
+yang ditawarkan dropdown tidak boleh membuat barisnya hilang dari daftar.**
+
+Menulis daftar namanya di dalam kode akan membuat keduanya dapat berselisih, dan selisihnya
+tidak menghasilkan galat — hanya berkas yang menghilang sesudah diunggah.
+
+### 160.4 Bentuk `EXISTS` diukur dan dibuang
+
+Rakitan pertama memakai `EXISTS` berkorelasi per baris. Diukur terhadap basis data nyata:
+**1,7 detik untuk 9 baris** — ia menyapu tabel lampiran Pega sekali untuk setiap baris.
+
+Diganti `LEFT JOIN` ke himpunan nama yang dihitung sekali: **842 ms saat dingin, 56 ms saat
+hangat**.
+
+### 160.5 Kategori kosong kini disimpan sebagai `File`
+
+§157.4 menetapkan memilih kategori TIDAK wajib, dan yang kosong dibiarkan kosong. Itu punya
+akibat yang **tidak terduga sampai penyaring ini ada**: baris tanpa kategori tidak cocok dengan
+satu pun nama kategori lampiran, sehingga **berkas yang baru saja diunggah petugas langsung
+hilang dari daftarnya**.
+
+Karena itu kategori kosong kini disimpan sebagai **`File`** — kategori lampiran bawaan Pega, dan
+nilai yang sudah menjadi bawaan dropdown-nya. Pilihan "Select.." tetap ada di layar; yang
+berubah hanya apa yang tersimpan ketika ia dipilih.
+
+### 160.6 Yang disaring DIHITUNG dan dinyatakan
+
+Jumlahnya ikut dikirim peladen dan disebut di layar: *"7 lampiran lama tidak ditampilkan —
+seluruhnya tidak tergambar di layar Pega pula."*
+
+Ini bukan hiasan. Daftar yang diam-diam lebih pendek adalah kegagalan yang **tidak menghasilkan
+satu pun galat**: dokumen yang dicari petugas hilang, dan tidak ada yang memberi tahu bahwa ia
+disembunyikan. Kalimatnya hanya muncul bila memang ada yang disaring — kalimat yang selalu
+muncul berhenti dibaca.
+
+Penyaringannya juga **tidak dilakukan di dalam kueri**. Kueri membawa penanda; lapisan atas yang
+memutuskan dan menghitung. Menyaring di SQL akan membuat jumlah yang tersembunyi mustahil
+diketahui.
+
+### 160.7 Satu akibat yang perlu disebut
+
+Satu berkas yang Work Owner unggah pagi ini — `DLAFACOUTH…108242.pdf`, berkategori `10066` —
+**ikut tersaring**. Ia diunggah lewat dialog kami sebelum §157 mengubah kategori menjadi nama,
+sehingga kategorinya kode angka. Berkasnya tetap ada di basis data; yang berubah hanya ia tidak
+lagi digambar, sama seperti di Pega.
+
+---
+
+## 161. Ke mana `SetTicket` mengarahkan klaim — rantainya terlacak penuh (2026-10-02)
+
+**Pertanyaan Work Owner:** *"untuk kirim Analyst … dia memanggil call SetTicket, itu agar klaim
+diarahkan ke mana lagi agar tidak di RCL/PUCL"*.
+
+§143 pernah berhenti tepat pada pertanyaan ini: temuan 6 menyatakan tahap Analyst ber-`pyRouteTo
+= Custom` dan **router-nya hilang dari export** (`R-04`), sehingga "kepada siapa klaim diberikan"
+tidak diketahui. Penelusuran hari ini **menutup pertanyaan itu**.
+
+### 161.1 Rantainya, berurutan
+
+| # | Artefak | Isi |
+|---|---|---|
+| 1 | `PUCLPost` langkah `call SetTicket` | prekondisi `param.Status==1`, `WhenFalse=3` — **hanya berjalan pada Kirim Ke Analyst** |
+| 2 | parameter langkah itu | `<Ticket>SendtoAnalysator</Ticket>` |
+| 3 | `Ticket/SendtoAnalysator-Ticket.xml` | ticket rule-nya **ada di export** |
+| 4 | `Flow/Register_Flow.xml` | ticket menempel pada shape ber-`pyUseCaseName = SendToAnalis` |
+| 5 | shape itu | `pyImplementation = **WorkList**`, `pyRouterProp.pyImplementation = **PNCTeknikRouter**` |
+
+**Parameternya nyaris terlewat.** Pega menyimpan parameter langkah `Call` sebagai **tag bernama
+parameternya sendiri** (`<Ticket>…</Ticket>`), bukan sebagai pasangan
+`PropertiesName`/`PropertiesValue`. Pencarian pertama saya memakai pola yang kedua dan tidak
+menemukan apa pun — kekeliruan yang sama persis dengan §139, dan terulang.
+
+### 161.2 Kepada siapa — pertanyaan terbuka §143 temuan 6, kini terjawab
+
+`PNCTeknikRouter` memang masih hilang (`R-04`), tetapi **akibatnya terukur**, dan modul
+`registrasi` sudah merekonstruksinya: `technicalpic.go` mencatat bahwa dari **338 baris** tahap
+teknis, pemegang tugasnya sama dengan `USERTEKNIS_1` pada **320**.
+
+Diperiksa ulang pada klaim nyata hari ini, dan cocok:
+
+| Klaim | `USERTEKNIS_1` | Pemegang worklist `Send To Analis` |
+|---|---|---|
+| `PNC-2183` | `ESTHERSIMBOLON` | **`ESTHERSIMBOLON`** |
+
+Jadi tujuannya: **tahap `Send To Analis` (`Assignment5`), antrean Worklist, dipegang PIC Teknik
+klaim itu sendiri.**
+
+### 161.3 Yang menahan klaim di RCL/PUCL BUKAN ticket-nya
+
+Ini bagian yang menjawab kekhawatiran Work Owner. Dibaca langsung dari basis data:
+
+| Klaim | Objek kerja | Worklist | Workbasket |
+|---|---|---|---|
+| `PNC-2183` (sudah dikirim) | `STATUSCLAIM_1 = 1151` | `Send To Analis` → PIC Teknik | **`RCLPUCL` MASIH ADA**, status `Error: Flow Not At Task` |
+| `PNC-2067` (belum) | `1157` | — | `RCLPUCL`, status `New` |
+
+Yang menahan klaim di antrean RCL/PUCL milik Pega adalah **satu baris**:
+
+```
+PZINSKEY = ASSIGN-WORKBASKET ASM-FW-GCNMFW-WORK PNC-xxxx!REGISTER_FLOW
+wb       = RCLPUCL      task = Assignment6      flow = Register_Flow
+```
+
+Di Pega baris itu dibuang oleh **Finish Assignment**, bukan oleh `SetTicket`. §144.4 menetapkan
+kami **tidak** membuangnya, dan akibatnya sudah dinyatakan di `PlannedDifferences`: klaim keluar
+dari antrean layar ini, tetapi masih terlihat di antrean RCL/PUCL milik Pega.
+
+### 161.4 Keadaan itu sudah ada sebelum kami, dan Pega menandainya sendiri
+
+**16 dari 63** klaim di antrean `RCLPUCL` berstatus klaim `1151` (Analyst) — yaitu sudah pindah
+tahap tetapi barisnya tertinggal. Pega menandai yang demikian `Error: Flow Not At Task`.
+
+Jadi tertinggalnya baris itu **bukan akibat modul ini**; ia keadaan yang sudah berjalan. Yang
+benar untuk dikatakan: modul ini **belum memperbaikinya**, bukan modul ini merusaknya.
+
+### 161.5 Kesalahan saya dalam penelusuran ini
+
+`TC_PNC_PUCL.CLAIMID` ternyata berisi **nomor case telanjang** (`PNC-2183`), bukan berawalan
+`ASM-FW-GCNMFW-WORK` seperti `PZINSKEY`. Penyambungan pertama saya ke tabel penugasan memakai
+`PXREFOBJECTKEY = CLAIMID`, tidak menemukan satu baris pun, dan saya nyaris menyimpulkan
+**"klaimnya tidak ada di worklist mana pun"** — kesimpulan yang salah total.
+
+Yang menyelamatkannya adalah uji kontrol: klaim yang **belum pernah disentuh** pun tidak punya
+baris, dan itu tidak masuk akal. Kode modul ini sendiri tidak terdampak — ia menerjemahkan nomor
+case lewat `work_object_key`; yang keliru hanya kueri selidik saya.
+
+### 161.6 Yang tersisa, dan itu keputusan Work Owner
+
+Satu operasi: **menutup baris workbasket `Assignment6`**. Jalannya tiga, dan ketiganya bukan
+keputusan saya:
+
+1. **Tim Pega membangun `ActionClaimPUCL`** — spesifikasinya sudah siap di
+   `permintaan-artefak-pega.md` §12.8. Ini jalan yang bersih.
+2. **Kami menghapus barisnya sendiri** — bertentangan dengan `D-66` (tidak ada penghapusan fisik)
+   dan dengan `P-1`; §143 sudah membuktikan jalur `INSERT`/`UPDATE` yang disetujui tidak dapat
+   mencapainya.
+3. **Dibiarkan** — klaim tetap terlihat di antrean RCL/PUCL Pega selama masa paralel, bergabung
+   dengan 16 baris yang sudah berkeadaan sama.
+
+---
+
+## 162. Kirim Ke Analyst MEMINDAHKAN penugasan, mengikuti alur Pega (2026-10-02)
+
+**Penetapan Work Owner:** *"ikuti seperti di pega alurnya"*, sesudah dua rekomendasi saya
+sebelumnya gugur.
+
+### 162.1 Dua rekomendasi saya yang salah, berurutan
+
+Dicatat karena polanya sama, dan polanya yang perlu diingat — bukan kesalahannya.
+
+| # | Saya merekomendasikan | Gugur karena |
+|---|---|---|
+| 1 | Tunggu Tim Pega, biarkan baris antrean tertinggal | Work Owner menunjuk `Register_Flow`: klaim memang kembali ke Send To Analis, dan saya belum menelusurinya |
+| 2 | Tulis `POOLDATA.T_CLAIMLIST_ADMIN` | Tabel itu **tidak punya baris** untuk kedua klaim PUCL, dan tahap `Send To Analis` **tidak pernah ada** di sana — labelnya hanya Input Register, Choose Surveyor, Input Estimasi, InputReceiveDocument, Estimation |
+
+Rekomendasi kedua saya berikan **tanpa memeriksa isi tabelnya**. Saya melihat `inboxmanager`
+membacanya dan menyimpulkan tahapnya akan tergambar di sana. Pemeriksaan yang seharusnya
+mendahului rekomendasi justru menjadi yang membatalkannya.
+
+### 162.2 §143 menyimpulkan dari satu klaim, dan itu terlalu luas
+
+§143 berhenti karena slot primary key penugasan "sudah terisi tugas orang lain". Diukur ulang
+pada **63** klaim antrean RCL/PUCL:
+
+| Keadaan | Jumlah | Perlakuan |
+|---|---:|---|
+| Slot bebas | **31** | sisipkan penugasan tahap tujuan |
+| Sudah di `Send To Analis` | **16** | tidak menyisipkan; buang baris lamanya saja |
+| Dipegang tugas lain (`Estimation`) | **15** | **DITOLAK** |
+
+Jadi **47 dari 63** sebenarnya aman. Kesimpulan §143 benar untuk klaim contohnya, dan terlalu
+luas untuk populasinya.
+
+### 162.3 Rantai alurnya, terlacak penuh
+
+| # | Artefak | Isi |
+|---|---|---|
+| 1 | `PUCLPost` langkah `call SetTicket` | prekondisi `param.Status==1` — hanya pada Kirim Ke Analyst |
+| 2 | parameter langkahnya | `<Ticket>SendtoAnalysator</Ticket>` |
+| 3 | `Register_Flow` | ticket menempel pada shape `Assignment5` |
+| 4 | shape itu | `pyImplementation = WorkList`, router `PNCTeknikRouter` |
+
+Dan **tidak ada connector** RCL/PUCL → Send To Analis: satu-satunya connector keluar
+`Assignment6` menuju `End1`. Tanpa ticket, menyelesaikan RCL/PUCL **mengakhiri alur**.
+
+### 162.4 Barisnya DISALIN dari baris asalnya
+
+Kedua baris penugasan hampir sebangun — 34 kolom, berbeda pada enam. Karena itu penyisipannya
+`INSERT … SELECT` dari baris workbasket klaim itu sendiri: kunci rule alur, aplikasi, versi,
+tahap, label klaim, dan waktu alur dimulai **tidak diketik sebagai konstanta**.
+
+Mengetiknya berarti menebak keadaan internal Pega, dan tebakan yang meleset menghasilkan
+penugasan yang tidak dapat dibuka.
+
+Yang berubah hanya enam: kunci, kelas, nama dan label tugas, pemegangnya, dan waktu
+pembuatannya. Atribut organisasi pemegang baru disalin dari penugasan terakhir orang itu —
+bukan dikarang pula.
+
+### 162.5 `PZPVSTREAM` sengaja dibiarkan kosong — dan itu risiko yang disadari
+
+Ia halaman serialisasi penugasan, dan isinya menyebut tugas **lama** (`Assignment6`).
+Menyalinnya apa adanya menanamkan tahap yang keliru ke dalam baris tahap baru.
+
+Kolomnya nullable, jadi dibiarkan kosong. **Pega mungkin menolak membuka penugasan tanpa
+stream itu.** Itu belum diuji — menguji berarti menulis ke basis data bersama, dan klaimnya
+klaim nyata milik petugas nyata.
+
+### 162.6 Yang ditolak, dan kenapa penolakan itu bukan kelemahan
+
+Slot yang dipegang tugas lain **tidak pernah ditimpa**. Menimpanya menghilangkan pekerjaan
+dari layar pemegangnya **tanpa satu pun pesan** — akibat yang berbeda jenis dari "satu klaim
+bermasalah", dan §143 sudah menolaknya atas dasar yang sama.
+
+Pesannya menyebut dua hal yang petugas butuhkan: **di mana** ia dapat menyelesaikannya (Pega),
+dan bahwa **penanda PUCL-nya sudah tersimpan** — supaya tombolnya tidak ditekan berulang.
+
+### 162.7 Penghapusan baris workbasket
+
+`D-66` melarang penghapusan fisik data bernilai bisnis, dan §144.4 menolaknya atas dasar
+"penghapusan tabel Pega tidak dapat dipulihkan". Keberatan itu disampaikan lagi sebelum
+pekerjaan ini dimulai; Work Owner memilih mengikuti alur Pega.
+
+Yang membatasi taruhannya: penghapusannya memakai **tiga penyaring** — klaim, nama tugas
+(`Assignment6`), dan workbasket (`RCLPUCL`) — sehingga yang terbuang persis baris yang
+dimaksud, bukan penugasan lain milik klaim yang sama.
+
+### 162.8 Kekeliruan ketiga: kunci penyambungan
+
+`TC_PNC_PUCL.CLAIMID` berisi **nomor case telanjang** (`PNC-2183`), bukan berawalan
+`ASM-FW-GCNMFW-WORK` seperti `PZINSKEY`. Kueri selidik pertama saya menyambung
+`PXREFOBJECTKEY = CLAIMID`, tidak menemukan apa pun, dan saya nyaris menyimpulkan klaimnya
+tidak ada di penugasan mana pun.
+
+Yang menyelamatkannya uji kontrol: klaim yang **belum pernah disentuh** pun tidak punya baris,
+dan itu tidak masuk akal. Kode modulnya tidak terdampak — ia menerjemahkan lewat
+`work_object_key`.
+
+**Tiga kekeliruan dalam satu sesi, ketiganya karena menyimpulkan sebelum memeriksa.** Uji
+kontrol menangkap yang ketiga; dua yang pertama ditangkap Work Owner.
+
+---
+
+## 163. §162 MERUSAK satu klaim — pencabutan dan pemulihannya (2026-10-02)
+
+**Laporan Work Owner:**
+
+```
+Unable to open an instance using the given inputs:
+ASSIGN-WORKBASKET ASM-FW-GCNMFW-WORK PNC-2067!REGISTER_FLOW
+```
+
+Klaim `PNC-2067` tidak dapat dibuka lagi di Pega. Penyebabnya pemindahan penugasan yang §162
+pasang beberapa jam sebelumnya.
+
+### 163.1 Kesimpulan §162.5 yang keliru
+
+§162.5 menulis bahwa `PZPVSTREAM` "nullable, jadi dibiarkan kosong", dengan risiko disebut
+sebagai kemungkinan. Angka yang seharusnya saya baca lebih dulu:
+
+> Dari **105.616** baris `PC_ASSIGN_WORKBASKET`, **nol** yang `PZPVSTREAM`-nya kosong.
+
+**Nullable berarti basis data mengizinkannya, bukan berarti Pega menerimanya.** Katalog
+menjawab pertanyaan yang berbeda dari pertanyaan yang saya ajukan, dan saya memakai jawabannya
+seolah sama.
+
+Satu kueri `COUNT` memisahkan "boleh kosong menurut skema" dari "pernah kosong dalam
+kenyataan". Kueri itu tidak saya jalankan.
+
+### 163.2 Yang rusak
+
+| Hal | Keadaan sesudah §162 berjalan |
+|---|---|
+| Baris workbasket `Assignment6` | **terhapus** — beserta `PZPVSTREAM`-nya |
+| Baris worklist `Send To Analis` | tersisip, ber-`PZPVSTREAM` **kosong** |
+| Objek kerja | tetap menunjuk penugasan workbasket yang sudah tidak ada |
+
+Akibatnya Pega tidak dapat membuka klaimnya sama sekali — bukan salah tampil, melainkan tidak
+terbuka.
+
+Hanya **satu** klaim terdampak: `PNC-2067`. `PNC-2183` tidak tersentuh karena slotnya sudah
+berisi `Send To Analis`, sehingga jalurnya berbeda.
+
+### 163.3 Pemulihannya
+
+Yang terhapus tidak dapat dikembalikan dari salinan — tidak ada salinannya. Ia **dibangun
+ulang** dari baris klaim lain yang sebangun:
+
+| Langkah | Isi |
+|---|---|
+| 1 | Donor dipilih: `Assignment6` · `RCLPUCL` · status `New` · nomor klaim **sama panjang** · label, divisi, dan workgroup sama |
+| 2 | Stream donor dibongkar: kepala `ZlB7` + panjang inflate **big-endian**, isinya zlib berisi teks **UTF-16LE** |
+| 3 | Nomor klaim donor diganti nomor korban — **4 kemunculan**, panjang bita identik sehingga tidak satu offset pun bergeser |
+| 4 | Dirakit ulang, lalu **dibuktikan bolak-balik**: hasilnya di-inflate kembali dan dibandingkan bita demi bita |
+| 5 | Disisipkan beserta kolom donor, dengan hanya keempat kolom identitas diganti |
+| 6 | Baris worklist cacat buatan kami dibuang |
+| 7 | `TC_PNC_PUCL` dikembalikan: `PUCL_APPROVE='0'`, `STATUS_CLAIM` diambil **dari objek kerjanya sendiri** (`1157`), bukan ditebak |
+
+Alat pemulihnya **menolak berjalan** bila barisnya ternyata sudah ada, bila kepala stream tidak
+dikenali, bila panjang di kepala tidak cocok, bila nomor klaim tidak ditemukan di dalam stream,
+bila panjang berubah sesudah penggantian, atau bila hasilnya tidak terbaca kembali. Uji kering
+dijalankan lebih dulu, dan tidak satu pun pernyataan tulis berjalan sampai ia bersih.
+
+Terverifikasi sesudahnya: `PZINSKEY` persis yang Pega minta, stream 4.972 bita terbaca,
+memuat nomor korban 4 kali dan **nol** jejak donor, dan **nol** baris ber-stream kosong di
+kedua tabel penugasan.
+
+### 163.4 Yang dicabut
+
+`ReturnToAnalyst` **tidak lagi memindahkan penugasan**. Ia kembali hanya menulis
+`TC_PNC_PUCL`, seperti sebelum §162.
+
+Fungsinya beserta ketiga kuerinya **dipertahankan, tidak dihapus** — supaya analisis alurnya
+tidak hilang, dan supaya sebab kegagalannya terbaca oleh siapa pun yang hendak mencobanya
+lagi. Menghidupkannya menuntut satu hal yang belum ada: **cara membentuk `PZPVSTREAM` yang
+Pega terima**.
+
+Yang kami tahu sekarang tentang format itu — kepala `ZlB7` + panjang big-endian, zlib,
+UTF-16LE, nama properti apa adanya — adalah hasil pemulihan ini, dan itu titik awal bila kelak
+dicoba lagi. Tetapi membentuknya dari nol berbeda dari menambal milik klaim lain.
+
+### 163.5 Yang seharusnya saya lakukan
+
+Sebelum menulis ke tabel engine Pega untuk pertama kalinya, **mencobanya pada satu klaim dan
+memeriksa Pega dapat membukanya** — sebelum tombolnya diserahkan ke Work Owner. Saya
+menyerahkannya dengan risiko tertulis di dokumen, dan risiko tertulis bukan pengganti
+percobaan.
+
+`Tiga kekeliruan` yang §162.8 catat bertambah satu, dan yang keempat ini berbiaya paling
+besar: ia menghentikan pekerjaan pada satu klaim nyata.
+
+---
+
+## 164. Kode penulis tabel Pega DIHAPUS, dan penjaganya dipasang (2026-10-02)
+
+**Permintaan Work Owner:** *"lakukan perbaikan agar kalau send to analyst tidak ada yang
+error"*.
+
+### 164.1 Mematikan tidak cukup
+
+§163 mencabut pemanggilannya, tetapi fungsinya beserta ketiga kuerinya dibiarkan ada —
+dengan alasan "supaya analisisnya tidak hilang". Alasan itu salah tempat: **analisis hidup di
+dokumen, bukan di kode yang tidak dipanggil.**
+
+Kode mati yang menulis tabel Pega adalah jebakan bagi sesi berikutnya. Ia terbaca seperti
+fitur yang tinggal dinyalakan, sedangkan yang membuatnya berbahaya — `PZPVSTREAM` — tidak
+terlihat dari tempat ia dinyalakan.
+
+Yang dihapus: `moveAssignmentToAnalyst`, `removeWorkbasketAssignment`, `technicalPIC`,
+ketiga kuerinya, `ErrAssignmentSlotTaken` beserta pemetaan galatnya, dan uji-ujinya.
+
+### 164.2 Dua penjaga, dan keduanya dibuktikan menggigit
+
+| Penjaga | Isi |
+|---|---|
+| `TestNoQueryWritesToPegaTables` | Setiap kueri yang `INSERT`/`UPDATE`/`DELETE` **tidak boleh** menyebut `DATAPEGA.` |
+| `TestNoPegaAssignmentQueryRemains` | Ketiga nama kueri yang terbukti merusak tidak boleh muncul lagi |
+
+Yang pertama **membuang baris komentar lebih dulu**: catatan BOLEH menyebut tabel Pega, dan
+justru harus — penjelasan yang tidak boleh menyebut penyebabnya tidak menjelaskan apa pun.
+
+Membaca tetap boleh, dan modul ini memang membaca `PC_ASM_FW_GCNMFW_WORK` dan
+`PC_LINK_ATTACHMENT`. `P-1` melarang menulis, bukan membaca.
+
+Dibuktikan: menyisipkan satu kueri `DELETE FROM DATAPEGA.PC_ASSIGN_WORKBASKET` membuat
+penjaga pertama gagal dengan menyebut nama kuerinya.
+
+### 164.3 Dijalankan terhadap basis data nyata
+
+Tindakan Kirim Ke Analyst dijalankan pada `PNC-2067` lewat repo yang sebenarnya:
+
+```
+sebelum      appr=0 status=1157  workbasket=1 worklist=0
+tindakan selesai TANPA galat
+sesudah      appr=1 status=1151  workbasket=1 worklist=0
+dikembalikan appr=0 status=1157  workbasket=1 worklist=0
+```
+
+Penugasan Pega **tidak tersentuh** — jumlah barisnya tetap sebelum dan sesudah. Keadaannya
+dikembalikan supaya klaimnya tetap berada di antrean Work Owner untuk dicoba sendiri.
+
+### 164.4 Yang tersisa, dan itu bukan galat
+
+Klaim yang dikirim keluar dari antrean layar ini tetapi **masih terlihat di antrean RCL/PUCL
+milik Pega**, bergabung dengan 16 klaim yang sudah berkeadaan sama sebelum modul ini ada.
+
+Itu selisih yang dinyatakan di `PlannedDifferences`, bukan kegagalan. Perpindahan tahap yang
+sebenarnya menunggu `ActionClaimPUCL` dari Tim Pega — dan sesudah §163, menunggu itu adalah
+jalan yang benar, bukan jalan yang lambat.
+
+---
+
+## 165. Peta ticket Register_Flow, dan kalimat yang berbohong (2026-10-02)
+
+**Laporan Work Owner:** *"PNC nya masih di send RCL/PUCL cuman tidak muncul saja"*, disertai
+permintaan menelusuri ulang `call SetTicket` beserta `when`-nya.
+
+### 165.1 Ke-57 langkah `PUCLPost` dibaca, bukan 40
+
+Penelusuran sebelumnya hanya mencetak 40 langkah pertama, dan dari situ saya menyimpulkan ada
+satu `call SetTicket`. Kesimpulannya **kebetulan benar**, tetapi dasarnya tidak — 17 langkah
+terakhir tidak pernah dibaca.
+
+Dibedah ulang per langkah lewat `pyStepPageReference`. Hasilnya:
+
+| Langkah | Isi | `when` |
+|---:|---|---|
+| 5 · 6 · 7 | set property jika PUCL · RCL · MSIG | `RCL_PUCL == 2 · 1 · 3` |
+| 11 | `PUCLApprove = 1` | `param.Status == 1` |
+| 12 | jika TOLAK KLAIM, `param = 0` | `param.Status == 0` |
+| 13 | `StatusCase = 1` | `param.statusCase == 1` |
+| **17** | **`call SetTicket` · `Ticket = SendtoAnalysator`** | **`param.Status == 1`**, `WhenFalse=3` |
+| 19–24 | HTML surat PUCL/RCL/MSIG, PA dan Travel | `IsPA` · `IsTravel` |
+| 25–28 | hapus lampiran senama · attach · set kategori | — |
+| 42 | `ASMForceCaseClose` | `param.Status == ""` |
+
+Jadi `SetTicket` memang **tunggal**, dan `when`-nya `param.Status == 1` — yaitu tombol Kirim,
+bukan Tolak dan bukan Download.
+
+### 165.2 Peta ticket: ke mana tiap ticket mengarahkan klaim
+
+Dibaca dari `pyTicketShapes` tiap shape di `Register_Flow`:
+
+| Ticket | Shape tujuan |
+|---|---|
+| **`SendtoPUCL`** | **`RCLPUCL`** — inilah yang MEMASUKKAN klaim ke antrean ini |
+| **`SendtoAnalysator`** | **`SendToAnalis`** |
+| `SendToInvestigator` | `Investigator` |
+| `CompliancePNC` | `Compliance` |
+| `RCLDokter` | `RCLDokter` |
+| `setToRegister_ticket` | `InputRegister` |
+
+Kedua arah karena itu terbaca lengkap: `SendtoPUCL` membawa klaim masuk, `SendtoAnalysator`
+membawanya keluar. Keduanya **ticket**, bukan connector — dan connector satu-satunya yang
+keluar dari shape `RCLPUCL` menuju `End1`.
+
+### 165.3 Cacat yang nyata dan dapat diperbaiki: kalimatnya berbohong
+
+Laporan Work Owner menunjuk satu hal yang BUKAN urusan Pega melainkan urusan kami:
+
+> kalimat sesudah tombol ditekan berbunyi **"Klaim diteruskan ke Analyst."**
+
+Itu **tidak benar**. Klaimnya tidak diteruskan ke mana pun; ia hanya ditandai selesai di
+`TC_PNC_PUCL` dan karena itu berhenti tergambar di layar ini. Di Pega ia tetap berada di
+antrean RCL/PUCL.
+
+Kalimatnya kini menyebut ketiganya: apa yang terjadi, apa yang **tidak** terjadi, dan **apa**
+yang akan memindahkannya (ticket `SendtoAnalysator`).
+
+Dua penjaga dipasang — satu menolak kedua kalimat lama dan menuntut kalimat barunya menyebut
+antrean Pega serta nama ticket-nya; satu menolak kata "berhasil", yang menjawab pertanyaan
+yang tidak ditanyakan petugas. Keduanya dibuktikan menggigit.
+
+**Janji yang tidak ditepati adalah cacat paling mahal di layar ini**: petugas berhenti
+memeriksa, lalu klaim menumpuk di antrean Pega tanpa ada yang menyadarinya. Enam belas klaim
+sudah berada di sana sebelum modul ini ada.
+
+### 165.4 Yang TIDAK saya kerjakan, dan alasannya
+
+Memindahkan klaimnya sendiri. Melepas ticket adalah pekerjaan **mesin alur Pega**, dan §163
+membuktikan ia tidak dapat ditiru dengan menulis baris tabel: dari 105.616 baris penugasan
+Pega, nol yang `PZPVSTREAM`-nya kosong, dan baris tanpa stream membuat klaim tidak dapat
+dibuka lagi.
+
+Sesudah kejadian itu, mencobanya lagi dengan cara lain bukan ketekunan melainkan pengulangan.
+Yang ditambahkan sebagai gantinya: `permintaan-artefak-pega.md` §12.9 — spesifikasi ticket
+yang wajib dilepas `ActionClaimPUCL`, lengkap dengan peta ticket di atas, supaya layanan yang
+dibangun Tim Pega tidak mengulang keadaan sekarang.
+
+---
+
+## 166. Rantai dua belas activity "Kirim Ke Analyst" — tiga selisih yang belum pernah tercatat (2026-10-02)
+
+**Permintaan Work Owner:** *"di pega saat Kirim ke Analyst menjalankan Activity InsertMitraPA,
+PNCInsertMitraLog_Act, PUCLPost, GetLinkAppClaim, currencyAct, PNCTeknikRouter, SetSignaturePA,
+BrowseSignature, AttachAsPDFC, CallVirusCheck, SetUploadDocument, InsertJsonClaimNonMBU_act —
+tolong analisa lagi lebih teliti."*
+
+Catatan kami sebelumnya menyebut **dua** activity untuk tombol ini. Daftar Work Owner menyebut
+**dua belas**. Selisihnya bukan kekeliruan daftar, melainkan **kedalaman pembacaan**: kami
+berhenti di langkah tingkat atas dan tidak pernah menelusuri apa yang dipanggil di dalamnya.
+
+### 166.1 Rantai sebenarnya, ditelusuri dari `pyStepsActivityName`
+
+```
+Kirim Ke Analyst
+ 1  InsertMitraPA(tipe="dokumen")
+    └─ PNCInsertMitraLog_Act          langkah 2, HANYA bila IsDokLengkap sudah "1"
+ 2  PUCLPost(Status="1", idObj, idCov, idAdj)
+    ├─ GetLinkAppClaim                langkah 3
+    ├─ currencyAct                    langkah 8
+    ├─ SetTicket                      langkah 17, hanya Status==1
+    ├─ SetSignaturePA                 langkah 18, hanya IsPA
+    │   └─ BrowseSignature ×3
+    ├─ AttachAsPDFC                   langkah 27, prekondisi `1==1` — SELALU
+    │   ├─ HTMLToPDF
+    │   ├─ AttachToWork → CallVirusCheck
+    │   └─ View
+    ├─ SetUploadDocument              langkah 29
+    └─ InsertHistoryClaimPNC          langkah 35
+ 3  Finish Assignment → Register_Flow → PNCTeknikRouter
+```
+
+Kesebelas yang disebut Work Owner terkonfirmasi. Yang kedua belas —
+**`InsertJsonClaimNonMBU_act` — TIDAK berjalan** pada tombol ini: prekondisinya
+`param.Status==0 && .ClaimData.PUCLStatus.RCL_PUCL==1`, yaitu **Tolak Klaim pada jalur RCL**.
+Ia ada di `PUCLPost`, hanya tidak pada jalur ini.
+
+`PNCTeknikRouter` tidak ada di export (`R-04`), sehingga aturan penugasannya tetap tidak terbaca.
+
+### 166.2 Kekeliruan metode yang menyembunyikannya
+
+Pembacaan sebelumnya memakai `grep` atas nama activity. Itu menemukan **nama**, tetapi tidak
+menjawab **kapan** ia berjalan — dan pada `PUCLPost` yang 48 langkahnya hampir seluruhnya
+berprekondisi, "kapan" adalah seluruh pertanyaannya.
+
+Parser yang dipakai kali ini memasangkan tiap `<rowdata REPEATINGINDEX="N">` dengan blok
+`<pyStepsPreCondParams>` **di dalam blok yang sama**. Percobaan pertama mengambil precondition
+dari blok yang berdekatan, dan hasilnya **tergeser satu langkah** — `SetTicket` terbaca
+berprekondisi `IsPA`, padahal `param.Status==1`. Pergeseran itu ketahuan karena
+`pyStepsDescription`-nya tidak cocok: langkah bertuliskan *"jika KIRIM KE ANALYSt PUCLAPPROVE ke
+set 1"* mustahil berprekondisi `IsPA`.
+
+**Deskripsi berbahasa Indonesia dari pengembang aslinya, sekali lagi, yang menyelamatkan
+pembacaan** — persis seperti pada §147.
+
+### 166.3 Tiga selisih yang ditemukan, dan perbaikannya
+
+| # | Pega | Keadaan sebelum | Perbaikan |
+|---|---|---|---|
+| 1 | langkah 10 menulis `KomentarPUCL` bersama tindakannya | **catatan DIBUANG** — badan permintaan hanya dibaca untuk `save` | tombol Kirim membawa, menyimpan, dan **mewajibkan** kedua isian |
+| 2 | langkah 27 `AttachAsPDFC` berprekondisi `1==1` | surat hanya terbit pada "Download Dokumen" | surat terbit dan melampir pada tombol Kirim pula |
+| 3 | langkah 20–22 menamai berkas per jalur | jalur `RCL_PUCL='3'` mendapat `PUCL.pdf` | `Notification.pdf`, sesuai langkah 22 |
+
+**Yang pertama paling merugikan, dan paling senyap.** Isian "Catatan untuk Analyst"
+digambar wajib, divalidasi wajib, lalu **dibuang** bila petugas menekan Kirim tanpa menekan
+Save lebih dulu. Layar menjawab berhasil, klaimnya pindah, dan Analyst menerima pekerjaan
+tanpa satu kalimat pun tentang apa yang berubah — akibat yang sudah tertulis di komentar
+`ReceiptInput.Note` sejak awal, tanpa ada yang menyadari bahwa jalurnya sendiri melanggarnya.
+
+Validasinya tidak ditulis ulang: `Repo.SaveReceipt` sudah memanggil `ReceiptInput.Validate`,
+sehingga aturan wajibnya hidup di **satu** tempat untuk kedua jalur. Kedua pelanggaran
+dikembalikan sekaligus, seperti Finish Assignment di Pega.
+
+**Yang kedua tidak lagi terhalang.** §159 mencatat alasannya: templat `SuratPUCL` tidak ada di
+export. Templatnya diterima Work Owner 2026-10-02, sehingga penghalangnya hilang — dan dengan
+hilangnya penghalang itu, prekondisi `1==1` menjadi dapat ditiru apa adanya.
+
+### 166.4 Satu selisih yang DITAMBAHKAN dengan sadar
+
+Pega membuang lampiran bernama sama lebih dulu (langkah 25–26), sehingga satu klaim hanya
+pernah punya satu `PUCL.pdf`. Itu **tidak ditiru**: `D-66` melarang penghapusan fisik data
+bernilai bisnis, dan `POOLDATA.DATA_ATTACHFILE` tidak punya kolom penanda hapus.
+
+Akibatnya petugas yang menekan "Download Dokumen" lalu "Kirim Ke Analyst" memperoleh **dua**
+baris `PUCL.pdf`. Daftarnya terurut terbaru di atas, jadi yang berlaku tetap yang teratas.
+Dinyatakan di daftar selisih layar, bukan dibiarkan ditemukan sendiri.
+
+### 166.5 Dua koreksi atas catatan kami sendiri
+
+1. **Teks riwayat `InsertHistoryClaimPNC`** adalah **`"Send by PUCL to Analyst"`** — nilai
+   `<statusNote>` pada langkah 35. Yang tercatat sebelumnya, *"PUCL send to ANALYST"*, adalah
+   `pyStepsDescription` langkah itu — **keterangan pengembang, bukan parameter**. Keduanya
+   berdampingan di XML, dan yang satu mudah terbaca sebagai yang lain.
+2. **Penomoran langkah.** §147 memakai nomor 15/35/36/48/51/56; XML-nya memakai
+   `REPEATINGINDEX` 11/17/18/27/30/35, dan itulah nomor yang terbaca di designer Pega. Catatan
+   baru memakai `REPEATINGINDEX`, dan menyebutkannya supaya kedua penomoran tidak dikira
+   menunjuk langkah yang berbeda.
+
+### 166.6 Yang tetap TIDAK dikerjakan
+
+| Hal | Sebab |
+|---|---|
+| `InsertHistoryClaimPNC` (langkah 35) | modul ini tidak punya tabel riwayat klaim |
+| `SendtoAnalystDate` (langkah 30) | tidak punya kolom di `TC_PNC_PUCL` |
+| `PUCLApprove = "Setuju"` pada `AdjustmentList` (langkah 10) | di luar lingkup modul ini |
+| `IsDokLengkap = 1` + `PNCInsertMitraLog_Act` | keduanya tidak punya kolom di tabel datar |
+| `SetTicket` (langkah 17) | hanya Pega yang dapat melepas ticket — §161, §163 |
+| `GetLinkAppClaim`, `currencyAct` | yang pertama digantikan pemilihan portal (`D-75`); yang kedua tidak menyentuh jalur ini |
+
+`SetSignaturePA` dan `BrowseSignature` **tidak** masuk daftar ini: blok tanda tangan sudah
+digambar `suratpdf`, dan kedua namanya kosong karena sumbernya belum ditetapkan — bukan karena
+langkahnya dilewati.
+
+### 166.7 Penjaga yang dipasang
+
+Lima uji baru, dan **yang ketiga dibuktikan menggigit** dengan membatalkan perbaikannya lalu
+menjalankan ulang:
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestKirimMenyimpanCatatanUntukAnalyst` | catatan yang diketik BENAR-BENAR tersimpan |
+| `TestKirimMENOLAKIsianWajibYangKosong` | kosong ditolak, **dan klaimnya tidak bergerak** |
+| `TestKirimMelampirkanSuratSepertiDownloadDokumen` | suratnya melampir, bukan sekadar dikembalikan |
+| `TestNamaBerkasSuratMengikutiJalurKlaim` | ketiga jalur, termasuk `Notification.pdf` |
+| `"Kirim Ke Analyst" MEMBAWA catatan yang diketik` (layar) | badan permintaannya memuat apa yang diketik |
+
+Butir kedua menjaga hal yang mudah terlewat: penolakan yang **tetap memindahkan klaim** jauh
+lebih buruk daripada tidak menolak sama sekali.
+
+---
+
+## 167. `Register_Flow` dibaca shape demi shape — konektor RCL/PUCL menuju **akhir flow** (2026-10-02)
+
+**Permintaan Work Owner:** *"coba analisa flow register, dia posisinya ada RCL/PUCL, tolong
+perbaiki."*
+
+### 167.1 Peta alurnya
+
+```
+Send To Analis (Assignment5) ──SendtoRCLPUCL──┐
+Send To PIC Teknik (Assignment8) ─InputRegister─┤
+                                              ▼
+                                         Decision7
+                      ┌────────────┬─────────┴──────────┬──────────────┐
+                 NotCompliance   RCLMSIG        IsAnalystTransfer   IsCompliance
+                      ▼            ▼                   ▼                ▼
+                 RCL/PUCL      RCLDokter       Analyst Doctor      Compliance
+                (Assignment6)
+                      │
+                      └──SendtoRCLPUCL──► End1        ← SATU-SATUNYA konektor keluar
+```
+
+| Shape | Isi |
+|---|---|
+| `Assignment6` — RCL/PUCL | `pyImplementation = WorkBasket` · `pyWorkBasket = RCLPUCL` · router `ToWorkbasket` |
+| ticket yang menempel padanya | **`SendtoPUCL`** (`Ticket4`) — inilah yang MEMASUKKAN klaim |
+| `Assignment5` — Send To Analis | `pyImplementation = WorkList` · `pyRouteTo = Custom` · router `PNCTeknikRouter` |
+| ticket yang menempel padanya | **`SendtoAnalysator`** (`Ticket2`) |
+| `End1` | `Data-MO-Event-End` — **akhir Register_Flow** |
+
+### 167.2 Temuan yang mengubah pemahaman
+
+**Shape RCL/PUCL punya tepat satu konektor keluar, tanpa syarat, dan tujuannya `End1`.**
+
+```
+Assignment6  ──SendtoRCLPUCL──►  End1     pyTaskWhen = (kosong)
+```
+
+Artinya **menyerahkan flow action `SendtoRCLPUCL` dari antrean RCL/PUCL MENGAKHIRI flow** —
+bukan mengembalikan klaim ke Analyst. Yang menyelamatkannya adalah
+`SetTicket(SendtoAnalysator)` pada `PUCLPost` langkah 17, yang berjalan **lebih dulu** dan
+melompatkan flow ke `Assignment5`.
+
+**Flow action yang sama dipakai dua konektor dengan akibat berlawanan:**
+
+| Dari | Ke | Akibat |
+|---|---|---|
+| `Assignment5` Send To Analis | `Decision7` | **masuk** ke RCL/PUCL |
+| `Assignment6` RCL/PUCL | `End1` | **keluar dari flow** — klaim ditutup |
+
+Namanya menyesatkan di tempat kedua: `SendtoRCLPUCL` di sana tidak mengirim ke RCL/PUCL, ia
+mengakhiri.
+
+### 167.3 Kenapa barisnya tertinggal — terjawab, dan bukan cacat kami
+
+`SetTicket` melompatkan flow ke `Assignment5` **sementara `Assignment6` masih terbuka**. Flow
+sudah tidak berada di shape itu, sehingga barisnya menjadi yatim — dan Pega menandainya sendiri
+**`Error: Flow Not At Task`**.
+
+Jadi tertinggalnya baris itu **melekat pada rancangan alurnya**, bukan akibat modul ini. Yang
+membuktikannya data Pega sendiri, sebelum modul ini ada: **16 dari 63** klaim di antrean
+`RCLPUCL` sudah berstatus `1151` (Analyst).
+
+Membereskannya menuntut penutupan `Assignment6` **sebelum** ticket dilepas — perubahan pada
+alur Pega, bukan pada modul ini.
+
+### 167.4 Jalan pintas yang tampak masuk akal, dan berbahaya
+
+API assignment bawaan Pega — `PUT /api/v1/assignments/{id}/actions/SendtoRCLPUCL` —
+menjalankan flow action lewat mesin alur sendiri, sehingga `PZPVSTREAM` dibentuk Pega dan
+kegagalan §163 tidak terulang. Terlihat seperti jalan keluarnya.
+
+**Ia akan menutup klaim.** Sebabnya terbaca dari rule-nya:
+
+> `Flow Action/SendtoRCLPUCL-FA.xml` memuat `pyPreProcessingActivity =
+> SetDataLampiranSuratRCLPUCL_Act`, dan **tidak memuat elemen `pyPostProcessingActivity` sama
+> sekali**.
+
+`PUCLPost` melekat pada **tombol** (rangkaian `pyBehaviors` di section), bukan pada flow
+action. Memanggil flow action lewat API melewati `PUCLPost` seluruhnya — ticket tidak pernah
+dilepas, dan konektor §167.2 membawa klaim ke `End1`.
+
+Dicatat **sebelum** dicoba, bukan sesudah. §163 adalah pelajaran yang cukup mahal untuk tidak
+diulang dengan cara lain.
+
+### 167.5 Yang diperbaiki
+
+| Tempat | Perubahan |
+|---|---|
+| `permintaan-artefak-pega.md` §12.9 | dua bagian baru: **urutan wajib** beserta tabel akibat tiap urutan, dan peringatan API assignment. Ini butir terpenting di seluruh §12 — tanpanya layanan yang dibangun Tim Pega dapat menutup klaim |
+| `adapter/pega/pega.go` | rantai langkah dilengkapi konektor `End1` dan sebab bahayanya |
+| `handler.go` | kalimat layar: **"BELUM bergerak"** menggantikan *"dikerjakan Pega"*, ditambah larangan menutup dari Pega |
+| `tab.go` | daftar selisih layar menyebut larangan yang sama |
+
+**Kenapa kalimatnya diubah padahal sudah lolos penjaga §165.** Bentuk sebelumnya memuat "MASIH
+di antrean RCL/PUCL" dan "SendtoAnalysator" — lolos keduanya — tetapi berbunyi *"perpindahannya
+dikerjakan Pega lewat ticket SendtoAnalysator"*, yang terbaca sebagai **akan** dikerjakan.
+Tidak ada yang akan mengerjakannya selama `ActionClaimPUCL` belum dibangun.
+
+Perbedaannya menentukan tindakan petugas: "dikerjakan Pega" menyuruhnya menunggu; yang benar
+adalah klaimnya tidak akan bergerak sendiri, dan selama itu antrean Pega terus bertambah.
+
+Penjaga baru `TestKalimatKirimMenyatakanKlaimBELUMBergerak` menuntut "BELUM bergerak", menolak
+"dikerjakan Pega", dan menuntut `End1` disebut. **Dibuktikan menggigit** dengan mengembalikan
+kalimat lama lalu menjalankan ulang.
+
+### 167.6 Yang TIDAK berubah
+
+Klaim tetap tidak bergerak di Pega, dan itu bukan sesuatu yang dapat diperbaiki dari sini.
+Ketiga jalan §161.6 masih berlaku — dan analisis hari ini **memperkuat jalan pertama**: bukan
+karena yang lain sulit, melainkan karena keduanya kini terbukti dapat **menutup klaim**, bukan
+sekadar gagal memindahkannya.
+
+---
+
+## 168. "Ikuti apa adanya" — tiga dari empat langkah dikerjakan, satu tidak bisa (2026-10-02)
+
+**Penetapan Work Owner:** *"dia menjalankan ACT ini — `InsertMitraPA`, `PNCInsertMitraLog_Act`,
+`PUCLPost`, lalu Finish Assignment. Itu saja alurnya yang ada di Pega. Tolong ikuti apa adanya."*
+
+Daftarnya terkonfirmasi dari `pyBehaviors` tombolnya — tiga aksi pada event `click`:
+
+| # | `pyAction` | Isi |
+|---|---|---|
+| 1 | `runActivity` | `InsertMitraPA(tipe="dokumen")` → di dalamnya `PNCInsertMitraLog_Act` |
+| 2 | **`refresh`** | `PUCLPost(Status=1, idObj, idCov, idAdj)`, target `thisSection` |
+| 3 | `finishAssignment` | Finish Assignment |
+
+Langkah 2 lewat **Refresh Section**, bukan `runActivity` — catatan sebelumnya tidak menyebut
+jenis aksinya, dan perbedaannya ada gunanya: ia berarti `PUCLPost` memang punya permukaan HTTP.
+
+### 168.1 Yang dikerjakan sesudah penetapan ini
+
+**`InsertHistoryClaimPNC` — kini DIKERJAKAN.**
+
+Catatan §166.6 menyatakan ia tidak dapat dikerjakan karena *"modul ini tidak punya tabel riwayat
+klaim"*. **Keliru**, dan terbukti keliru saat procedure-nya dibaca:
+
+```sql
+-- Database/PEGA_JSON_INSERT_HISTORY_CLAIM_PNC.prc — seluruh isinya satu pernyataan
+INSERT INTO LIST_HISTORY_CLAIM_PNC (CASEID, CREATEDATETIME, STATUSNOTE, USERUPDATE)
+VALUES (CaseID, CURRENT_TIMESTAMP, StatusNote, UserUpdate);
+```
+
+Tabelnya ada, dan ia tabel bisnis `POOLDATA` — bukan tabel engine Pega.
+
+**Perangkap yang nyaris menjerat.** `RDB List/InsertHistoryClaimPNC-SQL.xml` memanggilnya dengan
+nama properti clipboard `POLICY_NO`, `BUSINESS_CODE`, `BRANCH_CODE`, `BRANCH_NAME out` — dan
+**tidak satu pun berarti apa yang namanya katakan**. Pemetaannya posisional:
+
+| posisi | nama di rule | arti sebenarnya |
+|---|---|---|
+| 1 | `POLICY_NO` | **CaseID** |
+| 2 | `BUSINESS_CODE` | **StatusNote** |
+| 3 | `BRANCH_CODE` | **UserUpdate** |
+| 4 | `BRANCH_NAME` | ErrMsg (keluaran) |
+
+Membaca namanya dan bukan procedure-nya akan menulis **nomor polis ke kolom `CASEID`** — dan
+barisnya tersimpan rapi di tempat yang salah, tanpa satu pun galat. Ini contoh lain dari alias
+menyesatkan yang `D-19` tetapkan untuk tidak dibawa.
+
+`CASEID` diisi **`PZINSKEY`**, bukan nomor klaim — `PUCLPost` langkah 35 mengirim
+`caseID = pyWorkPage.pzInsKey`. Dibaca lewat kueri `work_object_key` yang sudah ada.
+
+### 168.2 Penyimpangan `P-1` yang diterima dengan sadar
+
+`LIST_HISTORY_CLAIM_PNC` kini ditulis **dua** sistem: Pega lewat procedure, dan modul ini
+langsung. Itu penyimpangan dari `P-1` (satu tabel, satu penulis), dan dicatat sebagai
+penyimpangan — bukan diabaikan.
+
+Alasan menerimanya:
+
+| | |
+|---|---|
+| Ia tabel **log append-only** | tiap baris berdiri sendiri; tidak ada baris yang diperbarui atau ditimpa |
+| **Nol pembaca** di seluruh export | tidak ada rule yang membacanya, sehingga tidak ada yang dapat terkejut oleh baris tambahan |
+| Satu klaim ditekan di **satu** tempat | petugas menekan tombolnya di layar ini **atau** di Pega, tidak keduanya |
+
+Risiko konflik karena itu nol. Yang berubah hanyalah: riwayat sebuah klaim dapat memuat baris
+dari dua sumber — dan itu memang yang diinginkan selama masa paralel.
+
+### 168.3 Yang TIDAK dikerjakan, dan alasannya per langkah
+
+| Langkah | Alasan |
+|---|---|
+| **`IsDokLengkap = "1"`** (`InsertMitraPA` langkah 4) | Ia **properti clipboard** objek kerja Pega. `ISDOKLENGKAP` muncul di SATU berkas saja di seluruh export — `InsertMitraPA-Act.xml` — dan nol rule SQL. Ia tersimpan di `PZPVSTREAM`, bukan di kolom mana pun |
+| **`PNCInsertMitraLog_Act`** | Menulis `PNC_CHRONOLOGYTAT` lewat `INSERT_PNCCHRONOLOGYTAT` — **163 baris** PL/SQL dengan percabangan grouppanel, jobcode, cek duplikat, dan perhitungan aging lewat `GET_WORKING_HOURS@ASMD`. `D-50` menetapkan logika jam kerja ditulis ulang di Go; itu pekerjaan modul TAT. Ia pun hanya berjalan bila `IsDokLengkap` **sudah** bernilai 1 sebelumnya — yaitu pada klik kedua dan seterusnya |
+| **Finish Assignment** | **Tidak dapat dikerjakan.** Lihat §168.4 |
+
+### 168.4 Finish Assignment — satu-satunya yang memindahkan klaim, dan satu-satunya yang tertutup
+
+Ini yang perlu dinyatakan tanpa dibungkus: **tiga langkah lainnya dikerjakan, dan klaim tetap
+tidak pindah di Pega.** Yang memindahkan klaim hanya ticket `SendtoAnalysator`, yang dilepas
+`PUCLPost` langkah 17 lewat metode engine `Obj-Set-Tickets`.
+
+Dua jalan menuju ke sana, dan keduanya tertutup:
+
+| Jalan | Keadaan |
+|---|---|
+| Menulis baris penugasan sendiri | **Terbukti merusak** — §163, `PNC-2067` tidak dapat dibuka |
+| Menyerahkan flow action dari luar | **Menutup klaim** — konektor `Assignment6 → End1`, §167 |
+
+Mengerjakan ketiga langkah lain **tidak mengubah hal itu**, dan tidak boleh dibaca seolah
+mengubahnya. Yang bertambah adalah kelengkapan replikasi dan jejak auditnya — bukan perpindahan.
+
+### 168.5 Penjaga
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestKirimMenulisRiwayatKlaim` | satu baris riwayat benar-benar ditulis, dengan teks dan pelaku yang benar |
+| `TestTeksRiwayatDisalinAPAADANYADariPega` | spasi di ujung teks cetak, dan beda huruf besar/kecil antara kedua teks Kirim |
+
+Butir kedua menjaga hal yang paling mudah "dirapikan": `"Send by PUCL to Analyst"` berhuruf
+besar, `"send by PUCL to PIC Teknis"` berhuruf kecil. Sumbernya memang berbeda — yang satu dari
+rangkaian tombol, yang satu dari `<statusNote>` `PUCLPost`. Menyeragamkannya terlihat seperti
+kerapian dan sebenarnya mengubah data yang tersimpan.
+
+Teksnya dipindahkan ke `inboxrclpucl.HistoryNoteFor` supaya kedua jalur — yang ditangani sendiri
+dan yang menempuh layanan Pega — memakai **satu** sumber. Sebelumnya ia tertulis dua kali.
+
+---
+
+## 169. Klaim BENAR-BENAR pindah — mengikuti Register_Flow aplikasi ini, bukan Pega (2026-10-02)
+
+**Koreksi Work Owner, dan ia membatalkan arah tiga catatan sebelumnya:**
+
+> *"Claimnya bukan pindah ke Pega, tapi pindah ke sesuai flow register."*
+> *"Dia hanya menjalankan activity `InsertMitraPA`, `PUCLPost` di PUCL dan Finish Assignment,
+> tidak menjalankan flow action. `PUCLPost` ada call `SetTicket` — hanya menjalankan itu saja,
+> tidak ada yang lain. Ikuti seperti di Pega."*
+
+### 169.1 Kekeliruan saya, dan bentuknya
+
+§161, §167, dan §168 seluruhnya bertanya **"bagaimana menggerakkan Pega"**, lalu menyimpulkan
+tidak bisa. Pertanyaannya sendiri yang salah arah: ini proyek **migrasi**, dan alurnya dibangun
+di sistem baru — bukan dikendalikan dari luar ke sistem lama.
+
+Yang membuatnya bertahan tiga catatan berturut-turut: setiap kali saya memeriksa, jawabannya
+konsisten — memang tidak bisa menggerakkan Pega. Konsistensi itu saya baca sebagai konfirmasi,
+padahal ia hanya menjawab pertanyaan yang tidak seharusnya diajukan.
+
+**Dan bahannya sudah ada di repositori ini sejak awal**, tidak pernah saya cari:
+
+| Yang sudah ada | Di mana |
+|---|---|
+| Register_Flow lengkap, ber-`PegaID` per shape | `registrasi/flow_register.go` |
+| Tabel tugas milik aplikasi | `POOLDATA.CPNC_TUGAS` |
+| Konsep `Task`, `QueueKind`, lompatan lateral sebagai data | `registrasi/flow.go` |
+| PIC Teknik sebagai penerima tahap teknis | `registrasi/technicalpic.go` |
+
+`StageSendToAnalyst.LateralJump` bahkan sudah bernilai `"SendtoAnalysator"` — ticket yang sama
+yang saya telusuri panjang lebar di §161, tanpa pernah melihat bahwa modul lain sudah
+memodelkannya.
+
+### 169.2 Satu koreksi Work Owner atas peringatan saya
+
+§167 memperingatkan bahwa menyerahkan flow action `SendtoRCLPUCL` membawa klaim ke `End1`.
+Work Owner menegaskan tombolnya **tidak menjalankan flow action**, dan ia benar untuk jalur
+ini: `SetTicket` sudah melompat lebih dulu, sehingga konektor itu **tidak pernah dievaluasi**.
+
+Peringatannya tetap berlaku untuk pemanggilan dari luar lewat API assignment — tetapi saya
+menyajikannya seolah berlaku pada alur normal, dan itu berlebihan.
+
+### 169.3 Yang dikerjakan
+
+Tombol Kirim kini menempuh lima langkah, dan yang kelima **yang benar-benar memindahkan**:
+
+| # | Langkah | Meniru |
+|---|---|---|
+| 1 | simpan `KOMENTAR_PUCL` + `TGL_TERIMA_DOKUMEN_PUCL`, kosong ditolak | form `pyRequired` |
+| 2 | `PUCL_APPROVE=1`, `STATUS_CLAIM=1151`, tanggal cetak | `PUCLPost` langkah 11 · 4 · 30 |
+| 3 | terbitkan + lampirkan PDF surat | `AttachAsPDFC` langkah 27 |
+| 4 | satu baris riwayat `LIST_HISTORY_CLAIM_PNC` | `InsertHistoryClaimPNC` langkah 35 |
+| **5** | **tutup tugas lama, buka tugas `kirim-analis` bertuan PIC Teknik** | **`SetTicket` langkah 17 + Finish Assignment** |
+
+Ketiganya dalam **satu transaksi** untuk langkah 5. Alasannya bukan kerapian: tugas lama yang
+tertutup tanpa tugas baru terbuka membuat klaim hilang dari **setiap** inbox — tidak lagi
+pekerjaan PUCL, belum menjadi pekerjaan siapa pun. Itu lebih buruk daripada tombol yang menolak.
+
+### 169.4 Tiga nilai yang WAJIB sama dengan modul `registrasi`
+
+`"kirim-analis"` · `"WORKLIST"` · dan kecocokan `NOMOR_KLAIM`. Tugas yang ditulis modul ini
+dibaca inbox modul lain, yang mencocokkan kolom `TAHAP` **sebagai teks**. Satu huruf berbeda
+membuat tugasnya tersimpan rapi dan tidak pernah muncul di inbox mana pun.
+
+Nilainya **disalin**, bukan diimpor: tidak satu pun modul di aplikasi ini mengimpor modul lain,
+dan membuka pengecualian untuk tiga konstanta akan menautkan dua modul yang berdiri sendiri.
+Penjaga uji mengunci ketiganya sebagai literal.
+
+### 169.5 Satu penolakan yang sengaja
+
+Klaim tanpa `USERTEKNIS_1` **ditolak**, tidak dipindahkan. Tahap Send To Analis adalah Worklist,
+dan tugas Worklist wajib bertuan sejak lahir (`D-26`) — tugas tanpa pemilik pada antrean yang
+bukan antrean bersama tidak muncul di inbox siapa pun.
+
+Menolak membuat sebabnya terbaca, dan klaimnya tetap di antrean PUCL. Memindahkannya tanpa
+pemilik akan melenyapkannya tanpa satu pun galat.
+
+### 169.6 Yang tetap tidak dikerjakan
+
+Baris `PC_ASSIGN_WORKBASKET` milik Pega **tidak** dihapus — §163 sudah membayar pelajaran itu.
+Akibatnya klaim yang sama masih tergambar di antrean RCL/PUCL Pega. Kalimat layar menyebutnya,
+supaya petugas yang membuka Pega tidak mengira perpindahannya gagal lalu menekan tombolnya lagi.
+
+`IsDokLengkap` dan `PNCInsertMitraLog_Act` tetap di luar — alasannya di §168.3, tidak berubah.
+
+### 169.7 Penjaga
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestKirimMEMINDAHKANKlaimKeTahapSendToAnalis` | ada tugas baru, tahap `kirim-analis`, antrean `WORKLIST`, **bertuan** |
+| `TestKirimDITOLAKSaatPICTeknikTidakDiketahui` | tanpa PIC → ditolak, **dan tidak ada tugas yang terbuka** |
+| `TestKalimatKirimMenyebutKeMANAKlaimPindah` | kalimat menyebut tahap tujuan, PIC Teknik, dan baris Pega yang tertinggal |
+
+Penjaga ketiga sudah **dua kali berganti makna** — mula-mula melarang menjanjikan perpindahan,
+kini menuntut menyebutkannya. Riwayat itu ditulis di dalam ujinya, karena penjaga yang maknanya
+berubah tanpa jejak akan terbaca sebagai pelonggaran.
+
+### 169.8 Koreksi Work Owner: sumbernya `PICTEKNIK`, bukan `USERTEKNIS_1` (2026-10-02)
+
+> *"`USERTEKNIS_1` diambil dari `PICTEKNIK`."*
+
+Bentuk pertama kueri `technical_pic` membaca
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK.USERTEKNIS_1`. Export membenarkan koreksi itu — kolomnya
+dialiaskan tepat begitu:
+
+```sql
+POOLDATA.T_CLAIM_PNC.PICTEKNIK  AS "UserTeknis"
+-- RDB List/GcnmSalvageData_OS_SQL-SQL.xml · GcnmSalvageData_ekonomisdanTba-SQL.xml
+```
+
+Jadi `USERTEKNIS_1` adalah **salinan** yang Pega ekspos dari properti clipboard
+`ClaimData.UserTeknis`; `PICTEKNIK` tempat nilainya benar-benar tinggal.
+
+**Kenapa ini bukan sekadar kerapian.** Membaca salinan berarti bergantung pada Pega sempat
+menuliskannya. Klaim yang dibuka aplikasi ini **tidak melewati Pega** — kolom salinannya tidak
+akan pernah terisi, sehingga tombolnya akan menolak setiap klaim PNCN dengan sebab yang
+terdengar masuk akal tetapi keliru: *"PIC Teknik tidak diketahui"*.
+
+Kueri kini menggabungkan `T_CLAIM_PNC` lewat `CLAIMNO = PYID`, memakai **`LEFT JOIN`** supaya
+klaim tanpa baris `T_CLAIM_PNC` tetap terbaca dan ditolak dengan sebab yang benar — bukan
+menghilang menjadi "klaim tidak ditemukan". Keduanya keadaan yang berbeda.
+
+Ini contoh keempat alias menyesatkan di modul ini, sesudah `POLICY_NO`→`CaseID` pada
+`InsertHistoryClaimPNC` (§168.1). Polanya sama setiap kali: **nama di rule Pega tidak
+menjelaskan isinya**, dan yang menjawab hanya membaca sumber aslinya.
+
+## 170. Transfer Kasir hanya manual — juga untuk PA (2026-10-03)
 
 **Keputusan Work Owner:** transfer ke Kasir **hanya boleh** lewat tombol Transfer Kasir. Tidak ada transfer otomatis, untuk
 lini mana pun.
