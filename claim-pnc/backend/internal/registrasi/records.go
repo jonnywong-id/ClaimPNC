@@ -11,9 +11,9 @@ import (
 // Progress Claim & Komunikasi.
 //
 // Seluruhnya DIBACA dari tabel milik sistem lama (T_SURVEYORLIST, LST_TYPE_DOC_BUSINESS,
-// DATA_ATTACHFILE, GCNM_PROGRESS_CLAIM, M_KOMUNIKASI_PNC). Tidak ada satu pun yang
-// ditulis modul ini: penulisannya milik modul lain (survey `B-8`, dokumen `S-1`, progres)
-// dan belum dibangun.
+// DATA_ATTACHFILE, GCNM_PROGRESS_CLAIM, M_KOMUNIKASI_PNC). Satu-satunya yang ditulis modul
+// ini adalah catatan tombol "Kirim ke Inputor" ke M_KOMUNIKASI_PNC (AddCommunication);
+// penulisan lainnya milik modul lain (survey `B-8`, dokumen `S-1`, progres).
 
 // legacyWorkPrefix adalah awalan kunci kelas Pega yang tertanam pada tabel warisan
 // (`03-CURRENT-ARCHITECTURE.md` §4.1). Klaim terbitan aplikasi ini tidak memakainya
@@ -119,6 +119,36 @@ type Communication struct {
 	ReplierName string
 	RepliedAt   time.Time
 	Status      string
+
+	// Channel adalah COMMUNICATE_FROM. Untuk catatan tombol "Kirim ke Inputor" isinya
+	// ChannelSendToInputor; baris warisan memuat kode cabang atau kosong.
+	Channel string
+}
+
+// ChannelSendToInputor menandai catatan analis dari tombol "Kirim ke Inputor".
+//
+// Nilainya disalin dari parameter `sendToInvest = "SENDTOINPUTOR"` yang dikirim tombol Kirim di
+// `Section/AnalystRemarks_sect` ke `sendToInputor_act`, sehingga barisnya dapat dikenali dari
+// percakapan lain pada klaim yang sama.
+const ChannelSendToInputor = "SENDTOINPUTOR"
+
+// CommunicationStatusOpen adalah KOMUNIKASISTATUS pesan yang belum dijawab — nilai yang sama
+// dengan yang ditulis inbox komunikasi cabang untuk pesan baru.
+const CommunicationStatusOpen = "0"
+
+// NewCommunication adalah satu pesan baru pada klaim — baris M_KOMUNIKASI_PNC.
+type NewCommunication struct {
+	// ClaimID mengisi CASEID dan CASECLAIM: percakapan tingkat klaim menyimpan kunci klaim di
+	// keduanya (terverifikasi pada data, 2026-10-03).
+	ClaimID     string
+	ClaimNumber string
+	Sender      string
+	SenderName  string
+	Message     string
+	Recipient   string
+	Channel     string
+	Status      string
+	At          time.Time
 }
 
 // ClaimRecordSource membaca catatan pendamping klaim dari tabel warisan.
@@ -131,6 +161,10 @@ type ClaimRecordSource interface {
 	// Communications membaca percakapan yang menempel ke kasus-kasus survey klaim, atau
 	// yang CASECLAIM-nya menunjuk klaim itu sendiri.
 	Communications(ctx context.Context, keys RecordKeys) ([]Communication, error)
+
+	// AddCommunication menyisipkan satu pesan. KOMUNIKASIID dan CREATEDDATE diisi basis data
+	// (default kolom), sama seperti seluruh baris yang sudah ada.
+	AddCommunication(ctx context.Context, c NewCommunication) error
 }
 
 // DocumentCategories adalah urutan sub-tab Unggah Dokumen, mengikuti

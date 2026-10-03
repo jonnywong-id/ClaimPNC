@@ -23,6 +23,7 @@ const (
 	CodeNotTaskOwner         = "bukan_pemilik_tugas"
 	CodeTaskAlreadyDone      = "tugas_sudah_selesai"
 	CodeStageMismatch        = "tahap_tidak_bersesuai"
+	CodeNotAvailableAtStage  = "tidak_tersedia_di_tahap"
 	CodeInvalidAction        = "tindakan_tidak_sah"
 	CodeExchangeRateNotFound = "kurs_tidak_ditemukan"
 	CodeAccountNotFound      = "rekening_tidak_ditemukan"
@@ -160,6 +161,12 @@ func mapError(err error) (int, ErrorResponse) {
 		return http.StatusConflict, ErrorResponse{
 			Code:    CodeStageMismatch,
 			Message: "Klaim sudah berpindah tahap. Muat ulang layar sebelum menyimpan.",
+		}
+
+	case errors.Is(err, registrasi.ErrNotAvailableAtStage):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeNotAvailableAtStage,
+			Message: "Fitur ini tidak tersedia pada tahap klaim saat ini.",
 		}
 
 	case errors.Is(err, registrasi.ErrInvalidAction):

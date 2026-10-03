@@ -113,6 +113,14 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/adjustment", func(w http.ResponseWriter, r *http.Request) {
 			h.AddSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Tambah: ValidationAdjustment (PA: estimasi NewEstimationPA).
+		sub.Post("/klaim/{klaimID}/adjustment/tambah", func(w http.ResponseWriter, r *http.Request) {
+			h.PrepareSettlement(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Perubahan isian baris yang sudah ada: hitung, periksa, simpan (SetNilaiResikoSendiri).
+		sub.Post("/klaim/{klaimID}/adjustment/ubah", func(w http.ResponseWriter, r *http.Request) {
+			h.UpdateSettlement(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Transfer Komite pada baris Adjustment, dan putusan anggota komite.
 		sub.Post("/klaim/{klaimID}/adjustment/komite", func(w http.ResponseWriter, r *http.Request) {
 			h.TransferCommittee(w, r, chi.URLParam(r, "klaimID"))
@@ -132,6 +140,10 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/penerima", func(w http.ResponseWriter, r *http.Request) {
 			h.SaveReceiver(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Data tertanggung (CIF polis) untuk tab Register. Hanya membaca.
+		sub.Get("/klaim/{klaimID}/tertanggung", func(w http.ResponseWriter, r *http.Request) {
+			h.Insured(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Get("/klaim/{klaimID}/progres", func(w http.ResponseWriter, r *http.Request) {
 			h.Progress(w, r, chi.URLParam(r, "klaimID"))
 		})
@@ -150,6 +162,15 @@ func Mount(r chi.Router, h *Handler) {
 		})
 		sub.Post("/tugas/{tugasID}/selesai", func(w http.ResponseWriter, r *http.Request) {
 			h.CompleteTask(w, r, chi.URLParam(r, "tugasID"))
+		})
+		// Tombol "Transfer ke Analyst" (TrfKomiteButton → modal ClaimComitee_OC → Kirim Analyst).
+		sub.Post("/tugas/{tugasID}/transfer-analis", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferToAnalyst(w, r, chi.URLParam(r, "tugasID"))
+		})
+
+		// Tombol "Kirim ke Inputor": catatan analis lalu lompat ke Input Register.
+		sub.Post("/tugas/{tugasID}/kirim-inputor", func(w http.ResponseWriter, r *http.Request) {
+			h.SendToInputor(w, r, chi.URLParam(r, "tugasID"))
 		})
 	})
 }

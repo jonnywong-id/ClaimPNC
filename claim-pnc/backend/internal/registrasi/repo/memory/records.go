@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"strconv"
+	"strings"
 
 	"claim-pnc/internal/registrasi"
 )
@@ -56,4 +58,17 @@ func (r *ClaimRecords) Progress(_ context.Context, keys registrasi.RecordKeys) (
 // Communications mengembalikan percakapan klaim.
 func (r *ClaimRecords) Communications(_ context.Context, keys registrasi.RecordKeys) ([]registrasi.Communication, error) {
 	return r.Communication[keys.Number], nil
+}
+
+// AddCommunication menambahkan pesan di depan daftar — terbaru lebih dulu, seperti kueri SQL.
+func (r *ClaimRecords) AddCommunication(_ context.Context, c registrasi.NewCommunication) error {
+	if r.Communication == nil {
+		r.Communication = map[string][]registrasi.Communication{}
+	}
+	key := strings.TrimSpace(c.ClaimNumber)
+	r.Communication[key] = append([]registrasi.Communication{{
+		CaseID: c.ClaimID, ID: strconv.Itoa(len(r.Communication[key]) + 1), SentAt: c.At,
+		Sender: c.Sender, SenderName: c.SenderName, Message: c.Message, Status: c.Status, Channel: c.Channel,
+	}}, r.Communication[key]...)
+	return nil
 }

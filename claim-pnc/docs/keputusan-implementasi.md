@@ -28785,6 +28785,7 @@ menghilang menjadi "klaim tidak ditemukan". Keduanya keadaan yang berbeda.
 Ini contoh keempat alias menyesatkan di modul ini, sesudah `POLICY_NO`→`CaseID` pada
 `InsertHistoryClaimPNC` (§168.1). Polanya sama setiap kali: **nama di rule Pega tidak
 menjelaskan isinya**, dan yang menjawab hanya membaca sumber aslinya.
+<<<<<<< HEAD
 >>>>>>> bb4c4f9114ef077bf2502c7305ba090482d3ab9c
 
 ### K-105.23 Pemetaan judul-ke-kolom bergeser satu — "Appointment No" ternyata sudah di tangan
@@ -28998,3 +28999,16 @@ Owner, bukan saya.
 `Activity/SetTempLostAdjuster-Act.xml` (`@If(.UserAdmin=="","LEADER",…)`) ·
 `RDB List/GetOSKomiteNonMBU-SQL.xml` (`b.LEADER_MEMBER = 'LEADER'`) · pengukuran produksi
 2026-10-03
+=======
+
+## 170. Transfer Kasir hanya manual — juga untuk PA (2026-10-03)
+
+**Keputusan Work Owner:** transfer ke Kasir **hanya boleh** lewat tombol Transfer Kasir. Tidak ada transfer otomatis, untuk
+lini mana pun.
+
+Ini **menyimpang dari Pega** secara sengaja: `SetAdjustmentAcceptation` langkah 113 menjalankan `TransferToKasir_act WHEN
+IsPA` langsung sesudah akseptasi. Aplikasi ini mengakseptasi PA seperti lini lain dan berhenti di situ.
+
+Klaim PNCN.26.26 sudah terlanjur ditransfer otomatis (2026-10-03, sebelum keputusan ini) — transfernya tidak dibatalkan
+aplikasi; pembatalan di sisi Kasir bukan wewenang aplikasi ini.
+>>>>>>> 8cb90930abc7cf29eb13e63d9ebf85b5ca010cb1

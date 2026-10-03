@@ -153,6 +153,9 @@ func (l *Service) AcceptSettlement(ctx context.Context, p AcceptanceCommand, by 
 	if err != nil {
 		return registrasi.Claim{}, err
 	}
+
+	// Transfer Kasir TIDAK dijalankan di sini, juga untuk PA (Pega langkah 113): Work Owner menetapkan
+	// (2026-10-03) transfer ke Kasir hanya lewat tombol Transfer Kasir.
 	return result, nil
 }
 

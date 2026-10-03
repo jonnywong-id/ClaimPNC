@@ -50,7 +50,7 @@ func (l *Service) SaveReceiver(ctx context.Context, p ReceiverCommand, by Caller
 		return registrasi.Claim{}, fmt.Errorf("%w: tugas %s bukan milik klaim %s", registrasi.ErrInvalidAction, p.TaskID, p.ClaimID)
 	}
 	if !settlementStages[task.Stage] {
-		return registrasi.Claim{}, registrasi.ErrStageMismatch
+		return registrasi.Claim{}, fmt.Errorf("%w: %q", registrasi.ErrNotAvailableAtStage, task.Stage)
 	}
 	if !l.canWork(task, by) {
 		return registrasi.Claim{}, registrasi.ErrNotTaskOwner
