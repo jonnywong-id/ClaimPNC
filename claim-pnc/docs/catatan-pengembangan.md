@@ -34774,3 +34774,112 @@ dan SLIK OJK.
 **Pembaruan #140 (2026-10-03): Transfer Kasir otomatis PA dicabut** atas keputusan Work Owner (keputusan-implementasi §170).
 `AcceptSettlement` tidak lagi memanggil `TransferCashier`; galat `akseptasi_tersimpan_kasir_gagal` dihapus. Akseptasi PA tetap
 dibuka (penahanan `gl.pkg_pelunasan_kasir` tetap dicabut); transfer dilakukan manual lewat tombol Transfer Kasir.
+
+## 141. Tanggal Terima Dokumen hanya wajib pada Travel dan PA (2026-10-03)
+
+**Gejala:** klaim Marine ditolak "Tanggal Terima Dokumen wajib diisi" padahal isiannya tidak tampil di layar Input Register.
+
+**Sebab:** `registerCommand` (http/handler.go) menolak tanggal kosong untuk ketiga tanggal. Di Section/InputRegisterDetail
+isian `.ClaimData.DateReceived` tampil dengan `IsTravelPA` dan ber-`pyRequired=true` — wajib hanya ketika tampil. Lini lain
+tidak pernah mengisinya, dan Pega melewati langkah 19, 23, 27 InputRegister_act karena `@CompareDates` dengan tanggal kosong
+bernilai false (transisi 3). Galat 400-nya juga tanpa nama isian, sehingga layar tidak memunculkan isian itu untuk diperbaiki.
+
+**Perbaikan:**
+- http: Tanggal Terima Dokumen kosong diterima; format salah tetap 400.
+- domain `validateDates`: kosong pada Travel/PA → pelanggaran `terima_dokumen_kosong` pada isian `tanggal_terima_dokumen`
+  (layar menampilkan isiannya karena ada galat isian); langkah 19, 23, 27 dilewati bila tanggalnya kosong.
+- uji: `TestDateReceivedRequiredOnlyForTravelPA`, `TestSaveRegisterAllowsEmptyDateReceived`.
+
+## 142. Tombol "Lihat dokumen" tab Unggah Dokumen (2026-10-04)
+
+Sebelumnya tombol hanya menampilkan nama berkas sebagai teks. Sekarang ia membuka daftar berkas jenis dokumen itu (nama,
+pengunggah, waktu) dengan tombol **Lihat** per berkas yang membuka berkasnya di jendela baru.
+
+- Backend: `GET /api/registrasi/klaim/{klaimID}/dokumen/{lampiranID}/tautan` — lampiran dicari di antara lampiran
+  klaim itu (DATA_ATTACHFILE), lalu alamatnya dibaca dari `GENERAL.T_STORAGE_IMAGE` lewat modul dokumen penunjang
+  (seam baru `registrasi.DocumentLinker`, dipenuhi `dokumenlink.Uploader`; `dokumenpenunjang.Service.Get`).
+- Padanan `GetLinkViewDoc_Act` langkah 4–6: alamat dipakai selama belum kedaluwarsa. Langkah 7–17 (perpanjangan lewat
+  Connect REST `NewLinkDokumenPNC`) **tidak dibawa** — rule-nya tidak ada di export (permintaan-artefak-pega bab 19).
+  Alamat kedaluwarsa dijawab 422 `tautan_dokumen_tidak_tersedia` dengan pesan yang menyebut sebabnya.
+- Terukur 2026-10-04: alamat berlaku sekitar 7 jam sesudah unggah, sehingga berkas lama tidak dapat dibuka sampai
+  `NewLinkDokumenPNC` tersedia.
+- Frontend: jendela dibuka sebelum alamat diminta (pemblokir pop-up), lalu diarahkan; gagal → jendela ditutup dan alasan
+  ditampilkan di bawah baris berkas.
+- Uji: `usecase/document_link_test.go` (4), `EstimateTabs.more.test.tsx` (2).
+
+## 143. Perpanjangan alamat berkas — tombol Lihat (2026-10-04)
+
+Melanjutkan #142 setelah Tim Pega mengirim `NewLinkDokumenPNC`, `UpdateNewDocumentPNC`, dan `GCNMViewAttachment2`.
+Alamat berkas yang kosong atau kedaluwarsa kini diperpanjang, persis alur `Activity/GetLinkViewDoc_Act-act.xml`:
+
+| Langkah Pega | Di sini |
+|---|---|
+| 5–7 `GetURLAndEXPDate`, pakai bila `@CompareDates(exp, sekarang)` | `dokumenpenunjang.Service.Tautan` — masa berlaku kosong ikut diperpanjang, seperti Pega |
+| 11 `GetAppFolder` · 13 `GenerateTokenPNCDokumen` | `NamaFolderAplikasi` · kode akses (terdaftar, atau `CatatAksesUnggah`) — sama dengan unggah |
+| 14 `Folder := @substring(appfolder,17,29)` | **`FolderDariAppFolder`** — menurut susunan jalur. Potongan tetap Pega hanya benar untuk bucket 12 karakter; bucket yang berlaku 15 karakter (terukur), sehingga potongan Pega memberi folder salah |
+| 14 `NamaFile := ATTACHNAME` | `FILENAME` metadata penyimpanan — nama yang benar-benar tersimpan (dibersihkan saat unggah) |
+| 14 `Durasi` = 3600 (TempDurasi tak pernah diisi) | `DurasiTautan = 3600` |
+| 16 `NewLinkDokumenPNC` — POST `/api/v1/geturl`, JSON, tanpa otentikasi, 30 detik | `httpstorage.Client.PerpanjangTautan` |
+| 19 `UpdateNewDocumentPNC` | kueri `perbarui_tautan` (URLPUBLIC, EXPDATE, APPFOLDER menurut IMAGEID) |
+| 20 bungkus `view.officeapps.live.com` | **tidak dibawa** — penampil Office tidak membuka PDF dan gambar, sedangkan lampiran klaim seluruhnya PDF/gambar |
+
+Gagal memperpanjang → 502 `tautan_dokumen_tidak_tersedia` ("could not renew"). Uji: `dokumenpenunjang/usecase/tautan_test.go` (5),
+`httpstorage_test.go` (2), uji registrasi #142 tetap lulus.
+
+## 144. Tombol Delete pada daftar berkas Lihat dokumen (2026-10-04)
+
+Mengikuti `Section/GCNMViewAttachment2-sect.xml` dan `Activity/DeleteAttachDoc-act.xml`; hapus **permanen** atas keputusan
+Work Owner (keputusan-implementasi §171, pengecualian `D-66`).
+
+| Pega | Di sini |
+|---|---|
+| ikon `pxIconDeleteItem` "Delete this row", tanpa konfirmasi | tombol 🗑 `aria-label="Delete this row"`, tanpa konfirmasi |
+| tampil bila `.exp <= 60.0 && .UserInput == OperatorID.pyUserIdentifier` | `registrasi.CanDeleteAttachment` — pengunggah sendiri, **≤ 60 menit sejak unggah (ASUMSI)**; dinilai server (`bisa_dihapus`) dan diperiksa ulang saat hapus |
+| langkah 6–14: GetAppFolder, GenerateTokenPNCDokumen, `DeleteDokumenPNC` (POST `/api/v1/delete`) | `dokumenpenunjang.Service.Hapus` · `httpstorage.Client.Hapus`; `UserInput` dikirim kosong (langkah 11) |
+| langkah 11 `NamaFile` := APPFOLDER tanpa `gs://<bucket>/` (nama bucket tetap di rule) | `JalurDariAppFolder` — menurut susunan jalur, karena bucket yang berlaku berbeda |
+| langkah 15–19 hanya bila `ErrorMessage` memuat "deleted from bucket": DELETE `DATA_ATTACHFILE`, `JSON_FORM_KLAIM` | sama; kueri `lampiran_hapus`, `form_klaim_hapus`; jejak audit `DOKUMEN_DIHAPUS` |
+| `DeleteDataStorage_SQL` menghapus IMAGEID tiruan | ditiru: baris `GENERAL.T_STORAGE_IMAGE` tidak dihapus |
+| sesudahnya `SetCountAttach_act` + `closeContainer` | jawaban berisi checklist terbaru; daftar berkas ditutup |
+
+Berkas terhapus dari penyimpanan tetapi barisnya gagal dihapus → 500 dengan pesan "jangan ulangi, laporkan"; penyimpanan
+menolak → 502, tidak ada yang berubah.
+
+**Perbaikan yang ikut:** `DATA_ATTACHFILE.INPUTDATE` ditulis jam UTC oleh aplikasi ini, sedangkan Pega menulis SYSDATE
+(server +07:00, terverifikasi). Akibatnya unggahan kita tampil 7 jam lebih awal ("02:52" untuk 09:52 WIB) — dan batas 60
+menit tidak akan pernah terpenuhi. Kini ditulis dan dibaca sebagai jam dinding WIB. Baris uji yang sudah tersimpan sebelum
+perbaikan ini tetap bergeser 7 jam.
+
+Uji: `usecase/document_delete_test.go` (5), `dokumenpenunjang/usecase/tautan_test.go` (+3), `httpstorage_test.go` (+1),
+`stores_r3_test.go` (+1), `EstimateTabs.more.test.tsx` (+3).
+
+## 145. Tombol Unggah selalu aktif; Delete tanpa batas waktu (2026-10-04)
+
+- **Unggah** tidak lagi nonaktif sebelum berkas dipilih (Work Owner: "seperti Pega"). Ditekan tanpa berkas, ia membuka
+  pemilih berkas dan unggahan langsung berjalan begitu berkas dipilih.
+- **Delete** tampil untuk setiap berkas yang diunggah pemanggil sendiri, berapa pun umurnya (keputusan-implementasi §171,
+  pembaruan kedua). Batas 60 menit dicabut.
+- Uji: `EstimateTabs.more.test.tsx` (+1, 1 disesuaikan), `ClaimPage.test.tsx` (1 disesuaikan), `document_delete_test.go`
+  (uji batas waktu diganti uji "lama sesudah unggah").
+
+## 146. Tombol Tutup Klaim — dialog Prevent Close Claim (2026-10-04)
+
+Sumber: `Section/ClaimSurvey_sect.xml` → `PreventRejectClaim` (FA + section) → `Activity/CloseClaim-act.xml`,
+`SetStatusCloseSementara`, `ValidationAdjustmentKomite`, `ValidationDLA_Act`, RDB `GetOperatorID`, `UpdateTotalJob_sql`,
+`UpdateStsKlaimClose_sql`, `Insert_to_log_SQL`. Cakupan **inti** (Work Owner).
+
+| Pega | Di sini |
+|---|---|
+| Dialog: pertanyaan, Catatan (wajib), Tutup Sementara, Alasan Keterlambatan, No Reff Broker, Banding, Survey Kepuasan, Manual/Paperless, Effort/Kendala Sebelum Close, Usulan; Ya / Tidak | `CloseClaim.tsx`, urutan sama. Empat dropdown + No Reff Broker **nonaktif**: tanpa daftar pilihan (Property tanpa tabel) dan tanpa kolom |
+| langkah 3 salvage TBA (ASM, bukan Travel/PA, STSSALVAGE 5, bukan sementara) · 8 catatan · 11 PIC (UserTeknis = pengguna / OLD_OPERATOR_ID) · 12 adjustment AcceptanceStatus 0 · 13 DLA belum diprint/dikirim | `registrasi.ValidateClosure` + `closureDLA`; berhenti pada yang pertama, pesan Pega apa adanya |
+| tutup sementara: ISPENDINGCLOSE 'true', log "Temp Close", lompat ke TEMP | `PendingClose`; status dan tugas tidak disentuh; tombol disembunyikan sesudahnya |
+| tutup permanen: STATUSCLAIM 1143, StatusWork Resolved-Completed, CLOSECLAIMDATE, `ASMForceCaseClose`, TOTAL_JOB − 1, dashboard STSKLAIM 3, log "Close" | sama — STATUSWORK memakai konvensi aplikasi (`SELESAI`); PYSTATUSWORK daftar kerja menjadi Resolved-Completed lewat cermin daftar kerja |
+
+**Tidak dibawa** (lihat `registrasi/closure.go`): langkah 4 (`Param.ERRMSG`), 5–7 (feedback AI — data tidak ada),
+`IsTransferPIC` (tanpa kolom), pengecualian 3 klaim tertulis tetap di `ValidationAdjustmentKomite` dan penulisan OS
+akseptasinya, `ValidationDLA_Act` langkah 13–15 (koasuransi/dokumen 14940), serta integrasi ServiceCloseClaimNonMBU,
+InsertJsonClaimNonMBU_act, RunConvertJSONKLAIM (procedure, `D-02`), dan email pelapor.
+
+**Selisih disengaja:** kotak Tutup Sementara di Pega menulis penanda dan log begitu diubah; di sini saat Ya.
+
+Kueri diuji kering ke Oracle dalam transaksi ROLLBACK (2026-10-04): kelimanya sah. Uji: `usecase/closure_test.go` (5),
+`sqlstore/closure_test.go`, `CloseClaim.test.tsx` (3).

@@ -39,6 +39,45 @@ type Converter interface {
 type Storage interface {
 	// Upload mengirim satu berkas, dan mengembalikan kunci yang DITERBITKAN layanan.
 	Upload(ctx context.Context, perintah PerintahUnggah) (HasilUnggah, error)
+
+	// PerpanjangTautan meminta alamat baca baru untuk berkas yang sudah tersimpan —
+	// Connect REST `NewLinkDokumenPNC` (POST /api/v1/geturl).
+	PerpanjangTautan(ctx context.Context, perintah PerintahTautan) (HasilUnggah, error)
+
+	// Hapus menghapus berkas dari bucket — Connect REST `DeleteDokumenPNC` (POST
+	// /api/v1/delete). Yang dikembalikan adalah `ErrorMessage` jawaban layanan; Pega menilai
+	// berhasil bila teksnya memuat "deleted from bucket".
+	Hapus(ctx context.Context, perintah PerintahHapus) (string, error)
+}
+
+// PerintahHapus adalah halaman `DocAPI` `Activity/DeleteAttachDoc-act.xml` langkah 6–12.
+// `UserInput` dikosongkan pada langkah 11 sebelum dikirim, sehingga tidak ada di sini.
+type PerintahHapus struct {
+	NamaAplikasi string
+	KodeAkses    string
+
+	// Jalur adalah jalur berkas di dalam bucket, `Doc/2026/10/<berkas>`.
+	Jalur string
+}
+
+// PerintahTautan adalah halaman `DocAPI` yang disusun `Activity/GetLinkViewDoc_Act-act.xml`
+// langkah 10–15 sebelum memanggil `NewLinkDokumenPNC`.
+type PerintahTautan struct {
+	// NamaAplikasi adalah nama folder penyimpanan hasil GetAppFolder — sama dengan unggah.
+	NamaAplikasi string
+
+	// Pengunggah adalah pengguna yang membuka berkas (`OperatorID.pyUserIdentifier`).
+	Pengunggah string
+
+	// KodeAkses adalah token GenerateTokenPNCDokumen, sama seperti unggah.
+	KodeAkses string
+
+	ImageID    string
+	Folder     string
+	NamaBerkas string
+
+	// Durasi adalah masa berlaku alamat baru, dalam detik.
+	Durasi int
 }
 
 // PerintahUnggah adalah bentuk yang diterima layanan penyimpanan, sesudah seluruh aturan
@@ -108,6 +147,9 @@ type Repo interface {
 
 	// Ambil mengembalikan satu dokumen menurut ImageID-nya.
 	Ambil(ctx context.Context, imageID string) (Document, error)
+
+	// PerbaruiTautan menyimpan alamat baru hasil perpanjangan — `RDB List/UpdateNewDocumentPNC-SQL.xml`.
+	PerbaruiTautan(ctx context.Context, imageID string, hasil HasilUnggah) error
 }
 
 // RepoSelector memilih repo menurut portal.

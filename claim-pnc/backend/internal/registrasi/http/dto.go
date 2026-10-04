@@ -236,7 +236,10 @@ type ClaimDTO struct {
 
 	// AnalystTransferred menyatakan klaim sudah pernah ditransfer ke Analyst
 	// (ANALYST_TRANSFERDATE terisi) — tombol "Transfer ke Analyst" tidak tampil lagi.
-	AnalystTransferred     bool   `json:"sudah_transfer_analis"`
+	AnalystTransferred bool `json:"sudah_transfer_analis"`
+
+	// PendingClose: klaim ditutup sementara (ISPENDINGCLOSE) — tombol Tutup Klaim tidak tampil.
+	PendingClose           bool   `json:"tutup_sementara"`
 	ClaimFlag              string `json:"flag_klaim"`
 	ProgressPositionStatus string `json:"status_posisi_progres"`
 
@@ -339,6 +342,16 @@ type TransferToAnalystRequest struct {
 // "Kirim ke Inputor" (`Section/AnalystRemarks_sect`).
 type SendToInputorRequest struct {
 	Note string `json:"catatan"`
+}
+
+// CloseClaimRequest adalah badan POST /api/registrasi/tugas/{id}/tutup-klaim — dialog
+// "Prevent Close Claim". Hanya isian yang punya kolom yang dikirim.
+type CloseClaimRequest struct {
+	Note      string `json:"catatan_tutup"`
+	Proposal  string `json:"usulan"`
+	Effort    string `json:"effort_tutup"`
+	Obstacle  string `json:"kendala_tutup"`
+	Temporary bool   `json:"tutup_sementara"`
 }
 
 // ClaimResponse adalah klaim beserta keadaan alurnya.

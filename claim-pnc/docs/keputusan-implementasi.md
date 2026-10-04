@@ -28750,3 +28750,37 @@ IsPA` langsung sesudah akseptasi. Aplikasi ini mengakseptasi PA seperti lini lai
 
 Klaim PNCN.26.26 sudah terlanjur ditransfer otomatis (2026-10-03, sebelum keputusan ini) — transfernya tidak dibatalkan
 aplikasi; pembatalan di sisi Kasir bukan wewenang aplikasi ini.
+
+## 171. Delete lampiran klaim mengikuti Pega — hapus permanen, pengecualian `D-66` (2026-10-04)
+
+**Keputusan Work Owner:** tombol Delete pada dialog Lihat dokumen menghapus **secara permanen**, persis
+`Activity/DeleteAttachDoc-act.xml`:
+
+1. berkas dihapus dari bucket penyimpanan lewat Connect REST `DeleteDokumenPNC` (POST `/api/v1/delete`);
+2. **hanya bila** jawaban layanan memuat `"deleted from bucket"`: `DELETE` baris `POOLDATA.DATA_ATTACHFILE` dan
+   `POOLDATA.JSON_FORM_KLAIM` menurut IMAGEID.
+
+Ini **pengecualian yang disengaja terhadap `D-66`** (larangan penghapusan fisik data bernilai bisnis). Pilihan "tandai saja"
+ditawarkan dan tidak dipilih. Akibat yang diterima: lampiran yang dihapus tidak dapat dipulihkan, dan tombolnya di Pega tidak
+punya konfirmasi.
+
+Yang ditiru apa adanya dari Pega: `DeleteDataStorage_SQL` menghapus IMAGEID tiruan (`'1111…'`), sehingga baris
+`GENERAL.T_STORAGE_IMAGE` **tidak** dihapus — metadata penyimpanan tetap ada.
+
+Yang TIDAK ditiru: langkah 11 membuang awalan `gs://<bucket>/` dengan nama bucket yang tertulis tetap di rule. Nama bucket
+yang berlaku berbeda (terukur 2026-10-04), sehingga jalurnya diambil menurut susunan APPFOLDER, seperti perpanjangan alamat
+(catatan pengembangan #143).
+
+**Belum dibangun:** syarat tampil tombol (`.exp <= 60.0 && .UserInput == OperatorID.pyUserIdentifier`) bergantung pada arti
+`.exp`, yang diisi `InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` — belum ada di export. Work Owner
+memilih menunggu berkas itu; tombol Delete tidak dibuat dengan asumsi.
+
+**Pembaruan §171 (2026-10-04): tombol Delete dibangun dengan ASUMSI.** Work Owner memilih tidak menunggu
+`InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC`: `.exp <= 60.0` ditafsirkan **"60 menit sejak unggah"**
+(`registrasi.AttachmentDeleteWindow`). Tombol tampil hanya untuk pengunggahnya sendiri dalam batas itu; syaratnya juga
+diperiksa ulang di server. Bila activity aslinya diterima dan artinya berbeda, cukup `CanDeleteAttachment` yang disesuaikan.
+
+**Pembaruan §171 (2026-10-04, kedua): batas 60 menit dicabut.** Work Owner menetapkan berkas yang sudah diunggah tetap
+dapat dihapus. Syarat tombol Delete kini hanya `.UserInput == OperatorID.pyUserIdentifier` (pengunggahnya sendiri) dan
+berkasnya tersimpan di penyimpanan; bagian `.exp <= 60.0` tidak dibawa. Bila `InputParamUpload_act` kelas
+`ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` kelak diterima dan Work Owner ingin syarat waktunya, cukup `CanDeleteAttachment`.

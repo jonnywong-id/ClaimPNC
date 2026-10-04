@@ -74,6 +74,7 @@ type Service struct {
 	committees             registrasi.CommitteeStore
 	documents              registrasi.DocumentUploader
 	attachments            registrasi.AttachmentStore
+	closures               registrasi.ClosureStore
 	id                     registrasi.IDGenerator
 	unit                   registrasi.UnitOfWork
 	clock                  clock.Clock
@@ -160,6 +161,9 @@ type Options struct {
 	Documents   registrasi.DocumentUploader
 	Attachments registrasi.AttachmentStore
 
+	// Closures menulis akibat tombol Tutup Klaim pada tabel warisan.
+	Closures registrasi.ClosureStore
+
 	// Acceptance menyimpan Persetujuan / Akseptasi (nomor ALOD, isian, riwayat, progres);
 	// Premium memanggil layanan status premi yang memeriksa premi sebelum akseptasi.
 	Acceptance registrasi.AcceptanceSource
@@ -233,6 +237,7 @@ func NewService(o Options) (*Service, error) {
 	check("KasusKomite", o.Committees != nil)
 	check("UnggahDokumen", o.Documents != nil)
 	check("LampiranKlaim", o.Attachments != nil)
+	check("PenutupanKlaim", o.Closures != nil)
 	check("Akseptasi", o.Acceptance != nil)
 	check("LayananPremi", o.Premium != nil)
 	check("PembuatID", o.IDGenerator != nil)
@@ -282,6 +287,7 @@ func NewService(o Options) (*Service, error) {
 		committees:             o.Committees,
 		documents:              o.Documents,
 		attachments:            o.Attachments,
+		closures:               o.Closures,
 		id:                     o.IDGenerator,
 		unit:                   o.UnitOfWork,
 		clock:                  o.Clock,

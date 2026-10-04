@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -120,7 +122,9 @@ func (r *ClaimRecords) Attachments(ctx context.Context, keys registrasi.RecordKe
 			Category: trimmed(category), SubCategory: trimmed(sub), ImageID: trimmed(image), UploadedBy: trimmed(by),
 		}
 		if at.Valid {
-			a.UploadedAt = at.Time
+			// INPUTDATE adalah jam dinding WIB (SYSDATE server +07:00), bukan UTC.
+			w := at.Time
+			a.UploadedAt = time.Date(w.Year(), w.Month(), w.Day(), w.Hour(), w.Minute(), w.Second(), w.Nanosecond(), clock.ZoneWIB)
 		}
 		result = append(result, a)
 	}

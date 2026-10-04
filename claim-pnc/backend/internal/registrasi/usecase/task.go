@@ -179,6 +179,9 @@ func (l *Service) ViewClaim(ctx context.Context, claimID string, by Caller) (Cla
 		return ClaimSummary{}, err
 	}
 
+	if claim.PendingClose, err = l.closures.PendingClose(ctx, claim.ID); err != nil {
+		return ClaimSummary{}, err
+	}
 	summary := ClaimSummary{Claim: claim}
 
 	task, err := l.task.OpenTaskForClaim(ctx, claim.ID)

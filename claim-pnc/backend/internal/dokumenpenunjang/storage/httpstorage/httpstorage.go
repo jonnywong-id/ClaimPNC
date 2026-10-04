@@ -48,6 +48,15 @@ import (
 // lingkungan hanyalah alamat pangkalnya.
 const JalurUnggah = "/api/v1/upload"
 
+// JalurTautan adalah jalur `Connect REST/NewLinkDokumenPNC-ConnectREST.xml` — `api`, `v1`,
+// `geturl`, seluruhnya CONSTANT, POST dengan Content-Type application/json, pangkal alamat
+// yang sama dengan unggah, `pyUseAuthentication=false`, batas waktu 30 detik.
+const JalurTautan = "/api/v1/geturl"
+
+// JalurHapus adalah jalur `Connect REST/DeleteDokumenPNC-ConnectREST.xml` — `api`, `v1`, `delete`,
+// POST JSON, pangkal alamat yang sama dengan unggah, `pyUseAuthentication=false`, 30 detik.
+const JalurHapus = "/api/v1/delete"
+
 // Client mengirim berkas ke layanan penyimpanan.
 type Client struct {
 	alamat string
@@ -216,6 +225,131 @@ func (c *Client) Upload(
 		Folder:    strings.TrimSpace(hasil.Folder),
 		ExpiresAt: uraiKedaluwarsa(hasil.Exp),
 	}, nil
+}
+
+// muatanTautan adalah halaman `DocAPI` yang disusun `Activity/GetLinkViewDoc_Act-act.xml`
+// langkah 10–15. `Durasi` angka, bukan teks — Pega membuang tanda kutipnya dengan
+// `@replaceAll` (langkah 15), sama seperti pada unggah.
+type muatanTautan struct {
+	UserInput  string `json:"UserInput"`
+	ImageID    string `json:"ImageID"`
+	App        string `json:"App"`
+	KodeString string `json:"KodeString"`
+	Folder     string `json:"Folder"`
+	NamaFile   string `json:"NamaFile"`
+	Durasi     int    `json:"Durasi"`
+}
+
+// PerpanjangTautan memenuhi dokumenpenunjang.Storage.
+//
+// Respons dibaca dari `ServiceReturn` yang sama dengan unggah: `URLImage`, `exp`,
+// `appfolder` — ketiganya yang ditulis kembali `UpdateNewDocumentPNC`.
+func (c *Client) PerpanjangTautan(
+	ctx context.Context,
+	perintah dokumenpenunjang.PerintahTautan,
+) (dokumenpenunjang.HasilUnggah, error) {
+	badan, err := json.Marshal(muatanTautan{
+		UserInput:  perintah.Pengunggah,
+		ImageID:    perintah.ImageID,
+		App:        perintah.NamaAplikasi,
+		KodeString: perintah.KodeAkses,
+		Folder:     perintah.Folder,
+		NamaFile:   perintah.NamaBerkas,
+		Durasi:     perintah.Durasi,
+	})
+	if err != nil {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: menyusun muatan tautan: %w", err)
+	}
+
+	batas, batal := context.WithTimeout(ctx, 30*time.Second)
+	defer batal()
+	permintaan, err := http.NewRequestWithContext(
+		batas, http.MethodPost, c.alamat+JalurTautan, bytes.NewReader(badan))
+	if err != nil {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: menyusun permintaan tautan: %w", err)
+	}
+	permintaan.Header.Set("Content-Type", "application/json")
+
+	respons, err := c.http.Do(permintaan)
+	if err != nil {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: menghubungi layanan penyimpanan: %w", err)
+	}
+	defer respons.Body.Close()
+	isi, err := io.ReadAll(io.LimitReader(respons.Body, 1<<20))
+	if err != nil {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: membaca respons tautan: %w", err)
+	}
+	if respons.StatusCode < 200 || respons.StatusCode > 299 {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: layanan menjawab %d", respons.StatusCode)
+	}
+
+	var hasil jawaban
+	if err := json.Unmarshal(isi, &hasil); err != nil {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: respons tautan bukan JSON yang dikenali: %w", err)
+	}
+	if strings.TrimSpace(hasil.URL) == "" {
+		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+			"dokumenpenunjang/httpstorage: respons tautan tidak memuat URLImage (ErrorCode: %v; ErrorMessage: %q; pesan layanan: %q; field: %s)",
+			hasil.ErrorCode, strings.TrimSpace(hasil.ErrorMessage), strings.TrimSpace(hasil.Pesan), fieldNames(isi))
+	}
+	return dokumenpenunjang.HasilUnggah{
+		URL:       strings.TrimSpace(hasil.URL),
+		Folder:    strings.TrimSpace(hasil.Folder),
+		ExpiresAt: uraiKedaluwarsa(hasil.Exp),
+	}, nil
+}
+
+// muatanHapus adalah halaman `DocAPI` `Activity/DeleteAttachDoc-act.xml` langkah 6–12.
+// `UserInput` dikirim KOSONG: langkah 11 mengosongkannya setelah token dibuat.
+type muatanHapus struct {
+	UserInput  string `json:"UserInput"`
+	App        string `json:"App"`
+	KodeString string `json:"KodeString"`
+	NamaFile   string `json:"NamaFile"`
+}
+
+// Hapus memenuhi dokumenpenunjang.Storage. Yang dikembalikan `ErrorMessage` jawaban layanan —
+// Pega memakainya sebagai penanda berhasil ("deleted from bucket").
+func (c *Client) Hapus(ctx context.Context, perintah dokumenpenunjang.PerintahHapus) (string, error) {
+	badan, err := json.Marshal(muatanHapus{
+		UserInput:  "",
+		App:        perintah.NamaAplikasi,
+		KodeString: perintah.KodeAkses,
+		NamaFile:   perintah.Jalur,
+	})
+	if err != nil {
+		return "", fmt.Errorf("dokumenpenunjang/httpstorage: menyusun muatan hapus: %w", err)
+	}
+	batas, batal := context.WithTimeout(ctx, 30*time.Second)
+	defer batal()
+	permintaan, err := http.NewRequestWithContext(batas, http.MethodPost, c.alamat+JalurHapus, bytes.NewReader(badan))
+	if err != nil {
+		return "", fmt.Errorf("dokumenpenunjang/httpstorage: menyusun permintaan hapus: %w", err)
+	}
+	permintaan.Header.Set("Content-Type", "application/json")
+	respons, err := c.http.Do(permintaan)
+	if err != nil {
+		return "", fmt.Errorf("dokumenpenunjang/httpstorage: menghubungi layanan penyimpanan: %w", err)
+	}
+	defer respons.Body.Close()
+	isi, err := io.ReadAll(io.LimitReader(respons.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("dokumenpenunjang/httpstorage: membaca respons hapus: %w", err)
+	}
+	if respons.StatusCode < 200 || respons.StatusCode > 299 {
+		return "", fmt.Errorf("dokumenpenunjang/httpstorage: layanan menjawab %d", respons.StatusCode)
+	}
+	var hasil jawaban
+	if err := json.Unmarshal(isi, &hasil); err != nil {
+		return "", fmt.Errorf("dokumenpenunjang/httpstorage: respons hapus bukan JSON yang dikenali: %w", err)
+	}
+	return strings.TrimSpace(hasil.ErrorMessage), nil
 }
 
 // uraiKedaluwarsa membaca `exp` dari respons.

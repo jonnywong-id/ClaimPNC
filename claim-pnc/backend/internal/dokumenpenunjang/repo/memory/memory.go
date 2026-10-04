@@ -129,6 +129,23 @@ func (r *Repo) Ambil(_ context.Context, imageID string) (dokumenpenunjang.Docume
 	return d, nil
 }
 
+// PerbaruiTautan memenuhi dokumenpenunjang.Repo.
+func (r *Repo) PerbaruiTautan(_ context.Context, imageID string, hasil dokumenpenunjang.HasilUnggah) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	d, ada := r.dokumen[strings.TrimSpace(imageID)]
+	if !ada {
+		return dokumenpenunjang.ErrTidakDitemukan
+	}
+	d.URL = hasil.URL
+	d.ExpiresAt = hasil.ExpiresAt
+	if hasil.Folder != "" {
+		d.Folder = hasil.Folder
+	}
+	r.dokumen[d.ImageID] = d
+	return nil
+}
+
 // Storage adalah layanan penyimpanan palsu yang MEREKAM apa yang dikirim kepadanya.
 //
 // Merekam, bukan sekadar menerima: hampir seluruh aturan modul ini — folder, nama bersih,
@@ -137,6 +154,8 @@ func (r *Repo) Ambil(_ context.Context, imageID string) (dokumenpenunjang.Docume
 type Storage struct {
 	mu       sync.Mutex
 	diterima []dokumenpenunjang.PerintahUnggah
+	tautan   []dokumenpenunjang.PerintahTautan
+	hapus    []dokumenpenunjang.PerintahHapus
 	galat    error
 	urutan   int
 	masaURL  time.Duration
@@ -195,6 +214,50 @@ func (s *Storage) Upload(
 		ImageID: id,
 		Folder:  perintah.Folder,
 	}, nil
+}
+
+// PerpanjangTautan memenuhi dokumenpenunjang.Storage: merekam perintahnya dan menerbitkan
+// alamat baru yang berlaku selama Durasi detik.
+func (s *Storage) PerpanjangTautan(
+	_ context.Context,
+	perintah dokumenpenunjang.PerintahTautan,
+) (dokumenpenunjang.HasilUnggah, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.galat != nil {
+		return dokumenpenunjang.HasilUnggah{}, s.galat
+	}
+	s.tautan = append(s.tautan, perintah)
+	berlaku := time.Now().Add(time.Duration(perintah.Durasi) * time.Second)
+	return dokumenpenunjang.HasilUnggah{
+		URL:       fmt.Sprintf("https://penyimpanan.contoh/%s?ke=%d", perintah.ImageID, len(s.tautan)),
+		ExpiresAt: &berlaku,
+	}, nil
+}
+
+// Hapus memenuhi dokumenpenunjang.Storage: merekam perintahnya dan menjawab seperti layanan.
+func (s *Storage) Hapus(_ context.Context, perintah dokumenpenunjang.PerintahHapus) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.galat != nil {
+		return "", s.galat
+	}
+	s.hapus = append(s.hapus, perintah)
+	return "File " + perintah.Jalur + " deleted from bucket", nil
+}
+
+// Dihapus mengembalikan seluruh perintah hapus yang pernah masuk.
+func (s *Storage) Dihapus() []dokumenpenunjang.PerintahHapus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]dokumenpenunjang.PerintahHapus(nil), s.hapus...)
+}
+
+// Tautan mengembalikan seluruh perintah perpanjangan yang pernah masuk.
+func (s *Storage) Tautan() []dokumenpenunjang.PerintahTautan {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]dokumenpenunjang.PerintahTautan(nil), s.tautan...)
 }
 
 // Converter adalah layanan konversi palsu yang MEREKAM apa yang dikonversinya.
