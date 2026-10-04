@@ -63,8 +63,10 @@ func TestAreaDirectoryOptions(t *testing.T) {
 func TestAttachmentStoreAdd(t *testing.T) {
 	db, mock := be4DB(t)
 	at := time.Date(2026, 12, 31, 18, 0, 0, 0, time.UTC) // 1 Jan 2027 WIB
+	// INPUTDATE: jam dinding WIB (SYSDATE server +07:00), dikirim sebagai waktu tanpa zona.
+	wall := time.Date(2027, 1, 1, 1, 0, 0, 0, time.UTC)
 	mock.ExpectExec(be4Q("lampiran_sisip")).
-		WithArgs("27", "KEY1", nil, "lod.pdf", nil, "pdf", "IMG-1", "10064", "14901", at).
+		WithArgs("27", "KEY1", nil, "lod.pdf", nil, "pdf", "IMG-1", "10064", "14901", wall).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	require.NoError(t, NewAttachmentStore(db).AddAttachment(context.Background(), registrasi.NewAttachment{
 		ClaimKey: "KEY1", Name: "lod.pdf", Extension: "pdf", ImageID: "IMG-1", Category: "10064", SubCategory: "14901", At: at,
@@ -433,5 +435,17 @@ func TestFaceSheetStoreRevisions(t *testing.T) {
 	mock.ExpectExec(be4Q("cfs_sisip")).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(be4Q("cfs_estimasi_sisip")).WillReturnError(be4Boom)
 	require.ErrorContains(t, s.SaveRevision(ctx, rev), "menyimpan estimasi Claim Face Sheet")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Tombol Delete: DATA_ATTACHFILE lalu JSON_FORM_KLAIM, keduanya menurut IMAGEID.
+func TestAttachmentStoreDelete(t *testing.T) {
+	db, mock := be4DB(t)
+	mock.ExpectExec(be4Q("lampiran_hapus")).WithArgs("IMG-1").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(be4Q("form_klaim_hapus")).WithArgs("IMG-1").WillReturnResult(sqlmock.NewResult(0, 0))
+	require.NoError(t, NewAttachmentStore(db).DeleteAttachment(context.Background(), "IMG-1"))
+
+	mock.ExpectExec(be4Q("lampiran_hapus")).WillReturnError(be4Boom)
+	require.ErrorIs(t, NewAttachmentStore(db).DeleteAttachment(context.Background(), "IMG-1"), be4Boom)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

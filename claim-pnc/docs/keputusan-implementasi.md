@@ -24185,8 +24185,6 @@ portal dan TYPESERVICE; kredensial dari KASIR_USER / KASIR_PASSWORD; hanya syara
 yang dibawa dari pengiriman dokumen; dialog berupa konfirmasi ringkas. Status transfer dibaca
 dari TRANSFER_CASHIER_DATE / IDCHASIER karena TransferCashierStatus tidak berkolom. Tidak ada
 baris yang ditandai terkirim tanpa CaseIDCashier atau NoTransClaim dari Kasir.
-<<<<<<< HEAD
->>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904
 
 ### K-105.22 `\r` ikut terkirim ke Oracle — pemuat kueri membuangnya, 58 modul lain dilaporkan
 
@@ -24230,7 +24228,6 @@ Alternatif yang lebih murah dan layak dipertimbangkan: satu baris `*.sql text eo
 
 **Bukti** `git config core.autocrlf` → `true` · `file` atas berkas `.sql` → `CRLF line
 terminators` · `grep -rl 'func splitByName' internal/*/repo/sqlstore/query.go` → 59
-=======
 
 ## 64. Inbox Auto Claim: grid muat satu layar, rincian pop-up, dan proteksi unggahan lanjutan (2026-09-29)
 
@@ -28785,8 +28782,6 @@ menghilang menjadi "klaim tidak ditemukan". Keduanya keadaan yang berbeda.
 Ini contoh keempat alias menyesatkan di modul ini, sesudah `POLICY_NO`→`CaseID` pada
 `InsertHistoryClaimPNC` (§168.1). Polanya sama setiap kali: **nama di rule Pega tidak
 menjelaskan isinya**, dan yang menjawab hanya membaca sumber aslinya.
-<<<<<<< HEAD
->>>>>>> bb4c4f9114ef077bf2502c7305ba090482d3ab9c
 
 ### K-105.23 Pemetaan judul-ke-kolom bergeser satu — "Appointment No" ternyata sudah di tangan
 
@@ -28999,7 +28994,6 @@ Owner, bukan saya.
 `Activity/SetTempLostAdjuster-Act.xml` (`@If(.UserAdmin=="","LEADER",…)`) ·
 `RDB List/GetOSKomiteNonMBU-SQL.xml` (`b.LEADER_MEMBER = 'LEADER'`) · pengukuran produksi
 2026-10-03
-=======
 
 ## 170. Transfer Kasir hanya manual — juga untuk PA (2026-10-03)
 
@@ -29011,4 +29005,37 @@ IsPA` langsung sesudah akseptasi. Aplikasi ini mengakseptasi PA seperti lini lai
 
 Klaim PNCN.26.26 sudah terlanjur ditransfer otomatis (2026-10-03, sebelum keputusan ini) — transfernya tidak dibatalkan
 aplikasi; pembatalan di sisi Kasir bukan wewenang aplikasi ini.
->>>>>>> 8cb90930abc7cf29eb13e63d9ebf85b5ca010cb1
+
+## 171. Delete lampiran klaim mengikuti Pega — hapus permanen, pengecualian `D-66` (2026-10-04)
+
+**Keputusan Work Owner:** tombol Delete pada dialog Lihat dokumen menghapus **secara permanen**, persis
+`Activity/DeleteAttachDoc-act.xml`:
+
+1. berkas dihapus dari bucket penyimpanan lewat Connect REST `DeleteDokumenPNC` (POST `/api/v1/delete`);
+2. **hanya bila** jawaban layanan memuat `"deleted from bucket"`: `DELETE` baris `POOLDATA.DATA_ATTACHFILE` dan
+   `POOLDATA.JSON_FORM_KLAIM` menurut IMAGEID.
+
+Ini **pengecualian yang disengaja terhadap `D-66`** (larangan penghapusan fisik data bernilai bisnis). Pilihan "tandai saja"
+ditawarkan dan tidak dipilih. Akibat yang diterima: lampiran yang dihapus tidak dapat dipulihkan, dan tombolnya di Pega tidak
+punya konfirmasi.
+
+Yang ditiru apa adanya dari Pega: `DeleteDataStorage_SQL` menghapus IMAGEID tiruan (`'1111…'`), sehingga baris
+`GENERAL.T_STORAGE_IMAGE` **tidak** dihapus — metadata penyimpanan tetap ada.
+
+Yang TIDAK ditiru: langkah 11 membuang awalan `gs://<bucket>/` dengan nama bucket yang tertulis tetap di rule. Nama bucket
+yang berlaku berbeda (terukur 2026-10-04), sehingga jalurnya diambil menurut susunan APPFOLDER, seperti perpanjangan alamat
+(catatan pengembangan #143).
+
+**Belum dibangun:** syarat tampil tombol (`.exp <= 60.0 && .UserInput == OperatorID.pyUserIdentifier`) bergantung pada arti
+`.exp`, yang diisi `InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` — belum ada di export. Work Owner
+memilih menunggu berkas itu; tombol Delete tidak dibuat dengan asumsi.
+
+**Pembaruan §171 (2026-10-04): tombol Delete dibangun dengan ASUMSI.** Work Owner memilih tidak menunggu
+`InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC`: `.exp <= 60.0` ditafsirkan **"60 menit sejak unggah"**
+(`registrasi.AttachmentDeleteWindow`). Tombol tampil hanya untuk pengunggahnya sendiri dalam batas itu; syaratnya juga
+diperiksa ulang di server. Bila activity aslinya diterima dan artinya berbeda, cukup `CanDeleteAttachment` yang disesuaikan.
+
+**Pembaruan §171 (2026-10-04, kedua): batas 60 menit dicabut.** Work Owner menetapkan berkas yang sudah diunggah tetap
+dapat dihapus. Syarat tombol Delete kini hanya `.UserInput == OperatorID.pyUserIdentifier` (pengunggahnya sendiri) dan
+berkasnya tersimpan di penyimpanan; bagian `.exp <= 60.0` tidak dibawa. Bila `InputParamUpload_act` kelas
+`ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` kelak diterima dan Work Owner ingin syarat waktunya, cukup `CanDeleteAttachment`.

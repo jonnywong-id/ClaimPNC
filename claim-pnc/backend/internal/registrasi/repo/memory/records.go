@@ -16,6 +16,9 @@ type ClaimRecords struct {
 	Attachment    map[string][]registrasi.Attachment
 	ProgressEntry map[string][]registrasi.ProgressEntry
 	Communication map[string][]registrasi.Communication
+
+	// Closure merekam akibat tombol Tutup Klaim.
+	Closure ClosureState
 }
 
 // SampleClaimRecords mengembalikan jenis dokumen contoh untuk setiap kategori tab.

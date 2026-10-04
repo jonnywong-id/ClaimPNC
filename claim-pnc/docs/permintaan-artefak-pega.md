@@ -3065,3 +3065,192 @@ Mohon diekspor dengan **include dependent rules**.
 
 `NewEstimationPA` dan `CekNilaiEstimasiDanAkseptasiTKAPA` sudah ada. Claim Face Sheet PA dibangun (catatan pengembangan
 #139). Tidak ada rule tambahan yang menahan.
+
+## 19. Tombol "Lihat dokumen" tab Unggah Dokumen (2026-10-04) — ke **Tim Pega**
+
+Tombol "Lihat dokumen" pada `Section/UploadDocument_sect.xml` membuka local action `GCNMViewAttachment2`. Pembukaan
+berkasnya mengikuti pola `Activity/GetLinkViewDoc_Act-act.xml`: alamat dibaca dari `GENERAL.T_STORAGE_IMAGE`
+(`GetURLAndEXPDate`) dan, bila sudah kedaluwarsa, diperpanjang lewat Connect REST `NewLinkDokumenPNC`.
+
+| Rule | Tipe | Dirujuk oleh | Akibat bila tidak ada |
+|---|---|---|---|
+| `GCNMViewAttachment2` | Flow Action | `Section/UploadDocument_sect.xml` (14 kemunculan) | isi dialog Pega tidak diketahui; layar memakai daftar berkas jenis dokumen itu |
+| `NewLinkDokumenPNC` | Connect REST | `Activity/GetLinkViewDoc_Act-act.xml` langkah 16 | **alamat berkas yang kedaluwarsa tidak dapat diperpanjang** — berkas hanya dapat dibuka selama alamat aslinya berlaku (terukur sekitar 7 jam sesudah unggah) |
+| `UpdateNewDocumentPNC` | RDB (Connect-SQL), kelas `ASM-FW-GKM-Int-KONVERSI2` | `Activity/GetLinkViewDoc_Act-act.xml` langkah 19 | alamat baru hasil perpanjangan tidak dapat disimpan kembali ke `GENERAL.T_STORAGE_IMAGE`, sehingga setiap pembukaan harus memperpanjang ulang |
+
+Mohon diekspor dengan **include dependent rules**.
+
+Yang SUDAH ada dan tidak perlu diminta: `GetURLAndEXPDate`, `GetAppFolder`, `GenerateTokenPNCDokumen` (RDB List), serta
+`Activity/GetLinkViewDoc_Act-act.xml` itu sendiri. Yang paling dibutuhkan adalah **`NewLinkDokumenPNC`**: tanpanya alamat
+endpoint, bentuk permintaan, dan bentuk jawaban `ServiceReturn` (`URLImage`, `exp`) tidak diketahui.
+
+### 19.1 Pembaruan 2026-10-04 — ketiga rule diterima
+
+`NewLinkDokumenPNC`, `UpdateNewDocumentPNC`, dan `GCNMViewAttachment2` sudah ada. Perpanjangan alamat berkas dibangun
+(catatan pengembangan #143). Satu rule turunan masih tidak ada: section `GCNMViewAttachment2` yang dirujuk flow action itu
+(`pySectionReference`) — tidak menahan apa pun, hanya tampilan dialognya yang belum dapat disamakan.
+
+## 20. Tombol "Delete" pada daftar berkas Lihat dokumen (2026-10-04) — ke **Tim Pega** dan **DBA**
+
+Work Owner meminta tombol dan proses Delete mengikuti `GCNMViewAttachment2-sect.xml`. Section itu **tidak ada** di export;
+yang ada hanya `Flow Action/GCNMViewAttachment2-FA.xml`, yang merujuknya lewat `pySectionReference` tanpa memuat tombol
+atau aksi apa pun. Empat activity penghapus lampiran yang ada di export tidak dipanggil dari layar ini
+(`DeleteAttachment` — 18 activity cetak/unduh; `DeleteAttachmentSurvey` — `SRVViewAttachment-Section`;
+`DeleteAllAttachmentKlaimPNC`, `KlaimDeleteAttachmentFromDB` — pengiriman email DLA), sehingga memakainya berarti menebak.
+
+### 20.1 Ke Tim Pega
+
+| # | Rule | Tipe | Dirujuk oleh | Yang dibutuhkan darinya |
+|---|---|---|---|---|
+| 1 | `GCNMViewAttachment2` | Section | `Flow Action/GCNMViewAttachment2-FA.xml` (`pySectionReference`) | tombol Delete: label, syarat tampil/aktif, konfirmasi, dan aksi yang dijalankan |
+| 2 | activity/local action yang dipanggil tombol Delete pada section itu | Activity / Flow Action | butir 1 | apa yang dihapus — baris `DATA_ATTACHFILE` saja, atau juga berkas di layanan penyimpanan (`GENERAL.T_STORAGE_IMAGE`) |
+| 3 | rule SQL / Connect REST yang dipanggil butir 2 | RDB List / Connect REST | butir 2 | bentuk penghapusannya; bila menyentuh layanan penyimpanan, endpoint dan muatannya |
+| 4 | When rule pada syarat tombol Delete | When | butir 1 | siapa yang boleh menghapus (pengunggah, peran, tahap klaim) |
+
+Butir 2–4 belum diketahui namanya — semuanya ikut bila butir 1 diekspor dengan **include dependent rules**.
+
+### 20.2 Ke DBA — kolom penanda hapus
+
+`D-66` melarang penghapusan fisik data bernilai bisnis; Delete dibangun sebagai penandaan. Terverifikasi 2026-10-04,
+`POOLDATA.DATA_ATTACHFILE` hanya berkolom `DATAID, ATTACHFILE, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
+ATTACHMIMETYPE, IMAGEID, CATEGORY, SUB_CATEGORY, IDPEGA` — **tanpa kolom penanda hapus**. Dibutuhkan, sama seperti
+`T_CLAIM_ADJUSTMENT` (migrasi 0014):
+
+| Kolom | Tipe | Isi |
+|---|---|---|
+| `DIHAPUS_PADA` | `TIMESTAMP(6)` | waktu dihapus; `NULL` = aktif |
+| `DIHAPUS_OLEH` | `VARCHAR2` | Operator ID yang menghapus |
+
+Selama Pega masih membaca tabel ini (masa paralel), baris bertanda tetap terlihat di layar Pega — perlu disepakati
+apakah itu dapat diterima.
+
+### 20.3 Pembaruan 2026-10-04 — section diterima, dua rule turunannya tidak ada
+
+`Section/GCNMViewAttachment2-sect.xml` sudah ada. Isinya tentang tombol Delete, terbaca langsung:
+
+| Hal | Isi |
+|---|---|
+| Bentuk | ikon `pxIconDeleteItem`, tooltip "Delete this row", pada grid `AttachList_API.pxResults` |
+| Tampil bila | sel ber-`pyCondition` **`.exp <= 60.0 && .UserInput == OperatorID.pyUserIdentifier`** — hanya pengunggahnya sendiri, dan hanya selama `.exp` ≤ 60 |
+| Konfirmasi | **tidak ada** |
+| Saat diklik | (1) refresh section dengan activity **`DeleteAttachDoc`** (`IDX = .pxListSubscript`, `IsError = 0`); (2) refresh section `UploadDocument` dengan `SetCountAttach_act` (hitungan "Lihat dokumen (n)"); (3) `closeContainer` — dialog ditutup |
+
+Yang masih menahan — **tidak dapat dibangun tanpa menebak**:
+
+| # | Rule | Tipe | Dirujuk oleh | Kenapa menahan |
+|---|---|---|---|---|
+| 1 | **`DeleteAttachDoc`** | Activity, kelas `ASM-FW-GCNMFW-Int` | `Section/GCNMViewAttachment2-sect.xml` (tombol Delete) | **isi proses hapusnya**: baris `DATA_ATTACHFILE` saja atau juga berkas di `GENERAL.T_STORAGE_IMAGE`/layanan penyimpanan, dan pemeriksaan apa yang dijalankan |
+| 2 | rule yang mengisi `AttachList_API.pxResults` untuk dialog ini | Activity / RDB List / Data Transform | grid tombol Delete | arti **`.exp`** pada syarat `.exp <= 60.0`. Kolom itu tidak dihasilkan kueri mana pun di export (`GetURLAndEXPDate` mengembalikan `exp` sebagai **tanggal**, bukan angka). Dugaan "menit sejak unggah" belum dapat dibuktikan |
+
+Petunjuk untuk butir 2: `Activity/AcceptationLOD_PreAct-act.xml` langkah 27 mengisi `AttachList_API` dari RDB
+`GetDocumentPNCAdj` (juga **tidak ada** di export) tanpa kolom `exp`. Pemanggil tombol "Lihat dokumen"
+(`PNCGetListDocKomunikasi_Act`) tidak mengisi `AttachList_API`.
+
+Rule `GetAIData` yang juga dirujuk section ini tidak diminta: tombolnya ("View") berada di sel ber-`pyCondition 1=2` —
+tidak pernah tampil.
+
+Kolom penanda hapus pada `DATA_ATTACHFILE` (§20.2) tetap dibutuhkan dari DBA.
+
+### 20.4 Pembaruan 2026-10-04 — `DeleteAttachDoc` diterima; enam rule turunannya tidak ada
+
+`Activity/DeleteAttachDoc-act.xml` (kelas `ASM-FW-GCNMFW-Int`) sudah ada. Alurnya:
+
+| Langkah | Isi |
+|---|---|
+| 4 | ImageID dari `AttachList_API.pxResults(Param.IDX).ImageID` |
+| 6–9 | `GetAppFolder`, `GetURLAndEXPDate` — sama seperti perpanjangan alamat |
+| 11 | `NamaFile` := APPFOLDER tanpa awalan `gs://<bucket>/` — **nama bucket tertulis tetap di rule** |
+| 13–14 | `GenerateTokenPNCDokumen`, lalu Connect REST **`DeleteDokumenPNC`** — berkas **dihapus dari bucket** |
+| 15–19 | hanya bila `ErrorMessage` memuat `"deleted from bucket"`: buang baris dari daftar, lalu **DELETE** lewat `DeleteDataAttachFile_SQL`, `DeleteDataJSON_FORM_KLAIM_SQL`, `DeleteDataStorage_SQL` |
+
+Yang masih **tidak ada** di export:
+
+| # | Rule | Tipe | Dirujuk oleh |
+|---|---|---|---|
+| 1 | **`DeleteDokumenPNC`** | Connect REST | `DeleteAttachDoc` langkah 14 — endpoint dan muatan penghapusan berkas |
+| 2 | `DeleteDataAttachFile_SQL` | RDB List, kelas `ASM-FW-GCNMFW-Int-DATA_ATTACHFILE` | langkah 17–19 |
+| 3 | `DeleteDataJSON_FORM_KLAIM_SQL` | RDB List | langkah 17–19 |
+| 4 | `DeleteDataStorage_SQL` | RDB List | langkah 17–19 |
+| 5 | `GetDataID` | RDB List | `DeleteAttachDoc` (penentu baris yang dibuang dari daftar) |
+| 6 | **`InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC`** | Activity | `Section/UploadDocument_sect.xml` dan `UploadDocument-sect.xml` — pengisi `AttachList_API` (termasuk `.exp` dan `.UserInput`). Versi yang ada di export berkelas `ASM-FW-GCNMFW-Work-PNC` (01-01-86), **tidak** menerima parameter `survey`/`Credentials`/`Durasi` yang dikirim section, dan tidak mengisi `AttachList_API` — rule yang berbeda |
+
+### 20.5 Pertentangan dengan `D-66` — perlu keputusan Work Owner
+
+`DeleteAttachDoc` menghapus **secara fisik**: berkasnya dari bucket penyimpanan (tidak dapat dipulihkan) dan barisnya dari tiga
+tabel. `D-66` melarang penghapusan fisik data bernilai bisnis. Pilihan:
+
+1. **Tandai saja** (sesuai `D-66`): lampiran diberi penanda hapus (§20.2, perlu DBA), berkas di bucket dibiarkan; selisih dari
+   Pega tercatat.
+2. **Ikuti Pega**: hapus berkas dari bucket dan baris tabelnya — menyimpang dari `D-66`, perlu dicatat sebagai pengecualian.
+
+### 20.6 Pembaruan 2026-10-04 — lima rule diterima; satu masih menahan
+
+Diterima: `DeleteDokumenPNC` (POST `/api/v1/delete`, pangkal alamat sama dengan unggah), `DeleteDataAttachFile_SQL`,
+`DeleteDataJSON_FORM_KLAIM_SQL`, `DeleteDataStorage_SQL` (menghapus IMAGEID tiruan — efektif tidak menghapus apa pun),
+`GetDataID`. Work Owner memutuskan hapus permanen mengikuti Pega (keputusan-implementasi §171), sehingga kolom penanda
+hapus §20.2 **tidak lagi diminta** ke DBA.
+
+**Masih menahan tombol Delete:**
+
+| Rule | Tipe | Kenapa |
+|---|---|---|
+| **`InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC`** | Activity | Section `UploadDocument` memanggil kelas ini dengan parameter `survey`, `Credentials`, `Durasi`. Yang ada di export adalah kelas `ASM-FW-GCNMFW-Work-PNC` versi 01-01-86 — bukan leluhur kelas pemanggil, tidak menerima parameter itu, dan tidak mengisi `AttachList_API`. Tanpanya arti `.exp` pada syarat tombol Delete tidak diketahui |
+
+Mohon diekspor menurut **kelas** `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` (bukan hanya menurut nama), ruleset GCNMFW versi terbaru.
+
+### 20.7 Pembaruan 2026-10-04 — tombol Delete dibangun dengan asumsi
+
+Atas keputusan Work Owner, tombol Delete dibangun tanpa menunggu `InputParamUpload_act` kelas
+`ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC`, dengan asumsi `.exp` = menit sejak unggah (keputusan-implementasi §171). Activity itu
+**tetap diminta** untuk memastikan asumsinya; bila artinya berbeda, cukup `registrasi.CanDeleteAttachment` yang disesuaikan.
+
+## 21. Tombol "Tutup Klaim" layar InputSurveyor (2026-10-04) — ke **Tim Pega**
+
+Yang sudah terbaca dari export:
+
+| Hal | Isi |
+|---|---|
+| Tombol | `Section/ClaimSurvey_sect.xml` "Tutup Klaim" → local action **`PreventRejectClaim`** (`Flow Action/PreventRejectClaim-FA.xml`, label "Prevent Close Claim", kelas `ASM-FW-GCNMFW-Work-PNC`) |
+| Dialog | `Section/PreventRejectClaim-sect.xml`: Catatan (`.ClaimData.CloseClaimNote`, **wajib**), Usulan, Survey Kepuasan, Manual/Paperless, No Reff Broker, Kendala Sebelum Close, Effort Sebelum Close, Banding, Alasan Keterlambatan; kotak `.IsPendingClose` (tampil bila `.ClaimData.IsPendingClosed=='false'`, mengubahnya menjalankan `SetStatusCloseSementara`); pertanyaan "Apakah anda yakin ingin menutup klaim ini?" |
+| Ya | activity **`CloseClaim`** (param `creator = .ClaimData.RCV_ID`), lalu muat ulang `ClaimSurvey` |
+| Tidak | tutup dialog |
+
+Pembanding (bukan aturan tombol ini): `Activity/JobTemporaryCloseClaimPNC-Act.xml` — penutupan sementara otomatis — mengisi
+`CloseClaimDate`, `CloseClaimNote`, `IsPendingClose`/`IsPendingClosed`, lalu `ASMForceCaseClose` dan
+`InsertJsonClaimNonMBU_act`.
+
+Yang **tidak ada** dan menahan tombol ini:
+
+| # | Rule | Tipe | Kenapa |
+|---|---|---|---|
+| 1 | **`CloseClaim`** (kelas `ASM-FW-GCNMFW-Work-PNC`) | Activity | inti proses tutup: Status Klaim yang diisi, tabel yang ditulis, penyelesaian kasus/tugas, notifikasi, syarat penolakan |
+| 2 | **`SetStatusCloseSementara`** | Activity | arti kotak "tutup sementara" (`.IsPendingClose`) — beda tutup sementara dan tutup permanen |
+| 3 | Property rule `.ClaimData.Usulan`, `SurveyKepuasan`, `Paperless`, `EffortClose`, `KendalaClose`, `Banding`, `AlasanTerlambat`, `NoReffBroker`, `CloseClaimNote` | Property | jenis isian dan daftar pilihannya (sumber daftar `associated` = dari definisi properti); folder `Property/` di export hanya berisi 4 berkas |
+| 4 | rule turunan butir 1–2 | RDB List / Activity / Data Transform | ikut bila diekspor dengan **include dependent rules** |
+
+### 21.1 Pembaruan 2026-10-04 — `CloseClaim` diterima; dua rule turunannya tidak ada
+
+Diterima: `Activity/CloseClaim-act.xml`, `Activity/SetStatusCloseSementara-act.xml`, Property `Usulan`, `SurveyKepuasan`,
+`Paperless`. Rule turunan yang ada: `GetLinkAppClaim`, `ValidationDLA_Act`, `ASMForceCaseClose`, `ConnectRestPNC_act`,
+`InsertJsonClaimNonMBU_act`, `SendSimpleEmail`, RDB `GetOperatorID`, `UpdateTotalJob_sql`, `UpdateStsKlaimClose_sql`,
+`RunConvertJSONKLAIM`, `BrowseEmailPelapor_PNC`, `GetIndividuOrNotbaseonPolisForPengkinianData`, Connect REST
+`ServiceCloseClaimNonMBU`. (`RefreshOnConflicts` adalah penyegar layar Pega — tidak diminta.)
+
+**Masih menahan tombol Tutup Klaim** (Work Owner memilih menunggu keduanya):
+
+| # | Rule | Tipe | Dirujuk oleh | Kenapa |
+|---|---|---|---|---|
+| 1 | **`ValidationAdjustmentKomite`** | Activity, kelas `ASM-FW-GCNMFW-Work-PNC` | `CloseClaim` langkah 12 | pemeriksaan adjustment/komite sebelum tutup; menyetel `Param.ErrorMsg = 1` yang menghentikan penutupan |
+| 2 | **`Insert_to_log_SQL`** | RDB List | `SetStatusCloseSementara` langkah 4 | catatan log tutup / tutup sementara / reopen (`AlasanKlaim` = "Temp Close"/"Reopen"/"Close", `Notes` = catatan tutup) |
+
+Cakupan yang disepakati saat dibangun: **inti saja** — validasi, Status Klaim `1143` / `Resolved-Completed`, tanggal dan
+catatan tutup, isian dialog, tutup sementara, penutupan tugas, `TOTAL_JOB` PIC dikurangi, `PEGA_DASHBOARDPNC.STSKLAIM = 3`,
+jejak audit. Ditunda sebagai pekerjaan lanjutan: REST `ServiceCloseClaimNonMBU`, `InsertJsonClaimNonMBU_act` (procedure
+`PEGA_JSON_KLAIM_PNC` + REST `SendKlaimToASO`), `RunConvertJSONKLAIM` (procedure — `D-02`), email ke pelapor.
+
+### 21.2 Pembaruan 2026-10-04 — kedua rule diterima, tombol dibangun
+
+`ValidationAdjustmentKomite` dan `Insert_to_log_SQL` diterima; tombol Tutup Klaim dibangun dengan cakupan inti (catatan
+pengembangan #146). Tidak ada rule yang masih menahan. Yang tetap kosong di export: daftar pilihan dropdown Survey Kepuasan,
+Manual/Paperless, Banding, Alasan Keterlambatan (Property tanpa tabel; dua Property terakhir tidak ada) — bila diperlukan,
+mohon Property `Banding`, `AlasanTerlambat`, `NoReffBroker` beserta sumber daftar pilihannya.

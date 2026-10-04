@@ -220,7 +220,8 @@ describe('DocumentTab', () => {
     const row = (await screen.findByText('Formulir Klaim')).closest('tr')!
     await userEvent.click(within(row).getByRole('button', { name: 'Unggah Dokumen' }))
     expect(screen.getByText('Unggah Dokumen: Formulir Klaim')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Unggah' })).toBeDisabled()
+    // Selalu dapat ditekan, seperti Pega — tanpa berkas ia membuka pemilih berkas.
+    expect(screen.getByRole('button', { name: 'Unggah' })).toBeEnabled()
 
     const file = new File(['isi'], 'formulir.pdf', { type: 'application/pdf' })
     await userEvent.upload(screen.getByLabelText('Berkas'), file)
@@ -353,5 +354,141 @@ describe('ProgressTab', () => {
     wrap(<ProgressTab claimID="klaim-1" />)
 
     expect(await screen.findByText('Data tidak dapat dimuat')).toBeInTheDocument()
+  })
+})
+
+describe('DocumentTab — Lihat dokumen', () => {
+  const WITH_FILE = {
+    ...DOCUMENTS,
+    berkas: [
+      {
+        id: 'B9',
+        nama: 'kerugian.pdf',
+        jenis_berkas: 'pdf',
+        catatan: '',
+        kategori: 'K1',
+        sub_kategori: 'D2',
+        tersimpan: true,
+        diunggah_oleh: 'ADMIN',
+        diunggah_pada: '2026-05-01T09:30:00+07:00',
+      },
+    ],
+  }
+
+  it('membuka berkas di jendela pop-up lewat alamat dari penyimpanan', async () => {
+    const target = { opener: {}, location: { href: '' }, close: vi.fn(), focus: vi.fn() }
+    const open = vi.fn(() => target)
+    vi.stubGlobal('open', open)
+    installFetch((url) => {
+      if (url === `${BASE}/dokumen`) return json(200, WITH_FILE)
+      if (url === `${BASE}/dokumen/B9/tautan`) return json(200, { url: 'https://penyimpanan.contoh/b9', berlaku_sampai: '' })
+      return undefined
+    })
+    wrap(<DocumentTab claimID="klaim-1" />)
+
+    const row = (await screen.findByText('Foto Kerugian')).closest('tr')!
+    await userEvent.click(within(row).getByRole('button', { name: 'Lihat dokumen (1)' }))
+    const list = screen.getByRole('table', { name: 'Daftar berkas' })
+    await userEvent.click(within(list).getByRole('button', { name: 'Lihat' }))
+
+    await waitFor(() => expect(target.location.href).toBe('https://penyimpanan.contoh/b9'))
+    expect(target.opener).toBeNull()
+    // Pop-up bernama dengan ukuran jendela, bukan tab baru.
+    expect(open).toHaveBeenCalledWith('', 'lihat-dokumen-klaim', expect.stringContaining('popup=yes'))
+  })
+
+  it('menutup jendela dan menampilkan alasan bila alamat tidak dapat dipakai', async () => {
+    const target = { opener: {}, location: { href: '' }, close: vi.fn(), focus: vi.fn() }
+    vi.stubGlobal('open', vi.fn(() => target))
+    installFetch((url) => {
+      if (url === `${BASE}/dokumen`) return json(200, WITH_FILE)
+      if (url === `${BASE}/dokumen/B9/tautan`) return json(422, { kode: 'tautan_dokumen_tidak_tersedia', pesan: 'Tautan kedaluwarsa.' })
+      return undefined
+    })
+    wrap(<DocumentTab claimID="klaim-1" />)
+
+    const row = (await screen.findByText('Foto Kerugian')).closest('tr')!
+    await userEvent.click(within(row).getByRole('button', { name: 'Lihat dokumen (1)' }))
+    await userEvent.click(within(screen.getByRole('table', { name: 'Daftar berkas' })).getByRole('button', { name: 'Lihat' }))
+
+    expect(await screen.findByText('Dokumen tidak dapat diproses')).toBeInTheDocument()
+    expect(screen.getByText('Tautan kedaluwarsa.')).toBeInTheDocument()
+    expect(target.close).toHaveBeenCalled()
+  })
+})
+
+describe('DocumentTab — Unggah tanpa berkas', () => {
+  it('membuka pemilih berkas lalu langsung mengunggah berkas yang dipilih', async () => {
+    installFetch((url, method) => {
+      if (url !== `${BASE}/dokumen`) return undefined
+      return method === 'POST' ? json(201, DOCUMENTS) : json(200, DOCUMENTS)
+    })
+    wrap(<DocumentTab claimID="klaim-1" />)
+
+    const row = (await screen.findByText('Formulir Klaim')).closest('tr')!
+    await userEvent.click(within(row).getByRole('button', { name: 'Unggah Dokumen' }))
+    const input = screen.getByLabelText('Berkas') as HTMLInputElement
+    const opened = vi.spyOn(input, 'click')
+    await userEvent.click(screen.getByRole('button', { name: 'Unggah' }))
+    expect(opened).toHaveBeenCalled()
+    expect(calls.some((c) => c.method === 'POST')).toBe(false)
+
+    await userEvent.upload(input, new File(['isi'], 'susulan.pdf', { type: 'application/pdf' }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true))
+  })
+})
+
+describe('DocumentTab — Delete', () => {
+  const file = (deletable: boolean) => ({
+    id: 'B9',
+    nama: 'kerugian.pdf',
+    jenis_berkas: 'pdf',
+    catatan: '',
+    kategori: 'K1',
+    sub_kategori: 'D2',
+    tersimpan: true,
+    diunggah_oleh: 'ADMIN',
+    diunggah_pada: '2026-05-01T09:30:00+07:00',
+    bisa_dihapus: deletable,
+  })
+
+  it('menampilkan tombol Delete hanya bila server mengizinkan', async () => {
+    installFetch((url) => (url === `${BASE}/dokumen` ? json(200, { ...DOCUMENTS, berkas: [file(false)] }) : undefined))
+    wrap(<DocumentTab claimID="klaim-1" />)
+
+    const row = (await screen.findByText('Foto Kerugian')).closest('tr')!
+    await userEvent.click(within(row).getByRole('button', { name: 'Lihat dokumen (1)' }))
+    expect(screen.queryByRole('button', { name: 'Delete this row' })).not.toBeInTheDocument()
+  })
+
+  it('menghapus tanpa konfirmasi lalu menutup daftar', async () => {
+    installFetch((url, method) => {
+      if (url === `${BASE}/dokumen`) return json(200, { ...DOCUMENTS, berkas: [file(true)] })
+      if (url === `${BASE}/dokumen/B9/hapus` && method === 'POST') return json(200, { ...DOCUMENTS, berkas: [] })
+      return undefined
+    })
+    wrap(<DocumentTab claimID="klaim-1" />)
+
+    const row = (await screen.findByText('Foto Kerugian')).closest('tr')!
+    await userEvent.click(within(row).getByRole('button', { name: 'Lihat dokumen (1)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Delete this row' }))
+
+    await waitFor(() => expect(screen.queryByRole('table', { name: 'Daftar berkas' })).not.toBeInTheDocument())
+    expect(calls.some((c) => c.url === `${BASE}/dokumen/B9/hapus` && c.method === 'POST')).toBe(true)
+  })
+
+  it('menampilkan alasan bila penghapusan ditolak', async () => {
+    installFetch((url) => {
+      if (url === `${BASE}/dokumen`) return json(200, { ...DOCUMENTS, berkas: [file(true)] })
+      if (url === `${BASE}/dokumen/B9/hapus`) return json(502, { kode: 'hapus_dokumen_gagal', pesan: 'Penyimpanan menolak.' })
+      return undefined
+    })
+    wrap(<DocumentTab claimID="klaim-1" />)
+
+    const row = (await screen.findByText('Foto Kerugian')).closest('tr')!
+    await userEvent.click(within(row).getByRole('button', { name: 'Lihat dokumen (1)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Delete this row' }))
+
+    expect(await screen.findByText('Penyimpanan menolak.')).toBeInTheDocument()
   })
 })

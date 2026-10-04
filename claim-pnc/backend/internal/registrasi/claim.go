@@ -492,6 +492,11 @@ type Claim struct {
 	// kolom: klaim yang sudah pernah ditransfer ke Analyst tidak menampilkan tombol itu lagi.
 	AnalystTransferredAt time.Time
 
+	// PendingClose adalah ISPENDINGCLOSE — `ClaimData.IsPendingClosed`: klaim ditutup sementara
+	// lewat tombol Tutup Klaim. Tombol itu tidak tampil lagi selama penanda ini terisi. Diisi
+	// ClosureStore.PendingClose (layar klaim, tombol Tutup Klaim), tidak oleh ClaimRepo.
+	PendingClose bool
+
 	// ClaimStatusName adalah nama ClaimStatus dari master V_STS_CLAIM — hanya dibaca,
 	// diisi penyimpanan.
 	ClaimStatusName        string

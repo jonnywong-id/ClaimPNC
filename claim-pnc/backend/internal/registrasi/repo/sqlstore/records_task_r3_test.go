@@ -9,6 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -104,7 +105,8 @@ func TestClaimRecordsAttachments(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Attachment{
 		ID: "1", Name: "lod.pdf", MimeType: "pdf", Note: "n", Category: "10064", SubCategory: "14901",
-		ImageID: "IMG", UploadedBy: "NIK1", UploadedAt: at,
+		// INPUTDATE dibaca sebagai jam dinding WIB.
+		ImageID: "IMG", UploadedBy: "NIK1", UploadedAt: time.Date(2026, 6, 9, 0, 0, 0, 0, clock.ZoneWIB),
 	}, got[0])
 	require.True(t, got[1].UploadedAt.IsZero())
 	r3RowFailures(t, mock, "lampiran_daftar", 9, func() error {

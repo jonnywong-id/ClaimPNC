@@ -14,6 +14,7 @@ import { CommitteeStatus, TransferCommitteeButton } from './Committee'
 import { DocumentTab, InvestigationTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
 import { ReceiverTab } from './ReceiverTab'
+import { CloseClaimDialog } from './CloseClaim'
 import { SendToInputorDialog } from './SendToInputor'
 import { SettlementDetail, SettlementEditor } from './SettlementEditor'
 import { TransferToAnalystDialog, isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
@@ -175,6 +176,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const tabs = TABS.filter((t) => (t !== 'Survey' || surveyVisible(klaim)) && (t !== 'Investigasi' || pa))
 
   const [sendingToInputor, setSendingToInputor] = useState(false)
+  const [closing, setClosing] = useState(false)
   // Kirim ke Inputor: local action AnalystRemarks (ClaimSurvey_sect, `!isAnalystPA_PNC`).
   const canSendToInputor = notice === null && !tugas.dapat_diambil
 
@@ -190,7 +192,12 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     },
     { label: 'Kirim ke Marketing', strong: true, visible: travel },
     { label: 'Kirim ke Admin', strong: true, visible: notTravelPA },
-    { label: 'Tutup Klaim', visible: true },
+    // Tutup Klaim: local action PreventRejectClaim, tampil selama `.ClaimData.IsPendingClosed=='false'`.
+    {
+      label: 'Tutup Klaim',
+      visible: klaim.tutup_sementara !== true,
+      ...(canSendToInputor ? { onClick: () => setClosing(true) } : {}),
+    },
   ]
 
   return (
@@ -247,6 +254,12 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       {sendingToInputor && (
         <SendToInputorDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setSendingToInputor(false)} />
+      )}
+      {closing && <CloseClaimDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setClosing(false)} />}
+      {klaim.tutup_sementara === true && (
+        <p className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+          This claim is temporarily closed.
+        </p>
       )}
 
       <dl className="mt-4 grid gap-4 sm:grid-cols-3">

@@ -240,6 +240,58 @@ func TipeMedia(ekstensi string) string {
 	}
 }
 
+// DurasiTautan adalah masa berlaku alamat hasil perpanjangan, dalam detik.
+//
+// `Activity/GetLinkViewDoc_Act-act.xml` langkah 14: `@if(TempDurasi.CARI1="","3600",…)` —
+// `TempDurasi` tidak pernah diisi di activity itu, sehingga nilainya selalu 3600.
+const DurasiTautan = 3600
+
+// FolderDariAppFolder mengambil folder berkas dari kolom APPFOLDER, yang berbentuk
+// `gs://<bucket>/Doc/2026/10/<berkas>`. Hasilnya `Doc/2026/10/` — sama dengan folder yang dikirim
+// saat unggah (FolderTanggal).
+//
+// # Menurut susunan jalur, bukan posisi tetap seperti Pega
+//
+// Pega memotong `@substring(appfolder, 17, 29)` (GetLinkViewDoc_Act langkah 14). Itu hanya
+// tepat bila nama bucket 12 karakter. Terukur 2026-10-04, nama bucket yang berlaku 15 karakter,
+// sehingga potongan tetap itu menghasilkan `<3 huruf bucket>/Doc/2026` — folder yang salah.
+// Di sini folder diambil dari segmen sesudah bucket sampai sebelum nama berkas; untuk bucket
+// 12 karakter hasilnya sama persis dengan Pega.
+//
+// Bentuk yang tidak dikenali menghasilkan teks kosong, bukan tebakan.
+func FolderDariAppFolder(appfolder string) string {
+	jalur := strings.TrimSpace(appfolder)
+	i := strings.Index(jalur, "://")
+	if i < 0 {
+		return ""
+	}
+	bagian := strings.Split(jalur[i+3:], "/")
+	if len(bagian) < 3 {
+		return ""
+	}
+	return strings.Join(bagian[1:len(bagian)-1], "/") + "/"
+}
+
+// JalurDariAppFolder mengambil jalur berkas di dalam bucket dari APPFOLDER:
+// `gs://<bucket>/Doc/2026/10/<berkas>` menjadi `Doc/2026/10/<berkas>`.
+//
+// `Activity/DeleteAttachDoc-act.xml` langkah 11 membuang awalan `gs://<bucket>/` dengan nama
+// bucket yang tertulis tetap di rule. Nama bucket yang berlaku berbeda (terukur 2026-10-04),
+// sehingga awalannya dibuang menurut susunan jalur — hasilnya sama bila bucket-nya sama.
+func JalurDariAppFolder(appfolder string) string {
+	jalur := strings.TrimSpace(appfolder)
+	i := strings.Index(jalur, "://")
+	if i < 0 {
+		return ""
+	}
+	sisa := jalur[i+3:]
+	j := strings.Index(sisa, "/")
+	if j < 0 || j == len(sisa)-1 {
+		return ""
+	}
+	return sisa[j+1:]
+}
+
 // FolderTanggal menyusun folder tujuan dari waktu unggah.
 //
 // Pega merakitnya di `Activity/InsertDokumenPNC-Act.xml:3652`:

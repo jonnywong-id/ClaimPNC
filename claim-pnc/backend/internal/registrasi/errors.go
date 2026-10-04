@@ -84,6 +84,7 @@ const (
 	ViolationPolicyPeriodEnded       ViolationCode = "periode_polis_berakhir"
 	ViolationReportedAfter7Days      ViolationCode = "lapor_lewat_7_hari"
 	ViolationReceivedAfter90Days     ViolationCode = "terima_dokumen_lewat_90_hari"
+	ViolationReceivedDateRequired    ViolationCode = "terima_dokumen_kosong"
 	ViolationDeclarationPolicy       ViolationCode = "polis_deklarasi"
 	ViolationDuplicateClaim          ViolationCode = "klaim_ganda"
 	ViolationSLIKNumberEmpty         ViolationCode = "nomor_slik_kosong"

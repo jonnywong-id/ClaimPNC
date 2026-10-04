@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
 )
 
@@ -64,6 +65,17 @@ type AttachmentDTO struct {
 	Stored      bool   `json:"tersimpan"`
 	UploadedBy  string `json:"diunggah_oleh"`
 	UploadedAt  string `json:"diunggah_pada"`
+
+	// Deletable: tombol Delete tampil untuk pemanggil (pengunggahnya sendiri, dalam batas waktu).
+	Deletable bool `json:"bisa_dihapus"`
+}
+
+// DocumentLinkResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/dokumen/{lampiranID}/tautan.
+type DocumentLinkResponse struct {
+	URL string `json:"url"`
+
+	// ValidUntil RFC 3339 WIB; kosong bila metadata tidak mencatat masa berlaku.
+	ValidUntil string `json:"berlaku_sampai"`
 }
 
 // DocumentsResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/dokumen.
@@ -129,7 +141,8 @@ func (h *Handler) Surveys(w http.ResponseWriter, r *http.Request, claimID string
 
 // Documents menangani GET /api/registrasi/klaim/{klaimID}/dokumen.
 func (h *Handler) Documents(w http.ResponseWriter, r *http.Request, claimID string) {
-	if _, ok := h.callerOf(w, r); !ok {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
 		return
 	}
 	view, err := h.service.Documents(r.Context(), claimID)
@@ -137,11 +150,11 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request, claimID stri
 		h.failure(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, documentsResponse(view))
+	h.writeResponse(w, r, http.StatusOK, documentsResponse(view, h.canDelete(caller)))
 }
 
 // documentsResponse menyusun badan tab Unggah Dokumen.
-func documentsResponse(view usecase.DocumentView) DocumentsResponse {
+func documentsResponse(view usecase.DocumentView, canDelete func(registrasi.Attachment) bool) DocumentsResponse {
 	body := DocumentsResponse{
 		Category:   make([]DocumentCategoryDTO, 0, len(view.Category)),
 		Attachment: make([]AttachmentDTO, 0, len(view.Attachment)),
@@ -160,7 +173,7 @@ func documentsResponse(view usecase.DocumentView) DocumentsResponse {
 		body.Attachment = append(body.Attachment, AttachmentDTO{
 			ID: a.ID, Name: a.Name, MimeType: a.MimeType, Note: a.Note, Category: a.Category,
 			SubCategory: a.SubCategory, Stored: a.ImageID != "", UploadedBy: a.UploadedBy,
-			UploadedAt: formatMoment(a.UploadedAt),
+			UploadedAt: formatMoment(a.UploadedAt), Deletable: canDelete(a),
 		})
 	}
 	return body
