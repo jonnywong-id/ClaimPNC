@@ -614,7 +614,7 @@ it('menandai isian yang ditolak server pada isiannya masing-masing', async () =>
   await userEvent.selectOptions(within(form).getByLabelText(/Status Salvage/), '2')
 
   await userEvent.click(
-    within(form).getByRole('button', { name: 'Submit' }),
+    within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }),
   )
 
   // KEDUA pesan tampil sekaligus, bukan satu lalu satu lagi (`P-5`).
@@ -707,11 +707,9 @@ it('klaim yang belum punya pengajuan membuka form Tambah, bukan panel rincian', 
   expect(within(form).getByLabelText(/Nama Object/)).toHaveValue('Gudang Blok C')
 
   // Grid riwayat tetap digambar meski kosong — kekosongannya adalah keterangan.
-  // Grid riwayat TIDAK digambar pada klaim yang belum pernah diajukan salvage — di layar
-  // lama pun ia tidak muncul pada pengajuan baru.
-  expect(
-    within(form).queryByRole('region', { name: 'Detail History Salvage' }),
-  ).not.toBeInTheDocument()
+  // Menyembunyikannya membuat keadaan itu tidak dapat dibedakan dari grid yang gagal dimuat.
+  const riwayat = within(form).getByRole('region', { name: 'Detail History Salvage' })
+  expect(within(riwayat).getByText('Data Tidak Ada')).toBeInTheDocument()
 })
 
 it('grid Detail History Salvage menggambar pengajuan sebelumnya milik klaim itu', async () => {
@@ -883,20 +881,29 @@ const KLAIM_DENGAN_PILIHAN: DetailResponse = {
 }
 
 /**
- * optionsOf membaca isi `<datalist>` milik sebuah autocomplete.
+ * optionsOf MEMBUKA daftar pilihan sebuah autocomplete, lalu membaca isinya.
  *
- * Isi datalist tidak muncul sebagai teks di layar, sehingga ia tidak dapat dicari lewat
- * `getByText`. Yang dibacanya adalah daftar yang DITAWARKAN kolomnya â€” persis hal yang
- * diperiksa uji di bawah.
+ * Ia harus membukanya lebih dulu, dan itu perbedaan yang menentukan dari bentuk
+ * sebelumnya: dulu kolomnya memakai `<datalist>` yang isinya selalu ada di DOM meski
+ * tidak pernah terlihat, sehingga uji dapat membacanya tanpa menyentuh kolomnya sama
+ * sekali â€” dan uji itu lulus bahkan seandainya daftarnya tidak pernah dapat dibuka
+ * pengguna. Sekarang yang dibaca adalah daftar yang BENAR-BENAR tergambar.
+ *
+ * Nama diambil dari simpul teks pertama tiap baris; penunjuk di sebelahnya tergambar
+ * sebagai `<span>` tersendiri dan sengaja tidak ikut terbaca.
  */
-function optionsOf(input: HTMLElement): string[] {
-  const listID = input.getAttribute('list')
+async function optionsOf(input: HTMLElement): Promise<string[]> {
+  await userEvent.click(input)
+
+  const listID = input.getAttribute('aria-controls')
   if (listID === null) return []
 
   const list = document.getElementById(listID)
   if (list === null) return []
 
-  return [...list.querySelectorAll('option')].map((option) => option.value)
+  return [...list.querySelectorAll('[role="option"]')].map(
+    (option) => option.childNodes[0]?.textContent?.trim() ?? '',
+  )
 }
 
 /** Peladen tiruan untuk jalur tombol "Tambah": pencarian klaim menjawab pilihan. */
@@ -958,7 +965,7 @@ it('mengetik Nomor Klaim memuat pilihan objek dan coverage klaim itu', async () 
 
   // Sebelum nomor klaim diketik, kedua kolom belum menawarkan apa pun â€” belum ada klaim
   // yang menjadi acuannya.
-  expect(optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([])
+  expect(await optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([])
 
   await userEvent.type(within(form).getByLabelText(/Nomor Klaim/), 'PNC-700071')
 
@@ -967,7 +974,7 @@ it('mengetik Nomor Klaim memuat pilihan objek dan coverage klaim itu', async () 
   await userEvent.tab()
 
   expect(await screen.findByText(/ditemukan\./)).toBeInTheDocument()
-  expect(optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([
+  expect(await optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([
     'Gudang Blok C',
     'Isi Gudang',
   ])
@@ -1004,12 +1011,12 @@ it('memilih objek TIDAK mempersempit daftar coverage', async () => {
   const coverage = within(form).getByLabelText(/Nama Coverage/)
   const semua = ['Gempa Bumi', 'Kebakaran', 'Pencurian']
 
-  expect(optionsOf(coverage)).toEqual(semua)
+  expect(await optionsOf(coverage)).toEqual(semua)
 
   await userEvent.type(within(form).getByLabelText(/Nama Object/), 'Isi Gudang')
 
   // Tetap ketiganya. Mempersempitnya akan menyembunyikan pilihan yang di Pega tersedia.
-  expect(optionsOf(coverage)).toEqual(semua)
+  expect(await optionsOf(coverage)).toEqual(semua)
 })
 
 it('mengganti objek TIDAK membuang coverage yang sudah dipilih', async () => {
@@ -1126,7 +1133,7 @@ it('form dari baris klaim TIDAK mengunci Nama Object dan Nama Coverage', async (
   // tidak pernah dapat disimpan, sementara keduanya wajib diisi di server.
   const objek = within(form).getByLabelText(/Nama Object/)
   expect(objek).not.toHaveAttribute('readonly')
-  expect(optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
+  expect(await optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
 
   await userEvent.type(objek, 'Gudang Blok C')
   expect(objek).toHaveValue('Gudang Blok C')
@@ -1161,7 +1168,7 @@ it('pilihan pada jalur baris klaim diambil dari jawaban yang SUDAH di tangan', a
 })
 
 
-it('coverage kembar ditawarkan SEKALI', async () => {
+it('coverage kembar ditawarkan DUA KALI, sebanyak barisnya', async () => {
   stubLookupFetch(() =>
     jsonResponse(200, {
       ...KLAIM_DENGAN_PILIHAN,
@@ -1183,7 +1190,17 @@ it('coverage kembar ditawarkan SEKALI', async () => {
 
   // Dua baris yang terbaca sama persis tidak menambah satu pun keterangan — selain
   // membuat React menandai kunci ganda pada datalist-nya.
-  expect(optionsOf(within(form).getByLabelText(/Nama Coverage/))).toEqual(['Kebakaran'])
+  // Keduanya digambar APA ADANYA, dan itu kebalikan dari perilaku sebelumnya.
+  //
+  // Dulu nama yang berulang dibuang supaya `<datalist>` tidak memuat dua pilihan
+  // bernilai sama. Yang hilang bukan hanya barisnya: pada objek, dua baris bernama sama
+  // membawa PENUNJUK yang berbeda, dan membuang salah satunya membuat objek itu tidak
+  // pernah dapat dipilih. Daftar sekarang memilih barisnya, bukan namanya, sehingga
+  // keduanya berdiri sendiri.
+  expect(await optionsOf(within(form).getByLabelText(/Nama Coverage/))).toEqual([
+    'Kebakaran',
+    'Kebakaran',
+  ])
 })
 
 
@@ -1265,7 +1282,7 @@ it('baris yang diketik di grid IKUT TERKIRIM saat disimpan', async () => {
   await userEvent.type(within(grid).getByLabelText('Jumlah Item baris 1'), '12')
 
   await userEvent.click(
-    within(form).getByRole('button', { name: 'Submit' }),
+    within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }),
   )
 
   const simpan = calls.find((call) => call.url === PATH && call.init?.method === 'POST')
@@ -1306,7 +1323,7 @@ it('tautan Hapus membuang baris terakhir', async () => {
   expect(within(grid).queryByLabelText('Nama Item baris 2')).not.toBeInTheDocument()
 })
 
-it('grid hanya punya TIGA kolom, sama seperti layar lama', async () => {
+it('grid punya LIMA kolom, dua di antaranya mati', async () => {
   stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
   const form = await openTambah()
 
@@ -1317,7 +1334,31 @@ it('grid hanya punya TIGA kolom, sama seperti layar lama', async () => {
 
   // Persis ketiganya. "Satuan" ADA di berkas CSV tetapi tidak digambar — begitu pula di
   // layar lama, dan menambah kolom di sini berarti menyimpang darinya.
-  expect(judul).toEqual(['Nama Item', 'Jumlah Item / Qty', 'Remark'])
+  // "Harga Total" dan "Upload file" ADA di layar yang berjalan, dan karena itu digambar.
+  //
+  // Keduanya tetap MATI: `INSERT_SALVAGE_DETAILS` tidak punya satu pun parameter untuk
+  // keduanya. Menghilangkannya membuat ketiadaannya tidak terlihat; membuatnya aktif
+  // membuat orang mengetik nilai yang diam-diam hilang saat disimpan.
+  //
+  // "Satuan" tetap tidak digambar: ia ada di berkas CSV, tetapi tidak di layar mana pun.
+  expect(judul).toEqual([
+    'Nama Item',
+    'Jumlah Item',
+    'Remark',
+    'Harga Total',
+    'Upload file',
+  ])
+})
+
+it('kedua kolom mati tidak dapat diisi', async () => {
+  stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
+  const form = await openTambah()
+
+  const grid = within(form).getByRole('table', { name: 'Detail Item Salvage' })
+  await userEvent.click(within(form).getByRole('button', { name: '+ Tambah' }))
+
+  expect(within(grid).getByLabelText('Harga Total baris 1')).toBeDisabled()
+  expect(within(grid).getByRole('button', { name: 'Upload file' })).toBeDisabled()
 })
 
 // ============================================================================
@@ -1334,7 +1375,7 @@ it('tombol Upload file membuka modal beserta kedua batas unggahannya', async () 
 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
 
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
@@ -1356,7 +1397,7 @@ it('Cancel menutup modal unggahan tanpa menyentuh form', async () => {
   const form = await openTambah()
 
   await userEvent.type(within(form).getByLabelText(/Jenis Salvage/), 'Besi Tua')
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
 
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
   await userEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
@@ -1371,7 +1412,7 @@ it('modal unggahan menolak berkas yang melewati 1 MB', async () => {
   stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
   const form = await openTambah()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   // Berkas 2 MB. Menolaknya DI LAYAR menghemat perjalanan kirim yang sudah pasti ditolak
@@ -1393,7 +1434,7 @@ it('modal unggahan menolak lebih dari lima dokumen', async () => {
   stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
   const form = await openTambah()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const enam = Array.from(
@@ -1435,7 +1476,7 @@ it('Submit pada modal unggahan MENGIRIM berkasnya sebagai satu permintaan', asyn
   await userEvent.tab()
   await screen.findByText(/ditemukan\./)
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const pemilih = modal.querySelector('input[type="file"]') as HTMLInputElement
@@ -1478,7 +1519,7 @@ it('unggahan yang DITOLAK server tetap membuka modal beserta berkasnya', async (
   await userEvent.tab()
   await screen.findByText(/ditemukan\./)
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const pemilih = modal.querySelector('input[type="file"]') as HTMLInputElement
@@ -1500,7 +1541,7 @@ it('Submit pada modal unggahan mati selama Nomor Klaim kosong', async () => {
   stubUnggahanDokumen(() => jsonResponse(200, { dokumen: [], pesan: '', portal: 'ASM' }))
   const form = await openTambah()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const pemilih = modal.querySelector('input[type="file"]') as HTMLInputElement
@@ -1639,7 +1680,7 @@ it('baris Rejected Checker membuka FORM, bukan panel rincian', async () => {
   // Isian pengajuannya sudah terisi â€” itu yang membedakannya dari form pengajuan baru.
   expect(within(form).getByLabelText(/Nomor Klaim/)).toHaveValue('PNC-700071')
   expect(within(form).getByLabelText(/Jenis Salvage/)).toHaveValue('Besi Tua')
-  expect(within(form).getByLabelText(/Minimum Salvage/)).toHaveValue('1800000')
+  expect(within(form).getByLabelText(/Total Nilai Salvage/)).toHaveValue('1800000')
 })
 
 it('Nama Object dan Nama Coverage TERISI beserta daftar pilihannya', async () => {
@@ -1654,8 +1695,8 @@ it('Nama Object dan Nama Coverage TERISI beserta daftar pilihannya', async () =>
   expect(objek).toHaveValue('Gudang Blok C')
   expect(coverage).toHaveValue('Kebakaran')
 
-  expect(optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
-  expect(optionsOf(coverage)).toEqual(['Kebakaran', 'Gempa Bumi'])
+  expect(await optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
+  expect(await optionsOf(coverage)).toEqual(['Kebakaran', 'Gempa Bumi'])
 })
 
 it('grid Detail Item Salvage terisi barang yang sudah tersimpan', async () => {
@@ -1691,7 +1732,7 @@ it('menyimpan dari Rejected Checker memakai mode ubah beserta ID pengajuannya', 
   expect(within(form).getByLabelText(/Status Salvage/)).toHaveValue('')
   await userEvent.selectOptions(within(form).getByLabelText(/Status Salvage/), '2')
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Submit' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }))
 
   await vi.waitFor(() => expect(dikirim).not.toBe(''))
 

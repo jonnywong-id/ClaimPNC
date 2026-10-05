@@ -115,6 +115,12 @@ const (
 	ViolationNoteTooLong             ViolationCode = "catatan_terlalu_panjang"
 	ViolationAnalystTransferred      ViolationCode = "sudah_transfer_analis"
 	ViolationAnalystNotAllowed       ViolationCode = "transfer_analis_tidak_berlaku"
+
+	// Tiga isian wajib modal "Kirim ke RCL/PUCL" (`Section/SectionPUCL-sect.xml`,
+	// `pyRequired=true`): pilihan jalur, Catatan untuk RCL/PUCL, dan Keterangan Isi.
+	ViolationPUCLTrackUnknown ViolationCode = "jalur_rclpucl_tidak_dikenal"
+	ViolationPUCLNoteEmpty    ViolationCode = "catatan_rclpucl_kosong"
+	ViolationPUCLBodyEmpty    ViolationCode = "keterangan_isi_kosong"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

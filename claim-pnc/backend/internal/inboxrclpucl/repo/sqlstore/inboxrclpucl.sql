@@ -861,7 +861,28 @@ SELECT COUNT(*) AS PROBE
 -- Nama kategori dicari lewat LEFT JOIN, mengikuti alasan yang sama seperti `inboxpladla`:
 -- satu kode yang tidak ada di master tidak boleh MENYEMBUNYIKAN dokumennya.
 --
--- Bind: :1 nomor case
+-- ============================================================================
+-- KEPEMILIKAN DICOCOKKAN TERHADAP TIGA KUNCI, BUKAN HANYA KUNCI OBJEK KERJA PEGA
+-- ============================================================================
+--
+-- Bentuk sebelumnya menuntut adanya baris `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`. Klaim `PNCN.*`
+-- tidak punya baris di sana (lihat `work_object_key`), sehingga SELURUH dokumennya hilang
+-- dari daftar — termasuk surat yang baru saja diterbitkan tombol "Download Dokumen", dan
+-- termasuk berkas yang diunggah petugas lewat layar registrasi.
+--
+-- Ketiga bentuk yang benar-benar dipakai sebagai `IDPEGA` karena itu disebut semuanya:
+--
+--	T_CLAIM_PNC.CLAIMID                      yang ditulis modul ini dan modul registrasi
+--	'ASM-FW-GCNMFW-WORK ' || CLAIMNO         bentuk berprefix milik modul registrasi
+--	PC_ASM_FW_GCNMFW_WORK.PZINSKEY           yang ditulis Pega sendiri
+--
+-- Untuk klaim Pega ketiganya menunjuk nilai yang sama, sehingga tidak ada baris yang
+-- tergambar dua kali: `IN` menguji keanggotaan, bukan menggabungkan baris.
+--
+-- `a.IDPEGA` sengaja TIDAK dibungkus `TRIM` — membungkusnya membuat index atas kolom itu
+-- tidak terpakai, sementara nilai yang disisipkan kedua modul tidak pernah berspasi tepi.
+--
+-- Bind: :1 :2 :3 nomor case
 SELECT a.DATAID                                     AS DOCUMENT_ID,
        a.ATTACHNAME                                 AS DOCUMENT_NAME,
        a.ATTACHMIMETYPE                             AS MIME_TYPE,
@@ -900,10 +921,18 @@ SELECT a.DATAID                                     AS DOCUMENT_ID,
                 AND TRIM(l.PYCATEGORY) IS NOT NULL) k
          ON k.CATEGORY_NAME = TRIM(a.CATEGORY)
  WHERE a.ATTACHFILE IS NOT NULL
-   AND EXISTS (SELECT 1
-                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-                WHERE w.PZINSKEY = a.IDPEGA
-                  AND TRIM(w.PYID) = TRIM(:1))
+   AND a.IDPEGA IN (SELECT c.CLAIMID
+                      FROM POOLDATA.T_CLAIM_PNC c
+                     WHERE TRIM(c.CLAIMNO) = TRIM(:1)
+                    UNION ALL
+                    SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
+                      FROM POOLDATA.T_CLAIM_PNC c
+                     WHERE TRIM(c.CLAIMNO) = TRIM(:2)
+                    UNION ALL
+                    SELECT w.PZINSKEY
+                      FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+                     WHERE TRIM(w.PYID) = TRIM(:3)
+                       AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC')
  ORDER BY a.INPUTDATE DESC NULLS LAST, a.DATAID DESC
 
 -- name: document_content
@@ -917,16 +946,29 @@ SELECT a.DATAID                                     AS DOCUMENT_ID,
 -- membungkusnya `pooldata.base64encode(attachfile)`; pembungkusan itu tidak dibawa karena
 -- memanggil procedure basis data (`D-02`) dan membesarkan muatan sepertiga tanpa manfaat.
 --
--- Bind: :1 id dokumen · :2 nomor case
+-- Rantai kepemilikannya memakai ketiga kunci yang sama dengan `documents`, dan karena alasan
+-- yang sama: dokumen klaim `PNCN.*` tidak dapat dibuka bila kepemilikannya hanya diakui lewat
+-- tabel kerja Pega. Keduanya WAJIB sejalan — daftar yang menggambar sebuah baris sementara
+-- pengambilnya menolaknya adalah tombol unduh yang selalu gagal.
+--
+-- Bind: :1 id dokumen · :2 :3 :4 nomor case
 SELECT a.ATTACHNAME     AS DOCUMENT_NAME,
        a.ATTACHMIMETYPE AS MIME_TYPE,
        a.ATTACHFILE     AS CONTENT
   FROM POOLDATA.DATA_ATTACHFILE a
  WHERE a.DATAID = :1
-   AND EXISTS (SELECT 1
-                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-                WHERE w.PZINSKEY = a.IDPEGA
-                  AND TRIM(w.PYID) = TRIM(:2))
+   AND a.IDPEGA IN (SELECT c.CLAIMID
+                      FROM POOLDATA.T_CLAIM_PNC c
+                     WHERE TRIM(c.CLAIMNO) = TRIM(:2)
+                    UNION ALL
+                    SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
+                      FROM POOLDATA.T_CLAIM_PNC c
+                     WHERE TRIM(c.CLAIMNO) = TRIM(:3)
+                    UNION ALL
+                    SELECT w.PZINSKEY
+                      FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+                     WHERE TRIM(w.PYID) = TRIM(:4)
+                       AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC')
 
 -- name: return_to_analyst
 -- Menandai klaim SUDAH SELESAI dikerjakan PUCL — tombol "Kirim Ke Analyst" dan
@@ -1053,19 +1095,42 @@ UPDATE POOLDATA.TC_PNC_PUCL
  WHERE TRIM(CLAIMID) = TRIM(:3)
 
 -- name: work_object_key
--- Kunci objek kerja Pega milik satu klaim — `PZINSKEY`.
+-- Kunci klaim yang disimpan `DATA_ATTACHFILE.IDPEGA` dan `LIST_HISTORY_CLAIM_PNC.CASEID`.
 --
--- Dibutuhkan unggahan: `DATA_ATTACHFILE.IDPEGA` menyimpan kunci itu, dan kueri `documents`
--- menggabungkannya kembali lewat kolom yang sama. Baris yang `IDPEGA`-nya tidak cocok tidak
--- akan pernah muncul di daftar dokumen klaimnya.
+-- Dibutuhkan unggahan dan penerbitan surat: kueri `documents` menggabungkannya kembali lewat
+-- kolom yang sama. Baris yang `IDPEGA`-nya tidak cocok tidak akan pernah muncul di daftar
+-- dokumen klaimnya.
 --
--- Ia MEMBACA tabel Pega, dan itu sah: `P-1` membatasi yang MENULIS.
+-- # TABEL PEGA TIDAK LAGI MENJADI PENGGERAKNYA — koreksi yang sama seperti `technical_pic`
+--
+-- Bentuk sebelumnya membacanya dari `DATAPEGA.PC_ASM_FW_GCNMFW_WORK.PZINSKEY`. Tabel itu
+-- hanya memuat klaim yang LAHIR DI PEGA; klaim yang dibuka aplikasi ini — bernomor `PNCN.*`,
+-- dan sejak modul registrasi punya tombol "Kirim ke RCL/PUCL" klaim seperti itu MEMANG masuk
+-- ke antrean layar ini — tidak punya baris di sana sama sekali.
+--
+-- Akibatnya `AddDocument` menjawab `ErrClaimNotFound` untuk setiap klaim PNCN, dan karena
+-- penerbitan surat sengaja TIDAK membatalkan tindakannya (lihat Service.PerformAction),
+-- kegagalannya muncul ke petugas sebagai *"Berkas suratnya TIDAK berhasil diterbitkan kali
+-- ini"* — klaimnya berpindah tab, suratnya tidak pernah terbit, dan sebabnya tidak terbaca
+-- di layar mana pun. `RecordHistory` gagal diam-diam dengan sebab yang sama.
+--
+-- `T_CLAIM_PNC` memuat KEDUANYA, dan kolomnya sepadan satu lawan satu:
+--
+--	klaim       CLAIMNO       CLAIMID                       PZINSKEY Pega
+--	Pega        PNC-2067      ASM-FW-GCNMFW-WORK PNC-2067   ASM-FW-GCNMFW-WORK PNC-2067
+--	aplikasi    PNCN.26.28    PNCN.26.28                    (tidak ada)
+--
+-- `CLAIMID` karena itu menggantikan `PZINSKEY` apa adanya — nilainya SAMA PERSIS untuk klaim
+-- Pega — dan sekaligus menjadi nilai yang benar untuk klaim PNCN. Ia pula nilai yang dipakai
+-- modul `registrasi` sebagai salah satu dari tiga kunci lampirannya (`lampiran_daftar`),
+-- sehingga surat yang terbit di sini terbaca pula di tab dokumen layar registrasi.
+--
+-- Ia MEMBACA, dan itu sah: `P-1` membatasi yang MENULIS.
 --
 -- Bind: :1 nomor klaim
-SELECT w.PZINSKEY AS WORK_KEY
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
- WHERE TRIM(w.PYID) = TRIM(:1)
-   AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+SELECT c.CLAIMID AS WORK_KEY
+  FROM POOLDATA.T_CLAIM_PNC c
+ WHERE TRIM(c.CLAIMNO) = TRIM(:1)
  FETCH FIRST 1 ROWS ONLY
 
 -- name: next_attachment_number
@@ -1219,21 +1284,42 @@ VALUES (:1, CURRENT_TIMESTAMP, :2, :3)
 -- Ini contoh lain dari alias menyesatkan yang `D-19` tetapkan untuk tidak dibawa: nama kolom
 -- dan nama alias di sistem lama memang tidak saling menjelaskan.
 --
--- # Kenapa LEFT JOIN, bukan INNER
+-- # TABEL PEGA TIDAK LAGI MENJADI PENGGERAKNYA — DAN ITU MEMPERBAIKI CACAT
 --
--- Supaya klaim yang tidak punya baris `T_CLAIM_PNC` tetap terbaca dan ditolak dengan sebab
--- yang benar — "PIC Teknik tidak diketahui" — alih-alih menghilang menjadi "klaim tidak
--- ditemukan". Keduanya keadaan yang berbeda, dan menyatukannya menyesatkan penelusuran.
+-- Bentuk sebelumnya menggerakkan kueri ini dari `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`:
 --
--- Keduanya MEMBACA, dan itu sah: `P-1` membatasi yang MENULIS.
+--	FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+--	LEFT JOIN POOLDATA.T_CLAIM_PNC c ON TRIM(c.CLAIMNO) = TRIM(w.PYID)
+--	WHERE TRIM(w.PYID) = TRIM(:1)
+--
+-- Tabel itu hanya memuat klaim yang LAHIR DI PEGA. Klaim yang dibuka aplikasi ini —
+-- bernomor `PNCN.*` — tidak punya baris di sana sama sekali (diperiksa 2026-10-04:
+-- `PNC-2067` ada, `PNCN.26.28` tidak). Akibatnya tombol "Kirim Ke Analyst" dan "Kirim ke
+-- PIC Teknik" MENOLAK setiap klaim PNCN dengan "klaim tidak ditemukan", padahal klaimnya
+-- ada dan sedang dibuka di layar yang sama.
+--
+-- `T_CLAIM_PNC` memuat keduanya, dan kolomnya sepadan satu lawan satu:
+--
+--	klaim       CLAIMNO       CLAIMID                       PZINSKEY Pega
+--	Pega        PNC-2067      ASM-FW-GCNMFW-WORK PNC-2067   ASM-FW-GCNMFW-WORK PNC-2067
+--	aplikasi    PNCN.26.28    PNCN.26.28                    (tidak ada)
+--
+-- `CLAIMID` karena itu menggantikan `PZINSKEY` apa adanya — nilainya SAMA PERSIS untuk
+-- klaim Pega, diperiksa langsung — dan sekaligus menjadi nilai yang benar untuk klaim
+-- PNCN. Ia pula yang sudah dipakai `CPNC_TUGAS.KLAIM_ID` pada kedua jenis klaim.
+--
+-- Akibat yang disadari: klaim yang TIDAK punya baris `T_CLAIM_PNC` kini ditolak sebagai
+-- "klaim tidak ditemukan", bukan "PIC Teknik tidak diketahui". Itu perubahan sebab
+-- penolakan, bukan perubahan apakah ia ditolak — bentuk lama pun menolaknya, hanya dengan
+-- kalimat yang berbeda.
+--
+-- Ia MEMBACA, dan itu sah: `P-1` membatasi yang MENULIS.
 --
 -- Bind: :1 nomor klaim
-SELECT w.PZINSKEY   AS WORK_KEY,
+SELECT c.CLAIMID    AS WORK_KEY,
        c.PICTEKNIK  AS TECHNICAL_PIC
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-  LEFT JOIN POOLDATA.T_CLAIM_PNC c
-         ON TRIM(c.CLAIMNO) = TRIM(w.PYID)
- WHERE TRIM(w.PYID) = TRIM(:1)
+  FROM POOLDATA.T_CLAIM_PNC c
+ WHERE TRIM(c.CLAIMNO) = TRIM(:1)
 
 -- name: close_open_tasks
 -- Menutup SELURUH tugas klaim yang masih terbuka — langkah "Finish Assignment".
@@ -1257,6 +1343,47 @@ UPDATE CPNC_TUGAS
  WHERE NOMOR_KLAIM    = :3
    AND SELESAI_PADA IS NULL
 
+-- name: tahap_tugas_terbuka
+-- Tahap tugas yang MASIH terbuka pada sebuah klaim, bila ada.
+--
+-- Dipakai menjaga "Kirim Ke Analyst" dari berjalan dua kali: klaim yang sudah di
+-- `kirim-analis` tidak punya apa pun untuk dipindahkan, dan menutup-lalu-membuka tahap
+-- yang sama hanya menambah baris riwayat tanpa memindahkan klaimnya.
+--
+-- Nol baris BUKAN galat — klaim yang masih dikerjakan Pega belum punya tugas di sini,
+-- dan untuk klaim seperti itu tindakannya justru sah.
+SELECT TAHAP FROM CPNC_TUGAS
+ WHERE NOMOR_KLAIM = :1
+   AND SELESAI_PADA IS NULL
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: mirror_daftar_kerja
+-- Baris daftar kerja **My Inbox** klaim ini — `POOLDATA.T_CLAIMLIST_ADMIN`.
+--
+-- # Kenapa pernyataan ini ada
+--
+-- Layar "My Inbox" (`MENU_ID 51`) TIDAK membaca `CPNC_TUGAS`. Ia menyaring
+-- `PXASSIGNEDOPERATORID` pada tabel ini. Memindahkan tugas tanpa memperbarui baris ini
+-- membuat klaim berpindah di satu tempat dan tidak berpindah di tempat lain: inbox modul
+-- registrasi menampilkannya pada pemilik baru, sementara My Inbox masih menampilkannya
+-- pada pemilik LAMA — dan tidak ada galat yang menandainya.
+--
+-- Terukur pada `PNCN.26.28` (2026-10-04): barisnya masih `ServicePNC` / `RCLDokter`
+-- setelah tugasnya berpindah, sehingga klaim tidak pernah sampai ke My Inbox analis.
+--
+-- Modul registrasi menulis baris yang sama lewat `inboxentry.sql`; keduanya mengisi kedua
+-- kolom ini dari sumber yang sama — pemilik tugas yang sedang berjalan dan nama tahapnya.
+--
+-- NOL BARIS BUKAN GALAT. Klaim yang lahir di Pega belum tentu punya baris di sini
+-- (`PNC-2067` tidak punya), dan tabel ini memang hanya memuat klaim yang pernah lewat
+-- proses pengisinya.
+--
+-- Bind: :1 pemilik tugas baru · :2 nama tahap · :3 nomor klaim
+UPDATE POOLDATA.T_CLAIMLIST_ADMIN
+   SET PXASSIGNEDOPERATORID = :1,
+       PXTASKLABEL          = :2
+ WHERE PYID = :3
+
 -- name: open_task
 -- Membuka satu tugas baru pada sebuah tahap — akibat lompatan ticket.
 --
@@ -1272,3 +1399,48 @@ INSERT INTO CPNC_TUGAS
        (ID, KLAIM_ID, NOMOR_KLAIM, TAHAP, ANTREAN, WORKBASKET, PEMILIK,
         DIBUAT_PADA, DIAMBIL_PADA, SELESAI_PADA, ALASAN_SELESAI)
 VALUES (:1, :2, :3, :4, :5, NULL, :6, :7, :8, NULL, NULL)
+
+-- name: letters_missing
+-- Berapa klaim yang DITANDAI suratnya tercetak padahal suratnya tidak pernah terbit.
+--
+-- # Kenapa keadaan ini perlu dihitung sama sekali
+--
+-- Tombol "Download Dokumen" menempuh dua langkah: menandai, lalu menerbitkan PDF. Kegagalan
+-- langkah kedua SENGAJA tidak membatalkan langkah pertama (lihat `Service.PerformAction`),
+-- sehingga klaimnya tetap berpindah tab dan petugas hanya membaca satu kalimat yang lewat.
+-- Sesudah itu tidak ada apa pun di layar mana pun yang membedakan klaim bersurat dari klaim
+-- yang suratnya tidak ada — keduanya duduk berdampingan di tab "Kelengkapan Dokumen".
+--
+-- Satu-satunya jejaknya adalah baris `Warn` di log peladen, dan log dibaca ketika seseorang
+-- sudah curiga. Hitungan ini yang membuat kecurigaan itu tidak perlu lebih dulu ada.
+--
+-- Sebab yang sudah diketahui — `work_object_key` yang menggerakkan dirinya dari tabel kerja
+-- Pega, sehingga setiap klaim `PNCN.*` gagal — sudah diperbaiki 2026-10-05. Hitungan ini
+-- TETAP dipasang: sebab lain tetap mungkin (basis data menolak, perender gagal), dan
+-- perilakunya yang membiarkan kegagalan lewat tidak berubah.
+--
+-- # Yang dihitung dan yang TIDAK
+--
+-- Hanya klaim yang MASIH pekerjaan PUCL (`PUCL_APPROVE <> '1'`) dan non-MSIG. Klaim yang
+-- sudah dikirim ke Analyst memang mengisi kolom tanggal yang sama, tetapi ia sudah berpindah
+-- tahap — melaporkannya di sini hanya akan menghasilkan angka yang tidak dapat ditindak.
+--
+-- Lampiran suratnya dicari lewat KEDUA bentuk kunci yang dipakai aplikasi ini, dengan alasan
+-- yang sama seperti kueri `documents`.
+SELECT COUNT(*) AS TANPA_SURAT
+  FROM POOLDATA.TC_PNC_PUCL p
+ WHERE p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
+   AND (p.PUCL_APPROVE IS NULL OR TRIM(p.PUCL_APPROVE) <> '1')
+   AND p.MSIG IS NULL
+   AND NOT EXISTS (SELECT 1
+                     FROM POOLDATA.DATA_ATTACHFILE a
+                    WHERE a.ATTACHFILE IS NOT NULL
+                      AND TRIM(a.CATEGORY) = 'Notification'
+                      AND TRIM(a.ATTACHNAME) IN ('PUCL.pdf', 'RCL.pdf', 'Notification.pdf')
+                      AND a.IDPEGA IN (SELECT c.CLAIMID
+                                         FROM POOLDATA.T_CLAIM_PNC c
+                                        WHERE TRIM(c.CLAIMNO) = TRIM(p.CLAIMID)
+                                       UNION ALL
+                                       SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
+                                         FROM POOLDATA.T_CLAIM_PNC c
+                                        WHERE TRIM(c.CLAIMNO) = TRIM(p.CLAIMID)))

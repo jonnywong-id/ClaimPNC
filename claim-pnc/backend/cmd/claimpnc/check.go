@@ -3811,6 +3811,34 @@ func checkRCLPUCL(
 	print("             WHERE TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL")
 	print("               AND PUCLAPPROVE_1 IS NULL;")
 
+	// Klaim yang ditandai tercetak TANPA suratnya terbit.
+	//
+	// Diperiksa SELALU, bukan hanya saat sebuah tab kosong: klaim seperti ini tergambar
+	// normal di tab "Kelengkapan Dokumen" berdampingan dengan klaim yang suratnya memang
+	// ada, dan tidak ada satu pun layar yang membedakan keduanya. Tab yang terisi justru
+	// tidak membuktikan apa pun tentangnya.
+	if tanpaSurat, err := repo.CountClaimsMissingLetter(ctx); err != nil {
+		print("  [PERIKSA] Jumlah klaim bersurat-gagal tidak dapat dihitung: %v", err)
+	} else if tanpaSurat == 0 {
+		print("  [ok]    Tidak ada klaim yang ditandai tercetak tanpa suratnya terbit")
+	} else {
+		print("  [PERIKSA] %d klaim ditandai suratnya tercetak, tetapi suratnya TIDAK ada.",
+			tanpaSurat)
+		print("            Tombol \"Download Dokumen\" menandai dulu, baru menerbitkan PDF.")
+		print("            Kegagalan penerbitan sengaja tidak membatalkan penandaan, sehingga")
+		print("            klaimnya tetap berpindah ke tab \"Kelengkapan Dokumen\" dan")
+		print("            petugas hanya membaca satu kalimat yang lewat. Sesudahnya klaim")
+		print("            ini tidak dapat dibedakan dari klaim yang suratnya memang ada.")
+		print("            Sebab yang sudah diketahui: sampai 2026-10-05 kueri work_object_key")
+		print("            mencari kunci klaim di DATAPEGA.PC_ASM_FW_GCNMFW_WORK, yang tidak")
+		print("            memuat klaim PNCN.* sama sekali. Itu sudah diperbaiki.")
+		print("            Pemulihannya: jalankan migrations/0015_pucl_cetak_tanpa_surat.up.sql")
+		print("            (DBA, atas persetujuan Work Owner — `D-63`). Klaimnya kembali ke")
+		print("            tab \"Cetak Surat\" dan tombolnya dapat ditekan ulang.")
+		print("            Angka yang TIDAK turun sesudah itu berarti sebabnya yang lain;")
+		print("            cari \"surat rcl/pucl gagal diterbitkan\" di log peladen.")
+	}
+
 	if counts[inboxrclpucl.TabCetakSurat] == 0 {
 		print("  [PERIKSA] Tab \"Cetak Surat\" kosong sementara tab lain terisi.")
 		print("            Periksa apakah STATUSCASE_1 masih bernilai %q untuk klaim yang",

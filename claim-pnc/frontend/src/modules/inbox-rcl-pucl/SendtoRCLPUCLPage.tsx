@@ -567,6 +567,14 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
     untukIsianWaktu(receipt?.tanggal_kelengkapan_dokumen ?? ''),
   )
 
+  // Pelanggaran per isian dari penolakan peladen yang TERAKHIR, dikunci nama field-nya
+  // (`catatan_untuk_analyst`, `tanggal_kelengkapan_dokumen`).
+  //
+  // Ia hidup di sini, bukan di dalam tombolnya, karena KETIGA tombol yang membawa isian
+  // menuju dua isian yang sama — dan isian yang ditandai oleh "Save" tetap harus tergambar
+  // merah ketika petugas berpindah menekan "Kirim Ke Analyst".
+  const [violations, setViolations] = useState<Record<string, string>>({})
+
   return (
     <>
       <Panel>
@@ -603,6 +611,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
           value={completeAt}
           onChange={setCompleteAt}
           type="datetime-local"
+          failure={violations['tanggal_kelengkapan_dokumen']}
         />
 
         <EditableField
@@ -611,6 +620,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
           value={note}
           onChange={setNote}
           type="area"
+          failure={violations['catatan_untuk_analyst']}
         />
 
         {/*
@@ -656,6 +666,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                   catatan_untuk_analyst: note,
                   tanggal_kelengkapan_dokumen: completeAt,
                 }}
+                onViolations={setViolations}
                 note="Menyimpan kedua isian di atas tanpa meneruskan klaimnya."
               />
             )}
@@ -693,6 +704,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                   tanggal_kelengkapan_dokumen: completeAt,
                 }}
                 bukaBerkas={false}
+                onViolations={setViolations}
                 note="Menyimpan kedua isian, melampirkan surat, lalu meneruskan klaim kembali ke Analyst."
               />
             )}
@@ -707,6 +719,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                   tanggal_kelengkapan_dokumen: completeAt,
                 }}
                 bukaBerkas={false}
+                onViolations={setViolations}
                 note="Menyimpan kedua isian, melampirkan surat, lalu meneruskan klaim ke PIC Teknik. Jalur PUCL pada lini Travel."
               />
             )}
@@ -1405,6 +1418,7 @@ function ClaimAction({
   isian,
   warna = 'biru',
   bukaBerkas = true,
+  onViolations,
 }: {
   label: string
   note: string
@@ -1433,6 +1447,13 @@ function ClaimAction({
   // `Button` tidak diberi nada baru untuk ini. Nada adalah kosakata sistem desain yang
   // dipakai puluhan layar, dan oranye di sini hanya berlaku karena layar lama memakainya.
   warna?: 'biru' | 'oranye'
+
+  // onViolations menyerahkan pelanggaran per isian KE ATAS, supaya isian yang salah dapat
+  // ditandai di tempatnya — bukan hanya diringkas satu kalimat di dekat tombol.
+  //
+  // Peladen sudah mengirimkannya sejak awal (`detail: [{field, pesan}]`), dan `APIError`
+  // sudah menyatukannya. Yang hilang hanyalah langkah terakhir ini.
+  onViolations?: ((violations: Record<string, string>) => void) | undefined
 }) {
   const tindakan = useTindakanKlaim(reference ?? null, aksi)
   const bukaDokumen = useBukaDokumen(reference ?? null)
@@ -1451,7 +1472,18 @@ function ClaimAction({
    * lama diambil lewat jalan yang sama persis — termasuk pemeriksaan kepemilikan klaimnya.
    */
   async function jalankan() {
-    const hasil = await tindakan.mutateAsync(isian)
+    // Tanda lama dibersihkan lebih dulu: isian yang sudah diperbaiki tidak boleh tetap
+    // tergambar merah sementara permintaannya sedang berjalan.
+    onViolations?.({})
+
+    let hasil
+    try {
+      hasil = await tindakan.mutateAsync(isian)
+    } catch (galat) {
+      onViolations?.(galat instanceof APIError ? galat.violations() : {})
+      throw galat
+    }
+
     const surat = hasil.dokumen
     if (!surat || !bukaBerkas) return
 
@@ -1494,6 +1526,21 @@ function ClaimAction({
       {tindakan.isError && (
         <div className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs text-slate-700">{messageOf(tindakan.error)}</p>
+
+          {/*
+            Pesan per isian ikut digambar DI SINI, bukan hanya di isiannya.
+
+            Keduanya dibutuhkan: tanda di isian menjawab "yang mana", dan daftar ini
+            menjawab "ada berapa" tanpa menggulir — kedua isian wajib layar ini berjauhan,
+            dan yang satu dapat berada di luar pandangan saat tombolnya ditekan.
+          */}
+          {pelanggaranDari(tindakan.error).length > 0 && (
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-slate-700">
+              {pelanggaranDari(tindakan.error).map((pesan) => (
+                <li key={pesan}>{pesan}</li>
+              ))}
+            </ul>
+          )}
 
           {/*
             Nomor case-nya digambar DI SINI, bukan hanya di kaki layar.
@@ -1692,18 +1739,33 @@ function EditableField({
   onChange,
   required,
   type,
+  failure,
 }: {
   label: string
   value: string
   onChange: (next: string) => void
   required?: boolean
   type: 'teks' | 'area' | 'datetime-local'
+
+  // failure adalah pesan pelanggaran peladen untuk isian INI.
+  //
+  // Tanpanya, galat `422` hanya tergambar sebagai satu kalimat di dekat tombol —
+  // "Perbaiki yang ditandai lalu coba lagi" — sementara tidak ada satu pun isian yang
+  // ditandai. Kalimat itu menyuruh petugas mencari sesuatu yang tidak ada.
+  failure?: string | undefined
 }) {
   const kelas = [
-    'mt-1 w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5',
-    'text-sm text-slate-900',
-    'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
+    'mt-1 w-full rounded-sm border bg-white px-2 py-1.5',
+    'text-sm text-slate-900 focus:outline-none focus:ring-2',
+    failure
+      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30'
+      : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/30',
   ].join(' ')
+
+  // Keadaan salah ditandai TIGA cara sekaligus — warna tepi, pesan tertulis, dan
+  // `aria-invalid` — supaya ia terbaca juga oleh yang tidak dapat membedakan warna dan
+  // oleh pembaca layar.
+  const pesanID = failure ? `galat-${label.replace(/\s+/g, '-').toLowerCase()}` : undefined
 
   return (
     <div className="mt-6 flex flex-col">
@@ -1715,6 +1777,8 @@ function EditableField({
           <textarea
             className={`${kelas} min-h-[72px]`}
             value={value}
+            aria-invalid={failure ? true : undefined}
+            aria-describedby={pesanID}
             onChange={(e) => onChange(e.target.value)}
           />
         ) : (
@@ -1722,10 +1786,17 @@ function EditableField({
             type={type === 'datetime-local' ? 'datetime-local' : 'text'}
             className={kelas}
             value={value}
+            aria-invalid={failure ? true : undefined}
+            aria-describedby={pesanID}
             onChange={(e) => onChange(e.target.value)}
           />
         )}
       </label>
+      {failure && (
+        <p id={pesanID} className="mt-1 text-xs text-red-700">
+          {failure}
+        </p>
+      )}
     </div>
   )
 }
@@ -1921,6 +1992,12 @@ function FieldBox({
 function messageOf(error: unknown): string {
   if (error instanceof APIError) return error.message
   return 'Sambungan ke peladen gagal. Coba lagi beberapa saat lagi.'
+}
+
+/** Pesan pelanggaran per isian, atau senarai kosong untuk galat yang bukan validasi. */
+function pelanggaranDari(error: unknown): string[] {
+  if (!(error instanceof APIError)) return []
+  return Object.values(error.violations())
 }
 
 /**

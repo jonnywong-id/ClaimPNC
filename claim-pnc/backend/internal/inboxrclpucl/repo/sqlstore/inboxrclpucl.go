@@ -274,7 +274,9 @@ func (r *Repo) Documents(
 	ctx context.Context,
 	caseNumber string,
 ) ([]inboxrclpucl.Document, error) {
-	rows, err := r.db.QueryContext(ctx, query("documents"), caseNumber)
+	// Nomor case diikat TIGA kali: kueri mencocokkan `IDPEGA` terhadap ketiga bentuk kunci
+	// yang benar-benar dipakai — lihat catatan pada kueri `documents`.
+	rows, err := r.db.QueryContext(ctx, query("documents"), caseNumber, caseNumber, caseNumber)
 	if err != nil {
 		return nil, fmt.Errorf("membaca daftar dokumen klaim: %w", err)
 	}
@@ -328,7 +330,8 @@ func (r *Repo) DocumentContent(
 		name, mime sql.NullString
 		content    []byte
 	)
-	err := r.db.QueryRowContext(ctx, query("document_content"), documentID, caseNumber).
+	err := r.db.QueryRowContext(ctx, query("document_content"),
+		documentID, caseNumber, caseNumber, caseNumber).
 		Scan(&name, &mime, &content)
 	if errors.Is(err, sql.ErrNoRows) {
 		return inboxrclpucl.DocumentContent{}, inboxrclpucl.ErrDocumentNotFound
@@ -483,12 +486,15 @@ func (r *Repo) MarkLetterPrinted(ctx context.Context, reference, caller string) 
 // transaksi supaya kegagalan di tengah tidak meninggalkan pencacah yang bertambah tanpa
 // lampiran — tepat jenis selisih yang `D-68` lepaskan dari procedure ber-sembilan-`COMMIT`.
 //
-// # Kenapa kunci objek kerja dibaca lebih dulu
+// # Kenapa kunci klaim dibaca lebih dulu
 //
-// `DATA_ATTACHFILE.IDPEGA` menyimpan `PZINSKEY` objek kerja, dan kueri `documents`
-// menggabungkannya kembali lewat kolom itu. Baris yang `IDPEGA`-nya salah tersimpan dengan
-// baik dan TIDAK PERNAH muncul di daftar dokumen klaimnya — kegagalan yang tidak menghasilkan
-// satu pun galat.
+// `DATA_ATTACHFILE.IDPEGA` menyimpan kunci klaim, dan kueri `documents` menggabungkannya
+// kembali lewat kolom itu. Baris yang `IDPEGA`-nya salah tersimpan dengan baik dan TIDAK
+// PERNAH muncul di daftar dokumen klaimnya — kegagalan yang tidak menghasilkan satu pun galat.
+//
+// Kuncinya dibaca dari `POOLDATA.T_CLAIM_PNC`, BUKAN dari tabel kerja Pega. Alasannya ditulis
+// lengkap pada kueri `work_object_key`: klaim `PNCN.*` tidak punya baris di tabel itu, dan
+// membacanya dari sana membuat setiap penerbitan surat untuk klaim seperti itu gagal.
 func (r *Repo) AddDocument(
 	ctx context.Context,
 	reference string,
@@ -697,6 +703,22 @@ func (r *Repo) DiagnoseEmpty(ctx context.Context) (EmptyDiagnosis, error) {
 		return EmptyDiagnosis{}, fmt.Errorf("menjalankan kueri diagnose_empty: %w", err)
 	}
 	return d, nil
+}
+
+// CountClaimsMissingLetter menghitung klaim yang ditandai tercetak tanpa suratnya terbit.
+//
+// Dipanggil `-periksa`, dan BERDIRI SENDIRI dari terisi atau tidaknya sebuah tab — klaim
+// seperti ini tergambar normal di tab "Kelengkapan Dokumen", berdampingan dengan klaim yang
+// suratnya memang ada. Tidak ada satu pun layar yang membedakan keduanya.
+//
+// Nol adalah jawaban yang menenangkan dan itulah gunanya: tanpa hitungan ini, satu-satunya
+// cara mengetahuinya adalah membaca log peladen setelah seseorang kebetulan curiga.
+func (r *Repo) CountClaimsMissingLetter(ctx context.Context) (int, error) {
+	var jumlah int
+	if err := r.db.QueryRowContext(ctx, query("letters_missing")).Scan(&jumlah); err != nil {
+		return 0, fmt.Errorf("menjalankan kueri letters_missing: %w", err)
+	}
+	return jumlah, nil
 }
 
 // scanner adalah bentuk minimal yang dibutuhkan pemindai, sehingga keduanya dapat diuji
@@ -949,8 +971,8 @@ func scanReportRow(row scanner) (inboxrclpucl.DailyReportRow, int, error) {
 
 // RecordHistory menulis satu baris riwayat klaim.
 //
-// Ia membaca `PZINSKEY` lebih dulu karena kolom `CASEID` menyimpan kunci objek kerja, bukan
-// nomor klaim — lihat catatan pada kueri `insert_history`.
+// Ia membaca kunci klaim lebih dulu karena kolom `CASEID` menyimpan kunci objek kerja, bukan
+// nomor klaim — lihat catatan pada kueri `insert_history` dan `work_object_key`.
 func (r *Repo) RecordHistory(ctx context.Context, reference, statusNote, caller string) error {
 	note := strings.TrimRight(statusNote, "\x00")
 	if strings.TrimSpace(note) == "" {
@@ -996,6 +1018,18 @@ func (r *Repo) MoveToSendToAnalyst(ctx context.Context, reference, caller string
 	if err != nil {
 		return fmt.Errorf("membaca PIC Teknik klaim %s: %w", reference, err)
 	}
+	// Klaim yang SUDAH di tahap Send To Analis tidak punya apa pun untuk dipindahkan.
+	// Melanjutkannya hanya menutup lalu membuka tahap yang sama — lihat ErrAlreadyWithAnalyst.
+	var stage sql.NullString
+	switch err := r.db.QueryRowContext(ctx, query("tahap_tugas_terbuka"), key).Scan(&stage); {
+	case errors.Is(err, sql.ErrNoRows):
+		// Klaim yang masih dikerjakan Pega belum punya tugas di sini; tindakannya sah.
+	case err != nil:
+		return fmt.Errorf("membaca tahap tugas terbuka klaim %s: %w", reference, err)
+	case strings.TrimSpace(stage.String) == inboxrclpucl.StageSendToAnalyst:
+		return inboxrclpucl.ErrAlreadyWithAnalyst
+	}
+
 	pic = strings.TrimSpace(picNull.String)
 	if pic == "" {
 		// Tugas Worklist WAJIB bertuan sejak lahir (`D-26`). Tugas tanpa pemilik pada
@@ -1025,6 +1059,20 @@ func (r *Repo) MoveToSendToAnalyst(ctx context.Context, reference, caller string
 		now, now,
 	); err != nil {
 		return fmt.Errorf("membuka tugas Send To Analis klaim %s: %w", reference, err)
+	}
+
+	// Baris daftar kerja My Inbox ikut berpindah, di dalam transaksi yang SAMA.
+	//
+	// Tanpanya klaim berpindah di `CPNC_TUGAS` tetapi tidak di `T_CLAIMLIST_ADMIN`, dan
+	// layar My Inbox — yang menyaring `PXASSIGNEDOPERATORID` — tetap menampilkannya pada
+	// pemilik lama. Tidak ada galat yang menandainya; yang terlihat hanyalah klaim yang
+	// "tidak kembali".
+	//
+	// Nol baris bukan galat: tidak setiap klaim punya baris di tabel itu.
+	if _, err := tx.ExecContext(ctx, query("mirror_daftar_kerja"),
+		pic, inboxrclpucl.StageNameSendToAnalyst, key,
+	); err != nil {
+		return fmt.Errorf("memperbarui daftar kerja klaim %s: %w", reference, err)
 	}
 
 	if err := tx.Commit(); err != nil {

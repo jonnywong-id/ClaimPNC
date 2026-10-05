@@ -1152,6 +1152,16 @@ const (
 	// StageSendToAnalyst — `Assignment5`, tujuan ticket `SendtoAnalysator`.
 	StageSendToAnalyst = "kirim-analis"
 
+	// StageNameSendToAnalyst adalah NAMA tahap yang sama, sebagaimana digambar layar dan
+	// disimpan pada `T_CLAIMLIST_ADMIN.PXTASKLABEL`.
+	//
+	// Ia disalin dari definisi alur modul registrasi (`Assignment5`, `Name: "Send To
+	// Analis"`) alih-alih mengimpornya: kedua modul tidak saling bergantung, dan satu
+	// teks yang sama di dua tempat lebih murah daripada satu ketergantungan antar modul.
+	// Bila keduanya menyimpang, yang terlihat adalah label tahap yang berbeda di dua
+	// layar untuk klaim yang sama.
+	StageNameSendToAnalyst = "Send To Analis"
+
 	// QueueWorklist — tahap Send To Analis dipegang SATU orang, bukan antrean bersama.
 	QueueWorklist = "WORKLIST"
 
@@ -1877,6 +1887,26 @@ var ErrActionNotAvailable = errors.New("inboxrclpucl: tindakan tidak tersedia un
 // alih-alih "gagal", karena keduanya menuntut tindakan dari orang yang berbeda — yang pertama
 // Tim Pega dan Infra, yang kedua tim pengembang.
 var ErrPegaServiceUnavailable = errors.New("inboxrclpucl: layanan Pega belum tersedia")
+
+// ErrAlreadyWithAnalyst dikembalikan saat klaim SUDAH berada di tahap Send To Analis.
+//
+// # Kenapa ini perlu dijaga, dan bukan dibiarkan berjalan
+//
+// `MoveToSendToAnalyst` menutup SELURUH tugas terbuka klaim lalu membuka satu tugas
+// `kirim-analis`. Bila klaimnya memang sudah di tahap itu, yang terjadi adalah tugas
+// ditutup lalu dibuka kembali pada tahap yang SAMA — klaimnya tidak berpindah ke mana
+// pun, tetapi riwayat tugasnya bertambah satu baris dan jam pembuatannya mundur.
+//
+// Terukur pada `PNCN.26.28`: tekanan pertama 10-05 01:53:31 memindahkannya dari
+// `rcl-dokter`, tekanan kedua 10-05 02:25:56 hanya menutup-dan-membuka `kirim-analis`.
+// Dari layar, keduanya tampak sama — dan yang kedua terbaca sebagai "klaim tidak pindah".
+//
+// Di Pega keadaan ini tidak mungkin: tombolnya hidup di atas penugasan RCL/PUCL, dan
+// `Finish Assignment` menghabiskan penugasan itu. Menekannya dua kali berarti menyerahkan
+// penugasan yang sudah tidak ada. Layar ini tidak punya penjagaan itu — ia dibuka dari
+// nomor klaim, bukan dari penugasan — sehingga penjagaannya dipasang di sini.
+var ErrAlreadyWithAnalyst = errors.New(
+	"inboxrclpucl: klaim sudah berada di tahap Send To Analis")
 
 // ClaimActionKind adalah tindakan yang diminta layar.
 //

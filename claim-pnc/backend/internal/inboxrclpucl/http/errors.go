@@ -134,6 +134,51 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"pada jalur PUCL lini Personal Accident.",
 		}, true
 
+	case errors.Is(err, inboxrclpucl.ErrAlreadyWithAnalyst):
+		// 409: permintaannya sah, keadaan klaimnya yang sudah berubah. Pesannya menyebut
+		// DI MANA klaimnya sekarang, karena itu pertanyaan yang akan muncul berikutnya —
+		// dan tanpa jawabannya petugas menekan tombolnya lagi.
+		return http.StatusConflict, ErrorResponse{
+			Code: "sudah_di_analyst",
+			Message: "Klaim ini sudah berada di tahap Send To Analis dan tidak lagi " +
+				"menjadi pekerjaan RCL/PUCL. Tidak ada yang dipindahkan.",
+		}, true
+
+	case errors.Is(err, inboxrclpucl.ErrTechnicalPICUnknown):
+		// 409: permintaannya sah, DATA klaimnya yang belum lengkap.
+		//
+		// # Kenapa pemetaan ini ada, dan apa akibatnya ketika belum ada
+		//
+		// Galat ini sudah dikembalikan repo sejak tahap Send To Analis dibangun, dan sudah
+		// diteruskan usecase apa adanya — tetapi tidak pernah dipetakan di sini. Akibatnya ia
+		// jatuh ke cadangan, yang juga tidak mengenalinya, lalu menjadi **"Terjadi kesalahan
+		// pada sistem."** Petugas membaca kalimat yang menyatakan sistemnya rusak, padahal
+		// yang kurang adalah satu isian pada klaimnya — dan satu-satunya keterangan yang
+		// menyebut sebabnya hanya masuk log peladen.
+		//
+		// Pesannya menyebut DI MANA nilainya tinggal, bukan sekadar bahwa ia kosong: tanpa
+		// itu tidak ada yang dapat dikerjakan petugas selain menekan tombolnya lagi.
+		return http.StatusConflict, ErrorResponse{
+			Code: "pic_teknik_belum_ada",
+			Message: "Klaim ini belum punya PIC Teknik, sehingga tidak ada yang dapat " +
+				"menerimanya di tahap Send To Analis. Tetapkan PIC Teknik klaim lebih " +
+				"dulu dari layar registrasi, lalu ulangi. Klaimnya tetap berada di " +
+				"antrean RCL/PUCL dan tidak ada yang berubah.",
+		}, true
+
+	case errors.Is(err, inboxrclpucl.ErrDocumentNotFound):
+		// 404, dan sebabnya TIDAK dirinci — lihat catatan pada ErrDocumentNotFound: dokumen
+		// yang tidak ada dan dokumen milik klaim lain sengaja dijawab sama, supaya jawaban
+		// ini tidak memberi tahu bahwa sebuah id dokumen memang ada.
+		//
+		// Ia pun sebelumnya jatuh ke 500 generik. Dokumen yang hilang dari penyimpanan lalu
+		// dilaporkan sebagai "sistem rusak" membuat petugas melapor ke tim yang salah.
+		return http.StatusNotFound, ErrorResponse{
+			Code: "dokumen_tidak_ditemukan",
+			Message: "Dokumen tidak ditemukan pada klaim ini. Daftar dokumennya mungkin " +
+				"sudah berubah — muat ulang daftarnya, lalu coba lagi.",
+		}, true
+
 	case errors.Is(err, inboxrclpucl.ErrClaimNotFound):
 		// 404, dan pesannya menyebut PORTAL.
 		//

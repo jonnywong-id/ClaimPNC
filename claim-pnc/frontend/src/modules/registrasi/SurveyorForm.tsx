@@ -15,6 +15,7 @@ import { DocumentTab, InvestigationTab, ProgressTab, SurveyTab } from './Estimat
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
 import { ReceiverTab } from './ReceiverTab'
 import { SendToInputorDialog } from './SendToInputor'
+import { SendToRCLPUCLDialog } from './SendToRCLPUCL'
 import { SettlementDetail, SettlementEditor } from './SettlementEditor'
 import { TransferToAnalystDialog, isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
 import {
@@ -49,11 +50,11 @@ function claimEstimate(c: Coverage): number {
  * # Yang ditampilkan, dan dari mana
  *
  * Baris atas: Status Klaim, lalu tombol menurut kondisinya di section itu —
- * Detail Premi · Detail Polis · Riwayat Klaim · Kirim ke Inputor (`!isAnalystPA_PNC`) ·
+ * Detail Premi · Detail Polis · Riwayat Klaim · Kirim ke RCL/PUCL
+ * (`isAnalystPA_PNC || isAnalisatorTravel`) · Kirim ke Inputor (`!isAnalystPA_PNC`) ·
  * Kirim ke Marketing (`IsTravel`) · Kirim ke Admin (`IsNotTravelPA`) · Tutup Klaim
- * (`IsPendingClosed` false). Tombol berbasis peran analis (Kirim ke RCL/PUCL, Compliance,
- * Investigator, Inputor PA) dan Claim Inquiry (`IsKBGBRISurf`) tidak ditampilkan: data
- * peran analis dan penanda BRI Surf belum ada di layar ini.
+ * (`IsPendingClosed` false). Tombol analis lain (Compliance, Investigator, Inputor PA) dan
+ * Claim Inquiry (`IsKBGBRISurf`) belum ditampilkan: penanda BRI Surf belum ada di layar ini.
  *
  * Tab untuk klaim yang belum ditutup sementara (`!IsPendingClose && !IsPNCReceive`):
  * Input Register (`InputRegisterDetail2`) · Estimasi & Adjustment (`InputEstimasi`) ·
@@ -141,6 +142,51 @@ function surveyVisible(klaim: Claim): boolean {
 /** Flow action tahap Investigator (Register_Flow Assignment11). */
 const ACTION_INPUT_INVESTIGATOR = 'InputInvestigator'
 
+/**
+ * Tombol **Kirim ke RCL/PUCL** — `Section/ClaimSurvey_sect.xml` sel 6 (`pyStyleName` Strong),
+ * membuka local action `KomentarRCLPUCL`. Syarat tampilnya, apa adanya dari section:
+ *
+ *	isAnalystPA_PNC || isAnalisatorTravel
+ *
+ * # Keduanya menguji KLAIM, bukan peran penekan tombol
+ *
+ * `When/isAnalystPA_PNC-when.xml` berlogika `A AND B`:
+ *
+ *	A  .Policy.Quotation.GroupPanel                    = "002"
+ *	B  .ClaimData.PUCLStatus.IsKomiteTransfer_PNC      = "1"
+ *
+ * **`isAnalisatorTravel` tidak ada di export** (`R-16`) — ia hanya DIRUJUK di section ini.
+ * Rujukannya tetap membawa satu keterangan yang menentukan, dan keterangan itu mengoreksi
+ * bentuk pertama fungsi ini:
+ *
+ *	pxRuleClassName  ASM-FW-GCNMFW-Work-PNC
+ *
+ * Ia rule berkelas **objek kerja**, sehingga ia menguji DATA KLAIM. Bandingkan dengan
+ * `IsAnalisator` yang berkelas `Data-Admin-Operator-ID` / `Data-Admin-WorkGroup` dan
+ * memang menguji peran pemanggil. Bentuk pertama fungsi ini memakai `IsAnalisator`
+ * (`tugas.analis`) untuk cabang Travel — itu jenis uji yang KELIRU: ia menyembunyikan
+ * tombol dari siapa pun di luar grup Analyst, padahal kelas rule-nya menyatakan
+ * perannya tidak ikut diuji.
+ *
+ * Yang dipakai sekarang adalah pasangan sebangun dari saudaranya: Travel menggantikan PA,
+ * penanda yang sama. Nama keduanya pun sejajar — "analyst PA" dan "analisator Travel" —
+ * dan keduanya di-OR dalam satu syarat. Bila rule aslinya kelak datang dan berbeda,
+ * fungsi inilah yang disesuaikan.
+ *
+ * # Penanda B direkonstruksi, dan bedanya disadari
+ *
+ * Diambil dari `klaim.sudah_transfer_analis` (ANALYST_TRANSFERDATE) karena
+ * `setTicketToAnalyst` mengisi keduanya pada langkah yang sama. Bedanya satu: Pega
+ * MENGEMBALIKAN `IsKomiteTransfer_PNC` ke "0" saat adjustment ditransfer ke komite
+ * (`KomitePost_Adjustment`, `SetListComiteeClaimPerObjAdj`), sedangkan
+ * ANALYST_TRANSFERDATE tidak pernah dikosongkan — jadi pada klaim yang sudah masuk
+ * komite, tombol ini masih tampil di sini padahal di Pega sudah hilang.
+ */
+export function showSendToRCLPUCL(klaim: Claim): boolean {
+  const analystLine = klaim.polis.lini === PANEL_PA || klaim.polis.lini === PANEL_TRAVEL
+  return analystLine && klaim.sudah_transfer_analis === true
+}
+
 export function ownerNotice(tugas: Task, identity: string, register: boolean): string | null {
   // Server menilai kewenangan: pemilik, atau pemegang grup tahap (M_LOGIN_GROUP_PNC).
   if (tugas.dapat_dikerjakan === true) return null
@@ -175,6 +221,10 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const tabs = TABS.filter((t) => (t !== 'Survey' || surveyVisible(klaim)) && (t !== 'Investigasi' || pa))
 
   const [sendingToInputor, setSendingToInputor] = useState(false)
+  const [sendingToRCLPUCL, setSendingToRCLPUCL] = useState(false)
+  // Kirim ke RCL/PUCL: local action KomentarRCLPUCL. Tombolnya tampil menurut kondisi
+  // section, tetapi baru dapat ditekan bila tugasnya memang dapat dikerjakan pemanggil.
+  const canSendToRCLPUCL = notice === null && !tugas.dapat_diambil
   // Kirim ke Inputor: local action AnalystRemarks (ClaimSurvey_sect, `!isAnalystPA_PNC`).
   const canSendToInputor = notice === null && !tugas.dapat_diambil
 
@@ -182,6 +232,12 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     { label: 'Detail Premi', visible: true },
     { label: 'Detail Polis', visible: true },
     { label: 'Riwayat Klaim', visible: true },
+    {
+      label: 'Kirim ke RCL/PUCL',
+      strong: true,
+      visible: showSendToRCLPUCL(klaim),
+      ...(canSendToRCLPUCL ? { onClick: () => setSendingToRCLPUCL(true) } : {}),
+    },
     {
       label: 'Kirim ke Inputor',
       strong: true,
@@ -247,6 +303,15 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       {sendingToInputor && (
         <SendToInputorDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setSendingToInputor(false)} />
+      )}
+
+      {sendingToRCLPUCL && (
+        <SendToRCLPUCLDialog
+          claimID={klaim.id}
+          taskID={tugas.id}
+          groupPanel={klaim.polis.lini}
+          onClose={() => setSendingToRCLPUCL(false)}
+        />
       )}
 
       <dl className="mt-4 grid gap-4 sm:grid-cols-3">

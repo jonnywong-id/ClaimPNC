@@ -108,6 +108,11 @@ func assembleRegistration(
 		options.Documents = documents
 		options.Attachments = registrasisql.NewAttachmentStore(db)
 		options.Acceptance = registrasisql.NewAcceptanceStore(db)
+		// Modal "Kirim ke RCL/PUCL": surat ke POOLDATA.TC_PNC_PUCL, pilihannya dari
+		// M_PERIHAL_RCLPUCL dan M_REASON_REJECT_REPRO. Satu adapter melayani kedua seam.
+		puclStore := registrasisql.NewPUCLStore(db)
+		options.PUCLLetters = puclStore
+		options.PUCLOptions = puclStore
 		// Transfer Kasir: alamat dari POOLDATA.GCNM_CONNECT_REST (KASIRPAID…), kredensial dari
 		// KASIR_USER / KASIR_PASSWORD.
 		if catalog != nil {
@@ -185,6 +190,9 @@ func assembleRegistration(
 		options.CommitteeTiering = registrasimemory.NewCommitteeTiering()
 		options.Acceptance = registrasimemory.NewAcceptance()
 		options.Premium = registrasimemory.NewPremium()
+		pucl := registrasimemory.NewPUCL()
+		options.PUCLLetters = pucl
+		options.PUCLOptions = pucl
 
 		logger.Warn("modul registrasi berjalan ATAS DATA CONTOH — tidak ada koneksi Oracle",
 			slog.String("akibat", "klaim yang dibuat tidak tersimpan dan polisnya karangan"),

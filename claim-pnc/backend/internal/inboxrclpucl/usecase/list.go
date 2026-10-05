@@ -552,44 +552,56 @@ func (s *Service) PerformAction(
 		return doc, nil
 	}
 
-	// KEDUA tombol Kirim menempuh TIGA langkah, dan urutannya bagian dari kebenarannya.
+	// KEDUA tombol Kirim menempuh TIGA langkah, dan URUTANNYA bagian dari kebenarannya.
 	//
-	// # 1. Isian disimpan LEBIH DULU, dan kegagalannya membatalkan seluruhnya
+	// # Urutannya DIBALIK pada 2026-10-05, dan ini sebabnya
+	//
+	// Sampai saat itu urutannya: simpan isian → tandai selesai di PUCL → pindahkan tahap.
+	// Ketiganya pernyataan TERPISAH, masing-masing menutup transaksinya sendiri — dan
+	// langkah ketiga dapat MENOLAK. Ketika ia menolak, dua langkah pertama sudah terlanjur
+	// tersimpan, sehingga klaimnya:
+	//
+	//	TC_PNC_PUCL.PUCL_APPROVE = '1'   -> keluar dari SELURUH tab RCL/PUCL
+	//	tidak ada tugas Send To Analis   -> belum menjadi pekerjaan siapa pun
+	//
+	// Klaimnya HILANG DARI SETIAP LAYAR — tepat kegagalan yang dikhawatirkan catatan pada
+	// Repo.MoveToSendToAnalyst, hanya saja lubangnya bukan di dalam fungsi itu melainkan di
+	// ANTARA ketiga pemanggilan ini. Itu benar-benar terjadi pada klaim `PNCN.26.31`, yang
+	// PIC Tekniknya belum ditetapkan sehingga perpindahannya ditolak.
+	//
+	// Sekarang yang DAPAT MENOLAK dikerjakan lebih dulu:
+	//
+	//	1. validasi isian   — tanpa menulis apa pun
+	//	2. pindahkan tahap  — satu-satunya langkah yang dapat menolak karena keadaan klaim
+	//	3. tandai PUCL selesai
+	//	4. simpan isian
+	//
+	// Penolakan pada langkah 2 kini tidak meninggalkan satu pun tulisan, dan klaimnya tetap
+	// berada di antrean RCL/PUCL tempat petugas dapat menemukannya kembali.
+	//
+	// # Yang BELUM dijamin, dan dinyatakan di sini supaya tidak terbaca sebagai jaminan
+	//
+	// Keempatnya masih pernyataan terpisah. Kegagalan BASIS DATA pada langkah 3 atau 4 —
+	// bukan penolakan, melainkan sambungan putus — tetap meninggalkan klaim yang sudah
+	// berpindah tetapi penandanya belum dicabut. Akibatnya klaim tergambar di DUA tempat
+	// sekaligus, dan itu dipilih dengan sadar: terlihat dua kali dapat diperbaiki, hilang
+	// sama sekali tidak. Menutupnya sepenuhnya menuntut keempatnya berada dalam SATU
+	// transaksi, dan itu menuntut Repo meneruskan transaksi antar-pemanggilan — perubahan
+	// yang menyentuh seluruh antarmukanya.
+	//
+	// # Kenapa isian tetap disimpan oleh tombol Kirim, bukan hanya oleh "Save"
 	//
 	// `PUCLPost` langkah 10 menulis `KomentarPUCL` ke baris `AdjustmentList` bersamaan dengan
 	// penandaan "Setuju" — artinya catatan yang diketik petugas memang ikut tersimpan oleh
-	// tombol Kirim, bukan hanya oleh "Save". Dan keduanya `pyRequired` di section, sehingga
-	// Finish Assignment di Pega MENOLAK form yang salah satunya kosong.
+	// tombol Kirim. Dan keduanya `pyRequired` di section, sehingga Finish Assignment di Pega
+	// MENOLAK form yang salah satunya kosong.
 	//
-	// Sampai 2026-10-02 modul ini membuang isian itu: badan permintaan hanya dibaca untuk
-	// "save". Petugas yang mengetik catatan lalu langsung menekan Kirim kehilangan catatannya
-	// tanpa satu pun galat — dan Analyst menerima klaim tanpa tahu apa yang berubah, persis
-	// akibat yang disebut ReceiptInput.Note.
-	//
-	// Validasinya tidak ditulis ulang di sini: Repo.SaveReceipt sudah memanggil
-	// ReceiptInput.Validate, sehingga aturan wajibnya hidup di SATU tempat untuk kedua jalur.
-	//
-	// # 2. Penandaan, lalu 3. penerbitan surat
-	//
-	// Urutan yang sama dengan "Download Dokumen", dan alasannya sama: bila penerbitan gagal,
-	// klaimnya tetap berpindah dan petugas tidak terhalang.
+	// Validasinya dipanggil DI SINI, bukan hanya di dalam Repo.SaveReceipt, justru supaya ia
+	// berjalan sebelum satu pun tulisan terjadi. Aturannya tetap hidup di satu tempat —
+	// ReceiptInput.Validate — dan SaveReceipt tetap memanggilnya untuk pemanggil lain.
 	if kind == inboxrclpucl.ActionSendToAnalyst || kind == inboxrclpucl.ActionSendToPICTeknik {
-		if err := repo.SaveReceipt(ctx, key, input, cleanCaller.Login); err != nil {
-			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
-				return nil, err
-			}
-			var invalid *inboxrclpucl.ValidationError
-			if errors.As(err, &invalid) {
-				return nil, err
-			}
-			return nil, fmt.Errorf("menyimpan isian klaim %s sebelum %s: %w", key, kind, err)
-		}
-
-		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
-			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
-				return nil, err
-			}
-			return nil, fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		if _, err := input.Validate(); err != nil {
+			return nil, err
 		}
 
 		// Perpindahan tahap — langkah yang BENAR-BENAR memindahkan klaim.
@@ -603,12 +615,36 @@ func (s *Service) PerformAction(
 		// yang ini tujuan tombolnya. Melaporkan berhasil sementara klaimnya tidak bergerak
 		// adalah kegagalan senyap yang sudah pernah terjadi di layar ini.
 		if err := repo.MoveToSendToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			// ErrAlreadyWithAnalyst ikut diteruskan APA ADANYA: ia keadaan yang dapat
+			// dijelaskan ke petugas, bukan kegagalan teknis. Membungkusnya akan
+			// menguburnya menjadi 500 dan menghilangkan sebabnya.
 			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) ||
-				errors.Is(err, inboxrclpucl.ErrTechnicalPICUnknown) {
+				errors.Is(err, inboxrclpucl.ErrTechnicalPICUnknown) ||
+				errors.Is(err, inboxrclpucl.ErrAlreadyWithAnalyst) {
 				return nil, err
 			}
 			return nil, fmt.Errorf(
 				"memindahkan klaim %s ke tahap Send To Analis: %w", key, err)
+		}
+
+		// Klaimnya SUDAH berpindah. Kedua penulisan berikut melepaskannya dari antrean
+		// RCL/PUCL dan menyimpan isian petugas — keduanya menyusul, bukan mendahului.
+		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		}
+
+		if err := repo.SaveReceipt(ctx, key, input, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			var invalid *inboxrclpucl.ValidationError
+			if errors.As(err, &invalid) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menyimpan isian klaim %s sesudah %s: %w", key, kind, err)
 		}
 
 		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)

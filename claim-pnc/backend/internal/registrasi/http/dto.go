@@ -341,6 +341,66 @@ type SendToInputorRequest struct {
 	Note string `json:"catatan"`
 }
 
+// SendToRCLPUCLRequest adalah badan POST /api/registrasi/tugas/{id}/kirim-rclpucl — isi
+// modal "Kirim ke RCL/PUCL" (`Section/SectionPUCL-sect.xml`), berurut seperti layarnya.
+//
+// Nama field memakai bahasa Indonesia karena ia KONTRAK, bukan nama internal (`D-80`).
+type SendToRCLPUCLRequest struct {
+	// Track adalah "Pilih RCL / PUCL": 1 = RCL, 2 = PUCL.
+	Track int `json:"jalur"`
+
+	Note        string `json:"catatan"`
+	Subject     string `json:"perihal"`
+	OpeningNote string `json:"keterangan_pembuka"`
+	BodyNote    string `json:"keterangan_isi"`
+	ClosingNote string `json:"keterangan_penutup"`
+	DoctorName  string `json:"nama_dokter"`
+}
+
+// PUCLSubjectDTO adalah satu pilihan "Perihal".
+type PUCLSubjectDTO struct {
+	ID   int    `json:"id"`
+	Nama string `json:"nama"`
+}
+
+// PUCLSubjectResponse adalah daftar pilihan "Perihal" satu jalur.
+type PUCLSubjectResponse struct {
+	Pilihan []PUCLSubjectDTO `json:"pilihan"`
+}
+
+// PUCLReasonDTO adalah satu baris grid alasan penolakan.
+type PUCLReasonDTO struct {
+	ID        string `json:"id"`
+	Nama      string `json:"nama"`
+	Deskripsi string `json:"deskripsi"`
+}
+
+// PUCLReasonResponse adalah satu halaman grid alasan penolakan.
+//
+// Ia TIDAK membawa jumlah seluruh baris. Tabelnya 2.116 baris dan penyaringnya pencarian
+// teks; menghitungnya setiap kali hanya menambah kerja tanpa menambah yang dapat
+// ditindaklanjuti pengguna — ia mengetik lebih banyak huruf, bukan membuka halaman 11.
+type PUCLReasonResponse struct {
+	Pilihan []PUCLReasonDTO `json:"pilihan"`
+}
+
+// RCLDoctorDTO adalah satu pilihan dropdown "Nama Dokter".
+//
+// Satu field, dan itu disengaja: nilai yang disimpan sekaligus yang ditampilkan adalah
+// `OLD_OPERATOR_ID` yang sama. Tidak ada kolom nama tampil di sumbernya, dan menambahkan
+// label kedua berarti mengarang.
+type RCLDoctorDTO struct {
+	ID string `json:"id"`
+}
+
+// RCLDoctorResponse adalah seluruh pilihan "Nama Dokter".
+//
+// Tanpa paginasi: daftarnya puluhan baris — diukur 17 operator aktif pada ketiga grup
+// akses pada 2026-09-27 — dan sebuah dropdown memang harus memuat seluruhnya.
+type RCLDoctorResponse struct {
+	Pilihan []RCLDoctorDTO `json:"pilihan"`
+}
+
 // ClaimResponse adalah klaim beserta keadaan alurnya.
 type ClaimResponse struct {
 	Claim ClaimDTO `json:"klaim"`

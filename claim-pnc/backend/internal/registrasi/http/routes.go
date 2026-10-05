@@ -172,5 +172,14 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/tugas/{tugasID}/kirim-inputor", func(w http.ResponseWriter, r *http.Request) {
 			h.SendToInputor(w, r, chi.URLParam(r, "tugasID"))
 		})
+
+		// Tombol "Kirim ke RCL/PUCL" (modal KomentarRCLPUCL → SectionPUCL) beserta ketiga
+		// daftar pilihannya. Ketiganya GET karena hanya membaca master.
+		sub.Post("/tugas/{tugasID}/kirim-rclpucl", func(w http.ResponseWriter, r *http.Request) {
+			h.SendToRCLPUCL(w, r, chi.URLParam(r, "tugasID"))
+		})
+		sub.Get("/rclpucl/perihal", h.PUCLSubjects)
+		sub.Get("/rclpucl/alasan", h.PUCLReasons)
+		sub.Get("/rclpucl/dokter", h.RCLDoctors)
 	})
 }
