@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
 )
@@ -23,6 +24,7 @@ const (
 	CodeNotTaskOwner         = "bukan_pemilik_tugas"
 	CodeTaskAlreadyDone      = "tugas_sudah_selesai"
 	CodeStageMismatch        = "tahap_tidak_bersesuai"
+	CodeNotAvailableAtStage  = "tidak_tersedia_di_tahap"
 	CodeInvalidAction        = "tindakan_tidak_sah"
 	CodeExchangeRateNotFound = "kurs_tidak_ditemukan"
 	CodeAccountNotFound      = "rekening_tidak_ditemukan"
@@ -30,6 +32,9 @@ const (
 	CodeNotCommitteeTurn     = "bukan_giliran_komite"
 	CodeReportRegistered     = "laporan_sudah_diregistrasi"
 	CodeDocumentUpload       = "unggah_dokumen_gagal"
+	CodeAttachmentNotFound   = "lampiran_tidak_ditemukan"
+	CodeDocumentLink         = "tautan_dokumen_tidak_tersedia"
+	CodeDocumentDelete       = "hapus_dokumen_gagal"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
 	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
@@ -43,6 +48,7 @@ func mapError(err error) (int, ErrorResponse) {
 	var registered *registrasi.ReportAlreadyRegisteredError
 	var upload *registrasi.DocumentUploadError
 	var cashierRejected *usecase.CashierRejectedError
+	var linkExpired *registrasi.DocumentLinkExpiredError
 
 	switch {
 	case errors.As(err, &upload):
@@ -57,6 +63,55 @@ func mapError(err error) (int, ErrorResponse) {
 			status = http.StatusInternalServerError
 		}
 		return status, ErrorResponse{Code: CodeDocumentUpload, Message: upload.Message}
+
+	case errors.Is(err, registrasi.ErrAttachmentNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code: CodeAttachmentNotFound, Message: "This file is not attached to this claim.",
+		}
+
+	case errors.As(err, &linkExpired):
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code: CodeDocumentLink,
+			Message: "The storage service returned a link that already expired at " +
+				linkExpired.ExpiresAt.In(clock.ZoneWIB).Format("02/01/2006 15:04") + " WIB. Try again.",
+		}
+
+	case errors.Is(err, registrasi.ErrAttachmentDeleteNotAllowed):
+		return http.StatusForbidden, ErrorResponse{
+			Code:    CodeDocumentDelete,
+			Message: "Only the user who uploaded this file can delete it.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentDeleteHalfDone):
+		return http.StatusInternalServerError, ErrorResponse{
+			Code: CodeDocumentDelete,
+			Message: "The file was deleted from storage, but the attachment record could not be removed. " +
+				"Report this to the administrator.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentDeleteFailed):
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodeDocumentDelete,
+			Message: "The storage service did not delete this file. Nothing was changed; try again later.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentLinkRenewFailed):
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodeDocumentLink,
+			Message: "The storage service could not renew the link to this file. Try again later.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentLinkEmpty):
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeDocumentLink,
+			Message: "The storage service has not recorded a link for this file yet. Try again in a moment.",
+		}
+
+	case errors.Is(err, registrasi.ErrDocumentLinkUnavailable):
+		return http.StatusBadGateway, ErrorResponse{
+			Code:    CodeDocumentLink,
+			Message: "The document storage metadata cannot be reached. Try again later.",
+		}
 
 	case errors.Is(err, registrasi.ErrDocumentTypeUnknown):
 		return http.StatusUnprocessableEntity, ErrorResponse{
@@ -160,6 +215,12 @@ func mapError(err error) (int, ErrorResponse) {
 		return http.StatusConflict, ErrorResponse{
 			Code:    CodeStageMismatch,
 			Message: "Klaim sudah berpindah tahap. Muat ulang layar sebelum menyimpan.",
+		}
+
+	case errors.Is(err, registrasi.ErrNotAvailableAtStage):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeNotAvailableAtStage,
+			Message: "Fitur ini tidak tersedia pada tahap klaim saat ini.",
 		}
 
 	case errors.Is(err, registrasi.ErrInvalidAction):

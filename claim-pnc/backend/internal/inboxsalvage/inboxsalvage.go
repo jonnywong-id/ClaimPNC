@@ -76,8 +76,11 @@ package inboxsalvage
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"strings"
+	"time"
 )
 
 // Row adalah satu baris pada grid mana pun di layar ini.
@@ -441,6 +444,16 @@ type StatusCount struct {
 // ErrRowNotFound berarti baris yang diminta tidak ada.
 var ErrRowNotFound = errors.New("inboxsalvage: baris salvage tidak ditemukan")
 
+// Penolakan unggahan dokumen.
+//
+// Keduanya dipisah dari galat validasi per berkas karena keduanya menyangkut PERMINTAAN,
+// bukan isi satu berkas — dan transport memetakannya ke kode HTTP yang berbeda.
+var (
+	ErrNoDocument       = errors.New("inboxsalvage: tidak ada berkas yang diunggah")
+	ErrTooManyDocuments = errors.New("inboxsalvage: berkas melebihi batas satu unggahan")
+	ErrDocumentTooLarge = errors.New("inboxsalvage: ukuran berkas melebihi batas")
+)
+
 // Detail adalah isi panel **"Detail Salvage"**, yang di Pega terbuka lewat tombol bernama
 // sama pada grid.
 //
@@ -481,6 +494,39 @@ type Detail struct {
 	//
 	// Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
 	History []HistoryRow
+
+	// ObjectChoices dan CoverageChoices adalah ISI KEDUA AUTOCOMPLETE pada form
+	// "Menambahkan Data Salvage" — kolom "Nama Object" dan "Nama Coverage".
+	//
+	// # Kenapa keduanya menempel pada rincian KLAIM, bukan pada pengajuan
+	//
+	// Karena di layar lama pun begitu. Ketiga kolom teratas form itu bekerja sebagai satu
+	// rangkaian: mengetik **Nomor Klaim** memicu `SetDataDetailSalvage_act` dengan
+	// `tipe=1` dan `CaseeID` berisi nomor yang diketik
+	// (`Section/TambahData_Salvage-Section.xml:2165-2190`), dan kedua autocomplete di
+	// bawahnya membaca hasilnya. Satu nomor klaim, satu pemuatan, dua daftar pilihan.
+	//
+	// Keduanya karena itu dibaca pada jalur DetailByClaim — jalur yang parameternya sama
+	// persis dengan `CaseeID` di sistem lama.
+	//
+	// # Activity pemasoknya
+	//
+	// `pyListPreActivity` kedua autocomplete itu adalah **`GetDataSalavageCovCurObj_act`**
+	// (`:2973` untuk objek, `:3832` untuk coverage). Berkasnya diterima 2026-10-03, dan
+	// isinya empat langkah: satu Property-Set yang menyusun kunci klaim, lalu tiga
+	// RDB-List. Dua di antaranya mengisi kedua daftar di bawah; yang ketiga mengisi
+	// `TempCurrencySalvage` dan TIDAK dipakai form ini — lihat catatan pada
+	// `claim_coverages` di inboxsalvage.sql.
+	//
+	// Kedua kuerinya kini disalin apa adanya, bukan direkonstruksi lagi.
+	//
+	// # Kosong BUKAN galat
+	//
+	// Klaim yang objeknya belum terisi memang ada — modul Inbox Investigator mencatat
+	// keadaan yang sama. Form tetap dapat diisi: kedua kolomnya menerima ketikan bebas,
+	// persis seperti `pyAllowFreeFormInput=true` di layar lama.
+	ObjectChoices   []ObjectChoice
+	CoverageChoices []CoverageChoice
 
 	// PIC dan LossDate berasal dari KLAIM, bukan dari pengajuan.
 	//
@@ -582,6 +628,252 @@ type DetailBarang struct {
 	AcceptanceNo  string // NOAKSEPTASI
 	AcceptedValue string // NILAIAKSEPTASI
 	Remark        string // REMARK
+}
+
+// ObjectChoice adalah satu pilihan pada autocomplete **"Nama Object"**.
+//
+// Di layar lama ia satu baris `TempObjectData.pxResults`: yang DIBACA pengguna adalah
+// `.City`, dan yang ikut tersimpan diam-diam saat barisnya dipilih adalah `.CaseID` —
+// disalin ke `TempInsert.NewNoKTP` lewat `pyAdditionalFields` ber-`pyShow=false`
+// (`Section/TambahData_Salvage-Section.xml:2944-2948`).
+//
+// Kedua nama properti itu MENYESATKAN dan tidak dibawa: `.City` bukan kota dan `.CaseID`
+// bukan nomor kasus. Isian di bawah menyebut isinya (`D-19`).
+type ObjectChoice struct {
+	// ID <- `POOLDATA.T_CLAIM_OBJECTLIST.OBJECTID`.
+	//
+	// Inilah yang berakhir di `PNC_SALVAGE.IDOBJECT`, parameter `tIDOBJ` pada
+	// `INSERT_SALVAGE`. Tanpanya pengajuan tersimpan dengan nama objek tetapi tanpa
+	// penunjuk ke objeknya — persis keadaan modul ini sebelum perbaikan ini.
+	ID string
+
+	// Name <- `OBJECTNAME`, satu-satunya isian yang dibaca pengguna.
+	Name string
+}
+
+// CoverageChoice adalah satu pilihan pada autocomplete **"Nama Coverage"**.
+//
+// Bentuknya sama persis dengan ObjectChoice, dan itu bukan kebetulan: kedua kuerinya di
+// layar lama memang kembar — `COVERAGEID as "CaseID", COVERAGENAME as "City"` berbanding
+// `OBJECTID as "CaseID", OBJECTNAME as "City"`.
+type CoverageChoice struct {
+	// ID <- `POOLDATA.T_CLAIM_OBJECTCOVERAGE.COVERAGEID`.
+	//
+	// # Catatan koreksi: ia KODE JENIS JAMINAN, bukan penunjuk satu baris
+	//
+	// `COVERAGEID` berisi kode seperti `'10003'`, dan kode yang sama berulang di banyak
+	// klaim — bahkan dapat berulang DI DALAM satu klaim bila dua objek punya jaminan yang
+	// sama. Ia karena itu tidak menunjuk satu baris coverage tertentu.
+	//
+	// Sempat disimpulkan bahwa yang dipakai adalah `OBJECTCOVERAGEID`, karena tujuh kueri
+	// PLA/DLA memperlakukan "IDCoverage" sebagai kolom itu
+	// (`GetDataDLA-SQL.xml:49`, `GetDataPLA-SQL.xml:108`, `GetDataPreDLA-SQL.xml:47`).
+	// Kesimpulan itu **salah untuk layar ini**:
+	// `RDB List/GetDataSalvageObjectCoverageForOs-SQL.xml` menyebut `COVERAGEID` apa
+	// adanya. Dua layar memakai kata yang sama untuk kolom yang berbeda, dan yang berlaku
+	// di sini adalah kuerinya sendiri.
+	//
+	// Akibat yang harus disadari: `PNC_SALVAGE.IDCOVERAGE` karena itu TIDAK dapat dipakai
+	// menunjuk baris coverage mana yang dimaksud bila klaimnya punya dua objek berjaminan
+	// sama. Itu keadaan di sistem lama, bukan sesuatu yang modul ini perkenalkan.
+	ID string
+
+	// Name <- `COVERAGENAME`.
+	Name string
+}
+
+// CurrencyOption adalah satu pilihan dropdown **"Mata Uang"** pada form Tambah.
+//
+// # Dari mana isinya
+//
+// Dropdown itu di layar lama bersumber Report Definition `SelectCurrency_RD`
+// (`Section/TambahData_Salvage-Section.xml:5251`), dan RD itu membaca kelas
+// `ASM-FW-GISFW-Int-CURRENCY` — tabel `POOLDATA.CURRENCY`. Kolom yang dibacanya
+// terkonfirmasi dari tempat kedua: `RDB List/Gcnmgetdatacurrencysalvage_SQL-SQL.xml`
+// menggabungkan `A.CURRENCY = B.ID` lalu mengambil `b.currency` sebagai teks yang dibaca
+// orang.
+//
+// # Kode DAN labelnya sama, dan itu disengaja
+//
+// Yang tersimpan di `PNC_SALVAGE.CURRENCY` adalah teks mata uangnya ("IDR"), bukan
+// `ID`-nya — panel rincian menggambar kolom itu apa adanya sebagai "Mata Uang", dan ia
+// terbaca sebagai kode tiga huruf. Mengirim `ID` sebagai nilai akan menyimpan angka di
+// kolom yang selama ini berisi huruf.
+type CurrencyOption struct {
+	// Code adalah nilai yang tersimpan DAN yang dibaca — `POOLDATA.CURRENCY.CURRENCY`.
+	Code string
+
+	// Label dibedakan dari Code supaya keduanya dapat berpisah kelak tanpa mengubah
+	// kontrak — misalnya bila nama negaranya kelak ikut ditampilkan.
+	Label string
+}
+
+// Batas unggahan dokumen, sebagaimana tertulis MERAH pada modal
+// `Section/SalvageUploadDocumentAll-Section.xml`.
+//
+// Keduanya ditegakkan DUA KALI — di layar dan di sini. Pemeriksaan layar menghemat
+// perjalanan kirim yang sudah pasti ditolak; pemeriksaan di sini yang benar-benar
+// mengikat, karena layar dapat dilewati.
+const (
+	MaxDocumentPerUpload = 5
+	MaxDocumentSizeBytes = 1024 * 1024
+)
+
+// DocumentCommand adalah parameter `tCOMMAND` kedua procedure lampiran.
+//
+// Hanya `"INSERT"` yang dipakai modul ini. Cabang satunya menghapus lampiran, dan
+// penghapusan dokumen belum ditawarkan layar mana pun.
+const DocumentCommand = "INSERT"
+
+// DocumentUpload adalah satu berkas yang diunggah lewat modal "UploadDocument_Salvage".
+//
+// # Isinya base64, bukan byte mentah
+//
+// `GCNMUploadResult64` — langkah pertama `SaveFilePenunjangBySalvage` — mengubah berkas
+// menjadi base64 sebelum apa pun terjadi, dan kolom `TEMP_DATA_ATTACHFILE.ATTACHFILE`
+// menyimpannya dalam bentuk itu. Pengubahannya dikerjakan lapisan transport, supaya
+// seam ini menerima bentuk yang benar-benar disimpan.
+type DocumentUpload struct {
+	// ClaimNo dan SalvageID menyatakan pengajuan mana yang dilampiri.
+	//
+	// SalvageID boleh kosong: pada form pengajuan BARU, pengajuannya memang belum punya
+	// ID. Lampirannya tetap tersimpan terhadap klaimnya — penaut salvage yang dilewati.
+	ClaimNo   string
+	SalvageID string
+
+	// FileName adalah nama ASLI berkas dari peramban.
+	//
+	// Bukan nama yang tersimpan: yang tersimpan disusun `SetFileNameSalvage` menjadi
+	// `<awalan>-<nomor klaim>-<urutan>.<ekstensi>`. Nama asli tetap dibawa karena
+	// ekstensinya diambil dari sini.
+	FileName string
+
+	// MimeType adalah EKSTENSI berkas, bukan media type HTTP.
+	//
+	// `SetFileNameSalvage` merangkainya langsung di belakang titik — `"." +
+	// Param.FileMimeType` — sehingga yang diharapkannya `pdf`, bukan `application/pdf`.
+	MimeType string
+
+	// Content64 adalah isi berkas yang sudah di-base64.
+	Content64 string
+
+	// Category dan SubCategory adalah `DOC_TYPE_ID` dan `DOC_TYPE_DT_ID` pada
+	// `LST_TYPE_DOC_BUSINESS`.
+	//
+	// Keduanya BOLEH kosong, dan pada modal salvage memang begitu: modalnya tidak punya
+	// pemilih jenis dokumen sama sekali. Akibatnya awalan nama berkas tidak terbaca dan
+	// nama asli yang dipakai — lihat Repo.AttachDocument.
+	Category    string
+	SubCategory string
+
+	// Operator adalah pengunggahnya — `OperatorID.pyUserIdentifier` di sistem lama.
+	Operator string
+}
+
+// Clean memangkas spasi setiap isian dan menormalkan ekstensinya.
+func (d DocumentUpload) Clean() DocumentUpload {
+	cleaned := DocumentUpload{
+		ClaimNo:     strings.ToUpper(strings.TrimSpace(d.ClaimNo)),
+		SalvageID:   strings.TrimSpace(d.SalvageID),
+		FileName:    strings.TrimSpace(d.FileName),
+		MimeType:    strings.ToLower(strings.TrimSpace(d.MimeType)),
+		Content64:   strings.TrimSpace(d.Content64),
+		Category:    strings.TrimSpace(d.Category),
+		SubCategory: strings.TrimSpace(d.SubCategory),
+		Operator:    strings.TrimSpace(d.Operator),
+	}
+
+	// Titik di depan ekstensi dibuang: `SetFileNameSalvage` sudah menambahkannya sendiri,
+	// dan membiarkannya menghasilkan nama berakhiran `..pdf`.
+	cleaned.MimeType = strings.TrimPrefix(cleaned.MimeType, ".")
+
+	return cleaned
+}
+
+// Validate memeriksa satu berkas sebelum ia menyentuh basis data.
+func (d DocumentUpload) Validate() error {
+	switch {
+	case d.ClaimNo == "":
+		return errors.New("inboxsalvage: nomor klaim wajib diisi")
+	case d.FileName == "":
+		return errors.New("inboxsalvage: nama berkas wajib diisi")
+	case d.Content64 == "":
+		return errors.New("inboxsalvage: isi berkas kosong")
+	}
+	return nil
+}
+
+// AttachedDocument adalah satu dokumen yang BERHASIL tersimpan.
+type AttachedDocument struct {
+	// DataID adalah kunci baris `DATA_ATTACHFILE` — yang KETERANGANNYA, bukan isinya.
+	//
+	// Kedua tabel membangkitkan DATAID sendiri-sendiri, dan yang dipakai penaut salvage
+	// adalah yang ini. Lihat catatan di kepala bagian unggahan pada inboxsalvage.sql.
+	DataID string
+
+	// ImageID menautkan keterangan dengan isinya.
+	ImageID string
+
+	// StoredName adalah nama berkas yang BENAR-BENAR tersimpan.
+	StoredName string
+
+	// LinkedToSalvage menyatakan baris penaut ke pengajuan salvage ikut ditulis.
+	//
+	// Salah bila pengajuannya belum punya ID — pada form pengajuan baru, lampirannya
+	// menempel ke klaimnya saja.
+	LinkedToSalvage bool
+}
+
+// NewImageID membangkitkan `IMAGEID` satu berkas lampiran.
+//
+// # Ia menggantikan kueri, bukan menirunya sembarangan
+//
+// `RDB List/GenerateimageID-SQL.xml` menyusunnya begini:
+//
+//	STANDARD_HASH('ASMPP' || TO_CHAR(SYSTIMESTAMP, 'DD/MM/YYYY HH24:MI:SS.FF3'), 'MD5')
+//
+// Bentuk yang dihasilkan di sini SAMA PERSIS — MD5 atas teks yang sama, dirender sebagai
+// heksadesimal huruf besar, seperti yang Oracle lakukan terhadap RAW.
+//
+// # Kenapa pindah ke Go
+//
+// Karena `STANDARD_HASH` dan `SYSTIMESTAMP` keduanya khas Oracle, sementara `D-20`
+// menuntut satu set SQL yang berjalan di Oracle DAN PostgreSQL. Dan karena pembangkit yang
+// hidup di Go dapat diuji tanpa basis data — termasuk dibuktikan bahwa dua berkas yang
+// diunggah pada milidetik berbeda menerima ID yang berbeda.
+//
+// # Yang dibawa serta, termasuk kelemahannya
+//
+// ID ini bergantung pada WAKTU saja. Dua berkas yang diunggah pada milidetik yang sama
+// menerima ID yang sama, dan karena `IMAGEID` yang menautkan isi berkas dengan
+// keterangannya, tabrakan itu menautkan keduanya secara silang. Itu keadaan sistem lama
+// apa adanya; memperbaikinya mengubah bentuk ID, dan bentuknya dibaca sistem lain.
+func NewImageID(now time.Time) string {
+	stamp := now.Format("02/01/2006 15:04:05.000")
+	sum := md5.Sum([]byte("ASMPP" + stamp))
+	return strings.ToUpper(hex.EncodeToString(sum[:]))
+}
+
+// SafeFileName membuang karakter yang tidak aman dari sebuah nama berkas.
+//
+// Aturannya disalin dari `SaveFilePenunjangBySalvage`, yang menempuh dua langkah:
+// membuang SPASI, lalu membuang segala yang bukan huruf, angka, titik, atau tanda hubung.
+//
+//	@pxReplaceAllViaRegex(@replaceAll(nama," ",""), "[^a-zA-Z0-9 .-]+", "")
+//
+// Ia dipakai saat awalan dari master jenis dokumen tidak terbaca — lihat storedNameOf.
+func SafeFileName(name string) string {
+	var builder strings.Builder
+	for _, char := range name {
+		switch {
+		case char >= 'a' && char <= 'z',
+			char >= 'A' && char <= 'Z',
+			char >= '0' && char <= '9',
+			char == '.', char == '-':
+			builder.WriteRune(char)
+		}
+	}
+	return builder.String()
 }
 
 // PositionLabelOf menerjemahkan `STSTRANSFER` menjadi teks "Posisi Salvage".
@@ -702,6 +994,28 @@ type Repo interface {
 	// bukan ErrRowNotFound. Yang menghasilkan ErrRowNotFound hanyalah nomor klaim yang
 	// tidak ada.
 	DetailByClaim(ctx context.Context, claimNo string) (Detail, error)
+
+	// Currencies mengembalikan pilihan dropdown "Mata Uang".
+	//
+	// Ia TIDAK bergantung pada klaim mana pun — isinya master, sama untuk seluruh layar.
+	//
+	// Kegagalannya diperlakukan pemanggil sebagai keadaan yang dapat ditoleransi, bukan
+	// sebagai galat yang menutup layar: kolom Mata Uang tetap digambar, hanya tanpa isi.
+	// Satu master yang tidak terbaca tidak boleh berubah menjadi layar yang tidak dapat
+	// dipakai sama sekali.
+	Currencies(ctx context.Context) ([]CurrencyOption, error)
+
+	// AttachDocument menyimpan SATU berkas lampiran beserta penautnya.
+	//
+	// Ia menggantikan pasca-proses `SaveFilePenunjangBySalvage`, dan satu pemanggilan
+	// menempuh enam langkah yang HARUS atomik: membangkitkan ID gambar, menyusun nama
+	// berkas, menyimpan isinya, menyimpan keterangannya, mencatat histori, lalu
+	// menautkannya ke pengajuan salvage.
+	//
+	// Kegagalan di tengah tidak boleh meninggalkan berkas tanpa keterangan — atau
+	// sebaliknya. Di sistem lama tiap langkah `COMMIT` sendiri; di sini keenamnya satu
+	// transaksi (`D-68`).
+	AttachDocument(ctx context.Context, doc DocumentUpload) (AttachedDocument, error)
 
 	// Create menyimpan satu pengajuan salvage beserta detail itemnya.
 	//

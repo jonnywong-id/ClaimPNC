@@ -125,6 +125,7 @@ func newHTTPEnv(t *testing.T) httpEnv {
 		Committees:        memory.NewCommittees(),
 		Documents:         uploader,
 		Attachments:       records,
+		Closures:          records,
 		IDGenerator:       memory.IDGenerator{},
 		UnitOfWork:        store,
 		Clock:             fixed,

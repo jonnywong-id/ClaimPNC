@@ -160,14 +160,27 @@ func validatePolicyPeriodActive(v *collector, k Claim, now time.Time) {
 // Dengan kata lain toleransi 30 hari Bonding **mati** — ini menjawab pertanyaan terbuka
 // pada `TKT-B02-002`. Membawanya ke sistem baru berarti menambahkan aturan yang tidak
 // pernah berlaku di produksi.
+//
+// # Tanggal Terima Dokumen hanya wajib pada Travel dan Personal Accident
+//
+// Isiannya di Section/InputRegisterDetail tampil dengan `IsTravelPA` dan ber-`pyRequired=true`
+// — wajib HANYA ketika tampil. Lini lain (Marine, Fire, Aneka, …) tidak pernah melihatnya,
+// sehingga Tanggal Terima Dokumen kosong. Pega lalu melewati langkah 19, 23, dan 27 karena
+// `@CompareDates` dengan tanggal kosong bernilai false (transisi 3 = lewati); di sini
+// ketiganya dilewati dengan cara yang sama bila tanggalnya kosong.
 func validateDates(v *collector, k Claim, now time.Time) {
 	today := clock.DateWIB(now)
 	lossDate := clock.DateWIB(k.DateOfLoss)
 	reportDate := clock.DateWIB(k.ReportDate)
 	receivedDate := clock.DateWIB(k.DateReceived)
+	hasReceived := !k.DateReceived.IsZero()
+
+	if !hasReceived && (k.Policy.Line == LineTravel || k.Policy.Line == LinePersonalAccident) {
+		v.add(ViolationReceivedDateRequired, "tanggal_terima_dokumen", "Tanggal Terima Dokumen is required.")
+	}
 
 	// Langkah 19 — hanya Travel.
-	if k.Policy.Line == LineTravel {
+	if k.Policy.Line == LineTravel && hasReceived {
 		if clock.DaysBetween(lossDate, receivedDate) > TravelDocumentReceiptLimit {
 			v.add(ViolationReceivedAfter90Days, "tanggal_terima_dokumen",
 				fmt.Sprintf("Tanggal Terima Dokumen tidak boleh lebih dari %d hari setelah Tanggal Kejadian.",
@@ -206,7 +219,7 @@ func validateDates(v *collector, k Claim, now time.Time) {
 	}
 
 	// Langkah 23 — lapor tidak boleh setelah terima dokumen.
-	if reportDate.After(receivedDate) {
+	if hasReceived && reportDate.After(receivedDate) {
 		v.add(ViolationReceivedBeforeReport, "tanggal_terima_dokumen",
 			"Tanggal Terima Dokumen harus setelah Tanggal Lapor")
 	}
@@ -220,7 +233,7 @@ func validateDates(v *collector, k Claim, now time.Time) {
 		v.add(ViolationReportDateInFuture, "tanggal_lapor",
 			"Tanggal Lapor tidak boleh lebih dari tanggal hari ini.")
 	}
-	if receivedDate.After(today) {
+	if hasReceived && receivedDate.After(today) {
 		v.add(ViolationReceivedInFuture, "tanggal_terima_dokumen",
 			"Tanggal Terima Dokumen tidak boleh lebih dari tanggal hari ini.")
 	}

@@ -19,7 +19,9 @@ import {
   type EstimateRequest,
   type ItemOptionsResponse,
   type SurveysResponse,
+  type DocumentLink,
   type DocumentsResponse,
+  type InsuredResponse,
   type ProgressResponse,
   type FaceSheetRequest,
   type PLARequest,
@@ -279,6 +281,84 @@ export function useCompleteStage() {
 }
 
 /**
+ * Tombol Kirim pada modal "Kirim ke Inputor" (`AnalystRemarks_sect`): menutup tugas berjalan dan
+ * melompatkan klaim ke Input Register milik Inputor, dengan catatan analis.
+ */
+export function useSendToInputor(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { taskID: string; catatan: string }) =>
+      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/kirim-inputor`, {
+        metode: 'POST',
+        body: { catatan: content.catatan },
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      // Catatan baru tampil di tab Progress dan sebagai Catatan dari Analyst.
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+    },
+  })
+}
+
+/** Isian dialog "Prevent Close Claim" yang dikirim ke server. */
+export interface CloseClaimBody {
+  catatan_tutup: string
+  usulan: string
+  effort_tutup: string
+  kendala_tutup: string
+  tutup_sementara: boolean
+}
+
+/** Tombol Ya pada dialog "Prevent Close Claim" — `CloseClaim`. */
+export function useCloseClaim(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { taskID: string; body: CloseClaimBody }) =>
+      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/tutup-klaim`, {
+        metode: 'POST',
+        body: content.body,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Tombol Kirim Analyst pada modal "Transfer Claim ke Komite" — `setTicketToAnalyst`. */
+export function useTransferToAnalyst(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { taskID: string; objekID: string; coverageID: string }) =>
+      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/transfer-analis`, {
+        metode: 'POST',
+        body: { objek_id: content.objekID, coverage_id: content.coverageID },
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+    },
+  })
+}
+
+/**
  * violationsFrom membaca rincian validasi dari sebuah galat.
  *
  * Ia mengembalikan daftar kosong untuk galat jenis lain, sehingga layar tidak perlu
@@ -316,7 +396,7 @@ export function messagesByField(violations: Violation[]): Record<string, string>
  * useClaimRecord membaca satu tab pendamping Input Estimasi: survey, dokumen, atau
  * progres. Ketiganya hanya membaca.
  */
-function useClaimRecord<T>(claimID: string, path: 'survey' | 'dokumen' | 'progres', enabled: boolean) {
+function useClaimRecord<T>(claimID: string, path: 'survey' | 'dokumen' | 'progres' | 'tertanggung', enabled: boolean) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
@@ -374,6 +454,49 @@ export function useUploadDocument(claimID: string) {
       apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
     },
   })
+}
+
+/**
+ * Tombol Lihat dokumen: alamat baca satu lampiran dari metadata penyimpanan. Diminta saat
+ * tombol ditekan, bukan dimuat bersama daftar — alamatnya bermasa berlaku.
+ */
+export function useDocumentLink(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (attachmentID: string) =>
+      callAPI<DocumentLink>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen/${encodeURIComponent(attachmentID)}/tautan`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Tombol Delete pada daftar berkas: hapus PERMANEN (keputusan-implementasi §171). Jawabannya
+ * checklist yang sudah diperbarui, sehingga "Lihat dokumen (n)" langsung berkurang.
+ */
+export function useDeleteDocument(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (attachmentID: string) =>
+      callAPI<DocumentsResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen/${encodeURIComponent(attachmentID)}/hapus`,
+        { metode: 'POST', token, portal },
+      ),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
+  })
+}
+
+/** Data tertanggung dari CIF polis — tab Register (DATA TERTANGGUNG KLAIM, Alamat). */
+export function useInsuredProfile(claimID: string, enabled = true) {
+  return useClaimRecord<InsuredResponse>(claimID, 'tertanggung', enabled)
 }
 
 /** Tab Progress Claim & Komunikasi. */
@@ -721,6 +844,46 @@ export function useAddSettlement(claimID: string) {
   return useMutation({
     mutationFn: (content: SettlementRequest) =>
       callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Tombol Tambah grid Adjustment — ValidationAdjustment; untuk PA menambahkan estimasi NewEstimationPA. */
+export function usePrepareSettlement(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { tugas_id: string; objek: number; jaminan: number }) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/tambah`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Menyimpan ulang baris Adjustment yang sudah ada setelah isiannya berubah (SetNilaiResikoSendiri). */
+export function useUpdateSettlement(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: SettlementRequest) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/ubah`, {
         metode: 'POST',
         body: content,
         token,

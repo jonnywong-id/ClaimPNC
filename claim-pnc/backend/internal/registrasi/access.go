@@ -73,6 +73,17 @@ func StageRole(s Stage) string {
 	return routerRole[s.Router]
 }
 
+// RoleAnalyst adalah When `IsAnalisator`: operator anggota workgroup `KlaimAnalisator`
+// (`@Utilities.countInPageList("KlaimAnalisator","pyWorkGroupName",OperatorID.pyWorkGroupList) > 0`).
+// Di sini dibaca dari M_LOGIN_GROUP_PNC seperti grup lain; per 2026-10-03 belum ada satu pun
+// anggota grup itu di tabel.
+const RoleAnalyst = GroupPrefix + "KlaimAnalisator"
+
+// IsAnalyst menyatakan pemegang peran-peran ini anggota grup Analyst (When `IsAnalisator`).
+func IsAnalyst(roles []string) bool {
+	return FlowContext{CallerRoles: roles}.HasRole(RoleAnalyst)
+}
+
 // CanWork menyatakan seseorang boleh mengerjakan tugas: tugasnya belum bertuan, ia
 // pemiliknya, atau ia memegang grup tahap itu.
 func CanWork(task Task, stage Stage, identity string, roles []string) bool {

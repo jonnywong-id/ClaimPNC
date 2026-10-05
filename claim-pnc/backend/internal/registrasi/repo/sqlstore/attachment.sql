@@ -22,3 +22,16 @@ INSERT INTO POOLDATA.DATA_ATTACHFILE
         CATEGORY, SUB_CATEGORY, INPUTDATE)
 VALUES (:1 || LPAD(TO_CHAR(POOLDATA.ATTACHFILE_SEQ.NEXTVAL), 10, '0'), :2, :3, :4, :5, :6, :7,
         :8, :9, :10)
+
+-- name: lampiran_hapus
+--
+-- Tombol Delete — salinan `RDB List/DeleteDataAttachFile_SQL-SQL.xml`:
+--     DELETE FROM pooldata.data_attachfile WHERE IMAGEID = {InputParam.CARI1}
+-- Penghapusan FISIK, pengecualian `D-66` yang ditetapkan Work Owner (keputusan-implementasi §171).
+DELETE FROM POOLDATA.DATA_ATTACHFILE WHERE IMAGEID = :1
+
+-- name: form_klaim_hapus
+--
+-- Salinan `RDB List/DeleteDataJSON_FORM_KLAIM_SQL-SQL.xml`:
+--     DELETE FROM pooldata.JSON_FORM_KLAIM WHERE IMAGEID = {InputParam.CARI1}
+DELETE FROM POOLDATA.JSON_FORM_KLAIM WHERE IMAGEID = :1

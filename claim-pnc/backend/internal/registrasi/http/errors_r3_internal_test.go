@@ -42,6 +42,7 @@ func TestMapErrorStatusAndCode(t *testing.T) {
 		{registrasi.ErrNotTaskOwner, http.StatusForbidden, CodeNotTaskOwner},
 		{registrasi.ErrTaskAlreadyDone, http.StatusConflict, CodeTaskAlreadyDone},
 		{registrasi.ErrStageMismatch, http.StatusConflict, CodeStageMismatch},
+		{registrasi.ErrNotAvailableAtStage, http.StatusConflict, CodeNotAvailableAtStage},
 		{registrasi.ErrInvalidAction, http.StatusBadRequest, CodeInvalidAction},
 		{usecase.ErrCashierUnavailable, http.StatusBadGateway, CodeCashierUnavailable},
 		{&usecase.CashierRejectedError{Message: "ditolak"}, http.StatusUnprocessableEntity, CodeCashierRejected},

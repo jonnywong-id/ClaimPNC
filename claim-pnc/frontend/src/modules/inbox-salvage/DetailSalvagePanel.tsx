@@ -3,6 +3,7 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
+import { RiwayatSalvage } from './RiwayatSalvage'
 import type { DetailBarang, DetailKey, DetailResponse } from './types'
 
 /**
@@ -60,9 +61,9 @@ function Isian({ label, value }: { label: string; value: string }) {
 /**
  * Satu kelompok isian, dengan judulnya.
  *
- * Kelompoknya mengikuti pengelompokan layar lama, bukan urutan kolom di basis data: layar
- * lama menempatkan data pengajuan, data akseptasi, data lelang, dan data PIC survey sebagai
- * bagian yang terpisah — dan petugas mencarinya per bagian, bukan per kolom.
+ * Dipakai oleh bagian-bagian TAMBAHAN di bawah kotak utama — yang isinya tidak ada di
+ * `DataDetail_Salvage` melainkan di section lain, dan karena itu tidak boleh menumpang di
+ * dalam kotak yang menyalin section tersebut.
  */
 function Kelompok({ judul, children }: { judul: string; children: React.ReactNode }) {
   return (
@@ -73,6 +74,11 @@ function Kelompok({ judul, children }: { judul: string; children: React.ReactNod
       </dl>
     </section>
   )
+}
+
+/** adaIsi menjawab apakah sekelompok isian punya sesuatu untuk digambar. */
+function adaIsi(...values: string[]): boolean {
+  return values.some((value) => value.trim() !== '')
 }
 
 const ITEM_COLUMNS: Column<BarangBernomor>[] = [
@@ -159,6 +165,32 @@ function messageOf(error: unknown): { title: string; description: string } {
  * untuk MEMBANDINGKANNYA dengan baris di daftar — posisi, nilai, PIC — dan halaman terpisah
  * memaksanya mengingat baris yang baru saja ia lihat.
  *
+ * # Kotak utamanya adalah `DataDetail_Salvage`, LIMA BELAS isian, tiga kolom
+ *
+ * Urutannya disalin dari urutan caption di dalam section itu, dibaca baris demi baris:
+ *
+ *	Tanggal Input Salvage · Tanggal Transfer GA · Tanggal Akseptasi
+ *	No Klaim              · No Akseptasi        · Nama Object
+ *	Nama Coverage         · Jenis Salvage       · Quantity Salvage
+ *	Lokasi Salvage        · Mata Uang           · Estimasi
+ *	Nilai Salvage         · Remark              · Posisi Salvage
+ *
+ * Sebelumnya panel ini mengelompokkan isian menurut maknanya — Data Klaim, Data Pengajuan,
+ * Posisi dan Akseptasi — dan itu meleset: pengelompokan itu buatan sendiri, sementara
+ * layar lama menggambarnya sebagai SATU kotak datar. Pada daftar Salvage Buyback khususnya,
+ * yang terbuka memang section ini apa adanya.
+ *
+ * # Bagian tambahan digambar HANYA bila berisi
+ *
+ * Isian lelang, PIC survey, dan grid barang TIDAK ada di `DataDetail_Salvage` — ketiganya
+ * milik `Data_Salvage` dan `DetailHistReqSalvage`, dua section lain yang dibuka daftar
+ * lain. Membuangnya berarti menghilangkan isian yang memang dibaca orang di daftar itu;
+ * menggambarnya selalu berarti kotak ini tidak pernah terlihat seperti aslinya.
+ *
+ * Jalan tengahnya: digambar bila ada isinya. Klaim Salvage Buyback yang belum punya
+ * pengajuan tidak punya satu pun nilai di sana, sehingga yang tampil persis kotak
+ * `DataDetail_Salvage` ditambah grid historinya — sebagaimana layar lama.
+ *
  * # Dua hal yang sengaja digambar apa adanya
  *
  *   - "Posisi Salvage" adalah LABEL, bukan kode. Kodenya tetap dikirim server dan
@@ -230,82 +262,125 @@ export function DetailSalvagePanel({
       */}
       {detail.data ? (
         <div className="space-y-4">
-          <Kelompok judul="Data Klaim">
-            <Isian label="No Klaim" value={detail.data.no_klaim} />
-            <Isian label="Nama Bisnis" value={detail.data.nama_bisnis} />
-            <Isian label="PIC Teknik" value={detail.data.pic} />
-            <Isian label="Tgl Kejadian" value={detail.data.tanggal_kejadian} />
-          </Kelompok>
+          {/*
+            Kotak `DataDetail_Salvage` — lima belas isian, tiga kolom, urutan apa adanya.
+            Tidak ada judul kelompok di dalamnya: section aslinya pun tidak punya.
+          */}
+          <section className="rounded-lg border border-slate-300 bg-white p-4">
+            <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Isian
+                label="Tanggal Input Salvage"
+                value={detail.data.tanggal_input_salvage}
+              />
+              <Isian label="Tanggal Transfer GA" value={detail.data.tanggal_transfer_ga} />
+              <Isian label="Tanggal Akseptasi" value={detail.data.tanggal_akseptasi} />
 
-          <Kelompok judul="Data Pengajuan">
-            <Isian label="ID Salvage" value={detail.data.id_salvage} />
-            <Isian label="Tanggal Input Salvage" value={detail.data.tanggal_input_salvage} />
-            <Isian label="Jenis Salvage" value={detail.data.jenis_salvage} />
-            <Isian label="Quantity Salvage" value={detail.data.quantity_salvage} />
-            <Isian label="Estimasi" value={detail.data.estimasi} />
-            <Isian label="Mata Uang" value={detail.data.mata_uang} />
-            <Isian label="Nama Object" value={detail.data.nama_object} />
-            <Isian label="Nama Coverage" value={detail.data.nama_coverage} />
-            <Isian label="Lokasi Salvage" value={detail.data.lokasi_salvage} />
-            <Isian
-              label="Lokasi di Jabodetabek"
-              value={detail.data.lokasi_salvage_di_jabodetabek ? 'Ya' : 'Tidak'}
-            />
-            <Isian label="Remark" value={detail.data.remark} />
-          </Kelompok>
+              <Isian label="No Klaim" value={detail.data.no_klaim} />
+              <Isian label="No Akseptasi" value={detail.data.no_akseptasi} />
+              <Isian label="Nama Object" value={detail.data.nama_object} />
 
-          <Kelompok judul="Posisi dan Akseptasi">
-            <div className="min-w-0">
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Posisi Salvage
-              </dt>
-              <dd className="mt-0.5 break-words text-sm text-slate-900">
-                {detail.data.posisi_salvage.trim() === '' ? (
-                  <span className="text-slate-400">—</span>
-                ) : (
-                  <>
-                    {detail.data.posisi_salvage}
-                    {detail.data.kode_posisi_salvage.trim() === '' ? null : (
-                      <span className="ml-2 text-xs text-slate-500">
-                        kode {detail.data.kode_posisi_salvage}
-                      </span>
-                    )}
-                  </>
-                )}
-              </dd>
-            </div>
-            <Isian label="Tanggal Transfer GA" value={detail.data.tanggal_transfer_ga} />
-            <Isian label="Tanggal Akseptasi" value={detail.data.tanggal_akseptasi} />
-            <Isian label="No Akseptasi" value={detail.data.no_akseptasi} />
-            <Isian label="Nilai Salvage" value={detail.data.nilai_salvage} />
-            <Isian label="Email" value={detail.data.email} />
-          </Kelompok>
+              <Isian label="Nama Coverage" value={detail.data.nama_coverage} />
+              <Isian label="Jenis Salvage" value={detail.data.jenis_salvage} />
+              <Isian label="Quantity Salvage" value={detail.data.quantity_salvage} />
 
-          <Kelompok judul="Lelang">
-            <Isian label="Nilai Penawaran" value={detail.data.nilai_penawaran} />
-            <Isian label="Nama Pemenang" value={detail.data.nama_pemenang} />
-            <Isian label="Tanggal Lelang" value={detail.data.tanggal_lelang} />
-          </Kelompok>
+              <Isian label="Lokasi Salvage" value={detail.data.lokasi_salvage} />
+              <Isian label="Mata Uang" value={detail.data.mata_uang} />
+              <Isian label="Estimasi" value={detail.data.estimasi} />
 
-          <Kelompok judul="PIC Survey">
-            <Isian label="Nama PIC Survey" value={detail.data.nama_pic_survey} />
-            <Isian label="No Telp PIC Survey" value={detail.data.no_telp_pic_survey} />
-            <Isian label="Email PIC Survey" value={detail.data.email_pic_survey} />
-          </Kelompok>
+              <Isian label="Nilai Salvage" value={detail.data.nilai_salvage} />
+              <Isian label="Remark" value={detail.data.remark} />
 
-          <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <h4 className="mb-3 text-sm font-semibold text-slate-800">
-              Detail Pengajuan Salvage
-            </h4>
-
-            <DataTable
-              columns={ITEM_COLUMNS}
-              rows={detail.data.barang.map((row, index) => ({ ...row, urutan: index }))}
-              rowKey={(row) => String(row.urutan)}
-              emptyMessage="Pengajuan ini tidak memiliki rincian barang."
-              hideSearch
-            />
+              <div className="min-w-0">
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Posisi Salvage
+                </dt>
+                <dd className="mt-0.5 break-words text-sm text-slate-900">
+                  {detail.data.posisi_salvage.trim() === '' ? (
+                    <span className="text-slate-400">—</span>
+                  ) : (
+                    <>
+                      {detail.data.posisi_salvage}
+                      {detail.data.kode_posisi_salvage.trim() === '' ? null : (
+                        <span className="ml-2 text-xs text-slate-500">
+                          kode {detail.data.kode_posisi_salvage}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </dd>
+              </div>
+            </dl>
           </section>
+
+          {/*
+            Grid "Detail History Salvage" — section yang SAMA yang digambar form Tambah,
+            sebagaimana di Pega `DetailPengajuanSalvage` disisipkan keduanya.
+          */}
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <RiwayatSalvage rows={detail.data.riwayat} />
+          </section>
+
+          {/*
+            ============================================================================
+            BAGIAN TAMBAHAN — BUKAN BAGIAN `DataDetail_Salvage`
+            ============================================================================
+
+            Ketiganya datang dari section lain, dan digambar HANYA bila berisi. Lihat
+            catatan di kepala komponen ini.
+          */}
+          {adaIsi(detail.data.nama_bisnis, detail.data.pic, detail.data.tanggal_kejadian) ? (
+            <Kelompok judul="Data Klaim">
+              <Isian label="Nama Bisnis" value={detail.data.nama_bisnis} />
+              <Isian label="PIC Teknik" value={detail.data.pic} />
+              <Isian label="Tgl Kejadian" value={detail.data.tanggal_kejadian} />
+              <Isian label="ID Salvage" value={detail.data.id_salvage} />
+              <Isian label="Email" value={detail.data.email} />
+              <Isian
+                label="Lokasi di Jabodetabek"
+                value={detail.data.ada_pengajuan ? (detail.data.lokasi_salvage_di_jabodetabek ? 'Ya' : 'Tidak') : ''}
+              />
+            </Kelompok>
+          ) : null}
+
+          {adaIsi(
+            detail.data.nilai_penawaran,
+            detail.data.nama_pemenang,
+            detail.data.tanggal_lelang,
+          ) ? (
+            <Kelompok judul="Lelang">
+              <Isian label="Nilai Penawaran" value={detail.data.nilai_penawaran} />
+              <Isian label="Nama Pemenang" value={detail.data.nama_pemenang} />
+              <Isian label="Tanggal Lelang" value={detail.data.tanggal_lelang} />
+            </Kelompok>
+          ) : null}
+
+          {adaIsi(
+            detail.data.nama_pic_survey,
+            detail.data.no_telp_pic_survey,
+            detail.data.email_pic_survey,
+          ) ? (
+            <Kelompok judul="PIC Survey">
+              <Isian label="Nama PIC Survey" value={detail.data.nama_pic_survey} />
+              <Isian label="No Telp PIC Survey" value={detail.data.no_telp_pic_survey} />
+              <Isian label="Email PIC Survey" value={detail.data.email_pic_survey} />
+            </Kelompok>
+          ) : null}
+
+          {detail.data.barang.length > 0 ? (
+            <section className="rounded-lg border border-slate-200 bg-white p-4">
+              <h4 className="mb-3 text-sm font-semibold text-slate-800">
+                Detail Pengajuan Salvage
+              </h4>
+
+              <DataTable
+                columns={ITEM_COLUMNS}
+                rows={detail.data.barang.map((row, index) => ({ ...row, urutan: index }))}
+                rowKey={(row) => String(row.urutan)}
+                emptyMessage="Pengajuan ini tidak memiliki rincian barang."
+                hideSearch
+              />
+            </section>
+          ) : null}
 
           {detail.data.pengajuan_sebelum_juli_2023 ? (
             <p className="text-xs text-slate-500">

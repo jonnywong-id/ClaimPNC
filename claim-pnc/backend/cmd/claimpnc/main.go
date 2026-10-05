@@ -4669,6 +4669,21 @@ func (penyimpananBelumDikonfigurasi) Upload(
 		dokumenpenunjang.ErrUnggahGagal)
 }
 
+func (penyimpananBelumDikonfigurasi) PerpanjangTautan(
+	context.Context,
+	dokumenpenunjang.PerintahTautan,
+) (dokumenpenunjang.HasilUnggah, error) {
+	return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+		"%w: alamat layanan penyimpanan belum dikonfigurasi (PENYIMPANAN_DOKUMEN_ALAMAT)",
+		dokumenpenunjang.ErrTautanGagal)
+}
+
+func (penyimpananBelumDikonfigurasi) Hapus(context.Context, dokumenpenunjang.PerintahHapus) (string, error) {
+	return "", fmt.Errorf(
+		"%w: alamat layanan penyimpanan belum dikonfigurasi (PENYIMPANAN_DOKUMEN_ALAMAT)",
+		dokumenpenunjang.ErrHapusGagal)
+}
+
 // buildImageConverter membentuk klien layanan konversi gambar.
 //
 // Terpisah dari buildDocumentStorage karena keduanya layanan yang berbeda di alamat yang

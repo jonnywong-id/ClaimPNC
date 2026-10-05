@@ -368,8 +368,8 @@ func TestCanAcceptAndAttachment(t *testing.T) {
 	numbered := approvedLine()
 	numbered.AcceptedNo = "A1"
 	require.Equal(t, []registrasi.ViolationCode{registrasi.ViolationAcceptanceNumbered}, violationCodes(t, registrasi.CanAccept(numbered, fire)))
-	require.Equal(t, []registrasi.ViolationCode{registrasi.ViolationAcceptancePA},
-		violationCodes(t, registrasi.CanAccept(approvedLine(), registrasi.Policy{Line: registrasi.LinePersonalAccident})))
+	// PA tidak lagi ditahan: akseptasinya berlanjut ke Transfer Kasir (SetAdjustmentAcceptation langkah 113).
+	require.NoError(t, registrasi.CanAccept(approvedLine(), registrasi.Policy{Line: registrasi.LinePersonalAccident}))
 
 	require.True(t, registrasi.AcceptanceAttachmentRequired(approvedLine(), fire))
 	for _, p := range []registrasi.Policy{

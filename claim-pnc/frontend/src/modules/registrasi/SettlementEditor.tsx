@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { rupiahToCents } from '@/components/format'
+import { centsToRupiah, rupiahToCents } from '@/components/format'
 
 import { AcceptanceNumber } from './AcceptanceNumber'
-import { useAddSettlement, usePreviewSettlement, violationsFrom } from './api'
+import { useAddSettlement, usePreviewSettlement, useUpdateSettlement, violationsFrom } from './api'
 import {
   PaymentType,
   RiskType,
@@ -66,7 +66,15 @@ const VAT_OPTIONS = [
 ]
 
 const EMPTY = '——'
+
+/** Hapus baris tersimpan butuh soft delete, sedangkan T_CLAIM_ADJUSTMENT belum punya DIHAPUS_PADA. */
+const DELETE_NEEDS_COLUMN = 'Deleting a saved line needs column DIHAPUS_PADA on POOLDATA.T_CLAIM_ADJUSTMENT (DBA).'
 const PREVIEW_DELAY_MS = 300
+
+/** Persen × 10.000 menjadi teks yang dapat disunting kembali (`105000` → `10,5`). */
+function percentText(e4: number): string {
+  return e4 ? String(e4 / 10_000).replace('.', ',') : ''
+}
 
 /** Persen yang diketik (`10,5`) menjadi persen × 10.000 (`105000`). */
 function percentE4(text: string): number {
@@ -85,6 +93,10 @@ type Values = {
   mata_uang: string
   total_klaim: string
   nilai_pengajuan: string
+  /** PA: .ProposeValueTertanggung — tampil, tetapi tidak punya kolom T_CLAIM_ADJUSTMENT. */
+  nilai_pengajuan_tertanggung: string
+  /** .NoInvoice (tipe 4) — tampil, tetapi tidak punya kolom T_CLAIM_ADJUSTMENT. */
+  no_invoice: string
   loc: string
   salvage_a: string
   salvage_b: string
@@ -106,6 +118,12 @@ export function SettlementEditor({
   currencies,
   travel,
   nonMBU,
+  pa = false,
+  exGratia = false,
+  analyst = false,
+  analystTransfer = false,
+  existing,
+  onCreated,
   onClose,
 }: {
   claimID: string
@@ -118,28 +136,57 @@ export function SettlementEditor({
   travel: boolean
   /** When IsNonMbu. */
   nonMBU: boolean
+  /** When IsPA. */
+  pa?: boolean
+  /** `pyWorkPage.ClaimData.ExGratia = 1` — baris adjustment mewarisinya (`.ExGratia`). */
+  exGratia?: boolean
+  /** When `IsAnalisator` — pemanggil anggota grup Analyst. */
+  analyst?: boolean
+  /**
+   * When `isAnalistorTransfer`: lini PA dan jaminan PHK (`ValidationAdjustment` step 30) atau jaminan yang sudah
+   * ditransfer ke Analyst (`setTicketToAnalyst`). Memunculkan "Total Klaim" (`.ProposeAdjustmentValue`).
+   */
+  analystTransfer?: boolean
+  /** Baris yang sudah tersimpan (berbasis 0) — isiannya dimuat dan perubahannya disimpan ulang. */
+  existing?: { index: number; line: Settlement }
+  /** Baris baru pertama kali tersimpan; indeksnya (berbasis 0) di jaminan ini. */
+  onCreated?: (index: number) => void
+  /** Hapus pada baris yang belum tersimpan. */
   onClose: () => void
 }) {
   const add = useAddSettlement(claimID)
+  const update = useUpdateSettlement(claimID)
   const preview = usePreviewSettlement(claimID)
+  const old = existing?.line
   const [computed, setComputed] = useState<SettlementPreviewResponse | null>(null)
   const [values, setValues] = useState<Values>({
-    tipe_pembayaran: '',
-    mata_uang: policyCurrency,
-    total_klaim: '',
-    nilai_pengajuan: '',
-    loc: '',
-    salvage_a: '',
-    salvage_b: '',
-    tipe_resiko: '',
-    persen_resiko: '',
-    nilai_resiko: '',
+    // PA: baris baru bertipe Interim (`ValidationAdjustment` step 19: PaymentType := 2).
+    tipe_pembayaran: old ? old.tipe_pembayaran : pa ? PaymentType.Interim : '',
+    mata_uang: old ? old.mata_uang : policyCurrency,
+    total_klaim: old ? centsToRupiah(old.nilai_propose_sen) : '',
+    nilai_pengajuan: old ? centsToRupiah(old.nilai_pengajuan_sen) : '',
+    nilai_pengajuan_tertanggung: '',
+    no_invoice: '',
+    loc: old ? percentText(old.loc) : '',
+    salvage_a: old ? centsToRupiah(old.nilai_salvage_sen) : '',
+    salvage_b: old ? centsToRupiah(old.nilai_salvage_b_sen) : '',
+    tipe_resiko: old ? old.tipe_resiko : '',
+    persen_resiko: old ? percentText(old.persen_resiko) : '',
+    nilai_resiko: old && old.tipe_resiko === RiskType.Other ? centsToRupiah(old.nilai_resiko_sen) : '',
     professional_fee: '',
     survey_expenses: '',
     vat: '',
     tipe_vat: '1',
   })
   const set = (key: keyof Values) => (value: string) => setValues((v) => ({ ...v, [key]: value }))
+  // Pega menjalankan SetNilaiResikoSendiri (hitung, periksa, simpan) pada perubahan isian: di sini saat
+  // pilihan berubah dan saat isian teks ditinggalkan.
+  const [commitPending, setCommitPending] = useState(false)
+  const commitSoon = () => setCommitPending(true)
+  const choose = (key: keyof Values) => (value: string) => {
+    set(key)(value)
+    commitSoon()
+  }
 
   const pt = values.tipe_pembayaran
   const proposeBased = pt === PaymentType.Final || pt === PaymentType.Interim || pt === PaymentType.Adjustment
@@ -148,11 +195,12 @@ export function SettlementEditor({
   const manualRisk = values.tipe_resiko === RiskType.Other
 
   const numbers = {
-    nilai_propose_sen: proposeBased ? rupiahToCents(values.total_klaim) : 0,
+    // PA: Total Klaim (.ProposeAdjustmentValue) hanya ada pada baris isAnalistorTransfer.
+    nilai_propose_sen: proposeBased && (!pa || analystTransfer) ? rupiahToCents(values.total_klaim) : 0,
     nilai_pengajuan_sen: proposeBased ? rupiahToCents(values.nilai_pengajuan) : 0,
-    loc: proposeBased && !travel ? percentE4(values.loc) : 0,
-    nilai_salvage_sen: proposeBased && !travel ? rupiahToCents(values.salvage_a) : 0,
-    nilai_salvage_b_sen: proposeBased && !travel ? rupiahToCents(values.salvage_b) : 0,
+    loc: proposeBased && !travel && !pa ? percentE4(values.loc) : 0,
+    nilai_salvage_sen: proposeBased && !travel && !pa ? rupiahToCents(values.salvage_a) : 0,
+    nilai_salvage_b_sen: proposeBased && !travel && !pa ? rupiahToCents(values.salvage_b) : 0,
     persen_resiko: proposeBased && withPercent ? percentE4(values.persen_resiko) : 0,
     nilai_resiko_sen: proposeBased && manualRisk ? rupiahToCents(values.nilai_resiko) : 0,
     professional_fee_sen: fee ? rupiahToCents(values.professional_fee) : 0,
@@ -192,41 +240,102 @@ export function SettlementEditor({
     return () => window.clearTimeout(timer)
   }, [requestKey, malformed, runPreview])
 
-  function submit() {
-    add.mutate(request, { onSuccess: onClose })
-  }
+  // Baris tersimpan: indeksnya (berbasis 0). Baris baru: null sampai simpan pertama berhasil.
+  const savedIndex = existing?.index ?? null
+  const lastSaved = useRef(existing ? requestKey : '')
+  const { mutate: runAdd } = add
+  const { mutate: runUpdate } = update
+  useEffect(() => {
+    if (!commitPending) return
+    setCommitPending(false)
+    if (malformed || requestKey === lastSaved.current) return
+    const body = JSON.parse(requestKey) as SettlementRequest
+    if (savedIndex === null) {
+      runAdd(body, {
+        onSuccess: (result) => {
+          lastSaved.current = requestKey
+          const count = result?.klaim?.objek?.[object - 1]?.coverage[coverage - 1]?.adjustment?.length ?? 0
+          if (count > 0) onCreated?.(count - 1)
+        },
+      })
+    } else {
+      runUpdate({ ...body, adjustment: savedIndex + 1 }, { onSuccess: () => (lastSaved.current = requestKey) })
+    }
+  }, [commitPending, requestKey, malformed, savedIndex, runAdd, runUpdate, object, coverage, onCreated])
 
   const line = computed?.adjustment
-  const violations = violationsFrom(add.error)
-  const failure = add.error ?? preview.error
+  const saveError = savedIndex === null ? add.error : update.error
+  const saving = add.isPending || update.isPending
+  const violations = violationsFrom(saveError)
+  const failure = saveError ?? preview.error
   const money = (sen: number | undefined) => (line && sen !== undefined ? amount.format(sen / 100) : EMPTY)
 
   return (
-    <div role="group" aria-label="Adjustment baru" className="rounded border border-blue-200 bg-white p-4 text-sm">
+    <div
+      role="group"
+      aria-label={existing ? `Ubah adjustment ${existing.index + 1}` : 'Adjustment baru'}
+      className="rounded border border-blue-200 bg-white p-4 text-sm"
+    >
       <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
         {/* ── Kolom kiri ─────────────────────────────────────────────────────── */}
         <div className="space-y-3">
           <Select
             label="Mata Uang"
             value={values.mata_uang}
-            onChange={set('mata_uang')}
+            onChange={choose('mata_uang')}
             disabled={travel}
             options={currencies.map((c) => ({ value: c.id, label: c.nama }))}
           />
-          <Select label="Tipe Pembayaran" required value={pt} onChange={set('tipe_pembayaran')} options={PAYMENT_OPTIONS} placeholder="--- PILIH ---" />
+          {/* Tipe Pembayaran IsPA: baca saja bila !IsAnalisator. */}
+          {pa && !analyst ? (
+            <Display label="Tipe Pembayaran" required>
+              {PAYMENT_OPTIONS.find((o) => o.value === pt)?.label ?? EMPTY}
+            </Display>
+          ) : (
+            <Select label="Tipe Pembayaran" required value={pt} onChange={choose('tipe_pembayaran')} options={PAYMENT_OPTIONS} placeholder="--- PILIH ---" />
+          )}
+          {/* NoInvoice: tipe 4. */}
+          {fee && (
+            <Text onBlur={commitSoon}
+              label="NoInvoice"
+              value={values.no_invoice}
+              onChange={set('no_invoice')}
+              note="Belum tersimpan: POOLDATA.T_CLAIM_ADJUSTMENT belum punya kolom No Invoice."
+            />
+          )}
+
+          {proposeBased && pa && (
+            <>
+              {/* Kontainer IsPA, tipe selain 3/4. */}
+              <Text onBlur={commitSoon}
+                label="Nilai Pengajuan Tertanggung"
+                value={values.nilai_pengajuan_tertanggung}
+                onChange={set('nilai_pengajuan_tertanggung')}
+                note="Belum tersimpan: POOLDATA.T_CLAIM_ADJUSTMENT belum punya kolom ProposeValueTertanggung."
+              />
+              <Text onBlur={commitSoon} label="Nilai Pengajuan" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} disabled={analyst} />
+              {analystTransfer && (
+                <Text onBlur={commitSoon} label="Total Klaim" required value={values.total_klaim} onChange={set('total_klaim')} />
+              )}
+            </>
+          )}
+          {proposeBased && !pa && (
+            <>
+              <Text onBlur={commitSoon} label="Total Klaim" required value={values.total_klaim} onChange={set('total_klaim')} />
+              <Text onBlur={commitSoon} label="Nilai Pengajuan Tertanggung" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} />
+            </>
+          )}
 
           {proposeBased && (
             <>
-              <Text label="Total Klaim" required value={values.total_klaim} onChange={set('total_klaim')} />
-              <Text label="Nilai Pengajuan Tertanggung" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} />
-              <Select label="Tipe Resiko Sendiri" required value={values.tipe_resiko} onChange={set('tipe_resiko')} options={RISK_OPTIONS} placeholder="--- PILIH ---" />
+              <Select label="Tipe Resiko Sendiri" required value={values.tipe_resiko} onChange={choose('tipe_resiko')} options={RISK_OPTIONS} placeholder="--- PILIH ---" />
               {withPercent ? (
-                <Text label="Persen Resiko Sendiri (%)" value={values.persen_resiko} onChange={set('persen_resiko')} />
+                <Text onBlur={commitSoon} label="Persen Resiko Sendiri (%)" value={values.persen_resiko} onChange={set('persen_resiko')} />
               ) : (
                 <Display label="Persen Resiko Sendiri (%)">{EMPTY}</Display>
               )}
               {manualRisk ? (
-                <Text label="Nilai Resiko Sendiri" required value={values.nilai_resiko} onChange={set('nilai_resiko')} />
+                <Text onBlur={commitSoon} label="Nilai Resiko Sendiri" required value={values.nilai_resiko} onChange={set('nilai_resiko')} />
               ) : (
                 <Display label="Nilai Resiko Sendiri">{money(line?.nilai_resiko_sen)}</Display>
               )}
@@ -235,16 +344,20 @@ export function SettlementEditor({
 
           {fee && (
             <>
-              <Text label="Professional Fee" required value={values.professional_fee} onChange={set('professional_fee')} />
-              <Text label="Survey Expenses" required value={values.survey_expenses} onChange={set('survey_expenses')} />
-              <Select label="Tipe VAT" required value={values.tipe_vat} onChange={set('tipe_vat')} options={VAT_OPTIONS} />
-              <Text label="VAT (%)" required value={values.vat} onChange={set('vat')} />
+              <Text onBlur={commitSoon} label="Professional Fee" required value={values.professional_fee} onChange={set('professional_fee')} />
+              <Text onBlur={commitSoon} label="Survey Expenses" required value={values.survey_expenses} onChange={set('survey_expenses')} />
+              <Select label="Tipe VAT" required value={values.tipe_vat} onChange={choose('tipe_vat')} options={VAT_OPTIONS} />
+              <Text onBlur={commitSoon} label="VAT (%)" required value={values.vat} onChange={set('vat')} />
               <Display label="Nilai Adjuster Fee">{money(line?.nilai_asm_sen)}</Display>
             </>
           )}
 
           {pt !== '' && <Display label="Nilai Nett Pembayaran">{money(line?.nilai_gross_sen)}</Display>}
           {!travel && <Display label="Status Persetujuan LOD">{EMPTY}</Display>}
+          {/* Status Aksep Analysator (.AcceptanceAnalystStatus): IsPA, baca saja. */}
+          {pa && <Display label="Status Aksep Analysator">{EMPTY}</Display>}
+          {/* Ex Gratia (.ExGratia): tampil bila klaim Ex Gratia, baca saja. */}
+          {exGratia && <Display label="Ex Gratia">Ya</Display>}
           {nonMBU && (
             <Display label="Tanggal Transfer LOD" small>
               {EMPTY}
@@ -256,12 +369,15 @@ export function SettlementEditor({
         <div className="space-y-3">
           <Display label="Nilai Dalam IDR">{line ? rate.format(line.kurs_e4 / 10_000) : EMPTY}</Display>
           <Display label="Nilai Estimasi">{money(line?.nilai_estimasi_sen)}</Display>
+          {/* Lama hari rawat inap (.InpatientDay): IsPA, baca saja kecuali isAnalistorTransfer. */}
+          {pa && <Display label="Lama Hari Rawat Inap">{EMPTY}</Display>}
 
-          {proposeBased && !travel && (
+          {/* LOC, Salvage A, Salvage B: kontainer `!IsPATRAVEL` — tidak untuk PA dan Travel. */}
+          {proposeBased && !travel && !pa && (
             <>
-              <Text label="Lack Of Document (%)" value={values.loc} onChange={set('loc')} />
-              <Text label="Nilai Salvage A" value={values.salvage_a} onChange={set('salvage_a')} />
-              <Text label="Nilai Salvage B" value={values.salvage_b} onChange={set('salvage_b')} />
+              <Text onBlur={commitSoon} label="Lack Of Document (%)" value={values.loc} onChange={set('loc')} />
+              <Text onBlur={commitSoon} label="Nilai Salvage A" value={values.salvage_a} onChange={set('salvage_a')} />
+              <Text onBlur={commitSoon} label="Nilai Salvage B" value={values.salvage_b} onChange={set('salvage_b')} />
             </>
           )}
           {proposeBased && nonMBU && <Display label="Nilai Interim">{money(line?.nilai_interim_sen)}</Display>}
@@ -282,13 +398,14 @@ export function SettlementEditor({
       </div>
 
       {/* ── Spreading jaminan (.SpreadingList) ──────────────────────────────────── */}
-      {computed && computed.spreading.length > 0 && <SpreadingTable spreading={computed.spreading} />}
+      {/* Tipe Treaty / Pembagian Persentase: kontainer `.ExGratia = 1`. */}
+      {exGratia && computed && computed.spreading.length > 0 && <SpreadingTable spreading={computed.spreading} />}
 
       {malformed && <p className="mt-3 text-sm text-red-700">Angka tidak valid.</p>}
       {failure && (
         <div className="mt-4">
           <ErrorMessage
-            title={add.error ? 'Adjustment belum dapat ditambahkan' : 'Nilai belum dapat dihitung'}
+            title={saveError ? 'Adjustment belum tersimpan' : 'Nilai belum dapat dihitung'}
             description={
               violations.length > 0
                 ? violations.map((v) => v.pesan).join(' ')
@@ -301,12 +418,16 @@ export function SettlementEditor({
         </div>
       )}
 
-      <div className="mt-4 flex justify-end gap-3">
-        <Button tone="halus" disabled={add.isPending} onClick={onClose}>
-          Batal
-        </Button>
-        <Button tone="utama" disabled={add.isPending || malformed} onClick={submit}>
-          {add.isPending ? 'Menyimpan…' : 'Simpan'}
+      {/* Pega tidak punya Simpan/Batal: setiap perubahan isian langsung disimpan. Hapus menghapus baris. */}
+      <div className="mt-4 flex items-center justify-end gap-3">
+        {saving && <span className="text-xs text-slate-500">Menyimpan…</span>}
+        <Button
+          tone="halus"
+          disabled={saving || savedIndex !== null}
+          title={savedIndex !== null ? DELETE_NEEDS_COLUMN : undefined}
+          onClick={onClose}
+        >
+          Hapus
         </Button>
       </div>
     </div>
@@ -322,10 +443,10 @@ function Caption({ label, required, small }: { label: string; required?: boolean
   )
 }
 
-function Display({ label, small, children }: { label: string; small?: boolean; children: ReactNode }) {
+function Display({ label, small, required, children }: { label: string; small?: boolean; required?: boolean; children: ReactNode }) {
   return (
     <div>
-      <Caption label={label} small={small ?? false} />
+      <Caption label={label} small={small ?? false} required={required ?? false} />
       <p className="text-slate-700">{children}</p>
     </div>
   )
@@ -374,11 +495,18 @@ function Text({
   value,
   onChange,
   required,
+  disabled,
+  note,
+  onBlur,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
+  onBlur?: () => void
   required?: boolean
+  disabled?: boolean
+  /** Keterangan di bawah isian, mis. bila nilainya belum tersimpan. */
+  note?: string
 }) {
   return (
     <label className="block">
@@ -387,9 +515,12 @@ function Text({
         aria-label={label}
         value={value}
         inputMode="decimal"
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded border border-slate-300 px-2 py-1 text-sm"
+        onBlur={onBlur}
+        className="mt-1 block w-full rounded border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-50"
       />
+      {note && <span className="mt-1 block text-xs text-slate-500">{note}</span>}
     </label>
   )
 }
@@ -418,6 +549,8 @@ export function SettlementDetail({
   spreading,
   travel,
   nonMBU,
+  pa = false,
+  exGratia = false,
   address,
 }: {
   line: Settlement
@@ -427,6 +560,10 @@ export function SettlementDetail({
   spreading: Spreading[]
   travel: boolean
   nonMBU: boolean
+  /** When IsPA. */
+  pa?: boolean
+  /** Klaim Ex Gratia — tabel treaty hanya tampil di kontainer `.ExGratia = 1`. */
+  exGratia?: boolean
   /** Tugas dan letak baris ini (berbasis 1) — untuk tombol PRINT dan Transfer Kasir. */
   address?: { claimID: string; taskID: string; object: number; coverage: number; adjustment: number }
 }) {
@@ -444,8 +581,19 @@ export function SettlementDetail({
           <Display label="Tipe Pembayaran">{line.nama_tipe_pembayaran}</Display>
           {proposeBased && (
             <>
-              <Display label="Total Klaim">{money(line.nilai_propose_sen)}</Display>
-              <Display label="Nilai Pengajuan Tertanggung">{money(line.nilai_pengajuan_sen)}</Display>
+              {pa ? (
+                <>
+                  {/* Kontainer IsPA: ProposeValueTertanggung tidak tersimpan; ProposeValue; ProposeAdjustmentValue bila diisi. */}
+                  <Display label="Nilai Pengajuan Tertanggung">{EMPTY}</Display>
+                  <Display label="Nilai Pengajuan">{money(line.nilai_pengajuan_sen)}</Display>
+                  {line.nilai_propose_sen > 0 && <Display label="Total Klaim">{money(line.nilai_propose_sen)}</Display>}
+                </>
+              ) : (
+                <>
+                  <Display label="Total Klaim">{money(line.nilai_propose_sen)}</Display>
+                  <Display label="Nilai Pengajuan Tertanggung">{money(line.nilai_pengajuan_sen)}</Display>
+                </>
+              )}
               <Display label="Tipe Resiko Sendiri">{RISK_NAMES[line.tipe_resiko] ?? EMPTY}</Display>
               <Display label="Persen Resiko Sendiri (%)">{line.persen_resiko ? percent.format(line.persen_resiko / 10_000) : EMPTY}</Display>
               <Display label="Nilai Resiko Sendiri">{money(line.nilai_resiko_sen)}</Display>
@@ -454,6 +602,8 @@ export function SettlementDetail({
           {fee && <Display label="Nilai Adjuster Fee">{money(line.nilai_asm_sen)}</Display>}
           <Display label="Nilai Nett Pembayaran">{money(line.nilai_gross_sen)}</Display>
           {!travel && <Display label="Status Persetujuan LOD">{LOD_STATUS[line.status_akseptasi_lod ?? ''] ?? EMPTY}</Display>}
+          {pa && <Display label="Status Aksep Analysator">{EMPTY}</Display>}
+          {exGratia && <Display label="Ex Gratia">Ya</Display>}
           {nonMBU && (
             <Display label="Tanggal Transfer LOD" small>
               {EMPTY}
@@ -463,7 +613,8 @@ export function SettlementDetail({
         <div className="space-y-3">
           <Display label="Nilai Dalam IDR">{rate.format(line.kurs_e4 / 10_000)}</Display>
           <Display label="Nilai Estimasi">{money(line.nilai_estimasi_sen || estimation)}</Display>
-          {proposeBased && !travel && (
+          {pa && <Display label="Lama Hari Rawat Inap">{EMPTY}</Display>}
+          {proposeBased && !travel && !pa && (
             <>
               <Display label="Lack Of Document (%)">{line.loc ? percent.format(line.loc / 10_000) : EMPTY}</Display>
               <Display label="Nilai Salvage A">{optional(line.nilai_salvage_sen)}</Display>
@@ -496,7 +647,7 @@ export function SettlementDetail({
           )}
         </div>
       </div>
-      {spreading.length > 0 && <SpreadingTable spreading={spreading} />}
+      {exGratia && spreading.length > 0 && <SpreadingTable spreading={spreading} />}
     </div>
   )
 }

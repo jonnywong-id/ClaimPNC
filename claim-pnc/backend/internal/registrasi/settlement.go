@@ -199,6 +199,11 @@ type SettlementContext struct {
 	TSIRate ExchangeRate
 
 	Now time.Time
+
+	// Analyst: pemanggil anggota grup Analyst (When `IsAnalisator`). Pada PA, "Nilai Pengajuan"
+	// nonaktif bagi Analyst (`InputAdjustment_sect`: `.AcceptanceStatus != '' || IsAnalisator`),
+	// sehingga wajibnya tidak diperiksa — isian nonaktif tidak divalidasi Pega.
+	Analyst bool
 }
 
 // Pesan aturan. Yang berasal dari Pega ditulis apa adanya; yang tambahan berbahasa
@@ -216,6 +221,8 @@ const (
 	msgAdjustmentNegative   = "Nilai adjust Klaim tidak boleh Kecil dari 0"
 	msgTotalOverEstimate    = "Total Nilai Adjustment Melebihi Estimasi"
 	msgSubmittedEmpty       = "Nilai Pengajuan Tertanggung is required."
+	msgSubmittedEmptyPA     = "Nilai Pengajuan is required."
+	msgProposeOverSubmitted = "Nilai Total Klaim melebihi Nilai Pengajuan Klaim"
 	msgSalvageNotHere       = "Salvage settlement lines are added from the Salvage module."
 	msgRejectNeedsReason    = "Tolak Klaim needs Alasan Tolak Klaim 1 and 2, whose list (GetDataPenolakanKlaimMas) is not in the export yet."
 	msgPaymentTypeUnknown   = "Unknown payment type."
@@ -274,6 +281,42 @@ func InterimPaid(c Coverage) Money {
 
 func proposeBased(pt string) bool {
 	return pt == PaymentFinal || pt == PaymentInterim || pt == PaymentAdjustment
+}
+
+// CurrencyIDR adalah kode mata uang rupiah (POOLDATA.CURRENCY) — `NewEstimationPA` mengisi
+// `.Currency := "10026"` dan `.KursValue := 1`.
+const CurrencyIDR = "10026"
+
+// NewEstimationPA adalah aktivitas Pega `NewEstimationPA`: satu item baru dengan satu estimasi
+// klaim bernilai TSI jaminan, bermata uang IDR, kurs 1, bertanggal saat ini. Ia dipanggil
+// `ValidationAdjustment` step 15 hanya bila lini PA dan jaminan belum punya baris adjustment —
+// yaitu pada Tambah pertama. Estimasi inilah yang dicetak Claim Face Sheet PA, karena klaim PA
+// tidak melewati tahap Input Estimasi.
+//
+// Mengembalikan false bila tidak ada yang ditambahkan: bukan PA, jaminan sudah punya adjustment,
+// atau masih ada estimasi yang belum dibuatkan CFS (Tambah berulang tanpa simpan tidak menumpuk
+// estimasi — di Pega setiap Tambah langsung membuat baris, sehingga hal itu tidak terjadi).
+func NewEstimationPA(c Claim, cov *Coverage, now time.Time) bool {
+	if c.Policy.Line != LinePersonalAccident || len(cov.Settlement) > 0 || HasUnprintedEstimate(*cov) {
+		return false
+	}
+	cov.Item = append(cov.Item, ObjectItem{Estimation: []Estimation{{
+		Type: EstimateClaim, Currency: CurrencyIDR, Date: now, Value: cov.TSI,
+		Rate: ExchangeRateOne, Converted: cov.TSI,
+	}}})
+	return true
+}
+
+// PHKCoverages adalah kode jaminan When `IsPHK` (`.CoverageOldID` 10010, 10023, 10018).
+var PHKCoverages = map[string]bool{"10010": true, "10023": true, "10018": true}
+
+// AnalystTransferLine adalah When `isAnalistorTransfer`: lini PA dan `.IsAnalisatorTransfer = 1`.
+// Penanda baris itu diisi `ValidationAdjustment` step 30 bila jaminannya PHK (atau klaim TKI — penanda
+// TKI belum dibaca aplikasi ini), dan `setTicketToAnalyst` step 5/8 pada jaminan yang ditransfer ke
+// Analyst (ISANALISTRANSFER). Hanya pada baris seperti ini "Total Klaim" (`.ProposeAdjustmentValue`)
+// tampil dan wajib (`InputAdjustment_sect`, kontainer `isAnalistorTransfer || isTKIPHK`).
+func AnalystTransferLine(c Claim, cov Coverage) bool {
+	return c.Policy.Line == LinePersonalAccident && (PHKCoverages[strings.TrimSpace(cov.ID)] || cov.AnalystTransferred)
 }
 
 // ComputeSettlementLine menghitung nilai-nilai sebuah baris tanpa memeriksanya — dipakai
@@ -339,6 +382,12 @@ func ComputeSettlementLine(in SettlementInput, sc SettlementContext) SettlementL
 		if pt == PaymentFinal || pt == PaymentInterim {
 			line.Gross = final - line.SalvageB - line.Interim
 		}
+		// PA: Nilai Propose Adjustment hanya diisi pada baris `isAnalistorTransfer`; selama ia kosong
+		// atau di bawah resiko sendiri, Total Klaim dan Nilai Adjustment nol (`SetNilaiResikoSendiri`
+		// step 28).
+		if sc.Claim.Policy.Line == LinePersonalAccident && (line.Propose <= 0 || line.Propose < line.RiskValue) {
+			line.Gross = 0
+		}
 		// Travel: klaim di bawah resiko sendiri bernilai nol (`SetNilaiResikoSendiri`
 		// langkah 4789). Non-MBU menolaknya saat diperiksa.
 		if line.RiskValue > line.Propose && sc.Claim.Policy.Line == LineTravel {
@@ -391,12 +440,24 @@ func NewSettlementLine(in SettlementInput, sc SettlementContext) (SettlementLine
 	valueIDR := line.Value.Convert(line.Rate)
 
 	if proposeBased(pt) {
-		if in.Propose == 0 {
+		pa := sc.Claim.Policy.Line == LinePersonalAccident
+		// PA: "Nilai Propose Adjustment" hanya ada (dan wajib) pada baris isAnalistorTransfer;
+		// lini lain mewajibkan "Total Klaim".
+		if in.Propose == 0 && (!pa || AnalystTransferLine(sc.Claim, sc.Coverage)) {
 			v.add(ViolationSettlementPropose, "nilai_propose", msgProposeEmpty)
 		}
-		// Section: "Nilai Pengajuan Tertanggung" ber-pyRequired untuk tipe selain 3/4/7.
-		if in.Submitted == 0 {
-			v.add(ViolationSettlementSubmitted, "nilai_pengajuan", msgSubmittedEmpty)
+		// Section: "Nilai Pengajuan Tertanggung" (PA: "Nilai Pengajuan", .ProposeValue) ber-pyRequired
+		// untuk tipe selain 3/4/7.
+		if in.Submitted == 0 && !(pa && sc.Analyst) {
+			msg := msgSubmittedEmpty
+			if pa {
+				msg = msgSubmittedEmptyPA
+			}
+			v.add(ViolationSettlementSubmitted, "nilai_pengajuan", msg)
+		}
+		// SetNilaiResikoSendiri step 39: ProposeAdjustmentValue > ProposeValue.
+		if pa && in.Propose > in.Submitted && in.Submitted > 0 {
+			v.add(ViolationSettlementPropose, "nilai_propose", msgProposeOverSubmitted)
 		}
 		switch line.RiskType {
 		case RiskOfClaim, RiskOfTSI:
@@ -407,8 +468,9 @@ func NewSettlementLine(in SettlementInput, sc SettlementContext) (SettlementLine
 		default:
 			v.add(ViolationSettlementRisk, "tipe_resiko", msgRiskTypeEmpty)
 		}
-		// Non-MBU: resiko sendiri tidak boleh melampaui Total Klaim.
-		if line.RiskValue > line.Propose && sc.Claim.Policy.Line != LineTravel {
+		// Non-MBU: resiko sendiri tidak boleh melampaui Total Klaim. PA tanpa Nilai Propose
+		// Adjustment tidak diperiksa (nilainya nol, step 28).
+		if line.RiskValue > line.Propose && sc.Claim.Policy.Line != LineTravel && !(pa && in.Propose == 0) {
 			v.add(ViolationSettlementRisk, "nilai_resiko", msgRiskOverValue)
 		}
 		if line.Propose.Convert(line.Rate) > claimEstimateIDR {

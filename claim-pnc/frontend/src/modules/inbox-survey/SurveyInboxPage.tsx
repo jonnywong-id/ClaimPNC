@@ -593,7 +593,14 @@ function Teks({ nilai }: { nilai: string }) {
  * kosong pada halaman ini — dan yang kedua terbaca sebagai "datanya belum diisi petugas".
  */
 function judulKolom(k: KolomLayar): string {
-  return k.tersedia ? k.judul : `${k.judul} · belum tersedia`
+  if (!k.tersedia) return `${k.judul} · belum tersedia`
+
+  // Kolom PENGGANTI terisi dan tampak wajar, tetapi isinya BUKAN kolom yang digambar Pega.
+  // Tanpa penanda di judulnya, selisih itu tidak dapat dilihat siapa pun — dan selisih yang
+  // tidak terlihat adalah selisih yang tidak pernah dilaporkan.
+  if (k.pengganti) return `${k.judul} · pengganti`
+
+  return k.judul
 }
 
 /**

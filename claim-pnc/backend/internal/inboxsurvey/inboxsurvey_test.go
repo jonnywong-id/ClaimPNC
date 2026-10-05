@@ -96,3 +96,55 @@ func TestKPIKindAndFilterNormalize(t *testing.T) {
 	require.Equal(t, inboxsurvey.KPIFinal,
 		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIFinal}.Normalize().Kind)
 }
+
+// TestAppointmentNoMemotongPrefixKelasPega mengunci kolom "Appointment No".
+//
+// # Kenapa uji ini ada
+//
+// Kolom ini sempat dinyatakan menunggu `ADJUSTERPIC` dari Tim Pega selama berhari-hari, atas
+// dugaan bahwa ia menggambar nama adjuster. Yang mematahkannya adalah Work Owner yang melihat
+// layar Pega berjalan: isinya `SRV-xxxxx`.
+//
+// Nomor itu ternyata sudah di tangan sejak awal — `CASEID` dikurangi prefix kelas Pega — dan
+// Pega sendiri menghitungnya persis begitu (`SetTempLostAdjuster-Act.xml:6197`). Uji ini
+// mengunci kesetaraan itu supaya kolomnya tidak pernah lagi dinyatakan menunggu siapa pun.
+func TestAppointmentNoMemotongPrefixKelasPega(t *testing.T) {
+	cases := []struct {
+		nama     string
+		surveyID string
+		mau      string
+	}{
+		{"kunci utuh berprefix", "ASM-FW-GCNMFW-WORK SRV-12345", "SRV-12345"},
+		{"sudah tanpa prefix", "SRV-12345", "SRV-12345"},
+		{"berspasi di ujung", "  ASM-FW-GCNMFW-WORK SRV-7  ", "SRV-7"},
+		{"kosong", "", ""},
+
+		// Nilai yang TIDAK berbentuk seperti dugaan dikembalikan apa adanya, bukan dipotong
+		// membabi buta pada posisi 19. Di sinilah TrimPrefix berbeda dari @substring(.,19,30),
+		// dan perbedaannya justru muncul pada data yang menyimpang.
+		{"bentuk lain tidak dipotong", "SRV-INI-PANJANG-SEKALI-SEKALI", "SRV-INI-PANJANG-SEKALI-SEKALI"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.nama, func(t *testing.T) {
+			task := inboxsurvey.SurveyTask{SurveyID: c.surveyID}
+			require.Equal(t, c.mau, task.AppointmentNo())
+		})
+	}
+}
+
+// TestAppointmentNoSepadanDenganPemotonganPega menjaga satu angka yang mudah dikira sepele.
+//
+// `SetTempLostAdjuster-Act.xml:6197` memotong pada posisi 19. Angka itu hanya benar selama
+// prefiksnya tepat 19 karakter — dan bila keduanya berbeda, nomor survei terpotong di tengah
+// tanpa galat apa pun.
+//
+// Diuji lewat PERILAKU, bukan lewat panjang konstantanya: yang harus sepadan adalah hasilnya,
+// dan itu yang dilihat pengguna.
+func TestAppointmentNoSepadanDenganPemotonganPega(t *testing.T) {
+	const kunci = "ASM-FW-GCNMFW-WORK SRV-98765"
+
+	task := inboxsurvey.SurveyTask{SurveyID: kunci}
+	require.Equal(t, kunci[19:], task.AppointmentNo(),
+		"Pega memotong @substring(.CaseID,19,30); hasil di sini harus sama")
+}

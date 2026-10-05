@@ -33,6 +33,11 @@ var (
 	ErrTaskAlreadyDone    = errors.New("registrasi: tugas sudah selesai")
 	ErrInvalidAction      = errors.New("registrasi: tindakan tidak berlaku pada tahap ini")
 	ErrStageMismatch      = errors.New("registrasi: klaim tidak sedang berada di tahap itu")
+
+	// ErrNotAvailableAtStage: klaim berada di tahap yang benar menurut tugasnya, tetapi fitur
+	// yang diminta tidak dimiliki layar tahap itu (mis. grid Adjustment di luar tahap
+	// InputSurveyor). Berbeda dari ErrStageMismatch, memuat ulang layar tidak mengubah apa pun.
+	ErrNotAvailableAtStage = errors.New("registrasi: fitur tidak tersedia pada tahap ini")
 )
 
 // ErrExchangeRateNotFound dikembalikan bila kurs mata uang pada tanggal kejadian belum
@@ -79,6 +84,7 @@ const (
 	ViolationPolicyPeriodEnded       ViolationCode = "periode_polis_berakhir"
 	ViolationReportedAfter7Days      ViolationCode = "lapor_lewat_7_hari"
 	ViolationReceivedAfter90Days     ViolationCode = "terima_dokumen_lewat_90_hari"
+	ViolationReceivedDateRequired    ViolationCode = "terima_dokumen_kosong"
 	ViolationDeclarationPolicy       ViolationCode = "polis_deklarasi"
 	ViolationDuplicateClaim          ViolationCode = "klaim_ganda"
 	ViolationSLIKNumberEmpty         ViolationCode = "nomor_slik_kosong"
@@ -107,6 +113,9 @@ const (
 	ViolationCommitteeTransferred    ViolationCode = "komite_sudah_ditransfer"
 	ViolationCommitteeIncomplete     ViolationCode = "adjustment_belum_lengkap"
 	ViolationCommitteeNoApprover     ViolationCode = "komite_tanpa_penyetuju"
+	ViolationNoteTooLong             ViolationCode = "catatan_terlalu_panjang"
+	ViolationAnalystTransferred      ViolationCode = "sudah_transfer_analis"
+	ViolationAnalystNotAllowed       ViolationCode = "transfer_analis_tidak_berlaku"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

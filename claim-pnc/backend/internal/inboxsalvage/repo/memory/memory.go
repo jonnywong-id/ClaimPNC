@@ -53,6 +53,18 @@ type Claim struct {
 	// HasBuybackValue menandai klaim ini punya baris adjustment ber-`NILAI_SALVAGE_A`
 	// terisi — penyaring daftar Salvage Buyback.
 	HasBuybackValue bool
+
+	// Objects dan Coverages adalah isi kedua autocomplete pada form "Menambahkan Data
+	// Salvage" — padanan `T_CLAIM_OBJECTLIST` dan `T_CLAIM_OBJECTCOVERAGE`.
+	//
+	// Keduanya ditaruh DI DALAM Claim, bukan sebagai peta tersendiri, karena keduanya
+	// memang milik satu klaim dan tidak pernah dibaca tanpa klaimnya. Menyimpannya
+	// terpisah hanya menambah satu kesempatan agar keduanya tidak sinkron.
+	//
+	// Kosong adalah keadaan yang SAH dan ikut diuji: klaim yang objeknya belum terisi
+	// memang ada, dan form tetap harus dapat diisi di atasnya.
+	Objects   []inboxsalvage.ObjectChoice
+	Coverages []inboxsalvage.CoverageChoice
 }
 
 // Salvage adalah satu baris `POOLDATA.PNC_SALVAGE` beserta agregat detailnya.
@@ -98,6 +110,9 @@ type Store struct {
 	// Ia peta, bukan senarai di dalam Salvage, karena panel detail membacanya lewat ID —
 	// dan Create menambahnya tanpa menyentuh baris pengajuannya.
 	items map[string][]inboxsalvage.DetailBarang
+
+	// attachments mencacah lampiran yang sudah disimpan, dipakai menyusun nama berkas.
+	attachments int
 
 	// now memasok tanggal hari ini, dapat diganti uji.
 	//
@@ -404,6 +419,20 @@ func (s *Store) Detail(
 		// `sync.RWMutex` melarang penguncian baca bertingkat — ia dapat mengunci mati
 		// bila ada penulis yang menunggu di antara keduanya.
 		detail.History = s.historyOfLocked(item.ClaimNo)
+
+		// Pilihan objek dan coverage ikut dibawa: daftar "Rejected Checker" membuka
+		// FORM, bukan panel baca, dan kedua autocomplete-nya harus terisi di sana.
+		for _, claim := range s.claims {
+			if claim.ClaimNo != item.ClaimNo {
+				continue
+			}
+			detail.ObjectChoices = append(
+				[]inboxsalvage.ObjectChoice{}, claim.Objects...)
+			detail.CoverageChoices = append(
+				[]inboxsalvage.CoverageChoice{}, claim.Coverages...)
+			break
+		}
+
 		return detail, nil
 	}
 
@@ -439,6 +468,14 @@ func (s *Store) DetailByClaim(
 		base.PIC = claim.PIC
 		base.BusinessName = claim.BusinessName
 		base.LossDate = claim.LossDate
+
+		// Disalin, bukan dibagikan. Senarai yang dibagikan dapat diubah pemanggil, dan
+		// perubahannya akan terbaca sebagai perubahan data contoh pada permintaan
+		// berikutnya — kelas kerusakan yang hanya muncul setelah layar dipakai berkali-kali.
+		base.ObjectChoices = append(
+			[]inboxsalvage.ObjectChoice{}, claim.Objects...)
+		base.CoverageChoices = append(
+			[]inboxsalvage.CoverageChoice{}, claim.Coverages...)
 		break
 	}
 
@@ -477,8 +514,67 @@ func (s *Store) DetailByClaim(
 		detail.BusinessName = base.BusinessName
 	}
 	detail.History = base.History
+	detail.ObjectChoices = base.ObjectChoices
+	detail.CoverageChoices = base.CoverageChoices
 
 	return detail, nil
+}
+
+// AttachDocument mencatat satu lampiran di memori.
+//
+// Yang ditirunya hanyalah BENTUK jawabannya — nama berkas yang tersimpan dan penanda
+// tertaut-tidaknya ke pengajuan — bukan cara Oracle membangkitkan DATAID lewat
+// `C_COUNTER_ATTACHMENT`. Yang diuji di sini aturan yang sama: berkas tanpa isi ditolak,
+// nama disusun dari klaimnya, dan penaut salvage dilewati saat ID pengajuan belum ada.
+func (s *Store) AttachDocument(
+	ctx context.Context,
+	doc inboxsalvage.DocumentUpload,
+) (inboxsalvage.AttachedDocument, error) {
+	if err := ctx.Err(); err != nil {
+		return inboxsalvage.AttachedDocument{}, err
+	}
+
+	clean := doc.Clean()
+	if err := clean.Validate(); err != nil {
+		return inboxsalvage.AttachedDocument{}, err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.attachments++
+	sequence := s.attachments
+
+	name := inboxsalvage.SafeFileName(clean.FileName) + "-" + clean.ClaimNo +
+		"-" + strconv.Itoa(sequence)
+	if clean.MimeType != "" {
+		name += "." + clean.MimeType
+	}
+
+	return inboxsalvage.AttachedDocument{
+		DataID:          "26" + strconv.Itoa(1000000000+sequence),
+		ImageID:         "IMG" + strconv.Itoa(sequence),
+		StoredName:      name,
+		LinkedToSalvage: clean.SalvageID != "",
+	}, nil
+}
+
+// Currencies mengembalikan pilihan "Mata Uang" contoh.
+//
+// Isinya KARANGAN, sama seperti seluruh data contoh modul ini — dan itu sah di sini
+// justru karena ia tidak pernah dipakai di produksi. Yang dibuktikannya adalah layar
+// menggambar daftarnya, bukan daftar itu sendiri benar.
+func (s *Store) Currencies(
+	ctx context.Context,
+) ([]inboxsalvage.CurrencyOption, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return []inboxsalvage.CurrencyOption{
+		{Code: "IDR", Label: "IDR"},
+		{Code: "USD", Label: "USD"},
+	}, nil
 }
 
 // historyOfLocked menyusun grid riwayat satu klaim; pemanggil sudah memegang kunci.
@@ -561,8 +657,11 @@ func (s *Store) Create(ctx context.Context, form inboxsalvage.Form) (string, err
 			// barisnya sendiri menjadi kosong — butir 12 daftar perbaikan `P-5`
 			// (`D-49` #9).
 			s.salvages[index].SalvageID = form.SalvageID
-			s.items[form.SalvageID] = append(
-				s.items[form.SalvageID], barangOf(form)...)
+
+			// Daftar barang DIGANTI, bukan ditambahi — mengikuti `pyDeleteSQL` pada
+			// `RDB List/PNCSalvageGetChekerDataKlaimAllData-SQL.xml`, yang membuang
+			// seluruh detail milik pengajuan itu sebelum yang baru disisipkan.
+			s.items[form.SalvageID] = barangOf(form)
 			return form.SalvageID, nil
 		}
 		return "", inboxsalvage.ErrRowNotFound

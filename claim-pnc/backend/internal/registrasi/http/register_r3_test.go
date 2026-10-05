@@ -217,6 +217,18 @@ func TestSaveRegisterRejectsBadDates(t *testing.T) {
 	}
 }
 
+// Tanggal Terima Dokumen kosong bukan galat bentuk: isiannya tidak tampil pada lini selain
+// Travel dan PA, sehingga klaim Fire tetap dapat diregistrasi.
+func TestSaveRegisterAllowsEmptyDateReceived(t *testing.T) {
+	e := newHTTPEnv(t)
+	reg := e.upToInputRegister(t)
+	body := validRegister(reg.Task.ID)
+	body.DateReceived = ""
+	w := e.do(t, http.MethodPost, "/registrasi/register", body)
+	require.Equal(t, http.StatusOK, w.Code, "badan = %s", w.Body.String())
+	require.Empty(t, decode[registrasihttp.ClaimResponse](t, w).Claim.DateReceived)
+}
+
 // Tugas yang tidak ada: 404 pada register, simpan, ambil, dan selesai.
 func TestTaskRoutesUnknownTask(t *testing.T) {
 	e := newHTTPEnv(t)

@@ -140,6 +140,20 @@ func (r *Repo) Ambil(
 	return pindai(rows)
 }
 
+// PerbaruiTautan memenuhi dokumenpenunjang.Repo.
+func (r *Repo) PerbaruiTautan(ctx context.Context, imageID string, hasil dokumenpenunjang.HasilUnggah) error {
+	_, err := r.db.ExecContext(ctx, query("perbarui_tautan"),
+		strings.TrimSpace(hasil.URL),
+		nullTime(hasil.ExpiresAt),
+		nullIfEmpty(hasil.Folder),
+		strings.TrimSpace(imageID),
+	)
+	if err != nil {
+		return fmt.Errorf("dokumenpenunjang/sqlstore: menyimpan alamat baru: %w", linkError(err))
+	}
+	return nil
+}
+
 // namaAplikasiPenyimpanan adalah nilai `APPNAME` yang modul ini tulis dan baca.
 //
 // # Kenapa ia konstanta di sini, bukan hasil pencarian seperti saat mengunggah

@@ -103,6 +103,14 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// supaya layar dapat mengisi tabel Detail Item Salvage. Lihat Handler.Upload.
 		perPortal.Post("/inbox-salvage/unggah-detail", h.Upload)
 
+		// Modal "UploadDocument_Salvage".
+		//
+		// Berbeda dari rute di atasnya, yang ini BENAR-BENAR MENYIMPAN — berkasnya masuk
+		// ke `TEMP_DATA_ATTACHFILE`, keterangannya ke `DATA_ATTACHFILE`, dan penautnya ke
+		// `SALAVAGEDOCUMENT`. Keduanya mudah tertukar karena sama-sama menerima berkas;
+		// yang membedakan adalah apa yang terjadi sesudahnya.
+		perPortal.Post("/inbox-salvage/dokumen", h.AttachDocuments)
+
 		// Aksi tulis yang belum dibangun. Rutenya ADA supaya tombol di layar menjawab
 		// dengan alasan, bukan dengan "halaman tidak ditemukan" — lihat
 		// Handler.RejectWrite.

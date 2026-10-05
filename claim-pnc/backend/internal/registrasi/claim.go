@@ -301,6 +301,13 @@ type InsuredItem struct {
 	Name     string
 	Location string
 	Coverage []Coverage
+
+	// Job dan DateOfBirth adalah Pekerjaan dan Tanggal Lahir peserta PA — kolom grid objek
+	// `ShowObjectAdj` (IsPA). Hanya dibaca, dari POOLDATA.T_PERSONLIST polis (ASMJOBNAME,
+	// ASMDATEOFBIRTH), sama dengan `GetListObjectPATravel`; T_CLAIM_OBJECTLIST tidak mengisinya.
+	// DateOfBirth teks apa adanya: yyyymmdd atau dd/mm/yyyy.
+	Job         string
+	DateOfBirth string
 }
 
 // Coverage adalah satu jaminan yang dipakai pada sebuah objek.
@@ -318,6 +325,12 @@ type Coverage struct {
 
 	// Settlement adalah AdjustmentList jaminan ini (tahap InputSurveyor) — lihat settlement.go.
 	Settlement []SettlementLine
+
+	// AnalystTransferred adalah ISANALISTRANSFER = 1 — `.IsAnalisTransfer` jaminan, diisi tombol
+	// "Transfer ke Analyst" (`setTicketToAnalyst` step 5, bersama ISKOMITETRANSFER dan
+	// USERBUSINESSPA). Jaminan yang sudah ditandai tidak menampilkan tombol itu lagi. Penyimpanan
+	// hanya MENGISI penanda ini, tidak pernah mengosongkannya.
+	AnalystTransferred bool
 }
 
 // CauseOfLossPA adalah kode penyebab kerugian yang menjadi bagian kunci duplikasi
@@ -472,6 +485,17 @@ type Claim struct {
 
 	ProcessStatus ProcessStatus
 	ClaimStatus   ClaimStatus
+
+	// AnalystTransferredAt adalah ANALYST_TRANSFERDATE — `ClaimData.AnalystTransferDate`, diisi
+	// tombol "Transfer ke Analyst" (`setTicketToAnalyst` step 9) hanya bila masih kosong. Selain
+	// tanggal, ia menggantikan penanda `IsAnalisTransfer = "1"` yang di Pega hidup di BLOB tanpa
+	// kolom: klaim yang sudah pernah ditransfer ke Analyst tidak menampilkan tombol itu lagi.
+	AnalystTransferredAt time.Time
+
+	// PendingClose adalah ISPENDINGCLOSE — `ClaimData.IsPendingClosed`: klaim ditutup sementara
+	// lewat tombol Tutup Klaim. Tombol itu tidak tampil lagi selama penanda ini terisi. Diisi
+	// ClosureStore.PendingClose (layar klaim, tombol Tutup Klaim), tidak oleh ClaimRepo.
+	PendingClose bool
 
 	// ClaimStatusName adalah nama ClaimStatus dari master V_STS_CLAIM — hanya dibaca,
 	// diisi penyimpanan.

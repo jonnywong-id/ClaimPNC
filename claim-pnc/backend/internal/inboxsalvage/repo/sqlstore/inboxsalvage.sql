@@ -535,6 +535,183 @@ VALUES (CURRENT_TIMESTAMP, :1, :2, :3, :4,
         :5, :6, TO_NUMBER(:7), :8, :9,
         :10, :11)
 
+-- ============================================================================
+-- UNGGAHAN DOKUMEN — MODAL "UploadDocument_Salvage"
+-- ============================================================================
+--
+-- Keenam pernyataan di bawah menggantikan pasca-proses
+-- `Activity/SaveFilePenunjangBySalvage-Act.xml`, dan urutannya mengikuti activity itu
+-- langkah demi langkah.
+--
+-- ----------------------------------------------------------------------------
+-- KENAPA PROCEDURE DIPANGGIL, PADAHAL `D-02` MELARANGNYA
+-- ----------------------------------------------------------------------------
+--
+-- Keputusan Work Owner 2026-10-03: **ikuti Pega apa adanya**. Itu diambil setelah dua
+-- penghalang nyata disampaikan, dan keduanya justru hilang dengan memanggil procedure:
+--
+--   * `POOLDATA.InsertSalvageDocument` TIDAK ADA di `Database/`. Argumennya terbaca dari
+--     `InsertToSalvageDoc_SQL`, isinya tidak. Menulis sendiri ke `SALAVAGEDOCUMENT`
+--     berarti menebak kolom dan aturannya; memanggilnya tidak.
+--   * `new_uuid`, pembangkit kunci `C_COUNTER_ATTACHMENT` yang dipakai KEDUA procedure
+--     lampiran, juga tidak ikut dikirim. Ia dipakai DI DALAM procedure, sehingga
+--     memanggil procedure membuatnya tidak perlu diketahui sama sekali.
+--
+-- Menulis ulang keduanya di Go — yang `D-02` kehendaki — menuntut menebak dua hal pada
+-- jalur yang menyimpan DOKUMEN NASABAH. Tebakan di sana menghasilkan lampiran yang tidak
+-- dapat ditemukan kembali, dan itu baru terlihat berbulan-bulan kemudian.
+--
+-- Selisih terhadap `D-02` karena itu DISENGAJA dan tercatat di PlannedDifferences,
+-- berlaku untuk jalur dokumen saja. Pernyataan lain di berkas ini tetap SQL langsung.
+--
+-- ----------------------------------------------------------------------------
+-- ISI DAN KETERANGAN BERKAS TERPISAH, DITAUTKAN `IMAGEID`
+-- ----------------------------------------------------------------------------
+--
+-- Ini yang paling mudah salah dibaca: `TEMP_SET_ATTACHMENT_64BIT` menyimpan ISI berkas
+-- (`ATTACHFILE`, base64) ke `TEMP_DATA_ATTACHFILE`, sementara `SET_ATTACHMENT_64BIT`
+-- menyimpan KETERANGANNYA ke `DATA_ATTACHFILE` — dan `DATA_ATTACHFILE` tidak punya kolom
+-- isi sama sekali.
+--
+-- Keduanya membangkitkan `DATAID` SENDIRI-SENDIRI, sehingga DATAID keduanya BERBEDA untuk
+-- satu berkas yang sama. Yang menautkan keduanya adalah **`IMAGEID`** — dan itulah sebabnya
+-- `GetDocumentData` mencari dengan kolom itu, bukan dengan DATAID.
+
+-- CATATAN: `IMAGEID` TIDAK dibangkitkan di sini.
+--
+-- `RDB List/GenerateimageID-SQL.xml` menyusunnya dengan
+-- `STANDARD_HASH('ASMPP' || TO_CHAR(SYSTIMESTAMP, …), 'MD5')` — dua fungsi yang keduanya
+-- khas Oracle, dan `D-20` menuntut satu set SQL yang berjalan di Oracle maupun
+-- PostgreSQL. Pembangkitannya karena itu pindah ke Go (`inboxsalvage.NewImageID`), tempat
+-- ia menghasilkan teks yang sama persis DAN dapat diuji tanpa basis data.
+
+-- name: attachment_name_prefix
+-- Awalan nama berkas — salinan `RDB List/GetNamaFile-SQL.xml`.
+--
+-- Bind: :1 DOC_TYPE_DT_ID
+--
+-- `SetFileNameSalvage` menyusun nama berkas sebagai
+-- `<awalan>-<nomor klaim>-<urutan>.<ekstensi>`, dan awalan itulah yang dibaca di sini.
+-- Tidak ada baris yang cocok BUKAN galat — lihat Repo.AttachDocument.
+SELECT t.NAMAFILE                      AS NAME_PREFIX
+  FROM POOLDATA.LST_TYPE_DOC_BUSINESS t
+ WHERE t.DOC_TYPE_DT_ID = :1
+
+-- name: attachment_sequence_of_claim
+-- Urutan berkas ke berapa pada klaim ini — salinan `RDB List/CountSalvage-SQL.xml`.
+--
+-- Bind: :1 NOKLAIM · :2 CATEGORY · :3 SUB_CATEGORY
+--
+-- Kueri lama memakai `select *` lalu menghitung barisnya di klipboard; di sini yang
+-- diambil langsung jumlahnya. Hasilnya sama, tanpa menarik seluruh baris beserta isinya.
+--
+-- Nama tabelnya memang `SALAVAGEDOCUMENT`, dengan salah ketik yang dibawa apa adanya —
+-- mengubah nama tabel menempuh `D-63`.
+SELECT COUNT(*)                        AS ROW_COUNT
+  FROM POOLDATA.SALAVAGEDOCUMENT s
+ WHERE s.NOKLAIM = :1
+   AND s.CATEGORY = :2
+   AND s.SUB_CATEGORY = :3
+
+-- name: attachment_content
+-- Menyimpan ISI berkas — salinan `RDB List/SaveAttachmentToDBTemp_Sql-SQL.xml`.
+--
+-- Bind: :1 mime · :2 catatan · :3 nama berkas · :4 perintah · :5 operator · :6 IMAGEID
+--       :7 kategori · :8 sub-kategori · :9 IDPEGA · :10 isi base64
+--       :11 DATAID keluar · :12 pesan galat keluar
+--
+-- `COMMIT` di dalam blok kueri lama TIDAK dibawa: transaksinya dipegang Go (`D-68`),
+-- supaya kegagalan pada langkah berikutnya tidak meninggalkan berkas setengah tersimpan.
+BEGIN
+  POOLDATA.TEMP_SET_ATTACHMENT_64BIT(:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12);
+END;
+
+-- name: attachment_meta
+-- Menyimpan KETERANGAN berkas — salinan `RDB List/SaveAttachmentToDB_Sql-SQL.xml`.
+--
+-- Bind sama dengan attachment_content, TANPA isi berkas: `DATA_ATTACHFILE` tidak punya
+-- kolom isi.
+BEGIN
+  POOLDATA.SET_ATTACHMENT_64BIT(:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11);
+END;
+
+-- name: attachment_history
+-- Baris histori — salinan `RDB List/InsertDokumentHistoriKlaimPNC-SQL.xml`.
+--
+-- Bind: :1 DATAID · :2 NOKLAIM · :3 operator · :4 nama berkas · :5 mime · :6 pesan
+--       :7 CATRGORY · :8 GCNMCATEGORY · :9 GCNMTYPE
+--
+-- Kueri lama mengisi `ATTACHNAME` dan `ATTACHNOTE` dengan nilai yang SAMA; itu dibawa apa
+-- adanya. Salah ketik nama kolom `CATRGORY` juga milik tabelnya, bukan salah salin.
+INSERT INTO POOLDATA.DATA_ATTACHFILE_HISTORIKLAIM
+       (DATAID, NOKLAIM, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
+        ATTACHMIMETYPE, MESSAGE, CATRGORY, GCNMCATEGORY, GCNMTYPE)
+VALUES (:1, :2, CURRENT_TIMESTAMP, :3, :4, :4,
+        :5, :6, :7, :8, :9)
+
+-- name: attachment_by_image
+-- Mencari keterangan berkas lewat `IMAGEID` — salinan `RDB List/GetDocumentData-SQL.xml`.
+--
+-- Bind: :1 IMAGEID
+--
+-- Inilah penghubung antara isi dan keterangannya. DATAID keduanya berbeda, sehingga
+-- penaut salvage di bawah HARUS memakai DATAID yang dikembalikan kueri ini — bukan yang
+-- dikembalikan penyimpan isi.
+SELECT a.DATAID                        AS DATA_ID,
+       a.ATTACHNAME                    AS ATTACH_NAME
+  FROM POOLDATA.DATA_ATTACHFILE a
+ WHERE a.IMAGEID = :1
+
+-- name: salvage_document_link
+-- Menautkan dokumen ke pengajuan salvage — salinan
+-- `RDB List/InsertToSalvageDoc_SQL-SQL.xml`.
+--
+-- Bind: :1 DATAID · :2 NOKLAIM · :3 IDSALVAGE · :4 nama lampiran · :5 operator
+--       :6 kategori · :7 sub-kategori · :8 hasil keluar
+--
+-- Isi `POOLDATA.InsertSalvageDocument` TIDAK ada di export — yang terbaca hanyalah
+-- argumennya. Ia dipanggil, bukan ditulis ulang; lihat catatan `D-02` di kepala bagian
+-- ini. Tabel yang ditulisnya diketahui dari `CountSalvage`: `POOLDATA.SALAVAGEDOCUMENT`.
+--
+-- Argumen keenam adalah WAKTU, dan kueri lama mengisinya `sysdate`. Di sini
+-- `CURRENT_TIMESTAMP` yang dipakai: `D-20` melarang `SYSDATE` demi portabilitas, dan
+-- keduanya berarti hal yang sama bagi procedure ini.
+BEGIN
+  POOLDATA.InsertSalvageDocument(:1, :2, :3, :4, :5, CURRENT_TIMESTAMP, :6, :7, :8);
+END;
+
+-- name: delete_salvage_detail
+-- Membuang SELURUH detail item milik satu pengajuan, sebelum yang baru disisipkan.
+--
+-- Bind: :1 NOKLAIM · :2 IDSALVAGE
+--
+-- ============================================================================
+-- KENAPA MENGHAPUS, PADAHAL `D-66` MENETAPKAN SOFT DELETE
+-- ============================================================================
+--
+-- Karena inilah mekanisme ganti yang dipakai layar lama, dan ia terbaca kata demi kata:
+-- `RDB List/PNCSalvageGetChekerDataKlaimAllData-SQL.xml` memuat
+--
+--	delete POOLDATA.DETAIL_PNC_SALVAGE
+--	 where NOKLAIM = {TempChecker_pr.CaseID} AND IDSALVAGE = {TempChecker_pr.Password}
+--
+-- pada `pyDeleteSQL`-nya. Menyunting sebuah pengajuan karena itu MENGGANTI daftar
+-- barangnya, bukan menambahkannya.
+--
+-- Tanpa langkah ini, menyunting pengajuan yang sudah punya tiga barang lalu menekan
+-- Submit menghasilkan ENAM baris — tiga yang lama ditambah tiga yang baru. Barisnya
+-- membawa nilai uang, dan penggandaannya tidak menghasilkan satu pun galat.
+--
+-- `DETAIL_PNC_SALVAGE` tidak punya kolom penanda hapus, sehingga soft delete tidak
+-- mungkin tanpa perubahan skema — dan perubahan skema menempuh `D-63`. Selisihnya
+-- dinyatakan di inboxsalvage.PlannedDifferences.
+--
+-- Nomor klaim IKUT disaring, bukan hanya ID pengajuan. Kueri lama pun begitu, dan itu
+-- menjaga satu ID yang keliru tidak membuang barang milik klaim lain.
+DELETE FROM POOLDATA.DETAIL_PNC_SALVAGE
+ WHERE NOKLAIM = :1
+   AND IDSALVAGE = :2
+
 -- name: check_salvage_columns
 -- Pemeriksaan kesiapan: memastikan kolom yang dibaca modul ini memang ada.
 --
@@ -753,3 +930,151 @@ SELECT a.TGLINPUT                       AS INPUT_DATE,
   FROM POOLDATA.PNC_SALVAGE a
  WHERE a.NOKLAIM = :1
  ORDER BY a.TGLINPUT DESC, a.IDSALVAGE DESC
+
+-- ============================================================================
+-- ISI KEDUA AUTOCOMPLETE PADA FORM "MENAMBAHKAN DATA SALVAGE"
+-- ============================================================================
+--
+-- Kolom "Nama Object" dan "Nama Coverage" pada `Section/TambahData_Salvage-Section.xml`
+-- BUKAN kotak teks biasa. Keduanya `pxAutoComplete` (`:2727` dan `:3629`) yang membaca
+-- page klipboard `TempObjectData.pxResults` dan `TempCoverageData.pxResults`, dan keduanya
+-- diisi pre-activity yang SAMA: `GetDataSalavageCovCurObj_act`, dengan satu parameter
+-- `CaseeID` berisi nomor klaim yang sedang diketik.
+--
+-- ----------------------------------------------------------------------------
+-- ISI ACTIVITY-NYA, DITERIMA 2026-10-03
+-- ----------------------------------------------------------------------------
+--
+-- `Activity/GetDataSalavageCovCurObj_act-Act.xml` menerima SATU parameter, `CaseeID`, dan
+-- berisi empat langkah:
+--
+--	1  Property-Set  tempQuery.CaseID := @toUpperCase("ASM-FW-GCNMFW-WORK " + Param.CaseeID)
+--	2  RDB-List      TempObjectData        <- GetDataSalvageObjectForOs
+--	3  RDB-List      TempCoverageData      <- GetDataSalvageObjectCoverageForOs
+--	4  RDB-List      TempCurrencySalvage   <- Gcnmgetdatacurrencysalvage_SQL
+--
+-- Langkah 1 juga memasang cadangan bila parameternya kosong:
+-- `@if(Param.CaseeID=="", TempInsert.CaseID, Param.CaseeID)` — nomor klaim yang sedang
+-- ada di form dipakai bila pemanggil tidak menyebutkannya. Di sini tidak dibutuhkan:
+-- nomor klaimnya selalu bagian dari alamat permintaan.
+--
+-- Kedua kueri di bawah adalah SALINAN langkah 2 dan 3. Langkah 4 SENGAJA tidak dibawa:
+-- `TempCurrencySalvage` memang diisi, tetapi kolom "Mata Uang" pada form ini TIDAK
+-- membacanya — dropdown-nya bersumber Report Definition `SelectCurrency_RD`
+-- (`Section/TambahData_Salvage-Section.xml:5251`), dan page itu hanya dideklarasikan di
+-- section tanpa satu pun kontrol yang terikat padanya.
+--
+-- ----------------------------------------------------------------------------
+-- SATU SELISIH YANG DISENGAJA: `ORDER BY`
+-- ----------------------------------------------------------------------------
+--
+-- Kueri lama tidak menyatakan urutan sama sekali, sehingga urutan baris pada daftar
+-- pilihan tidak ditentukan dan dapat berbeda pada setiap pembukaan. Urutannya menurut
+-- NAMA, karena nama itulah satu-satunya yang dibaca pengguna pada autocomplete.
+--
+-- Ia tidak mengubah baris MANA yang ditawarkan, hanya urutannya.
+--
+-- ----------------------------------------------------------------------------
+-- KENAPA `DIHAPUS_PADA` TIDAK DISARING — DAN KENAPA SEMPAT DISARING
+-- ----------------------------------------------------------------------------
+--
+-- Penyaring `DIHAPUS_PADA IS NULL` sempat dipasang di sini atas dasar `D-66`, yang
+-- menuntut setiap kueri pembaca membuang baris bertanda terhapus. Ia DICABUT setelah
+-- terbukti memutus layar.
+--
+-- Sebabnya: kolom itu BUKAN bawaan kedua tabel warisan. Ia ditambahkan migrasi
+-- `0008_klaim_anak_dan_spreading`, dan basis data portal yang belum menjalankannya akan
+-- menolak kueri ini dengan `ORA-00904` — sehingga bukan hanya daftar pilihannya yang
+-- kosong, melainkan SELURUH permintaan rincian klaim gagal.
+--
+-- Dua alasan lain menguatkan pencabutannya:
+--
+--   * Kueri aslinya tidak menyaringnya, sehingga penyaring itu selisih yang tidak
+--     dibutuhkan parity (`P-5`).
+--   * Kueri modul ini sendiri atas `T_CLAIM_OBJECTLIST` — lihat list_claim_object —
+--     juga tidak menyaringnya. Memasangnya di sini saja membuat satu modul menjawab
+--     pertanyaan yang sama dengan dua cara.
+--
+-- Akibat yang diterima: objek atau coverage yang sudah ditandai terhapus oleh modul
+-- Registrasi TETAP ditawarkan sebagai pilihan. Itu keadaan sistem lama apa adanya.
+
+-- name: claim_objects
+-- Pilihan kolom "Nama Object" — langkah 2 `GetDataSalavageCovCurObj_act`.
+--
+-- Bind: :1 awalan kunci Pega · :2 NOKLAIM
+--
+-- Aslinya, kata demi kata (`RDB List/GetDataSalvageObjectForOs-SQL.xml`):
+--
+--	select A.OBJECTID as "CaseID", A.OBJECTNAME as "City"
+--	  from POOLDATA.T_CLAIM_OBJECTLIST a where A.CLAIMID = {tempQuery.CaseID}
+--
+-- Alias `"CaseID"` dan `"City"` TIDAK dibawa — keduanya nama properti klipboard yang
+-- dipinjam, dan tidak satu pun menyatakan isinya (`D-19`).
+--
+-- Gabungannya lewat `CLAIMID`, bukan `CLAIMNO`: `T_CLAIM_OBJECTLIST` tidak punya nomor
+-- klaim sama sekali — yang ada kunci teknis Pega berbentuk `'ASM-FW-GCNMFW-WORK ' ||
+-- nomor klaim` (utang teknis §4.1). Awalannya DIIKAT sebagai parameter, tidak ditulis ke
+-- dalam teks SQL, sama seperti pada detail_header.
+--
+-- `UPPER` mengikuti `@toUpperCase` pada langkah 1. Dalam praktik ia tidak mengubah apa
+-- pun — nomor klaimnya sudah dicocokkan persis ke `T_CLAIM_PNC.CLAIMNO` oleh
+-- claim_header sebelum kueri ini dijalankan — tetapi ia dibawa supaya kedua jalur tidak
+-- dapat berselisih bila kelak claim_header dilonggarkan.
+SELECT o.OBJECTID                       AS OBJECT_ID,
+       o.OBJECTNAME                     AS OBJECT_NAME
+  FROM POOLDATA.T_CLAIM_OBJECTLIST o
+ WHERE o.CLAIMID = UPPER(:1 || :2)
+ ORDER BY o.OBJECTNAME
+
+-- name: currency_options
+-- Pilihan dropdown "Mata Uang" pada form Tambah.
+--
+-- Tanpa bind — isinya master, tidak bergantung klaim mana pun.
+--
+-- Sumbernya Report Definition `SelectCurrency_RD`, yang membaca kelas
+-- `ASM-FW-GISFW-Int-CURRENCY`. Kelas itu TIDAK menyebut nama tabelnya di dalam RD;
+-- namanya terbaca dari tempat lain — `RDB List/Gcnmgetdatacurrencysalvage_SQL-SQL.xml`
+-- menulis `(select currency from POOLDATA.CURRENCY b where A.CURRENCY = B.ID)`, yang
+-- sekaligus menyebut kedua kolomnya.
+--
+-- Baris tanpa teks mata uang dibuang di Go, bukan di sini — lihat Repo.Currencies.
+SELECT c.CURRENCY                       AS CURRENCY_CODE
+  FROM POOLDATA.CURRENCY c
+ ORDER BY c.CURRENCY
+
+-- name: claim_coverages
+-- Pilihan kolom "Nama Coverage" — langkah 3 `GetDataSalavageCovCurObj_act`.
+--
+-- Bind: :1 awalan kunci Pega · :2 NOKLAIM
+--
+-- Aslinya, kata demi kata (`RDB List/GetDataSalvageObjectCoverageForOs-SQL.xml`):
+--
+--	select A.COVERAGEID as "CaseID", A.COVERAGENAME as "City"
+--	  from POOLDATA.T_CLAIM_OBJECTCOVERAGE a where A.CLAIMID = {tempQuery.CaseID}
+--
+-- ============================================================================
+-- YANG TIDAK ADA DI KUERI INI, DAN ITU MENENTUKAN
+-- ============================================================================
+--
+-- `OBJECTID` TIDAK diambil. Artinya daftar coverage di layar lama **tidak dipersempit
+-- menurut objek yang dipilih** — seluruh coverage milik klaim ditawarkan, siapa pun
+-- objeknya. Perilakunya dibawa apa adanya (`P-5`).
+--
+-- Konsekuensinya diterima secara sadar: pasangan `IDOBJECT` dan `IDCOVERAGE` yang
+-- tersimpan di `PNC_SALVAGE` dapat berasal dari objek yang berbeda, dan tidak ada satu
+-- pun galat yang memberitahukannya. Itu keadaan sistem lama, bukan sesuatu yang modul ini
+-- perkenalkan — dan memperbaikinya adalah perubahan perilaku yang belum diputuskan siapa
+-- pun.
+--
+-- `COVERAGEID` pula yang dikirim sebagai ID, bukan `OBJECTCOVERAGEID`. Lihat catatan
+-- koreksi pada inboxsalvage.CoverageChoice.ID — kolom yang dipakai layar PLA/DLA memang
+-- berbeda, dan yang berlaku di sini adalah kueri layar ini sendiri.
+--
+-- Karena `COVERAGEID` adalah kode JENIS jaminan, kueri ini dapat mengembalikan baris
+-- KEMBAR pada klaim yang dua objeknya punya jaminan sama. Itu terjadi di Pega pula;
+-- pengulangannya dibuang di layar, tempat daftar saran disusun.
+SELECT c.COVERAGEID                     AS COVERAGE_ID,
+       c.COVERAGENAME                   AS COVERAGE_NAME
+  FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE c
+ WHERE c.CLAIMID = UPPER(:1 || :2)
+ ORDER BY c.COVERAGENAME

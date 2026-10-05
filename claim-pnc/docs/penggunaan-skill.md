@@ -11831,6 +11831,7 @@ beserta seluruh rule yang dirujuknya secara berantai"*. Permintaan sesi ini teta
 **empat putaran**; tanpa catatan itu kemungkinan lebih.
 >>>>>>> dev
 >>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904
+<<<<<<< HEAD
 >>>>>>> dev
 
 ---
@@ -12588,3 +12589,31 @@ Tidak ada skill yang dipanggil. Disiplin `grilling` dipakai pada pembacaan saya 
 | Membandingkan `PXCREATEDATETIME` Pega dengan riwayat WIB tanpa pergeseran zona | Hasil nol yang terlalu bersih; diulang dengan geser ±7 jam | Kolom waktu Pega GMT, riwayat WIB — pembanding waktu lintas tabel wajib diuji dengan beberapa pergeseran |
 | Menganggap riwayat "Send to Dokter" hanya ditulis aksi Dokter | Keadaan akhir klaim yang masih menunggu Dokter berstatus 1155 | `SendToPUCL` dipanggil juga saat analis mengirim; satu teks riwayat dapat berasal dari dua aksi |
 | Backtick di dalam perintah shell berkutip ganda tertelan, merusak satu komentar | Ditemukan saat memeriksa ulang berkas | Teks berisi backtick ditulis lewat berkas, bukan argumen shell |
+=======
+
+### Lanjutan 2026-09-30 — sisiran kedua menemukan varian yang tertukar
+
+Setelah kolom "Nama Insured" ditemukan hilang, sisiran yang sama dijalankan pada **popup
+Detail**. Ia menemukan dua kekeliruan lagi, keduanya milik saya:
+
+1. Saya menyatakan when rule pemilih varian kolom **tidak ada di export**. Kelimanya ada —
+   saya tidak pernah mencari berkasnya.
+2. Pemetaan variannya **tertukar**: PA dan Travel sama-sama saya beri varian peserta, padahal
+   posisi rujukan when rule di dalam section menunjukkan PA berpasangan dengan varian
+   "Pekerjaan".
+
+| Skill | Untuk apa | Hasil |
+|---|---|---|
+| `domain-modeling` | menyilangkan pernyataan dengan kode, bukan mempercayai catatan sendiri | menemukan kelima when rule ada, dan membaca kondisinya: `IsPA` = `GroupPanel "002"`, `IsTravel` = `Kode Bisnis "77"`, `IsAneka`≡`IsMarineCargo`, `IsFire` kosong |
+| `grilling` (pada diri sendiri) | menanyakan "posisi mana berpasangan dengan susunan kolom mana?" alih-alih menebak dari nama lini | urutan posisi di dalam berkas menjawabnya tanpa ambiguitas, dan jawabannya berlawanan dengan tebakan saya |
+
+**Pelajaran — pengulangan, dan itu yang membuatnya penting.** Dua kali berturut-turut saya
+menulis pernyataan fakta tentang export ("tidak ada di export", "grid 16 kolom") **tanpa
+memeriksanya**, dan dua kali salah. Uji tidak menemukan keduanya; yang menemukan adalah
+menyisir artefak sumber satu per satu. Sisiran itu harus menjadi langkah tetap **sebelum**
+menyatakan modul selesai.
+
+Penjaga yang ditambahkan mencerminkan pelajaran itu: tiap uji varian kini menegaskan kolom
+milik varian lain **tidak** muncul. Tanpa penegasan negatif, dua varian dapat runtuh menjadi
+satu sambil tetap lulus — persis bentuk cacat yang baru saja terjadi.
+>>>>>>> dev

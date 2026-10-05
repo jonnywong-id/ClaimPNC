@@ -236,8 +236,8 @@ describe('Input Register', () => {
     )
     show()
 
-    expect(await screen.findByLabelText('Mata uang')).toHaveValue('USD')
-    expect(screen.getByLabelText('Kode hubungan dengan tertanggung')).toHaveValue('')
+    expect(await screen.findByLabelText('Mata Uang')).toHaveValue('USD')
+    expect(screen.getByLabelText('Status Pelapor')).toHaveValue('')
     expect(screen.getByLabelText('Status RCL/PUCL')).toHaveValue('0')
     expect(screen.getByRole('radio', { name: 'NORMAL' })).toBeChecked()
 
@@ -252,10 +252,10 @@ describe('Input Register', () => {
     )
     show()
 
-    const hubungan = await screen.findByLabelText('Kode hubungan dengan tertanggung')
-    expect(screen.queryByLabelText('Sebutkan hubungannya')).not.toBeInTheDocument()
+    const hubungan = await screen.findByLabelText('Status Pelapor')
+    expect(screen.queryByLabelText('Sebutkan...')).not.toBeInTheDocument()
     await userEvent.type(hubungan, '7')
-    await userEvent.type(screen.getByLabelText('Sebutkan hubungannya'), 'Kerabat')
+    await userEvent.type(screen.getByLabelText('Sebutkan...'), 'Kerabat')
     await userEvent.click(screen.getByRole('radio', { name: 'SUSPICIOUS' }))
     await userEvent.type(screen.getByLabelText('Komentar Suspicious'), 'Mencurigakan')
     // Ex-Gratia hanya tampil untuk PA (ClaimSurvey-sect.xml); klaim ini Fire.

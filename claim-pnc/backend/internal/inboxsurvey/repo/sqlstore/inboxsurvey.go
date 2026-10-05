@@ -286,10 +286,14 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 	// Membaca langsung ke string akan menghasilkan galat pemindaian pada satu baris warisan,
 	// dan galat itu menjatuhkan SELURUH halaman — bukan satu sel.
 	//
-	// AppointmentNumber dan ReferenceNumber TIDAK ada di sini: kolomnya belum ada di tabel
-	// cermin, sehingga kueri pun tidak mengambilnya — menuliskannya menghasilkan ORA-00904
-	// yang menjatuhkan SELURUH layar, bukan sel kosong. Keduanya tetap ada sebagai field agar
-	// kolomnya tetap tergambar di layar sebagai isian yang belum terbawa.
+	// AppointmentNumber TIDAK dipindai di sini, dan itu BUKAN karena ia belum tersedia: ia
+	// **diturunkan** dari `SURVEY_ID` oleh `inboxsurvey.SurveyTask.AppointmentNo`, persis
+	// seperti Pega memotongnya dari kunci objek kerja. Memindainya sebagai kolom tersendiri
+	// akan membuat dua sumber untuk satu nilai, dan keduanya bisa berbeda.
+	//
+	// ReferenceNumber juga tidak dipindai — asalnya belum diketahui. `REFNO` bukan asalnya;
+	// lihat `inboxsurvey.SurveyTask.ReferenceNumber`. Ia tetap ada sebagai field agar kolomnya
+	// tergambar di layar sebagai isian yang belum terbawa.
 	if err := rows.Scan(
 		&surveyID,
 		&claimID,

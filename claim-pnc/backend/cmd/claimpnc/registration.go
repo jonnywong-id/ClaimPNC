@@ -107,6 +107,7 @@ func assembleRegistration(
 		// Unggah Dokumen: berkas lewat modul dokumen penunjang, baris di DATA_ATTACHFILE.
 		options.Documents = documents
 		options.Attachments = registrasisql.NewAttachmentStore(db)
+		options.Closures = registrasisql.NewClosureStore(db)
 		options.Acceptance = registrasisql.NewAcceptanceStore(db)
 		// Transfer Kasir: alamat dari POOLDATA.GCNM_CONNECT_REST (KASIRPAID…), kredensial dari
 		// KASIR_USER / KASIR_PASSWORD.
@@ -168,6 +169,7 @@ func assembleRegistration(
 		records := registrasimemory.SampleClaimRecords()
 		options.ClaimRecords = records
 		options.Attachments = records
+		options.Closures = records
 		options.Documents = documents
 		if options.Documents == nil {
 			options.Documents = &registrasimemory.DocumentUploader{}
