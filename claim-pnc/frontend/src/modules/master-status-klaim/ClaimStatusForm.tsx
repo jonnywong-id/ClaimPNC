@@ -45,9 +45,16 @@ type Props = {
 /**
  * Form tambah dan ubah Master Status Klaim.
  *
- * Meniru fungsi form `ListStatusClaim` di Pega — kode read-only, satu isian Status, dan
- * tombol Simpan — dengan dua perbedaan yang disengaja: isiannya wajib diisi, dan nama
- * yang sudah dipakai ditolak (keputusan Work Owner 2026-09-17).
+ * Meniru fungsi form `ListStatusClaim` di Pega — satu isian Status dan tombol Simpan —
+ * dengan dua perbedaan yang disengaja: isiannya wajib diisi, dan nama yang sudah dipakai
+ * ditolak (keputusan Work Owner 2026-09-17).
+ *
+ * # Kode tidak lagi ditampilkan
+ *
+ * Layar Pega menampilkan `LSC_ID` sebagai isian read-only. Itu **tidak dibawa** (keputusan
+ * Work Owner 2026-10-03): nomornya diterbitkan sistem dan tidak dapat disunting siapa pun,
+ * sehingga menampilkannya di form hanya menyita ruang tanpa memberi pengguna satu pun hal
+ * yang dapat ia lakukan. Alasan lengkapnya ada di badan komponen.
  */
 export function ClaimStatusForm({ status, tutup }: Props) {
   const save = useSaveClaimStatus()
@@ -97,48 +104,41 @@ export function ClaimStatusForm({ status, tutup }: Props) {
         <h3 className="text-base font-semibold text-slate-900">
           {editing ? 'Ubah Status Klaim' : 'Tambah Status Klaim'}
         </h3>
-        <p className="mt-1 text-sm text-slate-600">
-          {editing
-            ? 'Hanya nama status yang dapat diubah. Kode tetap, karena klaim lama menyimpannya.'
-            : 'Kode dibuat sistem setelah disimpan, melanjutkan nomor terakhir.'}
-        </p>
       </div>
 
       <div className="space-y-5 p-5">
         {save.isError && <SaveErrorMessage error={save.error} />}
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <span className="block text-sm font-medium text-slate-700">Kode</span>
-            {/*
-              Kode digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
-              dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
-              mengkliknya; kotak ini jelas bukan tempat mengetik.
-            */}
-            <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-500">
-              {status?.kode ?? 'Dibuat sistem'}
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Kode tidak dapat disunting, sama seperti di sistem lama.
-            </p>
-          </div>
+        {/*
+          KODE TIDAK ditampilkan di form ini, baik saat menambah maupun saat mengubah —
+          keputusan Work Owner 2026-10-03.
 
-          <Field
-            id="label"
-            label="Status"
-            placeholder="Contoh: Reopen Claim"
-            maxLength={MAX_LABEL_LENGTH}
-            autoComplete="off"
-            hint={`Paling panjang ${MAX_LABEL_LENGTH} karakter, dan belum dipakai status lain.`}
-            error={errors.label?.message}
-            disabled={save.isPending}
-            {...remainingLabel}
-            ref={(elemen) => {
-              refLabel(elemen)
-              firstField.current = elemen
-            }}
-          />
-        </div>
+          Alasannya: nomornya diterbitkan sistem — kode situs ditambah urutan
+          `M_STS_CLAIM_SEQ` — dan tidak dapat disunting siapa pun, sehingga menampilkannya
+          di form hanya menyita ruang tanpa memberi pengguna satu pun hal yang dapat ia
+          lakukan. Saat menambah ia belum ada sama sekali; saat mengubah ia tidak berubah.
+
+          Kode tetap terlihat di KOLOM PERTAMA tabel, tempat ia memang berguna — untuk
+          mengenali baris dan mencocokkannya dengan klaim yang menyimpan kode itu.
+
+          Bentuknya mengikuti Master Dominan Factor dan Master Penyebab Kerugian, yang
+          dirapikan dengan keputusan yang sama.
+        */}
+        <Field
+          id="label"
+          label="Status"
+          placeholder="Contoh: Reopen Claim"
+          maxLength={MAX_LABEL_LENGTH}
+          autoComplete="off"
+          hint={`Paling panjang ${MAX_LABEL_LENGTH} karakter, dan belum dipakai status lain.`}
+          error={errors.label?.message}
+          disabled={save.isPending}
+          {...remainingLabel}
+          ref={(elemen) => {
+            refLabel(elemen)
+            firstField.current = elemen
+          }}
+        />
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={save.isPending}>

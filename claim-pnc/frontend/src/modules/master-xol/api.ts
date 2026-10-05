@@ -6,6 +6,7 @@ import type {
   XOLFormResponse,
   XOLInput,
   XOLListResponse,
+  XOLReinsurerSearchResponse,
   XOLResponse,
 } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
@@ -28,6 +29,8 @@ const key = {
     ['master-xol', portal, token, 'form'] as const,
   business: (portal: string | null, token: string | null, tipe: string) =>
     ['master-xol', portal, token, 'bisnis', tipe] as const,
+  reinsurer: (portal: string | null, token: string | null, cari: string) =>
+    ['master-xol', portal, token, 'reas', cari] as const,
 }
 
 /**
@@ -109,6 +112,36 @@ export function useXOLBusinessGroup(tipe: string) {
       }),
     enabled: token !== null && portal !== null,
     staleTime: 30 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook pencarian master reasuradur, untuk kotak "NAMA REASURANSI".
+ *
+ * # Pencarian ditembakkan tombol, bukan ketikan
+ *
+ * `cari` berisi kata kunci yang SUDAH ditekan tombol Cari, bukan isi kotak saat diketik.
+ * Itu meniru layar Pega, yang memang bertombol — dan sekaligus menghindari satu
+ * permintaan per huruf ke master yang besar.
+ *
+ * Kata kunci kosong membuat hook ini tidak berjalan sama sekali: server pun menjawabnya
+ * dengan daftar kosong, jadi memanggilnya hanya menambah lalu lintas tanpa hasil.
+ */
+export function useXOLReinsurerSearch(cari: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: key.reinsurer(portal, token, cari),
+    queryFn: () =>
+      callAPI<XOLReinsurerSearchResponse>(`${ROUTES}/reas?cari=${encodeURIComponent(cari)}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && cari.trim() !== '',
+    // Master reasuradur jarang berubah, dan pengguna kerap mengulang kata kunci yang sama
+    // saat mengisi beberapa lapisan berturut-turut.
+    staleTime: 10 * 60 * 1000,
   })
 }
 

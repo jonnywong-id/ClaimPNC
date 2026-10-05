@@ -88,21 +88,31 @@ func (r Row) sortKey(tabCode string) time.Time {
 
 // Store adalah penyimpanan antrean di memori.
 //
-// Ia dilindungi mutex karena CreatePostAudit MENAMBAH baris. Operasi bacanya sendiri tidak
-// mengubah apa pun, tetapi keduanya menyentuh senarai yang sama.
+// Ia dilindungi mutex karena CreatePostAudit dan SaveDecision MENGUBAH keadaan. Operasi
+// bacanya sendiri tidak mengubah apa pun, tetapi seluruhnya menyentuh senarai yang sama.
 type Store struct {
 	mu   sync.Mutex
 	rows []Row
 
 	// sequence meniru POOLDATA.CPNC_POST_AUDIT_SEQ, termasuk titik mulainya.
 	sequence int64
+
+	// decisions meniru POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE, berkunci `PZINSKEY` klaimnya.
+	//
+	// Map, bukan senarai, karena satu klaim hanya punya satu keputusan BERLAKU —
+	// menyimpan ulang menimpa yang sebelumnya, sama seperti `MERGE` pada kuerinya.
+	decisions map[string]inboxcompliance.Decision
 }
 
 // NewStore membentuk penyimpanan berisi baris yang diberikan.
 func NewStore(rows ...Row) *Store {
 	// 100000, bukan 100001: pencacah dinaikkan LEBIH DULU saat dipakai, sehingga nomor
 	// pertama yang terbit tetap CPL-100001 — sama dengan START WITH sequence-nya.
-	return &Store{rows: rows, sequence: 100000}
+	return &Store{
+		rows:      rows,
+		sequence:  100000,
+		decisions: map[string]inboxcompliance.Decision{},
+	}
 }
 
 // List mengambil satu halaman antrean, meniru predikat dan urutan kueri Oracle.
@@ -236,4 +246,33 @@ func (s *Store) CreatePostAudit(
 	})
 
 	return saved, nil
+}
+
+// FindDecision mengambil keputusan Compliance yang sudah tersimpan atas satu klaim.
+//
+// Tidak ditemukan BUKAN galat: klaim yang baru masuk antrean memang belum diputuskan.
+func (s *Store) FindDecision(
+	_ context.Context, reference string,
+) (inboxcompliance.Decision, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	decision, exists := s.decisions[reference]
+	return decision, exists, nil
+}
+
+// SaveDecision menyimpan keputusan Compliance, menimpa keputusan sebelumnya atas klaim yang
+// sama.
+//
+// Menimpa, bukan menambah, karena satu klaim hanya punya satu keputusan Compliance yang
+// berlaku — `.ClaimData.PilihanCompliance` adalah satu properti pada klaimnya, bukan daftar.
+// Riwayat perubahannya ada di tempat lain (`InsertHistoryClaimPNC`), dan itu bukan tabel ini.
+func (s *Store) SaveDecision(
+	_ context.Context, decision inboxcompliance.Decision,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.decisions[decision.Reference] = decision
+	return nil
 }

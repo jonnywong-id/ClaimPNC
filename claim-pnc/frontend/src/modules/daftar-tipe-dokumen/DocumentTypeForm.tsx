@@ -183,7 +183,7 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
       */}
       <Field
         id="tipe_dokumen"
-        label="Jenis Dokumen"
+        label="Tipe Dokumen"
         type="text"
         autoFocus
         autoComplete="off"

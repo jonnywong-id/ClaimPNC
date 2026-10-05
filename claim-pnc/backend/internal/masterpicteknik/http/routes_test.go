@@ -2,6 +2,7 @@ package masterpicteknikhttp_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -203,8 +204,8 @@ func TestWithoutPortalRejected(t *testing.T) {
 		{"membaca daftar", http.MethodGet, route, ""},
 		{"membaca satu baris", http.MethodGet, route + "/PICTEKNIK01", ""},
 		{"mencari di direktori", http.MethodGet, route + "/direktori/PICTEKNIK01", ""},
-		{"menambah", http.MethodPost, route, `{"id_operator":"PICTEKNIK05","email":"a@b.co","lini_bisnis":"","grup":"","atasan":"","kuota":1,"kuota_luar":0,"aktif":true}`},
-		{"mengubah", http.MethodPut, route + "/PICTEKNIK01", `{"id_operator":"","email":"a@b.co","lini_bisnis":"","grup":"","atasan":"","kuota":1,"kuota_luar":0,"aktif":true}`},
+		{"menambah", http.MethodPost, route, `{"id_operator":"PICTEKNIK05","email":"a@b.co","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"aktif":true}`},
+		{"mengubah", http.MethodPut, route + "/PICTEKNIK01", `{"id_operator":"","email":"a@b.co","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"aktif":true}`},
 	}
 
 	for _, c := range cases {
@@ -246,7 +247,9 @@ func TestPortalsAreIsolated(t *testing.T) {
 // ── Daftar dan ambil ────────────────────────────────────────────────────────────
 
 // Daftar hanya memuat petugas AKTIF, meniru `STS_AKTIF = '1'` pada Report Definition lama.
-func TestListReturnsActiveOnly(t *testing.T) {
+// Daftar memuat petugas aktif MAUPUN nonaktif, sama dengan grid Pega yang menampilkan
+// Status Aktif `0` dan `1` berdampingan.
+func TestListIncludesInactiveTechnicians(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodGet, route, "ASM", "")
@@ -254,11 +257,17 @@ func TestListReturnsActiveOnly(t *testing.T) {
 
 	rows, _ := content["pic_teknik"].([]any)
 	require.NotEmpty(t, rows)
+
+	status := map[string]bool{}
 	for _, item := range rows {
 		row, _ := item.(map[string]any)
-		require.Equal(t, true, row["aktif"])
-		require.NotEqual(t, "PICTEKNIK04", row["id_operator"])
+		id, _ := row["id_operator"].(string)
+		aktif, _ := row["aktif"].(bool)
+		status[id] = aktif
 	}
+	require.True(t, status["PICTEKNIK01"])
+	require.Contains(t, status, "PICTEKNIK04", "petugas nonaktif harus ikut terkirim")
+	require.False(t, status["PICTEKNIK04"])
 }
 
 // Beban kerja ikut dikirim pada daftar: ia kolom view yang ditampilkan grid Pega.
@@ -313,7 +322,7 @@ func TestCreateReturns201AndDerivesName(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPost, route, "ASM",
-		`{"id_operator":"PICTEKNIK05","email":"baru@example.invalid","lini_bisnis":"NONMBU","grup":"TEKNIK JAKARTA","atasan":"","kuota":8,"kuota_luar":0,"aktif":true}`)
+		`{"id_operator":"PICTEKNIK05","email":"baru@example.invalid","bisnis":"NONMBU","kelompok":"A","atasan":"","counter_klaim_kurang_1m":8,"counter_klaim_lebih_1m":0,"aktif":true}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	row, _ := content["pic_teknik"].(map[string]any)
@@ -325,7 +334,7 @@ func TestCreateDuplicateReturns409(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPost, route, "ASM",
-		`{"id_operator":"PICTEKNIK01","email":"lagi@example.invalid","lini_bisnis":"","grup":"","atasan":"","kuota":1,"kuota_luar":0,"aktif":true}`)
+		`{"id_operator":"PICTEKNIK01","email":"lagi@example.invalid","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"aktif":true}`)
 	require.Equal(t, http.StatusConflict, response.StatusCode)
 	require.Equal(t, masterpicteknikhttp.CodeAlreadyExists, content["kode"])
 }
@@ -335,7 +344,7 @@ func TestCreateInvalidReturns422WithFieldDetail(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPost, route, "ASM",
-		`{"id_operator":"PICTEKNIK05","email":"bukan-email","lini_bisnis":"","grup":"","atasan":"","kuota":-1,"kuota_luar":0,"aktif":true}`)
+		`{"id_operator":"PICTEKNIK05","email":"bukan-email","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":-1,"counter_klaim_lebih_1m":0,"aktif":true}`)
 	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
 	require.Equal(t, masterpicteknikhttp.CodeValidationFailed, content["kode"])
 
@@ -349,55 +358,66 @@ func TestCreateInvalidReturns422WithFieldDetail(t *testing.T) {
 		found[field] = true
 	}
 	require.True(t, found[masterpicteknik.FieldEmail])
-	require.True(t, found[masterpicteknik.FieldQuota])
+	require.True(t, found[masterpicteknik.FieldClaimCounterBelow1M])
 }
 
-// Petugas yang tidak dikenal direktori ditolak, dan penolakannya menunjuk kolom
-// id_operator — langkah "set error kalau tidak ditemukan di service".
-func TestCreateUnknownEmployeeIsMarkedOnOperatorIDField(t *testing.T) {
+// Petugas yang tidak dikenal direktori TETAP tersimpan — Pega pun begitu.
+func TestCreateUnknownEmployeeStillStored(t *testing.T) {
 	p := newTestServer(t)
 
-	response, content := p.call(t, http.MethodPost, route, "ASM",
-		`{"id_operator":"TIDAKTERDAFTAR","email":"x@example.invalid","lini_bisnis":"","grup":"","atasan":"","kuota":1,"kuota_luar":0,"aktif":true}`)
-	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
+	response, _ := p.call(t, http.MethodPost, route, "ASM",
+		`{"id_operator":"TIDAKTERDAFTAR","email":"x@example.invalid","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"aktif":true}`)
 
-	detail, _ := content["detail"].([]any)
-	require.Len(t, detail, 1)
-	row, _ := detail[0].(map[string]any)
-	require.Equal(t, masterpicteknik.FieldOperatorID, row["field"])
+	require.Equal(t, http.StatusCreated, response.StatusCode)
 }
 
-// Direktori yang belum terdaftar di katalog dijawab 503 dengan kode TERSENDIRI — ia tidak
-// akan pulih dengan mencoba ulang, dan pesannya harus mengatakan itu.
-func TestUnconfiguredDirectoryReturns503WithOwnCode(t *testing.T) {
+// Direktori yang mati pun tidak menahan penyimpanan.
+func TestCreateStoresDespiteDirectoryFailure(t *testing.T) {
 	p := newTestServer(t)
 	p.directory.SetError(masterpicteknik.ErrDirectoryNotConfigured)
 
-	response, content := p.call(t, http.MethodPost, route, "ASM",
-		`{"id_operator":"PICTEKNIK05","email":"baru@example.invalid","lini_bisnis":"","grup":"","atasan":"","kuota":1,"kuota_luar":0,"aktif":true}`)
-	require.Equal(t, http.StatusServiceUnavailable, response.StatusCode)
-	require.Equal(t, masterpicteknikhttp.CodeDirectoryUnconfigured, content["kode"])
+	response, _ := p.call(t, http.MethodPost, route, "ASM",
+		`{"id_operator":"PICTEKNIK05","email":"baru@example.invalid","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"aktif":true}`)
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
 }
 
+// Jalur PENCARIAN tetap melaporkan gangguan apa adanya — hasilnya diperlihatkan ke
+// pengguna, jadi diamnya akan menyesatkan.
+//
+// ID yang dipakai sengaja TIDAK ada di master: bila ada, namanya terjawab dari master dan
+// direktori tidak pernah dipanggil.
 func TestDirectoryOutageReturns503(t *testing.T) {
 	p := newTestServer(t)
 	p.directory.SetError(masterpicteknik.ErrDirectoryUnreachable)
 
-	response, content := p.call(t, http.MethodGet, route+"/direktori/PICTEKNIK01", "ASM", "")
+	response, content := p.call(t, http.MethodGet, route+"/direktori/PICTEKNIK05", "ASM", "")
 	require.Equal(t, http.StatusServiceUnavailable, response.StatusCode)
 	require.Equal(t, masterpicteknikhttp.CodeDirectoryUnreachable, content["kode"])
+}
+
+// Pencarian dijawab dari master lebih dulu, tanpa menyentuh direktori sama sekali.
+func TestLookupAnswersFromMaster(t *testing.T) {
+	p := newTestServer(t)
+	p.directory.SetError(masterpicteknik.ErrDirectoryUnreachable)
+
+	response, content := p.call(t, http.MethodGet, route+"/direktori/PICTEKNIK01", "ASM", "")
+
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	employee, _ := content["pegawai"].(map[string]any)
+	require.NotEmpty(t, employee["nama"])
 }
 
 func TestUpdateReturns200(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPut, route+"/PICTEKNIK02", "ASM",
-		`{"id_operator":"","email":"adjuster.baru@example.invalid","lini_bisnis":"NONMBU","grup":"TEKNIK BANDUNG","atasan":"PICTEKNIK01","kuota":25,"kuota_luar":4,"aktif":true}`)
+		`{"id_operator":"","email":"adjuster.baru@example.invalid","bisnis":"NONMBU","kelompok":"C","atasan":"PICTEKNIK01","counter_klaim_kurang_1m":25,"counter_klaim_lebih_1m":4,"aktif":true}`)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 
 	row, _ := content["pic_teknik"].(map[string]any)
-	require.Equal(t, "TEKNIK BANDUNG", row["grup"])
-	require.Equal(t, float64(25), row["kuota"])
+	require.Equal(t, "C", row["kelompok"])
+	require.Equal(t, float64(25), row["counter_klaim_kurang_1m"])
 	// ID diambil dari jalur URL, bukan dari badan permintaan yang sengaja dikosongkan.
 	require.Equal(t, "PICTEKNIK02", row["id_operator"])
 }
@@ -406,7 +426,7 @@ func TestUpdateUnknownReturns404(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPut, route+"/TIDAKADA", "ASM",
-		`{"id_operator":"","email":"a@example.invalid","lini_bisnis":"","grup":"","atasan":"","kuota":1,"kuota_luar":0,"aktif":true}`)
+		`{"id_operator":"","email":"a@example.invalid","bisnis":"","kelompok":"","atasan":"","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"aktif":true}`)
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
 	require.Equal(t, masterpicteknikhttp.CodeNotFound, content["kode"])
 }
@@ -420,9 +440,9 @@ func TestUnknownFieldsRejected(t *testing.T) {
 	p := newTestServer(t)
 
 	for _, body := range []string{
-		`{"id_operator":"PICTEKNIK05","email":"a@b.co","nama":"Dikarang","kuota":1,"kuota_luar":0,"lini_bisnis":"","grup":"","atasan":"","aktif":true}`,
-		`{"id_operator":"PICTEKNIK05","email":"a@b.co","grup_panel":"X","kuota":1,"kuota_luar":0,"lini_bisnis":"","grup":"","atasan":"","aktif":true}`,
-		`{"id_operator":"PICTEKNIK05","email":"a@b.co","beban_kerja":99,"kuota":1,"kuota_luar":0,"lini_bisnis":"","grup":"","atasan":"","aktif":true}`,
+		`{"id_operator":"PICTEKNIK05","email":"a@b.co","nama":"Dikarang","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"bisnis":"","kelompok":"","atasan":"","aktif":true}`,
+		`{"id_operator":"PICTEKNIK05","email":"a@b.co","grup_panel":"X","counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"bisnis":"","kelompok":"","atasan":"","aktif":true}`,
+		`{"id_operator":"PICTEKNIK05","email":"a@b.co","beban_kerja":99,"counter_klaim_kurang_1m":1,"counter_klaim_lebih_1m":0,"bisnis":"","kelompok":"","atasan":"","aktif":true}`,
 	} {
 		response, content := p.call(t, http.MethodPost, route, "ASM", body)
 		require.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -445,4 +465,35 @@ func TestDeleteNotRouted(t *testing.T) {
 
 	response, _ := p.call(t, http.MethodDelete, route+"/PICTEKNIK01", "ASM", "")
 	require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
+}
+
+// ID operator yang berupa ALAMAT SUREL dapat dibuka dan diubah.
+//
+// Sebagian OPERATOR_ID di master ini memang alamat surel, sehingga `@` menjadi `%40` di
+// jalur URL. `chi.URLParam` mengembalikannya tanpa diurai — ia merutekan memakai
+// `r.URL.RawPath`, yang justru terisi ketika jalurnya bersandi persen.
+//
+// Gejalanya menyesatkan: baris yang tampil di daftar dijawab "PIC teknik tidak ditemukan".
+func TestOperatorIDWithAtSignIsDecoded(t *testing.T) {
+	p := newTestServer(t)
+
+	const operatorID = "PETUGAS89@CONTOH.INVALID"
+	_, err := p.asm.Insert(context.Background(), masterpicteknik.Technician{
+		OperatorID: operatorID,
+		Email:      "petugas89@contoh.invalid",
+		Active:     true,
+	})
+	require.NoError(t, err)
+
+	// Disandikan seperti encodeURIComponent di peramban, yang MENYANDIKAN @ menjadi %40.
+	// url.PathEscape tidak melakukannya karena @ sah di potongan jalur — tetapi yang
+	// menentukan di sini adalah apa yang benar-benar dikirim layar.
+	escaped := strings.ReplaceAll(operatorID, "@", "%40")
+
+	response, _ := p.call(t, http.MethodGet, route+"/"+escaped, "ASM", "")
+	require.Equal(t, http.StatusOK, response.StatusCode, "membuka baris ber-@ tidak boleh 404")
+
+	response, _ = p.call(t, http.MethodPut, route+"/"+escaped, "ASM",
+		`{"id_operator":"`+operatorID+`","email":"petugas89@contoh.invalid","bisnis":"NONMBU","kelompok":"B","atasan":"","counter_klaim_kurang_1m":3,"counter_klaim_lebih_1m":2,"aktif":true}`)
+	require.Equal(t, http.StatusOK, response.StatusCode, "mengubah baris ber-@ tidak boleh 404")
 }

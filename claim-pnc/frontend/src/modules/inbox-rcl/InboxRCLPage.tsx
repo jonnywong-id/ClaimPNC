@@ -29,16 +29,16 @@ import type { KolomLayar, TugasRCL } from './types'
  *
  * # Tampilan sama dengan Pega — tanpa catatan di layar
  *
- * Antrean disaring dengan identitas LAMA pemanggil. Bila identitas lama tidak ditemukan,
- * atau kolom tabelnya belum terisi, layar hanya menampilkan grid kosong — persis seperti
+ * Antrean disaring dengan LOGIN_ID pemanggil di POOLDATA.M_LOGIN_PNC. Bila login tidak
+ * ditemukan/aktif, atau kolom tabelnya belum terisi, layar hanya menampilkan grid kosong — persis seperti
  * layar lama. Work Owner memutuskan 2026-09-27: tidak ada peringatan merah maupun catatan
  * "selisih terencana/keterbatasan" di layar; penjelasannya hanya di kode dan
  * `docs/catatan-pengembangan.md` §64.
  *
  * # Layar ini hanya MEMBACA
  *
- * Menyelesaikan tugas RCL Dokter berarti menjalankan Flow Action `SendToRCLDokter`, yang
- * memindahkan penugasan — milik Pega selama masa paralel (`P-1`).
+ * Keputusan dokter (Setuju, Tidak Setuju, Submit, Back) dijalankan di layar kerja
+ * `RCLDokterPage`, bukan di sini.
  */
 export function InboxRCLPage() {
   const navigate = useNavigate()
@@ -70,12 +70,12 @@ export function InboxRCLPage() {
   }, [halamanKosongDiLuarAwal])
 
   /**
-   * Tujuan tautan baris. Di sistem lama sel pertama membuka penugasannya lewat
-   * `SetAssignmentInboxRCLDoctor_act` (`ASSIGN-WORKLIST <pzInsKey>!Register_Flow`). Yang
-   * dibuka di sini tampilan klaimnya lewat nomor case, sama seperti enam inbox lain (`D-22`).
+   * Tujuan tautan baris: layar kerja RCL Dokter (`/inbox-rcl/klaim/:nomor`) — pengganti
+   * `SetAssignmentInboxRCLDoctor_act`, yang di Pega membuka penugasan tahap RCLDokter
+   * (Flow Action `SendToRCLDokter` -> section `RCLDokter`). Isinya dari TC_PNC_PUCL.
    */
   function bukaKlaim(nomorCase: string) {
-    navigate(`/view-claim/${encodeURIComponent(nomorCase)}`)
+    navigate(`/inbox-rcl/klaim/${encodeURIComponent(nomorCase)}`)
   }
 
   if (portal === null) {

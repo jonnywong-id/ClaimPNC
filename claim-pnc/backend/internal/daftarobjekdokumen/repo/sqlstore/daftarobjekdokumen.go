@@ -5,26 +5,29 @@
 // penyaringan baris (`ADR-0030` Opsi 1) — tidak ada satu pun kueri di sini yang menyaring
 // berdasarkan entitas, dan memang tidak boleh ada.
 //
+// # Isi master ini tinggal di dokumen JSON
+//
+// Bukan di kolom. Alasannya, beserta buktinya dari katalog dan dari data, ada di kepala
+// `daftarobjekdokumen.sql`. Yang perlu diketahui saat membaca berkas ini:
+//
+//   - keterangan dan pemetaan bisnis dibaca dari `JSON_DATA`
+//   - penyimpanan menulis `JSON_DATA` **dan** kolom `KET_DOC_OBJ`
+//   - dokumen JSON disusun di Go, bukan dengan fungsi JSON di SQL
+//
 // # Kenapa modul ini boleh MENULIS ke tabel milik sistem lama
 //
 // `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem selama masa paralel — bukan
 // bahwa tabel lama tidak boleh ditulis sama sekali. Layar `ListDocumentObject` adalah
-// satu-satunya layar Pega yang menulis objek dokumen: pencarian di seluruh export
-// menemukan hanya dua rule yang menyentuhnya sebagai penulis
-// (`CNMInsertLstDocObj_act` dan `SetsLstDocObjValue_act`, keduanya dirujuk section layar
-// ini saja). Memindahkan layarnya karena itu memindahkan kepemilikan tabelnya secara utuh.
+// satu-satunya layar Pega yang menulis objek dokumen. Memindahkan layarnya karena itu
+// memindahkan kepemilikan tabelnya secara utuh.
 //
 // POOLDATA.BUSINESS TIDAK termasuk: ia milik GISFW dan hanya dibaca (`D-03`).
-//
-// # Nama objek tulisnya DUGAAN
-//
-// Seluruh nama objek ada di `daftarobjekdokumen.sql` beserta tanda mana yang terbaca dari
-// export dan mana yang dugaan. Jangan menyebut nama tabel di berkas ini.
 package sqlstore
 
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -35,19 +38,47 @@ import (
 
 // sequenceDigits adalah lebar nomor urut pada ID.
 //
-// Empat, mengikuti `Database/PEGA_LST_DOC_TYPE.prc:21` — `lpad(to_char(...), 4, '0')` —
-// yang merupakan procedure tabel bersaudara pada rumpun LST_* yang sama. Ia BUKAN tiga
-// seperti rumpun M_CAUSE_OF_LOSS; lebar berbeda per rumpun dan harus dibaca dari
-// procedure-nya masing-masing, tidak pernah disalin dari modul tetangga.
-const sequenceDigits = 4
+// LIMA, dan angkanya dibaca dari procedure yang benar-benar ada di basis data —
+// `POOLDATA.PEGA_LST_DOC_OBJ` membentuk ID dengan `lpad(to_char(LST_DOC_OBJ_SEQ.nextval),
+// 5, '0')`. Ditegaskan data: ID yang terpakai hari ini `100766`..`100777`, enam karakter,
+// dengan kode situs "1" di depannya.
+//
+// Versi pertama modul ini memasang EMPAT, disalin dari procedure tabel bersaudara
+// `PEGA_LST_DOC_TYPE`. Lebar nomor urut berbeda per tabel dan harus dibaca dari procedure
+// tabel itu sendiri, bukan dari tetangganya.
+const sequenceDigits = 5
 
-// Repo membaca dan menulis objek dokumen beserta tabel pemetaan bisnisnya.
+// Repo membaca dan menulis POOLDATA.LST_DOC_OBJ.
 type Repo struct {
 	db *sql.DB
 }
 
 // NewRepo membentuk repo; db wajib sudah terhubung ke basis data portal yang dituju.
 func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
+
+// Kunci di dalam dokumen JSON, persis seperti yang ditulis sistem lama
+// (`POOLDATA.PROCESS_LST_DOC_OBJ`) dan seperti yang terbaca pada data hari ini.
+const (
+	keyID          = "ID"
+	keyListLBUID   = "LIST_LBU_ID"
+	keyDescription = "KET_DOC_OBJ"
+)
+
+// document adalah dokumen JSON satu baris, disimpan sebagai PETA kunci mentah.
+//
+// Peta, bukan struct bertipe, dengan satu alasan: kunci yang TIDAK dikenal modul ini pun
+// ikut terbawa saat baris disimpan ulang. Dokumen pada data hari ini hanya memuat ketiga
+// kunci di atas, tetapi menyusun ulang dengan struct bertipe berarti kunci keempat yang
+// kelak ditambahkan siapa pun akan hilang diam-diam pada penyuntingan pertama.
+//
+// Yang TIDAK dijamin peta ini adalah urutan kuncinya — Go mengurutkan kunci peta saat
+// menulis JSON. Itu tidak berakibat apa pun: baik `JSON_VALUE` maupun `JSON_TABLE` tidak
+// peduli urutan, dan view POOLDATA.V_LST_DOC_OBJ_BISNIS membaca lewat jalur, bukan posisi.
+type document map[string]json.RawMessage
+
+type documentLBU struct {
+	ID string `json:"ID"`
+}
 
 // List membaca seluruh objek dokumen, tanpa pemetaan bisnisnya.
 func (r *Repo) List(ctx context.Context) ([]daftarobjekdokumen.DocumentObject, error) {
@@ -59,11 +90,15 @@ func (r *Repo) List(ctx context.Context) ([]daftarobjekdokumen.DocumentObject, e
 
 	var result []daftarobjekdokumen.DocumentObject
 	for rows.Next() {
-		row, err := scanRow(rows)
-		if err != nil {
+		var id, description, oldID sql.NullString
+		if err := rows.Scan(&id, &description, &oldID); err != nil {
 			return nil, fmt.Errorf("daftarobjekdokumen/sqlstore: membaca baris: %w", err)
 		}
-		result = append(result, row)
+		result = append(result, daftarobjekdokumen.DocumentObject{
+			ID:          strings.TrimSpace(id.String),
+			Description: strings.TrimSpace(description.String),
+			OldID:       strings.TrimSpace(oldID.String),
+		})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("daftarobjekdokumen/sqlstore: menelusuri daftar: %w", err)
@@ -72,33 +107,91 @@ func (r *Repo) List(ctx context.Context) ([]daftarobjekdokumen.DocumentObject, e
 }
 
 // Get membaca satu objek dokumen LENGKAP dengan pemetaan bisnisnya.
+//
+// Nama bisnisnya TIDAK diisi di sini — yang tersimpan hanyalah ID. Pelengkapannya ada di
+// usecase, yang memang sudah membaca master bisnis.
 func (r *Repo) Get(ctx context.Context, id string) (daftarobjekdokumen.DocumentObject, error) {
-	row, err := scanRow(r.db.QueryRowContext(ctx, getQuery("document_object_get"), id))
+	row, _, err := r.read(ctx, id)
+	return row, err
+}
+
+// read mengembalikan barisnya beserta dokumen JSON mentahnya.
+//
+// Dokumen mentah dibutuhkan jalur tulis: bagian dokumen yang TIDAK dikenal modul ini pun
+// harus ikut terbawa saat disimpan ulang, bukan hilang diam-diam.
+func (r *Repo) read(ctx context.Context, id string) (daftarobjekdokumen.DocumentObject, document, error) {
+	var rawID, description, oldID, raw sql.NullString
+
+	err := r.db.QueryRowContext(ctx, getQuery("document_object_get"), id).
+		Scan(&rawID, &description, &oldID, &raw)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return daftarobjekdokumen.DocumentObject{}, daftarobjekdokumen.ErrNotFound
+		return daftarobjekdokumen.DocumentObject{}, document{}, daftarobjekdokumen.ErrNotFound
 	case err != nil:
-		return daftarobjekdokumen.DocumentObject{}, fmt.Errorf("daftarobjekdokumen/sqlstore: membaca %q: %w", id, err)
+		return daftarobjekdokumen.DocumentObject{}, document{}, fmt.Errorf(
+			"daftarobjekdokumen/sqlstore: membaca %q: %w", id, err)
 	}
 
-	businesses, err := r.businessesOf(ctx, row.ID)
-	if err != nil {
-		return daftarobjekdokumen.DocumentObject{}, err
+	doc := parseDocument(raw.String)
+
+	row := daftarobjekdokumen.DocumentObject{
+		ID:          strings.TrimSpace(rawID.String),
+		Description: strings.TrimSpace(description.String),
+		OldID:       strings.TrimSpace(oldID.String),
+		Businesses:  businessesOf(doc),
 	}
-	row.Businesses = businesses
-	return row, nil
+	return row, doc, nil
+}
+
+// parseDocument membaca dokumen JSON, dan memaafkan isi yang tidak dapat dibaca.
+//
+// Dokumen yang rusak TIDAK menggagalkan pembacaan: barisnya tetap tampil, hanya pemetaan
+// bisnisnya yang kosong. Menggagalkan seluruh baris karena dokumennya cacat berarti satu
+// baris rusak membuat layar tidak dapat dibuka sama sekali.
+func parseDocument(raw string) document {
+	if strings.TrimSpace(raw) == "" {
+		return document{}
+	}
+	var doc document
+	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
+		return document{}
+	}
+	return doc
+}
+
+// businessesOf membongkar LIST_LBU_ID menjadi daftar bisnis — ID saja.
+//
+// Namanya TIDAK diisi di sini: dokumen ini memang tidak menyimpannya. Pelengkapannya ada
+// di usecase, yang memang sudah membaca master bisnis.
+func businessesOf(doc document) []daftarobjekdokumen.Business {
+	result := make([]daftarobjekdokumen.Business, 0)
+
+	raw, exists := doc[keyListLBUID]
+	if !exists {
+		return result
+	}
+
+	var list []documentLBU
+	if err := json.Unmarshal(raw, &list); err != nil {
+		// Senarai yang bentuknya tidak terduga diperlakukan sebagai kosong, dengan alasan
+		// yang sama seperti dokumen yang rusak: barisnya tetap dapat dibuka.
+		return result
+	}
+
+	for _, b := range list {
+		if clean := strings.TrimSpace(b.ID); clean != "" {
+			result = append(result, daftarobjekdokumen.Business{ID: clean})
+		}
+	}
+	return result
 }
 
 // Insert menerbitkan ID baru lalu menyimpan barisnya beserta pemetaan bisnisnya.
 //
 // Seluruh langkahnya berada dalam SATU transaksi, mengikuti `D-68` yang memindahkan
-// kepemilikan transaksi ke Go. Procedure sejenis pada rumpun ini menjalankan ROLLBACK di
-// dalam handler galatnya sendiri setelah sebagian pekerjaan sudah dilakukan; di sini
-// kegagalan di tengah tidak meninggalkan apa pun.
-//
-// Akibat yang harus disadari pada uji kesetaraan: bila penyimpanan gagal di tengah, sistem
-// lama meninggalkan sebagian data sedangkan sistem baru tidak meninggalkan apa pun.
-// Perbedaan itu DISENGAJA dan sudah dinyatakan di muka (`14-TESTING-STRATEGY.md` §6.4).
+// kepemilikan transaksi ke Go. Procedure lama menjalankan ROLLBACK-nya sendiri di dalam
+// handler galat setelah sebagian pekerjaan dilakukan; di sini kegagalan di tengah tidak
+// meninggalkan apa pun.
 func (r *Repo) Insert(ctx context.Context, data daftarobjekdokumen.SaveData) (daftarobjekdokumen.DocumentObject, error) {
 	saved, err := r.inTransaction(ctx, func(tx *sql.Tx) (daftarobjekdokumen.DocumentObject, error) {
 		id, err := issueID(ctx, tx)
@@ -106,11 +199,15 @@ func (r *Repo) Insert(ctx context.Context, data daftarobjekdokumen.SaveData) (da
 			return daftarobjekdokumen.DocumentObject{}, err
 		}
 
-		if _, err := tx.ExecContext(ctx, getQuery("document_object_insert"), id, data.Description); err != nil {
-			return daftarobjekdokumen.DocumentObject{}, fmt.Errorf("daftarobjekdokumen/sqlstore: menyisipkan %q: %w", id, err)
-		}
-		if err := replaceBusinesses(ctx, tx, id, data.Businesses); err != nil {
+		raw, err := buildDocument(document{}, id, data)
+		if err != nil {
 			return daftarobjekdokumen.DocumentObject{}, err
+		}
+
+		if _, err := tx.ExecContext(ctx, getQuery("document_object_insert"),
+			id, data.Description, raw); err != nil {
+			return daftarobjekdokumen.DocumentObject{}, fmt.Errorf(
+				"daftarobjekdokumen/sqlstore: menyisipkan %q: %w", id, err)
 		}
 
 		return daftarobjekdokumen.DocumentObject{ID: id, Description: data.Description}, nil
@@ -119,17 +216,32 @@ func (r *Repo) Insert(ctx context.Context, data daftarobjekdokumen.SaveData) (da
 		return daftarobjekdokumen.DocumentObject{}, err
 	}
 
-	// Dibaca ulang supaya yang dikembalikan adalah isi baris yang benar-benar tersimpan,
-	// termasuk urutan pemetaan bisnisnya sebagaimana basis data mengembalikannya.
+	// Dibaca ulang supaya yang dikembalikan adalah isi baris yang benar-benar tersimpan.
 	return r.Get(ctx, saved.ID)
 }
 
 // Update menyimpan perubahan pada baris yang sudah ada beserta pemetaan bisnisnya.
+//
+// Dokumen JSON-nya disusun ulang dari dokumen LAMA, bukan dari nol: bagian yang tidak
+// dikenal modul ini ikut terbawa. Menulis dokumen baru dari nol akan membuang apa pun yang
+// pernah ditaruh sistem lama di sana — diam-diam, dan tanpa cara memulihkannya.
 func (r *Repo) Update(ctx context.Context, id string, data daftarobjekdokumen.SaveData) (daftarobjekdokumen.DocumentObject, error) {
-	_, err := r.inTransaction(ctx, func(tx *sql.Tx) (daftarobjekdokumen.DocumentObject, error) {
-		result, err := tx.ExecContext(ctx, getQuery("document_object_update"), data.Description, id)
+	_, previous, err := r.read(ctx, id)
+	if err != nil {
+		return daftarobjekdokumen.DocumentObject{}, err
+	}
+
+	_, err = r.inTransaction(ctx, func(tx *sql.Tx) (daftarobjekdokumen.DocumentObject, error) {
+		raw, err := buildDocument(previous, id, data)
 		if err != nil {
-			return daftarobjekdokumen.DocumentObject{}, fmt.Errorf("daftarobjekdokumen/sqlstore: memperbarui %q: %w", id, err)
+			return daftarobjekdokumen.DocumentObject{}, err
+		}
+
+		result, err := tx.ExecContext(ctx, getQuery("document_object_update"),
+			data.Description, raw, id)
+		if err != nil {
+			return daftarobjekdokumen.DocumentObject{}, fmt.Errorf(
+				"daftarobjekdokumen/sqlstore: memperbarui %q: %w", id, err)
 		}
 
 		// Baris yang tersentuh diperiksa, bukan diabaikan: UPDATE terhadap ID yang tidak
@@ -139,10 +251,6 @@ func (r *Repo) Update(ctx context.Context, id string, data daftarobjekdokumen.Sa
 		if err == nil && affected == 0 {
 			return daftarobjekdokumen.DocumentObject{}, daftarobjekdokumen.ErrNotFound
 		}
-
-		if err := replaceBusinesses(ctx, tx, id, data.Businesses); err != nil {
-			return daftarobjekdokumen.DocumentObject{}, err
-		}
 		return daftarobjekdokumen.DocumentObject{}, nil
 	})
 	if err != nil {
@@ -151,32 +259,55 @@ func (r *Repo) Update(ctx context.Context, id string, data daftarobjekdokumen.Sa
 	return r.Get(ctx, id)
 }
 
-// CheckTable memastikan ketiga objek yang dipakai modul ini ada dan dapat dibaca akun
+// buildDocument menyusun dokumen JSON yang disimpan.
+//
+// ID selalu ikut di dalam dokumen, meniru bentuk yang ditulis sistem lama — di sana ID
+// disisipkan dengan mengganti penanda 'UnknownID' setelah nomornya terbit.
+func buildDocument(previous document, id string, data daftarobjekdokumen.SaveData) (string, error) {
+	fresh := document{}
+	for key, value := range previous {
+		fresh[key] = value
+	}
+
+	list := make([]documentLBU, 0, len(data.Businesses))
+	for _, b := range data.Businesses {
+		if clean := strings.TrimSpace(b.ID); clean != "" {
+			list = append(list, documentLBU{ID: clean})
+		}
+	}
+
+	for key, value := range map[string]any{
+		keyID:          id,
+		keyDescription: data.Description,
+		keyListLBUID:   list,
+	} {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return "", fmt.Errorf("daftarobjekdokumen/sqlstore: menyusun %s pada dokumen %q: %w", key, id, err)
+		}
+		fresh[key] = encoded
+	}
+
+	raw, err := json.Marshal(fresh)
+	if err != nil {
+		return "", fmt.Errorf("daftarobjekdokumen/sqlstore: menyusun dokumen JSON %q: %w", id, err)
+	}
+	return string(raw), nil
+}
+
+// CheckTable memastikan kedua objek yang dipakai modul ini ada dan dapat dibaca akun
 // aplikasi.
 //
 // Ia tidak mengambil satu baris pun, sehingga aman dijalankan terhadap produksi.
-//
-// Ketiganya diperiksa TERPISAH dengan sengaja: yang pertama namanya pasti, yang kedua dan
-// ketiga dugaan. Membedakan mana yang gagal adalah satu-satunya cara mengetahui apakah
-// dugaan itu benar — sebelum pengguna pertama menekan Simpan, bukan sesudahnya.
 func (r *Repo) CheckTable(ctx context.Context) error {
-	for _, check := range []struct {
-		queryName string
-		object    string
-	}{
-		{"document_object_check_table", "POOLDATA.V_LST_DOC_OBJ"},
-		{"document_object_write_check_table", "POOLDATA.LST_DOC_OBJ"},
-		{"document_object_business_check_table", "POOLDATA.LST_DOC_OBJ_BUSINESS"},
-	} {
-		rows, err := r.db.QueryContext(ctx, getQuery(check.queryName))
-		if err != nil {
-			return fmt.Errorf("daftarobjekdokumen/sqlstore: %s tidak dapat dibaca: %w", check.object, err)
-		}
-		err = rows.Err()
-		_ = rows.Close()
-		if err != nil {
-			return fmt.Errorf("daftarobjekdokumen/sqlstore: %s tidak dapat dibaca: %w", check.object, err)
-		}
+	rows, err := r.db.QueryContext(ctx, getQuery("document_object_check_table"))
+	if err != nil {
+		return fmt.Errorf("daftarobjekdokumen/sqlstore: POOLDATA.LST_DOC_OBJ tidak dapat dibaca: %w", err)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return fmt.Errorf("daftarobjekdokumen/sqlstore: POOLDATA.LST_DOC_OBJ tidak dapat dibaca: %w", err)
 	}
 	return nil
 }
@@ -206,85 +337,8 @@ func (r *Repo) inTransaction(
 	return result, nil
 }
 
-// businessesOf membaca pemetaan bisnis satu objek dokumen.
-func (r *Repo) businessesOf(ctx context.Context, id string) ([]daftarobjekdokumen.Business, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("document_object_business_list"), id)
-	if err != nil {
-		return nil, fmt.Errorf("daftarobjekdokumen/sqlstore: membaca pemetaan bisnis %q: %w", id, err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	result := make([]daftarobjekdokumen.Business, 0)
-	for rows.Next() {
-		var businessID, name sql.NullString
-		if err := rows.Scan(&businessID, &name); err != nil {
-			return nil, fmt.Errorf("daftarobjekdokumen/sqlstore: membaca baris pemetaan bisnis: %w", err)
-		}
-		result = append(result, daftarobjekdokumen.Business{
-			ID:   strings.TrimSpace(businessID.String),
-			Name: strings.TrimSpace(name.String),
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("daftarobjekdokumen/sqlstore: menelusuri pemetaan bisnis: %w", err)
-	}
-	return result, nil
-}
-
-// replaceBusinesses menggantikan SELURUH pemetaan bisnis satu objek dokumen.
-//
-// # Namanya memang replace, dan di sini itu benar
-//
-// Berbeda dari saveBusinesses pada modul Master COL Simas Online, yang namanya sengaja
-// BUKAN replace karena tabelnya tidak punya penanda aktif sehingga pencabutan tidak dapat
-// disimpan sama sekali. Tabel modul ini dirancang sejak awal dengan STS_AKTIF, sehingga
-// pencabutan benar-benar tersimpan — sebagai penandaan, bukan penghapusan (`D-66`).
-//
-// Langkahnya dua, dan urutannya mengikat:
-//
-//  1. seluruh baris milik objek dokumen ini ditandai TIDAK AKTIF
-//  2. baris pada setiap posisi dihidupkan kembali dengan isi yang baru
-//
-// Barisnya dikenali menurut POSISINYA di grid, bukan menurut namanya. Dengan begitu urutan
-// yang disusun pengguna terjaga, dan dua baris bernama sama tetap dua baris — keduanya sah,
-// karena grid Pega tidak punya satu pun penanda keunikan.
-func replaceBusinesses(ctx context.Context, tx *sql.Tx, id string, businesses []daftarobjekdokumen.Business) error {
-	if _, err := tx.ExecContext(ctx, getQuery("document_object_business_deactivate"), id); err != nil {
-		return fmt.Errorf("daftarobjekdokumen/sqlstore: menonaktifkan pemetaan bisnis %q: %w", id, err)
-	}
-
-	for index, business := range businesses {
-		// Posisi dihitung mulai dari 1, mengikuti nomor baris yang dilihat pengguna di
-		// layar — bukan indeks slice yang mulai dari 0.
-		position := index + 1
-
-		result, err := tx.ExecContext(ctx, getQuery("document_object_business_activate"),
-			nullIfEmpty(business.ID), business.Name, id, position)
-		if err != nil {
-			return fmt.Errorf("daftarobjekdokumen/sqlstore: memperbarui pemetaan bisnis baris %d: %w", position, err)
-		}
-
-		affected, err := result.RowsAffected()
-		if err != nil {
-			// Driver yang tidak dapat melaporkan jumlah baris membuat upsert ini tidak
-			// dapat memutuskan apa pun. Menyisipkan secara membabi buta berisiko baris
-			// ganda, jadi kegagalannya dinyatakan terang-terangan.
-			return fmt.Errorf("daftarobjekdokumen/sqlstore: jumlah baris pemetaan bisnis tidak terbaca: %w", err)
-		}
-		if affected > 0 {
-			continue
-		}
-
-		if _, err := tx.ExecContext(ctx, getQuery("document_object_business_insert"),
-			id, position, nullIfEmpty(business.ID), business.Name); err != nil {
-			return fmt.Errorf("daftarobjekdokumen/sqlstore: menyisipkan pemetaan bisnis baris %d: %w", position, err)
-		}
-	}
-	return nil
-}
-
-// issueID membentuk ID persis seperti `Database/PEGA_LST_DOC_TYPE.prc`: kode situs
-// disambung nomor urut empat digit.
+// issueID membentuk ID persis seperti `POOLDATA.PEGA_LST_DOC_OBJ`: kode situs disambung
+// nomor urut lima digit dari POOLDATA.LST_DOC_OBJ_SEQ.
 //
 // Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR termasuk
 // yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri pada dialek
@@ -306,63 +360,28 @@ func issueID(ctx context.Context, tx *sql.Tx) (string, error) {
 		return "", fmt.Errorf("daftarobjekdokumen/sqlstore: mengambil nomor urut: %w", err)
 	}
 
-	return strings.TrimSpace(site) + FourDigits(sequence), nil
+	return strings.TrimSpace(site) + FiveDigits(sequence), nil
 }
 
-// FourDigits meniru lpad(to_char(seq), 4, '0') pada procedure lama.
+// FiveDigits meniru lpad(to_char(seq), 5, '0') pada procedure lama.
 //
 // # Batas yang nyata, bukan teoretis
 //
-// Bilangan di atas 9999 dikembalikan apa adanya, sama seperti LPAD Oracle — dan ID
-// ke-10000 karena itu menjadi ENAM karakter. Bila kolom ID berlebar tetap lima, penyisipan
-// berikutnya akan DITOLAK basis data (ORA-12899), bukan diterima dengan ID aneh. Lebar ID
-// sendiri BELUM DIKETAHUI — DDL-nya belum ada (`R-08`) — dan itu ikut ditanyakan di migrasi
-// 0008.
+// Bilangan di atas 99999 dikembalikan apa adanya, sama seperti LPAD Oracle — dan ID
+// ke-100000 karena itu menjadi TUJUH karakter. Kolom ID berlebar CHAR(6), sehingga
+// penyisipan berikutnya akan DITOLAK basis data (ORA-12899), bukan diterima dengan ID aneh.
 //
-// Dipotong menjadi empat digit? Tidak. Itu akan menghasilkan ID GANDA, yang jauh lebih
-// buruk daripada penyisipan yang gagal dengan pesan jelas. Perilakunya dibiarkan apa adanya,
-// persis seperti masterstatus.ThreeDigits.
+// Urutannya ada di 778 hari ini, jadi batas itu masih sangat jauh. Perilakunya tetap
+// dibiarkan apa adanya: memotongnya menjadi lima digit akan menghasilkan ID GANDA, yang
+// jauh lebih buruk daripada penyisipan yang gagal dengan pesan jelas.
 //
 // Diekspor supaya perilaku ini dapat diuji.
-func FourDigits(n int64) string {
+func FiveDigits(n int64) string {
 	digits := strconv.FormatInt(n, 10)
 	for len(digits) < sequenceDigits {
 		digits = "0" + digits
 	}
 	return digits
-}
-
-// nullIfEmpty menyimpan NULL, bukan teks kosong, untuk isian opsional yang tidak diisi.
-//
-// Keduanya berbeda di basis data, dan membiarkan keduanya masuk berarti dua bentuk "tidak
-// diisi" yang harus sama-sama diingat setiap kueri sesudahnya.
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
-
-// rowScanner menyatukan *sql.Row dan *sql.Rows, yang keduanya punya Scan dengan bentuk sama
-// tetapi tidak berbagi satu antarmuka di pustaka standar.
-type rowScanner interface{ Scan(to ...any) error }
-
-// scanRow membaca satu baris hasil kueri menjadi DocumentObject.
-//
-// Ketiga kolom dibaca lewat sql.NullString lalu dipangkas. Dua sebab: kolom bertipe CHAR
-// berlebar tetap memadatkan nilainya dengan spasi tanpa memberi tanda apa pun, dan ketiganya
-// nullable — OLD_ID pasti, dan kedua lainnya belum dapat dipastikan karena DDL-nya belum
-// diterima (`R-08`).
-func scanRow(rows rowScanner) (daftarobjekdokumen.DocumentObject, error) {
-	var id, description, oldID sql.NullString
-	if err := rows.Scan(&id, &description, &oldID); err != nil {
-		return daftarobjekdokumen.DocumentObject{}, err
-	}
-	return daftarobjekdokumen.DocumentObject{
-		ID:          strings.TrimSpace(id.String),
-		Description: strings.TrimSpace(description.String),
-		OldID:       strings.TrimSpace(oldID.String),
-	}, nil
 }
 
 // BusinessRepo membaca POOLDATA.BUSINESS milik GISFW.

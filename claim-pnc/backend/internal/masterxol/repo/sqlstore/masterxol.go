@@ -557,6 +557,57 @@ func (r *Repo) ListBusinessGroup(ctx context.Context, t masterxol.Type) ([]maste
 	return result, nil
 }
 
+// SearchReinsurer mencari reasuradur di POOLDATA.T_REINSURER menurut nama.
+//
+// Kata kunci dibungkus `%…%` DI SINI, bukan di dalam teks kueri, supaya ia tetap berupa
+// parameter terikat. Karakter khusus LIKE — `%`, `_`, dan `\` — dilepas lebih dulu,
+// karena tanpa itu pengguna yang mengetik `_` akan mendapat hasil yang tidak dimintanya.
+func (r *Repo) SearchReinsurer(ctx context.Context, keyword string) ([]masterxol.ReinsurerOption, error) {
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		// Kata kunci kosong TIDAK berarti "ambil semuanya". Master ini besar, dan
+		// mengirimkan seluruh isinya ke peramban bukan hasil pencarian.
+		return nil, nil
+	}
+
+	rows, err := r.db.QueryContext(ctx, getQuery("xol_search_reinsurer"), "%"+escapeLike(keyword)+"%")
+	if err != nil {
+		return nil, fmt.Errorf("masterxol/sqlstore: mencari reasuradur: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []masterxol.ReinsurerOption
+	for rows.Next() {
+		var id, name sql.NullString
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("masterxol/sqlstore: membaca baris reasuradur: %w", err)
+		}
+		result = append(result, masterxol.ReinsurerOption{
+			ID:   strings.TrimSpace(id.String),
+			Name: strings.TrimSpace(name.String),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("masterxol/sqlstore: menelusuri hasil pencarian reasuradur: %w", err)
+	}
+	return result, nil
+}
+
+// escapeLike melumpuhkan karakter khusus LIKE di dalam kata kunci pengguna.
+//
+// Tanpa ini, `%` yang diketik pengguna berarti "apa saja" dan `_` berarti "satu huruf apa
+// saja" — pencarian mengembalikan baris yang tidak ia minta, dan ia tidak punya cara tahu
+// mengapa. Garis miring terbalik dilepas lebih dulu karena ia sendiri yang melepas.
+//
+// Pelepasnya `\`, dan kuerinya menyatakannya lewat `ESCAPE '\'` — Oracle TIDAK punya
+// pelepas LIKE bawaan, sehingga tanpa klausa itu pelepasan di sini tidak berarti apa-apa.
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "%", `\%`)
+	s = strings.ReplaceAll(s, "_", `\_`)
+	return s
+}
+
 // SubmitToCommittee mencatat pengajuan sebuah induk ke komite.
 func (r *Repo) SubmitToCommittee(ctx context.Context, id, pic, remark string) error {
 	result, err := r.db.ExecContext(ctx, getQuery("xol_submit_committee"),

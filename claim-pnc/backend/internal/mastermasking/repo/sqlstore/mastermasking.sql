@@ -248,3 +248,33 @@ SELECT ID,
 SELECT COUNT(*)
   FROM POOLDATA.BRANCH
  WHERE ID = :1
+
+-- name: operator_list
+--
+-- Petugas sebuah cabang yang berhak diberi kewenangan masking. Mengisi tabel pada form
+-- Tambah.
+--
+-- Diambil apa adanya dari `RDB List/GetDataLogin-SQL.xml`:
+--
+--     SELECT PYUSERIDENTIFIER AS "UserName", PYUSERNAME as "BranchName"
+--       FROM DATAPEGA.PR_OPERATORS
+--      WHERE PYPOSITION IN ('NONMBU','TRAVEL','PA','PUCL/RCL IP')
+--        AND BRANCHCODE = {InputData.ReportDescription}
+--      ORDER BY PYUSERIDENTIFIER ASC
+--
+-- Dua hal yang TIDAK dibawa, keduanya utang teknis §4.2:
+--
+--   - Alias yang menyesatkan. `PYUSERNAME as "BranchName"` menamai nama ORANG sebagai
+--     nama CABANG. Di sini kolomnya disebut apa adanya dan penamaan domainnya terjadi di
+--     Go (`D-19`).
+--   - Nilai cabang dirangkai ke teks SQL. Di sini ia parameter binding.
+--
+-- DATAPEGA.PR_OPERATORS hanya DIBACA — ia tabel milik engine Pega. Keempat jabatan ada di
+-- konstanta OperatorPositions dan diikat satu per satu, bukan dirangkai, supaya daftarnya
+-- tetap satu-satunya sumber kebenaran di Go.
+SELECT PYUSERIDENTIFIER,
+       PYUSERNAME
+  FROM DATAPEGA.PR_OPERATORS
+ WHERE PYPOSITION IN (:1, :2, :3, :4)
+   AND TRIM(BRANCHCODE) = :5
+ ORDER BY PYUSERIDENTIFIER ASC

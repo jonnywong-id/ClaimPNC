@@ -14,6 +14,12 @@ import (
 const (
 	CodeCallerUnknown = "profil_pemanggil_tidak_lengkap"
 	CodeInternalError = "galat_internal"
+	CodeClaimNotFound = "klaim_tidak_ditemukan"
+
+	CodeUnreadableBody      = "badan_tidak_terbaca"
+	CodeUnknownDecision     = "keputusan_tidak_dikenal"
+	CodeDecisionNotAllowed  = "keputusan_tidak_berlaku"
+	CodeTechnicalPICUnknown = "pic_teknik_tidak_diketahui"
 )
 
 // JSONWriter menuliskan badan respons.
@@ -59,6 +65,30 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Code: CodeCallerUnknown,
 			Message: "Identitas Anda tidak terbaca, sehingga antrean RCL milik Anda tidak " +
 				"dapat dipisahkan dari antrean dokter lain. Masuk ulang lalu coba lagi.",
+		}, true
+	case errors.Is(err, inboxrcl.ErrClaimNotFound):
+		// 404 — klaim tidak ada di antrean RCL pemanggil. Tidak dibedakan dari "milik orang
+		// lain" supaya keberadaan klaim orang lain tidak bocor.
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeClaimNotFound,
+			Message: "Klaim ini tidak ada di antrean RCL Anda.",
+		}, true
+	case errors.Is(err, inboxrcl.ErrUnknownDecision):
+		// 400 — bentuk permintaan salah (cacat klien), bukan pelanggaran aturan.
+		return http.StatusBadRequest, ErrorResponse{
+			Code:    CodeUnknownDecision,
+			Message: "Keputusan yang dikirim tidak dikenal.",
+		}, true
+	case errors.Is(err, inboxrcl.ErrDecisionNotAllowed):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeDecisionNotAllowed,
+			Message: "Tombol ini tidak berlaku untuk klaim ini. Muat ulang layar lalu coba lagi.",
+		}, true
+	case errors.Is(err, inboxrcl.ErrTechnicalPICUnknown):
+		return http.StatusConflict, ErrorResponse{
+			Code: CodeTechnicalPICUnknown,
+			Message: "Klaim tidak dapat dikembalikan ke analis karena PIC Teknik klaim ini " +
+				"belum tercatat.",
 		}, true
 	default:
 		return 0, ErrorResponse{}, false

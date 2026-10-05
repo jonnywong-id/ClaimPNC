@@ -10,9 +10,7 @@ import { useSelectedPortal } from '@/app/portal'
 import {
   useCreateTravelDocumentDetail,
   useTravelDocumentChoiceList,
-  useTravelDocumentDetail,
   useTravelDocumentDetailList,
-  useTravelPlanList,
   useUpdateTravelDocumentDetail,
 } from './api'
 import {
@@ -73,10 +71,9 @@ function loadMessage(error: unknown): MessageContent {
 /**
  * Layar Daftar Detail Dokumen Travel.
  *
- * Pengganti `Harness/ListDocumentTravel-Harness.xml` atas view POOLDATA.V_LST_DOC_TRAVEL
- * beserta pembatasan plan dan jaminannya. Judul, susunan kolom, dan tombolnya mengikuti
- * layar lama (`D-13`: alur dan tata letak ditiru supaya pengguna tidak perlu belajar
- * ulang):
+ * Pengganti `Harness/ListDocumentTravel-Harness.xml` atas view POOLDATA.V_LST_DOC_TRAVEL.
+ * Judul, susunan kolom, dan tombolnya mengikuti layar lama (`D-13`: alur dan tata letak
+ * ditiru supaya pengguna tidak perlu belajar ulang):
  *
  *   - Judul "Detail Dokumen Travel"   — `Section/LSTDocumentTravel-Section.xml`
  *   - Tombol "Tambah" dan "Refresh"   — section yang sama
@@ -99,6 +96,11 @@ function loadMessage(error: unknown): MessageContent {
  * satu pun `pyRequired` bernilai true maupun Validate rule. Keputusan Work Owner
  * 2026-09-21, sama dengan modul Master Dokumen Travel.
  *
+ * Tidak ada grid Plan dan Jaminan. `Section/BrowseDocumentTravel-Section.xml:3731`
+ * memuatnya, tetapi aplikasi Pega yang berjalan tidak — Work Owner memeriksa layarnya
+ * langsung dan menetapkannya 2026-10-03. Modul ini sempat membangunnya lalu mencabutnya;
+ * menambahkannya kembali menuntut keputusan Work Owner lebih dulu.
+ *
  * Tidak ada tombol hapus. Layar Pega pun tidak punya, dan baris ini menentukan dokumen
  * apa yang diminta pada klaim yang sedang berjalan (`Activity/TravelDocument_act-Act.xml`)
  * — menghapusnya mengubah kelengkapan klaim yang sudah telanjur dinilai (`D-66`,
@@ -110,20 +112,20 @@ export function TravelDocumentDetailPage() {
 
   const list = useTravelDocumentDetailList()
   const documents = useTravelDocumentChoiceList()
-  const travelPlans = useTravelPlanList()
   const create = useCreateTravelDocumentDetail()
   const update = useUpdateTravelDocumentDetail()
 
   const openedRow = typeof form === 'string' ? null : form
 
-  // Baris yang dibuka dimuat ULANG dari server supaya pembatasan plan-nya ikut terbawa.
-  // Daftar sengaja tidak membawanya — grid hanya menampilkan lima kolom — sehingga baris
-  // yang diambil dari daftar SELALU punya `jaminan: []`. Memakainya langsung akan membuat
-  // form tampak seolah seluruh pembatasannya sudah dihapus, dan menyimpannya benar-benar
-  // menghapusnya.
-  const detail = useTravelDocumentDetail(openedRow?.id ?? null)
+  // Form dibuka LANGSUNG dari baris yang ada di daftar, tanpa memuat ulang dari server.
+  //
+  // Daftar sudah membawa seluruh isi baris — kelima kolomnya adalah seluruh isi
+  // tabelnya. Memuat ulang karena itu tidak menambah satu keterangan pun. Modul ini
+  // sempat memuat ulang ketika masih memuat pembatasan Plan dan Jaminan, yang memang
+  // tidak dibawa daftar; pembatasan itu dicabut 2026-10-03 dan kewajiban itu hilang
+  // bersamanya.
+  const edited = openedRow
 
-  const edited = openedRow === null ? null : (detail.data?.detail_dokumen_travel ?? openedRow)
   const isSaving = create.isPending || update.isPending
   const saveError = openedRow ? update.error : create.error
 
@@ -146,43 +148,14 @@ export function TravelDocumentDetailPage() {
   }
 
   function save(values: TravelDocumentDetailFields) {
-    const plans = travelPlans.data?.plan ?? []
-    const coverages = travelPlans.data?.jaminan ?? []
-
     const input = {
       id_dokumen: values.id_dokumen,
       nama_dokumen: values.nama_dokumen,
       status_wajib: values.status_wajib === MANDATORY_YES,
-      // Isian kosong dibaca sebagai nol — pada layar tanpa validasi, "belum diisi" tidak
-      // boleh menjadi penolakan. Bentuknya sudah dijaga skema form berupa angka saja,
-      // sehingga Number() di sini tidak pernah menghasilkan NaN.
+      // Isian kosong dibaca sebagai nol — pada layar tanpa validasi, "belum diisi"
+      // tidak boleh menjadi penolakan. Bentuknya sudah dijaga skema form berupa angka
+      // saja, sehingga Number() di sini tidak pernah menghasilkan NaN.
       minimal_unggah: Number(values.minimal_unggah || '0'),
-      jaminan: values.jaminan
-        // Baris yang dibiarkan kosong seluruhnya dibuang di sini supaya tidak terkirim
-        // sebagai pembatasan yang tidak membatasi apa pun. Server pun membuangnya, tetapi
-        // membuangnya lebih awal membuat permintaannya menyatakan apa yang benar-benar
-        // dimaksud.
-        .filter((row) => row.nama_plan.trim() !== '' || row.nama_jaminan.trim() !== '')
-        .map((row) => {
-          // Kode dicarikan dari NAMA yang diketik atau dipilih petugas — itulah yang
-          // dilihatnya di layar. Nama yang tidak ada di master memang tidak punya kode,
-          // dan barisnya TETAP dikirim tanpa kode: autocomplete Pega pun menyimpan
-          // namanya saja pada keadaan itu (`pyAllowFreeFormInput=true`).
-          const planName = row.nama_plan.trim()
-          const coverageName = row.nama_jaminan.trim()
-          const plan = plans.find((item) => item.nama === planName)
-          const coverage = coverages.find(
-            (item) =>
-              item.nama === coverageName && (plan === undefined || item.id_plan === plan.id),
-          )
-
-          return {
-            id_plan: plan?.id ?? '',
-            nama_plan: planName,
-            id_jaminan: coverage?.id ?? '',
-            nama_jaminan: coverageName,
-          }
-        }),
     }
 
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
@@ -281,18 +254,9 @@ export function TravelDocumentDetailPage() {
 
       {form !== CLOSED && (
         <section className="mt-5">
-          {/* Kegagalan memuat daftar plan TIDAK menutup form dan tidak menghalangi
-              penyimpanan: nama plan dan jaminan memang boleh diketik sendiri. Yang hilang
-              hanya sarannya, dan form itu sendiri yang mengatakannya. */}
-          {travelPlans.isError && (
-            <div className="mb-3">
-              <ErrorMessage
-                title="Daftar plan dan jaminan tidak dapat dimuat"
-                description="Sarannya tidak tersedia untuk sementara. Namanya tetap dapat diketik sendiri, dan seluruh isian tetap dapat disimpan — hanya kodenya yang tidak ikut terisi."
-                tone="gangguan"
-              />
-            </div>
-          )}
+          {/* Kegagalan memuat daftar dokumen TIDAK menutup form dan tidak
+              menghalangi penyimpanan: kode dokumen memang boleh diketik sendiri.
+              Yang hilang hanya sarannya, dan form itu sendiri yang mengatakannya. */}
           {documents.isError && (
             <div className="mb-3">
               <ErrorMessage
@@ -305,9 +269,6 @@ export function TravelDocumentDetailPage() {
           <TravelDocumentDetailForm
             edited={edited}
             documents={documents.data?.dokumen ?? []}
-            plans={travelPlans.data?.plan ?? []}
-            coverages={travelPlans.data?.jaminan ?? []}
-            isLoadingCoverageMapping={openedRow !== null && detail.isPending}
             isSaving={isSaving}
             error={saveError}
             onSave={save}

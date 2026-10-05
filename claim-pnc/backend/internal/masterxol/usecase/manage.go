@@ -299,3 +299,21 @@ func (s *Service) BusinessGroup(ctx context.Context, portalAlias string, t maste
 	}
 	return list, nil
 }
+
+// SearchReinsurer mencari calon reasuradur di master, untuk kotak "NAMA REASURANSI".
+//
+// Ia TIDAK mengubah apa pun dan tidak menyentuh komite — murni pembacaan acuan, sama
+// sifatnya dengan BusinessGroup. Kata kunci diteruskan apa adanya; pengisi seam yang
+// menentukan cara mencocokkannya.
+func (s *Service) SearchReinsurer(ctx context.Context, portalAlias, keyword string) ([]masterxol.ReinsurerOption, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := repo.SearchReinsurer(ctx, keyword)
+	if err != nil {
+		return nil, fmt.Errorf("masterxol/usecase: mencari reasuradur: %w", err)
+	}
+	return list, nil
+}

@@ -71,93 +71,108 @@ export function TechnicianPage() {
 
   const rows = list.data?.pic_teknik ?? []
 
-  // Kolom "Kuota Sistem Lain" hanya ditampilkan bila ADA yang mengisinya.
-  //
-  // Nilainya diisi DB link ke sistem luar yang tidak dibawa ke sini (`ADR-0008`), sehingga
-  // pada banyak entitas ia nol seluruhnya — dan kolom yang selamanya berisi nol hanya
-  // menambah lebar tabel tanpa memberi tahu apa pun. Ia muncul dengan sendirinya bila
-  // ternyata terisi, tanpa perubahan kode.
-  const anyExternalQuota = rows.some((t) => t.kuota_luar > 0)
+  /*
+    TUJUH kolom, dengan label dan urutan yang SAMA PERSIS dengan grid Pega.
 
+    Urutannya dibaca dari `Section/BrowseUserTeknis-Section.xml`, bukan dikarang:
+
+      header  7733 Atasan · 8036 Status Aktif · 8332 Bisnis · 8761 Kelompok
+              9144 Counter Klaim <1M · 9420 Counter Klaim >1M
+      isi    10108 .OPERATOR_ID · 10572 .ATASAN · 10947 .STS_AKTIF · 11224 .TYPE_BUSINESS
+             11569 .TEAM_GROUP · 12090 .COUNTER_QUOTA · 12390 .OLD_OPERATOR_ID
+             13155 Ubah
+
+    Tiga hal yang SENGAJA TIDAK ADA di sini, karena tidak ada pula di Pega:
+
+      - kolom Nama tersendiri. Kolom pertama Pega berisi OPERATOR_ID, berlabel
+        "Input Nama" — label yang memang tidak mencerminkan isinya, dan itu dibiarkan
+        apa adanya supaya petugas melihat layar yang sama.
+      - kolom TOTAL_JOB. Report Definition menyebutnya, grid-nya tidak menampilkannya.
+      - gabungan "Beban / Kuota" beserta penanda "penuh". Itu karangan saya yang
+        keliru: COUNTER_QUOTA bukan batas melainkan PENCACAH klaim, sehingga
+        membandingkannya dengan beban tidak berarti apa-apa.
+  */
   const columns: Column<Technician>[] = [
     {
       key: 'id_operator',
-      title: 'ID Operator',
-      width: '11rem',
-      value: (t) => t.id_operator,
+      // Label Pega apa adanya. Isinya ID operator, bukan nama.
+      title: 'Input Nama',
+      width: '14rem',
+      // Nama dan surel ikut dicari meski tidak ditampilkan: petugas sering mencari lewat
+      // keduanya, dan menyembunyikannya dari penyaring membuat pencarian gagal tanpa
+      // sebab yang terlihat.
+      value: (t) => `${t.id_operator} ${t.nama} ${t.email}`,
       render: (t) => (
-        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
-          {t.id_operator}
-        </span>
-      ),
-    },
-    {
-      key: 'nama',
-      title: 'Nama',
-      // Nama DAN surel dicari bersamaan: petugas sering dicari lewat surelnya, dan
-      // menyembunyikan surel dari penyaring membuat pencarian itu gagal tanpa sebab yang
-      // terlihat.
-      value: (t) => `${t.nama} ${t.email}`,
-      render: (t) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium text-slate-900">{t.nama}</p>
-          <p className="truncate text-xs text-slate-500">{t.email}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'grup',
-      title: 'Grup',
-      width: '12rem',
-      value: (t) => `${t.grup} ${t.lini_bisnis}`,
-      render: (t) => (
-        <div className="min-w-0">
-          <p className="truncate text-slate-800">{t.grup || <span className="text-slate-400">—</span>}</p>
-          {t.lini_bisnis !== '' && (
-            <p className="truncate text-xs text-slate-500">{t.lini_bisnis}</p>
-          )}
-        </div>
+        <span className="font-medium text-slate-900">{t.id_operator}</span>
       ),
     },
     {
       key: 'atasan',
       title: 'Atasan',
-      width: '10rem',
+      width: '14rem',
       value: (t) => t.atasan,
       render: (t) =>
         t.atasan ? (
-          <span className="font-mono text-xs text-slate-600">{t.atasan}</span>
+          <span className="text-slate-700">{t.atasan}</span>
         ) : (
-          <span className="text-slate-400" title="Petugas ini tidak punya atasan di master">
-            —
-          </span>
+          <span className="text-slate-300">—</span>
         ),
     },
     {
-      key: 'beban',
-      title: 'Beban / Kuota',
-      width: '9rem',
-      // Diurutkan menurut BEBAN, bukan teks gabungannya: yang ingin diketahui pengguna
-      // adalah siapa yang paling penuh.
-      value: (t) => String(t.beban_kerja).padStart(6, '0'),
-      render: (t) => <WorkloadCell workload={t.beban_kerja} quota={t.kuota} />,
+      key: 'aktif',
+      title: 'Status Aktif',
+      width: '7rem',
+      // Ditampilkan sebagai sandi 1/0, sama dengan layar lama. Sandinya disebut di
+      // keterangan tabel supaya tetap terbaca orang yang belum terbiasa.
+      value: (t) => (t.aktif ? '1' : '0'),
+      render: (t) => (
+        <span className={t.aktif ? 'text-slate-900' : 'text-slate-400'}>
+          {t.aktif ? '1' : '0'}
+        </span>
+      ),
     },
-    ...(anyExternalQuota
-      ? [
-          {
-            key: 'kuota_luar',
-            title: 'Kuota sistem lain',
-            width: '9rem',
-            value: (t: Technician) => String(t.kuota_luar).padStart(6, '0'),
-            render: (t: Technician) =>
-              t.kuota_luar > 0 ? (
-                <span className="text-slate-700">{t.kuota_luar}</span>
-              ) : (
-                <span className="text-slate-400">—</span>
-              ),
-          },
-        ]
-      : []),
+    {
+      key: 'bisnis',
+      title: 'Bisnis',
+      width: '9rem',
+      value: (t) => t.bisnis,
+      render: (t) =>
+        t.bisnis ? (
+          <span className="text-slate-700">{t.bisnis}</span>
+        ) : (
+          <span className="text-slate-300">—</span>
+        ),
+    },
+    {
+      key: 'kelompok',
+      title: 'Kelompok',
+      width: '7rem',
+      value: (t) => t.kelompok,
+      render: (t) =>
+        t.kelompok ? (
+          <span className="text-slate-700">{t.kelompok}</span>
+        ) : (
+          <span className="text-slate-300">—</span>
+        ),
+    },
+    {
+      key: 'counter_klaim_kurang_1m',
+      title: 'Counter Klaim <1M',
+      width: '8rem',
+      alignRight: true,
+      // Diurutkan sebagai ANGKA, bukan teks: tanpa pelapisan nol, "9" akan berada di
+      // bawah "1463".
+      value: (t) => String(t.counter_klaim_kurang_1m).padStart(8, '0'),
+      render: (t) => <span className="text-slate-700">{t.counter_klaim_kurang_1m}</span>,
+    },
+    {
+      key: 'counter_klaim_lebih_1m',
+      title: 'Counter Klaim >1M',
+      width: '8rem',
+      alignRight: true,
+      value: (t) => String(t.counter_klaim_lebih_1m).padStart(8, '0'),
+      render: (t) => <span className="text-slate-700">{t.counter_klaim_lebih_1m}</span>,
+    },
     {
       key: 'aksi',
       title: 'Aksi',
@@ -226,11 +241,11 @@ export function TechnicianPage() {
           title="Daftar PIC Teknik"
           description={
             list.data
-              ? `${list.data.total} petugas aktif pada entitas ini. Petugas nonaktif tidak ditampilkan, sama seperti di sistem lama.`
+              ? `${list.data.total} petugas pada entitas ini. Kolom Status Aktif bernilai 1 untuk yang aktif dan 0 untuk yang tidak.`
               : 'Memuat daftar PIC teknik…'
           }
-          searchLabel="Cari ID operator, nama, surel, atau grup"
-          emptyMessage="Belum ada PIC teknik aktif pada entitas ini."
+          searchLabel="Cari ID operator, nama, surel, atasan, bisnis, atau kelompok"
+          emptyMessage="Belum ada PIC teknik pada entitas ini."
           isLoading={list.isPending}
           error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
           actions={
@@ -248,33 +263,6 @@ export function TechnicianPage() {
         />
       )}
     </div>
-  )
-}
-
-/**
- * Beban dan kuota ditampilkan berdampingan karena keduanya hanya bermakna bersama:
- * "9 pekerjaan" tidak memberi tahu apa pun tanpa mengetahui batasnya.
- *
- * Keadaan penuh ditandai DUA cara — warna dan teks "penuh" — bukan warna saja. Sekitar
- * satu dari dua belas laki-laki mengalami buta warna merah-hijau, dan bagi mereka angka
- * berwarna kuning tidak berbeda dari angka biasa.
- */
-function WorkloadCell({ workload, quota }: { workload: number; quota: number }) {
-  const full = quota > 0 && workload >= quota
-
-  return (
-    <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
-      <span className={full ? 'font-semibold text-amber-700' : 'font-medium text-slate-900'}>
-        {workload}
-      </span>
-      <span className="text-slate-400">/</span>
-      <span className="text-slate-600">{quota}</span>
-      {full && (
-        <span className="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700 ring-1 ring-amber-100">
-          penuh
-        </span>
-      )}
-    </span>
   )
 }
 

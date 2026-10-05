@@ -31,6 +31,10 @@ const (
 	// CodeStatusNotChosen menjawab pencarian menurut status yang statusnya belum dipilih —
 	// keadaan yang di layar lama dijawab pesan "Pilih Status Aktif".
 	CodeStatusNotChosen = "status_belum_dipilih"
+	// CodeBranchNotChosen menjawab permintaan daftar petugas tanpa menyebut cabangnya.
+	CodeBranchNotChosen = "cabang_belum_dipilih"
+	// CodeNoRowChosen menjawab penyimpanan massal yang tidak memuat satu baris pun.
+	CodeNoRowChosen = "belum_ada_baris"
 )
 
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri supaya

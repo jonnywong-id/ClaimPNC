@@ -144,6 +144,18 @@ func TestBindCountMatchesSuppliedArguments(t *testing.T) {
 		"count_post_audit":       0,
 		"check_table":            0,
 		"check_table_post_audit": 0,
+		// pemilik sequence, nama sequence
+		"check_post_audit_sequence": 2,
+
+		// Form Compliance Checker.
+		//
+		// `upsert_compliance_decision` memakai delapan bind, dan beberapa di antaranya
+		// muncul DUA KALI — sekali di cabang UPDATE, sekali di cabang INSERT. Yang
+		// diperiksa di sini adalah nomor bind TERTINGGI, bukan berapa kali ia muncul,
+		// sehingga pengulangan itu tidak mengubah angkanya.
+		"find_compliance_decision":   1,
+		"upsert_compliance_decision": 8,
+		"check_table_decision":       0,
 	}
 
 	for name, want := range expected {
@@ -183,6 +195,7 @@ func TestNoForbiddenSQLPatterns(t *testing.T) {
 		"list_compliance", "count_compliance",
 		"list_post_audit", "count_post_audit",
 		"check_table", "check_table_post_audit",
+		"check_post_audit_sequence",
 	} {
 		text := query(name)
 		for _, rule := range forbidden {
@@ -190,6 +203,31 @@ func TestNoForbiddenSQLPatterns(t *testing.T) {
 				"kueri %s melanggar aturan SQL: %s", name, rule.reason)
 		}
 	}
+}
+
+// Sequence yang DIPERIKSA harus sequence yang DIPAKAI — bukan sekadar sequence bernama
+// mirip.
+//
+// Keduanya ditulis di tempat berbeda: kueri NEXTVAL menyebut namanya di dalam teks SQL,
+// sedangkan kueri pemeriksa menerimanya sebagai bind dari konstanta Go. Bila salah satunya
+// berubah sendirian, `-periksa` akan melaporkan hijau atas objek yang tidak pernah dipakai
+// jalur tulis — kegagalan yang jauh lebih buruk daripada tidak memeriksa sama sekali,
+// karena ia membuat orang berhenti mencari.
+func TestCheckedSequenceIsTheOneUsedToWrite(t *testing.T) {
+	require.Contains(t, query("post_audit_next_sequence"),
+		sequenceOwner+"."+sequenceName+".NEXTVAL",
+		"kueri NEXTVAL memakai sequence yang berbeda dari yang diperiksa -periksa")
+}
+
+// Nama sequence WAJIB huruf besar seluruhnya.
+//
+// `ALL_SEQUENCES` menyimpan identifier tanpa tanda kutip dalam huruf besar. Konstanta
+// berhuruf kecil akan membuat pemeriksaannya SELALU mengembalikan nol, sehingga `-periksa`
+// melaporkan sequence tidak ada padahal ia ada — dan DBA diminta menjalankan migrasi yang
+// sudah pernah dijalankan.
+func TestSequenceIdentifiersAreUppercase(t *testing.T) {
+	require.Equal(t, strings.ToUpper(sequenceOwner), sequenceOwner)
+	require.Equal(t, strings.ToUpper(sequenceName), sequenceName)
 }
 
 // countingScanner menghitung berapa banyak tujuan yang diminta pemindai, lalu mengisi

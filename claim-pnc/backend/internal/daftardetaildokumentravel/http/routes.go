@@ -55,13 +55,12 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))
 
-		// Kedua daftar pilihan berada di luar sub-rute modul, sejajar dengan
-		// `/master/bisnis` milik modul Master COL Simas Online. Sebabnya bukan estetika:
-		// keduanya membaca tabel yang BUKAN milik modul ini, dan menaruhnya di dalam
+		// Daftar pilihan berada di luar sub-rute modul, sejajar dengan `/master/bisnis`
+		// milik modul Master COL Simas Online. Sebabnya bukan estetika: ia membaca tabel
+		// yang BUKAN milik modul ini, dan menaruhnya di dalam
 		// `/master/daftar-detail-dokumen-travel/...` akan menyiratkan kepemilikan yang
 		// justru sedang dijaga tidak terjadi (`P-1`).
 		perPortal.Get("/master/dokumen-travel-pilihan", h.Documents)
-		perPortal.Get("/master/plan-travel", h.Plans)
 
 		perPortal.Route("/master/daftar-detail-dokumen-travel", func(master chi.Router) {
 			master.Get("/", h.List)

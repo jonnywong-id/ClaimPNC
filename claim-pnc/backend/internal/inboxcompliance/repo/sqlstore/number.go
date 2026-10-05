@@ -30,6 +30,22 @@ import "strconv"
 // pada `migrations/0011_post_audit_compliance.up.sql`.
 const CaseIDPrefix = "CPL-"
 
+// Pemilik dan nama sequence penomoran Post Audit.
+//
+// Keduanya ditulis sebagai konstanta, bukan ditanam di dalam teks SQL, karena dipakai dua
+// tempat yang harus selalu menyebut objek yang sama: kueri `post_audit_next_sequence` yang
+// memakainya, dan kueri `check_post_audit_sequence` yang memeriksa keberadaannya. Bila
+// keduanya boleh menyebut nama sendiri-sendiri, `-periksa` dapat melaporkan hijau atas
+// sequence yang bukan yang dipakai jalur tulis.
+//
+// Nilainya WAJIB sama dengan `migrations/0011_post_audit_compliance.up.sql`. Huruf besar
+// disengaja: `ALL_SEQUENCES` menyimpan nama identifier tanpa tanda kutip dalam huruf
+// besar, sehingga pencarian dengan huruf kecil tidak akan menemukan apa pun.
+const (
+	sequenceOwner = "POOLDATA"
+	sequenceName  = "CPNC_POST_AUDIT_SEQ"
+)
+
 // BuildCaseID merakit nomor Post Audit dari nomor urut yang diterbitkan basis data.
 //
 // # Kenapa TANPA nol di depan
@@ -39,9 +55,25 @@ const CaseIDPrefix = "CPL-"
 //
 // Sebabnya kolom ini sudah berisi nomor terbitan Pega yang lebarnya tidak seragam — `CPL-1`
 // sampai `CPL-19` — dan tab Post Audit mengurutkannya sebagai TEKS, meniru Pega. Menambahkan
-// nol di depan pada nomor baru tidak menyeragamkan apa pun terhadap baris lama; yang
-// menjaga urutannya adalah lebar angkanya sendiri, yang selalu enam digit selama rentang
-// 100.001–999.999 belum habis.
+// nol di depan pada nomor baru tidak menyeragamkan apa pun terhadap baris lama, karena baris
+// lama itu tidak ikut berubah.
+//
+// # Akibatnya pada urutan, yang TIDAK menguntungkan
+//
+// Dalam urutan teks menurun, nomor baru jatuh DI ANTARA baris lama, bukan di atasnya:
+//
+//	CPL-3 · CPL-2 · CPL-19 · CPL-15 · CPL-100002 · CPL-100001 · CPL-1
+//
+// Perbandingannya berhenti pada karakter keenam — `CPL-1` sama, lalu `0` dibandingkan
+// dengan `9`. Petugas yang baru mengirim karena itu harus menggulir untuk menemukan
+// barisnya.
+//
+// Dibiarkan demikian karena urutan teks itulah yang dipakai Pega, dan `D-13` menetapkan
+// tampilan ditiru. Urutannya diuji di usecase/list_test.go terhadap urutan yang benar-benar
+// terlihat di layar Pega.
+//
+// Catatan ini sempat menyatakan sebaliknya. Itu penalaran yang tidak diuji, dan
+// kekeliruannya ditulis di sini supaya tidak diulang.
 func BuildCaseID(sequence int64) string {
 	return CaseIDPrefix + strconv.FormatInt(sequence, 10)
 }

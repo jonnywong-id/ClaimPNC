@@ -93,36 +93,18 @@ func TestPanjangDihitungDalamRuneBukanByte(t *testing.T) {
 	}.Clean().Check())
 }
 
-// Nama bisnis yang terlalu panjang ditolak, dan pesannya menyebut nama yang bersangkutan —
-// pada grid berisi banyak baris, "ada yang kepanjangan" tanpa menyebut yang mana tidak dapat
-// ditindaklanjuti.
-func TestNamaBisnisTerlaluPanjangDitolak(t *testing.T) {
-	panjang := strings.Repeat("B", daftarobjekdokumen.MaxBusinessNameLength+1)
-
-	err := daftarobjekdokumen.Input{
-		BusinessNames: []string{"ANEKA", panjang},
-	}.Clean().Check()
-
-	var validationError *daftarobjekdokumen.ValidationError
-	require.ErrorAs(t, err, &validationError)
-	require.Equal(t, daftarobjekdokumen.FieldBusiness, validationError.Violation[0].Field)
-	require.Contains(t, validationError.Violation[0].Message, panjang)
-}
-
-// SELURUH pelanggaran dikumpulkan sekaligus, bukan yang pertama saja (`P-5`).
+// Panjang nama bisnis TIDAK diperiksa di sini, dan itu bukan kelalaian.
 //
-// Pengguna yang salah pada dua hal harus melihat keduanya dalam satu kali simpan;
-// mengembalikan satu per satu berarti ia menekan Simpan berkali-kali hanya untuk menemukan
-// kesalahan berikutnya.
-func TestSeluruhPelanggaranDikumpulkanSekaligus(t *testing.T) {
-	err := daftarobjekdokumen.Input{
-		Description:   strings.Repeat("A", daftarobjekdokumen.MaxDescriptionLength+1),
-		BusinessNames: []string{strings.Repeat("B", daftarobjekdokumen.MaxBusinessNameLength+1)},
-	}.Clean().Check()
-
-	var validationError *daftarobjekdokumen.ValidationError
-	require.ErrorAs(t, err, &validationError)
-	require.Len(t, validationError.Violation, 2)
+// Nama bisnis tidak pernah disimpan modul ini — yang disimpan hanyalah ID-nya, di dalam
+// dokumen JSON baris induknya. Yang diperiksa adalah apakah namanya DIKENALI master, dan
+// pemeriksaan itu menuntut membaca master sehingga tempatnya di usecase.
+//
+// Uji ini menjaga ketiadaan pemeriksaan itu tetap disengaja: nama sepanjang apa pun lolos
+// di sini, dan ditolak di tempat yang benar bila tidak dikenali.
+func TestPanjangNamaBisnisTidakDiperiksaDiDomain(t *testing.T) {
+	require.NoError(t, daftarobjekdokumen.Input{
+		BusinessNames: []string{strings.Repeat("B", 500)},
+	}.Clean().Check())
 }
 
 // Nama isian yang dilaporkan SAMA dengan nama field JSON, sehingga layar dapat menyorot
@@ -172,8 +154,20 @@ func TestErrNotFoundAdalahSentinel(t *testing.T) {
 // dikerjakannya adalah membuat angkanya terlihat dan memaksa perubahan di sini menjadi
 // perubahan yang disadari.
 func TestLengthLimitsAreMirroredInTheFrontend(t *testing.T) {
-	require.Equal(t, 100, daftarobjekdokumen.MaxDescriptionLength,
+	require.Equal(t, 20, daftarobjekdokumen.MaxDescriptionLength,
 		"ubah juga MAX_DESCRIPTION_LENGTH di frontend/src/modules/daftar-objek-dokumen/DocumentObjectForm.tsx")
-	require.Equal(t, 100, daftarobjekdokumen.MaxBusinessNameLength,
-		"ubah juga MAX_BUSINESS_NAME_LENGTH di frontend/src/modules/daftar-objek-dokumen/DocumentObjectForm.tsx")
+}
+
+// Batasnya SAMA DENGAN lebar kolomnya, bukan di bawahnya.
+//
+// Uji ini merekam angka yang dibaca dari katalog pada 2026-10-03 —
+// POOLDATA.LST_DOC_OBJ.KET_DOC_OBJ berupa VARCHAR2(20) — supaya menaikkannya kelak menjadi
+// keputusan yang disertai pembacaan katalog baru, bukan tebakan.
+//
+// Batas yang LEBIH LONGGAR daripada kolomnya adalah yang membuat penyimpanan gagal dengan
+// ORA-12899: isian lolos pemeriksaan di sini, lalu ditolak basis data sebagai galat 500
+// yang tidak dapat dibaca pengguna. Itu yang terjadi pada versi pertama modul ini.
+func TestBatasPanjangSamaDenganLebarKolom(t *testing.T) {
+	const lebarKolomKetDocObj = 20
+	require.Equal(t, lebarKolomKetDocObj, daftarobjekdokumen.MaxDescriptionLength)
 }

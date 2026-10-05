@@ -169,6 +169,32 @@ func (s *Service) Update(
 	return repo.Update(ctx, key, input.Clean(), s.editor(by))
 }
 
+// SaveForBusiness menyimpan seluruh baris satu lini bisnis sekaligus — inilah penyimpanan
+// layar Ubah.
+//
+// Bisnisnya tidak ikut berubah, dan karena itu tidak diambil dari badan permintaan
+// melainkan dari alamatnya: `UPDATE` di sistem lama memang tidak menyentuh `BUSINESSID`
+// (`PEGA_LST_DET_TYPE_DOC_BUSINESS.prc`), dan memindahkan satu baris aturan ke bisnis lain
+// bukan pengubahan melainkan penghapusan aturan dari satu lini sekaligus penambahannya ke
+// lini lain.
+func (s *Service) SaveForBusiness(
+	ctx context.Context,
+	portalAlias, businessID string,
+	rows []daftartipedokumenbisnis.Input,
+	by string,
+) ([]daftartipedokumenbisnis.DocumentRule, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	business := strings.TrimSpace(businessID)
+	if business == "" {
+		return nil, daftartipedokumenbisnis.ErrBusinessRequired
+	}
+	return repo.SaveForBusiness(ctx, business, daftartipedokumenbisnis.CleanRows(rows), s.editor(by))
+}
+
 // AddCoverage menambahkan satu jaminan pada sebuah aturan.
 //
 // # Jaminan kosong DILEWATI, bukan ditolak

@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import type {
+  BranchListResponse,
+  CountryListResponse,
+  EmployeeListResponse,
   Surveyor,
   SurveyorDecisionInput,
   SurveyorInput,
@@ -179,4 +182,67 @@ function invalidateAll(client: ReturnType<typeof useQueryClient>) {
 /** Menyatakan satu surveyor masih menunggu keputusan komite. */
 export function isAwaitingDecision(surveyor: Surveyor): boolean {
   return surveyor.status === '0'
+}
+
+/**
+ * Hook daftar negara untuk dropdown "Negara" pada formulir.
+ *
+ * Menggantikan Report Definition `BrowseCountry_RD` yang mengisi dropdown yang sama di
+ * layar lama.
+ *
+ * Daftarnya nyaris tidak pernah berubah, sehingga ditahan lama di cache. Bila tabelnya
+ * belum tersedia di basis data entitas ini, server mengembalikan daftar kosong — dropdown
+ * ikut kosong dan sisa formulir tetap dapat diisi, karena Negara bukan isian wajib.
+ */
+export function useCountryList() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['master-surveyor', 'negara', portal, token] as const,
+    queryFn: () => callAPI<CountryListResponse>(`${ROUTE}/negara`, { token, portal }),
+    enabled: token !== null && portal !== null,
+    staleTime: 30 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook daftar pegawai calon SURVEYOR INTERNAL.
+ *
+ * Menggantikan pra-aktivitas `PNCCallRDBName_act`, yang mengisi autocomplete pada isian
+ * Nama di layar lama. Memilih satu pegawai mengisi nama, login aplikasi, dan email
+ * sekaligus.
+ *
+ * Daftarnya DIAMBIL HANYA saat tipe Internal Surveyor dipilih — tidak ada gunanya
+ * menembak server untuk tipe lain, yang isian Namanya memang kotak teks biasa.
+ */
+export function useEmployeeList(enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['master-surveyor', 'pegawai', portal, token] as const,
+    queryFn: () => callAPI<EmployeeListResponse>(`${ROUTE}/pegawai`, { token, portal }),
+    enabled: enabled && token !== null && portal !== null,
+    // Lebih pendek daripada daftar negara: daftar ini MENYUSUT setiap kali seorang
+    // pegawai didaftarkan menjadi surveyor, karena kuerinya membuang yang sudah terdaftar.
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook daftar cabang untuk isian "Cabang".
+ *
+ * Menggantikan Report Definition `BrowseBranch_RD`.
+ */
+export function useBranchList(enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['master-surveyor', 'cabang', portal, token] as const,
+    queryFn: () => callAPI<BranchListResponse>(`${ROUTE}/cabang`, { token, portal }),
+    enabled: enabled && token !== null && portal !== null,
+    staleTime: 30 * 60 * 1000,
+  })
 }

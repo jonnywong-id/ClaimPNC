@@ -25,22 +25,26 @@ func newMock(t *testing.T) (*Repo, sqlmock.Sqlmock) {
 func exact(name string) string { return "^" + regexp.QuoteMeta(getQuery(name)) + "$" }
 
 var columns = []string{
-	"ID", "NAME", "EMAIL", "LINE", "GROUP", "SUPERVISOR", "QUOTA", "EXTQUOTA", "X", "ACTIVE",
+	"ID", "NAME", "EMAIL", "LINE", "GROUP", "SUPERVISOR", "QUOTA", "EXTQUOTA", "PANEL", "ACTIVE",
 }
 
-func TestListMapsViewRows(t *testing.T) {
+func TestListMapsTableRows(t *testing.T) {
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(exact("technician_list")).WithArgs(masterpicteknik.ActiveCode).
+	// Tanpa argumen: kuerinya tidak lagi menyaring status aktif.
+	mock.ExpectQuery(exact("technician_list")).
 		WillReturnRows(sqlmock.NewRows(columns).
-			AddRow(" BUDI ", " Budi ", " b@contoh.co.id ", "NONMBU", "TEKNIK", "ANI", 10, 2, 4, " 1 ").
+			// Kolom ke-9 kini GROUPPANEL, bukan TOTAL_JOB: daftar membaca TABEL, dan
+			// TOTAL_JOB memang tidak ada di sana.
+			AddRow(" BUDI ", " Budi ", " b@contoh.co.id ", "NONMBU", "TEKNIK", "ANI", 10, 2, "06", " 1 ").
 			AddRow("ANI", nil, nil, nil, nil, nil, nil, nil, nil, nil))
 
 	rows, err := repo.List(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, []masterpicteknik.Technician{
 		{OperatorID: "BUDI", Name: "Budi", Email: "b@contoh.co.id", BusinessLine: "NONMBU",
-			Group: "TEKNIK", Supervisor: "ANI", Quota: 10, ExternalQuota: 2, Workload: 4, Active: true},
+			Group: "TEKNIK", Supervisor: "ANI", ClaimCounterBelow1M: 10, ClaimCounterAbove1M: 2,
+			PanelGroup: "06", Active: true},
 		{OperatorID: "ANI"},
 	}, rows)
 
@@ -69,7 +73,7 @@ func TestGetMapsTableRows(t *testing.T) {
 	got, err := repo.Get(context.Background(), "BUDI")
 	require.NoError(t, err)
 	require.Equal(t, masterpicteknik.Technician{
-		OperatorID: "BUDI", Name: "Budi", Quota: 5, PanelGroup: "006", Active: false,
+		OperatorID: "BUDI", Name: "Budi", ClaimCounterBelow1M: 5, PanelGroup: "006", Active: false,
 	}, got)
 
 	mock.ExpectQuery(exact("technician_get")).WillReturnRows(sqlmock.NewRows(columns))
@@ -85,7 +89,7 @@ func TestGetMapsTableRows(t *testing.T) {
 func sample() masterpicteknik.Technician {
 	return masterpicteknik.Technician{
 		OperatorID: "BUDI", Name: "Budi", Email: "", BusinessLine: "NONMBU", Group: "TEKNIK",
-		Supervisor: "ANI", Quota: 10, ExternalQuota: 2, Active: true,
+		Supervisor: "ANI", ClaimCounterBelow1M: 10, ClaimCounterAbove1M: 2, Active: true,
 	}
 }
 

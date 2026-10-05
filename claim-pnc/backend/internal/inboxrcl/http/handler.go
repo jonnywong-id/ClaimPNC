@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 	"time"
 
 	"claim-pnc/internal/inboxrcl"
@@ -30,20 +32,23 @@ type Handler struct {
 	service    *usecase.Service
 	caller     CallerReader
 	location   *time.Location
+	now        func() time.Time
 	writeJSON  JSONWriter
 	writeError ErrorWriter
 }
 
 // Options adalah bahan pembentuk Handler.
 //
-// Tidak ada Clock: berbeda dari Inbox Analyst Doctor, layar ini tidak punya kolom durasi —
-// kelima judul kolom di harness tidak memuatnya.
+// Now hanya dipakai keputusan dokter RCL (waktu kirim PUCL, tugas baru). Kosong berarti
+// time.Now.
 type Options struct {
 	Service   *usecase.Service
 	GetCaller CallerReader
 
 	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
 	Location *time.Location
+
+	Now func() time.Time
 
 	Logger              *slog.Logger
 	WriteJSON           JSONWriter
@@ -57,7 +62,13 @@ func NewHandler(o Options) *Handler {
 		location = jakarta()
 	}
 
+	now := o.Now
+	if now == nil {
+		now = time.Now
+	}
+
 	return &Handler{
+		now:        now,
 		service:    o.Service,
 		caller:     o.GetCaller,
 		location:   location,
@@ -109,6 +120,29 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias, h.location))
+}
+
+// Detail menangani GET /api/inbox-rcl/klaim/{nomor} — isi layar kerja `RCLDokter`.
+func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxrcl.ErrCallerUnknown)
+		return
+	}
+
+	detail, err := h.service.Detail(r.Context(), active.Alias, caller, chi.URLParam(r, "nomor"))
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias, h.location))
 }
 
 func (h *Handler) readCaller(r *http.Request) (inboxrcl.Caller, bool) {

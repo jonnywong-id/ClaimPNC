@@ -39,35 +39,6 @@ func TestSiteCodeIsTrimmedBeforeBeingJoined(t *testing.T) {
 	require.Equal(t, "10001", daftardetailtipedokumen.FormatID(" 1 ", 1))
 }
 
-// STS_WAJIB DITULIS sebagai teks "Ya"/"Tidak", bukan angka.
-//
-// Uji ini mengunci keputusan Work Owner 2026-09-23 beserta buktinya:
-// `Activity/SetTypePDFAdjustment-Act.xml` membandingkan `.STS_WAJIB=="Ya"` dan TIDAK
-// mengenali "1". Menulis angka akan membuatnya berhenti mengenali dokumen wajib — tanpa
-// satu pun galat, hanya jenis PDF yang salah pilih.
-func TestMandatoryIsStoredAsIndonesianTextNotDigits(t *testing.T) {
-	require.Equal(t, "Ya", daftardetailtipedokumen.MandatoryText(true))
-	require.Equal(t, "Tidak", daftardetailtipedokumen.MandatoryText(false))
-
-	require.Equal(t, "Ya", daftardetailtipedokumen.MandatoryYes)
-	require.Equal(t, "Tidak", daftardetailtipedokumen.MandatoryNo)
-}
-
-// PEMBACAAN-nya menerima keempat nilai yang benar-benar ada di produksi.
-//
-// `ValidationUploadDocument_act` dan `ValidationUploadRegister` sama-sama membandingkan
-// kolom ini dengan "Ya", "Tidak", "1", DAN "0" — bukti langsung bahwa data lamanya
-// bercampur. Menolak yang tidak dikenal akan menggagalkan seluruh daftar karena satu baris
-// warisan.
-func TestMandatoryIsReadLenientlyBecauseLegacyRowsAreMixed(t *testing.T) {
-	for _, stored := range []string{"Ya", "ya", "YA", " Ya ", "1", "y", "true"} {
-		require.True(t, daftardetailtipedokumen.MandatoryFrom(stored), "nilai %q seharusnya dibaca wajib", stored)
-	}
-	for _, stored := range []string{"Tidak", "tidak", "0", "", "   ", "entah"} {
-		require.False(t, daftardetailtipedokumen.MandatoryFrom(stored), "nilai %q seharusnya dibaca tidak wajib", stored)
-	}
-}
-
 // Clean memangkas spasi tepi SELURUH isian teks.
 //
 // Bukan kerapian: kolom bertipe CHAR berlebar tetap memadatkan nilainya dengan spasi tanpa
@@ -83,9 +54,6 @@ func TestCleanTrimsEveryTextField(t *testing.T) {
 		ObjectDocumentID:          " 10002 ",
 		ObjectDocumentDescription: "\tPolis Asli\n",
 		Risk:                      "  0  ",
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "  003  ", Mandatory: true, MinDocument: 1},
-		},
 	}.Clean()
 
 	require.Equal(t, "10001", cleaned.DocumentTypeID)
@@ -96,8 +64,6 @@ func TestCleanTrimsEveryTextField(t *testing.T) {
 	require.Equal(t, "10002", cleaned.ObjectDocumentID)
 	require.Equal(t, "Polis Asli", cleaned.ObjectDocumentDescription)
 	require.Equal(t, "0", cleaned.Risk)
-	require.Len(t, cleaned.Businesses, 1)
-	require.Equal(t, "003", cleaned.Businesses[0].BusinessID)
 }
 
 // Keterangan TANPA kode tetap diterima, dan itu bukan kelonggaran melainkan tiruan.
@@ -161,55 +127,6 @@ func TestCleanKeepsEmptyFieldsEmpty(t *testing.T) {
 	require.NoError(t, cleaned.Check())
 }
 
-// Baris grid yang bisnisnya belum dipilih dibuang, dan itu bukan validasi.
-//
-// Grid di layar selalu menyisakan baris yang baru ditambahkan tetapi belum diisi.
-// Menyimpannya berarti menulis aturan yang tidak menunjuk bisnis mana pun, lalu membacanya
-// kembali sebagai baris hantu di form berikutnya.
-func TestCleanDropsBusinessRowsWithoutABusiness(t *testing.T) {
-	cleaned := daftardetailtipedokumen.Input{
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "003", Mandatory: true, MinDocument: 1},
-			{BusinessID: "   ", Mandatory: true, MinDocument: 9},
-			{BusinessID: "", Mandatory: false, MinDocument: 0},
-			{BusinessID: "006"},
-		},
-	}.Clean()
-
-	require.Len(t, cleaned.Businesses, 2)
-	require.Equal(t, "003", cleaned.Businesses[0].BusinessID)
-	require.Equal(t, "006", cleaned.Businesses[1].BusinessID)
-}
-
-// Baris yang bisnisnya terisi TIDAK dibuang meski status wajib dan jumlah minimumnya
-// bernilai bawaan — keduanya memang punya arti pada nilai bawaannya.
-func TestCleanKeepsBusinessRowsThatOnlyHaveABusiness(t *testing.T) {
-	cleaned := daftardetailtipedokumen.Input{
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "005"},
-		},
-	}.Clean()
-
-	require.Len(t, cleaned.Businesses, 1)
-	require.False(t, cleaned.Businesses[0].Mandatory)
-	require.Equal(t, 0, cleaned.Businesses[0].MinDocument)
-}
-
-// MIN_DOC negatif diratakan menjadi nol, bukan ditolak.
-//
-// "Paling sedikit minus satu berkas" bukan aturan yang dapat dipenuhi maupun dilanggar,
-// dan meratakannya menjaga perlakuan tetap sejalan dengan layar yang tidak memvalidasi.
-func TestCleanFlattensNegativeMinimumToZero(t *testing.T) {
-	cleaned := daftardetailtipedokumen.Input{
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "003", MinDocument: -5},
-		},
-	}.Clean()
-
-	require.Len(t, cleaned.Businesses, 1)
-	require.Equal(t, 0, cleaned.Businesses[0].MinDocument)
-}
-
 // Yang diperiksa Check hanyalah PANJANG, dan itu bentuk kolom — bukan aturan bisnis.
 func TestCheckRejectsOnlyOverlongFields(t *testing.T) {
 	err := daftardetailtipedokumen.Input{
@@ -263,22 +180,6 @@ func TestCheckAcceptsReferencesThatDoNotExistInAnyMaster(t *testing.T) {
 		DocumentTypeID:   "TIDAK-ADA",
 		CauseOfLossID:    "TIDAK-ADA",
 		ObjectDocumentID: "TIDAK-ADA",
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "TIDAK-ADA"},
-		},
-	}.Clean().Check()
-
-	require.NoError(t, err)
-}
-
-// Bisnis kembar TIDAK ditolak, mengikuti grid Pega yang tidak punya satu pun penanda
-// keunikan.
-func TestCheckAcceptsDuplicateBusinessRows(t *testing.T) {
-	err := daftardetailtipedokumen.Input{
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "003", Mandatory: true, MinDocument: 1},
-			{BusinessID: "003", Mandatory: false, MinDocument: 2},
-		},
 	}.Clean().Check()
 
 	require.NoError(t, err)

@@ -85,7 +85,8 @@ func pending() masterrekening.Account {
 	return masterrekening.Account{
 		Number: "1234567890", OwnerName: "BENGKEL", BankName: "BANK", BankBranch: "CAB",
 		BankAddress: "JL", BankCode: "014", AccountType: "BIASA", Email: "a@contoh.co.id",
-		NIK: "317", DocumentID: "DOK", Note: "lama", Status: masterrekening.StatusPending,
+		NIK: "317", Phone: "0211234567", SubmitterEmail: "pengaju@contoh.co.id",
+		DocumentID: "DOK", Note: "lama", Status: masterrekening.StatusPending,
 	}
 }
 
@@ -171,12 +172,6 @@ func TestUpdateRefusals(t *testing.T) {
 	_, err := serviceWith(memory.NewRepo(), nil, nil, nil).
 		Update(ctx, masterrekening.Key{Number: "x"}, completeSubmission(), submitter())
 	require.ErrorIs(t, err, masterrekening.ErrNotFound)
-
-	approved := pending()
-	approved.Status = masterrekening.StatusApproved
-	_, err = serviceWith(memory.NewRepo(approved), nil, nil, nil).
-		Update(ctx, approved.KeyOf(), completeSubmission(), submitter())
-	require.ErrorIs(t, err, masterrekening.ErrAlreadyDecided)
 
 	repo := &failingRepo{Repo: memory.NewRepo(pending()), updateFailFrom: 1}
 	_, err = serviceWith(repo, nil, nil, nil).

@@ -212,36 +212,6 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Plans menangani GET /api/master/plan-travel.
-//
-// Menggantikan autocomplete `BrowsePlanTravelMaster_RD` dan `SearchCoverageTravel_RD`
-// sekaligus — keduanya membaca POOLDATA.M_PLANTRAVEL yang sama, dan layar selalu
-// membutuhkan keduanya bersamaan.
-func (h *Handler) Plans(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	plans, err := h.service.Plans(r.Context(), active.Alias)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-	coverages, err := h.service.Coverages(r.Context(), active.Alias)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, PlanListResponse{
-		Plan:     toPlanListDTO(plans),
-		Coverage: toCoverageOptionListDTO(coverages),
-		Portal:   active.Alias,
-	})
-}
-
 // readRequest membaca badan JSON. Nilai kedua false bila responsnya sudah ditulis.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
 	var request SaveRequest

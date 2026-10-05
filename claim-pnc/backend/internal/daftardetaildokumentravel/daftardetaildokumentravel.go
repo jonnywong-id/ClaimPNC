@@ -9,16 +9,33 @@
 // Travel diregistrasi, lalu diubahnya menjadi daftar dokumen yang harus dilampirkan.
 //
 // Di sistem lama layarnya adalah `Harness/ListDocumentTravel-Harness.xml`, dan datanya
-// dibaca dari DUA view:
+// dibaca dari satu view:
 //
-//	V_LST_DOC_TRAVEL            ID · DOCID · DOCUMENTNAME · STSWAJIB · MINUNGGAH
-//	V_LST_DOC_TRAVEL_COVERAGE   + PLANID · COVERAGEID · COVERAGENAME
+//	V_LST_DOC_TRAVEL   ID · DOCID · DOCUMENTNAME · STSWAJIB · MINUNGGAH
 //
-// Yang pertama mengisi grid layar (`Report Definition/BrowseLstDocTravel_RD-RD.xml`).
-// Yang kedua menyimpan pembatasan per **Plan** dan **Jaminan** — satu aturan dokumen
-// dapat dibatasi hanya berlaku pada kombinasi plan dan jaminan tertentu. Keduanya
-// dirangkai satu form: `Section/BrowseDocumentTravel-Section.xml` memuat isian dokumen
-// di bagian atas dan satu grid berulang `TempDTDocTravel.COVERAGELIST` di bawahnya.
+// Kelima kolom itulah seluruh isinya — baik grid (`BrowseLstDocTravel_RD-RD.xml`) maupun
+// form `Section/BrowseDocumentTravel-Section.xml` tidak menampilkan yang lain.
+//
+// # Pembatasan per Plan dan Jaminan TIDAK ada di layar ini
+//
+// Dicatat eksplisit karena ia sempat dibangun lalu dicabut, dan karena export rule
+// menyesatkan di titik ini.
+//
+// `Section/BrowseDocumentTravel-Section.xml:3731` memuat grid berulang
+// `TempDTDocTravel.COVERAGELIST` berkelas `ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE`,
+// tanpa `pyDisplayWhen` yang menyembunyikannya. Dibaca dari XML saja, grid itu tampak
+// menjadi bagian layar.
+//
+// **Di aplikasi Pega yang berjalan, grid itu tidak ada.** Work Owner memeriksa layarnya
+// langsung dan menetapkan 2026-10-03 bahwa form tambah dan ubah hanya memuat kelima
+// isian di atas. Yang dipercaya adalah layar yang berjalan, bukan XML — selisihnya
+// kemungkinan besar karena versi rule di export berbeda dari yang ter-deploy, dan itu
+// dicatat sebagai temuan di docs/catatan-pengembangan.md, bukan diperdebatkan di kode.
+//
+// Akibatnya modul ini **tidak menyentuh** V_LST_DOC_TRAVEL_COVERAGE maupun
+// POOLDATA.M_PLANTRAVEL sama sekali. Tabel pertama tetap dibaca jalur registrasi klaim
+// lewat `Activity/BrowseDocTravel-Act.xml`; yang berubah hanyalah bahwa layar master ini
+// bukan penulisnya.
 //
 // # Batas modul: ini master DETAIL, bukan master induknya
 //
@@ -26,7 +43,6 @@
 //
 //	M_DOCTRAVEL          <- internal/masterdokumentravel   MENU_ID 22
 //	  └─ V_LST_DOC_TRAVEL     <- paket ini                 MENU_ID 39
-//	       └─ V_LST_DOC_TRAVEL_COVERAGE
 //
 // Yang di atas hanya menyimpan DOCID dan judul dokumen. Paket ini merujuk DOCID itu dan
 // menambahkan aturannya. Akibat yang mengikat: paket ini TIDAK PERNAH menulis
@@ -41,7 +57,7 @@
 //	Section/LSTDocumentTravel-Section.xml            judul, tombol Tambah dan Refresh
 //	Section/BrowseDocumentTravel-Section.xml         grid, form, tombol Simpan dan Ubah
 //	Report Definition/BrowseLstDocTravel_RD-RD.xml   kolom grid dan urutannya
-//	Activity/BrowseDocTravel-Act.xml                 arti STSWAJIB dan penyaring per plan
+//	Activity/BrowseDocTravel-Act.xml                 arti STSWAJIB
 //	Activity/TravelDocument_act-Act.xml              siapa yang memakai aturan ini
 //
 // # Yang TIDAK ada di export, dan bagaimana ketiadaannya diperlakukan
@@ -53,7 +69,7 @@
 // M_DOCTRAVEL, yakni master induknya.
 //
 // Akibatnya bentuk INSERT dan UPDATE-nya TIDAK DAPAT ditiru; yang dapat ditiru adalah
-// APA yang disimpan, dan itu terbaca lengkap dari form beserta kedua view-nya. Bentuk
+// APA yang disimpan, dan itu terbaca lengkap dari form beserta view-nya. Bentuk
 // pernyataannya karena itu disusun di modul ini dan diisolasi seluruhnya di
 // repo/sqlstore/daftardetaildokumentravel.sql, dengan nama objek yang MASIH HARUS
 // DIVERIFIKASI DBA — lihat migrations/0006_detail_dokumen_travel.up.sql.
@@ -68,6 +84,9 @@ import (
 )
 
 // Detail adalah satu aturan kelengkapan dokumen Travel.
+//
+// Lima field, dan itu memang seluruh isinya: baik grid maupun form di layar Pega hanya
+// menampilkan kelimanya, dan Report Definition-nya pun hanya memilih kelima kolom itu.
 type Detail struct {
 	// ID adalah kunci baris V_LST_DOC_TRAVEL. Diterbitkan penyimpanan dan tidak pernah
 	// diisi pengguna — di layar Pega pun isiannya hanya ditampilkan, tidak disunting.
@@ -111,48 +130,6 @@ type Detail struct {
 	// Itu keadaan sistem lama apa adanya; modul ini menyimpannya dengan benar dan tidak
 	// mengubah pembacanya.
 	MinUpload int
-
-	// Coverages adalah pembatasan per Plan dan Jaminan, isi
-	// V_LST_DOC_TRAVEL_COVERAGE untuk baris ini.
-	//
-	// KOSONG berarti aturan dokumen berlaku TANPA pembatasan plan maupun jaminan — dan
-	// itu keadaan yang sah, bukan data yang belum lengkap. Grid utama layar Pega pun
-	// hanya membaca V_LST_DOC_TRAVEL, sehingga baris tanpa coverage tetap tampil utuh.
-	//
-	// Senarai ini hanya terisi pada pembacaan SATU baris (Get), tidak pada daftar.
-	// Daftar tidak membutuhkannya — gridnya lima kolom dan tidak satu pun menyebut plan
-	// atau jaminan — dan menariknya untuk seluruh baris berarti satu kueri yang hasilnya
-	// tidak pernah dilihat siapa pun.
-	Coverages []Coverage
-}
-
-// Coverage adalah satu pembatasan plan dan jaminan pada sebuah aturan dokumen.
-//
-// Bentuknya mengikuti `Section/BrowseDocumentTravel-Section.xml` pada grid
-// `TempDTDocTravel.COVERAGELIST`: dua isian yang terlihat petugas — Nama Plan dan Nama
-// Jaminan — masing-masing menyimpan kode tersembunyi di sampingnya.
-type Coverage struct {
-	// ID adalah kunci baris V_LST_DOC_TRAVEL_COVERAGE. Diterbitkan penyimpanan.
-	ID string
-
-	// PlanID adalah PLANID, kode plan travel.
-	//
-	// Di layar ia diisi otomatis saat petugas memilih Nama Plan — autocomplete
-	// `BrowsePlanTravelMaster_RD` menyalin `.ID` ke `.PLANID` (`pyPropertyTarget`).
-	PlanID string
-
-	// PlanName adalah PLANNAME, nama plan yang dilihat petugas.
-	PlanName string
-
-	// CoverageID adalah COVERAGEID, kode jaminan.
-	//
-	// Diisi otomatis dari autocomplete `SearchCoverageTravel_RD`, yang DISARING oleh
-	// plan yang sudah dipilih — parameter `plan` diisi `.PLANID` pada baris yang sama.
-	// Urutan pengisiannya karena itu mengikat: plan dulu, jaminan menyusul.
-	CoverageID string
-
-	// CoverageName adalah COVERAGENAME, nama jaminan yang dilihat petugas.
-	CoverageName string
 }
 
 // Input adalah nilai yang dikirim pengguna dari layar.
@@ -164,42 +141,22 @@ type Input struct {
 	DocumentName string
 	Mandatory    bool
 	MinUpload    int
-	Coverages    []CoverageInput
 }
 
-// CoverageInput adalah satu baris grid plan dan jaminan yang dikirim layar.
-//
-// Tanpa ID: seluruh daftar coverage DIGANTI setiap kali disimpan (lihat Repo.Update),
-// sehingga kunci baris lamanya tidak berguna bagi pemanggil.
-type CoverageInput struct {
-	PlanID       string
-	PlanName     string
-	CoverageID   string
-	CoverageName string
-}
-
-// Clean memangkas spasi di kedua ujung setiap isian teks, dan membuang baris coverage
-// yang seluruhnya kosong.
+// Clean memangkas spasi di kedua ujung setiap isian teks.
 //
 // # Ini SATU-SATUNYA perlakuan atas isian, dan ia bukan validasi
 //
 // Work Owner menetapkan 2026-09-21: layar ini tanpa validasi, sama seperti Master
-// Dokumen Travel. Judul kosong diterima, DOCID yang tidak ada di master diterima, dan
-// baris coverage yang hanya berisi plan tanpa jaminan pun diterima — persis seperti
-// `Section/BrowseDocumentTravel-Section.xml`, yang tidak memuat satu pun `pyRequired`
-// bernilai true maupun Validate rule.
+// Dokumen Travel. Nama dokumen kosong diterima dan DOCID yang tidak ada di master pun
+// diterima — persis seperti `Section/BrowseDocumentTravel-Section.xml`, yang tidak memuat
+// satu pun `pyRequired` bernilai true maupun Validate rule.
 //
 // Pemangkasan spasi tetap dilakukan, dan alasannya bukan kerapian: kolomnya dibaca
 // kembali dengan pemangkasan, karena kolom CHAR berlebar tetap memadatkan nilainya
 // dengan spasi tanpa memberi tanda apa pun. Tanpa memangkas saat menulis, apa yang
 // disimpan dan apa yang dibaca kembali dapat berbeda — dan selisih itu tidak terlihat di
 // layar karena spasi tidak tampak.
-//
-// Baris coverage yang SELURUH isiannya kosong dibuang, dan itu pun bukan validasi
-// melainkan pembacaan maksud: grid di layar selalu menyisakan baris kosong yang baru
-// ditambahkan tetapi belum diisi. Menyimpannya berarti menulis pembatasan plan yang
-// tidak membatasi apa pun, lalu membacanya kembali sebagai baris hantu di form
-// berikutnya.
 func (i Input) Clean() Input {
 	clean := Input{
 		DocumentID:   strings.TrimSpace(i.DocumentID),
@@ -213,20 +170,6 @@ func (i Input) Clean() Input {
 	// ditolak, supaya perlakuannya tetap sejalan dengan "tanpa validasi".
 	if clean.MinUpload < 0 {
 		clean.MinUpload = 0
-	}
-
-	clean.Coverages = make([]CoverageInput, 0, len(i.Coverages))
-	for _, row := range i.Coverages {
-		row = CoverageInput{
-			PlanID:       strings.TrimSpace(row.PlanID),
-			PlanName:     strings.TrimSpace(row.PlanName),
-			CoverageID:   strings.TrimSpace(row.CoverageID),
-			CoverageName: strings.TrimSpace(row.CoverageName),
-		}
-		if row.PlanID == "" && row.PlanName == "" && row.CoverageID == "" && row.CoverageName == "" {
-			continue
-		}
-		clean.Coverages = append(clean.Coverages, row)
 	}
 	return clean
 }
@@ -248,23 +191,6 @@ type Document struct {
 	Name string
 }
 
-// Plan adalah satu pilihan pada isian Nama Plan.
-type Plan struct {
-	ID   string
-	Name string
-}
-
-// CoverageOption adalah satu pilihan pada isian Nama Jaminan.
-//
-// PlanID ikut dibawa supaya layar dapat menyaring jaminan menurut plan yang sudah
-// dipilih tanpa menembak server lagi untuk setiap baris grid — persis penyaringan yang
-// dilakukan `SearchCoverageTravel_RD` lewat parameter `plan`.
-type CoverageOption struct {
-	ID     string
-	Name   string
-	PlanID string
-}
-
 // Repo adalah seam ke penyimpanan detail dokumen travel SATU portal.
 //
 // Pengisinya ada di repo/sqlstore (Oracle) dan repo/memory (pengujian dan pengembangan
@@ -277,16 +203,15 @@ type CoverageOption struct {
 // apa yang diminta pada klaim yang sedang berjalan — menghapusnya mengubah kelengkapan
 // klaim yang sudah telanjur dinilai.
 type Repo interface {
-	// List mengembalikan seluruh aturan dokumen TANPA coverage-nya, terurut seperti
-	// grid lama: ID menaik, lalu DOCID menaik.
+	// List mengembalikan seluruh aturan dokumen, terurut seperti grid lama: ID menaik,
+	// lalu DOCID menaik.
 	List(ctx context.Context) ([]Detail, error)
 
-	// Get mengembalikan satu aturan LENGKAP dengan daftar coverage-nya; ErrNotFound
-	// bila barisnya tidak ada.
+	// Get mengembalikan satu aturan; ErrNotFound bila barisnya tidak ada.
 	Get(ctx context.Context, id string) (Detail, error)
 
-	// InsertNew menerbitkan ID lalu menyisipkan barisnya beserta seluruh coverage-nya,
-	// dan mengembalikan baris yang benar-benar tersimpan.
+	// InsertNew menerbitkan ID lalu menyisipkan barisnya, dan mengembalikan baris yang
+	// benar-benar tersimpan.
 	//
 	// Penerbitan ID berada DI DALAM satu operasi repo, bukan dipecah menjadi "ambil
 	// nomor" lalu "sisip" di lapisan aplikasi: memecahnya melebarkan jarak antara
@@ -294,14 +219,8 @@ type Repo interface {
 	// bentuk kunci yang seharusnya hanya diketahui penyimpanan.
 	InsertNew(ctx context.Context, input Input) (Detail, error)
 
-	// Update mengganti isi satu aturan beserta SELURUH daftar coverage-nya;
-	// ErrNotFound bila barisnya hilang di antara pemuatan layar dan penyimpanan.
-	//
-	// Daftar coverage diganti seluruhnya, bukan ditambal baris demi baris. Alasannya
-	// ada di layar: grid di form memang mengirim susunan akhir yang dikehendaki
-	// petugas, dan tidak ada satu pun penanda di sana yang menyatakan baris mana yang
-	// baru, mana yang berubah, dan mana yang dibuang. Penggantian menyeluruh adalah
-	// satu-satunya tafsiran yang tidak menebak.
+	// Update mengganti isi satu aturan; ErrNotFound bila barisnya hilang di antara
+	// pemuatan layar dan penyimpanan.
 	Update(ctx context.Context, id string, input Input) (Detail, error)
 }
 
@@ -315,36 +234,6 @@ type DocumentRepo interface {
 	List(ctx context.Context) ([]Document, error)
 }
 
-// PlanRepo adalah seam BACA-SAJA ke master plan dan jaminan Travel milik GISFW.
-//
-// Penegakan `D-03`: data plan dan jaminan dimiliki tim lain, dan modul ini tidak boleh
-// menulisnya.
-//
-// # Kenapa plan dan jaminan berada di SATU seam
-//
-// Karena keduanya berasal dari SATU tabel. `Activity/SetspreadingtoCoverage-Act.xml`
-// menyimpan pembenaran peringatan Pega yang menyebutkannya apa adanya:
-//
-//	"ngambil data coverage bukan dari coverage travel tapi dari m_plantravel"
-//
-// dan rule yang membacanya bernama `GetDataMasterCoverageTravel_m_plantravel`. Kedua
-// kelas Pega yang tampak berbeda — `ASM-FW-GISFW-Int-PLANTRAVEL` dan
-// `ASM-FW-GISFW-Int-COVERAGETRAVEL` — karena itu dua sudut pandang atas tabel yang sama.
-// Memisahkannya menjadi dua seam akan menyiratkan dua sumber yang sebenarnya satu.
-type PlanRepo interface {
-	// ListPlans mengembalikan plan yang dapat dipilih, terurut menurut namanya.
-	ListPlans(ctx context.Context) ([]Plan, error)
-
-	// ListCoverages mengembalikan jaminan yang dapat dipilih beserta plan pemiliknya.
-	//
-	// Seluruhnya dikembalikan sekaligus, tidak disaring per plan di server seperti
-	// `SearchCoverageTravel_RD` yang menerima parameter `plan`. Sebabnya bentuk layarnya
-	// berbeda: grid di form dapat memuat banyak baris dengan plan berbeda-beda, dan
-	// menyaring di server berarti satu permintaan per baris grid setiap kali plannya
-	// berganti. Penyaringannya dikerjakan layar atas daftar yang sudah di tangan.
-	ListCoverages(ctx context.Context) ([]CoverageOption, error)
-}
-
 // RepoSelector memilih Repo milik satu portal entitas.
 //
 // Ia fungsi, bukan map yang sudah jadi, supaya kegagalan memilih portal terbaca saat
@@ -356,11 +245,8 @@ type PlanRepo interface {
 type RepoSelector func(portalAlias string) (Repo, error)
 
 // DocumentRepoSelector memilih DocumentRepo milik satu portal entitas.
-type DocumentRepoSelector func(portalAlias string) (DocumentRepo, error)
-
-// PlanRepoSelector memilih PlanRepo milik satu portal entitas.
 //
-// Terpisah dari kedua selector lain meski ketiganya selalu dipilih bersamaan, karena
-// ketiganya mengisi seam yang berbeda: yang satu tabel milik modul ini, yang kedua tabel
-// milik modul master induk, dan yang ketiga tabel milik GISFW.
-type PlanRepoSelector func(portalAlias string) (PlanRepo, error)
+// Terpisah dari RepoSelector meski keduanya selalu dipilih bersamaan, karena keduanya
+// mengisi seam yang berbeda: yang satu tabel milik modul ini, yang lain tabel milik modul
+// master induknya yang HANYA DIBACA.
+type DocumentRepoSelector func(portalAlias string) (DocumentRepo, error)

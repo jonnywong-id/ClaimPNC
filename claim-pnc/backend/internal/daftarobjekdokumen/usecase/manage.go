@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"claim-pnc/internal/daftarobjekdokumen"
 )
@@ -58,12 +59,59 @@ func (s *Service) List(ctx context.Context, portalAlias string) ([]daftarobjekdo
 }
 
 // Get mengembalikan satu objek dokumen LENGKAP dengan pemetaan bisnisnya.
+//
+// Nama bisnis DILENGKAPI di sini, bukan di penyimpanan. Yang tersimpan bersama pemetaan
+// hanyalah ID — dokumen JSON-nya memang tidak punya tempat untuk nama — sehingga nama harus
+// dicari ke master setiap kali dibaca.
+//
+// Itu juga yang membuat nama selalu mutakhir: bisnis yang berganti nama di master langsung
+// terbaca benar di sini, tanpa ada yang perlu memperbarui baris pemetaannya.
 func (s *Service) Get(ctx context.Context, portalAlias, id string) (daftarobjekdokumen.DocumentObject, error) {
 	repo, err := s.repoSelector(portalAlias)
 	if err != nil {
 		return daftarobjekdokumen.DocumentObject{}, err
 	}
-	return repo.Get(ctx, id)
+
+	row, err := repo.Get(ctx, id)
+	if err != nil {
+		return daftarobjekdokumen.DocumentObject{}, err
+	}
+
+	s.fillBusinessNames(ctx, portalAlias, row.Businesses)
+	return row, nil
+}
+
+// fillBusinessNames melengkapi nama pada setiap pemetaan, di tempat.
+//
+// Pemetaan yang ID-nya TIDAK ketemu di master dibiarkan bernama kosong — bukan dibuang.
+// Membuangnya berarti pengguna membuka form, tidak melihat barisnya, lalu menyimpan — dan
+// pemetaan yang sebenarnya ada ikut terhapus tanpa ia pernah tahu.
+//
+// Kegagalan membaca master juga tidak menggagalkan apa pun: yang hilang hanya namanya.
+func (s *Service) fillBusinessNames(ctx context.Context, portalAlias string, list []daftarobjekdokumen.Business) {
+	if len(list) == 0 {
+		return
+	}
+
+	repo, err := s.businessSelector(portalAlias)
+	if err != nil {
+		return
+	}
+	master, err := repo.List(ctx)
+	if err != nil {
+		return
+	}
+
+	byID := make(map[string]string, len(master))
+	for _, b := range master {
+		byID[strings.ToUpper(strings.TrimSpace(b.ID))] = b.Name
+	}
+
+	for i := range list {
+		if name, found := byID[strings.ToUpper(strings.TrimSpace(list[i].ID))]; found {
+			list[i].Name = name
+		}
+	}
 }
 
 // ListBusiness mengembalikan seluruh bisnis untuk saran isian di layar.
@@ -96,7 +144,18 @@ func (s *Service) Create(ctx context.Context, portalAlias string, input daftarob
 	if err != nil {
 		return daftarobjekdokumen.DocumentObject{}, err
 	}
-	return repo.Insert(ctx, s.toSaveData(ctx, portalAlias, clean))
+
+	data, err := s.toSaveData(ctx, portalAlias, clean)
+	if err != nil {
+		return daftarobjekdokumen.DocumentObject{}, err
+	}
+
+	saved, err := repo.Insert(ctx, data)
+	if err != nil {
+		return daftarobjekdokumen.DocumentObject{}, err
+	}
+	s.fillBusinessNames(ctx, portalAlias, saved.Businesses)
+	return saved, nil
 }
 
 // Update menyimpan perubahan pada baris yang sudah ada.
@@ -122,7 +181,18 @@ func (s *Service) Update(ctx context.Context, portalAlias, id string, input daft
 	if err != nil {
 		return daftarobjekdokumen.DocumentObject{}, err
 	}
-	return repo.Update(ctx, id, s.toSaveData(ctx, portalAlias, clean))
+
+	data, err := s.toSaveData(ctx, portalAlias, clean)
+	if err != nil {
+		return daftarobjekdokumen.DocumentObject{}, err
+	}
+
+	saved, err := repo.Update(ctx, id, data)
+	if err != nil {
+		return daftarobjekdokumen.DocumentObject{}, err
+	}
+	s.fillBusinessNames(ctx, portalAlias, saved.Businesses)
+	return saved, nil
 }
 
 // EnsurePortalReady memeriksa portal dapat dilayani tanpa menyentuh satu baris pun.
@@ -157,71 +227,102 @@ func (s *Service) checkInput(input daftarobjekdokumen.Input) (daftarobjekdokumen
 	return clean, nil
 }
 
-// toSaveData menyelesaikan nama bisnis menjadi pasangan nama dan ID, lalu menyusun isi yang
-// benar-benar disimpan.
+// toSaveData menyelesaikan nama bisnis menjadi ID, lalu menyusun isi yang benar-benar
+// disimpan.
 func (s *Service) toSaveData(
 	ctx context.Context,
 	portalAlias string,
 	clean daftarobjekdokumen.Input,
-) daftarobjekdokumen.SaveData {
+) (daftarobjekdokumen.SaveData, error) {
+	businesses, err := s.resolveBusinesses(ctx, portalAlias, clean.BusinessNames)
+	if err != nil {
+		return daftarobjekdokumen.SaveData{}, err
+	}
 	return daftarobjekdokumen.SaveData{
 		Description: clean.Description,
-		Businesses:  s.resolveBusinesses(ctx, portalAlias, clean.BusinessNames),
-	}
+		Businesses:  businesses,
+	}, nil
 }
 
-// resolveBusinesses mengubah nama bisnis menjadi pasangan nama dan ID.
+// resolveBusinesses mengubah nama bisnis menjadi ID.
 //
-// Nama yang cocok dengan master mendapat ID-nya; yang tidak cocok TETAP DIKEMBALIKAN dengan
-// ID kosong — itu perilaku layar lama yang dipertahankan.
+// # Nama yang tidak dikenali master DITOLAK
 //
-// Nama yang dikembalikan adalah nama dari MASTER bila cocok, bukan yang diketik pengguna:
-// dengan begitu "fire / property" yang diketik huruf kecil tersimpan dalam ejaan resmi
-// masternya, dan daftar di layar tidak menampilkan satu bisnis dalam dua ejaan.
+// Bukan dibuang diam-diam, dan bukan disimpan apa adanya. Keduanya tidak mungkin: yang
+// tersimpan di dokumen JSON hanyalah ID, sehingga nama tanpa ID tidak punya tempat.
+//
+// Membuangnya diam-diam adalah perilaku terburuk dari ketiganya — pengguna menekan Simpan,
+// melihat "berhasil", lalu menemukan barisnya hilang saat form dibuka lagi. Galat validasi
+// yang menyebut nama mana yang tidak dikenali dapat langsung ditindaklanjuti.
+//
+// Ini BERBEDA dari modul Master COL Simas Online, yang menerima nama bebas. Perbedaannya
+// dipaksa penyimpanan, bukan dipilih: tabel pemetaan di sana punya kolom NOTE.
 //
 // Master dibaca SEKALI lalu dicocokkan di memori, bukan satu kueri per baris: satu kueri
 // per baris grid adalah N+1 yang dilarang `15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 butir 4.
 //
-// Kegagalan membaca master TIDAK menggagalkan penyimpanan. Karena nama bebas memang
-// diterima, master hanya dipakai untuk MELENGKAPI ID — dan melengkapi yang gagal lebih baik
-// daripada menolak penyimpanan yang sebenarnya sah. Yang hilang hanya ID-nya, dan itu
-// keadaan yang memang sudah harus ditangani setiap pembaca.
+// # Kegagalan membaca master menggagalkan penyimpanan
+//
+// Juga berbeda dari modul itu, dan dengan alasan yang sama. Di sana master hanya MELENGKAPI
+// ID, sehingga gagal membacanya cukup kehilangan ID. Di sini master MENENTUKAN apa yang
+// disimpan: tanpa dapat membacanya, satu-satunya pilihan adalah menyimpan pemetaan kosong —
+// yang berarti menghapus seluruh pemetaan yang sudah ada tanpa ada yang memintanya.
 func (s *Service) resolveBusinesses(
 	ctx context.Context,
 	portalAlias string,
 	names []string,
-) []daftarobjekdokumen.Business {
+) ([]daftarobjekdokumen.Business, error) {
 	result := make([]daftarobjekdokumen.Business, 0, len(names))
 	if len(names) == 0 {
-		return result
+		return result, nil
 	}
 
-	master := s.businessMaster(ctx, portalAlias)
+	master, err := s.businessMaster(ctx, portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	var unknown []string
 	for _, name := range names {
-		if matched, found := master[daftarobjekdokumen.NormalizeBusinessName(name)]; found {
-			result = append(result, matched)
+		matched, found := master[daftarobjekdokumen.NormalizeBusinessName(name)]
+		if !found {
+			unknown = append(unknown, name)
 			continue
 		}
-		result = append(result, daftarobjekdokumen.Business{Name: name})
+		result = append(result, matched)
 	}
-	return result
+
+	if len(unknown) > 0 {
+		return nil, &daftarobjekdokumen.ValidationError{
+			Violation: []daftarobjekdokumen.Violation{{
+				Field: daftarobjekdokumen.FieldBusiness,
+				Message: "Bisnis berikut tidak ada di master dan tidak dapat disimpan: " +
+					strings.Join(unknown, ", ") + ". Pilih dari daftar yang tersedia.",
+			}},
+		}
+	}
+	return result, nil
 }
 
-// businessMaster membaca master bisnis menjadi peta bernama, atau peta kosong bila tidak
-// dapat dibaca.
-func (s *Service) businessMaster(ctx context.Context, portalAlias string) map[string]daftarobjekdokumen.Business {
+// businessMaster membaca master bisnis menjadi peta bernama.
+//
+// Galatnya diteruskan, tidak ditelan — lihat alasannya pada resolveBusinesses.
+func (s *Service) businessMaster(
+	ctx context.Context,
+	portalAlias string,
+) (map[string]daftarobjekdokumen.Business, error) {
 	repo, err := s.businessSelector(portalAlias)
 	if err != nil {
-		return map[string]daftarobjekdokumen.Business{}
+		return nil, err
 	}
 	list, err := repo.List(ctx)
 	if err != nil {
-		return map[string]daftarobjekdokumen.Business{}
+		return nil, err
 	}
 
 	result := make(map[string]daftarobjekdokumen.Business, len(list))
 	for _, b := range list {
 		result[daftarobjekdokumen.NormalizeBusinessName(b.Name)] = b
 	}
-	return result
+	return result, nil
 }

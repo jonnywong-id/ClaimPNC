@@ -227,8 +227,10 @@ describe('tambah', () => {
     await pengguna.click(screen.getByRole('button', { name: 'Tambah' }))
 
     const form = screen.getByRole('form', { name: /menambah data/i })
-    // ID tidak dapat disunting: ia dibuat sistem, sama seperti di Pega.
-    expect(within(form).getByText('Dibuat sistem')).toBeInTheDocument()
+    // ID TIDAK ditampilkan di form (keputusan Work Owner 2026-10-03). Nomornya
+    // diterbitkan sistem dan tidak dapat disunting, sehingga menampilkannya hanya
+    // menyita ruang tanpa memberi pengguna satu pun hal yang dapat ia lakukan.
+    expect(within(form).queryByText(/dibuat sistem/i)).not.toBeInTheDocument()
 
     await pengguna.type(within(form).getByLabelText('Keterangan'), 'Faktor Percobaan')
     await pengguna.click(within(form).getByRole('button', { name: 'Simpan' }))
@@ -353,8 +355,10 @@ describe('ubah', () => {
     await pengguna.click(screen.getByRole('button', { name: /Ubah faktor dominan Contoh Faktor A/i }))
 
     const form = screen.getByRole('form', { name: /memperbaharui data/i })
-    // ID baris yang sedang diubah ditampilkan, dan tetap tidak dapat disunting.
-    expect(within(form).getByText('1')).toBeInTheDocument()
+    // ID baris yang sedang diubah TIDAK ditampilkan di form — ia tidak berubah dan tidak
+    // dapat disunting. Yang membuktikan ID-nya benar adalah jalur PUT di bawah, yang
+    // menembak `/1` sesuai baris yang diklik.
+    expect(within(form).queryByText('1')).not.toBeInTheDocument()
 
     const isian = within(form).getByLabelText('Keterangan')
     expect(isian).toHaveValue('Contoh Faktor A')

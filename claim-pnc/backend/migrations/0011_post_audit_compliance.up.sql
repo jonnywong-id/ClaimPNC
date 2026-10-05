@@ -41,9 +41,25 @@
 --      bertabrakan — dan tabel ini tidak punya constraint unik yang akan menolaknya.
 --      Jarak 100.000 nomor dipilih supaya itu tidak mungkin terjadi pada umur sistem
 --      paralel.
---   3. Pengurutan tab Post Audit adalah pengurutan TEKS (lihat inboxcompliance.sql),
---      sehingga `CPL-100001` selalu berada di atas `CPL-19` — nomor baru tampil paling
---      atas. Itu kebetulan yang menguntungkan, bukan yang dirancang.
+--   3. **Nomor baru TIDAK tampil di paling atas.** Pengurutan tab Post Audit adalah
+--      pengurutan TEKS, meniru Pega (lihat inboxcompliance.sql), dan dalam urutan teks
+--      `CPL-100001` jatuh DI ANTARA `CPL-15` dan `CPL-1`:
+--
+--          CPL-3 · CPL-2 · CPL-19 · CPL-15 · CPL-100002 · CPL-100001 · CPL-1
+--
+--      Sebabnya perbandingan berhenti pada karakter keenam: `CPL-1` sama, lalu `0`
+--      dibandingkan dengan `9`. Petugas yang baru mengirim karena itu harus menggulir
+--      untuk menemukan barisnya, dan dapat mengira pengirimannya gagal.
+--
+--      Ini TIDAK diperbaiki dengan mengubah pengurutan, karena urutan teks itulah yang
+--      dipakai Pega dan `D-13` menetapkan tampilan ditiru. Ia juga tidak dapat diperbaiki
+--      dengan menambahkan nol di depan, karena baris terbitan Pega yang sudah ada tidak
+--      ikut berubah.
+--
+--      Versi pertama catatan ini menyatakan sebaliknya — bahwa nomor baru tampil paling
+--      atas. Itu SALAH, hasil penalaran yang tidak diuji, dan dibiarkan tertulis di sini
+--      supaya kekeliruannya tidak diulang: urutan teks tidak sama dengan urutan angka
+--      begitu lebar digitnya berbeda.
 --
 -- NOCACHE dipilih supaya tidak ada nomor yang hilang saat instans dimatikan. Lubang
 -- penomoran bukan cacat teknis, tetapi pada nomor yang dibaca orang ia selalu menimbulkan

@@ -80,8 +80,12 @@ SELECT ACCOUNT_NO,
    AND (:5  IS NULL OR UPPER(ACCOUNT_NAME)    LIKE '%' || UPPER(:6)  || '%')
    AND (:7  IS NULL OR UPPER(BANK_NAME)       LIKE '%' || UPPER(:8)  || '%')
    AND (:9  IS NULL OR UPPER(KOMITE_APPROVAL) =         UPPER(:10))
+   AND (:11 IS NULL OR UPPER(ACCOUNT_NO)      LIKE '%' || UPPER(:12) || '%'
+                    OR UPPER(ACCOUNT_NAME)    LIKE '%' || UPPER(:13) || '%'
+                    OR UPPER(BANK_NAME)       LIKE '%' || UPPER(:14) || '%'
+                    OR UPPER(BANK_BRANCH)     LIKE '%' || UPPER(:15) || '%')
  ORDER BY TGL_INPUT DESC, ACCOUNT_NO
-OFFSET :11 ROWS FETCH NEXT :12 ROWS ONLY
+OFFSET :16 ROWS FETCH NEXT :17 ROWS ONLY
 
 -- Catatan paginasi. OFFSET … FETCH dipakai, bukan ROWNUM: ia didukung Oracle 12c+ dan
 -- PostgreSQL sekaligus (09-DATABASE-STRATEGY §3.3). Keyset pagination yang dituntut
@@ -97,6 +101,10 @@ SELECT COUNT(*)
    AND (:5 IS NULL OR UPPER(ACCOUNT_NAME)    LIKE '%' || UPPER(:6)  || '%')
    AND (:7 IS NULL OR UPPER(BANK_NAME)       LIKE '%' || UPPER(:8)  || '%')
    AND (:9 IS NULL OR UPPER(KOMITE_APPROVAL) =         UPPER(:10))
+   AND (:11 IS NULL OR UPPER(ACCOUNT_NO)     LIKE '%' || UPPER(:12) || '%'
+                    OR UPPER(ACCOUNT_NAME)   LIKE '%' || UPPER(:13) || '%'
+                    OR UPPER(BANK_NAME)      LIKE '%' || UPPER(:14) || '%'
+                    OR UPPER(BANK_BRANCH)    LIKE '%' || UPPER(:15) || '%')
 
 -- name: account_get
 SELECT ACCOUNT_NO,

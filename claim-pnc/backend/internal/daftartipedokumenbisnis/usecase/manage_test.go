@@ -122,6 +122,8 @@ func TestEveryOperationRejectsUnknownPortal(t *testing.T) {
 	require.ErrorIs(t, err, errPortal)
 	_, err = service.Update(ctx, "X", "10001", daftartipedokumenbisnis.Input{}, "u")
 	require.ErrorIs(t, err, errPortal)
+	_, err = service.SaveForBusiness(ctx, "X", "001", nil, "u")
+	require.ErrorIs(t, err, errPortal)
 	_, err = service.AddCoverage(ctx, "X", "10001", "1")
 	require.ErrorIs(t, err, errPortal)
 	_, err = service.ListBusinessChoices(ctx, "X")
@@ -268,4 +270,81 @@ func TestMayBulkSelectOnlyForNONMBU(t *testing.T) {
 	require.True(t, service.MayBulkSelect(" nonmbu "))
 	require.False(t, service.MayBulkSelect("MBU"))
 	require.False(t, service.MayBulkSelect(""))
+}
+
+// Inilah penyimpanan layar Ubah: satu penekanan Simpan memperbarui baris lama DAN
+// menambah baris baru, persis bentuk sentinel `UnknownID` di sistem lama.
+func TestSaveForBusinessUpdatesRowsWithIDAndInsertsThoseWithout(t *testing.T) {
+	service, _ := newService(t)
+	ctx := context.Background()
+
+	saved, err := service.SaveForBusiness(ctx, "ASM", " 001 ", []daftartipedokumenbisnis.Input{
+		{ID: " 10001 ", DocumentTypeID: "20001", DetailTypeDocID: "40001", DetailDocument: "Diubah", MinDocument: 2},
+		{DocumentTypeID: "20003", DetailTypeDocID: "40003", DetailDocument: "Baru"},
+	}, "petugas")
+	require.NoError(t, err)
+
+	// Barisnya dibaca ulang dari repo, sehingga yang kembali adalah SELURUH isi bisnis itu
+	// — bukan hanya dua baris yang barusan dikirim.
+	byID := map[string]daftartipedokumenbisnis.DocumentRule{}
+	for _, row := range saved {
+		require.Equal(t, "001", row.BusinessID)
+		byID[row.ID] = row
+	}
+	require.Equal(t, "Diubah", byID["10001"].DetailDocument)
+	require.Equal(t, 2, byID["10001"].MinDocument)
+
+	var fresh int
+	for _, row := range saved {
+		if row.DetailDocument == "Baru" {
+			fresh++
+			require.NotEmpty(t, row.ID, "baris baru harus memperoleh ID")
+		}
+	}
+	require.Equal(t, 1, fresh)
+}
+
+// Baris yang hilang sejak layar dibuka membatalkan SELURUH penyimpanan — tidak ada
+// sebagian yang tersimpan, dan tidak ada penyisipan ulang diam-diam dengan ID baru.
+func TestSaveForBusinessRejectsMissingRowWithoutWritingAnything(t *testing.T) {
+	service, _ := newService(t)
+	ctx := context.Background()
+
+	_, err := service.SaveForBusiness(ctx, "ASM", "001", []daftartipedokumenbisnis.Input{
+		{ID: "10001", DetailDocument: "Diubah"},
+		{ID: "tidak-ada", DetailDocument: "Hantu"},
+	}, "petugas")
+	require.ErrorIs(t, err, daftartipedokumenbisnis.ErrNotFound)
+
+	after, err := service.Get(ctx, "ASM", "10001")
+	require.NoError(t, err)
+	require.Equal(t, "Laporan Kerugian", after.DetailDocument, "baris pertama tidak boleh ikut berubah")
+}
+
+// Bisnis kosong ditolak dengan pesan yang sama seperti layar lama.
+func TestSaveForBusinessRequiresBusiness(t *testing.T) {
+	service, _ := newService(t)
+
+	_, err := service.SaveForBusiness(context.Background(), "ASM", "   ", nil, "petugas")
+	require.ErrorIs(t, err, daftartipedokumenbisnis.ErrBusinessRequired)
+}
+
+// Baris BARU yang seluruh isiannya kosong dibuang; baris ber-ID yang dikosongkan TIDAK.
+// Pembedaan itu disengaja — lihat CleanRows di lapisan domain.
+func TestSaveForBusinessKeepsBlankedRowsThatAlreadyExist(t *testing.T) {
+	service, _ := newService(t)
+	ctx := context.Background()
+
+	saved, err := service.SaveForBusiness(ctx, "ASM", "001", []daftartipedokumenbisnis.Input{
+		{ID: "10001"},
+		{},
+	}, "petugas")
+	require.NoError(t, err)
+
+	for _, row := range saved {
+		if row.ID == "10001" {
+			require.Empty(t, row.DetailDocument, "pengosongan baris tersimpan harus benar-benar tersimpan")
+		}
+		require.NotEmpty(t, row.ID, "baris baru yang kosong tidak boleh ikut tersimpan")
+	}
 }

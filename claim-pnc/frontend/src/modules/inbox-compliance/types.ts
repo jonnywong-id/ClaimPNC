@@ -154,3 +154,72 @@ export type SendPostAuditResponse = {
   tanggal_kirim_post_audit: string | null
   portal: string
 }
+
+// ── Form Compliance Checker ──────────────────────────────────────────────────
+
+/**
+ * Satu Pilihan Compliance beserta labelnya.
+ *
+ * Keempatnya datang dari server, bukan ditulis di sini: nilainya adalah hasil pembacaan
+ * `Property/PilihanCompliance_property.xml`, dan tempat pembacaan itu tercatat adalah
+ * backend. Menyalinnya ke layar berarti daftar yang sama hidup di dua tempat, dan yang
+ * satu akan tertinggal saat yang lain diperbaiki.
+ */
+export type Choice = {
+  /** `"0"` Fraud/Tolak · `"1"` Bayar/Valid · `"2"` Bayar/PostAudit · `"3"` Lain-Lain. */
+  nilai: string
+  label: string
+}
+
+/** Keputusan Compliance yang sudah tersimpan atas satu klaim. */
+export type Decision = {
+  pilihan: string
+  pilihan_label: string
+  note: string
+  catatan: string
+  diputuskan_oleh: string
+  diputuskan_pada: string | null
+
+  /** Terisi HANYA pada Bayar/Valid. */
+  tanggal_valid: string | null
+
+  /** Terisi HANYA pada Bayar/PostAudit. */
+  tanggal_kirim_post_audit: string | null
+}
+
+/** Form Compliance Checker yang terbuka. */
+export type CheckerResponse = {
+  klaim: WorkItem
+  pilihan: Choice[]
+
+  /** `null` berarti klaimnya belum pernah diputuskan. */
+  keputusan: Decision | null
+
+  /**
+   * Kalimat yang WAJIB ditampilkan, bukan disembunyikan.
+   *
+   * Form ini mencatat keputusan; ia belum menjalankan alurnya. Klaimnya di Pega tidak
+   * berpindah status dan tidak keluar dari antrean, karena tabel klaim masih dimiliki
+   * Pega selama masa paralel (`P-1`).
+   */
+  keterbatasan: string
+  portal: string
+}
+
+/** Badan permintaan penyimpanan keputusan. */
+export type SubmitDecisionRequest = {
+  pilihan: string
+  note: string
+  catatan: string
+}
+
+/** Hasil penyimpanan keputusan. */
+export type SubmitDecisionResponse = {
+  keputusan: Decision
+
+  /** Terisi HANYA pada Bayar/PostAudit, ketika baris Post Audit ikut terbit. */
+  post_audit: SendPostAuditResponse | null
+
+  keterbatasan: string
+  portal: string
+}

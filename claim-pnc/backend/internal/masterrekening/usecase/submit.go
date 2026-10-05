@@ -47,6 +47,16 @@ type Submission struct {
 	Note        string
 	Active      bool
 
+	// SubmitterEmail adalah "Email Inputor" pada layar Pega — alamat yang dipakai
+	// Kasir mengirim pemberitahuan approval kembali ke pengaju.
+	//
+	// Ia DIISI PENGGUNA, bukan diambil dari sesi. Layar lama menandainya wajib dan
+	// memberinya keterangan "Wajib masukan email Anda untuk Notif Approval dari
+	// Kasir" — menandakan alamatnya tidak selalu sama dengan surel akun yang sedang
+	// masuk. Mengambilnya diam-diam dari sesi akan mengirim pemberitahuan ke alamat
+	// yang bukan dimaksud pengaju, dan ia tidak punya cara memperbaikinya.
+	SubmitterEmail string
+
 	// Tiga field berikut hanya terisi bila pengajuan ini menggantikan rekening lama
 	// pada klaim yang sedang berjalan.
 	PreviousBankCode  string
@@ -133,7 +143,12 @@ func (l *Service) Submit(ctx context.Context, p Submission, oleh Submitter) (mas
 		CreatedBy:         oleh.Identity,
 		CreatedAt:         sekarang,
 		UpdatedBy:         oleh.Identity,
-		SubmitterEmail:    tidy(oleh.Email),
+
+		// Email Inputor berasal dari isian, bukan dari sesi. Surel sesi dipakai hanya
+		// sebagai nilai awal bila isiannya kosong — supaya pengaju yang memang memakai
+		// alamat akunnya sendiri tidak perlu mengetik ulang, tanpa menghilangkan
+		// kemampuan menggantinya.
+		SubmitterEmail: pilihTerisi(p.SubmitterEmail, oleh.Email),
 	}
 
 	if err := r.Check(); err != nil {
@@ -167,17 +182,38 @@ func (l *Service) Submit(ctx context.Context, p Submission, oleh Submitter) (mas
 
 // Update memperbarui rekening yang sudah ada.
 //
-// Account yang sudah decided komite tidak dapat diubah lewat jalur ini: mengubah
-// nomor rekening yang sudah disetujui berarti uang klaim berpindah tujuan tanpa
-// seorang pun menyetujuinya. Submission baru adalah jalannya.
+// # Rekening yang SUDAH diputuskan komite boleh diubah
+//
+// Sebelumnya jalur ini menolaknya dengan ErrAlreadyDecided, dan itu **terlalu keras**.
+// Layar lama menyediakan tombol `Ubah` pada setiap baris — termasuk pada tab `Approve` —
+// dan `RDB List/UpdateMasterRekening-SQL.xml` memang menulis ulang `approval`,
+// `OLDBANID`, dan `OLDACCOUNT_NO` sekaligus. Mengubah rekening yang sudah disetujui
+// adalah alur yang memang ada, bukan yang dilarang.
+//
+// # Tetapi ia kembali menunggu persetujuan
+//
+// Kekhawatiran yang mendasari penolakan lama tetap sah: mengubah nomor rekening yang
+// sudah disetujui berarti uang klaim berpindah tujuan. Jawabannya bukan melarang
+// perubahannya, melainkan **mencabut persetujuannya** — rekening kembali ke status
+// menunggu, dan komite memutuskan ulang atas data yang baru.
+//
+// Itu pula yang dilakukan sistem lama: activity `CNMUpdateMasterRekening_act` memanggil
+// `GetKomiteApproval` saat menyimpan, dan menugaskan komite hanya masuk akal bila
+// rekeningnya memang kembali menunggu keputusan.
+//
+// Keadaan sebelum diubah disimpan di `PreviousBankCode`, `PreviousNumber`, dan
+// `PreviousOwnerName` — padanan `OLDBANID`, `OLDACCOUNT_NO`, dan `ACCOUNTNAMEOLD`.
+// Tanpa itu, tidak ada yang dapat menjawab "rekening ini dulunya apa" setelah
+// perubahannya disetujui.
 func (l *Service) Update(ctx context.Context, k masterrekening.Key, p Submission, oleh Submitter) (masterrekening.Account, error) {
 	existing, err := l.repo.Get(ctx, k)
 	if err != nil {
 		return masterrekening.Account{}, err
 	}
-	if !existing.AwaitingDecision() {
-		return masterrekening.Account{}, masterrekening.ErrAlreadyDecided
-	}
+
+	// Dicatat SEBELUM satu field pun ditimpa.
+	sudahDiputuskan := !existing.AwaitingDecision()
+	sebelumnya := existing
 
 	existing.OwnerName = tidy(p.OwnerName)
 	existing.BankName = tidy(p.BankName)
@@ -189,11 +225,32 @@ func (l *Service) Update(ctx context.Context, k masterrekening.Key, p Submission
 	existing.NIK = tidy(p.NIK)
 	existing.Active = p.Active
 	existing.UpdatedBy = oleh.Identity
+	existing.SubmitterEmail = pilihTerisi(p.SubmitterEmail, existing.SubmitterEmail)
 	if d := tidy(p.DocumentID); d != "" {
 		existing.DocumentID = d
 	}
 	if c := strings.TrimSpace(p.Note); c != "" {
 		existing.Note = c
+	}
+
+	if sudahDiputuskan {
+		// Persetujuan lama dicabut: datanya sudah bukan data yang disetujui komite.
+		existing.Status = masterrekening.StatusPending
+		existing.DecidedAt = nil
+		existing.CommitteeApproval = l.defaultCommittee
+		existing.ChangeFlag = flagDiubah
+
+		existing.PreviousBankCode = sebelumnya.BankCode
+		existing.PreviousNumber = sebelumnya.Number
+		existing.PreviousOwnerName = sebelumnya.OwnerName
+
+		// Jejak Kasir SENGAJA tidak dihapus.
+		//
+		// `UpdateMasterRekening-SQL.xml` pun tidak menyentuh STS_SERVICE, ID_REKASIR,
+		// maupun RESPONSE_KASIR (P-5). Lebih dari itu, pendaftaran yang lama adalah
+		// fakta yang benar-benar terjadi — menghapusnya membuat rekening tampak belum
+		// pernah didaftarkan padahal Kasir masih memegang catatannya. Ia ditimpa dengan
+		// sendirinya saat komite menyetujui ulang dan pendaftaran dijalankan lagi.
 	}
 
 	if err := existing.Check(); err != nil {
@@ -204,6 +261,15 @@ func (l *Service) Update(ctx context.Context, k masterrekening.Key, p Submission
 	}
 	return existing, nil
 }
+
+// flagDiubah adalah isi kolom FLAGUPDATE untuk rekening yang pernah diubah setelah
+// diputuskan komite.
+//
+// Nilainya "U" — huruf itu TIDAK terbaca dari export (`FLAGUPDATE` tidak pernah muncul
+// di satu pun rule yang menulisnya), sehingga ia ditetapkan di sini, bukan disalin.
+// Yang penting bukan hurufnya melainkan keberadaannya: tanpa penanda, baris yang pernah
+// diubah tidak dapat dibedakan dari yang sejak awal begitu.
+const flagDiubah = "U"
 
 // List membaca rekening yang cocok dengan filter.
 func (l *Service) List(ctx context.Context, f masterrekening.Filter) ([]masterrekening.Account, int, error) {
@@ -232,3 +298,14 @@ func (l *Service) ListBanks(ctx context.Context) ([]masterrekening.Bank, error) 
 }
 
 func tidy(s string) string { return strings.TrimSpace(s) }
+
+// pilihTerisi mengembalikan nilai pertama yang tidak kosong setelah dirapikan.
+//
+// Dipakai pada Email Inputor: isian pengguna menang, dan surel sesi hanya menjadi
+// nilai awal bila isiannya memang kosong.
+func pilihTerisi(utama, cadangan string) string {
+	if v := tidy(utama); v != "" {
+		return v
+	}
+	return tidy(cadangan)
+}

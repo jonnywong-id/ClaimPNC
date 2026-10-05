@@ -9,17 +9,11 @@ import { useSelectedPortal } from '@/app/portal'
 
 import {
   useCreateDetailDocumentType,
-  useDetailDocumentType,
   useDetailDocumentTypeList,
   useDetailDocumentTypeReferences,
   useUpdateDetailDocumentType,
 } from './api'
-import {
-  codeOf,
-  DetailDocumentTypeForm,
-  MANDATORY_YES,
-  type DetailDocumentTypeFields,
-} from './DetailDocumentTypeForm'
+import { DetailDocumentTypeForm, type DetailDocumentTypeFields } from './DetailDocumentTypeForm'
 
 /** Tidak ada form yang terbuka. */
 const CLOSED = 'closed'
@@ -70,12 +64,16 @@ function loadMessage(error: unknown): MessageContent {
   }
 }
 
-/** Nama master yang gagal dibaca, diubah menjadi kata yang dikenali petugas. */
+/**
+ * Nama master yang gagal dibaca, diubah menjadi kata yang dikenali petugas.
+ *
+ * Hanya memuat master yang BENAR-BENAR dipakai sebuah isian di form. Server masih ikut
+ * melaporkan `penyebab_kerugian` karena endpoint pilihannya tidak berubah, tetapi layar
+ * ini tidak lagi punya isian yang memakainya — menyebutnya dalam peringatan hanya akan
+ * membingungkan petugas, karena tidak ada yang bisa dikerjakannya.
+ */
 const REFERENCE_LABEL: Record<string, string> = {
   tipe_dokumen: 'Tipe Dokumen',
-  penyebab_kerugian: 'Penyebab Kerugian',
-  objek_dokumen: 'Objek Dokumen',
-  bisnis: 'Bisnis',
 }
 
 /**
@@ -99,11 +97,14 @@ const REFERENCE_LABEL: Record<string, string> = {
  * | Pencarian | tidak ada | satu kotak cari yang menelusuri seluruh kolom |
  * | Entitas yang dilihat | tidak pernah disebut | disebut terang-terangan (`R-20`) |
  * | Batas 500 baris | `pyMaxRecords=500` | dihapus — pemotongan senyap, bukan aturan |
- * | Keterangan rujukan | hanya di dalam autocomplete | ikut tampil di grid dan di form |
  *
- * Kolom keterangan penyebab kerugian dan objek dokumen ikut ditampilkan meski grid Pega
- * tidak memuatnya. Sebabnya bukan hiasan: tanpa keduanya, satu-satunya cara mengetahui
- * rincian dokumen ini melekat pada objek apa adalah membuka barisnya satu per satu.
+ * # Kolomnya tepat seperti Pega
+ *
+ * Grid ini memuat ID, Tipe Dokumen, Detail Dokumen, dan aksi Ubah — tidak lebih. Kolom
+ * Objek Dokumen dan Penyebab Kerugian sempat ditambahkan di sini dengan alasan
+ * memudahkan, lalu DICABUT atas koreksi Work Owner (2026-10-03): grid Pega tidak
+ * memuatnya, dan menambah kolom yang tidak ada di layar lama adalah perubahan tata letak
+ * yang `D-13` justru hendak dicegah.
  *
  * # Yang sengaja TIDAK berbeda
  *
@@ -128,23 +129,19 @@ export function DetailDocumentTypePage() {
 
   const openedRow = typeof form === 'string' ? null : form
 
-  // Baris yang dibuka dimuat ULANG dari server supaya daftar bisnisnya ikut terbawa.
-  // Daftar sengaja tidak membawanya — grid hanya menampilkan tiga kolom — sehingga baris
-  // yang diambil dari daftar SELALU punya `bisnis: []`. Memakainya langsung akan membuat
-  // form tampak seolah seluruh lini bisnisnya sudah dihapus, dan menyimpannya benar-benar
-  // menghapusnya.
-  const detail = useDetailDocumentType(openedRow?.id ?? null)
-
-  const edited = openedRow === null ? null : (detail.data?.detail_tipe_dokumen ?? openedRow)
+  // Baris dari daftar dipakai langsung. Daftar membawa SELURUH kolom yang dibutuhkan
+  // form maupun penyimpanan — termasuk keenam kolom yang tidak disunting tetapi harus
+  // ikut ditulis kembali — sehingga tidak ada lagi alasan memuat ulang satu baris.
+  const edited = openedRow
   const isSaving = create.isPending || update.isPending
   const saveError = openedRow ? update.error : create.error
 
   // Master yang gagal dibaca disebut server lewat `tidak_tersedia`. Kegagalan seluruh
   // permintaannya — jaringan, portal — diperlakukan sebagai keempatnya hilang, karena
   // memang tidak satu pun daftar yang di tangan.
-  const unavailable = references.isError
-    ? Object.keys(REFERENCE_LABEL)
-    : (references.data?.tidak_tersedia ?? [])
+  const unavailable = (
+    references.isError ? Object.keys(REFERENCE_LABEL) : (references.data?.tidak_tersedia ?? [])
+  ).filter((name) => name in REFERENCE_LABEL)
 
   function openCreate() {
     create.reset()
@@ -165,46 +162,20 @@ export function DetailDocumentTypePage() {
   }
 
   function save(values: DetailDocumentTypeFields) {
-    const causes = references.data?.penyebab_kerugian ?? []
-    const objects = references.data?.objek_dokumen ?? []
-
     const input = {
       id_tipe_dokumen: values.id_tipe_dokumen,
       detail_dokumen: values.detail_dokumen,
-      status_tertanggung: values.status_tertanggung,
-      // Kode dicarikan dari KETERANGAN yang diketik atau dipilih petugas — itulah yang
-      // dilihatnya di layar, dan itulah yang dikerjakan `pyPropertyTarget` pada
-      // autocomplete Pega saat sebuah pilihan dipilih.
-      //
-      // Keterangan yang tidak ada di master memang tidak punya kode, dan barisnya TETAP
-      // dikirim tanpa kode: `pyAllowFreeFormInput=true` mengizinkannya, dan kolom
-      // keterangannya yang menyimpan isian itu.
-      //
-      // Satu penyimpangan kecil yang disengaja: Pega hanya mengisi kodenya saat pilihan
-      // benar-benar DIPILIH dari daftar, sehingga keterangan yang diketik ulang persis
-      // sama akan meninggalkan kode LAMA yang tidak lagi cocok. Di sini kodenya selalu
-      // dicocokkan ulang terhadap keterangannya, sehingga keduanya tidak pernah
-      // menyimpang. Perbedaannya tidak terlihat pengguna, dan yang dihasilkan lebih
-      // konsisten.
-      id_penyebab_kerugian: codeOf(causes, values.keterangan_penyebab_kerugian) ?? '',
-      keterangan_penyebab_kerugian: values.keterangan_penyebab_kerugian,
-      id_objek_dokumen: codeOf(objects, values.keterangan_objek_dokumen) ?? '',
-      keterangan_objek_dokumen: values.keterangan_objek_dokumen,
-      resiko: values.resiko,
-      bisnis: values.bisnis
-        // Baris yang bisnisnya belum dipilih dibuang di sini supaya tidak terkirim sebagai
-        // aturan yang tidak menunjuk lini bisnis mana pun. Server pun membuangnya, tetapi
-        // membuangnya lebih awal membuat permintaannya menyatakan apa yang benar-benar
-        // dimaksud.
-        .filter((row) => row.id_bisnis.trim() !== '')
-        .map((row) => ({
-          id_bisnis: row.id_bisnis.trim(),
-          status_wajib: row.status_wajib === MANDATORY_YES,
-          // Isian kosong dibaca sebagai nol — pada isian yang kosongnya sah, "belum
-          // diisi" tidak boleh menjadi penolakan. Bentuknya sudah dijaga skema form
-          // berupa angka saja, sehingga Number() di sini tidak pernah menghasilkan NaN.
-          minimum_dokumen: Number(row.minimum_dokumen || '0'),
-        })),
+      // Keenam kolom berikut tidak punya isian di layar ini — layar Pega yang berjalan
+      // pun hanya meminta dua isian di atas. Nilainya DIBAWA APA ADANYA dari baris yang
+      // sedang disunting, bukan dikirim kosong: mengirimnya kosong akan menghapus isi
+      // kolomnya pada setiap penyimpanan, padahal petugas tidak pernah diberi kesempatan
+      // mengubahnya. Pada penambahan baru keenamnya memang belum punya isi.
+      status_tertanggung: edited?.status_tertanggung ?? '',
+      id_penyebab_kerugian: edited?.id_penyebab_kerugian ?? '',
+      keterangan_penyebab_kerugian: edited?.keterangan_penyebab_kerugian ?? '',
+      id_objek_dokumen: edited?.id_objek_dokumen ?? '',
+      keterangan_objek_dokumen: edited?.keterangan_objek_dokumen ?? '',
+      resiko: edited?.resiko ?? '',
     }
 
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
@@ -225,29 +196,12 @@ export function DetailDocumentTypePage() {
       key: 'tipe_dokumen',
       title: 'Tipe Dokumen',
       width: 'w-56',
-      // Kode DAN namanya sama-sama dapat dicari. Petugas yang hafal kodenya dan petugas
-      // yang hafal namanya sama-sama dilayani satu kotak cari.
-      value: (row) => `${row.id_tipe_dokumen} ${row.nama_tipe_dokumen}`,
-      render: (row) => (
-        <span>
-          <span className="block">{row.nama_tipe_dokumen || '—'}</span>
-          <span className="block text-xs text-slate-500">{row.id_tipe_dokumen}</span>
-        </span>
-      ),
+      // NAMANYA saja — kodenya tidak ditampilkan, sama seperti grid Pega. Kode itu
+      // sempat ikut tampil sebagai baris kecil di bawah namanya dan DICABUT atas
+      // koreksi Work Owner (2026-10-03).
+      value: (row) => row.nama_tipe_dokumen,
     },
     { key: 'detail_dokumen', title: 'Detail Dokumen', value: (row) => row.detail_dokumen },
-    {
-      key: 'objek_dokumen',
-      title: 'Objek Dokumen',
-      width: 'w-48',
-      value: (row) => row.keterangan_objek_dokumen,
-    },
-    {
-      key: 'penyebab_kerugian',
-      title: 'Penyebab Kerugian',
-      width: 'w-48',
-      value: (row) => row.keterangan_penyebab_kerugian,
-    },
     {
       key: 'aksi',
       title: 'Aksi',
@@ -270,15 +224,18 @@ export function DetailDocumentTypePage() {
   ]
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna
               mengenalinya tanpa diberi tahu. */}
           <h1 className="text-xl font-semibold text-slate-900">Detail Tipe Dokumen</h1>
+          {/* Keterangannya sengaja satu baris pendek, sama seperti layar master lain.
+              Keterangan panjang membuat blok judul melebar sampai tombol Refresh dan
+              Tambah terdorong turun ke baris berikutnya — dan di sana ia rata kiri,
+              tidak lagi di kanan seperti layar lain. */}
           <p className="text-sm text-slate-600">
-            Rincian dokumen di bawah setiap tipe dokumen klaim: melekat pada objek apa, dipicu
-            penyebab kerugian mana, dan wajib pada lini bisnis mana.
+            Rincian dokumen di bawah setiap tipe dokumen klaim.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -310,7 +267,7 @@ export function DetailDocumentTypePage() {
                 title="Sebagian daftar pilihan tidak dapat dimuat"
                 description={`Saran untuk isian ${unavailable
                   .map((name) => REFERENCE_LABEL[name] ?? name)
-                  .join(', ')} tidak tersedia untuk sementara. Kodenya tetap dapat diketik sendiri, dan seluruh isian tetap dapat disimpan.`}
+                  .join(', ')} tidak tersedia untuk sementara. Isian lain tetap dapat disimpan seperti biasa.`}
                 tone="gangguan"
               />
             </div>
@@ -318,10 +275,6 @@ export function DetailDocumentTypePage() {
           <DetailDocumentTypeForm
             edited={edited}
             documentTypes={references.data?.tipe_dokumen ?? []}
-            causesOfLoss={references.data?.penyebab_kerugian ?? []}
-            objectDocuments={references.data?.objek_dokumen ?? []}
-            businesses={references.data?.bisnis ?? []}
-            isLoadingBusinessRules={openedRow !== null && detail.isPending}
             isSaving={isSaving}
             error={saveError}
             onSave={save}

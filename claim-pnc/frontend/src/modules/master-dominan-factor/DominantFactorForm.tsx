@@ -49,10 +49,17 @@ type Props = {
 /**
  * Form tambah dan ubah Master Dominan Factor.
  *
- * Meniru fungsi form pada harness `DetailDominanFactor` — ID read-only, satu isian
- * Keterangan, dan tombol Simpan. Judulnya pun mengikuti yang di sana: layar lama memakai
- * "Menambah Data" dan "Memperbaharui Data" (`pyTitle`), dan `D-13` menetapkan teks yang
- * dilihat pengguna mengikuti layar Pega apa adanya.
+ * Meniru fungsi form pada harness `DetailDominanFactor` — satu isian Keterangan dan
+ * tombol Simpan. Judulnya pun mengikuti yang di sana: layar lama memakai "Menambah Data"
+ * dan "Memperbaharui Data" (`pyTitle`), dan `D-13` menetapkan teks yang dilihat pengguna
+ * mengikuti layar Pega apa adanya.
+ *
+ * # Satu perbedaan yang disengaja dari layar lama
+ *
+ * Layar Pega menampilkan ID sebagai isian read-only. Di sini ID **tidak ditampilkan sama
+ * sekali** di form (keputusan Work Owner 2026-10-03): nomornya diterbitkan sistem dan
+ * tidak dapat disunting siapa pun, sehingga tidak ada satu pun hal yang dapat dilakukan
+ * pengguna terhadapnya di sini. Ia tetap terlihat di kolom pertama tabel.
  */
 export function DominantFactorForm({ factor, tutup }: Props) {
   const save = useSaveDominantFactor()
@@ -102,11 +109,6 @@ export function DominantFactorForm({ factor, tutup }: Props) {
         <h3 className="text-base font-semibold text-slate-900">
           {editing ? 'Memperbaharui Data' : 'Menambah Data'}
         </h3>
-        <p className="mt-1 text-sm text-slate-600">
-          {editing
-            ? 'Hanya keterangan yang dapat diubah. ID tetap, karena klaim lama menyimpannya.'
-            : 'ID dibuat sistem setelah disimpan, melanjutkan nomor terakhir.'}
-        </p>
       </div>
 
       <div className="space-y-5 p-5">
@@ -122,38 +124,33 @@ export function DominantFactorForm({ factor, tutup }: Props) {
           </p>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <span className="block text-sm font-medium text-slate-700">ID</span>
-            {/*
-              ID digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
-              dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
-              mengkliknya; kotak ini jelas bukan tempat mengetik.
-            */}
-            <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-500">
-              {factor?.id ?? 'Dibuat sistem'}
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              ID tidak dapat disunting, sama seperti di sistem lama.
-            </p>
-          </div>
+        {/*
+          ID TIDAK ditampilkan di form ini, baik saat menambah maupun saat mengubah —
+          keputusan Work Owner 2026-10-03.
 
-          <Field
-            id="nama"
-            label="Keterangan"
-            placeholder="Contoh: Kelalaian pihak ketiga"
-            maxLength={MAX_NAME_LENGTH}
-            autoComplete="off"
-            hint={`Paling panjang ${MAX_NAME_LENGTH} karakter.`}
-            error={errors.nama?.message}
-            disabled={save.isPending}
-            {...remainingNama}
-            ref={(element) => {
-              refNama(element)
-              firstField.current = element
-            }}
-          />
-        </div>
+          Alasannya: nomornya diterbitkan sistem (`max(ID)+1`) dan tidak dapat disunting
+          siapa pun, sehingga menampilkannya di form hanya menyita ruang tanpa memberi
+          pengguna satu pun hal yang dapat ia lakukan. Saat menambah ia belum ada sama
+          sekali; saat mengubah ia tidak berubah.
+
+          ID tetap terlihat di KOLOM PERTAMA tabel, tempat ia memang berguna — untuk
+          mengenali baris dan mencocokkannya dengan data klaim.
+        */}
+        <Field
+          id="nama"
+          label="Keterangan"
+          placeholder="Contoh: Kelalaian pihak ketiga"
+          maxLength={MAX_NAME_LENGTH}
+          autoComplete="off"
+          hint={`Paling panjang ${MAX_NAME_LENGTH} karakter.`}
+          error={errors.nama?.message}
+          disabled={save.isPending}
+          {...remainingNama}
+          ref={(element) => {
+            refNama(element)
+            firstField.current = element
+          }}
+        />
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={save.isPending}>

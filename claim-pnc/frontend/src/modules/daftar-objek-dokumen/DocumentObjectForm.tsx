@@ -11,29 +11,38 @@ import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Button } from '@/components/Button'
 
 /**
- * Kedua batas harus sama dengan MaxDescriptionLength dan MaxBusinessNameLength di
+ * Harus sama dengan MaxDescriptionLength di
  * `internal/daftarobjekdokumen/daftarobjekdokumen.go`.
  *
- * Keduanya PENJAGA TEKNIS, bukan aturan bisnis: lebar kolomnya belum diketahui (`R-08`),
- * dan tabel pemetaan bisnisnya bahkan belum ada. Angkanya diperiksa di dua tempat dengan
- * sengaja — di sini supaya pengguna tahu sebelum mengirim, dan di server karena API dapat
- * ditembak tanpa melewati layar ini. Server tetap yang berwenang.
+ * DUA PULUH, dan angkanya dibaca dari katalog pada 2026-10-03:
+ * `POOLDATA.LST_DOC_OBJ.KET_DOC_OBJ` berupa `VARCHAR2(20)`.
  *
- * Bila angka ini berubah, berkas Go di atas harus ikut berubah.
+ * Versi pertama layar ini memasang 100 — disalin dari modul Master COL Simas Online, yang
+ * kolomnya memang selebar 200. Akibatnya nyata: setiap keterangan di atas 20 karakter lolos
+ * di sini, lalu DITOLAK Oracle dengan ORA-12899 yang sampai ke layar sebagai galat 500
+ * berbunyi "Terjadi kesalahan pada sistem".
+ *
+ * Batas yang lebih longgar daripada kolomnya bukan kelonggaran; ia memindahkan penolakan ke
+ * tempat yang tidak dapat dijelaskan kepada pengguna.
+ *
+ * Angkanya diperiksa di dua tempat dengan sengaja — di sini supaya pengguna tahu sebelum
+ * mengirim, dan di server karena API dapat ditembak tanpa melewati layar ini. Server tetap
+ * yang berwenang.
  */
-const MAX_DESCRIPTION_LENGTH = 100
-const MAX_BUSINESS_NAME_LENGTH = 100
+const MAX_DESCRIPTION_LENGTH = 20
 
 /**
- * Yang diperiksa di layar hanyalah PANJANG, dan itu disengaja.
+ * Yang diperiksa di layar hanyalah PANJANG KETERANGAN, dan itu disengaja.
  *
  * Layar Pega menandai seluruh isiannya `pyRequired=false` dan tidak punya satu pun Validate
  * rule untuk kelas ASM-FW-GCNMFW-Int-V_LST_DOC_OBJ, sehingga keterangan kosong maupun bisnis
  * kembar sama-sama sah. `P-5` menetapkan perilaku dipertahankan lebih dulu.
  *
- * Batas panjang tetap ada karena ia bukan aturan bisnis melainkan penjaga terhadap lebar
- * kolom basis data — tanpa itu, nilai yang kepanjangan ditolak Oracle dengan ORA-12899 yang
- * muncul sebagai galat 500 dan tidak dapat dibaca pengguna.
+ * # Panjang nama bisnis tidak lagi diperiksa di sini
+ *
+ * Karena nama bisnis tidak pernah disimpan: pemetaannya hanya menyimpan ID bisnis, di dalam
+ * dokumen JSON baris induknya. Yang menentukan diterima atau tidaknya sebuah nama adalah
+ * apakah ia ADA DI MASTER — dan hanya server yang dapat menjawab itu.
  */
 const schema = z.object({
   objek_dokumen: z
@@ -45,17 +54,7 @@ const schema = z.object({
     ),
   // Disimpan sebagai senarai objek, bukan senarai teks, karena useFieldArray menuntut setiap
   // barisnya berupa objek agar dapat memberinya kunci yang stabil.
-  bisnis: z.array(
-    z.object({
-      nama: z
-        .string()
-        .trim()
-        .max(
-          MAX_BUSINESS_NAME_LENGTH,
-          `Nama bisnis paling panjang ${MAX_BUSINESS_NAME_LENGTH} karakter.`,
-        ),
-    }),
-  ),
+  bisnis: z.array(z.object({ nama: z.string().trim() })),
 })
 
 export type DocumentObjectFields = z.infer<typeof schema>
@@ -285,13 +284,17 @@ export function DocumentObjectForm({
               <li key={row.id} className="flex items-end gap-2">
                 <div className="grow">
                   {/* ComboField, bukan SelectField: sel Bisnis di Pega memakai kontrol
-                      `pxAutoComplete` yang menerima ketikan bebas, sehingga nama di luar
-                      daftar TETAP boleh diketik dan disimpan. */}
+                      `pxAutoComplete`, dan bentuknya ditiru supaya pengguna dapat mengetik
+                      untuk menyaring daftar — bukan menggulung daftar sepanjang 206 baris.
+
+                      Yang BERBEDA dari Pega: nama di luar daftar tidak dapat DISIMPAN.
+                      Pemetaannya hanya menyimpan ID bisnis, sehingga nama tanpa ID tidak
+                      punya tempat. Server menolaknya dengan menyebut nama mana. */}
                   <ComboField
                     id={`bisnis-${index}`}
                     label={`Bisnis baris ${index + 1}`}
                     options={businessSuggestions}
-                    maxLength={MAX_BUSINESS_NAME_LENGTH}
+                    hint={index === 0 ? 'Pilih dari daftar; nama di luar daftar tidak dapat disimpan.' : undefined}
                     error={errors.bisnis?.[index]?.nama?.message}
                     {...register(`bisnis.${index}.nama` as const)}
                   />

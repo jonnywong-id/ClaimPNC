@@ -92,6 +92,13 @@ func TestFilterArgsMatchesBindCount(t *testing.T) {
 // isinya keliru tanpa satu pun pesan.
 func TestBindMarkersAreUniqueAndAscending(t *testing.T) {
 	for name := range queries {
+		// transfer_pending dikecualikan: penandanya DISISIPKAN saat jalan oleh expandClaims,
+		// sebanyak klaim yang diminta. Jumlahnya memang tidak diketahui di dalam teksnya, dan
+		// bentuknya dijaga TestPendingMarkersExpandSafely.
+		if name == "transfer_pending" {
+			continue
+		}
+
 		numbers := bindNumbers(t, query(name))
 		require.NotEmptyf(t, numbers, "kueri %s tidak punya penanda parameter", name)
 
@@ -263,17 +270,37 @@ func TestLikePatternEscapesWildcards(t *testing.T) {
 	require.Equal(t, "%PNC-1%", likePattern("pnc-1"))
 }
 
-// TestQueriesOnlyRead memastikan modul ini tidak pernah menulis.
+// TestOnlyTransferWrites memagari dua hal sekaligus.
 //
-// Seluruh tabel yang dibacanya masih ditulis Pega selama masa paralel, dan `P-1` menetapkan
-// satu tabel hanya ditulis satu sistem. Layar ini memang tidak punya aksi tulis; uji inilah
-// yang menjaganya tetap begitu.
-func TestQueriesOnlyRead(t *testing.T) {
+// `P-1` menetapkan satu tabel hanya ditulis satu sistem, dan selama masa paralel SELURUH
+// tabel klaim milik Pega. Tombol Transfer karena itu mencatat PERMINTAAN ke tabel milik
+// aplikasi sendiri; penugasannya tetap dipindahkan Pega.
+//
+// Yang dijaga:
+//
+//  1. tidak ada kueri tulis BARU yang lolos tanpa sengaja — satu-satunya penulis disebut
+//     namanya di sini, sehingga penambahan berikutnya harus menyunting uji ini lebih dulu;
+//  2. penulis yang satu itu tidak berpindah sasaran ke skema milik Pega.
+//
+// Butir kedua yang paling mudah terlewat: mengubah nama tabel pada satu kueri tidak
+// menghasilkan galat apa pun sampai ia benar-benar menulis ke tempat yang salah.
+func TestOnlyTransferWrites(t *testing.T) {
+	const penulis = "transfer_insert"
+
+	require.Contains(t, queries[penulis], "POOLDATA.CPNC_PERMINTAAN_TRANSFER",
+		"kueri tulis harus menyasar tabel milik aplikasi sendiri, bukan tabel warisan")
+	require.NotContains(t, strings.ToUpper(queries[penulis]), "DATAPEGA.",
+		"kueri tulis TIDAK boleh menyentuh skema milik Pega")
+
 	for name, statement := range queries {
+		if name == penulis {
+			continue
+		}
 		upper := strings.ToUpper(statement)
 		for _, forbidden := range []string{"INSERT ", "UPDATE ", "DELETE ", "MERGE ", "TRUNCATE "} {
 			require.NotContainsf(t, upper, forbidden,
-				"kueri %s memuat %q — modul ini hanya membaca", name, strings.TrimSpace(forbidden))
+				"kueri %s memuat %q — hanya %s yang boleh menulis",
+				name, strings.TrimSpace(forbidden), penulis)
 		}
 	}
 }
@@ -381,4 +408,92 @@ func outerKeyword(statement, keyword string) int {
 		}
 	}
 	return -1
+}
+
+// TestHoldingUsesItsOwnBindCount menjaga perbedaan yang mudah terlewat.
+//
+// Tab Inbox Tampungan PIC memakai DUA argumen penyaring, bukan delapan: kueri lamanya tidak
+// punya penanda lini bisnis sama sekali.
+//
+// Memakai ulang filterArgs di sana akan mengirim enam argumen yang tidak punya penanda, dan
+// Oracle menolaknya dengan ORA-01008 pada permintaan pertama yang datang — bukan saat kode
+// ditulis, dan bukan pada mesin pengembang yang tidak punya Oracle.
+func TestHoldingUsesItsOwnBindCount(t *testing.T) {
+	args := holdingFilterArgs(dashboardclaim.Filter{}.Normalize())
+	require.Len(t, args, 2)
+
+	require.Equal(t, 2, highestBind(t, query("holding_count")))
+	require.Equal(t, 4, highestBind(t, query("holding_list")),
+		"kueri daftar tampungan harus memakai dua penanda tambahan: offset dan limit")
+}
+
+// TestHoldingListAndCountShareTheSameWhere menjaga agar totalnya tidak menyimpang dari
+// barisnya.
+func TestHoldingListAndCountShareTheSameWhere(t *testing.T) {
+	require.Equal(t,
+		whereClause(t, query("holding_count")),
+		whereClause(t, query("holding_list")),
+		"syarat WHERE holding_count dan holding_list berbeda — totalnya akan menyimpang dari barisnya")
+}
+
+// TestHoldingKeepsTheThreeConditions menjaga ketiga syarat yang mendefinisikan "tampungan".
+//
+// Tidak satu pun cukup sendirian, dan menghapus salah satunya mengubah isi tab menjadi
+// populasi yang lain tanpa satu pun galat.
+func TestHoldingKeepsTheThreeConditions(t *testing.T) {
+	for _, name := range []string{"holding_count", "holding_list"} {
+		statement := query(name)
+
+		require.Containsf(t, statement, "'ServicePNC'",
+			"kueri %s kehilangan syarat akun penampung", name)
+		require.Containsf(t, statement, "USERTEKNIS_1 IS NULL",
+			"kueri %s kehilangan syarat belum punya PIC Teknik", name)
+		require.Containsf(t, statement, "POLICYNO IS NOT NULL",
+			"kueri %s kehilangan syarat polis sudah terisi", name)
+	}
+}
+
+// TestPendingMarkersExpandSafely menjaga satu-satunya tempat di modul ini yang MERANGKAI
+// teks SQL.
+//
+// Yang dirangkai adalah PENANDA (`:1, :2, …`), bukan nilainya — jumlahnya memang berubah
+// tiap permintaan. Uji ini memastikan batas itu tidak bergeser: nilainya tidak pernah
+// menyentuh teks, dan penandanya tetap unik serta menaik.
+func TestPendingMarkersExpandSafely(t *testing.T) {
+	require.Contains(t, query("transfer_pending"), "/*CLAIMS*/",
+		"penanda yang diganti expandClaims hilang dari kueri")
+
+	ids := []string{"ASM-FW-GCNMFW-WORK PNC-1", "ASM-FW-GCNMFW-WORK PNC-2", "PNC-3"}
+	statement, args := expandClaims(query("transfer_pending"), ids)
+
+	require.Len(t, args, len(ids))
+	require.NotContains(t, statement, "/*CLAIMS*/", "penanda tidak terganti")
+
+	// Nilainya TIDAK boleh muncul di dalam teks SQL.
+	for _, id := range ids {
+		require.NotContains(t, statement, id,
+			"nilai klaim terangkai ke dalam teks SQL — ia wajib lewat parameter binding")
+	}
+
+	numbers := bindNumbers(t, statement)
+	require.Len(t, numbers, len(ids))
+
+	previous := 0
+	for _, number := range numbers {
+		require.Greater(t, number, previous, "penanda wajib menaik sesuai urutan kemunculan")
+		previous = number
+	}
+}
+
+// TestPendingWithoutClaimsNeverRuns memastikan daftar kosong tidak menghasilkan `IN ()`.
+//
+// `IN ()` bukan SQL yang sah, dan halaman yang kebetulan tidak punya baris akan membuat
+// seluruh layar gagal — bukan hanya penandanya yang hilang.
+func TestPendingWithoutClaimsNeverRuns(t *testing.T) {
+	statement, args := expandClaims(query("transfer_pending"), nil)
+
+	require.Empty(t, args)
+	require.Contains(t, statement, "IN ()",
+		"bentuk tak sah ini memang dihasilkan — dan karena itu TransferRepo.PendingFor "+
+			"wajib menjawab daftar kosong SEBELUM menyentuh basis data")
 }

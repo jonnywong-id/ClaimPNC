@@ -66,5 +66,33 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// dapat memanggilnya. Itu `TKT-F3-005`, dan sampai ia ada, jejaknya hanya berupa
 		// baris log yang menyebut pengirimnya.
 		perPortal.Post("/inbox-compliance/post-audit", h.SendPostAudit)
+
+		// Form Compliance Checker — yang terbuka ketika petugas menekan Nomor Case.
+		//
+		// # Kenapa didaftarkan SETELAH kedua rute di atas
+		//
+		// Karena `/{referensi}` cocok dengan apa saja, termasuk `tab` dan `post-audit`.
+		// chi memang mengutamakan jalur harfiah di atas parameter, sehingga urutannya
+		// sebenarnya tidak menentukan — tetapi menaruhnya di bawah membuat urutan baca
+		// kode sama dengan urutan kekhususan jalurnya, dan itu yang menolong orang
+		// berikutnya yang menambahkan rute.
+		//
+		// `{referensi}` adalah `PZINSKEY`, yang memuat spasi dan tanda hubung. Layar
+		// WAJIB mengkodekannya; chi mendekodekannya kembali.
+		perPortal.Get("/inbox-compliance/{referensi}", h.OpenChecker)
+
+		// Rute KEDUA yang mengubah data di modul ini.
+		//
+		// Ia menulis ke `POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE`, tabel baru milik aplikasi
+		// ini — bukan ke tabel klaim, yang masih dimiliki Pega (`P-1`). Pada pilihan
+		// Bayar/PostAudit ia juga menerbitkan baris Post Audit, sehingga akibatnya sama
+		// dengan rute post-audit di atas ditambah tersimpannya keputusan.
+		//
+		// Ketiadaan pemeriksaan peran paling berat akibatnya di SINI, lebih berat
+		// daripada di rute mana pun lain di modul ini: pilihan `0` berarti Fraud/Tolak,
+		// yakni menolak klaim. Setiap pengguna yang sudah masuk dapat memanggilnya.
+		// Itu `TKT-F3-005`, dan sampai ia ada, jejaknya hanya berupa baris log yang
+		// menyebut pemutusnya.
+		perPortal.Post("/inbox-compliance/{referensi}/keputusan", h.SubmitDecision)
 	})
 }

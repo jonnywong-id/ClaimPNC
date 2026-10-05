@@ -286,3 +286,47 @@ func pad6(n int64) string {
 	}
 	return text
 }
+
+// ListCountries mengembalikan contoh daftar negara.
+//
+// Isinya SEDIKIT dan sengaja: mode memori hanya perlu membuktikan dropdown-nya berfungsi,
+// bukan menyalin daftar negara yang sebenarnya. Daftar yang sungguhan dibaca sqlstore dari
+// tabel COUNTRY milik GISFW.
+//
+// Kode negaranya KARANGAN — kode yang dipakai tabel sebenarnya tidak diketahui, dan
+// mengarang kode lalu menampilkannya sebagai data sungguhan justru yang harus dihindari.
+func (r *Repo) ListCountries(ctx context.Context) ([]mastersurveyors.Country, error) {
+	return []mastersurveyors.Country{
+		{Code: "ID", Name: "INDONESIA"},
+		{Code: "SG", Name: "SINGAPORE"},
+		{Code: "TL", Name: "TIMOR-LESTE"},
+	}, nil
+}
+
+// ListEmployees mengembalikan contoh daftar pegawai calon surveyor internal.
+//
+// Namanya KARANGAN dan sengaja dibuat terbaca sebagai contoh. Nama pegawai sungguhan
+// adalah data orang, dan `D-69` melarangnya ditulis ke berkas yang di-commit.
+//
+// Yang DITIRU dari sumber aslinya adalah bentuknya: tiga nilai yang bergerak bersama —
+// nama, login, dan email — karena memilih satu pegawai mengisi ketiganya sekaligus.
+//
+// Satu pegawai sengaja TIDAK punya email, meniru `BrowseNonMBUUsers` yang hanya menyaring
+// `login_aplikasi is not null` dan membiarkan `EMAIL` kosong. Tanpa contoh itu, jalur
+// "email wajib padahal pegawai tidak punya" tidak pernah terlihat saat mengembangkan.
+func (r *Repo) ListEmployees(ctx context.Context) ([]mastersurveyors.Employee, error) {
+	return []mastersurveyors.Employee{
+		{Name: "CONTOH PEGAWAI SATU", Login: "CONTOHPEGAWAI1", Email: "contoh.satu@contoh.invalid"},
+		{Name: "CONTOH PEGAWAI DUA", Login: "CONTOHPEGAWAI2", Email: "contoh.dua@contoh.invalid"},
+		{Name: "CONTOH PEGAWAI TIGA", Login: "CONTOHPEGAWAI3", Email: ""},
+	}, nil
+}
+
+// ListBranches mengembalikan contoh daftar cabang.
+func (r *Repo) ListBranches(ctx context.Context) ([]mastersurveyors.Branch, error) {
+	return []mastersurveyors.Branch{
+		{Code: "001", Name: "KANTOR PUSAT"},
+		{Code: "002", Name: "CABANG CONTOH SATU"},
+		{Code: "003", Name: "CABANG CONTOH DUA"},
+	}, nil
+}

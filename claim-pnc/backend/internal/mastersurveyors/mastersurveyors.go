@@ -191,13 +191,13 @@ type Surveyor struct {
 	// NameKey, dan alasannya ada di sana.
 	Name string
 
-	Address      string
-	PostalCode   string // KDPOS
-	State        string
-	Phone        string // TELEPHONE
-	Fax          string // FAKSIMILE
-	Email        string
-	OtherContact string
+	Address     string
+	PostalCode  string // KDPOS
+	Country     string
+	Phone       string // TELEPHONE
+	Fax         string // FAKSIMILE
+	Email       string
+	ContactName string
 
 	// BranchCode adalah BRANCH, berlabel "Cabang" di layar lama.
 	//
@@ -237,11 +237,20 @@ type Surveyor struct {
 	// saat pertama, dan tidak ditetapkan ulang pada penyuntingan berikutnya.
 	Committee string
 
-	// CommitteeTransferred adalah TRFKOMITE, penanda baris sudah diteruskan ke komite.
+	// NeedDirector adalah TRFKOMITE — di layar lama berlabel **"Apakah perlu ke direksi?"**
+	// dan berupa DROPDOWN yang diisi pengguna.
 	//
-	// Dibawa apa adanya. Nilai yang benar-benar dipakai sistem lama tidak dapat dibaca
-	// dari export — ia hanya disalin, tidak pernah dibandingkan di rule mana pun yang ada.
-	CommitteeTransferred string
+	// Ia sempat saya perlakukan sebagai penanda sistem yang diisi "1" saat keputusan
+	// komite diambil. Itu KELIRU, dan dibetulkan 2026-10-03 setelah layarnya dibaca:
+	//
+	//	Section/BrowseDetailSuveryorsApprove-Section.xml
+	//	    pyValue        = TempDetailSurveyors.TRFKOMITE
+	//	    pyLabelPreview = "Apakah perlu ke direksi?"
+	//	    pyFormat       = pxDropdown
+	//
+	// Jadi ia ISIAN FORMULIR, bukan jejak proses — dan nilainya datang dari orang yang
+	// mengajukan, bukan dari sistem.
+	NeedDirector string
 
 	// DecidedAt adalah waktu keputusan komite. Nil berarti belum diputuskan.
 	//
@@ -304,17 +313,17 @@ func (s Surveyor) Clean() Surveyor {
 	s.Name = strings.TrimSpace(s.Name)
 	s.Address = strings.TrimSpace(s.Address)
 	s.PostalCode = strings.TrimSpace(s.PostalCode)
-	s.State = strings.TrimSpace(s.State)
+	s.Country = strings.TrimSpace(s.Country)
 	s.Phone = strings.TrimSpace(s.Phone)
 	s.Fax = strings.TrimSpace(s.Fax)
 	s.Email = strings.TrimSpace(s.Email)
-	s.OtherContact = strings.TrimSpace(s.OtherContact)
+	s.ContactName = strings.TrimSpace(s.ContactName)
 	s.BranchCode = strings.TrimSpace(s.BranchCode)
 	s.BranchName = strings.TrimSpace(s.BranchName)
 	s.AppLogin = strings.TrimSpace(s.AppLogin)
 	s.DocumentID = strings.TrimSpace(s.DocumentID)
 	s.Committee = strings.TrimSpace(s.Committee)
-	s.CommitteeTransferred = strings.TrimSpace(s.CommitteeTransferred)
+	s.NeedDirector = strings.TrimSpace(s.NeedDirector)
 	s.Note = strings.TrimSpace(s.Note)
 	return s
 }
@@ -527,6 +536,87 @@ type Repo interface {
 
 	// Update menulis ulang surveyor yang sudah ada.
 	Update(ctx context.Context, s Surveyor) error
+
+	// ListCountries membaca daftar negara untuk dropdown "Negara".
+	//
+	// Ia ada di sini, bukan di seam tersendiri, karena tabelnya hidup di basis data
+	// entitas yang sama — memisahkannya hanya menambah satu selector yang selalu
+	// menunjuk koneksi yang sama.
+	//
+	// Tabelnya DIMILIKI pihak lain dan hanya DIBACA modul ini. Presedennya sama dengan
+	// `masterrekening.BankRepo` atas GENERAL.LST_BANK_GROUP.
+	ListCountries(ctx context.Context) ([]Country, error)
+
+	// ListEmployees membaca daftar pegawai yang boleh dijadikan Surveyor Internal.
+	ListEmployees(ctx context.Context) ([]Employee, error)
+
+	// ListBranches membaca daftar cabang untuk isian "Cabang".
+	ListBranches(ctx context.Context) ([]Branch, error)
+}
+
+// Employee adalah satu pilihan pada isian "Nama" untuk SURVEYOR INTERNAL.
+//
+// # Kenapa nama surveyor internal DIPILIH, bukan diketik
+//
+// Di layar lama, isian Nama punya DUA kontrol yang saling meniadakan — dibaca dari
+// `Section/BrowseDetailSuveryorsApprove-Section.xml`:
+//
+//	pyUIElement=text          pyCondition=!PNCIsInternalSurveyors
+//	pyUIElement=autocomplete  pyCondition=PNCIsInternalSurveyors
+//
+// Yang kedua itulah yang berlaku untuk Internal Surveyor. Ia bukan kotak teks melainkan
+// daftar pilihan pegawai, dan pemilihannya mengisi TIGA kolom sekaligus lewat
+// `pyAdditionalFields`:
+//
+//	.NAME            -> TempDetailSurveyors.NAME
+//	.LOGIN_APLIKASI  -> TempDetailSurveyors.LOGIN_APLIKASI
+//	.EMAIL           -> TempDetailSurveyors.EMAIL
+//
+// Itu menjawab pertanyaan yang sempat menggantung: dari mana LOGIN_APLIKASI terisi,
+// padahal kontrolnya sendiri TIDAK PERNAH tampil (`pyCondition = 1=2`). Jawabannya bukan
+// diketik pengguna — ia ikut terbawa dari pegawai yang dipilih.
+//
+// Tanpa daftar ini, surveyor internal baru TIDAK DAPAT dibuat sama sekali, karena aturan
+// langkah 8 activity lama mewajibkan login terisi untuk tipe internal.
+type Employee struct {
+	// Name adalah nama pegawai; menjadi NAME pada baris surveyor.
+	Name string
+
+	// Login adalah nama login aplikasinya; menjadi LOGIN_APLIKASI.
+	Login string
+
+	// Email menjadi EMAIL, dan tetap dapat disunting setelah dipilih — kontrol EMAIL di
+	// layar lama `pyVisible=ALWAYS` dan tidak pernah dikunci.
+	Email string
+}
+
+// Branch adalah satu pilihan pada isian "Cabang".
+//
+// Asalnya `Report Definition/BrowseBranch_RD-RD.xml`, kelas `ASM-FW-GISFW-Int-BRANCH`.
+// Kontrolnya `pyUIElement=autocomplete` dengan `pyDisplayProperty=.BranchName`, dan
+// pemilihannya mengisi DUA kolom: `.ID` ke `TempDetailSurveyors.BRANCH` dan nama cabangnya
+// ke `BRANCHNAME`.
+//
+// Jadi "Cabang" pun bukan kotak teks di layar lama. Mengetiknya bebas membuat `BRANCH`
+// kosong sementara `BRANCHNAME` terisi — dua kolom yang seharusnya sepasang menjadi
+// berbeda, dan tidak ada yang menandainya.
+type Branch struct {
+	Code string
+	Name string
+}
+
+// Country adalah satu pilihan pada dropdown "Negara".
+//
+// Asalnya `Report Definition/BrowseCountry_RD-RD.xml`, yang membaca kelas
+// `ASM-FW-GISFW-Int-COUNTRY` dengan field `.ID`, `.Country`, dan `.InatradeID`. Dropdown
+// pada layar lama menampilkan `.Country` dan menyimpan nilainya ke `STATE`.
+//
+// Perhatikan namanya: kolomnya bernama STATE, tetapi isinya NEGARA — bukan provinsi. Itu
+// satu lagi alias menyesatkan pada tabel ini, sejenis dengan `BUSINESS_CODE` yang
+// sebenarnya memuat Operator ID.
+type Country struct {
+	Code string
+	Name string
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

@@ -28,26 +28,26 @@ func service(t *testing.T) *usecase.Service {
 	return svc
 }
 
-func TestAntreanDisaringDenganIdentitasLamaBukanLogin(t *testing.T) {
+func TestAntreanDisaringDenganLoginDariMLoginPNC(t *testing.T) {
 	listed, err := service(t).List(context.Background(), "ASM",
 		inboxrcl.Caller{Login: memory.SampleLogin}, inboxrcl.Filter{})
 	require.NoError(t, err)
 
-	require.True(t, listed.LegacyIdentityFound)
+	require.True(t, listed.IdentityFound)
 	require.Equal(t, 4, listed.Page.Total)
 	for _, task := range listed.Page.Tasks {
-		require.Equal(t, memory.SampleLegacyID, task.AssignedOperator)
+		require.Equal(t, memory.SampleOperator, task.AssignedOperator)
 	}
 }
 
-// TestTanpaIdentitasLamaAntreanKosongDanDinyatakan membedakan "tidak ada pekerjaan" dari
+// TestLoginTidakAktifAntreanKosong membedakan "tidak ada pekerjaan" dari
 // "belum diketahui pekerjaan siapa" — keduanya grid kosong di Pega.
 func TestTanpaIdentitasLamaAntreanKosongDanDinyatakan(t *testing.T) {
 	listed, err := service(t).List(context.Background(), "ASM",
-		inboxrcl.Caller{Login: memory.SampleLoginNoLegacy}, inboxrcl.Filter{})
+		inboxrcl.Caller{Login: memory.SampleLoginInactive}, inboxrcl.Filter{})
 	require.NoError(t, err)
 
-	require.False(t, listed.LegacyIdentityFound)
+	require.False(t, listed.IdentityFound)
 	require.Empty(t, listed.Page.Tasks)
 	require.Zero(t, listed.Page.Total)
 }
@@ -87,4 +87,24 @@ func TestKolomMengikutiHarness(t *testing.T) {
 func TestTanpaSelectorDitolak(t *testing.T) {
 	_, err := usecase.NewService(usecase.Options{})
 	require.Error(t, err)
+}
+
+func TestDetailMembukaKlaimDiAntreanPemanggil(t *testing.T) {
+	detail, err := service(t).Detail(context.Background(), "ASM",
+		inboxrcl.Caller{Login: memory.SampleLogin}, "PNCN.26.0412")
+	require.NoError(t, err)
+	require.Equal(t, inboxrcl.ModeRCL, detail.Mode)
+}
+
+func TestDetailMenolakKlaimDokterLainDanLoginTidakAktif(t *testing.T) {
+	_, err := service(t).Detail(context.Background(), "ASM",
+		inboxrcl.Caller{Login: memory.SampleLogin}, "PNCN.26.0350")
+	require.ErrorIs(t, err, inboxrcl.ErrClaimNotFound, "milik dokter lain")
+
+	_, err = service(t).Detail(context.Background(), "ASM",
+		inboxrcl.Caller{Login: memory.SampleLoginInactive}, "PNCN.26.0412")
+	require.ErrorIs(t, err, inboxrcl.ErrClaimNotFound, "login tidak aktif")
+
+	_, err = service(t).Detail(context.Background(), "ASM", inboxrcl.Caller{}, "PNCN.26.0412")
+	require.ErrorIs(t, err, inboxrcl.ErrCallerUnknown)
 }

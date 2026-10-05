@@ -173,98 +173,6 @@ type DetailType struct {
 	// sehingga baris tanpa resiko berperilaku sama dengan baris beresiko nol. Menolaknya
 	// akan mengubah perilaku layar yang tidak sedang dimigrasikan.
 	Risk string
-
-	// Businesses adalah aturan per lini bisnis — isi V_LST_DET_TYPE_DOC_BISNIS untuk
-	// baris ini.
-	//
-	// KOSONG berarti rincian dokumen ini belum dikaitkan ke lini bisnis mana pun, dan itu
-	// keadaan yang sah — grid utama layar Pega pun hanya membaca view induknya, sehingga
-	// baris tanpa bisnis tetap tampil utuh.
-	//
-	// Senarai ini hanya terisi pada pembacaan SATU baris (Get), tidak pada daftar.
-	// Daftar tidak membutuhkannya: gridnya hanya tiga kolom — ID, Tipe Dokumen, dan
-	// Detail Dokumen — dan menariknya untuk seluruh baris berarti satu kueri yang
-	// hasilnya tidak pernah dilihat siapa pun.
-	Businesses []BusinessRule
-}
-
-// BusinessRule adalah aturan dokumen pada satu lini bisnis.
-//
-// Bentuknya mengikuti grid berulang `TempDTDoc.DFT_BISNIS_ID` pada
-// `Section/BrowseListDetailTypeDocument-Section.xml`: tiga isian — ID Bisnis, Status
-// Wajib, dan Minimum Dokumen.
-type BusinessRule struct {
-	// BusinessID adalah DFT_BISNIS_ID, rujukan ke POOLDATA.BUSINESS.ID milik GISFW.
-	BusinessID string
-
-	// BusinessName adalah NOTE pada POOLDATA.BUSINESS.
-	//
-	// HANYA DIBACA — `RDB List/GetLbuDetType-SQL.xml` mendapatkannya dengan menjoin
-	// BUSINESS, bukan dari baris ini. Akibatnya bila bisnisnya sudah tidak ada di master,
-	// namanya kosong sementara ID-nya tetap tersimpan.
-	BusinessName string
-
-	// Mandatory adalah STS_WAJIB — label layar "Status Wajib".
-	//
-	// Boolean di sini; yang tersimpan adalah TEKS. Lihat MandatoryYes di bawah — kolom
-	// ini memuat empat nilai yang berbeda di produksi, dan pembacaannya karena itu
-	// sengaja longgar sementara penulisannya tegas.
-	Mandatory bool
-
-	// MinDocument adalah MIN_DOC — label layar "Minimum Dokumen".
-	//
-	// Nol berarti tidak ada tuntutan jumlah.
-	MinDocument int
-}
-
-// Nilai yang DITULIS ke kolom STS_WAJIB.
-//
-// # Kenapa teks "Ya"/"Tidak", bukan angka 1/0
-//
-// Keputusan Work Owner 2026-09-23, dan bukti export membenarkannya. Kolom ini dibaca
-// tiga activity, dan yang membandingkannya HANYA dengan teks adalah yang membaca view
-// milik modul ini:
-//
-//	Activity/SetTypePDFAdjustment-Act.xml     .STS_WAJIB=="Ya"          hanya teks
-//	Activity/ValidationUploadDocument_act     "Ya" "Tidak" "1" "0"      keempatnya
-//	Activity/ValidationUploadRegister         "Ya" "Tidak" "1" "0"      keempatnya
-//
-// Menulis "1" akan membuat `SetTypePDFAdjustment` berhenti mengenali dokumen wajib —
-// tanpa satu pun galat, hanya jenis PDF yang salah pilih.
-//
-// # Kenapa pembacaannya tetap menerima "1" dan "0"
-//
-// Karena kedua activity yang menerima keempatnya membuktikan data produksi memang
-// memuat keduanya. Menolak nilai yang tidak dikenal akan menggagalkan seluruh daftar
-// karena satu baris warisan — jauh lebih buruk daripada membacanya sebagai "Tidak".
-const (
-	MandatoryYes = "Ya"
-	MandatoryNo  = "Tidak"
-)
-
-// MandatoryText mengubah penanda wajib menjadi teks yang disimpan.
-func MandatoryText(mandatory bool) string {
-	if mandatory {
-		return MandatoryYes
-	}
-	return MandatoryNo
-}
-
-// MandatoryFrom membaca kembali kolom STS_WAJIB menjadi penanda wajib.
-//
-// Empat nilai dikenali sebagai "wajib", dan sisanya — termasuk kosong dan NULL —
-// dijawab "tidak wajib". Alasannya ada di komentar MandatoryYes.
-//
-// Perbandingannya mengabaikan besar-kecil huruf dan spasi di ujung: kolom bertipe CHAR
-// berlebar tetap memadatkan nilainya dengan spasi tanpa memberi tanda apa pun, dan baris
-// warisan dapat memuat "YA" maupun "ya".
-func MandatoryFrom(stored string) bool {
-	switch strings.ToLower(strings.TrimSpace(stored)) {
-	case "ya", "1", "y", "true":
-		return true
-	default:
-		return false
-	}
 }
 
 // Input adalah nilai yang dikirim pengguna dari layar.
@@ -296,19 +204,7 @@ type Input struct {
 	ObjectDocumentID          string
 	ObjectDocumentDescription string
 
-	Risk       string
-	Businesses []BusinessInput
-}
-
-// BusinessInput adalah satu baris grid bisnis yang dikirim layar.
-//
-// Tanpa BusinessName: namanya milik master dan dibaca lewat join, tidak disimpan di
-// baris ini. Berbeda dari modul Daftar Detail Dokumen Travel, yang memang menyimpan nama
-// plan dan jaminannya sendiri karena view-nya memaparkan kolom itu.
-type BusinessInput struct {
-	BusinessID  string
-	Mandatory   bool
-	MinDocument int
+	Risk string
 }
 
 // Batas panjang isian.
@@ -345,7 +241,6 @@ const (
 	FieldDocumentType   = "id_tipe_dokumen"
 	FieldCauseOfLoss    = "id_penyebab_kerugian"
 	FieldObjectDocument = "id_objek_dokumen"
-	FieldBusiness       = "bisnis"
 )
 
 // Violation adalah satu pelanggaran isian.
@@ -401,25 +296,6 @@ func (i Input) Clean() Input {
 		Risk:                      strings.TrimSpace(i.Risk),
 	}
 
-	clean.Businesses = make([]BusinessInput, 0, len(i.Businesses))
-	for _, row := range i.Businesses {
-		row.BusinessID = strings.TrimSpace(row.BusinessID)
-
-		// MIN_DOC negatif tidak punya arti apa pun — "paling sedikit minus satu berkas"
-		// bukan aturan yang dapat dipenuhi maupun dilanggar. Ia diratakan menjadi nol,
-		// bukan ditolak, supaya perlakuannya tetap sejalan dengan layar tanpa validasi.
-		if row.MinDocument < 0 {
-			row.MinDocument = 0
-		}
-
-		// Baris dibuang hanya bila bisnisnya TIDAK dipilih. Status wajib dan jumlah
-		// minimum tidak ikut diperiksa: keduanya punya nilai baku yang sah — "Tidak" dan
-		// nol — sehingga baris yang bisnisnya terisi selalu bermakna.
-		if row.BusinessID == "" {
-			continue
-		}
-		clean.Businesses = append(clean.Businesses, row)
-	}
 	return clean
 }
 
@@ -480,21 +356,6 @@ func (i Input) Check() error {
 	tooLong(i.CauseOfLossID, MaxReferenceLength, FieldCauseOfLoss, "Kode Dokumen kolom ID")
 	tooLong(i.ObjectDocumentDescription, MaxDescriptionLength, FieldObjectDocument, "Objek Dokumen")
 	tooLong(i.ObjectDocumentID, MaxReferenceLength, FieldObjectDocument, "Kode Objek Dokumen")
-
-	for _, row := range i.Businesses {
-		if utf8.RuneCountInString(row.BusinessID) > MaxReferenceLength {
-			violation = append(violation, Violation{
-				Field:   FieldBusiness,
-				Message: "ID Bisnis paling panjang " + itoa(MaxReferenceLength) + " karakter: " + row.BusinessID,
-			})
-			break
-		}
-	}
-
-	// BISNIS KEMBAR TIDAK DITOLAK, mengikuti grid Pega yang tidak punya satu pun penanda
-	// keunikan — tidak ada `pyUnique`, tidak ada validasi. Perlakuan yang sama sudah
-	// ditetapkan Work Owner untuk grid sebentuk pada Master COL Simas Online dan Daftar
-	// Objek Dokumen.
 
 	if len(violation) > 0 {
 		return &ValidationError{Violation: violation}
@@ -568,30 +429,10 @@ func FormatID(site string, sequence int64) string {
 
 // Business adalah satu pilihan pada isian ID Bisnis.
 //
-// Ia sengaja BUKAN tipe milik modul lain: modul tidak saling mengimpor tipenya, sehingga
-// perubahan di satu modul tidak merambat ke modul lain. Yang dibagi adalah tabelnya,
-// bukan kodenya.
-type Business struct {
-	ID   string
-	Name string
-}
-
 // DocumentTypeOption adalah satu pilihan pada isian ID Tipe Dokumen.
 type DocumentTypeOption struct {
 	ID   string
 	Name string
-}
-
-// CauseOfLossOption adalah satu pilihan pada isian Dokumen kolom ID.
-type CauseOfLossOption struct {
-	ID          string
-	Description string
-}
-
-// ObjectDocumentOption adalah satu pilihan pada isian Objek Dokumen.
-type ObjectDocumentOption struct {
-	ID          string
-	Description string
 }
 
 // Repo adalah seam ke penyimpanan detail tipe dokumen SATU portal.
@@ -661,14 +502,6 @@ type ReferenceRepo interface {
 	// ListDocumentTypes mengembalikan pilihan isian ID Tipe Dokumen.
 	ListDocumentTypes(ctx context.Context) ([]DocumentTypeOption, error)
 
-	// ListCausesOfLoss mengembalikan pilihan isian Dokumen kolom ID.
-	ListCausesOfLoss(ctx context.Context) ([]CauseOfLossOption, error)
-
-	// ListObjectDocuments mengembalikan pilihan isian Objek Dokumen.
-	ListObjectDocuments(ctx context.Context) ([]ObjectDocumentOption, error)
-
-	// ListBusinesses mengembalikan pilihan isian ID Bisnis pada grid.
-	ListBusinesses(ctx context.Context) ([]Business, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

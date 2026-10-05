@@ -27,7 +27,6 @@ import (
 type Service struct {
 	repoSelector     daftardetaildokumentravel.RepoSelector
 	documentSelector daftardetaildokumentravel.DocumentRepoSelector
-	planSelector     daftardetaildokumentravel.PlanRepoSelector
 }
 
 // Options adalah bahan pembentuk Service.
@@ -37,9 +36,6 @@ type Options struct {
 
 	// DocumentSelector memilih pembaca master dokumen travel (M_DOCTRAVEL). Wajib.
 	DocumentSelector daftardetaildokumentravel.DocumentRepoSelector
-
-	// PlanSelector memilih pembaca master plan dan jaminan Travel. Wajib.
-	PlanSelector daftardetaildokumentravel.PlanRepoSelector
 }
 
 // NewService membentuk layanan dan menolak bahan yang tidak lengkap.
@@ -53,17 +49,13 @@ func NewService(o Options) (*Service, error) {
 	if o.DocumentSelector == nil {
 		return nil, errors.New("daftardetaildokumentravel/usecase: DocumentSelector wajib diisi")
 	}
-	if o.PlanSelector == nil {
-		return nil, errors.New("daftardetaildokumentravel/usecase: PlanSelector wajib diisi")
-	}
 	return &Service{
 		repoSelector:     o.RepoSelector,
 		documentSelector: o.DocumentSelector,
-		planSelector:     o.PlanSelector,
 	}, nil
 }
 
-// List mengembalikan seluruh aturan dokumen milik satu portal, tanpa coverage-nya.
+// List mengembalikan seluruh aturan dokumen milik satu portal.
 //
 // Tidak dipaginasi. Report Definition lama pun memuat seluruhnya sekaligus dengan batas
 // `pyMaxRecords=500` (`BrowseLstDocTravel_RD-RD.xml`), dan isi master ini berupa daftar
@@ -82,7 +74,7 @@ func (s *Service) List(ctx context.Context, portalAlias string) ([]daftardetaild
 	return repo.List(ctx)
 }
 
-// Get mengembalikan satu aturan LENGKAP dengan daftar coverage-nya.
+// Get mengembalikan satu aturan dokumen.
 //
 // Ia menggantikan `CNMSetDetailTravelDocument_act`, activity yang mengisi form dari
 // baris yang dipilih. Activity itu sendiri TIDAK ADA di export (`R-16`), sehingga yang
@@ -114,7 +106,7 @@ func (s *Service) Create(
 	return repo.InsertNew(ctx, input.Clean())
 }
 
-// Update mengganti isi satu aturan beserta seluruh daftar coverage-nya.
+// Update mengganti isi satu aturan dokumen.
 func (s *Service) Update(
 	ctx context.Context,
 	portalAlias, id string,
@@ -137,30 +129,6 @@ func (s *Service) Documents(ctx context.Context, portalAlias string) ([]daftarde
 		return nil, err
 	}
 	return repo.List(ctx)
-}
-
-// Plans mengembalikan pilihan Nama Plan.
-//
-// Menggantikan autocomplete `BrowsePlanTravelMaster_RD`.
-func (s *Service) Plans(ctx context.Context, portalAlias string) ([]daftardetaildokumentravel.Plan, error) {
-	repo, err := s.planSelector(portalAlias)
-	if err != nil {
-		return nil, err
-	}
-	return repo.ListPlans(ctx)
-}
-
-// Coverages mengembalikan pilihan Nama Jaminan beserta plan pemiliknya.
-//
-// Menggantikan autocomplete `SearchCoverageTravel_RD`, yang di Pega disaring server
-// lewat parameter `plan`. Di sini penyaringannya dikerjakan layar — alasannya ada di
-// komentar PlanRepo.ListCoverages.
-func (s *Service) Coverages(ctx context.Context, portalAlias string) ([]daftardetaildokumentravel.CoverageOption, error) {
-	repo, err := s.planSelector(portalAlias)
-	if err != nil {
-		return nil, err
-	}
-	return repo.ListCoverages(ctx)
 }
 
 // EnsurePortalReady memeriksa portal dapat dilayani tanpa menyentuh satu baris pun.

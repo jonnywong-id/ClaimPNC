@@ -33,10 +33,11 @@ import (
 // Dilindungi mutex karena satu instans dipakai bersama seluruh permintaan HTTP yang
 // berjalan bersamaan.
 type Repo struct {
-	mu       sync.RWMutex
-	rows     map[string]mastermasking.Masking
-	branches []mastermasking.Branch
-	nextID   int
+	mu        sync.RWMutex
+	rows      map[string]mastermasking.Masking
+	branches  []mastermasking.Branch
+	operators map[string][]mastermasking.Operator
+	nextID    int
 }
 
 // NewRepo membentuk repo berisi daftar yang diberikan.
@@ -45,7 +46,10 @@ type Repo struct {
 // cabang tidak menolak data contohnya sendiri. Cabang tambahan disuntikkan lewat
 // WithBranches.
 func NewRepo(list ...mastermasking.Masking) *Repo {
-	r := &Repo{rows: make(map[string]mastermasking.Masking, len(list))}
+	r := &Repo{
+		rows:      make(map[string]mastermasking.Masking, len(list)),
+		operators: map[string][]mastermasking.Operator{},
+	}
 
 	seen := map[string]bool{}
 	for _, m := range list {
@@ -230,6 +234,30 @@ func (r *Repo) ListBranches(ctx context.Context, keyword string, limit int) ([]m
 		}
 	}
 	return result, nil
+}
+
+// WithOperators mendaftarkan petugas sebuah cabang.
+//
+// Tanpa ini, form Tambah di mode memori akan menampilkan cabang yang tidak punya seorang
+// pun petugas — dan alurnya tidak dapat dicoba sampai selesai.
+func (r *Repo) WithOperators(branchID string, list ...mastermasking.Operator) *Repo {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.operators[strings.TrimSpace(branchID)] = append(
+		r.operators[strings.TrimSpace(branchID)], list...)
+	return r
+}
+
+// ListOperators mengembalikan petugas sebuah cabang, terurut menurut login — sama dengan
+// `ORDER BY PYUSERIDENTIFIER ASC` pada kueri Oracle.
+func (r *Repo) ListOperators(ctx context.Context, branchID string) ([]mastermasking.Operator, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	found := append([]mastermasking.Operator(nil), r.operators[strings.TrimSpace(branchID)]...)
+	sort.SliceStable(found, func(i, j int) bool { return found[i].Login < found[j].Login })
+	return found, nil
 }
 
 // BranchExists menyatakan apakah kode cabang dikenal.

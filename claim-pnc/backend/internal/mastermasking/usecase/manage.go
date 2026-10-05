@@ -183,6 +183,92 @@ func (s *Service) Create(ctx context.Context, portalAlias string, m mastermaskin
 	return saved, nil
 }
 
+// CreateMany menyimpan kewenangan untuk BANYAK petugas pada satu cabang sekaligus.
+//
+// Inilah bentuk form Tambah layar lama: pengguna memilih cabang, layar menampilkan daftar
+// petugas cabang itu, dan satu tombol SIMPAN menyimpan seluruh baris yang diisi.
+//
+// # Kenapa tidak dibungkus satu transaksi
+//
+// Karena layar lama pun tidak. Procedure dipanggil sekali per baris dan melakukan COMMIT
+// sendiri di dalamnya, sehingga baris yang berhasil tetap tersimpan meski baris lain
+// ditolak. Membungkusnya menjadi satu transaksi akan mengubah perilaku yang terlihat
+// pengguna: memilih 30 petugas yang 2 di antaranya sudah punya baris akan menggagalkan
+// ke-30-nya, padahal sistem lama menyimpan 28.
+//
+// Itu PERBEDAAN dari `D-68`, dan disengaja. `D-68` memindahkan kepemilikan transaksi ke Go
+// supaya `B-4` dan `B-9` dapat dibuat atomik — keduanya penerbitan dokumen yang memang
+// harus utuh. Di sini yang disimpan adalah baris-baris yang berdiri sendiri, dan keutuhan
+// justru merugikan.
+func (s *Service) CreateMany(
+	ctx context.Context, portalAlias, branchID string,
+	row []mastermasking.Masking, by string,
+) ([]mastermasking.SaveOutcome, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	branchID = trim(branchID)
+	if err := ensureBranchExists(ctx, repo, branchID); err != nil {
+		return nil, err
+	}
+	if len(row) == 0 {
+		return nil, mastermasking.ErrNoRowChosen
+	}
+
+	outcome := make([]mastermasking.SaveOutcome, 0, len(row))
+	for _, m := range row {
+		m = m.Clean()
+		// Cabang datang dari pilihan di atas form, bukan dari tiap baris. Membiarkan baris
+		// menyebut cabangnya sendiri akan membuat satu kali SIMPAN menyentuh beberapa
+		// cabang sekaligus — hal yang tidak dapat dilakukan layar lama, dan yang membuat
+		// pengguna tidak lagi dapat memastikan apa yang baru saja ia berikan.
+		m.BranchID = branchID
+		m.Active = true
+		m.InputBy = trim(by)
+		m.InputAt = s.now()
+
+		if err := mastermasking.NewValidationError(mastermasking.CheckMasking(m)); err != nil {
+			outcome = append(outcome, mastermasking.SaveOutcome{Login: m.Login, Err: err})
+			continue
+		}
+		if err := ensurePairFree(ctx, repo, m.BranchID, m.Login, ""); err != nil {
+			outcome = append(outcome, mastermasking.SaveOutcome{Login: m.Login, Err: err})
+			continue
+		}
+		if _, err := repo.Insert(ctx, m); err != nil {
+			outcome = append(outcome, mastermasking.SaveOutcome{Login: m.Login, Err: err})
+			continue
+		}
+		outcome = append(outcome, mastermasking.SaveOutcome{Login: m.Login, Saved: true})
+	}
+	return outcome, nil
+}
+
+// Operators mengembalikan petugas sebuah cabang yang berhak diberi kewenangan.
+//
+// Mengisi tabel pada form Tambah, menggantikan `RDB List/GetDataLogin-SQL.xml`.
+func (s *Service) Operators(ctx context.Context, portalAlias, branchID string) ([]mastermasking.Operator, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	branchID = trim(branchID)
+	if branchID == "" {
+		// Cabang WAJIB — di layar lama isiannya bertanda bintang merah. Tanpa cabang,
+		// daftar petugasnya tidak punya arti.
+		return nil, mastermasking.ErrBranchNotChosen
+	}
+
+	list, err := repo.ListOperators(ctx, branchID)
+	if err != nil {
+		return nil, fmt.Errorf("mastermasking/usecase: membaca petugas cabang %q: %w", branchID, err)
+	}
+	return list, nil
+}
+
 // Update mengubah baris yang sudah ada.
 //
 // Cabang dan login IKUT dapat diubah, karena layar lama pun mengirimkan keduanya pada

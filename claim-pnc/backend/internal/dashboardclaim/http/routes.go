@@ -66,6 +66,21 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 
 		dashboard.Get("/penyaring", h.Metadata)
 		dashboard.Get("/ringkasan", h.Summary)
+
+		// Tab kedua layar lama — "Inbox Tampungan PIC". Nama jalurnya statis dan BUKAN nama
+		// tile yang sah, sehingga ia tidak pernah terbaca sebagai telusur tile.
+		dashboard.Get("/tampungan", h.Holding)
+
+		// Unduhan dipisahkan menjadi jalurnya sendiri, bukan parameter format pada daftar.
+		// Keduanya berbeda sifat: yang satu dipaginasi dan dibaca layar, yang lain mengalir
+		// sampai habis dan diterima sebagai berkas.
+		dashboard.Get("/tampungan/unduh", h.ExportHolding)
 		dashboard.Get("/{tile}", h.List)
+		dashboard.Get("/{tile}/unduh", h.ExportTile)
+
+		// SATU-SATUNYA rute yang menulis, dan yang ditulisnya BUKAN klaim melainkan
+		// POOLDATA.CPNC_PERMINTAAN_TRANSFER — tabel milik aplikasi ini sendiri, dibuat
+		// migrasi 0014. Penugasannya tetap dipindahkan Pega (`P-1`).
+		dashboard.Post("/transfer", h.Transfer)
 	})
 }

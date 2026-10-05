@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type Masking } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon, ShieldIcon } from '@/components/Icon'
+import { ReloadIcon, AddIcon, EditIcon, ShieldIcon, CloseIcon } from '@/components/Icon'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
 import { SelectField } from '@/components/SelectField'
@@ -12,12 +12,15 @@ import { useSelectedPortal } from '@/app/portal'
 
 import {
   MaskingStatus,
+  moduleChecklist,
+  subModuleChecklist,
   useMaskingList,
   useSetMaskingStatus,
   type MaskingFilter,
   type SearchBy,
 } from './api'
-import { MaskingForm } from './MaskingForm'
+import { MaskingAddForm } from './MaskingAddForm'
+import { MaskingEditForm } from './MaskingEditForm'
 
 /**
  * Layar Master Masking.
@@ -88,15 +91,19 @@ export function MaskingPage() {
 
   const [beingEdited, setBeingEdited] = useState<Masking | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  // Baris yang sedang dilihat modulnya lewat tombol VIEW.
+  const [viewing, setViewing] = useState<Masking | null>(null)
 
   function openAdd() {
     setBeingEdited(null)
     setFormOpen(true)
+    setViewing(null)
   }
 
   function openEdit(row: Masking) {
     setBeingEdited(row)
     setFormOpen(true)
+    setViewing(null)
   }
 
   function closeForm() {
@@ -177,58 +184,60 @@ export function MaskingPage() {
     // KTP, EMAIL, dan NOTELP adalah TIGA kolom terpisah di layar lama, bukan satu kolom
     // gabungan. Dipertahankan begitu supaya petugas dapat menyapu satu kolom dari atas ke
     // bawah — cara membaca yang berbeda dari membandingkan tiga lencana per baris.
+    // Ketiganya ditampilkan sebagai teks "Ya"/"Tidak" apa adanya, sama dengan layar lama.
+    // Lencana berwarna sempat dipakai di sini dan dicabut: ia bacaan yang berbeda dari
+    // yang dikenal petugas, dan `D-13` menetapkan tampilan mengikuti Pega.
     {
       key: 'lihat_ktp',
       title: 'KTP',
       width: '6rem',
-      value: (m) => (m.lihat_ktp ? 'Ya' : 'Tidak'),
-      render: (m) => <Permission label="KTP" allowed={m.lihat_ktp} />,
+      value: (m) => yesNo(m.lihat_ktp),
+      render: (m) => <span className="text-slate-700">{yesNo(m.lihat_ktp)}</span>,
     },
     {
       key: 'lihat_email',
       title: 'Email',
       width: '6rem',
-      value: (m) => (m.lihat_email ? 'Ya' : 'Tidak'),
-      render: (m) => <Permission label="Email" allowed={m.lihat_email} />,
+      value: (m) => yesNo(m.lihat_email),
+      render: (m) => <span className="text-slate-700">{yesNo(m.lihat_email)}</span>,
     },
     {
       key: 'lihat_notelp',
       title: 'Notelp',
       width: '6rem',
-      value: (m) => (m.lihat_notelp ? 'Ya' : 'Tidak'),
-      render: (m) => <Permission label="No Telp" allowed={m.lihat_notelp} />,
+      value: (m) => yesNo(m.lihat_notelp),
+      render: (m) => <span className="text-slate-700">{yesNo(m.lihat_notelp)}</span>,
     },
-    // MAX LIHAT mendahului MAX CARI — urutan layar lama, bukan urutan yang terasa wajar.
+    // MAX LIHAT mendahului MAX CARI — urutan layar lama.
+    //
+    // Angkanya ditulis APA ADANYA tanpa pemisah ribuan. Pemisah sempat ditambahkan dan
+    // dicabut: layar lama menulis `10000`, dan `10.000` adalah angka yang berbeda bentuk
+    // dari yang dihafal petugas.
     {
       key: 'maks_lihat',
       title: 'Max Lihat',
       width: '7rem',
-      alignRight: true,
       value: (m) => String(m.maks_lihat),
-      render: (m) => <Quota value={m.maks_lihat} />,
+      render: (m) => <span className="text-slate-700">{m.maks_lihat}</span>,
     },
     {
       key: 'maks_cari',
       title: 'Max Cari',
       width: '7rem',
-      alignRight: true,
       value: (m) => String(m.maks_cari),
-      render: (m) => <Quota value={m.maks_cari} />,
+      render: (m) => <span className="text-slate-700">{m.maks_cari}</span>,
     },
     {
-      // Kolom LIHAT MODUL layar lama berisi tombol VIEW. Di sini modul dan sub modulnya
-      // ditampilkan langsung — isinya pendek, dan membuka popup untuk dua nilai teks
-      // menambah satu klik tanpa menambah apa pun yang terbaca.
+      // Kolom LIHAT MODUL layar lama berisi TOMBOL VIEW, bukan teks modulnya.
       key: 'lihat_modul',
       title: 'Lihat Modul',
-      width: '15rem',
+      width: '8rem',
       noSort: true,
-      value: (m) => `${m.modul} ${m.sub_modul}`,
+      value: () => '',
       render: (m) => (
-        <div>
-          <span className="block font-mono text-xs text-slate-700">{m.modul || '—'}</span>
-          <SubModuleList value={m.sub_modul} />
-        </div>
+        <Button tone="halus" onClick={() => setViewing(m)} aria-label={`Lihat modul ${m.login}`}>
+          VIEW
+        </Button>
       ),
     },
     {
@@ -244,24 +253,18 @@ export function MaskingPage() {
         // disunting maupun dinonaktifkan ulang — persis seperti sistem lama.
         m.aktif ? (
           <div className="flex justify-end gap-2">
-            <Button tone="halus" onClick={() => openEdit(m)} aria-label={`Ubah masking ${m.login}`}>
+            {/* Nama tombolnya mengikuti layar lama: Edit dan Delete. */}
+            <Button tone="halus" onClick={() => openEdit(m)} aria-label={`Edit masking ${m.login}`}>
               <EditIcon className="h-3.5 w-3.5" />
-              Ubah
+              Edit
             </Button>
-            {/*
-              Tombolnya disebut apa adanya — Nonaktifkan, bukan Hapus.
-
-              Layar lama menamainya DELETE padahal ia tidak pernah membuang baris. Nama
-              yang keliru itu membuat petugas mengira datanya hilang, lalu menambahkannya
-              lagi dari awal — dan barisnya menjadi dua.
-            */}
             <Button
               tone="kedua"
               disabled={setStatus.isPending}
               onClick={() => setStatus.mutate({ id: m.id, aktif: false })}
-              aria-label={`Nonaktifkan masking ${m.login}`}
+              aria-label={`Delete masking ${m.login}`}
             >
-              Nonaktifkan
+              Delete
             </Button>
           </div>
         ) : (
@@ -312,11 +315,18 @@ export function MaskingPage() {
         </p>
       </header>
 
-      {formOpen && (
-        <div className="mb-6">
-          <MaskingForm masking={beingEdited} onClose={closeForm} />
-        </div>
-      )}
+      {formOpen &&
+        (beingEdited === null ? (
+          <div className="mb-6">
+            <MaskingAddForm onClose={closeForm} />
+          </div>
+        ) : (
+          <div className="mb-6">
+            <MaskingEditForm masking={beingEdited} onClose={closeForm} />
+          </div>
+        ))}
+
+      {viewing !== null && <ModuleView masking={viewing} onClose={() => setViewing(null)} />}
 
       {portal === null ? (
         <ErrorMessage
@@ -452,78 +462,100 @@ export function MaskingPage() {
   )
 }
 
+/** Teks kewenangan, sama persis dengan yang tersimpan di kolom: "Ya" atau "Tidak". */
+function yesNo(allowed: boolean) {
+  return allowed ? 'Ya' : 'Tidak'
+}
+
 /**
- * Sub modul digambar sebagai daftar, bukan satu baris teks panjang.
+ * Dialog ViewDataModul — isi tombol VIEW pada kolom LIHAT MODUL.
  *
- * Nilainya tersimpan sebagai daftar dipisah koma dengan koma di ujungnya
- * ("Registrasi,Dokumen,"). Menampilkannya apa adanya membuat koma penutup terbaca seperti
- * ada bagian yang hilang.
+ * Bentuknya ditiru dari layar lama: dialog melayang berjudul **ViewDataModul**, dengan dua
+ * kelompok **kotak centang** — MODUL dan SUB MODUL — yang menunjukkan mana yang berlaku
+ * bagi baris itu.
  *
- * Nilai yang tidak dikenal TIDAK diperbaiki maupun disembunyikan — keputusan Work Owner
- * 2026-09-20. Satu baris produksi memang memuat sub modul yang salah ketik, dan
- * merapikannya di layar akan menyembunyikan bahwa datanya perlu diperbaiki.
+ * Centangnya MATI; ia tampilan, bukan isian. Mengubah kewenangan ditempuh lewat Edit,
+ * sama seperti di sistem lama.
+ *
+ * Panel inline sempat dipakai di sini dan dicabut: ia menuliskan nilai mentah kolom
+ * (`PNCSearchKlaim`) alih-alih label yang dibaca petugas (`VIEW HISTORY KLAIM`), dan
+ * menghilangkan sub modul yang TIDAK dicentang — padahal justru daftar lengkap beserta
+ * keadaan centangnya yang membuat dialog ini berguna.
  */
-function SubModuleList({ value }: { value: string }) {
-  const part = value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item) => item !== '')
-
-  if (part.length === 0) {
-    return (
-      <span className="text-slate-400" title="Baris ini tidak menyebut sub modul">
-        —
-      </span>
-    )
-  }
-
+function ModuleView({ masking, onClose }: { masking: Masking; onClose: () => void }) {
   return (
-    <div className="flex flex-wrap gap-1">
-      {part.map((item) => (
-        <span
-          key={item}
-          className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700 ring-1 ring-slate-200"
-        >
-          {item}
-        </span>
-      ))}
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 sm:p-8"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="ViewDataModul"
+        className="mt-10 w-full max-w-sm overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-angkat"
+      >
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
+          <h3 className="text-base font-medium text-slate-900">ViewDataModul</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup"
+            className="rounded-kontrol p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-4">
+          <ChecklistGroup title="MODUL" item={moduleChecklist(masking.modul)} />
+          <ChecklistGroup title="SUB MODUL" item={subModuleChecklist(masking.sub_modul)} />
+        </div>
+      </div>
     </div>
   )
 }
 
-/**
- * Kuota ditampilkan sebagai angka berpemisah ribuan.
- *
- * Nilainya mencapai 100.000 di data produksi; tanpa pemisah, angka sebesar itu sulit
- * dibaca sekilas dan mudah tertukar dengan 10.000.
- */
-function Quota({ value }: { value: number }) {
+/** Satu kelompok kotak centang mati pada dialog ViewDataModul. */
+function ChecklistGroup({
+  title,
+  item,
+}: {
+  title: string
+  item: { label: string; checked: boolean; dikenal: boolean }[]
+}) {
   return (
-    <span className="font-mono text-sm tabular-nums text-slate-700">
-      {value.toLocaleString('id-ID')}
-    </span>
-  )
-}
-
-/**
- * Satu kewenangan melihat, digambar sebagai lencana.
- *
- * Keadaan "boleh" dan "tidak boleh" dibedakan warna DAN teks tambahan pada label yang
- * dibacakan pembaca layar — warna saja tidak cukup, karena sekitar satu dari dua belas
- * laki-laki mengalami buta warna merah-hijau.
- */
-function Permission({ label, allowed }: { label: string; allowed: boolean }) {
-  return (
-    <span
-      aria-label={`${label}: ${allowed ? 'boleh dilihat' : 'tersamar'}`}
-      className={
-        allowed
-          ? 'inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-100'
-          : 'inline-flex items-center rounded-md bg-slate-50 px-1.5 py-0.5 text-xs text-slate-400 line-through ring-1 ring-slate-200'
-      }
-    >
-      {label}
-    </span>
+    <section>
+      <h4 className="text-sm font-medium text-slate-900">{title}</h4>
+      {item.length === 0 ? (
+        <p className="mt-2 text-sm text-slate-500">—</p>
+      ) : (
+        <ul className="mt-2 space-y-2">
+          {item.map((row) => (
+            <li key={row.label} className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={row.checked}
+                readOnly
+                disabled
+                aria-label={`${row.label}: ${row.checked ? 'berlaku' : 'tidak berlaku'}`}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+              />
+              <span>{row.label}</span>
+              {/* Nilai di luar daftar tetap ditampilkan dan ditandai — menyembunyikannya
+                  akan membuat data yang perlu diperbaiki tidak pernah terlihat. */}
+              {!row.dikenal && (
+                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800 ring-1 ring-amber-200">
+                  di luar daftar
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

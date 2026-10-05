@@ -39,13 +39,27 @@ var ErrDirectoryNotConfigured = errors.New("masterpicteknik: alamat layanan dire
 // transport sebagai penunjuk isian di layar, sehingga antarmuka dapat menandai kolom yang
 // salah — bukan sekadar menampilkan satu pesan di atas form.
 const (
-	FieldOperatorID    = "id_operator"
-	FieldEmail         = "email"
-	FieldBusinessLine  = "lini_bisnis"
-	FieldGroup         = "grup"
-	FieldSupervisor    = "atasan"
-	FieldQuota         = "kuota"
-	FieldExternalQuota = "kuota_luar"
+	FieldOperatorID = "id_operator"
+	FieldEmail      = "email"
+
+	// Ketiga nama berikut mengikuti LABEL yang dipakai layar Pega, bukan nama kolomnya
+	// dan bukan istilah yang saya karang sendiri:
+	//
+	//	TYPE_BUSINESS   → "Bisnis"
+	//	TEAM_GROUP      → "Kelompok"
+	//	COUNTER_QUOTA   → "Counter Klaim <1M"
+	//	COUNTER_QUOTA2  → "Counter Klaim >1M"
+	//
+	// Keduanya yang terakhir BUKAN kuota melainkan PENCACAH klaim yang sudah ditangani,
+	// dipisah menurut nilai klaim di bawah dan di atas Rp 1 Miliar — ambang yang sama
+	// dengan Notice of Large Losses. Itu sejalan dengan cara penugasan memilih petugas:
+	// `RDB List/BrowsePICRandomTeam-SQL.xml:39-40` mengurutkan `counter_quota ASC`, yaitu
+	// yang paling sedikit menangani klaim, lalu `AddTJobCounterPIC_SQL` menaikkannya.
+	FieldBusinessLine        = "bisnis"
+	FieldGroup               = "kelompok"
+	FieldSupervisor          = "atasan"
+	FieldClaimCounterBelow1M = "counter_klaim_kurang_1m"
+	FieldClaimCounterAbove1M = "counter_klaim_lebih_1m"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.

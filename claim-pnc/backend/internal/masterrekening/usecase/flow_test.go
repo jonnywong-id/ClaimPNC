@@ -32,6 +32,39 @@ func TestNewSubmissionAlwaysStartsPendingCommitteeDecision(t *testing.T) {
 	assert.Equal(t, build.clock.Now(), acct.CreatedAt)
 }
 
+// Email Inputor adalah alamat yang dipakai Kasir memberi tahu pengaju bahwa
+// rekeningnya sudah disetujui. Layar Pega mewajibkan pengaju mengetiknya, dan
+// keterangannya — "Wajib masukan email Anda untuk Notif Approval dari Kasir" —
+// menandakan ia tidak selalu sama dengan surel akun yang sedang masuk.
+//
+// Ketiga perilaku di bawah dikunci karena salah satu saja akan mengirim pemberitahuan
+// ke alamat yang bukan dimaksud pengaju, dan ia tidak punya cara memperbaikinya.
+func TestSubmitterEmailComesFromTheFormNotTheSession(t *testing.T) {
+	ctx := context.Background()
+	build := assembly(t, "ASM")
+
+	// 1. Isian pengguna menang atas surel sesi.
+	p := completeSubmission()
+	p.SubmitterEmail = "bagian.keuangan@contoh.co.id"
+	acct, err := build.service.Submit(ctx, p, submitter())
+	require.NoError(t, err)
+	assert.Equal(t, "bagian.keuangan@contoh.co.id", acct.SubmitterEmail)
+
+	// 2. Surel sesi hanya menjadi nilai awal bila isiannya kosong.
+	build2 := assembly(t, "ASM")
+	acct2, err := build2.service.Submit(ctx, completeSubmission(), submitter())
+	require.NoError(t, err)
+	assert.Equal(t, "petugas@sinarmas.id", acct2.SubmitterEmail)
+
+	// 3. Mengubah rekening tanpa mengisi ulang kolomnya TIDAK menimpa alamat yang
+	//    sudah tersimpan — orang yang mengubah belum tentu orang yang mengajukan.
+	diubah := completeSubmission()
+	diubah.OwnerName = "BENGKEL LAIN"
+	sesudah, err := build.service.Update(ctx, acct.KeyOf(), diubah, submitter())
+	require.NoError(t, err)
+	assert.Equal(t, "bagian.keuangan@contoh.co.id", sesudah.SubmitterEmail)
+}
+
 func TestIncompleteSubmissionRejectedBeforeTouchingStorage(t *testing.T) {
 	build := assembly(t, "ASM")
 
@@ -264,19 +297,71 @@ func TestResponseCodeOneFailsWithoutRaisingAlert(t *testing.T) {
 	assert.Empty(t, build.notifier.Sent)
 }
 
-func TestDecidedAccountCannotBeChanged(t *testing.T) {
+// Mengubah rekening yang sudah disetujui MENCABUT persetujuannya.
+//
+// Ini menggantikan uji lama yang menuntut perubahan itu ditolak sama sekali. Penolakan
+// itu terlalu keras: layar lama menyediakan tombol `Ubah` pada tab `Approve`, dan
+// `UpdateMasterRekening-SQL.xml` memang menulis ulang `approval` bersama `OLDBANID` dan
+// `OLDACCOUNT_NO`.
+//
+// Yang dikunci di sini adalah pengamannya — bukan perubahannya yang dilarang, melainkan
+// persetujuannya yang gugur. Tanpa itu, nomor rekening tujuan pembayaran dapat berpindah
+// tanpa seorang pun menyetujuinya.
+func TestChangingADecidedAccountSendsItBackForApproval(t *testing.T) {
 	build := assembly(t, "ASM")
 	ctx := context.Background()
 
 	acct, err := build.service.Submit(ctx, completeSubmission(), submitter())
 	require.NoError(t, err)
-	_, err = build.service.Decide(ctx, acct.KeyOf(), approve(), committee(), nil)
+	disetujui, err := build.service.Decide(ctx, acct.KeyOf(), approve(), committee(), nil)
+	require.NoError(t, err)
+	require.Equal(t, masterrekening.StatusApproved, disetujui.Status)
+	require.NotNil(t, disetujui.DecidedAt)
+
+	p := completeSubmission()
+	p.OwnerName = "NAMA LAIN"
+	sesudah, err := build.service.Update(ctx, acct.KeyOf(), p, submitter())
+	require.NoError(t, err, "rekening yang sudah diputuskan boleh diubah")
+
+	assert.Equal(t, "NAMA LAIN", sesudah.OwnerName)
+	assert.Equal(t, masterrekening.StatusPending, sesudah.Status, "persetujuannya dicabut")
+	assert.Nil(t, sesudah.DecidedAt, "waktu keputusan ikut dibersihkan")
+	assert.False(t, sesudah.Usable(), "belum dapat dipakai sampai disetujui ulang")
+
+	// Keadaan sebelum diubah tersimpan — padanan OLDBANID, OLDACCOUNT_NO, ACCOUNTNAMEOLD.
+	assert.Equal(t, disetujui.BankCode, sesudah.PreviousBankCode)
+	assert.Equal(t, disetujui.Number, sesudah.PreviousNumber)
+	assert.Equal(t, disetujui.OwnerName, sesudah.PreviousOwnerName)
+	assert.Equal(t, "U", sesudah.ChangeFlag)
+
+	// Tersimpan, bukan hanya dikembalikan.
+	tersimpan, err := build.service.Get(ctx, acct.KeyOf())
+	require.NoError(t, err)
+	assert.Equal(t, masterrekening.StatusPending, tersimpan.Status)
+	assert.Equal(t, "NAMA LAIN", tersimpan.OwnerName)
+}
+
+// Mengubah rekening yang MASIH menunggu tidak meninggalkan jejak perubahan.
+//
+// Dipisahkan dari uji di atas karena inilah yang membedakan keduanya: penanda `U` dan
+// kolom `Previous*` hanya bermakna bila ada persetujuan yang dicabut. Memasangnya pada
+// setiap penyuntingan akan membuat seluruh baris tampak pernah diubah setelah disetujui.
+func TestChangingAPendingAccountLeavesNoChangeTrace(t *testing.T) {
+	build := assembly(t, "ASM")
+	ctx := context.Background()
+
+	acct, err := build.service.Submit(ctx, completeSubmission(), submitter())
 	require.NoError(t, err)
 
 	p := completeSubmission()
 	p.OwnerName = "NAMA LAIN"
-	_, err = build.service.Update(ctx, acct.KeyOf(), p, submitter())
-	assert.ErrorIs(t, err, masterrekening.ErrAlreadyDecided)
+	sesudah, err := build.service.Update(ctx, acct.KeyOf(), p, submitter())
+	require.NoError(t, err)
+
+	assert.Equal(t, masterrekening.StatusPending, sesudah.Status)
+	assert.Empty(t, sesudah.ChangeFlag)
+	assert.Empty(t, sesudah.PreviousNumber)
+	assert.Empty(t, sesudah.PreviousOwnerName)
 }
 
 func TestStatusFilterSeparatesTheFourScreenTabs(t *testing.T) {
