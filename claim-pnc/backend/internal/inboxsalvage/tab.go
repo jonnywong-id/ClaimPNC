@@ -199,6 +199,23 @@ type Tab struct {
 	// layar ini yang isinya berbeda dari petugas ke petugas.
 	OwnedByCaller bool
 
+	// OpensEditForm menyatakan tombol Detail tab ini membuka FORM, bukan panel baca.
+	//
+	// # Kenapa satu daftar berbeda dari yang lain
+	//
+	// Karena yang dituntut daftar itu berbeda. Dua belas daftar menyodorkan pengajuan
+	// untuk DIBACA — posisinya, nilainya, barangnya. Satu daftar menyodorkannya untuk
+	// DIPERBAIKI: "Rejected Checker" berisi pengajuan yang checker kembalikan kepada PIC,
+	// dan satu-satunya tindakan yang masuk akal di sana adalah menyunting lalu mengirim
+	// ulang.
+	//
+	// Membukanya sebagai panel baca membuat daftar itu menjadi jalan buntu — barisnya
+	// menunggu diperbaiki, dan layarnya tidak menyediakan cara memperbaikinya.
+	//
+	// Keputusan Work Owner 2026-10-03, dari layar Pega yang berjalan: baris Rejected
+	// Checker membuka form "Menambahkan Data Salvage" yang sudah terisi.
+	OpensEditForm bool
+
 	// SearchLabel adalah judul kotak pencarian tab ini, kosong bila tab tidak punya.
 	SearchLabel string
 
@@ -531,6 +548,9 @@ var tabs = []Tab{
 		TransferStatus: "4",
 		SearchLabel:    searchByClaimNo,
 		LegacyTipe:     "5",
+
+		// Satu-satunya daftar yang membuka form sunting. Lihat Tab.OpensEditForm.
+		OpensEditForm: true,
 	},
 	{
 		Code:         TabRequestBalai,
@@ -867,9 +887,164 @@ var PlannedDifferences = []string{
 
 	"Klaim yang BELUM punya pengajuan salvage membuka form \"Menambahkan Data " +
 		"Salvage\" yang sudah terisi klaimnya, bukan panel rincian — sama seperti " +
-		"layar lama. Nomor Klaim, Nama Object, dan Nama Coverage terisi dan TIDAK " +
-		"dapat diubah, supaya pengajuan tidak tersimpan atas klaim yang berbeda dari " +
-		"baris yang diklik.",
+		"layar lama. Nomor Klaim terisi dan TIDAK dapat diubah, supaya pengajuan tidak " +
+		"tersimpan atas klaim yang berbeda dari baris yang diklik. Nama Object dan " +
+		"Nama Coverage TETAP DAPAT DIPILIH, karena klaim yang belum pernah diajukan " +
+		"salvage memang belum punya keduanya — mengunci keduanya dalam keadaan kosong " +
+		"membuat form itu tidak pernah dapat disimpan.",
+
+	"Daftar pilihan \"Nama Object\" dan \"Nama Coverage\" pada form Tambah DIURUTKAN " +
+		"menurut nama. Kedua kueri aslinya tidak menyatakan urutan sama sekali, " +
+		"sehingga urutan pilihannya tidak ditentukan dan dapat berbeda pada setiap " +
+		"pembukaan. Baris MANA yang ditawarkan tidak berubah — termasuk objek dan " +
+		"coverage yang sudah ditandai terhapus oleh modul Registrasi, yang tetap " +
+		"ditawarkan sebagaimana di sistem lama.",
+
+	"Nama coverage yang SAMA ditawarkan sekali, meski kueri mengembalikannya dua kali. " +
+		"Itu terjadi pada klaim yang dua objeknya punya jaminan sama: kueri coverage " +
+		"tidak menyaring objek, dan `COVERAGEID` adalah kode JENIS jaminan — sehingga " +
+		"kedua barisnya sama persis, termasuk kodenya. Menampilkan dua baris yang " +
+		"terbaca identik tidak menambah satu pun keterangan.",
+
+	"Daftar pilihan \"Nama Coverage\" TIDAK dipersempit menurut objek yang dipilih — " +
+		"seluruh coverage milik klaim ditawarkan, siapa pun objeknya. Itu perilaku " +
+		"layar lama apa adanya: kueri pemasoknya tidak mengambil `OBJECTID` sama " +
+		"sekali. Konsekuensinya dibawa serta dan perlu disadari — pasangan objek dan " +
+		"coverage yang tersimpan dapat berasal dari objek yang berbeda, tanpa satu pun " +
+		"galat. Memperbaikinya adalah perubahan perilaku yang belum diputuskan siapa pun.",
+
+	"Pengajuan yang dibuat form Tambah kini menyimpan `IDOBJECT` dan `IDCOVERAGE`. " +
+		"Sebelum perbaikan ini keduanya selalu kosong: form menggambar nama objek dan " +
+		"coverage sebagai kotak teks bebas, sehingga tidak ada penunjuk yang dapat " +
+		"ikut dikirim ke `INSERT_SALVAGE`. Baris yang telanjur tersimpan tanpa " +
+		"keduanya tidak diperbaiki modul ini.",
+
+	"Form Tambah TIDAK menggambar isian \"Quantity Salvage\". Ia tidak ada pada layar " +
+		"yang berjalan sekarang, dan tidak ada pula pada section di export — hanya " +
+		"procedure `INSERT_SALVAGE` yang menerimanya. Ia tetap dikirim kosong saat " +
+		"menyimpan, sehingga `QUANTITYSALVAGE` terisi NULL.",
+
+	"Kolom \"Satuan\" ADA di berkas CSV unggahan tetapi TIDAK digambar di grid Detail " +
+		"Item Salvage — layar lama pun hanya menggambar tiga kolom: Nama Item, Jumlah " +
+		"Item / Qty, dan Remark. Baris yang diketik langsung karena itu tersimpan tanpa " +
+		"satuan, sementara baris dari CSV membawa satuannya.",
+
+	"Tautan \"Hapus\" di atas grid Detail Item Salvage membuang baris TERAKHIR. Di " +
+		"layar lama ia membuang baris yang sedang dipilih, dan pemilihan baris itu " +
+		"sendiri tidak tergambar. Menambahkan kolom aksi per baris akan menyimpang dari " +
+		"bentuk layar lama, sementara baris terakhir pula yang paling sering dibatalkan " +
+		"orang — ia baru saja ditambahkan.",
+
+	"Tombol \"Upload file\" membuka modal **UploadDocument_Salvage** beserta kedua batas " +
+		"unggahannya — maksimal 5 dokumen, maksimal 1 MB per berkas — dan kedua batas " +
+		"itu DITEGAKKAN dua kali: saat berkas dipilih di layar, dan sekali lagi di " +
+		"server. Yang pertama menghemat waktu pengguna, yang kedua yang benar-benar " +
+		"mengikat — layar dapat dilewati, endpoint tidak.",
+
+	"Pasca-proses `SaveFilePenunjangBySalvage` memanggil enam activity dan dua belas " +
+		"rule SQL. Yang DIBAWA: base64 (`GCNMUploadResult64`), tabel sementara " +
+		"(`TEMP_SET_ATTACHMENT_64BIT`), tabel permanen (`SET_ATTACHMENT_64BIT` lewat " +
+		"`PNCSaveAttachmentToDB`), riwayat (`InsertDokumentHistoriKlaimPNC`), dan " +
+		"penaut ke pengajuan (`InsertSalvageDocument`). Yang TIDAK dibawa: konversi " +
+		"PNG/JPG menjadi AVIF lewat layanan `aiimage`, pengiriman ke Google Storage, " +
+		"cabang SIMASBID ke balai lelang, dan `InsertDokumenPNC`. Keempatnya menyentuh " +
+		"sistem di luar modul ini, dan membawanya berarti membangun integrasi `S-4` " +
+		"dari dalam Inbox Salvage.",
+
+	"Keputusan Work Owner 2026-10-03: unggahan dokumen salvage MENGIKUTI PEGA APA " +
+		"ADANYA — berkas disimpan sebagai base64 di dalam Oracle lewat " +
+		"`SET_ATTACHMENT_64BIT`. `D-16`, yang menetapkan dokumen masuk ke API storage " +
+		"internal, dengan sadar DIKECUALIKAN untuk jalur ini. Konsekuensinya diterima: " +
+		"saat modul Dokumen (`S-1`) kelak dibangun di atas `D-16`, dokumen salvage " +
+		"berada di tempat yang berbeda dari dokumen modul lain, dan menyatukannya " +
+		"menjadi pekerjaan tersendiri.",
+
+	"Rantai penyimpanannya kini terbaca sampai ke tabelnya. Isi berkas masuk ke " +
+		"`POOLDATA.TEMP_DATA_ATTACHFILE` sebagai base64, sementara keterangannya " +
+		"masuk ke `POOLDATA.DATA_ATTACHFILE` — DUA tabel dengan DATAID yang " +
+		"BERBEDA, dan yang menautkan keduanya adalah `IMAGEID`, bukan DATAID. " +
+		"Nama berkasnya `<awalan>-<nomor klaim>-<urutan>.<ekstensi>`, dan `IMAGEID` " +
+		"adalah MD5 atas `'ASMPP' || SYSTIMESTAMP`.",
+
+	"Jalur unggahan memanggil procedure Oracle SECARA LANGSUNG — pengecualian sadar " +
+		"terhadap `D-02`, atas instruksi Work Owner 2026-10-03 (\"ikuti apa adanya " +
+		"dengan Pega\"). Dua hal membuatnya satu-satunya jalan yang jujur: isi " +
+		"`POOLDATA.InsertSalvageDocument` tidak ada di `Database/`, dan `new_uuid` — " +
+		"pembangkit kunci `C_COUNTER_ATTACHMENT` yang dipakai KEDUA procedure lampiran " +
+		"— juga tidak. Menulis ulang logikanya berarti menebak kunci yang dipakai " +
+		"bersama modul lain. Konsekuensinya diterima: jalur ini TIDAK ikut berpindah " +
+		"saat basis data berpindah ke PostgreSQL (`D-24`), dan harus ditulis ulang " +
+		"saat itu tiba.",
+
+	"`IMAGEID` dibangkitkan DI GO, bukan di SQL. Layar lama menyusunnya dari " +
+		"`STANDARD_HASH('ASMPP' || SYSTIMESTAMP, 'MD5')` — keduanya khas Oracle dan " +
+		"melanggar `D-20`. Rumusnya disalin apa adanya ke `NewImageID`: MD5 atas " +
+		"`'ASMPP'` ditambah cap waktu berformat sama, sehingga bentuk kuncinya tidak " +
+		"berubah bagi data yang sudah ada.",
+
+	"Seluruh langkah penyimpanan satu berkas berjalan dalam SATU transaksi yang " +
+		"dimiliki Go (`D-68`). Layar lama menempuh beberapa `COMMIT` terpisah, " +
+		"sehingga kegagalan di tengah meninggalkan isi berkas tanpa keterangannya — " +
+		"atau sebaliknya. Akibatnya perilaku saat GAGAL berbeda dengan sengaja, dan " +
+		"itu tidak boleh dibandingkan apa adanya pada uji kesetaraan.",
+
+	"Baris daftar \"Rejected Checker\" membuka FORM SUNTING, bukan panel rincian — " +
+		"mengikuti layar yang berjalan sekarang. Daftar itu berisi pengajuan yang " +
+		"checker kembalikan kepada PIC, dan satu-satunya tindakan yang masuk akal di " +
+		"sana adalah memperbaikinya lalu mengirim ulang. Dua belas daftar lainnya tetap " +
+		"membuka panel baca.",
+
+	"Menyunting pengajuan MENGGANTI daftar barangnya, bukan menambahkannya. Itu " +
+		"mekanisme layar lama apa adanya: `pyDeleteSQL` pada " +
+		"`RDB List/PNCSalvageGetChekerDataKlaimAllData-SQL.xml` membuang seluruh baris " +
+		"`DETAIL_PNC_SALVAGE` milik pengajuan itu sebelum yang baru disisipkan. Tanpa " +
+		"langkah itu, menyunting pengajuan berbarang tiga lalu menekan Submit " +
+		"menghasilkan enam baris — dan barisnya membawa nilai uang. Penghapusannya " +
+		"FISIK, berbeda dari `D-66`: tabel warisan itu tidak punya kolom penanda hapus, " +
+		"dan menambahkannya menempuh `D-63`.",
+
+	"TIDAK ada bilah tab di layar ini. Sempat ada, lalu dihapus atas permintaan Work " +
+		"Owner (2026-10-03) karena menduakan navigasi yang sudah ada: tabel ringkas di " +
+		"kepala layar itulah yang memilih daftar, sebagaimana di Pega barisnyalah yang " +
+		"mengirim `Param.tipe`/`Param.tipe2`. Akibat yang mengikat: tabel ringkas kini " +
+		"SATU-SATUNYA jalan ke sebuah daftar, sehingga daftar yang tidak disebut satu " +
+		"baris pencacah pun menjadi tidak dapat dibuka siapa pun — tanpa satu pun galat " +
+		"yang menyatakannya. Itu dijaga `TestEveryVisibleListIsReachableFromACounterRow`.",
+
+	"Kotak utama panel rincian menyalin `Section/DataDetail_Salvage-Section.xml` apa " +
+		"adanya: LIMA BELAS isian, tiga kolom, tanpa judul kelompok, dalam urutan " +
+		"caption section itu. Sebelumnya isiannya dikelompokkan menurut maknanya — Data " +
+		"Klaim, Data Pengajuan, Posisi dan Akseptasi — dan pengelompokan itu buatan " +
+		"sendiri. Pada daftar Salvage Buyback khususnya, yang dibuka memang section ini.",
+
+	"Isian lelang, PIC survey, dan grid barang digambar HANYA bila berisi. Ketiganya " +
+		"tidak ada di `DataDetail_Salvage` melainkan di `Data_Salvage` dan " +
+		"`DetailHistReqSalvage` — dua section lain yang dibuka daftar lain. Pega memilih " +
+		"section per daftar; di sini satu panel melayani ketiga belasnya, dan yang " +
+		"memisahkannya adalah ada-tidaknya isi. Akibatnya baris yang tidak punya nilai " +
+		"lelang menggambar kotak yang persis sama dengan layar lama, tanpa kehilangan " +
+		"isian yang memang dibaca orang di daftar yang punya.",
+
+	"Grafik donat di kepala layar dibaca dari DAFTAR YANG SAMA dengan tabel ringkas di " +
+		"sebelahnya. Pega mengisi keduanya dari dua page berbeda — `PieTempALLSalvage` " +
+		"dan `TempALLSalvage` — dengan daftar label yang tidak sama: grafiknya memuat " +
+		"irisan \"Waive Salvage\" yang tidak punya baris di tabel, sementara tabelnya " +
+		"memuat \"Tidak Ada Salvage\" dan \"Salvage Buyback\" yang tidak punya irisan di " +
+		"grafik. Selisih itu TIDAK direplikasi: grafik dan tabel yang berdampingan dan " +
+		"menyebut hal berbeda memaksa pembacanya memilih mana yang dipercaya.",
+
+	"Isian \"Mata Uang\" adalah daftar pilihan yang dibaca dari `POOLDATA.CURRENCY` — " +
+		"tabel yang sama yang dibaca Report Definition `SelectCurrency_RD`, sumber " +
+		"dropdown ini di layar lama. Bila tabel itu tidak terbaca, daftarnya kosong dan " +
+		"kolomnya kehilangan tanda wajibnya: satu master yang gagal dibaca tidak boleh " +
+		"berubah menjadi layar yang tidak dapat dipakai sama sekali.",
+
+	"Langkah keempat `GetDataSalavageCovCurObj_act` TIDAK dibawa. Ia mengisi page " +
+		"`TempCurrencySalvage` dari `T_CLAIM_ADJUSTMENT`, tetapi kolom \"Mata Uang\" " +
+		"pada form ini tidak membacanya — dropdown-nya bersumber Report Definition " +
+		"`SelectCurrency_RD`, dan page itu hanya dideklarasikan di section tanpa satu " +
+		"pun kontrol yang terikat padanya. Kolom \"Mata Uang\" karena itu masih kotak " +
+		"teks bebas, belum daftar pilihan.",
 
 	"Grid \"Detail History Salvage\" pada form Tambah memakai pemetaan " +
 		"`STSTRANSFER` yang BERBEDA dari \"Posisi Salvage\" pada panel rincian, meski " +

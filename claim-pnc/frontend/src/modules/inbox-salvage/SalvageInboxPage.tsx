@@ -9,7 +9,6 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
 import { DetailSalvagePanel } from './DetailSalvagePanel'
-import { SalvageTabs } from './SalvageTabs'
 import { StatusSummary } from './StatusSummary'
 import { TambahSalvageForm } from './TambahSalvageForm'
 import {
@@ -19,7 +18,14 @@ import {
   useSalvageList,
   useSalvageMetadata,
 } from './api'
-import type { DetailKey, SalvageRow, Tab, TabColumn } from './types'
+import type {
+  DetailItem,
+  DetailKey,
+  DetailResponse,
+  SalvageRow,
+  Tab,
+  TabColumn,
+} from './types'
 
 /**
  * Inbox Salvage — menu `MENU_ID 71`, pengganti harness `InboxSalvage`.
@@ -104,6 +110,21 @@ export function SalvageInboxPage() {
   // baru yang sudah terisi klaimnya.
   const creatingFor =
     opened !== null && detail.data !== undefined && !detail.data.ada_pengajuan
+      ? detail.data
+      : null
+
+  // Baris daftar "Rejected Checker" membuka FORM SUNTING, bukan panel baca.
+  //
+  // Daftar itu berisi pengajuan yang checker kembalikan kepada PIC, dan satu-satunya
+  // tindakan yang masuk akal di sana adalah memperbaikinya lalu mengirim ulang. Daftar
+  // mana yang berperilaku begitu datang dari SERVER (`membuka_form_sunting`), bukan
+  // disimpulkan di sini dari kode tabnya — menyimpulkannya berarti daftar yang sama
+  // hidup di dua tempat.
+  const editingFor =
+    opened !== null &&
+    detail.data !== undefined &&
+    detail.data.ada_pengajuan &&
+    tab?.membuka_form_sunting === true
       ? detail.data
       : null
 
@@ -206,7 +227,31 @@ export function SalvageInboxPage() {
         isLoading={counts.isLoading}
       />
 
-      {creatingFor !== null ? (
+      {editingFor !== null ? (
+        <TambahSalvageForm
+          // Kunci memaksa form DIBONGKAR saat berpindah pengajuan — sama alasannya
+          // dengan jalur di bawah.
+          key={editingFor.id_salvage}
+          statusOptions={meta.data?.pilihan_status_salvage ?? []}
+          currencyOptions={meta.data?.pilihan_mata_uang ?? []}
+          uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
+          editing={{
+            id_salvage: editingFor.id_salvage,
+            isian: toFormState(editingFor),
+            item: toFormItems(editingFor),
+          }}
+          pilihan={{
+            objek: editingFor.pilihan_objek,
+            coverage: editingFor.pilihan_coverage,
+          }}
+          history={editingFor.riwayat}
+          onClose={() => setOpened(null)}
+          onSaved={(message) => {
+            setSaved(message)
+            setOpened(null)
+          }}
+        />
+      ) : creatingFor !== null ? (
         <TambahSalvageForm
           // Kunci memaksa form DIBONGKAR dan dipasang ulang saat berpindah klaim.
           //
@@ -215,11 +260,23 @@ export function SalvageInboxPage() {
           // yang salah, tanpa satu pun tanda.
           key={creatingFor.no_klaim}
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
+          currencyOptions={meta.data?.pilihan_mata_uang ?? []}
           uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
           prefill={{
             nomor_klaim: creatingFor.no_klaim,
             nama_object: creatingFor.nama_object,
             nama_coverage: creatingFor.nama_coverage,
+            id_object: creatingFor.id_object,
+            id_coverage: creatingFor.id_coverage,
+          }}
+          // Pilihan kedua autocomplete diteruskan dari jawaban yang SUDAH di tangan.
+          //
+          // Rincian klaim ini baru saja diambil untuk memutuskan form inilah yang
+          // digambar, dan jawabannya memuat keduanya. Membiarkan form mencarinya sendiri
+          // berarti permintaan kedua untuk jawaban yang sama.
+          pilihan={{
+            objek: creatingFor.pilihan_objek,
+            coverage: creatingFor.pilihan_coverage,
           }}
           history={creatingFor.riwayat}
           onClose={() => setOpened(null)}
@@ -231,19 +288,32 @@ export function SalvageInboxPage() {
       ) : adding ? (
         <TambahSalvageForm
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
+          currencyOptions={meta.data?.pilihan_mata_uang ?? []}
           uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
           onClose={() => setAdding(false)}
           onSaved={setSaved}
         />
       ) : (
         <>
-          <SalvageTabs tabs={tabs} active={active} onSelect={selectTab} />
+          {/*
+            TIDAK ada bilah tab di sini.
 
-          {tab && (
-            <p className="text-sm text-slate-600">
-              {tab.keterangan}
-            </p>
-          )}
+            Dulu ada, dan ia dihapus atas permintaan Work Owner (2026-10-03) karena
+            menduakan navigasi yang sudah ada: tabel ringkas di atas layar inilah yang
+            memilih daftar — di Pega pun begitu, lewat pasangan `Param.tipe`/`Param.tipe2`
+            yang dikirim barisnya. Bilah tab menggambar tujuan yang sama untuk kedua
+            kalinya, dengan nama yang tidak selalu sama pula.
+
+            Akibatnya tabel ringkas menjadi SATU-SATUNYA jalan ke sebuah daftar. Yang
+            menjaganya tetap begitu ada di sisi server:
+            `TestEveryVisibleListIsReachableFromACounterRow` menolak daftar yang tidak
+            disebut satu baris pencacah pun — tanpa itu, daftar baru dapat lahir dalam
+            keadaan tidak dapat dibuka siapa pun.
+
+            Nama daftar yang sedang terbuka tetap terbaca: barisnya ditandai di tabel
+            ringkas, dan judulnya ada pada label grid di bawah.
+          */}
+          {tab && <p className="text-sm text-slate-600">{tab.keterangan}</p>}
 
           {tab?.catatan_daftar !== undefined && tab.catatan_daftar !== '' && (
             <p className="rounded-kartu border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -331,6 +401,70 @@ export function SalvageInboxPage() {
       <PlannedDifferences items={meta.data?.selisih_terencana ?? []} />
     </Frame>
   )
+}
+
+/**
+ * toFormState menerjemahkan rincian pengajuan menjadi isian form sunting.
+ *
+ * # Kenapa ia di sini, bukan di dalam form
+ *
+ * Karena ini pemetaan antara dua KONTRAK — bentuk jawaban rincian dan bentuk permintaan
+ * simpan — dan keduanya memang berbeda nama. `estimasi` di satu sisi adalah
+ * `minimum_salvage` di sisi lain, dan keduanya `PNC_SALVAGE.ESTIMASINILAI`. Menaruhnya di
+ * dalam form berarti form harus mengenal bentuk rincian pula.
+ *
+ * Enam isian pada rincian TIDAK dipetakan — tanggal transfer GA, tanggal dan nomor
+ * akseptasi, nama pemenang lelang, dan tanggal lelang. Keenamnya tidak digambar form ini,
+ * dan mengirimkannya kembali berarti menuliskan ulang nilai yang tidak pernah terlihat
+ * pengguna.
+ *
+ * # "Status Salvage" SENGAJA tidak diisi, dan itu bukan kelalaian
+ *
+ * Di layar lama pun kolom itu tetap `--Pilih--` saat pengajuan yang sudah ada dibuka.
+ * Alasannya terbaca dari datanya: `STSTRANSFER` memikul dua arti yang BERTABRAKAN pada
+ * kode yang sama. Nilai `4` berarti **"Waive Salvage"** di daftar pilihan ini
+ * (`inboxsalvage.StatusOptions`), tetapi **"Rejected Checker"** sebagai penyaring daftar.
+ *
+ * Memetakannya akan memilihkan "Waive Salvage" untuk setiap pengajuan yang baru saja
+ * ditolak checker — keputusan bernilai uang yang tidak pernah diambil siapa pun. Yang
+ * dipilih PIC harus diketiknya sendiri.
+ */
+function toFormState(detail: DetailResponse) {
+  return {
+    nomor_klaim: detail.no_klaim,
+    id_object: detail.id_object,
+    nama_object: detail.nama_object,
+    id_coverage: detail.id_coverage,
+    nama_coverage: detail.nama_coverage,
+    tanggal_input: detail.tanggal_input_salvage,
+    jenis_salvage: detail.jenis_salvage,
+    lokasi_salvage: detail.lokasi_salvage,
+    lokasi_salvage_di_jabodetabek: detail.lokasi_salvage_di_jabodetabek,
+    mata_uang: detail.mata_uang,
+    minimum_salvage: detail.estimasi,
+    quantity_salvage: detail.quantity_salvage,
+    nilai_penawaran: detail.nilai_penawaran,
+    remark: detail.remark,
+    email: detail.email,
+    nama_pic_survey: detail.nama_pic_survey,
+    no_telp_pic_survey: detail.no_telp_pic_survey,
+    email_pic_survey: detail.email_pic_survey,
+  }
+}
+
+/**
+ * toFormItems menerjemahkan grid barang rincian menjadi baris grid form.
+ *
+ * `total_nilai` dan ketiga isian lelang TIDAK dibawa: form ini tidak menggambarnya, dan
+ * procedure penyimpan detail item pun tidak punya tempat untuk `total_nilai`.
+ */
+function toFormItems(detail: DetailResponse): DetailItem[] {
+  return detail.barang.map((barang) => ({
+    nama_item: barang.nama_barang,
+    jumlah_item: String(barang.jumlah),
+    satuan: barang.satuan,
+    remark: barang.remark,
+  }))
 }
 
 /** Frame adalah judul layar beserta ruang isinya. */

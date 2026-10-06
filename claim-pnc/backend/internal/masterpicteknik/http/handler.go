@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
@@ -77,7 +78,7 @@ func NewHandler(o Options) (*Handler, error) {
 // List menangani GET /api/master/pic-teknik.
 //
 // Menggantikan Report Definition `BrowseVMstUserTeknis_RD` yang mengisi grid layar
-// `UserTeknisInbox`, termasuk penyaring `STS_AKTIF = '1'` yang dipatok di dalamnya.
+// `UserTeknisInbox`. Seluruh petugas dikirim — aktif maupun tidak — sama dengan grid lama.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
@@ -116,7 +117,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	technician, err := h.service.Get(r.Context(), active.Alias, chi.URLParam(r, "id"))
+	technician, err := h.service.Get(r.Context(), active.Alias, operatorIDFrom(r))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -139,7 +140,7 @@ func (h *Handler) Lookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	employee, err := h.service.Lookup(r.Context(), active.Alias, chi.URLParam(r, "id"))
+	employee, err := h.service.Lookup(r.Context(), active.Alias, operatorIDFrom(r))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -194,7 +195,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := operatorIDFrom(r)
 	if id == "" {
 		h.writeModuleError(w, r, masterpicteknik.ErrNotFound)
 		return
@@ -258,29 +259,55 @@ func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveReque
 // dari baris yang sudah ada.
 func fromRequest(operatorID string, request SaveRequest) masterpicteknik.Technician {
 	return masterpicteknik.Technician{
-		OperatorID:    operatorID,
-		Email:         request.Email,
-		BusinessLine:  request.BusinessLine,
-		Group:         request.Group,
-		Supervisor:    request.Supervisor,
-		Quota:         request.Quota,
-		ExternalQuota: request.ExternalQuota,
-		Active:        request.Active,
+		OperatorID:          operatorID,
+		Email:               request.Email,
+		BusinessLine:        request.BusinessLine,
+		Group:               request.Group,
+		Supervisor:          request.Supervisor,
+		ClaimCounterBelow1M: request.ClaimCounterBelow1M,
+		ClaimCounterAbove1M: request.ClaimCounterAbove1M,
+		Active:              request.Active,
 	}
 }
 
 func toDTO(t masterpicteknik.Technician) TechnicianDTO {
 	return TechnicianDTO{
-		OperatorID:    t.OperatorID,
-		Name:          t.Name,
-		Email:         t.Email,
-		BusinessLine:  t.BusinessLine,
-		Group:         t.Group,
-		Supervisor:    t.Supervisor,
-		Quota:         t.Quota,
-		ExternalQuota: t.ExternalQuota,
-		Workload:      t.Workload,
-		PanelGroup:    t.PanelGroup,
-		Active:        t.Active,
+		OperatorID:          t.OperatorID,
+		Name:                t.Name,
+		Email:               t.Email,
+		BusinessLine:        t.BusinessLine,
+		Group:               t.Group,
+		Supervisor:          t.Supervisor,
+		ClaimCounterBelow1M: t.ClaimCounterBelow1M,
+		ClaimCounterAbove1M: t.ClaimCounterAbove1M,
+		Workload:            t.Workload,
+		PanelGroup:          t.PanelGroup,
+		Active:              t.Active,
 	}
+}
+
+// operatorIDFrom membaca ID operator dari jalur URL dan MENGURAI sandi persennya.
+//
+// # Kenapa penguraiannya tidak boleh diandalkan ke chi
+//
+// `chi.URLParam` mengembalikan potongan jalur **apa adanya**, termasuk sandi persennya.
+// Sebabnya ada di chi sendiri: ia merutekan memakai `r.URL.RawPath` bila kolom itu terisi,
+// dan `net/http` mengisinya justru ketika jalurnya memuat sandi persen. Jadi untuk jalur
+// yang polos `URLParam` mengembalikan nilai yang sudah benar, sementara untuk jalur yang
+// bersandi ia mengembalikan yang belum diurai — dua perilaku berbeda dari satu pemanggilan.
+//
+// Ini bukan kasus langka di master ini. Sebagian `OPERATOR_ID` adalah **alamat surel**,
+// dan `@` menjadi `%40` saat layar menyusun URL-nya. Akibatnya pencarian ke basis data
+// memakai `…89%40GMAIL.COM`, tidak ada barisnya, lalu dijawab "PIC teknik tidak ditemukan"
+// untuk baris yang jelas-jelas tampil di daftar.
+//
+// Kegagalan penguraian mengembalikan nilai aslinya, bukan galat: jalur yang tidak bersandi
+// tidak boleh ikut ditolak hanya karena pengurainya rewel.
+func operatorIDFrom(r *http.Request) string {
+	raw := chi.URLParam(r, "id")
+	decoded, err := url.PathUnescape(raw)
+	if err != nil {
+		return raw
+	}
+	return decoded
 }

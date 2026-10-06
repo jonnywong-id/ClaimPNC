@@ -85,12 +85,14 @@ func TestQueriesUseBindParametersOnly(t *testing.T) {
 // Daftar HARUS menyaring petugas aktif. Penyaring ini adalah keputusan Work Owner
 // 2026-09-19 yang meniru `STS_AKTIF = '1'` pada Report Definition lama — menghapusnya akan
 // menampilkan petugas nonaktif di grid tanpa ada yang menyadarinya.
-func TestListQueryFiltersActiveOnly(t *testing.T) {
-	list := strings.ToUpper(getQuery("technician_list"))
-	require.Contains(t, list, "WHERE STS_AKTIF =")
-	// Sandinya dikirim sebagai parameter, bukan ditulis di dalam teks SQL, supaya ia hidup
-	// di satu tempat saja — masterpicteknik.ActiveCode.
-	require.NotContains(t, list, "STS_AKTIF = '1'")
+// Daftar TIDAK boleh menyaring status aktif.
+//
+// Layar Pega yang berjalan menampilkan baris ber-Status Aktif `0` berdampingan dengan `1`;
+// penyaring `STS_AKTIF = '1'` pada Report Definition adalah nilai awal yang dapat
+// dikosongkan pengguna (`pyPromptType=AllAccess`), bukan penyaring tetap. Uji ini yang
+// menahan penyaring itu masuk kembali.
+func TestListQueryDoesNotFilterActive(t *testing.T) {
+	require.NotContains(t, strings.ToUpper(getQuery("technician_list")), "STS_AKTIF =")
 }
 
 // Ambil satu baris TIDAK boleh menyaring status aktif. Tanpa aturan ini, petugas yang
@@ -100,14 +102,19 @@ func TestGetQueryDoesNotFilterActive(t *testing.T) {
 	require.NotContains(t, strings.ToUpper(getQuery("technician_get")), "STS_AKTIF =")
 }
 
-// Daftar dibaca dari VIEW karena TOTAL_JOB tidak ada di tabelnya; penulisan selalu ke
-// TABEL. Tertukarnya keduanya akan membuat aplikasi menulis ke objek yang tidak dapat
-// ditulis, atau membaca daftar tanpa kolom beban kerja.
-func TestListReadsViewWhileWritesTargetTable(t *testing.T) {
-	require.Contains(t, strings.ToUpper(getQuery("technician_list")), "POOLDATA.V_MST_USER_TEKNIS")
-	require.Contains(t, strings.ToUpper(getQuery("technician_list")), "TOTAL_JOB")
+// SELURUH kueri menyentuh TABEL yang sama, termasuk daftar.
+//
+// Daftar sempat membaca view dan mengambil kolom `OLD_OPERATOR_ID` di sana, sementara form
+// membaca `COUNTER_QUOTA2` dari tabel. Keduanya kolom yang BERBEDA — `OLD_OPERATOR_ID`
+// hanyalah alias yang dipasang kueri Pega — sehingga grid dan form menampilkan angka yang
+// tidak sama untuk baris yang sama.
+//
+// Uji ini menahan view masuk kembali ke kueri mana pun.
+func TestEveryQueryTargetsTheSameTable(t *testing.T) {
+	require.NotContains(t, strings.ToUpper(getQuery("technician_list")), "OLD_OPERATOR_ID",
+		"OLD_OPERATOR_ID adalah alias milik kueri Pega, bukan kolom tabel")
 
-	for _, name := range []string{"technician_get", "technician_insert", "technician_update"} {
+	for _, name := range []string{"technician_list", "technician_get", "technician_insert", "technician_update"} {
 		uppercase := strings.ToUpper(getQuery(name))
 		require.Containsf(t, uppercase, "POOLDATA.MST_USER_TEKNIK", "kueri %q harus menyentuh tabel", name)
 		require.NotContainsf(t, uppercase, "V_MST_USER_TEKNIS", "kueri %q tidak boleh menyentuh view", name)

@@ -757,12 +757,14 @@ func matchesWorkClass(candidate Row) bool {
 // bentuk barisnya, dan baris contoh yang kehilangan isian itu akan menyembunyikan bahwa
 // kolomnya ada beserta pertanyaan terbuka tentang apa yang seharusnya diisi.
 
-// matchesWorkStatus meniru `PYSTATUSWORK <> 'Resolved-Completed'`.
+// matchesWorkStatus meniru kedua penyaring status kerja ketiga kueri daftar.
 //
-// Perhatikan ia hanya mengeluarkan yang SELESAI. Klaim `Resolved-Rejected` TETAP lolos, dan
-// itu memang benar: klaim yang ditolak justru pekerjaan utama antrean RCL.
+// KEDUA status `Resolved-*` dikeluarkan. Yang pertama disebut Report Definition apa adanya;
+// yang kedua menggantikan gabungan tabel penugasan yang tidak ada di tabel datar — lihat
+// `inboxrclpucl.WorkStatusRejected`.
 func matchesWorkStatus(candidate Row) bool {
-	return candidate.WorkStatus != inboxrclpucl.WorkStatusCompleted
+	return candidate.WorkStatus != inboxrclpucl.WorkStatusCompleted &&
+		candidate.WorkStatus != inboxrclpucl.WorkStatusRejected
 }
 
 // matchesLetterPrinted meniru penyaring `TANGGALCETAKDOKUMENPUCL_1`.
@@ -932,6 +934,31 @@ func (s *Store) MoveToSendToAnalyst(_ context.Context, reference, _ string) erro
 			Queue: inboxrclpucl.QueueWorklist,
 			Owner: pic,
 		}
+		return nil
+	}
+	return inboxrclpucl.ErrClaimNotFound
+}
+
+// RejectClaim menutup klaim sebagai ditolak — tombol "Tolak Klaim".
+//
+// Meniru `PUCLPost` dengan `Status = "0"` pada jalur RCL: penanda persetujuan diisi `"0"`,
+// status kerjanya menjadi `Resolved-Rejected` (akibat `ASMForceCaseClose`), tanggal cetak
+// surat terisi, dan tugas terbukanya ditutup TANPA tugas baru dibuka.
+//
+// Perhatikan ia TIDAK mengisi `s.moved`: tidak ada tahap tujuan. Uji yang memeriksa
+// MovedTaskOf sesudah tombol ini karena itu HARUS menemukan "tidak ada" — itulah bedanya
+// terhadap kedua tombol Kirim.
+func (s *Store) RejectClaim(_ context.Context, reference, _ string) error {
+	key := strings.TrimSpace(reference)
+
+	for i := range s.rows {
+		if s.rows[i].Item.Reference != key {
+			continue
+		}
+		s.rows[i].PUCLApprove = inboxrclpucl.PUCLWithPUCL
+		s.rows[i].WorkStatus = inboxrclpucl.WorkStatusRejected
+		s.rows[i].Item.LetterPrintedAt = time.Now().Format("2006-01-02 15:04:05")
+		delete(s.moved, key)
 		return nil
 	}
 	return inboxrclpucl.ErrClaimNotFound

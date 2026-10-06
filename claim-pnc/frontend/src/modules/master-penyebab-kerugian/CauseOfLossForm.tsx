@@ -62,11 +62,18 @@ type Props = {
 /**
  * Form tambah dan ubah Master Penyebab Kerugian.
  *
- * Meniru fungsi form pada section `BrowseCauseOfLoss` — ID read-only, satu isian
- * **Deskripsi Kerugian**, dan tombol Simpan. Judulnya pun diambil apa adanya dari `pyTitle`
- * layar lama, "Memperbaharui Data" (`D-13`). Padanannya untuk penambahan tidak ada di XML —
- * layar lama memakai judul yang sama untuk keduanya — sehingga "Menambah Data" dipakai,
- * mengikuti pasangan yang sudah ada di Master Dominan Factor.
+ * Meniru fungsi form pada section `BrowseCauseOfLoss` — satu isian **Deskripsi Kerugian**
+ * dan tombol Simpan. Judulnya pun diambil apa adanya dari `pyTitle` layar lama,
+ * "Memperbaharui Data" (`D-13`). Padanannya untuk penambahan tidak ada di XML — layar lama
+ * memakai judul yang sama untuk keduanya — sehingga "Menambah Data" dipakai, mengikuti
+ * pasangan yang sudah ada di Master Dominan Factor.
+ *
+ * # ID tidak lagi ditampilkan
+ *
+ * Layar Pega menampilkan `M_COL_ID` sebagai isian read-only. Itu **tidak dibawa**
+ * (keputusan Work Owner 2026-10-03): nomornya diterbitkan sistem dan tidak dapat disunting
+ * siapa pun, sehingga menampilkannya di form hanya menyita ruang tanpa memberi pengguna
+ * satu pun hal yang dapat ia lakukan. Alasan lengkapnya ada di badan komponen.
  *
  * # Satu isian Pega yang sengaja TIDAK dibawa
  *
@@ -129,11 +136,6 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
         <h3 className="text-base font-semibold text-slate-900">
           {editing ? 'Memperbaharui Data' : 'Menambah Data'}
         </h3>
-        <p className="mt-1 text-sm text-slate-600">
-          {editing
-            ? 'Hanya Deskripsi Kerugian yang dapat diubah. ID tetap, karena rincian penyebab kerugian bernaung di bawahnya.'
-            : 'ID dibuat sistem setelah disimpan, melanjutkan nomor terakhir.'}
-        </p>
       </div>
 
       <div className="space-y-5 p-5">
@@ -155,38 +157,37 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
           </p>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <span className="block text-sm font-medium text-slate-700">ID</span>
-            {/*
-              ID digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
-              dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
-              mengkliknya; kotak ini jelas bukan tempat mengetik.
-            */}
-            <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-500">
-              {cause?.id ?? 'Dibuat sistem'}
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              ID tidak dapat disunting, sama seperti di sistem lama.
-            </p>
-          </div>
+        {/*
+          ID TIDAK ditampilkan di form ini, baik saat menambah maupun saat mengubah —
+          keputusan Work Owner 2026-10-03.
 
-          <Field
-            id="deskripsi"
-            label="Deskripsi Kerugian"
-            placeholder="Contoh: Kebakaran"
-            maxLength={MAX_DESCRIPTION_LENGTH}
-            autoComplete="off"
-            hint={`Paling panjang ${MAX_DESCRIPTION_LENGTH} karakter.`}
-            error={errors.deskripsi?.message}
-            disabled={save.isPending}
-            {...remainingDeskripsi}
-            ref={(element) => {
-              refDeskripsi(element)
-              firstField.current = element
-            }}
-          />
-        </div>
+          Alasannya: nomornya diterbitkan sistem — kode situs ditambah urutan
+          `M_CAUSE_SEQ` — dan tidak dapat disunting siapa pun, sehingga menampilkannya di
+          form hanya menyita ruang tanpa memberi pengguna satu pun hal yang dapat ia
+          lakukan. Saat menambah ia belum ada sama sekali; saat mengubah ia tidak berubah.
+
+          ID tetap terlihat di KOLOM PERTAMA tabel, tempat ia memang berguna — untuk
+          mengenali baris dan mencocokkannya dengan rincian penyebab kerugian yang
+          bernaung di bawahnya.
+
+          Bentuknya mengikuti Master Dominan Factor, yang lebih dulu dirapikan dengan
+          keputusan yang sama.
+        */}
+        <Field
+          id="deskripsi"
+          label="Deskripsi Kerugian"
+          placeholder="Contoh: Kebakaran"
+          maxLength={MAX_DESCRIPTION_LENGTH}
+          autoComplete="off"
+          hint={`Paling panjang ${MAX_DESCRIPTION_LENGTH} karakter.`}
+          error={errors.deskripsi?.message}
+          disabled={save.isPending}
+          {...remainingDeskripsi}
+          ref={(element) => {
+            refDeskripsi(element)
+            firstField.current = element
+          }}
+        />
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={save.isPending}>

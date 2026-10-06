@@ -74,23 +74,28 @@ const (
 	FieldBusiness    = "bisnis"
 )
 
-// Batas panjang kedua isian teks.
+// MaxDescriptionLength adalah batas panjang keterangan objek dokumen.
 //
-// Keduanya PENJAGA TEKNIS, bukan aturan bisnis. Lebar kolom KET_DOC_OBJ dan lebar kolom
-// nama bisnis pada tabel pemetaan BELUM DIKETAHUI — DDL-nya belum diterima (`R-08`), dan
-// tabel pemetaannya bahkan belum ada. Angka di bawah mengikuti modul Master COL Simas
-// Online atas kolom yang sejenis, dan sengaja ditahan rendah: menaikkannya kelak tidak
-// merusak apa pun, menurunkannya merusak.
+// Angkanya BERDASAR KATALOG, bukan terkaan. Pembacaan langsung ke basis data 2026-10-03
+// memberi lebar sebenarnya:
 //
-// Tanpa penjaga ini, nilai yang melampaui lebar kolom akan ditolak Oracle dengan ORA-12899
-// — galat yang sampai ke layar sebagai 500 dan tidak dapat dibaca pengguna.
+//	POOLDATA.LST_DOC_OBJ.KET_DOC_OBJ   VARCHAR2(20)
 //
-// Keduanya harus berubah SERENTAK dengan `DocumentObjectForm.tsx` di frontend. Uji di
+// Dua puluh, dan tidak ditahan di bawahnya seperti modul lain: pada kolom selebar 200,
+// menahan batas di 100 masih menyisakan ruang; pada kolom selebar 20, menahannya berarti
+// menolak nama yang sebenarnya muat.
+//
+// # Ini mengoreksi angka sebelumnya
+//
+// Versi pertama modul ini memasang 100, menyalin modul Master COL Simas Online yang
+// kolomnya memang VARCHAR2(200). Akibatnya nyata: setiap keterangan di atas 20 karakter
+// lolos pemeriksaan lalu DITOLAK Oracle dengan ORA-12899 — galat yang sampai ke layar
+// sebagai 500 dan tidak dapat dibaca pengguna. Batas yang lebih longgar daripada kolomnya
+// bukan kelonggaran; ia memindahkan penolakan ke tempat yang tidak dapat dijelaskan.
+//
+// Ia harus berubah SERENTAK dengan `DocumentObjectForm.tsx` di frontend. Uji di
 // `daftarobjekdokumen_test.go` yang menjaga duplikasi itu tetap terlihat.
-const (
-	MaxDescriptionLength  = 100
-	MaxBusinessNameLength = 100
-)
+const MaxDescriptionLength = 20
 
 // DocumentObject adalah satu baris objek dokumen beserta pemetaan bisnisnya.
 type DocumentObject struct {
@@ -137,22 +142,25 @@ type DocumentObject struct {
 // Hanya dua kolom yang dipakai, dan keduanya terbukti dari `RDB List/GetLBUID_SQL-SQL.xml`:
 // `select ID, NOTE as "Note" from ... BUSINESS b where a.BISNISID = b.ID`.
 type Business struct {
-	// ID adalah BUSINESS.ID, tersimpan sebagai BISNISID.
+	// ID adalah BUSINESS.ID.
 	//
-	// BOLEH KOSONG, dan itu bukan cacat. Sel grid Bisnis di Pega terikat ke `.Note` lewat
-	// kontrol `pxAutoComplete` (`Section/BrowseDocumentObject-Section.xml:14465`), dan
-	// `.ID` hanya kolom tersembunyi yang ikut terisi saat sebuah pilihan diambil dari
-	// daftar. Nama yang diketik sendiri karena itu tersimpan tanpa ID.
+	// Inilah SATU-SATUNYA yang benar-benar tersimpan. Pemetaan bisnis hidup di dalam
+	// dokumen JSON baris induknya, dan bentuknya hanya memuat ID:
 	//
-	// Akibatnya: kolom ini TIDAK dapat dipercaya sebagai rujukan yang selalu ketemu saat
-	// di-join ke POOLDATA.BUSINESS. Setiap pembacanya wajib menyiapkan hasil kosong.
+	//	{"ID":"100766","LIST_LBU_ID":[{"ID":"10027"},{"ID":"10045"}],"KET_DOC_OBJ":"STOCK"}
+	//
+	// Dibaca langsung dari basis data 2026-10-03, dan ditegaskan view
+	// POOLDATA.V_LST_DOC_OBJ_BISNIS yang membongkar jalur `$.LIST_LBU_ID[*].ID` yang sama.
 	ID string
 
-	// Name adalah nama bisnis — BUSINESS.NOTE bila dipilih dari master, atau apa yang
-	// diketik petugas bila tidak.
+	// Name adalah nama bisnis, yaitu BUSINESS.NOTE.
 	//
-	// Inilah yang benar-benar terikat di layar, sehingga Name yang menjadi identitas baris
-	// pemetaan, bukan ID.
+	// Ia TIDAK tersimpan bersama pemetaannya — tidak ada tempatnya di dokumen JSON. Ia
+	// dilengkapi saat dibaca, dengan mencocokkan ID ke master bisnis.
+	//
+	// Akibat yang mengikat perilaku layar: nama yang diketik bebas dan tidak ada di master
+	// TIDAK DAPAT disimpan, karena yang disimpan hanyalah ID-nya. Lihat catatan pada
+	// Input.BusinessNames.
 	Name string
 }
 
@@ -166,12 +174,20 @@ type Input struct {
 
 	// BusinessNames adalah NAMA bisnis, bukan ID-nya.
 	//
-	// Nama yang dikirim karena itulah yang diketik dan dilihat petugas di layar, dan
-	// karena nama yang diketik bebas memang tidak punya ID. ID-nya diselesaikan di sisi
-	// server dengan mencocokkan nama ke master — cara yang sama dengan autocomplete Pega
-	// yang mengisi `.ID` saat sebuah pilihan diambil dari daftar.
+	// Nama yang dikirim karena itulah yang diketik dan dilihat petugas di layar — sel grid
+	// Bisnis di Pega terikat ke `.Note`, bukan ke `.ID`. ID-nya diselesaikan di sisi server
+	// dengan mencocokkan nama ke master, cara yang sama dengan autocomplete Pega yang
+	// mengisi `.ID` saat sebuah pilihan diambil dari daftar.
 	//
-	// Nama yang tidak ada di master TETAP diterima dan disimpan tanpa ID.
+	// # Nama yang TIDAK ada di master ditolak
+	//
+	// Ini berbeda dari modul Master COL Simas Online, dan perbedaannya dipaksa penyimpanan,
+	// bukan dipilih: di sana tabel pemetaannya punya kolom NOTE sehingga nama bebas punya
+	// tempat; di sini yang tersimpan hanyalah ID di dalam dokumen JSON.
+	//
+	// Menerimanya diam-diam berarti pengguna menekan Simpan, melihat "berhasil", lalu
+	// menemukan barisnya hilang saat form dibuka lagi. Ditolak dengan menyebut nama yang
+	// tidak dikenali jauh lebih dapat ditindaklanjuti.
 	BusinessNames []string
 }
 
@@ -278,15 +294,10 @@ func (i Input) Check() error {
 		})
 	}
 
-	for _, name := range i.BusinessNames {
-		if utf8.RuneCountInString(name) > MaxBusinessNameLength {
-			violation = append(violation, Violation{
-				Field:   FieldBusiness,
-				Message: "Nama bisnis paling panjang " + itoa(MaxBusinessNameLength) + " karakter: " + name,
-			})
-			break
-		}
-	}
+	// Panjang nama bisnis TIDAK diperiksa di sini, dan itu bukan kelalaian: nama bisnis
+	// tidak pernah disimpan modul ini — yang disimpan hanyalah ID-nya. Yang diperiksa
+	// adalah apakah namanya DIKENALI master, dan itu menuntut membaca master sehingga
+	// tempatnya di usecase.
 
 	// BISNIS KEMBAR TIDAK DITOLAK, mengikuti grid Pega yang tidak punya satu pun penanda
 	// keunikan — tidak ada `pyUnique`, tidak ada validasi. Perlakuan yang sama sudah

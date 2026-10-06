@@ -47,6 +47,47 @@ func (u *Uploader) Upload(ctx context.Context, f registrasi.DocumentFile) (strin
 	return doc.ImageID, nil
 }
 
+// Link membaca alamat berkas dari metadata GENERAL.T_STORAGE_IMAGE, dan memperpanjangnya
+// bila kosong atau kedaluwarsa (dokumenpenunjang.Service.Tautan).
+//
+// Dokumen yang tidak tercatat dijawab alamat kosong, bukan galat: bagi pemanggil artinya
+// sama — belum ada alamat yang dapat dibuka.
+func (u *Uploader) Link(ctx context.Context, portal, imageID, by string) (registrasi.DocumentLink, error) {
+	if u == nil || u.service == nil {
+		return registrasi.DocumentLink{}, registrasi.ErrDocumentLinkUnavailable
+	}
+	doc, err := u.service.Tautan(ctx, portal, imageID, by)
+	if errors.Is(err, dokumenpenunjang.ErrTidakDitemukan) {
+		return registrasi.DocumentLink{}, nil
+	}
+	if errors.Is(err, dokumenpenunjang.ErrTautanGagal) {
+		return registrasi.DocumentLink{}, fmt.Errorf("%w: %v", registrasi.ErrDocumentLinkRenewFailed, err)
+	}
+	if err != nil {
+		return registrasi.DocumentLink{}, fmt.Errorf("%w: %v", registrasi.ErrDocumentLinkUnavailable, err)
+	}
+	link := registrasi.DocumentLink{URL: doc.URL}
+	if doc.ExpiresAt != nil {
+		link.ExpiresAt = *doc.ExpiresAt
+	}
+	return link, nil
+}
+
+var _ registrasi.DocumentLinker = (*Uploader)(nil)
+
+// Remove menghapus berkas dari layanan penyimpanan (dokumenpenunjang.Service.Hapus).
+func (u *Uploader) Remove(ctx context.Context, portal, imageID, by string) error {
+	if u == nil || u.service == nil {
+		return registrasi.ErrDocumentDeleteFailed
+	}
+	if err := u.service.Hapus(ctx, portal, imageID, by); err != nil {
+		return fmt.Errorf("%w: %v", registrasi.ErrDocumentDeleteFailed, err)
+	}
+	return nil
+}
+
+var _ registrasi.DocumentRemover = (*Uploader)(nil)
+
 // translate memetakan galat modul dokumen penunjang.
 func translate(err error) error {
 	fail := func(kind registrasi.UploadFailure, message string) error {

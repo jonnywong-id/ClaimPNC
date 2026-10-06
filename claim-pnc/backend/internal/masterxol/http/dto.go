@@ -149,6 +149,23 @@ type BusinessGroupResponse struct {
 	Portal string        `json:"portal"`
 }
 
+// ReinsurerOptionDTO adalah satu calon reasuradur dari master.
+//
+// Hanya id dan nama. `POOLDATA.T_REINSURER` juga menyimpan email, login, dan negara;
+// ketiganya tidak dipakai layar ini, dan mengirimkannya berarti menyebarkan data mitra ke
+// peramban tanpa ada yang memintanya.
+type ReinsurerOptionDTO struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
+}
+
+// ReinsurerSearchResponse adalah jawaban GET /api/master/xol/reas.
+type ReinsurerSearchResponse struct {
+	Reas   []ReinsurerOptionDTO `json:"reas"`
+	Total  int                  `json:"total"`
+	Portal string               `json:"portal"`
+}
+
 // SaveRequest adalah isian form tambah dan ubah.
 //
 // ID TIDAK pernah datang dari badan permintaan: pada penambahan ia dibuat penyimpanan,

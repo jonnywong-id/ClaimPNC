@@ -29,7 +29,7 @@ type Repo struct {
 // NewRepo membentuk repo; db wajib sudah terhubung ke basis data portal yang dituju.
 func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 
-// List membaca seluruh aturan dokumen TANPA coverage-nya.
+// List membaca seluruh aturan dokumen.
 func (r *Repo) List(ctx context.Context) ([]daftardetaildokumentravel.Detail, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("detail_list"))
 	if err != nil {
@@ -51,16 +51,10 @@ func (r *Repo) List(ctx context.Context) ([]daftardetaildokumentravel.Detail, er
 	return result, nil
 }
 
-// Get membaca satu aturan lengkap dengan daftar coverage-nya.
-//
-// Dua kueri, bukan satu JOIN. Sebabnya bentuk hasilnya: JOIN akan mengembalikan baris
-// induk berulang sebanyak coverage-nya, dan menyusunnya kembali menjadi satu objek
-// berarti menulis pengelompokan sendiri di Go. Untuk satu baris yang dibuka pengguna,
-// dua kueri jauh lebih terbaca dan bedanya tidak terukur.
+// Get membaca satu aturan dokumen.
 func (r *Repo) Get(ctx context.Context, id string) (daftardetaildokumentravel.Detail, error) {
-	key := strings.TrimSpace(id)
+	row := r.db.QueryRowContext(ctx, getQuery("detail_get"), strings.TrimSpace(id))
 
-	row := r.db.QueryRowContext(ctx, getQuery("detail_get"), key)
 	detail, err := scanDetail(row)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -68,22 +62,16 @@ func (r *Repo) Get(ctx context.Context, id string) (daftardetaildokumentravel.De
 	case err != nil:
 		return daftardetaildokumentravel.Detail{}, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca detail %q: %w", id, err)
 	}
-
-	coverages, err := r.coveragesOf(ctx, key)
-	if err != nil {
-		return daftardetaildokumentravel.Detail{}, err
-	}
-	detail.Coverages = coverages
 	return detail, nil
 }
 
-// InsertNew menerbitkan ID lalu menyisipkan barisnya beserta seluruh coverage-nya.
+// InsertNew menerbitkan ID lalu menyisipkan barisnya.
 //
-// Seluruhnya dalam SATU transaksi. Ini bukan kehati-hatian berlebihan: sebuah aturan
-// dokumen yang tersimpan tanpa pembatasan plan-nya berarti dokumen itu berlaku untuk
-// SELURUH plan — kebalikan dari yang dimaksud petugas, dan tidak terlihat sebagai galat
-// di layar mana pun. `D-68` menetapkan kepemilikan transaksi berpindah ke Go persis
-// karena kelas kegagalan seperti ini.
+// Keduanya dalam SATU transaksi. Ini memperbaiki pola yang berulang di procedure warisan
+// rumpun tabel ini: `DOCTRAVEL_CVG.prc:25` melakukan COMMIT sendiri di dalam cabang
+// INSERT, sementara satu-satunya ROLLBACK-nya (`:53`) berada di handler terluar yang
+// berjalan SESUDAH commit itu — sehingga tidak memulihkan apa pun. `D-68` menetapkan
+// kepemilikan transaksi berpindah ke Go persis karena pola seperti itu.
 func (r *Repo) InsertNew(
 	ctx context.Context,
 	input daftardetaildokumentravel.Input,
@@ -102,18 +90,12 @@ func (r *Repo) InsertNew(
 			return fmt.Errorf("daftardetaildokumentravel/sqlstore: menyisipkan detail %q: %w", id, err)
 		}
 
-		coverages, err := insertCoverages(ctx, tx, id, input)
-		if err != nil {
-			return err
-		}
-
 		saved = daftardetaildokumentravel.Detail{
 			ID:           id,
 			DocumentID:   input.DocumentID,
 			DocumentName: input.DocumentName,
 			Mandatory:    input.Mandatory,
 			MinUpload:    input.MinUpload,
-			Coverages:    coverages,
 		}
 		return nil
 	})
@@ -123,83 +105,53 @@ func (r *Repo) InsertNew(
 	return saved, nil
 }
 
-// Update mengganti isi satu aturan beserta SELURUH daftar coverage-nya.
-//
-// Penggantian coverage dilakukan dengan menghapus lalu menyisip ulang, di dalam
-// transaksi yang sama dengan perubahan barisnya. Kegagalan di tengah karena itu tidak
-// dapat meninggalkan aturan dokumen yang kehilangan seluruh pembatasan plan-nya.
+// Update mengganti isi satu aturan dokumen.
 func (r *Repo) Update(
 	ctx context.Context,
 	id string,
 	input daftardetaildokumentravel.Input,
 ) (daftardetaildokumentravel.Detail, error) {
 	key := strings.TrimSpace(id)
-	var saved daftardetaildokumentravel.Detail
 
-	err := r.inTransaction(ctx, func(tx *sql.Tx) error {
-		result, err := tx.ExecContext(ctx, getQuery("detail_update"),
-			input.DocumentID, input.DocumentName, mandatoryCode(input.Mandatory), input.MinUpload, key)
-		if err != nil {
-			return fmt.Errorf("daftardetaildokumentravel/sqlstore: memperbarui detail %q: %w", id, err)
-		}
-
-		// Baris yang tersentuh diperiksa, bukan diabaikan: UPDATE terhadap ID yang tidak
-		// ada berhasil tanpa galat di SQL, dan membiarkannya akan melaporkan "tersimpan"
-		// atas perubahan yang tidak pernah terjadi — lalu MENGHAPUS coverage milik baris
-		// yang tidak ada, yang kebetulan tidak berakibat apa-apa hanya karena barisnya
-		// memang tidak ada.
-		affected, err := result.RowsAffected()
-		if err == nil && affected == 0 {
-			return daftardetaildokumentravel.ErrNotFound
-		}
-
-		if _, err := tx.ExecContext(ctx, getQuery("detail_coverage_delete_all"), key); err != nil {
-			return fmt.Errorf("daftardetaildokumentravel/sqlstore: membuang coverage detail %q: %w", id, err)
-		}
-
-		coverages, err := insertCoverages(ctx, tx, key, input)
-		if err != nil {
-			return err
-		}
-
-		saved = daftardetaildokumentravel.Detail{
-			ID:           key,
-			DocumentID:   input.DocumentID,
-			DocumentName: input.DocumentName,
-			Mandatory:    input.Mandatory,
-			MinUpload:    input.MinUpload,
-			Coverages:    coverages,
-		}
-		return nil
-	})
+	result, err := r.db.ExecContext(ctx, getQuery("detail_update"),
+		input.DocumentID, input.DocumentName, mandatoryCode(input.Mandatory), input.MinUpload, key)
 	if err != nil {
-		return daftardetaildokumentravel.Detail{}, err
+		return daftardetaildokumentravel.Detail{}, fmt.Errorf("daftardetaildokumentravel/sqlstore: memperbarui detail %q: %w", id, err)
 	}
-	return saved, nil
+
+	// Baris yang tersentuh diperiksa, bukan diabaikan: UPDATE terhadap ID yang tidak ada
+	// berhasil tanpa galat di SQL, dan membiarkannya akan melaporkan "tersimpan" atas
+	// perubahan yang tidak pernah terjadi.
+	affected, err := result.RowsAffected()
+	if err == nil && affected == 0 {
+		return daftardetaildokumentravel.Detail{}, daftardetaildokumentravel.ErrNotFound
+	}
+
+	return daftardetaildokumentravel.Detail{
+		ID:           key,
+		DocumentID:   input.DocumentID,
+		DocumentName: input.DocumentName,
+		Mandatory:    input.Mandatory,
+		MinUpload:    input.MinUpload,
+	}, nil
 }
 
-// CheckTable memastikan kedua view modul ini ada dan dapat dibaca akun aplikasi.
+// CheckTable memastikan view modul ini ada dan dapat dibaca akun aplikasi.
 //
 // Ia tidak mengambil satu baris pun, sehingga aman dijalankan terhadap produksi.
 //
 // Yang TIDAK diperiksa di sini: tabel dasar dan urutan yang dipakai jalur tulis. Nama
-// ketiganya belum terverifikasi (lihat kepala berkas .sql), dan memeriksa urutan berarti
+// keduanya belum terverifikasi (lihat kepala berkas .sql), dan memeriksa urutan berarti
 // MENGHABISKAN satu nomor — efek samping yang tidak pantas dimiliki mode periksa.
 // Verifikasinya ada di migrations/0006, dijalankan DBA sekali, bukan setiap kali
 // aplikasi diperiksa.
 func (r *Repo) CheckTable(ctx context.Context) error {
-	for _, name := range []string{"detail_check_table", "detail_coverage_check_table"} {
-		rows, err := r.db.QueryContext(ctx, getQuery(name))
-		if err != nil {
-			return fmt.Errorf("daftardetaildokumentravel/sqlstore: objek modul tidak dapat dibaca (%s): %w", name, err)
-		}
-		closeErr := rows.Err()
-		_ = rows.Close()
-		if closeErr != nil {
-			return fmt.Errorf("daftardetaildokumentravel/sqlstore: objek modul tidak dapat dibaca (%s): %w", name, closeErr)
-		}
+	rows, err := r.db.QueryContext(ctx, getQuery("detail_check_table"))
+	if err != nil {
+		return fmt.Errorf("daftardetaildokumentravel/sqlstore: POOLDATA.V_LST_DOC_TRAVEL tidak dapat dibaca: %w", err)
 	}
-	return nil
+	defer func() { _ = rows.Close() }()
+	return rows.Err()
 }
 
 // inTransaction menjalankan satu satuan kerja di dalam transaksi.
@@ -220,72 +172,6 @@ func (r *Repo) inTransaction(ctx context.Context, work func(tx *sql.Tx) error) e
 		return fmt.Errorf("daftardetaildokumentravel/sqlstore: menutup transaksi: %w", err)
 	}
 	return nil
-}
-
-// coveragesOf membaca pembatasan plan dan jaminan milik satu baris detail.
-func (r *Repo) coveragesOf(ctx context.Context, id string) ([]daftardetaildokumentravel.Coverage, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("detail_coverage_list"), id)
-	if err != nil {
-		return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca coverage detail %q: %w", id, err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []daftardetaildokumentravel.Coverage
-	for rows.Next() {
-		var coverageID, planID, planName, itemID, itemName sql.NullString
-		if err := rows.Scan(&coverageID, &planID, &planName, &itemID, &itemName); err != nil {
-			return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca baris coverage: %w", err)
-		}
-		result = append(result, daftardetaildokumentravel.Coverage{
-			ID:           strings.TrimSpace(coverageID.String),
-			PlanID:       strings.TrimSpace(planID.String),
-			PlanName:     strings.TrimSpace(planName.String),
-			CoverageID:   strings.TrimSpace(itemID.String),
-			CoverageName: strings.TrimSpace(itemName.String),
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: menelusuri coverage detail %q: %w", id, err)
-	}
-	return result, nil
-}
-
-// insertCoverages menyisipkan seluruh baris coverage milik satu detail.
-func insertCoverages(
-	ctx context.Context,
-	tx *sql.Tx,
-	parentID string,
-	input daftardetaildokumentravel.Input,
-) ([]daftardetaildokumentravel.Coverage, error) {
-	if len(input.Coverages) == 0 {
-		return nil, nil
-	}
-
-	result := make([]daftardetaildokumentravel.Coverage, 0, len(input.Coverages))
-	for _, coverage := range input.Coverages {
-		id, err := nextID(ctx, tx)
-		if err != nil {
-			return nil, err
-		}
-
-		// DOCID, DOCUMENTNAME, dan STSWAJIB ikut diisi meski sudah ada di baris induknya
-		// — alasannya ada di komentar `detail_coverage_insert` pada berkas .sql.
-		_, err = tx.ExecContext(ctx, getQuery("detail_coverage_insert"),
-			id, parentID, input.DocumentID, input.DocumentName, mandatoryCode(input.Mandatory),
-			coverage.PlanID, coverage.PlanName, coverage.CoverageID, coverage.CoverageName)
-		if err != nil {
-			return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: menyisipkan coverage detail %q: %w", parentID, err)
-		}
-
-		result = append(result, daftardetaildokumentravel.Coverage{
-			ID:           id,
-			PlanID:       coverage.PlanID,
-			PlanName:     coverage.PlanName,
-			CoverageID:   coverage.CoverageID,
-			CoverageName: coverage.CoverageName,
-		})
-	}
-	return result, nil
 }
 
 // nextID mengambil nomor urut berikutnya dan memformatnya menjadi ID.
@@ -391,77 +277,7 @@ func (r *DocumentRepo) CheckTable(ctx context.Context) error {
 	return rows.Err()
 }
 
-// PlanRepo membaca master plan dan jaminan Travel milik GISFW.
-type PlanRepo struct {
-	db *sql.DB
-}
-
-// NewPlanRepo membentuk pembaca master plan dan jaminan.
-func NewPlanRepo(db *sql.DB) *PlanRepo { return &PlanRepo{db: db} }
-
-// ListPlans membaca plan yang dapat dipilih.
-func (r *PlanRepo) ListPlans(ctx context.Context) ([]daftardetaildokumentravel.Plan, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("plan_list"))
-	if err != nil {
-		return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca master plan travel: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []daftardetaildokumentravel.Plan
-	for rows.Next() {
-		var id, name sql.NullString
-		if err := rows.Scan(&id, &name); err != nil {
-			return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca baris plan travel: %w", err)
-		}
-		result = append(result, daftardetaildokumentravel.Plan{
-			ID:   strings.TrimSpace(id.String),
-			Name: strings.TrimSpace(name.String),
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: menelusuri master plan travel: %w", err)
-	}
-	return result, nil
-}
-
-// ListCoverages membaca jaminan yang dapat dipilih beserta plan pemiliknya.
-func (r *PlanRepo) ListCoverages(ctx context.Context) ([]daftardetaildokumentravel.CoverageOption, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("coverage_list"))
-	if err != nil {
-		return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca master jaminan travel: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []daftardetaildokumentravel.CoverageOption
-	for rows.Next() {
-		var id, name, planID sql.NullString
-		if err := rows.Scan(&id, &name, &planID); err != nil {
-			return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: membaca baris jaminan travel: %w", err)
-		}
-		result = append(result, daftardetaildokumentravel.CoverageOption{
-			ID:     strings.TrimSpace(id.String),
-			Name:   strings.TrimSpace(name.String),
-			PlanID: strings.TrimSpace(planID.String),
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("daftardetaildokumentravel/sqlstore: menelusuri master jaminan travel: %w", err)
-	}
-	return result, nil
-}
-
-// CheckTable memastikan POOLDATA.M_PLANTRAVEL dapat dibaca akun aplikasi.
-func (r *PlanRepo) CheckTable(ctx context.Context) error {
-	rows, err := r.db.QueryContext(ctx, getQuery("plan_check_table"))
-	if err != nil {
-		return fmt.Errorf("daftardetaildokumentravel/sqlstore: POOLDATA.M_PLANTRAVEL tidak dapat dibaca: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	return rows.Err()
-}
-
 var (
 	_ daftardetaildokumentravel.Repo         = (*Repo)(nil)
 	_ daftardetaildokumentravel.DocumentRepo = (*DocumentRepo)(nil)
-	_ daftardetaildokumentravel.PlanRepo     = (*PlanRepo)(nil)
 )

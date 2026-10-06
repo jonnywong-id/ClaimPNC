@@ -53,14 +53,20 @@ func catalogOperasional() []Report {
 			// aslinya adalah **nama orang yang ditulis sebagai literal** di dalam SQL.
 			// Ia salah satu dari 24 Operator ID hardcode yang `D-15` haruskan menjadi
 			// master data, dan tidak ada sumber penggantinya di export.
-			Availability: Blocked(
-				"Daftar mitra dibaca lewat koneksi kedua portal (ANEKA_<PORTAL_ALIAS>_*); "+
-					"kuerinya belum ditulis. Kolom \"Atasan\" juga masih berupa nama orang yang "+
-					"ditulis langsung di dalam SQL dan belum punya master penggantinya.",
-				"R-03",
-			),
+			// # Penghalangnya HILANG pada 2026-09-30
+			//
+			// Kueri koneksi keduanya sudah ditulis (`report_mitra_logins`), dan daftar
+			// mitra kini dipakai menyaring baris di Go — lihat `mitraKeep`. Laporannya
+			// DITOLAK bila daftar itu tidak dapat dibaca, sehingga kekhawatiran di atas
+			// (seluruh petugas ikut masuk) tidak dapat terjadi diam-diam.
+			//
+			// Kolom "Atasan" tetap berupa nama orang yang ditulis di dalam SQL. Itu bukan
+			// lagi penghalang: Work Owner menetapkan pada 2026-09-25 bahwa yang sudah
+			// sesuai Pega dibiarkan apa adanya, termasuk hardcode-nya. Ia tetap tercatat
+			// sebagai salah satu dari 24 Operator ID yang `D-15` haruskan menjadi master.
+			Availability: Ready(),
 			variants: []variant{
-				always("13 kolom; kolom bersumber DB Link dikosongkan (R-03)", colsMitra),
+				always("13 kolom", colsMitra),
 			},
 		},
 		{
@@ -91,7 +97,15 @@ func catalogOperasional() []Report {
 			Code:         CodeCompliance,
 			Title:        "REPORT COMPLIANCE",
 			Group:        GroupOperasional,
-			Actions:      oneAction("Export Data Compliance", nil),
+			// Label tombolnya MENYEBUTKAN keterbatasannya, dan itu disengaja.
+			//
+			// Laporan ini berjalan tanpa penyaring Status Compliance — properti penyaringnya
+			// belum punya kolom basis data. Akibatnya berkasnya memuat SELURUH klaim PA pada
+			// periode itu, bukan hanya yang berstatus tertentu.
+			//
+			// Perbedaan sebesar itu tidak boleh hanya tertulis di dokumen. Ia ditaruh di
+			// tempat yang pasti terbaca: tombol yang ditekan pengguna.
+			Actions:      oneAction("Export Data Compliance (tanpa penyaring status)", nil),
 			FileBaseName: "Laporan Compliance",
 			// Radio "Status Compliance" dipakai HANYA oleh panel ini — di seluruh
 			// harness, `TempAdjComp.ComplianceStatus` tidak muncul di panel lain mana pun.
@@ -120,12 +134,44 @@ func catalogOperasional() []Report {
 			// Menjalankannya tetap akan menghasilkan berkas — berisi kolom klaim yang
 			// terbaca dan tujuh kolom kosong, disaring oleh status yang tidak dapat
 			// dibaca. Berkas seperti itu lebih buruk daripada tidak ada: ia tampak sah.
-			Availability: Blocked(
-				"Isi pemeriksaan compliance tersimpan sebagai properti klipboard Pega, bukan "+
-					"sebagai kolom basis data. Menunggu properti itu diekspos sebagai kolom, atau "+
-					"modul Compliance memiliki tabelnya sendiri.",
-				"R-16",
-			),
+			// # Penghalangnya kini DIKETAHUI PERSIS (2026-09-30)
+			//
+			// Keenam rule Property-nya sudah diterima dan dibaca. Hasilnya menutup satu
+			// pertanyaan dan memastikan satu lagi:
+			//
+			//   TERJAWAB  daftar pilihan "Status Compliance" — `PilihanCompliance`
+			//             ber-`pyTableOption = PromptList` dengan empat nilai, kini ada
+			//             di `ComplianceStatusOptions`.
+			//
+			//   PASTI     tidak satu pun dari keenamnya punya `pyColumnInclusion`, dan
+			//             kueri katalog DBA atas `PC_ASM_FW_GCNMFW_WORK` mengembalikan nol
+			//             kolom ber-`%COMPLIANCE%` maupun `%POSTAUDIT%`. Ditambah
+			//             pemeriksaan terakhir: kolom `SURPLUS1` dan `SURPLUS2` ternyata
+			//             memuat `isComplianceTransfer` dan `IsTransferAnalisator` — bukan
+			//             statusnya. Tidak ada kolom yang menyimpannya.
+			//
+			// Jadi penghalangnya bukan lagi "belum ketemu kolomnya", melainkan "kolomnya
+			// memang belum dibuat". Sebabnya disebut di pesan di bawah dengan nama rule
+			// dan tindakan yang persis, supaya kartunya menjadi perintah kerja — bukan
+			// keterangan yang masih perlu ditafsirkan.
+			// # Dibuka pada 2026-09-30, DENGAN keterbatasan yang dinyatakan
+			//
+			// Sepuluh dari 12 kolomnya ternyata dapat dibaca dari tabel biasa. Yang tidak:
+			// dua kolom komentar dan penyaring statusnya — ketiganya properti klipboard
+			// yang belum dioptimasi, dipastikan tiga kali (lihat report_compliance).
+			//
+			// Menahannya tetap tertutup berarti menahan sepuluh kolom yang sebenarnya siap,
+			// menunggu satu tindakan di sistem lain. Menjalankannya diam-diam berarti
+			// berkas yang barisnya jauh lebih banyak daripada Pega tanpa ada yang tahu.
+			//
+			// Jalan tengahnya: dijalankan, dan keterbatasannya ditaruh di LABEL TOMBOL —
+			// tempat yang pasti terbaca sebelum berkasnya terunduh.
+			//
+			// Yang memulihkannya sepenuhnya tetap satu tindakan: "Optimize for Reporting"
+			// pada `PilihanCompliance` (kelas `ASM-FW-GCNMFW-Data-ClaimData`). Kedua kolom
+			// komentar butuh Declare Index, bukan optimize — keduanya ada di dalam page
+			// list `ComplianceList`, dan satu klaim dapat punya banyak barisnya.
+			Availability: Ready(),
 			variants: []variant{
 				always("12 kolom", colsCompliance),
 			},
@@ -143,20 +189,23 @@ func catalogOperasional() []Report {
 				// sekali. Ia memanggil `pxRetrieveReportData` atas dua Report Definition.
 				SQLRule: nil,
 			},
-			// # Terhalang: kedua Report Definition-nya tidak ada di export
+			// # Lepas pada 2026-09-30 — DIREKONSTRUKSI, bukan disalin
 			//
-			// `InboxSurveyClose_rd` dan `InboxInternalSurveyClose_rd` — keduanya dirujuk
-			// `PNCAdjusterReport_Act`, dan tidak satu pun ada di antara 57 Report
-			// Definition yang dikirim. Tanpa keduanya, tidak diketahui tabel mana yang
-			// dibaca, penyaring apa yang berlaku, dan urutan barisnya bagaimana.
+			// Kedua Report Definition-nya tetap tidak ada di export (`R-16`). Yang berubah
+			// adalah cara menyusunnya: kesepuluh kolomnya sudah lengkap di
+			// `PNCAdjusterReport_Act`, dan penyaringnya direkonstruksi dari
+			// `RDB List/BrowseInternalSurveyor-SQL.xml` — inbox survei yang BELUM selesai,
+			// dibaca terbalik.
 			//
-			// Ia contoh langsung `R-16`: tujuh tipe rule tidak diaudit `19-GAP` sama
-			// sekali, dan Report Definition salah satunya.
-			Availability: Blocked(
-				"Report Definition InboxSurveyClose_rd dan InboxInternalSurveyClose_rd tidak ada "+
-					"di export Pega. Menunggu export ulang berbasis Product rule.",
-				"R-16",
-			),
+			// Daftar kolom `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` yang diterima dari DBA pada
+			// 2026-09-30 yang menutup sisanya: `SURVEYDATE_1`, `KETERANGAN_1`,
+			// `ADJUSTERSTATUS_1`, `USERTEKNIS_1`, `SURVEYORNAME_1`.
+			//
+			// TIGA hal masih berupa simpulan dan mengubah ISI laporan — arti "Close",
+			// kolom yang disaring periode, dan rumus "Nilai Reserve Klaim ASM". Ketiganya
+			// diuraikan di `report_adjuster` pada reportklaim_operasional.sql, dan hanya
+			// dapat dipastikan bila kedua Report Definition itu kelak dikirim.
+			Availability: Ready(),
 			variants: []variant{
 				always("10 kolom", colsAdjuster),
 			},

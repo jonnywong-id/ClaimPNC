@@ -6,11 +6,13 @@ import { z } from 'zod'
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type Masking } from '@/api/types'
 import { Field } from '@/components/Field'
+import { NumberField } from '@/components/NumberField'
 import { SelectField } from '@/components/SelectField'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Button } from '@/components/Button'
 
 import { useBranchOptions, useSaveMasking } from './api'
+import { ModuleChecklist } from './ModuleChecklist'
 
 /**
  * Batas panjang isian; sama dengan konstanta di domain Go.
@@ -89,8 +91,9 @@ const schema = z.object({
 type FieldValues = z.infer<typeof schema>
 
 type Props = {
-  /** Null berarti menambah; terisi berarti mengubah baris itu. */
-  masking: Masking | null
+  /** Baris yang sedang diubah. Form ini HANYA untuk mengubah — penambahan dilayani
+   *  MaskingAddForm, yang bentuknya berbeda karena layar lama pun memisahkan keduanya. */
+  masking: Masking
   onClose: () => void
 }
 
@@ -109,9 +112,8 @@ type Props = {
  * Pada penambahan, isian STATUS disembunyikan: baris baru selalu aktif, dan server
  * menimpanya demikian.
  */
-export function MaskingForm({ masking, onClose }: Props) {
+export function MaskingEditForm({ masking, onClose }: Props) {
   const save = useSaveMasking()
-  const editing = masking !== null
   const firstField = useRef<HTMLInputElement | null>(null)
 
   // Kata kunci pencarian cabang. Terpisah dari nilai form: yang disimpan adalah KODE
@@ -180,7 +182,7 @@ export function MaskingForm({ masking, onClose }: Props) {
   function send(values: FieldValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal.
-    save.mutate(editing ? { id: masking.id, ...values } : values, { onSuccess: onClose })
+    save.mutate({ id: masking.id, ...values }, { onSuccess: onClose })
   }
 
   return (
@@ -195,16 +197,14 @@ export function MaskingForm({ masking, onClose }: Props) {
       onSubmit={handleSubmit(send)}
       noValidate
       className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
-      aria-label={editing ? 'Ubah data masking' : 'Tambah data masking'}
+      aria-label='Ubah data masking'
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
         <h3 className="text-base font-semibold text-slate-900">
-          {editing ? 'Ubah Data Masking' : 'Tambah Data Masking'}
+          Ubah Data Masking
         </h3>
         <p className="mt-1 text-sm text-slate-600">
-          {editing
-            ? 'Status aktif tidak diubah dari sini — gunakan tombol pada barisnya.'
-            : 'Satu pengguna hanya boleh punya satu data masking per cabang.'}
+          Status diubah dari isian di bawah, sama seperti layar lama.
         </p>
       </div>
 
@@ -271,66 +271,80 @@ export function MaskingForm({ masking, onClose }: Props) {
             {...remainingLogin}
           />
 
-          <Field
-            id="modul"
-            label="Modul"
-            error={errors.modul?.message}
-            hint="Layar tempat kewenangan ini berlaku."
-            {...register('modul')}
-          />
+          {/* MODUL dan SUB MODUL berupa KOTAK CENTANG, sama seperti form Tambah dan
+              seperti kolom TEMPLATE AKSES di layar lama. */}
+          <div className="sm:col-span-2">
+            <ModuleChecklist
+              idPrefix="ubah"
+              modul={watch('modul')}
+              subModul={watch('sub_modul')}
+              onChange={(change) => {
+                if (change.modul !== undefined) {
+                  setValue('modul', change.modul, { shouldValidate: true })
+                }
+                if (change.sub_modul !== undefined) {
+                  setValue('sub_modul', change.sub_modul, { shouldValidate: true })
+                }
+              }}
+            />
+            {errors.modul?.message && (
+              <p className="mt-1.5 text-sm text-red-600">{errors.modul.message}</p>
+            )}
+            {errors.sub_modul?.message && (
+              <p className="mt-1.5 text-sm text-red-600">{errors.sub_modul.message}</p>
+            )}
+          </div>
 
-          <Field
-            id="sub_modul"
-            label="Sub modul"
-            placeholder="Registrasi,Dokumen,"
-            error={errors.sub_modul?.message}
-            hint="Boleh lebih dari satu, dipisah koma. Boleh dikosongkan."
-            {...register('sub_modul')}
-          />
+          {/*
+            Kuota memakai NumberField, bukan `register(..., { valueAsNumber: true })`.
 
-          <Field
+            Jalur `register` membiarkan peramban memegang teksnya, sehingga nilai tersimpan
+            `0` menampilkan `0` yang harus dihapus lebih dulu — dan mengetik di belakangnya
+            menghasilkan `010`. Form Tambah pernah menampakkannya ke petugas.
+
+            Angkanya tetap masuk ke React Hook Form lewat `setValue`, sehingga skema Zod
+            yang sama tetap yang memeriksanya.
+          */}
+          <NumberField
             id="maks_cari"
             label="Max Cari Data"
-            type="number"
-            min={0}
+            max={MAX_QUOTA}
+            value={watch('maks_cari')}
+            onValueChange={(next) => setValue('maks_cari', next, { shouldValidate: true })}
             error={errors.maks_cari?.message}
-            hint="Berapa kali pengguna boleh mencari. 0 berarti tidak boleh."
-            {...register('maks_cari', { valueAsNumber: true })}
+            hint="Berapa kali pengguna boleh mencari. Kosong atau 0 berarti tidak boleh."
           />
 
-          <Field
+          <NumberField
             id="maks_lihat"
             label="Max Lihat Data"
-            type="number"
-            min={0}
+            max={MAX_QUOTA}
+            value={watch('maks_lihat')}
+            onValueChange={(next) => setValue('maks_lihat', next, { shouldValidate: true })}
             error={errors.maks_lihat?.message}
-            hint="Berapa banyak data yang boleh dilihat. 0 berarti tidak boleh."
-            {...register('maks_lihat', { valueAsNumber: true })}
+            hint="Berapa banyak data yang boleh dilihat. Kosong atau 0 berarti tidak boleh."
           />
 
           {/*
-            Isian STATUS hanya muncul saat MENGUBAH.
+            Isian STATUS ada di form Ubah, bukan di form Tambah.
 
-            Pada penambahan ia tidak ada gunanya: baris baru selalu aktif, dan server
-            menimpanya demikian. Menampilkannya akan menawarkan pilihan yang tidak
-            berpengaruh — bentuk kebohongan kecil yang membuat pengguna berhenti memercayai
-            isian lain di layar yang sama.
+            Layar lama memisahkan keduanya dengan cara yang sama: form Tambah hanya
+            memuat CABANG dan tabel Template Akses, sedangkan STATUS hanya ada pada form
+            Ubah (`MasterProteksi_Sec:21133` beserta isiannya di `:22449`).
           */}
-          {editing && (
-            <SelectField
-              id="aktif"
-              label="Status"
-              options={[
-                { value: 'true', label: 'AKTIF' },
-                { value: 'false', label: 'TIDAK AKTIF' },
-              ]}
-              error={errors.aktif?.message}
-              {...register('aktif', {
-                // Dropdown mengirim teks; skema menuntut boolean.
-                setValueAs: (value: string | boolean) => value === true || value === 'true',
-              })}
-            />
-          )}
+          <SelectField
+            id="aktif"
+            label="Status"
+            options={[
+              { value: 'true', label: 'AKTIF' },
+              { value: 'false', label: 'TIDAK AKTIF' },
+            ]}
+            error={errors.aktif?.message}
+            {...register('aktif', {
+              // Dropdown mengirim teks; skema menuntut boolean.
+              setValueAs: (value: string | boolean) => value === true || value === 'true',
+            })}
+          />
         </div>
 
         {/*

@@ -450,6 +450,7 @@ func TestJalurFormTidakTerbacaSebagaiNomorInduk(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, call(t, server, http.MethodGet, basePath+"/form", nil).Code)
 	require.Equal(t, http.StatusOK, call(t, server, http.MethodGet, basePath+"/bisnis?tipe=1", nil).Code)
+	require.Equal(t, http.StatusOK, call(t, server, http.MethodGet, basePath+"/reas?cari=alfa", nil).Code)
 }
 
 func TestPilihanBisnisMengikutiTypeXOL(t *testing.T) {
@@ -468,4 +469,41 @@ func TestPilihanBisnisMengikutiTypeXOL(t *testing.T) {
 	require.Contains(t, nama, "MARINE CARGO")
 	require.Contains(t, nama, "TREATY INWARD")
 	require.NotContains(t, nama, "MOTOR VEHICLE")
+}
+
+// Pencarian master reasuradur untuk kotak "NAMA REASURANSI".
+func TestCariReasuradur(t *testing.T) {
+	server := testServer(t)
+
+	type jawaban struct {
+		Reas []struct {
+			ID   string `json:"id"`
+			Nama string `json:"nama"`
+		} `json:"reas"`
+		Total  int    `json:"total"`
+		Portal string `json:"portal"`
+	}
+
+	t.Run("mengembalikan id dan nama yang mengisi baris reas", func(t *testing.T) {
+		body := decode[jawaban](t, call(t, server, http.MethodGet, basePath+"/reas?cari=alfa", nil))
+		require.Equal(t, 2, body.Total)
+		require.Equal(t, portalASM, body.Portal)
+		require.NotEmpty(t, body.Reas[0].ID)
+		require.NotEmpty(t, body.Reas[0].Nama)
+	})
+
+	t.Run("kata kunci kosong menjawab daftar kosong, bukan seluruh master", func(t *testing.T) {
+		body := decode[jawaban](t, call(t, server, http.MethodGet, basePath+"/reas?cari=", nil))
+		require.Equal(t, 0, body.Total)
+		require.Empty(t, body.Reas)
+	})
+
+	t.Run("entitas lain tidak melihat master entitas ini", func(t *testing.T) {
+		// ASI sengaja kosong. Bila penyaringannya bocor, ia akan menjawab baris ASM —
+		// dan itu kebocoran lintas badan hukum (`R-20`).
+		response := callPortal(t, server, http.MethodGet, basePath+"/reas?cari=alfa", "ASI", nil)
+		body := decode[jawaban](t, response)
+		require.Equal(t, 0, body.Total)
+		require.Equal(t, "ASI", body.Portal)
+	})
 }

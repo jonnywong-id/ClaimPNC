@@ -52,6 +52,14 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.Documents(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Delete pada daftar berkas Lihat dokumen — hapus permanen (keputusan-implementasi §171).
+		sub.Post("/klaim/{klaimID}/dokumen/{lampiranID}/hapus", func(w http.ResponseWriter, r *http.Request) {
+			h.DeleteDocument(w, r, chi.URLParam(r, "klaimID"), chi.URLParam(r, "lampiranID"))
+		})
+		// Tombol Lihat dokumen: alamat baca satu lampiran dari metadata penyimpanan.
+		sub.Get("/klaim/{klaimID}/dokumen/{lampiranID}/tautan", func(w http.ResponseWriter, r *http.Request) {
+			h.DocumentLink(w, r, chi.URLParam(r, "klaimID"), chi.URLParam(r, "lampiranID"))
+		})
 		// Tombol Unggah Dokumen pada satu baris checklist: layanan penyimpanan + DATA_ATTACHFILE.
 		sub.Post("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.UploadDocument(w, r, chi.URLParam(r, "klaimID"))
@@ -169,8 +177,21 @@ func Mount(r chi.Router, h *Handler) {
 		})
 
 		// Tombol "Kirim ke Inputor": catatan analis lalu lompat ke Input Register.
+		// Tombol Tutup Klaim — dialog Prevent Close Claim (CloseClaim).
+		sub.Post("/tugas/{tugasID}/tutup-klaim", func(w http.ResponseWriter, r *http.Request) {
+			h.CloseClaim(w, r, chi.URLParam(r, "tugasID"))
+		})
 		sub.Post("/tugas/{tugasID}/kirim-inputor", func(w http.ResponseWriter, r *http.Request) {
 			h.SendToInputor(w, r, chi.URLParam(r, "tugasID"))
 		})
+
+		// Tombol "Kirim ke RCL/PUCL" (modal KomentarRCLPUCL → SectionPUCL) beserta ketiga
+		// daftar pilihannya. Ketiganya GET karena hanya membaca master.
+		sub.Post("/tugas/{tugasID}/kirim-rclpucl", func(w http.ResponseWriter, r *http.Request) {
+			h.SendToRCLPUCL(w, r, chi.URLParam(r, "tugasID"))
+		})
+		sub.Get("/rclpucl/perihal", h.PUCLSubjects)
+		sub.Get("/rclpucl/alasan", h.PUCLReasons)
+		sub.Get("/rclpucl/dokter", h.RCLDoctors)
 	})
 }

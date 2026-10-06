@@ -67,6 +67,10 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 			// sama dengan urutan pencocokannya supaya yang terbaca dan yang terjadi sama.
 			master.Get("/cabang", h.Branches)
 
+			// Daftar petugas sebuah cabang, mengisi tabel pada form Tambah. Sama seperti
+			// "cabang", ia didaftarkan sebelum "/{id}" supaya tidak tertangkap sebagai ID.
+			master.Get("/pengguna", h.Operators)
+
 			master.Get("/{id}", h.Get)
 
 			// PUT, bukan PATCH: seluruh isi yang boleh diubah dikirim setiap kali, sehingga

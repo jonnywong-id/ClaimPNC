@@ -119,3 +119,273 @@ SELECT caseid           AS "pzInsKey",
        replyfromname    AS "UserAdmin"
   FROM pooldata.m_komunikasi_pnc
  ORDER BY createddate DESC
+
+
+-- name: report_mitra
+--
+-- Produktivitas mitra — satu baris per penugasan, beserta empat kolom rekapitulasi
+-- per petugas.
+--
+-- Asal: `RDB List/ExportDetailMitraReport-SQL.xml`, dijalankan
+-- `Activity/PNCMitraReport_Act-Act.xml`.
+--
+-- Bind:
+--   :1  tanggal dari    DATE
+--   :2  tanggal sampai  DATE
+--
+-- ============================================================================
+-- Gabungan DB Link DIBUANG dari sini — dan itu MENGUBAH baris, bukan kolom
+-- ============================================================================
+--
+-- Kueri aslinya menggabung `general.lst_mitra@asmd` sebagai INNER JOIN:
+--
+--     FROM pooldata.PNC_CHRONOLOGYTAT a, general.lst_mitra@asmd... b
+--    WHERE a.userassign = b.login_aplikasi
+--
+-- Tidak satu pun kolom diambil dari `b`. Gabungan itu murni PENYARING: ia membatasi
+-- laporan pada petugas yang terdaftar sebagai mitra.
+--
+-- Karena `b` berada di basis data lain, penyaringnya dipindahkan ke koneksi kedua
+-- (`report_mitra_logins` pada reportklaim_aneka.sql) lalu diterapkan di Go. Keputusan
+-- Work Owner 2026-09-24: yang berupa sub-query tetap memakai DB Link, selain itu memakai
+-- koneksi langsung — dan gabungan ini bukan sub-query.
+--
+-- **Kueri ini karena itu TIDAK boleh dijalankan tanpa penyaring mitranya.** Tanpa itu
+-- seluruh petugas masuk ke laporan produktivitas mitra: berkasnya tetap terbit, angkanya
+-- tetap masuk akal, dan isinya bukan yang diminta. Penjagaannya ada di Repo.mitraLogins,
+-- yang MENOLAK menjalankan laporan bila daftar mitranya tidak dapat dibaca.
+--
+-- ============================================================================
+-- Tiga hal yang ditiru APA ADANYA dari Pega
+-- ============================================================================
+--
+--  1. **`'YUNIARTAULIASI'` sebagai kolom "Atasan".** Nama orang yang ditulis sebagai
+--     literal di dalam SQL — salah satu dari 24 Operator ID hardcode yang `D-15`
+--     haruskan menjadi master data. Tidak ada sumber penggantinya di export, dan
+--     Work Owner menetapkan yang sudah sesuai Pega dibiarkan apa adanya.
+--
+--  2. **Keempat kolom rekapitulasi TIDAK disaring periode.** Sub-kueri pencacahnya
+--     hanya menyaring `userassign`, sehingga "Total Produktivitas" menghitung SELURUH
+--     riwayat petugas itu — bukan hanya periode yang dipilih. Baris rinciannya disaring
+--     periode; rekapitulasinya tidak. Itu perilaku aslinya.
+--
+--  3. **Pembagi tidak dijaga NULLIF.** Ia memang tidak dapat nol: baris `a` sendiri
+--     sudah membuat pencacah penyebutnya minimal satu.
+--
+-- ============================================================================
+-- Yang berbeda dari kueri asli, dan sebabnya
+-- ============================================================================
+--
+--  * `TRUNC(a.insertdate) >= :1 AND TRUNC(a.insertdate) <= :2` menjadi rentang setengah
+--    terbuka. `TRUNC` pada kolom mematikan index dan memaksa pemindaian tabel penuh;
+--    rentang ini mencakup hari yang sama persis.
+--
+--  * `ORDER BY` ditambahkan. Kueri asli tidak punya, sehingga urutan barisnya ditentukan
+--    Oracle dan dapat berbeda antar-jalan. Urutan tetap membuat dua berkas ekspor dapat
+--    dibandingkan baris per baris — yang justru dibutuhkan saat menguji kesetaraan.
+--
+--  * `TO_CHAR` pada `timein`/`timeout` **DIPERTAHANKAN**, berbeda dari kueri lain di
+--    modul ini. Alasannya: kedua kolom itu menampilkan JAM, sedangkan pemformat bersama
+--    `text()` hanya mengeluarkan tanggal. Yang dilarang `D-20` adalah TO_CHAR untuk
+--    memformat tampilan tanggal; di sini jamnya bagian dari isi laporan — laporan SLA
+--    yang kehilangan jam masuk dan jam keluar tidak dapat dipakai.
+SELECT a.userassign AS "QQNAME",
+       a.position AS "NOPOLIS",
+       'YUNIARTAULIASI' AS "THEINSURED",
+       a.idpega AS "IDPEGA",
+       a.jenis_klaim AS "BUSINESSCODE",
+       TO_CHAR(a.timein, 'dd/mm/rrrr hh24:mi:ss') AS "SOBLEADER0",
+       TO_CHAR(a.timeout, 'dd/mm/rrrr hh24:mi:ss') AS "SOBLEADER1",
+       FLOOR(a.aging / 28800) AS "SOBLEADER2",
+       CASE
+           WHEN FLOOR(a.aging / 28800) <= 1 THEN 'Y'
+           ELSE 'N'
+       END AS "AUTOCANCELPRINTSTATUS",
+       ROUND(
+           (
+               (SELECT COUNT(*)
+                  FROM pooldata.PNC_CHRONOLOGYTAT
+                 WHERE userassign = a.userassign
+                   AND FLOOR(aging / 28800) <= 1)
+               /
+               (SELECT COUNT(*)
+                  FROM pooldata.PNC_CHRONOLOGYTAT
+                 WHERE userassign = a.userassign)
+           ) * 100
+       ) AS "BUSINESSNAME",
+       (SELECT COUNT(*)
+          FROM pooldata.PNC_CHRONOLOGYTAT
+         WHERE userassign = a.userassign) AS "BRANCHCODE",
+       (SELECT COUNT(*)
+          FROM pooldata.PNC_CHRONOLOGYTAT
+         WHERE userassign = a.userassign
+           AND FLOOR(aging / 28800) <= 1) AS "BRANCHNAME",
+       (SELECT COUNT(*)
+          FROM pooldata.PNC_CHRONOLOGYTAT
+         WHERE userassign = a.userassign
+           AND FLOOR(aging / 28800) > 1) AS "ACCUMCODE"
+  FROM pooldata.PNC_CHRONOLOGYTAT a
+ WHERE a.insertdate >= :1
+   AND a.insertdate < :2 + INTERVAL '1' DAY
+ ORDER BY a.userassign, a.timein
+
+
+-- name: report_adjuster
+--
+-- Survei yang sudah SELESAI, gabungan surveyor internal dan eksternal.
+--
+-- Asal: `Activity/PNCAdjusterReport_Act-Act.xml`.
+--
+-- Bind:
+--   :1  tanggal dari    DATE
+--   :2  tanggal sampai  DATE
+--
+-- ============================================================================
+-- Kueri ini DIREKONSTRUKSI, bukan disalin
+-- ============================================================================
+--
+-- Kedua Report Definition yang dipanggil activity-nya — `InboxSurveyClose_rd` dan
+-- `InboxInternalSurveyClose_rd` — TIDAK ADA di export (`R-16`). Yang tersedia hanya
+-- pemetaan kolomnya di activity itu, dan itu sudah lengkap: kesepuluh kolom laporan
+-- diketahui berikut properti sumbernya.
+--
+-- Yang harus direkonstruksi adalah PENYARINGNYA. Bahan rekonstruksinya
+-- `RDB List/BrowseInternalSurveyor-SQL.xml` — inbox survei yang BELUM selesai, dibaca
+-- terbalik.
+--
+-- Empat hal yang diambil dari sana apa adanya:
+--
+--   tabelnya              DATAPEGA.PC_ASM_FW_GCNMFW_WORK
+--   pembeda kelasnya      PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+--   pembeda internal      SURVEYORTYPE_1 = '1'
+--   keterkaitan klaimnya  CASEID_1 = pzinskey klaim induknya
+--
+-- ============================================================================
+-- TIGA hal yang masih SIMPULAN, dan harus dikonfirmasi
+-- ============================================================================
+--
+--  1. **Arti "Close".** `BrowseInternalSurveyor` menyaring
+--     `PYSTATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')` untuk inbox yang
+--     masih berjalan. Laporan ini memakai kebalikannya. Dasarnya kuat, tetapi ia tetap
+--     kebalikan yang disimpulkan — bukan yang terbaca dari rule-nya sendiri.
+--
+--  2. **Kolom yang disaring periode.** Dipilih `SURVEYDATE_1`, karena kolom tanggal pada
+--     laporannya sendiri berjudul "Tgl Pengajuan Survey". Bila Report Definition-nya
+--     ternyata menyaring `pxCreateDateTime`, hasilnya akan berbeda pada survei yang
+--     dibuat dan dijadwalkan di bulan yang berlainan.
+--
+--  3. **Rumus "Nilai Reserve Klaim ASM".** Activity-nya membaca `.ClaimData.ClaimEstimate`
+--     — properti klipboard yang tidak punya kolom sendiri. Yang dipakai di sini
+--     `SUM(convertvalue)` dari `T_CLAIM_ESTIMASI`, mengikuti rumus yang sudah dipakai
+--     modul ini untuk kolom berjudul "Reserve" (lihat report_klaim_harian).
+--
+-- Ketiganya TIDAK dapat diselesaikan tanpa kedua Report Definition itu, dan ketiganya
+-- mengubah ISI laporan — bukan bentuknya.
+--
+-- ============================================================================
+-- Kedua jenis surveyor DIGABUNG, dan itu memang perilakunya
+-- ============================================================================
+--
+-- Activity-nya memanggil KEDUA Report Definition berurutan lalu menyalin hasilnya ke
+-- daftar yang SAMA (`TempExportAdjuster.pxResults(<APPEND>)`). Jadi berkasnya memuat
+-- survei internal dan eksternal sekaligus, tanpa kolom yang membedakan keduanya.
+-- Karena itu `SURVEYORTYPE_1` tidak disaring di sini.
+SELECT (SELECT w.PYID
+          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+         WHERE w.PZINSKEY = s.CASEID_1) AS "IDSurvey",
+       s.POLICYNO AS "IDObject",
+       REPLACE(s.QQNAME, ',', ' ') AS "InsuredPIC",
+       (SELECT c.BUSINESSNAME
+          FROM POOLDATA.T_CLAIM_PNC c
+         WHERE c.CLAIMID = s.CASEID_1) AS "CouseOfLos",
+       (SELECT SUM(e.CONVERTVALUE)
+          FROM POOLDATA.T_CLAIM_ESTIMASI e
+         WHERE e.CLAIMID = s.CASEID_1) AS "Salvage",
+       s.SURVEYDATE_1 AS "BodyLetterOP",
+       s.SURVEYORNAME_1 AS "SurveyorName",
+       s.KETERANGAN_1 AS "KeteranganLain",
+       s.USERTEKNIS_1 AS "AdjusterPIC",
+       s.ADJUSTERSTATUS_1 AS "AdjusterStatus"
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
+ WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+   AND s.PYSTATUSWORK IN ('Resolved-Completed', 'Resolved-Rejected')
+   AND s.SURVEYDATE_1 >= :1
+   AND s.SURVEYDATE_1 < :2 + INTERVAL '1' DAY
+ ORDER BY s.SURVEYDATE_1, s.PYID
+
+
+-- name: report_compliance
+--
+-- Klaim Personal Accident beserta nilai propose dan nilai dibayarnya.
+--
+-- Asal: `Activity/PNCComplianceReport_Act-Act.xml`.
+--
+-- Bind:
+--   :1  tanggal dari    DATE
+--   :2  tanggal sampai  DATE
+--
+-- ============================================================================
+-- DUA kolom sengaja TIDAK diambil, dan penyaring statusnya TIDAK ada
+-- ============================================================================
+--
+-- Activity aslinya membaca tiga hal dari klipboard Pega, bukan dari tabel:
+--
+--     .ClaimData.ComplianceList(<LAST>).Compliance      -> "Komentar Compliance"
+--     .ClaimData.ComplianceList(<LAST>).ComplianceDate  -> "Tanggal Compliance"
+--     .ClaimData.PilihanCompliance                      -> penyaring Status Compliance
+--
+-- Ketiganya properti yang BELUM dioptimasi. Dipastikan tiga kali: keenam rule Property-nya
+-- tidak punya `pyColumnInclusion`; kueri katalog atas `PC_ASM_FW_GCNMFW_WORK` nol kolom
+-- ber-`%COMPLIANCE%`; dan kelas `ASM-FW-GCNMFW-Work-Compliance` ternyata
+-- `belongs to a class group` — jadi ia menumpang tabel yang sama, tidak punya tabel sendiri.
+--
+-- Kedua kolom komentar karena itu dibiarkan KOSONG di berkas, bukan dihapus: bentuk
+-- berkasnya tetap 12 kolom seperti Pega, sehingga dapat dibandingkan berdampingan.
+--
+-- **Penyaring status tidak ada.** Berkasnya memuat SELURUH klaim PA pada periode itu, bukan
+-- hanya yang berstatus tertentu. Itu perbedaan yang mengubah jumlah baris, dan karena itu
+-- dinyatakan di LABEL TOMBOLNYA — bukan disembunyikan di dokumen.
+--
+-- ============================================================================
+-- Yang ditiru apa adanya
+-- ============================================================================
+--
+-- `GROUP_PANEL = '002'`. Activity-nya memasang `Param.GroupPanel = "002"` sebagai nilai
+-- tetap: laporan ini memang laporan Personal Accident saja, dan dropdown lini bisnis tidak
+-- berpengaruh padanya.
+--
+-- ============================================================================
+-- Dua kolom nilai — rumusnya SIMPULAN
+-- ============================================================================
+--
+-- Activity membaca `.EstimationValue` dan `.AdjustmentValue` dari halaman adjustment yang
+-- sedang diputar. Padanan tabelnya dipilih mengikuti rumus yang sudah dipakai modul ini di
+-- laporan lain: estimasi dari `T_CLAIM_ESTIMASI`, nilai dibayar dari `T_CLAIM_ADJUSTMENT`.
+-- Keduanya perlu dicocokkan ke Pega sebelum dipercaya.
+SELECT a.CLAIMNO AS "CaseID",
+       a.NOPOLIS AS "ClaimNo",
+       (SELECT g.STARTDATE
+          FROM POOLDATA.T_GENERAL g
+         WHERE g.NOPOLIS = a.NOPOLIS
+           AND g.PRODKE = a.PRODKE) AS "AnaylstRemarks",
+       (SELECT g.ENDDATE
+          FROM POOLDATA.T_GENERAL g
+         WHERE g.NOPOLIS = a.NOPOLIS
+           AND g.PRODKE = a.PRODKE) AS "CountryID",
+       a.DATEOFLOSS AS "AnalystDoctorRemaks",
+       a.QQNAME AS "CityID",
+       a.LOCATION AS "Location",
+       (SELECT MIN(o.OBJECTNAME)
+          FROM POOLDATA.T_CLAIM_OBJECTLIST o
+         WHERE o.CLAIMID = a.CLAIMID) AS "ReporterName",
+       (SELECT SUM(e.ESTIMATIONVALUE)
+          FROM POOLDATA.T_CLAIM_ESTIMASI e
+         WHERE e.CLAIMID = a.CLAIMID) AS "ClaimEstimate",
+       (SELECT SUM(x.GROSSVALUE)
+          FROM POOLDATA.T_CLAIM_ADJUSTMENT x
+         WHERE x.CLAIMID = a.CLAIMID) AS "Country"
+  FROM POOLDATA.T_CLAIM_PNC a
+ WHERE a.GROUP_PANEL = '002'
+   AND a.REGISTERDATE >= :1
+   AND a.REGISTERDATE < :2 + INTERVAL '1' DAY
+ ORDER BY a.REGISTERDATE, a.CLAIMNO

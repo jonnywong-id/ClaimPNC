@@ -124,13 +124,13 @@ func TestRepositoryFailureIsForwarded(t *testing.T) {
 			d.handler.List(w, request(http.MethodGet, "", "", true))
 		},
 		"get": func(d *directHandler, w http.ResponseWriter) {
-			d.handler.Get(w, request(http.MethodGet, "", "10001", true))
+			d.handler.Get(w, request(http.MethodGet, "", "100001", true))
 		},
 		"create": func(d *directHandler, w http.ResponseWriter) {
 			d.handler.Create(w, request(http.MethodPost, `{}`, "", true))
 		},
 		"update": func(d *directHandler, w http.ResponseWriter) {
-			d.handler.Update(w, request(http.MethodPut, `{}`, "10001", true))
+			d.handler.Update(w, request(http.MethodPut, `{}`, "100001", true))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -148,12 +148,12 @@ func TestRepositoryFailureIsForwarded(t *testing.T) {
 func TestUpdateNotFoundAndValidation(t *testing.T) {
 	d := newDirectHandler(t)
 	recorder := httptest.NewRecorder()
-	d.handler.Update(recorder, request(http.MethodPut, `{"objek_dokumen":"x"}`, "99999", true))
+	d.handler.Update(recorder, request(http.MethodPut, `{"objek_dokumen":"x"}`, "999999", true))
 	require.Equal(t, http.StatusNotFound, recorder.Code)
 
 	recorder = httptest.NewRecorder()
 	long := strings.Repeat("A", daftarobjekdokumen.MaxDescriptionLength+1)
-	d.handler.Update(recorder, request(http.MethodPut, `{"objek_dokumen":"`+long+`"}`, "10001", true))
+	d.handler.Update(recorder, request(http.MethodPut, `{"objek_dokumen":"`+long+`"}`, "100001", true))
 	require.Equal(t, http.StatusUnprocessableEntity, recorder.Code)
 	require.Contains(t, recorder.Body.String(), `"validasi_gagal"`)
 }
@@ -167,13 +167,13 @@ func TestUpdateRejectsMalformedAndTrailingBody(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
-			d.handler.Update(recorder, request(http.MethodPut, body, "10001", true))
+			d.handler.Update(recorder, request(http.MethodPut, body, "100001", true))
 			require.Equal(t, http.StatusBadRequest, recorder.Code)
 			require.Contains(t, recorder.Body.String(), `"permintaan_cacat"`)
 		})
 	}
 	// Tidak satu pun yang tersimpan.
-	got, err := d.repo.Get(t.Context(), "10001")
+	got, err := d.repo.Get(t.Context(), "100001")
 	require.NoError(t, err)
 	require.Equal(t, "KTP Tertanggung", got.Description)
 }

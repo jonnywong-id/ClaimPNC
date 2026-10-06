@@ -94,6 +94,17 @@ func passesFilter(r masterrekening.Account, f masterrekening.Filter) bool {
 			return false
 		}
 	}
+	// Kata kunci cocok bila SALAH SATU dari keempat kolom memuatnya. Keempatnya sama
+	// dengan yang dicocokkan kueri SQL — bila yang satu berubah, yang lain wajib ikut,
+	// atau uji yang sama akan memberi hasil berbeda tergantung repo mana yang dipakai.
+	if keyword := strings.TrimSpace(f.Keyword); keyword != "" {
+		if !contains(r.Number, keyword) &&
+			!contains(r.OwnerName, keyword) &&
+			!contains(r.BankName, keyword) &&
+			!contains(r.BankBranch, keyword) {
+			return false
+		}
+	}
 	return true
 }
 

@@ -77,7 +77,7 @@ func TestNewHandlerDefaultsToJakartaTime(t *testing.T) {
 	recorder := serveDirect(handler, "/api/dashboard-claim/outstanding")
 	require.Equal(t, http.StatusOK, recorder.Code)
 	first := decode(t, recorder)["klaim"].([]any)[0].(map[string]any)
-	require.Equal(t, "2026-09-02", first["tanggal_register"])
+	require.Equal(t, "2026-09-02", first["tanggal_pendaftaran"])
 	require.Equal(t, "", first["tanggal_kejadian"], "tanggal kejadian kosong tidak menjadi tahun satu")
 }
 

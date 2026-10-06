@@ -28,20 +28,20 @@ const SAMPLE_PROFILE = {
  * `example.invalid` yang memang dicadangkan supaya tidak mungkin tertukar dengan pegawai
  * sungguhan.
  *
- * Seluruhnya AKTIF, karena itulah yang dikirim server: penyaring `STS_AKTIF = '1'` ada di
- * kueri, bukan di layar.
+ * Baris ketiga sengaja NONAKTIF: grid Pega menampilkan Status Aktif `0` dan `1`
+ * berdampingan, dan tanpa baris nonaktif aturan itu tidak benar-benar teruji.
  */
 const SAMPLE = [
   {
     id_operator: 'PICTEKNIK01',
     nama: 'Contoh Kepala Teknik',
     email: 'contoh.kepalateknik@example.invalid',
-    lini_bisnis: 'NONMBU',
-    grup: 'TEKNIK JAKARTA',
+    bisnis: 'NONMBU',
+    kelompok: 'A',
     atasan: '',
-    kuota: 20,
-    kuota_luar: 0,
-    beban_kerja: 6,
+    counter_klaim_kurang_1m: 6,
+    counter_klaim_lebih_1m: 0,
+    beban_kerja: 3,
     grup_panel: '',
     aktif: true,
   },
@@ -49,14 +49,27 @@ const SAMPLE = [
     id_operator: 'PICTEKNIK03',
     nama: 'Contoh Petugas Teknik',
     email: 'contoh.petugas@example.invalid',
-    lini_bisnis: 'NONMBU',
-    grup: 'TEKNIK SURABAYA',
+    bisnis: 'NONMBU',
+    kelompok: 'C',
     atasan: 'PICTEKNIK01',
-    kuota: 10,
-    kuota_luar: 0,
-    beban_kerja: 10,
+    counter_klaim_kurang_1m: 1463,
+    counter_klaim_lebih_1m: 2,
+    beban_kerja: 9,
     grup_panel: '',
     aktif: true,
+  },
+  {
+    id_operator: 'PICTEKNIK04',
+    nama: 'Contoh Petugas Nonaktif',
+    email: 'contoh.nonaktif@example.invalid',
+    bisnis: 'BONDING',
+    kelompok: 'B',
+    atasan: 'PICTEKNIK01',
+    counter_klaim_kurang_1m: 0,
+    counter_klaim_lebih_1m: 0,
+    beban_kerja: 0,
+    grup_panel: '',
+    aktif: false,
   },
 ]
 
@@ -80,8 +93,6 @@ function installFetch(reply: (url: string, init?: RequestInit) => Response | Pro
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
-    // Kerangka layar memuat menunya sendiri sejak menu dibaca dari basis data. Ia dijawab
-    // di sini supaya uji layar ini menguji layarnya, bukan jalur galat menu.
     if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
     return Promise.resolve(reply(url, init))
   })
@@ -91,7 +102,6 @@ function body(init: RequestInit | undefined): Record<string, unknown> {
   return JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
 }
 
-/** Peladen tiruan yang menjawab daftar, pencarian direktori, dan simpan. */
 function installDefaultFetch() {
   installFetch((url, init) => {
     if (url.startsWith(DIRECTORY)) {
@@ -107,18 +117,13 @@ function installDefaultFetch() {
       })
     }
     if (url === ROUTE && init?.method === 'POST') {
-      const sent = body(init)
       return jsonResponse(201, {
-        pic_teknik: { ...SAMPLE[0], ...sent, nama: 'Contoh Petugas Baru', beban_kerja: 0 },
+        pic_teknik: { ...SAMPLE[0], ...body(init), nama: 'Contoh Petugas Baru' },
         portal: 'ASM',
       })
     }
     if (url.startsWith(`${ROUTE}/`) && init?.method === 'PUT') {
-      const sent = body(init)
-      return jsonResponse(200, {
-        pic_teknik: { ...SAMPLE[0], ...sent },
-        portal: 'ASM',
-      })
+      return jsonResponse(200, { pic_teknik: { ...SAMPLE[0], ...body(init) }, portal: 'ASM' })
     }
     return jsonResponse(200, { pic_teknik: SAMPLE, total: SAMPLE.length, portal: 'ASM' })
   })
@@ -139,7 +144,6 @@ function show() {
 
 beforeEach(() => {
   calls = []
-  // Layar berada di balik sesi. Tanpa ini SessionGuard melempar ke layar masuk.
   useSession.setState({
     token: 'token-uji',
     user: SAMPLE_PROFILE,
@@ -154,98 +158,93 @@ afterEach(() => {
   useSelectedPortal.getState().clear()
 })
 
-describe('daftar', () => {
-  it('menampilkan petugas dari server', async () => {
+describe('grid', () => {
+  /**
+   * TUJUH kolom, dengan label dan urutan yang sama persis dengan grid Pega.
+   *
+   * Uji ini yang menahan kolom karangan masuk kembali — layar ini pernah punya kolom
+   * "Nama", "Beban / Kuota", dan penanda "penuh" yang tidak satu pun ada di Pega.
+   */
+  it('menampilkan tujuh kolom Pega dengan label dan urutan yang sama', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    const expected = [
+      'Input Nama',
+      'Atasan',
+      'Status Aktif',
+      'Bisnis',
+      'Kelompok',
+      'Counter Klaim <1M',
+      'Counter Klaim >1M',
+    ]
+    for (const title of expected) {
+      // getAllBy: DataTable menggambar judul kolom dua kali — tabel dan kartu layar sempit.
+      expect(screen.getAllByText(title).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('tidak menampilkan kolom yang tidak ada di Pega', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    expect(screen.queryAllByText('Beban / Kuota')).toHaveLength(0)
+    expect(screen.queryAllByText('Kuota sistem lain')).toHaveLength(0)
+    expect(screen.queryAllByText('penuh')).toHaveLength(0)
+    // TOTAL_JOB tidak pernah ditampilkan: Report Definition menyebutnya, grid-nya tidak.
+    expect(screen.queryAllByText('9')).toHaveLength(0)
+  })
+
+  it('menampilkan ID operator pada kolom pertama, bukan nama', async () => {
     installDefaultFetch()
     show()
 
-    expect(await screen.findByText('Contoh Kepala Teknik')).toBeInTheDocument()
-    // getAllBy, bukan getBy: PICTEKNIK01 muncul dua kali dengan sengaja — sebagai ID baris
-    // pertama, dan sebagai ATASAN baris kedua. Itulah bentuk kolom atasan yang memang
-    // menyimpan ID, bukan nama.
+    expect((await screen.findAllByText('PICTEKNIK01')).length).toBeGreaterThan(0)
+    // Nama tidak punya kolom sendiri di Pega; ia hanya muncul di form.
+    expect(screen.queryByText('Contoh Kepala Teknik')).not.toBeInTheDocument()
+  })
+
+  // Petugas nonaktif IKUT tampil — sama dengan layar lama, yang memuat Status Aktif `0`
+  // dan `1` berdampingan. Ini uji terpenting di berkas ini: layar sempat menyaringnya.
+  it('menampilkan petugas nonaktif, bukan menyembunyikannya', async () => {
+    installDefaultFetch()
+    show()
+
+    expect((await screen.findAllByText('PICTEKNIK04')).length).toBeGreaterThan(0)
+    // Baris aktif dan nonaktif sama-sama ada.
     expect(screen.getAllByText('PICTEKNIK01').length).toBeGreaterThan(0)
-    expect(screen.getByText('contoh.petugas@example.invalid')).toBeInTheDocument()
-
-    // Total datang dari server, bukan dihitung ulang di layar.
-    expect(screen.getByText(/2 petugas aktif/)).toBeInTheDocument()
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0)
   })
 
-  // Keputusan "daftar hanya menampilkan yang aktif" harus TERBACA pengguna, bukan hanya
-  // berlaku diam-diam — kalau tidak, petugas yang dinonaktifkan akan dikira terhapus.
-  it('menjelaskan bahwa petugas nonaktif tidak ditampilkan', async () => {
+  it('menampilkan pencacah klaim apa adanya', async () => {
     installDefaultFetch()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK03')
 
-    expect(screen.getByText(/Petugas nonaktif tidak ditampilkan/)).toBeInTheDocument()
+    expect(screen.getByText('1463')).toBeInTheDocument()
   })
 
-  it('menandai petugas yang bebannya sudah mencapai kuota', async () => {
+  it('menyebut entitas yang menjawab dan membawa token serta portal di header', async () => {
     installDefaultFetch()
     show()
-    await screen.findByText('Contoh Petugas Teknik')
-
-    // Ditandai teks, bukan warna saja — warna sendiri tidak terbaca semua orang.
-    expect(screen.getByText('penuh')).toBeInTheDocument()
-  })
-
-  it('menyebut entitas yang menjawab, bukan hanya yang diminta', async () => {
-    installDefaultFetch()
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     expect(screen.getByText(/Portal entitas:/)).toBeInTheDocument()
-  })
-
-  it('membawa token dan portal di header, bukan di URL', async () => {
-    installDefaultFetch()
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
 
     const request = calls.find((p) => p.url === ROUTE)
-    expect(request).toBeDefined()
     expect(request?.url).not.toContain('token')
-    expect(request?.url).not.toContain('ASM')
-
     const header = request?.init?.headers as Record<string, string>
     expect(header['Authorization']).toBe('Bearer token-uji')
     expect(header[HEADER_PORTAL]).toBe('ASM')
   })
 
-  /*
-    Kolom "Kuota sistem lain" tidak ditampilkan bila seluruh barisnya nol — kolom yang
-    selamanya kosong hanya menambah lebar tabel tanpa memberi tahu apa pun.
-  */
-  it('menyembunyikan kolom kuota sistem lain saat seluruhnya nol', async () => {
-    installDefaultFetch()
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
-
-    expect(screen.queryAllByText('Kuota sistem lain')).toHaveLength(0)
-  })
-
-  it('menampilkan kolom kuota sistem lain saat ada yang mengisinya', async () => {
-    installFetch(() =>
-      jsonResponse(200, {
-        pic_teknik: [{ ...SAMPLE[0], kuota_luar: 3 }],
-        total: 1,
-        portal: 'ASM',
-      }),
-    )
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
-
-    // getAllBy: DataTable menggambar judul kolom dua kali — sekali untuk tabel, sekali
-    // untuk tata letak kartu pada layar sempit (`D-12`).
-    expect(screen.getAllByText('Kuota sistem lain').length).toBeGreaterThan(0)
-  })
-
-  // Tidak ada Hapus — layar Pega pun tidak punya, dan menghapus petugas memutus rujukan
-  // penugasan pada klaim lama.
   it('tidak menyediakan tombol hapus', async () => {
     installDefaultFetch()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     expect(screen.queryByRole('button', { name: /hapus/i })).not.toBeInTheDocument()
   })
@@ -258,48 +257,132 @@ describe('portal', () => {
     show()
 
     expect(await screen.findByText(/Portal entitas belum dipilih/)).toBeInTheDocument()
-    // Permintaan daftar TIDAK dikirim: layar yang menuntun lebih berguna daripada pesan
-    // galat dari server.
     expect(calls.find((p) => p.url === ROUTE)).toBeUndefined()
   })
 })
 
-describe('menambah', () => {
-  it('mengisi nama dan atasan dari hasil pencarian direktori', async () => {
+describe('form', () => {
+  /**
+   * SEMBILAN isian, dengan label dan urutan yang sama persis dengan form Pega
+   * "Memperbaharui Data".
+   */
+  it('menampilkan sembilan isian Pega dengan label yang sama', async () => {
     installDefaultFetch()
     const user = userEvent.setup()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     await user.click(screen.getByRole('button', { name: /Tambah/i }))
-    await user.type(screen.getByLabelText('ID Operator'), 'PICTEKNIK05')
-    await user.click(screen.getByRole('button', { name: /Cari pegawai di direktori/i }))
 
-    // Nama datang dari direktori dan tidak dapat diketik.
+    expect(screen.getByLabelText('Username')).toBeInTheDocument()
+    // getAllBy: "Input Nama" dipakai DUA kali dengan sengaja — judul kolom pertama grid
+    // dan label isian hasil pencarian di form. Keduanya memang label Pega.
+    expect(screen.getAllByText('Input Nama').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Kelompok')).toBeInTheDocument()
+    expect(screen.getByLabelText('Status Aktif')).toBeInTheDocument()
+    expect(screen.getByLabelText('Atasan')).toBeInTheDocument()
+    expect(screen.getByLabelText('Bisnis')).toBeInTheDocument()
+    expect(screen.getByLabelText('Counter Klaim <1M')).toBeInTheDocument()
+    expect(screen.getByLabelText('Counter Klaim >1M')).toBeInTheDocument()
+  })
+
+  it('tidak memuat isian yang tidak ada di Pega', async () => {
+    installDefaultFetch()
+    const user = userEvent.setup()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    await user.click(screen.getByRole('button', { name: /Tambah/i }))
+
+    expect(screen.queryByLabelText('ID Operator')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Lini Bisnis')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Grup')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Beban Kerja')).not.toBeInTheDocument()
+    // Pencariannya terpicu saat isian ditinggalkan, tanpa tombol — sama dengan Pega.
+    expect(screen.queryByRole('button', { name: /Cari/i })).not.toBeInTheDocument()
+  })
+
+  // Kelompok, Status Aktif, Atasan, dan Bisnis adalah DROPDOWN di Pega, bukan teks bebas.
+  it('menyajikan Kelompok, Status Aktif, Atasan, dan Bisnis sebagai dropdown', async () => {
+    installDefaultFetch()
+    const user = userEvent.setup()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    await user.click(screen.getByRole('button', { name: /Tambah/i }))
+
+    for (const label of ['Kelompok', 'Status Aktif', 'Atasan', 'Bisnis']) {
+      expect(screen.getByLabelText(label).tagName).toBe('SELECT')
+    }
+
+    /*
+      Pilihan Kelompok dan Bisnis berasal dari Property rule Pega, BUKAN dari data yang
+      kebetulan tampil:
+
+        Property/TEAM_GROUP_property.xml     A · B · C
+        Property/TYPE_BUSINESS_property.xml  NONMBU · TRAVEL · PA · BONDING
+
+      Contoh di berkas ini hanya memuat NONMBU dan BONDING; TRAVEL dan PA tetap harus ada.
+      Itulah yang membedakan daftar tetap dari daftar yang diturunkan dari isi tabel.
+    */
+    const groupOptions = Array.from(screen.getByLabelText('Kelompok').querySelectorAll('option'))
+    expect(groupOptions.map((o) => o.value)).toEqual(['', 'A', 'B', 'C'])
+
+    const businessOptions = Array.from(screen.getByLabelText('Bisnis').querySelectorAll('option'))
+    expect(businessOptions.map((o) => o.value)).toEqual(['', 'NONMBU', 'TRAVEL', 'PA', 'BONDING'])
+
+    expect(screen.getByRole('option', { name: 'Ya' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Tidak' })).toBeInTheDocument()
+  })
+
+  // ATASAN tidak punya daftar nilai di Property rule — ia Text biasa, dan yang
+  // membatasinya di Pega adalah autocomplete atas daftar operator.
+  it('mengisi dropdown Atasan dari daftar operator, bukan daftar tetap', async () => {
+    installDefaultFetch()
+    const user = userEvent.setup()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    await user.click(screen.getByRole('button', { name: /Tambah/i }))
+
+    const options = Array.from(screen.getByLabelText('Atasan').querySelectorAll('option'))
+    expect(options.map((o) => o.value)).toEqual([
+      '',
+      'PICTEKNIK01',
+      'PICTEKNIK03',
+      'PICTEKNIK04',
+    ])
+  })
+
+  it('mencari direktori saat Username ditinggalkan, lalu mengisi nama dan atasan', async () => {
+    installDefaultFetch()
+    const user = userEvent.setup()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    await user.click(screen.getByRole('button', { name: /Tambah/i }))
+    await user.type(screen.getByLabelText('Username'), 'PICTEKNIK05')
+    await user.tab()
+
     expect(await screen.findByText('Contoh Petugas Baru')).toBeInTheDocument()
-    // Atasan diusulkan dari blok EmpLeader respons direktori.
     await waitFor(() => {
       expect(screen.getByLabelText('Atasan')).toHaveValue('PICTEKNIK01')
     })
     expect(screen.getByText(/Menurut direktori:/)).toBeInTheDocument()
   })
 
-  it('tidak pernah mengirim nama ke server', async () => {
+  it('tidak pernah mengirim nama, grup panel, atau beban kerja ke server', async () => {
     installDefaultFetch()
     const user = userEvent.setup()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     await user.click(screen.getByRole('button', { name: /Tambah/i }))
-    await user.type(screen.getByLabelText('ID Operator'), 'PICTEKNIK05')
-    await user.click(screen.getByRole('button', { name: /Cari pegawai di direktori/i }))
+    await user.type(screen.getByLabelText('Username'), 'PICTEKNIK05')
+    await user.tab()
     await screen.findByText('Contoh Petugas Baru')
 
-    // Dikosongkan lebih dulu: pencarian sudah mengusulkan surel dari direktori, dan
-    // mengetik di atasnya akan merangkai dua alamat menjadi satu.
-    const email = screen.getByLabelText('Email')
-    await user.clear(email)
-    await user.type(email, 'baru@example.invalid')
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
 
     await waitFor(() => {
@@ -307,46 +390,34 @@ describe('menambah', () => {
     })
 
     const sent = body(calls.find((p) => p.url === ROUTE && p.init?.method === 'POST')?.init)
-    // Ketiganya dimiliki server, bukan layar. Server bahkan menolak badan yang memuatnya.
     expect(sent).not.toHaveProperty('nama')
     expect(sent).not.toHaveProperty('grup_panel')
     expect(sent).not.toHaveProperty('beban_kerja')
     expect(sent.id_operator).toBe('PICTEKNIK05')
+    expect(sent.counter_klaim_kurang_1m).toBe(0)
   })
 
-  // Surel diusulkan dari direktori supaya petugas tidak mengetik ulang, tetapi ia tetap
-  // MILIK master ini — di sistem lama pun surel diketik, bukan diturunkan.
-  it('mengusulkan surel dari direktori saat isiannya masih kosong', async () => {
+  // Email kosong DITERIMA. Section Pega tidak memuat satu pun `pyRequired=true`, dan
+  // kolomnya NULLABLE — mewajibkannya membuat baris lama yang surelnya kosong tidak
+  // dapat disunting sama sekali.
+  it('menerima email kosong dan tetap mengirim ke server', async () => {
     installDefaultFetch()
     const user = userEvent.setup()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     await user.click(screen.getByRole('button', { name: /Tambah/i }))
-    await user.type(screen.getByLabelText('ID Operator'), 'PICTEKNIK05')
-    await user.click(screen.getByRole('button', { name: /Cari pegawai di direktori/i }))
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Email')).toHaveValue('contoh.baru@example.invalid')
-    })
-  })
-
-  it('menolak email yang kosong sebelum menembak server', async () => {
-    installDefaultFetch()
-    const user = userEvent.setup()
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
-
-    await user.click(screen.getByRole('button', { name: /Tambah/i }))
-    await user.type(screen.getByLabelText('ID Operator'), 'PICTEKNIK05')
+    await user.type(screen.getByLabelText('Username'), 'PICTEKNIK05')
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
 
-    expect(await screen.findByText('Email wajib diisi.')).toBeInTheDocument()
-    expect(calls.find((p) => p.init?.method === 'POST')).toBeUndefined()
+    await waitFor(() => expect(calls.find((p) => p.init?.method === 'POST')).toBeDefined())
+    expect(screen.queryByText('Email wajib diisi.')).not.toBeInTheDocument()
   })
 
-  // Katalog yang belum diisi dibedakan dari jaringan yang putus: yang ini tidak akan pulih
-  // sendiri, dan pesannya harus mengatakan itu alih-alih menyuruh mencoba lagi.
+  // Format email yang salah tetap ditolak — diuji di TechnicianPage.more.test.tsx
+  // ("menolak isian kosong dan format email yang salah"), pada form yang Username-nya
+  // masih kosong sehingga pencarian direktori tidak ikut mengisi ulang kolom surel.
+
   it('mengatakan mengulang tidak menolong saat layanan direktori belum terdaftar', async () => {
     installFetch((url) => {
       if (url.startsWith(DIRECTORY)) {
@@ -359,19 +430,20 @@ describe('menambah', () => {
     })
     const user = userEvent.setup()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     await user.click(screen.getByRole('button', { name: /Tambah/i }))
-    await user.type(screen.getByLabelText('ID Operator'), 'PICTEKNIK05')
-    await user.click(screen.getByRole('button', { name: /Cari pegawai di direktori/i }))
+    await user.type(screen.getByLabelText('Username'), 'PICTEKNIK05')
+    await user.tab()
 
-    expect(
-      await screen.findByText(/Layanan pencarian pegawai belum terdaftar/),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/Layanan pencarian pegawai belum terdaftar/)).toBeInTheDocument()
     expect(screen.getByText(/Mengulang tidak akan menolong/)).toBeInTheDocument()
   })
 
-  it('menyorot kolom ID saat pegawai tidak terdaftar di direktori', async () => {
+  // ID yang tidak ketemu adalah KETERANGAN, bukan penolakan: server menerimanya, sama
+  // seperti Pega yang hanya mengisi MCL_NAME apa adanya. Menandai isian merah membuat
+  // form tampak tidak dapat disimpan padahal bisa.
+  it('menerangkan tanpa menandai salah saat pegawai tidak terdaftar di direktori', async () => {
     installFetch((url) => {
       if (url.startsWith(DIRECTORY)) {
         return jsonResponse(422, {
@@ -386,35 +458,40 @@ describe('menambah', () => {
     })
     const user = userEvent.setup()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     await user.click(screen.getByRole('button', { name: /Tambah/i }))
-    await user.type(screen.getByLabelText('ID Operator'), 'TIDAKTERDAFTAR')
-    await user.click(screen.getByRole('button', { name: /Cari pegawai di direktori/i }))
+    await user.type(screen.getByLabelText('Username'), 'TIDAKTERDAFTAR')
+    await user.tab()
 
-    expect(
-      await screen.findByText('ID operator tidak terdaftar di direktori pegawai.'),
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText('ID Operator')).toHaveAttribute('aria-invalid', 'true')
+    expect(await screen.findByText(/tidak ketemu di master maupun direktori/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Username')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByText('Pencarian gagal')).not.toBeInTheDocument()
   })
 })
 
 describe('mengubah', () => {
-  it('mengunci ID operator dan mengirim perubahan lewat PUT', async () => {
+  it('memakai judul Pega dan mengunci Username', async () => {
     installDefaultFetch()
     const user = userEvent.setup()
     show()
-    await screen.findByText('Contoh Kepala Teknik')
+    await screen.findAllByText('PICTEKNIK01')
 
     await user.click(screen.getAllByRole('button', { name: /^Ubah PIC teknik/i })[0]!)
 
-    // ID digambar sebagai kotak mati; ia tidak lagi berupa isian yang dapat diketik.
-    expect(screen.queryByLabelText('ID Operator')).not.toBeInTheDocument()
+    expect(screen.getByText('Memperbaharui Data')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument()
     expect(screen.getByText(/Tidak dapat diubah/)).toBeInTheDocument()
+  })
 
-    const group = screen.getByLabelText('Grup')
-    await user.clear(group)
-    await user.type(group, 'TEKNIK BANDUNG')
+  it('mengirim perubahan lewat PUT dengan nama isian Pega', async () => {
+    installDefaultFetch()
+    const user = userEvent.setup()
+    show()
+    await screen.findAllByText('PICTEKNIK01')
+
+    await user.click(screen.getAllByRole('button', { name: /^Ubah PIC teknik/i })[0]!)
+    await user.selectOptions(screen.getByLabelText('Kelompok'), 'C')
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
 
     await waitFor(() => {
@@ -423,32 +500,6 @@ describe('mengubah', () => {
 
     const request = calls.find((p) => p.init?.method === 'PUT')
     expect(request?.url).toBe(`${ROUTE}/PICTEKNIK01`)
-    expect(body(request?.init).grup).toBe('TEKNIK BANDUNG')
-  })
-
-  // Peringatan diberikan SEBELUM disimpan. Tanpa itu, petugas yang dinonaktifkan tampak
-  // seperti terhapus dan pengguna akan melaporkannya sebagai kehilangan data.
-  it('memperingatkan bahwa menonaktifkan menghilangkan baris dari daftar', async () => {
-    installDefaultFetch()
-    const user = userEvent.setup()
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
-
-    await user.click(screen.getAllByRole('button', { name: /^Ubah PIC teknik/i })[0]!)
-
-    expect(screen.getByText(/hilang dari daftar/)).toBeInTheDocument()
-    expect(screen.getByText(/Datanya tidak dihapus/)).toBeInTheDocument()
-  })
-
-  it('menampilkan beban kerja sebagai keterangan, bukan isian', async () => {
-    installDefaultFetch()
-    const user = userEvent.setup()
-    show()
-    await screen.findByText('Contoh Kepala Teknik')
-
-    await user.click(screen.getAllByRole('button', { name: /^Ubah PIC teknik/i })[0]!)
-
-    expect(screen.getByText('6 pekerjaan berjalan')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Beban Kerja')).not.toBeInTheDocument()
+    expect(body(request?.init).kelompok).toBe('C')
   })
 })

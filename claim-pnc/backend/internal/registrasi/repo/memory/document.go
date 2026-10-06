@@ -24,6 +24,20 @@ func (r *ClaimRecords) AddAttachment(_ context.Context, a registrasi.NewAttachme
 	return nil
 }
 
+// DeleteAttachment menghapus lampiran ber-IMAGEID itu dari seluruh klaim.
+func (r *ClaimRecords) DeleteAttachment(_ context.Context, imageID string) error {
+	for number, list := range r.Attachment {
+		kept := list[:0]
+		for _, a := range list {
+			if a.ImageID != imageID {
+				kept = append(kept, a)
+			}
+		}
+		r.Attachment[number] = kept
+	}
+	return nil
+}
+
 var _ registrasi.AttachmentStore = (*ClaimRecords)(nil)
 
 // DocumentUploader adalah layanan penyimpanan palsu: ia merekam berkas dan menerbitkan
@@ -31,6 +45,24 @@ var _ registrasi.AttachmentStore = (*ClaimRecords)(nil)
 type DocumentUploader struct {
 	mu    sync.Mutex
 	Files []registrasi.DocumentFile
+
+	// Links adalah alamat berkas menurut IMAGEID, dipasang uji.
+	Links map[string]registrasi.DocumentLink
+
+	// Removed merekam IMAGEID yang dihapus; RemoveErr membuat penghapusan gagal.
+	Removed   []string
+	RemoveErr error
+}
+
+// Remove merekam penghapusan, atau gagal dengan RemoveErr.
+func (u *DocumentUploader) Remove(_ context.Context, _, imageID, _ string) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.RemoveErr != nil {
+		return u.RemoveErr
+	}
+	u.Removed = append(u.Removed, imageID)
+	return nil
 }
 
 // Upload merekam berkas dan mengembalikan IMAGEID.
@@ -41,4 +73,15 @@ func (u *DocumentUploader) Upload(_ context.Context, f registrasi.DocumentFile) 
 	return fmt.Sprintf("IMG-%d", len(u.Files)), nil
 }
 
-var _ registrasi.DocumentUploader = (*DocumentUploader)(nil)
+// Link mengembalikan alamat yang dipasang uji pada Links menurut IMAGEID; kosong bila tidak ada.
+func (u *DocumentUploader) Link(_ context.Context, _, imageID, _ string) (registrasi.DocumentLink, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.Links[imageID], nil
+}
+
+var (
+	_ registrasi.DocumentUploader = (*DocumentUploader)(nil)
+	_ registrasi.DocumentLinker   = (*DocumentUploader)(nil)
+	_ registrasi.DocumentRemover  = (*DocumentUploader)(nil)
+)

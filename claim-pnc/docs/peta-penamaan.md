@@ -1745,8 +1745,11 @@ objek dokumen tidak pernah berubah dan barisnya tidak pernah dihapus.
 | `ID` | `id` | `ID` | "ID" |
 | `KET_DOC_OBJ` | `objek_dokumen` | `Description` | **"Daftar Objek Dokumen"** |
 | `OLD_ID` | `id_lama` | `OldID` | *(tidak ditampilkan)* |
-| `BISNISID` | `bisnis[].id` | `Business.ID` | *(tersembunyi)* |
-| `NOTE` | `bisnis[].nama` | `Business.Name` | "ID Bisnis" |
+| `$.LIST_LBU_ID[*].ID` di `JSON_DATA` | `bisnis[].id` | `Business.ID` | "ID Bisnis" |
+| *(tidak tersimpan)* | `bisnis[].nama` | `Business.Name` | "ID Bisnis" |
+
+**Nama bisnis tidak punya kolom.** Dikoreksi 2026-10-03: yang tersimpan hanyalah ID, di dalam
+dokumen JSON baris induknya. Namanya dilengkapi saat dibaca dengan mencocokkan ke master.
 
 **`objek_dokumen`, bukan `keterangan`.** Field JSON mengikuti label layar supaya namanya
 mencerminkan isinya. Kata "Daftar" di depan label itu milik layarnya — ia daftar objek dokumen —
@@ -1756,31 +1759,59 @@ sedangkan nilai satu barisnya adalah satu objek dokumen.
 dinamai adalah perannya di dalam baris: ia keterangan barisnya. Nama modulnya sendiri tetap
 Indonesia (`D-81`).
 
-### Objek basis data — mana yang pasti, mana yang dugaan
+### Objek basis data — seluruhnya DIBACA DARI KATALOG (dikoreksi 2026-10-03)
 
-| Objek | Status | Sumber |
+| Objek | Keterangan |
+|---|---|
+| `POOLDATA.LST_DOC_OBJ` | tabel induk, 12 baris. Dibaca **dan** ditulis modul ini |
+| `POOLDATA.LST_DOC_OBJ_SEQ` | urutan penerbit ID, `LAST_NUMBER` 778 |
+| `POOLDATA.M_SITE_DATABASE` | kode situs, bernilai `"1"` |
+| `POOLDATA.BUSINESS` | master bisnis milik GISFW, 206 baris, **hanya dibaca** |
+
+Tidak dipakai, meski namanya menggoda:
+
+| Objek | Kenapa tidak |
+|---|---|
+| `POOLDATA.V_LST_DOC_OBJ` | tidak memuat `JSON_DATA`, dan di situlah isinya tinggal |
+| `POOLDATA.LST_DOC_OBJ_BUSINESS` | ada tetapi **kosong**, hanya dua kolom, tidak dibaca siapa pun |
+| `POOLDATA.SET_LST_DOC_OBJ` | namanya mirip urutan, tetapi ia **PROCEDURE** |
+
+Seluruh nama diisolasi di `repo/sqlstore/daftarobjekdokumen.sql`. Tidak ada nama tabel yang
+tercecer di dalam kode Go.
+
+### Di mana isinya tinggal: `JSON_DATA`, bukan kolom
+
+Kolom `KET_DOC_OBJ` **kosong pada seluruh 12 baris**; isinya ada di dokumen JSON:
+
+```json
+{"ID":"100766","LIST_LBU_ID":[{"ID":"10027"},{"ID":"10045"}],"KET_DOC_OBJ":"STOCK"}
+```
+
+| Jalur | Perlakuan |
+|---|---|
+| Baca nama | `COALESCE(KET_DOC_OBJ, JSON_VALUE(JSON_DATA, '$.KET_DOC_OBJ'))` |
+| Baca pemetaan bisnis | dibongkar dari `JSON_DATA` **di Go** |
+| Tulis | `JSON_DATA` **dan** `KET_DOC_OBJ` sekaligus |
+
+### Bentuk ID — LIMA digit, enam karakter
+
+```
+ID = M_SITE_DATABASE.ID || lpad(LST_DOC_OBJ_SEQ.nextval, 5, '0')
+```
+
+Mengikuti `POOLDATA.PEGA_LST_DOC_OBJ` — procedure yang **ada di basis data** meski hilang dari
+export. Ditegaskan data: `100766`..`100777`, `ID` berupa `CHAR(6)`.
+
+**Rumpun `LST_DOC_TYPE` memakai EMPAT digit, `M_CAUSE_OF_LOSS` memakai TIGA.** Lebar nomor urut
+harus dibaca dari procedure tabel itu sendiri, tidak pernah disalin dari tetangganya —
+menyalinnya menghasilkan ID berbentuk salah yang tidak terlihat sampai baris pertama disimpan.
+
+### Batas panjang
+
+| Isian | Batas | Sumber |
 |---|---|---|
-| `POOLDATA.V_LST_DOC_OBJ` | **pasti** | `Report Definition/BrowseVLstDocObj_RD-RD.xml` |
-| `POOLDATA.M_SITE_DATABASE` | **pasti** | `Database/PEGA_LST_DOC_TYPE.prc:11` |
-| `POOLDATA.BUSINESS` | **pasti** | `RDB List/GetLBUID_SQL-SQL.xml` |
-| `POOLDATA.LST_DOC_OBJ` | **DUGAAN** | diturunkan dari nama view-nya |
-| `POOLDATA.SET_LST_DOC_OBJ` | **DUGAAN** | diturunkan dari `SET_LST_DOC_TYPE` |
-| `POOLDATA.LST_DOC_OBJ_BUSINESS` | **DUGAAN** | tabel baru, dirancang di migrasi 0010 |
-
-Ketiga dugaan diisolasi di `repo/sqlstore/daftarobjekdokumen.sql`. Tidak ada nama tabel yang tercecer
-di dalam kode Go.
-
-### Bentuk ID — empat digit, bukan tiga
-
-```
-ID = M_SITE_DATABASE.ID || lpad(SET_LST_DOC_OBJ.nextval, 4, '0')
-```
-
-Mengikuti `Database/PEGA_LST_DOC_TYPE.prc:21`, procedure tabel bersaudara di rumpun `LST_*`.
-
-**Rumpun `M_CAUSE_OF_LOSS` memakai TIGA digit.** Lebar nomor urut harus dibaca dari procedure
-rumpunnya masing-masing, tidak pernah disalin dari modul tetangga. Menyalinnya menghasilkan ID
-berbentuk salah yang tidak terlihat sampai baris pertama disimpan ke Oracle.
+| Keterangan | **20** | `KET_DOC_OBJ VARCHAR2(20)`, dibaca dari katalog |
+| Nama bisnis | tidak dibatasi | tidak pernah disimpan; yang menentukan adalah apakah ia ada di master |
 
 Pemadatan nolnya dikerjakan **di Go**, bukan dengan `LPAD` — `LPAD` termasuk yang dilarang
 `09-DATABASE-STRATEGY.md` §4.
@@ -5114,3 +5145,156 @@ properti **`ACCOUNT_ID`** membawa **muatan JSON**, bukan nomor rekening —
 `RDB List/UpdateBengkelHE-SQL.xml` mengirimnya sebagai CLOB ke `PEGA_M_BENGKEL_HE`. Nomor
 rekening yang sesungguhnya ada di kolom `NO_ACCOUNT`.
 >>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904
+
+### Koreksi 2026-10-03 — Plan dan Jaminan dicabut
+
+Grid Plan dan Jaminan tidak ada di layar Pega yang berjalan (Work Owner memeriksa
+langsung). Nama-nama berikut **dicabut** dari modul ini, dan tidak boleh dipakai kembali
+tanpa keputusan Work Owner:
+
+| Lapisan | Nama yang dicabut |
+|---|---|
+| Go domain | `Coverage`, `CoverageInput`, `Plan`, `CoverageOption`, `PlanRepo`, `PlanRepoSelector` |
+| Go transport | `CoverageDTO`, `PlanDTO`, `CoverageOptionDTO`, `PlanListResponse`, `CoverageSaveEntry` |
+| Field JSON | `jaminan`, `id_plan`, `nama_plan`, `id_jaminan`, `nama_jaminan` |
+| Jalur API | `GET /api/master/plan-travel` |
+| TypeScript | `TravelDocumentDetailCoverage`, `TravelDocumentDetailCoverageInput`, `TravelPlan`, `TravelCoverage`, `TravelPlanListResponse` |
+| Tabel | `POOLDATA.V_LST_DOC_TRAVEL_COVERAGE`, `POOLDATA.M_PLANTRAVEL` |
+
+Yang tersisa, dan itulah seluruh isi modulnya:
+
+| Kolom | Go | JSON | Label layar |
+|---|---|---|---|
+| `ID` | `Detail.ID` | `id` | ID |
+| `DOCID` | `Detail.DocumentID` | `id_dokumen` | ID Dokumen |
+| `DOCUMENTNAME` | `Detail.DocumentName` | `nama_dokumen` | Nama Dokumen |
+| `STSWAJIB` | `Detail.Mandatory` (**bool**) | `status_wajib` (**bool**) | Status Wajib |
+| `MINUNGGAH` | `Detail.MinUpload` (`int`) | `minimal_unggah` (`number`) | Minimal Unggah |
+
+Teks layar yang ikut hilang: judul kelompok **"Plan dan Jaminan"**, label **"Nama Plan
+baris N"** dan **"Nama Jaminan baris N"**, tombol **"Tambah Plan"** dan **"Hapus
+pembatasan baris N"**, serta kalimat *"Belum ada pembatasan…"*.
+
+---
+
+## Koreksi 2026-10-03 — Master PIC Teknik disamakan dengan label Pega
+
+Penamaan modul ini sempat memakai istilah yang **saya karang sendiri**, bukan label yang
+dipakai layar Pega. Koreksinya dicatat di sini karena ia contoh persis dari masalah yang
+`D-19` dan utang teknis 4.2 peringatkan: nama kolom yang tidak mencerminkan isinya, lalu
+dipercaya begitu saja.
+
+### Dua nama yang salah arti, bukan sekadar salah bahasa
+
+| Kolom | Alias/nama lama | Yang saya tulis | **Yang benar** |
+|---|---|---|---|
+| `COUNTER_QUOTA` | `COUNTER_QUOTA` | `Quota` — "Kuota" | **`ClaimCounterBelow1M`** — "Counter Klaim <1M" |
+| `COUNTER_QUOTA2` | `OLD_OPERATOR_ID` | `ExternalQuota` — "Kuota Sistem Lain" | **`ClaimCounterAbove1M`** — "Counter Klaim >1M" |
+
+Keduanya **pencacah klaim yang sudah ditangani**, dipisah menurut nilai klaim di bawah dan
+di atas Rp 1 Miliar — bukan batas pekerjaan. Labelnya ada di
+`Section/BrowseUserTeknis-Section.xml:21683` dan `:22436`, dan pemakaiannya membenarkannya:
+`BrowsePICRandomTeam-SQL.xml:39-40` memilih petugas dengan `ORDER BY counter_quota ASC`.
+
+Nama kolomnya karena itu menyesatkan **dua kali**: `COUNTER_QUOTA` menyebut kuota padahal
+pencacah, dan aliasnya `OLD_OPERATOR_ID` menyebut identitas padahal angka.
+
+### Dua nama yang benar artinya tetapi salah istilah
+
+| Kolom | Yang saya tulis | **Label Pega** |
+|---|---|---|
+| `TYPE_BUSINESS` | "Lini Bisnis" | **"Bisnis"** |
+| `TEAM_GROUP` | "Grup" | **"Kelompok"** |
+
+### Peta lengkapnya sesudah koreksi
+
+| Kolom | Label layar | Field domain | Field JSON |
+|---|---|---|---|
+| `OPERATOR_ID` | "Input Nama" (grid) · "Username" (form) | `OperatorID` | `id_operator` |
+| `MCL_NAME` | "Input Nama" (form) | `Name` | `nama` |
+| `EMAIL` | "Email" | `Email` | `email` |
+| `TYPE_BUSINESS` | "Bisnis" | `BusinessLine` | `bisnis` |
+| `TEAM_GROUP` | "Kelompok" | `Group` | `kelompok` |
+| `ATASAN` | "Atasan" | `Supervisor` | `atasan` |
+| `COUNTER_QUOTA` | "Counter Klaim <1M" | `ClaimCounterBelow1M` | `counter_klaim_kurang_1m` |
+| `COUNTER_QUOTA2` | "Counter Klaim >1M" | `ClaimCounterAbove1M` | `counter_klaim_lebih_1m` |
+| `TOTAL_JOB` | — tidak ditampilkan | `Workload` | `beban_kerja` |
+| `GROUPPANEL` | — tidak ditampilkan | `PanelGroup` | `grup_panel` |
+| `STS_AKTIF` | "Status Aktif" | `Active` | `aktif` |
+
+**Satu label sengaja TIDAK diperbaiki.** Kolom pertama grid berisi `OPERATOR_ID` di bawah
+label "Input Nama" — label yang jelas tidak cocok dengan isinya. Ia dibiarkan apa adanya
+atas instruksi Work Owner: petugas harus melihat layar yang sama, dan memperbaiki label
+sepihak justru membuat layar baru berbeda dari yang lama.
+
+Ini perbedaan penting dari `D-19`. `D-19` mengganti **nama di dalam kode**; label yang
+dilihat pengguna tetap mengikuti layar Pega (`D-13`). Keduanya berjalan bersamaan di modul
+ini: `ClaimCounterBelow1M` di kode, "Counter Klaim <1M" di layar.
+
+### Konstanta daftar nilai
+
+Disalin dari Property rule, bukan diturunkan dari data:
+
+| Konstanta Go | Konstanta frontend | Sumber |
+|---|---|---|
+| `GroupCodes` | `GROUP_CODES` | `Property/TEAM_GROUP_property.xml` |
+| `BusinessCodes` | `BUSINESS_CODES` | `Property/TYPE_BUSINESS_property.xml` |
+
+`ATASAN` tidak punya konstanta: Property rule-nya Text biasa tanpa daftar nilai.
+
+### Nama uji yang ikut berubah
+
+| Sebelum | Sesudah |
+|---|---|
+| `TestListReturnsOnlyActiveTechnicians` | `TestListReturnsActiveAndInactiveTechnicians` |
+| `TestListQueryFiltersActiveOnly` | `TestListQueryDoesNotFilterActive` |
+| `TestListShowsOnlyActiveTechniciansSorted` | `TestListShowsEveryTechnicianSorted` |
+| `TestListReturnsActiveOnly` (HTTP) | `TestListIncludesInactiveTechnicians` |
+
+Nama uji ikut diperbaiki, bukan hanya isinya: uji bernama `...OnlyActive...` yang isinya
+justru memeriksa sebaliknya adalah dokumentasi yang berbohong.
+
+---
+
+## Koreksi 2026-10-05 — `OLD_OPERATOR_ID` adalah ALIAS, bukan kolom
+
+Satu lagi contoh utang teknis 4.2, dan kali ini saya yang terjebak.
+
+| Nama | Apa sebenarnya |
+|---|---|
+| `COUNTER_QUOTA2` | **kolom nyata** di `POOLDATA.MST_USER_TEKNIK` |
+| `OLD_OPERATOR_ID` | **alias** yang dipasang `RDB List/GetMasterPICTeknis-SQL.xml` |
+
+```sql
+COUNTER_QUOTA2 AS "OLD_OPERATOR_ID"
+```
+
+Alias itu menyebut **identitas** padahal isinya **angka pencacah**. Ia dipasang agar cocok
+dengan properti klipboard Pega yang sudah ada — persis sebab yang dijelaskan
+`03-CURRENT-ARCHITECTURE.md` §4.2.
+
+**Aturan yang berlaku sesudah ini:** nama di dalam `AS "…"` pada kueri Pega **tidak boleh**
+dipakai sebagai nama kolom. Yang dipakai adalah nama di sebelah kirinya.
+
+### Peta kolom tabel `POOLDATA.MST_USER_TEKNIK`
+
+Terverifikasi dari kueri Work Owner, `GetMasterPICTeknis`, dan `PEGA_MST_USER_TEKNIS.prc`:
+
+| Kolom tabel | Alias Pega | Label layar | Field domain | Field JSON |
+|---|---|---|---|---|
+| `OPERATOR_ID` | — | "Input Nama" · "Username" | `OperatorID` | `id_operator` |
+| `MCL_NAME` | — | "Input Nama" (form) | `Name` | `nama` |
+| `EMAIL` | — | "Email" | `Email` | `email` |
+| `TYPE_BUSINESS` | — | "Bisnis" | `BusinessLine` | `bisnis` |
+| `TEAM_GROUP` | — | "Kelompok" | `Group` | `kelompok` |
+| `ATASAN` | — | "Atasan" | `Supervisor` | `atasan` |
+| `COUNTER_QUOTA` | — | "Counter Klaim <1M" | `ClaimCounterBelow1M` | `counter_klaim_kurang_1m` |
+| **`COUNTER_QUOTA2`** | **`OLD_OPERATOR_ID`** | "Counter Klaim >1M" | `ClaimCounterAbove1M` | `counter_klaim_lebih_1m` |
+| `GROUPPANEL` | `IBNR` | — tidak ditampilkan | `PanelGroup` | `grup_panel` |
+| `STS_AKTIF` | — | "Status Aktif" | `Active` | `aktif` |
+
+Dua kolom memikul alias yang menyesatkan sekaligus: `COUNTER_QUOTA2 AS "OLD_OPERATOR_ID"`
+dan `GROUPPANEL AS "IBNR"`.
+
+`TOTAL_JOB` **tidak ada di tabel** — ia hanya milik view `V_MST_USER_TEKNIS`, yang sejak
+sekarang tidak dibaca sama sekali.

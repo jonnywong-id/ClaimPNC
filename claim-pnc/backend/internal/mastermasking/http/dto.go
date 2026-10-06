@@ -65,6 +65,71 @@ type BranchDTO struct {
 	Name string `json:"nama"`
 }
 
+// OperatorDTO adalah satu petugas pada form Tambah.
+//
+// Dua kolom tabel layar lama: NAMA USER dan LOGIN.
+type OperatorDTO struct {
+	Login string `json:"login"`
+	Name  string `json:"nama"`
+}
+
+// OperatorListResponse adalah jawaban GET /api/master/masking/pengguna.
+type OperatorListResponse struct {
+	Pengguna []OperatorDTO `json:"pengguna"`
+	Total    int           `json:"total"`
+	Portal   string        `json:"portal"`
+}
+
+// BulkSaveRequest adalah badan permintaan form Tambah.
+//
+// Bentuknya MASSAL karena form layar lama memang massal: satu cabang dipilih di atas, dan
+// satu tombol SIMPAN menyimpan kewenangan untuk beberapa petugas sekaligus
+// (`Activity/InsermaskingDataKlaimPnc_-Act.xml` mengulang `TempLogin.pxResults`).
+//
+// Cabang berada di LUAR daftar baris, bukan di dalam tiap baris. Itu bukan penghematan:
+// satu kali SIMPAN pada layar lama tidak pernah dapat menyentuh lebih dari satu cabang,
+// dan membiarkan tiap baris menyebut cabangnya sendiri akan membuka hal yang tidak pernah
+// ada sekaligus membuat pengguna sulit memastikan apa yang baru saja ia berikan.
+type BulkSaveRequest struct {
+	BranchID string       `json:"cabang"`
+	Row      []BulkRowDTO `json:"baris"`
+}
+
+// BulkRowDTO adalah satu baris Template Akses pada form Tambah.
+//
+// Isinya sepadan dengan `TemplateAksesMasking` — section per baris pada layar lama.
+// STATUS tidak ada di sini: baris baru selalu aktif.
+type BulkRowDTO struct {
+	Login       string `json:"login"`
+	Module      string `json:"modul"`
+	SubModule   string `json:"sub_modul"`
+	SearchQuota int    `json:"maks_cari"`
+	ViewQuota   int    `json:"maks_lihat"`
+	ViewIDCard  bool   `json:"lihat_ktp"`
+	ViewEmail   bool   `json:"lihat_email"`
+	ViewPhone   bool   `json:"lihat_notelp"`
+}
+
+// BulkSaveResponse melaporkan hasil per baris, bukan satu kata berhasil/gagal.
+//
+// Sebagian baris dapat tersimpan sementara sebagian ditolak — persis seperti layar lama,
+// yang memanggil procedure sekali per baris. Melaporkannya sebagai satu nilai akan
+// menyembunyikan baris mana yang sebenarnya belum tersimpan.
+type BulkSaveResponse struct {
+	Tersimpan int              `json:"tersimpan"`
+	Ditolak   int              `json:"ditolak"`
+	Hasil     []BulkOutcomeDTO `json:"hasil"`
+	Portal    string           `json:"portal"`
+}
+
+// BulkOutcomeDTO adalah hasil satu baris.
+type BulkOutcomeDTO struct {
+	Login     string `json:"login"`
+	Tersimpan bool   `json:"tersimpan"`
+	// Pesan hanya terisi bila barisnya ditolak.
+	Pesan string `json:"pesan,omitempty"`
+}
+
 // ListResponse adalah jawaban GET /api/master/masking.
 type ListResponse struct {
 	Masking []MaskingDTO `json:"masking"`

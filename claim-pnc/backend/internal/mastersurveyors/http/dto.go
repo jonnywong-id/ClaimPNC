@@ -32,18 +32,21 @@ type SurveyorDTO struct {
 	// (`docs/Steering/10-API-STRATEGY.md` §1).
 	TypeDescription string `json:"nama_tipe"`
 
-	Name         string `json:"nama"`
-	Address      string `json:"alamat"`
-	PostalCode   string `json:"kode_pos"`
-	State        string `json:"provinsi"`
-	Phone        string `json:"telepon"`
-	Fax          string `json:"faksimile"`
-	Email        string `json:"email"`
-	OtherContact string `json:"kontak_lain"`
-	BranchCode   string `json:"kode_cabang"`
-	BranchName   string `json:"nama_cabang"`
-	AppLogin     string `json:"login_aplikasi"`
-	DocumentID   string `json:"id_dokumen"`
+	Name        string `json:"nama"`
+	Address     string `json:"alamat"`
+	PostalCode  string `json:"kode_pos"`
+	Country     string `json:"negara"`
+	Phone       string `json:"telepon"`
+	Fax         string `json:"faksimile"`
+	Email       string `json:"email"`
+	ContactName string `json:"nama_pic"`
+	BranchCode  string `json:"kode_cabang"`
+	BranchName  string `json:"nama_cabang"`
+	AppLogin    string `json:"login_aplikasi"`
+	DocumentID  string `json:"id_dokumen"`
+
+	// NeedDirector = TRFKOMITE, dropdown "Apakah perlu ke direksi?".
+	NeedDirector string `json:"perlu_direksi"`
 
 	Status string `json:"status"`
 	// StatusLabel dikirim dari server supaya empat layar yang menampilkannya tidak dapat
@@ -72,11 +75,12 @@ func toDTO(s mastersurveyors.Surveyor) SurveyorDTO {
 		Name:             s.Name,
 		Address:          s.Address,
 		PostalCode:       s.PostalCode,
-		State:            s.State,
+		Country:          s.Country,
 		Phone:            s.Phone,
 		Fax:              s.Fax,
 		Email:            s.Email,
-		OtherContact:     s.OtherContact,
+		ContactName:      s.ContactName,
+		NeedDirector:     s.NeedDirector,
 		BranchCode:       s.BranchCode,
 		BranchName:       s.BranchName,
 		AppLogin:         s.AppLogin,
@@ -121,20 +125,30 @@ type SingleResponse struct {
 //
 // ID juga tidak diterima: pada pengajuan ia dibuat penyimpanan, dan pada perubahan ia
 // diambil dari jalur URL.
+// Urutannya mengikuti urutan isian pada layar lama, bukan urutan kolom basis data.
 type SaveRequest struct {
-	TypeCode     string `json:"kode_tipe"`
-	Name         string `json:"nama"`
-	Address      string `json:"alamat"`
-	PostalCode   string `json:"kode_pos"`
-	State        string `json:"provinsi"`
-	Phone        string `json:"telepon"`
-	Fax          string `json:"faksimile"`
-	Email        string `json:"email"`
-	OtherContact string `json:"kontak_lain"`
-	BranchCode   string `json:"kode_cabang"`
-	BranchName   string `json:"nama_cabang"`
-	AppLogin     string `json:"login_aplikasi"`
-	DocumentID   string `json:"id_dokumen"`
+	TypeCode string `json:"kode_tipe"`
+
+	// NeedDirector adalah dropdown "Apakah perlu ke direksi?" (TRFKOMITE) — isian
+	// pengguna, bukan penanda sistem.
+	NeedDirector string `json:"perlu_direksi"`
+
+	Name        string `json:"nama"`
+	Email       string `json:"email"`
+	Phone       string `json:"telepon"`
+	Fax         string `json:"faksimile"`
+	Country     string `json:"negara"`
+	PostalCode  string `json:"kode_pos"`
+	ContactName string `json:"nama_pic"`
+	Address     string `json:"alamat"`
+	BranchName  string `json:"nama_cabang"`
+	AppLogin    string `json:"login_aplikasi"`
+
+	// BranchCode dan DocumentID tidak tampil sebagai isian terpisah di layar lama —
+	// BRANCH diisi dari pemilihan cabang, dan DOCID dari unggahan lampiran. Keduanya tetap
+	// diterima supaya nilainya tidak hilang saat baris lama disunting.
+	BranchCode string `json:"kode_cabang"`
+	DocumentID string `json:"id_dokumen"`
 }
 
 // DecisionRequest adalah keputusan komite atas satu surveyor.
@@ -179,4 +193,45 @@ func violationsOf(field map[string]string) []ViolationDTO {
 		detail = append(detail, ViolationDTO{Field: name, Message: field[name]})
 	}
 	return detail
+}
+
+// CountryDTO adalah satu pilihan pada dropdown "Negara".
+type CountryDTO struct {
+	Code string `json:"kode"`
+	Name string `json:"nama"`
+}
+
+// CountryListResponse adalah jawaban GET /api/master/surveyor/negara.
+type CountryListResponse struct {
+	Country []CountryDTO `json:"negara"`
+	Portal  string       `json:"portal"`
+}
+
+// EmployeeDTO adalah satu pilihan pada isian Nama untuk Surveyor Internal.
+//
+// Ketiganya dikirim bersama karena ketiganya bergerak bersama: memilih satu pegawai
+// mengisi nama, login aplikasi, dan email sekaligus — persis `pyAdditionalFields` pada
+// autocomplete layar lama.
+type EmployeeDTO struct {
+	Name  string `json:"nama"`
+	Login string `json:"login_aplikasi"`
+	Email string `json:"email"`
+}
+
+// EmployeeListResponse adalah jawaban GET /api/master/surveyor/pegawai.
+type EmployeeListResponse struct {
+	Employee []EmployeeDTO `json:"pegawai"`
+	Portal   string        `json:"portal"`
+}
+
+// BranchDTO adalah satu pilihan pada isian "Cabang".
+type BranchDTO struct {
+	Code string `json:"kode"`
+	Name string `json:"nama"`
+}
+
+// BranchListResponse adalah jawaban GET /api/master/surveyor/cabang.
+type BranchListResponse struct {
+	Branch []BranchDTO `json:"cabang"`
+	Portal string      `json:"portal"`
 }

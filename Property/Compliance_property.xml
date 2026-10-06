@@ -1,0 +1,287 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateOperator>WILLYYAKOBUSTANDRA</pxUpdateOperator>
+<pyPropertyName>Compliance</pyPropertyName>
+<pyCircumstanceDateProp/>
+<pyWorkKey/>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyOnInput/>
+<pyFormPost/>
+<pyStringType>Text</pyStringType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyMaxLength>256</pyMaxLength>
+<pyRuleSetVersion>01-01-86</pyRuleSetVersion>
+<pzChecksum>273244084</pzChecksum>
+<pyRuleStarts/>
+<pyTableSelector/>
+<pyIsReference>false</pyIsReference>
+<pyExpectedSize/>
+<pxInstanceLockedBy/>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCE #20200707T070710.440 GMT</pzDocumentKey>
+<pyIsManualReference/>
+<pxInstanceLockedRuleSetVersion/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyOnObjChange/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxSaveDateTime>20200707T070722.219 GMT</pxSaveDateTime>
+<pyRuleFormStatusTime>20260930T061800.711 GMT</pyRuleFormStatusTime>
+<pyIsJavaPage/>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pyDocumentTitle/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pySerializeJavaObject/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDataRetrievalType/>
+<pyInterface/>
+<pySpecial>false</pySpecial>
+<pyFieldName/>
+<pxOriginalCreateOperator/>
+<pyEditValidate/>
+<pyOldStreamName>pxTextArea</pyOldStreamName>
+<pyRelativePath/>
+<pyTemplateInputBox/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsTransient/>
+<pySpecialtyComponentData/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyLocalize>false</pyLocalize>
+<pyCircumstanceVal/>
+<pyIsAssociation/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleParamsStreamName/>
+<pyLabel>Compliance</pyLabel>
+<pzRuleSetVersionPatch>86</pzRuleSetVersionPatch>
+<pyTableAggregate/>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxInsId>!COMPLIANCE</pxInsId>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyRuleAccessWhen/>
+<pyPropertyMode>String</pyPropertyMode>
+<pyLabelOld>Compliance</pyLabelOld>
+<pyJavaObjectClass/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySPRuleSetName>WILLYYAKOBUSTANDRA@</pySPRuleSetName>
+<pxCommitDateTime>20200707T070722.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyTableOption/>
+<pyColumnInclusion/>
+<pxInstanceLockedDateTime/>
+<pyColumnIndexed/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyBaseRule>false</pyBaseRule>
+<pyGatewayClass/>
+<pyDescription/>
+<pyTableClass/>
+<pyComparator/>
+<pyClassName>ASM-FW-GCNMFW-Work-Compliance</pyClassName>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyJavaStream/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWindowTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceProp/>
+<pxUpdateSystemID>ASMPegaSystem</pxUpdateSystemID>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyReflectStatus>true</pyReflectStatus>
+<pxMoveImportDateTime>20191231T031826.275 GMT</pxMoveImportDateTime>
+<pyIsGateway/>
+<pyUsage/>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedKey/>
+<pyShowJavaWindowName>GeneratedJava20260930T061800.756 GMT</pyShowJavaWindowName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pyTableProperty/>
+<pyCircumstanceType/>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCE #20200707T070710.440 GMT</pzInsKey>
+<pyStreamName>pxTextArea</pyStreamName>
+<pyMethodStatus/>
+<pyIsFromManageChangeLP/>
+<pxOriginalCreateOpName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCE #20171117T025342.254 GMT</pzOriginalInstanceKey>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pxHostId>jboss2058</pxHostId>
+<pyIsLightweight>false</pyIsLightweight>
+<pyDataObject/>
+<pyDeletedObject/>
+<pyFieldClass/>
+<pyRuleName>Compliance</pyRuleName>
+<pyUseForLocalization/>
+<pzIndexCount>3</pzIndexCount>
+<pxCreateDateTime>20200707T070710.440 GMT</pxCreateDateTime>
+<pzEntryCode>sTN256</pzEntryCode>
+<pyCircumstanceDate/>
+<pyMemo>done</pyMemo>
+<pyRuleEnds/>
+<pxInstanceLockedCreateDateTime/>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pxOriginalCreateDateTime/>
+<pyPageClass/>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyRefLocalizedValue/>
+<pxUpdateDateTime>20200707T070722.157 GMT</pxUpdateDateTime>
+<pxTabLabel>Compliance</pxTabLabel>
+<pxInsName>ASM-FW-GCNMFW-WORK-COMPLIANCE!COMPLIANCE</pxInsName>
+<pyStatus/>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pxUpdateOpName>WILLY YAKOBUS TANDRA</pxUpdateOpName>
+<pzStatus>valid</pzStatus>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCE #20200707T070710.440 GMT</pzInsKey>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Compliance</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCE #20200707T070710.440 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-Compliance</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-COMPLIANCE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCE #20200707T070710.440 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxTextArea</pyRuleName>
+<pyMethodStatus/>
+<pxRuleClassName/>
+<pxRuleFamilyName>PXTEXTAREA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCE #20200707T070710.440 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Compliance</pxRuleClassName>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+<pyKeyCaption/>
+<pyKeyValue/>
+</rowdata>
+</pyTableKeys>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyPreview>true</pyPreview>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pxSubscript>none</pxSubscript>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyqualifierpagegroup>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLocalizedValue/>
+<pyStandardValue/>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+</pyPromptTableList>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+</pagedata>

@@ -237,7 +237,10 @@ func TestDecideMencatatKeputusanDanWaktunya(t *testing.T) {
 	require.Equal(t, mastersurveyors.StatusApproved, decided.Status)
 	require.Equal(t, "Lengkap.", decided.Note)
 	require.NotNil(t, decided.DecidedAt, "waktu keputusan wajib tercatat — ia jejak audit")
-	require.Equal(t, "1", decided.CommitteeTransferred)
+	// NeedDirector (TRFKOMITE) TIDAK disentuh keputusan komite: ia isian pengguna
+	// — dropdown "Apakah perlu ke direksi?" — bukan penanda proses. Uji ini yang
+	// menjaga agar ia tidak ditimpa lagi seperti pada versi sebelumnya.
+	require.Equal(t, submission().NeedDirector, decided.NeedDirector)
 	require.True(t, decided.Assignable())
 }
 

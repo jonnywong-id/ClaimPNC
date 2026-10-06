@@ -38,5 +38,13 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 
 		perPortal.Get("/inbox-rcl/keterangan", h.Metadata)
 		perPortal.Get("/inbox-rcl", h.List)
+
+		// Layar kerja `RCLDokter` — dibuka saat Nomor Case diklik. Klaim hanya terbuka bila
+		// tampil di antrean pemanggil.
+		perPortal.Get("/inbox-rcl/klaim/{nomor}", h.Detail)
+
+		// Keputusan dokter RCL — tombol Setuju / Submit, dan Kirim pada layar Alasan Dokter
+		// (Tidak Setuju / Back). Padanan `SendToPUCL`; satu-satunya rute yang menulis.
+		perPortal.Post("/inbox-rcl/klaim/{nomor}/keputusan", h.Decide)
 	})
 }

@@ -177,3 +177,30 @@ func SampleSurveys() []SurveyRecord {
 		},
 	}
 }
+
+// SampleHolding adalah klaim penampungan contoh — tab Inbox Tampungan PIC.
+//
+// Isinya karangan, sama seperti contoh lain di berkas ini (`D-69`). PIC Teknik sengaja tidak
+// ada: itulah yang membuat sebuah klaim berada di penampungan.
+func SampleHolding() []dashboardclaim.HoldingRow {
+	return []dashboardclaim.HoldingRow{
+		{
+			ClaimID: "CONTOH-TAMPUNG-1", ClaimNumber: "PNCN.26.0201",
+			PolicyNumber: "POLIS-CONTOH-0201", InsuredName: "Tertanggung Contoh H",
+			BusinessName: "Aneka", BusinessSource: "Cabang", BranchName: "Jakarta",
+			AdminPNC: "Admin Contoh 1", RegisteredAt: sampleTime(14),
+		},
+		{
+			ClaimID: "CONTOH-TAMPUNG-2", ClaimNumber: "PNCN.26.0202",
+			PolicyNumber: "POLIS-CONTOH-0202", InsuredName: "Tertanggung Contoh I",
+			BusinessName: "Marine Cargo", BusinessSource: "Broker", BranchName: "Surabaya",
+			AdminPNC: "Admin Contoh 2", RegisteredAt: sampleTime(15),
+		},
+		{
+			ClaimID: "CONTOH-TAMPUNG-3", ClaimNumber: "PNCN.26.0203",
+			PolicyNumber: "POLIS-CONTOH-0203", InsuredName: "Tertanggung Contoh J",
+			BusinessName: "Travel", BusinessSource: "Agen", BranchName: "Denpasar",
+			AdminPNC: "Admin Contoh 3", RegisteredAt: sampleTime(16),
+		},
+	}
+}

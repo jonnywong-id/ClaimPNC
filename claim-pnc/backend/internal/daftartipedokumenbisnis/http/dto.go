@@ -130,6 +130,30 @@ type UpdateRequest struct {
 	RuleRequest
 }
 
+// BusinessSaveRequest adalah badan permintaan layar Ubah: SELURUH baris satu lini bisnis
+// sekaligus.
+//
+// Tanpa `bisnis` — lini bisnisnya ada di alamat, dan tidak dapat diubah. Lihat
+// Service.SaveForBusiness.
+type BusinessSaveRequest struct {
+	Rules []BusinessRuleRequest `json:"dokumen"`
+}
+
+// BusinessRuleRequest adalah satu baris pada layar Ubah.
+//
+// Berbeda dari RuleRequest hanya pada `id`, dan itulah seluruh inti bentuk ini: baris yang
+// membawa `id` diperbarui, baris tanpa `id` disisipkan. Klien tidak perlu memisahkan
+// keduanya sendiri, dan itu memang bentuk yang dipakai sistem lama
+// (`InsertDetailTypeDocumentBusiness_act-Act.xml:2399-2401`).
+//
+// `id` di sini BOLEH dikirim klien — berbeda dari SaveRequest, yang menolaknya — karena di
+// sini ia menunjuk baris yang sudah ada, bukan mengarang identitas baru. ID yang tidak
+// dikenali dijawab 404, bukan disisipkan.
+type BusinessRuleRequest struct {
+	ID string `json:"id"`
+	RuleRequest
+}
+
 // RuleRequest adalah satu baris aturan yang dikirim layar.
 type RuleRequest struct {
 	DocumentTypeID  string `json:"id_tipe_dokumen"`
@@ -161,6 +185,17 @@ func toInput(request RuleRequest) daftartipedokumenbisnis.Input {
 		Mandatory:       request.Mandatory,
 		MinDocument:     request.MinDocument,
 	}
+}
+
+// toRowInputs mengubah badan permintaan layar Ubah menjadi nilai domain.
+func toRowInputs(request BusinessSaveRequest) []daftartipedokumenbisnis.Input {
+	rows := make([]daftartipedokumenbisnis.Input, 0, len(request.Rules))
+	for _, rule := range request.Rules {
+		input := toInput(rule.RuleRequest)
+		input.ID = rule.ID
+		rows = append(rows, input)
+	}
+	return rows
 }
 
 // toBatchInput mengubah badan permintaan penambahan menjadi nilai domain.

@@ -119,49 +119,74 @@ func TestNamaBisnisDiselesaikanKeMaster(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, saved.Businesses, 1)
-	require.Equal(t, "003", saved.Businesses[0].ID)
+	require.Equal(t, "10013", saved.Businesses[0].ID)
 	require.Equal(t, "ANEKA", saved.Businesses[0].Name)
 }
 
-// Nama bisnis DI LUAR master tetap diterima dan disimpan TANPA ID.
+// Nama bisnis DI LUAR master DITOLAK, dan pesannya menyebut nama mana.
 //
-// Itu perilaku layar lama yang dipertahankan: sel Bisnis di Pega memakai kontrol
-// autocomplete yang menerima ketikan bebas. Menolaknya akan menghilangkan kemampuan yang
-// dipakai petugas hari ini.
-func TestNamaBisnisDiLuarMasterTetapDisimpan(t *testing.T) {
+// Ini berbeda dari modul Master COL Simas Online, dan perbedaannya dipaksa penyimpanan:
+// pemetaan di sini hanya menyimpan ID — di dalam dokumen JSON baris induknya — sehingga
+// nama tanpa ID tidak punya tempat sama sekali.
+//
+// Menerimanya diam-diam adalah perilaku terburuk yang mungkin: pengguna menekan Simpan,
+// melihat "berhasil", lalu menemukan barisnya hilang saat form dibuka lagi.
+func TestNamaBisnisDiLuarMasterDitolak(t *testing.T) {
 	service, _, _ := newService(t)
 
-	saved, err := service.Create(context.Background(), "ASM", daftarobjekdokumen.Input{
+	_, err := service.Create(context.Background(), "ASM", daftarobjekdokumen.Input{
 		Description:   "Nota Dinas",
 		BusinessNames: []string{"BISNIS YANG TIDAK ADA"},
 	})
-	require.NoError(t, err)
-	require.Len(t, saved.Businesses, 1)
-	require.Empty(t, saved.Businesses[0].ID)
-	require.Equal(t, "BISNIS YANG TIDAK ADA", saved.Businesses[0].Name)
+
+	var validationError *daftarobjekdokumen.ValidationError
+	require.ErrorAs(t, err, &validationError)
+	require.Len(t, validationError.Violation, 1)
+	require.Equal(t, daftarobjekdokumen.FieldBusiness, validationError.Violation[0].Field)
+	require.Contains(t, validationError.Violation[0].Message, "BISNIS YANG TIDAK ADA")
 }
 
-// Master bisnis yang GAGAL dibaca tidak menggagalkan penyimpanan.
+// Master bisnis yang GAGAL dibaca MENGGAGALKAN penyimpanan.
 //
-// Karena nama bebas memang diterima, master hanya dipakai untuk MELENGKAPI ID — dan
-// melengkapi yang gagal lebih baik daripada menolak penyimpanan yang sebenarnya sah. Yang
-// hilang hanya ID-nya, dan itu keadaan yang memang sudah harus ditangani setiap pembaca.
-func TestMasterBisnisGagalTidakMenggagalkanPenyimpanan(t *testing.T) {
+// Juga berbeda dari modul Master COL Simas Online, dan dengan alasan yang sama: di sana
+// master hanya MELENGKAPI ID, sehingga gagal membacanya cukup kehilangan ID. Di sini master
+// MENENTUKAN apa yang disimpan — tanpa dapat membacanya, satu-satunya yang dapat ditulis
+// adalah pemetaan kosong, yang berarti menghapus seluruh pemetaan yang sudah ada tanpa ada
+// yang memintanya.
+func TestMasterBisnisGagalMenggagalkanPenyimpanan(t *testing.T) {
+	service, asm, business := newService(t)
+	business.SetError(errors.New("koneksi putus"))
+
+	before, err := asm.Get(context.Background(), "100002")
+	require.NoError(t, err)
+	require.Len(t, before.Businesses, 2)
+
+	_, err = service.Update(context.Background(), "ASM", "100002", daftarobjekdokumen.Input{
+		Description:   "Polis Asli",
+		BusinessNames: []string{"ANEKA"},
+	})
+	require.Error(t, err)
+
+	after, err := asm.Get(context.Background(), "100002")
+	require.NoError(t, err)
+	require.Len(t, after.Businesses, 2, "pemetaan yang sudah ada tidak boleh ikut hilang")
+}
+
+// Objek dokumen TANPA bisnis tetap dapat disimpan, dan master tidak perlu dibaca sama
+// sekali — sehingga master yang sedang gagal pun tidak menghalanginya.
+func TestTanpaBisnisTidakMembacaMaster(t *testing.T) {
 	service, _, business := newService(t)
 	business.SetError(errors.New("koneksi putus"))
 
 	saved, err := service.Create(context.Background(), "ASM", daftarobjekdokumen.Input{
-		Description:   "Kwitansi",
-		BusinessNames: []string{"ANEKA"},
+		Description: "Kwitansi",
 	})
 	require.NoError(t, err)
-	require.Len(t, saved.Businesses, 1)
-	require.Empty(t, saved.Businesses[0].ID, "ID tidak dapat dilengkapi, tetapi namanya tetap tersimpan")
-	require.Equal(t, "ANEKA", saved.Businesses[0].Name)
+	require.Empty(t, saved.Businesses)
 }
 
 // ID diterbitkan penyimpanan, bukan diterima dari pemanggil, dan bentuknya kode situs
-// ditambah empat digit — mengikuti `Database/PEGA_LST_DOC_TYPE.prc:21`.
+// ditambah LIMA digit — mengikuti `POOLDATA.PEGA_LST_DOC_OBJ`.
 func TestIDDiterbitkanPenyimpanan(t *testing.T) {
 	service, _, _ := newService(t)
 
@@ -169,8 +194,8 @@ func TestIDDiterbitkanPenyimpanan(t *testing.T) {
 		Description: "Berita Acara",
 	})
 	require.NoError(t, err)
-	require.Len(t, saved.ID, 5, "kode situs satu digit ditambah empat digit nomor urut")
-	require.Equal(t, "10005", saved.ID, "melanjutkan deret contoh yang berakhir di 10004")
+	require.Len(t, saved.ID, 6, "kode situs satu digit ditambah lima digit nomor urut")
+	require.Equal(t, "100005", saved.ID, "melanjutkan deret contoh yang berakhir di 100004")
 }
 
 // Penyuntingan MENGGANTI seluruh pemetaan bisnis, bukan menggabungkannya.
@@ -181,12 +206,12 @@ func TestIDDiterbitkanPenyimpanan(t *testing.T) {
 func TestPenyuntinganMenggantiSeluruhPemetaanBisnis(t *testing.T) {
 	service, _, _ := newService(t)
 
-	// 10002 punya DUA bisnis pada data contoh.
-	before, err := service.Get(context.Background(), "ASM", "10002")
+	// 100002 punya DUA bisnis pada data contoh.
+	before, err := service.Get(context.Background(), "ASM", "100002")
 	require.NoError(t, err)
 	require.Len(t, before.Businesses, 2)
 
-	after, err := service.Update(context.Background(), "ASM", "10002", daftarobjekdokumen.Input{
+	after, err := service.Update(context.Background(), "ASM", "100002", daftarobjekdokumen.Input{
 		Description:   before.Description,
 		BusinessNames: []string{"TRAVEL"},
 	})
@@ -202,11 +227,11 @@ func TestPenyuntinganMenggantiSeluruhPemetaanBisnis(t *testing.T) {
 func TestPenyuntinganTidakMengubahID(t *testing.T) {
 	service, _, _ := newService(t)
 
-	after, err := service.Update(context.Background(), "ASM", "10001", daftarobjekdokumen.Input{
+	after, err := service.Update(context.Background(), "ASM", "100001", daftarobjekdokumen.Input{
 		Description: "Nama Baru",
 	})
 	require.NoError(t, err)
-	require.Equal(t, "10001", after.ID)
+	require.Equal(t, "100001", after.ID)
 	require.Equal(t, "Nama Baru", after.Description)
 }
 
@@ -215,10 +240,10 @@ func TestPenyuntinganTidakMengubahID(t *testing.T) {
 func TestBarisTidakAda(t *testing.T) {
 	service, _, _ := newService(t)
 
-	_, err := service.Get(context.Background(), "ASM", "99999")
+	_, err := service.Get(context.Background(), "ASM", "999999")
 	require.ErrorIs(t, err, daftarobjekdokumen.ErrNotFound)
 
-	_, err = service.Update(context.Background(), "ASM", "99999", daftarobjekdokumen.Input{})
+	_, err = service.Update(context.Background(), "ASM", "999999", daftarobjekdokumen.Input{})
 	require.ErrorIs(t, err, daftarobjekdokumen.ErrNotFound)
 }
 

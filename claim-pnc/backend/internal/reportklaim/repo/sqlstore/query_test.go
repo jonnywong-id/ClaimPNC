@@ -189,6 +189,27 @@ const kueriDenganDBLink = "report_tat"
 // Uji ini menjaga dua hal sekaligus: keduanya tidak merambat ke kueri lain, DAN kueri
 // yang dikecualikan benar-benar memuat DB Link — bukan lolos karena namanya kebetulan
 // masuk daftar kecuali.
+// kueriDenganJamTampil adalah kueri yang keluarannya memuat JAM, bukan hanya tanggal.
+//
+// # Kenapa ia pengecualian TERSENDIRI, bukan menumpang kueriDenganDBLink
+//
+// Karena sebabnya berbeda sama sekali. Yang di atas dipertahankan karena sub-query DB
+// Link dibawa apa adanya; yang di sini karena pemformat bersama `text()` hanya
+// mengeluarkan TANGGAL, sedangkan kolom laporan ini menampilkan jam.
+//
+// `report_mitra` adalah laporan SLA: "Tgl Awal" dan "Tgl Akhir" adalah jam masuk dan jam
+// keluar penugasan, dan aging-nya dihitung dalam detik. Laporan itu kehilangan artinya
+// bila jamnya dibuang.
+//
+// # Kenapa ini tidak melanggar maksud `D-20`
+//
+// Larangannya menyasar dua akibat: ketidakportabelan, dan tanggal yang berubah menjadi
+// teks sehingga pengurutan serta index-nya rusak (`09-DATABASE-STRATEGY.md` §3.2).
+// Keduanya tidak berlaku di sini — `to_char` dengan model format yang sama ada di Oracle
+// maupun PostgreSQL, dan kedua kolom ini hanya DIKELUARKAN, tidak pernah dipakai
+// menyaring maupun mengurutkan.
+var kueriDenganJamTampil = map[string]bool{"report_mitra": true}
+
 func TestPolaOracleHanyaPadaSubQueryDBLinkYangDipertahankan(t *testing.T) {
 	hanyaDiDBLink := []string{"TO_CHAR(", "MONTHS_BETWEEN("}
 
@@ -198,9 +219,24 @@ func TestPolaOracleHanyaPadaSubQueryDBLinkYangDipertahankan(t *testing.T) {
 		}
 		upper := strings.ToUpper(text)
 		for _, pola := range hanyaDiDBLink {
+			if pola == "TO_CHAR(" && kueriDenganJamTampil[name] {
+				// Dikecualikan, TETAPI hanya untuk pemformatan yang benar-benar memuat
+				// jam. Tanpa pemeriksaan ini, pengecualiannya lama-lama menjadi izin
+				// memformat tanggal biasa — dan justru itu yang dilarang.
+				require.Containsf(t, upper, "HH24:MI:SS",
+					"kueri %q dikecualikan karena menampilkan jam, tetapi tidak satu pun "+
+						"TO_CHAR-nya memuat jam", name)
+				continue
+			}
 			require.NotContainsf(t, upper, pola,
 				"kueri %q memakai %s di luar sub-query DB Link", name, pola)
 		}
+	}
+
+	// Pengecualian yang tidak lagi terpakai harus dibuang, bukan dibiarkan menganggur.
+	for name := range kueriDenganJamTampil {
+		require.Containsf(t, strings.ToUpper(query[name]), "TO_CHAR(",
+			"kueri %q tidak lagi memakai TO_CHAR; buang dari kueriDenganJamTampil", name)
 	}
 
 	dikecualikan := strings.ToUpper(query[kueriDenganDBLink])
@@ -267,6 +303,13 @@ func TestTidakAdaKueriYatim(t *testing.T) {
 		"report_fee_scale":        true,
 		"report_progress_names":   true,
 		"report_dominant_factors": true,
+
+		// Dipakai `mitraKeep` sebagai PENYARING BARIS, bukan sebagai kueri laporan.
+		//
+		// Ia tidak dapat ditemukan dengan menyusuri `plans` karena penyaringnya sebuah
+		// closure — yang terlihat di sana hanyalah `keep: mitraKeep`, bukan nama kueri
+		// yang dibacanya.
+		"report_mitra_logins": true,
 	}
 	for _, p := range plans {
 		for _, f := range kombinasiPenyaring {

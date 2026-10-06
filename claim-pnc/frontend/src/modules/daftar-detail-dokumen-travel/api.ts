@@ -6,14 +6,12 @@ import type {
   TravelDocumentDetailInput,
   TravelDocumentDetailListResponse,
   TravelDocumentDetailResponse,
-  TravelPlanListResponse,
 } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 const ROUTE = '/api/master/daftar-detail-dokumen-travel'
 const ROUTE_DOCUMENT = '/api/master/dokumen-travel-pilihan'
-const ROUTE_PLAN = '/api/master/plan-travel'
 
 /**
  * listKey menyertakan portal DAN token.
@@ -36,10 +34,6 @@ function detailKey(id: string, portal: string | null, token: string | null) {
 
 function documentKey(portal: string | null, token: string | null) {
   return ['dokumen-travel-pilihan', portal, token] as const
-}
-
-function planKey(portal: string | null, token: string | null) {
-  return ['plan-travel', portal, token] as const
 }
 
 /**
@@ -69,12 +63,21 @@ export function useTravelDocumentDetailList() {
 }
 
 /**
- * Hook satu baris LENGKAP dengan pembatasan plan dan jaminannya.
+ * Hook satu baris, dimuat ulang dari server.
  *
- * Dimuat terpisah, bukan diambil dari hasil daftar, karena daftar memang tidak
- * membawanya: grid hanya menampilkan lima kolom dan tidak satu pun menyebut plan atau
- * jaminan. Memakai baris dari daftar akan membuat form tampak seolah seluruh
- * pembatasannya sudah dihapus — dan menyimpannya benar-benar menghapusnya.
+ * # Layar TIDAK memakainya untuk membuka form, dan itu disengaja
+ *
+ * Daftar sudah membawa SELURUH isi baris — kelima kolomnya adalah seluruh isi tabelnya.
+ * Memuat ulang satu baris karena itu tidak menambah satu keterangan pun, dan form dibuka
+ * langsung dari baris yang ada di daftar, sama seperti modul Master Dokumen Travel.
+ *
+ * Hook ini sempat dipakai ketika modul masih memuat pembatasan Plan dan Jaminan: daftar
+ * memang tidak membawanya, sehingga form WAJIB memuat ulang. Pembatasan itu dicabut
+ * 2026-10-03, dan bersamanya kewajiban itu hilang.
+ *
+ * Ia dipertahankan karena rutenya memang ada di kontrak API dan berguna untuk memuat satu
+ * baris tanpa menarik seluruh daftar. Bila kelak tidak ada pemakainya sama sekali, ia
+ * dibuang bersama rutenya — bukan disimpan "untuk berjaga-jaga".
  *
  * `id` null berarti tidak ada baris yang sedang dibuka — hook-nya diam.
  */
@@ -108,28 +111,6 @@ export function useTravelDocumentChoiceList() {
   return useQuery({
     queryKey: documentKey(portal, token),
     queryFn: () => callAPI<TravelDocumentChoiceListResponse>(ROUTE_DOCUMENT, { token, portal }),
-    enabled: token !== null && portal !== null,
-    staleTime: 60 * 60 * 1000,
-  })
-}
-
-/**
- * Hook daftar pilihan Plan dan Jaminan.
- *
- * Menggantikan autocomplete `BrowsePlanTravelMaster_RD` dan `SearchCoverageTravel_RD`
- * sekaligus — keduanya membaca POOLDATA.M_PLANTRAVEL yang sama.
- *
- * Kegagalannya TIDAK menghalangi apa pun: nama plan dan jaminan boleh diketik sendiri,
- * sehingga yang hilang hanya kenyamanan memilih. Layar yang memakainya wajib menjaga
- * sikap itu, sama seperti daftar bisnis pada modul Master COL Simas Online.
- */
-export function useTravelPlanList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: planKey(portal, token),
-    queryFn: () => callAPI<TravelPlanListResponse>(ROUTE_PLAN, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 60 * 60 * 1000,
   })

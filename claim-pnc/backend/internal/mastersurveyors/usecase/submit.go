@@ -51,19 +51,24 @@ type Submitter struct {
 // `Activity/SetDetailSurveryorsValue_act-Act.xml` ke halaman TempDetailSurveyors, dikurangi
 // yang dimiliki sistem.
 type Submission struct {
-	TypeCode     string
-	Name         string
-	Address      string
-	PostalCode   string
-	State        string
-	Phone        string
-	Fax          string
-	Email        string
-	OtherContact string
-	BranchCode   string
-	BranchName   string
-	AppLogin     string
-	DocumentID   string
+	TypeCode string
+
+	// NeedDirector adalah jawaban dropdown "Apakah perlu ke direksi?" (TRFKOMITE).
+	// Ia ISIAN PENGGUNA, bukan penanda sistem — lihat catatan di domain.
+	NeedDirector string
+
+	Name        string
+	Email       string
+	Phone       string
+	Fax         string
+	Country     string
+	PostalCode  string
+	ContactName string
+	Address     string
+	BranchCode  string
+	BranchName  string
+	AppLogin    string
+	DocumentID  string
 }
 
 // Service menjalankan alur Master Surveyors di atas seam penyimpanan per portal.
@@ -278,7 +283,8 @@ func (s *Service) Update(ctx context.Context, portalAlias, id string, in Submiss
 	// Komite yang ditunjuk dibawa apa adanya: ia ditetapkan sekali saat pengajuan pertama,
 	// dan kueri surveyor_update memang tidak menyentuh kolomnya.
 	changed.Committee = existing.Committee
-	changed.CommitteeTransferred = existing.CommitteeTransferred
+	// NeedDirector TIDAK dibawa dari baris lama: ia isian formulir, sehingga nilainya
+	// datang dari apa yang baru saja diisi pengguna — sama seperti Nama dan Alamat.
 	changed.CreatedBy = existing.CreatedBy
 	changed.CreatedAt = existing.CreatedAt
 	changed.UpdatedBy = strings.TrimSpace(by.Identity)
@@ -340,14 +346,15 @@ func (s *Service) requestAccount(ctx context.Context, portalAlias string, survey
 func surveyorFrom(in Submission) mastersurveyors.Surveyor {
 	return mastersurveyors.Surveyor{
 		TypeCode:     in.TypeCode,
+		NeedDirector: in.NeedDirector,
 		Name:         in.Name,
 		Address:      in.Address,
 		PostalCode:   in.PostalCode,
-		State:        in.State,
+		Country:      in.Country,
 		Phone:        in.Phone,
 		Fax:          in.Fax,
 		Email:        in.Email,
-		OtherContact: in.OtherContact,
+		ContactName:  in.ContactName,
 		BranchCode:   in.BranchCode,
 		BranchName:   in.BranchName,
 		AppLogin:     in.AppLogin,
@@ -404,4 +411,56 @@ func translateRepoError(err error, activity string) error {
 	default:
 		return fmt.Errorf("mastersurveyors/usecase: %s: %w", activity, err)
 	}
+}
+
+// ListCountries mengembalikan daftar negara untuk dropdown "Negara" pada formulir.
+//
+// Menggantikan Report Definition `BrowseCountry_RD` yang mengisi dropdown yang sama di
+// layar lama.
+func (s *Service) ListCountries(ctx context.Context, portalAlias string) ([]mastersurveyors.Country, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := repo.ListCountries(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("mastersurveyors/usecase: membaca daftar negara: %w", err)
+	}
+	return list, nil
+}
+
+// ListEmployees mengembalikan daftar pegawai yang boleh dijadikan Surveyor Internal.
+//
+// Menggantikan pra-aktivitas `PNCCallRDBName_act` yang mengisi autocomplete pada isian
+// Nama di layar lama. Memilih satu pegawai mengisi nama, login aplikasi, dan email
+// sekaligus — itulah satu-satunya jalan LOGIN_APLIKASI terisi, karena kontrolnya sendiri
+// tidak pernah tampil.
+func (s *Service) ListEmployees(ctx context.Context, portalAlias string) ([]mastersurveyors.Employee, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := repo.ListEmployees(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("mastersurveyors/usecase: membaca daftar pegawai: %w", err)
+	}
+	return list, nil
+}
+
+// ListBranches mengembalikan daftar cabang untuk isian "Cabang".
+//
+// Menggantikan Report Definition `BrowseBranch_RD`.
+func (s *Service) ListBranches(ctx context.Context, portalAlias string) ([]mastersurveyors.Branch, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := repo.ListBranches(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("mastersurveyors/usecase: membaca daftar cabang: %w", err)
+	}
+	return list, nil
 }

@@ -255,6 +255,22 @@ type Reinsurer struct {
 	Share Share
 }
 
+// ReinsurerOption adalah satu calon reasuradur dari master POOLDATA.T_REINSURER.
+//
+// Ia BUKAN Reinsurer: yang ini belum melekat pada lapisan mana pun dan karena itu belum
+// punya share. Ia menjadi Reinsurer saat pengguna memilihnya dan mengisi share-nya.
+//
+// Hanya dua kolom yang dibawa, dan itu disengaja. `T_REINSURER` juga menyimpan email,
+// login, dan negara; ketiganya tidak dipakai layar ini, dan membawanya berarti
+// menyebarkan data yang tidak diminta ke peramban.
+type ReinsurerOption struct {
+	// ID adalah kolom REINSURERID — yang mengisi MST_XOL_REAS.IDREAS.
+	ID string
+
+	// Name adalah kolom REINSURERNAME — yang mengisi MST_XOL_REAS.NAMA.
+	Name string
+}
+
 // Layer adalah satu lapisan treaty — satu baris POOLDATA.MST_XOL_LAYER.
 type Layer struct {
 	// ID adalah kolom IDLAYER, kunci utama tabel. Diterbitkan penyimpanan saat lapisan

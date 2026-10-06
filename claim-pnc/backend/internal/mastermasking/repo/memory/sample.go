@@ -86,6 +86,32 @@ func SampleList() []mastermasking.Masking {
 	}
 }
 
+// SampleOperators adalah petugas contoh per cabang untuk mode memori.
+//
+// Loginnya dikarang — sama alasannya dengan SampleList. Yang ditiru hanyalah BENTUKNYA,
+// termasuk satu login berupa alamat surel, karena itu keadaan nyata di portal ASM
+// (`PYUSERIDENTIFIER` sebagian berisi alamat Gmail) dan layar harus terbaca benar untuknya.
+//
+// Cabang 100001 sengaja diberi petugas yang BELUM punya baris masking, supaya alur Tambah
+// dapat dicoba sampai tersimpan. Cabang 100081 memuat login yang SUDAH punya baris, supaya
+// penolakan "sudah ada" ikut dapat dicoba.
+func SampleOperators() map[string][]mastermasking.Operator {
+	return map[string][]mastermasking.Operator{
+		"100001": {
+			{Login: "CONTOH.BARU.SATU", Name: "CONTOH BARU SATU"},
+			{Login: "CONTOH.BARU.DUA", Name: "CONTOH BARU DUA"},
+			{Login: "contoh.surel@example.invalid", Name: "CONTOH SUREL"},
+		},
+		"100081": {
+			{Login: "CONTOH.ADMIN", Name: "CONTOH ADMIN"},
+			{Login: "CONTOH.BARU.TIGA", Name: "CONTOH BARU TIGA"},
+		},
+		"100069": {
+			{Login: "CONTOH.TEKNIK", Name: "CONTOH TEKNIK"},
+		},
+	}
+}
+
 // SampleBranches adalah pilihan cabang tambahan untuk mode memori.
 //
 // Kelimanya belum dipakai baris contoh mana pun, sehingga menambah data untuk cabang baru

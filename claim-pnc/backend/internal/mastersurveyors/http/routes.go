@@ -61,6 +61,13 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Route("/master/surveyor", func(master chi.Router) {
 			master.Get("/", h.List)
 			master.Post("/", h.Create)
+			// Daftar negara didaftarkan SEBELUM rute ber-{id}: chi mencocokkan jalur
+			// statis lebih dulu, tetapi menaruhnya di atas membuat urutannya terbaca.
+			master.Get("/negara", h.Countries)
+			// Keduanya mengisi isian yang di layar lama berupa daftar pilihan, bukan
+			// kotak teks: Nama untuk surveyor internal, dan Cabang.
+			master.Get("/pegawai", h.Employees)
+			master.Get("/cabang", h.Branches)
 			master.Get("/{id}", h.Get)
 			master.Put("/{id}", h.Update)
 

@@ -42,12 +42,7 @@ func (r *Repo) List(ctx context.Context) ([]daftardetailtipedokumen.DetailType, 
 	return result, nil
 }
 
-// Get membaca satu rincian lengkap dengan daftar bisnisnya.
-//
-// Dua kueri, bukan satu JOIN. Sebabnya bentuk hasilnya: JOIN akan mengembalikan baris
-// induk berulang sebanyak bisnisnya, dan menyusunnya kembali menjadi satu objek berarti
-// menulis pengelompokan sendiri di Go. Untuk satu baris yang dibuka pengguna, dua kueri
-// jauh lebih terbaca dan bedanya tidak terukur.
+// Get membaca satu rincian.
 func (r *Repo) Get(ctx context.Context, id string) (daftardetailtipedokumen.DetailType, error) {
 	key := strings.TrimSpace(id)
 
@@ -60,23 +55,14 @@ func (r *Repo) Get(ctx context.Context, id string) (daftardetailtipedokumen.Deta
 		return daftardetailtipedokumen.DetailType{}, fmt.Errorf("daftardetailtipedokumen/sqlstore: membaca detail %q: %w", id, err)
 	}
 
-	businesses, err := r.businessesOf(ctx, key)
-	if err != nil {
-		return daftardetailtipedokumen.DetailType{}, err
-	}
-	detail.Businesses = businesses
 	return detail, nil
 }
 
-// InsertNew menerbitkan ID lalu menyisipkan barisnya beserta seluruh baris bisnisnya.
+// InsertNew menerbitkan ID lalu menyisipkan barisnya.
 //
-// Seluruhnya dalam SATU transaksi. Ini bukan kehati-hatian berlebihan: sebuah rincian
-// dokumen yang tersimpan tanpa daftar bisnisnya berarti dokumen itu tidak diminta pada
-// lini bisnis mana pun — kebalikan dari yang dimaksud petugas, dan tidak terlihat sebagai
-// galat di layar mana pun. `D-68` menetapkan kepemilikan transaksi berpindah ke Go
-// persis karena kelas kegagalan seperti ini, dan procedure lama memperagakan akibatnya:
-// ia `COMMIT` sendiri lalu `ROLLBACK` sesudahnya, sehingga rollback-nya tidak memulihkan
-// apa pun.
+// Penerbitan ID dan penyisipannya berada dalam SATU transaksi, meniru
+// `Database/PEGA_LST_DET_TYPE_DOC.prc` yang melakukan keduanya dalam satu blok. Tanpa
+// itu, nomor urut dapat terbit lalu hilang tanpa baris yang memakainya.
 func (r *Repo) InsertNew(
 	ctx context.Context,
 	input daftardetailtipedokumen.Input,
@@ -107,10 +93,6 @@ func (r *Repo) InsertNew(
 			return fmt.Errorf("daftardetailtipedokumen/sqlstore: menyisipkan detail %q: %w", id, err)
 		}
 
-		if err := insertBusinesses(ctx, tx, id, input); err != nil {
-			return err
-		}
-
 		saved = detailFrom(id, input)
 		return nil
 	})
@@ -120,18 +102,16 @@ func (r *Repo) InsertNew(
 
 	// Baris dibaca ULANG lewat view, bukan disusun dari isian yang baru dikirim.
 	//
-	// Dua hal yang tidak diketahui pemanggil membuatnya perlu: `TYPE_DOCUMENT` hasil join
-	// ke master tipe dokumen, dan nama bisnis pada setiap baris anaknya hasil join ke
-	// POOLDATA.BUSINESS. Keduanya tidak ada di isian, dan mengarangnya berarti menampilkan
-	// nama untuk kode yang mungkin tidak ada di master mana pun.
+	// Satu hal yang tidak diketahui pemanggil membuatnya perlu: `TYPE_DOCUMENT` hasil
+	// join ke master tipe dokumen. Ia tidak ada di isian, dan mengarangnya berarti
+	// menampilkan nama untuk kode yang mungkin tidak ada di master mana pun.
 	return r.Get(ctx, saved.ID)
 }
 
-// Update mengganti isi satu rincian beserta SELURUH daftar bisnisnya.
+// Update mengganti isi satu rincian.
 //
-// Penggantian daftar bisnis dilakukan dengan menghapus lalu menyisip ulang, di dalam
-// transaksi yang sama dengan perubahan barisnya. Kegagalan di tengah karena itu tidak
-// dapat meninggalkan rincian dokumen yang kehilangan seluruh lini bisnisnya.
+// JSON_DATA tidak ikut disentuh, sehingga aturan per lini bisnis yang masih dimiliki Pega
+// di kolom itu tetap utuh setelah baris ini disunting dari sini.
 func (r *Repo) Update(
 	ctx context.Context,
 	id string,
@@ -160,24 +140,18 @@ func (r *Repo) Update(
 
 		// Baris yang tersentuh diperiksa, bukan diabaikan: UPDATE terhadap ID yang tidak
 		// ada berhasil tanpa galat di SQL, dan membiarkannya akan melaporkan "tersimpan"
-		// atas perubahan yang tidak pernah terjadi — lalu MENGHAPUS baris bisnis milik
-		// baris yang tidak ada.
+		// atas perubahan yang tidak pernah terjadi.
 		affected, err := result.RowsAffected()
 		if err == nil && affected == 0 {
 			return daftardetailtipedokumen.ErrNotFound
 		}
-
-		if _, err := tx.ExecContext(ctx, getQuery("detail_business_delete_all"), key); err != nil {
-			return fmt.Errorf("daftardetailtipedokumen/sqlstore: membuang bisnis detail %q: %w", id, err)
-		}
-
-		return insertBusinesses(ctx, tx, key, input)
+		return nil
 	})
 	if err != nil {
 		return daftardetailtipedokumen.DetailType{}, err
 	}
 
-	// Alasannya sama dengan InsertNew: keterangannya milik master.
+	// Alasannya sama dengan InsertNew: nama tipe dokumennya milik master.
 	return r.Get(ctx, key)
 }
 
@@ -196,19 +170,14 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 	return r.checkAll(ctx, "detail_check_table")
 }
 
-// CheckWriteTable memastikan kedua TABEL DASAR modul ini punya bentuk yang dipakai jalur
-// simpan — dan, untuk tabel anaknya, jalur baca satu baris.
+// CheckWriteTable memastikan TABEL DASAR modul ini punya bentuk yang dipakai jalur simpan.
 //
-// # Kenapa tabel anak ada di SINI, bukan di CheckTable
-//
-// Karena kueri daftar tidak menyentuhnya. `detail_list` hanya membaca view induk; tabel
-// anaknya baru dipakai saat satu baris DIBUKA (`detail_business_list`) dan saat disimpan.
-//
-// Pemisahan ini yang membuat laporan mode periksa jujur: bila hanya pemeriksaan ini yang
-// gagal, **daftarnya tetap dapat dimuat** dan yang terblokir hanya membuka baris serta
-// menyimpan. Menggabungkannya akan melaporkan seluruh layar mati padahal tidak.
+// Terpisah dari CheckTable dengan sengaja: `detail_list` membaca VIEW, sedangkan simpan
+// menulis TABEL-nya. Keduanya dapat gagal sendiri-sendiri, dan pemisahan ini yang membuat
+// laporan mode periksa jujur — bila hanya pemeriksaan ini yang gagal, daftarnya tetap
+// dapat dimuat dan yang terblokir hanya penyimpanan.
 func (r *Repo) CheckWriteTable(ctx context.Context) error {
-	return r.checkAll(ctx, "detail_write_check_table", "detail_business_check_table")
+	return r.checkAll(ctx, "detail_write_check_table")
 }
 
 func (r *Repo) checkAll(ctx context.Context, names ...string) error {
@@ -242,58 +211,6 @@ func (r *Repo) inTransaction(ctx context.Context, work func(tx *sql.Tx) error) e
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("daftardetailtipedokumen/sqlstore: menutup transaksi: %w", err)
-	}
-	return nil
-}
-
-// businessesOf membaca aturan per lini bisnis milik satu rincian.
-func (r *Repo) businessesOf(ctx context.Context, id string) ([]daftardetailtipedokumen.BusinessRule, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("detail_business_list"), id)
-	if err != nil {
-		return nil, fmt.Errorf("daftardetailtipedokumen/sqlstore: membaca bisnis detail %q: %w", id, err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []daftardetailtipedokumen.BusinessRule
-	for rows.Next() {
-		// MIN_DOC dibaca sebagai TEKS, bukan angka, karena itulah tipenya: pada view
-		// anak ia `VARCHAR2(10)` hasil `JSON_TABLE ... PATH '$.MIN_DOC'`. Membacanya
-		// sebagai angka akan menggagalkan seluruh daftar karena satu baris warisan yang
-		// isinya kosong atau bukan angka.
-		var businessID, businessName, mandatory, minDocument sql.NullString
-		if err := rows.Scan(&businessID, &businessName, &mandatory, &minDocument); err != nil {
-			return nil, fmt.Errorf("daftardetailtipedokumen/sqlstore: membaca baris bisnis: %w", err)
-		}
-		result = append(result, daftardetailtipedokumen.BusinessRule{
-			BusinessID:   strings.TrimSpace(businessID.String),
-			BusinessName: strings.TrimSpace(businessName.String),
-			Mandatory:    daftardetailtipedokumen.MandatoryFrom(mandatory.String),
-			MinDocument:  minimumFrom(minDocument.String),
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("daftardetailtipedokumen/sqlstore: menelusuri bisnis detail %q: %w", id, err)
-	}
-	return result, nil
-}
-
-// insertBusinesses menyisipkan seluruh baris bisnis milik satu rincian.
-func insertBusinesses(
-	ctx context.Context,
-	tx *sql.Tx,
-	parentID string,
-	input daftardetailtipedokumen.Input,
-) error {
-	for _, row := range input.Businesses {
-		_, err := tx.ExecContext(ctx, getQuery("detail_business_insert"),
-			parentID,
-			row.BusinessID,
-			daftardetailtipedokumen.MandatoryText(row.Mandatory),
-			row.MinDocument,
-		)
-		if err != nil {
-			return fmt.Errorf("daftardetailtipedokumen/sqlstore: menyisipkan bisnis detail %q: %w", parentID, err)
-		}
 	}
 	return nil
 }
@@ -421,7 +338,7 @@ type ReferenceRepo struct {
 	db *sql.DB
 }
 
-// NewReferenceRepo membentuk pembaca keempat master rujukan.
+// NewReferenceRepo membentuk pembaca master rujukan.
 func NewReferenceRepo(db *sql.DB) *ReferenceRepo { return &ReferenceRepo{db: db} }
 
 // ListDocumentTypes membaca pilihan isian ID Tipe Dokumen.
@@ -437,52 +354,10 @@ func (r *ReferenceRepo) ListDocumentTypes(ctx context.Context) ([]daftardetailti
 	return result, nil
 }
 
-// ListCausesOfLoss membaca pilihan isian Dokumen kolom ID.
-func (r *ReferenceRepo) ListCausesOfLoss(ctx context.Context) ([]daftardetailtipedokumen.CauseOfLossOption, error) {
-	pairs, err := r.listPairs(ctx, "cause_of_loss_choice_list", "POOLDATA.M_CAUSE_OF_LOSS")
-	if err != nil {
-		return nil, err
-	}
-	result := make([]daftardetailtipedokumen.CauseOfLossOption, 0, len(pairs))
-	for _, pair := range pairs {
-		result = append(result, daftardetailtipedokumen.CauseOfLossOption{ID: pair.first, Description: pair.second})
-	}
-	return result, nil
-}
-
-// ListObjectDocuments membaca pilihan isian Objek Dokumen.
-func (r *ReferenceRepo) ListObjectDocuments(ctx context.Context) ([]daftardetailtipedokumen.ObjectDocumentOption, error) {
-	pairs, err := r.listPairs(ctx, "object_document_choice_list", "POOLDATA.V_LST_DOC_OBJ")
-	if err != nil {
-		return nil, err
-	}
-	result := make([]daftardetailtipedokumen.ObjectDocumentOption, 0, len(pairs))
-	for _, pair := range pairs {
-		result = append(result, daftardetailtipedokumen.ObjectDocumentOption{ID: pair.first, Description: pair.second})
-	}
-	return result, nil
-}
-
-// ListBusinesses membaca pilihan isian ID Bisnis pada grid.
-func (r *ReferenceRepo) ListBusinesses(ctx context.Context) ([]daftardetailtipedokumen.Business, error) {
-	pairs, err := r.listPairs(ctx, "business_choice_list", "POOLDATA.BUSINESS")
-	if err != nil {
-		return nil, err
-	}
-	result := make([]daftardetailtipedokumen.Business, 0, len(pairs))
-	for _, pair := range pairs {
-		result = append(result, daftardetailtipedokumen.Business{ID: pair.first, Name: pair.second})
-	}
-	return result, nil
-}
-
-// CheckTable memastikan keempat master rujukan dapat dibaca akun aplikasi.
+// CheckTable memastikan master rujukan dapat dibaca akun aplikasi.
 func (r *ReferenceRepo) CheckTable(ctx context.Context) error {
 	for name, object := range map[string]string{
-		"document_type_check_table":   "POOLDATA.V_LST_DOC_TYPE",
-		"cause_of_loss_check_table":   "POOLDATA.M_CAUSE_OF_LOSS",
-		"object_document_check_table": "POOLDATA.V_LST_DOC_OBJ",
-		"business_check_table":        "POOLDATA.BUSINESS",
+		"document_type_check_table": "POOLDATA.V_LST_DOC_TYPE",
 	} {
 		rows, err := r.db.QueryContext(ctx, getQuery(name))
 		if err != nil {

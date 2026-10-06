@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { useSelectedPortal } from '@/app/portal'
@@ -19,7 +19,7 @@ function tugas(partial: Partial<TugasRCL> = {}): TugasRCL {
     nama_tertanggung: 'Andi Saputra Contoh',
     tanggal_masuk_inbox: '2026-09-22 10:00',
     deskripsi_analyst: 'Diagnosa tidak termasuk manfaat rawat inap.',
-    dokter_rcl: 'DOKTERRCL01',
+    mode: '1',
     status_proses: 'Open',
     operator_penerima: 'DOKTERRCL01',
     ...partial,
@@ -49,7 +49,7 @@ function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
     lewati: 0,
     batas: 25,
     cari: '',
-    identitas_lama_ditemukan: true,
+    pengguna_ditemukan: true,
     ...partial,
   }
 }
@@ -117,8 +117,8 @@ it('menggambar kelima judul kolom dari server beserta isinya', async () => {
   expect(screen.getByText('Diagnosa tidak termasuk manfaat rawat inap.')).toBeInTheDocument()
 })
 
-it('identitas lama tidak ditemukan hanya grid kosong, tanpa peringatan maupun catatan', async () => {
-  stubFetch(daftarResponse({ data: [], total: 0, identitas_lama_ditemukan: false }))
+it('login tidak ditemukan hanya grid kosong, tanpa peringatan maupun catatan', async () => {
+  stubFetch(daftarResponse({ data: [], total: 0, pengguna_ditemukan: false }))
   renderPage()
 
   expect(await screen.findByText('Tidak ada klaim RCL untuk Anda saat ini.')).toBeInTheDocument()
@@ -153,4 +153,25 @@ it('menampilkan pesan galat dari server', async () => {
   renderPage()
 
   expect(await screen.findByText('Antrean tidak dapat dimuat')).toBeInTheDocument()
+})
+
+it('klik Nomor Case membuka layar kerja RCL Dokter, bukan View Claim', async () => {
+  stubFetch(daftarResponse())
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/inbox-rcl']}>
+        <Routes>
+          <Route path="/inbox-rcl" element={<InboxRCLPage />} />
+          <Route path="/inbox-rcl/klaim/:nomor" element={<p>layar kerja RCL Dokter</p>} />
+          <Route path="/view-claim/:referensi" element={<p>view claim</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+
+  await userEvent.click(await screen.findByRole('button', { name: 'PNCN.26.0412' }))
+
+  expect(await screen.findByText('layar kerja RCL Dokter')).toBeInTheDocument()
+  expect(screen.queryByText('view claim')).not.toBeInTheDocument()
 })

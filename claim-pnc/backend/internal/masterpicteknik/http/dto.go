@@ -23,15 +23,15 @@ type TechnicianDTO struct {
 	// dapat menampilkannya, tetapi tidak pernah diterima kembali.
 	Name string `json:"nama"`
 
-	Email        string `json:"email"`
-	BusinessLine string `json:"lini_bisnis"`
-	Group        string `json:"grup"`
-	Supervisor   string `json:"atasan"`
-	Quota        int    `json:"kuota"`
+	Email               string `json:"email"`
+	BusinessLine        string `json:"bisnis"`
+	Group               string `json:"kelompok"`
+	Supervisor          string `json:"atasan"`
+	ClaimCounterBelow1M int    `json:"counter_klaim_kurang_1m"`
 
-	// ExternalQuota adalah COUNTER_QUOTA2 — beban kerja petugas yang sama di sistem lain.
+	// ClaimCounterAbove1M adalah COUNTER_QUOTA2 — beban kerja petugas yang sama di sistem lain.
 	// Namanya di sistem lama, alias "OLD_OPERATOR_ID", menyesatkan: isinya angka.
-	ExternalQuota int `json:"kuota_luar"`
+	ClaimCounterAbove1M int `json:"counter_klaim_lebih_1m"`
 
 	// Workload adalah TOTAL_JOB, beban pekerjaan yang sebenarnya. HANYA DIBACA, dan hanya
 	// terisi pada daftar: ia kolom milik view dan tidak ada di tabelnya.
@@ -104,14 +104,14 @@ type EmployeeResponse struct {
 // OperatorID hanya dipakai pada penambahan. Pada perubahan ia diambil dari jalur URL —
 // dua sumber untuk satu nilai berarti keduanya dapat berbeda.
 type SaveRequest struct {
-	OperatorID    string `json:"id_operator"`
-	Email         string `json:"email"`
-	BusinessLine  string `json:"lini_bisnis"`
-	Group         string `json:"grup"`
-	Supervisor    string `json:"atasan"`
-	Quota         int    `json:"kuota"`
-	ExternalQuota int    `json:"kuota_luar"`
-	Active        bool   `json:"aktif"`
+	OperatorID          string `json:"id_operator"`
+	Email               string `json:"email"`
+	BusinessLine        string `json:"bisnis"`
+	Group               string `json:"kelompok"`
+	Supervisor          string `json:"atasan"`
+	ClaimCounterBelow1M int    `json:"counter_klaim_kurang_1m"`
+	ClaimCounterAbove1M int    `json:"counter_klaim_lebih_1m"`
+	Active              bool   `json:"aktif"`
 }
 
 // ViolationDTO adalah satu aturan yang dilanggar beserta isian yang melanggarnya.

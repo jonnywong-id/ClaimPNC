@@ -19,7 +19,7 @@ var (
 	claimColumns = []string{
 		"CLAIM_ID", "CLAIM_NUMBER", "POLICY_NUMBER", "INSURED_NAME", "BUSINESS_NAME",
 		"BUSINESS_SOURCE", "BRANCH_NAME", "TECHNICAL_PIC", "ADMIN_PNC", "CLAIM_STATUS",
-		"PROCESS_STATUS", "LOSS_DATE", "REGISTERED_AT",
+		"CLAIM_STATUS_LABEL", "PROCESS_STATUS", "LOSS_DATE", "REPORT_DATE", "REGISTERED_AT",
 	}
 	surveyColumns = []string{
 		"SURVEY_ID", "SURVEY_NUMBER", "CLAIM_NUMBER", "POLICY_NUMBER", "INSURED_NAME",
@@ -73,6 +73,13 @@ func TestCountOutstandingError(t *testing.T) {
 func TestListOutstandingMapsRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	loss := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+	// RECEIVEDDATE_1 tersimpan sebagai TEKS bergaya Pega, bukan sebagai DATE — lihat
+	// catatan pada pegaTimestamp. Ujinya mengirim bentuk aslinya supaya pemindainya benar
+	// diuji, bukan diberi tipe yang tidak pernah datang dari basis data.
+	reportText := "20260902T000000.000 GMT"
+	// Zonanya FixedZone("GMT"), bukan time.UTC: itulah yang dihasilkan time.Parse atas
+	// singkatan "GMT" pada teks aslinya. Instannya sama; yang berbeda hanya nama zonanya.
+	report := time.Date(2026, time.September, 2, 0, 0, 0, 0, time.FixedZone("GMT", 0))
 	registered := time.Date(2026, time.September, 2, 3, 0, 0, 0, time.UTC)
 
 	filters := []driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL"}
@@ -81,8 +88,8 @@ func TestListOutstandingMapsRows(t *testing.T) {
 	mock.ExpectQuery(exact("outstanding_list")).WithArgs(append(filters, 25, 25)...).
 		WillReturnRows(sqlmock.NewRows(claimColumns).
 			AddRow("ID1", "PNCN.26.0001", "POL", "Tertanggung", "Bisnis", "Sumber", "Cabang",
-				"PIC", "Admin", "1147", "Open", loss, registered).
-			AddRow("ID2", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil))
+				"PIC", "Admin", "1147", "Register", "Open", loss, reportText, registered).
+			AddRow("ID2", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil))
 
 	page, err := repo.ListOutstanding(context.Background(), dashboardclaim.Filter{Offset: 25})
 	require.NoError(t, err)
@@ -91,8 +98,8 @@ func TestListOutstandingMapsRows(t *testing.T) {
 		{
 			ClaimID: "ID1", ClaimNumber: "PNCN.26.0001", PolicyNumber: "POL", InsuredName: "Tertanggung",
 			BusinessName: "Bisnis", BusinessSource: "Sumber", BranchName: "Cabang", TechnicalPIC: "PIC",
-			AdminPNC: "Admin", ClaimStatusCode: "1147", ProcessStatus: "Open",
-			LossDate: &loss, RegisteredAt: registered,
+			AdminPNC: "Admin", ClaimStatusCode: "1147", ClaimStatusLabel: "Register",
+			ProcessStatus: "Open", LossDate: &loss, ReportDate: &report, RegisteredAt: registered,
 		},
 		{ClaimID: "ID2"},
 	}, page.Rows)
@@ -124,7 +131,7 @@ func TestListOutstandingErrors(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(1))
 	mock.ExpectQuery(exact("outstanding_list")).
 		WillReturnRows(sqlmock.NewRows(claimColumns).
-			AddRow("ID", "N", "P", "I", "B", "S", "C", "T", "A", "K", "O", "bukan-tanggal", nil))
+			AddRow("ID", "N", "P", "I", "B", "S", "C", "T", "A", "K", "L", "O", "bukan-tanggal", nil, nil))
 	_, err = repo.ListOutstanding(ctx, dashboardclaim.Filter{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "membaca baris klaim")
@@ -136,7 +143,7 @@ func TestListOutstandingErrors(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(1))
 	mock.ExpectQuery(exact("outstanding_list")).
 		WillReturnRows(sqlmock.NewRows(claimColumns).
-			AddRow("ID", "N", "P", "I", "B", "S", "C", "T", "A", "K", "O", nil, nil).
+			AddRow("ID", "N", "P", "I", "B", "S", "C", "T", "A", "K", "L", "O", nil, nil, nil).
 			RowError(0, boom))
 	_, err = repo.ListOutstanding(ctx, dashboardclaim.Filter{})
 	require.ErrorIs(t, err, boom)

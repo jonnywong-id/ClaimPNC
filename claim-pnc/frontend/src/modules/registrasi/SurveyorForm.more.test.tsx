@@ -209,6 +209,76 @@ describe('bagian atas', () => {
     expect(screen.queryByLabelText('Status Klaim')).not.toBeInTheDocument()
   })
 
+  // Kirim ke RCL/PUCL — ClaimSurvey_sect sel 6, `isAnalystPA_PNC || isAnalisatorTravel`.
+  //
+  // KEDUANYA menguji data klaim, bukan peran penekan tombol: `isAnalisatorTravel`
+  // berkelas `ASM-FW-GCNMFW-Work-PNC`, sedangkan rule peran (`IsAnalisator`) berkelas
+  // `Data-Admin-Operator-ID`. Lihat catatan pada showSendToRCLPUCL.
+  it.each([
+    {
+      name: 'PA yang sudah ditransfer ke Analyst',
+      klaim: claim({ sudah_transfer_analis: true }, { lini: '002', jenis_bisnis: 'PA' }),
+      tugas: task(),
+    },
+    {
+      name: 'Travel yang sudah ditransfer ke Analyst',
+      klaim: claim({ sudah_transfer_analis: true }, { lini: '005', jenis_bisnis: 'Travel' }),
+      tugas: task(),
+    },
+    {
+      name: 'Travel sudah transfer, penekan BUKAN anggota grup Analyst',
+      klaim: claim({ sudah_transfer_analis: true }, { lini: '005', jenis_bisnis: 'Travel' }),
+      tugas: task({ analis: false }),
+    },
+  ])('menampilkan Kirim ke RCL/PUCL untuk $name', ({ klaim, tugas }) => {
+    wrap(<SurveyorForm klaim={klaim} tugas={tugas} />)
+    // Tugasnya dapat dikerjakan pemanggil, sehingga tombolnya membuka modal.
+    expect(screen.getByRole('button', { name: 'Kirim ke RCL/PUCL' })).toBeEnabled()
+  })
+
+  it('membuka modal KomentarRCLPUCL saat Kirim ke RCL/PUCL ditekan', async () => {
+    const user = userEvent.setup()
+    wrap(
+      <SurveyorForm
+        klaim={claim({ sudah_transfer_analis: true }, { lini: '002', jenis_bisnis: 'PA' })}
+        tugas={task()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Kirim ke RCL/PUCL' }))
+    expect(screen.getByRole('dialog', { name: 'Kirim ke RCL/PUCL' })).toBeInTheDocument()
+  })
+
+  it('mematikan Kirim ke RCL/PUCL bila tugasnya bukan milik pemanggil', () => {
+    wrap(
+      <SurveyorForm
+        klaim={claim({ sudah_transfer_analis: true }, { lini: '002', jenis_bisnis: 'PA' })}
+        tugas={task({ dapat_dikerjakan: false, pemilik: 'ORANG LAIN' })}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Kirim ke RCL/PUCL' })).toBeDisabled()
+  })
+
+  it.each([
+    {
+      name: 'PA yang belum ditransfer ke Analyst',
+      klaim: claim({}, { lini: '002', jenis_bisnis: 'PA' }),
+      tugas: task(),
+    },
+    {
+      name: 'Travel yang belum ditransfer ke Analyst',
+      klaim: claim({}, { lini: '005', jenis_bisnis: 'Travel' }),
+      tugas: task({ analis: true }),
+    },
+    {
+      name: 'lini lain meski sudah ditransfer ke Analyst',
+      klaim: claim({ sudah_transfer_analis: true }),
+      tugas: task({ analis: true }),
+    },
+  ])('tidak menampilkan Kirim ke RCL/PUCL untuk $name', ({ klaim, tugas }) => {
+    wrap(<SurveyorForm klaim={klaim} tugas={tugas} />)
+    expect(screen.queryByRole('button', { name: 'Kirim ke RCL/PUCL' })).not.toBeInTheDocument()
+  })
+
   it.each([
     { name: 'Marine Cargo menurut jenis bisnis', polis: { lini: '999', jenis_bisnis: 'MarineCargo' } },
     { name: 'Fire menurut jenis bisnis', polis: { lini: '999', jenis_bisnis: 'Fire' } },

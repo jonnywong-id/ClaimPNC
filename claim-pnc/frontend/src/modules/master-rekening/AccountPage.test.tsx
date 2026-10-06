@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { AccountPage } from './AccountPage'
@@ -83,6 +84,10 @@ beforeEach(() => {
     user: null,
     validUntil: '2026-12-31T00:00:00Z',
   })
+  // Layar menolak menggambar tabel sebelum portal entitas dipilih — satu aplikasi
+  // melayani empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak
+  // boleh hanya diandaikan (ADR-0030, R-20).
+  useSelectedPortal.getState().select('ASM')
   reply = new Map([
     ['/api/master-rekening/bank', { status: 200, body: { bank: [{ kode: '014', nama: 'BANK BCA' }] } }],
     ['/api/master-rekening', { status: 200, body: { rekening: [sampleAccount()], jumlah: 1, batas: 50, lewati: 0 } }],
@@ -93,55 +98,95 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  useSelectedPortal.getState().clear()
 })
 
 describe('AccountPage', () => {
-  it('menampilkan kelima tab layar lama', async () => {
+  it('menampilkan keempat tab layar lama, dengan nama dan urutan Pega', async () => {
     render(wrap(<AccountPage />))
 
-    for (const label of [
-      'Cari Data Rekening',
-      'Antrean Komite Saya',
-      'Menunggu Approval',
-      'Sudah Disetujui',
-      'Sudah Ditolak',
-    ]) {
-      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
-    }
+    // Keempatnya diambil dari `pyTitle` di Section/BrowseMasterRekening-Section.xml,
+    // berurutan. Tidak ada tab kelima: `BrowseMasterCariDataRekening` tidak punya
+    // `pyTitle` dan isinya alur perubahan rekening, bukan daftar.
+    const tabs = screen.getAllByRole('tab').map((t) => t.textContent)
+    expect(tabs).toEqual(['Approve', 'Reject', 'Waiting Approval', 'Komite Approval'])
   })
 
-  it('menampilkan rekening beserta status persetujuannya', async () => {
+  it('tab pertama adalah Approve dan menyaring ke status disetujui', async () => {
     render(wrap(<AccountPage />))
 
-    expect(await screen.findByText('1234567890')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(request.some((p) => p.path.includes('status=1'))).toBe(true)
+    })
+    expect(screen.getByRole('tab', { name: 'Approve' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('menampilkan keenam kolom bersama beserta tambahan khas tab Approve', async () => {
+    render(wrap(<AccountPage />))
+    await screen.findByText('1234567890')
+
+    // Nama kolom mengikuti caption Pega huruf per huruf. `Nama Bank` dan
+    // `Nama Cabang Bank` TERPISAH — sebelumnya keduanya digabung menjadi satu kolom.
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+    expect(headers).toEqual([
+      'No Rek',
+      'Nama Bank',
+      'Nama Account',
+      'Nama Cabang Bank',
+      'Tipe Account',
+      'Komite Approval',
+      'ID Kasir',
+      'Response Kasir',
+      'Aksi',
+    ])
+
     expect(screen.getByText('BENGKEL CONTOH SEJAHTERA')).toBeInTheDocument()
-    expect(screen.getByText('Menunggu')).toBeInTheDocument()
+    expect(screen.getByText('BANK CONTOH')).toBeInTheDocument()
+    expect(screen.getByText('JAKARTA PUSAT')).toBeInTheDocument()
+    expect(screen.getByText('KOMITE-01')).toBeInTheDocument()
   })
 
-  it('menandai rekening yang disetujui tetapi sudah dinonaktifkan', async () => {
-    // Tanpa penanda ini, layar menampilkannya sebagai "Komite Approve" dan petugas
-    // mengira rekening itu masih dapat dipakai membayar klaim.
-    reply.set('/api/master-rekening', {
-      status: 200,
-      body: {
-        rekening: [
-          sampleAccount({
-            status: '1',
-            status_label: 'Komite Approve',
-            aktif: false,
-            dapat_dipakai: false,
-          }),
-        ],
-        jumlah: 1,
-        batas: 50,
-        lewati: 0,
-      },
+  it('tab Reject menyaring ke status ditolak dan menukar dua kolom terakhir', async () => {
+    const pengguna = userEvent.setup()
+    render(wrap(<AccountPage />))
+
+    await pengguna.click(screen.getByRole('tab', { name: 'Reject' }))
+
+    await waitFor(() => {
+      expect(request.some((p) => p.path.includes('status=2'))).toBe(true)
     })
 
+    // Kolom Kasir diganti dua kolom alasan penolakan — persis seperti
+    // BrowseMasterRekeningReject, yang memang tidak memuat caption ID Kasir.
+    await waitFor(() => {
+      const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+      expect(headers).toContain('Alasan Reject Komite')
+      expect(headers).toContain('Alasan Reject Kasir')
+      expect(headers).not.toContain('ID Kasir')
+    })
+  })
+
+  it('tab Waiting Approval menyaring ke status menunggu, tanpa kolom kasir', async () => {
+    const pengguna = userEvent.setup()
     render(wrap(<AccountPage />))
 
-    expect(await screen.findByText('Komite Approve')).toBeInTheDocument()
-    expect(screen.getByText('nonaktif — tidak dapat dipakai')).toBeInTheDocument()
+    await pengguna.click(screen.getByRole('tab', { name: 'Waiting Approval' }))
+
+    await waitFor(() => {
+      expect(request.some((p) => p.path.includes('status=0'))).toBe(true)
+    })
+    await waitFor(() => {
+      const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+      expect(headers).toEqual([
+        'No Rek',
+        'Nama Bank',
+        'Nama Account',
+        'Nama Cabang Bank',
+        'Tipe Account',
+        'Komite Approval',
+        'Aksi',
+      ])
+    })
   })
 
   it('tab Komite Approval meminta antrean komite yang sedang masuk', async () => {
@@ -151,7 +196,7 @@ describe('AccountPage', () => {
     const pengguna = userEvent.setup()
     render(wrap(<AccountPage />))
 
-    await pengguna.click(screen.getByRole('button', { name: 'Antrean Komite Saya' }))
+    await pengguna.click(screen.getByRole('tab', { name: 'Komite Approval' }))
 
     await waitFor(() => {
       expect(
@@ -159,28 +204,24 @@ describe('AccountPage', () => {
       ).toBe(true)
     })
     expect(request.every((p) => !p.path.includes('identitas'))).toBe(true)
-  })
 
-  it('tab Reject menyaring ke status ditolak', async () => {
-    const pengguna = userEvent.setup()
-    render(wrap(<AccountPage />))
-
-    await pengguna.click(screen.getByRole('button', { name: 'Sudah Ditolak' }))
-
+    // Hanya tab ini yang punya kolom User Input — satu-satunya section yang memuat
+    // caption itu adalah ApprovalMasterRekening.
     await waitFor(() => {
-      expect(request.some((p) => p.path.includes('status=2'))).toBe(true)
+      const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+      expect(headers).toContain('User Input')
     })
   })
 
-  it('tombol Approve dan Reject hanya muncul pada tab yang menunggu keputusan', async () => {
+  it('tombol Approve dan Reject hanya muncul pada tab Komite Approval', async () => {
     const pengguna = userEvent.setup()
     render(wrap(<AccountPage />))
 
-    // Tab "Cari Data Rekening" hanya membaca.
+    // Tab Approve hanya membaca; keputusan diambil di antrean komite.
     expect(await screen.findByText('1234567890')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
 
-    await pengguna.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
+    await pengguna.click(screen.getByRole('tab', { name: 'Komite Approval' }))
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Approve' }).length).toBeGreaterThan(0)
     })
@@ -194,7 +235,7 @@ describe('AccountPage', () => {
     })
 
     render(wrap(<AccountPage />))
-    await pengguna.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
+    await pengguna.click(screen.getByRole('tab', { name: 'Komite Approval' }))
 
     const catatan = await screen.findByPlaceholderText('Keterangan approval atasan')
     await pengguna.type(catatan, 'Disetujui atasan.')
@@ -216,7 +257,7 @@ describe('AccountPage', () => {
     })
 
     render(wrap(<AccountPage />))
-    await pengguna.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
+    await pengguna.click(screen.getByRole('tab', { name: 'Komite Approval' }))
 
     const button = await screen.findAllByRole('button', { name: 'Approve' })
     await pengguna.click(button[0]!)
@@ -248,6 +289,10 @@ describe('AccountPage', () => {
 
     render(wrap(<AccountPage />))
 
-    expect(await screen.findByText(/Gagal · Rekening sudah terdaftar di Kasir\./)).toBeInTheDocument()
+    // Tab Approve memuat kolom Response Kasir, dan isinya ditandai merah saat
+    // pendaftarannya gagal — bukan disamarkan sebagai teks biasa.
+    const sel = await screen.findByText('Rekening sudah terdaftar di Kasir.')
+    expect(sel).toBeInTheDocument()
+    expect(sel).toHaveClass('text-red-700')
   })
 })

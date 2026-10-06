@@ -129,6 +129,15 @@ export type Tab = {
    * pada enam daftar yang barisnya klaim dan tidak membawa ID pengajuan sama sekali.
    */
   kunci_rincian: DetailKey
+
+  /**
+   * Tombol Detail daftar ini membuka **form sunting**, bukan panel baca.
+   *
+   * Satu daftar saja: "Rejected Checker" berisi pengajuan yang checker kembalikan kepada
+   * PIC, dan satu-satunya tindakan yang masuk akal di sana adalah menyunting lalu
+   * mengirim ulang. Membukanya sebagai panel baca menjadikan daftar itu jalan buntu.
+   */
+  membuka_form_sunting: boolean
 }
 
 /** Satu pilihan daftar "Status Salvage" pada form Tambah. */
@@ -142,6 +151,17 @@ export type MetadataResponse = {
   daftar: Tab[]
   daftar_bawaan: string
   pilihan_status_salvage: StatusOption[]
+
+  /**
+   * Pilihan **Mata Uang** pada form Tambah.
+   *
+   * Dibaca server dari `POOLDATA.CURRENCY` — tabel yang sama yang dibaca Report
+   * Definition `SelectCurrency_RD`, sumber dropdown ini di layar lama.
+   *
+   * KOSONG bila tabelnya tidak terbaca. Itu bukan galat yang menutup layar: kolomnya
+   * tetap digambar, hanya tanpa isi dan tanpa tanda wajib.
+   */
+  pilihan_mata_uang: StatusOption[]
   kolom_berkas_unggahan: string[]
   selisih_terencana: string[]
   portal: string
@@ -269,8 +289,74 @@ export type HistoryRow = {
   posisi_salvage: string
 }
 
+/**
+ * Satu dokumen yang BERHASIL tersimpan lewat modal "UploadDocument_Salvage".
+ *
+ * Isi berkas dan keterangannya hidup di dua tabel berbeda dengan `data_id` yang
+ * berbeda pula; yang menautkan keduanya `image_id`. Keduanya dikirim supaya penelusuran
+ * ke basis data dapat dimulai dari salah satunya.
+ */
+export type DokumenTersimpan = {
+  data_id: string
+  image_id: string
+
+  /** Nama berkas yang BENAR-BENAR tersimpan — bukan nama aslinya. */
+  nama_tersimpan: string
+
+  /**
+   * Baris penaut ke pengajuan salvage ikut ditulis.
+   *
+   * SALAH pada form pengajuan baru: di sana berkas diunggah sebelum Submit, sehingga
+   * pengajuannya belum punya nomor. Dokumennya tetap menempel pada klaimnya.
+   */
+  tertaut_salvage: boolean
+}
+
+export type AttachDocumentsResponse = {
+  dokumen: DokumenTersimpan[]
+  pesan: string
+  portal: string
+}
+
 /** Kunci yang dipakai membuka panel rincian. */
 export type DetailKey = 'pengajuan' | 'klaim'
+
+/**
+ * Satu pilihan pada autocomplete **"Nama Object"** di form Tambah.
+ *
+ * Di layar lama ia satu baris `TempObjectData.pxResults`: yang dibaca pengguna hanya
+ * namanya, dan `id`-nya ikut tersimpan diam-diam saat barisnya dipilih — disalin ke
+ * isian tersembunyi `TempInsert.NewNoKTP`.
+ */
+export type ObjekPilihan = {
+  /** `T_CLAIM_OBJECTLIST.OBJECTID` — berakhir di `PNC_SALVAGE.IDOBJECT`. */
+  id: string
+  nama: string
+}
+
+/**
+ * Satu pilihan pada autocomplete **"Nama Coverage"**.
+ *
+ * Bentuknya sama persis dengan `ObjekPilihan`, dan di layar lama pun kedua kuerinya
+ * kembar.
+ *
+ * # Daftar ini TIDAK terikat objek yang dipilih
+ *
+ * Kueri pemasoknya tidak mengambil `OBJECTID` sama sekali, sehingga seluruh coverage
+ * milik klaim ditawarkan siapa pun objeknya. Akibatnya pasangan objek dan coverage yang
+ * tersimpan dapat berasal dari objek yang berbeda — keadaan sistem lama yang dibawa apa
+ * adanya (`P-5`), bukan sesuatu yang modul ini perkenalkan.
+ */
+export type CoveragePilihan = {
+  /**
+   * `T_CLAIM_OBJECTCOVERAGE.COVERAGEID` — berakhir di `PNC_SALVAGE.IDCOVERAGE`.
+   *
+   * Ia KODE JENIS jaminan, bukan penunjuk satu baris: kode yang sama dapat muncul dua
+   * kali pada satu klaim bila dua objeknya punya jaminan yang sama.
+   */
+  id: string
+  nama: string
+}
 
 /** Satu baris grid "Detail Pengajuan Salvage" pada panel Detail. */
 export type DetailBarang = {
@@ -342,6 +428,16 @@ export type DetailResponse = {
 
   nama_object: string
   nama_coverage: string
+
+  /**
+   * Penunjuk objek dan coverage pengajuan ini.
+   *
+   * Tidak digambar sebagai isian. Yang membacanya adalah form Tambah, untuk memilih ulang
+   * baris yang sama pada kedua autocomplete.
+   */
+  id_object: string
+  id_coverage: string
+
   nilai_salvage: string
 
   email: string
@@ -372,6 +468,16 @@ export type DetailResponse = {
    * Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
    */
   riwayat: HistoryRow[]
+
+  /**
+   * Isi kedua autocomplete pada form "Menambahkan Data Salvage".
+   *
+   * Keduanya milik KLAIM, bukan milik pengajuan — sama seperti di layar lama, tempat
+   * mengetik Nomor Klaim memuat keduanya sekaligus. Pada jalur `/pengajuan/{id}` keduanya
+   * kosong, dan itu benar: panel rincian tidak menggambar form.
+   */
+  pilihan_objek: ObjekPilihan[]
+  pilihan_coverage: CoveragePilihan[]
 
   portal: string
 }

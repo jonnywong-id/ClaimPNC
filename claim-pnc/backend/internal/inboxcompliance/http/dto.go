@@ -166,14 +166,20 @@ var limitations = []string{
 		"lama, dan angkanya karena itu tidak dapat dibandingkan dengan angka TAT pada " +
 		"laporan KPI yang memakai dasar berbeda.",
 
-	// Ini bukan keterbatasan perkakas melainkan pertanyaan terbuka yang akibatnya
-	// TERLIHAT pengguna, sehingga tempatnya di sini — bukan hanya di dokumen. Tabel
-	// POOLDATA.T_CLAIM_COMPLIANCE_H tidak punya kolom status, sehingga penyaring
-	// `pyStatusWork = "New"` milik Report Definition lama tidak dapat direplikasi.
-	"Tab Post Audit menampilkan seluruh baris POOLDATA.T_CLAIM_COMPLIANCE_H. Sistem " +
-		"lama menyaringnya ke pemeriksaan yang berstatus baru; tabel itu tidak menyimpan " +
-		"status, sehingga penyaringnya tidak dapat dibawa. Bila daftar ini terasa lebih " +
-		"panjang daripada di Pega, itu sebabnya.",
+	// Catatan kedua DIHAPUS pada 2026-10-05 atas keputusan Work Owner.
+	//
+	// Isinya: tab Post Audit menampilkan seluruh baris `T_CLAIM_COMPLIANCE_H` karena tabel
+	// itu tidak punya kolom status, sehingga penyaring `pyStatusWork = "New"` milik Report
+	// Definition lama tidak dapat direplikasi.
+	//
+	// Work Owner menyatakan tabelnya diisi mengikuti aplikasi Pega, sehingga penyaringnya
+	// sudah terjadi di SUMBER dan tidak perlu diulang di sini — dan permintaan menambah
+	// kolom status ditolak dengan alasan yang sama. Dengan begitu peringatan "daftar ini
+	// bisa lebih panjang daripada di Pega" menjadi dugaan, bukan keterangan, dan
+	// peringatan yang isinya dugaan hanya melatih pengguna mengabaikan kotak ini.
+	//
+	// Keadaan yang menyebabkannya TIDAK berubah, dan tetap tercatat di
+	// `docs/keputusan-implementasi.md` §31. Yang berubah hanya tempat mencatatnya.
 }
 
 // toWorkItemDTO mengubah satu baris.
@@ -335,4 +341,159 @@ func toSendPostAuditResponse(sent usecase.Sent, portalAlias string) SendPostAudi
 		SentAt:       toDateTimeString(&at),
 		Portal:       portalAlias,
 	}
+}
+
+// ── Form Compliance Checker ──────────────────────────────────────────────────
+
+// ChoiceDTO adalah satu Pilihan Compliance beserta labelnya.
+//
+// Keempatnya datang dari server, bukan disalin ke layar, dengan alasan yang sama seperti
+// daftar tab: nilainya adalah hasil pembacaan `Property/PilihanCompliance_property.xml`,
+// dan tempat pembacaan itu tercatat adalah backend.
+type ChoiceDTO struct {
+	Value string `json:"nilai"`
+	Label string `json:"label"`
+}
+
+// DecisionDTO adalah keputusan Compliance yang sudah tersimpan.
+//
+// Ia muncul pada respons pembukaan form HANYA bila klaimnya sudah pernah diputuskan —
+// pointer pada CheckerResponse, bukan struct kosong, supaya layar dapat membedakan "belum
+// pernah diputuskan" dari "diputuskan dengan pilihan 0", yang berarti Fraud/Tolak.
+type DecisionDTO struct {
+	Choice string `json:"pilihan"`
+
+	// ChoiceLabel disertakan supaya layar tidak perlu mencocokkan nilainya sendiri ke
+	// daftar pilihan. Kosong bila nilainya tidak dikenal — keadaan yang hanya mungkin
+	// terjadi bila barisnya ditulis tangan ke basis data.
+	ChoiceLabel string `json:"pilihan_label"`
+
+	Note    string `json:"note"`
+	Remarks string `json:"catatan"`
+
+	DecidedBy string  `json:"diputuskan_oleh"`
+	DecidedAt *string `json:"diputuskan_pada"`
+
+	// Kedua tanggal berikut terisi HANYA pada pilihannya masing-masing: ValidatedAt pada
+	// Bayar/Valid, SentToPostAuditAt pada Bayar/PostAudit.
+	ValidatedAt       *string `json:"tanggal_valid"`
+	SentToPostAuditAt *string `json:"tanggal_kirim_post_audit"`
+}
+
+// CheckerResponse adalah form Compliance Checker yang terbuka.
+type CheckerResponse struct {
+	// Claim adalah baris antrean yang dibuka — bentuk yang SAMA dengan baris pada daftar,
+	// bukan bentuk kedua. Menyusun bentuk kedua akan membuat keduanya dapat berbeda.
+	Claim WorkItemDTO `json:"klaim"`
+
+	// Choices adalah keempat Pilihan Compliance.
+	Choices []ChoiceDTO `json:"pilihan"`
+
+	// Decision adalah keputusan yang sudah tersimpan, bila ada.
+	Decision *DecisionDTO `json:"keputusan"`
+
+	// Limitation adalah kalimat yang WAJIB sampai ke petugas, bukan hanya ke DBA.
+	//
+	// Form ini mencatat keputusan; ia belum menjalankan alurnya. Klaimnya di Pega tidak
+	// berpindah status dan tidak keluar dari antrean, karena tabel klaim masih dimiliki
+	// Pega selama masa paralel (`P-1`). Menyembunyikannya akan membuat petugas mengira
+	// pekerjaannya selesai padahal klaimnya masih menunggu di Pega.
+	Limitation string `json:"keterbatasan"`
+
+	Portal string `json:"portal"`
+}
+
+// SubmitDecisionRequest adalah badan permintaan penyimpanan keputusan.
+type SubmitDecisionRequest struct {
+	// Choice adalah nilai Pilihan Compliance — `"0"`…`"3"`.
+	//
+	// Teks, bukan angka, karena `pyStandardValue` memang teks. Mengirimnya sebagai angka
+	// akan membuat `0` tidak dapat dibedakan dari field yang tidak dikirim sama sekali.
+	Choice string `json:"pilihan"`
+
+	Note    string `json:"note"`
+	Remarks string `json:"catatan"`
+}
+
+// SubmitDecisionResponse adalah hasil penyimpanan keputusan.
+type SubmitDecisionResponse struct {
+	Decision DecisionDTO `json:"keputusan"`
+
+	// PostAudit terisi HANYA pada pilihan Bayar/PostAudit, yakni ketika baris Post Audit
+	// ikut terbit. Layar memakainya untuk menampilkan nomor yang terbit pada pesan
+	// berhasil.
+	PostAudit *SendPostAuditResponse `json:"post_audit"`
+
+	Limitation string `json:"keterbatasan"`
+	Portal     string `json:"portal"`
+}
+
+// checkerLimitation adalah kalimat keterbatasan yang dikirim bersama kedua respons di atas.
+//
+// Ia satu konstanta, bukan dua kalimat yang ditulis terpisah, supaya keduanya tidak dapat
+// berbeda saat salah satunya diperbaiki.
+const checkerLimitation = "Keputusan tersimpan di aplikasi baru. Status klaim di sistem " +
+	"lama belum ikut berubah dan klaimnya masih menunggu di antrean Compliance Pega."
+
+func toChoiceDTOs(choices []inboxcompliance.Choice) []ChoiceDTO {
+	out := make([]ChoiceDTO, 0, len(choices))
+	for _, c := range choices {
+		out = append(out, ChoiceDTO{Value: c.Value, Label: c.Label})
+	}
+	return out
+}
+
+func toDecisionDTO(decision inboxcompliance.Decision) DecisionDTO {
+	label := ""
+	if choice, known := inboxcompliance.FindChoice(decision.Choice); known {
+		label = choice.Label
+	}
+
+	decidedAt := decision.DecidedAt
+	return DecisionDTO{
+		Choice:            decision.Choice,
+		ChoiceLabel:       label,
+		Note:              decision.Note,
+		Remarks:           decision.Remarks,
+		DecidedBy:         decision.DecidedBy,
+		DecidedAt:         toDateTimeString(&decidedAt),
+		ValidatedAt:       toDateTimeString(decision.ValidatedAt),
+		SentToPostAuditAt: toDateTimeString(decision.SentToPostAuditAt),
+	}
+}
+
+func toCheckerResponse(opened usecase.CheckerOpened, portalAlias string) CheckerResponse {
+	response := CheckerResponse{
+		Claim:      toWorkItemDTO(opened.Case.Claim),
+		Choices:    toChoiceDTOs(opened.Choices),
+		Limitation: checkerLimitation,
+		Portal:     portalAlias,
+	}
+
+	if opened.Case.Decision != nil {
+		decision := toDecisionDTO(*opened.Case.Decision)
+		response.Decision = &decision
+	}
+
+	return response
+}
+
+func toSubmitDecisionResponse(
+	decided usecase.Decided, portalAlias string,
+) SubmitDecisionResponse {
+	response := SubmitDecisionResponse{
+		Decision:   toDecisionDTO(decided.Decision),
+		Limitation: checkerLimitation,
+		Portal:     portalAlias,
+	}
+
+	if decided.PostAudit != nil {
+		postAudit := toSendPostAuditResponse(
+			usecase.Sent{Entry: *decided.PostAudit, Claim: decided.Claim},
+			portalAlias,
+		)
+		response.PostAudit = &postAudit
+	}
+
+	return response
 }

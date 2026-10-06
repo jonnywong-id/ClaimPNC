@@ -89,6 +89,78 @@ type DocumentUploader interface {
 	Upload(ctx context.Context, f DocumentFile) (imageID string, err error)
 }
 
+// DocumentLink adalah alamat baca satu berkas di layanan penyimpanan, beserta masa
+// berlakunya — kolom URLPUBLIC dan EXPDATE pada GENERAL.T_STORAGE_IMAGE.
+type DocumentLink struct {
+	URL string
+
+	// ExpiresAt nol berarti metadata tidak mencatat masa berlaku.
+	ExpiresAt time.Time
+}
+
+// DocumentLinker membaca alamat berkas dari metadata penyimpanan menurut IMAGEID-nya.
+//
+// Padanan `Activity/GetLinkViewDoc_Act-act.xml`: alamat tersimpan dipakai selama berlaku;
+// bila kosong atau kedaluwarsa, diperpanjang lewat Connect REST `NewLinkDokumenPNC` atas nama
+// pengguna yang membuka berkas (by), lalu disimpan kembali.
+type DocumentLinker interface {
+	Link(ctx context.Context, portal, imageID, by string) (DocumentLink, error)
+}
+
+// DocumentRemover menghapus berkas dari layanan penyimpanan — Connect REST `DeleteDokumenPNC`
+// pada `Activity/DeleteAttachDoc-act.xml`. Penghapusannya PERMANEN (keputusan-implementasi §171).
+type DocumentRemover interface {
+	Remove(ctx context.Context, portal, imageID, by string) error
+}
+
+// CanDeleteAttachment menyatakan tombol Delete tampil untuk lampiran ini: hanya pengunggahnya
+// sendiri, dan hanya bila berkasnya tersimpan di layanan penyimpanan (ada IMAGEID).
+//
+// `Section/GCNMViewAttachment2-sect.xml` mensyaratkan `.exp <= 60.0 && .UserInput ==
+// OperatorID.pyUserIdentifier`. Bagian `.UserInput` dibawa. Bagian `.exp <= 60.0` TIDAK: artinya
+// diisi `InputParamUpload_act` kelas `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` yang belum ada di export,
+// dan Work Owner menetapkan (2026-10-04) berkas yang sudah diunggah tetap dapat dihapus —
+// menggantikan asumsi "60 menit sejak unggah" yang sempat dipakai (keputusan-implementasi §171).
+// `now` dipertahankan supaya syarat waktu dapat dikembalikan tanpa mengubah pemanggil.
+func CanDeleteAttachment(a Attachment, identity string, _ time.Time) bool {
+	identity = strings.TrimSpace(identity)
+	if identity == "" || strings.TrimSpace(a.ImageID) == "" {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(a.UploadedBy), identity)
+}
+
+// ErrAttachmentDeleteNotAllowed: pemanggil bukan pengunggahnya.
+var ErrAttachmentDeleteNotAllowed = errors.New("registrasi: lampiran ini tidak dapat dihapus oleh pengguna ini")
+
+// ErrDocumentDeleteFailed: layanan penyimpanan tidak menghapus berkasnya. Tidak ada yang berubah.
+var ErrDocumentDeleteFailed = errors.New("registrasi: berkas tidak dapat dihapus dari penyimpanan")
+
+// ErrDocumentDeleteHalfDone: berkas SUDAH terhapus dari penyimpanan, tetapi catatan lampirannya
+// gagal dihapus — baris lampiran menunjuk berkas yang sudah tidak ada.
+var ErrDocumentDeleteHalfDone = errors.New("registrasi: berkas terhapus dari penyimpanan, catatan lampiran gagal dihapus")
+
+// ErrDocumentLinkRenewFailed: layanan penyimpanan tidak dapat memperpanjang alamat berkas.
+var ErrDocumentLinkRenewFailed = errors.New("registrasi: alamat berkas tidak dapat diperpanjang")
+
+// ErrAttachmentNotFound: lampiran yang diminta bukan milik klaim ini.
+var ErrAttachmentNotFound = errors.New("registrasi: lampiran tidak ditemukan pada klaim ini")
+
+// ErrDocumentLinkEmpty: metadata penyimpanan belum mencatat alamat berkasnya.
+var ErrDocumentLinkEmpty = errors.New("registrasi: alamat berkas belum tercatat")
+
+// ErrDocumentLinkUnavailable: metadata penyimpanan tidak dapat dibaca.
+var ErrDocumentLinkUnavailable = errors.New("registrasi: metadata penyimpanan dokumen tidak dapat dibaca")
+
+// DocumentLinkExpiredError: alamat berkas sudah lewat masa berlakunya.
+type DocumentLinkExpiredError struct {
+	ExpiresAt time.Time
+}
+
+func (e *DocumentLinkExpiredError) Error() string {
+	return "registrasi: alamat berkas kedaluwarsa sejak " + e.ExpiresAt.Format(time.RFC3339)
+}
+
 // NewAttachment adalah satu baris DATA_ATTACHFILE yang akan disisipkan.
 type NewAttachment struct {
 	ClaimKey    string // IDPEGA
@@ -102,9 +174,14 @@ type NewAttachment struct {
 	At          time.Time
 }
 
-// AttachmentStore menyisipkan baris lampiran klaim.
+// AttachmentStore menyisipkan dan menghapus baris lampiran klaim.
 type AttachmentStore interface {
 	AddAttachment(ctx context.Context, a NewAttachment) error
+
+	// DeleteAttachment menghapus baris DATA_ATTACHFILE dan JSON_FORM_KLAIM menurut IMAGEID —
+	// `DeleteDataAttachFile_SQL` dan `DeleteDataJSON_FORM_KLAIM_SQL`. Penghapusan FISIK,
+	// pengecualian `D-66` (keputusan-implementasi §171).
+	DeleteAttachment(ctx context.Context, imageID string) error
 }
 
 // AttachmentExtension mengambil ekstensi berkas dalam huruf kecil, seperti isi

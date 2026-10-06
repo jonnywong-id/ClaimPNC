@@ -308,9 +308,14 @@ describe('mengubah', () => {
 
     await pengguna.click(screen.getByRole('button', { name: /ubah tipe surveyor EXPERT/i }))
 
-    // Kode digambar sebagai kotak mati, bukan isian — ia dipatok kueri Pega.
-    expect(screen.getByRole('form', { name: /ubah tipe surveyor/i })).toBeInTheDocument()
+    // Kode TIDAK ditampilkan di form (keputusan Work Owner 2026-10-03). Nomornya
+    // diterbitkan sistem dan tidak dapat disunting, sehingga menampilkannya hanya menyita
+    // ruang tanpa memberi pengguna satu pun hal yang dapat ia lakukan. Ia tetap terlihat
+    // di kolom pertama TABEL.
+    const form = screen.getByRole('form', { name: /ubah tipe surveyor/i })
+    expect(form).toBeInTheDocument()
     expect(screen.queryByLabelText(/^kode$/i)).not.toBeInTheDocument()
+    expect(within(form).queryByText(/dibuat sistem/i)).not.toBeInTheDocument()
 
     const isian = screen.getByLabelText('Tipe Surveyor')
     await pengguna.clear(isian)

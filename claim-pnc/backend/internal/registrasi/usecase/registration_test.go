@@ -67,6 +67,7 @@ type environment struct {
 	premium    *memory.Premium
 	accounts   *memory.Accounts
 	areas      *memory.AreaDirectory
+	pucl       *memory.PUCL
 	caller     usecase.Caller
 }
 
@@ -89,6 +90,7 @@ func setup(t *testing.T, roles ...string) environment {
 	premium := memory.NewPremium()
 	accounts := memory.NewAccounts()
 	areas := memory.NewAreaDirectory()
+	pucl := memory.NewPUCL()
 
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:              store,
@@ -127,6 +129,9 @@ func setup(t *testing.T, roles ...string) environment {
 		Committees:             memory.NewCommittees(),
 		Documents:              uploader,
 		Attachments:            records,
+		PUCLLetters:            pucl,
+		PUCLOptions:            pucl,
+		Closures:               records,
 		IDGenerator:            memory.IDGenerator{},
 		UnitOfWork:             store,
 		Clock:                  clock,
@@ -150,6 +155,7 @@ func setup(t *testing.T, roles ...string) environment {
 		premium:    premium,
 		accounts:   accounts,
 		areas:      areas,
+		pucl:       pucl,
 		caller: usecase.Caller{
 			Identity:   testOperator,
 			Name:       "Petugas Uji",
@@ -553,6 +559,9 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		Committees:             memory.NewCommittees(),
 		Documents:              &memory.DocumentUploader{},
 		Attachments:            records,
+		PUCLLetters:            memory.NewPUCL(),
+		PUCLOptions:            memory.NewPUCL(),
+		Closures:               records,
 		IDGenerator:            memory.IDGenerator{},
 		UnitOfWork:             store,
 		Clock:                  clock,

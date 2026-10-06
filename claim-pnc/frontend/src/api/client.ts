@@ -69,7 +69,7 @@ export class APIError extends Error {
   violations(): Record<string, string> {
     const result: Record<string, string> = { ...this.field }
     for (const item of this.detail) {
-      const column = item.field ?? item.kolom
+      const column = item.field ?? item.kolom ?? item.isian
       if (column) result[column] = item.pesan
     }
     return result
@@ -432,12 +432,34 @@ export async function unduhBerkas(
     const content = (await readJSON(response)) as {
       kode?: string
       pesan?: string
-      detail?: unknown
-      field?: unknown
+      detail?: FieldViolation[]
+      field?: Record<string, string>
     } | null
+
+    // Pesan cadangan MENYEBUTKAN kode HTTP-nya, dan itu bukan hiasan.
+    //
+    // Cadangan ini hanya terpakai ketika jawabannya BUKAN JSON — halaman galat peladen,
+    // badan kosong, atau `index.html` yang terkirim karena rutenya tidak cocok. Ketiganya
+    // kegagalan yang berbeda, dan tanpa angkanya ketiganya tampil sebagai satu kalimat
+    // yang sama: "Berkas tidak dapat diunduh."
+    //
+    // Kalimat itu tidak dapat ditindaklanjuti siapa pun. Dengan angkanya, 404 langsung
+    // memisahkan "rutenya salah" dari 500 "kuerinya gagal" dan 401 "sesinya habis" —
+    // tanpa perlu membuka perkakas pengembang.
+    // Rincian per isian IKUT diteruskan, sama seperti pada callAPI.
+    //
+    // Sebelumnya tidak, dan akibatnya nyata: unduhan yang ditolak karena "Tanggal Dari
+    // wajib diisi" hanya menampilkan ringkasan "Ada isian yang belum benar." Layar tidak
+    // dapat menandai isian mana yang kurang, karena rinciannya sudah dibuang di sini —
+    // bukan karena peladen tidak mengirimnya.
+    //
+    // Ditemukan 2026-10-01 dari gejala "semua Export gagal kecuali satu": yang satu itu
+    // kebetulan satu-satunya laporan yang tidak menuntut periode.
     throw new APIError(
       content?.kode ?? ErrorCode.internalError,
-      content?.pesan ?? 'Berkas tidak dapat diunduh.',
+      content?.pesan ??
+        `Berkas tidak dapat diunduh. Peladen menjawab HTTP ${response.status} ` +
+          'tanpa keterangan yang dapat dibaca.',
       response.status,
       Array.isArray(content?.detail) ? (content.detail as FieldViolation[]) : [],
       fieldMap(content?.field),

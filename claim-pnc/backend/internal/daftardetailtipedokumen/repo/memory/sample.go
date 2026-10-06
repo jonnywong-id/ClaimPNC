@@ -24,7 +24,6 @@ import "claim-pnc/internal/daftardetailtipedokumen"
 //	DOC_TYPE_ID  -> daftartipedokumen/repo/memory.SampleList          10001..10006
 //	DOC_COL_ID   -> masterpenyebabkerugian/repo/memory.SampleList     1001..1010
 //	OBJ_DOC      -> daftarobjekdokumen/repo/memory.SampleList         10001..10004
-//	DFT_BISNIS_ID-> SampleBusinessList di bawah                       002..006
 //
 // Ketiganya memang merujuk tabel yang sama di produksi, dan memakai kode yang berbeda
 // pada data pengembangan akan menampilkan isian yang tidak pernah cocok dengan daftarnya
@@ -49,10 +48,6 @@ func SampleList() []daftardetailtipedokumen.DetailType {
 			ObjectDocumentID:          "10002",
 			ObjectDocumentDescription: "Polis Asli",
 			Risk:                      "0",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "003", Mandatory: true, MinDocument: 1},
-				{BusinessID: "006", Mandatory: true, MinDocument: 1},
-			},
 		},
 		{
 			ID:                        "100002",
@@ -64,9 +59,6 @@ func SampleList() []daftardetailtipedokumen.DetailType {
 			ObjectDocumentID:          "10001",
 			ObjectDocumentDescription: "KTP Tertanggung",
 			Risk:                      "0",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "002", Mandatory: true, MinDocument: 1},
-			},
 		},
 		{
 			// Satu baris TANPA lini bisnis, supaya keadaan itu benar-benar terlihat saat
@@ -93,10 +85,6 @@ func SampleList() []daftardetailtipedokumen.DetailType {
 			ObjectDocumentID:          "10003",
 			ObjectDocumentDescription: "Surat Keterangan Dokter",
 			Risk:                      "1",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "002", Mandatory: false, MinDocument: 2},
-				{BusinessID: "005", Mandatory: true, MinDocument: 1},
-			},
 		},
 		{
 			// Baris yang RUJUKANNYA TIDAK ADA di master mana pun — tipe dokumen, penyebab
@@ -117,9 +105,6 @@ func SampleList() []daftardetailtipedokumen.DetailType {
 			ObjectDocumentID:          "19999",
 			ObjectDocumentDescription: "Objek Warisan Tanpa Master",
 			Risk:                      "0",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "099", Mandatory: true, MinDocument: 1},
-			},
 		},
 	}
 }
@@ -139,68 +124,10 @@ func SampleDocumentTypeList() []daftardetailtipedokumen.DocumentTypeOption {
 	}
 }
 
-// SampleCauseOfLossList adalah pilihan Dokumen kolom ID untuk pengembangan.
-//
-// Sama dengan isi `masterpenyebabkerugian/repo/memory.SampleList`. Bukan data produksi.
-//
-// Baris `1007` sengaja berketerangan KOSONG, mengikuti data contoh modul itu: ia
-// memperlihatkan bahwa pilihan tanpa keterangan tetap dapat dipilih, dan layar harus
-// menanganinya tanpa menampilkan baris yang tampak rusak.
-func SampleCauseOfLossList() []daftardetailtipedokumen.CauseOfLossOption {
-	return []daftardetailtipedokumen.CauseOfLossOption{
-		{ID: "1001", Description: "Contoh Golongan A"},
-		{ID: "1002", Description: "Contoh Golongan B"},
-		{ID: "1003", Description: "Contoh Golongan C"},
-		{ID: "1004", Description: "Contoh Golongan D"},
-		{ID: "1005", Description: "Contoh Golongan E"},
-		{ID: "1006", Description: "Contoh Golongan F"},
-		{ID: "1007", Description: ""},
-		{ID: "1008", Description: "Contoh Golongan H"},
-		{ID: "1009", Description: "Contoh Golongan I"},
-		{ID: "1010", Description: "Contoh Golongan J"},
-	}
-}
-
-// SampleObjectDocumentList adalah pilihan Objek Dokumen untuk pengembangan.
-//
-// Sama dengan isi `daftarobjekdokumen/repo/memory.SampleList`. Bukan data produksi.
-func SampleObjectDocumentList() []daftardetailtipedokumen.ObjectDocumentOption {
-	return []daftardetailtipedokumen.ObjectDocumentOption{
-		{ID: "10001", Description: "KTP Tertanggung"},
-		{ID: "10002", Description: "Polis Asli"},
-		{ID: "10003", Description: "Surat Keterangan Dokter"},
-		{ID: "10004", Description: "Bill of Lading"},
-	}
-}
-
-// SampleBusinessList adalah pilihan ID Bisnis untuk pengembangan.
-//
-// Sama dengan isi `daftarobjekdokumen/repo/memory.SampleBusinessList` dan
-// `mastercolsimasonline/repo/memory.SampleBusinessList` — ketiganya membaca
-// POOLDATA.BUSINESS yang sama, tabel milik GISFW (`D-03`).
-//
-// Kodenya mengikuti Group Panel yang terbaca di `CONTEXT.md`, bukan dikarang: `002`
-// Personal Accident, `003` Aneka, `004` Marine Cargo, `005` Travel, `006` Fire/Property.
-// Bukan data produksi — isi POOLDATA.BUSINESS tidak ada di export.
-func SampleBusinessList() []daftardetailtipedokumen.Business {
-	return []daftardetailtipedokumen.Business{
-		{ID: "002", Name: "PERSONAL ACCIDENT"},
-		{ID: "003", Name: "ANEKA"},
-		{ID: "004", Name: "MARINE CARGO"},
-		{ID: "005", Name: "TRAVEL"},
-		{ID: "006", Name: "FIRE / PROPERTY"},
-	}
-}
-
-// NewSampleReferenceRepo membentuk pembaca master rujukan berisi keempat daftar contoh.
+// NewSampleReferenceRepo membentuk pembaca master rujukan berisi daftar contoh.
 //
 // Ia ada supaya perakitan di cmd dan di uji tidak perlu menyebut keempat daftar itu satu
 // per satu — dan supaya keempatnya tidak pernah terpasang setengah.
 func NewSampleReferenceRepo() *ReferenceRepo {
-	return NewReferenceRepo(
-		SampleDocumentTypeList(),
-		SampleCauseOfLossList(),
-		SampleObjectDocumentList(),
-		SampleBusinessList(),
-	)
+	return NewReferenceRepo(SampleDocumentTypeList())
 }

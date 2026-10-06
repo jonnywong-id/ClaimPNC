@@ -47,6 +47,12 @@ type Repo struct {
 	mu      sync.RWMutex
 	claims  []ClaimRecord
 	surveys []SurveyRecord
+
+	// holding adalah isi tab Inbox Tampungan PIC.
+	//
+	// Disimpan TERPISAH dari claims, bukan disaring darinya: di produksi keduanya memang
+	// dibaca kueri yang berbeda dengan syarat yang berbeda.
+	holding []dashboardclaim.HoldingRow
 }
 
 // NewRepo membentuk penyimpanan memori.
@@ -57,6 +63,7 @@ func NewRepo(claims []ClaimRecord, surveys []SurveyRecord) *Repo {
 	return &Repo{
 		claims:  append([]ClaimRecord(nil), claims...),
 		surveys: append([]SurveyRecord(nil), surveys...),
+		holding: SampleHolding(),
 	}
 }
 
@@ -231,4 +238,32 @@ func paginate(total int, f dashboardclaim.Filter) []int {
 		indexes = append(indexes, i)
 	}
 	return indexes
+}
+
+// ListHolding membaca satu halaman tab Inbox Tampungan PIC.
+//
+// Penampungannya disimpan terpisah dari klaim berjalan, bukan disaring darinya: di produksi
+// keduanya memang dibaca kueri yang berbeda dengan syarat yang berbeda — tugas yang diparkir
+// di akun `ServicePNC` dan belum punya PIC Teknik.
+//
+// Penyaring lini bisnis TIDAK diterapkan di sini, sama seperti di sisi SQL.
+func (r *Repo) ListHolding(_ context.Context, f dashboardclaim.Filter) (dashboardclaim.HoldingPage, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	f = f.Normalize()
+
+	matched := make([]dashboardclaim.HoldingRow, 0, len(r.holding))
+	for _, row := range r.holding {
+		if !matchesSearch(f.Search, row.ClaimNumber) {
+			continue
+		}
+		matched = append(matched, row)
+	}
+
+	rows := make([]dashboardclaim.HoldingRow, 0, f.Limit)
+	for _, index := range paginate(len(matched), f) {
+		rows = append(rows, matched[index])
+	}
+	return dashboardclaim.HoldingPage{Rows: rows, Total: len(matched)}, nil
 }

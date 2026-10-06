@@ -134,13 +134,49 @@ describe('daftar Tipe Dokumen', () => {
     expect(calls[0]?.header[HEADER_PORTAL]).toBe('ASM')
   })
 
-  // Tanpa kotak cari — meniru grid Pega apa adanya (Work Owner 2026-09-21).
-  it('tidak menampilkan kotak cari', async () => {
+  // Kotak cari ditambahkan Work Owner 2026-10-03, disamakan dengan Master Penyebab
+  // Kerugian — mengubah keputusan 2026-09-21 yang semula meniadakannya.
+  it('menampilkan kotak cari', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByRole('table')
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+  })
+
+  // Pencarian menyaring DI PERAMBAN atas baris yang sudah di tangan; ia tidak menembak
+  // server lagi. Uji ini yang membuktikannya — bila kelak diubah menjadi penyaringan di
+  // server, ia akan gagal dan perubahannya tidak dapat lolos diam-diam.
+  it('menyaring baris tanpa meminta ulang ke server', async () => {
+    installFetch(defaultReply())
+    const user = userEvent.setup()
+    show()
+
+    await screen.findByRole('table')
+    const requestsBefore = calls.length
+
+    await user.type(screen.getByRole('searchbox'), 'Survey')
+
+    await waitFor(() => {
+      expect(screen.queryByText('Dokumen Registrasi')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Dokumen Survey')).toBeInTheDocument()
+    expect(calls).toHaveLength(requestsBefore)
+  })
+
+  // Yang dicari mencakup kolom Status Proses, bukan hanya nama tipe dokumennya.
+  it('mencari juga pada kolom Status Proses', async () => {
+    installFetch(defaultReply())
+    const user = userEvent.setup()
+    show()
+
+    await screen.findByRole('table')
+    await user.type(screen.getByRole('searchbox'), 'Register')
+
+    await waitFor(() => {
+      expect(screen.queryByText('Dokumen Survey')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Dokumen Registrasi')).toBeInTheDocument()
   })
 
   // Baris berisian kosong memang sah; ia ditandai supaya tidak tampak seperti baris rusak.

@@ -188,6 +188,87 @@ func (r *Repo) Update(
 	return r.Get(ctx, key)
 }
 
+// SaveForBusiness menyimpan seluruh baris satu lini bisnis dalam satu transaksi.
+//
+// Baris ber-ID diperbarui, baris tanpa ID disisipkan — percabangan yang sama dengan
+// sentinel `UnknownID` di sistem lama, hanya tanpa COMMIT per baris (`D-68`).
+func (r *Repo) SaveForBusiness(
+	ctx context.Context,
+	businessID string,
+	rows []daftartipedokumenbisnis.Input,
+	by daftartipedokumenbisnis.Editor,
+) ([]daftartipedokumenbisnis.DocumentRule, error) {
+	business := strings.TrimSpace(businessID)
+
+	err := r.inTransaction(ctx, func(tx *sql.Tx) error {
+		var site string
+		for _, row := range rows {
+			if row.ID != "" {
+				result, err := tx.ExecContext(ctx, getQuery("rule_update"),
+					row.DocumentTypeID,
+					nullIfEmpty(row.ObjectDocID),
+					row.DetailTypeDocID,
+					row.DetailDocument,
+					mandatoryCode(row.Mandatory),
+					row.MinDocument,
+					by.At,
+					by.Identity,
+					row.ID,
+				)
+				if err != nil {
+					return fmt.Errorf("daftartipedokumenbisnis/sqlstore: memperbarui aturan %q: %w", row.ID, err)
+				}
+				// Sama seperti Update: nol baris tersentuh berarti barisnya hilang di
+				// antara pemuatan layar dan penyimpanan, dan seluruh transaksi dibatalkan
+				// — bukan disisipkan ulang dengan ID baru, yang akan menghasilkan dua
+				// baris berbeda untuk satu aturan yang sama.
+				if affected, err := result.RowsAffected(); err == nil && affected == 0 {
+					return daftartipedokumenbisnis.ErrNotFound
+				}
+				continue
+			}
+
+			// Kode site diambil sekali saja, dan hanya bila memang ada baris baru. Layar
+			// Ubah yang tidak menambah baris karena itu tidak menyentuh kueri site sama
+			// sekali.
+			if site == "" {
+				code, err := siteCode(ctx, tx)
+				if err != nil {
+					return err
+				}
+				site = code
+			}
+
+			id, err := nextID(ctx, tx, site)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, getQuery("rule_insert"),
+				id,
+				business,
+				row.DocumentTypeID,
+				nullIfEmpty(row.ObjectDocID),
+				row.DetailTypeDocID,
+				row.DetailDocument,
+				mandatoryCode(row.Mandatory),
+				row.MinDocument,
+				by.At,
+				by.Identity,
+			); err != nil {
+				return fmt.Errorf("daftartipedokumenbisnis/sqlstore: menyisipkan aturan %q: %w", id, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Dibaca ulang, bukan disusun dari masukan — nama bisnis, tahap dokumen, dan detail
+	// dokumen seluruhnya berasal dari join.
+	return r.ListByBusiness(ctx, business)
+}
+
 // AddCoverage menambahkan satu jaminan pada sebuah aturan.
 //
 // Menambah, bukan mengganti — lihat komentar seam-nya di lapisan domain. Jaminan yang

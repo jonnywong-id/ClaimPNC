@@ -362,6 +362,30 @@ type Repo interface {
 	// Nomor yang dikarang lapisan di atasnya akan bertabrakan diam-diam: tabelnya tidak
 	// punya primary key maupun constraint unik, sehingga basis data tidak akan menolaknya.
 	CreatePostAudit(ctx context.Context, entry PostAuditEntry) (PostAuditEntry, error)
+
+	// FindDecision mengambil keputusan Compliance yang SUDAH pernah disimpan atas satu
+	// klaim, bila ada.
+	//
+	// Nilai kedua bernilai salah ketika klaimnya belum pernah diputuskan. Itu keadaan
+	// NORMAL — setiap klaim yang baru masuk antrean belum punya keputusan — dan pemanggil
+	// tidak boleh memperlakukannya sebagai galat.
+	//
+	// Ia dibaca supaya form yang dibuka kedua kalinya menampilkan pilihan yang sudah
+	// dibuat, alih-alih kotak kosong yang membuat petugas mengira keputusannya hilang.
+	FindDecision(ctx context.Context, reference string) (Decision, bool, error)
+
+	// SaveDecision menyimpan keputusan Compliance atas satu klaim.
+	//
+	// # Ke tabel mana, dan kenapa bukan ke klaimnya
+	//
+	// Ke `POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE`, tabel BARU milik aplikasi ini — bukan ke
+	// `T_CLAIM_PNC` maupun `PC_ASM_FW_GCNMFW_WORK`.
+	//
+	// Itu bukan pilihan rancangan melainkan keharusan `P-1`: selama masa paralel setiap
+	// tabel hanya boleh ditulis SATU sistem, dan kedua tabel itu masih dimiliki Pega.
+	// Konsekuensinya nyata dan disadari — lihat catatan "Akibat yang BELUM sampai ke
+	// klaim" pada usecase.SubmitDecision.
+	SaveDecision(ctx context.Context, decision Decision) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

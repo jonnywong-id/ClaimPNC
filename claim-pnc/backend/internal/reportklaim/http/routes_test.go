@@ -212,7 +212,9 @@ func TestPanelTerhalangTampilBesertaSebabnya(t *testing.T) {
 		}
 	}
 
-	require.Len(t, terhalang, 3)
+	// Nol sejak Mitra, Adjuster, dan Compliance lepas pada 2026-09-30. Uji ini tetap ada
+	// supaya panel yang kelak ditandai terhalang tidak lolos tanpa sebab dan penghalang.
+	require.Empty(t, terhalang)
 	for kode, r := range terhalang {
 		require.NotEmptyf(t, r["alasan"], "%s tanpa alasan", kode)
 		require.NotEmptyf(t, r["penghalang"], "%s tanpa penghalang", kode)
@@ -344,9 +346,23 @@ func TestLaporanTanpaRentangTanggalTidakMewajibkannya(t *testing.T) {
 // Laporan yang terhalang dijawab 409 dengan kode tersendiri — bukan 404, karena
 // laporannya ADA.
 func TestLaporanTerhalangDijawabDenganKodeTersendiri(t *testing.T) {
+	// Kodenya dicari dari katalog, bukan ditulis tetap. Sejak 2026-09-30 tidak ada satu
+	// pun laporan yang terhalang, dan uji ini melewatkan diri — lalu hidup kembali dengan
+	// sendirinya begitu ada yang ditandai terhalang lagi.
+	var terhalang reportklaim.Code
+	for _, r := range reportklaim.Catalog() {
+		if !r.Availability.Ready {
+			terhalang = r.Code
+			break
+		}
+	}
+	if terhalang == "" {
+		t.Skip("tidak ada laporan terhalang saat ini — jalur 409 tidak dapat diuji")
+	}
+
 	p := newTestServer(t)
 
-	response := p.get(t, "/api/report-klaim/adjuster/ekspor?"+rentangSah, portalUji)
+	response := p.get(t, "/api/report-klaim/"+string(terhalang)+"/ekspor?"+rentangSah, portalUji)
 	require.Equal(t, http.StatusConflict, response.StatusCode)
 	require.Equal(t, "laporan_belum_tersedia", decodeJSON(t, response)["kode"])
 }

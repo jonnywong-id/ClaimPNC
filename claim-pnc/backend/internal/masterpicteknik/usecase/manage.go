@@ -58,18 +58,17 @@ func NewService(o Options) (*Service, error) {
 	return &Service{repoSelector: o.RepoSelector, directory: o.Directory}, nil
 }
 
-// List mengembalikan petugas AKTIF milik satu portal, terurut menurut ID operator.
+// List mengembalikan SELURUH petugas milik satu portal, terurut menurut ID operator.
 //
-// # Kenapa hanya yang aktif
+// # Koreksi: tidak disaring menurut status aktif
 //
-// Report Definition `BrowseVMstUserTeknis_RD` memasang DUA penyaring yang digabung
-// `A AND B`, dan yang kedua dipatok langsung: `STS_AKTIF = '1'`. Grid layar Pega karena
-// itu tidak pernah menampilkan petugas nonaktif, dan keputusan Work Owner 2026-09-19
-// mempertahankannya persis.
+// Report Definition `BrowseVMstUserTeknis_RD` memasang dua penyaring `A AND B`, dan saya
+// sempat membawa penyaring B (`STS_AKTIF = '1'`) ke sini. **Itu keliru.** Layar Pega yang
+// berjalan menampilkan baris ber-Status Aktif `0` berdampingan dengan `1`; keduanya
+// penyaring ber-`pyPromptType=AllAccess`, yaitu nilai awal yang dapat dikosongkan
+// pengguna — bukan penyaring tetap.
 //
-// Akibat yang DISADARI: petugas yang dinonaktifkan hilang dari daftar. Ia tidak hilang
-// dari sistem — Get tetap menjangkaunya, sehingga mengaktifkan kembali masih mungkin bila
-// ID-nya diketahui.
+// Petugas nonaktif karena itu tetap muncul, dan kolom Status Aktif yang membedakannya.
 //
 // Tidak dipaginasi. Isinya puluhan baris, bukan puluhan ribu, dan Report Definition lama
 // pun memuat seluruhnya sekaligus dengan batas `pyMaxRecords=500`. Penyaringan dan
@@ -120,10 +119,61 @@ func (s *Service) Lookup(ctx context.Context, portalAlias, operatorID string) (m
 	// Portal diperiksa meski pencarian tidak menyentuh penyimpanan. Alamat layanan
 	// direktori dibaca per entitas, dan permintaan tanpa portal yang sah tidak boleh
 	// diam-diam memakai portal utama (`R-20`).
-	if _, err := s.repoSelector(portalAlias); err != nil {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
 		return masterpicteknik.Employee{}, err
 	}
+
+	// Master dicoba LEBIH DULU, dan itu atas instruksi Work Owner: nama diambil dari
+	// `mst_user_teknis`.
+	//
+	// Alasan teknisnya menguatkan: direktori HCQ dipanggil lewat `HCQ-LOGIN`, yang
+	// endpoint-nya `ValEmpPassOldStructure` — pemeriksa password, bukan pencari pegawai.
+	// Ia hanya mengembalikan data pegawai bila passwordnya benar, sedangkan pencarian ini
+	// tidak punya password siapa pun. Menggantungkan nama sepenuhnya padanya membuat
+	// sebagian besar pencarian nihil tanpa sebab yang terbaca pengguna.
+	if employee, ok := fromMaster(ctx, repo, operatorID); ok {
+		return employee, nil
+	}
 	return s.employee(ctx, portalAlias, operatorID)
+}
+
+// fromMaster membaca petugas dari master itu sendiri.
+//
+// # Barisnya ADA sudah cukup — namanya boleh kosong
+//
+// Sempat dituntut `MCL_NAME` terisi, dengan alasan baris tanpa nama tidak menjawab
+// "siapa orang ini". Itu keliru dan langsung menggigit: `JESSEJUANFRITZ` ADA di
+// `POOLDATA.MST_USER_TEKNIK`, tetapi karena namanya kosong ia dilempar ke direktori HCQ —
+// yang tidak dapat menjawab — lalu muncul sebagai "tidak terdaftar". Petugas yang jelas
+// terdaftar dinyatakan tidak terdaftar.
+//
+// `MCL_NAME` memang tidak selalu terisi: `Database/PEGA_MST_USER_TEKNIS.prc:36-37`
+// menulisnya dari parameter `TNAMA`, dan parameter itu berasal dari pencarian yang boleh
+// nihil. Baris bernama kosong karena itu normal, bukan baris rusak.
+//
+// Jawabannya kini: barisnya ada → itu orangnya, apa pun isi namanya.
+func fromMaster(ctx context.Context, repo masterpicteknik.Repo, operatorID string) (masterpicteknik.Employee, bool) {
+	row, err := repo.Get(ctx, masterpicteknik.IDKey(operatorID))
+	if err != nil {
+		return masterpicteknik.Employee{}, false
+	}
+	employee := masterpicteknik.Employee{
+		OperatorID:   row.OperatorID,
+		Name:         row.Name,
+		Email:        row.Email,
+		SupervisorID: row.Supervisor,
+	}
+
+	// Nama atasan ikut diambil bila atasannya juga ada di master, supaya layar dapat
+	// menampilkan nama orang dan bukan sekadar ID. Gagalnya tidak berakibat apa pun:
+	// atasan boleh saja tidak terdaftar sebagai PIC teknik.
+	if employee.SupervisorID != "" {
+		if supervisor, err := repo.Get(ctx, masterpicteknik.IDKey(employee.SupervisorID)); err == nil {
+			employee.SupervisorName = supervisor.Name
+		}
+	}
+	return employee, true
 }
 
 // Create mendaftarkan petugas baru.
@@ -131,13 +181,20 @@ func (s *Service) Lookup(ctx context.Context, portalAlias, operatorID string) (m
 // Urutannya mengikuti `CNMInsertMstUserTeknis_act` dan tidak boleh dibalik:
 //
 //  1. Periksa kelengkapan isian.
-//  2. Cari namanya di direktori. Bila tidak ditemukan, pengajuan DITOLAK — inilah langkah
-//     "set error kalau tidak ditemukan di service".
+//  2. Cari namanya di direktori — TANPA menggagalkan penyimpanan bila tidak ketemu.
 //  3. Baru simpan, dengan nama yang berasal dari direktori, bukan dari isian.
 //
 // Nama TIDAK diterima dari pemanggil. Menerimanya berarti master ini dapat memuat nama
 // yang tidak cocok dengan direktori, dan setiap layar yang menampilkan penugasan akan
 // menyebut orang yang berbeda dari yang sesungguhnya bertugas.
+//
+// # Koreksi: pencarian nama tidak lagi menolak
+//
+// Langkah 2 sempat MENOLAK pengajuan ketika ID tidak ada di direktori. Itu lebih ketat
+// daripada acuannya: `Activity/SetMstUserTeknisMstUser_act-Act.xml` hanya menjalankan
+// `Page-New` → `Property-Set` → `RDB-List SelectMstUserTeknisMclName` → `Property-Set
+// TempDcol.MCL_NAME`. Tidak ada satu pun langkah yang memeriksa hasilnya; nihil berarti
+// nama kosong, dan penyimpanan tetap berjalan.
 func (s *Service) Create(ctx context.Context, portalAlias string, t masterpicteknik.Technician) (masterpicteknik.Technician, error) {
 	repo, err := s.repoSelector(portalAlias)
 	if err != nil {
@@ -149,11 +206,7 @@ func (s *Service) Create(ctx context.Context, portalAlias string, t masterpictek
 		return masterpicteknik.Technician{}, err
 	}
 
-	employee, err := s.employee(ctx, portalAlias, t.OperatorID)
-	if err != nil {
-		return masterpicteknik.Technician{}, err
-	}
-	t = applyDirectory(t, employee)
+	t = applyDirectory(t, s.employeeBestEffort(ctx, portalAlias, t.OperatorID))
 
 	// PanelGroup dan Workload tidak pernah ditulis: yang pertama tidak disentuh procedure
 	// lama pada cabang mana pun, yang kedua milik view dan tidak ada di tabelnya. Keduanya
@@ -208,11 +261,10 @@ func (s *Service) Update(
 		return masterpicteknik.Technician{}, err
 	}
 
-	employee, err := s.employee(ctx, portalAlias, t.OperatorID)
-	if err != nil {
-		return masterpicteknik.Technician{}, err
-	}
-	t.Name = employee.Name
+	// Nama disegarkan dari direktori bila ketemu; bila tidak, nama yang SUDAH tersimpan di
+	// master dipertahankan. Tanpa penopang itu, satu petugas yang tidak ada di direktori
+	// akan kehilangan namanya hanya karena kolom lain disunting.
+	t.Name = firstNonEmpty(s.employeeBestEffort(ctx, portalAlias, t.OperatorID).Name, existing.Name)
 
 	// Kedua nilai yang tidak dikelola layar ini dipertahankan apa adanya dari baris yang
 	// sudah tersimpan, bukan diambil dari permintaan.
@@ -251,6 +303,45 @@ func applyDirectory(t masterpicteknik.Technician, employee masterpicteknik.Emplo
 		t.Supervisor = employee.SupervisorID
 	}
 	return t
+}
+
+// firstNonEmpty mengembalikan nilai pertama yang tidak kosong.
+func firstNonEmpty(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
+
+// employeeBestEffort mencari pegawai TANPA menggagalkan penyimpanan.
+//
+// # Kenapa kegagalannya ditelan di sini
+//
+// Acuannya menelan kegagalan yang sama. `Activity/SetMstUserTeknisMstUser_act-Act.xml`
+// menjalankan `RDB-List SelectMstUserTeknisMclName` lalu langsung menyalin hasilnya ke
+// `TempDcol.MCL_NAME`; tidak ada langkah yang memeriksa `pxResultCount`, dan tidak ada
+// satu pun `pyRequired=true` di seluruh Section. Nihil berarti nama kosong — bukan
+// penolakan.
+//
+// Membuatnya menolak berakibat nyata, bukan sekadar lebih ketat: setiap petugas yang
+// sudah terdaftar di master tetapi tidak ditemukan di direktori — berhenti bekerja,
+// berpindah entitas, atau ID-nya berubah — menjadi TIDAK DAPAT disunting sama sekali,
+// termasuk untuk dinonaktifkan. Padahal menonaktifkannya justru yang perlu dilakukan.
+//
+// Pencarian yang HASILNYA diperlihatkan ke pengguna tetap melaporkan galatnya apa adanya;
+// itu Lookup, dan ia memakai employee() di bawah.
+func (s *Service) employeeBestEffort(ctx context.Context, portalAlias, operatorID string) masterpicteknik.Employee {
+	if repo, err := s.repoSelector(portalAlias); err == nil {
+		if employee, ok := fromMaster(ctx, repo, operatorID); ok {
+			return employee
+		}
+	}
+
+	employee, err := s.directory.Lookup(ctx, portalAlias, operatorID)
+	if err != nil {
+		return masterpicteknik.Employee{}
+	}
+	return employee
 }
 
 // employee mencari pegawai dan mengubah ketiadaannya menjadi galat validasi pada kolom

@@ -38,9 +38,9 @@ type Props = {
  * berarti dua tafsir tentang bagaimana sebuah tab terlihat saat terpilih, dan pada
  * layar yang bersebelahan di menu perbedaan itu langsung terlihat.
  *
- * `SalvageTabs` pada modul Inbox Salvage mendahuluinya dan TIDAK diubah: modul itu sudah
- * selesai, dan menyatukan keduanya sekarang berarti menyentuh layar yang tidak sedang
- * dikerjakan.
+ * Modul Inbox Salvage dulu punya bilahnya sendiri, `SalvageTabs`. Ia DIHAPUS pada
+ * 2026-10-03 atas permintaan Work Owner, bukan disatukan ke sini: di layar itu pemilih
+ * daftarnya adalah tabel ringkas di kepala halaman, dan bilah tab menduakannya.
  *
  * # Digulir menyamping, bukan dilipat
  *

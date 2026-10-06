@@ -31,6 +31,9 @@ type Repo struct {
 	// year dan businessGroup adalah data acuan yang tidak berubah selama proses hidup.
 	year          []string
 	businessGroup []businessGroupRow
+
+	// reinsurer meniru POOLDATA.T_REINSURER — master yang dicari kotak "NAMA REASURANSI".
+	reinsurer []masterxol.ReinsurerOption
 }
 
 // businessGroupRow adalah satu baris pilihan grup bisnis beserta nama grup treaty yang
@@ -53,7 +56,33 @@ func NewSampleRepo() *Repo {
 	}
 	r.year = SampleYear()
 	r.businessGroup = sampleBusinessGroup()
+	r.reinsurer = SampleReinsurer()
 	return r
+}
+
+// SearchReinsurer mencari di master contoh, tanpa membedakan huruf besar-kecil.
+//
+// Perilakunya dibuat sama dengan pengisi SQL pada tiga hal yang mudah berbeda: kata kunci
+// kosong mengembalikan kosong, pencocokannya sebagian, dan hasilnya terurut menurut nama.
+// Seam yang kedua pengisinya berperilaku berbeda bukan seam, melainkan dua jalur.
+func (r *Repo) SearchReinsurer(_ context.Context, keyword string) ([]masterxol.ReinsurerOption, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return nil, nil
+	}
+
+	needle := strings.ToUpper(keyword)
+	var result []masterxol.ReinsurerOption
+	for _, row := range r.reinsurer {
+		if strings.Contains(strings.ToUpper(row.Name), needle) {
+			result = append(result, row)
+		}
+	}
+	sort.SliceStable(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+	return result, nil
 }
 
 // List mengembalikan seluruh induk tanpa anaknya, terurut numerik menurut ID.

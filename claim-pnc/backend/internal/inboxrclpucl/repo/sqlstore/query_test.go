@@ -378,19 +378,47 @@ func TestTheMSIGPlanBindsTheMarkerBeforePagination(t *testing.T) {
 	entry := allPlans(t)["klaim_msig"]
 	args := entry.plan.args(samplePage())
 
-	require.Len(t, args, 5)
+	require.Len(t, args, 6)
 	require.Equal(t, inboxrclpucl.PUCLReturnedToAnalyst, args[1])
 	require.Equal(t, inboxrclpucl.MSIGMarker, args[2])
-	require.Equal(t, 100, args[3], "offset halaman ketiga berukuran 50")
-	require.Equal(t, 50, args[4])
+	require.Equal(t, inboxrclpucl.WorkStatusRejected, args[3])
+	require.Equal(t, 100, args[4], "offset halaman ketiga berukuran 50")
+	require.Equal(t, 50, args[5])
 }
 
 func TestTheCetakSuratPlanBindsTheCaseStatus(t *testing.T) {
 	entry := allPlans(t)["cetak_surat"]
 	args := entry.plan.args(samplePage())
 
-	require.Len(t, args, 4)
+	require.Len(t, args, 5)
 	require.Equal(t, inboxrclpucl.ExpiryStatusActive, args[1])
+	require.Equal(t, inboxrclpucl.WorkStatusRejected, args[2])
+}
+
+// TestSetiapTabMengecualikanKlaimYangSudahDitolak menjaga penyaring yang menggantikan
+// gabungan tabel penugasan.
+//
+// Ketiga Report Definition hanya menyebut `Resolved-Completed`, dan klaim `Resolved-Rejected`
+// hilang dari layar lama lewat INNER JOIN ke `PC_ASSIGN_WORKBASKET` — penugasan yang dihapus
+// `ASMForceCaseClose`. Tabel datar tidak punya gabungan itu, sehingga penyaringnya harus
+// disebut langsung. Tanpa ini klaim yang baru ditolak duduk selamanya di tab "Kelengkapan
+// Dokumen" tanpa satu pun galat.
+func TestSetiapTabMengecualikanKlaimYangSudahDitolak(t *testing.T) {
+	for _, name := range listQueries {
+		require.Containsf(t, query(name), "p.STATUS_WORK <> :",
+			"kueri %s harus mengecualikan status kerja", name)
+		require.Containsf(t, query(name), "p.STATUS_WORK IS NULL OR p.STATUS_WORK <>",
+			"kueri %s harus membiarkan baris ber-STATUS_WORK kosong tetap lolos", name)
+	}
+
+	for key, want := range map[string]any{
+		"cetak_surat":         inboxrclpucl.WorkStatusRejected,
+		"kelengkapan_dokumen": inboxrclpucl.WorkStatusRejected,
+	} {
+		entry := allPlans(t)[key]
+		args := entry.plan.args(samplePage())
+		require.Containsf(t, args, want, "tab %s harus mengikat status kerja ditolak", key)
+	}
 }
 
 func TestUnknownTabHasNoQuery(t *testing.T) {

@@ -10,7 +10,7 @@ import { useSession } from '@/app/session'
 
 import { BusinessDocumentRulePage } from './BusinessDocumentRulePage'
 
-/** Grid tingkat pertama: bisnis yang SUDAH punya aturan. */
+/** Daftar utama: bisnis yang SUDAH punya aturan. */
 const BUSINESS_LIST = {
   portal: 'ASM',
   total: 2,
@@ -24,8 +24,8 @@ const BUSINESS_LIST = {
 /**
  * Daftar pilihan: SELURUH bisnis, termasuk yang belum punya aturan.
  *
- * `10028` sengaja ikut — ia salah satu dari lima kode yang dilewati "Pilih semua" di Pega,
- * dan tanpa satu pun di contoh, pengecualiannya tidak dapat diuji.
+ * `10028` sengaja ikut — ia salah satu dari lima kode yang dilewati pemilihan massal di
+ * Pega, dan tanpa satu pun di contoh, pengecualiannya tidak dapat diuji.
  */
 const BUSINESS_CHOICES = {
   portal: 'ASM',
@@ -64,16 +64,10 @@ const OBJECT_DOCUMENTS = {
   pilihan: [{ id: '30001', nama: 'Bangunan', id_induk: '' }],
 }
 
-/**
- * Aturan milik bisnis 001.
- *
- * Baris kedua sengaja ber-`detail_dokumen` "-": ia yang membuktikan penanda
- * "disembunyikan" benar-benar muncul. Baris ketiga sengaja ditandai wajib — daftar tidak
- * membawa jaminannya, dan itu pun diuji.
- */
+/** Aturan milik bisnis 001 — dua baris, supaya penyimpanan jamak dapat diuji. */
 const RULE_LIST = {
   portal: 'ASM',
-  total: 3,
+  total: 2,
   tipe_dokumen_bisnis: [
     {
       id: '10001',
@@ -143,7 +137,7 @@ function defaultReply(mutation?: (call: Call) => Reply) {
   return (call: Call): Reply => {
     if (call.method !== 'GET') {
       if (mutation) return mutation(call)
-      return { body: RULE_DETAIL, status: 201 }
+      return { body: RULE_LIST, status: 201 }
     }
     if (call.url.startsWith('/api/master/bisnis-pilihan')) return { body: BUSINESS_CHOICES }
     if (call.url.startsWith('/api/master/tipe-dokumen-pilihan')) return { body: DOCUMENT_TYPES }
@@ -183,6 +177,22 @@ function startSession() {
   })
 }
 
+/** openUbah membuka layar Ubah bisnis 001 dan mengembalikan form-nya. */
+async function openUbah(mutation?: (call: Call) => Reply) {
+  installFetch(defaultReply(mutation))
+  show()
+  await userEvent.click(await screen.findByRole('button', { name: 'Ubah dokumen bisnis Fire' }))
+  return screen.findByRole('form', { name: 'Update Data' })
+}
+
+/** openTambah membuka layar Tambah dan mengembalikan form-nya. */
+async function openTambah(mutation?: (call: Call) => Reply) {
+  installFetch(defaultReply(mutation))
+  show()
+  await userEvent.click(await screen.findByRole('button', { name: 'Tambah' }))
+  return screen.findByRole('form', { name: 'Tambah Data' })
+}
+
 beforeEach(() => {
   calls = []
   window.sessionStorage.clear()
@@ -201,20 +211,16 @@ describe('daftar Tipe Dokumen Bisnis', () => {
     installFetch(defaultReply())
     show()
 
-    // "Detail Tipe Dokumen Bisnis" dari Section Pega — bukan "Daftar Tipe Dokumen Bisnis"
-    // yang ada di tabel menu. Keduanya ditiru apa adanya di tempatnya masing-masing.
     expect(
-      screen.getByRole('heading', { name: 'Detail Tipe Dokumen Bisnis' }),
+      await screen.findByRole('heading', { name: 'Detail Tipe Dokumen Bisnis' }),
     ).toBeInTheDocument()
-
-    await screen.findByRole('table')
   })
 
   it('menyebut entitas yang menjawabnya dan mengirim portal di header', async () => {
     installFetch(defaultReply())
     show()
 
-    await screen.findByRole('table')
+    await screen.findByText('Fire')
     expect(screen.getByText('ASM')).toBeInTheDocument()
     expect(calls[0]?.header[HEADER_PORTAL]).toBe('ASM')
   })
@@ -224,154 +230,253 @@ describe('daftar Tipe Dokumen Bisnis', () => {
     installFetch(defaultReply())
     show()
 
-    await screen.findByText('Portal entitas belum dipilih')
+    expect(await screen.findByText('Portal entitas belum dipilih')).toBeInTheDocument()
     expect(calls).toHaveLength(0)
   })
 
-  it('membuka dokumen sebuah bisnis lewat tombol Detail', async () => {
+  /**
+   * Kedua tombol inilah yang ADA di layar lama. Versi pertama modul ini memakai satu
+   * tombol "Detail" yang membuka grid tingkat kedua — bentuk yang saya karang sendiri.
+   */
+  it('menawarkan Ubah dan Copy pada setiap bisnis, bukan Detail', async () => {
     installFetch(defaultReply())
     show()
 
     const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-
-    expect(await screen.findByText('Laporan Kerugian')).toBeInTheDocument()
-    expect(calls.some((call) => call.url.includes('/tipe-dokumen-bisnis/bisnis/001'))).toBe(true)
-  })
-
-  it('menandai baris ber-detail dokumen "-" sebagai disembunyikan', async () => {
-    installFetch(defaultReply())
-    show()
-
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-
-    expect(await screen.findByText('— disembunyikan')).toBeInTheDocument()
+    expect(within(table).getByRole('button', { name: 'Ubah dokumen bisnis Fire' })).toBeVisible()
+    expect(within(table).getByRole('button', { name: 'Copy dokumen bisnis Fire' })).toBeVisible()
+    expect(within(table).queryByRole('button', { name: /Detail/ })).toBeNull()
   })
 })
 
-describe('menambah aturan dokumen', () => {
-  it('mengirim perkalian bisnis kali dokumen, dan menunjukkan jumlahnya lebih dulu', async () => {
-    installFetch(defaultReply(() => ({ body: { ...RULE_LIST, total: 2 }, status: 201 })))
-    show()
+describe('layar Ubah', () => {
+  /**
+   * Inti koreksi atas bentuk sebelumnya: Ubah membuka SELURUH baris bisnis itu dalam satu
+   * form, bukan satu baris per layar.
+   */
+  it('memuat seluruh baris bisnis itu sekaligus', async () => {
+    const form = await openUbah()
 
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    expect(within(form).getByRole('textbox', { name: 'Nama File baris 1' })).toHaveValue(
+      'Laporan Kerugian',
+    )
+    expect(within(form).getByRole('textbox', { name: 'Nama File baris 2' })).toHaveValue('-')
+  })
 
-    const form = await screen.findByRole('form', { name: 'Tambah Data' })
+  /** Urutan kolom ditiru apa adanya dari layar yang berjalan. */
+  it('memakai urutan kolom dan label layar lama', async () => {
+    const form = await openUbah()
 
-    // Dua bisnis, satu baris dokumen → dua baris akan lahir, dan layar menyebutkannya
-    // sebelum petugas menekan Simpan.
-    await userEvent.click(within(form).getByRole('checkbox', { name: /Fire/ }))
-    await userEvent.click(within(form).getByRole('checkbox', { name: /Marine Cargo/ }))
-    expect(within(form).getByText(/2 bisnis × 1 dokumen/)).toBeInTheDocument()
+    const headers = within(form)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.trim())
+    expect(headers.slice(0, 6)).toEqual([
+      'Tipe Dokumen',
+      'Detail Dokumen',
+      'Object Dokumen',
+      'Nama File',
+      'Status Wajib',
+      'Minimum Dokumen',
+    ])
+  })
 
-    // Isian rujukan kini autocomplete ketik-cari, bukan dropdown — meniru
-    // `pyAutoComplete` ber-`pyAllowFreeFormInput=true` di Pega. Yang diketik adalah NAMA;
-    // kodenya dicarikan di belakang.
-    await userEvent.type(within(form).getByLabelText('Tipe Dokumen'), 'REGISTER (20001)')
+  /** Dropdown YA/TIDAK, bukan kotak centang — lihat komentarnya di DocumentRowsTable. */
+  it('menyajikan Status Wajib sebagai pilihan YA atau TIDAK', async () => {
+    const form = await openUbah()
+
+    expect(within(form).getByRole('combobox', { name: 'Status Wajib baris 1' })).toHaveValue('YA')
+    expect(within(form).getByRole('combobox', { name: 'Status Wajib baris 2' })).toHaveValue(
+      'TIDAK',
+    )
+  })
+
+  it('menyimpan seluruh baris sekaligus ke alamat bisnisnya', async () => {
+    const form = await openUbah(() => ({ body: RULE_LIST }))
+
+    const namaFile = within(form).getByRole('textbox', { name: 'Nama File baris 1' })
+    await userEvent.clear(namaFile)
+    await userEvent.type(namaFile, 'Laporan Kerugian Final')
+    await userEvent.selectOptions(
+      within(form).getByRole('combobox', { name: 'Status Wajib baris 2' }),
+      'YA',
+    )
+    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true))
+    const saved = calls.find((call) => call.method === 'PUT')
+    expect(saved?.url).toBe('/api/master/tipe-dokumen-bisnis/bisnis/001')
+
+    const body = saved?.body as { dokumen: Array<Record<string, unknown>> }
+    // Kedua baris membawa ID-nya, sehingga keduanya DIPERBARUI — bukan disisipkan ulang.
+    expect(body.dokumen.map((row) => row['id'])).toEqual(['10001', '10002'])
+    expect(body.dokumen[0]?.['detail_dokumen']).toBe('Laporan Kerugian Final')
+    expect(body.dokumen[1]?.['status_wajib']).toBe(true)
+    // Bisnisnya TIDAK ikut dikirim: ia ada di alamat, dan tidak dapat diubah.
+    expect(body).not.toHaveProperty('bisnis')
+  })
+
+  /**
+   * Satu penekanan Simpan dapat memperbarui baris lama DAN menambah baris baru — bentuk
+   * yang sama dengan sentinel `UnknownID` di sistem lama.
+   */
+  it('mengirim baris baru tanpa id berdampingan dengan baris lama', async () => {
+    const form = await openUbah(() => ({ body: RULE_LIST }))
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Tambah baris' }))
     await userEvent.type(
-      within(form).getByLabelText('Detail Dokumen'),
-      'Laporan Kerugian (40001)',
+      within(form).getByRole('textbox', { name: 'Nama File baris 3' }),
+      'Dokumen Baru',
     )
-    await userEvent.type(within(form).getByLabelText('Nama Dokumen'), 'Laporan Kerugian')
-
     await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
 
-    await waitFor(() => {
-      const saved = calls.find((call) => call.method === 'POST')
-      expect(saved?.body).toEqual({
-        bisnis: ['001', '004'],
-        dokumen: [
-          {
-            id_tipe_dokumen: '20001',
-            id_object_dokumen: '',
-            id_detail_dokumen: '40001',
-            detail_dokumen: 'Laporan Kerugian',
-            status_wajib: false,
-            minimum_dokumen: 0,
-          },
-        ],
-      })
-    })
+    await waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true))
+    const body = (calls.find((call) => call.method === 'PUT')?.body ?? {}) as {
+      dokumen: Array<Record<string, unknown>>
+    }
+    expect(body.dokumen).toHaveLength(3)
+    expect(body.dokumen[2]?.['id']).toBe('')
+    expect(body.dokumen[2]?.['detail_dokumen']).toBe('Dokumen Baru')
   })
 
-  it('menyempitkan pilihan Detail Dokumen mengikuti Tipe Dokumen', async () => {
-    installFetch(defaultReply())
-    show()
+  it('menyatakan bahwa lini bisnis tidak dapat dipindah', async () => {
+    const form = await openUbah()
 
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Tambah Data' })
-
-    // Saran dibaca dari <datalist>, bukan dari <select>. Ia diambil lewat id-nya karena
-    // opsi di dalam datalist tidak terekspos sebagai `role="option"` yang dapat
-    // diandalkan di jsdom.
-    const suggestions = () =>
-      Array.from(document.getElementById('detail-dokumen-0')?.children ?? []).map((node) =>
-        node.getAttribute('value'),
-      )
-
-    // Sebelum tahap dipilih, ketiganya ditawarkan.
-    expect(suggestions()).toHaveLength(3)
-
-    // Setelah tahap REGISTER dipilih, hanya rincian milik tahap itu yang tersisa. Tanpa
-    // penyempitan ini, petugas dapat menyimpan pasangan yang tidak akan pernah muncul di
-    // layar unggah mana pun.
-    await userEvent.type(within(form).getByLabelText('Tipe Dokumen'), 'REGISTER (20001)')
-    expect(suggestions()).toHaveLength(2)
-    expect(suggestions().some((value) => value?.includes('Berita Acara Survei'))).toBe(false)
+    expect(within(form).getByText(/tidak dapat diubah/)).toBeInTheDocument()
+    expect(within(form).queryByRole('combobox', { name: /^Nama Bisnis/ })).toBeNull()
   })
 
-  it('menampilkan kalimat layar lama saat bisnis belum dipilih', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: { kode: 'nama_bisnis_belum_diisi', pesan: 'Nama Bisnis belum di isi.' },
-        status: 422,
-      })),
-    )
-    show()
+  it('menyempitkan Detail Dokumen mengikuti Tipe Dokumen pada baris yang sama', async () => {
+    const form = await openUbah()
 
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Tambah Data' })
-    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+    const tipe = within(form).getByRole('combobox', { name: 'Tipe Dokumen baris 1' })
+    await userEvent.clear(tipe)
+    await userEvent.type(tipe, 'SURVEY (20003)')
 
-    expect(await screen.findByText('Nama Bisnis belum di isi')).toBeInTheDocument()
+    // Daftar pilihan baris 1 kini hanya memuat rincian milik tahap SURVEY.
+    const options = Array.from(
+      document.querySelectorAll<HTMLOptionElement>('#detail-dokumen-0 option'),
+    ).map((option) => option.value)
+    expect(options).toEqual(['Berita Acara Survei (40003)'])
+
+    // Rincian tahap sebelumnya ikut dikosongkan, supaya pasangan yang tidak pernah muncul
+    // di layar unggah mana pun tidak ikut tersimpan.
+    expect(within(form).getByRole('combobox', { name: 'Detail Dokumen baris 1' })).toHaveValue('')
+  })
+
+  it('memuat jenis klaim lewat jalurnya sendiri, per baris', async () => {
+    const form = await openUbah()
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Jenis Klaim baris 10001' }))
+
+    expect(await screen.findByText('10009')).toBeInTheDocument()
+    expect(calls.some((call) => call.url.includes('/tipe-dokumen-bisnis/10001'))).toBe(true)
+  })
+
+  it('menambahkan jenis klaim tanpa menyentuh penyimpanan baris', async () => {
+    const form = await openUbah(() => ({ body: RULE_DETAIL }))
+    await userEvent.click(within(form).getByRole('button', { name: 'Jenis Klaim baris 10001' }))
+
+    await userEvent.type(await screen.findByLabelText('Kode Jenis Klaim'), '10012')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah jenis klaim' }))
+
+    await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true))
+    const added = calls.find((call) => call.method === 'POST')
+    expect(added?.url).toBe('/api/master/tipe-dokumen-bisnis/10001/jenis-klaim')
+    expect(added?.body).toEqual({ id_jenis_klaim: '10012' })
+  })
+
+  it('menyatakan bahwa jenis klaim tidak dapat dibuang', async () => {
+    const form = await openUbah()
+    await userEvent.click(within(form).getByRole('button', { name: 'Jenis Klaim baris 10001' }))
+
+    expect(
+      await screen.findByText(/hanya dapat ditambahkan, tidak dapat dibuang/),
+    ).toBeInTheDocument()
   })
 })
 
-describe('pilih semua bisnis', () => {
-  // Lima kode lini MBU dilewati pemilihan massal
-  // (`Activity/SetAllBusiness-Act.xml:984`). Daftarnya kini datang dari konfigurasi
-  // (`D-15`), tetapi perilakunya sama persis.
-  it('melewati bisnis yang dikecualikan, tetapi tetap membiarkannya dipilih sendiri', async () => {
-    installFetch(defaultReply())
-    show()
+describe('layar Tambah', () => {
+  /**
+   * Nama Bisnis adalah baris autocomplete yang ditambah satu per satu, bukan grid 206
+   * kotak centang — lihat komentarnya di BusinessDocumentRuleCreateForm.
+   */
+  it('mengisi Nama Bisnis lewat baris autocomplete yang dapat ditambah', async () => {
+    const form = await openTambah()
 
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Tambah Data' })
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Nama Bisnis baris 1' }),
+      'Fire (001)',
+    )
+    await userEvent.click(within(form).getByRole('button', { name: 'Tambah' }))
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Nama Bisnis baris 2' }),
+      'Travel (005)',
+    )
 
-    await userEvent.click(within(form).getByRole('button', { name: 'Pilih semua' }))
-
-    // Tiga dari empat: Personal Accident (10028) dilewati.
-    expect(within(form).getByText(/3 dari 4 dipilih/)).toBeInTheDocument()
-
-    // Tetapi ia TIDAK terkunci — pengecualiannya hanya berlaku pada tombolnya.
-    const excluded = within(form).getByRole('checkbox', { name: /Personal Accident/ })
-    expect(excluded).not.toBeDisabled()
-    await userEvent.click(excluded)
-    expect(within(form).getByText(/4 dari 4 dipilih/)).toBeInTheDocument()
+    expect(within(form).getByText(/2 bisnis × 1 dokumen/)).toBeInTheDocument()
   })
 
-  // Di Pega tombolnya hanya TERLIHAT oleh operator ber-`pyPosition='NONMBU'`. Itu
-  // penyembunyian tampilan, bukan kewenangan — dan ditiru sebagai penyembunyian pula.
-  it('menyembunyikan tombolnya bagi operator di luar NONMBU', async () => {
+  it('mengirim perkalian bisnis kali dokumen', async () => {
+    const form = await openTambah(() => ({ body: RULE_LIST, status: 201 }))
+
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Nama Bisnis baris 1' }),
+      'Fire (001)',
+    )
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Tipe Dokumen baris 1' }),
+      'REGISTER (20001)',
+    )
+    await userEvent.type(
+      within(form).getByRole('textbox', { name: 'Nama File baris 1' }),
+      'Laporan Kerugian',
+    )
+    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true))
+    const body = calls.find((call) => call.method === 'POST')?.body as {
+      bisnis: string[]
+      dokumen: Array<Record<string, unknown>>
+    }
+    expect(body.bisnis).toEqual(['001'])
+    expect(body.dokumen[0]?.['id_tipe_dokumen']).toBe('20001')
+    // Baris baru TIDAK membawa id — jalur tambah memang selalu menyisipkan.
+    expect(body.dokumen[0]).not.toHaveProperty('id')
+  })
+
+  /**
+   * Teks di luar master boleh diketik dan tidak terhapus sendiri. Versi pertama form ini
+   * menurunkan nilai isian dari kodenya, sehingga setiap huruf yang belum cocok
+   * mengosongkan isiannya — dan isian itu menjadi mustahil diisi.
+   */
+  it('membiarkan teks di luar daftar diketik tanpa menghapusnya sendiri', async () => {
+    const form = await openTambah()
+
+    const tipe = within(form).getByRole('combobox', { name: 'Tipe Dokumen baris 1' })
+    await userEvent.type(tipe, 'REG')
+    expect(tipe).toHaveValue('REG')
+  })
+
+  it('melewati bisnis yang dikecualikan pada pemilihan massal, tetapi tetap membiarkannya diketik', async () => {
+    const form = await openTambah()
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Tamban semua bisnis NONMBU' }))
+
+    const typed = within(form)
+      .getAllByRole('combobox', { name: /^Nama Bisnis baris/ })
+      .map((input) => (input as HTMLInputElement).value)
+    expect(typed).toEqual(['Fire (001)', 'Marine Cargo (004)', 'Travel (005)'])
+
+    // Bisnis yang sama tetap dapat diketik sendiri — pengecualiannya hanya pada tombolnya.
+    await userEvent.click(within(form).getByRole('button', { name: 'Tambah' }))
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Nama Bisnis baris 4' }),
+      'Personal Accident (10028)',
+    )
+    expect(within(form).getByText(/4 bisnis × 1 dokumen/)).toBeInTheDocument()
+  })
+
+  it('menyembunyikan tombol massal bagi operator di luar NONMBU', async () => {
     installFetch((call) => {
       if (call.url.startsWith('/api/master/bisnis-pilihan')) {
         return { body: { ...BUSINESS_CHOICES, boleh_pilih_semua: false } }
@@ -379,200 +484,186 @@ describe('pilih semua bisnis', () => {
       return defaultReply()(call)
     })
     show()
-
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Tambah' }))
     const form = await screen.findByRole('form', { name: 'Tambah Data' })
 
-    expect(within(form).queryByRole('button', { name: 'Pilih semua' })).toBeNull()
-    // Kosongkan tetap ada: ia bukan bagian dari pengecualian mana pun.
-    expect(within(form).getByRole('button', { name: 'Kosongkan' })).toBeInTheDocument()
+    expect(within(form).queryByRole('button', { name: 'Tamban semua bisnis NONMBU' })).toBeNull()
+  })
+
+  it('menampilkan pesan layar lama saat bisnis belum diisi', async () => {
+    const form = await openTambah(() => ({
+      body: { kode: 'nama_bisnis_belum_diisi', pesan: 'x' },
+      status: 422,
+    }))
+    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    expect(await screen.findByText('Nama Bisnis belum di isi')).toBeInTheDocument()
   })
 })
 
-describe('menyalin aturan ke bisnis lain', () => {
-  // Inilah guna tombol Copy: aturan tidak dapat DIPINDAHKAN antar lini bisnis
-  // (`BUSINESSID` tidak ikut diubah saat menyunting), sehingga menyalin adalah
-  // satu-satunya cara memakai ulang susunan yang sudah ada.
-  it('membawa seluruh baris bisnis asal ke form tambah, tanpa ID-nya', async () => {
+describe('layar Copy', () => {
+  /**
+   * Copy membawa susunan bisnis asal ke form Tambah TANPA ID-nya — penyimpanan berikutnya
+   * karena itu menerbitkan baris baru alih-alih menimpa baris asalnya.
+   */
+  it('membawa seluruh baris bisnis asal, tanpa ID dan tanpa bisnisnya', async () => {
     installFetch(defaultReply())
     show()
-
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(await screen.findByRole('button', { name: 'Copy' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Copy dokumen bisnis Fire' }))
 
     const form = await screen.findByRole('form', { name: 'Tambah Data' })
-
-    // Kedua baris bisnis 001 ikut tersalin, sudah terisi.
-    expect(within(form).getByText(/2 dokumen/)).toBeInTheDocument()
-    expect(within(form).getByDisplayValue('Laporan Kerugian (40001)')).toBeInTheDocument()
-
-    // Bisnis tujuannya BELUM dipilih — itulah yang harus diisi petugas.
-    expect(within(form).getByText(/0 dari 4 dipilih/)).toBeInTheDocument()
+    expect(within(form).getByRole('textbox', { name: 'Nama File baris 1' })).toHaveValue(
+      'Laporan Kerugian',
+    )
+    // Bisnis tujuan dikosongkan: menyalin ke bisnis yang sama tidak punya arti apa pun.
+    expect(within(form).getByRole('combobox', { name: 'Nama Bisnis baris 1' })).toHaveValue('')
   })
 
   it('menyimpan salinan sebagai baris baru pada bisnis tujuan', async () => {
-    installFetch(defaultReply(() => ({ body: { ...RULE_LIST, total: 2 }, status: 201 })))
+    installFetch(defaultReply(() => ({ body: RULE_LIST, status: 201 })))
     show()
-
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(await screen.findByRole('button', { name: 'Copy' }))
-
+    await userEvent.click(await screen.findByRole('button', { name: 'Copy dokumen bisnis Fire' }))
     const form = await screen.findByRole('form', { name: 'Tambah Data' })
-    await userEvent.click(within(form).getByRole('checkbox', { name: /Travel/ }))
+
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Nama Bisnis baris 1' }),
+      'Travel (005)',
+    )
     await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
 
-    await waitFor(() => {
-      const saved = calls.find((call) => call.method === 'POST')
-      const body = saved?.body as { bisnis: string[]; dokumen: unknown[] }
-      expect(body.bisnis).toEqual(['005'])
-      expect(body.dokumen).toHaveLength(2)
-      // Tidak satu pun membawa `id` — salinan selalu menjadi baris baru.
-      expect(JSON.stringify(body.dokumen)).not.toContain('"id"')
-    })
+    await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true))
+    const posted = calls.find((call) => call.method === 'POST')
+    expect(posted?.url).toBe('/api/master/tipe-dokumen-bisnis')
+    const body = posted?.body as { bisnis: string[]; dokumen: Array<Record<string, unknown>> }
+    expect(body.bisnis).toEqual(['005'])
+    expect(body.dokumen).toHaveLength(2)
+    expect(body.dokumen.every((row) => !('id' in row))).toBe(true)
   })
 })
 
-describe('mengubah aturan dokumen', () => {
-  it('memuat ulang baris dari server, bukan memakai baris dari daftar', async () => {
-    installFetch(defaultReply())
+describe('galat', () => {
+  it('menampilkan pesan khusus saat portal belum dipilih di server', async () => {
+    installFetch(() => ({ body: { kode: 'portal_tidak_disebut', pesan: 'x' }, status: 400 }))
     show()
 
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ubah aturan Laporan Kerugian' }),
-    )
-
-    // Inilah uji yang menjaga sebuah KEPUTUSAN: daftar TIDAK membawa jaminan, pengambilan
-    // satu baris membawanya. Bila kelak seseorang "merapikan" keduanya menjadi sama, layar
-    // akan menampilkan setiap baris seolah tanpa jaminan — dan itu perbedaan antara
-    // dokumen yang wajib dan yang tidak.
-    await screen.findByRole('form', { name: 'Update Data' })
-    expect(calls.some((call) => call.url.match(/\/tipe-dokumen-bisnis\/10001$/))).toBe(true)
-    expect(await screen.findByText('10009')).toBeInTheDocument()
+    expect(await screen.findByText('Portal entitas belum dipilih')).toBeInTheDocument()
   })
 
-  it('menampilkan bisnis sebagai tidak dapat dipindah', async () => {
-    installFetch(defaultReply())
+  it('menampilkan pesan khusus saat basis data entitas belum siap', async () => {
+    installFetch(() => ({ body: { kode: 'portal_belum_siap', pesan: 'x' }, status: 503 }))
     show()
 
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ubah aturan Laporan Kerugian' }),
-    )
-
-    const form = await screen.findByRole('form', { name: 'Update Data' })
-    expect(within(form).getByText('(tidak dapat dipindah)')).toBeInTheDocument()
-    expect(within(form).queryByLabelText('Nama Bisnis')).toBeNull()
+    expect(await screen.findByText('Basis data entitas ini belum tersedia')).toBeInTheDocument()
   })
 
-  it('mengirim isian yang diubah tanpa menyertakan bisnis', async () => {
-    installFetch(defaultReply(() => ({ body: RULE_DETAIL })))
+  it('memakai pesan server pada galat lain', async () => {
+    installFetch(() => ({
+      body: { kode: 'galat_internal', pesan: 'Basis data sibuk.' },
+      status: 500,
+    }))
     show()
 
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ubah aturan Laporan Kerugian' }),
-    )
+    expect(await screen.findByText('Daftar tidak dapat dimuat')).toBeInTheDocument()
+    expect(screen.getByText('Basis data sibuk.')).toBeInTheDocument()
+  })
 
-    const form = await screen.findByRole('form', { name: 'Update Data' })
-    const minimum = within(form).getByLabelText('Minimum Dokumen')
-    await userEvent.clear(minimum)
-    await userEvent.type(minimum, '3')
+  /**
+   * Baris yang hilang sejak layar dibuka membatalkan SELURUH penyimpanan — tidak ada
+   * sebagian yang tersimpan, dan kalimatnya mengatakan itu.
+   */
+  it('menyebut bahwa tidak ada yang tersimpan saat sebuah baris hilang', async () => {
+    const form = await openUbah(() => ({
+      body: { kode: 'tipe_dokumen_bisnis_tidak_ditemukan', pesan: 'x' },
+      status: 404,
+    }))
     await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
 
-    await waitFor(() => {
-      const saved = calls.find((call) => call.method === 'PUT')
-      expect(saved?.url).toContain('/tipe-dokumen-bisnis/10001')
-      expect(saved?.body).toEqual({
-        id_tipe_dokumen: '20001',
-        id_object_dokumen: '30001',
-        id_detail_dokumen: '40001',
-        detail_dokumen: 'Laporan Kerugian',
-        status_wajib: true,
-        minimum_dokumen: 3,
-      })
-    })
+    expect(await screen.findByText('Baris aturan sudah tidak ada')).toBeInTheDocument()
+    expect(screen.getByText(/tidak ada yang tersimpan/)).toBeInTheDocument()
   })
 })
 
-describe('jenis klaim', () => {
-  it('memperingatkan bahwa wajib tanpa jenis klaim tidak wajib di klaim', async () => {
-    // Baris ini ditandai wajib TETAPI daftar jaminannya kosong — keadaan yang di layar
-    // lama tidak terlihat sama sekali, dan yang membuat petugas yakin telah mewajibkan
-    // dokumen yang sebenarnya tetap opsional.
-    installFetch((call) => {
-      if (call.method === 'GET' && call.url.match(/\/tipe-dokumen-bisnis\/\d+$/)) {
-        return { body: { portal: 'ASM', tipe_dokumen_bisnis: RULE_LIST.tipe_dokumen_bisnis[0] } }
-      }
-      return defaultReply()(call)
-    })
-    show()
-
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ubah aturan Laporan Kerugian' }),
-    )
-
-    expect(
-      await screen.findByText('Wajib di sini belum berarti wajib di klaim'),
-    ).toBeInTheDocument()
-  })
-
-  it('menambahkan jenis klaim lewat jalurnya sendiri', async () => {
-    installFetch(defaultReply(() => ({ body: RULE_DETAIL })))
-    show()
-
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ubah aturan Laporan Kerugian' }),
-    )
-
-    await userEvent.type(await screen.findByLabelText('Kode Jenis Klaim'), '10015')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah jenis klaim' }))
-
-    await waitFor(() => {
-      const saved = calls.find((call) => call.url.includes('/jenis-klaim'))
-      expect(saved?.method).toBe('POST')
-      expect(saved?.body).toEqual({ id_jenis_klaim: '10015' })
-    })
-  })
-
-  it('menyatakan bahwa jenis klaim tidak dapat dibuang', async () => {
+/**
+ * Inilah yang menyebabkan laporan "tersimpan tetapi tidak muncul, tanpa pesan galat" pada
+ * 2026-10-04.
+ *
+ * Isian autocomplete boleh diisi teks bebas (meniru `pyAllowFreeFormInput=true`), tetapi
+ * teks yang tidak cocok menghasilkan KODE KOSONG — dan baris berkode kosong tersimpan lalu
+ * hilang dari seluruh layar. Penandaannya wajib terbaca sebelum Simpan ditekan.
+ */
+describe('isian yang belum mengenali kodenya', () => {
+  it('memperingatkan saat Tipe Dokumen diketik tetapi tidak cocok', async () => {
     installFetch(defaultReply())
     show()
+    await userEvent.click(await screen.findByRole('button', { name: 'Tambah' }))
+    const form = await screen.findByRole('form', { name: 'Tambah Data' })
 
-    const table = await screen.findByRole('table')
-    await userEvent.click(
-      within(table).getByRole('button', { name: 'Lihat dokumen bisnis Fire' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ubah aturan Laporan Kerugian' }),
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Tipe Dokumen baris 1' }),
+      'REGIS',
     )
 
-    expect(
-      await screen.findByText(/hanya dapat ditambahkan, tidak dapat dibuang/),
-    ).toBeInTheDocument()
+    expect(within(form).getByText(/tidak akan tersimpan/)).toBeInTheDocument()
+  })
+
+  it('tidak memperingatkan setelah teksnya cocok dengan daftarnya', async () => {
+    installFetch(defaultReply())
+    show()
+    await userEvent.click(await screen.findByRole('button', { name: 'Tambah' }))
+    const form = await screen.findByRole('form', { name: 'Tambah Data' })
+
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Tipe Dokumen baris 1' }),
+      'REGISTER (20001)',
+    )
+
+    expect(within(form).queryByText(/tidak akan tersimpan/)).toBeNull()
+  })
+
+  it('memperingatkan saat Nama Bisnis diketik tetapi tidak cocok', async () => {
+    installFetch(defaultReply())
+    show()
+    await userEvent.click(await screen.findByRole('button', { name: 'Tambah' }))
+    const form = await screen.findByRole('form', { name: 'Tambah Data' })
+
+    await userEvent.type(
+      within(form).getByRole('combobox', { name: 'Nama Bisnis baris 1' }),
+      'Fir',
+    )
+
+    expect(within(form).getByText(/akan dilewati/)).toBeInTheDocument()
+  })
+
+  it('juga memperingatkan di layar Ubah', async () => {
+    const form = await openUbah()
+
+    const tipe = within(form).getByRole('combobox', { name: 'Tipe Dokumen baris 1' })
+    await userEvent.clear(tipe)
+    await userEvent.type(tipe, 'bukan tahap mana pun')
+
+    expect(within(form).getByText(/tidak akan tersimpan/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * Pencarian adalah SELISIH TERENCANA — layar lama tidak punya kotak cari. Diminta Work
+ * Owner 2026-10-05 karena daftarnya memuat ratusan lini bisnis.
+ */
+describe('pencarian daftar bisnis', () => {
+  it('menyaring menurut nama maupun kodenya', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByText('Fire')
+
+    const box = screen.getByRole('searchbox', { name: /Cari nama bisnis/ })
+
+    await userEvent.type(box, 'Marine')
+    expect(screen.queryByText('Fire')).toBeNull()
+    expect(screen.getByText('Marine Cargo')).toBeInTheDocument()
+
+    await userEvent.clear(box)
+    await userEvent.type(box, '001')
+    expect(screen.getByText('Fire')).toBeInTheDocument()
+    expect(screen.queryByText('Marine Cargo')).toBeNull()
   })
 })

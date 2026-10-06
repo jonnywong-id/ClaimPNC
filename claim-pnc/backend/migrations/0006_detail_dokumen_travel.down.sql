@@ -14,9 +14,8 @@
 -- ## Yang dikembalikan, dan yang TIDAK
 --
 --   DIKEMBALIKAN  hak akses akun aplikasi atas objek modul ini.
---   TIDAK         data. Setiap aturan dokumen dan setiap pembatasan plan yang sudah
---                 terlanjur disimpan lewat layar Go TETAP ADA, dan memang harus tetap
---                 ada.
+--   TIDAK         data. Setiap aturan dokumen yang sudah terlanjur disimpan lewat layar
+--                 Go TETAP ADA, dan memang harus tetap ada.
 --
 -- Sebabnya bukan kelalaian: baris itu dibaca `Activity/TravelDocument_act-Act.xml` saat
 -- klaim Travel diregistrasi. Menghapusnya berarti mengubah kelengkapan dokumen yang
@@ -37,7 +36,6 @@
 -- 2. CATAT JUMLAH BARIS SEKARANG, supaya dapat dipastikan tidak ada yang ikut hilang:
 --
 --        SELECT COUNT(*) FROM POOLDATA.V_LST_DOC_TRAVEL;
---        SELECT COUNT(*) FROM POOLDATA.V_LST_DOC_TRAVEL_COVERAGE;
 
 
 -- ---------------------------------------------------------------------------
@@ -55,18 +53,35 @@
 -- ---------------------------------------------------------------------------
 
 -- REVOKE INSERT, UPDATE ON POOLDATA.LST_DOC_TRAVEL FROM <AKUN_APLIKASI>;
--- REVOKE INSERT, UPDATE, DELETE ON POOLDATA.LST_DOC_TRAVEL_COVERAGE FROM <AKUN_APLIKASI>;
 -- REVOKE SELECT ON POOLDATA.LST_DOC_TRAVEL_SEQ FROM <AKUN_APLIKASI>;
 
 -- REVOKE SELECT ON POOLDATA.LST_DOC_TRAVEL FROM <AKUN_APLIKASI>;
--- REVOKE SELECT ON POOLDATA.LST_DOC_TRAVEL_COVERAGE FROM <AKUN_APLIKASI>;
 -- REVOKE SELECT ON POOLDATA.V_LST_DOC_TRAVEL FROM <AKUN_APLIKASI>;
--- REVOKE SELECT ON POOLDATA.V_LST_DOC_TRAVEL_COVERAGE FROM <AKUN_APLIKASI>;
--- REVOKE SELECT ON POOLDATA.M_PLANTRAVEL FROM <AKUN_APLIKASI>;
 
 
 -- ---------------------------------------------------------------------------
--- Langkah 2 — yang SENGAJA TIDAK dicabut
+-- Langkah 2 — hanya bila versi PERTAMA migrasi naik telanjur dijalankan
+--
+-- Versi pertama berkas .up.sql meminta hak atas dua objek yang kemudian DICABUT dari
+-- lingkup modul pada 2026-10-03: grid Plan dan Jaminan ternyata tidak ada di aplikasi
+-- Pega yang berjalan.
+--
+-- Bila haknya telanjur diberikan, cabut di sini. Bila tidak pernah diberikan, LEWATI —
+-- REVOKE atas hak yang tidak pernah ada akan gagal dengan ORA-01927, dan itu bukan
+-- masalah selain membuat laporan pelaksanaan membingungkan.
+--
+-- PERHATIAN pada baris kedua: POOLDATA.M_PLANTRAVEL milik GISFW dan mungkin dibaca
+-- modul LAIN yang tidak ada hubungannya dengan migrasi ini. Periksa lebih dulu sebelum
+-- mencabutnya.
+-- ---------------------------------------------------------------------------
+
+-- REVOKE SELECT, INSERT, UPDATE, DELETE ON POOLDATA.LST_DOC_TRAVEL_COVERAGE FROM <AKUN_APLIKASI>;
+-- REVOKE SELECT ON POOLDATA.V_LST_DOC_TRAVEL_COVERAGE FROM <AKUN_APLIKASI>;
+-- REVOKE SELECT ON POOLDATA.M_PLANTRAVEL FROM <AKUN_APLIKASI>;   -- periksa pemakai lain dulu
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 3 — yang SENGAJA TIDAK dicabut
 -- ---------------------------------------------------------------------------
 --
 -- POOLDATA.M_DOCTRAVEL. Haknya diberikan migrasi 0003 untuk modul Master Dokumen Travel,
@@ -78,7 +93,7 @@
 
 
 -- ---------------------------------------------------------------------------
--- Langkah 3 — verifikasi, dijalankan dengan AKUN APLIKASI
+-- Langkah 4 — verifikasi, dijalankan dengan AKUN APLIKASI
 --
 -- DIHARAPKAN GAGAL dengan ORA-00942. Berhasil berarti masih ada hak yang tertinggal —
 -- kemungkinan besar diberikan lewat peran, bukan langsung ke akunnya.

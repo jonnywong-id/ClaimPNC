@@ -147,7 +147,9 @@ describe('simpan', () => {
     installFetch()
     show()
     let form = await openEdit()
-    expect(within(form).getByText('1001')).toBeInTheDocument()
+    // ID baris yang sedang diubah TIDAK ditampilkan di form sejak keputusan Work Owner
+    // 2026-10-03 — ia diterbitkan sistem dan tidak dapat disunting.
+    expect(within(form).queryByText('1001')).not.toBeInTheDocument()
     await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
     await waitFor(() =>
       expect(screen.queryByRole('form', { name: /Memperbaharui Data/ })).not.toBeInTheDocument(),

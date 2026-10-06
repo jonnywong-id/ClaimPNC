@@ -45,10 +45,10 @@ type testServer struct {
 	asm *memory.Repo
 	asi *memory.Repo
 
-	// plan dipegang supaya jalur GAGALNYA dapat diuji. Kegagalan membaca master plan
-	// TIDAK BOLEH menghalangi penyimpanan — nama plan dan jaminan memang boleh diketik
+	// document dipegang supaya jalur GAGALNYA dapat diuji. Kegagalan membaca master
+	// dokumen TIDAK BOLEH menghalangi penyimpanan — kode dokumen memang boleh diketik
 	// sendiri, sehingga yang hilang hanya kenyamanan memilih.
-	plan *memory.PlanRepo
+	document *memory.DocumentRepo
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -69,7 +69,6 @@ func newTestServer(t *testing.T) *testServer {
 	asm := memory.NewRepo(memory.SampleList()...)
 	asi := memory.NewRepo()
 	document := memory.NewDocumentRepo(memory.SampleDocumentList()...)
-	plan := memory.NewPlanRepo(memory.SamplePlanList(), memory.SampleCoverageList())
 
 	perPortal := func(alias string) error {
 		if alias != "ASM" && alias != "ASI" {
@@ -94,12 +93,6 @@ func newTestServer(t *testing.T) *testServer {
 				return nil, err
 			}
 			return document, nil
-		},
-		PlanSelector: func(alias string) (daftardetaildokumentravel.PlanRepo, error) {
-			if err := perPortal(alias); err != nil {
-				return nil, err
-			}
-			return plan, nil
 		},
 	})
 	require.NoError(t, err)
@@ -151,7 +144,7 @@ func newTestServer(t *testing.T) *testServer {
 	}))
 	t.Cleanup(server.Close)
 
-	p := &testServer{server: server, asm: asm, asi: asi, plan: plan}
+	p := &testServer{server: server, asm: asm, asi: asi, document: document}
 	p.token = p.login(t)
 	return p
 }
@@ -240,32 +233,12 @@ func TestPermintaanTanpaSesiDitolak(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, response.StatusCode)
 }
 
-func TestDaftarTidakMembawaJaminanTetapiPengambilanSatuBarisMembawanya(t *testing.T) {
-	// Perbedaan ini disengaja dan harus tetap begitu: grid tidak menampilkan jaminan,
-	// dan menariknya untuk seluruh baris berarti satu kueri yang hasilnya tidak pernah
-	// dilihat siapa pun. Layar karena itu WAJIB memuat ulang baris saat dibuka untuk
-	// disunting — uji ini yang membuat kewajiban itu terlihat.
-	server := newTestServer(t)
-
-	_, list := server.call(t, http.MethodGet, route, "ASM", "")
-	rows := list["detail_dokumen_travel"].([]any)
-	for _, row := range rows {
-		require.Empty(t, row.(map[string]any)["jaminan"])
-	}
-
-	_, one := server.call(t, http.MethodGet, route+"/00003", "ASM", "")
-	detail := one["detail_dokumen_travel"].(map[string]any)
-	require.Len(t, detail["jaminan"], 2)
-}
-
 func TestPenambahanMengembalikanBarisTersimpanBesertaIDnya(t *testing.T) {
 	// ID diterbitkan server, sehingga layar tidak punya cara lain mengetahuinya.
 	server := newTestServer(t)
 
 	body := `{"id_dokumen":"100006","nama_dokumen":"Surat Keterangan Maskapai",` +
-		`"status_wajib":true,"minimal_unggah":2,` +
-		`"jaminan":[{"id_plan":"TP01","nama_plan":"Travel Plan Silver",` +
-		`"id_jaminan":"TC02","nama_jaminan":"Kehilangan Bagasi"}]}`
+		`"status_wajib":true,"minimal_unggah":2}`
 
 	response, content := server.call(t, http.MethodPost, route, "ASM", body)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
@@ -275,7 +248,6 @@ func TestPenambahanMengembalikanBarisTersimpanBesertaIDnya(t *testing.T) {
 	require.Equal(t, "100006", saved["id_dokumen"])
 	require.Equal(t, true, saved["status_wajib"])
 	require.Equal(t, float64(2), saved["minimal_unggah"])
-	require.Len(t, saved["jaminan"], 1)
 }
 
 func TestIsianKosongTetapDapatDisimpan(t *testing.T) {
@@ -285,32 +257,31 @@ func TestIsianKosongTetapDapatDisimpan(t *testing.T) {
 	server := newTestServer(t)
 
 	response, _ := server.call(t, http.MethodPost, route,
-		"ASM", `{"id_dokumen":"","nama_dokumen":"","status_wajib":false,"minimal_unggah":0,"jaminan":[]}`)
+		"ASM", `{"id_dokumen":"","nama_dokumen":"","status_wajib":false,"minimal_unggah":0}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 }
 
-func TestPenyimpananMenggantiSeluruhDaftarJaminan(t *testing.T) {
+func TestPenyuntinganMenggantiIsiBaris(t *testing.T) {
 	server := newTestServer(t)
 
-	body := `{"id_dokumen":"100004","nama_dokumen":"Laporan Kehilangan Bagasi",` +
-		`"status_wajib":false,"minimal_unggah":2,` +
-		`"jaminan":[{"id_plan":"TP03","nama_plan":"Travel Plan Platinum",` +
-		`"id_jaminan":"TC04","nama_jaminan":"Pembatalan Perjalanan"}]}`
+	body := `{"id_dokumen":"100004","nama_dokumen":"Laporan Bagasi",` +
+		`"status_wajib":true,"minimal_unggah":5}`
 
 	response, content := server.call(t, http.MethodPut, route+"/00003", "ASM", body)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 
 	saved := content["detail_dokumen_travel"].(map[string]any)
-	// Semula dua baris; setelah disimpan tinggal satu — penggantian menyeluruh, bukan
-	// penambahan.
-	require.Len(t, saved["jaminan"], 1)
+	require.Equal(t, "00003", saved["id"])
+	require.Equal(t, "Laporan Bagasi", saved["nama_dokumen"])
+	require.Equal(t, true, saved["status_wajib"])
+	require.Equal(t, float64(5), saved["minimal_unggah"])
 }
 
 func TestMengubahBarisYangTidakAdaMenjawab404(t *testing.T) {
 	server := newTestServer(t)
 
 	response, content := server.call(t, http.MethodPut, route+"/99999",
-		"ASM", `{"id_dokumen":"100001","nama_dokumen":"Paspor","status_wajib":true,"minimal_unggah":1,"jaminan":[]}`)
+		"ASM", `{"id_dokumen":"100001","nama_dokumen":"Paspor","status_wajib":true,"minimal_unggah":1}`)
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
 	require.Equal(t, "detail_dokumen_travel_tidak_ditemukan", content["kode"])
 }
@@ -326,33 +297,55 @@ func TestFieldYangTidakDikenalDitolak(t *testing.T) {
 	require.Equal(t, "permintaan_cacat", content["kode"])
 }
 
-func TestDaftarPilihanDokumenDanPlanDibacaPerEntitas(t *testing.T) {
+// TestPembatasanPlanDanJaminanDitolakKontrakAPI menjaga sebuah KEPUTUSAN.
+//
+// Grid Plan dan Jaminan tidak ada di layar Pega yang berjalan (Work Owner, 2026-10-03),
+// sehingga `jaminan` BUKAN field yang dikenal kontrak ini. Ia pernah ada dan dicabut.
+//
+// Penolakannya datang dari `DisallowUnknownFields`, dan itu memang yang dikehendaki:
+// klien lama yang masih mengirimnya mendapat galat yang jelas, bukan penyimpanan yang
+// diam-diam membuang sebagian isian.
+func TestPembatasanPlanDanJaminanDitolakKontrakAPI(t *testing.T) {
+	server := newTestServer(t)
+
+	body := `{"id_dokumen":"100001","nama_dokumen":"Paspor","status_wajib":true,` +
+		`"minimal_unggah":1,"jaminan":[]}`
+	response, content := server.call(t, http.MethodPost, route, "ASM", body)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.Equal(t, "permintaan_cacat", content["kode"])
+}
+
+// TestRutePlanTravelSudahTidakAda menjaga keputusan yang sama di tingkat rute.
+func TestRutePlanTravelSudahTidakAda(t *testing.T) {
+	server := newTestServer(t)
+
+	response, _ := server.call(t, http.MethodGet, "/api/master/plan-travel", "ASM", "")
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+}
+
+func TestDaftarPilihanDokumenDibacaPerEntitas(t *testing.T) {
 	server := newTestServer(t)
 
 	response, documents := server.call(t, http.MethodGet, "/api/master/dokumen-travel-pilihan", "ASM", "")
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.NotEmpty(t, documents["dokumen"])
 	require.Equal(t, "ASM", documents["portal"])
-
-	response, plans := server.call(t, http.MethodGet, "/api/master/plan-travel", "ASM", "")
-	require.Equal(t, http.StatusOK, response.StatusCode)
-	require.NotEmpty(t, plans["plan"])
-	require.NotEmpty(t, plans["jaminan"])
 }
 
 func TestDaftarPilihanYangGagalTidakMenghalangiPenyimpanan(t *testing.T) {
-	// Nama plan dan jaminan memang boleh diketik sendiri, sehingga yang hilang saat
-	// daftarnya gagal dimuat hanyalah kenyamanan memilih. Perlakuan yang sama dipakai
-	// daftar bisnis pada modul Master COL Simas Online.
+	// Kode dokumen memang boleh diketik sendiri, sehingga yang hilang saat daftarnya
+	// gagal dimuat hanyalah kenyamanan memilih. Perlakuan yang sama dipakai daftar
+	// bisnis pada modul Master COL Simas Online.
 	server := newTestServer(t)
-	server.plan.SetError(context.DeadlineExceeded)
+	server.document.SetError(context.DeadlineExceeded)
 
-	response, _ := server.call(t, http.MethodGet, "/api/master/plan-travel", "ASM", "")
+	response, _ := server.call(t, http.MethodGet, "/api/master/dokumen-travel-pilihan", "ASM", "")
 	require.GreaterOrEqual(t, response.StatusCode, http.StatusInternalServerError)
 
-	body := `{"id_dokumen":"100001","nama_dokumen":"Paspor","status_wajib":true,"minimal_unggah":1,` +
-		`"jaminan":[{"id_plan":"","nama_plan":"Plan yang diketik sendiri","id_jaminan":"","nama_jaminan":"Jaminan yang diketik sendiri"}]}`
+	body := `{"id_dokumen":"kode yang diketik sendiri","nama_dokumen":"Paspor",` +
+		`"status_wajib":true,"minimal_unggah":1}`
 	response, content := server.call(t, http.MethodPost, route, "ASM", body)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
-	require.Len(t, content["detail_dokumen_travel"].(map[string]any)["jaminan"], 1)
+	require.Equal(t, "kode yang diketik sendiri",
+		content["detail_dokumen_travel"].(map[string]any)["id_dokumen"])
 }

@@ -67,11 +67,23 @@ export type BarisKlaim = {
   pic_teknik: string
   admin_pnc: string
 
-  tanggal_register: string
+  /** Kolom "Tanggal Pendaftaran". */
+  tanggal_pendaftaran: string
+
+  /** Kolom "Report Date" — hanya terisi pada tile Outstanding. */
+  tanggal_lapor: string
+
   tanggal_kejadian: string
+
+  /** Kolom "Lama Waktu Klaim", dalam HARI. Pemformatannya urusan layar. */
+  lama_hari: number
 
   /** KODE status klaim, bukan artinya — pelabelannya milik master status klaim (`R-06`). */
   status_klaim_kode: string
+
+  /** Kolom "Claim status" — artinya, dari `V_STS_CLAIM.LSC_NOTE`. */
+  status_klaim_label: string
+
   status_proses: string
 }
 
@@ -92,6 +104,9 @@ export type BarisSurvei = {
   /** Hanya terisi pada tile Internal Surveyor — kueri loss adjuster tidak mengambilnya. */
   tanggal_survei: string
   tanggal_tugas: string
+
+  /** Kolom "Aging", dalam HARI. */
+  lama_hari: number
 
   status_survei: string
   status_proses: string
@@ -156,4 +171,93 @@ export type PenyaringDashboard = {
   lini_bisnis?: string
   cari?: string
   halaman?: number
+}
+
+/** Satu baris tab **Inbox Tampungan PIC** — klaim yang belum punya PIC Teknik. */
+export type BarisTampungan = {
+  klaim_id: string
+
+  nomor_klaim: string
+  nomor_polis: string
+  nama_tertanggung: string
+  nama_bisnis: string
+  sumber_bisnis: string
+  nama_cabang: string
+  admin_pnc: string
+
+  tanggal_pendaftaran: string
+}
+
+/** Jawaban tab Inbox Tampungan PIC. */
+export type TampunganResponse = {
+  klaim: BarisTampungan[]
+  halaman: KeteranganHalaman
+  portal: string
+}
+
+/** Kedua tab layar ini. */
+export type TabDashboard = 'dashboard' | 'tampungan'
+
+/** Lingkup permintaan transfer — tombol per baris, atau "Transfer All Case By UserID". */
+export type LingkupTransfer = 'baris' | 'massal'
+
+/** Badan permintaan transfer. */
+export type PermintaanTransfer = {
+  lingkup: LingkupTransfer
+  klaim_id?: string
+  nomor_klaim?: string
+  user_id_lama?: string
+  user_id_baru: string
+  tipe_pengguna?: string
+  alasan?: string
+}
+
+/** Jawaban permintaan transfer. */
+export type TransferResponse = {
+  permintaan: {
+    id: string
+    lingkup: LingkupTransfer
+    nomor_klaim?: string
+    user_id_lama?: string
+    user_id_baru: string
+    status: string
+    pemohon: string
+    pada: string
+  }
+  portal: string
+
+  /** Permintaan TERCATAT, tetapi penugasannya belum berpindah — Pega yang menjalankan. */
+  pelaksana_belum_ada: boolean
+}
+
+/**
+ * Jenis permintaan yang dapat diajukan dari tile Close Claim.
+ *
+ * Keduanya tombol nyata pada `Section/InboxManagerReopen1_Sec-Section.xml`, section yang
+ * **disertakan** layar Dashboard Claim — `Section/DashboardClaim_Section1-Section.xml`
+ * memuat `<pyInclude>InboxManagerReopen1_Sec</pyInclude>`.
+ *
+ * Nilainya mengikuti kontrak modul Inbox Close Claim yang sudah berjalan, bukan nama baru:
+ * `reopen` dan `salin`.
+ */
+export type JenisPermintaanKlaim = 'reopen' | 'salin'
+
+/** Izin mengajukan ReOpen dan Copy Klaim, dibaca dari modul Inbox Close Claim. */
+export type IzinPermintaanKlaim = {
+  boleh_mengajukan: boolean
+  alasan_tidak_boleh?: string
+}
+
+/**
+ * Hasil satu pengajuan di dalam satu kumpulan.
+ *
+ * Pengajuan massal adalah N permintaan terpisah, bukan satu permintaan berisi N klaim —
+ * lihat `useAjukanPermintaanKlaim`. Karena itu sebagiannya dapat berhasil dan sebagiannya
+ * gagal, dan hasil per baris harus dapat dilaporkan satu per satu.
+ */
+export type HasilPermintaanKlaim = {
+  klaim_id: string
+  nomor_klaim: string
+  berhasil: boolean
+  pesan?: string
 }

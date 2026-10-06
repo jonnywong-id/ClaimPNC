@@ -132,6 +132,15 @@ type Communication struct {
 // percakapan lain pada klaim yang sama.
 const ChannelSendToInputor = "SENDTOINPUTOR"
 
+// ChannelSendToRCLPUCL menandai "Catatan untuk RCL/PUCL" dari modal `KomentarRCLPUCL`.
+//
+// Berbeda dari ChannelSendToInputor, nilainya TIDAK disalin dari parameter rule mana pun:
+// `PUCLPost` tidak mengirim parameter semacam itu, dan catatan analis di sistem lama
+// tersimpan sebagai properti klaim (`KOMENTAR_ANALISATOR`), bukan sebagai baris komunikasi.
+// Baris komunikasi di sini adalah TAMBAHAN supaya catatannya terbaca di tab "Progress Claim
+// & Komunikasi" seperti catatan analis lainnya; isi yang mengikat tetap kolom suratnya.
+const ChannelSendToRCLPUCL = "SENDTORCLPUCL"
+
 // CommunicationStatusOpen adalah KOMUNIKASISTATUS pesan yang belum dijawab — nilai yang sama
 // dengan yang ditulis inbox komunikasi cabang untuk pesan baru.
 const CommunicationStatusOpen = "0"

@@ -224,19 +224,30 @@ func TestLaporanTerhalangMenyebutkanSebabnya(t *testing.T) {
 		require.NotEmptyf(t, r.Availability.Reason, "%s: terhalang tanpa sebab", r.Title)
 		require.NotEmptyf(t, r.Availability.Blocker, "%s: terhalang tanpa penghalang", r.Title)
 	}
-	require.ElementsMatch(t, []reportklaim.Code{
-		reportklaim.CodeCompliance,
-		reportklaim.CodeAdjuster,
-		reportklaim.CodeMitra,
-	}, terhalang)
+	// KOSONG sejak 2026-09-30: Mitra (penyaringnya pindah ke koneksi kedua portal),
+	// Adjuster (kuerinya direkonstruksi), dan Compliance (10 dari 12 kolomnya ternyata
+	// dapat dibaca; keterbatasannya pindah ke label tombol) semuanya lepas.
+	//
+	// Uji ini TIDAK dihapus: ia menjaga agar laporan yang kelak ditandai terhalang lagi
+	// wajib menyebut sebab DAN penghalangnya — dan itu diperiksa di perulangan di atas.
+	require.Empty(t, terhalang)
 }
 
 func TestLookupMembedakanKodeSalahDariLaporanTerhalang(t *testing.T) {
 	_, err := reportklaim.Lookup("tidak-ada")
 	require.ErrorIs(t, err, reportklaim.ErrUnknownReport)
 
-	_, err = reportklaim.Lookup(reportklaim.CodeAdjuster)
-	require.ErrorIs(t, err, reportklaim.ErrReportNotReady)
+	// Jalur "terhalang" hanya dapat diuji bila ada yang terhalang. Sejak 2026-09-30 tidak
+	// ada satu pun, jadi dicari dari katalog dan dilewati bila nihil — uji ini hidup
+	// kembali dengan sendirinya begitu ada laporan yang ditandai terhalang lagi.
+	for _, r := range reportklaim.Catalog() {
+		if r.Availability.Ready {
+			continue
+		}
+		_, err = reportklaim.Lookup(r.Code)
+		require.ErrorIs(t, err, reportklaim.ErrReportNotReady)
+		break
+	}
 
 	r, err := reportklaim.Lookup(reportklaim.CodeTAT)
 	require.NoError(t, err)

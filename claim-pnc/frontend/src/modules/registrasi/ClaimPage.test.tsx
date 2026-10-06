@@ -1203,7 +1203,8 @@ describe('tahap Input Estimasi', () => {
     await user.click(await screen.findByRole('button', { name: 'Unggah Dokumen' }))
 
     const unggah = screen.getByRole('button', { name: 'Unggah' })
-    expect(unggah).toBeDisabled()
+    // Selalu dapat ditekan, seperti Pega — tanpa berkas ia membuka pemilih berkas.
+    expect(unggah).toBeEnabled()
     await user.upload(screen.getByLabelText('Berkas'), new File(['%PDF'], 'lapor.pdf', { type: 'application/pdf' }))
     await user.type(screen.getByLabelText('Catatan'), 'asli')
     await user.click(unggah)

@@ -1,0 +1,37 @@
+-- 0012 turun — membuang tabel keputusan Compliance (Oracle 19c)
+--
+-- ============================================================================
+-- INI MENGHAPUS DATA, DAN DATA ITU TIDAK ADA DI TEMPAT LAIN.
+-- ============================================================================
+--
+-- Berbeda dari migrasi 0011 turun — yang hanya membuang sequence dan meninggalkan
+-- barisnya utuh — berkas ini membuang TABEL BESERTA SELURUH ISINYA.
+--
+-- Yang hilang adalah setiap keputusan Compliance yang pernah disimpan lewat form
+-- Compliance Checker: pilihan petugas, catatannya, siapa yang memutuskan, dan kapan.
+--
+-- Tidak ada satu pun salinannya. Keputusan itu TIDAK ikut tertulis ke klaimnya di Pega —
+-- justru itulah keterbatasan yang dicatat panjang di migrasi naik. Jadi membuang tabel ini
+-- berarti keputusan itu lenyap sepenuhnya, dan klaimnya kembali tampak belum pernah
+-- diperiksa.
+--
+-- Satu-satunya jejak yang tersisa adalah baris log aplikasi, yang dapat berputar dan yang
+-- retensinya bukan retensi audit.
+--
+-- ============================================================================
+-- SEBELUM MENJALANKANNYA
+-- ============================================================================
+--
+-- Salin isinya lebih dulu bila ada satu baris pun di dalamnya:
+--
+--     CREATE TABLE POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE_BAK
+--         AS SELECT * FROM POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE;
+--
+-- Periksa dulu apakah tabelnya memang kosong:
+--
+--     SELECT COUNT(*) FROM POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE;
+--
+-- Bila hasilnya bukan nol, berkas ini JANGAN dijalankan sebelum salinannya ada dan
+-- Work Owner menyetujui pembuangannya (`D-63`).
+
+DROP TABLE POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE;

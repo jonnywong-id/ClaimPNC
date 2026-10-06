@@ -235,6 +235,18 @@ type ClaimRow struct {
 	// pelabelannya adalah urusan master status klaim — bukan urusan modul ini.
 	ClaimStatusCode string
 
+	// ClaimStatusLabel adalah artinya, dibaca dari `POOLDATA.V_STS_CLAIM.LSC_NOTE`.
+	//
+	// Inilah yang digambar kolom "Claim status" pada layar lama — "Register", "Waiting
+	// Survey", dan seterusnya. Kodenya sendiri tidak pernah ditampilkan kepada pengguna.
+	ClaimStatusLabel string
+
+	// ReportDate adalah `RECEIVEDDATE_1` — kolom "Report Date" pada layar lama.
+	//
+	// Ia BUKAN tanggal pendaftaran dan bukan tanggal kejadian: ia tanggal laporan diterima,
+	// dan ketiganya digambar sebagai kolom yang berbeda. Dapat kosong pada data warisan.
+	ReportDate *time.Time
+
 	// ProcessStatus adalah `PYSTATUSWORK` — status alur kerja, bukan status bisnis.
 	//
 	// Keduanya konsep berbeda yang di sistem lama bernama mirip dan sering tertukar
@@ -293,6 +305,91 @@ type SurveyRow struct {
 	AssignedAt time.Time
 }
 
+// AgeInDays adalah umur klaim dalam hari — kolom "Lama Waktu Klaim" pada layar lama.
+//
+// Dihitung terhadap TANGGAL WIB, bukan terhadap selisih stempel waktu UTC. Keduanya berbeda
+// pada klaim yang didaftarkan menjelang tengah malam: selisih stempel waktu membulatkan ke
+// bawah dan menghasilkan umur yang kurang satu hari (`F-5`).
+//
+// Jam diambil dari pemanggil, bukan dari time.Now() di sini, supaya hasilnya dapat diuji
+// secara pasti — pola `Set7Hours` sistem lama justru lahir dari kebalikannya.
+func (c ClaimRow) AgeInDays(now time.Time, location *time.Location) int {
+	return daysBetween(c.RegisteredAt, now, location)
+}
+
+// AgeInDays adalah umur penugasan survei dalam hari — kolom "Aging" pada layar lama.
+func (s SurveyRow) AgeInDays(now time.Time, location *time.Location) int {
+	return daysBetween(s.AssignedAt, now, location)
+}
+
+// daysBetween menghitung selisih TANGGAL kalender, bukan selisih jam dibagi 24.
+//
+// Mengembalikan 0 bila titik awalnya kosong, dan tidak pernah mengembalikan angka negatif:
+// tanggal pendaftaran yang berada di masa depan adalah data yang keliru, dan menampilkannya
+// sebagai umur negatif hanya memindahkan kebingungannya ke layar.
+func daysBetween(from, now time.Time, location *time.Location) int {
+	if from.IsZero() {
+		return 0
+	}
+	if location == nil {
+		location = time.UTC
+	}
+
+	start := from.In(location)
+	end := now.In(location)
+
+	startDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
+	endDay := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, location)
+
+	days := int(endDay.Sub(startDay).Hours() / 24)
+	if days < 0 {
+		return 0
+	}
+	return days
+}
+
+// HoldingRow adalah satu baris tab **Inbox Tampungan PIC**.
+//
+// Ia klaim yang sudah terdaftar tetapi BELUM punya PIC Teknik — tugasnya masih diparkir di
+// akun penampung `ServicePNC`.
+//
+// Bentuknya terpisah dari ClaimRow, bukan memakai ulang, karena kolomnya memang lebih
+// sedikit: tab ini tidak menggambar PIC Teknik (menurut definisi belum ada), tidak
+// menggambar status, dan tidak menggambar umur. Memakai ClaimRow akan membawa enam field
+// yang selalu kosong, dan field yang selalu kosong tidak dapat dibedakan dari data hilang.
+//
+// Alias menyesatkan yang digantikan, dari `BrowseCaseNotAssigned`:
+//
+//	A.POLICYNO       AS "City"       -> PolicyNumber
+//	A.QQNAME         AS "CityID"     -> InsuredName
+//	A.BUSINESSNAME   AS "Country"    -> BusinessName
+//	A.SOBNAME        AS "CountryID"  -> BusinessSource
+//	A.BRANCHNAME     AS "District"   -> BranchName
+//	A.PXCREATEOPNAME AS "DistrictID" -> AdminPNC
+//	PXCREATEDATETIME AS "Province"   -> RegisteredAt
+//
+// Ketujuhnya memakai nama geografis untuk data yang sama sekali bukan geografis.
+type HoldingRow struct {
+	// ClaimID adalah kunci teknis Pega, tidak ditampilkan sebagai teks (`D-22`).
+	ClaimID string
+
+	ClaimNumber    string // "No Klaim"         <- PYID
+	PolicyNumber   string // "No Polis"         <- POLICYNO
+	InsuredName    string // "Nama Tertanggung" <- QQNAME
+	BusinessName   string // "Nama Bisnis"      <- BUSINESSNAME
+	BusinessSource string // "Sumber Bisnis"    <- SOBNAME
+	BranchName     string // "Nama Cabang"      <- BRANCHNAME
+	AdminPNC       string // "Admin PNC"        <- PXCREATEOPNAME
+
+	RegisteredAt time.Time // "Tanggal Pendaftaran"
+}
+
+// HoldingPage adalah satu halaman penampungan beserta jumlah seluruh baris yang cocok.
+type HoldingPage struct {
+	Rows  []HoldingRow
+	Total int
+}
+
 // ClaimPage adalah satu halaman baris klaim beserta jumlah seluruh baris yang cocok.
 type ClaimPage struct {
 	Rows  []ClaimRow
@@ -330,6 +427,13 @@ type Repo interface {
 
 	// ListSurvey membaca satu halaman survei menurut jenis surveyornya.
 	ListSurvey(ctx context.Context, kind SurveyorType, f Filter) (SurveyPage, error)
+
+	// ListHolding membaca satu halaman tab Inbox Tampungan PIC.
+	//
+	// Ia TIDAK menerima penyaring lini bisnis — kueri lamanya tidak punya penandanya, dan
+	// layar lamanya tidak menggambar dropdown Bisnis pada tab ini. Hanya kotak cari No Klaim
+	// dan paginasi yang berlaku, dan keduanya dibawa Filter.
+	ListHolding(ctx context.Context, f Filter) (HoldingPage, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

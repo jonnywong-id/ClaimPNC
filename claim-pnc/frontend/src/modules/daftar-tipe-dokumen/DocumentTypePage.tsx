@@ -83,6 +83,7 @@ function loadMessage(error: unknown): MessageContent {
  * | Layar sempit | grid digulir menyamping | berubah menjadi kartu (`D-12`) |
  * | Entitas yang dilihat | tidak pernah disebut | disebut terang-terangan (`R-20`) |
  * | Arti "Status Proses" | tidak dijelaskan | diberi keterangan di form |
+ * | Pencarian | tidak ada penyaring apa pun | satu kotak cari (`D-13` dikecualikan, lihat di bawah) |
  *
  * # Yang sengaja TIDAK berbeda
  *
@@ -91,8 +92,20 @@ function loadMessage(error: unknown): MessageContent {
  * diputuskan diperketat pada 2026-09-17; perbedaan keduanya disengaja dan dicatat di
  * docs/keputusan-implementasi.md.
  *
- * Tidak ada kotak cari. Layar lama tidak punya penyaring sama sekali — keputusan Work Owner
- * 2026-09-21, sama seperti Master Dokumen Travel dan berbeda dari Master Status Klaim.
+ * # Kotak cari — keputusan yang BERUBAH
+ *
+ * Semula layar ini dibangun TANPA kotak cari, meniru layar lama yang memang tidak punya
+ * penyaring sama sekali (keputusan Work Owner 2026-09-21). **Work Owner mengubahnya
+ * 2026-10-03:** kotak carinya ditambahkan, disamakan dengan Master Penyebab Kerugian.
+ *
+ * Penyaringannya dikerjakan DI PERAMBAN atas baris yang sudah di tangan — sama seperti
+ * pengurutan dan paginasi di komponen yang sama. Ia tidak mengubah satu pun permintaan ke
+ * server, dan karena itu tidak menyentuh kesetaraan hasil pada gerbang 1: yang berubah
+ * hanyalah berapa banyak dari baris yang sama itu tampil sekaligus.
+ *
+ * Paginasi 50 baris TETAP, dan keduanya memang berjalan bersama — `DataTable` menghitung
+ * halaman dari baris yang sudah disaring, sehingga mencari sesuatu yang hasilnya sedikit
+ * tidak menyisakan tombol halaman yang menuju halaman kosong.
  *
  * Tidak ada tombol hapus. Layar Pega pun tidak punya, `PEGA_LST_DOC_TYPE.prc` hanya mengenal
  * INSERT dan UPDATE, dan ID-nya dirujuk dua master turunan beserta dokumen klaim yang sudah
@@ -209,9 +222,6 @@ export function DocumentTypePage() {
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Daftar Tipe Dokumen</h1>
-          <p className="text-sm text-slate-600">
-            Kategori dokumen yang dapat dilampirkan pada klaim.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
@@ -268,10 +278,12 @@ export function DocumentTypePage() {
             columns={columns}
             rows={list.data.tipe_dokumen}
             rowKey={(row) => row.id}
-            // Tanpa kotak cari, dan dipaginasi 50 baris per halaman — keduanya meniru grid
-            // Pega apa adanya (`pyPageSize=50`, dan tidak ada satu pun penyaring di
-            // sectionnya). Keputusan Work Owner 2026-09-21.
-            searchable={false}
+            // Kotak cari dibiarkan menyala — `searchable` bawaannya `true`, sama seperti
+            // Master Penyebab Kerugian yang juga tidak menyebutnya. Work Owner menambahkan
+            // pencarian pada 2026-10-03, mengubah keputusan 2026-09-21.
+            //
+            // Paginasi 50 baris tetap, meniru `pyPageSize=50` pada
+            // `Report Definition/BrowseLstDocType_RD-RD.xml`.
             pageSize={50}
             description={`${list.data.total} tipe dokumen terdaftar. Sumber: POOLDATA.LST_DOC_TYPE`}
             emptyMessage="Belum ada tipe dokumen pada entitas ini."

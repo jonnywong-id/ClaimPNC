@@ -84,6 +84,7 @@ const (
 	ViolationPolicyPeriodEnded       ViolationCode = "periode_polis_berakhir"
 	ViolationReportedAfter7Days      ViolationCode = "lapor_lewat_7_hari"
 	ViolationReceivedAfter90Days     ViolationCode = "terima_dokumen_lewat_90_hari"
+	ViolationReceivedDateRequired    ViolationCode = "terima_dokumen_kosong"
 	ViolationDeclarationPolicy       ViolationCode = "polis_deklarasi"
 	ViolationDuplicateClaim          ViolationCode = "klaim_ganda"
 	ViolationSLIKNumberEmpty         ViolationCode = "nomor_slik_kosong"
@@ -115,6 +116,12 @@ const (
 	ViolationNoteTooLong             ViolationCode = "catatan_terlalu_panjang"
 	ViolationAnalystTransferred      ViolationCode = "sudah_transfer_analis"
 	ViolationAnalystNotAllowed       ViolationCode = "transfer_analis_tidak_berlaku"
+
+	// Tiga isian wajib modal "Kirim ke RCL/PUCL" (`Section/SectionPUCL-sect.xml`,
+	// `pyRequired=true`): pilihan jalur, Catatan untuk RCL/PUCL, dan Keterangan Isi.
+	ViolationPUCLTrackUnknown ViolationCode = "jalur_rclpucl_tidak_dikenal"
+	ViolationPUCLNoteEmpty    ViolationCode = "catatan_rclpucl_kosong"
+	ViolationPUCLBodyEmpty    ViolationCode = "keterangan_isi_kosong"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

@@ -105,32 +105,32 @@ func TestAntreanDikembalikanBesertaTotal(t *testing.T) {
 	body := decode(t, recorder)
 	require.Equal(t, testPortal, body["portal"])
 	require.Equal(t, float64(4), body["total"])
-	require.Equal(t, true, body["identitas_lama_ditemukan"])
+	require.Equal(t, true, body["pengguna_ditemukan"])
 }
 
 // TestBarisMembawaIsianLayar menjaga kontrak tidak menyusut diam-diam, dan memeriksa
-// konversi WIB: 2026-09-22 03:00 UTC harus tampil 10:00.
+// konversi WIB: 2026-10-05 01:00 UTC harus tampil 08:00.
 func TestBarisMembawaIsianLayar(t *testing.T) {
 	data := decode(t, get(t, buildServer(t, memory.SampleLogin, true), "/api/inbox-rcl"))["data"].([]any)
 	first := data[0].(map[string]any)
 
 	for _, field := range []string{
 		"klaim_id", "nomor_case", "nomor_polis", "nama_tertanggung",
-		"tanggal_masuk_inbox", "deskripsi_analyst", "dokter_rcl", "status_proses",
+		"tanggal_masuk_inbox", "deskripsi_analyst", "mode", "status_proses",
 		"operator_penerima",
 	} {
 		require.Containsf(t, first, field, "isian %s hilang dari jawaban", field)
 	}
 	require.Equal(t, "PNCN.26.0412", first["nomor_case"])
-	require.Equal(t, "2026-09-22 10:00", first["tanggal_masuk_inbox"])
+	require.Equal(t, "2026-10-05 08:00", first["tanggal_masuk_inbox"])
 }
 
-func TestTanpaIdentitasLamaDijawab200DenganPenanda(t *testing.T) {
-	recorder := get(t, buildServer(t, memory.SampleLoginNoLegacy, true), "/api/inbox-rcl")
+func TestLoginTidakAktifDijawab200DenganPenanda(t *testing.T) {
+	recorder := get(t, buildServer(t, memory.SampleLoginInactive, true), "/api/inbox-rcl")
 	require.Equal(t, http.StatusOK, recorder.Code)
 
 	body := decode(t, recorder)
-	require.Equal(t, false, body["identitas_lama_ditemukan"])
+	require.Equal(t, false, body["pengguna_ditemukan"])
 	require.Equal(t, float64(0), body["total"])
 	require.Empty(t, body["data"])
 }
@@ -168,3 +168,27 @@ func TestPencarianDanPaginasiDibawaKembali(t *testing.T) {
 	require.Equal(t, float64(0), body["lewati"])
 	require.Equal(t, "26.005", body["cari"])
 }
+
+// TestLayarKerjaRCLDokter memeriksa GET /api/inbox-rcl/klaim/{nomor}: isian dua mode dari
+// TC_PNC_PUCL, dan 404 bagi klaim yang tidak ada di antrean pemanggil.
+func TestLayarKerjaRCLDokter(t *testing.T) {
+	server := buildServer(t, memory.SampleLogin, true)
+
+	recorder := get(t, server, "/api/inbox-rcl/klaim/PNCN.26.0412")
+	require.Equal(t, http.StatusOK, recorder.Code)
+	body := decode(t, recorder)
+	require.Equal(t, "1", body["mode"])
+	require.Equal(t, "Penyakit tidak dijamin polis.", body["alasan"])
+	for _, field := range []string{"nomor_case", "catatan_analyst", "alasan", "alasan_dokter", "status_klaim"} {
+		require.Containsf(t, body, field, "isian %s hilang dari jawaban", field)
+	}
+
+	recorder = get(t, server, "/api/inbox-rcl/klaim/PNCN.26.0405")
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, "3", decode(t, recorder)["mode"])
+
+	recorder = get(t, server, "/api/inbox-rcl/klaim/PNCN.26.0350")
+	require.Equal(t, http.StatusNotFound, recorder.Code, "milik dokter lain")
+	require.Equal(t, rclhttp.CodeClaimNotFound, decode(t, recorder)["kode"])
+}
+

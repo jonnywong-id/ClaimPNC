@@ -18,7 +18,6 @@ func newTestService(t *testing.T) (*Service, *memory.Repo) {
 	t.Helper()
 	repo := memory.NewRepo(memory.SampleList()...)
 	documents := memory.NewDocumentRepo(memory.SampleDocumentList()...)
-	plans := memory.NewPlanRepo(memory.SamplePlanList(), memory.SampleCoverageList())
 
 	service, err := NewService(Options{
 		RepoSelector: func(alias string) (daftardetaildokumentravel.Repo, error) {
@@ -33,12 +32,6 @@ func newTestService(t *testing.T) (*Service, *memory.Repo) {
 			}
 			return documents, nil
 		},
-		PlanSelector: func(alias string) (daftardetaildokumentravel.PlanRepo, error) {
-			if alias != "ASM" {
-				return nil, errPortal
-			}
-			return plans, nil
-		},
 	})
 	require.NoError(t, err)
 	return service, repo
@@ -46,16 +39,12 @@ func newTestService(t *testing.T) (*Service, *memory.Repo) {
 
 func TestNewServiceRejectsMissingSelectors(t *testing.T) {
 	repoSelector := func(string) (daftardetaildokumentravel.Repo, error) { return nil, nil }
-	documentSelector := func(string) (daftardetaildokumentravel.DocumentRepo, error) { return nil, nil }
 
 	_, err := NewService(Options{})
 	require.ErrorContains(t, err, "RepoSelector wajib diisi")
 
 	_, err = NewService(Options{RepoSelector: repoSelector})
 	require.ErrorContains(t, err, "DocumentSelector wajib diisi")
-
-	_, err = NewService(Options{RepoSelector: repoSelector, DocumentSelector: documentSelector})
-	require.ErrorContains(t, err, "PlanSelector wajib diisi")
 }
 
 func TestServiceReadsFromSelectedPortal(t *testing.T) {
@@ -68,19 +57,11 @@ func TestServiceReadsFromSelectedPortal(t *testing.T) {
 
 	row, err := service.Get(ctx, "ASM", "00003")
 	require.NoError(t, err)
-	require.Len(t, row.Coverages, 2)
+	require.Equal(t, "Laporan Kehilangan Bagasi", row.DocumentName)
 
 	documents, err := service.Documents(ctx, "ASM")
 	require.NoError(t, err)
 	require.Len(t, documents, 6)
-
-	plans, err := service.Plans(ctx, "ASM")
-	require.NoError(t, err)
-	require.Len(t, plans, 3)
-
-	coverages, err := service.Coverages(ctx, "ASM")
-	require.NoError(t, err)
-	require.Len(t, coverages, 7)
 
 	require.NoError(t, service.EnsurePortalReady("ASM"))
 }
@@ -93,18 +74,11 @@ func TestServiceCleansInputBeforeSaving(t *testing.T) {
 		DocumentID:   "  100006 ",
 		DocumentName: " Surat ",
 		MinUpload:    -4,
-		Coverages: []daftardetaildokumentravel.CoverageInput{
-			{PlanID: " TP01 ", PlanName: "Silver"},
-			{PlanID: "  ", PlanName: "", CoverageID: "", CoverageName: " "},
-		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, "100006", created.DocumentID)
 	require.Equal(t, "Surat", created.DocumentName)
 	require.Equal(t, 0, created.MinUpload)
-	// Baris coverage yang seluruhnya kosong dibuang.
-	require.Len(t, created.Coverages, 1)
-	require.Equal(t, "TP01", created.Coverages[0].PlanID)
 
 	updated, err := service.Update(ctx, "ASM", created.ID, daftardetaildokumentravel.Input{
 		DocumentName: " Baru ",
@@ -114,7 +88,6 @@ func TestServiceCleansInputBeforeSaving(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Baru", updated.DocumentName)
 	require.True(t, updated.Mandatory)
-	require.Empty(t, updated.Coverages)
 
 	stored, err := repo.Get(ctx, created.ID)
 	require.NoError(t, err)
@@ -134,10 +107,6 @@ func TestServicePropagatesPortalFailure(t *testing.T) {
 	_, err = service.Update(ctx, "XX", "00001", daftardetaildokumentravel.Input{})
 	require.ErrorIs(t, err, errPortal)
 	_, err = service.Documents(ctx, "XX")
-	require.ErrorIs(t, err, errPortal)
-	_, err = service.Plans(ctx, "XX")
-	require.ErrorIs(t, err, errPortal)
-	_, err = service.Coverages(ctx, "XX")
 	require.ErrorIs(t, err, errPortal)
 
 	err = service.EnsurePortalReady("XX")

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -400,6 +401,116 @@ func (h *Handler) SendToInputor(w http.ResponseWriter, r *http.Request, taskID s
 	h.writeResponse(w, r, http.StatusOK, response)
 }
 
+// SendToRCLPUCL menangani POST /api/registrasi/tugas/{taskID}/kirim-rclpucl — tombol
+// Kirim pada modal "Kirim ke RCL/PUCL".
+func (h *Handler) SendToRCLPUCL(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body SendToRCLPUCLRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.SendToRCLPUCL(r.Context(), usecase.SendToRCLPUCLCommand{
+		TaskID:      taskID,
+		Track:       body.Track,
+		AnalystNote: body.Note,
+		Subject:     body.Subject,
+		OpeningNote: body.OpeningNote,
+		BodyNote:    body.BodyNote,
+		ClosingNote: body.ClosingNote,
+		DoctorName:  body.DoctorName,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// PUCLSubjects menangani GET /api/registrasi/rclpucl/perihal?jalur=N.
+func (h *Handler) PUCLSubjects(w http.ResponseWriter, r *http.Request) {
+	track, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("jalur")))
+
+	options, err := h.service.PUCLSubjectOptions(r.Context(), track)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := PUCLSubjectResponse{Pilihan: make([]PUCLSubjectDTO, 0, len(options))}
+	for _, o := range options {
+		response.Pilihan = append(response.Pilihan, PUCLSubjectDTO{ID: o.ID, Nama: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// PUCLReasons menangani GET /api/registrasi/rclpucl/alasan?cari=…&batas=N.
+func (h *Handler) PUCLReasons(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("batas")))
+
+	reasons, err := h.service.PUCLRejectReasons(r.Context(), r.URL.Query().Get("cari"), limit)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := PUCLReasonResponse{Pilihan: make([]PUCLReasonDTO, 0, len(reasons))}
+	for _, o := range reasons {
+		response.Pilihan = append(response.Pilihan, PUCLReasonDTO{ID: o.ID, Nama: o.Name, Deskripsi: o.Description})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// RCLDoctors menangani GET /api/registrasi/rclpucl/dokter.
+func (h *Handler) RCLDoctors(w http.ResponseWriter, r *http.Request) {
+	doctors, err := h.service.RCLDoctorOptions(r.Context())
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := RCLDoctorResponse{Pilihan: make([]RCLDoctorDTO, 0, len(doctors))}
+	for _, o := range doctors {
+		response.Pilihan = append(response.Pilihan, RCLDoctorDTO{ID: o.ID})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// CloseClaim menangani POST /api/registrasi/tugas/{taskID}/tutup-klaim — tombol Ya dialog
+// "Prevent Close Claim".
+func (h *Handler) CloseClaim(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body CloseClaimRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	result, err := h.service.CloseClaim(r.Context(), usecase.CloseClaimCommand{
+		TaskID: taskID,
+		Closure: registrasi.Closure{
+			Note: body.Note, Proposal: body.Proposal, Effort: body.Effort, Obstacle: body.Obstacle,
+			Temporary: body.Temporary,
+		},
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(result.Claim)})
+}
+
 // TransferToAnalyst menangani POST /api/registrasi/tugas/{taskID}/transfer-analis.
 func (h *Handler) TransferToAnalyst(w http.ResponseWriter, r *http.Request, taskID string) {
 	caller, ok := h.callerOf(w, r)
@@ -478,9 +589,14 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 	if err != nil {
 		return usecase.RegisterCommand{}, err
 	}
-	receivedDate, err := parseDate(b.DateReceived, "Tanggal Terima Dokumen")
-	if err != nil {
-		return usecase.RegisterCommand{}, err
+	// Tanggal Terima Dokumen boleh kosong: isiannya hanya tampil pada Travel dan PA
+	// (`IsTravelPA`), dan kewajibannya ditegakkan domain untuk kedua lini itu saja.
+	var receivedDate time.Time
+	if b.DateReceived != "" {
+		receivedDate, err = parseDate(b.DateReceived, "Tanggal Terima Dokumen")
+		if err != nil {
+			return usecase.RegisterCommand{}, err
+		}
 	}
 	if b.TaskID == "" {
 		return usecase.RegisterCommand{}, errors.New("tugas_id wajib diisi")
@@ -680,6 +796,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		ClaimStatus:            string(k.ClaimStatus),
 		ClaimStatusName:        k.ClaimStatusName,
 		AnalystTransferred:     !k.AnalystTransferredAt.IsZero(),
+		PendingClose:           k.PendingClose,
 		ClaimFlag:              string(k.ClaimFlag),
 		ProgressPositionStatus: string(k.ProgressPositionStatus),
 		CurrentStage:           k.CurrentStage,

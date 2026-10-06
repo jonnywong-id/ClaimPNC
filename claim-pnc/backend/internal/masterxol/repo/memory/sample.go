@@ -189,3 +189,19 @@ func sampleBusinessGroup() []businessGroupRow {
 		{masterxol.Business{ID: "10015", Name: "SURETY BOND"}, "SURETY BOND"},
 	}
 }
+
+// SampleReinsurer adalah master reasuradur contoh, meniru POOLDATA.T_REINSURER.
+//
+// Namanya sengaja dikarang — nama reasuradur sungguhan adalah data mitra, dan `D-69`
+// melarang menuliskannya ke berkas yang di-commit. Yang ditiru adalah BENTUKNYA: ID
+// numerik bernomor sepuluh ribuan, nama panjang berhuruf besar, beberapa berawalan sama
+// supaya pencarian sebagian benar-benar teruji.
+func SampleReinsurer() []masterxol.ReinsurerOption {
+	return []masterxol.ReinsurerOption{
+		{ID: "10001", Name: "REASURADUR ALFA INTERNASIONAL"},
+		{ID: "10002", Name: "REASURADUR ALFA NUSANTARA"},
+		{ID: "10003", Name: "REASURADUR BETA GLOBAL"},
+		{ID: "10004", Name: "BROKER GAMMA REINSURANCE"},
+		{ID: "10005", Name: "DELTA RE LIMITED"},
+	}
+}

@@ -76,8 +76,9 @@ function sampleAccount(overrides: Record<string, unknown> = {}) {
     tipe_rekening: 'BIASA',
     aktif: true,
     email: 'keuangan@contoh.example',
-    telepon: '',
+    telepon: '0211234567',
     nik: '3171000000000000',
+    email_inputor: 'pengaju@contoh.example',
     catatan: 'catatan awal',
     id_dokumen: '',
     diinput_oleh: '3171999',
@@ -112,58 +113,81 @@ afterEach(() => {
   useSelectedPortal.getState().clear()
 })
 
+/*
+ * Nama label di bawah mengikuti layar Pega `Memperbaharui Data` huruf per huruf,
+ * termasuk yang berhuruf kapital seluruhnya. Itu disengaja: uji ini sekaligus yang
+ * mengunci agar label layar tidak diubah diam-diam menjadi sesuatu yang "lebih rapi"
+ * tetapi tidak lagi dikenali pengguna yang terbiasa dengan layar lama.
+ *
+ * Tanda wajib ikut menjadi bagian label — "Email *" — karena `Field` menggambar label
+ * apa adanya. Pencocokannya memakai regex berjangkar depan supaya tidak bergantung pada
+ * spasi di sekitar bintangnya.
+ *
+ * Satu jebakan yang sudah menggigit sekali dan karena itu dicatat: jangkar `/^Email/`
+ * saja mengenai DUA kolom — "Email" dan "Email Inputor" — dan `getByLabelText` memilih
+ * yang pertama ditemukannya. Akibatnya salah satu kolom tetap kosong, pengajuan ditolak
+ * validasi, dan uji gagal di tempat yang jauh dari sebabnya. Jangkarnya karena itu
+ * menyertakan bintangnya.
+ */
 async function openForm() {
   render(wrap(<AccountPage />))
   await screen.findByText('1234567890')
-  await userEvent.click(screen.getByRole('button', { name: 'Tambah rekening' }))
-  return screen.findByRole('button', { name: 'Ajukan rekening' })
+  await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+  return screen.findByRole('button', { name: 'Simpan' })
 }
 
 async function fillForm() {
-  await userEvent.type(screen.getByLabelText('Nomor rekening'), '9988776655')
-  await userEvent.type(screen.getByLabelText('Nama pemilik rekening'), 'PEMILIK CONTOH')
+  await userEvent.type(screen.getByLabelText(/^NOMOR REKENING/), '9988776655')
+  await userEvent.type(screen.getByLabelText(/^Input Nama/), 'PEMILIK CONTOH')
   await screen.findByRole('option', { name: 'BANK BCA' })
-  await userEvent.selectOptions(screen.getByLabelText('Bank'), '014')
-  await userEvent.type(screen.getAllByLabelText('Nama bank')[0]!, 'BANK BCA')
-  await userEvent.type(screen.getByLabelText('Cabang bank'), 'SLEMAN')
-  await userEvent.type(screen.getByLabelText('Alamat bank'), 'JL. CONTOH 2')
-  await userEvent.selectOptions(screen.getByLabelText('Tipe rekening'), 'VA')
-  await userEvent.type(screen.getByLabelText('NIK pemilik rekening'), '3404000000000001')
-  await userEvent.type(screen.getByLabelText('Email'), 'pemilik@contoh.example')
-  await userEvent.type(screen.getByLabelText('Catatan'), 'ajuan baru')
+  await userEvent.selectOptions(screen.getByLabelText(/^NAMA BANK/), '014')
+  await userEvent.type(screen.getByLabelText(/^NAMA CABANG BANK/), 'SLEMAN')
+  await userEvent.type(screen.getByLabelText(/^NOMOR TELEPON/), '08123456789')
+  await userEvent.type(screen.getByLabelText(/^ALAMAT/), 'JL. CONTOH 2')
+  await userEvent.selectOptions(screen.getByLabelText(/^TIPE REKENING/), 'VA')
+  await userEvent.selectOptions(screen.getByLabelText(/^STATUS AKTIF/), 'Ya')
+  await userEvent.type(screen.getByLabelText(/^KTP\/NIK\/NPWP/), '3404000000000001')
+  await userEvent.type(screen.getByLabelText(/^Email \*$/), 'pemilik@contoh.example')
+  await userEvent.type(screen.getByLabelText(/^Email Inputor/), 'pengaju@contoh.example')
 }
 
 describe('formulir rekening baru', () => {
   it('membuka dan menutup formulir lewat tombol yang sama', async () => {
     await openForm()
-    expect(screen.getByText('Rekening baru')).toBeInTheDocument()
+    expect(screen.getByText('Memperbaharui Data')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Tutup formulir' }))
-    expect(screen.queryByText('Rekening baru')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Batal' }))
+    expect(screen.queryByText('Memperbaharui Data')).not.toBeInTheDocument()
   })
 
   it('menolak isian kosong dan format salah di layar tanpa memanggil server', async () => {
     const submit = await openForm()
     await userEvent.click(submit)
 
+    // Kesebelas kolom bertanda `*` di Pega harus mengeluh sekaligus. Pengguna yang
+    // mengisi sebelas kolom berhak tahu seluruh yang kurang dalam satu kali tekan,
+    // bukan menemukan satu kesalahan baru pada setiap percobaan.
     for (const text of [
       'Nomor rekening wajib diisi.',
-      'Nama pemilik rekening wajib diisi.',
-      'Nama bank wajib diisi.',
+      'Nama wajib diisi.',
+      'Nama bank wajib dipilih.',
       'Nama cabang bank wajib diisi.',
-      'Alamat bank wajib diisi.',
-      'Bank wajib dipilih dari daftar.',
+      'Nomor telepon wajib diisi.',
+      'Alamat wajib diisi.',
       'Tipe rekening wajib dipilih.',
+      'Status aktif wajib dipilih.',
       'Email wajib diisi.',
-      'NIK pemilik rekening wajib diisi.',
+      'Email inputor wajib diisi.',
+      'KTP/NIK/NPWP wajib diisi.',
     ]) {
       expect(await screen.findByText(text)).toBeInTheDocument()
     }
-    expect(screen.getByLabelText('Bank')).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('Tipe rekening')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^NAMA BANK/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^TIPE REKENING/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^STATUS AKTIF/)).toHaveAttribute('aria-invalid', 'true')
 
-    await userEvent.type(screen.getByLabelText('Nomor rekening'), '12A')
-    await userEvent.type(screen.getByLabelText('Email'), 'bukan-email')
+    await userEvent.type(screen.getByLabelText(/^NOMOR REKENING/), '12A')
+    await userEvent.type(screen.getByLabelText(/^Email \*$/), 'bukan-email')
     await userEvent.click(submit)
     expect(await screen.findByText('Nomor rekening hanya boleh berisi angka.')).toBeInTheDocument()
     expect(screen.getByText('Format email tidak benar.')).toBeInTheDocument()
@@ -176,7 +200,7 @@ describe('formulir rekening baru', () => {
     await fillForm()
     await userEvent.click(submit)
 
-    await waitFor(() => expect(screen.queryByText('Rekening baru')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Memperbaharui Data')).not.toBeInTheDocument())
     const sent = request.find((r) => r.metode === 'POST')
     expect(sent?.path).toBe('/api/master-rekening')
     expect(sent?.header['X-Portal']).toBe('ASM')
@@ -189,10 +213,13 @@ describe('formulir rekening baru', () => {
       kode_bank: '014',
       tipe_rekening: 'VA',
       email: 'pemilik@contoh.example',
-      telepon: '',
+      telepon: '08123456789',
       nik: '3404000000000001',
+      email_inputor: 'pengaju@contoh.example',
       id_dokumen: '',
-      catatan: 'ajuan baru',
+      // Pengaju tidak mengirim catatan: kolom NOTE diisi komite saat memutuskan, dan
+      // layar Pega memang tidak punya kolom catatan di sisi pengaju.
+      catatan: '',
       aktif: true,
       kode_bank_lama: '',
       nomor_rekening_lama: '',
@@ -209,19 +236,19 @@ describe('formulir rekening baru', () => {
     {
       name: 'galat API lain',
       answer: { status: 500, body: { kode: 'galat_internal', pesan: 'x' } } as Reply,
-      title: 'Terjadi kesalahan pada sistem',
-      description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
+      title: 'Gagal menyimpan',
     },
     {
       name: 'jaringan putus',
       answer: 'putus' as Reply,
-      title: 'Server Claim PNC tidak dapat dihubungi',
+      title: 'Tidak dapat menghubungi server',
+      description: 'Perubahan belum tersimpan. Periksa koneksi lalu coba lagi.',
     },
     {
       name: 'galat bukan API',
       answer: 'rusak' as Reply,
-      title: 'Terjadi kesalahan pada sistem',
-      description: 'Coba beberapa saat lagi.',
+      title: 'Gagal menyimpan',
+      description: 'Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi.',
     },
   ])('menampilkan galat pengajuan: $name', async ({ answer, title, description }) => {
     reply.set('POST /api/master-rekening', answer)
@@ -232,7 +259,7 @@ describe('formulir rekening baru', () => {
     expect(await screen.findByText(title)).toBeInTheDocument()
     if (description) expect(screen.getByText(description)).toBeInTheDocument()
     // Formulir tetap terbuka supaya pengguna dapat membetulkan isian.
-    expect(screen.getByText('Rekening baru')).toBeInTheDocument()
+    expect(screen.getByText('Memperbaharui Data')).toBeInTheDocument()
   })
 
   it('memindahkan galat validasi server ke kolomnya masing-masing', async () => {
@@ -248,17 +275,74 @@ describe('formulir rekening baru', () => {
     await fillForm()
     await userEvent.click(submit)
 
-    expect(await screen.findByText('Ada isian yang belum benar')).toBeInTheDocument()
     expect(await screen.findByText('Nomor ditolak server.')).toBeInTheDocument()
     expect(screen.queryByText('Diabaikan.')).not.toBeInTheDocument()
+
+    // Kotak pesan di atas form TIDAK muncul saat pelanggarannya sudah tersorot di
+    // kolomnya masing-masing: ia hanya akan mengulang hal yang sama dua kali. Perilaku
+    // ini seragam dengan Master Tipe Surveyors dan master lainnya.
+    expect(screen.queryByText('Ada isian yang belum benar')).not.toBeInTheDocument()
   })
 
   it('memberi tahu bila daftar bank gagal dimuat', async () => {
     reply.set('GET /api/master-rekening/bank', { status: 500, body: { kode: 'x', pesan: 'x' } })
     await openForm()
 
+    expect(await screen.findByText(/Daftar bank tidak dapat dimuat/)).toBeInTheDocument()
+  })
+})
+
+describe('mengubah rekening yang masih menunggu', () => {
+  it('mengisi formulir dari baris yang dipilih lalu mengirim PUT ke kuncinya', async () => {
+    reply.set('PUT /api/master-rekening', { status: 200, body: sampleAccount() })
+    render(wrap(<AccountPage />))
+    await screen.findByText('1234567890')
+
+    // Nama tombol menyebut nomor rekeningnya — satu tabel memuat banyak tombol "Ubah",
+    // dan tanpa nomornya pengguna pembaca layar mendengar deretan tombol yang
+    // seluruhnya bernama sama.
+    await userEvent.click(screen.getByRole('button', { name: 'Ubah rekening 1234567890' }))
+
+    // Formulir terisi dari baris yang dipilih, bukan kosong. Tanpa ini pengguna harus
+    // mengetik ulang sebelas kolom hanya untuk membetulkan satu di antaranya.
+    const number = screen.getByLabelText(/^NOMOR REKENING/)
+    expect(number).toHaveValue('1234567890')
+    expect(screen.getByLabelText(/^Input Nama/)).toHaveValue('BENGKEL CONTOH SEJAHTERA')
+    expect(screen.getByLabelText(/^Email Inputor/)).toHaveValue('pengaju@contoh.example')
+    expect(screen.getByLabelText(/^STATUS AKTIF/)).toHaveValue('Ya')
+
+    // Nomor rekening adalah bagian kuncinya; mengubahnya berarti pengajuan baru.
+    expect(number).toHaveAttribute('readonly')
+
+    await userEvent.clear(screen.getByLabelText(/^NAMA CABANG BANK/))
+    await userEvent.type(screen.getByLabelText(/^NAMA CABANG BANK/), 'SURABAYA')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(request.some((r) => r.metode === 'PUT')).toBe(true))
+    const sent = request.find((r) => r.metode === 'PUT')!
+    expect(sent.path).toBe('/api/master-rekening/014/1234567890')
+    expect(sent.body).toMatchObject({
+      cabang_bank: 'SURABAYA',
+      nomor_rekening: '1234567890',
+      email_inputor: 'pengaju@contoh.example',
+    })
+  })
+
+  it('menawarkan Ubah juga pada rekening yang sudah disetujui, dengan peringatannya', async () => {
+    reply.set(
+      'GET /api/master-rekening',
+      listOf([sampleAccount({ status: '1', status_label: 'Komite Approve' })]),
+    )
+    render(wrap(<AccountPage />))
+    await screen.findByText('1234567890')
+
+    // Layar lama menyediakan tombol ini di tab Approve, dan server kini menerimanya.
+    await userEvent.click(screen.getByRole('button', { name: 'Ubah rekening 1234567890' }))
+
+    // Pengamannya bukan menyembunyikan tombol, melainkan memberi tahu akibatnya:
+    // menyimpan akan mencabut persetujuan komite.
     expect(
-      await screen.findByText('Daftar bank tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.'),
+      await screen.findByText('Menyimpan akan mencabut persetujuan komite'),
     ).toBeInTheDocument()
   })
 })
@@ -268,7 +352,7 @@ describe('daftar dan tabel', () => {
     reply.set('GET /api/master-rekening', listOf([]))
     render(wrap(<AccountPage />))
 
-    expect(screen.getByText('Memuat data rekening…')).toBeInTheDocument()
+    expect(screen.getByText('Memuat data…')).toBeInTheDocument()
     expect(
       await screen.findByText('Tidak ada rekening yang cocok dengan pencarian Anda.'),
     ).toBeInTheDocument()
@@ -278,12 +362,10 @@ describe('daftar dan tabel', () => {
     reply.set('GET /api/master-rekening', { status: 500, body: { kode: 'x', pesan: 'x' } })
     render(wrap(<AccountPage />))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Daftar rekening tidak dapat dimuat. Coba beberapa saat lagi.',
-    )
+    expect(await screen.findByText('Daftar rekening gagal dimuat')).toBeInTheDocument()
   })
 
-  it('menampilkan status, keterangan Kasir, dan jumlah yang terpotong', async () => {
+  it('menampilkan ID Kasir dan Response Kasir sebagai dua kolom terpisah', async () => {
     reply.set(
       'GET /api/master-rekening',
       listOf(
@@ -301,12 +383,12 @@ describe('daftar dan tabel', () => {
             status_label: 'Komite Approve',
             status_layanan: 'BERHASIL',
           }),
-          sampleAccount({ nomor_rekening: '333', status: '2', status_label: 'Komite Reject' }),
           sampleAccount({
             nomor_rekening: '444',
-            status: '9',
-            status_label: '',
+            status: '1',
+            status_label: 'Komite Approve',
             status_layanan: 'GAGAL',
+            respons_kasir: 'Nomor rekening ditolak Kasir.',
           }),
         ],
         10,
@@ -314,47 +396,43 @@ describe('daftar dan tabel', () => {
     )
     render(wrap(<AccountPage />))
 
-    expect(await screen.findByText('Terdaftar · KSR-9')).toBeInTheDocument()
-    expect(screen.getByText('Terdaftar')).toBeInTheDocument()
-    expect(screen.getByText('Komite Reject')).toHaveClass('bg-red-100')
-    expect(screen.getByText('Tidak dikenal')).toHaveClass('bg-amber-100')
-    expect(screen.getByText('Gagal')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Menampilkan 4 dari 10\s+rekening\. Persempit pencarian untuk melihat sisanya\./),
-    ).toBeInTheDocument()
+    // Sebelumnya keduanya digabung menjadi satu sel "Terdaftar · KSR-9". Pega
+    // memisahkannya, dan penggabungan membuat ID-nya tidak dapat dicari maupun disalin
+    // sebagai nilai tersendiri.
+    expect(await screen.findByText('KSR-9')).toBeInTheDocument()
+
+    // Baris kedua tidak punya ID Kasir; selnya bertanda hubung, bukan kosong — sel
+    // kosong tidak dapat dibedakan dari sel yang gagal dimuat.
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+
+    const gagal = screen.getByText('Nomor rekening ditolak Kasir.')
+    expect(gagal).toHaveClass('text-red-700')
   })
 
-  it('mengirim isian pencarian sebagai saringan dan tab Disetujui ke status 1', async () => {
+  it('mengirim kata kunci ke SERVER, bukan menyaring di peramban', async () => {
     render(wrap(<AccountPage />))
     await screen.findByText('1234567890')
 
-    await userEvent.type(screen.getByLabelText('No rekening'), ' 12 ')
-    await userEvent.type(screen.getByLabelText('Nama pemilik'), 'BENG')
-    await userEvent.type(screen.getByLabelText('Nama bank'), 'CON')
-    await userEvent.click(screen.getByRole('button', { name: 'Sudah Disetujui' }))
+    // Satu kotak cari, dan isinya menembak server. Daftar rekening dipotong paginasi:
+    // menyaring di peramban hanya menyentuh halaman yang sedang terbuka, sehingga
+    // rekening di halaman berikutnya dilaporkan tidak ada.
+    await userEvent.type(screen.getByLabelText(/Cari nomor rekening/), 'BENG')
+    await userEvent.click(screen.getByRole('tab', { name: 'Reject' }))
 
     await waitFor(() =>
       expect(
-        request.some(
-          (r) =>
-            r.path ===
-            '/api/master-rekening?status=1&nomor_rekening=12&nama_pemilik=BENG&nama_bank=CON',
-        ),
+        request.some((r) => r.path.includes('status=2') && r.path.includes('cari=BENG')),
       ).toBe(true),
     )
-    expect(screen.getByRole('button', { name: 'Sudah Disetujui' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    // Tombol tambah hanya ada di tab pencarian.
-    expect(screen.queryByRole('button', { name: 'Tambah rekening' })).not.toBeInTheDocument()
   })
 })
 
 describe('keputusan komite', () => {
+  // Keputusan diambil HANYA di tab Komite Approval — satu-satunya section Pega yang
+  // memuat tombol `Approve`/`Reject` beserta "KETERANGAN APPROVAL ATASAN".
   async function openPending() {
     render(wrap(<AccountPage />))
-    await userEvent.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Komite Approval' }))
     return screen.findByDisplayValue('catatan awal')
   }
 
@@ -434,6 +512,7 @@ describe('hook', () => {
       email: 'baru@contoh.example',
       telepon: '0800',
       nik: '1',
+      emailInputor: 'pengaju@contoh.example',
       idDokumen: 'D1',
       catatan: 'c',
       aktif: false,

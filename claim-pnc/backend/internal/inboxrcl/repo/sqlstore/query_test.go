@@ -9,8 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// namedQueries adalah keempat kueri yang wajib ada di berkas .sql.
-var namedQueries = []string{"legacy_operator_for", "list_tasks", "check_tables", "check_columns"}
+// namedQueries adalah kelima kueri BACA di inboxrcl.sql. Kueri keputusan (decision.sql) —
+// satu-satunya yang menulis — dijaga decision_test.go.
+var namedQueries = []string{"operator_for", "list_tasks", "claim_detail", "check_tables", "check_columns"}
 
 func TestSetiapKueriBernamaAda(t *testing.T) {
 	for _, name := range namedQueries {
@@ -19,107 +20,97 @@ func TestSetiapKueriBernamaAda(t *testing.T) {
 }
 
 func TestTidakAdaKueriTakTerpakaiDiBerkasSQL(t *testing.T) {
-	require.Len(t, queries, len(namedQueries))
+	require.Len(t, queries, len(namedQueries)+len(decisionQueries))
 }
 
-// TestAliasKueriSamaDenganDaftarDanUrutannya menjaga kueri, taskColumns, dan scanTask sepadan.
-func TestAliasKueriSamaDenganDaftarDanUrutannya(t *testing.T) {
-	aliases := regexp.MustCompile(`(?i)\bAS\s+([A-Z_]+)`).FindAllStringSubmatch(query("list_tasks"), -1)
-	require.Len(t, aliases, len(taskColumns))
+func aliases(text string) []string {
+	result := []string{}
+	for _, m := range regexp.MustCompile(`(?i)\bAS\s+([A-Z_]+)`).FindAllStringSubmatch(text, -1) {
+		result = append(result, strings.ToUpper(m[1]))
+	}
+	return result
+}
 
-	for i, match := range aliases {
-		require.Equalf(t, taskColumns[i], strings.ToUpper(match[1]),
-			"alias ke-%d tidak sepadan dengan taskColumns", i+1)
+// TestAliasKueriSamaDenganDaftarDanUrutannya menjaga kueri, daftar kolom, dan pemindai sepadan.
+func TestAliasKueriSamaDenganDaftarDanUrutannya(t *testing.T) {
+	require.Equal(t, taskColumns, aliases(query("list_tasks")))
+	require.Equal(t, detailColumns, aliases(query("claim_detail")))
+}
+
+// TestSumberDataTC_PNC_PUCL mengunci keputusan Work Owner 2026-10-05: daftar dan layar kerja
+// membaca POOLDATA.TC_PNC_PUCL — bukan tabel Pega, bukan T_CLAIMLIST_ADMIN, bukan
+// T_ACCESS_GROUP_PNC.
+func TestSumberDataTC_PNC_PUCL(t *testing.T) {
+	for _, name := range []string{"list_tasks", "claim_detail"} {
+		text := strings.ToUpper(query(name))
+		require.Containsf(t, text, "FROM POOLDATA.TC_PNC_PUCL P", "kueri %s", name)
+		require.NotContainsf(t, text, "JOIN", "kueri %s", name)
+	}
+	for _, name := range namedQueries {
+		text := strings.ToUpper(query(name))
+		for _, forbidden := range []string{"DATAPEGA.", "T_CLAIMLIST_ADMIN", "T_ACCESS_GROUP_PNC"} {
+			require.NotContainsf(t, text, forbidden, "kueri %s masih membaca %s", name, forbidden)
+		}
 	}
 }
 
-// TestKeempatPenyaringReportDefinitionAda mengunci `pyFilterLogic = "A AND B AND C AND D"`.
+// TestKeempatPenyaringReportDefinitionAda mengunci pemetaan `A AND B AND C AND D`.
 func TestKeempatPenyaringReportDefinitionAda(t *testing.T) {
 	text := strings.ToUpper(query("list_tasks"))
 
-	require.Contains(t, text, "UPPER(TRIM(K.PXASSIGNEDOPERATORID)) = UPPER(:1)", "penyaring A")
-	require.Contains(t, text, "K.PYSTATUSWORK <> :2", "penyaring B — `!=`, bukan `=`")
-	require.Contains(t, text, "K.TANGGALANALYSTSENDRCL_1 IS NOT NULL", "penyaring C")
-	require.Contains(t, text, "UPPER(TRIM(K.NAMADOKTERRCL_1)) = UPPER(:3)", "penyaring D")
+	require.Contains(t, text, "UPPER(TRIM(P.ASSIGNED_OPERATOR_ID)) = UPPER(:1)", "penyaring A")
+	require.Contains(t, text, "P.STATUS_WORK <> :2", "penyaring B — `!=`, bukan `=`")
+	require.Contains(t, text, "P.TGL_KIRIM_PUCL IS NOT NULL", "penyaring C")
+	require.Contains(t, text, "TRIM(P.RCL_PUCL) IN (:3, :4)", "penyaring D — RCL dan MSIG")
 }
 
-// TestResolvedRejectedTidakIkutDikecualikan — hanya `Resolved-Completed` yang keluar.
+// TestDetailMemakaiPenyaringYangSamaDenganDaftar — layar kerja hanya terbuka bagi klaim yang
+// memang tampil di antrean pemanggil; klaim milik dokter lain tidak terbaca.
+func TestDetailMemakaiPenyaringYangSamaDenganDaftar(t *testing.T) {
+	text := strings.ToUpper(query("claim_detail"))
+
+	require.Contains(t, text, "UPPER(TRIM(P.CLAIMID)) = UPPER(:1)")
+	require.Contains(t, text, "UPPER(TRIM(P.ASSIGNED_OPERATOR_ID)) = UPPER(:2)")
+	require.Contains(t, text, "P.STATUS_WORK <> :3")
+	require.Contains(t, text, "P.TGL_KIRIM_PUCL IS NOT NULL")
+	require.Contains(t, text, "TRIM(P.RCL_PUCL) IN (:4, :5)")
+	require.Contains(t, text, "P.ALASAN_DOKTER_REJECT_RCL")
+}
+
 func TestResolvedRejectedTidakIkutDikecualikan(t *testing.T) {
 	require.NotContains(t, query("list_tasks"), "Resolved-Rejected")
 }
 
-func TestKueriDaftarMenyaringKelasObjekKerja(t *testing.T) {
-	require.Contains(t, query("list_tasks"), "'ASM-FW-GCNMFW-Work-PNC'")
-}
-
-// TestTidakAdaTabelPegaYangDibaca mengunci keputusan Work Owner 2026-09-27: modul ini
-// membaca POOLDATA.T_CLAIMLIST_ADMIN, tidak lagi DATAPEGA — di kueri MANA PUN, termasuk
-// kueri `-periksa`.
-func TestTidakAdaTabelPegaYangDibaca(t *testing.T) {
-	for _, name := range namedQueries {
-		require.NotContainsf(t, strings.ToUpper(query(name)), "DATAPEGA.",
-			"kueri %s masih membaca tabel Pega", name)
-	}
-}
-
-// TestKueriDaftarMembacaTabelDatarTanpaGabungan — satu baris per klaim, sehingga
-// gabungan ke worklist (dan klaim yang tampil dua kali karenanya) hilang.
-func TestKueriDaftarMembacaTabelDatarTanpaGabungan(t *testing.T) {
-	text := strings.ToUpper(query("list_tasks"))
-
-	require.Contains(t, text, "FROM POOLDATA.T_CLAIMLIST_ADMIN K")
-	require.NotContains(t, text, "JOIN")
-	require.NotContains(t, text, "EXISTS")
-}
-
-// TestUrutanMenurunDenganPemutusSeriPYID — `pySortOrder = 2` jatuh pada `.pyID`, bukan
-// `.pzInsKey` seperti di Inbox Analyst Doctor.
-func TestUrutanMenurunDenganPemutusSeriPYID(t *testing.T) {
+func TestUrutanMenurunDenganPemutusSeri(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("list_tasks")),
-		"ORDER BY K.PXCREATEDATETIME DESC, K.PYID DESC")
+		"ORDER BY P.TGL_CREATE_PUCL DESC, P.CLAIMID DESC")
 }
 
 func TestPaginasiDikerjakanBasisData(t *testing.T) {
 	text := strings.ToUpper(query("list_tasks"))
 
-	require.Contains(t, text, "OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY")
+	require.Contains(t, text, "OFFSET :8 ROWS FETCH NEXT :9 ROWS ONLY")
 	require.Contains(t, text, "COUNT(*) OVER ()")
 }
 
 func TestPencarianDimatikanSaatKataKunciNULL(t *testing.T) {
-	require.Contains(t, strings.ToUpper(query("list_tasks")), ":4 IS NULL")
+	require.Contains(t, strings.ToUpper(query("list_tasks")), ":5 IS NULL")
 }
 
-// TestIdentitasLamaMenyaringKetigaGrupAkses mengunci langkah pertama
-// `GetpyUserIdentifierFromTable` — tanpanya pengguna yang di Pega tidak punya
-// `TempOperator.City` akan memperoleh antrean.
-func TestIdentitasLamaMenyaringKetigaGrupAkses(t *testing.T) {
-	text := strings.ToUpper(query("legacy_operator_for"))
+// TestOperatorDariMLoginPNC — pemanggil dicari di POOLDATA.M_LOGIN_PNC (login aktif).
+func TestOperatorDariMLoginPNC(t *testing.T) {
+	text := strings.ToUpper(query("operator_for"))
 
-	require.Contains(t, text, "POOLDATA.T_ACCESS_GROUP_PNC")
-	require.Contains(t, text, "G.STS_AKTIF = '1'")
-	require.Contains(t, text, "G.ACCESS_GROUP IN (:2, :3, :4)")
-	require.Contains(t, text, "G.ACCESS_GROUP <> :5")
-	require.Contains(t, text, "MAX(", "deterministik, bukan pxResults(1)")
+	require.Contains(t, text, "FROM POOLDATA.M_LOGIN_PNC L")
+	require.Contains(t, text, "UPPER(TRIM(L.LOGIN_ID)) = :1")
+	require.Contains(t, text, "L.ACTIVE_STATUS = :2")
+	require.Contains(t, text, "MAX(")
 }
 
-// TestSeluruhNilaiLewatParameterBinding adalah uji keamanan, bukan uji gaya.
-func TestSeluruhNilaiLewatParameterBinding(t *testing.T) {
-	for _, name := range namedQueries {
-		text := query(name)
-		require.NotContainsf(t, strings.ToUpper(text), "{ASIS",
-			"kueri %s: perangkaian gaya Pega tidak boleh terbawa", name)
-		require.NotContainsf(t, text, "||",
-			"kueri %s: tidak boleh ada perangkaian apa pun ke teks SQL", name)
-	}
-}
-
-// TestSetiapPenandaBindMunculTepatSekaliDanBerurutan mengunci cacat yang ditemukan terhadap
-// Oracle 2026-09-27: godror mengikat parameter menurut URUTAN KEMUNCULAN, bukan nomornya,
-// sehingga `:4` yang dipakai tiga kali gagal dengan ORA-01008. Uji memori tidak pernah
-// menyentuh jalur itu — hanya uji ini yang menjaganya.
+// TestSetiapPenandaBindMunculTepatSekaliDanBerurutan mengunci ORA-01008 (2026-09-27): godror
+// mengikat menurut URUTAN KEMUNCULAN, bukan nomornya.
 func TestSetiapPenandaBindMunculTepatSekaliDanBerurutan(t *testing.T) {
-	expected := map[string]int{"list_tasks": 8, "legacy_operator_for": 5}
+	expected := map[string]int{"list_tasks": 9, "claim_detail": 5, "operator_for": 2}
 
 	for name, count := range expected {
 		markers := regexp.MustCompile(`:\d+`).FindAllString(query(name), -1)
@@ -133,7 +124,14 @@ func TestSetiapPenandaBindMunculTepatSekaliDanBerurutan(t *testing.T) {
 	}
 }
 
-// TestPolaPencarianDiEscape — "100%" tidak boleh menjadi pola yang cocok dengan semuanya.
+func TestSeluruhNilaiLewatParameterBinding(t *testing.T) {
+	for _, name := range namedQueries {
+		text := query(name)
+		require.NotContainsf(t, strings.ToUpper(text), "{ASIS", "kueri %s", name)
+		require.NotContainsf(t, text, "||", "kueri %s: tidak boleh ada perangkaian", name)
+	}
+}
+
 func TestPolaPencarianDiEscape(t *testing.T) {
 	require.Equal(t, "", searchPattern("   "))
 	require.Equal(t, "%PNCN.26%", searchPattern(" pncn.26 "))
@@ -146,25 +144,15 @@ func TestTidakAdaPernyataanYangMenulis(t *testing.T) {
 	for _, name := range namedQueries {
 		text := strings.ToUpper(query(name))
 		for _, forbidden := range []string{"INSERT ", "UPDATE ", "DELETE ", "MERGE ", "TRUNCATE "} {
-			require.NotContainsf(t, text, forbidden,
-				"kueri %s memuat pernyataan yang menulis: %s", name, forbidden)
+			require.NotContainsf(t, text, forbidden, "kueri %s: %s", name, forbidden)
 		}
 	}
 }
 
 func TestKueriPeriksaTidakMembacaSatuBarisPun(t *testing.T) {
 	for _, name := range []string{"check_tables", "check_columns"} {
-		require.Containsf(t, query(name), "1 = 0", "kueri %s harus menolak seluruh baris", name)
+		require.Containsf(t, query(name), "1 = 0", "kueri %s", name)
 	}
-}
-
-func TestKueriPeriksaKolomMenyebutKetigaKolomMigrasi0012(t *testing.T) {
-	text := strings.ToUpper(query("check_columns"))
-
-	require.Contains(t, text, "TANGGALANALYSTSENDRCL_1")
-	require.Contains(t, text, "NAMADOKTERRCL_1")
-	require.Contains(t, text, "KOMENTARANALISATOR_1")
-	require.Contains(t, text, "POOLDATA.T_CLAIMLIST_ADMIN")
 }
 
 func TestKomentarTidakIkutDikirimKeBasisData(t *testing.T) {
