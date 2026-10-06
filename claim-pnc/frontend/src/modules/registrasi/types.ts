@@ -453,6 +453,8 @@ export type Claim = {
   status_klaim_nama?: string
   /** Klaim sudah pernah ditransfer ke Analyst (ANALYST_TRANSFERDATE terisi). */
   sudah_transfer_analis?: boolean
+  /** Klaim ditutup sementara (ISPENDINGCLOSE) — tombol Tutup Klaim tidak tampil. */
+  tutup_sementara?: boolean
   flag_klaim: string
   status_posisi_progres: string
 
@@ -581,8 +583,12 @@ export type Attachment = {
   diunggah_oleh: string
   /** RFC 3339, WIB. */
   diunggah_pada: string
+  /** Tombol Delete tampil: berkas diunggah pemanggil sendiri dan tersimpan di penyimpanan (dinilai server). */
+  bisa_dihapus?: boolean
 }
 export type DocumentsResponse = { kategori: DocumentCategory[]; berkas: Attachment[] }
+/** Alamat baca satu lampiran — tombol Lihat dokumen. berlaku_sampai RFC 3339 WIB, boleh kosong. */
+export type DocumentLink = { url: string; berlaku_sampai: string }
 
 export type ProgressEntry = {
   urutan: number

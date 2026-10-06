@@ -895,6 +895,7 @@ func faultySetup(t *testing.T) (environment, *faults) {
 		Attachments:            rec,
 		PUCLLetters:            memory.NewPUCL(),
 		PUCLOptions:            memory.NewPUCL(),
+		Closures:               rec,
 		IDGenerator:            memory.IDGenerator{},
 		UnitOfWork:             fUnit{store, f},
 		Clock:                  fixed,

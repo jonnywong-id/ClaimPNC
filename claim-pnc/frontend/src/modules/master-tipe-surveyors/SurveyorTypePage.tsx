@@ -89,7 +89,7 @@ export function SurveyorTypePage() {
     },
     {
       key: 'deskripsi',
-      title: 'Tipe Surveyor',
+      title: 'Deskripsi',
       value: (t) => t.deskripsi,
       render: (t) => <span className="font-medium text-slate-900">{t.deskripsi}</span>,
     },
@@ -142,7 +142,7 @@ export function SurveyorTypePage() {
             <li aria-hidden="true" className="text-slate-300">
               /
             </li>
-            <li className="text-slate-700">Tipe Surveyors</li>
+            <li className="text-slate-700">Tipe Surveyor</li>
           </ol>
         </nav>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

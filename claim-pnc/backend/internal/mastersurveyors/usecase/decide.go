@@ -108,15 +108,14 @@ func (s *Service) Decide(
 	surveyor.DecidedAt = &decidedAt
 	surveyor.UpdatedBy = strings.TrimSpace(by.Identity)
 
-	// TRFKOMITE ditandai sudah diteruskan begitu keputusan diambil.
+	// TRFKOMITE (NeedDirector) SENGAJA TIDAK DISENTUH di sini.
 	//
-	// Nilai "1" adalah DUGAAN yang dinyatakan, bukan bacaan: kolom ini hanya pernah
-	// DISALIN di export (`SetDetailSurveryorsValue_act`) dan tidak pernah dibandingkan
-	// dengan apa pun, sehingga nilai yang bermakna baginya tidak dapat diketahui. Nilai
-	// "1" dipilih karena itu yang dipakai seluruh kolom penanda biner lain di basis data
-	// yang sama. Bila Tim Pega mengirim rule-nya dan ternyata berbeda, yang berubah hanya
-	// baris ini.
-	surveyor.CommitteeTransferred = "1"
+	// Ia sempat diisi "1" di tempat ini, atas dugaan bahwa kolom itu penanda "sudah
+	// diteruskan ke komite". Dugaan itu KELIRU dan dibetulkan 2026-10-03: layar lama
+	// menampilkannya sebagai dropdown berlabel "Apakah perlu ke direksi?" yang diisi
+	// PENGGUNA saat mengajukan, bukan oleh sistem saat memutuskan.
+	//
+	// Menimpanya di sini akan menghapus jawaban orang yang mengajukan.
 
 	if err := repo.Update(ctx, surveyor); err != nil {
 		return mastersurveyors.Surveyor{}, translateRepoError(err, "menyimpan keputusan komite")

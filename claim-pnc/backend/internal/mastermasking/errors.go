@@ -43,6 +43,16 @@ var (
 // (`Activity/SearchDataMasking-Act.xml:727`).
 var ErrStatusNotChosen = errors.New("mastermasking: status aktif belum dipilih")
 
+// ErrBranchNotChosen dikembalikan bila daftar petugas diminta tanpa menyebut cabangnya.
+// Di layar lama isian CABANG bertanda bintang merah — ia wajib sebelum tabel petugas
+// punya arti.
+var ErrBranchNotChosen = errors.New("mastermasking: cabang belum dipilih")
+
+// ErrNoRowChosen dikembalikan bila penyimpanan massal dijalankan tanpa satu baris pun.
+// Menjawabnya "berhasil menyimpan 0 baris" akan membuat pengguna mengira kewenangan sudah
+// diberikan padahal tidak ada yang tersimpan.
+var ErrNoRowChosen = errors.New("mastermasking: belum ada petugas yang diisi")
+
 // Field yang dapat membawa pelanggaran validasi. Nilainya dipakai apa adanya oleh lapisan
 // transport sebagai penunjuk isian di layar, sehingga antarmuka dapat menandai kolom yang
 // salah — bukan sekadar menampilkan satu pesan di atas form.

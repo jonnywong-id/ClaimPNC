@@ -83,20 +83,24 @@
 --   kolom             menghidupkan                                       keadaan 2026-09-30
 --   ----------------- -------------------------------------------------- ------------------
 --   ADJUSTERACCEPT    tab Outstanding, ALL, dan Invoice                   ADA, masih KOSONG
---   REFNO             kolom "Reference No" dan setengah kotak cari        ADA, masih KOSONG
 --   PYSTATUSWORK      tab Close, dan penyaring "berkas masih terbuka"     ADA, masih KOSONG
---   ADJUSTERPIC       kolom "Appointment No"                              belum ditambahkan
+--   REFNO             setengah kotak cari                                 ADA, masih KOSONG
 --
--- Kueri di bawah **belum membaca satu pun**, dan itu berlaku untuk keempatnya — termasuk
--- ketiga yang sudah ada. Alasannya berbeda untuk masing-masing:
+-- Kueri di bawah **belum membaca satu pun**. Seluruhnya sudah ada, dan justru itu yang
+-- berbahaya: kolom yang ADA tetapi KOSONG dibaca tanpa galat apa pun, lalu menjawab salah.
+-- `ADJUSTERACCEPT IS NULL` bernilai benar untuk seluruh 17.641 baris, sehingga tab Outstanding
+-- akan menampilkan seluruh antrean sebagai belum dikonfirmasi adjuster — terisi wajar, dan
+-- salah. Ditahan sampai `claimpnc -periksa` melaporkan keterisiannya.
+-- Lihat `docs/permintaan-kolom-t-surveyorlist.md`.
 --
---   yang BELUM ADA    menuliskannya menghasilkan ORA-00904, yang menjatuhkan SELURUH layar
---   yang ADA & KOSONG membacanya menghasilkan jawaban yang salah tanpa galat apa pun
+-- DUA KOLOM YANG SEMPAT ADA DI DAFTAR INI DAN SUDAH DICORET (2026-10-03):
 --
--- Yang kedua lebih berbahaya. `ADJUSTERACCEPT IS NULL` bernilai benar untuk seluruh 17.641
--- baris, sehingga tab Outstanding akan menampilkan seluruh antrean sebagai belum dikonfirmasi
--- adjuster — terisi wajar, dan salah. Karena itu keduanya sama-sama ditahan sampai
--- `claimpnc -periksa` melaporkan keterisiannya. Lihat `docs/permintaan-kolom-t-surveyorlist.md`.
+--   ADJUSTERPIC  tidak pernah diperlukan. "Appointment No" berisi `SRV-xxxxx`, bukan nama
+--                adjuster — dan nomor itu sudah ada sebagai `s.CASEID`.
+--   REFNO sebagai asal kolom "Reference No"
+--                keliru. `REFNO_1` dialiaskan "Province" di kedua kueri rujukan, dan properti
+--                itu tidak termasuk 13 sel data grid. REFNO tetap diminta, tetapi untuk
+--                kotak cari — bukan untuk kolom layar.
 --
 -- ## Kenapa `STS_SURVEY` tidak dapat menggantikan `PYSTATUSWORK`
 --
@@ -117,42 +121,82 @@
 -- PEMETAAN KOLOM — judul di layar -> kolom sebenarnya
 -- ============================================================================
 --
--- Judul dari `Section/InboxSurvey_section-Section.xml`; properti dari daftar Property-Set
--- pada `Activity/SetTempLostAdjuster-Act.xml`.
+-- Judul dari `Section/InboxSurvey_section-Section.xml`, urut dokumen. Properti dari sel data
+-- grid pada berkas yang sama, juga urut dokumen, setelah membuang DUA sel `Embed-NameValuePair`
+-- (parameter tautan, bukan kolom).
 --
---   judul di layar      properti Pega            kolom sekarang            alias
---   ------------------- ------------------------ ------------------------- -------------------
---   Appointment No      .City                    — ADJUSTERPIC belum ada   —
---   Reference No        .AlasanDokterRejectRCL   — REFNO ada, kosong       —
---   Claim No            .UserName                c.CLAIMNO                 CLAIM_NUMBER
---   Policy No           .Country                 c.NOPOLIS                 POLICY_NUMBER
---   Insured Name        .AnalystDoctorRemaks     c.QQNAME                  INSURED_NAME
---   COB                 .KomiteStatus            c.BUSINESSNAME            CLASS_OF_BUSINESS
---   Cause Of Loss       .CauseOfLoss             s.LOSSTYPE  **?**         CAUSE_OF_LOSS
---   Location            .Location                s.LOCATION_SURVEY         LOCATION
---   PIC ASM             .UserTeknis              c.PICTEKNIK               TECHNICAL_PIC
---   PIC Loss Adjuster   .AnaylstRemarks          s.SURVEYOR_NAME  = *      ADJUSTER_PIC
---   Date of Loss        .DateOfLoss              c.DATEOFLOSS              DATE_OF_LOSS
---   Aging               .CPLValidDate            dihitung dari s.TGLINPUT  CREATED_AT
---   Status ASM          .UserAdmin               s.STS_SURVEY              ASM_STATUS
+-- CARA PEMETAAN INI DIPASTIKAN, dan kenapa ia perlu dipastikan. Versi sebelumnya **bergeser
+-- satu kolom** karena kedua parameter tautan ikut terhitung sebagai kolom. Yang menegakkannya
+-- bukan hitungan ulang melainkan TIGA JANGKAR yang tidak bergantung urutan — judul yang
+-- namanya persis sama dengan propertinya:
 --
---   tidak digambar      —                        s.CASEID                  SURVEY_ID
+--   "Cause Of Loss" <-> .CauseOfLoss     "Location" <-> .Location     "Date of Loss" <-> .DateOfLoss
+--
+-- Ketiganya jatuh tepat pada posisi 7, 8, dan 11. Pergeseran satu kolom akan memindahkan
+-- ketiganya sekaligus, jadi kecocokan ini tidak mungkin kebetulan.
+--
+-- SUMBERNYA SEKARANG KEEMPAT KUERI TAB YANG SEBENARNYA, bukan kueri rujukan. Kelima rule yang
+-- hilang diterima 2026-10-03, dan **keempat browse memakai daftar alias yang IDENTIK** —
+-- sehingga pemetaan di bawah berlaku untuk seluruh tab, bukan satu tab saja. Itu menutup
+-- dugaan lama bahwa tiap tab mungkin punya daftar kolomnya sendiri.
+--
+--   judul di layar      kolom objek kerja Pega   kolom di sini             alias        status
+--   ------------------- ------------------------ ------------------------- ------------ ------
+--   Appointment No      a.pyid                   s.CASEID tanpa prefix     (SURVEY_ID)  setara
+--   Reference No        a.REFNO_1                s.REFNO                   —            ADA, KOSONG
+--   Claim No            a.CASEID_1               c.CLAIMNO                 CLAIM_NUMBER  ?
+--   Policy No           a.POLICYNO               c.NOPOLIS                 POLICY_NUMBER ?
+--   Insured Name        a.QQNAME                 c.QQNAME                  INSURED_NAME  ?
+--   COB                 subquery BUSINESSNAME    c.BUSINESSNAME            CLASS_OF_BUSINESS ?
+--   Cause Of Loss       subquery CAUSEOFLOSS     subquery yang SAMA        CAUSE_OF_LOSS setara
+--   Location            a.RescheduleLocation_1   s.LOCATION_SURVEY         LOCATION      ?
+--   PIC ASM             a.USERTEKNIS_1           c.PICTEKNIK               TECHNICAL_PIC ?
+--   PIC Loss Adjuster   a.ADJUSTERPIC_1          s.SURVEYOR_NAME           ADJUSTER_PIC  ?
+--   Date of Loss        a.DATEOFLOSS_1           c.DATEOFLOSS              DATE_OF_LOSS  ?
+--   Aging               a.pxcreatedatetime       dihitung dari s.TGLINPUT  CREATED_AT    ?
+--   Status ASM          a.ASMSTATUS_1            c.LEADER_MEMBER           ASM_STATUS   setara*
+--
+--   (asal Appointment No) —                      s.CASEID                  SURVEY_ID
 --   tidak digambar      —                        s.PNCCASEID               CLAIM_ID
 --   tidak digambar      —                        s.INDEX_SURVEY            SURVEY_INDEX
 --   tidak digambar      —                        s.SURVEYTYPE              SURVEYOR_TYPE
 --
--- CATATAN `= *` pada "PIC Loss Adjuster". `s.SURVEYOR_NAME` adalah padanan `SURVEYORNAME_1`
--- milik objek kerja — **kolom yang SAMA, orang yang sama**. Karena itu `SURVEYORNAME_1` TIDAK
--- perlu diminta.
+-- ARTI KOLOM "status" DI ATAS:
 --
--- Kolom itu dialiaskan TIGA nama berbeda di tiga rule, dan tidak satu pun mencerminkan isinya:
+--   setara      dibuktikan sepadan dengan kueri Pega
+--   ?           padanannya MASUK AKAL tetapi BELUM diuji ke basis data — tebakan terbuka
+--   BEDA        terbukti kolom yang BERLAINAN; selisihnya nyata dan belum diputuskan
 --
---   BrowseOSLossAdjusterPIC  SURVEYORNAME_1 AS "AnaylstRemarks"   <- yang dipakai section
---   BrowseLossAdjuster       SURVEYORNAME_1 AS "CountryID"
---   BrowseInternalSurveyor   SURVEYORNAME_1 AS "CountryID" DAN as "ComplianceRemark"
+-- CATATAN `setara*` pada "Status ASM". Kolom itu BUKAN status melainkan **peran koasuransi**:
+-- `ASMSTATUS_1` hanya bernilai `LEADER`, `MEMBER`, atau kosong, dan `SetTempLostAdjuster`
+-- menggambarnya lewat `@If(.UserAdmin=="", "LEADER", .UserAdmin)` — kosong tampil `LEADER`.
 --
--- Yang mengikat kolom layar adalah `.AnaylstRemarks`, terbaca dari
--- `Section/InboxSurvey_section-Section.xml`. Jadi "PIC Loss Adjuster" = `SURVEYORNAME_1`.
+-- `T_SURVEYORLIST` tidak punya padanannya, tetapi `T_CLAIM_PNC.LEADER_MEMBER` membawanya.
+-- Diukur di produksi 2026-10-03, **nol pertentangan** pada 17.633 baris:
+--
+--   LEADER_MEMBER   ASMSTATUS_1   baris
+--   --------------- ------------- -------
+--   LEADER          LEADER         15.125
+--   LEADER          (kosong)        1.444
+--   MEMBER          MEMBER          1.054
+--   MEMBER          (kosong)           10
+--
+-- Tanda bintangnya untuk sepuluh baris terakhir: `LEADER_MEMBER` menyebutnya MEMBER sedangkan
+-- Pega menggambarnya LEADER, karena nilai kosong jatuh ke bawaan. **0,06% dari seluruh baris**,
+-- dan di sana modul ini justru lebih tepat daripada layar lama.
+--
+-- Usulan memakai `LEADER_MEMBER` datang dari Work Owner, dan ia menghapus satu permintaan
+-- kolom yang sudah sempat diajukan.
+--
+-- Akibat yang harus disadari: **status perkembangan adjuster (`STS_SURVEY`) tidak lagi
+-- digambar**. Itu memang perilaku Pega — `AdjusterStatus_1` dialiaskan `"CauseOfLossID"` dan
+-- tidak termasuk 13 sel data grid. Kolomnya tetap dibaca saat tab Invoice dihidupkan, tetapi
+-- sebagai penyaring, bukan sebagai isi kolom.
+--
+-- CATATAN "PIC Loss Adjuster" — dugaan yang DICABUT. Berkas ini sempat menyatakan kolom itu
+-- berasal dari `SURVEYORNAME_1`, disimpulkan dari `BrowseOSLossAdjusterPIC`. Keempat kueri tab
+-- membuktikan sebaliknya: ia `a.ADJUSTERPIC_1`. Apakah `s.SURVEYOR_NAME` membawa isi yang sama
+-- **belum diuji**.
 --
 -- ## Penyaringan langkah terakhir yang membuat keduanya BENAR-BENAR sama
 --
@@ -230,12 +274,20 @@
 --      langkah terakhir berkasnya. Tabelnya 17.641 baris, sehingga memindai seluruhnya murah.
 --
 -- ============================================================================
--- CATATAN 4 — URUTANNYA MENAIK, DAN ITU DISENGAJA
+-- CATATAN 4 — URUTANNYA MENURUN, MENGIKUTI KEEMPAT KUERI TAB
 -- ============================================================================
 --
--- `BrowseLossAdjuster` dan `BrowseInternalSurveyor` keduanya `ORDER BY … ASC` — yang TERTUA
--- lebih dulu. Itu urutan antrean kerja. Ia BERBEDA dari inbox lain di aplikasi ini yang
--- menurun, dan perbedaannya dibawa (`P-5`).
+-- Keempat kueri tab — `BrowseOSLostAdjuster`, `BrowseConfirmLostAdjuster`,
+-- `BrowseCloseLostAdjuster`, `BrowseCommunicationLostAdjuster` — seluruhnya memakai
+--
+--   ROW_NUMBER() OVER (ORDER BY a.pxcreatedatetime DESC)
+--
+-- yang TERBARU lebih dulu.
+--
+-- KOREKSI 2026-10-03. Sampai hari itu berkas ini menyatakan urutannya MENAIK, dengan alasan
+-- "`BrowseLossAdjuster` dan `BrowseInternalSurveyor` keduanya ASC". Alasan itu runtuh begitu
+-- keempat kueri tab tiba: **kedua kueri itu bukan penggerak grid ini**, dan yang sebenarnya
+-- dipakai justru DESC. Layar karena itu sempat membalik urutan antrean.
 --
 -- Pemutus serinya `CASEID` — sesudah penyaringan langkah terakhir, tepat satu baris tersisa
 -- per berkas survei, sehingga `INDEX_SURVEY` tidak lagi diperlukan sebagai pemutus.
@@ -265,13 +317,17 @@ SELECT s.CASEID            AS SURVEY_ID,
        c.NOPOLIS           AS POLICY_NUMBER,
        c.QQNAME            AS INSURED_NAME,
        c.BUSINESSNAME      AS CLASS_OF_BUSINESS,
-       s.LOSSTYPE          AS CAUSE_OF_LOSS,
+       (SELECT cov.CAUSEOFLOSS
+          FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE cov
+         WHERE cov.CLAIMID = s.PNCCASEID
+         FETCH NEXT 1 ROW ONLY)
+                           AS CAUSE_OF_LOSS,
        s.LOCATION_SURVEY   AS LOCATION,
        c.PICTEKNIK         AS TECHNICAL_PIC,
        s.SURVEYOR_NAME     AS ADJUSTER_PIC,
        c.DATEOFLOSS        AS DATE_OF_LOSS,
        s.TGLINPUT          AS CREATED_AT,
-       s.STS_SURVEY        AS ASM_STATUS,
+       c.LEADER_MEMBER     AS ASM_STATUS,
        s.SURVEYTYPE        AS SURVEYOR_TYPE,
        COUNT(*) OVER ()    AS TOTAL_ROWS
   FROM (SELECT t.*,
@@ -303,7 +359,7 @@ SELECT s.CASEID            AS SURVEY_ID,
                         AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:3)))))
    AND (:6 IS NULL
         OR UPPER(c.CLAIMNO) LIKE '%' || UPPER(:6) || '%')
- ORDER BY s.TGLINPUT, s.CASEID
+ ORDER BY s.TGLINPUT DESC NULLS LAST, s.CASEID DESC
 OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
 
 -- name: count_tabs
@@ -498,10 +554,11 @@ SELECT COUNT(c.CLAIMID)           AS PROBE_CLAIM_ID,
 -- CATATAN NAMA. Kolom yang ditambahkan 2026-09-30 TANPA akhiran `_1` — `ADJUSTERACCEPT`, bukan
 -- `ADJUSTERACCEPT_1`. Akhiran itu artefak perataan Pega, dan menghilangkannya memang lebih
 -- bersih; yang penting nama di sini mengikuti nama SEBENARNYA di basis data.
-SELECT COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERACCEPT' THEN 1 END) AS HAS_ACCEPT,
-       COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERPIC'    THEN 1 END) AS HAS_APPOINTMENT,
-       COUNT(CASE WHEN COLUMN_NAME = 'REFNO'          THEN 1 END) AS HAS_REFERENCE,
-       COUNT(CASE WHEN COLUMN_NAME = 'PYSTATUSWORK'   THEN 1 END) AS HAS_WORK_STATUS
+SELECT COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERACCEPT'     THEN 1 END) AS HAS_ACCEPT,
+       COUNT(CASE WHEN COLUMN_NAME = 'REFNO'              THEN 1 END) AS HAS_REFERENCE,
+       COUNT(CASE WHEN COLUMN_NAME = 'PYSTATUSWORK'       THEN 1 END) AS HAS_WORK_STATUS,
+       COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERPIC'        THEN 1 END) AS HAS_ADJUSTER_PIC,
+       COUNT(CASE WHEN COLUMN_NAME = 'RESCHEDULELOCATION' THEN 1 END) AS HAS_SURVEY_LOCATION
   FROM ALL_TAB_COLUMNS
  WHERE OWNER = 'POOLDATA'
    AND TABLE_NAME = 'T_SURVEYORLIST'
@@ -520,14 +577,16 @@ SELECT COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERACCEPT' THEN 1 END) AS HAS_ACCEPT,
 -- sehingga kolom yang ADA tetapi SELURUHNYA kosong akan menampilkan **seluruh antrean** sebagai
 -- "belum dikonfirmasi adjuster". Itu cacat diam — layarnya terisi wajar dan isinya salah.
 --
--- Ia HANYA memuat kolom yang sudah ada per 2026-09-30 — `ADJUSTERACCEPT`, `REFNO`, dan
--- `PYSTATUSWORK`. `ADJUSTERPIC` belum ditambahkan, dan menuliskannya di sini akan membuat kueri
--- ini gagal seluruhnya, termasuk untuk ketiga kolom yang justru ingin diukur. Yang melaporkan
--- ketiadaan sebuah kolom adalah `check_new_columns`, lewat katalog.
-SELECT COUNT(*)                 AS TOTAL_ROWS,
-       COUNT(s.ADJUSTERACCEPT)  AS FILLED_ACCEPT,
-       COUNT(s.REFNO)           AS FILLED_REFERENCE,
-       COUNT(s.PYSTATUSWORK)    AS FILLED_WORK_STATUS
+-- Ia memuat KELIMA kolom yang ditunggu, dan seluruhnya sudah ada di basis data per 2026-10-03.
+-- Menuliskan kolom yang BELUM ada akan membuat kueri ini gagal seluruhnya — termasuk untuk
+-- kolom lain yang justru ingin diukur. Yang melaporkan ketiadaan sebuah kolom adalah
+-- `check_new_columns` lewat katalog, karena ia tidak dapat gagal karena sebab itu.
+SELECT COUNT(*)                     AS TOTAL_ROWS,
+       COUNT(s.ADJUSTERACCEPT)      AS FILLED_ACCEPT,
+       COUNT(s.REFNO)               AS FILLED_REFERENCE,
+       COUNT(s.PYSTATUSWORK)        AS FILLED_WORK_STATUS,
+       COUNT(s.ADJUSTERPIC)         AS FILLED_ADJUSTER_PIC,
+       COUNT(s.RESCHEDULELOCATION)  AS FILLED_SURVEY_LOCATION
   FROM POOLDATA.T_SURVEYORLIST s
 
 -- name: check_kpi

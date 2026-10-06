@@ -1,10 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { DaftarResponse, KeteranganResponse } from './types'
+import type {
+  DaftarResponse,
+  DetailRCL,
+  KeputusanRCL,
+  KeputusanResponse,
+  KeteranganResponse,
+} from './types'
 
 const PATH = '/api/inbox-rcl'
 
@@ -22,6 +28,9 @@ const keys = {
 
   daftar: (portal: string | null, token: string | null, cari: string, lewati: number) =>
     ['inbox-rcl', 'daftar', portal, token, cari, lewati] as const,
+
+  detail: (portal: string | null, token: string | null, nomor: string) =>
+    ['inbox-rcl', 'detail', portal, token, nomor] as const,
 }
 
 /**
@@ -62,5 +71,50 @@ export function useDaftarRCL(cari: string, lewati: number) {
     enabled: token !== null && portal !== null,
     staleTime: 0,
     placeholderData: (previous) => previous,
+  })
+}
+
+/**
+ * Hook layar kerja `RCLDokter` satu klaim — dibuka saat Nomor Case diklik.
+ *
+ * Server hanya membuka klaim yang ada di antrean pemanggil; klaim lain dijawab 404.
+ */
+export function useDetailRCL(nomor: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.detail(portal, token, nomor ?? ''),
+    queryFn: () =>
+      callAPI<DetailRCL>(`${PATH}/klaim/${encodeURIComponent(nomor ?? '')}`, { token, portal }),
+    enabled: token !== null && portal !== null && !!nomor,
+    staleTime: 0,
+    retry: false,
+  })
+}
+
+/**
+ * Hook keputusan dokter RCL — padanan activity `SendToPUCL`.
+ *
+ * Sesudah berhasil, antrean dan layar kerja klaim ini dibuang dari cache: klaimnya sudah
+ * berpindah ke tahap lain dan tidak boleh tampil lagi di antrean dokter.
+ */
+export function useKeputusanRCL(nomor: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: { keputusan: KeputusanRCL; alasanDokter?: string }) =>
+      callAPI<KeputusanResponse>(`${PATH}/klaim/${encodeURIComponent(nomor)}/keputusan`, {
+        metode: 'POST',
+        body: { keputusan: input.keputusan, alasan_dokter: input.alasanDokter ?? '' },
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-rcl', 'daftar'] })
+      client.removeQueries({ queryKey: ['inbox-rcl', 'detail'] })
+    },
   })
 }

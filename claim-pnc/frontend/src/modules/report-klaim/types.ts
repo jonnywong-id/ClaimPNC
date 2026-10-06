@@ -59,11 +59,24 @@ export type BusinessLine = {
   nama: string
 }
 
+/**
+ * Satu pilihan dropdown "Status Compliance".
+ *
+ * `nilai` dan `nama` BERBEDA, dan keduanya dipakai: yang dikirim ke penyaring adalah
+ * `nilai` ("0", "1", "2"), yang dibaca pengguna adalah `nama`. Mengirim namanya akan
+ * membuat penyaringnya tidak pernah cocok.
+ */
+export type ComplianceStatus = {
+  nilai: string
+  nama: string
+}
+
 /** Isi layar sebelum satu tombol pun ditekan. */
 export type CatalogResponse = {
   judul: string
   kelompok: ReportGroup[]
   lini_bisnis: BusinessLine[]
+  status_compliance: ComplianceStatus[]
 }
 
 /** Satu pilihan autocomplete "Bisnis". */

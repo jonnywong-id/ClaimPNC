@@ -8,6 +8,7 @@ import type {
   BusinessDocumentRuleInput,
   BusinessDocumentRuleListResponse,
   BusinessDocumentRuleResponse,
+  BusinessDocumentRuleRowInput,
   MasterChoiceListResponse,
 } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
@@ -184,6 +185,39 @@ export function useCreateBusinessDocumentRule() {
         token,
         portal,
       }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
+    },
+  })
+}
+
+/**
+ * Hook penyimpanan layar Ubah: SELURUH baris satu lini bisnis sekaligus.
+ *
+ * Baris yang membawa `id` diperbarui, baris tanpa `id` disisipkan — satu penekanan Simpan
+ * dapat melakukan keduanya, persis seperti layar lama.
+ *
+ * Berbeda dari useUpdateBusinessDocumentRule, yang menyunting satu baris lewat alamatnya
+ * sendiri. Keduanya dipertahankan: yang per baris dipakai penambahan jaminan dan
+ * pemanggilan terprogram, yang ini dipakai layar.
+ */
+export function useSaveBusinessDocumentRules() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      businessID,
+      rows,
+    }: {
+      businessID: string
+      rows: BusinessDocumentRuleRowInput[]
+    }) =>
+      callAPI<BusinessDocumentRuleListResponse>(
+        `${ROUTE}/bisnis/${encodeURIComponent(businessID)}`,
+        { metode: 'PUT', body: { dokumen: rows }, token, portal },
+      ),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
     },

@@ -202,3 +202,38 @@ func TestHapusReasIndukBersandarPadaTabelLayer(t *testing.T) {
 	require.Contains(t, text, "POOLDATA.MST_XOL_LAYER",
 		"penghapusan reas satu induk harus mencari IDLAYER-nya lewat tabel layer")
 }
+
+// T_REINSURER adalah master milik sistem lain: dicari, TIDAK PERNAH ditulis.
+//
+// Modul ini hanya membaca nama dan nomor reasuradur untuk mengisi baris MST_XOL_REAS.
+// Satu kueri tulis yang menyentuhnya berarti layar Master XOL ikut mengubah master
+// reasuradur yang dipakai PLA dan DLA juga (`P-1`).
+func TestMasterReasuradurTidakPernahDitulis(t *testing.T) {
+	for name, text := range query {
+		uppercase := strings.ToUpper(text)
+		writes := strings.HasPrefix(uppercase, "INSERT") ||
+			strings.HasPrefix(uppercase, "UPDATE") ||
+			strings.HasPrefix(uppercase, "DELETE")
+		if !writes {
+			continue
+		}
+		require.NotContainsf(t, uppercase, "T_REINSURER",
+			"kueri tulis %q menyentuh master reasuradur milik sistem lain", name)
+	}
+}
+
+// Pencarian reasuradur wajib mengikat kata kunci, bukan merangkainya ke dalam teks SQL —
+// dan wajib menyatakan ESCAPE, karena Oracle tidak punya pelepas LIKE bawaan.
+func TestPencarianReasuradurAman(t *testing.T) {
+	text := getQuery("xol_search_reinsurer")
+	uppercase := strings.ToUpper(text)
+
+	require.Contains(t, text, ":1", "kata kunci harus menjadi parameter terikat")
+	require.NotContains(t, text, "{", "tidak boleh ada sisa pola penyisipan teks gaya Pega")
+	require.Contains(t, uppercase, "ESCAPE",
+		"tanpa klausa ESCAPE, % dan _ yang diketik pengguna tetap berlaku sebagai jokar di Oracle")
+	require.Contains(t, uppercase, "FETCH NEXT",
+		"hasil wajib dibatasi; master ini tidak punya paginasi di layar")
+	require.NotContains(t, uppercase, "ROWNUM",
+		"ROWNUM tidak portabel ke PostgreSQL (D-20)")
+}

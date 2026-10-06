@@ -195,6 +195,47 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(w, r, http.StatusOK, SingleResponse{Rule: toDTO(saved), Portal: active.Alias})
 }
 
+// SaveForBusiness menangani PUT /master/tipe-dokumen-bisnis/bisnis/{businessID}.
+//
+// Inilah penyimpanan layar Ubah: seluruh baris satu lini bisnis dikirim sekaligus, yang
+// ber-`id` diperbarui dan sisanya disisipkan.
+//
+// Jawabannya memakai bentuk daftar, bukan satu baris, karena satu penyimpanan memang dapat
+// mengubah dan menambah beberapa baris sekaligus. Yang dikembalikan adalah keadaan
+// SETELAH simpan yang dibaca ulang dari basis data, sehingga layar tidak perlu menebak ID
+// baris yang baru dibuat.
+func (h *Handler) SaveForBusiness(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	businessID := chi.URLParam(r, "businessID")
+	if businessID == "" {
+		h.writeModuleError(w, r, daftartipedokumenbisnis.ErrBusinessRequired)
+		return
+	}
+
+	var request BusinessSaveRequest
+	if !h.readRequest(w, r, &request) {
+		return
+	}
+
+	saved, err := h.service.SaveForBusiness(r.Context(), active.Alias, businessID, toRowInputs(request), h.identity(r))
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	content := toRuleListDTO(saved)
+	h.writeResponse(w, r, http.StatusOK, RuleListResponse{
+		Rules:  content,
+		Total:  len(content),
+		Portal: active.Alias,
+	})
+}
+
 // AddCoverage menangani POST /master/tipe-dokumen-bisnis/{id}/jenis-klaim.
 //
 // Sub-sumber daya, bukan field pada badan Update, karena penambahannya memang operasi

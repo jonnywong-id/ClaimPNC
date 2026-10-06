@@ -78,6 +78,42 @@ type Repo interface {
 	// dipasang `Activity/ShowDetailGroupBisnisXol_Act-Act.xml`. Lihat BusinessGroupPattern.
 	ListBusinessGroup(ctx context.Context, t Type) ([]Business, error)
 
+	// SearchReinsurer mencari reasuradur di master menurut NAMA.
+	//
+	// # Dari mana tabelnya, dan apa yang TIDAK diketahui
+	//
+	// Layar Pega memuat kotak "NAMA REASURANSI" beserta tombol "Cari" di atas grid Reas.
+	// **Section-nya tidak ada di export** (`R-16`) — `Section/DetailXOL_sec-Section.xml`
+	// tidak menyebut reasuransi sama sekali, dan
+	// `Section/InputDetailPanelReasGenerated-Section.xml` hanya memuat ketiga kolom grid
+	// beserta aksi `addRow`. Jadi bentuk persisnya tidak dapat dibaca.
+	//
+	// Yang DAPAT dibaca adalah sumber datanya, dan buktinya berlapis:
+	//
+	//   - `POOLDATA.T_REINSURER` adalah satu-satunya master reasuradur di basis data,
+	//     dirujuk 35 kali di export, berkolom REINSURERID dan REINSURERNAME.
+	//   - `RDB List/GetDataReasXOL-SQL.xml` membuktikan baris reas XOL disimpan sebagai
+	//     `MST_XOL_REAS.IDREAS` + `MST_XOL_REAS.NAMA` — pasangan id + nama yang sama.
+	//   - `Activity/FindDataReinsurer-Act.xml` adalah pencarian reasuradur yang memang
+	//     sudah ada di aplikasi ini, dan ia memanggil
+	//     `RDB List/GetListDataLoginReas-SQL.xml`:
+	//     `select ... reinsurername, reinsurerid from pooldata.t_reinsurer
+	//      where reinsurername = {TempReasPLA.PLAReinsurer}`.
+	//
+	// # Satu hal yang dipilih, bukan dibaca
+	//
+	// `GetListDataLoginReas` mencocokkan nama **persis**, bukan sebagian. Di sini
+	// pencocokannya memakai LIKE tanpa membedakan huruf besar-kecil, karena kotak
+	// bertombol "Cari" menuntut pengguna mengetik nama lengkap tanpa satu huruf pun
+	// meleset bila dicocokkan persis — dan pencocokan persis adalah hal khusus dari LIKE,
+	// bukan perilaku yang hilang karenanya.
+	//
+	// Ini satu-satunya bagian yang TIDAK dapat ditunjuk ke sebuah berkas, dan ia dicatat
+	// terbuka sampai Tim Pega mengirimkan section pencariannya.
+	//
+	// Kata kunci kosong mengembalikan daftar kosong, bukan seluruh isi master.
+	SearchReinsurer(ctx context.Context, keyword string) ([]ReinsurerOption, error)
+
 	// SubmitToCommittee mencatat pengajuan sebuah induk ke komite.
 	//
 	// Ia menyetel PIC, STSKOMITE, dan REMARKPIC — persis tiga kolom yang disentuh

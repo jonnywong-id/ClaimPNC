@@ -107,6 +107,7 @@ func assembleRegistration(
 		// Unggah Dokumen: berkas lewat modul dokumen penunjang, baris di DATA_ATTACHFILE.
 		options.Documents = documents
 		options.Attachments = registrasisql.NewAttachmentStore(db)
+		options.Closures = registrasisql.NewClosureStore(db)
 		options.Acceptance = registrasisql.NewAcceptanceStore(db)
 		// Modal "Kirim ke RCL/PUCL": surat ke POOLDATA.TC_PNC_PUCL, pilihannya dari
 		// M_PERIHAL_RCLPUCL dan M_REASON_REJECT_REPRO. Satu adapter melayani kedua seam.
@@ -173,6 +174,7 @@ func assembleRegistration(
 		records := registrasimemory.SampleClaimRecords()
 		options.ClaimRecords = records
 		options.Attachments = records
+		options.Closures = records
 		options.Documents = documents
 		if options.Documents == nil {
 			options.Documents = &registrasimemory.DocumentUploader{}

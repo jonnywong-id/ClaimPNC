@@ -19,6 +19,7 @@ import {
   type EstimateRequest,
   type ItemOptionsResponse,
   type SurveysResponse,
+  type DocumentLink,
   type DocumentsResponse,
   type InsuredResponse,
   type ProgressResponse,
@@ -409,6 +410,36 @@ export function useSendToRCLPUCL(claimID: string) {
   })
 }
 
+/** Isian dialog "Prevent Close Claim" yang dikirim ke server. */
+export interface CloseClaimBody {
+  catatan_tutup: string
+  usulan: string
+  effort_tutup: string
+  kendala_tutup: string
+  tutup_sementara: boolean
+}
+
+/** Tombol Ya pada dialog "Prevent Close Claim" — `CloseClaim`. */
+export function useCloseClaim(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { taskID: string; body: CloseClaimBody }) =>
+      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/tutup-klaim`, {
+        metode: 'POST',
+        body: content.body,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
 /** Tombol Kirim Analyst pada modal "Transfer Claim ke Komite" — `setTicketToAnalyst`. */
 export function useTransferToAnalyst(claimID: string) {
   const token = useSession((state) => state.token)
@@ -523,6 +554,44 @@ export function useUploadDocument(claimID: string) {
         portal,
       })
     },
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
+  })
+}
+
+/**
+ * Tombol Lihat dokumen: alamat baca satu lampiran dari metadata penyimpanan. Diminta saat
+ * tombol ditekan, bukan dimuat bersama daftar — alamatnya bermasa berlaku.
+ */
+export function useDocumentLink(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (attachmentID: string) =>
+      callAPI<DocumentLink>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen/${encodeURIComponent(attachmentID)}/tautan`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Tombol Delete pada daftar berkas: hapus PERMANEN (keputusan-implementasi §171). Jawabannya
+ * checklist yang sudah diperbarui, sehingga "Lihat dokumen (n)" langsung berkurang.
+ */
+export function useDeleteDocument(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (attachmentID: string) =>
+      callAPI<DocumentsResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen/${encodeURIComponent(attachmentID)}/hapus`,
+        { metode: 'POST', token, portal },
+      ),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
     },

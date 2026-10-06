@@ -198,3 +198,72 @@ func TestBatasWaktuDihormati(t *testing.T) {
 	_, err = klien.Upload(context.Background(), perintah())
 	require.Error(t, err, "batas waktu wajib berlaku (09-API-STRATEGY.md §8.2)")
 }
+
+// Perpanjangan alamat: POST /api/v1/geturl dengan halaman DocAPI GetLinkViewDoc_Act langkah
+// 10–15 — tujuh field, Durasi angka.
+func TestPerpanjangTautanSamaBentukDenganPega(t *testing.T) {
+	var diterima map[string]any
+	var jalur, metode string
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			jalur, metode = r.URL.Path, r.Method
+			isi, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(isi, &diterima)
+			_, _ = w.Write([]byte(`{"URLImage":"https://penyimpanan.contoh/baru","exp":"2026-10-04T04:00:00Z","appfolder":"gs://ember/Doc/2026/10/a"}`))
+		}))
+	defer server.Close()
+
+	klien, err := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
+	require.NoError(t, err)
+	hasil, err := klien.PerpanjangTautan(context.Background(), dokumenpenunjang.PerintahTautan{
+		NamaAplikasi: "klaimpnc", Pengunggah: "JONNY", KodeAkses: "KODE-1", ImageID: "IMG-9",
+		Folder: "Doc/2026/10/", NamaBerkas: "a", Durasi: 3600,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, "/api/v1/geturl", jalur)
+	require.Equal(t, http.MethodPost, metode)
+	require.Equal(t, map[string]any{
+		"UserInput": "JONNY", "ImageID": "IMG-9", "App": "klaimpnc", "KodeString": "KODE-1",
+		"Folder": "Doc/2026/10/", "NamaFile": "a", "Durasi": float64(3600),
+	}, diterima)
+	require.Equal(t, "https://penyimpanan.contoh/baru", hasil.URL)
+	require.Equal(t, "gs://ember/Doc/2026/10/a", hasil.Folder)
+	require.NotNil(t, hasil.ExpiresAt)
+}
+
+func TestPerpanjangTautanTanpaURLImageGagal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"ErrorMessage":"tidak ditemukan"}`))
+		}))
+	defer server.Close()
+	klien, err := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
+	require.NoError(t, err)
+	_, err = klien.PerpanjangTautan(context.Background(), dokumenpenunjang.PerintahTautan{ImageID: "IMG-9"})
+	require.Error(t, err)
+}
+
+// Delete: POST /api/v1/delete, UserInput kosong, ErrorMessage dikembalikan apa adanya.
+func TestHapusSamaBentukDenganPega(t *testing.T) {
+	var diterima map[string]any
+	var jalur string
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			jalur = r.URL.Path
+			isi, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(isi, &diterima)
+			_, _ = w.Write([]byte(`{"ErrorMessage":"File Doc/2026/10/a deleted from bucket"}`))
+		}))
+	defer server.Close()
+	klien, err := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
+	require.NoError(t, err)
+
+	pesan, err := klien.Hapus(context.Background(), dokumenpenunjang.PerintahHapus{
+		NamaAplikasi: "klaimpnc", KodeAkses: "KODE-1", Jalur: "Doc/2026/10/a",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "/api/v1/delete", jalur)
+	require.Equal(t, map[string]any{"UserInput": "", "App": "klaimpnc", "KodeString": "KODE-1", "NamaFile": "Doc/2026/10/a"}, diterima)
+	require.Contains(t, pesan, "deleted from bucket")
+}

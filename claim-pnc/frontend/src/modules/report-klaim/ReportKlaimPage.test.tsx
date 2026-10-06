@@ -296,7 +296,19 @@ describe('layar Report Klaim', () => {
 
   // Isian yang tidak berpengaruh DINONAKTIFKAN, bukan dihilangkan — supaya letaknya
   // tidak berpindah-pindah setiap kali kartu berganti.
-  it('menonaktifkan isian yang tidak berlaku pada kartu yang disorot', async () => {
+  // Isian penyaring TIDAK PERNAH mati karena kartu mana yang kebetulan tersorot.
+  //
+  // # Kenapa uji ini berbalik arah
+  //
+  // Sebelumnya ia justru MENUNTUT isian mati pada kartu yang tidak memakainya.
+  // Perilaku itu dicabut 2026-10-01 setelah dilaporkan sebagai cacat: "dropdown
+  // Bisnis dan Status Compliance tidak selalu bisa dibuka".
+  //
+  // Sebabnya, kartu tersorot berubah saat kursor sekadar melintas — sehingga dropdown
+  // mati tepat sebelum disentuh — dan sorotannya melekat sesudah Export ditekan.
+  // Menautkan dapat-tidaknya diisi pada posisi kursor adalah kesalahannya. Isian kini
+  // selalu hidup, yang juga lebih dekat ke layar Pega (`D-13`).
+  it('isian penyaring tetap hidup apa pun kartu yang tersorot', async () => {
     installFetch()
     show()
 
@@ -304,10 +316,38 @@ describe('layar Report Klaim', () => {
     await userEvent.hover(kartu)
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Dari')).toBeDisabled()
+      expect(screen.getByLabelText('Bisnis')).toBeEnabled()
     })
-    expect(screen.getByLabelText('Treaty')).toBeDisabled()
-    expect(screen.getByLabelText('Bisnis')).toBeEnabled()
+    expect(screen.getByLabelText('Dari')).toBeEnabled()
+    expect(screen.getByLabelText('Treaty')).toBeEnabled()
+    expect(screen.getByLabelText('Status Compliance')).toBeEnabled()
+
+    // Dan tetap hidup SESUDAH Export ditekan — di situlah sorotannya dulu melekat.
+    await userEvent.click(screen.getByRole('button', { name: 'Export Data TAT' }))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Bisnis')).toBeEnabled()
+    })
+    expect(screen.getByLabelText('Status Compliance')).toBeEnabled()
+  })
+
+  // Daftar bisnis ikut ditarik ketika dropdown-nya disentuh langsung.
+  //
+  // Tanpa ini, pengguna yang membuka dropdown tanpa menyorot kartunya lebih dulu akan
+  // menemukan daftar KOSONG — dan daftar kosong tidak dapat dibedakan dari "tidak ada
+  // bisnis". Ia pasangan wajib dari pencabutan penonaktifan di atas.
+  it('menarik pilihan bisnis saat dropdown-nya disentuh', async () => {
+    installFetch()
+    show()
+
+    const bisnis = await screen.findByLabelText('Bisnis')
+    expect(calls.some((c) => c.url.includes('/pilihan-bisnis'))).toBe(false)
+
+    await userEvent.click(bisnis)
+
+    await waitFor(() => {
+      expect(calls.some((c) => c.url.includes('/pilihan-bisnis'))).toBe(true)
+    })
   })
 
   // Daftar bisnis hanya ditarik ketika kartu yang membutuhkannya disorot — ia dapat
@@ -336,4 +376,85 @@ describe('layar Report Klaim', () => {
     expect(screen.getByText('Pilih entitas lebih dulu')).toBeVisible()
     expect(calls).toHaveLength(0)
   })
+
+  // Penolakan validasi menyebut ISIAN MANA yang kurang — bukan hanya "ada isian yang
+  // belum benar".
+  //
+  // # Kenapa uji ini ada
+  //
+  // Ia mengunci cacat nyata yang ditemukan 2026-10-01. Peladen mengirim rinciannya
+  // ("Tanggal Dari wajib diisi."), tetapi layar hanya menampilkan ringkasannya. Pada layar
+  // dengan lima isian dan 28 tombol, ringkasan itu tidak dapat ditindaklanjuti — dan
+  // tombol yang ditekan sering berada jauh di bawah tempat pesannya muncul.
+  //
+  // Gejalanya di sisi pengguna: "semua export tidak bisa, kecuali satu". Yang satu itu
+  // kebetulan satu-satunya laporan yang tidak menuntut periode.
+  it('menyebut isian mana yang kurang saat penolakan validasi', async () => {
+    vi.stubGlobal('fetch', (url: string) => {
+      if (url.includes('/ekspor')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              kode: 'validasi_gagal',
+              pesan: 'Ada isian yang belum benar.',
+              detail: [{ isian: 'dari', pesan: 'Tanggal Dari wajib diisi.' }],
+            }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(CATALOG), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
+
+    show()
+
+    const tombol = await screen.findByRole('button', { name: 'Export Data TAT' })
+    await userEvent.click(tombol)
+
+    // Rinciannya tampil, bukan ringkasannya. Ia muncul dua kali dengan sengaja: sekali
+    // sebagai pesan di atas layar, sekali melekat pada isiannya sendiri.
+    expect((await screen.findAllByText('Tanggal Dari wajib diisi.')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Ada isian yang belum benar.')).not.toBeInTheDocument()
+  })
+
+  // Isiannya sendiri ikut ditandai, supaya pengguna tidak perlu mencocokkan pesan di atas
+  // layar dengan isian yang dimaksud.
+  it('menandai isian yang ditolak', async () => {
+    vi.stubGlobal('fetch', (url: string) => {
+      if (url.includes('/ekspor')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              kode: 'validasi_gagal',
+              pesan: 'Ada isian yang belum benar.',
+              detail: [{ isian: 'dari', pesan: 'Tanggal Dari wajib diisi.' }],
+            }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(CATALOG), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
+
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Export Data TAT' }))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Dari')).toHaveAttribute('aria-invalid', 'true')
+    })
+    // "Sampai" tidak disebut peladen, jadi ia TIDAK ikut ditandai.
+    expect(screen.getByLabelText('Sampai')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
 })

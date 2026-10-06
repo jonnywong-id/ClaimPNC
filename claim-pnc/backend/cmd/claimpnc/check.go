@@ -779,18 +779,10 @@ func checkPicTeknik(
 		print("  [ok]    POOLDATA.MST_USER_TEKNIK dapat dibaca")
 	}
 
-	if err := repo.CheckView(ctx); err != nil {
-		print("  [BELUM] POOLDATA.V_MST_USER_TEKNIS tidak dapat dibaca: %v", err)
-		print("            Daftar PIC Teknik dibaca dari view ini karena TOTAL_JOB tidak ada")
-		print("            di tabelnya. Nama kolomnya belum terverifikasi dari export —")
-		print("            mintakan definisinya ke DBA:")
-		print("              SELECT text FROM all_views")
-		print("               WHERE owner = 'POOLDATA' AND view_name = 'V_MST_USER_TEKNIS';")
-		print("            Bila kolomnya berbeda, yang disesuaikan hanya kueri")
-		print("            technician_list di repo/sqlstore/technician.sql.")
-	} else {
-		print("  [ok]    POOLDATA.V_MST_USER_TEKNIS dapat dibaca beserta TOTAL_JOB")
-	}
+	// View TIDAK lagi diperiksa. Daftar maupun form sama-sama membaca
+	// POOLDATA.MST_USER_TEKNIK — tempat datanya benar-benar disimpan — sehingga
+	// ketersediaan view tidak lagi menentukan apa pun. Memeriksanya hanya akan
+	// menghasilkan peringatan atas sesuatu yang tidak dipakai.
 
 	// Direktori pegawai dipakai SETIAP kali PIC ditambah atau diubah: nama tidak pernah
 	// diketik, selalu dicari. Tanpa barisnya, layar tetap dapat menampilkan daftar tetapi
@@ -978,33 +970,33 @@ func readPassword(source io.Reader) (string, error) {
 
 // checkTravelDocumentDetail memeriksa kesiapan Daftar Detail Dokumen Travel.
 //
-// Keempat objeknya diperiksa TERPISAH, karena keempatnya gagal karena sebab yang berbeda
-// dan menyatukan laporannya membuat pembaca menebak mana yang sebenarnya kurang:
+// Kedua objeknya diperiksa TERPISAH, karena keduanya gagal karena sebab yang berbeda dan
+// menyatukan laporannya membuat pembaca menebak mana yang sebenarnya kurang:
 //
-//	V_LST_DOC_TRAVEL             hak baca belum diberikan, atau view-nya memang tidak ada
-//	V_LST_DOC_TRAVEL_COVERAGE    idem
-//	M_DOCTRAVEL                  milik modul Master Dokumen Travel; hanya dibaca di sini
-//	M_PLANTRAVEL                 milik GISFW; hanya dibaca, dan belum pernah disentuh
-//	                             aplikasi ini sampai modul ini ada
+//	V_LST_DOC_TRAVEL   hak baca belum diberikan, atau view-nya memang tidak ada
+//	M_DOCTRAVEL        milik modul Master Dokumen Travel; hanya dibaca di sini
+//
+// V_LST_DOC_TRAVEL_COVERAGE dan M_PLANTRAVEL TIDAK ikut diperiksa, karena modul ini tidak
+// menyentuh keduanya: grid Plan dan Jaminan tidak ada di layar Pega yang berjalan
+// (Work Owner, 2026-10-03).
 //
 // # Yang sengaja TIDAK diperiksa di sini
 //
-// Tabel dasar dan urutan yang dipakai jalur tulis. Nama ketiganya belum terverifikasi
+// Tabel dasar dan urutan yang dipakai jalur tulis. Nama keduanya belum terverifikasi
 // (`R-16` — activity penyimpannya hilang dari export), dan memeriksa urutan berarti
 // MENGHABISKAN satu nomor — efek samping yang tidak pantas dimiliki mode periksa.
 // Verifikasinya ada di migrations/0006, dijalankan DBA sekali.
 //
 // Akibat yang harus disadari pembaca laporan ini: seluruh baris [ok] di bawah hanya
-// membuktikan jalur BACA siap. Jalur TULIS belum terbukti sampai migrasi 0005 dijawab.
+// membuktikan jalur BACA siap. Jalur TULIS belum terbukti sampai migrasi 0006 dijawab.
 func checkTravelDocumentDetail(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
 	repo := daftardetaildokumentravelsql.NewRepo(primary)
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Daftar Detail Dokumen Travel belum siap: %v", err)
-		print("            Kedua view V_LST_DOC_TRAVEL dan V_LST_DOC_TRAVEL_COVERAGE")
-		print("            adalah objek warisan Pega. Mintakan GRANT SELECT untuk akun")
-		print("            aplikasi — lihat migrations/0006. Selama belum diberikan,")
-		print("            layarnya tidak dapat dipakai terhadap Oracle; bagian lain")
-		print("            tetap jalan.")
+		print("            View V_LST_DOC_TRAVEL adalah objek warisan Pega. Mintakan")
+		print("            GRANT SELECT untuk akun aplikasi — lihat migrations/0006.")
+		print("            Selama belum diberikan, layarnya tidak dapat dipakai terhadap")
+		print("            Oracle; bagian lain tetap jalan.")
 	} else {
 		list, err := repo.List(ctx)
 		if err != nil {
@@ -1025,28 +1017,6 @@ func checkTravelDocumentDetail(ctx context.Context, primary *sql.DB, print func(
 	} else {
 		print("  [ok]    POOLDATA.M_DOCTRAVEL dapat dibaca: %d dokumen travel", len(list))
 	}
-
-	plan := daftardetaildokumentravelsql.NewPlanRepo(primary)
-	if err := plan.CheckTable(ctx); err != nil {
-		print("  [GAGAL] POOLDATA.M_PLANTRAVEL tidak dapat dibaca: %v", err)
-		print("            Tabel itu milik GISFW dan HANYA DIBACA. Mintakan GRANT SELECT")
-		print("            untuk akun aplikasi. Perhatikan juga nama kolomnya belum")
-		print("            pernah diverifikasi — bila galatnya menyebut kolom, bukan")
-		print("            tabel, lihat bagian M_PLANTRAVEL pada migrations/0006.")
-		return
-	}
-
-	plans, err := plan.ListPlans(ctx)
-	if err != nil {
-		print("  [GAGAL] POOLDATA.M_PLANTRAVEL tidak dapat dibaca isinya: %v", err)
-		return
-	}
-	coverages, err := plan.ListCoverages(ctx)
-	if err != nil {
-		print("  [GAGAL] jaminan travel tidak dapat dibaca: %v", err)
-		return
-	}
-	print("  [ok]    POOLDATA.M_PLANTRAVEL dapat dibaca: %d plan, %d jaminan", len(plans), len(coverages))
 }
 
 // checkSurveyors melaporkan kesiapan POOLDATA.D_SURVEYORS — daftar ORANGNYA.
@@ -1108,14 +1078,14 @@ func checkDocumentType(ctx context.Context, repo *daftartipedokumensql.Repo, pri
 // Diperiksa TIGA langkah, bukan satu, karena ketiganya gagal dengan sebab yang berbeda dan
 // menuntut tindakan yang berbeda pula:
 //
-//	baca     kedua view ada dan dapat dibaca        -> layarnya dapat menampilkan data
+//	baca     view induk ada dan dapat dibaca        -> layarnya dapat menampilkan data
 //	tulis    kolom tabel dasarnya sesuai dugaan     -> layarnya dapat MENYIMPAN
-//	rujukan  keempat master dapat dibaca            -> daftar pilihannya terisi
+//	rujukan  master tipe dokumen dapat dibaca       -> dropdown-nya terisi
 //
-// Langkah kedua yang paling penting, dan ia satu-satunya yang membuktikan dugaan nama
-// kolom pada migrasi 0009 LANGKAH 0 Q1 benar. Tanpa pemisahan ini, layar yang dapat
-// menampilkan data tetapi gagal menyimpan akan terbaca [ok] sampai pengguna pertama
-// menekan Simpan.
+// Langkah kedua yang paling penting: nama kolom tabel dasarnya diturunkan dari nama kolom
+// view-nya, bukan dibaca dari procedure lama yang hanya menyebut (ID, JSON_DATA). Tanpa
+// pemisahan ini, layar yang dapat menampilkan data tetapi gagal menyimpan akan terbaca
+// [ok] sampai pengguna pertama menekan Simpan.
 func checkDetailDocumentType(
 	ctx context.Context,
 	repo *daftardetailtipedokumensql.Repo,
@@ -1125,13 +1095,9 @@ func checkDetailDocumentType(
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Daftar Detail Tipe Dokumen belum siap: %v", err)
 		print("            Dua kemungkinan, dan galat di atas membedakannya:")
-		print("            - ORA-00942 pada LST_DET_TYPE_DOC_BISNIS: tabel anaknya BELUM")
-		print("              ADA. Daftar lini bisnis masih hidup di dalam JSON_DATA")
-		print("              induknya. Keputusan Work Owner 2026-09-23 menetapkan modul")
-		print("              ini tidak lagi menyentuh JSON, sehingga tabelnya harus")
-		print("              dibuat — migrations/0009 LANGKAH 1.")
-		print("            - galat hak akses: mintakan GRANT untuk akun aplikasi,")
-		print("              migrations/0009 LANGKAH 2.")
+		print("            - ORA-00942: POOLDATA.V_LST_DET_TYPE_DOC atau")
+		print("              POOLDATA.V_LST_DOC_TYPE tidak ada di basis data entitas ini.")
+		print("            - galat hak akses: mintakan GRANT SELECT untuk akun aplikasi.")
 		print("            Selama belum selesai, layarnya tidak dapat dipakai terhadap")
 		print("            Oracle; bagian lain tetap jalan.")
 		return
@@ -1150,28 +1116,19 @@ func checkDetailDocumentType(
 	// berbentuk itu, kueri ini gagal dengan ORA-00904.
 	if err := repo.CheckWriteTable(ctx); err != nil {
 		print("  [GAGAL] tabel dasar Daftar Detail Tipe Dokumen tidak dapat ditulis: %v", err)
-		print("            DAFTARNYA tetap dapat dimuat. Yang terblokir adalah MEMBUKA")
-		print("            SATU BARIS dan MENYIMPAN — keduanya menyentuh tabel anaknya.")
-		print("")
-		print("            Sebabnya sudah diverifikasi ke katalog Oracle 2026-09-23:")
-		print("            POOLDATA.LST_DET_TYPE_DOC sudah lengkap kolomnya, tetapi")
-		print("            POOLDATA.LST_DET_TYPE_DOC_BISNIS BELUM ADA — daftar bisnis")
-		print("            masih hidup di dalam JSON_DATA induknya, dan view anaknya")
-		print("            adalah JSON_TABLE atas kolom itu.")
-		print("")
-		print("            Yang harus diminta ke DBA ada di migrations/0009 LANGKAH 1:")
-		print("            membuat tabel anaknya, memindahkan isi JSON yang sudah ada,")
-		print("            lalu mendefinisikan ulang V_LST_DET_TYPE_DOC_BISNIS agar")
-		print("            membacanya. Sampai itu selesai, layarnya BACA-SAJA.")
+		print("            DAFTARNYA tetap dapat dimuat. Yang terblokir hanya MENYIMPAN.")
+		print("            POOLDATA.LST_DET_TYPE_DOC sudah diverifikasi lengkap kolomnya")
+		print("            pada 2026-09-23, jadi sebab yang paling mungkin adalah hak")
+		print("            akses: mintakan GRANT INSERT, UPDATE untuk akun aplikasi.")
 	}
 
-	// Keempat master rujukan diperiksa terakhir, dan kegagalannya hanya CATATAN: keempat
-	// kodenya boleh diketik sendiri — layar lama pun memakai autocomplete yang menerima
-	// ketikan di luar daftar — sehingga yang hilang hanya kenyamanan memilih.
+	// Master rujukan diperiksa terakhir, dan kegagalannya CATATAN — bukan kegagalan.
+	// Detail Dokumen tetap dapat disunting dan disimpan; yang kosong hanya dropdown ID
+	// Tipe Dokumen.
 	if err := reference.CheckTable(ctx); err != nil {
-		print("  [catat] master rujukan Daftar Detail Tipe Dokumen tidak dapat dibaca: %v", err)
-		print("            Layar tetap dapat dipakai; yang hilang hanya SARAN pada isian")
-		print("            Tipe Dokumen, Dokumen kolom ID, Objek Dokumen, dan ID Bisnis.")
+		print("  [catat] master tipe dokumen tidak dapat dibaca: %v", err)
+		print("            Layar tetap dapat dipakai; yang kosong hanya isi dropdown")
+		print("            ID Tipe Dokumen.")
 	}
 }
 
@@ -1182,30 +1139,51 @@ func checkDocumentObject(
 	print func(string, ...any),
 ) {
 	if err := repo.CheckTable(ctx); err != nil {
-		print("  [BELUM] Daftar Objek Dokumen belum siap: %v", err)
-		print("            Objeknya disiapkan migrasi 0008_daftar_objek_dokumen, yang ditulis")
-		print("            sebagai DAFTAR PERTANYAAN untuk DBA — bukan DDL yang tinggal")
-		print("            dijalankan. Bagian 0-nya menanyakan tiga nama yang masih dugaan:")
-		print("            POOLDATA.LST_DOC_OBJ, POOLDATA.SET_LST_DOC_OBJ, dan")
-		print("            POOLDATA.LST_DOC_OBJ_BUSINESS. Selama belum dijawab, layarnya")
-		print("            tidak dapat dipakai terhadap Oracle.")
+		print("  [GAGAL] Daftar Objek Dokumen belum siap: %v", err)
+		print("            Yang dipakai modul ini hanya POOLDATA.LST_DOC_OBJ beserta kolom")
+		print("            ID, KET_DOC_OBJ, OLD_ID, dan JSON_DATA. Keempatnya SUDAH ADA di")
+		print("            basis data, sehingga kegagalan di sini menyangkut HAK AKSES —")
+		print("            bukan migrasi yang belum dijalankan.")
 		return
 	}
 
 	list, err := repo.List(ctx)
 	if err != nil {
-		print("  [GAGAL] POOLDATA.V_LST_DOC_OBJ tidak dapat dibaca isinya: %v", err)
+		print("  [GAGAL] POOLDATA.LST_DOC_OBJ tidak dapat dibaca isinya: %v", err)
 		return
 	}
-	print("  [ok]    POOLDATA.V_LST_DOC_OBJ dapat dibaca: %d objek dokumen", len(list))
+
+	// Baris tanpa nama dihitung dan dilaporkan, karena itulah gejala yang paling mungkin
+	// dilaporkan pengguna — dan sebabnya ada di DATA, bukan di aplikasi.
+	//
+	// Isi master ini tinggal di JSON_DATA; kolom KET_DOC_OBJ kosong pada seluruh baris
+	// warisan. Modul membaca keduanya, sehingga nama tetap tampil. Baris yang masih kosong
+	// di KEDUANYA memang tidak punya nama di mana pun.
+	tanpaNama := 0
+	for _, row := range list {
+		if strings.TrimSpace(row.Description) == "" {
+			tanpaNama++
+		}
+	}
+
+	print("  [ok]    POOLDATA.LST_DOC_OBJ dapat dibaca: %d objek dokumen", len(list))
+	if tanpaNama > 0 {
+		print("  [catat] %d baris tanpa nama di kolom MAUPUN di dokumen JSON-nya", tanpaNama)
+		print("            Layar menampilkannya sebagai baris kosong. Itu isi datanya,")
+		print("            bukan cacat pembacaan.")
+	}
 
 	// Master bisnis diperiksa terpisah: ia milik GISFW (`D-03`) dan hak bacanya diminta
-	// sendiri ke DBA. Kegagalannya TIDAK membuat layar tidak dapat dipakai — nama bisnis
-	// boleh diketik sendiri — sehingga ia dilaporkan sebagai catatan, bukan sebagai gagal.
+	// sendiri ke DBA.
+	//
+	// Kegagalannya MENGHALANGI penyimpanan, dan karena itu dilaporkan sebagai GAGAL — bukan
+	// sebagai catatan seperti pada modul Master COL Simas Online. Pemetaan di sini hanya
+	// menyimpan ID bisnis, sehingga tanpa master tidak ada cara mengubah nama yang diketik
+	// pengguna menjadi sesuatu yang dapat disimpan.
 	if err := business.CheckTable(ctx); err != nil {
-		print("  [catat] POOLDATA.BUSINESS tidak dapat dibaca: %v", err)
-		print("            Layar tetap dapat dipakai; yang hilang hanya SARAN nama bisnis,")
-		print("            karena namanya memang boleh diketik sendiri.")
+		print("  [GAGAL] POOLDATA.BUSINESS tidak dapat dibaca: %v", err)
+		print("            Objek dokumen TANPA bisnis tetap dapat disimpan; yang memakai")
+		print("            isian Bisnis akan ditolak sampai hak bacanya diberikan.")
 	}
 }
 
@@ -1324,6 +1302,26 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 			)
 			return page.Total, err
 		}},
+
+		// Jalur TULIS modul Inbox Compliance diperiksa terpisah dari jalur bacanya.
+		//
+		// Kegagalannya berakibat berbeda, sehingga melaporkannya sebagai satu baris akan
+		// menyesatkan: tanpa sequence, kedua tab tetap terbaca utuh dan yang gagal hanya
+		// tombol Kirim ke Post Audit. Baris ini yang menemukannya saat start — kalau
+		// tidak, petugas Compliance yang menemukannya saat menekan tombol, dengan galat
+		// Oracle yang berbunyi "sequence does not exist" dan tidak menyebut sebabnya.
+		{"Inbox Compliance (kirim ke Post Audit)",
+			inboxCompliance.CheckPostAuditWritable, nil},
+
+		// Tabel keputusan form Compliance Checker, dibuat migrasi 0012.
+		//
+		// Baris tersendiri dengan alasan yang sama seperti di atas: tanpa tabel ini kedua
+		// tab tetap terbaca utuh dan daftar tetap tampil — yang gagal hanya tombol
+		// "Simpan Data" pada form, dan galatnya baru muncul setelah petugas mengisi
+		// seluruh form lalu menekan tombolnya.
+		{"Inbox Compliance (simpan keputusan)",
+			inboxCompliance.CheckDecisionWritable, nil},
+
 		// Kueri daftarnya ikut dijalankan, dan di modul ini pembedaan itu justru paling
 		// berharga: kueri grid aslinya TIDAK ADA di export (`R-16`) dan disusun ulang dari
 		// tiga rule sekelas — lihat kepala inboxservicecenter.sql. Nama kolom yang meleset
@@ -4234,15 +4232,17 @@ func checkInboxSurvey(
 		}
 		return "belum"
 	}
-	print("  [catat] Keempat kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:")
-	print("            ADJUSTERACCEPT %s · ADJUSTERPIC %s · REFNO %s · PYSTATUSWORK %s",
-		ada(columns.Accept), ada(columns.Appointment),
-		ada(columns.Reference), ada(columns.WorkStatus))
+	print("  [catat] Kelima kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:")
+	print("            ADJUSTERACCEPT %s · PYSTATUSWORK %s · REFNO %s",
+		ada(columns.Accept), ada(columns.WorkStatus), ada(columns.Reference))
+	print("            ADJUSTERPIC %s · RESCHEDULELOCATION %s",
+		ada(columns.AdjusterPIC), ada(columns.SurveyLocation))
 
 	if !columns.All() {
 		print("            Yang belum ada menahan: tab Outstanding/ALL/Invoice (ADJUSTERACCEPT),")
-		print("            tab Close dan penyaring berkas tutup (PYSTATUSWORK), kolom")
-		print("            Appointment No (ADJUSTERPIC), kolom Reference No (REFNO).")
+		print("            tab Close dan penyaring berkas tutup (PYSTATUSWORK), setengah kotak")
+		print("            cari dan kolom Reference No (REFNO), kolom PIC Loss Adjuster")
+		print("            (ADJUSTERPIC), dan kolom Location (RESCHEDULELOCATION).")
 		print("            Perubahan skema menempuh D-63 — lihat")
 		print("            docs/permintaan-kolom-t-surveyorlist.md")
 	}
@@ -4265,7 +4265,20 @@ func checkInboxSurvey(
 
 	print("  [catat] Keterisian, dari %d baris: ADJUSTERACCEPT %d · REFNO %d · PYSTATUSWORK %d",
 		filled.TotalRows, filled.Accept, filled.Reference, filled.WorkStatus)
+	print("            ADJUSTERPIC %d · RESCHEDULELOCATION %d",
+		filled.AdjusterPIC, filled.SurveyLocation)
 
+	if filled.AdjusterPIC == 0 {
+		print("  [BELUM] ADJUSTERPIC ADA tetapi SELURUHNYA kosong")
+		print("            Kolom PIC Loss Adjuster tetap menggambar SURVEYOR_NAME sebagai")
+		print("            pengganti. Diukur 2026-10-03: pada 1.796 berkas adjuster eksternal")
+		print("            itu ORANG YANG BERBEDA, bukan nama lain untuk orang yang sama.")
+	}
+	if filled.SurveyLocation == 0 {
+		print("  [BELUM] RESCHEDULELOCATION ADA tetapi SELURUHNYA kosong")
+		print("            Kolom Location tetap menggambar LOCATION_SURVEY sebagai pengganti —")
+		print("            berbeda dari Pega pada 660 dari 2.427 berkas.")
+	}
 	if filled.WorkStatus == 0 {
 		print("  [BELUM] PYSTATUSWORK ADA tetapi SELURUHNYA kosong")
 		print("            Tab Close belum dapat dihitung, dan berkas survei yang sudah ditutup")
@@ -4303,12 +4316,11 @@ func checkInboxSurvey(
 	print("            antrean kosong.")
 }
 
-// checkInboxRCL memastikan tabel DAN tiga kolom yang dibaca layar Inbox RCL terjangkau.
+// checkInboxRCL memastikan tabel dan kolom yang dibaca layar Inbox RCL terjangkau.
 //
-// Sumbernya POOLDATA.T_CLAIMLIST_ADMIN, bukan tabel Pega (keputusan Work Owner 2026-09-27).
-// Dua langkah, karena sebab gagalnya berbeda: hak baca, atau migrasi
-// `0012_claimlist_admin_rcl` yang belum dijalankan DBA. Dua dari tiga kolomnya PENYARING —
-// tanpanya layar tidak dapat dipakai terhadap Oracle sama sekali.
+// Sumbernya POOLDATA.TC_PNC_PUCL (keputusan Work Owner 2026-10-05) dan POOLDATA.M_LOGIN_PNC.
+// Dua langkah, karena sebab gagalnya berbeda: hak baca, atau kolom ALASAN_DOKTER_REJECT_RCL
+// yang ditambahkan Work Owner pada 2026-10-05.
 func checkInboxRCL(
 	ctx context.Context,
 	repo *inboxrclsql.Repo,
@@ -4316,23 +4328,18 @@ func checkInboxRCL(
 ) {
 	if err := repo.CheckTables(ctx); err != nil {
 		print("  [BELUM] Tabel Inbox RCL tidak dapat dibaca: %v", err)
-		print("            Dibutuhkan hak SELECT atas POOLDATA.T_CLAIMLIST_ADMIN dan")
-		print("            POOLDATA.T_ACCESS_GROUP_PNC.")
+		print("            Dibutuhkan hak SELECT atas POOLDATA.TC_PNC_PUCL dan POOLDATA.M_LOGIN_PNC.")
 		return
 	}
-	print("  [ok]    Tabel Inbox RCL dapat dibaca (T_CLAIMLIST_ADMIN, T_ACCESS_GROUP_PNC)")
+	print("  [ok]    Tabel Inbox RCL dapat dibaca (TC_PNC_PUCL, M_LOGIN_PNC)")
 
 	if err := repo.CheckColumns(ctx); err != nil {
-		print("  [BELUM] Kolom Inbox RCL belum ada di T_CLAIMLIST_ADMIN: %v", err)
-		print("            Jalankan migrations/0012_claimlist_admin_rcl.up.sql (DBA, D-63):")
-		print("            TANGGALANALYSTSENDRCL_1, NAMADOKTERRCL_1, KOMENTARANALISATOR_1.")
-		print("            Setelah itu proses pengisi T_CLAIMLIST_ADMIN harus mengisinya —")
-		print("            dua di antaranya `unexposed` di Pega dan hanya ada di blob.")
+		print("  [BELUM] Kolom ALASAN_DOKTER_REJECT_RCL belum ada di TC_PNC_PUCL: %v", err)
 		return
 	}
-	print("  [ok]    Kolom TANGGALANALYSTSENDRCL_1, NAMADOKTERRCL_1, KOMENTARANALISATOR_1 ada")
-	print("            Catatan: antrean disaring dengan identitas LAMA pemanggil")
-	print("            (T_ACCESS_GROUP_PNC, grup Administrators/PNCKomite/CaseManager).")
+	print("  [ok]    Kolom ALASAN_DOKTER_REJECT_RCL ada")
+	print("            Catatan: antrean disaring dengan LOGIN_ID pemanggil yang aktif di")
+	print("            POOLDATA.M_LOGIN_PNC, RCL_PUCL 1 (RCL) atau 3 (MSIG).")
 }
 
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.

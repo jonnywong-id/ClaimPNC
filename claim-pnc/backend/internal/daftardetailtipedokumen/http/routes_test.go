@@ -246,32 +246,12 @@ func TestRoutesRequireASession(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, response.StatusCode)
 }
 
-// Daftar TIDAK membawa aturan bisnis; satu baris membawanya.
-//
-// Uji ini mengunci perbedaan yang paling mudah dilanggar tanpa disadari: layar yang
-// memakai baris dari daftar untuk mengisi form akan tampak seolah seluruh lini bisnisnya
-// sudah dihapus — dan menyimpannya benar-benar menghapusnya.
-func TestListOmitsBusinessRulesButGetCarriesThem(t *testing.T) {
-	server := newTestServer(t)
-
-	_, list := server.call(t, http.MethodGet, route, "ASM", "")
-	rows := list["detail_tipe_dokumen"].([]any)
-	first := rows[0].(map[string]any)
-	require.Equal(t, "100001", first["id"])
-	require.Empty(t, first["bisnis"])
-
-	_, single := server.call(t, http.MethodGet, route+"/100001", "ASM", "")
-	detail := single["detail_tipe_dokumen"].(map[string]any)
-	businesses := detail["bisnis"].([]any)
-	require.Len(t, businesses, 2)
-}
-
 // SATU keterangan hasil join, DUA keterangan tersimpan — dan pembedaannya yang diuji.
 //
-// `nama_tipe_dokumen` dan `nama_bisnis` tidak pernah ada di halaman `TempDTDoc`, sehingga
-// keduanya mustahil tersimpan dan pasti hasil join. Kedua keterangan lain ADA di halaman
-// itu, sehingga keduanya tersimpan di kolomnya sendiri.
-func TestOnlyDocumentTypeNameAndBusinessNameAreJoined(t *testing.T) {
+// `nama_tipe_dokumen` tidak pernah ada di halaman `TempDTDoc`, sehingga ia mustahil
+// tersimpan dan pasti hasil join. Kedua keterangan lain ADA di halaman itu, sehingga
+// keduanya tersimpan di kolomnya sendiri.
+func TestOnlyTheDocumentTypeNameIsJoined(t *testing.T) {
 	server := newTestServer(t)
 
 	_, single := server.call(t, http.MethodGet, route+"/100001", "ASM", "")
@@ -285,9 +265,8 @@ func TestOnlyDocumentTypeNameAndBusinessNameAreJoined(t *testing.T) {
 	require.Equal(t, "Contoh Golongan A", detail["keterangan_penyebab_kerugian"])
 	require.Equal(t, "Polis Asli", detail["keterangan_objek_dokumen"])
 
-	businesses := detail["bisnis"].([]any)
-	first := businesses[0].(map[string]any)
-	require.NotEmpty(t, first["nama_bisnis"])
+	// Grid lini bisnis tidak ada di layar ini, dan tidak ada pula di kontraknya.
+	require.NotContains(t, detail, "bisnis")
 }
 
 // Keterangan yang diketik bebas — tanpa kode — TERSIMPAN dan terbaca kembali utuh.
@@ -306,8 +285,7 @@ func TestFreeTypedDescriptionSurvivesWithoutACode(t *testing.T) {
 		"keterangan_penyebab_kerugian": "Keterangan yang tidak ada di master",
 		"id_objek_dokumen": "",
 		"keterangan_objek_dokumen": "Objek yang tidak ada di master",
-		"resiko": "",
-		"bisnis": []
+		"resiko": ""
 	}`
 	response, content := server.call(t, http.MethodPost, route, "ASM", body)
 
@@ -343,11 +321,6 @@ func TestRowsWithMissingMasterReferencesAreStillReturned(t *testing.T) {
 	require.Equal(t, "Objek Warisan Tanpa Master", detail["keterangan_objek_dokumen"])
 	require.Equal(t, "Keterangan Warisan Tanpa Master", detail["keterangan_penyebab_kerugian"])
 
-	businesses := detail["bisnis"].([]any)
-	require.Len(t, businesses, 1)
-	require.Equal(t, "099", businesses[0].(map[string]any)["id_bisnis"])
-	// Nama bisnis dijoin -> kosong.
-	require.Equal(t, "", businesses[0].(map[string]any)["nama_bisnis"])
 }
 
 // Penambahan menerbitkan ID di server dan mengembalikannya.
@@ -362,8 +335,7 @@ func TestCreateIssuesTheIDOnTheServer(t *testing.T) {
 		"keterangan_penyebab_kerugian": "Contoh Golongan E",
 		"id_objek_dokumen": "10001",
 		"keterangan_objek_dokumen": "KTP Tertanggung",
-		"resiko": "0",
-		"bisnis": [{"id_bisnis": "003", "status_wajib": true, "minimum_dokumen": 1}]
+		"resiko": "0"
 	}`
 	response, content := server.call(t, http.MethodPost, route, "ASM", body)
 
@@ -374,43 +346,11 @@ func TestCreateIssuesTheIDOnTheServer(t *testing.T) {
 	require.Equal(t, "Dokumen Komite", detail["nama_tipe_dokumen"])
 }
 
-// Penyuntingan MENGGANTI seluruh daftar bisnis, bukan menambahinya.
-//
-// Grid di form memang mengirim susunan akhir yang dikehendaki petugas, dan tidak ada satu
-// pun penanda di sana yang menyatakan baris mana yang baru, mana yang berubah, dan mana
-// yang dibuang.
-func TestUpdateReplacesTheWholeBusinessList(t *testing.T) {
-	server := newTestServer(t)
-
-	body := `{
-		"id_tipe_dokumen": "10001",
-		"detail_dokumen": "Formulir Laporan Kerugian",
-		"status_tertanggung": "Tertanggung",
-		"id_penyebab_kerugian": "1001",
-		"keterangan_penyebab_kerugian": "Contoh Golongan A",
-		"id_objek_dokumen": "10002",
-		"keterangan_objek_dokumen": "Polis Asli",
-		"resiko": "0",
-		"bisnis": [{"id_bisnis": "005", "status_wajib": false, "minimum_dokumen": 3}]
-	}`
-	response, content := server.call(t, http.MethodPut, route+"/100001", "ASM", body)
-
-	require.Equal(t, http.StatusOK, response.StatusCode)
-	detail := content["detail_tipe_dokumen"].(map[string]any)
-	businesses := detail["bisnis"].([]any)
-	require.Len(t, businesses, 1)
-
-	only := businesses[0].(map[string]any)
-	require.Equal(t, "005", only["id_bisnis"])
-	require.Equal(t, false, only["status_wajib"])
-	require.Equal(t, float64(3), only["minimum_dokumen"])
-}
-
 // Menyunting baris yang tidak ada dijawab 404 dengan kode yang dikenali frontend.
 func TestUpdateOfAMissingRowIsNotFound(t *testing.T) {
 	server := newTestServer(t)
 
-	body := `{"id_tipe_dokumen":"","detail_dokumen":"x","status_tertanggung":"","id_penyebab_kerugian":"","id_objek_dokumen":"","resiko":"","bisnis":[]}`
+	body := `{"id_tipe_dokumen":"","detail_dokumen":"x","status_tertanggung":"","id_penyebab_kerugian":"","id_objek_dokumen":"","resiko":""}`
 	response, content := server.call(t, http.MethodPut, route+"/999999", "ASM", body)
 
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
@@ -429,8 +369,7 @@ func TestOverlongFieldsAreRejectedWithEveryViolation(t *testing.T) {
 		"status_tertanggung": "` + tooLongStatus + `",
 		"id_penyebab_kerugian": "",
 		"id_objek_dokumen": "",
-		"resiko": "",
-		"bisnis": []
+		"resiko": ""
 	}`
 	response, content := server.call(t, http.MethodPost, route, "ASM", body)
 
@@ -453,16 +392,17 @@ func TestUnknownFieldsAreRejected(t *testing.T) {
 }
 
 // Daftar pilihan membawa keempat master sekaligus.
-func TestReferenceListCarriesAllFourMastersAtOnce(t *testing.T) {
+func TestReferenceListCarriesTheDocumentTypeMaster(t *testing.T) {
 	server := newTestServer(t)
 
 	response, content := server.call(t, http.MethodGet, route+"/pilihan", "ASM", "")
 
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, content["tipe_dokumen"].([]any), 6)
-	require.Len(t, content["penyebab_kerugian"].([]any), 10)
-	require.Len(t, content["objek_dokumen"].([]any), 4)
-	require.Len(t, content["bisnis"].([]any), 5)
+	// Ketiga master lain tidak lagi dikirim: tidak ada isian yang memakainya.
+	require.NotContains(t, content, "penyebab_kerugian")
+	require.NotContains(t, content, "objek_dokumen")
+	require.NotContains(t, content, "bisnis")
 	require.Empty(t, content["tidak_tersedia"])
 	require.Equal(t, "ASM", content["portal"])
 }
@@ -483,10 +423,10 @@ func TestReferenceRouteIsNotSwallowedByTheIDRoute(t *testing.T) {
 
 // Satu master yang gagal dibaca TIDAK menggagalkan seluruh daftar pilihan.
 //
-// Keempat kode boleh diketik sendiri, sehingga daftar yang gagal dimuat hanya
-// menghilangkan kenyamanan memilih — bukan kemampuan menyimpan. Yang hilang DISEBUTKAN,
-// bukan disembunyikan sebagai daftar kosong yang terbaca "masternya memang kosong".
-func TestOneBrokenMasterDoesNotBreakTheWholeChoiceList(t *testing.T) {
+// Kode tipe dokumen tetap tersimpan apa adanya, sehingga master yang gagal dibaca hanya
+// mengosongkan dropdown — bukan menutup form. Yang hilang DISEBUTKAN, bukan
+// disembunyikan sebagai daftar kosong yang terbaca "masternya memang kosong".
+func TestABrokenMasterEmptiesTheListButKeepsTheFormUsable(t *testing.T) {
 	server := newTestServer(t)
 	server.reference.SetError(errors.New("master tidak dapat dibaca"))
 
@@ -494,7 +434,7 @@ func TestOneBrokenMasterDoesNotBreakTheWholeChoiceList(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.Empty(t, content["tipe_dokumen"])
-	require.Len(t, content["tidak_tersedia"].([]any), 4)
+	require.Equal(t, []any{"tipe_dokumen"}, content["tidak_tersedia"])
 }
 
 // Penyimpanan tetap berjalan meski daftar pilihannya sedang tidak dapat dibaca.
@@ -508,8 +448,7 @@ func TestSavingStillWorksWhileTheChoiceListIsBroken(t *testing.T) {
 		"status_tertanggung": "",
 		"id_penyebab_kerugian": "",
 		"id_objek_dokumen": "",
-		"resiko": "",
-		"bisnis": []
+		"resiko": ""
 	}`
 	response, _ := server.call(t, http.MethodPost, route, "ASM", body)
 

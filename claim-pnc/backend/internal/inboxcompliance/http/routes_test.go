@@ -2,6 +2,7 @@ package inboxcompliancehttp_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -79,8 +80,14 @@ func newTestServer(t *testing.T) *testServer {
 		// tabelnya memang tidak menyimpan keduanya.
 		memory.Row{
 			Tab: inboxcompliance.TabPostAudit,
+			// Nomornya berbentuk `CPL-nn`, bukan karangan seperti `PNC-PA-1`.
+			//
+			// Bentuk itu menentukan hasil uji, bukan sekadar enak dibaca: tab ini
+			// diurutkan sebagai TEKS, sehingga nomor contoh yang berawalan huruf lain
+			// akan menghasilkan urutan yang tidak mungkin terjadi pada data sebenarnya —
+			// dan ujinya akan membuktikan sesuatu yang tidak ada.
 			Item: inboxcompliance.WorkItem{
-				CaseID:            "PNC-PA-1",
+				CaseID:            "CPL-19",
 				Reference:         "ASM-FW-GCNMFW-WORK PNC-PA-1",
 				PolicyNumber:      "00.000.0000.00009",
 				InsuredName:       "Tertanggung Contoh Sembilan",
@@ -123,8 +130,23 @@ func newTestServer(t *testing.T) *testServer {
 	)
 
 	handler := inboxcompliancehttp.NewHandler(inboxcompliancehttp.Options{
-		Service:             service,
-		Logger:              logger,
+		Service: service,
+		Logger:  logger,
+
+		// Jembatan ke modul auth dirakit sama seperti cmd/claimpnc, bukan dibiarkan nil.
+		//
+		// Dibiarkan nil, seluruh jalur tulis akan dijawab 409 "pemanggil tidak dikenal" —
+		// dan ujinya akan lulus atas penolakan itu, bukan atas pengirimannya. Ini satu-
+		// satunya bagian rakitan yang BEDA dari jalur baca, sehingga ia yang paling mudah
+		// tertinggal saat modul ini dipasang di tempat lain.
+		GetCaller: func(ctx context.Context) (inboxcompliancehttp.Caller, bool) {
+			base, ok := authhttp.CallerFromContext(ctx)
+			if !ok {
+				return inboxcompliancehttp.Caller{}, false
+			}
+			return inboxcompliancehttp.Caller{Login: base.User.Login}, true
+		},
+
 		WriteJSON:           inboxcompliancehttp.JSONWriter(writeResponse),
 		FallbackErrorWriter: inboxcompliancehttp.ErrorWriter(writeError),
 	})
@@ -286,7 +308,7 @@ func TestTabPostAuditDilayani(t *testing.T) {
 
 	first, ok := rows[0].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "PNC-PA-1", first["nomor_case"])
+	require.Equal(t, "CPL-19", first["nomor_case"])
 	require.Equal(t, "Contoh catatan compliance", first["catatan_compliance"])
 	require.NotNil(t, first["tanggal_kirim_post_audit"])
 
@@ -294,6 +316,115 @@ func TestTabPostAuditDilayani(t *testing.T) {
 	// Compliance — sehingga Aging-nya kosong, bukan "0 hours ago".
 	require.Empty(t, first["aging"])
 	require.Nil(t, first["aging_jam"])
+}
+
+// post mengirim satu permintaan tulis, dengan badan JSON apa adanya.
+//
+// Terpisah dari call karena jalur tulis punya tiga hal yang tidak dimiliki jalur baca:
+// kata kerja POST, badan permintaan, dan pemanggil yang harus dikenali. Memakai satu
+// pembantu untuk keduanya akan menyembunyikan ketiganya.
+func (p *testServer) post(
+	t *testing.T, path, portalAlias, token, body string,
+) (*http.Response, map[string]any) {
+	t.Helper()
+
+	request, err := http.NewRequest(
+		http.MethodPost, p.server.URL+path, strings.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
+	if portalAlias != "" {
+		request.Header.Set(portalhttp.HeaderPortal, portalAlias)
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = response.Body.Close() })
+
+	content := map[string]any{}
+	_ = json.NewDecoder(response.Body).Decode(&content)
+	return response, content
+}
+
+const postAuditRoute = route + "/post-audit"
+
+// Pengiriman ke Post Audit berhasil lewat HTTP, dan hasilnya BENAR-BENAR tampil di tabnya.
+//
+// Uji ini sengaja menempuh dua permintaan, bukan satu. Permintaan pertama saja hanya
+// membuktikan handler-nya menjawab 201; yang dipertaruhkan sebenarnya adalah apakah baris
+// itu tampil ketika petugas membuka tab Post Audit — dan di antara keduanya ada pemetaan
+// DTO, pemilihan tab, dan pengurutan yang masing-masing bisa menjatuhkannya tanpa satu pun
+// galat muncul.
+func TestKirimKePostAuditTampilDiTabnya(t *testing.T) {
+	server := newTestServer(t)
+
+	response, content := server.post(t, postAuditRoute, "ASM", server.token,
+		`{"referensi":"ASM-FW-GCNMFW-WORK PNC-900101","catatan":"Dokumen lengkap"}`)
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+
+	// Nomornya berasal dari rentang aplikasi baru, bukan dari rentang terbitan Pega.
+	require.Equal(t, "CPL-100001", content["nomor_case"])
+
+	// Lalu tabnya dibuka seperti petugas membukanya.
+	listing, listed := server.call(
+		t, route+"?tab="+inboxcompliance.TabPostAudit, "ASM", server.token)
+	require.Equal(t, http.StatusOK, listing.StatusCode)
+
+	rows, ok := listed["baris"].([]any)
+	require.True(t, ok)
+	require.Len(t, rows, 2, "baris contoh ditambah satu baris yang baru dikirim")
+
+	// Baris yang baru dikirim TIDAK berada di paling atas.
+	//
+	// Pengurutannya teks menurun, meniru Pega, dan `CPL-100001` lebih kecil daripada
+	// `CPL-19` sebagai teks — perbandingannya berhenti pada `0` lawan `9`. Urutan inilah
+	// yang akan dilihat petugas, dan ia ditulis di sini supaya tidak "dirapikan" menjadi
+	// urutan angka, yang akan menyimpang dari Pega.
+	urutan := []string{}
+	for _, row := range rows {
+		urutan = append(urutan, row.(map[string]any)["nomor_case"].(string))
+	}
+	require.Equal(t, []string{"CPL-19", "CPL-100001"}, urutan)
+
+	baru, ok := rows[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "ASM-FW-GCNMFW-WORK PNC-900101", baru["no_klaim"])
+	require.Equal(t, "Tertanggung Contoh Satu", baru["nama_tertanggung"])
+	require.Equal(t, "00.000.0000.00001", baru["no_polis"])
+	require.Equal(t, "Dokumen lengkap", baru["catatan_compliance"])
+	require.NotEmpty(t, baru["tanggal_kirim_post_audit"])
+}
+
+// Klaim yang TIDAK sedang menunggu di antrean Compliance ditolak, bukan dikirim diam-diam.
+func TestKirimKePostAuditMenolakKlaimDiLuarAntrean(t *testing.T) {
+	server := newTestServer(t)
+
+	response, content := server.post(t, postAuditRoute, "ASM", server.token,
+		`{"referensi":"ASM-FW-GCNMFW-WORK PNC-TIDAK-ADA"}`)
+
+	require.Equal(t, http.StatusConflict, response.StatusCode)
+	require.NotEmpty(t, content["kode"])
+}
+
+// Jalur tulis berada di balik sesi dan di balik portal, sama seperti jalur baca.
+//
+// Keduanya diuji di sini pula, tidak dianggap sudah tercakup uji jalur baca: rute tulis
+// dipasang lewat pemanggilan Mount yang sama, tetapi menyimpang satu baris saja sudah
+// cukup membuatnya terbuka — dan pada jalur yang MENULIS ke basis data entitas, akibatnya
+// bukan kebocoran bacaan melainkan penulisan lintas badan hukum (`R-20`).
+func TestKirimKePostAuditMenuntutSesiDanPortal(t *testing.T) {
+	server := newTestServer(t)
+	body := `{"referensi":"ASM-FW-GCNMFW-WORK PNC-900101"}`
+
+	tanpaSesi, _ := server.post(t, postAuditRoute, "ASM", "", body)
+	require.Equal(t, http.StatusUnauthorized, tanpaSesi.StatusCode)
+
+	tanpaPortal, _ := server.post(t, postAuditRoute, "", server.token, body)
+	require.NotEqual(t, http.StatusCreated, tanpaPortal.StatusCode,
+		"permintaan tanpa portal TIDAK boleh jatuh ke portal utama (`R-20`)")
 }
 
 func TestTabTidakDikenalDijawab422(t *testing.T) {

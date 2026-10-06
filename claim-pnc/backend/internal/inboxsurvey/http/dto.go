@@ -88,6 +88,12 @@ type ColumnDTO struct {
 	// Dengan `omitempty`, kolom tersedia dan kolom yang field-nya lupa diisi akan terbaca
 	// sama oleh layar, dan layar akan menandai seluruh kolom sebagai belum tersedia.
 	Tersedia bool `json:"tersedia"`
+
+	// Pengganti menyatakan kolom ini terisi, tetapi dari kolom yang BERBEDA dari Pega.
+	//
+	// Berbeda dari Tersedia, ia memakai `omitempty`: kolom yang setara adalah keadaan
+	// normal, dan menuliskannya pada sepuluh dari tiga belas kolom hanya menambah derau.
+	Pengganti bool `json:"pengganti,omitempty"`
 }
 
 // TabDTO adalah satu tab beserta judulnya.
@@ -224,6 +230,7 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 			Judul:      c.Title,
 			Keterangan: c.Note,
 			Tersedia:   c.Available,
+			Pengganti:  c.Substitute,
 		})
 	}
 
@@ -322,7 +329,7 @@ func toTaskDTO(task inboxsurvey.SurveyTask, now time.Time, loc *time.Location) T
 		SurveiID:        task.SurveyID,
 		KlaimID:         task.ClaimID,
 		IndexSurvei:     task.SurveyIndex,
-		AppointmentNo:   task.AppointmentNumber,
+		AppointmentNo:   task.AppointmentNo(),
 		ReferenceNo:     task.ReferenceNumber,
 		ClaimNo:         task.ClaimNumber,
 		PolicyNo:        task.PolicyNumber,

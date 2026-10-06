@@ -22,20 +22,12 @@ import (
 
 var errBoom = errors.New("basis data mati")
 
-// coverageFailingPlanRepo membaca plan dengan normal tetapi menggagalkan daftar jaminan.
-type coverageFailingPlanRepo struct{ *memory.PlanRepo }
-
-func (coverageFailingPlanRepo) ListCoverages(context.Context) ([]daftardetaildokumentravel.CoverageOption, error) {
-	return nil, errBoom
-}
-
 // directHandler merakit handler tanpa middleware, supaya cabang penjaga di dalam handler
 // dapat diuji langsung.
 type directHandler struct {
 	handler       *Handler
 	repo          *memory.Repo
 	documents     *memory.DocumentRepo
-	plans         daftardetaildokumentravel.PlanRepo
 	unknownErrors []error
 }
 
@@ -44,12 +36,10 @@ func newDirectHandler(t *testing.T) *directHandler {
 	d := &directHandler{
 		repo:      memory.NewRepo(memory.SampleList()...),
 		documents: memory.NewDocumentRepo(memory.SampleDocumentList()...),
-		plans:     memory.NewPlanRepo(memory.SamplePlanList(), memory.SampleCoverageList()),
 	}
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector:     func(string) (daftardetaildokumentravel.Repo, error) { return d.repo, nil },
 		DocumentSelector: func(string) (daftardetaildokumentravel.DocumentRepo, error) { return d.documents, nil },
-		PlanSelector:     func(string) (daftardetaildokumentravel.PlanRepo, error) { return d.plans, nil },
 	})
 	require.NoError(t, err)
 
@@ -94,7 +84,7 @@ func TestHandlersWithoutActivePortalAreRejected(t *testing.T) {
 	d := newDirectHandler(t)
 	handlers := map[string]http.HandlerFunc{
 		"list": d.handler.List, "get": d.handler.Get, "create": d.handler.Create,
-		"update": d.handler.Update, "documents": d.handler.Documents, "plans": d.handler.Plans,
+		"update": d.handler.Update, "documents": d.handler.Documents,
 	}
 	for name, h := range handlers {
 		t.Run(name, func(t *testing.T) {
@@ -111,7 +101,6 @@ func TestRepoFailuresAreForwardedToSharedErrorWriter(t *testing.T) {
 	d := newDirectHandler(t)
 	d.repo.SetError(errBoom)
 	d.documents.SetError(errBoom)
-	d.plans.(*memory.PlanRepo).SetError(errBoom)
 
 	calls := map[string]struct {
 		h http.HandlerFunc
@@ -122,7 +111,6 @@ func TestRepoFailuresAreForwardedToSharedErrorWriter(t *testing.T) {
 		"create":    {d.handler.Create, request(http.MethodPost, `{"nama_dokumen":"x"}`, true, "")},
 		"update":    {d.handler.Update, request(http.MethodPut, `{"nama_dokumen":"x"}`, true, "00001")},
 		"documents": {d.handler.Documents, request(http.MethodGet, "", true, "")},
-		"plans":     {d.handler.Plans, request(http.MethodGet, "", true, "")},
 	}
 	for name, c := range calls {
 		t.Run(name, func(t *testing.T) {
@@ -133,16 +121,6 @@ func TestRepoFailuresAreForwardedToSharedErrorWriter(t *testing.T) {
 			require.ErrorIs(t, d.unknownErrors[before], errBoom)
 		})
 	}
-}
-
-func TestPlansFailWhenCoverageListFails(t *testing.T) {
-	d := newDirectHandler(t)
-	d.plans = coverageFailingPlanRepo{memory.NewPlanRepo(memory.SamplePlanList(), nil)}
-
-	w := httptest.NewRecorder()
-	d.handler.Plans(w, request(http.MethodGet, "", true, ""))
-	require.Equal(t, http.StatusInternalServerError, w.Code)
-	require.ErrorIs(t, d.unknownErrors[0], errBoom)
 }
 
 func TestGetAndUpdateWithoutIDAreReportedAsNotFound(t *testing.T) {

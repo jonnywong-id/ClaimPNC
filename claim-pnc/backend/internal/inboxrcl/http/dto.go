@@ -12,26 +12,22 @@ import (
 
 // TaskDTO adalah satu baris antrean.
 type TaskDTO struct {
-	// KlaimID adalah `PZINSKEY`. Tidak digambar; dipakai sebagai kunci baris.
+	// KlaimID sama dengan NomorCase (`TC_PNC_PUCL.CLAIMID`). Dipakai sebagai kunci baris dan
+	// kunci layar kerja.
 	KlaimID string `json:"klaim_id"`
 
 	NomorCase       string `json:"nomor_case"`
 	NomorPolis      string `json:"nomor_polis"`
 	NamaTertanggung string `json:"nama_tertanggung"`
 
-	// TanggalMasukInbox berbentuk "YYYY-MM-DD HH:mm", sudah dalam WIB.
-	//
-	// Propertinya `DateTime` (`pyDataType` pada Report Definition) dan section menggambarnya
-	// dengan kontrol `pxDateTime`, sehingga jamnya ikut ditampilkan. Konversi ke WIB
-	// dikerjakan SERVER, bukan peramban (`R-12`).
+	// TanggalMasukInbox berbentuk "YYYY-MM-DD HH:mm", sudah dalam WIB (`R-12`).
 	TanggalMasukInbox string `json:"tanggal_masuk_inbox"`
 
-	// DeskripsiAnalyst adalah `.ClaimData.PUCLStatus.KomentarAnalisator`.
+	// DeskripsiAnalyst adalah `KOMENTAR_ANALISATOR`.
 	DeskripsiAnalyst string `json:"deskripsi_analyst"`
 
-	// DokterRCL, StatusProses, dan OperatorPenerima tidak digambar; dikirim supaya jawaban
-	// dapat ditelusuri tanpa membuka basis data.
-	DokterRCL        string `json:"dokter_rcl"`
+	// Mode, StatusProses, dan OperatorPenerima tidak digambar; dikirim untuk penelusuran.
+	Mode             string `json:"mode"`
 	StatusProses     string `json:"status_proses"`
 	OperatorPenerima string `json:"operator_penerima"`
 }
@@ -61,10 +57,36 @@ type ListResponse struct {
 	Batas  int       `json:"batas"`
 	Cari   string    `json:"cari"`
 
-	// IdentitasLamaDitemukan menyatakan identitas lama pemanggil (`TempOperator.City`)
-	// ditemukan. `false` berarti antrean kosong karena BELUM DIKETAHUI pekerjaan siapa —
-	// bukan karena tidak ada pekerjaan. Layar menggambar keduanya berbeda.
-	IdentitasLamaDitemukan bool `json:"identitas_lama_ditemukan"`
+	// PenggunaDitemukan menyatakan login pemanggil ada dan aktif di POOLDATA.M_LOGIN_PNC.
+	// Tidak digambar layar; dikirim supaya antrean kosong dapat ditelusuri dari jawaban API.
+	PenggunaDitemukan bool `json:"pengguna_ditemukan"`
+}
+
+// DetailResponse adalah isi layar kerja `RCLDokter` satu klaim, seluruhnya dari TC_PNC_PUCL.
+type DetailResponse struct {
+	Portal string `json:"portal"`
+
+	NomorCase       string `json:"nomor_case"`
+	NomorPolis      string `json:"nomor_polis"`
+	NamaTertanggung string `json:"nama_tertanggung"`
+
+	// Mode adalah `RCL_PUCL`: "1" RCL (Setuju / Tidak Setuju), "3" MSIG (Back / Submit).
+	Mode string `json:"mode"`
+
+	// CatatanAnalyst — "Catatan dari Analyst" <- KOMENTAR_ANALISATOR.
+	CatatanAnalyst string `json:"catatan_analyst"`
+
+	// Alasan — "Alasan Klaim Ditolak/RCL" (mode RCL) atau "Alasan Klaim MSIG" (mode MSIG)
+	// <- KETERANGAN2.
+	Alasan string `json:"alasan"`
+
+	// AlasanDokter — "Alasan Dokter" <- ALASAN_DOKTER_REJECT_RCL.
+	AlasanDokter string `json:"alasan_dokter"`
+
+	StatusKlaim       string `json:"status_klaim"`
+	StatusProses      string `json:"status_proses"`
+	OperatorPenerima  string `json:"operator_penerima"`
+	TanggalMasukInbox string `json:"tanggal_masuk_inbox"`
 }
 
 // ErrorResponse adalah bentuk galat yang dibaca klien.
@@ -95,32 +117,49 @@ func toListResponse(listed usecase.Listed, portalAlias string, loc *time.Locatio
 	}
 
 	return ListResponse{
-		Portal:                 portalAlias,
-		Data:                   data,
-		Total:                  listed.Page.Total,
-		Lewati:                 listed.Filter.Offset,
-		Batas:                  listed.Filter.Limit,
-		Cari:                   listed.Filter.Search,
-		IdentitasLamaDitemukan: listed.LegacyIdentityFound,
+		Portal:            portalAlias,
+		Data:              data,
+		Total:             listed.Page.Total,
+		Lewati:            listed.Filter.Offset,
+		Batas:             listed.Filter.Limit,
+		Cari:              listed.Filter.Search,
+		PenggunaDitemukan: listed.IdentityFound,
 	}
 }
 
 func toTaskDTO(task inboxrcl.RCLTask, loc *time.Location) TaskDTO {
 	return TaskDTO{
-		KlaimID:           task.ClaimID,
+		KlaimID:           task.ClaimNumber,
 		NomorCase:         task.ClaimNumber,
 		NomorPolis:        task.PolicyNumber,
 		NamaTertanggung:   task.InsuredName,
 		TanggalMasukInbox: formatDateTime(task.SentToRCLAt, loc),
 		DeskripsiAnalyst:  task.AnalystNote,
-		DokterRCL:         task.RCLDoctor,
+		Mode:              string(task.Mode),
 		StatusProses:      task.ProcessStatus,
 		OperatorPenerima:  task.AssignedOperator,
 	}
 }
 
+func toDetailResponse(d inboxrcl.RCLDetail, portalAlias string, loc *time.Location) DetailResponse {
+	return DetailResponse{
+		Portal:            portalAlias,
+		NomorCase:         d.ClaimNumber,
+		NomorPolis:        d.PolicyNumber,
+		NamaTertanggung:   d.InsuredName,
+		Mode:              string(d.Mode),
+		CatatanAnalyst:    d.AnalystNote,
+		Alasan:            d.Reason,
+		AlasanDokter:      d.DoctorReason,
+		StatusKlaim:       d.StatusClaim,
+		StatusProses:      d.ProcessStatus,
+		OperatorPenerima:  d.AssignedOperator,
+		TanggalMasukInbox: formatDateTime(d.SentToRCLAt, loc),
+	}
+}
+
 // formatDateTime mengubah waktu UTC menjadi "YYYY-MM-DD HH:mm" WIB — SATU-SATUNYA tempat
-// konversi zona waktu pada modul ini, supaya cacat `Set7Hours` sistem lama tidak terulang.
+// konversi zona waktu pada modul ini.
 func formatDateTime(t time.Time, loc *time.Location) string {
 	if t.IsZero() {
 		return ""

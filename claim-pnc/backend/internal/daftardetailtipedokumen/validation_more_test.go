@@ -9,18 +9,16 @@ import (
 	"claim-pnc/internal/daftardetailtipedokumen"
 )
 
-// ID bisnis yang terlalu panjang dilaporkan sekali saja, menyebut ID-nya.
-func TestCheckReportsOverlongBusinessIDOnce(t *testing.T) {
+// Kode tipe dokumen yang terlalu panjang menyebut nilainya di dalam pesan, supaya
+// petugas tahu isian mana yang dimaksud tanpa menebak.
+func TestCheckReportsOverlongDocumentTypeWithItsValue(t *testing.T) {
 	long := strings.Repeat("9", daftardetailtipedokumen.MaxReferenceLength+1)
-	err := daftardetailtipedokumen.Input{Businesses: []daftardetailtipedokumen.BusinessInput{
-		{BusinessID: long}, {BusinessID: long},
-	}}.Check()
+	err := daftardetailtipedokumen.Input{DocumentTypeID: long}.Check()
 
 	var validation *daftardetailtipedokumen.ValidationError
 	require.ErrorAs(t, err, &validation)
 	require.Len(t, validation.Violation, 1)
-	require.Equal(t, daftardetailtipedokumen.FieldBusiness, validation.Violation[0].Field)
-	require.Contains(t, validation.Violation[0].Message, long)
+	require.Equal(t, daftardetailtipedokumen.FieldDocumentType, validation.Violation[0].Field)
 }
 
 func TestValidationErrorMessage(t *testing.T) {

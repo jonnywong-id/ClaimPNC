@@ -76,18 +76,43 @@
 
 -- name: technician_list
 --
--- Daftar untuk grid. Menggantikan Report Definition `BrowseVMstUserTeknis_RD` beserta
--- KEDUA penyaringnya yang digabung `A AND B`.
+-- Daftar untuk grid. Menggantikan Report Definition `BrowseVMstUserTeknis_RD`.
 --
--- Penyaring B dipatok langsung di Report Definition sebagai `STS_AKTIF = '1'`, sehingga
--- grid Pega TIDAK PERNAH menampilkan petugas nonaktif. Keputusan Work Owner 2026-09-19
--- mempertahankannya persis. Nilainya tetap lewat parameter binding, bukan ditulis di
--- dalam teks SQL, supaya sandi aktif hidup di satu tempat saja — masterpicteknik.ActiveCode.
+-- # TANPA penyaring, dan itu koreksi
 --
--- Penyaring A (`TYPE_BUSINESS = Param.type_business`) TIDAK dibawa: nilainya dipasok
--- pemanggil, dan seluruh pemanggil yang ada di export mengisinya kosong — yang pada Report
--- Definition Pega berarti penyaringnya tidak berlaku. Menerapkannya di sini akan
--- mengosongkan daftar.
+-- Report Definition memuat dua penyaring `A AND B`, dan saya sempat membawa penyaring B
+-- (`STS_AKTIF = '1'`) ke sini. **Itu keliru**, dan layar Pega yang berjalan membuktikannya:
+-- gridnya menampilkan baris ber-`Status Aktif` bernilai `0` berdampingan dengan `1`.
+-- Keduanya adalah penyaring ber-`pyPromptType=AllAccess`, yaitu nilai awal yang dapat
+-- dikosongkan pengguna lewat penyaring per kolom — bukan penyaring tetap.
+--
+-- Penyaring A (`TYPE_BUSINESS = Param.type_business`) juga tidak dibawa: nilainya dipasok
+-- pemanggil, dan seluruh pemanggil di export mengisinya kosong.
+--
+-- Petugas nonaktif karena itu TETAP muncul, dan kolom Status Aktif-lah yang
+-- membedakannya — persis seperti layar lama.
+--
+-- # KOREKSI: dibaca dari TABEL, bukan view
+--
+-- Sebelumnya kueri ini membaca `POOLDATA.V_MST_USER_TEKNIS` dan mengambil kolom
+-- `OLD_OPERATOR_ID`. Itu cacat, dan cacatnya tidak kasat mata:
+--
+--   * Datanya disimpan di `POOLDATA.MST_USER_TEKNIK` — itu yang ditulis
+--     `Database/PEGA_MST_USER_TEKNIS.prc`, dan itu pula yang dibaca
+--     `RDB List/GetMasterPICTeknis-SQL.xml` untuk form.
+--   * Di tabel itu kolomnya bernama **`COUNTER_QUOTA2`**. Nama `OLD_OPERATOR_ID` hanyalah
+--     ALIAS yang dipasang kueri Pega (`COUNTER_QUOTA2 AS "OLD_OPERATOR_ID"`) agar cocok
+--     dengan properti klipboard lama — persis pola alias menyesatkan pada utang teknis 4.2.
+--
+-- Akibatnya daftar membaca kolom yang BERBEDA dari yang dibaca form, sehingga "Counter
+-- Klaim >1M" di grid tidak sama dengan isi form untuk baris yang sama. Daftar juga hanya
+-- memuat baris yang lolos view, sementara tabelnya memuat lebih banyak.
+--
+-- Kolom dan urutannya kini SAMA PERSIS dengan technician_get, sehingga keduanya memakai
+-- pemindai baris yang sama dan tidak dapat lagi menyimpang diam-diam.
+--
+-- `TOTAL_JOB` hilang dari sini karena ia memang tidak ada di tabel. Ia tidak pernah
+-- ditampilkan di grid maupun form, jadi tidak ada yang berkurang.
 SELECT OPERATOR_ID,
        MCL_NAME,
        EMAIL,
@@ -95,11 +120,10 @@ SELECT OPERATOR_ID,
        TEAM_GROUP,
        ATASAN,
        COUNTER_QUOTA,
-       OLD_OPERATOR_ID,
-       TOTAL_JOB,
+       COUNTER_QUOTA2,
+       GROUPPANEL,
        STS_AKTIF
-  FROM POOLDATA.V_MST_USER_TEKNIS
- WHERE STS_AKTIF = :1
+  FROM POOLDATA.MST_USER_TEKNIK
  ORDER BY OPERATOR_ID
 
 -- name: technician_get

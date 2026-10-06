@@ -52,11 +52,19 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))
 
 		perPortal.Route("/master/xol", func(xol chi.Router) {
-			// Kedua rute statis didaftarkan lebih dulu supaya terbaca sebagai apa adanya,
+			// Ketiga rute statis didaftarkan lebih dulu supaya terbaca sebagai apa adanya,
 			// bukan sebagai nilai {id}. chi memang mendahulukan ruas statis atas ruas
 			// berparameter, tetapi urutannya ditulis begini agar terbaca manusia juga.
 			xol.Get("/form", h.Form)
 			xol.Get("/bisnis", h.BusinessGroup)
+
+			// Pencarian master reasuradur untuk kotak "NAMA REASURANSI".
+			//
+			// Letaknya di tingkat modul, bukan di bawah `/{id}/layer/{idLayer}`, karena
+			// yang dicari adalah MASTER — ia sama saja bagi lapisan mana pun, dan
+			// menempatkannya di bawah lapisan akan mengesankan hasilnya berbeda per
+			// lapisan.
+			xol.Get("/reas", h.SearchReinsurer)
 
 			xol.Get("/", h.List)
 			xol.Post("/", h.Create)

@@ -72,14 +72,18 @@
 -- Alias `DOCUMENT_TYPE_ID` untuk `b.note` tidak dibawa: isinya nama bisnis, bukan kode
 -- tipe dokumen, dan alias semacam itu persis yang `D-19` perintahkan dinamai ulang.
 --
--- Urutannya menurut NAMA, bukan ID. Kueri lama tidak mengurutkannya sama sekali, sehingga
--- urutannya ditentukan rencana eksekusi dan dapat berubah sendiri di antara dua kali
--- pemuatan. Grid yang berpindah urutan tanpa sebab terbaca sebagai datanya berubah.
+-- Urutannya menurut ID. Kueri lama tidak mengurutkannya sama sekali, sehingga urutannya
+-- ditentukan rencana eksekusi — tetapi layar yang berjalan hari ini menampilkannya
+-- menurut ID, dan itulah urutan yang dihafal petugas. Versi pertama modul ini mengurutkan
+-- menurut nama dengan alasan grid yang berpindah urutan terbaca sebagai datanya berubah;
+-- alasannya masih benar, tetapi memilih urutan yang BERBEDA dari layar lama bukan cara
+-- menjawabnya. Mengurutkan menurut ID menutup ketidakstabilan yang sama tanpa mengubah
+-- apa yang dilihat petugas (`D-13`).
 SELECT DISTINCT b.ID,
        b.NOTE
   FROM POOLDATA.LST_TYPE_DOC_BUSINESS a
   JOIN POOLDATA.BUSINESS b ON b.ID = a.BUSINESSID
- ORDER BY b.NOTE
+ ORDER BY b.ID
 
 -- name: rule_list_by_business
 --
@@ -108,21 +112,41 @@ SELECT DISTINCT b.ID,
 --    master akan menampilkan nama yang BERBEDA dari yang kelak dilihat petugas saat
 --    mengunggah — dan perbedaan itu tidak akan pernah disadari siapa pun.
 --
--- 2. INNER JOIN, MENIRU kueri lama yang merangkai keempat tabel dengan koma lalu
---    menyamakannya di WHERE.
+-- 2. LEFT JOIN ke kedua master, setelah INNER JOIN terbukti MENYEMBUNYIKAN BARIS YANG
+--    BARU SAJA DISIMPAN (2026-10-04).
 --
---    Versi pertama modul ini memakai LEFT JOIN supaya baris yang masternya sudah hilang
---    tetap terlihat. Itu PENYIMPANGAN yang saya buat sendiri, dan Work Owner menetapkan
---    2026-09-23 layar ini mengikuti Pega apa adanya — maka ia dicabut.
+--    Riwayatnya perlu dibaca utuh, karena keputusannya berbalik dua kali:
 --
---    Akibatnya perlu diketahui, bukan disembunyikan: baris yang DOCUMENT_TYPE_ID,
---    OBJECT_DOC_ID, atau DOC_TYPE_DT_ID-nya tidak lagi ada di masternya TIDAK MUNCUL di
---    layar ini — sementara keenam kueri unggah tetap memakainya, karena mereka membaca
---    `lst_type_doc_business` langsung tanpa join. Aturan yang tak terlihat tetap berlaku
---    pada klaim, dan petugas tidak dapat memperbaikinya dari sini.
+--      - versi pertama LEFT JOIN — penyimpangan yang saya buat sendiri;
+--      - 2026-09-23 Work Owner menetapkan layar ini mengikuti Pega apa adanya, sehingga
+--        ia dikembalikan menjadi INNER JOIN, meniru kueri lama yang merangkai keempat
+--        tabel dengan koma lalu menyamakannya di WHERE;
+--      - 2026-10-04 Work Owner melaporkan "tambah sama edit tidak tersimpan tapi tidak
+--        muncul error". INNER JOIN inilah sebabnya.
 --
---    Itu keadaan sistem lama apa adanya (`P-5`). Ia dicatat sebagai pertanyaan ke Work
---    Owner di migrasi 0010 Bagian 1, bukan diperbaiki sepihak dari modul ini.
+--    Mekanismenya: isian Tipe Dokumen dan Detail Dokumen adalah autocomplete
+--    ber-`pyAllowFreeFormInput=true`, sehingga teks yang tidak cocok dengan master
+--    menghasilkan KODE KOSONG — dan baris dengan kode kosong tetap TERSIMPAN tetapi
+--    dibuang oleh INNER JOIN. Penyimpanan menjawab 200, tidak ada galat, dan barisnya
+--    tidak pernah muncul di layar mana pun.
+--
+--    Yang membuatnya tidak dapat dipertahankan bukan sekadar membingungkan:
+--
+--      - barisnya TETAP BERLAKU pada klaim, karena keenam kueri unggah dokumen membaca
+--        `lst_type_doc_business` langsung tanpa join;
+--      - petugas tidak dapat memperbaikinya, karena ia tidak terlihat;
+--      - petugas tidak dapat membuangnya, karena `D-66` melarang penghapusan fisik.
+--
+--    Jadi setiap salah ketik menambah aturan permanen yang tak terlihat dan tak dapat
+--    dikoreksi. Itu bukan kesetaraan perilaku, itu jebakan data.
+--
+--    `e` bahkan TIDAK MENYUMBANG SATU KOLOM PUN ke SELECT — nama rinciannya diambil dari
+--    `a.DETAIL_DOKUMEN` sesuai butir 1 di atas. Sebagai INNER JOIN ia hanya menyaring,
+--    tanpa memberi apa pun.
+--
+--    Ini SELISIH TERENCANA terhadap `P-5`: yang berubah hanya baris mana yang TERLIHAT,
+--    bukan baris mana yang berlaku. Perlu persetujuan Work Owner, dan dicatat di
+--    `keputusan-implementasi.md` §177.
 --
 --    OBJECT_DOC_ID boleh NULL (procedure lama mengosongkannya dengan sengaja), sehingga
 --    join ke V_LST_DOC_OBJ tetap LEFT — bila ia INNER, setiap baris tanpa objek dokumen
@@ -141,8 +165,8 @@ SELECT a.ID,
        a.MIN_DOC
   FROM POOLDATA.LST_TYPE_DOC_BUSINESS a
   JOIN POOLDATA.BUSINESS b            ON b.ID = a.BUSINESSID
-  JOIN POOLDATA.V_LST_DOC_TYPE c      ON c.ID = a.DOCUMENT_TYPE_ID
-  JOIN POOLDATA.V_LST_DET_TYPE_DOC e  ON e.ID = a.DOC_TYPE_DT_ID
+  LEFT JOIN POOLDATA.V_LST_DOC_TYPE c ON c.ID = a.DOCUMENT_TYPE_ID
+  LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC e ON e.ID = a.DOC_TYPE_DT_ID
   LEFT JOIN POOLDATA.V_LST_DOC_OBJ o  ON o.ID = a.OBJECT_DOC_ID
  WHERE a.BUSINESSID = :1
  ORDER BY a.ID
@@ -165,8 +189,8 @@ SELECT a.ID,
        a.MIN_DOC
   FROM POOLDATA.LST_TYPE_DOC_BUSINESS a
   JOIN POOLDATA.BUSINESS b            ON b.ID = a.BUSINESSID
-  JOIN POOLDATA.V_LST_DOC_TYPE c      ON c.ID = a.DOCUMENT_TYPE_ID
-  JOIN POOLDATA.V_LST_DET_TYPE_DOC e  ON e.ID = a.DOC_TYPE_DT_ID
+  LEFT JOIN POOLDATA.V_LST_DOC_TYPE c ON c.ID = a.DOCUMENT_TYPE_ID
+  LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC e ON e.ID = a.DOC_TYPE_DT_ID
   LEFT JOIN POOLDATA.V_LST_DOC_OBJ o  ON o.ID = a.OBJECT_DOC_ID
  WHERE a.ID = :1
 

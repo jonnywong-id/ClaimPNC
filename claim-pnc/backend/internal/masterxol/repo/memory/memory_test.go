@@ -141,3 +141,37 @@ func TestNumericSortFallsBackToText(t *testing.T) {
 	require.Equal(t, "1009", list[0].ID)
 	require.Equal(t, "10010", list[1].ID)
 }
+
+// Pencarian reasuradur: sebagian, tanpa membedakan huruf besar-kecil, dan kata kunci
+// kosong TIDAK berarti "ambil semuanya".
+func TestSearchReinsurer(t *testing.T) {
+	repo := NewSampleRepo()
+	ctx := context.Background()
+
+	t.Run("kata kunci kosong mengembalikan kosong", func(t *testing.T) {
+		hasil, err := repo.SearchReinsurer(ctx, "   ")
+		require.NoError(t, err)
+		require.Empty(t, hasil, "kosong berarti belum mencari, bukan meminta seluruh master")
+	})
+
+	t.Run("mencocokkan sebagian tanpa membedakan huruf", func(t *testing.T) {
+		hasil, err := repo.SearchReinsurer(ctx, "alfa")
+		require.NoError(t, err)
+		require.Len(t, hasil, 2)
+		require.Equal(t, "REASURADUR ALFA INTERNASIONAL", hasil[0].Name)
+		require.Equal(t, "REASURADUR ALFA NUSANTARA", hasil[1].Name)
+	})
+
+	t.Run("membawa nomor yang mengisi IDREAS", func(t *testing.T) {
+		hasil, err := repo.SearchReinsurer(ctx, "DELTA RE")
+		require.NoError(t, err)
+		require.Len(t, hasil, 1)
+		require.Equal(t, "10005", hasil[0].ID)
+	})
+
+	t.Run("tanpa kecocokan mengembalikan kosong, bukan galat", func(t *testing.T) {
+		hasil, err := repo.SearchReinsurer(ctx, "tidak ada sama sekali")
+		require.NoError(t, err)
+		require.Empty(t, hasil)
+	})
+}

@@ -165,23 +165,18 @@ func (s *Service) Update(
 	return repo.Update(ctx, id, clean, s.editor(by))
 }
 
-// References mengembalikan keempat daftar pilihan yang dibutuhkan form.
+// References mengembalikan daftar pilihan yang dibutuhkan form.
 //
-// Keempatnya dikirim dalam SATU jawaban meski berasal dari empat pemanggilan seam, karena
-// form selalu membutuhkan keempatnya bersamaan: tidak ada satu pun isian rujukan yang
-// dapat ditampilkan tanpa daftarnya, dan memisahkannya menjadi empat permintaan hanya
-// menambah tiga keadaan setengah-siap yang harus dijaga layar.
+// Satu saja sejak grid Lini Bisnis dicabut (koreksi Work Owner 2026-10-03): form hanya
+// punya dua isian, dan hanya ID Tipe Dokumen yang memilih dari daftar.
 //
-// # Kegagalan salah satunya TIDAK menggagalkan seluruhnya
+// # Kegagalannya TIDAK menggagalkan permintaan
 //
-// Keempat kode boleh diketik sendiri — layar lama pun memakai autocomplete yang menerima
-// ketikan di luar daftar — sehingga daftar yang gagal dimuat hanya menghilangkan
-// kenyamanan memilih, bukan kemampuan menyimpan. Menggagalkan seluruh permintaan karena
-// satu master bermasalah akan menutup form yang sebenarnya masih dapat dipakai.
-//
-// Kegagalannya tetap DILAPORKAN, bukan disembunyikan: senarai yang bersangkutan kosong
-// dan namanya masuk ke Unavailable, sehingga layar dapat mengatakan apa yang hilang
-// alih-alih menampilkan daftar kosong yang terbaca sebagai "masternya memang kosong".
+// Bentuknya dipertahankan sebagai amplop berisi daftar plus catatan apa yang hilang,
+// bukan disederhanakan menjadi satu senarai telanjang. Dua sebabnya: kontrak API tidak
+// berubah bentuk saat master berikutnya ditambahkan, dan layar tetap dapat membedakan
+// "masternya memang kosong" dari "masternya gagal dibaca" — dua keadaan yang tampak sama
+// di layar tetapi perbaikannya berbeda jauh.
 func (s *Service) References(ctx context.Context, portalAlias string) (References, error) {
 	repo, err := s.referenceSelector(portalAlias)
 	if err != nil {
@@ -196,24 +191,6 @@ func (s *Service) References(ctx context.Context, portalAlias string) (Reference
 		result.DocumentTypes = list
 	}
 
-	if list, err := repo.ListCausesOfLoss(ctx); err != nil {
-		result.Unavailable = append(result.Unavailable, ReferenceCauseOfLoss)
-	} else {
-		result.CausesOfLoss = list
-	}
-
-	if list, err := repo.ListObjectDocuments(ctx); err != nil {
-		result.Unavailable = append(result.Unavailable, ReferenceObjectDocument)
-	} else {
-		result.ObjectDocuments = list
-	}
-
-	if list, err := repo.ListBusinesses(ctx); err != nil {
-		result.Unavailable = append(result.Unavailable, ReferenceBusiness)
-	} else {
-		result.Businesses = list
-	}
-
 	return result, nil
 }
 
@@ -223,20 +200,14 @@ func (s *Service) References(ctx context.Context, portalAlias string) (Reference
 // tabel penerjemah — dan supaya penambahan master berikutnya tidak menggeser arti nomor
 // yang sudah dipakai klien lama.
 const (
-	ReferenceDocumentType   = "tipe_dokumen"
-	ReferenceCauseOfLoss    = "penyebab_kerugian"
-	ReferenceObjectDocument = "objek_dokumen"
-	ReferenceBusiness       = "bisnis"
+	ReferenceDocumentType = "tipe_dokumen"
 )
 
-// References adalah keempat daftar pilihan beserta catatan mana yang gagal dimuat.
+// References adalah daftar pilihan beserta catatan mana yang gagal dimuat.
 type References struct {
-	DocumentTypes   []daftardetailtipedokumen.DocumentTypeOption
-	CausesOfLoss    []daftardetailtipedokumen.CauseOfLossOption
-	ObjectDocuments []daftardetailtipedokumen.ObjectDocumentOption
-	Businesses      []daftardetailtipedokumen.Business
+	DocumentTypes []daftardetailtipedokumen.DocumentTypeOption
 
-	// Unavailable menyebut master mana yang gagal dibaca. Kosong berarti keempatnya
+	// Unavailable menyebut master mana yang gagal dibaca. Kosong berarti seluruhnya
 	// terbaca.
 	Unavailable []string
 }

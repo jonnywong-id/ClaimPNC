@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/dashboardclaim"
@@ -69,19 +70,30 @@ func (r *Repo) ListOutstanding(ctx context.Context, f dashboardclaim.Filter) (da
 // bukan menggeser seluruh nilai satu kolom tanpa galat apa pun.
 func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 	var (
-		claimID         sql.NullString
-		claimNumber     sql.NullString
-		policyNumber    sql.NullString
-		insuredName     sql.NullString
-		businessName    sql.NullString
-		businessSource  sql.NullString
-		branchName      sql.NullString
-		technicalPIC    sql.NullString
-		adminPNC        sql.NullString
-		claimStatusCode sql.NullString
-		processStatus   sql.NullString
-		lossDate        sql.NullTime
-		registeredAt    sql.NullTime
+		claimID          sql.NullString
+		claimNumber      sql.NullString
+		policyNumber     sql.NullString
+		insuredName      sql.NullString
+		businessName     sql.NullString
+		businessSource   sql.NullString
+		branchName       sql.NullString
+		technicalPIC     sql.NullString
+		adminPNC         sql.NullString
+		claimStatusCode  sql.NullString
+		claimStatusLabel sql.NullString
+		processStatus    sql.NullString
+		lossDate         sql.NullTime
+		registeredAt     sql.NullTime
+
+		// RECEIVEDDATE_1 dibaca sebagai TEKS, bukan sebagai tanggal.
+		//
+		// Kolomnya memang bertipe teks dan berisi stempel waktu bergaya Pega
+		// (`20200106T142602.000 GMT`, 23 karakter) — bukan DATE. Memindainya ke sql.NullTime
+		// menghasilkan galat konversi pada baris pertama yang terisi, dan layar menjawab 500.
+		//
+		// Temuan ini sudah tercatat di modul lain:
+		// `internal/inboxrclpucl/repo/sqlstore/inboxrclpucl.sql:760`.
+		reportDate sql.NullString
 	)
 
 	if err := s.Scan(
@@ -95,31 +107,68 @@ func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 		&technicalPIC,
 		&adminPNC,
 		&claimStatusCode,
+		&claimStatusLabel,
 		&processStatus,
 		&lossDate,
+		&reportDate,
 		&registeredAt,
 	); err != nil {
 		return dashboardclaim.ClaimRow{}, err
 	}
 
 	row := dashboardclaim.ClaimRow{
-		ClaimID:         text(claimID),
-		ClaimNumber:     text(claimNumber),
-		PolicyNumber:    text(policyNumber),
-		InsuredName:     text(insuredName),
-		BusinessName:    text(businessName),
-		BusinessSource:  text(businessSource),
-		BranchName:      text(branchName),
-		TechnicalPIC:    text(technicalPIC),
-		AdminPNC:        text(adminPNC),
-		ClaimStatusCode: text(claimStatusCode),
-		ProcessStatus:   text(processStatus),
-		LossDate:        timeOrNil(lossDate),
+		ClaimID:          text(claimID),
+		ClaimNumber:      text(claimNumber),
+		PolicyNumber:     text(policyNumber),
+		InsuredName:      text(insuredName),
+		BusinessName:     text(businessName),
+		BusinessSource:   text(businessSource),
+		BranchName:       text(branchName),
+		TechnicalPIC:     text(technicalPIC),
+		AdminPNC:         text(adminPNC),
+		ClaimStatusCode:  text(claimStatusCode),
+		ClaimStatusLabel: text(claimStatusLabel),
+		ProcessStatus:    text(processStatus),
+		LossDate:         timeOrNil(lossDate),
+		ReportDate:       pegaTimestamp(text(reportDate)),
 	}
 	if registeredAt.Valid {
 		row.RegisteredAt = registeredAt.Time
 	}
 	return row, nil
+}
+
+// pegaTimestamp membaca stempel waktu bergaya Pega yang tersimpan sebagai TEKS.
+//
+// Bentuknya `20200106T142602.000 GMT` — tahun, bulan, hari, `T`, jam, menit, detik, milidetik,
+// lalu zona. Ia disimpan apa adanya di kolom bertipe teks, bukan sebagai DATE.
+//
+// Teks yang TIDAK terbaca mengembalikan nil, bukan galat: satu baris berformat menyimpang
+// tidak boleh menggagalkan seluruh halaman. Yang hilang karena itu satu kolom pada satu
+// baris — dan kolom kosong di layar sudah menyatakan bahwa tanggalnya tidak terbaca.
+//
+// Beberapa bentuk dicoba berurutan karena data warisan tidak seragam: sebagian baris
+// menyimpannya tanpa milidetik, sebagian tanpa zona.
+func pegaTimestamp(value string) *time.Time {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+
+	for _, layout := range []string{
+		"20060102T150405.000 MST",
+		"20060102T150405 MST",
+		"20060102T150405.000",
+		"20060102T150405",
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	} {
+		if parsed, err := time.Parse(layout, trimmed); err == nil {
+			return &parsed
+		}
+	}
+	return nil
 }
 
 // timeOrNil mengubah kolom waktu yang boleh kosong menjadi penunjuk.

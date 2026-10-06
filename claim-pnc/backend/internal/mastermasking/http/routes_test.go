@@ -66,6 +66,11 @@ func newTestServer(t *testing.T) *testServer {
 	require.NoError(t, err)
 
 	asm := memory.NewRepo(memory.SampleList()...).WithBranches(memory.SampleBranches()...)
+	// Petugas per cabang ikut dimuat: tanpa itu, form Tambah tidak punya satu baris pun
+	// untuk diisi, dan alurnya tidak dapat diuji sampai tersimpan.
+	for branchID, operator := range memory.SampleOperators() {
+		asm = asm.WithOperators(branchID, operator...)
+	}
 	asi := memory.NewRepo().WithBranches(memory.SampleBranches()...)
 
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
@@ -309,53 +314,185 @@ func TestPasswordNeverLeavesServer(t *testing.T) {
 	require.NotContains(t, strings.ToLower(raw.String()), "sandi")
 }
 
-// ── Menambah ────────────────────────────────────────────────────────────────────
+// ── Menambah — form MASSAL ──────────────────────────────────────────────────────
+//
+// Form Tambah layar lama berbentuk daftar: satu cabang di atas, lalu tabel petugas cabang
+// itu dengan Template Akses per baris, lalu satu tombol SIMPAN. Uji di bagian ini menjaga
+// bentuk itu, karena ia yang paling mudah "disederhanakan" kembali menjadi satu baris oleh
+// siapa pun yang membacanya tanpa melihat layar aslinya.
 
-const newRow = `{"cabang":"100001","login":"BARU.SEKALI","modul":"PNCSearchKlaim",
-	"sub_modul":"Registrasi,","maks_cari":5,"maks_lihat":5,
-	"lihat_ktp":true,"lihat_email":false,"lihat_notelp":false}`
+// bulk menyusun badan permintaan Tambah untuk satu cabang.
+func bulk(branchID string, row ...string) string {
+	return `{"cabang":"` + branchID + `","baris":[` + strings.Join(row, ",") + `]}`
+}
 
-// Penambahan menjawab 201 dan mengembalikan ID yang dibuat server.
-func TestCreate(t *testing.T) {
+// rowFor menyusun satu baris Template Akses.
+func rowFor(login string) string {
+	return `{"login":"` + login + `","modul":"PNCSearchKlaim","sub_modul":"Registrasi,",
+	  "maks_cari":5,"maks_lihat":7,"lihat_ktp":true,"lihat_email":false,"lihat_notelp":false}`
+}
+
+// Daftar petugas mengisi tabel pada form Tambah.
+func TestOperatorList(t *testing.T) {
 	p := newTestServer(t)
 
-	response, body := p.call(t, http.MethodPost, route, "ASM", newRow)
-	require.Equal(t, http.StatusCreated, response.StatusCode)
+	response, body := p.call(t, http.MethodGet, route+"/pengguna?cabang=100001", "ASM", "")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, float64(3), body["total"], "tiga petugas contoh pada cabang itu")
 
-	saved := body["masking"].(map[string]any)
-	require.NotEmpty(t, saved["id"])
-	require.Equal(t, "BARU.SEKALI", saved["login"])
-	require.Equal(t, true, saved["aktif"], "baris baru selalu aktif")
-	require.Equal(t, true, saved["lihat_ktp"])
-	require.Equal(t, false, saved["lihat_email"])
-	// Nama cabang dihitung server, bukan dikirim klien.
-	require.Equal(t, "AGENCY MANADO", saved["nama_cabang"])
+	first := body["pengguna"].([]any)[0].(map[string]any)
+	require.NotEmpty(t, first["login"])
+	require.NotEmpty(t, first["nama"])
+}
+
+// Daftar petugas tanpa cabang ditolak — di layar lama isian CABANG bertanda wajib.
+func TestOperatorListWithoutBranch(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodGet, route+"/pengguna", "ASM", "")
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.Equal(t, "cabang_belum_dipilih", body["kode"])
+}
+
+// Jalur "pengguna" tidak tertangkap sebagai sebuah ID.
+func TestOperatorRouteNotMistakenForID(t *testing.T) {
+	p := newTestServer(t)
+
+	_, body := p.call(t, http.MethodGet, route+"/pengguna?cabang=100001", "ASM", "")
+	require.NotNil(t, body["pengguna"], "yang dikembalikan daftar petugas, bukan satu baris masking")
+}
+
+// Menyimpan beberapa baris sekaligus — bentuk pokok form Tambah.
+func TestCreateMany(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodPost, route, "ASM",
+		bulk("100001", rowFor("CONTOH.BARU.SATU"), rowFor("CONTOH.BARU.DUA")))
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Equal(t, float64(2), body["tersimpan"])
+	require.Equal(t, float64(0), body["ditolak"])
+	require.Len(t, body["hasil"].([]any), 2)
 }
 
 // Pelaku diisi dari SESI, bukan dari badan permintaan.
-func TestCreateStampsCallerFromSession(t *testing.T) {
+func TestCreateManyStampsCallerFromSession(t *testing.T) {
 	p := newTestServer(t)
 
-	_, body := p.call(t, http.MethodPost, route, "ASM", newRow)
-	saved := body["masking"].(map[string]any)
+	_, created := p.call(t, http.MethodPost, route, "ASM", bulk("100001", rowFor("CONTOH.BARU.SATU")))
+	require.Equal(t, float64(1), created["tersimpan"])
+
+	_, list := p.call(t, http.MethodGet, route+"?cari_di=login&kata_kunci=CONTOH.BARU.SATU", "ASM", "")
+	saved := list["masking"].([]any)[0].(map[string]any)
 	require.NotEmpty(t, saved["dicatat_oleh"])
 	require.NotEmpty(t, saved["dicatat_pada"])
+	require.Equal(t, true, saved["aktif"], "baris baru selalu aktif")
+	require.Equal(t, "100001", saved["cabang"], "cabang datang dari atas form, bukan dari baris")
+}
+
+// Sebagian berhasil, sebagian ditolak — dan keduanya dilaporkan per baris.
+//
+// Ini perilaku layar lama: procedure dipanggil sekali per baris dan COMMIT sendiri,
+// sehingga baris yang sah tetap tersimpan meski baris lain bentrok. Membungkusnya menjadi
+// satu transaksi akan menggagalkan seluruhnya — perubahan yang terlihat pengguna.
+func TestCreateManyPartialSuccess(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodPost, route, "ASM",
+		// CONTOH.ADMIN sudah punya baris di cabang 100081.
+		bulk("100081", rowFor("CONTOH.BARU.TIGA"), rowFor("CONTOH.ADMIN")))
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Equal(t, float64(1), body["tersimpan"])
+	require.Equal(t, float64(1), body["ditolak"])
+
+	ditolak := map[string]string{}
+	for _, item := range body["hasil"].([]any) {
+		row := item.(map[string]any)
+		if row["tersimpan"] == false {
+			ditolak[row["login"].(string)], _ = row["pesan"].(string)
+		}
+	}
+	require.Contains(t, ditolak, "CONTOH.ADMIN")
+	require.Contains(t, ditolak["CONTOH.ADMIN"], "sudah punya data masking")
+}
+
+// Bila TIDAK ADA satu pun baris tersimpan, jawabannya 200 — bukan 201, dan bukan galat.
+//
+// Bukan 201 karena tidak ada yang dibuat. Bukan galat karena permintaannya berhasil
+// dijalankan; yang ditolak adalah barisnya, dan alasannya ada di `hasil`.
+//
+// Status 2xx di sini WAJIB, dan bukan soal kerapian: klien memperlakukan setiap non-2xx
+// sebagai galat dan mencari `pesan` di badannya. Badan ini membawa `hasil`, bukan `pesan`,
+// sehingga status galat membuang laporan per baris tepat sebelum sampai ke layar dan
+// menyisakan kalimat umum. Pernah terjadi — 409 dikembalikan di sini, dan petugas hanya
+// melihat "Terjadi kesalahan pada sistem".
+func TestCreateManyNoneSavedStillReportsPerRow(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodPost, route, "ASM", bulk("100081", rowFor("CONTOH.ADMIN")))
+
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, float64(0), body["tersimpan"])
+	require.Equal(t, float64(1), body["ditolak"])
+
+	// Alasannya harus benar-benar sampai, bukan sekadar jumlahnya.
+	row := body["hasil"].([]any)[0].(map[string]any)
+	require.Equal(t, "CONTOH.ADMIN", row["login"])
+	require.Equal(t, false, row["tersimpan"])
+	require.Contains(t, row["pesan"], "sudah punya data masking")
+}
+
+// Permintaan tanpa satu baris pun ditolak, bukan dijawab "0 tersimpan".
+func TestCreateManyWithoutRows(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodPost, route, "ASM", `{"cabang":"100001","baris":[]}`)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.Equal(t, "belum_ada_baris", body["kode"])
+}
+
+// Cabang yang tidak dikenal ditolak sebelum satu baris pun disentuh.
+func TestCreateManyUnknownBranch(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodPost, route, "ASM",
+		bulk("999999", rowFor("SIAPA.SAJA")))
+
+	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
+	require.Equal(t, "cabang_tidak_dikenal", body["kode"])
+}
+
+// Isian cacat pada satu baris ditolak pada baris itu saja.
+func TestCreateManyRowValidation(t *testing.T) {
+	p := newTestServer(t)
+
+	response, body := p.call(t, http.MethodPost, route, "ASM",
+		bulk("100001",
+			rowFor("CONTOH.BARU.SATU"),
+			`{"login":"","modul":"","sub_modul":"","maks_cari":-1,"maks_lihat":0,
+			  "lihat_ktp":false,"lihat_email":false,"lihat_notelp":false}`))
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Equal(t, float64(1), body["tersimpan"])
+	require.Equal(t, float64(1), body["ditolak"])
 }
 
 // Field yang tidak dikenal DITOLAK, tidak diabaikan diam-diam.
 //
-// Ketiganya sengaja tidak pernah diterima dari klien — `id`, `nama_cabang`, dan
-// `dicatat_oleh`. Menolaknya terang-terangan lebih baik daripada mengabaikan diam-diam:
-// salah ketik nama field akan terbaca sebagai "isian tidak dikirim" dan menyimpan nilai
-// kosong tanpa satu pun tanda bahwa ada yang salah.
-//
-// `aktif` TIDAK ada di daftar ini — ia field yang sah, karena form layar lama pun memuat
-// isian "STATUS".
-func TestUnknownFieldsRejected(t *testing.T) {
+// `aktif` termasuk di sini pada form Tambah: baris baru selalu aktif, dan menerimanya akan
+// menyiratkan pilihan yang tidak ada.
+func TestBulkUnknownFieldsRejected(t *testing.T) {
 	for name, body := range map[string]string{
-		"id":           `{"cabang":"100001","login":"X","modul":"M","sub_modul":"","maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,"aktif":true,"id":"9"}`,
-		"nama_cabang":  `{"cabang":"100001","login":"X","modul":"M","sub_modul":"","maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,"aktif":true,"nama_cabang":"PALSU"}`,
-		"dicatat_oleh": `{"cabang":"100001","login":"X","modul":"M","sub_modul":"","maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,"aktif":true,"dicatat_oleh":"ORANG.LAIN"}`,
+		"aktif di baris": `{"cabang":"100001","baris":[{"login":"X","modul":"M","sub_modul":"",
+		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,
+		  "aktif":true}]}`,
+		"id di baris": `{"cabang":"100001","baris":[{"login":"X","modul":"M","sub_modul":"",
+		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,
+		  "id":"9"}]}`,
+		"cabang di baris": `{"cabang":"100001","baris":[{"login":"X","modul":"M","sub_modul":"",
+		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,
+		  "cabang":"100081"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := newTestServer(t)
@@ -366,72 +503,24 @@ func TestUnknownFieldsRejected(t *testing.T) {
 	}
 }
 
-// Isian cacat dijawab 422 beserta SELURUH pelanggarannya dan kolom yang melanggar.
-func TestValidationFailure(t *testing.T) {
-	p := newTestServer(t)
-
-	response, body := p.call(t, http.MethodPost, route, "ASM",
-		`{"cabang":"","login":"","modul":"","sub_modul":"","maks_cari":-1,"maks_lihat":0,
-		  "lihat_ktp":false,"lihat_email":false,"lihat_notelp":false}`)
-
-	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
-	require.Equal(t, "validasi_gagal", body["kode"])
-
-	detail := body["detail"].([]any)
-	require.GreaterOrEqual(t, len(detail), 4, "seluruh pelanggaran dikirim sekaligus")
-
-	field := map[string]bool{}
-	for _, row := range detail {
-		field[row.(map[string]any)["field"].(string)] = true
-	}
-	require.True(t, field["cabang"])
-	require.True(t, field["login"])
-	require.True(t, field["modul"])
-	require.True(t, field["maks_cari"])
-}
-
-// Pasangan cabang+login yang sudah ada dijawab 409, bukan 422.
-//
-// Isian penggunanya sah; yang bentrok adalah keadaan penyimpanan.
-func TestDuplicatePairConflict(t *testing.T) {
-	p := newTestServer(t)
-
-	response, body := p.call(t, http.MethodPost, route, "ASM",
-		`{"cabang":"100081","login":"CONTOH.ADMIN","modul":"PNCSearchKlaim","sub_modul":"",
-		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false}`)
-
-	require.Equal(t, http.StatusConflict, response.StatusCode)
-	require.Equal(t, "masking_pengguna_sudah_ada", body["kode"])
-}
-
-// Cabang yang tidak dikenal ditolak dan ditandai pada kolom cabang.
-func TestUnknownBranchRejected(t *testing.T) {
-	p := newTestServer(t)
-
-	response, body := p.call(t, http.MethodPost, route, "ASM",
-		`{"cabang":"999999","login":"SIAPA","modul":"PNCSearchKlaim","sub_modul":"",
-		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false}`)
-
-	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
-	require.Equal(t, "cabang_tidak_dikenal", body["kode"])
-}
-
 // ── Mengubah dan status ─────────────────────────────────────────────────────────
 
 // Mengubah baris yang tidak ada dijawab 404.
 func TestUpdateMissing(t *testing.T) {
 	p := newTestServer(t)
 
-	response, body := p.call(t, http.MethodPut, route+"/9999", "ASM", newRow)
+	response, body := p.call(t, http.MethodPut, route+"/9999", "ASM",
+		`{"cabang":"100001","login":"SIAPA","modul":"PNCSearchKlaim","sub_modul":"",
+		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,
+		  "aktif":true}`)
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
 	require.Equal(t, "masking_tidak_ditemukan", body["kode"])
 }
 
-// Menyimpan form TIDAK dapat menghidupkan kembali baris yang sudah dinonaktifkan.
+// Menyimpan form Ubah IKUT mengubah status — form layar lama memang memuat isian STATUS.
 //
-// Ini uji terpenting di berkas ini. Tanpa pemisahan jalur status, menyunting baris nonaktif
-// akan diam-diam mengembalikan kewenangan membuka data pribadi — tanpa pesan apa pun, dan
-// tanpa ada yang bermaksud demikian.
+// Yang menjaga status tidak berubah tanpa sengaja adalah layar daftar: tombol Edit hanya
+// muncul pada baris aktif, meniru `ActionMaskingData_Sec`.
 func TestUpdateCarriesStatusFromForm(t *testing.T) {
 	p := newTestServer(t)
 
@@ -447,21 +536,6 @@ func TestUpdateCarriesStatusFromForm(t *testing.T) {
 	saved := body["masking"].(map[string]any)
 	require.Equal(t, false, saved["aktif"], "status pada form ikut tersimpan")
 	require.Equal(t, float64(9), saved["maks_cari"], "isian lain tetap tersimpan")
-}
-
-// Baris baru SELALU aktif, apa pun yang dikirim klien.
-//
-// Layar lama tidak punya cara membuat baris nonaktif — tombol penonaktifan hanya ada pada
-// baris yang sudah tersimpan.
-func TestCreateAlwaysActive(t *testing.T) {
-	p := newTestServer(t)
-
-	_, body := p.call(t, http.MethodPost, route, "ASM",
-		`{"cabang":"100001","login":"COBA.NONAKTIF","modul":"PNCSearchKlaim","sub_modul":"",
-		  "maks_cari":1,"maks_lihat":1,"lihat_ktp":false,"lihat_email":false,"lihat_notelp":false,
-		  "aktif":false}`)
-
-	require.Equal(t, true, body["masking"].(map[string]any)["aktif"])
 }
 
 // Menonaktifkan tidak membuang baris; ia tetap terbaca dan dapat dihidupkan kembali.

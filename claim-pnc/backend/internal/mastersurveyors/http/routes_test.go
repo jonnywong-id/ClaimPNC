@@ -69,6 +69,20 @@ func (s *stubService) Decide(_ context.Context, _, id string, d usecase.Decision
 	return s.surveyor, s.err
 }
 
+func (s *stubService) ListCountries(_ context.Context, _ string) ([]mastersurveyors.Country, error) {
+	return []mastersurveyors.Country{{Code: "ID", Name: "INDONESIA"}}, nil
+}
+
+func (s *stubService) ListEmployees(_ context.Context, _ string) ([]mastersurveyors.Employee, error) {
+	return []mastersurveyors.Employee{
+		{Name: "CONTOH PEGAWAI SATU", Login: "CONTOHPEGAWAI1", Email: "contoh.satu@contoh.invalid"},
+	}, nil
+}
+
+func (s *stubService) ListBranches(_ context.Context, _ string) ([]mastersurveyors.Branch, error) {
+	return []mastersurveyors.Branch{{Code: "001", Name: "KANTOR PUSAT"}}, nil
+}
+
 func writeJSON(w http.ResponseWriter, _ *http.Request, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

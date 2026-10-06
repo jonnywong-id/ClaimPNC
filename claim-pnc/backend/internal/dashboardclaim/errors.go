@@ -74,3 +74,12 @@ func NewValidationError(violations []Violation) error {
 	}
 	return &ValidationError{Violations: violations}
 }
+
+// ErrTransferUnavailable berarti tombol Transfer belum dapat dipakai.
+//
+// Sebabnya tabel `POOLDATA.CPNC_PERMINTAAN_TRANSFER` dibuat migrasi `0014` yang BELUM
+// dijalankan DBA di lingkungan mana pun (`D-63`).
+//
+// Ia galat tersendiri, bukan 500: pengguna yang menekan Transfer berhak tahu bahwa yang
+// kurang adalah perubahan skema yang sedang ditunggu — bukan bahwa sistemnya rusak.
+var ErrTransferUnavailable = errors.New("dashboardclaim: pencatatan permintaan transfer belum terpasang")

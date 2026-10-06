@@ -1,13 +1,12 @@
 // Package usecase mengorkestrasi modul Inbox RCL.
 //
-// Dua operasi, dan keduanya hanya MEMBACA:
+// Empat operasi:
 //
 //	Metadata  judul kolom, selisih terencana, dan keterbatasan yang berlaku
-//	List      satu halaman antrean milik identitas LAMA pemanggil
-//
-// Tidak ada operasi yang menulis. Menyelesaikan tugas RCL Dokter berarti menjalankan Flow
-// Action `SendToRCLDokter`, yang memindahkan penugasan — milik Pega selama masa paralel
-// (`P-1`).
+//	List      satu halaman antrean milik pemanggil (`M_LOGIN_PNC.LOGIN_ID`)
+//	Detail    isi layar kerja `RCLDokter` satu klaim di antrean pemanggil
+//	Decide    keputusan dokter RCL — padanan `SendToPUCL` (decide.go); satu-satunya yang
+//	          menulis, dan yang ditulisnya tabel aplikasi, bukan tabel Pega (`P-1`).
 package usecase
 
 import (
@@ -79,22 +78,16 @@ func PlannedDifferences() []string {
 		"Kotak cari Nomor Case dan No Polis adalah TAMBAHAN. Layar lama tidak punya " +
 			"penyaring apa pun, dan tanpa pencarian sisi server satu klaim menjadi sulit " +
 			"ditemukan begitu antreannya dipaginasi.",
-		"Antrean yang kosong karena identitas lama Anda tidak ditemukan dinyatakan sebagai " +
-			"keadaan tersendiri. Di layar lama keduanya tampil sama — grid kosong tanpa " +
-			"keterangan.",
 	}
 }
 
 // Limitations adalah keterbatasan yang berlaku hari ini dan akan hilang dengan sendirinya.
 func Limitations() []string {
 	return []string{
-		"Antrean disaring dengan identitas LAMA Anda (`POOLDATA.T_ACCESS_GROUP_PNC`), dan " +
-			"hanya identitas lama yang tercatat pada grup Administrators, PNCKomite, atau " +
-			"CaseManager. Itu perilaku layar lama apa adanya.",
-		"Data dibaca dari tabel klaim POOLDATA.T_CLAIMLIST_ADMIN, bukan tabel Pega. Kolom " +
-			"Tanggal Masuk Inbox, Nama Dokter RCL, dan Deskripsi Analyst sudah ada di tabel " +
-			"itu, tetapi BELUM DIISI proses pengisinya — sampai itu terjadi, antrean ini " +
-			"kosong bagi semua orang.",
+		"Antrean disaring dengan login Anda di POOLDATA.M_LOGIN_PNC (harus aktif). Di layar " +
+			"lama ia identitas lama dari T_ACCESS_GROUP_PNC; tabel itu tidak dipakai lagi.",
+		"Daftar dan layar kerja dibaca dari POOLDATA.TC_PNC_PUCL — tabel status RCL/PUCL " +
+			"yang juga dibaca Inbox RCL/PUCL — bukan tabel Pega.",
 		"Pemeriksaan kewenangan menu belum ada (`TKT-F3-005`). Yang menjaga layar ini " +
 			"sekarang hanyalah sesi, portal aktif, dan penyaring identitas.",
 	}
@@ -123,36 +116,27 @@ type Listed struct {
 	Filter inboxrcl.Filter
 	Page   inboxrcl.Page
 
-	// LegacyIdentityFound menyatakan identitas lama pemanggil ditemukan.
+	// IdentityFound menyatakan login pemanggil ditemukan dan aktif di `M_LOGIN_PNC`.
 	//
-	// # Kenapa ia dibawa, bukan cukup dengan halaman kosong
-	//
-	// Karena dua keadaan yang sama sekali berbeda menghasilkan halaman kosong yang sama:
-	//
-	//	identitas ditemukan, antreannya kosong  -> memang tidak ada pekerjaan
-	//	identitas TIDAK ditemukan                -> belum diketahui pekerjaan siapa
-	//
-	// Pega menampilkan keduanya sebagai grid kosong. Hasil yang dilihat pengguna tetap sama
-	// (`P-5`) — tetap tidak ada baris — tetapi layar kini dapat menyebut sebabnya.
-	LegacyIdentityFound bool
+	// Tidak digambar layar (keputusan Work Owner 2026-09-27: layar sama dengan Pega, tanpa
+	// peringatan). Tetap dikirim supaya antrean kosong dapat ditelusuri dari jawaban API:
+	// "tidak ada pekerjaan" lawan "login tidak dikenal".
+	IdentityFound bool
 }
 
-// List mengambil satu halaman antrean milik identitas lama pemanggil.
+// List mengambil satu halaman antrean milik pemanggil.
 //
-// # Urutannya disengaja
+// Login diperiksa lebih dulu, lalu portal dipilih (`M_LOGIN_PNC` tersimpan per entitas), lalu
+// login dicari di `M_LOGIN_PNC`. Bila tidak ada atau tidak aktif, antrean TIDAK dicari sama
+// sekali.
 //
-// Login diperiksa lebih dulu — tanpanya identitas lama tidak dapat dicari. Lalu portal
-// dipilih, karena identitas lama tersimpan di basis data entitas. Lalu identitas lama
-// dicari, dan bila tidak ada, antrean TIDAK dicari sama sekali.
-//
-// # Kenapa antrean tidak dicari dengan identitas kosong
+// # Kenapa antrean tidak dicari dengan operator kosong
 //
 // Di Pega `Param.assign` lalu bernilai string kosong, dan kedua penyaringnya (A dan D) tidak
-// punya opsi "abaikan bila kosong" — `InboxRCLDokter_RD` tidak menyalakannya. Oracle
-// memperlakukan string kosong sebagai NULL, sehingga perbandingan sama-dengan tidak
-// mencocokkan baris apa pun dan hasilnya nol baris. Tidak menjalankan kuerinya memberi
-// hasil yang SAMA tanpa bergantung pada dialek: di PostgreSQL string kosong bukan NULL, dan
-// kueri yang sama akan mencocokkan setiap klaim yang dokter RCL-nya kosong.
+// punya opsi "abaikan bila kosong". Oracle memperlakukan string kosong sebagai NULL, sehingga
+// hasilnya nol baris. Tidak menjalankan kuerinya memberi hasil yang SAMA tanpa bergantung pada
+// dialek: di PostgreSQL string kosong bukan NULL, dan kueri yang sama akan mencocokkan setiap
+// klaim yang dokter RCL-nya kosong.
 func (s *Service) List(
 	ctx context.Context,
 	portalAlias string,
@@ -170,21 +154,56 @@ func (s *Service) List(
 
 	clean := filter.Normalize()
 
-	legacy, err := repo.LegacyOperatorFor(ctx, caller.Login)
+	operator, err := repo.OperatorFor(ctx, caller.Login)
 	if err != nil {
-		return Listed{}, fmt.Errorf("mencari identitas lama pemanggil: %w", err)
+		return Listed{}, fmt.Errorf("mencari login pemanggil di M_LOGIN_PNC: %w", err)
 	}
-	if legacy == "" {
+	if operator == "" {
 		return Listed{
 			Filter: clean,
 			Page:   inboxrcl.Page{Tasks: []inboxrcl.RCLTask{}},
 		}, nil
 	}
 
-	page, err := repo.List(ctx, legacy, clean)
+	page, err := repo.List(ctx, operator, clean)
 	if err != nil {
 		return Listed{}, fmt.Errorf("mengambil antrean RCL Dokter: %w", err)
 	}
 
-	return Listed{Filter: clean, Page: page, LegacyIdentityFound: true}, nil
+	return Listed{Filter: clean, Page: page, IdentityFound: true}, nil
+}
+
+// Detail mengambil isi layar kerja `RCLDokter` satu klaim — dibuka saat Nomor Case diklik.
+//
+// Kewenangannya sama dengan antrean: klaim hanya terbuka bila tampil di antrean pemanggil.
+// Login yang tidak dikenal atau tidak aktif menghasilkan ErrClaimNotFound, bukan galat sesi:
+// sesinya sah, hanya tidak ada antrean RCL miliknya.
+func (s *Service) Detail(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxrcl.Caller,
+	claimNumber string,
+) (inboxrcl.RCLDetail, error) {
+	if caller.Login == "" {
+		return inboxrcl.RCLDetail{}, inboxrcl.ErrCallerUnknown
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxrcl.RCLDetail{}, err
+	}
+
+	operator, err := repo.OperatorFor(ctx, caller.Login)
+	if err != nil {
+		return inboxrcl.RCLDetail{}, fmt.Errorf("mencari login pemanggil di M_LOGIN_PNC: %w", err)
+	}
+	if operator == "" {
+		return inboxrcl.RCLDetail{}, inboxrcl.ErrClaimNotFound
+	}
+
+	detail, err := repo.Detail(ctx, operator, claimNumber)
+	if err != nil && !errors.Is(err, inboxrcl.ErrClaimNotFound) {
+		return inboxrcl.RCLDetail{}, fmt.Errorf("mengambil layar kerja RCL Dokter: %w", err)
+	}
+	return detail, err
 }

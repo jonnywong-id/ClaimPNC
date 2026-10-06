@@ -63,7 +63,13 @@ func TestListCountsThenReadsOnePage(t *testing.T) {
 	db, mock := newMock(t)
 	repo := NewRepo(db)
 
-	filter := []any{"0", "0", "12", "12", nil, nil, "BCA", "BCA", "budi", "budi"}
+	// Lima nilai terakhir adalah KATA KUNCI yang sama, dikirim lima kali: sekali untuk
+	// pemeriksaan IS NULL, lalu sekali untuk masing-masing dari empat kolom yang
+	// dicocokkannya.
+	filter := []any{
+		"0", "0", "12", "12", nil, nil, "BCA", "BCA", "budi", "budi",
+		"mandiri", "mandiri", "mandiri", "mandiri", "mandiri",
+	}
 	mock.ExpectQuery(exact("account_count")).WithArgs(toDriver(filter)...).
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(9))
 	mock.ExpectQuery(exact("account_list")).WithArgs(toDriver(append(filter, 5, 2000))...).
@@ -71,6 +77,7 @@ func TestListCountsThenReadsOnePage(t *testing.T) {
 
 	rows, total, err := repo.List(context.Background(), masterrekening.Filter{
 		Status: masterrekening.StatusPending, Number: " 12 ", OwnerName: "  ", BankName: "BCA",
+		Keyword:         " mandiri ",
 		MyCommitteeOnly: true, CommitteeIdentity: "budi", Limit: 9999, Offset: 5,
 	})
 	require.NoError(t, err)
@@ -91,7 +98,7 @@ func TestListDefaultsTheLimitAndIgnoresCommitteeWhenNotMine(t *testing.T) {
 	db, mock := newMock(t)
 	repo := NewRepo(db)
 
-	nils := []any{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
+	nils := []any{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 	mock.ExpectQuery(exact("account_count")).WithArgs(toDriver(nils)...).
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(0))
 	mock.ExpectQuery(exact("account_list")).WithArgs(toDriver(append(nils, 0, 500))...).
@@ -315,6 +322,77 @@ func TestBankListSkipsEmptyCodesAndFillsNames(t *testing.T) {
 	_, err = repo.List(context.Background())
 	require.ErrorContains(t, err, "menelusuri daftar bank")
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Keempat perilaku sumber cadangan dikunci di sini.
+//
+// Yang paling perlu dijaga adalah yang KEDUA: hanya ORA-00942 yang berpindah sumber.
+// Tanpa pembatasan itu, koneksi putus atau waktu habis akan diam-diam dijawab dengan
+// daftar bank dari tempat lain, dan gangguan nyata berubah menjadi data yang salah asal.
+func TestBankListFallsBackOnlyWhenTheObjectIsNotVisible(t *testing.T) {
+	columns := []string{"CODE", "NAME"}
+
+	t.Run("ORA-00942 berpindah ke sumber POOLDATA", func(t *testing.T) {
+		db, mock := newMock(t)
+		repo := NewBankRepo(db)
+
+		mock.ExpectQuery(exact("bank_list")).
+			WillReturnError(errors.New("ORA-00942: table or view does not exist"))
+		mock.ExpectQuery(exact("bank_list_pooldata")).
+			WillReturnRows(sqlmock.NewRows(columns).AddRow("014", "BANK BCA"))
+
+		banks, err := repo.List(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, []masterrekening.Bank{{Code: "014", Name: "BANK BCA"}}, banks)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("galat lain diteruskan apa adanya", func(t *testing.T) {
+		db, mock := newMock(t)
+		repo := NewBankRepo(db)
+
+		// Tidak ada ExpectQuery kedua: sumber cadangan TIDAK BOLEH dicoba di sini.
+		mock.ExpectQuery(exact("bank_list")).WillReturnError(errDB)
+		_, err := repo.List(context.Background())
+		require.ErrorIs(t, err, errDB)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("kedua sumber gagal: yang dilaporkan sumber kanonikal", func(t *testing.T) {
+		db, mock := newMock(t)
+		repo := NewBankRepo(db)
+
+		mock.ExpectQuery(exact("bank_list")).
+			WillReturnError(errors.New("ORA-00942: table or view does not exist"))
+		mock.ExpectQuery(exact("bank_list_pooldata")).WillReturnError(errDB)
+
+		_, err := repo.List(context.Background())
+		require.ErrorContains(t, err, "ORA-00942")
+		require.ErrorContains(t, err, "sumber cadangan juga gagal")
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("sumber yang berhasil diingat, kueri yang gagal tidak diulang", func(t *testing.T) {
+		db, mock := newMock(t)
+		repo := NewBankRepo(db)
+
+		mock.ExpectQuery(exact("bank_list")).
+			WillReturnError(errors.New("ORA-00942: table or view does not exist"))
+		mock.ExpectQuery(exact("bank_list_pooldata")).
+			WillReturnRows(sqlmock.NewRows(columns).AddRow("014", "BANK BCA"))
+		_, err := repo.List(context.Background())
+		require.NoError(t, err)
+
+		// Pemanggilan kedua langsung ke sumber cadangan — tanpa mencoba yang kanonikal
+		// sekali lagi. Daftar bank dibuka setiap kali form dibuka, dan satu kueri yang
+		// pasti gagal tidak perlu diulang sepanjang umur proses.
+		mock.ExpectQuery(exact("bank_list_pooldata")).
+			WillReturnRows(sqlmock.NewRows(columns).AddRow("002", "BANK BRI"))
+		banks, err := repo.List(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, []masterrekening.Bank{{Code: "002", Name: "BANK BRI"}}, banks)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }
 
 func TestGetQueryPanicsOnAnUnknownName(t *testing.T) {

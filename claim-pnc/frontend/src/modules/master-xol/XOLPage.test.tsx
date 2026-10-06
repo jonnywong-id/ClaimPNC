@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -21,12 +21,8 @@ const SAMPLE_PROFILE = {
 /**
  * Tiga induk contoh yang MENIRU BENTUK produksi, termasuk keanehannya.
  *
- * Ketiganya dipilih dengan sengaja, dan masing-masing menguji perilaku nyata:
- *
- *   - Nomor BERLUBANG (10001, 10002, 10004) — 10003 pernah dihapus di produksi, sehingga
- *     layar tidak boleh mengandaikan nomornya berurutan.
- *   - Satu induk ber-Type XOL KOSONG, karena dua dari delapan induk produksi memang NULL.
- *   - Status komite yang berbeda-beda, supaya lencananya teruji pada ketiga keadaan.
+ *   - Nomor BERLUBANG (10001, 10002, 10004) — 10003 pernah dihapus di produksi.
+ *   - Satu induk ber-Type XOL dan Remark Komite KOSONG.
  */
 const SAMPLE = [
   {
@@ -40,7 +36,7 @@ const SAMPLE = [
     pic: 'MARIATRIELSA',
     status_komite: '0',
     komite: 'NOVERHALOMOAN',
-    remark_komite: 'ok',
+    remark_komite: 'OK',
     bisnis: [],
     layer: [],
   },
@@ -70,7 +66,7 @@ const SAMPLE = [
     pic: 'NOVERHALOMOAN',
     status_komite: '1',
     komite: 'NOVERHALOMOAN',
-    remark_komite: 'ok',
+    remark_komite: 'OK',
     bisnis: [],
     layer: [],
   },
@@ -132,8 +128,6 @@ function installFetch(reply: (url: string, init?: RequestInit) => Response | Pro
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
-    // Kerangka layar memuat menunya sendiri sejak menu dibaca dari basis data. Ia dijawab
-    // di sini supaya uji layar ini menguji layarnya, bukan jalur galat menu.
     if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
     if (url === `${ROUTES}/form`) return Promise.resolve(jsonResponse(200, FORM_OPTION))
     if (url.startsWith(`${ROUTES}/bisnis`)) {
@@ -148,7 +142,8 @@ function installDefaultFetch(options: { peringatan?: string[] } = {}) {
   installFetch((url, init) => {
     if (url === ROUTES && init?.method === 'POST') {
       return jsonResponse(201, {
-        xol: { ...SAMPLE[0], id: '10009' },
+        // Server menerbitkan nomor induk DAN nomor layer; keduanya belum diketahui klien.
+        xol: { ...SAMPLE[0], id: '10009', layer: [{ ...DETAIL_10001.layer[0], id: '10018' }] },
         portal: 'ASM',
         ...(options.peringatan ? { peringatan: options.peringatan } : {}),
       })
@@ -185,7 +180,6 @@ function show() {
 
 beforeEach(() => {
   calls = []
-  // Layar berada di balik sesi. Tanpa ini SessionGuard melempar ke layar masuk.
   useSession.setState({
     token: 'token-uji',
     user: SAMPLE_PROFILE,
@@ -198,103 +192,245 @@ afterEach(() => {
   useSession.getState().clear()
 })
 
-describe('daftar', () => {
-  it('menampilkan induk beserta nomor yang berlubang', async () => {
+// ── Kolom grid: harus SAMA PERSIS dengan layar Pega ──────────────────────────────
+
+describe('kolom grid mengikuti layar Pega', () => {
+  it('memuat tepat empat kolom data: ID, Tahun, Kurs, Remark Komite', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
 
-    expect(await screen.findByText('Section 1')).toBeInTheDocument()
-    expect(screen.getByText('TESTING')).toBeInTheDocument()
-    // 10003 tidak ada — nomor produksi memang berlubang.
-    expect(screen.getByText('10004')).toBeInTheDocument()
-
-    // Total datang dari server, bukan dihitung ulang di layar.
-    expect(screen.getByText(/3 master XOL terdaftar/)).toBeInTheDocument()
+    const judul = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim() ?? '')
+    // Kolom kelima adalah kolom aksi dan sengaja tanpa judul, sama seperti di Pega.
+    expect(judul.filter((t) => t !== '')).toEqual(['ID', 'Tahun', 'Kurs', 'Remark Komite'])
   })
 
-  it('menandai induk tanpa nama dan tanpa Type XOL, bukan membiarkannya kosong', async () => {
+  it('TIDAK memuat Nama, Type XOL, maupun Status Komite', async () => {
+    // Ketiganya ada di tabel tetapi TIDAK ada di grid Pega. Versi pertama layar ini
+    // menambahkannya; uji ini yang menjaganya tidak kembali.
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
 
-    expect(await screen.findByText('(tanpa nama)')).toBeInTheDocument()
-    expect(screen.getAllByText('(belum dipilih)').length).toBeGreaterThan(0)
+    const judul = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim())
+    expect(judul).not.toContain('Nama')
+    expect(judul).not.toContain('Type XOL')
+    expect(judul).not.toContain('Status Komite')
   })
 
-  it('menerjemahkan status komite menjadi kalimat', async () => {
+  it('aksi per baris hanya Update, tanpa Hapus', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
 
-    expect(await screen.findByText('Menunggu komite')).toBeInTheDocument()
-    expect(screen.getByText('Disetujui')).toBeInTheDocument()
-    expect(screen.getByText('Belum diajukan')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Update master XOL/ })).toHaveLength(3)
+    expect(screen.queryByRole('button', { name: /^Hapus master XOL/ })).not.toBeInTheDocument()
   })
 
-  it('menyebut entitas yang menjawab permintaan', async () => {
+  it('tombol halaman bernama Tambah dan Refresh', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
 
-    await screen.findByText('Section 1')
-    expect(screen.getByText(/Portal entitas:/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tambah' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+  })
+
+  it('menampilkan isi keempat kolom apa adanya', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+
+    expect(screen.getByText('2018')).toBeInTheDocument()
+    expect(screen.getByText('13.500')).toBeInTheDocument()
+    expect(screen.getAllByText('OK').length).toBeGreaterThan(0)
   })
 })
 
-describe('form', () => {
-  it('memberi tahu bahwa menyimpan sekaligus mengajukan ke komite', async () => {
+// ── Form: isian dan judul panel mengikuti layar Pega ─────────────────────────────
+
+describe('form mengikuti layar Pega', () => {
+  it('berjudul UPDATE DATA XOL dan memuat tepat empat isian', async () => {
     installDefaultFetch()
     show()
-
-    await screen.findByText('Section 1')
+    await screen.findByText('10001')
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
 
-    expect(await screen.findByText('Menambah Data')).toBeInTheDocument()
-    expect(screen.getByText(/mengajukan ke komite/)).toBeInTheDocument()
+    expect(await screen.findByText('UPDATE DATA XOL')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tahun')).toBeInTheDocument()
+    expect(screen.getByLabelText('Kurs IDR')).toBeInTheDocument()
+    expect(screen.getByLabelText('Type XOL')).toBeInTheDocument()
+    expect(screen.getByLabelText('Remark PIC')).toBeInTheDocument()
+
+    // Nama dan ID TIDAK punya isian — layar Pega pun tidak punya.
+    expect(screen.queryByLabelText('Nama')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('ID')).not.toBeInTheDocument()
+  })
+
+  it('memakai dua panel bernama Detail Group Bisnis dan Detail Layer', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+
+    expect(await screen.findByText('Detail Group Bisnis')).toBeInTheDocument()
+    expect(screen.getByText('Detail Layer')).toBeInTheDocument()
+    // Teks kosongnya pun diambil apa adanya dari Pega.
+    expect(screen.getAllByText('Data Tidak Ada').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('grid Layer memakai keempat judul kolom Pega', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('Detail Layer')
+
+    for (const judul of ['ID Layer', 'Nama Layer', 'Limit (USD)', 'Excess (USD)']) {
+      expect(screen.getByText(judul)).toBeInTheDocument()
+    }
+    // Limit (IDR) TIDAK ada di grid Pega.
+    expect(screen.queryByText('Limit (IDR)')).not.toBeInTheDocument()
+  })
+
+  it('kedua dropdown memakai teks kosong --Pilih--', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+
+    const tahun = await screen.findByLabelText('Tahun')
+    expect(within(tahun).getByRole('option', { name: '--Pilih--' })).toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText('Type XOL')).getByRole('option', { name: '--Pilih--' }),
+    ).toBeInTheDocument()
   })
 
   it('memuat isi induk lewat permintaan detail, bukan dari baris grid', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Update master XOL 10001' }))
 
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Ubah master XOL 10001' }))
-
-    // Baris grid tidak membawa anaknya; layar wajib menariknya sendiri.
     await waitFor(() => {
       expect(calls.some((c) => c.url === `${ROUTES}/10001`)).toBe(true)
     })
     expect(await screen.findByDisplayValue('Sub Layer')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('SWISS RE')).toBeInTheDocument()
   })
+})
 
-  it('menghitung Limit (IDR) dari Limit dolar dikali kurs', async () => {
+// ── Fungsi Tambah dan Ubah benar-benar bekerja ───────────────────────────────────
+
+describe('tambah dan ubah', () => {
+  it('menambah mengirim POST dan menampilkan nomor yang diterbitkan server', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('UPDATE DATA XOL')
 
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Ubah master XOL 10001' }))
+    await userEvent.selectOptions(screen.getByLabelText('Tahun'), '2026')
+    await userEvent.clear(screen.getByLabelText('Kurs IDR'))
+    await userEvent.type(screen.getByLabelText('Kurs IDR'), '16000')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
-    // 1.095.000 × 13.500 = 14.782.500.000
-    expect(await screen.findByText('14.782.500.000')).toBeInTheDocument()
+    expect(await screen.findByText(/Tersimpan dan diajukan ke komite/)).toBeInTheDocument()
+    const posted = calls.find((c) => c.url === ROUTES && c.init?.method === 'POST')
+    expect(posted).toBeDefined()
+    expect(String(posted?.init?.body)).toContain('"tahun":"2026"')
+    expect(String(posted?.init?.body)).toContain('"kurs":16000')
   })
 
-  it('menampilkan peringatan total share sebagai catatan, bukan sebagai kegagalan', async () => {
+  // Menyimpan tanpa catatan MENUTUP form. Kabarnya karena itu wajib muncul di halaman —
+  // bila ia dipasang di dalam form, ia hilang bersama form pada saat yang sama.
+  it('menyimpan tanpa catatan menutup form dan memberi kabar di halaman', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('UPDATE DATA XOL')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    expect(await screen.findByText(/Tersimpan dan diajukan ke komite/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('UPDATE DATA XOL')).not.toBeInTheDocument())
+  })
+
+  // Sebaliknya: ada catatan berarti form TETAP terbuka, supaya catatannya terbaca dan
+  // pengguna dapat memperbaiki share lalu menyimpan lagi.
+  it('menyimpan dengan catatan membiarkan form tetap terbuka', async () => {
     installDefaultFetch({ peringatan: ['Total share pada Sub Layer belum 100% (sekarang 60%).'] })
     show()
-
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Ubah master XOL 10001' }))
-    await screen.findByDisplayValue('Sub Layer')
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('UPDATE DATA XOL')
 
     await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Tersimpan, dengan catatan:')).toBeInTheDocument()
-    expect(screen.getByText(/belum 100%/)).toBeInTheDocument()
+    expect(screen.getByText('UPDATE DATA XOL')).toBeInTheDocument()
   })
 
-  it('tidak pernah mengirim limit_idr maupun kolom komite ke server', async () => {
+  // Tombol Tutup mengirim objek klik bila tidak dibungkus, dan halaman akan menampilkan
+  // objek itu sebagai pesan berhasil.
+  it('tombol Tutup tidak memunculkan pesan berhasil', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('UPDATE DATA XOL')
 
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Ubah master XOL 10001' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tutup' }))
+
+    await waitFor(() => expect(screen.queryByText('UPDATE DATA XOL')).not.toBeInTheDocument())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('menyimpan dua kali setelah menambah TIDAK membuat induk kembar', async () => {
+    // Cacat yang nyata bila nomornya tidak dicatat: penyimpanan kedua akan mengirim POST
+    // untuk kedua kalinya, dan server menerbitkan induk baru lagi.
+    //
+    // Jawaban server diberi CATATAN dengan sengaja, karena itulah satu-satunya jalur yang
+    // menyisakan tombol Simpan kedua: penyimpanan tanpa catatan menutup form.
+    installDefaultFetch({ peringatan: ['Total share pada Sub Layer belum 100% (sekarang 60%).'] })
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('UPDATE DATA XOL')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+    await screen.findByText('Tersimpan, dengan catatan:')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => {
+      expect(calls.filter((c) => c.init?.method === 'PUT')).toHaveLength(1)
+    })
+    expect(calls.filter((c) => c.url === ROUTES && c.init?.method === 'POST')).toHaveLength(1)
+  })
+
+  it('mengubah mengirim PUT ke nomor induknya', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Update master XOL 10001' }))
+    await screen.findByDisplayValue('Sub Layer')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => {
+      const saved = calls.find((c) => c.init?.method === 'PUT')
+      expect(saved?.url).toBe(`${ROUTES}/10001`)
+    })
+  })
+
+  it('membawa Nama yang sudah tersimpan meski tidak ada isiannya di layar', async () => {
+    // Kolom NAMA terisi di produksi tetapi tidak punya isian di form Pega. Bila ia tidak
+    // ikut dikirim, menyimpan akan MENGOSONGKAN nama yang sudah ada.
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Update master XOL 10001' }))
     await screen.findByDisplayValue('Sub Layer')
 
     await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
@@ -303,54 +439,95 @@ describe('form', () => {
       expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true)
     })
     const saved = calls.find((c) => c.init?.method === 'PUT')
-    const body = String(saved?.init?.body ?? '')
+    expect(String(saved?.init?.body)).toContain('"nama":"Section 1"')
+  })
 
-    // Server menolak field tak dikenal; ketiganya wajib dibuang di layar.
+  it('tidak pernah mengirim limit_idr maupun penanda layar', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Update master XOL 10001' }))
+    await screen.findByDisplayValue('Sub Layer')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => {
+      expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true)
+    })
+    const body = String(calls.find((c) => c.init?.method === 'PUT')?.init?.body ?? '')
     expect(body).not.toContain('limit_idr')
     expect(body).not.toContain('tersimpan')
     expect(body).not.toContain('status_komite')
   })
+
+  it('menampilkan peringatan total share sebagai catatan, bukan kegagalan', async () => {
+    installDefaultFetch({ peringatan: ['Total share pada Sub Layer belum 100% (sekarang 60%).'] })
+    show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Update master XOL 10001' }))
+    await screen.findByDisplayValue('Sub Layer')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    expect(await screen.findByText('Tersimpan, dengan catatan:')).toBeInTheDocument()
+    expect(screen.getByText(/belum 100%/)).toBeInTheDocument()
+  })
 })
 
-describe('hapus', () => {
-  it('meminta konfirmasi dan menyebut bahwa hapus berkaskade', async () => {
+// ── Baris anak ──────────────────────────────────────────────────────────────────
+
+describe('baris anak', () => {
+  it('menambah baris layer menampilkan grid Reas-nya', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('Detail Layer')
 
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus master XOL 10001' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah Layer' }))
 
-    const dialog = await screen.findByRole('alertdialog')
-    expect(dialog).toHaveTextContent(/ikut terhapus/)
-    // Tidak ada permintaan hapus sebelum dikonfirmasi.
-    expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(false)
+    expect(await screen.findByText('Reas')).toBeInTheDocument()
+    expect(screen.getByText('Share (%)')).toBeInTheDocument()
+    expect(screen.getByText('(baru)')).toBeInTheDocument()
   })
 
-  it('menghapus setelah dikonfirmasi', async () => {
+  it('menghapus baris anak yang sudah tersimpan menembak server seketika', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Update master XOL 10001' }))
+    await screen.findByDisplayValue('Sub Layer')
 
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus master XOL 10001' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Ya, hapus' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus reas baris 1' }))
 
     await waitFor(() => {
       const removed = calls.find((c) => c.init?.method === 'DELETE')
-      expect(removed?.url).toBe(`${ROUTES}/10001`)
+      expect(removed?.url).toBe(`${ROUTES}/10001/layer/10001/reas/10036322`)
     })
   })
 
-  it('membatalkan tanpa mengirim apa pun', async () => {
+  it('menghapus baris anak yang BELUM tersimpan tidak menembak server', async () => {
     installDefaultFetch()
     show()
+    await screen.findByText('10001')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByText('Detail Layer')
 
-    await screen.findByText('Section 1')
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus master XOL 10001' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Batal' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah Layer' }))
+    await screen.findByText('(baru)')
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus Layer baris 1' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
     expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(false)
+  })
+})
+
+// ── Portal ──────────────────────────────────────────────────────────────────────
+
+describe('portal', () => {
+  it('menyebut entitas yang menjawab permintaan', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('10001')
+    expect(screen.getByText(/Portal entitas:/)).toBeInTheDocument()
   })
 })

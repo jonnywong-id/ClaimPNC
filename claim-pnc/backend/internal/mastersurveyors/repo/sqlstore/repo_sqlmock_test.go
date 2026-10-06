@@ -338,7 +338,7 @@ func TestUpdate(t *testing.T) {
 	changed := sample()
 	changed.ID = "1000002"
 	changed.Status = mastersurveyors.StatusApproved
-	changed.CommitteeTransferred = "1"
+	changed.NeedDirector = "1"
 
 	t.Run("berhasil", func(t *testing.T) {
 		repo, mock := newMock(t)

@@ -339,6 +339,23 @@ export type XOLBusinessGroupResponse = {
 }
 
 /**
+ * Satu calon reasuradur dari master `POOLDATA.T_REINSURER`.
+ *
+ * Hanya id dan nama — persis dua kolom yang dituntut baris reas (`IDREAS` dan `NAMA`).
+ * Email, login, dan negara ada di master tetapi tidak dikirim: layar ini tidak memakainya.
+ */
+export type XOLReinsurerOption = {
+  id: string
+  nama: string
+}
+
+export type XOLReinsurerSearchResponse = {
+  reas: XOLReinsurerOption[]
+  total: number
+  portal: string
+}
+
+/**
  * Badan permintaan tambah dan ubah.
  *
  * `id`, `limit_idr`, dan keempat kolom komite TIDAK ada di sini dengan sengaja — server
@@ -489,17 +506,23 @@ export type Surveyor = {
 
   /** Kolom M_SURVEY_ID, merujuk baris pada master tipe surveyor. */
   kode_tipe: string
-  /** Deskripsi tipe, ikut dikirim server supaya grid tidak memanggil master tipe per baris. */
+  /**
+   * Deskripsi tipe, ikut dikirim server supaya grid tidak memanggil master tipe per baris.
+   * Di layar lama kolom ini berjudul **"ID Survei Master"**.
+   */
   nama_tipe: string
+
+  /** Kolom TRFKOMITE — dropdown "Apakah perlu ke direksi?". Isian pengguna. */
+  perlu_direksi: string
 
   nama: string
   alamat: string
   kode_pos: string
-  provinsi: string
+  negara: string
   telepon: string
   faksimile: string
   email: string
-  kontak_lain: string
+  nama_pic: string
   /** Kolom BRANCH, berlabel "Cabang" di layar lama. Isian teks — master cabang belum ada. */
   kode_cabang: string
   nama_cabang: string
@@ -550,17 +573,20 @@ export type SurveyorResponse = {
  */
 export type SurveyorInput = {
   kode_tipe: string
+  /** Dropdown "Apakah perlu ke direksi?" (TRFKOMITE) — isian pengguna. */
+  perlu_direksi: string
   nama: string
-  alamat: string
-  kode_pos: string
-  provinsi: string
+  email: string
   telepon: string
   faksimile: string
-  email: string
-  kontak_lain: string
-  kode_cabang: string
+  negara: string
+  kode_pos: string
+  nama_pic: string
+  alamat: string
   nama_cabang: string
   login_aplikasi: string
+  /** Tidak tampil sebagai isian terpisah; dibawa agar nilainya tidak hilang saat disunting. */
+  kode_cabang: string
   id_dokumen: string
 }
 
@@ -595,41 +621,39 @@ export type Technician = {
 
   email: string
 
-  /**
-   * Kolom TYPE_BUSINESS. Teks bebas, bukan pilihan tertutup: satu-satunya nilai yang
-   * benar-benar muncul di export adalah "NONMBU".
-   */
-  lini_bisnis: string
+  /** Kolom TYPE_BUSINESS — berlabel **"Bisnis"**. Nilai yang terlihat: NONMBU, BONDING. */
+  bisnis: string
 
-  /** Kolom TEAM_GROUP, kelompok kerja petugas. */
-  grup: string
+  /** Kolom TEAM_GROUP — berlabel **"Kelompok"**. Nilai yang terlihat: A, B, C. */
+  kelompok: string
 
   /** Kolom ATASAN — berisi ID operator atasannya, BUKAN namanya. */
   atasan: string
 
-  /** Kolom COUNTER_QUOTA — banyaknya pekerjaan yang BOLEH dipikul. */
-  kuota: number
-
   /**
-   * Kolom COUNTER_QUOTA2 — beban kerja petugas yang sama di sistem lain.
+   * Kolom COUNTER_QUOTA — berlabel **"Counter Klaim <1M"**.
    *
-   * Namanya di sistem lama, alias "OLD_OPERATOR_ID", menyesatkan: isinya angka.
+   * PENCACAH klaim yang sudah ditangani dengan nilai di bawah Rp 1 Miliar — bukan kuota.
+   * Penugasan memilih petugas dengan pencacah terkecil (`ORDER BY counter_quota ASC`).
    */
-  kuota_luar: number
+  counter_klaim_kurang_1m: number
+
+  /** Kolom COUNTER_QUOTA2 — berlabel **"Counter Klaim >1M"**. Pencacah klaim di atas Rp 1 Miliar. */
+  counter_klaim_lebih_1m: number
 
   /**
-   * Kolom TOTAL_JOB — beban pekerjaan yang SEBENARNYA, berbeda dari kuota yang
-   * menyatakan batas.
+   * Kolom TOTAL_JOB.
    *
-   * Hanya dibaca, dan hanya terisi pada daftar: ia kolom milik view dan tidak ada di
-   * tabelnya.
+   * TIDAK DITAMPILKAN di layar mana pun — grid Pega memuat tujuh kolom dan ini bukan
+   * salah satunya, dan form-nya pun tidak memuatnya. Ia ikut dikirim karena view
+   * menyediakannya, bukan karena ada yang memakainya.
    */
   beban_kerja: number
 
-  /** Kolom GROUPPANEL, dialias "IBNR" di kueri lama. Hanya dibaca. */
+  /** Kolom GROUPPANEL, dialias "IBNR" di kueri lama. Hanya dibaca, tidak ditampilkan. */
   grup_panel: string
 
-  /** Kolom STS_AKTIF. Hanya yang aktif muncul di daftar. */
+  /** Kolom STS_AKTIF — berlabel **"Status Aktif"**, ditampilkan sebagai `1`/`0`. */
   aktif: boolean
 }
 
@@ -671,11 +695,11 @@ export type EmployeeResponse = {
 export type TechnicianInput = {
   id_operator: string
   email: string
-  lini_bisnis: string
-  grup: string
+  bisnis: string
+  kelompok: string
   atasan: string
-  kuota: number
-  kuota_luar: number
+  counter_klaim_kurang_1m: number
+  counter_klaim_lebih_1m: number
   aktif: boolean
 }
 
@@ -725,12 +749,15 @@ export type TravelDocumentInput = {
  *
  * Layar "Daftar Detail Dokumen Travel" (MENU_ID 39), pengganti
  * `Harness/ListDocumentTravel-Harness.xml`. Ia merujuk `TravelDocument.id` di atas dan
- * menambahkan aturannya: wajib atau tidak, berapa berkas paling sedikit, dan pada plan
- * serta jaminan mana aturan itu berlaku.
+ * menambahkan aturannya: wajib atau tidak, dan berapa berkas paling sedikit.
  *
  * Nama fieldnya mengikuti label isian di layar Pega
  * (`Section/BrowseDocumentTravel-Section.xml`), supaya satu istilah berlaku dari layar
  * sampai ke kontrak.
+ *
+ * Pembatasan per Plan dan Jaminan yang sempat ada di sini DICABUT 2026-10-03: grid itu
+ * memang ada di section Pega, tetapi tidak ada di aplikasi yang berjalan, dan Work Owner
+ * memeriksa layarnya langsung.
  */
 export type TravelDocumentDetail = {
   /** Kunci baris. Diterbitkan server; tidak pernah diisi pengguna. */
@@ -748,24 +775,6 @@ export type TravelDocumentDetail = {
   status_wajib: boolean
   /** Kolom MINUNGGAH — label layar "Minimal Unggah". Nol berarti tanpa tuntutan jumlah. */
   minimal_unggah: number
-  /**
-   * Pembatasan per Plan dan Jaminan — baris V_LST_DOC_TRAVEL_COVERAGE.
-   *
-   * SELALU kosong pada hasil daftar; hanya terisi pada pengambilan satu baris. Layar
-   * karena itu WAJIB memuat ulang barisnya saat dibuka untuk disunting — memakai baris
-   * dari daftar akan membuat form tampak seolah seluruh pembatasannya sudah dihapus, dan
-   * menyimpannya benar-benar menghapusnya.
-   */
-  jaminan: TravelDocumentDetailCoverage[]
-}
-
-/** Satu pembatasan plan dan jaminan pada sebuah aturan dokumen. */
-export type TravelDocumentDetailCoverage = {
-  id: string
-  id_plan: string
-  nama_plan: string
-  id_jaminan: string
-  nama_jaminan: string
 }
 
 export type TravelDocumentDetailListResponse = {
@@ -781,32 +790,17 @@ export type TravelDocumentDetailResponse = {
   portal: string
 }
 
-/** Badan permintaan penambahan dan penyuntingan detail dokumen travel. */
+/**
+ * Badan permintaan penambahan dan penyuntingan detail dokumen travel.
+ *
+ * Keempat field inilah seluruh isi form. Server menolak field yang tidak dikenal, jadi
+ * mengirim `jaminan` seperti versi sebelumnya akan dijawab `permintaan_cacat`.
+ */
 export type TravelDocumentDetailInput = {
   id_dokumen: string
   nama_dokumen: string
   status_wajib: boolean
   minimal_unggah: number
-  /**
-   * Susunan AKHIR yang dikehendaki petugas — server menggantikan seluruh daftar lamanya,
-   * bukan menambahinya.
-   */
-  jaminan: TravelDocumentDetailCoverageInput[]
-}
-
-/**
- * Satu baris grid plan dan jaminan yang dikirim layar.
- *
- * Nama DAN kode keduanya dikirim. Sebabnya perilaku layar lama: autocomplete-nya
- * menyalin kode ke properti tersembunyi saat sebuah pilihan dipilih, tetapi isiannya
- * tetap dapat diisi teks yang tidak ada di master — dan pada keadaan itu yang tersimpan
- * hanyalah namanya, tanpa kode.
- */
-export type TravelDocumentDetailCoverageInput = {
-  id_plan: string
-  nama_plan: string
-  id_jaminan: string
-  nama_jaminan: string
 }
 
 /**
@@ -888,33 +882,6 @@ export type DetailDocumentType = {
    * berarti nol.
    */
   resiko: string
-  /**
-   * Aturan per lini bisnis — baris V_LST_DET_TYPE_DOC_BISNIS.
-   *
-   * SELALU kosong pada hasil daftar; hanya terisi pada pengambilan satu baris. Layar
-   * karena itu WAJIB memuat ulang barisnya saat dibuka untuk disunting — memakai baris
-   * dari daftar akan membuat form tampak seolah seluruh lini bisnisnya sudah dihapus, dan
-   * menyimpannya benar-benar menghapusnya.
-   */
-  bisnis: DetailDocumentTypeBusiness[]
-}
-
-/** Aturan dokumen pada satu lini bisnis. */
-export type DetailDocumentTypeBusiness = {
-  /** Kolom DFT_BISNIS_ID — label layar "ID Bisnis". */
-  id_bisnis: string
-  /** NOTE pada POOLDATA.BUSINESS. HANYA DIBACA; kosong bila bisnisnya sudah tidak ada. */
-  nama_bisnis: string
-  /**
-   * Kolom STS_WAJIB — label layar "Status Wajib".
-   *
-   * Boolean di kontrak; yang tersimpan TEKS "Ya"/"Tidak" (keputusan Work Owner
-   * 2026-09-23). Data lama bercampur — kolomnya memuat "Ya", "Tidak", "1", dan "0" —
-   * dan server yang menjembataninya.
-   */
-  status_wajib: boolean
-  /** Kolom MIN_DOC — label layar "Minimum Dokumen". Nol berarti tanpa tuntutan jumlah. */
-  minimum_dokumen: number
 }
 
 export type DetailDocumentTypeListResponse = {
@@ -931,18 +898,18 @@ export type DetailDocumentTypeResponse = {
 }
 
 /**
- * Keempat daftar pilihan form Daftar Detail Tipe Dokumen.
+ * Daftar pilihan form Daftar Detail Tipe Dokumen.
  *
- * Dikirim dalam SATU respons meski berasal dari empat master, karena form selalu
- * membutuhkan keempatnya bersamaan.
+ * Hanya satu sejak grid Lini Bisnis dicabut (koreksi Work Owner 2026-10-03): form
+ * hanya punya dua isian, dan hanya ID Tipe Dokumen yang memilih dari daftar.
+ *
+ * Bentuk amplopnya dipertahankan, bukan disederhanakan menjadi satu senarai telanjang:
+ * penambahan master berikutnya tidak mengubah bentuk kontraknya.
  */
 export type DetailDocumentTypeReferenceResponse = {
   tipe_dokumen: DetailDocumentTypeChoice[]
-  penyebab_kerugian: DetailDocumentTypeChoice[]
-  objek_dokumen: DetailDocumentTypeChoice[]
-  bisnis: DetailDocumentTypeChoice[]
   /**
-   * Master mana yang gagal dibaca. Kosong berarti keempatnya terbaca.
+   * Master mana yang gagal dibaca. Kosong berarti seluruhnya terbaca.
    *
    * Ia ada supaya layar dapat membedakan "masternya kosong" dari "masternya tidak dapat
    * dibaca" — dua keadaan yang tampak sama persis (daftar pilihan kosong) tetapi menuntut
@@ -964,35 +931,18 @@ export type DetailDocumentTypeInput = {
   detail_dokumen: string
   status_tertanggung: string
   /**
-   * Kode DAN keterangan dikirim BERPASANGAN.
+   * Enam kolom berikut TIDAK disunting dari layar ini — layar Pega yang berjalan hanya
+   * meminta ID Tipe Dokumen dan Detail Dokumen.
    *
-   * Keterangannya yang diketik petugas; kodenya diisi layar saat keterangan itu cocok
-   * dengan salah satu pilihan master. Keterangan di luar master tetap dikirim dengan kode
-   * kosong — persis `pyAllowFreeFormInput=true` di layar lama. Mengirim kodenya saja akan
-   * membuang isian yang sah.
+   * Layar tetap WAJIB mengirimkan nilai lamanya apa adanya. Mengirimnya kosong akan
+   * mengosongkan kolomnya pada setiap penyimpanan, padahal petugas tidak pernah diberi
+   * kesempatan mengubahnya.
    */
   id_penyebab_kerugian: string
   keterangan_penyebab_kerugian: string
   id_objek_dokumen: string
   keterangan_objek_dokumen: string
   resiko: string
-  /**
-   * Susunan AKHIR yang dikehendaki petugas — server menggantikan seluruh daftar lamanya,
-   * bukan menambahinya.
-   */
-  bisnis: DetailDocumentTypeBusinessInput[]
-}
-
-/**
- * Satu baris grid bisnis yang dikirim layar.
- *
- * Tanpa nama bisnis: namanya milik master dan dibaca lewat join, tidak disimpan di baris
- * ini. Mengirimkannya hanya akan menyimpan salinan yang dapat menyimpang dari masternya.
- */
-export type DetailDocumentTypeBusinessInput = {
-  id_bisnis: string
-  status_wajib: boolean
-  minimum_dokumen: number
 }
 
 /* ── Daftar Tipe Dokumen Bisnis — MENU_ID 42 ──────────────────────────────────
@@ -1138,6 +1088,17 @@ export type BusinessDocumentRuleBatchInput = {
   dokumen: BusinessDocumentRuleInput[]
 }
 
+/**
+ * Satu baris pada layar Ubah.
+ *
+ * Bedanya dari BusinessDocumentRuleInput hanya `id`, dan itulah seluruh intinya: baris
+ * ber-`id` diperbarui, baris tanpa `id` disisipkan. Satu penekanan Simpan dapat memuat
+ * keduanya — bentuk yang sama dengan sentinel `UnknownID` di sistem lama.
+ */
+export type BusinessDocumentRuleRowInput = BusinessDocumentRuleInput & {
+  id: string
+}
+
 /** Badan permintaan penambahan satu jaminan. */
 export type BusinessDocumentRuleCoverageInput = {
   id_jenis_klaim: string
@@ -1174,37 +1135,9 @@ export type TravelDocumentChoiceListResponse = {
   portal: string
 }
 
-/** Satu pilihan pada isian Nama Plan, dibaca dari POOLDATA.M_PLANTRAVEL milik GISFW. */
-export type TravelPlan = {
-  id: string
-  nama: string
-}
-
-/**
- * Satu pilihan pada isian Nama Jaminan.
- *
- * `id_plan` ikut dibawa supaya layar dapat menyaring jaminan menurut plan yang sudah
- * dipilih tanpa menembak server lagi untuk setiap baris grid — penyaringan yang di Pega
- * dikerjakan server lewat parameter `plan` pada `SearchCoverageTravel_RD`.
- */
-export type TravelCoverage = {
-  id: string
-  nama: string
-  id_plan: string
-}
-
-/**
- * Plan dan jaminan datang dalam SATU respons.
- *
- * Keduanya berasal dari tabel yang sama (POOLDATA.M_PLANTRAVEL) dan layar selalu
- * membutuhkannya bersamaan: grid pembatasan tidak dapat menampilkan satu baris pun tanpa
- * keduanya.
- */
-export type TravelPlanListResponse = {
-  plan: TravelPlan[]
-  jaminan: TravelCoverage[]
-  portal: string
-}
+// Tipe TravelPlan, TravelCoverage, dan TravelPlanListResponse DICABUT 2026-10-03
+// bersama rute /api/master/plan-travel yang melayaninya. Grid Plan dan Jaminan tidak ada
+// di layar Pega yang berjalan, sehingga tidak ada layar yang membutuhkannya.
 
 /**
  * Satu tipe dokumen klaim — kolom V_LST_DOC_TYPE yang benar-benar tampil di layar.
@@ -1266,6 +1199,21 @@ export type DocumentTypeInput = {
 export type FieldViolation = {
   field?: string
   kolom?: string
+
+  /**
+   * Nama ketiga untuk hal yang sama — dipakai modul Report Klaim.
+   *
+   * Ditemukan 2026-10-01 karena akibatnya: pelanggarannya SELALU terbuang. `violations()`
+   * hanya mengenali `field` dan `kolom`, sehingga rincian "Tanggal Dari wajib diisi."
+   * tidak pernah sampai ke layar — yang tampil hanya ringkasan "Ada isian yang belum
+   * benar.", yang tidak dapat ditindaklanjuti.
+   *
+   * Tiga nama untuk satu hal adalah utang yang `TKT-F1-004` tutup dengan menyeragamkan
+   * kontraknya. Sampai itu terjadi, ketiganya dibaca di sini — dan pembacaan inilah yang
+   * membuat layar tidak perlu tahu modul mana memakai nama yang mana.
+   */
+  isian?: string
+
   pesan: string
 }
 
@@ -1399,6 +1347,12 @@ export const ErrorCode = {
    * hampir pasti berhasil.
    */
   maskingIDTaken: 'id_masking_sudah_dipakai',
+  /** Daftar petugas diminta tanpa menyebut cabangnya. */
+  maskingBranchNotChosen: 'cabang_belum_dipilih',
+  /** Penyimpanan massal dijalankan tanpa satu baris pun. */
+  maskingNoRowChosen: 'belum_ada_baris',
+  /** Pencarian menurut status dijalankan tanpa memilih statusnya. */
+  maskingStatusNotChosen: 'status_belum_dipilih',
 
   // Milik modul Master Tipe Surveyors.
   surveyorTypeNotFound: 'tipe_surveyor_tidak_ditemukan',
@@ -1483,6 +1437,8 @@ export type Account = {
   email: string
   telepon: string
   nik: string
+  /** "Email Inputor" — tujuan pemberitahuan approval dari Kasir. */
+  email_inputor: string
   catatan: string
   id_dokumen: string
   diinput_oleh: string
@@ -2281,6 +2237,68 @@ export type MaskingInput = {
 /** Badan permintaan pengaktifan dan penonaktifan. */
 export type MaskingStatusInput = {
   aktif: boolean
+}
+
+/**
+ * Satu petugas pada form Tambah — kolom NAMA USER dan LOGIN di layar lama.
+ *
+ * Sumbernya `DATAPEGA.PR_OPERATORS`, disaring ke empat jabatan dan ke cabang terpilih.
+ */
+export type MaskingOperator = {
+  login: string
+  nama: string
+}
+
+export type MaskingOperatorListResponse = {
+  pengguna: MaskingOperator[]
+  total: number
+  portal: string
+}
+
+/**
+ * Satu baris Template Akses pada form Tambah.
+ *
+ * Tidak ada `cabang` di sini: cabang dipilih sekali di atas form, dan satu kali SIMPAN di
+ * layar lama tidak pernah dapat menyentuh lebih dari satu cabang.
+ *
+ * Tidak ada `aktif` juga — baris baru selalu aktif.
+ */
+export type MaskingBulkRow = {
+  login: string
+  modul: string
+  sub_modul: string
+  maks_cari: number
+  maks_lihat: number
+  lihat_ktp: boolean
+  lihat_email: boolean
+  lihat_notelp: boolean
+}
+
+/** Badan permintaan form Tambah — satu cabang, banyak baris. */
+export type MaskingBulkInput = {
+  cabang: string
+  baris: MaskingBulkRow[]
+}
+
+/**
+ * Hasil penyimpanan massal, dilaporkan PER BARIS.
+ *
+ * Sebagian baris dapat tersimpan sementara sebagian ditolak, karena penyimpanannya
+ * berulang per baris seperti di sistem lama. Melaporkannya sebagai satu nilai akan
+ * menyembunyikan baris mana yang sebenarnya belum tersimpan.
+ */
+export type MaskingBulkOutcome = {
+  login: string
+  tersimpan: boolean
+  /** Hanya terisi bila barisnya ditolak. */
+  pesan?: string
+}
+
+export type MaskingBulkResponse = {
+  tersimpan: number
+  ditolak: number
+  hasil: MaskingBulkOutcome[]
+  portal: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5363,3 +5381,42 @@ export const KomiteInboxErrorCode = {
 
 export type KomiteInboxErrorCode =
   (typeof KomiteInboxErrorCode)[keyof typeof KomiteInboxErrorCode]
+
+/** Satu pilihan pada dropdown "Negara" formulir surveyor (Report Definition BrowseCountry_RD). */
+export type SurveyorCountry = {
+  kode: string
+  nama: string
+}
+
+export type CountryListResponse = {
+  negara: SurveyorCountry[]
+  portal: string
+}
+
+/**
+ * Satu pilihan pada isian Nama untuk SURVEYOR INTERNAL.
+ *
+ * Ketiganya datang bersama karena memilih satu pegawai mengisi ketiganya sekaligus —
+ * cerminan `pyAdditionalFields` pada autocomplete layar lama.
+ */
+export type SurveyorEmployee = {
+  nama: string
+  login_aplikasi: string
+  email: string
+}
+
+export type EmployeeListResponse = {
+  pegawai: SurveyorEmployee[]
+  portal: string
+}
+
+/** Satu pilihan pada isian "Cabang". */
+export type SurveyorBranch = {
+  kode: string
+  nama: string
+}
+
+export type BranchListResponse = {
+  cabang: SurveyorBranch[]
+  portal: string
+}

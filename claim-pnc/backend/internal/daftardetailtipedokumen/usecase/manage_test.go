@@ -37,7 +37,7 @@ func (r *recordingRepo) Update(ctx context.Context, id string, input daftardetai
 
 // partialReferences gagal hanya pada daftar yang ditandai.
 type partialReferences struct {
-	failDocument, failCause, failObject, failBusiness bool
+	failDocument bool
 }
 
 func (p partialReferences) ListDocumentTypes(context.Context) ([]daftardetailtipedokumen.DocumentTypeOption, error) {
@@ -45,27 +45,6 @@ func (p partialReferences) ListDocumentTypes(context.Context) ([]daftardetailtip
 		return nil, errPortal
 	}
 	return memory.SampleDocumentTypeList(), nil
-}
-
-func (p partialReferences) ListCausesOfLoss(context.Context) ([]daftardetailtipedokumen.CauseOfLossOption, error) {
-	if p.failCause {
-		return nil, errPortal
-	}
-	return memory.SampleCauseOfLossList(), nil
-}
-
-func (p partialReferences) ListObjectDocuments(context.Context) ([]daftardetailtipedokumen.ObjectDocumentOption, error) {
-	if p.failObject {
-		return nil, errPortal
-	}
-	return memory.SampleObjectDocumentList(), nil
-}
-
-func (p partialReferences) ListBusinesses(context.Context) ([]daftardetailtipedokumen.Business, error) {
-	if p.failBusiness {
-		return nil, errPortal
-	}
-	return memory.SampleBusinessList(), nil
 }
 
 var fixedNow = time.Date(2026, 9, 20, 4, 0, 0, 0, time.UTC)
@@ -127,12 +106,10 @@ func TestServiceCreateCleansAndStampsEditor(t *testing.T) {
 	created, err := service.Create(context.Background(), "ASM", daftardetailtipedokumen.Input{
 		DocumentTypeID: " 10001 ",
 		Detail:         "  Kwitansi ",
-		Businesses:     []daftardetailtipedokumen.BusinessInput{{BusinessID: " 003 ", Mandatory: true, MinDocument: -3}, {BusinessID: " "}},
 	}, "  adminpnc ")
 	require.NoError(t, err)
 	require.Equal(t, "100006", created.ID)
 	require.Equal(t, "Kwitansi", created.Detail)
-	require.Equal(t, []daftardetailtipedokumen.BusinessRule{{BusinessID: "003", Mandatory: true, MinDocument: 0}}, created.Businesses)
 
 	require.Equal(t, []daftardetailtipedokumen.Editor{{Identity: "adminpnc", At: fixedNow}}, repo.editors)
 	require.Equal(t, "10001", repo.inputs[0].DocumentTypeID)
@@ -195,29 +172,20 @@ func TestReferencesAllAvailable(t *testing.T) {
 	got, err := service.References(context.Background(), "ASM")
 	require.NoError(t, err)
 	require.Len(t, got.DocumentTypes, 6)
-	require.Len(t, got.CausesOfLoss, 10)
-	require.Len(t, got.ObjectDocuments, 4)
-	require.Len(t, got.Businesses, 5)
 	require.Empty(t, got.Unavailable)
 }
 
 func TestReferencesReportEachUnavailableListWithoutFailing(t *testing.T) {
-	service := newService(t, memory.NewRepo(), partialReferences{
-		failDocument: true, failCause: true, failObject: true, failBusiness: true,
-	})
+	service := newService(t, memory.NewRepo(), partialReferences{failDocument: true})
 	got, err := service.References(context.Background(), "ASM")
 	require.NoError(t, err)
-	require.Equal(t, []string{
-		usecase.ReferenceDocumentType, usecase.ReferenceCauseOfLoss,
-		usecase.ReferenceObjectDocument, usecase.ReferenceBusiness,
-	}, got.Unavailable)
+	require.Equal(t, []string{usecase.ReferenceDocumentType}, got.Unavailable)
 	require.Nil(t, got.DocumentTypes)
-	require.Nil(t, got.Businesses)
 
-	// Satu daftar gagal tidak menghilangkan yang lain.
-	service = newService(t, memory.NewRepo(), partialReferences{failCause: true})
+	// Master yang terbaca tidak ikut masuk daftar yang hilang.
+	service = newService(t, memory.NewRepo(), partialReferences{})
 	got, err = service.References(context.Background(), "ASM")
 	require.NoError(t, err)
-	require.Equal(t, []string{usecase.ReferenceCauseOfLoss}, got.Unavailable)
+	require.Empty(t, got.Unavailable)
 	require.Len(t, got.DocumentTypes, 6)
 }

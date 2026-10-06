@@ -127,6 +127,7 @@ func newHTTPEnv(t *testing.T) httpEnv {
 		Attachments:       records,
 		PUCLLetters:       memory.NewPUCL(),
 		PUCLOptions:       memory.NewPUCL(),
+		Closures:          records,
 		IDGenerator:       memory.IDGenerator{},
 		UnitOfWork:        store,
 		Clock:             fixed,

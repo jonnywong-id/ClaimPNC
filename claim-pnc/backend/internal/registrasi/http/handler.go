@@ -486,6 +486,31 @@ func (h *Handler) RCLDoctors(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(w, r, http.StatusOK, response)
 }
 
+// CloseClaim menangani POST /api/registrasi/tugas/{taskID}/tutup-klaim — tombol Ya dialog
+// "Prevent Close Claim".
+func (h *Handler) CloseClaim(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body CloseClaimRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	result, err := h.service.CloseClaim(r.Context(), usecase.CloseClaimCommand{
+		TaskID: taskID,
+		Closure: registrasi.Closure{
+			Note: body.Note, Proposal: body.Proposal, Effort: body.Effort, Obstacle: body.Obstacle,
+			Temporary: body.Temporary,
+		},
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(result.Claim)})
+}
+
 // TransferToAnalyst menangani POST /api/registrasi/tugas/{taskID}/transfer-analis.
 func (h *Handler) TransferToAnalyst(w http.ResponseWriter, r *http.Request, taskID string) {
 	caller, ok := h.callerOf(w, r)
@@ -564,9 +589,14 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 	if err != nil {
 		return usecase.RegisterCommand{}, err
 	}
-	receivedDate, err := parseDate(b.DateReceived, "Tanggal Terima Dokumen")
-	if err != nil {
-		return usecase.RegisterCommand{}, err
+	// Tanggal Terima Dokumen boleh kosong: isiannya hanya tampil pada Travel dan PA
+	// (`IsTravelPA`), dan kewajibannya ditegakkan domain untuk kedua lini itu saja.
+	var receivedDate time.Time
+	if b.DateReceived != "" {
+		receivedDate, err = parseDate(b.DateReceived, "Tanggal Terima Dokumen")
+		if err != nil {
+			return usecase.RegisterCommand{}, err
+		}
 	}
 	if b.TaskID == "" {
 		return usecase.RegisterCommand{}, errors.New("tugas_id wajib diisi")
@@ -766,6 +796,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		ClaimStatus:            string(k.ClaimStatus),
 		ClaimStatusName:        k.ClaimStatusName,
 		AnalystTransferred:     !k.AnalystTransferredAt.IsZero(),
+		PendingClose:           k.PendingClose,
 		ClaimFlag:              string(k.ClaimFlag),
 		ProgressPositionStatus: string(k.ProgressPositionStatus),
 		CurrentStage:           k.CurrentStage,

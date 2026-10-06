@@ -18,6 +18,22 @@ type CatalogResponse struct {
 
 	// LiniBisnis adalah isi dropdown yang di layar berlabel "Treaty".
 	LiniBisnis []BusinessLineDTO `json:"lini_bisnis"`
+
+	// StatusCompliance adalah isi dropdown "Status Compliance".
+	//
+	// Dikirim bersama katalog, bukan lewat permintaan tersendiri: daftarnya tetap — ia
+	// berasal dari rule Property, bukan dari data.
+	StatusCompliance []ComplianceStatusDTO `json:"status_compliance"`
+}
+
+// ComplianceStatusDTO adalah satu pilihan dropdown "Status Compliance".
+//
+// Nilai dan labelnya BERBEDA, dan keduanya wajib dikirim. Yang disaring adalah kodenya
+// ("0", "1", "2"); yang dibaca pengguna adalah labelnya. Mengirim labelnya saja akan
+// membuat penyaringnya tidak pernah cocok.
+type ComplianceStatusDTO struct {
+	Nilai string `json:"nilai"`
+	Nama  string `json:"nama"`
 }
 
 // GroupDTO adalah satu kelompok kartu di layar.
@@ -134,12 +150,18 @@ func toCatalogDTO(reports []reportklaim.Report) CatalogResponse {
 		lineDTO = append(lineDTO, BusinessLineDTO{Nilai: string(l.Value), Nama: l.Name})
 	}
 
+	statusDTO := make([]ComplianceStatusDTO, 0, len(reportklaim.ComplianceStatusOptions))
+	for _, o := range reportklaim.ComplianceStatusOptions {
+		statusDTO = append(statusDTO, ComplianceStatusDTO{Nilai: o.Code, Nama: o.Label})
+	}
+
 	return CatalogResponse{
 		// Disalin apa adanya dari harness. Judulnya memang berbahasa Inggris di sistem
 		// lama, dan `D-13` menetapkan teks layar ditiru (`D-80`).
-		Judul:      "Report Claim",
-		Kelompok:   groups,
-		LiniBisnis: lineDTO,
+		Judul:            "Report Claim",
+		Kelompok:         groups,
+		LiniBisnis:       lineDTO,
+		StatusCompliance: statusDTO,
 	}
 }
 

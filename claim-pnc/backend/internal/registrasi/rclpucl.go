@@ -332,10 +332,13 @@ type RCLDoctorOption struct {
 // RCLDoctorAccessGroups adalah ketiga grup akses yang identitas lamanya boleh menjadi
 // Nama Dokter, beserta grup yang dikecualikan.
 //
-// SALINAN SENGAJA dari `inboxrcl.LegacyAccessGroups` — modul tidak saling mengimpor di
-// repositori ini. Kesamaannya dijaga uji `rclpucl_doctor_test.go`, karena keduanya WAJIB
-// sama: daftar yang lebih longgar menawarkan dokter yang antreannya tidak pernah
-// menerima klaim itu, dan daftar yang lebih ketat menyembunyikan dokter yang sah.
+// Dulu SALINAN dari `inboxrcl.LegacyAccessGroups`, dijaga uji `rclpucl_doctor_test.go`.
+// Penulisan ulang `inboxrcl` (dev, 2026-10-05) menghapus penyaringan grup akses di sana —
+// penugasan dokter RCL kini lewat `ClaimData.NamaDokterRCL` — sehingga acuan pembandingnya
+// tidak ada lagi dan uji itu ikut dihapus saat merge.
+//
+// BELUM DIVERIFIKASI: apakah ketiga grup di bawah masih himpunan dokter RCL yang sah
+// menurut rancangan baru itu. Sampai dipastikan, daftar ini dipertahankan apa adanya.
 var RCLDoctorAccessGroups = []string{
 	"GCNMFW:Administrators",
 	"GCNMFW:PNCKomite",

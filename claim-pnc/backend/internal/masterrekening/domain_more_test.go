@@ -25,8 +25,9 @@ func TestValidationErrorListsFieldsAlphabetically(t *testing.T) {
 	err := masterrekening.Account{}.Check()
 	require.Error(t, err)
 	require.Equal(t,
-		"masterrekening: isian tidak lengkap: alamat_bank, cabang_bank, email, kode_bank, "+
-			"nama_bank, nama_pemilik, nik, nomor_rekening, tipe_rekening",
+		"masterrekening: isian tidak lengkap: alamat_bank, cabang_bank, email, "+
+			"email_penginput, kode_bank, nama_bank, nama_pemilik, nik, nomor_rekening, "+
+			"telepon, tipe_rekening",
 		err.Error())
 }
 
@@ -34,6 +35,7 @@ func TestSubmitterEmailIsCheckedWhenGiven(t *testing.T) {
 	acct := masterrekening.Account{
 		Number: "1", OwnerName: "A", BankName: "B", BankBranch: "C", BankAddress: "D",
 		BankCode: "E", AccountType: "F", Email: "a@contoh.co.id", NIK: "G",
+		Phone:          "021",
 		SubmitterEmail: "salah",
 	}
 	var validation *masterrekening.ValidationError

@@ -84,8 +84,15 @@ func TestMetadataDescribesTabsColumnsAndDefaults(t *testing.T) {
 	meta := sampleService(t).Metadata()
 
 	require.Len(t, meta.Columns, 13)
-	require.False(t, meta.Columns[0].Available)
+
+	// "Appointment No" TERSEDIA sejak 2026-10-03. Ia diturunkan dari CASEID — persis seperti
+	// Pega memotongnya dari kunci objek kerja — sehingga tidak menunggu kolom dari siapa pun.
 	require.Equal(t, "appointment_no", meta.Columns[0].Key)
+	require.True(t, meta.Columns[0].Available)
+
+	// Yang masih tertahan tinggal "Reference No": kolom REFNO sudah ada tetapi masih kosong.
+	require.Equal(t, "reference_no", meta.Columns[1].Key)
+	require.False(t, meta.Columns[1].Available)
 	require.Len(t, meta.Tabs, len(inboxsurvey.Tabs()))
 	for _, tab := range meta.Tabs {
 		require.Equal(t, tab.Key.Available(), tab.Available)
@@ -95,7 +102,7 @@ func TestMetadataDescribesTabsColumnsAndDefaults(t *testing.T) {
 	require.Equal(t, inboxsurvey.DefaultAvailableTab(), meta.DefaultTab)
 	require.Equal(t, inboxsurvey.DefaultLimit, meta.PageSize)
 	require.Len(t, meta.PlannedDifferences, 6)
-	require.Len(t, meta.Limitations, 9)
+	require.Len(t, meta.Limitations, 10)
 
 	cols := usecase.Columns()
 	cols[0].Key = "rusak"
@@ -174,4 +181,38 @@ func TestRepoFailuresAreWrapped(t *testing.T) {
 
 	_, err = svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{})
 	require.ErrorContains(t, err, "mengambil ringkasan KPI adjuster")
+}
+
+// TestKolomPenggantiDitandai mengunci keadaan ketiga sebuah kolom.
+//
+// # Kenapa uji ini ada
+//
+// `Available` hanya membedakan terisi dari kosong. Ia tidak dapat menyatakan keadaan yang
+// paling berbahaya di antara keduanya: **terisi, tampak wajar, dan bukan angka yang sama
+// dengan Pega**.
+//
+// Ketiga kolom di bawah persis begitu. Pega membacanya dari kolom objek kerja yang
+// `POOLDATA.T_SURVEYORLIST` tidak punya sama sekali, sehingga modul ini menggambar pengganti.
+// Tanpa penanda, selisihnya tidak terlihat siapa pun — dan selisih yang tidak terlihat tidak
+// pernah dilaporkan.
+func TestKolomPenggantiDitandai(t *testing.T) {
+	// `status_asm` SEMPAT ada di daftar ini dan KELUAR pada 2026-10-03: usulan Work Owner
+	// memakai `T_CLAIM_PNC.LEADER_MEMBER` terbukti setara dengan `ASMSTATUS_1` — nol
+	// pertentangan pada 17.633 baris — sehingga kolomnya bukan pengganti lagi, melainkan
+	// setara. Dicatat supaya tidak dimasukkan kembali.
+	pengganti := map[string]bool{
+		"pic_loss_adjuster": true, // Pega: ADJUSTERPIC_1 · di sini: SURVEYOR_NAME
+		"location":          true, // Pega: RescheduleLocation_1 · di sini: LOCATION_SURVEY
+	}
+
+	for _, c := range usecase.Columns() {
+		if pengganti[c.Key] {
+			require.Truef(t, c.Substitute, "kolom %s menggambar pengganti tetapi tidak ditandai", c.Key)
+			require.Truef(t, c.Available, "kolom %s terisi, jadi harus tetap tersedia", c.Key)
+			require.Containsf(t, c.Note, "PENGGANTI",
+				"keterangan kolom %s harus menyebut kolom Pega yang digantikannya", c.Key)
+			continue
+		}
+		require.Falsef(t, c.Substitute, "kolom %s ditandai pengganti tanpa alasan", c.Key)
+	}
 }

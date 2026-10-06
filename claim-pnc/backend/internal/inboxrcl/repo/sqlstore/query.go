@@ -33,15 +33,20 @@ func query(name string) string {
 	return text
 }
 
-// taskColumns adalah ke-11 alias yang dikembalikan kueri daftar.
+// taskColumns adalah ke-10 alias yang dikembalikan list_tasks, dan detailColumns ke-11 alias
+// yang dikembalikan claim_detail.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxrcl.sql dan dengan urutan pemindai
-// scanTask. Ketiganya dijaga query_test.go — satu kolom yang bergeser akan memindahkan nomor
-// polis ke kolom nama tertanggung tanpa menghasilkan galat apa pun.
+// scanTask/scanDetail. Ketiganya dijaga query_test.go — satu kolom yang bergeser akan
+// memindahkan nomor polis ke kolom nama tertanggung tanpa menghasilkan galat apa pun.
 var taskColumns = []string{
-	"REFERENCE", "CASE_ID", "POLICY_NUMBER", "INSURED_NAME", "SENT_TO_RCL_AT",
-	"ANALYST_NOTE", "RCL_DOCTOR", "REGISTERED_AT", "PROCESS_STATUS",
-	"ASSIGNED_OPERATOR", "TOTAL_ROWS",
+	"CASE_ID", "POLICY_NUMBER", "INSURED_NAME", "SENT_TO_RCL_AT", "ANALYST_NOTE",
+	"RCL_MODE", "REGISTERED_AT", "PROCESS_STATUS", "ASSIGNED_OPERATOR", "TOTAL_ROWS",
+}
+
+var detailColumns = []string{
+	"CASE_ID", "POLICY_NUMBER", "INSURED_NAME", "RCL_MODE", "ANALYST_NOTE", "REASON",
+	"DOCTOR_REASON", "STATUS_CLAIM", "PROCESS_STATUS", "ASSIGNED_OPERATOR", "SENT_TO_RCL_AT",
 }
 
 // loadQueries membaca setiap berkas .sql dan memecahnya pada penanda "-- name: <nama>",

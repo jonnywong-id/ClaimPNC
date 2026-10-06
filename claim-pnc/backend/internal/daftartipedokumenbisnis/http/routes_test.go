@@ -547,3 +547,88 @@ func TestDaftarPilihanDetailDokumenMembawaTahapPemiliknya(t *testing.T) {
 		require.NotEmpty(t, item.(map[string]any)["id_induk"])
 	}
 }
+
+// Penyimpanan layar Ubah: SELURUH baris satu lini bisnis sekaligus, yang ber-`id`
+// diperbarui dan sisanya disisipkan — bentuk yang sama dengan sentinel `UnknownID` di
+// sistem lama (`InsertDetailTypeDocumentBusiness_act-Act.xml:2399-2401`).
+func TestPenyimpananPerBisnisMemperbaruiDanMenyisipkanSekaligus(t *testing.T) {
+	server := newTestServer(t)
+
+	body := `{"dokumen":[
+		{"id":"10001","id_tipe_dokumen":"20001","id_object_dokumen":"","id_detail_dokumen":"40001",
+		 "detail_dokumen":"Laporan Kerugian Final","status_wajib":true,"minimum_dokumen":1},
+		{"id":"","id_tipe_dokumen":"20003","id_object_dokumen":"","id_detail_dokumen":"40003",
+		 "detail_dokumen":"Berita Acara","status_wajib":false,"minimum_dokumen":0}]}`
+
+	response, content := server.call(t, http.MethodPut, route+"/bisnis/001", "ASM", body)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	rows := content["tipe_dokumen_bisnis"].([]any)
+	found := map[string]string{}
+	for _, item := range rows {
+		row := item.(map[string]any)
+		// Seluruh baris yang kembali milik bisnis yang sama — ia tidak dapat dipindahkan.
+		require.Equal(t, "001", row["id_bisnis"])
+		found[row["id"].(string)] = row["detail_dokumen"].(string)
+	}
+	require.Equal(t, "Laporan Kerugian Final", found["10001"], "baris ber-id diperbarui")
+
+	var fresh int
+	for _, name := range found {
+		if name == "Berita Acara" {
+			fresh++
+		}
+	}
+	require.Equal(t, 1, fresh, "baris tanpa id disisipkan")
+}
+
+// Satu baris yang hilang membatalkan SELURUH penyimpanan — tidak ada sebagian yang
+// tersimpan, dan tidak ada penyisipan ulang diam-diam dengan ID baru.
+func TestPenyimpananPerBisnisMembatalkanSeluruhnyaBilaAdaBarisHilang(t *testing.T) {
+	server := newTestServer(t)
+
+	body := `{"dokumen":[
+		{"id":"10001","id_tipe_dokumen":"20001","id_object_dokumen":"","id_detail_dokumen":"40001",
+		 "detail_dokumen":"Diubah","status_wajib":true,"minimum_dokumen":1},
+		{"id":"99999","id_tipe_dokumen":"20001","id_object_dokumen":"","id_detail_dokumen":"40001",
+		 "detail_dokumen":"Hantu","status_wajib":true,"minimum_dokumen":1}]}`
+
+	response, content := server.call(t, http.MethodPut, route+"/bisnis/001", "ASM", body)
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Equal(t, "tipe_dokumen_bisnis_tidak_ditemukan", content["kode"])
+
+	_, after := server.call(t, http.MethodGet, route+"/10001", "ASM", "")
+	rule := after["tipe_dokumen_bisnis"].(map[string]any)
+	require.Equal(t, "Laporan Kerugian", rule["detail_dokumen"], "baris pertama tidak boleh ikut berubah")
+}
+
+// Badan permintaan layar Ubah TIDAK menerima `bisnis` — lini bisnisnya ada di alamat, dan
+// tidak dapat diubah. Menerimanya lalu mengabaikannya akan membuat klien mengira
+// perpindahan berhasil.
+func TestPenyimpananPerBisnisMenolakBadanYangMenyertakanBisnis(t *testing.T) {
+	server := newTestServer(t)
+
+	body := `{"bisnis":["004"],"dokumen":[]}`
+
+	response, _ := server.call(t, http.MethodPut, route+"/bisnis/001", "ASM", body)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+}
+
+// Jejak simpan tetap tidak dapat diaku-aku lewat jalur ini.
+func TestPenyimpananPerBisnisMenolakJejakSimpanDariKlien(t *testing.T) {
+	server := newTestServer(t)
+
+	body := `{"dokumen":[{"id":"10001","user_edit":"orang lain","id_tipe_dokumen":"20001",
+		"id_object_dokumen":"","id_detail_dokumen":"40001","detail_dokumen":"x",
+		"status_wajib":true,"minimum_dokumen":1}]}`
+
+	response, _ := server.call(t, http.MethodPut, route+"/bisnis/001", "ASM", body)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+}
+
+func TestPenyimpananPerBisnisMenuntutPortal(t *testing.T) {
+	server := newTestServer(t)
+
+	response, _ := server.call(t, http.MethodPut, route+"/bisnis/001", "", `{"dokumen":[]}`)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+}

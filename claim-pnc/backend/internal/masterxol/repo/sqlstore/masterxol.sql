@@ -390,3 +390,47 @@ SELECT p.ID,
        POOLDATA.MST_XOL_LAYER l,
        POOLDATA.MST_XOL_REAS r
  WHERE 1 = 0
+
+-- name: xol_search_reinsurer
+--
+-- Pencarian reasuradur menurut nama, untuk kotak "NAMA REASURANSI" di panel Reas.
+--
+-- # Sumbernya terbukti, bentuk layarnya tidak
+--
+-- Section pencariannya TIDAK ADA di export (`R-16`), jadi tata letaknya tidak dapat
+-- disalin. Sumber datanya dapat: `POOLDATA.T_REINSURER` adalah satu-satunya master
+-- reasuradur di basis data, dirujuk 35 kali, dan `Activity/FindDataReinsurer-Act.xml`
+-- mencari di sana lewat `RDB List/GetListDataLoginReas-SQL.xml`:
+--
+--   select ... reinsurername, reinsurerid from pooldata.t_reinsurer
+--    where reinsurername = {TempReasPLA.PLAReinsurer}
+--
+-- Pasangan kolomnya cocok persis dengan yang dituntut baris reas:
+-- `MST_XOL_REAS.IDREAS` + `MST_XOL_REAS.NAMA` (`RDB List/GetDataReasXOL-SQL.xml`).
+--
+-- # Tiga pilihan yang dibuat di sini, dan alasannya
+--
+--  1. LIKE, bukan sama dengan. Pencocokan persis menuntut pengguna mengetik nama lengkap
+--     tanpa satu huruf pun meleset — dan itu bukan pencarian. Pencocokan persis tetap
+--     bekerja, karena ia hal khusus dari LIKE.
+--  2. UPPER di kedua sisi, supaya huruf besar-kecil tidak menentukan hasil. Kedua sisi
+--     diubah, bukan hanya kolomnya, agar tidak ada ketergantungan pada NLS_SORT.
+--  3. Dibatasi 50 baris. Master ini tidak punya paginasi di layar mana pun, dan kata
+--     kunci pendek dapat mengembalikan ribuan baris ke peramban. `OFFSET … FETCH NEXT`
+--     dipakai karena ia sah di Oracle 12c+ maupun PostgreSQL (`D-20`); `ROWNUM` tidak.
+--
+-- Baris tanpa ID atau tanpa nama dibuang: keduanya wajib terisi untuk dapat menjadi baris
+-- reas, dan menawarkan baris yang tidak dapat dipakai hanya menyesatkan.
+SELECT r.REINSURERID,
+       r.REINSURERNAME
+  FROM POOLDATA.T_REINSURER r
+-- Klausa ESCAPE WAJIB ditulis: Oracle tidak punya karakter pelepas LIKE bawaan, sehingga
+-- `%` dan `_` yang diketik pengguna akan tetap berlaku sebagai jokar tanpa klausa ini.
+-- PostgreSQL memakai `\` secara baku dan menerima klausa yang sama, jadi satu teks berlaku
+-- di keduanya (`D-20`).
+ WHERE UPPER(r.REINSURERNAME) LIKE UPPER(:1) ESCAPE '\'
+   AND r.REINSURERID IS NOT NULL
+   AND r.REINSURERNAME IS NOT NULL
+ GROUP BY r.REINSURERID, r.REINSURERNAME
+ ORDER BY r.REINSURERNAME
+ OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY

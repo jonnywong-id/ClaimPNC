@@ -44,11 +44,11 @@ func (r *Repo) SetError(err error) {
 	r.issues = err
 }
 
-// List mengembalikan petugas AKTIF saja, terurut menurut ID operator.
+// List mengembalikan SELURUH petugas, aktif maupun tidak, terurut menurut ID operator.
 //
-// Penyaringan ada di sini — bukan di usecase — supaya kedua pengisi seam berperilaku
-// sama. Di sqlstore penyaringnya bagian dari kueri; di sini ia harus ditiru, kalau tidak
-// pengujian terhadap memori akan meloloskan cacat yang muncul terhadap Oracle.
+// Tidak menyaring apa pun — sama dengan kueri sqlstore. Kedua pengisi seam harus
+// berperilaku sama, kalau tidak pengujian terhadap memori akan meloloskan cacat yang
+// muncul terhadap Oracle.
 func (r *Repo) List(_ context.Context) ([]masterpicteknik.Technician, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -58,9 +58,6 @@ func (r *Repo) List(_ context.Context) ([]masterpicteknik.Technician, error) {
 
 	result := make([]masterpicteknik.Technician, 0, len(r.rows))
 	for _, t := range r.rows {
-		if !t.Active {
-			continue
-		}
 		result = append(result, t)
 	}
 	sort.Slice(result, func(i, j int) bool {

@@ -24,6 +24,8 @@ import (
 type Service interface {
 	Counts(ctx context.Context, q usecase.Query) (usecase.CountsResult, error)
 	List(ctx context.Context, q usecase.ListQuery) (usecase.ListResult, error)
+	Holding(ctx context.Context, q usecase.Query) (usecase.HoldingResult, error)
+	Transfer(ctx context.Context, cmd usecase.TransferCommand) (dashboardclaim.TransferRequest, error)
 }
 
 // Handler melayani rute Dashboard Claim.
@@ -31,6 +33,8 @@ type Handler struct {
 	service  Service
 	logger   *slog.Logger
 	location *time.Location
+	now      func() time.Time
+	caller   callerBridge
 
 	writeResponse JSONWriter
 	writeError    ErrorWriter
@@ -55,6 +59,21 @@ type Options struct {
 	// seluruh modul, bukan disusun ulang di setiap handler.
 	WriteResponse JSONWriter
 	WriteError    ErrorWriter
+
+	// Caller adalah jembatan satu arah ke modul auth, dipasang di cmd supaya kedua modul
+	// tetap tidak saling mengimpor.
+	//
+	// DUA field diambil, berbeda dari modul yang hanya membaca: jejak permintaan transfer
+	// menyimpan NAMA pemohon bersama login-nya, supaya jejak itu tetap terbaca utuh tanpa
+	// join ke tabel pengguna.
+	Caller func(ctx context.Context) (Caller, bool)
+
+	// Now adalah seam ke jam, dipakai menghitung kolom "Lama Waktu Klaim" dan "Aging".
+	//
+	// Ia disuntik supaya umur dapat diuji dengan angka pasti, dan supaya tidak ada satu pun
+	// tempat di dalam modul yang memanggil time.Now() sendiri — pola yang justru melahirkan
+	// `Set7Hours` di sistem lama. Kosong berarti jam sistem.
+	Now func() time.Time
 }
 
 // NewHandler membentuk handler dan menolak Options yang tidak lengkap.
@@ -74,10 +93,22 @@ func NewHandler(o Options) (*Handler, error) {
 	if location == nil {
 		location = jakarta()
 	}
+	now := o.Now
+	if now == nil {
+		now = time.Now
+	}
+	caller := o.Caller
+	if caller == nil {
+		// Kosong berarti tombol Transfer selalu menolak — bukan panik. Modul ini tetap dapat
+		// dirakit untuk layar baca-saja tanpa menyentuh modul auth.
+		caller = func(context.Context) (Caller, bool) { return Caller{}, false }
+	}
 	return &Handler{
 		service:       o.Service,
 		logger:        o.Logger,
 		location:      location,
+		now:           now,
+		caller:        caller,
 		writeResponse: o.WriteResponse,
 		writeError:    o.WriteError,
 	}, nil
@@ -155,11 +186,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	// tanpa memeriksa null lebih dulu — dan supaya JSON-nya `[]`, bukan `null`.
 	claims := make([]claimDTO, 0, len(result.Claims.Rows))
 	for _, row := range result.Claims.Rows {
-		claims = append(claims, adaptClaim(row, h.location))
+		claims = append(claims, adaptClaim(row, h.now(), h.location))
 	}
 	surveys := make([]surveyDTO, 0, len(result.Surveys.Rows))
 	for _, row := range result.Surveys.Rows {
-		surveys = append(surveys, adaptSurvey(row, h.location))
+		surveys = append(surveys, adaptSurvey(row, h.now(), h.location))
 	}
 
 	total := result.Claims.Total
@@ -352,4 +383,44 @@ func readPositiveInt(raw string) (int, error) {
 		return 0, errors.New("bukan angka bulat tidak negatif")
 	}
 	return value, nil
+}
+
+// Holding menjawab GET /dashboard-claim/tampungan.
+//
+// Tab kedua layar ini — klaim yang sudah terdaftar tetapi belum punya PIC Teknik.
+//
+// Ia TIDAK menerima penyaring lini bisnis, dan itu bukan kelalaian: kueri lamanya tidak
+// punya penandanya, dan layar lamanya tidak menggambar dropdown Bisnis pada tab ini.
+func (h *Handler) Holding(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	filter, err := readFilter(r.URL.Query())
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	result, err := h.service.Holding(r.Context(), usecase.Query{
+		PortalAlias: active.Alias,
+		Filter:      filter,
+	})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	rows := make([]holdingDTO, 0, len(result.Page.Rows))
+	for _, row := range result.Page.Rows {
+		rows = append(rows, adaptHolding(row, h.location))
+	}
+
+	h.writeResponse(w, r, http.StatusOK, holdingResponse{
+		Klaim:   rows,
+		Halaman: pagination(result.Page.Total, result.Filter.Limit, result.Filter.Offset),
+		Portal:  active.Alias,
+	})
 }

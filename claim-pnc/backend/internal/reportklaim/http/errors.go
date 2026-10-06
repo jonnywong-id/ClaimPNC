@@ -42,6 +42,14 @@ const (
 	//
 	// Ia juga berlaku hanya pada SEBAGIAN lini bisnis, sehingga pesannya menyebutkan itu.
 	CodeQueryNotPorted = "kueri_belum_dipindahkan"
+
+	// CodeQueryFailed: kuerinya ADA dan dijalankan, tetapi basis data menolaknya.
+	//
+	// Dipisahkan dari galat internal umum karena yang harus dilakukan berbeda: galat
+	// internal menuntut pembacaan kode, yang ini menuntut pembacaan pesan ORA pada log
+	// peladen. Tanpa pemisahan itu keduanya tampil sebagai kalimat yang sama, dan
+	// kalimat itu tidak mengarahkan ke mana pun.
+	CodeQueryFailed = "laporan_gagal_dijalankan"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
@@ -64,12 +72,42 @@ type violationBody struct {
 
 // writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
+	// Penolakan basis data ditangani lebih dulu, karena jawabannya menyertakan ID
+	// permintaan — dan ID itu hanya ada di sini, bukan di mapError yang murni.
+	if errors.Is(err, reportklaimsql.ErrQueryFailed) {
+		h.writeQueryFailure(w, r, err)
+		return
+	}
 	status, body, known := mapError(err)
 	if !known {
 		h.writeError(w, r, err)
 		return
 	}
 	h.writeResponse(w, r, status, body)
+}
+
+// writeQueryFailure menjawab penolakan basis data: ID permintaan ke pengguna, pesan
+// ORA-nya ke log.
+//
+// Pembagian itu disengaja. Pesan ORA memuat nama tabel dan kolom, dan membocorkannya ke
+// peramban adalah celah keamanan (`11-CROSSCUTTING.md` §1.2 aturan 5). Tetapi menahan
+// SELURUHNYA membuat kegagalan menjadi buntu — itulah keadaan sebelum ini. ID permintaan
+// adalah jembatan yang aman: ia tidak berarti apa-apa bagi penyerang, dan ia menunjuk
+// tepat satu baris log bagi yang berhak membacanya.
+func (h *Handler) writeQueryFailure(w http.ResponseWriter, r *http.Request, err error) {
+	id := logging.RequestID(r.Context())
+	if h.logger != nil {
+		h.logger.ErrorContext(r.Context(), "laporan ditolak basis data",
+			slog.String("jalur", r.URL.Path),
+			slog.String("id_permintaan", id),
+			slog.String("galat", err.Error()))
+	}
+	h.writeResponse(w, r, http.StatusInternalServerError, errorBody{
+		Kode: CodeQueryFailed,
+		Pesan: "Laporan ini gagal dijalankan oleh basis data. Keterangan lengkapnya ada " +
+			"pada log peladen dengan nomor permintaan " + id + " — sampaikan nomor itu " +
+			"kepada tim pengembang.",
+	})
 }
 
 // mapError memetakan galat domain ke kode HTTP beserta badannya.

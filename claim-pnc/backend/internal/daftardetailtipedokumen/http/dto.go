@@ -68,12 +68,6 @@ type DetailTypeDTO struct {
 	// server menolak baris yang sebenarnya tersimpan dan harus tetap dapat diperbaiki.
 	Risk string `json:"resiko"`
 
-	// Businesses adalah aturan per lini bisnis.
-	//
-	// SELALU dikirim, dan pada daftar SELALU kosong — daftar memang tidak membacanya.
-	// Klien tidak boleh menyimpulkan "tidak ada lini bisnis" dari hasil daftar; yang
-	// berwenang hanya hasil pengambilan satu baris.
-	Businesses []BusinessRuleDTO `json:"bisnis"`
 }
 
 // BusinessRuleDTO adalah aturan dokumen pada satu lini bisnis.
@@ -132,9 +126,6 @@ type SingleResponse struct {
 // karena form selalu membutuhkan keempatnya bersamaan.
 type ReferenceResponse struct {
 	DocumentTypes   []ChoiceDTO `json:"tipe_dokumen"`
-	CausesOfLoss    []ChoiceDTO `json:"penyebab_kerugian"`
-	ObjectDocuments []ChoiceDTO `json:"objek_dokumen"`
-	Businesses      []ChoiceDTO `json:"bisnis"`
 
 	// Unavailable menyebut master mana yang gagal dibaca.
 	//
@@ -173,17 +164,6 @@ type SaveRequest struct {
 	ObjectDocumentID          string              `json:"id_objek_dokumen"`
 	ObjectDocumentDescription string              `json:"keterangan_objek_dokumen"`
 	Risk                      string              `json:"resiko"`
-	Businesses                []BusinessSaveEntry `json:"bisnis"`
-}
-
-// BusinessSaveEntry adalah satu baris grid bisnis yang dikirim layar.
-//
-// Tanpa nama bisnis: namanya milik master dan dibaca lewat join, tidak disimpan di baris
-// ini. Mengirimkannya hanya akan menyimpan salinan yang dapat menyimpang dari masternya.
-type BusinessSaveEntry struct {
-	BusinessID  string `json:"id_bisnis"`
-	Mandatory   bool   `json:"status_wajib"`
-	MinDocument int    `json:"minimum_dokumen"`
 }
 
 // ViolationDTO adalah satu pelanggaran isian.
@@ -204,15 +184,6 @@ type ErrorResponse struct {
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(row daftardetailtipedokumen.DetailType) DetailTypeDTO {
-	businesses := make([]BusinessRuleDTO, 0, len(row.Businesses))
-	for _, business := range row.Businesses {
-		businesses = append(businesses, BusinessRuleDTO{
-			BusinessID:   business.BusinessID,
-			BusinessName: business.BusinessName,
-			Mandatory:    business.Mandatory,
-			MinDocument:  business.MinDocument,
-		})
-	}
 	return DetailTypeDTO{
 		ID:                        row.ID,
 		DocumentTypeID:            row.DocumentTypeID,
@@ -224,7 +195,6 @@ func toDTO(row daftardetailtipedokumen.DetailType) DetailTypeDTO {
 		ObjectDocumentID:          row.ObjectDocumentID,
 		ObjectDocumentDescription: row.ObjectDocumentDescription,
 		Risk:                      row.Risk,
-		Businesses:                businesses,
 	}
 }
 
@@ -232,8 +202,7 @@ func toDTO(row daftardetailtipedokumen.DetailType) DetailTypeDTO {
 //
 // Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya daftar kosong terkirim
 // sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan
-// satu layar yang lupa akan gagal saat masternya masih kosong. Berlaku pula untuk senarai
-// bisnis di dalam setiap barisnya.
+// satu layar yang lupa akan gagal saat masternya masih kosong.
 func toListDTO(list []daftardetailtipedokumen.DetailType) []DetailTypeDTO {
 	result := make([]DetailTypeDTO, 0, len(list))
 	for _, row := range list {
@@ -242,51 +211,25 @@ func toListDTO(list []daftardetailtipedokumen.DetailType) []DetailTypeDTO {
 	return result
 }
 
-// toReferenceResponse mengubah keempat daftar pilihan.
+// toReferenceResponse mengubah daftar pilihan.
 func toReferenceResponse(references usecase.References, portal string) ReferenceResponse {
 	documentTypes := make([]ChoiceDTO, 0, len(references.DocumentTypes))
 	for _, row := range references.DocumentTypes {
 		documentTypes = append(documentTypes, ChoiceDTO{ID: row.ID, Name: row.Name})
 	}
 
-	causes := make([]ChoiceDTO, 0, len(references.CausesOfLoss))
-	for _, row := range references.CausesOfLoss {
-		causes = append(causes, ChoiceDTO{ID: row.ID, Name: row.Description})
-	}
-
-	objects := make([]ChoiceDTO, 0, len(references.ObjectDocuments))
-	for _, row := range references.ObjectDocuments {
-		objects = append(objects, ChoiceDTO{ID: row.ID, Name: row.Description})
-	}
-
-	businesses := make([]ChoiceDTO, 0, len(references.Businesses))
-	for _, row := range references.Businesses {
-		businesses = append(businesses, ChoiceDTO{ID: row.ID, Name: row.Name})
-	}
-
 	unavailable := make([]string, 0, len(references.Unavailable))
 	unavailable = append(unavailable, references.Unavailable...)
 
 	return ReferenceResponse{
-		DocumentTypes:   documentTypes,
-		CausesOfLoss:    causes,
-		ObjectDocuments: objects,
-		Businesses:      businesses,
-		Unavailable:     unavailable,
-		Portal:          portal,
+		DocumentTypes: documentTypes,
+		Unavailable:   unavailable,
+		Portal:        portal,
 	}
 }
 
 // toInput mengubah isian form menjadi nilai domain.
 func toInput(request SaveRequest) daftardetailtipedokumen.Input {
-	businesses := make([]daftardetailtipedokumen.BusinessInput, 0, len(request.Businesses))
-	for _, business := range request.Businesses {
-		businesses = append(businesses, daftardetailtipedokumen.BusinessInput{
-			BusinessID:  business.BusinessID,
-			Mandatory:   business.Mandatory,
-			MinDocument: business.MinDocument,
-		})
-	}
 	return daftardetailtipedokumen.Input{
 		DocumentTypeID:            request.DocumentTypeID,
 		Detail:                    request.Detail,
@@ -296,6 +239,5 @@ func toInput(request SaveRequest) daftardetailtipedokumen.Input {
 		ObjectDocumentID:          request.ObjectDocumentID,
 		ObjectDocumentDescription: request.ObjectDocumentDescription,
 		Risk:                      request.Risk,
-		Businesses:                businesses,
 	}
 }

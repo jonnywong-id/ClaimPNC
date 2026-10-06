@@ -377,3 +377,112 @@ SELECT d.D_SURVEY_ID,
        CAST(NULL AS VARCHAR(100))  AS USER_UPDATE
   FROM POOLDATA.D_SURVEYORS d
  WHERE 1 = 0
+
+-- name: surveyor_country_list
+--
+-- Daftar negara untuk dropdown "Negara" pada formulir surveyor.
+--
+-- Sumbernya dibaca dari Report Definition lama, bukan ditebak:
+--
+--     Report Definition/BrowseCountry_RD-RD.xml
+--         class  : ASM-FW-GISFW-Int-COUNTRY
+--         fields : .ID, .Country, .InatradeID
+--
+-- BELUM DIVERIFIKASI ke katalog basis data: nama skema dan nama tabel fisiknya disimpulkan
+-- dari nama kelas Pega, dengan pola yang sama seperti kelas lain di aplikasi ini
+-- (`ASM-FW-GCNMFW-Int-V_D_SURVEYORS` → `POOLDATA.V_D_SURVEYORS`). Bila ternyata berbeda,
+-- yang berubah hanya kueri ini — dropdown Negara akan kosong dan sisa layar tetap bekerja,
+-- karena Negara bukan isian wajib.
+--
+-- Tabelnya DIMILIKI pihak lain dan hanya DIBACA. Tidak ada satu pun pernyataan tulis
+-- terhadapnya di modul ini.
+SELECT ID,
+       COUNTRY
+  FROM POOLDATA.COUNTRY
+ ORDER BY COUNTRY
+
+-- name: surveyor_employee_list
+--
+-- Daftar pegawai yang boleh dijadikan SURVEYOR INTERNAL.
+--
+-- Asalnya `RDB List/BrowseNonMBUUsers-SQL.xml`, dipanggil `Activity/PNCCallRDBName_act`
+-- sebagai pra-aktivitas autocomplete pada isian Nama. Bentuk aslinya:
+--
+--     select MCL_NAME as NAME, LOGIN_APLIKASI AS LOGIN_APLIKASI, EMAIL AS EMAIL
+--       from HRDASM.v_hrd_mst@asmd.sinarmas.co.id hrd
+--      where LDI_ID in ('0016','0018','0043','0076','0048','0077','0078','0111')
+--        and TGL_KELUAR is null
+--        and login_aplikasi is not null
+--        and hrd.login_aplikasi not in
+--            (select login_aplikasi from v_d_surveyors WHERE login_aplikasi is not null)
+--     UNION ALL
+--     SELECT MCL_NAME as NAME, OPERATOR_ID AS LOGIN_APLIKASI, EMAIL AS EMAIL
+--       FROM MST_USER_TEKNIK WHERE TYPE_BUSINESS='NONMBU' AND STS_AKTIF='1'
+--
+-- Dibawa apa adanya, termasuk kedelapan kode departemen dan penyaring NOT IN. Ketiganya
+-- menentukan SIAPA yang boleh menjadi surveyor internal, dan mengubahnya berarti mengubah
+-- aturan bisnis — bukan merapikan kueri (`P-5`).
+--
+-- Penyaring NOT IN itu yang membuat daftarnya menyusut sendiri: pegawai yang SUDAH menjadi
+-- surveyor tidak muncul lagi, sehingga satu orang tidak dapat didaftarkan dua kali. Ia
+-- bekerja sama dengan indeks unik LOGIN_APLIKASI, bukan menggantikannya.
+--
+-- # DB Link yang masih dipakai, dan kenapa
+--
+-- `D-25` menetapkan seluruh DB Link diganti pemanggilan API, dan `R-03` mencatat API-nya
+-- kemungkinan belum ada. Selama itu belum tiba, bagian HRD memakai DB Link yang sama
+-- dengan sistem lama — objek yang sama, sambungan yang sama, basis data yang sama.
+-- Presedennya `inboxkomunikasicabang/repo/sqlstore/branch.sql`, yang menempuh jalan ini
+-- lebih dulu untuk alasan yang sama.
+--
+-- Kegagalan DB Link TIDAK menghapus seluruh daftar: bagian kedua (`MST_USER_TEKNIK`) hidup
+-- di basis data yang sama dan dibaca lewat kueri terpisah, lihat surveyor_user_teknik_list.
+SELECT hrd.MCL_NAME,
+       hrd.LOGIN_APLIKASI,
+       hrd.EMAIL
+  FROM HRDASM.V_HRD_MST@asmd.sinarmas.co.id hrd
+ WHERE hrd.LDI_ID IN ('0016', '0018', '0043', '0076', '0048', '0077', '0078', '0111')
+   AND hrd.TGL_KELUAR IS NULL
+   AND hrd.LOGIN_APLIKASI IS NOT NULL
+   AND hrd.LOGIN_APLIKASI NOT IN (SELECT v.LOGIN_APLIKASI
+                                    FROM POOLDATA.V_D_SURVEYORS v
+                                   WHERE v.LOGIN_APLIKASI IS NOT NULL)
+ ORDER BY hrd.MCL_NAME
+
+-- name: surveyor_user_teknik_list
+--
+-- Bagian KEDUA daftar pegawai — separuh `UNION ALL` pada `BrowseNonMBUUsers`.
+--
+-- Dipisahkan menjadi kueri tersendiri, bukan disatukan dengan `UNION ALL` seperti aslinya,
+-- karena separuh pertama menempuh DB Link dan separuh ini TIDAK. Disatukan, kegagalan DB
+-- Link menjatuhkan keduanya dan daftar pegawai menjadi kosong sama sekali — padahal
+-- separuh ini hidup di basis data yang sedang dibaca.
+--
+-- Perhatikan aliasnya: kolomnya `OPERATOR_ID`, dan nilainyalah yang menjadi
+-- `LOGIN_APLIKASI`. Itu satu lagi penamaan yang tidak mencerminkan isi pada tabel-tabel
+-- ini, sejenis `BUSINESS_CODE` yang memuat Operator ID dan `STATE` yang memuat negara.
+SELECT t.MCL_NAME,
+       t.OPERATOR_ID,
+       t.EMAIL
+  FROM POOLDATA.MST_USER_TEKNIK t
+ WHERE t.TYPE_BUSINESS = 'NONMBU'
+   AND t.STS_AKTIF = '1'
+ ORDER BY t.MCL_NAME
+
+-- name: surveyor_branch_list
+--
+-- Daftar cabang untuk isian "Cabang" pada surveyor internal.
+--
+-- Asalnya `Report Definition/BrowseBranch_RD-RD.xml`, kelas `ASM-FW-GISFW-Int-BRANCH`.
+-- Kontrolnya autocomplete dengan `pyDisplayProperty=.BranchName`; pemilihannya mengisi
+-- `.ID` ke `TempDetailSurveyors.BRANCH` dan namanya ke `BRANCHNAME`.
+--
+-- Nama tabelnya TIDAK ditebak: `POOLDATA.BRANCH` sudah dipakai modul lain di aplikasi ini
+-- (`inboxadmin`, `inboxkomunikasicabang`, `inboxlaporanklaim`) dan di 13 rule SQL lama.
+--
+-- Tabelnya DIMILIKI GISFW dan hanya DIBACA.
+SELECT b.ID,
+       b.BRANCHNAME
+  FROM POOLDATA.BRANCH b
+ WHERE b.BRANCHNAME IS NOT NULL
+ ORDER BY b.BRANCHNAME

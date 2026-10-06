@@ -22,12 +22,28 @@ import (
 type Service struct {
 	claims dashboardclaim.RepoSelector
 	closed dashboardclaim.ClosedClaimReader
+
+	// transfers OPSIONAL — kosong berarti tombol Transfer belum terpasang.
+	//
+	// Kosong bukan galat perakitan melainkan keadaan yang sah hari ini: tabelnya dibuat
+	// migrasi `0014` yang belum dijalankan DBA. Layar menjawab galat yang MENYEBUTKAN
+	// sebabnya, bukan 500 yang tidak menjelaskan apa-apa.
+	transfers dashboardclaim.TransferRepoSelector
+	ids       IDGenerator
+	clock     Clock
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
 	// RepoSelector memilih penyimpanan menurut portal entitas.
 	RepoSelector dashboardclaim.RepoSelector
+
+	// Transfers memilih penyimpanan permintaan transfer. BOLEH kosong — lihat Service.
+	Transfers dashboardclaim.TransferRepoSelector
+
+	// IDs dan Clock wajib bila Transfers diisi.
+	IDs   IDGenerator
+	Clock Clock
 
 	// ClosedClaim membaca tile CLOSE CLAIM dari modul yang sudah memilikinya.
 	//
@@ -49,7 +65,23 @@ func NewService(o Options) (*Service, error) {
 	if o.ClosedClaim == nil {
 		return nil, errors.New("dashboardclaim/usecase: ClosedClaim wajib diisi")
 	}
-	return &Service{claims: o.RepoSelector, closed: o.ClosedClaim}, nil
+	if o.Transfers != nil {
+		// Diperiksa saat START, bukan saat tombolnya ditekan: perakitan yang kurang harus
+		// gagal keras di awal, bukan saat seseorang sedang bekerja.
+		if o.IDs == nil {
+			return nil, errors.New("dashboardclaim/usecase: IDs wajib diisi bila Transfers dipasang")
+		}
+		if o.Clock == nil {
+			return nil, errors.New("dashboardclaim/usecase: Clock wajib diisi bila Transfers dipasang")
+		}
+	}
+	return &Service{
+		claims:    o.RepoSelector,
+		closed:    o.ClosedClaim,
+		transfers: o.Transfers,
+		ids:       o.IDs,
+		clock:     o.Clock,
+	}, nil
 }
 
 // Query adalah permintaan dari layar.
@@ -119,6 +151,34 @@ func (s *Service) Counts(ctx context.Context, q Query) (CountsResult, error) {
 	}
 
 	return CountsResult{Counts: counts, Filter: filter}, nil
+}
+
+// HoldingResult adalah satu halaman tab Inbox Tampungan PIC.
+type HoldingResult struct {
+	Page   dashboardclaim.HoldingPage
+	Filter dashboardclaim.Filter
+}
+
+// Holding membaca satu halaman tab Inbox Tampungan PIC.
+//
+// Penyaring lini bisnis sengaja DIBUANG sebelum dikirim ke penyimpanan: tab ini tidak
+// mengenalnya, dan membiarkannya terbawa akan membuat pengguna yang sebelumnya memilih
+// "Personal Accident" pada tab sebelah melihat penampungan yang tampak kosong tanpa sebab
+// yang terlihat di layar.
+func (s *Service) Holding(ctx context.Context, q Query) (HoldingResult, error) {
+	claims, err := s.claims(q.PortalAlias)
+	if err != nil {
+		return HoldingResult{}, err
+	}
+
+	filter := q.Filter.Normalize()
+	filter.Business = dashboardclaim.BusinessAll
+
+	page, err := claims.ListHolding(ctx, filter)
+	if err != nil {
+		return HoldingResult{}, fmt.Errorf("dashboardclaim/usecase: membaca daftar klaim tampungan: %w", err)
+	}
+	return HoldingResult{Page: page, Filter: filter}, nil
 }
 
 // ListQuery adalah permintaan telusur satu tile.

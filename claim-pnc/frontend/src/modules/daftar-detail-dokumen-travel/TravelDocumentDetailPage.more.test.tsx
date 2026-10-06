@@ -17,14 +17,9 @@ const LIST = {
   portal: 'ASM',
   total: 2,
   detail_dokumen_travel: [
-    { id: '00002', id_dokumen: '100009', nama_dokumen: 'Tiket', status_wajib: false, minimal_unggah: 3, jaminan: [] },
-    { id: '00001', id_dokumen: '100001', nama_dokumen: '', status_wajib: true, minimal_unggah: 1, jaminan: [] },
+    { id: '00002', id_dokumen: '100009', nama_dokumen: 'Tiket', status_wajib: false, minimal_unggah: 3 },
+    { id: '00001', id_dokumen: '100001', nama_dokumen: '', status_wajib: true, minimal_unggah: 1 },
   ],
-}
-const PLANS = {
-  portal: 'ASM',
-  plan: [{ id: 'TP01', nama: 'Travel Plan Silver' }],
-  jaminan: [{ id: 'TC02', nama: 'Kehilangan Bagasi', id_plan: 'TP01' }],
 }
 
 type Call = { url: string; method: string; body: unknown }
@@ -54,10 +49,6 @@ function installFetch(map: (call: Call) => Reply | null) {
 function defaults(call: Call): Reply {
   if (call.url.startsWith('/api/master/dokumen-travel-pilihan')) {
     return { body: { portal: 'ASM', dokumen: [{ id: '100001', nama: 'Paspor' }] } }
-  }
-  if (call.url.startsWith('/api/master/plan-travel')) return { body: PLANS }
-  if (call.method === 'GET' && call.url.includes('/daftar-detail-dokumen-travel/')) {
-    return { body: { portal: 'ASM', detail_dokumen_travel: { ...LIST.detail_dokumen_travel[0], jaminan: [] } } }
   }
   if (call.method === 'GET') return { body: LIST }
   return { status: 201, body: { portal: 'ASM', detail_dokumen_travel: LIST.detail_dokumen_travel[0] } }
@@ -155,7 +146,7 @@ describe('galat simpan', () => {
 })
 
 describe('tambah', () => {
-  it('mengirim plan dan jaminan yang kodenya dicarikan dari nama, lalu menutup form', async () => {
+  it('mengirim keempat isian form, lalu menutup form', async () => {
     installFetch(() => null)
     const user = userEvent.setup()
     show()
@@ -167,11 +158,6 @@ describe('tambah', () => {
     await user.type(within(form).getByLabelText('ID Dokumen'), '100001')
     await user.type(within(form).getByLabelText('Nama Dokumen'), 'Paspor')
     await user.selectOptions(within(form).getByLabelText('Status Wajib'), 'Ya')
-    await user.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await user.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await user.type(within(form).getByLabelText('Nama Plan baris 1'), 'Travel Plan Silver')
-    await user.type(within(form).getByLabelText('Nama Jaminan baris 1'), 'Kehilangan Bagasi')
-    await user.type(within(form).getByLabelText('Nama Jaminan baris 2'), 'Jaminan bebas')
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true))
@@ -180,15 +166,16 @@ describe('tambah', () => {
       nama_dokumen: 'Paspor',
       status_wajib: true,
       minimal_unggah: 0,
-      jaminan: [
-        { id_plan: 'TP01', nama_plan: 'Travel Plan Silver', id_jaminan: 'TC02', nama_jaminan: 'Kehilangan Bagasi' },
-        { id_plan: '', nama_plan: '', id_jaminan: '', nama_jaminan: 'Jaminan bebas' },
-      ],
     })
-    await waitFor(() => expect(screen.queryByRole('form', { name: 'Detail Dokumen Travel' })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('form', { name: 'Detail Dokumen Travel' })).not.toBeInTheDocument(),
+    )
   })
 
-  it('menghapus baris pembatasan sebelum menyimpan', async () => {
+  // Grid Plan dan Jaminan tidak ada di layar Pega yang berjalan (Work Owner,
+  // 2026-10-03). Ia sempat dibangun lalu dicabut; uji ini yang membuat
+  // kemunculannya kembali gagal di CI alih-alih lolos diam-diam.
+  it('tidak menampilkan grid Plan dan Jaminan', async () => {
     installFetch(() => null)
     const user = userEvent.setup()
     show()
@@ -196,9 +183,27 @@ describe('tambah', () => {
     await screen.findByRole('table')
     await user.click(screen.getByRole('button', { name: 'Tambah' }))
     const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-    await user.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await user.click(within(form).getByRole('button', { name: 'Hapus pembatasan baris 1' }))
-    expect(within(form).getByText(/Belum ada pembatasan/)).toBeInTheDocument()
+
+    expect(within(form).queryByRole('button', { name: 'Tambah Plan' })).not.toBeInTheDocument()
+    expect(within(form).queryByLabelText('Nama Plan baris 1')).not.toBeInTheDocument()
+    expect(within(form).queryByLabelText('Nama Jaminan baris 1')).not.toBeInTheDocument()
+  })
+
+  // Daftar sudah membawa seluruh isi baris, sehingga form dibuka langsung dari
+  // baris itu — tanpa satu permintaan tambahan ke /{id}.
+  it('membuka form ubah tanpa memuat ulang baris dari server', async () => {
+    installFetch(() => null)
+    const user = userEvent.setup()
+    show()
+
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Ubah Tiket' }))
+    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
+
+    expect(within(form).getByLabelText('Nama Dokumen')).toHaveValue('Tiket')
+    expect(
+      calls.filter((c) => c.method === 'GET' && c.url.includes('/daftar-detail-dokumen-travel/')),
+    ).toHaveLength(0)
   })
 })
 

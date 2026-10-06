@@ -88,7 +88,9 @@ func TestKatalogTetapMemuatPanelYangTerhalang(t *testing.T) {
 			terhalang++
 		}
 	}
-	require.Equal(t, 3, terhalang)
+	// Nol, sejak Mitra, Adjuster, dan Compliance lepas pada 2026-09-30. Uji ini tetap
+	// ada supaya laporan yang kelak ditandai terhalang tidak lolos tanpa sebab.
+	require.Equal(t, 0, terhalang)
 }
 
 func TestEksporMengalirkanBarisDanMenghitungnya(t *testing.T) {
@@ -109,6 +111,27 @@ func TestEksporMengalirkanBarisDanMenghitungnya(t *testing.T) {
 	require.Equal(t, "PNCN.26.0001", diterima[0].Value("CaseID"))
 }
 
+
+// kodeTerhalang mencari satu laporan yang BELUM siap, apa pun kodenya.
+//
+// Dicari dari katalog, bukan ditulis tetap. Sejak 2026-09-30 tidak ada satu pun laporan
+// yang terhalang, sehingga uji yang menyebut kode tertentu akan kehilangan sasarannya
+// setiap kali daftar itu berubah — dan yang diuji di sini memang MEKANISMENYA, bukan
+// laporan tertentu.
+//
+// Uji yang memakainya melewatkan diri bila tidak ada yang terhalang, dan hidup kembali
+// dengan sendirinya begitu ada.
+func kodeTerhalang(t *testing.T) reportklaim.Code {
+	t.Helper()
+	for _, r := range layanan(t, nil).Catalog() {
+		if !r.Availability.Ready {
+			return r.Code
+		}
+	}
+	t.Skip("tidak ada laporan terhalang saat ini — mekanismenya tidak dapat diuji")
+	return ""
+}
+
 // Laporan yang tidak ada dan laporan yang terhalang DIBEDAKAN: yang satu salah ketik,
 // yang lain penghalang migrasi. Menyatukannya membuat penghalang dicari di tempat salah.
 func TestLaporanTidakDikenalDibedakanDariYangTerhalang(t *testing.T) {
@@ -121,7 +144,7 @@ func TestLaporanTidakDikenalDibedakanDariYangTerhalang(t *testing.T) {
 	require.ErrorIs(t, err, reportklaim.ErrUnknownReport)
 
 	_, _, err = s.Export(t.Context(), usecase.ExportRequest{
-		PortalAlias: portalUji, Code: reportklaim.CodeAdjuster, Filter: rentangSah(),
+		PortalAlias: portalUji, Code: kodeTerhalang(t), Filter: rentangSah(),
 	}, buang)
 	require.ErrorIs(t, err, reportklaim.ErrReportNotReady)
 }
@@ -131,7 +154,7 @@ func TestLaporanTidakDikenalDibedakanDariYangTerhalang(t *testing.T) {
 func TestLaporanTerhalangDitolakSebelumPenyaringDiperiksa(t *testing.T) {
 	_, _, err := layanan(t, nil).Export(t.Context(), usecase.ExportRequest{
 		PortalAlias: portalUji,
-		Code:        reportklaim.CodeAdjuster,
+		Code:        kodeTerhalang(t),
 		Filter:      reportklaim.Filter{}, // tanggal sengaja kosong
 	}, func(reportklaim.Row) error { return nil })
 

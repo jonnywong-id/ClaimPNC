@@ -52,6 +52,7 @@ export function InboxCompliancePage() {
 
   // Klaim yang sedang dikirim ke Post Audit, atau null bila formnya tertutup.
   const [sending, setSending] = useState<WorkItem | null>(null)
+  const navigate = useNavigate()
 
   const portal = useSelectedPortal((state) => state.alias)
   const meta = useInboxComplianceMetadata()
@@ -110,13 +111,20 @@ export function InboxCompliancePage() {
           {tab.tersedia ? (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => (
-                  <RowActions
-                    item={row}
-                    tab={tab}
-                    onSend={() => setSending(row)}
-                  />
-                ))}
+                columns={columnsFor(
+                  tab,
+                  (row) => (
+                    <RowActions
+                      item={row}
+                      tab={tab}
+                      onSend={() => setSending(row)}
+                    />
+                  ),
+                  (row) =>
+                    navigate(
+                      `/inbox-compliance/${encodeURIComponent(row.referensi)}`,
+                    ),
+                )}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.nomor_case}`}
                 title={tab.nama}
@@ -152,7 +160,7 @@ export function InboxCompliancePage() {
         </>
       )}
 
-      <Notes limitations={meta.data?.keterbatasan ?? []} />
+      <Notes limitations={meta.data?.keterbatasan ?? []} tab={tab} />
 
       {sending && (
         <SendPostAuditDialog claim={sending} onClose={() => setSending(null)} />
@@ -208,18 +216,57 @@ function PendingTab({ tab }: { tab: Tab }) {
  * Yang dikirim adalah `referensi`, kunci teknis Pega. Dengan begitu menyalakan layar
  * rincian kelak tidak menuntut perubahan kontrak API modul ini.
  */
-function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.nomor_case
+/**
+ * Nomor Case sebagai tautan pembuka form Compliance Checker.
+ *
+ * # Ke mana ia menuju, dan kenapa BUKAN ke rincian klaim
+ *
+ * Ke `/inbox-compliance/:referensi` — **form Compliance Checker**, bukan layar rincian
+ * klaim. Itu yang dilakukan Pega, dan jalurnya terbaca dari export:
+ *
+ *   1. `Section/InputComplianceDtl_Section-Section.xml` — sel Nomor Case menjalankan
+ *      `SetAssignmentInboxPUCL_act(inskey=.pzInsKey)`, yang MEMBUKA ASSIGNMENT.
+ *   2. `Flow/Register_Flow.xml` — Assignment9 "Compliance", `pyWorkBasket=CompliancePNC`,
+ *      dengan SATU transisi: flow action `ComplianceChecker` → `End1`.
+ *   3. `Flow Action/ComplianceChecker-FA.xml` — `pySectionReference = ComplianceChecker`.
+ *
+ * Jadi baris di antrean ini adalah PEKERJAAN, bukan sekadar rujukan ke sebuah klaim.
+ * Membukanya berarti mengerjakannya.
+ *
+ * Sebelum 2026-10-05 tautan ini menuju `/registrasi/klaim/:claimID`, layar rincian yang
+ * dibuka My Inbox. Itu KELIRU — Work Owner mengoreksinya, dan penelusuran ketiga rule di
+ * atas membenarkan koreksi itu.
+ *
+ * # Kenapa yang dikirim `referensi`, bukan `nomor_case`
+ *
+ * Karena yang dibuka adalah assignment, dan assignment dikenali lewat `PZINSKEY` — yakni
+ * tepat yang dipakai `SetAssignmentInboxPUCL_act(inskey=.pzInsKey)`. Nomor klaim tidak
+ * unik lintas sistem selama masa paralel; kunci teknis unik.
+ *
+ * Nilainya memuat spasi dan tanda hubung, sehingga pemanggil WAJIB mengkodekannya ke
+ * dalam alamat.
+ */
+function ClaimLink({ item, onOpen }: { item: WorkItem; onOpen: () => void }) {
+  const label = item.nomor_case || '—'
+
+  // Baris tanpa kunci teknis tidak dapat dibuka, dan ditampilkan sebagai teks biasa — bukan
+  // tautan mati yang terlihat dapat diklik lalu berakhir di layar "tidak ditemukan".
+  //
+  // Yang diperiksa adalah `referensi`, bukan `nomor_case`: itulah yang dikirim ke alamat
+  // tujuan. Baris tab Post Audit punya `nomor_case` berbentuk `CPL-…` tetapi tidak punya
+  // assignment yang dapat dibuka — lihat catatan di columnsFor.
+  if (item.referensi === '') {
+    return <span>{label}</span>
+  }
 
   return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+    <button
+      type="button"
+      onClick={onOpen}
+      className="text-left font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900"
     >
-      Lihat Detail Klaim
-    </Button>
+      {label}
+    </button>
   )
 }
 
@@ -277,9 +324,27 @@ function Pagination({
  * penghalangnya hilang. Tanpa catatan ini, Aging yang berbeda dari angka TAT pada laporan
  * KPI akan dilaporkan berulang kali sebagai kerusakan — padahal keduanya memang memakai
  * dasar hitungan yang berbeda sejak di sistem lama.
+ *
+ * # Kenapa ia ikut tersembunyi saat kolomnya disaring
+ *
+ * Satu-satunya catatan yang ada menjelaskan kolom **Aging**. Begitu tab Compliance
+ * disamakan dengan layar Pega yang hanya menampilkan Nomor Case, kolom itu tidak lagi
+ * digambar — dan catatan yang menerangkan kolom tak tampil bukan sekadar mubazir, ia
+ * membuat pembacanya mencari kolom yang tidak ada.
+ *
+ * Catatannya TIDAK dihapus dari server: isinya tetap benar tentang `aging_jam` yang masih
+ * dikirim. Yang dilakukan di sini hanya menunda menampilkannya sampai kolomnya kembali,
+ * dan keduanya dikendalikan sakelar yang sama — `KOLOM_TAMPIL`.
  */
-function Notes({ limitations }: { limitations: string[] }) {
+function Notes({
+  limitations,
+  tab,
+}: {
+  limitations: string[]
+  tab: Tab | undefined
+}) {
   if (limitations.length === 0) return null
+  if (tab && KOLOM_TAMPIL[tab.kode]) return null
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
@@ -328,7 +393,6 @@ function RowActions({
           Kirim ke Post Audit
         </Button>
       )}
-      <DetailButton item={item} />
     </div>
   )
 }
@@ -451,8 +515,49 @@ function SendPostAuditDialog({
   )
 }
 
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
+/**
+ * Kolom yang BENAR-BENAR digambar, dari kolom yang disebut server.
+ *
+ * # Kenapa tab Compliance hanya menampilkan satu kolom
+ *
+ * Karena layar Pega yang berjalan hanya menampilkan satu: `Nomor Case`, sebagai tautan.
+ * `D-13` menetapkan tampilan ditiru, dan Work Owner meminta keduanya disamakan setelah
+ * membandingkan kedua layar berdampingan (2026-10-05).
+ *
+ * # Yang perlu diketahui sebelum ini "diperbaiki" kembali menjadi delapan kolom
+ *
+ * Rule-nya TIDAK sejalan dengan layarnya. `Section/InputComplianceDtl_Section-Section.xml`
+ * mengikat delapan properti — `.pyID`, `.Policy.PolicyNo`, `.Policy.QQName`,
+ * `.Policy.Quotation.BusinessName`, `.Policy.Quotation.BranchName`, `.pyOrigUserID`,
+ * `.ClaimData.TanggalBuatCompliance`, `.ClaimData.AgingKlaim` — dan ke-57 penanda
+ * `pyVisible` di dalamnya bernilai `ALWAYS`, tanpa satu pun kondisi. Menurut rule, kedelapan
+ * kolom itu selalu tampil.
+ *
+ * Dugaan terkuat atas selisihnya: **personalisasi grid per pengguna**, yang Pega simpan di
+ * preferensi akun dan TIDAK ikut terekspor. Artinya petugas lain bisa jadi melihat kedelapan
+ * kolomnya. Dugaan ini belum dibuktikan.
+ *
+ * Karena itu kolomnya disembunyikan DI SINI saja, bukan dihapus: server tetap mengirimkan
+ * kedelapan kolom beserta isinya, sehingga mengembalikannya cukup dengan menghapus satu
+ * daftar di bawah — tanpa menyentuh kontrak API, kueri, maupun uji backend.
+ *
+ * Tab Post Audit TIDAK disaring: layar Pega-nya memang menampilkan ketujuh kolomnya.
+ */
+const KOLOM_TAMPIL: Record<string, readonly string[] | undefined> = {
+  compliance: ['nomor_case'],
+}
+
+function columnsFor(
+  tab: Tab,
+  action: (row: WorkItem) => ReactNode,
+  openClaim: (row: WorkItem) => void,
+): Column<WorkItem>[] {
+  const allowed = KOLOM_TAMPIL[tab.kode]
+  const shown = allowed
+    ? tab.kolom.filter((column) => allowed.includes(column.kunci))
+    : tab.kolom
+
+  const columns: Column<WorkItem>[] = shown.map((column) => ({
     key: column.kunci,
     title: column.judul,
     value: (row) => cellText(row, column),
@@ -472,6 +577,25 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
     // Sementara itu barisnya sudah datang terurut dari server — menurut tanggal kirim,
     // yang untuk kedua antrean ini berarti yang paling BARU di atas.
     noSort: column.kunci === 'aging' || column.kunci === 'outstanding',
+
+    // Nomor Case digambar sebagai TAUTAN, meniru Pega — di sana nomornya sendiri yang
+    // diklik untuk membuka pekerjaannya, bukan tombol terpisah di ujung baris.
+    //
+    // HANYA pada tab Compliance. Tab Post Audit tidak punya assignment yang dapat dibuka:
+    // barisnya berasal dari `POOLDATA.T_CLAIM_COMPLIANCE_H`, tabel datar hasil pemeriksaan
+    // yang sudah selesai — dan `nomor_case` di sana berbentuk `CPL-…`, nomor baris Post
+    // Audit, bukan nomor klaim. Menjadikannya tautan akan mengirim petugas ke form yang
+    // akan menjawab "klaim tidak ada di antrean".
+    //
+    // `value` tetap mengembalikan teksnya, sehingga pengurutan dan pencarian `DataTable`
+    // tetap bekerja atas nomornya, bukan atas simpul React.
+    ...(column.kunci === 'nomor_case' && tab.kode === 'compliance'
+      ? {
+          render: (row: WorkItem) => (
+            <ClaimLink item={row} onOpen={() => openClaim(row)} />
+          ),
+        }
+      : {}),
   }))
 
   columns.push({

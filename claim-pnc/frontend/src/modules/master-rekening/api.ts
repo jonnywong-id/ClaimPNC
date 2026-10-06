@@ -18,6 +18,14 @@ export type AccountFilter = {
   nomorRekening?: string
   namaPemilik?: string
   namaBank?: string
+  /**
+   * Satu kata kunci, dicocokkan SERVER ke nomor rekening, nama pemilik, nama bank, dan
+   * cabang bank sekaligus.
+   *
+   * Dikerjakan server, bukan peramban: daftar dipotong paginasi, dan menyaring di
+   * peramban hanya menyentuh halaman yang sedang terbuka.
+   */
+  cari?: string
   /** Membatasi ke antrean komite yang sedang masuk. Dipakai tab Komite Approval. */
   komiteSaya?: boolean
   batas?: number
@@ -36,6 +44,8 @@ export type AccountFields = {
   email: string
   telepon: string
   nik: string
+  /** "Email Inputor" — alamat tujuan pemberitahuan approval dari Kasir. */
+  emailInputor: string
   idDokumen: string
   catatan: string
   aktif: boolean
@@ -56,6 +66,7 @@ function bodyOf(values: AccountFields) {
     email: values.email,
     telepon: values.telepon,
     nik: values.nik,
+    email_inputor: values.emailInputor,
     id_dokumen: values.idDokumen,
     catatan: values.catatan,
     aktif: values.aktif,
@@ -71,6 +82,7 @@ function queryFrom(filter: AccountFilter): string {
   if (filter.nomorRekening?.trim()) q.set('nomor_rekening', filter.nomorRekening.trim())
   if (filter.namaPemilik?.trim()) q.set('nama_pemilik', filter.namaPemilik.trim())
   if (filter.namaBank?.trim()) q.set('nama_bank', filter.namaBank.trim())
+  if (filter.cari?.trim()) q.set('cari', filter.cari.trim())
   if (filter.komiteSaya) q.set('komite_saya', '1')
   if (filter.batas !== undefined) q.set('batas', String(filter.batas))
   if (filter.lewati !== undefined) q.set('lewati', String(filter.lewati))

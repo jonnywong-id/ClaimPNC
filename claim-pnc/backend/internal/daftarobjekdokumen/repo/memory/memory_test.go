@@ -16,31 +16,31 @@ var errBoom = errors.New("boom")
 func TestListSortsByIDAsTextWithoutBusinesses(t *testing.T) {
 	repo := NewRepo(
 		daftarobjekdokumen.DocumentObject{ID: "1009", Description: "b"},
-		daftarobjekdokumen.DocumentObject{ID: "10010", Description: "a", OldID: "07",
+		daftarobjekdokumen.DocumentObject{ID: "10010", Description: "a", OldID: "0007",
 			Businesses: []daftarobjekdokumen.Business{{ID: "1", Name: "X"}}},
 	)
 	got, err := repo.List(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, []daftarobjekdokumen.DocumentObject{
-		{ID: "10010", Description: "a", OldID: "07"},
+		{ID: "10010", Description: "a", OldID: "0007"},
 		{ID: "1009", Description: "b"},
 	}, got)
 }
 
 func TestGetReturnsCopyWithBusinesses(t *testing.T) {
 	repo := NewRepo(SampleList()...)
-	got, err := repo.Get(context.Background(), " 10002 ")
+	got, err := repo.Get(context.Background(), " 100002 ")
 	require.NoError(t, err)
 	require.Equal(t, "Polis Asli", got.Description)
 	require.Len(t, got.Businesses, 2)
 
 	// Mengubah hasil tidak boleh mengubah isi tersimpan.
 	got.Businesses[0].Name = "DIUBAH"
-	again, err := repo.Get(context.Background(), "10002")
+	again, err := repo.Get(context.Background(), "100002")
 	require.NoError(t, err)
 	require.Equal(t, "FIRE / PROPERTY", again.Businesses[0].Name)
 
-	_, err = repo.Get(context.Background(), "99999")
+	_, err = repo.Get(context.Background(), "999999")
 	require.ErrorIs(t, err, daftarobjekdokumen.ErrNotFound)
 }
 
@@ -52,7 +52,7 @@ func TestInsertContinuesSequence(t *testing.T) {
 		Businesses:  []daftarobjekdokumen.Business{{ID: "003", Name: "ANEKA"}},
 	})
 	require.NoError(t, err)
-	require.Equal(t, "10005", saved.ID)
+	require.Equal(t, "100005", saved.ID)
 	require.Equal(t, []daftarobjekdokumen.Business{{ID: "003", Name: "ANEKA"}}, saved.Businesses)
 
 	list, err := repo.List(context.Background())
@@ -64,7 +64,7 @@ func TestInsertContinuesSequence(t *testing.T) {
 func TestInsertOnEmptyAndOddIDs(t *testing.T) {
 	saved, err := NewRepo().Insert(context.Background(), daftarobjekdokumen.SaveData{Description: "a"})
 	require.NoError(t, err)
-	require.Equal(t, "10001", saved.ID)
+	require.Equal(t, "100001", saved.ID)
 
 	// "1" terlalu pendek, "1abc" bukan angka — keduanya tidak memengaruhi deret.
 	repo := NewRepo(
@@ -73,29 +73,29 @@ func TestInsertOnEmptyAndOddIDs(t *testing.T) {
 	)
 	saved, err = repo.Insert(context.Background(), daftarobjekdokumen.SaveData{Description: "b"})
 	require.NoError(t, err)
-	require.Equal(t, "10001", saved.ID)
+	require.Equal(t, "100001", saved.ID)
 }
 
-// Nomor urut dibaca dari ID tanpa digit pertama, apa pun digit situsnya; di atas 9999 tidak
+// Nomor urut dibaca dari ID tanpa digit pertama, apa pun digit situsnya; di atas 99999 tidak
 // dipotong, sama seperti LPAD.
 func TestNextIDReadsSequenceAfterSiteDigit(t *testing.T) {
-	repo := NewRepo(daftarobjekdokumen.DocumentObject{ID: "20041"})
-	require.Equal(t, "10042", repo.nextID())
-	require.Equal(t, "0007", fourDigits(7))
-	require.Equal(t, "10000", fourDigits(10000))
+	repo := NewRepo(daftarobjekdokumen.DocumentObject{ID: "200041"})
+	require.Equal(t, "100042", repo.nextID())
+	require.Equal(t, "00007", fiveDigits(7))
+	require.Equal(t, "100000", fiveDigits(100000))
 }
 
 func TestUpdateReplacesDescriptionAndBusinesses(t *testing.T) {
 	repo := NewRepo(SampleList()...)
-	saved, err := repo.Update(context.Background(), "10003", daftarobjekdokumen.SaveData{
+	saved, err := repo.Update(context.Background(), "100003", daftarobjekdokumen.SaveData{
 		Description: "Ubah",
-		Businesses:  []daftarobjekdokumen.Business{{ID: "005", Name: "TRAVEL"}},
+		Businesses:  []daftarobjekdokumen.Business{{ID: "10045", Name: "TRAVEL"}},
 	})
 	require.NoError(t, err)
 	// ID dan OldID tidak ikut ditimpa.
 	require.Equal(t, daftarobjekdokumen.DocumentObject{
-		ID: "10003", Description: "Ubah", OldID: "07",
-		Businesses: []daftarobjekdokumen.Business{{ID: "005", Name: "TRAVEL"}},
+		ID: "100003", Description: "Ubah", OldID: "0007",
+		Businesses: []daftarobjekdokumen.Business{{ID: "10045", Name: "TRAVEL"}},
 	}, saved)
 
 	_, err = repo.Update(context.Background(), "nope", daftarobjekdokumen.SaveData{})

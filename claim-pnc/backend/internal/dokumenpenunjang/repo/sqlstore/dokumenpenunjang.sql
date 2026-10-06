@@ -161,3 +161,20 @@ SELECT s.IMAGEID,
        s.TGL_UPLOAD
   FROM GENERAL.T_STORAGE_IMAGE@asmd.sinarmas.co.id s
  WHERE TRIM(s.IMAGEID) = :1
+
+
+-- name: perbarui_tautan
+-- Alamat baru hasil perpanjangan (`NewLinkDokumenPNC`) — salinan `RDB List/UpdateNewDocumentPNC-SQL.xml`:
+--
+--     UPDATE GENERAL.T_STORAGE_IMAGE
+--        SET URLPUBLIC = {URLImage}, EXPDATE = To_date({exp}, 'DD/MM/YYYY HH24:MI:SS'),
+--            APPFOLDER = {appfolder}
+--      WHERE IMAGEID = {DocAPI.ImageID}
+--
+-- EXPDATE dikirim sebagai waktu terikat, bukan teks yang diurai To_date. APPFOLDER yang
+-- tidak dilaporkan layanan tidak menghapus nilai lama.
+UPDATE GENERAL.T_STORAGE_IMAGE@asmd.sinarmas.co.id
+   SET URLPUBLIC = :1,
+       EXPDATE   = :2,
+       APPFOLDER = COALESCE(:3, APPFOLDER)
+ WHERE IMAGEID = :4

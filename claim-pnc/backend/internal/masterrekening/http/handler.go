@@ -144,8 +144,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		Number:    strings.TrimSpace(q.Get("nomor_rekening")),
 		OwnerName: strings.TrimSpace(q.Get("nama_pemilik")),
 		BankName:  strings.TrimSpace(q.Get("nama_bank")),
-		Limit:     angka(q.Get("batas"), 50, clientMaxLimit),
-		Offset:    angka(q.Get("lewati"), 0, 0),
+		// Satu kotak cari layar, dicocokkan server ke empat kolom sekaligus.
+		Keyword: strings.TrimSpace(q.Get("cari")),
+		Limit:   angka(q.Get("batas"), 50, clientMaxLimit),
+		Offset:  angka(q.Get("lewati"), 0, 0),
 	}
 
 	// Tab "Komite Approval" hanya menampilkan yang menunggu keputusan komite yang
@@ -343,6 +345,7 @@ func submissionFrom(b SaveRequest) usecase.Submission {
 		DocumentID:        b.DocumentID,
 		Note:              b.Note,
 		Active:            b.Active,
+		SubmitterEmail:    b.SubmitterEmail,
 		PreviousBankCode:  b.PreviousBankCode,
 		PreviousNumber:    b.PreviousNumber,
 		PreviousOwnerName: b.PreviousOwnerName,

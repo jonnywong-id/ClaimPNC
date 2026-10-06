@@ -63,38 +63,13 @@ export function useDetailDocumentTypeList() {
 }
 
 /**
- * Hook satu baris LENGKAP dengan daftar bisnisnya.
+ * Hook daftar pilihan form.
  *
- * Dimuat terpisah, bukan diambil dari hasil daftar, karena daftar memang tidak
- * membawanya: grid hanya menampilkan tiga kolom dan tidak satu pun menyebut lini bisnis.
- * Memakai baris dari daftar akan membuat form tampak seolah seluruh lini bisnisnya sudah
- * dihapus — dan menyimpannya benar-benar menghapusnya.
+ * Menggantikan dropdown ID Tipe Dokumen pada form Pega. Bentuknya tetap amplop berisi
+ * daftar plus catatan apa yang hilang, bukan satu senarai telanjang — penambahan master
+ * berikutnya karena itu tidak mengubah bentuk kontraknya.
  *
- * `id` null berarti tidak ada baris yang sedang dibuka — hook-nya diam.
- */
-export function useDetailDocumentType(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: detailKey(id ?? '', portal, token),
-    queryFn: () =>
-      callAPI<DetailDocumentTypeResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && id !== null,
-  })
-}
-
-/**
- * Hook keempat daftar pilihan form.
- *
- * Menggantikan keempat autocomplete pada form Pega sekaligus. SATU permintaan, bukan
- * empat: keempatnya selalu dibutuhkan bersamaan, dan memisahkannya hanya menambah tiga
- * keadaan setengah-siap yang harus dijaga layar.
- *
- * MENUNTUT portal: keempat masternya hidup di basis data setiap entitas.
+ * MENUNTUT portal: masternya hidup di basis data setiap entitas.
  *
  * Kegagalannya TIDAK menghalangi apa pun: keempat kode boleh diketik sendiri, sehingga
  * yang hilang hanya kenyamanan memilih. Yang gagal disebutkan server lewat

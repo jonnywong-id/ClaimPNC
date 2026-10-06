@@ -1,0 +1,26 @@
+-- 0014 turun — membatalkan tabel permintaan transfer penugasan.
+--
+-- ============================================================================
+-- MENJALANKAN BERKAS INI MENGHAPUS JEJAK PERMINTAAN
+-- ============================================================================
+--
+-- Isinya SIAPA meminta pekerjaan siapa dipindahkan ke siapa, dan KAPAN. `D-59` menghapus
+-- pemisahan tugas, sehingga jejak semacam ini adalah kontrol pengimbang — bukan data
+-- pelengkap.
+--
+-- Pada tabel INI taruhannya khas: permintaan massal memindahkan SELURUH pekerjaan satu
+-- operator sekaligus. Jejak yang hilang berarti tidak ada lagi cara mengetahui siapa yang
+-- memerintahkan perpindahan itu.
+--
+-- Jalankan hanya setelah memastikan salah satu dari dua hal:
+--
+--   1. tabelnya masih KOSONG — migrasi baru saja dijalankan dan tombolnya belum dipakai;
+--      atau
+--   2. isinya sudah disalin ke tempat yang disetujui Work Owner dan Compliance.
+--
+-- `P-4` mewajibkan setiap migrasi punya `down` yang benar-benar berfungsi, dan itulah
+-- sebabnya berkas ini ada. Ia BUKAN anjuran untuk menjalankannya.
+--
+-- Ketiga indeks ikut terhapus bersama tabelnya; menghapusnya lebih dulu tidak diperlukan.
+
+DROP TABLE POOLDATA.CPNC_PERMINTAAN_TRANSFER;

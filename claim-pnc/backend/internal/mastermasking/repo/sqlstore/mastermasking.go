@@ -286,6 +286,44 @@ func (r *Repo) ListBranches(ctx context.Context, keyword string, limit int) ([]m
 	return result, nil
 }
 
+// ListOperators membaca petugas sebuah cabang yang berhak diberi kewenangan masking.
+//
+// Keempat jabatan diikat satu per satu dari mastermasking.OperatorPositions — bukan
+// dirangkai ke teks SQL — supaya daftarnya tetap satu-satunya sumber kebenaran, dan supaya
+// tidak ada satu pun nilai yang menyentuh pernyataan SQL sebagai teks.
+func (r *Repo) ListOperators(ctx context.Context, branchID string) ([]mastermasking.Operator, error) {
+	position := mastermasking.OperatorPositions
+	if len(position) != 4 {
+		// Kueri mengikat tepat empat jabatan. Bila daftarnya kelak berubah panjang, kueri
+		// wajib ikut berubah — dan panik di sini membuat ketidakcocokan itu terlihat saat
+		// pertama dijalankan, bukan sebagai daftar yang diam-diam tidak lengkap.
+		panic("mastermasking/sqlstore: operator_list mengikat tepat 4 jabatan; OperatorPositions berubah panjang")
+	}
+
+	rows, err := r.db.QueryContext(ctx, getQuery("operator_list"),
+		position[0], position[1], position[2], position[3], strings.TrimSpace(branchID))
+	if err != nil {
+		return nil, fmt.Errorf("mastermasking/sqlstore: membaca daftar petugas cabang %q: %w", branchID, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []mastermasking.Operator
+	for rows.Next() {
+		var login, name sql.NullString
+		if err := rows.Scan(&login, &name); err != nil {
+			return nil, fmt.Errorf("mastermasking/sqlstore: membaca baris petugas: %w", err)
+		}
+		result = append(result, mastermasking.Operator{
+			Login: strings.TrimSpace(login.String),
+			Name:  strings.TrimSpace(name.String),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("mastermasking/sqlstore: menelusuri daftar petugas: %w", err)
+	}
+	return result, nil
+}
+
 // BranchExists menyatakan apakah kode cabang ada di POOLDATA.BRANCH.
 func (r *Repo) BranchExists(ctx context.Context, branchID string) (bool, error) {
 	var total int

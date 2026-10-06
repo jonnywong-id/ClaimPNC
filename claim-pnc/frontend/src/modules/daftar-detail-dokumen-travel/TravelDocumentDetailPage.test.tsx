@@ -17,22 +17,11 @@ const DOCUMENTS = {
   ],
 }
 
-const PLANS = {
-  portal: 'ASM',
-  plan: [
-    { id: 'TP01', nama: 'Travel Plan Silver' },
-    { id: 'TP02', nama: 'Travel Plan Gold' },
-  ],
-  jaminan: [
-    { id: 'TC02', nama: 'Kehilangan Bagasi', id_plan: 'TP01' },
-    { id: 'TC01', nama: 'Biaya Pengobatan Darurat', id_plan: 'TP02' },
-    { id: 'TC03', nama: 'Keterlambatan Penerbangan', id_plan: 'TP02' },
-  ],
-}
-
 /**
- * Jawaban daftar. Perhatikan `jaminan` SELALU kosong di sini — itu memang bentuk
- * jawabannya, karena kueri daftar tidak membaca pembatasan plan.
+ * Jawaban daftar.
+ *
+ * Kelima kolom inilah SELURUH isi barisnya — tidak ada pembatasan Plan dan Jaminan, dan
+ * karena itu tidak ada yang perlu dimuat ulang saat form dibuka.
  */
 const LIST = {
   portal: 'ASM',
@@ -44,7 +33,6 @@ const LIST = {
       nama_dokumen: 'Paspor',
       status_wajib: true,
       minimal_unggah: 1,
-      jaminan: [],
     },
     {
       id: '00003',
@@ -52,42 +40,8 @@ const LIST = {
       nama_dokumen: 'Laporan Kehilangan Bagasi',
       status_wajib: false,
       minimal_unggah: 2,
-      jaminan: [],
     },
   ],
-}
-
-/**
- * Jawaban GET satu baris — di sinilah pembatasan plan-nya ikut, bukan di daftar.
- *
- * Baris kedua SENGAJA tanpa kode: itu plan dan jaminan yang namanya diketik bebas dan
- * tidak ada di master, keadaan sah yang harus ditangani layar.
- */
-const DETAIL = {
-  portal: 'ASM',
-  detail_dokumen_travel: {
-    id: '00003',
-    id_dokumen: '100004',
-    nama_dokumen: 'Laporan Kehilangan Bagasi',
-    status_wajib: false,
-    minimal_unggah: 2,
-    jaminan: [
-      {
-        id: '00005',
-        id_plan: 'TP01',
-        nama_plan: 'Travel Plan Silver',
-        id_jaminan: 'TC02',
-        nama_jaminan: 'Kehilangan Bagasi',
-      },
-      {
-        id: '00006',
-        id_plan: '',
-        nama_plan: 'Plan yang diketik sendiri',
-        id_jaminan: '',
-        nama_jaminan: 'Jaminan yang diketik sendiri',
-      },
-    ],
-  },
 }
 
 type Call = {
@@ -122,17 +76,16 @@ function installFetch(map: (call: Call) => Reply) {
   })
 }
 
-/** defaultReply melayani daftar, detail, dan kedua daftar pilihan. */
+/** defaultReply melayani daftar dan daftar pilihan ID Dokumen. */
 function defaultReply(mutation?: (call: Call) => Reply) {
   return (call: Call): Reply => {
     if (call.url.startsWith('/api/master/dokumen-travel-pilihan')) return { body: DOCUMENTS }
-    if (call.url.startsWith('/api/master/plan-travel')) return { body: PLANS }
-    if (call.method === 'GET' && call.url.includes('/daftar-detail-dokumen-travel/')) {
-      return { body: DETAIL }
-    }
     if (call.method === 'GET') return { body: LIST }
     if (mutation) return mutation(call)
-    return { body: DETAIL, status: 201 }
+    return {
+      body: { portal: 'ASM', detail_dokumen_travel: LIST.detail_dokumen_travel[0] },
+      status: 201,
+    }
   }
 }
 
@@ -164,18 +117,11 @@ function startSession() {
   })
 }
 
-/** Membuka form ubah pada baris 00003 dan menunggu pembatasan plan-nya selesai dimuat. */
+/** Membuka form ubah pada baris 00003. */
 async function openEditForm() {
   await screen.findByRole('table')
-  await userEvent.click(
-    screen.getByRole('button', { name: 'Ubah Laporan Kehilangan Bagasi' }),
-  )
-
-  const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-  await waitFor(() => {
-    expect(within(form).getByLabelText('Nama Plan baris 1')).toHaveValue('Travel Plan Silver')
-  })
-  return form
+  await userEvent.click(screen.getByRole('button', { name: 'Ubah Laporan Kehilangan Bagasi' }))
+  return screen.findByRole('form', { name: 'Detail Dokumen Travel' })
 }
 
 beforeEach(() => {
@@ -237,19 +183,6 @@ describe('daftar detail dokumen travel', () => {
 })
 
 describe('form detail dokumen travel', () => {
-  it('memuat ULANG baris yang dibuka supaya pembatasan plannya ikut terbawa', async () => {
-    // Daftar tidak membawanya. Memakai baris dari daftar akan membuat form tampak seolah
-    // seluruh pembatasannya sudah dihapus — dan menyimpannya benar-benar menghapusnya.
-    installFetch(defaultReply())
-    show()
-
-    const form = await openEditForm()
-    expect(within(form).getByLabelText('Nama Jaminan baris 1')).toHaveValue('Kehilangan Bagasi')
-    expect(within(form).getByLabelText('Nama Plan baris 2')).toHaveValue(
-      'Plan yang diketik sendiri',
-    )
-  })
-
   it('mengisi seluruh isian dari baris yang dibuka', async () => {
     installFetch(defaultReply())
     show()
@@ -263,41 +196,36 @@ describe('form detail dokumen travel', () => {
     expect(within(form).getByLabelText('Status Wajib')).toHaveValue('0')
   })
 
-  it('menyaring jaminan menurut plan yang dipilih pada baris itu', async () => {
-    // Penyaringan yang di Pega dikerjakan server lewat parameter `plan` pada
-    // `SearchCoverageTravel_RD`. Di sini dikerjakan layar, atas daftar yang sudah di
-    // tangan — tanpa satu permintaan per baris grid.
+  // Uji ini menjaga sebuah KEPUTUSAN, bukan sebuah perhitungan.
+  //
+  // `Section/BrowseDocumentTravel-Section.xml:3731` memuat grid berulang Plan dan
+  // Jaminan tanpa kondisi yang menyembunyikannya, sehingga siapa pun yang membaca export
+  // akan menyimpulkan form ini punya grid itu. Grid itu TIDAK ADA di aplikasi Pega yang
+  // berjalan — Work Owner memeriksa layarnya langsung dan menetapkannya 2026-10-03, dan
+  // modul ini sempat membangunnya lalu mencabutnya.
+  it('tidak memuat grid Plan dan Jaminan', async () => {
     installFetch(defaultReply())
     show()
 
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-
-    await userEvent.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await userEvent.type(
-      within(form).getByLabelText('Nama Plan baris 1'),
-      'Travel Plan Gold',
-    )
-
-    const coverage = within(form).getByLabelText('Nama Jaminan baris 1')
-    const list = document.getElementById(coverage.getAttribute('list') ?? '')
-    const options = Array.from(list?.querySelectorAll('option') ?? []).map((o) => o.value)
-
-    expect(options).toContain('Biaya Pengobatan Darurat')
-    expect(options).toContain('Keterlambatan Penerbangan')
-    // Milik TP01, bukan TP02 — tidak boleh ikut ditawarkan.
-    expect(options).not.toContain('Kehilangan Bagasi')
+    const form = await openEditForm()
+    expect(within(form).queryByText(/Plan dan Jaminan/)).not.toBeInTheDocument()
+    expect(within(form).queryByRole('button', { name: 'Tambah Plan' })).not.toBeInTheDocument()
   })
 
-  it('mengirim kode plan dan jaminan yang dicarikan dari namanya', async () => {
-    // Kode dicarikan dari NAMA yang dilihat petugas. Inilah pengganti `pySetValueOnSelect`
-    // pada autocomplete Pega, yang menyalin `.ID` ke properti tersembunyi.
+  it('tidak menembak rute plan-travel yang sudah dicabut', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await openEditForm()
+    expect(calls.some((call) => call.url.startsWith('/api/master/plan-travel'))).toBe(false)
+  })
+
+  it('mengirim keempat isian apa adanya', async () => {
     let saved: unknown
     installFetch(
       defaultReply((call) => {
         saved = call.body
-        return { body: DETAIL, status: 201 }
+        return { body: { portal: 'ASM', detail_dokumen_travel: LIST.detail_dokumen_travel[0] }, status: 201 }
       }),
     )
     show()
@@ -308,79 +236,15 @@ describe('form detail dokumen travel', () => {
 
     await userEvent.type(within(form).getByLabelText('ID Dokumen'), '100001')
     await userEvent.type(within(form).getByLabelText('Nama Dokumen'), 'Paspor')
-    await userEvent.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await userEvent.type(
-      within(form).getByLabelText('Nama Plan baris 1'),
-      'Travel Plan Silver',
-    )
-    await userEvent.type(
-      within(form).getByLabelText('Nama Jaminan baris 1'),
-      'Kehilangan Bagasi',
-    )
     await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => expect(saved).toBeDefined())
-    expect(saved).toMatchObject({
+    expect(saved).toEqual({
       id_dokumen: '100001',
       nama_dokumen: 'Paspor',
-      jaminan: [
-        {
-          id_plan: 'TP01',
-          nama_plan: 'Travel Plan Silver',
-          id_jaminan: 'TC02',
-          nama_jaminan: 'Kehilangan Bagasi',
-        },
-      ],
+      status_wajib: false,
+      minimal_unggah: 0,
     })
-  })
-
-  it('tetap mengirim baris yang namanya tidak ada di master, tanpa kode', async () => {
-    // `pyAllowFreeFormInput=true` pada autocomplete Pega: nama di luar daftar TETAP boleh
-    // diketik dan tersimpan. Membuangnya berarti mengubah perilaku, bukan memperbaikinya.
-    let saved: { jaminan?: unknown[] } | undefined
-    installFetch(
-      defaultReply((call) => {
-        saved = call.body as { jaminan?: unknown[] }
-        return { body: DETAIL, status: 201 }
-      }),
-    )
-    show()
-
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-
-    await userEvent.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await userEvent.type(within(form).getByLabelText('Nama Plan baris 1'), 'Plan Baru')
-    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
-
-    await waitFor(() => expect(saved).toBeDefined())
-    expect(saved?.jaminan).toEqual([
-      { id_plan: '', nama_plan: 'Plan Baru', id_jaminan: '', nama_jaminan: '' },
-    ])
-  })
-
-  it('membuang baris plan yang dibiarkan kosong seluruhnya', async () => {
-    // Grid selalu menyisakan baris yang baru ditambahkan tetapi belum diisi. Menyimpannya
-    // berarti menulis pembatasan yang tidak membatasi apa pun.
-    let saved: { jaminan?: unknown[] } | undefined
-    installFetch(
-      defaultReply((call) => {
-        saved = call.body as { jaminan?: unknown[] }
-        return { body: DETAIL, status: 201 }
-      }),
-    )
-    show()
-
-    await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-
-    await userEvent.click(within(form).getByRole('button', { name: 'Tambah Plan' }))
-    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
-
-    await waitFor(() => expect(saved).toBeDefined())
-    expect(saved?.jaminan).toEqual([])
   })
 
   it('menerima isian kosong karena layar ini tanpa validasi', async () => {
@@ -391,7 +255,7 @@ describe('form detail dokumen travel', () => {
     installFetch(
       defaultReply((call) => {
         saved = call.body
-        return { body: DETAIL, status: 201 }
+        return { body: { portal: 'ASM', detail_dokumen_travel: LIST.detail_dokumen_travel[0] }, status: 201 }
       }),
     )
     show()
@@ -452,24 +316,23 @@ describe('form detail dokumen travel', () => {
     expect(within(form).getByLabelText('Nama Dokumen')).toHaveValue('Paspor')
   })
 
-  it('tetap dapat menyimpan meski daftar plan gagal dimuat', async () => {
-    // Nama plan dan jaminan memang boleh diketik sendiri, sehingga yang hilang saat
-    // daftarnya gagal dimuat hanyalah kenyamanan memilih.
+  it('tetap dapat menyimpan meski daftar dokumen gagal dimuat', async () => {
+    // Kode dokumen memang boleh diketik sendiri, sehingga yang hilang saat daftarnya
+    // gagal dimuat hanyalah kenyamanan memilih.
     let saved: unknown
     installFetch((call) => {
-      if (call.url.startsWith('/api/master/plan-travel')) {
+      if (call.url.startsWith('/api/master/dokumen-travel-pilihan')) {
         return { body: { kode: 'galat_internal', pesan: 'Gagal.' }, status: 500 }
       }
-      if (call.url.startsWith('/api/master/dokumen-travel-pilihan')) return { body: DOCUMENTS }
       if (call.method === 'GET') return { body: LIST }
       saved = call.body
-      return { body: DETAIL, status: 201 }
+      return { body: { portal: 'ASM', detail_dokumen_travel: LIST.detail_dokumen_travel[0] }, status: 201 }
     })
     show()
 
     await screen.findByRole('table')
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    await screen.findByText('Daftar plan dan jaminan tidak dapat dimuat')
+    await screen.findByText('Daftar dokumen travel tidak dapat dimuat')
 
     const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
     await userEvent.type(within(form).getByLabelText('Nama Dokumen'), 'Paspor')
