@@ -29012,3 +29012,56 @@ IsPA` langsung sesudah akseptasi. Aplikasi ini mengakseptasi PA seperti lini lai
 Klaim PNCN.26.26 sudah terlanjur ditransfer otomatis (2026-10-03, sebelum keputusan ini) — transfernya tidak dibatalkan
 aplikasi; pembatalan di sisi Kasir bukan wewenang aplikasi ini.
 >>>>>>> 8cb90930abc7cf29eb13e63d9ebf85b5ca010cb1
+
+---
+
+## 171. My Inbox — status dokumen sebagai tablist (2026-10-05)
+
+**Keputusan:** donut dan tabel hierarki status dokumen **tidak dibawa**. Yang dibangun
+hanya **satu deret tab**, berbentuk `role="tablist"` mengikuti `SourceTab` pada Inbox Auto
+Claim.
+
+Menyupersede §40.11 dan §40.12, yang menetapkan donut + tabel mengikuti Inbox Laporan
+Klaim. Pemilik keputusan: Work Owner, 2026-10-05.
+
+**Kenapa satu sajian, bukan tiga.** Pega menampilkan angka yang sama di tab, donut, dan
+tabel. Tiga sajian atas satu angka berarti tiga tempat yang bisa menyimpang — dan
+menyimpangnya tidak menghasilkan galat, hanya dua angka berbeda di layar yang sama.
+
+**Kenapa tablist, bukan deretan tombol.** Dengan peran yang benar, pembaca layar
+mengumumkan "tab 2 dari 9" dan panah kiri/kanan berpindah. Deretan tombol biasa terbaca
+sebagai sembilan tombol lepas tanpa hubungan. Grid di bawahnya karena itu dibungkus
+`role="tabpanel"` dengan `aria-labelledby` — tanpa itu, tabnya diumumkan tetapi isi yang
+dikendalikannya tidak pernah disebut.
+
+**Tab aktif bukan sakelar.** Mengeklik tab yang sedang terpilih **tidak** membatalkannya.
+Pada tablist satu tab selalu terpilih, dan pembatalannya sudah punya nama sendiri —
+"ALL Case". Perilaku sakelar pada versi sebelumnya dibuang.
+
+**Navigasi panah melewati tab yang belum tersedia.** Keenam tab yang sumber datanya belum
+dimigrasikan `disabled`; memasukkannya ke putaran panah akan menghentikan pengguna papan
+ketik di tab yang tidak dapat dibuka.
+
+**Kontrak API tidak berubah.** `jumlah: null` tetap berarti "belum dihitung" dan berbeda
+dari nol, `dapat_dipilih` tetap menentukan mana yang dapat menyaring. Keduanya sudah ada
+sejak §40.12, sehingga perubahan ini **sepenuhnya di frontend**.
+
+### 171.1 "ALL Case" paling depan (2026-10-05)
+
+**Keputusan Work Owner:** urutan tab mengikuti hierarki tabel Pega, dengan "ALL Case" di
+urutan pertama.
+
+**Dasar yang diperiksa.** Export tidak memuat urutan lain: kesembilan label muncul tepat
+sekali di section dan sekali di harness, berurutan sama, dengan "ALL Case" di urutan
+**ketujuh**. "Document status" pada `Harness:5708` adalah kolom grid (`pyWidth = 198`),
+bukan daftar status. Jadi pemindahan ini **penyimpangan yang disengaja** dari urutan
+export, bukan hasil pembacaan ulang — dan dicatat begitu di `statusOrder`.
+
+**Yang tidak diubah:** urutan relatif kedelapan tab lainnya. Memindahkan satu tab yang
+diminta berbeda dari menata ulang seluruhnya; yang kedua akan memindahkan tab yang sudah
+dihafal petugas tanpa diminta.
+
+**Urutan ditentukan di SATU tempat** — `statusOrder` pada domain. Frontend menggambar apa
+adanya. Uji frontend yang memeriksa urutan karena itu wajib memakai stub yang disalin dari
+`statusOrder`; stub yang urutannya dikarang sendiri akan lulus terhadap dirinya sendiri,
+dan itu benar-benar terjadi saat perubahan ini dikerjakan.

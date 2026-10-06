@@ -99,7 +99,7 @@
 //
 //	"Appointment No" berisi nama adjuster dari ADJUSTERPIC_1
 //	    SALAH. Isinya `SRV-xxxxx` — nomor berkas survei. Sudah di tangan modul ini sebagai
-//	    CASEID, dan `ADJUSTERPIC` TIDAK perlu diminta sama sekali. Lihat AppointmentNo.
+//	    CASEID, dan `ADJUSTER_PIC` TIDAK perlu diminta sama sekali. Lihat AppointmentNo.
 //
 //	"Reference No" berasal dari REFNO_1
 //	    SALAH. `REFNO_1` dialiaskan "Province" di kedua kueri rujukan, dan properti itu tidak
@@ -608,12 +608,12 @@ const pegaWorkKeyPrefix = "ASM-FW-GCNMFW-WORK "
 //
 // # Dugaan yang dicabut, dan kenapa dicatat di sini
 //
-// Sampai 2026-10-03 kolom ini dinyatakan menunggu `ADJUSTERPIC` dari Tim Pega, atas dugaan
+// Sampai 2026-10-03 kolom ini dinyatakan menunggu `ADJUSTER_PIC` dari Tim Pega, atas dugaan
 // bahwa "Appointment No" menggambar `AdjusterPIC_1`. Dugaan itu **salah**, dan yang
 // mematahkannya bukan pembacaan ulang melainkan **Work Owner yang melihat layarnya**: isinya
 // `SRV-xxx`, bukan nama orang.
 //
-// Dicatat supaya permintaan `ADJUSTERPIC` tidak dihidupkan kembali oleh pembaca berikutnya
+// Dicatat supaya permintaan `ADJUSTER_PIC` tidak dihidupkan kembali oleh pembaca berikutnya
 // yang menemukan jejak dugaan lama.
 //
 // # Kenapa prefiksnya dipotong dengan TrimPrefix, bukan substring(19)

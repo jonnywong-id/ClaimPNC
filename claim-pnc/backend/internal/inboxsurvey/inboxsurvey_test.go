@@ -101,7 +101,7 @@ func TestKPIKindAndFilterNormalize(t *testing.T) {
 //
 // # Kenapa uji ini ada
 //
-// Kolom ini sempat dinyatakan menunggu `ADJUSTERPIC` dari Tim Pega selama berhari-hari, atas
+// Kolom ini sempat dinyatakan menunggu `ADJUSTER_PIC` dari Tim Pega selama berhari-hari, atas
 // dugaan bahwa ia menggambar nama adjuster. Yang mematahkannya adalah Work Owner yang melihat
 // layar Pega berjalan: isinya `SRV-xxxxx`.
 //

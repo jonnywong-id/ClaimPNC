@@ -158,3 +158,72 @@ func TestLossDateToApply(t *testing.T) {
 	require.False(t, ok)
 	require.True(t, got.IsZero())
 }
+
+// TestCauseOfLossToApply menjaga aturan penerapan perubahan Penyebab Kerugian.
+//
+// Yang diuji di sini BUKAN SQL-nya melainkan kapan sebuah keputusan mengubah coverage sama
+// sekali — dan itu aturan bisnis, bukan detail penyimpanan.
+func TestCauseOfLossToApply(t *testing.T) {
+	lengkap := inboxacceptopenprotection.Protection{
+		Type: inboxacceptopenprotection.TypeChangeCauseOfLoss,
+		Change: inboxacceptopenprotection.ChangeDetail{
+			CauseOfLossBefore: "12001",
+			CauseOfLossAfter:  " 12002 ",
+			ObjectID:          " 1 ",
+			ObjectCoverageID:  " 3 ",
+		},
+	}
+
+	// Disetujui: ketiganya dirapikan, dan yang dibawa adalah KODE — bukan deskripsinya.
+	got, ok := inboxacceptopenprotection.CauseOfLossToApply(
+		lengkap, inboxacceptopenprotection.DecisionApprove)
+	require.True(t, ok)
+	require.Equal(t, inboxacceptopenprotection.CauseOfLossChange{
+		ObjectID: "1", ObjectCoverageID: "3", CauseOfLossID: "12002",
+	}, got)
+
+	// Ditolak TIDAK mengubah coverage. Pega mengubahnya juga saat ditolak; itu selisih
+	// terencana `P-5`, sama dengan DOL.
+	_, ok = inboxacceptopenprotection.CauseOfLossToApply(
+		lengkap, inboxacceptopenprotection.DecisionReject)
+	require.False(t, ok)
+
+	// Tipe '7' memunculkan panel yang sama, tetapi tidak mengubah Penyebab Kerugian.
+	p7 := lengkap
+	p7.Type = inboxacceptopenprotection.TypeChangeLossDate
+	_, ok = inboxacceptopenprotection.CauseOfLossToApply(p7, inboxacceptopenprotection.DecisionApprove)
+	require.False(t, ok)
+
+	// Tipe lain sama sekali.
+	p1 := lengkap
+	p1.Type = "1"
+	_, ok = inboxacceptopenprotection.CauseOfLossToApply(p1, inboxacceptopenprotection.DecisionApprove)
+	require.False(t, ok)
+
+	// Tiga keadaan baris WARISAN, dan ketiganya bukan galat: persetujuannya tetap sah, yang
+	// tidak terjadi hanyalah perubahan coverage-nya.
+	for nama, ubah := range map[string]func(*inboxacceptopenprotection.ChangeDetail){
+		"tanpa kode baru": func(c *inboxacceptopenprotection.ChangeDetail) { c.CauseOfLossAfter = "  " },
+		"tanpa objek":     func(c *inboxacceptopenprotection.ChangeDetail) { c.ObjectID = "" },
+		"tanpa coverage":  func(c *inboxacceptopenprotection.ChangeDetail) { c.ObjectCoverageID = "" },
+	} {
+		t.Run(nama, func(t *testing.T) {
+			p := lengkap
+			ubah(&p.Change)
+			hasil, ok := inboxacceptopenprotection.CauseOfLossToApply(
+				p, inboxacceptopenprotection.DecisionApprove)
+			require.False(t, ok)
+			require.Equal(t, inboxacceptopenprotection.CauseOfLossChange{}, hasil)
+		})
+	}
+}
+
+// TestChangeDetailEmptyMenghitungSasaran menjaga Empty() tetap jujur.
+//
+// Baris yang HANYA punya sasaran — mungkin pada data yang separuh terisi — tidak boleh
+// terbaca sebagai "tidak ada detail perubahan", karena layar lalu menyembunyikan panelnya.
+func TestChangeDetailEmptyMenghitungSasaran(t *testing.T) {
+	require.True(t, inboxacceptopenprotection.ChangeDetail{}.Empty())
+	require.False(t, inboxacceptopenprotection.ChangeDetail{ObjectID: "1"}.Empty())
+	require.False(t, inboxacceptopenprotection.ChangeDetail{ObjectCoverageID: "2"}.Empty())
+}

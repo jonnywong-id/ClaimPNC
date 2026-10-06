@@ -268,6 +268,16 @@ type ChangeDetail struct {
 	CauseOfLossID       string
 	CauseOfLossMasterID string
 
+	// ObjectID dan ObjectCoverageID adalah SASARAN perubahan Type '8' — baris
+	// `T_CLAIM_OBJECTCOVERAGE` yang Penyebab Kerugiannya hendak diubah.
+	//
+	// Tersimpan di kolom `OBJECT_ID` dan `OBJECT_COVERAGE_ID` (migrasi `0015`). Keduanya
+	// KOSONG pada baris warisan Pega: sasaran di sana hidup di dalam blob properti dan tidak
+	// pernah menjadi kolom, sehingga permintaan COL lama tetap tidak dapat diterapkan
+	// otomatis.
+	ObjectID         string
+	ObjectCoverageID string
+
 	// ObjectName dan BranchName melengkapi keduanya.
 	ObjectName string
 	BranchName string
@@ -484,7 +494,20 @@ type Repo interface {
 	// claim adalah klaim yang SUDAH DITEMUKAN pemanggil. Adapter menurunkan darinya nomor
 	// polis, nama objek, nama cabang, dan kedua nilai "sebelum" pada panel detail perubahan —
 	// nilai-nilai yang di Pega disalin `Activity/OpenProtection-Act.xml`, bukan diketik.
-	Create(ctx context.Context, draft Draft, claim Claim, by string, at time.Time) (Protection, error)
+	// selected adalah baris coverage yang DIPILIH pemohon, dan ia WAJIB untuk tipe '8'.
+	//
+	// # Kenapa ia parameter tersendiri, bukan diturunkan dari Claim
+	//
+	// Nilai "sebelum" pada perubahan Cause of Loss adalah milik SATU BARIS coverage, bukan
+	// milik klaim. Klaim tidak punya penyebab kerugian tunggal — kueri terhadap `PNC-1452`
+	// mengembalikan empat baris dengan empat penyebab berbeda.
+	//
+	// Sebelum ada panel pemilih, `Claim.CauseOfLoss` diisi dari coverage PERTAMA, dan
+	// nilai itulah yang tersimpan sebagai `OLD_DATA`. Terhadap klaim bercoverage banyak,
+	// itu mencatat keadaan baris yang belum tentu yang diubah.
+	//
+	// Nol-value dipakai untuk tipe selain '8', dan adapter mengabaikannya di sana.
+	Create(ctx context.Context, draft Draft, claim Claim, selected CoverageRow, by string, at time.Time) (Protection, error)
 
 	// Update menyunting proteksi yang belum tertaut klaim.
 	//
@@ -492,7 +515,7 @@ type Repo interface {
 	// diakseptasi, meski pemanggil sudah memeriksanya lebih dulu. Pemeriksaan di lapisan
 	// atas menjaga pengguna dari kesalahan; pemeriksaan di penyimpanan menjaga data dari
 	// dua permintaan yang tiba bersamaan.
-	Update(ctx context.Context, number string, draft Draft, claim Claim, by string, at time.Time) (Protection, error)
+	Update(ctx context.Context, number string, draft Draft, claim Claim, selected CoverageRow, by string, at time.Time) (Protection, error)
 }
 
 // TypeRepo adalah seam ke master tipe proteksi.
@@ -550,6 +573,51 @@ type Stores struct {
 
 	// Claims mencari klaim yang ditaut. Wajib.
 	Claims ClaimRepo
+
+	// Causes membaca master penyebab kerugian untuk dropdown "Next Cause Of Loss". Wajib.
+	Causes CauseOfLossRepo
+}
+
+// CauseOfLossOption adalah satu pilihan pada dropdown **Next Cause Of Loss**.
+type CauseOfLossOption struct {
+	// ID adalah `D_COL_ID` — nilai yang DISIMPAN, dan yang kelak ditulis ke
+	// `T_CLAIM_OBJECTCOVERAGE.CAUSEOFLOSSID`.
+	ID string
+
+	// Description adalah teks yang DIBACA pengguna, dan yang kelak ditulis ke
+	// `T_CLAIM_OBJECTCOVERAGE.CAUSEOFLOSS`.
+	//
+	// Keduanya disimpan berpasangan karena penyebab kerugian memang sepasang nilai — lihat
+	// CoverageRow.CauseOfLossID.
+	Description string
+
+	// LossCode adalah `LOSS_CODE`, kode pendek yang dipakai sebagian laporan. Ditampilkan
+	// berdampingan dengan deskripsi supaya pilihan bernama mirip dapat dibedakan.
+	LossCode string
+}
+
+// CauseOfLossRepo adalah seam ke master penyebab kerugian.
+//
+// # Sumbernya TABEL dengan KOLOM BIASA — ditetapkan Work Owner 2026-10-05
+//
+// `POOLDATA.D_CAUSE_OF_LOSS` dulu hanya punya dua kolom, `D_COL_ID` dan `JSONDATA`
+// (`Database/PEGA_D_CAUSE_OF_LOSS.prc:22,33`), sehingga deskripsi dan kodenya hidup di dalam
+// dokumen JSON. **Dokumen itu sudah dikeluarkan menjadi kolom**, dan modul ini membaca
+// kolomnya — bukan JSON, dan bukan view.
+//
+// Lini bisnisnya tinggal di tabel anak `POOLDATA.D_CAUSE_OF_LOSS_BUSINESS`, karena satu
+// penyebab kerugian berlaku bagi BEBERAPA lini. Bentuk kuerinya ada di
+// `cause_of_loss_options`.
+//
+// Modul `detailpenyebab` masih menulis `JSONDATA` dan membaca view. Perbedaan itu di luar
+// lingkup modul ini dan dilaporkan apa adanya, bukan diperbaiki dari sini.
+type CauseOfLossRepo interface {
+	// ListCauseOfLoss mengembalikan pilihan yang berlaku bagi satu lini bisnis.
+	//
+	// businessCode kosong berarti TIDAK menyaring. Itu disengaja: klaim yang kolom
+	// BUSINESSCODE-nya kosong lebih baik menampilkan semua pilihan daripada daftar kosong
+	// yang terbaca sebagai master yang rusak.
+	ListCauseOfLoss(ctx context.Context, businessCode string) ([]CauseOfLossOption, error)
 }
 
 // ── Pencarian klaim ──────────────────────────────────────────────────────────────
@@ -606,6 +674,84 @@ type Claim struct {
 	// ObjectName dan BranchName melengkapi kedua panel.
 	ObjectName string
 	BranchName string
+
+	// BusinessCode adalah `T_CLAIM_PNC.BUSINESSCODE` — lini bisnis klaim ini.
+	//
+	// Ia TIDAK ditampilkan. Gunanya satu: menyaring daftar "Next Cause Of Loss" supaya
+	// pemohon hanya melihat penyebab kerugian yang berlaku bagi lini bisnis klaimnya.
+	//
+	// Pega menyaringnya di `RDB List/BrowseCOLByBisnis_Sql-SQL.xml`, yang memeriksa
+	// keberadaan baris pada `v_d_cause_of_loss_business` untuk `d_col_id` yang sama.
+	// Penyaring lini bisnisnya di sana dirangkai ke dalam teks SQL lewat
+	// `{ASIS:TempSearchBisnis.DESCRIPTION}` — perangkaian yang TIDAK dibawa; di sini
+	// nilainya lewat parameter binding (`11-SECURITY.md` §4.1).
+	//
+	// Kosong berarti tidak menyaring: lebih baik menampilkan terlalu banyak pilihan
+	// daripada menampilkan daftar kosong yang terbaca sebagai master yang rusak.
+	BusinessCode string
+}
+
+// CoverageRow adalah satu baris panel **Detail Perubahan Cause Of Loss**.
+//
+// # Kenapa daftar, bukan satu nilai
+//
+// Satu klaim dapat punya banyak objek, dan tiap objek banyak coverage — masing-masing
+// dengan Penyebab Kerugiannya sendiri. Pemohon memilih SATU di antaranya, dan pilihan itulah
+// yang menentukan baris `T_CLAIM_OBJECTCOVERAGE` mana yang berubah saat permintaannya
+// disetujui.
+//
+// Layar Pega `InputProtectionFlow` untuk `OPC-221` memperlihatkannya langsung — empat baris,
+// dengan tombol **Pilih** pada masing-masing:
+//
+//	JackHugh  Resiko A    ILLNESS
+//	JackHugh  Resiko A    STORM
+//	JackHugh  Katastropi  WINDSTORM
+//	JackHugh  Resiko A    HURRICANE
+//
+// # Dan itulah kenapa nama tidak cukup
+//
+// `JackHugh / Resiko A` muncul TIGA KALI. Nama objek ditambah nama coverage karena itu tidak
+// menunjuk satu baris; yang membedakan ketiganya hanya ObjectCoverageID.
+//
+// Versi sebelumnya mengambil **satu** baris pertama (`FETCH FIRST 1 ROW ONLY`), sehingga
+// panel menampilkan Penyebab Kerugian milik coverage yang belum tentu hendak diubah.
+type CoverageRow struct {
+	// ObjectID dan ObjectCoverageID adalah KUNCI baris ini, bersama CLAIMID klaimnya.
+	//
+	// Keduanya disimpan ke `T_CLAIM_OPENPROTECTION.OBJECT_ID` dan `.OBJECT_COVERAGE_ID`
+	// (migrasi `0015`), dan dari sanalah akseptasi menemukan baris yang harus diubah.
+	//
+	// ObjectCoverageID berisi URUTAN coverage DI DALAM objeknya — terverifikasi 2026-09-24:
+	// nilainya "1", dan pasangan (klaim, nilai itu) berulang lintas objek. Ia bukan pengenal
+	// global, dan karena itu tidak pernah dipakai sendirian.
+	ObjectID         string
+	ObjectCoverageID string
+
+	// ObjectName — kolom "Object Name". Dari `T_CLAIM_OBJECTLIST.OBJECTNAME`.
+	ObjectName string
+
+	// CoverageName — kolom "Coverage Name". Boleh berulang, lihat contoh di atas.
+	CoverageName string
+
+	// CauseOfLoss — kolom "Cause of Loss", yakni keadaan SEKARANG baris ini. Inilah yang
+	// menjadi "Cause Of Loss Dipilih" begitu pemohon menekan Pilih.
+	CauseOfLoss string
+
+	// CauseOfLossID adalah KODE penyebab kerugian baris ini — `CAUSEOFLOSSID`.
+	//
+	// # Kenapa keduanya, bukan salah satu
+	//
+	// Penyebab kerugian pada sebuah coverage adalah SEPASANG nilai: deskripsi yang dibaca
+	// manusia dan kode yang dibaca mesin. Pega menyetel keduanya dalam satu langkah
+	// (`InsertOpenProtectionCase`):
+	//
+	//	ObjectCoverageList(...).CauseOfLoss   <- deskripsi
+	//	ObjectCoverageList(...).CauseOfLossID <- kode
+	//
+	// Ditegaskan Work Owner 2026-10-05. Mengubah salah satunya saja menghasilkan baris yang
+	// namanya berkata satu hal dan kodenya berkata hal lain — tanpa galat, dan setiap laporan
+	// yang mengelompokkan menurut kode ikut salah.
+	CauseOfLossID string
 }
 
 // ClaimReferenceOf menyatakan nilai yang disimpan pada kolom `ID_CLAIM`.
@@ -657,4 +803,19 @@ type ClaimRepo interface {
 	// membuat form terisi nilai kosong seolah klaimnya ditemukan tanpa data, dan permintaan
 	// tersimpan menunjuk klaim yang tidak pernah ada.
 	FindClaim(ctx context.Context, number string) (Claim, error)
+
+	// ListCoverages mengembalikan seluruh coverage klaim beserta kunci barisnya, untuk panel
+	// Detail Perubahan Cause Of Loss.
+	//
+	// # Daftar KOSONG bukan galat
+	//
+	// Klaim yang belum punya objek dan coverage adalah keadaan biasa — pohon klaim diisi
+	// bertahap. Yang terjadi kemudian adalah panel menampilkan "tidak ada coverage", dan
+	// permintaan perubahan COL atas klaim itu memang tidak dapat diajukan. Itu benar, dan
+	// jauh lebih baik daripada memberi satu baris tebakan untuk dipilih.
+	//
+	// `ErrClaimNotFound` TIDAK dikembalikan di sini: pemanggil sudah memastikan klaimnya ada
+	// lewat FindClaim, dan membedakan "klaim tidak ada" dari "klaim tanpa coverage" di dua
+	// tempat akan membuat kedua pesan berbeda untuk sebab yang sama.
+	ListCoverages(ctx context.Context, number string) ([]CoverageRow, error)
 }

@@ -230,33 +230,47 @@ func TestJenisSurveyorDibacaPerJanjiSurvei(t *testing.T) {
 	require.NotContains(t, strings.ToUpper(text), "SURVEYORTYPE_1")
 }
 
-// TestKeempatKolomAdjusterTidakDibacaKueriDaftar mengunci batas yang disadari.
+// TestKolomYangBelumTerisiTidakDibacaKueriDaftar mengunci batas yang disadari.
 //
-// Keempatnya belum ada di `POOLDATA.T_SURVEYORLIST`. Menuliskannya ke kueri daftar tidak
-// menghasilkan kolom kosong melainkan ORA-00904 yang menjatuhkan SELURUH layar — dan itu
-// persis cacat yang pernah terjadi sebelum katalog kolomnya diperiksa.
+// Kelimanya SUDAH ADA di `POOLDATA.T_SURVEYORLIST` tetapi seluruhnya masih kosong. Membacanya
+// sekarang tidak menghasilkan galat apa pun — ia menjawab salah, dan itu lebih berbahaya.
+//
+// # Kenapa yang diperiksa `S.<kolom>`, bukan nama kolomnya saja
+//
+// Karena sejak penggantian nama 2026-10-05, nama kolom `ADJUSTER_PIC` **sama persis dengan
+// alias** yang dipakai kueri daftar untuk kolom layar "PIC Loss Adjuster":
+//
+//	s.SURVEYOR_NAME     AS ADJUSTER_PIC
+//
+// Memeriksa namanya saja akan menolak alias yang memang benar. Yang hendak dicegah adalah
+// **membaca kolomnya**, dan itu selalu berbentuk `s.<kolom>` — awalan tabel yang membedakan
+// keduanya. Alias menamai kolom LAYAR; `s.` menamai kolom BASIS DATA.
 //
 // `ADJUSTERSTATUS_1` TIDAK ada di daftar ini, dan itu bukan kelalaian: `STS_SURVEY` terbukti
-// membawa domainnya, sehingga kolom "Status ASM" sudah terisi tanpa menunggu siapa pun.
-func TestKeempatKolomAdjusterTidakDibacaKueriDaftar(t *testing.T) {
+// membawa domainnya — dan kolom "Status ASM" ternyata bukan itu sama sekali, melainkan
+// `LEADER_MEMBER`.
+func TestKolomYangBelumTerisiTidakDibacaKueriDaftar(t *testing.T) {
 	text := strings.ToUpper(query("list_tasks"))
 
 	for _, kolom := range []string{
-		"ADJUSTERACCEPT", "ADJUSTERPIC", "REFNO", "PYSTATUSWORK",
+		"ADJUSTERACCEPT", "ADJUSTER_PIC", "REFNO", "PYSTATUSWORK", "RESCHEDULE_LOCATION",
 	} {
-		require.NotContainsf(t, text, kolom,
-			"kueri daftar membaca %s sebelum keterisiannya terukur", kolom)
+		require.NotContainsf(t, text, "S."+kolom,
+			"kueri daftar membaca s.%s sebelum keterisiannya terukur", kolom)
 	}
+
+	// Aliasnya JUSTRU harus ada — ia yang menamai kolom layar.
+	require.Contains(t, text, "AS ADJUSTER_PIC")
 }
 
 // TestKueriPemeriksaMenyebutKelimaKolomYangDitunggu adalah kebalikan uji di atasnya.
 //
 // # Kenapa LIMA, dan kenapa angkanya pernah berubah dua kali
 //
-// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTERPIC` dicoret sebagai asal
+// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTER_PIC` dicoret sebagai asal
 // "Appointment No" (nomornya ternyata `CASEID`), lalu LIMA setelah keempat kueri tab tiba dan
-// `ADJUSTERPIC` kembali — kali ini sebagai asal "PIC Loss Adjuster", kolom yang berbeda —
-// bersama `RESCHEDULELOCATION`.
+// `ADJUSTER_PIC` kembali — kali ini sebagai asal "PIC Loss Adjuster", kolom yang berbeda —
+// bersama `RESCHEDULE_LOCATION`.
 //
 // Setiap perubahan bersandar pada satu pengukuran. Uji ini menjaga daftarnya tetap sama dengan
 // apa yang benar-benar ditunggu: menanyakan kolom yang tidak perlu membuat `-periksa`
@@ -267,7 +281,7 @@ func TestKueriPemeriksaMenyebutKelimaKolomYangDitunggu(t *testing.T) {
 
 	// Nama TANPA akhiran `_1` — itu nama sebenarnya di basis data.
 	for _, kolom := range []string{
-		"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK", "ADJUSTERPIC", "RESCHEDULELOCATION",
+		"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK", "ADJUSTER_PIC", "RESCHEDULE_LOCATION",
 	} {
 		require.Containsf(t, text, kolom, "kueri pemeriksa tidak menanyakan %s", kolom)
 	}
@@ -585,7 +599,7 @@ func TestKeterisianDiukurUntukKelimaKolom(t *testing.T) {
 	text := strings.ToUpper(query("check_filled_columns"))
 
 	for _, column := range []string{
-		"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK", "ADJUSTERPIC", "RESCHEDULELOCATION",
+		"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK", "ADJUSTER_PIC", "RESCHEDULE_LOCATION",
 	} {
 		require.Containsf(t, text, "COUNT(S."+column+")",
 			"kolom %s sudah ada di POOLDATA.T_SURVEYORLIST tetapi keterisiannya tidak diukur",

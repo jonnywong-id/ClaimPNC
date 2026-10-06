@@ -3741,8 +3741,28 @@ JSON tetap Indonesia.
 | `.IsUsedPNC` | `UsedByClaim` | `DIPAKAI_KLAIM` | — | — |
 | `.ClaimDataProtect.BeforeDateOfLoss` | `ChangeDetail.LossDateBefore` | `DOL_SEBELUM` | `dol_sebelum` | Current Date Of Loss |
 | `.ClaimDataProtect.DateOfLoss` | `ChangeDetail.LossDateAfter` | `DOL_BARU` | `dol_baru` | Next Date Of Loss |
-| `.ClaimDataProtect.CauseOfLossID` | `ChangeDetail.CauseOfLossID` | `COL_ID` | `penyebab_kerugian` | Cause Of Loss Sebelumnya |
-| `.ClaimDataProtect.IDMasterTONP` | `ChangeDetail.CauseOfLossMasterID` | `COL_MASTER_ID` | `penyebab_kerugian_master` | Cause Of Loss Dipilih |
+| `.ClaimDataProtect.IDMasterTONP` | `ChangeDetail.CauseOfLossID` | `COL_ID` | `penyebab_kerugian` | Cause Of Loss Dipilih |
+| `.ClaimDataProtect.CauseOfLossID` | `ChangeDetail.CauseOfLossMasterID` | `COL_MASTER_ID` | `penyebab_kerugian_master` | Next Cause Of Loss |
+
+> **Kedua baris di atas DIKOREKSI 2026-10-05 — sebelumnya properti Pega-nya tertukar.**
+>
+> Versi sebelumnya memasangkan `.CauseOfLossID` dengan nilai *sebelum* dan `.IDMasterTONP`
+> dengan nilai *sesudah*. Itu kebalikan dari sistem lama, dan dibuktikan tiga kali:
+>
+> | Bukti | Isi |
+> |---|---|
+> | `Section/InputProtectionSection-Section.xml` | label **"Cause Of Loss Dipilih"** terikat `.ClaimDataProtect.IDMasterTONP`; label **"Next Cause Of Loss"** terikat `.ClaimDataProtect.CauseOfLossID` |
+> | `Activity/InsertOpenProtectionCase-Act.xml:2956`, `:3003` | yang DITULIS ke klaim adalah `.ClaimDataProtect.CauseOfLoss` dan `.CauseOfLossID` — yaitu nilai BARU |
+> | `Activity/InsertOpenProtectionCase-Act.xml:3069` | catatan klaim berbunyi `"Cause Of Loss Sebelum : " + .ClaimDataProtect.IDMasterTONP` — yaitu nilai LAMA |
+>
+> **Perilaku kode TIDAK ikut berubah, dan memang tidak perlu:** `OLD_DATA` sudah berisi
+> penyebab kerugian klaim saat ini dan `NEW_DATA` pilihan pemohon, dan akseptasi menerapkan
+> `NEW_DATA`. Yang keliru hanyalah pemetaannya ke nama properti Pega di tabel ini.
+>
+> Ia tetap dikoreksi karena justru baris inilah yang berbahaya: pembaca berikutnya dapat
+> "menyesuaikan" kode agar cocok dengan tabel yang salah, dan akibatnya adalah **kode penyebab
+> kerugian LAMA yang dituliskan kembali ke klaim** saat permintaan disetujui — perubahan yang
+> tampak berhasil tetapi tidak mengubah apa pun.
 
 **`.CaseID` dan `.PNCCaseID` mudah tertukar dan artinya berbeda:** yang pertama nomor klaim
 yang **diketik** pengguna, yang kedua klaim yang benar-benar **ditemukan**. Sistem lama

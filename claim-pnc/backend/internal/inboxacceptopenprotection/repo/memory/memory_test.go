@@ -234,3 +234,97 @@ func TestGroupRepo(t *testing.T) {
 
 	require.Len(t, memory.SampleGroups(), 4)
 }
+
+// TestDecideMenerapkanPenyebabKerugian menjaga repo memori berperilaku SAMA dengan Oracle.
+//
+// Tanpa ini, uji atas usecase akan lolos pada jalur yang tidak pernah terjadi di produksi —
+// persis mode kegagalan yang dihindari dengan menirukan penerapan DOL di sini.
+func TestDecideMenerapkanPenyebabKerugian(t *testing.T) {
+	at := time.Date(2026, 9, 25, 2, 0, 0, 0, time.UTC)
+
+	baru := func() *memory.Repo {
+		r := memory.NewRepo()
+		r.Add(inboxacceptopenprotection.Protection{
+			Number:         "OPCN.1",
+			PolicyNumber:   "POL-1",
+			ClaimNumber:    "PNCN.26.0001",
+			ClaimReference: "PNCN.26.0001",
+			Type:           inboxacceptopenprotection.TypeChangeCauseOfLoss,
+			AcceptStatus:   inboxacceptopenprotection.AcceptPending,
+			Change: inboxacceptopenprotection.ChangeDetail{
+				CauseOfLossBefore: "12001",
+				CauseOfLossAfter:  "12002",
+				ObjectID:          "1",
+				ObjectCoverageID:  "3",
+			},
+		})
+		r.AddCauseOfLoss("12002", "KEBAKARAN")
+		return r
+	}
+
+	t.Run("disetujui mengubah baris yang dipilih saja", func(t *testing.T) {
+		r := baru()
+		r.AddCoverage("PNCN.26.0001", "1", "3", "12001 BANJIR")
+		// Baris LAIN pada objek yang sama; ia tidak boleh ikut berubah.
+		r.AddCoverage("PNCN.26.0001", "1", "4", "12001 BANJIR")
+
+		_, err := r.Decide(context.Background(), "OPCN.1",
+			inboxacceptopenprotection.DecisionApprove, "PETUGAS", at)
+		require.NoError(t, err)
+
+		sesudah, ada := r.CoverageOf("PNCN.26.0001", "1", "3")
+		require.True(t, ada)
+		require.Equal(t, "12002 KEBAKARAN", sesudah)
+
+		lain, ada := r.CoverageOf("PNCN.26.0001", "1", "4")
+		require.True(t, ada)
+		require.Equal(t, "12001 BANJIR", lain)
+	})
+
+	t.Run("ditolak tidak mengubah coverage", func(t *testing.T) {
+		r := baru()
+		r.AddCoverage("PNCN.26.0001", "1", "3", "12001 BANJIR")
+
+		_, err := r.Decide(context.Background(), "OPCN.1",
+			inboxacceptopenprotection.DecisionReject, "PETUGAS", at)
+		require.NoError(t, err)
+
+		sesudah, _ := r.CoverageOf("PNCN.26.0001", "1", "3")
+		require.Equal(t, "12001 BANJIR", sesudah)
+	})
+
+	t.Run("kode tidak dikenal membatalkan keputusan", func(t *testing.T) {
+		r := memory.NewRepo()
+		r.Add(inboxacceptopenprotection.Protection{
+			Number:         "OPCN.1",
+			ClaimReference: "PNCN.26.0001",
+			Type:           inboxacceptopenprotection.TypeChangeCauseOfLoss,
+			AcceptStatus:   inboxacceptopenprotection.AcceptPending,
+			Change: inboxacceptopenprotection.ChangeDetail{
+				CauseOfLossAfter: "99999", ObjectID: "1", ObjectCoverageID: "3",
+			},
+		})
+		r.AddCoverage("PNCN.26.0001", "1", "3", "12001 BANJIR")
+
+		_, err := r.Decide(context.Background(), "OPCN.1",
+			inboxacceptopenprotection.DecisionApprove, "PETUGAS", at)
+		require.ErrorIs(t, err, inboxacceptopenprotection.ErrUnknownCauseOfLoss)
+
+		// Keputusannya TIDAK tersimpan: proteksi tetap menunggu.
+		sesudah, err := r.Get(context.Background(), "OPCN.1")
+		require.NoError(t, err)
+		require.True(t, sesudah.Pending())
+	})
+
+	t.Run("coverage sudah tidak ada membatalkan keputusan", func(t *testing.T) {
+		r := baru() // tanpa AddCoverage sama sekali
+
+		_, err := r.Decide(context.Background(), "OPCN.1",
+			inboxacceptopenprotection.DecisionApprove, "PETUGAS", at)
+		require.ErrorIs(t, err, inboxacceptopenprotection.ErrClaimNotSynced)
+
+		sesudah, err := r.Get(context.Background(), "OPCN.1")
+		require.NoError(t, err)
+		require.True(t, sesudah.Pending())
+	})
+}

@@ -109,9 +109,9 @@ func TestEveryMethodHonoursCancelledContext(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	_, err = repo.HasDuplicate(ctx, inputreqprotection.DuplicateKey{}, "")
 	require.ErrorIs(t, err, context.Canceled)
-	_, err = repo.Create(ctx, inputreqprotection.Draft{}, inputreqprotection.Claim{}, "U", time.Now())
+	_, err = repo.Create(ctx, inputreqprotection.Draft{}, inputreqprotection.Claim{}, inputreqprotection.CoverageRow{}, "U", time.Now())
 	require.ErrorIs(t, err, context.Canceled)
-	_, err = repo.Update(ctx, "OPC-201", inputreqprotection.Draft{}, inputreqprotection.Claim{}, "U", time.Now())
+	_, err = repo.Update(ctx, "OPC-201", inputreqprotection.Draft{}, inputreqprotection.Claim{}, inputreqprotection.CoverageRow{}, "U", time.Now())
 	require.ErrorIs(t, err, context.Canceled)
 
 	_, err = memory.NewTypeRepoWithSamples().ListTypes(ctx)
@@ -181,7 +181,7 @@ func TestCreateIssuesGlobalSequenceAcrossYearsAndDerivesDetail(t *testing.T) {
 	}
 
 	at := time.Date(2026, time.December, 31, 10, 0, 0, 0, wib)
-	first, err := repo.Create(context.Background(), draft, claim, "ADMIN", at)
+	first, err := repo.Create(context.Background(), draft, claim, inputreqprotection.CoverageRow{}, "ADMIN", at)
 	require.NoError(t, err)
 	require.Equal(t, "OPCN.26.0001", first.Number)
 	require.Equal(t, "POL-1", first.PolicyNumber)
@@ -190,14 +190,19 @@ func TestCreateIssuesGlobalSequenceAcrossYearsAndDerivesDetail(t *testing.T) {
 	require.Equal(t, "ADMIN", first.CreatedBy)
 	require.Equal(t, at, first.CreatedAt)
 	require.Equal(t, inputreqprotection.AcceptPending, first.AcceptStatus)
+	// Permintaan tipe '7' tidak membawa penyebab kerugian "sebelum".
+	//
+	// Nilai itu kini berasal dari BARIS COVERAGE YANG DIPILIH, dan perubahan DOL tidak
+	// memilih baris mana pun. Sebelumnya ia terisi dari `Claim.CauseOfLoss` pada setiap tipe —
+	// deskripsi coverage pertama klaim, yang tidak ada hubungannya dengan permintaan ini.
 	require.Equal(t, inputreqprotection.ChangeDetail{
 		LossDateBefore: &dol, LossDateAfter: &after,
-		CauseOfLossID: "Kebakaran", CauseOfLossMasterID: "COL-2",
-		ObjectName: "OBJ", BranchName: "CAB",
+		CauseOfLossMasterID: "COL-2",
+		ObjectName:          "OBJ", BranchName: "CAB",
 	}, first.ChangeDetail)
 
 	// Pencacah global: menembus pergantian tahun tanpa reset.
-	second, err := repo.Create(context.Background(), draft, claim, "ADMIN", at.AddDate(0, 0, 1))
+	second, err := repo.Create(context.Background(), draft, claim, inputreqprotection.CoverageRow{}, "ADMIN", at.AddDate(0, 0, 1))
 	require.NoError(t, err)
 	require.Equal(t, "OPCN.27.0002", second.Number)
 
@@ -219,7 +224,7 @@ func TestUpdateKeepsOriginAndRejectsLockedOrAccepted(t *testing.T) {
 		Change: inputreqprotection.ChangeRequest{CauseOfLossAfter: "COL-9"}}
 	ctx := context.Background()
 
-	saved, err := repo.Update(ctx, "e", draft, claim, "PENYUNTING", at.Add(time.Hour))
+	saved, err := repo.Update(ctx, "e", draft, claim, inputreqprotection.CoverageRow{}, "PENYUNTING", at.Add(time.Hour))
 	require.NoError(t, err)
 	require.Equal(t, "E", saved.Number)
 	require.Equal(t, "NEW", saved.PolicyNumber)
@@ -232,11 +237,11 @@ func TestUpdateKeepsOriginAndRejectsLockedOrAccepted(t *testing.T) {
 	require.Equal(t, "PEMBUAT", saved.CreatedBy)
 	require.Equal(t, at, saved.CreatedAt)
 
-	_, err = repo.Update(ctx, "L", draft, claim, "U", at)
+	_, err = repo.Update(ctx, "L", draft, claim, inputreqprotection.CoverageRow{}, "U", at)
 	require.ErrorIs(t, err, inputreqprotection.ErrLocked)
-	_, err = repo.Update(ctx, "A", draft, claim, "U", at)
+	_, err = repo.Update(ctx, "A", draft, claim, inputreqprotection.CoverageRow{}, "U", at)
 	require.ErrorIs(t, err, inputreqprotection.ErrAccepted)
-	_, err = repo.Update(ctx, "X", draft, claim, "U", at)
+	_, err = repo.Update(ctx, "X", draft, claim, inputreqprotection.CoverageRow{}, "U", at)
 	require.ErrorIs(t, err, inputreqprotection.ErrNotFound)
 }
 

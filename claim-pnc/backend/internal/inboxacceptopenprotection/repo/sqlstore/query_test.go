@@ -288,3 +288,98 @@ func TestPolisDiambilDariPerpanjanganTerbaru(t *testing.T) {
 	require.NotContains(t, teks, "LPAD(",
 		"urutan wajib numerik, bukan trik penyamaan lebar teks")
 }
+
+// namaKueriKlaim adalah kueri yang menyentuh DATA KLAIM, bukan tabel proteksi.
+//
+// Dipisahkan dari namaKueri karena sebagian uji di atas memang khusus tabel proteksi —
+// `STATUS_ACTIVE`, misalnya, tidak ada di `T_CLAIM_PNC` maupun `T_CLAIM_OBJECTCOVERAGE`.
+// Yang BERLAKU bagi keduanya tetap ditegakkan di bawah.
+var namaKueriKlaim = []string{
+	"claim_apply_loss_date",
+	"cause_of_loss_describe",
+	"claim_apply_cause_of_loss",
+}
+
+func TestKueriKlaimTermuat(t *testing.T) {
+	for _, nama := range namaKueriKlaim {
+		require.NotEmpty(t, strings.TrimSpace(query(nama)), "kueri %q kosong atau tidak ada", nama)
+	}
+}
+
+// TestKueriKlaimMengikutiDisiplinSQLPortabel menjaga `D-20` pada kueri sisi klaim.
+//
+// Ketiganya sebelumnya TIDAK diuji sama sekali — `claim_apply_loss_date` ada sejak modul ini
+// menerapkan DOL, dan tidak pernah masuk daftar mana pun. Konstruksi khas Oracle di sana
+// akan lolos sampai cutover PostgreSQL.
+func TestKueriKlaimMengikutiDisiplinSQLPortabel(t *testing.T) {
+	terlarang := []string{
+		"NVL(", "SYSDATE", "ROWNUM", "DECODE(", "TO_CHAR(", "TO_NUMBER(",
+		"TRUNC(", "FROM DUAL", "SELECT *", "INSTR(", "LISTAGG(",
+	}
+
+	for _, nama := range namaKueriKlaim {
+		teks := strings.ToUpper(query(nama))
+		for _, pola := range terlarang {
+			require.NotContains(t, teks, pola,
+				"kueri %q memakai %s yang dilarang 09-DATABASE-STRATEGY.md §4", nama, pola)
+		}
+	}
+}
+
+// TestKueriKlaimMemakaiParameterBinding menjaga penutup celah `{ASIS:…}` warisan.
+func TestKueriKlaimMemakaiParameterBinding(t *testing.T) {
+	for _, nama := range namaKueriKlaim {
+		require.NotContains(t, query(nama), "'",
+			"kueri %q memuat literal teks; nilai harus lewat bind", nama)
+	}
+}
+
+// TestPenerapanPenyebabKerugianMenulisKeduaKolom menjaga ketetapan Work Owner 2026-10-05:
+// *"ingat ganti cause of loss itu ganti causeoflossid juga"*.
+//
+// Menulis salah satunya saja menghasilkan baris yang namanya berkata satu hal dan kodenya
+// berkata hal lain — dan laporan yang mengelompokkan menurut kode akan menghitungnya ke
+// golongan lama sementara layar menampilkan yang baru.
+func TestPenerapanPenyebabKerugianMenulisKeduaKolom(t *testing.T) {
+	teks := strings.ToUpper(query("claim_apply_cause_of_loss"))
+	bagianSet := strings.SplitN(teks, "WHERE", 2)[0]
+
+	require.Contains(t, bagianSet, "CAUSEOFLOSSID")
+	require.Contains(t, bagianSet, "CAUSEOFLOSS ")
+}
+
+// TestPenerapanPenyebabKerugianMengunciTigaKolom menjaga sasarannya SATU baris.
+//
+// Pada klaim `PNC-1452`, `JackHugh / Resiko A` muncul tiga kali dengan Penyebab Kerugian
+// berbeda. Kehilangan salah satu penyaring berarti mengubah baris yang tidak diminta — dan
+// pada data nyata, dua dari tiga kali yang salah.
+func TestPenerapanPenyebabKerugianMengunciTigaKolom(t *testing.T) {
+	teks := strings.ToUpper(query("claim_apply_cause_of_loss"))
+	bagianWhere := strings.SplitN(teks, "WHERE", 2)[1]
+
+	for _, kolom := range []string{"CLAIMID", "OBJECTID", "OBJECTCOVERAGEID"} {
+		require.Contains(t, bagianWhere, kolom,
+			"penerapan penyebab kerugian harus menyaring %s", kolom)
+	}
+}
+
+// TestPenerapanPenyebabKerugianMenghormatiSoftDelete menjaga `D-66`.
+//
+// Coverage yang sudah dibuang dari klaim tidak boleh berubah karena persetujuan yang
+// menunjuknya. Penyaring yang sama dipakai saat menawarkan pilihannya, sehingga yang dapat
+// dipilih dan yang dapat diubah adalah himpunan yang sama.
+func TestPenerapanPenyebabKerugianMenghormatiSoftDelete(t *testing.T) {
+	require.Contains(t, strings.ToUpper(query("claim_apply_cause_of_loss")),
+		"DIHAPUS_PADA IS NULL")
+}
+
+// TestDeskripsiPenyebabDibacaDariTabelInduk menjaga ketetapan Work Owner 2026-10-05:
+// *"menggunakan D_CAUSE_OF_LOSS jangan view"*.
+//
+// Dropdown yang menawarkan pilihan dan penerapan yang menuliskannya WAJIB membaca sumber
+// yang sama — kalau tidak, sebuah kode dapat tampil di dropdown lalu ditolak saat diterapkan.
+func TestDeskripsiPenyebabDibacaDariTabelInduk(t *testing.T) {
+	teks := strings.ToUpper(query("cause_of_loss_describe"))
+	require.Contains(t, teks, "POOLDATA.D_CAUSE_OF_LOSS")
+	require.NotContains(t, teks, "V_D_CAUSE_OF_LOSS")
+}

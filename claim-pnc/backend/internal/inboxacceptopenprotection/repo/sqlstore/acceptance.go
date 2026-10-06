@@ -200,10 +200,30 @@ func (r *Repo) Decide(
 
 // applyToClaim menerapkan perubahan yang disetujui ke data klaim.
 //
-// Aturannya ADA DI DOMAIN (`LossDateToApply`), bukan di sini: adapter hanya menjalankan.
-// Menaruh "tipe '7' berarti ubah DOL" di dalam SQL akan menyembunyikan aturan bisnis di
-// tempat yang tidak dibaca siapa pun saat menelusuri perilaku.
+// Aturannya ADA DI DOMAIN (`LossDateToApply`, `CauseOfLossToApply`), bukan di sini: adapter
+// hanya menjalankan. Menaruh "tipe '7' berarti ubah DOL" di dalam SQL akan menyembunyikan
+// aturan bisnis di tempat yang tidak dibaca siapa pun saat menelusuri perilaku.
+//
+// # Kedua jenis perubahan DIPERIKSA, bukan dipilih dengan if-else
+//
+// Tipe '7' dan '8' saling meniadakan hari ini, dan kedua fungsi domain itu sudah menjamin
+// hanya salah satunya yang pernah mengembalikan `true`. Memeriksa keduanya karena itu bukan
+// kehati-hatian berlebih melainkan tempat yang benar bagi jenis ketiga kelak: ia ditambahkan
+// di sini, bukan dengan membongkar percabangan.
 func (r *Repo) applyToClaim(
+	ctx context.Context,
+	tx *sql.Tx,
+	p inboxacceptopenprotection.Protection,
+	d inboxacceptopenprotection.Decision,
+) error {
+	if err := r.applyLossDate(ctx, tx, p, d); err != nil {
+		return err
+	}
+	return r.applyCauseOfLoss(ctx, tx, p, d)
+}
+
+// applyLossDate menerapkan Tanggal Kejadian baru ke `POOLDATA.T_CLAIM_PNC`.
+func (r *Repo) applyLossDate(
 	ctx context.Context,
 	tx *sql.Tx,
 	p inboxacceptopenprotection.Protection,
@@ -250,6 +270,90 @@ func (r *Repo) applyToClaim(
 	return nil
 }
 
+// applyCauseOfLoss menerapkan Penyebab Kerugian baru ke satu baris
+// `POOLDATA.T_CLAIM_OBJECTCOVERAGE`.
+//
+// # Deskripsinya dicari saat MENERAPKAN, bukan saat meminta
+//
+// Yang tersimpan di `NEW_DATA` hanyalah `D_COL_ID` — keputusan Work Owner 2026-10-05, *"old
+// data new data simpan idcol aja"*. Teksnya diambil dari master di sini, sehingga permintaan
+// yang dibuat bulan lalu lalu disetujui hari ini menuliskan teks yang berlaku HARI INI.
+//
+// Keduanya berjalan di dalam transaksi yang sama dengan keputusannya.
+func (r *Repo) applyCauseOfLoss(
+	ctx context.Context,
+	tx *sql.Tx,
+	p inboxacceptopenprotection.Protection,
+	d inboxacceptopenprotection.Decision,
+) error {
+	perubahan, perlu := inboxacceptopenprotection.CauseOfLossToApply(p, d)
+	if !perlu {
+		return nil
+	}
+
+	rujukan := strings.TrimSpace(p.ClaimReference)
+	if rujukan == "" {
+		return inboxacceptopenprotection.ErrClaimNotSynced
+	}
+
+	deskripsi, err := r.describeCauseOfLoss(ctx, tx, perubahan.CauseOfLossID)
+	if err != nil {
+		return err
+	}
+
+	hasil, err := tx.ExecContext(ctx, query("claim_apply_cause_of_loss"),
+		perubahan.CauseOfLossID, deskripsi, kunci(rujukan),
+		strings.TrimSpace(perubahan.ObjectID), strings.TrimSpace(perubahan.ObjectCoverageID))
+	if err != nil {
+		return fmt.Errorf(
+			"inboxacceptopenprotection/sqlstore: menerapkan penyebab kerugian ke klaim: %w", err)
+	}
+
+	tersentuh, err := hasil.RowsAffected()
+	if err != nil {
+		return fmt.Errorf(
+			"inboxacceptopenprotection/sqlstore: membaca jumlah baris coverage tersentuh: %w", err)
+	}
+	if tersentuh == 0 {
+		// Baris coverage-nya tidak ada lagi — dibuang dari klaim setelah permintaan diajukan,
+		// atau klaimnya sendiri tidak ada.
+		//
+		// Sama dengan DOL: keputusannya DIBATALKAN. Persetujuan atas perubahan yang tidak
+		// pernah diterapkan tidak meninggalkan gejala apa pun.
+		return inboxacceptopenprotection.ErrClaimNotSynced
+	}
+
+	return nil
+}
+
+// describeCauseOfLoss mencari deskripsi sebuah Penyebab Kerugian dari kodenya.
+//
+// Kode yang tidak ada di master menghasilkan `ErrUnknownCauseOfLoss`, BUKAN deskripsi kosong:
+// menuliskan kode tanpa teksnya menghasilkan baris coverage yang namanya berkata satu hal dan
+// kodenya berkata hal lain.
+func (r *Repo) describeCauseOfLoss(ctx context.Context, tx *sql.Tx, code string) (string, error) {
+	var deskripsi sql.NullString
+
+	err := tx.QueryRowContext(ctx, query("cause_of_loss_describe"), strings.TrimSpace(code)).
+		Scan(&deskripsi)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return "", inboxacceptopenprotection.ErrUnknownCauseOfLoss
+	case err != nil:
+		return "", fmt.Errorf(
+			"inboxacceptopenprotection/sqlstore: membaca deskripsi penyebab kerugian: %w", err)
+	}
+
+	// Barisnya ada tetapi deskripsinya kosong diperlakukan SAMA dengan tidak ada. Menuliskan
+	// teks kosong ke coverage menghapus nama penyebab kerugiannya tanpa menghapus kodenya —
+	// kerusakan yang sama, hanya sampai lewat jalan lain.
+	if strings.TrimSpace(deskripsi.String) == "" {
+		return "", inboxacceptopenprotection.ErrUnknownCauseOfLoss
+	}
+
+	return strings.TrimSpace(deskripsi.String), nil
+}
+
 // ── Pemindaian ───────────────────────────────────────────────────────────────────
 
 // pemindai menyatukan *sql.Row dan *sql.Rows supaya scanProtection melayani keduanya.
@@ -287,6 +391,10 @@ func scanProtection(row pemindai, denganPolis bool) (inboxacceptopenprotection.P
 		diputuskanPada        sql.NullTime
 		diputuskanOleh        sql.NullString
 
+		// Sasaran perubahan Cause of Loss. NULL pada seluruh baris warisan Pega — keduanya
+		// kolom yang baru ada 2026-10-05.
+		idObjek, idCoverage sql.NullString
+
 		tertanggung            sql.NullString
 		polisMulai, polisAkhir sql.NullTime
 	)
@@ -298,7 +406,7 @@ func scanProtection(row pemindai, denganPolis bool) (inboxacceptopenprotection.P
 	// demi nilai yang tidak pernah dilihat siapa pun.
 	kolom := []any{&id, &nopolis, &noklaim, &idKlaim, &tipe, &namaTipe, &dibuatPada,
 		&notes, &dibuatOleh, &dataLama, &dataBaru, &namaObjek, &namaCabang,
-		&status, &diputuskanPada, &diputuskanOleh}
+		&status, &diputuskanPada, &diputuskanOleh, &idObjek, &idCoverage}
 	if denganPolis {
 		kolom = append(kolom, &tertanggung, &polisMulai, &polisAkhir)
 	}
@@ -324,8 +432,15 @@ func scanProtection(row pemindai, denganPolis bool) (inboxacceptopenprotection.P
 		TypeName:       teks(namaTipe),
 		Note:           teks(notes),
 		CreatedBy:      teks(dibuatOleh),
-		Change: decodeChangeDetail(
-			teks(tipe), teks(dataLama), teks(dataBaru), teks(namaObjek), teks(namaCabang)),
+		Change: decodeChangeDetail(kolomPerubahan{
+			Tipe:       teks(tipe),
+			DataLama:   teks(dataLama),
+			DataBaru:   teks(dataBaru),
+			NamaObjek:  teks(namaObjek),
+			NamaCabang: teks(namaCabang),
+			IDObjek:    teks(idObjek),
+			IDCoverage: teks(idCoverage),
+		}),
 		AcceptStatus: teks(status),
 		AcceptedBy:   teks(diputuskanOleh),
 		InsuredName:  teks(tertanggung),
@@ -371,23 +486,51 @@ const tanggalTeks = "2006-01-02"
 // Tanggal yang tidak dapat dibaca menjadi nil, BUKAN galat. Baris warisan Pega tidak punya
 // kolom asal untuk OLD_DATA/NEW_DATA (`kolom-open-protection.md` §9), dan satu baris
 // berformat asing tidak boleh mematikan seluruh antrean.
-func decodeChangeDetail(protectionType, lama, baru, objek, cabang string) inboxacceptopenprotection.ChangeDetail {
-	if !inboxacceptopenprotection.ShowsChangeDetail(protectionType) {
+//
+// # Kenapa satu struct, bukan tujuh parameter
+//
+// Sejak sasaran coverage ikut dibaca, fungsi ini memerlukan tujuh nilai yang SELURUHNYA
+// bertipe string. Dua di antaranya tertukar tidak akan ditolak kompilator maupun terlihat
+// saat membaca pemanggilnya — dan akibatnya adalah perubahan yang diterapkan ke baris yang
+// salah. Penamaan field membuat pertukaran itu mustahil.
+func decodeChangeDetail(kolom kolomPerubahan) inboxacceptopenprotection.ChangeDetail {
+	if !inboxacceptopenprotection.ShowsChangeDetail(kolom.Tipe) {
 		return inboxacceptopenprotection.ChangeDetail{}
 	}
 
-	d := inboxacceptopenprotection.ChangeDetail{ObjectName: objek, BranchName: cabang}
+	d := inboxacceptopenprotection.ChangeDetail{
+		ObjectName: kolom.NamaObjek,
+		BranchName: kolom.NamaCabang,
+	}
 
-	switch strings.TrimSpace(protectionType) {
+	switch strings.TrimSpace(kolom.Tipe) {
 	case inboxacceptopenprotection.TypeChangeLossDate:
-		d.LossDateBefore = bacaTanggal(lama)
-		d.LossDateAfter = bacaTanggal(baru)
+		d.LossDateBefore = bacaTanggal(kolom.DataLama)
+		d.LossDateAfter = bacaTanggal(kolom.DataBaru)
 	case inboxacceptopenprotection.TypeChangeCauseOfLoss:
-		d.CauseOfLossBefore = lama
-		d.CauseOfLossAfter = baru
+		d.CauseOfLossBefore = kolom.DataLama
+		d.CauseOfLossAfter = kolom.DataBaru
+
+		// Sasarannya DIBACA HANYA untuk tipe '8', sejalan dengan dua kolom serbaguna di
+		// atasnya: isi yang kebetulan tersimpan pada tipe lain bukan bagian permintaan.
+		d.ObjectID = strings.TrimSpace(kolom.IDObjek)
+		d.ObjectCoverageID = strings.TrimSpace(kolom.IDCoverage)
 	}
 
 	return d
+}
+
+// kolomPerubahan adalah keenam kolom mentah yang menyusun panel "Detail Perubahan".
+type kolomPerubahan struct {
+	Tipe       string
+	DataLama   string
+	DataBaru   string
+	NamaObjek  string
+	NamaCabang string
+
+	// Keduanya sasaran perubahan Cause of Loss; kosong pada tipe lain dan pada baris warisan.
+	IDObjek    string
+	IDCoverage string
 }
 
 func bacaTanggal(s string) *time.Time {

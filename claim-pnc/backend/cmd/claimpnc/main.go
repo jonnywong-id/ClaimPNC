@@ -5314,6 +5314,11 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				Protections: inputreqprotectionsql.NewRepo(conn),
 				Types:       inputreqprotectionsql.NewTypeRepo(conn),
 				Claims:      inputreqprotectionsql.NewClaimRepo(conn),
+				// Master penyebab kerugian dibaca dari basis data portal YANG SAMA.
+				// Mengambilnya dari portal lain berarti menawarkan pilihan milik badan
+				// hukum lain — tanpa galat, dan tanpa apa pun di layar yang menandainya
+				// (`R-20`).
+				Causes: inputreqprotectionsql.NewCauseRepo(conn),
 			}, nil
 		}
 		store.protectionAcceptSelector = func(alias string) (inboxacceptopenprotection.Repo, error) {
@@ -5809,11 +5814,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Klaim contoh ikut dimuat supaya form tipe 7 dan 8 dapat dicoba utuh tanpa
 		// Oracle — termasuk field turunan yang tidak dapat diketik.
 		protectionClaimMemory := inputreqprotectionmemory.NewClaimRepoWithSamples()
+		// Master penyebab kerugian contoh, supaya dropdown "Next Cause Of Loss" dapat dicoba
+		// tanpa Oracle.
+		protectionCauseMemory := inputreqprotectionmemory.NewCauseRepoWithSamples()
 		store.protectionRequestSelector = func(string) (inputreqprotection.Stores, error) {
 			return inputreqprotection.Stores{
 				Protections: protectionRequestMemory,
 				Types:       protectionTypeMemory,
 				Claims:      protectionClaimMemory,
+				Causes:      protectionCauseMemory,
 			}, nil
 		}
 

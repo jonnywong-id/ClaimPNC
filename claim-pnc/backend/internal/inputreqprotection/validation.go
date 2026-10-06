@@ -67,6 +67,24 @@ type ChangeRequest struct {
 
 	// CauseOfLossAfter — "Next Cause Of Loss". Wajib untuk Type '8'.
 	CauseOfLossAfter string
+
+	// ObjectID dan ObjectCoverageID adalah baris coverage yang DIPILIH pemohon pada panel
+	// Detail Perubahan Cause Of Loss. Wajib untuk Type '8'.
+	//
+	// # Kenapa dua, dan kenapa keduanya wajib
+	//
+	// Keduanya bersama nomor klaim menunjuk tepat satu baris `T_CLAIM_OBJECTCOVERAGE`, dan
+	// dari sanalah akseptasi tahu Penyebab Kerugian mana yang harus diubah.
+	//
+	// Nama tidak dapat menggantikannya. Kueri terhadap klaim `PNC-1452` (dijalankan 2026-10-05)
+	// mengembalikan `JackHugh / Resiko A` TIGA KALI dengan Cause of Loss berbeda; yang
+	// membedakan ketiganya hanya ObjectCoverageID.
+	//
+	// Dibiarkan kosong, permintaannya tersimpan tanpa sasaran — dan baru ketahuan saat
+	// seseorang menyetujuinya lalu klaimnya tidak berubah. Karena itu ia divalidasi di sini,
+	// bukan dibiarkan jatuh ke akseptasi.
+	ObjectID         string
+	ObjectCoverageID string
 }
 
 // Normalize merapikan isian sebelum divalidasi maupun disimpan.
@@ -98,6 +116,8 @@ func (d Draft) Normalize() Draft {
 	d.Note = strings.TrimSpace(d.Note)
 
 	d.Change.CauseOfLossAfter = strings.TrimSpace(d.Change.CauseOfLossAfter)
+	d.Change.ObjectID = strings.TrimSpace(d.Change.ObjectID)
+	d.Change.ObjectCoverageID = strings.TrimSpace(d.Change.ObjectCoverageID)
 
 	return d
 }
@@ -114,6 +134,14 @@ const (
 	FieldCauseOfLossMst = "penyebab_kerugian_master"
 	FieldObjectName     = "nama_objek"
 	FieldBranchName     = "nama_cabang"
+
+	// FieldCoverageRow adalah SATU nama untuk sepasang nilai — ObjectID dan
+	// ObjectCoverageID.
+	//
+	// Keduanya datang dari satu tombol **Pilih** pada satu baris panel, jadi pengguna tidak
+	// pernah mengisinya terpisah. Dua pesan galat untuk satu tombol akan membuatnya mencari
+	// dua isian yang tidak ada di layar.
+	FieldCoverageRow = "baris_coverage"
 )
 
 // Batas panjang tiap isian, MENGIKUTI lebar kolom `POOLDATA.T_CLAIM_OPENPROTECTION`.
@@ -224,6 +252,20 @@ func (d Draft) Validate() error {
 		// klaimnya, diperiksa saat pencarian.
 		if d.Change.CauseOfLossAfter == "" {
 			v.Add(FieldCauseOfLossMst, "Next Cause Of Loss wajib dipilih.")
+		}
+
+		// Baris coverage yang hendak diubah WAJIB disebut.
+		//
+		// Di Pega pemohon menekan tombol **Pilih** pada salah satu baris panel, dan pilihan
+		// itulah yang menentukan sasarannya. Tanpa keduanya, permintaan tersimpan tanpa
+		// sasaran — dan kegagalannya baru terlihat saat seseorang menyetujuinya lalu klaim
+		// tidak berubah. Lebih baik ditolak di sini, selagi pemohon masih di depan layarnya.
+		//
+		// Pesannya menyebut satu hal yang dilakukan pengguna ("pilih barisnya"), bukan dua
+		// nama kolom yang tidak ia kenal — keduanya datang dari satu tombol yang sama.
+		if d.Change.ObjectID == "" || d.Change.ObjectCoverageID == "" {
+			v.Add(FieldCoverageRow,
+				"Pilih dahulu baris objek dan coverage yang Penyebab Kerugiannya hendak diubah.")
 		}
 	}
 

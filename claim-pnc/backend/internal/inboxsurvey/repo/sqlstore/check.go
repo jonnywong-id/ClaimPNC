@@ -62,7 +62,7 @@ func (r *Repo) CheckColumns(ctx context.Context) error {
 //
 // # Kenapa jumlahnya berubah-ubah, dan itu bukan kebingungan
 //
-// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTERPIC` dicoret sebagai asal
+// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTER_PIC` dicoret sebagai asal
 // "Appointment No", lalu LIMA setelah keempat kueri tab tiba dan dua kolom lain terbukti
 // benar-benar berbeda. Setiap perubahan bersandar pada satu pengukuran, bukan pada pembacaan
 // ulang — dan daftar yang mengecil justru hasil terbaiknya.

@@ -63,3 +63,24 @@ var ErrForbidden = errors.New("inboxacceptopenprotection: tidak berwenang atas l
 // ada di data, bukan pada tindakannya.
 var ErrClaimNotSynced = errors.New(
 	"inboxacceptopenprotection: perubahan tidak dapat diterapkan ke data klaim")
+
+// ErrUnknownCauseOfLoss dikembalikan ketika Penyebab Kerugian yang diminta tidak ada di
+// master `POOLDATA.D_CAUSE_OF_LOSS`.
+//
+// # Kenapa ia DIBEDAKAN dari ErrClaimNotSynced
+//
+// Keduanya membatalkan keputusan, tetapi yang harus dibereskan berbeda — dan petugas yang
+// membacanya berbeda pula. `ErrClaimNotSynced` menunjuk ke KLAIM: barisnya tidak ada, atau
+// coverage-nya sudah dibuang. Yang ini menunjuk ke MASTER: kodenya terkirim, barisnya ada,
+// tetapi tidak ada penyebab kerugian dengan kode itu.
+//
+// Menyatukannya akan membuat pesan yang sama muncul untuk dua pekerjaan perbaikan yang
+// berbeda, dan yang pertama dicoba hampir pasti yang salah.
+//
+// # Kenapa membatalkan, bukan menuliskan kodenya saja
+//
+// `T_CLAIM_OBJECTCOVERAGE` menyimpan kode DAN teksnya berdampingan. Menuliskan kode tanpa
+// teks menghasilkan baris yang namanya berkata satu hal dan kodenya berkata hal lain —
+// persis keadaan yang panel pemilih ini dibuat untuk mencegahnya. Lebih baik gagal keras.
+var ErrUnknownCauseOfLoss = errors.New(
+	"inboxacceptopenprotection: penyebab kerugian yang diminta tidak ada di master")

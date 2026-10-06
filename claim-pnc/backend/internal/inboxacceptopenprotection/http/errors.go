@@ -60,13 +60,32 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			return
 
 		case errors.Is(err, inboxacceptopenprotection.ErrClaimNotSynced):
-			// 409, bukan 500: tidak ada yang rusak — klaimnya belum ada di daftar klaim.
+			// 409, bukan 500: tidak ada yang rusak — sasaran perubahannya yang tidak ada.
 			// Pesannya menyebut apa yang harus dibereskan dan menegaskan keputusannya TIDAK
 			// tersimpan, supaya petugas tidak mengira persetujuannya sudah berlaku.
+			//
+			// Pesannya TIDAK LAGI menyebut Tanggal Kejadian saja. Sejak perubahan Penyebab
+			// Kerugian ikut diterapkan, galat yang sama muncul ketika baris coverage yang
+			// ditunjuk sudah dibuang dari klaim — dan pesan yang menyebut DOL akan menyuruh
+			// petugas memeriksa hal yang sama sekali tidak berhubungan.
 			writeJSON(w, r, http.StatusConflict, ErrorResponse{
 				Code: CodeConflict,
-				Message: "Keputusan tidak disimpan: klaim yang ditaut belum ada di daftar klaim, " +
-					"sehingga perubahan Tanggal Kejadian tidak dapat diterapkan. Laporkan nomor klaimnya ke administrator.",
+				Message: "Keputusan tidak disimpan: data klaim yang hendak diubah tidak ditemukan — " +
+					"klaimnya belum ada di daftar klaim, atau baris coverage yang dipilih sudah dihapus. " +
+					"Laporkan nomor klaimnya ke administrator.",
+			})
+			return
+
+		case errors.Is(err, inboxacceptopenprotection.ErrUnknownCauseOfLoss):
+			// 409, bukan 400: permintaannya BENAR bentuknya — kode itu memang pernah ada saat
+			// pemohon memilihnya. Yang berubah adalah masternya.
+			//
+			// Dibedakan dari ErrClaimNotSynced karena pekerjaan perbaikannya berbeda: yang ini
+			// di master penyebab kerugian, bukan di data klaim.
+			writeJSON(w, r, http.StatusConflict, ErrorResponse{
+				Code: CodeConflict,
+				Message: "Keputusan tidak disimpan: Penyebab Kerugian yang diminta tidak ada lagi di master, " +
+					"sehingga perubahannya tidak dapat diterapkan. Minta pemohon mengajukan ulang dengan pilihan yang berlaku.",
 			})
 			return
 

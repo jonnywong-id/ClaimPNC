@@ -111,16 +111,22 @@ func TestSummaryReturnsEveryTabWithCountsAndOwner(t *testing.T) {
 	require.Equal(t, "ADMINPNC", body.Pemilik)
 	require.Len(t, body.Status, 9)
 
-	require.Equal(t, "lengkap", body.Status[0].Kode)
-	require.Equal(t, "Complete documents", body.Status[0].Judul)
+	// "ALL Case" PALING DEPAN — keputusan Work Owner 2026-10-05; lihat statusOrder.
+	require.Equal(t, "semua", body.Status[0].Kode)
+	require.Equal(t, "ALL Case", body.Status[0].Judul)
 	require.True(t, body.Status[0].DapatDipilih)
-	require.Equal(t, 1, *body.Status[0].Jumlah)
+	require.Equal(t, 2, *body.Status[0].Jumlah)
+
+	require.Equal(t, "lengkap", body.Status[1].Kode)
+	require.Equal(t, "Complete documents", body.Status[1].Judul)
+	require.True(t, body.Status[1].DapatDipilih)
 	require.Equal(t, 1, *body.Status[1].Jumlah)
+	require.Equal(t, 1, *body.Status[2].Jumlah)
 
 	// Tab yang belum dapat dihitung dikirim tanpa jumlah dan tidak dapat dipilih.
-	require.Equal(t, "loss-adjuster", body.Status[4].Kode)
-	require.Nil(t, body.Status[4].Jumlah)
-	require.False(t, body.Status[4].DapatDipilih)
+	require.Equal(t, "loss-adjuster", body.Status[5].Kode)
+	require.Nil(t, body.Status[5].Jumlah)
+	require.False(t, body.Status[5].DapatDipilih)
 }
 
 func TestSummaryRejectsAMalformedQuery(t *testing.T) {

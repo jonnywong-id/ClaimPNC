@@ -140,7 +140,9 @@ SELECT p.OPEN_PROTECTION_ID,
        p.OLD_DATA,
        p.NEW_DATA,
        p.OBJECT_NAME,
-       p.BRANCH_NAME
+       p.BRANCH_NAME,
+       p.OBJECT_ID,
+       p.OBJECT_COVERAGE_ID
   FROM POOLDATA.T_CLAIM_OPENPROTECTION p
   LEFT JOIN POOLDATA.M_CLAIM_PROTECTION_TYPE t
          ON TRIM(t.PROTECTION_TYPE_ID) = TRIM(p.PROTECTION_TYPE_ID)
@@ -173,7 +175,9 @@ SELECT p.OPEN_PROTECTION_ID,
        p.OLD_DATA,
        p.NEW_DATA,
        p.OBJECT_NAME,
-       p.BRANCH_NAME
+       p.BRANCH_NAME,
+       p.OBJECT_ID,
+       p.OBJECT_COVERAGE_ID
   FROM POOLDATA.T_CLAIM_OPENPROTECTION p
   LEFT JOIN POOLDATA.M_CLAIM_PROTECTION_TYPE t
          ON TRIM(t.PROTECTION_TYPE_ID) = TRIM(p.PROTECTION_TYPE_ID)
@@ -266,14 +270,20 @@ SELECT POOLDATA.CLAIM_PROTECTION_SEQ.NEXTVAL FROM DUAL
 --
 -- RESOLVED_BY dan RESOLVED_DATETIME juga tidak disebut — keduanya milik modul
 -- inboxacceptopenprotection (`P-1`).
+--
+-- OBJECT_ID dan OBJECT_COVERAGE_ID (migrasi `0015`) menyimpan SASARAN perubahan tipe '8' —
+-- baris coverage yang dipilih pemohon. Keduanya NULL untuk tipe lain, dan itu benar: hanya
+-- permintaan perubahan Cause of Loss yang punya sasaran di tingkat coverage.
 INSERT INTO POOLDATA.T_CLAIM_OPENPROTECTION (
     OPEN_PROTECTION_ID, POLICY_NO, CLAIM_NO, ID_CLAIM, PROTECTION_TYPE_ID,
     CREATE_DATE, CREATED_BY, NOTES,
-    OLD_DATA, NEW_DATA, OBJECT_NAME, BRANCH_NAME, STATUS_ACTIVE
+    OLD_DATA, NEW_DATA, OBJECT_NAME, BRANCH_NAME, STATUS_ACTIVE,
+    OBJECT_ID, OBJECT_COVERAGE_ID
 ) VALUES (
     :1, :2, :3, :4, :5,
     :6, :7, :8,
-    :9, :10, :11, :12, '1'
+    :9, :10, :11, :12, '1',
+    :13, :14
 )
 
 
@@ -295,8 +305,13 @@ UPDATE POOLDATA.T_CLAIM_OPENPROTECTION
        OLD_DATA           = :6,
        NEW_DATA           = :7,
        OBJECT_NAME        = :8,
-       BRANCH_NAME        = :9
- WHERE UPPER(TRIM(OPEN_PROTECTION_ID)) = :10
+       BRANCH_NAME        = :9,
+       -- Ikut ditulis ulang, termasuk menjadi NULL ketika tipenya berubah dari '8' ke tipe
+       -- lain. Membiarkannya terisi akan meninggalkan sasaran yang tidak lagi berarti apa-apa
+       -- pada baris yang bukan permintaan perubahan Cause of Loss.
+       OBJECT_ID          = :10,
+       OBJECT_COVERAGE_ID = :11
+ WHERE UPPER(TRIM(OPEN_PROTECTION_ID)) = :12
    AND APPROVAL_STATUS IS NULL
    AND (CLAIM_NO IS NULL OR TRIM(CLAIM_NO) IS NULL)
    AND (STATUS_ACTIVE IS NULL OR TRIM(STATUS_ACTIVE) = '1')
@@ -472,6 +487,177 @@ SELECT c.CLAIMID,
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
          WHERE o.CLAIMID = c.CLAIMID
          ORDER BY o.OBJECTID
-         FETCH FIRST 1 ROW ONLY)
+         FETCH FIRST 1 ROW ONLY),
+       -- BUSINESSCODE tidak ditampilkan. Ia menyaring daftar "Next Cause Of Loss" supaya
+       -- pemohon hanya melihat penyebab kerugian yang berlaku bagi lini bisnis klaimnya —
+       -- padanan `BrowseCOLByBisnis_Sql` milik Pega.
+       c.BUSINESSCODE
   FROM POOLDATA.T_CLAIM_PNC c
  WHERE UPPER(TRIM(c.CLAIMID)) IN (:1, :2)
+
+-- name: claim_coverages
+--
+-- Seluruh coverage satu klaim beserta KUNCI barisnya — isi panel Detail Perubahan Cause Of
+-- Loss, dan satu-satunya cara permintaan tipe '8' tahu baris mana yang hendak diubah.
+--
+-- ============================================================================
+-- KENAPA SELURUHNYA, BUKAN SATU
+-- ============================================================================
+--
+-- `claim_find` di atas mengambil SATU Cause of Loss lewat `FETCH FIRST 1 ROW ONLY`. Itu
+-- memadai selama panelnya hanya menampilkan keterangan, dan TIDAK memadai begitu pemohon
+-- harus memilih — ia akan memilih dari satu-satunya baris yang ditawarkan, dan baris itu
+-- belum tentu yang dimaksudnya.
+--
+-- Layar Pega `InputProtectionFlow` (`OPC-221`) menampilkan empat baris untuk satu klaim,
+-- tiga di antaranya bernama `JackHugh / Resiko A` dengan Cause of Loss berbeda. Nama karena
+-- itu tidak menunjuk baris; yang membedakannya hanya OBJECTCOVERAGEID.
+--
+-- ============================================================================
+-- KUNCINYA OBJECTID + OBJECTCOVERAGEID
+-- ============================================================================
+--
+-- Bersama CLAIMID, keduanya kunci alami satu baris coverage — kunci yang SAMA dengan yang
+-- dipakai `POOLDATA.T_CLAIM_SPREADING`. Keduanya `NOT NULL` di tabel warisan dan terisi pada
+-- seluruh 2.630 baris (diukur 2026-10-05), sehingga berlaku untuk baris warisan Pega maupun
+-- baris baru.
+--
+-- `URUTAN_OBJEK`/`URUTAN` TIDAK dipakai meski modul `registrasi` memakainya: keduanya
+-- ditambahkan migrasi `0008` dan hanya terisi pada **32 dari 2.630** baris.
+--
+-- ============================================================================
+-- OBJECTNAME DIAMBIL DARI TABEL OBJEK, BUKAN DARI BARIS COVERAGE
+-- ============================================================================
+--
+-- `T_CLAIM_OBJECTCOVERAGE` punya kolom OBJECTNAME sendiri — ditambahkan
+-- `docs/ddl/tc_pnc_object_tree.sql`, dan karena itu baru. `T_CLAIM_OBJECTLIST.OBJECTNAME`
+-- adalah kolom warisan yang terisi pada baris lama, sehingga LEFT JOIN ke sana membuat
+-- nama objek tetap tampil pada klaim Pega.
+--
+-- LEFT JOIN, bukan INNER: coverage yang objeknya tidak ditemukan tetap TAMPIL, dengan nama
+-- kosong. INNER JOIN akan menghilangkan barisnya dari panel tanpa satu pun gejala — dan
+-- baris yang hilang dari panel adalah baris yang tidak akan pernah bisa diperbaiki.
+--
+-- Baris yang sudah ditandai terhapus dikecualikan (`DIHAPUS_PADA IS NULL`, `D-66`): memilih
+-- coverage yang sudah dibuang berarti meminta perubahan atas sesuatu yang tidak lagi ada.
+--
+-- ============================================================================
+-- DIJALANKAN TERHADAP ORACLE 2026-10-05 — HASILNYA SAMA PERSIS DENGAN LAYAR PEGA
+-- ============================================================================
+--
+-- Work Owner menjalankan kueri ini untuk `ASM-FW-GCNMFW-WORK PNC-1452`:
+--
+--     1  1  JackHugh  Resiko A    ILLNESS
+--     1  2  JackHugh  Resiko A    STORM
+--     1  3  JackHugh  Katastropi  WINDSTORM
+--     1  4  JackHugh  Resiko A    HURRICANE
+--
+-- Empat baris, urutan yang sama, isi yang sama dengan panel Detail Perubahan Cause Of Loss
+-- pada layar `InputProtectionFlow` milik `OPC-221`. Ini bukti kesetaraan atas data nyata,
+-- bukan terhadap data yang dikarang dari kode ini sendiri.
+--
+-- Tiga hal yang ikut terbukti, dan ketiganya tidak dapat dibuktikan sqlmock:
+--
+--   * `OBJECTCOVERAGEID` memang unik DI DALAM satu objek — 1, 2, 3, 4 pada OBJECTID yang
+--     sama. Bersama OBJECTID dan CLAIMID ia menunjuk tepat satu baris.
+--   * `LEFT JOIN` ke `T_CLAIM_OBJECTLIST` benar-benar menemukan namanya pada klaim
+--     WARISAN — "JackHugh" terisi, bukan kosong.
+--   * `JackHugh / Resiko A` muncul tiga kali, sehingga pencocokan lewat nama akan menunjuk
+--     baris yang salah dua dari tiga kali.
+--
+-- ============================================================================
+-- CAUSEOFLOSSID IKUT DIBACA — PENYEBAB KERUGIAN ADALAH SEPASANG NILAI
+-- ============================================================================
+--
+-- Ditegaskan Work Owner 2026-10-05: *"ganti cause of loss itu ganti causeoflossid juga"*.
+--
+-- Pega melakukan keduanya dalam satu langkah (`InsertOpenProtectionCase`):
+--
+--     ObjectCoverageList(...).CauseOfLoss   <- deskripsi yang dipilih
+--     ObjectCoverageList(...).CauseOfLossID <- id-nya
+--
+-- Membaca hanya deskripsinya akan membuat akseptasi menulis nama baru di atas id lama —
+-- baris yang namanya berkata satu hal dan kodenya berkata hal lain, tanpa galat. Setiap
+-- laporan yang mengelompokkan menurut kode akan ikut salah, dan tidak ada yang menandainya.
+SELECT cv.OBJECTID,
+       cv.OBJECTCOVERAGEID,
+       o.OBJECTNAME,
+       cv.COVERAGENAME,
+       cv.CAUSEOFLOSS,
+       cv.CAUSEOFLOSSID
+  FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE cv
+  LEFT JOIN POOLDATA.T_CLAIM_OBJECTLIST o
+    ON TRIM(o.CLAIMID) = TRIM(cv.CLAIMID)
+   AND TRIM(o.OBJECTID) = TRIM(cv.OBJECTID)
+ WHERE UPPER(TRIM(cv.CLAIMID)) IN (:1, :2)
+   AND cv.DIHAPUS_PADA IS NULL
+ ORDER BY cv.OBJECTID, cv.OBJECTCOVERAGEID
+
+-- name: cause_of_loss_options
+--
+-- Pilihan dropdown **Next Cause Of Loss**, disaring lini bisnis klaim.
+--
+-- ============================================================================
+-- KOLOM BIASA, BUKAN JSONDATA — DITETAPKAN WORK OWNER 2026-10-05
+-- ============================================================================
+--
+-- Dokumen JSON SUDAH DIKELUARKAN menjadi kolom. Bentuk tabel per 2026-10-05, dibaca
+-- langsung dari katalog:
+--
+--     JSONDATA      CLOB            masih ada, TIDAK dipakai lagi
+--     D_COL_ID      VARCHAR2(5)     NOT NULL — kunci, dan nilai yang disimpan
+--     OLD_D_COL_ID  VARCHAR2(5)
+--     M_COL_ID      VARCHAR2(1000)  golongan induk
+--     DESCRIPTION   VARCHAR2(4000)  teks yang dibaca pengguna
+--     STS_AKTIF     VARCHAR2(10)
+--     LOSS_CODE     VARCHAR2(100)
+--
+-- Contoh isinya: "11997 · FIRE - OPEN FLAME · A" dan "12033 · WRECK REMOVAL".
+--
+-- JSONDATA sengaja TIDAK disebut di sini. Selama kolom dan dokumen hidup berdampingan,
+-- keduanya dapat menyimpang — dan membaca yang satu sambil ada yang menulis yang lain
+-- menghasilkan daftar yang benar hari ini lalu salah diam-diam besok.
+--
+-- ============================================================================
+-- LINI BISNIS: TABEL ANAK, KARENA IA RELASI SATU-KE-BANYAK
+-- ============================================================================
+--
+-- POOLDATA.D_CAUSE_OF_LOSS_BUSINESS — ditetapkan Work Owner 2026-10-05.
+--
+-- Satu penyebab kerugian berlaku bagi BEBERAPA lini bisnis, sehingga ia tidak muat sebagai
+-- kolom pada tabel induk. Di dokumen JSON ia memang array: $.BISNISID[*] berisi {ID, Note}.
+--
+-- Dipasang sebagai EXISTS, bukan JOIN. Alasannya satu dan menentukan: sebuah penyebab
+-- kerugian yang terdaftar pada tiga lini akan muncul TIGA KALI bila di-join, dan dropdown
+-- yang menawarkan pilihan yang sama berulang kali membuat pengguna ragu ia memilih yang
+-- benar.
+--
+-- Pega menyaringnya dengan merangkai potongan WHERE ke dalam teks SQL lewat
+-- {ASIS:TempSearchBisnis.DESCRIPTION} (BrowseCOLByBisnis_Sql). Perangkaian itu TIDAK
+-- dibawa; di sini nilainya lewat parameter binding (11-SECURITY.md §4.1).
+--
+-- TRIM di kedua sisi pembanding: keduanya VARCHAR2 tanpa penyeragaman, dan satu spasi di
+-- ujung membuat dropdown kosong tanpa satu pun galat.
+--
+-- Kode bisnis KOSONG berarti tidak menyaring. Itu disengaja: klaim yang BUSINESSCODE-nya
+-- kosong lebih baik menampilkan semua pilihan daripada daftar kosong yang terbaca sebagai
+-- master yang rusak.
+--
+-- ============================================================================
+-- STS_AKTIF TIDAK DISARING — MENGIKUTI PEGA
+-- ============================================================================
+--
+-- BrowseCOLByBisnis_Sql tidak menyaringnya, dan detail_list milik modul detailpenyebab juga
+-- tidak. Menambahkannya adalah PERUBAHAN PERILAKU: penyebab kerugian yang dinonaktifkan akan
+-- hilang dari dropdown, dan permintaan lama yang memakainya tidak lagi dapat disunting. Bila
+-- itu dikehendaki, ia butir P-5 tersendiri — bukan keputusan yang diselipkan ke dalam kueri.
+SELECT d.D_COL_ID,
+       d.DESCRIPTION,
+       d.LOSS_CODE
+  FROM POOLDATA.D_CAUSE_OF_LOSS d
+ WHERE ( :1 IS NULL
+         OR EXISTS (SELECT 1
+                      FROM POOLDATA.D_CAUSE_OF_LOSS_BUSINESS b
+                     WHERE TRIM(b.D_COL_ID) = TRIM(d.D_COL_ID)
+                       AND TRIM(b.BISNISID) = :2) )
+ ORDER BY d.DESCRIPTION

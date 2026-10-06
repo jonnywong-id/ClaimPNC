@@ -35085,3 +35085,161 @@ dan SLIK OJK.
 **Pembaruan #140 (2026-10-03): Transfer Kasir otomatis PA dicabut** atas keputusan Work Owner (keputusan-implementasi §170).
 `AcceptSettlement` tidak lagi memanggil `TransferCashier`; galat `akseptasi_tersimpan_kasir_gagal` dihapus. Akseptasi PA tetap
 dibuka (penahanan `gl.pkg_pelunasan_kasir` tetap dicabut); transfer dilakukan manual lewat tombol Transfer Kasir.
+
+---
+
+## 141. My Inbox — donut dibuang, status dokumen menjadi tab (2026-10-05)
+
+Keputusan Work Owner: *"tidak jadi pakai piechart, mengikuti inbox auto klaim saja ada tab
+disampingnya untuk menggantikan piechart dan tabel hierarki yang ada di pega"*.
+
+### 141.1 Tiga sajian menjadi satu
+
+`Section/InboxRegister_Section-Section.xml` menampilkan status dokumen lewat **tiga** hal
+sekaligus: sembilan tab bertuliskan tebal, sebuah donut (`:4151` — `pyType=pie`,
+`pySubType=doughnut`), dan tabel jumlahnya. Ketiganya kini diganti **satu deret tab**.
+
+Angka yang dulu dibaca dari donut dan tabel hidup sebagai **lencana pada tabnya sendiri**.
+Satu tempat, bukan tiga — dan tidak ada lagi dua sajian yang bisa berbeda tanpa ada yang
+menyadarinya.
+
+### 141.2 Bentuknya mengikuti `SourceTab` Inbox Auto Claim
+
+Modul itu **hanya dibaca sebagai rujukan**, tidak disentuh — `git status` pada
+`src/modules/inbox-auto-claim/` bersih.
+
+| | |
+|---|---|
+| Peran | `role="tablist"` + `role="tab"`, bukan deretan tombol lepas |
+| Bentuk | bergaris bawah (`border-b-2`), bukan kartu berpanel |
+| Papan ketik | panah kiri/kanan berpindah, **roving tabindex** |
+| Panel | grid dibungkus `role="tabpanel"` + `aria-labelledby` |
+
+Sebelumnya modul ini mengikuti pola **Inbox Laporan Klaim** (tombol berlencana di dalam
+`<nav>`). Itu diganti karena Work Owner menunjuk Auto Claim, dan karena Auto Claim sendiri
+sudah lebih dulu membuang donutnya — `CompanySummary.tsx` yang berdonut tidak ada lagi di
+sana.
+
+### 141.3 Satu perilaku yang sengaja diubah
+
+Versi lama memperlakukan tab aktif sebagai **sakelar**: mengekliknya lagi membatalkan
+pilihan. Itu dibuang. Pada tablist, satu tab **selalu** terpilih, dan yang membatalkan
+sudah punya namanya sendiri — **ALL Case**. Klik yang diam-diam melompat ke tab lain
+justru yang mengagetkan.
+
+Ujinya ikut diperbarui, dan alasannya ditulis di dalam ujinya sendiri supaya perubahan ini
+tidak terbaca sebagai kelalaian.
+
+### 141.4 Yang TIDAK berubah
+
+- **Kesembilan tab tetap digambar**, termasuk enam yang belum dapat dihitung. Keenamnya
+  tanpa lencana dan `disabled` — bukan diberi angka nol, karena nol menyatakan "tidak ada
+  satu pun" sedangkan yang benar "belum dihitung".
+- Backend tidak disentuh sama sekali: kontrak `/ringkasan` sudah mengirim `jumlah: null`
+  dan `dapat_dipilih` sejak §40.12.
+- Penyaringan tetap di server lewat `status_dokumen`.
+
+### 141.5 Hasil
+
+| | |
+|---|---|
+| `DocumentStatusSummary.tsx` | dihapus |
+| `DocumentStatusTab.tsx` | baru |
+| Uji modul | **37 lulus** (2 berkas) |
+| Galat tipe seluruh repo | **0** |
+| `recharts` di `src/` | tinggal satu rujukan, di uji Auto Claim |
+
+### 141.6 Dilaporkan, tidak disentuh
+
+`src/modules/inbox-auto-claim/AutoClaimInboxPage.test.tsx` masih memuat rujukan `recharts`
+padahal modulnya sudah tidak berdonut — kemungkinan mock yang tertinggal. Di luar lingkup
+sesi ini.
+
+### 141.7 Urutan tab — "ALL Case" dipindah ke depan (2026-10-05)
+
+Work Owner: *"urutan tabnya mengikuti hierarki tabel pega saja, dimana all case paling
+pertama"*.
+
+**Yang diperiksa lebih dulu.** Export ditelusuri untuk mencari urutan lain selain urutan
+label tebal. Tidak ada: kesembilan label muncul **tepat sekali** di
+`Section/InboxRegister_Section-Section.xml` dan sekali di harness-nya, dengan urutan yang
+sama. Tiga kemunculan "Document status" di harness bukan daftar status — yang di `:5708`
+adalah **kolom grid** (`pyWidth = 198`, `pyColumnFiltering = true`), dua sisanya nama rule
+caption.
+
+Jadi tidak ada "urutan tabel hierarki" tersendiri yang dapat disalin. Yang dikerjakan:
+urutan Pega dipertahankan, **"ALL Case" dipindah dari urutan ketujuh ke pertama**.
+
+    sebelum  Complete · Not complete · Temporary Close · Deadline · Loss Adjuster ·
+             Internal Surveyor · ALL Case · Communication · TKA
+
+    sesudah  ALL Case · Complete · Not complete · Temporary Close · Deadline ·
+             Loss Adjuster · Internal Surveyor · Communication · TKA
+
+Urutan relatif kedelapan tab lainnya **tidak diubah**, supaya yang sudah dihafal petugas
+tetap berdampingan seperti semula.
+
+**Satu tempat, bukan dua.** Urutannya hidup di `statusOrder` pada domain backend; frontend
+menggambar apa adanya sesuai urutan yang diterimanya. Bila frontend ikut menata ulang, dua
+tempat menentukan hal yang sama dan keduanya dapat menyimpang tanpa satu pun galat.
+
+**Cacat yang tertangkap saat mengubahnya.** Uji frontend bernama "menampilkan kesembilan
+tab dalam urutan layar Pega" **tetap lulus** setelah backend diubah — karena stub-nya
+sendiri yang menentukan urutan, bukan backend. Uji yang memeriksa urutan terhadap data
+yang dikarangnya sendiri tidak dapat membantah apa pun. Stub pada kedua berkas uji kini
+disalin dari `statusOrder`, dan ujinya diganti nama menjadi "menggambar kesembilan tab
+sesuai urutan dari server".
+
+**Bukti terhadap Oracle:**
+
+    ALL Case                     80 klaim
+    Complete documents            0 klaim
+    Documents not complete       80 klaim
+    Temporary Close              (belum dihitung)
+    ...
+    tab yang terhitung menjumlah tepat menjadi 80
+
+### 84.23 Kolom dinamai ulang, dan satu tabrakan nama yang hampir lolos (2026-10-05)
+
+Work Owner menamai ulang dua kolom agar sejalan dengan gaya tabelnya:
+
+```
+ADJUSTERPIC         ->  ADJUSTER_PIC
+RESCHEDULELOCATION  ->  RESCHEDULE_LOCATION
+```
+
+Konsisten dengan `SURVEYOR_NAME`, `LOCATION_SURVEY`, `LOCATION_OBJECT`, `STS_SURVEY`.
+
+#### Yang hampir lolos
+
+`ADJUSTER_PIC` **sudah dipakai sebagai alias** di kueri daftar:
+
+```sql
+s.SURVEYOR_NAME     AS ADJUSTER_PIC
+```
+
+Dan uji `TestKeempatKolomAdjusterTidakDibacaKueriDaftar` menolak kemunculan nama itu di kueri —
+maksudnya mencegah kolom yang belum terisi ikut dibaca. Setelah rename, ujinya menolak **alias
+yang justru benar**.
+
+Perbaikannya bukan melonggarkan uji, melainkan **mempertajamnya**: yang hendak dicegah adalah
+*membaca kolomnya*, dan itu selalu berbentuk `s.<kolom>`. Awalan tabel yang membedakan keduanya.
+
+```
+alias  ADJUSTER_PIC     menamai kolom LAYAR
+s.     s.ADJUSTER_PIC   menamai kolom BASIS DATA
+```
+
+Keduanya akan menyatu sendiri (`s.ADJUSTER_PIC AS ADJUSTER_PIC`) begitu kolomnya terisi.
+
+Ujinya diganti nama menjadi `TestKolomYangBelumTerisiTidakDibacaKueriDaftar` — nama lama menyebut
+"keempat" padahal kini lima, dan menyebut "adjuster" padahal dua di antaranya bukan.
+
+#### Pelajarannya
+
+Uji yang memeriksa **kemunculan teks** rapuh terhadap penggantian nama; yang memeriksa **bentuk
+pemakaian** tidak. Nama kolom dan nama alias boleh sama — yang tidak boleh adalah uji yang tidak
+dapat membedakannya.
+
+Ditemukan oleh uji, bukan oleh pembacaan — satu-satunya kali dalam rangkaian ini sebuah cacat
+tertangkap sebelum sampai ke Work Owner.

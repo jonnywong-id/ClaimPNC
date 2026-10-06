@@ -505,12 +505,19 @@ type statusDefinition struct {
 	countable bool
 }
 
-// statusOrder adalah urutan tab PERSIS seperti di layar Pega.
+// statusOrder adalah urutan tab: **ALL Case di depan**, sisanya urutan Pega.
 //
-// Dibaca dari label tebal `Section/InboxRegister_Section-Section.xml` berurutan:
-// `:11438`, `:11626`, `:11841`, `:12023`, `:12170`, `:12632`, `:12825`, `:12971`,
-// `:13184`. Menata ulangnya — misalnya menaruh "ALL Case" di depan karena terasa wajar —
-// akan memindahkan tab yang sudah dihafal petugas.
+// Urutan label tebal pada `Section/InboxRegister_Section-Section.xml` adalah `:11438`,
+// `:11626`, `:11841`, `:12023`, `:12170`, `:12632`, `:12825` (ALL Case), `:12971`,
+// `:13184` — di sana "ALL Case" berada di urutan KETUJUH.
+//
+// Work Owner memindahkannya ke depan pada 2026-10-05, mengikuti hierarki tabel Pega.
+// Urutan relatif kedelapan tab lainnya TIDAK diubah, supaya yang sudah dihafal petugas
+// tetap berdampingan seperti semula.
+//
+// Penyimpangan ini disengaja dan dicatat di sini, bukan dibiarkan terbaca sebagai
+// kelalaian membaca export. Ia juga satu-satunya tempat urutan tab ditentukan — frontend
+// menggambar apa adanya sesuai urutan yang diterimanya.
 //
 // # Kenapa hanya tiga yang dapat dihitung
 //
@@ -526,13 +533,13 @@ type statusDefinition struct {
 // `T_CLAIMLIST_ADMIN` hanya memuat `Work-PNC` (870 baris) dan `Work-ReceiveDocument`
 // (142) — nol `Work-SurveyClaim`.
 var statusOrder = []statusDefinition{
+	{StatusAll, "ALL Case", "3", true},
 	{StatusComplete, "Complete documents", "1", true},
 	{StatusIncomplete, "Documents not complete", "0", true},
 	{StatusTemporaryClose, "Temporary Close", "8", false},
 	{StatusDeadlineTemporaryClose, "Deadline To Temporary Close", "9", false},
 	{StatusLossAdjuster, "Loss Adjuster", "2", false},
 	{StatusInternalSurveyor, "Internal Surveyor", "4", false},
-	{StatusAll, "ALL Case", "3", true},
 	{StatusCommunication, "Communication", "5", false},
 	{StatusTKA, "TKA", "9", false},
 }

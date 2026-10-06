@@ -26,6 +26,12 @@ type Service interface {
 	List(ctx context.Context, q usecase.ListQuery) (inputreqprotection.Page, error)
 	ListTypes(ctx context.Context, portalAlias string) ([]inputreqprotection.ProtectionType, error)
 	FindClaim(ctx context.Context, portalAlias, number string) (inputreqprotection.Claim, error)
+
+	// Keduanya mengisi panel "Detail Perubahan Cause Of Loss": daftar coverage yang dapat
+	// dipilih, dan pilihan penyebab kerugian penggantinya.
+	ListCoverages(ctx context.Context, portalAlias, claimNumber string) ([]inputreqprotection.CoverageRow, error)
+	ListCauseOfLoss(ctx context.Context, portalAlias, claimNumber string) ([]inputreqprotection.CauseOfLossOption, error)
+
 	Get(ctx context.Context, portalAlias, number string) (inputreqprotection.Protection, error)
 	Create(ctx context.Context, cmd usecase.SaveCommand) (inputreqprotection.Protection, error)
 	Update(ctx context.Context, cmd usecase.SaveCommand) (inputreqprotection.Protection, error)
@@ -374,4 +380,54 @@ func (h *Handler) FindClaim(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toClaimDTO(claim, h.location))
+}
+
+// ListCoverages melayani daftar coverage sebuah klaim — isi panel pemilih.
+//
+// Nomor klaim ada di JALUR, bukan di query string: ia bagian dari identitas sumber daya yang
+// diminta, bukan penyaring atasnya.
+func (h *Handler) ListCoverages(w http.ResponseWriter, r *http.Request) {
+	number := strings.TrimSpace(chi.URLParam(r, "nomor"))
+	if number == "" {
+		writeBadRequest(h.writeJSON, w, r, "Nomor klaim wajib disebutkan.")
+		return
+	}
+
+	alias, ok := h.requirePortal(w, r)
+	if !ok {
+		return
+	}
+
+	rows, err := h.service.ListCoverages(r.Context(), alias, number)
+	if err != nil {
+		h.writeErrorF(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toCoverageListResponse(rows))
+}
+
+// ListCauseOfLoss melayani pilihan dropdown "Next Cause Of Loss" untuk sebuah klaim.
+//
+// Lini bisnisnya TIDAK diterima dari pemanggil — ia diturunkan dari klaim di server. Lihat
+// alasannya pada usecase.Service.ListCauseOfLoss.
+func (h *Handler) ListCauseOfLoss(w http.ResponseWriter, r *http.Request) {
+	number := strings.TrimSpace(chi.URLParam(r, "nomor"))
+	if number == "" {
+		writeBadRequest(h.writeJSON, w, r, "Nomor klaim wajib disebutkan.")
+		return
+	}
+
+	alias, ok := h.requirePortal(w, r)
+	if !ok {
+		return
+	}
+
+	options, err := h.service.ListCauseOfLoss(r.Context(), alias, number)
+	if err != nil {
+		h.writeErrorF(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toCauseListResponse(options))
 }

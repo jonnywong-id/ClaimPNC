@@ -18,15 +18,20 @@ import (
 // yang benar-benar dikirim beserta argumennya, dan pemetaan baris ke struct.
 
 var (
-	reCount   = regexp.QuoteMeta("SELECT COUNT(*)") + ".*T_CLAIM_OPENPROTECTION"
-	reList    = regexp.QuoteMeta("ORDER BY p.CREATE_DATE DESC") + ".*OFFSET"
-	reGet     = regexp.QuoteMeta("POOLDATA.T_GENERAL") + ".*" + regexp.QuoteMeta("UPPER(TRIM(p.OPEN_PROTECTION_ID)) = :1")
-	reDecide  = regexp.QuoteMeta("UPDATE POOLDATA.T_CLAIM_OPENPROTECTION")
-	reApply   = regexp.QuoteMeta("UPDATE POOLDATA.T_CLAIM_PNC")
-	reGroups  = "M_LOGIN_GROUP_PNC"
-	errBasis  = errors.New("basis data mati")
-	listCols  = []string{"OPEN_PROTECTION_ID", "POLICY_NO", "CLAIM_NO", "ID_CLAIM", "PROTECTION_TYPE_ID", "PROTECTION_TYPE_NAME", "CREATE_DATE", "NOTES", "CREATED_BY", "OLD_DATA", "NEW_DATA", "OBJECT_NAME", "BRANCH_NAME", "APPROVAL_STATUS", "RESOLVED_DATETIME", "RESOLVED_BY"}
-	detailCol = append(append([]string(nil), listCols...), "THEINSURED", "STARTDATE", "ENDDATE")
+	reCount  = regexp.QuoteMeta("SELECT COUNT(*)") + ".*T_CLAIM_OPENPROTECTION"
+	reList   = regexp.QuoteMeta("ORDER BY p.CREATE_DATE DESC") + ".*OFFSET"
+	reGet    = regexp.QuoteMeta("POOLDATA.T_GENERAL") + ".*" + regexp.QuoteMeta("UPPER(TRIM(p.OPEN_PROTECTION_ID)) = :1")
+	reDecide = regexp.QuoteMeta("UPDATE POOLDATA.T_CLAIM_OPENPROTECTION")
+	reApply  = regexp.QuoteMeta("UPDATE POOLDATA.T_CLAIM_PNC")
+
+	// Dibedakan dari reApply supaya sebuah uji tidak lolos karena kebetulan mencocoki UPDATE
+	// yang salah: keduanya sama-sama UPDATE di dalam satu transaksi.
+	reApplyCOL = regexp.QuoteMeta("UPDATE POOLDATA.T_CLAIM_OBJECTCOVERAGE")
+	reDescribe = regexp.QuoteMeta("FROM POOLDATA.D_CAUSE_OF_LOSS")
+	reGroups   = "M_LOGIN_GROUP_PNC"
+	errBasis   = errors.New("basis data mati")
+	listCols   = []string{"OPEN_PROTECTION_ID", "POLICY_NO", "CLAIM_NO", "ID_CLAIM", "PROTECTION_TYPE_ID", "PROTECTION_TYPE_NAME", "CREATE_DATE", "NOTES", "CREATED_BY", "OLD_DATA", "NEW_DATA", "OBJECT_NAME", "BRANCH_NAME", "APPROVAL_STATUS", "RESOLVED_DATETIME", "RESOLVED_BY", "OBJECT_ID", "OBJECT_COVERAGE_ID"}
+	detailCol  = append(append([]string(nil), listCols...), "THEINSURED", "STARTDATE", "ENDDATE")
 )
 
 func newMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
@@ -37,8 +42,19 @@ func newMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
 	return db, mock
 }
 
-// detailRow membentuk satu baris kueri detail.
+// detailRow membentuk satu baris kueri detail, TANPA sasaran coverage.
+//
+// Keduanya NULL — persis baris warisan Pega, yang tidak punya kolom asal bagi `OBJECT_ID`
+// dan `OBJECT_COVERAGE_ID`. Pengujian perubahan Cause of Loss memakai detailRowCOL.
 func detailRow(id, typ, oldData, newData, status, claimRef string) *sqlmock.Rows {
+	return detailRowCOL(id, typ, oldData, newData, status, claimRef, nil, nil)
+}
+
+// detailRowCOL membentuk satu baris kueri detail BESERTA sasaran coverage-nya.
+func detailRowCOL(
+	id, typ, oldData, newData, status, claimRef string,
+	objectID, coverageID any,
+) *sqlmock.Rows {
 	dibuat := time.Date(2026, 9, 20, 3, 0, 0, 0, time.UTC)
 	mulai := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	akhir := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -53,7 +69,7 @@ func detailRow(id, typ, oldData, newData, status, claimRef string) *sqlmock.Rows
 	return sqlmock.NewRows(detailCol).AddRow(
 		" "+id+" ", "POL-1", "PNCN.26.0001", ref, typ, "Nama Tipe", dibuat,
 		"catatan", "PEMBUAT", oldData, newData, "Objek", "Cabang",
-		st, nil, nil, " Tertanggung ", mulai, akhir)
+		st, nil, nil, objectID, coverageID, " Tertanggung ", mulai, akhir)
 }
 
 func TestListMapsRowsAndSendsQueueAndSearchArgs(t *testing.T) {
@@ -72,9 +88,9 @@ func TestListMapsRowsAndSendsQueueAndSearchArgs(t *testing.T) {
 		WithArgs(1, "2", 1, "2", "A%B_", "%AB%", "%AB%", "%AB%", 5, 10).
 		WillReturnRows(sqlmock.NewRows(listCols).
 			AddRow("OPCN.1", " POL ", "KLM", "REF", "2", nil, dibuat, nil, "U",
-				nil, nil, nil, nil, nil, nil, nil).
+				nil, nil, nil, nil, nil, nil, nil, nil, nil).
 			AddRow("OPCN.2", "POL", "KLM", "REF", "7", "Ubah DOL", nil, "n", "U",
-				"2026-08-03", "rusak", "Obj", "Cab", "1", diputuskan, "PETUGAS"))
+				"2026-08-03", "rusak", "Obj", "Cab", "1", diputuskan, "PETUGAS", nil, nil))
 
 	page, err := repo.List(context.Background(), inboxacceptopenprotection.Filter{
 		Queue: inboxacceptopenprotection.QueuePremium, Search: " a%b_ ", Limit: 10, Offset: 5,
@@ -163,7 +179,7 @@ func TestListErrors(t *testing.T) {
 		db, mock := newMock(t)
 		mock.ExpectQuery(reCount).WillReturnRows(sqlmock.NewRows([]string{"n"}).AddRow(1))
 		mock.ExpectQuery(reList).WillReturnRows(sqlmock.NewRows(listCols).
-			AddRow("A", "P", "K", "R", "1", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).
+			AddRow("A", "P", "K", "R", "1", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).
 			RowError(0, errBasis))
 
 		_, err := NewRepo(db).List(context.Background(), inboxacceptopenprotection.Filter{})
@@ -463,4 +479,178 @@ func TestSplitByNameDropsCommentsAndEmptyBodies(t *testing.T) {
 func TestSearchArgsAndEscape(t *testing.T) {
 	require.Equal(t, []any{nil, nil, nil, nil}, searchArgs("   "))
 	require.Equal(t, []any{"50%_X", "%50X%", "%50X%", "%50X%"}, searchArgs(" 50%_x "))
+}
+
+// TestDecideMenerapkanPenyebabKerugian menjaga jalur tipe '8' SAMPAI KE BASIS DATA.
+//
+// Yang diperiksa bukan hanya "ada UPDATE", melainkan NILAI yang dikirim ke kelima penanda —
+// karena kesalahan yang paling mungkin di sini adalah urutan argumen yang tertukar, dan
+// akibatnya adalah perubahan yang diterapkan ke baris coverage yang salah.
+func TestDecideMenerapkanPenyebabKerugian(t *testing.T) {
+	at := time.Date(2026, 9, 25, 2, 0, 0, 0, time.UTC)
+
+	db, mock := newMock(t)
+	mock.ExpectBegin()
+	mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(reGet).
+		WillReturnRows(detailRowCOL("A", "8", "12001", "12002", "1", "R", " 1 ", " 3 "))
+
+	// Deskripsinya dicari LEBIH DULU, dari master — bukan dibawa dari permintaan.
+	mock.ExpectQuery(reDescribe).WithArgs("12002").
+		WillReturnRows(sqlmock.NewRows([]string{"DESCRIPTION"}).AddRow(" KEBAKARAN "))
+
+	// Kelima argumen, berurutan: kode baru, deskripsi, CLAIMID, OBJECTID, OBJECTCOVERAGEID.
+	mock.ExpectExec(reApplyCOL).
+		WithArgs("12002", "KEBAKARAN", "R", "1", "3").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	got, err := NewRepo(db).Decide(
+		context.Background(), "A", inboxacceptopenprotection.DecisionApprove, "P", at)
+	require.NoError(t, err)
+	require.Equal(t, "12002", got.Change.CauseOfLossAfter)
+	require.Equal(t, "1", got.Change.ObjectID)
+	require.Equal(t, "3", got.Change.ObjectCoverageID)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDecideTidakMenerapkanPenyebabKerugian menjaga keadaan yang TIDAK boleh menyentuh
+// coverage.
+//
+// Ketiganya berakhir COMMIT, bukan rollback: persetujuannya tetap sah. Inilah yang membuat
+// seluruh antrean warisan tipe '8' tetap dapat diputuskan.
+func TestDecideTidakMenerapkanPenyebabKerugian(t *testing.T) {
+	at := time.Date(2026, 9, 25, 2, 0, 0, 0, time.UTC)
+
+	kasus := map[string]struct {
+		rows *sqlmock.Rows
+		d    inboxacceptopenprotection.Decision
+	}{
+		"ditolak": {
+			detailRowCOL("A", "8", "12001", "12002", "1", "R", "1", "3"),
+			inboxacceptopenprotection.DecisionReject,
+		},
+		"warisan tanpa sasaran": {
+			detailRowCOL("A", "8", "12001", "12002", "1", "R", nil, nil),
+			inboxacceptopenprotection.DecisionApprove,
+		},
+		"warisan tanpa kode baru": {
+			detailRowCOL("A", "8", "12001", "", "1", "R", "1", "3"),
+			inboxacceptopenprotection.DecisionApprove,
+		},
+	}
+
+	for nama, c := range kasus {
+		t.Run(nama, func(t *testing.T) {
+			db, mock := newMock(t)
+			mock.ExpectBegin()
+			mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery(reGet).WillReturnRows(c.rows)
+			// Tanpa ExpectQuery/ExpectExec apa pun di antaranya: pemanggilan yang tidak
+			// diharapkan akan menggagalkan uji ini, dan itulah yang dijaga.
+			mock.ExpectCommit()
+
+			_, err := NewRepo(db).Decide(context.Background(), "A", c.d, "P", at)
+			require.NoError(t, err)
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+// TestDecideGagalMenerapkanPenyebabKerugian menjaga setiap jalur gagal MEMBATALKAN keputusan.
+func TestDecideGagalMenerapkanPenyebabKerugian(t *testing.T) {
+	at := time.Date(2026, 9, 25, 2, 0, 0, 0, time.UTC)
+	approve := inboxacceptopenprotection.DecisionApprove
+	baris := func() *sqlmock.Rows {
+		return detailRowCOL("A", "8", "12001", "12002", "1", "R", "1", "3")
+	}
+
+	t.Run("kode tidak ada di master", func(t *testing.T) {
+		db, mock := newMock(t)
+		mock.ExpectBegin()
+		mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery(reGet).WillReturnRows(baris())
+		mock.ExpectQuery(reDescribe).WillReturnRows(sqlmock.NewRows([]string{"DESCRIPTION"}))
+		mock.ExpectRollback()
+
+		_, err := NewRepo(db).Decide(context.Background(), "A", approve, "P", at)
+		require.ErrorIs(t, err, inboxacceptopenprotection.ErrUnknownCauseOfLoss)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// Barisnya ADA tetapi deskripsinya kosong. Menuliskannya akan menghapus nama penyebab
+	// kerugian pada coverage tanpa menghapus kodenya.
+	t.Run("deskripsi kosong", func(t *testing.T) {
+		db, mock := newMock(t)
+		mock.ExpectBegin()
+		mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery(reGet).WillReturnRows(baris())
+		mock.ExpectQuery(reDescribe).
+			WillReturnRows(sqlmock.NewRows([]string{"DESCRIPTION"}).AddRow("   "))
+		mock.ExpectRollback()
+
+		_, err := NewRepo(db).Decide(context.Background(), "A", approve, "P", at)
+		require.ErrorIs(t, err, inboxacceptopenprotection.ErrUnknownCauseOfLoss)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("master gagal dibaca", func(t *testing.T) {
+		db, mock := newMock(t)
+		mock.ExpectBegin()
+		mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery(reGet).WillReturnRows(baris())
+		mock.ExpectQuery(reDescribe).WillReturnError(errBasis)
+		mock.ExpectRollback()
+
+		_, err := NewRepo(db).Decide(context.Background(), "A", approve, "P", at)
+		require.ErrorIs(t, err, errBasis)
+		require.Contains(t, err.Error(), "deskripsi penyebab kerugian")
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("update gagal", func(t *testing.T) {
+		db, mock := newMock(t)
+		mock.ExpectBegin()
+		mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery(reGet).WillReturnRows(baris())
+		mock.ExpectQuery(reDescribe).
+			WillReturnRows(sqlmock.NewRows([]string{"DESCRIPTION"}).AddRow("KEBAKARAN"))
+		mock.ExpectExec(reApplyCOL).WillReturnError(errBasis)
+		mock.ExpectRollback()
+
+		_, err := NewRepo(db).Decide(context.Background(), "A", approve, "P", at)
+		require.ErrorIs(t, err, errBasis)
+		require.Contains(t, err.Error(), "menerapkan penyebab kerugian")
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// Coverage-nya sudah dibuang dari klaim setelah permintaan diajukan. Sama dengan DOL:
+	// keputusannya dibatalkan, bukan disimpan tanpa akibat.
+	t.Run("baris coverage sudah tidak ada", func(t *testing.T) {
+		db, mock := newMock(t)
+		mock.ExpectBegin()
+		mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery(reGet).WillReturnRows(baris())
+		mock.ExpectQuery(reDescribe).
+			WillReturnRows(sqlmock.NewRows([]string{"DESCRIPTION"}).AddRow("KEBAKARAN"))
+		mock.ExpectExec(reApplyCOL).WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectRollback()
+
+		_, err := NewRepo(db).Decide(context.Background(), "A", approve, "P", at)
+		require.ErrorIs(t, err, inboxacceptopenprotection.ErrClaimNotSynced)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("proteksi tanpa ID_CLAIM", func(t *testing.T) {
+		db, mock := newMock(t)
+		mock.ExpectBegin()
+		mock.ExpectExec(reDecide).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery(reGet).
+			WillReturnRows(detailRowCOL("A", "8", "12001", "12002", "1", "", "1", "3"))
+		mock.ExpectRollback()
+
+		_, err := NewRepo(db).Decide(context.Background(), "A", approve, "P", at)
+		require.ErrorIs(t, err, inboxacceptopenprotection.ErrClaimNotSynced)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }

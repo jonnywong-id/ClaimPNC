@@ -71,20 +71,25 @@
 -- Pernyataan sebelumnya bahwa kolom ini hanya berisi `"On Progress"` **dicabut**: itu hanya
 -- satu dari 22 nilai, dan penulis lainnya berada di luar export (`R-01`, `R-16`).
 --
--- Kolom "Status ASM" karena itu diisi `s.STS_SURVEY` pada langkah terakhir.
+-- `STS_SURVEY` karena itu **dibaca sebagai penyaring tab Invoice**, bukan sebagai isi kolom.
+-- Kolom layar "Status ASM" ternyata bukan ini sama sekali — ia `ASMSTATUS_1` yang berisi peran
+-- koasuransi, dan padanannya `T_CLAIM_PNC.LEADER_MEMBER`. Lihat PEMETAAN KOLOM di bawah.
 --
 -- ============================================================================
 -- C. APA YANG BELUM TERBAWA
 -- ============================================================================
 --
--- Empat isian masih menunggu, seluruhnya milik objek kerja `Work-SurveyClaim`. Namanya di
--- `T_SURVEYORLIST` TANPA akhiran `_1` — akhiran itu artefak perataan Pega:
+-- LIMA isian masih menunggu, seluruhnya milik objek kerja `Work-SurveyClaim`. Namanya di
+-- `T_SURVEYORLIST` memakai garis bawah dan TANPA akhiran `_1` — akhiran itu artefak perataan
+-- Pega, dan garis bawahnya mengikuti gaya tabel ini (`SURVEYOR_NAME`, `LOCATION_SURVEY`):
 --
---   kolom             menghidupkan                                       keadaan 2026-09-30
---   ----------------- -------------------------------------------------- ------------------
---   ADJUSTERACCEPT    tab Outstanding, ALL, dan Invoice                   ADA, masih KOSONG
---   PYSTATUSWORK      tab Close, dan penyaring "berkas masih terbuka"     ADA, masih KOSONG
---   REFNO             setengah kotak cari                                 ADA, masih KOSONG
+--   kolom                menghidupkan                                  keadaan 2026-10-05
+--   -------------------- --------------------------------------------- ------------------
+--   ADJUSTERACCEPT       tab Outstanding, ALL, dan Invoice              ADA, masih KOSONG
+--   PYSTATUSWORK         tab Close, penyaring "berkas masih terbuka"    ADA, masih KOSONG
+--   REFNO                kolom Reference No, setengah kotak cari        ADA, masih KOSONG
+--   ADJUSTER_PIC         kolom "PIC Loss Adjuster"                      ADA, masih KOSONG
+--   RESCHEDULE_LOCATION  kolom "Location"                               ADA, masih KOSONG
 --
 -- Kueri di bawah **belum membaca satu pun**. Seluruhnya sudah ada, dan justru itu yang
 -- berbahaya: kolom yang ADA tetapi KOSONG dibaca tanpa galat apa pun, lalu menjawab salah.
@@ -93,14 +98,17 @@
 -- salah. Ditahan sampai `claimpnc -periksa` melaporkan keterisiannya.
 -- Lihat `docs/permintaan-kolom-t-surveyorlist.md`.
 --
--- DUA KOLOM YANG SEMPAT ADA DI DAFTAR INI DAN SUDAH DICORET (2026-10-03):
+-- HATI-HATI: `ADJUSTER_PIC` adalah nama kolom DAN nama alias. Kueri daftar memakai
+-- `s.SURVEYOR_NAME AS ADJUSTER_PIC` — alias menamai kolom LAYAR, `s.` menamai kolom BASIS
+-- DATA. Keduanya akan menyatu (`s.ADJUSTER_PIC AS ADJUSTER_PIC`) begitu kolomnya terisi.
 --
---   ADJUSTERPIC  tidak pernah diperlukan. "Appointment No" berisi `SRV-xxxxx`, bukan nama
---                adjuster — dan nomor itu sudah ada sebagai `s.CASEID`.
---   REFNO sebagai asal kolom "Reference No"
---                keliru. `REFNO_1` dialiaskan "Province" di kedua kueri rujukan, dan properti
---                itu tidak termasuk 13 sel data grid. REFNO tetap diminta, tetapi untuk
---                kotak cari — bukan untuk kolom layar.
+-- DUA PERMINTAAN YANG DICORET (2026-10-03), dan cara gugurnya layak diingat:
+--
+--   ADJUSTER_PIC untuk "Appointment No"
+--                keliru — nomor itu `SRV-xxxxx`, dan sudah ada sebagai `s.CASEID`.
+--                Kolomnya tetap diminta, tetapi untuk "PIC Loss Adjuster".
+--   ASMSTATUS    tidak perlu — `T_CLAIM_PNC.LEADER_MEMBER` sudah membawanya, diukur dengan
+--                nol pertentangan pada 17.633 baris. Usulan Work Owner.
 --
 -- ## Kenapa `STS_SURVEY` tidak dapat menggantikan `PYSTATUSWORK`
 --
@@ -557,8 +565,8 @@ SELECT COUNT(c.CLAIMID)           AS PROBE_CLAIM_ID,
 SELECT COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERACCEPT'     THEN 1 END) AS HAS_ACCEPT,
        COUNT(CASE WHEN COLUMN_NAME = 'REFNO'              THEN 1 END) AS HAS_REFERENCE,
        COUNT(CASE WHEN COLUMN_NAME = 'PYSTATUSWORK'       THEN 1 END) AS HAS_WORK_STATUS,
-       COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTERPIC'        THEN 1 END) AS HAS_ADJUSTER_PIC,
-       COUNT(CASE WHEN COLUMN_NAME = 'RESCHEDULELOCATION' THEN 1 END) AS HAS_SURVEY_LOCATION
+       COUNT(CASE WHEN COLUMN_NAME = 'ADJUSTER_PIC'        THEN 1 END) AS HAS_ADJUSTER_PIC,
+       COUNT(CASE WHEN COLUMN_NAME = 'RESCHEDULE_LOCATION' THEN 1 END) AS HAS_SURVEY_LOCATION
   FROM ALL_TAB_COLUMNS
  WHERE OWNER = 'POOLDATA'
    AND TABLE_NAME = 'T_SURVEYORLIST'
@@ -585,8 +593,8 @@ SELECT COUNT(*)                     AS TOTAL_ROWS,
        COUNT(s.ADJUSTERACCEPT)      AS FILLED_ACCEPT,
        COUNT(s.REFNO)               AS FILLED_REFERENCE,
        COUNT(s.PYSTATUSWORK)        AS FILLED_WORK_STATUS,
-       COUNT(s.ADJUSTERPIC)         AS FILLED_ADJUSTER_PIC,
-       COUNT(s.RESCHEDULELOCATION)  AS FILLED_SURVEY_LOCATION
+       COUNT(s.ADJUSTER_PIC)         AS FILLED_ADJUSTER_PIC,
+       COUNT(s.RESCHEDULE_LOCATION)  AS FILLED_SURVEY_LOCATION
   FROM POOLDATA.T_SURVEYORLIST s
 
 -- name: check_kpi

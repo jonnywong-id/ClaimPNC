@@ -103,6 +103,26 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			})
 			return
 
+		// Klaim yang dicari tidak ada — BUKAN proteksi yang tidak ada.
+		//
+		// Pesannya sengaja berbeda dari ErrNotFound di atas: pengguna yang mengetik nomor
+		// klaim salah harus membaca bahwa KLAIM-nya yang tidak ketemu, bukan permintaan
+		// proteksinya. Dua keadaan berbeda dengan satu pesan akan membuatnya mencari
+		// kesalahan di tempat yang salah.
+		//
+		// # Ini MENGUBAH perilaku yang sudah ada, dan itu disengaja
+		//
+		// Sebelum ini `ErrClaimNotFound` tidak dipetakan sama sekali, sehingga ia jatuh ke
+		// cadangan dan dijawab **500** — termasuk pada `GET /klaim/{nomor}` yang sudah ada.
+		// Nomor klaim yang salah ketik adalah kesalahan PENGGUNA, dan menjawabnya sebagai
+		// kegagalan server membuat frontend tidak dapat membedakannya dari gangguan nyata.
+		case errors.Is(err, inputreqprotection.ErrClaimNotFound):
+			writeJSON(w, r, http.StatusNotFound, ErrorResponse{
+				Code:    CodeNotFound,
+				Message: "Klaim tidak ditemukan.",
+			})
+			return
+
 		case errors.Is(err, inputreqprotection.ErrLocked):
 			writeJSON(w, r, http.StatusConflict, ErrorResponse{
 				Code:    CodeConflict,

@@ -90,14 +90,13 @@ function stubFetch(
 
     // Dokumen penunjang dijawab daftar KOSONG secara baku.
     //
-    // Hari ini cabang ini TIDAK PERNAH terpakai: sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF`
-    // bernilai `false` sampai modul GCS disiapkan, sehingga panelnya tidak menembak server
-    // sama sekali.
+    // Sejak sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF` dinyalakan (2026-10-03), cabang ini
+    // BENAR-BENAR terpakai: panelnya dirender pada form akseptasi, dan membuka satu baris
+    // selalu menembak jalur ini.
     //
-    // Ia tetap dipasang karena begitu sakelarnya dinyalakan, panelnya ikut dirender pada
-    // form akseptasi dan membuka satu baris akan selalu menembak jalur ini. Tanpa cabang
-    // ini, setiap uji di berkas ini menerima badan daftar proteksi sebagai daftar dokumen —
-    // dan yang gagal bukan panelnya, melainkan uji yang sedang menguji hal lain.
+    // Tanpa cabang ini, setiap uji di berkas ini menerima badan daftar proteksi sebagai
+    // daftar dokumen — dan yang gagal bukan panelnya, melainkan uji yang sedang menguji hal
+    // lain.
     if (url.includes('/dokumen-penunjang')) {
       return Promise.resolve(jsonResponse(200, { data: [] }))
     }

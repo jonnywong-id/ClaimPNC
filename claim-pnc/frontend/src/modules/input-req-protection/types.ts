@@ -60,12 +60,28 @@ export type ChangeDetail = {
   dol_sebelum: string
   dol_baru: string
 
-  /** Keduanya dipakai tipe `8` (Perubahan Cause Of Loss). */
+  /**
+   * Keduanya dipakai tipe `8` (Perubahan Cause Of Loss), dan sejak 2026-10-05 keduanya
+   * berisi KODE `D_COL_ID` — bukan deskripsi.
+   *
+   * Keputusan Work Owner: "old data new data simpan idcol aja". Dengan begitu perbandingan
+   * "dari apa menjadi apa" tidak pernah bergantung pada teks yang dapat berubah di master.
+   */
   penyebab_kerugian: string
   penyebab_kerugian_master: string
 
   nama_objek: string
   nama_cabang: string
+
+  /**
+   * SASARAN perubahan tipe `8` — baris coverage yang Penyebab Kerugiannya hendak diubah.
+   *
+   * Dikembalikan supaya form suntingan dapat menandai kembali baris yang dipilih pemohon.
+   * KOSONG pada tipe lain dan pada seluruh baris warisan Pega: di sana sasarannya hidup di
+   * dalam blob properti dan tidak pernah menjadi kolom.
+   */
+  id_objek: string
+  id_coverage: string
 }
 
 /** Satu permintaan proteksi beserta isian formnya. */
@@ -114,8 +130,59 @@ export type ChangeRequestFields = {
   /** "Next Date Of Loss" — wajib untuk tipe `7`. */
   dol_baru: string
 
-  /** "Next Cause Of Loss" — wajib untuk tipe `8`. */
+  /** "Next Cause Of Loss" — wajib untuk tipe `8`. Berisi KODE (`D_COL_ID`), bukan teks. */
   penyebab_kerugian_baru: string
+
+  /**
+   * Baris coverage yang dipilih pemohon pada panel Detail Perubahan Cause Of Loss.
+   * Wajib untuk tipe `8`.
+   *
+   * Keduanya datang dari SATU tombol Pilih, jadi tidak pernah terisi sebagian. Satu klaim
+   * dapat punya banyak coverage bernama sama — pada klaim `PNC-1452`, `Resiko A` muncul
+   * tiga kali dengan Penyebab Kerugian berbeda, dan yang membedakannya hanya `id_coverage`.
+   */
+  id_objek: string
+  id_coverage: string
+}
+
+/** Satu baris panel "Detail Perubahan Cause Of Loss". */
+export type CoverageRow = {
+  id_objek: string
+  id_coverage: string
+  nama_objek: string
+  nama_coverage: string
+
+  /** Keadaan SEKARANG baris ini — kolom "Cause of Loss". */
+  penyebab_kerugian: string
+
+  /**
+   * Kodenya. Akseptasi mengubah deskripsi DAN kode sekaligus, sehingga keduanya ditampilkan
+   * berdampingan — kolom yang namanya berkata satu hal dan kodenya berkata hal lain adalah
+   * persis keadaan yang hendak dicegah.
+   */
+  penyebab_kerugian_id: string
+}
+
+/** Isi respons daftar coverage. */
+export type CoverageListResponse = {
+  coverage: CoverageRow[]
+}
+
+/** Satu pilihan dropdown "Next Cause Of Loss". */
+export type CauseOfLossOption = {
+  /** `D_COL_ID` — nilai yang DISIMPAN, dan yang kelak ditulis ke `CAUSEOFLOSSID` klaim. */
+  kode: string
+
+  /** Teks yang dibaca pengguna. */
+  nama: string
+
+  /** `LOSS_CODE`. Ditampilkan berdampingan supaya pilihan bernama mirip dapat dibedakan. */
+  kode_kerugian: string
+}
+
+/** Isi respons daftar penyebab kerugian. */
+export type CauseOfLossListResponse = {
+  penyebab_kerugian: CauseOfLossOption[]
 }
 
 /** Hasil pencarian klaim; seluruhnya HANYA DIBACA di layar. */

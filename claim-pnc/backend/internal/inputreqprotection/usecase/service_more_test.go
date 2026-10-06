@@ -37,18 +37,18 @@ func (f *failingRepo) HasDuplicate(ctx context.Context, k inputreqprotection.Dup
 	return f.Repo.HasDuplicate(ctx, k, except)
 }
 
-func (f *failingRepo) Create(ctx context.Context, d inputreqprotection.Draft, c inputreqprotection.Claim, by string, at time.Time) (inputreqprotection.Protection, error) {
+func (f *failingRepo) Create(ctx context.Context, d inputreqprotection.Draft, c inputreqprotection.Claim, sel inputreqprotection.CoverageRow, by string, at time.Time) (inputreqprotection.Protection, error) {
 	if f.createErr != nil {
 		return inputreqprotection.Protection{}, f.createErr
 	}
-	return f.Repo.Create(ctx, d, c, by, at)
+	return f.Repo.Create(ctx, d, c, sel, by, at)
 }
 
-func (f *failingRepo) Update(ctx context.Context, n string, d inputreqprotection.Draft, c inputreqprotection.Claim, by string, at time.Time) (inputreqprotection.Protection, error) {
+func (f *failingRepo) Update(ctx context.Context, n string, d inputreqprotection.Draft, c inputreqprotection.Claim, sel inputreqprotection.CoverageRow, by string, at time.Time) (inputreqprotection.Protection, error) {
 	if f.updateErr != nil {
 		return inputreqprotection.Protection{}, f.updateErr
 	}
-	return f.Repo.Update(ctx, n, d, c, by, at)
+	return f.Repo.Update(ctx, n, d, c, sel, by, at)
 }
 
 // failingTypes adalah master tipe yang selalu gagal.
@@ -82,6 +82,7 @@ func defaultStores(repo inputreqprotection.Repo) inputreqprotection.Stores {
 		Protections: repo,
 		Types:       memory.NewTypeRepoWithSamples(),
 		Claims:      memory.NewClaimRepoWithSamples(),
+		Causes:      memory.NewCauseRepoWithSamples(),
 	}
 }
 
