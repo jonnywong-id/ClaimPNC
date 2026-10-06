@@ -38,13 +38,15 @@ func listRows() *sqlmock.Rows {
 func TestListRunsTheTabQueryWithItsBindsAndMapsTheRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
-	// Bind-nya EMPAT, bukan enam: kueri daftar tidak lagi menggabung tabel objek kerja Pega,
-	// melainkan membaca `POOLDATA.TC_PNC_PUCL` sendirian. `WorkClassClaim` dan
-	// `RCLPUCLWorkbasket` karena itu tidak lagi diikat di sini.
+	// Bind-nya LIMA, bukan enam seperti bentuk lama yang menggabung tabel objek kerja Pega:
+	// kueri daftar membaca `POOLDATA.TC_PNC_PUCL` sendirian, sehingga `WorkClassClaim` dan
+	// `RCLPUCLWorkbasket` tidak lagi diikat. Yang kelima adalah status kerja DITOLAK —
+	// pengganti gabungan tabel penugasan yang dahulu menyembunyikan klaim tertutup.
 	mock.ExpectQuery(exactly("list_cetak_surat")).
 		WithArgs(
 			inboxrclpucl.WorkStatusCompleted,
 			inboxrclpucl.ExpiryStatusActive,
+			inboxrclpucl.WorkStatusRejected,
 			50, // halaman 2 × 50
 			50,
 		).
@@ -89,6 +91,7 @@ func TestListOfTheMSIGTabBindsTheMarker(t *testing.T) {
 			inboxrclpucl.WorkStatusCompleted,
 			inboxrclpucl.PUCLReturnedToAnalyst,
 			inboxrclpucl.MSIGMarker,
+			inboxrclpucl.WorkStatusRejected,
 			0,
 			inboxrclpucl.DefaultPageSize,
 		).
@@ -112,6 +115,7 @@ func TestListOfTheKelengkapanDokumenTabRunsItsOwnQuery(t *testing.T) {
 		WithArgs(
 			inboxrclpucl.WorkStatusCompleted,
 			inboxrclpucl.PUCLReturnedToAnalyst,
+			inboxrclpucl.WorkStatusRejected,
 			0,
 			inboxrclpucl.DefaultPageSize,
 		).

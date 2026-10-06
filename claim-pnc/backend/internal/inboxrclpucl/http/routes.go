@@ -117,9 +117,9 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// akibat kedua. Alamatnya bersarang pada klaimnya karena yang diubah adalah klaim
 		// itu, bukan sumber daya tersendiri.
 		//
-		// EMPAT dari lima tindakan ditangani sendiri, dan seluruhnya menulis
+		// KELIMA tindakan ditangani sendiri sejak 2026-10-06, dan seluruhnya menulis
 		// `POOLDATA.TC_PNC_PUCL` — tabel milik aplikasi ini, bukan tabel engine Pega.
-		// Yang tersisa menempuh layanan Pega hanyalah "Tolak Klaim".
+		// Tidak ada lagi yang menempuh layanan Pega.
 		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}", h.PerformAction)
 
 		// Aksi tulis sistem lama yang BELUM punya jalur. Rutenya ADA supaya tindakan di layar

@@ -314,11 +314,41 @@ const RCLPUCLWorkbasket = "RCLPUCL"
 //
 // Penyaringnya `<>`, bukan `=`. Satu tanda yang salah membalik seluruh isi layar: yang
 // tampil menjadi klaim yang sudah tuntas, dan tidak ada apa pun di layar yang menandakannya.
-//
-// Perhatikan ia HANYA menyebut `Resolved-Completed`. `Resolved-Rejected` TIDAK dikecualikan,
-// sehingga klaim yang ditolak TETAP muncul — dan itu memang benar: klaim yang ditolak justru
-// pekerjaan utama antrean RCL.
 const WorkStatusCompleted = "Resolved-Completed"
+
+// WorkStatusRejected adalah status kerja yang ditulis "Tolak Klaim" — dan ia pun DIKELUARKAN
+// dari ketiga tab.
+//
+// # Report Definition hanya menyebut satu, dan itu BUKAN berarti yang lain ikut tampil
+//
+// `pyFilterLogic` ketiga Report Definition memang hanya menyebut `Resolved-Completed`.
+// Catatan sebelumnya menyimpulkan dari situ bahwa klaim `Resolved-Rejected` "TETAP muncul,
+// dan itu memang benar". Kesimpulan itu KELIRU, dan sebabnya terbaca dari kuerinya sendiri:
+// ketiga Report Definition menggabung `PC_ASSIGN_WORKBASKET` secara INNER JOIN
+// (`RDB List/ReminderPUCL-SQL.xml`), sehingga klaim yang penugasannya sudah tidak ada
+// TIDAK PERNAH sampai ke penyaring status kerja.
+//
+// Penugasan itulah yang dihapus `ASMForceCaseClose`, dan "Tolak Klaim" memanggilnya —
+// `Activity/PUCLPost-Act.xml` langkah 42 dan 43, keduanya `WorkStatus = Resolved-Rejected`,
+// `CloseAllSubCases = true`, berprekondisi `param.Status=="0" && RCL_PUCL==1`. Jadi di Pega
+// klaim yang ditolak memang hilang dari layar ini — bukan lewat penyaring status, melainkan
+// lewat penugasan yang lenyap.
+//
+// Port ini membaca `TC_PNC_PUCL` tanpa gabungan penugasan (lihat kepala berkas `.sql`),
+// sehingga mekanisme itu tidak ada. Penggantinya adalah menyebut status kerjanya langsung.
+// Tanpa itu, klaim yang baru saja ditolak duduk selamanya di tab "Kelengkapan Dokumen".
+//
+// Pembacaan ini sejalan dengan seluruh modul lain di aplikasi ini, yang memperlakukan kedua
+// status `Resolved-*` sebagai "sudah keluar dari inbox siapa pun" —
+// `inboxadmin` dan `dashboardclaim` menulis `NOT IN ('Resolved-Completed','Resolved-Rejected')`
+// apa adanya dari rule-nya.
+//
+// # Yang perlu disadari pada data yang SUDAH ada
+//
+// `T_CLAIMLIST_ADMIN` memuat 7 baris ber-`Resolved-Rejected` (`docs/kolom-t-claimlist-admin.md`
+// §B.3). Bila baris sepadan ada di `TC_PNC_PUCL`, ia kini tidak lagi tergambar — dan memang
+// tidak tergambar pula di Pega, karena penugasannya sudah tidak ada.
+const WorkStatusRejected = "Resolved-Rejected"
 
 // Jalur penanganan klaim.
 //
@@ -502,6 +532,16 @@ const (
 	// bukan nilai yang diterima. Ia ditulis di sini supaya kedua nilai kolom ini terbaca
 	// berdampingan: tanpa pasangannya, `PUCLReturnedToAnalyst` terbaca seolah satu-satunya
 	// nilai yang mungkin.
+	//
+	// # Ia JUGA nilai yang ditulis "Tolak Klaim", dan itu terbaca berlawanan
+	//
+	// `PUCLPost` langkah 12 menulis `"0"` pada jalur `Status = "0"` — klaim yang DITUTUP.
+	// Jadi kolom ini tidak menyatakan "masih dikerjakan"; ia menyatakan **klaimnya tidak
+	// dikembalikan ke Analyst**, dan "ditutup sebagai ditolak" memang bukan pengembalian.
+	//
+	// Yang mengeluarkan klaim tertutup dari layar BUKAN kolom ini melainkan
+	// WorkStatusRejected. Membaca kolom ini sendirian akan menyimpulkan klaim yang ditolak
+	// masih menjadi pekerjaan PUCL — dan itu tidak benar.
 	PUCLWithPUCL = "0"
 
 	// MSIGMarker adalah nilai `MSIG_1` yang menempatkan klaim di tab "Klaim MSIG" —
@@ -1171,6 +1211,23 @@ const (
 	// supaya riwayat tugas menyebut APA yang memindahkannya, dan jejaknya dapat dilacak
 	// kembali ke rule Pega yang sama.
 	TicketSendToAnalyst = "SendtoAnalysator"
+
+	// TaskReasonForceCaseClose adalah alasan penutupan tugas yang dicatat "Tolak Klaim".
+	//
+	// Ia BUKAN nama ticket — "Tolak Klaim" tidak melepas satu pun. `SetTicket` pada
+	// `PUCLPost` langkah 17 berprekondisi `param.Status==1`, sementara tombol ini mengirim
+	// `"0"`. Yang menutup tugasnya adalah `ASMForceCaseClose`, dan nama itulah yang dicatat
+	// supaya jejak tugas menunjuk ke rule yang benar-benar menutupnya.
+	TaskReasonForceCaseClose = "ASMForceCaseClose"
+
+	// StageNameRejected adalah label tahap yang ditulis ke `T_CLAIMLIST_ADMIN.PXTASKLABEL`
+	// sesudah klaim ditolak.
+	//
+	// Kasusnya TUTUP, sehingga ia bukan nama tahap melainkan keadaan akhir. Teksnya tidak
+	// dikarang: `inboxadmin` sudah memetakan `PYSTATUSWORK = 'Resolved-Rejected'` menjadi
+	// **"Reject"** untuk digambar (`internal/inboxadmin/repo/sqlstore/inboxadmin.sql`), dan
+	// memakai teks yang sama membuat kedua layar menyebut keadaan yang sama dengan satu kata.
+	StageNameRejected = "Reject"
 )
 
 // Teks riwayat yang ditulis tiap tombol — parameter `statusNote` `InsertHistoryClaimPNC`.
@@ -1188,10 +1245,30 @@ const (
 	HistoryNotePrintLetter   = "Wait for Complete PUCL Document "
 	HistoryNoteSendToAnalyst = "Send by PUCL to Analyst"
 	HistoryNoteSendToPIC     = "send by PUCL to PIC Teknis"
+
+	// HistoryNoteRejectClaim adalah catatan "Tolak Klaim" — `<statusNote>` `PUCLPost`
+	// langkah 36.
+	//
+	// # Di Pega ia BERSYARAT, di sini TIDAK — dan itu disengaja
+	//
+	// Prekondisi langkah itu `param.Status=="0" && RCL_PUCL==1 && local.isCFS=="1"`, dan
+	// `local.isCFS` baru bernilai `"1"` bila klaimnya sudah punya tanggal OS Akseptasi
+	// (langkah 9). Klaim yang ditolak SEBELUM pernah diakseptasi karena itu tidak
+	// meninggalkan satu baris riwayat pun di Pega — penutupan kasusnya tidak tercatat di
+	// mana-mana.
+	//
+	// Di sini catatannya ditulis SELALU. `D-59` menjadikan jejak audit satu-satunya kontrol
+	// pengimbang karena tidak ada pemisahan tugas, dan "klaim ditutup tanpa jejak siapa yang
+	// menutupnya" adalah persis lubang yang kontrol itu ada untuk menutupnya. Selisihnya satu
+	// baris riwayat LEBIH pada sebagian klaim, bukan perbedaan status atau nilai.
+	//
+	// Dinyatakan di sini supaya `S-8` dapat menggolongkannya sebagai selisih yang
+	// direncanakan, bukan menemukannya sebagai kejutan.
+	HistoryNoteRejectClaim = "RCL and Close Claim"
 )
 
 // HistoryNoteFor memilih teks riwayat satu tindakan. Kosong berarti tindakan itu TIDAK
-// menulis riwayat — "Tolak Klaim" dan "Save" memang tidak.
+// menulis riwayat — "Save" memang tidak, karena ia tidak memanggil `PUCLPost` sama sekali.
 //
 // Ia di paket domain, bukan di adapter, karena DUA jalur memakainya: jalur yang ditangani
 // sendiri dan jalur yang menempuh layanan Pega. Dua salinan akan dapat berselisih, dan
@@ -1204,6 +1281,8 @@ func HistoryNoteFor(kind ClaimActionKind) string {
 		return HistoryNoteSendToAnalyst
 	case ActionSendToPICTeknik:
 		return HistoryNoteSendToPIC
+	case ActionRejectClaim:
+		return HistoryNoteRejectClaim
 	default:
 		return ""
 	}
@@ -1718,6 +1797,50 @@ type Repo interface {
 	// tugas di tabel ini.
 	MoveToSendToAnalyst(ctx context.Context, reference, caller string) error
 
+	// RejectClaim MENUTUP klaim sebagai ditolak — tombol "Tolak Klaim".
+	//
+	// # Ia activity yang SAMA dengan kedua tombol Kirim, hanya `Status` berbeda
+	//
+	// Ketiganya memanggil `PUCLPost`. Yang membedakan hanya parameternya, dan perbedaan satu
+	// karakter itu membalik tujuan tombolnya:
+	//
+	//	Status "1"  langkah 11  PUCLApprove := "1"   langkah 17  SetTicket(SendtoAnalysator)
+	//	                        StatusClaim := 1151              -> klaim DITERUSKAN ke Analyst
+	//
+	//	Status "0"  langkah 12  PUCLApprove := "0"   langkah 42, 43
+	//	                                             ASMForceCaseClose(Resolved-Rejected)
+	//	                                             -> kasusnya DITUTUP
+	//
+	// `SetTicket` tidak berjalan pada jalur ini (prekondisinya `param.Status==1`), sehingga
+	// tidak ada tahap tujuan sama sekali — klaimnya tidak berpindah ke siapa pun, ia selesai.
+	//
+	// # Apa yang WAJIB berubah, dan kenapa ketiganya
+	//
+	//	TC_PNC_PUCL.PUCL_APPROVE  := "0"                 langkah 12, apa adanya
+	//	TC_PNC_PUCL.STATUS_WORK   := Resolved-Rejected   akibat ASMForceCaseClose
+	//	tugas terbuka klaim       := ditutup             akibat CloseAllSubCases
+	//
+	// Yang ketiga adalah padanan penghapusan penugasan. Tanpanya klaim tetap tergambar
+	// sebagai pekerjaan seseorang di inbox lain, padahal kasusnya sudah tutup — dan tidak
+	// ada galat yang menandainya.
+	//
+	// TIDAK ada tugas baru yang dibuka. Itu pembeda satu-satunya terhadap
+	// MoveToSendToAnalyst, dan ia yang membuat kedua jalur tidak dapat disatukan menjadi
+	// satu fungsi berparameter: "tutup lalu buka" dan "tutup saja" adalah dua keadaan akhir
+	// yang berbeda, dan yang membedakannya tidak boleh berupa satu argumen yang mudah
+	// terbalik.
+	//
+	// # Kenapa ia TIDAK menempuh layanan Pega
+	//
+	// Karena ketiga tulisannya seluruhnya pada tabel milik aplikasi ini — `TC_PNC_PUCL`,
+	// `CPNC_TUGAS`, `T_CLAIMLIST_ADMIN`. Tidak satu pun tabel engine Pega disentuh, sehingga
+	// `P-1` tidak dilanggar. Alasan "Kirim Ke Analyst" dahulu harus menempuh Pega — inbox
+	// Analyst membaca `PC_ASSIGN_WORKLIST` — tidak berlaku di sini: tombol ini tidak
+	// mengirim klaim ke inbox siapa pun.
+	//
+	// Kunci yang tidak ditemukan menghasilkan ErrClaimNotFound, dan TIDAK ada yang ditulis.
+	RejectClaim(ctx context.Context, reference, caller string) error
+
 	// SaveReceipt menyimpan kedua isian Penerimaan Dokumen yang DAPAT DIKETIK petugas.
 	//
 	// Ia melayani tombol "Save". Lihat ReceiptInput untuk apa yang disimpan dan kenapa hanya
@@ -2016,10 +2139,14 @@ type ClaimActionCommand struct {
 // selesai mengembalikan klaim kepada PIC Teknik — tujuan yang ditegaskan Work Owner.
 //
 // Karena itu kedua tombol Kirim TIDAK lagi melewati seam ini; keduanya memakai
-// Repo.ReturnToAnalyst. Yang tersisa di seam ini adalah tindakan yang memang menuntut Pega:
-// "Download Dokumen" (membuat PDF dan mengirim email), "Tolak Klaim", dan "Save".
+// Repo.ReturnToAnalyst. "Download Dokumen", "Save", dan — sejak 2026-10-06 — "Tolak Klaim"
+// menyusul, masing-masing lewat method Repo-nya sendiri.
 //
-// Saat Pega dimatikan, pengisi ini diganti logika kami sendiri; yang memakainya tidak berubah.
+// # Seam ini kini TIDAK DIPAKAI tindakan mana pun, dan tetap dipertahankan
+//
+// Bukan karena ragu, melainkan karena `ClaimActionKind` masih dapat bertambah. Menghapusnya
+// berarti tindakan baru yang belum punya penanganan jatuh diam-diam ke "berhasil tanpa
+// melakukan apa-apa" alih-alih ditolak dengan alasan.
 type ClaimActions interface {
 	// Perform menjalankan satu tindakan pada satu klaim.
 	//

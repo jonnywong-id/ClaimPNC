@@ -238,7 +238,7 @@
 -- `ASM-FW-GCNMFW-WORK PNC-1865`. Tautan lama berbentuk panjang itu TIDAK akan ditemukan.
 --
 -- Bind: :1 status kerja yang dikecualikan · :2 nilai STATUS_CASE yang diterima
---       :3 offset · :4 jumlah baris
+--       :3 status kerja ditolak yang dikecualikan · :4 offset · :5 jumlah baris
 SELECT p.CLAIMID                        AS REFERENCE,
        p.CLAIMID                        AS CASE_ID,
        p.POLICY_NO                      AS POLICY_NUMBER,
@@ -255,8 +255,9 @@ SELECT p.CLAIMID                        AS REFERENCE,
  WHERE p.STATUS_WORK <> :1
    AND p.TGL_CETAK_DOKUMEN_PUCL IS NULL
    AND p.STATUS_CASE = :2
+   AND (p.STATUS_WORK IS NULL OR p.STATUS_WORK <> :3)
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
+OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: list_kelengkapan_dokumen
 -- Tab "Kelengkapan Dokumen" — surat sudah dicetak, belum disetujui, bukan jalur MSIG.
@@ -264,7 +265,7 @@ OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 -- — SQL hasil generate-nya ada utuh di RDB List/ReminderPUCL-SQL.xml
 --
 -- Bind: :1 status kerja yang dikecualikan · :2 nilai PUCL_APPROVE yang dikecualikan
---       :3 offset · :4 jumlah baris
+--       :3 status kerja ditolak yang dikecualikan · :4 offset · :5 jumlah baris
 SELECT p.CLAIMID                        AS REFERENCE,
        p.CLAIMID                        AS CASE_ID,
        p.POLICY_NO                      AS POLICY_NUMBER,
@@ -282,8 +283,9 @@ SELECT p.CLAIMID                        AS REFERENCE,
    AND p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
    AND p.PUCL_APPROVE <> :2
    AND p.MSIG IS NULL
+   AND (p.STATUS_WORK IS NULL OR p.STATUS_WORK <> :3)
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
+OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: list_klaim_msig
 -- Tab "Klaim MSIG" — sama seperti list_kelengkapan_dokumen, tetapi jalur MSIG.
@@ -302,7 +304,8 @@ OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 -- ini dinyatakan ke pengguna lewat Tab.Notice, bukan disamarkan.
 --
 -- Bind: :1 status kerja yang dikecualikan · :2 nilai PUCL_APPROVE yang dikecualikan
---       :3 penanda jalur MSIG · :4 offset · :5 jumlah baris
+--       :3 penanda jalur MSIG · :4 status kerja ditolak yang dikecualikan
+--       :5 offset · :6 jumlah baris
 SELECT p.CLAIMID                        AS REFERENCE,
        p.CLAIMID                        AS CASE_ID,
        p.POLICY_NO                      AS POLICY_NUMBER,
@@ -320,8 +323,9 @@ SELECT p.CLAIMID                        AS REFERENCE,
    AND p.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
    AND p.PUCL_APPROVE <> :2
    AND p.MSIG = :3
+   AND (p.STATUS_WORK IS NULL OR p.STATUS_WORK <> :4)
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
+OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 
 -- name: daily_report
 -- LAPORAN HARIAN RCL/PUCL — keluaran tombol ekspor tab "Cetak Surat".
@@ -1044,6 +1048,74 @@ UPDATE POOLDATA.TC_PNC_PUCL
        STATUS_CLAIM           = :2,
        TGL_CETAK_DOKUMEN_PUCL = CURRENT_TIMESTAMP
  WHERE TRIM(CLAIMID) = TRIM(:3)
+
+-- name: reject_claim
+-- MENUTUP klaim sebagai ditolak — tombol "Tolak Klaim".
+--
+-- # Ketiga kolomnya, dan dari langkah mana
+--
+--	langkah  4   .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL := @CurrentDateTime()
+--	langkah 12   .ClaimData.PUCLStatus.PUCLApprove             := "0"
+--	langkah 42   ASMForceCaseClose(WorkStatus = "Resolved-Rejected")
+--	langkah 43   idem - dipanggil DUA KALI, berketerangan "(2x supaya sts jadi reject)"
+--
+-- Langkah 4 tanpa prekondisi, sehingga ia berjalan untuk SETIAP tombol yang memanggil
+-- `PUCLPost` — termasuk tombol ini. Ditiru apa adanya (`P-5`), sama seperti pada
+-- `return_to_analyst`.
+--
+-- Pemanggilan ganda langkah 42-43 TIDAK ditiru. Keduanya menulis nilai yang sama persis, dan
+-- satu `UPDATE` menghasilkan keadaan akhir yang identik; yang di Pega menuntut dua panggilan
+-- adalah mesin alur kerjanya, bukan datanya.
+--
+-- # `STATUS_CLAIM` sengaja TIDAK disentuh
+--
+-- `PUCLPost` menulisnya pada jalur ini hanya di langkah 39 — `"1143"`, Close Claim for this
+-- object — dan langkah itu berprekondisi `local.isCFS=="1"`, yang baru benar bila klaimnya
+-- sudah punya tanggal OS Akseptasi (langkah 9). Menuliskannya tanpa syarat akan mengubah
+-- status klaim yang di Pega tidak berubah.
+--
+-- # Kenapa `STATUS_WORK` yang ditulis, bukan penanda lain
+--
+-- Karena itulah yang `ASMForceCaseClose` tulis, dan karena ketiga kueri daftar di atas kini
+-- mengecualikannya — lihat `inboxrclpucl.WorkStatusRejected`. Tanpa kolom ini klaim yang
+-- baru ditolak tetap duduk di tab "Kelengkapan Dokumen", karena `PUCL_APPROVE = '0'` justru
+-- MENAHANNYA di sana.
+--
+-- Bind: :1 nilai PUCL_APPROVE sesudah ditolak · :2 status kerja ditolak · :3 nomor klaim
+UPDATE POOLDATA.TC_PNC_PUCL
+   SET PUCL_APPROVE           = :1,
+       STATUS_WORK            = :2,
+       TGL_CETAK_DOKUMEN_PUCL = CURRENT_TIMESTAMP
+ WHERE TRIM(CLAIMID) = TRIM(:3)
+
+-- name: mirror_daftar_kerja_tolak
+-- Baris daftar kerja **My Inbox** klaim yang DITUTUP sebagai ditolak.
+--
+-- Ia sepupu `mirror_daftar_kerja`, dan dipisah karena menulis kolom yang BERBEDA:
+--
+--	mirror_daftar_kerja        pemilik BARU  + nama tahap  -> klaim berpindah tangan
+--	mirror_daftar_kerja_tolak  pemilik KOSONG + status kerja -> klaim tidak di tangan siapa pun
+--
+-- `PXASSIGNEDOPERATORID` dikosongkan karena kasusnya tutup: tidak ada lagi orang yang
+-- memegangnya, dan membiarkannya terisi menampilkan klaim tertutup di My Inbox petugas
+-- RCL/PUCL tanpa satu pun tindakan yang dapat dilakukan padanya.
+--
+-- `PYSTATUSWORK` ikut ditulis supaya layar lain yang membaca tabel INI melihat keadaan yang
+-- sama dengan `TC_PNC_PUCL`. Kolomnya sudah memuat `Resolved-Rejected` pada 7 baris
+-- (`docs/kolom-t-claimlist-admin.md` §B.3), jadi nilainya bukan bentuk baru bagi tabel ini.
+--
+-- Tabel kerja Pega TIDAK disentuh (`P-1`). Klaim yang lahir di Pega karena itu tetap
+-- tergambar di inbox Pega sampai Pega sendiri menutupnya — konsekuensi masa paralel yang
+-- sama dengan seluruh tindakan lain di modul ini.
+--
+-- NOL BARIS BUKAN GALAT: tidak setiap klaim punya baris di tabel ini.
+--
+-- Bind: :1 status kerja ditolak · :2 label tahap · :3 nomor klaim
+UPDATE POOLDATA.T_CLAIMLIST_ADMIN
+   SET PXASSIGNEDOPERATORID = NULL,
+       PYSTATUSWORK         = :1,
+       PXTASKLABEL          = :2
+ WHERE PYID = :3
 
 -- name: save_receipt
 -- Menyimpan kedua isian Penerimaan Dokumen yang dapat diketik — tombol "Save".

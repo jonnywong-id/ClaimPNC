@@ -155,7 +155,11 @@ func TestTiapTindakanMengirimParameterPUCLPostYangBENAR(t *testing.T) {
 		status, tipe, statusCase, statusNote string
 	}{
 		{inboxrclpucl.ActionPrintLetter, "", "cetak", "1", "Wait for Complete PUCL Document "},
-		{inboxrclpucl.ActionRejectClaim, "0", "dokumen", "", ""},
+		// "Tolak Klaim" TIDAK lagi menempuh layanan ini — ia ditangani sendiri sejak
+		// 2026-10-06 (lihat Repo.RejectClaim). Barisnya dipertahankan karena petanya masih
+		// memuatnya: bila layanannya kelak dipakai untuk tindakan ini lagi, parameternya
+		// harus tetap yang ini.
+		{inboxrclpucl.ActionRejectClaim, "0", "dokumen", "", "RCL and Close Claim"},
 		// Huruf besar pada "Send" — berbeda dari "send by PUCL to PIC Teknis" di bawahnya,
 		// dan keduanya ditiru persis dari `<statusNote>` masing-masing langkah.
 		{inboxrclpucl.ActionSendToAnalyst, "1", "dokumen", "", "Send by PUCL to Analyst"},

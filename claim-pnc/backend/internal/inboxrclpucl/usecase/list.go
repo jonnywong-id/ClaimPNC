@@ -494,9 +494,16 @@ func (s *Service) PerformAction(
 	// hidup di `TC_PNC_PUCL` — tabel milik aplikasi ini. Klaimnya kembali kepada PIC Teknik
 	// yang SUDAH memegang baris penugasannya; lihat Repo.ReturnToAnalyst.
 	//
-	// Ketiga tindakan lain tetap menempuh Pega, dan bukan karena kehati-hatian melainkan
-	// karena isinya: "Download Dokumen" membuat PDF dan mengirim email berlampiran, "Tolak
-	// Klaim" dan "Save" menyentuh isian yang tidak dibaca layar ini.
+	// SEJAK 2026-10-06 tidak ada satu pun tombol layar ini yang menempuh layanan Pega.
+	// "Tolak Klaim" adalah yang terakhir berpindah; lihat Repo.RejectClaim untuk sebabnya —
+	// ketiga tulisannya seluruhnya pada tabel milik aplikasi ini, sehingga alasan yang
+	// menahan kedua tombol Kirim dahulu tidak berlaku padanya.
+	//
+	// Jalur `s.actions.Perform` di kaki fungsi ini karena itu TIDAK LAGI TERJANGKAU oleh
+	// tindakan mana pun yang dikenali. Ia sengaja dipertahankan: `ClaimActionKind` masih
+	// dapat bertambah, dan menghapusnya berarti tindakan baru jatuh diam-diam ke `nil, nil`
+	// alih-alih ditolak.
+	//
 	// "Save" ditangani SENDIRI pula, dan ia menyimpan apa yang DIKETIK petugas.
 	//
 	// Di layar lama tombolnya menempuh `SaveInputRegisterDetail2`, yang berakhir pada
@@ -546,6 +553,45 @@ func (s *Service) PerformAction(
 			// Kegagalan menerbitkan surat TIDAK membatalkan tindakannya. Klaimnya sudah
 			// berpindah tab, dan mengembalikan galat di sini akan membuat petugas menekan
 			// tombolnya lagi — tanpa akibat, karena penandaannya sudah terjadi.
+			s.logLetterFailure(portalAlias, cleanCaller.Login, detail.ClaimNumber, err)
+			return nil, nil
+		}
+		return doc, nil
+	}
+
+	// "Tolak Klaim" — MENUTUP klaim sebagai ditolak.
+	//
+	// # Ia activity yang SAMA dengan kedua tombol Kirim, hanya `Status` berbeda
+	//
+	// Ketiganya memanggil `PUCLPost`. `Status = "1"` melepas ticket `SendtoAnalysator`
+	// (langkah 17) sehingga klaim DITERUSKAN; `Status = "0"` tidak melepas satu pun ticket
+	// dan justru memanggil `ASMForceCaseClose(Resolved-Rejected)` (langkah 42 dan 43),
+	// sehingga kasusnya DITUTUP. Peta lengkapnya ada di seam Repo.RejectClaim.
+	//
+	// # Urutannya: tutup dulu, catat kemudian
+	//
+	// Alasannya sama dengan kedua tombol Kirim: yang dapat MENOLAK dikerjakan lebih dulu,
+	// supaya penolakan tidak meninggalkan jejak separuh jalan. Di sini penutupannya sendiri
+	// satu transaksi, sehingga yang tersisa sesudahnya hanyalah pelengkap — riwayat dan surat.
+	//
+	// Keduanya TIDAK membatalkan penolakan bila gagal. Klaimnya sudah tertutup, dan
+	// mengembalikan galat hanya akan membuat petugas menekan tombolnya lagi tanpa akibat.
+	if kind == inboxrclpucl.ActionRejectClaim {
+		if err := repo.RejectClaim(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menolak klaim %s: %w", key, err)
+		}
+
+		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
+		s.recordHistory(ctx, repo, portalAlias, detail, kind, cleanCaller.Login)
+
+		// Suratnya tetap terbit — `AttachAsPDFC` berprekondisi `1==1`, sehingga ia berjalan
+		// berapa pun `param.Status`. Pada jalur RCL namanya `RCL.pdf`, yaitu surat penolakan
+		// yang memang menjadi keluaran tombol ini.
+		doc, err := s.issueLetter(ctx, repo, detail, cleanCaller.Login)
+		if err != nil {
 			s.logLetterFailure(portalAlias, cleanCaller.Login, detail.ClaimNumber, err)
 			return nil, nil
 		}

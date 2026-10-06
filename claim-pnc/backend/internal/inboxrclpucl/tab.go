@@ -501,13 +501,19 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "Satu tombol masih dikerjakan di Pega: \"Tolak Klaim\". Tujuh lainnya " +
-			"berjalan di sini.",
+		Summary: "Seluruh tombol layar kerja kini berjalan di sini; tidak ada lagi yang " +
+			"menunggu layanan Pega.",
 
-		Detail: "Download Dokumen, Save, Unggah Dokumen, kedua tombol Kirim, serta ✚ " +
-			"Tambah dan Hapus berjalan penuh. \"Tolak Klaim\" menempuh layanan Pega, dan " +
-			"layanan itu belum dibangun. Tombolnya tetap digambar supaya keberadaannya " +
-			"terlihat, dan penekanannya menjawab alasan, bukan halaman kosong.",
+		Detail: "\"Tolak Klaim\" adalah yang terakhir berpindah, pada 2026-10-06. Ia " +
+			"menjalankan activity yang SAMA dengan kedua tombol Kirim — PUCLPost — hanya " +
+			"dengan Status \"0\" alih-alih \"1\", dan perbedaan satu karakter itu membalik " +
+			"tujuannya: Status \"1\" melepas ticket SendtoAnalysator sehingga klaim " +
+			"diteruskan ke Analyst, sedangkan Status \"0\" memanggil ASMForceCaseClose " +
+			"sehingga kasusnya DITUTUP dengan status kerja Resolved-Rejected. Ketiga " +
+			"tulisannya seluruhnya pada tabel milik aplikasi ini, sehingga tidak ada yang " +
+			"dibutuhkan dari Pega. Yang TIDAK terjadi: penugasan di Pega tidak disentuh " +
+			"(P-1), sehingga klaim yang lahir di Pega masih terlihat di antrean Pega sampai " +
+			"Pega sendiri menutupnya — sama seperti kedua tombol Kirim.",
 	},
 
 	{
@@ -582,8 +588,8 @@ var PlannedDifferences = []Difference{
 			"PDF-nya dibentuk, dilampirkan ke klaim, lalu dibuka. Tetapi pada langkah yang " +
 			"sama tanggal cetak dokumen ikut terisi, dan kolom itulah yang menentukan klaim " +
 			"berada di tab \"Cetak Surat\" atau sudah pindah ke \"Kelengkapan Dokumen\". Jadi " +
-			"ia bukan tombol lihat-lihat: sekali ditekan, klaimnya berpindah. Itu sebabnya ia " +
-			"ikut terhalang di sini. Yang TIDAK terjadi padanya adalah penutupan klaim — " +
+			"ia bukan tombol lihat-lihat: sekali ditekan, klaimnya berpindah. Yang TIDAK " +
+			"terjadi padanya adalah penutupan klaim — " +
 			"langkah itu dilewati untuk jalur cetak, dan hanya berlaku pada \"Tolak Klaim\" " +
 			"di jalur RCL.",
 	},
