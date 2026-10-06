@@ -288,7 +288,10 @@ describe('layar kerja klaim', () => {
     // Objek dan coverage terisi dari polis saat klaim dibuka; namanya ikut kembali supaya
     // tidak hilang saat disimpan.
     expect(objek[0]?.coverage[0]?.nama).toBe('All Risk')
-    expect(screen.getByLabelText('Nama coverage')).toHaveValue('All Risk')
+
+    // Jaminan tersembunyi sampai baris objeknya dibuka; nilainya tetap ikut terkirim.
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /^Buka jaminan objek/ })[0]!)
+    expect(screen.getByLabelText('Nama coverage jaminan 1 objek 1')).toHaveValue('All Risk')
   })
 
   // Sistem lama menampilkan satu pesan, lalu pesan berikutnya setelah disimpan ulang.

@@ -20,7 +20,37 @@ type PolicyItems struct {
 // NewPolicyItems membentuk pembaca objek polis.
 func NewPolicyItems(db *sql.DB) *PolicyItems { return &PolicyItems{db: db} }
 
-// Items membaca objek dan coverage polis pada versi snapshot klaim.
+// objectQuery dan coverageQuery memetakan tabel sumber sebuah lini ke kueri objek dan
+// kueri coverage-nya. Keduanya dipisah supaya pasangan untuk setiap lini terbaca
+// berdampingan, bukan tersebar di dalam fungsi yang memakainya.
+var objectQuery = map[registrasi.PolicySource]string{
+	registrasi.SourcePerson:   "polis_objek_person",
+	registrasi.SourceProperty: "polis_objek_property",
+	registrasi.SourceCargo:    "polis_objek_cargo",
+	registrasi.SourceAneka:    "polis_objek_aneka",
+}
+
+var coverageQuery = map[registrasi.PolicySource]string{
+	registrasi.SourcePerson:   "polis_coverage_person",
+	registrasi.SourceProperty: "polis_coverage_property",
+	registrasi.SourceCargo:    "polis_coverage_cargo",
+	registrasi.SourceAneka:    "polis_coverage_aneka",
+}
+
+// Items membaca objek, coverage, dan spreading polis pada versi snapshot klaim.
+//
+// Tiga kueri dijalankan, bukan satu per objek: objeknya, SELURUH coverage polis, dan
+// SELURUH spreading polis. Penggabungannya terjadi di sini lewat INDEXOBJECT dan
+// INDEXCOVERAGE.
+//
+// # Kenapa digabung di Go, bukan dengan JOIN
+//
+// Karena satu baris hasil JOIN tiga tabel mengulang kolom objek sebanyak jumlah baris
+// spreading-nya, dan kolom nama objek pada lini Fire berukuran besar. Yang lebih
+// menentukan: coverage TANPA spreading harus tetap muncul. Ia yang membuat gerbang
+// validasi berkata "total spreading bukan 100 persen" alih-alih menghilangkan
+// coverage-nya diam-diam. OUTER JOIN dapat melakukannya, tetapi tiga kueri datar jauh
+// lebih mudah dibaca dan diperiksa satu per satu saat produksi bermasalah.
 func (p *PolicyItems) Items(ctx context.Context, policy registrasi.Policy) ([]registrasi.SourceItem, error) {
 	number := strings.TrimSpace(policy.Number)
 	version := strings.TrimSpace(policy.ProdKe)
@@ -29,60 +59,205 @@ func (p *PolicyItems) Items(ctx context.Context, policy registrasi.Policy) ([]re
 	}
 
 	source := registrasi.SourceOf(policy)
-	name := map[registrasi.PolicySource]string{
-		registrasi.SourcePerson:   "polis_objek_person",
-		registrasi.SourceProperty: "polis_objek_property",
-		registrasi.SourceCargo:    "polis_objek_cargo",
-		registrasi.SourceAneka:    "polis_objek_aneka",
-	}[source]
 
-	rows, err := p.db.QueryContext(ctx, loadQuery(name), number, version)
+	item, key, err := p.objects(ctx, source, number, version)
 	if err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: membaca objek polis (%s): %w", source, err)
+		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	if len(item) == 0 {
+		return nil, nil
+	}
 
-	var result []registrasi.SourceItem
-	var index []string // INDEXOBJECT tiap objek property, untuk kueri coverage-nya
-	for rows.Next() {
-		var a, b, c, d sql.NullString
-		if err := rows.Scan(&a, &b, &c, &d); err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris objek polis: %w", err)
-		}
-		if source == registrasi.SourceProperty {
-			// INDEXOBJECT, OBJECTNO, OBJECTNAME, ASMADDRESS.
-			result = append(result, registrasi.SourceItem{ID: text(b), Name: text(c), Location: text(d)})
-			index = append(index, text(a))
-			continue
-		}
-		coverage, err := parseCoverages(d.String)
-		if err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: dokumen coverage objek %s: %w", text(a), err)
-		}
-		result = append(result, registrasi.SourceItem{ID: text(a), Name: text(b), Location: text(c), Coverage: coverage})
+	spreading, err := p.spreading(ctx, number, version)
+	if err != nil {
+		return nil, err
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: menelusuri objek polis: %w", err)
+	coverage, err := p.coverages(ctx, source, number, version, spreading)
+	if err != nil {
+		return nil, err
 	}
-	_ = rows.Close()
-
-	for i := range result {
-		if source != registrasi.SourceProperty {
-			break
-		}
-		coverage, err := p.propertyCoverages(ctx, number, version, index[i])
-		if err != nil {
-			return nil, err
-		}
-		result[i].Coverage = coverage
+	for i := range item {
+		item[i].Coverage = coverage[key[i]]
 	}
 
 	names, err := p.treatyNames(ctx)
 	if err != nil {
 		return nil, err
 	}
-	nameTreaties(result, names)
-	return result, nil
+	nameTreaties(item, names)
+	return item, nil
+}
+
+// objects membaca baris objek polis dan mengembalikan kunci penggabungannya.
+//
+// Kunci dikembalikan terpisah karena lini Fire memakai OBJECTNO sebagai ID objek klaim
+// sementara coverage-nya tergabung lewat INDEXOBJECT. Menyimpan kunci di dalam SourceItem
+// akan membocorkan rincian penyimpanan ke tipe domain.
+func (p *PolicyItems) objects(
+	ctx context.Context,
+	source registrasi.PolicySource,
+	number, version string,
+) ([]registrasi.SourceItem, []string, error) {
+	rows, err := p.db.QueryContext(ctx, loadQuery(objectQuery[source]), number, version)
+	if err != nil {
+		return nil, nil, fmt.Errorf("registrasi/sqlstore: membaca objek polis (%s): %w", source, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var item []registrasi.SourceItem
+	var key []string
+	for rows.Next() {
+		var index, id, name, location sql.NullString
+		if err := rows.Scan(&index, &id, &name, &location); err != nil {
+			return nil, nil, fmt.Errorf("registrasi/sqlstore: membaca baris objek polis: %w", err)
+		}
+		item = append(item, registrasi.SourceItem{ID: text(id), Name: text(name), Location: text(location)})
+		key = append(key, joinKey(index))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("registrasi/sqlstore: menelusuri objek polis: %w", err)
+	}
+	return item, key, nil
+}
+
+// coverages membaca seluruh coverage polis, dikelompokkan menurut INDEXOBJECT.
+//
+// Urutan baris di dalam satu objek adalah urutan kueri, sehingga coverage tampil pada
+// urutan yang sama dengan dokumen lama.
+func (p *PolicyItems) coverages(
+	ctx context.Context,
+	source registrasi.PolicySource,
+	number, version string,
+	spreading spreadingIndex,
+) (map[string][]registrasi.SourceCoverage, error) {
+	rows, err := p.db.QueryContext(ctx, loadQuery(coverageQuery[source]), number, version)
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca coverage polis (%s): %w", source, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := map[string][]registrasi.SourceCoverage{}
+	for rows.Next() {
+		var object, index, code, name, tsi, sumTSI, sublimit, deleted sql.NullString
+		if err := rows.Scan(&object, &index, &code, &name, &tsi, &sumTSI, &sublimit, &deleted); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris coverage polis: %w", err)
+		}
+		objectKey := joinKey(object)
+		result[objectKey] = append(result[objectKey], registrasi.SourceCoverage{
+			Code:        text(code),
+			Name:        text(name),
+			TSI:         parseMoney(tsi.String),
+			SumTSI:      parseMoney(sumTSI.String),
+			TSISublimit: parseMoney(sublimit.String),
+			Deleted:     isFlagged(deleted),
+			Spreading:   spreading.of(objectKey, joinKey(index), text(code)),
+		})
+	}
+	return result, rows.Err()
+}
+
+// spreadingIndex menyimpan baris spreading satu polis dengan dua kunci.
+//
+// byIndex adalah kunci utama (INDEXOBJECT + INDEXCOVERAGE); byCode adalah cadangan
+// (INDEXOBJECT + kode coverage) yang dipakai hanya bila kunci utama tidak memberi satu
+// baris pun. Alasannya di komentar kueri polis_spreading.
+type spreadingIndex struct {
+	byIndex map[string][]registrasi.SourceSpreading
+	byCode  map[string][]registrasi.SourceSpreading
+}
+
+func (s spreadingIndex) of(object, index, code string) []registrasi.SourceSpreading {
+	if row := s.byIndex[spreadingKey(object, index)]; len(row) > 0 {
+		return row
+	}
+	if code == "" {
+		return nil
+	}
+	return s.byCode[spreadingKey(object, code)]
+}
+
+// spreadingKey menyatukan dua bagian kunci dengan pemisah yang tidak mungkin muncul di
+// dalam nilai kolomnya. Perangkaian polos akan membuat pasangan ("1", "23") dan
+// ("12", "3") bertabrakan.
+func spreadingKey(object, second string) string { return object + "\x00" + second }
+
+// spreading membaca seluruh baris spreading satu polis.
+func (p *PolicyItems) spreading(ctx context.Context, number, version string) (spreadingIndex, error) {
+	result := spreadingIndex{
+		byIndex: map[string][]registrasi.SourceSpreading{},
+		byCode:  map[string][]registrasi.SourceSpreading{},
+	}
+
+	rows, err := p.db.QueryContext(ctx, loadQuery("polis_spreading"), number, version)
+	if err != nil {
+		return result, fmt.Errorf("registrasi/sqlstore: membaca spreading polis: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var object, index, code, treaty, treatyName, share, deleted sql.NullString
+		if err := rows.Scan(&object, &index, &code, &treaty, &treatyName, &share, &deleted); err != nil {
+			return result, fmt.Errorf("registrasi/sqlstore: membaca baris spreading polis: %w", err)
+		}
+		value, _ := parsePercent(share.String)
+		row := registrasi.SourceSpreading{
+			TreatyType: text(treaty),
+			TreatyName: text(treatyName),
+			Share:      value,
+			Deleted:    isFlagged(deleted),
+		}
+		objectKey := joinKey(object)
+
+		indexKey := spreadingKey(objectKey, joinKey(index))
+		result.byIndex[indexKey] = append(result.byIndex[indexKey], row)
+
+		if c := text(code); c != "" {
+			codeKey := spreadingKey(objectKey, c)
+			result.byCode[codeKey] = append(result.byCode[codeKey], row)
+		}
+	}
+	return result, rows.Err()
+}
+
+// joinKey menormalkan nilai kunci penggabungan.
+//
+// INDEXOBJECT dan INDEXCOVERAGE bertipe berbeda antartabel — NUMBER pada sebagian,
+// VARCHAR2 pada yang lain — sehingga nilai yang sama dapat datang sebagai "1" dan "01".
+// Nol di depan karena itu dibuang pada nilai yang seluruhnya angka. Tanpa ini, spreading
+// sebuah coverage hilang tanpa galat apa pun, dan gejalanya muncul jauh dari sebabnya:
+// gerbang validasi menolak klaim karena total spreading tidak genap seratus.
+//
+// Nilai yang BUKAN angka dibiarkan apa adanya; memangkas nol di depan teks akan mengubah
+// kunci yang memang berbentuk kode.
+func joinKey(value sql.NullString) string {
+	raw := strings.TrimSpace(value.String)
+	if raw == "" {
+		return ""
+	}
+	for _, r := range raw {
+		if r < '0' || r > '9' {
+			return raw
+		}
+	}
+	if trimmed := strings.TrimLeft(raw, "0"); trimmed != "" {
+		return trimmed
+	}
+	return "0"
+}
+
+// isFlagged membaca satu kolom bendera.
+//
+// Kolomnya bertipe teks pada seluruh tabel coverage dan spreading, tetapi isinya ditulis
+// bermacam-macam oleh sistem polis: "1", "0", "Y", kosong, maupun NULL. Yang diperlakukan
+// sebagai menyala hanya "1" dan "Y" — sama seperti dokumen lama yang menguji
+// FlagDelete sama dengan "1".
+func isFlagged(value sql.NullString) bool {
+	switch strings.ToUpper(strings.TrimSpace(value.String)) {
+	case "1", "Y":
+		return true
+	default:
+		return false
+	}
 }
 
 // treatyNames membaca NOTE master REINSURANCETYPE per ID — nama yang ditampilkan dropdown
@@ -119,64 +294,6 @@ func nameTreaties(items []registrasi.SourceItem, names map[string]string) {
 	}
 }
 
-// propertyCoverages menggabungkan coverage seluruh baris satu INDEXOBJECT.
-//
-// Satu objek Fire dapat tercatat di lebih dari satu baris (satu per item properti), dan
-// activity lama mengadopsi dokumen tiap baris ke halaman yang sama. Coverage yang sama
-// karena itu dapat muncul lebih dari sekali; yang dipakai adalah kemunculan pertama.
-func (p *PolicyItems) propertyCoverages(ctx context.Context, number, version, indexObject string) ([]registrasi.SourceCoverage, error) {
-	rows, err := p.db.QueryContext(ctx, loadQuery("polis_coverage_property"), number, version, indexObject)
-	if err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: membaca coverage objek properti %s: %w", indexObject, err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []registrasi.SourceCoverage
-	seen := map[string]bool{}
-	for rows.Next() {
-		var doc sql.NullString
-		if err := rows.Scan(&doc); err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: membaca dokumen coverage properti: %w", err)
-		}
-		list, err := parseCoverages(doc.String)
-		if err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: dokumen coverage properti %s: %w", indexObject, err)
-		}
-		for _, c := range list {
-			if seen[c.Code] {
-				continue
-			}
-			seen[c.Code] = true
-			result = append(result, c)
-		}
-	}
-	return result, rows.Err()
-}
-
-// coverageDoc adalah bagian dokumen coverage polis yang dipakai.
-//
-// PA dan Travel menyimpan daftarnya di ASMCoverage; lini lain di CoverageList.
-type coverageDoc struct {
-	CoverageList []coverageJSON `json:"CoverageList"`
-	ASMCoverage  []coverageJSON `json:"ASMCoverage"`
-}
-
-type coverageJSON struct {
-	Coverage      jsonText        `json:"Coverage"`
-	CoverageNote  jsonText        `json:"CoverageNote"`
-	TSI           jsonText        `json:"TSI"`
-	SumTSI        jsonText        `json:"SumTSI"`
-	TSISublimit   jsonText        `json:"TSISublimit"`
-	FlagDelete    jsonText        `json:"FlagDelete"`
-	SpreadingList []spreadingJSON `json:"SpreadingList"`
-}
-
-type spreadingJSON struct {
-	TreatyType      jsonText `json:"TreatyType"`
-	SharePercentage jsonText `json:"SharePercentage"`
-	FlagDelete      jsonText `json:"FlagDelete"`
-}
-
 // jsonText menerima nilai JSON berupa teks maupun angka. Dokumen polis mencampur
 // keduanya ("100.0000" dan 100 untuk kolom yang sama).
 type jsonText string
@@ -197,44 +314,6 @@ func (t *jsonText) UnmarshalJSON(data []byte) error {
 	}
 	*t = jsonText(strings.TrimSpace(string(data)))
 	return nil
-}
-
-// parseCoverages mengurai dokumen coverage. Dokumen kosong berarti tanpa coverage.
-func parseCoverages(document string) ([]registrasi.SourceCoverage, error) {
-	document = strings.TrimSpace(document)
-	if document == "" {
-		return nil, nil
-	}
-	var doc coverageDoc
-	if err := json.Unmarshal([]byte(document), &doc); err != nil {
-		return nil, err
-	}
-	list := doc.CoverageList
-	if len(list) == 0 {
-		list = doc.ASMCoverage
-	}
-
-	result := make([]registrasi.SourceCoverage, 0, len(list))
-	for _, c := range list {
-		coverage := registrasi.SourceCoverage{
-			Code:        string(c.Coverage),
-			Name:        string(c.CoverageNote),
-			TSI:         parseMoney(string(c.TSI)),
-			SumTSI:      parseMoney(string(c.SumTSI)),
-			TSISublimit: parseMoney(string(c.TSISublimit)),
-			Deleted:     string(c.FlagDelete) == "1",
-		}
-		for _, s := range c.SpreadingList {
-			share, _ := parsePercent(string(s.SharePercentage))
-			coverage.Spreading = append(coverage.Spreading, registrasi.SourceSpreading{
-				TreatyType: string(s.TreatyType),
-				Share:      share,
-				Deleted:    string(s.FlagDelete) == "1",
-			})
-		}
-		result = append(result, coverage)
-	}
-	return result, nil
 }
 
 // parseMoney membaca rupiah bertipe teks ("97200000.0000") menjadi sen, dibulatkan ke

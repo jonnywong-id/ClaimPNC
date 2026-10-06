@@ -45,6 +45,7 @@ import {
   type AreaOption,
   type CauseOfLossOption,
   type Claim,
+  type InsuredItem,
   type Violation,
   type RegisterRequest,
   type Task,
@@ -361,6 +362,9 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   }, [klaim, reset])
 
   const objek = useFieldArray({ control, name: 'objek' })
+  // Objek yang baru ditambahkan: barisnya digambar sudah terbuka. Menambah objek lalu
+  // mendapati tidak ada yang terjadi adalah tombol yang tampak rusak.
+  const [addedItem, setAddedItem] = useState<number | null>(null)
   const fieldErrors = messagesByField(violations)
   const hubungan = watch('pelapor_hubungan')
   const suspicious = watch('prinsip_mengenal_nasabah') === CustomerPrinciple.Suspicious
@@ -550,23 +554,74 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         )}
         {fieldErrors['spreading'] && <p className="mb-3 text-sm text-red-700">{fieldErrors['spreading']}</p>}
 
-        <div className="space-y-4">
-          {objek.fields.map((f, i) => (
-            <InsuredItemEditor
-              key={f.id}
-              index={i}
-              control={control}
-              register={register}
-              setValue={setValue}
-              businessCode={klaim.polis.kode_bisnis ?? ''}
-              onRemove={() => objek.remove(i)}
-            />
-          ))}
+        {/*
+          Grid objek Section/InputRegisterDetail-sect.xml. Kolomnya diturunkan dari sana:
+          Nama (.ObjectName), Perkerjaan (.ObjectJob), Tanggal Lahir (.ObjectDateOfBirth)
+          untuk lini PA. Lini lain memakai Nama Objek dan Lokasi, mengikuti konvensi
+          ShowObjectAdj yang sudah dipakai layar Surveyor — satu konvensi kolom untuk dua
+          layar, bukan dua konvensi yang berbeda untuk hal yang sama.
+
+          Ejaan judulnya "Pekerjaan", bukan "Perkerjaan" seperti di Pega. Salah ketik itu
+          tidak dibawa karena layar Surveyor di aplikasi ini sudah menulisnya benar, dan
+          dua ejaan berbeda untuk kolom yang sama di dua layar lebih membingungkan
+          daripada selisih satu huruf terhadap Pega.
+        */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <caption className="sr-only">Objek pertanggungan beserta jaminannya</caption>
+            <thead>
+              <tr className="bg-slate-100 text-left text-xs text-slate-700">
+                {/* Kolom tombol buka-tutup. Judulnya kosong: tombolnya sudah ber-aria-label. */}
+                <th scope="col" className="w-8 border border-slate-300 p-2" />
+                <th scope="col" className="w-10 border border-slate-300 p-2 text-right">#</th>
+                <th scope="col" className="border border-slate-300 p-2">Kode Objek</th>
+                <th scope="col" className="border border-slate-300 p-2">
+                  {pa ? 'Nama' : 'Nama Objek'}
+                </th>
+                {pa ? (
+                  <>
+                    <th scope="col" className="border border-slate-300 p-2">Pekerjaan</th>
+                    <th scope="col" className="border border-slate-300 p-2">Tanggal Lahir</th>
+                  </>
+                ) : (
+                  <th scope="col" className="border border-slate-300 p-2">Lokasi</th>
+                )}
+                <th scope="col" className="w-20 border border-slate-300 p-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {objek.fields.length === 0 && (
+                <tr>
+                  <td colSpan={pa ? 7 : 6} className="border border-slate-300 p-2 text-xs text-slate-500">
+                    Data Tidak Ada
+                  </td>
+                </tr>
+              )}
+              {objek.fields.map((f, i) => (
+                <InsuredItemEditor
+                  key={f.id}
+                  index={i}
+                  pa={pa}
+                  defaultOpen={i === addedItem}
+                  currency={klaim.polis.mata_uang ?? ''}
+                  control={control}
+                  register={register}
+                  setValue={setValue}
+                  businessCode={klaim.polis.kode_bisnis ?? ''}
+                  person={klaim.objek[i]}
+                  onRemove={() => objek.remove(i)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <button
           type="button"
-          onClick={() => objek.append({ id: '', nama: '', lokasi: '', coverage: [] })}
+          onClick={() => {
+            setAddedItem(objek.fields.length)
+            objek.append({ id: '', nama: '', lokasi: '', coverage: [] })
+          }}
           className="mt-4 rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
         >
           Tambah objek
@@ -900,69 +955,241 @@ const Toggle = forwardRef<
   )
 })
 
+/**
+ * InsuredItemEditor menggambar SATU objek sebagai dua baris tabel: baris datanya, dan
+ * baris jaminannya yang membentang seluruh kolom.
+ *
+ * # Kenapa dua baris, bukan satu kartu
+ *
+ * Karena objek berjajar dalam kolom yang sama dapat dibandingkan sekilas — nama di bawah
+ * nama, tanggal di bawah tanggal. Pada kartu bertumpuk, isian yang sama berpindah tempat
+ * di setiap objek, dan mata harus mencarinya satu per satu. Itulah bentuk grid di
+ * `Section/InputRegisterDetail-sect.xml`, dan alasannya sama.
+ *
+ * Jaminan tetap berada di baris terpisah di bawah objeknya: ia punya tabel spreading
+ * sendiri, dan menyelipkannya ke dalam satu sel akan merusak perjajaran yang baru saja
+ * dibangun.
+ */
+/**
+ * Disclosure adalah tombol buka-tutup satu baris grid.
+ *
+ * Ia `aria-expanded`, bukan sekadar tanda panah yang berputar: pembaca layar harus tahu
+ * baris itu sedang terbuka atau tertutup, dan panah hanyalah gambar.
+ */
+function Disclosure({ open, label, onClick }: { open: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      aria-label={label}
+      onClick={onClick}
+      className="flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-600 hover:bg-slate-100"
+    >
+      <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+    </button>
+  )
+}
+
+/**
+ * InsuredItemEditor menggambar SATU objek sebagai baris grid yang dapat dibuka.
+ *
+ * # Kenapa jaminannya disembunyikan sampai dibuka
+ *
+ * Karena satu klaim Fire dapat memuat belasan objek, dan setiap objek memuat beberapa
+ * jaminan yang masing-masing punya tabel spreading sendiri. Menggambar seluruhnya
+ * sekaligus menghasilkan halaman yang harus digulung berlayar-layar hanya untuk
+ * menemukan objek kedua — dan perjajaran kolom yang menjadi alasan grid ini dibuat
+ * justru hilang karenanya.
+ *
+ * Baris yang BARU DITAMBAHKAN petugas terbuka dengan sendirinya. Menambah objek lalu
+ * mendapati tidak ada yang terjadi adalah tombol yang tampak rusak.
+ */
 function InsuredItemEditor({
   index,
+  pa,
+  defaultOpen,
+  currency,
   control,
   register,
   setValue,
   businessCode,
+  person,
   onRemove,
 }: {
   index: number
+  pa: boolean
+  /** Baris yang baru ditambahkan terbuka saat digambar pertama kali. */
+  defaultOpen: boolean
+  /** Mata uang polis — `pyWorkPage.Policy.Currency` pada grid jaminan Pega. */
+  currency: string
   control: Control<RegisterFormValues>
   register: UseFormRegister<RegisterFormValues>
   setValue: UseFormSetValue<RegisterFormValues>
   businessCode: string
+  /**
+   * Objek yang sama dari klaim tersimpan, dipakai HANYA untuk Pekerjaan dan Tanggal
+   * Lahir.
+   *
+   * Keduanya milik peserta di `T_PERSONLIST` polis dan tidak pernah disunting di sini,
+   * sehingga keduanya tidak ikut masuk ke keadaan formulir. Objek yang baru ditambahkan
+   * petugas belum punya pasangannya di klaim — di situ nilainya memang tidak ada.
+   */
+  person: InsuredItem | undefined
   onRemove: () => void
 }) {
   const coverage = useFieldArray({ control, name: `objek.${index}.coverage` })
+  const [open, setOpen] = useState(defaultOpen)
+  // Jaminan yang baru ditambahkan: barisnya digambar dengan spreading sudah terbuka.
+  const [addedCoverage, setAddedCoverage] = useState<number | null>(null)
+  const columns = pa ? 7 : 6
+  const name = person?.nama?.trim() || `baris ${index + 1}`
 
   return (
-    <div className="rounded border border-slate-200 bg-slate-50 p-3">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <FormField id={`objek-${index}-id`} label="Kode objek" {...register(`objek.${index}.id`)} />
-        <FormField id={`objek-${index}-nama`} label="Nama objek" {...register(`objek.${index}.nama`)} />
-        <FormField id={`objek-${index}-lokasi`} label="Lokasi objek" {...register(`objek.${index}.lokasi`)} />
-      </div>
-
-      <div className="mt-3 space-y-3">
-        {coverage.fields.map((f, j) => (
-          <CoverageEditor
-            key={f.id}
-            itemIndex={index}
-            index={j}
-            control={control}
-            register={register}
-            setValue={setValue}
-            businessCode={businessCode}
-            onRemove={() => coverage.remove(j)}
+    <>
+      <tr className="border border-slate-300 align-top">
+        <td className="border border-slate-300 p-1 text-center">
+          <Disclosure
+            open={open}
+            label={`${open ? 'Tutup' : 'Buka'} jaminan objek ${name}`}
+            onClick={() => setOpen((v) => !v)}
           />
-        ))}
-      </div>
+        </td>
+        <td className="border border-slate-300 p-2 text-right text-slate-500">{index + 1}</td>
+        <td className="border border-slate-300 p-1">
+          <input
+            aria-label={`Kode objek baris ${index + 1}`}
+            className="w-full rounded border border-slate-300 px-2 py-1"
+            {...register(`objek.${index}.id`)}
+          />
+        </td>
+        <td className="border border-slate-300 p-1">
+          <input
+            aria-label={`${pa ? 'Nama' : 'Nama objek'} baris ${index + 1}`}
+            className="w-full rounded border border-slate-300 px-2 py-1"
+            {...register(`objek.${index}.nama`)}
+          />
+        </td>
+        {pa ? (
+          <>
+            {/*
+              Pekerjaan dan Tanggal Lahir dibaca dari polis dan TIDAK dapat disunting di
+              sini. Keduanya digambar sebagai teks, bukan isian yang dimatikan: isian
+              berwarna abu-abu tampak seperti sesuatu yang seharusnya dapat diisi tetapi
+              sedang terkunci, padahal ia memang bukan milik layar ini.
+            */}
+            <td className="border border-slate-300 p-2">{person?.pekerjaan || '—'}</td>
+            <td className="border border-slate-300 p-2">{birthDate(person?.tanggal_lahir)}</td>
+          </>
+        ) : (
+          <td className="border border-slate-300 p-1">
+            <input
+              aria-label={`Lokasi objek baris ${index + 1}`}
+              className="w-full rounded border border-slate-300 px-2 py-1"
+              {...register(`objek.${index}.lokasi`)}
+            />
+          </td>
+        )}
+        <td className="border border-slate-300 p-1 text-center">
+          {/*
+            Label terbacanya "Hapus" supaya kolom Aksi tetap sempit, tetapi aria-label-nya
+            menyebut objek dan nomor barisnya. Tanpa itu, satu layar memuat belasan tombol
+            bernama "Hapus" yang semuanya terdengar sama bagi pembaca layar — dan tiga di
+            antaranya membuang hal yang berbeda: objek, jaminan, dan baris spreading.
+          */}
+          <button
+            type="button"
+            aria-label={`Hapus objek baris ${index + 1}`}
+            onClick={onRemove}
+            className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+          >
+            Hapus
+          </button>
+        </td>
+      </tr>
 
-      <div className="mt-3 flex gap-3">
-        <button
-          type="button"
-          onClick={() => coverage.append({ id: '', nama: '', penyebab_kerugian: '', tsi: '', spreading: [] })}
-          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
-        >
-          Tambah coverage
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="rounded border border-red-200 bg-white px-3 py-1 text-sm text-red-700 hover:bg-red-50"
-        >
-          Hapus objek
-        </button>
-      </div>
-    </div>
+      {open && (
+        <tr>
+          <td colSpan={columns} className="border border-slate-300 bg-slate-50 p-2">
+            {/*
+              Grid jaminan `Section/ObjectCoverageAdj-sect.xml`: Nama Coverage
+              (`.CoverageNote`), Penyebab Kerugian (`.CauseOfLoss`), Mata Uang
+              (`pyWorkPage.Policy.Currency`), TSI (`.SumTSI`). Kode Coverage ditambahkan
+              karena ia ikut terkirim saat menyimpan dan tidak punya tempat lain.
+            */}
+            <table className="w-full border-collapse text-sm">
+              <caption className="sr-only">Jaminan objek {name}</caption>
+              <thead>
+                <tr className="bg-slate-100 text-left text-xs text-slate-700">
+                  <th scope="col" className="w-8 border border-slate-300 p-2" />
+                  <th scope="col" className="border border-slate-300 p-2">Kode Coverage</th>
+                  <th scope="col" className="border border-slate-300 p-2">Coverage</th>
+                  <th scope="col" className="border border-slate-300 p-2">Penyebab Kerugian</th>
+                  <th scope="col" className="w-24 border border-slate-300 p-2">Mata Uang</th>
+                  <th scope="col" className="w-32 border border-slate-300 p-2">TSI</th>
+                  <th scope="col" className="w-24 border border-slate-300 p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddedCoverage(coverage.fields.length)
+                        coverage.append({ id: '', nama: '', penyebab_kerugian: '', tsi: '', spreading: [] })
+                      }}
+                      className="rounded border border-blue-300 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+                    >
+                      Tambah coverage
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {coverage.fields.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="border border-slate-300 bg-white p-2 text-xs text-slate-500">
+                      Objek ini belum punya jaminan. Registrasi menolak objek tanpa jaminan.
+                    </td>
+                  </tr>
+                )}
+                {coverage.fields.map((f, j) => (
+                  <CoverageEditor
+                    key={f.id}
+                    itemIndex={index}
+                    index={j}
+                    defaultOpen={j === addedCoverage}
+                    currency={currency}
+                    control={control}
+                    register={register}
+                    setValue={setValue}
+                    businessCode={businessCode}
+                    onRemove={() => coverage.remove(j)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
+/** Tanggal lahir grid objek PA ditulis seperti Pega: dd/MM/yyyy (mis. 03/02/1996). */
+function birthDate(iso: string | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '')
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '—'
+}
+
+/**
+ * CoverageEditor menggambar SATU jaminan sebagai baris grid yang dapat dibuka.
+ *
+ * Yang tersembunyi di dalamnya adalah tabel spreading — bagian terbesar dari layar ini,
+ * dan bagian yang paling jarang disentuh: spreading datang dari polis dan biasanya sudah
+ * benar. Total share tetap terlihat tanpa membuka satu baris pun, lewat Ringkasan di
+ * bawah daftar objek.
+ */
 function CoverageEditor({
   itemIndex,
   index,
+  defaultOpen,
+  currency,
   control,
   register,
   setValue,
@@ -971,6 +1198,8 @@ function CoverageEditor({
 }: {
   itemIndex: number
   index: number
+  defaultOpen: boolean
+  currency: string
   control: Control<RegisterFormValues>
   register: UseFormRegister<RegisterFormValues>
   setValue: UseFormSetValue<RegisterFormValues>
@@ -982,6 +1211,7 @@ function CoverageEditor({
   const cause = useWatch({ control, name: `${nama}.penyebab_kerugian` })
   const causes = useCauseOfLossOptions(businessCode)
   const causeOptions = causes.data?.pilihan ?? []
+  const [open, setOpen] = useState(defaultOpen)
 
   // Kode bisnis yang pilihannya tepat satu tidak perlu dipilih petugas — pilihan itu
   // langsung diisi. Lebih dari satu pilihan tetap menunggu petugas.
@@ -990,87 +1220,129 @@ function CoverageEditor({
     if (only !== '' && !cause) setValue(`${nama}.penyebab_kerugian`, only, { shouldDirty: true })
   }, [only, cause, nama, setValue])
 
+  const label = `jaminan ${index + 1} objek ${itemIndex + 1}`
+
   return (
-    <div className="rounded border border-slate-200 bg-white p-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <FormField id={`${nama}-id`} label="Kode coverage" {...register(`${nama}.id`)} />
-        <FormField id={`${nama}-nama`} label="Nama coverage" {...register(`${nama}.nama`)} />
-        <SelectField
-          id={`${nama}-sebab`}
-          label="Penyebab kerugian"
-          options={causeSelectOptions(causeOptions, cause)}
-          emptyText={causes.isFetching ? 'Memuat…' : '— pilih —'}
-          {...register(`${nama}.penyebab_kerugian`)}
-        />
-        <FormField id={`${nama}-tsi`} label="TSI" inputMode="decimal" {...register(`${nama}.tsi`)} />
-      </div>
+    <>
+      <tr className="border border-slate-300 bg-white align-top">
+        <td className="border border-slate-300 p-1 text-center">
+          <Disclosure
+            open={open}
+            label={`${open ? 'Tutup' : 'Buka'} spreading ${label}`}
+            onClick={() => setOpen((v) => !v)}
+          />
+        </td>
+        <td className="border border-slate-300 p-1">
+          <input
+            aria-label={`Kode coverage ${label}`}
+            className="w-full rounded border border-slate-300 px-2 py-1"
+            {...register(`${nama}.id`)}
+          />
+        </td>
+        <td className="border border-slate-300 p-1">
+          <input
+            aria-label={`Nama coverage ${label}`}
+            className="w-full rounded border border-slate-300 px-2 py-1"
+            {...register(`${nama}.nama`)}
+          />
+        </td>
+        <td className="border border-slate-300 p-1">
+          <select
+            aria-label={`Penyebab kerugian ${label}`}
+            className="w-full rounded border border-slate-300 px-2 py-1"
+            {...register(`${nama}.penyebab_kerugian`)}
+          >
+            <option value="">{causes.isFetching ? 'Memuat…' : '— pilih —'}</option>
+            {causeSelectOptions(causeOptions, cause).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </td>
+        {/*
+          Mata Uang mengikat `pyWorkPage.Policy.Currency` di Pega — mata uang POLIS, dan
+          bukan sesuatu yang diisi per jaminan. Ia teks, bukan isian.
+        */}
+        <td className="border border-slate-300 p-2 text-slate-600">{currency || '—'}</td>
+        <td className="border border-slate-300 p-1">
+          <input
+            aria-label={`TSI ${label}`}
+            inputMode="decimal"
+            className="w-full rounded border border-slate-300 px-2 py-1 text-right"
+            {...register(`${nama}.tsi`)}
+          />
+        </td>
+        <td className="border border-slate-300 p-1 text-center">
+          <button
+            type="button"
+            aria-label={`Hapus ${label}`}
+            onClick={onRemove}
+            className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+          >
+            Hapus
+          </button>
+        </td>
+      </tr>
 
-      <table className="mt-3 w-full border-collapse text-sm">
-        <caption className="sr-only">Spreading reasuransi</caption>
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-            <th scope="col" className="py-1 pr-2 font-medium">Treaty</th>
-            <th scope="col" className="py-1 pr-2 font-medium">Nama</th>
-            <th scope="col" className="py-1 pr-2 font-medium">Share %</th>
-            <th scope="col" className="py-1 pr-2 font-medium">Objek Fac Offer</th>
-            <th scope="col" className="py-1 font-medium">Hapus</th>
-          </tr>
-        </thead>
-        <tbody>
-          {spreading.fields.map((f, n) => (
-            <tr key={f.id} className="border-b border-slate-100">
-              <td className="py-1 pr-2">
-                <input className="w-24 rounded border border-slate-300 px-2 py-1"
-                  aria-label="Jenis treaty" {...register(`${nama}.spreading.${n}.jenis_treaty`)} />
-              </td>
-              <td className="py-1 pr-2">
-                <input className="w-full rounded border border-slate-300 px-2 py-1"
-                  aria-label="Nama treaty" {...register(`${nama}.spreading.${n}.nama`)} />
-              </td>
-              <td className="py-1 pr-2">
-                <input className="w-28 rounded border border-slate-300 px-2 py-1" inputMode="decimal"
-                  aria-label="Share persen" {...register(`${nama}.spreading.${n}.share`)} />
-              </td>
-              <td className="py-1 pr-2">
-                <input className="w-full rounded border border-slate-300 px-2 py-1"
-                  aria-label="Objek Fac Offer" {...register(`${nama}.spreading.${n}.objek_fac_offer`)} />
-              </td>
-              <td className="py-1">
-                <button type="button" onClick={() => spreading.remove(n)}
-                  className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50">
-                  Hapus
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {open && (
+        <tr>
+          <td colSpan={7} className="border border-slate-300 bg-slate-50 p-2">
+            <table className="w-full border-collapse text-sm">
+              <caption className="sr-only">Spreading reasuransi {label}</caption>
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th scope="col" className="py-1 pr-2 font-medium">Treaty</th>
+                  <th scope="col" className="py-1 pr-2 font-medium">Nama</th>
+                  <th scope="col" className="py-1 pr-2 font-medium">Share %</th>
+                  <th scope="col" className="py-1 pr-2 font-medium">Objek Fac Offer</th>
+                  <th scope="col" className="py-1 font-medium">Hapus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spreading.fields.map((f, n) => (
+                  <tr key={f.id} className="border-b border-slate-100">
+                    <td className="py-1 pr-2">
+                      <input className="w-24 rounded border border-slate-300 px-2 py-1"
+                        aria-label="Jenis treaty" {...register(`${nama}.spreading.${n}.jenis_treaty`)} />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <input className="w-full rounded border border-slate-300 px-2 py-1"
+                        aria-label="Nama treaty" {...register(`${nama}.spreading.${n}.nama`)} />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <input className="w-28 rounded border border-slate-300 px-2 py-1" inputMode="decimal"
+                        aria-label="Share persen" {...register(`${nama}.spreading.${n}.share`)} />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <input className="w-full rounded border border-slate-300 px-2 py-1"
+                        aria-label="Objek Fac Offer" {...register(`${nama}.spreading.${n}.objek_fac_offer`)} />
+                    </td>
+                    <td className="py-1">
+                      <button type="button" onClick={() => spreading.remove(n)}
+                        className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50">
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-      <div className="mt-2 flex gap-3">
-        <button
-          type="button"
-          onClick={() => spreading.append({ jenis_treaty: '', nama: '', share: '', objek_fac_offer: '', dihapus: false })}
-          className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
-        >
-          Tambah spreading
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 hover:bg-red-50"
-        >
-          Hapus coverage
-        </button>
-      </div>
-    </div>
+            <button
+              type="button"
+              onClick={() => spreading.append({ jenis_treaty: '', nama: '', share: '', objek_fac_offer: '', dihapus: false })}
+              className="mt-2 rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+            >
+              Tambah spreading
+            </button>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
-/**
- * Pilihan Penyebab Kerugian untuk dropdown. Nilai tersimpan yang tidak ada di daftar —
- * misalnya teks yang diketik sebelum isian ini menjadi dropdown — tetap ditampilkan,
- * supaya membuka ulang klaim lama tidak diam-diam mengosongkannya.
- */
 export function causeSelectOptions(options: CauseOfLossOption[], current: string | undefined) {
   const list = options.map((o) => ({ value: o.id, label: o.nama }))
   if (current && !options.some((o) => o.id === current)) list.unshift({ value: current, label: current })

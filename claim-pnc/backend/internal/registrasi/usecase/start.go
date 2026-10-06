@@ -271,7 +271,7 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 // Membalik keduanya — mengisi `DateReceived` dari kolom yang bernama
 // `TANGGALTERIMADOKUMEN` — adalah godaan yang saya sempat ikuti. Ia salah dua kali: kolom
 // itu menyimpan `ReceivedDate`, dan `ReportDate` yang tertinggal kosong justru medan yang
-// dipakai aturan "Tanggal Lapor ≤ DOL + 7 hari".
+// dipakai aturan "Tanggal Kejadian ≤ Tanggal Lapor ≤ Tanggal Terima Dokumen".
 //
 // # Yang TIDAK disalin, dan kenapa
 //

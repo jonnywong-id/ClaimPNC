@@ -216,14 +216,18 @@ func TestTravelDocumentReceiptLimit(t *testing.T) {
 	})
 }
 
-// TestSevenDayReportLimit menjaga operator yang terbaca dari source tetap seperti
-// adanya.
+// TestReportDateSevenDayLimitLifted menjaga pencabutan batas tujuh hari tetap tercabut.
 //
-// Pesan di sistem lama berbunyi "tidak boleh lebih dari 7 hari", tetapi kondisinya
-// menolak SEJAK hari ke-7. Selisih antara pesan dan aturan itu dibawa apa adanya
-// (`P-5`), dan uji ini yang menjaganya tetap terlihat.
-func TestSevenDayReportLimit(t *testing.T) {
-	create := func(line registrasi.LineOfBusiness, delta int) registrasi.Claim {
+// Langkah 20 sistem lama menolak Tanggal Lapor yang berjarak tujuh hari atau lebih dari
+// Tanggal Kejadian. Work Owner mencabutnya pada 2026-10-06 karena Pega sendiri sudah tidak
+// menegakkannya lagi.
+//
+// Uji ini sengaja berpasangan: yang pertama membuktikan jarak jauh DITERIMA, yang kedua
+// membuktikan aturan Tanggal Lapor yang LAIN tidak ikut tercabut. Tanpa yang kedua,
+// pencabutan ini dapat melebar diam-diam menjadi "tanggal lapor tidak diperiksa sama
+// sekali".
+func TestReportDateSevenDayLimitLifted(t *testing.T) {
+	report := func(line registrasi.LineOfBusiness, delta int) registrasi.Claim {
 		k := validClaim()
 		k.Policy.Line = line
 		k.DateOfLoss = date(2026, time.March, 1)
@@ -233,26 +237,24 @@ func TestSevenDayReportLimit(t *testing.T) {
 	}
 	b := registrasi.Parts{Now: date(2026, time.June, 1)}
 
-	t.Run("hari ke-6 diterima", func(t *testing.T) {
-		err := registrasi.Validate(create(registrasi.LineFire, 6), b)
-		if err != nil {
-			g := violations(t, err)
-			require.False(t, g.Has(registrasi.ViolationReportedAfter7Days))
+	t.Run("jarak berapa pun diterima", func(t *testing.T) {
+		for _, delta := range []int{6, 7, 8, 30, 90} {
+			err := registrasi.Validate(report(registrasi.LineFire, delta), b)
+			require.NoError(t, err, "jarak %d hari seharusnya diterima", delta)
 		}
 	})
 
-	t.Run("hari ke-7 ditolak", func(t *testing.T) {
-		g := violations(t, registrasi.Validate(create(registrasi.LineFire, 7), b))
-		require.True(t, g.Has(registrasi.ViolationReportedAfter7Days))
+	t.Run("tanggal lapor tetap tidak boleh mendahului kejadian", func(t *testing.T) {
+		g := violations(t, registrasi.Validate(report(registrasi.LineFire, -1), b))
+		require.True(t, g.Has(registrasi.ViolationReportDateBeforeLoss))
 	})
 
-	t.Run("lini Personal Accident dikecualikan", func(t *testing.T) {
-		k := create(registrasi.LinePersonalAccident, 30)
-		err := registrasi.Validate(k, b)
-		if err != nil {
-			g := violations(t, err)
-			require.False(t, g.Has(registrasi.ViolationReportedAfter7Days))
-		}
+	t.Run("tanggal lapor tetap tidak boleh melewati hari ini", func(t *testing.T) {
+		k := report(registrasi.LineFire, 0)
+		k.ReportDate = date(2026, time.July, 1)
+		k.DateReceived = k.ReportDate
+		g := violations(t, registrasi.Validate(k, b))
+		require.True(t, g.Has(registrasi.ViolationReportDateInFuture))
 	})
 }
 

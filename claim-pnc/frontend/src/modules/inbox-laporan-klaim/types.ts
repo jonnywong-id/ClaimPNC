@@ -225,6 +225,14 @@ export const EMPTY_DETAIL: ClaimReportDetail = {
  */
 export const FIELD_LIMIT = {
   nama: 255,
+
+  /**
+   * Nama Tertanggung (QQ) sengaja berbeda dari `nama`.
+   *
+   * Isinya disalin dari `POOLDATA.T_GENERAL.QQNAME`, kolom 2000 karakter — bukan diketik
+   * petugas. Batas 255 memotong nama tertanggung panjang tanpa pemberitahuan.
+   */
+  tertanggung: 2000,
   email: 200,
   telepon: 64,
   polis: 64,

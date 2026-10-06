@@ -63,17 +63,26 @@ const TravelPAPeriodTolerance = 90
 // tanggal terima dokumen untuk lini Travel (langkah 19).
 const TravelDocumentReceiptLimit = 90
 
-// ReportAfterLossLimit adalah jarak hari yang membuat tanggal lapor ditolak
-// (langkah 20).
+// # Batas tujuh hari Tanggal Lapor DICABUT — Work Owner, 2026-10-06
 //
-// PERHATIKAN OPERATORNYA. Pesan di sistem lama berbunyi "tidak boleh lebih dari 7 hari",
-// tetapi kondisinya menolak sejak hari ke-7, bukan setelahnya:
+// Langkah 20 sistem lama menolak Tanggal Lapor yang berjarak tujuh hari atau lebih dari
+// Tanggal Kejadian, untuk seluruh lini kecuali Personal Accident. Aturan itu TIDAK LAGI
+// ditegakkan di Pega, sehingga membawanya ke sini akan menolak klaim yang sistem lama
+// sendiri terima — kebalikan dari yang `P-5` tuntut.
 //
-//	skip bila  kejadian + 7 > lapor      →  galat bila  lapor >= kejadian + 7
+// Konstanta `ReportAfterLossLimit` dan pemeriksaannya karena itu dihapus, bukan sekadar
+// dinonaktifkan: aturan yang masih ada tetapi tidak pernah berjalan adalah aturan yang
+// akan dihidupkan kembali tanpa sengaja.
 //
-// Perilakunya dibawa apa adanya (`P-5`); selisih antara pesan dan aturan dicatat
-// sebagai calon perbaikan, bukan diperbaiki diam-diam.
-const ReportAfterLossLimit = 7
+// Yang TETAP berlaku atas Tanggal Lapor, dan sengaja tidak ikut dicabut:
+//
+//   - langkah 22 — Tanggal Lapor tidak boleh mendahului Tanggal Kejadian;
+//   - langkah 23 — Tanggal Lapor tidak boleh melewati Tanggal Terima Dokumen;
+//   - langkah 26 — Tanggal Lapor tidak boleh melewati hari ini.
+//
+// Pencabutan ini MENGUBAH KELUARAN terhadap data historis: klaim yang dilaporkan tujuh
+// hari atau lebih setelah kejadian kini diterima. Uji kesetaraan `S-8` akan melaporkannya
+// sebagai selisih, dan selisih itu DIRENCANAKAN — bukan cacat.
 
 // Validate menjalankan seluruh aturan tahap Input Register.
 //
@@ -185,15 +194,6 @@ func validateDates(v *collector, k Claim, now time.Time) {
 			v.add(ViolationReceivedAfter90Days, "tanggal_terima_dokumen",
 				fmt.Sprintf("Tanggal Terima Dokumen tidak boleh lebih dari %d hari setelah Tanggal Kejadian.",
 					TravelDocumentReceiptLimit))
-		}
-	}
-
-	// Langkah 20 — seluruh lini KECUALI Personal Accident.
-	if k.Policy.Line != LinePersonalAccident {
-		if clock.DaysBetween(lossDate, reportDate) >= ReportAfterLossLimit {
-			v.add(ViolationReportedAfter7Days, "tanggal_lapor",
-				fmt.Sprintf("Tanggal Lapor tidak boleh lebih dari %d hari setelah Tanggal Kejadian.",
-					ReportAfterLossLimit))
 		}
 	}
 

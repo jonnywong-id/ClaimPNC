@@ -19,8 +19,19 @@ import (
 //	Marine Cargo            POOLDATA.T_CARGOLIST     GetListObjectMarine
 //	Aneka                   POOLDATA.T_ANEKALIST     GetListObjectAneka
 //
-// Coverage-nya tersimpan sebagai dokumen JSON di tabel yang sama, dan spreading ada di
-// dalam setiap coverage (`CoverageList[].SpreadingList[]`).
+// Coverage dan spreading TIDAK ada di tabel itu. Sampai 2026-10-06 keduanya dibaca dari
+// kolom BLOB berisi dokumen JSON pada tabel objeknya sendiri; Work Owner menggantinya
+// dengan tabel relasional:
+//
+//	PA (002), Travel (005)  POOLDATA.T_COVERAGELIST_PERSON  + T_SPREADINGLIST
+//	Fire                    POOLDATA.T_COVERAGELIST_FIRE    + T_SPREADINGLIST
+//	Marine Cargo            POOLDATA.T_COVERAGELIST_CARGO   + T_SPREADINGLIST
+//	Aneka                   POOLDATA.T_COVERAGELIST_ANEKA   + T_SPREADINGLIST
+//
+// Perpindahan itu seluruhnya urusan adapter; tipe di berkas ini tidak berubah karenanya.
+// SourceCoverage dan SourceSpreading tetap menyebut apa yang polis punya, bukan dari kolom
+// mana nilainya datang — itulah yang membuat penggantian sumber tidak menyentuh satu pun
+// aturan pembentukan klaim di bawah.
 
 // PolicySource menyebut tabel sumber objek sebuah polis.
 type PolicySource string
@@ -68,7 +79,7 @@ type SourceItem struct {
 	Coverage []SourceCoverage
 }
 
-// SourceCoverage adalah satu coverage pada dokumen JSON polis.
+// SourceCoverage adalah satu coverage polis, satu baris T_COVERAGELIST_*.
 type SourceCoverage struct {
 	Code string // Coverage
 	Name string // CoverageNote
@@ -83,11 +94,14 @@ type SourceCoverage struct {
 	Spreading []SourceSpreading
 }
 
-// SourceSpreading adalah satu baris SpreadingList.
+// SourceSpreading adalah satu baris T_SPREADINGLIST.
 type SourceSpreading struct {
 	TreatyType string
-	// TreatyName adalah NOTE master REINSURANCETYPE untuk TreatyType itu (ORS, FAC-OUT, …).
-	// Dokumen polis tidak menyimpan nama treaty; pengisi seam yang melengkapinya.
+	// TreatyName adalah nama treaty yang ditampilkan (ORS, FAC-OUT, …).
+	//
+	// T_SPREADINGLIST menyimpannya di TREATYNAME, tetapi kolom itu dapat kosong. Pengisi
+	// seam karena itu melengkapinya dari NOTE master REINSURANCETYPE — master yang sama
+	// dengan dropdown Nama Treaty Pega.
 	TreatyName string
 	Share      Percent
 	Deleted    bool // FlagDelete = "1"

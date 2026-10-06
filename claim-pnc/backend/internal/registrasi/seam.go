@@ -256,8 +256,9 @@ type IDGenerator interface {
 //
 // Ia sempat saya isi dari `TANGGALTERIMADOKUMEN`. Itu keliru dua kali: kolom itu menyimpan
 // `ReceivedDate`, dan `ReceivedDate` memberi makan `ReportDate` — bukan `DateReceived`.
-// Akibatnya Tanggal Lapor tertinggal kosong, padahal aturan "Tanggal Lapor ≤ DOL + 7 hari"
-// bersandar padanya.
+// Akibatnya Tanggal Lapor tertinggal kosong, padahal aturan "Tanggal Kejadian ≤ Tanggal
+// Lapor ≤ Tanggal Terima Dokumen" bersandar padanya. (Batas tujuh hari yang semula ikut
+// disebut di sini DICABUT 2026-10-06 — lihat registrasi/validation.go.)
 type ClaimReportSnapshot struct {
 	// DateOfLoss ← ReceiveDocument.TglKejadian
 	DateOfLoss time.Time

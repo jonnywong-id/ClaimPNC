@@ -7,7 +7,7 @@ import { DateField } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { NumberField } from '@/components/NumberField'
-import { centsToRupiah, formatDate, rupiahToCents } from '@/components/format'
+import { centsToRupiah, formatDate, rupiahToCents, todayWIB } from '@/components/format'
 
 import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
 import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupResponse } from './types'
@@ -41,7 +41,7 @@ export function ClaimReportFormPage() {
   const daftar = useRegisterClaim()
   const polis = useLookupPolicy()
 
-  const [values, setValues] = useState<ClaimReportDetail>(EMPTY_DETAIL)
+  const [values, setValues] = useState<ClaimReportDetail>(withReceivedDefault(EMPTY_DETAIL))
   const [estimateText, setEstimateText] = useState('')
   const [policyResult, setPolicyResult] = useState<PolicyLookupResponse | null>(null)
   const [lookedUpNumber, setLookedUpNumber] = useState<string | null>(null)
@@ -51,7 +51,7 @@ export function ClaimReportFormPage() {
   // Query menyegarkan datanya di latar belakang.
   useEffect(() => {
     if (!berkas.data?.isian) return
-    setValues(berkas.data.isian)
+    setValues(withReceivedDefault(berkas.data.isian))
     setEstimateText(centsToRupiah(berkas.data.isian.estimasi_kerugian))
   }, [berkas.data])
 
@@ -307,7 +307,7 @@ export function ClaimReportFormPage() {
             label="Nama Tertanggung"
             value={values.tertanggung}
             onChange={(e) => set('tertanggung', e.target.value)}
-            maxLength={FIELD_LIMIT.nama}
+            maxLength={FIELD_LIMIT.tertanggung}
             error={violation['tertanggung']}
             disabled={!editable}
           />
@@ -522,6 +522,31 @@ export function ClaimReportFormPage() {
       </p>
     </FormFrame>
   )
+}
+
+
+/**
+ * withReceivedDefault mengisi Tanggal Terima Dokumen dengan tanggal hari ini bila berkas
+ * belum punya nilainya.
+ *
+ * # Kenapa bawaan, dan kenapa hanya saat kosong
+ *
+ * Berkas yang baru dibuat lahir KOSONG (`CreateNewCaseRCV`), dan tanggal yang hampir
+ * selalu benar untuk isian ini adalah hari berkasnya diterima — yaitu hari ini. Petugas
+ * tetap dapat mengoreksinya; ini bawaan, bukan penguncian.
+ *
+ * Nilai yang SUDAH tersimpan tidak pernah ditimpa. Menimpanya akan mengubah tanggal
+ * berkas lama setiap kali layarnya dibuka, dan perubahan itu tidak akan terlihat siapa
+ * pun sampai tersimpan.
+ *
+ * Tanggalnya diambil `todayWIB`, bukan `new Date()` apa adanya: pengguna di zona waktu
+ * lain tidak boleh mendapat tanggal yang berbeda dari tanggal yang dipakai server, dan
+ * aturan tanggal di sistem ini seluruhnya berbasis tanggal kalender WIB
+ * (`08-TECHNICAL-STRATEGY.md` bagian 4.4).
+ */
+function withReceivedDefault(detail: ClaimReportDetail): ClaimReportDetail {
+  if (detail.tanggal_terima_dokumen.trim() !== '') return detail
+  return { ...detail, tanggal_terima_dokumen: todayWIB() }
 }
 
 function FormFrame({

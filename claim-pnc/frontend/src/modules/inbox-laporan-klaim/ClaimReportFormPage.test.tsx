@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
+import { todayWIB } from '@/components/format'
 
 import { backToListPath, ClaimReportFormPage } from './ClaimReportFormPage'
 
@@ -144,6 +145,12 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+
+/** asDisplayDate mengubah ISO `YYYY-MM-DD` menjadi bentuk tampil DateField `DD/MM/YYYY`. */
+function asDisplayDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}/${month}/${year}`
+}
 
 describe('form Input Receive Document', () => {
   it('memakai label isian persis seperti layar lama', async () => {
@@ -328,6 +335,48 @@ describe('form Input Receive Document', () => {
       'Pelapor Contoh',
     )
     expect(screen.getByLabelText('Estimasi Kerugian')).toHaveValue('2500000,00')
+  })
+
+  it('Tanggal Terima Dokumen berisi tanggal hari ini pada berkas baru', async () => {
+    installFetch(() => ({ body: berkas() }))
+    show()
+
+    // Berkas baru lahir kosong; tanggal yang hampir selalu benar adalah hari berkasnya
+    // diterima. Petugas tetap dapat mengoreksinya — ini bawaan, bukan penguncian.
+    //
+    // Isiannya menampilkan DD/MM/YYYY walau nilainya ISO (DateField), sehingga yang
+    // dibandingkan adalah bentuk tampilnya.
+    const field = await screen.findByLabelText('Tanggal Terima Dokumen')
+    await waitFor(() => expect(field).toHaveValue(asDisplayDate(todayWIB())))
+  })
+
+  it('Tanggal Terima Dokumen yang sudah tersimpan tidak ditimpa tanggal hari ini', async () => {
+    installFetch(() => ({
+      body: berkas({ isian: { ...ISIAN_KOSONG, tanggal_terima_dokumen: '2026-01-15' } }),
+    }))
+    show()
+
+    // Menimpanya akan mengubah tanggal berkas lama setiap kali layarnya dibuka, dan
+    // perubahan itu tidak terlihat siapa pun sampai tersimpan.
+    //
+    // waitFor, bukan findBy: isiannya SUDAH ada sejak render pertama berisi bawaan hari
+    // ini, sehingga findBy akan puas sebelum jawaban server tiba dan uji ini lulus tanpa
+    // menguji apa pun.
+    const field = await screen.findByLabelText('Tanggal Terima Dokumen')
+    await waitFor(() => expect(field).toHaveValue('15/01/2026'))
+  })
+
+  it('Nama Tertanggung menerima lebih dari 255 karakter', async () => {
+    installFetch(() => ({ body: berkas() }))
+    show()
+
+    // Isinya disalin dari POOLDATA.T_GENERAL.QQNAME, kolom 2000 karakter — bukan diketik
+    // petugas. Batas 255 memotong nama tertanggung panjang tanpa pemberitahuan.
+    const field = await screen.findByLabelText('Nama Tertanggung')
+    expect(field).toHaveAttribute('maxLength', '2000')
+
+    // Isian nama LAIN tetap 255: ketiganya diketik petugas dan kolomnya memang 255.
+    expect(screen.getByLabelText('Nama Bisnis')).toHaveAttribute('maxLength', '255')
   })
 
   it('kegagalan memuat berkas ditampilkan, bukan form kosong yang menyesatkan', async () => {

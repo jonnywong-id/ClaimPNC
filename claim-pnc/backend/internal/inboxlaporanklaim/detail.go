@@ -49,7 +49,7 @@ import (
 //     Oracle menolaknya dengan `ORA-12899` yang tidak menyebut isian mana;
 //   - **angka tidak boleh negatif** — estimasi kerugian dan jumlah dokumen.
 //
-// Aturan tanggal — DOL di dalam periode polis, Tanggal Lapor <= DOL + 7 hari, dan
+// Aturan tanggal — DOL di dalam periode polis, Tanggal Lapor <= Tanggal Terima Dokumen,
 // seterusnya — **sengaja TIDAK ada di sini**. Ia milik `B-2` Registrasi Klaim
 // (`02-BUSINESS-UNDERSTANDING.md` §3.1), dan berkas laporan justru dapat masuk sebelum
 // tanggalnya diketahui. Menambahkannya di sini akan menolak berkas yang di Pega diterima.
@@ -94,6 +94,17 @@ type Detail struct {
 // `detail_test.go` yang menjaganya tetap terlihat.
 const (
 	MaxNameLength      = 255
+
+	// MaxInsuredNameLength adalah batas Nama Tertanggung (QQ), dan ia SENGAJA berbeda
+	// dari MaxNameLength.
+	//
+	// Isian ini tidak diketik petugas melainkan disalin dari POOLDATA.T_GENERAL.QQNAME —
+	// kolom yang menampung sampai 2000 karakter. Membatasinya di 255 memotong nama
+	// tertanggung panjang (nama badan hukum beserta klausa QQ) tanpa pemberitahuan, atau
+	// menolak berkas yang datanya sendiri sah di sistem polis.
+	//
+	// Isian nama LAIN tetap 255: ketiganya diketik petugas dan kolomnya memang 255.
+	MaxInsuredNameLength = 2000
 	MaxEmailLength     = 200
 	MaxPhoneLength     = 64
 	MaxPolicyLength    = 64
@@ -164,7 +175,7 @@ func (d Detail) Check() error {
 		{"telepon_pelapor", "No. HP Pengirim", d.ReporterPhone, MaxPhoneLength},
 		{"nama_kurir", "Nama Kurir ASM", d.CourierName, MaxNameLength},
 		{"nomor_polis", "Nomor Polis", d.PolicyNumber, MaxPolicyLength},
-		{"tertanggung", "Nama Tertanggung", d.InsuredName, MaxNameLength},
+		{"tertanggung", "Nama Tertanggung", d.InsuredName, MaxInsuredNameLength},
 		{"nama_bisnis", "Nama Bisnis", d.BusinessName, MaxNameLength},
 		{"nomor_rujukan", "No. Referensi/Placing Slip", d.ReferenceNumber, MaxReferenceLength},
 		{"lokasi_kejadian", "Lokasi Kejadian", d.LossLocation, MaxLocationLength},

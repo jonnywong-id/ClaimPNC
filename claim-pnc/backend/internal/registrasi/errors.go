@@ -82,7 +82,6 @@ const (
 	ViolationReceivedInFuture        ViolationCode = "terima_dokumen_di_masa_depan"
 	ViolationLossOutsidePolicyPeriod ViolationCode = "tanggal_kejadian_di_luar_periode_polis"
 	ViolationPolicyPeriodEnded       ViolationCode = "periode_polis_berakhir"
-	ViolationReportedAfter7Days      ViolationCode = "lapor_lewat_7_hari"
 	ViolationReceivedAfter90Days     ViolationCode = "terima_dokumen_lewat_90_hari"
 	ViolationReceivedDateRequired    ViolationCode = "terima_dokumen_kosong"
 	ViolationDeclarationPolicy       ViolationCode = "polis_deklarasi"

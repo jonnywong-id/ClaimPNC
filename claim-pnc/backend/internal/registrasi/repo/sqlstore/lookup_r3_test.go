@@ -214,6 +214,10 @@ func TestLookupHelpers(t *testing.T) {
 }
 
 // Objek polis: tanpa nomor/versi tidak dibaca; tiap sumber memakai kuerinya sendiri.
+//
+// Urutan kueri sejak coverage pindah ke tabel relasional (Work Owner, 2026-10-06) adalah
+// objek, spreading, coverage, lalu nama treaty. Urutan itu bukan selera: spreading dibaca
+// SEBELUM coverage karena setiap baris coverage langsung memungut spreading miliknya.
 func TestPolicyItemsItems(t *testing.T) {
 	db, mock := be4DB(t)
 	p := NewPolicyItems(db)
@@ -223,9 +227,12 @@ func TestPolicyItemsItems(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, got)
 
-	cov := `{"CoverageList":[{"Coverage":"11022","CoverageNote":"ICC C","TSI":"100"}]}`
 	mock.ExpectQuery(be4Q("polis_objek_cargo")).WithArgs("POL", "1").
-		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" OBJ1 ", " Kargo ", " Laut ", cov))
+		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" 1 ", " OBJ1 ", " Kargo ", " Laut "))
+	mock.ExpectQuery(be4Q("polis_spreading")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(7)).AddRow("1", "1", "11022", "10001", "OR", "100.0000", "0"))
+	mock.ExpectQuery(be4Q("polis_coverage_cargo")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(8)).AddRow("1", "1", " 11022 ", " ICC C ", "100", nil, nil, "0"))
 	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow("10001", "OR"))
 	got, err = p.Items(ctx, registrasi.Policy{Number: " POL ", ProdKe: " 1 ", Line: registrasi.LineMarineCargo})
 	require.NoError(t, err)
@@ -233,12 +240,13 @@ func TestPolicyItemsItems(t *testing.T) {
 	require.Equal(t, "OBJ1", got[0].ID)
 	require.Equal(t, "Kargo", got[0].Name)
 	require.Equal(t, "Laut", got[0].Location)
+	require.Len(t, got[0].Coverage, 1)
 	require.Equal(t, "11022", got[0].Coverage[0].Code)
-
-	// Dokumen coverage rusak menghentikan pembacaan.
-	mock.ExpectQuery(be4Q("polis_objek_person")).WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow("O", "N", "L", "{rusak"))
-	_, err = p.Items(ctx, registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LinePersonalAccident})
-	require.ErrorContains(t, err, "dokumen coverage objek O")
+	require.Equal(t, "ICC C", got[0].Coverage[0].Name)
+	require.Equal(t, registrasi.Rupiah(100), got[0].Coverage[0].TSI)
+	require.Equal(t, []registrasi.SourceSpreading{
+		{TreatyType: "10001", TreatyName: "OR", Share: registrasi.PercentFull},
+	}, got[0].Coverage[0].Spreading)
 
 	mock.ExpectQuery(be4Q("polis_objek_aneka")).WillReturnError(be4Boom)
 	_, err = p.Items(ctx, registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LineMiscellaneous})
@@ -252,27 +260,45 @@ func TestPolicyItemsItems(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Objek properti: coverage dibaca per INDEXOBJECT, kode ganda dibuang.
+// Objek tanpa satu baris pun TIDAK menjalankan kueri coverage maupun spreading.
+//
+// Tanpa jalan pintas ini, membuka polis yang objeknya belum ada menembak basis data tiga
+// kali untuk mendapat nol baris.
+func TestPolicyItemsSkipsCoverageWhenNoObject(t *testing.T) {
+	db, mock := be4DB(t)
+	p := NewPolicyItems(db)
+
+	mock.ExpectQuery(be4Q("polis_objek_cargo")).WillReturnRows(sqlmock.NewRows(be4Cols(4)))
+	got, err := p.Items(context.Background(), registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LineMarineCargo})
+	require.NoError(t, err)
+	require.Nil(t, got)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Objek properti: kunci penggabungannya INDEXOBJECT, sementara ID objek klaim OBJECTNO.
+//
+// Lini Fire satu-satunya yang kedua nilainya berbeda, sehingga ia pula yang akan patah
+// lebih dulu bila penggabungan keliru memakai ID.
 func TestPolicyItemsPropertyCoverages(t *testing.T) {
 	db, mock := be4DB(t)
 	p := NewPolicyItems(db)
 	ctx := context.Background()
 	fire := registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LineFire}
 
-	mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
-		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" IDX1 ", " OBJ1 ", " Gudang ", " Jakarta "))
-	a := `{"CoverageList":[{"Coverage":"C1","TSI":"10"}]}`
-	b := `{"CoverageList":[{"Coverage":"C1","TSI":"10"},{"Coverage":"C2","TSI":"20"}]}`
-	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1", "IDX1").
-		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(a).AddRow(b))
-	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnError(be4Boom)
-	_, err := p.Items(ctx, fire)
-	require.ErrorContains(t, err, "membaca nama treaty")
+	object := func() {
+		mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
+			WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" 7 ", " OBJ1 ", " Gudang ", " Jakarta "))
+	}
+	noSpreading := func() {
+		mock.ExpectQuery(be4Q("polis_spreading")).WillReturnRows(sqlmock.NewRows(be4Cols(7)))
+	}
 
-	mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
-		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" IDX1 ", " OBJ1 ", " Gudang ", " Jakarta "))
-	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1", "IDX1").
-		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(a).AddRow(b))
+	object()
+	noSpreading()
+	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(8)).
+			AddRow("7", "1", "C1", "Kebakaran", "10", nil, nil, "0").
+			AddRow("7", "2", "C2", "Gempa", "20", nil, "25", "0"))
 	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnRows(sqlmock.NewRows(be4Cols(2)))
 	got, err := p.Items(ctx, fire)
 	require.NoError(t, err)
@@ -280,22 +306,37 @@ func TestPolicyItemsPropertyCoverages(t *testing.T) {
 	require.Equal(t, "OBJ1", got[0].ID)
 	require.Len(t, got[0].Coverage, 2)
 	require.Equal(t, "C2", got[0].Coverage[1].Code)
+	// TSISUBLIMIT menang atas TSI bila terisi (coverageTSI).
+	require.Equal(t, registrasi.Rupiah(25), got[0].Coverage[1].TSISublimit)
 
-	object := func() {
-		mock.ExpectQuery(be4Q("polis_objek_property")).WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow("IDX1", "OBJ1", "G", "J"))
-	}
 	object()
+	noSpreading()
+	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnRows(sqlmock.NewRows(be4Cols(8)))
+	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnError(be4Boom)
+	_, err = p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca nama treaty")
+
+	object()
+	mock.ExpectQuery(be4Q("polis_spreading")).WillReturnError(be4Boom)
+	_, err = p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca spreading polis")
+
+	object()
+	mock.ExpectQuery(be4Q("polis_spreading")).WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow("1"))
+	_, err = p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca baris spreading polis")
+
+	object()
+	noSpreading()
 	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnError(be4Boom)
 	_, err = p.Items(ctx, fire)
-	require.ErrorContains(t, err, "membaca coverage objek properti IDX1")
+	require.ErrorContains(t, err, "membaca coverage polis")
+
 	object()
+	noSpreading()
 	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnRows(sqlmock.NewRows([]string{"a", "b"}).AddRow("1", "2"))
 	_, err = p.Items(ctx, fire)
-	require.ErrorContains(t, err, "membaca dokumen coverage properti")
-	object()
-	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow("{rusak"))
-	_, err = p.Items(ctx, fire)
-	require.ErrorContains(t, err, "dokumen coverage properti IDX1")
+	require.ErrorContains(t, err, "membaca baris coverage polis")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

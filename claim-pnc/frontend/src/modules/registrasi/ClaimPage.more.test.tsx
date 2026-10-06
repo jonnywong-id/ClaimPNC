@@ -301,13 +301,159 @@ describe('Input Register', () => {
     expect(screen.getAllByText('Total spreading harus 100%.')).toHaveLength(2)
   })
 
+  // Grid objek Section/InputRegisterDetail-sect.xml. Kolomnya berbeda menurut lini, dan
+  // kedua uji di bawah menjaga perbedaannya tetap ada — menyeragamkannya akan membuat
+  // lini PA kehilangan Pekerjaan dan Tanggal Lahir tanpa ada yang menyadarinya.
+
+  it('grid objek lini PA berkolom Nama, Pekerjaan, dan Tanggal Lahir', async () => {
+    installFetch(
+      response({
+        polis: { ...KLAIM.polis, lini: '002', nama_lini: 'Personal Accident', jenis_bisnis: 'PA' },
+        objek: [
+          {
+            id: 'OBJ-1',
+            nama: 'FRANSISCO AMADEUS J',
+            lokasi: '',
+            pekerjaan: 'KARYAWAN',
+            tanggal_lahir: '1996-02-03',
+            coverage: [],
+          },
+        ],
+      }),
+    )
+    show()
+
+    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
+    const header = within(grid).getAllByRole('columnheader').map((h) => h.textContent)
+    expect(header).toEqual(['', '#', 'Kode Objek', 'Nama', 'Pekerjaan', 'Tanggal Lahir', 'Aksi'])
+
+    // Nama dan Kode Objek dapat disunting; Pekerjaan dan Tanggal Lahir milik polis dan
+    // digambar sebagai teks, bukan isian yang dimatikan.
+    expect(within(grid).getByLabelText('Nama baris 1')).toHaveValue('FRANSISCO AMADEUS J')
+    expect(within(grid).getByLabelText('Kode objek baris 1')).toHaveValue('OBJ-1')
+    expect(within(grid).getByText('KARYAWAN')).toBeInTheDocument()
+    expect(within(grid).getByText('03/02/1996')).toBeInTheDocument()
+    expect(within(grid).queryByLabelText('Lokasi objek baris 1')).toBeNull()
+  })
+
+  it('grid objek lini selain PA berkolom Nama Objek dan Lokasi', async () => {
+    installFetch(
+      response({
+        objek: [{ id: 'OBJ-9', nama: 'Gudang Utama', lokasi: 'Jakarta', coverage: [] }],
+      }),
+    )
+    show()
+
+    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
+    const header = within(grid).getAllByRole('columnheader').map((h) => h.textContent)
+    expect(header).toEqual(['', '#', 'Kode Objek', 'Nama Objek', 'Lokasi', 'Aksi'])
+
+    expect(within(grid).getByLabelText('Lokasi objek baris 1')).toHaveValue('Jakarta')
+    // Pekerjaan dan Tanggal Lahir tidak berlaku di lini ini, dan kolomnya tidak digambar
+    // kosong — kolom yang selalu kosong hanya menyita lebar.
+    expect(within(grid).queryByText('Tanggal Lahir')).toBeNull()
+  })
+
+  // Jaminan dan spreading tersembunyi sampai barisnya dibuka. Satu klaim Fire dapat
+  // memuat belasan objek yang masing-masing berjaminan dan ber-spreading; menggambar
+  // seluruhnya sekaligus menghapus perjajaran kolom yang menjadi alasan grid ini ada.
+
+  it('jaminan tersembunyi sampai baris objeknya dibuka', async () => {
+    installFetch(
+      response({
+        objek: [
+          {
+            id: 'OBJ-9',
+            nama: 'Gudang Utama',
+            lokasi: 'Jakarta',
+            coverage: [{ id: 'C1', nama: 'All Risk', penyebab_kerugian: '', tsi_sen: 0, spreading: [] }],
+          },
+        ],
+      }),
+    )
+    show()
+
+    const toggle = await screen.findByRole('button', { name: 'Buka jaminan objek Gudang Utama' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByLabelText('Nama coverage jaminan 1 objek 1')).toBeNull()
+
+    await userEvent.click(toggle)
+    expect(screen.getByLabelText('Nama coverage jaminan 1 objek 1')).toHaveValue('All Risk')
+    // Mata Uang mengikat mata uang POLIS, dan digambar sebagai teks — bukan isian.
+    expect(screen.getByRole('table', { name: 'Jaminan objek Gudang Utama' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tutup jaminan objek Gudang Utama' }))
+    expect(screen.queryByLabelText('Nama coverage jaminan 1 objek 1')).toBeNull()
+  })
+
+  it('spreading tersembunyi sampai baris jaminannya dibuka', async () => {
+    installFetch(
+      response({
+        objek: [
+          {
+            id: 'OBJ-9',
+            nama: 'Gudang Utama',
+            lokasi: 'Jakarta',
+            coverage: [
+              {
+                id: 'C1',
+                nama: 'All Risk',
+                penyebab_kerugian: '',
+                tsi_sen: 0,
+                spreading: [{ jenis_treaty: '10001', nama: 'OR', share: 1_000_000, objek_fac_offer: '', dihapus: false }],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buka jaminan objek Gudang Utama' }))
+    expect(screen.queryByLabelText('Share persen')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Buka spreading jaminan 1 objek 1' }))
+    expect(screen.getByLabelText('Share persen')).toHaveValue('100')
+  })
+
+  it('objek yang baru ditambahkan langsung terbuka', async () => {
+    installFetch(response())
+    show()
+
+    // Menambah objek lalu mendapati tidak ada yang terjadi adalah tombol yang tampak
+    // rusak. Baris baru karena itu digambar sudah terbuka.
+    await userEvent.click(await screen.findByRole('button', { name: 'Tambah objek' }))
+    expect(screen.getByRole('button', { name: 'Tambah coverage' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Objek ini belum punya jaminan. Registrasi menolak objek tanpa jaminan.'),
+    ).toBeInTheDocument()
+  })
+
+  it('objek tanpa jaminan dinyatakan, bukan dibiarkan tampak kosong', async () => {
+    installFetch(
+      response({ objek: [{ id: 'OBJ-9', nama: 'Gudang Utama', lokasi: 'Jakarta', coverage: [] }] }),
+    )
+    show()
+
+    // Jaminan tersembunyi sampai barisnya dibuka — itulah sebab adanya tombol ini.
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Buka jaminan objek Gudang Utama' }),
+    )
+
+    // Gerbang validasi menolak objek tanpa jaminan. Menyatakannya di layar lebih murah
+    // daripada membiarkan petugas menekan Next untuk mengetahuinya.
+    expect(
+      screen.getByText('Objek ini belum punya jaminan. Registrasi menolak objek tanpa jaminan.'),
+    ).toBeInTheDocument()
+  })
+
   it('menambah dan membuang objek, coverage, serta spreading, dengan ringkasan share', async () => {
     installFetch(response())
     show()
 
     await userEvent.click(await screen.findByRole('button', { name: 'Tambah objek' }))
     await userEvent.click(screen.getByRole('button', { name: 'Tambah coverage' }))
-    await userEvent.type(screen.getByLabelText('TSI'), '1.000')
+    await userEvent.type(screen.getByLabelText('TSI jaminan 1 objek 1'), '1.000')
     await userEvent.click(screen.getByRole('button', { name: 'Tambah spreading' }))
     await userEvent.type(screen.getByLabelText('Share persen'), '60,5')
 
@@ -321,9 +467,11 @@ describe('Input Register', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Hapus' }))
     expect(screen.queryByLabelText('Share persen')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus coverage' }))
-    expect(screen.queryByLabelText('TSI')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus objek' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus jaminan 1 objek 1' }))
+    expect(screen.queryByLabelText('TSI jaminan 1 objek 1')).not.toBeInTheDocument()
+    // Tombol buang objek bernama menurut barisnya: satu layar memuat belasan tombol
+    // "Hapus", dan tiga di antaranya membuang hal yang berbeda.
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus objek baris 1' }))
     expect(screen.queryByRole('heading', { name: 'Ringkasan' })).not.toBeInTheDocument()
   })
 
