@@ -272,41 +272,20 @@ SELECT r.REASON_ID,
  ORDER BY r.REASON_ID
  FETCH NEXT :4 ROWS ONLY
 
--- name: dokter_rcl
--- Pilihan dropdown "Nama Dokter" — `POOLDATA.T_ACCESS_GROUP_PNC`.
+-- Kueri `dokter_rcl` DIHAPUS pada 2026-10-06, dan alasannya layak dibaca sebelum ada yang
+-- menulisnya kembali.
 --
--- Padanan dropdown sel ke-7 `Section/SectionPUCL-sect.xml`, yang sumber pilihannya TIDAK
--- ADA di export (`R-16`). Yang terbaca hanyalah bahwa ia `pxDropdown`; isinya diturunkan
--- dari SATU-SATUNYA tempat nilainya dipakai kembali.
+-- Ia menarik identitas lama pada ketiga grup akses `POOLDATA.T_ACCESS_GROUP_PNC` sebagai
+-- isi dropdown "Nama Dokter" (sel ke-7 `Section/SectionPUCL-sect.xml`). Sumber pilihan
+-- sel itu tidak ada di export (`R-16`), sehingga isinya DITURUNKAN dari satu-satunya
+-- tempat nilainya dipakai kembali: penyaring D `InboxRCLDokter_RD` mencocokkan
+-- `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` dengan identitas lama pemanggil, jadi daftarnya
+-- "pasti" himpunan identitas itu.
 --
--- KENAPA TABEL INI, BUKAN MASTER DOKTER.
+-- Property `NamaDokterRCL` yang diserahkan Work Owner membuktikan sebaliknya: dropdown-nya
+-- `pyTableOption = PromptList` dengan `pyPromptTableList` berisi TEPAT DUA baris pada
+-- property itu sendiri — tanpa kueri, tanpa tabel. Daftarnya kini ada di Go sebagai
+-- `registrasi.RCLDoctorOptions`, bukan di sini.
 --
--- Nilai yang dipilih di sini disimpan ke `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`, dan layar
--- Inbox RCL menyaring antreannya dengan kolom itu — penyaring D `InboxRCLDokter_RD`:
---
---     UPPER(TRIM(k.NAMADOKTERRCL_1)) = UPPER(<identitas lama pemanggil>)
---
--- Identitas lama itu sendiri dibaca `RDB List/GetOperatorID-SQL.xml` dari tabel ini,
--- dengan penyaring yang sama persis seperti di bawah. Jadi daftar pilihan ini adalah
--- HIMPUNAN NILAI YANG DAPAT DICOCOKKAN — tidak lebih luas, tidak lebih sempit. Satu nilai
--- di luar himpunan itu membuat klaimnya tidak muncul di inbox siapa pun, tanpa galat.
---
--- `DISTINCT` karena satu orang punya satu baris per grup akses: seseorang yang memegang
--- Administrators sekaligus PNCKomite akan muncul dua kali tanpanya.
---
--- `UPPER(TRIM(...))` menyamakan bentuknya dengan sisi pembanding di Inbox RCL, sehingga
--- yang tersimpan tidak perlu dinormalkan lagi saat dicocokkan.
---
--- Bind:
---   :1  'GCNMFW:Administrators'
---   :2  'GCNMFW:PNCKomite'
---   :3  'GCNMFW:CaseManager'
---   :4  'GCNMFW:ViewClaimPNC'
-SELECT DISTINCT UPPER(TRIM(g.OLD_OPERATOR_ID)) AS DOCTOR
-  FROM POOLDATA.T_ACCESS_GROUP_PNC g
- WHERE g.STS_AKTIF = '1'
-   AND g.ACCESS_GROUP IN (:1, :2, :3)
-   AND g.ACCESS_GROUP <> :4
-   AND g.OLD_OPERATOR_ID IS NOT NULL
-   AND TRIM(g.OLD_OPERATOR_ID) <> ''
- ORDER BY 1
+-- Penyaring D Inbox RCL tidak ikut berubah; yang gugur hanya anggapan bahwa isi dropdown
+-- seluas himpunan yang dapat dicocokkannya. Pega membatasinya pada dua orang.

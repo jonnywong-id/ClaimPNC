@@ -166,16 +166,47 @@ func (l *Service) SendToRCLPUCL(ctx context.Context, p SendToRCLPUCLCommand, by 
 	if err != nil {
 		return CompleteResult{}, fmt.Errorf("registrasi/usecase: menentukan penerima tahap %q: %w", target.ID, err)
 	}
+
+	// DOKTER YANG DIPILIH BELUM MENJADI PEMILIK TUGASNYA — DITAHAN ATAS KEPUTUSAN WORK
+	// OWNER (2026-10-06). Ini perbedaan yang disengaja terhadap `RouterRCLDokter`, yang di
+	// Pega berbunyi `Param.AssignTo := ClaimData.NamaDokterRCL`.
+	//
+	// # Kenapa ditahan, padahal sudah pernah dipasang dan hijau
+	//
+	// Memindahkan klaim ke akun dokter menuntut nilai yang kita tulis dapat dicocokkan
+	// penyaring A `InboxRCLDokter_RD`:
+	//
+	//	UPPER(TRIM(ASSIGNED_OPERATOR_ID)) = UPPER(<LOGIN_ID pemanggil di M_LOGIN_PNC>)
+	//
+	// Yang tersedia untuk ditulis adalah `pyStandardValue` prompt list — bentuk
+	// `OPERATOR_ID` lama, yang di Pega dicocokkan ke `T_ACCESS_GROUP_PNC.OLD_OPERATOR_ID`,
+	// tabel yang Work Owner nyatakan tidak dipakai lagi (2026-10-05). Keduanya ruang nama
+	// yang BERBEDA, dan kecocokannya belum pernah diperiksa ke basis data. Ditambah:
+	// `M_LOGIN_PNC` adalah tabel login non-karyawan, sementara dokter RCL kemungkinan
+	// karyawan yang masuk lewat HCC/HCQ.
+	//
+	// Bila tidak cocok, klaimnya tidak muncul di inbox siapa pun dan layar menggambar
+	// "Tidak ada klaim RCL untuk Anda saat ini." — tidak terbedakan dari "memang tidak ada
+	// klaim". Menahan di sini berarti perilakunya TIDAK BERUBAH dari hari ini; memasangnya
+	// tanpa verifikasi berisiko membuat klaim hilang dari semua inbox.
+	//
+	// # Yang harus dikerjakan begitu identitasnya terverifikasi
+	//
+	//	1. recipients = registrasi.Assignee{Operator: <login dokter>} saat DoctorName terisi
+	//	2. ASSIGNED_OPERATOR_ID ikut pemilik tugas, bukan analis — lihat sqlstore/rclpucl.go
+	//
+	// Keduanya pernah ditulis dan lulus uji; yang kurang hanya pemetaan nama ke login.
+	// Catatan pengembangan §148 memuat kuerinya.
+
 	fresh := registrasi.NewTask(l.id.New(), claim, target, recipients, now)
 
-	// Jalur RCL harus benar-benar TERLIHAT di Inbox RCL, dan layar itu menyaring dengan
-	// `NAMADOKTERRCL_1`. Isian "Nama Dokter" sendiri hanya tampil pada lini PA, sehingga
-	// pada lini lain ia selalu kosong — dan surat yang menulis kolom itu kosong akan
-	// membuat klaimnya tidak muncul di inbox siapa pun.
+	// Dokter TIDAK dipilih — isian itu hanya tampil pada lini PA, sehingga
+	// pada lini lain ia selalu kosong. Surat yang menulis `NAMADOKTERRCL_1` kosong akan
+	// membuat klaimnya tidak dapat ditelusuri ke siapa pun.
 	//
-	// Yang diisi karena itu PEMILIK tugas RCLDokter, orang yang sama dengan yang ditulis
-	// ke `PXASSIGNEDOPERATORID` oleh mirrorInbox. Dengan begitu kedua penyaring layar itu
-	// menunjuk orang yang sama, bukan saling meniadakan.
+	// Yang diisi karena itu PEMILIK tugas — di sini `ServicePNC` dari assigner. Dengan
+	// begitu kolom nama dokter dan pemilik tugas selalu menunjuk pihak yang sama, apa pun
+	// jalurnya.
 	if letter.EntersRCLInbox() && letter.DoctorName == "" {
 		letter.DoctorName = recipients.Operator
 	}
@@ -244,10 +275,14 @@ func (l *Service) PUCLRejectReasons(ctx context.Context, keyword string, limit i
 //
 // Isiannya hanya tampil pada jalur RCL atau Notification lini PA — penyaring itu dipegang
 // layar, bukan di sini, karena yang menentukannya adalah Group Panel klaim yang sedang
-// dibuka. Yang dijaga di sini adalah ISI daftarnya: ia selalu himpunan nilai yang dapat
-// dicocokkan penyaring Inbox RCL, apa pun jalurnya.
-func (l *Service) RCLDoctorOptions(ctx context.Context) ([]registrasi.RCLDoctorOption, error) {
-	return l.puclOptions.RCLDoctors(ctx)
+// dibuka.
+//
+// Tanpa ctx dan tanpa error: isinya `pyPromptTableList` property `NamaDokterRCL`, daftar
+// tetap dua baris yang tidak menyentuh basis data sama sekali. Mempertahankan bentuk
+// lamanya — yang dapat gagal — berarti layar tetap harus menggambar "gagal dimuat" untuk
+// keadaan yang tidak bisa terjadi lagi.
+func (l *Service) RCLDoctorOptions() []registrasi.RCLDoctorOption {
+	return registrasi.RCLDoctorOptions()
 }
 
 // jejak merangkai keputusan yang dilewati menjadi satu baris jejak audit. Tanpa ini,

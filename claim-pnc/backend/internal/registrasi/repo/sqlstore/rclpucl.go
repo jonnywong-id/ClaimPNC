@@ -53,6 +53,16 @@ func (s *PUCLStore) SaveLetter(ctx context.Context, letter registrasi.PUCLLetter
 	// Urutannya mengikuti SET pada surat_rclpucl_perbarui kolom demi kolom, dimulai
 	// TGL_CREATE_PUCL. UPDATE menutup dengan CLAIMID di WHERE; INSERT membukanya
 	// sebagai kolom pertama.
+	//
+	// `OPERATOR_ID` dan `ASSIGNED_OPERATOR_ID` ditulis dengan nilai yang SAMA — analis yang
+	// menekan Kirim — dan itu CACAT YANG DITAHAN, bukan yang terlewat.
+	//
+	// Kolom kedua seharusnya pemilik tugas berikutnya: Inbox RCL menyaring dengannya
+	// (penyaring A `InboxRCLDokter_RD`), sehingga klaim berjalur RCL hari ini mendarat di
+	// Inbox RCL analis sendiri, bukan dokternya. Perbaikannya pernah dipasang dan lulus
+	// uji, lalu ditahan Work Owner (2026-10-06) sampai pemetaan nama dokter ke
+	// `M_LOGIN_PNC.LOGIN_ID` terverifikasi — tanpa itu klaimnya justru hilang dari inbox
+	// siapa pun. Alasan lengkapnya di `usecase.SendToRCLPUCL`.
 	values := []any{
 		letter.SentAt,
 		emptyTextAsNil(letter.Operator),
@@ -211,39 +221,13 @@ func (s *PUCLStore) RejectReasons(ctx context.Context, keyword string, limit int
 	return result, nil
 }
 
-// RCLDoctors membaca pilihan dropdown "Nama Dokter".
+// Pilihan "Nama Dokter" TIDAK dibaca di sini, dan dulu pernah.
 //
-// Sumbernya tabel dan penyaring yang SAMA dengan yang dipakai Inbox RCL mencari identitas
-// lama pemanggilnya, sehingga setiap pilihan di sini pasti dapat dicocokkan penyaring itu.
-// Alasan lengkapnya ada di rclpucl.sql.
-func (s *PUCLStore) RCLDoctors(ctx context.Context) ([]registrasi.RCLDoctorOption, error) {
-	groups := registrasi.RCLDoctorAccessGroups
-	if len(groups) != 3 {
-		return nil, fmt.Errorf("registrasi/sqlstore: kueri dokter RCL mengikat 3 grup akses, daftarnya %d", len(groups))
-	}
-
-	rows, err := executorFrom(ctx, s.db).QueryContext(ctx, loadQuery("dokter_rcl"),
-		groups[0], groups[1], groups[2], registrasi.RCLDoctorExcludedAccessGroup)
-	if err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: membaca pilihan Nama Dokter: %w", err)
-	}
-	defer rows.Close()
-
-	result := []registrasi.RCLDoctorOption{}
-	for rows.Next() {
-		var id sql.NullString
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: memindai pilihan Nama Dokter: %w", err)
-		}
-		if name := strings.TrimSpace(id.String); name != "" {
-			result = append(result, registrasi.RCLDoctorOption{ID: name})
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: membaca pilihan Nama Dokter: %w", err)
-	}
-	return result, nil
-}
+// Kuerinya menarik identitas lama pada ketiga grup akses `T_ACCESS_GROUP_PNC` — turunan
+// dari penyaring Inbox RCL, karena rule sumbernya tidak ada di export (`R-16`). Property
+// `NamaDokterRCL` yang diserahkan Work Owner pada 2026-10-06 membuktikan sumbernya bukan
+// tabel mana pun melainkan `pyPromptTableList` pada property itu sendiri, dua baris.
+// Kuerinya ikut dihapus bersama metode ini; daftarnya kini `registrasi.RCLDoctorOptions`.
 
 // escapeLikePattern menetralkan ketiga aksara yang punya arti khusus di dalam LIKE,
 // supaya pencarian "100%" mencari teks itu dan bukan mencocokkan segalanya. Aksara

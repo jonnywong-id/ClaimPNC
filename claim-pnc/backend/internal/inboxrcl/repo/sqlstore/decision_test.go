@@ -130,9 +130,13 @@ func TestTidakSetujuKembaliKePICTeknik(t *testing.T) {
 			AddRow("PNC-2067", "1", "0", "0", "AKTIF", nil, nil, nil, nil, ""))
 	mock.ExpectQuery(exactQ("decision_technical_pic")).WithArgs("PNC-2067").
 		WillReturnRows(sqlmock.NewRows([]string{"p"}).AddRow("PICTEKNIK01"))
+	// Argumen ke-6 (`TGL_KIRIM_PUCL`) WAJIB nil, dan bentuk lamanya `at` mengunci cacat
+	// yang dilaporkan Work Owner: kolom itu penyaring C Inbox RCL, sehingga selama ia
+	// terisi klaimnya tetap di antrean dokter walau pemiliknya sudah berpindah. Argumen
+	// ke-7 (`TGL_ANALYST_SEND_RCL`) juga nil — tidak dibaca penyaring mana pun.
 	mock.ExpectExec(exactQ("decision_update_pucl")).
 		WithArgs(inboxrcl.StatusClaimAnalyst, inboxrcl.StatusKlaimActive, nil, "0", nil,
-			at, nil, nil, "Diagnosa dijamin.", "PICTEKNIK01", "PNC-2067").
+			nil, nil, nil, "Diagnosa dijamin.", "PICTEKNIK01", "PNC-2067").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(exactQ("decision_update_worklist")).
 		WithArgs(inboxrcl.StatusClaimAnalyst, nil, "PICTEKNIK01", inboxrcl.StageNameSendToAnalyst, "PNC-2067").

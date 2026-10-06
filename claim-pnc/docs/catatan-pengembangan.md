@@ -38679,3 +38679,223 @@ InsertJsonClaimNonMBU_act, RunConvertJSONKLAIM (procedure, `D-02`), dan email pe
 Kueri diuji kering ke Oracle dalam transaksi ROLLBACK (2026-10-04): kelimanya sah. Uji: `usecase/closure_test.go` (5),
 `sqlstore/closure_test.go`, `CloseClaim.test.tsx` (3).
 >>>>>>> dev
+
+## 147. Nama Dokter modal Kirim RCL/PUCL — sumbernya terbaca, dugaan lama gugur (2026-10-06)
+
+**Cacat yang dilaporkan.** Dropdown "Nama Dokter" tampil berisi "----- PILIH -----" saja.
+
+**Sebabnya bukan bug perakitan layar, melainkan sumber yang salah.** Sel ke-7
+`Section/SectionPUCL-sect.xml` hanya terbaca sebagai `pxDropdown`; sumber pilihannya tidak ada di export (`R-16`).
+Isinya karena itu DITURUNKAN dari satu-satunya tempat nilainya dipakai kembali — penyaring D `InboxRCLDokter_RD`
+mencocokkan `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` dengan identitas lama pemanggil — lalu ditarik dari
+`POOLDATA.T_ACCESS_GROUP_PNC` pada ketiga grup akses. Kuerinya tidak mengembalikan satu baris pun.
+
+**Property `NamaDokterRCL` diserahkan Work Owner.** Dropdown-nya `pyTableOption = PromptList` dengan
+`pyPromptTableList` berisi **tepat dua baris pada property itu sendiri**, tanpa kueri:
+
+| `pyStandardValue` | `pyLocalizedValue` |
+|---|---|
+| `WAHYUKRISTANTI` | WAHYUKRISTANTI |
+| `MARGARETHAROSAGUNAWAN` | MARGARETHA ROSA GUNAWAN |
+
+Kedua `Rule-Obj-FieldValue` (`pyCaption …`) ikut terdaftar di `pxRuleReferences` property-nya — bukti kedua bahwa
+labelnya memang dua itu saja.
+
+**Yang berubah.**
+
+| Sebelum | Sesudah |
+|---|---|
+| kueri `dokter_rcl` ke `T_ACCESS_GROUP_PNC` (17 identitas) | `registrasi.RCLDoctorOptions` — prompt list, dua baris, urutan Pega (bukan abjad) |
+| `RCLDoctors` pada seam `PUCLOptionSource` + adapter Oracle & memori | dihapus; daftar tetap tidak perlu seam dan tidak dapat gagal |
+| `RCLDoctorOption{ID}` satu field | `{ID, Label}` — pada baris kedua **berbeda**; tertukar, yang tersimpan nama berspasi yang tak pernah cocok dengan penyaring Inbox RCL |
+| `RCLDoctorAccessGroups`, `RCLDoctorExcludedAccessGroup` | dihapus bersama kuerinya |
+| DTO `{id}` | `{id, nama}`; layar menggambar `nama`, mengirim `id` |
+| `Service.RCLDoctorOptions(ctx) ([]…, error)` | `Service.RCLDoctorOptions() []…` — tanpa ctx dan tanpa error |
+
+**Yang TIDAK berubah.** Penyaring D Inbox RCL tetap mencocokkan `NAMADOKTERRCL_1` dengan identitas lama pemanggil.
+Bentuk `pyStandardValue` — huruf besar, tanpa spasi — memang bentuk `OPERATOR_ID`, jadi keduanya tetap sebangun.
+Yang gugur hanya anggapan bahwa isi dropdown seluas himpunan itu: Pega membatasinya pada dua orang. Aturan tampilnya
+(`RCL_PUCL != 2 && IsPA`) dan pembuangan isian di luar jalur RCL lini PA juga tidak disentuh.
+
+**Hardcode yang disadari.** Kedua nama itu bagian dari 24 Operator ID hardcode yang `D-15` tetapkan menjadi master data
+(`F-4`), yang belum ada. Direplikasi apa adanya (`P-5`), dengan preseden yang sama seperti daftar kode bisnis di
+`casestudyclaim/filter.go`. Menuliskan nama Operator ID lengkap diizinkan `D-69`.
+
+**Work Owner mengonfirmasi "masih" (2026-10-06).** Kedua orang itu masih dokter RCL yang berlaku — ditanyakan karena
+property-nya dibuat 2018 dan terakhir disunting 2020. Jadi daftarnya direplikasi sebagai perilaku yang **benar**, bukan
+perilaku lama yang ditiru menunggu koreksi. **Masih terbuka:** siapa yang berwenang mengubah daftarnya setelah `F-4`
+ada; selama belum, menambah dokter menempuh perubahan kode dan rilis. Dicatat di `permintaan-artefak-pega.md` §6.12.
+
+Uji: `usecase/rclpucl_test.go` (1 ditulis ulang — urutan, pemisahan nilai/label, dan daftar tidak kosong tanpa basis
+data), `SendToRCLPUCL.test.tsx` (+1 "menggambar pyLocalizedValue tetapi menyimpan pyStandardValue", fixture disesuaikan
+agar baris keduanya `id` ≠ `nama`). Backend 14 paket `registrasi` hijau; frontend 22 uji modal hijau.
+
+**Pembaruan sore 2026-10-06 — daftarnya pindah ke layar.** Work Owner melaporkan dropdown MASIH kosong sesudah
+perbaikan di atas, lalu meminta: *"masukan saja namanya di pilihan nama dokter langsung set ke dua nama dokter itu,
+ubah itu saja jangan yang lainya."*
+
+**Sebab masih kosong bukan kodenya.** Yang berjalan di layar adalah **Vite dev server** (PID 17316, port 5173) dengan
+API ke `claimpnc.exe` (PID 16568, port 8080) yang **dibangun 09:29 — sebelum perbaikan backend ada**. Jadi perubahan
+frontend sudah hidup lewat hot reload, sementara endpoint-nya masih menjalankan kueri lama ke `T_ACCESS_GROUP_PNC`
+yang mengembalikan nol baris. Mode kegagalan ini persis yang sudah dicatat `spa/embed.go:42-53` sejak 2026-09-22.
+
+**Yang diubah:** dropdown digambar dari konstanta `RCL_DOCTORS` di `SendToRCLPUCL.tsx` — `pyPromptTableList` disalin
+apa adanya — **tanpa panggilan jaringan**. Tidak ada keadaan memuat dan tidak ada keadaan gagal, karena di Pega pun ia
+bukan data melainkan bagian dari definisi property-nya. Hook `useRCLDoctors` tidak lagi dipakai komponen.
+
+**Proses tidak disentuh** (diminta Work Owner): PID 16568 dan 17316 tetap berjalan. SPA dibangun ulang ke
+`backend/spa/dist`; perubahannya sudah hidup di dev server, cukup muat ulang halaman.
+
+**Utang yang ditinggalkan dengan sadar:** `GET /rclpucl/dokter`, `Service.RCLDoctorOptions`,
+`registrasi.RCLDoctorOptions`, hook `useRCLDoctors`, dan `rclpucl_route_test.go` kini **tidak dipakai layar**. Isinya
+sama persis dengan konstanta di layar, jadi tidak ada risiko dua kebenaran — tetapi ia permukaan API yang tidak punya
+pemanggil. Dibiarkan karena Work Owner meminta perubahan sebatas dropdown-nya; pembersihannya diusulkan terpisah.
+
+Uji: `SendToRCLPUCL.test.tsx` 21 hijau — "tidak pernah meminta daftar dokter ke jaringan" menggantikan uji lama, dan
+isi dropdown diperiksa **seketika tanpa `waitFor`** supaya uji ikut gagal bila daftarnya kembali menjadi panggilan
+jaringan.
+
+## 148. Dokter yang dipilih menerima klaimnya — `ASSIGNED_OPERATOR_ID`, bukan nama dokter (2026-10-06)
+
+Work Owner: *"kalau pilih salah satu dokter tersebut, klaimnya masuk ke akun nama dokter tersebut, yang ada di inbox
+RCL."* Itu BELUM terjadi, dan sebabnya dua lapis — keduanya senyap.
+
+**Lapis 1 — tugasnya tidak pernah menjadi milik dokter.** `Assigner` memarkir tahap `RCLDokter` di `ServicePNC`,
+keputusan sementara yang diambil ketika layar pemilihan dokter belum ada (`sqlstore/lookup.go`). Sejak modal ini punya
+dropdown-nya, keputusan itu menjadi salah. Kini `SendToRCLPUCL` menerapkan `RouterRCLDokter` apa adanya —
+`Param.AssignTo := ClaimData.NamaDokterRCL` — dan `ServicePNC` tinggal sebagai cadangan untuk lini non-PA yang memang
+tidak menampilkan isian itu.
+
+**Lapis 2 — dan ini akar yang sebenarnya.** Inbox RCL membaca `POOLDATA.TC_PNC_PUCL` dan menyaring dengan penyaring A
+`InboxRCLDokter_RD`:
+
+    UPPER(TRIM(p.ASSIGNED_OPERATOR_ID)) = UPPER(:1)   -- :1 = login pemanggil
+
+Ia **tidak** menyaring dengan `NAMADOKTERRCL_1`. Sementara itu `SaveLetter` menulis `OPERATOR_ID` dan
+`ASSIGNED_OPERATOR_ID` dengan nilai yang SAMA — identitas analis yang menekan Kirim. Akibatnya klaim yang dikirim ke
+dokter **mendarat di Inbox RCL analis sendiri**, lengkap dengan nama dokter tersimpan rapi di kolom yang tidak dipakai
+menyaring apa pun.
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| pemilik tugas `RCLDokter` | selalu `ServicePNC` | dokter terpilih; `ServicePNC` bila tidak ada |
+| `TC_PNC_PUCL.OPERATOR_ID` | analis | analis — tidak berubah |
+| `TC_PNC_PUCL.ASSIGNED_OPERATOR_ID` | **analis** | **pemilik tugas**; jatuh ke analis bila penerimanya antrean bersama |
+
+Field baru `PUCLLetter.AssignedOperator` memisahkan "yang mengerjakan" dari "yang ditugasi". Jalur PUCL **tidak
+berubah**: penerimanya antrean bersama sehingga tidak ada pemilik perorangan, penulisnya jatuh kembali ke analis, dan
+Inbox RCL/PUCL memang tidak menyaring kolom itu sama sekali (`inboxrclpucl.sql` butir 1).
+
+Uji: `rclpucl_test.go` +3 — dokter terpilih menjadi pemilik tugas **dan** `ASSIGNED_OPERATOR_ID`; tanpa dokter tetap
+diparkir di `ServicePNC`; jalur PUCL tetap mencatat analis. `registrasi`, `inboxrcl`, `inboxrclpucl` hijau.
+
+**BELUM TERVERIFIKASI — dan ia dapat menggagalkan seluruh perbaikan ini tanpa satu pun galat.** Penyaring A
+membandingkan `ASSIGNED_OPERATOR_ID` dengan hasil `operator_for`, yaitu `POOLDATA.M_LOGIN_PNC.LOGIN_ID` milik pemanggil
+(`ACTIVE_STATUS = '1'`). Yang kita tulis adalah `pyStandardValue` prompt list — bentuk `OPERATOR_ID` lama, yang di Pega
+dicocokkan ke `T_ACCESS_GROUP_PNC.OLD_OPERATOR_ID`, tabel yang Work Owner nyatakan tidak dipakai lagi (2026-10-05).
+Keduanya ruang nama yang berbeda. Ditambah: `M_LOGIN_PNC` adalah tabel login **non-karyawan** (`auth/provider/local.go`),
+sementara dokter RCL kemungkinan karyawan yang masuk lewat HCC/HCQ.
+
+Bila tidak cocok, `OperatorFor` mengembalikan kosong dan layar menggambar **"Tidak ada klaim RCL untuk Anda saat ini."**
+— tidak terbedakan dari "memang tidak ada klaim". Kelas kegagalan yang sama persis dengan dropdown kosong kemarin.
+
+Yang memastikannya satu kueri baca:
+
+```sql
+SELECT LOGIN_ID, ACTIVE_STATUS FROM POOLDATA.M_LOGIN_PNC
+ WHERE UPPER(TRIM(LOGIN_ID)) IN ('WAHYUKRISTANTI', 'MARGARETHAROSAGUNAWAN');
+```
+
+Nol baris berarti nilai prompt list harus dipetakan ke login yang sebenarnya — pemetaan itu **belum ada di mana pun**.
+Ditujukan ke Work Owner + DBA.
+
+**Koreksi cara aplikasi dijalankan (2026-10-06).** Catatan 147 menyalahkan `backend/claimpnc.exe` yang basi. Itu
+**keliru**: `Win32_Process` menunjukkan yang berjalan adalah `go run .\cmd\claimpnc` (induk PID 3148), dengan binary
+anak di cache `go-build`, bukan `claimpnc.exe` sama sekali. Berkas `claimpnc.exe` di repo adalah artefak basi yang
+**tidak dipakai siapa pun**.
+
+Kesimpulan "yang berjalan dibangun sebelum perbaikan ada" tetap benar — `go run` mengompilasi saat START, sehingga
+proses yang hidup sejak pagi memegang source pagi itu. Yang salah hanyalah artefak yang ditunjuk. Akibat praktisnya
+berbeda: **tidak perlu membangun binary dan menukarnya** — cukup hentikan dan jalankan ulang `go run`, dan ia
+mengompilasi ulang dari source.
+
+Pelajarannya sama dengan tiga kesalahan di catatan sesi 4: **alat ukur dipercaya sebelum divalidasi.** Stempel waktu
+`claimpnc.exe` tampak menjelaskan gejalanya, dan penjelasan yang masuk akal diterima tanpa memeriksa apakah berkas itu
+benar-benar yang sedang berjalan. Satu kueri `Win32_Process` menjawabnya.
+
+## 149. Penerapan `RouterRCLDokter` DITAHAN — dropdown tetap, routing kembali seperti semula (2026-10-06)
+
+Setelah risiko di §148 dijelaskan, Work Owner memutuskan: *"kalau gitu jangan dulu masuk ke akun kedua dokter
+tersebut."* Perubahan routing §148 **dikembalikan seluruhnya**.
+
+**Yang TETAP** (§147): dropdown "Nama Dokter" berisi kedua nama prompt list, dan pilihannya tetap tersimpan ke
+`T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`. Analis tidak kehilangan apa pun yang ia isi.
+
+**Yang DIKEMBALIKAN** (§148): pemilik tugas tahap `RCLDokter` kembali selalu `ServicePNC`, dan
+`TC_PNC_PUCL.ASSIGNED_OPERATOR_ID` kembali berisi identitas analis. Field `PUCLLetter.AssignedOperator` dihapus.
+
+**Kenapa dikembalikan SELURUHNYA, bukan separuh.** Sempat dipertimbangkan menahan butir 1 saja dan tetap memakai
+pemilik tugas untuk `ASSIGNED_OPERATOR_ID`. Itu akan membuat kolomnya berisi `ServicePNC` — dan klaim yang hari ini
+setidaknya terlihat di Inbox RCL analis akan **hilang dari semua inbox**. Menahan separuh menghasilkan keadaan yang
+lebih buruk daripada keduanya; perilakunya karena itu dikembalikan persis seperti sebelum §148.
+
+**Cacatnya tetap ada dan tetap dicatat:** `ASSIGNED_OPERATOR_ID` seharusnya pemilik tugas, bukan penekan tombol.
+Selama belum diperbaiki, klaim berjalur RCL mendarat di Inbox RCL analis sendiri. Perbaikannya sudah pernah ditulis
+dan lulus uji — yang kurang hanya pemetaan nama dokter ke `M_LOGIN_PNC.LOGIN_ID` (kueri di §148).
+
+Uji `TestSendToRCLPUCLDokterTerpilihMenjadiPemilikTugas` diganti
+`TestSendToRCLPUCLDokterTersimpanTetapiBelumMemindahkanKlaim` — ia mengunci keadaan tertahan supaya **disengaja dan
+terlihat**, bukan diam-diam berlaku, dan ia yang pertama harus dibalik begitu pemetaannya terverifikasi. Tiga tempat
+memuat rujukan silang ke alasannya: `usecase/rclpucl.go`, `sqlstore/rclpucl.go`, `sqlstore/lookup.go`.
+
+Backend dijalankan ulang 15:55 supaya yang hidup benar-benar versi tertahan ini — yang berjalan sejak 15:45 masih
+memuat perubahan §148.
+
+## 150. Tidak Setuju tidak mengeluarkan klaim dari Inbox RCL — penyaring C tidak pernah digugurkan (2026-10-06)
+
+Work Owner: *"pas klik tidak setuju itu menjalankan flow action `sendToAnalystRCL`, klaimnya masih di inbox RCL,
+harusnya balik ke Analyst atau ke my inbox."*
+
+**Seluruh alurnya ternyata sudah terpasang** — layar Alasan Dokter, keputusan `TidakSetuju`, `StatusClaim` 1151,
+`StatusCase` dikosongkan, Ticket `SendtoAnalysator`, tahap `kirim-analis` milik `T_CLAIM_PNC.PICTEKNIK`, tugas lama
+ditutup dan tugas baru dibuka. Yang salah satu baris.
+
+**Penyaring Inbox RCL `A AND B AND C AND D`.** Sesudah Tidak Setuju, B dan D tidak berubah sama sekali, sehingga yang
+dapat mengeluarkan klaim hanya:
+
+    A  ASSIGNED_OPERATOR_ID berpindah ke PIC Teknik
+    C  TGL_KIRIM_PUCL dikosongkan
+
+Pega mengosongkan `TanggalAnalystSendRCL` pada langkah 16 — properti yang MENJADI penyaring C. Replikasi ini
+mengosongkan `Outcome.AnalystSentAt`, yang terikat ke kolom **`TGL_ANALYST_SEND_RCL`** — kolom bernama mirip yang
+**tidak dibaca penyaring mana pun**. Penyaring C sendiri membaca **`TGL_KIRIM_PUCL`**, yang diisi `SentToPUCLAt` dan
+tidak pernah dikosongkan.
+
+Akibatnya pengaman tinggal satu: A. Dan A gagal persis ketika **analis dan PIC Teknik adalah akun yang sama** — lumrah
+di lingkungan uji, dan mungkin di cabang kecil. Klaimnya kembali ke analis dengan benar di tabel tugas, tetapi barisnya
+tetap tergambar di Inbox RCL.
+
+**Perbaikan:** `ReturnsToAnalyst` kini mengosongkan `SentToPUCLAt` juga, sehingga `TGL_KIRIM_PUCL` menjadi NULL dan
+penyaring C gugur — klaim keluar dari antrean dokter siapa pun pemilik berikutnya. Pega punya dua pengaman; replikasi
+ini kini punya dua.
+
+**Dua uji ternyata MENGUNCI cacatnya, dan keduanya hijau sepanjang waktu:**
+
+| Berkas | Bentuk lama |
+|---|---|
+| `decision_test.go:88` | `require.Equal(t, now, out.SentToPUCLAt, "langkah 8 tetap berlaku")` |
+| `sqlstore/decision_test.go:135` | argumen ke-6 `decision_update_pucl` diharapkan `at` |
+
+Keduanya membaca langkah 8 sendiri-sendiri, tanpa menanyakan kolom mana yang dibaca penyaring C. Itu pola yang sama
+dengan tiga kesalahan sesi 4: **alat ukur dipercaya sebelum divalidasi** — di sini alat ukurnya uji itu sendiri. Uji
+hijau tidak berarti perilakunya benar; ia hanya berarti perilakunya sama dengan yang dibayangkan penulisnya.
+
+Ditambah uji baru `TestTidakSetujuMengeluarkanKlaimDariInboxRCLApaPunPemilikBerikutnya` yang sengaja **tidak memeriksa
+pemiliknya sama sekali** — ia menguji bahwa keputusan itu sendiri cukup untuk mengeluarkan klaim.
+
+**Utang yang tersisa, dicatat bukan diperbaiki:** `TGL_ANALYST_SEND_RCL` ditulis tetapi tidak dibaca siapa pun,
+sementara properti Pega `TanggalAnalystSendRCL` dipetakan ke `TGL_KIRIM_PUCL`. Pemetaan yang lebih jujur adalah
+sebaliknya, tetapi memindahkannya menuntut `registrasi.SaveLetter` ikut mengisi `TGL_ANALYST_SEND_RCL` — tanpa itu
+seluruh baris yang sudah ada hilang dari Inbox RCL. Dibiarkan sebagai satu kolom yang tidak terpakai.
+
+Backend dijalankan ulang 16:41.

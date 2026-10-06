@@ -145,6 +145,10 @@ type PUCLLetter struct {
 	// lini selain PA, karena layar tidak menampilkannya — nilainya diisi PEMILIK tugas
 	// RCLDokter. Dengan begitu penyaring "dokter" dan penyaring "pemilik tugas"
 	// (`PXASSIGNEDOPERATORID`) menunjuk orang yang sama. Lihat usecase.SendToRCLPUCL.
+	// Nama yang dipilih di sini BELUM memindahkan klaimnya ke akun dokter itu — ditahan
+	// Work Owner (2026-10-06) sampai pemetaannya ke `M_LOGIN_PNC.LOGIN_ID` terverifikasi.
+	// Yang memindahkan klaim adalah `ASSIGNED_OPERATOR_ID`, bukan kolom ini; lihat
+	// `usecase.SendToRCLPUCL`.
 	DoctorName string
 
 	// Tiga penunjuk adjustment yang menjadi pokok surat ini — `ID_OBJECT`,
@@ -309,46 +313,92 @@ type PUCLLetterStore interface {
 
 // RCLDoctorOption adalah satu pilihan dropdown "Nama Dokter".
 //
-// # Isinya BUKAN nama bebas, melainkan identitas yang disaring Inbox RCL
+// # Sumbernya kini TERBACA, bukan lagi diturunkan
 //
-// Yang tersimpan pada `.ClaimData.NamaDokterRCL` (`T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`)
-// menentukan SIAPA yang melihat klaimnya: penyaring D layar Inbox RCL mencocokkan kolom
-// itu dengan **identitas LAMA** pemanggil — `OLD_OPERATOR_ID` pada
-// `POOLDATA.T_ACCESS_GROUP_PNC`, dibatasi ketiga grup akses `RCLDoctorAccessGroups`.
+// Sebelumnya daftar ini dibaca dari `POOLDATA.T_ACCESS_GROUP_PNC` — hasil penalaran,
+// karena rule sumbernya tidak ada di export (`R-16`): nilainya disimpan ke
+// `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`, dan penyaring D Inbox RCL mencocokkan kolom itu
+// dengan identitas lama pemanggil, jadi daftarnya "pasti" himpunan identitas lama.
 //
-// Karena itu pilihan dropdown ini dibaca dari tabel dan penyaring yang SAMA. Kalau
-// daftarnya dikarang — atau dibiarkan diketik bebas seperti sebelumnya — analis dapat
-// menuliskan nama yang tidak pernah cocok dengan satu pemanggil pun, dan klaimnya hilang
-// dari semua inbox tanpa satu pesan galat pun.
+// Penalaran itu masuk akal dan tetap salah. Property `NamaDokterRCL` diserahkan Work
+// Owner pada 2026-10-06, dan dropdown-nya ternyata **daftar tetap pada property-nya
+// sendiri** — `pyTableOption = PromptList` dengan `pyPromptTableList` berisi TEPAT DUA
+// baris, bukan kueri ke tabel mana pun:
+//
+//	pyStandardValue        pyLocalizedValue           Rule-Obj-FieldValue
+//	---------------------  -------------------------  ------------------------
+//	WAHYUKRISTANTI         WAHYUKRISTANTI             pyCaption WAHYUKRISTANTI
+//	MARGARETHAROSAGUNAWAN  MARGARETHA ROSA GUNAWAN    pyCaption MARGARETHA ROSA GUNAWAN
+//
+// Kedua `Rule-Obj-FieldValue` itu ikut terdaftar di `pxRuleReferences` property-nya —
+// bukti kedua bahwa labelnya memang dua itu saja, bukan cuplikan dari daftar yang lebih
+// panjang.
+//
+// Inilah sebab layarnya kosong: kuerinya mencari 17 identitas yang tidak pernah menjadi
+// isi dropdown ini, dan di basis data yang dipakai layar tidak satu pun terambil.
+//
+// # Yang TIDAK berubah
+//
+// Penyaring D Inbox RCL tetap mencocokkan `NAMADOKTERRCL_1` dengan identitas lama
+// pemanggil. Bentuk `pyStandardValue` di atas — huruf besar, tanpa spasi — memang bentuk
+// `OPERATOR_ID`, sehingga keduanya tetap sebangun. Yang gugur hanya anggapan bahwa
+// daftarnya seluas himpunan itu: Pega membatasinya pada dua orang.
 type RCLDoctorOption struct {
-	// ID adalah `OLD_OPERATOR_ID` — nilai yang DISIMPAN sekaligus yang DITAMPILKAN.
-	//
-	// Keduanya sama karena tidak ada kolom nama tampil: isi kolom itu memang sudah
-	// berupa nama orang (`WAHYUKRISTANTI`, `MARGARETHA ROSA GUNAWAN`). Menambahkan
-	// label lain berarti mengarang.
+	// ID adalah nilai yang DISIMPAN ke `NAMADOKTERRCL_1` — `pyStandardValue`.
 	ID string
+
+	// Label adalah yang DITAMPILKAN — `pyLocalizedValue`.
+	//
+	// Dua field, bukan satu seperti sebelumnya: pada baris kedua keduanya BERBEDA
+	// (`MARGARETHAROSAGUNAWAN` versus `MARGARETHA ROSA GUNAWAN`). Menyimpan label
+	// berarti menyimpan nilai yang tidak pernah cocok dengan penyaring inbox;
+	// menampilkan nilai simpan berarti menampilkan nama tanpa spasi.
+	Label string
 }
 
-// RCLDoctorAccessGroups adalah ketiga grup akses yang identitas lamanya boleh menjadi
-// Nama Dokter, beserta grup yang dikecualikan.
+// rclDoctorPromptList adalah `pyPromptTableList` property `NamaDokterRCL`, dalam URUTAN
+// ASLINYA (`REPEATINGINDEX` 1 lalu 2) — bukan diurutkan abjad.
 //
-// Dulu SALINAN dari `inboxrcl.LegacyAccessGroups`, dijaga uji `rclpucl_doctor_test.go`.
-// Penulisan ulang `inboxrcl` (dev, 2026-10-05) menghapus penyaringan grup akses di sana —
-// penugasan dokter RCL kini lewat `ClaimData.NamaDokterRCL` — sehingga acuan pembandingnya
-// tidak ada lagi dan uji itu ikut dihapus saat merge.
+// Urutan dipertahankan karena itulah urutan yang dilihat petugas hari ini; menatanya
+// ulang memindahkan pilihan yang sudah dihafal. Alasan yang sama dipakai dropdown Bisnis
+// `casestudyclaim`.
 //
-// BELUM DIVERIFIKASI: apakah ketiga grup di bawah masih himpunan dokter RCL yang sah
-// menurut rancangan baru itu. Sampai dipastikan, daftar ini dipertahankan apa adanya.
-var RCLDoctorAccessGroups = []string{
-	"GCNMFW:Administrators",
-	"GCNMFW:PNCKomite",
-	"GCNMFW:CaseManager",
+// # Kedua nama ini hardcode, dan itu disadari
+//
+// `D-15` menetapkan nilai semacam ini menjadi master data (`F-4`), yang belum ada —
+// kedua nama ini bagian dari 24 Operator ID hardcode yang dicatat di sana. Sampai `F-4`
+// tiba, daftarnya tinggal di sini, tempat asalnya di Pega dapat dibaca berdampingan.
+// Menuliskan nama Operator ID lengkap diizinkan `D-69`.
+//
+// # Keduanya DIKONFIRMASI masih berlaku (Work Owner, 2026-10-06)
+//
+// Ditanyakan justru karena daftarnya berumur: property-nya dibuat 2018 dan terakhir
+// disunting 2020, sementara orang berpindah tugas. Jawabannya "masih" — sehingga
+// daftar ini direplikasi sebagai perilaku yang BENAR, bukan sekadar perilaku lama yang
+// ditiru menunggu koreksi (`P-5`).
+//
+// Yang BELUM dijawab: siapa yang berwenang menambah atau menghapus dokter setelah `F-4`
+// ada. Selama belum, penambahan dokter menempuh perubahan kode dan rilis — konsekuensi
+// yang perlu disebut saat `F-4` dirancang, bukan ditemukan saat ada dokter baru masuk.
+var rclDoctorPromptList = []RCLDoctorOption{
+	{ID: "WAHYUKRISTANTI", Label: "WAHYUKRISTANTI"},
+	{ID: "MARGARETHAROSAGUNAWAN", Label: "MARGARETHA ROSA GUNAWAN"},
 }
 
-// RCLDoctorExcludedAccessGroup dikecualikan meski orangnya memegang salah satu grup di atas.
-const RCLDoctorExcludedAccessGroup = "GCNMFW:ViewClaimPNC"
+// RCLDoctorOptions mengembalikan isi dropdown "Nama Dokter" dalam urutan layar.
+//
+// Salinan, bukan irisan aslinya: pemanggil yang mengurutkan hasilnya di tempat tidak
+// boleh ikut menata ulang daftar yang dipakai bersama.
+func RCLDoctorOptions() []RCLDoctorOption {
+	out := make([]RCLDoctorOption, len(rclDoctorPromptList))
+	copy(out, rclDoctorPromptList)
+	return out
+}
 
-// PUCLOptionSource melayani ketiga daftar pilihan modal.
+// PUCLOptionSource melayani kedua daftar pilihan modal yang datang dari basis data.
+//
+// "Nama Dokter" TIDAK di sini: ia daftar tetap pada property-nya sendiri
+// (`RCLDoctorOptions`), sehingga tidak punya adapter dan tidak dapat gagal.
 type PUCLOptionSource interface {
 	// SubjectOptions mengembalikan pilihan Perihal untuk satu jalur.
 	SubjectOptions(ctx context.Context, track int) ([]PUCLSubjectOption, error)
@@ -359,10 +409,4 @@ type PUCLOptionSource interface {
 	// (`pyGridPaginator`). Mengirim seluruhnya ke layar akan mengulang persis cacat
 	// yang `NFR-12` larang.
 	RejectReasons(ctx context.Context, keyword string, limit int) ([]PUCLRejectReason, error)
-
-	// RCLDoctors mengembalikan pilihan "Nama Dokter", terurut menaik dan tanpa kembar.
-	//
-	// Tanpa parameter: daftarnya puluhan baris, bukan ribuan, dan penyaringnya sudah
-	// melekat pada kuerinya — ketiga grup akses dan `STS_AKTIF = '1'`.
-	RCLDoctors(ctx context.Context) ([]RCLDoctorOption, error)
 }

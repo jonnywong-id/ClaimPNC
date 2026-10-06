@@ -209,6 +209,65 @@ func TestSendToRCLPUCLMembuangNamaDokterDiLuarJalurnya(t *testing.T) {
 	require.Empty(t, l.pucl.Letter[0].DoctorName, "lini polis contoh bukan PA")
 }
 
+// Dokter yang dipilih TERSIMPAN, tetapi BELUM memindahkan klaimnya — ditahan Work Owner.
+//
+// # Uji ini mengunci keputusan, bukan perilaku yang diinginkan
+//
+// Yang diinginkan adalah `RouterRCLDokter` apa adanya: `Param.AssignTo :=
+// ClaimData.NamaDokterRCL`. Itu pernah dipasang dan lulus uji, lalu ditahan Work Owner
+// (2026-10-06) karena satu mata rantai belum terverifikasi: Inbox RCL mencocokkan
+// `ASSIGNED_OPERATOR_ID` dengan `M_LOGIN_PNC.LOGIN_ID` pemanggil, sedangkan yang kita
+// tulis adalah `pyStandardValue` prompt list — ruang nama yang berbeda. Tidak cocok,
+// klaimnya hilang dari inbox siapa pun tanpa satu pun galat.
+//
+// Jadi uji ini ada supaya keadaan tertahan itu **disengaja dan terlihat**, bukan diam-diam
+// berlaku. Begitu pemetaannya terverifikasi, uji ini yang pertama harus dibalik.
+func TestSendToRCLPUCLDokterTersimpanTetapiBelumMemindahkanKlaim(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+	// Isian "Nama Dokter" hanya tampil pada lini PA.
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	claim.Policy.Line = registrasi.LinePersonalAccident
+	require.NoError(t, l.store.Save(ctx, claim))
+
+	const dokter = "WAHYUKRISTANTI" // `pyPromptTableList` NamaDokterRCL, baris pertama
+	isi := isiLengkap(task.ID, registrasi.PUCLTrackRCL)
+	isi.DoctorName = dokter
+
+	result, err := l.service.SendToRCLPUCL(ctx, isi, l.caller)
+	require.NoError(t, err)
+
+	require.Equal(t, registrasi.StageRCLDoctor, result.Claim.CurrentStage)
+
+	// Pilihannya TERSIMPAN — analis tidak kehilangan apa yang ia isi.
+	require.Equal(t, dokter, l.pucl.Letter[0].DoctorName)
+
+	// Tetapi tugasnya BELUM berpindah ke dokter itu. Inilah yang ditahan.
+	require.Equal(t, registrasi.OperatorUnassigned, result.NextTask.Owner,
+		"penerapan RouterRCLDokter ditahan sampai pemetaan nama dokter ke LOGIN_ID terverifikasi")
+}
+
+// Tanpa dokter yang dipilih, tugasnya TETAP diparkir di `ServicePNC`.
+//
+// Pasangan dari uji di atas, dan ia yang menjaga cadangannya tidak ikut hilang: lini
+// selain PA tidak menampilkan isian "Nama Dokter" sama sekali, sehingga klaimnya harus
+// mendarat di antrean belum-ditugaskan — bukan di tangan orang terakhir yang kebetulan
+// tersimpan di suatu tempat.
+func TestSendToRCLPUCLTanpaDokterTetapDiParkir(t *testing.T) {
+	l := setup(t)
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+	result, err := l.service.SendToRCLPUCL(context.Background(),
+		isiLengkap(task.ID, registrasi.PUCLTrackRCL), l.caller)
+	require.NoError(t, err)
+
+	require.Equal(t, registrasi.OperatorUnassigned, result.NextTask.Owner, "lini contoh bukan PA")
+	require.Equal(t, registrasi.OperatorUnassigned, l.pucl.Letter[0].DoctorName)
+}
+
 // "Nama Dokter" tampil bila `RCL_PUCL != 2 && IsPA` — jadi jalur Notification pun
 // membawanya, bukan jalur RCL saja. Diuji pada tingkat aturan karena lini polis contoh
 // bukan PA: yang dipastikan di sini adalah jalur PUCL selalu membuangnya.
@@ -295,19 +354,27 @@ func TestAlasanPenolakanDicariDiSumbernya(t *testing.T) {
 	require.NotEmpty(t, cocok[0].Description, "Pilih menyalin deskripsinya ke Keterangan Isi")
 }
 
-// Dropdown "Nama Dokter" menyerahkan pilihannya terurut, tanpa parameter.
+// Dropdown "Nama Dokter" adalah `pyPromptTableList` property `NamaDokterRCL`, apa adanya.
 //
-// Terurut karena dropdown yang urutannya berubah-ubah antar pemuatan membuat pengguna
-// memilih baris yang salah; tanpa parameter karena penyaringnya melekat pada sumbernya —
-// ketiga grup akses dan `STS_AKTIF = '1'` — bukan diserahkan ke pemanggil.
-func TestPilihanNamaDokterTerurut(t *testing.T) {
+// Yang diperiksa bukan sekadar jumlahnya, melainkan ketiga hal yang pernah salah:
+//
+//  1. URUTANNYA urutan prompt list (`REPEATINGINDEX` 1 lalu 2), bukan abjad. Diurutkan
+//     abjad, MARGARETHA naik ke atas dan petugas memilih baris yang salah karena hafal
+//     posisinya.
+//  2. Nilai simpan dan label DIPISAH, dan pada baris kedua memang berbeda. Tertukar,
+//     yang tersimpan adalah nama berspasi yang tidak pernah cocok dengan penyaring
+//     Inbox RCL — dan klaimnya hilang dari semua inbox tanpa satu pesan galat.
+//  3. Daftarnya TIDAK KOSONG tanpa basis data. Inilah cacat yang dilaporkan: kueri lama
+//     ke `T_ACCESS_GROUP_PNC` tidak mengembalikan satu baris pun, dan layar menggambar
+//     dropdown berisi "----- PILIH -----" saja.
+func TestPilihanNamaDokterMengikutiPromptListPega(t *testing.T) {
 	l := setup(t)
 
-	pilihan, err := l.service.RCLDoctorOptions(context.Background())
-	require.NoError(t, err)
-	require.Len(t, pilihan, 2)
-	require.Equal(t, "DOKTER CONTOH DUA", pilihan[0].ID)
-	require.Equal(t, "DOKTERCONTOHSATU", pilihan[1].ID)
+	pilihan := l.service.RCLDoctorOptions()
+	require.Equal(t, []registrasi.RCLDoctorOption{
+		{ID: "WAHYUKRISTANTI", Label: "WAHYUKRISTANTI"},
+		{ID: "MARGARETHAROSAGUNAWAN", Label: "MARGARETHA ROSA GUNAWAN"},
+	}, pilihan)
 }
 
 // Klaim yang dikirim ke RCL/PUCL dua kali tetap SATU surat.

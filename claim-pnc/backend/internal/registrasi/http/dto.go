@@ -389,17 +389,23 @@ type PUCLReasonResponse struct {
 
 // RCLDoctorDTO adalah satu pilihan dropdown "Nama Dokter".
 //
-// Satu field, dan itu disengaja: nilai yang disimpan sekaligus yang ditampilkan adalah
-// `OLD_OPERATOR_ID` yang sama. Tidak ada kolom nama tampil di sumbernya, dan menambahkan
-// label kedua berarti mengarang.
+// DUA field, sejak property `NamaDokterRCL` terbaca (2026-10-06). Sebelumnya satu, dengan
+// alasan bahwa sumbernya tidak punya kolom nama tampil — alasan yang gugur bersama
+// sumbernya: `pyPromptTableList` memisahkan `pyStandardValue` dari `pyLocalizedValue`, dan
+// pada baris kedua keduanya berbeda (`MARGARETHAROSAGUNAWAN` versus
+// `MARGARETHA ROSA GUNAWAN`).
 type RCLDoctorDTO struct {
+	// ID adalah yang dikirim balik pada `nama_dokter` — `pyStandardValue`.
 	ID string `json:"id"`
+
+	// Nama adalah yang digambar layar — `pyLocalizedValue`.
+	Nama string `json:"nama"`
 }
 
 // RCLDoctorResponse adalah seluruh pilihan "Nama Dokter".
 //
-// Tanpa paginasi: daftarnya puluhan baris — diukur 17 operator aktif pada ketiga grup
-// akses pada 2026-09-27 — dan sebuah dropdown memang harus memuat seluruhnya.
+// Tanpa paginasi: daftarnya DUA baris, tetap, dan sebuah dropdown memang harus memuat
+// seluruhnya.
 type RCLDoctorResponse struct {
 	Pilihan []RCLDoctorDTO `json:"pilihan"`
 }

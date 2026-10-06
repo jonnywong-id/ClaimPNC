@@ -497,11 +497,14 @@ func (a *Assigner) Assign(
 	// membuka klaim yang baru saja dibuatnya sendiri.
 	//
 	// ADMINKLAIM di basis data adalah kolom yang sama dengan CreatedBy di sini.
-	// RouterRCLDokter menugaskan ke ClaimData.NamaDokterRCL. Tidak ada rule di export yang
-	// mengisinya (hanya laporan yang membacanya; Pega menyimpannya di
-	// T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1), dan layar pemilihan dokter RCL belum ada di aplikasi
-	// ini. Sampai itu ada, tugas diparkir di ServicePNC — antrean "belum ditugaskan" — bukan
-	// diberikan ke PIC Teknik yang bukan dokter.
+	// RouterRCLDokter menugaskan ke ClaimData.NamaDokterRCL. Modal "Kirim ke RCL/PUCL" kini
+	// PUNYA dropdown dokternya, tetapi penerapannya DITAHAN Work Owner (2026-10-06) sampai
+	// pemetaan nama dokter ke `M_LOGIN_PNC.LOGIN_ID` terverifikasi — tanpa itu klaimnya
+	// hilang dari inbox siapa pun, tanpa galat. Alasan lengkapnya di
+	// `usecase.SendToRCLPUCL`.
+	//
+	// Sampai itu terjawab, SELURUH tugas tahap ini diparkir di ServicePNC — antrean "belum
+	// ditugaskan" — bukan diberikan ke PIC Teknik yang bukan dokter.
 	if stage.Router == registrasi.RouterRCLDoctor {
 		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
 	}
