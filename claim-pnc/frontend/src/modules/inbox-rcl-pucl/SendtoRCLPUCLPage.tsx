@@ -675,7 +675,16 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                 label="Tolak Klaim"
                 aksi="tolak"
                 reference={detail?.referensi}
-                note="Menolak klaim. Hanya tersedia pada jalur RCL."
+                /*
+                  Akibatnya disebut, bukan hanya namanya. Tombol ini MENUTUP klaimnya —
+                  `PUCLPost` dengan `Status = "0"` memanggil `ASMForceCaseClose`, sehingga
+                  status kerjanya menjadi Resolved-Rejected dan klaimnya keluar dari antrean
+                  tanpa berpindah ke siapa pun.
+
+                  Berbeda dari kedua tombol Kirim, yang meneruskan klaim dan masih dapat
+                  dikembalikan: ini tidak punya tombol sebaliknya di layar mana pun.
+                */
+                note="Menutup klaim sebagai ditolak. Hanya pada jalur RCL, dan tidak dapat dibatalkan dari layar ini."
               />
             )}
               {/*

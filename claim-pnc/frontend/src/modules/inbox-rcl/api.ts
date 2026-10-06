@@ -115,6 +115,13 @@ export function useKeputusanRCL(nomor: string) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['inbox-rcl', 'daftar'] })
       client.removeQueries({ queryKey: ['inbox-rcl', 'detail'] })
+
+      // Klaimnya BERPINDAH ANTREAN, bukan sekadar hilang dari antrean dokter: Setuju dan
+      // Submit membukanya di workbasket `RCLPUCL` (tahap `rcl-pucl`), Tidak Setuju dan Back
+      // mengembalikannya ke PIC Teknik. Tanpa baris ini, cache daftar Inbox RCL/PUCL yang
+      // sudah terbuka di sesi yang sama masih memuat daftar LAMA saat penggunanya pindah ke
+      // sana — klaim yang baru disetujui terbaca belum sampai.
+      void client.invalidateQueries({ queryKey: ['inbox-rcl-pucl'] })
     },
   })
 }

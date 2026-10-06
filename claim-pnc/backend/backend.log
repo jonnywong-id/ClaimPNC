@@ -14,3 +14,33 @@
 {"time":"2026-10-06T09:29:34.0959275+07:00","level":"WARN","msg":"penyaring pemilik Inbox Komite DIMATIKAN","modul":"komite","akibat":"daftarnya adalah antrean komite SELURUH perusahaan, bukan pekerjaan pengguna yang masuk","berlaku":"hanya APP_ENV=development; konfigurasi menolaknya di luar itu","mematikan":"kosongkan KOMITE_TANPA_PENYARING_OPERATOR"}
 {"time":"2026-10-06T09:29:34.1003013+07:00","level":"WARN","msg":"identitas mitra DIPINJAM pada layar Inbox PLA DLA","login_pengembangan":"JONNY","berjalan_sebagai":"TUGUREASURANSIINDONESIA","akibat":"seluruh layar — termasuk balasan komunikasi — berjalan atas nama mitra itu; balasan tercatat sebagai miliknya, bukan milik pemakainya","berlaku":"hanya APP_ENV=development"}
 {"time":"2026-10-06T09:29:34.1005856+07:00","level":"INFO","msg":"server menyala","alamat":":8080"}
+{"time":"2026-10-06T09:30:05.5413266+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"e51bbd2d8bf76030","metode":"GET","jalur":"/health/ready","status":200,"lama":0}
+{"time":"2026-10-06T09:30:05.6404742+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"e84eaad88552fad6","metode":"POST","jalur":"/api/inbox-rcl-pucl/klaim/PNCN.26.32/tindakan/tolak","status":401,"lama":518600}
+{"time":"2026-10-06T09:36:15.423362+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"38e159c1781be031","metode":"GET","jalur":"/api/inbox-service-center/tab","status":401,"lama":0}
+{"time":"2026-10-06T09:36:32.0916784+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"55bfc02a61163876","metode":"POST","jalur":"/api/masuk","status":200,"lama":15048106600}
+{"time":"2026-10-06T09:36:32.1556959+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"b11ebcdba29aa793","metode":"GET","jalur":"/api/portal","status":200,"lama":11617200}
+{"time":"2026-10-06T09:36:32.1666113+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"9934acfc8d7e43bc","metode":"GET","jalur":"/api/inbox-service-center/tab","status":200,"lama":6615100}
+{"time":"2026-10-06T09:36:32.2096448+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"65396f9bb514f4ca","metode":"GET","jalur":"/api/inbox-service-center","status":200,"lama":20397600}
+{"time":"2026-10-06T09:36:32.2676612+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"4e9850b54f97a0e4","metode":"GET","jalur":"/api/menu","status":200,"lama":116012200}
+{"time":"2026-10-06T09:37:20.0586998+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"7d356ffa12825d9c","metode":"GET","jalur":"/api/inbox-survey/keterangan","status":200,"lama":10961700}
+{"time":"2026-10-06T09:37:20.1109662+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"a063e49b917f9e7f","metode":"GET","jalur":"/api/inbox-survey/jumlah-tab","status":403,"lama":64212000}
+{"time":"2026-10-06T09:37:20.1220618+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"636aa9d35d7b453d","metode":"GET","jalur":"/api/inbox-survey","status":403,"lama":15364700}
+{"time":"2026-10-06T09:37:21.2714251+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"2a0e722e700e159f","metode":"GET","jalur":"/api/inbox-rcl-pucl/tab","status":200,"lama":11232500}
+{"time":"2026-10-06T09:37:21.3398946+07:00","level":"INFO","msg":"antrean RCL/PUCL dibuka","modul":"inbox-rcl-pucl","tab":"1","pemanggil":"JONNY","portal":"ASM","baris":1}
+{"time":"2026-10-06T09:37:21.3398946+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"4f83d9547f38e577","metode":"GET","jalur":"/api/inbox-rcl-pucl","status":200,"lama":32691900}
+{"time":"2026-10-06T09:37:22.7163018+07:00","level":"INFO","msg":"antrean RCL/PUCL dibuka","modul":"inbox-rcl-pucl","tab":"2","pemanggil":"JONNY","portal":"ASM","baris":2}
+{"time":"2026-10-06T09:37:22.7166877+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"d1f3d1eab660856c","metode":"GET","jalur":"/api/inbox-rcl-pucl","status":200,"lama":19189800}
+{"time":"2026-10-06T09:37:23.8492043+07:00","level":"INFO","msg":"layar kerja RCL/PUCL dibuka","modul":"inbox-rcl-pucl","pemanggil":"JONNY","portal":"ASM","klaim":"PNCN.26.32"}
+{"time":"2026-10-06T09:37:23.8501614+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"1d2a92daf4834cd7","metode":"GET","jalur":"/api/inbox-rcl-pucl/klaim/PNCN.26.32","status":200,"lama":32194200}
+{"time":"2026-10-06T09:37:28.0072581+07:00","level":"INFO","msg":"tindakan klaim RCL/PUCL dijalankan","portal":"ASM","login":"JONNY","klaim":"PNCN.26.32","tindakan":"tolak"}
+{"time":"2026-10-06T09:37:28.2043507+07:00","level":"INFO","msg":"surat rcl/pucl diterbitkan","klaim":"PNCN.26.32","berkas":"RCL.pdf","dokumen":"260001895423","oleh":"JONNY"}
+{"time":"2026-10-06T09:37:28.204985+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"b1bb4b297b4752de","metode":"POST","jalur":"/api/inbox-rcl-pucl/klaim/PNCN.26.32/tindakan/tolak","status":200,"lama":441589000}
+{"time":"2026-10-06T09:37:28.2644004+07:00","level":"INFO","msg":"layar kerja RCL/PUCL dibuka","modul":"inbox-rcl-pucl","pemanggil":"JONNY","portal":"ASM","klaim":"PNCN.26.32"}
+{"time":"2026-10-06T09:37:28.2644004+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"0cb16b44397e451a","metode":"GET","jalur":"/api/inbox-rcl-pucl/klaim/PNCN.26.32","status":200,"lama":31167800}
+{"time":"2026-10-06T09:37:28.3448297+07:00","level":"INFO","msg":"dokumen klaim RCL/PUCL diambil","portal":"ASM","login":"JONNY","klaim":"PNCN.26.32","dokumen":"260001895423"}
+{"time":"2026-10-06T09:37:28.3451394+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"29f4ee1ba427ef61","metode":"GET","jalur":"/api/inbox-rcl-pucl/klaim/PNCN.26.32/dokumen/260001895423","status":200,"lama":34899100}
+{"time":"2026-10-06T09:37:37.2091724+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"8a6a025617b42914","metode":"GET","jalur":"/api/inbox-rcl-pucl/tab","status":200,"lama":8027200}
+{"time":"2026-10-06T09:37:37.2166839+07:00","level":"INFO","msg":"antrean RCL/PUCL dibuka","modul":"inbox-rcl-pucl","tab":"2","pemanggil":"JONNY","portal":"ASM","baris":1}
+{"time":"2026-10-06T09:37:37.2176745+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"7ea7f6f7a6530454","metode":"GET","jalur":"/api/inbox-rcl-pucl","status":200,"lama":16529300}
+{"time":"2026-10-06T09:37:38.5761569+07:00","level":"INFO","msg":"antrean RCL/PUCL dibuka","modul":"inbox-rcl-pucl","tab":"1","pemanggil":"JONNY","portal":"ASM","baris":1}
+{"time":"2026-10-06T09:37:38.5761569+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"99af006051ee3b2c","metode":"GET","jalur":"/api/inbox-rcl-pucl","status":200,"lama":19895100}
