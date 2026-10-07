@@ -113,7 +113,7 @@ type TableProps = {
   onToggle: (key: string | null) => void
 }
 
-function ClaimTable({ masterID, master, rows, loading, error, opened, onToggle }: TableProps) {
+function ClaimTable({ masterID, master, rows, loading, error, opened, onToggle }: Readonly<TableProps>) {
   const columns: Column<ClaimSummary>[] = [
     {
       key: 'tanggal_kejadian',
@@ -219,7 +219,7 @@ function ClaimTable({ masterID, master, rows, loading, error, opened, onToggle }
  * membuat pengguna menunggu data yang tidak akan pernah datang.
  */
 function emptyMessageFor(master: MasterXOL | undefined): string {
-  if (master && master.jumlah_group_business === 0) {
+  if (master?.jumlah_group_business === 0) {
     return (
       'Perjanjian ini belum punya group business, sehingga tidak ada klaim yang dapat ' +
       'diakumulasi. Lengkapi Master XOL lebih dulu.'
@@ -229,7 +229,7 @@ function emptyMessageFor(master: MasterXOL | undefined): string {
 }
 
 /** MasterSummary menampilkan keempat kolom kepala pada `Sec_Detail_claim_XOL`. */
-function MasterSummary({ master }: { master: MasterXOL }) {
+function MasterSummary({ master }: Readonly<{ master: MasterXOL }>) {
   const entries: Array<[string, string]> = [
     ['Type Master', master.tipe || '—'],
     ['ID Master', master.id],
@@ -253,11 +253,11 @@ function BreakdownTable({
   masterID,
   lossDate,
   cause,
-}: {
+}: Readonly<{
   masterID: string
   lossDate: string
   cause: string
-}) {
+}>) {
   const breakdown = useBreakdown(masterID, lossDate, cause)
   const rows = breakdown.data?.baris ?? []
 

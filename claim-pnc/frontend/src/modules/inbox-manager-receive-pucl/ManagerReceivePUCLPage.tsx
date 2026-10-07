@@ -149,9 +149,7 @@ export function ManagerReceivePUCLPage() {
           ) : (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => (
-                  <CaseLink item={row} onOpen={openDocument} />
-                ))}
+                columns={columnsFor(tab, openDocument)}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.no_case}`}
                 title={tab.nama}
@@ -197,12 +195,12 @@ function PageFrame({
   tab,
   exportable,
   children,
-}: {
+}: Readonly<{
   tab: string
   /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
   exportable: boolean
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -246,7 +244,7 @@ function PageFrame({
  * adalah jawaban yang membingungkan: pengguna tidak dapat membedakannya dari ekspor yang
  * gagal diam-diam.
  */
-function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
+function ExportButton({ tab, enabled }: Readonly<{ tab: string; enabled: boolean }>) {
   const ekspor = useExportManagerReceivePUCL()
 
   return (
@@ -274,7 +272,7 @@ function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
  * hilang dengan sendirinya begitu penghalangnya hilang. Menyebut pemiliknya penting:
  * penghalang tanpa alamat tidak pernah hilang.
  */
-function BlockedNotice({ tab }: { tab: Tab }) {
+function BlockedNotice({ tab }: Readonly<{ tab: Tab }>) {
   return (
     <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
       <h2 className="text-sm font-semibold text-amber-900">{tab.nama} belum tersedia</h2>
@@ -325,10 +323,10 @@ function BlockedNotice({ tab }: { tab: Tab }) {
 function CaseLink({
   item,
   onOpen,
-}: {
+}: Readonly<{
   item: WorkItem
   onOpen: (row: WorkItem) => void
-}) {
+}>) {
   if (item.no_case === '') return <span className="text-slate-400">—</span>
 
   // Tanpa kunci teknis, Open Assignment tidak punya apa pun untuk dibuka. Nomornya tetap
@@ -360,7 +358,7 @@ function CaseLink({
  * kini diturunkan dari Group Panel, dan tab RCL/PUCL yang isinya jauh lebih sedikit daripada
  * yang dikembalikan Report Definition aslinya.
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (
@@ -391,7 +389,7 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
  * dilihat pengguna adalah gambarnya. Menyatukannya akan membuat pengurutan menelusuri markup
  * alih-alih nomor case.
  */
-function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+function columnsFor(tab: Tab, onOpen: (row: WorkItem) => void): Column<WorkItem>[] {
   return tab.kolom.map((column) => {
     const base: Column<WorkItem> = {
       key: column.kunci,
@@ -402,7 +400,7 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
     // Hanya tab Receive yang nomor case-nya membuka layar kerja. Penandanya datang dari
     // server, bukan disimpulkan dari kode tab di sini.
     if (column.kunci === 'no_case' && tab.buka_layar_kerja) {
-      return { ...base, render: openCase }
+      return { ...base, render: (row) => <CaseLink item={row} onOpen={onOpen} /> }
     }
     return base
   })

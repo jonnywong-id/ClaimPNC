@@ -268,7 +268,7 @@ export function ClaimReportInboxPage() {
   )
 }
 
-function PageFrame({ children }: { children: React.ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -296,11 +296,11 @@ function CategoryTabs({
   category,
   active,
   onSelect,
-}: {
+}: Readonly<{
   category: ReportCategory[]
   active: string
   onSelect: (kode: string) => void
-}) {
+}>) {
   if (category.length === 0) return null
 
   return (
@@ -439,7 +439,7 @@ function columnsFor(message: boolean): Column<ClaimReport>[] {
  * selama masa paralel daftar ini menggabungkan dua tabel, dan pertanyaan pertama pada
  * setiap selisih adalah "baris ini ditulis siapa".
  */
-function OriginBadge({ origin }: { origin: string }) {
+function OriginBadge({ origin }: Readonly<{ origin: string }>) {
   const fromPega = origin === 'pega'
   return (
     <span
@@ -478,7 +478,7 @@ function OriginBadge({ origin }: { origin: string }) {
  * Teksnya sengaja TIDAK diterjemahkan (`D-13`, `D-80`): ia teks layar yang dibaca petugas
  * setiap hari, dan mengubahnya berarti mengubah layar, bukan menerjemahkan kode.
  */
-function AgingBadge({ days }: { days: number }) {
+function AgingBadge({ days }: Readonly<{ days: number }>) {
   return <span className="tabular-nums">{relativeAge(days)}</span>
 }
 
@@ -489,7 +489,7 @@ function relativeAge(days: number): string {
   return `${days}d ago`
 }
 
-function PositionBadge({ position }: { position: string }) {
+function PositionBadge({ position }: Readonly<{ position: string }>) {
   const style: Record<string, string> = {
     Outstanding: 'bg-blue-50 text-blue-800 border-blue-200',
     'Not Registered': 'bg-amber-50 text-amber-800 border-amber-200',
@@ -516,7 +516,7 @@ function descriptionFor(category: ReportCategory | undefined): string {
 }
 
 /** Keterangan batas cabang yang sedang berlaku, digambar di kanan judul tabel. */
-function BranchScope({ code }: { code: string }) {
+function BranchScope({ code }: Readonly<{ code: string }>) {
   if (code === '') return null
   return (
     <span className="rounded-kontrol bg-slate-100 px-2 py-1 text-xs text-slate-600">

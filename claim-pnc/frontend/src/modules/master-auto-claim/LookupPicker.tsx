@@ -73,7 +73,7 @@ export function LookupPicker({
   error,
   hint,
   disabled = false,
-}: Props) {
+}: Readonly<Props>) {
   const fieldId = useId()
   const [isOpen, setOpen] = useState(false)
 
@@ -83,6 +83,47 @@ export function LookupPicker({
     onPick(row)
     onKeywordChange('')
     setOpen(false)
+  }
+
+  // Isi daftar hasil pencarian menurut keadaan kueri.
+  function renderResults() {
+    if (isError) {
+      return (
+        <p className="px-3 py-3 text-sm text-red-700" role="alert">
+          Pencarian gagal. Coba beberapa saat lagi.
+        </p>
+      )
+    }
+    if (isSearching) {
+      return <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
+    }
+    if (rows.length === 0) {
+      return (
+        <p className="px-3 py-3 text-sm text-slate-500">
+          Tidak ada yang cocok dengan “{keyword.trim()}”.
+        </p>
+      )
+    }
+    return (
+      <ul>
+        {rows.map((row) => (
+          <li key={row.id}>
+            <button
+              type="button"
+              onClick={() => pick(row)}
+              className={[
+                'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
+                'transition-colors duration-150 ease-halus',
+                'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
+              ].join(' ')}
+            >
+              <span className="min-w-0 flex-1 text-slate-900">{row.nama}</span>
+              <span className="shrink-0 text-xs text-slate-500">{row.id}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    )
   }
 
   return (
@@ -132,36 +173,7 @@ export function LookupPicker({
 
           {isOpen && !shortKeyword && keyword.trim() !== '' && (
             <div className="mt-2 max-h-56 overflow-y-auto rounded-kontrol border border-slate-200 bg-white shadow-lembut">
-              {isError ? (
-                <p className="px-3 py-3 text-sm text-red-700" role="alert">
-                  Pencarian gagal. Coba beberapa saat lagi.
-                </p>
-              ) : isSearching ? (
-                <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
-              ) : rows.length === 0 ? (
-                <p className="px-3 py-3 text-sm text-slate-500">
-                  Tidak ada yang cocok dengan “{keyword.trim()}”.
-                </p>
-              ) : (
-                <ul>
-                  {rows.map((row) => (
-                    <li key={row.id}>
-                      <button
-                        type="button"
-                        onClick={() => pick(row)}
-                        className={[
-                          'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
-                          'transition-colors duration-150 ease-halus',
-                          'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
-                        ].join(' ')}
-                      >
-                        <span className="min-w-0 flex-1 text-slate-900">{row.nama}</span>
-                        <span className="shrink-0 text-xs text-slate-500">{row.id}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {renderResults()}
             </div>
           )}
         </div>

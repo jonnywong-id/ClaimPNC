@@ -92,7 +92,7 @@ export function PrintPreDLAPanel({
   onKirim,
   busy,
   pesanKirim,
-}: Props) {
+}: Readonly<Props>) {
   const rows = data ?? []
 
   return (
@@ -157,12 +157,11 @@ export function PrintPreDLAPanel({
       </p>
 
       {pesanKirim != null && pesanKirim !== '' && (
-        <p
-          role="status"
-          className="mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        <output
+          className="block mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
         >
           {pesanKirim}
-        </p>
+        </output>
       )}
     </section>
   )

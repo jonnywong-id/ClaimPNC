@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
 import {
@@ -35,6 +35,63 @@ import { DetailForm, type DetailFormValues } from './DetailForm'
 const PAGE_SIZE = 50
 
 type MessageContent = { title: string; description: string; tone: ErrorTone }
+
+/** statusClass memilih warna lencana Status Aktif: aktif, kosong, atau selainnya. */
+function statusClass(status: string): string {
+  if (status === '1') return 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+  if (status === '') return 'bg-slate-50 text-slate-600 ring-slate-200'
+  return 'bg-amber-50 text-amber-800 ring-amber-200'
+}
+
+/**
+ * renderFormBody menggambar isi form: memuat baris, galat pemuatan, atau form-nya.
+ *
+ * Baris baru (`editingID === ''`) tidak pernah memuat apa pun, sehingga dua keadaan
+ * pertama hanya berlaku saat menyunting.
+ */
+function renderFormBody({
+  editingID,
+  loaded,
+  statusOptions,
+  fieldError,
+  busy,
+  onSubmit,
+  onCancel,
+}: Readonly<{
+  editingID: string
+  loaded: ReturnType<typeof useCauseOfLossDetail>
+  statusOptions: ComponentProps<typeof DetailForm>['options']
+  fieldError: Record<string, string>
+  busy: boolean
+  onSubmit: (values: DetailFormValues) => void
+  onCancel: () => void
+}>): ReactNode {
+  if (editingID !== '' && loaded.isLoading) {
+    return <p className="text-sm text-slate-500">Memuat baris…</p>
+  }
+  if (editingID !== '' && loaded.error !== null) {
+    return (
+      <ErrorMessage
+        title="Baris ini tidak dapat dimuat"
+        description="Tutup form ini dan muat ulang daftarnya."
+        tone="gangguan"
+      />
+    )
+  }
+  return (
+    <DetailForm
+      // key memaksa form lahir ulang saat berpindah baris. Tanpa itu, nilai
+      // awalnya tidak ikut berganti — `useState` hanya membaca nilai awal sekali.
+      key={editingID === '' ? 'baru' : editingID}
+      existing={editingID === '' ? null : (loaded.data?.detail ?? null)}
+      options={statusOptions}
+      fieldError={fieldError}
+      busy={busy}
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+    />
+  )
+}
 
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
@@ -273,14 +330,7 @@ export function DetailPage() {
       width: '9rem',
       render: (row) => (
         <span
-          className={[
-            'rounded-full px-2 py-0.5 text-xs ring-1',
-            row.status_aktif === '1'
-              ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
-              : row.status_aktif === ''
-                ? 'bg-slate-50 text-slate-600 ring-slate-200'
-                : 'bg-amber-50 text-amber-800 ring-amber-200',
-          ].join(' ')}
+          className={['rounded-full px-2 py-0.5 text-xs ring-1', statusClass(row.status_aktif)].join(' ')}
         >
           {row.label_status_aktif}
         </span>
@@ -382,27 +432,15 @@ export function DetailPage() {
           )}
 
           <div className="mt-4">
-            {editingID !== '' && loaded.isLoading ? (
-              <p className="text-sm text-slate-500">Memuat baris…</p>
-            ) : editingID !== '' && loaded.error !== null ? (
-              <ErrorMessage
-                title="Baris ini tidak dapat dimuat"
-                description="Tutup form ini dan muat ulang daftarnya."
-                tone="gangguan"
-              />
-            ) : (
-              <DetailForm
-                // key memaksa form lahir ulang saat berpindah baris. Tanpa itu, nilai
-                // awalnya tidak ikut berganti — `useState` hanya membaca nilai awal sekali.
-                key={editingID === '' ? 'baru' : editingID}
-                existing={editingID === '' ? null : (loaded.data?.detail ?? null)}
-                options={options.data?.status_aktif ?? []}
-                fieldError={fieldError}
-                busy={busy}
-                onSubmit={submit}
-                onCancel={closeForm}
-              />
-            )}
+            {renderFormBody({
+              editingID,
+              loaded,
+              statusOptions: options.data?.status_aktif ?? [],
+              fieldError,
+              busy,
+              onSubmit: submit,
+              onCancel: closeForm,
+            })}
           </div>
         </section>
       )}

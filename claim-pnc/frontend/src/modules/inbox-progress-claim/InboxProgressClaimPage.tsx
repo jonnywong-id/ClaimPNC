@@ -108,7 +108,7 @@ export function InboxProgressClaimPage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -130,7 +130,7 @@ function PageFrame({ children }: { children: ReactNode }) {
  * penghalangnya hilang. Tanpa catatan ini, penyaring cabang yang belum aktif dan bagian
  * Approval yang tidak ada akan dilaporkan berulang kali sebagai kerusakan.
  */
-function Notes({ limitations }: { limitations: string[] }) {
+function Notes({ limitations }: Readonly<{ limitations: string[] }>) {
   if (limitations.length === 0) return null
 
   return (

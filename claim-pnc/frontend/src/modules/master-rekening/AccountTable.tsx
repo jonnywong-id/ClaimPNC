@@ -19,7 +19,7 @@ type Props = {
  * ia ada, tabel ini diganti dengannya; kolom dan tindakannya sudah dipisahkan supaya
  * penggantian itu tidak menyentuh isi layar.
  */
-export function AccountTable({ rows, loading, actions }: Props) {
+export function AccountTable({ rows, loading, actions }: Readonly<Props>) {
   if (loading) {
     return <p className="py-8 text-center text-sm text-slate-500">Memuat data rekening…</p>
   }
@@ -69,6 +69,13 @@ export function AccountTable({ rows, loading, actions }: Props) {
   )
 }
 
+// Warna lencana menurut kode status: 1 disetujui, 2 ditolak, selain itu menunggu.
+function statusColor(status: string): string {
+  if (status === '1') return 'bg-green-100 text-green-800'
+  if (status === '2') return 'bg-red-100 text-red-800'
+  return 'bg-amber-100 text-amber-900'
+}
+
 /**
  * LencanaStatus menampilkan posisi persetujuan.
  *
@@ -76,13 +83,8 @@ export function AccountTable({ rows, loading, actions }: Props) {
  * layar menampilkannya sebagai "Komite Approve" dan petugas mengira rekening itu masih
  * dapat dipakai membayar klaim.
  */
-function StatusBadge({ rekening }: { rekening: Account }) {
-  const color =
-    rekening.status === '1'
-      ? 'bg-green-100 text-green-800'
-      : rekening.status === '2'
-        ? 'bg-red-100 text-red-800'
-        : 'bg-amber-100 text-amber-900'
+function StatusBadge({ rekening }: Readonly<{ rekening: Account }>) {
+  const color = statusColor(rekening.status)
 
   return (
     <span className="inline-flex flex-col gap-1">
@@ -103,7 +105,7 @@ function StatusBadge({ rekening }: { rekening: Account }) {
  * gagal didaftarkan ke Kasir akan menahan pembayaran, dan satu-satunya orang yang dapat
  * menindaklanjutinya adalah petugas yang melihat layar ini.
  */
-function CashierNote({ rekening }: { rekening: Account }) {
+function CashierNote({ rekening }: Readonly<{ rekening: Account }>) {
   if (rekening.status_layanan === '') {
     return <span className="text-xs text-slate-400">—</span>
   }

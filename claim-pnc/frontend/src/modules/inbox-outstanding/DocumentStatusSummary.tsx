@@ -43,7 +43,7 @@ type Props = {
  * padahal yang benar "belum dihitung" — alasan yang sama persis dengan tab "Data rejected"
  * pada Inbox Laporan Klaim.
  */
-export function DocumentStatusSummary({ filter, selected, onSelect }: Props) {
+export function DocumentStatusSummary({ filter, selected, onSelect }: Readonly<Props>) {
   const summary = useOutstandingSummary(filter)
 
   if (summary.isError) {
@@ -119,12 +119,12 @@ function StatusTabs({
   total,
   selected,
   onSelect,
-}: {
+}: Readonly<{
   status: DocumentStatusCount[]
   total: number
   selected: DocumentStatusCode | ''
   onSelect: (status: DocumentStatusCode | '') => void
-}) {
+}>) {
   if (status.length === 0) return null
 
   return (
@@ -147,13 +147,7 @@ function StatusTabs({
               Tanpa ini pembaca layar menyebut "Complete documents0" — angkanya menempel
               tanpa jeda, dan "0" sendirian tidak menyatakan nol apa.
             */
-            aria-label={
-              !s.dapat_dipilih
-                ? `${s.judul}, belum tersedia`
-                : jumlah === null
-                  ? s.judul
-                  : `${s.judul}, ${jumlah} klaim`
-            }
+            aria-label={tabLabel(s, jumlah)}
             title={
               s.dapat_dipilih ? undefined : 'Sumber datanya belum dimigrasikan dari Pega.'
             }
@@ -162,11 +156,7 @@ function StatusTabs({
               'inline-flex items-center gap-2 rounded-kontrol border px-3 py-1.5 text-sm',
               'transition-[background-color,border-color,box-shadow] duration-150 ease-halus',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-              s.dapat_dipilih
-                ? active
-                  ? 'border-blue-600 bg-blue-600 font-medium text-white shadow-aksen'
-                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
-                : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400',
+              tabTone(s.dapat_dipilih, active),
             ].join(' ')}
           >
             {s.judul}
@@ -192,6 +182,20 @@ function StatusTabs({
   )
 }
 
+/** Nama tab untuk pembaca layar: belum tersedia, tanpa jumlah, atau berjumlah. */
+function tabLabel(s: DocumentStatusCount, jumlah: number | null): string {
+  if (!s.dapat_dipilih) return `${s.judul}, belum tersedia`
+  if (jumlah === null) return s.judul
+  return `${s.judul}, ${jumlah} klaim`
+}
+
+/** Kelas warna tab menurut dapat-dipilih dan aktifnya. */
+function tabTone(selectable: boolean, active: boolean): string {
+  if (!selectable) return 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+  if (active) return 'border-blue-600 bg-blue-600 font-medium text-white shadow-aksen'
+  return 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+}
+
 /**
  * Donut jumlah klaim per status dokumen.
  *
@@ -203,11 +207,11 @@ function SummaryChart({
   status,
   selected,
   onSelect,
-}: {
+}: Readonly<{
   status: DocumentStatusCount[]
   selected: DocumentStatusCode | ''
   onSelect: (status: DocumentStatusCode | '') => void
-}) {
+}>) {
   // Yang digambar hanyalah tab yang benar-benar MEMBAGI HABIS inbox.
   //
   // "ALL Case" dikeluarkan karena ia totalnya sendiri — memasukkannya membuat donut

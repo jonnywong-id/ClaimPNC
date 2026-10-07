@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 
 import type {
   CauseOfLossActiveOption,
@@ -106,7 +106,7 @@ export function DetailForm({
   busy,
   onSubmit,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const idField = useId()
   const [values, setValues] = useState<DetailFormValues>(() => initialValues(existing))
 
@@ -120,6 +120,56 @@ export function DetailForm({
 
   function change<K extends keyof DetailFormValues>(key: K, value: DetailFormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  function renderMasterResults(): ReactNode {
+    if (masterLookup.isError) {
+      return (
+        <p className="px-3 py-3 text-sm text-red-700" role="alert">
+          Pencarian gagal. Coba beberapa saat lagi.
+        </p>
+      )
+    }
+    if (masterLookup.isFetching) {
+      return (
+        <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
+      )
+    }
+    if ((masterLookup.data?.master ?? []).length === 0) {
+      return (
+        <p className="px-3 py-3 text-sm text-slate-500">
+          Tidak ada master penyebab kerugian yang cocok.
+        </p>
+      )
+    }
+    return (
+      <ul>
+        {(masterLookup.data?.master ?? []).map((option) => (
+          <li key={option.id}>
+            <button
+              type="button"
+              onClick={() => {
+                setValues((current) => ({
+                  ...current,
+                  id_master: option.id,
+                  nama_master: option.nama,
+                }))
+                setMasterKeyword('')
+                setMasterOpen(false)
+              }}
+              className={[
+                'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
+                'transition-colors duration-150 ease-halus',
+                'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
+              ].join(' ')}
+            >
+              <span className="min-w-0 flex-1 text-slate-900">{option.nama}</span>
+              <span className="shrink-0 text-xs text-slate-500">{option.id}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    )
   }
 
   return (
@@ -199,44 +249,7 @@ export function DetailForm({
 
         {masterOpen && !shortMasterKeyword && cleanMasterKeyword !== '' && (
           <div className="mt-2 max-h-56 overflow-y-auto rounded-kontrol border border-slate-200 bg-white shadow-lembut">
-            {masterLookup.isError ? (
-              <p className="px-3 py-3 text-sm text-red-700" role="alert">
-                Pencarian gagal. Coba beberapa saat lagi.
-              </p>
-            ) : masterLookup.isFetching ? (
-              <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
-            ) : (masterLookup.data?.master ?? []).length === 0 ? (
-              <p className="px-3 py-3 text-sm text-slate-500">
-                Tidak ada master penyebab kerugian yang cocok.
-              </p>
-            ) : (
-              <ul>
-                {(masterLookup.data?.master ?? []).map((option) => (
-                  <li key={option.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setValues((current) => ({
-                          ...current,
-                          id_master: option.id,
-                          nama_master: option.nama,
-                        }))
-                        setMasterKeyword('')
-                        setMasterOpen(false)
-                      }}
-                      className={[
-                        'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
-                        'transition-colors duration-150 ease-halus',
-                        'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
-                      ].join(' ')}
-                    >
-                      <span className="min-w-0 flex-1 text-slate-900">{option.nama}</span>
-                      <span className="shrink-0 text-xs text-slate-500">{option.id}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {renderMasterResults()}
           </div>
         )}
       </div>

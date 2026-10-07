@@ -79,7 +79,7 @@ type Props = {
  * mengubah; dan view `V_M_CAUSE_OF_LOSS` tidak punya kolom untuk membacanya kembali.
  * Menyalinnya berarti menghadirkan isian yang sejak semula tidak berfungsi.
  */
-export function CauseOfLossForm({ cause, tutup }: Props) {
+export function CauseOfLossForm({ cause, tutup }: Readonly<Props>) {
   const save = useSaveCauseOfLoss()
   const editing = cause !== null
   const firstField = useRef<HTMLInputElement | null>(null)
@@ -226,7 +226,7 @@ function Spinner() {
  * pengguna sama sekali, dan gangguan sistem tidak dapat ditolong dengan mencoba ulang
  * berkali-kali.
  */
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

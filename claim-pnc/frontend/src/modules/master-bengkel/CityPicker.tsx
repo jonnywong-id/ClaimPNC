@@ -49,7 +49,7 @@ type Props = {
  * yang tidak menunjuk baris mana pun di master kota — dan tidak ada apa pun di layar yang
  * menandakannya.
  */
-export function CityPicker({ selected, onPick, onClear, error, disabled = false }: Props) {
+export function CityPicker({ selected, onPick, onClear, error, disabled = false }: Readonly<Props>) {
   const fieldId = useId()
   const [keyword, setKeyword] = useState('')
   const [isOpen, setOpen] = useState(false)
@@ -93,6 +93,47 @@ export function CityPicker({ selected, onPick, onClear, error, disabled = false 
     )
   }
 
+  // Isi daftar hasil pencarian kota menurut keadaan kueri.
+  function renderResults() {
+    if (lookup.isError) {
+      return (
+        <p className="px-3 py-3 text-sm text-red-700" role="alert">
+          Pencarian kota gagal. Coba beberapa saat lagi.
+        </p>
+      )
+    }
+    if (lookup.isFetching) {
+      return <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
+    }
+    if (rows.length === 0) {
+      return (
+        <p className="px-3 py-3 text-sm text-slate-500">
+          Tidak ada kota yang cocok dengan “{keyword.trim()}”.
+        </p>
+      )
+    }
+    return (
+      <ul>
+        {rows.map((city) => (
+          <li key={city.id}>
+            <button
+              type="button"
+              onClick={() => pick(city)}
+              className={[
+                'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
+                'transition-colors duration-150 ease-halus',
+                'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
+              ].join(' ')}
+            >
+              <span className="min-w-0 flex-1 text-slate-900">{city.nama}</span>
+              <span className="shrink-0 text-xs text-slate-500">{city.id}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <div>
       <Field
@@ -114,36 +155,7 @@ export function CityPicker({ selected, onPick, onClear, error, disabled = false 
 
       {isOpen && !shortKeyword && keyword.trim() !== '' && (
         <div className="mt-2 max-h-56 overflow-y-auto rounded-kontrol border border-slate-200 bg-white shadow-lembut">
-          {lookup.isError ? (
-            <p className="px-3 py-3 text-sm text-red-700" role="alert">
-              Pencarian kota gagal. Coba beberapa saat lagi.
-            </p>
-          ) : lookup.isFetching ? (
-            <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
-          ) : rows.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-slate-500">
-              Tidak ada kota yang cocok dengan “{keyword.trim()}”.
-            </p>
-          ) : (
-            <ul>
-              {rows.map((city) => (
-                <li key={city.id}>
-                  <button
-                    type="button"
-                    onClick={() => pick(city)}
-                    className={[
-                      'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
-                      'transition-colors duration-150 ease-halus',
-                      'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
-                    ].join(' ')}
-                  >
-                    <span className="min-w-0 flex-1 text-slate-900">{city.nama}</span>
-                    <span className="shrink-0 text-xs text-slate-500">{city.id}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {renderResults()}
         </div>
       )}
     </div>

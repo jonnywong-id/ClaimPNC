@@ -26,7 +26,7 @@ type Props = {
  * Nilai keluar-masuknya tetap ISO, sehingga pemakai cukup mengganti komponen tanpa mengubah
  * bentuk penyaringnya.
  */
-export function DateField({ id, label, value, onChange, error, disabled }: Props) {
+export function DateField({ id, label, value, onChange, error, disabled }: Readonly<Props>) {
   const d = useDateText(value, onChange)
   return (
     <div className="relative">
@@ -59,13 +59,13 @@ export function DateInput({
   className,
   disabled,
   "aria-label": ariaLabel,
-}: {
+}: Readonly<{
   value: string
   onChange: (iso: string) => void
   className?: string
   disabled?: boolean
   "aria-label"?: string
-}) {
+}>) {
   const d = useDateText(value, onChange)
   return (
     <span className="relative block">
@@ -126,7 +126,7 @@ function useDateText(value: string, onChange: (iso: string) => void) {
   }
 }
 
-function CalendarButton({ label, disabled, onOpen, className }: { label: string; disabled?: boolean | undefined; onOpen: () => void; className: string }) {
+function CalendarButton({ label, disabled, onOpen, className }: Readonly<{ label: string; disabled?: boolean | undefined; onOpen: () => void; className: string }>) {
   return (
     <button
       type="button"
@@ -143,7 +143,7 @@ function CalendarButton({ label, disabled, onOpen, className }: { label: string;
 }
 
 /** Kalender bawaan, tidak terlihat: hanya sumber pilihan tanggal. */
-function HiddenPicker({ d, value }: { d: DateText; value: string }) {
+function HiddenPicker({ d, value }: Readonly<{ d: DateText; value: string }>) {
   return (
     <input
       ref={d.picker}

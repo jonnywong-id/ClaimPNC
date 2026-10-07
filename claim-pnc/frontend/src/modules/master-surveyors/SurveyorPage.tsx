@@ -340,14 +340,16 @@ export function SurveyorPage() {
   )
 }
 
+/** Warna penanda status: 1 disetujui, 2 ditolak, selain itu menunggu. */
+function statusTone(status: Surveyor['status']): string {
+  if (status === '1') return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+  if (status === '2') return 'bg-rose-50 text-rose-700 ring-rose-200'
+  return 'bg-amber-50 text-amber-700 ring-amber-200'
+}
+
 /** Penanda status persetujuan, berwarna menurut posisinya. */
-function StatusBadge({ surveyor }: { surveyor: Surveyor }) {
-  const tone =
-    surveyor.status === '1'
-      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-      : surveyor.status === '2'
-        ? 'bg-rose-50 text-rose-700 ring-rose-200'
-        : 'bg-amber-50 text-amber-700 ring-amber-200'
+function StatusBadge({ surveyor }: Readonly<{ surveyor: Surveyor }>) {
+  const tone = statusTone(surveyor.status)
 
   return (
     <span
@@ -364,7 +366,7 @@ function StatusBadge({ surveyor }: { surveyor: Surveyor }) {
  * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat salah
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
-function LoadErrorMessage({ error }: { error: unknown }) {
+function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = loadMessage(error)
   return (
     <ErrorMessage title={message.title} description={message.description} tone={message.tone} />

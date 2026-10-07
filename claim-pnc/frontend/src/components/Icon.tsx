@@ -23,7 +23,7 @@ import type { SVGProps } from 'react'
  */
 type Props = SVGProps<SVGSVGElement>
 
-function Base({ children, ...rest }: Props & { children: React.ReactNode }) {
+function Base({ children, ...rest }: Readonly<Props & { children: React.ReactNode }>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -42,7 +42,7 @@ function Base({ children, ...rest }: Props & { children: React.ReactNode }) {
 }
 
 /** Perisai — lambang aplikasi. Asuransi adalah perlindungan; bentuknya menyatakan itu. */
-export function ShieldIcon(props: Props) {
+export function ShieldIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M12 3 5 6v5.5c0 4.2 2.9 7.9 7 9.5 4.1-1.6 7-5.3 7-9.5V6l-7-3Z" />
@@ -51,7 +51,7 @@ export function ShieldIcon(props: Props) {
   )
 }
 
-export function SearchIcon(props: Props) {
+export function SearchIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <circle cx="11" cy="11" r="6.5" />
@@ -61,7 +61,7 @@ export function SearchIcon(props: Props) {
 }
 
 /** Kartu — rekening bank. Dipakai menu Master Rekening. */
-export function CardIcon(props: Props) {
+export function CardIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
@@ -71,7 +71,7 @@ export function CardIcon(props: Props) {
   )
 }
 
-export function AddIcon(props: Props) {
+export function AddIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M12 6v12M6 12h12" />
@@ -79,7 +79,7 @@ export function AddIcon(props: Props) {
   )
 }
 
-export function EditIcon(props: Props) {
+export function EditIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4Z" />
@@ -96,7 +96,7 @@ export function EditIcon(props: Props) {
  * tindakan biasa adalah TEKS tombol dan konfirmasinya, bukan warna ikonnya — sekitar satu
  * dari dua belas laki-laki tidak dapat membedakan merah dari abu-abu.
  */
-export function TrashIcon(props: Props) {
+export function TrashIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M4 7h16" />
@@ -107,7 +107,7 @@ export function TrashIcon(props: Props) {
   )
 }
 
-export function ReloadIcon(props: Props) {
+export function ReloadIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M20 12a8 8 0 1 1-2.6-5.9" />
@@ -116,7 +116,7 @@ export function ReloadIcon(props: Props) {
   )
 }
 
-export function LogoutIcon(props: Props) {
+export function LogoutIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
@@ -125,7 +125,7 @@ export function LogoutIcon(props: Props) {
   )
 }
 
-export function LockIcon(props: Props) {
+export function LockIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
@@ -134,7 +134,7 @@ export function LockIcon(props: Props) {
   )
 }
 
-export function ListIcon(props: Props) {
+export function ListIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M8 7h12M8 12h12M8 17h12" />
@@ -143,7 +143,7 @@ export function ListIcon(props: Props) {
   )
 }
 
-export function EmptyBoxIcon(props: Props) {
+export function EmptyBoxIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5v-7Z" />
@@ -153,7 +153,7 @@ export function EmptyBoxIcon(props: Props) {
 }
 
 /** Anak panah — penanda kelompok menu yang terbuka atau tertutup. */
-export function ChevronIcon(props: Props) {
+export function ChevronIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="m9 6 6 6-6 6" />
@@ -162,7 +162,7 @@ export function ChevronIcon(props: Props) {
 }
 
 /** Tiga garis — pembuka menu pada layar sempit. */
-export function MenuIcon(props: Props) {
+export function MenuIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M4 7h16M4 12h16M4 17h16" />
@@ -171,7 +171,7 @@ export function MenuIcon(props: Props) {
 }
 
 /** Silang — penutup menu pada layar sempit. */
-export function CloseIcon(props: Props) {
+export function CloseIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="m6 6 12 12M18 6 6 18" />
@@ -186,7 +186,7 @@ export function CloseIcon(props: Props) {
  * komite adalah tangga yang dinaiki bertingkat sesuai besarnya nilai klaim, dan setiap
  * anak tangga yang terlampaui ikut menyetujui.
  */
-export function StairsIcon(props: Props) {
+export function StairsIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M3 20h5v-5h5v-5h5V5h3" />
@@ -196,7 +196,7 @@ export function StairsIcon(props: Props) {
 }
 
 /** Segitiga peringatan — dipakai menandai temuan pada master ambang. */
-export function WarningIcon(props: Props) {
+export function WarningIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M12 4.5 21 19.5H3L12 4.5Z" />
@@ -206,7 +206,7 @@ export function WarningIcon(props: Props) {
 }
 
 /** Timbangan — dipakai menandai menu Penjenjangan Komite. */
-export function ScaleIcon(props: Props) {
+export function ScaleIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M12 4v16M7 20h10M4.5 8h15M12 4.5 4.5 8M12 4.5 19.5 8" />
@@ -216,7 +216,7 @@ export function ScaleIcon(props: Props) {
 }
 
 /** Rumah — Beranda. */
-export function HomeIcon(props: Props) {
+export function HomeIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9v5.5H5.5A1.5 1.5 0 0 1 4 19v-8.5Z" />
@@ -225,7 +225,7 @@ export function HomeIcon(props: Props) {
 }
 
 /** Panel samping — tombol memperkecil/memperbesar menu kiri. */
-export function SidebarIcon(props: Props) {
+export function SidebarIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
@@ -235,7 +235,7 @@ export function SidebarIcon(props: Props) {
 }
 
 /** Baki masuk — kelompok menu INBOX. */
-export function InboxIcon(props: Props) {
+export function InboxIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M4 13.5 6.2 6a1.5 1.5 0 0 1 1.4-1h8.8a1.5 1.5 0 0 1 1.4 1L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18v-4.5Z" />
@@ -245,7 +245,7 @@ export function InboxIcon(props: Props) {
 }
 
 /** Grafik batang — kelompok menu REPORT. */
-export function ChartIcon(props: Props) {
+export function ChartIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M4 20h16" />
@@ -257,7 +257,7 @@ export function ChartIcon(props: Props) {
 }
 
 /** Mata — kelompok menu VIEW. */
-export function EyeIcon(props: Props) {
+export function EyeIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
@@ -267,7 +267,7 @@ export function EyeIcon(props: Props) {
 }
 
 /** Papan klip — kelompok menu SURVEYOR. */
-export function ClipboardIcon(props: Props) {
+export function ClipboardIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <rect x="5.5" y="5" width="13" height="15.5" rx="2" />
@@ -279,7 +279,7 @@ export function ClipboardIcon(props: Props) {
 }
 
 /** Unduh — tombol ekspor berkas. */
-export function DownloadIcon(props: Props) {
+export function DownloadIcon(props: Readonly<Props>) {
   return (
     <Base {...props}>
       <path d="M12 4v11" />

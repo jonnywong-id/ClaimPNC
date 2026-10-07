@@ -122,7 +122,7 @@ export function ClauseForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = edited !== null
   const categoryId = useId()
 

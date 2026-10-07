@@ -29,10 +29,10 @@ import { formatPersen, formatTanggal, formatWaktu } from './format'
 export function ClaimSheet({
   kasus,
   transfer,
-}: {
+}: Readonly<{
   kasus: KomiteCase
   transfer?: KomiteTransferDetail | undefined
-}) {
+}>) {
   return (
     <section
       aria-label="Claim Detail"
@@ -46,7 +46,7 @@ export function ClaimSheet({
 
 type Row = { label: string; value: string; hint?: string }
 
-function SheetRows({ rows }: { rows: Row[] }) {
+function SheetRows({ rows }: Readonly<{ rows: Row[] }>) {
   return (
     <dl className="divide-y divide-slate-100">
       {rows.map((row) => (
@@ -65,10 +65,10 @@ function SheetRows({ rows }: { rows: Row[] }) {
 function LeftColumn({
   kasus,
   transfer,
-}: {
+}: Readonly<{
   kasus: KomiteCase
   transfer?: KomiteTransferDetail | undefined
-}) {
+}>) {
   const klaim = transfer?.klaim ?? undefined
   const coverage = transfer?.coverage ?? []
   const travel = klaim?.group_panel === '005'
@@ -144,7 +144,7 @@ function LeftColumn({
   )
 }
 
-function RightColumn({ transfer }: { transfer?: KomiteTransferDetail | undefined }) {
+function RightColumn({ transfer }: Readonly<{ transfer?: KomiteTransferDetail | undefined }>) {
   const leader = transfer?.leader
   const baris = transfer?.baris ?? []
   const penuh = transfer?.spreading_lengkap ?? false
@@ -226,12 +226,12 @@ function LineShares({
   penuh,
   facOut,
   berlabel,
-}: {
+}: Readonly<{
   line: KomiteAdjustmentLine
   penuh: boolean
   facOut: KomiteFacOffer[]
   berlabel: boolean
-}) {
+}>) {
   const coMember = line.co_member ?? []
   const spreading = line.spreading ?? []
 
@@ -304,10 +304,10 @@ function LineShares({
 export function PolicyTab({
   kasus,
   transfer,
-}: {
+}: Readonly<{
   kasus: KomiteCase
   transfer?: KomiteTransferDetail | undefined
-}) {
+}>) {
   const klaim = transfer?.klaim ?? undefined
   const leader = transfer?.leader
   const rows: Row[] = [
@@ -356,7 +356,7 @@ const attachmentColumns: Column<KomiteAttachment>[] = [
  * `UploadDocumentKomite` di Pega juga menerima unggahan KE case komite; jalur itu belum
  * ada, dan layar menyatakannya alih-alih menampilkan tombol yang tidak bekerja.
  */
-export function AttachmentTab({ transfer }: { transfer?: KomiteTransferDetail | undefined }) {
+export function AttachmentTab({ transfer }: Readonly<{ transfer?: KomiteTransferDetail | undefined }>) {
   return (
     <div className="space-y-3">
       <DataTable

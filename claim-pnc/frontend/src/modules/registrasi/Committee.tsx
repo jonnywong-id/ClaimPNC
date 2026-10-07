@@ -37,7 +37,7 @@ export function TransferCommitteeButton({
   adjustment,
   line,
   lockedReason,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   object: number
@@ -45,7 +45,7 @@ export function TransferCommitteeButton({
   adjustment: number
   line: Settlement
   lockedReason: string | null
-}) {
+}>) {
   const transfer = useTransferCommittee(claimID)
   const done = !!line.komite_id
   const title = done ? 'Sudah ditransfer ke komite.' : (lockedReason ?? undefined)
@@ -76,7 +76,7 @@ const decisionLabel: Record<string, string> = {
 }
 
 /** Kolom Akseptasi: status komite baris yang sudah ditransfer. */
-export function CommitteeStatus({ line }: { line: Settlement }) {
+export function CommitteeStatus({ line }: Readonly<{ line: Settlement }>) {
   const committee = useCommittee(line.komite_id)
   if (!line.komite_id) return <span>Belum ditransfer</span>
   const c = committee.data
@@ -127,13 +127,13 @@ export function CommitteeInbox() {
   )
 }
 
-function CommitteeRow({ item }: { item: CommitteeItem }) {
+function CommitteeRow({ item }: Readonly<{ item: CommitteeItem }>) {
   const [note, setNote] = useState('')
   const decide = useDecideCommittee()
   const send = (keputusan: string) => decide.mutate({ komiteID: item.komite_id, keputusan, catatan: note })
 
   return (
-    <div role="group" aria-label={`Komite ${item.komite_id}`} className="rounded border border-slate-200 p-3 text-sm">
+    <fieldset aria-label={`Komite ${item.komite_id}`} className="rounded border border-slate-200 p-3 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium text-slate-900">
           {item.klaim_id ? (
@@ -155,7 +155,7 @@ function CommitteeRow({ item }: { item: CommitteeItem }) {
         {amount.format(item.nilai_komite_sen / 100)}
       </p>
       <label className="mt-2 block text-xs font-semibold text-slate-800">
-        Catatan Komite
+        <span>Catatan Komite</span>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -186,6 +186,6 @@ function CommitteeRow({ item }: { item: CommitteeItem }) {
           {failureText(decide.error)}
         </p>
       )}
-    </div>
+    </fieldset>
   )
 }

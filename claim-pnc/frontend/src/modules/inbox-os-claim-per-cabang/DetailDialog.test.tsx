@@ -223,7 +223,7 @@ it('menggambar keempat bagian popup dengan label layar lama', async () => {
 
   box.getByText('Objek Pertanggungan')
   box.getByText('Riwayat Progress')
-  box.getByText('KOMUNIKASI DENGAN LOSS ADJUSTER')
+  expect(box.getByText('KOMUNIKASI DENGAN LOSS ADJUSTER')).toBeInTheDocument()
 })
 
 it('menampilkan nilai uang dengan format rupiah, bukan teks mentah', async () => {
@@ -294,7 +294,7 @@ it('menandai pesan dari petugas internal', async () => {
   stubServer({ 'PNC-9001': jsonResponse(200, DETAIL_ANEKA) })
 
   const dialog = await openDetail('PNC-9001')
-  await within(dialog).findByText('internal')
+  expect(await within(dialog).findByText('internal')).toBeInTheDocument()
 })
 
 it('menampilkan pesan kosong yang menjelaskan dirinya saat tidak ada komunikasi', async () => {
@@ -302,7 +302,9 @@ it('menampilkan pesan kosong yang menjelaskan dirinya saat tidak ada komunikasi'
   stubServer({ 'PNC-9002': jsonResponse(200, DETAIL_PA) })
 
   const dialog = await openDetail('PNC-9002')
-  await within(dialog).findByText('Belum ada komunikasi dengan loss adjuster.')
+  expect(
+    await within(dialog).findByText('Belum ada komunikasi dengan loss adjuster.'),
+  ).toBeInTheDocument()
 })
 
 it('hanya mengirim NOMOR klaim, tidak ada nilai uang maupun umur', async () => {
@@ -337,7 +339,7 @@ it('menjelaskan klaim yang tidak ditemukan sebagai penolakan, bukan gangguan', a
   const box = within(dialog)
 
   await box.findByText('Klaim tidak ditemukan')
-  box.getByText(/Muat ulang daftar/)
+  expect(box.getByText(/Muat ulang daftar/)).toBeInTheDocument()
 })
 
 it('menutup popup lewat tombol Tutup', async () => {

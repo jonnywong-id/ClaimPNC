@@ -116,6 +116,110 @@ export function ReportKPIPage() {
     setPage(1)
   }
 
+  // Isi tab aktif: KPI Admin, KPI PIC Teknik, atau KPI Adjuster.
+  function renderTabContent() {
+    if (activeTab === 'admin') {
+      return <ReportKPIAdmin metadata={metadata.data} />
+    }
+    if (activeTab === 'pic-teknik') {
+      return <ReportKPIPICTeknik metadata={metadata.data} />
+    }
+    return (
+      <>
+        <FilterForm
+          value={draft}
+          onChange={setDraft}
+          reportTypes={metadata.data?.tipe_report ?? []}
+          adjusters={adjusters.data?.adjuster ?? []}
+          adjustersLoading={adjusters.isFetching}
+          violations={violations}
+          onSearch={search}
+          onExport={(grid) => exportFile.mutate({ filter: active, grid })}
+          exportEnabled={searched}
+          exporting={exportFile.isPending}
+        />
+
+        {exportFile.isError && (
+          <ErrorMessage
+            title="Berkas tidak dapat diunduh"
+            description={messageOf(exportFile.error)}
+            tone="gangguan"
+          />
+        )}
+
+        {searched ? (
+          <>
+            <DataTable<SummaryRow>
+              title={summaryGrid?.judul ?? 'Summary KPI Adjuster'}
+              label="Ringkasan KPI per adjuster"
+              description="Rata-rata seluruh kasus adjuster pada periode yang dipilih, dibulatkan dua desimal."
+              // Tipe report diambil dari penyaring yang DIJAWAB server, bukan dari isian
+              // yang sedang diketik: kolomnya harus cocok dengan baris yang sedang
+              // tampil, bukan dengan penyaring yang belum dikirim.
+              columns={summaryColumns(
+                summaryGrid,
+                components,
+                summary.data?.penyaring.tipe_report ?? active.tipeReport,
+              )}
+              rows={summary.data?.baris ?? []}
+              rowKey={(row) => `${row.adjuster}|${row.tipe}`}
+              isLoading={summary.isPending}
+              error={
+                summary.isError ? (
+                  <ErrorMessage
+                    title="Ringkasan tidak dapat diambil"
+                    description={messageOf(summary.error)}
+                    tone="gangguan"
+                  />
+                ) : undefined
+              }
+              emptyMessage={emptyMessage}
+            />
+
+            <DataTable<DetailRow>
+              title={detailGrid?.judul ?? 'Detail KPI Adjuster'}
+              label="Rincian KPI per kasus survei"
+              description="Satu baris per kasus survei yang sudah dinilai."
+              columns={detailColumns(
+                detailGrid,
+                components,
+                detail.data?.penyaring.tipe_report ?? active.tipeReport,
+              )}
+              rows={detail.data?.baris ?? []}
+              rowKey={(row) => row.no_case}
+              isLoading={detail.isPending}
+              error={
+                detail.isError ? (
+                  <ErrorMessage
+                    title="Rincian tidak dapat diambil"
+                    description={messageOf(detail.error)}
+                    tone="gangguan"
+                  />
+                ) : undefined
+              }
+              emptyMessage={emptyMessage}
+              hideSearch
+              pagination={{
+                page: detail.data?.paginasi.halaman ?? 1,
+                size: detail.data?.paginasi.ukuran ?? 50,
+                total: detail.data?.paginasi.total ?? 0,
+                totalPage: detail.data?.paginasi.total_halaman ?? 0,
+                onPageChange: setPage,
+                isLoading: detail.isFetching,
+              }}
+            />
+          </>
+        ) : (
+          <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+            Pilih tipe report dan periode, lalu tekan <strong>Cari</strong>. Layar lama
+            pun menuntut keduanya sebelum menampilkan apa pun.
+          </p>
+        )}
+
+      </>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <header className="space-y-1">
@@ -144,104 +248,7 @@ export function ReportKPIPage() {
         kolomnya berbeda. Menyatukannya menjadi satu komponen bersyarat akan membuat setiap
         perubahan pada salah satu tab menyentuh yang lain.
       */}
-      {activeTab === 'admin' ? (
-        <ReportKPIAdmin metadata={metadata.data} />
-      ) : activeTab === 'pic-teknik' ? (
-        <ReportKPIPICTeknik metadata={metadata.data} />
-      ) : (
-        <>
-          <FilterForm
-            value={draft}
-            onChange={setDraft}
-            reportTypes={metadata.data?.tipe_report ?? []}
-            adjusters={adjusters.data?.adjuster ?? []}
-            adjustersLoading={adjusters.isFetching}
-            violations={violations}
-            onSearch={search}
-            onExport={(grid) => exportFile.mutate({ filter: active, grid })}
-            exportEnabled={searched}
-            exporting={exportFile.isPending}
-          />
-
-          {exportFile.isError && (
-            <ErrorMessage
-              title="Berkas tidak dapat diunduh"
-              description={messageOf(exportFile.error)}
-              tone="gangguan"
-            />
-          )}
-
-          {!searched ? (
-            <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              Pilih tipe report dan periode, lalu tekan <strong>Cari</strong>. Layar lama
-              pun menuntut keduanya sebelum menampilkan apa pun.
-            </p>
-          ) : (
-            <>
-              <DataTable<SummaryRow>
-                title={summaryGrid?.judul ?? 'Summary KPI Adjuster'}
-                label="Ringkasan KPI per adjuster"
-                description="Rata-rata seluruh kasus adjuster pada periode yang dipilih, dibulatkan dua desimal."
-                // Tipe report diambil dari penyaring yang DIJAWAB server, bukan dari isian
-                // yang sedang diketik: kolomnya harus cocok dengan baris yang sedang
-                // tampil, bukan dengan penyaring yang belum dikirim.
-                columns={summaryColumns(
-                  summaryGrid,
-                  components,
-                  summary.data?.penyaring.tipe_report ?? active.tipeReport,
-                )}
-                rows={summary.data?.baris ?? []}
-                rowKey={(row) => `${row.adjuster}|${row.tipe}`}
-                isLoading={summary.isPending}
-                error={
-                  summary.isError ? (
-                    <ErrorMessage
-                      title="Ringkasan tidak dapat diambil"
-                      description={messageOf(summary.error)}
-                      tone="gangguan"
-                    />
-                  ) : undefined
-                }
-                emptyMessage={emptyMessage}
-              />
-
-              <DataTable<DetailRow>
-                title={detailGrid?.judul ?? 'Detail KPI Adjuster'}
-                label="Rincian KPI per kasus survei"
-                description="Satu baris per kasus survei yang sudah dinilai."
-                columns={detailColumns(
-                  detailGrid,
-                  components,
-                  detail.data?.penyaring.tipe_report ?? active.tipeReport,
-                )}
-                rows={detail.data?.baris ?? []}
-                rowKey={(row) => row.no_case}
-                isLoading={detail.isPending}
-                error={
-                  detail.isError ? (
-                    <ErrorMessage
-                      title="Rincian tidak dapat diambil"
-                      description={messageOf(detail.error)}
-                      tone="gangguan"
-                    />
-                  ) : undefined
-                }
-                emptyMessage={emptyMessage}
-                hideSearch
-                pagination={{
-                  page: detail.data?.paginasi.halaman ?? 1,
-                  size: detail.data?.paginasi.ukuran ?? 50,
-                  total: detail.data?.paginasi.total ?? 0,
-                  totalPage: detail.data?.paginasi.total_halaman ?? 0,
-                  onPageChange: setPage,
-                  isLoading: detail.isFetching,
-                }}
-              />
-            </>
-          )}
-
-        </>
-      )}
+      {renderTabContent()}
     </div>
   )
 }
@@ -279,7 +286,7 @@ function FilterForm({
   onExport,
   exportEnabled,
   exporting,
-}: FilterFormProps) {
+}: Readonly<FilterFormProps>) {
   const typeOptions: SelectOption[] = reportTypes.map((item) => ({
     value: item.kode,
     label: item.judul,

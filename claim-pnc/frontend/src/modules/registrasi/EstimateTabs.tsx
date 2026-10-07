@@ -27,7 +27,7 @@ function formatMoment(iso: string): string {
   return time ? `${formatDate(date)} ${time}` : formatDate(date)
 }
 
-function Table({ caption, head, empty, children }: { caption: string; head: string[]; empty: boolean; children: ReactNode }) {
+function Table({ caption, head, empty, children }: Readonly<{ caption: string; head: string[]; empty: boolean; children: ReactNode }>) {
   return (
     <table className="mt-2 w-full border-collapse text-sm">
       <caption className="mb-1 text-left text-xs font-semibold text-slate-700">{caption}</caption>
@@ -55,7 +55,7 @@ function Table({ caption, head, empty, children }: { caption: string; head: stri
   )
 }
 
-function Loading({ state }: { state: { isPending: boolean; error: unknown } }) {
+function Loading({ state }: Readonly<{ state: { isPending: boolean; error: unknown } }>) {
   if (state.error) {
     const description = state.error instanceof Error ? state.error.message : 'Terjadi kesalahan pada sistem.'
     return (
@@ -76,7 +76,7 @@ const surveyTypeName: Record<string, string> = { '1': 'Survey Internal', '2': 'L
  * berkondisi `isPA_PNC` atas `ClaimData.SurveyResults` (T_SURVEYORLIST, sumber yang sama dengan
  * tab Survey).
  */
-export function InvestigationTab({ claimID }: { claimID: string }) {
+export function InvestigationTab({ claimID }: Readonly<{ claimID: string }>) {
   const q = useSurveys(claimID)
   const list = q.data?.survey ?? []
   return (
@@ -103,7 +103,7 @@ export function InvestigationTab({ claimID }: { claimID: string }) {
   )
 }
 
-export function SurveyTab({ claimID }: { claimID: string }) {
+export function SurveyTab({ claimID }: Readonly<{ claimID: string }>) {
   const q = useSurveys(claimID)
   const list = q.data?.survey ?? []
   return (
@@ -143,7 +143,7 @@ const ACCEPTED_FILES = '.png,.jpg,.jpeg,.avif,.txt,.doc,.docx,.pdf,.eml,.rar,.zi
  * UploadPanel adalah isian unggah satu baris checklist — pengganti section `UploadDocument`
  * yang tidak ada di export. Berkasnya ke layanan penyimpanan, barisnya ke DATA_ATTACHFILE.
  */
-function UploadPanel({ claimID, typeID, typeName, onDone }: { claimID: string; typeID: string; typeName: string; onDone: () => void }) {
+function UploadPanel({ claimID, typeID, typeName, onDone }: Readonly<{ claimID: string; typeID: string; typeName: string; onDone: () => void }>) {
   const upload = useUploadDocument(claimID)
   const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState('')
@@ -247,7 +247,7 @@ function popupFeatures(): string {
   return `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
 }
 
-function AttachmentList({ claimID, files, onDeleted }: { claimID: string; files: Attachment[]; onDeleted: () => void }) {
+function AttachmentList({ claimID, files, onDeleted }: Readonly<{ claimID: string; files: Attachment[]; onDeleted: () => void }>) {
   const link = useDocumentLink(claimID)
   const remove = useDeleteDocument(claimID)
   const [failed, setFailed] = useState<{ id: string; message: string } | null>(null)
@@ -358,7 +358,7 @@ function visibleCategory(kode: string, line: string): boolean {
 
 const TRAVEL_TAB = 'DOKUMEN TRAVEL'
 
-export function DocumentTab({ claimID, line = '' }: { claimID: string; line?: string }) {
+export function DocumentTab({ claimID, line = '' }: Readonly<{ claimID: string; line?: string }>) {
   const q = useDocuments(claimID)
   const [open, setOpen] = useState<string | null>(null)
   const [viewing, setViewing] = useState<string | null>(null)
@@ -468,7 +468,7 @@ export function DocumentTab({ claimID, line = '' }: { claimID: string; line?: st
   )
 }
 
-export function ProgressTab({ claimID }: { claimID: string }) {
+export function ProgressTab({ claimID }: Readonly<{ claimID: string }>) {
   const q = useProgressRecords(claimID)
   return (
     <div className="mt-3">

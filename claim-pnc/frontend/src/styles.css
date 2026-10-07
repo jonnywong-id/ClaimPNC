@@ -209,6 +209,31 @@
     scrollbar-color: var(--color-slate-300) transparent;
     scrollbar-width: thin;
   }
+
+  /* Elemen semantik pengganti `role` (temuan SonarQube S6819) — `<dialog open>` untuk
+     modal dan `<output>` untuk pesan status. Gaya bawaan peramban untuk `dialog`
+     (posisi absolut, lebar fit-content, latar Canvas, warna CanvasText, batas ukuran)
+     dinetralkan supaya ia tampil persis seperti `div` yang digantikannya; kelas Tailwind
+     di elemennya tetap menang karena utilitas berada di lapisan sesudah `base`. */
+  dialog {
+    position: static;
+    inset: auto;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    color: inherit;
+  }
+
+  /* `fieldset` pengganti `role="group"`: peramban memberinya min-width min-content, yang
+     tidak dimiliki `div` asalnya. */
+  fieldset {
+    min-width: 0;
+  }
 }
 
 /* ==========================================================================

@@ -131,7 +131,7 @@ export function ProgressStatus2Form({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = edited !== null
 
   const {

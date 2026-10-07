@@ -168,9 +168,9 @@ export function CaseStudyClaimPage() {
             pada layar telaah yang dibuka berjam-jam, itu perbedaan yang menentukan.
           */}
           {searched && list.dataUpdatedAt > 0 && (
-            <span className="ml-auto text-xs text-slate-500" role="status">
+            <output className="ml-auto text-xs text-slate-500">
               Last Refresh: {formatClock(list.dataUpdatedAt)}
-            </span>
+            </output>
           )}
         </div>
       </form>
@@ -185,12 +185,7 @@ export function CaseStudyClaimPage() {
         </div>
       )}
 
-      {!searched ? (
-        <p className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Pilih periode, lalu tekan <strong>Lihat Data</strong>. Layar lama pun menampilkan
-          grid kosong sampai tombol itu ditekan.
-        </p>
-      ) : (
+      {searched ? (
         <div className="mt-4">
           <DataTable<CaseStudyRow>
             columns={columns}
@@ -230,20 +225,25 @@ export function CaseStudyClaimPage() {
             sini membedakan "penyaringnya tidak bekerja" dari "memang begitu cara kerjanya".
           */}
           {list.data && (
-            <p className="mt-3 text-xs text-slate-500" role="status">
+            <output className="mt-3 block text-xs text-slate-500">
               Disaring menurut tahun registrasi {list.data.periode.tahun_awal}
               {list.data.periode.tahun_akhir !== list.data.periode.tahun_awal &&
                 `–${list.data.periode.tahun_akhir}`}
               .
-            </p>
+            </output>
           )}
         </div>
+      ) : (
+        <p className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          Pilih periode, lalu tekan <strong>Lihat Data</strong>. Layar lama pun menampilkan
+          grid kosong sampai tombol itu ditekan.
+        </p>
       )}
     </PageFrame>
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[110rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">

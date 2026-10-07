@@ -99,7 +99,7 @@ function violationsOf(error: unknown): Record<string, string> {
  * sebelah, karena tabel ini memang tidak mengenal persetujuan sama sekali — hanya
  * IDMASTER dan NOTEMASTER.
  */
-export function CommitteeRejectionForm({ edited, isSaving, error, onSave, onCancel }: Props) {
+export function CommitteeRejectionForm({ edited, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const editMode = edited !== null
 
   const {

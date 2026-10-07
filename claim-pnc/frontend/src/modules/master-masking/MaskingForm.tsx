@@ -109,7 +109,7 @@ type Props = {
  * Pada penambahan, isian STATUS disembunyikan: baris baru selalu aktif, dan server
  * menimpanya demikian.
  */
-export function MaskingForm({ masking, onClose }: Props) {
+export function MaskingForm({ masking, onClose }: Readonly<Props>) {
   const save = useSaveMasking()
   const editing = masking !== null
   const firstField = useRef<HTMLInputElement | null>(null)
@@ -378,7 +378,7 @@ const Checkbox = function Checkbox({
   id,
   label,
   ...rest
-}: { id: string; label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: Readonly<{ id: string; label: string } & React.InputHTMLAttributes<HTMLInputElement>>) {
   return (
     <label
       htmlFor={id}
@@ -396,7 +396,7 @@ const Checkbox = function Checkbox({
 }
 
 /** Gagal menyimpan dibedakan dari gagal memuat: di sini pengguna baru saja melakukan sesuatu. */
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = saveMessage(error)
   return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
 }

@@ -198,18 +198,18 @@ export function TieringPage() {
 /** Isian yang sudah dikirim ke server; berbeda dari isian yang masih diketik. */
 type Requested = { value: string; line: string; applicant: string }
 
-function TieringResult({ result }: { result: KomiteTieringResponse }) {
+function TieringResult({ result }: Readonly<{ result: KomiteTieringResponse }>) {
   const singleApprover = result.mode === KomiteMode.singleApprover
+
+  let heading = `${result.jumlah_jenjang} jenjang harus menyetujui`
+  if (result.jumlah_jenjang === 0) heading = 'Tidak ada yang menyetujui'
+  else if (singleApprover) heading = 'Satu penyetuju dipilih'
 
   return (
     <section className="rounded-kartu border border-slate-200 bg-white shadow-lembut">
       <header className="border-b border-slate-200 p-5">
         <h2 className="text-base font-semibold text-slate-900">
-          {result.jumlah_jenjang === 0
-            ? 'Tidak ada yang menyetujui'
-            : singleApprover
-              ? 'Satu penyetuju dipilih'
-              : `${result.jumlah_jenjang} jenjang harus menyetujui`}
+          {heading}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
           Klaim <strong className="tabular-nums">{formatRupiah(result.nilai)}</strong> pada
@@ -283,7 +283,7 @@ function TieringResult({ result }: { result: KomiteTieringResponse }) {
  * layar hanya menyodorkan satu nama yang berubah-ubah setiap kali tombol ditekan, dan
  * tidak ada cara memastikan aturannya berjalan benar.
  */
-function SingleApproverNote({ result }: { result: KomiteTieringResponse }) {
+function SingleApproverNote({ result }: Readonly<{ result: KomiteTieringResponse }>) {
   const candidates = result.kandidat ?? []
 
   return (
@@ -337,7 +337,7 @@ function SingleApproverNote({ result }: { result: KomiteTieringResponse }) {
  * Tanpa alasan itu, layar hanya menyodorkan daftar nama dan pengguna tidak punya cara
  * memeriksa apakah hasilnya masuk akal.
  */
-function ApproverRow({ approver }: { approver: KomiteApprover }) {
+function ApproverRow({ approver }: Readonly<{ approver: KomiteApprover }>) {
   return (
     <li className="flex items-start gap-4 px-5 py-4">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800 tabular-nums">
@@ -370,7 +370,7 @@ function ApproverRow({ approver }: { approver: KomiteApprover }) {
  * Tanpa keterangan ini, dua orang yang menghitung klaim yang sama akan mendapat jumlah
  * penyetuju yang berbeda dan tidak punya cara mengetahui sebabnya.
  */
-function ExcludedNote({ excluded }: { excluded: KomiteApprover[] }) {
+function ExcludedNote({ excluded }: Readonly<{ excluded: KomiteApprover[] }>) {
   return (
     <div className="flex items-start gap-3 border-t border-amber-200 bg-amber-50/70 p-4">
       <WarningIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
@@ -446,7 +446,7 @@ function ExampleCases() {
   )
 }
 
-function ComputeErrorMessage({ error }: { error: unknown }) {
+function ComputeErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

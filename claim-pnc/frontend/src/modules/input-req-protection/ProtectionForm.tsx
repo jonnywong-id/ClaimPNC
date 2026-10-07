@@ -72,7 +72,7 @@ export function ProtectionForm({
   onCancel,
   isSubmitting,
   failure,
-}: Props) {
+}: Readonly<Props>) {
   const [claimNumber, setClaimNumber] = useState(existing?.nomor_klaim ?? '')
   const [type, setType] = useState(existing?.tipe_proteksi ?? '')
   const [note, setNote] = useState(existing?.keterangan ?? '')
@@ -113,13 +113,12 @@ export function ProtectionForm({
   // Itulah yang membuat "Object Name kosong terus" tidak dapat dibedakan dari "klaimnya
   // memang tidak ada" — dan pada `PENYIMPANAN=memori`, hampir setiap nomor klaim nyata
   // memang tidak ada.
-  const claimSedangDicari = claimNumber.trim() !== '' && claim.isPending
-  const claimTidakKetemu =
-    claimNumber.trim() !== '' &&
-    claim.isError &&
-    claim.error instanceof APIError &&
-    claim.error.status === 404
-  const claimGagalDibaca = claimNumber.trim() !== '' && claim.isError && !claimTidakKetemu
+  const { claimSedangDicari, claimTidakKetemu, claimGagalDibaca } = claimLookupState(
+    claimNumber.trim() !== '',
+    claim.isPending,
+    claim.isError,
+    claim.error,
+  )
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -352,7 +351,7 @@ export function ProtectionForm({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button tone="utama" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Menyimpan…' : existing ? 'Simpan Perubahan' : 'Simpan'}
+          {submitLabel(isSubmitting, existing !== undefined)}
         </Button>
         <Button tone="halus" onClick={onCancel} disabled={isSubmitting}>
           Batal
@@ -376,4 +375,30 @@ export function ProtectionForm({
       )}
     </form>
   )
+}
+
+/** Label tombol simpan: sedang menyimpan, menyimpan perubahan, atau menyimpan baru. */
+function submitLabel(isSubmitting: boolean, isEditing: boolean): string {
+  if (isSubmitting) return 'Menyimpan…'
+  return isEditing ? 'Simpan Perubahan' : 'Simpan'
+}
+
+/**
+ * Keadaan pencarian klaim: sedang dicari, tidak ditemukan (404), atau gagal dibaca.
+ *
+ * Ketiganya hanya bermakna bila nomor klaim sudah diisi.
+ */
+function claimLookupState(
+  hasNumber: boolean,
+  isPending: boolean,
+  isError: boolean,
+  error: unknown,
+): { claimSedangDicari: boolean; claimTidakKetemu: boolean; claimGagalDibaca: boolean } {
+  const claimTidakKetemu =
+    hasNumber && isError && error instanceof APIError && error.status === 404
+  return {
+    claimSedangDicari: hasNumber && isPending,
+    claimTidakKetemu,
+    claimGagalDibaca: hasNumber && isError && !claimTidakKetemu,
+  }
 }

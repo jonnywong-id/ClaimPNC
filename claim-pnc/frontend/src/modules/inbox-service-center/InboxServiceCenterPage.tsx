@@ -159,7 +159,7 @@ export function InboxServiceCenterPage() {
                 membedakan "prop tidak diberikan" dari "prop bernilai undefined", dan
                 hanya yang pertama yang sah bagi prop opsional.
               */
-              {...(info && info.aktif
+              {...(info?.aktif
                 ? {
                     pagination: {
                       page: info.halaman,
@@ -174,10 +174,10 @@ export function InboxServiceCenterPage() {
             />
 
             {info && !info.aktif && info.total > 0 && (
-              <p className="mt-3 text-sm text-slate-600" role="status">
+              <output className="block mt-3 text-sm text-slate-600">
                 Menampilkan seluruh {info.total} baris yang cocok. Saat mencari, hasilnya
                 tidak dibagi per halaman — sama seperti di layar lama.
-              </p>
+              </output>
             )}
           </div>
         </>
@@ -188,7 +188,7 @@ export function InboxServiceCenterPage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -214,10 +214,10 @@ function PageFrame({ children }: { children: ReactNode }) {
 function SearchBar({
   value,
   onChange,
-}: {
+}: Readonly<{
   value: string
   onChange: (text: string) => void
-}) {
+}>) {
   return (
     <div className="mt-4 w-full sm:w-80">
       <label
@@ -258,7 +258,7 @@ function SearchBar({
  * begitu penghalangnya hilang. Tanpa catatan ini, ketiadaan tombol simpan dan pencarian yang
  * tampak setengah bekerja akan dilaporkan berulang kali sebagai kerusakan.
  */
-function Notes({ limitations }: { limitations: string[] }) {
+function Notes({ limitations }: Readonly<{ limitations: string[] }>) {
   if (limitations.length === 0) return null
 
   return (
@@ -305,7 +305,7 @@ function columnsFor(tab: Tab): Column<ServiceClaim>[] {
  * bekerja seperti yang diharapkan pengguna. Petugas yang membandingkan beberapa klaim
  * sekaligus memang membukanya berdampingan.
  */
-function DetailLink({ id }: { id: string }) {
+function DetailLink({ id }: Readonly<{ id: string }>) {
   if (id === '') return <span className="text-sm text-slate-400">—</span>
 
   return (

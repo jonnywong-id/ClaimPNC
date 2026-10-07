@@ -17,7 +17,7 @@ import { formatTanggal, formatWaktu } from './format'
  * Seluruh angka dan teks status disusun server (`internal/komite/breakdown.go`); layar hanya
  * memformat dan menggambarnya.
  */
-export function CommitteeBottom({ transfer }: { transfer: KomiteTransferDetail }) {
+export function CommitteeBottom({ transfer }: Readonly<{ transfer: KomiteTransferDetail }>) {
   return (
     <div className="mt-5 space-y-5">
       {transfer.baris.map((line, i) =>
@@ -72,13 +72,13 @@ function BreakdownTable({
   known,
   rows,
   label,
-}: {
+}: Readonly<{
   title: string
   valueHeader: string
   known: boolean
   rows: KomiteBreakdownRow[]
   label?: string | undefined
-}) {
+}>) {
   if (!known) {
     return (
       <p className="rounded-kartu border border-dashed border-slate-300 p-3 text-sm text-slate-600">
@@ -152,7 +152,7 @@ const documentColumns: Column<KomiteAttachment>[] = [
  * di export — sehingga isinya diambil dari lampiran klaim (`DATA_ATTACHFILE`). Dokumen Polis
  * dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
  */
-function Documents({ attachments }: { attachments: KomiteAttachment[] }) {
+function Documents({ attachments }: Readonly<{ attachments: KomiteAttachment[] }>) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <DataTable
@@ -186,13 +186,13 @@ function EntryTable({
   withCase = false,
   dateTitle,
   emptyMessage,
-}: {
+}: Readonly<{
   title: string
   entries: KomiteCommitteeEntry[]
   withCase?: boolean
   dateTitle: string
   emptyMessage: string
-}) {
+}>) {
   const columns: Column<KomiteCommitteeEntry>[] = [
     ...(withCase
       ? [{ key: 'case', title: 'Komite ID', value: (r: KomiteCommitteeEntry) => r.nomor_case }]

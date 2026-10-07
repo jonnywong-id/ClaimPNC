@@ -48,7 +48,7 @@ type Props = {
  * mana saja yang tersedia — dan pada layar yang tabnya menentukan populasi baris, bukan
  * sekadar penyaring tampilan, itu menyembunyikan struktur layarnya sendiri.
  */
-export function TabBar({ tabs, active, onSelect, label }: Props) {
+export function TabBar({ tabs, active, onSelect, label }: Readonly<Props>) {
   return (
     <div className="overflow-x-auto" role="tablist" aria-label={label}>
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">

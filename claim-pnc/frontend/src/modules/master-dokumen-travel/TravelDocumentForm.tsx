@@ -107,7 +107,7 @@ function messageFor(error: unknown): MessageContent | null {
  * hanya sebagai penyaring `WHERE` (`Database/DOCTRAVEL_CVG.prc:37`), dan baris
  * V_LST_DOC_TRAVEL beserta dokumen klaim yang sudah terunggah merujuknya.
  */
-export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }: Props) {
+export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const editMode = edited !== null
 
   const { register, handleSubmit, reset } = useForm<TravelDocumentFields>({

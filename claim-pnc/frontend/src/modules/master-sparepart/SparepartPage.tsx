@@ -493,13 +493,13 @@ function DecisionBar({
   onApprove,
   onReject,
   onClear,
-}: {
+}: Readonly<{
   count: number
   isBusy: boolean
   onApprove: () => void
   onReject: () => void
   onClear: () => void
-}) {
+}>) {
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
       <span className="min-w-0 flex-1 text-sm text-slate-700">

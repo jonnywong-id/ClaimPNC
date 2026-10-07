@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -146,6 +146,12 @@ function valuesOf(edited: DocumentObject | null): DocumentObjectFields {
   }
 }
 
+/** submitLabel memilih label tombol simpan: sedang menyimpan, modus ubah, atau modus tambah. */
+function submitLabel(isSaving: boolean, editMode: boolean): string {
+  if (isSaving) return 'Menyimpan…'
+  return editMode ? 'Ubah' : 'Simpan'
+}
+
 /**
  * DocumentObjectForm adalah satu form untuk DUA mode — tambah dan ubah.
  *
@@ -182,7 +188,7 @@ export function DocumentObjectForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = edited !== null
 
   const {
@@ -230,6 +236,49 @@ export function DocumentObjectForm({
 
   const businessSuggestions = businesses.map((b) => b.nama)
 
+  function renderBusinessRows(): ReactNode {
+    if (isLoadingBusinessMapping) {
+      return (
+        <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
+      )
+    }
+    if (fields.length === 0) {
+      return (
+        <p className="text-sm text-slate-500">
+          Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat disimpan.
+        </p>
+      )
+    }
+    return (
+      <ul className="space-y-2">
+        {fields.map((row, index) => (
+          <li key={row.id} className="flex items-end gap-2">
+            <div className="grow">
+              {/* ComboField, bukan SelectField: sel Bisnis di Pega memakai kontrol
+                  `pxAutoComplete` yang menerima ketikan bebas, sehingga nama di luar
+                  daftar TETAP boleh diketik dan disimpan. */}
+              <ComboField
+                id={`bisnis-${index}`}
+                label={`Bisnis baris ${index + 1}`}
+                options={businessSuggestions}
+                maxLength={MAX_BUSINESS_NAME_LENGTH}
+                error={errors.bisnis?.[index]?.nama?.message}
+                {...register(`bisnis.${index}.nama` as const)}
+              />
+            </div>
+            <Button
+              tone="halus"
+              onClick={() => remove(index)}
+              aria-label={`Hapus bisnis baris ${index + 1}`}
+            >
+              Hapus
+            </Button>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onSave)}
@@ -273,40 +322,7 @@ export function DocumentObjectForm({
       <fieldset className="rounded-kontrol border border-slate-200 p-4">
         <legend className="px-1 text-sm font-medium text-slate-700">ID Bisnis</legend>
 
-        {isLoadingBusinessMapping ? (
-          <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
-        ) : fields.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat disimpan.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {fields.map((row, index) => (
-              <li key={row.id} className="flex items-end gap-2">
-                <div className="grow">
-                  {/* ComboField, bukan SelectField: sel Bisnis di Pega memakai kontrol
-                      `pxAutoComplete` yang menerima ketikan bebas, sehingga nama di luar
-                      daftar TETAP boleh diketik dan disimpan. */}
-                  <ComboField
-                    id={`bisnis-${index}`}
-                    label={`Bisnis baris ${index + 1}`}
-                    options={businessSuggestions}
-                    maxLength={MAX_BUSINESS_NAME_LENGTH}
-                    error={errors.bisnis?.[index]?.nama?.message}
-                    {...register(`bisnis.${index}.nama` as const)}
-                  />
-                </div>
-                <Button
-                  tone="halus"
-                  onClick={() => remove(index)}
-                  aria-label={`Hapus bisnis baris ${index + 1}`}
-                >
-                  Hapus
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+        {renderBusinessRows()}
 
         {/* Pelanggaran grid dilaporkan di bawah gridnya, bukan di salah satu barisnya:
             server menyebutnya sebagai satu isian bernama "bisnis". */}
@@ -338,7 +354,7 @@ export function DocumentObjectForm({
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya (`pyButtonLabel` pada BrowseDocumentObject-Section). */}
         <Button type="submit" tone="utama" disabled={isSaving || isLoadingBusinessMapping}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+          {submitLabel(isSaving, editMode)}
         </Button>
       </div>
     </form>

@@ -63,7 +63,7 @@ type Props = {
  * perbedaan yang disengaja: isiannya wajib diisi, dan nama yang sudah dipakai ditolak
  * (keputusan Work Owner, sejalan dengan Master Status Klaim 2026-09-17).
  */
-export function SurveyorTypeForm({ surveyorType, onClose }: Props) {
+export function SurveyorTypeForm({ surveyorType, onClose }: Readonly<Props>) {
   const save = useSaveSurveyorType()
   const editing = surveyorType !== null
   const firstField = useRef<HTMLInputElement | null>(null)
@@ -203,7 +203,7 @@ function Spinner() {
  * portal yang belum dipilih diperbaiki di bilah atas, dan gangguan sistem tidak dapat
  * ditolong dengan mencoba ulang berkali-kali.
  */
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

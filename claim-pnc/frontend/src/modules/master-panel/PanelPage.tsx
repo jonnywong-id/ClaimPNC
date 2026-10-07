@@ -347,6 +347,43 @@ export function PanelPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar panel…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id_panel}
+        description="Sumber: POOLDATA.PANEL_HE dan POOLDATA.LOKASI_PANEL_HE"
+        searchLabel="Cari panel"
+        emptyMessage={`Belum ada panel pada tab ${active.label}.`}
+        pageSize={active.pageSize}
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -474,36 +511,7 @@ export function PanelPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar panel…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id_panel}
-            description="Sumber: POOLDATA.PANEL_HE dan POOLDATA.LOKASI_PANEL_HE"
-            searchLabel="Cari panel"
-            emptyMessage={`Belum ada panel pada tab ${active.label}.`}
-            pageSize={active.pageSize}
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )
@@ -537,7 +545,7 @@ function DecisionBar({
   onApprove,
   onReject,
   onClear,
-}: {
+}: Readonly<{
   count: number
   note: string
   onNoteChange: (value: string) => void
@@ -545,7 +553,7 @@ function DecisionBar({
   onApprove: () => void
   onReject: () => void
   onClear: () => void
-}) {
+}>) {
   return (
     <div className="mt-4 space-y-3 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">

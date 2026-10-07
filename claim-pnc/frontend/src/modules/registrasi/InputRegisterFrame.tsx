@@ -29,7 +29,7 @@ type Tab = (typeof TABS)[number]
  * Tab Register memuat formulir `InputRegisterDetail` (FormRegister); tab Kuisioner `QuestionnaireClaim`.
  * Keduanya tetap terpasang saat berpindah tab, supaya isian yang belum disimpan tidak hilang.
  */
-export function InputRegisterFrame({ klaim, tugas, register }: { klaim: Claim; tugas: Task; register: ReactNode }) {
+export function InputRegisterFrame({ klaim, tugas, register }: Readonly<{ klaim: Claim; tugas: Task; register: ReactNode }>) {
   const identity = useSession((state) => state.user?.identitas ?? '')
   const notice = ownerNotice(tugas, identity, true)
   const travel = klaim.polis.lini === PANEL_TRAVEL

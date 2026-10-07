@@ -7,6 +7,13 @@ import { useCashierPreview, useTransferCashier, violationsFrom } from './api'
 
 const amountFormatter = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+/** Teks galat dialog: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
+function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
+  if (failure instanceof Error) return failure.message
+  return 'Terjadi kesalahan pada sistem.'
+}
+
 /**
  * Dialog "Transfer Pembayaran" — flow action `ValidasiTransferKasir_dialog` (section
  * `Sec_dialogValidasiTransfer`, pra-proses `Pre_AlertTransferkasir`). Judul, kalimat konfirmasi,
@@ -22,11 +29,11 @@ export function CashierDialog({
   claimID,
   address,
   onClose,
-}: {
+}: Readonly<{
   claimID: string
   address: { tugas_id: string; objek: number; jaminan: number; adjustment: number }
   onClose: () => void
-}) {
+}>) {
   const preview = useCashierPreview(claimID)
   const transfer = useTransferCashier(claimID)
   const [kind, setKind] = useState('1')
@@ -54,9 +61,9 @@ export function CashierDialog({
   const done = transfer.isSuccess
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-transfer-kasir"
     >
@@ -146,30 +153,24 @@ export function CashierDialog({
           </div>
         )}
         {data?.masalah && !done && (
-          <p className="mt-4 text-sm text-amber-700" role="status">
+          <output className="mt-4 block text-sm text-amber-700">
             {data.masalah}
-          </p>
+          </output>
         )}
 
         {failure && (
           <div className="mt-4">
             <ErrorMessage
               title="Transfer Kasir belum dapat diproses"
-              description={
-                violations.length > 0
-                  ? violations.map((v) => v.pesan).join(' ')
-                  : failure instanceof Error
-                    ? failure.message
-                    : 'Terjadi kesalahan pada sistem.'
-              }
+              description={failureDescription(violations, failure)}
               tone="penolakan"
             />
           </div>
         )}
         {done && (
-          <p className="mt-4 text-sm text-emerald-700" role="status">
+          <output className="mt-4 block text-sm text-emerald-700">
             Berhasil ditransfer ke Kasir.
-          </p>
+          </output>
         )}
 
         <div className="mt-6 flex justify-end gap-3">
@@ -179,7 +180,7 @@ export function CashierDialog({
           {!done && (
             <Button
               tone="utama"
-              disabled={busy || !data || data.masalah !== ''}
+              disabled={busy || data?.masalah !== ''}
               onClick={() => {
                 transfer.reset()
                 const facOut = kind === '2' || kind === '3' ? unpaid : []
@@ -191,6 +192,6 @@ export function CashierDialog({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

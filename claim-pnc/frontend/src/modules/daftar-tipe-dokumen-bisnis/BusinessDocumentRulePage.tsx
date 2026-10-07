@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import type { UseQueryResult } from '@tanstack/react-query'
+import { useState, type ReactNode } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
 import {
@@ -37,6 +38,27 @@ const CREATE = 'create'
 type FormState = typeof CLOSED | typeof CREATE | { editedID: string }
 
 type MessageContent = { title: string; description: string; tone: ErrorTone }
+
+/**
+ * renderQuery menggambar tiga keadaan sebuah query: sedang memuat, gagal, atau datanya.
+ *
+ * Teks memuat dan bentuk pesan galatnya sama persis dengan yang dulu ditulis berulang di
+ * tiap bagian layar ini.
+ */
+function renderQuery<TData>(
+  query: UseQueryResult<TData>,
+  loadingText: string,
+  renderData: (data: TData) => ReactNode,
+): ReactNode {
+  if (query.isPending) return <p className="text-sm text-slate-500">{loadingText}</p>
+  if (query.isError) {
+    const message = loadMessage(query.error)
+    return (
+      <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+    )
+  }
+  return renderData(query.data)
+}
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
@@ -200,7 +222,7 @@ export function BusinessDocumentRulePage() {
           status_wajib: values.status_wajib,
           // Diubah menjadi angka di sini, bukan di dalam form — lihat komentar skema di
           // BusinessDocumentRuleForm.
-          minimum_dokumen: Number(values.minimum_dokumen.replaceAll(/[^0-9]/g, '')) || 0,
+          minimum_dokumen: Number(values.minimum_dokumen.replaceAll(/\D/g, '')) || 0,
         },
       },
       { onSuccess: closeForm },
@@ -341,23 +363,10 @@ export function BusinessDocumentRulePage() {
 
       {editedID !== null && (
         <section className="mt-5 space-y-4">
-          {edited.isPending ? (
-            <p className="text-sm text-slate-500">Memuat aturan dokumen…</p>
-          ) : edited.isError ? (
-            (() => {
-              const message = loadMessage(edited.error)
-              return (
-                <ErrorMessage
-                  title={message.title}
-                  description={message.description}
-                  tone={message.tone}
-                />
-              )
-            })()
-          ) : (
+          {renderQuery(edited, 'Memuat aturan dokumen…', (data) => (
             <>
               <BusinessDocumentRuleForm
-                edited={edited.data.tipe_dokumen_bisnis}
+                edited={data.tipe_dokumen_bisnis}
                 documentTypes={documentTypes.data?.pilihan ?? []}
                 detailDocuments={detailDocuments.data?.pilihan ?? []}
                 objectDocuments={objectDocuments.data?.pilihan ?? []}
@@ -384,10 +393,10 @@ export function BusinessDocumentRulePage() {
                 </p>
 
                 <ul className="mt-3 flex flex-wrap gap-2">
-                  {edited.data.tipe_dokumen_bisnis.jenis_klaim.length === 0 ? (
+                  {data.tipe_dokumen_bisnis.jenis_klaim.length === 0 ? (
                     <li className="text-sm text-slate-400">Belum ada jenis klaim.</li>
                   ) : (
-                    edited.data.tipe_dokumen_bisnis.jenis_klaim.map((coverage) => (
+                    data.tipe_dokumen_bisnis.jenis_klaim.map((coverage) => (
                       <li
                         key={coverage}
                         className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-sm text-slate-700"
@@ -449,7 +458,7 @@ export function BusinessDocumentRulePage() {
                   })()}
               </section>
             </>
-          )}
+          ))}
         </section>
       )}
 
@@ -460,29 +469,18 @@ export function BusinessDocumentRulePage() {
             description="Pilih entitas di bagian atas layar untuk melihat daftarnya."
             tone="penolakan"
           />
-        ) : businesses.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar bisnis…</p>
-        ) : businesses.isError ? (
-          (() => {
-            const message = loadMessage(businesses.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
         ) : (
-          <DataTable
-            columns={businessColumns}
-            rows={businesses.data.bisnis}
-            rowKey={(row) => row.id}
-            searchable={false}
-            pageSize={50}
-            description={`${businesses.data.total} lini bisnis sudah punya aturan dokumen. Sumber: POOLDATA.LST_TYPE_DOC_BUSINESS`}
-            emptyMessage="Belum ada lini bisnis yang punya aturan dokumen pada entitas ini."
-          />
+          renderQuery(businesses, 'Memuat daftar bisnis…', (data) => (
+            <DataTable
+              columns={businessColumns}
+              rows={data.bisnis}
+              rowKey={(row) => row.id}
+              searchable={false}
+              pageSize={50}
+              description={`${data.total} lini bisnis sudah punya aturan dokumen. Sumber: POOLDATA.LST_TYPE_DOC_BUSINESS`}
+              emptyMessage="Belum ada lini bisnis yang punya aturan dokumen pada entitas ini."
+            />
+          ))
         )}
       </section>
 
@@ -518,30 +516,17 @@ export function BusinessDocumentRulePage() {
           </div>
 
           <div className="mt-4">
-            {rules.isPending ? (
-              <p className="text-sm text-slate-500">Memuat dokumen…</p>
-            ) : rules.isError ? (
-              (() => {
-                const message = loadMessage(rules.error)
-                return (
-                  <ErrorMessage
-                    title={message.title}
-                    description={message.description}
-                    tone={message.tone}
-                  />
-                )
-              })()
-            ) : (
+            {renderQuery(rules, 'Memuat dokumen…', (data) => (
               <DataTable
                 columns={ruleColumns}
-                rows={rules.data.tipe_dokumen_bisnis}
+                rows={data.tipe_dokumen_bisnis}
                 rowKey={(row) => row.id}
                 searchable={false}
                 pageSize={50}
-                description={`${rules.data.total} aturan dokumen pada bisnis ini.`}
+                description={`${data.total} aturan dokumen pada bisnis ini.`}
                 emptyMessage="Bisnis ini belum punya aturan dokumen. Tekan Tambah untuk membuatnya."
               />
-            )}
+            ))}
           </div>
         </section>
       )}

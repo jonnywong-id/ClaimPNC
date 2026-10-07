@@ -40,7 +40,7 @@ type Props = {
   onClose: () => void
 }
 
-export function DocumentPanel({ scope, onClose }: Props) {
+export function DocumentPanel({ scope, onClose }: Readonly<Props>) {
   const documents = useBandingHargaSalvageDocuments(scope)
 
   if (scope === null) return null

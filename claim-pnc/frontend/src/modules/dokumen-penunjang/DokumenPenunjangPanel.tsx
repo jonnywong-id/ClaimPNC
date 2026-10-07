@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -31,7 +31,7 @@ import type { DokumenPenunjang } from './types'
 export function DokumenPenunjangPanel({
   nomorKlaim,
   readOnly = false,
-}: {
+}: Readonly<{
   /** Kosong berarti klaim belum dipilih — panel menjelaskan itu alih-alih tampil kosong. */
   nomorKlaim: string | null
 
@@ -43,7 +43,7 @@ export function DokumenPenunjangPanel({
    * lagi bermakna.
    */
   readOnly?: boolean
-}) {
+}>) {
   const nomor = nomorKlaim?.trim() ?? ''
 
   // Kedua hook tetap dipanggil meski fiturnya mati — aturan hook melarang pemanggilan
@@ -86,6 +86,66 @@ export function DokumenPenunjangPanel({
       // melihat tombolnya seperti tidak bekerja.
       if (inputRef.current) inputRef.current.value = ''
     }
+  }
+
+  function renderIsi(): ReactNode {
+    if (!FITUR_DOKUMEN_PENUNJANG_AKTIF) {
+      return (
+        <p className="mt-3 text-sm text-slate-600">
+          Layanan penyimpanan dokumen belum tersedia, sehingga berkas belum dapat diunggah
+          maupun ditampilkan di sini.
+        </p>
+      )
+    }
+    if (nomor === '') {
+      return (
+        <p className="mt-3 text-sm text-slate-600">
+          Pilih No Klaim lebih dulu. Dokumen penunjang menempel pada klaim, bukan pada
+          permintaan proteksinya.
+        </p>
+      )
+    }
+    return (
+      <>
+        {pesanGagal && (
+          <div className="mt-3">
+            <ErrorMessage
+              tone={nadaGagal}
+              title="Berkas tidak tersimpan"
+              description={pesanGagal}
+            />
+          </div>
+        )}
+
+        {daftar.isPending && (
+          <p className="mt-3 text-sm text-slate-500">Memuat daftar dokumen…</p>
+        )}
+
+        {daftar.isError && (
+          <div className="mt-3">
+            <ErrorMessage
+              tone="gangguan"
+              title="Daftar dokumen gagal dimuat"
+              description="Muat ulang halaman untuk mencoba lagi."
+            />
+          </div>
+        )}
+
+        {daftar.isSuccess && isi.length === 0 && (
+          <p className="mt-3 text-sm text-slate-600">
+            Belum ada dokumen penunjang untuk klaim ini.
+          </p>
+        )}
+
+        {isi.length > 0 && (
+          <ul className="mt-3 divide-y divide-slate-100">
+            {isi.map((dokumen) => (
+              <BarisDokumen key={dokumen.id} dokumen={dokumen} />
+            ))}
+          </ul>
+        )}
+      </>
+    )
   }
 
   return (
@@ -133,62 +193,12 @@ export function DokumenPenunjangPanel({
         )}
       </div>
 
-      {!FITUR_DOKUMEN_PENUNJANG_AKTIF ? (
-        <p className="mt-3 text-sm text-slate-600">
-          Layanan penyimpanan dokumen belum tersedia, sehingga berkas belum dapat diunggah
-          maupun ditampilkan di sini.
-        </p>
-      ) : nomor === '' ? (
-        <p className="mt-3 text-sm text-slate-600">
-          Pilih No Klaim lebih dulu. Dokumen penunjang menempel pada klaim, bukan pada
-          permintaan proteksinya.
-        </p>
-      ) : (
-        <>
-          {pesanGagal && (
-            <div className="mt-3">
-              <ErrorMessage
-                tone={nadaGagal}
-                title="Berkas tidak tersimpan"
-                description={pesanGagal}
-              />
-            </div>
-          )}
-
-          {daftar.isPending && (
-            <p className="mt-3 text-sm text-slate-500">Memuat daftar dokumen…</p>
-          )}
-
-          {daftar.isError && (
-            <div className="mt-3">
-              <ErrorMessage
-                tone="gangguan"
-                title="Daftar dokumen gagal dimuat"
-                description="Muat ulang halaman untuk mencoba lagi."
-              />
-            </div>
-          )}
-
-          {daftar.isSuccess && isi.length === 0 && (
-            <p className="mt-3 text-sm text-slate-600">
-              Belum ada dokumen penunjang untuk klaim ini.
-            </p>
-          )}
-
-          {isi.length > 0 && (
-            <ul className="mt-3 divide-y divide-slate-100">
-              {isi.map((dokumen) => (
-                <BarisDokumen key={dokumen.id} dokumen={dokumen} />
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+      {renderIsi()}
     </section>
   )
 }
 
-function BarisDokumen({ dokumen }: { dokumen: DokumenPenunjang }) {
+function BarisDokumen({ dokumen }: Readonly<{ dokumen: DokumenPenunjang }>) {
   // Tautan hanya dipasang bila ada alamatnya DAN belum kedaluwarsa. Tautan mati yang
   // tetap dapat diklik membuat pengguna mengira berkasnya hilang; teks tanpa tautan
   // beserta sebabnya jauh lebih terbaca.

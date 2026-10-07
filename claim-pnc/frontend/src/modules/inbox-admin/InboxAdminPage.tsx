@@ -147,7 +147,7 @@ export function InboxAdminPage() {
 
           <div className="mt-4">
             <DataTable<WorkItem>
-              columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+              columns={columnsFor(tab, renderDetailButton)}
               rows={list.data?.baris ?? []}
               rowKey={(row) => `${row.referensi}|${row.case_id}`}
               title={tab.nama}
@@ -188,7 +188,7 @@ export function InboxAdminPage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -217,14 +217,14 @@ function FilterBar({
   search,
   onBusiness,
   onSearch,
-}: {
+}: Readonly<{
   tab: Tab
   lines: BusinessLine[]
   business: string
   search: string
   onBusiness: (code: string) => void
   onSearch: (text: string) => void
-}) {
+}>) {
   if (!tab.pakai_pencarian && !tab.pakai_lini_bisnis && !tab.hanya_milik_saya) {
     return null
   }
@@ -290,6 +290,14 @@ function FilterBar({
 }
 
 /**
+ * Isi kolom aksi tiap baris. Didefinisikan di tingkat modul — bukan sebagai fungsi panah di
+ * dalam render layar — supaya tidak dibuat ulang setiap render (temuan SonarQube S6478).
+ */
+function renderDetailButton(row: WorkItem): ReactNode {
+  return <DetailButton item={row} />
+}
+
+/**
  * Tombol "Lihat Detail Klaim".
  *
  * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
@@ -300,7 +308,7 @@ function FilterBar({
  * `setDataViewKlaim_Act` di sistem lama. Dengan begitu menyalakan layar rincian kelak tidak
  * menuntut perubahan kontrak API modul ini.
  */
-function DetailButton({ item }: { item: WorkItem }) {
+function DetailButton({ item }: Readonly<{ item: WorkItem }>) {
   const navigate = useNavigate()
   const key = item.referensi || item.case_id
 
@@ -327,20 +335,20 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   info: PageInfo
   visible: number
   onMove: (page: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
   const last = (info.halaman - 1) * info.ukuran + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {info.total} baris.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"
@@ -371,10 +379,10 @@ function Pagination({
 function Notes({
   limitations,
   disabled,
-}: {
+}: Readonly<{
   limitations: string[]
   disabled: DisabledTab[]
-}) {
+}>) {
   if (limitations.length === 0 && disabled.length === 0) return null
 
   return (

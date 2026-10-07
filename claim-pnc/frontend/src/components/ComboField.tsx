@@ -1,4 +1,4 @@
-import { forwardRef, useId, type InputHTMLAttributes } from 'react'
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react'
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   id: string
@@ -9,6 +9,13 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   error?: string | undefined
   /** Keterangan singkat di bawah isian. Disembunyikan saat ada pesan galat. */
   hint?: string | undefined
+}
+
+/** describedByFor memilih elemen keterangan yang dirujuk aria-describedby: galat lebih dulu, lalu petunjuk. */
+function describedByFor(id: string, error: unknown, hint: unknown): string | undefined {
+  if (error) return `${id}-galat`
+  if (hint) return `${id}-petunjuk`
+  return undefined
 }
 
 /**
@@ -46,6 +53,22 @@ export const ComboField = forwardRef<HTMLInputElement, Props>(function ComboFiel
       ? 'border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/25'
       : 'border-slate-300 focus-visible:border-blue-500 focus-visible:ring-blue-500/25')
 
+  // Pesan di bawah isian: galat lebih dulu, lalu petunjuk, atau tidak ada sama sekali.
+  let message: ReactNode = null
+  if (error) {
+    message = (
+      <p id={`${id}-galat`} className="mt-1 text-sm text-red-600" role="alert">
+        {error}
+      </p>
+    )
+  } else if (hint) {
+    message = (
+      <p id={`${id}-petunjuk`} className="mt-1 text-sm text-slate-500">
+        {hint}
+      </p>
+    )
+  }
+
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
@@ -62,7 +85,7 @@ export const ComboField = forwardRef<HTMLInputElement, Props>(function ComboFiel
         // bercampur dengan daftar bisnis yang sesungguhnya.
         autoComplete="off"
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined}
+        aria-describedby={describedByFor(id, error, hint)}
         className={[baseClass, className].filter(Boolean).join(' ')}
       />
 
@@ -72,15 +95,7 @@ export const ComboField = forwardRef<HTMLInputElement, Props>(function ComboFiel
         ))}
       </datalist>
 
-      {error ? (
-        <p id={`${id}-galat`} className="mt-1 text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-petunjuk`} className="mt-1 text-sm text-slate-500">
-          {hint}
-        </p>
-      ) : null}
+      {message}
     </div>
   )
 })

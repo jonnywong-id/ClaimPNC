@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 
 import { SearchIcon, EmptyBoxIcon, ChevronIcon } from './Icon'
 
@@ -248,6 +248,22 @@ export function pageWindow(current: number, total: number): (number | 'sela')[] 
 }
 
 /**
+ * keyedPageWindow menyertakan kunci React yang stabil untuk setiap butir pageWindow.
+ *
+ * Nomor halaman menjadi kuncinya sendiri. Sela diberi kunci dari nomor halaman yang
+ * mendahuluinya — sela selalu didahului satu nomor, dan dua sela tidak pernah didahului
+ * nomor yang sama.
+ */
+function keyedPageWindow(current: number, total: number): { item: number | 'sela'; key: string }[] {
+  let previous = 0
+  return pageWindow(current, total).map((item) => {
+    if (item === 'sela') return { item, key: `sela-${previous}` }
+    previous = item
+    return { item, key: String(item) }
+  })
+}
+
+/**
  * DataTable adalah satu-satunya tabel di seluruh aplikasi.
  *
  * # Kenapa ia ada
@@ -319,7 +335,7 @@ export function DataTable<T>({
   showHeaderWhenEmpty = false,
   expandedRow,
   dense = false,
-}: Props<T>) {
+}: Readonly<Props<T>>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
   const [page, setPage] = useState(1)
@@ -332,41 +348,13 @@ export function DataTable<T>({
   const query = serverSearch ? serverSearch.value : localQuery
   const setQuery = serverSearch ? serverSearch.onChange : setLocalQuery
 
-  const visible = useMemo(() => {
-    // Saat pencarian dikerjakan server, barisnya dipakai APA ADANYA. Menyaringnya lagi di
-    // sini akan menyaring dua kali — dan yang kedua hanya menyentuh halaman yang sedang
-    // terbuka.
-    if (onServer) return rows
-
-    const word = query.trim().toLowerCase()
-    const filtered = word
-      ? rows.filter((b) => columns.some((k) => k.value(b).toLowerCase().includes(word)))
-      : rows
-
-    if (!sort) return filtered
-
-    const sortColumn = columns.find((k) => k.key === sort.key)
-    if (!sortColumn) return filtered
-
-    // Salinan dibuat lebih dulu: sort mengubah senarai di tempat, dan mengurutkan props
-    // secara langsung akan mengubah data milik pemanggil.
-    return [...filtered].sort((a, b) => {
-      const comparison = sortColumn.value(a).localeCompare(sortColumn.value(b), 'id', {
-        numeric: true,
-        sensitivity: 'base',
-      })
-      return sort.direction === 'asc' ? comparison : -comparison
-    })
-  }, [rows, columns, query, sort, onServer])
+  const visible = useMemo(
+    () => filterAndSort(rows, columns, query, sort, onServer),
+    [rows, columns, query, sort, onServer],
+  )
 
   function toggleSort(key: string) {
-    setSort((previous) => {
-      if (previous?.key !== key) return { key, direction: 'asc' }
-      if (previous.direction === 'asc') return { key, direction: 'desc' }
-      // Klik ketiga mengembalikan urutan asli dari server. Tanpa ini, pengguna tidak
-      // punya cara kembali ke urutan semula selain memuat ulang halaman.
-      return null
-    })
+    setSort((previous) => nextSort(previous, key))
     // Mengurutkan ulang menyusun ulang seluruh daftar, sehingga halaman ketujuh yang
     // sedang dibuka tidak lagi memuat baris yang sama. Kembali ke halaman pertama adalah
     // satu-satunya posisi yang artinya tidak berubah.
@@ -398,6 +386,38 @@ export function DataTable<T>({
   const firstIndex = paginated ? (currentPage - 1) * pageSize : 0
   const shown = paginated ? visible.slice(firstIndex, firstIndex + pageSize) : visible
 
+  const emptyText = hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage
+  const emptyHint = hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined
+
+  // Isi utama: galat, memuat, kosong, atau tabelnya — dalam urutan prioritas itu.
+  let content: ReactNode
+  if (error) {
+    content = <div className="p-5">{error}</div>
+  } else if (isLoading) {
+    content = <LoadingState />
+  } else if (visible.length === 0 && !showHeaderWhenEmpty) {
+    content = <EmptyState pesan={emptyText} saran={emptyHint} />
+  } else {
+    content = (
+      <TableView
+        columns={columns}
+        label={label}
+        dense={dense}
+        onServer={onServer}
+        sort={sort}
+        onToggleSort={toggleSort}
+        isEmpty={visible.length === 0}
+        emptyText={emptyText}
+        emptyHint={emptyHint}
+        shown={shown}
+        rowKey={rowKey}
+        expandedRow={expandedRow}
+        expanded={expanded}
+        onExpand={setExpanded}
+      />
+    )
+  }
+
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
       {(title || actions) && (
@@ -411,211 +431,20 @@ export function DataTable<T>({
       )}
 
       {searchable && !hideSearch && (
-        <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
-          <label htmlFor="tabel-cari" className="sr-only">
-            {searchLabel}
-          </label>
-          <div className="relative sm:max-w-sm">
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
-            >
-              <SearchIcon className="h-4 w-4" />
-            </span>
-            <input
-              id="tabel-cari"
-              type="search"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
-                // daftar lama hampir pasti tidak ada pada daftar baru.
-                setPage(1)
-              }}
-              placeholder={searchLabel}
-              className={[
-                'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
-                'text-sm text-slate-900 placeholder:text-slate-400',
-                'transition-[border-color,box-shadow] duration-150 ease-halus',
-                'hover:border-slate-400',
-                'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-              ].join(' ')}
-            />
-          </div>
-          {hasSearch && (
-            <p className="mt-2 text-xs text-slate-600" role="status">
-              {serverSearch
-                ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
-                : `${visible.length} dari ${rows.length} baris cocok.`}
-            </p>
-          )}
-        </div>
-      )}
-
-      {error ? (
-        <div className="p-5">{error}</div>
-      ) : isLoading ? (
-        <LoadingState />
-      ) : visible.length === 0 && !showHeaderWhenEmpty ? (
-        <EmptyState
-          pesan={hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage}
-          saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
+        <SearchBox
+          searchLabel={searchLabel}
+          query={query}
+          onQueryChange={(value) => {
+            setQuery(value)
+            // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
+            // daftar lama hampir pasti tidak ada pada daftar baru.
+            setPage(1)
+          }}
+          summary={hasSearch ? matchSummary(serverSearch, visible.length, rows.length) : null}
         />
-      ) : (
-        <div className="md:overflow-x-auto">
-          <table aria-label={label} className="block w-full border-collapse text-sm md:table">
-            <thead className="hidden md:table-header-group">
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-left">
-                {columns.map((k) => (
-                  <th
-                    key={k.key}
-                    scope="col"
-                    style={k.width ? { width: k.width } : undefined}
-                    aria-sort={
-                      !onServer && sort?.key === k.key
-                        ? sort.direction === 'asc'
-                          ? 'ascending'
-                          : 'descending'
-                        : 'none'
-                    }
-                    className={[
-                      dense ? 'px-3 py-2.5' : 'px-5 py-3',
-                      'text-xs font-semibold uppercase tracking-wide text-slate-600',
-                      k.alignRight ? 'text-right' : '',
-                    ].join(' ')}
-                  >
-                    {/*
-                      Pengurutan ikut dimatikan saat pencarian dikerjakan server:
-                      mengurutkan satu halaman dari sepuluh bukan pengurutan, dan panah
-                      yang muncul menjanjikan sesuatu yang tidak dilakukannya.
-                    */}
-                    {k.noSort || onServer ? (
-                      k.title
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => toggleSort(k.key)}
-                        className={[
-                          'group -mx-1.5 inline-flex items-center gap-1.5 rounded px-1.5 py-1',
-                          'transition-colors duration-150 ease-halus',
-                          'hover:bg-slate-200/70 hover:text-slate-900',
-                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                        ].join(' ')}
-                      >
-                        {k.title}
-                        <SortMarker
-                          active={sort?.key === k.key}
-                          direction={sort?.direction ?? 'asc'}
-                        />
-                      </button>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody className="block md:table-row-group">
-              {/*
-                Baris kosong hanya muncul pada layar yang menyalakan showHeaderWhenEmpty;
-                pada layar lain cabang ini tidak pernah tercapai karena EmptyState sudah
-                menggantikan seluruh tabelnya lebih dulu.
-
-                `colSpan` memakai jumlah kolom apa adanya supaya pesannya membentang penuh
-                di tampilan meja. Di tampilan kartu tabelnya menjadi blok, dan colSpan tidak
-                berlaku — di sana pesannya tetap terbaca karena selnya pun menjadi blok.
-              */}
-              {visible.length === 0 ? (
-                <tr className="block md:table-row">
-                  <td className="block md:table-cell" colSpan={columns.length}>
-                    <EmptyState
-                      pesan={
-                        hasSearch
-                          ? `Tidak ada baris yang cocok dengan “${query.trim()}”.`
-                          : emptyMessage
-                      }
-                      saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-                    />
-                  </td>
-                </tr>
-              ) : null}
-              {shown.map((b) => {
-                const kunci = rowKey(b)
-                const isi = expandedRow?.(b) ?? null
-                const bisaDibuka = isi != null && isi !== false
-                const terbuka = bisaDibuka && expanded === kunci
-
-                return (
-                  <Fragment key={kunci}>
-                    <tr
-                      className={[
-                        'block border-b border-slate-200 py-2.5 last:border-0',
-                        'md:table-row md:border-slate-100 md:py-0',
-                        'transition-colors duration-150 ease-halus',
-                        'hover:bg-blue-50/50',
-                        bisaDibuka ? 'cursor-pointer' : '',
-                        terbuka ? 'bg-blue-50/60' : '',
-                      ].join(' ')}
-                      // Baris yang dapat dibuka dijadikan tombol bagi teknologi bantu, dan
-                      // dapat dibuka dengan Enter maupun Spasi. Tanpa itu, isinya hanya
-                      // terjangkau tetikus — dan grid lama pun membukanya dengan klik.
-                      {...(bisaDibuka
-                        ? {
-                            onClick: () => setExpanded(terbuka ? null : kunci),
-                            onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
-                              if (event.key !== 'Enter' && event.key !== ' ') return
-                              event.preventDefault()
-                              setExpanded(terbuka ? null : kunci)
-                            },
-                            role: 'button',
-                            tabIndex: 0,
-                            'aria-expanded': terbuka,
-                          }
-                        : {})}
-                    >
-                      {columns.map((k) => (
-                        <td
-                          key={k.key}
-                          className={[
-                            'flex items-baseline gap-3 px-5 py-1.5',
-                            'md:table-cell md:py-3.5 md:align-middle',
-                            k.alignRight ? 'md:text-right' : '',
-                          ].join(' ')}
-                        >
-                          {/*
-                            Nama kolom digambar ulang di dalam sel untuk tampilan kartu.
-                            aria-hidden karena <th scope="col"> sudah menjelaskan sel ini —
-                            tanpa itu pembaca layar menyebut nama kolom dua kali.
-                          */}
-                          <span
-                            aria-hidden="true"
-                            className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500 md:hidden"
-                          >
-                            {k.title}
-                          </span>
-                          <span className="min-w-0 flex-1 break-words text-slate-900">
-                            {k.render ? k.render(b) : k.value(b) || '—'}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
-
-                    {terbuka && (
-                      <tr className="block bg-slate-50/70 md:table-row">
-                        <td
-                          className="block border-b border-slate-200 px-5 py-4 md:table-cell"
-                          colSpan={columns.length}
-                        >
-                          {isi}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
       )}
+
+      {content}
 
       {pagination && <PageBar {...pagination} />}
       {/*
@@ -638,6 +467,345 @@ export function DataTable<T>({
 }
 
 /**
+ * filterAndSort menyaring dan mengurutkan baris di peramban.
+ *
+ * Saat pencarian dikerjakan server, barisnya dipakai APA ADANYA. Menyaringnya lagi di
+ * sini akan menyaring dua kali — dan yang kedua hanya menyentuh halaman yang sedang
+ * terbuka.
+ */
+function filterAndSort<T>(
+  rows: T[],
+  columns: Column<T>[],
+  query: string,
+  sort: SortOrder | null,
+  onServer: boolean,
+): T[] {
+  if (onServer) return rows
+
+  const word = query.trim().toLowerCase()
+  const filtered = word
+    ? rows.filter((b) => columns.some((k) => k.value(b).toLowerCase().includes(word)))
+    : rows
+
+  if (!sort) return filtered
+
+  const sortColumn = columns.find((k) => k.key === sort.key)
+  if (!sortColumn) return filtered
+
+  // Salinan dibuat lebih dulu: sort mengubah senarai di tempat, dan mengurutkan props
+  // secara langsung akan mengubah data milik pemanggil.
+  return [...filtered].sort((a, b) => {
+    const comparison = sortColumn.value(a).localeCompare(sortColumn.value(b), 'id', {
+      numeric: true,
+      sensitivity: 'base',
+    })
+    return sort.direction === 'asc' ? comparison : -comparison
+  })
+}
+
+/** nextSort menghitung urutan berikutnya saat judul kolom yang sama ditekan lagi. */
+function nextSort(previous: SortOrder | null, key: string): SortOrder | null {
+  if (previous?.key !== key) return { key, direction: 'asc' }
+  if (previous.direction === 'asc') return { key, direction: 'desc' }
+  // Klik ketiga mengembalikan urutan asli dari server. Tanpa ini, pengguna tidak
+  // punya cara kembali ke urutan semula selain memuat ulang halaman.
+  return null
+}
+
+/** matchSummary menuliskan banyaknya baris yang cocok di bawah kotak cari. */
+function matchSummary(
+  serverSearch: Props<unknown>['serverSearch'],
+  visibleCount: number,
+  totalCount: number,
+): string {
+  if (serverSearch) return `${serverSearch.matchCount ?? visibleCount} baris cocok.`
+  return `${visibleCount} dari ${totalCount} baris cocok.`
+}
+
+/** ariaSortFor menerjemahkan urutan kolom ke nilai `aria-sort`-nya. */
+function ariaSortFor(
+  onServer: boolean,
+  sort: SortOrder | null,
+  key: string,
+): 'ascending' | 'descending' | 'none' {
+  if (onServer || sort?.key !== key) return 'none'
+  return sort.direction === 'asc' ? 'ascending' : 'descending'
+}
+
+/** Kotak pencarian di atas tabel, beserta ringkasan baris yang cocok. */
+function SearchBox({
+  searchLabel,
+  query,
+  onQueryChange,
+  summary,
+}: Readonly<{
+  searchLabel: string
+  query: string
+  onQueryChange: (value: string) => void
+  summary: string | null
+}>) {
+  return (
+    <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
+      <label htmlFor="tabel-cari" className="sr-only">
+        {searchLabel}
+      </label>
+      <div className="relative sm:max-w-sm">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
+        >
+          <SearchIcon className="h-4 w-4" />
+        </span>
+        <input
+          id="tabel-cari"
+          type="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder={searchLabel}
+          className={[
+            'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
+            'text-sm text-slate-900 placeholder:text-slate-400',
+            'transition-[border-color,box-shadow] duration-150 ease-halus',
+            'hover:border-slate-400',
+            'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
+          ].join(' ')}
+        />
+      </div>
+      {summary !== null && <output className="mt-2 block text-xs text-slate-600">{summary}</output>}
+    </div>
+  )
+}
+
+type TableViewProps<T> = {
+  columns: Column<T>[]
+  label: string | undefined
+  dense: boolean
+  onServer: boolean
+  sort: SortOrder | null
+  onToggleSort: (key: string) => void
+  isEmpty: boolean
+  emptyText: string
+  emptyHint: string | undefined
+  shown: T[]
+  rowKey: (rows: T) => string
+  expandedRow: ((row: T) => ReactNode) | undefined
+  expanded: string | null
+  onExpand: (key: string | null) => void
+}
+
+/** Tabelnya sendiri: kepala kolom dan baris-baris yang sedang tampil. */
+function TableView<T>({
+  columns,
+  label,
+  dense,
+  onServer,
+  sort,
+  onToggleSort,
+  isEmpty,
+  emptyText,
+  emptyHint,
+  shown,
+  rowKey,
+  expandedRow,
+  expanded,
+  onExpand,
+}: Readonly<TableViewProps<T>>) {
+  return (
+    <div className="md:overflow-x-auto">
+      <table aria-label={label} className="block w-full border-collapse text-sm md:table">
+        <thead className="hidden md:table-header-group">
+          <tr className="border-b border-slate-200 bg-slate-50/80 text-left">
+            {columns.map((k) => (
+              <HeaderCell
+                key={k.key}
+                column={k}
+                dense={dense}
+                onServer={onServer}
+                sort={sort}
+                onToggleSort={onToggleSort}
+              />
+            ))}
+          </tr>
+        </thead>
+
+        <tbody className="block md:table-row-group">
+          {/*
+            Baris kosong hanya muncul pada layar yang menyalakan showHeaderWhenEmpty;
+            pada layar lain cabang ini tidak pernah tercapai karena EmptyState sudah
+            menggantikan seluruh tabelnya lebih dulu.
+
+            `colSpan` memakai jumlah kolom apa adanya supaya pesannya membentang penuh
+            di tampilan meja. Di tampilan kartu tabelnya menjadi blok, dan colSpan tidak
+            berlaku — di sana pesannya tetap terbaca karena selnya pun menjadi blok.
+          */}
+          {isEmpty ? (
+            <tr className="block md:table-row">
+              <td className="block md:table-cell" colSpan={columns.length}>
+                <EmptyState pesan={emptyText} saran={emptyHint} />
+              </td>
+            </tr>
+          ) : null}
+          {shown.map((b) => {
+            const kunci = rowKey(b)
+            const isi = expandedRow?.(b) ?? null
+            const bisaDibuka = isi != null && isi !== false
+            const terbuka = bisaDibuka && expanded === kunci
+
+            return (
+              <DataRow
+                key={kunci}
+                row={b}
+                columns={columns}
+                content={isi}
+                expandable={bisaDibuka}
+                open={terbuka}
+                onToggle={() => onExpand(terbuka ? null : kunci)}
+              />
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** Satu kepala kolom, beserta tombol pengurutannya bila kolom itu dapat diurutkan. */
+function HeaderCell<T>({
+  column: k,
+  dense,
+  onServer,
+  sort,
+  onToggleSort,
+}: Readonly<{
+  column: Column<T>
+  dense: boolean
+  onServer: boolean
+  sort: SortOrder | null
+  onToggleSort: (key: string) => void
+}>) {
+  return (
+    <th
+      scope="col"
+      style={k.width ? { width: k.width } : undefined}
+      aria-sort={ariaSortFor(onServer, sort, k.key)}
+      className={[
+        dense ? 'px-3 py-2.5' : 'px-5 py-3',
+        'text-xs font-semibold uppercase tracking-wide text-slate-600',
+        k.alignRight ? 'text-right' : '',
+      ].join(' ')}
+    >
+      {/*
+        Pengurutan ikut dimatikan saat pencarian dikerjakan server:
+        mengurutkan satu halaman dari sepuluh bukan pengurutan, dan panah
+        yang muncul menjanjikan sesuatu yang tidak dilakukannya.
+      */}
+      {k.noSort || onServer ? (
+        k.title
+      ) : (
+        <button
+          type="button"
+          onClick={() => onToggleSort(k.key)}
+          className={[
+            'group -mx-1.5 inline-flex items-center gap-1.5 rounded px-1.5 py-1',
+            'transition-colors duration-150 ease-halus',
+            'hover:bg-slate-200/70 hover:text-slate-900',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+          ].join(' ')}
+        >
+          {k.title}
+          <SortMarker active={sort?.key === k.key} direction={sort?.direction ?? 'asc'} />
+        </button>
+      )}
+    </th>
+  )
+}
+
+/** Satu baris data, beserta baris rincian di bawahnya saat baris itu terbuka. */
+function DataRow<T>({
+  row: b,
+  columns,
+  content,
+  expandable,
+  open,
+  onToggle,
+}: Readonly<{
+  row: T
+  columns: Column<T>[]
+  content: ReactNode
+  expandable: boolean
+  open: boolean
+  onToggle: () => void
+}>) {
+  return (
+    <>
+      <tr
+        className={[
+          'block border-b border-slate-200 py-2.5 last:border-0',
+          'md:table-row md:border-slate-100 md:py-0',
+          'transition-colors duration-150 ease-halus',
+          'hover:bg-blue-50/50',
+          expandable ? 'cursor-pointer' : '',
+          open ? 'bg-blue-50/60' : '',
+        ].join(' ')}
+        // Baris yang dapat dibuka dijadikan tombol bagi teknologi bantu, dan
+        // dapat dibuka dengan Enter maupun Spasi. Tanpa itu, isinya hanya
+        // terjangkau tetikus — dan grid lama pun membukanya dengan klik.
+        {...(expandable
+          ? {
+              onClick: onToggle,
+              onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                onToggle()
+              },
+              role: 'button',
+              tabIndex: 0,
+              'aria-expanded': open,
+            }
+          : {})}
+      >
+        {columns.map((k) => (
+          <td
+            key={k.key}
+            className={[
+              'flex items-baseline gap-3 px-5 py-1.5',
+              'md:table-cell md:py-3.5 md:align-middle',
+              k.alignRight ? 'md:text-right' : '',
+            ].join(' ')}
+          >
+            {/*
+              Nama kolom digambar ulang di dalam sel untuk tampilan kartu.
+              aria-hidden karena <th scope="col"> sudah menjelaskan sel ini —
+              tanpa itu pembaca layar menyebut nama kolom dua kali.
+            */}
+            <span
+              aria-hidden="true"
+              className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500 md:hidden"
+            >
+              {k.title}
+            </span>
+            <span className="min-w-0 flex-1 break-words text-slate-900">
+              {k.render ? k.render(b) : k.value(b) || '—'}
+            </span>
+          </td>
+        ))}
+      </tr>
+
+      {open && (
+        <tr className="block bg-slate-50/70 md:table-row">
+          <td
+            className="block border-b border-slate-200 px-5 py-4 md:table-cell"
+            colSpan={columns.length}
+          >
+            {content}
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+/**
  * Bilah halaman: First / Previous / Next / Last beserta "Total Data".
  *
  * Bentuknya mengikuti `Section/ButtonPagingInbox-Section.xml` — keempat tombol itu dan
@@ -655,7 +823,7 @@ function PageBar({
   totalPage,
   onPageChange,
   isLoading = false,
-}: ServerPagination) {
+}: Readonly<ServerPagination>) {
   const atFirst = page <= 1
   const atLast = totalPage === 0 || page >= totalPage
 
@@ -679,17 +847,18 @@ function PageBar({
       aria-label="Navigasi halaman"
       className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="text-xs text-slate-600" role="status">
+      <output className="block text-xs text-slate-600">
         {total === 0 ? (
           'Total Data : 0'
         ) : (
           <>
-            Menampilkan <span className="font-medium text-slate-800">{first}</span>–
+            Menampilkan <span className="font-medium text-slate-800">{first}</span>
+            {'–'}
             <span className="font-medium text-slate-800">{last}</span> · Total Data :{' '}
             <span className="font-medium text-slate-800">{total}</span>
           </>
         )}
-      </p>
+      </output>
 
       <div className="flex items-center gap-1.5">
         <button
@@ -782,14 +951,14 @@ export function Paginator({
   currentPage,
   totalPages,
   onPick,
-}: {
+}: Readonly<{
   firstRow: number
   lastRow: number
   totalRows: number
   currentPage: number
   totalPages: number
   onPick: (page: number) => void
-}) {
+}>) {
   const step =
     'inline-flex h-8 min-w-8 items-center justify-center rounded-kontrol border px-2 text-sm ' +
     'transition-colors duration-150 ease-halus ' +
@@ -798,13 +967,13 @@ export function Paginator({
 
   return (
     <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs text-slate-600" role="status">
+      <output className="block text-xs text-slate-600">
         Menampilkan{' '}
         <span className="font-medium text-slate-800">
           {firstRow}–{lastRow}
         </span>{' '}
         dari {totalRows} baris.
-      </p>
+      </output>
 
       {/*
         Tombolnya disembunyikan saat halamannya hanya satu. Paginator berisi satu tombol
@@ -823,12 +992,12 @@ export function Paginator({
             <ChevronIcon className="h-4 w-4 rotate-180" />
           </button>
 
-          {pageWindow(currentPage, totalPages).map((item, index) =>
+          {keyedPageWindow(currentPage, totalPages).map(({ item, key }) =>
             item === 'sela' ? (
               <span
                 // Sela tidak punya nilai yang dapat dijadikan kunci, dan dua di antaranya
-                // dapat muncul bersamaan — indeksnya yang membedakan.
-                key={`sela-${index}`}
+                // dapat muncul bersamaan — nomor halaman sebelumnya yang membedakan.
+                key={key}
                 aria-hidden="true"
                 className="px-1 text-sm text-slate-400"
               >
@@ -897,7 +1066,7 @@ function LoadingState() {
   )
 }
 
-function EmptyState({ pesan, saran }: { pesan: string; saran?: string | undefined }) {
+function EmptyState({ pesan, saran }: Readonly<{ pesan: string; saran?: string | undefined }>) {
   return (
     <div className="flex flex-col items-center gap-3 px-5 py-14 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
@@ -916,7 +1085,7 @@ function EmptyState({ pesan, saran }: { pesan: string; saran?: string | undefine
  * disentuh tetikus — itu yang memberi tahu bahwa judulnya dapat ditekan. Tanpa petunjuk
  * itu, pengguna tidak punya cara menduga tabelnya dapat diurutkan.
  */
-function SortMarker({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
+function SortMarker({ active, direction }: Readonly<{ active: boolean; direction: 'asc' | 'desc' }>) {
   if (!active) {
     return (
       <svg

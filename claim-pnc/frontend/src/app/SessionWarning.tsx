@@ -35,8 +35,8 @@ export function SessionWarning() {
     const batas = new Date(validUntil).getTime()
     const count = () => setRemainingMs(batas - Date.now())
     count()
-    const controller = window.setInterval(count, 1000)
-    return () => window.clearInterval(controller)
+    const controller = globalThis.setInterval(count, 1000)
+    return () => globalThis.clearInterval(controller)
   }, [validUntil])
 
   if (remainingMs === null || remainingMs > WARNING_THRESHOLD_MS) return null
@@ -50,7 +50,7 @@ export function SessionWarning() {
     : 'border-amber-200 bg-amber-50 text-amber-900'
 
   return (
-    <div role="status" className={`border-b px-4 py-2.5 text-sm ${style}`}>
+    <output className={`block border-b px-4 py-2.5 text-sm ${style}`}>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <svg
@@ -75,6 +75,6 @@ export function SessionWarning() {
           </Button>
         )}
       </div>
-    </div>
+    </output>
   )
 }

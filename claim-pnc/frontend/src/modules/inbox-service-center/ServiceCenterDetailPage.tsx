@@ -55,9 +55,9 @@ export function ServiceCenterDetailPage() {
   if (detail.isPending) {
     return (
       <PageFrame id={id}>
-        <p className="mt-6 text-sm text-slate-600" role="status">
+        <output className="block mt-6 text-sm text-slate-600">
           Memuat rincian klaim…
-        </p>
+        </output>
       </PageFrame>
     )
   }
@@ -97,11 +97,11 @@ function PageFrame({
   id,
   claim,
   children,
-}: {
+}: Readonly<{
   id: string
   claim?: ClaimDetail
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -140,7 +140,7 @@ function PageFrame({
  * Digambar sebagai daftar deskripsi, bukan tabel: isinya pasangan label dan nilai, dan tabel
  * dua kolom yang barisnya tidak dapat diurutkan hanya meniru bentuk tabel tanpa manfaatnya.
  */
-function FieldGroupCard({ group, claim }: { group: FieldGroup; claim: ClaimDetail }) {
+function FieldGroupCard({ group, claim }: Readonly<{ group: FieldGroup; claim: ClaimDetail }>) {
   return (
     <section className="rounded-kartu border border-slate-200 bg-white">
       <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800">
@@ -156,7 +156,7 @@ function FieldGroupCard({ group, claim }: { group: FieldGroup; claim: ClaimDetai
   )
 }
 
-function Field({ field, claim }: { field: FieldRef; claim: ClaimDetail }) {
+function Field({ field, claim }: Readonly<{ field: FieldRef; claim: ClaimDetail }>) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium tracking-wide text-slate-500">{field.judul}</dt>
@@ -175,7 +175,7 @@ function Field({ field, claim }: { field: FieldRef; claim: ClaimDetail }) {
  * Terlama di atas, mengikuti `ORDER BY INSERTDATE ASC` pada kueri lamanya — riwayat memang
  * dibaca dari awal.
  */
-function ProgressHistory({ notes }: { notes: ProgressNote[] }) {
+function ProgressHistory({ notes }: Readonly<{ notes: ProgressNote[] }>) {
   const columns: Column<ProgressNote>[] = [
     {
       key: 'tanggal',
@@ -208,7 +208,7 @@ function ProgressHistory({ notes }: { notes: ProgressNote[] }) {
  * tidak punya cara menduga bahwa yang ia lihat tidak lengkap. Sampai bentuknya diketahui,
  * isinya ditampilkan mentah supaya datanya tidak hilang dari layar.
  */
-function PartDetailNote({ raw }: { raw: string | null | undefined }) {
+function PartDetailNote({ raw }: Readonly<{ raw: string | null | undefined }>) {
   const value = textOf(raw)
   if (value === '') return null
 

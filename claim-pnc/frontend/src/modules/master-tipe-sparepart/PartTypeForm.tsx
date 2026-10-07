@@ -196,7 +196,7 @@ export function PartTypeForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = editing !== null
 
   const {

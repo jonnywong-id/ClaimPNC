@@ -35,7 +35,7 @@ type Props = {
  * hanya ditegakkan di peramban bukan kewenangan, dan keadaan barisnya dapat berubah
  * antara saat daftar dimuat dan saat tombol ditekan.
  */
-export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
+export function SurveyorDecisionPanel({ surveyor, onClose }: Readonly<Props>) {
   const decide = useDecideSurveyor()
   const [note, setNote] = useState('')
 
@@ -109,7 +109,7 @@ export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
   )
 }
 
-function DecisionErrorMessage({ error }: { error: unknown }) {
+function DecisionErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = decisionMessage(error)
   return (
     <div className="mt-4">

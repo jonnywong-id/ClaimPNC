@@ -45,7 +45,7 @@ type Props = {
  * `components/`, dan yang belum bersama tetap di modulnya — menaikkannya lebih dulu berarti
  * menebak bentuk yang dibutuhkan modul lain sebelum modul itu ada.
  */
-export function BusinessPicker({ value, onChange, disabled = false }: Props) {
+export function BusinessPicker({ value, onChange, disabled = false }: Readonly<Props>) {
   const fieldId = useId()
   const [keyword, setKeyword] = useState('')
   const [isOpen, setOpen] = useState(false)
@@ -70,6 +70,63 @@ export function BusinessPicker({ value, onChange, disabled = false }: Props) {
   }
 
   const results = (lookup.data?.bisnis ?? []).filter((business) => !alreadyPicked(business.id))
+
+  // Isi daftar hasil pencarian lini bisnis menurut keadaan kueri.
+  function renderResults() {
+    if (lookup.isError) {
+      return (
+        <p className="px-3 py-3 text-sm text-red-700" role="alert">
+          Pencarian gagal. Coba beberapa saat lagi.
+        </p>
+      )
+    }
+    if (lookup.isFetching) {
+      return <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
+    }
+    return (
+      <ul>
+        {results.map((business) => (
+          <li key={business.id}>
+            <button
+              type="button"
+              onClick={() => add(business)}
+              className={[
+                'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
+                'transition-colors duration-150 ease-halus',
+                'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
+              ].join(' ')}
+            >
+              <span className="min-w-0 flex-1 text-slate-900">{business.nama}</span>
+              <span className="shrink-0 text-xs text-slate-500">{business.id}</span>
+            </button>
+          </li>
+        ))}
+
+        {/*
+          Pilihan terakhir: menambahkan nama yang diketik apa adanya. Ia padanan
+          `pyAllowFreeFormInput=true` pada autocomplete layar lama, dan ia
+          sengaja diletakkan PALING BAWAH serta diberi keterangan — supaya
+          memilih dari master tetap menjadi jalan yang paling mudah ditempuh.
+        */}
+        <li className="border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => add({ id: '', nama: clean })}
+            className={[
+              'w-full px-3 py-2 text-left text-sm',
+              'transition-colors duration-150 ease-halus',
+              'hover:bg-amber-50 focus:bg-amber-50 focus:outline-none',
+            ].join(' ')}
+          >
+            <span className="text-slate-900">Tambahkan “{clean}” apa adanya</span>
+            <span className="block text-xs text-slate-500">
+              Tidak terhubung ke master lini bisnis.
+            </span>
+          </button>
+        </li>
+      </ul>
+    )
+  }
 
   return (
     <div>
@@ -139,55 +196,7 @@ export function BusinessPicker({ value, onChange, disabled = false }: Props) {
 
           {isOpen && !shortKeyword && clean !== '' && (
             <div className="mt-2 max-h-56 overflow-y-auto rounded-kontrol border border-slate-200 bg-white shadow-lembut">
-              {lookup.isError ? (
-                <p className="px-3 py-3 text-sm text-red-700" role="alert">
-                  Pencarian gagal. Coba beberapa saat lagi.
-                </p>
-              ) : lookup.isFetching ? (
-                <p className="px-3 py-3 text-sm text-slate-500">Mencari…</p>
-              ) : (
-                <ul>
-                  {results.map((business) => (
-                    <li key={business.id}>
-                      <button
-                        type="button"
-                        onClick={() => add(business)}
-                        className={[
-                          'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
-                          'transition-colors duration-150 ease-halus',
-                          'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
-                        ].join(' ')}
-                      >
-                        <span className="min-w-0 flex-1 text-slate-900">{business.nama}</span>
-                        <span className="shrink-0 text-xs text-slate-500">{business.id}</span>
-                      </button>
-                    </li>
-                  ))}
-
-                  {/*
-                    Pilihan terakhir: menambahkan nama yang diketik apa adanya. Ia padanan
-                    `pyAllowFreeFormInput=true` pada autocomplete layar lama, dan ia
-                    sengaja diletakkan PALING BAWAH serta diberi keterangan — supaya
-                    memilih dari master tetap menjadi jalan yang paling mudah ditempuh.
-                  */}
-                  <li className="border-t border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => add({ id: '', nama: clean })}
-                      className={[
-                        'w-full px-3 py-2 text-left text-sm',
-                        'transition-colors duration-150 ease-halus',
-                        'hover:bg-amber-50 focus:bg-amber-50 focus:outline-none',
-                      ].join(' ')}
-                    >
-                      <span className="text-slate-900">Tambahkan “{clean}” apa adanya</span>
-                      <span className="block text-xs text-slate-500">
-                        Tidak terhubung ke master lini bisnis.
-                      </span>
-                    </button>
-                  </li>
-                </ul>
-              )}
+              {renderResults()}
             </div>
           )}
         </div>

@@ -47,7 +47,7 @@ export function QueuePanel({
   isDeciding,
   resultMessage,
   decideError,
-}: Props) {
+}: Readonly<Props>) {
   const [selected, setSelected] = useState<string[]>([])
   const [reason, setReason] = useState('')
 
@@ -136,7 +136,7 @@ export function QueuePanel({
                 disabled={rows.length === 0}
                 className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              Pilih semua di halaman ini
+              <span>Pilih semua di halaman ini</span>
             </label>
 
             <span className="text-sm text-slate-500" aria-live="polite">
@@ -207,9 +207,9 @@ export function QueuePanel({
           ) : null}
 
           {resultMessage ? (
-            <p className="text-sm text-slate-700" role="status">
+            <output className="block text-sm text-slate-700">
               {resultMessage}
-            </p>
+            </output>
           ) : null}
         </div>
       ) : null}

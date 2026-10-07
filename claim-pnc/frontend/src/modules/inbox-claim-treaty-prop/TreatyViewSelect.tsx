@@ -53,7 +53,7 @@ type Props = {
  * "tidak ada pekerjaan". Menonaktifkan pilihannya akan membuat pengguna tidak pernah tahu
  * kenapa.
  */
-export function TreatyViewSelect({ tabs, active, onSelect }: Props) {
+export function TreatyViewSelect({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     <div>
       {/*

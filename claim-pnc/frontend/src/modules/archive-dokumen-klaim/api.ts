@@ -254,7 +254,7 @@ export function useExportArchive() {
  */
 function filenameOf(response: Response): string {
   const header = response.headers.get('Content-Disposition') ?? ''
-  const match = header.match(/filename="([^"]+)"/)
+  const match = /filename="([^"]+)"/.exec(header)
   return match?.[1] ?? 'archive-dokumen-klaim.csv'
 }
 

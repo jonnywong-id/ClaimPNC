@@ -179,7 +179,7 @@ export function BusinessDocumentRuleCreateForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const [selected, setSelected] = useState<string[]>([])
 
   // Baris awal dibentuk SEKALI. Bila ia dihitung ulang setiap render, setiap ketikan
@@ -239,7 +239,7 @@ export function BusinessDocumentRuleCreateForm({
       <section>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-800">
-            Nama Bisnis
+            <span>Nama Bisnis</span>
             <span className="ml-2 font-normal text-slate-500">
               {selected.length} dari {businesses.length} dipilih
             </span>
@@ -411,7 +411,7 @@ export function BusinessDocumentRuleCreateForm({
                         updateRule(index, { status_wajib: event.target.checked })
                       }
                     />
-                    Status Wajib
+                    <span>Status Wajib</span>
                   </label>
 
                   <label className="text-sm">
@@ -424,7 +424,7 @@ export function BusinessDocumentRuleCreateForm({
                       value={String(rule.minimum_dokumen)}
                       onChange={(event) =>
                         updateRule(index, {
-                          minimum_dokumen: Number(event.target.value.replaceAll(/[^0-9]/g, '')) || 0,
+                          minimum_dokumen: Number(event.target.value.replaceAll(/\D/g, '')) || 0,
                         })
                       }
                     />

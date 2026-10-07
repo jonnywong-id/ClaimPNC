@@ -36,7 +36,7 @@ type Props = {
  * kendali (`11-SECURITY.md` §3.1) — yang menjadi kendali adalah penolakan di server, dan
  * komponen ini hanya mengikuti hasilnya.
  */
-export function ManagerAdminTabs({ tabs, active, onSelect }: Props) {
+export function ManagerAdminTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya

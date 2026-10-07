@@ -36,7 +36,7 @@ type Props = {
  * - **Pilihan dipertahankan saat mencari.** Kata kunci hanya menyaring daftar kiri; batch
  *   yang sedang diperiksa di kanan tidak ikut hilang hanya karena namanya tersaring keluar.
  */
-export function CompanyBrowser({ source, table }: Props) {
+export function CompanyBrowser({ source, table }: Readonly<Props>) {
   const summary = useAutoClaimSummary(source)
 
   const [query, setQuery] = useState('')
@@ -107,85 +107,123 @@ export function CompanyBrowser({ source, table }: Props) {
             />
           </div>
           {query.trim() !== '' && summary.isSuccess && (
-            <p className="mt-2 text-xs text-slate-600" role="status">
+            <output className="mt-2 block text-xs text-slate-600">
               {visible.length} dari {company.length} perusahaan cocok.
-            </p>
+            </output>
           )}
         </div>
 
-        {summary.isPending ? (
-          <div className="space-y-2 px-4 pb-4" role="status" aria-label="Memuat daftar perusahaan">
-            {[0, 1, 2, 3].map((n) => (
-              <div key={n} className="h-9 animate-pulse rounded bg-slate-100" />
-            ))}
-          </div>
-        ) : visible.length === 0 ? (
-          <p className="px-4 pb-4 text-sm text-slate-600">
-            {query.trim() === ''
-              ? 'Belum ada batch klaim pada tab ini.'
-              : `Tidak ada perusahaan yang cocok dengan “${query.trim()}”.`}
-          </p>
-        ) : (
-          <nav
-            aria-label="Daftar perusahaan"
-            className="max-h-64 overflow-y-auto pb-2 sm:max-h-80 lg:max-h-none lg:min-h-0 lg:flex-1"
-          >
-            <ul>
-              {visible.map((c) => (
-                <li key={c.kode}>
-                  <CompanyItem
-                    company={c}
-                    active={selected?.kode === c.kode}
-                    onPick={() => setPicked(c.kode)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
+        {renderCompanyList(summary.isPending, visible, query, selected, setPicked)}
       </aside>
 
       <section
         aria-label="Batch perusahaan terpilih"
         className="min-w-0 rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut sm:p-5"
       >
-        {selected === undefined ? (
-          <div className="flex flex-col items-center gap-3 py-14 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-              <EmptyBoxIcon className="h-6 w-6" />
-            </span>
-            <p className="text-sm font-medium text-slate-700">
-              {summary.isPending ? 'Memuat…' : 'Pilih perusahaan di sebelah kiri.'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <header className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {selected.nama === '' ? selected.kode : selected.nama}
-              </h2>
-              <span className="text-sm text-slate-600">
-                {selected.nama === '' ? 'tidak terdaftar di Master Auto Claim' : selected.kode}
-                {' · '}
-                <span className="tabular-nums">{selected.jumlah_batch}</span> batch
-              </span>
-              {/* Nama tabelnya datang bersama tabnya: ketiga tab membaca tabel berbeda. */}
-              <span className="w-full text-xs text-slate-500">
-                Sumber: {table === '' ? '…' : table}
-              </span>
-            </header>
-            {/* `key` memasang ulang grid saat perusahaan berganti: halaman dan rincian
-                yang terbuka milik perusahaan sebelumnya tidak boleh terbawa. */}
-            <CompanyBatches
-              key={selected.kode}
-              source={source}
-              company={selected.kode}
-              companyName={selected.nama}
-            />
-          </>
-        )}
+        {renderSelectedCompany(selected, summary.isPending, source, table)}
       </section>
     </div>
+  )
+}
+
+/**
+ * Isi daftar kiri: kerangka memuat, keterangan kosong, atau daftar perusahaan.
+ *
+ * Dipanggil sebagai fungsi biasa, bukan komponen, sehingga pohon elemennya sama persis
+ * dengan ternary bersarang yang digantikannya (temuan SonarQube S3358 dan S3776).
+ */
+function renderCompanyList(
+  isPending: boolean,
+  visible: AutoClaimCompanySummary[],
+  query: string,
+  selected: AutoClaimCompanySummary | undefined,
+  onPick: (kode: string) => void,
+) {
+  if (isPending) {
+    return (
+      <output className="block space-y-2 px-4 pb-4" aria-label="Memuat daftar perusahaan">
+        {[0, 1, 2, 3].map((n) => (
+          <div key={n} className="h-9 animate-pulse rounded bg-slate-100" />
+        ))}
+      </output>
+    )
+  }
+
+  if (visible.length === 0) {
+    return (
+      <p className="px-4 pb-4 text-sm text-slate-600">
+        {query.trim() === ''
+          ? 'Belum ada batch klaim pada tab ini.'
+          : `Tidak ada perusahaan yang cocok dengan “${query.trim()}”.`}
+      </p>
+    )
+  }
+
+  return (
+    <nav
+      aria-label="Daftar perusahaan"
+      className="max-h-64 overflow-y-auto pb-2 sm:max-h-80 lg:max-h-none lg:min-h-0 lg:flex-1"
+    >
+      <ul>
+        {visible.map((c) => (
+          <li key={c.kode}>
+            <CompanyItem
+              company={c}
+              active={selected?.kode === c.kode}
+              onPick={() => onPick(c.kode)}
+            />
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+/** Isi panel kanan: ajakan memilih, atau batch perusahaan terpilih. */
+function renderSelectedCompany(
+  selected: AutoClaimCompanySummary | undefined,
+  isPending: boolean,
+  source: string,
+  table: string,
+) {
+  if (selected === undefined) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-14 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+          <EmptyBoxIcon className="h-6 w-6" />
+        </span>
+        <p className="text-sm font-medium text-slate-700">
+          {isPending ? 'Memuat…' : 'Pilih perusahaan di sebelah kiri.'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <header className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-lg font-semibold text-slate-900">
+          {selected.nama === '' ? selected.kode : selected.nama}
+        </h2>
+        <span className="text-sm text-slate-600">
+          {selected.nama === '' ? 'tidak terdaftar di Master Auto Claim' : selected.kode}
+          {' · '}
+          <span className="tabular-nums">{selected.jumlah_batch}</span> batch
+        </span>
+        {/* Nama tabelnya datang bersama tabnya: ketiga tab membaca tabel berbeda. */}
+        <span className="w-full text-xs text-slate-500">
+          Sumber: {table === '' ? '…' : table}
+        </span>
+      </header>
+      {/* `key` memasang ulang grid saat perusahaan berganti: halaman dan rincian
+          yang terbuka milik perusahaan sebelumnya tidak boleh terbawa. */}
+      <CompanyBatches
+        key={selected.kode}
+        source={source}
+        company={selected.kode}
+        companyName={selected.nama}
+      />
+    </>
   )
 }
 
@@ -200,11 +238,11 @@ function CompanyItem({
   company,
   active,
   onPick,
-}: {
+}: Readonly<{
   company: AutoClaimCompanySummary
   active: boolean
   onPick: () => void
-}) {
+}>) {
   const registered = company.nama !== ''
   return (
     <button

@@ -34,7 +34,7 @@ import type {
  * Metrik dan kolomnya berbeda, dan yang menentukannya adalah keterangan dari server —
  * bukan percabangan di layar ini.
  */
-export function ReportKPIAdmin({ metadata }: { metadata: MetadataResponse | undefined }) {
+export function ReportKPIAdmin({ metadata }: Readonly<{ metadata: MetadataResponse | undefined }>) {
   const [draft, setDraft] = useState<AdminFilterInput>(emptyAdminFilter)
   const [applied, setApplied] = useState<AdminFilterInput | null>(null)
   const [page, setPage] = useState(1)
@@ -121,12 +121,7 @@ export function ReportKPIAdmin({ metadata }: { metadata: MetadataResponse | unde
         />
       )}
 
-      {!searched ? (
-        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Pilih data KPI dan periode, lalu tekan <strong>Cari</strong>. Layar lama pun
-          menolak tanpa periode — pesannya berbunyi &quot;Periode tanggal masih kosong&quot;.
-        </p>
-      ) : (
+      {searched ? (
         <>
           {scorecard.isError ? (
             <ErrorMessage
@@ -170,6 +165,11 @@ export function ReportKPIAdmin({ metadata }: { metadata: MetadataResponse | unde
             }}
           />
         </>
+      ) : (
+        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          Pilih data KPI dan periode, lalu tekan <strong>Cari</strong>. Layar lama pun
+          menolak tanpa periode — pesannya berbunyi &quot;Periode tanggal masih kosong&quot;.
+        </p>
       )}
     </div>
   )
@@ -188,11 +188,11 @@ function Scorecard({
   card,
   loading,
   coordinatorInQuery,
-}: {
+}: Readonly<{
   card: ScorecardResponse | undefined
   loading: boolean
   coordinatorInQuery: string
-}) {
+}>) {
   if (loading && !card) {
     return (
       <div className="rounded-kotak border border-slate-200 bg-white p-4 text-sm text-slate-500">

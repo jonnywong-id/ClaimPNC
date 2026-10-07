@@ -54,7 +54,7 @@ type Props = {
  * "Menambah Data" dan "Memperbaharui Data" (`pyTitle`), dan `D-13` menetapkan teks yang
  * dilihat pengguna mengikuti layar Pega apa adanya.
  */
-export function DominantFactorForm({ factor, tutup }: Props) {
+export function DominantFactorForm({ factor, tutup }: Readonly<Props>) {
   const save = useSaveDominantFactor()
   const editing = factor !== null
   const firstField = useRef<HTMLInputElement | null>(null)
@@ -192,7 +192,7 @@ function Spinner() {
  * validasi server menunjuk kolom tertentu, dan gangguan sistem tidak dapat ditolong
  * dengan mencoba ulang berkali-kali.
  */
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

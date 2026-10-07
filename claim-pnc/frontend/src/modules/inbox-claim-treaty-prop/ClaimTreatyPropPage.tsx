@@ -190,7 +190,7 @@ export function ClaimTreatyPropPage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -259,9 +259,9 @@ function CreateClaimButton() {
         Create Claim Treaty Prop
       </Button>
       {notice !== '' && (
-        <p className="max-w-md text-right text-xs text-amber-900" role="status">
+        <output className="block max-w-md text-right text-xs text-amber-900">
           {notice}
-        </p>
+        </output>
       )}
     </div>
   )
@@ -274,7 +274,7 @@ function CreateClaimButton() {
  * hilang dengan sendirinya begitu penghalangnya hilang. Menyebut pemiliknya penting:
  * penghalang tanpa alamat tidak pernah hilang.
  */
-function BlockedNotice({ tab }: { tab: Tab }) {
+function BlockedNotice({ tab }: Readonly<{ tab: Tab }>) {
   return (
     <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
       <h2 className="text-sm font-semibold text-amber-900">
@@ -301,11 +301,11 @@ function FilterBar({
   tab,
   seeAll,
   onSeeAll,
-}: {
+}: Readonly<{
   tab: Tab
   seeAll: boolean
   onSeeAll: (value: boolean) => void
-}) {
+}>) {
   if (!tab.pakai_lihat_semua && !tab.hanya_milik_saya) return null
 
   return (
@@ -318,7 +318,7 @@ function FilterBar({
             onChange={(event) => onSeeAll(event.target.checked)}
             className="size-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
           />
-          See All Claim
+          <span>See All Claim</span>
         </label>
       )}
 
@@ -357,7 +357,7 @@ function FilterBar({
  * gagal. Yang digambar untuk baris seperti itu adalah tanda pisah yang sama dengan sel
  * kosong lain.
  */
-function ClaimIDLink({ item }: { item: WorkItem }) {
+function ClaimIDLink({ item }: Readonly<{ item: WorkItem }>) {
   if (item.claim_id === '') return <span className="text-slate-400">—</span>
 
   return (
@@ -385,20 +385,20 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   info: PageInfo
   visible: number
   onMove: (page: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
   const last = (info.halaman - 1) * info.ukuran + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {info.total} baris.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"
@@ -426,7 +426,7 @@ function Pagination({
  * "Date Of Loss" yang kini terisi dan tombol pembuat klaim yang menolak akan dilaporkan
  * berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar berdampingan.
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (

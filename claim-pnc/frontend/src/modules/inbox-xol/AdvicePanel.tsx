@@ -155,7 +155,7 @@ export function AdvicePanel() {
  * Ia tautan, bukan tombol ber-onClick: unduhan adalah navigasi, dan peramban sudah
  * menanganinya termasuk saat pengguna membukanya di tab baru.
  */
-function DownloadButton({ form }: { form: AdviceForm }) {
+function DownloadButton({ form }: Readonly<{ form: AdviceForm }>) {
   return (
     <a
       href={downloadURL(form)}

@@ -168,6 +168,67 @@ export function ClauseAIPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data ini dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar Pasal AI…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <div className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
+        <DataTable
+          columns={columns}
+          rows={rows}
+          // Kunci barisnya WP_ID — kunci sungguhan, bukan gabungan No Pasal dan Ayat.
+          // Tidak ada constraint yang diketahui melarang dua baris berpasangan sama
+          // (`R-08`), dan kunci yang dapat kembar membuat React menggambar ulang baris
+          // yang salah.
+          rowKey={(row) => row.id}
+          hideSearch
+          emptyMessage={
+            keyword === ''
+              ? 'Belum ada Pasal AI pada entitas ini.'
+              : `Tidak ada Pasal AI yang cocok dengan "${keyword}".`
+          }
+        />
+
+        {/* Paginator sisi server, memakai komponen yang sama dengan tabel lain supaya
+            tidak ada dua gaya paginasi hidup berdampingan.
+
+            Barisnya dihitung dari jendela yang dikembalikan server, bukan dari panjang
+            senarai — panjang senarai hanya menceritakan halaman yang sedang terbuka. */}
+        {pagination !== undefined && rows.length > 0 && (
+          <Paginator
+            firstRow={(pagination.halaman - 1) * pagination.ukuran_halaman + 1}
+            lastRow={(pagination.halaman - 1) * pagination.ukuran_halaman + rows.length}
+            totalRows={pagination.jumlah_baris}
+            currentPage={pagination.halaman}
+            totalPages={pagination.jumlah_halaman}
+            onPick={setPage}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -220,60 +281,7 @@ export function ClauseAIPage() {
       </form>
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data ini dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar Pasal AI…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <div className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
-            <DataTable
-              columns={columns}
-              rows={rows}
-              // Kunci barisnya WP_ID — kunci sungguhan, bukan gabungan No Pasal dan Ayat.
-              // Tidak ada constraint yang diketahui melarang dua baris berpasangan sama
-              // (`R-08`), dan kunci yang dapat kembar membuat React menggambar ulang baris
-              // yang salah.
-              rowKey={(row) => row.id}
-              hideSearch
-              emptyMessage={
-                keyword === ''
-                  ? 'Belum ada Pasal AI pada entitas ini.'
-                  : `Tidak ada Pasal AI yang cocok dengan "${keyword}".`
-              }
-            />
-
-            {/* Paginator sisi server, memakai komponen yang sama dengan tabel lain supaya
-                tidak ada dua gaya paginasi hidup berdampingan.
-
-                Barisnya dihitung dari jendela yang dikembalikan server, bukan dari panjang
-                senarai — panjang senarai hanya menceritakan halaman yang sedang terbuka. */}
-            {pagination !== undefined && rows.length > 0 && (
-              <Paginator
-                firstRow={(pagination.halaman - 1) * pagination.ukuran_halaman + 1}
-                lastRow={(pagination.halaman - 1) * pagination.ukuran_halaman + rows.length}
-                totalRows={pagination.jumlah_baris}
-                currentPage={pagination.halaman}
-                totalPages={pagination.jumlah_halaman}
-                onPick={setPage}
-              />
-            )}
-          </div>
-        )}
+        {renderList()}
       </section>
 
       {/* Dua keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan

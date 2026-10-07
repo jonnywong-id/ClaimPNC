@@ -33,14 +33,14 @@ export function RequestDialog({
   onKirim,
   sedangMengirim,
   galat,
-}: {
+}: Readonly<{
   jenis: JenisPermintaan
   klaim: KlaimTutup
   onBatal: () => void
   onKirim: (alasan: string) => void
   sedangMengirim: boolean
   galat: string | null
-}) {
+}>) {
   const [alasan, setAlasan] = useState('')
 
   // Escape menutup dialog, seperti dialog mana pun yang dikenal pengguna.
@@ -53,12 +53,13 @@ export function RequestDialog({
   }, [onBatal, sedangMengirim])
 
   const reopen = jenis === 'reopen'
+  const labelKirim = reopen ? 'Ajukan buka kembali' : 'Ajukan salin klaim'
   const judul = reopen ? 'Buka kembali klaim ini?' : 'Salin klaim ini menjadi klaim baru?'
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-permintaan"
     >
@@ -155,10 +156,10 @@ export function RequestDialog({
             Batal
           </Button>
           <Button tone="utama" onClick={() => onKirim(alasan)} disabled={sedangMengirim}>
-            {sedangMengirim ? 'Mengirim…' : reopen ? 'Ajukan buka kembali' : 'Ajukan salin klaim'}
+            {sedangMengirim ? 'Mengirim…' : labelKirim}
           </Button>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

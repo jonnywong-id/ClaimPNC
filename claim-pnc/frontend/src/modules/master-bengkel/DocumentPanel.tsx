@@ -39,7 +39,7 @@ import { unduhDokumenBengkel, useUploadWorkshopDocument, useWorkshopDocument } f
  * `BENGKEL_HE` hanya punya satu kolom `DOKUMENID`. Unggahan berikutnya menggantikan
  * tautannya; baris lampiran yang lama tidak dihapus (`D-66`), ia hanya tidak lagi tertaut.
  */
-export function DocumentPanel({ workshop, onClose }: { workshop: Workshop; onClose: () => void }) {
+export function DocumentPanel({ workshop, onClose }: Readonly<{ workshop: Workshop; onClose: () => void }>) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
@@ -88,6 +88,36 @@ export function DocumentPanel({ workshop, onClose }: { workshop: Workshop; onClo
     )
   }
 
+  // Isi keterangan dokumen menurut keadaan kueri.
+  function renderDocument() {
+    if (document.isPending) {
+      return <p className="text-sm text-slate-500">Memuat keterangan dokumen…</p>
+    }
+    if (loadFailed) {
+      return (
+        <ErrorMessage
+          title="Keterangan dokumen tidak dapat dimuat"
+          description="Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC."
+          tone="gangguan"
+        />
+      )
+    }
+    if (attached) {
+      return (
+        <AttachedDocument
+          name={attached.nama_berkas}
+          size={attached.ukuran_byte}
+          hasContent={attached.berisi}
+          uploadedBy={attached.diunggah_oleh}
+          uploadedAt={attached.diunggah_pada}
+          isDownloading={isDownloading}
+          onDownload={() => { download() }}
+        />
+      )
+    }
+    return <p className="text-sm text-slate-600">Bengkel ini belum punya dokumen terlampir.</p>
+  }
+
   return (
     <section
       className="mt-5 rounded-lg border border-slate-200 bg-white p-5"
@@ -106,27 +136,7 @@ export function DocumentPanel({ workshop, onClose }: { workshop: Workshop; onClo
       </header>
 
       <div className="mt-4">
-        {document.isPending ? (
-          <p className="text-sm text-slate-500">Memuat keterangan dokumen…</p>
-        ) : loadFailed ? (
-          <ErrorMessage
-            title="Keterangan dokumen tidak dapat dimuat"
-            description="Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC."
-            tone="gangguan"
-          />
-        ) : attached ? (
-          <AttachedDocument
-            name={attached.nama_berkas}
-            size={attached.ukuran_byte}
-            hasContent={attached.berisi}
-            uploadedBy={attached.diunggah_oleh}
-            uploadedAt={attached.diunggah_pada}
-            isDownloading={isDownloading}
-            onDownload={() => { download() }}
-          />
-        ) : (
-          <p className="text-sm text-slate-600">Bengkel ini belum punya dokumen terlampir.</p>
-        )}
+        {renderDocument()}
       </div>
 
       {downloadError && (
@@ -198,7 +208,7 @@ function AttachedDocument({
   uploadedAt,
   isDownloading,
   onDownload,
-}: {
+}: Readonly<{
   name: string
   size: number
   hasContent: boolean
@@ -206,7 +216,7 @@ function AttachedDocument({
   uploadedAt: string
   isDownloading: boolean
   onDownload: () => void
-}) {
+}>) {
   return (
     <div className="rounded border border-slate-200 bg-slate-50 p-4">
       <p className="text-sm font-medium text-slate-900">{name}</p>

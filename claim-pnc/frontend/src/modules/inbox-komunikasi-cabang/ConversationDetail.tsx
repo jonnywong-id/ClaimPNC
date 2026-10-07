@@ -44,7 +44,7 @@ type Props = {
  * petugas kembali ke daftarnya begitu selesai membaca. Panel di halaman yang sama menjaga
  * tab dan nomor halaman tetap di tempatnya.
  */
-export function ConversationDetail({ id, onClose }: Props) {
+export function ConversationDetail({ id, onClose }: Readonly<Props>) {
   const detail = useKomunikasiCabangDetail(id)
 
   return (
@@ -113,7 +113,7 @@ export function ConversationDetail({ id, onClose }: Props) {
  * dan setiap balasan menempati barisnya sendiri. Blok balasan karena itu dicabut — ia kini
  * satu `<li>` seperti ucapan lainnya.
  */
-function Thread({ messages }: { messages: ThreadMessage[] }) {
+function Thread({ messages }: Readonly<{ messages: ThreadMessage[] }>) {
   if (messages.length === 0) {
     return (
       <p className="text-sm text-slate-500">
@@ -161,7 +161,7 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
  * Cacat itu tidak dibawa, dan kesimpulan penggantinya hidup di satu tempat — di server —
  * supaya tidak ada dua kesimpulan yang dapat menyimpang.
  */
-function Attachments({ items }: { items: Attachment[] }) {
+function Attachments({ items }: Readonly<{ items: Attachment[] }>) {
   return (
     <section className="mt-5 border-t border-slate-200 pt-4">
       <h3 className="text-xs font-semibold tracking-wide text-slate-700 uppercase">
@@ -247,7 +247,7 @@ function Attachments({ items }: { items: Attachment[] }) {
  *
  * Yang dikosongkan hanyalah yang BERHASIL tersimpan, dan hanya setelah peladen menjawab.
  */
-function ReplyBox({ id }: { id: string }) {
+function ReplyBox({ id }: Readonly<{ id: string }>) {
   const [message, setMessage] = useState('')
   const reply = useKomunikasiCabangReply()
 
@@ -309,9 +309,9 @@ function ReplyBox({ id }: { id: string }) {
       )}
 
       {reply.isSuccess && (
-        <p className="mt-2 text-xs text-emerald-700" role="status">
+        <output className="block mt-2 text-xs text-emerald-700">
           {reply.data.pesan}
-        </p>
+        </output>
       )}
     </form>
   )

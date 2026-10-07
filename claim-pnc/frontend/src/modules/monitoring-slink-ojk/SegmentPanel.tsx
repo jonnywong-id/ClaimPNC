@@ -38,7 +38,7 @@ export function SegmentPanel({
   onHalamanChange,
   aktif,
   kunciBaris,
-}: Props) {
+}: Readonly<Props>) {
   const query = useData(penyaring, halaman, aktif)
 
   const columns = useMemo(

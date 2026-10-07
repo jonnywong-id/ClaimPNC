@@ -270,7 +270,7 @@ export function SparepartForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const isEditing = editing !== null
   const headingId = useId()
 
@@ -672,7 +672,7 @@ export function SparepartForm({
  * Ia `<fieldset>` dan bukan `<div>` supaya pembaca layar mengumumkan judulnya saat kursor
  * masuk ke salah satu isian di dalamnya.
  */
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
       <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
@@ -694,7 +694,7 @@ const Angka = ({
   error,
   disabled,
   ...rest
-}: React.ComponentProps<typeof Field>) => (
+}: Readonly<React.ComponentProps<typeof Field>>) => (
   <Field
     id={id}
     label={label}
@@ -708,7 +708,7 @@ const Angka = ({
 )
 
 /** Keterangan baca-saja pada kepala form mode ubah. */
-function Keterangan({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Keterangan({ label, value, hint }: Readonly<{ label: string; value: string; hint?: string }>) {
   return (
     <div>
       <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">

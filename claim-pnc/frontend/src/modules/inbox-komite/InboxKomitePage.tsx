@@ -89,6 +89,7 @@ export function InboxKomitePage() {
   const data = list.data
   const rows = data?.kasus ?? []
 
+  console.log("data", data)
 
   function changeKind(next: Kind) {
     setKind(next)
@@ -290,7 +291,7 @@ export function InboxKomitePage() {
         belum ada (`ADR-0024`), dan ia tidak muncul sebagai galat sama sekali. Karena itu
         operator yang dipakai menyaring ditampilkan apa adanya.
       */}
-      {data && data.total === 0 && data.penyaring_pemilik_aktif && (
+      {data?.total === 0 && data.penyaring_pemilik_aktif && (
         <p className="mt-4 text-xs leading-relaxed text-slate-500">
           Inbox disaring untuk operator <span className="font-mono">{data.operator || '—'}</span>.
           Bila Anda yakin ada kasus yang menunggu, periksa apakah nama operator Anda di
@@ -318,13 +319,10 @@ export function InboxKomitePage() {
  * lebih dulu — dan persetujuan otomatis melewati seluruh kontrol otorisasi, karena job
  * tidak punya pengguna sehingga tidak ada menu yang dapat diperiksa (`D-59`).
  */
-function AgingBadge({ days }: { days: number }) {
-  const tone =
-    days >= 7
-      ? 'bg-red-50 text-red-700 ring-red-100'
-      : days >= 3
-        ? 'bg-amber-50 text-amber-800 ring-amber-100'
-        : 'bg-slate-100 text-slate-600 ring-slate-200'
+function AgingBadge({ days }: Readonly<{ days: number }>) {
+  let tone = 'bg-slate-100 text-slate-600 ring-slate-200'
+  if (days >= 7) tone = 'bg-red-50 text-red-700 ring-red-100'
+  else if (days >= 3) tone = 'bg-amber-50 text-amber-800 ring-amber-100'
 
   return (
     <span
@@ -344,7 +342,7 @@ function AgingBadge({ days }: { days: number }) {
  * berarti memutuskan mana yang sah — pertanyaan yang belum dijawab siapa pun, dan yang
  * tidak boleh dijawab diam-diam oleh sebuah komponen tampilan.
  */
-function StateCell({ item }: { item: KomiteCase }) {
+function StateCell({ item }: Readonly<{ item: KomiteCase }>) {
   const progress = item.penjenjangan
 
   return (
@@ -364,7 +362,7 @@ function StateCell({ item }: { item: KomiteCase }) {
   )
 }
 
-function OutcomeBadge({ outcome }: { outcome: KomiteCase['penjenjangan']['kesimpulan'] }) {
+function OutcomeBadge({ outcome }: Readonly<{ outcome: KomiteCase['penjenjangan']['kesimpulan'] }>) {
   const tone: Record<string, string> = {
     [KomiteOutcome.pending]: 'bg-blue-50 text-blue-700 ring-blue-100',
     [KomiteOutcome.approved]: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
@@ -398,11 +396,11 @@ function RangeFilter({
   from,
   to,
   onChange,
-}: {
+}: Readonly<{
   from: string
   to: string
   onChange: (from: string, to: string) => void
-}) {
+}>) {
   const inverted = from !== '' && to !== '' && to < from
 
   return (
@@ -436,22 +434,22 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   offset: number
   limit: number
   total: number
   visible: number
   onMove: (offset: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : offset + 1
   const last = offset + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {total} kasus.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"
@@ -491,7 +489,7 @@ function emptyMessageFor(kind: Kind): string {
 }
 
 /** Gagal memuat selalu bernada gangguan: pengguna baru membuka layarnya. */
-function LoadErrorMessage({ error }: { error: unknown }) {
+function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

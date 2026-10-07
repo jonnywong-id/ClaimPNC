@@ -33,15 +33,14 @@ type Props = {
  * tidak pernah cocok. Perbaikan itu disetujui Work Owner 2026-09-29 dan dinyatakan lewat
  * `selisih_terencana`, yang digambar halaman ini di bawah tabel.
  */
-export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
+export function StatusSummary({ rows, active, onSelect, isLoading }: Readonly<Props>) {
   if (isLoading) {
     return (
-      <div
-        className="rounded-kartu border border-slate-200 bg-white p-4 text-sm text-slate-500"
-        role="status"
+      <output
+        className="block rounded-kartu border border-slate-200 bg-white p-4 text-sm text-slate-500"
       >
         Menghitung ringkasan banding harga…
-      </div>
+      </output>
     )
   }
 

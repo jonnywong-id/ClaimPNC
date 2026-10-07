@@ -259,7 +259,7 @@ export function TechnicianPage() {
  * satu dari dua belas laki-laki mengalami buta warna merah-hijau, dan bagi mereka angka
  * berwarna kuning tidak berbeda dari angka biasa.
  */
-function WorkloadCell({ workload, quota }: { workload: number; quota: number }) {
+function WorkloadCell({ workload, quota }: Readonly<{ workload: number; quota: number }>) {
   const full = quota > 0 && workload >= quota
 
   return (
@@ -284,7 +284,7 @@ function WorkloadCell({ workload, quota }: { workload: number; quota: number }) 
  * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat salah
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
-function LoadErrorMessage({ error }: { error: unknown }) {
+function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = loadMessage(error)
   return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
 }

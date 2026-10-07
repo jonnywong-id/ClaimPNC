@@ -29,7 +29,7 @@ export function AcceptanceNumber({
   coverage,
   adjustment,
   line,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   /** Objek, jaminan, dan adjustment berbasis 1. */
@@ -37,7 +37,7 @@ export function AcceptanceNumber({
   coverage: number
   adjustment: number
   line: Settlement
-}) {
+}>) {
   const [cashier, setCashier] = useState(false)
   const print = usePrintAcceptanceNote(claimID)
   const rules = acceptanceNumberRules(line)

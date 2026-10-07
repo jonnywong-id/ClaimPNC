@@ -148,5 +148,5 @@ export type ProtectionFilter = {
  */
 export function protectionTypeLabel(code: string, name?: string): string {
   const nama = name?.trim()
-  return nama ? nama : code
+  return nama || code
 }

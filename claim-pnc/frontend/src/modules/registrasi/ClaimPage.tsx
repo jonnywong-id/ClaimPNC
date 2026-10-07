@@ -58,7 +58,7 @@ const PANEL_PA = '002'
 const PANEL_TRAVEL = '005'
 
 /** Tahap Input Estimasi (Non-MBU dan Travel), yang isiannya dimiliki EstimateForm. */
-const TAHAP_INPUT_ESTIMASI = ['estimasi-admin', 'estimasi-travel']
+const TAHAP_INPUT_ESTIMASI = new Set(['estimasi-admin', 'estimasi-travel'])
 
 /**
  * Tahap yang ditutup flow action InputSurveyor — layar SurveyorForm:
@@ -73,7 +73,7 @@ const TAHAP_INPUT_ESTIMASI = ['estimasi-admin', 'estimasi-travel']
  * sehingga ia memakai bingkai ClaimSurvey_sect yang sama dan keluar lewat Submit/Back:
  * Register_Flow Estimation → Investigator → Send To Analis.
  */
-const TAHAP_INPUT_SURVEYOR = ['pilih-surveyor', 'kirim-pic-teknik', 'estimasi-pa', 'investigator', 'kirim-analis']
+const TAHAP_INPUT_SURVEYOR = new Set(['pilih-surveyor', 'kirim-pic-teknik', 'estimasi-pa', 'investigator', 'kirim-analis'])
 
 /**
  * Layar kerja satu klaim.
@@ -102,8 +102,8 @@ export function ClaimPage() {
 
   const content = klaim.data
   const atInputRegister = content.klaim.tahap_kini === TAHAP_INPUT_REGISTER
-  const atInputEstimate = TAHAP_INPUT_ESTIMASI.includes(content.klaim.tahap_kini)
-  const atInputSurveyor = TAHAP_INPUT_SURVEYOR.includes(content.klaim.tahap_kini)
+  const atInputEstimate = TAHAP_INPUT_ESTIMASI.has(content.klaim.tahap_kini)
+  const atInputSurveyor = TAHAP_INPUT_SURVEYOR.has(content.klaim.tahap_kini)
 
   return (
     <Frame>
@@ -150,7 +150,7 @@ export function ClaimPage() {
   )
 }
 
-function Frame({ children }: { children: ReactNode }) {
+function Frame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <Link to="/registrasi" className="text-sm text-slate-600 underline">
@@ -161,7 +161,7 @@ function Frame({ children }: { children: ReactNode }) {
   )
 }
 
-function ClaimHeader({ klaim }: { klaim: Claim }) {
+function ClaimHeader({ klaim }: Readonly<{ klaim: Claim }>) {
   return (
     <header className="border-b border-slate-200 pb-4">
       <h1 className="text-xl font-semibold text-slate-900">
@@ -182,7 +182,7 @@ function ClaimHeader({ klaim }: { klaim: Claim }) {
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
@@ -198,7 +198,7 @@ function Row({ label, value }: { label: string; value: string }) {
  * bersangkutan, bukan teks yang ditebak layar. Bila layar mengirim tindakan yang bukan
  * penutup tahap itu, server menolaknya (`ADR-0023`).
  */
-function StageActions({ tugas }: { tugas: Task }) {
+function StageActions({ tugas }: Readonly<{ tugas: Task }>) {
   const done = useCompleteStage()
 
   return (
@@ -253,7 +253,7 @@ function StageActions({ tugas }: { tugas: Task }) {
  * tombol. Menampilkan cabang yang dipilih membuat perpindahan itu dapat dijelaskan tanpa
  * membaca kode.
  */
-function DecisionTrace({ trace }: { trace: string[] }) {
+function DecisionTrace({ trace }: Readonly<{ trace: string[] }>) {
   return (
     <div className="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -345,7 +345,7 @@ const HUBUNGAN_LAIN_LAIN = '7'
 /** Kode cabang yang tidak menampilkan Tgl Terima HCDKP (`KodeCabang != '100081'`, InputRegisterDetail). */
 const BRANCH_HEAD_OFFICE = '100081'
 
-function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
+function FormRegister({ klaim, tugas }: Readonly<{ klaim: Claim; tugas: Task }>) {
   const save = useSaveRegister()
   const draft = useSaveDraft()
   const navigate = useNavigate()
@@ -703,12 +703,12 @@ function LossLocationSection({
   watch,
   setValue,
   fieldErrors,
-}: {
+}: Readonly<{
   register: UseFormRegister<RegisterFormValues>
   watch: UseFormWatch<RegisterFormValues>
   setValue: UseFormSetValue<RegisterFormValues>
   fieldErrors: Record<string, string>
-}) {
+}>) {
   const w = watch('wilayah')
   const indonesia = (w.negara ?? '').toUpperCase() === COUNTRY_INDONESIA
   const countries = useAreaOptions(AreaLevel.Country, '')
@@ -790,7 +790,7 @@ function AreaSelect({
   currentName,
   disabled,
   onPick,
-}: {
+}: Readonly<{
   id: string
   label: string
   query: { data?: { pilihan: AreaOption[] } | undefined; isFetching: boolean }
@@ -798,7 +798,7 @@ function AreaSelect({
   currentName: string | undefined
   disabled?: boolean
   onPick: (option: AreaOption | undefined) => void
-}) {
+}>) {
   const option = query.data?.pilihan ?? []
   const known = option.some((o) => o.id === value)
   const list = [
@@ -823,12 +823,12 @@ function RadioGroup({
   name,
   register,
   options,
-}: {
+}: Readonly<{
   label: string
   name: 'prinsip_mengenal_nasabah' | 'ex_gratia'
   register: UseFormRegister<RegisterFormValues>
   options: { value: string; label: string }[]
-}) {
+}>) {
   return (
     <fieldset>
       <legend className="block text-sm font-medium text-slate-700">{label}</legend>
@@ -851,14 +851,14 @@ function RadioGroup({
  */
 function UnsavedField({
   id, label, value, onChange, type = 'text', multiline = false,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: string
   onChange: (value: string) => void
   type?: string
   multiline?: boolean
-}) {
+}>) {
   const className = 'mt-1 w-full rounded border border-dashed border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none'
   return (
     <div>
@@ -873,7 +873,7 @@ function UnsavedField({
   )
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <section className="rounded border border-slate-200 p-4">
       <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">{title}</h2>
@@ -907,14 +907,14 @@ function InsuredItemEditor({
   setValue,
   businessCode,
   onRemove,
-}: {
+}: Readonly<{
   index: number
   control: Control<RegisterFormValues>
   register: UseFormRegister<RegisterFormValues>
   setValue: UseFormSetValue<RegisterFormValues>
   businessCode: string
   onRemove: () => void
-}) {
+}>) {
   const coverage = useFieldArray({ control, name: `objek.${index}.coverage` })
 
   return (
@@ -968,7 +968,7 @@ function CoverageEditor({
   setValue,
   businessCode,
   onRemove,
-}: {
+}: Readonly<{
   itemIndex: number
   index: number
   control: Control<RegisterFormValues>
@@ -976,7 +976,7 @@ function CoverageEditor({
   setValue: UseFormSetValue<RegisterFormValues>
   businessCode: string
   onRemove: () => void
-}) {
+}>) {
   const nama = `objek.${itemIndex}.coverage.${index}` as const
   const spreading = useFieldArray({ control, name: `${nama}.spreading` })
   const cause = useWatch({ control, name: `${nama}.penyebab_kerugian` })
@@ -1087,7 +1087,7 @@ export function causeSelectOptions(options: CauseOfLossOption[], current: string
  * Totalnya PER JAMINAN, sama dengan server (`InputRegister_act` 37.3.1 mereset total di
  * dalam loop coverage): dua jaminan masing-masing 100% sudah benar.
  */
-function SpreadingSummary({ values }: { values: InsuredItemInput[] | undefined }) {
+function SpreadingSummary({ values }: Readonly<{ values: InsuredItemInput[] | undefined }>) {
   if (!values || values.length === 0) return null
 
   let count = 0
@@ -1176,7 +1176,7 @@ function fromClaim(klaim: Claim): RegisterFormValues {
     user_teknis: klaim.user_teknis,
     rcv_id: klaim.rcv_id,
     ex_gratia: klaim.ex_gratia ? 'YES' : 'NO',
-    wilayah: { ...EMPTY_AREA, ...(klaim.wilayah ?? {}) },
+    wilayah: { ...EMPTY_AREA, ...klaim.wilayah },
     // NORMAL adalah bawaan layar Pega (pyDefaultValue 1).
     prinsip_mengenal_nasabah: klaim.prinsip_mengenal_nasabah || CustomerPrinciple.Normal,
     komentar_suspicious: klaim.komentar_suspicious ?? '',

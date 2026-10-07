@@ -56,7 +56,7 @@ export function ArchiveFormPanel({
   busy,
   fieldError,
   successMessage,
-}: Props) {
+}: Readonly<Props>) {
   const [pickerOpen, setPickerOpen] = useState(false)
 
   const kindsForType = documentKinds.filter(
@@ -180,12 +180,9 @@ export function ArchiveFormPanel({
         </div>
 
         {successMessage && (
-          <p
-            className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900"
-            role="status"
-          >
+          <output className="mt-4 block rounded-kontrol border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">
             {successMessage}
-          </p>
+          </output>
         )}
 
         {fieldError['__umum'] && (
@@ -223,7 +220,7 @@ export function ArchiveFormPanel({
 }
 
 /** ReadOnly menggambar satu keterangan yang ikut dari klaim. */
-function ReadOnly({ label, value }: { label: string; value: string }) {
+function ReadOnly({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>

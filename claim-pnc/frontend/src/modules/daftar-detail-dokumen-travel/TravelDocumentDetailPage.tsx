@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type TravelDocumentDetail } from '@/api/types'
@@ -249,6 +249,42 @@ export function TravelDocumentDetailPage() {
     },
   ]
 
+  function renderList(): ReactNode {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return (
+        <p className="text-sm text-slate-500">Memuat daftar detail dokumen travel…</p>
+      )
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.detail_dokumen_travel}
+        rowKey={(row) => row.id}
+        description="Sumber: POOLDATA.V_LST_DOC_TRAVEL"
+        emptyMessage="Belum ada detail dokumen travel pada entitas ini."
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -317,34 +353,7 @@ export function TravelDocumentDetailPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar detail dokumen travel…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.detail_dokumen_travel}
-            rowKey={(row) => row.id}
-            description="Sumber: POOLDATA.V_LST_DOC_TRAVEL"
-            emptyMessage="Belum ada detail dokumen travel pada entitas ini."
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )

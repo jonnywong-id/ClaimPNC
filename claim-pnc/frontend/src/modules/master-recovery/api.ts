@@ -290,7 +290,7 @@ export function useViewDocument() {
         window.open(alamat, '_blank', 'noopener,noreferrer')
         // Dicabut setelah peramban sempat membacanya. Mencabutnya seketika akan
         // membatalkan tab yang baru saja dibuka.
-        window.setTimeout(() => URL.revokeObjectURL(alamat), 60_000)
+        globalThis.setTimeout(() => URL.revokeObjectURL(alamat), 60_000)
         return
       }
 

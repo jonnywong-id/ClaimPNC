@@ -160,6 +160,48 @@ export function ProgressStatusPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar status progres…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.status_progres}
+        rowKey={(row) => row.id}
+        description="Sumber: POOLDATA.GCNM_MST_PROGRESS_KLAIM"
+        emptyMessage="Belum ada status progres pada entitas ini."
+        // 15 baris per halaman, sama seperti layar lama. Angkanya BUKAN dikarang:
+        // `Section/BrowseStatusProgress-Section.xml` menyisipkan `pyGridPaginator`
+        // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`.
+        //
+        // Ditambahkan 2026-09-20 setelah Work Owner menemukan grid ini menggambar
+        // seluruh baris sekaligus, padahal layar lamanya berhalaman.
+        pageSize={15}
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       {/* Tidak ada tautan "kembali ke beranda" di sini: menu utama di kerangka sudah
@@ -204,41 +246,7 @@ export function ProgressStatusPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar status progres…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.status_progres}
-            rowKey={(row) => row.id}
-            description="Sumber: POOLDATA.GCNM_MST_PROGRESS_KLAIM"
-            emptyMessage="Belum ada status progres pada entitas ini."
-            // 15 baris per halaman, sama seperti layar lama. Angkanya BUKAN dikarang:
-            // `Section/BrowseStatusProgress-Section.xml` menyisipkan `pyGridPaginator`
-            // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`.
-            //
-            // Ditambahkan 2026-09-20 setelah Work Owner menemukan grid ini menggambar
-            // seluruh baris sekaligus, padahal layar lamanya berhalaman.
-            pageSize={15}
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )

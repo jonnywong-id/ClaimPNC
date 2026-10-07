@@ -110,13 +110,7 @@ export function InboxCompliancePage() {
           {tab.tersedia ? (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => (
-                  <RowActions
-                    item={row}
-                    tab={tab}
-                    onSend={() => setSending(row)}
-                  />
-                ))}
+                columns={columnsFor(tab, rowActionsRenderer(tab, setSending))}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.nomor_case}`}
                 title={tab.nama}
@@ -161,7 +155,7 @@ export function InboxCompliancePage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -186,7 +180,7 @@ function PageFrame({ children }: { children: ReactNode }) {
  * Nadanya "gangguan", bukan "galat": tidak ada yang rusak dan tidak ada yang perlu
  * diperbaiki pengguna. Yang ada adalah artefak yang sedang ditunggu.
  */
-function PendingTab({ tab }: { tab: Tab }) {
+function PendingTab({ tab }: Readonly<{ tab: Tab }>) {
   return (
     <div className="mt-4">
       <ErrorMessage
@@ -208,7 +202,7 @@ function PendingTab({ tab }: { tab: Tab }) {
  * Yang dikirim adalah `referensi`, kunci teknis Pega. Dengan begitu menyalakan layar
  * rincian kelak tidak menuntut perubahan kontrak API modul ini.
  */
-function DetailButton({ item }: { item: WorkItem }) {
+function DetailButton({ item }: Readonly<{ item: WorkItem }>) {
   const navigate = useNavigate()
   const key = item.referensi || item.nomor_case
 
@@ -236,20 +230,20 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   info: PageInfo
   visible: number
   onMove: (page: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
   const last = (info.halaman - 1) * info.ukuran + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {info.total} baris.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"
@@ -278,7 +272,7 @@ function Pagination({
  * KPI akan dilaporkan berulang kali sebagai kerusakan — padahal keduanya memang memakai
  * dasar hitungan yang berbeda sejak di sistem lama.
  */
-function Notes({ limitations }: { limitations: string[] }) {
+function Notes({ limitations }: Readonly<{ limitations: string[] }>) {
   if (limitations.length === 0) return null
 
   return (
@@ -316,11 +310,11 @@ function RowActions({
   item,
   tab,
   onSend,
-}: {
+}: Readonly<{
   item: WorkItem
   tab: Tab
   onSend: () => void
-}) {
+}>) {
   return (
     <div className="flex justify-end gap-2">
       {tab.kode === 'compliance' && (
@@ -331,6 +325,15 @@ function RowActions({
       <DetailButton item={item} />
     </div>
   )
+}
+
+/**
+ * Penyusun isi kolom aksi. Didefinisikan di tingkat modul — bukan sebagai fungsi panah di
+ * dalam render layar — supaya definisinya tidak tinggal di dalam komponen (temuan SonarQube
+ * S6478). Isinya sama persis: `RowActions` untuk baris itu, dan Kirim membuka dialognya.
+ */
+function rowActionsRenderer(tab: Tab, onSend: (row: WorkItem) => void) {
+  return (row: WorkItem) => <RowActions item={row} tab={tab} onSend={() => onSend(row)} />
 }
 
 /**
@@ -349,10 +352,10 @@ function RowActions({
 function SendPostAuditDialog({
   claim,
   onClose,
-}: {
+}: Readonly<{
   claim: WorkItem
   onClose: () => void
-}) {
+}>) {
   const [remarks, setRemarks] = useState('')
   const send = useSendToPostAudit()
 
@@ -365,9 +368,9 @@ function SendPostAuditDialog({
   }
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="kirim-post-audit-judul"
     >
@@ -447,7 +450,7 @@ function SendPostAuditDialog({
           </Button>
         </div>
       </form>
-    </div>
+    </dialog>
   )
 }
 
@@ -508,8 +511,8 @@ function cellText(row: WorkItem, column: TabColumn): string {
   // Satu kolom membawa jamnya: Tanggal Kirim Audit Compliance. Tanggalnya diformat lewat
   // fungsi bersama yang sama, lalu jamnya ditempelkan — sehingga bentuk tanggalnya tetap
   // seragam dengan kolom lain, dan hanya jamnya yang ditambahkan.
-  const stamp = text.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/)
-  if (stamp && stamp[1] && stamp[2]) return `${formatDate(stamp[1])} ${stamp[2]}`
+  const stamp = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(text)
+  if (stamp?.[1] && stamp[2]) return `${formatDate(stamp[1])} ${stamp[2]}`
 
   return text
 }

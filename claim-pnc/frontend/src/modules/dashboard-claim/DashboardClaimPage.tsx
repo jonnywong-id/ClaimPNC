@@ -227,7 +227,7 @@ function Telusur({
   halaman,
   onHalaman,
   state,
-}: {
+}: Readonly<{
   tile: Tile
   judul: string
   cari: string
@@ -235,7 +235,7 @@ function Telusur({
   halaman: number
   onHalaman: (halaman: number) => void
   state: ReturnType<typeof useTelusurDashboard>
-}) {
+}>) {
   const data = state.data
   const bentuk = data?.bentuk ?? (tile === 'loss-adjuster' || tile === 'internal-surveyor' ? 'survei' : 'klaim')
 

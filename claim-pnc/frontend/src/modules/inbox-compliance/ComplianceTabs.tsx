@@ -33,7 +33,7 @@ type Props = {
  * Sistem lama tidak menampilkannya, dan menghadirkannya berarti menjalankan kueri kedua tab
  * setiap kali layar dibuka — termasuk tab yang belum punya kueri.
  */
-export function ComplianceTabs({ tabs, active, onSelect }: Props) {
+export function ComplianceTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Dua tab

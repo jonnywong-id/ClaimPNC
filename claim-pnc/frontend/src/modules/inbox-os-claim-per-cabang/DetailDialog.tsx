@@ -39,10 +39,10 @@ import type {
 export function DetailDialog({
   nomorKlaim,
   onTutup,
-}: {
+}: Readonly<{
   nomorKlaim: string
   onTutup: () => void
-}) {
+}>) {
   const detail = useOSClaimPerCabangDetail(nomorKlaim)
 
   // Escape menutup popup, seperti dialog mana pun yang dikenal pengguna.
@@ -55,9 +55,9 @@ export function DetailDialog({
   }, [onTutup])
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 px-4 py-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-detail-os-cabang"
     >
@@ -143,7 +143,7 @@ export function DetailDialog({
           </div>
         ) : null}
       </div>
-    </div>
+    </dialog>
   )
 }
 
@@ -154,7 +154,7 @@ export function DetailDialog({
  * "Kronologi :", "Note dari PIC :". `D-13` menetapkan teks yang dilihat pengguna mengikuti
  * Pega, dan menerjemahkan sebagiannya justru membuat layar tidak dikenali lagi.
  */
-function Summary({ header }: { header: DetailHeader }) {
+function Summary({ header }: Readonly<{ header: DetailHeader }>) {
   return (
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
       <Entry label="COB">{header.cob || '—'}</Entry>
@@ -199,11 +199,11 @@ function Entry({
   label,
   children,
   wide = false,
-}: {
+}: Readonly<{
   label: string
   children: ReactNode
   wide?: boolean
-}) {
+}>) {
   return (
     <div className={wide ? 'sm:col-span-2' : undefined}>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -215,7 +215,7 @@ function Entry({
 }
 
 /** Section membungkus satu grid beserta judulnya. */
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <section>
       <h3 className="mb-2 text-sm font-semibold text-slate-900">{title}</h3>
@@ -384,7 +384,7 @@ const MESSAGE_COLUMNS: Column<DetailMessage>[] = [
  * "Total Sum Insured" tidak berlaku di grid, dan catatan tentang paginasi tidak berlaku di
  * sini (`D-54`).
  */
-function DetailPlannedDifferences({ lines }: { lines: string[] }) {
+function DetailPlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (

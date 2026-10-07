@@ -31,7 +31,7 @@ type Props = {
  * Ketiga tab Komunikasi tidak digambar sama sekali, dan ketiadaannya dijelaskan di bawah
  * tabel — bukan digambar sebagai tab mati yang mengundang klik.
  */
-export function InboxTabs({ tabs, active, onSelect }: Props) {
+export function InboxTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Delapan tab

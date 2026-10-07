@@ -9,6 +9,13 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   hint?: string | undefined
 }
 
+/** describedByFor memilih elemen keterangan yang dirujuk aria-describedby: galat lebih dulu, lalu petunjuk. */
+function describedByFor(id: string, error: unknown, hint: unknown): string | undefined {
+  if (error) return `${id}-galat`
+  if (hint) return `${id}-petunjuk`
+  return undefined
+}
+
 /**
  * TextAreaField adalah saudara `Field` untuk isian bertingkat banyak baris.
  *
@@ -67,7 +74,7 @@ export const TextAreaField = forwardRef<HTMLTextAreaElement, Props>(
           ref={ref}
           rows={rows}
           aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined}
+          aria-describedby={describedByFor(id, error, hint)}
           className={className ? `${fieldClass} ${className} mt-1.5` : `${fieldClass} mt-1.5`}
           {...rest}
         />

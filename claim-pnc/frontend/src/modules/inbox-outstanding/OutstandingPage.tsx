@@ -102,8 +102,8 @@ export function OutstandingPage() {
     try {
       // Penyaring layar TIDAK dikirim: unduhan mencakup lini bisnis, bukan isi layar.
       await downloadOutstandingCSV(token, portal)
-    } catch (failure) {
-      setDownloadError(errorMessage(failure))
+    } catch (error_) {
+      setDownloadError(errorMessage(error_))
     } finally {
       setDownloading(false)
     }
@@ -124,31 +124,7 @@ export function OutstandingPage() {
       title: 'Claim no',
       width: '11rem',
       value: (c) => c.nomor_klaim,
-      render: (c) =>
-        isOpenableHere(c.nomor_klaim) ? (
-          // Klaim PNCN dibuka di halaman klaim registrasi aplikasi ini — lewat NOMORNYA,
-          // yang juga kunci barisnya di T_CLAIMLIST_ADMIN.
-          <Link
-            to={`/registrasi/klaim/${encodeURIComponent(c.nomor_klaim)}`}
-            className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 underline-offset-2 ring-1 ring-blue-100 hover:underline"
-          >
-            {c.nomor_klaim}
-          </Link>
-        ) : c.nomor_klaim ? (
-          <span
-            className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-100"
-            title="Pega claim — open it in Pega"
-          >
-            {c.nomor_klaim}
-          </span>
-        ) : (
-          <span
-            className="text-slate-400"
-            title="Nomor terbit setelah tahap Input Register lolos validasi"
-          >
-            belum bernomor
-          </span>
-        ),
+      render: (c) => <ClaimNumberCell claimNumber={c.nomor_klaim} />,
     },
     {
       key: 'policy_no',
@@ -388,7 +364,7 @@ export function OutstandingPage() {
   )
 }
 
-/** * OwnerNotice menyatakan pekerjaan SIAPA yang sedang ditampilkan. * * Ini bukan hiasan. Daftar kosong pada layar bernama "My Inbox" punya dua sebab yang * tampak persis sama — memang tidak ada pekerjaan, atau penyaringnya salah orang — dan * tanpa keterangan ini pengguna tidak punya cara membedakannya. */function OwnerNotice({ pemilik }: { pemilik: string }) {  return (    <p className="mt-4 text-sm text-slate-600">      Menampilkan pekerjaan milik{' '}      <span className="font-medium text-slate-900">{pemilik}</span>.    </p>  )}
+/** * OwnerNotice menyatakan pekerjaan SIAPA yang sedang ditampilkan. * * Ini bukan hiasan. Daftar kosong pada layar bernama "My Inbox" punya dua sebab yang * tampak persis sama — memang tidak ada pekerjaan, atau penyaringnya salah orang — dan * tanpa keterangan ini pengguna tidak punya cara membedakannya. */function OwnerNotice({ pemilik }: Readonly<{ pemilik: string }>) {  return (    <p className="mt-4 text-sm text-slate-600">      Menampilkan pekerjaan milik{' '}      <span className="font-medium text-slate-900">{pemilik}</span>.    </p>  )}
 
 /**
  * Umur klaim, dengan penegasan pada yang sudah lama.
@@ -397,7 +373,7 @@ export function OutstandingPage() {
  * dijelaskan lewat title. Pembedaan yang hanya mengandalkan warna tidak terbaca pengguna
  * dengan gangguan penglihatan warna.
  */
-function AgeBadge({ days }: { days: number }) {
+function AgeBadge({ days }: Readonly<{ days: number }>) {
   const lama = days >= 30
 
   return (
@@ -413,14 +389,52 @@ function AgeBadge({ days }: { days: number }) {
   )
 }
 
+/** Sel nomor klaim: tautan untuk klaim PNCN, lencana untuk klaim Pega, atau belum bernomor. */
+function ClaimNumberCell({ claimNumber }: Readonly<{ claimNumber: string }>) {
+  if (isOpenableHere(claimNumber)) {
+    return (
+      // Klaim PNCN dibuka di halaman klaim registrasi aplikasi ini — lewat NOMORNYA,
+      // yang juga kunci barisnya di T_CLAIMLIST_ADMIN.
+      <Link
+        to={`/registrasi/klaim/${encodeURIComponent(claimNumber)}`}
+        className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 underline-offset-2 ring-1 ring-blue-100 hover:underline"
+      >
+        {claimNumber}
+      </Link>
+    )
+  }
+
+  if (claimNumber) {
+    return (
+      <span
+        className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-100"
+        title="Pega claim — open it in Pega"
+      >
+        {claimNumber}
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className="text-slate-400"
+      title="Nomor terbit setelah tahap Input Register lolos validasi"
+    >
+      belum bernomor
+    </span>
+  )
+}
+
+/** Kelas warna lencana status. */
+function statusTone(status: string): string {
+  if (status === 'Reject') return 'bg-red-50 text-red-700 ring-red-100'
+  if (status === 'Close') return 'bg-slate-100 text-slate-700 ring-slate-200'
+  return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+}
+
 /** Status yang dilihat pengguna; teksnya mengikuti layar Pega apa adanya (`D-13`). */
-function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === 'Reject'
-      ? 'bg-red-50 text-red-700 ring-red-100'
-      : status === 'Close'
-        ? 'bg-slate-100 text-slate-700 ring-slate-200'
-        : 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+function StatusBadge({ status }: Readonly<{ status: string }>) {
+  const tone = statusTone(status)
 
   return (
     <span
@@ -444,13 +458,13 @@ function Pagination({
   total,
   onChange,
   busy,
-}: {
+}: Readonly<{
   offset: number
   shown: number
   total: number
   onChange: (next: number) => void
   busy: boolean
-}) {
+}>) {
   if (total === 0) return null
 
   const first = offset + 1

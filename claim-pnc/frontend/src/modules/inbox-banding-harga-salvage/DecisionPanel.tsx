@@ -38,7 +38,7 @@ type Props = {
  * halaman berarti pengguna kehilangan tempatnya di daftar setiap kali membuka satu klaim,
  * dan pada antrean yang dibaca berurutan itu terasa setiap kali.
  */
-export function DecisionPanel({ claimNo, columns, onClose }: Props) {
+export function DecisionPanel({ claimNo, columns, onClose }: Readonly<Props>) {
   const decisions = useBandingHargaSalvageDecisions(claimNo)
 
   if (claimNo === '') return null
@@ -145,13 +145,10 @@ function renderCell(row: Decision, column: DecisionColumn): ReactNode {
  * `DecisionLabel` di server mengembalikan "PROSES" untuk kode asing, dan menyembunyikannya di
  * balik warna "ditolak" akan menyatakan sesuatu yang belum tentu benar.
  */
-function DecisionBadge({ code, label }: { code: string; label: string }) {
-  const tone =
-    code === DecisionCode.approved
-      ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
-      : code === DecisionCode.rejected
-        ? 'bg-rose-50 text-rose-800 ring-rose-200'
-        : 'bg-slate-100 text-slate-700 ring-slate-200'
+function DecisionBadge({ code, label }: Readonly<{ code: string; label: string }>) {
+  let tone = 'bg-slate-100 text-slate-700 ring-slate-200'
+  if (code === DecisionCode.approved) tone = 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+  else if (code === DecisionCode.rejected) tone = 'bg-rose-50 text-rose-800 ring-rose-200'
 
   return (
     <span

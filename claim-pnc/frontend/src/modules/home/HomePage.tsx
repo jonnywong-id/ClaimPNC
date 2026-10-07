@@ -173,7 +173,7 @@ function MenuShortcut() {
   )
 }
 
-function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function Row({ label, value, mono = false }: Readonly<{ label: string; value: string; mono?: boolean }>) {
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>

@@ -209,6 +209,54 @@ export function ReasMemberPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar member reas…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        /*
+          Kunci barisnya TIGA kolom, bukan kode reas saja.
+
+          Kunci alaminya memang begitu — `Database/UPDATEREAS.prc` memeriksa keberadaan
+          baris dengan REINSURERID + REINSURERNAME + TYPE sekaligus — dan memakai kode
+          reas sendirian akan membuat tiga baris milik satu perusahaan berbagi kunci yang
+          sama. React akan menganggap ketiganya satu baris.
+
+          Pemisahnya \u001f (unit separator), bukan tanda baca biasa yang dapat muncul di
+          dalam nama perusahaan.
+        */
+        rowKey={(row) => [row.kode_reas, row.nama_reas, row.tipe].join('\u001f')}
+        description="Sumber: POOLDATA.T_REINSURER"
+        searchLabel="Cari kode, nama, login, atau email"
+        pageSize={PAGE_SIZE}
+        emptyMessage="Belum ada member reas pada entitas ini."
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -240,7 +288,7 @@ export function ReasMemberPage() {
           surel tujuan pemberitahuan klaim, dan mitra satu badan hukum bukan mitra badan
           hukum lain. */}
       <p className="mt-3 text-xs text-slate-500">
-        Daftar ini memuat seluruh member reas pada entitas yang sedang dibuka.
+        <span>Daftar ini memuat seluruh member reas pada entitas yang sedang dibuka.</span>
         <span className="ml-1">
           Portal entitas:{' '}
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
@@ -248,47 +296,7 @@ export function ReasMemberPage() {
       </p>
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar member reas…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            /*
-              Kunci barisnya TIGA kolom, bukan kode reas saja.
-
-              Kunci alaminya memang begitu — `Database/UPDATEREAS.prc` memeriksa keberadaan
-              baris dengan REINSURERID + REINSURERNAME + TYPE sekaligus — dan memakai kode
-              reas sendirian akan membuat tiga baris milik satu perusahaan berbagi kunci yang
-              sama. React akan menganggap ketiganya satu baris.
-
-              Pemisahnya \u001f (unit separator), bukan tanda baca biasa yang dapat muncul di
-              dalam nama perusahaan.
-            */
-            rowKey={(row) => [row.kode_reas, row.nama_reas, row.tipe].join('\u001f')}
-            description="Sumber: POOLDATA.T_REINSURER"
-            searchLabel="Cari kode, nama, login, atau email"
-            pageSize={PAGE_SIZE}
-            emptyMessage="Belum ada member reas pada entitas ini."
-          />
-        )}
+        {renderList()}
       </section>
 
       {/* Tiga keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan

@@ -179,7 +179,7 @@ type FilterBarProps = {
  * Memindahkannya ke atas bersama yang lain adalah penyesuaian bentuk, bukan perubahan
  * perilaku: ia tetap hanya berlaku pada panel itu, dan pada panel lain ia dinonaktifkan.
  */
-function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat }: FilterBarProps) {
+function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat }: Readonly<FilterBarProps>) {
   const ubah = (bagian: Partial<ReportFilter>) => setFilter({ ...filter, ...bagian })
 
   return (
@@ -245,7 +245,7 @@ function FilterBar({ filter, setFilter, aktif, liniBisnis, bisnis, bisnisMemuat 
             onChange={(e) => ubah({ rincian: e.target.checked })}
             className="h-4 w-4 rounded border-slate-300"
           />
-          Tampilkan kolom rincian
+          <span>Tampilkan kolom rincian</span>
         </label>
       </div>
     </div>
@@ -266,7 +266,7 @@ type CardProps = {
  * pengguna melaporkan laporan yang "hilang", dan membuat kemajuan migrasi tidak terbaca
  * dari layar — perlakuan yang sama dengan butir menu yang belum punya layar.
  */
-function ReportCard({ laporan, sedangDiunduh, onExport, onFocus }: CardProps) {
+function ReportCard({ laporan, sedangDiunduh, onExport, onFocus }: Readonly<CardProps>) {
   const mati = !laporan.tersedia
 
   return (

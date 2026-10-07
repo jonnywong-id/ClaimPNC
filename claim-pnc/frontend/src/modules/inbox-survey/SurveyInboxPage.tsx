@@ -262,7 +262,7 @@ function BagianInbox({
   galat,
   onMuatUlang,
   bukaKlaim,
-}: {
+}: Readonly<{
   tabTersedia: TabLayar[]
   jumlah: { kunci: string; total: number }[]
   /** Jumlah baris per tab gagal diambil — angkanya tidak dapat ditampilkan. */
@@ -281,7 +281,7 @@ function BagianInbox({
   galat: string | null
   onMuatUlang: () => void
   bukaKlaim: (nomorKlaim: string) => void
-}) {
+}>) {
   const halaman = Math.floor(lewati / PAGE_SIZE) + 1
   const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -300,11 +300,7 @@ function BagianInbox({
   // tidak pernah dilaporkan siapa pun sebagai kerusakan.
   const tabs: TabItem[] = tabTersedia.map((t) => ({
     kode: t.kunci,
-    nama: !t.tersedia
-      ? `${t.judul} (belum tersedia)`
-      : angka.has(t.kunci)
-        ? `${t.judul} (${angka.get(t.kunci)})`
-        : t.judul,
+    nama: namaTab(t, angka),
     ...(t.alasan_tak_tersedia ?? t.keterangan
       ? { keterangan: t.alasan_tak_tersedia ?? t.keterangan }
       : {}),
@@ -317,6 +313,9 @@ function BagianInbox({
   // itu baru muat ditampilkan setelah tabnya dibuka.
   const tabDibuka = tabTersedia.find((t) => t.kunci === tabAktif)
   const tabBelumTersedia = tabDibuka && !tabDibuka.tersedia ? tabDibuka : null
+
+  // Disebar bersyarat: tanpa pekerjaan, keterangan jumlah tidak diberikan sama sekali.
+  const keteranganJumlah = total > 0 ? { description: `${total} pekerjaan pada tab ini.` } : {}
 
   return (
     <>
@@ -339,10 +338,10 @@ function BagianInbox({
         // Ia pemberitahuan di dalam layar, BUKAN pengganti seluruh layar: daftarnya sendiri
         // tetap dapat dibaca, dan menutup layar karena penghitungnya gagal akan mengambil
         // lebih banyak daripada yang hilang.
-        <p className="mt-2 text-xs text-slate-600" role="status">
+        <output className="block mt-2 text-xs text-slate-600">
           Jumlah pekerjaan per tab tidak dapat diambil, sehingga angkanya tidak ditampilkan.
           Daftarnya sendiri tetap dapat dibuka. Tekan Muat ulang untuk mencoba lagi.
-        </p>
+        </output>
       )}
 
       {tabBelumTersedia ? (
@@ -375,7 +374,7 @@ function BagianInbox({
             rowKey={(row) => `${row.survei_id}|${row.index_survei}`}
             title="Antrean pekerjaan survei"
             label="Antrean My Work"
-            {...(total > 0 ? { description: `${total} pekerjaan pada tab ini.` } : {})}
+            {...keteranganJumlah}
             isLoading={sedangMemuat}
             // HANYA Claim No. Layar lama juga mencari pada Reference No, dan kolom itu belum
             // tersedia — menyebutnya di sini akan menjanjikan pencarian yang tidak terjadi.
@@ -412,6 +411,13 @@ function BagianInbox({
   )
 }
 
+/** Nama tab pada bilah: penanda belum tersedia, nama berangka, atau nama polos. */
+function namaTab(t: TabLayar, angka: Map<string, number>): string {
+  if (!t.tersedia) return `${t.judul} (belum tersedia)`
+  if (angka.has(t.kunci)) return `${t.judul} (${angka.get(t.kunci)})`
+  return t.judul
+}
+
 /** Judul jenis ringkasan KPI, dipasangkan dengan nilai yang dikirim server. */
 const JUDUL_JENIS_KPI: Record<string, string> = {
   outstanding: 'Outstanding KPI Adjuster',
@@ -432,7 +438,7 @@ function BagianKPI({
   sedangMengambil,
   galat,
   onMuatUlang,
-}: {
+}: Readonly<{
   kolom: KolomLayar[]
   jenisTersedia: string[]
   jenis: string
@@ -444,7 +450,7 @@ function BagianKPI({
   sedangMengambil: boolean
   galat: string | null
   onMuatUlang: () => void
-}) {
+}>) {
   // Kolom pertama berganti arti menurut jenis ringkasannya: nama adjuster pada dua yang
   // pertama, TAHUN pada yang ketiga. Judulnya ikut berganti supaya kolomnya tidak terbaca
   // sebagai nama orang yang kebetulan berupa angka.
@@ -581,7 +587,7 @@ const angkaKPI: Record<string, ((row: BarisKPI) => number) | undefined> = {
 }
 
 /** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
-function Teks({ nilai }: { nilai: string }) {
+function Teks({ nilai }: Readonly<{ nilai: string }>) {
   if (!nilai) return <span className="text-slate-400">—</span>
   return <span className="truncate">{nilai}</span>
 }
@@ -603,7 +609,7 @@ function judulKolom(k: KolomLayar): string {
  * tidak dapat dibedakan dari em dash pada baris yang kebetulan kosong, dan sebab keduanya
  * berbeda jauh: yang satu menunggu Tim Pega, yang lain menunggu petugas mengisi.
  */
-function SelBelumTersedia({ keterangan }: { keterangan: string | undefined }) {
+function SelBelumTersedia({ keterangan }: Readonly<{ keterangan: string | undefined }>) {
   return (
     <span className="text-xs text-slate-400" title={keterangan ?? ''}>
       belum tersedia
@@ -781,10 +787,10 @@ const renderer: Record<string, Renderer | undefined> = {
 function PageFrame({
   children,
   identitas,
-}: {
+}: Readonly<{
   children: ReactNode
   identitas?: IdentitasSurveyor | null
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[110rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -826,7 +832,7 @@ function PageFrame({
  * menunggu DBA — sehingga menuliskannya di sini berarti menyunting layar setiap kali satu
  * penghalang selesai.
  */
-function Catatan({ judul, baris }: { judul: string; baris: string[] }) {
+function Catatan({ judul, baris }: Readonly<{ judul: string; baris: string[] }>) {
   if (baris.length === 0) return null
 
   return (

@@ -205,7 +205,7 @@ const FIELD_NAMES = [
  * **ID Panel.** Isian tersembunyi yang diisi pilihan Nama Panel, persis seperti
  * `pySetValueOnSelect` pada autocomplete Pega.
  */
-export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Props) {
+export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const isEditing = editing !== null
   const headingId = useId()
 
@@ -517,7 +517,7 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
  * Ia `<fieldset>` dan bukan `<div>` supaya pembaca layar mengumumkan judulnya saat kursor
  * masuk ke salah satu isian di dalamnya.
  */
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
       <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
@@ -533,7 +533,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
  * mengundang pengguna mencari cara menyalakannya, sedangkan teks menyatakan bahwa nilainya
  * memang bukan miliknya untuk diisi.
  */
-function Turunan({ label, value }: { label: string; value: string }) {
+function Turunan({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div>
       <span className="block text-sm font-medium text-slate-700">{label}</span>
@@ -545,7 +545,7 @@ function Turunan({ label, value }: { label: string; value: string }) {
 }
 
 /** Keterangan baca-saja pada kepala form mode ubah. */
-function Keterangan({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Keterangan({ label, value, hint }: Readonly<{ label: string; value: string; hint?: string }>) {
   return (
     <div>
       <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">

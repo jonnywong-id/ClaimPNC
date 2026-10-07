@@ -150,12 +150,15 @@ export async function callAPI<T>(path: string, options: RequestOptions = {}): Pr
   if (token) header['Authorization'] = `Bearer ${token}`
   if (portal) header[HEADER_PORTAL] = portal
 
+  let payload: BodyInit | null = null
+  if (body !== undefined) payload = isForm ? body : JSON.stringify(body)
+
   let response: Response
   try {
     response = await fetch(path, {
       method: metode,
       headers: header,
-      body: body === undefined ? null : isForm ? body : JSON.stringify(body),
+      body: payload,
     })
   } catch {
     throw new NetworkError()
@@ -463,7 +466,7 @@ export function simpanBerkas(file: DownloadedFile): void {
   tautan.download = file.namaBerkas
   document.body.appendChild(tautan)
   tautan.click()
-  document.body.removeChild(tautan)
+  tautan.remove()
   URL.revokeObjectURL(url)
 }
 

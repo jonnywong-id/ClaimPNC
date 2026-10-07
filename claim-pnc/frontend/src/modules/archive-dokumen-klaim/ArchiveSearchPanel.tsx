@@ -37,7 +37,7 @@ const MODES = [
  * Nama isiannya TIDAK diterjemahkan — `D-13` menetapkan tampilan meniru Pega supaya
  * pengguna tidak perlu belajar ulang, dan itulah teks yang selama ini mereka baca.
  */
-export function ArchiveSearchPanel({ form, onChange, onSubmit, busy, fieldError }: Props) {
+export function ArchiveSearchPanel({ form, onChange, onSubmit, busy, fieldError }: Readonly<Props>) {
   const byKeyword = form.mode === SearchMode.keyword
 
   return (

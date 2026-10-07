@@ -109,6 +109,85 @@ type Values = {
   tipe_vat: string
 }
 
+/** Isian awal: dari baris tersimpan bila ada, selain itu kosong. */
+function initialValues(old: Settlement | undefined, pa: boolean, policyCurrency: string): Values {
+  const blank = {
+    nilai_pengajuan_tertanggung: '',
+    no_invoice: '',
+    professional_fee: '',
+    survey_expenses: '',
+    vat: '',
+    tipe_vat: '1',
+  }
+  if (!old) {
+    return {
+      // PA: baris baru bertipe Interim (`ValidationAdjustment` step 19: PaymentType := 2).
+      tipe_pembayaran: pa ? PaymentType.Interim : '',
+      mata_uang: policyCurrency,
+      total_klaim: '',
+      nilai_pengajuan: '',
+      loc: '',
+      salvage_a: '',
+      salvage_b: '',
+      tipe_resiko: '',
+      persen_resiko: '',
+      nilai_resiko: '',
+      ...blank,
+    }
+  }
+  return {
+    tipe_pembayaran: old.tipe_pembayaran,
+    mata_uang: old.mata_uang,
+    total_klaim: centsToRupiah(old.nilai_propose_sen),
+    nilai_pengajuan: centsToRupiah(old.nilai_pengajuan_sen),
+    loc: percentText(old.loc),
+    salvage_a: centsToRupiah(old.nilai_salvage_sen),
+    salvage_b: centsToRupiah(old.nilai_salvage_b_sen),
+    tipe_resiko: old.tipe_resiko,
+    persen_resiko: percentText(old.persen_resiko),
+    nilai_resiko: old.tipe_resiko === RiskType.Other ? centsToRupiah(old.nilai_resiko_sen) : '',
+    ...blank,
+  }
+}
+
+/** Isian yang menentukan kolom angka mana yang dikirim; selebihnya dikirim 0. */
+type NumberFlags = {
+  proposeBased: boolean
+  fee: boolean
+  withPercent: boolean
+  manualRisk: boolean
+  pa: boolean
+  travel: boolean
+  analystTransfer: boolean
+}
+
+/** Kolom angka permintaan adjustment; isian yang tidak tampil dikirim 0. */
+function settlementNumbers(values: Values, f: NumberFlags) {
+  const propose = (on: boolean, value: () => number) => (f.proposeBased && on ? value() : 0)
+  const feeValue = (value: () => number) => (f.fee ? value() : 0)
+  const outsidePATravel = !f.travel && !f.pa
+  return {
+    // PA: Total Klaim (.ProposeAdjustmentValue) hanya ada pada baris isAnalistorTransfer.
+    nilai_propose_sen: propose(!f.pa || f.analystTransfer, () => rupiahToCents(values.total_klaim)),
+    nilai_pengajuan_sen: propose(true, () => rupiahToCents(values.nilai_pengajuan)),
+    loc: propose(outsidePATravel, () => percentE4(values.loc)),
+    nilai_salvage_sen: propose(outsidePATravel, () => rupiahToCents(values.salvage_a)),
+    nilai_salvage_b_sen: propose(outsidePATravel, () => rupiahToCents(values.salvage_b)),
+    persen_resiko: propose(f.withPercent, () => percentE4(values.persen_resiko)),
+    nilai_resiko_sen: propose(f.manualRisk, () => rupiahToCents(values.nilai_resiko)),
+    professional_fee_sen: feeValue(() => rupiahToCents(values.professional_fee)),
+    survey_expenses_sen: feeValue(() => rupiahToCents(values.survey_expenses)),
+    vat: feeValue(() => percentE4(values.vat)),
+  }
+}
+
+/** Teks galat: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
+function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
+  if (failure instanceof Error) return failure.message
+  return 'Terjadi kesalahan pada sistem.'
+}
+
 export function SettlementEditor({
   claimID,
   taskID,
@@ -125,7 +204,7 @@ export function SettlementEditor({
   existing,
   onCreated,
   onClose,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   object: number
@@ -153,31 +232,13 @@ export function SettlementEditor({
   onCreated?: (index: number) => void
   /** Hapus pada baris yang belum tersimpan. */
   onClose: () => void
-}) {
+}>) {
   const add = useAddSettlement(claimID)
   const update = useUpdateSettlement(claimID)
   const preview = usePreviewSettlement(claimID)
   const old = existing?.line
   const [computed, setComputed] = useState<SettlementPreviewResponse | null>(null)
-  const [values, setValues] = useState<Values>({
-    // PA: baris baru bertipe Interim (`ValidationAdjustment` step 19: PaymentType := 2).
-    tipe_pembayaran: old ? old.tipe_pembayaran : pa ? PaymentType.Interim : '',
-    mata_uang: old ? old.mata_uang : policyCurrency,
-    total_klaim: old ? centsToRupiah(old.nilai_propose_sen) : '',
-    nilai_pengajuan: old ? centsToRupiah(old.nilai_pengajuan_sen) : '',
-    nilai_pengajuan_tertanggung: '',
-    no_invoice: '',
-    loc: old ? percentText(old.loc) : '',
-    salvage_a: old ? centsToRupiah(old.nilai_salvage_sen) : '',
-    salvage_b: old ? centsToRupiah(old.nilai_salvage_b_sen) : '',
-    tipe_resiko: old ? old.tipe_resiko : '',
-    persen_resiko: old ? percentText(old.persen_resiko) : '',
-    nilai_resiko: old && old.tipe_resiko === RiskType.Other ? centsToRupiah(old.nilai_resiko_sen) : '',
-    professional_fee: '',
-    survey_expenses: '',
-    vat: '',
-    tipe_vat: '1',
-  })
+  const [values, setValues] = useState<Values>(() => initialValues(old, pa, policyCurrency))
   const set = (key: keyof Values) => (value: string) => setValues((v) => ({ ...v, [key]: value }))
   // Pega menjalankan SetNilaiResikoSendiri (hitung, periksa, simpan) pada perubahan isian: di sini saat
   // pilihan berubah dan saat isian teks ditinggalkan.
@@ -194,19 +255,7 @@ export function SettlementEditor({
   const withPercent = values.tipe_resiko === RiskType.OfClaim || values.tipe_resiko === RiskType.OfTSI
   const manualRisk = values.tipe_resiko === RiskType.Other
 
-  const numbers = {
-    // PA: Total Klaim (.ProposeAdjustmentValue) hanya ada pada baris isAnalistorTransfer.
-    nilai_propose_sen: proposeBased && (!pa || analystTransfer) ? rupiahToCents(values.total_klaim) : 0,
-    nilai_pengajuan_sen: proposeBased ? rupiahToCents(values.nilai_pengajuan) : 0,
-    loc: proposeBased && !travel && !pa ? percentE4(values.loc) : 0,
-    nilai_salvage_sen: proposeBased && !travel && !pa ? rupiahToCents(values.salvage_a) : 0,
-    nilai_salvage_b_sen: proposeBased && !travel && !pa ? rupiahToCents(values.salvage_b) : 0,
-    persen_resiko: proposeBased && withPercent ? percentE4(values.persen_resiko) : 0,
-    nilai_resiko_sen: proposeBased && manualRisk ? rupiahToCents(values.nilai_resiko) : 0,
-    professional_fee_sen: fee ? rupiahToCents(values.professional_fee) : 0,
-    survey_expenses_sen: fee ? rupiahToCents(values.survey_expenses) : 0,
-    vat: fee ? percentE4(values.vat) : 0,
-  }
+  const numbers = settlementNumbers(values, { proposeBased, fee, withPercent, manualRisk, pa, travel, analystTransfer })
   const malformed = Object.values(numbers).some((n) => Number.isNaN(n))
 
   const request: SettlementRequest = {
@@ -230,14 +279,14 @@ export function SettlementEditor({
   useEffect(() => {
     if (malformed) return
     latest.current = requestKey
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       runPreview(JSON.parse(requestKey) as SettlementRequest, {
         onSuccess: (result) => {
           if (latest.current === requestKey) setComputed(result)
         },
       })
     }, PREVIEW_DELAY_MS)
-    return () => window.clearTimeout(timer)
+    return () => globalThis.clearTimeout(timer)
   }, [requestKey, malformed, runPreview])
 
   // Baris tersimpan: indeksnya (berbasis 0). Baris baru: null sampai simpan pertama berhasil.
@@ -271,8 +320,7 @@ export function SettlementEditor({
   const money = (sen: number | undefined) => (line && sen !== undefined ? amount.format(sen / 100) : EMPTY)
 
   return (
-    <div
-      role="group"
+    <fieldset
       aria-label={existing ? `Ubah adjustment ${existing.index + 1}` : 'Adjustment baru'}
       className="rounded border border-blue-200 bg-white p-4 text-sm"
     >
@@ -406,13 +454,7 @@ export function SettlementEditor({
         <div className="mt-4">
           <ErrorMessage
             title={saveError ? 'Adjustment belum tersimpan' : 'Nilai belum dapat dihitung'}
-            description={
-              violations.length > 0
-                ? violations.map((v) => v.pesan).join(' ')
-                : failure instanceof Error
-                  ? failure.message
-                  : 'Terjadi kesalahan pada sistem.'
-            }
+            description={failureDescription(violations, failure)}
             tone="penolakan"
           />
         </div>
@@ -430,11 +472,11 @@ export function SettlementEditor({
           Hapus
         </Button>
       </div>
-    </div>
+    </fieldset>
   )
 }
 
-function Caption({ label, required, small }: { label: string; required?: boolean; small?: boolean }) {
+function Caption({ label, required, small }: Readonly<{ label: string; required?: boolean; small?: boolean }>) {
   return (
     <span className={small ? 'text-xs font-semibold text-slate-800' : 'font-semibold text-slate-800'}>
       {label}
@@ -443,7 +485,7 @@ function Caption({ label, required, small }: { label: string; required?: boolean
   )
 }
 
-function Display({ label, small, required, children }: { label: string; small?: boolean; required?: boolean; children: ReactNode }) {
+function Display({ label, small, required, children }: Readonly<{ label: string; small?: boolean; required?: boolean; children: ReactNode }>) {
   return (
     <div>
       <Caption label={label} small={small ?? false} required={required ?? false} />
@@ -460,7 +502,7 @@ function Select({
   placeholder,
   required,
   disabled,
-}: {
+}: Readonly<{
   label: string
   value: string
   onChange: (value: string) => void
@@ -468,7 +510,7 @@ function Select({
   placeholder?: string
   required?: boolean
   disabled?: boolean
-}) {
+}>) {
   return (
     <label className="block">
       <Caption label={label} required={required ?? false} />
@@ -498,7 +540,7 @@ function Text({
   disabled,
   note,
   onBlur,
-}: {
+}: Readonly<{
   label: string
   value: string
   onChange: (value: string) => void
@@ -507,7 +549,7 @@ function Text({
   disabled?: boolean
   /** Keterangan di bawah isian, mis. bila nilainya belum tersimpan. */
   note?: string
-}) {
+}>) {
   return (
     <label className="block">
       <Caption label={label} required={required ?? false} />
@@ -552,7 +594,7 @@ export function SettlementDetail({
   pa = false,
   exGratia = false,
   address,
-}: {
+}: Readonly<{
   line: Settlement
   currencyName: string
   /** Nilai Estimasi jaminan (estimasi klaim), dalam sen. */
@@ -566,7 +608,7 @@ export function SettlementDetail({
   exGratia?: boolean
   /** Tugas dan letak baris ini (berbasis 1) — untuk tombol PRINT dan Transfer Kasir. */
   address?: { claimID: string; taskID: string; object: number; coverage: number; adjustment: number }
-}) {
+}>) {
   const pt = line.tipe_pembayaran
   const proposeBased = pt === PaymentType.Final || pt === PaymentType.Interim || pt === PaymentType.Adjustment
   const fee = pt === PaymentType.AdjusterFee
@@ -574,7 +616,7 @@ export function SettlementDetail({
   const optional = (sen: number) => (sen ? money(sen) : EMPTY)
 
   return (
-    <div role="group" aria-label={`Detail adjustment ${line.nama_tipe_pembayaran}`} className="rounded border border-slate-200 bg-slate-50 p-4 text-sm">
+    <fieldset aria-label={`Detail adjustment ${line.nama_tipe_pembayaran}`} className="rounded border border-slate-200 bg-slate-50 p-4 text-sm">
       <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
         <div className="space-y-3">
           <Display label="Mata Uang">{currencyName}</Display>
@@ -648,11 +690,11 @@ export function SettlementDetail({
         </div>
       </div>
       {exGratia && spreading.length > 0 && <SpreadingTable spreading={spreading} />}
-    </div>
+    </fieldset>
   )
 }
 
-function SpreadingTable({ spreading }: { spreading: Spreading[] }) {
+function SpreadingTable({ spreading }: Readonly<{ spreading: Spreading[] }>) {
   return (
     <table className="mt-5 border-collapse border border-slate-200 bg-white text-xs">
       <caption className="sr-only">Spreading jaminan</caption>
@@ -665,7 +707,7 @@ function SpreadingTable({ spreading }: { spreading: Spreading[] }) {
       </thead>
       <tbody>
         {spreading.map((s, n) => (
-          <tr key={n} className="border-t border-slate-200">
+          <tr key={`${s.jenis_treaty}-${n}`} className="border-t border-slate-200">
             <td className="p-2">{n + 1}</td>
             <td className="p-2">{s.nama || s.jenis_treaty}</td>
             <td className="p-2 text-right">{rate.format(s.share / 10_000)}</td>

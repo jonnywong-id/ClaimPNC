@@ -293,9 +293,7 @@ export function PartTypePage() {
       // pencarian bawaan DataTable tidak ikut menjaring tanda "—" yang hanya tampilan.
       value: (row) => row.nama_kategori_sparepart,
       render: (row) =>
-        row.nama_kategori_sparepart !== '' ? (
-          <span>{row.nama_kategori_sparepart}</span>
-        ) : (
+        row.nama_kategori_sparepart === '' ? (
           /*
             Baris yatim: kategorinya tidak ada di master kategori.
 
@@ -309,6 +307,8 @@ export function PartTypePage() {
           >
             — kategori tidak ditemukan
           </span>
+        ) : (
+          <span>{row.nama_kategori_sparepart}</span>
         ),
     },
     {
@@ -325,6 +325,43 @@ export function PartTypePage() {
       ),
     },
   ]
+
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar tipe sparepart…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id_tipe_sparepart}
+        description="Sumber: POOLDATA.GCNM_M_SPAREPART_TYPE"
+        searchLabel="Cari tipe atau kategori sparepart"
+        pageSize={PAGE_SIZE}
+        emptyMessage={`Belum ada tipe sparepart pada tab ${active.label}.`}
+      />
+    )
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -438,36 +475,7 @@ export function PartTypePage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar tipe sparepart…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id_tipe_sparepart}
-            description="Sumber: POOLDATA.GCNM_M_SPAREPART_TYPE"
-            searchLabel="Cari tipe atau kategori sparepart"
-            pageSize={PAGE_SIZE}
-            emptyMessage={`Belum ada tipe sparepart pada tab ${active.label}.`}
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )
@@ -491,13 +499,13 @@ function DecisionBar({
   onApprove,
   onReject,
   onClear,
-}: {
+}: Readonly<{
   count: number
   isBusy: boolean
   onApprove: () => void
   onReject: () => void
   onClear: () => void
-}) {
+}>) {
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
       <span className="min-w-0 flex-1 text-sm text-slate-700">

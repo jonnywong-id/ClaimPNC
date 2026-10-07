@@ -49,7 +49,7 @@ type Props = {
  * Menyaring atas dasar tebakan berarti menyembunyikan baris, dan baris yang hilang
  * diam-diam tidak akan pernah dikeluhkan siapa pun.
  */
-export function OutstandingTable({ actions }: Props) {
+export function OutstandingTable({ actions }: Readonly<Props>) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
@@ -134,9 +134,14 @@ export function OutstandingTable({ actions }: Props) {
         onPageChange: setPage,
         isLoading: list.isFetching,
       }}
-      expandedRow={(row) => <BatchTable rows={row.batch} />}
+      expandedRow={renderBatchTable}
     />
   )
+}
+
+// Baris rincian yang dibuka di bawah setiap principal: daftar batch-nya.
+function renderBatchTable(row: RecoveryPrincipalGroup) {
+  return <BatchTable rows={row.batch} />
 }
 
 function money(
@@ -171,7 +176,7 @@ function money(
  * pencarian, pengurutan, maupun paginasi sendiri — seluruh riwayat satu principal sudah
  * di tangan — dan menyarangkan dua bilah pencarian pada satu layar justru membingungkan.
  */
-function BatchTable({ rows }: { rows: RecoveryRow[] }) {
+function BatchTable({ rows }: Readonly<{ rows: RecoveryRow[] }>) {
   const [modal, setModal] = useState<RecoveryRow | null>(null)
 
   return (
@@ -291,27 +296,31 @@ function BatchTable({ rows }: { rows: RecoveryRow[] }) {
 function SupportingDocumentModal({
   batch,
   onClose,
-}: {
+}: Readonly<{
   batch: RecoveryRow
   onClose: () => void
-}) {
+}>) {
   const view = useViewDocument()
   const dokumen = batch.dokumen
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
-      role="dialog"
       aria-modal="true"
       aria-label="View Dokument Pendukung"
-      // Mengeklik latar menutup modal, sama seperti menekan tombol silang. Klik di
-      // dalamnya dihentikan supaya tidak ikut menutup.
-      onClick={onClose}
     >
-      <div
-        className="w-full max-w-md overflow-hidden rounded-kartu bg-white shadow-lg"
-        onClick={(event) => event.stopPropagation()}
-      >
+      {/* Latar: mengeklik di luar kotak menutup modal, sama seperti menekan tombol silang.
+          Ia tombol, bukan div berpendengar klik, supaya elemen yang menerima klik memang
+          elemen interaktif; kotak di atasnya tidak lagi perlu menghentikan klik. */}
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={-1}
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-md overflow-hidden rounded-kartu bg-white shadow-lg">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <h3 className="text-base font-semibold text-slate-900">View Dokument Pendukung</h3>
           <button
@@ -374,7 +383,7 @@ function SupportingDocumentModal({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }
 
@@ -408,7 +417,7 @@ const INPUT_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 })
 
-function DocumentErrorMessage({ error }: { error: unknown }) {
+function DocumentErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage
@@ -463,7 +472,7 @@ function DocumentErrorMessage({ error }: { error: unknown }) {
  * Tanpa pembedaan itu, gangguan jaringan terbaca sebagai "belum ada data" — dan petugas
  * dapat menyimpulkan batch yang sudah dicatatnya hilang.
  */
-function ListErrorMessage({ error }: { error: unknown }) {
+function ListErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

@@ -21,7 +21,7 @@ const COLLAPSED_KEY = 'claimpnc.menu-diperkecil'
  */
 function readCollapsed(): boolean {
   try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === '1'
+    return globalThis.localStorage.getItem(COLLAPSED_KEY) === '1'
   } catch {
     return false
   }
@@ -51,7 +51,7 @@ function readCollapsed(): boolean {
  * Keduanya berlaku untuk SELURUH layar di balik sesi dan bukan bagian dari peta menu.
  * Menaruhnya di dalam kolom menu akan membuat keduanya ikut tergulir bersama 80 butir.
  */
-export function PageShell({ children }: { children: ReactNode }) {
+export function PageShell({ children }: Readonly<{ children: ReactNode }>) {
   // Laci menu untuk layar sempit. `D-12` menetapkan surveyor memakai tablet dan ponsel
   // di lapangan, dan kolom selebar 16rem akan memakan hampir separuh layar ponsel.
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -65,7 +65,7 @@ export function PageShell({ children }: { children: ReactNode }) {
   function changeCollapsed(value: boolean) {
     setCollapsed(value)
     try {
-      window.localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0')
+      globalThis.localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0')
     } catch {
       // Penyimpanan peramban dapat ditolak (mode privat, kebijakan kantor). Menu tetap
       // berfungsi; hanya pilihannya tidak diingat.
@@ -154,7 +154,7 @@ export function PageShell({ children }: { children: ReactNode }) {
  * Isinya `Sidebar` yang sama persis, bukan salinan: dua daftar menu yang berbeda akan
  * berbeda isinya cepat atau lambat.
  */
-function MenuDrawer({ onClose }: { onClose: () => void }) {
+function MenuDrawer({ onClose }: Readonly<{ onClose: () => void }>) {
   return (
     <div className="fixed inset-0 z-40 lg:hidden">
       {/* Latar gelap ikut menutup laci saat ditekan. Ia `aria-hidden` dan tidak dapat
@@ -180,7 +180,7 @@ function MenuDrawer({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
+function TopBar({ onOpenMenu }: Readonly<{ onOpenMenu: () => void }>) {
   const user = useSession((state) => state.user)
   const logout = useLogout()
 
@@ -254,7 +254,7 @@ function Brand() {
  * tidak akan punya: HCC/HCQ tidak mengirimkannya, dan menambahkan unggahan foto berarti
  * menyimpan data pribadi tanpa alasan bisnis.
  */
-function UserChip({ nama, jenis, identitas }: { nama: string; jenis: string; identitas: string }) {
+function UserChip({ nama, jenis, identitas }: Readonly<{ nama: string; jenis: string; identitas: string }>) {
   return (
     <div className="flex items-center gap-2.5 rounded-kontrol border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-lembut">
       <span
@@ -284,6 +284,6 @@ function UserChip({ nama, jenis, identitas }: { nama: string; jenis: string; ide
 function initials(nama: string): string {
   const word = nama.trim().split(/\s+/).filter(Boolean)
   const start = word[0]?.[0] ?? '?'
-  const end = word.length > 1 ? (word[word.length - 1]?.[0] ?? '') : ''
+  const end = word.length > 1 ? (word.at(-1)?.[0] ?? '') : ''
   return (start + end).toUpperCase()
 }

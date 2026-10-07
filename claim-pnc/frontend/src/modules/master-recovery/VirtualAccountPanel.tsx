@@ -72,7 +72,7 @@ type Props = {
  * | Client ID kosong | diterima | ditolak — ia kunci pencarian VA |
  * | Galat layanan | satu pesan untuk semua sebab | dibedakan: belum terdaftar · tidak terhubung · ditolak |
  */
-export function VirtualAccountPanel({ onIssued, onClose }: Props) {
+export function VirtualAccountPanel({ onIssued, onClose }: Readonly<Props>) {
   const issue = useIssueVirtualAccount()
 
   const {
@@ -219,7 +219,7 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
  * pesan — seperti sistem lama — membuat petugas mengulang permintaan yang tidak akan pernah
  * berhasil.
  */
-function IssueErrorMessage({ error }: { error: unknown }) {
+function IssueErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

@@ -28,7 +28,7 @@ export function InsuredDataSection({
   onPhone,
   email,
   onEmail,
-}: {
+}: Readonly<{
   klaim: Claim
   idCard: string
   onIDCard: (value: string) => void
@@ -36,7 +36,7 @@ export function InsuredDataSection({
   onPhone: (value: string) => void
   email: string
   onEmail: (value: string) => void
-}) {
+}>) {
   const profile = useInsuredProfile(klaim.id)
   const defaultIDCard = profile.data?.no_ktp ?? ''
   useEffect(() => {
@@ -140,7 +140,7 @@ export function InsuredDataSection({
   )
 }
 
-function ReadField({ label, value }: { label: string; value: string }) {
+function ReadField({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="min-w-0 flex-1">
       <p className="text-xs font-medium text-slate-600">{label}</p>
@@ -149,7 +149,7 @@ function ReadField({ label, value }: { label: string; value: string }) {
   )
 }
 
-function UnsavedInput({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
+function UnsavedInput({ id, label, value, onChange }: Readonly<{ id: string; label: string; value: string; onChange: (v: string) => void }>) {
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>

@@ -35,7 +35,7 @@ type Props = {
  * Isian mana yang tampak DITENTUKAN SERVER lewat ketiga penanda pada tipe terpilih, bukan
  * ditebak layar. Dengan begitu bentuk formulir punya satu sumber kebenaran.
  */
-export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError }: Props) {
+export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError }: Readonly<Props>) {
   const selected = types.find((t) => t.kode === form.tipe)
 
   return (

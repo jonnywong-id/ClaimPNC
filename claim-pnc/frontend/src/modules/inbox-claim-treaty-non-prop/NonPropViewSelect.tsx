@@ -52,7 +52,7 @@ type Props = {
  * "tidak ada pekerjaan". Menonaktifkan pilihannya akan membuat pengguna tidak pernah tahu
  * kenapa.
  */
-export function NonPropViewSelect({ tabs, active, onSelect }: Props) {
+export function NonPropViewSelect({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     <div>
       {/*

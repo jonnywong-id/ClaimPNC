@@ -45,7 +45,7 @@ type Props = {
  * Perhatikan isian ketiga: sebuah properti bernama `City` menyimpan ISI PESAN. Tidak satu pun
  * nama itu dibawa (`D-19`).
  */
-export function NewMessageForm({ onClose, onSent }: Props) {
+export function NewMessageForm({ onClose, onSent }: Readonly<Props>) {
   const [destination, setDestination] = useState('PUSAT')
   const [branch, setBranch] = useState('')
   const [message, setMessage] = useState('')

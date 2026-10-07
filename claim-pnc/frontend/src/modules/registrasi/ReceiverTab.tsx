@@ -31,12 +31,12 @@ export function ReceiverTab({
   klaim,
   tugas,
   lockedReason,
-}: {
+}: Readonly<{
   klaim: Claim
   tugas: Task
   /** Alasan isian dikunci — tugas bukan milik pengguna ini. */
   lockedReason: string | null
-}) {
+}>) {
   const receivers = klaim.penerima_klaim ?? []
   // Baris yang sedang dibuka: IDRECEIVER, atau 'baru' untuk baris dari tombol Tambah.
   const [open, setOpen] = useState<string | null>(null)
@@ -135,13 +135,13 @@ function ReceiverPane({
   receiver,
   lockedReason,
   onDone,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   receiver: Receiver | null
   lockedReason: string | null
   onDone: () => void
-}) {
+}>) {
   const [number, setNumber] = useState(receiver?.nomor_rekening ?? '')
   // Nomor yang dibaca dari master — diperbarui saat isian ditinggalkan, seperti event
   // change pada kontrol Pega (bukan setiap ketikan).
@@ -164,8 +164,7 @@ function ReceiverPane({
   const locked = lockedReason !== null
   const violations = violationsFrom(save.error)
   const fieldMessages = messagesByField(violations)
-  const lookupMessage =
-    account.error instanceof APIError ? account.error.message : account.error ? 'Master Rekening cannot be read.' : null
+  const lookupMessage = accountLookupMessage(account.error)
 
   // Sebelum master terbaca (atau bila nomornya belum diubah), tampilkan yang tersimpan.
   const shown = master ?? {
@@ -185,7 +184,7 @@ function ReceiverPane({
   }
 
   return (
-    <div role="group" aria-label="InputReceiver">
+    <fieldset aria-label="InputReceiver">
       <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
         <div className="space-y-3">
           <Input
@@ -259,15 +258,22 @@ function ReceiverPane({
           </Button>
         )}
       </div>
-    </div>
+    </fieldset>
   )
+}
+
+/** Pesan pencarian Master Rekening: pesan galat API apa adanya, galat lain dengan pesan umum. */
+function accountLookupMessage(error: unknown): string | null {
+  if (error instanceof APIError) return error.message
+  if (error) return 'Master Rekening cannot be read.'
+  return null
 }
 
 function dateOrEmpty(value: string): string {
   return value ? formatDate(value) : EMPTY
 }
 
-function Display({ label, children }: { label: string; children: ReactNode }) {
+function Display({ label, children }: Readonly<{ label: string; children: ReactNode }>) {
   return (
     <div>
       <p className="text-xs font-semibold text-slate-800">{label}</p>
@@ -284,7 +290,7 @@ function Input({
   disabled,
   required,
   message,
-}: {
+}: Readonly<{
   label: string
   value: string
   onChange: (v: string) => void
@@ -292,7 +298,7 @@ function Input({
   disabled: boolean
   required?: boolean
   message?: string | null | undefined
-}) {
+}>) {
   return (
     <label className="block text-xs font-semibold text-slate-800">
       {label}

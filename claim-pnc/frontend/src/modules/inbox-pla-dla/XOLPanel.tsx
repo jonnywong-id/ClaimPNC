@@ -29,7 +29,7 @@ type Props = {
  * melarang nilai bisnis ditulis tetap. Keterangan di kaki panel menyebutkannya supaya
  * mitra yang terbiasa melihat angka lama tahu mengapa angkanya berubah.
  */
-export function XOLPanel({ kolom, rows, isLoading, isError, error }: Props) {
+export function XOLPanel({ kolom, rows, isLoading, isError, error }: Readonly<Props>) {
   return (
     <section
       className="space-y-2"

@@ -142,9 +142,9 @@ export function KomiteCasePage() {
       </div>
 
       {detail.isPending && (
-        <p className="text-sm text-slate-600" role="status">
+        <output className="block text-sm text-slate-600">
           Memuat rincian kasus komite…
-        </p>
+        </output>
       )}
 
       {detail.isError && <LoadError error={detail.error} caseID={caseID} />}
@@ -183,7 +183,7 @@ export function KomiteCasePage() {
  * ClaimSheet — dengan nilai daftar ini sebagai cadangannya — sehingga tidak diulang di sini.
  * Menampilkan satu nilai dua kali di layar yang sama membuat orang bertanya mana yang benar.
  */
-function CaseFacts({ item }: { item: KomiteCase }) {
+function CaseFacts({ item }: Readonly<{ item: KomiteCase }>) {
   const rows: { label: string; value: string }[] = [
     { label: 'Nomor case', value: item.nomor_case },
     { label: 'Tgl komite', value: formatTanggal(item.tanggal_komite) },
@@ -239,7 +239,7 @@ function CaseFacts({ item }: { item: KomiteCase }) {
  * yang membuat kalimat ini dapat ditindaklanjuti: yang meminta ke Tim Pega tahu persis apa
  * yang diminta, dan yang membacanya kelak tahu kapan bagian ini boleh dihapus.
  */
-function MissingParts({ heDapatDinilai }: { heDapatDinilai: boolean }) {
+function MissingParts({ heDapatDinilai }: Readonly<{ heDapatDinilai: boolean }>) {
   const parts: { name: string; reason: string }[] = [
     {
       name: 'ShowTransferDetailHE',
@@ -313,7 +313,7 @@ function MissingParts({ heDapatDinilai }: { heDapatDinilai: boolean }) {
  * bukan milik pemanggil. Membedakannya di peramban akan mengubah alamat halaman ini menjadi
  * alat untuk menebak nomor case — lihat catatan pada `komite.ErrNotAssigned`.
  */
-function LoadError({ error, caseID }: { error: unknown; caseID: string }) {
+function LoadError({ error, caseID }: Readonly<{ error: unknown; caseID: string }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage
@@ -372,7 +372,7 @@ function outcomeLabel(outcome: KomiteCase['keputusan_pega']): string {
  * Menggambar "Rp 0" untuk keadaan itu adalah kesalahan yang paling mahal di layar ini: nol
  * yang tidak dapat dibedakan dari "belum ada" terbaca sebagai angka yang sudah diputuskan.
  */
-function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
+function TransferSection({ transfer }: Readonly<{ transfer: KomiteTransferDetail }>) {
   return (
     <section
       aria-labelledby="judul-detail-transfer"
@@ -419,7 +419,7 @@ function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
  * Dibaca dari `POOLDATA.T_CLAIM_PNC` lewat kunci BER-PREFIX. Terbaca pada 189 dari 189
  * case, jadi blok ini nyaris selalu tergambar.
  */
-function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klaim']> }) {
+function ClaimSection({ klaim }: Readonly<{ klaim: NonNullable<KomiteTransferDetail['klaim']> }>) {
   // Tanggal kejadian, tanggal register, dan lokasi sudah di kolom kiri ClaimSheet.
   const rows: { label: string; value: string }[] = [
     { label: 'Status klaim', value: klaim.status_klaim || '—' },
@@ -485,9 +485,9 @@ function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klai
  */
 function CoverageSection({
   coverages,
-}: {
+}: Readonly<{
   coverages: KomiteTransferDetail['coverage']
-}) {
+}>) {
   return (
     <section
       aria-labelledby="judul-analisis-komite"
@@ -508,9 +508,9 @@ function CoverageSection({
 
 function CoverageCard({
   coverage,
-}: {
+}: Readonly<{
   coverage: KomiteTransferDetail['coverage'][number]
-}) {
+}>) {
   const analisis: { label: string; value: string }[] = [
     { label: 'Keadaan kerugian', value: coverage.keadaan_kerugian ?? '' },
     { label: 'Luas kerugian', value: coverage.luas_kerugian ?? '' },
@@ -571,7 +571,7 @@ function CoverageCard({
 }
 
 /** Keputusan komite menurut PEGA — diberi nama yang menyebut asalnya. */
-function CommitteeRecord({ record }: { record: NonNullable<KomiteTransferDetail['komite']> }) {
+function CommitteeRecord({ record }: Readonly<{ record: NonNullable<KomiteTransferDetail['komite']> }>) {
   const rows: { label: string; value: string }[] = [
     { label: 'Tipe komite', value: record.tipe_komite || '—' },
     { label: 'Anggota komite', value: record.nama_komite || '—' },
@@ -610,7 +610,7 @@ function CommitteeRecord({ record }: { record: NonNullable<KomiteTransferDetail[
  * tabel memaksa pembacanya menghitung kolom untuk tahu angka mana yang sedang ia lihat —
  * dan yang dibaca di sini adalah angka yang akan disetujui.
  */
-function AdjustmentCard({ line }: { line: KomiteAdjustmentLine }) {
+function AdjustmentCard({ line }: Readonly<{ line: KomiteAdjustmentLine }>) {
   const uang: { label: string; value: string; tegas?: boolean }[] = [
     { label: 'Gross', value: formatRupiah(line.nilai_gross) },
     { label: 'Usulan', value: formatRupiah(line.nilai_usulan) },

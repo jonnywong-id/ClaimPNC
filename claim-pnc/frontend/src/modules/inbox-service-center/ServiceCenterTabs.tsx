@@ -23,7 +23,7 @@ type Props = {
  * Sistem lama pun tidak menampilkannya, dan menghadirkannya berarti menjalankan keempat
  * kueri sekaligus setiap kali layar dibuka — terhadap tabel yang tumbuh tanpa batas.
  */
-export function ServiceCenterTabs({ tabs, active, onSelect }: Props) {
+export function ServiceCenterTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Empat tab

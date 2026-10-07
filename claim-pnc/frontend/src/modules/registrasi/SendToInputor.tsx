@@ -19,7 +19,7 @@ const MAX_NOTE = 4000
  * Text Area (`.ClaimData.AnaylstRemarks`, tidak wajib) dan tombol Kirim. Kirim menutup tugas
  * berjalan dan melompatkan klaim ke Input Register (`setToRegister_ticket`), milik Inputor.
  */
-export function SendToInputorDialog({ claimID, taskID, onClose }: { claimID: string; taskID: string; onClose: () => void }) {
+export function SendToInputorDialog({ claimID, taskID, onClose }: Readonly<{ claimID: string; taskID: string; onClose: () => void }>) {
   const send = useSendToInputor(claimID)
   const [note, setNote] = useState('')
   const busy = send.isPending
@@ -113,7 +113,7 @@ export function latestAnalystNote(list: Communication[]): Communication | undefi
  * failure). Pega menampilkannya selama `StatusAnalystRemarks == 1`; di sini catatan terbaru
  * berkanal SENDTOINPUTOR ditampilkan.
  */
-export function AnalystNoteNotice({ claimID }: { claimID: string }) {
+export function AnalystNoteNotice({ claimID }: Readonly<{ claimID: string }>) {
   const q = useProgressRecords(claimID)
   const note = latestAnalystNote(q.data?.komunikasi ?? [])
   if (!note) return null

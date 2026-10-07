@@ -214,7 +214,7 @@ export function AutoClaimForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const isEditing = editing !== null
 
   // Tab Waiting Approval tidak punya satu pun tombol simpan di Pega — ia baca saja.

@@ -186,7 +186,7 @@ function ReadOnlyNote() {
 }
 
 /** Batas pita ditampilkan supaya pengguna dapat melihatnya, bukan menghafalnya. */
-function BandNote({ bands }: { bands: { lini: string; batas: string }[] }) {
+function BandNote({ bands }: Readonly<{ bands: { lini: string; batas: string }[] }>) {
   return (
     <div className="mb-6 rounded-kartu border border-blue-200 bg-blue-50/70 p-4">
       <h2 className="text-sm font-semibold text-blue-900">Pita nilai</h2>
@@ -215,7 +215,7 @@ function BandNote({ bands }: { bands: { lini: string; batas: string }[] }) {
  * dipercaya, peringatan berarti masternya tidak salah tetapi ada yang pantas dilihat
  * sebelum dipakai memutuskan uang.
  */
-function FindingList({ findings }: { findings: KomiteFinding[] }) {
+function FindingList({ findings }: Readonly<{ findings: KomiteFinding[] }>) {
   const defects = findings.filter((f) => f.tingkat === 'cacat')
   const warnings = findings.filter((f) => f.tingkat !== 'cacat')
 
@@ -233,11 +233,11 @@ function FindingCard({
   title,
   findings,
   severe,
-}: {
+}: Readonly<{
   title: string
   findings: KomiteFinding[]
   severe: boolean
-}) {
+}>) {
   const style = severe
     ? { box: 'border-red-200 bg-red-50/80', icon: 'text-red-700', title: 'text-red-900' }
     : { box: 'border-amber-200 bg-amber-50/70', icon: 'text-amber-700', title: 'text-amber-900' }
@@ -282,14 +282,13 @@ function rowNote(a: KomiteThreshold): string {
  * registrasi akan tampak sama — dan pertanyaan "kenapa orang ini tidak ikut" tidak
  * terjawab oleh layarnya sendiri.
  */
-function RowBadges({ threshold }: { threshold: KomiteThreshold }) {
+function RowBadges({ threshold }: Readonly<{ threshold: KomiteThreshold }>) {
   const label = rowNote(threshold)
 
-  const style = threshold.jenjang_persetujuan
-    ? threshold.sedang_absen
-      ? 'bg-amber-100 text-amber-900'
-      : 'bg-emerald-100 text-emerald-900'
-    : 'bg-slate-100 text-slate-600'
+  let style = 'bg-slate-100 text-slate-600'
+  if (threshold.jenjang_persetujuan) {
+    style = threshold.sedang_absen ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'
+  }
 
   return (
     <span
@@ -309,7 +308,7 @@ function RowBadges({ threshold }: { threshold: KomiteThreshold }) {
  * Gagal memuat selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat
  * salah — ia baru membuka layarnya.
  */
-function LoadErrorMessage({ error }: { error: unknown }) {
+function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

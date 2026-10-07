@@ -22,7 +22,7 @@ export function LODTypeSelect({
   groupPanel,
   businessType,
   lockedReason,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   /** Objek, jaminan, dan adjustment berbasis 1. */
@@ -33,7 +33,7 @@ export function LODTypeSelect({
   groupPanel: string
   businessType: string
   lockedReason: string | null
-}) {
+}>) {
   const visible = lodTypeVisible(groupPanel, businessType)
   const editable = visible && lodTypeEditable(line) && lockedReason === null
   const options = useLODTypeOptions(claimID, taskID, visible)

@@ -19,6 +19,34 @@ import {
 } from './api'
 import { MaskingForm } from './MaskingForm'
 
+// Sel kolom Cabang: nama cabang di atas, kodenya di bawah.
+function branchCell(m: Masking) {
+  return (
+    <div>
+      <span className="block font-medium text-slate-900">
+        {/* Cabang yang tidak dikenal TIDAK disembunyikan. Tidak ada yang menggantung
+            hari ini, tetapi menyembunyikannya bila kelak terjadi berarti sebuah
+            kewenangan hidup tanpa pernah terbaca benar di layar mana pun. */}
+        {m.nama_cabang || <span className="text-amber-700">Cabang tidak dikenal</span>}
+      </span>
+      <span className="font-mono text-xs text-slate-500">{m.cabang}</span>
+    </div>
+  )
+}
+
+// Lencana Status Aktif.
+function activeBadge(aktif: boolean) {
+  return aktif ? (
+    <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+      AKTIF
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+      TIDAK AKTIF
+    </span>
+  )
+}
+
 /**
  * Layar Master Masking.
  *
@@ -139,17 +167,7 @@ export function MaskingPage() {
       title: 'Cabang',
       width: '13rem',
       value: (m) => `${m.nama_cabang} ${m.cabang}`,
-      render: (m) => (
-        <div>
-          <span className="block font-medium text-slate-900">
-            {/* Cabang yang tidak dikenal TIDAK disembunyikan. Tidak ada yang menggantung
-                hari ini, tetapi menyembunyikannya bila kelak terjadi berarti sebuah
-                kewenangan hidup tanpa pernah terbaca benar di layar mana pun. */}
-            {m.nama_cabang || <span className="text-amber-700">Cabang tidak dikenal</span>}
-          </span>
-          <span className="font-mono text-xs text-slate-500">{m.cabang}</span>
-        </div>
-      ),
+      render: (m) => branchCell(m),
     },
     {
       key: 'login',
@@ -163,16 +181,7 @@ export function MaskingPage() {
       title: 'Status Aktif',
       width: '8rem',
       value: (m) => (m.aktif ? 'AKTIF' : 'TIDAK AKTIF'),
-      render: (m) =>
-        m.aktif ? (
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
-            AKTIF
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-            TIDAK AKTIF
-          </span>
-        ),
+      render: (m) => activeBadge(m.aktif),
     },
     // KTP, EMAIL, dan NOTELP adalah TIGA kolom terpisah di layar lama, bukan satu kolom
     // gabungan. Dipertahankan begitu supaya petugas dapat menyapu satu kolom dari atas ke
@@ -463,7 +472,7 @@ export function MaskingPage() {
  * 2026-09-20. Satu baris produksi memang memuat sub modul yang salah ketik, dan
  * merapikannya di layar akan menyembunyikan bahwa datanya perlu diperbaiki.
  */
-function SubModuleList({ value }: { value: string }) {
+function SubModuleList({ value }: Readonly<{ value: string }>) {
   const part = value
     .split(',')
     .map((item) => item.trim())
@@ -497,7 +506,7 @@ function SubModuleList({ value }: { value: string }) {
  * Nilainya mencapai 100.000 di data produksi; tanpa pemisah, angka sebesar itu sulit
  * dibaca sekilas dan mudah tertukar dengan 10.000.
  */
-function Quota({ value }: { value: number }) {
+function Quota({ value }: Readonly<{ value: number }>) {
   return (
     <span className="font-mono text-sm tabular-nums text-slate-700">
       {value.toLocaleString('id-ID')}
@@ -512,7 +521,7 @@ function Quota({ value }: { value: number }) {
  * dibacakan pembaca layar — warna saja tidak cukup, karena sekitar satu dari dua belas
  * laki-laki mengalami buta warna merah-hijau.
  */
-function Permission({ label, allowed }: { label: string; allowed: boolean }) {
+function Permission({ label, allowed }: Readonly<{ label: string; allowed: boolean }>) {
   return (
     <span
       aria-label={`${label}: ${allowed ? 'boleh dilihat' : 'tersamar'}`}
@@ -533,7 +542,7 @@ function Permission({ label, allowed }: { label: string; allowed: boolean }) {
  * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat salah
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
-function LoadErrorMessage({ error }: { error: unknown }) {
+function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = loadMessage(error)
   return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
 }

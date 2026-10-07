@@ -118,7 +118,7 @@ export function TambahSalvageForm({
   onSaved,
   prefill,
   history = [],
-}: Props) {
+}: Readonly<Props>) {
   // Prefill dipakai sebagai keadaan AWAL, bukan disalin ulang setiap render.
   //
   // Komponen ini dibongkar dan dipasang kembali setiap kali form dibuka — sehingga nilai
@@ -365,7 +365,7 @@ export function TambahSalvageForm({
           }
           className="size-4 rounded border-slate-300"
         />
-        Lokasi Salvage Di Jabodatabek
+        <span>Lokasi Salvage Di Jabodatabek</span>
       </label>
 
       <TextAreaField
@@ -434,7 +434,7 @@ function DetailItemTable({
   onChooseFile,
   onRemove,
   failure,
-}: DetailProps) {
+}: Readonly<DetailProps>) {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -594,7 +594,7 @@ const HISTORY_COLUMNS: Column<HistoryRow>[] = [
  * Menyembunyikan gridnya akan membuat keadaan itu tidak dapat dibedakan dari grid yang
  * gagal dimuat.
  */
-function RiwayatSalvage({ rows }: { rows: HistoryRow[] }) {
+function RiwayatSalvage({ rows }: Readonly<{ rows: HistoryRow[] }>) {
   return (
     <section aria-label="Detail History Salvage">
       <h3 className="mb-3 text-sm font-semibold text-slate-800">Detail History Salvage</h3>

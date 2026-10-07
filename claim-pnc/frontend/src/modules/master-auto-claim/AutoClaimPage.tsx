@@ -336,6 +336,41 @@ export function AutoClaimPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar auto claim…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.auto_claim}
+        rowKey={(row) => row.inisial}
+        description="Sumber: POOLDATA.M_AUTO_CLAIM_PNC"
+        emptyMessage={`Belum ada baris pada tab ${active.label}.`}
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -454,34 +489,7 @@ export function AutoClaimPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar auto claim…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.auto_claim}
-            rowKey={(row) => row.inisial}
-            description="Sumber: POOLDATA.M_AUTO_CLAIM_PNC"
-            emptyMessage={`Belum ada baris pada tab ${active.label}.`}
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )

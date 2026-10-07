@@ -90,7 +90,7 @@ export function DocumentPanel({
   onSend,
   busy,
   pesanKirim,
-}: Props) {
+}: Readonly<Props>) {
   return (
     <section
       className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
@@ -150,17 +150,16 @@ export function DocumentPanel({
       <p className="mt-3 text-xs text-slate-500">
         Tombol <strong>Send</strong> mengirim <strong>satu</strong> {daftar.nama} beserta
         lampirannya ke reasuradur lewat surel, lalu menandainya terkirim. Surat yang sudah
-        terkirim tidak dapat ditarik kembali — periksa kolom <strong>Terkirim</strong>
+        terkirim tidak dapat ditarik kembali — periksa kolom <strong>Terkirim</strong>{' '}
         sebelum menekannya.
       </p>
 
       {pesanKirim != null && pesanKirim !== '' && (
-        <p
-          role="status"
-          className="mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        <output
+          className="block mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
         >
           {pesanKirim}
-        </p>
+        </output>
       )}
     </section>
   )

@@ -68,7 +68,7 @@ type Props = {
  * adalah pemeriksaan di server pada setiap endpoint. Sidebar ini tidak menambah maupun
  * mengurangi kewenangan siapa pun.
  */
-export function Sidebar({ onNavigate, collapsed = false, onExpandGroup, requestedGroup }: Props) {
+export function Sidebar({ onNavigate, collapsed = false, onExpandGroup, requestedGroup }: Readonly<Props>) {
   const menu = useMenu()
   const location = useLocation()
 
@@ -160,9 +160,9 @@ export function Sidebar({ onNavigate, collapsed = false, onExpandGroup, requeste
         // role="status" (sopan), bukan "alert" (memotong): menu yang gagal dimuat
         // adalah keadaan, bukan sesuatu yang harus menyela apa pun yang sedang dibaca
         // pengguna di isi halaman.
-        <p role="status" className="px-3 py-2 text-sm text-amber-800">
+        <output className="block px-3 py-2 text-sm text-amber-800">
           Menu tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.
-        </p>
+        </output>
       )}
 
       {menu.isSuccess && groups.length === 0 && (
@@ -189,12 +189,12 @@ function MenuGroup({
   open,
   onToggle,
   onNavigate,
-}: {
+}: Readonly<{
   group: MenuItem
   open: boolean
   onToggle: () => void
   onNavigate?: (() => void) | undefined
-}) {
+}>) {
   const panelID = `menu-group-${group.id}`
 
   return (
@@ -242,7 +242,7 @@ function MenuGroup({
   )
 }
 
-function MenuEntry({ item, onNavigate }: { item: MenuItem; onNavigate?: (() => void) | undefined }) {
+function MenuEntry({ item, onNavigate }: Readonly<{ item: MenuItem; onNavigate?: (() => void) | undefined }>) {
   const path = routeFor(item.program)
 
   if (path === null) {
@@ -274,7 +274,7 @@ function MenuEntry({ item, onNavigate }: { item: MenuItem; onNavigate?: (() => v
  * yang belum dikenal mendapat dua huruf pertama namanya — tetap terbedakan, dan tetap
  * bernama lengkap lewat tooltip dan aria-label.
  */
-function GroupIcon({ name, className = 'h-5 w-5' }: { name: string; className?: string }) {
+function GroupIcon({ name, className = 'h-5 w-5' }: Readonly<{ name: string; className?: string }>) {
   const key = name.toUpperCase()
   if (key.includes('MASTER')) return <ListIcon className={className} />
   if (key.includes('INBOX')) return <InboxIcon className={className} />

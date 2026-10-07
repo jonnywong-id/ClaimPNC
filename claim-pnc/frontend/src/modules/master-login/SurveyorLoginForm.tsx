@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -215,7 +215,7 @@ const FIELDS = ['nama', 'email', 'telp', 'alamat'] as const
  * menyembunyikan hal yang tersimpan tidak membuatnya tidak tersimpan. Keduanya tidak dapat
  * diubah dari layar mana pun, dan itu dinyatakan apa adanya.
  */
-export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }: Props) {
+export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const editMode = editing !== null
 
   const {
@@ -266,6 +266,21 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
   const message = messageFor(error)
   const title = editMode ? 'Ubah Login Surveyor' : 'Tambah Login Surveyor'
 
+  // Isi keterangan Login: kunci yang tersimpan, pratinjau, atau petunjuk.
+  let loginContent: ReactNode
+  if (editMode) {
+    loginContent = (
+      <>
+        <span className="font-medium">{editing.login}</span>
+        <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+      </>
+    )
+  } else if (previewLogin === '') {
+    loginContent = <span className="text-slate-500">Terisi otomatis setelah Nama diketik.</span>
+  } else {
+    loginContent = <span className="font-medium">{previewLogin}</span>
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onSave)}
@@ -303,16 +318,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
       <div>
         <span className="block text-sm font-medium text-slate-700">Login</span>
         <p className="mt-1.5 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          {editMode ? (
-            <>
-              <span className="font-medium">{editing.login}</span>
-              <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
-            </>
-          ) : previewLogin !== '' ? (
-            <span className="font-medium">{previewLogin}</span>
-          ) : (
-            <span className="text-slate-500">Terisi otomatis setelah Nama diketik.</span>
-          )}
+          {loginContent}
         </p>
         {!editMode && (
           <p className="mt-1 text-xs text-slate-500">

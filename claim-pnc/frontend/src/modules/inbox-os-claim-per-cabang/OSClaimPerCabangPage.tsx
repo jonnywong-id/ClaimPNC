@@ -152,7 +152,7 @@ function PageFrame({
   exportable,
   branch,
   children,
-}: {
+}: Readonly<{
   exportable: boolean
   /**
    * Cabang pemanggil, atau undefined selama daftarnya belum termuat.
@@ -163,7 +163,7 @@ function PageFrame({
    */
   branch?: Branch | undefined
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -197,7 +197,7 @@ function PageFrame({
  * Namanya tetap "Export To Excel" meski berkasnya CSV. `D-13` menetapkan teks yang dilihat
  * pengguna mengikuti layar Pega, dan CSV memang dibuka Excel tanpa perantara.
  */
-function ExportButton({ enabled }: { enabled: boolean }) {
+function ExportButton({ enabled }: Readonly<{ enabled: boolean }>) {
   const ekspor = useExportOSClaimPerCabang()
 
   return (
@@ -336,11 +336,11 @@ function Marked({
   row,
   threshold,
   children,
-}: {
+}: Readonly<{
   row: WorkItem
   threshold: number
   children: ReactNode
-}) {
+}>) {
   if (!row.perlu_perhatian) return <>{children}</>
 
   return (
@@ -387,7 +387,7 @@ function reasonOf(row: WorkItem, threshold: number): string {
  * berbeda saat salah satunya diubah, dan yang berubah diam-diam adalah keterangannya —
  * bukan pewarnaannya.
  */
-function RedRuleLegend({ threshold }: { threshold: number }) {
+function RedRuleLegend({ threshold }: Readonly<{ threshold: number }>) {
   return (
     <p className="mt-4 text-sm text-slate-600">
       <span className="font-medium text-red-700">Baris merah</span> menandai klaim yang
@@ -404,7 +404,7 @@ function RedRuleLegend({ threshold }: { threshold: number }) {
  * pengguna yang membandingkan kedua layar berdampingan memperoleh jawaban alih-alih
  * melaporkannya sebagai kerusakan (`D-54`).
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (
@@ -426,20 +426,20 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   info: PageInfo
   visible: number
   onMove: (page: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
   const last = (info.halaman - 1) * info.ukuran + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {info.total} baris.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"

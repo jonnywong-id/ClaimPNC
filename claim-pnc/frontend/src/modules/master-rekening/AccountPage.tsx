@@ -217,7 +217,7 @@ export function AccountPage() {
           loading={list.isPending}
           actions={
             tab === 'komite' || tab === 'menunggu'
-              ? (rekening) => <CommitteeAction rekening={rekening} />
+              ? renderCommitteeAction
               : undefined
           }
         />
@@ -233,17 +233,22 @@ export function AccountPage() {
   )
 }
 
+// Kolom aksi tab komite: tombol keputusan untuk satu rekening.
+function renderCommitteeAction(rekening: Account) {
+  return <CommitteeAction rekening={rekening} />
+}
+
 function SearchFields({
   id,
   label,
   value,
   edit,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: string
   edit: (value: string) => void
-}) {
+}>) {
   return (
     <div>
       <label
@@ -271,9 +276,9 @@ function SearchFields({
  * pengaju mengulang pengajuan yang sama persis, karena tidak ada yang memberitahunya
  * apa yang salah.
  */
-function CommitteeAction({ rekening }: { rekening: Account }) {
+function CommitteeAction({ rekening }: Readonly<{ rekening: Account }>) {
   const decide = useDecideAccount()
-  const [catatan, setNote] = useState(rekening.catatan)
+  const [catatan, setCatatan] = useState(rekening.catatan)
 
   const send = (
     status:
@@ -300,7 +305,7 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
       <input
         id={`catatan-${rekening.kode_bank}-${rekening.nomor_rekening}`}
         value={catatan}
-        onChange={(e) => setNote(e.target.value)}
+        onChange={(e) => setCatatan(e.target.value)}
         placeholder="Keterangan approval atasan"
         className="w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none"
       />
@@ -332,7 +337,7 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
   )
 }
 
-function DecisionMessage({ error }: { error: unknown }) {
+function DecisionMessage({ error }: Readonly<{ error: unknown }>) {
   if (
     error instanceof APIError &&
     error.kode === 'isian_tidak_sah'

@@ -27,7 +27,7 @@ type Props = {
  *
  * Karena itu keterangan tab ikut digambar sebagai `title`, bukan hanya di bawah bilah.
  */
-export function RCLPUCLTabs({ tabs, active, onSelect }: Props) {
+export function RCLPUCLTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya

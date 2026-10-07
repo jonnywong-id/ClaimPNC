@@ -35,7 +35,7 @@ type Props = {
  * berpindah tab — perilaku yang diharapkan pengguna papan ketik dari sesuatu yang terlihat
  * seperti tab. Deretan tombol biasa terbaca sebagai tiga tombol lepas tanpa hubungan.
  */
-export function SourceTab({ tab, selected, onSelect }: Props) {
+export function SourceTab({ tab, selected, onSelect }: Readonly<Props>) {
   if (tab.length === 0) return null
 
   function pindah(arah: -1 | 1) {

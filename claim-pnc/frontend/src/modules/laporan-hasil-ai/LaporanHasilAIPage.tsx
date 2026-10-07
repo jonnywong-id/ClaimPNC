@@ -169,13 +169,7 @@ export function LaporanHasilAIPage() {
         />
       )}
 
-      {!searched ? (
-        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Isi <strong>Tgl Input Dari</strong> dan <strong>Tgl Input Sampai</strong>, lalu
-          tekan <strong>Cari Data</strong>. Layar lama pun menolak tanpa keduanya —
-          penyaringnya disusun dari kedua isian itu, dan yang kosong membuat kuerinya gagal.
-        </p>
-      ) : (
+      {searched ? (
         <>
           {/*
             Grid ringkasan digambar DataTable yang sama dengan grid rincian, bukan tabel
@@ -236,6 +230,12 @@ export function LaporanHasilAIPage() {
             }}
           />
         </>
+      ) : (
+        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          Isi <strong>Tgl Input Dari</strong> dan <strong>Tgl Input Sampai</strong>, lalu
+          tekan <strong>Cari Data</strong>. Layar lama pun menolak tanpa keduanya —
+          penyaringnya disusun dari kedua isian itu, dan yang kosong membuat kuerinya gagal.
+        </p>
       )}
     </div>
   )

@@ -69,7 +69,7 @@ const toneClass: Record<ButtonTone, string> = {
  * `type` sengaja berbawaan `button`. Bawaan HTML adalah `submit`, dan tombol Batal yang
  * lupa menyebut tipenya akan diam-diam mengirim form.
  */
-export function Button({ tone = 'kedua', className, type = 'button', ...rest }: Props) {
+export function Button({ tone = 'kedua', className, type = 'button', ...rest }: Readonly<Props>) {
   const baseClass = [
     'inline-flex items-center justify-center gap-2 rounded-kontrol px-3.5 py-2',
     'text-sm font-medium whitespace-nowrap select-none',

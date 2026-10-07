@@ -107,23 +107,7 @@ export function AutoClaimInboxPage() {
 
           {!premiumActive && <UploadResult note={uploadNote} onClose={() => setUploadNote(null)} />}
 
-          {portal === null ? (
-            <div className="mt-5">
-              <ErrorMessage
-                title="Portal entitas belum dipilih"
-                description="Data klaim dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-                tone="penolakan"
-              />
-            </div>
-          ) : premiumActive ? (
-            <PremiumCheckPanel />
-          ) : (
-            // `key` pada tab membuat berpindah tab MEMASANG ULANG isinya: kata kunci,
-            // perusahaan terpilih, dan halaman ikut hilang. Bukan kerapian — ketiga tab
-            // membaca tabel berbeda, dan kode perusahaan di satu tab belum tentu ada di tab
-            // lain.
-            <CompanyBrowser key={activeSource} source={activeSource} table={activeTable} />
-          )}
+          {renderTabBody(portal, premiumActive, activeSource, activeTable)}
         </div>
       )}
 
@@ -143,6 +127,38 @@ export function AutoClaimInboxPage() {
 }
 
 /**
+ * Isi panel tab: peringatan portal, panel Cek Premi, atau daftar perusahaan.
+ *
+ * Dipanggil sebagai fungsi biasa (bukan komponen), sehingga pohon elemennya sama persis
+ * dengan ternary bersarang yang digantikannya (temuan SonarQube S3358).
+ */
+function renderTabBody(
+  portal: string | null,
+  premiumActive: boolean,
+  activeSource: string,
+  activeTable: string,
+) {
+  if (portal === null) {
+    return (
+      <div className="mt-5">
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data klaim dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      </div>
+    )
+  }
+
+  if (premiumActive) return <PremiumCheckPanel />
+
+  // `key` pada tab membuat berpindah tab MEMASANG ULANG isinya: kata kunci, perusahaan
+  // terpilih, dan halaman ikut hilang. Bukan kerapian — ketiga tab membaca tabel berbeda,
+  // dan kode perusahaan di satu tab belum tentu ada di tab lain.
+  return <CompanyBrowser key={activeSource} source={activeSource} table={activeTable} />
+}
+
+/**
  * Panel hasil unggahan, di dalam panel tab.
  *
  * Ia membedakan TIGA keadaan, dan pembedaannya bukan kerapian tampilan: yang "bertanda"
@@ -152,19 +168,18 @@ export function AutoClaimInboxPage() {
 function UploadResult({
   note,
   onClose,
-}: {
+}: Readonly<{
   note: AutoClaimUploadResponse | null
   onClose: () => void
-}) {
+}>) {
   if (note === null) return null
 
   return (
-    <div
-      role="status"
+    <output
       className={
         note.ditolak.length > 0
-          ? 'mt-4 rounded-kartu border border-amber-200 bg-amber-50/80 p-4 text-sm shadow-lembut'
-          : 'mt-4 rounded-kartu border border-emerald-200 bg-emerald-50/80 p-4 text-sm shadow-lembut'
+          ? 'mt-4 block rounded-kartu border border-amber-200 bg-amber-50/80 p-4 text-sm shadow-lembut'
+          : 'mt-4 block rounded-kartu border border-emerald-200 bg-emerald-50/80 p-4 text-sm shadow-lembut'
       }
     >
       <p className="font-medium text-slate-900">
@@ -219,6 +234,6 @@ function UploadResult({
           Tutup
         </Button>
       </div>
-    </div>
+    </output>
   )
 }

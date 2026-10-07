@@ -49,7 +49,7 @@ type Props = {
  * tombol Simpan — dengan dua perbedaan yang disengaja: isiannya wajib diisi, dan nama
  * yang sudah dipakai ditolak (keputusan Work Owner 2026-09-17).
  */
-export function ClaimStatusForm({ status, tutup }: Props) {
+export function ClaimStatusForm({ status, tutup }: Readonly<Props>) {
   const save = useSaveClaimStatus()
   const editing = status !== null
   const firstField = useRef<HTMLInputElement | null>(null)
@@ -177,7 +177,7 @@ function Spinner() {
  * pengguna, validasi server menunjuk kolom tertentu, dan gangguan sistem tidak dapat
  * ditolong dengan mencoba ulang berkali-kali.
  */
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

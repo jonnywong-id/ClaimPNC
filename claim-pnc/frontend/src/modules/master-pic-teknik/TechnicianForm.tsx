@@ -28,6 +28,20 @@ const MAX_BUSINESS_LINE_LENGTH = 50
 const MAX_QUOTA = 9999
 
 /**
+ * isPlausibleEmail setara persis dengan regex lama `^[^@\s]+@[^@\s]+\.[^@\s]+$`: tepat satu
+ * `@`, tanpa spasi, bagian lokal tidak kosong, dan bagian domain memuat titik yang diapit
+ * sedikitnya satu karakter di kiri dan kanannya. Ditulis tanpa regex bertumpuk supaya
+ * waktunya linear (temuan SonarQube S5852 — backtracking super-linear).
+ */
+function isPlausibleEmail(value: string): boolean {
+  if (/\s/.test(value)) return false
+  const at = value.indexOf('@')
+  if (at < 1 || at !== value.lastIndexOf('@')) return false
+  const domain = value.slice(at + 1)
+  return domain.length >= 3 && domain.slice(1, -1).includes('.')
+}
+
+/**
  * Aturan yang sama dinyatakan dua kali: di sini dan di domain Go.
  *
  * Itu duplikasi yang DISENGAJA, bukan kelalaian. Yang di sini menjawab pengguna tanpa
@@ -52,7 +66,7 @@ const schema = z.object({
     // Sengaja longgar, sama dengan EmailPlausible di domain: satu-satunya cara
     // membuktikan alamat benar adalah mengirim surel ke sana, dan validasi yang terlalu
     // ketat justru menolak alamat yang sah.
-    .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, 'Format email tidak benar.'),
+    .refine(isPlausibleEmail, 'Format email tidak benar.'),
   lini_bisnis: z
     .string()
     .trim()
@@ -111,7 +125,7 @@ type Props = {
  * Simpan ditekan. Di Pega ia berjalan diam-diam, dan kegagalannya baru muncul sebagai
  * penolakan setelah seluruh form diisi.
  */
-export function TechnicianForm({ technician, onClose }: Props) {
+export function TechnicianForm({ technician, onClose }: Readonly<Props>) {
   const save = useSaveTechnician()
   const lookup = useLookupEmployee()
   const editing = technician !== null
@@ -463,13 +477,13 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
  * saat mengisi ID, yang lain saat menekan Simpan. Menyatukannya akan membuat pesan
  * pencarian bertahan di layar setelah pengguna memperbaiki ID-nya.
  */
-function LookupErrorMessage({ error }: { error: unknown }) {
+function LookupErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = parseDirectory(error)
   if (message === null) return null
   return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
 }
 
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

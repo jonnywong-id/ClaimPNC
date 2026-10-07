@@ -44,7 +44,7 @@ type Props = {
  * Label dan isinya ditumpuk, bukan disejajarkan dalam satu baris, supaya isian yang panjang
  * — lokasi salvage, remark — tidak memaksa seluruh kolom melebar.
  */
-function Isian({ label, value }: { label: string; value: string }) {
+function Isian({ label, value }: Readonly<{ label: string; value: string }>) {
   const clean = value.trim()
 
   return (
@@ -64,7 +64,7 @@ function Isian({ label, value }: { label: string; value: string }) {
  * lama menempatkan data pengajuan, data akseptasi, data lelang, dan data PIC survey sebagai
  * bagian yang terpisah — dan petugas mencarinya per bagian, bukan per kolom.
  */
-function Kelompok({ judul, children }: { judul: string; children: React.ReactNode }) {
+function Kelompok({ judul, children }: Readonly<{ judul: string; children: React.ReactNode }>) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <h4 className="mb-3 text-sm font-semibold text-slate-800">{judul}</h4>
@@ -176,7 +176,7 @@ export function DetailSalvagePanel({
   isError,
   error,
   onClose,
-}: Props) {
+}: Readonly<Props>) {
   const detail = { data, isPending, isError, error }
 
   return (
@@ -187,22 +187,7 @@ export function DetailSalvagePanel({
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-slate-900">Detail Salvage</h3>
-          <p className="mt-0.5 text-sm text-slate-600">
-            {detailKey === 'klaim' ? 'Klaim ' : 'Pengajuan '}
-            <span className="font-medium text-slate-800">{reference}</span>
-            {detail.data && detail.data.ada_pengajuan && detailKey === 'klaim' ? (
-              <>
-                {' · pengajuan '}
-                <span className="font-medium text-slate-800">{detail.data.id_salvage}</span>
-              </>
-            ) : null}
-            {detail.data && detailKey === 'pengajuan' ? (
-              <>
-                {' · klaim '}
-                <span className="font-medium text-slate-800">{detail.data.no_klaim}</span>
-              </>
-            ) : null}
-          </p>
+          <DetailReference detailKey={detailKey} reference={reference} data={detail.data} />
         </div>
 
         <Button type="button" tone="kedua" onClick={onClose}>
@@ -260,18 +245,10 @@ export function DetailSalvagePanel({
                 Posisi Salvage
               </dt>
               <dd className="mt-0.5 break-words text-sm text-slate-900">
-                {detail.data.posisi_salvage.trim() === '' ? (
-                  <span className="text-slate-400">—</span>
-                ) : (
-                  <>
-                    {detail.data.posisi_salvage}
-                    {detail.data.kode_posisi_salvage.trim() === '' ? null : (
-                      <span className="ml-2 text-xs text-slate-500">
-                        kode {detail.data.kode_posisi_salvage}
-                      </span>
-                    )}
-                  </>
-                )}
+                <SalvagePosition
+                  label={detail.data.posisi_salvage}
+                  code={detail.data.kode_posisi_salvage}
+                />
               </dd>
             </div>
             <Isian label="Tanggal Transfer GA" value={detail.data.tanggal_transfer_ga} />
@@ -317,5 +294,49 @@ export function DetailSalvagePanel({
         </div>
       ) : null}
     </section>
+  )
+}
+
+/** Baris rujukan di bawah judul: klaim atau pengajuan yang dibuka, beserta pasangannya. */
+function DetailReference({
+  detailKey,
+  reference,
+  data,
+}: Readonly<{
+  detailKey: DetailKey
+  reference: string
+  data: DetailResponse | undefined
+}>) {
+  return (
+    <p className="mt-0.5 text-sm text-slate-600">
+      {detailKey === 'klaim' ? 'Klaim ' : 'Pengajuan '}
+      <span className="font-medium text-slate-800">{reference}</span>
+      {data && data.ada_pengajuan && detailKey === 'klaim' ? (
+        <>
+          {' · pengajuan '}
+          <span className="font-medium text-slate-800">{data.id_salvage}</span>
+        </>
+      ) : null}
+      {data && detailKey === 'pengajuan' ? (
+        <>
+          {' · klaim '}
+          <span className="font-medium text-slate-800">{data.no_klaim}</span>
+        </>
+      ) : null}
+    </p>
+  )
+}
+
+/** Label posisi salvage beserta kodenya; tanda pisah bila labelnya kosong. */
+function SalvagePosition({ label, code }: Readonly<{ label: string; code: string }>) {
+  if (label.trim() === '') return <span className="text-slate-400">—</span>
+
+  return (
+    <>
+      {label}
+      {code.trim() === '' ? null : (
+        <span className="ml-2 text-xs text-slate-500">kode {code}</span>
+      )}
+    </>
   )
 }

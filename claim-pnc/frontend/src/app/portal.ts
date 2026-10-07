@@ -33,7 +33,7 @@ export const useSelectedPortal = create<PortalState>((set) => ({
 
 function loadFromBrowser(): string | null {
   try {
-    return window.sessionStorage.getItem(STORAGE_KEY)
+    return globalThis.sessionStorage.getItem(STORAGE_KEY)
   } catch {
     // sessionStorage dapat ditolak peramban (mode privat, kebijakan perusahaan).
     // Aplikasi tetap harus jalan; pengguna cukup memilih portalnya lagi.
@@ -43,7 +43,7 @@ function loadFromBrowser(): string | null {
 
 function saveToBrowser(alias: string): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, alias)
+    globalThis.sessionStorage.setItem(STORAGE_KEY, alias)
   } catch {
     /* diabaikan dengan sadar: pilihan tetap hidup di memori tab ini */
   }
@@ -51,7 +51,7 @@ function saveToBrowser(alias: string): void {
 
 function clearFromBrowser(): void {
   try {
-    window.sessionStorage.removeItem(STORAGE_KEY)
+    globalThis.sessionStorage.removeItem(STORAGE_KEY)
   } catch {
     /* diabaikan dengan sadar */
   }

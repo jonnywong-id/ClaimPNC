@@ -38,7 +38,7 @@ const style: Record<ErrorTone, { box: string; icon: string; title: string }> = {
 }
 
 /** ErrorMessage menampilkan satu kotak pesan kesalahan yang dapat ditindaklanjuti. */
-export function ErrorMessage({ title, description, tone }: Props) {
+export function ErrorMessage({ title, description, tone }: Readonly<Props>) {
   const g = style[tone]
 
   return (

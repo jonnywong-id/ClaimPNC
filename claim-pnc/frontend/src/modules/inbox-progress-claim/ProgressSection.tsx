@@ -55,7 +55,7 @@ export function ProgressSection({
   openByDefault,
   ready,
   onOpenClaim,
-}: Props) {
+}: Readonly<Props>) {
   const [open, setOpen] = useState(openByDefault)
   const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
   const [page, setPage] = useState(1)
@@ -170,11 +170,11 @@ function SectionHeader({
   section,
   open,
   onToggle,
-}: {
+}: Readonly<{
   section: Section
   open: boolean
   onToggle: () => void
-}) {
+}>) {
   return (
     <button
       type="button"
@@ -233,7 +233,7 @@ function FilterBar({
   onCommitSearch,
   onChange,
   onClear,
-}: {
+}: Readonly<{
   section: Section
   lines: BusinessLine[]
   filter: FilterForm
@@ -242,7 +242,7 @@ function FilterBar({
   onCommitSearch: () => void
   onChange: (patch: Partial<FilterForm>) => void
   onClear: () => void
-}) {
+}>) {
   const anyControl =
     section.pakai_pencarian || section.pakai_lini_bisnis || section.pakai_rentang_tanggal
 
@@ -334,12 +334,12 @@ function DateField({
   label,
   value,
   onChange,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: string
   onChange: (value: string) => void
-}) {
+}>) {
   return (
     <div className="w-full sm:w-44">
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
@@ -366,7 +366,7 @@ function DateField({
  * adalah alasannya — supaya pengguna yang mencari penyaring Tanggal Kejadian memperoleh
  * jawaban alih-alih menduga modulnya belum selesai.
  */
-function DeadControlNotes({ section }: { section: Section }) {
+function DeadControlNotes({ section }: Readonly<{ section: Section }>) {
   if (section.kontrol_mati.length === 0) return null
 
   return (
@@ -394,20 +394,20 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   info: PageInfo
   visible: number
   onMove: (page: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
   const last = (info.halaman - 1) * info.ukuran + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {info.total} baris.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"
@@ -515,10 +515,10 @@ function renderFor(column: Column): (row: Row) => ReactNode {
 function DetailButton({
   row,
   onOpen,
-}: {
+}: Readonly<{
   row: ClaimRow
   onOpen: (claimNumber: string) => void
-}) {
+}>) {
   return (
     <Button
       tone="halus"
@@ -553,7 +553,8 @@ function isCount(field: Column['isian']): boolean {
  * memecah teksnya lagi, dan pemecahan itu akan salah begitu sebuah nilai memuat koma.
  */
 export function cellText(row: Row, column: Column): string {
-  const value = (row as Record<string, unknown>)[column.isian]
+  // Seluruh isian kedua bentuk baris bertipe teks, angka, atau null — tidak ada objek.
+  const value = (row as Record<string, string | number | null | undefined>)[column.isian]
 
   if (value === null || value === undefined || value === '') return '—'
   if (typeof value === 'number') return String(value)

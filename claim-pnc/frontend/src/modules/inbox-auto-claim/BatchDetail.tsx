@@ -28,7 +28,7 @@ type Props = {
  * petugas membandingkan rincian dengan angka ringkasnya — berapa berhasil, berapa gagal —
  * dan layar terpisah memaksa ia bolak-balik untuk itu.
  */
-export function BatchDetail({ source, company, companyName, batch, onClose }: Props) {
+export function BatchDetail({ source, company, companyName, batch, onClose }: Readonly<Props>) {
   const [page, setPage] = useState(1)
   const list = useAutoClaimLineList(source, company, batch, page)
 
@@ -184,7 +184,7 @@ export function BatchDetail({ source, company, companyName, batch, onClose }: Pr
  * boleh kehilangan pembedaannya (sistem desain: "pembedaan penting tidak pernah hanya
  * warna").
  */
-function ResultBadge({ line }: { line: AutoClaimLine }) {
+function ResultBadge({ line }: Readonly<{ line: AutoClaimLine }>) {
   if (line.hasil === AutoClaimResult.succeeded) {
     return (
       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200 ring-inset">

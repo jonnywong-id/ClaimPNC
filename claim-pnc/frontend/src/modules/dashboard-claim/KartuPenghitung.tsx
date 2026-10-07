@@ -17,12 +17,12 @@ export function KartuPenghitung({
   terpilih,
   memuat,
   onPilih,
-}: {
+}: Readonly<{
   kartu: Kartu
   terpilih: boolean
   memuat: boolean
   onPilih: (tile: Tile) => void
-}) {
+}>) {
   return (
     <button
       type="button"

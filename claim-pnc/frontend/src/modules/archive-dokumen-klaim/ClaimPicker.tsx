@@ -54,7 +54,7 @@ export function ClaimPicker({
   pickedNumber,
   fieldError,
   searched,
-}: Props) {
+}: Readonly<Props>) {
   const columns: Column<ClaimCandidate>[] = [
     { key: 'nomor_klaim', title: 'No Klaim', value: (row) => row.nomor_klaim },
     { key: 'nomor_polis', title: 'No Polis', value: (row) => row.nomor_polis },

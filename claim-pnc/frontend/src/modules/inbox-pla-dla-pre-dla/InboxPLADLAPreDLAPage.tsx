@@ -376,7 +376,7 @@ export function InboxPLADLAPreDLAPage() {
 }
 
 /** Bingkai adalah judul layar beserta ruang isinya. */
-function Bingkai({ children }: { children: ReactNode }) {
+function Bingkai({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="space-y-5 p-6">
       <header>
@@ -547,7 +547,7 @@ function pesanKosong(penyaring: FormPencarian): string {
  * selisihnya — dan selisih yang tidak dinyatakan akan dilaporkan sebagai kerusakan, lalu
  * ditelusuri ulang oleh orang yang tidak tahu bahwa ia disengaja.
  */
-function SelisihTerencana({ butir }: { butir: string[] }) {
+function SelisihTerencana({ butir }: Readonly<{ butir: string[] }>) {
   if (butir.length === 0) return null
 
   return (

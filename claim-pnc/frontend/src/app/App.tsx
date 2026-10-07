@@ -1741,7 +1741,7 @@ export function AppRoute() {
  * dan nama pengguna hanya ada di satu tempat — sebelumnya keduanya hidup di dalam
  * halaman beranda, sehingga layar lain tidak punya cara keluar.
  */
-function Protected({ children }: { children: ReactNode }) {
+function Protected({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <PageShell>
       <SessionWarning />

@@ -42,7 +42,7 @@ type Props = {
  * Kolom "Desc Archive" tidak digambar — isinya berasal dari master yang tidak kita miliki.
  * Yang menggantikannya adalah jumlah pemakaian, keterangan yang benar-benar ada.
  */
-export function FillingCodePicker({ open, onClose, onPick }: Props) {
+export function FillingCodePicker({ open, onClose, onPick }: Readonly<Props>) {
   const [keyword, setKeyword] = useState('')
 
   const codes = useFillingCodes(keyword, open)
@@ -52,9 +52,9 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
   const rows: FillingCode[] = codes.data?.kode ?? []
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-pilih-kode"
     >
@@ -154,6 +154,6 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
           </Button>
         </footer>
       </div>
-    </div>
+    </dialog>
   )
 }

@@ -55,7 +55,7 @@ export function SearchPanel({
   labelTanggal,
   labelPencarian,
   fieldError,
-}: Props) {
+}: Readonly<Props>) {
   return (
     <form
       className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"

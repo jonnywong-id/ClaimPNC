@@ -248,7 +248,7 @@ function toOptions(list: SupplierCode[]) {
  * menambah, muncul saat menyunting. Di sini ia ditampilkan sebagai keterangan pada mode
  * ubah, bukan sebagai isian yang tidak dapat diketik.
  */
-export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel }: Props) {
+export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const isEditing = editing !== null
   const headingId = useId()
 
@@ -673,7 +673,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
  * masuk ke salah satu isian di dalamnya — pada form dua puluh tiga isian, "isian ke berapa
  * dari bagian apa" adalah satu-satunya cara menavigasinya tanpa melihat.
  */
-function Group({ title, children }: { title: string; children: ReactNode }) {
+function Group({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
       <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>

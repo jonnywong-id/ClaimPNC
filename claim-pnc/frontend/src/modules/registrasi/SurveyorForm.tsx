@@ -107,7 +107,7 @@ const PANEL_TRAVEL = '005'
 const PANEL_FIRE = '006'
 
 /** When IsNonMBU: Group Panel 003, 004, 006, 009. */
-const NON_MBU_PANELS = ['003', PANEL_MARINE_CARGO, PANEL_FIRE, '009']
+const NON_MBU_PANELS = new Set(['003', PANEL_MARINE_CARGO, PANEL_FIRE, '009'])
 
 /** When IsAneka: `Quotation.BusinessCode = "10140"`. */
 const BUSINESS_CODE_ANEKA = '10140'
@@ -158,7 +158,7 @@ export function ownerNotice(tugas: Task, identity: string, register: boolean): s
  * Tab Input Register di sini tampilan baca (RegisterView); tahap Input Register sendiri memakai
  * bingkai InputRegister-sect (InputRegisterFrame).
  */
-export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
+export function SurveyorForm({ klaim, tugas }: Readonly<{ klaim: Claim; tugas: Task }>) {
   const identity = useSession((state) => state.user?.identitas ?? '')
   const notice = ownerNotice(tugas, identity, false)
   // Tahap Investigator membuka tab Investigasi lebih dulu.
@@ -218,7 +218,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         {/* Status Klaim: layout `!IsTravel`, sel `!IsPA` — tidak tampil untuk Travel maupun PA. */}
         {!travel && !pa ? (
           <label className="block text-xs font-semibold text-slate-800">
-            Status Klaim
+            <span>Status Klaim</span>
             <select
               disabled
               aria-label="Status Klaim"
@@ -300,7 +300,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
  * (Kirim ke Inputor PA, Kirim ke Investigator) bergantung When `isAnalystPA_PNC` yang tidak
  * ada di export, sehingga tanpa tombol ini klaim PA tidak dapat maju dari layar.
  */
-function StageSubmit({ tugas, locked }: { tugas: Task; locked: boolean }) {
+function StageSubmit({ tugas, locked }: Readonly<{ tugas: Task; locked: boolean }>) {
   const done = useCompleteStage()
   const go = (kembali: boolean) => done.mutate({ taskID: tugas.id, action: tugas.tindakan_keluar, kembali })
   return (
@@ -336,7 +336,7 @@ function StageSubmit({ tugas, locked }: { tugas: Task; locked: boolean }) {
  * Tugas Workbasket (mis. Investigator, antrean InvestigatorPNC) lahir tanpa pemilik, dan server
  * menolak menutupnya sebelum diambil. Tombol Ambil di sini sama dengan tombol Ambil di inbox.
  */
-function ClaimTaskNotice({ tugas }: { tugas: Task }) {
+function ClaimTaskNotice({ tugas }: Readonly<{ tugas: Task }>) {
   const take = useClaimTask()
   return (
     <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
@@ -363,7 +363,7 @@ function ClaimTaskNotice({ tugas }: { tugas: Task }) {
  * dokumen JSON_KLAIM terbaru memuatnya (2026-10-02); grid ditampilkan kosong sampai tahap
  * Compliance, PUCL, dan Analyst Doctor dibangun di aplikasi ini.
  */
-function AnalystNotes({ travel }: { travel: boolean }) {
+function AnalystNotes({ travel }: Readonly<{ travel: boolean }>) {
   const grids: [string, string][] = [
     ['Catatan Dari Compliance', 'ClaimData.ComplianceList'],
     ['Tanggal Terima Dokumen PUCL', 'ClaimData.PUCLStatus.DateReceivedDocument'],
@@ -395,7 +395,7 @@ function AnalystNotes({ travel }: { travel: boolean }) {
   )
 }
 
-function Field({ label, note }: { label: string; note: string }) {
+function Field({ label, note }: Readonly<{ label: string; note: string }>) {
   return (
     <div>
       <dt className="text-sm font-semibold text-slate-800">{label}</dt>
@@ -411,12 +411,12 @@ export function TabList<T extends string>({
   current,
   onSelect,
   label,
-}: {
+}: Readonly<{
   items: readonly T[]
   current: T
   onSelect: (t: T) => void
   label: string
-}) {
+}>) {
   return (
     <div role="tablist" aria-label={label} className="mt-5 flex flex-wrap gap-1 border-b border-slate-200">
       {items.map((t) => (
@@ -438,7 +438,7 @@ export function TabList<T extends string>({
   )
 }
 
-function Head({ columns }: { columns: string[] }) {
+function Head({ columns }: Readonly<{ columns: string[] }>) {
   return (
     <thead>
       <tr className="bg-slate-100 text-left text-xs text-slate-700">
@@ -452,7 +452,7 @@ function Head({ columns }: { columns: string[] }) {
   )
 }
 
-function Empty({ span }: { span: number }) {
+function Empty({ span }: Readonly<{ span: number }>) {
   return (
     <tr>
       <td colSpan={span} className="p-2 text-xs text-slate-500">
@@ -462,7 +462,7 @@ function Empty({ span }: { span: number }) {
   )
 }
 
-function NoObjects({ klaim, children }: { klaim: Claim; children: ReactNode }) {
+function NoObjects({ klaim, children }: Readonly<{ klaim: Claim; children: ReactNode }>) {
   if (klaim.objek.length === 0) {
     return <p className="mt-3 text-sm text-slate-600">Klaim ini belum punya objek.</p>
   }
@@ -471,7 +471,7 @@ function NoObjects({ klaim, children }: { klaim: Claim; children: ReactNode }) {
 
 // ── Tab Input Register — dibaca saja ───────────────────────────────────────────────
 
-function RegisterView({ klaim }: { klaim: Claim }) {
+function RegisterView({ klaim }: Readonly<{ klaim: Claim }>) {
   const rows: [string, string][] = [
     ['Nomor Polis', klaim.polis.nomor],
     ['Tertanggung', klaim.polis.nama_tertanggung || '—'],
@@ -539,12 +539,12 @@ function EstimateView({
   tugas,
   currencies,
   lockedReason,
-}: {
+}: Readonly<{
   klaim: Claim
   tugas: Task
   currencies: CurrencyOption[]
   lockedReason: string | null
-}) {
+}>) {
   // Section InputEstimasiDetail yang sama dengan layar Input Estimasi — ClaimSurvey_sect
   // menanamnya, sehingga estimasi dapat ditambah dan disimpan di tahap ini tanpa memindahkan
   // tahap. Kirim PIC Teknik tidak ada di sini.
@@ -567,14 +567,14 @@ function EstimateView({
         </div>
       )}
       {faceSheet.isSuccess && !busy && !failure && (
-        <p className="mt-4 text-sm text-emerald-700" role="status">
+        <output className="mt-4 block text-sm text-emerald-700">
           Claim Face Sheet diunduh. Estimasi jaminan itu kini terkunci.
-        </p>
+        </output>
       )}
       {save.isSuccess && !faceSheet.isSuccess && !busy && !failure && (
-        <p className="mt-4 text-sm text-emerald-700" role="status">
+        <output className="mt-4 block text-sm text-emerald-700">
           Estimasi disimpan.
-        </p>
+        </output>
       )}
       <div className="mt-4 flex justify-end">
         <Button tone="kedua" disabled={busy || lockedReason !== null} title={lockedReason ?? undefined} onClick={editor.saveNow}>
@@ -620,12 +620,12 @@ function AdjustmentView({
   tugas,
   identity,
   currencies,
-}: {
+}: Readonly<{
   klaim: Claim
   tugas: Task
   identity: string
   currencies: CurrencyOption[]
-}) {
+}>) {
   // Jaminan yang baris isian Tambah-nya sedang terbuka.
   const [addFor, setAddFor] = useState<{ i: number; j: number } | null>(null)
   // Jaminan yang modal "Transfer ke Analyst"-nya sedang terbuka.
@@ -678,7 +678,7 @@ function AdjustmentView({
           {klaim.objek.map((o, i) => {
             const totals = acceptedTotals(o)
             return (
-              <Fragment key={i}>
+              <Fragment key={`${o.id}-${i}`}>
                 <tr className="border-b border-slate-200 align-top">
                   <td className="p-2">{i + 1}</td>
                   <td className="p-2">{o.nama || o.id}</td>
@@ -730,7 +730,7 @@ function AdjustmentView({
                         )}
                         <tbody>
                           {o.coverage.map((c, j) => (
-                            <Fragment key={j}>
+                            <Fragment key={`${c.id}-${j}`}>
                               <tr className="border-b border-slate-100">
                                 <td className="p-2">{j + 1}</td>
                                 <td className="p-2">{c.nama || c.id}</td>
@@ -826,7 +826,7 @@ function AdjustmentView({
                                     spreading={c.spreading.filter((s) => !s.dihapus)}
                                     estimation={claimEstimate(c)}
                                     travel={klaim.polis.lini === PANEL_TRAVEL}
-                                    nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                    nonMBU={NON_MBU_PANELS.has(klaim.polis.lini)}
                                     groupPanel={klaim.polis.lini}
                                     businessType={klaim.polis.jenis_bisnis}
                                     receivers={klaim.penerima_klaim ?? []}
@@ -843,7 +843,7 @@ function AdjustmentView({
                                           policyCurrency={klaim.polis.mata_uang}
                                           currencies={currencies}
                                           travel={klaim.polis.lini === PANEL_TRAVEL}
-                                          nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                          nonMBU={NON_MBU_PANELS.has(klaim.polis.lini)}
                                           pa={pa}
                                           exGratia={klaim.ex_gratia}
                                           analyst={tugas.analis === true}
@@ -865,7 +865,7 @@ function AdjustmentView({
                                           policyCurrency={klaim.polis.mata_uang}
                                           currencies={currencies}
                                           travel={klaim.polis.lini === PANEL_TRAVEL}
-                                          nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
+                                          nonMBU={NON_MBU_PANELS.has(klaim.polis.lini)}
                                           pa={pa}
                                           exGratia={klaim.ex_gratia}
                                           analyst={tugas.analis === true}
@@ -928,7 +928,7 @@ function SettlementGrid({
   onAdd,
   editor,
   lockedReason,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   /** Objek dan jaminan berbasis 1 — alamat baris untuk Transfer Komite. */
@@ -957,7 +957,7 @@ function SettlementGrid({
   editor: ReactNode
   /** Alasan tombol Tambah dikunci — tugas bukan milik pengguna ini. */
   lockedReason: string | null
-}) {
+}>) {
   // Baris adjustment yang sedang dibuka untuk dilihat kembali.
   const [open, setOpen] = useState<number | null>(null)
   useEffect(() => {

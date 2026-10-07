@@ -29,7 +29,7 @@ import { isKmtnCase, useDecideKmtn, useKmtnCommittee } from './api'
  * `.RejectedCode` (pasal penolakan) pada ShowTransfer tidak ditampilkan: sumber daftarnya
  * (`GetDataPenolakanKlaimMas`) tidak ada di export.
  */
-export function KmtnDecisionForm({ caseID }: { caseID: string }) {
+export function KmtnDecisionForm({ caseID }: Readonly<{ caseID: string }>) {
   const login = useSession((state) => state.user?.login ?? '')
   const committee = useKmtnCommittee(caseID)
   const decide = useDecideKmtn(caseID)
@@ -43,9 +43,9 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
 
   if (committee.isPending) {
     return (
-      <p className="mt-5 text-sm text-slate-600" role="status">
+      <output className="block mt-5 text-sm text-slate-600">
         Loading committee status…
-      </p>
+      </output>
     )
   }
   if (committee.isError || !committee.data) {
@@ -59,17 +59,17 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
   const c = committee.data
   if (c.status !== 'berjalan') {
     return (
-      <p className={`${box} text-sm text-slate-700`} role="status">
+      <output className={`block ${box} text-sm text-slate-700`}>
         This committee is closed — {c.status === 'disetujui' ? 'approved' : 'rejected'}.
-      </p>
+      </output>
     )
   }
   const mine = (c.menunggu ?? '').trim().toUpperCase() === login.trim().toUpperCase()
   if (!mine) {
     return (
-      <p className={`${box} text-sm text-slate-700`} role="status">
+      <output className={`block ${box} text-sm text-slate-700`}>
         Waiting for the decision of {c.menunggu || 'the next committee member'}.
-      </p>
+      </output>
     )
   }
 
@@ -82,12 +82,9 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
     decide.mutate({ decision, note: note.trim() })
   }
 
-  const failure =
-    decide.error instanceof APIError
-      ? decide.error.message
-      : decide.error
-        ? 'The decision could not be saved. Try again.'
-        : ''
+  let failure = ''
+  if (decide.error instanceof APIError) failure = decide.error.message
+  else if (decide.error) failure = 'The decision could not be saved. Try again.'
 
   return (
     <section aria-label="Keputusan komite" className={box}>
@@ -142,9 +139,9 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
         </p>
       )}
       {decide.isSuccess && (
-        <p className="mt-2 text-sm text-emerald-700" role="status">
+        <output className="block mt-2 text-sm text-emerald-700">
           Decision saved.
-        </p>
+        </output>
       )}
 
       <div className="mt-4 flex justify-end gap-2">

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -156,6 +156,12 @@ function valuesOf(edited: TravelDocumentDetail | null): TravelDocumentDetailFiel
   }
 }
 
+/** submitLabel memilih label tombol simpan: sedang menyimpan, modus ubah, atau modus tambah. */
+function submitLabel(isSaving: boolean, editMode: boolean): string {
+  if (isSaving) return 'Menyimpan…'
+  return editMode ? 'Ubah' : 'Simpan'
+}
+
 /**
  * TravelDocumentDetailForm adalah satu form untuk DUA mode — tambah dan ubah.
  *
@@ -200,7 +206,7 @@ export function TravelDocumentDetailForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = edited !== null
 
   const {
@@ -245,6 +251,68 @@ export function TravelDocumentDetailForm({
   const chosenDocumentName = documents.find((row) => row.id === chosenDocument?.trim())?.nama
 
   const rows = watch('jaminan')
+
+  function renderCoverageContent(): ReactNode {
+    if (isLoadingCoverageMapping) {
+      return (
+        <p className="text-sm text-slate-500">Memuat plan dan jaminan yang sudah dipilih…</p>
+      )
+    }
+    if (fields.length === 0) {
+      return (
+        <p className="text-sm text-slate-500">
+          Belum ada pembatasan. Dibiarkan kosong berarti aturan dokumen ini berlaku untuk
+          seluruh plan dan jaminan.
+        </p>
+      )
+    }
+    return (
+      <ul className="space-y-3">
+        {fields.map((row, index) => {
+          // Jaminan disaring menurut plan yang dipilih pada BARIS INI — persis
+          // penyaringan yang dilakukan `SearchCoverageTravel_RD` lewat parameter
+          // `plan`. Bedanya penyaringan dikerjakan di sini, atas daftar yang sudah di
+          // tangan, bukan dengan menembak server sekali per baris.
+          //
+          // Plan yang diketik bebas tidak cocok dengan satu pun baris master, dan
+          // pada keadaan itu SELURUH jaminan ditawarkan — bukan daftar kosong. Daftar
+          // kosong akan terbaca sebagai "tidak ada jaminan untuk plan ini", padahal
+          // yang benar adalah "plan ini tidak dikenali master".
+          const planName = rows?.[index]?.nama_plan?.trim() ?? ''
+          const planID = plans.find((plan) => plan.nama === planName)?.id
+          const coverageOptions = (
+            planID ? coverages.filter((item) => item.id_plan === planID) : coverages
+          ).map((item) => item.nama)
+
+          return (
+            <li key={row.id} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <ComboField
+                id={`jaminan-${index}-plan`}
+                label={`Nama Plan baris ${index + 1}`}
+                options={planOptions}
+                error={errors.jaminan?.[index]?.nama_plan?.message}
+                {...register(`jaminan.${index}.nama_plan` as const)}
+              />
+              <ComboField
+                id={`jaminan-${index}-jaminan`}
+                label={`Nama Jaminan baris ${index + 1}`}
+                options={coverageOptions}
+                error={errors.jaminan?.[index]?.nama_jaminan?.message}
+                {...register(`jaminan.${index}.nama_jaminan` as const)}
+              />
+              <Button
+                tone="halus"
+                onClick={() => remove(index)}
+                aria-label={`Hapus pembatasan baris ${index + 1}`}
+              >
+                Hapus
+              </Button>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
 
   return (
     <form
@@ -331,59 +399,7 @@ export function TravelDocumentDetailForm({
       <fieldset className="rounded-kontrol border border-slate-200 p-4">
         <legend className="px-1 text-sm font-medium text-slate-700">Plan dan Jaminan</legend>
 
-        {isLoadingCoverageMapping ? (
-          <p className="text-sm text-slate-500">Memuat plan dan jaminan yang sudah dipilih…</p>
-        ) : fields.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Belum ada pembatasan. Dibiarkan kosong berarti aturan dokumen ini berlaku untuk
-            seluruh plan dan jaminan.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {fields.map((row, index) => {
-              // Jaminan disaring menurut plan yang dipilih pada BARIS INI — persis
-              // penyaringan yang dilakukan `SearchCoverageTravel_RD` lewat parameter
-              // `plan`. Bedanya penyaringan dikerjakan di sini, atas daftar yang sudah di
-              // tangan, bukan dengan menembak server sekali per baris.
-              //
-              // Plan yang diketik bebas tidak cocok dengan satu pun baris master, dan
-              // pada keadaan itu SELURUH jaminan ditawarkan — bukan daftar kosong. Daftar
-              // kosong akan terbaca sebagai "tidak ada jaminan untuk plan ini", padahal
-              // yang benar adalah "plan ini tidak dikenali master".
-              const planName = rows?.[index]?.nama_plan?.trim() ?? ''
-              const planID = plans.find((plan) => plan.nama === planName)?.id
-              const coverageOptions = (
-                planID ? coverages.filter((item) => item.id_plan === planID) : coverages
-              ).map((item) => item.nama)
-
-              return (
-                <li key={row.id} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                  <ComboField
-                    id={`jaminan-${index}-plan`}
-                    label={`Nama Plan baris ${index + 1}`}
-                    options={planOptions}
-                    error={errors.jaminan?.[index]?.nama_plan?.message}
-                    {...register(`jaminan.${index}.nama_plan` as const)}
-                  />
-                  <ComboField
-                    id={`jaminan-${index}-jaminan`}
-                    label={`Nama Jaminan baris ${index + 1}`}
-                    options={coverageOptions}
-                    error={errors.jaminan?.[index]?.nama_jaminan?.message}
-                    {...register(`jaminan.${index}.nama_jaminan` as const)}
-                  />
-                  <Button
-                    tone="halus"
-                    onClick={() => remove(index)}
-                    aria-label={`Hapus pembatasan baris ${index + 1}`}
-                  >
-                    Hapus
-                  </Button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+        {renderCoverageContent()}
 
         <div className="mt-3">
           <Button tone="kedua" onClick={() => append({ nama_plan: '', nama_jaminan: '' })}>
@@ -407,7 +423,7 @@ export function TravelDocumentDetailForm({
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya. */}
         <Button type="submit" tone="utama" disabled={isSaving || isLoadingCoverageMapping}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+          {submitLabel(isSaving, editMode)}
         </Button>
       </div>
     </form>

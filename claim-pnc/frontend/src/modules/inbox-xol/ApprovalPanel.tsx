@@ -27,7 +27,7 @@ import type { ApprovalItem, MasterXOL } from './types'
  * Selama modul ini membaca saja, taruhannya terbatas — antrean yang terlihat bukan
  * antrean yang dapat disetujui.
  */
-export function ApprovalPanel({ active }: { active: boolean }) {
+export function ApprovalPanel({ active }: Readonly<{ active: boolean }>) {
   const approvals = useApprovals(active)
 
   const advices = approvals.data?.pemberitahuan ?? []

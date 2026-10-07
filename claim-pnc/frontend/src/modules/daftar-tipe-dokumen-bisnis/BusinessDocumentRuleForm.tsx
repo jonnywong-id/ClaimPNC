@@ -168,7 +168,7 @@ export function BusinessDocumentRuleForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   function seed(): FormFields {
     return {
       tipe_dokumen: labelForID(documentTypes, edited.id_tipe_dokumen, edited.tipe_dokumen),

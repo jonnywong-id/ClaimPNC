@@ -302,7 +302,7 @@ export function WorkshopForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const isEditing = editing !== null
   const headingId = useId()
 
@@ -815,7 +815,7 @@ export function WorkshopForm({
  * masuk ke salah satu isian di dalamnya — pada form tiga puluh tiga isian, "isian ke
  * berapa dari bagian apa" adalah satu-satunya cara menavigasinya tanpa melihat.
  */
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
       <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
@@ -835,7 +835,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
  * Tidak menggambar apa pun bila belum ada nilai yang terpakai, supaya daftar kosong tidak
  * muncul sebagai kotak saran yang selalu hampa.
  */
-function Suggestions({ name, values }: { name: string; values: string[] }) {
+function Suggestions({ name, values }: Readonly<{ name: string; values: string[] }>) {
   if (values.length === 0) return null
 
   return (

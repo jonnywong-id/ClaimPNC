@@ -52,7 +52,7 @@ export function InboxPage() {
           </div>
         )}
 
-        {inbox.data && inbox.data.tugas.length === 0 && (
+        {inbox.data?.tugas.length === 0 && (
           <p className="mt-3 rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             Tidak ada pekerjaan yang menunggu. Mulailah dari sebuah nomor polis di atas.
           </p>
@@ -86,11 +86,11 @@ function TaskTable({
   tugas,
   claiming,
   onClaim,
-}: {
+}: Readonly<{
   tugas: Task[]
   claiming: string | undefined
   onClaim: (taskID: string) => void
-}) {
+}>) {
   return (
     <div className="mt-3 overflow-x-auto">
       <table className="w-full border-collapse text-sm">

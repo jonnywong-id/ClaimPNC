@@ -303,7 +303,7 @@ export function InboxBandingHargaSalvagePage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -326,7 +326,7 @@ function PageFrame({ children }: { children: ReactNode }) {
  * menyimpulkan antreannya sendiri kosong — dan itu kesimpulan yang tidak akan ia laporkan
  * sebagai kerusakan.
  */
-function QueueNotices({ queue }: { queue: QueueInfo | undefined }) {
+function QueueNotices({ queue }: Readonly<{ queue: QueueInfo | undefined }>) {
   if (!queue) return null
 
   const lines = [queue.catatan_perwakilan, queue.catatan_giliran].filter(
@@ -335,16 +335,13 @@ function QueueNotices({ queue }: { queue: QueueInfo | undefined }) {
   if (lines.length === 0) return null
 
   return (
-    <div
-      className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3"
-      role="status"
-    >
+    <output className="mt-4 block rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3">
       <ul className="space-y-1 text-sm text-amber-900">
         {lines.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
-    </div>
+    </output>
   )
 }
 
@@ -360,12 +357,12 @@ function SearchBar({
   placeholder,
   value,
   onChange,
-}: {
+}: Readonly<{
   label: string
   placeholder: string
   value: string
   onChange: (text: string) => void
-}) {
+}>) {
   return (
     <div className="mt-4 w-full sm:w-80">
       <label
@@ -407,7 +404,7 @@ function SearchBar({
  * keputusan yang tidak sampai ke balai lelang akan dilaporkan berulang kali sebagai
  * kerusakan — atau, yang lebih buruk, tidak dilaporkan sama sekali.
  */
-function Notes({ title, lines }: { title: string; lines: string[] }) {
+function Notes({ title, lines }: Readonly<{ title: string; lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (
@@ -524,22 +521,19 @@ function columnsFor(
 function DecisionResultNotice({
   message,
   onDismiss,
-}: {
+}: Readonly<{
   message: string
   onDismiss: () => void
-}) {
+}>) {
   if (message === '') return null
 
   return (
-    <div
-      className="mt-4 flex items-start gap-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-4 py-3"
-      role="status"
-    >
+    <output className="mt-4 flex items-start gap-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-4 py-3">
       <p className="flex-1 text-sm text-emerald-900">{message}</p>
       <Button tone="halus" onClick={onDismiss}>
         Tutup
       </Button>
-    </div>
+    </output>
   )
 }
 

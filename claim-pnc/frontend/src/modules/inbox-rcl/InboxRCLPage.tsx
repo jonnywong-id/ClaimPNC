@@ -166,7 +166,7 @@ function buildColumns(
 }
 
 /** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
-function Teks({ nilai }: { nilai: string }) {
+function Teks({ nilai }: Readonly<{ nilai: string }>) {
   if (!nilai) return <span className="text-slate-400">—</span>
   return <span className="truncate">{nilai}</span>
 }
@@ -235,7 +235,7 @@ const renderer: Record<string, Renderer | undefined> = {
   }),
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">

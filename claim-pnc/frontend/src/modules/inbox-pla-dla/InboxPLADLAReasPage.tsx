@@ -293,7 +293,7 @@ export function InboxPLADLAReasPage() {
 }
 
 /** Bingkai adalah judul layar beserta ruang isinya. */
-function Bingkai({ children }: { children: ReactNode }) {
+function Bingkai({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="space-y-5 p-6">
       <header>
@@ -409,7 +409,7 @@ function pesanKosong(dicari: string, daftar: Daftar | undefined): string {
 }
 
 /** SelisihTerencana menggambar selisih terhadap layar Pega di kaki halaman. */
-function SelisihTerencana({ butir }: { butir: string[] }) {
+function SelisihTerencana({ butir }: Readonly<{ butir: string[] }>) {
   if (butir.length === 0) return null
 
   return (

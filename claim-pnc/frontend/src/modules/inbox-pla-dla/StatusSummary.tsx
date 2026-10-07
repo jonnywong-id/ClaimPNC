@@ -30,7 +30,7 @@ type Props = {
  * status bukan tab, dan tidak ada daftar terpisah per status di Pega. Membuatnya dapat
  * diklik akan menjanjikan penyaringan yang tidak ada.
  */
-export function StatusSummary({ rows, isLoading }: Props) {
+export function StatusSummary({ rows, isLoading }: Readonly<Props>) {
   if (isLoading) {
     return (
       <p className="text-sm text-slate-600">Menghitung ringkasan status…</p>

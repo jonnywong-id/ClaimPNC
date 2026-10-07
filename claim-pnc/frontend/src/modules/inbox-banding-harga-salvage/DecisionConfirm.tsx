@@ -41,7 +41,7 @@ type Props = {
   onDecided: (message: string) => void
 }
 
-export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
+export function DecisionConfirm({ row, approve, onCancel, onDecided }: Readonly<Props>) {
   const [note, setNote] = useState('')
   const decide = useBandingHargaSalvageDecide()
 
@@ -162,7 +162,7 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
  * kembali ke server. Yang dikirim adalah `harga_request` apa adanya sebagaimana diterima,
  * sehingga pembulatan tampilan tidak pernah menjadi pembulatan nilai (`I-12`).
  */
-function PriceComparison({ row }: { row: AppealRow }) {
+function PriceComparison({ row }: Readonly<{ row: AppealRow }>) {
   const barang = parseMoney(row.harga_barang)
   const request = parseMoney(row.harga_request)
   const terbaca = barang !== null && request !== null
@@ -210,11 +210,11 @@ function Figure({
   label,
   value,
   tone = 'biasa',
-}: {
+}: Readonly<{
   label: string
   value: string
   tone?: 'biasa' | 'turun'
-}) {
+}>) {
   return (
     <div className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2">
       <dt className="text-xs text-slate-500">{label}</dt>

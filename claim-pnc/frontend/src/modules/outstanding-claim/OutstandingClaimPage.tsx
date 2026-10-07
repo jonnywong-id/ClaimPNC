@@ -79,9 +79,9 @@ export function OutstandingClaimPage() {
   if (layout.isPending || detail.isPending) {
     return (
       <PageFrame claimID={claimID}>
-        <p className="mt-6 text-sm text-slate-600" role="status">
+        <output className="mt-6 block text-sm text-slate-600">
           Memuat rincian klaim…
-        </p>
+        </output>
       </PageFrame>
     )
   }
@@ -106,11 +106,11 @@ function PageFrame({
   claimID,
   claim,
   children,
-}: {
+}: Readonly<{
   claimID: string
   claim?: DetailResponse
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -159,11 +159,11 @@ function GroupCard({
   group,
   claim,
   layout,
-}: {
+}: Readonly<{
   group: Group
   claim: DetailResponse
   layout: LayoutResponse
-}) {
+}>) {
   const grids = group.grid
     .map((code) => layout.grid.find((candidate) => candidate.kode === code))
     .filter((grid): grid is Grid => grid !== undefined)
@@ -207,7 +207,7 @@ function GroupCard({
  * yang tidak punya sumber sama sekali tampak sama dengan isian yang datanya memang belum
  * diisi — dan yang pertama adalah hal yang harus dilaporkan, yang kedua bukan.
  */
-function FieldCell({ field, claim }: { field: Field; claim: DetailResponse }) {
+function FieldCell({ field, claim }: Readonly<{ field: Field; claim: DetailResponse }>) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium tracking-wide text-slate-500">{field.judul}</dt>
@@ -233,7 +233,7 @@ function FieldCell({ field, claim }: { field: Field; claim: DetailResponse }) {
  * Grid terhalang menggambar ALASAN dan pemiliknya, bukan tabel kosong — tabel kosong terbaca
  * sebagai "tidak ada isinya", padahal yang benar adalah "belum dapat dibaca".
  */
-function GridBlock({ grid, rows }: { grid: Grid; rows: GridRow[] }) {
+function GridBlock({ grid, rows }: Readonly<{ grid: Grid; rows: GridRow[] }>) {
   if (grid.terhalang) {
     return (
       <div className="rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3">

@@ -21,6 +21,7 @@ import { ProtectionForm } from './ProtectionForm'
 import {
   protectionTypeLabel,
   type Protection,
+  type ProtectionDetail,
   type ProtectionFields,
 } from './types'
 
@@ -271,28 +272,17 @@ export function ProtectionListPage() {
             {editing ? 'Ubah Permintaan Proteksi' : 'Input Open Protection'}
           </h2>
 
-          {editing !== '' && detail.isPending ? (
-            <p className="text-sm text-slate-500">Memuat isian…</p>
-          ) : editing !== '' && detail.error ? (
-            <ErrorMessage
-              title="Permintaan tidak dapat dibuka"
-              description={
-                detail.error instanceof APIError
-                  ? detail.error.message
-                  : 'Terjadi kesalahan saat memuat isian.'
-              }
-              tone="gangguan"
-            />
-          ) : (
-            <ProtectionForm
-              {...(editing !== '' && detail.data ? { existing: detail.data } : {})}
-              typeOptions={typeOptions}
-              onSubmit={submit}
-              onCancel={closeForm}
-              isSubmitting={submitting}
-              failure={failure}
-            />
-          )}
+          <FormContent
+            isEditing={editing !== ''}
+            isPending={detail.isPending}
+            error={detail.error}
+            existing={detail.data}
+            typeOptions={typeOptions}
+            onSubmit={submit}
+            onCancel={closeForm}
+            isSubmitting={submitting}
+            failure={failure}
+          />
         </section>
       )}
 
@@ -343,5 +333,60 @@ export function ProtectionListPage() {
         />
       </div>
     </div>
+  )
+}
+
+/**
+ * Isi panel form: penanda memuat, galat membuka permintaan, atau form-nya sendiri.
+ *
+ * Saat membuat baru (`isEditing` palsu), rincian tidak pernah diminta sehingga form
+ * langsung digambar kosong.
+ */
+function FormContent({
+  isEditing,
+  isPending,
+  error,
+  existing,
+  typeOptions,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+  failure,
+}: Readonly<{
+  isEditing: boolean
+  isPending: boolean
+  error: unknown
+  existing: ProtectionDetail | undefined
+  typeOptions: SelectOption[]
+  onSubmit: (values: ProtectionFields) => Promise<void>
+  onCancel: () => void
+  isSubmitting: boolean
+  failure: unknown
+}>) {
+  if (isEditing && isPending) {
+    return <p className="text-sm text-slate-500">Memuat isian…</p>
+  }
+
+  if (isEditing && error) {
+    return (
+      <ErrorMessage
+        title="Permintaan tidak dapat dibuka"
+        description={
+          error instanceof APIError ? error.message : 'Terjadi kesalahan saat memuat isian.'
+        }
+        tone="gangguan"
+      />
+    )
+  }
+
+  return (
+    <ProtectionForm
+      {...(isEditing && existing ? { existing } : {})}
+      typeOptions={typeOptions}
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+      isSubmitting={isSubmitting}
+      failure={failure}
+    />
   )
 }

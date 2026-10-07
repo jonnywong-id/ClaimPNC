@@ -58,7 +58,7 @@ type StoredSession = { token: string; user: User; validUntil: string }
 function loadFromBrowser(): Pick<SessionState, 'token' | 'user' | 'validUntil'> {
   const empty = { token: null, user: null, validUntil: null }
   try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY)
+    const raw = globalThis.sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return empty
     const content = JSON.parse(raw) as Partial<StoredSession>
     if (!content.token || !content.user || !content.validUntil) return empty
@@ -72,7 +72,7 @@ function loadFromBrowser(): Pick<SessionState, 'token' | 'user' | 'validUntil'> 
 
 function saveToBrowser(content: StoredSession): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(content))
+    globalThis.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(content))
   } catch {
     /* diabaikan dengan sadar: sesi tetap hidup di memori tab ini */
   }
@@ -80,7 +80,7 @@ function saveToBrowser(content: StoredSession): void {
 
 function clearFromBrowser(): void {
   try {
-    window.sessionStorage.removeItem(STORAGE_KEY)
+    globalThis.sessionStorage.removeItem(STORAGE_KEY)
   } catch {
     /* diabaikan dengan sadar */
   }

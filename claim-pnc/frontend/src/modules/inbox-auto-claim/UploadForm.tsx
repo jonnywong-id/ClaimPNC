@@ -50,7 +50,7 @@ type Props = {
  * Owner 2026-09-27). Versi sebelumnya menyisipkan form di antara tombol dan tabel, sehingga
  * tabel perusahaan terdorong ke bawah setiap kali form dibuka.
  */
-export function UploadForm({ source, sourceLabel, onClose, onUploaded }: Props) {
+export function UploadForm({ source, sourceLabel, onClose, onUploaded }: Readonly<Props>) {
   const template = useAutoClaimUploadTemplate(source)
   const upload = useUploadAutoClaim(source)
 
@@ -86,9 +86,9 @@ export function UploadForm({ source, sourceLabel, onClose, onUploaded }: Props) 
   }
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-unggah"
     >
@@ -211,7 +211,7 @@ export function UploadForm({ source, sourceLabel, onClose, onUploaded }: Props) 
           {file && <span className="text-xs text-slate-500">{file.name}</span>}
         </div>
       </form>
-    </div>
+    </dialog>
   )
 }
 

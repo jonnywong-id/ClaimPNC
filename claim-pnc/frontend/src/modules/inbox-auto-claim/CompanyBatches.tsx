@@ -39,7 +39,7 @@ type Props = {
  *
  * Paginasinya tetap di SERVER.
  */
-export function CompanyBatches({ source, company, companyName }: Props) {
+export function CompanyBatches({ source, company, companyName }: Readonly<Props>) {
   const [page, setPage] = useState(1)
   const [opened, setOpened] = useState<string | null>(null)
 
@@ -272,11 +272,11 @@ function DetailDialog({
   batch,
   onClose,
   children,
-}: {
+}: Readonly<{
   batch: string
   onClose: () => void
   children: React.ReactNode
-}) {
+}>) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose()
@@ -286,19 +286,24 @@ function DetailDialog({
   }, [onClose])
 
   return (
-    <div
-      role="dialog"
+    <dialog
+      open
       aria-modal="true"
       aria-label={`Rincian batch ${batch}`}
       className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 px-3 py-6 sm:items-center sm:px-6"
-      onClick={(event) => {
-        // Hanya klik pada latar yang menutup; klik di dalam kotak tidak.
-        if (event.target === event.currentTarget) onClose()
-      }}
     >
-      <div className="max-h-full w-full max-w-5xl overflow-y-auto rounded-kartu bg-white p-4 shadow-terbang sm:p-6">
+      {/* Latar: klik di luar kotak menutup. Ia tombol, bukan div berpendengar klik, supaya
+          elemen yang menerima klik memang elemen interaktif; dari keyboard, Escape menutup. */}
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={-1}
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+      />
+      <div className="relative max-h-full w-full max-w-5xl overflow-y-auto rounded-kartu bg-white p-4 shadow-terbang sm:p-6">
         {children}
       </div>
-    </div>
+    </dialog>
   )
 }

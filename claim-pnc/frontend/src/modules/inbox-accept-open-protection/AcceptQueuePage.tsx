@@ -16,7 +16,13 @@ import {
   useDecideProtection,
   useProtectionDetail,
 } from './api'
-import { protectionTypeLabel, type ChangeDetail, type Protection, type Queue } from './types'
+import {
+  protectionTypeLabel,
+  type ChangeDetail,
+  type Protection,
+  type ProtectionDetail,
+  type Queue,
+} from './types'
 
 /**
  * Layar Inbox Accept Open Protection.
@@ -124,79 +130,10 @@ export function AcceptQueuePage() {
     }
   }
 
-  const columns: Column<Protection>[] = [
-    {
-      key: 'nomor_proteksi',
-      title: 'No Proteksi',
-      width: '11rem',
-      value: (p) => p.nomor_proteksi,
-      render: (p) => (
-        <button
-          type="button"
-          onClick={() => {
-            decide.reset()
-            setOpened(p.nomor_proteksi)
-          }}
-          className="truncate rounded font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          {p.nomor_proteksi}
-        </button>
-      ),
-    },
-    {
-      key: 'nomor_polis',
-      title: 'No Polis',
-      width: '12rem',
-      value: (p) => p.nomor_polis,
-      render: (p) => (
-        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_polis || '—'}</span>
-      ),
-    },
-    {
-      key: 'nomor_klaim',
-      title: 'No Klaim',
-      width: '11rem',
-      value: (p) => p.nomor_klaim,
-      render: (p) => (
-        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_klaim || '—'}</span>
-      ),
-    },
-    {
-      key: 'tipe_proteksi',
-      title: 'Tipe Proteksi',
-      width: '12rem',
-      value: (p) => p.tipe_proteksi,
-      render: (p) => <span className="truncate">{protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}</span>,
-    },
-    {
-      key: 'tanggal_proteksi',
-      title: 'Tanggal Proteksi Dibuat',
-      width: '10rem',
-      value: (p) => p.tanggal_proteksi,
-      render: (p) => (
-        <span className="tabular-nums">
-          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'keterangan',
-      title: 'Keterangan',
-      value: (p) => p.keterangan,
-      render: (p) => (
-        <span className="truncate" title={p.keterangan}>
-          {p.keterangan || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'user_create',
-      title: 'User Create',
-      width: '10rem',
-      value: (p) => p.user_create,
-      render: (p) => <span className="truncate">{p.user_create || '—'}</span>,
-    },
-  ]
+  const columns = protectionColumns((nomor) => {
+    decide.reset()
+    setOpened(nomor)
+  })
 
   const decisionFailure = decide.error instanceof APIError ? decide.error.message : null
 
@@ -274,107 +211,14 @@ export function AcceptQueuePage() {
             </div>
           )}
 
-          {detail.isPending ? (
-            <p className="text-sm text-slate-500">Memuat rincian…</p>
-          ) : detail.error ? (
-            <ErrorMessage
-              title="Rincian tidak dapat dibuka"
-              description={
-                detail.error instanceof APIError
-                  ? detail.error.message
-                  : 'Terjadi kesalahan saat memuat rincian.'
-              }
-              tone="gangguan"
-            />
-          ) : detail.data ? (
-            <>
-              <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Detail label="No Proteksi" value={detail.data.nomor_proteksi} mono />
-                <Detail label="No Polis" value={detail.data.nomor_polis} mono />
-                <Detail label="No Klaim" value={detail.data.nomor_klaim} mono />
-                <Detail label="Nama Tertanggung" value={detail.data.nama_tertanggung} />
-                <Detail
-                  label="Start Date Time"
-                  value={detail.data.polis_mulai ? formatDate(detail.data.polis_mulai) : ''}
-                />
-                <Detail
-                  label="End Date Time"
-                  value={detail.data.polis_akhir ? formatDate(detail.data.polis_akhir) : ''}
-                />
-                <Detail
-                  label="Tipe Proteksi"
-                  value={protectionTypeLabel(detail.data.tipe_proteksi, detail.data.nama_tipe_proteksi)}
-                />
-                <Detail
-                  label="Tanggal Input"
-                  value={
-                    detail.data.tanggal_proteksi ? formatDate(detail.data.tanggal_proteksi) : ''
-                  }
-                />
-                <Detail label="User Create" value={detail.data.user_create} />
-                <div className="sm:col-span-2 lg:col-span-3">
-                  <Detail label="Keterangan" value={detail.data.keterangan} />
-                </div>
-              </dl>
-
-              {detail.data.detail_perubahan && (
-                <ChangeDetailPanel detail={detail.data.detail_perubahan} />
-              )}
-
-              {/*
-                Dokumen penunjang menempel pada KLAIM, bukan pada permintaan proteksinya —
-                karena itu yang diserahkan nomor klaimnya.
-
-                Permintaan yang sudah diputuskan menjadi baca-saja: dokumennya tetap perlu
-                dibuka untuk ditinjau, tetapi menambah berkas pada permintaan yang sudah
-                selesai tidak lagi bermakna.
-              */}
-              <DokumenPenunjangPanel
-                nomorKlaim={detail.data.nomor_klaim}
-                readOnly={!detail.data.menunggu_keputusan}
-              />
-
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                {detail.data.menunggu_keputusan ? (
-                  <>
-                    <Button
-                      tone="utama"
-                      onClick={() => { submit('setuju') }}
-                      disabled={decide.isPending}
-                    >
-                      {decide.isPending ? 'Menyimpan…' : 'Setujui'}
-                    </Button>
-                    <Button
-                      tone="kedua"
-                      onClick={() => { submit('tolak') }}
-                      disabled={decide.isPending}
-                    >
-                      Tolak
-                    </Button>
-                  </>
-                ) : (
-                  // Sudah diputuskan: tombolnya tidak ditampilkan sama sekali, dan yang
-                  // ditampilkan adalah keputusannya beserta pelakunya. Menampilkan tombol
-                  // yang pasti ditolak hanya membuat pengguna mencobanya.
-                  <p className="text-sm text-slate-600">
-                    Sudah{' '}
-                    <span className="font-medium">
-                      {detail.data.status_akseptasi === '1' ? 'disetujui' : 'ditolak'}
-                    </span>
-                    {detail.data.diaksep_oleh && <> oleh {detail.data.diaksep_oleh}</>}
-                    {detail.data.tanggal_akseptasi && (
-                      <> pada {formatDate(detail.data.tanggal_akseptasi)}</>
-                    )}
-                    .
-                  </p>
-                )}
-
-                <Button tone="halus" onClick={() => setOpened(null)} disabled={decide.isPending}>
-                  Tutup
-                </Button>
-              </div>
-            </>
-          ) : null}
+          <ProtectionDetailBody
+            isPending={detail.isPending}
+            error={detail.error}
+            data={detail.data}
+            deciding={decide.isPending}
+            onDecide={(decision) => { submit(decision) }}
+            onClose={() => setOpened(null)}
+          />
         </section>
       )}
 
@@ -422,20 +266,97 @@ export function AcceptQueuePage() {
   )
 }
 
+/**
+ * Ketujuh kolom antrean. Dipisahkan dari komponen layar supaya fungsi layarnya tetap
+ * terbaca (temuan SonarQube S3776); `onOpen` membuka panel akseptasi untuk satu proteksi.
+ */
+function protectionColumns(onOpen: (nomor: string) => void): Column<Protection>[] {
+  return [
+    {
+      key: 'nomor_proteksi',
+      title: 'No Proteksi',
+      width: '11rem',
+      value: (p) => p.nomor_proteksi,
+      render: (p) => (
+        <button
+          type="button"
+          onClick={() => onOpen(p.nomor_proteksi)}
+          className="truncate rounded font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {p.nomor_proteksi}
+        </button>
+      ),
+    },
+    {
+      key: 'nomor_polis',
+      title: 'No Polis',
+      width: '12rem',
+      value: (p) => p.nomor_polis,
+      render: (p) => (
+        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_polis || '—'}</span>
+      ),
+    },
+    {
+      key: 'nomor_klaim',
+      title: 'No Klaim',
+      width: '11rem',
+      value: (p) => p.nomor_klaim,
+      render: (p) => (
+        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_klaim || '—'}</span>
+      ),
+    },
+    {
+      key: 'tipe_proteksi',
+      title: 'Tipe Proteksi',
+      width: '12rem',
+      value: (p) => p.tipe_proteksi,
+      render: (p) => <span className="truncate">{protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}</span>,
+    },
+    {
+      key: 'tanggal_proteksi',
+      title: 'Tanggal Proteksi Dibuat',
+      width: '10rem',
+      value: (p) => p.tanggal_proteksi,
+      render: (p) => (
+        <span className="tabular-nums">
+          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'keterangan',
+      title: 'Keterangan',
+      value: (p) => p.keterangan,
+      render: (p) => (
+        <span className="truncate" title={p.keterangan}>
+          {p.keterangan || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'user_create',
+      title: 'User Create',
+      width: '10rem',
+      value: (p) => p.user_create,
+      render: (p) => <span className="truncate">{p.user_create || '—'}</span>,
+    },
+  ]
+}
+
 /** Satu tab antrean. */
 function QueueTab({
   current,
   value,
   label,
   onPick,
-}: {
+}: Readonly<{
   // Boleh null selama daftar antrean yang menjadi hak pemanggil belum tiba — pada saat itu
   // belum ada tab yang aktif, dan menandai salah satunya akan keliru separuh waktu.
   current: Queue | null
   value: Queue
   label: string
   onPick: (queue: Queue) => void
-}) {
+}>) {
   const active = current === value
 
   return (
@@ -469,7 +390,7 @@ function QueueTab({
  * tanpa membandingkan dua label. Pada layar sempit panahnya berputar menjadi menurun; nilai
  * yang panjang tidak boleh memaksa tabel menggeser mendatar.
  */
-function ChangeDetailPanel({ detail }: { detail: ChangeDetail }) {
+function ChangeDetailPanel({ detail }: Readonly<{ detail: ChangeDetail }>) {
   // Tipe '7' mengisi pasangan tanggal, tipe '8' mengisi pasangan penyebab. Keduanya tidak
   // pernah terisi bersamaan — backend yang memastikannya.
   const pasangan = detail.dol_sebelum || detail.dol_sesudah
@@ -533,11 +454,11 @@ function ChangeSide({
   label,
   value,
   highlight,
-}: {
+}: Readonly<{
   label: string
   value: string
   highlight?: boolean
-}) {
+}>) {
   return (
     <div
       className={
@@ -560,7 +481,7 @@ function ChangeSide({
   )
 }
 
-function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Detail({ label, value, mono }: Readonly<{ label: string; value: string; mono?: boolean }>) {
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
@@ -568,5 +489,138 @@ function Detail({ label, value, mono }: { label: string; value: string; mono?: b
         {value || '—'}
       </dd>
     </div>
+  )
+}
+
+/**
+ * Isi panel "Akseptasi Proteksi": memuat, galat, atau rincian beserta tombol keputusannya.
+ *
+ * Dipisahkan dari layar supaya ketiga keadaannya terbaca sebagai `if` berurutan, bukan
+ * ternary bersarang (temuan SonarQube S3358 dan S3776). Urutan pemeriksaannya sama persis
+ * dengan sebelumnya: memuat lebih dulu, lalu galat, lalu data.
+ */
+function ProtectionDetailBody({
+  isPending,
+  error,
+  data,
+  deciding,
+  onDecide,
+  onClose,
+}: Readonly<{
+  isPending: boolean
+  error: Error | null
+  data: ProtectionDetail | undefined
+  deciding: boolean
+  onDecide: (decision: 'setuju' | 'tolak') => void
+  onClose: () => void
+}>) {
+  if (isPending) {
+    return <p className="text-sm text-slate-500">Memuat rincian…</p>
+  }
+
+  if (error) {
+    return (
+      <ErrorMessage
+        title="Rincian tidak dapat dibuka"
+        description={
+          error instanceof APIError
+            ? error.message
+            : 'Terjadi kesalahan saat memuat rincian.'
+        }
+        tone="gangguan"
+      />
+    )
+  }
+
+  if (!data) return null
+
+  return (
+    <>
+      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Detail label="No Proteksi" value={data.nomor_proteksi} mono />
+        <Detail label="No Polis" value={data.nomor_polis} mono />
+        <Detail label="No Klaim" value={data.nomor_klaim} mono />
+        <Detail label="Nama Tertanggung" value={data.nama_tertanggung} />
+        <Detail
+          label="Start Date Time"
+          value={data.polis_mulai ? formatDate(data.polis_mulai) : ''}
+        />
+        <Detail
+          label="End Date Time"
+          value={data.polis_akhir ? formatDate(data.polis_akhir) : ''}
+        />
+        <Detail
+          label="Tipe Proteksi"
+          value={protectionTypeLabel(data.tipe_proteksi, data.nama_tipe_proteksi)}
+        />
+        <Detail
+          label="Tanggal Input"
+          value={
+            data.tanggal_proteksi ? formatDate(data.tanggal_proteksi) : ''
+          }
+        />
+        <Detail label="User Create" value={data.user_create} />
+        <div className="sm:col-span-2 lg:col-span-3">
+          <Detail label="Keterangan" value={data.keterangan} />
+        </div>
+      </dl>
+
+      {data.detail_perubahan && (
+        <ChangeDetailPanel detail={data.detail_perubahan} />
+      )}
+
+      {/*
+        Dokumen penunjang menempel pada KLAIM, bukan pada permintaan proteksinya —
+        karena itu yang diserahkan nomor klaimnya.
+
+        Permintaan yang sudah diputuskan menjadi baca-saja: dokumennya tetap perlu
+        dibuka untuk ditinjau, tetapi menambah berkas pada permintaan yang sudah
+        selesai tidak lagi bermakna.
+      */}
+      <DokumenPenunjangPanel
+        nomorKlaim={data.nomor_klaim}
+        readOnly={!data.menunggu_keputusan}
+      />
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {data.menunggu_keputusan ? (
+          <>
+            <Button
+              tone="utama"
+              onClick={() => { onDecide('setuju') }}
+              disabled={deciding}
+            >
+              {deciding ? 'Menyimpan…' : 'Setujui'}
+            </Button>
+            <Button
+              tone="kedua"
+              onClick={() => { onDecide('tolak') }}
+              disabled={deciding}
+            >
+              Tolak
+            </Button>
+          </>
+        ) : (
+          // Sudah diputuskan: tombolnya tidak ditampilkan sama sekali, dan yang
+          // ditampilkan adalah keputusannya beserta pelakunya. Menampilkan tombol
+          // yang pasti ditolak hanya membuat pengguna mencobanya.
+          <p className="text-sm text-slate-600">
+            Sudah{' '}
+            <span className="font-medium">
+              {data.status_akseptasi === '1' ? 'disetujui' : 'ditolak'}
+            </span>
+            {data.diaksep_oleh && <> oleh {data.diaksep_oleh}</>}
+            {data.tanggal_akseptasi && (
+              <> pada {formatDate(data.tanggal_akseptasi)}</>
+            )}
+            .
+          </p>
+        )}
+
+        <Button tone="halus" onClick={onClose} disabled={deciding}>
+          Tutup
+        </Button>
+      </div>
+    </>
   )
 }

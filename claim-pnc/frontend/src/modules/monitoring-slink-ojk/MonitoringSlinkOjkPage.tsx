@@ -414,12 +414,9 @@ function IsiLayar() {
  * Baris yang ditolak ditampilkan beserta nomor barisnya, supaya pelapor dapat membuka
  * berkasnya dan memperbaiki baris itu — bukan menebak baris mana yang salah.
  */
-function RingkasanTulis({ hasil }: { hasil: HasilTulis }) {
+function RingkasanTulis({ hasil }: Readonly<{ hasil: HasilTulis }>) {
   return (
-    <div
-      className="mt-3 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm"
-      role="status"
-    >
+    <output className="mt-3 block rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
       <p className="text-slate-800">
         <strong className="font-semibold">{hasil.total} baris</strong> diproses —{' '}
         {hasil.baru} baru, {hasil.diperbarui} diperbarui.
@@ -453,7 +450,7 @@ function RingkasanTulis({ hasil }: { hasil: HasilTulis }) {
           )}
         </div>
       )}
-    </div>
+    </output>
   )
 }
 
@@ -483,11 +480,11 @@ function TabSegmen({
   aktif,
   daftar,
   onPilih,
-}: {
+}: Readonly<{
   aktif: KodeSegmen
   daftar: Array<{ kode: KodeSegmen; label: string }>
   onPilih: (kode: KodeSegmen) => void
-}) {
+}>) {
   return (
     <div className="mt-4 overflow-x-auto" role="tablist" aria-label="Segmen SLIK OJK">
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
@@ -515,7 +512,7 @@ function TabSegmen({
     </div>
   )
 }
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">

@@ -122,7 +122,7 @@ export function InboxManagerAdminPage() {
 
               <div className="mt-4">
                 <DataTable<WorkItem>
-                  columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+                  columns={columnsFor(tab, renderDetailButton)}
                   rows={list.data?.baris ?? []}
                   rowKey={(row) => `${row.referensi}|${row.id}`}
                   title={tab.nama}
@@ -169,12 +169,12 @@ function PageFrame({
   tab,
   exportable,
   children,
-}: {
+}: Readonly<{
   tab: string
   /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
   exportable: boolean
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -215,7 +215,7 @@ function PageFrame({
  * adalah jawaban yang membingungkan: pengguna tidak dapat membedakannya dari ekspor yang
  * gagal diam-diam.
  */
-function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
+function ExportButton({ tab, enabled }: Readonly<{ tab: string; enabled: boolean }>) {
   const ekspor = useExportInboxManagerAdmin()
 
   return (
@@ -257,7 +257,7 @@ function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
  * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya ia ikut berubah saat
  * aturannya berubah.
  */
-function NoTabNotice({ meta }: { meta: MetadataResponse }) {
+function NoTabNotice({ meta }: Readonly<{ meta: MetadataResponse }>) {
   const belumDiisi = meta.lini_bisnis_anda.trim() === ''
 
   return (
@@ -317,6 +317,11 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
   )
 }
 
+/** Isi kolom aksi tiap baris — di tingkat modul agar tidak dibuat ulang tiap render. */
+function renderDetailButton(row: WorkItem): ReactNode {
+  return <DetailButton item={row} />
+}
+
 /**
  * Tombol rincian.
  *
@@ -328,7 +333,7 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
  * disusun menjadi kunci assignment oleh `SetAssignmentInboxReg_act`. Dengan begitu
  * menyalakan layar rincian kelak tidak menuntut perubahan kontrak API modul ini.
  */
-function DetailButton({ item }: { item: WorkItem }) {
+function DetailButton({ item }: Readonly<{ item: WorkItem }>) {
   const navigate = useNavigate()
   const key = item.referensi || item.id
 
@@ -351,7 +356,7 @@ function DetailButton({ item }: { item: WorkItem }) {
  * berdampingan: daftar yang tidak lagi terpotong di 500 baris, ketiga grid yang kini menjadi
  * tab, dan kolom Lama Waktu Klaim yang bentuknya direkonstruksi.
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (

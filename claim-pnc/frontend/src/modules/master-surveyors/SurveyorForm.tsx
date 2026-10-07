@@ -117,7 +117,7 @@ type Props = {
  * dan padanannya menunggu modul `S-1 Dokumen`. Nilai yang sudah ada dipertahankan apa
  * adanya saat menyunting — tidak dikosongkan diam-diam.
  */
-export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
+export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Readonly<Props>) {
   const save = useSaveSurveyor()
   const firstFieldRef = useRef<HTMLSelectElement | null>(null)
 
@@ -299,7 +299,7 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
  * Yang di sini kerap dapat diperbaiki pengguna sendiri — nama yang bentrok, login yang
  * sudah dipakai — sehingga nadanya penolakan, bukan gangguan.
  */
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = saveMessage(error)
   return (
     <ErrorMessage title={message.title} description={message.description} tone={message.tone} />

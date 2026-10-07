@@ -37,7 +37,7 @@ type Props = {
  * juga Approval Master. Menggambar "0" pada tab yang tidak punya hitungan berarti menyatakan
  * tidak ada apa-apa di sana, padahal isinya justru penuh.
  */
-export function ManagerTabs({ tabs, counters, active, onSelect }: Props) {
+export function ManagerTabs({ tabs, counters, active, onSelect }: Readonly<Props>) {
   const byTab = new Map(counters.map((counter) => [counter.tab, counter]))
 
   return (
@@ -93,10 +93,10 @@ export function ManagerTabs({ tabs, counters, active, onSelect }: Props) {
 function TabBadge({
   counter,
   selected,
-}: {
+}: Readonly<{
   counter?: Counter | undefined
   selected: boolean
-}) {
+}>) {
   if (!counter) return null
 
   if (counter.tidak_tersedia) {
@@ -112,15 +112,20 @@ function TabBadge({
 
   const empty = counter.jumlah === 0
 
+  let tone: string
+  if (empty) {
+    tone = 'bg-slate-100 text-slate-400'
+  } else if (selected) {
+    tone = 'bg-blue-100 text-blue-800'
+  } else {
+    tone = 'bg-slate-200 text-slate-700'
+  }
+
   return (
     <span
       className={[
         'rounded-full px-1.5 text-xs font-semibold tabular-nums',
-        empty
-          ? 'bg-slate-100 text-slate-400'
-          : selected
-            ? 'bg-blue-100 text-blue-800'
-            : 'bg-slate-200 text-slate-700',
+        tone,
       ].join(' ')}
     >
       {counter.jumlah}

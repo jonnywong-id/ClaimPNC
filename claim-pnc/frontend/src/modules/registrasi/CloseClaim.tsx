@@ -20,7 +20,7 @@ const NOT_STORED = 'No options and no storage column for this field in the Pega 
  *
  * Empat dropdown dan No Reff Broker tampil tetapi nonaktif: tidak punya daftar pilihan maupun kolom.
  */
-export function CloseClaimDialog({ claimID, taskID, onClose }: { claimID: string; taskID: string; onClose: () => void }) {
+export function CloseClaimDialog({ claimID, taskID, onClose }: Readonly<{ claimID: string; taskID: string; onClose: () => void }>) {
   const close = useCloseClaim(claimID)
   const [note, setNote] = useState('')
   const [temporary, setTemporary] = useState(false)
@@ -160,7 +160,7 @@ export function CloseClaimDialog({ claimID, taskID, onClose }: { claimID: string
   )
 }
 
-function DisabledSelect({ id, label }: { id: string; label: string }) {
+function DisabledSelect({ id, label }: Readonly<{ id: string; label: string }>) {
   return (
     <label className="block text-xs font-semibold text-slate-800">
       {label}

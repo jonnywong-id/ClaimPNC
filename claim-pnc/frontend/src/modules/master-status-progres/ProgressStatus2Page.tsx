@@ -214,6 +214,47 @@ export function ProgressStatus2Page() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar status progres 2…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.status_progres_2}
+        rowKey={(row) => row.id}
+        description="Sumber: POOLDATA.GCNM_MST_PROGRESS"
+        emptyMessage="Belum ada status progres 2 pada entitas ini."
+        // 15 baris per halaman, sama seperti layar lama. Angkanya dibaca dari section
+        // MILIK LAYAR INI, bukan disalin dari tingkat 1:
+        // `Section/BrowseStatusProgress2-Section.xml` menyisipkan `pyGridPaginator`
+        // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Kebetulan sama
+        // dengan tingkat 1 — dan kebetulan itu diperiksa, bukan diandaikan.
+        pageSize={15}
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -255,40 +296,7 @@ export function ProgressStatus2Page() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar status progres 2…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.status_progres_2}
-            rowKey={(row) => row.id}
-            description="Sumber: POOLDATA.GCNM_MST_PROGRESS"
-            emptyMessage="Belum ada status progres 2 pada entitas ini."
-            // 15 baris per halaman, sama seperti layar lama. Angkanya dibaca dari section
-            // MILIK LAYAR INI, bukan disalin dari tingkat 1:
-            // `Section/BrowseStatusProgress2-Section.xml` menyisipkan `pyGridPaginator`
-            // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Kebetulan sama
-            // dengan tingkat 1 — dan kebetulan itu diperiksa, bukan diandaikan.
-            pageSize={15}
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )

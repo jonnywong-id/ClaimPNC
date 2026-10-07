@@ -157,7 +157,7 @@ function violationsOf(error: unknown): Record<string, string> {
  * Tabelnya tidak punya kolom penampung alasan penolakan. Menggambar isian yang diam-diam
  * membuang isinya lebih buruk daripada tidak menggambarnya.
  */
-export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }: Props) {
+export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const editMode = editing !== null
 
   const {

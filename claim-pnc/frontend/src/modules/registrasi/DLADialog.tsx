@@ -7,6 +7,13 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { useDLAList, usePrintDLA, violationsFrom } from './api'
 import type { DLAListResponse, DLARow } from './types'
 
+/** Teks galat dialog: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
+function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
+  if (failure instanceof Error) return failure.message
+  return 'Terjadi kesalahan pada sistem.'
+}
+
 /**
  * Dialog Print DLA — padanan layar `Section/PrintDLA-sect.xml` (flow action lokal `PrintDLA`,
  * pra-proses `GenerateDLAListAdjustment`). Membukanya menerbitkan DLA adjustment itu per
@@ -21,11 +28,11 @@ export function DLADialog({
   claimID,
   address,
   onClose,
-}: {
+}: Readonly<{
   claimID: string
   address: { tugas_id: string; objek: number; jaminan: number; adjustment: number }
   onClose: () => void
-}) {
+}>) {
   const list = useDLAList(claimID)
   const print = usePrintDLA(claimID)
   const [data, setData] = useState<DLAListResponse | null>(null)
@@ -75,9 +82,9 @@ export function DLADialog({
   }
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-print-dla"
     >
@@ -88,21 +95,21 @@ export function DLADialog({
 
         <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={asPerPolicy} onChange={(e) => setAsPerPolicy(e.target.checked)} />
-          Coverage AS PER ORIGINAL POLICY
+          <span>Coverage AS PER ORIGINAL POLICY</span>
         </label>
 
         {list.isPending && !data && <p className="mt-4 text-sm text-slate-500">Menyiapkan DLA…</p>}
 
         {data?.ex_gratia && (
-          <p className="mt-4 text-sm text-slate-600" role="status">
+          <output className="mt-4 block text-sm text-slate-600">
             No DLA is issued for an ex gratia claim.
-          </p>
+          </output>
         )}
         {data && !data.ex_gratia && rows.length === 0 && (
-          <p className="mt-4 text-sm text-slate-600" role="status">
+          <output className="mt-4 block text-sm text-slate-600">
             No DLA recipient: the policy has no co-insurance led by us, and no Fac Out, Treaty, or BPPDAN spreading
             qualifies.
-          </p>
+          </output>
         )}
         {data && data.peringatan.length > 0 && (
           <p className="mt-4 whitespace-pre-line text-sm text-amber-700">{data.peringatan.join('\n')}</p>
@@ -171,21 +178,15 @@ export function DLADialog({
           <div className="mt-4">
             <ErrorMessage
               title="DLA belum dapat diproses"
-              description={
-                violations.length > 0
-                  ? violations.map((v) => v.pesan).join(' ')
-                  : failure instanceof Error
-                    ? failure.message
-                    : 'Terjadi kesalahan pada sistem.'
-              }
+              description={failureDescription(violations, failure)}
               tone="penolakan"
             />
           </div>
         )}
         {print.isSuccess && !busy && !failure && (
-          <p className="mt-4 text-sm text-emerald-700" role="status">
+          <output className="mt-4 block text-sm text-emerald-700">
             DLA diunduh.
-          </p>
+          </output>
         )}
 
         <div className="mt-6 flex flex-wrap justify-between gap-3">
@@ -202,6 +203,6 @@ export function DLADialog({
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

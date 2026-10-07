@@ -11,6 +11,13 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   icon?: ReactNode
 }
 
+/** describedByFor memilih elemen keterangan yang dirujuk aria-describedby: galat lebih dulu, lalu petunjuk. */
+function describedByFor(id: string, error: unknown, hint: unknown): string | undefined {
+  if (error) return `${id}-galat`
+  if (hint) return `${id}-petunjuk`
+  return undefined
+}
+
 /**
  * Field adalah satu baris isian: label, input, dan pesan kesalahannya.
  *
@@ -73,7 +80,7 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
           ref={ref}
           disabled={disabled}
           aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined}
+          aria-describedby={describedByFor(id, error, hint)}
           className={className ? `${inputClass} ${className}` : inputClass}
           {...rest}
         />

@@ -165,9 +165,7 @@ export function RCLPUCLPage() {
           ) : (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => (
-                  <CaseLink item={row} onOpen={openCase} />
-                ))}
+                columns={columnsFor(tab, openCase)}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.no_case}`}
                 title={tab.nama}
@@ -215,14 +213,14 @@ function PageFrame({
   exportable,
   reportColumns = [],
   children,
-}: {
+}: Readonly<{
   tab: Tab | undefined
   range: DateRange
   /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
   exportable: boolean
   reportColumns?: ReportColumn[]
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -271,10 +269,10 @@ function PageFrame({
 function DateRangeFilter({
   value,
   onChange,
-}: {
+}: Readonly<{
   value: DateRange
   onChange: (next: DateRange) => void
-}) {
+}>) {
   return (
     <section className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
       <div className="flex flex-wrap items-start gap-4">
@@ -310,7 +308,7 @@ function DateRangeFilter({
  * sendirinya begitu keadaannya berubah — khususnya catatan tab "Klaim MSIG", yang berlaku
  * hanya sampai DBA memastikan kolom penandanya.
  */
-function TabNotice({ text }: { text: string }) {
+function TabNotice({ text }: Readonly<{ text: string }>) {
   return (
     <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
       <p className="text-xs text-slate-700">{text}</p>
@@ -335,14 +333,17 @@ function ExportButton({
   range,
   enabled,
   columns,
-}: {
+}: Readonly<{
   tab: Tab | undefined
   range: DateRange
   enabled: boolean
   columns: ReportColumn[]
-}) {
+}>) {
   const ekspor = useExportRCLPUCL()
   const isReport = tab?.punya_laporan_rentang_tanggal === true
+
+  let label = isReport ? 'Unduh Laporan Harian' : 'Export To Excel'
+  if (ekspor.isPending) label = 'Menyiapkan berkas…'
 
   return (
     <div className="flex max-w-sm flex-col items-end gap-1">
@@ -356,11 +357,7 @@ function ExportButton({
           })
         }
       >
-        {ekspor.isPending
-          ? 'Menyiapkan berkas…'
-          : isReport
-            ? 'Unduh Laporan Harian'
-            : 'Export To Excel'}
+        {label}
       </Button>
 
       {isReport && columns.length > 0 && (
@@ -385,7 +382,7 @@ function ExportButton({
  * hilang dengan sendirinya begitu penghalangnya hilang. Menyebut pemiliknya penting:
  * penghalang tanpa alamat tidak pernah hilang.
  */
-function BlockedNotice({ tab }: { tab: Tab }) {
+function BlockedNotice({ tab }: Readonly<{ tab: Tab }>) {
   return (
     <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
       <h2 className="text-sm font-semibold text-amber-900">{tab.nama} belum tersedia</h2>
@@ -489,7 +486,7 @@ function WriteActionsNotice() {
  * dibuka `PNCInboxAdmin`, `PNCSearchKlaim`, `InboxManagerReopen1_Sec`, dan
  * `InputProgressClaim` — **tidak satu pun dari RCL/PUCL**.
  */
-function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) => void }) {
+function CaseLink({ item, onOpen }: Readonly<{ item: WorkItem; onOpen: (row: WorkItem) => void }>) {
   if (item.no_case === '') return <span className="text-slate-400">—</span>
 
   return (
@@ -526,7 +523,7 @@ function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) =>
  * keputusan, bukan diulang atas nama merapikan layar yang panjang —
  * `keputusan-implementasi.md` §80.9.
  */
-function PlannedDifferences({ lines }: { lines: PlannedDifference[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: PlannedDifference[] }>) {
   if (lines.length === 0) return null
 
   return (
@@ -585,7 +582,7 @@ function PlannedDifferences({ lines }: { lines: PlannedDifference[] }) {
  * dilihat pengguna adalah gambarnya. Menyatukannya akan membuat pengurutan menelusuri
  * markup alih-alih nomor case.
  */
-function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+function columnsFor(tab: Tab, onOpen: (row: WorkItem) => void): Column<WorkItem>[] {
   return tab.kolom.map((column) => {
     const base: Column<WorkItem> = {
       key: column.kunci,
@@ -594,7 +591,7 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
     }
 
     if (column.kunci === 'no_case') {
-      return { ...base, render: openCase }
+      return { ...base, render: (row) => <CaseLink item={row} onOpen={onOpen} /> }
     }
     return base
   })

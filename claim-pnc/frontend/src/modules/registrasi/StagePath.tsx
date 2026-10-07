@@ -27,7 +27,7 @@ type Props = {
  * itu memang perilaku sistem lama; yang tidak boleh terjadi adalah petugas mengira ini
  * janji.
  */
-export function StagePath({ tahap, jalur, currentStage }: Props) {
+export function StagePath({ tahap, jalur, currentStage }: Readonly<Props>) {
   if (jalur.length === 0) return null
 
   const stageNames = new Map(tahap.map((t) => [t.id, t.nama]))

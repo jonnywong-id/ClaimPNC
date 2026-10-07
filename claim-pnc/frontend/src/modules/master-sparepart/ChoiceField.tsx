@@ -59,6 +59,14 @@ type Props = {
 /** Sandi pilihan "Lainnya"; sengaja memuat karakter yang tidak mungkin menjadi nilai. */
 const OTHER = '\u0000lainnya'
 
+/**
+ * Pilihan yang ditawarkan: nilai yang sudah dipakai baris lain, ditambah nilai yang sedang
+ * dipegang bila belum ada di sana, terurut menurut unit kode.
+ */
+function optionsFor(known: string[], value: string): string[] {
+  return [...new Set([...known, ...(value === '' ? [] : [value])])].sort(compareCodeUnits)
+}
+
 export function ChoiceField({
   label,
   value,
@@ -69,14 +77,14 @@ export function ChoiceField({
   hint,
   maxLength,
   onChange,
-}: Props) {
+}: Readonly<Props>) {
   const id = useId()
   const errorId = `${id}-error`
 
   // Nilai yang sedang dipegang TETAP muncul sebagai pilihan meski tidak ada di daftar —
   // baris lama dapat memuat nilai yang belum pernah dipakai baris lain, dan menyembunyikannya
   // akan mengosongkan isian hanya karena barisnya dibuka.
-  const options = [...new Set([...known, ...(value !== '' ? [value] : [])])].sort(compareCodeUnits)
+  const options = optionsFor(known, value)
   const isTyping = value !== '' && !known.includes(value)
 
   function pick(picked: string) {
@@ -86,6 +94,7 @@ export function ChoiceField({
   }
 
   const describedBy = error ? errorId : undefined
+  const ariaInvalid = error ? 'true' : 'false'
 
   return (
     <div>
@@ -107,7 +116,7 @@ export function ChoiceField({
           id={id}
           value={isTyping ? OTHER : value}
           disabled={disabled}
-          aria-invalid={error ? 'true' : 'false'}
+          aria-invalid={ariaInvalid}
           aria-describedby={describedBy}
           onChange={(event) => pick(event.target.value)}
           className={[
@@ -159,7 +168,7 @@ export function ChoiceField({
               onChange={() => pick(OTHER)}
               className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500/50"
             />
-            Lainnya…
+            <span>Lainnya…</span>
           </label>
         </div>
       )}
@@ -176,7 +185,7 @@ export function ChoiceField({
           maxLength={maxLength}
           disabled={disabled}
           aria-label={`${label} — ketik nilai lain`}
-          aria-invalid={error ? 'true' : 'false'}
+          aria-invalid={ariaInvalid}
           aria-describedby={describedBy}
           onChange={(event) => onChange(event.target.value)}
           className={[

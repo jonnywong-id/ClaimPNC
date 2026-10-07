@@ -123,8 +123,8 @@ export function CloseClaimPage() {
     setGalatUnduh(null)
     try {
       await unduhKlaimTutupCSV(filter, token, portal)
-    } catch (failure) {
-      setGalatUnduh(pesanGalat(failure))
+    } catch (error_) {
+      setGalatUnduh(pesanGalat(error_))
     } finally {
       setSedangUnduh(false)
     }
@@ -327,12 +327,9 @@ export function CloseClaimPage() {
       )}
 
       {kabar && (
-        <div
-          className="mt-6 rounded-kartu border border-emerald-200 bg-emerald-50 p-4"
-          role="status"
-        >
+        <output className="mt-6 block rounded-kartu border border-emerald-200 bg-emerald-50 p-4">
           <p className="text-sm text-emerald-900">{kabar}</p>
-        </div>
+        </output>
       )}
 
       {galatUnduh && (
@@ -446,7 +443,7 @@ export function CloseClaimPage() {
  * Work Owner tertulis — dan menyatakannya di layar itulah yang membuat keputusan itu
  * terlihat oleh orang yang memakai layarnya, bukan hanya oleh yang membaca dokumen.
  */
-function SelisihTerencana({ butir }: { butir: string[] }) {
+function SelisihTerencana({ butir }: Readonly<{ butir: string[] }>) {
   if (butir.length === 0) return null
 
   return (
@@ -469,7 +466,7 @@ function SelisihTerencana({ butir }: { butir: string[] }) {
  * Keenam isiannya tetap disalin dari activity yang membacanya, sehingga tidak ada satu pun
  * penyaring yang dikarang maupun hilang.
  */
-function PanelPenyaring(props: {
+function PanelPenyaring(props: Readonly<{
   noPolis: string
   noKlaim: string
   pic: string
@@ -486,7 +483,7 @@ function PanelPenyaring(props: {
   onStatusTransfer: (value: string) => void
   onStatusBayar: (value: string) => void
   onBersihkan: () => void
-}) {
+}>) {
   const adaPenyaring =
     props.noPolis !== '' ||
     props.noKlaim !== '' ||
@@ -540,12 +537,12 @@ function IsianTeks({
   label,
   value,
   onChange,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: string
   onChange: (value: string) => void
-}) {
+}>) {
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
@@ -568,13 +565,13 @@ function IsianPilihan({
   value,
   options,
   onChange,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: string
   options: { nilai: string; label: string }[]
   onChange: (value: string) => void
-}) {
+}>) {
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
@@ -610,13 +607,13 @@ function BarisTindakan({
   alasan,
   nonaktif,
   onPilih,
-}: {
+}: Readonly<{
   klaim: KlaimTutup
   boleh: boolean
   alasan: string
   nonaktif: boolean
   onPilih: (jenis: JenisPermintaan) => void
-}) {
+}>) {
   const menunggu = new Set(klaim.permintaan_tertunda.map((p) => p.jenis))
 
   /*
@@ -649,7 +646,7 @@ function BarisTindakan({
   )
 }
 
-function PenandaMenunggu({ teks }: { teks: string }) {
+function PenandaMenunggu({ teks }: Readonly<{ teks: string }>) {
   return (
     <span
       className="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200"
@@ -669,7 +666,7 @@ function PenandaMenunggu({ teks }: { teks: string }) {
  * Klaim yang tanggal tutupnya tidak diketahui ditandai berbeda: angkanya dihitung sampai
  * HARI INI, dan itu arti yang berbeda dari lamanya klaim berjalan.
  */
-function LamaKlaim({ hari, tanggalTutup }: { hari: number; tanggalTutup: string }) {
+function LamaKlaim({ hari, tanggalTutup }: Readonly<{ hari: number; tanggalTutup: string }>) {
   if (tanggalTutup === '') {
     return (
       <span
@@ -694,7 +691,7 @@ function LamaKlaim({ hari, tanggalTutup }: { hari: number; tanggalTutup: string 
  * Label status klaim ikut ditampilkan di bawahnya — ia TIDAK ada di layar lama, tetapi
  * tanpanya penyaring Status Bayar menyaring sesuatu yang tidak terlihat di baris mana pun.
  */
-function StatusBadge({ status, label }: { status: string; label: string }) {
+function StatusBadge({ status, label }: Readonly<{ status: string; label: string }>) {
   const tone =
     status === 'Reject'
       ? 'bg-red-50 text-red-700 ring-red-100'
@@ -725,13 +722,13 @@ function Paginasi({
   total,
   onChange,
   sibuk,
-}: {
+}: Readonly<{
   lewati: number
   tampil: number
   total: number
   onChange: (next: number) => void
   sibuk: boolean
-}) {
+}>) {
   if (total === 0) return null
 
   const pertama = lewati + 1

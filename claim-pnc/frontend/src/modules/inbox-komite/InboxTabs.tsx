@@ -51,7 +51,7 @@ const TABS: { kind: KomiteInboxKind; label: string; hint: string }[] = [
  * Tolak dan kembalikan sama-sama menghentikan komite, dan keduanya masuk kotak ini. Itu
  * disebutkan pada keterangan tab, bukan dibiarkan disimpulkan dari isinya.
  */
-export function InboxTabs({ summary, active, onSelect, loading = false }: Props) {
+export function InboxTabs({ summary, active, onSelect, loading = false }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya
@@ -98,7 +98,7 @@ export function InboxTabs({ summary, active, onSelect, loading = false }: Props)
                   loading ? 'opacity-50' : '',
                 ].join(' ')}
               >
-                {count === undefined ? '—' : count}
+                {count ?? '—'}
               </span>
             </button>
           )

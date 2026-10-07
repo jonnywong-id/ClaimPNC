@@ -506,13 +506,13 @@ function DecisionBar({
   onApprove,
   onReject,
   onClear,
-}: {
+}: Readonly<{
   count: number
   isBusy: boolean
   onApprove: () => void
   onReject: () => void
   onClear: () => void
-}) {
+}>) {
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
       <span className="min-w-0 flex-1 text-sm text-slate-700">
@@ -569,7 +569,7 @@ function DecisionBar({
  * punya kolom itu. Keterangan ini yang menggantikannya: ia menyampaikan hal yang sama
  * pada baris yang benar-benar memerlukannya, tanpa menambah kolom.
  */
-function LoginCell({ row }: { row: Workshop }) {
+function LoginCell({ row }: Readonly<{ row: Workshop }>) {
   if (row.login_aplikasi !== '') {
     return <span>{row.login_aplikasi}</span>
   }

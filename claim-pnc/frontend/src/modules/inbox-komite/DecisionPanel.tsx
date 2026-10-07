@@ -90,7 +90,7 @@ const CHOICES: { kind: Kind; label: string; hint: string }[] = [
  * peramban, dan tidak dapat diuji sama sekali — sementara yang dikonfirmasi di sini
  * adalah penghentian klaim yang tidak dapat ditarik kembali.
  */
-export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props) {
+export function DecisionPanel({ item, working, error, onClose, onSubmit }: Readonly<Props>) {
   const [decision, setDecision] = useState<Kind | null>(null)
   const [note, setNote] = useState('')
   const [touched, setTouched] = useState(false)
@@ -136,6 +136,16 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
     }
     onSubmit(decision, note.trim())
   }
+
+  // Pesan galat catatan dan label tombol simpan, ditulis sebagai if berurutan alih-alih
+  // ternary bersarang (temuan SonarQube S3358). Urutan prioritasnya sama persis.
+  let noteError: string | undefined
+  if (touched && noteMissing) noteError = 'Catatan wajib diisi supaya alasannya dapat ditindaklanjuti.'
+  else if (noteTooLong) noteError = `Catatan paling panjang ${MAX_NOTE} karakter.`
+
+  let submitLabel = 'Simpan keputusan'
+  if (working) submitLabel = 'Menyimpan…'
+  else if (confirming) submitLabel = 'Ya, lanjutkan'
 
   return (
     <section
@@ -229,13 +239,7 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
           value={note}
           rows={3}
           onChange={(e) => setNote(e.target.value)}
-          error={
-            touched && noteMissing
-              ? 'Catatan wajib diisi supaya alasannya dapat ditindaklanjuti.'
-              : noteTooLong
-                ? `Catatan paling panjang ${MAX_NOTE} karakter.`
-                : undefined
-          }
+          error={noteError}
           hint={
             terminal
               ? 'Pengaju membaca catatan ini untuk tahu apa yang harus diperbaiki.'
@@ -264,11 +268,7 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
 
       <div className="mt-5 flex flex-wrap gap-2">
         <Button tone="utama" onClick={submit} disabled={working}>
-          {working
-            ? 'Menyimpan…'
-            : confirming
-              ? 'Ya, lanjutkan'
-              : 'Simpan keputusan'}
+          {submitLabel}
         </Button>
         <Button
           tone="kedua"
@@ -287,7 +287,7 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
   )
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Figure({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="rounded-kartu border border-slate-200 p-3">
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
@@ -304,7 +304,7 @@ function Figure({ label, value }: { label: string; value: string }) {
  * "coba lagi" di sana akan membuatnya menekan tombol berulang kali pada sesuatu yang
  * memang tidak akan berubah.
  */
-function DecisionError({ error }: { error: unknown }) {
+function DecisionError({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

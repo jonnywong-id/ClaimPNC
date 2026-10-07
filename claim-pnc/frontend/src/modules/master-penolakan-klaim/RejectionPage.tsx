@@ -140,6 +140,25 @@ export function RejectionPage() {
   const portal = useSelectedPortal((state) => state.alias)
   const [tab, setTab] = useState<Tab>('klaim')
 
+  // Isi tab aktif, atau peringatan bila portal belum dipilih.
+  function renderTab() {
+    if (portal === null) {
+      return (
+        <section className="mt-6">
+          <ErrorMessage
+            title="Portal entitas belum dipilih"
+            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+            tone="penolakan"
+          />
+        </section>
+      )
+    }
+    if (tab === 'klaim') {
+      return <RejectionTab />
+    }
+    return <CommitteeTab />
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -169,19 +188,7 @@ export function RejectionPage() {
         </TabButton>
       </div>
 
-      {portal === null ? (
-        <section className="mt-6">
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        </section>
-      ) : tab === 'klaim' ? (
-        <RejectionTab />
-      ) : (
-        <CommitteeTab />
-      )}
+      {renderTab()}
     </main>
   )
 }
@@ -190,11 +197,11 @@ function TabButton({
   active,
   onClick,
   children,
-}: {
+}: Readonly<{
   active: boolean
   onClick: () => void
   children: string
-}) {
+}>) {
   return (
     <button
       type="button"
@@ -214,6 +221,20 @@ function TabButton({
   )
 }
 
+// Menyetel ulang kedua mutasi lalu menetapkan baris yang disunting dan keadaan form.
+// Dipakai bersama oleh kedua tab supaya urutan langkahnya hanya ditulis sekali.
+function setFormState<T>(
+  mutations: ReadonlyArray<{ reset: () => void }>,
+  setEdited: (row: T | null) => void,
+  setFormOpen: (open: boolean) => void,
+  row: T | null,
+  open: boolean,
+) {
+  for (const mutation of mutations) mutation.reset()
+  setEdited(row)
+  setFormOpen(open)
+}
+
 /** Tab pertama — POOLDATA.MST_PENOLAKAN_KLAIM_1 dan _2. */
 function RejectionTab() {
   const [edited, setEdited] = useState<Rejection | null>(null)
@@ -227,24 +248,15 @@ function RejectionTab() {
   const saving = edited === null ? create : update
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(true)
+    setFormState([create, update], setEdited, setFormOpen, null, true)
   }
 
   function openEdit(row: Rejection) {
-    create.reset()
-    update.reset()
-    setEdited(row)
-    setFormOpen(true)
+    setFormState([create, update], setEdited, setFormOpen, row, true)
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(false)
+    setFormState([create, update], setEdited, setFormOpen, null, false)
   }
 
   // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
@@ -333,6 +345,25 @@ function RejectionTab() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan kueri.
+  function renderList() {
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar penolakan klaim…</p>
+    }
+    if (list.isError) {
+      return <LoadError error={list.error} />
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.penolakan_klaim}
+        rowKey={(row) => row.id}
+        description="Sumber: POOLDATA.MST_PENOLAKAN_KLAIM_2 · persetujuan diisi lewat Inbox Manager"
+        emptyMessage="Belum ada penolakan klaim pada entitas ini."
+      />
+    )
+  }
+
   return (
     <>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -358,19 +389,7 @@ function RejectionTab() {
       )}
 
       <section className="mt-6">
-        {list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar penolakan klaim…</p>
-        ) : list.isError ? (
-          <LoadError error={list.error} />
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.penolakan_klaim}
-            rowKey={(row) => row.id}
-            description="Sumber: POOLDATA.MST_PENOLAKAN_KLAIM_2 · persetujuan diisi lewat Inbox Manager"
-            emptyMessage="Belum ada penolakan klaim pada entitas ini."
-          />
-        )}
+        {renderList()}
       </section>
     </>
   )
@@ -388,24 +407,15 @@ function CommitteeTab() {
   const saving = edited === null ? create : update
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(true)
+    setFormState([create, update], setEdited, setFormOpen, null, true)
   }
 
   function openEdit(row: CommitteeRejection) {
-    create.reset()
-    update.reset()
-    setEdited(row)
-    setFormOpen(true)
+    setFormState([create, update], setEdited, setFormOpen, row, true)
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(false)
+    setFormState([create, update], setEdited, setFormOpen, null, false)
   }
 
   function save(values: CommitteeRejectionFields) {
@@ -436,6 +446,25 @@ function CommitteeTab() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan kueri.
+  function renderList() {
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar penolakan komite…</p>
+    }
+    if (list.isError) {
+      return <LoadError error={list.error} />
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.penolakan_komite}
+        rowKey={(row) => row.id}
+        description="Sumber: POOLDATA.MST_REJECTED_KOMITE"
+        emptyMessage="Belum ada penolakan komite pada entitas ini."
+      />
+    )
+  }
+
   return (
     <>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -460,25 +489,13 @@ function CommitteeTab() {
       )}
 
       <section className="mt-6">
-        {list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar penolakan komite…</p>
-        ) : list.isError ? (
-          <LoadError error={list.error} />
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.penolakan_komite}
-            rowKey={(row) => row.id}
-            description="Sumber: POOLDATA.MST_REJECTED_KOMITE"
-            emptyMessage="Belum ada penolakan komite pada entitas ini."
-          />
-        )}
+        {renderList()}
       </section>
     </>
   )
 }
 
-function LoadError({ error }: { error: unknown }) {
+function LoadError({ error }: Readonly<{ error: unknown }>) {
   const message = loadMessage(error)
   return (
     <ErrorMessage title={message.title} description={message.description} tone={message.tone} />

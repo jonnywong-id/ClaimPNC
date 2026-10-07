@@ -220,21 +220,19 @@ export function KomunikasiCabangPage() {
           )}
 
           {sent !== '' && (
-            <p
-              className="mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
-              role="status"
+            <output
+              className="block mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
             >
               {sent}
-            </p>
+            </output>
           )}
 
           {finish.isSuccess && (
-            <p
-              className="mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
-              role="status"
+            <output
+              className="block mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
             >
               {finish.data.pesan}
-            </p>
+            </output>
           )}
 
           {confirming && (
@@ -318,7 +316,7 @@ function PageFrame({
   onAdd,
   adding,
   children,
-}: {
+}: Readonly<{
   tab: Tab | undefined
   /** Tombol unduh hanya berguna bila ada yang dapat diunduh. */
   exportable: boolean
@@ -336,7 +334,7 @@ function PageFrame({
   adding?: boolean
 
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -376,7 +374,7 @@ function PageFrame({
  * itu pelebaran batas data yang tidak menghasilkan satu pun galat. Kalimatnya sendiri datang
  * dari server, supaya penjelasannya berubah di satu tempat saat keputusannya ditinjau ulang.
  */
-function BranchNotice({ branch }: { branch: BranchScope }) {
+function BranchNotice({ branch }: Readonly<{ branch: BranchScope }>) {
   const warning = !branch.terbaca
 
   return (
@@ -398,7 +396,7 @@ function BranchNotice({ branch }: { branch: BranchScope }) {
  * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya ia hilang dengan sendirinya
  * begitu keadaannya berubah.
  */
-function TabNotice({ text }: { text: string }) {
+function TabNotice({ text }: Readonly<{ text: string }>) {
   return (
     <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
       <p className="text-xs text-slate-700">{text}</p>
@@ -416,7 +414,7 @@ function TabNotice({ text }: { text: string }) {
  * `role="alert"` supaya pembaca layar mengumumkannya — tombolnya ditekan, dan jawabannya
  * muncul di tempat lain di halaman.
  */
-function ActionNotice({ message }: { message: string }) {
+function ActionNotice({ message }: Readonly<{ message: string }>) {
   return (
     <div
       role="alert"
@@ -440,7 +438,7 @@ function ActionNotice({ message }: { message: string }) {
  * memaksa pembacaan ulang adalah menyegarkan seluruh halaman — yang ikut membuang tab dan
  * nomor halaman yang sedang dibuka.
  */
-function RefreshButton({ onRefresh, busy }: { onRefresh: () => void; busy: boolean }) {
+function RefreshButton({ onRefresh, busy }: Readonly<{ onRefresh: () => void; busy: boolean }>) {
   return (
     <Button tone="kedua" disabled={busy} onClick={onRefresh}>
       {busy ? 'Menyegarkan…' : 'Refresh'}
@@ -463,7 +461,7 @@ function RefreshButton({ onRefresh, busy }: { onRefresh: () => void; busy: boole
  * "Kirim Pesan" — tombol kirim di dalam form itu — karena itu belum punya tempat di sini.
  * Ia akan lahir bersama formnya, bila kepemilikan tabelnya kelak berpindah (`P-1`).
  */
-function AddButton({ onAdd, busy }: { onAdd: () => void; busy: boolean }) {
+function AddButton({ onAdd, busy }: Readonly<{ onAdd: () => void; busy: boolean }>) {
   return (
     <Button tone="kedua" disabled={busy} onClick={onAdd}>
       Tambah
@@ -487,11 +485,11 @@ function ExportButton({
   tab,
   enabled,
   columns,
-}: {
+}: Readonly<{
   tab: Tab | undefined
   enabled: boolean
   columns: ExportColumn[]
-}) {
+}>) {
   const ekspor = useExportKomunikasiCabang()
 
   return (
@@ -545,10 +543,10 @@ function ExportButton({
 function DetailButton({
   item,
   onOpen,
-}: {
+}: Readonly<{
   item: Conversation
   onOpen: (row: Conversation) => void
-}) {
+}>) {
   return (
     <button
       type="button"
@@ -596,11 +594,11 @@ function FinishButton({
   item,
   onFinish,
   busy,
-}: {
+}: Readonly<{
   item: Conversation
   onFinish: (row: Conversation) => void
   busy: boolean
-}) {
+}>) {
   return (
     <button
       type="button"
@@ -644,12 +642,12 @@ function FinishConfirmation({
   pending,
   onConfirm,
   onCancel,
-}: {
+}: Readonly<{
   item: Conversation
   pending: boolean
   onConfirm: () => void
   onCancel: () => void
-}) {
+}>) {
   return (
     <section
       className="mt-3 rounded-kartu border border-amber-300 bg-amber-50 px-4 py-3"
@@ -694,7 +692,7 @@ function FinishConfirmation({
  * berdampingan — terutama pemisahan menjadi tab, urutan kedua tab yang berlawanan, dan
  * angka pencacah yang tidak sama dengan jumlah baris tabel.
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (
@@ -795,12 +793,9 @@ function isDate(text: string): boolean {
  * bukan yang Anda kira". Hanya yang kedua yang menuntut laporan.
  */
 function emptyMessageFor(tab: Tab, branch: BranchScope | undefined): string {
-  const scope =
-    branch === undefined
-      ? ''
-      : branch.kantor_pusat
-        ? ' pada percakapan kantor pusat'
-        : ` pada cabang ${branch.kode}`
+  let scope = ''
+  if (branch?.kantor_pusat) scope = ' pada percakapan kantor pusat'
+  else if (branch !== undefined) scope = ` pada cabang ${branch.kode}`
 
   const unresolved =
     branch !== undefined && !branch.terbaca

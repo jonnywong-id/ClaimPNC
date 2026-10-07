@@ -35,9 +35,9 @@ import type {
  */
 export function ReportKPIPICTeknik({
   metadata,
-}: {
+}: Readonly<{
   metadata: MetadataResponse | undefined
-}) {
+}>) {
   const [draft, setDraft] = useState<PICFilterInput>(emptyPICFilter)
   const [applied, setApplied] = useState<PICFilterInput | null>(null)
 
@@ -49,6 +49,60 @@ export function ReportKPIPICTeknik({
 
   const violations = violationsOf(result.error)
   const components = metadata?.komponen_pic ?? []
+
+  // Isi bagian hasil menurut keadaan pencarian dan kueri.
+  function renderResult() {
+    if (!searched) {
+      return (
+        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          Pilih lini bisnis dan periode, lalu tekan <strong>Cari</strong>. Layar lama pun
+          menolak tanpa periode — pesannya berbunyi &quot;Periode tanggal masih kosong&quot;.
+        </p>
+      )
+    }
+    if (result.isError) {
+      return (
+        <ErrorMessage
+          title="Penilaian tidak dapat diambil"
+          description={messageOf(result.error)}
+          tone="gangguan"
+        />
+      )
+    }
+    if (result.isPending) {
+      return (
+        <p className="rounded-kotak border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
+          Menghitung penilaian…
+        </p>
+      )
+    }
+    return (
+      <>
+        {result.data.kartu_skor.length === 0 ? (
+          <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+            Tidak ada petugas terdaftar pada lini bisnis ini.
+          </p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {result.data.kartu_skor.map((card) => (
+              <Scorecard key={card.pic} card={card} components={components} />
+            ))}
+          </div>
+        )}
+
+        {/*
+          Rekapitulasi digambar TERPISAH di bawah, bukan sebagai kartu kesekian di dalam
+          kisi. Ia bukan orang, dan menaruhnya berdampingan dengan kartu petugas membuat
+          pembacanya mengira "Leader" adalah nama seseorang.
+        */}
+        <Scorecard
+          card={result.data.rekapitulasi}
+          components={components}
+          summary
+        />
+      </>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -114,47 +168,7 @@ export function ReportKPIPICTeknik({
         />
       )}
 
-      {!searched ? (
-        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Pilih lini bisnis dan periode, lalu tekan <strong>Cari</strong>. Layar lama pun
-          menolak tanpa periode — pesannya berbunyi &quot;Periode tanggal masih kosong&quot;.
-        </p>
-      ) : result.isError ? (
-        <ErrorMessage
-          title="Penilaian tidak dapat diambil"
-          description={messageOf(result.error)}
-          tone="gangguan"
-        />
-      ) : result.isPending ? (
-        <p className="rounded-kotak border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
-          Menghitung penilaian…
-        </p>
-      ) : (
-        <>
-          {result.data.kartu_skor.length === 0 ? (
-            <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              Tidak ada petugas terdaftar pada lini bisnis ini.
-            </p>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {result.data.kartu_skor.map((card) => (
-                <Scorecard key={card.pic} card={card} components={components} />
-              ))}
-            </div>
-          )}
-
-          {/*
-            Rekapitulasi digambar TERPISAH di bawah, bukan sebagai kartu kesekian di dalam
-            kisi. Ia bukan orang, dan menaruhnya berdampingan dengan kartu petugas membuat
-            pembacanya mengira "Leader" adalah nama seseorang.
-          */}
-          <Scorecard
-            card={result.data.rekapitulasi}
-            components={components}
-            summary
-          />
-        </>
-      )}
+      {renderResult()}
 
     </div>
   )
@@ -166,11 +180,11 @@ function Scorecard({
   card,
   components,
   summary,
-}: {
+}: Readonly<{
   card: PICScorecard
   components: PICComponent[]
   summary?: boolean
-}) {
+}>) {
   return (
     <section
       className={[
@@ -240,7 +254,7 @@ function Scorecard({
  * kerusakan, dan yang melaporkannya akan menghabiskan waktu menelusuri hal yang memang
  * disengaja.
  */
-function MetricRow({ row, descending }: { row: PICRow; descending: boolean }) {
+function MetricRow({ row, descending }: Readonly<{ row: PICRow; descending: boolean }>) {
   return (
     <tr className="border-b border-slate-100 last:border-0">
       <td className="py-2 text-slate-800">
@@ -260,7 +274,7 @@ function MetricRow({ row, descending }: { row: PICRow; descending: boolean }) {
         {row.persentase === null ? '—' : `${round2(row.persentase)}%`}
       </td>
       <td className="py-2 text-right tabular-nums font-medium text-slate-900">
-        {row.nilai === null ? '—' : row.nilai}
+        {row.nilai ?? '—'}
       </td>
     </tr>
   )

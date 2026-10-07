@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -190,6 +190,12 @@ function describe(choices: DetailDocumentTypeChoice[], id: string | undefined): 
   return choices.find((row) => row.id === key)?.nama
 }
 
+/** submitLabel memilih label tombol simpan: sedang menyimpan, modus ubah, atau modus tambah. */
+function submitLabel(isSaving: boolean, editMode: boolean): string {
+  if (isSaving) return 'Menyimpan…'
+  return editMode ? 'Ubah' : 'Simpan'
+}
+
 /**
  * Mencari kode sebuah keterangan pada daftar pilihannya — arah kebalikan `describe`.
  *
@@ -282,7 +288,7 @@ export function DetailDocumentTypeForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = edited !== null
 
   const {
@@ -324,6 +330,70 @@ export function DetailDocumentTypeForm({
   const chosenCauseOfLoss = codeOf(causesOfLoss, watch('keterangan_penyebab_kerugian'))
   const chosenObjectDocument = codeOf(objectDocuments, watch('keterangan_objek_dokumen'))
   const rows = watch('bisnis')
+
+  function renderBusinessRows(): ReactNode {
+    if (isLoadingBusinessRules) {
+      return (
+        <p className="text-sm text-slate-500">Memuat lini bisnis yang sudah dipilih…</p>
+      )
+    }
+    if (fields.length === 0) {
+      return (
+        <p className="text-sm text-slate-500">
+          Belum ada lini bisnis. Dibiarkan kosong berarti rincian dokumen ini belum diminta
+          pada lini bisnis mana pun.
+        </p>
+      )
+    }
+    return (
+      <ul className="space-y-3">
+        {fields.map((row, index) => {
+          const businessName = describe(businesses, rows?.[index]?.id_bisnis)
+
+          return (
+            <li
+              key={row.id}
+              className="grid gap-2 sm:grid-cols-[1.5fr_1fr_1fr_auto] sm:items-end"
+            >
+              <ComboField
+                id={`bisnis-${index}-id`}
+                label={`ID Bisnis baris ${index + 1}`}
+                options={businesses.map((item) => item.id)}
+                hint={businessName}
+                error={errors.bisnis?.[index]?.id_bisnis?.message}
+                {...register(`bisnis.${index}.id_bisnis` as const)}
+              />
+              <SelectField
+                id={`bisnis-${index}-wajib`}
+                label={`Status Wajib baris ${index + 1}`}
+                options={[
+                  { value: MANDATORY_YES, label: 'Ya' },
+                  { value: MANDATORY_NO, label: 'Tidak' },
+                ]}
+                error={errors.bisnis?.[index]?.status_wajib?.message}
+                {...register(`bisnis.${index}.status_wajib` as const)}
+              />
+              <Field
+                id={`bisnis-${index}-minimum`}
+                label={`Minimum Dokumen baris ${index + 1}`}
+                type="text"
+                inputMode="numeric"
+                error={errors.bisnis?.[index]?.minimum_dokumen?.message}
+                {...register(`bisnis.${index}.minimum_dokumen` as const)}
+              />
+              <Button
+                tone="halus"
+                onClick={() => remove(index)}
+                aria-label={`Hapus lini bisnis baris ${index + 1}`}
+              >
+                Hapus
+              </Button>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
 
   return (
     <form
@@ -435,61 +505,7 @@ export function DetailDocumentTypeForm({
       <fieldset className="rounded-kontrol border border-slate-200 p-4">
         <legend className="px-1 text-sm font-medium text-slate-700">Lini Bisnis</legend>
 
-        {isLoadingBusinessRules ? (
-          <p className="text-sm text-slate-500">Memuat lini bisnis yang sudah dipilih…</p>
-        ) : fields.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Belum ada lini bisnis. Dibiarkan kosong berarti rincian dokumen ini belum diminta
-            pada lini bisnis mana pun.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {fields.map((row, index) => {
-              const businessName = describe(businesses, rows?.[index]?.id_bisnis)
-
-              return (
-                <li
-                  key={row.id}
-                  className="grid gap-2 sm:grid-cols-[1.5fr_1fr_1fr_auto] sm:items-end"
-                >
-                  <ComboField
-                    id={`bisnis-${index}-id`}
-                    label={`ID Bisnis baris ${index + 1}`}
-                    options={businesses.map((item) => item.id)}
-                    hint={businessName}
-                    error={errors.bisnis?.[index]?.id_bisnis?.message}
-                    {...register(`bisnis.${index}.id_bisnis` as const)}
-                  />
-                  <SelectField
-                    id={`bisnis-${index}-wajib`}
-                    label={`Status Wajib baris ${index + 1}`}
-                    options={[
-                      { value: MANDATORY_YES, label: 'Ya' },
-                      { value: MANDATORY_NO, label: 'Tidak' },
-                    ]}
-                    error={errors.bisnis?.[index]?.status_wajib?.message}
-                    {...register(`bisnis.${index}.status_wajib` as const)}
-                  />
-                  <Field
-                    id={`bisnis-${index}-minimum`}
-                    label={`Minimum Dokumen baris ${index + 1}`}
-                    type="text"
-                    inputMode="numeric"
-                    error={errors.bisnis?.[index]?.minimum_dokumen?.message}
-                    {...register(`bisnis.${index}.minimum_dokumen` as const)}
-                  />
-                  <Button
-                    tone="halus"
-                    onClick={() => remove(index)}
-                    aria-label={`Hapus lini bisnis baris ${index + 1}`}
-                  >
-                    Hapus
-                  </Button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+        {renderBusinessRows()}
 
         <div className="mt-3">
           <Button
@@ -518,7 +534,7 @@ export function DetailDocumentTypeForm({
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya. */}
         <Button type="submit" tone="utama" disabled={isSaving || isLoadingBusinessRules}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+          {submitLabel(isSaving, editMode)}
         </Button>
       </div>
     </form>

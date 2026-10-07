@@ -67,7 +67,7 @@ type Props = {
 }
 
 /** AccountForm adalah formulir pengajuan rekening baru. */
-export function AccountForm({ onSuccess }: Props) {
+export function AccountForm({ onSuccess }: Readonly<Props>) {
   const submit = useSubmitAccount()
   const bank = useBankList()
 
@@ -271,7 +271,7 @@ export function AccountForm({ onSuccess }: Props) {
 
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input type="checkbox" className="rounded border-slate-300" {...register('aktif')} />
-        Rekening aktif
+        <span>Rekening aktif</span>
       </label>
 
       <p className="text-sm text-slate-600">
@@ -303,7 +303,7 @@ const COLUMN_MAP: Record<string, keyof FieldValues> = {
   nik: 'nik',
 }
 
-function SubmitErrorMessage({ error }: { error: unknown }) {
+function SubmitErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const content = messageFor(error)
   return <ErrorMessage title={content.title} description={content.description} tone={content.tone} />
 }

@@ -132,11 +132,13 @@ export function useReportKPIDetail(filter: FilterInput, page: number, enabled: b
 
   return useQuery({
     queryKey: keys.detail(portal, token, filter, page),
-    queryFn: () =>
-      callAPI<DetailResponse>(
-        `${PATH}/adjuster?${params(filter)}${page > 1 ? `&halaman=${page}` : ''}`,
+    queryFn: () => {
+      const pageParam = page > 1 ? `&halaman=${page}` : ''
+      return callAPI<DetailResponse>(
+        `${PATH}/adjuster?${params(filter)}${pageParam}`,
         { token, portal },
-      ),
+      )
+    },
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -271,11 +273,13 @@ export function useAdminDetail(
 
   return useQuery({
     queryKey: adminKeys.detail(portal, token, filter, page),
-    queryFn: () =>
-      callAPI<AdminDetailResponse>(
-        `${PATH}/admin?${adminParams(filter)}${page > 1 ? `&halaman=${page}` : ''}`,
+    queryFn: () => {
+      const pageParam = page > 1 ? `&halaman=${page}` : ''
+      return callAPI<AdminDetailResponse>(
+        `${PATH}/admin?${adminParams(filter)}${pageParam}`,
         { token, portal },
-      ),
+      )
+    },
     enabled: enabled && token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,

@@ -56,9 +56,9 @@ export function InputAcceptationPage() {
   if (detail.isPending) {
     return (
       <PageFrame claimID={claimID}>
-        <p className="mt-6 text-sm text-slate-600" role="status">
+        <output className="block mt-6 text-sm text-slate-600">
           Memuat akseptasi {claimID}…
-        </p>
+        </output>
       </PageFrame>
     )
   }
@@ -85,7 +85,7 @@ export function InputAcceptationPage() {
  * `useState` di komponen luar berarti keadaan itu bertahan saat pengguna berpindah ke klaim
  * lain, dan perubahan pada klaim A akan terbawa ke klaim B.
  */
-function Loaded({ data, claimID }: { data: DetailResponse; claimID: string }) {
+function Loaded({ data, claimID }: Readonly<{ data: DetailResponse; claimID: string }>) {
   const submit = useSubmitInputAcceptation(claimID)
 
   // Hanya SELISIHNYA yang disimpan, bukan salinan seluruh isian. Dengan begitu nilai yang
@@ -158,11 +158,11 @@ function PageFrame({
   claimID,
   statusWork,
   children,
-}: {
+}: Readonly<{
   claimID: string
   statusWork?: string
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -199,12 +199,12 @@ function GroupSection({
   changed,
   violations,
   onChange,
-}: {
+}: Readonly<{
   group: Group
   changed: Record<string, string>
   violations: Record<string, string>
   onChange: (key: string, value: string) => void
-}) {
+}>) {
   return (
     <section className="rounded-kartu border border-slate-200 bg-white px-4 py-4">
       <h2 className="text-base font-semibold text-slate-900">{group.judul}</h2>
@@ -242,13 +242,55 @@ function FieldRow({
   value,
   violation,
   onChange,
-}: {
+}: Readonly<{
   field: Field
   value: string
   violation: string | undefined
   onChange: (key: string, value: string) => void
-}) {
+}>) {
   const id = `isian-${field.kunci}`
+
+  let cell: ReactNode
+  if (field.terhalang) {
+    cell = (
+      <dd className="mt-0.5">
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
+          belum tersedia
+        </span>
+        {field.alasan_terhalang && (
+          <p className="mt-1 text-xs text-slate-500">{field.alasan_terhalang}</p>
+        )}
+      </dd>
+    )
+  } else if (field.dapat_diubah) {
+    cell = (
+      <dd className="mt-0.5">
+        <input
+          id={id}
+          value={value}
+          onChange={(event) => onChange(field.kunci, event.target.value)}
+          aria-invalid={violation ? true : undefined}
+          className={[
+            'w-full rounded-kontrol border px-2 py-1 text-sm text-slate-900',
+            'transition-[border-color,box-shadow] duration-150 ease-halus',
+            'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20',
+            violation
+              ? 'border-red-500 focus:border-red-600'
+              : 'border-slate-300 focus:border-blue-500',
+          ].join(' ')}
+        />
+        {violation && (
+          <p className="mt-1 text-xs text-red-700" role="alert">
+            {violation}
+          </p>
+        )}
+      </dd>
+    )
+  } else {
+    cell = (
+      <dd className="mt-0.5 text-sm break-words text-slate-900">{value || '—'}</dd>
+    )
+  }
 
   return (
     <div className="min-w-0">
@@ -258,40 +300,7 @@ function FieldRow({
         </label>
       </dt>
 
-      {field.terhalang ? (
-        <dd className="mt-0.5">
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
-            belum tersedia
-          </span>
-          {field.alasan_terhalang && (
-            <p className="mt-1 text-xs text-slate-500">{field.alasan_terhalang}</p>
-          )}
-        </dd>
-      ) : field.dapat_diubah ? (
-        <dd className="mt-0.5">
-          <input
-            id={id}
-            value={value}
-            onChange={(event) => onChange(field.kunci, event.target.value)}
-            aria-invalid={violation ? true : undefined}
-            className={[
-              'w-full rounded-kontrol border px-2 py-1 text-sm text-slate-900',
-              'transition-[border-color,box-shadow] duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20',
-              violation
-                ? 'border-red-500 focus:border-red-600'
-                : 'border-slate-300 focus:border-blue-500',
-            ].join(' ')}
-          />
-          {violation && (
-            <p className="mt-1 text-xs text-red-700" role="alert">
-              {violation}
-            </p>
-          )}
-        </dd>
-      ) : (
-        <dd className="mt-0.5 text-sm break-words text-slate-900">{value || '—'}</dd>
-      )}
+      {cell}
     </div>
   )
 }
@@ -303,7 +312,7 @@ function FieldRow({
  * sepuluh kolom, dan melipatnya menyembunyikan kolom nilai uang yang justru menjadi alasan
  * layar ini dibuka.
  */
-function GridTable({ grid }: { grid: Grid }) {
+function GridTable({ grid }: Readonly<{ grid: Grid }>) {
   if (grid.terhalang) {
     return (
       <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3">
@@ -348,7 +357,10 @@ function GridTable({ grid }: { grid: Grid }) {
               </tr>
             ) : (
               grid.baris.map((row, index) => (
-                <tr key={index} className="border-b border-slate-100">
+                <tr
+                  key={`${Object.values(row).join('|')}-${index}`}
+                  className="border-b border-slate-100"
+                >
                   {grid.kolom.map((column) => (
                     <td
                       key={column.kunci}
@@ -379,13 +391,13 @@ function SubmitBar({
   error,
   success,
   onSubmit,
-}: {
+}: Readonly<{
   dirty: boolean
   pending: boolean
   error: string
   success: string
   onSubmit: () => void
-}) {
+}>) {
   return (
     <div className="mt-6 flex flex-col items-end gap-2 border-t border-slate-200 pt-4">
       <Button tone="utama" disabled={!dirty || pending} onClick={onSubmit}>
@@ -403,9 +415,9 @@ function SubmitBar({
       )}
 
       {success && (
-        <p className="text-sm text-green-700" role="status">
+        <output className="block text-sm text-green-700">
           {success}
-        </p>
+        </output>
       )}
     </div>
   )
@@ -418,7 +430,7 @@ function SubmitBar({
  * yang selalu kosong dan Submit yang menolak akan dilaporkan berulang kali sebagai kerusakan
  * oleh orang yang membandingkan kedua layar berdampingan.
  */
-function PlannedDifferences({ lines }: { lines: string[] }) {
+function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
   if (lines.length === 0) return null
 
   return (

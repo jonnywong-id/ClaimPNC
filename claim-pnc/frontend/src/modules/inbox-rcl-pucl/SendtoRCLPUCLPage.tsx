@@ -73,13 +73,7 @@ export function SendtoRCLPUCLPage() {
   // paling sulit dilaporkan pengguna, karena tidak ada satu pun yang dapat disebutkan.
   const detail = claim.data ?? null
 
-  const state: ScreenState = claim.isError
-    ? 'galat'
-    : claim.isPending
-      ? 'memuat'
-      : detail
-        ? 'siap'
-        : 'kosong'
+  const state = screenStateOf(claim.isError, claim.isPending, detail !== null)
 
   // Tab dan halaman dibawa kembali apa adanya. Petugas yang membuka klaim dari halaman
   // ketiga tab "Kelengkapan Dokumen" harus mendarat di sana lagi.
@@ -120,6 +114,20 @@ export function SendtoRCLPUCLPage() {
 /** Keadaan pengambilan isi layar kerja. */
 type ScreenState = 'memuat' | 'galat' | 'kosong' | 'siap'
 
+/** Menurunkan keadaan layar dari keadaan pengambilan; galat lebih dulu, lalu memuat. */
+function screenStateOf(isError: boolean, isPending: boolean, hasDetail: boolean): ScreenState {
+  if (isError) return 'galat'
+  if (isPending) return 'memuat'
+  return hasDetail ? 'siap' : 'kosong'
+}
+
+/** Teks pilihan kosong pada kolom kategori, menurut keadaan pengambilan daftarnya. */
+function categoryPlaceholder(isPending: boolean, isError: boolean): string {
+  if (isPending) return 'Memuat kategori…'
+  if (isError) return 'Kategori gagal dimuat — muat ulang halaman'
+  return 'Select..'
+}
+
 /**
  * Sebaris keterangan keadaan, digambar DI ATAS layar — bukan menggantikannya.
  *
@@ -132,11 +140,11 @@ function StateNotice({
   state,
   error,
   claimKey,
-}: {
+}: Readonly<{
   state: ScreenState
   error: unknown
   claimKey: string
-}) {
+}>) {
   if (state === 'siap') return null
 
   if (state === 'memuat') {
@@ -217,7 +225,7 @@ type WorkTab = 'lampiran' | 'penerimaan'
  * pengertian "tab" pada satu alamat akan membuat yang satu menimpa yang lain, dan akibatnya
  * tombol kembali mendarat di antrean yang keliru.
  */
-function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
+function WorkScreen({ detail }: Readonly<{ detail: ClaimDetailResponse | null }>) {
   const [tab, setTab] = useState<WorkTab>('lampiran')
 
   // Nama tombol yang panelnya sedang terbuka. Satu nilai untuk seluruh layar — lihat
@@ -310,11 +318,11 @@ function WorkTabs({
   active,
   onChange,
   showsReceipt,
-}: {
+}: Readonly<{
   active: WorkTab
   onChange: (tab: WorkTab) => void
   showsReceipt: boolean
-}) {
+}>) {
   const tabs: { key: WorkTab; label: string }[] = [
     { key: 'lampiran', label: 'Lampiran Surat' },
     ...(showsReceipt
@@ -380,7 +388,7 @@ const NO_BUTTONS: ClaimDetailResponse['tombol'] = {
  * itu — ketiga sel `pxButton` section ini ber-caption **Pilih** (pemilih Perihal),
  * **Download Dokumen**, dan **Tutup Klaim**.
  */
-function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
+function LetterTab({ detail }: Readonly<{ detail: ClaimDetailResponse | null }>) {
   const letter = detail?.lampiran_surat
   const buttons = detail?.tombol ?? NO_BUTTONS
 
@@ -548,7 +556,7 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
  *
  * Hal yang sama berlaku pada sel "Tolak Klaim" KEDUA, yang syaratnya juga `1==2`.
  */
-function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
+function ReceiptTab({ detail }: Readonly<{ detail: ClaimDetailResponse | null }>) {
   const receipt = detail?.penerimaan_dokumen
   const buttons = detail?.tombol ?? NO_BUTTONS
 
@@ -729,10 +737,10 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
 function ScreenFooter({
   detail,
   actionCount,
-}: {
+}: Readonly<{
   detail: ClaimDetailResponse | null
   actionCount: string
-}) {
+}>) {
   return (
     <>
       {/*
@@ -792,7 +800,7 @@ function ScreenFooter({
  * bentuk di layar ini yang tidak dapat diwakili sebuah isian, dan menghapusnya akan
  * menyembunyikan bahwa layar lama memuat DAFTAR di sini — bukan satu tanggal.
  */
-function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }) {
+function ReceivedDocumentGrid({ detail }: Readonly<{ detail: ClaimDetailResponse | null }>) {
   const partial = detail?.penerimaan_dokumen?.tanggal_terima_dokumen_sebagian === true
 
   // Barisnya KEADAAN LAYAR, bukan dibaca langsung dari `detail`.
@@ -959,7 +967,7 @@ type ReceivedRow = {
  * Yang hilang karenanya ada dua, dan keduanya nyata: berkas dapat dipilih BANYAK sekaligus,
  * dan namanya dapat diubah SEBELUM dikirim. Keduanya kembali di sini.
  */
-function UploadDocumentAction({ reference }: { reference?: string | undefined }) {
+function UploadDocumentAction({ reference }: Readonly<{ reference?: string | undefined }>) {
   const [terbuka, setTerbuka] = useState(false)
 
   return (
@@ -996,10 +1004,10 @@ type UploadRow = {
 function UploadDocumentDialog({
   reference,
   onClose,
-}: {
+}: Readonly<{
   reference: string
   onClose: () => void
-}) {
+}>) {
   const pilih = useRef<HTMLInputElement>(null)
   const [rows, setRows] = useState<UploadRow[]>([])
   const [gagal, setGagal] = useState<string | null>(null)
@@ -1170,11 +1178,7 @@ function UploadDocumentDialog({
                           memilih sesuatu yang mungkin tidak ia ketahui.
                         */}
                         <option value="">
-                          {kategori.isPending
-                            ? 'Memuat kategori…'
-                            : kategori.isError
-                              ? 'Kategori gagal dimuat — muat ulang halaman'
-                              : 'Select..'}
+                          {categoryPlaceholder(kategori.isPending, kategori.isError)}
                         </option>
                         {(kategori.data?.kategori ?? []).map((pilihan) => (
                           <option key={pilihan.nilai} value={pilihan.nilai}>
@@ -1247,7 +1251,7 @@ function UploadDocumentDialog({
  * Biaya yang disadari: berkasnya memang melewati memori halaman. Penampil bawaan peramban
  * TETAP dipakai — yang diserahkan ke tab baru adalah blob beserta jenis isinya.
  */
-function ViewDocumentsAction({ reference }: { reference?: string | undefined }) {
+function ViewDocumentsAction({ reference }: Readonly<{ reference?: string | undefined }>) {
   const [open, setOpen] = useState(false)
   const documents = useRCLPUCLDocuments(reference ?? null, open)
   const bukaDokumen = useBukaDokumen(reference ?? null)
@@ -1405,7 +1409,7 @@ function ClaimAction({
   isian,
   warna = 'biru',
   bukaBerkas = true,
-}: {
+}: Readonly<{
   label: string
   note: string
   aksi: TindakanKlaim
@@ -1433,7 +1437,7 @@ function ClaimAction({
   // `Button` tidak diberi nada baru untuk ini. Nada adalah kosakata sistem desain yang
   // dipakai puluhan layar, dan oranye di sini hanya berlaku karena layar lama memakainya.
   warna?: 'biru' | 'oranye'
-}) {
+}>) {
   const tindakan = useTindakanKlaim(reference ?? null, aksi)
   const bukaDokumen = useBukaDokumen(reference ?? null)
 
@@ -1533,13 +1537,13 @@ function WriteAction({
   label,
   note,
   caseNumber,
-}: {
+}: Readonly<{
   label: string
   note: string
   // `| undefined` eksplisit karena project memakai `exactOptionalPropertyTypes`: detailnya
   // boleh belum tiba, dan tombolnya tetap digambar.
   caseNumber?: string | undefined
-}) {
+}>) {
   const panel = useContext(WriteActionPanel)
   const open = panel.open === label
 
@@ -1574,10 +1578,10 @@ function WriteAction({
 function ActionNote({
   label,
   caseNumber,
-}: {
+}: Readonly<{
   label: string
   caseNumber?: string | undefined
-}) {
+}>) {
   return (
     <div className="mt-2 flex max-w-md flex-wrap items-center gap-2 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
       <span className="text-xs text-slate-700">
@@ -1606,7 +1610,7 @@ function ActionNote({
  * Keadaan "Tersalin" tidak perlu disetel ulang dengan tangan: pemanggilnya menggambar
  * komponen ini hanya saat panelnya terbuka, sehingga ia lahir kembali bersama panelnya.
  */
-function CopyCaseNumber({ caseNumber }: { caseNumber?: string | undefined }) {
+function CopyCaseNumber({ caseNumber }: Readonly<{ caseNumber?: string | undefined }>) {
   const [copied, setCopied] = useState(false)
 
   async function salin() {
@@ -1692,13 +1696,13 @@ function EditableField({
   onChange,
   required,
   type,
-}: {
+}: Readonly<{
   label: string
   value: string
   onChange: (next: string) => void
   required?: boolean
   type: 'teks' | 'area' | 'datetime-local'
-}) {
+}>) {
   const kelas = [
     'mt-1 w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5',
     'text-sm text-slate-900',
@@ -1765,13 +1769,13 @@ function untukIsianWaktu(raw: string): string {
   return ''
 }
 
-function Panel({ children }: { children: ReactNode }) {
+function Panel({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mt-4 rounded-sm border border-slate-300 bg-white p-5">{children}</div>
   )
 }
 
-function FieldGroup({ title, fields }: { title?: string; fields: Field[] }) {
+function FieldGroup({ title, fields }: Readonly<{ title?: string; fields: Field[] }>) {
   return (
     <div className="mt-6">
       {title && (
@@ -1796,7 +1800,7 @@ function FieldGroup({ title, fields }: { title?: string; fields: Field[] }) {
  * Memaksanya ke dua kolom akan memotong kalimat surat yang panjang menjadi kolom sempit,
  * dan itu bukan bentuk layar lama.
  */
-function StackedFields({ title, fields }: { title?: string; fields: Field[] }) {
+function StackedFields({ title, fields }: Readonly<{ title?: string; fields: Field[] }>) {
   return (
     <div className="mt-6">
       {title && (
@@ -1814,7 +1818,7 @@ function StackedFields({ title, fields }: { title?: string; fields: Field[] }) {
 }
 
 /** Satu baris isian, dipakai kedua susunan supaya keduanya tidak dapat menyimpang. */
-function FieldRow({ field }: { field: Field }) {
+function FieldRow({ field }: Readonly<{ field: Field }>) {
   const [label, value, required, kind = 'teks'] = field
 
   const teks =
@@ -1872,11 +1876,11 @@ function FieldBox({
   kind,
   teks,
   kosong,
-}: {
+}: Readonly<{
   kind: FieldKind
   teks: string
   kosong: boolean
-}) {
+}>) {
   const dasar = [
     'w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5',
     'text-sm text-slate-900',
@@ -1941,11 +1945,11 @@ function OrangeButton({
   children,
   disabled,
   onClick,
-}: {
+}: Readonly<{
   children: ReactNode
   disabled?: boolean
   onClick: () => void
-}) {
+}>) {
   return (
     <button
       type="button"

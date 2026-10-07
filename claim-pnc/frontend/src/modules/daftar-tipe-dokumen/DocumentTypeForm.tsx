@@ -109,7 +109,7 @@ function messageFor(error: unknown): MessageContent | null {
  * `pyEditOptions=Read-only`, procedure penyimpannya memakai ID hanya sebagai penyaring
  * `WHERE`, dan dua master turunan beserta dokumen klaim yang sudah terunggah merujuknya.
  */
-export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: Props) {
+export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const editMode = edited !== null
 
   const { register, handleSubmit, reset } = useForm<DocumentTypeFields>({

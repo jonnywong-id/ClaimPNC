@@ -27,7 +27,7 @@ type Props = {
  * Baris dashboard tidak punya kunci, tidak dapat diputuskan, dan tidak hilang setelah
  * ditindaklanjuti. Menggambar kotak pilih di sini akan menyarankan tindakan yang tidak ada.
  */
-export function DashboardPanels({ panels, isLoading, refreshedAt }: Props) {
+export function DashboardPanels({ panels, isLoading, refreshedAt }: Readonly<Props>) {
   return (
     <div className="space-y-6">
       {refreshedAt ? <RefreshNote at={refreshedAt} /> : null}
@@ -61,7 +61,7 @@ export function DashboardPanels({ panels, isLoading, refreshedAt }: Props) {
  * Layar lama pun menampilkannya — `Section/DisplayInboxProduktivitas_Sect` punya
  * `<pyCaption Last Refresh>`, diisi `Activity/LastRefresh_act` dari kolom `refreshdate`.
  */
-function RefreshNote({ at }: { at: string }) {
+function RefreshNote({ at }: Readonly<{ at: string }>) {
   const when = new Date(at)
   const readable = Number.isNaN(when.getTime())
     ? at
@@ -124,7 +124,7 @@ function formatAmount(value: string): string {
   const [whole, fraction] = unsigned.split('.')
   if (whole === undefined || !/^\d+$/.test(whole)) return clean
 
-  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const grouped = whole.replaceAll(/\B(?=(\d{3})+(?!\d))/g, '.')
   const tail = fraction ? `,${fraction}` : ''
 
   return `${negative ? '-' : ''}${grouped}${tail}`

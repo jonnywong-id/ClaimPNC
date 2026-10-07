@@ -31,7 +31,7 @@ type Props = {
  * Tanpa itu, pemisahan menjadi tab akan MENGHILANGKAN keterangan yang selama ini terlihat
  * sekilas. Itu akan menjadikannya selisih yang merugikan, bukan sekadar selisih bentuk.
  */
-export function KomunikasiCabangTabs({ tabs, active, summary, onSelect }: Props) {
+export function KomunikasiCabangTabs({ tabs, active, summary, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya

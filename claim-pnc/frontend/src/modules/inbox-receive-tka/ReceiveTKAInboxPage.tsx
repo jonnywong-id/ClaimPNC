@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, ReceiveTKAErrorCode, type ReceiveTKATask } from '@/api/types'
@@ -200,6 +200,15 @@ function formatAging(value: string | null): string {
     return months === 0 ? 'bulan ini' : `${months} bulan lalu`
   }
   return restMonths === 0 ? `${years} tahun lalu` : `${years} tahun ${restMonths} bulan lalu`
+}
+
+/** Keterangan tombol Submit yang sedang tidak dapat ditekan; tanpa keterangan bila dapat. */
+function submitTitle(orphan: boolean, empty: boolean): string | undefined {
+  if (orphan) {
+    return 'Klaim ini tidak ditemukan pada data klaim utama, sehingga tanggalnya tidak dapat disimpan.'
+  }
+  if (empty) return 'Isi tanggal dokumen lengkap lebih dulu.'
+  return undefined
 }
 
 /**
@@ -420,13 +429,7 @@ export function ReceiveTKAInboxPage() {
             tone="utama"
             disabled={orphan || empty || busy}
             onClick={() => submitRow(row)}
-            title={
-              orphan
-                ? 'Klaim ini tidak ditemukan pada data klaim utama, sehingga tanggalnya tidak dapat disimpan.'
-                : empty
-                  ? 'Isi tanggal dokumen lengkap lebih dulu.'
-                  : undefined
-            }
+            title={submitTitle(orphan, empty)}
           >
             {busy ? 'Menyimpan…' : 'Submit'}
           </Button>
@@ -436,6 +439,47 @@ export function ReceiveTKAInboxPage() {
   ]
 
   const orphanCount = rows.filter((row) => !row.klaim_tersedia).length
+
+  let listContent: ReactNode
+  if (portal === null) {
+    listContent = (
+      <ErrorMessage
+        title="Portal entitas belum dipilih"
+        description="Daftar klaim TKA dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+        tone="penolakan"
+      />
+    )
+  } else if (inbox.isPending) {
+    listContent = <p className="text-sm text-slate-500">Memuat daftar Inbox Receive TKA…</p>
+  } else if (inbox.isError) {
+    const message = loadMessage(inbox.error)
+    listContent = (
+      <ErrorMessage
+        title={message.title}
+        description={message.description}
+        tone={message.tone}
+      />
+    )
+  } else {
+    listContent = (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        /*
+          Kunci barisnya `referensi` — `pzInsKey`, yang unik per pekerjaan dan SELALU
+          terisi karena sumbernya tabel yang menggerakkan kuerinya. Memakai nomor klaim
+          tidak salah hari ini, tetapi keunikannya tidak dibuktikan DDL mana pun
+          (`R-08`), dan kunci baris yang kembar membuat React menganggap dua baris
+          sebagai satu.
+        */
+        rowKey={(row) => row.referensi}
+        description="Sumber: antrean klaim TKA pada tabel kerja Pega"
+        searchLabel="Cari nomor klaim, polis, tertanggung, atau peserta"
+        pageSize={PAGE_SIZE}
+        emptyMessage="Tidak ada klaim TKA yang menunggu tanggal kelengkapan dokumen."
+      />
+    )
+  }
 
   return (
     <main className="mx-auto max-w-[96rem] px-4 py-8">
@@ -460,8 +504,10 @@ export function ReceiveTKAInboxPage() {
           lebih dari sekadar kerapian: Submit mengubah tanggal pada data klaim, dan "klaim
           milik siapa" tidak boleh hanya diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        Daftar ini milik entitas yang sedang dibuka, dan Submit mengubah data klaim entitas
-        itu.
+        <span>
+          Daftar ini milik entitas yang sedang dibuka, dan Submit mengubah data klaim entitas
+          itu.
+        </span>
         <span className="ml-1">
           Portal entitas:{' '}
           <span className="font-medium text-slate-700">{inbox.data?.portal ?? portal ?? '—'}</span>
@@ -517,43 +563,7 @@ export function ReceiveTKAInboxPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Daftar klaim TKA dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : inbox.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar Inbox Receive TKA…</p>
-        ) : inbox.isError ? (
-          (() => {
-            const message = loadMessage(inbox.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            /*
-              Kunci barisnya `referensi` — `pzInsKey`, yang unik per pekerjaan dan SELALU
-              terisi karena sumbernya tabel yang menggerakkan kuerinya. Memakai nomor klaim
-              tidak salah hari ini, tetapi keunikannya tidak dibuktikan DDL mana pun
-              (`R-08`), dan kunci baris yang kembar membuat React menganggap dua baris
-              sebagai satu.
-            */
-            rowKey={(row) => row.referensi}
-            description="Sumber: antrean klaim TKA pada tabel kerja Pega"
-            searchLabel="Cari nomor klaim, polis, tertanggung, atau peserta"
-            pageSize={PAGE_SIZE}
-            emptyMessage="Tidak ada klaim TKA yang menunggu tanggal kelengkapan dokumen."
-          />
-        )}
+        {listContent}
       </section>
 
       <footer className="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">

@@ -234,6 +234,54 @@ export function InvestigatorInboxPage() {
     },
   ]
 
+  // Isi bagian antrean: portal belum dipilih, memuat, galat, atau tabel. Ditulis sebagai
+  // if berurutan, bukan ternary bersarang (temuan SonarQube S3358); urutan pemeriksaannya
+  // sama persis.
+  function renderQueue() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Antrean pekerjaan dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+
+    if (inbox.isPending) {
+      return <p className="text-sm text-slate-500">Memuat antrean investigator…</p>
+    }
+
+    if (inbox.isError) {
+      const message = loadMessage(inbox.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+
+    return (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        /*
+          Kunci barisnya `referensi` — pzInsKey, yang unik per pekerjaan. Memakai nomor
+          case tidak salah hari ini, tetapi tidak ada DDL yang membuktikan keunikannya
+          (`R-08`), dan kunci baris yang kembar membuat React menganggap dua baris
+          sebagai satu.
+        */
+        rowKey={(row) => row.referensi}
+        description="Sumber: antrean workbasket InvestigatorPNC"
+        searchLabel="Cari nomor case, polis, tertanggung, peserta, bisnis, cabang, atau admin"
+        pageSize={PAGE_SIZE}
+        emptyMessage="Tidak ada pekerjaan yang menunggu di antrean investigator."
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -260,7 +308,7 @@ export function InvestigatorInboxPage() {
           Pada layar ini ia berarti lebih dari sekadar kerapian: barisnya memuat nama
           tertanggung dan nama peserta klaim satu badan hukum. */}
       <p className="mt-3 text-xs text-slate-500">
-        Antrean ini milik entitas yang sedang dibuka.
+        <span>Antrean ini milik entitas yang sedang dibuka.</span>
         <span className="ml-1">
           Portal entitas:{' '}
           <span className="font-medium text-slate-700">{inbox.data?.portal ?? portal ?? '—'}</span>
@@ -278,42 +326,7 @@ export function InvestigatorInboxPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Antrean pekerjaan dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : inbox.isPending ? (
-          <p className="text-sm text-slate-500">Memuat antrean investigator…</p>
-        ) : inbox.isError ? (
-          (() => {
-            const message = loadMessage(inbox.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            /*
-              Kunci barisnya `referensi` — pzInsKey, yang unik per pekerjaan. Memakai nomor
-              case tidak salah hari ini, tetapi tidak ada DDL yang membuktikan keunikannya
-              (`R-08`), dan kunci baris yang kembar membuat React menganggap dua baris
-              sebagai satu.
-            */
-            rowKey={(row) => row.referensi}
-            description="Sumber: antrean workbasket InvestigatorPNC"
-            searchLabel="Cari nomor case, polis, tertanggung, peserta, bisnis, cabang, atau admin"
-            pageSize={PAGE_SIZE}
-            emptyMessage="Tidak ada pekerjaan yang menunggu di antrean investigator."
-          />
-        )}
+        {renderQueue()}
       </section>
 
       {/* Tiga keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan

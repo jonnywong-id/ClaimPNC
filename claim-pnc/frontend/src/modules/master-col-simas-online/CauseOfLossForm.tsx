@@ -179,7 +179,7 @@ export function CauseOfLossForm({
   error,
   onSave,
   onCancel,
-}: Props) {
+}: Readonly<Props>) {
   const editMode = edited !== null
 
   const {
@@ -227,6 +227,52 @@ export function CauseOfLossForm({
 
   const businessSuggestions = businesses.map((b) => b.nama)
 
+  let submitLabel = 'Simpan'
+  if (isSaving) submitLabel = 'Menyimpan…'
+  else if (editMode) submitLabel = 'Ubah'
+
+  // Isi grid Bisnis menurut keadaan pemuatan dan jumlah barisnya.
+  function renderBusinessRows() {
+    if (isLoadingBusinessMapping) {
+      return <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
+    }
+    if (fields.length === 0) {
+      return (
+        <p className="text-sm text-slate-500">
+          Belum ada bisnis yang dipilih. Cause of loss ini tetap dapat disimpan.
+        </p>
+      )
+    }
+    return (
+      <ul className="space-y-2">
+        {fields.map((row, index) => (
+          <li key={row.id} className="flex items-end gap-2">
+            <div className="grow">
+              {/* ComboField, bukan SelectField: isian Bisnis di Pega
+                  ber-`pyAllowFreeFormInput=true`, sehingga nama di luar daftar
+                  TETAP boleh diketik dan disimpan. */}
+              <ComboField
+                id={`bisnis-${index}`}
+                label={`Bisnis baris ${index + 1}`}
+                options={businessSuggestions}
+                maxLength={MAX_BUSINESS_NAME_LENGTH}
+                error={errors.bisnis?.[index]?.nama?.message}
+                {...register(`bisnis.${index}.nama` as const)}
+              />
+            </div>
+            <Button
+              tone="halus"
+              onClick={() => remove(index)}
+              aria-label={`Hapus bisnis baris ${index + 1}`}
+            >
+              Hapus
+            </Button>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onSave)}
@@ -269,40 +315,7 @@ export function CauseOfLossForm({
       <fieldset className="rounded-kontrol border border-slate-200 p-4">
         <legend className="px-1 text-sm font-medium text-slate-700">Bisnis</legend>
 
-        {isLoadingBusinessMapping ? (
-          <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
-        ) : fields.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Belum ada bisnis yang dipilih. Cause of loss ini tetap dapat disimpan.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {fields.map((row, index) => (
-              <li key={row.id} className="flex items-end gap-2">
-                <div className="grow">
-                  {/* ComboField, bukan SelectField: isian Bisnis di Pega
-                      ber-`pyAllowFreeFormInput=true`, sehingga nama di luar daftar
-                      TETAP boleh diketik dan disimpan. */}
-                  <ComboField
-                    id={`bisnis-${index}`}
-                    label={`Bisnis baris ${index + 1}`}
-                    options={businessSuggestions}
-                    maxLength={MAX_BUSINESS_NAME_LENGTH}
-                    error={errors.bisnis?.[index]?.nama?.message}
-                    {...register(`bisnis.${index}.nama` as const)}
-                  />
-                </div>
-                <Button
-                  tone="halus"
-                  onClick={() => remove(index)}
-                  aria-label={`Hapus bisnis baris ${index + 1}`}
-                >
-                  Hapus
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+        {renderBusinessRows()}
 
         {/* Pelanggaran grid dilaporkan di bawah gridnya, bukan di salah satu barisnya:
             server menyebutnya sebagai satu isian bernama "bisnis", dan pesannya
@@ -335,7 +348,7 @@ export function CauseOfLossForm({
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya. */}
         <Button type="submit" tone="utama" disabled={isSaving || isLoadingBusinessMapping}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+          {submitLabel}
         </Button>
       </div>
     </form>

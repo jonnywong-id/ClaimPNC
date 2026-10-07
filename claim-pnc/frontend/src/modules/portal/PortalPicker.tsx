@@ -28,7 +28,7 @@ export function PortalPicker() {
     return (
       <span className="flex items-center gap-2 text-sm text-slate-500">
         <span aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-slate-300" />
-        Memuat portal…
+        <span>Memuat portal…</span>
       </span>
     )
   }
@@ -109,12 +109,12 @@ export function PortalList() {
                 {p.siap ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Tersedia
+                    <span>Tersedia</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                    Menunggu kredensial basis data
+                    <span>Menunggu kredensial basis data</span>
                   </span>
                 )}
               </td>

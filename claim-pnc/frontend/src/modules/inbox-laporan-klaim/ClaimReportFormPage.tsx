@@ -119,9 +119,9 @@ export function ClaimReportFormPage() {
   if (berkas.isPending) {
     return (
       <FormFrame id={id}>
-        <p className="mt-6 text-sm text-slate-500" role="status">
+        <output className="block mt-6 text-sm text-slate-500">
           Memuat berkas…
-        </p>
+        </output>
       </FormFrame>
     )
   }
@@ -143,13 +143,12 @@ export function ClaimReportFormPage() {
   return (
     <FormFrame id={id} report={berkas.data?.laporan.posisi}>
       {registered && (
-        <p
-          className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
-          role="status"
+        <output
+          className="block mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
         >
           This Receive Document is already registered as claim{' '}
           <strong>{berkas.data?.laporan.nomor_klaim}</strong> and can no longer be changed.
-        </p>
+        </output>
       )}
 
       {!editable && !registered && (
@@ -177,12 +176,11 @@ export function ClaimReportFormPage() {
       )}
 
       {simpan.isSuccess && !simpan.isPending && (
-        <p
-          className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
-          role="status"
+        <output
+          className="block mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
         >
           Berkas tersimpan.
-        </p>
+        </output>
       )}
 
       <form
@@ -529,11 +527,11 @@ function FormFrame({
   id,
   report,
   children,
-}: {
+}: Readonly<{
   id: string
   report?: string | undefined
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <nav className="text-xs text-slate-500">
@@ -562,11 +560,11 @@ function Group({
   title,
   children,
   full = false,
-}: {
+}: Readonly<{
   title: string
   children: ReactNode
   full?: boolean
-}) {
+}>) {
   return (
     <section className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut">
       <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">{title}</h2>
@@ -584,7 +582,7 @@ function Group({
  * dirakit dari dua aplikasi berbeda.
  */
 /** ReadOnly menampilkan isian baca saja dengan label seperti Field. */
-function ReadOnly({ label, value }: { label: string; value: string }) {
+function ReadOnly({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div>
       <span className="block text-sm font-medium text-slate-700">{label}</span>
@@ -604,7 +602,7 @@ function TextArea({
   error,
   disabled,
   rows = 5,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: string
@@ -613,7 +611,7 @@ function TextArea({
   error?: string | undefined
   disabled?: boolean
   rows?: number
-}) {
+}>) {
   const errorID = `${id}-galat`
   return (
     <div>

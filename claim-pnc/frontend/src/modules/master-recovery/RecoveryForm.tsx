@@ -123,7 +123,7 @@ type Props = {
  * | Judul kolom | nama properti Pega | nama yang dibaca manusia (`D-19`) |
  * | Layar sempit | digulir menyamping | tersusun satu kolom (`D-12`) |
  */
-export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
+export function RecoveryForm({ nextBatch, year, principal, onSaved }: Readonly<Props>) {
   const save = useSaveRecovery()
   const lookup = useLookupPolicy()
   const upload = useUploadPaymentProof()
@@ -584,7 +584,7 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
 
 // ── Pesan galat ───────────────────────────────────────────────────────────────────
 
-function SaveErrorMessage({ error }: { error: unknown }) {
+function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage
@@ -647,7 +647,7 @@ function parseSave(error: APIError): MessageContent | null {
   }
 }
 
-function PolicyErrorMessage({ error }: { error: unknown }) {
+function PolicyErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof APIError && error.kode === ErrorCode.recoveryPolicyNotFound) {
     return (
       <ErrorMessage
@@ -666,7 +666,7 @@ function PolicyErrorMessage({ error }: { error: unknown }) {
   )
 }
 
-function UploadErrorMessage({ error }: { error: unknown }) {
+function UploadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof APIError && error.kode === ErrorCode.validationFailed) {
     const violation = error.violations()['bukti_bayar']
     return (

@@ -103,7 +103,8 @@ export function useExportReport() {
   return useMutation({
     mutationFn: async (request: ExportRequest) => {
       const query = searchParams(request)
-      const path = `${ROUTE}/${encodeURIComponent(request.kode)}/ekspor${query ? `?${query}` : ''}`
+      const suffix = query ? `?${query}` : ''
+      const path = `${ROUTE}/${encodeURIComponent(request.kode)}/ekspor${suffix}`
 
       const berkas = await unduhBerkas(path, { token, portal })
       simpanBerkas(berkas)

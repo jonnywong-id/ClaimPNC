@@ -180,7 +180,7 @@ function initialValues(edited: Rejection | null): RejectionFields {
  * baris baru hanya lahir bila pengguna memang meminta yang baru. Itulah sebabnya isian
  * pertama di sini berupa daftar pilihan, bukan kotak teks.
  */
-export function RejectionForm({ edited, parents, isSaving, error, onSave, onCancel }: Props) {
+export function RejectionForm({ edited, parents, isSaving, error, onSave, onCancel }: Readonly<Props>) {
   const editMode = edited !== null
 
   const {

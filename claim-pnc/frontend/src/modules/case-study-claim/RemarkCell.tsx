@@ -25,7 +25,7 @@ import type { CaseStudyRow } from './types'
  * baris. Menggantinya dengan dialog akan mengubah alur kerja yang sudah dihafal petugas
  * (`D-13`).
  */
-export function RemarkCell({ row }: { row: CaseStudyRow }) {
+export function RemarkCell({ row }: Readonly<{ row: CaseStudyRow }>) {
   const [draft, setDraft] = useState(row.remark)
   const save = useSaveRemark()
 
@@ -82,9 +82,9 @@ export function RemarkCell({ row }: { row: CaseStudyRow }) {
         </Button>
 
         {save.isSuccess && !changed && (
-          <span className="text-xs text-emerald-700" role="status">
+          <output className="text-xs text-emerald-700">
             Tersimpan
-          </span>
+          </output>
         )}
       </div>
 

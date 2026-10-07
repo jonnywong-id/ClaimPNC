@@ -188,54 +188,19 @@ export function SalvageInboxPage() {
     )
   }
 
-  return (
-    <Frame>
-      {saved !== '' && (
-        <div
-          className="rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
-          role="status"
-        >
-          {saved}
-        </div>
-      )}
-
-      <StatusSummary
-        rows={counts.data?.baris ?? []}
-        active={active}
-        onSelect={selectTab}
-        isLoading={counts.isLoading}
-      />
-
-      {creatingFor !== null ? (
-        <TambahSalvageForm
-          // Kunci memaksa form DIBONGKAR dan dipasang ulang saat berpindah klaim.
-          //
-          // Tanpanya, isian yang sudah diketik untuk klaim sebelumnya akan tertinggal di
-          // form yang sekarang menyebut klaim lain — pengajuan yang tersimpan atas klaim
-          // yang salah, tanpa satu pun tanda.
-          key={creatingFor.no_klaim}
-          statusOptions={meta.data?.pilihan_status_salvage ?? []}
-          uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
-          prefill={{
-            nomor_klaim: creatingFor.no_klaim,
-            nama_object: creatingFor.nama_object,
-            nama_coverage: creatingFor.nama_coverage,
-          }}
-          history={creatingFor.riwayat}
-          onClose={() => setOpened(null)}
-          onSaved={(message) => {
-            setSaved(message)
-            setOpened(null)
-          }}
-        />
-      ) : adding ? (
+  let body: ReactNode
+  if (creatingFor === null) {
+    if (adding) {
+      body = (
         <TambahSalvageForm
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
           uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
           onClose={() => setAdding(false)}
           onSaved={setSaved}
         />
-      ) : (
+      )
+    } else {
+      body = (
         <>
           <SalvageTabs tabs={tabs} active={active} onSelect={selectTab} />
 
@@ -326,7 +291,52 @@ export function SalvageInboxPage() {
             />
           )}
         </>
+      )
+    }
+  } else {
+    body = (
+      <TambahSalvageForm
+        // Kunci memaksa form DIBONGKAR dan dipasang ulang saat berpindah klaim.
+        //
+        // Tanpanya, isian yang sudah diketik untuk klaim sebelumnya akan tertinggal di
+        // form yang sekarang menyebut klaim lain — pengajuan yang tersimpan atas klaim
+        // yang salah, tanpa satu pun tanda.
+        key={creatingFor.no_klaim}
+        statusOptions={meta.data?.pilihan_status_salvage ?? []}
+        uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
+        prefill={{
+          nomor_klaim: creatingFor.no_klaim,
+          nama_object: creatingFor.nama_object,
+          nama_coverage: creatingFor.nama_coverage,
+        }}
+        history={creatingFor.riwayat}
+        onClose={() => setOpened(null)}
+        onSaved={(message) => {
+          setSaved(message)
+          setOpened(null)
+        }}
+      />
+    )
+  }
+
+  return (
+    <Frame>
+      {saved !== '' && (
+        <output
+          className="block rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
+        >
+          {saved}
+        </output>
       )}
+
+      <StatusSummary
+        rows={counts.data?.baris ?? []}
+        active={active}
+        onSelect={selectTab}
+        isLoading={counts.isLoading}
+      />
+
+      {body}
 
       <PlannedDifferences items={meta.data?.selisih_terencana ?? []} />
     </Frame>
@@ -334,7 +344,7 @@ export function SalvageInboxPage() {
 }
 
 /** Frame adalah judul layar beserta ruang isinya. */
-function Frame({ children }: { children: ReactNode }) {
+function Frame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="space-y-5">
       <header>
@@ -491,7 +501,7 @@ function emptyMessageFor(tab: Tab | undefined, search: string): string {
  *
  * Dilipat secara bawaan supaya tidak menyaingi isi layar, tetapi TIDAK disembunyikan.
  */
-function PlannedDifferences({ items }: { items: string[] }) {
+function PlannedDifferences({ items }: Readonly<{ items: string[] }>) {
   if (items.length === 0) return null
 
   return (

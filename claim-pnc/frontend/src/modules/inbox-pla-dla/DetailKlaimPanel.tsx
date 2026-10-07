@@ -53,7 +53,7 @@ type Props = {
 /** Pilihan dokumen yang sedang dibuka — nomor pemberitahuan beserta jenisnya. */
 type PilihanDokumen = { nomor: string; jenis: string }
 
-export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
+export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Readonly<Props>) {
   const rincian = useRincianKlaim(kunciKlaim, true)
   const [dokumen, setDokumen] = useState<PilihanDokumen | null>(null)
 
@@ -135,7 +135,7 @@ export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
 }
 
 /** KepalaKlaim menggambar keterangan klaim di kepala panel. */
-function KepalaKlaim({ isi }: { isi: NonNullable<ReturnType<typeof useRincianKlaim>['data']>['klaim'] }) {
+function KepalaKlaim({ isi }: Readonly<{ isi: NonNullable<ReturnType<typeof useRincianKlaim>['data']>['klaim'] }>) {
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
       <Isian label="Claim No" nilai={isi.no_klaim} />
@@ -154,7 +154,7 @@ function KepalaKlaim({ isi }: { isi: NonNullable<ReturnType<typeof useRincianKla
 }
 
 /** Isian adalah satu label beserta isinya. */
-function Isian({ label, nilai }: { label: string; nilai: string }) {
+function Isian({ label, nilai }: Readonly<{ label: string; nilai: string }>) {
   const bersih = nilai.trim()
 
   return (
@@ -182,14 +182,14 @@ function GridPemberitahuan({
   dipilih,
   onPilih,
   pesanKosong,
-}: {
+}: Readonly<{
   judul: string
   kolom: Kolom[]
   baris: BarisPemberitahuan[]
   dipilih: PilihanDokumen | null
   onPilih: (pilihan: PilihanDokumen) => void
   pesanKosong: string
-}) {
+}>) {
   const tindakan = useTindakanBelumTersedia()
 
   const kolomTabel: Column<BarisPemberitahuan>[] = [
@@ -268,12 +268,12 @@ function PanelDokumen({
   pilihan,
   kolom,
   onClose,
-}: {
+}: Readonly<{
   kunciKlaim: string
   pilihan: PilihanDokumen
   kolom: Kolom[]
   onClose: () => void
-}) {
+}>) {
   const dokumen = useDokumenPemberitahuan(
     kunciKlaim,
     pilihan.nomor,
@@ -360,11 +360,11 @@ function PanelKomunikasi({
   kunciKlaim,
   kolom,
   baris,
-}: {
+}: Readonly<{
   kunciKlaim: string
   kolom: Kolom[]
   baris: BarisKomunikasi[]
-}) {
+}>) {
   const [membalas, setMembalas] = useState<string | null>(null)
   const [isian, setIsian] = useState('')
   const balas = useBalasKomunikasi(kunciKlaim)

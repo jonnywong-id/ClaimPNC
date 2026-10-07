@@ -197,7 +197,7 @@ export function DominantFactorPage() {
  * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat
  * salah — ia baru membuka layarnya.
  */
-function LoadErrorMessage({ error }: { error: unknown }) {
+function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   const message = loadMessage(error)
   return (
     <ErrorMessage title={message.title} description={message.description} tone={message.tone} />

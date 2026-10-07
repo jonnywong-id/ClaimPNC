@@ -988,7 +988,7 @@ describe('OutstandingTable', () => {
     // Klik di dalam modal tidak menutupnya; klik di latar menutupnya.
     await user.click(within(dialog).getByText('View Dokument Pendukung'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    await user.click(dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 

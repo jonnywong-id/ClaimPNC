@@ -340,7 +340,7 @@ export function ArchiveDocumentPage() {
 }
 
 /** PageFrame menggambar judul dan kerangka halaman. */
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto w-full max-w-[100rem] px-4 py-6 sm:px-6 lg:px-8">
       <header>

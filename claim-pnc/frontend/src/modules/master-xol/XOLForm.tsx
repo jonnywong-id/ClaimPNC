@@ -139,7 +139,7 @@ type Props = {
  *  2. **Tombol hapus pada grid menghapus SEKETIKA**, tidak menunggu Simpan — juga persis
  *     seperti layar lama, yang memanggil `DeleteFromTabelMst` langsung.
  */
-export function XOLForm({ master, tutup }: Props) {
+export function XOLForm({ master, tutup }: Readonly<Props>) {
   const editing = master !== null
   const detail = useXOLDetail(master?.id ?? null)
   const option = useXOLForm()
@@ -214,6 +214,7 @@ export function XOLForm({ master, tutup }: Props) {
   }
 
   const memuat = editing && detail.isPending
+  const loadState = loadStateFor(memuat, detail.isError)
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -227,17 +228,7 @@ export function XOLForm({ master, tutup }: Props) {
         </p>
       </header>
 
-      {memuat ? (
-        <p className="px-5 py-8 text-sm text-slate-500">Memuat isi master XOL…</p>
-      ) : detail.isError ? (
-        <div className="px-5 py-5">
-          <ErrorMessage
-            title="Isi master XOL gagal dimuat"
-            description="Tutup form ini lalu coba buka kembali."
-            tone="gangguan"
-          />
-        </div>
-      ) : (
+      {loadState ?? (
         <form onSubmit={handleSubmit(send)} className="space-y-6 px-5 py-5" noValidate>
           {/* ── Isian induk ────────────────────────────────────────────── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -290,11 +281,7 @@ export function XOLForm({ master, tutup }: Props) {
           {/* ── Grid Nama Bisnis ───────────────────────────────────────── */}
           <Panel
             judul="Nama Bisnis"
-            keterangan={
-              tipe === ''
-                ? 'Pilih Type XOL lebih dulu — pilihan grup bisnis mengikuti jenisnya.'
-                : 'Grup bisnis yang dicakup treaty ini.'
-            }
+            keterangan={businessHint(tipe)}
             aksi={
               <Button
                 tone="kedua"
@@ -457,23 +444,20 @@ export function XOLForm({ master, tutup }: Props) {
 
           {/* ── Peringatan dan galat ───────────────────────────────────── */}
           {save.isSuccess && (save.data.peringatan?.length ?? 0) > 0 && (
-            <div
-              role="status"
-              className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-            >
+            <output className="block rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <p className="font-semibold">Tersimpan, dengan catatan:</p>
               <ul className="mt-1.5 list-disc space-y-0.5 pl-5">
                 {save.data.peringatan?.map((pesan) => (
                   <li key={pesan}>{pesan}</li>
                 ))}
               </ul>
-            </div>
+            </output>
           )}
 
           {save.isSuccess && (save.data.peringatan?.length ?? 0) === 0 && (
-            <p role="status" className="text-sm font-medium text-emerald-700">
+            <output className="block text-sm font-medium text-emerald-700">
               Tersimpan dan diajukan ke komite.
-            </p>
+            </output>
           )}
 
           {save.isError && <SaveError error={save.error} />}
@@ -500,6 +484,35 @@ export function XOLForm({ master, tutup }: Props) {
 }
 
 /**
+ * Pengganti isi form selama detail dimuat atau gagal dimuat; `null` berarti form siap
+ * ditampilkan.
+ */
+function loadStateFor(memuat: boolean, isError: boolean) {
+  if (memuat) {
+    return <p className="px-5 py-8 text-sm text-slate-500">Memuat isi master XOL…</p>
+  }
+  if (isError) {
+    return (
+      <div className="px-5 py-5">
+        <ErrorMessage
+          title="Isi master XOL gagal dimuat"
+          description="Tutup form ini lalu coba buka kembali."
+          tone="gangguan"
+        />
+      </div>
+    )
+  }
+  return null
+}
+
+/** Keterangan grid Nama Bisnis: pilihan grup bisnis bergantung pada Type XOL. */
+function businessHint(tipe: string): string {
+  return tipe === ''
+    ? 'Pilih Type XOL lebih dulu — pilihan grup bisnis mengikuti jenisnya.'
+    : 'Grup bisnis yang dicakup treaty ini.'
+}
+
+/**
  * Limit (IDR) ditampilkan, bukan diisi.
  *
  * Nilainya dihitung server dari Limit dolar dikali kurs induk. Yang ditampilkan di sini
@@ -511,11 +524,11 @@ function LimitIDR({
   control,
   index,
   kurs,
-}: {
+}: Readonly<{
   control: Control<FieldValues>
   index: number
   kurs: number
-}) {
+}>) {
   const limit = useWatch({ control, name: `layer.${index}.limit` }) ?? 0
   const nilai = Number(limit) * Number(kurs)
 
@@ -553,14 +566,14 @@ function ReasPanel({
   layerID,
   masterID,
   onHapusTersimpan,
-}: {
+}: Readonly<{
   control: Control<FieldValues>
   register: UseFormRegister<FieldValues>
   layerIndex: number
   layerID: string
   masterID: string
   onHapusTersimpan: (reasID: string) => void
-}) {
+}>) {
   const reas = useFieldArray({ control, name: `layer.${layerIndex}.reas` })
   const isi = useWatch({ control, name: `layer.${layerIndex}.reas` }) ?? []
 
@@ -655,12 +668,12 @@ function Panel({
   keterangan,
   aksi,
   children,
-}: {
+}: Readonly<{
   judul: string
   keterangan: string
   aksi: React.ReactNode
   children: React.ReactNode
-}) {
+}>) {
   return (
     <section className="rounded-md border border-slate-200 p-4">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
@@ -675,11 +688,11 @@ function Panel({
   )
 }
 
-function EmptyRow({ pesan }: { pesan: string }) {
+function EmptyRow({ pesan }: Readonly<{ pesan: string }>) {
   return <p className="py-3 text-sm italic text-slate-400">{pesan}</p>
 }
 
-function SaveError({ error }: { error: unknown }) {
+function SaveError({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

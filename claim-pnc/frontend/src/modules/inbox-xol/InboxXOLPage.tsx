@@ -92,7 +92,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
  * mengendalikan pemuatan adalah `enabled` pada hook masing-masing panel. Dengan begitu,
  * membuka layar tidak menembak permintaan tab yang belum dilihat siapa pun.
  */
-function Tabs({ active, onSelect }: { active: TabKey; onSelect: (key: TabKey) => void }) {
+function Tabs({ active, onSelect }: Readonly<{ active: TabKey; onSelect: (key: TabKey) => void }>) {
   return (
     <div className="mt-4 overflow-x-auto" role="tablist" aria-label="Bagian Inbox XOL">
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
@@ -141,7 +141,7 @@ function InsertNotice() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">

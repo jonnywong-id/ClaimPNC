@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type DocumentType } from '@/api/types'
@@ -204,6 +204,47 @@ export function DocumentTypePage() {
     },
   ]
 
+  function renderList(): ReactNode {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Daftar tipe dokumen dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return (
+        <p className="text-sm text-slate-500">Memuat daftar tipe dokumen…</p>
+      )
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.tipe_dokumen}
+        rowKey={(row) => row.id}
+        // Tanpa kotak cari, dan dipaginasi 50 baris per halaman — keduanya meniru grid
+        // Pega apa adanya (`pyPageSize=50`, dan tidak ada satu pun penyaring di
+        // sectionnya). Keputusan Work Owner 2026-09-21.
+        searchable={false}
+        pageSize={50}
+        description={`${list.data.total} tipe dokumen terdaftar. Sumber: POOLDATA.LST_DOC_TYPE`}
+        emptyMessage="Belum ada tipe dokumen pada entitas ini."
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -244,39 +285,7 @@ export function DocumentTypePage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Daftar tipe dokumen dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar tipe dokumen…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data.tipe_dokumen}
-            rowKey={(row) => row.id}
-            // Tanpa kotak cari, dan dipaginasi 50 baris per halaman — keduanya meniru grid
-            // Pega apa adanya (`pyPageSize=50`, dan tidak ada satu pun penyaring di
-            // sectionnya). Keputusan Work Owner 2026-09-21.
-            searchable={false}
-            pageSize={50}
-            description={`${list.data.total} tipe dokumen terdaftar. Sumber: POOLDATA.LST_DOC_TYPE`}
-            emptyMessage="Belum ada tipe dokumen pada entitas ini."
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )

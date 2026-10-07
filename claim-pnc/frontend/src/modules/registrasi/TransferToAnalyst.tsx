@@ -51,14 +51,14 @@ export function TransferToAnalystDialog({
   coverageID,
   coverageName,
   onClose,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   objekID: string
   coverageID: string
   coverageName: string
   onClose: () => void
-}) {
+}>) {
   const send = useTransferToAnalyst(claimID)
   const busy = send.isPending
 

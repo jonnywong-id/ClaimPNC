@@ -38,7 +38,7 @@ type Props = {
  * | Jumlah nilai | tidak ada | dihitung dan ditampilkan sebelum menyimpan |
  * | Membatalkan unggahan | tidak ada | daftar dapat dikosongkan kembali |
  */
-export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
+export function ClaimLineUpload({ claimLine, onChange, disabled }: Readonly<Props>) {
   const read = useReadClaimLine()
   const template = useDownloadTemplate()
   const picker = useRef<HTMLInputElement | null>(null)
@@ -145,7 +145,7 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
             </p>
             <ul className="mt-2 space-y-1 text-xs text-amber-800">
               {rejected.map((item, index) => (
-                <li key={index}>• {item.pesan}</li>
+                <li key={`${item.pesan}-${index}`}>• {item.pesan}</li>
               ))}
             </ul>
           </div>
@@ -182,7 +182,7 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
   )
 }
 
-function ReadErrorMessage({ error }: { error: unknown }) {
+function ReadErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage

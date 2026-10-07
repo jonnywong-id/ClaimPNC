@@ -68,7 +68,7 @@ export function BranchQueue({
   sendingID,
   sendError,
   sendMessage,
-}: Props) {
+}: Readonly<Props>) {
   const hidden = scope?.lini_disembunyikan ?? []
 
   const columns: Column<ArchiveFile>[] = [
@@ -122,12 +122,9 @@ export function BranchQueue({
       )}
 
       {sendMessage && (
-        <p
-          className="mt-3 rounded-kontrol border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900"
-          role="status"
-        >
+        <output className="mt-3 block rounded-kontrol border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">
           {sendMessage}
-        </p>
+        </output>
       )}
 
       {sendError && (

@@ -10,7 +10,7 @@ import { useSession } from '@/app/session'
  * setiap endpoint memeriksa sesi pemanggilnya sendiri (docs/Steering/11-SECURITY.md §3.1).
  * Menyembunyikan halaman di peramban tidak menutup apa pun.
  */
-export function SessionGuard({ children }: { children: ReactNode }) {
+export function SessionGuard({ children }: Readonly<{ children: ReactNode }>) {
   const token = useSession((state) => state.token)
   const location = useLocation()
 

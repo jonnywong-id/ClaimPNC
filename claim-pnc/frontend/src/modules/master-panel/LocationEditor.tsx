@@ -72,7 +72,7 @@ export function LocationEditor({
   isSaving,
   onAdd,
   onRemove,
-}: Props) {
+}: Readonly<Props>) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500">

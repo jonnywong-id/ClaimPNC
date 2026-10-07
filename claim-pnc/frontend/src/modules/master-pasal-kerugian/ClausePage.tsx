@@ -231,6 +231,25 @@ export function ClausePage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan kueri.
+  function renderList() {
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar pasal kerugian…</p>
+    }
+    if (list.isError) {
+      return <LoadError error={list.error} />
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={list.data.pasal_kerugian}
+        rowKey={(row) => row.id}
+        description="Sumber: POOLDATA.V_M_DATA_PASAL · lini bisnis terlihat saat pasal dibuka"
+        emptyMessage="Belum ada pasal kerugian pada entitas ini."
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -313,19 +332,7 @@ export function ClausePage() {
           )}
 
           <section className="mt-6">
-            {list.isPending ? (
-              <p className="text-sm text-slate-500">Memuat daftar pasal kerugian…</p>
-            ) : list.isError ? (
-              <LoadError error={list.error} />
-            ) : (
-              <DataTable
-                columns={columns}
-                rows={list.data.pasal_kerugian}
-                rowKey={(row) => row.id}
-                description="Sumber: POOLDATA.V_M_DATA_PASAL · lini bisnis terlihat saat pasal dibuka"
-                emptyMessage="Belum ada pasal kerugian pada entitas ini."
-              />
-            )}
+            {renderList()}
           </section>
         </>
       )}
@@ -333,7 +340,7 @@ export function ClausePage() {
   )
 }
 
-function LoadError({ error }: { error: unknown }) {
+function LoadError({ error }: Readonly<{ error: unknown }>) {
   const message = loadMessage(error)
   return (
     <ErrorMessage title={message.title} description={message.description} tone={message.tone} />

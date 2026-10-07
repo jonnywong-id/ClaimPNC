@@ -7,6 +7,13 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { usePLAList, usePrintPLA, useSavePLANotes, violationsFrom } from './api'
 import type { PLARow } from './types'
 
+/** Teks galat dialog: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
+function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
+  if (failure instanceof Error) return failure.message
+  return 'Terjadi kesalahan pada sistem.'
+}
+
 /**
  * Dialog Print PLA — padanan layar `Section/PrintPLA_dtl_sect.xml` (flow action lokal
  * `PrintPLA`). Membukanya menerbitkan PLA koasuransi revisi CFS terakhir bila belum ada.
@@ -24,14 +31,14 @@ export function PLADialog({
   coverage,
   coverageName,
   onClose,
-}: {
+}: Readonly<{
   claimID: string
   taskID: string
   object: number
   coverage: number
   coverageName: string
   onClose: () => void
-}) {
+}>) {
   const list = usePLAList(claimID)
   const save = useSavePLANotes(claimID)
   const print = usePrintPLA(claimID)
@@ -77,9 +84,9 @@ export function PLADialog({
   }
 
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="judul-print-pla"
     >
@@ -141,21 +148,15 @@ export function PLADialog({
           <div className="mt-4">
             <ErrorMessage
               title="PLA belum dapat diproses"
-              description={
-                violations.length > 0
-                  ? violations.map((v) => v.pesan).join(' ')
-                  : failure instanceof Error
-                    ? failure.message
-                    : 'Terjadi kesalahan pada sistem.'
-              }
+              description={failureDescription(violations, failure)}
               tone="penolakan"
             />
           </div>
         )}
         {print.isSuccess && !busy && !failure && (
-          <p className="mt-4 text-sm text-emerald-700" role="status">
+          <output className="mt-4 block text-sm text-emerald-700">
             PLA diunduh.
-          </p>
+          </output>
         )}
 
         <div className="mt-6 flex flex-wrap justify-between gap-3">
@@ -175,6 +176,6 @@ export function PLADialog({
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

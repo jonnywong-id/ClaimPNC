@@ -7,6 +7,13 @@ type Props = {
   onSelect: (code: string) => void
 }
 
+/** Kelas warna tab: terhalang, sedang terbuka, atau biasa. */
+function tabStateClass(blocked: boolean, selected: boolean): string {
+  if (blocked) return 'cursor-not-allowed border-transparent text-slate-400'
+  if (selected) return 'border-blue-600 text-blue-700'
+  return 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+}
+
 /**
  * Bilah tab Report KPI PNC.
  *
@@ -27,7 +34,7 @@ type Props = {
  * hanya sebagai lencana "belum tersedia" — yang membacanya adalah penguji yang sedang
  * memutuskan apakah ini cacat atau bukan, dan lencana saja tidak menjawab itu.
  */
-export function ReportKPITabs({ tabs, active, onSelect }: Props) {
+export function ReportKPITabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya
@@ -55,11 +62,7 @@ export function ReportKPITabs({ tabs, active, onSelect }: Props) {
                 'text-sm font-medium whitespace-nowrap',
                 'transition-[color,border-color,background-color] duration-150 ease-halus',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                tab.terhalang
-                  ? 'cursor-not-allowed border-transparent text-slate-400'
-                  : selected
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
+                tabStateClass(tab.terhalang, selected),
               ].join(' ')}
             >
               {tab.judul}

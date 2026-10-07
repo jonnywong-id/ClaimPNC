@@ -192,12 +192,12 @@ function PageFrame({
   isExporting,
   onExport,
   children,
-}: {
+}: Readonly<{
   exportable: boolean
   isExporting: boolean
   onExport: () => void
   children: ReactNode
-}) {
+}>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -226,11 +226,11 @@ function PageFrame({
           <Button type="button" tone="kedua" onClick={onExport} disabled={!exportable || isExporting}>
             {isExporting ? 'Menyiapkan…' : 'Export'}
           </Button>
-          {!exportable ? (
+          {exportable ? null : (
             <span className="text-xs text-slate-500">
               Hanya antrean persetujuan yang dapat diekspor.
             </span>
-          ) : null}
+          )}
         </div>
       </header>
 
@@ -250,7 +250,7 @@ function PageFrame({
  * Keduanya dulu menghasilkan layar yang sama, dan laporan pengguna karena itu tidak dapat
  * ditindaklanjuti.
  */
-function LineBusinessNote({ line, loading }: { line: string; loading: boolean }) {
+function LineBusinessNote({ line, loading }: Readonly<{ line: string; loading: boolean }>) {
   if (loading) return null
 
   if (line === '') {
@@ -288,7 +288,7 @@ type TabBodyProps = {
 }
 
 /** Isi tab yang sedang terbuka, digambar menurut JENISNYA. */
-function TabBody(props: TabBodyProps) {
+function TabBody(props: Readonly<TabBodyProps>) {
   const { tab, list } = props
 
   if (list.isError) {
@@ -354,10 +354,10 @@ function TabBody(props: TabBodyProps) {
 function OverviewPanel({
   counters,
   onSelectTab,
-}: {
+}: Readonly<{
   counters: Counter[]
   onSelectTab: (code: string) => void
-}) {
+}>) {
   const children = counters.filter((counter) => counter.induk)
 
   if (children.length === 0) {
@@ -409,12 +409,12 @@ function PeriodFilter({
   value,
   onChange,
   applied,
-}: {
+}: Readonly<{
   tab: Tab
   value: PeriodInput | null
   onChange: (period: PeriodInput | null) => void
   applied?: { dari: string; sampai: string } | undefined
-}) {
+}>) {
   const mode = value?.bentuk ?? 'bulan'
 
   function update(next: Partial<PeriodInput>) {
@@ -508,7 +508,7 @@ function PeriodFilter({
  * dinyatakan akan dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan
  * layar ini dengan Pega berdampingan (`D-54`).
  */
-function PlannedDifferences({ items }: { items: string[] }) {
+function PlannedDifferences({ items }: Readonly<{ items: string[] }>) {
   if (items.length === 0) return null
 
   return (

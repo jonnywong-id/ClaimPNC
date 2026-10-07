@@ -224,6 +224,43 @@ export function SurveyorLoginPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar login surveyor…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.login}
+        description="Sumber: POOLDATA.MST_LOGIN_SURVEYOR"
+        searchLabel="Cari nama, login, atau email"
+        pageSize={PAGE_SIZE}
+        emptyMessage="Belum ada login surveyor pada entitas ini."
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -255,7 +292,7 @@ export function SurveyorLoginPage() {
           Pada layar ini ia lebih berarti daripada pada master penggolongan: yang tertera
           adalah orang, dan orang yang sama belum tentu terdaftar di entitas lain. */}
       <p className="mt-3 text-xs text-slate-500">
-        Daftar ini memuat seluruh login surveyor pada entitas yang sedang dibuka.
+        <span>Daftar ini memuat seluruh login surveyor pada entitas yang sedang dibuka.</span>
         <span className="ml-1">
           Portal entitas:{' '}
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
@@ -275,36 +312,7 @@ export function SurveyorLoginPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar login surveyor…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.login}
-            description="Sumber: POOLDATA.MST_LOGIN_SURVEYOR"
-            searchLabel="Cari nama, login, atau email"
-            pageSize={PAGE_SIZE}
-            emptyMessage="Belum ada login surveyor pada entitas ini."
-          />
-        )}
+        {renderList()}
       </section>
 
       {/* Dua keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan

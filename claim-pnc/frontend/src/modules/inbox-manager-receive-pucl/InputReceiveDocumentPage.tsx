@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
@@ -65,13 +66,7 @@ export function InputReceiveDocumentPage() {
   // paling sulit dilaporkan pengguna, karena tidak ada satu pun yang dapat disebutkan.
   const detail = berkas.data ?? null
 
-  const state: ScreenState = berkas.isError
-    ? 'galat'
-    : berkas.isPending
-      ? 'memuat'
-      : detail
-        ? 'siap'
-        : 'kosong'
+  const state = screenStateOf(berkas.isError, berkas.isPending, detail !== null)
 
   // Tab dan halaman dibawa kembali apa adanya. Petugas yang membuka berkas dari halaman
   // ketiga harus mendarat di sana lagi.
@@ -114,6 +109,13 @@ export function InputReceiveDocumentPage() {
 /** Keadaan pengambilan isi layar kerja. */
 type ScreenState = 'memuat' | 'galat' | 'kosong' | 'siap'
 
+/** Menurunkan keadaan layar dari keadaan pengambilan; galat lebih dulu, lalu memuat. */
+function screenStateOf(isError: boolean, isPending: boolean, hasDetail: boolean): ScreenState {
+  if (isError) return 'galat'
+  if (isPending) return 'memuat'
+  return hasDetail ? 'siap' : 'kosong'
+}
+
 /**
  * Keterangan kepala berkas: nomor klaim PNC, jenis klaim, dan status kerjanya.
  *
@@ -121,7 +123,7 @@ type ScreenState = 'memuat' | 'galat' | 'kosong' | 'siap'
  * dibuka lewat Open Assignment: sebelum mengerjakan berkasnya di Pega, petugas perlu tahu
  * berkas ini sudah menjadi klaim atau belum, dan masih berjalan atau sudah selesai.
  */
-function CaseSummary({ detail }: { detail: DocumentResponse }) {
+function CaseSummary({ detail }: Readonly<{ detail: DocumentResponse }>) {
   return (
     <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
       <div className="flex gap-1">
@@ -157,16 +159,16 @@ function StateNotice({
   state,
   error,
   documentKey,
-}: {
+}: Readonly<{
   state: ScreenState
   error: unknown
   documentKey: string
-}) {
+}>) {
   if (state === 'memuat') {
     return (
-      <p className="mt-4 text-sm text-slate-500" role="status">
+      <output className="mt-4 block text-sm text-slate-500">
         Memuat berkas…
-      </p>
+      </output>
     )
   }
 
@@ -208,7 +210,7 @@ function StateNotice({
  * Urutan kelompok mengikuti urutan sel di section, bukan disusun ulang menurut selera —
  * petugas yang membandingkan kedua layar berdampingan membaca isian pada urutan yang sama.
  */
-function WorkScreen({ detail }: { detail: DocumentResponse | null }) {
+function WorkScreen({ detail }: Readonly<{ detail: DocumentResponse | null }>) {
   const groups = detail?.kelompok ?? []
   const values = detail?.nilai ?? {}
 
@@ -235,11 +237,11 @@ function FieldGroup({
   title,
   fields,
   values,
-}: {
+}: Readonly<{
   title: string
   fields: DocumentField[]
   values: Record<string, string>
-}) {
+}>) {
   return (
     <section className="rounded-kartu border border-slate-200">
       <h2 className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-800">
@@ -272,21 +274,22 @@ function FieldGroup({
  * petugas mengisinya. Pada layar yang enam belas dari 36 isiannya terhalang, pembedaan itu
  * bukan kehalusan.
  */
-function FieldRow({ field, value }: { field: DocumentField; value: string }) {
+function FieldRow({ field, value }: Readonly<{ field: DocumentField; value: string }>) {
   const span = field.bertingkat ? 'sm:col-span-2' : ''
+
+  let content: ReactNode
+  if (field.terhalang) {
+    content = <BlockedValue field={field} />
+  } else if (field.bertingkat) {
+    content = <span className="block whitespace-pre-wrap">{value || '—'}</span>
+  } else {
+    content = value || '—'
+  }
 
   return (
     <div className={span}>
       <dt className="text-xs font-medium text-slate-500">{field.judul}</dt>
-      <dd className="mt-0.5 text-sm text-slate-900">
-        {field.terhalang ? (
-          <BlockedValue field={field} />
-        ) : field.bertingkat ? (
-          <span className="block whitespace-pre-wrap">{value || '—'}</span>
-        ) : (
-          value || '—'
-        )}
-      </dd>
+      <dd className="mt-0.5 text-sm text-slate-900">{content}</dd>
     </div>
   )
 }
@@ -298,7 +301,7 @@ function FieldRow({ field, value }: { field: DocumentField; value: string }) {
  * belas alasan yang seluruhnya tergambar akan menenggelamkan isian yang benar-benar berisi.
  * Yang terlihat langsung adalah TANDA-nya; alasannya terbaca saat ditunjuk.
  */
-function BlockedValue({ field }: { field: DocumentField }) {
+function BlockedValue({ field }: Readonly<{ field: DocumentField }>) {
   const reason = [field.alasan_terhalang, field.pemilik_penghalang && `Menunggu: ${field.pemilik_penghalang}`]
     .filter(Boolean)
     .join('\n\n')
@@ -335,10 +338,10 @@ function BlockedValue({ field }: { field: DocumentField }) {
 function WriteActionBar({
   actions,
   berkas,
-}: {
+}: Readonly<{
   actions: DocumentAction[]
   berkas: string
-}) {
+}>) {
   const tindakan = useReceiveDocumentAction()
 
   if (actions.length === 0) return null
@@ -398,9 +401,9 @@ function WriteActionBar({
  */
 function ClipboardNotice({
   groups,
-}: {
+}: Readonly<{
   groups: DocumentResponse['kelompok']
-}) {
+}>) {
   const blocked = groups.flatMap((group) => group.isian.filter((field) => field.terhalang))
   if (blocked.length === 0) return null
 

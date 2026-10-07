@@ -28,7 +28,7 @@ type Props = {
  * yang menjadi navigasi di layar lama. Mengulangnya di dua tempat berarti dua angka yang dapat
  * berselisih saat salah satu belum dimuat ulang.
  */
-export function BandingHargaTabs({ tabs, active, onSelect }: Props) {
+export function BandingHargaTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Dua tab memang

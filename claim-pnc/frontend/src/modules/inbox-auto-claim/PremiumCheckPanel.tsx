@@ -146,7 +146,7 @@ export function PremiumCheckPanel() {
   )
 }
 
-function Item({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Item({ label, value, strong }: Readonly<{ label: string; value: string; strong?: boolean }>) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>

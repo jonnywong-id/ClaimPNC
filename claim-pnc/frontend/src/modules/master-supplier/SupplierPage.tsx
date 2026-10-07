@@ -244,6 +244,61 @@ export function SupplierPage() {
     },
   ]
 
+  // Isi bagian daftar menurut keadaan portal dan kueri.
+  function renderList() {
+    if (portal === null) {
+      return (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      )
+    }
+    if (list.isPending) {
+      return <p className="text-sm text-slate-500">Memuat daftar supplier…</p>
+    }
+    if (list.isError) {
+      const message = loadMessage(list.error)
+      return (
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
+      )
+    }
+    return (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id_supplier}
+        description="Sumber: M_SUPPLIER"
+        searchLabel="Cari supplier"
+        emptyMessage="Belum ada supplier pada entitas ini."
+        /*
+          Dua puluh baris per halaman, dibaca langsung dari
+          `Section/InboxMasterSupplier-Section.xml`:
+
+            pyPageMode  = Numeric   nomor halaman, bukan "muat lebih banyak"
+            pyPageSize  = 20
+
+          Angkanya TIDAK seragam antarlayar — Master Bengkel juga 20, sementara Master
+          Rekening, Status Klaim, Status Progres, Pasal Kerugian, dan Penolakan Klaim
+          memakai 15 (`pyPageSizeOther`). Karena itu ia prop per layar, bukan bawaan
+          komponen.
+
+          Paginasinya di peramban, bukan di server: grid Pega pun terikat pada page
+          list klipboard (`pyPageListProperty = ListMasterSupllier.pxResults`) dan
+          memotong daftar yang sudah dimuat. Paginasi keyset sisi server adalah
+          `TKT-U2-001`, dan Steering menyebutnya perubahan perilaku — bukan
+          pemeliharaan.
+        */
+        pageSize={20}
+      />
+    )
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -306,54 +361,7 @@ export function SupplierPage() {
       )}
 
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar supplier…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id_supplier}
-            description="Sumber: M_SUPPLIER"
-            searchLabel="Cari supplier"
-            emptyMessage="Belum ada supplier pada entitas ini."
-            /*
-              Dua puluh baris per halaman, dibaca langsung dari
-              `Section/InboxMasterSupplier-Section.xml`:
-
-                pyPageMode  = Numeric   nomor halaman, bukan "muat lebih banyak"
-                pyPageSize  = 20
-
-              Angkanya TIDAK seragam antarlayar — Master Bengkel juga 20, sementara Master
-              Rekening, Status Klaim, Status Progres, Pasal Kerugian, dan Penolakan Klaim
-              memakai 15 (`pyPageSizeOther`). Karena itu ia prop per layar, bukan bawaan
-              komponen.
-
-              Paginasinya di peramban, bukan di server: grid Pega pun terikat pada page
-              list klipboard (`pyPageListProperty = ListMasterSupllier.pxResults`) dan
-              memotong daftar yang sudah dimuat. Paginasi keyset sisi server adalah
-              `TKT-U2-001`, dan Steering menyebutnya perubahan perilaku — bukan
-              pemeliharaan.
-            */
-            pageSize={20}
-          />
-        )}
+        {renderList()}
       </section>
     </main>
   )
@@ -390,7 +398,7 @@ function labelOf(list: SupplierCode[], value: string): string {
  * tampil sebagai tidak aktif dan tidak punya cara mengetahui sebabnya. Ia keterangan di
  * DALAM kolom yang sama, bukan kolom tambahan — susunan kolomnya tetap sembilan.
  */
-function StatusMark({ label, waiting }: { label: string; waiting: boolean }) {
+function StatusMark({ label, waiting }: Readonly<{ label: string; waiting: boolean }>) {
   return (
     <span className="inline-flex flex-col">
       <span className="text-sm text-slate-900">{label || '—'}</span>

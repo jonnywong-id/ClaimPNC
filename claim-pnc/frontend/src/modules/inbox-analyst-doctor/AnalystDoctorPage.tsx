@@ -191,7 +191,7 @@ function buildColumns(
 }
 
 /** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
-function Teks({ nilai }: { nilai: string }) {
+function Teks({ nilai }: Readonly<{ nilai: string }>) {
   if (!nilai) return <span className="text-slate-400">—</span>
   return <span className="truncate">{nilai}</span>
 }
@@ -305,7 +305,7 @@ const renderer: Record<string, Renderer | undefined> = {
   }),
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -327,7 +327,7 @@ function PageFrame({ children }: { children: ReactNode }) {
  * penghalangnya hilang. Tanpa catatan ini, kolom yang belum terbawa dan kotak cari yang tidak
  * ada di Pega akan dilaporkan berulang kali sebagai kerusakan.
  */
-function Catatan({ judul, baris }: { judul: string; baris: string[] }) {
+function Catatan({ judul, baris }: Readonly<{ judul: string; baris: string[] }>) {
   if (baris.length === 0) return null
 
   return (

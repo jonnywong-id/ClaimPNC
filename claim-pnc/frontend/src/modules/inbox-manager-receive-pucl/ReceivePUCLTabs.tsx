@@ -42,7 +42,7 @@ type Props = {
  * mengkliknya menampilkan alasan beserta pemiliknya, bukan tabel kosong yang terbaca
  * sebagai "tidak ada pekerjaan".
  */
-export function ReceivePUCLTabs({ tabs, active, onSelect }: Props) {
+export function ReceivePUCLTabs({ tabs, active, onSelect }: Readonly<Props>) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya

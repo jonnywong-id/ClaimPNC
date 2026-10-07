@@ -147,7 +147,7 @@ export function ClaimHistoryPage() {
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
@@ -169,7 +169,7 @@ function PageFrame({ children }: { children: ReactNode }) {
  * yang lain menuntut penambahan jatah. Menyatukannya menjadi satu pesan membuat pengguna
  * menebak mana yang berlaku padanya.
  */
-function GateBlocked({ error }: { error: unknown }) {
+function GateBlocked({ error }: Readonly<{ error: unknown }>) {
   const code = error instanceof APIError ? error.kode : ''
 
   if (code === ClaimHistoryError.quotaExhausted) {
@@ -214,7 +214,7 @@ function GateBlocked({ error }: { error: unknown }) {
  * Nadanya berubah saat tinggal sedikit — dan pembedaannya tidak hanya lewat warna
  * (`D-12`: bukan hanya warna), melainkan lewat kalimatnya.
  */
-function QuotaNotice({ remaining }: { remaining: number }) {
+function QuotaNotice({ remaining }: Readonly<{ remaining: number }>) {
   const low = remaining <= 3
 
   return (
@@ -249,20 +249,20 @@ function Pagination({
   visible,
   onMove,
   loading,
-}: {
+}: Readonly<{
   info: PageInfo
   visible: number
   onMove: (page: number) => void
   loading: boolean
-}) {
+}>) {
   const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
   const last = (info.halaman - 1) * info.ukuran + visible
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-600" role="status">
+      <output className="block text-sm text-slate-600">
         Menampilkan {first}–{last} dari {info.total} klaim.
-      </p>
+      </output>
       <div className="flex gap-2">
         <Button
           tone="kedua"
