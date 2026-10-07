@@ -55,9 +55,9 @@ func NewHandler(o Options) (*Handler, error) {
 	//	WAITING APPROVAL  status=0
 	//	REJECT            status=2
 	//
-// Yang kedua DITAMBAHKAN. Report definition lama membatasi hasilnya di 500 baris
-// (`pyMaxRecords=500`) tanpa satu pun cara mempersempitnya dari layar; pencarian di sini
-// yang menggantikan pemotongan itu.
+	// Yang kedua DITAMBAHKAN. Report definition lama membatasi hasilnya di 500 baris
+	// (`pyMaxRecords=500`) tanpa satu pun cara mempersempitnya dari layar; pencarian di sini
+	// yang menggantikan pemotongan itu.
 	//
 	// Get menangani GET /master/bengkel/{id}.
 	//

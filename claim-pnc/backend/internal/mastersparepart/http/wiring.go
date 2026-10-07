@@ -52,9 +52,9 @@ func NewHandler(o Options) (*Handler, error) {
 	// Yang pertama adalah cerminan ketiga tab `Section/BrowseMasterSparepartHE-Section.xml`,
 	// yang ketiganya memuat section berbeda dengan nilai penyaring "1", "2", dan "0".
 	//
-// Yang kedua DITAMBAHKAN. Report definition lama membatasi hasilnya di 500 baris
-// (`pyMaxRecords=500`) tanpa satu pun cara mempersempitnya dari layar; pencarian di sini
-// yang menggantikan pemotongan itu.
+	// Yang kedua DITAMBAHKAN. Report definition lama membatasi hasilnya di 500 baris
+	// (`pyMaxRecords=500`) tanpa satu pun cara mempersempitnya dari layar; pencarian di sini
+	// yang menggantikan pemotongan itu.
 	//
 	// # Kenapa daftar acuan ikut dibaca di jalur daftar
 	//

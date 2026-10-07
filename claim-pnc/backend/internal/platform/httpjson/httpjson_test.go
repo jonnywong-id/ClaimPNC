@@ -18,7 +18,9 @@ type sink struct {
 	body   any
 }
 
-func (s *sink) write(_ http.ResponseWriter, _ *http.Request, status int, b any) { s.status, s.body = status, b }
+func (s *sink) write(_ http.ResponseWriter, _ *http.Request, status int, b any) {
+	s.status, s.body = status, b
+}
 
 func run(t *testing.T, loose bool, payload string, max int64) (bool, body, *sink) {
 	t.Helper()

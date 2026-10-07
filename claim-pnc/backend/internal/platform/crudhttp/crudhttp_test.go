@@ -89,14 +89,14 @@ func TestStatusesAndArguments(t *testing.T) {
 }
 
 func TestMissingIDAndUnreadableBody(t *testing.T) {
-	h, o, calls := setup(nil, true)
+	h, o, _ := setup(nil, true)
 	h.Get(httptest.NewRecorder(), request("", true))
 	require.ErrorIs(t, o.err, errMissing)
 	o.err = nil
 	h.Update(httptest.NewRecorder(), request("", true))
 	require.ErrorIs(t, o.err, errMissing)
 
-	h, _, calls = setup(nil, false)
+	h, _, calls := setup(nil, false)
 	h.Create(httptest.NewRecorder(), request("", true))
 	h.Update(httptest.NewRecorder(), request("9", true))
 	require.Empty(t, *calls)

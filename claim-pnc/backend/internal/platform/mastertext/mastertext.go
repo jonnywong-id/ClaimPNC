@@ -28,11 +28,11 @@ func Clean(description string, businessNames []string) (string, []string) {
 
 // Limits adalah batas panjang beserta nama isian yang ditandai pelanggarannya.
 type Limits struct {
-	DescriptionField  string
-	DescriptionLabel  string
-	MaxDescription    int
-	BusinessField     string
-	MaxBusinessName   int
+	DescriptionField string
+	DescriptionLabel string
+	MaxDescription   int
+	BusinessField    string
+	MaxBusinessName  int
 }
 
 // CheckLengths memeriksa panjang keterangan dan nama bisnis. Nama bisnis yang terlalu panjang
