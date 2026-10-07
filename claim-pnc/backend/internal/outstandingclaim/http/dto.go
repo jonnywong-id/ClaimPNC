@@ -9,6 +9,7 @@ package outstandingclaimhttp
 import (
 	"claim-pnc/internal/outstandingclaim"
 	"claim-pnc/internal/outstandingclaim/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // FieldDTO adalah satu isian skalar pada layar rincian.
@@ -88,10 +89,7 @@ type DetailResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {

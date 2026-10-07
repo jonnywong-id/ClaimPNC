@@ -2,14 +2,11 @@ package inboxrclpuclhttp
 
 import (
 	"encoding/csv"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxrclpucl/usecase"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/csvexport"
 )
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan saat mengekspor.
@@ -32,8 +29,8 @@ const exportChunk = inboxrclpucl.MaxPageSize
 // yang mencegahnya memilih sepuluh tahun sekaligus.
 //
 // Berkas yang menyentuhnya diberi tanda di baris terakhir — bukan dipotong tanpa satu pun
-// pemberitahuan, yang persis cacat sistem lama. Nilainya sama dengan modul inbox lain
-// supaya tidak ada dua batas berbeda tanpa alasan.
+// pemberitahuan, yang persis cacat sistem lama. Nilainya sama dengan modul inbox lain supaya
+// tidak ada dua batas berbeda tanpa alasan.
 const exportLimit = 50_000
 
 // Export menangani GET /api/inbox-rcl-pucl/ekspor — tombol "Export To Excel" di layar.
@@ -67,9 +64,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// berkas separuh jadi tanpa satu pun keterangan. Tab yang tidak dikenal, sesi yang
 	// tidak lengkap, dan rentang tanggal yang salah karena itu tetap dijawab sebagai galat
 	// yang terbaca.
-	first, err := h.service.List(r.Context(), active.Alias, caller, readFilter(query), page)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, readFilter(query), page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -97,47 +94,23 @@ func (h *Handler) exportGrid(
 
 	h.beginDownload(w, exportFilename(tab))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(header); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
 	filter := readFilter(r.URL.Query())
 	page := inboxrclpucl.Pagination{Page: 1, Size: exportChunk}
 
-	written := 0
-	current := first
-	for {
-		for _, item := range current.Page.Items {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(header), current.Page.Total))
-				return
-			}
-			if err := writer.Write(gridRow(tab, item)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Page.Total || len(current.Page.Items) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.List(r.Context(), portalAlias, caller, filter, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+	csvexport.Paged[inboxrclpucl.WorkItem]{
+		Header: header,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(item inboxrclpucl.WorkItem) []string {
+			return gridRow(tab, item)
+		},
+		Next: func(n int) ([]inboxrclpucl.WorkItem, int, error) {
+			page.Page = n
+			next, err := h.Service.List(r.Context(), portalAlias, caller, filter, page)
+			return next.Page.Items, next.Page.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Page.Items, first.Page.Total)
 }
 
 // exportDailyReport menulis berkas LAPORAN HARIAN RCL/PUCL.
@@ -157,9 +130,9 @@ func (h *Handler) exportDailyReport(
 	input := readReport(r.URL.Query())
 	page := inboxrclpucl.Pagination{Page: 1, Size: exportChunk}
 
-	first, err := h.service.DailyReport(r.Context(), portalAlias, caller, input, page)
+	first, err := h.Service.DailyReport(r.Context(), portalAlias, caller, input, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -167,44 +140,20 @@ func (h *Handler) exportDailyReport(
 
 	h.beginDownload(w, reportFilename(first.Request.Range))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(header); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
-	written := 0
-	current := first
-	for {
-		for _, row := range current.Rows {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(header), current.Total))
-				return
-			}
-			if err := writer.Write(reportRow(row)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Total || len(current.Rows) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.DailyReport(r.Context(), portalAlias, caller, input, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+	csvexport.Paged[inboxrclpucl.DailyReportRow]{
+		Header: header,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(row inboxrclpucl.DailyReportRow) []string {
+			return reportRow(row)
+		},
+		Next: func(n int) ([]inboxrclpucl.DailyReportRow, int, error) {
+			page.Page = n
+			next, err := h.Service.DailyReport(r.Context(), portalAlias, caller, input, page)
+			return next.Rows, next.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Rows, first.Total)
 }
 
 // beginDownload memasang header unduhan.
@@ -212,21 +161,15 @@ func (h *Handler) exportDailyReport(
 // `no-store` bukan kehati-hatian berlebih: berkas ini memuat nomor polis dan nama
 // tertanggung, dan ia tidak boleh mengendap di cache perantara mana pun.
 func (h *Handler) beginDownload(w http.ResponseWriter, filename string) {
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	w.Header().Set("Cache-Control", "no-store")
+	csvexport.BeginDownload(w, filename)
 }
 
 // flush mendorong isi yang sudah tertulis keluar setiap potong, bukan menahannya sampai
 // akhir. Itulah yang membuat unduhan besar mulai mengalir segera dan memori tidak menumpuk.
 func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Request) bool {
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+	if err := csvexport.Flush(w, writer); err != nil {
 		h.logExportFailure(r, err)
 		return false
-	}
-	if flusher, able := w.(http.Flusher); able {
-		flusher.Flush()
 	}
 	return true
 }
@@ -356,15 +299,7 @@ func reportFilename(rng inboxrclpucl.DateRange) string {
 
 // truncationNotice menyusun baris penanda bahwa berkasnya tidak lengkap.
 func truncationNotice(width, total int) []string {
-	notice := make([]string, width)
-	if width == 0 {
-		return notice
-	}
-	notice[0] = fmt.Sprintf(
-		"-- Terpotong pada %s baris dari %s yang cocok. Persempit rentangnya. --",
-		strconv.Itoa(exportLimit), strconv.Itoa(total),
-	)
-	return notice
+	return csvexport.TruncationNotice(width, exportLimit, total, " Persempit rentangnya.")
 }
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
@@ -374,8 +309,5 @@ func truncationNotice(width, total int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor inbox RCL/PUCL terputus",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", err.Error()),
-	)
+	csvexport.LogFailure(r, h.Logger, "ekspor inbox RCL/PUCL terputus", err)
 }

@@ -1,0 +1,193 @@
+{
+  "SampleRows": [
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKLIST ASM-FW-GCNMFW-WORK CLMNP-1001!FLOW",
+        "ClaimID": "CLMNP-1001",
+        "AssignedOperator": "ADMINNONPROP1",
+        "MasterID": "TNP-2026-01",
+        "JSONMasterID": "TNP-2026-01",
+        "PolicyNumber": "99.002.2026.00001",
+        "LossDate": "2026-08-14",
+        "BusinessName": "Property All Risk",
+        "BusinessSource": "Treaty Inward",
+        "CedingCompany": "Asuransi Contoh Pertama",
+        "InsuredName": "PT Contoh Sejahtera",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "ADMINNONPROP1",
+        "LastUpdateOperator": "ADMINNONPROP1"
+      },
+      "FromWorkbasket": false,
+      "WorkCreatedAt": "2026-09-18T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKLIST ASM-FW-GCNMFW-WORK CLMNP-1002!FLOW",
+        "ClaimID": "CLMNP-1002",
+        "AssignedOperator": "ADMINNONPROP1",
+        "MasterID": "TNP-2026-02",
+        "JSONMasterID": "TNP-2026-02-REV1",
+        "PolicyNumber": "99.002.2026.00002",
+        "LossDate": "2026-09-02",
+        "BusinessName": "Marine Cargo",
+        "BusinessSource": "Treaty Inward",
+        "CedingCompany": "Asuransi Contoh Kedua",
+        "InsuredName": "PT Contoh Bahari",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "ADMINNONPROP1",
+        "LastUpdateOperator": "PICNONPROP1"
+      },
+      "FromWorkbasket": false,
+      "WorkCreatedAt": "2026-09-20T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKLIST ASM-FW-GCNMFW-WORK CLMNP-1003!FLOW",
+        "ClaimID": "CLMNP-1003",
+        "AssignedOperator": "ADMINNONPROP2",
+        "MasterID": "TNP-2026-03",
+        "JSONMasterID": "TNP-2026-03",
+        "PolicyNumber": "99.002.2026.00003",
+        "LossDate": "2026-08-28",
+        "BusinessName": "Engineering",
+        "BusinessSource": "Treaty Inward",
+        "CedingCompany": "Asuransi Contoh Ketiga",
+        "InsuredName": "PT Contoh Konstruksi",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "ADMINNONPROP2",
+        "LastUpdateOperator": "ADMINNONPROP2"
+      },
+      "FromWorkbasket": false,
+      "WorkCreatedAt": "2026-09-19T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKLIST ASM-FW-GCNMFW-WORK CLMNP-1004!FLOW",
+        "ClaimID": "CLMNP-1004",
+        "AssignedOperator": "ADMINNONPROP1",
+        "MasterID": "TNP-2026-04",
+        "JSONMasterID": "TNP-2026-04",
+        "PolicyNumber": "",
+        "LossDate": "2026-09-11",
+        "BusinessName": "Contractors Plant & Machinery",
+        "BusinessSource": "Treaty Inward",
+        "CedingCompany": "Asuransi Contoh Keempat",
+        "InsuredName": "PT Contoh Alat Berat",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "ADMINNONPROP1",
+        "LastUpdateOperator": "ADMINNONPROP1"
+      },
+      "FromWorkbasket": false,
+      "WorkCreatedAt": "2026-09-21T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKBASKET ASM-FW-GCNMFW-WORK CLMNP-2001!FLOW",
+        "ClaimID": "CLMNP-2001",
+        "AssignedOperator": "TreatyinPNCTeknik",
+        "MasterID": "TNP-2026-05",
+        "JSONMasterID": "",
+        "PolicyNumber": "99.002.2026.00005",
+        "LossDate": "2026-08-30",
+        "BusinessName": "Marine Hull",
+        "BusinessSource": "Treaty Inward",
+        "CedingCompany": "Asuransi Contoh Kelima",
+        "InsuredName": "PT Contoh Pelayaran",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "ADMINNONPROP2",
+        "LastUpdateOperator": "PICNONPROP2"
+      },
+      "FromWorkbasket": true,
+      "WorkCreatedAt": "2026-09-17T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKBASKET ASM-FW-GCNMFW-WORK CLMNP-2002!FLOW",
+        "ClaimID": "CLMNP-2002",
+        "AssignedOperator": "TreatyinPNCTeknik",
+        "MasterID": "TNP-2026-06",
+        "JSONMasterID": "",
+        "PolicyNumber": "99.002.2026.00006",
+        "LossDate": "2026-09-09",
+        "BusinessName": "Property All Risk",
+        "BusinessSource": "Treaty Inward",
+        "CedingCompany": "Asuransi Contoh Keenam",
+        "InsuredName": "PT Contoh Industri",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "ADMINNONPROP1",
+        "LastUpdateOperator": "PICNONPROP2"
+      },
+      "FromWorkbasket": true,
+      "WorkCreatedAt": "2026-09-22T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKLIST ASM-FW-GCNMFW-WORK-CLAIMTREATY CLMP-1001!FLOW",
+        "ClaimID": "CLMP-1001",
+        "AssignedOperator": "ADMINNONPROP1",
+        "MasterID": "",
+        "JSONMasterID": "",
+        "PolicyNumber": "99.001.2026.00001",
+        "LossDate": "",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "CedingCompany": "",
+        "InsuredName": "PT Contoh Treaty Proporsional",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "",
+        "LastUpdateOperator": ""
+      },
+      "FromWorkbasket": false,
+      "WorkCreatedAt": "2026-09-23T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKLIST ASM-FW-GCNMFW-WORK KMTNP-3001!FLOW",
+        "ClaimID": "KMTNP-3001",
+        "AssignedOperator": "ADMINNONPROP1",
+        "MasterID": "",
+        "JSONMasterID": "",
+        "PolicyNumber": "99.002.2026.00007",
+        "LossDate": "",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "CedingCompany": "",
+        "InsuredName": "PT Contoh Komite",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "",
+        "LastUpdateOperator": ""
+      },
+      "FromWorkbasket": false,
+      "WorkCreatedAt": "2026-09-23T03:00:00Z"
+    },
+    {
+      "Item": {
+        "Reference": "ASSIGN-WORKBASKET ASM-FW-GCNMFW-WORK CLMNP-3002!FLOW",
+        "ClaimID": "CLMNP-3002",
+        "AssignedOperator": "AntreanLain",
+        "MasterID": "",
+        "JSONMasterID": "",
+        "PolicyNumber": "99.002.2026.00008",
+        "LossDate": "",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "CedingCompany": "",
+        "InsuredName": "PT Contoh Antrean Lain",
+        "CreatedAt": "",
+        "AgingDays": 0,
+        "CreateOperator": "",
+        "LastUpdateOperator": ""
+      },
+      "FromWorkbasket": true,
+      "WorkCreatedAt": "2026-09-22T03:00:00Z"
+    }
+  ]
+}

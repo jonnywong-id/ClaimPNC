@@ -1,0 +1,106 @@
+{
+  "SampleBranches": [
+    {
+      "ID": "100001",
+      "Name": "AGENCY MANADO"
+    },
+    {
+      "ID": "100052",
+      "Name": "AGENCY BINTARO"
+    },
+    {
+      "ID": "100054",
+      "Name": "GARUT"
+    },
+    {
+      "ID": "100104",
+      "Name": "MADIUN"
+    },
+    {
+      "ID": "100128",
+      "Name": "GRESIK"
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "1",
+      "BranchID": "100081",
+      "BranchName": "KANTOR PUSAT",
+      "Login": "CONTOH.ADMIN",
+      "Module": "PNCSearchKlaim",
+      "SubModule": "Registrasi,Dokumen,",
+      "SearchQuota": 100,
+      "ViewQuota": 100,
+      "ViewIDCard": true,
+      "ViewEmail": true,
+      "ViewPhone": true,
+      "Active": true,
+      "InputBy": "CONTOH.SUPERVISOR",
+      "InputAt": "2026-09-06T08:00:00Z"
+    },
+    {
+      "ID": "2",
+      "BranchID": "100069",
+      "BranchName": "BOGOR",
+      "Login": "CONTOH.TEKNIK",
+      "Module": "PNCSearchKlaim",
+      "SubModule": "Penerimaan Pembayaran Klaim,Registrasi,Dokumen,",
+      "SearchQuota": 5,
+      "ViewQuota": 5,
+      "ViewIDCard": true,
+      "ViewEmail": false,
+      "ViewPhone": true,
+      "Active": true,
+      "InputBy": "CONTOH.SUPERVISOR",
+      "InputAt": "2026-09-05T08:00:00Z"
+    },
+    {
+      "ID": "3",
+      "BranchID": "100084",
+      "BranchName": "MALANG",
+      "Login": "CONTOH.SURVEYOR",
+      "Module": "PNCSearchKlaim",
+      "SubModule": "Dokumen,",
+      "SearchQuota": 4,
+      "ViewQuota": 17,
+      "ViewIDCard": false,
+      "ViewEmail": true,
+      "ViewPhone": true,
+      "Active": true,
+      "InputBy": "CONTOH.ADMIN",
+      "InputAt": "2026-09-04T08:00:00Z"
+    },
+    {
+      "ID": "4",
+      "BranchID": "100089",
+      "BranchName": "YOGYAKARTA",
+      "Login": "CONTOH.KASIR",
+      "Module": "PNCSearchKlaim",
+      "SubModule": "Penerimaan Pembayaran Klaim,",
+      "SearchQuota": 100000,
+      "ViewQuota": 100000,
+      "ViewIDCard": false,
+      "ViewEmail": false,
+      "ViewPhone": true,
+      "Active": true,
+      "InputBy": "CONTOH.ADMIN",
+      "InputAt": "2026-09-03T08:00:00Z"
+    },
+    {
+      "ID": "5",
+      "BranchID": "100004",
+      "BranchName": "KETAPANG",
+      "Login": "CONTOH.MUTASI",
+      "Module": "PNCSearchKlaim",
+      "SubModule": "",
+      "SearchQuota": 0,
+      "ViewQuota": 0,
+      "ViewIDCard": false,
+      "ViewEmail": false,
+      "ViewPhone": false,
+      "Active": false,
+      "InputBy": "CONTOH.SUPERVISOR",
+      "InputAt": "2026-09-02T08:00:00Z"
+    }
+  ]
+}

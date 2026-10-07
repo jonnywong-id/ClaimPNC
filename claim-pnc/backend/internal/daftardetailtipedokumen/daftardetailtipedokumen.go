@@ -80,6 +80,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // DetailType adalah satu rincian dokumen klaim.
@@ -349,10 +351,7 @@ const (
 )
 
 // Violation adalah satu pelanggaran isian.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError mengumpulkan SELURUH pelanggaran sekaligus.
 //

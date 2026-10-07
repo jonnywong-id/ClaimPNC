@@ -114,9 +114,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// galat tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa
 	// berkas separuh jadi tanpa satu pun keterangan. Tab yang bukan haknya dan sesi yang
 	// tidak lengkap karena itu tetap dijawab sebagai galat yang terbaca.
-	first, err := h.service.List(r.Context(), active.Alias, caller, filter, page)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, filter, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		page.Page++
-		current, err = h.service.List(r.Context(), active.Alias, caller, filter, page)
+		current, err = h.Service.List(r.Context(), active.Alias, caller, filter, page)
 		if err != nil {
 			h.logExportFailure(r, err)
 			return
@@ -259,10 +259,10 @@ func exportTruncationNotice(total int) []string {
 // berkas yang berhenti di tengah. Catatan ini satu-satunya jejaknya, dan tanpa itu keluhan
 // "berkasnya tidak lengkap" tidak dapat ditelusuri sama sekali.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	if h.logger == nil {
+	if h.Logger == nil {
 		return
 	}
-	logging.From(r.Context(), h.logger).Error(
+	logging.From(r.Context(), h.Logger).Error(
 		"ekspor Inbox Manager Admin terputus",
 		slog.String("jalur", r.URL.Path),
 		slog.String("tab", strings.TrimSpace(r.URL.Query().Get("tab"))),

@@ -5,7 +5,10 @@
 // `mastersupplierhttp` supaya tidak menutupi `net/http`.
 package mastersupplierhttp
 
-import "claim-pnc/internal/mastersupplier"
+import (
+	"claim-pnc/internal/mastersupplier"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // SupplierDTO adalah bentuk satu baris master supplier yang dikirim ke peramban.
 //
@@ -138,8 +141,8 @@ type ListResponse struct {
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
-	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan hukum,
-	// "data siapa ini" tidak boleh hanya diandaikan.
+	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan
+	// hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 
@@ -295,10 +298,7 @@ func (r SaveRequest) toInput() mastersupplier.Input {
 // `kolom` dipilih karena itu yang dipakai Master Bengkel dan Master Auto Claim; Master
 // Pasal Kerugian memakai `field`. Keduanya sah hari ini, dan penyeragamannya menunggu
 // TKT-F1-004.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

@@ -41,7 +41,7 @@ func TestAngkaBesarTidakDibulatkan(t *testing.T) {
 	doc, err := parseDocument(`{"TotalSumInsuredIDR": 1234567890123.45}`)
 	require.NoError(t, err)
 
-	value, exists := doc.lookup("TotalSumInsuredIDR")
+	value, exists := doc.Lookup("TotalSumInsuredIDR")
 	require.True(t, exists)
 	require.Equal(t, "1234567890123.45", text(value))
 }
@@ -54,15 +54,15 @@ func TestJalurTidakAdaDibedakanDariNilaiKosong(t *testing.T) {
 	doc, err := parseDocument(`{"NoClaim": "", "PolicyData": {"PolicyNo": "99.002"}}`)
 	require.NoError(t, err)
 
-	value, exists := doc.lookup("NoClaim")
+	value, exists := doc.Lookup("NoClaim")
 	require.True(t, exists, "isian yang ada tetapi kosong tetap ADA")
 	require.Equal(t, "", text(value))
 
-	_, exists = doc.lookup("IsianYangTidakPernahAda")
+	_, exists = doc.Lookup("IsianYangTidakPernahAda")
 	require.False(t, exists)
 
 	// Jalur bertingkat ditelusuri titik demi titik.
-	value, exists = doc.lookup("PolicyData.PolicyNo")
+	value, exists = doc.Lookup("PolicyData.PolicyNo")
 	require.True(t, exists)
 	require.Equal(t, "99.002", text(value))
 }
@@ -80,7 +80,7 @@ func TestObjekTunggalDibacaSebagaiSatuBaris(t *testing.T) {
 	doc, err := parseDocument(`{"AdjustmentList": {"Type": "Final", "AcceptedNo": "A-1"}}`)
 	require.NoError(t, err)
 
-	value, exists := doc.lookup("AdjustmentList")
+	value, exists := doc.Lookup("AdjustmentList")
 	require.True(t, exists)
 
 	got := rows(value, columns)

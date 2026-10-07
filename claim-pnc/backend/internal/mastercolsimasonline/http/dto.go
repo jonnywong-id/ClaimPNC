@@ -6,7 +6,10 @@
 // `mastercolsimasonlinehttp` supaya tidak menutupi `net/http`.
 package mastercolsimasonlinehttp
 
-import "claim-pnc/internal/mastercolsimasonline"
+import (
+	"claim-pnc/internal/mastercolsimasonline"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // CauseOfLossDTO adalah bentuk satu baris master yang dikirim ke peramban.
 //
@@ -95,10 +98,7 @@ type ErrorResponse struct {
 }
 
 // ViolationDTO adalah satu isian yang tidak lolos pemeriksaan.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(row mastercolsimasonline.CauseOfLoss) CauseOfLossDTO {
@@ -111,9 +111,9 @@ func toDTO(row mastercolsimasonline.CauseOfLoss) CauseOfLossDTO {
 
 // toListDTO mengubah sekumpulan baris domain.
 //
-// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim
-// sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri,
-// dan satu layar yang lupa akan gagal saat tabelnya masih kosong.
+// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []mastercolsimasonline.CauseOfLoss) []CauseOfLossDTO {
 	result := make([]CauseOfLossDTO, 0, len(list))
 	for _, row := range list {

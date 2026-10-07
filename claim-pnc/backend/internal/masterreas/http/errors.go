@@ -30,12 +30,6 @@ const (
 	CodeMalformedRequest = "permintaan_cacat"
 )
 
-// ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
-
-// JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
-
 // writeModuleError meneruskan galat ke penulis bersama, dan mencatat yang perlu dicatat.
 //
 // Tidak ada pemetaan di sini; lihat catatan pada blok konstanta di atas.
@@ -55,10 +49,10 @@ type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body an
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
 	clientMistake := errors.Is(err, portal.ErrNotStated) || errors.Is(err, portal.ErrNotFound)
 	if !clientMistake {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
+		logging.From(r.Context(), h.Logger).Error("permintaan gagal",
 			slog.String("jalur", r.URL.Path),
 			slog.String("galat", err.Error()),
 		)
 	}
-	h.writeError(w, r, err)
+	h.WriteError(w, r, err)
 }

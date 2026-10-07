@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterstatusprogres"
+	"claim-pnc/internal/platform/sqlkit"
 )
 
 // Repo2 membaca dan menulis POOLDATA.GCNM_MST_PROGRESS — Master Status Progres 2.
@@ -26,23 +27,7 @@ func NewRepo2(db *sql.DB) *Repo2 { return &Repo2{db: db} }
 // List membaca seluruh status progres tingkat 2.
 func (r *Repo2) List(ctx context.Context) ([]masterstatusprogres.ProgressStatus2, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("progress_status2_list"))
-	if err != nil {
-		return nil, fmt.Errorf("masterstatusprogres2/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterstatusprogres.ProgressStatus2
-	for rows.Next() {
-		sp, err := scanRow2(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, sp)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterstatusprogres2/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow2, "masterstatusprogres2/sqlstore: membaca daftar", "", "masterstatusprogres2/sqlstore: menelusuri daftar")
 }
 
 // Get membaca satu status progres tingkat 2 berdasarkan ID_MST-nya.

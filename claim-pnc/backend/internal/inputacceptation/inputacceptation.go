@@ -286,10 +286,10 @@ func NewQuery(claimID string, caller Caller) (Query, error) {
 
 // Repo adalah seam ke akseptasi klaim treaty non-proporsional pada SATU portal.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di tingkat kueri
-// (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut entitas, dan
-// memang tidak boleh ada.
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di
+// tingkat kueri (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut
+// entitas, dan memang tidak boleh ada.
 type Repo interface {
 	// Find mengembalikan satu rincian akseptasi.
 	//

@@ -74,3 +74,11 @@ func TestTwoDigitYearWIBAroundNewYear(t *testing.T) {
 	require.Equal(t, 7, clock.TwoDigitYearWIB(
 		time.Date(2007, time.June, 1, 0, 0, 0, 0, time.UTC)))
 }
+
+func TestCalendarDays(t *testing.T) {
+	wib := time.FixedZone("WIB", 7*3600)
+	start := time.Date(2026, 1, 1, 16, 0, 0, 0, time.UTC) // 23.00 WIB
+	require.Equal(t, 1, clock.CalendarDays(start, start.Add(2*time.Hour), wib))
+	require.Equal(t, 0, clock.CalendarDays(start, start.Add(2*time.Hour), time.UTC))
+	require.Equal(t, 0, clock.CalendarDays(start.Add(72*time.Hour), start, wib))
+}

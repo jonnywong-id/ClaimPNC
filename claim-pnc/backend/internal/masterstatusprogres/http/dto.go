@@ -5,7 +5,10 @@
 // `masterstatusprogreshttp` supaya tidak menutupi `net/http`.
 package masterstatusprogreshttp
 
-import "claim-pnc/internal/masterstatusprogres"
+import (
+	"claim-pnc/internal/masterstatusprogres"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // ProgressStatusDTO adalah bentuk satu baris master yang dikirim ke peramban.
 //
@@ -45,8 +48,8 @@ type ListResponse struct {
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
-	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang
-	// melayani empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan.
+	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang melayani
+	// empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 
@@ -84,10 +87,7 @@ type ErrorResponse struct {
 }
 
 // ViolationDTO adalah satu isian yang tidak lolos pemeriksaan.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(sp masterstatusprogres.ProgressStatus) ProgressStatusDTO {
@@ -101,9 +101,9 @@ func toDTO(sp masterstatusprogres.ProgressStatus) ProgressStatusDTO {
 
 // toListDTO mengubah sekumpulan baris domain.
 //
-// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim
-// sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri,
-// dan satu layar yang lupa akan gagal saat tabelnya masih kosong.
+// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []masterstatusprogres.ProgressStatus) []ProgressStatusDTO {
 	result := make([]ProgressStatusDTO, 0, len(list))
 	for _, sp := range list {

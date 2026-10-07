@@ -25,13 +25,18 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterpasal"
+	"claim-pnc/internal/platform/sqlfile"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterpasal/sqlstore", sqlfile.KeepEmpty())
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "masterpasal/sqlstore", name) }
 
 // Repo membaca dan menulis POOLDATA.V_M_DATA_PASAL, dan MEMBACA POOLDATA.BUSINESS.
 type Repo struct {
@@ -561,65 +566,4 @@ func lookupArguments(keyword string) (pattern, exact string) {
 		escaped = strings.ReplaceAll(escaped, special, `\`+special)
 	}
 	return "%" + escaped + "%", clean
-}
-
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("masterpasal/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterpasal/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterpasal/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterpasal/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		result[name] = strings.TrimSpace(strings.Join(body, "\n"))
-	}
-
-	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		if strings.HasPrefix(trimmed, "--") {
-			continue
-		}
-		body = append(body, line)
-	}
-	save()
-	return result
 }

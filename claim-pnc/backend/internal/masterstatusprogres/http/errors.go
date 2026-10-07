@@ -2,24 +2,23 @@ package masterstatusprogreshttp
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/masterstatusprogres"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini.
 //
 // # Kenapa modul ini memetakan galatnya sendiri
 //
-// Kontrak galat yang mengikat seluruh aplikasi adalah TKT-F1-004, dan ia masih
-// terhalang keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth,
-// dan menambah kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
+// Kontrak galat yang mengikat seluruh aplikasi adalah TKT-F1-004, dan ia masih terhalang
+// keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth, dan
+// menambah kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
 //
 // Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan
-// sisanya ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap
-// sama sehingga klien tidak menghadapi dua bentuk galat yang berbeda.
+// sisanya ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama
+// sehingga klien tidak menghadapi dua bentuk galat yang berbeda.
 //
 // Begitu TKT-F1-004 diputuskan, pemetaan ini pindah ke tempat bersama dan berkas ini
 // tinggal memakainya. Utang itu dicatat di docs/keputusan-implementasi.md.
@@ -30,30 +29,14 @@ const (
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // penulisGalatModul memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	status, body, known := mapError(err)
-	if !known {
-		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan
-		// jaringan, cacat pemrograman — diserahkan ke penulis bersama, yang menjawab
-		// 500 dengan pesan umum dan menaruh rinciannya di log saja. Rincian galat
-		// internal tidak pernah dikirim ke peramban.
-		h.writeError(w, r, err)
-		return
-	}
-
-	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-	}
-	h.writeResponse(w, r, status, body)
+	apierror.Write(w, r, err, mapError, h.logger, h.writeResponse, h.writeError)
 }
 
 // mapError memetakan galat domain menjadi status dan badan respons.
@@ -73,10 +56,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// 422 berarti pengguna perlu memperbaiki isiannya (`10-API-STRATEGY.md` §5).
 		//
 		// SELURUH pelanggaran dikirim sekaligus, bukan yang pertama saja.
-		detail := make([]ViolationDTO, 0, len(validationError.Violation))
-		for _, p := range validationError.Violation {
-			detail = append(detail, ViolationDTO{Field: p.Field, Message: p.Message})
-		}
+		detail := apierror.ColumnErrors(validationError.Violation)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFailed,
 			Message: "Ada isian yang belum benar. Periksa keterangan di bawah setiap isian.",

@@ -81,6 +81,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // Caller adalah identitas petugas yang mengirim permintaan.
@@ -286,13 +288,16 @@ type QueueRow struct {
 }
 
 // Pagination menyatakan halaman keberapa yang diminta dan sebesar apa.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi.
 //
@@ -307,31 +312,6 @@ const (
 	DefaultPageSize = 25
 	MaxPageSize     = 100
 )
-
-// Normalize mengembalikan paginasi yang sudah dibetulkan ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari parameter
-// query yang mudah salah ketik, dan menolak seluruh permintaan karena `halaman=0` akan
-// membuat layar gagal tanpa alasan yang terbaca pengguna.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati sebelum halaman yang diminta.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
 
 // QueuePage adalah satu halaman antrean beserta jumlah seluruh baris yang cocok.
 type QueuePage struct {
@@ -401,10 +381,10 @@ const LargeResultWarning = 5000
 
 // Repo adalah seam ke SATU portal entitas.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di tingkat kueri
-// (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut entitas, dan
-// memang tidak boleh ada.
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di
+// tingkat kueri (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut
+// entitas, dan memang tidak boleh ada.
 type Repo interface {
 	// Counters mengembalikan kesepuluh pencacah di kepala layar.
 	//

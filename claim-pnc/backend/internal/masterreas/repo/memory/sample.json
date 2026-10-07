@@ -1,0 +1,60 @@
+{
+  "SampleList": [
+    {
+      "ReinsurerID": "RE-001",
+      "ReinsurerName": "Reasuransi Nusantara Jaya",
+      "Login": "ReasuransiNusantaraJaya",
+      "Email": "pla.nusantara@contoh.invalid",
+      "Country": "Indonesia",
+      "Type": "1"
+    },
+    {
+      "ReinsurerID": "RE-001",
+      "ReinsurerName": "Reasuransi Nusantara Jaya",
+      "Login": "ReasuransiNusantaraJaya",
+      "Email": "dla.nusantara@contoh.invalid",
+      "Country": "Indonesia",
+      "Type": "2"
+    },
+    {
+      "ReinsurerID": "RE-001",
+      "ReinsurerName": "Reasuransi Nusantara Jaya",
+      "Login": "ReasuransiNusantaraJaya",
+      "Email": "xol.nusantara@contoh.invalid",
+      "Country": "Indonesia",
+      "Type": "3"
+    },
+    {
+      "ReinsurerID": "RE-002",
+      "ReinsurerName": "Andalas Re",
+      "Login": "AndalasRe",
+      "Email": "klaim.andalas@contoh.invalid",
+      "Country": "Indonesia",
+      "Type": "1"
+    },
+    {
+      "ReinsurerID": "RE-003",
+      "ReinsurerName": "Bahtera Reinsurance Ltd",
+      "Login": "BahteraReinsuranceLtd",
+      "Email": "notice.bahtera@contoh.invalid",
+      "Country": "",
+      "Type": "1"
+    },
+    {
+      "ReinsurerID": "RE-004",
+      "ReinsurerName": "Cakrawala Re Asia",
+      "Login": "CakrawalaReAsia",
+      "Email": "dla.cakrawala@contoh.invalid",
+      "Country": "Singapura",
+      "Type": "2"
+    },
+    {
+      "ReinsurerID": "RE-005",
+      "ReinsurerName": "Andalas Re Syariah",
+      "Login": "AndalasRe",
+      "Email": "syariah.andalas@contoh.invalid",
+      "Country": "Indonesia",
+      "Type": "1"
+    }
+  ]
+}

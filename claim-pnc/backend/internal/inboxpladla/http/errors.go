@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/inboxpladla"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien.
@@ -28,10 +29,10 @@ const (
 )
 
 // JSONWriter menuliskan badan respons.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat modul ini menjadi respons HTTP.
 //
@@ -39,42 +40,18 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 // galat portal dan auth. Bila tidak ada cadangan, jawabannya 500 dengan pesan umum dan
 // rinciannya hanya masuk log.
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
-		status, body, recognized := mapError(err)
+	return apierror.Writer(logger, writeJSON, fallback, mapAny, ErrorResponse{
+		Code:    CodeInternalError,
+		Message: "Terjadi kesalahan pada sistem.",
+	})
+}
 
-		// Galat layar rincian dicoba SESUDAHNYA, bukan digabung ke satu switch raksasa.
-		//
-		// Urutannya penting satu kali: `NotAvailableError` membungkus
-		// ErrWriteNotAvailable lewat Unwrap, sehingga mapError akan menangkapnya lebih
-		// dulu dan menjawab kalimat umum. Itulah sebabnya mapError TIDAK lagi memeriksa
-		// sentinel itu — pemeriksaannya dipindahkan seluruhnya ke mapDetailError, yang
-		// menjawab alasan per tombol.
-		if !recognized {
-			status, body, recognized = mapDetailError(err)
-		}
-
-		if !recognized {
-			if fallback != nil {
-				fallback(w, r, err)
-				return
-			}
-
-			status, body = http.StatusInternalServerError, ErrorResponse{
-				Code:    CodeInternalError,
-				Message: "Terjadi kesalahan pada sistem.",
-			}
-		}
-
-		if status >= http.StatusInternalServerError && logger != nil {
-			logger.Error(
-				"permintaan gagal",
-				slog.String("jalur", r.URL.Path),
-				slog.String("galat", err.Error()),
-			)
-		}
-
-		writeJSON(w, r, status, body)
+// mapAny mencoba pemetaan galat umum lebih dulu, lalu pemetaan galat rincian.
+func mapAny(err error) (int, ErrorResponse, bool) {
+	if status, body, recognized := mapError(err); recognized {
+		return status, body, true
 	}
+	return mapDetailError(err)
 }
 
 // mapError menerjemahkan galat domain menjadi status dan badan HTTP.
@@ -83,10 +60,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 
 	switch {
 	case errors.As(err, &validation):
-		details := make([]ViolationDTO, 0, len(validation.Violations))
-		for _, v := range validation.Violations {
-			details = append(details, ViolationDTO{Field: v.Field, Message: v.Message})
-		}
+		details := apierror.FieldErrors(validation.Violations)
 
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFail,

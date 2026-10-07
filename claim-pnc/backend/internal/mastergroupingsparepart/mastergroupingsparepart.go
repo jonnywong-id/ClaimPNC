@@ -82,6 +82,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // ApprovalStatus adalah posisi sebuah baris dalam alur persetujuan.
@@ -427,12 +429,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis data —
-	// layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis data —
+// layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -454,11 +454,7 @@ func OneViolation(field, message string) error {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "mastergroupingsparepart: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "mastergroupingsparepart: isian tidak sah (", ": ", "; ", ")")
 }
 
 // Clean memangkas spasi di kedua ujung setiap isian.
@@ -570,21 +566,12 @@ func (i Input) checkGroupTarget() []Violation {
 
 // checkRequired memeriksa satu isian wajib beserta panjangnya.
 func checkRequired(field, label, value string, max int) []Violation {
-	if value == "" {
-		return []Violation{{Field: field, Message: label + " wajib diisi."}}
-	}
-	return checkLength(field, label, value, max)
+	return validation.Required(field, label, value, max)
 }
 
 // checkLength memeriksa panjang satu isian yang boleh kosong.
 func checkLength(field, label, value string, max int) []Violation {
-	if len(value) > max {
-		return []Violation{{
-			Field:   field,
-			Message: fmt.Sprintf("%s paling panjang %d karakter.", label, max),
-		}}
-	}
-	return nil
+	return validation.Length(field, label, value, max)
 }
 
 // Filter menyaring daftar yang dibaca layar.
@@ -723,9 +710,9 @@ type IDSource interface {
 
 // Repo adalah seam ke penyimpanan grouping sparepart SATU portal.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di tingkat kueri
-// (ADR-0030 Opsi 1).
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di
+// tingkat kueri (ADR-0030 Opsi 1).
 type Repo interface {
 	// List mengembalikan baris yang cocok dengan penyaring.
 	List(ctx context.Context, filter Filter) ([]Grouping, error)
@@ -781,8 +768,8 @@ type Repo interface {
 // permintaan datang — bukan diputuskan sekali saat aplikasi start.
 //
 // Portal yang tidak dikenal atau koneksinya belum hidup WAJIB menghasilkan galat.
-// Mengembalikan repo portal utama sebagai jalan pintas berarti menulis data satu badan hukum
-// ke basis data badan hukum lain tanpa satu pun pesan galat (`R-20`).
+// Mengembalikan repo portal utama sebagai jalan pintas berarti menulis data satu badan
+// hukum ke basis data badan hukum lain tanpa satu pun pesan galat (`R-20`).
 type RepoSelector func(portalAlias string) (Store, error)
 
 // Store menyatukan ketiga seam yang dipakai layanan modul ini.

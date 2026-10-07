@@ -16,13 +16,21 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterstatusprogres"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterstatusprogres/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string {
+	return sqlfile.MustGet(query, "masterstatusprogres/sqlstore", name)
+}
 
 // Repo membaca dan menulis POOLDATA.GCNM_MST_PROGRESS_KLAIM.
 type Repo struct {
@@ -35,23 +43,7 @@ func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 // List membaca seluruh status progres.
 func (r *Repo) List(ctx context.Context) ([]masterstatusprogres.ProgressStatus, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("progress_status_list"))
-	if err != nil {
-		return nil, fmt.Errorf("masterstatusprogres/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterstatusprogres.ProgressStatus
-	for rows.Next() {
-		sp, err := scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, sp)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterstatusprogres/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow, "masterstatusprogres/sqlstore: membaca daftar", "", "masterstatusprogres/sqlstore: menelusuri daftar")
 }
 
 // Get membaca satu status progres berdasarkan ID-nya.
@@ -195,9 +187,7 @@ func nextID(used []string) string {
 	}
 }
 
-type scanner interface {
-	Scan(target ...any) error
-}
+type scanner = sqlkit.Scanner
 
 // scanRow membaca satu baris hasil kueri menjadi ProgressStatus.
 //
@@ -219,77 +209,6 @@ func scanRow(p scanner) (masterstatusprogres.ProgressStatus, error) {
 
 func scanSingleRow(rows *sql.Row) (masterstatusprogres.ProgressStatus, error) {
 	return scanRow(rows)
-}
-
-// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
-// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
-// saat pertama dijalankan.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("masterstatusprogres/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterstatusprogres/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterstatusprogres/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterstatusprogres/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		if trimmed := strings.TrimSpace(rows); strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 var _ masterstatusprogres.Repo = (*Repo)(nil)

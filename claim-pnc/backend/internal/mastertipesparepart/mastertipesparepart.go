@@ -64,6 +64,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // ApprovalStatus adalah posisi sebuah baris dalam alur persetujuan.
@@ -273,12 +275,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
-	// data — layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+// data — layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -300,11 +300,7 @@ func OneViolation(field, message string) error {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "mastertipesparepart: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "mastertipesparepart: isian tidak sah (", ": ", "; ", ")")
 }
 
 // Clean memangkas spasi di kedua ujung setiap isian.
@@ -443,9 +439,9 @@ type IDSource interface {
 
 // Repo adalah seam ke penyimpanan master tipe sparepart SATU portal.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di tingkat
-// kueri (ADR-0030 Opsi 1).
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di
+// tingkat kueri (ADR-0030 Opsi 1).
 type Repo interface {
 	// List mengembalikan baris yang cocok dengan penyaring, beserta nama kategori induknya.
 	List(ctx context.Context, filter Filter) ([]PartType, error)

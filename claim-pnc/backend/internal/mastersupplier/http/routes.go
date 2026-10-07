@@ -1,19 +1,15 @@
 package mastersupplierhttp
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/mastersupplier"
 	"claim-pnc/internal/mastersupplier/usecase"
+	"claim-pnc/internal/platform/httpjson"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -24,121 +20,6 @@ import (
 // supaya permintaan bertubuh raksasa ditolak sebelum memakan memori.
 const maxRequestBody = 64 << 10
 
-// Caller adalah pemanggil yang sudah terverifikasi sesinya.
-//
-// Berbeda dari Master Bengkel, identitas ini BENAR-BENAR TERSIMPAN: ia menjadi kunci
-// `USERKLAIMID` di dalam dokumen supplier dan kolom `USER_REQ` pada baris permintaan
-// persetujuan. Keduanya ditulis sistem lama juga.
-type Caller struct {
-	Login string
-}
-
-// CallerReader mengambil identitas pemanggil dari konteks permintaan.
-//
-// Ia jembatan SATU ARAH dari modul auth, disuntikkan dari cmd. Modul ini tidak mengimpor
-// lapisan transport modul auth — itulah yang membuat keduanya dapat berpindah tanpa
-// menyeret satu sama lain.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan master supplier.
-type Handler struct {
-	service       *usecase.Service
-	caller        CallerReader
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Caller  CallerReader
-	Logger  *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul master supplier.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("mastersupplier/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("mastersupplier/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("mastersupplier/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
-// List menangani GET /master/supplier.
-//
-// # Penyaringnya
-//
-//	?cari=...  mempersempit pada nama, kota, atau contact person
-//
-// Ia DITAMBAHKAN. Layar lama tidak punya penyaring apa pun — `Section/InboxMasterSupplier`
-// hanya punya tombol New Supplier, Edit, dan Refresh — dan gridnya membaca page list yang
-// tidak ada satu pun rule di export yang mengisinya (`R-16`). Tanpa kueri lamanya, tidak
-// ada yang dapat ditiru; yang dapat dilakukan adalah membuat daftar yang dapat
-// dipersempit.
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	list, err := h.service.List(r.Context(), active.Alias, r.URL.Query().Get("cari"))
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
-		Supplier: toListDTO(list),
-		Portal:   active.Alias,
-	})
-}
-
-// Get menangani GET /master/supplier/{id}.
-//
-// Ia padanan `Activity/GetDataSupplier_pre`, termasuk penurunan JENIS_STATUS dari
-// SUPPLIER_HE yang dikerjakan adapter saat membaca.
-func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		h.writeModuleError(w, r, mastersupplier.ErrNotFound)
-		return
-	}
-
-	found, err := h.service.Get(r.Context(), active.Alias, id)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
-		Supplier: toDTO(found),
-		Portal:   active.Alias,
-	})
-}
-
 // Create menangani POST /master/supplier.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
@@ -147,12 +28,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	by, known := h.caller(r.Context())
+	by, known := h.Caller(r.Context())
 	if !known {
 		// Tidak mungkin terjadi di balik middleware Autentikasi. Dinyatakan supaya cacat
 		// perakitan gagal keras, bukan diam-diam menulis master dengan kunci USERKLAIMID
 		// kosong — kolom yang justru menjadi satu-satunya jejak pelaku pada tabel ini.
-		h.writeError(w, r, errors.New("mastersupplier/http: identitas pemanggil tidak ada di konteks"))
+		h.WriteError(w, r, errors.New("mastersupplier/http: identitas pemanggil tidak ada di konteks"))
 		return
 	}
 
@@ -161,8 +42,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Create(r.Context(), active.Alias, request.toInput(),
-		usecase.Actor{Login: by.Login}, h.logger)
+	saved, err := h.Service.Create(r.Context(), active.Alias, request.toInput(),
+		usecase.Actor{Login: by.Login}, h.Logger)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -171,7 +52,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// 201, dan badannya memuat baris yang benar-benar tersimpan — termasuk ID, SUPPLIER_HE,
 	// dan STS_AKTIF yang ketiganya diterbitkan server, sehingga layar tidak punya cara lain
 	// mengetahuinya.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
+	h.WriteResponse(w, r, http.StatusCreated, SingleResponse{
 		Supplier: toDTO(saved),
 		Portal:   active.Alias,
 	})
@@ -187,9 +68,9 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	by, known := h.caller(r.Context())
+	by, known := h.Caller(r.Context())
 	if !known {
-		h.writeError(w, r, errors.New("mastersupplier/http: identitas pemanggil tidak ada di konteks"))
+		h.WriteError(w, r, errors.New("mastersupplier/http: identitas pemanggil tidak ada di konteks"))
 		return
 	}
 
@@ -204,14 +85,14 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Save(r.Context(), active.Alias, id, request.toInput(),
-		usecase.Actor{Login: by.Login}, h.logger)
+	saved, err := h.Service.Save(r.Context(), active.Alias, id, request.toInput(),
+		usecase.Actor{Login: by.Login}, h.Logger)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{
 		Supplier: toDTO(saved),
 		Portal:   active.Alias,
 	})
@@ -225,13 +106,13 @@ func (h *Handler) Branches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.ListBranches(r.Context(), active.Alias)
+	list, err := h.Service.ListBranches(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BranchListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BranchListResponse{
 		Branch: toBranchListDTO(list),
 		Portal: active.Alias,
 	})
@@ -245,13 +126,13 @@ func (h *Handler) Cities(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.SearchCities(r.Context(), active.Alias, r.URL.Query().Get("cari"))
+	list, err := h.Service.SearchCities(r.Context(), active.Alias, r.URL.Query().Get("cari"))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, CityListResponse{
+	h.WriteResponse(w, r, http.StatusOK, CityListResponse{
 		City:   toCityListDTO(list),
 		Portal: active.Alias,
 	})
@@ -265,13 +146,13 @@ func (h *Handler) Countries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.ListCountries(r.Context(), active.Alias)
+	list, err := h.Service.ListCountries(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, CountryListResponse{
+	h.WriteResponse(w, r, http.StatusOK, CountryListResponse{
 		Country: toCountryListDTO(list),
 		Portal:  active.Alias,
 	})
@@ -285,13 +166,13 @@ func (h *Handler) Banks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.ListBanks(r.Context(), active.Alias)
+	list, err := h.Service.ListBanks(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BankListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BankListResponse{
 		Bank:   toBankListDTO(list),
 		Portal: active.Alias,
 	})
@@ -308,13 +189,13 @@ func (h *Handler) Codes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	set, err := h.service.ListCodes(r.Context(), active.Alias)
+	set, err := h.Service.ListCodes(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, CodeListResponse{
+	h.WriteResponse(w, r, http.StatusOK, CodeListResponse{
 		PartnerStatus: toCodeListDTO(set.PartnerStatus),
 		SupplyType:    toCodeListDTO(set.SupplyType),
 		SupplierType:  toCodeListDTO(set.SupplierType),
@@ -327,43 +208,19 @@ func (h *Handler) Codes(w http.ResponseWriter, r *http.Request) {
 // readRequest membaca badan JSON ke dalam target. Nilai balik false bila responsnya sudah
 // ditulis.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request, target any) bool {
-	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
-	decoder := json.NewDecoder(reader)
-	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam: salah ketik nama field
-	// akan terbaca sebagai "isian tidak dikirim" dan menyimpan nilai kosong tanpa satu pun
-	// tanda bahwa ada yang salah. Pada form berisi dua puluh tiga isian yang lima belas di
-	// antaranya wajib, itu kelas cacat yang paling mudah lolos.
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(target); err != nil {
-		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan badan
-		// permintaan.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return false
-	}
-
-	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
-	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return false
-	}
-
-	return true
+	return httpjson.Decode(w, r, maxRequestBody, target, h.WriteResponse, ErrorResponse{
+		Code:    CodeMalformedRequest,
+		Message: "Permintaan tidak dapat dibaca.",
+	})
 }
 
 // Mount mendaftarkan rute modul master supplier.
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang
-// merakit urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // SELURUH rute dipasangi PortalAktif. Tidak ada satu pun yang isinya milik aplikasi:
 // master dan kelima lookup-nya dibaca dari basis data entitas, dan dua entitas punya
@@ -381,9 +238,9 @@ func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request, target any
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 //
 // # Yang TIDAK didaftarkan
 //

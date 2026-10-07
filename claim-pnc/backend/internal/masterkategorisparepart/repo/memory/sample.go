@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterkategorisparepart"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterkategorisparepart"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi contoh untuk pengembangan tanpa Oracle.
 //
@@ -38,40 +48,12 @@ import "claim-pnc/internal/masterkategorisparepart"
 // ENGINE, HYDRAULIC, dan UNDERCARRIAGE adalah tiga yang sudah dipakai contoh Master
 // Sparepart, dan ketiganya dipertahankan supaya kedua layar bercerita tentang dunia yang
 // sama. Tiga sisanya melengkapi keempat status yang perlu diwakili.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Baris ditolak yang namanya TETAP memblokir pemakaian nama itu. Ia yang membuat
+// perilaku paling mengejutkan pada modul ini dapat dicoba tanpa menyiapkan data
+// sendiri.
 func SampleList() []masterkategorisparepart.PartCategory {
-	return []masterkategorisparepart.PartCategory{
-		{
-			ID:     "1",
-			Name:   "ENGINE",
-			Status: masterkategorisparepart.StatusApproved,
-		},
-		{
-			ID:     "2",
-			Name:   "HYDRAULIC",
-			Status: masterkategorisparepart.StatusApproved,
-		},
-		{
-			ID:     "3",
-			Name:   "UNDERCARRIAGE",
-			Status: masterkategorisparepart.StatusApproved,
-		},
-		{
-			ID:     "4",
-			Name:   "ELECTRICAL",
-			Status: masterkategorisparepart.StatusPending,
-		},
-		{
-			ID:     "5",
-			Name:   "TRANSMISSION",
-			Status: masterkategorisparepart.StatusPending,
-		},
-		{
-			// Baris ditolak yang namanya TETAP memblokir pemakaian nama itu. Ia yang membuat
-			// perilaku paling mengejutkan pada modul ini dapat dicoba tanpa menyiapkan data
-			// sendiri.
-			ID:     "6",
-			Name:   "ATTACHMENT",
-			Status: masterkategorisparepart.StatusRejected,
-		},
-	}
+	return sampledata.Must[[]masterkategorisparepart.PartCategory](sampleJSON, "SampleList")
 }

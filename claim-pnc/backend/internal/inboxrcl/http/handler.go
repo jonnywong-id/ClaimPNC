@@ -1,70 +1,15 @@
 package inboxrclhttp
 
 import (
-	"context"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"claim-pnc/internal/inboxrcl"
-	"claim-pnc/internal/inboxrcl/usecase"
+	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini — tipe
-// milik modul ini, bukan tipe modul auth; jembatannya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK — padanan
-	// `OperatorID.pyUserIdentifier`, kunci pencarian identitas lamanya.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox RCL.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	location   *time.Location
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-//
-// Tidak ada Clock: berbeda dari Inbox Analyst Doctor, layar ini tidak punya kolom durasi —
-// kelima judul kolom di harness tidak memuatnya.
-type Options struct {
-	Service   *usecase.Service
-	GetCaller CallerReader
-
-	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
-	Location *time.Location
-
-	Logger              *slog.Logger
-	WriteJSON           JSONWriter
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox RCL.
-func NewHandler(o Options) *Handler {
-	location := o.Location
-	if location == nil {
-		location = jakarta()
-	}
-
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		location:   location,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-rcl/keterangan.
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
@@ -124,18 +69,7 @@ func (h *Handler) readCaller(r *http.Request) (inboxrcl.Caller, bool) {
 
 // nonNegativeNumber membaca angka dari parameter query; nilai yang tidak terbaca menjadi 0
 // dan Filter.Normalize membetulkannya menjadi nilai bawaan.
-func nonNegativeNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func nonNegativeNumber(raw string) int { return httpquery.NonNegative(raw) }
 
 // jakarta mengembalikan zona WIB; offset tetap +07:00 bila basis data zona waktu tidak ada.
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	return time.FixedZone("WIB", 7*60*60)
-}
+func jakarta() *time.Location { return clock.Jakarta() }

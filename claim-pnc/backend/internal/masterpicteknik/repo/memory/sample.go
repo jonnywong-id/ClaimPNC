@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterpicteknik"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterpicteknik"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah baris awal untuk menjalankan aplikasi tanpa basis data.
 //
@@ -29,50 +39,5 @@ import "claim-pnc/internal/masterpicteknik"
 // Baris keempat itulah yang membuat keputusan "daftar hanya menampilkan yang aktif" dapat
 // diuji sungguhan, bukan hanya dipercaya.
 func SampleList() []masterpicteknik.Technician {
-	return []masterpicteknik.Technician{
-		{
-			OperatorID:   "PICTEKNIK01",
-			Name:         "Contoh Kepala Teknik",
-			Email:        "contoh.kepalateknik@example.invalid",
-			BusinessLine: "NONMBU",
-			Group:        "TEKNIK JAKARTA",
-			Quota:        20,
-			Workload:     6,
-			Active:       true,
-		},
-		{
-			OperatorID:   "PICTEKNIK02",
-			Name:         "Contoh Adjuster Madya",
-			Email:        "contoh.adjuster@example.invalid",
-			BusinessLine: "NONMBU",
-			Group:        "TEKNIK JAKARTA",
-			Supervisor:   "PICTEKNIK01",
-			Quota:        15,
-			Workload:     9,
-			Active:       true,
-		},
-		{
-			OperatorID:    "PICTEKNIK03",
-			Name:          "Contoh Petugas Teknik",
-			Email:         "contoh.petugas@example.invalid",
-			BusinessLine:  "NONMBU",
-			Group:         "TEKNIK SURABAYA",
-			Supervisor:    "PICTEKNIK01",
-			Quota:         10,
-			ExternalQuota: 3,
-			Workload:      10,
-			Active:        true,
-		},
-		{
-			OperatorID:   "PICTEKNIK04",
-			Name:         "Contoh Petugas Nonaktif",
-			Email:        "contoh.nonaktif@example.invalid",
-			BusinessLine: "NONMBU",
-			Group:        "TEKNIK SURABAYA",
-			Supervisor:   "PICTEKNIK01",
-			Quota:        0,
-			Workload:     0,
-			Active:       false,
-		},
-	}
+	return sampledata.Must[[]masterpicteknik.Technician](sampleJSON, "SampleList")
 }

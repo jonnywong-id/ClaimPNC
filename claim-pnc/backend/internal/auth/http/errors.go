@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/auth"
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/logging"
 )
 
@@ -27,7 +28,7 @@ const (
 const wrongCredentialMessage = "Nama pengguna atau kata sandi salah."
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat menjadi respons HTTP.
 //

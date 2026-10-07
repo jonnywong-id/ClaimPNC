@@ -1,75 +1,20 @@
 package inboxpladlapredlahttp
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxpladlapredla"
-	"claim-pnc/internal/inboxpladlapredla/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Ia TIDAK menyaring di layar ini — ketiga daftarnya bersama. Yang membutuhkannya
-	// adalah jejak.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox PLA, DLA, Pre DLA.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox PLA, DLA, Pre DLA.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-pla-dla-pre-dla/daftar.
 //
@@ -78,12 +23,12 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK,
-		toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK,
+		toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-pla-dla-pre-dla.
@@ -95,13 +40,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	input, err := readFilter(r)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -112,11 +57,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Documents menangani GET /api/inbox-pla-dla-pre-dla/klaim/{kunci}.
@@ -147,11 +92,11 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 
 	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
 	if claimKey == "" {
-		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		h.WriteError(w, r, inboxpladlapredla.ErrRowNotFound)
 		return
 	}
 
-	documented, err := h.service.Documents(
+	documented, err := h.Service.Documents(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -159,11 +104,11 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 		claimKey,
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK,
+	h.WriteJSON(w, r, http.StatusOK,
 		toDocumentsResponse(documented, active.Alias))
 }
 
@@ -179,17 +124,17 @@ func (h *Handler) Print(w http.ResponseWriter, r *http.Request) {
 
 	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
 	if claimKey == "" {
-		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		h.WriteError(w, r, inboxpladlapredla.ErrRowNotFound)
 		return
 	}
 
-	printable, err := h.service.PrintList(r.Context(), active.Alias, caller, claimKey)
+	printable, err := h.Service.PrintList(r.Context(), active.Alias, caller, claimKey)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toPrintResponse(printable, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toPrintResponse(printable, active.Alias))
 }
 
 // RejectWrite menjawab aksi tulis yang belum tersedia.
@@ -200,7 +145,7 @@ func (h *Handler) Print(w http.ResponseWriter, r *http.Request) {
 // yang dibutuhkan pengguna adalah tahu ke mana ia harus pergi.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
@@ -211,8 +156,8 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	// dasar memutuskan kapan ia dibangun. Tindakannya ikut dicatat, sehingga ketiga
 	// tombol dapat dibedakan: yang paling sering ditekan yang paling layak dibangun
 	// lebih dulu.
-	if h.logger != nil {
-		h.logger.Info(
+	if h.Logger != nil {
+		h.Logger.Info(
 			"tombol yang belum dibangun ditekan",
 			slog.String("modul", "inbox-pla-dla-pre-dla"),
 			slog.String("jalur", r.URL.Path),
@@ -222,7 +167,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	h.writeError(w, r, rejected)
+	h.WriteError(w, r, rejected)
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -234,13 +179,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxpladlapredla.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxpladlapredla.ErrCallerUnknown)
+		h.WriteError(w, r, inboxpladlapredla.ErrCallerUnknown)
 		return portal.Portal{}, inboxpladlapredla.Caller{}, false
 	}
 
@@ -249,10 +194,10 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 
 // readCaller membaca identitas pemanggil lewat jembatan yang disuntikkan cmd.
 func (h *Handler) readCaller(r *http.Request) (inboxpladlapredla.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxpladlapredla.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists {
 		return inboxpladlapredla.Caller{}, false
 	}
@@ -330,13 +275,7 @@ func readDate(raw string) (*time.Time, error) {
 // halaman yang salah ketik menampilkan halaman pertama — tidak ada yang tersembunyi.
 // Tanggal yang salah ketik, bila diabaikan, justru MELEBARKAN hasil tanpa sepengetahuan
 // pengguna.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegativeTrimmed(raw) }
 
 // SendPreDLA menandai satu Pre-DLA sebagai terkirim.
 //
@@ -354,7 +293,7 @@ func (h *Handler) SendPreDLA(w http.ResponseWriter, r *http.Request) {
 
 	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
 	if claimKey == "" {
-		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		h.WriteError(w, r, inboxpladlapredla.ErrRowNotFound)
 		return
 	}
 
@@ -366,14 +305,14 @@ func (h *Handler) SendPreDLA(w http.ResponseWriter, r *http.Request) {
 	// sama, dan membedakannya hanya menambah satu cabang tanpa menambah keterangan.
 	_ = json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&badan)
 
-	err := h.service.SendPreDLA(
+	err := h.Service.SendPreDLA(
 		r.Context(), active.Alias, caller, claimKey, badan.AdviceNo)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, map[string]string{
+	h.WriteJSON(w, r, http.StatusOK, map[string]string{
 		"pesan": "Pre-DLA ditandai terkirim.",
 	})
 }
@@ -390,7 +329,7 @@ func (h *Handler) SendAdvice(w http.ResponseWriter, r *http.Request) {
 
 	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
 	if claimKey == "" {
-		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		h.WriteError(w, r, inboxpladlapredla.ErrRowNotFound)
 		return
 	}
 
@@ -400,14 +339,14 @@ func (h *Handler) SendAdvice(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&badan)
 
-	hasil, err := h.service.SendAdvice(
+	hasil, err := h.Service.SendAdvice(
 		r.Context(), active.Alias, caller, badan.Tab, claimKey, badan.AdviceNo)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, SendResponse{
+	h.WriteJSON(w, r, http.StatusOK, SendResponse{
 		Message:     "Surat terkirim dan dokumen ditandai terkirim.",
 		Recipients:  len(hasil.Recipients),
 		Attachments: hasil.Attachments,

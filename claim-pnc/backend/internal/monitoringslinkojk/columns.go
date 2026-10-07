@@ -1,5 +1,9 @@
 package monitoringslinkojk
 
+import (
+	"claim-pnc/internal/platform/tabletext"
+)
+
 // Katalog kolom kedua segmen — untuk grid di layar maupun untuk berkas CSV.
 //
 // ============================================================================
@@ -297,43 +301,39 @@ var f06Columns = d01Columns
 // Perilakunya **direplikasi**, bukan diperbaiki: `P-5` menetapkan hasil yang benar adalah
 // hasil yang sama dengan Pega kecuali 13 butir `D-49`, dan ini bukan salah satunya.
 // Mengubahnya berarti mengosongkan satu kolom laporan OJK atas dasar tebakan.
-var d01Columns = []Column{
-	{Key: "no_klaim", Header: "No Klaim", LegacyProperty: "ClaimID", Source: SourceAvailable},
-	{Key: "contract_no", Header: "Contract No", LegacyProperty: "ContractNo", Source: SourceAvailable},
-	{Key: "nomor_rekening_fasilitas", Header: "Nomor Rekening Fasilitas", LegacyProperty: "NOMORREKENINGFASILITAS", Source: SourceAvailable},
-	{Key: "no_cif_debitur", Header: "No CIF Debitur", LegacyProperty: "NOMORCIFDEBITUR", Source: SourceAvailable},
-	{Key: "kode_jenis_fasilitas", Header: "Kode Jenis Fasilitas", LegacyProperty: "KodeJenisFasilitas", Source: SourceAvailable},
-	{Key: "sumber_dana", Header: "Sumber Dana", LegacyProperty: "SumberDana", Source: SourceAvailable},
-	{Key: "start_polis", Header: "Start Polis", LegacyProperty: "AwalPolis", Source: SourceAvailable},
-	{Key: "end_polis", Header: "End Polis", LegacyProperty: "AkhirPolis", Source: SourceAvailable},
-	{Key: "suku_bunga", Header: "Suku Bunga", LegacyProperty: "SukuBunga", Source: SourceAvailable, Numeric: true},
-	{Key: "kode_valuta", Header: "Kode Valuta", LegacyProperty: "KODEVALUTA", Source: SourceAvailable},
-
-	// Lihat catatan di atas: terisi dari `tanggalkondisi`, bukan dari tanggal pembayaran.
+var d01Columns = tabletext.Rows[Column](`
+	Key                      | Header                      | LegacyProperty         | Source   | Numeric
+	no_klaim                 | No Klaim                    | ClaimID                | tersedia |
+	contract_no              | Contract No                 | ContractNo             | tersedia |
+	nomor_rekening_fasilitas | Nomor Rekening Fasilitas    | NOMORREKENINGFASILITAS | tersedia |
+	no_cif_debitur           | No CIF Debitur              | NOMORCIFDEBITUR        | tersedia |
+	kode_jenis_fasilitas     | Kode Jenis Fasilitas        | KodeJenisFasilitas     | tersedia |
+	sumber_dana              | Sumber Dana                 | SumberDana             | tersedia |
+	start_polis              | Start Polis                 | AwalPolis              | tersedia |
+	end_polis                | End Polis                   | AkhirPolis             | tersedia |
+	suku_bunga               | Suku Bunga                  | SukuBunga              | tersedia | true
+	kode_valuta              | Kode Valuta                 | KODEVALUTA             | tersedia |
+	// Lihat catatan di atas: terisi dari 'tanggalkondisi', bukan dari tanggal pembayaran.
 	//
 	// Urutannya — SEBELUM "Nilai Mata Uang Asal" — diambil dari tangkapan layar Pega yang
-	// berjalan, bukan dari urutan SELECT. Keduanya memang berbeda: di `GetDataSlinkAllFOGF06`
-	// alias ini berada tepat sesudah `kodejenisfasilitas`, sedangkan di layar ia berada
+	// berjalan, bukan dari urutan SELECT. Keduanya memang berbeda: di 'GetDataSlinkAllFOGF06'
+	// alias ini berada tepat sesudah 'kodejenisfasilitas', sedangkan di layar ia berada
 	// sesudah "Kode Valuta". Yang menentukan tata letak grid adalah section, bukan kueri.
-	{Key: "tanggal_pembayaran", Header: "Tanggal Pembayaran", LegacyProperty: "TanggalPembayaran", Source: SourceAvailable},
-
-	{Key: "nilai_mata_uang_asal", Header: "Nilai Mata Uang Asal", LegacyProperty: "NilaiMataUangAsal", Source: SourceAvailable},
-
+	tanggal_pembayaran       | Tanggal Pembayaran          | TanggalPembayaran      | tersedia |
+	nilai_mata_uang_asal     | Nilai Mata Uang Asal        | NilaiMataUangAsal      | tersedia |
 	// Judulnya salah ketik di section lama ("Kelektibilitas"), dan kolom tabelnya salah
 	// ketik pula ("KODEKOLEKTABILITAS"). Keduanya dibiarkan apa adanya.
-	{Key: "kode_kolektibilitas", Header: "Kode Kelektibilitas", LegacyProperty: "KodeKolektibilitas", Source: SourceAvailable},
-
+	kode_kolektibilitas      | Kode Kelektibilitas         | KodeKolektibilitas     | tersedia |
 	// Judulnya menyebut sendiri isinya: tanggal REGISTRASI klaim, bukan tanggal macet.
-	// `GetDataSlinkAllFOG-SQL.xml` mengisi kolom padanannya dari `pnc.REGISTERDATE`.
-	{Key: "tanggal_macet", Header: "Tanggal Macet (Regist Date)", LegacyProperty: "TanggalMacet", Source: SourceAvailable},
-
-	{Key: "kode_sebab_macet", Header: "Kode Sebab Macet", LegacyProperty: "KodeSebabMacet", Source: SourceAvailable},
-	{Key: "tunggakan", Header: "Tunggakan", LegacyProperty: "TUNGGAKAN", Source: SourceAvailable, Numeric: true},
-	{Key: "jumlah_kewajiban", Header: "Nominal / Jumlah Kewajiban", LegacyProperty: "JUMLAHKEWAJIBAN", Source: SourceAvailable, Numeric: true},
-	{Key: "tanggal_kondisi", Header: "Tanggal Kondisi", LegacyProperty: "TanggalKondisi", Source: SourceAvailable},
-	{Key: "kode_kondisi", Header: "Kode Kondisi", LegacyProperty: "KodeKondisi", Source: SourceAvailable},
-	{Key: "keterangan", Header: "Keterangan", LegacyProperty: "Keterangan", Source: SourceAvailable},
-}
+	// 'GetDataSlinkAllFOG-SQL.xml' mengisi kolom padanannya dari 'pnc.REGISTERDATE'.
+	tanggal_macet            | Tanggal Macet (Regist Date) | TanggalMacet           | tersedia |
+	kode_sebab_macet         | Kode Sebab Macet            | KodeSebabMacet         | tersedia |
+	tunggakan                | Tunggakan                   | TUNGGAKAN              | tersedia | true
+	jumlah_kewajiban         | Nominal / Jumlah Kewajiban  | JUMLAHKEWAJIBAN        | tersedia | true
+	tanggal_kondisi          | Tanggal Kondisi             | TanggalKondisi         | tersedia |
+	kode_kondisi             | Kode Kondisi                | KodeKondisi            | tersedia |
+	keterangan               | Keterangan                  | Keterangan             | tersedia |
+`)
 
 // ============================================================================
 // SEGMEN D01 — BERKAS CSV
@@ -350,38 +350,37 @@ var d01Columns = []Column{
 //   - **`ObjectName` tidak akan pernah terisi.** Kolom itu ada di `GetDataSlinkAllFOG`
 //     (kueri segmen F06), BUKAN di `GetDataSlinkAllFOGF06` yang mengisi grid D01. Ia
 //     karena itu ditandai SourceMissing — kolomnya ada di berkas, nilainya tidak.
-var d01ExportColumns = []Column{
-	{Key: "no_klaim", Header: "ClaimID", LegacyProperty: "ClaimID", Source: SourceAvailable},
-	{Key: "contract_no", Header: "ContractNo", LegacyProperty: "ContractNo", Source: SourceAvailable},
-	{Key: "nama_objek", Header: "ObjectName", LegacyProperty: "ObjectName", Source: SourceMissing},
-	{Key: "nomor_rekening_fasilitas", Header: "NOMORREKENINGFASILITAS", LegacyProperty: "NOMORREKENINGFASILITAS", Source: SourceAvailable},
-	{Key: "no_cif_debitur", Header: "NOMORCIFDEBITUR", LegacyProperty: "NOMORCIFDEBITUR", Source: SourceAvailable},
-	{Key: "kode_jenis_fasilitas", Header: "KodeJenisFasilitas", LegacyProperty: "KodeJenisFasilitas", Source: SourceAvailable},
-	{Key: "sumber_dana", Header: "SumberDana", LegacyProperty: "SumberDana", Source: SourceAvailable},
-	{Key: "start_polis", Header: "AwalPolis", LegacyProperty: "AwalPolis", Source: SourceAvailable},
-	{Key: "end_polis", Header: "AkhirPolis", LegacyProperty: "AkhirPolis", Source: SourceAvailable},
-	{Key: "suku_bunga", Header: "SukuBunga", LegacyProperty: "SukuBunga", Source: SourceAvailable, Numeric: true},
-	{Key: "kode_valuta", Header: "KODEVALUTA", LegacyProperty: "KODEVALUTA", Source: SourceAvailable},
-	{Key: "tanggal_pembayaran", Header: "TanggalPembayaran", LegacyProperty: "TanggalPembayaran", Source: SourceAvailable},
-	{Key: "nilai_mata_uang_asal", Header: "NilaiMataUangAsal", LegacyProperty: "NilaiMataUangAsal", Source: SourceAvailable},
-	{Key: "kode_kolektibilitas", Header: "KodeKolektibilitas", LegacyProperty: "KodeKolektibilitas", Source: SourceAvailable},
-	{Key: "tanggal_macet", Header: "TanggalMacet", LegacyProperty: "TanggalMacet", Source: SourceAvailable},
-	{Key: "kode_sebab_macet", Header: "KodeSebabMacet", LegacyProperty: "KodeSebabMacet", Source: SourceAvailable},
-	{Key: "tunggakan", Header: "TUNGGAKAN", LegacyProperty: "TUNGGAKAN", Source: SourceAvailable, Numeric: true},
-	{Key: "jumlah_kewajiban", Header: "JUMLAHKEWAJIBAN", LegacyProperty: "JUMLAHKEWAJIBAN", Source: SourceAvailable, Numeric: true},
-	{Key: "tanggal_kondisi", Header: "TanggalKondisi", LegacyProperty: "TanggalKondisi", Source: SourceAvailable},
-	{Key: "kode_kondisi", Header: "KodeKondisi", LegacyProperty: "KodeKondisi", Source: SourceAvailable},
-	{Key: "keterangan", Header: "Keterangan", LegacyProperty: "Keterangan", Source: SourceAvailable},
-	{Key: "kode_kantor_cabang", Header: "KodeKantorCabang", LegacyProperty: "KodeKantorCabang", Source: SourceAvailable},
-	{Key: "operasi_data", Header: "OperasiData", LegacyProperty: "OperasiData", Source: SourceAvailable},
-
-	// Kolom 24 — `Keterangan` untuk kedua kalinya. Ada di sumbernya; lihat catatan di atas.
-	{Key: "keterangan", Header: "Keterangan", LegacyProperty: "Keterangan", Source: SourceAvailable},
-
-	{Key: "no_ktp", Header: "NoKTP", LegacyProperty: "NoKTP", Source: SourceAvailable},
-	{Key: "npwp_perusahaan", Header: "NPWPPerusahaan", LegacyProperty: "NPWPPerusahaan", Source: SourceAvailable},
-	{Key: "no_polis", Header: "PolicyNo", LegacyProperty: "PolicyNo", Source: SourceAvailable},
-}
+var d01ExportColumns = tabletext.Rows[Column](`
+	Key                      | Header                 | LegacyProperty         | Source           | Numeric
+	no_klaim                 | ClaimID                | ClaimID                | tersedia         |
+	contract_no              | ContractNo             | ContractNo             | tersedia         |
+	nama_objek               | ObjectName             | ObjectName             | belum-ada-sumber |
+	nomor_rekening_fasilitas | NOMORREKENINGFASILITAS | NOMORREKENINGFASILITAS | tersedia         |
+	no_cif_debitur           | NOMORCIFDEBITUR        | NOMORCIFDEBITUR        | tersedia         |
+	kode_jenis_fasilitas     | KodeJenisFasilitas     | KodeJenisFasilitas     | tersedia         |
+	sumber_dana              | SumberDana             | SumberDana             | tersedia         |
+	start_polis              | AwalPolis              | AwalPolis              | tersedia         |
+	end_polis                | AkhirPolis             | AkhirPolis             | tersedia         |
+	suku_bunga               | SukuBunga              | SukuBunga              | tersedia         | true
+	kode_valuta              | KODEVALUTA             | KODEVALUTA             | tersedia         |
+	tanggal_pembayaran       | TanggalPembayaran      | TanggalPembayaran      | tersedia         |
+	nilai_mata_uang_asal     | NilaiMataUangAsal      | NilaiMataUangAsal      | tersedia         |
+	kode_kolektibilitas      | KodeKolektibilitas     | KodeKolektibilitas     | tersedia         |
+	tanggal_macet            | TanggalMacet           | TanggalMacet           | tersedia         |
+	kode_sebab_macet         | KodeSebabMacet         | KodeSebabMacet         | tersedia         |
+	tunggakan                | TUNGGAKAN              | TUNGGAKAN              | tersedia         | true
+	jumlah_kewajiban         | JUMLAHKEWAJIBAN        | JUMLAHKEWAJIBAN        | tersedia         | true
+	tanggal_kondisi          | TanggalKondisi         | TanggalKondisi         | tersedia         |
+	kode_kondisi             | KodeKondisi            | KodeKondisi            | tersedia         |
+	keterangan               | Keterangan             | Keterangan             | tersedia         |
+	kode_kantor_cabang       | KodeKantorCabang       | KodeKantorCabang       | tersedia         |
+	operasi_data             | OperasiData            | OperasiData            | tersedia         |
+	// Kolom 24 — 'Keterangan' untuk kedua kalinya. Ada di sumbernya; lihat catatan di atas.
+	keterangan               | Keterangan             | Keterangan             | tersedia         |
+	no_ktp                   | NoKTP                  | NoKTP                  | tersedia         |
+	npwp_perusahaan          | NPWPPerusahaan         | NPWPPerusahaan         | tersedia         |
+	no_polis                 | PolicyNo               | PolicyNo               | tersedia         |
+`)
 
 // ============================================================================
 // SEGMEN F06 — DEBITUR INDIVIDU
@@ -443,76 +442,61 @@ var d01ExportColumns = []Column{
 // ekspor F06 hari ini kemungkinan besar **hampir seluruhnya kosong**. Dicatat sebagai
 // pertanyaan di `docs/permintaan-artefak-pega.md`, bukan sebagai kesimpulan — ia perlu
 // diuji terhadap satu berkas ekspor produksi yang sungguhan.
-var f06ExportColumns = []Column{
-	{Key: "nomor_cif_debitur", Header: "Nomor CIF Debitur", LegacyProperty: "ASMClientID", Source: SourceAvailable},
-	{Key: "jenis_identitas", Header: "Jenis Identitas", LegacyProperty: "ASMIDType", Source: SourceMissing},
-	{Key: "nomor_identitas", Header: "Nomor Identitas", LegacyProperty: "ASMNIK", Source: SourceMissing},
-	{Key: "nama_sesuai_identitas", Header: "Nama Sesuai Identitas", LegacyProperty: "ASMIDCard", Source: SourceMissing},
-	{Key: "nama_lengkap", Header: "Nama Lengkap", LegacyProperty: "pyFullName", Source: SourceMissing},
-
+var f06ExportColumns = tabletext.Rows[Column](`
+	Key                              | Header                           | LegacyProperty       | Source           | Numeric
+	nomor_cif_debitur                | Nomor CIF Debitur                | ASMClientID          | tersedia         |
+	jenis_identitas                  | Jenis Identitas                  | ASMIDType            | belum-ada-sumber |
+	nomor_identitas                  | Nomor Identitas                  | ASMNIK               | belum-ada-sumber |
+	nama_sesuai_identitas            | Nama Sesuai Identitas            | ASMIDCard            | belum-ada-sumber |
+	nama_lengkap                     | Nama Lengkap                     | pyFullName           | belum-ada-sumber |
 	// Judul tanpa properti di export; lihat catatan misalign di atas.
-	{Key: "kode_status_pendidikan", Header: "KodeStatusPendidikan", Source: SourceMissing},
-
-	{Key: "jenis_kelamin", Header: "Jenis Kelamin", LegacyProperty: "ASMGender", Source: SourceAvailable},
-
+	kode_status_pendidikan           | KodeStatusPendidikan             |                      | belum-ada-sumber |
+	jenis_kelamin                    | Jenis Kelamin                    | ASMGender            | tersedia         |
 	// Judul tanpa properti di export.
-	{Key: "tempat_lahir", Header: "Tempat Lahir", Source: SourceMissing},
-
-	{Key: "tanggal_lahir", Header: "Tanggal Lahir", LegacyProperty: "ASMDateOfBirth", Source: SourceAvailable},
-
-	// Judul tanpa properti di export. Jangan tertukar dengan `NPWPPerusahaan` pada ekspor
+	tempat_lahir                     | Tempat Lahir                     |                      | belum-ada-sumber |
+	tanggal_lahir                    | Tanggal Lahir                    | ASMDateOfBirth       | tersedia         |
+	// Judul tanpa properti di export. Jangan tertukar dengan 'NPWPPerusahaan' pada ekspor
 	// D01 — yang ini NPWP DEBITUR.
-	{Key: "npwp", Header: "NPWP", Source: SourceMissing},
-
-	{Key: "alamat", Header: "Alamat", LegacyProperty: "ASMAddress", Source: SourceAvailable},
-
+	npwp                             | NPWP                             |                      | belum-ada-sumber |
+	alamat                           | Alamat                           | ASMAddress           | tersedia         |
 	// Alias menyesatkan: "Kelurahan" terikat properti catatan RW.
-	{Key: "kelurahan", Header: "Kelurahan", LegacyProperty: "ASMRWNote", Source: SourceMissing},
-
-	{Key: "kecamatan", Header: "Kecamatan", LegacyProperty: "ASMDistrict", Source: SourceMissing},
-	{Key: "kode_kab_kota", Header: "Kode Kab/Kota", LegacyProperty: "ASMCity", Source: SourceMissing},
-	{Key: "kode_pos", Header: "Kode Pos", LegacyProperty: "PostalCode", Source: SourceAvailable},
-	{Key: "telepon", Header: "Telepon", LegacyProperty: "PhoneNo", Source: SourceAvailable},
-	{Key: "nomor_telepon_seluler", Header: "Nomor Telepon Seluler", LegacyProperty: "ASMMobilePhoneList", Source: SourceMissing},
-	{Key: "alamat_email", Header: "Alamat Email", LegacyProperty: "EmailAddress", Source: SourceMissing},
-
+	kelurahan                        | Kelurahan                        | ASMRWNote            | belum-ada-sumber |
+	kecamatan                        | Kecamatan                        | ASMDistrict          | belum-ada-sumber |
+	kode_kab_kota                    | Kode Kab/Kota                    | ASMCity              | belum-ada-sumber |
+	kode_pos                         | Kode Pos                         | PostalCode           | tersedia         |
+	telepon                          | Telepon                          | PhoneNo              | tersedia         |
+	nomor_telepon_seluler            | Nomor Telepon Seluler            | ASMMobilePhoneList   | belum-ada-sumber |
+	alamat_email                     | Alamat Email                     | EmailAddress         | belum-ada-sumber |
 	// Alias menyesatkan: "Kode Negara Domisili" terikat properti kewarganegaraan.
-	{Key: "kode_negara_domisili", Header: "Kode Negara Domisili", LegacyProperty: "ASMNationality", Source: SourceMissing},
-
-	{Key: "kode_pekerjaan", Header: "Kode Pekerjaan", LegacyProperty: "ASMJobDesc", Source: SourceMissing},
-
-	// Alias paling menyesatkan di segmen ini: "Tempat Bekerja" terikat `ASMNotes`.
-	{Key: "tempat_bekerja", Header: "Tempat Bekerja", LegacyProperty: "ASMNotes", Source: SourceMissing},
-
-	{Key: "kode_bidang_usaha_tempat_bekerja", Header: "Kode Bidang Usaha Tempat Bekerja", LegacyProperty: "ASMBusinessField", Source: SourceMissing},
-	{Key: "alamat_tempat_bekerja", Header: "Alamat Tempat Bekerja", LegacyProperty: "OrganizationAddress", Source: SourceMissing},
-	{Key: "penghasilan_kotor_per_tahun", Header: "Penghasilan Kotor Per Tahun", LegacyProperty: "YearlyGrossIncome", Source: SourceMissing, Numeric: true},
-	{Key: "kode_sumber_penghasilan", Header: "Kode Sumber Penghasilan", LegacyProperty: "IncomeSource", Source: SourceMissing},
-	{Key: "jumlah_tanggungan", Header: "Jumlah Tanggungan", LegacyProperty: "Tanggungan", Source: SourceMissing, Numeric: true},
-	{Key: "kode_hubungan_dengan_pelapor", Header: "Kode Hubungan Dengan Pelapor", LegacyProperty: "ReporterRelationship", Source: SourceMissing},
-	{Key: "kode_golongan_debitur", Header: "Kode Golongan Debitur", LegacyProperty: "ReporterGroup", Source: SourceMissing},
-	{Key: "status_perkawinan_debitur", Header: "Status Perkawinan Debitur", LegacyProperty: "ASMMaritalStatus", Source: SourceMissing},
-	{Key: "nomor_identitas_pasangan", Header: "Nomor Identitas Pasangan", LegacyProperty: "SpouseIDCard", Source: SourceMissing},
-	{Key: "nama_pasangan", Header: "Nama Pasangan", LegacyProperty: "SpouseName", Source: SourceMissing},
-	{Key: "tanggal_lahir_pasangan", Header: "Tanggal Lahir Pasangan", LegacyProperty: "SpouseDateOfBirth", Source: SourceMissing},
-
-	// Salah ketik `AssetAggreement` disalin apa adanya; itu nama propertinya di Pega.
-	{Key: "perjanjian_pisah_harta", Header: "Perjanjian Pisah Harta", LegacyProperty: "AssetAggreement", Source: SourceMissing},
-
+	kode_negara_domisili             | Kode Negara Domisili             | ASMNationality       | belum-ada-sumber |
+	kode_pekerjaan                   | Kode Pekerjaan                   | ASMJobDesc           | belum-ada-sumber |
+	// Alias paling menyesatkan di segmen ini: "Tempat Bekerja" terikat 'ASMNotes'.
+	tempat_bekerja                   | Tempat Bekerja                   | ASMNotes             | belum-ada-sumber |
+	kode_bidang_usaha_tempat_bekerja | Kode Bidang Usaha Tempat Bekerja | ASMBusinessField     | belum-ada-sumber |
+	alamat_tempat_bekerja            | Alamat Tempat Bekerja            | OrganizationAddress  | belum-ada-sumber |
+	penghasilan_kotor_per_tahun      | Penghasilan Kotor Per Tahun      | YearlyGrossIncome    | belum-ada-sumber | true
+	kode_sumber_penghasilan          | Kode Sumber Penghasilan          | IncomeSource         | belum-ada-sumber |
+	jumlah_tanggungan                | Jumlah Tanggungan                | Tanggungan           | belum-ada-sumber | true
+	kode_hubungan_dengan_pelapor     | Kode Hubungan Dengan Pelapor     | ReporterRelationship | belum-ada-sumber |
+	kode_golongan_debitur            | Kode Golongan Debitur            | ReporterGroup        | belum-ada-sumber |
+	status_perkawinan_debitur        | Status Perkawinan Debitur        | ASMMaritalStatus     | belum-ada-sumber |
+	nomor_identitas_pasangan         | Nomor Identitas Pasangan         | SpouseIDCard         | belum-ada-sumber |
+	nama_pasangan                    | Nama Pasangan                    | SpouseName           | belum-ada-sumber |
+	tanggal_lahir_pasangan           | Tanggal Lahir Pasangan           | SpouseDateOfBirth    | belum-ada-sumber |
+	// Salah ketik 'AssetAggreement' disalin apa adanya; itu nama propertinya di Pega.
+	perjanjian_pisah_harta           | Perjanjian Pisah Harta           | AssetAggreement      | belum-ada-sumber |
 	// Judul di GRID lebih panjang — "Melanggar BMPK/BMPD/BMPP" — sedangkan judul di BERKAS
 	// lebih pendek. Yang dipakai di sini judul berkas, karena katalog ini melayani
 	// keduanya; selisih dua judul itu dicatat, tidak dihilangkan.
-	{Key: "melanggar_bmpk", Header: "Melanggar BMPK", LegacyProperty: "ViolatedBMPK", Source: SourceMissing},
-	{Key: "melampaui_bmpk", Header: "Melampaui BMPK", LegacyProperty: "ExceededBMPK", Source: SourceMissing},
-
-	{Key: "nama_ibu_kandung", Header: "Nama Ibu Kandung", LegacyProperty: "ASMMotherName", Source: SourceMissing},
-
+	melanggar_bmpk                   | Melanggar BMPK                   | ViolatedBMPK         | belum-ada-sumber |
+	melampaui_bmpk                   | Melampaui BMPK                   | ExceededBMPK         | belum-ada-sumber |
+	nama_ibu_kandung                 | Nama Ibu Kandung                 | ASMMotherName        | belum-ada-sumber |
 	// Kedua kolom terakhir terisi, tetapi keduanya membawa cacat yang ikut dicatat di
-	// berkas .sql: kode kantor cabang adalah konstanta `'001'` di dalam kueri lama
-	// (melanggar `D-15`), dan operasi data diturunkan dari pencocokan teks `'%EDM%'`.
-	{Key: "kode_kantor_cabang", Header: "Kode Kantor Cabang", LegacyProperty: "KodeKantorCabang", Source: SourceAvailable},
-	{Key: "operasi_data", Header: "Operasi Data", LegacyProperty: "OperasiData", Source: SourceAvailable},
-}
+	// berkas .sql: kode kantor cabang adalah konstanta ''001'' di dalam kueri lama
+	// (melanggar 'D-15'), dan operasi data diturunkan dari pencocokan teks ''%EDM%''.
+	kode_kantor_cabang               | Kode Kantor Cabang               | KodeKantorCabang     | tersedia         |
+	operasi_data                     | Operasi Data                     | OperasiData          | tersedia         |
+`)
 
 // f06ExportSlots adalah **34 kolom data** berkas ekspor segmen F06.
 //
@@ -527,57 +511,52 @@ var f06ExportColumns = []Column{
 // `Key` terisi hanya pada slot yang propertinya benar-benar dihasilkan
 // `GetDataSlinkAllFOG`. Slot berkunci kosong selalu menghasilkan sel kosong — dan itulah
 // yang terjadi pada 31 dari 34 slot.
-var f06ExportSlots = []Column{
+var f06ExportSlots = tabletext.Rows[Column](`
+	Header                  | LegacyProperty          | Source           | Key
 	// Delapan slot pertama: properti CIF yang tidak dihasilkan kueri grid.
-	{Header: "ASMClientID", LegacyProperty: "ASMClientID", Source: SourceMissing},
-	{Header: "ASMIDType", LegacyProperty: "ASMIDType", Source: SourceMissing},
-	{Header: "ASMNIK", LegacyProperty: "ASMNIK", Source: SourceMissing},
-	{Header: "ASMIDCard", LegacyProperty: "ASMIDCard", Source: SourceMissing},
-	{Header: "pyFullName", LegacyProperty: "pyFullName", Source: SourceMissing},
-
+	ASMClientID             | ASMClientID             | belum-ada-sumber |
+	ASMIDType               | ASMIDType               | belum-ada-sumber |
+	ASMNIK                  | ASMNIK                  | belum-ada-sumber |
+	ASMIDCard               | ASMIDCard               | belum-ada-sumber |
+	pyFullName              | pyFullName              | belum-ada-sumber |
 	// Slot keenam: DUA nama properti yang tersambung tanpa koma di sumbernya. Ia tidak
 	// pernah ada sebagai properti, sehingga selalu kosong — dan karena satu entri
 	// memakan jatah dua, seluruh slot sesudahnya bergeser terhadap judulnya.
-	{Header: "ASMGenderASMDateOfBirth", LegacyProperty: "ASMGenderASMDateOfBirth", Source: SourceMissing},
-
+	ASMGenderASMDateOfBirth | ASMGenderASMDateOfBirth | belum-ada-sumber |
 	// Slot ketujuh — TERISI. Nilainya tercetak di bawah judul "Jenis Kelamin".
-	{Key: "alamat", Header: "ASMAddress", LegacyProperty: "ASMAddress", Source: SourceAvailable},
-
-	{Header: "ASMRWNote", LegacyProperty: "ASMRWNote", Source: SourceMissing},
-	{Header: "ASMDistrict", LegacyProperty: "ASMDistrict", Source: SourceMissing},
-	{Header: "ASMCity", LegacyProperty: "ASMCity", Source: SourceMissing},
-
-	// `PostalCode` dan `PhoneNo` TIDAK berpadanan dengan alias kueri (`ASMZIPCODE`,
-	// `TELFAXNUMBER`), sehingga keduanya kosong di berkas meski nilainya ADA di grid.
-	{Header: "PostalCode", LegacyProperty: "PostalCode", Source: SourceMissing},
-	{Header: "PhoneNo", LegacyProperty: "PhoneNo", Source: SourceMissing},
-
-	{Header: "ASMMobilePhoneList", LegacyProperty: "ASMMobilePhoneList", Source: SourceMissing},
-	{Header: "EmailAddress", LegacyProperty: "EmailAddress", Source: SourceMissing},
-	{Header: "ASMNationality", LegacyProperty: "ASMNationality", Source: SourceMissing},
-	{Header: "ASMJobDesc", LegacyProperty: "ASMJobDesc", Source: SourceMissing},
-	{Header: "ASMNotes", LegacyProperty: "ASMNotes", Source: SourceMissing},
-	{Header: "ASMBusinessField", LegacyProperty: "ASMBusinessField", Source: SourceMissing},
-	{Header: "OrganizationAddress", LegacyProperty: "OrganizationAddress", Source: SourceMissing},
-	{Header: "YearlyGrossIncome", LegacyProperty: "YearlyGrossIncome", Source: SourceMissing},
-	{Header: "IncomeSource", LegacyProperty: "IncomeSource", Source: SourceMissing},
-	{Header: "Tanggungan", LegacyProperty: "Tanggungan", Source: SourceMissing},
-	{Header: "ReporterRelationship", LegacyProperty: "ReporterRelationship", Source: SourceMissing},
-	{Header: "ReporterGroup", LegacyProperty: "ReporterGroup", Source: SourceMissing},
-	{Header: "ASMMaritalStatus", LegacyProperty: "ASMMaritalStatus", Source: SourceMissing},
-	{Header: "SpouseIDCard", LegacyProperty: "SpouseIDCard", Source: SourceMissing},
-	{Header: "SpouseName", LegacyProperty: "SpouseName", Source: SourceMissing},
-	{Header: "SpouseDateOfBirth", LegacyProperty: "SpouseDateOfBirth", Source: SourceMissing},
-	{Header: "AssetAggreement", LegacyProperty: "AssetAggreement", Source: SourceMissing},
-	{Header: "ViolatedBMPK", LegacyProperty: "ViolatedBMPK", Source: SourceMissing},
-	{Header: "ExceededBMPK", LegacyProperty: "ExceededBMPK", Source: SourceMissing},
-	{Header: "ASMMotherName", LegacyProperty: "ASMMotherName", Source: SourceMissing},
-
+	ASMAddress              | ASMAddress              | tersedia         | alamat
+	ASMRWNote               | ASMRWNote               | belum-ada-sumber |
+	ASMDistrict             | ASMDistrict             | belum-ada-sumber |
+	ASMCity                 | ASMCity                 | belum-ada-sumber |
+	// 'PostalCode' dan 'PhoneNo' TIDAK berpadanan dengan alias kueri ('ASMZIPCODE',
+	// 'TELFAXNUMBER'), sehingga keduanya kosong di berkas meski nilainya ADA di grid.
+	PostalCode              | PostalCode              | belum-ada-sumber |
+	PhoneNo                 | PhoneNo                 | belum-ada-sumber |
+	ASMMobilePhoneList      | ASMMobilePhoneList      | belum-ada-sumber |
+	EmailAddress            | EmailAddress            | belum-ada-sumber |
+	ASMNationality          | ASMNationality          | belum-ada-sumber |
+	ASMJobDesc              | ASMJobDesc              | belum-ada-sumber |
+	ASMNotes                | ASMNotes                | belum-ada-sumber |
+	ASMBusinessField        | ASMBusinessField        | belum-ada-sumber |
+	OrganizationAddress     | OrganizationAddress     | belum-ada-sumber |
+	YearlyGrossIncome       | YearlyGrossIncome       | belum-ada-sumber |
+	IncomeSource            | IncomeSource            | belum-ada-sumber |
+	Tanggungan              | Tanggungan              | belum-ada-sumber |
+	ReporterRelationship    | ReporterRelationship    | belum-ada-sumber |
+	ReporterGroup           | ReporterGroup           | belum-ada-sumber |
+	ASMMaritalStatus        | ASMMaritalStatus        | belum-ada-sumber |
+	SpouseIDCard            | SpouseIDCard            | belum-ada-sumber |
+	SpouseName              | SpouseName              | belum-ada-sumber |
+	SpouseDateOfBirth       | SpouseDateOfBirth       | belum-ada-sumber |
+	AssetAggreement         | AssetAggreement         | belum-ada-sumber |
+	ViolatedBMPK            | ViolatedBMPK            | belum-ada-sumber |
+	ExceededBMPK            | ExceededBMPK            | belum-ada-sumber |
+	ASMMotherName           | ASMMotherName           | belum-ada-sumber |
 	// Dua slot terakhir — TERISI. Nilainya tercetak di bawah judul "Perjanjian Pisah
 	// Harta" dan "Melanggar BMPK".
-	{Key: "kode_kantor_cabang", Header: "KodeKantorCabang", LegacyProperty: "KodeKantorCabang", Source: SourceAvailable},
-	{Key: "operasi_data", Header: "OperasiData", LegacyProperty: "OperasiData", Source: SourceAvailable},
-}
+	KodeKantorCabang        | KodeKantorCabang        | tersedia         | kode_kantor_cabang
+	OperasiData             | OperasiData             | tersedia         | operasi_data
+`)
 
 // ============================================================================
 // FORMAT FILE — berkas contoh unggahan

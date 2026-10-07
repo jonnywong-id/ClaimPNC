@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-
 	"fmt"
 	"strconv"
 	"strings"
 
 	"claim-pnc/internal/inboxsalvage"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca dan menulis data salvage pada SATU basis data entitas.
@@ -893,12 +893,7 @@ func jabodetabekFlag(in bool) string {
 // Perbedaannya nyata di layar: kolom yang NULL tergambar kosong, sementara teks kosong
 // tergambar kosong pula — tetapi keduanya berbeda pada kueri yang memakai `IS NULL`, dan
 // kueri agregat modul ini memakainya.
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nullIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // numberOrNull mengirim NULL alih-alih teks kosong untuk kolom bertipe angka.
 //

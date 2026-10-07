@@ -1,18 +1,11 @@
 package masterstatusprogreshttp
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"claim-pnc/internal/masterstatusprogres"
-	"claim-pnc/internal/masterstatusprogres/usecase"
-	"claim-pnc/internal/portal"
-
+	"claim-pnc/internal/platform/httpjson"
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -22,126 +15,6 @@ import (
 // Batasnya ada supaya permintaan bertubuh raksasa ditolak sebelum memakan memori,
 // bukan setelah.
 const maxRequestBody = 64 << 10
-
-// Handler melayani permintaan master status progres.
-type Handler struct {
-	service       *usecase.Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Logger  *slog.Logger
-
-	// TulisRespon dan TulisGalat disuntikkan dari cmd, bukan diimpor dari modul auth.
-	// Modul tidak saling mengimpor lapisan transport-nya — itulah yang membuat modul
-	// dapat dipindahkan tanpa menariknya serta.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul master status progres.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("masterstatusprogres/http: Layanan wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("masterstatusprogres/http: TulisRespon dan TulisGalat wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
-// List menangani GET /master/status-progres-1.
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	list, err := h.service.List(r.Context(), active.Alias)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
-		ProgressStatus: toListDTO(list),
-		Portal:         active.Alias,
-	})
-}
-
-// Create menangani POST /master/status-progres-1.
-func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	request, parsed := h.readRequest(w, r)
-	if !parsed {
-		return
-	}
-
-	saved, err := h.service.Create(r.Context(), active.Alias, masterstatusprogres.Input{
-		Name:         request.Name,
-		PositionCode: request.PositionCode,
-	})
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	// 201, dan badannya memuat baris yang benar-benar tersimpan beserta ID-nya. ID
-	// diterbitkan server, sehingga layar tidak punya cara lain mengetahuinya.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
-		ProgressStatus: toDTO(saved),
-		Portal:         active.Alias,
-	})
-}
-
-// Update menangani PUT /master/status-progres-1/{id}.
-func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		h.writeModuleError(w, r, masterstatusprogres.ErrNotFound)
-		return
-	}
-
-	request, parsed := h.readRequest(w, r)
-	if !parsed {
-		return
-	}
-
-	saved, err := h.service.Update(r.Context(), active.Alias, id, masterstatusprogres.Input{
-		Name:         request.Name,
-		PositionCode: request.PositionCode,
-	})
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
-		ProgressStatus: toDTO(saved),
-		Portal:         active.Alias,
-	})
-}
 
 // Position menangani GET /master/posisi-klaim.
 //
@@ -162,34 +35,11 @@ func (h *Handler) Position(w http.ResponseWriter, r *http.Request) {
 // readRequest membaca badan JSON. Nilai kedua false bila responsnya sudah ditulis.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
 	var request SaveRequest
-
-	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
-	decoder := json.NewDecoder(reader)
-	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam: salah ketik nama
-	// field akan terbaca sebagai "isian tidak dikirim" dan menyimpan nilai kosong tanpa
-	// satu pun tanda bahwa ada yang salah.
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&request); err != nil {
-		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan
-		// badan permintaan.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-
-	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
-	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-
-	return request, true
+	ok := httpjson.Decode(w, r, maxRequestBody, &request, h.writeResponse, ErrorResponse{
+		Code:    CodeMalformedRequest,
+		Message: "Permintaan tidak dapat dibaca.",
+	})
+	return request, ok
 }
 
 // Mount mendaftarkan rute modul master status progres.

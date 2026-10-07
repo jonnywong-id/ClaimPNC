@@ -1,87 +1,19 @@
 package inboxkomunikasicabanghttp
 
 import (
-	"context"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxkomunikasicabang"
-	"claim-pnc/internal/inboxkomunikasicabang/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Ia yang diterjemahkan menjadi kode cabang, dan karena itu MENENTUKAN apa yang
-	// terlihat — bukan sekadar mengisi jejak log seperti di sebagian modul inbox lain.
-	Login string
-
-	// Name adalah nama pengguna yang terbaca manusia.
-	//
-	// Ia dibutuhkan SEJAK 2026-09-24, ketika modul ini mulai menulis: balasan menyimpannya
-	// di `REPLYFROMNAME`, dan itulah yang digambar kolom "Penjawab(Dari)". Ia disimpan
-	// bersama balasannya, bukan diambil lewat join saat dibaca — jejak yang namanya diambil
-	// lewat join berubah ketika orangnya berganti nama, dan jejak yang dapat berubah bukan
-	// jejak.
-	//
-	// Pada rute BACA ia tidak dipakai sama sekali, sehingga rute baca tetap dilayani meski
-	// nama tidak terbaca. Yang menolak adalah NewReplyCommand, di lapisan domain.
-	Name string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox Komunikasi Cabang.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan diimpor
-	// dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa menariknya
-	// serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan galat
-	// portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Komunikasi Cabang.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-komunikasi-cabang/tab.
 //
@@ -90,11 +22,11 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-komunikasi-cabang.
@@ -106,7 +38,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -117,11 +49,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Detail menangani GET /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}.
@@ -138,14 +70,14 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detailed, err := h.service.Detail(
+	detailed, err := h.Service.Detail(
 		r.Context(),
 		active.Alias,
 		caller,
 		inboxkomunikasicabang.DetailInput{ID: chi.URLParam(r, "komunikasi")},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -157,7 +89,7 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 	//
 	// Meminta ulang akan menembus DB Link dua kali untuk satu permintaan; lihat
 	// `usecase.Detailed`.
-	h.writeJSON(w, r, http.StatusOK,
+	h.WriteJSON(w, r, http.StatusOK,
 		toConversationDetailResponse(detailed.Detail, detailed.Branch, active.Alias))
 }
 
@@ -200,7 +132,7 @@ func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&body); err != nil {
-		h.writeError(w, r, inboxkomunikasicabang.NewValidationError(
+		h.WriteError(w, r, inboxkomunikasicabang.NewValidationError(
 			[]inboxkomunikasicabang.Violation{{
 				Field:   inboxkomunikasicabang.FieldReplyMessage,
 				Message: "Balasan tidak dapat dibaca dari permintaan.",
@@ -209,18 +141,18 @@ func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.service.Reply(r.Context(), active.Alias, caller, inboxkomunikasicabang.ReplyInput{
+	err := h.Service.Reply(r.Context(), active.Alias, caller, inboxkomunikasicabang.ReplyInput{
 		ID:      chi.URLParam(r, "komunikasi"),
 		Message: body.Message,
 	})
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
 	// 200, bukan 201. Tidak ada sumber daya baru yang punya alamat sendiri — yang berubah
 	// adalah percakapan yang alamatnya sudah ada.
-	h.writeJSON(w, r, http.StatusOK, ActionResponse{
+	h.WriteJSON(w, r, http.StatusOK, ActionResponse{
 		ID: strings.TrimSpace(chi.URLParam(r, "komunikasi")),
 		Message: "Balasan tersimpan. Percakapan ini berpindah ke tab \"Sudah Dijawab\", " +
 			"dan cabang tujuan melihatnya sebagai jawaban terakhir.",
@@ -245,14 +177,14 @@ func (h *Handler) Finish(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "komunikasi")
 
-	err := h.service.Finish(r.Context(), active.Alias, caller,
+	err := h.Service.Finish(r.Context(), active.Alias, caller,
 		inboxkomunikasicabang.DetailInput{ID: id})
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, ActionResponse{
+	h.WriteJSON(w, r, http.StatusOK, ActionResponse{
 		ID: strings.TrimSpace(id),
 		Message: "Percakapan ditutup. Ia tidak lagi tampil di kedua tab, dan tidak dapat " +
 			"dibuka kembali dari layar ini.",
@@ -279,13 +211,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxkomunikasicabang.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxkomunikasicabang.ErrCallerUnknown)
+		h.WriteError(w, r, inboxkomunikasicabang.ErrCallerUnknown)
 		return portal.Portal{}, inboxkomunikasicabang.Caller{}, false
 	}
 
@@ -307,10 +239,10 @@ func readFilter(query url.Values) inboxkomunikasicabang.QueryInput {
 
 // readCaller membaca identitas pemanggil, atau menyatakan ia tidak terbaca.
 func (h *Handler) readCaller(r *http.Request) (inboxkomunikasicabang.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxkomunikasicabang.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return inboxkomunikasicabang.Caller{}, false
 	}
@@ -328,10 +260,4 @@ func (h *Handler) readCaller(r *http.Request) (inboxkomunikasicabang.Caller, boo
 // menjadi nilai bawaan. Menolak seluruh permintaan karena `halaman=abc` akan membuat layar
 // gagal tanpa alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah
 // jawaban yang selalu masuk akal.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegative(raw) }

@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/daftardetaildokumentravel"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/daftardetaildokumentravel"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi awal untuk pengembangan dan pengujian tanpa basis data.
 //
@@ -23,64 +33,13 @@ import "claim-pnc/internal/daftardetaildokumentravel"
 // Keduanya memang merujuk tabel yang sama, dan memakai kode yang berbeda pada data
 // pengembangan akan menampilkan isian ID Dokumen yang tidak pernah cocok dengan
 // daftarnya sendiri — kelas kebingungan yang tidak ada di produksi.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Satu baris dengan pembatasan plan dan jaminan, supaya grid coverage pada
+// form benar-benar terisi saat dibuka di pengembangan — bukan selalu kosong.
 func SampleList() []daftardetaildokumentravel.Detail {
-	return []daftardetaildokumentravel.Detail{
-		{
-			ID:           "00001",
-			DocumentID:   "100001",
-			DocumentName: "Paspor",
-			Mandatory:    true,
-			MinUpload:    1,
-		},
-		{
-			ID:           "00002",
-			DocumentID:   "100002",
-			DocumentName: "Tiket Perjalanan",
-			Mandatory:    true,
-			MinUpload:    1,
-		},
-		{
-			// Satu baris dengan pembatasan plan dan jaminan, supaya grid coverage pada
-			// form benar-benar terisi saat dibuka di pengembangan — bukan selalu kosong.
-			ID:           "00003",
-			DocumentID:   "100004",
-			DocumentName: "Laporan Kehilangan Bagasi",
-			Mandatory:    false,
-			MinUpload:    2,
-			Coverages: []daftardetaildokumentravel.Coverage{
-				{
-					ID:           "00005",
-					PlanID:       "TP01",
-					PlanName:     "Travel Plan Silver",
-					CoverageID:   "TC02",
-					CoverageName: "Kehilangan Bagasi",
-				},
-				{
-					ID:           "00006",
-					PlanID:       "TP02",
-					PlanName:     "Travel Plan Gold",
-					CoverageID:   "TC02",
-					CoverageName: "Kehilangan Bagasi",
-				},
-			},
-		},
-		{
-			ID:           "00004",
-			DocumentID:   "100005",
-			DocumentName: "Kuitansi Biaya Pengobatan",
-			Mandatory:    true,
-			MinUpload:    1,
-			Coverages: []daftardetaildokumentravel.Coverage{
-				{
-					ID:           "00007",
-					PlanID:       "TP02",
-					PlanName:     "Travel Plan Gold",
-					CoverageID:   "TC01",
-					CoverageName: "Biaya Pengobatan Darurat",
-				},
-			},
-		},
-	}
+	return sampledata.Must[[]daftardetaildokumentravel.Detail](sampleJSON, "SampleList")
 }
 
 // SampleDocumentList adalah pilihan ID Dokumen untuk pengembangan.
@@ -88,14 +47,7 @@ func SampleList() []daftardetaildokumentravel.Detail {
 // Sama dengan isi `masterdokumentravel/repo/memory.SampleList`, dan itu disengaja —
 // keduanya membaca POOLDATA.M_DOCTRAVEL yang sama. Bukan data produksi.
 func SampleDocumentList() []daftardetaildokumentravel.Document {
-	return []daftardetaildokumentravel.Document{
-		{ID: "100001", Name: "Paspor"},
-		{ID: "100002", Name: "Tiket Perjalanan"},
-		{ID: "100003", Name: "Boarding Pass"},
-		{ID: "100004", Name: "Laporan Kehilangan Bagasi"},
-		{ID: "100005", Name: "Kuitansi Biaya Pengobatan"},
-		{ID: "100006", Name: "Surat Keterangan Maskapai"},
-	}
+	return sampledata.Must[[]daftardetaildokumentravel.Document](sampleJSON, "SampleDocumentList")
 }
 
 // SamplePlanList adalah pilihan Nama Plan untuk pengembangan.
@@ -103,11 +55,7 @@ func SampleDocumentList() []daftardetaildokumentravel.Document {
 // BUKAN data produksi. Isi POOLDATA.M_PLANTRAVEL tidak ada di export, dan tabel itu pun
 // dimiliki GISFW (`D-03`) sehingga isinya memang tidak berada di tangan tim ini.
 func SamplePlanList() []daftardetaildokumentravel.Plan {
-	return []daftardetaildokumentravel.Plan{
-		{ID: "TP01", Name: "Travel Plan Silver"},
-		{ID: "TP02", Name: "Travel Plan Gold"},
-		{ID: "TP03", Name: "Travel Plan Platinum"},
-	}
+	return sampledata.Must[[]daftardetaildokumentravel.Plan](sampleJSON, "SamplePlanList")
 }
 
 // SampleCoverageList adalah pilihan Nama Jaminan untuk pengembangan.
@@ -115,13 +63,5 @@ func SamplePlanList() []daftardetaildokumentravel.Plan {
 // BUKAN data produksi. PlanID setiap barisnya menunjuk SamplePlanList, supaya
 // penyaringan jaminan menurut plan benar-benar terlihat bekerja saat dicoba.
 func SampleCoverageList() []daftardetaildokumentravel.CoverageOption {
-	return []daftardetaildokumentravel.CoverageOption{
-		{ID: "TC01", Name: "Biaya Pengobatan Darurat", PlanID: "TP01"},
-		{ID: "TC02", Name: "Kehilangan Bagasi", PlanID: "TP01"},
-		{ID: "TC01", Name: "Biaya Pengobatan Darurat", PlanID: "TP02"},
-		{ID: "TC02", Name: "Kehilangan Bagasi", PlanID: "TP02"},
-		{ID: "TC03", Name: "Keterlambatan Penerbangan", PlanID: "TP02"},
-		{ID: "TC03", Name: "Keterlambatan Penerbangan", PlanID: "TP03"},
-		{ID: "TC04", Name: "Pembatalan Perjalanan", PlanID: "TP03"},
-	}
+	return sampledata.Must[[]daftardetaildokumentravel.CoverageOption](sampleJSON, "SampleCoverageList")
 }

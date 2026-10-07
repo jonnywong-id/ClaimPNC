@@ -111,6 +111,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // Jenis surveyor — kolom `SURVEYORTYPE_1`.
@@ -671,15 +673,7 @@ func (f Filter) Normalize() Filter {
 	if !f.Tab.Valid() {
 		f.Tab = DefaultTab
 	}
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxLimit {
-		f.Limit = MaxLimit
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxLimit)
 	return f
 }
 

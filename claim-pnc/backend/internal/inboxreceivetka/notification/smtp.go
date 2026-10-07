@@ -41,65 +41,18 @@ package notification
 import (
 	"context"
 	"errors"
-	"fmt"
 	"html"
-	"net"
-	"net/smtp"
 	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxreceivetka"
+	"claim-pnc/internal/platform/smtpsend"
 )
 
 // Config adalah parameter sambungan SMTP.
-type Config struct {
-	Host string
-	Port int
+type Config = smtpsend.Config
 
-	// User dan Password boleh kosong. Banyak relay SMTP internal menerima pengirim dari
-	// jaringan tepercaya tanpa autentikasi; memaksakan kredensial akan menolak konfigurasi
-	// yang sah.
-	User     string
-	Password string
-
-	// From adalah alamat pengirim.
-	//
-	// Di sistem lama nilainya tertanam di dalam rule sebagai alamat otomatis milik
-	// perusahaan. Ia dipindahkan ke konfigurasi, bukan karena rahasia, melainkan karena
-	// alamat pengirim berbeda antarlingkungan — dan surel pengujian yang mengaku berasal
-	// dari alamat produksi adalah cara tercepat membuat penerima berhenti mempercayainya.
-	From string
-
-	// To adalah mailbox penerima pemberitahuan kelengkapan dokumen TKA.
-	//
-	// Ia konfigurasi, bukan diturunkan dari data dan bukan dari identitas penekan tombol.
-	// Lihat banner paket.
-	To []string
-
-	// Timeout membatasi lama menunggu server SMTP. Nol berarti nilai baku.
-	Timeout time.Duration
-}
-
-// Complete menyatakan konfigurasi ini cukup untuk mengirim surel.
-func (k Config) Complete() bool {
-	return strings.TrimSpace(k.Host) != "" &&
-		k.Port > 0 &&
-		strings.TrimSpace(k.From) != "" &&
-		len(k.to()) > 0
-}
-
-// to mengembalikan alamat penerima yang benar-benar terisi.
-func (k Config) to() []string {
-	result := make([]string, 0, len(k.To))
-	for _, address := range k.To {
-		if trimmed := strings.TrimSpace(address); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
-}
-
-const defaultTimeout = 20 * time.Second
+const defaultTimeout = smtpsend.DefaultTimeout
 
 // Sender mengirim pemberitahuan lewat SMTP.
 type Sender struct {
@@ -118,86 +71,12 @@ func (p *Sender) NotifyDocumentCompleted(
 		return errors.New("inboxreceivetka/notification: SMTP belum dikonfigurasi")
 	}
 
-	to := p.cfg.to()
+	to := p.cfg.Recipients()
 	return p.send(ctx, to, composeEmail(p.cfg.From, to, notice))
 }
 
 func (p *Sender) send(ctx context.Context, to []string, message []byte) error {
-	timeout := p.cfg.Timeout
-	if timeout <= 0 {
-		timeout = defaultTimeout
-	}
-
-	address := net.JoinHostPort(p.cfg.Host, fmt.Sprint(p.cfg.Port))
-	dialer := &net.Dialer{Timeout: timeout}
-
-	connection, err := dialer.DialContext(ctx, "tcp", address)
-	if err != nil {
-		return fmt.Errorf("inboxreceivetka/notification: menghubungi server surel: %w", err)
-	}
-	// Tenggang dipasang pada sambungan, bukan hanya pada pemutarnya: server SMTP yang
-	// menerima koneksi lalu diam adalah kegagalan yang paling sering menggantung proses.
-	_ = connection.SetDeadline(time.Now().Add(timeout))
-
-	client, err := smtp.NewClient(connection, p.cfg.Host)
-	if err != nil {
-		_ = connection.Close()
-		return fmt.Errorf("inboxreceivetka/notification: memulai percakapan SMTP: %w", err)
-	}
-	defer func() { _ = client.Close() }()
-
-	// STARTTLS dipakai bila server menawarkannya. Ia tidak dipaksakan karena relay internal
-	// sering belum memasang sertifikat; yang dipaksakan justru sebaliknya — kredensial hanya
-	// dikirim setelah sambungan terenkripsi.
-	//
-	// Rule lama menetapkan `UseSSL=false` dan mengirimkan kata sandi apa adanya (`R-17`).
-	// Itu tidak ditiru: menyalin kelemahan keamanan bukan kesetaraan perilaku.
-	secured := false
-	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(nil); err != nil {
-			return fmt.Errorf("inboxreceivetka/notification: menegakkan TLS: %w", err)
-		}
-		secured = true
-	}
-
-	if p.cfg.User != "" {
-		if !secured {
-			return errors.New(
-				"inboxreceivetka/notification: server surel tidak mendukung STARTTLS; " +
-					"kredensial SMTP tidak dikirim melalui sambungan terbuka")
-		}
-		auth := smtp.PlainAuth("", p.cfg.User, p.cfg.Password, p.cfg.Host)
-		if err := client.Auth(auth); err != nil {
-			// Galatnya tidak memuat kredensial, dan tidak boleh memuatnya: galat ini
-			// berakhir di log.
-			return fmt.Errorf(
-				"inboxreceivetka/notification: autentikasi SMTP ditolak: %w", err)
-		}
-	}
-
-	if err := client.Mail(p.cfg.From); err != nil {
-		return fmt.Errorf(
-			"inboxreceivetka/notification: server menolak alamat pengirim: %w", err)
-	}
-	for _, address := range to {
-		if err := client.Rcpt(address); err != nil {
-			return fmt.Errorf(
-				"inboxreceivetka/notification: server menolak alamat tujuan: %w", err)
-		}
-	}
-
-	write, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("inboxreceivetka/notification: membuka badan surel: %w", err)
-	}
-	if _, err := write.Write(message); err != nil {
-		_ = write.Close()
-		return fmt.Errorf("inboxreceivetka/notification: menulis badan surel: %w", err)
-	}
-	if err := write.Close(); err != nil {
-		return fmt.Errorf("inboxreceivetka/notification: menutup badan surel: %w", err)
-	}
-	return client.Quit()
+	return p.cfg.Send(ctx, to, message, "inboxreceivetka/notification")
 }
 
 // composeEmail membentuk pesan RFC 5322 lengkap dengan badan HTML.

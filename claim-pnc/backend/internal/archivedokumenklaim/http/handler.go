@@ -1,9 +1,7 @@
 package archivedokumenklaimhttp
 
 import (
-	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,72 +10,16 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/archivedokumenklaim"
-	"claim-pnc/internal/archivedokumenklaim/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login mengisi kolom USERINPUT.
-	Login string
-
-	// Position menentukan lini bisnis yang tampak pada daftar kirim ke cabang.
-	Position string
-
-	// BranchCode mengisi kolom KODECABANG. Lihat archivedokumenklaim.Draft.BranchCode.
-	BranchCode string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
 
 // maxRequestBody adalah batas panjang badan permintaan penyimpanan.
 //
 // Formulirnya dua belas isian pendek, sehingga 64 KiB sudah jauh melampaui kebutuhannya.
 // Batasnya ada untuk menahan yang tidak wajar, bukan untuk membatasi yang wajar.
 const maxRequestBody = 64 << 10
-
-// Handler melayani permintaan modul Archive Dokumen Klaim.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Archive Dokumen Klaim.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Open menangani GET /arsip-dokumen/buka.
 //
@@ -90,13 +32,13 @@ func (h *Handler) Open(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opened, err := h.service.Open(r.Context(), active.Alias, toDomainCaller(caller))
+	opened, err := h.Service.Open(r.Context(), active.Alias, toDomainCaller(caller))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toOpenResponse(opened, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toOpenResponse(opened, active.Alias))
 }
 
 // Search menangani GET /arsip-dokumen.
@@ -120,7 +62,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, err := h.service.Search(
+	found, err := h.Service.Search(
 		r.Context(),
 		active.Alias,
 		archivedokumenklaim.CriteriaInput{
@@ -135,11 +77,11 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, SearchResponse{
+	h.WriteJSON(w, r, http.StatusOK, SearchResponse{
 		Files:      toArchiveFileListDTO(found.Page.Files),
 		Pagination: toPaginationDTO(found.Page),
 		Portal:     active.Alias,
@@ -155,14 +97,14 @@ func (h *Handler) SearchClaims(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	claims, err := h.service.SearchClaims(
+	claims, err := h.Service.SearchClaims(
 		r.Context(), active.Alias, query.Get("tipe"), query.Get("nilai"))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, ClaimSearchResponse{
+	h.WriteJSON(w, r, http.StatusOK, ClaimSearchResponse{
 		Claims: toClaimListDTO(claims),
 		Portal: active.Alias,
 	})
@@ -175,14 +117,14 @@ func (h *Handler) FillingCodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	codes, err := h.service.FillingCodes(
+	codes, err := h.Service.FillingCodes(
 		r.Context(), active.Alias, r.URL.Query().Get("kata_kunci"))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, FillingCodeResponse{
+	h.WriteJSON(w, r, http.StatusOK, FillingCodeResponse{
 		Codes:         toFillingCodeListDTO(codes),
 		Reconstructed: true,
 		Portal:        active.Alias,
@@ -214,7 +156,7 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Save(
+	saved, err := h.Service.Save(
 		r.Context(),
 		active.Alias,
 		toDomainCaller(caller),
@@ -236,7 +178,7 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -258,7 +200,7 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 			"dan dapat dikirim ulang dari tab Kirim ke Cabang."
 	}
 
-	h.writeJSON(w, r, status, SaveResponse{
+	h.WriteJSON(w, r, status, SaveResponse{
 		ID:          saved.ID,
 		Created:     saved.Created,
 		Message:     message,
@@ -279,7 +221,7 @@ func (h *Handler) Pending(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	pending, err := h.service.PendingBranch(
+	pending, err := h.Service.PendingBranch(
 		r.Context(),
 		active.Alias,
 		toDomainCaller(caller),
@@ -289,11 +231,11 @@ func (h *Handler) Pending(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, PendingResponse{
+	h.WriteJSON(w, r, http.StatusOK, PendingResponse{
 		Files:      toArchiveFileListDTO(pending.Page.Files),
 		Pagination: toPaginationDTO(pending.Page),
 		Scope:      toBranchScopeDTO(pending.Scope),
@@ -314,13 +256,13 @@ func (h *Handler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sent, err := h.service.SendToBranch(r.Context(), active.Alias, toDomainCaller(caller), id)
+	sent, err := h.Service.SendToBranch(r.Context(), active.Alias, toDomainCaller(caller), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, SendResponse{
+	h.WriteJSON(w, r, http.StatusOK, SendResponse{
 		ID:          sent.ID,
 		ServiceCode: sent.Code,
 		ServiceNote: sent.Note,
@@ -339,13 +281,13 @@ func (h *Handler) begin(
 ) (portal.Portal, Caller, bool) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, archivedokumenklaim.ErrCallerUnknown)
+		h.WriteError(w, r, archivedokumenklaim.ErrCallerUnknown)
 		return portal.Portal{}, Caller{}, false
 	}
 
@@ -358,11 +300,11 @@ func (h *Handler) begin(
 // satu operasi — memasukkannya ke tipe domain akan membawanya ke lima operasi lain yang
 // tidak membutuhkannya.
 func (h *Handler) readCaller(r *http.Request) (Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return Caller{}, false
 	}
 
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return Caller{}, false
 	}
@@ -383,7 +325,7 @@ func toDomainCaller(caller Caller) archivedokumenklaim.Caller {
 // bertipe teks — hanya isinya yang tidak dapat dibaca sebagai tanggal. Layar dapat
 // menandai isian yang salah alih-alih menampilkan galat umum.
 func (h *Handler) writeBadDate(w http.ResponseWriter, r *http.Request, field string) {
-	h.writeError(w, r, archivedokumenklaim.NewValidationError([]archivedokumenklaim.Violation{{
+	h.WriteError(w, r, archivedokumenklaim.NewValidationError([]archivedokumenklaim.Violation{{
 		Field:   field,
 		Message: "Tanggal tidak dapat dibaca. Bentuknya YYYY-MM-DD.",
 	}}))
@@ -391,7 +333,7 @@ func (h *Handler) writeBadDate(w http.ResponseWriter, r *http.Request, field str
 
 // writeBadRequest menjawab permintaan yang bentuknya salah.
 func (h *Handler) writeBadRequest(w http.ResponseWriter, r *http.Request, message string) {
-	h.writeJSON(w, r, http.StatusBadRequest, ErrorResponse{
+	h.WriteJSON(w, r, http.StatusBadRequest, ErrorResponse{
 		Code:    CodeBadRequest,
 		Message: message,
 	})
@@ -433,13 +375,7 @@ func parseDate(raw string) (*time.Time, bool) {
 // menjadi nilai bawaan. Menolak seluruh permintaan karena `halaman=abc` akan membuat layar
 // gagal tanpa alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah
 // jawaban yang selalu masuk akal.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegativeTrimmed(raw) }
 
 // valueOf membaca pointer teks yang boleh kosong.
 func valueOf(value *string) string {

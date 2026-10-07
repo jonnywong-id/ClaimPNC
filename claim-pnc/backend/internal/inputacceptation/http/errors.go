@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/inputacceptation"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien. Klien membedakan jenis galat lewat kode ini, bukan dengan
@@ -22,10 +23,10 @@ const (
 )
 
 // JSONWriter menuliskan badan respons.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat modul ini menjadi respons HTTP.
 //
@@ -33,29 +34,10 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 // portal dan auth. Bila tidak ada cadangan, atau cadangannya pun tidak mengenalinya, jawabannya
 // 500 dengan pesan umum dan rinciannya hanya masuk log.
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
-		status, body, recognized := mapError(err)
-
-		if !recognized {
-			if fallback != nil {
-				fallback(w, r, err)
-				return
-			}
-			status, body = http.StatusInternalServerError, ErrorResponse{
-				Code:    CodeInternalError,
-				Message: "Terjadi kesalahan pada sistem.",
-			}
-		}
-
-		if status >= http.StatusInternalServerError && logger != nil {
-			logger.Error("permintaan gagal",
-				slog.String("jalur", r.URL.Path),
-				slog.String("galat", err.Error()),
-			)
-		}
-
-		writeJSON(w, r, status, body)
-	}
+	return apierror.Writer(logger, writeJSON, fallback, mapError, ErrorResponse{
+		Code:    CodeInternalError,
+		Message: "Terjadi kesalahan pada sistem.",
+	})
 }
 
 // mapError menerjemahkan galat domain menjadi status dan badan HTTP.
@@ -65,10 +47,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 	switch {
 	case errors.As(err, &validation):
 		// 422, bukan 400: permintaannya berbentuk benar, isinya yang melanggar aturan.
-		details := make([]ViolationDTO, 0, len(validation.Violations))
-		for _, v := range validation.Violations {
-			details = append(details, ViolationDTO{Field: v.Field, Message: v.Message})
-		}
+		details := apierror.FieldErrors(validation.Violations)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFail,
 			Message: "Permintaan belum benar. Perbaiki yang ditandai lalu coba lagi.",

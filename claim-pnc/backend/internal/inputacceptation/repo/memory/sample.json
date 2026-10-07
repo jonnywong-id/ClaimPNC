@@ -1,0 +1,874 @@
+{
+  "SampleDetails": [
+    {
+      "ClaimID": "CLMNP-1001",
+      "Reference": "ASM-FW-GCNMFW-WORK-CLAIMTREATYNONPROP CLMNP-1001",
+      "StatusWork": "Pending-Acceptation",
+      "LastUpdateOperator": "ADMINNONPROP1",
+      "Values": {
+        "appointed_adj": "Adjuster Contoh",
+        "cause_of_loss": "Kebakaran",
+        "circumtances": "Kronologi contoh untuk pengembangan lokal.",
+        "claim_no": "CLMNP-1001",
+        "claim_no_ceding": "CLM/2026/0001",
+        "consultant_name": "Konsultan Contoh",
+        "currency_deductible": "IDR",
+        "date_of_loss": "2026-08-14",
+        "deductible_percent": "2,5000",
+        "deductible_type": "Persentase",
+        "deductible_value": "500.000.000,00",
+        "dla_no_ceding": "DLA/2026/0001",
+        "form_type": "Excess of Loss",
+        "insured_interest": "Bangunan dan isinya",
+        "insured_name": "PT Contoh Sejahtera",
+        "insured_relationship_others": "—",
+        "location_of_loss": "Gudang Contoh, Bekasi",
+        "pla_no_ceding": "PLA/2026/0001",
+        "policy_end": "2026-12-31",
+        "policy_no": "99.002.2026.00001",
+        "policy_no_ceding": "CED/2026/000123",
+        "policy_start": "2026-01-01",
+        "received_date": "2026-08-20",
+        "report_date": "2026-08-16",
+        "report_description": "Kerugian akibat kebakaran pada gudang penyimpanan. Seluruh isi contoh ini karangan.",
+        "report_status": "Diterima",
+        "report_type": "Laporan Awal",
+        "reporter_address": "Jalan Contoh No. 1, Jakarta",
+        "reporter_name": "Contoh Pelapor",
+        "reporter_phone": "021-5550000",
+        "share_ceding": "40,0000",
+        "supporting_document": "Berita acara, foto lokasi, laporan surveyor",
+        "total_sum_insured_idr": "25.000.000.000,00",
+        "treaty_end_date": "2026-12-31",
+        "treaty_id": "TNP-2026-01",
+        "treaty_name": "XOL Property 2026 Layer 1",
+        "treaty_start_date": "2026-01-01",
+        "treaty_year": "2026",
+        "tsi_deductible": "25.000.000.000,00",
+        "type_deductible": "TSI"
+      },
+      "Grids": {
+        "adjustment_list": [
+          {
+            "acceptation_date": "2026-09-25",
+            "acceptation_no": "AKS/TNP/2026/0001",
+            "status": "1",
+            "type": "Final"
+          }
+        ],
+        "claim_amount": [
+          {
+            "adjuster_fee": "25.000.000,00",
+            "claim_amount": "3.000.000.000,00",
+            "claim_amount_cedant": "3.000.000.000,00",
+            "claim_amount_idr": "3.000.000.000,00",
+            "currency": "IDR",
+            "fee": "5.000.000,00",
+            "proportion_pct": "100,0000",
+            "rate_of_exchange": "1,0000",
+            "salvage": "50.000.000,00",
+            "tpl": "0,00"
+          }
+        ],
+        "cnp_spread_loss": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_amount": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "to_xol": "false",
+            "treaty_name": "OR"
+          },
+          {
+            "adjuster_fee": "10.000.000,00",
+            "claim_amount": "1.200.000.000,00",
+            "currency": "IDR",
+            "fee": "2.000.000,00",
+            "salvage": "20.000.000,00",
+            "share_pct": "40,0000",
+            "to_xol": "true",
+            "treaty_name": "XOL Layer 1"
+          }
+        ],
+        "interest_list": [
+          {
+            "currency": "IDR",
+            "object_name": "Bangunan Gudang",
+            "value": "15.000.000.000,00",
+            "value_idr": "15.000.000.000,00"
+          },
+          {
+            "currency": "IDR",
+            "object_name": "Mesin dan Peralatan",
+            "value": "10.000.000.000,00",
+            "value_idr": "10.000.000.000,00"
+          }
+        ],
+        "interest_total": [
+          {
+            "currency": "IDR",
+            "value": "25.000.000.000,00"
+          }
+        ],
+        "reinstatement_list": [
+          {
+            "adjuster_fee": "10.000.000,00",
+            "claim_amount": "1.200.000.000,00",
+            "currency": "IDR",
+            "layer": "1",
+            "limit": "5.000.000.000,00",
+            "premi_mdp": "150.000.000,00",
+            "reinstatement_pct": "100,0000",
+            "reinstatement_premium": "36.000.000,00",
+            "reinstatement_premium_asm": "9.000.000,00",
+            "salvage": "20.000.000,00"
+          }
+        ],
+        "spreading_adjustment": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_spreaded": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "reinstatement_premium": "36.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "total_claim": "1.848.000.000,00",
+            "treaty_type": "OR"
+          }
+        ],
+        "spreading_adjustment_qs": [],
+        "spreading_break_qs": [],
+        "spreading_claim": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_spreded": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "treaty_type": "OR"
+          }
+        ],
+        "spreading_risk": [
+          {
+            "adjuster_fee": "3.750.000,00",
+            "asm_share_pct": "25,0000",
+            "claim_amount": "1.800.000.000,00",
+            "claim_amount_asm": "450.000.000,00",
+            "currency": "IDR",
+            "fee": "750.000,00",
+            "salvage": "7.500.000,00",
+            "treaty_name": "OR"
+          }
+        ],
+        "suggest_list": [
+          {
+            "confirmed": "true",
+            "date": "2026-09-26",
+            "name": "Contoh Petugas Ceding",
+            "noted": "Disetujui sesuai perhitungan."
+          }
+        ],
+        "total_estimation": [
+          {
+            "adjuster_fee": "3.750.000,00",
+            "claim_amount": "3.000.000.000,00",
+            "claim_amount_asm": "450.000.000,00",
+            "currency": "IDR",
+            "fee": "750.000,00",
+            "salvage": "7.500.000,00"
+          }
+        ]
+      }
+    },
+    {
+      "ClaimID": "CLMNP-1002",
+      "Reference": "ASM-FW-GCNMFW-WORK-CLAIMTREATYNONPROP CLMNP-1002",
+      "StatusWork": "New",
+      "LastUpdateOperator": "ADMINNONPROP1",
+      "Values": {},
+      "Grids": {}
+    },
+    {
+      "ClaimID": "CLMNP-2001",
+      "Reference": "ASM-FW-GCNMFW-WORK-CLAIMTREATYNONPROP CLMNP-2001",
+      "StatusWork": "Pending-Acceptation",
+      "LastUpdateOperator": "ADMINNONPROP1",
+      "Values": {
+        "appointed_adj": "Adjuster Contoh",
+        "cause_of_loss": "Kebakaran",
+        "circumtances": "Kronologi contoh untuk pengembangan lokal.",
+        "claim_no": "CLMNP-2001",
+        "claim_no_ceding": "CLM/2026/0001",
+        "consultant_name": "Konsultan Contoh",
+        "currency_deductible": "IDR",
+        "date_of_loss": "2026-08-14",
+        "deductible_percent": "2,5000",
+        "deductible_type": "Persentase",
+        "deductible_value": "500.000.000,00",
+        "dla_no_ceding": "DLA/2026/0001",
+        "form_type": "Excess of Loss",
+        "insured_interest": "Bangunan dan isinya",
+        "insured_name": "PT Contoh Sejahtera",
+        "insured_relationship_others": "—",
+        "location_of_loss": "Gudang Contoh, Bekasi",
+        "pla_no_ceding": "PLA/2026/0001",
+        "policy_end": "2026-12-31",
+        "policy_no": "99.002.2026.00001",
+        "policy_no_ceding": "CED/2026/000123",
+        "policy_start": "2026-01-01",
+        "received_date": "2026-08-20",
+        "report_date": "2026-08-16",
+        "report_description": "Kerugian akibat kebakaran pada gudang penyimpanan. Seluruh isi contoh ini karangan.",
+        "report_status": "Diterima",
+        "report_type": "Laporan Awal",
+        "reporter_address": "Jalan Contoh No. 1, Jakarta",
+        "reporter_name": "Contoh Pelapor",
+        "reporter_phone": "021-5550000",
+        "share_ceding": "40,0000",
+        "supporting_document": "Berita acara, foto lokasi, laporan surveyor",
+        "total_sum_insured_idr": "25.000.000.000,00",
+        "treaty_end_date": "2026-12-31",
+        "treaty_id": "TNP-2026-01",
+        "treaty_name": "XOL Property 2026 Layer 1",
+        "treaty_start_date": "2026-01-01",
+        "treaty_year": "2026",
+        "tsi_deductible": "25.000.000.000,00",
+        "type_deductible": "TSI"
+      },
+      "Grids": {
+        "adjustment_list": [
+          {
+            "acceptation_date": "2026-09-25",
+            "acceptation_no": "AKS/TNP/2026/0001",
+            "status": "1",
+            "type": "Final"
+          }
+        ],
+        "claim_amount": [
+          {
+            "adjuster_fee": "25.000.000,00",
+            "claim_amount": "3.000.000.000,00",
+            "claim_amount_cedant": "3.000.000.000,00",
+            "claim_amount_idr": "3.000.000.000,00",
+            "currency": "IDR",
+            "fee": "5.000.000,00",
+            "proportion_pct": "100,0000",
+            "rate_of_exchange": "1,0000",
+            "salvage": "50.000.000,00",
+            "tpl": "0,00"
+          }
+        ],
+        "cnp_spread_loss": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_amount": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "to_xol": "false",
+            "treaty_name": "OR"
+          },
+          {
+            "adjuster_fee": "10.000.000,00",
+            "claim_amount": "1.200.000.000,00",
+            "currency": "IDR",
+            "fee": "2.000.000,00",
+            "salvage": "20.000.000,00",
+            "share_pct": "40,0000",
+            "to_xol": "true",
+            "treaty_name": "XOL Layer 1"
+          }
+        ],
+        "interest_list": [
+          {
+            "currency": "IDR",
+            "object_name": "Bangunan Gudang",
+            "value": "15.000.000.000,00",
+            "value_idr": "15.000.000.000,00"
+          },
+          {
+            "currency": "IDR",
+            "object_name": "Mesin dan Peralatan",
+            "value": "10.000.000.000,00",
+            "value_idr": "10.000.000.000,00"
+          }
+        ],
+        "interest_total": [
+          {
+            "currency": "IDR",
+            "value": "25.000.000.000,00"
+          }
+        ],
+        "reinstatement_list": [
+          {
+            "adjuster_fee": "10.000.000,00",
+            "claim_amount": "1.200.000.000,00",
+            "currency": "IDR",
+            "layer": "1",
+            "limit": "5.000.000.000,00",
+            "premi_mdp": "150.000.000,00",
+            "reinstatement_pct": "100,0000",
+            "reinstatement_premium": "36.000.000,00",
+            "reinstatement_premium_asm": "9.000.000,00",
+            "salvage": "20.000.000,00"
+          }
+        ],
+        "spreading_adjustment": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_spreaded": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "reinstatement_premium": "36.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "total_claim": "1.848.000.000,00",
+            "treaty_type": "OR"
+          }
+        ],
+        "spreading_adjustment_qs": [],
+        "spreading_break_qs": [],
+        "spreading_claim": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_spreded": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "treaty_type": "OR"
+          }
+        ],
+        "spreading_risk": [
+          {
+            "adjuster_fee": "3.750.000,00",
+            "asm_share_pct": "25,0000",
+            "claim_amount": "1.800.000.000,00",
+            "claim_amount_asm": "450.000.000,00",
+            "currency": "IDR",
+            "fee": "750.000,00",
+            "salvage": "7.500.000,00",
+            "treaty_name": "OR"
+          }
+        ],
+        "suggest_list": [
+          {
+            "confirmed": "true",
+            "date": "2026-09-26",
+            "name": "Contoh Petugas Ceding",
+            "noted": "Disetujui sesuai perhitungan."
+          }
+        ],
+        "total_estimation": [
+          {
+            "adjuster_fee": "3.750.000,00",
+            "claim_amount": "3.000.000.000,00",
+            "claim_amount_asm": "450.000.000,00",
+            "currency": "IDR",
+            "fee": "750.000,00",
+            "salvage": "7.500.000,00"
+          }
+        ]
+      }
+    },
+    {
+      "ClaimID": "CLMNP-2002",
+      "Reference": "ASM-FW-GCNMFW-WORK-CLAIMTREATYNONPROP CLMNP-2002",
+      "StatusWork": "Pending-Acceptation",
+      "LastUpdateOperator": "ADMINNONPROP1",
+      "Values": {
+        "appointed_adj": "Adjuster Contoh",
+        "cause_of_loss": "Kebakaran",
+        "circumtances": "Kronologi contoh untuk pengembangan lokal.",
+        "claim_no": "CLMNP-2002",
+        "claim_no_ceding": "CLM/2026/0001",
+        "consultant_name": "Konsultan Contoh",
+        "currency_deductible": "IDR",
+        "date_of_loss": "2026-08-14",
+        "deductible_percent": "2,5000",
+        "deductible_type": "Persentase",
+        "deductible_value": "500.000.000,00",
+        "dla_no_ceding": "DLA/2026/0001",
+        "form_type": "Excess of Loss",
+        "insured_interest": "Bangunan dan isinya",
+        "insured_name": "PT Contoh Sejahtera",
+        "insured_relationship_others": "—",
+        "location_of_loss": "Gudang Contoh, Bekasi",
+        "pla_no_ceding": "PLA/2026/0001",
+        "policy_end": "2026-12-31",
+        "policy_no": "99.002.2026.00001",
+        "policy_no_ceding": "CED/2026/000123",
+        "policy_start": "2026-01-01",
+        "received_date": "2026-08-20",
+        "report_date": "2026-08-16",
+        "report_description": "Kerugian akibat kebakaran pada gudang penyimpanan. Seluruh isi contoh ini karangan.",
+        "report_status": "Diterima",
+        "report_type": "Laporan Awal",
+        "reporter_address": "Jalan Contoh No. 1, Jakarta",
+        "reporter_name": "Contoh Pelapor",
+        "reporter_phone": "021-5550000",
+        "share_ceding": "40,0000",
+        "supporting_document": "Berita acara, foto lokasi, laporan surveyor",
+        "total_sum_insured_idr": "25.000.000.000,00",
+        "treaty_end_date": "2026-12-31",
+        "treaty_id": "TNP-2026-01",
+        "treaty_name": "XOL Property 2026 Layer 1",
+        "treaty_start_date": "2026-01-01",
+        "treaty_year": "2026",
+        "tsi_deductible": "25.000.000.000,00",
+        "type_deductible": "TSI"
+      },
+      "Grids": {
+        "adjustment_list": [
+          {
+            "acceptation_date": "2026-09-25",
+            "acceptation_no": "AKS/TNP/2026/0001",
+            "status": "1",
+            "type": "Final"
+          }
+        ],
+        "claim_amount": [
+          {
+            "adjuster_fee": "25.000.000,00",
+            "claim_amount": "3.000.000.000,00",
+            "claim_amount_cedant": "3.000.000.000,00",
+            "claim_amount_idr": "3.000.000.000,00",
+            "currency": "IDR",
+            "fee": "5.000.000,00",
+            "proportion_pct": "100,0000",
+            "rate_of_exchange": "1,0000",
+            "salvage": "50.000.000,00",
+            "tpl": "0,00"
+          }
+        ],
+        "cnp_spread_loss": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_amount": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "to_xol": "false",
+            "treaty_name": "OR"
+          },
+          {
+            "adjuster_fee": "10.000.000,00",
+            "claim_amount": "1.200.000.000,00",
+            "currency": "IDR",
+            "fee": "2.000.000,00",
+            "salvage": "20.000.000,00",
+            "share_pct": "40,0000",
+            "to_xol": "true",
+            "treaty_name": "XOL Layer 1"
+          }
+        ],
+        "interest_list": [
+          {
+            "currency": "IDR",
+            "object_name": "Bangunan Gudang",
+            "value": "15.000.000.000,00",
+            "value_idr": "15.000.000.000,00"
+          },
+          {
+            "currency": "IDR",
+            "object_name": "Mesin dan Peralatan",
+            "value": "10.000.000.000,00",
+            "value_idr": "10.000.000.000,00"
+          }
+        ],
+        "interest_total": [
+          {
+            "currency": "IDR",
+            "value": "25.000.000.000,00"
+          }
+        ],
+        "reinstatement_list": [
+          {
+            "adjuster_fee": "10.000.000,00",
+            "claim_amount": "1.200.000.000,00",
+            "currency": "IDR",
+            "layer": "1",
+            "limit": "5.000.000.000,00",
+            "premi_mdp": "150.000.000,00",
+            "reinstatement_pct": "100,0000",
+            "reinstatement_premium": "36.000.000,00",
+            "reinstatement_premium_asm": "9.000.000,00",
+            "salvage": "20.000.000,00"
+          }
+        ],
+        "spreading_adjustment": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_spreaded": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "reinstatement_premium": "36.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "total_claim": "1.848.000.000,00",
+            "treaty_type": "OR"
+          }
+        ],
+        "spreading_adjustment_qs": [],
+        "spreading_break_qs": [],
+        "spreading_claim": [
+          {
+            "adjuster_fee": "15.000.000,00",
+            "claim_spreded": "1.800.000.000,00",
+            "currency": "IDR",
+            "fee": "3.000.000,00",
+            "salvage": "30.000.000,00",
+            "share_pct": "60,0000",
+            "treaty_type": "OR"
+          }
+        ],
+        "spreading_risk": [
+          {
+            "adjuster_fee": "3.750.000,00",
+            "asm_share_pct": "25,0000",
+            "claim_amount": "1.800.000.000,00",
+            "claim_amount_asm": "450.000.000,00",
+            "currency": "IDR",
+            "fee": "750.000,00",
+            "salvage": "7.500.000,00",
+            "treaty_name": "OR"
+          }
+        ],
+        "suggest_list": [
+          {
+            "confirmed": "true",
+            "date": "2026-09-26",
+            "name": "Contoh Petugas Ceding",
+            "noted": "Disetujui sesuai perhitungan."
+          }
+        ],
+        "total_estimation": [
+          {
+            "adjuster_fee": "3.750.000,00",
+            "claim_amount": "3.000.000.000,00",
+            "claim_amount_asm": "450.000.000,00",
+            "currency": "IDR",
+            "fee": "750.000,00",
+            "salvage": "7.500.000,00"
+          }
+        ]
+      }
+    }
+  ],
+  "filledGrids": {
+    "adjustment_list": [
+      {
+        "acceptation_date": "2026-09-25",
+        "acceptation_no": "AKS/TNP/2026/0001",
+        "status": "1",
+        "type": "Final"
+      }
+    ],
+    "claim_amount": [
+      {
+        "adjuster_fee": "25.000.000,00",
+        "claim_amount": "3.000.000.000,00",
+        "claim_amount_cedant": "3.000.000.000,00",
+        "claim_amount_idr": "3.000.000.000,00",
+        "currency": "IDR",
+        "fee": "5.000.000,00",
+        "proportion_pct": "100,0000",
+        "rate_of_exchange": "1,0000",
+        "salvage": "50.000.000,00",
+        "tpl": "0,00"
+      }
+    ],
+    "cnp_spread_loss": [
+      {
+        "adjuster_fee": "15.000.000,00",
+        "claim_amount": "1.800.000.000,00",
+        "currency": "IDR",
+        "fee": "3.000.000,00",
+        "salvage": "30.000.000,00",
+        "share_pct": "60,0000",
+        "to_xol": "false",
+        "treaty_name": "OR"
+      },
+      {
+        "adjuster_fee": "10.000.000,00",
+        "claim_amount": "1.200.000.000,00",
+        "currency": "IDR",
+        "fee": "2.000.000,00",
+        "salvage": "20.000.000,00",
+        "share_pct": "40,0000",
+        "to_xol": "true",
+        "treaty_name": "XOL Layer 1"
+      }
+    ],
+    "interest_list": [
+      {
+        "currency": "IDR",
+        "object_name": "Bangunan Gudang",
+        "value": "15.000.000.000,00",
+        "value_idr": "15.000.000.000,00"
+      },
+      {
+        "currency": "IDR",
+        "object_name": "Mesin dan Peralatan",
+        "value": "10.000.000.000,00",
+        "value_idr": "10.000.000.000,00"
+      }
+    ],
+    "interest_total": [
+      {
+        "currency": "IDR",
+        "value": "25.000.000.000,00"
+      }
+    ],
+    "reinstatement_list": [
+      {
+        "adjuster_fee": "10.000.000,00",
+        "claim_amount": "1.200.000.000,00",
+        "currency": "IDR",
+        "layer": "1",
+        "limit": "5.000.000.000,00",
+        "premi_mdp": "150.000.000,00",
+        "reinstatement_pct": "100,0000",
+        "reinstatement_premium": "36.000.000,00",
+        "reinstatement_premium_asm": "9.000.000,00",
+        "salvage": "20.000.000,00"
+      }
+    ],
+    "spreading_adjustment": [
+      {
+        "adjuster_fee": "15.000.000,00",
+        "claim_spreaded": "1.800.000.000,00",
+        "currency": "IDR",
+        "fee": "3.000.000,00",
+        "reinstatement_premium": "36.000.000,00",
+        "salvage": "30.000.000,00",
+        "share_pct": "60,0000",
+        "total_claim": "1.848.000.000,00",
+        "treaty_type": "OR"
+      }
+    ],
+    "spreading_adjustment_qs": [],
+    "spreading_break_qs": [],
+    "spreading_claim": [
+      {
+        "adjuster_fee": "15.000.000,00",
+        "claim_spreded": "1.800.000.000,00",
+        "currency": "IDR",
+        "fee": "3.000.000,00",
+        "salvage": "30.000.000,00",
+        "share_pct": "60,0000",
+        "treaty_type": "OR"
+      }
+    ],
+    "spreading_risk": [
+      {
+        "adjuster_fee": "3.750.000,00",
+        "asm_share_pct": "25,0000",
+        "claim_amount": "1.800.000.000,00",
+        "claim_amount_asm": "450.000.000,00",
+        "currency": "IDR",
+        "fee": "750.000,00",
+        "salvage": "7.500.000,00",
+        "treaty_name": "OR"
+      }
+    ],
+    "suggest_list": [
+      {
+        "confirmed": "true",
+        "date": "2026-09-26",
+        "name": "Contoh Petugas Ceding",
+        "noted": "Disetujui sesuai perhitungan."
+      }
+    ],
+    "total_estimation": [
+      {
+        "adjuster_fee": "3.750.000,00",
+        "claim_amount": "3.000.000.000,00",
+        "claim_amount_asm": "450.000.000,00",
+        "currency": "IDR",
+        "fee": "750.000,00",
+        "salvage": "7.500.000,00"
+      }
+    ]
+  },
+  "sampleRows": {
+    "adjustment_list": [
+      {
+        "acceptation_date": "2026-09-25",
+        "acceptation_no": "AKS/TNP/2026/0001",
+        "status": "1",
+        "type": "Final"
+      }
+    ],
+    "claim_amount": [
+      {
+        "adjuster_fee": "25.000.000,00",
+        "claim_amount": "3.000.000.000,00",
+        "claim_amount_cedant": "3.000.000.000,00",
+        "claim_amount_idr": "3.000.000.000,00",
+        "currency": "IDR",
+        "fee": "5.000.000,00",
+        "proportion_pct": "100,0000",
+        "rate_of_exchange": "1,0000",
+        "salvage": "50.000.000,00",
+        "tpl": "0,00"
+      }
+    ],
+    "cnp_spread_loss": [
+      {
+        "adjuster_fee": "15.000.000,00",
+        "claim_amount": "1.800.000.000,00",
+        "currency": "IDR",
+        "fee": "3.000.000,00",
+        "salvage": "30.000.000,00",
+        "share_pct": "60,0000",
+        "to_xol": "false",
+        "treaty_name": "OR"
+      },
+      {
+        "adjuster_fee": "10.000.000,00",
+        "claim_amount": "1.200.000.000,00",
+        "currency": "IDR",
+        "fee": "2.000.000,00",
+        "salvage": "20.000.000,00",
+        "share_pct": "40,0000",
+        "to_xol": "true",
+        "treaty_name": "XOL Layer 1"
+      }
+    ],
+    "interest_list": [
+      {
+        "currency": "IDR",
+        "object_name": "Bangunan Gudang",
+        "value": "15.000.000.000,00",
+        "value_idr": "15.000.000.000,00"
+      },
+      {
+        "currency": "IDR",
+        "object_name": "Mesin dan Peralatan",
+        "value": "10.000.000.000,00",
+        "value_idr": "10.000.000.000,00"
+      }
+    ],
+    "interest_total": [
+      {
+        "currency": "IDR",
+        "value": "25.000.000.000,00"
+      }
+    ],
+    "reinstatement_list": [
+      {
+        "adjuster_fee": "10.000.000,00",
+        "claim_amount": "1.200.000.000,00",
+        "currency": "IDR",
+        "layer": "1",
+        "limit": "5.000.000.000,00",
+        "premi_mdp": "150.000.000,00",
+        "reinstatement_pct": "100,0000",
+        "reinstatement_premium": "36.000.000,00",
+        "reinstatement_premium_asm": "9.000.000,00",
+        "salvage": "20.000.000,00"
+      }
+    ],
+    "spreading_adjustment": [
+      {
+        "adjuster_fee": "15.000.000,00",
+        "claim_spreaded": "1.800.000.000,00",
+        "currency": "IDR",
+        "fee": "3.000.000,00",
+        "reinstatement_premium": "36.000.000,00",
+        "salvage": "30.000.000,00",
+        "share_pct": "60,0000",
+        "total_claim": "1.848.000.000,00",
+        "treaty_type": "OR"
+      }
+    ],
+    "spreading_claim": [
+      {
+        "adjuster_fee": "15.000.000,00",
+        "claim_spreded": "1.800.000.000,00",
+        "currency": "IDR",
+        "fee": "3.000.000,00",
+        "salvage": "30.000.000,00",
+        "share_pct": "60,0000",
+        "treaty_type": "OR"
+      }
+    ],
+    "spreading_risk": [
+      {
+        "adjuster_fee": "3.750.000,00",
+        "asm_share_pct": "25,0000",
+        "claim_amount": "1.800.000.000,00",
+        "claim_amount_asm": "450.000.000,00",
+        "currency": "IDR",
+        "fee": "750.000,00",
+        "salvage": "7.500.000,00",
+        "treaty_name": "OR"
+      }
+    ],
+    "suggest_list": [
+      {
+        "confirmed": "true",
+        "date": "2026-09-26",
+        "name": "Contoh Petugas Ceding",
+        "noted": "Disetujui sesuai perhitungan."
+      }
+    ],
+    "total_estimation": [
+      {
+        "adjuster_fee": "3.750.000,00",
+        "claim_amount": "3.000.000.000,00",
+        "claim_amount_asm": "450.000.000,00",
+        "currency": "IDR",
+        "fee": "750.000,00",
+        "salvage": "7.500.000,00"
+      }
+    ]
+  },
+  "sampleValues": {
+    "appointed_adj": "Adjuster Contoh",
+    "cause_of_loss": "Kebakaran",
+    "circumtances": "Kronologi contoh untuk pengembangan lokal.",
+    "claim_no_ceding": "CLM/2026/0001",
+    "consultant_name": "Konsultan Contoh",
+    "currency_deductible": "IDR",
+    "date_of_loss": "2026-08-14",
+    "deductible_percent": "2,5000",
+    "deductible_type": "Persentase",
+    "deductible_value": "500.000.000,00",
+    "dla_no_ceding": "DLA/2026/0001",
+    "form_type": "Excess of Loss",
+    "insured_interest": "Bangunan dan isinya",
+    "insured_name": "PT Contoh Sejahtera",
+    "location_of_loss": "Gudang Contoh, Bekasi",
+    "pla_no_ceding": "PLA/2026/0001",
+    "policy_end": "2026-12-31",
+    "policy_no": "99.002.2026.00001",
+    "policy_no_ceding": "CED/2026/000123",
+    "policy_start": "2026-01-01",
+    "received_date": "2026-08-20",
+    "report_date": "2026-08-16",
+    "report_description": "Kerugian akibat kebakaran pada gudang penyimpanan. Seluruh isi contoh ini karangan.",
+    "report_status": "Diterima",
+    "report_type": "Laporan Awal",
+    "reporter_address": "Jalan Contoh No. 1, Jakarta",
+    "reporter_name": "Contoh Pelapor",
+    "reporter_phone": "021-5550000",
+    "share_ceding": "40,0000",
+    "supporting_document": "Berita acara, foto lokasi, laporan surveyor",
+    "total_sum_insured_idr": "25.000.000.000,00",
+    "treaty_end_date": "2026-12-31",
+    "treaty_id": "TNP-2026-01",
+    "treaty_name": "XOL Property 2026 Layer 1",
+    "treaty_start_date": "2026-01-01",
+    "treaty_year": "2026",
+    "tsi_deductible": "25.000.000.000,00",
+    "type_deductible": "TSI"
+  }
+}

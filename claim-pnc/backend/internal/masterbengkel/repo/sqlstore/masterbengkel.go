@@ -16,13 +16,21 @@ import (
 	"time"
 
 	"claim-pnc/internal/masterbengkel"
+	"claim-pnc/internal/platform/idformat"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterbengkel/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "masterbengkel/sqlstore", name) }
 
 // sequenceWidth adalah lebar nomor urut pada ID_BENGKEL.
 //
@@ -225,36 +233,7 @@ func (r *Repo) Update(ctx context.Context, w masterbengkel.Workshop) error {
 // Sistem lama tidak menjamin itu — `SetApprovalAllMaster` menjalankan satu RDB-List per
 // baris tanpa transaksi yang melingkupinya.
 func (r *Repo) SetStatus(ctx context.Context, id []string, status masterbengkel.ApprovalStatus) (int, error) {
-	if len(id) == 0 {
-		return 0, nil
-	}
-
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("masterbengkel/sqlstore: memulai transaksi keputusan: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	changed := 0
-	for _, one := range id {
-		result, err := tx.ExecContext(ctx, getQuery("bengkel_set_status"),
-			string(status), strings.TrimSpace(one))
-		if err != nil {
-			return 0, fmt.Errorf("masterbengkel/sqlstore: menetapkan status %q: %w", one, err)
-		}
-		// Driver yang tidak mendukung RowsAffected membuat pencacahnya tidak dapat
-		// diandalkan. Barisnya tetap dianggap berubah: pernyataannya sudah berhasil, dan
-		// melaporkan nol akan menampilkan kegagalan palsu.
-		affected, err := result.RowsAffected()
-		if err != nil || affected > 0 {
-			changed++
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("masterbengkel/sqlstore: menutup transaksi keputusan: %w", err)
-	}
-	return changed, nil
+	return sqlkit.SetEach(ctx, r.db, getQuery("bengkel_set_status"), string(status), id, "masterbengkel/sqlstore")
 }
 
 // NextID menerbitkan ID_BENGKEL berikutnya.
@@ -267,32 +246,7 @@ func (r *Repo) SetStatus(ctx context.Context, id []string, status masterbengkel.
 // situs dan sequence yang berasal dari dua koneksi berbeda pada pool yang sama tetap
 // benar, tetapi jaminannya tidak berasal dari mana pun selain kebetulan.
 func (r *Repo) NextID(ctx context.Context) (string, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return "", fmt.Errorf("masterbengkel/sqlstore: memulai transaksi penomoran: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var site sql.NullString
-	if err := tx.QueryRowContext(ctx, getQuery("bengkel_site")).Scan(&site); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// Persis keadaan yang ditangkap `PEGA_M_BENGKEL_HE.prc:12-16`, yang
-			// menjawabnya dengan pesan galat lalu berhenti. Di sini ia juga berhenti —
-			// ID tanpa kode situs akan bertabrakan dengan ID entitas lain.
-			return "", errors.New("masterbengkel/sqlstore: POOLDATA.M_SITE_DATABASE tidak punya baris CURRENT_SITE='1'")
-		}
-		return "", fmt.Errorf("masterbengkel/sqlstore: membaca kode situs: %w", err)
-	}
-
-	var sequence int64
-	if err := tx.QueryRowContext(ctx, getQuery("bengkel_next_sequence")).Scan(&sequence); err != nil {
-		return "", fmt.Errorf("masterbengkel/sqlstore: mengambil nomor urut: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("masterbengkel/sqlstore: menutup transaksi penomoran: %w", err)
-	}
-	return masterbengkel.ComposeID(strings.TrimSpace(site.String), sequence, sequenceWidth), nil
+	return idformat.Next(ctx, r.db, getQuery("bengkel_site"), getQuery("bengkel_next_sequence"), "masterbengkel/sqlstore", sequenceWidth)
 }
 
 // ListBranches membaca daftar cabang.
@@ -448,17 +402,9 @@ func (r *Repo) CountJSONMirror(ctx context.Context) (int, error) {
 //
 // `ESCAPE '\'` disebut eksplisit di kuerinya karena Oracle tidak punya karakter pelolos
 // bawaan pada LIKE.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
-type scanner interface {
-	Scan(target ...any) error
-}
+type scanner = sqlkit.Scanner
 
 // scanRow membaca satu baris master bengkel.
 //
@@ -597,77 +543,6 @@ func locked(ctx context.Context, tx *sql.Tx, name, value string) (bool, error) {
 		return false, fmt.Errorf("masterbengkel/sqlstore: menelusuri pemeriksaan %q: %w", value, err)
 	}
 	return found, nil
-}
-
-// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
-// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
-// saat pertama dijalankan.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("masterbengkel/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterbengkel/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterbengkel/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterbengkel/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		if trimmed := strings.TrimSpace(rows); strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 // WithClock mengganti jam yang memasok dua digit tahun pada DATAID lampiran.

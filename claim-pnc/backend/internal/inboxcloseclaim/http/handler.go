@@ -10,12 +10,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"claim-pnc/internal/inboxcloseclaim"
 	"claim-pnc/internal/inboxcloseclaim/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/platform/logging"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -35,84 +34,8 @@ type Service interface {
 	CanRequest() bool
 }
 
-// Caller adalah identitas pengguna yang sedang masuk, sejauh yang dibutuhkan modul ini.
-//
-// Dua field, bukan satu seperti modul yang hanya membaca: jejak permintaan menyimpan NAMA
-// pemohon bersama login-nya, supaya jejak itu tetap terbaca utuh tanpa join ke tabel
-// pengguna — jejak yang namanya diambil lewat join akan berubah ketika orangnya berganti
-// nama.
-type Caller struct {
-	Login string
-	Name  string
-}
-
 // GetCaller membaca identitas pengguna dari konteks permintaan.
 type GetCaller func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan Inbox Close Claim.
-type Handler struct {
-	service     Service
-	getCaller   GetCaller
-	logger      *slog.Logger
-	writeJSON   JSONWriter
-	writeErrorF ErrorWriter
-	location    *time.Location
-	now         func() time.Time
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service   Service
-	GetCaller GetCaller
-	Logger    *slog.Logger
-
-	WriteJSON           JSONWriter
-	FallbackErrorWriter ErrorWriter
-
-	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
-	//
-	// Ia parameter, bukan konstanta, supaya uji dapat menetapkannya dan tidak bergantung
-	// pada basis data zona waktu mesin yang menjalankan.
-	Location *time.Location
-
-	// Now dapat diisi uji supaya kolom Lama Waktu Klaim dapat diperiksa secara
-	// deterministik.
-	Now func() time.Time
-}
-
-// NewHandler membentuk handler modul Inbox Close Claim.
-func NewHandler(o Options) *Handler {
-	location := o.Location
-	if location == nil {
-		location = jakarta()
-	}
-	now := o.Now
-	if now == nil {
-		now = time.Now
-	}
-
-	return &Handler{
-		service:     o.Service,
-		getCaller:   o.GetCaller,
-		logger:      o.Logger,
-		writeJSON:   o.WriteJSON,
-		writeErrorF: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-		location:    location,
-		now:         now,
-	}
-}
-
-// jakarta mengembalikan zona WIB.
-//
-// Bila basis data zona waktu tidak tersedia di mesin — yang terjadi pada sebagian citra
-// kontainer minimal — dipakai offset tetap +07:00. Indonesia bagian barat tidak mengenal
-// daylight saving, sehingga offset tetap SETARA dan bukan penyederhanaan yang merugikan.
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	return time.FixedZone("WIB", 7*60*60)
-}
 
 // selisihTerencana adalah perbedaan yang DISENGAJA terhadap layar Pega.
 //
@@ -135,24 +58,24 @@ func selisihTerencana() []string {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	q, err := h.queryFrom(r)
 	if err != nil {
-		writeBadRequest(h.writeJSON, w, r, err.Error())
+		writeBadRequest(h.WriteJSON, w, r, err.Error())
 		return
 	}
 
-	result, err := h.service.List(r.Context(), q)
+	result, err := h.Service.List(r.Context(), q)
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 	h.logPendingLookupFailure(r, result)
 
-	now := h.now()
+	now := h.Now()
 	claims := make([]claimDTO, 0, len(result.Page.Claims))
 	for _, claim := range result.Page.Claims {
-		claims = append(claims, toClaimDTO(claim, result.Pending[claim.ClaimID], now, h.location))
+		claims = append(claims, toClaimDTO(claim, result.Pending[claim.ClaimID], now, h.Location))
 	}
 
-	boleh := h.service.CanRequest()
+	boleh := h.Service.CanRequest()
 
 	body := listResponse{
 		Klaim:             claims,
@@ -170,7 +93,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		body.AlasanTidakBoleh = inboxcloseclaim.AlasanTidakBolehMengajukan
 	}
 
-	h.writeJSON(w, r, http.StatusOK, body)
+	h.WriteJSON(w, r, http.StatusOK, body)
 }
 
 // Metadata menangani GET /api/inbox-close-claim/penyaring.
@@ -183,7 +106,7 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		lines = append(lines, pilihanDTO{Nilai: string(line), Label: line.Label()})
 	}
 
-	h.writeJSON(w, r, http.StatusOK, metadataResponse{
+	h.WriteJSON(w, r, http.StatusOK, metadataResponse{
 		LiniBisnis: lines,
 		StatusTransfer: []pilihanDTO{
 			{Nilai: string(inboxcloseclaim.TransferAny), Label: "Semua Status Transfer"},
@@ -211,15 +134,15 @@ const maxBodyBytes = 64 * 1024
 // menempuh pemeriksaan, penyimpanan, dan penolakan yang sama persis; memisahkannya menjadi
 // dua handler akan menggandakan aturan yang sama dan membuka celah keduanya menyimpang.
 func (h *Handler) Request(w http.ResponseWriter, r *http.Request) {
-	caller, found := h.getCaller(r.Context())
+	caller, found := h.Caller(r.Context())
 	if !found || strings.TrimSpace(caller.Login) == "" {
-		writeBadRequest(h.writeJSON, w, r, "identitas pemanggil tidak dikenali")
+		writeBadRequest(h.WriteJSON, w, r, "identitas pemanggil tidak dikenali")
 		return
 	}
 
 	activePortal, portalFound := portalhttp.ActivePortalFrom(r.Context())
 	if !portalFound {
-		writeBadRequest(h.writeJSON, w, r, "portal aktif tidak dikenali")
+		writeBadRequest(h.WriteJSON, w, r, "portal aktif tidak dikenali")
 		return
 	}
 
@@ -227,18 +150,18 @@ func (h *Handler) Request(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(io.LimitReader(r.Body, maxBodyBytes))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&body); err != nil {
-		writeBadRequest(h.writeJSON, w, r, "badan permintaan tidak dapat dibaca")
+		writeBadRequest(h.WriteJSON, w, r, "badan permintaan tidak dapat dibaca")
 		return
 	}
 
 	kind, known := inboxcloseclaim.ParseRequestKind(body.Jenis)
 	if !known {
-		writeBadRequest(h.writeJSON, w, r,
+		writeBadRequest(h.WriteJSON, w, r,
 			"jenis permintaan harus \"reopen\" atau \"salin\"")
 		return
 	}
 
-	request, err := h.service.Request(r.Context(), usecase.RequestCommand{
+	request, err := h.Service.Request(r.Context(), usecase.RequestCommand{
 		PortalAlias: activePortal.Alias,
 		Kind:        kind,
 		ClaimID:     strings.TrimSpace(body.KlaimID),
@@ -247,14 +170,14 @@ func (h *Handler) Request(w http.ResponseWriter, r *http.Request) {
 		ActorName:   caller.Name,
 	})
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
 	// 201: sebuah PERMINTAAN dibuat. Bukan 200 — yang akan menyiratkan bahwa tindakannya
 	// sendiri sudah dijalankan, dan itu justru yang belum terjadi.
-	h.writeJSON(w, r, http.StatusCreated, requestResponse{
-		Permintaan: toRequestDTO(request, h.location),
+	h.WriteJSON(w, r, http.StatusCreated, requestResponse{
+		Permintaan: toRequestDTO(request, h.Location),
 		Pesan:      pesanPermintaan(kind),
 	})
 }
@@ -308,16 +231,16 @@ const exportMaxRows = 10000
 func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	q, err := h.queryFrom(r)
 	if err != nil {
-		writeBadRequest(h.writeJSON, w, r, err.Error())
+		writeBadRequest(h.WriteJSON, w, r, err.Error())
 		return
 	}
 
 	q.Filter.Offset = 0
 	q.Filter.Limit = exportBatchSize
 
-	first, err := h.service.List(r.Context(), q)
+	first, err := h.Service.List(r.Context(), q)
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 	h.logPendingLookupFailure(r, first)
@@ -325,7 +248,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// Header ditulis SEBELUM baris pertama dikirim. Setelah badan respons mulai mengalir,
 	// status HTTP tidak dapat diubah lagi — sehingga galat yang terjadi di tengah tidak
 	// dapat dijawab dengan 500. Itu diterima, dan alasannya ada di bawah.
-	filename := "inbox-close-claim-" + h.now().In(h.location).Format("20060102-150405") + ".csv"
+	filename := "inbox-close-claim-" + h.Now().In(h.Location).Format("20060102-150405") + ".csv"
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	w.Header().Set("Cache-Control", "no-store")
@@ -338,7 +261,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	now := h.now()
+	now := h.Now()
 	written := 0
 	page := first
 
@@ -347,7 +270,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 			if written >= exportMaxRows {
 				return
 			}
-			row := exportRow(toClaimDTO(claim, page.Pending[claim.ClaimID], now, h.location))
+			row := exportRow(toClaimDTO(claim, page.Pending[claim.ClaimID], now, h.Location))
 			if err := writer.Write(row); err != nil {
 				// Sambungan putus di tengah unduhan adalah kejadian biasa — pengguna
 				// menutup tab. Ia dicatat sebagai peringatan, bukan galat, dan tidak dapat
@@ -372,7 +295,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		q.Filter.Offset = written
-		page, err = h.service.List(r.Context(), q)
+		page, err = h.Service.List(r.Context(), q)
 		if err != nil {
 			h.logExportInterrupted(r, err)
 			return
@@ -427,7 +350,7 @@ func boolText(value bool) string {
 // Identitas pemanggil diambil dari KONTEKS, tidak pernah dari badan permintaan maupun query
 // string.
 func (h *Handler) queryFrom(r *http.Request) (usecase.ListQuery, error) {
-	caller, found := h.getCaller(r.Context())
+	caller, found := h.Caller(r.Context())
 	if !found || strings.TrimSpace(caller.Login) == "" {
 		return usecase.ListQuery{}, fmt.Errorf("identitas pemanggil tidak dikenali")
 	}
@@ -490,15 +413,7 @@ func (h *Handler) queryFrom(r *http.Request) (usecase.ListQuery, error) {
 
 // positiveInt membaca bilangan bulat tak negatif; kosong berarti nilai baku.
 func positiveInt(raw string, fallback int) (int, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return fallback, nil
-	}
-	value, err := strconv.Atoi(trimmed)
-	if err != nil || value < 0 {
-		return 0, fmt.Errorf("bukan bilangan bulat tak negatif")
-	}
-	return value, nil
+	return httpquery.NonNegativeOr(raw, fallback)
 }
 
 // logPendingLookupFailure mencatat kegagalan membaca permintaan tertunda.
@@ -511,7 +426,7 @@ func (h *Handler) logPendingLookupFailure(r *http.Request, result usecase.ListRe
 	if result.PendingLookupError == nil {
 		return
 	}
-	logging.From(r.Context(), h.logger).Warn(
+	logging.From(r.Context(), h.Logger).Warn(
 		"permintaan tertunda tidak dapat dibaca; penanda di layar tidak akan muncul",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", result.PendingLookupError.Error()),
@@ -520,7 +435,7 @@ func (h *Handler) logPendingLookupFailure(r *http.Request, result usecase.ListRe
 
 // logExportInterrupted mencatat export yang berhenti di tengah.
 func (h *Handler) logExportInterrupted(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Warn("export berhenti sebelum selesai",
+	logging.From(r.Context(), h.Logger).Warn("export berhenti sebelum selesai",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)

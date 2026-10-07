@@ -61,6 +61,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/idformat"
+	"claim-pnc/internal/platform/validation"
 )
 
 // ApprovalStatus adalah posisi sebuah baris dalam alur persetujuan.
@@ -350,12 +353,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
-	// data — layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+// data — layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -377,11 +378,7 @@ func OneViolation(field, message string) error {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "mastersparepart: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "mastersparepart: isian tidak sah (", ": ", "; ", ")")
 }
 
 // Clean memangkas spasi di kedua ujung setiap isian.
@@ -601,21 +598,12 @@ func (i Input) checkStockRange() []Violation {
 
 // checkRequired memeriksa satu isian wajib beserta panjangnya.
 func checkRequired(field, label, value string, max int) []Violation {
-	if value == "" {
-		return []Violation{{Field: field, Message: label + " wajib diisi."}}
-	}
-	return checkLength(field, label, value, max)
+	return validation.Required(field, label, value, max)
 }
 
 // checkLength memeriksa panjang satu isian yang boleh kosong.
 func checkLength(field, label, value string, max int) []Violation {
-	if len(value) > max {
-		return []Violation{{
-			Field:   field,
-			Message: fmt.Sprintf("%s paling panjang %d karakter.", label, max),
-		}}
-	}
-	return nil
+	return validation.Length(field, label, value, max)
 }
 
 // ParseNumber membaca sebuah isian angka.
@@ -707,18 +695,14 @@ type IDSource interface {
 // miliar baris untuk sampai ke sana. Di sini ia dibiarkan tumbuh: kuncinya menjadi lebih
 // panjang, dan itu terlihat, alih-alih salah tanpa terlihat.
 func ComposeID(site string, sequence int64, width int) string {
-	number := strconv.FormatInt(sequence, 10)
-	if pad := width - len(number); pad > 0 {
-		number = strings.Repeat("0", pad) + number
-	}
-	return strings.TrimSpace(site) + number
+	return idformat.Compose(site, sequence, width)
 }
 
 // Repo adalah seam ke penyimpanan master sparepart SATU portal.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di tingkat
-// kueri (ADR-0030 Opsi 1).
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di
+// tingkat kueri (ADR-0030 Opsi 1).
 type Repo interface {
 	// List mengembalikan baris yang cocok dengan penyaring.
 	List(ctx context.Context, filter Filter) ([]Sparepart, error)

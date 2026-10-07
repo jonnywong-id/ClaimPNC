@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterrekening"
+	"claim-pnc/internal/platform/sqlkit"
 )
 
 // defaultLimit membatasi jumlah baris yang dibaca bila pemanggil tidak menyebut batasnya.
@@ -132,23 +133,7 @@ func (r *Repo) Get(ctx context.Context, k masterrekening.Key) (masterrekening.Ac
 // FindByNumber membaca seluruh baris dengan nomor rekening tertentu, tanpa peduli banknya.
 func (r *Repo) FindByNumber(ctx context.Context, nomor string) ([]masterrekening.Account, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("account_find_by_number"), strings.TrimSpace(nomor))
-	if err != nil {
-		return nil, fmt.Errorf("masterrekening/sqlstore: mencari nomor rekening: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterrekening.Account
-	for rows.Next() {
-		acct, err := scanAccount(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, acct)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterrekening/sqlstore: menelusuri hasil pencarian nomor: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanAccount, "masterrekening/sqlstore: mencari nomor rekening", "", "masterrekening/sqlstore: menelusuri hasil pencarian nomor")
 }
 
 // Save menyisipkan rekening baru.
@@ -296,9 +281,7 @@ func readActive(value string) bool {
 // rowScanner menyatukan *sql.Row dan *sql.Rows sehingga satu fungsi pemindaian melayani
 // keduanya. Tanpa ini, 27 kolom harus ditulis dua kali dan kedua salinannya harus
 // diingat untuk diubah bersama-sama.
-type rowScanner interface {
-	Scan(to ...any) error
-}
+type rowScanner = sqlkit.Scanner
 
 func scanAccount(p rowScanner) (masterrekening.Account, error) {
 	var (

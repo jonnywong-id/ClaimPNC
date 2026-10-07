@@ -9,6 +9,10 @@
 // kembali. **Tidak ada aturan modul di sini.**
 package masterdominanfactorhttp
 
+import (
+	"claim-pnc/internal/platform/apierror"
+)
+
 // DominantFactorDTO adalah bentuk satu faktor dominan yang dikirim ke peramban.
 //
 // Tipe ini sengaja TERPISAH dari masterdominanfactor.DominantFactor. Memakai tipe modul
@@ -65,10 +69,7 @@ type SaveRequest struct {
 //
 // Field dikirim supaya layar dapat menandai kolom yang salah, bukan sekadar menampilkan
 // satu pesan di atas form.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

@@ -11,6 +11,7 @@ import (
 
 	"claim-pnc/internal/archivedokumenklaim"
 	"claim-pnc/internal/archivedokumenklaim/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // ArchiveFileDTO adalah satu baris grid ARCHIVE FILE KLAIM.
@@ -205,10 +206,7 @@ type SendResponse struct {
 }
 
 // ViolationDTO adalah satu aturan yang dilanggar beserta isian yang melanggarnya.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

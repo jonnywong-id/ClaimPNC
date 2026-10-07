@@ -1,69 +1,16 @@
 package inputacceptationhttp
 
 import (
-	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inputacceptation"
-	"claim-pnc/internal/inputacceptation/usecase"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Di modul ini ia tidak menyaring apa pun — ia yang dicatat pada setiap pembukaan dan
-	// setiap Submit. Memakai NIK di sini akan membuat jejaknya tidak dapat dicocokkan dengan
-	// jejak modul lain, yang seluruhnya mencatat login.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Acceptation Claim.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan galat
-	// portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Acceptation Claim.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // maxSubmitBody membatasi besar muatan Submit.
 //
@@ -81,25 +28,25 @@ const maxSubmitBody = 1 << 20
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inputacceptation.ErrCallerUnknown)
+		h.WriteError(w, r, inputacceptation.ErrCallerUnknown)
 		return
 	}
 
-	detail, err := h.service.Find(
+	detail, err := h.Service.Find(
 		r.Context(), active.Alias, caller, chi.URLParam(r, "no_klaim"))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK,
-		toDetailResponse(h.service.Metadata(), detail, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK,
+		toDetailResponse(h.Service.Metadata(), detail, active.Alias))
 }
 
 // Submit menangani POST /api/input-acceptation/{no_klaim}.
@@ -115,13 +62,13 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inputacceptation.ErrCallerUnknown)
+		h.WriteError(w, r, inputacceptation.ErrCallerUnknown)
 		return
 	}
 
@@ -135,7 +82,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&body); err != nil {
-		h.writeError(w, r, inputacceptation.NewValidationError(
+		h.WriteError(w, r, inputacceptation.NewValidationError(
 			[]inputacceptation.Violation{{
 				Field:   "badan",
 				Message: "Muatan permintaan tidak dapat dibaca sebagai JSON yang sah.",
@@ -144,14 +91,14 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	claimID := chi.URLParam(r, "no_klaim")
-	err := h.service.Submit(
+	err := h.Service.Submit(
 		r.Context(), active.Alias, caller, claimID, body.Values, toGridRows(body.Grids))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, SubmitResponse{
+	h.WriteJSON(w, r, http.StatusOK, SubmitResponse{
 		ClaimID: claimID,
 		Message: "Akseptasi tersimpan.",
 	})
@@ -159,10 +106,10 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 
 // readCaller membaca identitas pemanggil, atau menyatakan ia tidak terbaca.
 func (h *Handler) readCaller(r *http.Request) (inputacceptation.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inputacceptation.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return inputacceptation.Caller{}, false
 	}

@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/mastertipesparepart"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/mastertipesparepart"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleCategoryList adalah acuan kategori contoh untuk pengembangan tanpa Oracle.
 //
@@ -27,11 +37,7 @@ import "claim-pnc/internal/mastertipesparepart"
 // berjalan tanpa Oracle. Terhadap Oracle keduanya membaca tabel yang sama dan tautannya
 // bekerja — itu keterbatasan modus memori, bukan cacat modul.
 func SampleCategoryList() []mastertipesparepart.Category {
-	return []mastertipesparepart.Category{
-		{ID: "1", Name: "ENGINE"},
-		{ID: "2", Name: "HYDRAULIC"},
-		{ID: "3", Name: "UNDERCARRIAGE"},
-	}
+	return sampledata.Must[[]mastertipesparepart.Category](sampleJSON, "SampleCategoryList")
 }
 
 // SampleList adalah isi contoh untuk pengembangan tanpa Oracle.
@@ -67,62 +73,22 @@ func SampleCategoryList() []mastertipesparepart.Category {
 //
 // Setiap tipe ditaruh di bawah kategori yang masuk akal baginya, supaya kolom Kategori pada
 // grid bercerita alih-alih menampilkan pasangan acak.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Baris ditolak yang namanya TETAP memblokir pemakaian nama itu. Ia yang membuat
+// perilaku paling mengejutkan pada modul ini dapat dicoba tanpa menyiapkan data
+// sendiri: mencoba menambah tipe bernama "CONTROL VALVE" akan ditolak, dan barisnya
+// tidak terlihat dari tab Approve maupun Waiting Approval.
+// Baris YATIM: kategorinya "99" tidak ada di SampleCategoryList.
+//
+// Di sistem lama baris seperti ini HILANG dari layar — inner join-nya membuangnya —
+// sehingga ia tidak dapat dilihat maupun diperbaiki siapa pun. Di modul ini ia
+// tetap muncul dengan kolom Kategori kosong, dan hanya dapat disimpan ulang setelah
+// petugas memilih kategori yang sah.
+//
+// Ia ada di contoh supaya selisih perilaku itu dapat DILIHAT saat mencoba tanpa
+// Oracle, bukan hanya dibaca di komentar berkas .sql.
 func SampleList() []mastertipesparepart.PartType {
-	return []mastertipesparepart.PartType{
-		{
-			ID:         "1",
-			Name:       "FUEL FILTER",
-			CategoryID: "1", // ENGINE
-			Status:     mastertipesparepart.StatusApproved,
-		},
-		{
-			ID:         "2",
-			Name:       "TURBOCHARGER",
-			CategoryID: "1", // ENGINE
-			Status:     mastertipesparepart.StatusApproved,
-		},
-		{
-			ID:         "3",
-			Name:       "HYDRAULIC PUMP",
-			CategoryID: "2", // HYDRAULIC
-			Status:     mastertipesparepart.StatusApproved,
-		},
-		{
-			ID:         "4",
-			Name:       "TRACK ROLLER",
-			CategoryID: "3", // UNDERCARRIAGE
-			Status:     mastertipesparepart.StatusPending,
-		},
-		{
-			ID:         "5",
-			Name:       "IDLER",
-			CategoryID: "3", // UNDERCARRIAGE
-			Status:     mastertipesparepart.StatusPending,
-		},
-		{
-			// Baris ditolak yang namanya TETAP memblokir pemakaian nama itu. Ia yang membuat
-			// perilaku paling mengejutkan pada modul ini dapat dicoba tanpa menyiapkan data
-			// sendiri: mencoba menambah tipe bernama "CONTROL VALVE" akan ditolak, dan barisnya
-			// tidak terlihat dari tab Approve maupun Waiting Approval.
-			ID:         "6",
-			Name:       "CONTROL VALVE",
-			CategoryID: "2", // HYDRAULIC
-			Status:     mastertipesparepart.StatusRejected,
-		},
-		{
-			// Baris YATIM: kategorinya "99" tidak ada di SampleCategoryList.
-			//
-			// Di sistem lama baris seperti ini HILANG dari layar — inner join-nya membuangnya —
-			// sehingga ia tidak dapat dilihat maupun diperbaiki siapa pun. Di modul ini ia
-			// tetap muncul dengan kolom Kategori kosong, dan hanya dapat disimpan ulang setelah
-			// petugas memilih kategori yang sah.
-			//
-			// Ia ada di contoh supaya selisih perilaku itu dapat DILIHAT saat mencoba tanpa
-			// Oracle, bukan hanya dibaca di komentar berkas .sql.
-			ID:         "7",
-			Name:       "SPROCKET",
-			CategoryID: "99",
-			Status:     mastertipesparepart.StatusApproved,
-		},
-	}
+	return sampledata.Must[[]mastertipesparepart.PartType](sampleJSON, "SampleList")
 }

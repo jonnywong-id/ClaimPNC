@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/inboxrcl"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien — KONTRAK, sehingga berbahasa Indonesia (`D-80`). Nilainya
@@ -17,37 +18,18 @@ const (
 )
 
 // JSONWriter menuliskan badan respons.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat modul ini menjadi respons HTTP; galat yang bukan milik modul
 // ini diteruskan ke fallback (galat sesi dan portal). Rincian galat internal hanya masuk log.
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
-		status, body, recognized := mapError(err)
-
-		if !recognized {
-			if fallback != nil {
-				fallback(w, r, err)
-				return
-			}
-			status, body = http.StatusInternalServerError, ErrorResponse{
-				Code:    CodeInternalError,
-				Message: "Terjadi kesalahan pada sistem.",
-			}
-		}
-
-		if status >= http.StatusInternalServerError && logger != nil {
-			logger.Error("permintaan gagal",
-				slog.String("jalur", r.URL.Path),
-				slog.String("galat", err.Error()),
-			)
-		}
-
-		writeJSON(w, r, status, body)
-	}
+	return apierror.Writer(logger, writeJSON, fallback, mapError, ErrorResponse{
+		Code:    CodeInternalError,
+		Message: "Terjadi kesalahan pada sistem.",
+	})
 }
 
 func mapError(err error) (int, ErrorResponse, bool) {

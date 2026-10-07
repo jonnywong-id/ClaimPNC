@@ -2,11 +2,10 @@ package inboxreceivetkahttp
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/inboxreceivetka"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini.
@@ -66,29 +65,14 @@ const (
 var errMalformedDate = errors.New("inboxreceivetkahttp: tanggal tidak dapat diurai")
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	status, body, known := mapError(err)
-	if !known {
-		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan jaringan,
-		// galat portal, cacat pemrograman — diserahkan ke penulis bersama. Rincian galat
-		// internal tidak pernah dikirim ke peramban.
-		h.writeError(w, r, err)
-		return
-	}
-
-	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-	}
-	h.writeResponse(w, r, status, body)
+	apierror.Write(w, r, err, mapError, h.Logger, h.WriteResponse, h.WriteError)
 }
 
 // mapError memetakan galat domain menjadi status dan badan respons.

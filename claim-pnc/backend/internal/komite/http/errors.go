@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/platform/money"
 )
@@ -33,10 +34,10 @@ const (
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri
 // supaya seluruh modul menulis respons dengan cara yang sama, termasuk header
 // Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat modul ini menjadi respons HTTP.
 //
@@ -82,10 +83,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// bisnis. Frontend menanganinya berbeda — 400 adalah bug frontend, 422 adalah
 		// kesalahan pengguna yang harus ditandai di kolomnya
 		// (`docs/Steering/10-API-STRATEGY.md` §5).
-		details := make([]ViolationDTO, 0, len(validation.Violations))
-		for _, v := range validation.Violations {
-			details = append(details, ViolationDTO{Field: v.Field, Message: v.Message})
-		}
+		details := apierror.FieldErrors(validation.Violations)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFailed,
 			Message: "Isian belum benar. Perbaiki yang ditandai lalu coba lagi.",

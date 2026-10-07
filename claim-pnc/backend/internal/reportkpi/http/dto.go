@@ -8,6 +8,7 @@
 package reportkpihttp
 
 import (
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/reportkpi"
 	"claim-pnc/internal/reportkpi/usecase"
 )
@@ -205,10 +206,7 @@ type AdjusterListResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {

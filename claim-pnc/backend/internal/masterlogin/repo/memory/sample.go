@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterlogin"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterlogin"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi contoh untuk pengembangan tanpa Oracle.
 //
@@ -44,66 +54,14 @@ import "claim-pnc/internal/masterlogin"
 // menuliskan itu. Baris leader-nya juga "Member" — perannya sebagai leader dinyatakan oleh
 // baris LAIN yang menunjuknya lewat LOGINLEADER, bukan oleh kolom ini. Itu bentuk data yang
 // membingungkan, dan ia ditiru apa adanya karena itulah yang ada.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Leader tim. Ketiga baris berikutnya menunjuknya lewat LOGINLEADER, sehingga
+// penambahan yang dilakukan salah satu dari mereka menurunkan leader yang sama.
+// Tanda hubung pada Nama dibuang saat LOGIN diturunkan.
+// ALAMAT kosong — isian yang memang tidak wajib.
+// LOGINLEADER kosong — surveyor yang tidak bertaut ke tim mana pun.
 func SampleList() []masterlogin.SurveyorLogin {
-	return []masterlogin.SurveyorLogin{
-		{
-			// Leader tim. Ketiga baris berikutnya menunjuknya lewat LOGINLEADER, sehingga
-			// penambahan yang dilakukan salah satu dari mereka menurunkan leader yang sama.
-			Name:        "Budi Hartono",
-			Login:       "BudiHartono",
-			Email:       "budi.hartono@contoh.invalid",
-			Phone:       "021-5550101",
-			Address:     "Jl. Melati Raya No. 12, Jakarta Selatan",
-			LoginStatus: masterlogin.LoginStatusMember,
-			LeaderLogin: "",
-		},
-		{
-			Name:        "Rina Ayu Lestari",
-			Login:       "RinaAyuLestari",
-			Email:       "rina.lestari@contoh.invalid",
-			Phone:       "021-5550102",
-			Address:     "Jl. Kenanga No. 7, Jakarta Pusat",
-			LoginStatus: masterlogin.LoginStatusMember,
-			LeaderLogin: "BudiHartono",
-		},
-		{
-			// Tanda hubung pada Nama dibuang saat LOGIN diturunkan.
-			Name:        "Siti Nur-Halimah",
-			Login:       "SitiNurHalimah",
-			Email:       "siti.halimah@contoh.invalid",
-			Phone:       "0811-5550103",
-			Address:     "Jl. Anggrek No. 3, Bandung",
-			LoginStatus: masterlogin.LoginStatusMember,
-			LeaderLogin: "BudiHartono",
-		},
-		{
-			// ALAMAT kosong — isian yang memang tidak wajib.
-			Name:        "Agus Pratama",
-			Login:       "AgusPratama",
-			Email:       "agus.pratama@contoh.invalid",
-			Phone:       "0812-5550104",
-			Address:     "",
-			LoginStatus: masterlogin.LoginStatusMember,
-			LeaderLogin: "BudiHartono",
-		},
-		{
-			// LOGINLEADER kosong — surveyor yang tidak bertaut ke tim mana pun.
-			Name:        "Dewi Kartika",
-			Login:       "DewiKartika",
-			Email:       "dewi.kartika@contoh.invalid",
-			Phone:       "0813-5550105",
-			Address:     "Jl. Cendana No. 21, Surabaya",
-			LoginStatus: masterlogin.LoginStatusMember,
-			LeaderLogin: "",
-		},
-		{
-			Name:        "Eko Nugroho",
-			Login:       "EkoNugroho",
-			Email:       "eko.nugroho@contoh.invalid",
-			Phone:       "0814-5550106",
-			Address:     "Jl. Diponegoro No. 45, Semarang",
-			LoginStatus: masterlogin.LoginStatusMember,
-			LeaderLogin: "DewiKartika",
-		},
-	}
+	return sampledata.Must[[]masterlogin.SurveyorLogin](sampleJSON, "SampleList")
 }

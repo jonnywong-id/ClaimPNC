@@ -3,6 +3,8 @@ package inboxservicecenter
 import (
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/tabletext"
 )
 
 // ClaimDetail adalah satu klaim portal rekanan beserta SELURUH isian layar rinciannya.
@@ -221,126 +223,133 @@ var detailGroups = []FieldGroup{
 	{
 		Code:  GroupGeneral,
 		Title: "General Information",
-		Fields: []Column{
-			{Key: "id", Title: "ID"},
-			{Key: "repair_id", Title: "REPAIR ID"},
-			{Key: "no_klaim", Title: "No Klaim"},
-			{Key: "tipe", Title: "Tipe"},
-			{Key: "username", Title: "Username"},
-			{Key: "tanggal_input", Title: "Input Date"},
-			{Key: "no_polis", Title: "NO. POLIS"},
-			{Key: "asuransi", Title: "ASURANSI"},
-			{Key: "active_date_warranty", Title: "ACTIVE DATE WARRANTY"},
-			{Key: "expire_date_warranty", Title: "EXPIRE DATE WARRANTY"},
-			{Key: "customer_name", Title: "Customer Name"},
-			{Key: "nasabah", Title: "Nasabah"},
-			{Key: "no_hp_nasabah", Title: "NO. HP NASABAH"},
-			{Key: "no_ktp", Title: "NO KTP"},
-			{Key: "principal_bill_no", Title: "Principal Bill No"},
-			{Key: "no_insurance_bill", Title: "NO. INSURANCE BILL"},
-			{Key: "no_quotation", Title: "NO. QUOTATION"},
-			{Key: "quotation_amount", Title: "QUOTATION AMOUNT"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key                  | Title
+			id                   | ID
+			repair_id            | REPAIR ID
+			no_klaim             | No Klaim
+			tipe                 | Tipe
+			username             | Username
+			tanggal_input        | Input Date
+			no_polis             | NO. POLIS
+			asuransi             | ASURANSI
+			active_date_warranty | ACTIVE DATE WARRANTY
+			expire_date_warranty | EXPIRE DATE WARRANTY
+			customer_name        | Customer Name
+			nasabah              | Nasabah
+			no_hp_nasabah        | NO. HP NASABAH
+			no_ktp               | NO KTP
+			principal_bill_no    | Principal Bill No
+			no_insurance_bill    | NO. INSURANCE BILL
+			no_quotation         | NO. QUOTATION
+			quotation_amount     | QUOTATION AMOUNT
+		`),
 	},
 	{
 		Code:  GroupUnit,
 		Title: "Informasi Unit",
-		Fields: []Column{
-			{Key: "jenis_barang", Title: "JENIS BARANG"},
-			{Key: "kategori_barang", Title: "KATEGORI BARANG"},
-			{Key: "brand", Title: "BRAND"},
-			{Key: "model", Title: "MODEL"},
-			{Key: "color", Title: "Color"},
-			{Key: "device", Title: "DEVICE"},
-			{Key: "no_imei", Title: "NO. IMEI"},
-			{Key: "no_serial", Title: "NO. SERIAL"},
-			{Key: "item_warranty", Title: "ITEM WARRANTY"},
-			{Key: "object_name", Title: "Object Name"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key             | Title
+			jenis_barang    | JENIS BARANG
+			kategori_barang | KATEGORI BARANG
+			brand           | BRAND
+			model           | MODEL
+			color           | Color
+			device          | DEVICE
+			no_imei         | NO. IMEI
+			no_serial       | NO. SERIAL
+			item_warranty   | ITEM WARRANTY
+			object_name     | Object Name
+		`),
 	},
 	{
 		Code:  GroupRepair,
 		Title: "Informasi Perbaikan",
-		Fields: []Column{
-			{Key: "collect_point", Title: "COLLECT POINT"},
-			{Key: "repair_point", Title: "REPAIR POINT"},
-			{Key: "is_delivery", Title: "Is Delivery"},
-			{Key: "symptom_code", Title: "SYMPTOM CODE"},
-			{Key: "symptom_description", Title: "SYMPTOM DESCRIPTION"},
-			{Key: "analisa_kerusakan", Title: "ANALISA KERUSAKAN"},
-			{Key: "nama_pic", Title: "NAMA PIC"},
-			{Key: "repair_status_label", Title: "REPAIR STATUS"},
-			{Key: "alasan", Title: "ALASAN"},
-			{Key: "alasan_batal", Title: "ALASAN BATAL"},
-			{Key: "customer_arrival", Title: "CUSTOMER ARRIVAL"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key                 | Title
+			collect_point       | COLLECT POINT
+			repair_point        | REPAIR POINT
+			is_delivery         | Is Delivery
+			symptom_code        | SYMPTOM CODE
+			symptom_description | SYMPTOM DESCRIPTION
+			analisa_kerusakan   | ANALISA KERUSAKAN
+			nama_pic            | NAMA PIC
+			repair_status_label | REPAIR STATUS
+			alasan              | ALASAN
+			alasan_batal        | ALASAN BATAL
+			customer_arrival    | CUSTOMER ARRIVAL
+		`),
 	},
 	{
 		Code:  GroupDates,
 		Title: "Estimasi Date",
-		Fields: []Column{
-			{Key: "acknowledge_date", Title: "ACKNOWLEDGE DATE"},
-			{Key: "tanggal_pengecekan", Title: "TANGGAL PENGECEKAN"},
-			{Key: "tanggal_selesai_perbaikan", Title: "TANGGAL SELESAI PERBAIKAN"},
-			{Key: "tanggal_pick_up", Title: "TANGGAL PICK UP"},
-			{Key: "tanggal_kurir_pick_up", Title: "TANGGAL KURIR PICK UP"},
-			{Key: "release_date", Title: "Release Date"},
-			{Key: "invoice_date", Title: "INVOICE DATE"},
-			{Key: "downpayment", Title: "DOWNPAYMENT"},
-			{Key: "no_downpayment", Title: "NO. DOWNPAYMENT"},
-			{Key: "downpayment_method", Title: "DOWNPAYMENT METHOD"},
-			{Key: "status_approval_label", Title: "STATUS APPROVAL"},
-			{Key: "remark_approval", Title: "REMARK APPROVAL"},
-			{Key: "komite_approval", Title: "KOMITE APPROVAL"},
-			{Key: "aksesoris_lainya", Title: "AKSESORIS LAINYA"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key                       | Title
+			acknowledge_date          | ACKNOWLEDGE DATE
+			tanggal_pengecekan        | TANGGAL PENGECEKAN
+			tanggal_selesai_perbaikan | TANGGAL SELESAI PERBAIKAN
+			tanggal_pick_up           | TANGGAL PICK UP
+			tanggal_kurir_pick_up     | TANGGAL KURIR PICK UP
+			release_date              | Release Date
+			invoice_date              | INVOICE DATE
+			downpayment               | DOWNPAYMENT
+			no_downpayment            | NO. DOWNPAYMENT
+			downpayment_method        | DOWNPAYMENT METHOD
+			status_approval_label     | STATUS APPROVAL
+			remark_approval           | REMARK APPROVAL
+			komite_approval           | KOMITE APPROVAL
+			aksesoris_lainya          | AKSESORIS LAINYA
+		`),
 	},
 	{
 		Code:  GroupCost,
 		Title: "Estimasi Biaya",
-		Fields: []Column{
-			{Key: "biaya_jasa", Title: "BIAYA JASA"},
-			{Key: "biaya_sparepart", Title: "BIAYA SPAREPART"},
-			{Key: "biaya_suku_cadang", Title: "BIAYA SUKU CADANG"},
-			{Key: "biaya_pajak", Title: "BIAYA PAJAK"},
-			{Key: "ppn", Title: "PPN"},
-			{Key: "biaya_pengiriman", Title: "BIAYA PENGIRIMAN"},
-			{Key: "biaya_lainnya", Title: "BIAYA LAINNYA"},
-			{Key: "excess", Title: "EXCESS DIBAYAR CUSTOMER"},
-			{Key: "deductible", Title: "DEDUCTIBLE"},
-			{Key: "total_biaya", Title: "TOTAL BIAYA"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key               | Title
+			biaya_jasa        | BIAYA JASA
+			biaya_sparepart   | BIAYA SPAREPART
+			biaya_suku_cadang | BIAYA SUKU CADANG
+			biaya_pajak       | BIAYA PAJAK
+			ppn               | PPN
+			biaya_pengiriman  | BIAYA PENGIRIMAN
+			biaya_lainnya     | BIAYA LAINNYA
+			excess            | EXCESS DIBAYAR CUSTOMER
+			deductible        | DEDUCTIBLE
+			total_biaya       | TOTAL BIAYA
+		`),
 	},
 	{
 		Code:  GroupCostApproved,
 		Title: "Harga Approve Komite",
-		Fields: []Column{
-			{Key: "biaya_suku_cadang_approve", Title: "BIAYA SUKU CADANG"},
-			{Key: "biaya_pajak_approve", Title: "BIAYA PAJAK"},
-			{Key: "ppn_approve", Title: "PPN"},
-			{Key: "biaya_pengiriman_approve", Title: "BIAYA PENGIRIMAN"},
-			{Key: "excess_approve", Title: "EXCESS DIBAYAR CUSTOMER"},
-			{Key: "deductible_approve", Title: "DEDUCTIBLE"},
-			{Key: "total_biaya_approve", Title: "TOTAL BIAYA"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key                       | Title
+			biaya_suku_cadang_approve | BIAYA SUKU CADANG
+			biaya_pajak_approve       | BIAYA PAJAK
+			ppn_approve               | PPN
+			biaya_pengiriman_approve  | BIAYA PENGIRIMAN
+			excess_approve            | EXCESS DIBAYAR CUSTOMER
+			deductible_approve        | DEDUCTIBLE
+			total_biaya_approve       | TOTAL BIAYA
+		`),
 	},
 	{
 		Code:  GroupAccessories,
 		Title: "Accessories Unit",
-		Fields: []Column{
-			{Key: "charger_adaptor", Title: "CHARGER ADAPTOR"},
-			{Key: "charger_cable", Title: "CHARGER CABLE"},
-			{Key: "car_kit", Title: "CAR KIT"},
-			{Key: "removable_antenna", Title: "Removable Antenna"},
-			{Key: "headset", Title: "HEADSET"},
-			{Key: "battery", Title: "BATTERY"},
-			{Key: "sim_card", Title: "SIM CARD"},
-			{Key: "external_cover", Title: "EXTERNAL COVER"},
-			{Key: "battery_cover", Title: "Battery Cover"},
-			{Key: "lcd_text", Title: "LCD Text"},
-			{Key: "case", Title: "CASE"},
-			{Key: "box_unit", Title: "BOX UNIT"},
-		},
+		Fields: tabletext.Rows[Column](`
+			Key               | Title
+			charger_adaptor   | CHARGER ADAPTOR
+			charger_cable     | CHARGER CABLE
+			car_kit           | CAR KIT
+			removable_antenna | Removable Antenna
+			headset           | HEADSET
+			battery           | BATTERY
+			sim_card          | SIM CARD
+			external_cover    | EXTERNAL COVER
+			battery_cover     | Battery Cover
+			lcd_text          | LCD Text
+			case              | CASE
+			box_unit          | BOX UNIT
+		`),
 	},
 }
 

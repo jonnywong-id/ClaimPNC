@@ -1,8 +1,8 @@
 // Package memory adalah pengisi seam mastersupplier.Store yang hidup di dalam memory.
 //
-// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang
-// membuat seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan
-// tanpa Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
+// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang membuat
+// seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan tanpa
+// Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
 //
 // Yang ditiru bukan hanya bentuk datanya, tetapi juga urutan barisnya, cara penyaring
 // bekerja, kunci mana yang TIDAK ikut berubah saat disimpan, penurunan JENIS_STATUS saat
@@ -22,10 +22,10 @@ import (
 // Repo menyimpan master supplier satu portal beserta keempat tabel acuannya dan antrean
 // persetujuannya.
 //
-// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun tetap
-// memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
-// Menyatukannya justru akan menyembunyikan kelas cacat yang paling ingin dicegah ADR-0030
-// dan R-20.
+// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun
+// tetap memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
+// Menyatukannya justru akan menyembunyikan kelas cacat yang paling ingin dicegah
+// ADR-0030 dan R-20.
 type Repo struct {
 	// mutex melindungi seluruh isi. Permintaan HTTP dilayani beberapa goroutine
 	// sekaligus, dan penambahan yang menolak nama ganda harus berjalan satu per satu —

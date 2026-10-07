@@ -8,7 +8,10 @@
 // Lapisan Transport — ia boleh tahu Domain, dan dilarang tahu SQL maupun nama tabel.
 package masterloginhttp
 
-import "claim-pnc/internal/masterlogin"
+import (
+	"claim-pnc/internal/masterlogin"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // SurveyorLoginDTO adalah satu login surveyor sebagaimana dilihat klien.
 //
@@ -114,9 +117,9 @@ func (r SaveRequest) toInput() masterlogin.Input {
 
 // ErrorResponse adalah bentuk galat modul ini.
 //
-// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk pelanggaran
-// per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan mencocokkan
-// teks `pesan`.
+// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk
+// pelanggaran per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan
+// mencocokkan teks `pesan`.
 type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
@@ -129,10 +132,7 @@ type ErrorResponse struct {
 // masterstatusprogres, masterautoclaim, dan masterkategorisparepart. Penyeragamannya dengan
 // masterstatus — yang memakai `field` — adalah TKT-F1-004 yang masih terhalang. Frontend
 // sudah menampung keduanya lewat `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah satu baris domain menjadi bentuk yang dikirim ke klien.
 func toDTO(one masterlogin.SurveyorLogin) SurveyorLoginDTO {

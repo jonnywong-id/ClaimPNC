@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/reportklaim"
 	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
@@ -45,10 +46,10 @@ const (
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // errorBody adalah bentuk galat yang dikirim ke klien.
 type errorBody struct {
@@ -66,10 +67,10 @@ type violationBody struct {
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
 	status, body, known := mapError(err)
 	if !known {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, status, body)
+	h.WriteResponse(w, r, status, body)
 }
 
 // mapError memetakan galat domain ke kode HTTP beserta badannya.
@@ -132,10 +133,10 @@ func mapError(err error) (int, errorBody, bool) {
 // pengguna berupa berkas CSV separuh jadi tanpa satu pun keterangan. Satu-satunya tempat
 // keadaan itu terbaca adalah log.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	if h.logger == nil {
+	if h.Logger == nil {
 		return
 	}
-	h.logger.ErrorContext(r.Context(), "ekspor laporan terputus di tengah",
+	h.Logger.ErrorContext(r.Context(), "ekspor laporan terputus di tengah",
 		slog.String("jalur", r.URL.Path),
 		slog.String("id_permintaan", logging.RequestID(r.Context())),
 		slog.String("sebab", err.Error()))

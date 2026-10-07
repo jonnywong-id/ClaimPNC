@@ -1,10 +1,16 @@
 package memory
 
 import (
+	_ "embed"
 	"time"
 
-	"claim-pnc/internal/inboxanalystdoctor"
+	"claim-pnc/internal/platform/sampledata"
 )
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleOperator adalah login petugas pemilik antrean contoh.
 //
@@ -58,138 +64,18 @@ func at(year int, month time.Month, date, hour int) time.Time {
 //     diperiksa; tanpanya urutan keduanya tidak tetap.
 //   - Satu baris dengan komentar PIC Teknis terisi, sehingga kolom yang di Oracle masih
 //     kosong tetap terlihat bentuknya saat dikembangkan.
-var SampleTasks = []Record{
-	{
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0311",
-			ClaimNumber:      "PNCN.26.0311",
-			PolicyNumber:     "26.002.2026.00311",
-			InsuredName:      "Bayu Pratama Contoh",
-			BranchName:       "JAKARTA PUSAT",
-			AdminName:        "ADMINREG1",
-			TechnicalPIC:     "PICTEKNIKPA1",
-			TechnicalPICNote: "Mohon dinilai kelayakan biaya rawat inap hari ke-4 sampai ke-9.",
-			RegisteredAt:     at(2026, time.September, 18, 9),
-			ProcessStatus:    "Open",
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0298",
-			ClaimNumber:      "PNCN.26.0298",
-			PolicyNumber:     "26.002.2026.00298",
-			InsuredName:      "Sari Melati Contoh",
-			BranchName:       "SURABAYA",
-			AdminName:        "ADMINREG2",
-			TechnicalPIC:     "PICTEKNIKPA1",
-			TechnicalPICNote: "",
-			RegisteredAt:     at(2026, time.September, 15, 14),
-			ProcessStatus:    "Pending-AnalystDoctor",
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		// Berwaktu daftar SAMA PERSIS dengan baris di bawahnya. Keduanya ada supaya pemutus
-		// seri `pzInsKey` menurun dapat diperiksa — yang ber-`…0290` harus mendahului
-		// yang ber-`…0289`.
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0290",
-			ClaimNumber:      "PNCN.26.0290",
-			PolicyNumber:     "26.002.2026.00290",
-			InsuredName:      "Rahmat Hidayat Contoh",
-			BranchName:       "BANDUNG",
-			AdminName:        "ADMINREG1",
-			TechnicalPIC:     "PICTEKNIKPA2",
-			RegisteredAt:     at(2026, time.September, 12, 8),
-			ProcessStatus:    "Open",
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0289",
-			ClaimNumber:      "PNCN.26.0289",
-			PolicyNumber:     "26.005.2026.00289",
-			InsuredName:      "Dewi Anggraini Contoh",
-			BranchName:       "MEDAN",
-			AdminName:        "ADMINREG3",
-			TechnicalPIC:     "PICTEKNIKTRV",
-			RegisteredAt:     at(2026, time.September, 12, 8),
-			ProcessStatus:    "Open",
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		// HARUS TETAP MUNCUL. Report Definition mengecualikan `Resolved-Completed` saja,
-		// sehingga klaim yang DITOLAK tetap berada di antrean ini.
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0255",
-			ClaimNumber:      "PNCN.26.0255",
-			PolicyNumber:     "26.002.2026.00255",
-			InsuredName:      "Joko Susilo Contoh",
-			BranchName:       "SEMARANG",
-			AdminName:        "ADMINREG2",
-			TechnicalPIC:     "PICTEKNIKPA2",
-			RegisteredAt:     at(2026, time.September, 5, 11),
-			ProcessStatus:    "Resolved-Rejected",
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		// TIDAK BOLEH MUNCUL — tugasnya sudah tuntas.
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0240",
-			ClaimNumber:      "PNCN.26.0240",
-			PolicyNumber:     "26.002.2026.00240",
-			InsuredName:      "Lestari Wulandari Contoh",
-			BranchName:       "JAKARTA PUSAT",
-			AdminName:        "ADMINREG1",
-			TechnicalPIC:     "PICTEKNIKPA1",
-			RegisteredAt:     at(2026, time.August, 30, 10),
-			ProcessStatus:    inboxanalystdoctor.StatusKerjaSelesai,
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		// TIDAK BOLEH MUNCUL — milik antrean Compliance, bukan antrean ini.
-		TransferFlag: inboxanalystdoctor.TransferCompliance,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0231",
-			ClaimNumber:      "PNCN.26.0231",
-			PolicyNumber:     "26.003.2026.00231",
-			InsuredName:      "PT Sumber Contoh",
-			BranchName:       "JAKARTA PUSAT",
-			AdminName:        "ADMINREG3",
-			TechnicalPIC:     "PICTEKNIKANK",
-			RegisteredAt:     at(2026, time.September, 20, 9),
-			ProcessStatus:    "Open",
-			AssignedOperator: SampleOperator,
-		},
-	},
-	{
-		// TIDAK BOLEH MUNCUL bagi SampleOperator — antrean ini milik satu orang.
-		TransferFlag: inboxanalystdoctor.TransferAnalystDoctor,
-		Task: inboxanalystdoctor.AnalystDoctorTask{
-			ClaimID:          "ASM-FW-GCNMFW-WORK PNCN.26.0222",
-			ClaimNumber:      "PNCN.26.0222",
-			PolicyNumber:     "26.002.2026.00222",
-			InsuredName:      "Hendra Kusuma Contoh",
-			BranchName:       "DENPASAR",
-			AdminName:        "ADMINREG2",
-			TechnicalPIC:     "PICTEKNIKPA2",
-			RegisteredAt:     at(2026, time.September, 19, 16),
-			ProcessStatus:    "Open",
-			AssignedOperator: SampleOtherOperator,
-		},
-	},
-}
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Berwaktu daftar SAMA PERSIS dengan baris di bawahnya. Keduanya ada supaya pemutus
+// seri `pzInsKey` menurun dapat diperiksa — yang ber-`…0290` harus mendahului
+// yang ber-`…0289`.
+// HARUS TETAP MUNCUL. Report Definition mengecualikan `Resolved-Completed` saja,
+// sehingga klaim yang DITOLAK tetap berada di antrean ini.
+// TIDAK BOLEH MUNCUL — tugasnya sudah tuntas.
+// TIDAK BOLEH MUNCUL — milik antrean Compliance, bukan antrean ini.
+// TIDAK BOLEH MUNCUL bagi SampleOperator — antrean ini milik satu orang.
+var SampleTasks = sampledata.Must[[]Record](sampleJSON, "SampleTasks")
 
 // NewSampleStore membentuk pembaca berisi antrean contoh.
 //

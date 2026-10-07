@@ -5,7 +5,10 @@
 // `inboxautoclaimhttp` supaya tidak menutupi `net/http`.
 package inboxautoclaimhttp
 
-import "claim-pnc/internal/inboxautoclaim"
+import (
+	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // BatchDTO adalah satu baris grid inbox yang dikirim ke peramban.
 //
@@ -264,10 +267,7 @@ type ErrorResponse struct {
 // Nama kuncinya `kolom`, mengikuti masterstatusprogres — bukan `field` seperti
 // masterstatus. Ketidakseragaman itu sudah ada dan sudah ditampung klien di
 // api/client.ts; menambah bentuk KETIGA akan memperburuknya. Penyeragamannya TKT-F1-004.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // Nilai kolom `hasil` pada LineDTO.
 const (

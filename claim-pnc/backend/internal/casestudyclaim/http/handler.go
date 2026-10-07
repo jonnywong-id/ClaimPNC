@@ -15,8 +15,8 @@ import (
 
 	"claim-pnc/internal/casestudyclaim"
 	"claim-pnc/internal/casestudyclaim/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/platform/logging"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -29,82 +29,8 @@ type Service interface {
 	SaveRemark(ctx context.Context, portalAlias string, caller usecase.Caller, claimNumber, remark string) error
 }
 
-// Caller adalah identitas pengguna yang sedang masuk, sejauh yang dibutuhkan modul ini.
-//
-// Hanya satu field: modul ini tidak perlu tahu apa pun tentang bentuk sesi, dan modul auth
-// tidak perlu tahu modul ini ada. Jembatannya dipasang di cmd/claimpnc, satu-satunya
-// berkas yang memang tahu keduanya.
-type Caller struct {
-	Login string
-}
-
 // GetCaller membaca identitas pengguna dari konteks permintaan.
 type GetCaller func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan Case Study Claim.
-type Handler struct {
-	service     Service
-	getCaller   GetCaller
-	logger      *slog.Logger
-	writeJSON   JSONWriter
-	writeErrorF ErrorWriter
-	location    *time.Location
-	now         func() time.Time
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service   Service
-	GetCaller GetCaller
-	Logger    *slog.Logger
-
-	WriteJSON           JSONWriter
-	FallbackErrorWriter ErrorWriter
-
-	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
-	//
-	// Ia parameter, bukan konstanta, supaya uji dapat menetapkannya dan tidak bergantung
-	// pada basis data zona waktu mesin yang menjalankan. Di modul ini ia menentukan
-	// sesuatu yang nyata: TAHUN mana yang diambil dari tanggal yang dipilih pengguna.
-	Location *time.Location
-
-	// Now dapat diisi uji supaya nama berkas unduhan dapat diperiksa secara deterministik.
-	Now func() time.Time
-}
-
-// NewHandler membentuk handler modul Case Study Claim.
-func NewHandler(o Options) *Handler {
-	location := o.Location
-	if location == nil {
-		location = jakarta()
-	}
-	now := o.Now
-	if now == nil {
-		now = time.Now
-	}
-
-	return &Handler{
-		service:     o.Service,
-		getCaller:   o.GetCaller,
-		logger:      o.Logger,
-		writeJSON:   o.WriteJSON,
-		writeErrorF: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-		location:    location,
-		now:         now,
-	}
-}
-
-// jakarta mengembalikan zona WIB.
-//
-// Bila basis data zona waktu tidak tersedia di mesin — yang terjadi pada sebagian citra
-// kontainer minimal — dipakai offset tetap +07:00. Indonesia bagian barat tidak mengenal
-// daylight saving, sehingga offset tetap SETARA dan bukan penyederhanaan yang merugikan.
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	return time.FixedZone("WIB", 7*60*60)
-}
 
 // Metadata menangani GET /api/case-study-claim/penyaring.
 //
@@ -144,7 +70,7 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.writeJSON(w, r, http.StatusOK, body)
+	h.WriteJSON(w, r, http.StatusOK, body)
 }
 
 // List menangani GET /api/case-study-claim.
@@ -155,22 +81,22 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	q, err := h.queryFrom(r)
 	if err != nil {
-		writeBadRequest(h.writeJSON, w, r, err.field, err.message)
+		writeBadRequest(h.WriteJSON, w, r, err.field, err.message)
 		return
 	}
 
-	page, listErr := h.service.List(r.Context(), q)
+	page, listErr := h.Service.List(r.Context(), q)
 	if listErr != nil {
-		h.writeErrorF(w, r, listErr)
+		h.WriteError(w, r, listErr)
 		return
 	}
 
 	rows := make([]rowDTO, 0, len(page.Rows))
 	for _, row := range page.Rows {
-		rows = append(rows, toRowDTO(row, h.location))
+		rows = append(rows, toRowDTO(row, h.Location))
 	}
 
-	h.writeJSON(w, r, http.StatusOK, listResponse{
+	h.WriteJSON(w, r, http.StatusOK, listResponse{
 		Baris: rows,
 		Total: page.Total,
 		Periode: periodDTO{
@@ -213,7 +139,7 @@ const exportMaxRows = 10000
 func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	q, err := h.queryFrom(r)
 	if err != nil {
-		writeBadRequest(h.writeJSON, w, r, err.field, err.message)
+		writeBadRequest(h.WriteJSON, w, r, err.field, err.message)
 		return
 	}
 
@@ -222,16 +148,16 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	q.Offset = 0
 	q.Limit = casestudyclaim.MaxExportBatch
 
-	first, listErr := h.service.List(r.Context(), q)
+	first, listErr := h.Service.List(r.Context(), q)
 	if listErr != nil {
-		h.writeErrorF(w, r, listErr)
+		h.WriteError(w, r, listErr)
 		return
 	}
 
 	// Header ditulis SEBELUM baris pertama dikirim. Setelah badan respons mulai mengalir,
 	// status HTTP tidak dapat diubah lagi — sehingga galat yang terjadi di tengah tidak
 	// dapat dijawab dengan 500. Itu diterima, dan alasannya ada di bawah.
-	filename := "case-study-claim-" + h.now().In(h.location).Format("20060102-150405") + ".csv"
+	filename := "case-study-claim-" + h.Now().In(h.Location).Format("20060102-150405") + ".csv"
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	w.Header().Set("Cache-Control", "no-store")
@@ -252,7 +178,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 			if written >= exportMaxRows {
 				return
 			}
-			if err := writer.Write(exportRow(toRowDTO(row, h.location))); err != nil {
+			if err := writer.Write(exportRow(toRowDTO(row, h.Location))); err != nil {
 				// Sambungan putus di tengah unduhan adalah kejadian biasa — pengguna
 				// menutup tab. Ia dicatat sebagai peringatan, bukan galat, dan tidak dapat
 				// diberitahukan ke klien karena badan respons sudah mengalir.
@@ -274,7 +200,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		q.Offset = written
-		page, listErr = h.service.List(r.Context(), q)
+		page, listErr = h.Service.List(r.Context(), q)
 		if listErr != nil {
 			h.logExportInterrupted(r, listErr)
 			return
@@ -361,21 +287,21 @@ func decimalText(value *int64, scale int) string {
 // Menggantikan tombol **Save** pada setiap baris grid
 // (`Activity/SaveRemarksRecommendation_act`).
 func (h *Handler) SaveRemark(w http.ResponseWriter, r *http.Request) {
-	caller, found := h.getCaller(r.Context())
+	caller, found := h.Caller(r.Context())
 	if !found || strings.TrimSpace(caller.Login) == "" {
-		writeBadRequest(h.writeJSON, w, r, "", "Identitas pemanggil tidak dikenali.")
+		writeBadRequest(h.WriteJSON, w, r, "", "Identitas pemanggil tidak dikenali.")
 		return
 	}
 
 	activePortal, portalFound := portalhttp.ActivePortalFrom(r.Context())
 	if !portalFound {
-		writeBadRequest(h.writeJSON, w, r, "", "Portal aktif tidak dikenali.")
+		writeBadRequest(h.WriteJSON, w, r, "", "Portal aktif tidak dikenali.")
 		return
 	}
 
 	number := strings.TrimSpace(chi.URLParam(r, "nomor"))
 	if number == "" {
-		writeBadRequest(h.writeJSON, w, r, "nomor_klaim", "Nomor klaim tidak disebutkan.")
+		writeBadRequest(h.WriteJSON, w, r, "nomor_klaim", "Nomor klaim tidak disebutkan.")
 		return
 	}
 
@@ -387,19 +313,19 @@ func (h *Handler) SaveRemark(w http.ResponseWriter, r *http.Request) {
 	// kosong — dan kosong di sini berarti MENGHAPUS catatan yang sudah ada.
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&body); err != nil {
-		writeBadRequest(h.writeJSON, w, r, "catatan", "Badan permintaan tidak dapat dibaca.")
+		writeBadRequest(h.WriteJSON, w, r, "catatan", "Badan permintaan tidak dapat dibaca.")
 		return
 	}
 
 	remark := strings.TrimSpace(body.Catatan)
-	if err := h.service.SaveRemark(
+	if err := h.Service.SaveRemark(
 		r.Context(), activePortal.Alias, usecase.Caller{Login: caller.Login}, number, remark,
 	); err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, saveRemarkResponse{
+	h.WriteJSON(w, r, http.StatusOK, saveRemarkResponse{
 		NomorKlaim: number,
 		Catatan:    remark,
 	})
@@ -432,14 +358,14 @@ func (h *Handler) queryFrom(r *http.Request) (usecase.Query, *paramError) {
 
 	values := r.URL.Query()
 
-	from, err := dateParam(values.Get("dari"), h.location)
+	from, err := dateParam(values.Get("dari"), h.Location)
 	if err != nil {
 		return usecase.Query{}, &paramError{
 			field:   "dari",
 			message: "Tanggal Awal tidak sah; formatnya YYYY-MM-DD.",
 		}
 	}
-	to, err := dateParam(values.Get("sampai"), h.location)
+	to, err := dateParam(values.Get("sampai"), h.Location)
 	if err != nil {
 		return usecase.Query{}, &paramError{
 			field:   "sampai",
@@ -449,10 +375,10 @@ func (h *Handler) queryFrom(r *http.Request) (usecase.Query, *paramError) {
 
 	query := usecase.Query{PortalAlias: activePortal.Alias}
 	if from != nil {
-		query.FromYear = casestudyclaim.YearOf(*from, h.location)
+		query.FromYear = casestudyclaim.YearOf(*from, h.Location)
 	}
 	if to != nil {
-		query.ToYear = casestudyclaim.YearOf(*to, h.location)
+		query.ToYear = casestudyclaim.YearOf(*to, h.Location)
 	}
 
 	business, known := casestudyclaim.FindBusinessScope(values.Get("bisnis"))
@@ -501,37 +427,16 @@ func (h *Handler) queryFrom(r *http.Request) (usecase.Query, *paramError) {
 //
 // Kosong berarti tidak diisi, bukan galat bentuk — yang menolak isian kosong adalah
 // pemeriksaan periode di domain, dengan pesan yang menjelaskan sebabnya.
-func dateParam(raw string, loc *time.Location) (*time.Time, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return nil, nil
-	}
-	if loc == nil {
-		loc = time.UTC
-	}
-	parsed, err := time.ParseInLocation("2006-01-02", trimmed, loc)
-	if err != nil {
-		return nil, err
-	}
-	return &parsed, nil
-}
+func dateParam(raw string, loc *time.Location) (*time.Time, error) { return httpquery.Date(raw, loc) }
 
 // positiveInt membaca bilangan bulat tak negatif; kosong berarti nilai baku.
 func positiveInt(raw string, fallback int) (int, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return fallback, nil
-	}
-	value, err := strconv.Atoi(trimmed)
-	if err != nil || value < 0 {
-		return 0, fmt.Errorf("bukan bilangan bulat tak negatif")
-	}
-	return value, nil
+	return httpquery.NonNegativeOr(raw, fallback)
 }
 
 // logExportInterrupted mencatat export yang berhenti di tengah.
 func (h *Handler) logExportInterrupted(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Warn("export berhenti sebelum selesai",
+	logging.From(r.Context(), h.Logger).Warn("export berhenti sebelum selesai",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)

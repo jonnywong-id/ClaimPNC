@@ -11,6 +11,7 @@ package inboxpladlahttp
 import (
 	"claim-pnc/internal/inboxpladla"
 	"claim-pnc/internal/inboxpladla/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // RowDTO adalah satu baris daftar klaim.
@@ -432,10 +433,7 @@ type ReplyResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat yang dikirim ke klien.
 type ErrorResponse struct {

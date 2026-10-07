@@ -1,0 +1,64 @@
+{
+  "SampleTasks": [
+    {
+      "Reference": "ASM-FW-GCNMFW-WORK PNC-1729",
+      "ClaimKey": "ASM-FW-GCNMFW-WORK PNC-1729",
+      "ClaimNumber": "PNC-1729",
+      "PolicyNumber": "12200007000001",
+      "InsuredName": "PT Contoh Karya Mandiri",
+      "ParticipantName": "PT Contoh Karya Mandiri",
+      "DateOfLoss": "2024-03-19T00:00:00Z",
+      "RegisteredOn": "2024-03-19T00:00:00Z"
+    },
+    {
+      "Reference": "ASM-FW-GCNMFW-WORK PNC-1546",
+      "ClaimKey": "ASM-FW-GCNMFW-WORK PNC-1546",
+      "ClaimNumber": "PNC-1546",
+      "PolicyNumber": "12000000000002",
+      "InsuredName": "PT Contoh Sejahtera Abadi",
+      "ParticipantName": "Peserta Contoh Satu",
+      "DateOfLoss": "2021-08-16T00:00:00Z",
+      "RegisteredOn": "2023-05-10T00:00:00Z"
+    },
+    {
+      "Reference": "ASM-FW-GCNMFW-WORK PNC-1811",
+      "ClaimKey": "ASM-FW-GCNMFW-WORK PNC-1811",
+      "ClaimNumber": "PNC-1811",
+      "PolicyNumber": "12200007000003",
+      "InsuredName": "PT Contoh Bahari Nusantara",
+      "ParticipantName": "",
+      "DateOfLoss": "2025-02-11T00:00:00Z",
+      "RegisteredOn": "2025-02-20T00:00:00Z"
+    },
+    {
+      "Reference": "ASM-FW-GCNMFW-WORK PNC-1902",
+      "ClaimKey": "ASM-FW-GCNMFW-WORK PNC-1902",
+      "ClaimNumber": "PNC-1902",
+      "PolicyNumber": "12200007000004",
+      "InsuredName": "PT Contoh Rekayasa Utama",
+      "ParticipantName": "Peserta Contoh Dua",
+      "DateOfLoss": null,
+      "RegisteredOn": "2026-06-01T00:00:00Z"
+    },
+    {
+      "Reference": "ASM-FW-GCNMFW-WORK PNC-1955",
+      "ClaimKey": "ASM-FW-GCNMFW-WORK PNC-1955",
+      "ClaimNumber": "PNC-1955",
+      "PolicyNumber": "12200007000005",
+      "InsuredName": "PT Contoh Adikarya Persada",
+      "ParticipantName": "Peserta Contoh Tiga",
+      "DateOfLoss": "2026-07-04T00:00:00Z",
+      "RegisteredOn": null
+    },
+    {
+      "Reference": "ASM-FW-GCNMFW-WORK PNC-1977",
+      "ClaimKey": "",
+      "ClaimNumber": "PNC-1977",
+      "PolicyNumber": "12200007000006",
+      "InsuredName": "PT Contoh Lintas Benua",
+      "ParticipantName": "",
+      "DateOfLoss": "2026-08-30T00:00:00Z",
+      "RegisteredOn": "2026-09-01T00:00:00Z"
+    }
+  ]
+}

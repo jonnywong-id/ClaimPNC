@@ -34,8 +34,8 @@ const sequenceDigits = 4
 
 // Repo menyimpan objek dokumen satu portal di memori.
 //
-// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun tetap
-// memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
+// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun
+// tetap memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
 // Menyatukannya justru akan menyembunyikan kelas cacat yang paling ingin dicegah
 // `ADR-0030` dan `R-20`.
 type Repo struct {

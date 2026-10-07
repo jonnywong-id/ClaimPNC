@@ -28,9 +28,9 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))

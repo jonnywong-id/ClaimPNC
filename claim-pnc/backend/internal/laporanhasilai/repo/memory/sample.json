@@ -1,0 +1,112 @@
+{
+  "SampleRows": [
+    {
+      "CommitteeID": "KMT-000101",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.26.0001",
+      "ApproveCode": "1",
+      "CommitteeDate": "2026-09-03T00:00:00Z",
+      "AIResult": "DITERIMA",
+      "AIDate": "2026-09-01T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000101",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-02",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.26.0001",
+      "ApproveCode": "1",
+      "CommitteeDate": "2026-09-03T00:00:00Z",
+      "AIResult": "DITOLAK",
+      "AIDate": "2026-09-01T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000101",
+      "CommitteeStep": "2",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.26.0001",
+      "ApproveCode": "1",
+      "CommitteeDate": "2026-09-05T00:00:00Z",
+      "AIResult": "DITERIMA",
+      "AIDate": "2026-09-01T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000102",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-02",
+      "ClaimNumber": "PNCN.26.0002",
+      "ApproveCode": "2",
+      "CommitteeDate": "2026-09-08T00:00:00Z",
+      "AIResult": "DITERIMA",
+      "AIDate": "2026-09-06T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000103",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-03",
+      "ClaimNumber": "PNCN.26.0003",
+      "ApproveCode": "0",
+      "CommitteeDate": "2026-09-10T00:00:00Z",
+      "AIResult": "DITOLAK",
+      "AIDate": "2026-09-09T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000104",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.26.0004",
+      "ApproveCode": "1",
+      "CommitteeDate": "2026-09-12T00:00:00Z",
+      "AIResult": "",
+      "AIDate": "0001-01-01T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000105",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.26.0005",
+      "ApproveCode": "1",
+      "CommitteeDate": "0001-01-01T00:00:00Z",
+      "AIResult": "DITERIMA",
+      "AIDate": "2026-09-11T00:00:00Z",
+      "CaseResolved": true
+    },
+    {
+      "CommitteeID": "KMT-000106",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.26.0006",
+      "ApproveCode": "0",
+      "CommitteeDate": "2026-09-13T00:00:00Z",
+      "AIResult": "DITERIMA",
+      "AIDate": "2026-09-12T00:00:00Z",
+      "CaseResolved": false
+    },
+    {
+      "CommitteeID": "KMT-000107",
+      "CommitteeStep": "1",
+      "ObjectID": "OBJ-01",
+      "CoverageID": "CVG-01",
+      "ClaimNumber": "PNCN.25.0099",
+      "ApproveCode": "1",
+      "CommitteeDate": "2025-03-04T00:00:00Z",
+      "AIResult": "DITERIMA",
+      "AIDate": "2025-03-01T00:00:00Z",
+      "CaseResolved": true
+    }
+  ]
+}

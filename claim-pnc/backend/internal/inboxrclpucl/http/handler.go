@@ -1,7 +1,6 @@
 package inboxrclpuclhttp
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -9,70 +8,15 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxrclpucl"
-	"claim-pnc/internal/inboxrclpucl/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Ia tidak dipakai menyaring satu pun kueri di modul ini — antreannya bersama. Yang
-	// memakainya adalah jejak log, dan itulah satu-satunya kontrol yang tersisa selama
-	// pemeriksaan peran belum ada (`TKT-F3-004`).
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox RCL/PUCL.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox RCL/PUCL.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-rcl-pucl/tab.
 //
@@ -81,11 +25,11 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-rcl-pucl.
@@ -97,7 +41,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -108,11 +52,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Detail menangani GET /api/inbox-rcl-pucl/klaim/{referensi}.
@@ -129,18 +73,18 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail, err := h.service.Detail(
+	detail, err := h.Service.Detail(
 		r.Context(),
 		active.Alias,
 		caller,
 		chi.URLParam(r, "referensi"),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toClaimDetailResponse(detail, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toClaimDetailResponse(detail, active.Alias))
 }
 
 // Documents menangani GET /api/inbox-rcl-pucl/klaim/{referensi}/dokumen.
@@ -153,15 +97,15 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	documents, err := h.service.Documents(
+	documents, err := h.Service.Documents(
 		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDocumentListResponse(documents, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDocumentListResponse(documents, active.Alias))
 }
 
 // DocumentContent menangani GET /api/inbox-rcl-pucl/klaim/{referensi}/dokumen/{dokumen}.
@@ -177,13 +121,13 @@ func (h *Handler) DocumentContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	document, err := h.service.DocumentContent(
+	document, err := h.Service.DocumentContent(
 		r.Context(), active.Alias, caller,
 		chi.URLParam(r, "referensi"),
 		strings.TrimSpace(chi.URLParam(r, "dokumen")),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -354,7 +298,7 @@ func (h *Handler) PerformAction(w http.ResponseWriter, r *http.Request) {
 	// pernah ada tombolnya.
 	kind, known := inboxrclpucl.ClaimActionOf(chi.URLParam(r, "aksi"))
 	if !known {
-		h.writeJSON(w, r, http.StatusNotFound, ErrorResponse{
+		h.WriteJSON(w, r, http.StatusNotFound, ErrorResponse{
 			Code:    "tindakan_tidak_dikenal",
 			Message: "Tindakan yang diminta tidak dikenali.",
 		})
@@ -374,7 +318,7 @@ func (h *Handler) PerformAction(w http.ResponseWriter, r *http.Request) {
 	if carriesReceipt(kind) {
 		var body saveReceiptRequest
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			h.writeJSON(w, r, http.StatusBadRequest, ErrorResponse{
+			h.WriteJSON(w, r, http.StatusBadRequest, ErrorResponse{
 				Code:    "badan_tidak_terbaca",
 				Message: "Isian yang dikirim tidak terbaca.",
 			})
@@ -386,11 +330,11 @@ func (h *Handler) PerformAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	doc, err := h.service.PerformAction(
+	doc, err := h.Service.PerformAction(
 		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"), kind, input,
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -421,7 +365,7 @@ func (h *Handler) PerformAction(w http.ResponseWriter, r *http.Request) {
 			"tab \"Cetak Surat\"."
 	}
 
-	h.writeJSON(w, r, http.StatusOK, jawaban)
+	h.WriteJSON(w, r, http.StatusOK, jawaban)
 }
 
 // kalimatKirim dibaca petugas setelah kedua tombol Kirim berhasil.
@@ -509,20 +453,20 @@ func actionDoneMessage(kind inboxrclpucl.ClaimActionKind) string {
 // dijawab "halaman tidak ditemukan" terbaca sebagai kerusakan, sementara yang dibutuhkan
 // pengguna adalah tahu ke mana ia harus pergi.
 //
-// Portal tetap diperiksa lebih dulu meski permintaannya pasti ditolak: jawaban yang menyebut
-// portal aktif untuk permintaan yang tidak menyebut portal akan membuat layar mengira ia
-// sudah berada di portal yang benar.
+// Portal tetap diperiksa lebih dulu meski permintaannya pasti ditolak: jawaban yang
+// menyebut portal aktif untuk permintaan yang tidak menyebut portal akan membuat layar
+// mengira ia sudah berada di portal yang benar.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
 	// Dicatat, bukan hanya ditolak. Selama masa paralel, inilah satu-satunya tanda seberapa
 	// sering pengguna benar-benar membutuhkan aksi ini — dan itu yang menjadi dasar
 	// memutuskan kapan kepemilikan tabelnya dipindahkan (`P-1`).
-	if h.logger != nil {
-		h.logger.Info(
+	if h.Logger != nil {
+		h.Logger.Info(
 			"aksi tulis diminta pada modul yang belum menulis",
 			slog.String("modul", "inbox-rcl-pucl"),
 			slog.String("jalur", r.URL.Path),
@@ -530,7 +474,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	h.writeError(w, r, inboxrclpucl.ErrWriteNotAvailable)
+	h.WriteError(w, r, inboxrclpucl.ErrWriteNotAvailable)
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -543,13 +487,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxrclpucl.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxrclpucl.ErrCallerUnknown)
+		h.WriteError(w, r, inboxrclpucl.ErrCallerUnknown)
 		return portal.Portal{}, inboxrclpucl.Caller{}, false
 	}
 
@@ -584,10 +528,10 @@ func readReport(query url.Values) inboxrclpucl.ReportInput {
 
 // readCaller membaca identitas pemanggil, atau menyatakan ia tidak terbaca.
 func (h *Handler) readCaller(r *http.Request) (inboxrclpucl.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxrclpucl.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return inboxrclpucl.Caller{}, false
 	}
@@ -600,13 +544,7 @@ func (h *Handler) readCaller(r *http.Request) (inboxrclpucl.Caller, bool) {
 // menjadi nilai bawaan. Menolak seluruh permintaan karena `halaman=abc` akan membuat layar
 // gagal tanpa alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah
 // jawaban yang selalu masuk akal.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegative(raw) }
 
 // DocumentCategories melayani pilihan kolom "Category" pada dialog unggah.
 //
@@ -622,9 +560,9 @@ func (h *Handler) DocumentCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	categories, err := h.service.DocumentCategories(r.Context(), active.Alias)
+	categories, err := h.Service.DocumentCategories(r.Context(), active.Alias)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -636,7 +574,7 @@ func (h *Handler) DocumentCategories(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.writeJSON(w, r, http.StatusOK, map[string]any{"kategori": items})
+	h.WriteJSON(w, r, http.StatusOK, map[string]any{"kategori": items})
 }
 
 // UploadDocument menerima satu berkas dan melampirkannya ke klaim.
@@ -662,7 +600,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 
 	berkas, header, err := r.FormFile("berkas")
 	if err != nil {
-		h.writeJSON(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteJSON(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    "berkas_tidak_terbaca",
 			Message: "Berkas unggahan tidak terbaca. Pilih satu berkas lalu coba lagi.",
 		})
@@ -672,7 +610,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 
 	isi, err := io.ReadAll(berkas)
 	if err != nil {
-		h.writeJSON(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteJSON(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    "berkas_tidak_terbaca",
 			Message: "Berkas unggahan tidak dapat dibaca sampai selesai.",
 		})
@@ -689,7 +627,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		nama = header.Filename
 	}
 
-	doc, err := h.service.UploadDocument(
+	doc, err := h.Service.UploadDocument(
 		r.Context(), active.Alias, caller, chi.URLParam(r, "referensi"),
 		inboxrclpucl.UploadedDocument{
 			Name: nama,
@@ -707,11 +645,11 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 			Content:  isi,
 		})
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusCreated, map[string]any{
+	h.WriteJSON(w, r, http.StatusCreated, map[string]any{
 		"pesan":   "Dokumen diunggah.",
 		"dokumen": documentDTO(doc),
 	})

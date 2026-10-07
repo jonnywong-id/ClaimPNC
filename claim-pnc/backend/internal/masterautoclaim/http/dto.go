@@ -5,7 +5,10 @@
 // paketnya `masterautoclaimhttp` supaya tidak menutupi `net/http`.
 package masterautoclaimhttp
 
-import "claim-pnc/internal/masterautoclaim"
+import (
+	"claim-pnc/internal/masterautoclaim"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // AutoClaimDTO adalah bentuk satu baris master yang dikirim ke peramban.
 //
@@ -200,10 +203,7 @@ type ErrorResponse struct {
 // sepakat menamainya — masterstatus memakai `field` — dan penyeragamannya adalah
 // TKT-F1-004 yang masih terhalang. Frontend sudah menampung keduanya lewat
 // `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(ac masterautoclaim.AutoClaim) AutoClaimDTO {
@@ -228,9 +228,9 @@ func toDTO(ac masterautoclaim.AutoClaim) AutoClaimDTO {
 
 // toListDTO mengubah sekumpulan baris domain.
 //
-// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim
-// sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri,
-// dan satu layar yang lupa akan gagal saat tabelnya masih kosong.
+// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []masterautoclaim.AutoClaim) []AutoClaimDTO {
 	result := make([]AutoClaimDTO, 0, len(list))
 	for _, ac := range list {

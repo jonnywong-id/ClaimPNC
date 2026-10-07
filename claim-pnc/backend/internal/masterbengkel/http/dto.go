@@ -5,7 +5,10 @@
 // paketnya `masterbengkelhttp` supaya tidak menutupi `net/http`.
 package masterbengkelhttp
 
-import "claim-pnc/internal/masterbengkel"
+import (
+	"claim-pnc/internal/masterbengkel"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // WorkshopDTO adalah bentuk satu baris master bengkel yang dikirim ke peramban.
 //
@@ -269,10 +272,7 @@ type ErrorResponse struct {
 // master belum sepakat menamainya — masterstatus memakai `field` — dan penyeragamannya
 // adalah TKT-F1-004 yang masih terhalang. Frontend sudah menampung keduanya lewat
 // `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(w masterbengkel.Workshop) WorkshopDTO {
@@ -372,9 +372,9 @@ func (r SaveRequest) toInput() masterbengkel.Input {
 
 // toListDTO mengubah sekumpulan baris domain.
 //
-// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim
-// sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri,
-// dan satu layar yang lupa akan gagal saat tabelnya masih kosong.
+// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []masterbengkel.Workshop) []WorkshopDTO {
 	result := make([]WorkshopDTO, 0, len(list))
 	for _, w := range list {

@@ -16,8 +16,8 @@ type Column struct {
 // Nama field JSON pada satu baris pekerjaan.
 //
 // Dikumpulkan sebagai konstanta supaya judul kolom di berkas ini, penyusun DTO di
-// http/dto.go, dan penggambar sel di layar tidak dapat berselisih tanpa ketahuan —
-// ketiganya merujuk nama yang sama.
+// http/dto.go, dan penggambar sel di layar tidak dapat berselisih tanpa ketahuan — ketiganya
+// merujuk nama yang sama.
 const (
 	FieldCaseID             = "nomor_case"
 	FieldClaimNumber        = "no_klaim"

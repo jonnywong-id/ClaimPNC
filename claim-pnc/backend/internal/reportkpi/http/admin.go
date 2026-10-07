@@ -105,10 +105,10 @@ func (h *Handler) Scorecard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.AdminScorecard(
+	result, err := h.Service.AdminScorecard(
 		r.Context(), active.Alias, caller, readAdminFilter(r.URL.Query()))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -123,7 +123,7 @@ func (h *Handler) Scorecard(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.writeJSON(w, r, http.StatusOK, ScorecardResponse{
+	h.WriteJSON(w, r, http.StatusOK, ScorecardResponse{
 		Identity: AdminIdentityDTO{
 			Category:    card.Identity.Category,
 			Coordinator: card.Identity.Coordinator,
@@ -151,14 +151,14 @@ func (h *Handler) AdminDetail(w http.ResponseWriter, r *http.Request) {
 		Size: positiveNumber(query.Get("ukuran")),
 	}
 
-	result, err := h.service.AdminDetail(
+	result, err := h.Service.AdminDetail(
 		r.Context(), active.Alias, caller, readAdminFilter(query), page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, AdminDetailResponse{
+	h.WriteJSON(w, r, http.StatusOK, AdminDetailResponse{
 		Rows:       toAdminDetailRows(result.Page.Rows),
 		Pagination: toPaginationDTO(page, result.Page.Total),
 		Filter:     toAdminFilterDTO(result.Query),
@@ -183,9 +183,9 @@ func (h *Handler) AdminExport(w http.ResponseWriter, r *http.Request) {
 	// Potongan pertama diambil SEBELUM satu byte pun ditulis. Setelah header terkirim,
 	// galat tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa
 	// berkas separuh jadi tanpa satu pun keterangan.
-	first, err := h.service.AdminDetail(r.Context(), active.Alias, caller, filter, page)
+	first, err := h.Service.AdminDetail(r.Context(), active.Alias, caller, filter, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -235,7 +235,7 @@ func (h *Handler) AdminExport(w http.ResponseWriter, r *http.Request) {
 		}
 
 		page.Page++
-		next, err := h.service.AdminDetail(r.Context(), active.Alias, caller, filter, page)
+		next, err := h.Service.AdminDetail(r.Context(), active.Alias, caller, filter, page)
 		if err != nil {
 			h.logExportFailure(r, err)
 			return

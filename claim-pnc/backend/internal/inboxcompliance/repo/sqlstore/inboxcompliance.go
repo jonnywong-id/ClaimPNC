@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxcompliance"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca antrean Compliance dari SATU basis data entitas, dan menulis SATU tabel.
@@ -270,13 +271,7 @@ func scanPostAuditItem(row scanner) (inboxcompliance.WorkItem, error) {
 // Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
 // diisi" saat ditampilkan, dan kolom Aging yang dihitung darinya akan menghasilkan angka
 // dalam jutaan jam.
-func timeOrNil(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	at := value.Time
-	return &at
-}
+func timeOrNil(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }
 
 // FindInQueue mencari satu klaim yang sedang menunggu di antrean Compliance.
 //

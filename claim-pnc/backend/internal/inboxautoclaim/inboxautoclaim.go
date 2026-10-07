@@ -67,6 +67,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // MessageSuccess adalah isi kolom TMP_MESSAGE untuk baris yang berhasil menjadi klaim.
@@ -585,14 +587,12 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar.
-	//
-	// Untuk unggahan ia menyebut baris berkasnya juga — "baris 12 · nopolis" — karena
-	// yang diperbaiki pengguna adalah berkasnya, bukan sebuah kolom di layar.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar.
+//
+// Untuk unggahan ia menyebut baris berkasnya juga — "baris 12 · nopolis" — karena
+// yang diperbaiki pengguna adalah berkasnya, bukan sebuah kolom di layar.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -604,11 +604,7 @@ type ValidationError struct {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "inboxautoclaim: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "inboxautoclaim: isian tidak sah (", ": ", "; ", ")")
 }
 
 // FormatBatchNumber menyusun nomor batch dari nomor urut.

@@ -2,7 +2,8 @@ package outstandingclaim
 
 import (
 	"errors"
-	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Galat domain modul Outstanding Claim.
@@ -34,10 +35,7 @@ var (
 const FieldClaimID = "no_klaim"
 
 // Violation adalah satu pelanggaran pada satu isian.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError mengumpulkan SELURUH pelanggaran, bukan yang pertama saja.
 //
@@ -56,10 +54,5 @@ func (e *ValidationError) Error() string {
 	if len(e.Violations) == 0 {
 		return "outstandingclaim: isian tidak sah"
 	}
-
-	parts := make([]string, 0, len(e.Violations))
-	for _, v := range e.Violations {
-		parts = append(parts, v.Field+": "+v.Message)
-	}
-	return "outstandingclaim: " + strings.Join(parts, "; ")
+	return validation.Format(e.Violations, "outstandingclaim: ", ": ", "; ", "")
 }

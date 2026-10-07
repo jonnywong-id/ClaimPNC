@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/masterstatus"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien. Klien membedakan jenis galat lewat kode ini, bukan
@@ -23,10 +23,10 @@ const (
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri
 // supaya seluruh modul menulis respons dengan cara yang sama, termasuk header
 // Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat modul ini menjadi respons HTTP.
 //
@@ -36,26 +36,10 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 // pun tidak mengenalinya, jawabannya 500 dengan pesan umum dan rinciannya hanya masuk
 // log — rincian galat internal tidak pernah dikirim ke peramban.
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallbackWriter ErrorWriter) ErrorWriter {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
-		status, body, dikenali := mapError(err)
-		if !dikenali {
-			if fallbackWriter != nil {
-				fallbackWriter(w, r, err)
-				return
-			}
-			status, body = http.StatusInternalServerError, ErrorResponse{
-				Code:    ErrCodeInternal,
-				Message: "Terjadi kesalahan pada sistem.",
-			}
-		}
-		if status >= http.StatusInternalServerError {
-			logging.From(r.Context(), logger).Error("permintaan gagal",
-				slog.String("jalur", r.URL.Path),
-				slog.String("galat", err.Error()),
-			)
-		}
-		writeJSON(w, r, status, body)
-	}
+	return apierror.ContextWriter(logger, writeJSON, fallbackWriter, mapError, ErrorResponse{
+		Code:    ErrCodeInternal,
+		Message: "Terjadi kesalahan pada sistem.",
+	})
 }
 
 // mapError menerjemahkan galat domain menjadi status dan badan HTTP.
@@ -72,10 +56,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// bisnis. Frontend menanganinya berbeda — 400 adalah bug frontend, 422 adalah
 		// kesalahan pengguna yang harus ditandai di kolomnya
 		// (docs/Steering/10-API-STRATEGY.md §5).
-		detail := make([]ViolationDTO, 0, len(validasi.Violation))
-		for _, p := range validasi.Violation {
-			detail = append(detail, ViolationDTO{Field: p.Field, Message: p.Message})
-		}
+		detail := apierror.FieldErrors(validasi.Violation)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    ErrCodeValidationFailed,
 			Message: "Isian belum benar. Perbaiki yang ditandai lalu simpan lagi.",

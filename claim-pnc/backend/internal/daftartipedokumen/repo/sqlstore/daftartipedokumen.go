@@ -141,9 +141,9 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 // issueID membentuk ID persis seperti `PEGA_LST_DOC_TYPE.prc` baris 12 dan 21: kode situs
 // disambung nomor urut empat digit.
 //
-// Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR
-// termasuk yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri pada
-// dialek Oracle.
+// Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR termasuk
+// yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri pada dialek
+// Oracle.
 func issueID(ctx context.Context, tx *sql.Tx) (string, error) {
 	var site string
 	if err := tx.QueryRowContext(ctx, getQuery("document_type_site")).Scan(&site); err != nil {

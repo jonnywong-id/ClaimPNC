@@ -1,0 +1,123 @@
+{
+  "SampleCategories": [
+    {
+      "ID": "KAT01",
+      "Name": "ENGINE"
+    },
+    {
+      "ID": "KAT02",
+      "Name": "HYDRAULIC"
+    },
+    {
+      "ID": "KAT03",
+      "Name": "UNDERCARRIAGE"
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "SP0000000001",
+      "Name": "FILTER OLI MESIN",
+      "Number": "1R-0716",
+      "Code": "FLT-ENG-001",
+      "SellingPrice": "1250000",
+      "CategoryID": "KAT01",
+      "TypeID": "TIP01",
+      "Weight": "850",
+      "Length": "12",
+      "Width": "12",
+      "Height": "18",
+      "MinStock": "5",
+      "MaxStock": "40",
+      "OrderQuantity": "10",
+      "ProductionDate": "2025-11-04",
+      "Substitute": "FILTER OLI MESIN ALT",
+      "Kind": "ORIGINAL",
+      "Unit": "PCS",
+      "ActiveStatus": "1",
+      "PartStatus": "READY",
+      "UpdatedBy": "INTANHENNY",
+      "PriceUpdatedAt": "2026-09-12T03:15:00Z",
+      "DocumentID": "DOC-0001",
+      "Status": "1"
+    },
+    {
+      "ID": "SP0000000002",
+      "Name": "SEAL KIT BOOM CYLINDER",
+      "Number": "707-99-45600",
+      "Code": "SKT-HYD-014",
+      "SellingPrice": "4750000",
+      "CategoryID": "KAT02",
+      "TypeID": "TIP03",
+      "Weight": "1200",
+      "Length": "",
+      "Width": "",
+      "Height": "",
+      "MinStock": "2",
+      "MaxStock": "12",
+      "OrderQuantity": "4",
+      "ProductionDate": "",
+      "Substitute": "",
+      "Kind": "",
+      "Unit": "",
+      "ActiveStatus": "",
+      "PartStatus": "",
+      "UpdatedBy": "INTANHENNY",
+      "PriceUpdatedAt": "2026-09-18T03:15:00Z",
+      "DocumentID": "",
+      "Status": "0"
+    },
+    {
+      "ID": "SP0000000003",
+      "Name": "TRACK LINK ASSY",
+      "Number": "20Y-32-00203",
+      "Code": "TRK-UND-007",
+      "SellingPrice": "0",
+      "CategoryID": "KAT03",
+      "TypeID": "TIP05",
+      "Weight": "",
+      "Length": "",
+      "Width": "",
+      "Height": "",
+      "MinStock": "",
+      "MaxStock": "",
+      "OrderQuantity": "",
+      "ProductionDate": "2024-07-19",
+      "Substitute": "",
+      "Kind": "",
+      "Unit": "SET",
+      "ActiveStatus": "0",
+      "PartStatus": "DISCONTINUED",
+      "UpdatedBy": "INTANHENNY",
+      "PriceUpdatedAt": null,
+      "DocumentID": "",
+      "Status": "2"
+    }
+  ],
+  "SampleTypes": [
+    {
+      "ID": "TIP01",
+      "Name": "FILTER",
+      "CategoryID": "KAT01"
+    },
+    {
+      "ID": "TIP02",
+      "Name": "PISTON",
+      "CategoryID": "KAT01"
+    },
+    {
+      "ID": "TIP03",
+      "Name": "SEAL KIT",
+      "CategoryID": "KAT02"
+    },
+    {
+      "ID": "TIP04",
+      "Name": "HOSE",
+      "CategoryID": "KAT02"
+    },
+    {
+      "ID": "TIP05",
+      "Name": "TRACK LINK",
+      "CategoryID": "KAT03"
+    }
+  ]
+}

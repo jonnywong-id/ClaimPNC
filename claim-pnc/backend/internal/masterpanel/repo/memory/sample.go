@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterpanel"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterpanel"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // Isi contoh untuk pengembangan tanpa Oracle.
 //
@@ -34,65 +44,11 @@ const SamplePanelSequence int64 = 3
 // Ketiganya sengaja punya jumlah lokasi yang BERBEDA — dua, satu, dan nol — supaya layar
 // yang menggambar daftar lokasi teruji pada ketiga keadaannya, termasuk panel tanpa
 // lokasi sama sekali yang merupakan keadaan yang sah.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Alasan penolakan terisi, supaya layar yang menampilkannya teruji tanpa perlu
+// menolak satu baris lebih dulu.
 func SampleList() []masterpanel.Panel {
-	return []masterpanel.Panel{
-		{
-			ID:                  "01000001",
-			Name:                "Pintu Depan",
-			RepairStatus:        "1",
-			EditQuantityStatus:  "1",
-			PremiumRepairStatus: "0",
-			ShatterStatus:       "0",
-			StickerStatus:       "1",
-			SideStatus:          "1",
-			SevereDamageStatus:  "0",
-			ActiveStatus:        "1",
-			ExclusionC:          "0",
-			ApprovalMark:        "1",
-			DocumentID:          "",
-			Status:              masterpanel.StatusApproved,
-			Location: []masterpanel.PanelLocation{
-				{Name: "KIRI", Side: masterpanel.SideLeft},
-				{Name: "KANAN", Side: masterpanel.SideRight},
-			},
-		},
-		{
-			ID:                  "01000002",
-			Name:                "Kaca Depan",
-			RepairStatus:        "0",
-			EditQuantityStatus:  "0",
-			PremiumRepairStatus: "0",
-			ShatterStatus:       "1",
-			StickerStatus:       "0",
-			SideStatus:          "-",
-			SevereDamageStatus:  "1",
-			ActiveStatus:        "1",
-			ExclusionC:          "Y",
-			ApprovalMark:        "",
-			DocumentID:          "",
-			Status:              masterpanel.StatusPending,
-			Location: []masterpanel.PanelLocation{
-				{Name: "DEPAN", Side: masterpanel.SideNone},
-			},
-		},
-		{
-			ID:                  "01000003",
-			Name:                "Bumper Belakang",
-			RepairStatus:        "1",
-			EditQuantityStatus:  "1",
-			PremiumRepairStatus: "1",
-			ShatterStatus:       "0",
-			StickerStatus:       "0",
-			SideStatus:          "-",
-			SevereDamageStatus:  "1",
-			ActiveStatus:        "0",
-			ExclusionC:          "0",
-			ApprovalMark:        "",
-			// Alasan penolakan terisi, supaya layar yang menampilkannya teruji tanpa perlu
-			// menolak satu baris lebih dulu.
-			RejectReason: "Nama panel bertabrakan dengan panel yang sudah ada.",
-			DocumentID:   "",
-			Status:       masterpanel.StatusRejected,
-		},
-	}
+	return sampledata.Must[[]masterpanel.Panel](sampleJSON, "SampleList")
 }

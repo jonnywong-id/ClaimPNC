@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/masterpenolakan"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // RejectionDTO adalah bentuk satu baris Status Penolakan 2 yang dikirim ke peramban.
@@ -73,8 +74,8 @@ type ListResponse struct {
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
-	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang
-	// melayani empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan.
+	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang melayani
+	// empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 
@@ -132,10 +133,7 @@ type ErrorResponse struct {
 // Nama kuncinya `kolom`, mengikuti modul Master Status Progres. Ketidakseragaman dengan
 // modul Master Status Klaim yang memakai `field` sudah dikenali dan masuk TKT-F1-004;
 // frontend menyatukan keduanya di `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(rejection masterpenolakan.RejectionStatus2) RejectionDTO {
@@ -156,9 +154,9 @@ func toDTO(rejection masterpenolakan.RejectionStatus2) RejectionDTO {
 
 // toListDTO mengubah sekumpulan baris domain.
 //
-// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim
-// sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri,
-// dan satu layar yang lupa akan gagal saat tabelnya masih kosong.
+// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []masterpenolakan.RejectionStatus2) []RejectionDTO {
 	result := make([]RejectionDTO, 0, len(list))
 	for _, rejection := range list {

@@ -1,0 +1,231 @@
+{
+  "SampleAdvices": [
+    {
+      "Number": "PLA/XOL/2024/0001",
+      "Revision": "0",
+      "ReinsurerID": "R-001",
+      "ReinsurerName": "Reasuransi Contoh Pertama",
+      "LayerID": "L1",
+      "LayerName": "Layer 1",
+      "Year": "2024",
+      "CauseOfLoss": "BANJIR",
+      "ExchangeRate": 15500,
+      "SharePercent": 35.5,
+      "Email": "reas.pertama@contoh.invalid",
+      "Country": "SINGAPORE",
+      "Remark": "Menunggu konfirmasi reasuradur.",
+      "ApprovalNote": "",
+      "PICNote": "",
+      "Limit": "10.000.000.000",
+      "ApprovalStatus": "0",
+      "MasterID": "XOL-001",
+      "InputBy": "PICTEKNIK01",
+      "InputByEmail": "pic.teknik01@contoh.invalid",
+      "IssuedOn": "15/03/2024",
+      "Type": "PLA"
+    },
+    {
+      "Number": "PLA/XOL/2024/0002",
+      "Revision": "1",
+      "ReinsurerID": "R-002",
+      "ReinsurerName": "Reasuransi Contoh Kedua",
+      "LayerID": "L2",
+      "LayerName": "Layer 2",
+      "Year": "2024",
+      "CauseOfLoss": "BANJIR",
+      "ExchangeRate": 15500,
+      "SharePercent": 64.5,
+      "Email": "reas.kedua@contoh.invalid",
+      "Country": "MALAYSIA",
+      "Remark": "",
+      "ApprovalNote": "Disetujui komite.",
+      "PICNote": "",
+      "Limit": "25.000.000.000",
+      "ApprovalStatus": "1",
+      "MasterID": "XOL-001",
+      "InputBy": "PICTEKNIK01",
+      "InputByEmail": "pic.teknik01@contoh.invalid",
+      "IssuedOn": "18/03/2024",
+      "Type": "PLA"
+    },
+    {
+      "Number": "DLA/XOL/2024/0001",
+      "Revision": "0",
+      "ReinsurerID": "R-001",
+      "ReinsurerName": "Reasuransi Contoh Pertama",
+      "LayerID": "L1",
+      "LayerName": "Layer 1",
+      "Year": "2024",
+      "CauseOfLoss": "KEBAKARAN",
+      "ExchangeRate": 15500,
+      "SharePercent": 35.5,
+      "Email": "reas.pertama@contoh.invalid",
+      "Country": "SINGAPORE",
+      "Remark": "",
+      "ApprovalNote": "",
+      "PICNote": "Nilai akseptasi final.",
+      "Limit": "10.000.000.000",
+      "ApprovalStatus": "0",
+      "MasterID": "XOL-001",
+      "InputBy": "PICTEKNIK02",
+      "InputByEmail": "pic.teknik02@contoh.invalid",
+      "IssuedOn": "02/08/2024",
+      "Type": "DLA"
+    }
+  ],
+  "SampleBreakdownBanjir": [
+    {
+      "BusinessGroup": "Fire",
+      "BusinessGroupID": "10",
+      "ClaimCount": 12,
+      "OutstandingValue": 3100000000,
+      "AcceptedValue": 2170000000,
+      "Source": "bisnis",
+      "RateMissing": false
+    },
+    {
+      "BusinessGroup": "Marine Cargo",
+      "BusinessGroupID": "20",
+      "ClaimCount": 4,
+      "OutstandingValue": 1550000000,
+      "AcceptedValue": 930000000,
+      "Source": "bisnis",
+      "RateMissing": false
+    }
+  ],
+  "SampleBreakdownKebakaran": [
+    {
+      "BusinessGroup": "Fire",
+      "BusinessGroupID": "10",
+      "ClaimCount": 27,
+      "OutstandingValue": 9300000000,
+      "AcceptedValue": 7750000000,
+      "Source": "bisnis",
+      "RateMissing": false
+    }
+  ],
+  "SampleCauseOfLoss": [
+    {
+      "ID": "12001",
+      "Description": "BANJIR"
+    },
+    {
+      "ID": "12002",
+      "Description": "KECELAKAAN DIRI"
+    },
+    {
+      "ID": "12003",
+      "Description": "KEBAKARAN"
+    },
+    {
+      "ID": "12004",
+      "Description": "GEMPA BUMI"
+    }
+  ],
+  "SampleMasters": [
+    {
+      "ID": "XOL-001",
+      "Name": "XOL Property Treaty",
+      "Year": "2024",
+      "ExchangeRate": 15500,
+      "Type": "PROPERTY",
+      "BusinessGroups": [
+        {
+          "ID": "10",
+          "Name": "Fire"
+        },
+        {
+          "ID": "20",
+          "Name": "Marine Cargo"
+        }
+      ],
+      "CommitteeStatus": "1",
+      "CommitteeNote": "Disetujui rapat komite.",
+      "PIC": "PICTEKNIK01",
+      "PICEmail": "pic.teknik01@contoh.invalid",
+      "PICNote": "Pengajuan tahunan."
+    },
+    {
+      "ID": "XOL-002",
+      "Name": "XOL Aneka Treaty",
+      "Year": "2023",
+      "ExchangeRate": 15000,
+      "Type": "ANEKA",
+      "BusinessGroups": [
+        {
+          "ID": "30",
+          "Name": "Aneka"
+        },
+        {
+          "ID": "99",
+          "Name": ""
+        }
+      ],
+      "CommitteeStatus": "1",
+      "CommitteeNote": "",
+      "PIC": "PICTEKNIK02",
+      "PICEmail": "pic.teknik02@contoh.invalid",
+      "PICNote": ""
+    },
+    {
+      "ID": "XOL-003",
+      "Name": "XOL Engineering Treaty",
+      "Year": "2025",
+      "ExchangeRate": 16200,
+      "Type": "ENGINEERING",
+      "BusinessGroups": null,
+      "CommitteeStatus": "0",
+      "CommitteeNote": "",
+      "PIC": "PICTEKNIK01",
+      "PICEmail": "pic.teknik01@contoh.invalid",
+      "PICNote": "Menunggu persetujuan komite."
+    }
+  ],
+  "SampleSummaries2023": [
+    {
+      "LossDate": "05/11/2023",
+      "CauseOfLoss": "GEMPA BUMI",
+      "BusinessGroup": "",
+      "OutstandingValue": 1500000000,
+      "AcceptedValue": 1200000000
+    }
+  ],
+  "SampleSummaries2024": [
+    {
+      "LossDate": "12/03/2024",
+      "CauseOfLoss": "BANJIR",
+      "BusinessGroup": "",
+      "OutstandingValue": 4650000000,
+      "AcceptedValue": 3100000000
+    },
+    {
+      "LossDate": "28/07/2024",
+      "CauseOfLoss": "KEBAKARAN",
+      "BusinessGroup": "",
+      "OutstandingValue": 9300000000,
+      "AcceptedValue": 7750000000
+    }
+  ],
+  "SampleTreatyBanjir": [
+    {
+      "BusinessGroup": "Treaty Inward",
+      "BusinessGroupID": "",
+      "ClaimCount": 3,
+      "OutstandingValue": 48500,
+      "AcceptedValue": 31200,
+      "Source": "treaty",
+      "RateMissing": false
+    }
+  ],
+  "SampleTreatyKebakaran": [
+    {
+      "BusinessGroup": "Treaty Inward",
+      "BusinessGroupID": "",
+      "ClaimCount": 2,
+      "OutstandingValue": 0,
+      "AcceptedValue": 0,
+      "Source": "treaty",
+      "RateMissing": true
+    }
+  ]
+}

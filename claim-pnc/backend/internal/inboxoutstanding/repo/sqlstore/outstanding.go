@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/inboxoutstanding"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca POOLDATA.T_CLAIMLIST_ADMIN.
@@ -305,12 +306,7 @@ func searchPattern(search string) string {
 
 // nilIfEmpty mengubah string kosong menjadi NULL, supaya penyaring "NULL berarti semua"
 // pada SQL bekerja.
-func nilIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nilIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // scanClaim membaca satu baris.
 //

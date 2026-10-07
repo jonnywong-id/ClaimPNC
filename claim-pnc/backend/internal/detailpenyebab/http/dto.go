@@ -4,7 +4,10 @@
 // Domain tidak tahu apa pun tentang HTTP, dan paket ini tidak tahu apa pun tentang SQL.
 package detailpenyebabhttp
 
-import "claim-pnc/internal/detailpenyebab"
+import (
+	"claim-pnc/internal/detailpenyebab"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // # Kenapa nama field JSON berbahasa Indonesia
 //
@@ -221,10 +224,7 @@ func toBusinessDTO(list []detailpenyebab.Business) []BusinessDTO {
 }
 
 // ViolationDTO adalah satu isian yang tidak lolos pemeriksaan.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

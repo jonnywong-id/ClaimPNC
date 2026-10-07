@@ -105,6 +105,8 @@ import (
 	"context"
 	"errors"
 	"strings"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // DateLayout adalah bentuk tanggal yang dibawa modul ini ke lapisan transport.
@@ -356,13 +358,16 @@ func (c Caller) Clean() Caller {
 }
 
 // Pagination adalah permintaan satu halaman.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi.
 //
@@ -377,78 +382,17 @@ const (
 	MaxPageSize     = 100
 )
 
-// Normalize mengembalikan paginasi yang sudah dibetulkan ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari
-// parameter query yang mudah salah ketik, dan menolak seluruh permintaan karena
-// `halaman=0` akan membuat layar gagal tanpa alasan yang terbaca pengguna.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati sebelum halaman yang diminta.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
-
 // Page adalah satu halaman hasil beserta jumlah seluruh baris yang cocok.
-type Page struct {
-	Items []Row
-
-	// Total adalah jumlah SELURUH baris yang cocok di penyimpanan, bukan yang tampil.
-	Total int
-
-	// Pagination adalah paginasi yang BENAR-BENAR dipakai setelah dibetulkan.
-	Pagination Pagination
-}
-
-// TotalPages adalah jumlah halaman, minimal 1 supaya layar tidak pernah menggambar
-// "halaman 1 dari 0" saat hasilnya kosong.
-func (p Page) TotalPages() int {
-	size := p.Pagination.Normalize().Size
-	if p.Total <= 0 {
-		return 1
-	}
-	pages := p.Total / size
-	if p.Total%size != 0 {
-		pages++
-	}
-	return pages
-}
+//
+// Total adalah jumlah SELURUH baris yang cocok di penyimpanan, bukan yang tampil.
+// Pagination adalah paginasi yang BENAR-BENAR dipakai setelah dibetulkan.
+type Page = pagination.Page[Row, pageSizes]
 
 // Slice memotong satu halaman dari seluruh baris yang sudah di tangan.
 //
 // Ia dipakai penyimpanan MEMORI saja. Penyimpanan SQL memotongnya di basis data dengan
 // `OFFSET … FETCH NEXT`, dan perbedaan itu disengaja — lihat kepala berkas .sql-nya.
-func Slice(all []Row, page Pagination) Page {
-	clean := page.Normalize()
-
-	result := Page{Total: len(all), Pagination: clean, Items: []Row{}}
-
-	offset := clean.Offset()
-	if offset >= len(all) {
-		return result
-	}
-
-	end := offset + clean.Size
-	if end > len(all) {
-		end = len(all)
-	}
-
-	result.Items = all[offset:end]
-	return result
-}
+func Slice(all []Row, page Pagination) Page { return pagination.Slice(all, page) }
 
 // ErrRowNotFound berarti klaim yang dimintakan rinciannya tidak ada pada entitas ini.
 //

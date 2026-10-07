@@ -1,19 +1,15 @@
 package masterautoclaimhttp
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterautoclaim/usecase"
+	"claim-pnc/internal/platform/httpjson"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -23,61 +19,6 @@ import (
 // Batasnya ada supaya permintaan bertubuh raksasa ditolak sebelum memakan memori, bukan
 // setelah.
 const maxRequestBody = 64 << 10
-
-// Caller adalah pemanggil yang sudah terverifikasi sesinya.
-//
-// Satu field saja — lihat usecase.Actor untuk alasan kenapa yang dipakai LOGIN dan
-// bukan NIK.
-type Caller struct {
-	Login string
-}
-
-// CallerReader mengambil identitas pemanggil dari konteks permintaan.
-//
-// Ia jembatan SATU ARAH dari modul auth, disuntikkan dari cmd. Modul ini tidak
-// mengimpor lapisan transport modul auth — itulah yang membuat keduanya dapat berpindah
-// tanpa menyeret satu sama lain.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan master auto claim.
-type Handler struct {
-	service       *usecase.Service
-	caller        CallerReader
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Caller  CallerReader
-	Logger  *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul master auto claim.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("masterautoclaim/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("masterautoclaim/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("masterautoclaim/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
 
 // List menangani GET /master/auto-claim.
 //
@@ -104,12 +45,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	by, known := h.caller(r.Context())
+	by, known := h.Caller(r.Context())
 	if !known {
 		// Tidak mungkin terjadi di balik middleware Autentikasi. Dinyatakan supaya
 		// cacat perakitan gagal keras, bukan diam-diam menyajikan antrean komite
 		// kepada pemanggil tanpa identitas.
-		h.writeError(w, r, errors.New("masterautoclaim/http: identitas pemanggil tidak ada di konteks"))
+		h.WriteError(w, r, errors.New("masterautoclaim/http: identitas pemanggil tidak ada di konteks"))
 		return
 	}
 
@@ -119,13 +60,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	committeeOnly := r.URL.Query().Get("komite_saya") == "true"
 
-	list, err := h.service.List(r.Context(), active.Alias, status, committeeOnly, usecase.Actor{Login: by.Login})
+	list, err := h.Service.List(r.Context(), active.Alias, status, committeeOnly, usecase.Actor{Login: by.Login})
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
+	h.WriteResponse(w, r, http.StatusOK, ListResponse{
 		AutoClaim: toListDTO(list),
 		Status:    string(status),
 		Portal:    active.Alias,
@@ -148,13 +89,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, err := h.service.Get(r.Context(), active.Alias, initial)
+	found, err := h.Service.Get(r.Context(), active.Alias, initial)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{
 		AutoClaim: toDTO(found),
 		Portal:    active.Alias,
 	})
@@ -168,9 +109,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	by, known := h.caller(r.Context())
+	by, known := h.Caller(r.Context())
 	if !known {
-		h.writeError(w, r, errors.New("masterautoclaim/http: identitas pemanggil tidak ada di konteks"))
+		h.WriteError(w, r, errors.New("masterautoclaim/http: identitas pemanggil tidak ada di konteks"))
 		return
 	}
 
@@ -179,7 +120,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Create(r.Context(), active.Alias, masterautoclaim.Input{
+	saved, err := h.Service.Create(r.Context(), active.Alias, masterautoclaim.Input{
 		Initial:         request.Initial,
 		ReceiverName:    request.ReceiverName,
 		BankName:        request.BankName,
@@ -190,7 +131,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		ReceiverAddress: request.ReceiverAddress,
 		ClientID:        request.ClientID,
 		ClientName:      request.ClientName,
-	}, usecase.Actor{Login: by.Login}, h.logger)
+	}, usecase.Actor{Login: by.Login}, h.Logger)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -199,7 +140,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// 201, dan badannya memuat baris yang benar-benar tersimpan — termasuk KOMITE dan
 	// APPROVAL yang keduanya diterbitkan server, sehingga layar tidak punya cara lain
 	// mengetahuinya.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
+	h.WriteResponse(w, r, http.StatusCreated, SingleResponse{
 		AutoClaim: toDTO(saved),
 		Portal:    active.Alias,
 	})
@@ -218,9 +159,9 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	by, known := h.caller(r.Context())
+	by, known := h.Caller(r.Context())
 	if !known {
-		h.writeError(w, r, errors.New("masterautoclaim/http: identitas pemanggil tidak ada di konteks"))
+		h.WriteError(w, r, errors.New("masterautoclaim/http: identitas pemanggil tidak ada di konteks"))
 		return
 	}
 
@@ -239,7 +180,7 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 	// badan permintaan, dan lapisan aplikasi memeriksanya dengan CheckEditable yang
 	// memang tidak menuntut keduanya. Mengisinya dengan nilai palsu hanya supaya
 	// pemeriksaan lolos akan menyembunyikan aturan yang sebenarnya berlaku.
-	saved, err := h.service.Save(r.Context(), active.Alias, initial, masterautoclaim.Input{
+	saved, err := h.Service.Save(r.Context(), active.Alias, initial, masterautoclaim.Input{
 		BankName:        request.BankName,
 		AccountNumber:   request.AccountNumber,
 		MaxPercent:      request.MaxPercent,
@@ -255,7 +196,7 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{
 		AutoClaim: toDTO(saved),
 		Portal:    active.Alias,
 	})
@@ -269,13 +210,13 @@ func (h *Handler) BusinessSources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.SearchBusinessSources(r.Context(), active.Alias, r.URL.Query().Get("cari"))
+	list, err := h.Service.SearchBusinessSources(r.Context(), active.Alias, r.URL.Query().Get("cari"))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BusinessSourceListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BusinessSourceListResponse{
 		BusinessSource: toBusinessSourceListDTO(list),
 		Portal:         active.Alias,
 	})
@@ -289,13 +230,13 @@ func (h *Handler) Clients(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.SearchClients(r.Context(), active.Alias, r.URL.Query().Get("cari"))
+	list, err := h.Service.SearchClients(r.Context(), active.Alias, r.URL.Query().Get("cari"))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, ClientListResponse{
+	h.WriteResponse(w, r, http.StatusOK, ClientListResponse{
 		Client: toClientListDTO(list),
 		Portal: active.Alias,
 	})
@@ -309,13 +250,13 @@ func (h *Handler) Banks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.ListBanks(r.Context(), active.Alias)
+	list, err := h.Service.ListBanks(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BankListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BankListResponse{
 		Bank:   toBankListDTO(list),
 		Portal: active.Alias,
 	})
@@ -324,33 +265,10 @@ func (h *Handler) Banks(w http.ResponseWriter, r *http.Request) {
 // readRequest membaca badan JSON ke dalam target. Nilai balik false bila responsnya
 // sudah ditulis.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request, target any) bool {
-	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
-	decoder := json.NewDecoder(reader)
-	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam: salah ketik nama
-	// field akan terbaca sebagai "isian tidak dikirim" dan menyimpan nilai kosong tanpa
-	// satu pun tanda bahwa ada yang salah.
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(target); err != nil {
-		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan
-		// badan permintaan.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return false
-	}
-
-	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
-	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return false
-	}
-
-	return true
+	return httpjson.Decode(w, r, maxRequestBody, target, h.WriteResponse, ErrorResponse{
+		Code:    CodeMalformedRequest,
+		Message: "Permintaan tidak dapat dibaca.",
+	})
 }
 
 // Mount mendaftarkan rute modul master auto claim.

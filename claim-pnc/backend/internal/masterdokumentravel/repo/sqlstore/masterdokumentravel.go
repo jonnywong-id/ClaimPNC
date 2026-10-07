@@ -124,9 +124,9 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 // issueID membentuk DOCID persis seperti `DOCTRAVEL_CVG.prc` baris 12 dan 20: kode situs
 // disambung nomor urut lima digit.
 //
-// Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR
-// termasuk yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri
-// pada dialek Oracle.
+// Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR termasuk
+// yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri pada dialek
+// Oracle.
 func issueID(ctx context.Context, tx *sql.Tx) (string, error) {
 	var site string
 	if err := tx.QueryRowContext(ctx, getQuery("travel_document_site")).Scan(&site); err != nil {

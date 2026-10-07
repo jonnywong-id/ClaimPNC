@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterdominanfactor"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterdominanfactor"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah daftar contoh untuk pengembangan tanpa basis data.
 //
@@ -35,16 +45,5 @@ import "claim-pnc/internal/masterdominanfactor"
 // membuktikan pengurutan numerik benar-benar bekerja, dan bukan kebetulan karena semua
 // ID masih satu digit.
 func SampleList() []masterdominanfactor.DominantFactor {
-	return []masterdominanfactor.DominantFactor{
-		{ID: "1", Name: "Contoh Faktor A"},
-		{ID: "2", Name: "Contoh Faktor B"},
-		{ID: "3", Name: "Contoh Faktor C"},
-		{ID: "4", Name: "Contoh Faktor D"},
-		{ID: "5", Name: "Contoh Faktor E"},
-		{ID: "6", Name: "Contoh Faktor F"},
-		{ID: "7", Name: "Contoh Faktor G"},
-		{ID: "8", Name: "Contoh Faktor H"},
-		{ID: "9", Name: "Contoh Faktor I"},
-		{ID: "10", Name: "Contoh Faktor J"},
-	}
+	return sampledata.Must[[]masterdominanfactor.DominantFactor](sampleJSON, "SampleList")
 }

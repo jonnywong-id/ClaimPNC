@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxservicecenter"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca klaim portal rekanan dari SATU basis data entitas.
@@ -197,12 +198,7 @@ func searchPattern(keyword string) string {
 // Mengirimnya sebagai teks kosong akan membentuk `LIKE '%%'` — yang kebetulan juga cocok
 // dengan semuanya, tetapi memaksa basis data memindai setiap baris alih-alih melewati
 // predikatnya.
-func nilIfEmpty(value string) any {
-	if value == "" {
-		return nil
-	}
-	return value
-}
+func nilIfEmpty(value string) any { return sqlvalue.NilIfEmpty(value) }
 
 // scanner adalah bentuk minimal yang dibutuhkan scanClaim, sehingga ia dapat diuji tanpa
 // basis data.
@@ -257,10 +253,4 @@ func scanClaim(row scanner) (inboxservicecenter.ServiceClaim, error) {
 //
 // Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
 // diisi" saat ditampilkan.
-func timeOrNil(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	at := value.Time
-	return &at
-}
+func timeOrNil(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }

@@ -10,6 +10,7 @@ package inboxmanagerreceivepuclhttp
 import (
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxmanagerreceivepucl/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // WorkItemDTO adalah satu baris pekerjaan.
@@ -17,10 +18,10 @@ import (
 // Nama field JSON berbahasa Indonesia — ia KONTRAK yang dibaca frontend, dan termasuk
 // pengecualian `D-80`. Namanya mengikuti apa yang dibaca pengguna di kolom grid.
 //
-// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang digambar
-// dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian, karena isian
-// yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya menghilang
-// begitu saja.
+// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang
+// digambar dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian,
+// karena isian yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya
+// menghilang begitu saja.
 //
 // Di layar ini sifat itu bukan kehalusan: sembilan dari enam belas isian memang hanya
 // berlaku pada salah satu tab, dan satu — `jumlah_lembar_dokumen` — SELALU kosong karena
@@ -240,10 +241,7 @@ func toDocumentResponse(doc usecase.Document, portalAlias string) DocumentRespon
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {

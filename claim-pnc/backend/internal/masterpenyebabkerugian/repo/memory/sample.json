@@ -1,0 +1,54 @@
+{
+  "SampleList": [
+    {
+      "ID": "1001",
+      "LegacyID": "01",
+      "Description": "Contoh Golongan A"
+    },
+    {
+      "ID": "1002",
+      "LegacyID": "02",
+      "Description": "Contoh Golongan B"
+    },
+    {
+      "ID": "1003",
+      "LegacyID": "",
+      "Description": "Contoh Golongan C"
+    },
+    {
+      "ID": "1004",
+      "LegacyID": "",
+      "Description": "Contoh Golongan D"
+    },
+    {
+      "ID": "1005",
+      "LegacyID": "",
+      "Description": "Contoh Golongan E"
+    },
+    {
+      "ID": "1006",
+      "LegacyID": "",
+      "Description": "Contoh Golongan F"
+    },
+    {
+      "ID": "1007",
+      "LegacyID": "",
+      "Description": ""
+    },
+    {
+      "ID": "1008",
+      "LegacyID": "",
+      "Description": "Contoh Golongan H"
+    },
+    {
+      "ID": "1009",
+      "LegacyID": "",
+      "Description": "Contoh Golongan I"
+    },
+    {
+      "ID": "1010",
+      "LegacyID": "",
+      "Description": "Contoh Golongan J"
+    }
+  ]
+}

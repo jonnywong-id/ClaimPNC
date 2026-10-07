@@ -66,9 +66,9 @@ func (h *Handler) Branches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	branches, err := h.service.Branches(r.Context(), active.Alias, caller)
+	branches, err := h.Service.Branches(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (h *Handler) Branches(w http.ResponseWriter, r *http.Request) {
 		destinations = append(destinations, string(destination))
 	}
 
-	h.writeJSON(w, r, http.StatusOK, BranchListResponse{
+	h.WriteJSON(w, r, http.StatusOK, BranchListResponse{
 		Branches:     options,
 		Destinations: destinations,
 		Portal:       active.Alias,
@@ -112,7 +112,7 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&body); err != nil {
-		h.writeError(w, r, inboxkomunikasicabang.NewValidationError(
+		h.WriteError(w, r, inboxkomunikasicabang.NewValidationError(
 			[]inboxkomunikasicabang.Violation{{
 				Field:   inboxkomunikasicabang.FieldMessageBody,
 				Message: "Isi pesan tidak dapat dibaca dari permintaan.",
@@ -121,7 +121,7 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.service.SendMessage(
+	id, err := h.Service.SendMessage(
 		r.Context(), active.Alias, caller,
 		inboxkomunikasicabang.NewMessageInput{
 			Destination: body.Destination,
@@ -130,11 +130,11 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusCreated, ActionResponse{
+	h.WriteJSON(w, r, http.StatusCreated, ActionResponse{
 		ID: id,
 		Message: "Pesan terkirim. Ia muncul di tab \"Belum Dijawab\" milik " +
 			recipientLabel(body.Destination) + " sampai dibalas.",

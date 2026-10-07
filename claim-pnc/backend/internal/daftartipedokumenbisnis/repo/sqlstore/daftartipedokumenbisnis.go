@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/daftartipedokumenbisnis"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca dan menulis aturan dokumen pada satu basis data entitas.
@@ -347,12 +348,7 @@ func mandatoryCode(mandatory bool) string {
 // dengan `object_doc_id is null`. Menyimpan teks kosong akan membuat baris itu lolos dari
 // pemeriksaan NULL dan gagal pula pada pemeriksaan IN — dokumen yang seharusnya tidak
 // wajib menjadi tidak terbaca sama sekali.
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nullIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows, yang keduanya punya Scan berbentuk sama
 // tetapi tidak berbagi satu antarmuka di pustaka standar.

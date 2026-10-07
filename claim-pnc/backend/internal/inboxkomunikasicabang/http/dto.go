@@ -9,6 +9,7 @@ package inboxkomunikasicabanghttp
 import (
 	"claim-pnc/internal/inboxkomunikasicabang"
 	"claim-pnc/internal/inboxkomunikasicabang/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // ConversationDTO adalah satu baris pada grid.
@@ -16,10 +17,10 @@ import (
 // Nama field JSON berbahasa Indonesia — ia KONTRAK yang dibaca frontend, dan termasuk
 // pengecualian `D-80`. Namanya mengikuti apa yang dibaca pengguna di kolom grid.
 //
-// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang digambar
-// dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian, karena isian
-// yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya menghilang
-// begitu saja.
+// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang
+// digambar dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian,
+// karena isian yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya
+// menghilang begitu saja.
 //
 // Di layar ini sifat itu bukan kehalusan: `jawaban_terakhir` dan `penjawab` SELALU kosong
 // pada tab "Belum Dijawab" — penyaringnya `IS NULL` — dan justru karena itu kedua kolomnya
@@ -300,10 +301,7 @@ type ActionResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"isian"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.InputError
 
 // ErrorResponse adalah bentuk baku jawaban galat.
 type ErrorResponse struct {

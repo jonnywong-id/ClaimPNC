@@ -14,9 +14,9 @@ import (
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan saat mengekspor.
 //
-// Ia sengaja sama dengan batas halaman biasa: hasilnya DITULIS langsung ke jawaban
-// setiap kali satu potong selesai dibaca, sehingga memori tetap datar berapa pun
-// jumlah barisnya (`15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 aturan 6).
+// Ia sengaja sama dengan batas halaman biasa: hasilnya DITULIS langsung ke jawaban setiap
+// kali satu potong selesai dibaca, sehingga memori tetap datar berapa pun jumlah barisnya
+// (`15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 aturan 6).
 const exportChunk = inboxlaporanklaim.MaxPageSize
 
 // exportLimit membatasi banyaknya baris pada satu berkas ekspor.
@@ -57,13 +57,13 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// Potongan pertama diambil SEBELUM satu byte pun ditulis. Setelah header terkirim,
 	// galat tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa
 	// berkas CSV separuh jadi tanpa satu pun keterangan.
-	first, err := h.service.List(r.Context(), active.Alias, caller, query)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, query)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	now := h.service.Now()
+	now := h.Service.Now()
 	filename := fmt.Sprintf("laporan-klaim-%s-%s.csv", query.Category, now.Format("20060102"))
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
@@ -113,7 +113,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		query.Pagination.Page++
-		page, err = h.service.List(r.Context(), active.Alias, caller, query)
+		page, err = h.Service.List(r.Context(), active.Alias, caller, query)
 		if err != nil {
 			h.logExportFailure(r, err)
 			return
@@ -182,7 +182,7 @@ func exportTruncationNotice(total, limit int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor laporan klaim terputus",
+	logging.From(r.Context(), h.Logger).Error("ekspor laporan klaim terputus",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)

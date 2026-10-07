@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/inboxrcl"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca antrean RCL Dokter dari SATU basis data entitas.
@@ -121,12 +122,7 @@ func searchPattern(search string) string {
 
 // nilIfEmpty mengirim pola kosong sebagai NULL, supaya `:4 IS NULL` mematikan seluruh
 // saringan pencarian alih-alih memaksa `LIKE` memindai setiap baris.
-func nilIfEmpty(value string) any {
-	if value == "" {
-		return nil
-	}
-	return value
-}
+func nilIfEmpty(value string) any { return sqlvalue.NilIfEmpty(value) }
 
 // scanTask membaca satu baris hasil beserta jumlah seluruh baris yang menyertainya.
 //

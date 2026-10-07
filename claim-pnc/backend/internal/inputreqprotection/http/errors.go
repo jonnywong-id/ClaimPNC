@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/inputreqprotection"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien.
@@ -60,10 +60,10 @@ type FieldErrorResponse struct {
 //
 // Dipasok dari luar supaya seluruh modul menulis respons dengan cara yang sama, termasuk
 // header Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat menjadi respons HTTP.
 //
@@ -79,62 +79,49 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 // struktur basis data atau jejak tumpukan ke klien adalah celah keamanan
 // (`11-CROSSCUTTING` §1.2 butir 5).
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
-		var validation *inputreqprotection.ValidationError
-		if errors.As(err, &validation) {
-			details := make([]FieldErrorResponse, 0, len(validation.Errors))
-			for _, fe := range validation.Errors {
-				details = append(details, FieldErrorResponse{Field: fe.Field, Message: fe.Message})
-			}
+	return apierror.ContextWriter(logger, writeJSON, fallback, mapError, ErrorResponse{
+		Code:    CodeInternalError,
+		Message: "Terjadi kesalahan pada sistem.",
+	})
+}
 
-			writeJSON(w, r, http.StatusUnprocessableEntity, ErrorResponse{
-				Code:    CodeValidation,
-				Message: "Isian belum lengkap atau belum benar.",
-				Details: details,
-			})
-			return
+// mapError memetakan galat yang dikenali modul ini menjadi status dan badan respons; nilai
+// ketiga false bila galatnya bukan milik modul ini.
+func mapError(err error) (int, ErrorResponse, bool) {
+	var validation *inputreqprotection.ValidationError
+	if errors.As(err, &validation) {
+		details := make([]FieldErrorResponse, 0, len(validation.Errors))
+		for _, fe := range validation.Errors {
+			details = append(details, FieldErrorResponse{Field: fe.Field, Message: fe.Message})
 		}
 
-		switch {
-		case errors.Is(err, inputreqprotection.ErrNotFound):
-			writeJSON(w, r, http.StatusNotFound, ErrorResponse{
-				Code:    CodeNotFound,
-				Message: "Permintaan proteksi tidak ditemukan.",
-			})
-			return
-
-		case errors.Is(err, inputreqprotection.ErrLocked):
-			writeJSON(w, r, http.StatusConflict, ErrorResponse{
-				Code:    CodeConflict,
-				Message: "Permintaan proteksi sudah tertaut ke klaim dan tidak dapat diubah lagi.",
-			})
-			return
-
-		case errors.Is(err, inputreqprotection.ErrAccepted):
-			writeJSON(w, r, http.StatusConflict, ErrorResponse{
-				Code:    CodeConflict,
-				Message: "Permintaan proteksi sudah diakseptasi dan tidak dapat diubah lagi.",
-			})
-			return
-		}
-
-		if fallback != nil {
-			// Galat yang tidak dikenali modul ini diteruskan ke cadangan — di cmd diisi
-			// penulis galat auth, sehingga galat sesi yang lolos dari middleware tetap
-			// dijawab dengan kode yang sudah dikenal frontend.
-			fallback(w, r, err)
-			return
-		}
-
-		logging.From(r.Context(), logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-		writeJSON(w, r, http.StatusInternalServerError, ErrorResponse{
-			Code:    CodeInternalError,
-			Message: "Terjadi kesalahan pada sistem.",
-		})
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeValidation,
+			Message: "Isian belum lengkap atau belum benar.",
+			Details: details,
+		}, true
 	}
+
+	switch {
+	case errors.Is(err, inputreqprotection.ErrNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeNotFound,
+			Message: "Permintaan proteksi tidak ditemukan.",
+		}, true
+
+	case errors.Is(err, inputreqprotection.ErrLocked):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeConflict,
+			Message: "Permintaan proteksi sudah tertaut ke klaim dan tidak dapat diubah lagi.",
+		}, true
+
+	case errors.Is(err, inputreqprotection.ErrAccepted):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeConflict,
+			Message: "Permintaan proteksi sudah diakseptasi dan tidak dapat diubah lagi.",
+		}, true
+	}
+	return 0, ErrorResponse{}, false
 }
 
 // writeBadRequest menjawab permintaan yang cacat bentuknya.

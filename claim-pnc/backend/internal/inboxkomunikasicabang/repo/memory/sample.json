@@ -1,0 +1,237 @@
+{
+  "SampleHistory": [
+    {
+      "Sender": "pictekniks",
+      "Message": "Mohon konfirmasi kelengkapan dokumen survei untuk objek kedua.",
+      "ConversationID": "KOM-0001",
+      "Channel": "1",
+      "CreatedAt": "2026-09-01 08:15"
+    },
+    {
+      "Sender": "adminpnc",
+      "Message": "Dokumen sudah kami terima, mohon tunggu proses akseptasi.",
+      "ConversationID": "KOM-0002",
+      "Channel": "1001",
+      "CreatedAt": "2026-09-02 09:30"
+    },
+    {
+      "Sender": "pictekniks",
+      "Message": "Baik, kami tunggu kabarnya.",
+      "ConversationID": "KOM-0002",
+      "Channel": "CABANG",
+      "CreatedAt": "2026-09-03 10:05"
+    },
+    {
+      "Sender": "adminpnc",
+      "Message": "Mohon lengkapi berita acara kerugian.",
+      "ConversationID": "KOM-0004",
+      "Channel": "1001",
+      "CreatedAt": "2026-09-05 11:00"
+    },
+    {
+      "Sender": "pictekniks",
+      "Message": "Berita acara sudah diunggah hari ini.",
+      "ConversationID": "KOM-0004",
+      "Channel": "CABANG",
+      "CreatedAt": "2026-09-12 16:20"
+    },
+    {
+      "Sender": "pictekniks",
+      "Message": "Tertanggung menanyakan perkiraan tanggal pembayaran.",
+      "ConversationID": "KOM-0005",
+      "Channel": "1",
+      "CreatedAt": "2026-09-10 07:50"
+    },
+    {
+      "Sender": "adminpnc",
+      "Message": "Mohon kirim ulang rincian biaya perbaikan.",
+      "ConversationID": "KOM-0006",
+      "Channel": "1001",
+      "CreatedAt": "2026-09-06 13:15"
+    },
+    {
+      "Sender": "adminpnc",
+      "Message": "Rincian menyusul.",
+      "ConversationID": "KOM-0006",
+      "Channel": "CABANG",
+      "CreatedAt": "2026-09-07 08:00"
+    }
+  ],
+  "SampleRows": [
+    {
+      "ID": "KOM-0001",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1001",
+      "CommunicateTo": "1",
+      "Sender": "pictekniks",
+      "SenderName": "PIC Teknik Surabaya",
+      "Message": "Mohon konfirmasi kelengkapan dokumen survei untuk objek kedua.",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "0",
+      "CreatedAt": "2026-09-01 08:15",
+      "RepliedAt": "",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0002",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1",
+      "CommunicateTo": "1001",
+      "Sender": "adminpnc",
+      "SenderName": "Admin PNC Pusat",
+      "Message": "Dokumen sudah kami terima, mohon tunggu proses akseptasi.",
+      "ReplyMessage": "Baik, kami tunggu kabarnya.",
+      "ReplyFrom": "pictekniks",
+      "ReplyFromName": "PIC Teknik Surabaya",
+      "Status": "1",
+      "CreatedAt": "2026-09-02 09:30",
+      "RepliedAt": "2026-09-03 10:05",
+      "Attachments": [
+        {
+          "DocumentID": "DOC-11001",
+          "TypeName": "DOKUMEN KLAIM",
+          "DetailName": "Laporan Survei",
+          "Note": "Revisi kedua",
+          "UploadedAt": "2026-09-03 10:07"
+        },
+        {
+          "DocumentID": "DOC-11002",
+          "TypeName": "DOKUMEN KLAIM",
+          "DetailName": "Foto Objek",
+          "Note": "Menunggu kiriman cabang",
+          "UploadedAt": ""
+        }
+      ]
+    },
+    {
+      "ID": "KOM-0003",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1002",
+      "CommunicateTo": "1",
+      "Sender": "pictekniks",
+      "SenderName": "PIC Teknik Bandung",
+      "Message": "Apakah nilai estimasi sudah dapat dinaikkan ke komite?",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "0",
+      "CreatedAt": "2026-08-28 14:40",
+      "RepliedAt": "",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0004",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1",
+      "CommunicateTo": "1001",
+      "Sender": "adminpnc",
+      "SenderName": "Admin PNC Pusat",
+      "Message": "Mohon lengkapi berita acara kerugian.",
+      "ReplyMessage": "Berita acara sudah diunggah hari ini.",
+      "ReplyFrom": "pictekniks",
+      "ReplyFromName": "PIC Teknik Surabaya",
+      "Status": "1",
+      "CreatedAt": "2026-09-05 11:00",
+      "RepliedAt": "2026-09-12 16:20",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0005",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1001",
+      "CommunicateTo": "1",
+      "Sender": "pictekniks",
+      "SenderName": "PIC Teknik Surabaya",
+      "Message": "Tertanggung menanyakan perkiraan tanggal pembayaran.",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "0",
+      "CreatedAt": "2026-09-10 07:50",
+      "RepliedAt": "",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0006",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1",
+      "CommunicateTo": "1001",
+      "Sender": "adminpnc",
+      "SenderName": "Admin PNC Pusat",
+      "Message": "Mohon kirim ulang rincian biaya perbaikan.",
+      "ReplyMessage": "Rincian menyusul.",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "1",
+      "CreatedAt": "2026-09-06 13:15",
+      "RepliedAt": "2026-09-07 08:00",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0007",
+      "CaseID": "CABANG SELESAI",
+      "CommunicateFrom": "1001",
+      "CommunicateTo": "1",
+      "Sender": "pictekniks",
+      "SenderName": "PIC Teknik Surabaya",
+      "Message": "Sudah selesai, terima kasih.",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "2",
+      "CreatedAt": "2026-08-20 10:00",
+      "RepliedAt": "",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0008",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1001",
+      "CommunicateTo": "1",
+      "Sender": "",
+      "SenderName": "",
+      "Message": "Pesan tanpa pengirim tercatat.",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "0",
+      "CreatedAt": "2026-09-04 09:00",
+      "RepliedAt": "",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0009",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1001",
+      "CommunicateTo": "1",
+      "Sender": "pictekniks",
+      "SenderName": "PIC Teknik Surabaya",
+      "Message": "",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "0",
+      "CreatedAt": "2026-09-04 09:30",
+      "RepliedAt": "",
+      "Attachments": null
+    },
+    {
+      "ID": "KOM-0010",
+      "CaseID": "CABANG",
+      "CommunicateFrom": "1003",
+      "CommunicateTo": "1004",
+      "Sender": "petugaslain",
+      "SenderName": "Petugas Cabang Lain",
+      "Message": "Percakapan milik cabang lain.",
+      "ReplyMessage": "",
+      "ReplyFrom": "",
+      "ReplyFromName": "",
+      "Status": "0",
+      "CreatedAt": "2026-09-08 08:00",
+      "RepliedAt": "",
+      "Attachments": null
+    }
+  ]
+}

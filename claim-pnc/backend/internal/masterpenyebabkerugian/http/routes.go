@@ -3,6 +3,7 @@ package masterpenyebabkerugianhttp
 import (
 	"github.com/go-chi/chi/v5"
 
+	"claim-pnc/internal/platform/crudhttp"
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -43,21 +44,8 @@ import (
 // # Portal entitas
 //
 // Middleware ActivePortal dipasang DI SINI, bukan di cmd, karena SELURUH rute modul ini
-// menyentuh basis data entitas. Permintaan tanpa portal ditolak, TIDAK PERNAH dialihkan ke
-// portal utama sebagai cadangan (`R-20`, `TKT-F6-002`).
+// menyentuh basis data entitas. Permintaan tanpa portal ditolak, TIDAK PERNAH dialihkan
+// ke portal utama sebagai cadangan (`R-20`, `TKT-F6-002`).
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Route("/master/penyebab-kerugian", func(master chi.Router) {
-			master.Get("/", h.List)
-			master.Post("/", h.Create)
-			master.Get("/{id}", h.Get)
-
-			// PUT, bukan PATCH: seluruh isi yang boleh diubah — satu field, deskripsi —
-			// dikirim setiap kali, sehingga permintaannya menggantikan dan idempoten.
-			// Mengirim permintaan yang sama dua kali menghasilkan keadaan akhir yang sama.
-			master.Put("/{id}", h.Update)
-		})
-	})
+	crudhttp.Mount(r, portalDeps, "/master/penyebab-kerugian", "id", h)
 }

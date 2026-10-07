@@ -1,73 +1,17 @@
 package inboxbandinghargasalvagehttp
 
 import (
-	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxbandinghargasalvage"
-	"claim-pnc/internal/inboxbandinghargasalvage/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Itulah yang dicocokkan ke kolom `NAMAKOMITE` pada `T_CLAIM_CHEKER_SALVAGE`. Memakai
-	// NIK di sini akan membuat kedua tab tampak kosong bagi setiap pengguna.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox Banding Harga Salvage.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan galat
-	// portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Banding Harga Salvage.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-banding-harga-salvage/tab.
 //
@@ -76,11 +20,11 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-banding-harga-salvage.
@@ -92,7 +36,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -106,11 +50,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Summary menangani GET /api/inbox-banding-harga-salvage/ringkas.
@@ -124,13 +68,13 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := h.service.Summary(r.Context(), active.Alias, caller)
+	summary, err := h.Service.Summary(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK,
+	h.WriteJSON(w, r, http.StatusOK,
 		toSummaryResponse(summary, inboxbandinghargasalvage.ReviewerFor(caller), active.Alias))
 }
 
@@ -143,13 +87,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxbandinghargasalvage.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxbandinghargasalvage.ErrCallerUnknown)
+		h.WriteError(w, r, inboxbandinghargasalvage.ErrCallerUnknown)
 		return portal.Portal{}, inboxbandinghargasalvage.Caller{}, false
 	}
 
@@ -158,10 +102,10 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 
 // readCaller membaca identitas pemanggil lewat jembatan yang disuntikkan cmd.
 func (h *Handler) readCaller(r *http.Request) (inboxbandinghargasalvage.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxbandinghargasalvage.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || caller.Login == "" {
 		return inboxbandinghargasalvage.Caller{}, false
 	}
@@ -174,13 +118,7 @@ func (h *Handler) readCaller(r *http.Request) (inboxbandinghargasalvage.Caller, 
 // menjadi nilai bawaan. Menolak seluruh permintaan karena `halaman=abc` akan membuat layar
 // gagal tanpa alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah
 // jawaban yang selalu masuk akal.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegative(raw) }
 
 // Decisions menangani GET /api/inbox-banding-harga-salvage/riwayat/{noKlaim}.
 //
@@ -196,14 +134,14 @@ func (h *Handler) Decisions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decided, err := h.service.Decisions(
+	decided, err := h.Service.Decisions(
 		r.Context(), active.Alias, caller, chi.URLParam(r, "noKlaim"))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDecisionsResponse(decided, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDecisionsResponse(decided, active.Alias))
 }
 
 // Decide menangani POST /api/inbox-banding-harga-salvage/keputusan.
@@ -222,14 +160,14 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		// 400, bukan 422: badan yang tidak dapat diurai adalah cacat pemanggil, bukan
 		// isian pengguna yang melanggar aturan (`10-API-STRATEGY.md` §5).
-		h.writeJSON(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteJSON(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeBadRequest,
 			Message: "Permintaan tidak dapat dibaca.",
 		})
 		return
 	}
 
-	result, err := h.service.Decide(
+	result, err := h.Service.Decide(
 		r.Context(), active.Alias, caller,
 		inboxbandinghargasalvage.DecisionInput{
 			DetailObject: body.DetailObject,
@@ -240,11 +178,11 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK,
+	h.WriteJSON(w, r, http.StatusOK,
 		toDecisionResultResponse(result, body.Approve, active.Alias))
 }
 
@@ -260,22 +198,22 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	documents, err := h.service.Documents(
+	documents, err := h.Service.Documents(
 		r.Context(), active.Alias, caller,
 		r.URL.Query().Get("detail_object"),
 		r.URL.Query().Get("id_salvage"),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDocumentsResponse(documents, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDocumentsResponse(documents, active.Alias))
 }
 
 // DocumentContent menangani GET /api/inbox-banding-harga-salvage/dokumen/{dokumen}.
 //
-// Ia menyerahkan ISI berkas, bukan JSON — karena itu ia tidak memakai h.writeJSON, dan
+// Ia menyerahkan ISI berkas, bukan JSON — karena itu ia tidak memakai h.WriteJSON, dan
 // header-nya disusun di sini.
 func (h *Handler) DocumentContent(w http.ResponseWriter, r *http.Request) {
 	active, caller, ready := h.prepare(w, r)
@@ -283,14 +221,14 @@ func (h *Handler) DocumentContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	document, err := h.service.DocumentContent(
+	document, err := h.Service.DocumentContent(
 		r.Context(), active.Alias, caller,
 		r.URL.Query().Get("detail_object"),
 		r.URL.Query().Get("id_salvage"),
 		chi.URLParam(r, "dokumen"),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 

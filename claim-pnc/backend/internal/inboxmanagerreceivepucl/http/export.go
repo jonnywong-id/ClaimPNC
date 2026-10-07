@@ -71,9 +71,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// galat tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa
 	// berkas separuh jadi tanpa satu pun keterangan. Tab yang tidak dikenal dan sesi yang
 	// tidak lengkap karena itu tetap dijawab sebagai galat yang terbaca.
-	first, err := h.service.List(r.Context(), active.Alias, caller, filter, page)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, filter, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -129,7 +129,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		page.Page++
-		current, err = h.service.List(r.Context(), active.Alias, caller, filter, page)
+		current, err = h.Service.List(r.Context(), active.Alias, caller, filter, page)
 		if err != nil {
 			h.logExportFailure(r, err)
 			return
@@ -249,7 +249,7 @@ func exportTruncationNotice(width, total int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor inbox manager receive/PUCL terputus",
+	logging.From(r.Context(), h.Logger).Error("ekspor inbox manager receive/PUCL terputus",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)

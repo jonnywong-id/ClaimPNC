@@ -44,13 +44,13 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail, err := h.service.Detail(r.Context(), active.Alias, caller, claimKeyOf(r))
+	detail, err := h.Service.Detail(r.Context(), active.Alias, caller, claimKeyOf(r))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias))
 }
 
 // Documents menangani GET /api/inbox-pla-dla/klaim/{kunci}/dokumen.
@@ -67,20 +67,20 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 
 	kind, known := inboxpladla.ParseAdviceKind(query.Get("jenis"))
 	if !known {
-		h.writeError(w, r, inboxpladla.ErrAdviceKindUnknown)
+		h.WriteError(w, r, inboxpladla.ErrAdviceKindUnknown)
 		return
 	}
 
-	rows, err := h.service.Documents(
+	rows, err := h.Service.Documents(
 		r.Context(), active.Alias, caller, claimKeyOf(r),
 		strings.TrimSpace(query.Get("nomor")), kind,
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, DocumentsResponse{
+	h.WriteJSON(w, r, http.StatusOK, DocumentsResponse{
 		Rows:    toDocumentDTOs(rows),
 		Columns: toColumnDTOs(inboxpladla.DocumentColumns()),
 		Portal:  active.Alias,
@@ -101,12 +101,12 @@ func (h *Handler) DocumentContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	document, err := h.service.DocumentContent(
+	document, err := h.Service.DocumentContent(
 		r.Context(), active.Alias, caller, claimKeyOf(r),
 		strings.TrimSpace(chi.URLParam(r, "dokumen")),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -134,14 +134,14 @@ func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 	if err := decoder.Decode(&body); err != nil {
 		// Badan yang tidak terbaca adalah kesalahan BENTUK, bukan kesalahan isi —
 		// sehingga ia 400 lewat ValidationError, bukan 422. Lihat mapError.
-		h.writeError(w, r, inboxpladla.NewValidationError([]inboxpladla.Violation{{
+		h.WriteError(w, r, inboxpladla.NewValidationError([]inboxpladla.Violation{{
 			Field:   inboxpladla.FieldReply,
 			Message: "Badan permintaan tidak terbaca sebagai JSON.",
 		}}))
 		return
 	}
 
-	err := h.service.Reply(
+	err := h.Service.Reply(
 		r.Context(), active.Alias, caller, claimKeyOf(r),
 		inboxpladla.ReplyInput{
 			ConversationID: body.ConversationID,
@@ -150,11 +150,11 @@ func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 		time.Now(),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, ReplyResponse{
+	h.WriteJSON(w, r, http.StatusOK, ReplyResponse{
 		Message: "Balasan Anda tersimpan dan sudah terlihat oleh petugas Asuransi " +
 			"Sinar Mas.",
 		Portal: active.Alias,

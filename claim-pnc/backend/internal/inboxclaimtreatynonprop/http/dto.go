@@ -10,6 +10,7 @@ package inboxclaimtreatynonprophttp
 import (
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatynonprop/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // WorkItemDTO adalah satu baris pekerjaan.
@@ -18,10 +19,10 @@ import (
 // pengecualian `D-80`. Namanya mengikuti apa yang dibaca pengguna di kolom grid, bukan nama
 // properti Pega: `ceding_co`, bukan `cari16`.
 //
-// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang digambar
-// dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian, karena isian
-// yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya menghilang
-// begitu saja.
+// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang
+// digambar dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian,
+// karena isian yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya
+// menghilang begitu saja.
 type WorkItemDTO struct {
 	// Reference adalah kunci teknis yang dibutuhkan tombol rincian klaim.
 	//
@@ -145,10 +146,7 @@ type ListResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {

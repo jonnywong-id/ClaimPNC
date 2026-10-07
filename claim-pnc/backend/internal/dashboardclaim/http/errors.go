@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/dashboardclaim"
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/logging"
 )
 
@@ -36,16 +37,13 @@ type ErrorResponse struct {
 // — salah satu dari tiga bentuk yang hidup berdampingan hari ini dan yang sudah ditampung
 // `APIError.violations()` di frontend. Menyeragamkan ketiganya adalah `TKT-F1-004`, yang
 // masih terhalang.
-type violationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type violationDTO = apierror.FieldError
 
 // JSONWriter menuliskan badan respons.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat menjadi respons HTTP.
 //
@@ -56,10 +54,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		var validation *dashboardclaim.ValidationError
 		if errors.As(err, &validation) {
-			details := make([]violationDTO, 0, len(validation.Violations))
-			for _, v := range validation.Violations {
-				details = append(details, violationDTO{Field: v.Field, Message: v.Message})
-			}
+			details := apierror.FieldErrors(validation.Violations)
 			// 422, bukan 400: permintaannya benar bentuknya tetapi melanggar aturan
 			// (`10-API-STRATEGY.md` §5). Frontend menanganinya berbeda.
 			writeJSON(w, r, http.StatusUnprocessableEntity, ErrorResponse{

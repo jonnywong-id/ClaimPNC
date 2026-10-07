@@ -2,7 +2,8 @@ package monitoringslinkojk
 
 import (
 	"errors"
-	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Kegagalan yang wajib dapat dibedakan pemanggil tanpa membaca teks pesan.
@@ -65,10 +66,7 @@ const (
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus.
 //
@@ -81,11 +79,7 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	messages := make([]string, 0, len(e.Violations))
-	for _, v := range e.Violations {
-		messages = append(messages, v.Field+": "+v.Message)
-	}
-	return "monitoringslinkojk: validasi gagal — " + strings.Join(messages, "; ")
+	return validation.Format(e.Violations, "monitoringslinkojk: validasi gagal — ", ": ", "; ", "")
 }
 
 // NewValidationError membentuk galat validasi, atau nil bila tidak ada pelanggaran.

@@ -12,6 +12,10 @@
 // nama internal (`D-80`). Mengubahnya adalah perubahan yang merusak klien.
 package komitehttp
 
+import (
+	"claim-pnc/internal/platform/apierror"
+)
+
 // ThresholdDTO adalah satu baris master ambang komite yang dikirim ke peramban.
 //
 // Tipe ini sengaja TERPISAH dari komite.Threshold. Memakai tipe modul langsung sebagai
@@ -194,10 +198,7 @@ type TieringResponse struct {
 //
 // Field dikirim supaya layar dapat menandai kolom yang salah, bukan sekadar menampilkan
 // satu pesan di atas form.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

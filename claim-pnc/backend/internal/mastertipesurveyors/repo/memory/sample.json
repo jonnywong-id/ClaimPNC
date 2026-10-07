@@ -1,0 +1,24 @@
+{
+  "SampleList": [
+    {
+      "Code": "1001",
+      "Description": "INTERNAL SURVEYOR",
+      "LegacyCode": ""
+    },
+    {
+      "Code": "1002",
+      "Description": "LOSS ADJUSTER",
+      "LegacyCode": ""
+    },
+    {
+      "Code": "1003",
+      "Description": "EXPERT",
+      "LegacyCode": ""
+    },
+    {
+      "Code": "1004",
+      "Description": "SURVEY AGENT",
+      "LegacyCode": ""
+    }
+  ]
+}

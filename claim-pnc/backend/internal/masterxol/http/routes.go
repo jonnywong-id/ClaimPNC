@@ -37,10 +37,10 @@ import (
 //
 // # Kewenangan
 //
-// Rutenya TERLINDUNGI sesi dan portal, tetapi BELUM diperiksa perannya. Penegakan
-// "apakah peran pemanggil memiliki menu Master Data" adalah TKT-F3-005, yang bergantung
-// pada tabel peran TKT-F3-004 — dan tabel itu dapat dibangun tetapi belum dapat diisi,
-// karena penugasan operator ke peran tidak ada di basis data maupun di export
+// Rutenya TERLINDUNGI sesi dan portal, tetapi BELUM diperiksa perannya. Penegakan "apakah
+// peran pemanggil memiliki menu Master Data" adalah TKT-F3-005, yang bergantung pada tabel
+// peran TKT-F3-004 — dan tabel itu dapat dibangun tetapi belum dapat diisi, karena
+// penugasan operator ke peran tidak ada di basis data maupun di export
 // (`docs/Steering/11-SECURITY.md` §3.1). Keadaan ini sama dengan seluruh rute lain yang
 // sudah ada hari ini, dan dicatat terbuka di docs/keputusan-implementasi.md.
 //

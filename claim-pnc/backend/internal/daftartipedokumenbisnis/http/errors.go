@@ -26,13 +26,6 @@ const (
 	CodeMalformedRequest = "permintaan_cacat"
 )
 
-// JSONWriter menulis jawaban berhasil. Disuntikkan cmd supaya bentuk amplopnya seragam di
-// seluruh aplikasi tanpa modul saling mengimpor.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
-
-// ErrorWriter menulis galat yang BUKAN milik modul ini — terutama galat portal.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
-
 // writeModuleError menulis galat, memetakannya lebih dulu bila ia milik modul ini.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
 	status, body, known := mapError(err)

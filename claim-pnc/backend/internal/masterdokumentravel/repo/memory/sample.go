@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterdokumentravel"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterdokumentravel"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi awal untuk pengembangan dan pengujian tanpa basis data.
 //
@@ -22,12 +32,5 @@ import "claim-pnc/internal/masterdokumentravel"
 // digit — supaya penambahan pertama pada pengembangan melanjutkan deret yang masuk akal
 // dan bentuk yang tampil di layar sama dengan bentuk yang kelak datang dari Oracle.
 func SampleList() []masterdokumentravel.TravelDocument {
-	return []masterdokumentravel.TravelDocument{
-		{ID: "100001", Name: "Paspor"},
-		{ID: "100002", Name: "Tiket Perjalanan"},
-		{ID: "100003", Name: "Boarding Pass"},
-		{ID: "100004", Name: "Laporan Kehilangan Bagasi"},
-		{ID: "100005", Name: "Kuitansi Biaya Pengobatan"},
-		{ID: "100006", Name: "Surat Keterangan Maskapai"},
-	}
+	return sampledata.Must[[]masterdokumentravel.TravelDocument](sampleJSON, "SampleList")
 }

@@ -73,6 +73,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // SourceTable adalah satu-satunya tabel yang dibaca modul ini.
@@ -184,13 +186,16 @@ type DetailPage struct {
 }
 
 // Pagination adalah permintaan satu halaman.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi.
 //
@@ -203,31 +208,6 @@ const (
 	MaxPageSize     = 100
 	PegaMaxRecords  = 500
 )
-
-// Normalize membetulkan paginasi ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari
-// parameter query yang mudah salah ketik, dan menolak seluruh permintaan karena
-// `halaman=0` membuat layar gagal tanpa alasan yang terbaca pengguna.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati untuk mencapai halaman ini.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
 
 // Repo adalah seam penyimpanan modul ini.
 //

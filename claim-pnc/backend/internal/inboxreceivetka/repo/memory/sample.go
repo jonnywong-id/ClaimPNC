@@ -1,10 +1,17 @@
 package memory
 
 import (
+	_ "embed"
 	"time"
 
 	"claim-pnc/internal/inboxreceivetka"
+	"claim-pnc/internal/platform/sampledata"
 )
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleTasks mengembalikan daftar contoh untuk pengembangan tanpa Oracle.
 //
@@ -50,76 +57,18 @@ import (
 //
 // Tidak ada baris yang tanggal kelengkapan dokumennya terisi dan tidak ada yang berstatus
 // selesai, karena kedua penyaring itu hidup di dalam kueri SQL — bukan di dalam Filter.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Polisnya tidak ditemukan di tabel polis, sehingga nama pesertanya kosong.
+// Barisnya tetap dapat dikerjakan — yang hilang hanya satu sel.
+// Date Of Loss kosong.
+// Tanggal registrasi kosong — kolom sumbernya VARCHAR2, dan bentuk yang tidak
+// dikenali diurai menjadi nil alih-alih tanggal karangan.
+// Klaim YATIM: pekerjaannya ada di tabel kerja Pega, klaimnya tidak ada di
+// tabel bisnis. Ia TAMPIL, dan Submit atasnya ditolak.
 func SampleTasks() []inboxreceivetka.Task {
-	return []inboxreceivetka.Task{
-		{
-			Reference:       "ASM-FW-GCNMFW-WORK PNC-1729",
-			ClaimKey:        "ASM-FW-GCNMFW-WORK PNC-1729",
-			ClaimNumber:     "PNC-1729",
-			PolicyNumber:    "12200007000001",
-			InsuredName:     "PT Contoh Karya Mandiri",
-			ParticipantName: "PT Contoh Karya Mandiri",
-			DateOfLoss:      at("2024-03-19T00:00:00Z"),
-			RegisteredOn:    at("2024-03-19T00:00:00Z"),
-		},
-		{
-			Reference:       "ASM-FW-GCNMFW-WORK PNC-1546",
-			ClaimKey:        "ASM-FW-GCNMFW-WORK PNC-1546",
-			ClaimNumber:     "PNC-1546",
-			PolicyNumber:    "12000000000002",
-			InsuredName:     "PT Contoh Sejahtera Abadi",
-			ParticipantName: "Peserta Contoh Satu",
-			DateOfLoss:      at("2021-08-16T00:00:00Z"),
-			RegisteredOn:    at("2023-05-10T00:00:00Z"),
-		},
-		{
-			// Polisnya tidak ditemukan di tabel polis, sehingga nama pesertanya kosong.
-			// Barisnya tetap dapat dikerjakan — yang hilang hanya satu sel.
-			Reference:       "ASM-FW-GCNMFW-WORK PNC-1811",
-			ClaimKey:        "ASM-FW-GCNMFW-WORK PNC-1811",
-			ClaimNumber:     "PNC-1811",
-			PolicyNumber:    "12200007000003",
-			InsuredName:     "PT Contoh Bahari Nusantara",
-			ParticipantName: "",
-			DateOfLoss:      at("2025-02-11T00:00:00Z"),
-			RegisteredOn:    at("2025-02-20T00:00:00Z"),
-		},
-		{
-			// Date Of Loss kosong.
-			Reference:       "ASM-FW-GCNMFW-WORK PNC-1902",
-			ClaimKey:        "ASM-FW-GCNMFW-WORK PNC-1902",
-			ClaimNumber:     "PNC-1902",
-			PolicyNumber:    "12200007000004",
-			InsuredName:     "PT Contoh Rekayasa Utama",
-			ParticipantName: "Peserta Contoh Dua",
-			DateOfLoss:      nil,
-			RegisteredOn:    at("2026-06-01T00:00:00Z"),
-		},
-		{
-			// Tanggal registrasi kosong — kolom sumbernya VARCHAR2, dan bentuk yang tidak
-			// dikenali diurai menjadi nil alih-alih tanggal karangan.
-			Reference:       "ASM-FW-GCNMFW-WORK PNC-1955",
-			ClaimKey:        "ASM-FW-GCNMFW-WORK PNC-1955",
-			ClaimNumber:     "PNC-1955",
-			PolicyNumber:    "12200007000005",
-			InsuredName:     "PT Contoh Adikarya Persada",
-			ParticipantName: "Peserta Contoh Tiga",
-			DateOfLoss:      at("2026-07-04T00:00:00Z"),
-			RegisteredOn:    nil,
-		},
-		{
-			// Klaim YATIM: pekerjaannya ada di tabel kerja Pega, klaimnya tidak ada di
-			// tabel bisnis. Ia TAMPIL, dan Submit atasnya ditolak.
-			Reference:       "ASM-FW-GCNMFW-WORK PNC-1977",
-			ClaimKey:        "",
-			ClaimNumber:     "PNC-1977",
-			PolicyNumber:    "12200007000006",
-			InsuredName:     "PT Contoh Lintas Benua",
-			ParticipantName: "",
-			DateOfLoss:      at("2026-08-30T00:00:00Z"),
-			RegisteredOn:    at("2026-09-01T00:00:00Z"),
-		},
-	}
+	return sampledata.Must[[]inboxreceivetka.Task](sampleJSON, "SampleTasks")
 }
 
 // at mengurai waktu contoh, dan panik bila penulisannya salah.

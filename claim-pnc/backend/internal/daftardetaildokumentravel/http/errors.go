@@ -2,11 +2,10 @@ package daftardetaildokumentravelhttp
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/daftardetaildokumentravel"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini.
@@ -34,30 +33,14 @@ const (
 // JSONWriter menuliskan badan respons yang berhasil. Modul ini tidak membawa penulisnya
 // sendiri supaya seluruh modul menulis respons dengan cara yang sama, termasuk header
 // Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	status, body, known := mapError(err)
-	if !known {
-		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan
-		// jaringan, galat portal, cacat pemrograman — diserahkan ke penulis bersama,
-		// yang menjawab dengan kode yang sudah dikenal frontend dan menaruh rinciannya
-		// di log saja. Rincian galat internal tidak pernah dikirim ke peramban.
-		h.writeError(w, r, err)
-		return
-	}
-
-	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-	}
-	h.writeResponse(w, r, status, body)
+	apierror.Write(w, r, err, mapError, h.Logger, h.WriteResponse, h.WriteError)
 }
 
 // mapError memetakan galat domain menjadi status dan badan respons.

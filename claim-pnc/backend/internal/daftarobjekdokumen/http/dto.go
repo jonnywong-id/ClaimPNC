@@ -8,7 +8,10 @@
 // kembali. **Tidak ada aturan modul di sini.**
 package daftarobjekdokumenhttp
 
-import "claim-pnc/internal/daftarobjekdokumen"
+import (
+	"claim-pnc/internal/daftarobjekdokumen"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // DocumentObjectDTO adalah bentuk satu baris objek dokumen yang dikirim ke peramban.
 //
@@ -123,10 +126,7 @@ type ErrorResponse struct {
 }
 
 // ViolationDTO adalah satu isian yang tidak lolos pemeriksaan.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(row daftarobjekdokumen.DocumentObject) DocumentObjectDTO {

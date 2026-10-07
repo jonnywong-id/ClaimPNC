@@ -10,6 +10,7 @@ import (
 
 	"claim-pnc/internal/casestudyclaim"
 	"claim-pnc/internal/platform/money"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca POOLDATA.PEGA_DASHBOARDPNC, T_CLAIM_PNC, BUSINESS, dan T_CLAIM_ADJUSTMENT.
@@ -193,12 +194,7 @@ func isValueTooLarge(err error) bool {
 
 // nilIfEmpty mengubah teks kosong menjadi NULL, supaya penyaring "NULL berarti semua" pada
 // SQL bekerja.
-func nilIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nilIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // scanRow membaca satu baris hasil.
 //

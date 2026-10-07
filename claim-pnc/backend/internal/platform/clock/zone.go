@@ -57,3 +57,19 @@ func AddDays(t time.Time, n int) time.Time {
 func TwoDigitYearWIB(t time.Time) int {
 	return t.In(ZoneWIB).Year() % 100
 }
+
+// CalendarDays menghitung hari kalender dari start sampai end menurut zona location — bukan
+// kelipatan 24 jam: klaim yang didaftarkan pukul 23.00 sudah berumur satu hari pada pukul
+// 01.00 esoknya. Hasil negatif (start di masa depan, yakni data yang cacat) menjadi nol;
+// yang memperbaikinya adalah datanya, bukan layar.
+func CalendarDays(start, end time.Time, location *time.Location) int {
+	from := start.In(location)
+	to := end.In(location)
+	startDay := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, location)
+	endDay := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, location)
+	days := int(endDay.Sub(startDay).Hours() / 24)
+	if days < 0 {
+		return 0
+	}
+	return days
+}

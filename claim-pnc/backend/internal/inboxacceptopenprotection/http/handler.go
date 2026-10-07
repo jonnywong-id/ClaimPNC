@@ -4,17 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxacceptopenprotection/usecase"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -26,60 +23,8 @@ type Service interface {
 	Decide(ctx context.Context, cmd usecase.DecideCommand) (inboxacceptopenprotection.Protection, error)
 }
 
-// Caller adalah identitas pengguna yang sedang masuk, sejauh yang dibutuhkan modul ini.
-type Caller struct {
-	Login string
-}
-
 // GetCaller membaca identitas pengguna dari konteks permintaan.
 type GetCaller func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan Inbox Accept Open Protection.
-type Handler struct {
-	service     Service
-	getCaller   GetCaller
-	logger      *slog.Logger
-	writeJSON   JSONWriter
-	writeErrorF ErrorWriter
-	location    *time.Location
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service   Service
-	GetCaller GetCaller
-	Logger    *slog.Logger
-
-	WriteJSON           JSONWriter
-	FallbackErrorWriter ErrorWriter
-
-	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
-	Location *time.Location
-}
-
-// NewHandler membentuk handler modul Inbox Accept Open Protection.
-func NewHandler(o Options) *Handler {
-	location := o.Location
-	if location == nil {
-		location = jakarta()
-	}
-
-	return &Handler{
-		service:     o.Service,
-		getCaller:   o.GetCaller,
-		logger:      o.Logger,
-		writeJSON:   o.WriteJSON,
-		writeErrorF: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-		location:    location,
-	}
-}
-
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	return time.FixedZone("WIB", 7*60*60)
-}
 
 // List melayani antrean akseptasi.
 //
@@ -107,7 +52,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := h.service.List(r.Context(), usecase.ListQuery{
+	page, err := h.Service.List(r.Context(), usecase.ListQuery{
 		PortalAlias: alias,
 		Queue:       queue,
 		Login:       caller.Login,
@@ -116,16 +61,16 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		Offset:      offset,
 	})
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
 	rows := make([]protectionDTO, 0, len(page.Protections))
 	for _, p := range page.Protections {
-		rows = append(rows, toProtectionDTO(p, h.location))
+		rows = append(rows, toProtectionDTO(p, h.Location))
 	}
 
-	h.writeJSON(w, r, http.StatusOK, listResponse{
+	h.WriteJSON(w, r, http.StatusOK, listResponse{
 		Proteksi: rows,
 		Total:    page.Total,
 		Antrean:  string(queue),
@@ -136,7 +81,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	number := strings.TrimSpace(chi.URLParam(r, "nomor"))
 	if number == "" {
-		writeBadRequest(h.writeJSON, w, r, "Nomor proteksi wajib disebutkan.")
+		writeBadRequest(h.WriteJSON, w, r, "Nomor proteksi wajib disebutkan.")
 		return
 	}
 	alias, ok := h.requirePortal(w, r)
@@ -148,13 +93,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := h.service.Get(r.Context(), alias, number, caller.Login)
+	p, err := h.Service.Get(r.Context(), alias, number, caller.Login)
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDetailDTO(p, h.location))
+	h.WriteJSON(w, r, http.StatusOK, toDetailDTO(p, h.Location))
 }
 
 // Queues melayani daftar antrean yang boleh dibuka pemanggil.
@@ -171,9 +116,9 @@ func (h *Handler) Queues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queues, err := h.service.Queues(r.Context(), caller.Login)
+	queues, err := h.Service.Queues(r.Context(), caller.Login)
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -182,14 +127,14 @@ func (h *Handler) Queues(w http.ResponseWriter, r *http.Request) {
 		daftar = append(daftar, string(q))
 	}
 
-	h.writeJSON(w, r, http.StatusOK, queuesResponse{Antrean: daftar})
+	h.WriteJSON(w, r, http.StatusOK, queuesResponse{Antrean: daftar})
 }
 
 // Decide melayani keputusan akseptasi: setuju atau tolak.
 func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	number := strings.TrimSpace(chi.URLParam(r, "nomor"))
 	if number == "" {
-		writeBadRequest(h.writeJSON, w, r, "Nomor proteksi wajib disebutkan.")
+		writeBadRequest(h.WriteJSON, w, r, "Nomor proteksi wajib disebutkan.")
 		return
 	}
 
@@ -197,7 +142,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		writeBadRequest(h.writeJSON, w, r, "Badan permintaan tidak dapat dibaca.")
+		writeBadRequest(h.WriteJSON, w, r, "Badan permintaan tidak dapat dibaca.")
 		return
 	}
 
@@ -210,18 +155,18 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Decide(r.Context(), usecase.DecideCommand{
+	saved, err := h.Service.Decide(r.Context(), usecase.DecideCommand{
 		PortalAlias: alias,
 		Number:      number,
 		Decision:    inboxacceptopenprotection.Decision(strings.TrimSpace(req.Keputusan)),
 		By:          caller.Login,
 	})
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDetailDTO(saved, h.location))
+	h.WriteJSON(w, r, http.StatusOK, toDetailDTO(saved, h.Location))
 }
 
 // ── Pembacaan permintaan ─────────────────────────────────────────────────────────
@@ -240,7 +185,7 @@ func (h *Handler) readQueue(w http.ResponseWriter, r *http.Request) (inboxaccept
 
 	queue := inboxacceptopenprotection.Queue(raw)
 	if !queue.Valid() {
-		writeBadRequest(h.writeJSON, w, r, `Parameter antrean harus "premi" atau "non-premi".`)
+		writeBadRequest(h.WriteJSON, w, r, `Parameter antrean harus "premi" atau "non-premi".`)
 		return "", false
 	}
 	return queue, true
@@ -253,7 +198,7 @@ func (h *Handler) readQueue(w http.ResponseWriter, r *http.Request) (inboxaccept
 func (h *Handler) requirePortal(w http.ResponseWriter, r *http.Request) (string, bool) {
 	active, found := portalhttp.ActivePortalFrom(r.Context())
 	if !found || strings.TrimSpace(active.Alias) == "" {
-		h.writeErrorF(w, r, errors.New("inboxacceptopenprotection/http: portal aktif tidak dikenali"))
+		h.WriteError(w, r, errors.New("inboxacceptopenprotection/http: portal aktif tidak dikenali"))
 		return "", false
 	}
 	return active.Alias, true
@@ -261,14 +206,14 @@ func (h *Handler) requirePortal(w http.ResponseWriter, r *http.Request) (string,
 
 // requireCaller mengambil identitas pemanggil dari sesi.
 func (h *Handler) requireCaller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
-	if h.getCaller == nil {
-		h.writeErrorF(w, r, errors.New("inboxacceptopenprotection/http: pembaca identitas tidak dipasang"))
+	if h.Caller == nil {
+		h.WriteError(w, r, errors.New("inboxacceptopenprotection/http: pembaca identitas tidak dipasang"))
 		return Caller{}, false
 	}
 
-	caller, ok := h.getCaller(r.Context())
+	caller, ok := h.Caller(r.Context())
 	if !ok || strings.TrimSpace(caller.Login) == "" {
-		h.writeErrorF(w, r, errors.New("inboxacceptopenprotection/http: identitas pemanggil tidak tersedia di konteks"))
+		h.WriteError(w, r, errors.New("inboxacceptopenprotection/http: identitas pemanggil tidak tersedia di konteks"))
 		return Caller{}, false
 	}
 	return caller, true
@@ -284,11 +229,11 @@ func (h *Handler) readLimit(w http.ResponseWriter, r *http.Request) (int, bool) 
 
 	limit, err := strconv.Atoi(raw)
 	if err != nil || limit <= 0 {
-		writeBadRequest(h.writeJSON, w, r, "Parameter batas harus berupa angka lebih besar dari nol.")
+		writeBadRequest(h.WriteJSON, w, r, "Parameter batas harus berupa angka lebih besar dari nol.")
 		return 0, false
 	}
 	if limit > inboxacceptopenprotection.MaxLimit {
-		writeBadRequest(h.writeJSON, w, r,
+		writeBadRequest(h.WriteJSON, w, r,
 			"Parameter batas melebihi "+strconv.Itoa(inboxacceptopenprotection.MaxLimit)+".")
 		return 0, false
 	}
@@ -303,7 +248,7 @@ func (h *Handler) readOffset(w http.ResponseWriter, r *http.Request) (int, bool)
 
 	offset, err := strconv.Atoi(raw)
 	if err != nil || offset < 0 {
-		writeBadRequest(h.writeJSON, w, r, "Parameter lewati harus berupa angka nol atau lebih.")
+		writeBadRequest(h.WriteJSON, w, r, "Parameter lewati harus berupa angka nol atau lebih.")
 		return 0, false
 	}
 	return offset, true

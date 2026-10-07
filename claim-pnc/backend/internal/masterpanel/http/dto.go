@@ -5,7 +5,10 @@
 // `masterpanelhttp` supaya tidak menutupi `net/http`.
 package masterpanelhttp
 
-import "claim-pnc/internal/masterpanel"
+import (
+	"claim-pnc/internal/masterpanel"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // PanelLocationDTO adalah satu baris lokasi pada sebuah panel.
 //
@@ -103,8 +106,8 @@ type ListResponse struct {
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
-	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan hukum,
-	// "data siapa ini" tidak boleh hanya diandaikan.
+	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan
+	// hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 
@@ -218,9 +221,9 @@ type DecisionRequest struct {
 
 // ErrorResponse adalah bentuk galat modul ini.
 //
-// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk pelanggaran
-// per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan mencocokkan
-// teks `pesan`.
+// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk
+// pelanggaran per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan
+// mencocokkan teks `pesan`.
 type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
@@ -236,10 +239,7 @@ type ErrorResponse struct {
 //
 // Pelanggaran pada baris lokasi memakai bentuk `lokasi.<indeks>.<isian>`, sehingga layar
 // dapat menyorot baris yang tepat pada daftar yang panjangnya berubah-ubah.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(p masterpanel.Panel) PanelDTO {
@@ -314,9 +314,9 @@ func (r SaveRequest) toInput() masterpanel.Input {
 
 // toListDTO mengubah sekumpulan baris domain.
 //
-// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim
-// sebagai `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan
-// satu layar yang lupa akan gagal saat tabelnya masih kosong.
+// Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []masterpanel.Panel) []PanelDTO {
 	result := make([]PanelDTO, 0, len(list))
 	for _, p := range list {

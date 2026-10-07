@@ -13,6 +13,7 @@ package daftardetailtipedokumenhttp
 import (
 	"claim-pnc/internal/daftardetailtipedokumen"
 	"claim-pnc/internal/daftardetailtipedokumen/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // DetailTypeDTO adalah bentuk satu rincian dokumen yang dikirim ke peramban.
@@ -116,7 +117,8 @@ type ListResponse struct {
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
 	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang
-	// melayani empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan (`R-20`).
+	// melayani empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan
+	// (`R-20`).
 	Portal string `json:"portal"`
 }
 
@@ -187,10 +189,7 @@ type BusinessSaveEntry struct {
 }
 
 // ViolationDTO adalah satu pelanggaran isian.
-type ViolationDTO struct {
-	Field   string `json:"isian"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.InputError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

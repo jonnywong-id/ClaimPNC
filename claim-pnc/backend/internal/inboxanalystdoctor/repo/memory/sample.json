@@ -1,0 +1,132 @@
+{
+  "SampleTasks": [
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0311",
+        "ClaimNumber": "PNCN.26.0311",
+        "PolicyNumber": "26.002.2026.00311",
+        "InsuredName": "Bayu Pratama Contoh",
+        "BranchName": "JAKARTA PUSAT",
+        "AdminName": "ADMINREG1",
+        "TechnicalPICNote": "Mohon dinilai kelayakan biaya rawat inap hari ke-4 sampai ke-9.",
+        "TechnicalPIC": "PICTEKNIKPA1",
+        "RegisteredAt": "2026-09-18T09:00:00Z",
+        "ProcessStatus": "Open",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "2"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0298",
+        "ClaimNumber": "PNCN.26.0298",
+        "PolicyNumber": "26.002.2026.00298",
+        "InsuredName": "Sari Melati Contoh",
+        "BranchName": "SURABAYA",
+        "AdminName": "ADMINREG2",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKPA1",
+        "RegisteredAt": "2026-09-15T14:00:00Z",
+        "ProcessStatus": "Pending-AnalystDoctor",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "2"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0290",
+        "ClaimNumber": "PNCN.26.0290",
+        "PolicyNumber": "26.002.2026.00290",
+        "InsuredName": "Rahmat Hidayat Contoh",
+        "BranchName": "BANDUNG",
+        "AdminName": "ADMINREG1",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKPA2",
+        "RegisteredAt": "2026-09-12T08:00:00Z",
+        "ProcessStatus": "Open",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "2"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0289",
+        "ClaimNumber": "PNCN.26.0289",
+        "PolicyNumber": "26.005.2026.00289",
+        "InsuredName": "Dewi Anggraini Contoh",
+        "BranchName": "MEDAN",
+        "AdminName": "ADMINREG3",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKTRV",
+        "RegisteredAt": "2026-09-12T08:00:00Z",
+        "ProcessStatus": "Open",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "2"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0255",
+        "ClaimNumber": "PNCN.26.0255",
+        "PolicyNumber": "26.002.2026.00255",
+        "InsuredName": "Joko Susilo Contoh",
+        "BranchName": "SEMARANG",
+        "AdminName": "ADMINREG2",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKPA2",
+        "RegisteredAt": "2026-09-05T11:00:00Z",
+        "ProcessStatus": "Resolved-Rejected",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "2"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0240",
+        "ClaimNumber": "PNCN.26.0240",
+        "PolicyNumber": "26.002.2026.00240",
+        "InsuredName": "Lestari Wulandari Contoh",
+        "BranchName": "JAKARTA PUSAT",
+        "AdminName": "ADMINREG1",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKPA1",
+        "RegisteredAt": "2026-08-30T10:00:00Z",
+        "ProcessStatus": "Resolved-Completed",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "2"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0231",
+        "ClaimNumber": "PNCN.26.0231",
+        "PolicyNumber": "26.003.2026.00231",
+        "InsuredName": "PT Sumber Contoh",
+        "BranchName": "JAKARTA PUSAT",
+        "AdminName": "ADMINREG3",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKANK",
+        "RegisteredAt": "2026-09-20T09:00:00Z",
+        "ProcessStatus": "Open",
+        "AssignedOperator": "ADMINKLAIM"
+      },
+      "TransferFlag": "1"
+    },
+    {
+      "Task": {
+        "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0222",
+        "ClaimNumber": "PNCN.26.0222",
+        "PolicyNumber": "26.002.2026.00222",
+        "InsuredName": "Hendra Kusuma Contoh",
+        "BranchName": "DENPASAR",
+        "AdminName": "ADMINREG2",
+        "TechnicalPICNote": "",
+        "TechnicalPIC": "PICTEKNIKPA2",
+        "RegisteredAt": "2026-09-19T16:00:00Z",
+        "ProcessStatus": "Open",
+        "AssignedOperator": "ADMINLAIN"
+      },
+      "TransferFlag": "2"
+    }
+  ]
+}

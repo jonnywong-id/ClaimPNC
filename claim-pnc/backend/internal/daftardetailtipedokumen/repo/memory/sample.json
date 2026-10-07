@@ -1,0 +1,217 @@
+{
+  "SampleBusinessList": [
+    {
+      "ID": "002",
+      "Name": "PERSONAL ACCIDENT"
+    },
+    {
+      "ID": "003",
+      "Name": "ANEKA"
+    },
+    {
+      "ID": "004",
+      "Name": "MARINE CARGO"
+    },
+    {
+      "ID": "005",
+      "Name": "TRAVEL"
+    },
+    {
+      "ID": "006",
+      "Name": "FIRE / PROPERTY"
+    }
+  ],
+  "SampleCauseOfLossList": [
+    {
+      "ID": "1001",
+      "Description": "Contoh Golongan A"
+    },
+    {
+      "ID": "1002",
+      "Description": "Contoh Golongan B"
+    },
+    {
+      "ID": "1003",
+      "Description": "Contoh Golongan C"
+    },
+    {
+      "ID": "1004",
+      "Description": "Contoh Golongan D"
+    },
+    {
+      "ID": "1005",
+      "Description": "Contoh Golongan E"
+    },
+    {
+      "ID": "1006",
+      "Description": "Contoh Golongan F"
+    },
+    {
+      "ID": "1007",
+      "Description": ""
+    },
+    {
+      "ID": "1008",
+      "Description": "Contoh Golongan H"
+    },
+    {
+      "ID": "1009",
+      "Description": "Contoh Golongan I"
+    },
+    {
+      "ID": "1010",
+      "Description": "Contoh Golongan J"
+    }
+  ],
+  "SampleDocumentTypeList": [
+    {
+      "ID": "10001",
+      "Name": "Dokumen Registrasi"
+    },
+    {
+      "ID": "10002",
+      "Name": "Dokumen Survey"
+    },
+    {
+      "ID": "10003",
+      "Name": "Dokumen Komite"
+    },
+    {
+      "ID": "10004",
+      "Name": "Dokumen Salvage"
+    },
+    {
+      "ID": "10005",
+      "Name": "Dokumen Pembayaran"
+    },
+    {
+      "ID": "10006",
+      "Name": "Dokumen Pendukung Lainnya"
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "100001",
+      "DocumentTypeID": "10001",
+      "DocumentTypeName": "",
+      "Detail": "Formulir Laporan Kerugian",
+      "InsuredStatus": "Tertanggung",
+      "CauseOfLossID": "1001",
+      "CauseOfLossDescription": "Contoh Golongan A",
+      "ObjectDocumentID": "10002",
+      "ObjectDocumentDescription": "Polis Asli",
+      "Risk": "0",
+      "Businesses": [
+        {
+          "BusinessID": "003",
+          "BusinessName": "",
+          "Mandatory": true,
+          "MinDocument": 1
+        },
+        {
+          "BusinessID": "006",
+          "BusinessName": "",
+          "Mandatory": true,
+          "MinDocument": 1
+        }
+      ]
+    },
+    {
+      "ID": "100002",
+      "DocumentTypeID": "10001",
+      "DocumentTypeName": "",
+      "Detail": "Fotokopi KTP Tertanggung",
+      "InsuredStatus": "Tertanggung",
+      "CauseOfLossID": "1002",
+      "CauseOfLossDescription": "Contoh Golongan B",
+      "ObjectDocumentID": "10001",
+      "ObjectDocumentDescription": "KTP Tertanggung",
+      "Risk": "0",
+      "Businesses": [
+        {
+          "BusinessID": "002",
+          "BusinessName": "",
+          "Mandatory": true,
+          "MinDocument": 1
+        }
+      ]
+    },
+    {
+      "ID": "100003",
+      "DocumentTypeID": "10002",
+      "DocumentTypeName": "",
+      "Detail": "Foto Kerusakan",
+      "InsuredStatus": "",
+      "CauseOfLossID": "1003",
+      "CauseOfLossDescription": "Contoh Golongan C",
+      "ObjectDocumentID": "",
+      "ObjectDocumentDescription": "",
+      "Risk": "",
+      "Businesses": null
+    },
+    {
+      "ID": "100004",
+      "DocumentTypeID": "10002",
+      "DocumentTypeName": "",
+      "Detail": "Surat Keterangan Dokter",
+      "InsuredStatus": "Tertanggung",
+      "CauseOfLossID": "1004",
+      "CauseOfLossDescription": "Contoh Golongan D",
+      "ObjectDocumentID": "10003",
+      "ObjectDocumentDescription": "Surat Keterangan Dokter",
+      "Risk": "1",
+      "Businesses": [
+        {
+          "BusinessID": "002",
+          "BusinessName": "",
+          "Mandatory": false,
+          "MinDocument": 2
+        },
+        {
+          "BusinessID": "005",
+          "BusinessName": "",
+          "Mandatory": true,
+          "MinDocument": 1
+        }
+      ]
+    },
+    {
+      "ID": "100005",
+      "DocumentTypeID": "19999",
+      "DocumentTypeName": "",
+      "Detail": "Dokumen Warisan Tanpa Master",
+      "InsuredStatus": "",
+      "CauseOfLossID": "1999",
+      "CauseOfLossDescription": "Keterangan Warisan Tanpa Master",
+      "ObjectDocumentID": "19999",
+      "ObjectDocumentDescription": "Objek Warisan Tanpa Master",
+      "Risk": "0",
+      "Businesses": [
+        {
+          "BusinessID": "099",
+          "BusinessName": "",
+          "Mandatory": true,
+          "MinDocument": 1
+        }
+      ]
+    }
+  ],
+  "SampleObjectDocumentList": [
+    {
+      "ID": "10001",
+      "Description": "KTP Tertanggung"
+    },
+    {
+      "ID": "10002",
+      "Description": "Polis Asli"
+    },
+    {
+      "ID": "10003",
+      "Description": "Surat Keterangan Dokter"
+    },
+    {
+      "ID": "10004",
+      "Description": "Bill of Lading"
+    }
+  ]
+}

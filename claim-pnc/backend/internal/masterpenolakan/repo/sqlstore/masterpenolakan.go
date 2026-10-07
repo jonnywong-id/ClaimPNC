@@ -16,13 +16,19 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterpenolakan"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterpenolakan/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "masterpenolakan/sqlstore", name) }
 
 // Repo membaca dan menulis POOLDATA.MST_PENOLAKAN_KLAIM_1 dan _2.
 //
@@ -38,45 +44,13 @@ func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 // ListParent membaca seluruh Status Penolakan 1.
 func (r *Repo) ListParent(ctx context.Context) ([]masterpenolakan.RejectionStatus, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("rejection_parent_list"))
-	if err != nil {
-		return nil, fmt.Errorf("masterpenolakan/sqlstore: membaca daftar status penolakan 1: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterpenolakan.RejectionStatus
-	for rows.Next() {
-		parent, err := scanParent(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, parent)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterpenolakan/sqlstore: menelusuri status penolakan 1: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanParent, "masterpenolakan/sqlstore: membaca daftar status penolakan 1", "", "masterpenolakan/sqlstore: menelusuri status penolakan 1")
 }
 
 // List membaca seluruh Status Penolakan 2.
 func (r *Repo) List(ctx context.Context) ([]masterpenolakan.RejectionStatus2, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("rejection_list"))
-	if err != nil {
-		return nil, fmt.Errorf("masterpenolakan/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterpenolakan.RejectionStatus2
-	for rows.Next() {
-		rejection, err := scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, rejection)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterpenolakan/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow, "masterpenolakan/sqlstore: membaca daftar", "", "masterpenolakan/sqlstore: menelusuri daftar")
 }
 
 // Get membaca satu Status Penolakan 2 berdasarkan ID_ND-nya.
@@ -306,9 +280,7 @@ func lockedIDs(ctx context.Context, tx *sql.Tx, queryName string) ([]string, err
 	return used, nil
 }
 
-type scanner interface {
-	Scan(target ...any) error
-}
+type scanner = sqlkit.Scanner
 
 // scanParent membaca satu baris Status Penolakan 1.
 func scanParent(p scanner) (masterpenolakan.RejectionStatus, error) {
@@ -368,77 +340,6 @@ func scanRow(p scanner) (masterpenolakan.RejectionStatus2, error) {
 		rejection.ApprovedAt = &decided
 	}
 	return rejection, nil
-}
-
-// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
-// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
-// saat pertama dijalankan.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("masterpenolakan/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterpenolakan/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterpenolakan/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterpenolakan/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, line := range body {
-			if strings.HasPrefix(strings.TrimSpace(line), "--") {
-				continue
-			}
-			statement = append(statement, line)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, line := range strings.Split(content, "\n") {
-		if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, line)
-	}
-	save()
-	return result
 }
 
 // Penegasan bahwa seam benar-benar dipenuhi. Bila sebuah method hilang atau tandanya

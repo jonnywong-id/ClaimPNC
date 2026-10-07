@@ -124,6 +124,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Nilai kolom STS_AKTIF — isian berlabel "Status Aktif".
@@ -311,12 +313,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
-	// data — layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+// data — layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 type ValidationError struct {
@@ -324,11 +324,7 @@ type ValidationError struct {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "detailpenyebab: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "detailpenyebab: isian tidak sah (", ": ", "; ", ")")
 }
 
 // Clean memangkas spasi di kedua ujung setiap isian, dan membuang baris bisnis kosong.

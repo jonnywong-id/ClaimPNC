@@ -1,7 +1,6 @@
 package masterpasalaihttp
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -9,10 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/masterpasalai"
-	"claim-pnc/internal/masterpasalai/usecase"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -29,50 +26,6 @@ import (
 // Kata kunci yang melebihi batas DITOLAK sebagai permintaan cacat, bukan dipotong diam-diam:
 // memotongnya akan mengembalikan hasil yang tidak diminta siapa pun.
 const maxKeywordLength = 200
-
-// Handler melayani permintaan Master Pasal AI.
-//
-// # Tidak ada Caller di sini, dan itu bukan kelalaian
-//
-// Modul yang menulis menerima identitas pemanggil untuk mengisi kolom pencatat siapa. Modul
-// ini **tidak menulis apa pun** — layar lamanya baca-saja — sehingga tidak ada yang perlu
-// dicatat.
-type Handler struct {
-	service       *usecase.Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	// Service melayani seluruh perkara modul ini. Wajib.
-	Service *usecase.Service
-
-	Logger *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	// Modul tidak saling mengimpor lapisan transport-nya — itulah yang membuat modul dapat
-	// dipindahkan tanpa menariknya serta.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Master Pasal AI.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("masterpasalai/http: Service wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("masterpasalai/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
 
 // List menangani GET /master/pasal-ai.
 //
@@ -92,14 +45,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	keyword := r.URL.Query().Get("cari")
 	if len(keyword) > maxKeywordLength {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Kata kunci pencarian terlalu panjang.",
 		})
 		return
 	}
 
-	page, err := h.service.List(r.Context(), active.Alias, masterpasalai.Filter{
+	page, err := h.Service.List(r.Context(), active.Alias, masterpasalai.Filter{
 		Keyword: keyword,
 		Page:    pageNumber(r.URL.Query().Get("halaman")),
 	})
@@ -108,7 +61,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
+	h.WriteResponse(w, r, http.StatusOK, ListResponse{
 		Clause: toListDTO(page.Clause),
 		Page:   toPageDTO(page),
 		Portal: active.Alias,
@@ -147,11 +100,11 @@ func (h *Handler) activePortal(w http.ResponseWriter, r *http.Request) (portal.P
 // dapat cacat maupun baris yang dapat bentrok. Yang lewat sini hanyalah galat portal (yang
 // dipetakan pembungkusnya) dan kegagalan teknis (yang dijawab 500 dengan pesan umum).
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Warn("permintaan Master Pasal AI gagal",
+	logging.From(r.Context(), h.Logger).Warn("permintaan Master Pasal AI gagal",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)
-	h.writeError(w, r, err)
+	h.WriteError(w, r, err)
 }
 
 // Mount mendaftarkan seluruh rute modul Master Pasal AI.
@@ -171,13 +124,11 @@ func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err e
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Get("/master/pasal-ai", h.List)
-	})
+	portalhttp.MountGets(r, portalDeps,
+		portalhttp.Route{Path: "/master/pasal-ai", Handler: h.List},
+	)
 }

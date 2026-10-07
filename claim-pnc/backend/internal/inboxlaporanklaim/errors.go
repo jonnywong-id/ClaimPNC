@@ -2,7 +2,8 @@ package inboxlaporanklaim
 
 import (
 	"errors"
-	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Galat modul ini. Transport yang memetakannya ke kode HTTP; domain tidak tahu HTTP.
@@ -96,12 +97,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
-	// data — layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+// data — layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -113,9 +112,5 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	parts := make([]string, 0, len(e.Violation))
-	for _, p := range e.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "inboxlaporanklaim: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(e.Violation, "inboxlaporanklaim: isian tidak sah (", ": ", "; ", ")")
 }

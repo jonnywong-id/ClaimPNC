@@ -74,6 +74,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // InternalTypeCode adalah M_SURVEY_ID milik tipe "INTERNAL SURVEYOR".
@@ -657,19 +659,7 @@ func AccountRequestFor(s Surveyor) AccountRequest {
 //
 // Aturannya disamakan persis dengan `masterrekening.EmailLooksValid` — dua master yang
 // menolak alamat berbeda akan membuat pengguna menyimpulkan salah satunya rusak.
-func EmailLooksValid(address string) bool {
-	address = strings.TrimSpace(address)
-	i := strings.IndexByte(address, '@')
-	if i <= 0 || i == len(address)-1 {
-		return false
-	}
-	domain := address[i+1:]
-	if strings.ContainsRune(domain, '@') {
-		return false
-	}
-	j := strings.IndexByte(domain, '.')
-	return j > 0 && j < len(domain)-1
-}
+func EmailLooksValid(address string) bool { return validation.EmailLooksValid(address) }
 
 // sortNames mengurutkan nama field. Ditulis di sini supaya paket domain tidak perlu
 // mengimpor sort hanya untuk satu pemakaian pada jalur galat.

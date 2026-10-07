@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxadmin"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca antrean kerja Inbox Admin dari SATU basis data entitas.
@@ -229,10 +230,4 @@ func scanWorkItem(row scanner) (inboxadmin.WorkItem, error) {
 // Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
 // diisi" saat ditampilkan, dan kolom Aging yang dihitung darinya akan menghasilkan angka
 // dalam ratusan ribu hari.
-func timeOrNil(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	at := value.Time
-	return &at
-}
+func timeOrNil(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }

@@ -34,7 +34,7 @@ func TestNumbersKeepTheirExactText(t *testing.T) {
 	doc, err := parseDocument(`{"TotalSumInsuredIDR": 1234567890123.45}`)
 	require.NoError(t, err)
 
-	value, found := doc.lookup("TotalSumInsuredIDR")
+	value, found := doc.Lookup("TotalSumInsuredIDR")
 	require.True(t, found)
 	require.Equal(t, "1234567890123.45", text(value))
 }
@@ -43,7 +43,7 @@ func TestLookupWalksNestedPaths(t *testing.T) {
 	doc, err := parseDocument(`{"PolicyData": {"PolicyNo": "99.001"}}`)
 	require.NoError(t, err)
 
-	value, found := doc.lookup("PolicyData.PolicyNo")
+	value, found := doc.Lookup("PolicyData.PolicyNo")
 	require.True(t, found)
 	require.Equal(t, "99.001", text(value))
 }
@@ -55,10 +55,10 @@ func TestMissingIsDistinctFromEmpty(t *testing.T) {
 	doc, err := parseDocument(`{"InsuredName": ""}`)
 	require.NoError(t, err)
 
-	_, found := doc.lookup("InsuredName")
+	_, found := doc.Lookup("InsuredName")
 	require.True(t, found, "isian kosong tetap ADA")
 
-	_, found = doc.lookup("NamaYangTidakAda")
+	_, found = doc.Lookup("NamaYangTidakAda")
 	require.False(t, found)
 }
 
@@ -68,7 +68,7 @@ func TestLookupStopsAtNonObject(t *testing.T) {
 	doc, err := parseDocument(`{"PolicyData": "bukan objek"}`)
 	require.NoError(t, err)
 
-	_, found := doc.lookup("PolicyData.PolicyNo")
+	_, found := doc.Lookup("PolicyData.PolicyNo")
 	require.False(t, found)
 }
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/dashboardclaim"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca ringkasan dan telusur Dashboard Claim dari satu basis data entitas.
@@ -111,12 +112,7 @@ func likePattern(value string) string {
 //
 // Dipakai supaya pola "NULL berarti tidak menyaring" pada sisi SQL bekerja. Tanpa itu,
 // kotak cari yang kosong akan diperlakukan sebagai pencarian atas teks kosong.
-func nilIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nilIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // text membaca kolom teks yang boleh kosong.
 //

@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/outstandingclaim"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/outstandingclaim"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleDetails adalah rincian contoh untuk pengembangan lokal dan pengujian.
 //
@@ -19,21 +29,13 @@ import "claim-pnc/internal/outstandingclaim"
 //	CLMP-1001  klaim terisi penuh — seluruh kelompok punya isi, seluruh grid punya baris
 //	CLMP-1002  klaim yang dokumennya belum tersalin — hanya keadaan objek kerja yang ada,
 //	           meniru gabungan LEFT JOIN yang tidak menemukan baris di JSON_KLAIM
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Klaim tanpa dokumen. Ia TETAP dapat dibuka — itulah yang dijamin LEFT JOIN — dan
+// layarnya menggambar nomor serta statusnya, dengan seluruh isian kosong.
 func SampleDetails() []outstandingclaim.Detail {
-	return []outstandingclaim.Detail{
-		sampleFullDetail(),
-
-		// Klaim tanpa dokumen. Ia TETAP dapat dibuka — itulah yang dijamin LEFT JOIN — dan
-		// layarnya menggambar nomor serta statusnya, dengan seluruh isian kosong.
-		outstandingclaim.NewDetail(
-			"CLMP-1002",
-			"ASM-FW-GCNMFW-WORK-CLAIMTREATY CLMP-1002",
-			"New",
-			"ADMINTREATY1",
-			map[string]string{},
-			map[string][]outstandingclaim.GridRow{},
-		),
-	}
+	return sampledata.Must[[]outstandingclaim.Detail](sampleJSON, "SampleDetails")
 }
 
 // sampleFullDetail menyusun satu klaim yang seluruh bagiannya terisi.

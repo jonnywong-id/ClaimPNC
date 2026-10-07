@@ -72,6 +72,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // Nilai kolom RESULTAI yang dicacah grid ringkasan.
@@ -441,38 +443,16 @@ const (
 )
 
 // Pagination adalah jendela halaman yang diminta.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
-
-	// Size adalah banyaknya baris per halaman.
-	Size int
-}
-
-// Normalize membetulkan paginasi ke rentang yang sah.
 //
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: nomor halaman datang dari tautan
-// paginasi, dan tautan yang basi bukan kesalahan yang dapat diperbaiki pengguna dengan
-// mengetik.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
+// Page dimulai dari 1.
+// Size adalah banyaknya baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-// Offset adalah banyaknya baris yang dilewati untuk mencapai halaman ini.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Page adalah satu halaman grid rincian.
 type Page struct {

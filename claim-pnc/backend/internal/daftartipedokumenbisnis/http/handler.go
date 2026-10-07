@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/daftartipedokumenbisnis"
-	"claim-pnc/internal/daftartipedokumenbisnis/usecase"
 	"claim-pnc/internal/portal"
 	portalhttp "claim-pnc/internal/portal/http"
 )
@@ -23,55 +21,6 @@ import (
 // penambahan di layar ini mengirim perkalian bisnis kali dokumen dalam satu badan —
 // puluhan bisnis dikali puluhan baris masih harus muat.
 const maxRequestBody = 256 << 10
-
-// Caller adalah identitas pemanggil, sejauh yang dibutuhkan modul ini.
-//
-// Tipe milik modul, bukan impor dari modul auth: modul tidak saling mengimpor lapisan
-// transport-nya. Yang menjembatani keduanya adalah cmd.
-type Caller struct {
-	Identity string
-
-	// Position adalah pyPosition pemanggil.
-	//
-	// Dipakai HANYA untuk memutuskan apakah tombol "Pilih semua" ditampilkan, meniru
-	// `pyVisible` layar lama. Ia bukan kewenangan — lihat Service.MayBulkSelect.
-	Position string
-}
-
-// Handler melayani rute modul Daftar Tipe Dokumen Bisnis.
-type Handler struct {
-	service       *usecase.Service
-	caller        func(context.Context) (Caller, bool)
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah ketergantungan Handler.
-type Options struct {
-	Service       *usecase.Service
-	Logger        *slog.Logger
-	Caller        func(context.Context) (Caller, bool)
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk Handler dan menolak ketergantungan yang belum diisi.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("daftartipedokumenbisnis/http: Service wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("daftartipedokumenbisnis/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
 
 // ListBusinesses menangani GET /master/tipe-dokumen-bisnis — grid tingkat pertama.
 func (h *Handler) ListBusinesses(w http.ResponseWriter, r *http.Request) {

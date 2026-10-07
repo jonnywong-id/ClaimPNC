@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxinvestigator"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca antrean pekerjaan Investigator dari tabel engine Pega dan tabel bisnisnya.
@@ -133,13 +134,7 @@ func (r *Repo) count(ctx context.Context, name string) (int, error) {
 // Urutannya menentukan: garis miring terbalik diloloskan LEBIH DULU, sebelum persen dan
 // garis bawah. Membaliknya akan meloloskan garis miring yang baru saja ditambahkan, dan pola
 // yang dihasilkan tidak lagi cocok dengan apa pun.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows.
 //
@@ -202,12 +197,6 @@ func scanTask(row rowScanner) (inboxinvestigator.Task, error) {
 //
 // Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
 // diisi" saat ditampilkan, dan layar akan menuliskan "01/01/0001" alih-alih tanda hubung.
-func nullableTime(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	moment := value.Time
-	return &moment
-}
+func nullableTime(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }
 
 var _ inboxinvestigator.Repo = (*Repo)(nil)

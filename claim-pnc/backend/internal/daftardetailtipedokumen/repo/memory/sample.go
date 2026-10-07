@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/daftardetailtipedokumen"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/daftardetailtipedokumen"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi awal untuk pengembangan dan pengujian tanpa basis data.
 //
@@ -37,91 +47,24 @@ import "claim-pnc/internal/daftardetailtipedokumen"
 // Yang sengaja TIDAK diisi hanyalah `DocumentTypeName` dan nama bisnis pada baris anak:
 // keduanya hasil join, dan di adapter memori diisikan `Repo.withReferences`.
 // Menuliskannya di sini akan menyembunyikan cacat bila pencariannya kelak rusak.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Satu baris TANPA lini bisnis, supaya keadaan itu benar-benar terlihat saat
+// dicoba — ia sah, dan grid utama pun tetap menampilkannya utuh.
+// Satu baris dengan dokumen TIDAK WAJIB dan jumlah minimum lebih dari satu,
+// supaya kedua isian itu tidak selalu bernilai sama di data contoh.
+// Baris yang RUJUKANNYA TIDAK ADA di master mana pun — tipe dokumen, penyebab
+// kerugian, objek dokumen, dan bisnisnya semua menunjuk kode yang tidak
+// terdaftar.
+//
+// Ia ada dengan sengaja: di Oracle baris seperti ini dihasilkan LEFT JOIN
+// dengan keterangan KOSONG, dan ia harus TETAP TAMPIL supaya petugas dapat
+// memperbaikinya. Kueri lama memakai INNER JOIN dan menyembunyikannya — itulah
+// penyimpangan yang dicatat pada `detail_business_list`, dan baris inilah yang
+// membuktikan penyimpangan itu bekerja.
 func SampleList() []daftardetailtipedokumen.DetailType {
-	return []daftardetailtipedokumen.DetailType{
-		{
-			ID:                        "100001",
-			DocumentTypeID:            "10001",
-			Detail:                    "Formulir Laporan Kerugian",
-			InsuredStatus:             "Tertanggung",
-			CauseOfLossID:             "1001",
-			CauseOfLossDescription:    "Contoh Golongan A",
-			ObjectDocumentID:          "10002",
-			ObjectDocumentDescription: "Polis Asli",
-			Risk:                      "0",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "003", Mandatory: true, MinDocument: 1},
-				{BusinessID: "006", Mandatory: true, MinDocument: 1},
-			},
-		},
-		{
-			ID:                        "100002",
-			DocumentTypeID:            "10001",
-			Detail:                    "Fotokopi KTP Tertanggung",
-			InsuredStatus:             "Tertanggung",
-			CauseOfLossID:             "1002",
-			CauseOfLossDescription:    "Contoh Golongan B",
-			ObjectDocumentID:          "10001",
-			ObjectDocumentDescription: "KTP Tertanggung",
-			Risk:                      "0",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "002", Mandatory: true, MinDocument: 1},
-			},
-		},
-		{
-			// Satu baris TANPA lini bisnis, supaya keadaan itu benar-benar terlihat saat
-			// dicoba — ia sah, dan grid utama pun tetap menampilkannya utuh.
-			ID:                        "100003",
-			DocumentTypeID:            "10002",
-			Detail:                    "Foto Kerusakan",
-			InsuredStatus:             "",
-			CauseOfLossID:             "1003",
-			CauseOfLossDescription:    "Contoh Golongan C",
-			ObjectDocumentID:          "",
-			ObjectDocumentDescription: "",
-			Risk:                      "",
-		},
-		{
-			// Satu baris dengan dokumen TIDAK WAJIB dan jumlah minimum lebih dari satu,
-			// supaya kedua isian itu tidak selalu bernilai sama di data contoh.
-			ID:                        "100004",
-			DocumentTypeID:            "10002",
-			Detail:                    "Surat Keterangan Dokter",
-			InsuredStatus:             "Tertanggung",
-			CauseOfLossID:             "1004",
-			CauseOfLossDescription:    "Contoh Golongan D",
-			ObjectDocumentID:          "10003",
-			ObjectDocumentDescription: "Surat Keterangan Dokter",
-			Risk:                      "1",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "002", Mandatory: false, MinDocument: 2},
-				{BusinessID: "005", Mandatory: true, MinDocument: 1},
-			},
-		},
-		{
-			// Baris yang RUJUKANNYA TIDAK ADA di master mana pun — tipe dokumen, penyebab
-			// kerugian, objek dokumen, dan bisnisnya semua menunjuk kode yang tidak
-			// terdaftar.
-			//
-			// Ia ada dengan sengaja: di Oracle baris seperti ini dihasilkan LEFT JOIN
-			// dengan keterangan KOSONG, dan ia harus TETAP TAMPIL supaya petugas dapat
-			// memperbaikinya. Kueri lama memakai INNER JOIN dan menyembunyikannya — itulah
-			// penyimpangan yang dicatat pada `detail_business_list`, dan baris inilah yang
-			// membuktikan penyimpangan itu bekerja.
-			ID:                        "100005",
-			DocumentTypeID:            "19999",
-			Detail:                    "Dokumen Warisan Tanpa Master",
-			InsuredStatus:             "",
-			CauseOfLossID:             "1999",
-			CauseOfLossDescription:    "Keterangan Warisan Tanpa Master",
-			ObjectDocumentID:          "19999",
-			ObjectDocumentDescription: "Objek Warisan Tanpa Master",
-			Risk:                      "0",
-			Businesses: []daftardetailtipedokumen.BusinessRule{
-				{BusinessID: "099", Mandatory: true, MinDocument: 1},
-			},
-		},
-	}
+	return sampledata.Must[[]daftardetailtipedokumen.DetailType](sampleJSON, "SampleList")
 }
 
 // SampleDocumentTypeList adalah pilihan ID Tipe Dokumen untuk pengembangan.
@@ -129,14 +72,7 @@ func SampleList() []daftardetailtipedokumen.DetailType {
 // Sama dengan isi `daftartipedokumen/repo/memory.SampleList`, dan itu disengaja —
 // keduanya membaca POOLDATA.V_LST_DOC_TYPE yang sama. Bukan data produksi.
 func SampleDocumentTypeList() []daftardetailtipedokumen.DocumentTypeOption {
-	return []daftardetailtipedokumen.DocumentTypeOption{
-		{ID: "10001", Name: "Dokumen Registrasi"},
-		{ID: "10002", Name: "Dokumen Survey"},
-		{ID: "10003", Name: "Dokumen Komite"},
-		{ID: "10004", Name: "Dokumen Salvage"},
-		{ID: "10005", Name: "Dokumen Pembayaran"},
-		{ID: "10006", Name: "Dokumen Pendukung Lainnya"},
-	}
+	return sampledata.Must[[]daftardetailtipedokumen.DocumentTypeOption](sampleJSON, "SampleDocumentTypeList")
 }
 
 // SampleCauseOfLossList adalah pilihan Dokumen kolom ID untuk pengembangan.
@@ -147,30 +83,14 @@ func SampleDocumentTypeList() []daftardetailtipedokumen.DocumentTypeOption {
 // memperlihatkan bahwa pilihan tanpa keterangan tetap dapat dipilih, dan layar harus
 // menanganinya tanpa menampilkan baris yang tampak rusak.
 func SampleCauseOfLossList() []daftardetailtipedokumen.CauseOfLossOption {
-	return []daftardetailtipedokumen.CauseOfLossOption{
-		{ID: "1001", Description: "Contoh Golongan A"},
-		{ID: "1002", Description: "Contoh Golongan B"},
-		{ID: "1003", Description: "Contoh Golongan C"},
-		{ID: "1004", Description: "Contoh Golongan D"},
-		{ID: "1005", Description: "Contoh Golongan E"},
-		{ID: "1006", Description: "Contoh Golongan F"},
-		{ID: "1007", Description: ""},
-		{ID: "1008", Description: "Contoh Golongan H"},
-		{ID: "1009", Description: "Contoh Golongan I"},
-		{ID: "1010", Description: "Contoh Golongan J"},
-	}
+	return sampledata.Must[[]daftardetailtipedokumen.CauseOfLossOption](sampleJSON, "SampleCauseOfLossList")
 }
 
 // SampleObjectDocumentList adalah pilihan Objek Dokumen untuk pengembangan.
 //
 // Sama dengan isi `daftarobjekdokumen/repo/memory.SampleList`. Bukan data produksi.
 func SampleObjectDocumentList() []daftardetailtipedokumen.ObjectDocumentOption {
-	return []daftardetailtipedokumen.ObjectDocumentOption{
-		{ID: "10001", Description: "KTP Tertanggung"},
-		{ID: "10002", Description: "Polis Asli"},
-		{ID: "10003", Description: "Surat Keterangan Dokter"},
-		{ID: "10004", Description: "Bill of Lading"},
-	}
+	return sampledata.Must[[]daftardetailtipedokumen.ObjectDocumentOption](sampleJSON, "SampleObjectDocumentList")
 }
 
 // SampleBusinessList adalah pilihan ID Bisnis untuk pengembangan.
@@ -183,13 +103,7 @@ func SampleObjectDocumentList() []daftardetailtipedokumen.ObjectDocumentOption {
 // Personal Accident, `003` Aneka, `004` Marine Cargo, `005` Travel, `006` Fire/Property.
 // Bukan data produksi — isi POOLDATA.BUSINESS tidak ada di export.
 func SampleBusinessList() []daftardetailtipedokumen.Business {
-	return []daftardetailtipedokumen.Business{
-		{ID: "002", Name: "PERSONAL ACCIDENT"},
-		{ID: "003", Name: "ANEKA"},
-		{ID: "004", Name: "MARINE CARGO"},
-		{ID: "005", Name: "TRAVEL"},
-		{ID: "006", Name: "FIRE / PROPERTY"},
-	}
+	return sampledata.Must[[]daftardetailtipedokumen.Business](sampleJSON, "SampleBusinessList")
 }
 
 // NewSampleReferenceRepo membentuk pembaca master rujukan berisi keempat daftar contoh.

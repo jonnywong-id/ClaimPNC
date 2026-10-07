@@ -1,0 +1,136 @@
+{
+  "SampleCoverageList": [
+    {
+      "ID": "TC01",
+      "Name": "Biaya Pengobatan Darurat",
+      "PlanID": "TP01"
+    },
+    {
+      "ID": "TC02",
+      "Name": "Kehilangan Bagasi",
+      "PlanID": "TP01"
+    },
+    {
+      "ID": "TC01",
+      "Name": "Biaya Pengobatan Darurat",
+      "PlanID": "TP02"
+    },
+    {
+      "ID": "TC02",
+      "Name": "Kehilangan Bagasi",
+      "PlanID": "TP02"
+    },
+    {
+      "ID": "TC03",
+      "Name": "Keterlambatan Penerbangan",
+      "PlanID": "TP02"
+    },
+    {
+      "ID": "TC03",
+      "Name": "Keterlambatan Penerbangan",
+      "PlanID": "TP03"
+    },
+    {
+      "ID": "TC04",
+      "Name": "Pembatalan Perjalanan",
+      "PlanID": "TP03"
+    }
+  ],
+  "SampleDocumentList": [
+    {
+      "ID": "100001",
+      "Name": "Paspor"
+    },
+    {
+      "ID": "100002",
+      "Name": "Tiket Perjalanan"
+    },
+    {
+      "ID": "100003",
+      "Name": "Boarding Pass"
+    },
+    {
+      "ID": "100004",
+      "Name": "Laporan Kehilangan Bagasi"
+    },
+    {
+      "ID": "100005",
+      "Name": "Kuitansi Biaya Pengobatan"
+    },
+    {
+      "ID": "100006",
+      "Name": "Surat Keterangan Maskapai"
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "00001",
+      "DocumentID": "100001",
+      "DocumentName": "Paspor",
+      "Mandatory": true,
+      "MinUpload": 1,
+      "Coverages": null
+    },
+    {
+      "ID": "00002",
+      "DocumentID": "100002",
+      "DocumentName": "Tiket Perjalanan",
+      "Mandatory": true,
+      "MinUpload": 1,
+      "Coverages": null
+    },
+    {
+      "ID": "00003",
+      "DocumentID": "100004",
+      "DocumentName": "Laporan Kehilangan Bagasi",
+      "Mandatory": false,
+      "MinUpload": 2,
+      "Coverages": [
+        {
+          "ID": "00005",
+          "PlanID": "TP01",
+          "PlanName": "Travel Plan Silver",
+          "CoverageID": "TC02",
+          "CoverageName": "Kehilangan Bagasi"
+        },
+        {
+          "ID": "00006",
+          "PlanID": "TP02",
+          "PlanName": "Travel Plan Gold",
+          "CoverageID": "TC02",
+          "CoverageName": "Kehilangan Bagasi"
+        }
+      ]
+    },
+    {
+      "ID": "00004",
+      "DocumentID": "100005",
+      "DocumentName": "Kuitansi Biaya Pengobatan",
+      "Mandatory": true,
+      "MinUpload": 1,
+      "Coverages": [
+        {
+          "ID": "00007",
+          "PlanID": "TP02",
+          "PlanName": "Travel Plan Gold",
+          "CoverageID": "TC01",
+          "CoverageName": "Biaya Pengobatan Darurat"
+        }
+      ]
+    }
+  ],
+  "SamplePlanList": [
+    {
+      "ID": "TP01",
+      "Name": "Travel Plan Silver"
+    },
+    {
+      "ID": "TP02",
+      "Name": "Travel Plan Gold"
+    },
+    {
+      "ID": "TP03",
+      "Name": "Travel Plan Platinum"
+    }
+  ]
+}

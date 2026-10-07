@@ -3,6 +3,8 @@ package casestudyclaim
 import (
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // BusinessScope adalah pilihan dropdown **Bisnis**.
@@ -258,15 +260,7 @@ func (f Filter) Normalize() Filter {
 	f.FromYear = strings.TrimSpace(f.FromYear)
 	f.ToYear = strings.TrimSpace(f.ToYear)
 
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxExportBatch {
-		f.Limit = MaxExportBatch
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxExportBatch)
 	return f
 }
 

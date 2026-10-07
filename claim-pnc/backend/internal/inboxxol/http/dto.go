@@ -9,6 +9,7 @@ package inboxxolhttp
 import (
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/inboxxol/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // MasterDTO adalah satu perjanjian XOL.
@@ -283,10 +284,7 @@ func toCauseOfLossResponse(causes []inboxxol.CauseOfLoss) CauseOfLossResponse {
 // Bentuknya `{field, pesan}` mengikuti modul masterstatus, bukan `{kolom, pesan}` maupun
 // peta `kolom → pesan`. Ketiganya hidup berdampingan hari ini, dan penyeragamannya adalah
 // `TKT-F1-004` yang masih terhalang — dicatat di `api/client.ts`.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat yang dibaca klien.
 type ErrorResponse struct {

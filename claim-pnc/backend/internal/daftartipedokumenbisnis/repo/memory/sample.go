@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/daftartipedokumenbisnis"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/daftartipedokumenbisnis"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // # PERINGATAN — INI BUKAN DATA PRODUKSI
 //
@@ -31,59 +41,7 @@ import "claim-pnc/internal/daftartipedokumenbisnis"
 //   - baris ber-DETAIL_DOKUMEN "-" — tersembunyi dari seluruh layar unggah
 //   - baris tanpa objek dokumen — kolomnya memang boleh kosong
 func SampleList() []daftartipedokumenbisnis.DocumentRule {
-	return []daftartipedokumenbisnis.DocumentRule{
-		{
-			ID:               "10001",
-			BusinessID:       "001",
-			BusinessName:     "Fire",
-			DocumentTypeID:   "20001",
-			DocumentTypeName: "REGISTER",
-			ObjectDocID:      "30001",
-			ObjectDocName:    "Bangunan",
-			DetailTypeDocID:  "40001",
-			DetailDocument:   "Laporan Kerugian",
-			Mandatory:        true,
-			MinDocument:      1,
-			Coverages: []daftartipedokumenbisnis.Coverage{
-				{ID: "10009"},
-			},
-		},
-		{
-			ID:               "10002",
-			BusinessID:       "001",
-			BusinessName:     "Fire",
-			DocumentTypeID:   "20001",
-			DocumentTypeName: "REGISTER",
-			DetailTypeDocID:  "40002",
-			DetailDocument:   "Foto Lokasi Kejadian",
-			Mandatory:        true,
-			MinDocument:      3,
-		},
-		{
-			ID:               "10003",
-			BusinessID:       "001",
-			BusinessName:     "Fire",
-			DocumentTypeID:   "20003",
-			DocumentTypeName: "SURVEY",
-			DetailTypeDocID:  "40003",
-			DetailDocument:   "-",
-			Mandatory:        false,
-			MinDocument:      0,
-		},
-		{
-			ID:               "10004",
-			BusinessID:       "004",
-			BusinessName:     "Marine Cargo",
-			DocumentTypeID:   "20002",
-			DocumentTypeName: "COMMITEE",
-			ObjectDocID:      "30002",
-			ObjectDocName:    "Kargo",
-			DetailTypeDocID:  "40004",
-			DetailDocument:   "Bill of Lading",
-			Mandatory:        true,
-			MinDocument:      1,
-		},
-	}
+	return sampledata.Must[[]daftartipedokumenbisnis.DocumentRule](sampleJSON, "SampleList")
 }
 
 // SampleBusinessList mengembalikan contoh lini bisnis.
@@ -99,13 +57,7 @@ func SampleList() []daftartipedokumenbisnis.DocumentRule {
 // Perhatikan `ExcludedFromBulkSelect` TIDAK diisi di sini: penandanya dipasang lapisan
 // usecase dari konfigurasi, bukan disimpan sebagai isi tabel.
 func SampleBusinessList() []daftartipedokumenbisnis.Business {
-	return []daftartipedokumenbisnis.Business{
-		{ID: "001", Name: "Fire"},
-		{ID: "003", Name: "Aneka"},
-		{ID: "004", Name: "Marine Cargo"},
-		{ID: "005", Name: "Travel"},
-		{ID: "10028", Name: "Personal Accident"},
-	}
+	return sampledata.Must[[]daftartipedokumenbisnis.Business](sampleJSON, "SampleBusinessList")
 }
 
 // SampleDocumentTypeList mengembalikan keenam tahap dokumen.
@@ -123,23 +75,12 @@ func SampleBusinessList() []daftartipedokumenbisnis.Business {
 // memperbaikinya di sini akan membuat contoh tidak lagi cocok dengan kueri yang mencarinya
 // — kueri itu mencari teks persis. Perbaikannya, bila dikehendaki, menempuh `D-63`.
 func SampleDocumentTypeList() []daftartipedokumenbisnis.Reference {
-	return []daftartipedokumenbisnis.Reference{
-		{ID: "20001", Name: "REGISTER"},
-		{ID: "20002", Name: "COMMITEE"},
-		{ID: "20003", Name: "SURVEY"},
-		{ID: "20004", Name: "PAYMENT"},
-		{ID: "20005", Name: "SALVAGE"},
-		{ID: "20006", Name: "COLLECTING DOCUMENT"},
-	}
+	return sampledata.Must[[]daftartipedokumenbisnis.Reference](sampleJSON, "SampleDocumentTypeList")
 }
 
 // SampleObjectDocList mengembalikan contoh objek dokumen.
 func SampleObjectDocList() []daftartipedokumenbisnis.Reference {
-	return []daftartipedokumenbisnis.Reference{
-		{ID: "30001", Name: "Bangunan"},
-		{ID: "30002", Name: "Kargo"},
-		{ID: "30003", Name: "Orang"},
-	}
+	return sampledata.Must[[]daftartipedokumenbisnis.Reference](sampleJSON, "SampleObjectDocList")
 }
 
 // SampleDetailTypeDocList mengembalikan contoh rincian dokumen.
@@ -153,11 +94,5 @@ func SampleObjectDocList() []daftartipedokumenbisnis.Reference {
 // seluruh contoh bernaung pada satu tahap, daftar yang tidak menyempit dan daftar yang
 // menyempit akan tampak sama persis di layar.
 func SampleDetailTypeDocList() []daftartipedokumenbisnis.Reference {
-	return []daftartipedokumenbisnis.Reference{
-		{ID: "40001", Name: "Laporan Kerugian", ParentID: "20001"},
-		{ID: "40002", Name: "Foto Lokasi Kejadian", ParentID: "20001"},
-		{ID: "40003", Name: "Berita Acara Survei", ParentID: "20003"},
-		{ID: "40004", Name: "Bill of Lading", ParentID: "20002"},
-		{ID: "40005", Name: "Kuitansi Pembayaran", ParentID: "20004"},
-	}
+	return sampledata.Must[[]daftartipedokumenbisnis.Reference](sampleJSON, "SampleDetailTypeDocList")
 }

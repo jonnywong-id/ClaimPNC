@@ -2,7 +2,6 @@ package komitehttp
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"sort"
 
@@ -19,35 +18,6 @@ type Service interface {
 	TieringWith(ctx context.Context, value money.Money, line komite.BusinessLine, applicant string) (komite.Tiering, error)
 	Integrity(ctx context.Context) ([]komite.Finding, error)
 	Policy() komite.Policy
-}
-
-// Handler melayani permintaan modul Komite.
-type Handler struct {
-	service       Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service Service
-	Logger  *slog.Logger
-
-	// WriteResponse dan FallbackErrorWriter dipasok dari luar supaya seluruh modul
-	// menuliskan respons dan galat sesi dengan cara yang sama.
-	WriteResponse       JSONWriter
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Komite.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    WriteError(o.Logger, o.WriteResponse, o.FallbackErrorWriter),
-	}
 }
 
 // ListThresholds menangani GET /api/master/ambang-komite.

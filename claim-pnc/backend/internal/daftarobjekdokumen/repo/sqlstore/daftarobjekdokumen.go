@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/daftarobjekdokumen"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // sequenceDigits adalah lebar nomor urut pada ID.
@@ -336,12 +337,7 @@ func FourDigits(n int64) string {
 //
 // Keduanya berbeda di basis data, dan membiarkan keduanya masuk berarti dua bentuk "tidak
 // diisi" yang harus sama-sama diingat setiap kueri sesudahnya.
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nullIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows, yang keduanya punya Scan dengan bentuk sama
 // tetapi tidak berbagi satu antarmuka di pustaka standar.

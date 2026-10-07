@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/platform/money"
+	"claim-pnc/internal/platform/pagination"
 )
 
 // WorkItem adalah satu baris pada grid layar.
@@ -397,13 +398,16 @@ var PlannedDifferences = []string{
 // menarik seluruh baris cabang itu sekaligus ke klipboard. Dengan puluhan juta baris data
 // historis (`D-10`) itu bukan pola yang dibawa (`15-NFR-PERFORMANCE-SCALABILITY.md` §3.2
 // aturan 1). Selisihnya dinyatakan lewat PlannedDifferences.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi.
 //
@@ -414,56 +418,12 @@ const (
 	MaxPageSize     = 100
 )
 
-// Normalize mengembalikan paginasi yang sudah dibetulkan ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari parameter
-// query yang mudah salah ketik, dan menolak seluruh permintaan karena `halaman=0` akan
-// membuat layar gagal tanpa alasan yang terbaca pengguna.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati sebelum halaman yang diminta.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
-
 // Page adalah satu halaman hasil beserta jumlah seluruh baris yang cocok.
-type Page struct {
-	Items []WorkItem
-
-	// Total adalah jumlah SELURUH baris yang cocok di penyimpanan, bukan yang tampil.
-	Total int
-
-	// Pagination adalah paginasi yang BENAR-BENAR dipakai setelah dibetulkan, bukan yang
-	// diminta. Layar menggambar penomoran halamannya dari sini.
-	Pagination Pagination
-}
-
-// TotalPages adalah jumlah halaman, minimal 1 supaya layar tidak pernah menggambar
-// "halaman 1 dari 0" saat hasilnya kosong.
-func (p Page) TotalPages() int {
-	size := p.Pagination.Normalize().Size
-	if p.Total <= 0 {
-		return 1
-	}
-	pages := p.Total / size
-	if p.Total%size != 0 {
-		pages++
-	}
-	return pages
-}
+//
+// Total adalah jumlah SELURUH baris yang cocok di penyimpanan, bukan yang tampil.
+// Pagination adalah paginasi yang BENAR-BENAR dipakai setelah dibetulkan, bukan yang
+// diminta. Layar menggambar penomoran halamannya dari sini.
+type Page = pagination.Page[WorkItem, pageSizes]
 
 // Slice memotong satu halaman dari seluruh baris yang sudah di tangan.
 //
@@ -473,21 +433,4 @@ func (p Page) TotalPages() int {
 //
 // Keduanya tetap menghasilkan Page dengan arti yang sama, sehingga uji aturan modul yang
 // berjalan di atas memori menyatakan hal yang benar tentang yang berjalan di Oracle.
-func Slice(all []WorkItem, page Pagination) Page {
-	clean := page.Normalize()
-
-	result := Page{Total: len(all), Pagination: clean, Items: []WorkItem{}}
-
-	offset := clean.Offset()
-	if offset >= len(all) {
-		return result
-	}
-
-	end := offset + clean.Size
-	if end > len(all) {
-		end = len(all)
-	}
-
-	result.Items = all[offset:end]
-	return result
-}
+func Slice(all []WorkItem, page Pagination) Page { return pagination.Slice(all, page) }

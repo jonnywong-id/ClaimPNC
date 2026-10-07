@@ -16,13 +16,21 @@ import (
 	"time"
 
 	"claim-pnc/internal/mastersparepart"
+	"claim-pnc/internal/platform/idformat"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "mastersparepart/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "mastersparepart/sqlstore", name) }
 
 // sequenceWidth adalah lebar nomor urut pada ID.
 //
@@ -282,45 +290,12 @@ func (r *Repo) Update(ctx context.Context, s mastersparepart.Sparepart) error {
 // Satu pernyataan per baris, bukan satu pernyataan dengan daftar kunci yang panjangnya
 // berubah-ubah — lihat `sparepart_set_status` pada berkas .sql untuk alasannya.
 //
-// Transaksinya melingkupi seluruh baris supaya persetujuan borongan tidak pernah setengah
-// jalan: bila baris kelima gagal, keempat yang sebelumnya ikut dibatalkan. Sistem lama
-// tidak menjamin itu — `SetApprovalAllMaster` menjalankan satu RDB-List per baris tanpa
-// transaksi yang melingkupinya.
-func (r *Repo) SetStatus(
-	ctx context.Context,
-	id []string,
-	status mastersparepart.ApprovalStatus,
-) (int, error) {
-	if len(id) == 0 {
-		return 0, nil
-	}
-
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("mastersparepart/sqlstore: memulai transaksi keputusan: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	changed := 0
-	for _, one := range id {
-		result, err := tx.ExecContext(ctx, getQuery("sparepart_set_status"),
-			string(status), strings.TrimSpace(one))
-		if err != nil {
-			return 0, fmt.Errorf("mastersparepart/sqlstore: menetapkan status %q: %w", one, err)
-		}
-		// Driver yang tidak mendukung RowsAffected membuat pencacahnya tidak dapat
-		// diandalkan. Barisnya tetap dianggap berubah: pernyataannya sudah berhasil, dan
-		// melaporkan nol akan menampilkan kegagalan palsu.
-		affected, err := result.RowsAffected()
-		if err != nil || affected > 0 {
-			changed++
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("mastersparepart/sqlstore: menutup transaksi keputusan: %w", err)
-	}
-	return changed, nil
+// Transaksinya melingkupi seluruh baris supaya persetujuan borongan tidak pernah
+// setengah jalan: bila baris kelima gagal, keempat yang sebelumnya ikut dibatalkan.
+// Sistem lama tidak menjamin itu — `SetApprovalAllMaster` menjalankan satu RDB-List per
+// baris tanpa transaksi yang melingkupinya.
+func (r *Repo) SetStatus(ctx context.Context, id []string, status mastersparepart.ApprovalStatus) (int, error) {
+	return sqlkit.SetEach(ctx, r.db, getQuery("sparepart_set_status"), string(status), id, "mastersparepart/sqlstore")
 }
 
 // NextID menerbitkan ID berikutnya.
@@ -329,37 +304,11 @@ func (r *Repo) SetStatus(
 // nomor urut SEPULUH digit bertambal nol.
 //
 // Kedua kueri dijalankan di dalam SATU transaksi. Bukan demi keatomikan — sequence tidak
-// dapat dibatalkan — melainkan supaya keduanya pasti dilayani koneksi yang sama; kode situs
-// dan sequence yang berasal dari dua koneksi berbeda pada pool yang sama tetap benar, tetapi
-// jaminannya tidak berasal dari mana pun selain kebetulan.
+// dapat dibatalkan — melainkan supaya keduanya pasti dilayani koneksi yang sama; kode
+// situs dan sequence yang berasal dari dua koneksi berbeda pada pool yang sama tetap
+// benar, tetapi jaminannya tidak berasal dari mana pun selain kebetulan.
 func (r *Repo) NextID(ctx context.Context) (string, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return "", fmt.Errorf("mastersparepart/sqlstore: memulai transaksi penomoran: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var site sql.NullString
-	if err := tx.QueryRowContext(ctx, getQuery("sparepart_site")).Scan(&site); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// Persis keadaan yang ditangkap `PEGA_M_SPAREPART_HE.prc:13-18`, yang menjawabnya
-			// dengan pesan galat lalu berhenti. Di sini ia juga berhenti — ID tanpa kode situs
-			// akan bertabrakan dengan ID entitas lain.
-			return "", errors.New(
-				"mastersparepart/sqlstore: POOLDATA.M_SITE_DATABASE tidak punya baris CURRENT_SITE='1'")
-		}
-		return "", fmt.Errorf("mastersparepart/sqlstore: membaca kode situs: %w", err)
-	}
-
-	var sequence int64
-	if err := tx.QueryRowContext(ctx, getQuery("sparepart_next_sequence")).Scan(&sequence); err != nil {
-		return "", fmt.Errorf("mastersparepart/sqlstore: mengambil nomor urut: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("mastersparepart/sqlstore: menutup transaksi penomoran: %w", err)
-	}
-	return mastersparepart.ComposeID(strings.TrimSpace(site.String), sequence, sequenceWidth), nil
+	return idformat.Next(ctx, r.db, getQuery("sparepart_site"), getQuery("sparepart_next_sequence"), "mastersparepart/sqlstore", sequenceWidth)
 }
 
 // CheckTable memastikan POOLDATA.SPAREPART_HE ada dan kedua puluh empat kolomnya dapat
@@ -437,24 +386,16 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 
 // likePattern menyusun pola LIKE dari sebuah kata kunci.
 //
-// Tanda persen, garis bawah, dan backslash pada kata kunci DILOLOSKAN lebih dulu. Tanpa itu,
-// pengguna yang mengetik "%" menarik seluruh tabel dan yang mengetik "_" mencocoki karakter
-// apa pun — bukan celah keamanan karena nilainya tetap terikat sebagai parameter, tetapi
-// hasil yang tidak dapat dijelaskan kepada yang mengetiknya.
+// Tanda persen, garis bawah, dan backslash pada kata kunci DILOLOSKAN lebih dulu. Tanpa
+// itu, pengguna yang mengetik "%" menarik seluruh tabel dan yang mengetik "_" mencocoki
+// karakter apa pun — bukan celah keamanan karena nilainya tetap terikat sebagai
+// parameter, tetapi hasil yang tidak dapat dijelaskan kepada yang mengetiknya.
 //
 // `ESCAPE '\'` disebut eksplisit di kuerinya karena Oracle tidak punya karakter pelolos
 // bawaan pada LIKE.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
-type scanner interface {
-	Scan(target ...any) error
-}
+type scanner = sqlkit.Scanner
 
 // scanRow membaca satu baris master sparepart.
 //
@@ -624,77 +565,6 @@ func lockedKeys(ctx context.Context, tx *sql.Tx, s mastersparepart.Sparepart) er
 		return &mastersparepart.ValidationError{Violation: violation}
 	}
 	return nil
-}
-
-// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan masukan
-// pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat saat pertama
-// dijalankan.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("mastersparepart/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("mastersparepart/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("mastersparepart/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("mastersparepart/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		if trimmed := strings.TrimSpace(rows); strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 var _ mastersparepart.Store = (*Repo)(nil)

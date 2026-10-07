@@ -1,73 +1,17 @@
 package inboxmanagerreceivepuclhttp
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxmanagerreceivepucl"
-	"claim-pnc/internal/inboxmanagerreceivepucl/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Ia tidak dipakai menyaring satu pun kueri di modul ini — layar ini pandangan penyelia
-	// atas pekerjaan orang lain. Yang memakainya adalah jejak log, dan itulah satu-satunya
-	// kontrol yang tersisa selama pemeriksaan peran belum ada (`TKT-F3-004`).
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox Manager Receive / PUCL.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Manager Receive / PUCL.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-manager-receive-pucl/tab.
 //
@@ -76,11 +20,11 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-manager-receive-pucl.
@@ -92,7 +36,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -103,11 +47,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Document menangani GET /api/inbox-manager-receive-pucl/dokumen/{referensi}.
@@ -130,13 +74,13 @@ func (h *Handler) Document(w http.ResponseWriter, r *http.Request) {
 	// ditemukan" yang tidak dapat dijelaskan siapa pun.
 	reference := strings.TrimSpace(chi.URLParam(r, "referensi"))
 
-	doc, err := h.service.Document(r.Context(), active.Alias, caller, reference)
+	doc, err := h.Service.Document(r.Context(), active.Alias, caller, reference)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDocumentResponse(doc, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDocumentResponse(doc, active.Alias))
 }
 
 // RejectWrite menjawab aksi tulis yang belum tersedia.
@@ -146,12 +90,12 @@ func (h *Handler) Document(w http.ResponseWriter, r *http.Request) {
 // dijawab "halaman tidak ditemukan" terbaca sebagai kerusakan, sementara yang dibutuhkan
 // pengguna adalah tahu ke mana ia harus pergi.
 //
-// Portal tetap diperiksa lebih dulu meski permintaannya pasti ditolak: jawaban yang menyebut
-// portal aktif untuk permintaan yang tidak menyebut portal akan membuat layar mengira ia
-// sudah berada di portal yang benar.
+// Portal tetap diperiksa lebih dulu meski permintaannya pasti ditolak: jawaban yang
+// menyebut portal aktif untuk permintaan yang tidak menyebut portal akan membuat layar
+// mengira ia sudah berada di portal yang benar.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
@@ -164,8 +108,8 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	// Klaim", `S-1` untuk unggah dokumen, `S-3` untuk komunikasi, `S-4` untuk transfer ke
 	// ASM. Jejak yang hanya menyebut jalurnya tidak dapat menjawab pertanyaan yang justru
 	// ingin dijawabnya: modul mana yang paling mendesak dibangun.
-	if h.logger != nil {
-		h.logger.Info(
+	if h.Logger != nil {
+		h.Logger.Info(
 			"aksi tulis diminta pada modul yang belum menulis",
 			slog.String("modul", "inbox-manager-receive-pucl"),
 			slog.String("jalur", r.URL.Path),
@@ -174,7 +118,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	h.writeError(w, r, inboxmanagerreceivepucl.ErrWriteNotAvailable)
+	h.WriteError(w, r, inboxmanagerreceivepucl.ErrWriteNotAvailable)
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -187,13 +131,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxmanagerreceivepucl.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxmanagerreceivepucl.ErrCallerUnknown)
+		h.WriteError(w, r, inboxmanagerreceivepucl.ErrCallerUnknown)
 		return portal.Portal{}, inboxmanagerreceivepucl.Caller{}, false
 	}
 
@@ -218,10 +162,10 @@ func readFilter(query map[string][]string) inboxmanagerreceivepucl.QueryInput {
 
 // readCaller membaca identitas pemanggil, atau menyatakan ia tidak terbaca.
 func (h *Handler) readCaller(r *http.Request) (inboxmanagerreceivepucl.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxmanagerreceivepucl.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return inboxmanagerreceivepucl.Caller{}, false
 	}
@@ -234,10 +178,4 @@ func (h *Handler) readCaller(r *http.Request) (inboxmanagerreceivepucl.Caller, b
 // menjadi nilai bawaan. Menolak seluruh permintaan karena `halaman=abc` akan membuat layar
 // gagal tanpa alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah
 // jawaban yang selalu masuk akal.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegative(raw) }

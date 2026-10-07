@@ -1,10 +1,15 @@
 package memory
 
 import (
-	"time"
+	_ "embed"
 
-	"claim-pnc/internal/inboxmanagerreceivepucl"
+	"claim-pnc/internal/platform/sampledata"
 )
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleRows adalah baris contoh untuk pengembangan lokal dan uji.
 //
@@ -36,270 +41,39 @@ import (
 // Baris 1 sampai 4 membawa pula isi LAYAR KERJA penerimaan dokumennya. Baris 4 sengaja
 // membawanya nyaris kosong: ia berkas tanpa pasangan di tabel cermin, dan layar kerjanya
 // harus tetap terbuka alih-alih dinyatakan tidak ada.
-func SampleRows() []Row {
-	// Waktu dasar dibuat tetap, bukan `time.Now()`. Urutan baris pada uji karena itu tidak
-	// berubah menurut hari, dan uji yang memeriksanya tidak gagal esok hari tanpa ada yang
-	// menyentuh kode.
-	base := time.Date(2026, time.September, 22, 8, 0, 0, 0, time.UTC)
-	receive := inboxmanagerreceivepucl.WorkClassReceiveDocument
-	claim := inboxmanagerreceivepucl.WorkClassClaim
-
-	return []Row{
-		{
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:            "ASM-FW-GCNMFW-WORK RCV-900001",
-				CaseID:               "RCV-900001",
-				PolicyNumber:         "CONTOH-PA-0001",
-				ClaimNumber:          "PNCN.26.0001",
-				InsuredName:          "Tertanggung Contoh Satu",
-				LossDate:             "2026-09-01",
-				SenderName:           "Pengirim Contoh Satu",
-				DocumentReceivedDate: "03/09/2026",
-				InboxEntryAt:         "2026-09-03 09:14:00",
-			},
-			WorkClass:        receive,
-			AssignedOperator: "PETUGASCONTOH1",
-			GroupPanel:       inboxmanagerreceivepucl.GroupPanelPA,
-			CreatedAt:        base.Add(-2 * time.Hour),
-			Document: inboxmanagerreceivepucl.ReceiveDocument{
-				Reference:        "ASM-FW-GCNMFW-WORK RCV-900001",
-				CaseID:           "RCV-900001",
-				ClaimNumber:      "PNCN.26.0001",
-				WorkStatus:       "Open",
-				CreatedAt:        "2026-09-03 09:14:00",
-				ReceivedAt:       "03/09/2026",
-				SenderName:       "Pengirim Contoh Satu",
-				SenderEmail:      "pengirim.satu@contoh.invalid",
-				SenderPhone:      "08000000001",
-				CourierName:      "Kurir Contoh Satu",
-				InsuredName:      "Tertanggung Contoh Satu",
-				PolicyNumber:     "CONTOH-PA-0001",
-				LossDate:         "2026-09-01",
-				ReferenceNumber:  "REF-CONTOH-0001",
-				InsuredEmail:     "tertanggung.satu@contoh.invalid",
-				LossLocation:     "Lokasi Contoh Satu",
-				DriverLicence:    "SIM-CONTOH-0001",
-				Chronology:       "Kronologi contoh baris pertama.",
-				DamageDetail:     "Rincian kerusakan contoh baris pertama.",
-				TransferReason:   "Menunggu kelengkapan dokumen pendukung.",
-				EmailSubject:     "Penerimaan dokumen klaim contoh satu",
-				NotRegisteredNot: "",
-			},
-		},
-		{
-			// Berkas PA yang BELUM diregistrasi menjadi klaim: nomor klaim PNC-nya kosong,
-			// dan itu keadaan yang sah — bukan data hilang.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:            "ASM-FW-GCNMFW-WORK RCV-900002",
-				CaseID:               "RCV-900002",
-				PolicyNumber:         "CONTOH-PA-0002",
-				InsuredName:          "Tertanggung Contoh Dua",
-				LossDate:             "2026-09-05",
-				SenderName:           "Pengirim Contoh Dua",
-				DocumentReceivedDate: "06/09/2026",
-				InboxEntryAt:         "2026-09-06 10:02:00",
-			},
-			WorkClass:        receive,
-			AssignedOperator: "PETUGASCONTOH2",
-			GroupPanel:       inboxmanagerreceivepucl.GroupPanelPA,
-			CreatedAt:        base.Add(-5 * time.Hour),
-			Document: inboxmanagerreceivepucl.ReceiveDocument{
-				Reference:  "ASM-FW-GCNMFW-WORK RCV-900002",
-				CaseID:     "RCV-900002",
-				WorkStatus: "Open",
-				CreatedAt:  "2026-09-06 10:02:00",
-				ReceivedAt: "06/09/2026",
-				SenderName: "Pengirim Contoh Dua",
-
-				// Berkas ini BELUM diregistrasi menjadi klaim — nomor klaim PNC-nya kosong —
-				// dan alasannya diisi di sini supaya layar kerjanya menunjukkan keadaan yang
-				// benar-benar dihadapi petugas.
-				InsuredName:      "Tertanggung Contoh Dua",
-				PolicyNumber:     "CONTOH-PA-0002",
-				LossDate:         "2026-09-05",
-				LossLocation:     "Lokasi Contoh Dua",
-				Chronology:       "Kronologi contoh baris kedua.",
-				NotRegisteredNot: "Menunggu konfirmasi nomor polis dari cabang.",
-			},
-		},
-		{
-			// Group Panel 006 — Fire/Property. Ia bukan PA, sehingga muncul di tab NONMBU.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:            "ASM-FW-GCNMFW-WORK RCV-900003",
-				CaseID:               "RCV-900003",
-				PolicyNumber:         "CONTOH-FIRE-0003",
-				ClaimNumber:          "PNCN.26.0003",
-				InsuredName:          "PT Contoh Properti",
-				LossDate:             "2026-08-28",
-				SenderName:           "Pengirim Contoh Tiga",
-				DocumentReceivedDate: "30/08/2026",
-				InboxEntryAt:         "2026-08-30 14:20:00",
-			},
-			WorkClass:        receive,
-			AssignedOperator: "PETUGASCONTOH1",
-			GroupPanel:       "006",
-			CreatedAt:        base.Add(-30 * time.Hour),
-			Document: inboxmanagerreceivepucl.ReceiveDocument{
-				Reference:      "ASM-FW-GCNMFW-WORK RCV-900003",
-				CaseID:         "RCV-900003",
-				ClaimNumber:    "PNCN.26.0003",
-				WorkStatus:     "Open",
-				CreatedAt:      "2026-08-30 14:20:00",
-				ReceivedAt:     "30/08/2026",
-				SenderName:     "Pengirim Contoh Tiga",
-				SenderEmail:    "pengirim.tiga@contoh.invalid",
-				CourierName:    "Kurir Contoh Dua",
-				InsuredName:    "PT Contoh Properti",
-				PolicyNumber:   "CONTOH-FIRE-0003",
-				LossDate:       "2026-08-28",
-				InsuredEmail:   "properti@contoh.invalid",
-				LossLocation:   "Lokasi Contoh Tiga",
-				Chronology:     "Kronologi contoh baris ketiga.",
-				DamageDetail:   "Rincian kerusakan contoh baris ketiga.",
-				TransferReason: "Menunggu hasil survei.",
-				EmailSubject:   "Penerimaan dokumen klaim contoh tiga",
-			},
-		},
-		{
-			// Berkas NONMBU tanpa pasangan di tabel cermin: Nama Pengirim dan Tanggal
-			// Terima Dokumen kosong. Ia SENGAJA ada — `LEFT JOIN` pada kueri aslinya
-			// membuat baris seperti ini tetap muncul, dan penyimpanan memori harus
-			// menunjukkan hal yang sama.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:    "ASM-FW-GCNMFW-WORK RCV-900004",
-				CaseID:       "RCV-900004",
-				PolicyNumber: "CONTOH-MARINE-0004",
-				InsuredName:  "PT Contoh Kargo",
-				LossDate:     "2026-09-10",
-				InboxEntryAt: "2026-09-11 08:45:00",
-			},
-			WorkClass:        receive,
-			AssignedOperator: "PETUGASCONTOH3",
-			GroupPanel:       "004",
-			CreatedAt:        base.Add(-40 * time.Hour),
-
-			// Layar kerjanya nyaris kosong, dan itu SENGAJA: berkas ini tidak punya pasangan
-			// di tabel cermin, sehingga ke-13 isian yang berasal dari sana memang NULL.
-			// Ia harus tetap TERBUKA — bukan dinyatakan tidak ada — karena `LEFT JOIN` pada
-			// kueri aslinya memang membiarkannya terbaca.
-			Document: inboxmanagerreceivepucl.ReceiveDocument{
-				Reference:    "ASM-FW-GCNMFW-WORK RCV-900004",
-				CaseID:       "RCV-900004",
-				WorkStatus:   "Open",
-				CreatedAt:    "2026-09-11 08:45:00",
-				InsuredName:  "PT Contoh Kargo",
-				PolicyNumber: "CONTOH-MARINE-0004",
-				LossDate:     "2026-09-10",
-			},
-		},
-		{
-			// Group Panel KOSONG. Ia tidak muncul di tab Receive mana pun, persis seperti
-			// `GROUPPANEL_1 <> '002'` yang tidak menangkap NULL di Oracle.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:    "ASM-FW-GCNMFW-WORK RCV-900005",
-				CaseID:       "RCV-900005",
-				PolicyNumber: "CONTOH-TANPA-PANEL",
-				InsuredName:  "Tertanggung Contoh Lima",
-				InboxEntryAt: "2026-09-12 11:30:00",
-			},
-			WorkClass:        receive,
-			AssignedOperator: "PETUGASCONTOH1",
-			CreatedAt:        base.Add(-50 * time.Hour),
-		},
-		{
-			// KLAIM, bukan berkas penerimaan dokumen, tetapi berada di tabel penugasan per
-			// orang. Ia tidak boleh muncul di tab Receive mana pun — pembedanya semata
-			// `PXOBJCLASS`, dan itulah yang dibuktikan baris ini.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:    "ASM-FW-GCNMFW-WORK PNC-800001",
-				CaseID:       "PNC-800001",
-				PolicyNumber: "CONTOH-KLAIM-8001",
-				InsuredName:  "Tertanggung Contoh Enam",
-				InboxEntryAt: "2026-09-13 09:00:00",
-			},
-			WorkClass:        claim,
-			AssignedOperator: "PETUGASCONTOH2",
-			GroupPanel:       inboxmanagerreceivepucl.GroupPanelPA,
-			WorkStatus:       "Open",
-			CreatedAt:        base.Add(-60 * time.Hour),
-		},
-		{
-			// Jalur RCL — `RCL_PUCL_1 = '1'`.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:       "ASM-FW-GCNMFW-WORK PNC-800002",
-				CaseID:          "PNC-800002",
-				PolicyNumber:    "CONTOH-KLAIM-8002",
-				InsuredName:     "Tertanggung Contoh Tujuh",
-				InboxEntryAt:    "2026-09-14 13:05:00",
-				AnalystNote:     "Dokumen pendukung tidak lengkap; menunggu tanggapan cabang.",
-				Track:           inboxmanagerreceivepucl.TrackRCL,
-				TrackStatus:     "Menunggu Keputusan",
-				LetterPrintedAt: "16/09/2026",
-				ClaimAge:        "8",
-				ExpiryStatus:    "Belum Kadaluarsa",
-			},
-			WorkClass:        claim,
-			FromWorkbasket:   true,
-			AssignedOperator: inboxmanagerreceivepucl.RCLPUCLWorkbasket,
-			WorkStatus:       "Open",
-			CreatedAt:        base.Add(-70 * time.Hour),
-		},
-		{
-			// Jalur PUCL — `RCL_PUCL_1 = '2'`. Suratnya BELUM dicetak, sehingga
-			// `LetterPrintedAt` kosong. Baris seperti ini tidak akan muncul bila ketiga
-			// penyaring job pengingat ikut dibawa — dan itulah alasan ketiganya tidak
-			// dibawa; lihat catatan di inboxmanagerreceivepucl.sql.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:    "ASM-FW-GCNMFW-WORK PNC-800003",
-				CaseID:       "PNC-800003",
-				PolicyNumber: "CONTOH-KLAIM-8003",
-				InsuredName:  "PT Contoh Ulang",
-				InboxEntryAt: "2026-09-15 07:50:00",
-				AnalystNote:  "Diajukan proses ulang setelah bukti baru diterima.",
-				Track:        inboxmanagerreceivepucl.TrackPUCL,
-				TrackStatus:  "Dalam Proses",
-				ClaimAge:     "5",
-				ExpiryStatus: "Belum Kadaluarsa",
-			},
-			WorkClass:        claim,
-			FromWorkbasket:   true,
-			AssignedOperator: inboxmanagerreceivepucl.RCLPUCLWorkbasket,
-			WorkStatus:       "Open",
-			CreatedAt:        base.Add(-80 * time.Hour),
-		},
-		{
-			// Klaim SELESAI di antrean yang sama. Ia tidak boleh muncul — satu-satunya
-			// penyaring Report Definition RCL/PUCL adalah status kerja ini.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:    "ASM-FW-GCNMFW-WORK PNC-800004",
-				CaseID:       "PNC-800004",
-				PolicyNumber: "CONTOH-KLAIM-8004",
-				InsuredName:  "Tertanggung Contoh Sembilan",
-				InboxEntryAt: "2026-09-16 15:10:00",
-				Track:        inboxmanagerreceivepucl.TrackRCL,
-			},
-			WorkClass:        claim,
-			FromWorkbasket:   true,
-			AssignedOperator: inboxmanagerreceivepucl.RCLPUCLWorkbasket,
-			WorkStatus:       inboxmanagerreceivepucl.WorkStatusCompleted,
-			CreatedAt:        base.Add(-90 * time.Hour),
-		},
-		{
-			// Klaim di antrean bersama LAIN. Ia tidak boleh muncul — dan baris inilah yang
-			// membuktikan penyaring antrean benar-benar dipakai, bukan sekadar tertulis.
-			// Tanpanya, kueri yang lupa menyaring antrean tetap lulus seluruh uji.
-			Item: inboxmanagerreceivepucl.WorkItem{
-				Reference:    "ASM-FW-GCNMFW-WORK PNC-800005",
-				CaseID:       "PNC-800005",
-				PolicyNumber: "CONTOH-KLAIM-8005",
-				InsuredName:  "Tertanggung Contoh Sepuluh",
-				InboxEntryAt: "2026-09-17 16:40:00",
-			},
-			WorkClass:        claim,
-			FromWorkbasket:   true,
-			AssignedOperator: "Compliance",
-			WorkStatus:       "Open",
-			CreatedAt:        base.Add(-100 * time.Hour),
-		},
-	}
-}
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Waktu dasar dibuat tetap, bukan `time.Now()`. Urutan baris pada uji karena itu tidak
+// berubah menurut hari, dan uji yang memeriksanya tidak gagal esok hari tanpa ada yang
+// menyentuh kode.
+// Berkas PA yang BELUM diregistrasi menjadi klaim: nomor klaim PNC-nya kosong,
+// dan itu keadaan yang sah — bukan data hilang.
+// Berkas ini BELUM diregistrasi menjadi klaim — nomor klaim PNC-nya kosong —
+// dan alasannya diisi di sini supaya layar kerjanya menunjukkan keadaan yang
+// benar-benar dihadapi petugas.
+// Group Panel 006 — Fire/Property. Ia bukan PA, sehingga muncul di tab NONMBU.
+// Berkas NONMBU tanpa pasangan di tabel cermin: Nama Pengirim dan Tanggal
+// Terima Dokumen kosong. Ia SENGAJA ada — `LEFT JOIN` pada kueri aslinya
+// membuat baris seperti ini tetap muncul, dan penyimpanan memori harus
+// menunjukkan hal yang sama.
+// Layar kerjanya nyaris kosong, dan itu SENGAJA: berkas ini tidak punya pasangan
+// di tabel cermin, sehingga ke-13 isian yang berasal dari sana memang NULL.
+// Ia harus tetap TERBUKA — bukan dinyatakan tidak ada — karena `LEFT JOIN` pada
+// kueri aslinya memang membiarkannya terbaca.
+// Group Panel KOSONG. Ia tidak muncul di tab Receive mana pun, persis seperti
+// `GROUPPANEL_1 <> '002'` yang tidak menangkap NULL di Oracle.
+// KLAIM, bukan berkas penerimaan dokumen, tetapi berada di tabel penugasan per
+// orang. Ia tidak boleh muncul di tab Receive mana pun — pembedanya semata
+// `PXOBJCLASS`, dan itulah yang dibuktikan baris ini.
+// Jalur RCL — `RCL_PUCL_1 = '1'`.
+// Jalur PUCL — `RCL_PUCL_1 = '2'`. Suratnya BELUM dicetak, sehingga
+// `LetterPrintedAt` kosong. Baris seperti ini tidak akan muncul bila ketiga
+// penyaring job pengingat ikut dibawa — dan itulah alasan ketiganya tidak
+// dibawa; lihat catatan di inboxmanagerreceivepucl.sql.
+// Klaim SELESAI di antrean yang sama. Ia tidak boleh muncul — satu-satunya
+// penyaring Report Definition RCL/PUCL adalah status kerja ini.
+// Klaim di antrean bersama LAIN. Ia tidak boleh muncul — dan baris inilah yang
+// membuktikan penyaring antrean benar-benar dipakai, bukan sekadar tertulis.
+// Tanpanya, kueri yang lupa menyaring antrean tetap lulus seluruh uji.
+func SampleRows() []Row { return sampledata.Must[[]Row](sampleJSON, "SampleRows") }

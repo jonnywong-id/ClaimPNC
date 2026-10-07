@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterpenolakan"
+	"claim-pnc/internal/platform/sqlkit"
 )
 
 // RepoKomite membaca dan menulis POOLDATA.MST_REJECTED_KOMITE.
@@ -27,23 +28,7 @@ func NewRepoKomite(db *sql.DB) *RepoKomite { return &RepoKomite{db: db} }
 // List membaca seluruh penolakan komite.
 func (r *RepoKomite) List(ctx context.Context) ([]masterpenolakan.CommitteeRejection, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("committee_rejection_list"))
-	if err != nil {
-		return nil, fmt.Errorf("masterpenolakan/sqlstore: membaca daftar penolakan komite: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterpenolakan.CommitteeRejection
-	for rows.Next() {
-		rejection, err := scanKomite(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, rejection)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterpenolakan/sqlstore: menelusuri penolakan komite: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanKomite, "masterpenolakan/sqlstore: membaca daftar penolakan komite", "", "masterpenolakan/sqlstore: menelusuri penolakan komite")
 }
 
 // Get membaca satu penolakan komite berdasarkan IDMASTER-nya.

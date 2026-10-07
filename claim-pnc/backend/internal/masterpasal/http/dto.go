@@ -4,7 +4,10 @@
 // kode status. Tidak ada satu pun aturan bisnis di sini.
 package masterpasalhttp
 
-import "claim-pnc/internal/masterpasal"
+import (
+	"claim-pnc/internal/masterpasal"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // ClauseDTO adalah bentuk satu pasal kerugian di kawat.
 //
@@ -150,10 +153,7 @@ type BusinessSaveRequest struct {
 }
 
 // ViolationDTO adalah satu isian yang tidak lolos pemeriksaan.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

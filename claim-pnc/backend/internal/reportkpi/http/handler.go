@@ -1,73 +1,16 @@
 package reportkpihttp
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-	"claim-pnc/internal/reportkpi"
-	"claim-pnc/internal/reportkpi/usecase"
-
 	portalhttp "claim-pnc/internal/portal/http"
+	"claim-pnc/internal/reportkpi"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Ia tidak dipakai menyaring satu pun kueri di modul ini — laporannya pandangan
-	// penyelia atas seluruh adjuster. Yang memakainya adalah jejak log, dan itulah
-	// satu-satunya kontrol yang tersisa selama pemeriksaan peran belum ada
-	// (`TKT-F3-004`, `D-59`).
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Report KPI PNC.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Report KPI PNC.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/report-kpi/tab.
 //
@@ -75,11 +18,11 @@ func NewHandler(o Options) *Handler {
 // adalah bentuk layar, bukan data entitas.
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata()))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(h.Service.Metadata()))
 }
 
 // Summary menangani GET /api/report-kpi/adjuster/ringkasan.
@@ -89,13 +32,13 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.Summary(r.Context(), active.Alias, caller, readFilter(r.URL.Query()))
+	result, err := h.Service.Summary(r.Context(), active.Alias, caller, readFilter(r.URL.Query()))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, SummaryResponse{
+	h.WriteJSON(w, r, http.StatusOK, SummaryResponse{
 		Rows:   toSummaryRows(result.Rows),
 		Filter: toFilterDTO(result.Query),
 		Portal: active.Alias,
@@ -115,13 +58,13 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		Size: positiveNumber(query.Get("ukuran")),
 	}
 
-	result, err := h.service.Detail(r.Context(), active.Alias, caller, readFilter(query), page)
+	result, err := h.Service.Detail(r.Context(), active.Alias, caller, readFilter(query), page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, DetailResponse{
+	h.WriteJSON(w, r, http.StatusOK, DetailResponse{
 		Rows:       toDetailRows(result.Page.Rows),
 		Pagination: toPaginationDTO(page, result.Page.Total),
 		Filter:     toFilterDTO(result.Query),
@@ -141,9 +84,9 @@ func (h *Handler) Adjusters(w http.ResponseWriter, r *http.Request) {
 
 	input := readFilter(r.URL.Query())
 
-	names, err := h.service.Adjusters(r.Context(), active.Alias, caller, input)
+	names, err := h.Service.Adjusters(r.Context(), active.Alias, caller, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -153,7 +96,7 @@ func (h *Handler) Adjusters(w http.ResponseWriter, r *http.Request) {
 	input.Adjuster = ""
 	query, _ := reportkpi.NewQuery(input, reportkpi.Caller{Login: caller.Login})
 
-	h.writeJSON(w, r, http.StatusOK, AdjusterListResponse{
+	h.WriteJSON(w, r, http.StatusOK, AdjusterListResponse{
 		Adjusters: names,
 		Filter:    toFilterDTO(query),
 		Portal:    active.Alias,
@@ -171,15 +114,15 @@ func (h *Handler) Adjusters(w http.ResponseWriter, r *http.Request) {
 // mengira ia sudah berada di portal yang benar.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
 	// Dicatat, bukan hanya ditolak. Selama masa paralel, inilah satu-satunya tanda seberapa
 	// sering pengguna benar-benar membutuhkan aksi ini — dan itu yang menjadi dasar
 	// memutuskan kapan kepemilikan tabelnya dipindahkan (`P-1`).
-	if h.logger != nil {
-		h.logger.Info(
+	if h.Logger != nil {
+		h.Logger.Info(
 			"aksi tulis diminta pada modul yang belum menulis",
 			slog.String("modul", "report-kpi"),
 			slog.String("jalur", r.URL.Path),
@@ -187,7 +130,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	h.writeError(w, r, reportkpi.ErrWriteNotAvailable)
+	h.WriteError(w, r, reportkpi.ErrWriteNotAvailable)
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -199,13 +142,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, reportkpi.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, reportkpi.ErrCallerUnknown)
+		h.WriteError(w, r, reportkpi.ErrCallerUnknown)
 		return portal.Portal{}, reportkpi.Caller{}, false
 	}
 
@@ -232,10 +175,10 @@ func readFilter(query url.Values) reportkpi.QueryInput {
 
 // readCaller membaca identitas pemanggil, atau menyatakan ia tidak terbaca.
 func (h *Handler) readCaller(r *http.Request) (reportkpi.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return reportkpi.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return reportkpi.Caller{}, false
 	}
@@ -248,10 +191,4 @@ func (h *Handler) readCaller(r *http.Request) (reportkpi.Caller, bool) {
 // menjadi nilai bawaan. Menolak seluruh permintaan karena `halaman=abc` akan membuat layar
 // gagal tanpa alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah
 // jawaban yang selalu masuk akal.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegative(raw) }

@@ -3,6 +3,7 @@ package masterstatushttp
 import (
 	"github.com/go-chi/chi/v5"
 
+	"claim-pnc/internal/platform/crudhttp"
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -40,18 +41,5 @@ import (
 // Modul ini semula dilayani portal utama saja. Penyelarasannya diputuskan Work Owner
 // 2026-09-19, sekaligus mencabut Isolasi Protektif untuk modul ini.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Route("/master/status-klaim", func(master chi.Router) {
-			master.Get("/", h.List)
-			master.Post("/", h.Create)
-			master.Get("/{kode}", h.Get)
-
-			// PUT, bukan PATCH: seluruh isi yang boleh diubah — satu field, label —
-			// dikirim setiap kali, sehingga permintaannya menggantikan dan idempoten.
-			// Mengirim permintaan yang sama dua kali menghasilkan keadaan akhir yang sama.
-			master.Put("/{kode}", h.Update)
-		})
-	})
+	crudhttp.Mount(r, portalDeps, "/master/status-klaim", "kode", h)
 }

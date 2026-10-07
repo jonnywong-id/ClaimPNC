@@ -104,7 +104,7 @@ func (h *Handler) stream(
 		return writer.Write(reportklaim.Headers(columns))
 	}
 
-	_, _, err := h.service.Export(r.Context(), request, func(row reportklaim.Row) error {
+	_, _, err := h.Service.Export(r.Context(), request, func(row reportklaim.Row) error {
 		if !started {
 			if err := begin(); err != nil {
 				return err

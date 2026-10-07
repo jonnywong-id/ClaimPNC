@@ -2,13 +2,10 @@ package inboxkomunikasicabanghttp
 
 import (
 	"encoding/csv"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"claim-pnc/internal/inboxkomunikasicabang"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/csvexport"
 )
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan saat mengekspor.
@@ -62,9 +59,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa berkas
 	// separuh jadi tanpa satu pun keterangan. Tab yang tidak dikenal, sesi yang tidak
 	// lengkap, dan sumber cabang yang mati karena itu tetap dijawab sebagai galat terbaca.
-	first, err := h.service.List(r.Context(), active.Alias, caller, readFilter(query), page)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, readFilter(query), page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -72,65 +69,35 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 
 	h.beginDownload(w, exportFilename(first.Query.Tab, first.Query.Branch))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(header); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
 	filter := readFilter(query)
-	written := 0
-	current := first
 
-	for {
-		for _, item := range current.Page.Items {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(header), current.Page.Total))
-				return
-			}
-			if err := writer.Write(exportRow(item)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Page.Total || len(current.Page.Items) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.List(r.Context(), active.Alias, caller, filter, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+	csvexport.Paged[inboxkomunikasicabang.Conversation]{
+		Header: header,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(item inboxkomunikasicabang.Conversation) []string {
+			return exportRow(item)
+		},
+		Next: func(n int) ([]inboxkomunikasicabang.Conversation, int, error) {
+			page.Page = n
+			next, err := h.Service.List(r.Context(), active.Alias, caller, filter, page)
+			return next.Page.Items, next.Page.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Page.Items, first.Page.Total)
 }
 
 // beginDownload memasang header unduhan.
 func (h *Handler) beginDownload(w http.ResponseWriter, filename string) {
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	w.Header().Set("Cache-Control", "no-store")
+	csvexport.BeginDownload(w, filename)
 }
 
 // flush mendorong isi yang sudah tertulis keluar setiap potong, bukan menahannya sampai
 // akhir. Itulah yang membuat unduhan besar mulai mengalir segera dan memori tidak menumpuk.
 func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Request) bool {
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+	if err := csvexport.Flush(w, writer); err != nil {
 		h.logExportFailure(r, err)
 		return false
-	}
-	if flusher, able := w.(http.Flusher); able {
-		flusher.Flush()
 	}
 	return true
 }
@@ -218,15 +185,7 @@ func exportFilename(
 
 // truncationNotice menyusun baris penanda bahwa berkasnya tidak lengkap.
 func truncationNotice(width, total int) []string {
-	notice := make([]string, width)
-	if width == 0 {
-		return notice
-	}
-	notice[0] = fmt.Sprintf(
-		"-- Terpotong pada %s baris dari %s yang cocok. --",
-		strconv.Itoa(exportLimit), strconv.Itoa(total),
-	)
-	return notice
+	return csvexport.TruncationNotice(width, exportLimit, total, "")
 }
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
@@ -236,8 +195,5 @@ func truncationNotice(width, total int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor inbox komunikasi cabang terputus",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", err.Error()),
-	)
+	csvexport.LogFailure(r, h.Logger, "ekspor inbox komunikasi cabang terputus", err)
 }

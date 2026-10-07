@@ -40,9 +40,9 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 //
 // # Kewenangan
 //

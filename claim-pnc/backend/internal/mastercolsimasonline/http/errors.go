@@ -2,11 +2,10 @@ package mastercolsimasonlinehttp
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/mastercolsimasonline"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini.
@@ -34,30 +33,14 @@ const (
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	status, body, known := mapError(err)
-	if !known {
-		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan
-		// jaringan, cacat pemrograman — diserahkan ke penulis bersama, yang menjawab
-		// 500 dengan pesan umum dan menaruh rinciannya di log saja. Rincian galat
-		// internal tidak pernah dikirim ke peramban.
-		h.writeError(w, r, err)
-		return
-	}
-
-	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-	}
-	h.writeResponse(w, r, status, body)
+	apierror.Write(w, r, err, mapError, h.Logger, h.WriteResponse, h.WriteError)
 }
 
 // mapError memetakan galat domain menjadi status dan badan respons.
@@ -65,8 +48,8 @@ func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err e
 // Nilai ketiga menyatakan apakah galatnya dikenali modul ini.
 //
 // Galat PORTAL sengaja tidak ada di sini. Ia dipetakan portalhttp.WithPortalError yang
-// membungkus penulis galat yang disuntikkan dari cmd — satu pemetaan yang dipakai
-// seluruh modul bisnis, bukan satu tafsiran per modul.
+// membungkus penulis galat yang disuntikkan dari cmd — satu pemetaan yang dipakai seluruh
+// modul bisnis, bukan satu tafsiran per modul.
 func mapError(err error) (int, ErrorResponse, bool) {
 	var validationError *mastercolsimasonline.ValidationError
 
@@ -77,10 +60,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// 422 berarti pengguna perlu memperbaiki isiannya (`10-API-STRATEGY.md` §5).
 		//
 		// SELURUH pelanggaran dikirim sekaligus, bukan yang pertama saja.
-		detail := make([]ViolationDTO, 0, len(validationError.Violation))
-		for _, v := range validationError.Violation {
-			detail = append(detail, ViolationDTO{Field: v.Field, Message: v.Message})
-		}
+		detail := apierror.ColumnErrors(validationError.Violation)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFailed,
 			Message: "Ada isian yang belum benar. Periksa keterangan di bawah setiap isian.",

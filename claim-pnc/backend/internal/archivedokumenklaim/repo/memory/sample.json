@@ -1,0 +1,204 @@
+{
+  "SampleClaims": [
+    {
+      "Number": "PNC-100006",
+      "PolicyNumber": "POL-2024-000006",
+      "InsuredName": "CONTOH TERTANGGUNG ENAM",
+      "LossDate": "2024-07-21T00:00:00Z",
+      "BusinessName": "FIRE",
+      "BranchName": "CABANG CONTOH",
+      "WorkStatus": "Resolved-Completed",
+      "ClaimPosition": "Close Claim",
+      "CloseDate": "2024-08-30T00:00:00Z",
+      "CloseNote": "Selesai dibayarkan",
+      "TechnicalPIC": "PICTEKNIK1",
+      "GroupPanel": "006"
+    },
+    {
+      "Number": "PNC-100007",
+      "PolicyNumber": "POL-2024-000006",
+      "InsuredName": "CONTOH TERTANGGUNG ENAM",
+      "LossDate": "2024-09-02T00:00:00Z",
+      "BusinessName": "MARINE CARGO",
+      "BranchName": "CABANG CONTOH",
+      "WorkStatus": "Resolved-Completed",
+      "ClaimPosition": "Paid",
+      "CloseDate": "2024-10-11T00:00:00Z",
+      "CloseNote": "",
+      "TechnicalPIC": "PICTEKNIK2",
+      "GroupPanel": "004"
+    },
+    {
+      "Number": "PNCN.26.0002",
+      "PolicyNumber": "POL-2026-000002",
+      "InsuredName": "CONTOH TERTANGGUNG TUJUH",
+      "LossDate": "2026-02-14T00:00:00Z",
+      "BusinessName": "PERSONAL ACCIDENT",
+      "BranchName": "CABANG CONTOH",
+      "WorkStatus": "Open",
+      "ClaimPosition": "Register",
+      "CloseDate": null,
+      "CloseNote": "",
+      "TechnicalPIC": "PICTEKNIK3",
+      "GroupPanel": "002"
+    }
+  ],
+  "SampleDocumentKinds": [
+    {
+      "Code": "000101",
+      "Name": "Laporan Kerugian",
+      "TypeCode": "0001"
+    },
+    {
+      "Code": "000102",
+      "Name": "Polis dan Endorsement",
+      "TypeCode": "0001"
+    },
+    {
+      "Code": "000201",
+      "Name": "Berita Acara Survey",
+      "TypeCode": "0002"
+    },
+    {
+      "Code": "000202",
+      "Name": "Foto Lokasi",
+      "TypeCode": "0002"
+    },
+    {
+      "Code": "000301",
+      "Name": "Korespondensi",
+      "TypeCode": "0003"
+    }
+  ],
+  "SampleDocumentTypes": [
+    {
+      "Code": "0001",
+      "Name": "Dokumen Klaim"
+    },
+    {
+      "Code": "0002",
+      "Name": "Dokumen Survey"
+    },
+    {
+      "Code": "0003",
+      "Name": "Dokumen Pendukung"
+    }
+  ],
+  "SampleFiles": [
+    {
+      "ID": 1,
+      "ClaimNumber": "PNC-100001",
+      "PolicyNumber": "POL-2024-000001",
+      "InsuredName": "CONTOH TERTANGGUNG SATU",
+      "LossDate": "2024-03-11T00:00:00Z",
+      "TechnicalPIC": "PICTEKNIK1",
+      "DocumentReceivedDate": "2024-03-18T00:00:00Z",
+      "InputDate": "2024-03-20T00:00:00Z",
+      "SheetCount": 24,
+      "DocumentTypeCode": "0001",
+      "DocumentTypeName": "",
+      "DocumentKindCode": "000101",
+      "DocumentKindName": "",
+      "BoxName": "BOX-A-01",
+      "FillingCode": "FIL-2024-001",
+      "InputUser": "USERARSIP1",
+      "SentDate": null,
+      "GroupPanel": "006",
+      "BranchStatus": "0",
+      "ServiceCode": "",
+      "ServiceNote": ""
+    },
+    {
+      "ID": 2,
+      "ClaimNumber": "PNC-100002",
+      "PolicyNumber": "POL-2024-000002",
+      "InsuredName": "CONTOH TERTANGGUNG DUA",
+      "LossDate": "2024-04-02T00:00:00Z",
+      "TechnicalPIC": "PICTEKNIK2",
+      "DocumentReceivedDate": "2024-04-09T00:00:00Z",
+      "InputDate": "2024-04-10T00:00:00Z",
+      "SheetCount": 8,
+      "DocumentTypeCode": "0001",
+      "DocumentTypeName": "",
+      "DocumentKindCode": "000102",
+      "DocumentKindName": "",
+      "BoxName": "BOX-A-01",
+      "FillingCode": "FIL-2024-001",
+      "InputUser": "USERARSIP1",
+      "SentDate": "2024-04-12T00:00:00Z",
+      "GroupPanel": "004",
+      "BranchStatus": "1",
+      "ServiceCode": "200",
+      "ServiceNote": "Berhasil diterima sistem Arsip"
+    },
+    {
+      "ID": 3,
+      "ClaimNumber": "PNC-100003",
+      "PolicyNumber": "POL-2024-000003",
+      "InsuredName": "CONTOH TERTANGGUNG TIGA",
+      "LossDate": "2024-05-05T00:00:00Z",
+      "TechnicalPIC": "PICTEKNIK1",
+      "DocumentReceivedDate": "2024-05-14T00:00:00Z",
+      "InputDate": "2024-05-15T00:00:00Z",
+      "SheetCount": 112,
+      "DocumentTypeCode": "0002",
+      "DocumentTypeName": "",
+      "DocumentKindCode": "000201",
+      "DocumentKindName": "",
+      "BoxName": "BOX-B-07",
+      "FillingCode": "FIL-2024-014",
+      "InputUser": "USERARSIP2",
+      "SentDate": null,
+      "GroupPanel": "002",
+      "BranchStatus": "0",
+      "ServiceCode": "",
+      "ServiceNote": ""
+    },
+    {
+      "ID": 4,
+      "ClaimNumber": "PNC-100004",
+      "PolicyNumber": "POL-2024-000004",
+      "InsuredName": "CONTOH TERTANGGUNG EMPAT",
+      "LossDate": "2024-06-01T00:00:00Z",
+      "TechnicalPIC": "PICTEKNIK3",
+      "DocumentReceivedDate": "2024-06-06T00:00:00Z",
+      "InputDate": "2024-06-07T00:00:00Z",
+      "SheetCount": 5,
+      "DocumentTypeCode": "0002",
+      "DocumentTypeName": "",
+      "DocumentKindCode": "000202",
+      "DocumentKindName": "",
+      "BoxName": "BOX-B-08",
+      "FillingCode": "FIL-2024-015",
+      "InputUser": "USERARSIP2",
+      "SentDate": null,
+      "GroupPanel": "005",
+      "BranchStatus": "0",
+      "ServiceCode": "",
+      "ServiceNote": ""
+    },
+    {
+      "ID": 5,
+      "ClaimNumber": "PNCN.26.0001",
+      "PolicyNumber": "POL-2026-000001",
+      "InsuredName": "CONTOH TERTANGGUNG LIMA",
+      "LossDate": "2026-01-09T00:00:00Z",
+      "TechnicalPIC": "PICTEKNIK3",
+      "DocumentReceivedDate": "2026-01-15T00:00:00Z",
+      "InputDate": "2026-01-16T00:00:00Z",
+      "SheetCount": 40,
+      "DocumentTypeCode": "9999",
+      "DocumentTypeName": "",
+      "DocumentKindCode": "999901",
+      "DocumentKindName": "",
+      "BoxName": "BOX-C-02",
+      "FillingCode": "FIL-2026-003",
+      "InputUser": "USERARSIP1",
+      "SentDate": null,
+      "GroupPanel": "003",
+      "BranchStatus": "0",
+      "ServiceCode": "",
+      "ServiceNote": ""
+    }
+  ]
+}

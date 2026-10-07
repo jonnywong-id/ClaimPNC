@@ -1,18 +1,13 @@
 package mastercolsimasonlinehttp
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/mastercolsimasonline"
-	"claim-pnc/internal/mastercolsimasonline/usecase"
+	"claim-pnc/internal/platform/httpjson"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -23,150 +18,6 @@ import (
 // memakan memori, bukan setelah.
 const maxRequestBody = 64 << 10
 
-// Handler melayani permintaan master COL Simas Online.
-type Handler struct {
-	service       *usecase.Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Logger  *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	// Modul tidak saling mengimpor lapisan transport-nya — itulah yang membuat modul
-	// dapat dipindahkan tanpa menariknya serta.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul master COL Simas Online.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("mastercolsimasonline/http: Service wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("mastercolsimasonline/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
-// List menangani GET /master/col-simas-online.
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	list, err := h.service.List(r.Context(), active.Alias)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
-		CauseOfLoss: toListDTO(list),
-		Portal:      active.Alias,
-	})
-}
-
-// Get menangani GET /master/col-simas-online/{id}.
-//
-// Rute tersendiri, bukan sekadar mencari di hasil List, karena hanya di sini pemetaan
-// bisnisnya ikut dimuat — dan layar membutuhkannya tepat saat baris dibuka untuk
-// disunting, bukan saat daftarnya ditampilkan.
-func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		h.writeModuleError(w, r, mastercolsimasonline.ErrNotFound)
-		return
-	}
-
-	row, err := h.service.Get(r.Context(), active.Alias, id)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
-		CauseOfLoss: toDTO(row),
-		Portal:      active.Alias,
-	})
-}
-
-// Create menangani POST /master/col-simas-online.
-func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	request, parsed := h.readRequest(w, r)
-	if !parsed {
-		return
-	}
-
-	saved, err := h.service.Create(r.Context(), active.Alias, requestToInput(request))
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	// 201, dan badannya memuat baris yang benar-benar tersimpan beserta ID-nya. ID
-	// diterbitkan server, sehingga layar tidak punya cara lain mengetahuinya.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
-		CauseOfLoss: toDTO(saved),
-		Portal:      active.Alias,
-	})
-}
-
-// Update menangani PUT /master/col-simas-online/{id}.
-func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		h.writeModuleError(w, r, mastercolsimasonline.ErrNotFound)
-		return
-	}
-
-	request, parsed := h.readRequest(w, r)
-	if !parsed {
-		return
-	}
-
-	saved, err := h.service.Update(r.Context(), active.Alias, id, requestToInput(request))
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
-		CauseOfLoss: toDTO(saved),
-		Portal:      active.Alias,
-	})
-}
-
 // Business menangani GET /master/bisnis.
 func (h *Handler) Business(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
@@ -175,13 +26,13 @@ func (h *Handler) Business(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.ListBusiness(r.Context(), active.Alias)
+	list, err := h.Service.ListBusiness(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BusinessListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BusinessListResponse{
 		Business: toBusinessListDTO(list),
 		Portal:   active.Alias,
 	})
@@ -198,34 +49,11 @@ func requestToInput(request SaveRequest) mastercolsimasonline.Input {
 // readRequest membaca badan JSON. Nilai kedua false bila responsnya sudah ditulis.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
 	var request SaveRequest
-
-	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
-	decoder := json.NewDecoder(reader)
-	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam: salah ketik nama
-	// field akan terbaca sebagai "isian tidak dikirim" dan menyimpan nilai kosong tanpa
-	// satu pun tanda bahwa ada yang salah.
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&request); err != nil {
-		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan
-		// badan permintaan.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-
-	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
-	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-
-	return request, true
+	ok := httpjson.Decode(w, r, maxRequestBody, &request, h.WriteResponse, ErrorResponse{
+		Code:    CodeMalformedRequest,
+		Message: "Permintaan tidak dapat dibaca.",
+	})
+	return request, ok
 }
 
 // Mount mendaftarkan rute modul master COL Simas Online.

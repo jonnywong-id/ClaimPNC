@@ -30,72 +30,21 @@ package sqlstore
 
 import (
 	"embed"
-	"fmt"
-	"strings"
+
+	"claim-pnc/internal/platform/sqlfile"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // queries memuat seluruh pernyataan SQL, dikunci dengan namanya.
-var queries = loadAllQueries()
+var queries = sqlfile.MustLoad(queryFiles, "registrasi/sqlstore", sqlfile.KeepComments())
 
-// loadQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
-// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
-// saat pertama dijalankan — bukan galat runtime yang menunggu pengguna menemukannya.
-func loadQuery(name string) string {
-	text, ok := queries[name]
-	if !ok {
-		panic(fmt.Sprintf("registrasi/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
+// loadQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func loadQuery(name string) string { return sqlfile.MustGet(queries, "registrasi/sqlstore", name) }
 
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("registrasi/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		body, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("registrasi/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(body)) {
-			if _, conflict := result[name]; conflict {
-				panic("registrasi/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-func splitByName(body string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var lines []string
-
-	store := func() {
-		if name != "" {
-			if text := strings.TrimSpace(strings.Join(lines, "\n")); text != "" {
-				result[name] = text
-			}
-		}
-	}
-	for _, row := range strings.Split(body, "\n") {
-		if trim := strings.TrimSpace(row); strings.HasPrefix(trim, marker) {
-			store()
-			name = strings.TrimSpace(strings.TrimPrefix(trim, marker))
-			lines = nil
-			continue
-		}
-		lines = append(lines, row)
-	}
-	store()
-	return result
+// splitByName memecah isi satu berkas .sql dengan aturan yang sama seperti pemuat di atas.
+func splitByName(content string) map[string]string {
+	return sqlfile.Split(content, sqlfile.KeepComments())
 }

@@ -2,8 +2,6 @@ package reportklaimhttp
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -12,10 +10,8 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/portal"
-	"claim-pnc/internal/reportklaim"
-	"claim-pnc/internal/reportklaim/usecase"
-
 	portalhttp "claim-pnc/internal/portal/http"
+	"claim-pnc/internal/reportklaim"
 )
 
 // CallerLookup membaca identitas pemanggil dari konteks permintaan.
@@ -25,51 +21,12 @@ import (
 // serta.
 type CallerLookup func(ctx context.Context) (reportklaim.Caller, bool)
 
-// Handler melayani permintaan Report Klaim.
-type Handler struct {
-	service       *usecase.Service
-	caller        CallerLookup
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Caller  CallerLookup
-	Logger  *slog.Logger
-
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Report Klaim.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("reportklaim/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("reportklaim/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("reportklaim/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
 // Catalog menangani GET /report-klaim — isi layar sebelum satu tombol pun ditekan.
 func (h *Handler) Catalog(w http.ResponseWriter, r *http.Request) {
 	if _, _, ready := h.prepare(w, r); !ready {
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, toCatalogDTO(h.service.Catalog()))
+	h.WriteResponse(w, r, http.StatusOK, toCatalogDTO(h.Service.Catalog()))
 }
 
 // BusinessOptions menangani GET /report-klaim/pilihan-bisnis.
@@ -79,7 +36,7 @@ func (h *Handler) BusinessOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	option, err := h.service.BusinessOptions(r.Context(), active.Alias)
+	option, err := h.Service.BusinessOptions(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -89,7 +46,7 @@ func (h *Handler) BusinessOptions(w http.ResponseWriter, r *http.Request) {
 	for _, o := range option {
 		body.Bisnis = append(body.Bisnis, BusinessOptionDTO{Kode: o.Code, Nama: o.Name})
 	}
-	h.writeResponse(w, r, http.StatusOK, body)
+	h.WriteResponse(w, r, http.StatusOK, body)
 }
 
 // prepare memeriksa portal aktif dan identitas pemanggil.
@@ -100,7 +57,7 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (portal.Portal
 		return portal.Portal{}, reportklaim.Caller{}, false
 	}
 
-	caller, known := h.caller(r.Context())
+	caller, known := h.Caller(r.Context())
 	if !known {
 		h.writeModuleError(w, r, reportklaim.ErrCallerUnknown)
 		return portal.Portal{}, reportklaim.Caller{}, false

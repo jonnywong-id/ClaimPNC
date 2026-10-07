@@ -13,13 +13,23 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterlogin"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterlogin/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "masterlogin/sqlstore", name) }
+
+// splitByName memecah isi satu berkas .sql dengan aturan yang sama seperti pemuat di atas.
+func splitByName(content string) map[string]string { return sqlfile.Split(content) }
 
 // Repo membaca dan menulis POOLDATA.MST_LOGIN_SURVEYOR.
 type Repo struct {
@@ -51,23 +61,7 @@ func (r *Repo) List(
 		rows, err = r.db.QueryContext(ctx, getQuery("login_list_search"),
 			pattern, pattern, pattern)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("masterlogin/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterlogin.SurveyorLogin
-	for rows.Next() {
-		one, err := scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, one)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterlogin/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow, "masterlogin/sqlstore: membaca daftar", "", "masterlogin/sqlstore: menelusuri daftar")
 }
 
 // Get mengembalikan satu baris berdasarkan LOGIN-nya.
@@ -79,14 +73,7 @@ func (r *Repo) Get(
 ) (masterlogin.SurveyorLogin, error) {
 	row := r.db.QueryRowContext(ctx, getQuery("login_get"), strings.TrimSpace(login))
 
-	found, err := scanRow(row)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return masterlogin.SurveyorLogin{}, masterlogin.ErrNotFound
-	case err != nil:
-		return masterlogin.SurveyorLogin{}, err
-	}
-	return found, nil
+	return sqlkit.One(row, scanRow, masterlogin.ErrNotFound)
 }
 
 // FindLeaderOf mengembalikan isi LOGINLEADER milik satu login.
@@ -259,22 +246,14 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 //
 // `ESCAPE '\'` disebut eksplisit di kuerinya karena Oracle tidak punya karakter pelolos
 // bawaan pada LIKE.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows.
 //
 // Keduanya punya Scan dengan tanda tangan yang sama tetapi tidak berbagi interface apa pun
 // di pustaka standar, dan tanpa ini pembacaan barisnya harus ditulis dua kali — dua tempat
 // yang dapat berbeda urutan kolomnya tanpa satu pun yang memberi tahu.
-type rowScanner interface {
-	Scan(target ...any) error
-}
+type rowScanner = sqlkit.Scanner
 
 // scanRow membaca satu baris menjadi SurveyorLogin.
 //
@@ -314,80 +293,6 @@ func scanRow(row rowScanner) (masterlogin.SurveyorLogin, error) {
 		LoginStatus: strings.TrimSpace(loginStatus.String),
 		LeaderLogin: strings.TrimSpace(leaderLogin.String),
 	}, nil
-}
-
-// getQuery mengambil pernyataan SQL menurut namanya.
-//
-// Ia PANIC bila namanya tidak ada, dan itu disengaja: nama kueri adalah konstanta yang
-// ditulis programmer, bukan masukan pengguna. Salah ketik harus gagal saat uji pertama
-// dijalankan, bukan menjadi galat runtime di hadapan petugas.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf(
-			"masterlogin/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterlogin/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterlogin/sqlstore: tidak dapat membaca " +
-				file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterlogin/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(rows)
-		if strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 var _ masterlogin.Repo = (*Repo)(nil)

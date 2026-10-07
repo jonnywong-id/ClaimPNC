@@ -2,11 +2,10 @@ package mastersurveyorshttp
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/mastersurveyors"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini. Klien membedakan jenis galat lewat kode ini, bukan dengan
@@ -15,12 +14,12 @@ import (
 // # Kenapa modul ini memetakan galatnya sendiri
 //
 // Kontrak galat yang mengikat seluruh aplikasi adalah TKT-F1-004, dan ia masih terhalang
-// keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth, dan menambah
-// kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
+// keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth, dan
+// menambah kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
 //
-// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan sisanya
-// ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama sehingga
-// klien tidak menghadapi dua bentuk galat yang berbeda.
+// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan
+// sisanya ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama
+// sehingga klien tidak menghadapi dua bentuk galat yang berbeda.
 const (
 	CodeNotFound              = "surveyor_tidak_ditemukan"
 	CodeValidationFailed      = "validasi_gagal"
@@ -35,37 +34,21 @@ const (
 
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri supaya
 // seluruh modul menulis respons dengan cara yang sama, termasuk header Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	status, body, known := mapError(err)
-	if !known {
-		// Galat yang tidak dikenali modul ini — galat portal, kegagalan basis data,
-		// kegagalan jaringan, cacat pemrograman — diserahkan ke penulis bersama. Galat
-		// portal dipetakan portalhttp.WithPortalError yang membungkusnya di cmd; sisanya
-		// dijawab 500 dengan pesan umum, dan rinciannya hanya masuk log.
-		h.writeError(w, r, err)
-		return
-	}
-
-	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-	}
-	h.writeResponse(w, r, status, body)
+	apierror.Write(w, r, err, mapError, h.Logger, h.WriteResponse, h.WriteError)
 }
 
 // mapError menerjemahkan galat domain menjadi status dan badan HTTP.
 //
 // Nilai ketiga menyatakan apakah galatnya dikenali modul ini. Ia dibutuhkan supaya
-// pemanggil dapat membedakan "ini milik saya" dari "ini bukan milik saya, serahkan ke yang
-// lain" — dua hal yang tidak dapat dibedakan hanya dari status 500.
+// pemanggil dapat membedakan "ini milik saya" dari "ini bukan milik saya, serahkan ke
+// yang lain" — dua hal yang tidak dapat dibedakan hanya dari status 500.
 //
 // Galat PORTAL sengaja tidak ada di sini. Ia dipetakan portalhttp.WithPortalError yang
 // membungkus penulis galat yang disuntikkan dari cmd — satu pemetaan yang dipakai seluruh

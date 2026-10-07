@@ -1,0 +1,44 @@
+{
+  "SampleList": [
+    {
+      "ID": "1",
+      "Name": "Contoh Faktor A"
+    },
+    {
+      "ID": "2",
+      "Name": "Contoh Faktor B"
+    },
+    {
+      "ID": "3",
+      "Name": "Contoh Faktor C"
+    },
+    {
+      "ID": "4",
+      "Name": "Contoh Faktor D"
+    },
+    {
+      "ID": "5",
+      "Name": "Contoh Faktor E"
+    },
+    {
+      "ID": "6",
+      "Name": "Contoh Faktor F"
+    },
+    {
+      "ID": "7",
+      "Name": "Contoh Faktor G"
+    },
+    {
+      "ID": "8",
+      "Name": "Contoh Faktor H"
+    },
+    {
+      "ID": "9",
+      "Name": "Contoh Faktor I"
+    },
+    {
+      "ID": "10",
+      "Name": "Contoh Faktor J"
+    }
+  ]
+}

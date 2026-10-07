@@ -14,13 +14,18 @@ import (
 	"time"
 
 	"claim-pnc/internal/laporanhasilai"
+	"claim-pnc/internal/platform/sqlfile"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "laporanhasilai/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "laporanhasilai/sqlstore", name) }
 
 // Repo membaca POOLDATA.T_CLAIM_DATA_RESULTS_AI yang digabung dengan
 // POOLDATA.T_CLAIM_KOMITE_LIST.
@@ -313,80 +318,6 @@ func rowKey(committeeID, step, objectID, coverageID string) string {
 		strings.TrimSpace(objectID),
 		strings.TrimSpace(coverageID),
 	}, "|")
-}
-
-// getQuery mengambil pernyataan SQL menurut namanya.
-//
-// Ia PANIC bila namanya tidak ada, dan itu disengaja: nama kueri adalah konstanta yang
-// ditulis programmer, bukan masukan pengguna. Salah ketik harus gagal saat uji pertama
-// dijalankan, bukan menjadi galat runtime di hadapan petugas.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf(
-			"laporanhasilai/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("laporanhasilai/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("laporanhasilai/sqlstore: tidak dapat membaca " +
-				file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("laporanhasilai/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(rows)
-		if strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 var _ laporanhasilai.Repo = (*Repo)(nil)

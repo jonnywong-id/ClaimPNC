@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterreas"
+	"claim-pnc/internal/platform/sqlkit"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca POOLDATA.T_REINSURER.
@@ -43,23 +45,7 @@ func (r *Repo) List(
 		rows, err = r.db.QueryContext(ctx, getQuery("reas_list_search"),
 			pattern, pattern, pattern, pattern)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("masterreas/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []masterreas.Member
-	for rows.Next() {
-		one, err := scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, one)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("masterreas/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow, "masterreas/sqlstore: membaca daftar", "", "masterreas/sqlstore: menelusuri daftar")
 }
 
 // CountAll mencacah seluruh baris. Dipakai `claimpnc -periksa`.
@@ -128,22 +114,14 @@ func (r *Repo) count(ctx context.Context, name string) (int, error) {
 // Urutannya menentukan: garis miring terbalik diloloskan LEBIH DULU, sebelum persen dan
 // garis bawah. Membaliknya akan meloloskan garis miring yang baru saja ditambahkan, dan
 // pola yang dihasilkan tidak lagi cocok dengan apa pun.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows.
 //
 // Keduanya punya Scan dengan tanda tangan yang sama tetapi tidak berbagi interface apa pun
 // di pustaka standar, dan tanpa ini pembacaan barisnya harus ditulis dua kali — dua tempat
 // yang dapat berbeda urutan kolomnya tanpa satu pun yang memberi tahu.
-type rowScanner interface {
-	Scan(target ...any) error
-}
+type rowScanner = sqlkit.Scanner
 
 // scanRow membaca satu baris menjadi Member.
 //

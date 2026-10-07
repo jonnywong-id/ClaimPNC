@@ -11,6 +11,7 @@ import (
 
 	"claim-pnc/internal/inboxservicecenter"
 	"claim-pnc/internal/inboxservicecenter/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // dateLayout adalah bentuk tanggal pada kontrak API: YYYY-MM-DD.
@@ -131,10 +132,7 @@ type ListResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {

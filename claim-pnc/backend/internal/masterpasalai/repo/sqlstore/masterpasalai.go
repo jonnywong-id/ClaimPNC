@@ -13,13 +13,19 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterpasalai"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterpasalai/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "masterpasalai/sqlstore", name) }
 
 // Repo membaca POOLDATA.MST_PASAL_AI.
 //
@@ -141,19 +147,13 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 // Kata kunci di-uppercase karena kuerinya membandingkan `UPPER(kolom)`; keduanya harus
 // searah, dan menaikkannya di sini membuat basis data tidak perlu melakukannya per baris
 // untuk sisi kanan.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows.
 //
-// Keduanya punya Scan dengan tanda tangan yang sama tetapi tidak berbagi interface apa pun di
-// pustaka standar, dan tanpa ini pembacaan barisnya harus ditulis dua kali — dua tempat yang
-// dapat berbeda urutan kolomnya tanpa satu pun yang memberi tahu.
+// Keduanya punya Scan dengan tanda tangan yang sama tetapi tidak berbagi interface apa pun
+// di pustaka standar, dan tanpa ini pembacaan barisnya harus ditulis dua kali — dua tempat
+// yang dapat berbeda urutan kolomnya tanpa satu pun yang memberi tahu.
 type rowScanner interface {
 	Scan(target ...any) error
 }
@@ -188,80 +188,6 @@ func scanRow(row rowScanner) (masterpasalai.Clause, error) {
 		Paragraph: strings.TrimSpace(paragraph.String),
 		Event:     strings.TrimSpace(event.String),
 	}, nil
-}
-
-// getQuery mengambil pernyataan SQL menurut namanya.
-//
-// Ia PANIC bila namanya tidak ada, dan itu disengaja: nama kueri adalah konstanta yang ditulis
-// programmer, bukan masukan pengguna. Salah ketik harus gagal saat uji pertama dijalankan,
-// bukan menjadi galat runtime di hadapan petugas.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf(
-			"masterpasalai/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterpasalai/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterpasalai/sqlstore: tidak dapat membaca " +
-				file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterpasalai/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris komentar
-// dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(rows)
-		if strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 var _ masterpasalai.Repo = (*Repo)(nil)

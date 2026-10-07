@@ -26,16 +26,16 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detailed, err := h.service.Detail(
+	detailed, err := h.Service.Detail(
 		r.Context(),
 		active.Alias,
 		caller,
 		chi.URLParam(r, "nomor"),
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDetailResponse(detailed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDetailResponse(detailed, active.Alias))
 }

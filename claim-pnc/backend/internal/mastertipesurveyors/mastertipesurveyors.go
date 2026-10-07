@@ -169,9 +169,9 @@ type RepoSelector func(portalAlias string) (Repo, error)
 // CheckDescription mengumpulkan SELURUH pelanggaran aturan deskripsi, bukan berhenti pada
 // yang pertama.
 //
-// Mengumpulkan semuanya adalah kesetaraan perilaku, bukan selera: sistem lama menampilkan
-// seluruh pesan validasi sekaligus, dan mengembalikannya satu per satu akan membuat
-// pengguna menekan Simpan berkali-kali untuk menemukan kesalahan berikutnya
+// Mengumpulkan semuanya adalah kesetaraan perilaku, bukan selera: sistem lama
+// menampilkan seluruh pesan validasi sekaligus, dan mengembalikannya satu per satu akan
+// membuat pengguna menekan Simpan berkali-kali untuk menemukan kesalahan berikutnya
 // (`docs/Steering/12-CROSSCUTTING.md` §1.2 butir 1).
 //
 // Keunikan TIDAK diperiksa di sini: ia menuntut membaca penyimpanan, sedangkan fungsi ini

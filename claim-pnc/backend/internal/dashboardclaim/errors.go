@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Galat domain modul Dashboard Claim.
@@ -37,10 +39,7 @@ const (
 )
 
 // Violation adalah satu pelanggaran validasi pada satu isian.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError mengumpulkan SELURUH pelanggaran, bukan hanya yang pertama.
 //

@@ -96,6 +96,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // ApprovalStatus adalah posisi sebuah baris dalam alur persetujuan komite.
@@ -357,12 +359,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
-	// data — layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+// data — layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -388,11 +388,7 @@ func OneViolation(field, message string) error {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "masterautoclaim: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "masterautoclaim: isian tidak sah (", ": ", "; ", ")")
 }
 
 // Clean memangkas spasi di kedua ujung setiap isian.

@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/mastertipesurveyors"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/mastertipesurveyors"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah keempat tipe surveyor nyata sesuai isi POOLDATA.V_M_SURVEYORS.
 //
@@ -41,10 +51,5 @@ import "claim-pnc/internal/mastertipesurveyors"
 //
 // Angka itu yang membuat "menghapus satu tipe" bukan sekadar menghilangkan satu baris.
 func SampleList() []mastertipesurveyors.SurveyorType {
-	return []mastertipesurveyors.SurveyorType{
-		{Code: "1001", Description: "INTERNAL SURVEYOR"},
-		{Code: "1002", Description: "LOSS ADJUSTER"},
-		{Code: "1003", Description: "EXPERT"},
-		{Code: "1004", Description: "SURVEY AGENT"},
-	}
+	return sampledata.Must[[]mastertipesurveyors.SurveyorType](sampleJSON, "SampleList")
 }

@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterpenyebabkerugian"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterpenyebabkerugian"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah daftar contoh untuk pengembangan tanpa basis data.
 //
@@ -42,20 +52,12 @@ import "claim-pnc/internal/masterpenyebabkerugian"
 // membedakan diri dari yang kosong, dan yang kedua membuktikan deskripsi kosong memang
 // DITERIMA — keputusan Work Owner 2026-09-20 yang tidak dapat dicoba tanpa satu baris
 // seperti itu.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Sepuluh baris dipilih dengan sengaja supaya urutannya menembus dua digit —
+// itulah yang membuktikan pengurutan benar-benar bekerja, dan bukan kebetulan
+// karena semua nomornya masih satu digit.
 func SampleList() []masterpenyebabkerugian.CauseOfLoss {
-	return []masterpenyebabkerugian.CauseOfLoss{
-		{ID: "1001", LegacyID: "01", Description: "Contoh Golongan A"},
-		{ID: "1002", LegacyID: "02", Description: "Contoh Golongan B"},
-		{ID: "1003", Description: "Contoh Golongan C"},
-		{ID: "1004", Description: "Contoh Golongan D"},
-		{ID: "1005", Description: "Contoh Golongan E"},
-		{ID: "1006", Description: "Contoh Golongan F"},
-		{ID: "1007", Description: ""},
-		{ID: "1008", Description: "Contoh Golongan H"},
-		{ID: "1009", Description: "Contoh Golongan I"},
-		// Sepuluh baris dipilih dengan sengaja supaya urutannya menembus dua digit —
-		// itulah yang membuktikan pengurutan benar-benar bekerja, dan bukan kebetulan
-		// karena semua nomornya masih satu digit.
-		{ID: "1010", Description: "Contoh Golongan J"},
-	}
+	return sampledata.Must[[]masterpenyebabkerugian.CauseOfLoss](sampleJSON, "SampleList")
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/laporanhasilai"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien.
@@ -24,10 +25,10 @@ const (
 //
 // Modul ini tidak membawa penulisnya sendiri supaya seluruh modul menulis respons dengan
 // cara yang sama, termasuk header Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat modul ini menjadi respons HTTP.
 //
@@ -66,8 +67,8 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 // mapError menerjemahkan galat domain menjadi status dan badan HTTP.
 //
 // Nilai ketiga menyatakan apakah galatnya dikenali modul ini. Ia dibutuhkan supaya
-// pemanggil dapat membedakan "ini milik saya" dari "ini bukan milik saya, serahkan ke yang
-// lain" — dua hal yang tidak dapat dibedakan hanya dari status 500.
+// pemanggil dapat membedakan "ini milik saya" dari "ini bukan milik saya, serahkan ke
+// yang lain" — dua hal yang tidak dapat dibedakan hanya dari status 500.
 func mapError(err error) (int, ErrorResponse, bool) {
 	var validation *laporanhasilai.ValidationError
 
@@ -78,10 +79,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		//
 		// Kedua isian tanggal yang kosong dikirim SEKALIGUS, bukan satu lalu satu lagi
 		// (`P-5`, `11-CROSSCUTTING.md` §1.1).
-		details := make([]ViolationDTO, 0, len(validation.Violations))
-		for _, one := range validation.Violations {
-			details = append(details, ViolationDTO{Field: one.Field, Message: one.Message})
-		}
+		details := apierror.FieldErrors(validation.Violations)
 
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFail,

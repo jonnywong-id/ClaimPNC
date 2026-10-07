@@ -1,0 +1,28 @@
+{
+  "SampleList": [
+    {
+      "ID": "100001",
+      "Name": "Paspor"
+    },
+    {
+      "ID": "100002",
+      "Name": "Tiket Perjalanan"
+    },
+    {
+      "ID": "100003",
+      "Name": "Boarding Pass"
+    },
+    {
+      "ID": "100004",
+      "Name": "Laporan Kehilangan Bagasi"
+    },
+    {
+      "ID": "100005",
+      "Name": "Kuitansi Biaya Pengobatan"
+    },
+    {
+      "ID": "100006",
+      "Name": "Surat Keterangan Maskapai"
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+{
+  "SampleClaims": [
+    {
+      "History": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9001",
+        "Number": "PNC-9001",
+        "PolicyNumber": "POL-CONTOH-0001",
+        "InsuredName": "PT SUMBER CONTOH SENTOSA",
+        "LossDate": "2026-03-12T00:00:00Z",
+        "BusinessName": "Fire / Property",
+        "BranchName": "Cabang Contoh Pusat",
+        "WorkStatus": "Resolved-Completed",
+        "ClaimPosition": "Paid",
+        "CloseDate": "2026-05-02T00:00:00Z",
+        "CloseNote": "Klaim selesai dibayar penuh.",
+        "TechnicalPIC": "PIC Teknik Contoh A",
+        "AcceptanceNumber": "",
+        "AuctionHouseID": "",
+        "InsuredItemName": "",
+        "BirthDate": null
+      },
+      "ObjectName": "Gudang Contoh Blok A",
+      "PLANumber": "PLA-CONTOH-0001",
+      "DLANumber": "DLA-CONTOH-0001",
+      "AuctionID": "",
+      "SurveyNumber": "SRV-CONTOH-0001",
+      "PersonName": "",
+      "PersonBirthDate": null,
+      "AcceptanceNumber": "AKS-CONTOH-0001"
+    },
+    {
+      "History": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9002",
+        "Number": "PNC-9002",
+        "PolicyNumber": "POL-CONTOH-0002",
+        "InsuredName": "CV MITRA CONTOH ABADI",
+        "LossDate": "2026-03-12T00:00:00Z",
+        "BusinessName": "Marine Cargo",
+        "BranchName": "Cabang Contoh Timur",
+        "WorkStatus": "Open",
+        "ClaimPosition": "Claim Committee",
+        "CloseDate": null,
+        "CloseNote": "",
+        "TechnicalPIC": "PIC Teknik Contoh B",
+        "AcceptanceNumber": "",
+        "AuctionHouseID": "",
+        "InsuredItemName": "",
+        "BirthDate": null
+      },
+      "ObjectName": "Kontainer Contoh 20 Kaki",
+      "PLANumber": "PLA-CONTOH-0002",
+      "DLANumber": "",
+      "AuctionID": "",
+      "SurveyNumber": "SRV-CONTOH-0002",
+      "PersonName": "",
+      "PersonBirthDate": null,
+      "AcceptanceNumber": ""
+    },
+    {
+      "History": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9003",
+        "Number": "PNC-9003",
+        "PolicyNumber": "POL-CONTOH-0003",
+        "InsuredName": "PT SALVAGE CONTOH JAYA",
+        "LossDate": "2025-11-04T00:00:00Z",
+        "BusinessName": "Aneka",
+        "BranchName": "Cabang Contoh Barat",
+        "WorkStatus": "Resolved-Completed",
+        "ClaimPosition": "Close Claim for this object",
+        "CloseDate": "2026-01-20T00:00:00Z",
+        "CloseNote": "Ditutup setelah lelang barang sisa.",
+        "TechnicalPIC": "PIC Teknik Contoh A",
+        "AcceptanceNumber": "",
+        "AuctionHouseID": "",
+        "InsuredItemName": "",
+        "BirthDate": null
+      },
+      "ObjectName": "Mesin Contoh Produksi",
+      "PLANumber": "",
+      "DLANumber": "DLA-CONTOH-0003",
+      "AuctionID": "BL-CONTOH-77",
+      "SurveyNumber": "",
+      "PersonName": "",
+      "PersonBirthDate": null,
+      "AcceptanceNumber": "AKS-CONTOH-0003"
+    },
+    {
+      "History": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9004",
+        "Number": "PNC-9004",
+        "PolicyNumber": "POL-CONTOH-0004",
+        "InsuredName": "YAYASAN CONTOH PEDULI",
+        "LossDate": "2026-02-09T00:00:00Z",
+        "BusinessName": "Personal Accident",
+        "BranchName": "Cabang Contoh Pusat",
+        "WorkStatus": "Open",
+        "ClaimPosition": "Analyst",
+        "CloseDate": null,
+        "CloseNote": "",
+        "TechnicalPIC": "Analyst Doctor Contoh",
+        "AcceptanceNumber": "",
+        "AuctionHouseID": "",
+        "InsuredItemName": "",
+        "BirthDate": null
+      },
+      "ObjectName": "Peserta Contoh Kelompok 1",
+      "PLANumber": "",
+      "DLANumber": "",
+      "AuctionID": "",
+      "SurveyNumber": "SRV-CONTOH-0004",
+      "PersonName": "Peserta Contoh Satu",
+      "PersonBirthDate": "1990-07-17T00:00:00Z",
+      "AcceptanceNumber": ""
+    },
+    {
+      "History": {
+        "Reference": "PNCN.26.0001",
+        "Number": "PNCN.26.0001",
+        "PolicyNumber": "POL-CONTOH-0005",
+        "InsuredName": "PT PENDATANG CONTOH BARU",
+        "LossDate": "2026-09-01T00:00:00Z",
+        "BusinessName": "Travel",
+        "BranchName": "Cabang Contoh Selatan",
+        "WorkStatus": "Open",
+        "ClaimPosition": "Register",
+        "CloseDate": null,
+        "CloseNote": "",
+        "TechnicalPIC": "PIC Teknik Contoh C",
+        "AcceptanceNumber": "",
+        "AuctionHouseID": "",
+        "InsuredItemName": "",
+        "BirthDate": null
+      },
+      "ObjectName": "Perjalanan Contoh Asia",
+      "PLANumber": "",
+      "DLANumber": "",
+      "AuctionID": "",
+      "SurveyNumber": "",
+      "PersonName": "",
+      "PersonBirthDate": null,
+      "AcceptanceNumber": ""
+    }
+  ],
+  "SampleProtections": [
+    {
+      "Login": "adminpnc",
+      "SearchQuota": 50,
+      "ViewQuota": 50,
+      "SubModules": [
+        "PNCSearchKlaim"
+      ],
+      "MaskPhone": false,
+      "MaskEmail": false,
+      "MaskIDCard": false
+    },
+    {
+      "Login": "pictekniks",
+      "SearchQuota": 1,
+      "ViewQuota": 5,
+      "SubModules": [
+        "PNCSearchKlaim"
+      ],
+      "MaskPhone": true,
+      "MaskEmail": false,
+      "MaskIDCard": true
+    },
+    {
+      "Login": "penggunanonaktif",
+      "SearchQuota": 0,
+      "ViewQuota": 0,
+      "SubModules": [
+        "PNCSearchKlaim"
+      ],
+      "MaskPhone": false,
+      "MaskEmail": false,
+      "MaskIDCard": false
+    }
+  ]
+}

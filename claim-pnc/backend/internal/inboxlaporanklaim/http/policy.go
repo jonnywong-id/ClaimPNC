@@ -45,7 +45,7 @@ func (h *Handler) Policy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.LookupPolicy(r.Context(), active.Alias, r.URL.Query().Get("nomor"))
+	result, err := h.Service.LookupPolicy(r.Context(), active.Alias, r.URL.Query().Get("nomor"))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -58,7 +58,7 @@ func (h *Handler) Policy(w http.ResponseWriter, r *http.Request) {
 		blocked = blocked || n.Blocking
 	}
 
-	h.writeResponse(w, r, http.StatusOK, PolicyResponse{
+	h.WriteResponse(w, r, http.StatusOK, PolicyResponse{
 		NomorPolis:  result.Number,
 		Ditemukan:   result.Found,
 		Tertanggung: result.Policy.InsuredName,

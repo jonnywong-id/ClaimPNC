@@ -282,9 +282,9 @@ type EmployeeDirectory interface {
 // Check mengumpulkan SELURUH pelanggaran aturan sekaligus, bukan berhenti pada yang
 // pertama.
 //
-// Mengumpulkan semuanya adalah kesetaraan perilaku, bukan selera: sistem lama menampilkan
-// seluruh pesan validasi sekaligus, dan mengembalikannya satu per satu akan membuat
-// pengguna menekan Simpan berkali-kali untuk menemukan kesalahan berikutnya
+// Mengumpulkan semuanya adalah kesetaraan perilaku, bukan selera: sistem lama
+// menampilkan seluruh pesan validasi sekaligus, dan mengembalikannya satu per satu akan
+// membuat pengguna menekan Simpan berkali-kali untuk menemukan kesalahan berikutnya
 // (`docs/Steering/12-CROSSCUTTING.md` §1.2 butir 1).
 //
 // Keberadaan petugas di direktori TIDAK diperiksa di sini — ia menuntut memanggil seam,

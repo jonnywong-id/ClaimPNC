@@ -1,10 +1,8 @@
 package inboxmanagerhttp
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,67 +10,8 @@ import (
 	"claim-pnc/internal/inboxmanager"
 	"claim-pnc/internal/inboxmanager/usecase"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Setiap keputusan yang ditulis modul ini dicatat atas namanya, dan pada dua antrean ia
-	// ikut tersimpan di kolom basis data. Tanpa login, tidak satu pun keputusan boleh
-	// ditulis.
-	Login string
-
-	// OrgUnit adalah unit organisasi pengguna — padanan `OperatorID.pyOrgUnit`.
-	//
-	// Satu nilai punya arti khusus: `Development` membuka tab yang dibatasi lini bisnis.
-	OrgUnit string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox Manager.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan galat
-	// portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Manager.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-manager/tab.
 //
@@ -84,13 +23,13 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	meta, err := h.service.Metadata(r.Context(), active.Alias, caller)
+	meta, err := h.Service.Metadata(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(meta))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(meta))
 }
 
 // Counters menangani GET /api/inbox-manager/ringkasan.
@@ -103,13 +42,13 @@ func (h *Handler) Counters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	counters, err := h.service.Counters(r.Context(), active.Alias, caller)
+	counters, err := h.Service.Counters(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toCountersResponse(counters))
+	h.WriteJSON(w, r, http.StatusOK, toCountersResponse(counters))
 }
 
 // List menangani GET /api/inbox-manager.
@@ -119,13 +58,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view, err := h.service.List(r.Context(), active.Alias, readQuery(r), caller)
+	view, err := h.Service.List(r.Context(), active.Alias, readQuery(r), caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(view))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(view))
 }
 
 // Decide menangani POST /api/inbox-manager/keputusan.
@@ -145,25 +84,25 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 
 	var body DecisionRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		h.writeError(w, r, inboxmanager.NewValidationError([]inboxmanager.Violation{{
+		h.WriteError(w, r, inboxmanager.NewValidationError([]inboxmanager.Violation{{
 			Field:   inboxmanager.FieldKeys,
 			Message: "Badan permintaan tidak dapat dibaca.",
 		}}))
 		return
 	}
 
-	result, err := h.service.Decide(r.Context(), active.Alias, usecase.DecideInput{
+	result, err := h.Service.Decide(r.Context(), active.Alias, usecase.DecideInput{
 		Tab:     body.Tab,
 		Verdict: inboxmanager.Verdict(strings.TrimSpace(body.Verdict)),
 		Keys:    body.Keys,
 		Reason:  body.Reason,
 	}, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, DecisionResponse{
+	h.WriteJSON(w, r, http.StatusOK, DecisionResponse{
 		Requested: result.Requested,
 		Changed:   result.Changed,
 		Stale:     result.Stale(),
@@ -197,13 +136,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxmanager.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxmanager.ErrCallerUnknown)
+		h.WriteError(w, r, inboxmanager.ErrCallerUnknown)
 		return portal.Portal{}, inboxmanager.Caller{}, false
 	}
 
@@ -222,11 +161,11 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 // — dan itu cacat yang sudah pernah mengosongkan layar modul lain selama berhari-hari tanpa
 // satu pun galat (koreksi 2026-09-27).
 func (h *Handler) readCaller(r *http.Request) (inboxmanager.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxmanager.Caller{}, false
 	}
 
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists {
 		return inboxmanager.Caller{}, false
 	}

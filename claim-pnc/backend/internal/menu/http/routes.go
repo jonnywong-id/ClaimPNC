@@ -1,7 +1,6 @@
 package menuhttp
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -9,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/menu"
-	"claim-pnc/internal/menu/usecase"
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/logging"
 )
 
@@ -20,69 +19,11 @@ import (
 // DBA — bukan pengguna yang mencoba lagi.
 const KodeMenuTidakTerkonfigurasi = "menu_tidak_terkonfigurasi"
 
-// Caller adalah bagian identitas pemanggil yang dibutuhkan modul ini.
-//
-// Hanya SATU field, dan itu disengaja: menu hanya perlu tahu login siapa yang bertanya.
-// Menerima seluruh catatan pengguna akan membuat modul ini bergantung pada bentuk data
-// modul auth.
-type Caller struct {
-	// Login adalah yang DIKETIK pengguna di layar masuk — itulah yang dicocokkan ke
-	// M_LOGIN_GROUP_PNC.LOGIN_ID dan M_OTORISASI_PNC.LOGIN_ID_GROUP, sesuai aturan yang
-	// ditetapkan Work Owner 2026-09-18.
-	Login string
-}
-
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
-
-// Handler melayani permintaan menu.
-type Handler struct {
-	service       *usecase.Service
-	caller        func(ctx context.Context) (Caller, bool)
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// Caller adalah jembatan SATU ARAH dari modul auth ke modul ini. Ia disuntikkan
-	// dari cmd, bukan diimpor, supaya kedua modul tetap tidak saling mengimpor — yang
-	// tahu keduanya hanyalah berkas perakitan.
-	Caller func(ctx context.Context) (Caller, bool)
-
-	Logger *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd supaya seluruh modul menuliskan
-	// respons dan galat sesi dengan cara yang sama.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul menu.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("menu/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("menu/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("menu/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
+type ErrorWriter = apierror.ErrorWriter
 
 // List menangani GET /api/menu.
 //
@@ -91,33 +32,33 @@ func NewHandler(o Options) (*Handler, error) {
 // endpoint modulnya masing-masing. Menyaring di sini hanya membuat layar tidak
 // menawarkan pintu yang pasti tertutup.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	caller, existing := h.caller(r.Context())
+	caller, existing := h.Caller(r.Context())
 	if !existing {
 		// Rutenya berada di balik middleware sesi, sehingga keadaan ini berarti
 		// perakitannya keliru — bukan permintaan yang cacat. Diserahkan ke penulis galat
 		// bersama, yang menjawab 500 dengan pesan umum dan menaruh rinciannya di log.
-		h.writeError(w, r, errors.New("menu/http: konteks pemanggil tidak ada di balik middleware sesi"))
+		h.WriteError(w, r, errors.New("menu/http: konteks pemanggil tidak ada di balik middleware sesi"))
 		return
 	}
 
-	tree, err := h.service.ForLogin(r.Context(), caller.Login)
+	tree, err := h.Service.ForLogin(r.Context(), caller.Login)
 	if err != nil {
 		if errors.Is(err, menu.ErrAppNotFound) {
-			logging.From(r.Context(), h.logger).Error("menu tidak dapat disusun",
+			logging.From(r.Context(), h.Logger).Error("menu tidak dapat disusun",
 				slog.String("jalur", r.URL.Path),
 				slog.String("sebab", "baris M_APLIKASI dengan APP_DESC "+menu.AppName+" tidak ada"),
 			)
-			h.writeResponse(w, r, http.StatusInternalServerError, ErrorResponse{
+			h.WriteResponse(w, r, http.StatusInternalServerError, ErrorResponse{
 				Kode:  KodeMenuTidakTerkonfigurasi,
 				Pesan: "Menu aplikasi belum terdaftar. Hubungi administrator Claim PNC.",
 			})
 			return
 		}
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, ListResponse{Menu: toListDTO(tree)})
+	h.WriteResponse(w, r, http.StatusOK, ListResponse{Menu: toListDTO(tree)})
 }
 
 // Mount mendaftarkan rute modul menu.

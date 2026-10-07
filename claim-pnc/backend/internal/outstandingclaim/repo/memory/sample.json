@@ -1,0 +1,159 @@
+{
+  "SampleDetails": [
+    {
+      "ClaimID": "CLMP-1001",
+      "Reference": "ASM-FW-GCNMFW-WORK-CLAIMTREATY CLMP-1001",
+      "StatusWork": "Pending-Teknik",
+      "LastUpdateOperator": "PICTREATY1",
+      "Values": {
+        "appointed_adj": "Adjuster Contoh",
+        "cause_of_loss": "Kebakaran",
+        "class_of_business": "Property All Risk",
+        "consultant_name": "Konsultan Contoh",
+        "currency_deductible": "IDR",
+        "date_of_loss": "2026-08-14",
+        "deductible_percent": "10",
+        "deductible_type": "true",
+        "deductible_value": "50000000",
+        "end_date_treaty": "2026-12-31",
+        "form_type": "Percentage",
+        "ibnr_idr": "25000000",
+        "id_master": "TRP-2026-01",
+        "insured_interest": "Bangunan gudang beserta isinya",
+        "insured_name": "PT Contoh Sejahtera",
+        "insured_relationship_others": "",
+        "location_of_loss": "Gudang Contoh",
+        "net_deductible_value": "50000000",
+        "pla_no_ceding": "PLA-2026-0001",
+        "policy_end_ceding": "2026-12-31",
+        "policy_no": "99.001.2026.00001",
+        "policy_no_ceding": "CED-2026-0001",
+        "policy_start_ceding": "2026-01-01",
+        "province": "DKI Jakarta",
+        "quater": "3",
+        "received_date": "2026-08-18",
+        "report_address": "Jalan Contoh Nomor 1",
+        "report_date": "2026-08-16",
+        "report_description": "Kerugian akibat kebakaran di gudang contoh.",
+        "report_status": "Reported",
+        "report_type": "Email",
+        "reporter_email": "contoh.pelapor@example.invalid",
+        "reporter_name": "Contoh Pelapor",
+        "share_ceding": "25",
+        "start_date_treaty": "2026-01-01",
+        "total_estimasi_idr": "500000000",
+        "total_gross_estimate_idr": "2000000000",
+        "total_sum_insured_idr": "15000000000",
+        "treaty_group_id": "TG-001",
+        "treaty_group_name": "Property",
+        "treaty_name": "Treaty Contoh Proporsional 2026",
+        "treaty_year": "2026",
+        "tsi_deductible": "15000000000",
+        "type_deductible": "Claim Amount",
+        "year_of_account": "2026",
+        "year_of_quartal": "2026",
+        "zip_code": "12345"
+      },
+      "Grids": {
+        "claim_amount": [
+          {
+            "claim_amount": "2000000000",
+            "claim_amount_ceding": "1950000000",
+            "claim_amount_idr": "1950000000",
+            "currency": "IDR",
+            "net_deductible": "50000000"
+          }
+        ],
+        "estimation_list": [
+          {
+            "currency": "IDR",
+            "estimation_asm": "500000000",
+            "estimation_asm_idr": "500000000",
+            "estimation_date": "2026-08-20",
+            "gross_estimation": "2000000000",
+            "ibnr": "25000000",
+            "kurs": "1",
+            "type": "Initial",
+            "type_loss": "Partial Loss"
+          }
+        ],
+        "estimation_total": [
+          {
+            "currency": "IDR",
+            "estimation_asm": "500000000",
+            "gross_estimate": "2000000000"
+          }
+        ],
+        "interest_list": [
+          {
+            "currency": "IDR",
+            "kurs": "1",
+            "object_name": "Bangunan Gudang Contoh",
+            "tsi_per_object": "10000000000"
+          },
+          {
+            "currency": "IDR",
+            "kurs": "1",
+            "object_name": "Isi Gudang Contoh",
+            "tsi_per_object": "5000000000"
+          }
+        ],
+        "interest_total": [
+          {
+            "currency": "IDR",
+            "value": "15000000000"
+          }
+        ],
+        "spreading_break_qs": [
+          {
+            "claim_spreaded": "243750000",
+            "currency": "IDR",
+            "share_percentage": "12.5",
+            "treaty_type": "Quota Share Break"
+          }
+        ],
+        "spreading_claim": [
+          {
+            "claim_spreaded": "487500000",
+            "currency": "IDR",
+            "share_percentage": "25",
+            "treaty_type": "Quota Share"
+          }
+        ],
+        "spreading_risk": [
+          {
+            "currency": "IDR",
+            "ibnr": "12500000",
+            "result_claim": "487500000",
+            "result_claim_idr": "487500000",
+            "share_percentage": "25",
+            "treaty_type": "Quota Share"
+          },
+          {
+            "currency": "IDR",
+            "ibnr": "12500000",
+            "result_claim": "97500000",
+            "result_claim_idr": "97500000",
+            "share_percentage": "5",
+            "treaty_type": "Surplus"
+          }
+        ],
+        "suggestion": [
+          {
+            "date": "2026-08-21",
+            "name": "PICTREATY1",
+            "noted": "Menunggu laporan adjuster."
+          }
+        ]
+      }
+    },
+    {
+      "ClaimID": "CLMP-1002",
+      "Reference": "ASM-FW-GCNMFW-WORK-CLAIMTREATY CLMP-1002",
+      "StatusWork": "New",
+      "LastUpdateOperator": "ADMINTREATY1",
+      "Values": {},
+      "Grids": {}
+    }
+  ]
+}

@@ -3,6 +3,7 @@ package mastertipesurveyorshttp
 import (
 	"github.com/go-chi/chi/v5"
 
+	"claim-pnc/internal/platform/crudhttp"
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -38,9 +39,9 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 //
 // # Kewenangan
 //
@@ -51,24 +52,5 @@ import (
 // (`docs/Steering/11-SECURITY.md` §3.1). Keadaan ini sama dengan seluruh rute lain yang
 // sudah ada hari ini, dan dicatat terbuka di docs/keputusan-implementasi.md.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Route("/master/tipe-surveyor", func(master chi.Router) {
-			master.Get("/", h.List)
-			master.Post("/", h.Create)
-			master.Get("/{kode}", h.Get)
-
-			// PUT, bukan PATCH: seluruh isi yang boleh diubah — satu isian, deskripsi —
-			// dikirim setiap kali, sehingga permintaannya menggantikan dan idempoten.
-			// Mengirim permintaan yang sama dua kali menghasilkan keadaan akhir yang sama.
-			master.Put("/{kode}", h.Update)
-
-			// DELETE sengaja TIDAK didaftarkan. Layar Pega tidak punya tombol hapus,
-			// procedure lamanya hanya mengenal INSERT dan UPDATE, dan menghapus satu tipe
-			// akan membuat puluhan baris D_SURVEYORS kehilangan golongannya. Rute yang
-			// tidak ada tidak dapat dipanggil kode yang ditulis kemudian tanpa keputusan
-			// sadar.
-		})
-	})
+	crudhttp.Mount(r, portalDeps, "/master/tipe-surveyor", "kode", h)
 }

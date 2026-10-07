@@ -39,6 +39,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // ApprovalStatus adalah posisi sebuah rekening dalam alur persetujuan komite.
@@ -469,20 +471,7 @@ func TrimCashierResponse(mentah string) string {
 // benar adalah mengirim surel ke sana. Validasi yang terlalu ketat justru menolak
 // alamat sah — dan layar lama pun hanya memeriksa keberadaan "@" lewat activity
 // ValidasiEmailRekening.
-func EmailLooksValid(address string) bool {
-	address = strings.TrimSpace(address)
-	i := strings.IndexByte(address, '@')
-	if i <= 0 || i == len(address)-1 {
-		return false
-	}
-	// Tidak boleh ada "@" kedua, dan bagian setelahnya harus memuat titik di tengah.
-	domain := address[i+1:]
-	if strings.ContainsRune(domain, '@') {
-		return false
-	}
-	j := strings.IndexByte(domain, '.')
-	return j > 0 && j < len(domain)-1
-}
+func EmailLooksValid(address string) bool { return validation.EmailLooksValid(address) }
 
 // sortRows mengurutkan nama field. Ditulis di sini supaya paket domain tidak perlu
 // mengimpor sort hanya untuk satu pemakaian pada jalur galat.

@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterpasal"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterpasal"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleBusiness mengembalikan master lini bisnis contoh — padanan POOLDATA.BUSINESS.
 //
@@ -15,14 +25,7 @@ import "claim-pnc/internal/masterpasal"
 //
 // Tidak ada satu pun data nasabah di sini, dan memang tidak boleh ada (`D-69`).
 func SampleBusiness() []masterpasal.Business {
-	return []masterpasal.Business{
-		{ID: "2001", Name: "Personal Accident"},
-		{ID: "2002", Name: "Travel"},
-		{ID: "2003", Name: "Marine Cargo"},
-		{ID: "2004", Name: "Fire / Property"},
-		{ID: "2005", Name: "Aneka"},
-		{ID: "2006", Name: "Bonding"},
-	}
+	return sampledata.Must[[]masterpasal.Business](sampleJSON, "SampleBusiness")
 }
 
 // SampleList mengembalikan pasal kerugian contoh.
@@ -39,43 +42,7 @@ func SampleBusiness() []masterpasal.Business {
 // Isi pasalnya dikarang dan sengaja dibuat pendek. Ia hanya perlu cukup untuk melihat
 // kolom "Isi Pasal" terisi.
 func SampleList() []masterpasal.Clause {
-	return []masterpasal.Clause{
-		{
-			ID:            "1",
-			Number:        "PSL-001",
-			Text:          "Penanggung menjamin kerugian atas harta benda yang dipertanggungkan akibat kebakaran.",
-			Description:   "Jaminan dasar kebakaran",
-			Category:      masterpasal.CategoryPolicyCoverage,
-			CategoryLabel: masterpasal.CategoryLabel(masterpasal.CategoryPolicyCoverage),
-			Business: []masterpasal.Business{
-				{ID: "2004", Name: "Fire / Property"},
-			},
-		},
-		{
-			ID:            "2",
-			Number:        "PSL-002",
-			Text:          "Tidak dijamin kerugian yang timbul akibat keausan, sifat barang sendiri, atau cacat tersembunyi.",
-			Description:   "Pengecualian umum",
-			Category:      masterpasal.CategoryException,
-			CategoryLabel: masterpasal.CategoryLabel(masterpasal.CategoryException),
-			Business: []masterpasal.Business{
-				{ID: "2003", Name: "Marine Cargo"},
-				{ID: "2005", Name: "Aneka"},
-			},
-		},
-		{
-			ID:            "3",
-			Number:        "PSL-003",
-			Text:          "Tertanggung wajib memberitahukan setiap perubahan risiko kepada Penanggung.",
-			Description:   "Kewajiban pemberitahuan",
-			Category:      masterpasal.CategoryNotification,
-			CategoryLabel: masterpasal.CategoryLabel(masterpasal.CategoryNotification),
-			Business: []masterpasal.Business{
-				{ID: "2001", Name: "Personal Accident"},
-				{ID: "2002", Name: "Travel"},
-			},
-		},
-	}
+	return sampledata.Must[[]masterpasal.Clause](sampleJSON, "SampleList")
 }
 
 // NewSampleRepo membentuk penyimpanan berisi contoh di atas.

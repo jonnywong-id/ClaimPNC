@@ -12,6 +12,7 @@ import (
 
 	"claim-pnc/internal/inboxmanageradmin"
 	"claim-pnc/internal/inboxmanageradmin/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // dateLayout adalah bentuk tanggal pada kontrak API: YYYY-MM-DD.
@@ -25,10 +26,10 @@ const dateLayout = "2006-01-02"
 // Nama field JSON berbahasa Indonesia — ia KONTRAK yang dibaca frontend, dan termasuk
 // pengecualian `D-80`. Namanya mengikuti apa yang dibaca pengguna di kolom grid.
 //
-// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang digambar
-// dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian, karena isian
-// yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya menghilang
-// begitu saja.
+// SELURUH isian selalu dikirim, termasuk yang kosong. Layar memilih kolom mana yang
+// digambar dari `kolom` pada tab yang sedang terbuka — bukan dari ada-tidaknya isian,
+// karena isian yang kebetulan kosong pada seluruh baris halaman ini akan membuat kolomnya
+// menghilang begitu saja.
 type WorkItemDTO struct {
 	// Reference adalah kunci teknis Pega yang dibutuhkan tombol rincian.
 	//
@@ -142,10 +143,7 @@ type ListResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {

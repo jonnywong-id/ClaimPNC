@@ -1,5 +1,9 @@
 package inputacceptation
 
+import (
+	"claim-pnc/internal/platform/tabletext"
+)
+
 // Bentuk layar Acceptation Claim, dibaca dari `Section/InputAcceptation-Section.xml`.
 //
 // # Kenapa bentuk layar tinggal di BACKEND
@@ -178,73 +182,62 @@ var groups = []Group{
 	{
 		Code:  GroupTreaty,
 		Title: "Treaty Information",
-		Fields: []Field{
-			{Key: "claim_no", Title: "Claim No", Path: "NoClaim"},
-			{Key: "treaty_id", Title: "Treaty ID", Path: "IDMaster"},
-			{Key: "treaty_name", Title: "Treaty Name", Path: "TreatyName"},
-			{Key: "ri_type", Title: "R/I Type", Blocked: true},
-
-			// Isian ini terikat `pyWorkPage.OfferFacIn.QuotationData.BusinessName` —
-			// halaman `OfferFacIn`, bukan `.ClaimData`. Seperti TreatyInMaster, ia tidak
+		Fields: tabletext.Rows[Field](`
+			Key               | Title             | Path            | Blocked
+			claim_no          | Claim No          | NoClaim         |
+			treaty_id         | Treaty ID         | IDMaster        |
+			treaty_name       | Treaty Name       | TreatyName      |
+			ri_type           | R/I Type          |                 | true
+			// Isian ini terikat 'pyWorkPage.OfferFacIn.QuotationData.BusinessName' —
+			// halaman 'OfferFacIn', bukan '.ClaimData'. Seperti TreatyInMaster, ia tidak
 			// diisi satu pun pra-aksi Flow Action ini, sehingga tidak dapat dibaca dari
 			// dokumen klaim.
-			{Key: "class_of_business", Title: "Class Of Business", Blocked: true},
-
-			{Key: "ceding_name", Title: "Ceding Name", Blocked: true},
-			{Key: "sob_name", Title: "SOB Name", Blocked: true},
-			{Key: "bordereaux", Title: "Bordereaux", Blocked: true},
-			{Key: "bordereaux_note", Title: "Bordereaux Note", Blocked: true},
-			{Key: "treaty_year", Title: "Treaty Year", Path: "YearofAccount"},
-			{Key: "treaty_start_date", Title: "Treaty Start Date", Path: "StartDateTreaty"},
-			{Key: "treaty_end_date", Title: "Treaty End Date", Path: "EndDateTreaty"},
-			{Key: "accounting_mode", Title: "Accounting Mode", Blocked: true},
-			{Key: "teritorial_scope", Title: "Teritorial Scope", Blocked: true},
-		},
+			class_of_business | Class Of Business |                 | true
+			ceding_name       | Ceding Name       |                 | true
+			sob_name          | SOB Name          |                 | true
+			bordereaux        | Bordereaux        |                 | true
+			bordereaux_note   | Bordereaux Note   |                 | true
+			treaty_year       | Treaty Year       | YearofAccount   |
+			treaty_start_date | Treaty Start Date | StartDateTreaty |
+			treaty_end_date   | Treaty End Date   | EndDateTreaty   |
+			accounting_mode   | Accounting Mode   |                 | true
+			teritorial_scope  | Teritorial Scope  |                 | true
+		`),
 	},
 	{
 		Code:  GroupClaim,
 		Title: "Claim Information",
-		Fields: []Field{
-			{Key: "policy_no", Title: "Policy No", Path: "PolicyData.PolicyNo"},
-			{Key: "date_of_loss", Title: "Date of Loss", Path: "DateOfLoss"},
-			{Key: "report_date", Title: "Report Date", Path: "ReportDate"},
-			{Key: "policy_no_ceding", Title: "Policy No Ceding", Path: "PolicyNo"},
-			{Key: "received_date", Title: "Received Date", Path: "DateReceived"},
-			{Key: "insured_name", Title: "Insured Name", Path: "InsuredName"},
-			{Key: "reporter_name", Title: "Reporter Name", Path: "ReporterName"},
-			{Key: "pla_no_ceding", Title: "Pla No Ceding", Path: "PlaNoCeding"},
-			{Key: "claim_no_ceding", Title: "Claim No Ceding", Path: "CNPClmNoCedant"},
-
+		Fields: tabletext.Rows[Field](`
+			Key                         | Title                        | Path                      | Editable
+			policy_no                   | Policy No                    | PolicyData.PolicyNo       |
+			date_of_loss                | Date of Loss                 | DateOfLoss                |
+			report_date                 | Report Date                  | ReportDate                |
+			policy_no_ceding            | Policy No Ceding             | PolicyNo                  |
+			received_date               | Received Date                | DateReceived              |
+			insured_name                | Insured Name                 | InsuredName               |
+			reporter_name               | Reporter Name                | ReporterName              |
+			pla_no_ceding               | Pla No Ceding                | PlaNoCeding               |
+			claim_no_ceding             | Claim No Ceding              | CNPClmNoCedant            |
 			// Salah satu dari sedikit isian yang BOLEH diubah di layar ini.
-			{Key: "dla_no_ceding", Title: "DLA No Ceding", Path: "DLANoCeding",
-				Editable: true},
-
-			{Key: "reporter_phone", Title: "Reporter Phone Number", Path: "ReporterTelp"},
-			{Key: "policy_start", Title: "Policy Start", Path: "PolicyData.StartDateTime"},
-			{Key: "policy_end", Title: "Policy End", Path: "PolicyData.EndDateTime"},
-			{Key: "cause_of_loss", Title: "Cause Of Loss", Path: "CauseOfLoss"},
-
+			dla_no_ceding               | DLA No Ceding                | DLANoCeding               | true
+			reporter_phone              | Reporter Phone Number        | ReporterTelp              |
+			policy_start                | Policy Start                 | PolicyData.StartDateTime  |
+			policy_end                  | Policy End                   | PolicyData.EndDateTime    |
+			cause_of_loss               | Cause Of Loss                | CauseOfLoss               |
 			// Label selnya di section berbunyi "Dropdown" — label bawaan kontrol, bukan
 			// judul. Judul di bawah mengikuti modul Outstanding Claim, yang isian sama
 			// pada layar saudaranya bernama begitu.
-			{Key: "report_status", Title: "Report Status", Path: "ReporterStatus",
-				Editable: true},
-
-			{Key: "report_type", Title: "Report Type", Path: "ReportType"},
-			{Key: "insured_relationship_others", Title: "Specify...",
-				Path: "InsuredRelationshipOthers"},
-			{Key: "location_of_loss", Title: "Location of Loss", Path: "Location"},
-			{Key: "reporter_address", Title: "Reporter Address", Path: "ReportAddress"},
-			{Key: "report_description", Title: "Report Description",
-				Path: "ReportDescription"},
-			{Key: "appointed_adj", Title: "Adjuster / Professional Name",
-				Path: "AppointedADJ"},
-			{Key: "consultant_name", Title: "Consultant Name", Path: "ConsultantName"},
-			{Key: "circumtances", Title: "Circumtances", Path: "CNPCircumtances",
-				Editable: true},
-			{Key: "supporting_document", Title: "Supporting Document",
-				Path: "CNPSupportDoc", Editable: true},
-		},
+			report_status               | Report Status                | ReporterStatus            | true
+			report_type                 | Report Type                  | ReportType                |
+			insured_relationship_others | Specify...                   | InsuredRelationshipOthers |
+			location_of_loss            | Location of Loss             | Location                  |
+			reporter_address            | Reporter Address             | ReportAddress             |
+			report_description          | Report Description           | ReportDescription         |
+			appointed_adj               | Adjuster / Professional Name | AppointedADJ              |
+			consultant_name             | Consultant Name              | ConsultantName            |
+			circumtances                | Circumtances                 | CNPCircumtances           | true
+			supporting_document         | Supporting Document          | CNPSupportDoc             | true
+		`),
 
 		// DUA isian di section TIDAK dibawa: `InputData.CARI31` dan `InputData.CARI32`.
 		// Keduanya kotak pencari di atas halaman SEMENTARA `InputData` — pencari ID
@@ -265,24 +258,21 @@ var groups = []Group{
 	{
 		Code:  GroupDeductible,
 		Title: "Deductible",
-		Fields: []Field{
-			{Key: "share_ceding", Title: "Share Ceding(%)", Path: "ShareCeding"},
-
+		Fields: tabletext.Rows[Field](`
+			Key                 | Title           | Path               | Editable
+			share_ceding        | Share Ceding(%) | ShareCeding        |
 			// Labelnya di section "Checkbox" — label bawaan kontrol. Ia yang MEMILIH di
 			// antara dua susunan deductible yang digambar berdampingan di section
 			// (persentase-dari-TSI versus jumlah tetap), dan keduanya membaca isian yang
 			// sama. Yang digambar di sini satu susunan, dengan penanda jenisnya.
-			{Key: "deductible_type", Title: "Deductible Type", Path: "DeductibleType",
-				Editable: true},
-
-			{Key: "form_type", Title: "Format", Path: "FormType"},
-			{Key: "currency_deductible", Title: "Currency", Path: "CurrencyDeductible",
-				Editable: true},
-			{Key: "deductible_value", Title: "Amount", Path: "DeductibleValue"},
-			{Key: "deductible_percent", Title: "%", Path: "Amount"},
-			{Key: "type_deductible", Title: "of", Path: "TypeDeductible"},
-			{Key: "tsi_deductible", Title: "TSI Amount", Path: "TSIDeductible"},
-		},
+			deductible_type     | Deductible Type | DeductibleType     | true
+			form_type           | Format          | FormType           |
+			currency_deductible | Currency        | CurrencyDeductible | true
+			deductible_value    | Amount          | DeductibleValue    |
+			deductible_percent  | %               | Amount             |
+			type_deductible     | of              | TypeDeductible     |
+			tsi_deductible      | TSI Amount      | TSIDeductible      |
+		`),
 	},
 	{
 		Code:  GroupClaimAmount,
@@ -462,12 +452,13 @@ var grids = []Grid{
 	{
 		Code: GridAdjustment, Title: "Acceptation",
 		Path: "AdjustmentList", // section :2938678
-		Columns: []GridColumn{
-			{Key: "type", Title: "Type", Path: "Type", Editable: true},
-			{Key: "acceptation_no", Title: "Acceptation No", Path: "AcceptedNo"},
-			{Key: "acceptation_date", Title: "Acceptation Date", Path: "AcceptedDate"},
-			{Key: "status", Title: "Status", Path: "AcceptanceStatus"},
-		},
+		Columns: tabletext.Rows[GridColumn](`
+			Key              | Title            | Path             | Editable
+			type             | Type             | Type             | true
+			acceptation_no   | Acceptation No   | AcceptedNo       |
+			acceptation_date | Acceptation Date | AcceptedDate     |
+			status           | Status           | AcceptanceStatus |
+		`),
 	},
 	{
 		Code: GridSpreadAdjust, Title: "Claim Spreaded",
@@ -496,13 +487,13 @@ var grids = []Grid{
 	{
 		Code: GridSuggest, Title: "Ceding Confirmation",
 		Path: "SuggestList", // section :3448089
-		Columns: []GridColumn{
-			{Key: "confirmed", Title: "Confirmed", Path: "IsCedingConfirm",
-				Editable: true},
-			{Key: "name", Title: "Name", Path: "Initial"},
-			{Key: "date", Title: "Date", Path: "DateSuggest", Editable: true},
-			{Key: "noted", Title: "Noted", Path: "CommentSuggest", Editable: true},
-		},
+		Columns: tabletext.Rows[GridColumn](`
+			Key       | Title     | Path            | Editable
+			confirmed | Confirmed | IsCedingConfirm | true
+			name      | Name      | Initial         |
+			date      | Date      | DateSuggest     | true
+			noted     | Noted     | CommentSuggest  | true
+		`),
 	},
 }
 

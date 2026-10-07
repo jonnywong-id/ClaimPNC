@@ -101,6 +101,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // ── Antrean ──────────────────────────────────────────────────────────────────────
@@ -458,15 +460,7 @@ func (f Filter) Normalize() Filter {
 	f.Search = strings.TrimSpace(f.Search)
 	f.Queue = f.Queue.Normalize()
 
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxLimit {
-		f.Limit = MaxLimit
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxLimit)
 	return f
 }
 

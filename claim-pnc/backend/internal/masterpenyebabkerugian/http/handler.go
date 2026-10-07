@@ -2,15 +2,13 @@ package masterpenyebabkerugianhttp
 
 import (
 	"context"
-	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/masterpenyebabkerugian"
+	"claim-pnc/internal/platform/httpjson"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -30,35 +28,6 @@ type Service interface {
 	Get(ctx context.Context, portalAlias, id string) (masterpenyebabkerugian.CauseOfLoss, error)
 	Create(ctx context.Context, portalAlias, description string) (masterpenyebabkerugian.CauseOfLoss, error)
 	Update(ctx context.Context, portalAlias, id, description string) (masterpenyebabkerugian.CauseOfLoss, error)
-}
-
-// Handler melayani permintaan Master Penyebab Kerugian.
-type Handler struct {
-	service       Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service Service
-	Logger  *slog.Logger
-
-	// WriteResponse dan FallbackErrorWriter dipasok dari luar supaya seluruh modul
-	// menuliskan respons dan galat portal dengan cara yang sama.
-	WriteResponse       JSONWriter
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Master Penyebab Kerugian.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    WriteError(o.Logger, o.WriteResponse, o.FallbackErrorWriter),
-	}
 }
 
 // List menangani GET /api/master/penyebab-kerugian.
@@ -171,19 +140,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 // ditulis dan pemanggil harus berhenti.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
 	var request SaveRequest
-	r.Body = http.MaxBytesReader(w, r.Body, maxSaveBodyBytes)
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		// Isi badan permintaan tidak ikut dikembalikan. Di modul ini ia tidak memuat
-		// rahasia, tetapi memantulkan masukan mentah ke peramban adalah kebiasaan yang
-		// tidak layak dimulai di satu tempat pun.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    ErrCodeBadRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-	return request, true
+	ok := httpjson.DecodeLoose(w, r, maxSaveBodyBytes, &request, h.writeResponse, ErrorResponse{
+		Code:    ErrCodeBadRequest,
+		Message: "Permintaan tidak dapat dibaca.",
+	})
+	return request, ok
 }
 
 func toDTO(c masterpenyebabkerugian.CauseOfLoss) CauseOfLossDTO {

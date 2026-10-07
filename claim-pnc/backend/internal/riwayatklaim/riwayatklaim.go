@@ -72,6 +72,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // ClaimHistory adalah satu baris hasil pencarian riwayat klaim.
@@ -177,13 +179,16 @@ type ClaimHistory struct {
 // Paginasi di sini karena itu **perubahan perilaku yang disadari**, bukan pemeliharaan —
 // `09-DATABASE-STRATEGY.md` §6.3 menyatakannya harus diuji per layar, tidak diasumsikan
 // setara.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi.
 //
@@ -193,32 +198,6 @@ const (
 	DefaultPageSize = 20
 	MaxPageSize     = 100
 )
-
-// Normalize mengembalikan paginasi yang sudah dibetulkan ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari
-// parameter query yang mudah salah ketik, dan menolak seluruh permintaan karena
-// `halaman=0` akan membuat layar gagal tanpa alasan yang terbaca pengguna. Ukuran yang
-// melebihi batas dipotong ke batas, bukan dibiarkan.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati sebelum halaman yang diminta.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
 
 // Page adalah satu halaman hasil beserta jumlah seluruh baris yang cocok.
 //
@@ -235,17 +214,7 @@ type Page struct {
 
 // TotalPages adalah jumlah halaman, minimal 1 supaya layar tidak pernah menggambar
 // "halaman 1 dari 0" saat hasilnya kosong.
-func (p Page) TotalPages() int {
-	size := p.Pagination.Normalize().Size
-	if p.Total <= 0 {
-		return 1
-	}
-	pages := p.Total / size
-	if p.Total%size != 0 {
-		pages++
-	}
-	return pages
-}
+func (p Page) TotalPages() int { return pagination.Pages(p.Total, p.Pagination.Normalize().Size) }
 
 // Caller adalah identitas petugas yang mengirim permintaan.
 //

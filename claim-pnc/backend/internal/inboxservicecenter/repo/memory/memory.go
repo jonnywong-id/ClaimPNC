@@ -4,8 +4,8 @@
 //
 // Dua hal, dan keduanya nyata:
 //
-//   - Pengujian aturan modul TANPA basis data, sehingga uji aturan bisnis berjalan cepat dan
-//     tidak menuntut Oracle (`14-TESTING-STRATEGY.md` §3).
+//   - Pengujian aturan modul TANPA basis data, sehingga uji aturan bisnis berjalan cepat
+//     dan tidak menuntut Oracle (`14-TESTING-STRATEGY.md` §3).
 //   - Pengembangan lokal saat variabel `PENYIMPANAN` tidak menunjuk basis data mana pun.
 //
 // # Kenapa penyaringnya ditiru, bukan disederhanakan

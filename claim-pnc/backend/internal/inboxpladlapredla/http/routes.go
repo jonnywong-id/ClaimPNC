@@ -10,9 +10,9 @@ import (
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang
-// merakit urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // # Kenapa SELURUH rute di balik pemeriksaan portal
 //

@@ -1,0 +1,34 @@
+{
+  "SampleList": [
+    {
+      "ID": "10001",
+      "Type": "Dokumen Registrasi",
+      "ProcessStatus": "Register"
+    },
+    {
+      "ID": "10002",
+      "Type": "Dokumen Survey",
+      "ProcessStatus": "Survey"
+    },
+    {
+      "ID": "10003",
+      "Type": "Dokumen Komite",
+      "ProcessStatus": "Komite"
+    },
+    {
+      "ID": "10004",
+      "Type": "Dokumen Salvage",
+      "ProcessStatus": ""
+    },
+    {
+      "ID": "10005",
+      "Type": "Dokumen Pembayaran",
+      "ProcessStatus": "Payment"
+    },
+    {
+      "ID": "10006",
+      "Type": "Dokumen Pendukung Lainnya",
+      "ProcessStatus": ""
+    }
+  ]
+}

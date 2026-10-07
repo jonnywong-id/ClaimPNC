@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterstatus"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah 33 status klaim nyata sesuai isi POOLDATA.V_STS_CLAIM.
 //
@@ -37,39 +47,5 @@ import "claim-pnc/internal/masterstatus"
 // Uji TestSelisihDenganBasisDataProduksiTercatat mengunci selisih itu supaya ia tidak
 // hilang diam-diam saat daftar ini kelak disunting.
 func SampleList() []masterstatus.ClaimStatus {
-	return []masterstatus.ClaimStatus{
-		{Code: "1134", Label: "Abbreviated Report", LegacyCode: "01"},
-		{Code: "1135", Label: "Preliminary Report", LegacyCode: "02"},
-		{Code: "1136", Label: "Interim Payment Report", LegacyCode: "03"},
-		{Code: "1137", Label: "Final Report", LegacyCode: "04"},
-		{Code: "1138", Label: "PLA Report", LegacyCode: "05"},
-		{Code: "1139", Label: "DLA Report", LegacyCode: "06"},
-		{Code: "1140", Label: "Partial Accepted", LegacyCode: "07"},
-		{Code: "1141", Label: "Full Accepted", LegacyCode: "08"},
-		{Code: "1142", Label: "Rejected Claim", LegacyCode: "09"},
-		{Code: "1143", Label: "Close Claim for this object", LegacyCode: "10"},
-		{Code: "1144", Label: "Cancelled Claim", LegacyCode: "11"},
-		{Code: "1145", Label: "Waiting Survey", LegacyCode: ""},
-		{Code: "1146", Label: "View Polis", LegacyCode: ""},
-		{Code: "1147", Label: "Register", LegacyCode: ""},
-		{Code: "1148", Label: "CFS Report", LegacyCode: ""},
-		{Code: "1149", Label: "Claim Committee", LegacyCode: ""},
-		{Code: "1150", Label: "LOD Report", LegacyCode: ""},
-		{Code: "1151", Label: "Analyst", LegacyCode: ""},
-		{Code: "1152", Label: "Compliance", LegacyCode: ""},
-		{Code: "1153", Label: "RCL", LegacyCode: ""},
-		{Code: "1154", Label: "PUCL", LegacyCode: ""},
-		{Code: "1155", Label: "RCL Dokter", LegacyCode: ""},
-		{Code: "1156", Label: "Investigator", LegacyCode: ""},
-		{Code: "1157", Label: "Document Waiting RCL/PUCL", LegacyCode: ""},
-		{Code: "1158", Label: "Inputor", LegacyCode: ""},
-		{Code: "1159", Label: "Approval Commite", LegacyCode: ""},
-		{Code: "1160", Label: "Rejected Commite", LegacyCode: ""},
-		{Code: "1161", Label: "Acceptance Report", LegacyCode: ""},
-		{Code: "1162", Label: "Transfered to Cashier", LegacyCode: ""},
-		{Code: "1163", Label: "Paid", LegacyCode: ""},
-		{Code: "1164", Label: "Reopen Claim", LegacyCode: ""},
-		{Code: "1165", Label: "Rejected Chasier", LegacyCode: ""},
-		{Code: "1166", Label: "LOD Accepted", LegacyCode: ""},
-	}
+	return sampledata.Must[[]masterstatus.ClaimStatus](sampleJSON, "SampleList")
 }

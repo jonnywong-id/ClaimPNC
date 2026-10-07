@@ -1,0 +1,126 @@
+{
+  "SampleAccess": [
+    {
+      "Login": "adminpnc",
+      "LegacyID": "DOKTERRCL01",
+      "AccessGroup": "GCNMFW:PNCKomite",
+      "Active": true
+    },
+    {
+      "Login": "adminpnc",
+      "LegacyID": "DOKTERRCL01",
+      "AccessGroup": "GCNMFW:ViewClaimPNC",
+      "Active": true
+    },
+    {
+      "Login": "pictekniks",
+      "LegacyID": "PICTEKNIKLAMA",
+      "AccessGroup": "GCNMFW:PncPICTeknik",
+      "Active": true
+    },
+    {
+      "Login": "pictekniks",
+      "LegacyID": "PICTEKNIKLAMA",
+      "AccessGroup": "GCNMFW:PNCKomite",
+      "Active": false
+    }
+  ],
+  "SampleTasks": [
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0412",
+      "ClaimNumber": "PNCN.26.0412",
+      "PolicyNumber": "26.002.2026.00412",
+      "InsuredName": "Andi Saputra Contoh",
+      "SentToRCLAt": "2026-09-22T03:00:00Z",
+      "AnalystNote": "Diagnosa tidak termasuk manfaat rawat inap; mohon pertimbangan penolakan.",
+      "RCLDoctor": "DOKTERRCL01",
+      "RegisteredAt": "2026-09-20T02:00:00Z",
+      "ProcessStatus": "Open",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0405",
+      "ClaimNumber": "PNCN.26.0405",
+      "PolicyNumber": "26.002.2026.00405",
+      "InsuredName": "Maya Kartika Contoh",
+      "SentToRCLAt": "2026-09-19T07:00:00Z",
+      "AnalystNote": "Penyakit bawaan sebelum masa pertanggungan.",
+      "RCLDoctor": "DOKTERRCL01",
+      "RegisteredAt": "2026-09-17T01:00:00Z",
+      "ProcessStatus": "Pending-RCLDokter",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0404",
+      "ClaimNumber": "PNCN.26.0404",
+      "PolicyNumber": "26.005.2026.00404",
+      "InsuredName": "Rudi Hartono Contoh",
+      "SentToRCLAt": "2026-09-18T09:00:00Z",
+      "AnalystNote": "",
+      "RCLDoctor": "DOKTERRCL01",
+      "RegisteredAt": "2026-09-17T01:00:00Z",
+      "ProcessStatus": "Open",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0380",
+      "ClaimNumber": "PNCN.26.0380",
+      "PolicyNumber": "26.002.2026.00380",
+      "InsuredName": "Siti Rahma Contoh",
+      "SentToRCLAt": "2026-09-10T04:00:00Z",
+      "AnalystNote": "Dokumen medis tidak lengkap.",
+      "RCLDoctor": "DOKTERRCL01",
+      "RegisteredAt": "2026-09-08T03:00:00Z",
+      "ProcessStatus": "Resolved-Rejected",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0371",
+      "ClaimNumber": "PNCN.26.0371",
+      "PolicyNumber": "26.002.2026.00371",
+      "InsuredName": "Agus Salim Contoh",
+      "SentToRCLAt": "2026-09-06T02:00:00Z",
+      "AnalystNote": "",
+      "RCLDoctor": "DOKTERRCL01",
+      "RegisteredAt": "2026-09-05T02:00:00Z",
+      "ProcessStatus": "Resolved-Completed",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0366",
+      "ClaimNumber": "PNCN.26.0366",
+      "PolicyNumber": "26.002.2026.00366",
+      "InsuredName": "Lina Marlina Contoh",
+      "SentToRCLAt": "0001-01-01T00:00:00Z",
+      "AnalystNote": "",
+      "RCLDoctor": "DOKTERRCL01",
+      "RegisteredAt": "2026-09-21T05:00:00Z",
+      "ProcessStatus": "Open",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0359",
+      "ClaimNumber": "PNCN.26.0359",
+      "PolicyNumber": "26.002.2026.00359",
+      "InsuredName": "Budi Santoso Contoh",
+      "SentToRCLAt": "2026-09-21T06:00:00Z",
+      "AnalystNote": "",
+      "RCLDoctor": "DOKTERRCL02",
+      "RegisteredAt": "2026-09-21T05:00:00Z",
+      "ProcessStatus": "Open",
+      "AssignedOperator": "DOKTERRCL01"
+    },
+    {
+      "ClaimID": "ASM-FW-GCNMFW-WORK PNCN.26.0350",
+      "ClaimNumber": "PNCN.26.0350",
+      "PolicyNumber": "26.002.2026.00350",
+      "InsuredName": "Dian Permata Contoh",
+      "SentToRCLAt": "2026-09-21T07:00:00Z",
+      "AnalystNote": "",
+      "RCLDoctor": "DOKTERRCL02",
+      "RegisteredAt": "2026-09-21T06:00:00Z",
+      "ProcessStatus": "Open",
+      "AssignedOperator": "DOKTERRCL02"
+    }
+  ]
+}

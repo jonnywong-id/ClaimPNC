@@ -14,13 +14,22 @@ import (
 	"strings"
 
 	"claim-pnc/internal/mastertipesparepart"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "mastertipesparepart/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string {
+	return sqlfile.MustGet(query, "mastertipesparepart/sqlstore", name)
+}
 
 // approvedLookup adalah nilai APPROVAL yang dipakai kueri acuan kategori.
 //
@@ -71,23 +80,7 @@ func (r *Repo) List(
 		rows, err = r.db.QueryContext(ctx, getQuery("type_list_search"),
 			string(filter.Status), "%"+escapeLike(keyword)+"%")
 	}
-	if err != nil {
-		return nil, fmt.Errorf("mastertipesparepart/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []mastertipesparepart.PartType
-	for rows.Next() {
-		one, err := scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, one)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("mastertipesparepart/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow, "mastertipesparepart/sqlstore: membaca daftar", "", "mastertipesparepart/sqlstore: menelusuri daftar")
 }
 
 // Get mengembalikan satu baris berdasarkan kuncinya.
@@ -97,14 +90,7 @@ func (r *Repo) Get(
 ) (mastertipesparepart.PartType, error) {
 	row := r.db.QueryRowContext(ctx, getQuery("type_get"), strings.TrimSpace(id))
 
-	found, err := scanRow(row)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return mastertipesparepart.PartType{}, mastertipesparepart.ErrNotFound
-	case err != nil:
-		return mastertipesparepart.PartType{}, err
-	}
-	return found, nil
+	return sqlkit.One(row, scanRow, mastertipesparepart.ErrNotFound)
 }
 
 // FindByName mencari baris menurut namanya.
@@ -124,14 +110,7 @@ func (r *Repo) FindByName(
 	row := r.db.QueryRowContext(ctx, getQuery("type_find_by_name"),
 		strings.ToUpper(strings.TrimSpace(name)))
 
-	found, err := scanNameRow(row)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return mastertipesparepart.PartType{}, mastertipesparepart.ErrNotFound
-	case err != nil:
-		return mastertipesparepart.PartType{}, err
-	}
-	return found, nil
+	return sqlkit.One(row, scanNameRow, mastertipesparepart.ErrNotFound)
 }
 
 // ListCategories membaca kategori yang sudah disetujui, untuk dropdown Kategori.
@@ -193,52 +172,33 @@ func (r *Repo) Insert(
 	ctx context.Context,
 	t mastertipesparepart.PartType,
 ) (mastertipesparepart.PartType, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+	var fresh mastertipesparepart.PartType
+	err := sqlkit.InTx(ctx, r.db, "mastertipesparepart/sqlstore: memulai transaksi", "mastertipesparepart/sqlstore: menutup transaksi sisip", func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, getQuery("type_lock_table")); err != nil {
+			return fmt.Errorf("mastertipesparepart/sqlstore: mengunci tabel tipe: %w", err)
+		}
+		if err := rejectTakenName(ctx, tx, t.Name); err != nil {
+			return err
+		}
+		id, err := nextID(ctx, tx)
+		if err != nil {
+			return err
+		}
+		fresh = mastertipesparepart.PartType{
+			ID:         id,
+			Name:       t.Name,
+			CategoryID: t.CategoryID,
+			Status:     t.Status,
+		}
+		if _, err := tx.ExecContext(ctx, getQuery("type_insert"),
+			fresh.ID, fresh.Name, fresh.CategoryID, string(fresh.Status)); err != nil {
+			return fmt.Errorf("mastertipesparepart/sqlstore: menyisipkan %q: %w", fresh.Name, err)
+		}
+		return nil
+	})
 	if err != nil {
-		return mastertipesparepart.PartType{}, fmt.Errorf(
-			"mastertipesparepart/sqlstore: memulai transaksi: %w", err)
-	}
-	// Rollback tanpa syarat; setelah Commit berhasil ia tidak berakibat apa pun. Tanpa ini,
-	// satu jalur galat yang terlewat meninggalkan transaksi menggantung — dan karena
-	// transaksi ini memegang kunci TABEL, yang tertahan bukan satu baris melainkan seluruh
-	// penambahan tipe sampai koneksinya didaur ulang.
-	defer func() { _ = tx.Rollback() }()
-
-	if _, err := tx.ExecContext(ctx, getQuery("type_lock_table")); err != nil {
-		return mastertipesparepart.PartType{}, fmt.Errorf(
-			"mastertipesparepart/sqlstore: mengunci tabel tipe: %w", err)
-	}
-
-	if err := rejectTakenName(ctx, tx, t.Name); err != nil {
 		return mastertipesparepart.PartType{}, err
 	}
-
-	id, err := nextID(ctx, tx)
-	if err != nil {
-		return mastertipesparepart.PartType{}, err
-	}
-
-	fresh := mastertipesparepart.PartType{
-		ID:         id,
-		Name:       t.Name,
-		CategoryID: t.CategoryID,
-		Status:     t.Status,
-	}
-	if _, err := tx.ExecContext(ctx, getQuery("type_insert"),
-		fresh.ID, fresh.Name, fresh.CategoryID, string(fresh.Status)); err != nil {
-		return mastertipesparepart.PartType{}, fmt.Errorf(
-			"mastertipesparepart/sqlstore: menyisipkan %q: %w", fresh.Name, err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return mastertipesparepart.PartType{}, fmt.Errorf(
-			"mastertipesparepart/sqlstore: menutup transaksi sisip: %w", err)
-	}
-
-	// CategoryName TIDAK diisi di sini: ia milik tabel kategori, dan membacanya menuntut
-	// perjalanan kedua yang hanya untuk memperindah satu jawaban. Lapisan aplikasi yang
-	// mengisinya dari daftar kategori yang memang sudah dibacanya untuk memeriksa
-	// keberadaannya — lihat usecase.Service.Create.
 	return fresh, nil
 }
 
@@ -251,18 +211,8 @@ func (r *Repo) Insert(
 // TIDAK menyaring APPROVAL dan TIDAK menyaring kategori, meniru `ValidationSparepartType`
 // apa adanya. Lihat mastertipesparepart.ErrNameTaken.
 func rejectTakenName(ctx context.Context, tx *sql.Tx, name string) error {
-	row := tx.QueryRowContext(ctx, getQuery("type_find_by_name"),
-		strings.ToUpper(strings.TrimSpace(name)))
-
-	_, err := scanNameRow(row)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return nil
-	case err != nil:
-		return err
-	default:
-		return mastertipesparepart.ErrNameTaken
-	}
+	row := tx.QueryRowContext(ctx, getQuery("type_find_by_name"), strings.ToUpper(strings.TrimSpace(name)))
+	return sqlkit.Taken(row, scanNameRow, mastertipesparepart.ErrNameTaken)
 }
 
 // nextID membaca nomor urut berikutnya di dalam transaksi yang sudah memegang kunci tabel.
@@ -273,19 +223,7 @@ func rejectTakenName(ctx context.Context, tx *sql.Tx, name string) error {
 // dan ID yang tersimpan sebagai "8.0" tidak akan pernah cocok dengan
 // `SPAREPART_HE.TIPE_SPART` yang berisi "8".
 func nextID(ctx context.Context, tx *sql.Tx) (string, error) {
-	var next int64
-	if err := tx.QueryRowContext(ctx, getQuery("type_next_id")).Scan(&next); err != nil {
-		return "", fmt.Errorf(
-			"mastertipesparepart/sqlstore: menerbitkan ID tipe: %w", err)
-	}
-	if next <= 0 {
-		// COALESCE(MAX(...),0)+1 tidak dapat menghasilkan nilai ini pada tabel yang waras.
-		// Bila ia terjadi, ada ID negatif di tabelnya — dan menyisipkan baris di atasnya akan
-		// menimpa deret yang sudah ada.
-		return "", fmt.Errorf(
-			"mastertipesparepart/sqlstore: ID tipe berikutnya tidak masuk akal: %d", next)
-	}
-	return strconv.FormatInt(next, 10), nil
+	return sqlkit.NextSerial(ctx, tx, getQuery("type_next_id"), "mastertipesparepart/sqlstore", "ID tipe")
 }
 
 // NextID menerbitkan ID berikutnya di luar transaksi penambahan.
@@ -300,10 +238,9 @@ func nextID(ctx context.Context, tx *sql.Tx) (string, error) {
 // Nilai yang dikembalikannya karena itu bersifat SEMENTARA dan tidak boleh dipakai
 // menyisipkan apa pun.
 func (r *Repo) NextID(ctx context.Context) (string, error) {
-	var next int64
-	if err := r.db.QueryRowContext(ctx, getQuery("type_next_id")).Scan(&next); err != nil {
-		return "", fmt.Errorf(
-			"mastertipesparepart/sqlstore: menerbitkan ID tipe: %w", err)
+	next, err := sqlkit.Serial(ctx, r.db, getQuery("type_next_id"), "mastertipesparepart/sqlstore", "ID tipe")
+	if err != nil {
+		return "", err
 	}
 	return strconv.FormatInt(next, 10), nil
 }
@@ -329,54 +266,15 @@ func (r *Repo) Update(ctx context.Context, t mastertipesparepart.PartType) error
 	// Driver yang tidak mendukung RowsAffected mengembalikan galat; dalam keadaan itu
 	// perubahannya TIDAK dianggap gagal — pernyataannya sendiri sudah berhasil, dan
 	// menolaknya akan menampilkan kegagalan palsu.
-	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
-		return mastertipesparepart.ErrNotFound
-	}
-	return nil
+	return sqlkit.RequireAffected(result, mastertipesparepart.ErrNotFound)
 }
 
 // SetStatus menetapkan APPROVAL sejumlah baris di dalam SATU transaksi.
 //
 // Bentuk pernyataannya DIREKONSTRUKSI; lihat catatan pada `type_set_status` di berkas .sql
 // dan pada mastertipesparepart.Repo.SetStatus.
-func (r *Repo) SetStatus(
-	ctx context.Context,
-	id []string,
-	status mastertipesparepart.ApprovalStatus,
-) (int, error) {
-	if len(id) == 0 {
-		return 0, nil
-	}
-
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf(
-			"mastertipesparepart/sqlstore: memulai transaksi keputusan: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	changed := 0
-	for _, one := range id {
-		result, err := tx.ExecContext(ctx, getQuery("type_set_status"),
-			string(status), strings.TrimSpace(one))
-		if err != nil {
-			return 0, fmt.Errorf(
-				"mastertipesparepart/sqlstore: menetapkan status %q: %w", one, err)
-		}
-		// Driver yang tidak mendukung RowsAffected membuat pencacahnya tidak dapat
-		// diandalkan. Barisnya tetap dianggap berubah: pernyataannya sudah berhasil, dan
-		// melaporkan nol akan menampilkan kegagalan palsu.
-		affected, err := result.RowsAffected()
-		if err != nil || affected > 0 {
-			changed++
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf(
-			"mastertipesparepart/sqlstore: menutup transaksi keputusan: %w", err)
-	}
-	return changed, nil
+func (r *Repo) SetStatus(ctx context.Context, id []string, status mastertipesparepart.ApprovalStatus) (int, error) {
+	return sqlkit.SetEach(ctx, r.db, getQuery("type_set_status"), string(status), id, "mastertipesparepart/sqlstore")
 }
 
 // CountByStatus mencacah baris satu status. Dipakai `claimpnc -periksa`.
@@ -419,21 +317,12 @@ func (r *Repo) CountOrphanSparepart(ctx context.Context) (int, error) {
 
 // CheckTable membuktikan tabel beserta keempat kolomnya ada dan dapat dibaca.
 func (r *Repo) CheckTable(ctx context.Context) error {
-	rows, err := r.db.QueryContext(ctx, getQuery("type_check_table"))
-	if err != nil {
-		return fmt.Errorf("mastertipesparepart/sqlstore: memeriksa tabel tipe: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	return rows.Err()
+	return sqlkit.CheckReadable(ctx, r.db, getQuery("type_check_table"), "mastertipesparepart/sqlstore: memeriksa tabel tipe")
 }
 
 // count menjalankan satu kueri pencacah.
 func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, error) {
-	var total int
-	if err := r.db.QueryRowContext(ctx, getQuery(name), argument...).Scan(&total); err != nil {
-		return 0, fmt.Errorf("mastertipesparepart/sqlstore: %s: %w", name, err)
-	}
-	return total, nil
+	return sqlkit.Count(ctx, r.db, getQuery(name), "mastertipesparepart/sqlstore: "+name, argument...)
 }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows.
@@ -441,9 +330,7 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 // Keduanya punya Scan dengan tanda tangan yang sama tetapi tidak berbagi interface apa pun
 // di pustaka standar, dan tanpa ini pembacaan barisnya harus ditulis dua kali — dua tempat
 // yang dapat berbeda urutan kolomnya tanpa satu pun yang memberi tahu.
-type rowScanner interface {
-	Scan(target ...any) error
-}
+type rowScanner = sqlkit.Scanner
 
 // scanRow membaca satu baris LIMA kolom menjadi PartType.
 //
@@ -533,16 +420,7 @@ func scanNameRow(row rowScanner) (mastertipesparepart.PartType, error) {
 // dikarang tidak akan menemukan barisnya, sedangkan kunci ganjil yang dibiarkan setidaknya
 // masih menunjuk baris yang benar. Bila ia muncul, ia terlihat di layar sebagaimana adanya
 // — dan itu yang diinginkan.
-func tidyNumber(text string) string {
-	if text == "" {
-		return ""
-	}
-	number, err := strconv.ParseInt(strings.TrimSuffix(text, ".0"), 10, 64)
-	if err != nil {
-		return text
-	}
-	return strconv.FormatInt(number, 10)
-}
+func tidyNumber(text string) string { return sqlvalue.TidyNumber(text) }
 
 // escapeLike menetralkan karakter pola pada kata kunci pencarian.
 //
@@ -553,83 +431,6 @@ func tidyNumber(text string) string {
 // Karakter pelolosnya tidak dinyatakan dengan klausa ESCAPE karena baik Oracle maupun
 // PostgreSQL memakai backslash sebagai pelolos bawaan pada LIKE. Backslash sendiri
 // dilipatgandakan lebih dulu supaya ia tetap dapat dicari.
-func escapeLike(keyword string) string {
-	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return replacer.Replace(keyword)
-}
-
-// getQuery mengambil pernyataan SQL menurut namanya.
-//
-// Ia PANIC bila namanya tidak ada, dan itu disengaja: nama kueri adalah konstanta yang
-// ditulis programmer, bukan masukan pengguna. Salah ketik harus gagal saat uji pertama
-// dijalankan, bukan menjadi galat runtime di hadapan petugas.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf(
-			"mastertipesparepart/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("mastertipesparepart/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("mastertipesparepart/sqlstore: tidak dapat membaca " +
-				file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("mastertipesparepart/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(rows)
-		if strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
-}
+func escapeLike(keyword string) string { return sqlvalue.EscapeLike(keyword) }
 
 var _ mastertipesparepart.Store = (*Repo)(nil)

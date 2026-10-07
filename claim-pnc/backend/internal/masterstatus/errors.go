@@ -2,7 +2,8 @@ package masterstatus
 
 import (
 	"errors"
-	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Tiga kegagalan yang wajib dapat dibedakan pemanggil tanpa membaca teks pesan.
@@ -29,10 +30,7 @@ const (
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus.
 //
@@ -44,11 +42,7 @@ type ValidationError struct {
 }
 
 func (g *ValidationError) Error() string {
-	message := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		message = append(message, p.Field+": "+p.Message)
-	}
-	return "masterstatus: validasi gagal — " + strings.Join(message, "; ")
+	return validation.Format(g.Violation, "masterstatus: validasi gagal — ", ": ", "; ", "")
 }
 
 // NewValidationError membentuk galat validasi, atau nil bila tidak ada pelanggaran.

@@ -1,0 +1,157 @@
+{
+  "SampleRows": [
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9001",
+        "CaseID": "PNC-9001",
+        "PolicyNumber": "00.000.2026.00001",
+        "InsuredName": "PT Contoh Sejahtera",
+        "BusinessName": "Property All Risk",
+        "BusinessSource": "Broker Contoh",
+        "RegisteredAt": "2026-09-23T08:00:00Z",
+        "AdminName": "Admin Contoh Satu",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminPNC",
+      "WorkStatus": "New"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9002",
+        "CaseID": "PNC-9002",
+        "PolicyNumber": "00.000.2026.00002",
+        "InsuredName": "PT Contoh Abadi",
+        "BusinessName": "Marine Cargo",
+        "BusinessSource": "",
+        "RegisteredAt": null,
+        "AdminName": "Admin Contoh Satu",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminPNC",
+      "WorkStatus": "New"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9101",
+        "CaseID": "PNC-9101",
+        "PolicyNumber": "00.002.2026.00011",
+        "InsuredName": "Tertanggung Contoh A",
+        "BusinessName": "Personal Accident",
+        "BusinessSource": "Keagenan Contoh",
+        "RegisteredAt": "2026-09-25T08:00:00Z",
+        "AdminName": "Admin Contoh Dua",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminPA",
+      "WorkStatus": "New"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9102",
+        "CaseID": "PNC-9102",
+        "PolicyNumber": "00.002.2026.00012",
+        "InsuredName": "Tertanggung Contoh B",
+        "BusinessName": "Personal Accident",
+        "BusinessSource": "Bancassurance Contoh",
+        "RegisteredAt": "2025-08-22T08:00:00Z",
+        "AdminName": "Admin Contoh Dua",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminPA",
+      "WorkStatus": "New"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9201",
+        "CaseID": "PNC-9201",
+        "PolicyNumber": "00.005.2026.00021",
+        "InsuredName": "Tertanggung Contoh C",
+        "BusinessName": "Travel",
+        "BusinessSource": "Digital Contoh",
+        "RegisteredAt": "2026-09-16T08:00:00Z",
+        "AdminName": "Admin Contoh Tiga",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminTRAVEL",
+      "WorkStatus": "New"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9003",
+        "CaseID": "PNC-9003",
+        "PolicyNumber": "00.000.2026.00003",
+        "InsuredName": "PT Contoh Selesai",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "RegisteredAt": "2026-08-27T08:00:00Z",
+        "AdminName": "Admin Contoh Satu",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminPNC",
+      "WorkStatus": "Resolved-Completed"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9103",
+        "CaseID": "PNC-9103",
+        "PolicyNumber": "00.002.2026.00013",
+        "InsuredName": "Tertanggung Contoh D",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "RegisteredAt": "2026-08-12T08:00:00Z",
+        "AdminName": "Admin Contoh Dua",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminPA",
+      "WorkStatus": "Resolved-Rejected"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK RCV-7001",
+        "CaseID": "RCV-7001",
+        "PolicyNumber": "00.000.2026.00004",
+        "InsuredName": "PT Contoh Dokumen",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "RegisteredAt": "2026-09-24T08:00:00Z",
+        "AdminName": "Petugas Terima Contoh",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-ReceiveDocument",
+      "OrgUnit": "AdminPNC",
+      "WorkStatus": "New"
+    },
+    {
+      "Item": {
+        "Reference": "ASM-FW-GCNMFW-WORK PNC-9301",
+        "CaseID": "PNC-9301",
+        "PolicyNumber": "00.000.2026.00005",
+        "InsuredName": "PT Contoh Unit Lain",
+        "BusinessName": "",
+        "BusinessSource": "",
+        "RegisteredAt": "2026-09-21T08:00:00Z",
+        "AdminName": "Admin Contoh Empat",
+        "ClaimStatus": "",
+        "ClaimElapsed": ""
+      },
+      "WorkClass": "ASM-FW-GCNMFW-Work-PNC",
+      "OrgUnit": "AdminLain",
+      "WorkStatus": "New"
+    }
+  ]
+}

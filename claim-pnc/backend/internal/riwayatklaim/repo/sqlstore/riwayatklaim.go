@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"claim-pnc/internal/platform/sqlvalue"
 	"claim-pnc/internal/riwayatklaim"
 )
 
@@ -184,10 +185,4 @@ func scanClaim(row scanner) (riwayatklaim.ClaimHistory, error) {
 //
 // Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
 // diisi" saat ditampilkan, dan layar akan menuliskan "01/01/0001" alih-alih tanda hubung.
-func nullableTime(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	moment := value.Time
-	return &moment
-}
+func nullableTime(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }

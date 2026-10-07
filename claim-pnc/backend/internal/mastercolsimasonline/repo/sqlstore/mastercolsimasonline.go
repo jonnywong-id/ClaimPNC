@@ -2,8 +2,8 @@
 //
 // Satu instans Repo terikat pada SATU koneksi basis data, yaitu satu portal entitas.
 // Pemisahan data antarentitas karena itu ada di tingkat koneksi, bukan di tingkat
-// penyaringan baris (`ADR-0030` Opsi 1) — tidak ada satu pun kueri di sini yang
-// menyaring berdasarkan entitas, dan memang tidak boleh ada.
+// penyaringan baris (`ADR-0030` Opsi 1) — tidak ada satu pun kueri di sini yang menyaring
+// berdasarkan entitas, dan memang tidak boleh ada.
 //
 // # Kenapa modul ini boleh MENULIS ke tabel milik sistem lama
 //
@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/mastercolsimasonline"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca dan menulis POOLDATA.M_CAUSE_OF_LOSS_ONLINE beserta tabel pemetaan
@@ -269,9 +270,9 @@ func saveBusinesses(ctx context.Context, tx *sql.Tx, code string, businesses []m
 // issueCode membentuk M_COL_ID persis seperti `Database/PEGA_M_CAUSE_OF_LOSS_ONLINE`:
 // kode situs disambung nomor urut tiga digit, memakai urutan M_CAUSE_SEQ_ONLINE.
 //
-// Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR
-// termasuk yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri
-// pada dialek Oracle.
+// Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR termasuk
+// yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri pada dialek
+// Oracle.
 func issueCode(ctx context.Context, tx *sql.Tx) (string, error) {
 	var site string
 	if err := tx.QueryRowContext(ctx, getQuery("cause_of_loss_site")).Scan(&site); err != nil {
@@ -319,12 +320,7 @@ func ThreeDigits(n int64) string {
 //
 // Keduanya berbeda di basis data, dan membiarkan keduanya masuk berarti dua bentuk
 // "tidak diisi" yang harus sama-sama diingat setiap kueri sesudahnya.
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nullIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows, yang keduanya punya Scan dengan bentuk
 // sama tetapi tidak berbagi satu antarmuka di pustaka standar.

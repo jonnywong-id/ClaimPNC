@@ -262,7 +262,7 @@ func TestReadCallerWithoutReaderIsUnknown(t *testing.T) {
 	_, known := h.readCaller(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.False(t, known)
 
-	h.caller = func(context.Context) (Caller, bool) { return Caller{Login: "   "}, true }
+	h.Caller = func(context.Context) (Caller, bool) { return Caller{Login: "   "}, true }
 	_, known = h.readCaller(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.False(t, known)
 }

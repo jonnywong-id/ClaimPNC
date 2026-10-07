@@ -3,6 +3,8 @@ package inboxpladla
 import (
 	"errors"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Galat domain modul Inbox PLA DLA.
@@ -119,10 +121,7 @@ const (
 )
 
 // Violation adalah satu pelanggaran pada satu isian.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError mengumpulkan SELURUH pelanggaran, bukan yang pertama saja (`P-5`).
 type ValidationError struct {
@@ -142,12 +141,7 @@ func (e *ValidationError) Error() string {
 	if len(e.Violations) == 0 {
 		return "inboxpladla: isian tidak sah"
 	}
-
-	parts := make([]string, 0, len(e.Violations))
-	for _, v := range e.Violations {
-		parts = append(parts, v.Field+": "+v.Message)
-	}
-	return "inboxpladla: " + strings.Join(parts, "; ")
+	return validation.Format(e.Violations, "inboxpladla: ", ": ", "; ", "")
 }
 
 // QueryInput adalah isian mentah dari layar, belum divalidasi.

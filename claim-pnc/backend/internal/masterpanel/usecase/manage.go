@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterpanel"
+	"claim-pnc/internal/platform/decision"
 )
 
 // Service adalah pintu masuk seluruh perkara master panel.
@@ -252,19 +253,7 @@ func (l *Service) Decide(
 		return 0, err
 	}
 
-	wanted := make([]string, 0, len(id))
-	seen := make(map[string]bool, len(id))
-	for _, one := range id {
-		clean := strings.TrimSpace(one)
-		// Kunci ganda dibuang: layar dapat mengirim baris yang sama dua kali bila
-		// daftarnya dimuat ulang saat centang masih terpasang, dan jumlah baris berubah
-		// yang dilaporkan harus mencerminkan baris, bukan centang.
-		if clean == "" || seen[clean] {
-			continue
-		}
-		seen[clean] = true
-		wanted = append(wanted, clean)
-	}
+	wanted := decision.UniqueIDs(id)
 	if len(wanted) == 0 {
 		return 0, masterpanel.OneViolation("id_panel", "Pilih dulu panel yang akan diputuskan.")
 	}
@@ -283,16 +272,7 @@ func (l *Service) Decide(
 		return 0, err
 	}
 
-	if changed != len(wanted) && logger != nil {
-		// Bukan galat: baris yang tidak berubah adalah baris yang sudah tidak ada, atau
-		// sudah berstatus itu. Tetapi selisihnya berarti layar menampilkan daftar yang
-		// sudah basi, dan itu layak terbaca.
-		logger.Warn("keputusan master panel tidak menyentuh seluruh baris yang dipilih",
-			slog.String("portal", portalAlias),
-			slog.Int("dipilih", len(wanted)),
-			slog.Int("berubah", changed),
-			slog.String("oleh", by.Login))
-	}
+	decision.WarnPartial(logger, "keputusan master panel tidak menyentuh seluruh baris yang dipilih", portalAlias, len(wanted), changed, by.Login)
 
 	notifyDecisionOmitted(logger, portalAlias, changed, status, by)
 	return changed, nil

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"claim-pnc/internal/archivedokumenklaim"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -84,9 +83,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// berkas CSV separuh jadi tanpa satu pun keterangan.
 	page := archivedokumenklaim.Pagination{Page: 1, Size: exportChunk}
 
-	first, err := h.service.Search(r.Context(), active.Alias, input, page)
+	first, err := h.Service.Search(r.Context(), active.Alias, input, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -141,7 +140,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		page.Page++
-		current, err = h.service.Search(r.Context(), active.Alias, input, page)
+		current, err = h.Service.Search(r.Context(), active.Alias, input, page)
 		if err != nil {
 			h.logExportFailure(r, err)
 			return
@@ -233,7 +232,7 @@ func firstNonEmpty(values ...string) string {
 // dikirimkan, sehingga yang sampai ke pengguna adalah berkas yang terputus. Tanpa catatan
 // ini, kegagalannya tidak meninggalkan jejak di mana pun.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	if h.logger == nil {
+	if h.Logger == nil {
 		return
 	}
 
@@ -242,7 +241,7 @@ func (h *Handler) logExportFailure(r *http.Request, err error) {
 		alias = active.Alias
 	}
 
-	h.logger.Error("ekspor berkas arsip terputus di tengah jalan",
+	h.Logger.Error("ekspor berkas arsip terputus di tengah jalan",
 		slog.String("jalur", r.URL.Path),
 		slog.String("portal", alias),
 		slog.String("galat", err.Error()),

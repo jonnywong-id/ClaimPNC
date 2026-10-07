@@ -10,6 +10,10 @@
 // kembali. **Tidak ada aturan modul di sini.**
 package masterpenyebabkerugianhttp
 
+import (
+	"claim-pnc/internal/platform/apierror"
+)
+
 // CauseOfLossDTO adalah bentuk satu golongan penyebab kerugian yang dikirim ke peramban.
 //
 // Tipe ini sengaja TERPISAH dari masterpenyebabkerugian.CauseOfLoss. Memakai tipe modul
@@ -100,10 +104,7 @@ type SaveRequest struct {
 //
 // Field dikirim supaya layar dapat menandai kolom yang salah, bukan sekadar menampilkan
 // satu pesan di atas form.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

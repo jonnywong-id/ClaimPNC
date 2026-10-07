@@ -45,6 +45,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // LoginStatusMember adalah nilai `STSLOGIN` yang ditulis setiap penambahan.
@@ -229,12 +231,10 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
-	// data — layar yang menyorot isiannya memakai nilai ini.
-	Field   string
-	Message string
-}
+//
+// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+// data — layar yang menyorot isiannya memakai nilai ini.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja (`P-5`).
 type ValidationError struct {
@@ -251,11 +251,7 @@ func OneViolation(field, message string) error {
 }
 
 func (g *ValidationError) Error() string {
-	parts := make([]string, 0, len(g.Violation))
-	for _, p := range g.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "masterlogin: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(g.Violation, "masterlogin: isian tidak sah (", ": ", "; ", ")")
 }
 
 // loginStripped adalah karakter yang dibuang saat Login diturunkan dari Nama.

@@ -10,9 +10,9 @@ import (
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang
-// merakit urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // # Kenapa SELURUH rute di balik pemeriksaan portal
 //
@@ -30,10 +30,10 @@ import (
 //
 // # Kewenangan
 //
-// Rutenya terlindungi sesi. Yang BELUM ada adalah pemeriksaan peran: "apakah peran pemanggil
-// memiliki menu ini" adalah `TKT-F3-005`, yang bergantung pada tabel peran `TKT-F3-004` —
-// dan tabel itu dapat dibangun tetapi belum dapat diisi, karena penugasan operator ke peran
-// tidak ada di basis data maupun di export (`11-SECURITY.md` §3.1).
+// Rutenya terlindungi sesi. Yang BELUM ada adalah pemeriksaan peran: "apakah peran
+// pemanggil memiliki menu ini" adalah `TKT-F3-005`, yang bergantung pada tabel peran
+// `TKT-F3-004` — dan tabel itu dapat dibangun tetapi belum dapat diisi, karena penugasan
+// operator ke peran tidak ada di basis data maupun di export (`11-SECURITY.md` §3.1).
 //
 // Di sistem lama, layar ini membedakan perilaku bagi `GCNMFW:CaseManager` dan
 // `GCNMFW:PncManagerAdmin` — keduanya melewati penyaring cabang dan memperoleh pemilih
@@ -45,14 +45,12 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Get("/inbox-admin/tab", h.Metadata)
-		perPortal.Get("/inbox-admin", h.List)
-	})
+	portalhttp.MountGets(r, portalDeps,
+		portalhttp.Route{Path: "/inbox-admin/tab", Handler: h.Metadata},
+		portalhttp.Route{Path: "/inbox-admin", Handler: h.List},
+	)
 }

@@ -17,6 +17,7 @@ import (
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/db"
+	"claim-pnc/internal/platform/sqlkit"
 )
 
 // ownTable menerjemahkan kegagalan pada tabel MILIK APLIKASI INI menjadi galat domain
@@ -535,23 +536,7 @@ func (r *Repo) count(ctx context.Context, name string, argument []any) (int, err
 // query menjalankan salah satu kueri daftar dan membaca seluruh barisnya.
 func (r *Repo) query(ctx context.Context, name string, argument []any) ([]inboxlaporanklaim.ClaimReport, error) {
 	rows, err := r.db.QueryContext(ctx, sourced(name), argument...)
-	if err != nil {
-		return nil, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca daftar: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []inboxlaporanklaim.ClaimReport
-	for rows.Next() {
-		report, err := scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, report)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("inboxlaporanklaim/sqlstore: menelusuri daftar: %w", err)
-	}
-	return result, nil
+	return sqlkit.Collect(rows, err, scanRow, "inboxlaporanklaim/sqlstore: membaca daftar", "", "inboxlaporanklaim/sqlstore: menelusuri daftar")
 }
 
 // scopeArguments menyusun dua puluh satu bind pertama, sama untuk setiap kueri.

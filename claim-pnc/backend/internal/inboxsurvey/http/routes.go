@@ -10,9 +10,9 @@ import (
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang merakit
-// urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // Tuntutan itu LEBIH KERAS di modul ini daripada di kebanyakan inbox. Antreannya tidak
 // sekadar disaring identitas — identitas itu diterjemahkan lebih dulu menjadi NAMA SURVEYOR
@@ -53,9 +53,9 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 //
 // # Kenapa empat rute, bukan satu
 //

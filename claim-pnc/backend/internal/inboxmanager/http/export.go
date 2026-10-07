@@ -41,14 +41,14 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// separuh jadi tanpa satu pun keterangan.
 	input.Page = inboxmanager.Pagination{Page: 1, Size: inboxmanager.MaxPageSize}
 
-	view, err := h.service.List(r.Context(), active.Alias, input, caller)
+	view, err := h.Service.List(r.Context(), active.Alias, input, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
 	if view.Tab.Kind != inboxmanager.KindQueue {
-		h.writeError(w, r, inboxmanager.NewValidationError([]inboxmanager.Violation{{
+		h.WriteError(w, r, inboxmanager.NewValidationError([]inboxmanager.Violation{{
 			Field:   inboxmanager.FieldTab,
 			Message: "Hanya antrean persetujuan yang dapat diekspor.",
 		}}))
@@ -110,7 +110,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		page++
 		input.Page = inboxmanager.Pagination{Page: page, Size: inboxmanager.MaxPageSize}
 
-		view, err = h.service.List(r.Context(), active.Alias, input, caller)
+		view, err = h.Service.List(r.Context(), active.Alias, input, caller)
 		if err != nil {
 			// Galat di tengah berkas tidak dapat lagi dijawab sebagai JSON. Yang dapat
 			// dilakukan hanyalah mencatatnya dan berhenti — dan berkas yang berhenti di
@@ -137,10 +137,10 @@ func exportFilename(tab inboxmanager.Tab) string {
 
 // logExportFailure mencatat kegagalan yang terjadi setelah header terkirim.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	if h.logger == nil {
+	if h.Logger == nil {
 		return
 	}
-	h.logger.Error("ekspor inbox manager gagal di tengah berkas",
+	h.Logger.Error("ekspor inbox manager gagal di tengah berkas",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)

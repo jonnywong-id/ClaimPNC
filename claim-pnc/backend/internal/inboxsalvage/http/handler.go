@@ -1,73 +1,18 @@
 package inboxsalvagehttp
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxsalvage"
-	"claim-pnc/internal/inboxsalvage/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Berbeda dari modul inbox lain, ia MENYARING di sini: daftar "Request Balai Lelang"
-	// menampilkan pengajuan yang PIC-nya pemanggil sendiri.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox Salvage.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Salvage.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-salvage/daftar.
 //
@@ -76,11 +21,11 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-salvage.
@@ -92,7 +37,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -103,11 +48,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Counts menangani GET /api/inbox-salvage/ringkas.
@@ -121,13 +66,13 @@ func (h *Handler) Counts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	counts, err := h.service.Counts(r.Context(), active.Alias, caller)
+	counts, err := h.Service.Counts(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toCountsResponse(counts, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toCountsResponse(counts, active.Alias))
 }
 
 // maxCreateBody membatasi ukuran badan permintaan simpan.
@@ -158,7 +103,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&request); err != nil {
-		h.writeError(w, r, inboxsalvage.NewValidationError([]inboxsalvage.Violation{{
+		h.WriteError(w, r, inboxsalvage.NewValidationError([]inboxsalvage.Violation{{
 			Field: inboxsalvage.FieldFormClaimNo,
 			Message: "Data yang dikirim tidak terbaca. Muat ulang halaman lalu isi " +
 				"ulang formulirnya.",
@@ -166,13 +111,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.service.Create(r.Context(), active.Alias, caller, request.toInput())
+	created, err := h.Service.Create(r.Context(), active.Alias, caller, request.toInput())
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusCreated, CreateResponse{
+	h.WriteJSON(w, r, http.StatusCreated, CreateResponse{
 		SalvageID: created.SalvageID,
 		ItemCount: created.ItemCount,
 		Message: "Pengajuan salvage tersimpan dan masuk antrean Checker. " +
@@ -208,7 +153,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("berkas")
 	if err != nil {
-		h.writeError(w, r, inboxsalvage.NewValidationError([]inboxsalvage.Violation{{
+		h.WriteError(w, r, inboxsalvage.NewValidationError([]inboxsalvage.Violation{{
 			Field:   inboxsalvage.FieldFormFile,
 			Message: "Berkas belum dipilih, atau ukurannya melebihi batas.",
 		}}))
@@ -220,7 +165,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	// `FormFile` di atas, dan menguraikannya lagi akan selalu menghasilkan berkas kosong.
 	items, err := inboxsalvage.ParseUpload(file)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -234,7 +179,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.writeJSON(w, r, http.StatusOK, UploadResponse{
+	h.WriteJSON(w, r, http.StatusOK, UploadResponse{
 		Items: rows,
 		Message: "Berkas terbaca dan isinya dimasukkan ke tabel Detail Item Salvage. " +
 			"Belum ada yang tersimpan — tekan Submit untuk menyimpannya.",
@@ -249,15 +194,15 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 // sementara yang dibutuhkan pengguna adalah tahu ke mana ia harus pergi.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
 	// Dicatat, bukan hanya ditolak. Selama masa paralel, inilah satu-satunya tanda seberapa
 	// sering pengguna benar-benar membutuhkan aksi ini — dan itu yang menjadi dasar
 	// memutuskan kapan ia dibangun.
-	if h.logger != nil {
-		h.logger.Info(
+	if h.Logger != nil {
+		h.Logger.Info(
 			"aksi tulis diminta pada tindakan yang belum dibangun",
 			slog.String("modul", "inbox-salvage"),
 			slog.String("jalur", r.URL.Path),
@@ -265,7 +210,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	h.writeError(w, r, inboxsalvage.ErrWriteNotAvailable)
+	h.WriteError(w, r, inboxsalvage.ErrWriteNotAvailable)
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -277,13 +222,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxsalvage.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxsalvage.ErrCallerUnknown)
+		h.WriteError(w, r, inboxsalvage.ErrCallerUnknown)
 		return portal.Portal{}, inboxsalvage.Caller{}, false
 	}
 
@@ -292,10 +237,10 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 
 // readCaller membaca identitas pemanggil lewat jembatan yang disuntikkan cmd.
 func (h *Handler) readCaller(r *http.Request) (inboxsalvage.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxsalvage.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists {
 		return inboxsalvage.Caller{}, false
 	}
@@ -318,13 +263,7 @@ func readFilter(tab, search string) inboxsalvage.QueryInput {
 // menjadi nilai bawaan — bukan ditolak. Halaman dan ukuran datang dari alamat yang mudah
 // salah ketik, dan menolak seluruh permintaan karena `halaman=abc` akan membuat layar gagal
 // tanpa alasan yang terbaca pengguna.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegativeTrimmed(raw) }
 
 // Detail menangani GET /api/inbox-salvage/pengajuan/{id}.
 //
@@ -393,15 +332,15 @@ func (h *Handler) detail(
 ) {
 	clean := strings.TrimSpace(reference)
 	if clean == "" {
-		h.writeError(w, r, inboxsalvage.ErrRowNotFound)
+		h.WriteError(w, r, inboxsalvage.ErrRowNotFound)
 		return
 	}
 
-	detail, err := h.service.Detail(r.Context(), active.Alias, caller, key, clean)
+	detail, err := h.Service.Detail(r.Context(), active.Alias, caller, key, clean)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias))
 }

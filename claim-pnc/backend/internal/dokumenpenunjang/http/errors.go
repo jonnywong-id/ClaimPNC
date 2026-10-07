@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/dokumenpenunjang"
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/logging"
 )
 
@@ -29,10 +30,10 @@ type ErrorResponse struct {
 }
 
 // JSONWriter menuliskan badan respons.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // WriteError memetakan galat menjadi respons HTTP.
 //

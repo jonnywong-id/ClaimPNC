@@ -59,8 +59,9 @@ package mastercolsimasonline
 import (
 	"context"
 	"errors"
-	"strings"
-	"unicode/utf8"
+
+	"claim-pnc/internal/platform/mastertext"
+	"claim-pnc/internal/platform/validation"
 )
 
 // Nama isian yang dipakai layar untuk menyorot pelanggaran.
@@ -169,11 +170,9 @@ var (
 )
 
 // Violation adalah satu isian yang tidak lolos pemeriksaan.
-type Violation struct {
-	// Field memakai nama isian yang dikenali layar, bukan nama kolom basis data.
-	Field   string
-	Message string
-}
+//
+// Field memakai nama isian yang dikenali layar, bukan nama kolom basis data.
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja.
 //
@@ -186,11 +185,7 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	parts := make([]string, 0, len(e.Violation))
-	for _, p := range e.Violation {
-		parts = append(parts, p.Field+": "+p.Message)
-	}
-	return "mastercolsimasonline: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+	return validation.Format(e.Violation, "mastercolsimasonline: isian tidak sah (", ": ", "; ", ")")
 }
 
 // Clean memangkas spasi di kedua ujung setiap isian dan membuang ID bisnis kosong.
@@ -202,17 +197,8 @@ func (e *ValidationError) Error() string {
 // barisnya sendiri di grid, dan mengurutkannya diam-diam akan membuat layar menampilkan
 // urutan yang berbeda dari yang baru saja ia simpan.
 func (i Input) Clean() Input {
-	businessNames := make([]string, 0, len(i.BusinessNames))
-	for _, name := range i.BusinessNames {
-		if trimmed := strings.TrimSpace(name); trimmed != "" {
-			businessNames = append(businessNames, trimmed)
-		}
-	}
-
-	return Input{
-		Description:   strings.TrimSpace(i.Description),
-		BusinessNames: businessNames,
-	}
+	description, names := mastertext.Clean(i.Description, i.BusinessNames)
+	return Input{Description: description, BusinessNames: names}
 }
 
 // Check menjalankan seluruh aturan isian yang dapat diperiksa TANPA menyentuh
@@ -225,7 +211,6 @@ func (i Input) Clean() Input {
 // bisnis, sedangkan fungsi ini murni dan dapat diuji tanpa apa pun. Pemeriksaannya ada
 // di usecase, mengikuti pemisahan yang sama pada masterstatus.CheckLabel.
 func (i Input) Check() error {
-	var violation []Violation
 
 	// NAMA TIDAK DIWAJIBKAN, dan itu hasil pemeriksaan ulang ke export — bukan kelalaian.
 	//
@@ -248,22 +233,13 @@ func (i Input) Check() error {
 	//
 	// Dihitung dalam rune, bukan byte: satu huruf beraksen memakan dua byte dan akan
 	// membuat batas terasa berubah-ubah bagi pengguna.
-	if utf8.RuneCountInString(i.Description) > MaxDescriptionLength {
-		violation = append(violation, Violation{
-			Field:   FieldDescription,
-			Message: "Nama Cause of loss paling panjang " + itoa(MaxDescriptionLength) + " karakter.",
-		})
-	}
-
-	for _, name := range i.BusinessNames {
-		if utf8.RuneCountInString(name) > MaxBusinessNameLength {
-			violation = append(violation, Violation{
-				Field:   FieldBusiness,
-				Message: "Nama bisnis paling panjang " + itoa(MaxBusinessNameLength) + " karakter: " + name,
-			})
-			break
-		}
-	}
+	violation := mastertext.CheckLengths(i.Description, i.BusinessNames, mastertext.Limits{
+		DescriptionField: FieldDescription,
+		DescriptionLabel: "Nama Cause of loss",
+		MaxDescription:   MaxDescriptionLength,
+		BusinessField:    FieldBusiness,
+		MaxBusinessName:  MaxBusinessNameLength,
+	})
 
 	// BISNIS KEMBAR TIDAK DITOLAK.
 	//
@@ -297,23 +273,7 @@ func (i Input) Check() error {
 // Diekspor supaya pemakainya di lapisan lain memakai bentuk yang sama persis; dua tempat
 // yang menormalkan dengan cara berbeda akan menghasilkan ID yang kadang ketemu kadang
 // tidak.
-func NormalizeBusinessName(name string) string {
-	return strings.ToUpper(strings.TrimSpace(name))
-}
-
-// itoa mengubah bilangan kecil menjadi teks tanpa menarik strconv ke lapisan domain
-// hanya untuk dua pesan. Pola yang sama dipakai masterstatus.
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	return string(digits)
-}
+func NormalizeBusinessName(name string) string { return mastertext.NormalizeBusinessName(name) }
 
 // Repo adalah seam ke penyimpanan master COL SATU portal.
 //

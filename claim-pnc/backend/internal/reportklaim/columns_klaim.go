@@ -9,365 +9,365 @@ package reportklaim
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCTATReport1_Act-Act.xml`.
-var colsTATPersonal = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "RCV", Field: "RefNo"},
-	{Header: "No polis", Field: "ClaimNo"},
-	{Header: "Nama tertanggung", Field: "LossCoverage"},
-	{Header: "Sumber bisnis", Field: "DollarCurrencyVal"},
-	{Header: "Coverage", Field: "UserTeknisGroup"},
-	{Header: "Status Klaim", Field: "AnalystDoctorRemaks"},
-	{Header: "Posisi", Field: "TelpTertanggung"},
-	{Header: "No Akseptasi", Field: "IsAnalisTransfer"},
-	{Header: "Jumlah yang diakseptasi", Field: "FlagReject"},
-	{Header: "Tgl receive dokumen", Field: "CommentKomiteClosecase"},
-	{Header: "tgl masuk analis", Field: "KirimAnalystDate"},
-	{Header: "tgl analis-invest", Field: "KirimInvestDate"},
-	{Header: "Tgl registrasi", Field: "City"},
-	{Header: "Tgl tf invest - analyst", Field: "IdxSurveyResults"},
-	{Header: "Tgl tf analyst - PUCL/RCL", Field: "ClaimEstimate"},
-	{Header: "Tgl tf RCL/PUCL-Analyst", Field: "AlasanTerlambat"},
-	{Header: "RCL/PUCL/Notifikasi", Field: "ExGratia"},
-	{Header: "Tgl tf analyst - compliance", Field: "Province"},
-	{Header: "tgl tf complicance-analyst", Field: "IsCFS_PNC"},
-	{Header: "Tgl bayar CPL", Field: "CompliancePosAuditByr"},
-	{Header: "Tgl postAudit CPL", Field: "IsBackCFS"},
-	{Header: "Tgl bayar CPL postAuditIs", Field: "IsTransferPIC"},
-	{Header: "TransferPIC", Field: "Location"},
-	{Header: "Tgl tf analyst - komite", Field: "AnaylstRemarks"},
-	{Header: "invest 1/0", Field: "IsInvest"},
-	{Header: "compliance 1/0", Field: "isCompliance"},
-	{Header: "Tgl komite akseptasi", Field: "StatusWork"},
-	{Header: "Tgl krm propose adjustment", Field: "CountryID"},
-	{Header: "Tgl akseptasi", Field: "ComplianceRemark"},
-	{Header: "Tgl Bayar", Field: "UserBusinessPA"},
-	{Header: "Tipe Pembayaran", Field: "ReporterName"},
-	{Header: "Status bayar", Field: "DistrictID"},
-	{Header: "Tgl tutup klaim", Field: "ExGratiaNote"},
-	{Header: "Alasan keterlambatan", Field: "Remark"},
-	{Header: "Inputor", Field: "pyLabel"},
-	{Header: "Tgl Cetak LOD", Field: "ResponseNote"},
-	{Header: "Tgl Trf Investigator", Field: "DateKomite"},
-	{Header: "Tgl Terima LOD", Field: "ResponseNote"},
-	{Header: "Tgl Transfer Kasir", Field: "pyEmailAddress"},
-	{Header: "Report Date", Field: "CASEDB"},
-	{Header: "Start Date Polis", Field: "ClaimNoSRB"},
-	{Header: "End Date Polis", Field: "NoPla"},
-	{Header: "Date Of Accident", Field: "DaftarObjek"},
-	{Header: "Remark", Field: "Status"},
-	{Header: "Tgl Analis To Inputor", Field: "HideKTP"},
-	{Header: "Risk Location", Field: "RiskLocation"},
-	{Header: "DOB", Field: "DOB"},
-	{Header: "Usia pada saat klaim", Field: "USIA"},
-	{Header: "Diagnosa", Field: "Diagnose"},
-	{Header: "Nature Of Loss", Field: "NatureOfLoss"},
-	{Header: "Perhitungan jarak antara terbit polis - tanggal kejadian", Field: "PolicyRange"},
-}
+var colsTATPersonal = parseColumns(`
+No Klaim	CaseID
+RCV	RefNo
+No polis	ClaimNo
+Nama tertanggung	LossCoverage
+Sumber bisnis	DollarCurrencyVal
+Coverage	UserTeknisGroup
+Status Klaim	AnalystDoctorRemaks
+Posisi	TelpTertanggung
+No Akseptasi	IsAnalisTransfer
+Jumlah yang diakseptasi	FlagReject
+Tgl receive dokumen	CommentKomiteClosecase
+tgl masuk analis	KirimAnalystDate
+tgl analis-invest	KirimInvestDate
+Tgl registrasi	City
+Tgl tf invest - analyst	IdxSurveyResults
+Tgl tf analyst - PUCL/RCL	ClaimEstimate
+Tgl tf RCL/PUCL-Analyst	AlasanTerlambat
+RCL/PUCL/Notifikasi	ExGratia
+Tgl tf analyst - compliance	Province
+tgl tf complicance-analyst	IsCFS_PNC
+Tgl bayar CPL	CompliancePosAuditByr
+Tgl postAudit CPL	IsBackCFS
+Tgl bayar CPL postAuditIs	IsTransferPIC
+TransferPIC	Location
+Tgl tf analyst - komite	AnaylstRemarks
+invest 1/0	IsInvest
+compliance 1/0	isCompliance
+Tgl komite akseptasi	StatusWork
+Tgl krm propose adjustment	CountryID
+Tgl akseptasi	ComplianceRemark
+Tgl Bayar	UserBusinessPA
+Tipe Pembayaran	ReporterName
+Status bayar	DistrictID
+Tgl tutup klaim	ExGratiaNote
+Alasan keterlambatan	Remark
+Inputor	pyLabel
+Tgl Cetak LOD	ResponseNote
+Tgl Trf Investigator	DateKomite
+Tgl Terima LOD	ResponseNote
+Tgl Transfer Kasir	pyEmailAddress
+Report Date	CASEDB
+Start Date Polis	ClaimNoSRB
+End Date Polis	NoPla
+Date Of Accident	DaftarObjek
+Remark	Status
+Tgl Analis To Inputor	HideKTP
+Risk Location	RiskLocation
+DOB	DOB
+Usia pada saat klaim	USIA
+Diagnosa	Diagnose
+Nature Of Loss	NatureOfLoss
+Perhitungan jarak antara terbit polis - tanggal kejadian	PolicyRange
+`)
 
 // colsTATNonMBU — 39 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCTATReport1_Act-Act.xml`.
-var colsTATNonMBU = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "No Polis", Field: "ClaimNo"},
-	{Header: "Nama tertanggung", Field: "LossCoverage"},
-	{Header: "Nama bisnis", Field: "AlasanDokterRejectRCL"},
-	{Header: "Sumber bisnis", Field: "DollarCurrencyVal"},
-	{Header: "Klaim Leader/Member", Field: "NamaDokterRCL"},
-	{Header: "Nomor Akseptasi", Field: "IsAnalisTransfer"},
-	{Header: "Tahun Of Loss", Field: "CauseOfLoss"},
-	{Header: "Tgl kejadian", Field: "DaftarObjek"},
-	{Header: "Tgl terima dokumen", Field: "CommentKomiteClosecase"},
-	{Header: "Tgl Registrasi", Field: "City"},
-	{Header: "Tgl selesai registrasi", Field: "Location"},
-	{Header: "Tgl tf PLA", Field: "InsuredRelationshipOthers"},
-	{Header: "Lama proses regis-tf ke teknik", Field: "CloseClaimNote"},
-	{Header: "Tgl permintaan kelengkapan dokumen", Field: "isComplianceTransfer"},
-	{Header: "Tgl Survey", Field: "UserAdmin"},
-	{Header: "Tgl aksep komite", Field: "AnaylstRemarks"},
-	{Header: "Tgl Selesai Cek Komite", Field: "LokasiSurveyor"},
-	{Header: "Tgl krm propose adjustment", Field: "CountryID"},
-	{Header: "Tgl Terima LOD", Field: "ResponseNote"},
-	{Header: "Tgl Akseptasi", Field: "ComplianceRemark"},
-	{Header: "Tgl akseptasi manual", Field: "IsTransferAnalisator"},
-	{Header: "Tgl DLA", Field: "RCV_ID"},
-	{Header: "Tgl bayar", Field: "UserBusinessPA"},
-	{Header: "Status Bayar", Field: "DistrictID"},
-	{Header: "Lama regis - tanggal trf kasir", Field: "CityID"},
-	{Header: "Lama aksep - trf kasir", Field: "OccupationCode"},
-	{Header: "Lama akseptasi - tanggal bayar", Field: "Conveyance"},
-	{Header: "Status klaim", Field: "AnalystDoctorRemaks"},
-	{Header: "PIC Teknik", Field: "NoKTP"},
-	{Header: "Tgl tutup kaim", Field: "ExGratiaNote"},
-	{Header: "ctt tutup kaim", Field: "NIK"},
-	{Header: "Alasan keterlambatan", Field: "Remark"},
-	{Header: "Tgl Trf PIC", Field: "NewNoKTP"},
-	{Header: "PIC Admin", Field: "pyLabel"},
-	{Header: "Tgl Dok Lengkap", Field: "pyGroup"},
-	{Header: "Tgl Trf Komite", Field: "pyCountryName"},
-	{Header: "Tgl Trf Kasir", Field: "NewEmail"},
-	{Header: "Report Date", Field: "CASEDB"},
-}
+var colsTATNonMBU = parseColumns(`
+No Klaim	CaseID
+No Polis	ClaimNo
+Nama tertanggung	LossCoverage
+Nama bisnis	AlasanDokterRejectRCL
+Sumber bisnis	DollarCurrencyVal
+Klaim Leader/Member	NamaDokterRCL
+Nomor Akseptasi	IsAnalisTransfer
+Tahun Of Loss	CauseOfLoss
+Tgl kejadian	DaftarObjek
+Tgl terima dokumen	CommentKomiteClosecase
+Tgl Registrasi	City
+Tgl selesai registrasi	Location
+Tgl tf PLA	InsuredRelationshipOthers
+Lama proses regis-tf ke teknik	CloseClaimNote
+Tgl permintaan kelengkapan dokumen	isComplianceTransfer
+Tgl Survey	UserAdmin
+Tgl aksep komite	AnaylstRemarks
+Tgl Selesai Cek Komite	LokasiSurveyor
+Tgl krm propose adjustment	CountryID
+Tgl Terima LOD	ResponseNote
+Tgl Akseptasi	ComplianceRemark
+Tgl akseptasi manual	IsTransferAnalisator
+Tgl DLA	RCV_ID
+Tgl bayar	UserBusinessPA
+Status Bayar	DistrictID
+Lama regis - tanggal trf kasir	CityID
+Lama aksep - trf kasir	OccupationCode
+Lama akseptasi - tanggal bayar	Conveyance
+Status klaim	AnalystDoctorRemaks
+PIC Teknik	NoKTP
+Tgl tutup kaim	ExGratiaNote
+ctt tutup kaim	NIK
+Alasan keterlambatan	Remark
+Tgl Trf PIC	NewNoKTP
+PIC Admin	pyLabel
+Tgl Dok Lengkap	pyGroup
+Tgl Trf Komite	pyCountryName
+Tgl Trf Kasir	NewEmail
+Report Date	CASEDB
+`)
 
 // colsTATBonding — 34 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCTATReport1_Act-Act.xml`.
-var colsTATBonding = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "No Polis", Field: "ClaimNo"},
-	{Header: "Nama tertanggung", Field: "LossCoverage"},
-	{Header: "Nama bisnis", Field: "AlasanDokterRejectRCL"},
-	{Header: "Sumber bisnis", Field: "DollarCurrencyVal"},
-	{Header: "Klaim Leader/Member", Field: "NamaDokterRCL"},
-	{Header: "Nomor Akseptasi", Field: "IsAnalisTransfer"},
-	{Header: "Tahun Of Loss", Field: "CauseOfLoss"},
-	{Header: "Tgl kejadian", Field: "DaftarObjek"},
-	{Header: "Tgl terima dokumen", Field: "CommentKomiteClosecase"},
-	{Header: "Tgl Registrasi", Field: "City"},
-	{Header: "Tgl selesai registrasi", Field: "AnalystRemaksInvestigator"},
-	{Header: "Tgl tf ke PIC Teknik", Field: "Location"},
-	{Header: "Tgl tf PLA", Field: "InsuredRelationshipOthers"},
-	{Header: "Lama proses regis-tf ke teknik", Field: "CloseClaimNote"},
-	{Header: "Tgl permintaan kelengkapan dokumen", Field: "isComplianceTransfer"},
-	{Header: "Tgl Survey", Field: "UserAdmin"},
-	{Header: "Tgl aksep komite", Field: "AnaylstRemarks"},
-	{Header: "Tgl Selesai Cek Komite", Field: "LokasiSurveyor"},
-	{Header: "Tgl krm propose adjustment", Field: "CountryID"},
-	{Header: "Tgl Terima LOD", Field: "ResponseNote"},
-	{Header: "Tgl Akseptasi", Field: "ComplianceRemark"},
-	{Header: "Tgl akseptasi manual", Field: "IsTransferAnalisator"},
-	{Header: "Tgl DLA", Field: "RCV_ID"},
-	{Header: "Tgl bayar", Field: "UserBusinessPA"},
-	{Header: "Status Bayar", Field: "DistrictID"},
-	{Header: "Lama regis - request bayar", Field: "CityID"},
-	{Header: "Lama akseptasi - request bayar", Field: "Conveyance"},
-	{Header: "Status klaim", Field: "AnalystDoctorRemaks"},
-	{Header: "PIC Teknik", Field: "NoKTP"},
-	{Header: "Tgl tutup kaim", Field: "ExGratiaNote"},
-	{Header: "ctt tutup kaim", Field: "NIK"},
-	{Header: "Alasan keterlambatan", Field: "Remark"},
-	{Header: "Report Date", Field: "CASEDB"},
-}
+var colsTATBonding = parseColumns(`
+No Klaim	CaseID
+No Polis	ClaimNo
+Nama tertanggung	LossCoverage
+Nama bisnis	AlasanDokterRejectRCL
+Sumber bisnis	DollarCurrencyVal
+Klaim Leader/Member	NamaDokterRCL
+Nomor Akseptasi	IsAnalisTransfer
+Tahun Of Loss	CauseOfLoss
+Tgl kejadian	DaftarObjek
+Tgl terima dokumen	CommentKomiteClosecase
+Tgl Registrasi	City
+Tgl selesai registrasi	AnalystRemaksInvestigator
+Tgl tf ke PIC Teknik	Location
+Tgl tf PLA	InsuredRelationshipOthers
+Lama proses regis-tf ke teknik	CloseClaimNote
+Tgl permintaan kelengkapan dokumen	isComplianceTransfer
+Tgl Survey	UserAdmin
+Tgl aksep komite	AnaylstRemarks
+Tgl Selesai Cek Komite	LokasiSurveyor
+Tgl krm propose adjustment	CountryID
+Tgl Terima LOD	ResponseNote
+Tgl Akseptasi	ComplianceRemark
+Tgl akseptasi manual	IsTransferAnalisator
+Tgl DLA	RCV_ID
+Tgl bayar	UserBusinessPA
+Status Bayar	DistrictID
+Lama regis - request bayar	CityID
+Lama akseptasi - request bayar	Conveyance
+Status klaim	AnalystDoctorRemaks
+PIC Teknik	NoKTP
+Tgl tutup kaim	ExGratiaNote
+ctt tutup kaim	NIK
+Alasan keterlambatan	Remark
+Report Date	CASEDB
+`)
 
 // colsKlaimHarianRingkas — 10 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportHarian_act1-Act.xml`.
-var colsKlaimHarianRingkas = []Column{
-	{Header: "Tanggal regist", Field: "City"},
-	{Header: "No Polis", Field: "AlasanDokterRejectRCL"},
-	{Header: "Atas Nama tertanggung", Field: "AlasanTerlambat"},
-	{Header: "No Klaim", Field: "AnalystDoctorRemaks"},
-	{Header: "DOL", Field: "AnaylstRemarks"},
-	{Header: "Tanggal Transfer PIC", Field: "District"},
-	{Header: "Tanggal Terima Dokumen", Field: "DistrictID"},
-	{Header: "Nilai Klaim(100%)", Field: "CloseClaimNote"},
-	{Header: "Nilai Klaim(Share ASM)", Field: "ComplianceRemark"},
-	{Header: "PIC Teknik", Field: "ExGratiaNote"},
-}
+var colsKlaimHarianRingkas = parseColumns(`
+Tanggal regist	City
+No Polis	AlasanDokterRejectRCL
+Atas Nama tertanggung	AlasanTerlambat
+No Klaim	AnalystDoctorRemaks
+DOL	AnaylstRemarks
+Tanggal Transfer PIC	District
+Tanggal Terima Dokumen	DistrictID
+Nilai Klaim(100%)	CloseClaimNote
+Nilai Klaim(Share ASM)	ComplianceRemark
+PIC Teknik	ExGratiaNote
+`)
 
 // colsKlaimHarian — 30 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportHarian_act1-Act.xml`.
-var colsKlaimHarian = []Column{
-	{Header: "No Polis", Field: "NoKTP"},
-	{Header: "PNC CaseID", Field: "CaseID"},
-	{Header: "Nama Tertanggung", Field: "NamaSurveyor"},
-	{Header: "COB", Field: "City"},
-	{Header: "PIC Teknik", Field: "UserAdmin"},
-	{Header: "Email", Field: "AnalystTransferDate"},
-	{Header: "Tgl Regis", Field: "Email"},
-	{Header: "Bulan Klaim", Field: "DateOfLoss"},
-	{Header: "Date of Loss", Field: "CityID"},
-	{Header: "SOB", Field: "AgingAmount"},
-	{Header: "Leader/ Member/Fac In", Field: "Country"},
-	{Header: "Nature of Loss", Field: "Country"},
-	{Header: "Cause of Loss", Field: "AlasanTerlambat"},
-	{Header: "ASM Share", Field: "CloseClaimNote"},
-	{Header: "Deductible", Field: "CommentKomiteClosecase"},
-	{Header: "Nilai Share ASM", Field: "ComplianceRemark"},
-	{Header: "Nilai Klaim 100%", Field: "Conveyance"},
-	{Header: "Adjuster fee 100 % Share", Field: "UserName"},
-	{Header: "Nilai Klaim Net 100 %", Field: "UserTeknis"},
-	{Header: "Nilai Klaim Net ASM Share", Field: "CompliancePosAuditByr"},
-	{Header: "Lack of Doc/Salvage/Recovery/Subrogaration", Field: "AnalystRemaksInvestigator"},
-	{Header: "Cabang", Field: "ClaimNo"},
-	{Header: "Status", Field: "LokasiSurveyor"},
-	{Header: "Kronologis", Field: "NIK"},
-	{Header: "Tgl terima dokumen", Field: "NPWP"},
-	{Header: "Tgl tf ke PIC Teknik", Field: "TransferPICDate"},
-	{Header: "Remark", Field: "AnaylstRemarks"},
-	{Header: "PIC Admin Regist", Field: "NewEmail"},
-	{Header: "Location", Field: "Location"},
-	{Header: "No Reff Broker", Field: "NoReffBroker"},
-}
+var colsKlaimHarian = parseColumns(`
+No Polis	NoKTP
+PNC CaseID	CaseID
+Nama Tertanggung	NamaSurveyor
+COB	City
+PIC Teknik	UserAdmin
+Email	AnalystTransferDate
+Tgl Regis	Email
+Bulan Klaim	DateOfLoss
+Date of Loss	CityID
+SOB	AgingAmount
+Leader/ Member/Fac In	Country
+Nature of Loss	Country
+Cause of Loss	AlasanTerlambat
+ASM Share	CloseClaimNote
+Deductible	CommentKomiteClosecase
+Nilai Share ASM	ComplianceRemark
+Nilai Klaim 100%	Conveyance
+Adjuster fee 100 % Share	UserName
+Nilai Klaim Net 100 %	UserTeknis
+Nilai Klaim Net ASM Share	CompliancePosAuditByr
+Lack of Doc/Salvage/Recovery/Subrogaration	AnalystRemaksInvestigator
+Cabang	ClaimNo
+Status	LokasiSurveyor
+Kronologis	NIK
+Tgl terima dokumen	NPWP
+Tgl tf ke PIC Teknik	TransferPICDate
+Remark	AnaylstRemarks
+PIC Admin Regist	NewEmail
+Location	Location
+No Reff Broker	NoReffBroker
+`)
 
 // colsRejectKlaim — 33 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataReject_act-Act.xml`.
-var colsRejectKlaim = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "Nopolis", Field: "NoKTP"},
-	{Header: "QQName", Field: "ClaimID"},
-	{Header: "Nama Bisnis", Field: "ClaimNo"},
-	{Header: "PIC Teknik", Field: "Conveyance"},
-	{Header: "Tgl Registrasi", Field: "Country"},
-	{Header: "Tgl Kejadian", Field: "CountryID"},
-	{Header: "Tgl Reject", Field: "Email"},
-	{Header: "Bulan Reject", Field: "FlagASO"},
-	{Header: "Alasan Reject", Field: "CityID"},
-	{Header: "Estimasi Value", Field: "Resources"},
-	{Header: "Share ASM", Field: "ClaimAmount"},
-	{Header: "Persen OR", Field: "OwnRisk"},
-	{Header: "Reject Note", Field: "CloseClaimNote"},
-	{Header: "Coins", Field: "FlagReject"},
-	{Header: "PSRSPL", Field: "InsuredRelationship"},
-	{Header: "QS_RI", Field: "PolicyObjectLocationRWNote"},
-	{Header: "ER1", Field: "IsBackCFS"},
-	{Header: "ER2", Field: "IsCFS"},
-	{Header: "SURPLUS1", Field: "isComplianceTransfer"},
-	{Header: "SURPLUS2", Field: "IsTransferAnalisator"},
-	{Header: "PSRQS_RI", Field: "IsTransferPIC"},
-	{Header: "PSRQS_OR", Field: "InsuredRelationshipOthers"},
-	{Header: "ORS", Field: "KomiteStatus"},
-	{Header: "Facultative", Field: "District"},
-	{Header: "Facobl", Field: "LokasiSurveyor"},
-	{Header: "BPPDAN", Field: "LossCoverage"},
-	{Header: "XL", Field: "NamaDokumen"},
-	{Header: "PSS", Field: "NamaSurveyor"},
-	{Header: "PRGBI", Field: "NIK"},
-	{Header: "FESPL", Field: "AnalystRemaksInvestigator"},
-	{Header: "PFRA", Field: "ProdKe"},
-	{Header: "Fac_Out", Field: "AlasanDokterRejectRCL"},
-}
+var colsRejectKlaim = parseColumns(`
+No Klaim	CaseID
+Nopolis	NoKTP
+QQName	ClaimID
+Nama Bisnis	ClaimNo
+PIC Teknik	Conveyance
+Tgl Registrasi	Country
+Tgl Kejadian	CountryID
+Tgl Reject	Email
+Bulan Reject	FlagASO
+Alasan Reject	CityID
+Estimasi Value	Resources
+Share ASM	ClaimAmount
+Persen OR	OwnRisk
+Reject Note	CloseClaimNote
+Coins	FlagReject
+PSRSPL	InsuredRelationship
+QS_RI	PolicyObjectLocationRWNote
+ER1	IsBackCFS
+ER2	IsCFS
+SURPLUS1	isComplianceTransfer
+SURPLUS2	IsTransferAnalisator
+PSRQS_RI	IsTransferPIC
+PSRQS_OR	InsuredRelationshipOthers
+ORS	KomiteStatus
+Facultative	District
+Facobl	LokasiSurveyor
+BPPDAN	LossCoverage
+XL	NamaDokumen
+PSS	NamaSurveyor
+PRGBI	NIK
+FESPL	AnalystRemaksInvestigator
+PFRA	ProdKe
+Fac_Out	AlasanDokterRejectRCL
+`)
 
 // colsCloseKlaimRingkas — 11 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataClose_act-Act.xml`.
-var colsCloseKlaimRingkas = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "Nopolis", Field: "NoKTP"},
-	{Header: "QQName", Field: "ClaimID"},
-	{Header: "Nama Bisnis", Field: "ClaimNo"},
-	{Header: "PIC Teknik", Field: "Conveyance"},
-	{Header: "Tgl Registrasi", Field: "Country"},
-	{Header: "Tgl Kejadian", Field: "CountryID"},
-	{Header: "Tgl Akseptasi", Field: "District"},
-	{Header: "No Akseptasi", Field: "DistrictID"},
-	{Header: "Tgl Close", Field: "Email"},
-	{Header: "Bulan Close", Field: "FlagASO"},
-}
+var colsCloseKlaimRingkas = parseColumns(`
+No Klaim	CaseID
+Nopolis	NoKTP
+QQName	ClaimID
+Nama Bisnis	ClaimNo
+PIC Teknik	Conveyance
+Tgl Registrasi	Country
+Tgl Kejadian	CountryID
+Tgl Akseptasi	District
+No Akseptasi	DistrictID
+Tgl Close	Email
+Bulan Close	FlagASO
+`)
 
 // colsCloseKlaim — 81 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataClose_act-Act.xml`.
-var colsCloseKlaim = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "Bisnis", Field: "KodeCabang"},
-	{Header: "Remark PIC", Field: "AlasanDokterRejectRCL"},
-	{Header: "No Polis", Field: "TKI"},
-	{Header: "Client Name", Field: "AnalystDoctorRemaks"},
-	{Header: "Nama Mo", Field: "AnalystRemaksInvestigator"},
-	{Header: "Okupasi", Field: "AnaylstRemarks"},
-	{Header: "No Aksep", Field: "City"},
-	{Header: "Cause Of Loss", Field: "CauseOfLoss"},
-	{Header: "Coverage Name", Field: "CityID"},
-	{Header: "Sts Exgratia", Field: "ClaimEstimate"},
-	{Header: "Date Of Loss", Field: "StatusWork"},
-	{Header: "Month DOL", Field: "ClaimNo"},
-	{Header: "Year DOL", Field: "CloseClaimNote"},
-	{Header: "Prepare Date", Field: "UserTeknisEmail"},
-	{Header: "Thn Regis", Field: "CommentKomiteClosecase"},
-	{Header: "THN POLIS", Field: "RefNo"},
-	{Header: "Tgl Aksep", Field: "DollarCurrencyVal"},
-	{Header: "Month Aksep", Field: "CompliancePosAuditByr"},
-	{Header: "Year Aksep", Field: "ComplianceRemark"},
-	{Header: "Tgl Reject", Field: "UserTeknis"},
-	{Header: "Month Reject", Field: "Conveyance"},
-	{Header: "Thn Reject", Field: "Country"},
-	{Header: "Begin Date", Field: "UserTeknisGroup"},
-	{Header: "End Date", Field: "RemarkRecommendation"},
-	{Header: "TAT", Field: "UserName"},
-	{Header: "TSI", Field: "ProvinceID"},
-	{Header: "Total Aksep", Field: "CountryID"},
-	{Header: "Below 100jt", Field: "DokumenLengkap"},
-	{Header: "Total OS", Field: "Currency"},
-	{Header: "Reject Klaim", Field: "Province"},
-	{Header: "LEADER/MEMBER/FACIN", Field: "DaftarObjek"},
-	{Header: "Risk Loc", Field: "Location"},
-	{Header: "Risk Loc Klaim", Field: "pyID"},
-	{Header: "PIC Klaim", Field: "DistrictID"},
-	{Header: "Own Retension", Field: "ExGratiaNote"},
-	{Header: "Coins", Field: "FlagReject"},
-	{Header: "PSRSPL", Field: "InsuredRelationship"},
-	{Header: "QS_RI", Field: "Investigasi"},
-	{Header: "ER1", Field: "IsBackCFS"},
-	{Header: "ER2", Field: "IsCFS_PNC"},
-	{Header: "SURPLUS1", Field: "isComplianceTransfer"},
-	{Header: "SURPLUS2", Field: "IsTransferAnalisator"},
-	{Header: "PSRQS_RI", Field: "IsTransferPIC"},
-	{Header: "PSRQS_OR", Field: "InsuredRelationshipOthers"},
-	{Header: "ORS", Field: "KomiteStatus"},
-	{Header: "Facultative", Field: "District"},
-	{Header: "Facobl", Field: "LokasiSurveyor"},
-	{Header: "BPPDAN", Field: "LossCoverage"},
-	{Header: "XL", Field: "NamaDokumen"},
-	{Header: "PSS", Field: "NamaSurveyor"},
-	{Header: "PRGBI", Field: "NIK"},
-	{Header: "FESPL", Field: "NoKTP"},
-	{Header: "PFRA", Field: "ProdKe"},
-	{Header: "Nilai Klaim yang Diajukan Tertanggung", Field: "Password"},
-	{Header: "Adjustment Klaim (Self Adjustment)", Field: "RCV_ID"},
-	{Header: "Adjustment Klaim (Adjuster)", Field: "ReportAddress"},
-	{Header: "Selisih Estimasi Klaim dengan Adjustment", Field: "Remark"},
-	{Header: "Adjuster Fee", Field: "ReporterName"},
-	{Header: "Nilai Klaim yang Diajukan Tertanggung OR", Field: "ReportDescription"},
-	{Header: "Adjustment Klaim (Self Adjustment) OR", Field: "StatusClaim"},
-	{Header: "Adjustment Klaim (Adjuster) OR", Field: "TelpTertanggung"},
-	{Header: "Selisih Estimasi Klaim dengan Adjustment OR", Field: "UserAdmin"},
-	{Header: "Nilai Salvage", Field: "RWID"},
-	{Header: "Dokumen Penalti", Field: "ReporterTelp"},
-	{Header: "Status Progress 1", Field: "AgingAmount"},
-	{Header: "Status Progress 2", Field: "AlasanTerlambat"},
-	{Header: "Tgl Terakhir Update Progress", Field: "ReceiverClaim"},
-	{Header: "Jumlah FU Terlambat", Field: "ResponseNote"},
-	{Header: "Jumlah Tidak FU Terlambat", Field: "StatusKomunikasi"},
-	{Header: "Keterangan", Field: "pyNote"},
-	{Header: "Sumber Bisnis", Field: "UserBusinessPA"},
-	{Header: "Ceding/Leader", Field: "OwnRisk"},
-	{Header: "Surveyor", Field: "SuspiciousComment"},
-	{Header: "Loss Adjuster", Field: "StatusAnalystRemarks"},
-	{Header: "Next Follow Up", Field: "StatusReceiver"},
-	{Header: "Tgl Regist", Field: "NewNoKTP"},
-	{Header: "Tgl Close Claim", Field: "NewEmail"},
-	{Header: "Tgl Tf PIC", Field: "NewTelpTertanggung"},
-	{Header: "Alasan Reject", Field: "AlasanDokterRejectRCL"},
-	{Header: "Dominan Factor", Field: "DominanName"},
-}
+var colsCloseKlaim = parseColumns(`
+No Klaim	CaseID
+Bisnis	KodeCabang
+Remark PIC	AlasanDokterRejectRCL
+No Polis	TKI
+Client Name	AnalystDoctorRemaks
+Nama Mo	AnalystRemaksInvestigator
+Okupasi	AnaylstRemarks
+No Aksep	City
+Cause Of Loss	CauseOfLoss
+Coverage Name	CityID
+Sts Exgratia	ClaimEstimate
+Date Of Loss	StatusWork
+Month DOL	ClaimNo
+Year DOL	CloseClaimNote
+Prepare Date	UserTeknisEmail
+Thn Regis	CommentKomiteClosecase
+THN POLIS	RefNo
+Tgl Aksep	DollarCurrencyVal
+Month Aksep	CompliancePosAuditByr
+Year Aksep	ComplianceRemark
+Tgl Reject	UserTeknis
+Month Reject	Conveyance
+Thn Reject	Country
+Begin Date	UserTeknisGroup
+End Date	RemarkRecommendation
+TAT	UserName
+TSI	ProvinceID
+Total Aksep	CountryID
+Below 100jt	DokumenLengkap
+Total OS	Currency
+Reject Klaim	Province
+LEADER/MEMBER/FACIN	DaftarObjek
+Risk Loc	Location
+Risk Loc Klaim	pyID
+PIC Klaim	DistrictID
+Own Retension	ExGratiaNote
+Coins	FlagReject
+PSRSPL	InsuredRelationship
+QS_RI	Investigasi
+ER1	IsBackCFS
+ER2	IsCFS_PNC
+SURPLUS1	isComplianceTransfer
+SURPLUS2	IsTransferAnalisator
+PSRQS_RI	IsTransferPIC
+PSRQS_OR	InsuredRelationshipOthers
+ORS	KomiteStatus
+Facultative	District
+Facobl	LokasiSurveyor
+BPPDAN	LossCoverage
+XL	NamaDokumen
+PSS	NamaSurveyor
+PRGBI	NIK
+FESPL	NoKTP
+PFRA	ProdKe
+Nilai Klaim yang Diajukan Tertanggung	Password
+Adjustment Klaim (Self Adjustment)	RCV_ID
+Adjustment Klaim (Adjuster)	ReportAddress
+Selisih Estimasi Klaim dengan Adjustment	Remark
+Adjuster Fee	ReporterName
+Nilai Klaim yang Diajukan Tertanggung OR	ReportDescription
+Adjustment Klaim (Self Adjustment) OR	StatusClaim
+Adjustment Klaim (Adjuster) OR	TelpTertanggung
+Selisih Estimasi Klaim dengan Adjustment OR	UserAdmin
+Nilai Salvage	RWID
+Dokumen Penalti	ReporterTelp
+Status Progress 1	AgingAmount
+Status Progress 2	AlasanTerlambat
+Tgl Terakhir Update Progress	ReceiverClaim
+Jumlah FU Terlambat	ResponseNote
+Jumlah Tidak FU Terlambat	StatusKomunikasi
+Keterangan	pyNote
+Sumber Bisnis	UserBusinessPA
+Ceding/Leader	OwnRisk
+Surveyor	SuspiciousComment
+Loss Adjuster	StatusAnalystRemarks
+Next Follow Up	StatusReceiver
+Tgl Regist	NewNoKTP
+Tgl Close Claim	NewEmail
+Tgl Tf PIC	NewTelpTertanggung
+Alasan Reject	AlasanDokterRejectRCL
+Dominan Factor	DominanName
+`)
 
 // colsAIKlaim — 14 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/ExportHasilDataAIKlaim-Act.xml`.
-var colsAIKlaim = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "No Polis", Field: "PolicyNo"},
-	{Header: "Tertangung", Field: "City"},
-	{Header: "Bisnis Name", Field: "CityID"},
-	{Header: "Tgl Kejadian", Field: "NoKTP"},
-	{Header: "Start Polis", Field: "CityID"},
-	{Header: "End Polis", Field: "Country"},
-	{Header: "ResultsAi", Field: "CountryID"},
-	{Header: "Coverage AI Final", Field: "AlasanKlaim"},
-	{Header: "Cause Of Los (AI)", Field: "NoteKasir"},
-	{Header: "Coverage Kronologi (AI)", Field: "FlagASO"},
-	{Header: "Tipe Note AI", Field: "NamaSurveyor"},
-	{Header: "Note AI", Field: "DistrictID"},
-	{Header: "", Field: "District"},
-}
+var colsAIKlaim = parseColumns(`
+No Klaim	CaseID
+No Polis	PolicyNo
+Tertangung	City
+Bisnis Name	CityID
+Tgl Kejadian	NoKTP
+Start Polis	CityID
+End Polis	Country
+ResultsAi	CountryID
+Coverage AI Final	AlasanKlaim
+Cause Of Los (AI)	NoteKasir
+Coverage Kronologi (AI)	FlagASO
+Tipe Note AI	NamaSurveyor
+Note AI	DistrictID
+	District
+`)

@@ -65,7 +65,7 @@ SELECT b.claimno          AS "CaseID",
  WHERE CAST(a.tglpla AS DATE) >= :1
    AND CAST(a.tglpla AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND b.grouppanel = '002')
      OR (:3 = '005' AND b.grouppanel = '005')
      OR (:3 = '346' AND b.grouppanel IN ('003','004','006','009')
@@ -114,7 +114,7 @@ SELECT b.claimno      AS "CaseID",
  WHERE CAST(a.tgldla AS DATE) >= :1
    AND CAST(a.tgldla AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND b.grouppanel = '002')
      OR (:3 = '005' AND b.grouppanel = '005')
      OR (:3 = '346' AND b.grouppanel IN ('003','004','006','009')

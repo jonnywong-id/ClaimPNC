@@ -16,83 +16,19 @@ package sqlstore
 
 import (
 	"embed"
-	"fmt"
-	"strings"
+
+	"claim-pnc/internal/platform/sqlfile"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "masterrecovery/sqlstore")
 
-// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
-// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
-// saat pertama dijalankan — bukan galat runtime yang menunggu pengguna menemukannya.
-func getQuery(name string) string {
-	text, existing := query[name]
-	if !existing {
-		panic(fmt.Sprintf("masterrecovery/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "masterrecovery/sqlstore", name) }
 
-// loadAllQueries membaca setiap berkas .sql dan memecahnya pada penanda
-// "-- name: <nama>", sehingga satu berkas dapat memuat beberapa pernyataan dan tetap
-// terbaca sebagai satu kesatuan saat di-review.
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("masterrecovery/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("masterrecovery/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("masterrecovery/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memisahkan isi berkas menjadi pernyataan bernama, membuang baris komentar
-// supaya yang dikirim ke basis data hanyalah SQL-nya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name != "" {
-			if text := strings.TrimSpace(strings.Join(body, "\n")); text != "" {
-				result[name] = text
-			}
-		}
-	}
-	for _, rows := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(rows)
-		if strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		if name == "" || strings.HasPrefix(trimmed, "--") {
-			// Komentar kepala berkas dan komentar penjelas tiap kueri tidak ikut dikirim:
-			// yang dibaca DBA adalah berkasnya, bukan jejak di basis data.
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
-}
+// splitByName memecah isi satu berkas .sql dengan aturan yang sama seperti pemuat di atas.
+func splitByName(content string) map[string]string { return sqlfile.Split(content) }

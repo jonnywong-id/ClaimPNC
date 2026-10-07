@@ -9,6 +9,10 @@
 // kembali. **Tidak ada aturan modul di sini.**
 package masterstatushttp
 
+import (
+	"claim-pnc/internal/platform/apierror"
+)
+
 // ClaimStatusDTO adalah bentuk satu status klaim yang dikirim ke peramban.
 //
 // Tipe ini sengaja TERPISAH dari masterstatus.ClaimStatus. Memakai tipe modul langsung
@@ -62,10 +66,7 @@ type SaveRequest struct {
 //
 // Field dikirim supaya layar dapat menandai kolom yang salah, bukan sekadar menampilkan
 // satu pesan di atas form.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

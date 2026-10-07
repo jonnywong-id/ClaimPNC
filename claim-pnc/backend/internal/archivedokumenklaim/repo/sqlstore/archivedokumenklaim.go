@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/archivedokumenklaim"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca dan menulis POOLDATA.T_CLAIM_ARCHIVE_FILE.
@@ -572,14 +573,7 @@ func nullableTime(value *time.Time) any {
 //
 // Tanpa pelucutan itu, kode filling yang memuat `%` atau `_` berubah menjadi pola
 // pencarian — dan `_` cukup lazim di kode arsip. ESCAPE-nya dinyatakan di kuerinya.
-func likePattern(keyword string) string {
-	clean := strings.TrimSpace(keyword)
-	if clean == "" {
-		return "%"
-	}
-	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return "%" + strings.ToUpper(replacer.Replace(clean)) + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.LikeOrAll(keyword) }
 
 // Repo wajib memenuhi seam modul. Pernyataan ini membuat ketidakcocokan terbaca saat
 // kompilasi, bukan saat perakitan di cmd.

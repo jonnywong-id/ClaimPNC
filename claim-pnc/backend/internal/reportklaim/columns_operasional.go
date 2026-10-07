@@ -9,90 +9,90 @@ package reportklaim
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCMitraReport_Act-Act.xml`.
-var colsMitra = []Column{
-	{Header: "Login Aplikasi", Field: "QQNAME"},
-	{Header: "Posisi", Field: "NOPOLIS"},
-	{Header: "Atasan", Field: "THEINSURED"},
-	{Header: "No Klaim", Field: "IDPEGA"},
-	{Header: "Jenis Klaim", Field: "BUSINESSCODE"},
-	{Header: "Tgl Awal", Field: "SOBLEADER0"},
-	{Header: "Tgl Akhir", Field: "SOBLEADER1"},
-	{Header: "AGING", Field: "SOBLEADER2"},
-	{Header: "Sesuai SLA", Field: "AUTOCANCELPRINTSTATUS"},
-	{Header: "Jml Sesuai SLA", Field: "BRANCHNAME"},
-	{Header: "Jml Tdk Sesuai SLA", Field: "ACCUMCODE"},
-	{Header: "Persentase Sesuai SLA", Field: "BUSINESSNAME"},
-	{Header: "Total Produktivitas", Field: "BRANCHCODE"},
-}
+var colsMitra = parseColumns(`
+Login Aplikasi	QQNAME
+Posisi	NOPOLIS
+Atasan	THEINSURED
+No Klaim	IDPEGA
+Jenis Klaim	BUSINESSCODE
+Tgl Awal	SOBLEADER0
+Tgl Akhir	SOBLEADER1
+AGING	SOBLEADER2
+Sesuai SLA	AUTOCANCELPRINTSTATUS
+Jml Sesuai SLA	BRANCHNAME
+Jml Tdk Sesuai SLA	ACCUMCODE
+Persentase Sesuai SLA	BUSINESSNAME
+Total Produktivitas	BRANCHCODE
+`)
 
 // colsProduksiPA — 15 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/ReportProduksiPA_act-Act.xml`.
-var colsProduksiPA = []Column{
-	{Header: "Tahun", Field: "CityID"},
-	{Header: "Resiko A", Field: "AlasanDokterRejectRCL"},
-	{Header: "Jumlah Klaim", Field: "CompliancePosAuditByr"},
-	{Header: "Tahun", Field: "CaseID"},
-	{Header: "Resiko B", Field: "Country"},
-	{Header: "Jumlah Klaim", Field: "ComplianceRemark"},
-	{Header: "Tahun", Field: "City"},
-	{Header: "Resiko D", Field: "AnalystDoctorRemaks"},
-	{Header: "Jumlah Klaim", Field: "Conveyance"},
-	{Header: "Tahun", Field: "AnaylstRemarks"},
-	{Header: "Resiko MC", Field: "AnalystRemaksInvestigator"},
-	{Header: "Jumlah Klaim", Field: "CustomerPrinciple"},
-	{Header: "Tahun", Field: "ReporterName"},
-	{Header: "Resiko LAINNYA", Field: "CloseClaimNote"},
-	{Header: "Jumlah Klaim", Field: "District"},
-}
+var colsProduksiPA = parseColumns(`
+Tahun	CityID
+Resiko A	AlasanDokterRejectRCL
+Jumlah Klaim	CompliancePosAuditByr
+Tahun	CaseID
+Resiko B	Country
+Jumlah Klaim	ComplianceRemark
+Tahun	City
+Resiko D	AnalystDoctorRemaks
+Jumlah Klaim	Conveyance
+Tahun	AnaylstRemarks
+Resiko MC	AnalystRemaksInvestigator
+Jumlah Klaim	CustomerPrinciple
+Tahun	ReporterName
+Resiko LAINNYA	CloseClaimNote
+Jumlah Klaim	District
+`)
 
 // colsCompliance — 12 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCComplianceReport_Act-Act.xml`.
-var colsCompliance = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "No Polis", Field: "ClaimNo"},
-	{Header: "Tanggal Mulai Polis", Field: "AnaylstRemarks"},
-	{Header: "Tanggal Berakhir Polis", Field: "CountryID"},
-	{Header: "Tanggal Kerugian", Field: "AnalystDoctorRemaks"},
-	{Header: "Nama Tertanggung", Field: "CityID"},
-	{Header: "Lokasi Kerugian", Field: "Location"},
-	{Header: "Nama Claimant", Field: "ReporterName"},
-	{Header: "Nilai KlaimPropose", Field: "ClaimEstimate"},
-	{Header: "Nilai Klaim Paid", Field: "Country"},
-	{Header: "Komentar Compliance", Field: "Remark"},
-	{Header: "Tanggal Compliance", Field: "NoteKasir"},
-}
+var colsCompliance = parseColumns(`
+No Klaim	CaseID
+No Polis	ClaimNo
+Tanggal Mulai Polis	AnaylstRemarks
+Tanggal Berakhir Polis	CountryID
+Tanggal Kerugian	AnalystDoctorRemaks
+Nama Tertanggung	CityID
+Lokasi Kerugian	Location
+Nama Claimant	ReporterName
+Nilai KlaimPropose	ClaimEstimate
+Nilai Klaim Paid	Country
+Komentar Compliance	Remark
+Tanggal Compliance	NoteKasir
+`)
 
 // colsAdjuster — 10 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCAdjusterReport_Act-Act.xml`.
-var colsAdjuster = []Column{
-	{Header: "No Klaim", Field: "IDSurvey"},
-	{Header: "No Polis", Field: "IDObject"},
-	{Header: "Nama Tertanggung", Field: "InsuredPIC"},
-	{Header: "Nama Bisnis", Field: "CouseOfLos"},
-	{Header: "Nilai Reserve Klaim ASM", Field: "Salvage"},
-	{Header: "Tgl Pengajuan Survey", Field: "BodyLetterOP"},
-	{Header: "Nama", Field: "SurveyorName"},
-	{Header: "Catatan", Field: "KeteranganLain"},
-	{Header: "PIC Teknis", Field: "AdjusterPIC"},
-	{Header: "Status", Field: "AdjusterStatus"},
-}
+var colsAdjuster = parseColumns(`
+No Klaim	IDSurvey
+No Polis	IDObject
+Nama Tertanggung	InsuredPIC
+Nama Bisnis	CouseOfLos
+Nilai Reserve Klaim ASM	Salvage
+Tgl Pengajuan Survey	BodyLetterOP
+Nama	SurveyorName
+Catatan	KeteranganLain
+PIC Teknis	AdjusterPIC
+Status	AdjusterStatus
+`)
 
 // colsKomunikasiKlaim — 7 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataKominukasiAdjusterKlaim-Act.xml`.
-var colsKomunikasiKlaim = []Column{
-	{Header: "Nomor Klaim", Field: "pzInsKey"},
-	{Header: "Tanggal kirim", Field: "CloseClaimDate"},
-	{Header: "Message", Field: "Email"},
-	{Header: "Pengirim", Field: "UserName"},
-	{Header: "Message Balasan", Field: "CloseClaimNote"},
-	{Header: "Tanggal Balas", Field: "AnalystTransferDate"},
-	{Header: "Nama_Replay", Field: "UserAdmin"},
-}
+var colsKomunikasiKlaim = parseColumns(`
+Nomor Klaim	pzInsKey
+Tanggal kirim	CloseClaimDate
+Message	Email
+Pengirim	UserName
+Message Balasan	CloseClaimNote
+Tanggal Balas	AnalystTransferDate
+Nama_Replay	UserAdmin
+`)

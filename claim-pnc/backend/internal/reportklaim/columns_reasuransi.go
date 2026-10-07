@@ -9,75 +9,75 @@ package reportklaim
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataPLA_act-Act.xml`.
-var colsPLA = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "Nopolis", Field: "NoKTP"},
-	{Header: "Nama Bisnis", Field: "ClaimID"},
-	{Header: "Nama Tertanggung", Field: "ClaimNo"},
-	{Header: "DOL", Field: "RefNo"},
-	{Header: "Tgl Regist", Field: "Remark"},
-	{Header: "PIC", Field: "RW"},
-	{Header: "No PLA", Field: "Conveyance"},
-	{Header: "Tanggal PLA", Field: "Country"},
-	{Header: "Bulan", Field: "District"},
-	{Header: "Reinsurer", Field: "CountryID"},
-	{Header: "Klaim Leader/Member", Field: "Email"},
-}
+var colsPLA = parseColumns(`
+No Klaim	CaseID
+Nopolis	NoKTP
+Nama Bisnis	ClaimID
+Nama Tertanggung	ClaimNo
+DOL	RefNo
+Tgl Regist	Remark
+PIC	RW
+No PLA	Conveyance
+Tanggal PLA	Country
+Bulan	District
+Reinsurer	CountryID
+Klaim Leader/Member	Email
+`)
 
 // colsDLA — 16 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataDLA_act-Act.xml`.
-var colsDLA = []Column{
-	{Header: "No Klaim", Field: "CaseID"},
-	{Header: "Nopolis", Field: "NoKTP"},
-	{Header: "Nama Bisnis", Field: "ClaimID"},
-	{Header: "Nama Tertanggung", Field: "ClaimNo"},
-	{Header: "DOL", Field: "RefNo"},
-	{Header: "Tgl Regist", Field: "Remark"},
-	{Header: "PIC", Field: "RW"},
-	{Header: "No DLA", Field: "Conveyance"},
-	{Header: "Nilai DLA", Field: "Province"},
-	{Header: "No Aksep", Field: "District"},
-	{Header: "Revisi DLA", Field: "NIK"},
-	{Header: "Tanggal DLA", Field: "Country"},
-	{Header: "Bulan", Field: "Location"},
-	{Header: "Reinsurer", Field: "CountryID"},
-	{Header: "Tanggal Aksep", Field: "DistrictID"},
-	{Header: "Klaim Leader/Member", Field: "Email"},
-}
+var colsDLA = parseColumns(`
+No Klaim	CaseID
+Nopolis	NoKTP
+Nama Bisnis	ClaimID
+Nama Tertanggung	ClaimNo
+DOL	RefNo
+Tgl Regist	Remark
+PIC	RW
+No DLA	Conveyance
+Nilai DLA	Province
+No Aksep	District
+Revisi DLA	NIK
+Tanggal DLA	Country
+Bulan	Location
+Reinsurer	CountryID
+Tanggal Aksep	DistrictID
+Klaim Leader/Member	Email
+`)
 
 // colsPengirimanPLA — 12 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataPengirimanPLA_act-Act.xml`.
-var colsPengirimanPLA = []Column{
-	{Header: "No Policy", Field: "AlasanKlaim"},
-	{Header: "Nama Tertanggung", Field: "Keyword"},
-	{Header: "DOL", Field: "Other"},
-	{Header: "Nomor Klaim", Field: "CaseID"},
-	{Header: "Nomor PLA", Field: "City"},
-	{Header: "Nilai PLA", Field: "Amount"},
-	{Header: "PLA Reinsurer", Field: "CityID"},
-	{Header: "TGL PLA", Field: "District"},
-	{Header: "TGL Kirim", Field: "DistrictID"},
-	{Header: "TGL Terima PLA", Field: "Country"},
-	{Header: "Status Kirim", Field: "CountryID"},
-	{Header: "PIC", Field: "UserTeknis"},
-}
+var colsPengirimanPLA = parseColumns(`
+No Policy	AlasanKlaim
+Nama Tertanggung	Keyword
+DOL	Other
+Nomor Klaim	CaseID
+Nomor PLA	City
+Nilai PLA	Amount
+PLA Reinsurer	CityID
+TGL PLA	District
+TGL Kirim	DistrictID
+TGL Terima PLA	Country
+Status Kirim	CountryID
+PIC	UserTeknis
+`)
 
 // colsPengirimanDLA — 9 kolom.
 //
 // Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
 // `pxConvertResultsToCSV` pada `Activity/PNCReportDataPengirimanDLA_act-Act.xml`.
-var colsPengirimanDLA = []Column{
-	{Header: "Nomor Klaim", Field: "CaseID"},
-	{Header: "Nomor DLA", Field: "City"},
-	{Header: "Nilai Share DLA", Field: "Amount"},
-	{Header: "DLA Reinsurer", Field: "CityID"},
-	{Header: "TGL DLA", Field: "District"},
-	{Header: "TGL Kirim", Field: "DistrictID"},
-	{Header: "TGL Terima DLA", Field: "Country"},
-	{Header: "Statur Kirim", Field: "CountryID"},
-	{Header: "PIC", Field: "Keyword"},
-}
+var colsPengirimanDLA = parseColumns(`
+Nomor Klaim	CaseID
+Nomor DLA	City
+Nilai Share DLA	Amount
+DLA Reinsurer	CityID
+TGL DLA	District
+TGL Kirim	DistrictID
+TGL Terima DLA	Country
+Statur Kirim	CountryID
+PIC	Keyword
+`)

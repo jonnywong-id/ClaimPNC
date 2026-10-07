@@ -3,7 +3,6 @@ package authhttp
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/auth"
@@ -19,18 +18,6 @@ type Service interface {
 	Login(ctx context.Context, k auth.Credential) (usecase.Result, error)
 	Renew(ctx context.Context, token auth.Token) (auth.Session, error)
 	Logout(ctx context.Context, token auth.Token) error
-}
-
-// Handler memuat handler masuk, keluar, identitas pemanggil, dan perpanjangan sesi.
-type Handler struct {
-	service    Service
-	logger     *slog.Logger
-	writeError ErrorWriter
-}
-
-// NewHandler membentuk handler modul auth.
-func NewHandler(service Service, logger *slog.Logger) *Handler {
-	return &Handler{service: service, logger: logger, writeError: WriteError(logger)}
 }
 
 // Login menangani POST /api/masuk.

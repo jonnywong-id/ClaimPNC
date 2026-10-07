@@ -2,13 +2,11 @@ package reportkpihttp
 
 import (
 	"encoding/csv"
-	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/csvexport"
 	"claim-pnc/internal/reportkpi"
 )
 
@@ -72,9 +70,9 @@ func (h *Handler) exportSummary(
 	// dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa berkas separuh
 	// jadi tanpa satu pun keterangan. Tipe report yang belum dipilih dan periode yang
 	// kosong karena itu tetap dijawab sebagai galat yang terbaca.
-	result, err := h.service.Summary(r.Context(), portalAlias, caller, readFilter(r.URL.Query()))
+	result, err := h.Service.Summary(r.Context(), portalAlias, caller, readFilter(r.URL.Query()))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -157,9 +155,9 @@ func (h *Handler) exportDetail(
 	filter := readFilter(r.URL.Query())
 	page := reportkpi.Pagination{Page: 1, Size: exportChunk}
 
-	first, err := h.service.Detail(r.Context(), portalAlias, caller, filter, page)
+	first, err := h.Service.Detail(r.Context(), portalAlias, caller, filter, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -170,49 +168,24 @@ func (h *Handler) exportDetail(
 
 	h.beginDownload(w, exportFilename("rincian-kpi-adjuster", first.Query))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(header); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
-	written := 0
-	current := first
-	for {
-		for _, row := range current.Page.Rows {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(header), current.Page.Total))
-				return
-			}
-
+	csvexport.Paged[reportkpi.AdjusterDetail]{
+		Header: header,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(row reportkpi.AdjusterDetail) []string {
 			cells := make([]string, 0, len(columns))
 			for _, column := range columns {
 				cells = append(cells, detailCell(row, column.Key))
 			}
-			if err := writer.Write(append(cells, scoreCells(row.Scores)...)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Page.Total || len(current.Page.Rows) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.Detail(r.Context(), portalAlias, caller, filter, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+			return append(cells, scoreCells(row.Scores)...)
+		},
+		Next: func(n int) ([]reportkpi.AdjusterDetail, int, error) {
+			page.Page = n
+			next, err := h.Service.Detail(r.Context(), portalAlias, caller, filter, page)
+			return next.Page.Rows, next.Page.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Page.Rows, first.Page.Total)
 }
 
 // findGrid mengambil keterangan satu grid pada tab KPI Adjuster.
@@ -264,21 +237,15 @@ func scoreCells(scores map[string]reportkpi.Score) []string {
 
 // beginDownload memasang header unduhan.
 func (h *Handler) beginDownload(w http.ResponseWriter, filename string) {
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	w.Header().Set("Cache-Control", "no-store")
+	csvexport.BeginDownload(w, filename)
 }
 
 // flush mendorong isi yang sudah tertulis keluar setiap potong, bukan menahannya sampai
 // akhir. Itulah yang membuat unduhan besar mulai mengalir segera dan memori tidak menumpuk.
 func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Request) bool {
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+	if err := csvexport.Flush(w, writer); err != nil {
 		h.logExportFailure(r, err)
 		return false
-	}
-	if flusher, able := w.(http.Flusher); able {
-		flusher.Flush()
 	}
 	return true
 }
@@ -299,15 +266,7 @@ func exportFilename(prefix string, query reportkpi.Query) string {
 
 // truncationNotice menyusun baris penanda bahwa berkasnya tidak lengkap.
 func truncationNotice(width, total int) []string {
-	notice := make([]string, width)
-	if width == 0 {
-		return notice
-	}
-	notice[0] = fmt.Sprintf(
-		"-- Terpotong pada %s baris dari %s yang cocok. Persempit periodenya. --",
-		strconv.Itoa(exportLimit), strconv.Itoa(total),
-	)
-	return notice
+	return csvexport.TruncationNotice(width, exportLimit, total, " Persempit periodenya.")
 }
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
@@ -317,8 +276,5 @@ func truncationNotice(width, total int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor Report KPI terputus",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", err.Error()),
-	)
+	csvexport.LogFailure(r, h.Logger, "ekspor Report KPI terputus", err)
 }

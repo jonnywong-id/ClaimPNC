@@ -1,0 +1,67 @@
+{
+  "SampleCategoryList": [
+    {
+      "ID": "1",
+      "Name": "ENGINE"
+    },
+    {
+      "ID": "2",
+      "Name": "HYDRAULIC"
+    },
+    {
+      "ID": "3",
+      "Name": "UNDERCARRIAGE"
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "1",
+      "Name": "FUEL FILTER",
+      "CategoryID": "1",
+      "CategoryName": "",
+      "Status": "1"
+    },
+    {
+      "ID": "2",
+      "Name": "TURBOCHARGER",
+      "CategoryID": "1",
+      "CategoryName": "",
+      "Status": "1"
+    },
+    {
+      "ID": "3",
+      "Name": "HYDRAULIC PUMP",
+      "CategoryID": "2",
+      "CategoryName": "",
+      "Status": "1"
+    },
+    {
+      "ID": "4",
+      "Name": "TRACK ROLLER",
+      "CategoryID": "3",
+      "CategoryName": "",
+      "Status": "0"
+    },
+    {
+      "ID": "5",
+      "Name": "IDLER",
+      "CategoryID": "3",
+      "CategoryName": "",
+      "Status": "0"
+    },
+    {
+      "ID": "6",
+      "Name": "CONTROL VALVE",
+      "CategoryID": "2",
+      "CategoryName": "",
+      "Status": "2"
+    },
+    {
+      "ID": "7",
+      "Name": "SPROCKET",
+      "CategoryID": "99",
+      "CategoryName": "",
+      "Status": "1"
+    }
+  ]
+}

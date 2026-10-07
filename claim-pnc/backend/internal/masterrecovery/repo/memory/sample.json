@@ -1,0 +1,34 @@
+{
+  "SamplePolicy": {
+    "CONTOH-POLIS-0001": {
+      "BusinessID": "01",
+      "BranchID": "001",
+      "AgentID": "AG0001",
+      "MarketingID": "MO0001"
+    },
+    "CONTOH-POLIS-0002": {
+      "BusinessID": "02",
+      "BranchID": "002",
+      "AgentID": "AG0002",
+      "MarketingID": "MO0002"
+    }
+  },
+  "SamplePrincipal": [
+    {
+      "ClientID": "CONTOH-PRINCIPAL-001",
+      "Name": "PT CONTOH PENJAMINAN NUSANTARA",
+      "VirtualAccountNumber": "0000000000000001",
+      "Email": "contoh.satu@example.invalid",
+      "Status": "",
+      "Message": ""
+    },
+    {
+      "ClientID": "CONTOH-PRINCIPAL-002",
+      "Name": "PT CONTOH MITRA SEJAHTERA",
+      "VirtualAccountNumber": "0000000000000002",
+      "Email": "contoh.dua@example.invalid",
+      "Status": "",
+      "Message": ""
+    }
+  ]
+}

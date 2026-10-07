@@ -2,14 +2,15 @@ package inboxmanagerreceivepucl
 
 import (
 	"errors"
-	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Galat domain modul Inbox Manager Receive / PUCL.
 //
 // Ia tipe tersendiri, bukan teks: lapisan transport yang memetakannya ke kode HTTP, dan
-// domain tidak boleh tahu apa pun tentang HTTP (`11-CROSSCUTTING.md` §1.2 — kesalahan
-// domain adalah tipe, bukan string).
+// domain tidak boleh tahu apa pun tentang HTTP (`11-CROSSCUTTING.md` §1.2 — kesalahan domain
+// adalah tipe, bukan string).
 var (
 	// ErrCallerUnknown berarti identitas pemanggil tidak terbaca dari sesi.
 	//
@@ -50,10 +51,7 @@ var (
 const FieldTab = "tab"
 
 // Violation adalah satu pelanggaran pada satu isian.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError mengumpulkan SELURUH pelanggaran, bukan yang pertama saja.
 //
@@ -72,10 +70,5 @@ func (e *ValidationError) Error() string {
 	if len(e.Violations) == 0 {
 		return "inboxmanagerreceivepucl: isian tidak sah"
 	}
-
-	parts := make([]string, 0, len(e.Violations))
-	for _, v := range e.Violations {
-		parts = append(parts, v.Field+": "+v.Message)
-	}
-	return "inboxmanagerreceivepucl: " + strings.Join(parts, "; ")
+	return validation.Format(e.Violations, "inboxmanagerreceivepucl: ", ": ", "; ", "")
 }

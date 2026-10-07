@@ -9,16 +9,19 @@
 // Lapisan Transport — ia boleh tahu Domain, dan dilarang tahu SQL maupun nama tabel.
 package masterkategorispareparthttp
 
-import "claim-pnc/internal/masterkategorisparepart"
+import (
+	"claim-pnc/internal/masterkategorisparepart"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // PartCategoryDTO adalah satu baris kategori sebagaimana dilihat klien.
 //
 // # Kenapa nama field JSON-nya bahasa Indonesia
 //
 // Ia KONTRAK, bukan nama internal (`D-80`). Nama tipe, field Go, dan variabel di modul ini
-// seluruhnya bahasa Inggris; yang tetap Indonesia hanyalah yang dipakai di luar kode —
-// dan nama field JSON termasuk di dalamnya, karena mengubahnya adalah perubahan yang
-// merusak klien, bukan penggantian nama.
+// seluruhnya bahasa Inggris; yang tetap Indonesia hanyalah yang dipakai di luar kode — dan
+// nama field JSON termasuk di dalamnya, karena mengubahnya adalah perubahan yang merusak
+// klien, bukan penggantian nama.
 //
 // # Kenapa hanya empat field
 //
@@ -104,9 +107,9 @@ type DecisionRequest struct {
 
 // ErrorResponse adalah bentuk galat modul ini.
 //
-// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk pelanggaran
-// per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan mencocokkan
-// teks `pesan`.
+// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk
+// pelanggaran per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan
+// mencocokkan teks `pesan`.
 type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
@@ -119,10 +122,7 @@ type ErrorResponse struct {
 // masterstatusprogres, dan masterautoclaim. Penyeragamannya dengan masterstatus — yang
 // memakai `field` — adalah TKT-F1-004 yang masih terhalang. Frontend sudah menampung
 // keduanya lewat `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah satu baris domain menjadi bentuk yang dikirim ke klien.
 func toDTO(c masterkategorisparepart.PartCategory) PartCategoryDTO {

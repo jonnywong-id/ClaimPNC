@@ -11,6 +11,7 @@ import (
 
 	"claim-pnc/internal/inboxosclaimpercabang"
 	"claim-pnc/internal/platform/money"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca daftar klaim outstanding dari SATU basis data entitas.
@@ -534,10 +535,4 @@ func minorUnitsFromText(text string) (money.Money, error) {
 //
 // Kosong dikembalikan sebagai nil, bukan sebagai waktu nol. Keduanya berbeda artinya di layar:
 // yang pertama kolom kosong, yang kedua tanggal 1 Januari tahun 1.
-func nullableTime(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	moment := value.Time
-	return &moment
-}
+func nullableTime(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }

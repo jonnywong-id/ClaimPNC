@@ -1,8 +1,8 @@
 // Package memory adalah pengisi seam masterautoclaim.Store yang hidup di dalam memory.
 //
-// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang
-// membuat seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan
-// tanpa Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
+// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang membuat
+// seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan tanpa
+// Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
 //
 // Yang ditiru bukan hanya bentuk datanya, tetapi juga urutan barisnya, cara penyaring
 // bekerja, dan kolom mana yang TIDAK ikut berubah saat disimpan — kalau tidak, uji yang

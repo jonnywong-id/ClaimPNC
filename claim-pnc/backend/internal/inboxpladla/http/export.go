@@ -2,14 +2,11 @@ package inboxpladlahttp
 
 import (
 	"encoding/csv"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"claim-pnc/internal/inboxpladla"
 	"claim-pnc/internal/inboxpladla/usecase"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/csvexport"
 )
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan saat mengekspor.
@@ -48,9 +45,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// galat tidak dapat lagi dijawab sebagai JSON — dan di layar ini galat yang paling
 	// mungkin terjadi justru yang paling perlu terbaca: pemanggil yang bukan reasuradur
 	// terdaftar.
-	first, err := h.service.List(r.Context(), active.Alias, caller, filter, page)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, filter, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -71,46 +68,22 @@ func (h *Handler) exportGrid(
 
 	h.beginDownload(w, exportFilename(tab))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(header); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
 	page := inboxpladla.Pagination{Page: 1, Size: exportChunk}
 
-	written := 0
-	current := first
-	for {
-		for _, item := range current.Page.Items {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(header), current.Page.Total))
-				return
-			}
-			if err := writer.Write(gridRow(tab, item)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Page.Total || len(current.Page.Items) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.List(r.Context(), portalAlias, caller, filter, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+	csvexport.Paged[inboxpladla.Row]{
+		Header: header,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(item inboxpladla.Row) []string {
+			return gridRow(tab, item)
+		},
+		Next: func(n int) ([]inboxpladla.Row, int, error) {
+			page.Page = n
+			next, err := h.Service.List(r.Context(), portalAlias, caller, filter, page)
+			return next.Page.Items, next.Page.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Page.Items, first.Page.Total)
 }
 
 // beginDownload memasang header unduhan.
@@ -119,24 +92,14 @@ func (h *Handler) exportGrid(
 // polis milik tertanggung Asuransi Sinar Mas, dan yang mengunduhnya adalah PIHAK LUAR.
 // Berkas seperti itu tidak boleh mengendap di cache perantara mana pun.
 func (h *Handler) beginDownload(w http.ResponseWriter, filename string) {
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	w.Header().Set("Cache-Control", "no-store")
+	csvexport.BeginDownload(w, filename)
 }
 
 // flush mendorong isi yang sudah tertulis keluar setiap potong.
-func (h *Handler) flush(
-	w http.ResponseWriter,
-	writer *csv.Writer,
-	r *http.Request,
-) bool {
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Request) bool {
+	if err := csvexport.Flush(w, writer); err != nil {
 		h.logExportFailure(r, err)
 		return false
-	}
-	if flusher, able := w.(http.Flusher); able {
-		flusher.Flush()
 	}
 	return true
 }
@@ -212,22 +175,10 @@ func exportFilename(tab inboxpladla.Tab) string {
 
 // truncationNotice menyusun baris penanda bahwa berkasnya tidak lengkap.
 func truncationNotice(width, total int) []string {
-	notice := make([]string, width)
-	if width == 0 {
-		return notice
-	}
-	notice[0] = fmt.Sprintf(
-		"-- Terpotong pada %s baris dari %s yang cocok. Persempit pencariannya. --",
-		strconv.Itoa(exportLimit), strconv.Itoa(total),
-	)
-	return notice
+	return csvexport.TruncationNotice(width, exportLimit, total, " Persempit pencariannya.")
 }
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error(
-		"ekspor inbox PLA/DLA reasuradur terputus",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", err.Error()),
-	)
+	csvexport.LogFailure(r, h.Logger, "ekspor inbox PLA/DLA reasuradur terputus", err)
 }

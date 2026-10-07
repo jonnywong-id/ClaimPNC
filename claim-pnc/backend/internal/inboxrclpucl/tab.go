@@ -355,8 +355,8 @@ type Difference struct {
 // # Kenapa ia data, bukan komentar
 //
 // Karena ia dikirim ke layar dan ditampilkan kepada pengguna. Selisih yang hanya tercatat
-// di komentar akan dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan
-// layar baru dengan Pega berdampingan.
+// di komentar akan dilaporkan berulang kali sebagai kerusakan oleh orang yang
+// membandingkan layar baru dengan Pega berdampingan.
 //
 // Ia juga yang dipakai saat uji kesetaraan gerbang 1: setiap selisih WAJIB dapat dipetakan
 // ke salah satu butir `P-5`, atau dinyatakan sebagai bug (`D-54`). Butir di bawah adalah

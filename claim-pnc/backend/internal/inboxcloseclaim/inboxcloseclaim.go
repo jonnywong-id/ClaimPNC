@@ -77,6 +77,10 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/businessline"
+	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/pagination"
 )
 
 // Nilai `PYSTATUSWORK` yang menandai klaim SUDAH TUTUP.
@@ -278,19 +282,7 @@ func (c ClosedClaim) DurationDays(now time.Time, location *time.Location) int {
 		end = *c.ResolvedAt
 	}
 
-	start := c.RegisteredAt.In(location)
-	finish := end.In(location)
-
-	startDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
-	endDay := time.Date(finish.Year(), finish.Month(), finish.Day(), 0, 0, 0, 0, location)
-
-	days := int(endDay.Sub(startDay).Hours() / 24)
-	if days < 0 {
-		// Tanggal tutup yang mendahului tanggal daftar adalah data yang cacat, bukan durasi
-		// negatif. Ia ditampilkan nol; yang memperbaikinya adalah datanya, bukan layar ini.
-		return 0
-	}
-	return days
+	return clock.CalendarDays(c.RegisteredAt, end, location)
 }
 
 // BusinessLine adalah penyaring lini bisnis pada bilah atas layar.
@@ -327,66 +319,28 @@ func (c ClosedClaim) DurationDays(now time.Time, location *time.Location) int {
 //
 // Karena itu modul ini TIDAK memakai ulang `inboxoutstanding.ScopeFor` maupun
 // `inboxadmin.BusinessLine`. Kesamaan namanya kebetulan; isinya tidak sama.
-type BusinessLine string
+type BusinessLine = businessline.Line
 
 // Kelima nilai penyaring lini bisnis.
 //
 // Nilainya huruf besar persis seperti yang dibandingkan activity lama, dan itu bukan gaya
 // penulisan melainkan kontrak: ia dikirim layar sebagai parameter query.
 const (
-	BusinessAll     BusinessLine = "ALL"
-	BusinessNonMBU  BusinessLine = "NONMBU"
-	BusinessBonding BusinessLine = "BONDING"
-	BusinessPA      BusinessLine = "PA"
-	BusinessTravel  BusinessLine = "TRAVEL"
+	BusinessAll     = businessline.All
+	BusinessNonMBU  = businessline.NonMBU
+	BusinessBonding = businessline.Bonding
+	BusinessPA      = businessline.PA
+	BusinessTravel  = businessline.Travel
 )
 
-// businessLines adalah kelimanya dalam urutan tampilnya di dropdown.
-var businessLines = []BusinessLine{
-	BusinessAll, BusinessNonMBU, BusinessBonding, BusinessPA, BusinessTravel,
-}
-
 // BusinessLines mengembalikan isi dropdown lini bisnis.
-func BusinessLines() []BusinessLine {
-	result := make([]BusinessLine, len(businessLines))
-	copy(result, businessLines)
-	return result
-}
-
-// Label adalah teks yang dibaca pengguna pada dropdown.
-func (b BusinessLine) Label() string {
-	switch b {
-	case BusinessAll:
-		return "Semua Lini Bisnis"
-	case BusinessNonMBU:
-		return "Non-MBU"
-	case BusinessBonding:
-		return "Bonding"
-	case BusinessPA:
-		return "Personal Accident"
-	case BusinessTravel:
-		return "Travel"
-	default:
-		return string(b)
-	}
-}
+func BusinessLines() []BusinessLine { return businessline.Lines() }
 
 // ParseBusinessLine membaca pilihan lini bisnis dari isian layar.
 //
 // Isian kosong berarti ALL, bukan galat: layar yang baru dibuka belum memilih apa pun, dan
 // "belum memilih" di sistem lama memang berarti tanpa saringan.
-func ParseBusinessLine(raw string) (BusinessLine, bool) {
-	value := BusinessLine(strings.ToUpper(strings.TrimSpace(raw)))
-	if value == "" {
-		return BusinessAll, true
-	}
-	for _, known := range businessLines {
-		if known == value {
-			return value, true
-		}
-	}
-	return "", false
-}
+func ParseBusinessLine(raw string) (BusinessLine, bool) { return businessline.Parse(raw) }
 
 // TransferStatus adalah penyaring "Status Transfer Kasir".
 //
@@ -513,15 +467,7 @@ func (f Filter) Normalize() Filter {
 	if f.Business == "" {
 		f.Business = BusinessAll
 	}
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxLimit {
-		f.Limit = MaxLimit
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxLimit)
 	return f
 }
 
@@ -574,8 +520,8 @@ type Repo interface {
 // # Kenapa per portal, bukan satu penyimpanan
 //
 // `ADR-0030` menetapkan satu database per entitas, bukan satu database bersama dengan
-// penanda entitas. Klaim milik Asuransi Sinar Mas dan klaim milik Simas Insurtech karena
-// itu tidak pernah berada di tabel yang sama.
+// penanda entitas. Klaim milik Asuransi Sinar Mas dan klaim milik Simas Insurtech karena itu
+// tidak pernah berada di tabel yang sama.
 //
 // # Kenapa galat, bukan cadangan
 //

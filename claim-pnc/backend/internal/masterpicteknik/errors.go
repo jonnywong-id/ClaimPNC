@@ -2,7 +2,8 @@ package masterpicteknik
 
 import (
 	"errors"
-	"strings"
+
+	"claim-pnc/internal/platform/validation"
 )
 
 // Empat kegagalan yang wajib dapat dibedakan pemanggil tanpa membaca teks pesan.
@@ -49,10 +50,7 @@ const (
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.
-type Violation struct {
-	Field   string
-	Message string
-}
+type Violation = validation.Violation
 
 // ValidationError memuat SELURUH pelanggaran sekaligus.
 //
@@ -64,11 +62,7 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	message := make([]string, 0, len(e.Violation))
-	for _, v := range e.Violation {
-		message = append(message, v.Field+": "+v.Message)
-	}
-	return "masterpicteknik: validasi gagal — " + strings.Join(message, "; ")
+	return validation.Format(e.Violation, "masterpicteknik: validasi gagal — ", ": ", "; ", "")
 }
 
 // NewValidationError membentuk galat validasi, atau nil bila tidak ada pelanggaran.

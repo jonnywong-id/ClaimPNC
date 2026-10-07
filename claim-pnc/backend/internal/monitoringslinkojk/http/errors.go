@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/monitoringslinkojk"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat yang dikenali klien. Klien membedakan jenis galat lewat kode ini, bukan
@@ -29,13 +30,6 @@ const (
 	CodeInternalError = "galat_internal"
 )
 
-// JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri supaya
-// seluruh modul menulis respons dengan cara yang sama, termasuk header Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
-
-// ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
-
 // WriteError memetakan galat modul ini menjadi respons HTTP.
 //
 // Galat yang BUKAN milik modul ini diteruskan ke fallback — yang di cmd diisi penulis
@@ -44,28 +38,10 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 // cadangan, atau cadangannya pun tidak mengenalinya, jawabannya 500 dengan pesan umum dan
 // rinciannya hanya masuk log — rincian galat internal tidak pernah dikirim ke peramban.
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
-		status, body, recognized := mapError(err)
-
-		if !recognized {
-			if fallback != nil {
-				fallback(w, r, err)
-				return
-			}
-			status, body = http.StatusInternalServerError, ErrorResponse{
-				Code:    CodeInternalError,
-				Message: "Terjadi kesalahan pada sistem.",
-			}
-		}
-
-		if status >= http.StatusInternalServerError && logger != nil {
-			logger.Error("permintaan gagal",
-				slog.String("jalur", r.URL.Path),
-				slog.String("galat", err.Error()))
-		}
-
-		writeJSON(w, r, status, body)
-	}
+	return apierror.Writer(logger, writeJSON, fallback, mapError, ErrorResponse{
+		Code:    CodeInternalError,
+		Message: "Terjadi kesalahan pada sistem.",
+	})
 }
 
 // ErrorWriterFrom membungkus penulis galat modul lain menjadi cadangan modul ini.
@@ -92,10 +68,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		//
 		// SELURUH pelanggaran dikembalikan sekaligus, meniru sistem lama yang
 		// menampilkan semua pesan bersamaan (`P-5`).
-		details := make([]ViolationDTO, 0, len(validation.Violations))
-		for _, v := range validation.Violations {
-			details = append(details, ViolationDTO{Field: v.Field, Message: v.Message})
-		}
+		details := apierror.FieldErrors(validation.Violations)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFail,
 			Message: "Isian belum benar. Perbaiki yang ditandai lalu coba lagi.",

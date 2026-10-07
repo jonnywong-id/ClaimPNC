@@ -1,6 +1,6 @@
 package masterpasalaihttp
 
-import "net/http"
+import "claim-pnc/internal/platform/apierror"
 
 // Kode galat modul ini.
 //
@@ -19,7 +19,7 @@ const (
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxbandinghargasalvage"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca antrean banding harga salvage dari SATU basis data entitas.
@@ -200,12 +201,7 @@ func filterArgs(q inboxbandinghargasalvage.Query) []any {
 // Mengirimnya sebagai teks kosong akan membuat penyaringnya TETAP berjalan dan mencocokkan
 // nomor klaim dengan teks kosong — yang tidak pernah cocok, sehingga layarnya kosong tanpa
 // alasan yang terbaca.
-func nilIfEmpty(value string) any {
-	if value == "" {
-		return nil
-	}
-	return value
-}
+func nilIfEmpty(value string) any { return sqlvalue.NilIfEmpty(value) }
 
 // scanner adalah bentuk minimal yang dibutuhkan pemindai, sehingga keduanya dapat diuji tanpa
 // basis data.
@@ -295,13 +291,7 @@ func wholeDays(value sql.NullFloat64) int {
 //
 // Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
 // diisi" saat ditampilkan.
-func timeOrNil(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	at := value.Time
-	return &at
-}
+func timeOrNil(value sql.NullTime) *time.Time { return sqlvalue.TimeOrNil(value) }
 
 // ListDecisions mengambil keputusan banding harga satu klaim.
 //

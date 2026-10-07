@@ -1,6 +1,11 @@
 package dashboardclaim
 
-import "strings"
+import (
+	"strings"
+
+	"claim-pnc/internal/platform/businessline"
+	"claim-pnc/internal/platform/pagination"
+)
 
 // BusinessLine adalah penyaring lini bisnis layar ini.
 //
@@ -35,62 +40,24 @@ import "strings"
 // sendiri terhadap `inboxoutstanding`: kelimanya berasal dari activity yang BERBEDA, dan
 // kesamaannya kebetulan. Bila salah satu activity kelak diubah, yang berbagi tipe akan ikut
 // berubah tanpa ada yang memintanya.
-type BusinessLine string
+type BusinessLine = businessline.Line
 
 const (
-	BusinessAll     BusinessLine = "ALL"
-	BusinessNonMBU  BusinessLine = "NONMBU"
-	BusinessBonding BusinessLine = "BONDING"
-	BusinessPA      BusinessLine = "PA"
-	BusinessTravel  BusinessLine = "TRAVEL"
+	BusinessAll     = businessline.All
+	BusinessNonMBU  = businessline.NonMBU
+	BusinessBonding = businessline.Bonding
+	BusinessPA      = businessline.PA
+	BusinessTravel  = businessline.Travel
 )
 
-// businessLines adalah kelimanya dalam urutan tampilnya di dropdown.
-var businessLines = []BusinessLine{
-	BusinessAll, BusinessNonMBU, BusinessBonding, BusinessPA, BusinessTravel,
-}
-
 // BusinessLines mengembalikan isi dropdown lini bisnis.
-func BusinessLines() []BusinessLine {
-	result := make([]BusinessLine, len(businessLines))
-	copy(result, businessLines)
-	return result
-}
-
-// Label adalah teks yang dibaca pengguna pada dropdown.
-func (b BusinessLine) Label() string {
-	switch b {
-	case BusinessAll:
-		return "Semua Lini Bisnis"
-	case BusinessNonMBU:
-		return "Non-MBU"
-	case BusinessBonding:
-		return "Bonding"
-	case BusinessPA:
-		return "Personal Accident"
-	case BusinessTravel:
-		return "Travel"
-	default:
-		return string(b)
-	}
-}
+func BusinessLines() []BusinessLine { return businessline.Lines() }
 
 // ParseBusinessLine membaca pilihan lini bisnis dari isian layar.
 //
 // Isian kosong berarti ALL, bukan galat: layar yang baru dibuka belum memilih apa pun, dan
 // "belum memilih" di sistem lama memang berarti tanpa saringan.
-func ParseBusinessLine(raw string) (BusinessLine, bool) {
-	value := BusinessLine(strings.ToUpper(strings.TrimSpace(raw)))
-	if value == "" {
-		return BusinessAll, true
-	}
-	for _, known := range businessLines {
-		if known == value {
-			return value, true
-		}
-	}
-	return "", false
-}
+func ParseBusinessLine(raw string) (BusinessLine, bool) { return businessline.Parse(raw) }
 
 // Filter adalah penyaring yang berlaku untuk keempat tile sekaligus.
 //
@@ -133,15 +100,7 @@ func (f Filter) Normalize() Filter {
 	if f.Business == "" {
 		f.Business = BusinessAll
 	}
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxLimit {
-		f.Limit = MaxLimit
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxLimit)
 	return f
 }
 

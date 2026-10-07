@@ -9,6 +9,10 @@
 // kembali. **Tidak ada aturan modul di sini.**
 package masterxolhttp
 
+import (
+	"claim-pnc/internal/platform/apierror"
+)
+
 // ReinsurerDTO adalah satu baris reas pada sebuah lapisan.
 //
 // Nama field JSON berbahasa Indonesia — ia KONTRAK, bukan nama internal (`D-80`).
@@ -173,10 +177,7 @@ type SaveRequest struct {
 //
 // Field dikirim supaya layar dapat menandai bagian yang salah, bukan sekadar menampilkan
 // satu pesan di atas form.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

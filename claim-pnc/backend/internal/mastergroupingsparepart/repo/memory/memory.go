@@ -2,12 +2,13 @@
 // memory.
 //
 // Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang membuat
-// seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan tanpa Oracle
-// saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
+// seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan tanpa
+// Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
 //
-// Yang ditiru bukan hanya bentuk datanya, tetapi juga urutan barisnya, cara penyaring bekerja,
-// kolom mana yang TIDAK ikut berubah saat disimpan, dan bentuk kunci yang diterbitkan — kalau
-// tidak, uji yang lulus di sini tidak membuktikan apa pun tentang adapter SQL.
+// Yang ditiru bukan hanya bentuk datanya, tetapi juga urutan barisnya, cara penyaring
+// bekerja, kolom mana yang TIDAK ikut berubah saat disimpan, dan bentuk kunci yang
+// diterbitkan — kalau tidak, uji yang lulus di sini tidak membuktikan apa pun tentang
+// adapter SQL.
 package memory
 
 import (
@@ -22,9 +23,10 @@ import (
 
 // Repo menyimpan grouping satu portal beserta keempat daftar acuannya.
 //
-// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun tetap
-// memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data. Menyatukannya
-// justru akan menyembunyikan kelas cacat yang paling ingin dicegah ADR-0030 dan R-20.
+// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun
+// tetap memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
+// Menyatukannya justru akan menyembunyikan kelas cacat yang paling ingin dicegah
+// ADR-0030 dan R-20.
 type Repo struct {
 	// mutex melindungi seluruh isi. Permintaan HTTP dilayani beberapa goroutine sekaligus, dan
 	// penambahan yang menolak kunci ganda harus berjalan satu per satu — persis seperti

@@ -1,13 +1,8 @@
 package sqlstore
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"strings"
-
 	"claim-pnc/internal/inputacceptation"
+	"claim-pnc/internal/platform/jsondoc"
 )
 
 // document adalah dokumen klaim yang sudah diurai — isi kolom
@@ -27,7 +22,7 @@ import (
 // Peta bebas membuat ketidakcocokan TERLIHAT: isian yang jalurnya tidak ada dapat dibedakan
 // dari isian yang ada tetapi kosong, dan perbedaan itu yang dilaporkan sebagai temuan
 // alih-alih diam-diam menjadi sel kosong di layar.
-type document map[string]any
+type document = jsondoc.Document
 
 // parseDocument mengurai dokumen klaim.
 //
@@ -38,53 +33,7 @@ type document map[string]any
 // Dokumen yang ADA tetapi tidak dapat diurai JUSTRU galat, dan galat yang menyebut sebabnya.
 // Menelannya menjadi rincian kosong berarti kerusakan data tersaji kepada pengguna sebagai
 // "klaim ini memang belum diisi".
-func parseDocument(raw string) (document, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return document{}, nil
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader([]byte(trimmed)))
-
-	// Angka dibaca sebagai teks apa adanya, bukan sebagai float64.
-	//
-	// Di layar ini hampir setiap angka adalah NILAI UANG, persentase share reasuransi, atau
-	// premi reinstatement — dan float64 mengubah `1234567890123.45` menjadi nilai yang
-	// dibulatkan tanpa satu pun galat. `I-12` menetapkan nilai uang disimpan presisi penuh
-	// dan hanya dibulatkan saat ditampilkan.
-	decoder.UseNumber()
-
-	var parsed document
-	if err := decoder.Decode(&parsed); err != nil {
-		return nil, fmt.Errorf("mengurai dokumen klaim: %w", err)
-	}
-	return parsed, nil
-}
-
-// lookup menelusuri satu jalur bertitik di dalam dokumen.
-//
-// Mengembalikan nilai yang ditemukan dan penanda ADA-nya. Penandanya dipisah dari nilainya
-// karena "tidak ada" dan "ada tetapi kosong" adalah dua keadaan yang berbeda — yang pertama
-// menunjuk jalur yang salah, yang kedua menunjuk data yang belum diisi.
-func (d document) lookup(path string) (any, bool) {
-	if path == "" {
-		return nil, false
-	}
-
-	var current any = map[string]any(d)
-	for _, step := range strings.Split(path, ".") {
-		object, isObject := current.(map[string]any)
-		if !isObject {
-			return nil, false
-		}
-		next, exists := object[step]
-		if !exists {
-			return nil, false
-		}
-		current = next
-	}
-	return current, true
-}
+func parseDocument(raw string) (document, error) { return jsondoc.Parse(raw) }
 
 // text mengubah satu nilai JSON menjadi teks yang siap digambar.
 //
@@ -96,20 +45,7 @@ func (d document) lookup(path string) (any, bool) {
 // berisi struktur adalah tanda jalurnya salah, dan menumpahkan JSON mentah ke sel tabel hanya
 // memindahkan kebingungannya ke pengguna. Ketidakcocokan seperti itu terlihat pada penghitung
 // di Stats, bukan di layar.
-func text(value any) string {
-	switch typed := value.(type) {
-	case nil:
-		return ""
-	case string:
-		return typed
-	case json.Number:
-		return typed.String()
-	case bool:
-		return strconv.FormatBool(typed)
-	default:
-		return ""
-	}
-}
+func text(value any) string { return jsondoc.Text(value) }
 
 // rows mengubah satu nilai JSON menjadi daftar baris grid.
 //
@@ -118,42 +54,19 @@ func text(value any) string {
 // (`R-08`). Objek tunggal karena itu diperlakukan sebagai satu baris — bukan dibuang, karena
 // membuang satu-satunya baris membuat grid tampak kosong padahal berisi.
 func rows(value any, columns []inputacceptation.GridColumn) []inputacceptation.GridRow {
-	switch typed := value.(type) {
-	case []any:
-		result := make([]inputacceptation.GridRow, 0, len(typed))
-		for _, item := range typed {
-			if row, ok := rowOf(item, columns); ok {
-				result = append(result, row)
-			}
-		}
-		return result
-
-	case map[string]any:
-		if row, ok := rowOf(typed, columns); ok {
-			return []inputacceptation.GridRow{row}
-		}
-		return nil
-
-	default:
+	paths := make([]jsondoc.Column, len(columns))
+	for i, column := range columns {
+		paths[i] = jsondoc.Column{Key: column.Key, Path: column.Path}
+	}
+	found := jsondoc.Rows(value, paths)
+	if found == nil {
 		return nil
 	}
-}
-
-// rowOf mengubah satu elemen senarai menjadi satu baris grid.
-func rowOf(item any, columns []inputacceptation.GridColumn) (inputacceptation.GridRow, bool) {
-	object, isObject := item.(map[string]any)
-	if !isObject {
-		return nil, false
+	result := make([]inputacceptation.GridRow, len(found))
+	for i, row := range found {
+		result[i] = inputacceptation.GridRow(row)
 	}
-
-	row := make(inputacceptation.GridRow, len(columns))
-	for _, column := range columns {
-		if column.Path == "" {
-			continue
-		}
-		row[column.Key] = text(object[column.Path])
-	}
-	return row, true
+	return result
 }
 
 // Stats menghitung berapa isian dan grid yang jalurnya TIDAK ditemukan di dokumen.
@@ -193,7 +106,7 @@ func readDocument(doc document) (
 		if field.Blocked {
 			continue
 		}
-		value, exists := doc.lookup(field.Path)
+		value, exists := doc.Lookup(field.Path)
 		if !exists {
 			stats.FieldsMissing++
 			continue
@@ -207,7 +120,7 @@ func readDocument(doc document) (
 		if grid.Blocked {
 			continue
 		}
-		value, exists := doc.lookup(grid.Path)
+		value, exists := doc.Lookup(grid.Path)
 		if !exists {
 			stats.GridsMissing++
 			continue

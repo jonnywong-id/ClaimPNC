@@ -2,11 +2,10 @@ package daftardetailtipedokumenhttp
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"claim-pnc/internal/daftardetailtipedokumen"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini.
@@ -17,9 +16,9 @@ import (
 // keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth, dan
 // menambah kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
 //
-// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan sisanya
-// ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama sehingga
-// klien tidak menghadapi dua bentuk galat yang berbeda.
+// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan
+// sisanya ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama
+// sehingga klien tidak menghadapi dua bentuk galat yang berbeda.
 //
 // Nilainya sengaja SAMA PERSIS dengan modul Daftar Objek Dokumen dan Master COL Simas
 // Online, bukan dikarang sendiri: klien sudah mengenali ketiganya, dan kode galat baru
@@ -37,30 +36,14 @@ const (
 // JSONWriter menuliskan badan respons yang berhasil. Modul ini tidak membawa penulisnya
 // sendiri supaya seluruh modul menulis respons dengan cara yang sama, termasuk header
 // Cache-Control-nya.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
-	status, body, known := mapError(err)
-	if !known {
-		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan jaringan,
-		// galat portal, cacat pemrograman — diserahkan ke penulis bersama, yang menjawab
-		// dengan kode yang sudah dikenal frontend dan menaruh rinciannya di log saja.
-		// Rincian galat internal tidak pernah dikirim ke peramban.
-		h.writeError(w, r, err)
-		return
-	}
-
-	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
-			slog.String("jalur", r.URL.Path),
-			slog.String("galat", err.Error()),
-		)
-	}
-	h.writeResponse(w, r, status, body)
+	apierror.Write(w, r, err, mapError, h.Logger, h.WriteResponse, h.WriteError)
 }
 
 // mapError memetakan galat domain menjadi status dan badan respons.
@@ -83,10 +66,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		//
 		// SELURUH pelanggaran dikirim sekaligus, bukan yang pertama saja, meniru layar
 		// Pega yang menampilkan semua pesannya bersamaan.
-		detail := make([]ViolationDTO, 0, len(validationError.Violation))
-		for _, v := range validationError.Violation {
-			detail = append(detail, ViolationDTO{Field: v.Field, Message: v.Message})
-		}
+		detail := apierror.InputErrors(validationError.Violation)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFailed,
 			Message: "Ada isian yang belum benar. Periksa keterangan di bawah setiap isian.",

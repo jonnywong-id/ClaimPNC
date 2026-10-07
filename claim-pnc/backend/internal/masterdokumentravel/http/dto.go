@@ -36,8 +36,8 @@ type ListResponse struct {
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
-	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang
-	// melayani empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan.
+	// milik entitas yang dipilih pengguna, bukan entitas lain. Pada aplikasi yang melayani
+	// empat badan hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 

@@ -15,13 +15,19 @@ import (
 	"strings"
 
 	"claim-pnc/internal/mastersupplier"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "mastersupplier/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "mastersupplier/sqlstore", name) }
 
 // Repo membaca dan menulis M_SUPPLIER serta POOLDATA.PROTEKSI_KLAIMMBU, dan MEMBACA enam
 // objek acuan.
@@ -244,9 +250,9 @@ func (r *Repo) RequestApproval(ctx context.Context, request mastersupplier.Appro
 // urut SEBELAS digit bertambal nol — bukan sepuluh seperti Master Bengkel.
 //
 // Kedua kueri dijalankan di dalam SATU transaksi. Bukan demi keatomikan — sequence tidak
-// dapat dibatalkan — melainkan supaya keduanya pasti dilayani koneksi yang sama; kode situs
-// dan sequence yang berasal dari dua koneksi berbeda pada pool yang sama tetap benar,
-// tetapi jaminannya tidak berasal dari mana pun selain kebetulan.
+// dapat dibatalkan — melainkan supaya keduanya pasti dilayani koneksi yang sama; kode
+// situs dan sequence yang berasal dari dua koneksi berbeda pada pool yang sama tetap
+// benar, tetapi jaminannya tidak berasal dari mana pun selain kebetulan.
 func (r *Repo) NextID(ctx context.Context) (string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -458,13 +464,7 @@ func locked(ctx context.Context, tx *sql.Tx, name, value string) (bool, error) {
 // Karakter khas LIKE diloloskan lebih dulu supaya tanda persen yang diketik pengguna
 // dicari apa adanya, bukan berlaku sebagai wildcard. Pelolosnya `\`, dan ia disebut
 // eksplisit di setiap kueri lewat `ESCAPE '\'`.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
 type scanner interface {
 	Scan(target ...any) error
@@ -553,70 +553,4 @@ func scanRow(p scanner) (mastersupplier.Supplier, error) {
 		UpdatedBy: trim(updatedBy.String),
 		UpdatedAt: trim(updatedAt.String),
 	}, nil
-}
-
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("mastersupplier/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("mastersupplier/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("mastersupplier/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("mastersupplier/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(rows), marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(rows), marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }

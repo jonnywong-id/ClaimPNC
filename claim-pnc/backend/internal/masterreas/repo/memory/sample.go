@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterreas"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterreas"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi contoh untuk pengembangan tanpa Oracle.
 //
@@ -40,72 +50,14 @@ import "claim-pnc/internal/masterreas"
 // Lihat masterreas.FallbackType. Nilai selain `1` di sini — `2` dan `3` — dipilih sekadar
 // sebagai karakter yang berbeda; **artinya dalam bahasa bisnis tidak diketahui** (`R-16`),
 // dan contoh ini tidak berpura-pura mengetahuinya.
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Satu perusahaan, tiga jenis dokumen, tiga surel berbeda.
+// Berbagi LOGIN dengan RE-005; lihat catatan di atas.
+// COUNTRY kosong — bentuk baris yang lahir dari GetListDataLoginReas.
+// Tanpa baris cadangan: hanya TYPE "2".
+// Berbagi LOGIN dengan RE-002.
 func SampleList() []masterreas.Member {
-	return []masterreas.Member{
-		// Satu perusahaan, tiga jenis dokumen, tiga surel berbeda.
-		{
-			ReinsurerID:   "RE-001",
-			ReinsurerName: "Reasuransi Nusantara Jaya",
-			Login:         "ReasuransiNusantaraJaya",
-			Email:         "pla.nusantara@contoh.invalid",
-			Country:       "Indonesia",
-			Type:          "1",
-		},
-		{
-			ReinsurerID:   "RE-001",
-			ReinsurerName: "Reasuransi Nusantara Jaya",
-			Login:         "ReasuransiNusantaraJaya",
-			Email:         "dla.nusantara@contoh.invalid",
-			Country:       "Indonesia",
-			Type:          "2",
-		},
-		{
-			ReinsurerID:   "RE-001",
-			ReinsurerName: "Reasuransi Nusantara Jaya",
-			Login:         "ReasuransiNusantaraJaya",
-			Email:         "xol.nusantara@contoh.invalid",
-			Country:       "Indonesia",
-			Type:          "3",
-		},
-
-		// Berbagi LOGIN dengan RE-005; lihat catatan di atas.
-		{
-			ReinsurerID:   "RE-002",
-			ReinsurerName: "Andalas Re",
-			Login:         "AndalasRe",
-			Email:         "klaim.andalas@contoh.invalid",
-			Country:       "Indonesia",
-			Type:          "1",
-		},
-
-		// COUNTRY kosong — bentuk baris yang lahir dari GetListDataLoginReas.
-		{
-			ReinsurerID:   "RE-003",
-			ReinsurerName: "Bahtera Reinsurance Ltd",
-			Login:         "BahteraReinsuranceLtd",
-			Email:         "notice.bahtera@contoh.invalid",
-			Country:       "",
-			Type:          "1",
-		},
-
-		// Tanpa baris cadangan: hanya TYPE "2".
-		{
-			ReinsurerID:   "RE-004",
-			ReinsurerName: "Cakrawala Re Asia",
-			Login:         "CakrawalaReAsia",
-			Email:         "dla.cakrawala@contoh.invalid",
-			Country:       "Singapura",
-			Type:          "2",
-		},
-
-		// Berbagi LOGIN dengan RE-002.
-		{
-			ReinsurerID:   "RE-005",
-			ReinsurerName: "Andalas Re Syariah",
-			Login:         "AndalasRe",
-			Email:         "syariah.andalas@contoh.invalid",
-			Country:       "Indonesia",
-			Type:          "1",
-		},
-	}
+	return sampledata.Must[[]masterreas.Member](sampleJSON, "SampleList")
 }

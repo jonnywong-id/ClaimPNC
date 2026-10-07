@@ -86,7 +86,7 @@ func TestNewHandlerRejectsIncompleteOptions(t *testing.T) {
 	require.ErrorContains(t, err, "Service wajib diisi")
 
 	d := newDirectHandler(t)
-	_, err = NewHandler(Options{Service: d.handler.service})
+	_, err = NewHandler(Options{Service: d.handler.Service})
 	require.ErrorContains(t, err, "WriteResponse dan WriteError wajib diisi")
 }
 

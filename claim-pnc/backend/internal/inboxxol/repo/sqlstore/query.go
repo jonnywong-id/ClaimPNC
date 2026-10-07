@@ -24,26 +24,19 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"claim-pnc/internal/platform/sqlfile"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // queries memuat seluruh pernyataan SQL, dikunci dengan namanya.
-var queries = loadQueries()
+var queries = sqlfile.MustLoad(queryFiles, "inboxxol/sqlstore")
 
-// query mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
-// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
-// saat pertama dijalankan — bukan galat runtime yang menunggu pengguna menemukannya.
-func query(name string) string {
-	text, exists := queries[name]
-	if !exists {
-		panic(fmt.Sprintf("inboxxol/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
+// query mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func query(name string) string { return sqlfile.MustGet(queries, "inboxxol/sqlstore", name) }
 
 // idsMarker adalah penanda di berkas .sql yang digantikan deretan placeholder.
 const idsMarker = "/*:ids*/"
@@ -83,65 +76,4 @@ func expandIDs(name string, leading []any, ids []string) (string, []any, error) 
 	}
 
 	return strings.Replace(text, idsMarker, strings.Join(placeholders, ", "), 1), arguments, nil
-}
-
-// loadQueries membaca setiap berkas .sql dan memecahnya pada penanda
-// "-- name: <nama>", sehingga satu berkas dapat memuat beberapa pernyataan dan tetap
-// terbaca sebagai satu kesatuan saat di-review.
-func loadQueries() map[string]string {
-	result := map[string]string{}
-	entries, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("inboxxol/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, entry := range entries {
-		content, err := queryFiles.ReadFile(entry.Name())
-		if err != nil {
-			panic("inboxxol/sqlstore: tidak dapat membaca " + entry.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("inboxxol/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memisahkan isi berkas menjadi pernyataan bernama, membuang baris komentar
-// supaya yang dikirim ke basis data hanyalah SQL-nya.
-//
-// Komentar `/*:ids*/` TIDAK ikut dibuang: ia bukan komentar penjelas melainkan penanda
-// yang harus sampai ke expandIDs. Yang dibuang hanyalah baris yang DIMULAI dengan `--`.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	flush := func() {
-		if name != "" {
-			if text := strings.TrimSpace(strings.Join(body, "\n")); text != "" {
-				result[name] = text
-			}
-		}
-	}
-	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, marker) {
-			flush()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		if name == "" || strings.HasPrefix(trimmed, "--") {
-			// Komentar kepala berkas dan komentar penjelas tiap kueri tidak ikut
-			// dikirim: yang dibaca DBA adalah berkasnya, bukan jejak di basis data.
-			continue
-		}
-		body = append(body, line)
-	}
-	flush()
-	return result
 }

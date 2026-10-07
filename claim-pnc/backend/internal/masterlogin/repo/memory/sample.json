@@ -1,0 +1,58 @@
+{
+  "SampleList": [
+    {
+      "Name": "Budi Hartono",
+      "Login": "BudiHartono",
+      "Email": "budi.hartono@contoh.invalid",
+      "Phone": "021-5550101",
+      "Address": "Jl. Melati Raya No. 12, Jakarta Selatan",
+      "LoginStatus": "Member",
+      "LeaderLogin": ""
+    },
+    {
+      "Name": "Rina Ayu Lestari",
+      "Login": "RinaAyuLestari",
+      "Email": "rina.lestari@contoh.invalid",
+      "Phone": "021-5550102",
+      "Address": "Jl. Kenanga No. 7, Jakarta Pusat",
+      "LoginStatus": "Member",
+      "LeaderLogin": "BudiHartono"
+    },
+    {
+      "Name": "Siti Nur-Halimah",
+      "Login": "SitiNurHalimah",
+      "Email": "siti.halimah@contoh.invalid",
+      "Phone": "0811-5550103",
+      "Address": "Jl. Anggrek No. 3, Bandung",
+      "LoginStatus": "Member",
+      "LeaderLogin": "BudiHartono"
+    },
+    {
+      "Name": "Agus Pratama",
+      "Login": "AgusPratama",
+      "Email": "agus.pratama@contoh.invalid",
+      "Phone": "0812-5550104",
+      "Address": "",
+      "LoginStatus": "Member",
+      "LeaderLogin": "BudiHartono"
+    },
+    {
+      "Name": "Dewi Kartika",
+      "Login": "DewiKartika",
+      "Email": "dewi.kartika@contoh.invalid",
+      "Phone": "0813-5550105",
+      "Address": "Jl. Cendana No. 21, Surabaya",
+      "LoginStatus": "Member",
+      "LeaderLogin": ""
+    },
+    {
+      "Name": "Eko Nugroho",
+      "Login": "EkoNugroho",
+      "Email": "eko.nugroho@contoh.invalid",
+      "Phone": "0814-5550106",
+      "Address": "Jl. Diponegoro No. 45, Semarang",
+      "LoginStatus": "Member",
+      "LeaderLogin": "DewiKartika"
+    }
+  ]
+}

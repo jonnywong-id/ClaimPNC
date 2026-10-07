@@ -56,7 +56,7 @@ SELECT a.claimid              AS "CaseID",
    AND CAST(a.transfer_cashier_date AS DATE) >= :1
    AND CAST(a.transfer_cashier_date AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND b.group_panel = '002')
      OR (:3 = '005' AND b.group_panel = '005')
      OR (:3 = '346' AND b.group_panel IN ('003','004','006','009'))
@@ -87,7 +87,7 @@ SELECT a.claimid              AS "CaseID",
    AND CAST(a.transfer_cashier_date AS DATE) >= :1
    AND CAST(a.transfer_cashier_date AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND b.group_panel = '002')
      OR (:3 = '005' AND b.group_panel = '005')
      OR (:3 = '346' AND b.group_panel IN ('003','004','006','009'))
@@ -134,7 +134,7 @@ SELECT b.nopolis    AS "PolicyNo",
    AND CAST(b.registerdate AS DATE) >= :1
    AND CAST(b.registerdate AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND b.grouppanel = '002')
      OR (:3 = '005' AND b.grouppanel = '005')
      OR (:3 = '346' AND b.grouppanel IN ('003','004','006','009')
@@ -490,7 +490,7 @@ SELECT a.claimno      AS "CaseID",
    AND CAST(a.closeclaimdate AS DATE) >= :1
    AND CAST(a.closeclaimdate AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND a.grouppanel = '002')
      OR (:3 = '005' AND a.grouppanel = '005')
      OR (:3 = '346' AND a.grouppanel IN ('003','004','006','009')

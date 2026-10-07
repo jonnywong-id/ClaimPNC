@@ -1,6 +1,10 @@
 package inputacceptation
 
-import "errors"
+import (
+	"errors"
+
+	"claim-pnc/internal/platform/validation"
+)
 
 // Nama isian yang dapat dilanggar, dipakai menandai pelanggaran pada isian yang benar.
 const (
@@ -40,13 +44,10 @@ var (
 )
 
 // Violation adalah satu pelanggaran pada satu isian.
-type Violation struct {
-	// Field adalah nama isian yang dilanggar, memakai nama pada kontrak API.
-	Field string
-
-	// Message adalah kalimat yang dapat langsung ditampilkan ke pengguna.
-	Message string
-}
+//
+// Field adalah nama isian yang dilanggar, memakai nama pada kontrak API.
+// Message adalah kalimat yang dapat langsung ditampilkan ke pengguna.
+type Violation = validation.Violation
 
 // ValidationError mengumpulkan SELURUH pelanggaran sekaligus.
 //

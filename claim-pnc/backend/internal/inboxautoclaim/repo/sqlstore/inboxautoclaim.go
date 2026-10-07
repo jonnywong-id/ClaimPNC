@@ -15,13 +15,18 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/platform/sqlfile"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "inboxautoclaim/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string { return sqlfile.MustGet(query, "inboxautoclaim/sqlstore", name) }
 
 // dateLayout adalah bentuk tanggal yang dipakai seluruh layar dan berkas modul ini.
 //
@@ -858,72 +863,6 @@ func getQueryFor(source inboxautoclaim.Source, name string) string {
 		panic(fmt.Sprintf("inboxautoclaim/sqlstore: kueri %q tidak ada untuk tab %q", name, source))
 	}
 	return text
-}
-
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf("inboxautoclaim/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("inboxautoclaim/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("inboxautoclaim/sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("inboxautoclaim/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris
-// komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, line := range body {
-			if strings.HasPrefix(strings.TrimSpace(line), "--") {
-				continue
-			}
-			statement = append(statement, line)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, line := range strings.Split(content, "\n") {
-		if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, line)
-	}
-	save()
-	return result
 }
 
 // Jaminan waktu kompilasi bahwa seluruh seam terpenuhi.

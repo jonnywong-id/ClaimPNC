@@ -3,6 +3,7 @@ package daftartipedokumenhttp
 import (
 	"github.com/go-chi/chi/v5"
 
+	"claim-pnc/internal/platform/crudhttp"
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -41,27 +42,18 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 //
 // # Kewenangan
 //
-// Rutenya TERLINDUNGI sesi dan portal, tetapi BELUM diperiksa perannya. Penegakan "apakah
-// peran pemanggil memiliki menu Master Data" adalah TKT-F3-005, yang bergantung pada tabel
-// peran TKT-F3-004 — dan tabel itu dapat dibangun tetapi belum dapat diisi, karena
-// penugasan operator ke peran tidak ada di basis data maupun di export (`11-SECURITY.md`
-// §3.1). Keadaan ini sama dengan seluruh rute lain yang sudah ada hari ini, dan dicatat
-// terbuka di docs/keputusan-implementasi.md.
+// Rutenya TERLINDUNGI sesi dan portal, tetapi BELUM diperiksa perannya. Penegakan
+// "apakah peran pemanggil memiliki menu Master Data" adalah TKT-F3-005, yang bergantung
+// pada tabel peran TKT-F3-004 — dan tabel itu dapat dibangun tetapi belum dapat diisi,
+// karena penugasan operator ke peran tidak ada di basis data maupun di export
+// (`11-SECURITY.md` §3.1). Keadaan ini sama dengan seluruh rute lain yang sudah ada hari
+// ini, dan dicatat terbuka di docs/keputusan-implementasi.md.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Route("/master/tipe-dokumen", func(master chi.Router) {
-			master.Get("/", h.List)
-			master.Post("/", h.Create)
-			master.Get("/{id}", h.Get)
-			master.Put("/{id}", h.Update)
-		})
-	})
+	crudhttp.Mount(r, portalDeps, "/master/tipe-dokumen", "id", h)
 }

@@ -16,10 +16,3 @@ func TestValidationErrorMessageListsEveryViolation(t *testing.T) {
 		"mastercolsimasonline: isian tidak sah (nama: terlalu panjang; bisnis: juga terlalu panjang)",
 		err.Error())
 }
-
-// itoa menuliskan nol sebagai "0", bukan teks kosong.
-func TestItoaWritesZeroAndMultiDigitNumbers(t *testing.T) {
-	require.Equal(t, "0", itoa(0))
-	require.Equal(t, "100", itoa(100))
-	require.Equal(t, "7", itoa(7))
-}

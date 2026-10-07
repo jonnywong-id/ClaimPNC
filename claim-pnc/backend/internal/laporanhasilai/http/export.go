@@ -2,14 +2,11 @@ package laporanhasilaihttp
 
 import (
 	"encoding/csv"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"claim-pnc/internal/laporanhasilai"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/csvexport"
 )
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan.
@@ -118,44 +115,20 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 
 	h.beginDownload(w, exportFilename(filter))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(exportHeader); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
-	written := 0
-	current := first
-	for {
-		for _, row := range current.Rows {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(exportHeader), current.Total))
-				return
-			}
-			if err := writer.Write(exportRow(row)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Total || len(current.Rows) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.ListForExport(r.Context(), active.Alias, filter, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+	csvexport.Paged[laporanhasilai.Row]{
+		Header: exportHeader,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(row laporanhasilai.Row) []string {
+			return exportRow(row)
+		},
+		Next: func(n int) ([]laporanhasilai.Row, int, error) {
+			page.Page = n
+			next, err := h.service.ListForExport(r.Context(), active.Alias, filter, page)
+			return next.Rows, next.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Rows, first.Total)
 }
 
 // exportRow menyusun satu baris berkas, pada urutan exportHeader.
@@ -188,22 +161,16 @@ func csvDate(value time.Time) string {
 
 // beginDownload memasang header unduhan.
 func (h *Handler) beginDownload(w http.ResponseWriter, filename string) {
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	w.Header().Set("Cache-Control", "no-store")
+	csvexport.BeginDownload(w, filename)
 }
 
 // flush mendorong isi yang sudah tertulis keluar setiap potong, bukan menahannya sampai
 // akhir. Itulah yang membuat unduhan besar mulai mengalir segera dan memori tidak
 // menumpuk.
 func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Request) bool {
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+	if err := csvexport.Flush(w, writer); err != nil {
 		h.logExportFailure(r, err)
 		return false
-	}
-	if flusher, able := w.(http.Flusher); able {
-		flusher.Flush()
 	}
 	return true
 }
@@ -225,15 +192,7 @@ func exportFilename(filter laporanhasilai.Filter) string {
 
 // truncationNotice menyusun baris penanda bahwa berkasnya tidak lengkap.
 func truncationNotice(width, total int) []string {
-	notice := make([]string, width)
-	if width == 0 {
-		return notice
-	}
-	notice[0] = fmt.Sprintf(
-		"-- Terpotong pada %s baris dari %s yang cocok. Persempit rentang tanggalnya. --",
-		strconv.Itoa(exportLimit), strconv.Itoa(total),
-	)
-	return notice
+	return csvexport.TruncationNotice(width, exportLimit, total, " Persempit rentang tanggalnya.")
 }
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
@@ -243,8 +202,5 @@ func truncationNotice(width, total int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor Laporan Hasil AI terputus",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", err.Error()),
-	)
+	csvexport.LogFailure(r, h.logger, "ekspor Laporan Hasil AI terputus", err)
 }

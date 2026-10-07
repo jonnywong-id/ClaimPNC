@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/masterpenolakan"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Kode galat modul ini.
@@ -15,9 +16,9 @@ import (
 // keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth, dan
 // menambah kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
 //
-// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan sisanya
-// ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama sehingga
-// klien tidak menghadapi dua bentuk galat yang berbeda.
+// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan
+// sisanya ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama
+// sehingga klien tidak menghadapi dua bentuk galat yang berbeda.
 //
 // Begitu TKT-F1-004 diputuskan, pemetaan ini pindah ke tempat bersama dan berkas ini
 // tinggal memakainya. Utang itu dicatat di docs/keputusan-implementasi.md.
@@ -28,10 +29,10 @@ const (
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
-type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+type ErrorWriter = apierror.ErrorWriter
 
 // JSONWriter menuliskan badan respons yang berhasil.
-type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+type JSONWriter = apierror.JSONWriter
 
 // mapError memetakan galat domain menjadi status dan badan respons.
 //
@@ -54,10 +55,7 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// berarti pengguna perlu memperbaiki isiannya (`10-API-STRATEGY.md` §5).
 		//
 		// SELURUH pelanggaran dikirim sekaligus, bukan yang pertama saja.
-		detail := make([]ViolationDTO, 0, len(validationError.Violation))
-		for _, violation := range validationError.Violation {
-			detail = append(detail, ViolationDTO{Field: violation.Field, Message: violation.Message})
-		}
+		detail := apierror.ColumnErrors(validationError.Violation)
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFailed,
 			Message: "Ada isian yang belum benar. Periksa keterangan di bawah setiap isian.",

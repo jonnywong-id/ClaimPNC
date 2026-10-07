@@ -16,6 +16,7 @@ import (
 	"fmt"
 
 	"claim-pnc/internal/inboxrcl"
+	"claim-pnc/internal/platform/tabletext"
 )
 
 // Service melayani modul Inbox RCL.
@@ -51,17 +52,14 @@ type Column struct {
 // Urutannya mengikuti kelima sel berkepala pada `Section/InboxRCLDokter_Section-Section.xml`:
 // `.pyID` (tautan) · `.Policy.PolicyNo` · `.Policy.QQName` · `.ClaimData.TanggalAnalystSendRCL`
 // · `.ClaimData.PUCLStatus.KomentarAnalisator`.
-var columns = []Column{
-	{Key: "nomor_case", Title: "Nomor Case"},
-	{Key: "nomor_polis", Title: "No Polis"},
-	{Key: "nama_tertanggung", Title: "Nama Tertanggung"},
-	{
-		Key:   "tanggal_masuk_inbox",
-		Title: "Tanggal Masuk Inbox",
-		Note:  "Waktu analis mengirim klaim ke dokter RCL.",
-	},
-	{Key: "deskripsi_analyst", Title: "Deskripsi Analyst"},
-}
+var columns = tabletext.Rows[Column](`
+	Key                 | Title               | Note
+	nomor_case          | Nomor Case          |
+	nomor_polis         | No Polis            |
+	nama_tertanggung    | Nama Tertanggung    |
+	tanggal_masuk_inbox | Tanggal Masuk Inbox | Waktu analis mengirim klaim ke dokter RCL.
+	deskripsi_analyst   | Deskripsi Analyst   |
+`)
 
 // Columns menyerahkan salinan daftar kolom.
 func Columns() []Column {

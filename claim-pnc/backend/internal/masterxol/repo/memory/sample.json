@@ -1,0 +1,260 @@
+{
+  "SampleMaster": [
+    {
+      "ID": "10001",
+      "Name": "Section 1",
+      "Year": "2018",
+      "ExchangeRate": 13500,
+      "Type": "1",
+      "RemarkPIC": "Revisi",
+      "PIC": "MARIATRIELSA",
+      "CommitteeStatus": "0",
+      "Committee": "NOVERHALOMOAN",
+      "RemarkCommittee": "ok",
+      "Business": [
+        {
+          "ID": "10004",
+          "Name": "MOTOR VEHICLE"
+        },
+        {
+          "ID": "10009",
+          "Name": "ENGINEERING"
+        },
+        {
+          "ID": "10013",
+          "Name": "FIRE"
+        },
+        {
+          "ID": "10033",
+          "Name": "AVIATION HULL"
+        }
+      ],
+      "Layer": [
+        {
+          "ID": "10001",
+          "Name": "Sub Layer",
+          "Limit": 1095000,
+          "Excess": 1155000,
+          "ConvertedLimit": 0,
+          "Reinsurer": [
+            {
+              "ID": "10036309",
+              "Name": "REASURANSI NASIONAL INDONESIA",
+              "Share": 5
+            },
+            {
+              "ID": "10036322",
+              "Name": "SWISS RE",
+              "Share": 75
+            },
+            {
+              "ID": "10036329",
+              "Name": "TUGU REASURANSI INDONESIA",
+              "Share": 4
+            },
+            {
+              "ID": "10038311",
+              "Name": "REASURANSI INDONESIA UTAMA",
+              "Share": 10
+            },
+            {
+              "ID": "10038851",
+              "Name": "MASKAPAI REASURANSI INDONESIA",
+              "Share": 2
+            },
+            {
+              "ID": "10043934",
+              "Name": "REASURANSI NUSANTARA MAKMUR",
+              "Share": 4
+            }
+          ]
+        },
+        {
+          "ID": "10002",
+          "Name": "Layer 1",
+          "Limit": 2750000,
+          "Excess": 2250000,
+          "ConvertedLimit": 0,
+          "Reinsurer": [
+            {
+              "ID": "10050067",
+              "Name": "SIMAS REINSURANCE BROKERS",
+              "Share": 25
+            },
+            {
+              "ID": "10051584",
+              "Name": "WILLIS INSURANCE BROKERS CO. LTD",
+              "Share": 75
+            }
+          ]
+        },
+        {
+          "ID": "10003",
+          "Name": "Layer 2",
+          "Limit": 5000000,
+          "Excess": 5000000,
+          "ConvertedLimit": 0,
+          "Reinsurer": [
+            {
+              "ID": "10050067",
+              "Name": "SIMAS REINSURANCE BROKERS",
+              "Share": 25
+            },
+            {
+              "ID": "10051584",
+              "Name": "WILLIS INSURANCE BROKERS CO. LTD",
+              "Share": 75
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "10002",
+      "Name": "Section 1",
+      "Year": "2017",
+      "ExchangeRate": 14500,
+      "Type": "",
+      "RemarkPIC": "",
+      "PIC": "",
+      "CommitteeStatus": "",
+      "Committee": "",
+      "RemarkCommittee": "",
+      "Business": [
+        {
+          "ID": "10009",
+          "Name": "ENGINEERING"
+        },
+        {
+          "ID": "10012",
+          "Name": "MOTOR CYCLE"
+        },
+        {
+          "ID": "10013",
+          "Name": "FIRE"
+        },
+        {
+          "ID": "11111",
+          "Name": "TREATY INWARD"
+        }
+      ],
+      "Layer": [
+        {
+          "ID": "10004",
+          "Name": "Sub Layer",
+          "Limit": 1095000,
+          "Excess": 1155000,
+          "ConvertedLimit": 0,
+          "Reinsurer": null
+        },
+        {
+          "ID": "10005",
+          "Name": "Main Layer",
+          "Limit": 2750000,
+          "Excess": 2250000,
+          "ConvertedLimit": 0,
+          "Reinsurer": [
+            {
+              "ID": "10038290",
+              "Name": "SIMAS REINSURANCE BROKER",
+              "Share": 25
+            },
+            {
+              "ID": "10036359",
+              "Name": "WILLIS LIMITED",
+              "Share": 75
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "10004",
+      "Name": "TESTING",
+      "Year": "2022",
+      "ExchangeRate": 14000,
+      "Type": "",
+      "RemarkPIC": "Pengajuan Master XOL",
+      "PIC": "NOVERHALOMOAN",
+      "CommitteeStatus": "1",
+      "Committee": "NOVERHALOMOAN",
+      "RemarkCommittee": "ok",
+      "Business": [
+        {
+          "ID": "10012",
+          "Name": "MOTOR CYCLE"
+        },
+        {
+          "ID": "10013",
+          "Name": "FIRE"
+        }
+      ],
+      "Layer": [
+        {
+          "ID": "10011",
+          "Name": "Layer 1",
+          "Limit": 1000000,
+          "Excess": 20000000,
+          "ConvertedLimit": 0,
+          "Reinsurer": [
+            {
+              "ID": "10038693",
+              "Name": "AON REINSURANCE BROKERS INDONESIA",
+              "Share": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "10008",
+      "Name": "Section 6",
+      "Year": "2016",
+      "ExchangeRate": 14000,
+      "Type": "1",
+      "RemarkPIC": "baru",
+      "PIC": "MARIATRIELSA",
+      "CommitteeStatus": "0",
+      "Committee": "",
+      "RemarkCommittee": "",
+      "Business": [
+        {
+          "ID": "10006",
+          "Name": "PA"
+        },
+        {
+          "ID": "10012",
+          "Name": "MOTOR CYCLE"
+        }
+      ],
+      "Layer": [
+        {
+          "ID": "10017",
+          "Name": "",
+          "Limit": 0,
+          "Excess": 0,
+          "ConvertedLimit": 0,
+          "Reinsurer": null
+        }
+      ]
+    }
+  ],
+  "SampleYear": [
+    "2030",
+    "2029",
+    "2028",
+    "2027",
+    "2026",
+    "2025",
+    "2024",
+    "2023",
+    "2022",
+    "2021",
+    "2020",
+    "2019",
+    "2018",
+    "2017",
+    "2016",
+    "2015"
+  ]
+}

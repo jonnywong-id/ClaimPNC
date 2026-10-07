@@ -1,8 +1,8 @@
 // Package memory adalah pengisi seam inboxlaporanklaim.Repo yang hidup di dalam memori.
 //
-// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang
-// membuat seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan
-// tanpa Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
+// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang membuat
+// seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan tanpa
+// Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
 //
 // # Yang ditiru bukan hanya bentuk datanya
 //

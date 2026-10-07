@@ -10,9 +10,9 @@ import (
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang
-// merakit urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // Tuntutan itu lebih keras di layar ini daripada di modul inbox lain: batas datanya
 // DITURUNKAN dari login pemanggil, sehingga rute yang lolos tanpa sesi bukan sekadar
@@ -52,9 +52,9 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))

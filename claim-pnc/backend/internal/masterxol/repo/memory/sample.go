@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterxol"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterxol"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleMaster adalah contoh isi Master XOL yang MENIRU BENTUK data produksi.
 //
@@ -26,121 +36,14 @@ import "claim-pnc/internal/masterxol"
 // Tidak ada data nasabah di tabel ini — isinya struktur treaty dan nama perusahaan
 // reasuransi, bukan nomor polis maupun nama tertanggung (`D-69`). Nama induk pun berupa
 // label teknis seperti "Section 1".
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// TYPEXOL kosong, dan lapisannya tanpa satu pun reasuradur — keanehan 2 dan 4.
+// Nomor 10003 sengaja dilewati — keanehan 1.
+// Lapisan tanpa nama, limit, dan excess — keanehan 3.
 func SampleMaster() []masterxol.Master {
-	return []masterxol.Master{
-		{
-			ID:              "10001",
-			Name:            "Section 1",
-			Year:            "2018",
-			ExchangeRate:    13500,
-			Type:            masterxol.TypeProperty,
-			PIC:             "MARIATRIELSA",
-			CommitteeStatus: masterxol.CommitteePending,
-			Committee:       "NOVERHALOMOAN",
-			RemarkPIC:       "Revisi",
-			RemarkCommittee: "ok",
-			Business: []masterxol.Business{
-				{ID: "10004", Name: "MOTOR VEHICLE"},
-				{ID: "10009", Name: "ENGINEERING"},
-				{ID: "10013", Name: "FIRE"},
-				{ID: "10033", Name: "AVIATION HULL"},
-			},
-			Layer: []masterxol.Layer{
-				{
-					ID: "10001", Name: "Sub Layer", Limit: 1095000, Excess: 1155000,
-					Reinsurer: []masterxol.Reinsurer{
-						{ID: "10036309", Name: "REASURANSI NASIONAL INDONESIA", Share: 5},
-						{ID: "10036322", Name: "SWISS RE", Share: 75},
-						{ID: "10036329", Name: "TUGU REASURANSI INDONESIA", Share: 4},
-						{ID: "10038311", Name: "REASURANSI INDONESIA UTAMA", Share: 10},
-						{ID: "10038851", Name: "MASKAPAI REASURANSI INDONESIA", Share: 2},
-						{ID: "10043934", Name: "REASURANSI NUSANTARA MAKMUR", Share: 4},
-					},
-				},
-				{
-					ID: "10002", Name: "Layer 1", Limit: 2750000, Excess: 2250000,
-					Reinsurer: []masterxol.Reinsurer{
-						{ID: "10050067", Name: "SIMAS REINSURANCE BROKERS", Share: 25},
-						{ID: "10051584", Name: "WILLIS INSURANCE BROKERS CO. LTD", Share: 75},
-					},
-				},
-				{
-					ID: "10003", Name: "Layer 2", Limit: 5000000, Excess: 5000000,
-					Reinsurer: []masterxol.Reinsurer{
-						{ID: "10050067", Name: "SIMAS REINSURANCE BROKERS", Share: 25},
-						{ID: "10051584", Name: "WILLIS INSURANCE BROKERS CO. LTD", Share: 75},
-					},
-				},
-			},
-		},
-		{
-			// TYPEXOL kosong, dan lapisannya tanpa satu pun reasuradur — keanehan 2 dan 4.
-			ID:           "10002",
-			Name:         "Section 1",
-			Year:         "2017",
-			ExchangeRate: 14500,
-			Type:         masterxol.TypeUnknown,
-			Business: []masterxol.Business{
-				{ID: "10009", Name: "ENGINEERING"},
-				{ID: "10012", Name: "MOTOR CYCLE"},
-				{ID: "10013", Name: "FIRE"},
-				{ID: "11111", Name: masterxol.TreatyInwardName},
-			},
-			Layer: []masterxol.Layer{
-				{ID: "10004", Name: "Sub Layer", Limit: 1095000, Excess: 1155000},
-				{
-					ID: "10005", Name: "Main Layer", Limit: 2750000, Excess: 2250000,
-					Reinsurer: []masterxol.Reinsurer{
-						{ID: "10038290", Name: "SIMAS REINSURANCE BROKER", Share: 25},
-						{ID: "10036359", Name: "WILLIS LIMITED", Share: 75},
-					},
-				},
-			},
-		},
-		{
-			// Nomor 10003 sengaja dilewati — keanehan 1.
-			ID:              "10004",
-			Name:            "TESTING",
-			Year:            "2022",
-			ExchangeRate:    14000,
-			Type:            masterxol.TypeUnknown,
-			PIC:             "NOVERHALOMOAN",
-			CommitteeStatus: masterxol.CommitteeApproved,
-			Committee:       "NOVERHALOMOAN",
-			RemarkPIC:       "Pengajuan Master XOL",
-			RemarkCommittee: "ok",
-			Business: []masterxol.Business{
-				{ID: "10012", Name: "MOTOR CYCLE"},
-				{ID: "10013", Name: "FIRE"},
-			},
-			Layer: []masterxol.Layer{
-				{
-					ID: "10011", Name: "Layer 1", Limit: 1000000, Excess: 20000000,
-					Reinsurer: []masterxol.Reinsurer{
-						{ID: "10038693", Name: "AON REINSURANCE BROKERS INDONESIA", Share: 100},
-					},
-				},
-			},
-		},
-		{
-			// Lapisan tanpa nama, limit, dan excess — keanehan 3.
-			ID:              "10008",
-			Name:            "Section 6",
-			Year:            "2016",
-			ExchangeRate:    14000,
-			Type:            masterxol.TypeProperty,
-			PIC:             "MARIATRIELSA",
-			CommitteeStatus: masterxol.CommitteePending,
-			RemarkPIC:       "baru",
-			Business: []masterxol.Business{
-				{ID: "10006", Name: "PA"},
-				{ID: "10012", Name: "MOTOR CYCLE"},
-			},
-			Layer: []masterxol.Layer{
-				{ID: "10017"},
-			},
-		},
-	}
+	return sampledata.Must[[]masterxol.Master](sampleJSON, "SampleMaster")
 }
 
 // SampleYear meniru isi POOLDATA.M_TREATYYEAR yang dipakai dropdown Tahun.
@@ -149,12 +52,7 @@ func SampleMaster() []masterxol.Master {
 // pendek tetapi mencakup seluruh tahun yang benar-benar dipakai SampleMaster, supaya
 // dropdown di layar pengembangan tidak pernah menampilkan tahun yang tidak ada
 // pilihannya.
-func SampleYear() []string {
-	return []string{
-		"2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023",
-		"2022", "2021", "2020", "2019", "2018", "2017", "2016", "2015",
-	}
-}
+func SampleYear() []string { return sampledata.Must[[]string](sampleJSON, "SampleYear") }
 
 // sampleBusinessGroup meniru pilihan grup bisnis beserta nama grup treaty induknya.
 //

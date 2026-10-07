@@ -1,71 +1,15 @@
 package inboxpladlahttp
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"claim-pnc/internal/inboxpladla"
-	"claim-pnc/internal/inboxpladla/usecase"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: jembatan di antara keduanya dipasang
-// cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Ia dicocokkan ke `POOLDATA.T_REINSURER.LOGIN`. Memakai NIK di sini akan membuat
-	// layar kosong bagi SETIAP reasuradur — dan kosongnya tidak dapat dibedakan dari
-	// "belum ada pekerjaan".
-	Login string
-
-	// Name adalah nama yang dibaca manusia.
-	//
-	// Ia tidak menyaring apa pun; satu-satunya pemakainya adalah kolom nama pembalas pada
-	// balasan komunikasi. Boleh kosong.
-	Name string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox PLA DLA.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service   *usecase.Service
-	GetCaller CallerReader
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox PLA DLA.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-pla-dla/daftar.
 //
@@ -75,12 +19,12 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK,
-		toMetadataResponse(h.service.Metadata(), active.Alias))
+	h.WriteJSON(w, r, http.StatusOK,
+		toMetadataResponse(h.Service.Metadata(), active.Alias))
 }
 
 // List menangani GET /api/inbox-pla-dla.
@@ -92,7 +36,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	listed, err := h.service.List(
+	listed, err := h.Service.List(
 		r.Context(),
 		active.Alias,
 		caller,
@@ -103,11 +47,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
 }
 
 // Counts menangani GET /api/inbox-pla-dla/ringkas.
@@ -121,13 +65,13 @@ func (h *Handler) Counts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	counts, err := h.service.Counts(r.Context(), active.Alias, caller, readFilter(r))
+	counts, err := h.Service.Counts(r.Context(), active.Alias, caller, readFilter(r))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toCountsResponse(counts, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toCountsResponse(counts, active.Alias))
 }
 
 // XOL menangani GET /api/inbox-pla-dla/xol.
@@ -142,13 +86,13 @@ func (h *Handler) XOL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := h.service.XOL(r.Context(), active.Alias, caller)
+	rows, err := h.Service.XOL(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toXOLResponse(rows, active.Alias))
+	h.WriteJSON(w, r, http.StatusOK, toXOLResponse(rows, active.Alias))
 }
 
 // RejectWrite menjawab tombol yang belum tersedia.
@@ -162,14 +106,14 @@ func (h *Handler) XOL(w http.ResponseWriter, r *http.Request) {
 // "Download ALL DLA" membaca penjelasan tentang PLA.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return
 	}
 
 	action := strings.TrimSpace(r.URL.Query().Get("tindakan"))
 
-	if h.logger != nil {
-		h.logger.Info(
+	if h.Logger != nil {
+		h.Logger.Info(
 			"tindakan diminta pada tombol yang belum dibangun",
 			slog.String("modul", "inbox-pla-dla"),
 			slog.String("jalur", r.URL.Path),
@@ -177,7 +121,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	h.writeError(w, r, h.service.RejectAction(action))
+	h.WriteError(w, r, h.Service.RejectAction(action))
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -188,13 +132,13 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 ) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return portal.Portal{}, inboxpladla.Caller{}, false
 	}
 
 	caller, known := h.readCaller(r)
 	if !known {
-		h.writeError(w, r, inboxpladla.ErrCallerUnknown)
+		h.WriteError(w, r, inboxpladla.ErrCallerUnknown)
 		return portal.Portal{}, inboxpladla.Caller{}, false
 	}
 
@@ -203,10 +147,10 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 
 // readCaller membaca identitas pemanggil lewat jembatan yang disuntikkan cmd.
 func (h *Handler) readCaller(r *http.Request) (inboxpladla.Caller, bool) {
-	if h.caller == nil {
+	if h.Caller == nil {
 		return inboxpladla.Caller{}, false
 	}
-	caller, exists := h.caller(r.Context())
+	caller, exists := h.Caller(r.Context())
 	if !exists {
 		return inboxpladla.Caller{}, false
 	}
@@ -226,10 +170,4 @@ func readFilter(r *http.Request) inboxpladla.QueryInput {
 //
 // Nilai yang tidak terbaca menghasilkan 0, yang kemudian DIBETULKAN Pagination.Normalize
 // menjadi nilai bawaan — bukan ditolak.
-func positiveNumber(raw string) int {
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func positiveNumber(raw string) int { return httpquery.NonNegativeTrimmed(raw) }

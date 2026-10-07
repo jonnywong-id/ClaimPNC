@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inputreqprotection"
+	"claim-pnc/internal/platform/clock"
 )
 
 // Service melayani daftar dan penyuntingan permintaan proteksi.
@@ -68,12 +69,7 @@ func NewService(o Options) (*Service, error) {
 // Cadangan itu bukan kemewahan: citra kontainer yang ramping kerap tidak menyertakan
 // tzdata, dan tanpa cadangan seluruh pemeriksaan "hari ini" akan diam-diam memakai UTC —
 // menggeser batas hari tujuh jam.
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	return time.FixedZone("WIB", 7*60*60)
-}
+func jakarta() *time.Location { return clock.Jakarta() }
 
 // ── Membaca ──────────────────────────────────────────────────────────────────────
 

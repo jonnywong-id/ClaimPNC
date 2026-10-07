@@ -1,9 +1,17 @@
 package memory
 
 import (
+	_ "embed"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/sampledata"
 )
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // pegaWorkKeyPrefix adalah awalan kunci objek kerja Pega pada `T_CLAIM_PNC.CLAIMID`.
 //
@@ -109,284 +117,84 @@ func sampleReinsurers(login string) []Reinsurer {
 //
 // Kode `1139` ikut, karena itulah kode yang menggantikan kode asli pada klaim yang
 // menunggu penutupan — dan tanpa artinya, reasuradur hanya membaca angka.
-func sampleLabels() []StatusLabel {
-	return []StatusLabel{
-		{Code: "1139", Label: "Pending Close Claim"},
-		{Code: "1147", Label: "Register"},
-		{Code: "1149", Label: "Claim Committee"},
-		{Code: "1163", Label: "Paid"},
-	}
-}
+func sampleLabels() []StatusLabel { return sampledata.Must[[]StatusLabel](sampleJSON, "sampleLabels") }
 
 // sampleClaims adalah delapan baris klaim contoh.
 //
 // Nama tertanggung dan nomor polis di sini KARANGAN — data nasabah tidak pernah disalin
 // ke berkas yang di-commit (`D-69`).
-func sampleClaims() []Claim {
-	return []Claim{
-		{
-			// PLA terkirim, DLA belum -> daftar PLA.
-			Key: workKey("PNC-2001"), No: "PNC-2001",
-			PolicyNo: "POL-2026-2001", Insured: "PT Contoh Satu",
-			BusinessName: "FIRE", GroupPanel: "006",
-			RegisterDate: day(2026, time.January, 5),
-			LossDate:     day(2026, time.January, 2),
-			PICTeknik:    "BUDI",
-			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
-		},
-		{
-			// PLA dan DLA keduanya terkirim -> daftar DLA saja, BUKAN daftar PLA.
-			Key: workKey("PNC-2002"), No: "PNC-2002",
-			PolicyNo: "POL-2026-2002", Insured: "PT Contoh Dua",
-			BusinessName: "MARINE CARGO", GroupPanel: "004",
-			RegisterDate: day(2026, time.January, 6),
-			LossDate:     day(2026, time.January, 3),
-			PICTeknik:    "SITI",
-			WorkStatus:   "Open", StatusCode: "1149", HasWorkRow: true,
-		},
-		{
-			// Sudah selesai dan tidak menunggu penutupan -> daftar Close.
-			Key: workKey("PNC-2003"), No: "PNC-2003",
-			PolicyNo: "POL-2026-2003", Insured: "PT Contoh Tiga",
-			BusinessName: "ANEKA", GroupPanel: "003",
-			RegisterDate: day(2026, time.January, 7),
-			LossDate:     day(2026, time.January, 4),
-			PICTeknik:    "AGUS", CloseNote: "Selesai dibayar",
-			WorkStatus: "Resolved-Completed", StatusCode: "1163", HasWorkRow: true,
-		},
-		{
-			// PLA-nya ditandai terkirim TANPA tanggal kirim -> tidak masuk daftar mana
-			// pun. Kueri lama menuntut ketiga syaratnya sekaligus.
-			Key: workKey("PNC-2004"), No: "PNC-2004",
-			PolicyNo: "POL-2026-2004", Insured: "PT Contoh Empat",
-			BusinessName: "FIRE", GroupPanel: "006",
-			RegisterDate: day(2026, time.January, 8),
-			LossDate:     day(2026, time.January, 5),
-			PICTeknik:    "BUDI",
-			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
-		},
-		{
-			// Sudah `Resolved-Completed` TETAPI masih menunggu penutupan.
-			//
-			// Ia muncul di daftar DLA dengan kode status DIGANTI `1139`, dan TIDAK
-			// muncul di daftar Close.
-			Key: workKey("PNC-2005"), No: "PNC-2005",
-			PolicyNo: "POL-2026-2005", Insured: "PT Contoh Lima",
-			BusinessName: "ANEKA", GroupPanel: "009",
-			RegisterDate: day(2026, time.January, 9),
-			LossDate:     day(2026, time.January, 6),
-			PICTeknik:    "RINA",
-			WorkStatus:   "Resolved-Completed", StatusCode: "1163",
-			PendingClose: true, HasWorkRow: true,
-		},
-		{
-			// DITOLAK. Ia punya PLA terkirim, tetapi tidak muncul di daftar mana pun —
-			// termasuk daftar Close, yang hanya menerima `Resolved-Completed`.
-			//
-			// Akibatnya reasuradur kehilangan jejak klaim yang pernah diberitahukan
-			// kepadanya, tanpa satu pun pemberitahuan. Itu perilaku Pega (`P-5`).
-			Key: workKey("PNC-2006"), No: "PNC-2006",
-			PolicyNo: "POL-2026-2006", Insured: "PT Contoh Enam",
-			BusinessName: "ANEKA", GroupPanel: "003",
-			RegisterDate: day(2026, time.January, 10),
-			LossDate:     day(2026, time.January, 7),
-			PICTeknik:    "RINA",
-			WorkStatus:   "Resolved-Rejected", StatusCode: "1142", HasWorkRow: true,
-		},
-		{
-			// TANPA baris tabel kerja Pega.
-			//
-			// Ia muncul di daftar PLA — kueri lamanya memakai sub-kueri, setara LEFT
-			// JOIN — tetapi TIDAK di daftar DLA, yang menggabungkannya secara INNER.
-			Key: workKey("PNC-2007"), No: "PNC-2007",
-			PolicyNo: "POL-2026-2007", Insured: "PT Contoh Tujuh",
-			BusinessName: "FIRE", GroupPanel: "006",
-			RegisterDate: day(2026, time.January, 11),
-			LossDate:     day(2026, time.January, 8),
-			PICTeknik:    "AGUS",
-			WorkStatus:   "Open", StatusCode: "", HasWorkRow: false,
-		},
-		{
-			// Milik login KEDUA, dan PLA-nya dikirim ke kode reasuradur yang LEBIH
-			// RENDAH (`R900`, bukan `R901`).
-			//
-			// Ia karena itu muncul di daftar Close — yang mencocokkan seluruh kode —
-			// tetapi TIDAK di daftar PLA, yang hanya mencocokkan kode tertinggi.
-			// Inilah satu-satunya baris yang membuktikan perbedaan `IN` versus `=`.
-			Key: workKey("PNC-2008"), No: "PNC-2008",
-			PolicyNo: "POL-2026-2008", Insured: "PT Contoh Delapan",
-			BusinessName: "ANEKA", GroupPanel: "003",
-			RegisterDate: day(2026, time.January, 12),
-			LossDate:     day(2026, time.January, 9),
-			PICTeknik:    "SITI", CloseNote: "Ditutup",
-			WorkStatus: "Resolved-Completed", StatusCode: "1163", HasWorkRow: true,
-		},
-		{
-			// Lini PERSONAL ACCIDENT (`002`), TANPA satu pun pemberitahuan.
-			//
-			// Ia tidak akan pernah muncul di ketiga daftar pemberitahuan — keduanya
-			// karena lini bisnisnya dikecualikan DAN karena tidak ada PLA maupun DLA
-			// yang dikirimkan. Ia muncul HANYA di daftar komunikasi.
-			//
-			// Tanpa baris ini, kedua perbedaan itu tidak dapat dibuktikan: menambahkan
-			// penyaring `grouppanel` ke kueri komunikasi akan lolos setiap uji.
-			Key: workKey("PNC-2009"), No: "PNC-2009",
-			PolicyNo: "POL-2026-2009", Insured: "PT Contoh Sembilan",
-			BusinessName: "PERSONAL ACCIDENT", GroupPanel: "002",
-			RegisterDate: day(2026, time.January, 13),
-			LossDate:     day(2026, time.January, 10),
-			PICTeknik:    "BUDI",
-			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
-		},
-	}
-}
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// PLA terkirim, DLA belum -> daftar PLA.
+// PLA dan DLA keduanya terkirim -> daftar DLA saja, BUKAN daftar PLA.
+// Sudah selesai dan tidak menunggu penutupan -> daftar Close.
+// PLA-nya ditandai terkirim TANPA tanggal kirim -> tidak masuk daftar mana
+// pun. Kueri lama menuntut ketiga syaratnya sekaligus.
+// Sudah `Resolved-Completed` TETAPI masih menunggu penutupan.
+//
+// Ia muncul di daftar DLA dengan kode status DIGANTI `1139`, dan TIDAK
+// muncul di daftar Close.
+// DITOLAK. Ia punya PLA terkirim, tetapi tidak muncul di daftar mana pun —
+// termasuk daftar Close, yang hanya menerima `Resolved-Completed`.
+//
+// Akibatnya reasuradur kehilangan jejak klaim yang pernah diberitahukan
+// kepadanya, tanpa satu pun pemberitahuan. Itu perilaku Pega (`P-5`).
+// TANPA baris tabel kerja Pega.
+//
+// Ia muncul di daftar PLA — kueri lamanya memakai sub-kueri, setara LEFT
+// JOIN — tetapi TIDAK di daftar DLA, yang menggabungkannya secara INNER.
+// Milik login KEDUA, dan PLA-nya dikirim ke kode reasuradur yang LEBIH
+// RENDAH (`R900`, bukan `R901`).
+//
+// Ia karena itu muncul di daftar Close — yang mencocokkan seluruh kode —
+// tetapi TIDAK di daftar PLA, yang hanya mencocokkan kode tertinggi.
+// Inilah satu-satunya baris yang membuktikan perbedaan `IN` versus `=`.
+// Lini PERSONAL ACCIDENT (`002`), TANPA satu pun pemberitahuan.
+//
+// Ia tidak akan pernah muncul di ketiga daftar pemberitahuan — keduanya
+// karena lini bisnisnya dikecualikan DAN karena tidak ada PLA maupun DLA
+// yang dikirimkan. Ia muncul HANYA di daftar komunikasi.
+//
+// Tanpa baris ini, kedua perbedaan itu tidak dapat dibuktikan: menambahkan
+// penyaring `grouppanel` ke kueri komunikasi akan lolos setiap uji.
+func sampleClaims() []Claim { return sampledata.Must[[]Claim](sampleJSON, "sampleClaims") }
 
 // sampleAdvices adalah dokumen PLA dan DLA contoh.
-func sampleAdvices() []Advice {
-	sentOn := func(d time.Time) (string, time.Time, string) {
-		return "1", d, "reas@contoh.example"
-	}
-
-	sent1, date1, mail1 := sentOn(day(2026, time.January, 15))
-
-	return []Advice{
-		// PNC-2001 — hanya PLA.
-		{
-			ClaimKey: workKey("PNC-2001"), Kind: "pla", No: "PLA/2026/2001",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-			Type: "Treaty", Amount: "125000000.00",
-			AdviceDate: day(2026, time.January, 14),
-		},
-		{
-			// Revisi lebih tinggi -> nomor INILAH yang digambar kolom "No PLA".
-			ClaimKey: workKey("PNC-2001"), Kind: "pla", No: "PLA/2026/2001-R1",
-			ReinsCode: "R100", Revision: 1,
-			Sent: sent1, SentDate: date1, Email: mail1,
-			Type: "Treaty", Amount: "140000000.00",
-			AdviceDate: day(2026, time.January, 15),
-		},
-		{
-			// Milik reasuradur LAIN pada klaim yang SAMA.
-			//
-			// Ia tidak boleh terlihat di grid rincian PNC-2001. Di Pega ia justru
-			// terlihat: gridnya dimuat dari objek kerja klaim, yang memuat seluruh
-			// mitra beserta nilai masing-masing. Tanpa baris ini, selisih itu tidak
-			// dapat dibuktikan.
-			ClaimKey: workKey("PNC-2001"), Kind: "pla", No: "PLA/2026/2001-LAIN",
-			ReinsCode: "R900", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-			Type: "Fac Out", Amount: "99000000.00",
-			AdviceDate: day(2026, time.January, 14),
-		},
-
-		// PNC-2002 — PLA dan DLA keduanya terkirim.
-		{
-			ClaimKey: workKey("PNC-2002"), Kind: "pla", No: "PLA/2026/2002",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-			Type: "Treaty", Amount: "75000000.00",
-			AdviceDate: day(2026, time.January, 14),
-		},
-		{
-			ClaimKey: workKey("PNC-2002"), Kind: "dla", No: "DLA/2026/2002",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-			Type: "Treaty", Amount: "70000000.00",
-			AcceptanceNo: "AKS/2026/2002",
-			AdviceDate:   day(2026, time.January, 16),
-		},
-		{
-			// BELUM terkirim — ia tidak boleh muncul di grid rincian.
-			//
-			// Grid Pega memuatnya; di sini tidak. Lihat PlannedDifferences.
-			ClaimKey: workKey("PNC-2002"), Kind: "dla", No: "DLA/2026/2002-DRAF",
-			ReinsCode: "R100", Revision: 0,
-			Sent: "0",
-			Type: "Treaty", Amount: "70000000.00",
-			AdviceDate: day(2026, time.January, 17),
-		},
-
-		// PNC-2003 — PLA terkirim; klaimnya sudah selesai.
-		{
-			ClaimKey: workKey("PNC-2003"), Kind: "pla", No: "PLA/2026/2003",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-		},
-
-		// PNC-2004 — ditandai terkirim TANPA tanggal kirim dan tanpa alamat surel.
-		{
-			ClaimKey: workKey("PNC-2004"), Kind: "pla", No: "PLA/2026/2004",
-			ReinsCode: "R100", Revision: 0,
-			Sent: "1",
-		},
-
-		// PNC-2005 — DLA terkirim; klaimnya menunggu penutupan.
-		{
-			ClaimKey: workKey("PNC-2005"), Kind: "dla", No: "DLA/2026/2005",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-		},
-
-		// PNC-2006 — PLA terkirim, tetapi klaimnya ditolak.
-		{
-			ClaimKey: workKey("PNC-2006"), Kind: "pla", No: "PLA/2026/2006",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-		},
-
-		// PNC-2007 — PLA terkirim; klaimnya tanpa baris tabel kerja.
-		{
-			ClaimKey: workKey("PNC-2007"), Kind: "pla", No: "PLA/2026/2007",
-			ReinsCode: "R100", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-		},
-
-		// PNC-2008 — dikirim ke kode yang LEBIH RENDAH milik login bergkode ganda.
-		{
-			ClaimKey: workKey("PNC-2008"), Kind: "pla", No: "PLA/2026/2008",
-			ReinsCode: "R900", Revision: 0,
-			Sent: sent1, SentDate: date1, Email: mail1,
-		},
-	}
-}
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// PNC-2001 — hanya PLA.
+// Revisi lebih tinggi -> nomor INILAH yang digambar kolom "No PLA".
+// Milik reasuradur LAIN pada klaim yang SAMA.
+//
+// Ia tidak boleh terlihat di grid rincian PNC-2001. Di Pega ia justru
+// terlihat: gridnya dimuat dari objek kerja klaim, yang memuat seluruh
+// mitra beserta nilai masing-masing. Tanpa baris ini, selisih itu tidak
+// dapat dibuktikan.
+// PNC-2002 — PLA dan DLA keduanya terkirim.
+// BELUM terkirim — ia tidak boleh muncul di grid rincian.
+//
+// Grid Pega memuatnya; di sini tidak. Lihat PlannedDifferences.
+// PNC-2003 — PLA terkirim; klaimnya sudah selesai.
+// PNC-2004 — ditandai terkirim TANPA tanggal kirim dan tanpa alamat surel.
+// PNC-2005 — DLA terkirim; klaimnya menunggu penutupan.
+// PNC-2006 — PLA terkirim, tetapi klaimnya ditolak.
+// PNC-2007 — PLA terkirim; klaimnya tanpa baris tabel kerja.
+// PNC-2008 — dikirim ke kode yang LEBIH RENDAH milik login bergkode ganda.
+func sampleAdvices() []Advice { return sampledata.Must[[]Advice](sampleJSON, "sampleAdvices") }
 
 // sampleXOL adalah ringkasan XOL contoh.
 //
 // Satu baris milik reasuradur LAIN, dan satu baris BELUM terkirim. Keduanya ada supaya
 // penyaringnya benar-benar teruji — termasuk penyaring reasuradur, yang di Pega justru
 // tidak mengikuti pemanggil sama sekali.
-func sampleXOL() []XOL {
-	return []XOL{
-		{
-			Kind: "PLA", ReinsCode: "R100", Year: "2026",
-			CauseOfLoss: "Kebakaran", Sent: true,
-			InsertDate: day(2026, time.February, 1),
-		},
-		{
-			Kind: "PLA", ReinsCode: "R100", Year: "2026",
-			CauseOfLoss: "Kebakaran", Sent: true,
-			InsertDate: day(2026, time.February, 10),
-		},
-		{
-			Kind: "DLA", ReinsCode: "R100", Year: "2025",
-			CauseOfLoss: "Banjir", Sent: true,
-			InsertDate: day(2025, time.December, 20),
-		},
-		{
-			// Milik reasuradur lain — tidak boleh terlihat.
-			Kind: "PLA", ReinsCode: "R900", Year: "2026",
-			CauseOfLoss: "Gempa", Sent: true,
-			InsertDate: day(2026, time.March, 1),
-		},
-		{
-			// Belum terkirim — `SENDDATE IS NULL`.
-			Kind: "DLA", ReinsCode: "R100", Year: "2026",
-			CauseOfLoss: "Pencurian", Sent: false,
-			InsertDate: day(2026, time.March, 5),
-		},
-	}
-}
+//
+// Catatan pada isinya, yang kini tersimpan di sample.json:
+//
+// Milik reasuradur lain — tidak boleh terlihat.
+// Belum terkirim — `SENDDATE IS NULL`.
+func sampleXOL() []XOL { return sampledata.Must[[]XOL](sampleJSON, "sampleXOL") }
 
 // sampleMessages adalah percakapan contoh pada `POOLDATA.M_KOMUNIKASI_PNC`.
 //

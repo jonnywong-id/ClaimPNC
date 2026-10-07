@@ -362,9 +362,9 @@ type RepoSelector func(portalAlias string) (Repo, error)
 // CheckMasking mengumpulkan SELURUH pelanggaran aturan isian, bukan berhenti pada yang
 // pertama.
 //
-// Mengumpulkan semuanya adalah kesetaraan perilaku, bukan selera: sistem lama menampilkan
-// seluruh pesan validasi sekaligus, dan mengembalikannya satu per satu akan membuat
-// pengguna menekan Simpan berkali-kali untuk menemukan kesalahan berikutnya
+// Mengumpulkan semuanya adalah kesetaraan perilaku, bukan selera: sistem lama
+// menampilkan seluruh pesan validasi sekaligus, dan mengembalikannya satu per satu akan
+// membuat pengguna menekan Simpan berkali-kali untuk menemukan kesalahan berikutnya
 // (`docs/Steering/12-CROSSCUTTING.md` §1.2 butir 1).
 //
 // Keunikan dan keberadaan cabang TIDAK diperiksa di sini: keduanya menuntut membaca

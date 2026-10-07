@@ -1,0 +1,154 @@
+{
+  "SampleRows": [
+    {
+      "Adjuster": "PT ADJUSTER NUSA CONTOH",
+      "CaseID": "CONTOH-KPI-0001",
+      "ReportType": "OUTSTANDING",
+      "ScoredOn": "2026-03-04",
+      "Scores": {
+        "final_report": "2",
+        "immediate_advice": "4",
+        "interim_report": "2",
+        "nilai": "3",
+        "penjadwalan_survey": "3",
+        "preliminary_advice": "3",
+        "propose_adjustment": "3",
+        "tanggapan_komunikasi": "3",
+        "update_progress": "4"
+      }
+    },
+    {
+      "Adjuster": "PT ADJUSTER NUSA CONTOH",
+      "CaseID": "CONTOH-KPI-0002",
+      "ReportType": "OUTSTANDING",
+      "ScoredOn": "2026-03-18",
+      "Scores": {
+        "final_report": "3",
+        "immediate_advice": "4",
+        "interim_report": "3",
+        "nilai": "4",
+        "penjadwalan_survey": "4",
+        "preliminary_advice": "4",
+        "propose_adjustment": "4",
+        "tanggapan_komunikasi": "4",
+        "update_progress": "5"
+      }
+    },
+    {
+      "Adjuster": "PT ADJUSTER NUSA CONTOH",
+      "CaseID": "CONTOH-KPI-0003",
+      "ReportType": "FINAL",
+      "ScoredOn": "2026-03-25",
+      "Scores": {
+        "final_report": "5",
+        "immediate_advice": "5",
+        "interim_report": "5",
+        "nilai": "5",
+        "penjadwalan_survey": "5",
+        "preliminary_advice": "5",
+        "propose_adjustment": "5",
+        "tanggapan_komunikasi": "5",
+        "update_progress": "5"
+      }
+    },
+    {
+      "Adjuster": "CV SURVEI CONTOH SEJAHTERA",
+      "CaseID": "CONTOH-KPI-0004",
+      "ReportType": "OUTSTANDING",
+      "ScoredOn": "2026-03-09",
+      "Scores": {
+        "final_report": "4",
+        "immediate_advice": "3",
+        "nilai": "3.6",
+        "penjadwalan_survey": "4",
+        "preliminary_advice": "3",
+        "propose_adjustment": "4"
+      }
+    },
+    {
+      "Adjuster": "PT PENILAI CONTOH PRATAMA",
+      "CaseID": "CONTOH-KPI-0005",
+      "ReportType": "FINAL",
+      "ScoredOn": "2026-03-31",
+      "Scores": {
+        "final_report": "5",
+        "immediate_advice": "4",
+        "interim_report": "4",
+        "nilai": "4.5",
+        "penjadwalan_survey": "5",
+        "preliminary_advice": "N/A",
+        "propose_adjustment": "4",
+        "tanggapan_komunikasi": "5",
+        "update_progress": "4"
+      }
+    },
+    {
+      "Adjuster": "PT TEPI CONTOH MANDIRI",
+      "CaseID": "CONTOH-KPI-0006",
+      "ReportType": "FINAL",
+      "ScoredOn": "2026-03-01",
+      "Scores": {
+        "final_report": "2",
+        "immediate_advice": "2",
+        "interim_report": "2",
+        "nilai": "2",
+        "penjadwalan_survey": "2",
+        "preliminary_advice": "2",
+        "propose_adjustment": "2",
+        "tanggapan_komunikasi": "2",
+        "update_progress": "2"
+      }
+    },
+    {
+      "Adjuster": "PT TEPI CONTOH MANDIRI",
+      "CaseID": "CONTOH-KPI-0007",
+      "ReportType": "FINAL",
+      "ScoredOn": "2026-03-31",
+      "Scores": {
+        "final_report": "4",
+        "immediate_advice": "4",
+        "interim_report": "4",
+        "nilai": "4",
+        "penjadwalan_survey": "4",
+        "preliminary_advice": "4",
+        "propose_adjustment": "4",
+        "tanggapan_komunikasi": "4",
+        "update_progress": "4"
+      }
+    },
+    {
+      "Adjuster": "PT LUAR CONTOH PERIODE",
+      "CaseID": "CONTOH-KPI-0008",
+      "ReportType": "FINAL",
+      "ScoredOn": "2026-02-28",
+      "Scores": {
+        "final_report": "1",
+        "immediate_advice": "1",
+        "interim_report": "1",
+        "nilai": "1",
+        "penjadwalan_survey": "1",
+        "preliminary_advice": "1",
+        "propose_adjustment": "1",
+        "tanggapan_komunikasi": "1",
+        "update_progress": "1"
+      }
+    },
+    {
+      "Adjuster": "PT LUAR CONTOH PERIODE",
+      "CaseID": "CONTOH-KPI-0009",
+      "ReportType": "FINAL",
+      "ScoredOn": "2026-04-01",
+      "Scores": {
+        "final_report": "1",
+        "immediate_advice": "1",
+        "interim_report": "1",
+        "nilai": "1",
+        "penjadwalan_survey": "1",
+        "preliminary_advice": "1",
+        "propose_adjustment": "1",
+        "tanggapan_komunikasi": "1",
+        "update_progress": "1"
+      }
+    }
+  ]
+}

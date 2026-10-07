@@ -226,10 +226,10 @@ func NewQuery(claimID string, caller Caller) (Query, error) {
 
 // Repo adalah seam ke rincian klaim treaty pada SATU portal.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di tingkat kueri
-// (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut entitas, dan
-// memang tidak boleh ada.
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di
+// tingkat kueri (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut
+// entitas, dan memang tidak boleh ada.
 //
 // # Tidak ada satu pun operasi yang menulis
 //

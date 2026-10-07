@@ -2,14 +2,11 @@ package inboxsalvagehttp
 
 import (
 	"encoding/csv"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxsalvage/usecase"
-	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/csvexport"
 )
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan saat mengekspor.
@@ -28,8 +25,8 @@ const exportChunk = inboxsalvage.MaxPageSize
 // kebutuhan ekspor bervolume besar belum pernah benar-benar dilayani.
 //
 // Berkas yang menyentuhnya diberi tanda di baris terakhir — bukan dipotong tanpa satu pun
-// pemberitahuan, yang persis cacat sistem lama. Nilainya sama dengan modul inbox lain
-// supaya tidak ada dua batas berbeda tanpa alasan.
+// pemberitahuan, yang persis cacat sistem lama. Nilainya sama dengan modul inbox lain supaya
+// tidak ada dua batas berbeda tanpa alasan.
 const exportLimit = 50_000
 
 // Export menangani GET /api/inbox-salvage/ekspor — tombol "Export Data" di layar.
@@ -61,9 +58,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// galat tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa
 	// berkas separuh jadi tanpa satu pun keterangan. Daftar yang tidak dikenal dan sesi
 	// yang tidak lengkap karena itu tetap dijawab sebagai galat yang terbaca.
-	first, err := h.service.List(r.Context(), active.Alias, caller, filter, page)
+	first, err := h.Service.List(r.Context(), active.Alias, caller, filter, page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -84,46 +81,22 @@ func (h *Handler) exportGrid(
 
 	h.beginDownload(w, exportFilename(tab))
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(header); err != nil {
-		h.logExportFailure(r, err)
-		return
-	}
-
 	page := inboxsalvage.Pagination{Page: 1, Size: exportChunk}
 
-	written := 0
-	current := first
-	for {
-		for _, item := range current.Page.Items {
-			if written >= exportLimit {
-				_ = writer.Write(truncationNotice(len(header), current.Page.Total))
-				return
-			}
-			if err := writer.Write(gridRow(tab, item)); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
-			written++
-		}
-
-		if !h.flush(w, writer, r) {
-			return
-		}
-		if written >= current.Page.Total || len(current.Page.Items) == 0 {
-			return
-		}
-
-		page.Page++
-		next, err := h.service.List(r.Context(), portalAlias, caller, filter, page)
-		if err != nil {
-			h.logExportFailure(r, err)
-			return
-		}
-		current = next
-	}
+	csvexport.Paged[inboxsalvage.Row]{
+		Header: header,
+		Limit:  exportLimit,
+		Notice: truncationNotice,
+		Row: func(item inboxsalvage.Row) []string {
+			return gridRow(tab, item)
+		},
+		Next: func(n int) ([]inboxsalvage.Row, int, error) {
+			page.Page = n
+			next, err := h.Service.List(r.Context(), portalAlias, caller, filter, page)
+			return next.Page.Items, next.Page.Total, err
+		},
+		Fail: func(err error) { h.logExportFailure(r, err) },
+	}.Write(w, first.Page.Items, first.Page.Total)
 }
 
 // beginDownload memasang header unduhan.
@@ -131,21 +104,15 @@ func (h *Handler) exportGrid(
 // `no-store` bukan kehati-hatian berlebih: berkas ini memuat nomor klaim dan nilai uang,
 // dan ia tidak boleh mengendap di cache perantara mana pun.
 func (h *Handler) beginDownload(w http.ResponseWriter, filename string) {
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	w.Header().Set("Cache-Control", "no-store")
+	csvexport.BeginDownload(w, filename)
 }
 
 // flush mendorong isi yang sudah tertulis keluar setiap potong, bukan menahannya sampai
 // akhir. Itulah yang membuat unduhan besar mulai mengalir segera dan memori tidak menumpuk.
 func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Request) bool {
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+	if err := csvexport.Flush(w, writer); err != nil {
 		h.logExportFailure(r, err)
 		return false
-	}
-	if flusher, able := w.(http.Flusher); able {
-		flusher.Flush()
 	}
 	return true
 }
@@ -243,15 +210,7 @@ func exportFilename(tab inboxsalvage.Tab) string {
 
 // truncationNotice menyusun baris penanda bahwa berkasnya tidak lengkap.
 func truncationNotice(width, total int) []string {
-	notice := make([]string, width)
-	if width == 0 {
-		return notice
-	}
-	notice[0] = fmt.Sprintf(
-		"-- Terpotong pada %s baris dari %s yang cocok. Persempit pencariannya. --",
-		strconv.Itoa(exportLimit), strconv.Itoa(total),
-	)
-	return notice
+	return csvexport.TruncationNotice(width, exportLimit, total, " Persempit pencariannya.")
 }
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
@@ -261,8 +220,5 @@ func truncationNotice(width, total int) []string {
 // meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
 // keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor inbox salvage terputus",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", err.Error()),
-	)
+	csvexport.LogFailure(r, h.Logger, "ekspor inbox salvage terputus", err)
 }

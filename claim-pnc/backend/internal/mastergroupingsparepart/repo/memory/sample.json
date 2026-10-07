@@ -1,0 +1,144 @@
+{
+  "SampleList": [
+    {
+      "ID": "1",
+      "PartNumber": "SP-1001",
+      "PartName": "FILTER OLI",
+      "CategoryID": "KAT01",
+      "TypeID": "TIP01",
+      "PartCode": "KD-1001",
+      "ProductionDate": "12/05/2024",
+      "PanelID": "PNL02",
+      "PanelName": "KABIN",
+      "PanelSide": "1",
+      "ChassisNumber": "MHFXW1234K5678901",
+      "VehicleType": "EXCAVATOR",
+      "GroupWithChassis": "",
+      "GroupNumber": "0001",
+      "Note": "Pemasangan awal unit.",
+      "Status": "1"
+    },
+    {
+      "ID": "2",
+      "PartNumber": "SP-1002",
+      "PartName": "SEAL KIT BOOM",
+      "CategoryID": "KAT02",
+      "TypeID": "TIP03",
+      "PartCode": "KD-1002",
+      "ProductionDate": "03/01/2025",
+      "PanelID": "PNL01",
+      "PanelName": "BUMPER DEPAN",
+      "PanelSide": "2",
+      "ChassisNumber": "MHFXW1234K5678901",
+      "VehicleType": "EXCAVATOR",
+      "GroupWithChassis": "MHFXW1234K5678901",
+      "GroupNumber": "0001",
+      "Note": "",
+      "Status": "1"
+    },
+    {
+      "ID": "3",
+      "PartNumber": "SP-1003",
+      "PartName": "TRACK LINK",
+      "CategoryID": "KAT03",
+      "TypeID": "TIP05",
+      "PartCode": "KD-1003",
+      "ProductionDate": "",
+      "PanelID": "PNL03",
+      "PanelName": "BUCKET",
+      "PanelSide": "-",
+      "ChassisNumber": "MHFZZ9876K1234567",
+      "VehicleType": "BULLDOZER",
+      "GroupWithChassis": "",
+      "GroupNumber": "0002",
+      "Note": "Menunggu konfirmasi teknik.",
+      "Status": "0"
+    },
+    {
+      "ID": "4",
+      "PartNumber": "SP-1001",
+      "PartName": "FILTER OLI",
+      "CategoryID": "KAT01",
+      "TypeID": "TIP01",
+      "PartCode": "KD-1001",
+      "ProductionDate": "12/05/2024",
+      "PanelID": "PNL01",
+      "PanelName": "BUMPER DEPAN",
+      "PanelSide": "1",
+      "ChassisNumber": "MHFQQ5555K7654321",
+      "VehicleType": "WHEEL LOADER",
+      "GroupWithChassis": "",
+      "GroupNumber": "0003",
+      "Note": "",
+      "Status": "2"
+    }
+  ],
+  "SamplePanels": [
+    {
+      "ID": "PNL01",
+      "Name": "BUMPER DEPAN"
+    },
+    {
+      "ID": "PNL02",
+      "Name": "KABIN"
+    },
+    {
+      "ID": "PNL03",
+      "Name": "BUCKET"
+    }
+  ],
+  "SampleParts": [
+    {
+      "Number": "SP-1001",
+      "Name": "FILTER OLI",
+      "CategoryID": "KAT01",
+      "TypeID": "TIP01",
+      "Code": "KD-1001",
+      "ProductionDate": "12/05/2024"
+    },
+    {
+      "Number": "SP-1002",
+      "Name": "SEAL KIT BOOM",
+      "CategoryID": "KAT02",
+      "TypeID": "TIP03",
+      "Code": "KD-1002",
+      "ProductionDate": "03/01/2025"
+    },
+    {
+      "Number": "SP-1003",
+      "Name": "TRACK LINK",
+      "CategoryID": "KAT03",
+      "TypeID": "TIP05",
+      "Code": "KD-1003",
+      "ProductionDate": ""
+    }
+  ],
+  "SampleSides": {
+    "PNL01": [
+      "1",
+      "2"
+    ],
+    "PNL02": [
+      "-",
+      "1",
+      "2"
+    ],
+    "PNL03": [
+      "-"
+    ]
+  },
+  "SampleVehicleTypes": [
+    {
+      "ID": "TY01",
+      "Name": "EXCAVATOR"
+    },
+    {
+      "ID": "TY02",
+      "Name": "BULLDOZER"
+    },
+    {
+      "ID": "TY03",
+      "Name": "WHEEL LOADER"
+    }
+  ]
+}

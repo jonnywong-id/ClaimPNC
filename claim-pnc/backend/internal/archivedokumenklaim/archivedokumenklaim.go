@@ -68,6 +68,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // ArchiveFile adalah satu baris POOLDATA.T_CLAIM_ARCHIVE_FILE — satu berkas klaim yang
@@ -279,13 +281,16 @@ type FillingCodeOption struct {
 //
 // Paginasi di sini adalah **perubahan perilaku yang disadari**, bukan pemeliharaan —
 // `09-DATABASE-STRATEGY.md` §6.3 menyatakannya harus diuji per layar.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi. MaxSize 100 mengikuti `10-API-STRATEGY.md` §4: permintaan yang lebih
 // besar DITOLAK menjadi batas, bukan dipenuhi diam-diam.
@@ -293,31 +298,6 @@ const (
 	DefaultPageSize = 20
 	MaxPageSize     = 100
 )
-
-// Normalize mengembalikan paginasi yang sudah dibetulkan ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari
-// parameter query yang mudah salah ketik, dan menolak seluruh permintaan karena
-// `halaman=0` membuat layar gagal tanpa alasan yang terbaca pengguna.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati sebelum halaman yang diminta.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
 
 // ArchivePage adalah satu halaman grid ARCHIVE FILE KLAIM beserta jumlah seluruh
 // barisnya.

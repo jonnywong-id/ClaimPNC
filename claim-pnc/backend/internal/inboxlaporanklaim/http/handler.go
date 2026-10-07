@@ -2,10 +2,6 @@ package inboxlaporanklaimhttp
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,8 +11,8 @@ import (
 
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxlaporanklaim/usecase"
+	"claim-pnc/internal/platform/httpjson"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -35,45 +31,6 @@ const maxRequestBody = 64 << 10
 // serta. Pola yang sama dipakai modul Master Rekening dan modul menu.
 type CallerLookup func(ctx context.Context) (inboxlaporanklaim.Caller, bool)
 
-// Handler melayani permintaan Inbox Laporan Klaim.
-type Handler struct {
-	service       *usecase.Service
-	caller        CallerLookup
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Caller  CallerLookup
-	Logger  *slog.Logger
-
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Laporan Klaim.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("inboxlaporanklaim/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("inboxlaporanklaim/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("inboxlaporanklaim/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
 // List menangani GET /inbox/laporan-klaim.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	active, caller, ready := h.prepare(w, r)
@@ -81,14 +38,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.List(r.Context(), active.Alias, caller, readQuery(r))
+	result, err := h.Service.List(r.Context(), active.Alias, caller, readQuery(r))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	now := h.service.Now()
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
+	now := h.Service.Now()
+	h.WriteResponse(w, r, http.StatusOK, ListResponse{
 		Laporan:  toListDTO(result.Page.Report, now),
 		Kategori: toCategoryDTO(result.Summary),
 		Halaman: PaginationDTO{
@@ -113,7 +70,7 @@ func (h *Handler) Options(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	region, err := h.service.Regions(r.Context(), active.Alias)
+	region, err := h.Service.Regions(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -138,7 +95,7 @@ func (h *Handler) Options(w http.ResponseWriter, r *http.Request) {
 		area = append(area, OptionDTO{Kode: item.Code, Nama: item.Name})
 	}
 
-	h.writeResponse(w, r, http.StatusOK, OptionResponse{
+	h.WriteResponse(w, r, http.StatusOK, OptionResponse{
 		Kategori: category,
 		Bisnis:   business,
 		Kanwil:   area,
@@ -160,13 +117,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	report, err := h.service.Get(r.Context(), active.Alias, id)
+	report, err := h.Service.Get(r.Context(), active.Alias, id)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, singleResponse(report, active.Alias, h.service.Now()))
+	h.WriteResponse(w, r, http.StatusOK, singleResponse(report, active.Alias, h.Service.Now()))
 }
 
 // Save menangani PUT /inbox/laporan-klaim/{id} — tombol Simpan pada form Input Receive
@@ -192,46 +149,23 @@ func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Save(r.Context(), active.Alias, id, caller, toDetail(request))
+	saved, err := h.Service.Save(r.Context(), active.Alias, id, caller, toDetail(request))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, singleResponse(saved, active.Alias, h.service.Now()))
+	h.WriteResponse(w, r, http.StatusOK, singleResponse(saved, active.Alias, h.Service.Now()))
 }
 
 // readRequest membaca badan JSON. Nilai kedua false bila responsnya sudah ditulis.
 func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
 	var request SaveRequest
-
-	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
-	decoder := json.NewDecoder(reader)
-	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam: salah ketik nama field
-	// akan terbaca sebagai "isian tidak dikirim" dan MENGOSONGKAN isian yang sebenarnya
-	// terisi — pada permintaan yang menggantikan seluruh isi, itu kehilangan data.
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&request); err != nil {
-		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan
-		// badan permintaan.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-
-	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
-	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Permintaan tidak dapat dibaca.",
-		})
-		return SaveRequest{}, false
-	}
-
-	return request, true
+	ok := httpjson.Decode(w, r, maxRequestBody, &request, h.WriteResponse, ErrorResponse{
+		Code:    CodeMalformedRequest,
+		Message: "Permintaan tidak dapat dibaca.",
+	})
+	return request, ok
 }
 
 // singleResponse menyusun jawaban yang memuat satu berkas beserta isian formnya.
@@ -264,7 +198,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	report, err := h.service.Create(r.Context(), active.Alias, caller)
+	report, err := h.Service.Create(r.Context(), active.Alias, caller)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -274,7 +208,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// diterbitkan server, sehingga layar tidak punya cara lain mengetahuinya — dan layar
 	// LANGSUNG membuka form isiannya, persis seperti alur Pega yang meneruskan ke
 	// assignment "Receive Document" begitu berkasnya dibuat.
-	h.writeResponse(w, r, http.StatusCreated, singleResponse(report, active.Alias, h.service.Now()))
+	h.WriteResponse(w, r, http.StatusCreated, singleResponse(report, active.Alias, h.Service.Now()))
 }
 
 // prepare mengambil portal aktif dan identitas pemanggil sekaligus.
@@ -290,7 +224,7 @@ func (h *Handler) prepare(
 		return portal.Portal{}, inboxlaporanklaim.Caller{}, false
 	}
 
-	caller, known := h.caller(r.Context())
+	caller, known := h.Caller(r.Context())
 	if !known {
 		h.writeModuleError(w, r, inboxlaporanklaim.ErrCallerUnknown)
 		return portal.Portal{}, inboxlaporanklaim.Caller{}, false

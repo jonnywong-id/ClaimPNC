@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -14,7 +13,6 @@ import (
 
 	"claim-pnc/internal/dokumenpenunjang"
 	"claim-pnc/internal/dokumenpenunjang/usecase"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -24,67 +22,14 @@ type Service interface {
 	List(ctx context.Context, portalAlias, nomorKlaim string) ([]dokumenpenunjang.Document, error)
 }
 
-// Caller adalah identitas pengguna yang sedang masuk.
-type Caller struct {
-	Login string
-}
-
 // GetCaller membaca identitas pengguna dari konteks permintaan.
 type GetCaller func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan dokumen penunjang.
-type Handler struct {
-	service     Service
-	getCaller   GetCaller
-	logger      *slog.Logger
-	writeJSON   JSONWriter
-	writeErrorF ErrorWriter
-	location    *time.Location
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service   Service
-	GetCaller GetCaller
-	Logger    *slog.Logger
-
-	WriteJSON           JSONWriter
-	FallbackErrorWriter ErrorWriter
-
-	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
-	Location *time.Location
-}
-
-// NewHandler membentuk handler modul dokumen penunjang.
-func NewHandler(o Options) *Handler {
-	location := o.Location
-	if location == nil {
-		location = jakarta()
-	}
-	return &Handler{
-		service:     o.Service,
-		getCaller:   o.GetCaller,
-		logger:      o.Logger,
-		writeJSON:   o.WriteJSON,
-		writeErrorF: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-		location:    location,
-	}
-}
-
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	// Basis image tanpa tzdata tidak boleh membuat modul ini gagal; zona tetap +7 sudah
-	// benar untuk WIB, yang tidak mengenal daylight saving.
-	return time.FixedZone("WIB", 7*60*60)
-}
 
 // List melayani GET daftar dokumen sebuah klaim.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	nomor := strings.TrimSpace(chi.URLParam(r, "nomor"))
 	if nomor == "" {
-		writeBadRequest(h.writeJSON, w, r, "Nomor klaim wajib diisi.")
+		writeBadRequest(h.WriteJSON, w, r, "Nomor klaim wajib diisi.")
 		return
 	}
 
@@ -93,14 +38,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	daftar, err := h.service.List(r.Context(), alias, nomor)
+	daftar, err := h.Service.List(r.Context(), alias, nomor)
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, ListResponse{
-		Data: dariDaftar(daftar, h.location, time.Now()),
+	h.WriteJSON(w, r, http.StatusOK, ListResponse{
+		Data: dariDaftar(daftar, h.Location, time.Now()),
 	})
 }
 
@@ -118,7 +63,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	nomor := strings.TrimSpace(chi.URLParam(r, "nomor"))
 	if nomor == "" {
-		writeBadRequest(h.writeJSON, w, r, "Nomor klaim wajib diisi.")
+		writeBadRequest(h.WriteJSON, w, r, "Nomor klaim wajib diisi.")
 		return
 	}
 
@@ -131,11 +76,11 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	// internal: `USERINPUT` pada jejak dan `UserInput` pada muatan keduanya memuat siapa
 	// yang mengunggah, dan mengosongkannya menghapus satu-satunya jejak itu (`D-59`).
 	pemanggil, ada := Caller{}, false
-	if h.getCaller != nil {
-		pemanggil, ada = h.getCaller(r.Context())
+	if h.Caller != nil {
+		pemanggil, ada = h.Caller(r.Context())
 	}
 	if !ada || strings.TrimSpace(pemanggil.Login) == "" {
-		h.writeErrorF(w, r, dokumenpenunjang.ErrPengunggahKosong)
+		h.WriteError(w, r, dokumenpenunjang.ErrPengunggahKosong)
 		return
 	}
 
@@ -154,10 +99,10 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		// `MaxBytesReader` yang memutus juga mendarat di sini. Dibedakan supaya pesannya
 		// menyebut ukuran, bukan "berkas tidak ditemukan" yang menyesatkan.
 		if strings.Contains(err.Error(), "request body too large") {
-			h.writeErrorF(w, r, dokumenpenunjang.ErrBerkasTerlaluBesar)
+			h.WriteError(w, r, dokumenpenunjang.ErrBerkasTerlaluBesar)
 			return
 		}
-		writeBadRequest(h.writeJSON, w, r,
+		writeBadRequest(h.WriteJSON, w, r,
 			`Berkas tidak ditemukan pada permintaan. Sertakan bagian bernama "berkas".`)
 		return
 	}
@@ -166,14 +111,14 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	isi, err := io.ReadAll(berkas)
 	if err != nil {
 		if strings.Contains(err.Error(), "request body too large") {
-			h.writeErrorF(w, r, dokumenpenunjang.ErrBerkasTerlaluBesar)
+			h.WriteError(w, r, dokumenpenunjang.ErrBerkasTerlaluBesar)
 			return
 		}
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	dokumen, err := h.service.Upload(r.Context(), usecase.UploadCommand{
+	dokumen, err := h.Service.Upload(r.Context(), usecase.UploadCommand{
 		PortalAlias: alias,
 		Request: dokumenpenunjang.UploadRequest{
 			ClaimNumber: nomor,
@@ -186,12 +131,12 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil {
-		h.writeErrorF(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusCreated, ItemResponse{
-		Data: dariDokumen(dokumen, h.location, time.Now()),
+	h.WriteJSON(w, r, http.StatusCreated, ItemResponse{
+		Data: dariDokumen(dokumen, h.Location, time.Now()),
 	})
 }
 
@@ -203,7 +148,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) requirePortal(w http.ResponseWriter, r *http.Request) (string, bool) {
 	aktif, ada := portalhttp.ActivePortalFrom(r.Context())
 	if !ada || strings.TrimSpace(aktif.Alias) == "" {
-		h.writeErrorF(w, r, errors.New("dokumenpenunjang/http: portal aktif tidak dikenali"))
+		h.WriteError(w, r, errors.New("dokumenpenunjang/http: portal aktif tidak dikenali"))
 		return "", false
 	}
 	return aktif.Alias, true

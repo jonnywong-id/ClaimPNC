@@ -1,7 +1,6 @@
 package inboxxolhttp
 
 import (
-	"context"
 	"encoding/csv"
 	"log/slog"
 	"net/http"
@@ -9,61 +8,9 @@ import (
 	"strings"
 
 	"claim-pnc/internal/inboxxol"
-	"claim-pnc/internal/inboxxol/usecase"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk — `OperatorID.pyUserIdentifier`
-	// di sistem lama, bukan NIK.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul Inbox XOL.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	logger     *slog.Logger
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan
-	// diimpor dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa
-	// menariknya serta.
-	GetCaller CallerReader
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan
-	// galat portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox XOL.
-func NewHandler(o Options) *Handler {
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		logger:     o.Logger,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // context menyiapkan portal aktif dan identitas pemanggil untuk satu permintaan.
 //
@@ -74,17 +21,17 @@ func NewHandler(o Options) *Handler {
 func (h *Handler) context(w http.ResponseWriter, r *http.Request) (string, inboxxol.Caller, bool) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+		h.WriteError(w, r, portal.ErrNotStated)
 		return "", inboxxol.Caller{}, false
 	}
 
-	if h.caller == nil {
-		h.writeError(w, r, inboxxol.ErrCallerUnknown)
+	if h.Caller == nil {
+		h.WriteError(w, r, inboxxol.ErrCallerUnknown)
 		return "", inboxxol.Caller{}, false
 	}
-	caller, known := h.caller(r.Context())
+	caller, known := h.Caller(r.Context())
 	if !known || strings.TrimSpace(caller.Login) == "" {
-		h.writeError(w, r, inboxxol.ErrCallerUnknown)
+		h.WriteError(w, r, inboxxol.ErrCallerUnknown)
 		return "", inboxxol.Caller{}, false
 	}
 
@@ -101,12 +48,12 @@ func (h *Handler) ListMasters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	masters, err := h.service.ListMasters(r.Context(), alias, caller)
+	masters, err := h.Service.ListMasters(r.Context(), alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeJSON(w, r, http.StatusOK, MasterListResponse{Masters: toMasterDTOs(masters)})
+	h.WriteJSON(w, r, http.StatusOK, MasterListResponse{Masters: toMasterDTOs(masters)})
 }
 
 // SummarizeClaims menangani GET /inbox-xol/klaim.
@@ -118,13 +65,13 @@ func (h *Handler) SummarizeClaims(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	overview, err := h.service.SummarizeClaims(r.Context(), alias, caller,
+	overview, err := h.Service.SummarizeClaims(r.Context(), alias, caller,
 		r.URL.Query().Get("id_master"))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeJSON(w, r, http.StatusOK, toClaimSummaryResponse(overview))
+	h.WriteJSON(w, r, http.StatusOK, toClaimSummaryResponse(overview))
 }
 
 // Breakdown menangani GET /inbox-xol/klaim/rincian.
@@ -137,13 +84,13 @@ func (h *Handler) Breakdown(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := r.URL.Query()
-	rows, err := h.service.Breakdown(r.Context(), alias, caller,
+	rows, err := h.Service.Breakdown(r.Context(), alias, caller,
 		query.Get("id_master"), query.Get("tanggal_kejadian"), query.Get("sebab_kerugian"))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeJSON(w, r, http.StatusOK, toBreakdownResponse(rows))
+	h.WriteJSON(w, r, http.StatusOK, toBreakdownResponse(rows))
 }
 
 // SearchAdvice menangani GET /inbox-xol/pla-dla.
@@ -157,12 +104,12 @@ func (h *Handler) SearchAdvice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	advices, err := h.service.SearchAdvice(r.Context(), alias, caller, adviceFilterFrom(r))
+	advices, err := h.Service.SearchAdvice(r.Context(), alias, caller, adviceFilterFrom(r))
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeJSON(w, r, http.StatusOK, AdviceListResponse{Advices: toAdviceDTOs(advices)})
+	h.WriteJSON(w, r, http.StatusOK, AdviceListResponse{Advices: toAdviceDTOs(advices)})
 }
 
 // DownloadAdvice menangani GET /inbox-xol/pla-dla/unduh.
@@ -188,9 +135,9 @@ func (h *Handler) DownloadAdvice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := adviceFilterFrom(r)
-	advices, err := h.service.SearchAdvice(r.Context(), alias, caller, filter)
+	advices, err := h.Service.SearchAdvice(r.Context(), alias, caller, filter)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -249,12 +196,12 @@ func (h *Handler) ListApprovals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queue, err := h.service.ListApprovals(r.Context(), alias, caller)
+	queue, err := h.Service.ListApprovals(r.Context(), alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeJSON(w, r, http.StatusOK, toApprovalResponse(queue))
+	h.WriteJSON(w, r, http.StatusOK, toApprovalResponse(queue))
 }
 
 // ListCauseOfLoss menangani GET /inbox-xol/sebab-kerugian.
@@ -264,12 +211,12 @@ func (h *Handler) ListCauseOfLoss(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	causes, err := h.service.ListCauseOfLoss(r.Context(), alias, caller)
+	causes, err := h.Service.ListCauseOfLoss(r.Context(), alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
-	h.writeJSON(w, r, http.StatusOK, toCauseOfLossResponse(causes))
+	h.WriteJSON(w, r, http.StatusOK, toCauseOfLossResponse(causes))
 }
 
 // RejectWrite menjawab setiap aksi yang mengubah data.
@@ -284,7 +231,7 @@ func (h *Handler) ListCauseOfLoss(w http.ResponseWriter, r *http.Request) {
 // Pega selama masa paralel (`P-1`). Tanpa rute ini, penekanan tombol akan menghasilkan
 // "halaman tidak ditemukan" — pesan yang menyesatkan pengguna DAN penelusur masalah.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
-	h.writeError(w, r, inboxxol.ErrWriteNotAvailable)
+	h.WriteError(w, r, inboxxol.ErrWriteNotAvailable)
 }
 
 // adviceFilterFrom membaca penyaring pemberitahuan dari parameter query.
@@ -331,10 +278,10 @@ func adviceFileName(filter inboxxol.AdviceFilter) string {
 // Ia hanya dapat dicatat, tidak dapat dijawab: status 200 sudah terkirim. Yang diterima
 // pengguna adalah berkas yang terpotong, dan satu-satunya jejaknya ada di log.
 func (h *Handler) logDownloadFailure(r *http.Request, err error) {
-	if h.logger == nil {
+	if h.Logger == nil {
 		return
 	}
-	h.logger.Error("unduhan perhitungan XOL terputus",
+	h.Logger.Error("unduhan perhitungan XOL terputus",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()))
 }

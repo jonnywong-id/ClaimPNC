@@ -1,0 +1,80 @@
+{
+  "SampleBusiness": [
+    {
+      "ID": "2001",
+      "Name": "Personal Accident"
+    },
+    {
+      "ID": "2002",
+      "Name": "Travel"
+    },
+    {
+      "ID": "2003",
+      "Name": "Marine Cargo"
+    },
+    {
+      "ID": "2004",
+      "Name": "Fire / Property"
+    },
+    {
+      "ID": "2005",
+      "Name": "Aneka"
+    },
+    {
+      "ID": "2006",
+      "Name": "Bonding"
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "1",
+      "Number": "PSL-001",
+      "Text": "Penanggung menjamin kerugian atas harta benda yang dipertanggungkan akibat kebakaran.",
+      "Description": "Jaminan dasar kebakaran",
+      "Category": "1",
+      "CategoryLabel": "Jaminan Polis",
+      "Business": [
+        {
+          "ID": "2004",
+          "Name": "Fire / Property"
+        }
+      ]
+    },
+    {
+      "ID": "2",
+      "Number": "PSL-002",
+      "Text": "Tidak dijamin kerugian yang timbul akibat keausan, sifat barang sendiri, atau cacat tersembunyi.",
+      "Description": "Pengecualian umum",
+      "Category": "2",
+      "CategoryLabel": "Pengecualian",
+      "Business": [
+        {
+          "ID": "2003",
+          "Name": "Marine Cargo"
+        },
+        {
+          "ID": "2005",
+          "Name": "Aneka"
+        }
+      ]
+    },
+    {
+      "ID": "3",
+      "Number": "PSL-003",
+      "Text": "Tertanggung wajib memberitahukan setiap perubahan risiko kepada Penanggung.",
+      "Description": "Kewajiban pemberitahuan",
+      "Category": "",
+      "CategoryLabel": "Notifikasi",
+      "Business": [
+        {
+          "ID": "2001",
+          "Name": "Personal Accident"
+        },
+        {
+          "ID": "2002",
+          "Name": "Travel"
+        }
+      ]
+    }
+  ]
+}

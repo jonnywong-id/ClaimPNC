@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/daftartipedokumen"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/daftartipedokumen"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SampleList adalah isi awal untuk pengembangan dan pengujian tanpa basis data.
 //
@@ -30,12 +40,5 @@ import "claim-pnc/internal/daftartipedokumen"
 // supaya penambahan pertama pada pengembangan melanjutkan deret yang masuk akal dan
 // bentuk yang tampil di layar sama dengan bentuk yang kelak datang dari Oracle.
 func SampleList() []daftartipedokumen.DocumentType {
-	return []daftartipedokumen.DocumentType{
-		{ID: "10001", Type: "Dokumen Registrasi", ProcessStatus: "Register"},
-		{ID: "10002", Type: "Dokumen Survey", ProcessStatus: "Survey"},
-		{ID: "10003", Type: "Dokumen Komite", ProcessStatus: "Komite"},
-		{ID: "10004", Type: "Dokumen Salvage", ProcessStatus: ""},
-		{ID: "10005", Type: "Dokumen Pembayaran", ProcessStatus: "Payment"},
-		{ID: "10006", Type: "Dokumen Pendukung Lainnya", ProcessStatus: ""},
-	}
+	return sampledata.Must[[]daftartipedokumen.DocumentType](sampleJSON, "SampleList")
 }

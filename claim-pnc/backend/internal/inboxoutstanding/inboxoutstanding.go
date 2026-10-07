@@ -60,6 +60,9 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/pagination"
 )
 
 // DisplayStatus adalah status yang DILIHAT pengguna pada kolom "Claim status".
@@ -303,18 +306,7 @@ func (c OutstandingClaim) AgeInDays(now time.Time, location *time.Location) int 
 	if location == nil {
 		location = time.UTC
 	}
-	start := c.RegisteredAt.In(location)
-	end := now.In(location)
-
-	startDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
-	endDay := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, location)
-
-	days := int(endDay.Sub(startDay).Hours() / 24)
-	if days < 0 {
-		// Klaim bertanggal masa depan tidak berumur negatif; ia berumur nol hari.
-		return 0
-	}
-	return days
+	return clock.CalendarDays(c.RegisteredAt, now, location)
 }
 
 // Filter adalah penyaring dan paginasi yang diminta layar.
@@ -406,15 +398,7 @@ func (f Filter) Normalize() Filter {
 	f.Stage = strings.TrimSpace(f.Stage)
 	f.BranchCode = strings.TrimSpace(f.BranchCode)
 
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxLimit {
-		f.Limit = MaxLimit
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxLimit)
 	return f
 }
 

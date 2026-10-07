@@ -8,6 +8,7 @@ package monitoringslinkojkhttp
 import (
 	"claim-pnc/internal/monitoringslinkojk"
 	"claim-pnc/internal/monitoringslinkojk/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // ColumnDTO adalah satu kolom katalog.
@@ -192,10 +193,7 @@ func toRowDTO(columns []monitoringslinkojk.Column, row monitoringslinkojk.Row) R
 }
 
 // ViolationDTO adalah satu pelanggaran validasi.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk baku galat modul ini.
 type ErrorResponse struct {

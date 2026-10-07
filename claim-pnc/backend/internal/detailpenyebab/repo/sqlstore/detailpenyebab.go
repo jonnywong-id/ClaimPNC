@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/detailpenyebab"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo memenuhi detailpenyebab.Store terhadap satu koneksi entitas.
@@ -606,14 +607,7 @@ func mergeDocument(raw string, one detailpenyebab.CauseOfLossDetail) (string, er
 // `%`, `_`, dan `\` di dalam kata kunci dilolosi supaya keduanya dicari sebagai huruf
 // biasa. Tanpa itu, seorang petugas yang mengetik `_` akan menerima hasil yang cocok
 // dengan karakter apa pun — dan tidak ada apa pun di layar yang menjelaskan kenapa.
-func likePattern(keyword string) string {
-	clean := strings.TrimSpace(keyword)
-	if clean == "" {
-		return "%"
-	}
-	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return "%" + strings.ToUpper(replacer.Replace(clean)) + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.LikeOrAll(keyword) }
 
 // nullable mengubah teks kosong menjadi NULL basis data.
 //

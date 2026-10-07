@@ -1,5 +1,9 @@
 package outstandingclaim
 
+import (
+	"claim-pnc/internal/platform/tabletext"
+)
+
 // Bentuk layar Outstanding Claim, dibaca dari `Section/OutstandingClaim-Section.xml`.
 //
 // # Kenapa bentuk layar tinggal di BACKEND
@@ -143,72 +147,64 @@ var groups = []Group{
 		// blok ini. Judul di bawah ditetapkan dari isinya.
 		Title: "Treaty Information",
 
-		Fields: []Field{
-			{Key: "id_master", Title: "Treaty ID", Path: "IDMaster"},
-			{Key: "treaty_name", Title: "Treaty Name", Path: "TreatyName"},
-			{Key: "ri_type", Title: "R/I Type", Blocked: true},
-			{Key: "class_of_business", Title: "Class Of Business",
-				Path: "QuotationData.BusinessName"},
-			{Key: "ceding_name", Title: "Ceding Name", Blocked: true},
-			{Key: "sob_name", Title: "SOB Name", Blocked: true},
-			{Key: "bordeaux", Title: "Bordeaux", Blocked: true},
-			{Key: "bordereaux_note", Title: "Bordereaux Note", Blocked: true},
-			{Key: "year_of_account", Title: "Treaty Year", Path: "YearofAccount"},
-			{Key: "start_date_treaty", Title: "StartDateTreaty", Path: "StartDateTreaty"},
-			{Key: "end_date_treaty", Title: "EndDateTreaty", Path: "EndDateTreaty"},
-			{Key: "accounting_mode", Title: "Accounting Mode", Blocked: true},
-			{Key: "teritorial_scope", Title: "TERITORIAL SCOPE", Blocked: true},
-			{Key: "treaty_group_id", Title: "Treaty Group", Path: "TreatyGroupID"},
-
+		Fields: tabletext.Rows[Field](`
+			Key               | Title             | Path                       | Blocked
+			id_master         | Treaty ID         | IDMaster                   |
+			treaty_name       | Treaty Name       | TreatyName                 |
+			ri_type           | R/I Type          |                            | true
+			class_of_business | Class Of Business | QuotationData.BusinessName |
+			ceding_name       | Ceding Name       |                            | true
+			sob_name          | SOB Name          |                            | true
+			bordeaux          | Bordeaux          |                            | true
+			bordereaux_note   | Bordereaux Note   |                            | true
+			year_of_account   | Treaty Year       | YearofAccount              |
+			start_date_treaty | StartDateTreaty   | StartDateTreaty            |
+			end_date_treaty   | EndDateTreaty     | EndDateTreaty              |
+			accounting_mode   | Accounting Mode   |                            | true
+			teritorial_scope  | TERITORIAL SCOPE  |                            | true
+			treaty_group_id   | Treaty Group      | TreatyGroupID              |
 			// Judulnya BENAR-BENAR "Class Of Business", sama dengan isian di atas,
 			// meski isinya nama grup treaty. Itu tertulis begitu di section dan
-			// dipertahankan apa adanya (`D-13`).
-			{Key: "treaty_group_name", Title: "Class Of Business", Path: "TreatyGroupName"},
-		},
+			// dipertahankan apa adanya ('D-13').
+			treaty_group_name | Class Of Business | TreatyGroupName            |
+		`),
 	},
 	{
 		Code:  GroupClaim,
 		Title: "Claim Information",
-		Fields: []Field{
-			{Key: "policy_no", Title: "Policy No", Path: "PolicyData.PolicyNo"},
-
+		Fields: tabletext.Rows[Field](`
+			Key                         | Title                        | Path                      | Blocked
+			policy_no                   | Policy No                    | PolicyData.PolicyNo       |
 			// Ketiga isian berikut menyusun satu baris "Quarter/Year" di Pega —
-			// `Q <Quater> / <YearofQuartal>   U/Y <TreatyYear>`. Di sini ketiganya tetap
+			// 'Q <Quater> / <YearofQuartal>   U/Y <TreatyYear>'. Di sini ketiganya tetap
 			// isian terpisah: merangkainya menjadi satu teks membuat isian yang kosong
 			// tidak dapat dibedakan dari yang berisi tanda baca saja.
-			{Key: "quater", Title: "Quater", Path: "Quater"},
-			{Key: "year_of_quartal", Title: "YearofQuartal", Path: "YearofQuartal"},
-			{Key: "treaty_year", Title: "TreatyYear", Path: "TreatyYear"},
-
-			{Key: "policy_no_ceding", Title: "Policy No Ceding", Path: "PolicyNo"},
-			{Key: "insured_name", Title: "Insured Name", Path: "InsuredName"},
-			{Key: "pla_no_ceding", Title: "Pla No Ceding", Path: "PlaNoCeding"},
-			{Key: "policy_start_ceding", Title: "Policy Start Ceding",
-				Path: "PolicyData.StartDateTime"},
-			{Key: "policy_end_ceding", Title: "Policy End Ceding",
-				Path: "PolicyData.EndDateTime"},
-			{Key: "date_of_loss", Title: "Date Of Loss", Path: "DateOfLoss"},
-			{Key: "report_date", Title: "Report Date", Path: "ReportDate"},
-			{Key: "received_date", Title: "Received Date", Path: "DateReceived"},
-			{Key: "reporter_name", Title: "Reporter Name", Path: "ReporterName"},
-			{Key: "reporter_email", Title: "Reporter Email", Path: "Email"},
-			{Key: "cause_of_loss", Title: "Cause Of Loss", Path: "CauseOfLoss"},
-			{Key: "report_status", Title: "Report Status", Path: "ReporterStatus"},
-			{Key: "report_type", Title: "Report Type", Path: "ReportType"},
-			{Key: "insured_relationship_others", Title: "Specify...",
-				Path: "InsuredRelationshipOthers"},
-			{Key: "report_address", Title: "Report Address", Path: "ReportAddress"},
-			{Key: "appointed_adj", Title: "Adjuster / Professional Name",
-				Path: "AppointedADJ"},
-			{Key: "consultant_name", Title: "Consultant Name", Path: "ConsultantName"},
-			{Key: "report_description", Title: "Report Description",
-				Path: "ReportDescription"},
-			{Key: "location_of_loss", Title: "Location of Loss", Path: "Location"},
-			{Key: "province", Title: "Province", Path: "Province"},
-			{Key: "zip_code", Title: "Zip Code", Path: "PostalCode"},
-
-			{Key: "asm_share", Title: "ASM Share", Blocked: true},
-		},
+			quater                      | Quater                       | Quater                    |
+			year_of_quartal             | YearofQuartal                | YearofQuartal             |
+			treaty_year                 | TreatyYear                   | TreatyYear                |
+			policy_no_ceding            | Policy No Ceding             | PolicyNo                  |
+			insured_name                | Insured Name                 | InsuredName               |
+			pla_no_ceding               | Pla No Ceding                | PlaNoCeding               |
+			policy_start_ceding         | Policy Start Ceding          | PolicyData.StartDateTime  |
+			policy_end_ceding           | Policy End Ceding            | PolicyData.EndDateTime    |
+			date_of_loss                | Date Of Loss                 | DateOfLoss                |
+			report_date                 | Report Date                  | ReportDate                |
+			received_date               | Received Date                | DateReceived              |
+			reporter_name               | Reporter Name                | ReporterName              |
+			reporter_email              | Reporter Email               | Email                     |
+			cause_of_loss               | Cause Of Loss                | CauseOfLoss               |
+			report_status               | Report Status                | ReporterStatus            |
+			report_type                 | Report Type                  | ReportType                |
+			insured_relationship_others | Specify...                   | InsuredRelationshipOthers |
+			report_address              | Report Address               | ReportAddress             |
+			appointed_adj               | Adjuster / Professional Name | AppointedADJ              |
+			consultant_name             | Consultant Name              | ConsultantName            |
+			report_description          | Report Description           | ReportDescription         |
+			location_of_loss            | Location of Loss             | Location                  |
+			province                    | Province                     | Province                  |
+			zip_code                    | Zip Code                     | PostalCode                |
+			asm_share                   | ASM Share                    |                           | true
+		`),
 
 		// DUA isian di section TIDAK dibawa: `InputData.CARI31` ("Adjuster / Professional
 		// ID") dan `InputData.CARI32` ("Consultant ID"). Keduanya kotak autocomplete di
@@ -230,27 +226,24 @@ var groups = []Group{
 	{
 		Code:  GroupDeductible,
 		Title: "Deductible",
-		Fields: []Field{
-			{Key: "share_ceding", Title: "Share Ceding", Path: "ShareCeding"},
-			{Key: "deductible_type", Title: "DeductibleType", Path: "DeductibleType"},
-			{Key: "form_type", Title: "Format", Path: "FormType"},
-			{Key: "currency_deductible", Title: "Currency", Path: "CurrencyDeductible"},
-			{Key: "deductible_value", Title: "Amount", Path: "DeductibleValue"},
-
+		Fields: tabletext.Rows[Field](`
+			Key                  | Title            | Path
+			share_ceding         | Share Ceding     | ShareCeding
+			deductible_type      | DeductibleType   | DeductibleType
+			form_type            | Format           | FormType
+			currency_deductible  | Currency         | CurrencyDeductible
+			deductible_value     | Amount           | DeductibleValue
 			// Judulnya di Pega hanya "%" — satu karakter, tanpa keterangan apa pun.
-			// Dipertahankan (`D-13`); yang ditambahkan hanyalah nama kuncinya yang
+			// Dipertahankan ('D-13'); yang ditambahkan hanyalah nama kuncinya yang
 			// menyebut apa isinya.
-			{Key: "deductible_percent", Title: "%", Path: "Amount"},
-
-			// Judul sel ini di section adalah `.TypeDeductible` — nama propertinya
+			deductible_percent   | %                | Amount
+			// Judul sel ini di section adalah '.TypeDeductible' — nama propertinya
 			// sendiri, bukan judul. Itu terjadi ketika sel dibuat tanpa mengisi labelnya.
 			// Ditulis apa adanya supaya pembandingan dengan layar Pega tetap cocok.
-			{Key: "type_deductible", Title: ".TypeDeductible", Path: "TypeDeductible"},
-
-			{Key: "tsi_deductible", Title: "TSI Amount", Path: "TSIDeductible"},
-			{Key: "net_deductible_value", Title: "Deductible Value",
-				Path: "NetDeductibleValue"},
-		},
+			type_deductible      | .TypeDeductible  | TypeDeductible
+			tsi_deductible       | TSI Amount       | TSIDeductible
+			net_deductible_value | Deductible Value | NetDeductibleValue
+		`),
 	},
 	{
 		Code:   GroupClaimAmount,
@@ -305,25 +298,25 @@ var grids = map[string]Grid{
 		Code:  GridInterest,
 		Title: "Insured Interest",
 		Path:  "InterestList",
-		Columns: []GridColumn{
-			{Key: "object_name", Title: "Insured Interest", Path: "ObjectName"},
-			{Key: "currency", Title: "Currency", Path: "CurrencyID"},
-
+		Columns: tabletext.Rows[GridColumn](`
+			Key            | Title            | Path
+			object_name    | Insured Interest | ObjectName
+			currency       | Currency         | CurrencyID
 			// PERINGATAN: pasangan dua kolom terakhir TAMPAK tertukar, dan itu dibawa apa
 			// adanya. Pada baris kepala urutannya "Value in IDR" lalu "Value"; pada baris
-			// isi urutannya `.KursObjectItem` lalu `.TSIPerObject` — sehingga kolom
+			// isi urutannya '.KursObjectItem' lalu '.TSIPerObject' — sehingga kolom
 			// berjudul "Value in IDR" menampilkan KURS, dan kolom berjudul "Value"
 			// menampilkan nilai pertanggungan per objek.
 			//
-			// Itu bukan salah baca: kedua baris diambil dari `pyRows` grid yang sama dan
-			// jumlah selnya cocok satu lawan satu. `P-5` menetapkan perilaku dipertahankan
+			// Itu bukan salah baca: kedua baris diambil dari 'pyRows' grid yang sama dan
+			// jumlah selnya cocok satu lawan satu. 'P-5' menetapkan perilaku dipertahankan
 			// lebih dulu, dan menukarnya di sini berarti angka di layar baru berbeda dari
 			// Pega tanpa satu pun butir perbaikan yang menjelaskannya.
 			//
 			// Diangkat sebagai pertanyaan terbuka ke Work Owner, bukan diperbaiki sepihak.
-			{Key: "kurs", Title: "Value in IDR", Path: "KursObjectItem"},
-			{Key: "tsi_per_object", Title: "Value", Path: "TSIPerObject"},
-		},
+			kurs           | Value in IDR     | KursObjectItem
+			tsi_per_object | Value            | TSIPerObject
+		`),
 	},
 	GridInterestTotal: {
 		Code:  GridInterestTotal,
@@ -338,55 +331,53 @@ var grids = map[string]Grid{
 		Code:  GridClaimAmount,
 		Title: "Claim Amount",
 		Path:  "ListClaimAmount",
-		Columns: []GridColumn{
-			{Key: "currency", Title: "Currency", Path: "CurrencyID"},
-			{Key: "claim_amount", Title: "Claim Amount 100%", Path: "ClaimAmount"},
-			{Key: "net_deductible", Title: "Net Deductible", Path: "NetDeductibleValue"},
-			{Key: "claim_amount_ceding", Title: "Claim Amount Ceding", Path: "Value"},
-
-			// Judul kolomnya "Claim Amount in IDR" sementara propertinya bernama `.USD`.
+		Columns: tabletext.Rows[GridColumn](`
+			Key                 | Title               | Path
+			currency            | Currency            | CurrencyID
+			claim_amount        | Claim Amount 100%   | ClaimAmount
+			net_deductible      | Net Deductible      | NetDeductibleValue
+			claim_amount_ceding | Claim Amount Ceding | Value
+			// Judul kolomnya "Claim Amount in IDR" sementara propertinya bernama '.USD'.
 			// Nama properti itu sisa penamaan lama; yang menentukan arti kolom adalah
-			// judulnya, dan judul itulah yang dibawa (`D-13`).
-			{Key: "claim_amount_idr", Title: "Claim Amount in IDR", Path: "USD"},
-		},
+			// judulnya, dan judul itulah yang dibawa ('D-13').
+			claim_amount_idr    | Claim Amount in IDR | USD
+		`),
 	},
 	GridSpreadingRisk: {
 		Code:  GridSpreadingRisk,
 		Title: "Result Claim",
 		Path:  "SpreadingRisk",
-		Columns: []GridColumn{
-			{Key: "currency", Title: "Currency", Path: "CurrencyID"},
-			{Key: "treaty_type", Title: "Treaty Type", Path: "TreatyName"},
-			{Key: "share_percentage", Title: "Share (%)", Path: "SharePercentage"},
-			{Key: "result_claim", Title: "Result Claim", Path: "ClaimSpreaded"},
-			{Key: "ibnr", Title: "IBNR", Path: "IBNR"},
-			{Key: "result_claim_idr", Title: "Result Claim in IDR", Path: "ClaimEstimation"},
-		},
+		Columns: tabletext.Rows[GridColumn](`
+			Key              | Title               | Path
+			currency         | Currency            | CurrencyID
+			treaty_type      | Treaty Type         | TreatyName
+			share_percentage | Share (%)           | SharePercentage
+			result_claim     | Result Claim        | ClaimSpreaded
+			ibnr             | IBNR                | IBNR
+			result_claim_idr | Result Claim in IDR | ClaimEstimation
+		`),
 	},
 	GridEstimation: {
 		Code:  GridEstimation,
 		Title: "Estimation",
 		Path:  "EstimationList",
-		Columns: []GridColumn{
+		Columns: tabletext.Rows[GridColumn](`
+			Key                | Title                        | Path
 			// Kolom pertama TIDAK berjudul di Pega — sel kepalanya kosong. Judul di bawah
 			// ditambahkan dari nama propertinya supaya kolomnya punya nama bagi pembaca
 			// layar; ia satu-satunya judul di berkas ini yang tidak berasal dari section.
-			{Key: "type_loss", Title: "Type Loss", Path: "TypeLoss"},
-
-			{Key: "estimation_date", Title: "Estimation Date", Path: "EstimationDate"},
-			{Key: "type", Title: "Type", Path: "Type"},
-			{Key: "currency", Title: "Currency", Path: "CurrencyID"},
-
+			type_loss          | Type Loss                    | TypeLoss
+			estimation_date    | Estimation Date              | EstimationDate
+			type               | Type                         | Type
+			currency           | Currency                     | CurrencyID
 			// Pasangan yang sama anehnya dengan grid Insured Interest: kolom berjudul
 			// "Value in IDR" menampilkan KURS.
-			{Key: "kurs", Title: "Value in IDR", Path: "KursValue"},
-
-			{Key: "gross_estimation", Title: "Gross Estimate Treaty (100%)",
-				Path: "GrossEstimationPct"},
-			{Key: "estimation_asm", Title: "Estimation ASM", Path: "EstimationValue"},
-			{Key: "ibnr", Title: "IBNR", Path: "IBNR"},
-			{Key: "estimation_asm_idr", Title: "Estimation ASM in IDR", Path: "ConvertValue"},
-		},
+			kurs               | Value in IDR                 | KursValue
+			gross_estimation   | Gross Estimate Treaty (100%) | GrossEstimationPct
+			estimation_asm     | Estimation ASM               | EstimationValue
+			ibnr               | IBNR                         | IBNR
+			estimation_asm_idr | Estimation ASM in IDR        | ConvertValue
+		`),
 	},
 	GridEstimationTotal: {
 		Code:  GridEstimationTotal,
@@ -406,12 +397,13 @@ var grids = map[string]Grid{
 		Code:  GridSpreadingClaim,
 		Title: "Claim Spreaded",
 		Path:  "SpreadingClaim",
-		Columns: []GridColumn{
-			{Key: "treaty_type", Title: "Treaty Type", Path: "TreatyName"},
-			{Key: "share_percentage", Title: "Share (%)", Path: "SharePercentage"},
-			{Key: "currency", Title: "Currency", Path: "Currency"},
-			{Key: "claim_spreaded", Title: "Claim Spreaded", Path: "ClaimSpreaded"},
-		},
+		Columns: tabletext.Rows[GridColumn](`
+			Key              | Title          | Path
+			treaty_type      | Treaty Type    | TreatyName
+			share_percentage | Share (%)      | SharePercentage
+			currency         | Currency       | Currency
+			claim_spreaded   | Claim Spreaded | ClaimSpreaded
+		`),
 	},
 	GridSpreadingBreak: {
 		Code: GridSpreadingBreak,
@@ -421,12 +413,13 @@ var grids = map[string]Grid{
 		// bersebelahan tidak dibacakan pembaca layar dengan nama yang sama.
 		Title: "Claim Spreaded — Break QS",
 		Path:  "SpreadingBreakQS",
-		Columns: []GridColumn{
-			{Key: "treaty_type", Title: "Treaty Type", Path: "TreatyName"},
-			{Key: "share_percentage", Title: "Share (%)", Path: "SharePercentage"},
-			{Key: "currency", Title: "Currency", Path: "Currency"},
-			{Key: "claim_spreaded", Title: "Claim Spreaded", Path: "ClaimSpreaded"},
-		},
+		Columns: tabletext.Rows[GridColumn](`
+			Key              | Title          | Path
+			treaty_type      | Treaty Type    | TreatyName
+			share_percentage | Share (%)      | SharePercentage
+			currency         | Currency       | Currency
+			claim_spreaded   | Claim Spreaded | ClaimSpreaded
+		`),
 	},
 	GridAttachment: {
 		Code:  GridAttachment,

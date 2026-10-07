@@ -10,9 +10,9 @@ import (
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang
-// merakit urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // # Kenapa SELURUH rute di balik pemeriksaan portal
 //
@@ -20,9 +20,9 @@ import (
 // bukan klaim badan hukum lain, dan baris yang muncul di sana memuat nama nasabah beserta
 // nomor IMEI perangkatnya.
 //
-// Permintaan tanpa header portal DITOLAK, tidak pernah dilayani portal utama sebagai cadangan
-// — jatuh ke koneksi bawaan berarti menampilkan klaim satu badan hukum kepada petugas badan
-// hukum lain tanpa satu pun pesan galat (`R-20`, `TKT-F6-002`).
+// Permintaan tanpa header portal DITOLAK, tidak pernah dilayani portal utama sebagai
+// cadangan — jatuh ke koneksi bawaan berarti menampilkan klaim satu badan hukum kepada
+// petugas badan hukum lain tanpa satu pun pesan galat (`R-20`, `TKT-F6-002`).
 //
 // Rute keterangan layar (`/tab`) ikut di balik pemeriksaan itu meski isinya sama di seluruh
 // entitas. Alasannya bukan kerahasiaan melainkan kejujuran jawaban: respons memuat alias
@@ -31,10 +31,10 @@ import (
 //
 // # Kewenangan
 //
-// Rutenya terlindungi sesi. Yang BELUM ada adalah pemeriksaan peran: "apakah peran pemanggil
-// memiliki menu ini" adalah `TKT-F3-005`, yang bergantung pada tabel peran `TKT-F3-004` — dan
-// tabel itu dapat dibangun tetapi belum dapat diisi, karena penugasan operator ke peran tidak
-// ada di basis data maupun di export (`11-SECURITY.md` §3.1).
+// Rutenya terlindungi sesi. Yang BELUM ada adalah pemeriksaan peran: "apakah peran
+// pemanggil memiliki menu ini" adalah `TKT-F3-005`, yang bergantung pada tabel peran
+// `TKT-F3-004` — dan tabel itu dapat dibangun tetapi belum dapat diisi, karena penugasan
+// operator ke peran tidak ada di basis data maupun di export (`11-SECURITY.md` §3.1).
 //
 // Di sistem lama, menu ini tampil bagi `GCNMFW:Administrators`, `GCNMFW:PNCServiceCenter`,
 // dan `GCNMFW:PncAdmin` — ditambah dua cabang berbasis nama server, yang `12-CROSSCUTTING.md`
@@ -48,9 +48,9 @@ import (
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))

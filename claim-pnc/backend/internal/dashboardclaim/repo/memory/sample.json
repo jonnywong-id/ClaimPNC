@@ -1,0 +1,225 @@
+{
+  "SampleClosed": [
+    {
+      "Row": {
+        "ClaimID": "CONTOH-TUTUP-1",
+        "ClaimNumber": "PNCN.26.0101",
+        "PolicyNumber": "POLIS-CONTOH-0101",
+        "InsuredName": "Tertanggung Contoh F",
+        "BusinessName": "Aneka",
+        "BusinessSource": "Cabang",
+        "BranchName": "Jakarta",
+        "TechnicalPIC": "PIC Contoh 1",
+        "AdminPNC": "Admin Contoh 1",
+        "ClaimStatusCode": "1163",
+        "ProcessStatus": "Resolved-Completed",
+        "LossDate": "2026-07-01T00:00:00Z",
+        "RegisteredAt": "2026-08-02T03:00:00Z"
+      },
+      "GroupPanel": "003",
+      "BusinessGroupID": "10001"
+    },
+    {
+      "Row": {
+        "ClaimID": "CONTOH-TUTUP-2",
+        "ClaimNumber": "PNCN.26.0102",
+        "PolicyNumber": "POLIS-CONTOH-0102",
+        "InsuredName": "Tertanggung Contoh G",
+        "BusinessName": "Personal Accident",
+        "BusinessSource": "Broker",
+        "BranchName": "Surabaya",
+        "TechnicalPIC": "PIC Contoh 2",
+        "AdminPNC": "Admin Contoh 2",
+        "ClaimStatusCode": "1142",
+        "ProcessStatus": "Resolved-Rejected",
+        "LossDate": "2026-07-03T00:00:00Z",
+        "RegisteredAt": "2026-08-04T03:00:00Z"
+      },
+      "GroupPanel": "002",
+      "BusinessGroupID": "10002"
+    }
+  ],
+  "SampleOutstanding": [
+    {
+      "Row": {
+        "ClaimID": "CONTOH-BERJALAN-1",
+        "ClaimNumber": "PNCN.26.0001",
+        "PolicyNumber": "POLIS-CONTOH-0001",
+        "InsuredName": "Tertanggung Contoh A",
+        "BusinessName": "Aneka",
+        "BusinessSource": "Cabang",
+        "BranchName": "Jakarta",
+        "TechnicalPIC": "PIC Contoh 1",
+        "AdminPNC": "Admin Contoh 1",
+        "ClaimStatusCode": "1147",
+        "ProcessStatus": "New",
+        "LossDate": "2026-07-04T00:00:00Z",
+        "RegisteredAt": "2026-08-05T03:00:00Z"
+      },
+      "GroupPanel": "003",
+      "BusinessGroupID": "10001"
+    },
+    {
+      "Row": {
+        "ClaimID": "CONTOH-BERJALAN-2",
+        "ClaimNumber": "PNCN.26.0002",
+        "PolicyNumber": "POLIS-CONTOH-0002",
+        "InsuredName": "Tertanggung Contoh B",
+        "BusinessName": "Personal Accident",
+        "BusinessSource": "Broker",
+        "BranchName": "Surabaya",
+        "TechnicalPIC": "PIC Contoh 2",
+        "AdminPNC": "Admin Contoh 2",
+        "ClaimStatusCode": "1149",
+        "ProcessStatus": "Pending",
+        "LossDate": "2026-07-06T00:00:00Z",
+        "RegisteredAt": "2026-08-07T03:00:00Z"
+      },
+      "GroupPanel": "002",
+      "BusinessGroupID": "10002"
+    },
+    {
+      "Row": {
+        "ClaimID": "CONTOH-BERJALAN-3",
+        "ClaimNumber": "PNCN.26.0003",
+        "PolicyNumber": "POLIS-CONTOH-0003",
+        "InsuredName": "Tertanggung Contoh C",
+        "BusinessName": "Travel",
+        "BusinessSource": "Agen",
+        "BranchName": "Denpasar",
+        "TechnicalPIC": "PIC Contoh 3",
+        "AdminPNC": "Admin Contoh 3",
+        "ClaimStatusCode": "1147",
+        "ProcessStatus": "New",
+        "LossDate": "2026-07-08T00:00:00Z",
+        "RegisteredAt": "2026-08-09T03:00:00Z"
+      },
+      "GroupPanel": "005",
+      "BusinessGroupID": "10003"
+    },
+    {
+      "Row": {
+        "ClaimID": "CONTOH-BERJALAN-4",
+        "ClaimNumber": "PNCN.26.0004",
+        "PolicyNumber": "POLIS-CONTOH-0004",
+        "InsuredName": "Tertanggung Contoh D",
+        "BusinessName": "Bonding",
+        "BusinessSource": "Cabang",
+        "BranchName": "Medan",
+        "TechnicalPIC": "PIC Contoh 4",
+        "AdminPNC": "Admin Contoh 4",
+        "ClaimStatusCode": "1149",
+        "ProcessStatus": "New",
+        "LossDate": "2026-07-10T00:00:00Z",
+        "RegisteredAt": "2026-08-11T03:00:00Z"
+      },
+      "GroupPanel": "004",
+      "BusinessGroupID": "10008"
+    },
+    {
+      "Row": {
+        "ClaimID": "CONTOH-BERJALAN-5",
+        "ClaimNumber": "PNCN.26.0005",
+        "PolicyNumber": "POLIS-CONTOH-0005",
+        "InsuredName": "Tertanggung Contoh E",
+        "BusinessName": "Aneka Varian",
+        "BusinessSource": "Cabang",
+        "BranchName": "Semarang",
+        "TechnicalPIC": "PIC Contoh 5",
+        "AdminPNC": "Admin Contoh 5",
+        "ClaimStatusCode": "1147",
+        "ProcessStatus": "New",
+        "LossDate": "2026-07-12T00:00:00Z",
+        "RegisteredAt": "2026-08-13T03:00:00Z"
+      },
+      "GroupPanel": "009",
+      "BusinessGroupID": "10004"
+    }
+  ],
+  "SampleSurveys": [
+    {
+      "Row": {
+        "SurveyID": "CONTOH-SURVEI-1",
+        "SurveyNumber": "SRV-CONTOH-0001",
+        "ClaimNumber": "PNCN.26.0001",
+        "PolicyNumber": "POLIS-CONTOH-0001",
+        "InsuredName": "Tertanggung Contoh A",
+        "ReferenceNumber": "REF-CONTOH-01",
+        "SurveyorName": "Adjuster Contoh 1",
+        "TechnicalPIC": "PIC Contoh 1",
+        "SurveyLocation": "Jakarta",
+        "SurveyStatus": "Assigned",
+        "ProcessStatus": "Open",
+        "AdjusterPIC": "PIC Adjuster Contoh 1",
+        "ScheduledAt": null,
+        "AssignedAt": "2026-08-06T03:00:00Z"
+      },
+      "Kind": "2",
+      "GroupPanel": "003",
+      "BusinessGroupID": "10001"
+    },
+    {
+      "Row": {
+        "SurveyID": "CONTOH-SURVEI-2",
+        "SurveyNumber": "SRV-CONTOH-0002",
+        "ClaimNumber": "PNCN.26.0002",
+        "PolicyNumber": "POLIS-CONTOH-0002",
+        "InsuredName": "Tertanggung Contoh B",
+        "ReferenceNumber": "REF-CONTOH-02",
+        "SurveyorName": "Adjuster Contoh 2",
+        "TechnicalPIC": "PIC Contoh 2",
+        "SurveyLocation": "Surabaya",
+        "SurveyStatus": "On Progress",
+        "ProcessStatus": "Open",
+        "AdjusterPIC": "PIC Adjuster Contoh 2",
+        "ScheduledAt": null,
+        "AssignedAt": "2026-08-08T03:00:00Z"
+      },
+      "Kind": "2",
+      "GroupPanel": "002",
+      "BusinessGroupID": "10002"
+    },
+    {
+      "Row": {
+        "SurveyID": "CONTOH-SURVEI-3",
+        "SurveyNumber": "SRV-CONTOH-0003",
+        "ClaimNumber": "PNCN.26.0001",
+        "PolicyNumber": "POLIS-CONTOH-0001",
+        "InsuredName": "Tertanggung Contoh A",
+        "ReferenceNumber": "REF-CONTOH-03",
+        "SurveyorName": "Surveyor Contoh 1",
+        "TechnicalPIC": "PIC Contoh 1",
+        "SurveyLocation": "Jakarta",
+        "SurveyStatus": "Scheduled",
+        "ProcessStatus": "Open",
+        "AdjusterPIC": "Surveyor Contoh 1",
+        "ScheduledAt": "2026-07-20T00:00:00Z",
+        "AssignedAt": "2026-08-10T03:00:00Z"
+      },
+      "Kind": "1",
+      "GroupPanel": "003",
+      "BusinessGroupID": "10001"
+    },
+    {
+      "Row": {
+        "SurveyID": "CONTOH-SURVEI-4",
+        "SurveyNumber": "SRV-CONTOH-0004",
+        "ClaimNumber": "PNCN.26.0003",
+        "PolicyNumber": "POLIS-CONTOH-0003",
+        "InsuredName": "Tertanggung Contoh C",
+        "ReferenceNumber": "REF-CONTOH-04",
+        "SurveyorName": "Surveyor Contoh 2",
+        "TechnicalPIC": "PIC Contoh 3",
+        "SurveyLocation": "Denpasar",
+        "SurveyStatus": "Scheduled",
+        "ProcessStatus": "Open",
+        "AdjusterPIC": "Surveyor Contoh 2",
+        "ScheduledAt": "2026-07-22T00:00:00Z",
+        "AssignedAt": "2026-08-12T03:00:00Z"
+      },
+      "Kind": "1",
+      "GroupPanel": "005",
+      "BusinessGroupID": "10003"
+    }
+  ]
+}

@@ -38,65 +38,18 @@ package notification
 import (
 	"context"
 	"errors"
-	"fmt"
 	"html"
-	"net"
-	"net/smtp"
 	"strconv"
 	"strings"
-	"time"
 
 	"claim-pnc/internal/masterxol"
+	"claim-pnc/internal/platform/smtpsend"
 )
 
 // Config adalah parameter sambungan SMTP beserta penerimanya.
-type Config struct {
-	Host string
-	Port int
+type Config = smtpsend.Config
 
-	// User dan Password boleh kosong. Banyak relay SMTP internal menerima pengirim dari
-	// jaringan tepercaya tanpa autentikasi; memaksakan kredensial akan menolak
-	// konfigurasi yang sah.
-	User     string
-	Password string
-
-	// From adalah alamat pengirim.
-	From string
-
-	// To adalah mailbox komite yang menerima pemberitahuan pengajuan.
-	//
-	// Ia KONFIGURASI, bukan nilai di dalam kode — itulah pokok perbedaannya dari sistem
-	// lama, yang menuliskan dua alamat perorangan langsung di dalam activity-nya.
-	To []string
-
-	// Timeout membatasi lama menunggu server SMTP. Nol berarti nilai baku.
-	Timeout time.Duration
-}
-
-// Complete menyatakan konfigurasi ini cukup untuk mengirim surel.
-//
-// Penerima ikut disyaratkan: pengirim surel tanpa tujuan bukan setengah lengkap, ia tidak
-// lengkap — dan menyatakannya lengkap akan menyembunyikan konfigurasi yang belum selesai
-// di balik pengiriman yang tidak pernah sampai ke siapa pun.
-func (c Config) Complete() bool {
-	return strings.TrimSpace(c.Host) != "" &&
-		c.Port > 0 &&
-		strings.TrimSpace(c.From) != "" &&
-		len(c.to()) > 0
-}
-
-// to mengembalikan alamat penerima yang benar-benar terisi.
-func (c Config) to() []string {
-	result := make([]string, 0, len(c.To))
-	for _, address := range c.To {
-		if trimmed := strings.TrimSpace(address); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
-}
-
-const defaultTimeout = 20 * time.Second
+const defaultTimeout = smtpsend.DefaultTimeout
 
 // Sender mengirim pemberitahuan lewat SMTP.
 type Sender struct {
@@ -112,82 +65,12 @@ func (s *Sender) NotifyCommitteeSubmission(ctx context.Context, submission maste
 		return errors.New("masterxol/notification: SMTP belum dikonfigurasi")
 	}
 
-	to := s.cfg.to()
+	to := s.cfg.Recipients()
 	return s.send(ctx, to, composeEmail(s.cfg.From, to, submission))
 }
 
 func (s *Sender) send(ctx context.Context, to []string, message []byte) error {
-	timeout := s.cfg.Timeout
-	if timeout <= 0 {
-		timeout = defaultTimeout
-	}
-
-	address := net.JoinHostPort(s.cfg.Host, fmt.Sprint(s.cfg.Port))
-	dialer := &net.Dialer{Timeout: timeout}
-
-	connection, err := dialer.DialContext(ctx, "tcp", address)
-	if err != nil {
-		return fmt.Errorf("masterxol/notification: menghubungi server surel: %w", err)
-	}
-	// Tenggang dipasang pada sambungannya, bukan hanya pada pemutarnya: server SMTP yang
-	// menerima koneksi lalu diam adalah kegagalan yang paling sering menggantung proses.
-	_ = connection.SetDeadline(time.Now().Add(timeout))
-
-	client, err := smtp.NewClient(connection, s.cfg.Host)
-	if err != nil {
-		_ = connection.Close()
-		return fmt.Errorf("masterxol/notification: memulai percakapan SMTP: %w", err)
-	}
-	defer func() { _ = client.Close() }()
-
-	// STARTTLS dipakai bila server menawarkannya. Ia tidak dipaksakan karena relay
-	// internal sering belum memasang sertifikat; yang dipaksakan justru sebaliknya —
-	// kredensial hanya dikirim setelah sambungan terenkripsi.
-	//
-	// Ini menutup satu temuan nyata: export memuat `UseSSL=false` pada SELURUH
-	// kemunculannya, sementara 16 dari 31 lokasi memakai port 587 (`R-17`).
-	secured := false
-	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(nil); err != nil {
-			return fmt.Errorf("masterxol/notification: menegakkan TLS: %w", err)
-		}
-		secured = true
-	}
-
-	if s.cfg.User != "" {
-		if !secured {
-			return errors.New(
-				"masterxol/notification: server surel tidak mendukung STARTTLS; " +
-					"kredensial SMTP tidak dikirim melalui sambungan terbuka")
-		}
-		if err := client.Auth(smtp.PlainAuth("", s.cfg.User, s.cfg.Password, s.cfg.Host)); err != nil {
-			// Galatnya tidak memuat kredensial, dan tidak boleh memuatnya: galat ini
-			// berakhir di log.
-			return fmt.Errorf("masterxol/notification: autentikasi SMTP ditolak: %w", err)
-		}
-	}
-
-	if err := client.Mail(s.cfg.From); err != nil {
-		return fmt.Errorf("masterxol/notification: server menolak alamat pengirim: %w", err)
-	}
-	for _, address := range to {
-		if err := client.Rcpt(address); err != nil {
-			return fmt.Errorf("masterxol/notification: server menolak alamat tujuan: %w", err)
-		}
-	}
-
-	write, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("masterxol/notification: membuka badan surel: %w", err)
-	}
-	if _, err := write.Write(message); err != nil {
-		_ = write.Close()
-		return fmt.Errorf("masterxol/notification: menulis badan surel: %w", err)
-	}
-	if err := write.Close(); err != nil {
-		return fmt.Errorf("masterxol/notification: menutup badan surel: %w", err)
-	}
-	return client.Quit()
+	return s.cfg.Send(ctx, to, message, "masterxol/notification")
 }
 
 // Subject menyusun baris subjek.

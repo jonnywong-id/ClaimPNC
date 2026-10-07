@@ -9,6 +9,10 @@
 // kembali. **Tidak ada aturan modul di sini.**
 package masterrecoveryhttp
 
+import (
+	"claim-pnc/internal/platform/apierror"
+)
+
 // Nilai uang dikirim sebagai ANGKA JSON, bukan teks.
 //
 // Keduanya sama-sama masuk akal, dan yang dipilih adalah yang paling sulit disalahgunakan
@@ -335,10 +339,7 @@ type SaveResponse struct {
 // Field dikirim supaya layar dapat menandai kolom yang salah, bukan sekadar menampilkan
 // satu pesan di atas form — yang persis itulah yang dilakukan sistem lama dengan satu
 // kalimat "Wajib ISI semua field" tanpa menyebut isian mana.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 //

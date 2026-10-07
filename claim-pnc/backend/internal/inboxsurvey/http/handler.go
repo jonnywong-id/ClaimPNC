@@ -1,44 +1,15 @@
 package inboxsurveyhttp
 
 import (
-	"context"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"claim-pnc/internal/inboxsurvey"
-	"claim-pnc/internal/inboxsurvey/usecase"
+	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/httpquery"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
-
-// Caller adalah identitas pemanggil sebagaimana dilihat lapisan transport modul ini.
-//
-// Ia tipe milik modul ini, bukan tipe modul auth: modul tidak saling mengimpor lapisan
-// transport-nya, dan jembatan di antara keduanya dipasang cmd/claimpnc.
-type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK.
-	//
-	// Itulah yang dicocokkan ke `POOLDATA.MST_LOGIN_SURVEYOR.LOGIN` — pemetaan yang
-	// `RDB List/GetLoginLeaderSurveyor-SQL.xml` pakai persis begitu. Memakai NIK di sini akan
-	// membuat setiap pengguna terbaca sebagai bukan surveyor.
-	Login string
-}
-
-// CallerReader membaca identitas pemanggil dari konteks permintaan.
-type CallerReader func(ctx context.Context) (Caller, bool)
-
-// Handler melayani permintaan modul My Work.
-type Handler struct {
-	service    *usecase.Service
-	caller     CallerReader
-	clock      inboxsurvey.Clock
-	location   *time.Location
-	writeJSON  JSONWriter
-	writeError ErrorWriter
-}
 
 // systemClock membaca jam mesin.
 //
@@ -48,54 +19,6 @@ type Handler struct {
 type systemClock struct{}
 
 func (systemClock) Now() time.Time { return time.Now() }
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// GetCaller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan cmd, bukan diimpor
-	// dari modul auth — itulah yang membuat modul ini dapat dipindahkan tanpa menariknya
-	// serta.
-	GetCaller CallerReader
-
-	// Location adalah zona waktu tampilan. Kosong berarti Asia/Jakarta.
-	Location *time.Location
-
-	// Clock adalah seam ke waktu. Kosong berarti jam mesin.
-	//
-	// Ia dibutuhkan kolom Aging, yang DIHITUNG dari tanggal janji survei dicatat terhadap
-	// tanggal WIB hari ini — bukan dibaca dari kolom.
-	Clock inboxsurvey.Clock
-
-	Logger    *slog.Logger
-	WriteJSON JSONWriter
-
-	// FallbackErrorWriter menangani galat yang bukan milik modul ini — galat sesi dan galat
-	// portal.
-	FallbackErrorWriter ErrorWriter
-}
-
-// NewHandler membentuk handler modul My Work.
-func NewHandler(o Options) *Handler {
-	location := o.Location
-	if location == nil {
-		location = jakarta()
-	}
-
-	clock := o.Clock
-	if clock == nil {
-		clock = systemClock{}
-	}
-
-	return &Handler{
-		service:    o.Service,
-		caller:     o.GetCaller,
-		clock:      clock,
-		location:   location,
-		writeJSON:  o.WriteJSON,
-		writeError: WriteError(o.Logger, o.WriteJSON, o.FallbackErrorWriter),
-	}
-}
 
 // Metadata menangani GET /api/inbox-survey/keterangan.
 //
@@ -234,22 +157,11 @@ func (h *Handler) readCaller(r *http.Request) (inboxsurvey.Caller, bool) {
 // nilai bawaan. Menolak seluruh permintaan karena `batas=abc` akan membuat layar gagal tanpa
 // alasan yang terbaca pengguna — sementara menampilkan halaman pertama adalah jawaban yang
 // selalu masuk akal.
-func nonNegativeNumber(raw string) int {
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return 0
-	}
-	return value
-}
+func nonNegativeNumber(raw string) int { return httpquery.NonNegative(raw) }
 
 // jakarta mengembalikan zona WIB.
 //
 // Bila basis data zona waktu tidak tersedia di mesin — yang terjadi pada sebagian citra
 // kontainer minimal — dipakai offset tetap +07:00. Indonesia bagian barat tidak mengenal
 // daylight saving, sehingga offset tetap SETARA dan bukan penyederhanaan yang merugikan.
-func jakarta() *time.Location {
-	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
-		return loc
-	}
-	return time.FixedZone("WIB", 7*60*60)
-}
+func jakarta() *time.Location { return clock.Jakarta() }

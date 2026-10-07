@@ -5,6 +5,7 @@ import (
 
 	"claim-pnc/internal/inboxmanager"
 	"claim-pnc/internal/inboxmanager/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // Nama field JSON di berkas ini berbahasa Indonesia, dan itu bukan ketidakkonsistenan: nama
@@ -18,10 +19,7 @@ type ErrorResponse struct {
 }
 
 // ViolationDTO menunjuk satu isian yang bermasalah.
-type ViolationDTO struct {
-	Field   string `json:"isian"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.InputError
 
 // ColumnDTO adalah satu kolom grid.
 type ColumnDTO struct {

@@ -1,0 +1,56 @@
+{
+  "SampleList": [
+    {
+      "OperatorID": "PICTEKNIK01",
+      "Name": "Contoh Kepala Teknik",
+      "Email": "contoh.kepalateknik@example.invalid",
+      "BusinessLine": "NONMBU",
+      "Group": "TEKNIK JAKARTA",
+      "Supervisor": "",
+      "Quota": 20,
+      "ExternalQuota": 0,
+      "PanelGroup": "",
+      "Workload": 6,
+      "Active": true
+    },
+    {
+      "OperatorID": "PICTEKNIK02",
+      "Name": "Contoh Adjuster Madya",
+      "Email": "contoh.adjuster@example.invalid",
+      "BusinessLine": "NONMBU",
+      "Group": "TEKNIK JAKARTA",
+      "Supervisor": "PICTEKNIK01",
+      "Quota": 15,
+      "ExternalQuota": 0,
+      "PanelGroup": "",
+      "Workload": 9,
+      "Active": true
+    },
+    {
+      "OperatorID": "PICTEKNIK03",
+      "Name": "Contoh Petugas Teknik",
+      "Email": "contoh.petugas@example.invalid",
+      "BusinessLine": "NONMBU",
+      "Group": "TEKNIK SURABAYA",
+      "Supervisor": "PICTEKNIK01",
+      "Quota": 10,
+      "ExternalQuota": 3,
+      "PanelGroup": "",
+      "Workload": 10,
+      "Active": true
+    },
+    {
+      "OperatorID": "PICTEKNIK04",
+      "Name": "Contoh Petugas Nonaktif",
+      "Email": "contoh.nonaktif@example.invalid",
+      "BusinessLine": "NONMBU",
+      "Group": "TEKNIK SURABAYA",
+      "Supervisor": "PICTEKNIK01",
+      "Quota": 0,
+      "ExternalQuota": 0,
+      "PanelGroup": "",
+      "Workload": 0,
+      "Active": false
+    }
+  ]
+}

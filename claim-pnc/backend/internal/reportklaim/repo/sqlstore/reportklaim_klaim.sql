@@ -212,7 +212,7 @@ SELECT a.claimno                        AS "CaseID",
    AND CAST(a.registerdate AS DATE) <= :2
    AND a.branchcode <> '100639'
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND a.grouppanel = '002')
      OR (:3 = '005' AND a.grouppanel = '005')
      OR (:3 = '346' AND a.grouppanel IN ('003','004','006','009')
@@ -305,7 +305,7 @@ SELECT b.nopolis    AS "NoKTP",
    AND b.claimno IS NOT NULL
    AND b.branchname <> 'ASNET'
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND b.grouppanel = '002')
      OR (:3 = '005' AND b.grouppanel = '005')
      OR (:3 = '346' AND b.grouppanel IN ('003','004','006','009'))
@@ -388,7 +388,7 @@ SELECT d.claimno       AS "CaseID",
    AND CAST(d.closeclaimdate AS DATE) >= :1
    AND CAST(d.closeclaimdate AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND d.grouppanel = '002')
      OR (:3 = '005' AND d.grouppanel = '005')
      OR (:3 = '346' AND d.grouppanel IN ('003','004','006','009')
@@ -430,7 +430,7 @@ SELECT a.claimno      AS "CaseID",
    AND CAST(a.closeclaimdate AS DATE) >= :1
    AND CAST(a.closeclaimdate AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND a.grouppanel = '002')
      OR (:3 = '005' AND a.grouppanel = '005')
      OR (:3 = '346' AND a.grouppanel IN ('003','004','006','009')
@@ -469,7 +469,7 @@ SELECT a.claimno      AS "CaseID",
    AND CAST(a.closeclaimdate AS DATE) >= :1
    AND CAST(a.closeclaimdate AS DATE) <= :2
    AND (
-        :3 = ''
+        :3 IS NULL
      OR (:3 = '002' AND a.grouppanel = '002')
      OR (:3 = '005' AND a.grouppanel = '005')
      OR (:3 = '346' AND a.grouppanel IN ('003','004','006','009')
@@ -544,7 +544,7 @@ SELECT a.idpega   AS "CaseID",
            FROM POOLDATA.CLAIM_SERVICE_LOG s
           WHERE s.categoryservice = 'RESULT AI PA')
    AND (
-        :1 = ''
+        :1 IS NULL
      OR EXISTS (SELECT 1 FROM T_CLAIM_PNC p
                  WHERE p.claimid = a.idpega
                    AND (   (:1 = '002' AND p.grouppanel = '002')

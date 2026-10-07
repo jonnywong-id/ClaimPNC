@@ -10,10 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/masterpasal"
-	"claim-pnc/internal/masterpasal/usecase"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -30,54 +28,6 @@ import (
 // (`R-08`) — lihat masterpasal.Input.Check.
 const maxRequestBody = 256 << 10
 
-// Handler melayani permintaan Master Pasal Kerugian.
-//
-// # Tidak ada Caller di sini, dan itu bukan kelalaian
-//
-// Modul master lain menerima identitas pemanggil untuk mengisi kolom pencatat siapa.
-// POOLDATA.V_M_DATA_PASAL tidak punya kolom semacam itu — hanya IDDATA, IDPASAL, dan
-// JSONPASAL — sehingga tidak ada tempat untuk menuliskannya.
-//
-// Akibatnya dicatat sebagai keterbatasan, bukan ditambal dengan kolom yang dikarang:
-// perubahan dan penghapusan di layar ini TIDAK MENINGGALKAN JEJAK di basis data.
-// Menambah kolom menempuh `D-63`.
-type Handler struct {
-	service       *usecase.Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	// Service melayani seluruh perkara modul ini. Wajib.
-	Service *usecase.Service
-
-	Logger *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	// Modul tidak saling mengimpor lapisan transport-nya — itulah yang membuat modul
-	// dapat dipindahkan tanpa menariknya serta.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Master Pasal Kerugian.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("masterpasal/http: Service wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("masterpasal/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
 // List menangani GET /master/pasal-kerugian.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	active, ready := h.activePortal(w, r)
@@ -85,13 +35,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.List(r.Context(), active.Alias)
+	list, err := h.Service.List(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
+	h.WriteResponse(w, r, http.StatusOK, ListResponse{
 		Clause: toListDTO(list),
 		Portal: active.Alias,
 	})
@@ -115,13 +65,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clause, err := h.service.Get(r.Context(), active.Alias, id)
+	clause, err := h.Service.Get(r.Context(), active.Alias, id)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{
 		Clause: toDTO(clause),
 		Portal: active.Alias,
 	})
@@ -139,7 +89,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Create(r.Context(), active.Alias, toInput(request))
+	saved, err := h.Service.Create(r.Context(), active.Alias, toInput(request))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -148,7 +98,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// 201, dan badannya memuat baris yang benar-benar tersimpan — termasuk ID dan sebutan
 	// kategori yang keduanya diterbitkan server, sehingga layar tidak punya cara lain
 	// mengetahuinya.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
+	h.WriteResponse(w, r, http.StatusCreated, SingleResponse{
 		Clause: toDTO(saved),
 		Portal: active.Alias,
 	})
@@ -172,13 +122,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saved, err := h.service.Update(r.Context(), active.Alias, id, toInput(request))
+	saved, err := h.Service.Update(r.Context(), active.Alias, id, toInput(request))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{
 		Clause: toDTO(saved),
 		Portal: active.Alias,
 	})
@@ -213,17 +163,17 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.Delete(r.Context(), active.Alias, id); err != nil {
+	if err := h.Service.Delete(r.Context(), active.Alias, id); err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	logging.From(r.Context(), h.logger).Info("pasal kerugian dihapus permanen",
+	logging.From(r.Context(), h.Logger).Info("pasal kerugian dihapus permanen",
 		slog.String("portal", active.Alias),
 		slog.String("id", id),
 	)
 
-	h.writeResponse(w, r, http.StatusOK, DeleteResponse{ID: id, Portal: active.Alias})
+	h.WriteResponse(w, r, http.StatusOK, DeleteResponse{ID: id, Portal: active.Alias})
 }
 
 // Business menangani GET /master/pasal-kerugian/bisnis?cari=...
@@ -238,13 +188,13 @@ func (h *Handler) Business(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.SearchBusiness(r.Context(), active.Alias, r.URL.Query().Get("cari"))
+	list, err := h.Service.SearchBusiness(r.Context(), active.Alias, r.URL.Query().Get("cari"))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BusinessListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BusinessListResponse{
 		Business: toBusinessListDTO(list),
 		Portal:   active.Alias,
 	})
@@ -258,7 +208,7 @@ func (h *Handler) Business(w http.ResponseWriter, r *http.Request) {
 // sehingga menuntut portal di sini akan membuat form gagal dimuat justru saat pengguna
 // belum memilih entitas.
 func (h *Handler) Category(w http.ResponseWriter, r *http.Request) {
-	h.writeResponse(w, r, http.StatusOK, CategoryListResponse{
+	h.WriteResponse(w, r, http.StatusOK, CategoryListResponse{
 		Category: toCategoryListDTO(masterpasal.Categories()),
 	})
 }
@@ -286,7 +236,7 @@ func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveReque
 	if err := decoder.Decode(&request); err != nil {
 		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan
 		// badan permintaan.
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Permintaan tidak dapat dibaca.",
 		})
@@ -295,7 +245,7 @@ func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveReque
 
 	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
 	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Permintaan tidak dapat dibaca.",
 		})
@@ -312,17 +262,17 @@ func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err e
 		// cacat pemrograman — diserahkan ke penulis bersama, yang menjawab 500 dengan
 		// pesan umum dan menaruh rinciannya di log saja. Rincian galat internal tidak
 		// pernah dikirim ke peramban.
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
 	if status >= http.StatusInternalServerError {
-		logging.From(r.Context(), h.logger).Error("permintaan gagal",
+		logging.From(r.Context(), h.Logger).Error("permintaan gagal",
 			slog.String("jalur", r.URL.Path),
 			slog.String("galat", err.Error()),
 		)
 	}
-	h.writeResponse(w, r, status, body)
+	h.WriteResponse(w, r, status, body)
 }
 
 // Mount mendaftarkan seluruh rute modul Master Pasal Kerugian.

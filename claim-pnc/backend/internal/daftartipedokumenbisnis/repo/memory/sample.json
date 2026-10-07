@@ -1,0 +1,167 @@
+{
+  "SampleBusinessList": [
+    {
+      "ID": "001",
+      "Name": "Fire",
+      "ExcludedFromBulkSelect": false
+    },
+    {
+      "ID": "003",
+      "Name": "Aneka",
+      "ExcludedFromBulkSelect": false
+    },
+    {
+      "ID": "004",
+      "Name": "Marine Cargo",
+      "ExcludedFromBulkSelect": false
+    },
+    {
+      "ID": "005",
+      "Name": "Travel",
+      "ExcludedFromBulkSelect": false
+    },
+    {
+      "ID": "10028",
+      "Name": "Personal Accident",
+      "ExcludedFromBulkSelect": false
+    }
+  ],
+  "SampleDetailTypeDocList": [
+    {
+      "ID": "40001",
+      "Name": "Laporan Kerugian",
+      "ParentID": "20001"
+    },
+    {
+      "ID": "40002",
+      "Name": "Foto Lokasi Kejadian",
+      "ParentID": "20001"
+    },
+    {
+      "ID": "40003",
+      "Name": "Berita Acara Survei",
+      "ParentID": "20003"
+    },
+    {
+      "ID": "40004",
+      "Name": "Bill of Lading",
+      "ParentID": "20002"
+    },
+    {
+      "ID": "40005",
+      "Name": "Kuitansi Pembayaran",
+      "ParentID": "20004"
+    }
+  ],
+  "SampleDocumentTypeList": [
+    {
+      "ID": "20001",
+      "Name": "REGISTER",
+      "ParentID": ""
+    },
+    {
+      "ID": "20002",
+      "Name": "COMMITEE",
+      "ParentID": ""
+    },
+    {
+      "ID": "20003",
+      "Name": "SURVEY",
+      "ParentID": ""
+    },
+    {
+      "ID": "20004",
+      "Name": "PAYMENT",
+      "ParentID": ""
+    },
+    {
+      "ID": "20005",
+      "Name": "SALVAGE",
+      "ParentID": ""
+    },
+    {
+      "ID": "20006",
+      "Name": "COLLECTING DOCUMENT",
+      "ParentID": ""
+    }
+  ],
+  "SampleList": [
+    {
+      "ID": "10001",
+      "BusinessID": "001",
+      "BusinessName": "Fire",
+      "DocumentTypeID": "20001",
+      "DocumentTypeName": "REGISTER",
+      "ObjectDocID": "30001",
+      "ObjectDocName": "Bangunan",
+      "DetailTypeDocID": "40001",
+      "DetailDocument": "Laporan Kerugian",
+      "Mandatory": true,
+      "MinDocument": 1,
+      "Coverages": [
+        {
+          "ID": "10009"
+        }
+      ]
+    },
+    {
+      "ID": "10002",
+      "BusinessID": "001",
+      "BusinessName": "Fire",
+      "DocumentTypeID": "20001",
+      "DocumentTypeName": "REGISTER",
+      "ObjectDocID": "",
+      "ObjectDocName": "",
+      "DetailTypeDocID": "40002",
+      "DetailDocument": "Foto Lokasi Kejadian",
+      "Mandatory": true,
+      "MinDocument": 3,
+      "Coverages": null
+    },
+    {
+      "ID": "10003",
+      "BusinessID": "001",
+      "BusinessName": "Fire",
+      "DocumentTypeID": "20003",
+      "DocumentTypeName": "SURVEY",
+      "ObjectDocID": "",
+      "ObjectDocName": "",
+      "DetailTypeDocID": "40003",
+      "DetailDocument": "-",
+      "Mandatory": false,
+      "MinDocument": 0,
+      "Coverages": null
+    },
+    {
+      "ID": "10004",
+      "BusinessID": "004",
+      "BusinessName": "Marine Cargo",
+      "DocumentTypeID": "20002",
+      "DocumentTypeName": "COMMITEE",
+      "ObjectDocID": "30002",
+      "ObjectDocName": "Kargo",
+      "DetailTypeDocID": "40004",
+      "DetailDocument": "Bill of Lading",
+      "Mandatory": true,
+      "MinDocument": 1,
+      "Coverages": null
+    }
+  ],
+  "SampleObjectDocList": [
+    {
+      "ID": "30001",
+      "Name": "Bangunan",
+      "ParentID": ""
+    },
+    {
+      "ID": "30002",
+      "Name": "Kargo",
+      "ParentID": ""
+    },
+    {
+      "ID": "30003",
+      "Name": "Orang",
+      "ParentID": ""
+    }
+  ]
+}

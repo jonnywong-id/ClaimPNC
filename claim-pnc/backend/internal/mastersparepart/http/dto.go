@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/mastersparepart"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // SparepartDTO adalah bentuk satu baris master sparepart yang dikirim ke peramban.
@@ -109,9 +110,9 @@ type ListResponse struct {
 
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
-	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang milik
-	// entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan hukum, "data
-	// siapa ini" tidak boleh hanya diandaikan.
+	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
+	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan
+	// hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 
@@ -233,9 +234,9 @@ type DecisionRequest struct {
 
 // ErrorResponse adalah bentuk galat modul ini.
 //
-// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk pelanggaran
-// per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan mencocokkan
-// teks `pesan`.
+// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk
+// pelanggaran per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan
+// mencocokkan teks `pesan`.
 type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
@@ -248,10 +249,7 @@ type ErrorResponse struct {
 // masterautoclaim. Ketiga modul master belum sepakat menamainya — masterstatus memakai
 // `field` — dan penyeragamannya adalah TKT-F1-004 yang masih terhalang. Frontend sudah
 // menampung keduanya lewat `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // nameIndex adalah pemetaan kode acuan ke namanya.
 //

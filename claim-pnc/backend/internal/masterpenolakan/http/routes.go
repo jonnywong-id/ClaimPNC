@@ -1,7 +1,6 @@
 package masterpenolakanhttp
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,10 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/masterpenolakan"
-	"claim-pnc/internal/masterpenolakan/usecase"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -24,100 +21,6 @@ import (
 // dari cukup. Batasnya ada supaya permintaan bertubuh raksasa ditolak sebelum memakan
 // memori, bukan setelah.
 const maxRequestBody = 64 << 10
-
-// Caller adalah identitas orang yang mengirim permintaan.
-//
-// Ia sengaja tipe milik modul ini, bukan tipe milik modul auth: modul tidak saling
-// mengimpor, dan yang dibutuhkan di sini hanyalah satu field. Cara mengisinya diberikan
-// saat perakitan di cmd/claimpnc lewat Options.Caller, sehingga modul ini tidak pernah
-// tahu bagaimana sesi bekerja.
-//
-// Yang dipakai adalah LOGIN, bukan NIK. Kolom USER_INPUT pada
-// POOLDATA.MST_PENOLAKAN_KLAIM_2 diisi `OperatorID.pyUserIdentifier` di sistem lama
-// (`Activity/InsertMasterPenolakanNoteKlaim-Act.xml`), yaitu login operator Pega —
-// sehingga baris-baris lama sudah berisi login. Mengisinya dengan NIK akan membuat satu
-// kolom memuat dua jenis pengenal yang tidak dapat dibedakan sesudahnya.
-type Caller struct {
-	Login string
-}
-
-// Handler melayani permintaan Master Penolakan Klaim — kedua tab sekaligus.
-//
-// SATU handler untuk dua master, karena keduanya satu layar dan satu butir menu
-// (MENU_ID 25). Yang tidak disatukan adalah layanannya: masing-masing memilih penyimpanan
-// yang berbeda, dan menyatukannya berarti satu layanan yang menerima dua pemilih repo
-// lalu bercabang di setiap method.
-type Handler struct {
-	service       *usecase.Service
-	komite        *usecase.ServiceKomite
-	caller        func(context.Context) (Caller, bool)
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	// Service melayani tab Penolakan Klaim. Wajib.
-	Service *usecase.Service
-
-	// Komite melayani tab Penolakan Komite. Wajib.
-	Komite *usecase.ServiceKomite
-
-	// Caller membaca identitas pemanggil dari context. Wajib — tanpa itu kolom
-	// USER_INPUT tidak dapat diisi, dan satu-satunya jejak pertanggungjawaban yang
-	// dimiliki tabel ini hilang.
-	Caller func(context.Context) (Caller, bool)
-
-	Logger *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	// Modul tidak saling mengimpor lapisan transport-nya — itulah yang membuat modul
-	// dapat dipindahkan tanpa menariknya serta.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Master Penolakan Klaim.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil || o.Komite == nil {
-		return nil, errors.New("masterpenolakan/http: Service dan Komite wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("masterpenolakan/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("masterpenolakan/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		komite:        o.Komite,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
-
-// List menangani GET /master/penolakan-klaim.
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	list, err := h.service.List(r.Context(), active.Alias)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
-		Rejection: toListDTO(list),
-		Portal:    active.Alias,
-	})
-}
 
 // Parent menangani GET /master/penolakan-klaim/status-1.
 //

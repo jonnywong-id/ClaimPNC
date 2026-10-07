@@ -1,7 +1,6 @@
 package inboxautoclaimhttp
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,10 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxautoclaim"
-	"claim-pnc/internal/inboxautoclaim/usecase"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -30,65 +27,6 @@ const maxUploadRequest = 12 << 20
 
 // uploadFormField adalah nama bagian multipart tempat berkas dikirim.
 const uploadFormField = "berkas"
-
-// Caller menyebut pemanggil yang sudah terautentikasi.
-//
-// Ia dipakai mengisi kolom USERINPUT pada baris yang diunggah — kolom yang menjadi
-// "User Upload" di grid. Bentuknya sempit dengan sengaja: modul ini hanya butuh tahu
-// SIAPA yang mengunggah, bukan seluruh profil pengguna.
-type Caller struct {
-	// Login adalah nama pengguna yang diketik saat masuk, bukan NIK.
-	//
-	// Yang dipakai adalah Login karena itulah yang tertulis di kolom USERINPUT pada baris
-	// lama: RDB List/GetHasilAutoClaim-SQL.xml menyaringnya dengan
-	// {OperatorID.pyUserIdentifier}, yaitu identitas operator Pega — padanan terdekatnya
-	// di sistem baru adalah login, bukan NIK.
-	Login string
-}
-
-// Handler melayani permintaan Inbox Auto Claim.
-type Handler struct {
-	service       *usecase.Service
-	caller        func(context.Context) (Caller, bool)
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-
-	// Caller adalah jembatan SATU ARAH dari modul auth. Ia disuntikkan dari cmd, bukan
-	// diimpor di sini, supaya kedua modul tetap tidak saling mengimpor.
-	Caller func(context.Context) (Caller, bool)
-
-	Logger *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Auto Claim.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("inboxautoclaim/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("inboxautoclaim/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("inboxautoclaim/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
 
 // readSource membaca tab dari parameter ?sumber=.
 //
@@ -123,13 +61,13 @@ func (h *Handler) ListBatch(w http.ResponseWriter, r *http.Request) {
 		Page:        readPage(r),
 	}
 
-	page, err := h.service.ListBatch(r.Context(), active.Alias, filter)
+	page, err := h.Service.ListBatch(r.Context(), active.Alias, filter)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, BatchListResponse{
+	h.WriteResponse(w, r, http.StatusOK, BatchListResponse{
 		Batch:  toBatchListDTO(page.Item),
 		Page:   toPageDTO(filter.Page, page.Total),
 		Portal: active.Alias,
@@ -154,7 +92,7 @@ func (h *Handler) ListTab(w http.ResponseWriter, r *http.Request) {
 		}
 		tab = append(tab, TabDTO{Kode: string(source), Label: info.Label, Tabel: info.Table})
 	}
-	h.writeResponse(w, r, http.StatusOK, TabListResponse{
+	h.WriteResponse(w, r, http.StatusOK, TabListResponse{
 		Tab:    tab,
 		Bawaan: string(inboxautoclaim.DefaultSource),
 	})
@@ -172,13 +110,13 @@ func (h *Handler) ListCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.service.ListCompany(r.Context(), active.Alias)
+	list, err := h.Service.ListCompany(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, CompanyListResponse{
+	h.WriteResponse(w, r, http.StatusOK, CompanyListResponse{
 		Perusahaan: toCompanyListDTO(list),
 		Portal:     active.Alias,
 	})
@@ -202,13 +140,13 @@ func (h *Handler) Summarize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := h.service.SummarizeCompany(r.Context(), active.Alias, source)
+	summary, err := h.Service.SummarizeCompany(r.Context(), active.Alias, source)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SummaryResponse{
+	h.WriteResponse(w, r, http.StatusOK, SummaryResponse{
 		Perusahaan: toSummaryListDTO(summary.Company),
 		Total:      summary.Total,
 		Portal:     active.Alias,
@@ -247,13 +185,13 @@ func (h *Handler) ListLine(w http.ResponseWriter, r *http.Request) {
 		Page:        readPage(r),
 	}
 
-	page, err := h.service.ListLine(r.Context(), active.Alias, query)
+	page, err := h.Service.ListLine(r.Context(), active.Alias, query)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, LineListResponse{
+	h.WriteResponse(w, r, http.StatusOK, LineListResponse{
 		KodePerusahaan: companyCode,
 		Batch:          batchNumber,
 		Baris:          toLineListDTO(page.Item),
@@ -291,7 +229,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := h.service.Export(r.Context(), active.Alias, inboxautoclaim.LineQuery{
+	file, err := h.Service.Export(r.Context(), active.Alias, inboxautoclaim.LineQuery{
 		Source:      source,
 		CompanyCode: companyCode,
 		BatchNumber: batchNumber,
@@ -302,7 +240,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.From(r.Context(), h.logger).Info("berkas ekspor diterbitkan",
+	logging.From(r.Context(), h.Logger).Info("berkas ekspor diterbitkan",
 		slog.String("portal", active.Alias),
 		slog.String("perusahaan", companyCode),
 		slog.String("batch", batchNumber),
@@ -325,7 +263,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write(file.Content); err != nil {
 		// Tidak ada yang dapat ditulis ke klien di sini — statusnya sudah terkirim.
 		// Yang dapat dilakukan hanya mencatatnya supaya unduhan yang terputus terlihat.
-		logging.From(r.Context(), h.logger).Warn("berkas ekspor gagal terkirim",
+		logging.From(r.Context(), h.Logger).Warn("berkas ekspor gagal terkirim",
 			slog.String("galat", err.Error()))
 	}
 }
@@ -338,27 +276,27 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	caller, authenticated := h.caller(r.Context())
+	caller, authenticated := h.Caller(r.Context())
 	if !authenticated {
 		// Rute ini sudah berada di balik middleware Autentikasi, sehingga keadaan ini
 		// berarti perakitan yang salah, bukan permintaan yang salah. Ia dijawab 500 lewat
 		// penulis bersama, bukan 401 — memberi tahu pengguna "silakan masuk lagi" untuk
 		// cacat perakitan hanya mengirimnya berputar-putar.
-		h.writeError(w, r, errors.New("inboxautoclaim/http: konteks pemanggil tidak tersedia pada rute unggah"))
+		h.WriteError(w, r, errors.New("inboxautoclaim/http: konteks pemanggil tidak tersedia pada rute unggah"))
 		return
 	}
 
 	// Portal diperiksa SEBELUM badan permintaan dibaca. Menarik berkas beberapa megabyte
 	// dari jaringan hanya untuk menolaknya karena portalnya belum siap adalah pemborosan
 	// yang terasa pengguna.
-	if err := h.service.EnsurePortalReady(active.Alias); err != nil {
+	if err := h.Service.EnsurePortalReady(active.Alias); err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadRequest)
 	if err := r.ParseMultipartForm(maxUploadRequest); err != nil {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Berkas tidak dapat dibaca. Pastikan ukurannya wajar dan formatnya CSV.",
 		})
@@ -380,7 +318,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	file, header, err := r.FormFile(uploadFormField)
 	if err != nil {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: fmt.Sprintf("Berkas belum dilampirkan pada bagian %q.", uploadFormField),
 		})
@@ -394,7 +332,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.Upload(r.Context(), active.Alias, source, row, caller.Login)
+	result, err := h.Service.Upload(r.Context(), active.Alias, source, row, caller.Login)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -402,7 +340,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	// Nama berkas TIDAK dicatat ke log: ia dipilih pengguna dan dapat memuat nama
 	// nasabah atau nomor polis. Yang dicatat hanya ukuran dan hasilnya.
-	logging.From(r.Context(), h.logger).Info("unggahan auto claim tersimpan",
+	logging.From(r.Context(), h.Logger).Info("unggahan auto claim tersimpan",
 		slog.String("portal", active.Alias),
 		slog.Int("baris", result.Rows),
 		slog.Int("batch", len(result.Batch)),
@@ -436,7 +374,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.writeResponse(w, r, http.StatusCreated, UploadResponse{
+	h.WriteResponse(w, r, http.StatusCreated, UploadResponse{
 		Batch:       batch,
 		JumlahBaris: result.Rows,
 		Ditolak:     rejected,
@@ -452,7 +390,7 @@ func (h *Handler) PremiumCheckChoices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	choices, err := h.service.PremiumCheckChoices(r.Context(), active.Alias)
+	choices, err := h.Service.PremiumCheckChoices(r.Context(), active.Alias)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -465,7 +403,7 @@ func (h *Handler) PremiumCheckChoices(w http.ResponseWriter, r *http.Request) {
 		}
 		return result
 	}
-	h.writeResponse(w, r, http.StatusOK, PremiumCheckChoicesResponse{
+	h.WriteResponse(w, r, http.StatusOK, PremiumCheckChoicesResponse{
 		Bisnis:       toDTO(choices.Business),
 		SumberBisnis: toDTO(choices.SourceOfBusiness),
 		Portal:       active.Alias,
@@ -487,13 +425,13 @@ func (h *Handler) CheckPremium(w http.ResponseWriter, r *http.Request) {
 		BusinessCode:     r.URL.Query().Get("kode_bisnis"),
 		SourceOfBusiness: r.URL.Query().Get("kode_sumber_bisnis"),
 	}
-	result, err := h.service.CheckPremiumTotal(r.Context(), active.Alias, query)
+	result, err := h.Service.CheckPremiumTotal(r.Context(), active.Alias, query)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, PremiumCheckResponse{
+	h.WriteResponse(w, r, http.StatusOK, PremiumCheckResponse{
 		KodeBisnis:       strings.TrimSpace(query.BusinessCode),
 		KodeSumberBisnis: strings.TrimSpace(query.SourceOfBusiness),
 		TotalPremi:       result.PremiumPaid,
@@ -516,7 +454,7 @@ func (h *Handler) UploadTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	required, optional := inboxautoclaim.UploadColumnFor(source)
-	h.writeResponse(w, r, http.StatusOK, UploadTemplateResponse{
+	h.WriteResponse(w, r, http.StatusOK, UploadTemplateResponse{
 		KolomWajib:    required,
 		KolomOpsional: optional,
 		KolomTanggal:  inboxautoclaim.DateColumnFor(source),

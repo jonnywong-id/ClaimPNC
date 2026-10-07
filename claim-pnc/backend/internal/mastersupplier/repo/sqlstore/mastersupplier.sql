@@ -358,34 +358,35 @@ UPDATE M_SUPPLIER
 -- SATU kueri untuk lima daftar, bukan lima. Kelimanya dibaca dari tabel yang sama, dan
 -- memecahnya berarti lima kali memindai tabel yang sama untuk mengisi satu form.
 --
--- Penyaring `IS NOT NULL` DAN `<> ''` keduanya dipasang, dan itu bukan pengulangan: Oracle
--- memperlakukan teks kosong sebagai NULL sehingga penyaring pertama yang menangkapnya,
--- sedangkan PostgreSQL membedakan keduanya sehingga penyaring kedua yang menangkapnya.
--- Satu saja akan meloloskan pilihan kosong di salah satu basis data (D-20).
+-- Pilihan kosong disaring dengan `IS NOT NULL`. Sebelumnya juga ada `<> ''`, yang di Oracle
+-- (teks kosong = NULL) TIDAK PERNAH benar dan membuat kueri ini mengembalikan nol baris; diganti
+-- `IS NOT NULL` atas permintaan Work Owner (2026-10-05). Catatan untuk perpindahan ke PostgreSQL
+-- (D-20): di sana teks kosong bukan NULL, sehingga pilihan kosong akan lolos — bentuk yang sah di
+-- keduanya adalah `NULLIF(TRIM(x), '') IS NOT NULL`.
 SELECT DISTINCT 'STS_REKANAN', TRIM(JSON_VALUE(JSONDATA, '$.STS_REKANAN'))
   FROM M_SUPPLIER
  WHERE TRIM(JSON_VALUE(JSONDATA, '$.STS_REKANAN')) IS NOT NULL
-   AND TRIM(JSON_VALUE(JSONDATA, '$.STS_REKANAN')) <> ''
+   AND TRIM(JSON_VALUE(JSONDATA, '$.STS_REKANAN')) IS NOT NULL
 UNION ALL
 SELECT DISTINCT 'JENIS_STATUS', TRIM(JSON_VALUE(JSONDATA, '$.JENIS_STATUS'))
   FROM M_SUPPLIER
  WHERE TRIM(JSON_VALUE(JSONDATA, '$.JENIS_STATUS')) IS NOT NULL
-   AND TRIM(JSON_VALUE(JSONDATA, '$.JENIS_STATUS')) <> ''
+   AND TRIM(JSON_VALUE(JSONDATA, '$.JENIS_STATUS')) IS NOT NULL
 UNION ALL
 SELECT DISTINCT 'JENIS_SUPPLIER', TRIM(JSON_VALUE(JSONDATA, '$.JENIS_SUPPLIER'))
   FROM M_SUPPLIER
  WHERE TRIM(JSON_VALUE(JSONDATA, '$.JENIS_SUPPLIER')) IS NOT NULL
-   AND TRIM(JSON_VALUE(JSONDATA, '$.JENIS_SUPPLIER')) <> ''
+   AND TRIM(JSON_VALUE(JSONDATA, '$.JENIS_SUPPLIER')) IS NOT NULL
 UNION ALL
 SELECT DISTINCT 'STS_AKTIF_PROMLIST', TRIM(JSON_VALUE(JSONDATA, '$.STS_AKTIF_PROMLIST'))
   FROM M_SUPPLIER
  WHERE TRIM(JSON_VALUE(JSONDATA, '$.STS_AKTIF_PROMLIST')) IS NOT NULL
-   AND TRIM(JSON_VALUE(JSONDATA, '$.STS_AKTIF_PROMLIST')) <> ''
+   AND TRIM(JSON_VALUE(JSONDATA, '$.STS_AKTIF_PROMLIST')) IS NOT NULL
 UNION ALL
 SELECT DISTINCT 'STS_AUTOPAYMENT', TRIM(JSON_VALUE(JSONDATA, '$.STS_AUTOPAYMENT'))
   FROM M_SUPPLIER
  WHERE TRIM(JSON_VALUE(JSONDATA, '$.STS_AUTOPAYMENT')) IS NOT NULL
-   AND TRIM(JSON_VALUE(JSONDATA, '$.STS_AUTOPAYMENT')) <> ''
+   AND TRIM(JSON_VALUE(JSONDATA, '$.STS_AUTOPAYMENT')) IS NOT NULL
 
 -- name: supplier_count_all
 --

@@ -1,9 +1,9 @@
 // Package sqlstore memenuhi seam mastergroupingsparepart.Store dengan SQL.
 //
 // Satu instans Repo terikat pada SATU koneksi basis data, yaitu satu portal entitas.
-// Pemisahan data antarentitas karena itu ada di tingkat koneksi, bukan di tingkat penyaringan
-// baris (ADR-0030 Opsi 1) — tidak ada satu pun kueri di sini yang menyaring berdasarkan
-// entitas, dan memang tidak boleh ada.
+// Pemisahan data antarentitas karena itu ada di tingkat koneksi, bukan di tingkat
+// penyaringan baris (ADR-0030 Opsi 1) — tidak ada satu pun kueri di sini yang menyaring
+// berdasarkan entitas, dan memang tidak boleh ada.
 package sqlstore
 
 import (
@@ -16,13 +16,25 @@ import (
 	"strings"
 
 	"claim-pnc/internal/mastergroupingsparepart"
+	"claim-pnc/internal/platform/sqlfile"
+	"claim-pnc/internal/platform/sqlkit"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 //go:embed *.sql
 var queryFiles embed.FS
 
 // query memuat seluruh pernyataan SQL modul ini, dikunci dengan namanya.
-var query = loadAllQueries()
+var query = sqlfile.MustLoad(queryFiles, "mastergroupingsparepart/sqlstore")
+
+// getQuery mengembalikan teks SQL bernama tertentu; ia panik bila namanya tidak ada
+// (lihat sqlfile.MustGet).
+func getQuery(name string) string {
+	return sqlfile.MustGet(query, "mastergroupingsparepart/sqlstore", name)
+}
+
+// splitByName memecah isi satu berkas .sql dengan aturan yang sama seperti pemuat di atas.
+func splitByName(content string) map[string]string { return sqlfile.Split(content) }
 
 // approvedLookup adalah nilai APPROVAL yang dipakai daftar panel.
 //
@@ -356,8 +368,8 @@ func (r *Repo) Update(ctx context.Context, g mastergroupingsparepart.Grouping) e
 	// "tersimpan" atas baris yang sudah tidak ada.
 	//
 	// Driver yang tidak mendukung RowsAffected mengembalikan galat; dalam keadaan itu
-	// perubahannya TIDAK dianggap gagal — pernyataannya sendiri sudah berhasil, dan menolaknya
-	// akan menampilkan kegagalan palsu.
+	// perubahannya TIDAK dianggap gagal — pernyataannya sendiri sudah berhasil, dan
+	// menolaknya akan menampilkan kegagalan palsu.
 	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
 		return mastergroupingsparepart.ErrNotFound
 	}
@@ -417,44 +429,8 @@ func saveCompanion(
 //
 // Tabel pendamping TIDAK disentuh: keputusan persetujuan mengenai induknya saja, dan
 // APPROVAL memang hanya ada di sana.
-func (r *Repo) SetStatus(
-	ctx context.Context,
-	id []string,
-	status mastergroupingsparepart.ApprovalStatus,
-) (int, error) {
-	if len(id) == 0 {
-		return 0, nil
-	}
-
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf(
-			"mastergroupingsparepart/sqlstore: memulai transaksi keputusan: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	changed := 0
-	for _, one := range id {
-		result, err := tx.ExecContext(ctx, getQuery("grouping_set_status"),
-			string(status), strings.TrimSpace(one))
-		if err != nil {
-			return 0, fmt.Errorf(
-				"mastergroupingsparepart/sqlstore: menetapkan status %q: %w", one, err)
-		}
-		// Driver yang tidak mendukung RowsAffected membuat pencacahnya tidak dapat diandalkan.
-		// Barisnya tetap dianggap berubah: pernyataannya sudah berhasil, dan melaporkan nol
-		// akan menampilkan kegagalan palsu.
-		affected, err := result.RowsAffected()
-		if err != nil || affected > 0 {
-			changed++
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf(
-			"mastergroupingsparepart/sqlstore: menutup transaksi keputusan: %w", err)
-	}
-	return changed, nil
+func (r *Repo) SetStatus(ctx context.Context, id []string, status mastergroupingsparepart.ApprovalStatus) (int, error) {
+	return sqlkit.SetEach(ctx, r.db, getQuery("grouping_set_status"), string(status), id, "mastergroupingsparepart/sqlstore")
 }
 
 // NextID menerbitkan ID berikutnya.
@@ -717,20 +693,14 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 
 // likePattern menyusun pola LIKE dari sebuah kata kunci.
 //
-// Tanda persen, garis bawah, dan backslash pada kata kunci DILOLOSKAN lebih dulu. Tanpa itu,
-// pengguna yang mengetik "%" menarik seluruh tabel dan yang mengetik "_" mencocoki karakter
-// apa pun — bukan celah keamanan karena nilainya tetap terikat sebagai parameter, tetapi hasil
-// yang tidak dapat dijelaskan kepada yang mengetiknya.
+// Tanda persen, garis bawah, dan backslash pada kata kunci DILOLOSKAN lebih dulu. Tanpa
+// itu, pengguna yang mengetik "%" menarik seluruh tabel dan yang mengetik "_" mencocoki
+// karakter apa pun — bukan celah keamanan karena nilainya tetap terikat sebagai
+// parameter, tetapi hasil yang tidak dapat dijelaskan kepada yang mengetiknya.
 //
 // `ESCAPE '\'` disebut eksplisit di kuerinya karena Oracle tidak punya karakter pelolos bawaan
 // pada LIKE.
-func likePattern(keyword string) string {
-	escaped := strings.ToUpper(strings.TrimSpace(keyword))
-	for _, special := range []string{`\`, `%`, `_`} {
-		escaped = strings.ReplaceAll(escaped, special, `\`+special)
-	}
-	return "%" + escaped + "%"
-}
+func likePattern(keyword string) string { return sqlvalue.Like(keyword) }
 
 // upperKey menyiapkan keempat nilai kunci alami untuk dibandingkan.
 //
@@ -742,9 +712,7 @@ func upperKey(key mastergroupingsparepart.NaturalKey) (string, string, string, s
 		upper(key.ChassisNumber), upper(key.PanelSide)
 }
 
-type scanner interface {
-	Scan(target ...any) error
-}
+type scanner = sqlkit.Scanner
 
 // scanRow membaca satu baris grouping.
 //
@@ -867,79 +835,6 @@ func lockedKey(ctx context.Context, tx *sql.Tx, g mastergroupingsparepart.Groupi
 		return mastergroupingsparepart.ErrDuplicate
 	}
 	return nil
-}
-
-// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
-//
-// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan masukan
-// pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat saat pertama
-// dijalankan.
-func getQuery(name string) string {
-	text, exists := query[name]
-	if !exists {
-		panic(fmt.Sprintf(
-			"mastergroupingsparepart/sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
-	}
-	return text
-}
-
-func loadAllQueries() map[string]string {
-	result := map[string]string{}
-	list, err := queryFiles.ReadDir(".")
-	if err != nil {
-		panic("mastergroupingsparepart/sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
-	}
-	for _, file := range list {
-		content, err := queryFiles.ReadFile(file.Name())
-		if err != nil {
-			panic("mastergroupingsparepart/sqlstore: tidak dapat membaca " +
-				file.Name() + ": " + err.Error())
-		}
-		for name, text := range splitByName(string(content)) {
-			if _, clash := result[name]; clash {
-				panic("mastergroupingsparepart/sqlstore: nama kueri ganda: " + name)
-			}
-			result[name] = text
-		}
-	}
-	return result
-}
-
-// splitByName memecah isi berkas pada penanda "-- name: <nama>", lalu membuang baris komentar
-// dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
-func splitByName(content string) map[string]string {
-	const marker = "-- name:"
-	result := map[string]string{}
-	name := ""
-	var body []string
-
-	save := func() {
-		if name == "" {
-			return
-		}
-		var statement []string
-		for _, rows := range body {
-			if strings.HasPrefix(strings.TrimSpace(rows), "--") {
-				continue
-			}
-			statement = append(statement, rows)
-		}
-		if text := strings.TrimSpace(strings.Join(statement, "\n")); text != "" {
-			result[name] = text
-		}
-	}
-
-	for _, rows := range strings.Split(content, "\n") {
-		if trimmed := strings.TrimSpace(rows); strings.HasPrefix(trimmed, marker) {
-			save()
-			name = strings.TrimSpace(strings.TrimPrefix(trimmed, marker))
-			body = nil
-			continue
-		}
-		body = append(body, rows)
-	}
-	save()
-	return result
 }
 
 var _ mastergroupingsparepart.Store = (*Repo)(nil)

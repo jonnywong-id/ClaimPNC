@@ -79,10 +79,10 @@ type SaveRequest struct {
 // Bentuknya sama dengan modul lain — `{kode, pesan}`. Klien membedakan jenis galat lewat
 // `kode`, tidak pernah dengan mencocokkan teks `pesan`.
 //
-// Tidak ada field `detail` di sini, dan itu konsekuensi langsung dari keputusan Work Owner
-// 2026-09-21: layar ini tanpa validasi, sehingga tidak ada pelanggaran per isian yang
-// dapat dilaporkan. Menyediakan fieldnya "untuk berjaga-jaga" akan menyiratkan ada aturan
-// yang sebenarnya tidak ada.
+// Tidak ada field `detail` di sini, dan itu konsekuensi langsung dari keputusan Work
+// Owner 2026-09-21: layar ini tanpa validasi, sehingga tidak ada pelanggaran per isian
+// yang dapat dilaporkan. Menyediakan fieldnya "untuk berjaga-jaga" akan menyiratkan ada
+// aturan yang sebenarnya tidak ada.
 type ErrorResponse struct {
 	Code    string `json:"kode"`
 	Message string `json:"pesan"`

@@ -87,13 +87,13 @@ func (h *Handler) PICTeknik(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scored, err := h.service.PICTeknik(r.Context(), active.Alias, readPICFilter(r), caller)
+	scored, err := h.Service.PICTeknik(r.Context(), active.Alias, readPICFilter(r), caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, PICTeknikResponse{
+	h.WriteJSON(w, r, http.StatusOK, PICTeknikResponse{
 		Scorecards: toPICScorecards(scored.Result.Scorecards),
 		Leader:     toPICScorecard(scored.Result.Leader),
 		Filter:     toPICFilterDTO(scored.Filter),
@@ -116,9 +116,9 @@ func (h *Handler) PICTeknikExport(w http.ResponseWriter, r *http.Request) {
 	// Seluruh isinya diambil SEBELUM satu byte pun ditulis. Setelah header terkirim, galat
 	// tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa berkas
 	// separuh jadi tanpa satu pun keterangan.
-	scored, err := h.service.PICTeknik(r.Context(), active.Alias, readPICFilter(r), caller)
+	scored, err := h.Service.PICTeknik(r.Context(), active.Alias, readPICFilter(r), caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 

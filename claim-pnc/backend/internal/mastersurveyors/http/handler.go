@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	"claim-pnc/internal/mastersurveyors"
 	"claim-pnc/internal/mastersurveyors/usecase"
 	"claim-pnc/internal/portal"
-
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -25,19 +23,6 @@ import (
 // permintaan yang wajar, dan menolaknya lebih awal menjaga memori tidak dihabiskan badan
 // permintaan yang dikarang.
 const maxSaveBodyBytes = 16 << 10
-
-// Caller adalah identitas orang yang mengirim permintaan.
-//
-// Ia sengaja tipe milik modul ini, bukan tipe milik modul auth: modul tidak saling
-// mengimpor, dan yang dibutuhkan di sini hanyalah dua field. Cara mengisinya diberikan
-// saat perakitan di cmd/claimpnc lewat Options.Caller, sehingga modul ini tidak pernah
-// tahu bagaimana sesi bekerja.
-type Caller struct {
-	// Identity adalah nilai yang dibandingkan dengan kolom KOMITE. Keduanya berisi
-	// **Operator ID** — lihat catatan di paket committee.
-	Identity string
-	Name     string
-}
 
 // Service adalah bagian usecase yang dipakai handler ini.
 //
@@ -50,54 +35,6 @@ type Service interface {
 	Submit(ctx context.Context, portalAlias string, in usecase.Submission, by usecase.Submitter) (mastersurveyors.Surveyor, error)
 	Update(ctx context.Context, portalAlias, id string, in usecase.Submission, by usecase.Submitter) (mastersurveyors.Surveyor, error)
 	Decide(ctx context.Context, portalAlias, id string, d usecase.Decision, by usecase.Committee) (mastersurveyors.Surveyor, error)
-}
-
-// Handler melayani permintaan Master Surveyors.
-type Handler struct {
-	service       Service
-	caller        func(context.Context) (Caller, bool)
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service Service
-
-	// Caller membaca identitas pemanggil dari context. Diisi saat perakitan di cmd.
-	Caller func(context.Context) (Caller, bool)
-
-	Logger *slog.Logger
-
-	// WriteResponse dan WriteError dipasok dari luar supaya seluruh modul menuliskan
-	// respons dan galat dengan cara yang sama. WriteError yang disuntikkan cmd sudah
-	// dibungkus portalhttp.WithPortalError, sehingga galat portal terpetakan seragam.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Master Surveyors.
-//
-// Ia menolak bahan yang tidak lengkap saat perakitan di cmd, bukan saat permintaan
-// pertama datang: rakitan yang setengah jadi harus gagal saat start.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("mastersurveyors/http: Service wajib diisi")
-	}
-	if o.Caller == nil {
-		return nil, errors.New("mastersurveyors/http: Caller wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New("mastersurveyors/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		caller:        o.Caller,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
 }
 
 // List menangani GET /api/master/surveyor.
@@ -114,14 +51,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	filter, err := h.filterFrom(r)
 	if err != nil {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: err.Error(),
 		})
 		return
 	}
 
-	rows, total, err := h.service.List(r.Context(), active.Alias, filter)
+	rows, total, err := h.Service.List(r.Context(), active.Alias, filter)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -131,7 +68,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	for _, s := range rows {
 		content = append(content, toDTO(s))
 	}
-	h.writeResponse(w, r, http.StatusOK, ListResponse{
+	h.WriteResponse(w, r, http.StatusOK, ListResponse{
 		Surveyor: content,
 		Total:    total,
 		Portal:   active.Alias,
@@ -146,12 +83,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	surveyor, err := h.service.Get(r.Context(), active.Alias, chi.URLParam(r, "id"))
+	surveyor, err := h.Service.Get(r.Context(), active.Alias, chi.URLParam(r, "id"))
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
 }
 
 // Create menangani POST /api/master/surveyor.
@@ -161,7 +98,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	surveyor, err := h.service.Submit(r.Context(), active.Alias, submissionFrom(body), usecase.Submitter{
+	surveyor, err := h.Service.Submit(r.Context(), active.Alias, submissionFrom(body), usecase.Submitter{
 		Identity: caller.Identity,
 		Name:     caller.Name,
 	})
@@ -169,7 +106,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		h.writeModuleError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
+	h.WriteResponse(w, r, http.StatusCreated, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
 }
 
 // Update menangani PUT /api/master/surveyor/{id}.
@@ -179,7 +116,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	surveyor, err := h.service.Update(r.Context(), active.Alias, chi.URLParam(r, "id"), submissionFrom(body), usecase.Submitter{
+	surveyor, err := h.Service.Update(r.Context(), active.Alias, chi.URLParam(r, "id"), submissionFrom(body), usecase.Submitter{
 		Identity: caller.Identity,
 		Name:     caller.Name,
 	})
@@ -187,7 +124,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		h.writeModuleError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
 }
 
 // Decide menangani POST /api/master/surveyor/{id}/keputusan.
@@ -206,13 +143,13 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	if !h.readBody(w, r, &body) {
 		return
 	}
-	caller, known := h.caller(r.Context())
+	caller, known := h.Caller(r.Context())
 	if !known {
-		h.writeError(w, r, errors.New("mastersurveyors/http: konteks pemanggil tidak ada"))
+		h.WriteError(w, r, errors.New("mastersurveyors/http: konteks pemanggil tidak ada"))
 		return
 	}
 
-	surveyor, err := h.service.Decide(r.Context(), active.Alias, chi.URLParam(r, "id"),
+	surveyor, err := h.Service.Decide(r.Context(), active.Alias, chi.URLParam(r, "id"),
 		usecase.Decision{
 			Status: mastersurveyors.ApprovalStatus(strings.TrimSpace(body.Status)),
 			Note:   body.Note,
@@ -223,7 +160,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 		h.writeModuleError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
+	h.WriteResponse(w, r, http.StatusOK, SingleResponse{Surveyor: toDTO(surveyor), Portal: active.Alias})
 }
 
 // prepareSave menjalankan tiga langkah yang sama pada Create dan Update: memastikan
@@ -243,9 +180,9 @@ func (h *Handler) prepareSave(w http.ResponseWriter, r *http.Request) (portal.Po
 		return portal.Portal{}, Caller{}, SaveRequest{}, false
 	}
 
-	caller, known := h.caller(r.Context())
+	caller, known := h.Caller(r.Context())
 	if !known {
-		h.writeError(w, r, errors.New("mastersurveyors/http: konteks pemanggil tidak ada"))
+		h.WriteError(w, r, errors.New("mastersurveyors/http: konteks pemanggil tidak ada"))
 		return portal.Portal{}, Caller{}, SaveRequest{}, false
 	}
 	return active, caller, body, true
@@ -267,7 +204,7 @@ func (h *Handler) readBody(w http.ResponseWriter, r *http.Request, target any) b
 		if errors.Is(err, io.EOF) {
 			message = "Badan permintaan kosong."
 		}
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: message,
 		})
@@ -303,7 +240,7 @@ func (h *Handler) filterFrom(r *http.Request) (mastersurveyors.Filter, error) {
 	// Antrean komite: identitasnya diambil dari SESI, tidak pernah dari parameter kueri.
 	// Menerimanya dari kueri akan membuat siapa pun dapat melihat antrean komite lain.
 	if strings.TrimSpace(q.Get("antrean_saya")) == "1" {
-		caller, known := h.caller(r.Context())
+		caller, known := h.Caller(r.Context())
 		if !known {
 			return mastersurveyors.Filter{}, errors.New("Antrean komite hanya dapat dibaca setelah masuk.")
 		}

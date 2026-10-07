@@ -73,6 +73,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/pagination"
 )
 
 // ServiceClaim adalah satu baris klaim portal rekanan di Inbox Service Center.
@@ -163,13 +165,16 @@ type ServiceClaim struct {
 // `.PageSize`, berdampingan dengan `.FirstRow = ((.CurrentIndex-1) * .PageSize) + 1` dan
 // `.LastRow = .CurrentIndex * .PageSize`. Ia tidak dikarang dan tidak disamakan dengan modul
 // lain yang memakai 20.
-type Pagination struct {
-	// Page dimulai dari 1.
-	Page int
+//
+// Page dimulai dari 1.
+// Size adalah jumlah baris per halaman.
+type Pagination = pagination.Request[pageSizes]
 
-	// Size adalah jumlah baris per halaman.
-	Size int
-}
+// pageSizes membawa ukuran halaman layar ini ke tipe generik pagination.
+type pageSizes struct{}
+
+func (pageSizes) Default() int { return DefaultPageSize }
+func (pageSizes) Max() int     { return MaxPageSize }
 
 // Batas paginasi.
 //
@@ -179,31 +184,6 @@ const (
 	DefaultPageSize = 25
 	MaxPageSize     = 100
 )
-
-// Normalize mengembalikan paginasi yang sudah dibetulkan ke rentang yang sah.
-//
-// Nilai di luar rentang DIBETULKAN, tidak ditolak: halaman dan ukuran datang dari parameter
-// query yang mudah salah ketik, dan menolak seluruh permintaan karena `halaman=0` akan
-// membuat layar gagal tanpa alasan yang terbaca pengguna.
-func (p Pagination) Normalize() Pagination {
-	clean := p
-	if clean.Page < 1 {
-		clean.Page = 1
-	}
-	if clean.Size < 1 {
-		clean.Size = DefaultPageSize
-	}
-	if clean.Size > MaxPageSize {
-		clean.Size = MaxPageSize
-	}
-	return clean
-}
-
-// Offset adalah jumlah baris yang dilewati sebelum halaman yang diminta.
-func (p Pagination) Offset() int {
-	clean := p.Normalize()
-	return (clean.Page - 1) * clean.Size
-}
 
 // Page adalah satu halaman hasil beserta jumlah seluruh baris yang cocok.
 type Page struct {
@@ -259,10 +239,10 @@ func (c Caller) Clean() Caller {
 
 // Repo adalah seam ke daftar klaim portal rekanan SATU portal.
 //
-// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada satu
-// basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di tingkat kueri
-// (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut entitas, dan
-// memang tidak boleh ada.
+// Pengisinya ada di repo/sqlstore dan repo/memory. Satu instans Repo selalu terikat pada
+// satu basis data entitas — pemisahan antarentitas ada di tingkat KONEKSI, bukan di
+// tingkat kueri (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut
+// entitas, dan memang tidak boleh ada.
 //
 // # Kenapa tidak ada satu pun operasi yang menulis
 //

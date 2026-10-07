@@ -3,6 +3,7 @@ package masterdokumentravelhttp
 import (
 	"github.com/go-chi/chi/v5"
 
+	"claim-pnc/internal/platform/crudhttp"
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
@@ -43,17 +44,8 @@ import (
 // "apakah peran pemanggil memiliki menu Master Data" adalah TKT-F3-005, yang bergantung
 // pada tabel peran TKT-F3-004 — dan tabel itu dapat dibangun tetapi belum dapat diisi,
 // karena penugasan operator ke peran tidak ada di basis data maupun di export
-// (`11-SECURITY.md` §3.1). Keadaan ini sama dengan seluruh rute lain yang sudah ada
-// hari ini, dan dicatat terbuka di docs/keputusan-implementasi.md.
+// (`11-SECURITY.md` §3.1). Keadaan ini sama dengan seluruh rute lain yang sudah ada hari
+// ini, dan dicatat terbuka di docs/keputusan-implementasi.md.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Route("/master/dokumen-travel", func(master chi.Router) {
-			master.Get("/", h.List)
-			master.Post("/", h.Create)
-			master.Get("/{id}", h.Get)
-			master.Put("/{id}", h.Update)
-		})
-	})
+	crudhttp.Mount(r, portalDeps, "/master/dokumen-travel", "id", h)
 }

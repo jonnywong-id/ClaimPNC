@@ -68,6 +68,9 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/pagination"
 )
 
 // TransferAnalystDoctor adalah nilai `ClaimData.isComplianceTransfer` yang menempatkan
@@ -206,19 +209,7 @@ func (t AnalystDoctorTask) DurationDays(now time.Time, location *time.Location) 
 		location = time.UTC
 	}
 
-	start := t.RegisteredAt.In(location)
-	finish := now.In(location)
-
-	startDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
-	endDay := time.Date(finish.Year(), finish.Month(), finish.Day(), 0, 0, 0, 0, location)
-
-	days := int(endDay.Sub(startDay).Hours() / 24)
-	if days < 0 {
-		// Tanggal pendaftaran di masa depan adalah data yang cacat, bukan durasi negatif.
-		// Ia ditampilkan nol; yang memperbaikinya adalah datanya, bukan layar ini.
-		return 0
-	}
-	return days
+	return clock.CalendarDays(t.RegisteredAt, now, location)
 }
 
 // Caller adalah identitas pemanggil sebagaimana dibutuhkan modul ini.
@@ -291,15 +282,7 @@ const (
 func (f Filter) Normalize() Filter {
 	f.Search = strings.TrimSpace(f.Search)
 
-	if f.Limit <= 0 {
-		f.Limit = DefaultLimit
-	}
-	if f.Limit > MaxLimit {
-		f.Limit = MaxLimit
-	}
-	if f.Offset < 0 {
-		f.Offset = 0
-	}
+	f.Limit, f.Offset = pagination.LimitOffset(f.Limit, f.Offset, DefaultLimit, MaxLimit)
 	return f
 }
 

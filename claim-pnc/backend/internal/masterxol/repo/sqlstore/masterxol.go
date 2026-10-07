@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/masterxol"
+	"claim-pnc/internal/platform/sqlvalue"
 )
 
 // Repo membaca dan menulis keempat tabel Master XOL.
@@ -643,12 +644,7 @@ func scanMaster(rows rowScanner) (masterxol.Master, error) {
 // tetapi tidak di PostgreSQL — dan `D-20` menuntut satu set SQL yang berjalan di
 // keduanya. Mengirim NULL secara eksplisit membuat keduanya berperilaku sama, dan
 // menyamai apa yang tersimpan hari ini.
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
+func nullIfEmpty(value string) any { return sqlvalue.NilIfBlank(value) }
 
 // sortMasterByID mengurutkan numerik, bukan leksikografis.
 func sortMasterByID(list []masterxol.Master) {

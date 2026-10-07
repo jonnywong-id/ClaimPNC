@@ -33,10 +33,8 @@ import (
 // melihat keadaan "identitas tidak ditemukan", bukan antrean orang lain. Itu peredam, bukan
 // kendali.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
-
-		perPortal.Get("/inbox-rcl/keterangan", h.Metadata)
-		perPortal.Get("/inbox-rcl", h.List)
-	})
+	portalhttp.MountGets(r, portalDeps,
+		portalhttp.Route{Path: "/inbox-rcl/keterangan", Handler: h.Metadata},
+		portalhttp.Route{Path: "/inbox-rcl", Handler: h.List},
+	)
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxlaporanklaim"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // ClaimReportDTO adalah bentuk satu baris daftar yang dikirim ke peramban.
@@ -293,10 +294,7 @@ type ErrorResponse struct {
 }
 
 // ViolationDTO adalah satu isian yang tidak lolos pemeriksaan.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // dateLayout adalah bentuk tanggal pada kontrak API modul ini.
 const dateLayout = "2006-01-02"

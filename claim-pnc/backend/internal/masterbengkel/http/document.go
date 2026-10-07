@@ -40,9 +40,9 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	by, known := h.caller(r.Context())
+	by, known := h.Caller(r.Context())
 	if !known {
-		h.writeError(w, r, errors.New("masterbengkel/http: identitas pemanggil tidak ada di konteks"))
+		h.WriteError(w, r, errors.New("masterbengkel/http: identitas pemanggil tidak ada di konteks"))
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 	// telanjur ditarik seluruhnya sebelum ditolak.
 	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentRequest)
 	if err := r.ParseMultipartForm(maxDocumentRequest); err != nil {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Berkas tidak dapat dibaca. Pastikan ukurannya wajar.",
 		})
@@ -72,7 +72,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 
 	file, header, err := r.FormFile(documentFormField)
 	if err != nil {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: fmt.Sprintf("Berkas belum dilampirkan pada bagian %q.", documentFormField),
 		})
@@ -82,7 +82,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 
 	content, err := io.ReadAll(file)
 	if err != nil {
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{
 			Code:    CodeMalformedRequest,
 			Message: "Berkas tidak dapat dibaca sampai selesai.",
 		})
@@ -95,7 +95,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 	// dipakai menyusun jalur berkas.
 	name := filepath.Base(header.Filename)
 
-	document, err := h.service.UploadDocument(r.Context(), active.Alias,
+	document, err := h.Service.UploadDocument(r.Context(), active.Alias,
 		usecase.Actor{Login: by.Login},
 		masterbengkel.UploadInput{
 			WorkshopID: id,
@@ -107,7 +107,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusCreated, DocumentResponse{
+	h.WriteResponse(w, r, http.StatusCreated, DocumentResponse{
 		Dokumen: toDocumentDTO(document),
 		Portal:  active.Alias,
 	})
@@ -124,7 +124,7 @@ func (h *Handler) Document(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, DocumentResponse{
+	h.WriteResponse(w, r, http.StatusOK, DocumentResponse{
 		Dokumen: toDocumentDTO(document),
 		Portal:  active,
 	})
@@ -145,7 +145,7 @@ func (h *Handler) DocumentFile(w http.ResponseWriter, r *http.Request) {
 		// Dokumen warisan Pega: barisnya ada, isinya tidak pernah tersimpan. Ia dijawab
 		// 404 dengan pesan yang menyebut sebabnya — bukan berkas nol byte, yang akan
 		// terlihat seperti unduhan berhasil.
-		h.writeResponse(w, r, http.StatusNotFound, ErrorResponse{
+		h.WriteResponse(w, r, http.StatusNotFound, ErrorResponse{
 			Code: CodeDocumentEmpty,
 			Message: "Berkas dokumen ini tidak tersimpan. Dokumen yang diunggah lewat " +
 				"sistem lama hanya mencatat keterangannya, tanpa isinya.",
@@ -183,7 +183,7 @@ func (h *Handler) readDocument(w http.ResponseWriter, r *http.Request) (masterbe
 		return masterbengkel.Document{}, "", false
 	}
 
-	document, err := h.service.Document(r.Context(), active.Alias, id)
+	document, err := h.Service.Document(r.Context(), active.Alias, id)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return masterbengkel.Document{}, "", false

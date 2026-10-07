@@ -1,6 +1,16 @@
 package memory
 
-import "claim-pnc/internal/masterrecovery"
+import (
+	_ "embed"
+
+	"claim-pnc/internal/masterrecovery"
+	"claim-pnc/internal/platform/sampledata"
+)
+
+// sampleJSON memuat seluruh data contoh paket ini; lihat platform/sampledata.
+//
+//go:embed sample.json
+var sampleJSON []byte
 
 // SamplePrincipal adalah isi master Virtual Account untuk dipakai tanpa Oracle.
 //
@@ -15,20 +25,7 @@ import "claim-pnc/internal/masterrecovery"
 // keadaan STATUS serta MESSAGE yang keduanya kosong pada baris nyata — bukan nilainya.
 // Nomor di bawah sengaja berawalan yang jelas bukan awalan bank mana pun.
 func SamplePrincipal() []masterrecovery.Principal {
-	return []masterrecovery.Principal{
-		{
-			ClientID:             "CONTOH-PRINCIPAL-001",
-			Name:                 "PT CONTOH PENJAMINAN NUSANTARA",
-			VirtualAccountNumber: "0000000000000001",
-			Email:                "contoh.satu@example.invalid",
-		},
-		{
-			ClientID:             "CONTOH-PRINCIPAL-002",
-			Name:                 "PT CONTOH MITRA SEJAHTERA",
-			VirtualAccountNumber: "0000000000000002",
-			Email:                "contoh.dua@example.invalid",
-		},
-	}
+	return sampledata.Must[[]masterrecovery.Principal](sampleJSON, "SamplePrincipal")
 }
 
 // SamplePolicy adalah acuan polis untuk mencoba pencarian identitas tanpa DB Link.
@@ -41,20 +38,7 @@ func SamplePrincipal() []masterrecovery.Principal {
 // "polis tidak ditemukan", sehingga perilaku penolakannya ikut teruji saat pengembangan —
 // bukan baru ditemukan di produksi.
 func SamplePolicy() map[string]masterrecovery.PolicyReference {
-	return map[string]masterrecovery.PolicyReference{
-		"CONTOH-POLIS-0001": {
-			BusinessID:  "01",
-			BranchID:    "001",
-			AgentID:     "AG0001",
-			MarketingID: "MO0001",
-		},
-		"CONTOH-POLIS-0002": {
-			BusinessID:  "02",
-			BranchID:    "002",
-			AgentID:     "AG0002",
-			MarketingID: "MO0002",
-		},
-	}
+	return sampledata.Must[map[string]masterrecovery.PolicyReference](sampleJSON, "SamplePolicy")
 }
 
 // NewSampleRepo membentuk repo berisi seluruh contoh di atas.

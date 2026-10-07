@@ -10,6 +10,7 @@ package inboxsalvagehttp
 import (
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxsalvage/usecase"
+	"claim-pnc/internal/platform/apierror"
 )
 
 // RowDTO adalah satu baris pada grid mana pun.
@@ -420,10 +421,7 @@ type UploadResponse struct {
 // memakai `field`, `inboxkomunikasicabang` memakai `isian` yang tidak terbaca layar. Yang
 // dipakai di sini adalah yang terbukti bekerja. Penyeragamannya adalah `TKT-F1-004`, yang
 // masih terhalang.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat yang dikirim ke klien.
 type ErrorResponse struct {

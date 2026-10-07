@@ -1,15 +1,9 @@
 package inboxinvestigatorhttp
 
 import (
-	"errors"
-	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-
-	"claim-pnc/internal/inboxinvestigator/usecase"
-	"claim-pnc/internal/portal"
 
 	portalhttp "claim-pnc/internal/portal/http"
 )
@@ -24,54 +18,6 @@ import (
 // maupun nama peserta yang lebih panjang dari itu, sehingga batas ini tidak pernah menolak
 // pencarian yang sungguh-sungguh.
 const MaxKeywordLength = 100
-
-// Handler melayani permintaan Inbox Investigator.
-//
-// TANPA CallerReader, dan itu bukan kelalaian melainkan akibat langsung dari bentuk layarnya:
-// yang ditampilkan adalah isi **workbasket**, yaitu antrean BERSAMA yang belum bertuan
-// (`D-26`). Tidak ada satu baris pun yang diturunkan dari identitas pemanggil, dan tidak ada
-// perubahan yang perlu dicatat pelakunya.
-//
-// Itu berubah begitu layar kerjanya dibangun: mengambil pekerjaan dari antrean menuntut
-// identitas pengambilnya, dan modul itulah yang akan membutuhkannya — bukan modul ini.
-//
-// Kewenangan membuka layar ini tetap ditegakkan — lewat middleware Autentikasi yang dipasang
-// cmd, dan kelak lewat pemeriksaan peran `TKT-F3-005` yang belum ada. Di sistem lama
-// pembatasnya `When/IsInvestigator-When.xml`: access group `PncInvestigator` atau
-// `Administrators`, dan bukan `ViewClaimPNC`.
-type Handler struct {
-	service       *usecase.Service
-	logger        *slog.Logger
-	writeResponse JSONWriter
-	writeError    ErrorWriter
-}
-
-// Options adalah bahan pembentuk Handler.
-type Options struct {
-	Service *usecase.Service
-	Logger  *slog.Logger
-
-	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
-	WriteResponse JSONWriter
-	WriteError    ErrorWriter
-}
-
-// NewHandler membentuk handler modul Inbox Investigator.
-func NewHandler(o Options) (*Handler, error) {
-	if o.Service == nil {
-		return nil, errors.New("inboxinvestigator/http: Service wajib diisi")
-	}
-	if o.WriteResponse == nil || o.WriteError == nil {
-		return nil, errors.New(
-			"inboxinvestigator/http: WriteResponse dan WriteError wajib diisi")
-	}
-	return &Handler{
-		service:       o.Service,
-		logger:        o.Logger,
-		writeResponse: o.WriteResponse,
-		writeError:    o.WriteError,
-	}, nil
-}
 
 // List menangani GET /inbox/investigator.
 //
@@ -98,40 +44,27 @@ func NewHandler(o Options) (*Handler, error) {
 // jatah apa pun dan tidak mengambil pekerjaan siapa pun — berbeda dari View History Claim,
 // yang membukanya memakai satu jatah sehingga harus POST.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeModuleError(w, r, portal.ErrNotStated)
+	active, keyword, ok := portalhttp.ActiveKeyword(w, r, MaxKeywordLength, h.writeModuleError, h.keywordTooLong)
+	if !ok {
 		return
 	}
 
-	keyword := strings.TrimSpace(r.URL.Query().Get("cari"))
-	if len(keyword) > MaxKeywordLength {
-		// 400, bukan daftar kosong. Permintaan yang tidak dapat dipenuhi ditolak dengan
-		// sebabnya — daftar kosong akan terbaca sebagai "antreannya memang kosong", dan
-		// pengguna tidak punya cara membedakan keduanya (`10-API-STRATEGY.md` §4).
-		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
-			Code:    CodeMalformedRequest,
-			Message: "Kata pencarian terlalu panjang.",
-		})
-		return
-	}
-
-	page, err := h.service.List(r.Context(), active.Alias, keyword)
+	page, err := h.Service.List(r.Context(), active.Alias, keyword)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, toListResponse(page, active.Alias))
+	h.WriteResponse(w, r, http.StatusOK, toListResponse(page, active.Alias))
 }
 
 // Mount mendaftarkan rute modul Inbox Investigator.
 //
 // # Yang dituntut pemanggil
 //
-// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini tidak
-// memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth; yang
-// merakit urutannya adalah cmd/claimpnc.
+// Seluruh rute di sini WAJIB sudah berada di balik middleware Autentikasi. Paket ini
+// tidak memasangnya sendiri supaya modul tidak mengimpor lapisan transport modul auth;
+// yang merakit urutannya adalah cmd/claimpnc.
 //
 // # SELURUH rute dipasangi pemeriksaan portal
 //
@@ -145,9 +78,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 // # Kenapa jalurnya tanpa /v1
 //
 // Kontrak API yang ada belum memakai awalan versi (`/api/masuk`, `/api/portal`).
-// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini saja
-// akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
-// teknis, bukan diselesaikan sepihak di satu modul.
+// `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`, dan memperkenalkannya di modul ini
+// saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
+// utang teknis, bukan diselesaikan sepihak di satu modul.
 //
 // # Kenapa jalurnya `/inbox/investigator`, bukan `/inbox-investigator`
 //
@@ -172,9 +105,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 // Analisis lengkapnya disimpan di `docs/permintaan-artefak-pega.md` §2, supaya tidak perlu
 // ditelusuri ulang bila fitur ini kelak dihidupkan.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	r.Group(func(perPortal chi.Router) {
-		perPortal.Use(portalhttp.ActivePortal(portalDeps))
+	portalhttp.MountGets(r, portalDeps,
+		portalhttp.Route{Path: "/inbox/investigator", Handler: h.List},
+	)
+}
 
-		perPortal.Get("/inbox/investigator", h.List)
-	})
+// keywordTooLong menjawab kata pencarian yang melampaui MaxKeywordLength.
+func (h *Handler) keywordTooLong(w http.ResponseWriter, r *http.Request) {
+	h.WriteResponse(w, r, http.StatusBadRequest, ErrorResponse{Code: CodeMalformedRequest, Message: "Kata pencarian terlalu panjang."})
 }

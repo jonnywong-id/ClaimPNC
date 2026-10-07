@@ -16,8 +16,8 @@ type Column struct {
 // Nama field JSON pada satu baris.
 //
 // Dikumpulkan sebagai konstanta supaya judul kolom di berkas ini, penyusun DTO di
-// http/dto.go, dan penggambar sel di layar tidak dapat berselisih tanpa ketahuan —
-// ketiganya merujuk nama yang sama.
+// http/dto.go, dan penggambar sel di layar tidak dapat berselisih tanpa ketahuan — ketiganya
+// merujuk nama yang sama.
 const (
 	FieldID             = "id"
 	FieldInputDate      = "tanggal_input"

@@ -14,8 +14,8 @@ import (
 
 // exportChunk adalah banyaknya baris yang diambil sekali jalan saat mengekspor.
 //
-// Ia sengaja sama dengan batas halaman biasa: hasilnya DITULIS langsung ke jawaban setiap kali
-// satu potong selesai dibaca, sehingga memori tetap datar berapa pun jumlah barisnya
+// Ia sengaja sama dengan batas halaman biasa: hasilnya DITULIS langsung ke jawaban setiap
+// kali satu potong selesai dibaca, sehingga memori tetap datar berapa pun jumlah barisnya
 // (`15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 aturan 6).
 const exportChunk = inboxosclaimpercabang.MaxPageSize
 
@@ -58,9 +58,9 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	// dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa berkas separuh
 	// jadi tanpa satu pun keterangan. Cabang yang tidak diketahui dan sesi yang tidak lengkap
 	// karena itu tetap dijawab sebagai galat yang terbaca.
-	session, err := h.service.BeginExport(r.Context(), active.Alias, caller)
+	session, err := h.Service.BeginExport(r.Context(), active.Alias, caller)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 
 	first, err := session.Page(r.Context(), page)
 	if err != nil {
-		h.writeError(w, r, err)
+		h.WriteError(w, r, err)
 		return
 	}
 
@@ -263,12 +263,12 @@ func exportTruncationNotice(total int) []string {
 
 // logExportFailure mencatat kegagalan yang terjadi SETELAH header terkirim.
 //
-// Ia tidak dapat lagi dijawab sebagai galat HTTP — status sudah 200 dan sebagian berkas sudah
-// sampai ke pengguna. Yang dapat dilakukan hanyalah menghentikan penulisan dan meninggalkan
-// jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan keterangan di sisi
-// peladen.
+// Ia tidak dapat lagi dijawab sebagai galat HTTP — status sudah 200 dan sebagian berkas
+// sudah sampai ke pengguna. Yang dapat dilakukan hanyalah menghentikan penulisan dan
+// meninggalkan jejak, supaya unduhan yang terpotong di sisi pengguna punya pasangan
+// keterangan di sisi peladen.
 func (h *Handler) logExportFailure(r *http.Request, err error) {
-	logging.From(r.Context(), h.logger).Error("ekspor OS klaim per cabang terputus",
+	logging.From(r.Context(), h.Logger).Error("ekspor OS klaim per cabang terputus",
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()),
 	)

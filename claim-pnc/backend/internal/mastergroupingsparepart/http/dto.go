@@ -6,7 +6,10 @@
 // `mastergroupingspareparthttp` supaya tidak menutupi `net/http`.
 package mastergroupingspareparthttp
 
-import "claim-pnc/internal/mastergroupingsparepart"
+import (
+	"claim-pnc/internal/mastergroupingsparepart"
+	"claim-pnc/internal/platform/apierror"
+)
 
 // GroupingDTO adalah bentuk satu baris grouping yang dikirim ke peramban.
 //
@@ -89,9 +92,9 @@ type ListResponse struct {
 
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
-	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang milik
-	// entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan hukum, "data
-	// siapa ini" tidak boleh hanya diandaikan.
+	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang
+	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan
+	// hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
 }
 
@@ -105,9 +108,9 @@ type SingleResponse struct {
 type DecisionResponse struct {
 	// Changed adalah jumlah baris yang BENAR-BENAR berubah, bukan jumlah yang dikirim.
 	//
-	// Keduanya dapat berbeda: baris yang sudah berstatus itu, atau yang sudah tidak ada, tidak
-	// ikut terhitung. Menyebutkannya membuat layar dapat mengatakan "3 dari 5" alih-alih
-	// melaporkan keberhasilan atas baris yang tidak tersentuh.
+	// Keduanya dapat berbeda: baris yang sudah berstatus itu, atau yang sudah tidak ada,
+	// tidak ikut terhitung. Menyebutkannya membuat layar dapat mengatakan "3 dari 5"
+	// alih-alih melaporkan keberhasilan atas baris yang tidak tersentuh.
 	Changed int `json:"jumlah_berubah"`
 
 	Status      string `json:"status"`
@@ -232,9 +235,9 @@ type DecisionRequest struct {
 
 // ErrorResponse adalah bentuk galat modul ini.
 //
-// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk pelanggaran per
-// isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan mencocokkan teks
-// `pesan`.
+// Bentuknya sama dengan modul lain — `{kode, pesan}` — ditambah `detail` untuk
+// pelanggaran per isian. Klien membedakan jenis galat lewat `kode`, tidak pernah dengan
+// mencocokkan teks `pesan`.
 type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
@@ -246,10 +249,7 @@ type ErrorResponse struct {
 // Nama kuncinya `kolom`, mengikuti masterbengkel, masterpanel, mastersparepart,
 // masterstatusprogres, dan masterautoclaim. Penyeragamannya adalah TKT-F1-004 yang masih
 // terhalang; frontend sudah menampung keduanya lewat `APIError.violations()`.
-type ViolationDTO struct {
-	Field   string `json:"kolom"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.ColumnError
 
 // toDTO mengubah baris domain menjadi bentuk yang dikirim ke peramban.
 func toDTO(g mastergroupingsparepart.Grouping) GroupingDTO {
@@ -278,8 +278,8 @@ func toDTO(g mastergroupingsparepart.Grouping) GroupingDTO {
 // toListDTO mengubah sekumpulan baris domain.
 //
 // Slice-nya selalu dibuat, tidak pernah dibiarkan nil, supaya tabel kosong terkirim sebagai
-// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu layar
-// yang lupa akan gagal saat tabelnya masih kosong.
+// `[]` dan bukan `null` — layar yang menerima `null` harus menjaganya sendiri, dan satu
+// layar yang lupa akan gagal saat tabelnya masih kosong.
 func toListDTO(list []mastergroupingsparepart.Grouping) []GroupingDTO {
 	result := make([]GroupingDTO, 0, len(list))
 	for _, g := range list {

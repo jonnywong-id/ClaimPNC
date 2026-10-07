@@ -1,8 +1,8 @@
 // Package memory adalah pengisi seam masterlogin.Repo yang hidup di dalam memori.
 //
-// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang
-// membuat seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan
-// tanpa Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
+// Ia ada supaya modul dan layarnya dapat diuji tanpa basis data — adapter kedua yang membuat
+// seam ini nyata, bukan hipotetis. Ia juga yang memungkinkan aplikasi dijalankan tanpa
+// Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
 //
 // Yang ditiru bukan hanya bentuk datanya, tetapi juga URUTAN barisnya, kolom mana saja yang
 // ikut dicari, cakupan pemeriksaan login ganda, dan perbedaan huruf besar-kecil antara
@@ -21,10 +21,10 @@ import (
 
 // Repo menyimpan master login surveyor satu portal.
 //
-// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun tetap
-// memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
-// Menyatukannya justru akan menyembunyikan kelas cacat yang paling ingin dicegah ADR-0030
-// dan R-20.
+// Setiap portal mendapat instans sendiri, sehingga pengembangan tanpa basis data pun
+// tetap memperlihatkan perilaku yang benar: berpindah portal berarti berpindah data.
+// Menyatukannya justru akan menyembunyikan kelas cacat yang paling ingin dicegah
+// ADR-0030 dan R-20.
 type Repo struct {
 	// mutex melindungi seluruh isi.
 	//

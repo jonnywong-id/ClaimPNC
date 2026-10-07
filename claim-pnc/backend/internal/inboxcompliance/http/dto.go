@@ -11,6 +11,7 @@ import (
 
 	"claim-pnc/internal/inboxcompliance"
 	"claim-pnc/internal/inboxcompliance/usecase"
+	"claim-pnc/internal/platform/apierror"
 	"claim-pnc/internal/platform/clock"
 )
 
@@ -144,10 +145,7 @@ type ListResponse struct {
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
-type ViolationDTO struct {
-	Field   string `json:"field"`
-	Message string `json:"pesan"`
-}
+type ViolationDTO = apierror.FieldError
 
 // ErrorResponse adalah bentuk galat modul ini.
 type ErrorResponse struct {
