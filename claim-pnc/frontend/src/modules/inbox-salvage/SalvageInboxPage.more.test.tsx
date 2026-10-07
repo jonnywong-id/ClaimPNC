@@ -360,7 +360,8 @@ describe('SalvageInboxPage — form Tambah', () => {
     await fillRequired(user, form)
     await user.click(within(form).getByRole('button', { name: 'Submit' }))
 
-    expect(await screen.findByText('Pengajuan 300 tersimpan.')).toHaveAttribute('role', 'status')
+    const notice = await screen.findByText('Pengajuan 300 tersimpan.')
+    expect(screen.getAllByRole('status')).toContain(notice)
     // onSaved TIDAK menutup form jalur Tambah — penutupnya onClose.
     await waitFor(() =>
       expect(screen.queryByRole('form', { name: 'Menambahkan Data Salvage' })).not.toBeInTheDocument(),
@@ -394,7 +395,8 @@ describe('SalvageInboxPage — form Tambah', () => {
     await fillRequired(user, form)
     await user.click(within(form).getByRole('button', { name: 'Submit' }))
 
-    expect(await screen.findByText('Tersimpan untuk klaim.')).toHaveAttribute('role', 'status')
+    const notice = await screen.findByText('Tersimpan untuk klaim.')
+    expect(screen.getAllByRole('status')).toContain(notice)
     expect(screen.queryByRole('form', { name: 'Menambahkan Data Salvage' })).not.toBeInTheDocument()
   })
 
