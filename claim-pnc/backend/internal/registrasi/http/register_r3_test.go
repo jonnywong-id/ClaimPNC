@@ -41,6 +41,7 @@ func TestRoutesRejectMissingSession(t *testing.T) {
 		{http.MethodPost, "/registrasi/estimasi/simpan"},
 		{http.MethodGet, "/registrasi/mata-uang"},
 		{http.MethodGet, "/registrasi/klaim/K1/pilihan-item"},
+		{http.MethodGet, "/registrasi/klaim/K1/pilihan-coverage"},
 		{http.MethodGet, "/registrasi/klaim/K1/survey"},
 		{http.MethodGet, "/registrasi/klaim/K1/dokumen"},
 		{http.MethodPost, "/registrasi/klaim/K1/dokumen"},
@@ -171,6 +172,7 @@ func TestClaimReadRoutesUnknownClaim(t *testing.T) {
 		"/registrasi/klaim/K-TIDAK-ADA/dokumen",
 		"/registrasi/klaim/K-TIDAK-ADA/progres",
 		"/registrasi/klaim/K-TIDAK-ADA/pilihan-item",
+		"/registrasi/klaim/K-TIDAK-ADA/pilihan-coverage",
 	} {
 		w := e.do(t, http.MethodGet, p, nil)
 		requireError(t, w, http.StatusNotFound, registrasihttp.CodeClaimNotFound)
@@ -337,4 +339,26 @@ func TestLineName(t *testing.T) {
 	require.Equal(t, "Travel", registrasihttp.LineName(registrasi.LineTravel))
 	require.Equal(t, "Fire", registrasihttp.LineName(registrasi.LineFire))
 	require.Equal(t, "999", registrasihttp.LineName(registrasi.LineOfBusiness("999")))
+}
+
+// Dropdown "Tambah coverage" menawarkan coverage polis milik objek yang diminta saja,
+// lengkap dengan TSI dan spreading-nya; objek yang tidak dikenal mendapat daftar kosong.
+func TestCoverageOptionsFollowRequestedObject(t *testing.T) {
+	e := newHTTPEnv(t)
+	est := e.upToInputEstimate(t)
+
+	// Objek "1" adalah objek polis contoh (memory.SamplePolicyItems): satu coverage, OR 100%.
+	w := e.do(t, http.MethodGet, "/registrasi/klaim/"+est.Claim.ID+"/pilihan-coverage?objek=1", nil)
+	require.Equal(t, http.StatusOK, w.Code, "badan = %s", w.Body.String())
+	options := decode[registrasihttp.CoverageOptionsResponse](t, w)
+	require.Len(t, options.Option, 1)
+	require.NotEmpty(t, options.Option[0].ID)
+	require.NotEmpty(t, options.Option[0].Name)
+	require.Positive(t, options.Option[0].TSICents)
+	require.Len(t, options.Option[0].Spreading, 1)
+	require.Equal(t, registrasihttp.Percent(1_000_000), options.Option[0].Spreading[0].Share)
+
+	w = e.do(t, http.MethodGet, "/registrasi/klaim/"+est.Claim.ID+"/pilihan-coverage?objek=OBJ-TIDAK-ADA", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Empty(t, decode[registrasihttp.CoverageOptionsResponse](t, w).Option)
 }

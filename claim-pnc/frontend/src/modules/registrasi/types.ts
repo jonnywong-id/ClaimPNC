@@ -244,6 +244,11 @@ export type CurrencyOption = { id: string; nama: string }
 /** Pilihan Objek item estimasi — item properti polis Fire. Lini lain: daftar kosong. */
 export type ItemOption = { nama: string; kelompok: string; tsi_sen: Cents }
 export type ItemOptionsResponse = { pilihan: ItemOption[] }
+/**
+ * Pilihan dropdown "Tambah coverage" — coverage polis milik satu objek, dibaca dari
+ * POOLDATA.T_COVERAGELIST_CARGO/ANEKA/FIRE/PERSON sesuai lini bisnis polis.
+ */
+export type CoverageOptionsResponse = { pilihan: Coverage[] }
 export type CurrenciesResponse = { pilihan: CurrencyOption[] }
 
 export type InsuredItem = {
@@ -254,6 +259,14 @@ export type InsuredItem = {
   /** Pekerjaan dan tanggal lahir (YYYY-MM-DD) peserta PA — T_PERSONLIST polis, baca saja. */
   pekerjaan?: string
   tanggal_lahir?: string
+  /** KTP/Paspor dan Status peserta Travel — T_PERSONLIST polis, baca saja. */
+  ktp_paspor?: string
+  status_peserta?: string
+  /** Model, Merk, Nama Tipe, Nomor Chasis objek HE — T_ANEKALIST polis, baca saja. */
+  model?: string
+  merk?: string
+  nama_tipe?: string
+  nomor_chasis?: string
 }
 
 /** Satu penerima klaim. */
@@ -711,3 +724,18 @@ export type DLAListResponse = {
   peringatan: string[]
   dla: DLARow[]
 }
+
+/** Satu baris grid Status Penerimaan Komite (InputAdjustment_sect, .ComiteeClaim). */
+export type CommitteeStatusRow = {
+  jenjang: number
+  nama_komite: string
+  /** 0 menunggu, 1 setuju, 2 tolak. */
+  status: string
+  tanggal: string
+  komentar: string
+}
+
+/** Satu baris grid Histori Transfer Kasir (InputAdjustment_sect, TempDataLogKasir). */
+export type CashierHistoryRow = { pic_teknik: string; tanggal: string; status_kasir: string; komentar: string }
+
+export type SettlementHistoryResponse = { komite: CommitteeStatusRow[]; kasir: CashierHistoryRow[] }

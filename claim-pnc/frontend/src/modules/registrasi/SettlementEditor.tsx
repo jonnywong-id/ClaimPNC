@@ -5,6 +5,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { centsToRupiah, rupiahToCents } from '@/components/format'
 
 import { AcceptanceNumber } from './AcceptanceNumber'
+import { SettlementHistory } from './SettlementHistory'
 import { useAddSettlement, usePreviewSettlement, useUpdateSettlement, violationsFrom } from './api'
 import {
   PaymentType,
@@ -648,6 +649,14 @@ export function SettlementDetail({
         </div>
       </div>
       {exGratia && spreading.length > 0 && <SpreadingTable spreading={spreading} />}
+      {address && (
+        <SettlementHistory
+          claimID={address.claimID}
+          object={address.object}
+          coverage={address.coverage}
+          adjustment={address.adjustment}
+        />
+      )}
     </div>
   )
 }

@@ -55,7 +55,8 @@ func TestListMapsEveryColumnAndSendsTabArguments(t *testing.T) {
 
 	rows := sqlmock.NewRows(resultColumns).AddRow(fullRow(at)...).AddRow(nullRow()...)
 	mock.ExpectQuery(regexp.QuoteMeta(query("list_all"))).
-		WithArgs("PNC", "NONMBU").
+		WithArgs("PNC", "PNC", "PNC", "NONMBU", "NONMBU", "NONMBU", "NONMBU", "NONMBU",
+			nil, nil, nil, nil).
 		WillReturnRows(rows)
 
 	items, err := repo.List(context.Background(), inboxadmin.Query{
@@ -116,12 +117,15 @@ func TestListSendsPerTabArguments(t *testing.T) {
 		name string
 		args []driver.Value
 	}{
-		{inboxadmin.TabUnregisteredRCV, "list_unregistered", []driver.Value{nil, "ALL", "NORMAL"}},
-		{inboxadmin.TabRCVOnline, "list_unregistered", []driver.Value{nil, "ALL", "ONLINE"}},
-		{inboxadmin.TabRequestSurvey, "list_request_survey", []driver.Value{nil, "ADMINKLAIM"}},
+		{inboxadmin.TabUnregisteredRCV, "list_unregistered",
+			[]driver.Value{"NORMAL", "NORMAL", nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL", nil, nil, nil, nil}},
+		{inboxadmin.TabRCVOnline, "list_unregistered",
+			[]driver.Value{"ONLINE", "ONLINE", nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL", nil, nil, nil, nil}},
+		{inboxadmin.TabRequestSurvey, "list_request_survey", []driver.Value{"ADMINKLAIM", nil, nil, nil, nil, nil}},
 		{inboxadmin.TabRequestDocument, "list_request_document", []driver.Value{"ADMINKLAIM"}},
-		{inboxadmin.TabAllCaseAdmin, "list_all_case_admin", []driver.Value{nil, "ADMINKLAIM"}},
-		{inboxadmin.TabBranchClaim, "list_branch_claim", []driver.Value{nil, "ALL"}},
+		{inboxadmin.TabAllCaseAdmin, "list_all_case_admin", []driver.Value{"ADMINKLAIM", nil, nil, nil, nil, nil}},
+		{inboxadmin.TabBranchClaim, "list_branch_claim",
+			[]driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL", nil, nil, nil, nil}},
 	}
 
 	for _, c := range cases {
@@ -173,7 +177,7 @@ func TestListWrapsQueryError(t *testing.T) {
 func TestListWrapsScanError(t *testing.T) {
 	repo, mock := newMock(t)
 	values := nullRow()
-	values[9] = "bukan-tanggal"
+	values[9] = true // bukan tanggal, bukan teks
 	mock.ExpectQuery(regexp.QuoteMeta(query("list_rcl_pucl"))).
 		WillReturnRows(sqlmock.NewRows(resultColumns).AddRow(values...))
 
@@ -211,5 +215,39 @@ func TestCheckTableWrapsError(t *testing.T) {
 	err := repo.CheckTable(context.Background())
 	require.ErrorIs(t, err, boom)
 	require.ErrorContains(t, err, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// REPORTDATE_1 Pega bertipe VARCHAR2. Ia diurai sebagai waktu GMT, dan teks yang tidak
+// dapat diurai menjadi NULL alih-alih menggagalkan seluruh tab.
+func TestListReadsPegaTextDates(t *testing.T) {
+	repo, mock := newMock(t)
+	readable := nullRow()
+	readable[10] = "20200105T170000.000 GMT"
+	unreadable := nullRow()
+	unreadable[10] = "bukan-tanggal"
+	mock.ExpectQuery(regexp.QuoteMeta(query("list_rcl_pucl"))).
+		WillReturnRows(sqlmock.NewRows(resultColumns).AddRow(readable...).AddRow(unreadable...))
+
+	items, err := repo.List(context.Background(), inboxadmin.Query{Tab: findTab(t, inboxadmin.TabRCLPUCL)})
+	require.NoError(t, err)
+	require.Equal(t, time.Date(2020, time.January, 5, 17, 0, 0, 0, time.UTC), *items[0].ReportDate)
+	require.Nil(t, items[1].ReportDate)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Batas cabang dan kanwil dikirim sebagai dua kemunculan masing-masing, di BELAKANG bind
+// kueri — klausanya disisipkan tepat sebelum ORDER BY.
+func TestListSendsScopeArguments(t *testing.T) {
+	repo, mock := newMock(t)
+	mock.ExpectQuery(regexp.QuoteMeta(query("list_branch_claim"))).
+		WithArgs(nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL", "100351", "100351", "1", "1").
+		WillReturnRows(sqlmock.NewRows(resultColumns))
+
+	_, err := repo.List(context.Background(), inboxadmin.Query{
+		Tab: findTab(t, inboxadmin.TabBranchClaim), Business: inboxadmin.BusinessAll,
+		Scope: inboxadmin.Scope{BranchCode: "100351", RegionCode: "1"},
+	})
+	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

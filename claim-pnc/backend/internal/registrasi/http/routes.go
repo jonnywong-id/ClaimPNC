@@ -44,6 +44,9 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/pilihan-item", func(w http.ResponseWriter, r *http.Request) {
 			h.ItemOptions(w, r, chi.URLParam(r, "klaimID"))
 		})
+		sub.Get("/klaim/{klaimID}/pilihan-coverage", func(w http.ResponseWriter, r *http.Request) {
+			h.CoverageOptions(w, r, chi.URLParam(r, "klaimID"))
+		})
 
 		// Tab pendamping tahap Input Estimasi. Ketiganya hanya membaca tabel warisan.
 		sub.Get("/klaim/{klaimID}/survey", func(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +118,9 @@ func Mount(r chi.Router, h *Handler) {
 			h.AcceptSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
 		// Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor).
+		sub.Get("/klaim/{klaimID}/adjustment/riwayat", func(w http.ResponseWriter, r *http.Request) {
+			h.SettlementHistory(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Post("/klaim/{klaimID}/adjustment/hitung", func(w http.ResponseWriter, r *http.Request) {
 			h.PreviewSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})

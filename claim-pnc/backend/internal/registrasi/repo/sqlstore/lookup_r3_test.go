@@ -21,7 +21,7 @@ func TestExchangeRateFind(t *testing.T) {
 	_, err := s.Find(ctx, " ", day)
 	require.ErrorIs(t, err, registrasi.ErrExchangeRateNotFound)
 
-	mock.ExpectQuery(be4Q("kurs_pada_tanggal")).WithArgs("USD", day).WillReturnRows(sqlmock.NewRows([]string{"k"}).AddRow("15000,5"))
+	mock.ExpectQuery(be4Q("kurs_pada_tanggal")).WithArgs("USD", "USD", day).WillReturnRows(sqlmock.NewRows([]string{"k"}).AddRow("15000,5"))
 	rate, err := s.Find(ctx, " USD ", day)
 	require.NoError(t, err)
 	require.Equal(t, registrasi.ExchangeRate(150_005_000), rate)

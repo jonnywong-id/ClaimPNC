@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -117,7 +118,8 @@ func assembleRegistration(
 		// Transfer Kasir: alamat dari POOLDATA.GCNM_CONNECT_REST (KASIRPAID…), kredensial dari
 		// KASIR_USER / KASIR_PASSWORD.
 		if catalog != nil {
-			options.CashierGateway = cashierlink.New(catalog, cashier.User, cashier.Password, nil)
+			options.CashierGateway = cashierlink.New(catalog, cashier.User, cashier.Password,
+				&http.Client{Timeout: cashier.TransferTimeout})
 			if cashier.User == "" {
 				logger.Warn("Transfer Kasir tanpa kredensial — isi KASIR_USER dan KASIR_PASSWORD bila Kasir menuntutnya")
 			}

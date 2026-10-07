@@ -17,6 +17,8 @@ const (
 	CodeValidationFail = "validasi_gagal"
 	CodeCallerUnknown  = "profil_pemanggil_tidak_lengkap"
 	CodeInternalError  = "galat_internal"
+
+	CodeExportUnavailable = "ekspor_belum_tersedia"
 )
 
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri supaya
@@ -93,6 +95,12 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Code: CodeCallerUnknown,
 			Message: "Identitas Anda tidak terbaca, sehingga antrean milik Anda tidak " +
 				"dapat dipisahkan dari antrean orang lain. Masuk ulang lalu coba lagi.",
+		}, true
+
+	case errors.Is(err, inboxadmin.ErrExportUnavailable):
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodeExportUnavailable,
+			Message: "Ekspor ini belum tersedia pada penyimpanan yang sedang dipakai aplikasi.",
 		}, true
 
 	default:

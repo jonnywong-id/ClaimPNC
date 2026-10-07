@@ -53,6 +53,31 @@ func (l *Service) ItemOptions(ctx context.Context, claimID, objectID string) ([]
 	return l.options.ItemOptions(ctx, claim.Policy, objectID)
 }
 
+// CoverageOptions adalah isi dropdown "Tambah coverage" pada tahap Input Register: coverage
+// polis milik SATU objek, dibaca dari POOLDATA.T_COVERAGELIST_CARGO/ANEKA/FIRE/PERSON sesuai
+// lini bisnis polis (lewat PolicyItemSource yang sama dengan pembukaan klaim).
+//
+// Tanggal kejadian sengaja tidak dipakai menyaring: dropdown menawarkan seluruh coverage
+// objek itu, dan aturan periode tetap ditegakkan validasi saat register. Pilihan tidak
+// disimpan ke tabel mana pun di sini — coverage tersimpan bersama klaim saat Save/Submit
+// (keputusan Work Owner 2026-10-07: tidak ditulis ke POOLDATA.TC_PNC_COVERAGEDETAIL).
+func (l *Service) CoverageOptions(ctx context.Context, claimID, objectID string) ([]registrasi.Coverage, error) {
+	claim, err := l.claim.Get(ctx, claimID)
+	if err != nil {
+		return nil, err
+	}
+	source, err := l.items.Items(ctx, claim.Policy)
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/usecase: membaca coverage polis: %w", err)
+	}
+	for _, item := range registrasi.BuildInsuredItems(claim.Policy, time.Time{}, source) {
+		if item.ID == objectID {
+			return item.Coverage, nil
+		}
+	}
+	return nil, nil
+}
+
 // SaveEstimate menyimpan isian Input Estimasi tanpa menutup tahap — tombol Save.
 func (l *Service) SaveEstimate(ctx context.Context, p EstimateCommand, by Caller) (registrasi.Claim, error) {
 	claim, _, now, err := l.prepareEstimate(ctx, p, by, registrasi.ActionInputSurveyor)

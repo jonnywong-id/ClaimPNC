@@ -87,3 +87,25 @@ func (s *CashierStore) MarkTransferred(ctx context.Context, claimID, objectID st
 	}
 	return nil
 }
+
+// CashierHistory membaca riwayat transfer kasir satu nomor akseptasi.
+func (s *CashierStore) CashierHistory(ctx context.Context, acceptedNo string) ([]registrasi.CashierHistoryEntry, error) {
+	rows, err := executorFrom(ctx, s.db).QueryContext(ctx, loadQuery("kasir_riwayat"), acceptedNo)
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca riwayat transfer kasir: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []registrasi.CashierHistoryEntry
+	for rows.Next() {
+		var pic, status, reason sql.NullString
+		var at sql.NullTime
+		if err := rows.Scan(&pic, &at, &status, &reason); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris riwayat transfer kasir: %w", err)
+		}
+		out = append(out, registrasi.CashierHistoryEntry{
+			PIC: strings.TrimSpace(pic.String), At: at.Time,
+			Status: strings.TrimSpace(status.String), Reason: strings.TrimSpace(reason.String),
+		})
+	}
+	return out, rows.Err()
+}

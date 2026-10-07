@@ -213,6 +213,10 @@ type Props<T> = {
    * Opt-in, sama alasannya dengan `showHeaderWhenEmpty`: layar yang sudah ada tidak
    * berubah. Dipakai grid yang harus muat SATU LAYAR tanpa gulir menyamping di samping
    * panel lain — Inbox Auto Claim adalah yang pertama (permintaan Work Owner 2026-09-29).
+   *
+   * Merapatkan judul DAN isi sel, serta mengecilkan huruf tabel. Semula hanya judul yang
+   * dirapatkan, sehingga sel tetap ber-padding lebar dan tabel berkolom banyak tetap
+   * menuntut gulir menyamping (Inbox Admin, 2026-10-07).
    */
   dense?: boolean
 }
@@ -463,7 +467,10 @@ export function DataTable<T>({
         />
       ) : (
         <div className="md:overflow-x-auto">
-          <table aria-label={label} className="block w-full border-collapse text-sm md:table">
+          <table
+            aria-label={label}
+            className={['block w-full border-collapse md:table', dense ? 'text-xs' : 'text-sm'].join(' ')}
+          >
             <thead className="hidden md:table-header-group">
               <tr className="border-b border-slate-200 bg-slate-50/80 text-left">
                 {columns.map((k) => (
@@ -577,7 +584,7 @@ export function DataTable<T>({
                           key={k.key}
                           className={[
                             'flex items-baseline gap-3 px-5 py-1.5',
-                            'md:table-cell md:py-3.5 md:align-middle',
+                            dense ? 'md:table-cell md:px-3 md:py-2 md:align-middle' : 'md:table-cell md:py-3.5 md:align-middle',
                             k.alignRight ? 'md:text-right' : '',
                           ].join(' ')}
                         >

@@ -704,6 +704,13 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			Coverage:    make([]CoverageDTO, 0, len(o.Coverage)),
 			Job:         o.Job,
 			DateOfBirth: birthDate(o.DateOfBirth),
+
+			IDCard:            o.IDCard,
+			ParticipantStatus: o.ParticipantStatus,
+			VehicleModel:      o.VehicleModel,
+			VehicleBrand:      o.VehicleBrand,
+			VehicleType:       o.VehicleType,
+			ChassisNumber:     o.ChassisNumber,
 		}
 		for _, c := range o.Coverage {
 			cov := CoverageDTO{

@@ -133,6 +133,9 @@ type PLASource interface {
 
 	// Signature membaca penanda tangan PLA sebuah entitas (POOLDATA.MTTD).
 	Signature(ctx context.Context, entity string) (name string, png []byte, err error)
+	// PASignature membaca satu tanda tangan POOLDATA.M_SIGNATURE1 menurut SIGNATURE_ID
+	// (`BrowseSignature`) — dipakai blok tanda tangan Draft Persetujuan Personal Accident.
+	PASignature(ctx context.Context, id string) (name string, image []byte, err error)
 
 	// LODEmails membaca bahan isian Email LOD: email tertanggung dari pengkinian data
 	// klaim dan email PIC teknik. Kosong bila tidak ada barisnya.

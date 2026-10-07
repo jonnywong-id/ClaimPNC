@@ -163,8 +163,12 @@ var tabs = []Tab{
 		SupportsSearch: true,
 	},
 	{
-		Code:        TabAll,
-		Name:        "ALL",
+		Code: TabAll,
+		// "Outstanding", bukan "ALL": itulah label baris kode 3 pada daftar Status
+		// Register Pega (`GetReportClaimRegistList` langkah 30). Nama "ALL" sempat dipakai
+		// karena label itu disusun activity, bukan ditulis di section — dikoreksi
+		// 2026-10-07 dari tangkapan layar Pega yang berjalan.
+		Name:        "Outstanding",
 		Description: "Seluruh klaim PNC yang masih berjalan pada tahap Register, Estimasi, atau Estimation.",
 		Columns: []Column{
 			colCaseID, colPolicyNumber, colInsuredName, colBusinessName, colBusinessSrc,
@@ -235,7 +239,7 @@ var tabs = []Tab{
 	},
 	{
 		Code:        TabBranchClaim,
-		Name:        "Branch Claim",
+		Name:        "LOD", // `GetReportClaimRegistList` langkah 48
 		Description: "Klaim personal accident yang menunggu unggahan LOD dari cabang.",
 		Columns: []Column{
 			colCaseID, colPolicyNumber, colInsuredName, colBusinessSrc, colBranchName,
@@ -256,7 +260,7 @@ var tabs = []Tab{
 	},
 	{
 		Code:        TabRCLPUCL,
-		Name:        "Status RCL/PUCL",
+		Name:        "PUCL", // `GetReportClaimRegistList` langkah 50
 		Description: "Klaim yang suratnya sudah dicetak dan menunggu persetujuan PUCL.",
 		Columns: []Column{
 			colCaseID,

@@ -55,19 +55,31 @@ func be4SaveSteps() []be4Step {
 	return []be4Step{
 		{name: "klaim_perbarui", exec: true, affected: 0},
 		{name: "klaim_sisip", exec: true, affected: 1},
+		// Coverage tersimpan: (1,1) masih hidup; (1,2) dibuang petugas; (2,1) milik objek
+		// yang dibuang. Spreading dua yang terakhir dihapus, lalu coverage-nya.
+		{name: "coverage_kunci", cols: 4, rows: [][]driver.Value{
+			{int64(1), int64(1), "OBJ1", "1"},
+			{int64(1), int64(2), "OBJ1", "2"},
+			{int64(2), int64(1), "OBJ-LAMA", "1"},
+		}},
+		{name: "spreading_hapus_coverage", exec: true},
+		{name: "spreading_hapus_coverage", exec: true},
+		{name: "coverage_hapus_sisa", exec: true},
+		{name: "coverage_hapus_objek_sisa", exec: true},
 		{name: "objek_perbarui", exec: true, affected: 0},
 		{name: "objek_sisip", exec: true, affected: 1},
 		{name: "coverage_perbarui", exec: true, affected: 1},
-		{name: "spreading_ada", cols: 1},
+		// Tersimpan 10003 (tetap ada) dan 10009 (dibuang); 10001 baru, 10002 ber-Removed.
+		{name: "spreading_jenis", cols: 1, rows: [][]driver.Value{{"10003"}, {"10009"}}},
 		{name: "spreading_sisip", exec: true, affected: 1},
-		{name: "spreading_ada", cols: 1, rows: [][]driver.Value{{"1"}}},
+		{name: "spreading_perbarui", exec: true, affected: 1},
+		{name: "spreading_hapus", exec: true, affected: 1},
 		{name: "item_perbarui", exec: true, affected: 0},
 		{name: "item_sisip", exec: true, affected: 1},
 		{name: "estimasi_perbarui", exec: true, affected: 1},
 		{name: "item_tandai_sisa", exec: true},
 		{name: "adjustment_perbarui", exec: true, affected: 0},
 		{name: "adjustment_sisip", exec: true, affected: 1},
-		{name: "coverage_tandai_sisa", exec: true},
 		{name: "objek_tandai_sisa", exec: true},
 		{name: "penerima_perbarui", exec: true, affected: 1},
 	}
@@ -83,16 +95,22 @@ func TestClaimSaveWritesWholeTree(t *testing.T) {
 	steps[0].args = be4AnyArgs(57, map[int]driver.Value{
 		0: nil, 1: "ASM", 2: "POL-1", 3: "005", 20: "Y", 26: nil, 36: 60.0, 55: nil, 56: "K1"})
 	steps[1].args = be4AnyArgs(59, map[int]driver.Value{55: nil, 56: "K1", 57: "adminpnc"})
-	steps[2].args = []driver.Value{"OBJ1", "Gudang", "Jakarta", "K1", 1}
-	steps[5].args = []driver.Value{"K1", "OBJ1", "1", "10001"}
-	steps[6].args = []driver.Value{"K1", "OBJ1", "1", "10001", "OR", 40.0, 1}
-	steps[9].args = be4AnyArgs(12, map[int]driver.Value{0: "Atap", 1: nil, 2: int64(500), 5: "K1", 6: "OBJ1", 7: "1", 8: "1"})
-	steps[10].args = be4AnyArgs(13, map[int]driver.Value{6: 1})
-	steps[11].args = be4AnyArgs(6, map[int]driver.Value{0: "adminpnc", 2: "K1", 3: "OBJ1", 4: "1", 5: 1})
-	steps[12].args = be4AnyArgs(26, map[int]driver.Value{0: "1", 14: "1", 22: "K1", 23: "OBJ1", 24: "1", 25: "1"})
-	steps[14].args = be4AnyArgs(4, map[int]driver.Value{1: "K1", 2: 1, 3: 1})
-	steps[15].args = be4AnyArgs(3, map[int]driver.Value{1: "K1", 2: 1})
-	steps[16].args = []driver.Value{"Budi", nil, nil, nil, "K1", "R1"}
+	steps[2].args = []driver.Value{"K1"}
+	steps[3].args = []driver.Value{"K1", "OBJ1", "2"}
+	steps[4].args = []driver.Value{"K1", "OBJ-LAMA", "1"}
+	steps[5].args = []driver.Value{"K1", 1, 1}
+	steps[6].args = []driver.Value{"K1", 1}
+	steps[7].args = []driver.Value{"OBJ1", "Gudang", "Jakarta", "K1", 1}
+	steps[10].args = []driver.Value{"K1", "OBJ1", "1"}
+	steps[11].args = []driver.Value{"K1", "OBJ1", "1", "10001", "OR", 40.0, 1}
+	steps[12].args = []driver.Value{"QS", 60.0, 3, "K1", "OBJ1", "1", "10003"}
+	steps[13].args = []driver.Value{"K1", "OBJ1", "1", "10009"}
+	steps[15].args = be4AnyArgs(12, map[int]driver.Value{0: "Atap", 1: nil, 2: int64(500), 5: "K1", 6: "OBJ1", 7: "1", 8: "1"})
+	steps[16].args = be4AnyArgs(13, map[int]driver.Value{6: 1})
+	steps[17].args = be4AnyArgs(6, map[int]driver.Value{0: "adminpnc", 2: "K1", 3: "OBJ1", 4: "1", 5: 1})
+	steps[18].args = be4AnyArgs(26, map[int]driver.Value{0: "1", 14: "1", 22: "K1", 23: "OBJ1", 24: "1", 25: "1"})
+	steps[20].args = be4AnyArgs(3, map[int]driver.Value{1: "K1", 2: 1})
+	steps[21].args = []driver.Value{"Budi", nil, nil, nil, "K1", "R1"}
 	be4ExpectAll(mock, steps)
 
 	require.NoError(t, NewClaimStore(db).Save(context.Background(), k))
@@ -104,10 +122,14 @@ func TestClaimSaveWritesWholeTree(t *testing.T) {
 func TestClaimSaveStopsAtEveryFailingStatement(t *testing.T) {
 	steps := be4SaveSteps()
 	contexts := []string{
-		"memperbarui klaim", "menyisipkan klaim", "menyimpan objek 1", "menyimpan objek 1",
-		"menyimpan coverage 1.1", "menyimpan spreading 1.1", "menyimpan spreading 1.1",
+		"memperbarui klaim", "menyisipkan klaim",
+		"membaca coverage tersimpan", "menghapus spreading coverage yang dibuang",
+		"menghapus spreading coverage yang dibuang", "menghapus coverage yang dibuang",
+		"menghapus coverage objek yang dibuang",
+		"menyimpan objek 1", "menyimpan objek 1", "menyimpan coverage 1.1",
+		"menyimpan spreading 1.1", "menyimpan spreading 1.1", "menyimpan spreading 1.1",
 		"menyimpan spreading 1.1", "item 1", "item 1", "estimasi 1.1", "menyimpan estimasi 1.1",
-		"adjustment 1", "adjustment 1", "menandai sisa coverage", "menandai sisa objek",
+		"adjustment 1", "adjustment 1", "menandai sisa objek",
 		"menyimpan penerima R1",
 	}
 	for i := range steps {
@@ -135,15 +157,22 @@ func TestClaimSaveRowsAffectedAndRowErrFailures(t *testing.T) {
 	require.Contains(t, err.Error(), "membaca jumlah baris klaim")
 
 	db, mock = be4DB(t)
-	be4ExpectAll(mock, steps[:2])
-	be4Expect(mock, steps[2], be4Affected)
+	be4ExpectAll(mock, steps[:7])
+	be4Expect(mock, steps[7], be4Affected)
 	err = NewClaimStore(db).Save(context.Background(), be4Claim())
 	require.ErrorIs(t, err, be4Boom)
 	require.Contains(t, err.Error(), "menyimpan objek 1")
 
 	db, mock = be4DB(t)
-	be4ExpectAll(mock, steps[:5])
-	be4Expect(mock, steps[5], be4RowErr)
+	be4ExpectAll(mock, steps[:2])
+	be4Expect(mock, steps[2], be4RowErr)
+	err = NewClaimStore(db).Save(context.Background(), be4Claim())
+	require.ErrorIs(t, err, be4Boom)
+	require.Contains(t, err.Error(), "menelusuri coverage tersimpan")
+
+	db, mock = be4DB(t)
+	be4ExpectAll(mock, steps[:10])
+	be4Expect(mock, steps[10], be4RowErr)
 	err = NewClaimStore(db).Save(context.Background(), be4Claim())
 	require.ErrorIs(t, err, be4Boom)
 	require.Contains(t, err.Error(), "menyimpan spreading 1.1")
@@ -157,6 +186,10 @@ func TestClaimSaveUpdatesExistingHeader(t *testing.T) {
 	mock.ExpectExec(be4Q("klaim_perbarui")).
 		WithArgs(be4AnyArgs(57, map[int]driver.Value{0: "PNCN.26.1", 8: nil, 26: "1", 36: nil, 55: nil, 56: "K2"})...).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(be4Q("coverage_kunci")).WithArgs("K2").
+		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d"}))
+	mock.ExpectExec(be4Q("coverage_hapus_objek_sisa")).WithArgs("K2", 0).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(be4Q("objek_tandai_sisa")).WithArgs(sqlmock.AnyArg(), "K2", 0).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -212,8 +245,9 @@ func be4GetSteps() []be4Step {
 			"", "", "", nil, nil,
 		}}},
 		{name: "polis_koasuransi", cols: 3, args: []driver.Value{"POL-1", "0"}},
-		{name: "objek_daftar", cols: 6, rows: [][]driver.Value{
-			{int64(1), "OBJ1 ", "Gudang", "Jakarta", " KARYAWAN ", "19890524"},
+		{name: "objek_daftar", cols: 12, rows: [][]driver.Value{
+			{int64(1), "OBJ1 ", "Gudang", "Jakarta", " KARYAWAN ", "19890524",
+				" A1234 ", "1", " DUMP TRUCK ", "HINO", nil, " CH-9 "},
 		}},
 		{name: "coverage_daftar", cols: 7, rows: [][]driver.Value{
 			{int64(1), int64(1), "COV1", "C1", int64(1000), "Kebakaran", int64(1)},
@@ -272,6 +306,12 @@ func TestClaimGetReadsWholeTree(t *testing.T) {
 
 	require.Len(t, k.InsuredItem, 1)
 	require.Equal(t, "KARYAWAN", k.InsuredItem[0].Job)
+	require.Equal(t, "A1234", k.InsuredItem[0].IDCard)
+	require.Equal(t, "1", k.InsuredItem[0].ParticipantStatus)
+	require.Equal(t, "DUMP TRUCK", k.InsuredItem[0].VehicleModel)
+	require.Equal(t, "HINO", k.InsuredItem[0].VehicleBrand)
+	require.Empty(t, k.InsuredItem[0].VehicleType)
+	require.Equal(t, "CH-9", k.InsuredItem[0].ChassisNumber)
 	require.Equal(t, "19890524", k.InsuredItem[0].DateOfBirth)
 	coverage := k.InsuredItem[0].Coverage
 	require.Len(t, coverage, 1)

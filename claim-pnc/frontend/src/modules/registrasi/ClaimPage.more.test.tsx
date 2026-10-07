@@ -274,6 +274,24 @@ describe('Input Register', () => {
     })
   })
 
+  it('Next ditahan bila Lokasi Kerugian/Kejadian kosong; Save tetap menyimpan', async () => {
+    installFetch(response({ lokasi: '' }))
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Lokasi Kerugian/Kejadian is required.')).toBeInTheDocument()
+    expect(calls.some((c) => c.url === '/api/registrasi/register')).toBe(false)
+    expect(screen.getByLabelText('Lokasi Kerugian/Kejadian *')).toHaveFocus()
+
+    // Spasi saja tetap dianggap kosong.
+    await userEvent.type(screen.getByLabelText('Lokasi Kerugian/Kejadian *'), '   ')
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(calls.some((c) => c.url === '/api/registrasi/register')).toBe(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls.some((c) => c.url === '/api/registrasi/register/simpan')).toBe(true))
+  })
+
   it('menampilkan galat simpan tanpa pelanggaran dan daftar banyak pelanggaran', async () => {
     let answer: () => Answer = () => json(500, { kode: 'galat_internal', pesan: 'Basis data sibuk.' })
     installFetch(response(), (url) => (url === '/api/registrasi/register' ? answer() : undefined))
@@ -305,6 +323,13 @@ describe('Input Register', () => {
   // kedua uji di bawah menjaga perbedaannya tetap ada — menyeragamkannya akan membuat
   // lini PA kehilangan Pekerjaan dan Tanggal Lahir tanpa ada yang menyadarinya.
 
+  // Empat grid objek Section/InputRegisterDetail-sect.xml, dipilih menurut lini polis.
+  // Kolom polis read-only seperti di XML; "Type Object" (tampil 1==2) tidak digambar.
+  const headerOf = async () => {
+    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
+    return { grid, header: within(grid).getAllByRole('columnheader').map((h) => h.textContent) }
+  }
+
   it('grid objek lini PA berkolom Nama, Pekerjaan, dan Tanggal Lahir', async () => {
     installFetch(
       response({
@@ -323,35 +348,74 @@ describe('Input Register', () => {
     )
     show()
 
-    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
-    const header = within(grid).getAllByRole('columnheader').map((h) => h.textContent)
-    expect(header).toEqual(['', '#', 'Kode Objek', 'Nama', 'Pekerjaan', 'Tanggal Lahir', 'Aksi'])
-
-    // Nama dan Kode Objek dapat disunting; Pekerjaan dan Tanggal Lahir milik polis dan
-    // digambar sebagai teks, bukan isian yang dimatikan.
-    expect(within(grid).getByLabelText('Nama baris 1')).toHaveValue('FRANSISCO AMADEUS J')
-    expect(within(grid).getByLabelText('Kode objek baris 1')).toHaveValue('OBJ-1')
+    const { grid, header } = await headerOf()
+    expect(header).toEqual(['', '#', 'Nama', 'Pekerjaan', 'Tanggal Lahir', 'Aksi'])
+    // Seluruhnya milik polis dan digambar sebagai teks, bukan isian.
+    expect(within(grid).getByText('FRANSISCO AMADEUS J')).toBeInTheDocument()
     expect(within(grid).getByText('KARYAWAN')).toBeInTheDocument()
     expect(within(grid).getByText('03/02/1996')).toBeInTheDocument()
-    expect(within(grid).queryByLabelText('Lokasi objek baris 1')).toBeNull()
+    expect(within(grid).queryByRole('textbox')).toBeNull()
   })
 
-  it('grid objek lini selain PA berkolom Nama Objek dan Lokasi', async () => {
+  it('grid objek lini Travel berkolom Nama Peserta, Status, KTP/Paspor, dan Tanggal Lahir', async () => {
     installFetch(
       response({
-        objek: [{ id: 'OBJ-9', nama: 'Gudang Utama', lokasi: 'Jakarta', coverage: [] }],
+        polis: { ...KLAIM.polis, lini: '005', nama_lini: 'Travel', jenis_bisnis: 'Travel' },
+        objek: [
+          { id: '1', nama: 'PESERTA SATU', lokasi: '', ktp_paspor: 'X123', status_peserta: 'Tertanggung',
+            tanggal_lahir: '1990-01-02', coverage: [] },
+        ],
       }),
     )
     show()
 
-    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
-    const header = within(grid).getAllByRole('columnheader').map((h) => h.textContent)
-    expect(header).toEqual(['', '#', 'Kode Objek', 'Nama Objek', 'Lokasi', 'Aksi'])
+    const { grid, header } = await headerOf()
+    expect(header).toEqual(['', '#', 'Nama Peserta', 'Status', 'KTP/Paspor', 'Tanggal Lahir', 'Aksi'])
+    expect(within(grid).getByText('X123')).toBeInTheDocument()
+    expect(within(grid).getByText('Tertanggung')).toBeInTheDocument()
+    expect(within(grid).getByText('02/01/1990')).toBeInTheDocument()
+  })
 
-    expect(within(grid).getByLabelText('Lokasi objek baris 1')).toHaveValue('Jakarta')
-    // Pekerjaan dan Tanggal Lahir tidak berlaku di lini ini, dan kolomnya tidak digambar
-    // kosong — kolom yang selalu kosong hanya menyita lebar.
-    expect(within(grid).queryByText('Tanggal Lahir')).toBeNull()
+  it('grid objek lini HE berkolom Object, Model, Merk, Nama Tipe, Nomor Chasis, dan Location', async () => {
+    installFetch(
+      response({
+        polis: { ...KLAIM.polis, lini: '003', jenis_bisnis: 'HE' },
+        objek: [
+          { id: '2', nama: 'DUMP TRUCK', lokasi: 'MOROWALI', model: 'DUMP TRUCK', merk: 'SANY',
+            nama_tipe: 'SYZ324C8W', nomor_chasis: 'CH-9', coverage: [] },
+        ],
+      }),
+    )
+    show()
+
+    const { grid, header } = await headerOf()
+    expect(header).toEqual(['', '#', 'Object', 'Model', 'Merk', 'Nama Tipe', 'Nomor Chasis', 'Location', 'Aksi'])
+    for (const value of ['SANY', 'SYZ324C8W', 'CH-9', 'MOROWALI']) {
+      expect(within(grid).getByText(value)).toBeInTheDocument()
+    }
+    expect(within(grid).queryByRole('textbox')).toBeNull()
+    expect(within(grid).queryByText('Type Object')).toBeNull()
+  })
+
+  it('grid objek lini lain berkolom Object dan Location; objek tambahan tetap dapat diisi', async () => {
+    installFetch(
+      response({
+        objek: [{ id: '9', nama: 'Gudang Utama', lokasi: 'Jakarta', coverage: [] }],
+      }),
+    )
+    show()
+
+    const { grid, header } = await headerOf()
+    expect(header).toEqual(['', '#', 'Object', 'Location', 'Aksi'])
+    expect(within(grid).getByText('Gudang Utama')).toBeInTheDocument()
+    expect(within(grid).getByText('Jakarta')).toBeInTheDocument()
+    expect(within(grid).queryByText('Model')).toBeNull()
+
+    // Objek tambahan tidak punya pasangan di polis: nama dan lokasinya diisi petugas, dan
+    // kodenya diberikan otomatis karena grid Pega tidak punya kolom kode objek.
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah objek' }))
+    expect(within(grid).getByLabelText('Nama objek baris 2')).toHaveValue('')
+    expect(within(grid).getByLabelText('Lokasi objek baris 2')).toHaveValue('')
   })
 
   // Jaminan dan spreading tersembunyi sampai barisnya dibuka. Satu klaim Fire dapat
@@ -445,6 +509,77 @@ describe('Input Register', () => {
     expect(
       screen.getByText('Objek ini belum punya jaminan. Registrasi menolak objek tanpa jaminan.'),
     ).toBeInTheDocument()
+  })
+
+  it('Tambah coverage memilih coverage polis objek itu dan mengisi nama, TSI, serta spreading', async () => {
+    installFetch(
+      response({ objek: [{ id: 'OBJ-9', nama: 'Gudang Utama', lokasi: 'Jakarta', coverage: [] }] }),
+      (url) =>
+        url.includes('/pilihan-coverage?objek=OBJ-9')
+          ? json(200, {
+              pilihan: [
+                {
+                  id: 'C7',
+                  nama: 'FLEXAS',
+                  penyebab_kerugian: '',
+                  tsi_sen: 100_000_000,
+                  spreading: [{ jenis_treaty: '10001', nama: 'OR', share: 1_000_000, objek_fac_offer: '', dihapus: false }],
+                },
+              ],
+            })
+          : undefined,
+    )
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buka jaminan objek Gudang Utama' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah coverage' }))
+
+    const code = await screen.findByRole('combobox', { name: 'Kode coverage jaminan 1 objek 1' })
+    await screen.findByRole('option', { name: 'C7 — FLEXAS' })
+    await userEvent.selectOptions(code, 'C7')
+
+    expect(screen.getByLabelText('Nama coverage jaminan 1 objek 1')).toHaveValue('FLEXAS')
+    expect(screen.getByLabelText('TSI jaminan 1 objek 1')).not.toHaveValue('')
+    expect(screen.getByLabelText('Share persen')).toHaveValue('100')
+    expect(calls.some((c) => c.url.includes('/klaim/klaim-1/pilihan-coverage?objek=OBJ-9'))).toBe(true)
+  })
+
+  it('Jenis Laporan adalah dropdown pilihan ReportType dengan bawaan Direct', async () => {
+    installFetch(response())
+    show()
+
+    const field = await screen.findByRole('combobox', { name: 'Jenis Laporan' })
+    expect(field).toHaveValue('1')
+    expect(within(field).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Direct', 'Via Email', 'Via Fax', 'Via Pos / Kurir', 'Via Telephone', 'Via Portal',
+    ])
+  })
+
+  it('Mata Uang adalah dropdown kode; simbol lama IDR diganti kodenya', async () => {
+    installFetch(response({ mata_uang: 'IDR' }), (url) =>
+      url === '/api/registrasi/mata-uang'
+        ? json(200, { pilihan: [{ id: '10001', nama: 'USD' }, { id: '10026', nama: 'IDR' }] })
+        : undefined,
+    )
+    show()
+
+    const field = await screen.findByRole('combobox', { name: 'Mata Uang' })
+    await screen.findByRole('option', { name: 'USD' })
+    await vi.waitFor(() => expect(field).toHaveValue('10026'), { timeout: 5000 })
+  })
+
+  it('Tambah dan Hapus hanya mengubah layar — tabel baru berubah saat Save/Next/Back', async () => {
+    installFetch(response())
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Tambah objek' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah coverage' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah spreading' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus jaminan 1 objek 1' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus objek baris 1' }))
+
+    expect(calls.filter((c) => c.method !== 'GET')).toEqual([])
   })
 
   it('menambah dan membuang objek, coverage, serta spreading, dengan ringkasan share', async () => {

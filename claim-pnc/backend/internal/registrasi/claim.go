@@ -308,6 +308,19 @@ type InsuredItem struct {
 	// DateOfBirth teks apa adanya: yyyymmdd atau dd/mm/yyyy.
 	Job         string
 	DateOfBirth string
+
+	// IDCard dan ParticipantStatus adalah KTP/Paspor dan Status peserta Travel — kolom grid
+	// objek IsTravel di InputRegisterDetail. Baca saja, dari T_PERSONLIST polis.
+	IDCard            string
+	ParticipantStatus string
+
+	// VehicleModel, VehicleBrand, VehicleType, dan ChassisNumber adalah Model, Merk, Nama
+	// Tipe, dan Nomor Chasis objek Heavy Equipment — kolom grid objek IsHE di
+	// InputRegisterDetail. Baca saja, dari T_ANEKALIST polis (GetListObjectAneka).
+	VehicleModel  string
+	VehicleBrand  string
+	VehicleType   string
+	ChassisNumber string
 }
 
 // Coverage adalah satu jaminan yang dipakai pada sebuah objek.
@@ -575,4 +588,21 @@ func (k Claim) HighestTSI() Money {
 
 func equalFold(a, b string) bool {
 	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
+}
+
+// FillPolicyCurrency mengisi mata uang polis yang kosong dengan mata uang klaim.
+//
+// Ada polis — terukur 2026-10-07 pada polis PA klaim PNCN.26.37 — yang TIDAK membawa mata
+// uang sama sekali: T_GENERAL.CURRENCY kosong dan dokumen JSON_POLIS-nya tidak ada. Mata
+// uang polis dipakai sebagai kurs TSI pada Adjustment, juga pada estimasi, PLA, DLA, dan
+// nota akseptasi; nilai kosong membuat setiap pencarian kurs ditolak (`D-48`).
+//
+// Mata uang klaim (.ClaimData.Currency) adalah pilihan terbaik yang tersisa: di Pega ia
+// berbawaan mata uang polis, dan untuk polis tanpa mata uang layar Input Register mengisinya
+// dengan IDR. Arahnya kebalikan dari bawaan Pega, dan hanya berlaku bila polis kosong —
+// mata uang polis yang terisi tidak pernah ditimpa.
+func (c *Claim) FillPolicyCurrency() {
+	if strings.TrimSpace(c.Policy.Currency) == "" {
+		c.Policy.Currency = strings.TrimSpace(c.Currency)
+	}
 }

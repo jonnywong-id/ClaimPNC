@@ -1221,6 +1221,8 @@ describe('tahap Input Estimasi', () => {
   })
 
   // Lini Fire: Objek dipilih dari item properti polis, dan kelompoknya ikut terkirim.
+  // Objek adalah pxAutoComplete Pega: isian ketik dengan saran dari item polis. Memilih
+  // saran (mengetik namanya persis) ikut mengisi kelompok itemnya.
   it('memilih Objek dari item properti polis Fire', async () => {
     itemOptions = [
       { nama: 'BUILDING', kelompok: 'BUILDING(S)', tsi_sen: 0 },
@@ -1230,8 +1232,11 @@ describe('tahap Input Estimasi', () => {
     mount(<ClaimPage />)
     const user = userEvent.setup()
 
-    await waitFor(() => expect(screen.getByRole('option', { name: 'CONTENTS' })).toBeInTheDocument())
-    await user.selectOptions(screen.getByLabelText('Objek'), 'CONTENTS')
+    const field = await screen.findByLabelText('Objek')
+    await waitFor(() => expect(field.getAttribute('list')).toBeTruthy())
+    const suggestions = document.getElementById(field.getAttribute('list')!)
+    expect(Array.from(suggestions!.querySelectorAll('option')).map((o) => o.value)).toEqual(['BUILDING', 'CONTENTS'])
+    await user.type(field, 'CONTENTS')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(estimateBody).not.toBeNull())

@@ -36,10 +36,21 @@
 -- Tidak ditemukan berarti TIDAK ADA baris, bukan nol. `D-48` menetapkan klaim ditolak
 -- bila kurs tanggal kejadian tidak tersedia — tidak ada nilai bawaan, dan tidak ada
 -- RETURN 1 seperti GETCURRENCYSTANDARD yang lama.
+--
+-- # Simbol ISO tetap diterima, diterjemahkan lewat master POOLDATA.CURRENCY
+--
+-- Klaim dapat membawa simbol (IDR) alih-alih kode (10026) -- terukur 2026-10-07 pada
+-- klaim PA yang polisnya tidak berisi mata uang, sehingga layar mengisi bawaan IDR.
+-- Kode tetap dicocokkan lebih dulu; simbol diterjemahkan lewat CURRENCY.CURRENCY, yang
+-- unik per simbol (terverifikasi 2026-10-07). Nilai yang sama diikat dua kali supaya
+-- setiap penanda bind dipakai satu kali.
 SELECT CURRENCYVALUE
   FROM POOLDATA.M_CURRENCYSTANDARD
- WHERE TRIM(ID) = :1
-   AND CURRENCYDATE <= :2
+ WHERE (TRIM(ID) = :1
+        OR TRIM(ID) IN (SELECT TRIM(c.ID)
+                          FROM POOLDATA.CURRENCY c
+                         WHERE UPPER(TRIM(c.CURRENCY)) = UPPER(:2)))
+   AND CURRENCYDATE <= :3
  ORDER BY CURRENCYDATE DESC
  FETCH FIRST 1 ROWS ONLY
 

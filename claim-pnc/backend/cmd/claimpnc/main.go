@@ -59,6 +59,7 @@ import (
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/inputacceptation"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/konversicoverage"
 	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
@@ -252,6 +253,7 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	konversicoveragehttp "claim-pnc/internal/konversicoverage/http"
 	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
 	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
 	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
@@ -1772,6 +1774,22 @@ func run() error {
 	//
 	// Identitasnya tetap dituntut ada. Susunan kolom laporan ke OJK beserta nomor CIF
 	// dan tanggal lahir debitur tidak boleh terbaca tanpa sesi.
+	// Konversi Coverage (`MENU_ID 87`) — alat bantu data uji: membaca dokumen coverage
+	// polis dari LIVE dan menulis tabel relasionalnya ke TEST. Koneksinya milik modul
+	// sendiri (KONVERSI_LIVE_* dan KONVERSI_TEST_*) dan baru dibuka saat pertama dijalankan.
+	konversiCoverageHandler := konversicoveragehttp.NewHandler(konversicoveragehttp.Options{
+		Config: konversicoverage.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversicoveragehttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversicoveragehttp.Caller{}, false
+			}
+			return konversicoveragehttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiCoverageHandler.Close()
+
 	slinkOJKHandler := slinkojkhttp.NewHandler(slinkojkhttp.Options{
 		Service: assembly.monitoringSlinkOJK,
 		GetCaller: func(ctx context.Context) (slinkojkhttp.Caller, bool) {
@@ -2495,6 +2513,10 @@ func run() error {
 				// (`P-1`), dan artefak kedua tombol pengirimnya tidak ada di
 				// export (`R-16`).
 				slinkojkhttp.Mount(protected, slinkOJKHandler, activePortalDeps)
+
+				// Konversi Coverage — TIDAK di balik pemeriksaan portal: koneksinya ditentukan
+				// konfigurasi modul, bukan portal yang dipilih pengguna.
+				konversicoveragehttp.Mount(protected, konversiCoverageHandler)
 
 				// Inbox Salvage memuat nomor klaim DAN nilai uang — nilai pengajuan
 				// PIC, nilai request balai lelang, nilai penawaran. Rutenya menuntut

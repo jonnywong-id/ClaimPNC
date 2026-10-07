@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -147,6 +148,10 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.Claim) error {
 	now := k.UpdatedAt.UTC()
 
+	if err := r.dropRemoved(ctx, exec, k); err != nil {
+		return err
+	}
+
 	for i, o := range k.InsuredItem {
 		itemSeq := i + 1
 		if err := upsert(ctx, exec,
@@ -186,11 +191,6 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 					itemSeq, coverageSeq, err)
 			}
 		}
-
-		if _, err := exec.ExecContext(ctx, loadQuery("coverage_tandai_sisa"),
-			now, k.ID, itemSeq, len(o.Coverage)); err != nil {
-			return fmt.Errorf("registrasi/sqlstore: menandai sisa coverage: %w", err)
-		}
 	}
 
 	if _, err := exec.ExecContext(ctx, loadQuery("objek_tandai_sisa"),
@@ -200,22 +200,83 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 	return nil
 }
 
-// saveSpreading menuliskan pembagian risiko satu coverage.
+// dropRemoved menghapus coverage yang dibuang petugas beserta spreading-nya, SEBELUM
+// pohon klaim disimpan ulang.
 //
-// # Aturan tulisnya ditetapkan Work Owner, bukan disimpulkan
+// Permintaan Work Owner 2026-10-07: coverage yang dihapus di layar ikut dihapus dari
+// POOLDATA.T_CLAIM_OBJECTCOVERAGE, dan spreading-nya dari POOLDATA.T_CLAIM_SPREADING.
+// Sebelumnya coverage hanya ditandai DIHAPUS_PADA dan spreading tidak pernah dihapus,
+// sehingga spreading yang dibuang muncul kembali saat klaim dibuka ulang.
 //
-// Terhadap POOLDATA.T_CLAIM_SPREADING, aplikasi **hanya menyisipkan bila barisnya belum
-// ada, dan tidak pernah menghapus** (Work Owner, 2026-09-26). Karena itu tidak ada
-// pembaruan dan tidak ada penandaan sisa di sini — dua hal yang dilakukan tabel anak
-// lainnya.
+// # Kenapa sebelum menyimpan, dan kenapa membandingkan dengan pasangan yang hidup
 //
-// # Baris yang ditandai dibuang petugas tidak disisipkan
+// Objek dan coverage dikenali lewat URUTAN, sementara spreading dikenali lewat OBJECTID +
+// OBJECTCOVERAGEID. Membuang objek ke-1 menggeser objek ke-2 ke urutan 1, sehingga baris
+// lama dapat membawa pasangan (OBJECTID, OBJECTCOVERAGEID) yang SAMA dengan coverage yang
+// masih hidup. Karena itu spreading hanya dihapus untuk pasangan yang tidak dipakai coverage
+// mana pun di klaim yang disimpan; spreading pasangan hidup diselaraskan saveSpreading.
 //
-// Tabelnya tidak punya kolom penanda, dan tidak ada proses hapus. Bila baris ber-`Removed`
-// tetap disisipkan, ia akan terbaca kembali sebagai baris yang masih berlaku dan ikut
-// terhitung pada aturan total 100% (`I-1`, `D-51`) — mengubah hasil validasi tanpa ada
-// yang menyadarinya. Karena itu ia tidak ditulis sama sekali, sejalan dengan sistem lama
-// yang membuang baris ber-`FlagDelete = "1"` sebelum perhitungan.
+// Coverage yang tetap di urutannya tetapi berganti objek (objek bergeser) juga meninggalkan
+// spreading pasangan lamanya — itu ikut dihapus di sini.
+func (r *ClaimStore) dropRemoved(ctx context.Context, exec executor, k registrasi.Claim) error {
+	live := map[[2]string]bool{}
+	for _, o := range k.InsuredItem {
+		for j := range o.Coverage {
+			live[[2]string{o.ID, strconv.Itoa(j + 1)}] = true
+		}
+	}
+
+	rows, err := exec.QueryContext(ctx, loadQuery("coverage_kunci"), k.ID)
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: membaca coverage tersimpan: %w", err)
+	}
+	var stale [][2]string
+	seen := map[[2]string]bool{}
+	for rows.Next() {
+		var itemSeq, coverageSeq sql.NullInt64
+		var objectID, coverageID sql.NullString
+		if err := rows.Scan(&itemSeq, &coverageSeq, &objectID, &coverageID); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("registrasi/sqlstore: membaca coverage tersimpan: %w", err)
+		}
+		pair := [2]string{objectID.String, coverageID.String}
+		if live[pair] || seen[pair] {
+			continue
+		}
+		seen[pair] = true
+		stale = append(stale, pair)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("registrasi/sqlstore: menelusuri coverage tersimpan: %w", err)
+	}
+	_ = rows.Close()
+
+	for _, pair := range stale {
+		if _, err := exec.ExecContext(ctx, loadQuery("spreading_hapus_coverage"), k.ID, pair[0], pair[1]); err != nil {
+			return fmt.Errorf("registrasi/sqlstore: menghapus spreading coverage yang dibuang: %w", err)
+		}
+	}
+	for i, o := range k.InsuredItem {
+		if _, err := exec.ExecContext(ctx, loadQuery("coverage_hapus_sisa"), k.ID, i+1, len(o.Coverage)); err != nil {
+			return fmt.Errorf("registrasi/sqlstore: menghapus coverage yang dibuang: %w", err)
+		}
+	}
+	if _, err := exec.ExecContext(ctx, loadQuery("coverage_hapus_objek_sisa"), k.ID, len(k.InsuredItem)); err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menghapus coverage objek yang dibuang: %w", err)
+	}
+	return nil
+}
+
+// saveSpreading menyelaraskan pembagian risiko satu coverage dengan isi layar.
+//
+// Baris yang dibuang petugas — tidak ada di daftar, atau ditandai `Removed` — DIHAPUS
+// (Work Owner 2026-10-07; aturan "hanya INSERT" 2026-09-26 tidak berlaku lagi). Baris
+// yang tetap ada diperbarui nama, share, dan urutannya; baris baru disisipkan.
+//
+// Baris ber-`Removed` tidak boleh tertinggal: tabelnya tidak punya kolom penanda, sehingga
+// ia akan terbaca kembali sebagai baris berlaku dan ikut terhitung pada aturan total 100%
+// (`I-1`, `D-51`).
 //
 // # `FacOfferItem` tidak tersimpan
 //
@@ -231,34 +292,63 @@ func (r *ClaimStore) saveSpreading(
 ) error {
 	coverageID := strconv.Itoa(coverageSeq)
 
-	for n, s := range daftar {
-		if s.Removed {
-			continue
+	rows, err := exec.QueryContext(ctx, loadQuery("spreading_jenis"), claimID, objectID, coverageID)
+	if err != nil {
+		return err
+	}
+	stored := map[string]bool{}
+	for rows.Next() {
+		var kind sql.NullString
+		if err := rows.Scan(&kind); err != nil {
+			_ = rows.Close()
+			return err
 		}
+		stored[kind.String] = true
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	_ = rows.Close()
 
-		baris, err := exec.QueryContext(ctx, loadQuery("spreading_ada"),
-			claimID, objectID, coverageID, s.TreatyKind)
-		if err != nil {
-			return err
-		}
-		ada := baris.Next()
-		if err := baris.Err(); err != nil {
-			_ = baris.Close()
-			return err
-		}
-		_ = baris.Close()
-		if ada {
+	// Satu baris per jenis treaty — kunci tabelnya. Baris pertama yang berlaku menang.
+	kept := map[string]bool{}
+	for n, s := range daftar {
+		if s.Removed || kept[s.TreatyKind] {
 			continue
 		}
+		kept[s.TreatyKind] = true
 
 		// Share dibagi 10.000 menjadi persen. Pembagian ini AMAN meski lewat float64:
 		// kolomnya NUMBER(9,6) dan nilainya berkisar 0–100, sehingga galat float64
 		// (~1e-14) jauh di bawah satu satuan terkecil kolomnya (1e-6). Nilai yang sama
 		// dibaca kembali lewat ROUND(... * 10000) — lihat spreading_daftar.
+		share := float64(s.Share) / 10_000
+		if stored[s.TreatyKind] {
+			if _, err := exec.ExecContext(ctx, loadQuery("spreading_perbarui"),
+				s.Name, share, n+1, claimID, objectID, coverageID, s.TreatyKind,
+			); err != nil {
+				return err
+			}
+			continue
+		}
 		if _, err := exec.ExecContext(ctx, loadQuery("spreading_sisip"),
-			claimID, objectID, coverageID, s.TreatyKind, s.Name,
-			float64(s.Share)/10_000, n+1,
+			claimID, objectID, coverageID, s.TreatyKind, s.Name, share, n+1,
 		); err != nil {
+			return err
+		}
+	}
+
+	// Urutan tetap, supaya urutan pernyataan dapat diperiksa uji.
+	var removed []string
+	for kind := range stored {
+		if !kept[kind] {
+			removed = append(removed, kind)
+		}
+	}
+	sort.Strings(removed)
+	for _, kind := range removed {
+		if _, err := exec.ExecContext(ctx, loadQuery("spreading_hapus"), claimID, objectID, coverageID, kind); err != nil {
 			return err
 		}
 	}
@@ -377,6 +467,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	}
 
 	k.Currency = currency.String
+	k.FillPolicyCurrency()
 	k.SLIKNumber = slikNumber.String
 	k.ExGratia = fromYesNo(exGratia.String)
 	k.TechnicalPIC = technicalPIC.String
@@ -545,8 +636,12 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			itemID         string
 			name, location sql.NullString
 			job, birth     sql.NullString
+			idCard, status sql.NullString
+			model, brand   sql.NullString
+			kind, chassis  sql.NullString
 		)
-		if err := row.Scan(&seq, &itemID, &name, &location, &job, &birth); err != nil {
+		if err := row.Scan(&seq, &itemID, &name, &location, &job, &birth,
+			&idCard, &status, &model, &brand, &kind, &chassis); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris objek: %w", err)
 		}
 		itemIndex[seq] = len(k.InsuredItem)
@@ -556,6 +651,9 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 		k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{
 			ID: itemID, Name: name.String, Location: location.String,
 			Job: strings.TrimSpace(job.String), DateOfBirth: strings.TrimSpace(birth.String),
+			IDCard: strings.TrimSpace(idCard.String), ParticipantStatus: strings.TrimSpace(status.String),
+			VehicleModel: strings.TrimSpace(model.String), VehicleBrand: strings.TrimSpace(brand.String),
+			VehicleType: strings.TrimSpace(kind.String), ChassisNumber: strings.TrimSpace(chassis.String),
 		})
 	}
 	if err := row.Err(); err != nil {

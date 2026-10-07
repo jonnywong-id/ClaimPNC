@@ -28,6 +28,8 @@ import {
   useSaveDraft,
   useAreaOptions,
   useCauseOfLossOptions,
+  useCoverageOptions,
+  useCurrencies,
   violationsFrom,
   messagesByField,
 } from './api'
@@ -57,6 +59,66 @@ const TAHAP_INPUT_REGISTER = 'input-register'
 /** Group Panel (`.Policy.Quotation.GroupPanel`) — penentu kondisi tampil InputRegisterDetail2_sect. */
 const PANEL_PA = '002'
 const PANEL_TRAVEL = '005'
+
+/**
+ * Pilihan Jenis Laporan (`.ClaimData.ReportType`, `pxDropdown` di InputRegisterDetail-sect).
+ * Sumber pilihannya "associated" — rule property `ReportType` yang tidak ada di export —
+ * sehingga kode dan labelnya diambil dari Data Transform `ReportTypetoText`. Bawaannya `1`
+ * (`pyDefaultValue` di section). Pega menyimpannya di T_CLAIM_PNC.REPORTTYPE.
+ */
+const REPORT_TYPE_DIRECT = '1'
+const REPORT_TYPES = [
+  { value: '1', label: 'Direct' },
+  { value: '2', label: 'Via Email' },
+  { value: '3', label: 'Via Fax' },
+  { value: '4', label: 'Via Pos / Kurir' },
+  { value: '5', label: 'Via Telephone' },
+  { value: '6', label: 'Via Portal' },
+]
+
+/** Pesan isian Lokasi kosong — sama dengan pesan server (ViolationLocationEmpty). */
+const LOCATION_REQUIRED = 'Lokasi Kerugian/Kejadian is required.'
+
+/** Kode IDR di master POOLDATA.CURRENCY. */
+const CURRENCY_IDR = '10026'
+
+/**
+ * ObjectGrid adalah empat grid `.ClaimData.ObjectList` di Section/InputRegisterDetail-sect.xml,
+ * dipilih menurut kondisi tampil kontainernya: `IsTravel` (GroupPanel 005), `IsPA`
+ * (GroupPanel 002), `IsHE` (BusinessType "HE"), dan `!IsTravelPA && !IsHE` untuk lini lain.
+ */
+type ObjectGrid = 'travel' | 'pa' | 'he' | 'umum'
+
+/**
+ * Judul kolom tiap grid, urut seperti di XML. Seluruhnya read-only di XML (`pyEditOptions
+ * Read-only`) kecuali dua yang sengaja tidak dibawa:
+ *
+ * - "Type Object" (`.TypeObjectKlaim`) di grid umum dan HE: kondisi tampilnya `1==2`, jadi
+ *   tidak pernah tampil di Pega.
+ * - "Pilih Peserta" (`.Selected`, kotak centang) di grid Travel: satu-satunya isian yang
+ *   dapat diubah, tetapi T_CLAIM_OBJECTLIST tidak punya kolom untuk menyimpannya.
+ *
+ * Ejaan "Pekerjaan" dibetulkan dari "Perkerjaan" Pega — lihat catatan grid di bawah.
+ */
+const OBJECT_COLUMNS: Record<ObjectGrid, string[]> = {
+  travel: ['Nama Peserta', 'Status', 'KTP/Paspor', 'Tanggal Lahir'],
+  pa: ['Nama', 'Pekerjaan', 'Tanggal Lahir'],
+  he: ['Object', 'Model', 'Merk', 'Nama Tipe', 'Nomor Chasis', 'Location'],
+  umum: ['Object', 'Location'],
+}
+
+function objectGrid(panel: string, businessType: string): ObjectGrid {
+  if (panel === PANEL_TRAVEL) return 'travel'
+  if (panel === PANEL_PA) return 'pa'
+  if (businessType.trim().toUpperCase() === 'HE') return 'he'
+  return 'umum'
+}
+
+/** nextObjectID memberi kode objek baru: satu di atas kode angka terbesar yang dipakai. */
+function nextObjectID(ids: string[]): string {
+  const max = ids.reduce((m, id) => (/^\d+$/.test(id.trim()) ? Math.max(m, Number(id.trim())) : m), 0)
+  return String(max + 1)
+}
 
 /** Tahap Input Estimasi (Non-MBU dan Travel), yang isiannya dimiliki EstimateForm. */
 const TAHAP_INPUT_ESTIMASI = ['estimasi-admin', 'estimasi-travel']
@@ -373,6 +435,28 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const panel = klaim.polis.lini
   const pa = panel === PANEL_PA
   const travel = panel === PANEL_TRAVEL
+  const grid = objectGrid(panel, klaim.polis.jenis_bisnis ?? '')
+  const gridColumns = OBJECT_COLUMNS[grid]
+  const formItems = watch('objek')
+
+  // Mata Uang (.ClaimData.Currency) adalah dropdown di InputRegisterDetail, bernilai KODE
+  // master POOLDATA.CURRENCY (10026 = IDR), bukan simbol. Klaim lama yang telanjur
+  // menyimpan simbol diterjemahkan ke kodenya begitu daftar termuat.
+  const currencies = useCurrencies()
+  const currencyList = currencies.data?.pilihan ?? []
+  const currencyValue = watch('mata_uang') ?? ''
+  useEffect(() => {
+    const value = currencyValue.trim()
+    if (value === '' || currencyList.some((c) => c.id === value)) return
+    const bySymbol = currencyList.find((c) => c.nama.trim().toUpperCase() === value.toUpperCase())
+    if (bySymbol) setValue('mata_uang', bySymbol.id, { shouldDirty: true })
+  }, [currencyValue, currencyList, setValue])
+  const currencyOptions = [
+    ...(currencyValue !== '' && !currencyList.some((c) => c.id === currencyValue)
+      ? [{ value: currencyValue, label: currencyValue }]
+      : []),
+    ...currencyList.map((c) => ({ value: c.id, label: c.nama })),
+  ]
   // Tanggal Terima Dokumen: IsTravelPA. Tetap ditampilkan bila server menolaknya, supaya
   // petugas dapat memperbaikinya.
   const showDateReceived = pa || travel || Boolean(fieldErrors['tanggal_terima_dokumen'])
@@ -380,7 +464,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   // Isian tanpa kolom di T_CLAIM_PNC — tampil sesuai section, belum tersimpan.
   const [unsaved, setUnsaved] = useState({
     rawat_inap: false, tanggal_keluar_rawat_inap: '', no_ktp: '', catatan_analis: '',
-    jenis_laporan: '', tgl_terima_hcdkp: '', data_pengobatan: '',
+    jenis_laporan: REPORT_TYPE_DIRECT, tgl_terima_hcdkp: '', data_pengobatan: '',
     ekspedisi: '', ekspedisi_lain: '', no_resi: '', tanggal_kirim_ekspedisi: '', estimasi_sampai_ekspedisi: '',
     pengkinian_hp: '', pengkinian_email: '',
   })
@@ -393,6 +477,17 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   })
 
   const submit = (content: RegisterFormValues, kembali: boolean) => {
+    // Lokasi Kerugian/Kejadian wajib (`pyRequired=always` di InputRegisterDetail-sect). Next
+    // ditahan di layar lebih dulu; server menolaknya juga (ViolationLocationEmpty), sehingga
+    // klaim tidak lagi lolos ke akseptasi dengan lokasi kosong ("Location kosong !!").
+    // Back tidak diperiksa: ia hanya mengembalikan tahap.
+    if (!kembali && !(content.lokasi ?? '').trim()) {
+      save.reset()
+      draft.reset()
+      setViolations([{ kode: 'lokasi_kosong', field: 'lokasi', pesan: LOCATION_REQUIRED }])
+      document.getElementById('lokasi')?.focus()
+      return
+    }
     setViolations([])
     draft.reset()
     save.mutate(toRequest(visible(content), tugas.id, kembali), {
@@ -508,6 +603,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           )}
           <FormField id="pelapor_nama" label="Nama Pelapor" {...register('pelapor_nama')} />
           <UnsavedField id="jenis_laporan" label="Jenis Laporan" value={unsaved.jenis_laporan}
+            options={REPORT_TYPES} note="Not saved yet: this screen does not write T_CLAIM_PNC.REPORTTYPE yet."
             onChange={(v) => setUnsavedField('jenis_laporan', v)} />
           <FormField id="pelapor_hubungan" label="Status Pelapor" inputMode="numeric" {...register('pelapor_hubungan')} />
           {hubungan === HUBUNGAN_LAIN_LAIN && (
@@ -555,11 +651,10 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         {fieldErrors['spreading'] && <p className="mb-3 text-sm text-red-700">{fieldErrors['spreading']}</p>}
 
         {/*
-          Grid objek Section/InputRegisterDetail-sect.xml. Kolomnya diturunkan dari sana:
-          Nama (.ObjectName), Perkerjaan (.ObjectJob), Tanggal Lahir (.ObjectDateOfBirth)
-          untuk lini PA. Lini lain memakai Nama Objek dan Lokasi, mengikuti konvensi
-          ShowObjectAdj yang sudah dipakai layar Surveyor — satu konvensi kolom untuk dua
-          layar, bukan dua konvensi yang berbeda untuk hal yang sama.
+          Grid objek Section/InputRegisterDetail-sect.xml — EMPAT grid berbeda menurut lini
+          (lihat ObjectGrid dan OBJECT_COLUMNS). Kolomnya berasal dari polis dan read-only,
+          seperti di XML. Objek yang ditambahkan petugas sendiri tidak punya pasangan di
+          polis, sehingga nama dan lokasinya tetap dapat diisi.
 
           Ejaan judulnya "Pekerjaan", bukan "Perkerjaan" seperti di Pega. Salah ketik itu
           tidak dibawa karena layar Surveyor di aplikasi ini sudah menulisnya benar, dan
@@ -574,25 +669,18 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
                 {/* Kolom tombol buka-tutup. Judulnya kosong: tombolnya sudah ber-aria-label. */}
                 <th scope="col" className="w-8 border border-slate-300 p-2" />
                 <th scope="col" className="w-10 border border-slate-300 p-2 text-right">#</th>
-                <th scope="col" className="border border-slate-300 p-2">Kode Objek</th>
-                <th scope="col" className="border border-slate-300 p-2">
-                  {pa ? 'Nama' : 'Nama Objek'}
-                </th>
-                {pa ? (
-                  <>
-                    <th scope="col" className="border border-slate-300 p-2">Pekerjaan</th>
-                    <th scope="col" className="border border-slate-300 p-2">Tanggal Lahir</th>
-                  </>
-                ) : (
-                  <th scope="col" className="border border-slate-300 p-2">Lokasi</th>
-                )}
+                {gridColumns.map((title) => (
+                  <th key={title} scope="col" className="border border-slate-300 p-2">
+                    {title}
+                  </th>
+                ))}
                 <th scope="col" className="w-20 border border-slate-300 p-2">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {objek.fields.length === 0 && (
                 <tr>
-                  <td colSpan={pa ? 7 : 6} className="border border-slate-300 p-2 text-xs text-slate-500">
+                  <td colSpan={gridColumns.length + 3} className="border border-slate-300 p-2 text-xs text-slate-500">
                     Data Tidak Ada
                   </td>
                 </tr>
@@ -600,15 +688,16 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
               {objek.fields.map((f, i) => (
                 <InsuredItemEditor
                   key={f.id}
+                  claimID={klaim.id}
                   index={i}
-                  pa={pa}
+                  grid={grid}
                   defaultOpen={i === addedItem}
                   currency={klaim.polis.mata_uang ?? ''}
                   control={control}
                   register={register}
                   setValue={setValue}
                   businessCode={klaim.polis.kode_bisnis ?? ''}
-                  person={klaim.objek[i]}
+                  saved={klaim.objek.find((o) => o.id.trim() === (formItems?.[i]?.id ?? '').trim())}
                   onRemove={() => objek.remove(i)}
                 />
               ))}
@@ -620,7 +709,9 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           type="button"
           onClick={() => {
             setAddedItem(objek.fields.length)
-            objek.append({ id: '', nama: '', lokasi: '', coverage: [] })
+            // Kode objek tidak punya kolom di grid Pega; objek tambahan diberi kode berikutnya.
+            const used = [...(formItems ?? []).map((o) => o.id), ...klaim.objek.map((o) => o.id)]
+            objek.append({ id: nextObjectID(used), nama: '', lokasi: '', coverage: [] })
           }}
           className="mt-4 rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
         >
@@ -634,7 +725,9 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <Section title="Estimasi">
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField id="mata_uang" label="Mata Uang" {...register('mata_uang')} />
+          <SelectField id="mata_uang" label="Mata Uang" options={currencyOptions}
+            emptyText={currencies.isFetching ? 'Memuat…' : '— pilih —'} {...register('mata_uang')}
+            value={currencyValue} />
           <FormField id="nilai_estimasi" label="Estimasi Klaim" inputMode="decimal"
             failure={fieldErrors['nilai_estimasi']} {...register('nilai_estimasi')} />
           <RadioGroup
@@ -905,7 +998,7 @@ function RadioGroup({
  * nilainya hanya di layar — tidak dikirim ke server.
  */
 function UnsavedField({
-  id, label, value, onChange, type = 'text', multiline = false,
+  id, label, value, onChange, type = 'text', multiline = false, options, note,
 }: {
   id: string
   label: string
@@ -913,17 +1006,29 @@ function UnsavedField({
   onChange: (value: string) => void
   type?: string
   multiline?: boolean
+  /** Bila diisi, isian digambar sebagai dropdown berpilihan ini (`pxDropdown` Pega). */
+  options?: { value: string; label: string }[]
+  /** Pengganti catatan "belum tersimpan" bawaan. */
+  note?: string
 }) {
   const className = 'mt-1 w-full rounded border border-dashed border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none'
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>
-      {multiline ? (
+      {options ? (
+        <select id={id} className={className} value={value} onChange={(e) => onChange(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : multiline ? (
         <textarea id={id} rows={3} className={className} value={value} onChange={(e) => onChange(e.target.value)} />
       ) : (
         <input id={id} type={type} className={className} value={value} onChange={(e) => onChange(e.target.value)} />
       )}
-      <p className="mt-1 text-xs text-amber-700">Not saved yet: no column for this field in T_CLAIM_PNC.</p>
+      <p className="mt-1 text-xs text-amber-700">{note ?? 'Not saved yet: no column for this field in T_CLAIM_PNC.'}</p>
     </div>
   )
 }
@@ -1005,19 +1110,23 @@ function Disclosure({ open, label, onClick }: { open: boolean; label: string; on
  * mendapati tidak ada yang terjadi adalah tombol yang tampak rusak.
  */
 function InsuredItemEditor({
+  claimID,
   index,
-  pa,
+  grid,
   defaultOpen,
   currency,
   control,
   register,
   setValue,
   businessCode,
-  person,
+  saved,
   onRemove,
 }: {
+  /** ID klaim — dipakai membaca pilihan coverage polis per objek. */
+  claimID: string
   index: number
-  pa: boolean
+  /** Grid objek lini polis — menentukan kolom yang digambar. */
+  grid: ObjectGrid
   /** Baris yang baru ditambahkan terbuka saat digambar pertama kali. */
   defaultOpen: boolean
   /** Mata uang polis — `pyWorkPage.Policy.Currency` pada grid jaminan Pega. */
@@ -1027,22 +1136,53 @@ function InsuredItemEditor({
   setValue: UseFormSetValue<RegisterFormValues>
   businessCode: string
   /**
-   * Objek yang sama dari klaim tersimpan, dipakai HANYA untuk Pekerjaan dan Tanggal
-   * Lahir.
-   *
-   * Keduanya milik peserta di `T_PERSONLIST` polis dan tidak pernah disunting di sini,
-   * sehingga keduanya tidak ikut masuk ke keadaan formulir. Objek yang baru ditambahkan
-   * petugas belum punya pasangannya di klaim — di situ nilainya memang tidak ada.
+   * Objek yang sama dari klaim tersimpan, dicocokkan lewat kode objek. Kolom polis —
+   * Pekerjaan, Tanggal Lahir, KTP/Paspor, Status, Model, Merk, Nama Tipe, Nomor Chasis —
+   * dibaca dari sini dan tidak pernah disunting, sehingga tidak masuk keadaan formulir.
+   * Objek yang baru ditambahkan petugas belum punya pasangannya: nama dan lokasinya
+   * diisi petugas, kolom polis lainnya memang kosong.
    */
-  person: InsuredItem | undefined
+  saved: InsuredItem | undefined
   onRemove: () => void
 }) {
   const coverage = useFieldArray({ control, name: `objek.${index}.coverage` })
   const [open, setOpen] = useState(defaultOpen)
   // Jaminan yang baru ditambahkan: barisnya digambar dengan spreading sudah terbuka.
   const [addedCoverage, setAddedCoverage] = useState<number | null>(null)
-  const columns = pa ? 7 : 6
-  const name = person?.nama?.trim() || `baris ${index + 1}`
+  const columns = OBJECT_COLUMNS[grid].length + 3
+  const formName = useWatch({ control, name: `objek.${index}.nama` })
+  const formLocation = useWatch({ control, name: `objek.${index}.lokasi` })
+  const name = formName?.trim() || `baris ${index + 1}`
+
+  // Kolom polis digambar sebagai teks, bukan isian yang dimatikan: isian berwarna abu-abu
+  // tampak seperti sesuatu yang seharusnya dapat diisi tetapi sedang terkunci, padahal ia
+  // memang bukan milik layar ini.
+  const text = (value: string | undefined) => (
+    <td className="border border-slate-300 p-2">{value?.trim() || '—'}</td>
+  )
+  // Nama dan lokasi: teks untuk objek polis, isian untuk objek tambahan petugas.
+  const nameCell = saved ? (
+    text(formName)
+  ) : (
+    <td className="border border-slate-300 p-1">
+      <input
+        aria-label={`Nama objek baris ${index + 1}`}
+        className="w-full rounded border border-slate-300 px-2 py-1"
+        {...register(`objek.${index}.nama`)}
+      />
+    </td>
+  )
+  const locationCell = saved ? (
+    text(formLocation)
+  ) : (
+    <td className="border border-slate-300 p-1">
+      <input
+        aria-label={`Lokasi objek baris ${index + 1}`}
+        className="w-full rounded border border-slate-300 px-2 py-1"
+        {...register(`objek.${index}.lokasi`)}
+      />
+    </td>
+  )
 
   return (
     <>
@@ -1055,40 +1195,30 @@ function InsuredItemEditor({
           />
         </td>
         <td className="border border-slate-300 p-2 text-right text-slate-500">{index + 1}</td>
-        <td className="border border-slate-300 p-1">
-          <input
-            aria-label={`Kode objek baris ${index + 1}`}
-            className="w-full rounded border border-slate-300 px-2 py-1"
-            {...register(`objek.${index}.id`)}
-          />
-        </td>
-        <td className="border border-slate-300 p-1">
-          <input
-            aria-label={`${pa ? 'Nama' : 'Nama objek'} baris ${index + 1}`}
-            className="w-full rounded border border-slate-300 px-2 py-1"
-            {...register(`objek.${index}.nama`)}
-          />
-        </td>
-        {pa ? (
+        {nameCell}
+        {grid === 'travel' && (
           <>
-            {/*
-              Pekerjaan dan Tanggal Lahir dibaca dari polis dan TIDAK dapat disunting di
-              sini. Keduanya digambar sebagai teks, bukan isian yang dimatikan: isian
-              berwarna abu-abu tampak seperti sesuatu yang seharusnya dapat diisi tetapi
-              sedang terkunci, padahal ia memang bukan milik layar ini.
-            */}
-            <td className="border border-slate-300 p-2">{person?.pekerjaan || '—'}</td>
-            <td className="border border-slate-300 p-2">{birthDate(person?.tanggal_lahir)}</td>
+            {text(saved?.status_peserta)}
+            {text(saved?.ktp_paspor)}
+            <td className="border border-slate-300 p-2">{birthDate(saved?.tanggal_lahir)}</td>
           </>
-        ) : (
-          <td className="border border-slate-300 p-1">
-            <input
-              aria-label={`Lokasi objek baris ${index + 1}`}
-              className="w-full rounded border border-slate-300 px-2 py-1"
-              {...register(`objek.${index}.lokasi`)}
-            />
-          </td>
         )}
+        {grid === 'pa' && (
+          <>
+            {text(saved?.pekerjaan)}
+            <td className="border border-slate-300 p-2">{birthDate(saved?.tanggal_lahir)}</td>
+          </>
+        )}
+        {grid === 'he' && (
+          <>
+            {text(saved?.model)}
+            {text(saved?.merk)}
+            {text(saved?.nama_tipe)}
+            {text(saved?.nomor_chasis)}
+            {locationCell}
+          </>
+        )}
+        {grid === 'umum' && locationCell}
         <td className="border border-slate-300 p-1 text-center">
           {/*
             Label terbacanya "Hapus" supaya kolom Aksi tetap sempit, tetapi aria-label-nya
@@ -1151,6 +1281,7 @@ function InsuredItemEditor({
                 {coverage.fields.map((f, j) => (
                   <CoverageEditor
                     key={f.id}
+                    claimID={claimID}
                     itemIndex={index}
                     index={j}
                     defaultOpen={j === addedCoverage}
@@ -1186,6 +1317,7 @@ function birthDate(iso: string | undefined): string {
  * bawah daftar objek.
  */
 function CoverageEditor({
+  claimID,
   itemIndex,
   index,
   defaultOpen,
@@ -1196,6 +1328,7 @@ function CoverageEditor({
   businessCode,
   onRemove,
 }: {
+  claimID: string
   itemIndex: number
   index: number
   defaultOpen: boolean
@@ -1212,6 +1345,33 @@ function CoverageEditor({
   const causes = useCauseOfLossOptions(businessCode)
   const causeOptions = causes.data?.pilihan ?? []
   const [open, setOpen] = useState(defaultOpen)
+
+  // Dropdown kode coverage: coverage polis milik objek INI saja, dibaca dari
+  // T_COVERAGELIST_CARGO/ANEKA/FIRE/PERSON sesuai lini bisnis. Memilih satu coverage
+  // mengisi nama, TSI, dan spreading-nya dari polis; petugas tetap boleh mengubahnya.
+  // Bila polis tidak punya coverage untuk objek ini (mis. T_COVERAGELIST_PERSON kosong),
+  // isian kembali bebas seperti sebelumnya supaya klaim tetap dapat diisi.
+  const objectID = useWatch({ control, name: `objek.${itemIndex}.id` }) ?? ''
+  const coverageID = useWatch({ control, name: `${nama}.id` }) ?? ''
+  const coverageOptions = useCoverageOptions(claimID, objectID)
+  const policyCoverage = coverageOptions.data?.pilihan ?? []
+  const useDropdown = policyCoverage.length > 0
+
+  function applyCoverage(id: string) {
+    const chosen = policyCoverage.find((c) => c.id === id)
+    if (!chosen) return
+    setValue(`${nama}.nama`, chosen.nama ?? '', { shouldDirty: true })
+    setValue(`${nama}.tsi`, centsToRupiah(chosen.tsi_sen), { shouldDirty: true })
+    spreading.replace(
+      chosen.spreading.map((s) => ({
+        jenis_treaty: s.jenis_treaty,
+        nama: s.nama,
+        share: (s.share / 10_000).toString(),
+        objek_fac_offer: s.objek_fac_offer,
+        dihapus: s.dihapus,
+      })),
+    )
+  }
 
   // Kode bisnis yang pilihannya tepat satu tidak perlu dipilih petugas — pilihan itu
   // langsung diisi. Lebih dari satu pilihan tetap menunggu petugas.
@@ -1233,11 +1393,29 @@ function CoverageEditor({
           />
         </td>
         <td className="border border-slate-300 p-1">
-          <input
-            aria-label={`Kode coverage ${label}`}
-            className="w-full rounded border border-slate-300 px-2 py-1"
-            {...register(`${nama}.id`)}
-          />
+          {useDropdown ? (
+            <select
+              aria-label={`Kode coverage ${label}`}
+              className="w-full rounded border border-slate-300 px-2 py-1"
+              {...register(`${nama}.id`, { onChange: (event) => applyCoverage(event.target.value) })}
+            >
+              <option value="">— pilih coverage —</option>
+              {coverageID !== '' && !policyCoverage.some((c) => c.id === coverageID) && (
+                <option value={coverageID}>{coverageID}</option>
+              )}
+              {policyCoverage.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nama ? `${c.id} — ${c.nama}` : c.id}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              aria-label={`Kode coverage ${label}`}
+              className="w-full rounded border border-slate-300 px-2 py-1"
+              {...register(`${nama}.id`)}
+            />
+          )}
         </td>
         <td className="border border-slate-300 p-1">
           <input
@@ -1358,23 +1536,32 @@ export function causeSelectOptions(options: CauseOfLossOption[], current: string
  *
  * Totalnya PER JAMINAN, sama dengan server (`InputRegister_act` 37.3.1 mereset total di
  * dalam loop coverage): dua jaminan masing-masing 100% sudah benar.
+ *
+ * Cukup SATU objek terisi — punya coverage dan setiap coverage-nya 100% (Work Owner,
+ * 2026-10-07). Jaminan objek lain yang belum 100% karena itu ditampilkan sebagai keterangan,
+ * bukan galat; merah hanya bila belum ada satu objek pun yang terisi.
  */
 function SpreadingSummary({ values }: { values: InsuredItemInput[] | undefined }) {
   if (!values || values.length === 0) return null
 
   let count = 0
   let totalTSI = 0
+  let filled = 0
   const offside: string[] = []
 
   values.forEach((o, i) => {
-    ;(o.coverage ?? []).forEach((c, j) => {
+    const coverages = o.coverage ?? []
+    let complete = coverages.length > 0
+    coverages.forEach((c, j) => {
       totalTSI += rupiahToCents(c.tsi || '0') || 0
       const totalE4 = coverageShareE4(c)
       count += (c.spreading ?? []).filter((s) => !s.dihapus).length
       if (totalE4 < 999_999 || totalE4 > 1_000_001) {
+        complete = false
         offside.push(`Objek ${i + 1} · ${c.id || `jaminan ${j + 1}`}: ${formatPercent(totalE4)}`)
       }
     })
+    if (complete) filled++
   })
 
   return (
@@ -1385,14 +1572,26 @@ function SpreadingSummary({ values }: { values: InsuredItemInput[] | undefined }
         <Row label="Total TSI" value={formatRupiah(totalTSI)} />
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Objek terisi
+          </dt>
+          <dd className={filled === 0 ? 'text-sm font-medium text-red-700' : 'text-sm text-slate-900'}>
+            {filled} dari {values.length}
+            {filled === 0 ? ' — minimal satu objek harus terisi' : ''}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Total share per jaminan
           </dt>
           {offside.length === 0 ? (
             <dd className="text-sm text-slate-900">100% di setiap jaminan</dd>
           ) : (
             offside.map((line) => (
-              <dd key={line} className="text-sm font-medium text-red-700">
-                {line} — belum 100%
+              <dd
+                key={line}
+                className={filled === 0 ? 'text-sm font-medium text-red-700' : 'text-sm text-amber-700'}
+              >
+                {line} — belum 100%{filled > 0 ? ' (objek ini tidak wajib)' : ''}
               </dd>
             ))
           )}
@@ -1443,7 +1642,10 @@ function fromClaim(klaim: Claim): RegisterFormValues {
     pelapor_hubungan: klaim.pelapor.hubungan ? String(klaim.pelapor.hubungan) : '',
     pelapor_hubungan_lainnya: klaim.pelapor.hubungan_lainnya,
     nilai_estimasi: centsToRupiah(klaim.nilai_estimasi_sen),
-    mata_uang: klaim.mata_uang || klaim.polis.mata_uang || 'IDR',
+    // Bawaan = mata uang polis (`.ClaimData.Currency` default `pyWorkPage.Policy.Currency`).
+    // Polis yang tidak membawa mata uang jatuh ke IDR dalam bentuk KODE (10026): kurs di
+    // M_CURRENCYSTANDARD dikunci kode, dan simbol "IDR" dulu membuat kursnya tidak ditemukan.
+    mata_uang: klaim.mata_uang || klaim.polis.mata_uang || CURRENCY_IDR,
     nomor_slik: klaim.nomor_slik,
     user_teknis: klaim.user_teknis,
     rcv_id: klaim.rcv_id,

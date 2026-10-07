@@ -35,7 +35,7 @@ func TestGrantsOfGroupAndLoginAreCombined(t *testing.T) {
 	for _, node := range tree {
 		groups = append(groups, node.Description)
 	}
-	require.Equal(t, []string{"MASTER", "INBOX", "VIEW", "REPORT"}, groups,
+	require.Equal(t, []string{"MASTER", "INBOX", "VIEW", "REPORT", "UTILITY"}, groups,
 		"REPORT hanya datang dari izin login, sisanya dari izin group")
 }
 
@@ -67,7 +67,7 @@ func TestGroupOnlyGrantsStillProduceTheirHeadings(t *testing.T) {
 	for _, node := range tree {
 		groups = append(groups, node.Description)
 	}
-	require.Equal(t, []string{"MASTER", "INBOX", "VIEW"}, groups)
+	require.Equal(t, []string{"MASTER", "INBOX", "VIEW", "UTILITY"}, groups)
 	require.NotContains(t, groups, "REPORT", "izin REPORT milik login JONNY, bukan group IT")
 }
 

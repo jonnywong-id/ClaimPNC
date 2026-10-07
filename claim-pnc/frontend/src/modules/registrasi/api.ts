@@ -18,6 +18,8 @@ import {
   type CurrenciesResponse,
   type EstimateRequest,
   type ItemOptionsResponse,
+  type CoverageOptionsResponse,
+  type SettlementHistoryResponse,
   type SurveysResponse,
   type DocumentLink,
   type DocumentsResponse,
@@ -226,6 +228,53 @@ export function useItemOptions(claimID: string, objectID: string) {
     queryFn: () =>
       callAPI<ItemOptionsResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-item?objek=${encodeURIComponent(objectID)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Pilihan dropdown "Tambah coverage" untuk satu objek klaim. Hanya membaca — coverage
+ * tersimpan bersama klaim saat Save/Submit, tidak ke tabel lain.
+ */
+export function useCoverageOptions(claimID: string, objectID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'pilihan-coverage', claimID, objectID, token],
+    enabled: claimID !== '' && objectID !== '',
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<CoverageOptionsResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-coverage?objek=${encodeURIComponent(objectID)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Riwayat satu baris Adjustment: Status Penerimaan Komite dan Histori Transfer Kasir.
+ * Baris dialamatkan lewat urutan objek, jaminan, dan adjustment (berbasis 1).
+ */
+/** Awalan kunci riwayat adjustment satu klaim — dipakai juga untuk menyegarkannya. */
+export const settlementHistoryKey = (claimID: string) => ['registrasi', 'riwayat-adjustment', claimID] as const
+
+export function useSettlementHistory(claimID: string, object: number, coverage: number, adjustment: number) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const query = new URLSearchParams({
+    objek: String(object),
+    coverage: String(coverage),
+    adjustment: String(adjustment),
+  }).toString()
+
+  return useQuery({
+    queryKey: [...settlementHistoryKey(claimID), object, coverage, adjustment, token],
+    enabled: claimID !== '',
+    queryFn: () =>
+      callAPI<SettlementHistoryResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/riwayat?${query}`,
         { token, portal },
       ),
   })
@@ -768,6 +817,9 @@ export function useTransferCashier(claimID: string) {
       }),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      // Histori Transfer Kasir membaca TRF_KASIR_LOG lewat kuncinya sendiri; tanpa ini grid
+      // riwayat tetap menampilkan keadaan sebelum transfer sampai halaman dimuat ulang.
+      apiClient.invalidateQueries({ queryKey: settlementHistoryKey(claimID) })
     },
   })
 }

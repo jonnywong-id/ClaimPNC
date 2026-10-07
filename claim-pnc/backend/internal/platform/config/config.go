@@ -253,6 +253,11 @@ type Cashier struct {
 	Password    string
 	Timeout     time.Duration
 
+	// TransferTimeout adalah batas waktu Transfer Kasir (KASIR_TRANSFER_BATAS_WAKTU, bawaan
+	// 2 menit) — terpisah dari Timeout pendaftaran rekening karena Kasir memproses
+	// pembayaran sebelum menjawab.
+	TransferTimeout time.Duration
+
 	// CheckAccount menyalakan pemeriksaan "No Rekening terdaftar di sistem Kasir"
 	// (`GetDataBankMaster` langkah 5–7) saat penerima klaim disimpan. Pega melewatinya di
 	// server dev dengan MEMBANDINGKAN NAMA SERVER; di sini pengaturan eksplisit
@@ -591,6 +596,12 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// Transfer Kasir terpisah dari pendaftaran rekening: Kasir memproses pembayaran sebelum
+	// menjawab, dan 30 detik terbukti terlalu pendek (2026-10-07, jawaban tidak datang).
+	cashierTransferTimeout, err := getDuration("KASIR_TRANSFER_BATAS_WAKTU", 2*time.Minute)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	// 30 detik: layanan penerbit VA sendiri berbicara ke bank, sehingga jawabannya wajar
 	// lebih lambat daripada pemanggilan internal biasa.
 	virtualAccountTimeout, err := getDuration("VIRTUAL_ACCOUNT_BATAS_WAKTU", 30*time.Second)
@@ -693,12 +704,13 @@ func Load() (Config, error) {
 			Timeout:  hcqTimeout,
 		},
 		Cashier: Cashier{
-			RegisterURL:  strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
-			UpdateURL:    strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
-			User:         strings.TrimSpace(os.Getenv("KASIR_USER")),
-			Password:     os.Getenv("KASIR_PASSWORD"),
-			Timeout:      cashierTimeout,
-			CheckAccount: cashierCheckAccount(env),
+			RegisterURL:     strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
+			UpdateURL:       strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
+			User:            strings.TrimSpace(os.Getenv("KASIR_USER")),
+			Password:        os.Getenv("KASIR_PASSWORD"),
+			Timeout:         cashierTimeout,
+			TransferTimeout: cashierTransferTimeout,
+			CheckAccount:    cashierCheckAccount(env),
 		},
 		// Bawaannya `tiruan`, dan itu disengaja: menyalakannya menerbitkan rekening
 		// sungguhan. Lihat VirtualAccount untuk alasan lengkapnya.

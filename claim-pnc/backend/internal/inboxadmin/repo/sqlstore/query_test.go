@@ -158,6 +158,11 @@ func TestNoQueryPaginatesInSQL(t *testing.T) {
 	// baris ditarik lalu dipotong di aplikasi. Kueri yang diam-diam memaginasi akan
 	// membuat jumlah "Total Data" di layar menjadi jumlah SATU HALAMAN.
 	for name, text := range queries {
+		// branch_of_login memilih SATU baris cabang (`pxResults(1)` di Pega), bukan memotong
+		// halaman antrean.
+		if name == "branch_of_login" {
+			continue
+		}
 		upper := strings.ToUpper(text)
 		require.NotContainsf(t, upper, "FETCH NEXT",
 			"kueri %s memaginasi di SQL; pemotongan halaman milik inboxadmin.Slice", name)
@@ -186,16 +191,36 @@ func TestEveryLikeUsesEscape(t *testing.T) {
 	}
 }
 
-func TestBranchFilterIsAbsentEverywhere(t *testing.T) {
-	// Penyaring cabang dan korwil MENUNGGU API pengganti DB Link HRD (`R-03`), keputusan
-	// Work Owner 2026-09-20. Uji ini menjaga agar ia tidak masuk diam-diam lewat DB Link —
-	// yang akan menembus batas yang sengaja belum dilewati.
+func TestBranchAndRegionFiltersFollowLegacyQueries(t *testing.T) {
+	// Penyaring cabang dan kanwil dipasang 2026-10-07 atas permintaan Work Owner, mencabut
+	// penundaan 2026-09-20. Kueri mana yang memakainya dibaca dari `{ASIS:TempView.Currency}`
+	// (cabang) dan `{ASIS:TempView.Remark}` (kanwil) pada RDB rule masing-masing tab.
+	branch := []string{
+		"list_all", "list_unregistered", "list_branch_claim", "list_request_survey",
+		"list_all_case_admin",
+	}
+	region := []string{"list_all", "list_unregistered", "list_branch_claim"}
+	without := []string{"list_request_document", "list_rcl_pucl"}
+
+	branchFilter := regexp.MustCompile(`KODECABANG_1[^:]*= :\d+`)
+	for _, name := range branch {
+		require.Truef(t, branchFilter.MatchString(strings.ToUpper(query(name))), "kueri %s tanpa batas cabang", name)
+	}
+	for _, name := range region {
+		require.Containsf(t, strings.ToUpper(query(name)), "BASTERRITORY", "kueri %s tanpa penyaring kanwil", name)
+	}
+	for _, name := range without {
+		upper := strings.ToUpper(query(name))
+		require.Falsef(t, branchFilter.MatchString(upper), "kueri %s seharusnya tidak dibatasi cabang", name)
+		require.NotContainsf(t, upper, "BASTERRITORY", "kueri %s seharusnya tidak disaring kanwil", name)
+	}
+
+	// DB Link HANYA boleh ada di penerjemah cabang — tidak di kueri antrean mana pun.
 	for name, text := range queries {
-		upper := strings.ToUpper(text)
-		require.NotContainsf(t, upper, "@ASMD", "kueri %s menembus DB Link", name)
-		require.NotContainsf(t, upper, "V_HRD_MST", "kueri %s membaca master HRD", name)
-		require.NotContainsf(t, upper, "LST_USER_ASURANSI", "kueri %s membaca master user asuransi", name)
-		require.NotContainsf(t, upper, "BASTERRITORY", "kueri %s menyaring menurut korwil", name)
+		if name == "branch_of_login" {
+			continue
+		}
+		require.NotContainsf(t, strings.ToUpper(text), "@ASMD", "kueri %s menembus DB Link", name)
 	}
 }
 
@@ -210,8 +235,8 @@ func TestOnlyOneQueryServesBothUnregisteredTabs(t *testing.T) {
 
 	normal := plans[inboxadmin.TabUnregisteredRCV].args(sampleQuery(inboxadmin.Tab{}))
 	online := plans[inboxadmin.TabRCVOnline].args(sampleQuery(inboxadmin.Tab{}))
-	require.Equal(t, "NORMAL", normal[len(normal)-1])
-	require.Equal(t, "ONLINE", online[len(online)-1])
+	require.Equal(t, "NORMAL", normal[0], "mode kurir adalah penanda pertama")
+	require.Equal(t, "ONLINE", online[0])
 }
 
 func TestEmptyKeywordIsSentAsNull(t *testing.T) {
@@ -223,4 +248,20 @@ func TestEmptyKeywordIsSentAsNull(t *testing.T) {
 
 	filled := inboxadmin.Query{Tab: tab, Business: inboxadmin.BusinessAll, Keyword: "PNC"}
 	require.Equal(t, "PNC", plans[tab.Code].args(filled)[0])
+}
+
+func TestQueueQueriesReadClaimListAdmin(t *testing.T) {
+	// Keputusan Work Owner 2026-10-07: antrean dibaca dari POOLDATA.T_CLAIMLIST_ADMIN,
+	// bukan dari tabel kerja dan tabel penugasan Pega. Satu-satunya pengecualian adalah
+	// kolom PUCL pada tab PUCL, yang tidak ada di T_CLAIMLIST_ADMIN.
+	for _, tab := range inboxadmin.Tabs() {
+		name := plans[tab.Code].name
+		upper := strings.ToUpper(query(name))
+		require.Containsf(t, upper, "POOLDATA.T_CLAIMLIST_ADMIN", "kueri %s", name)
+		require.NotContainsf(t, upper, "PC_ASSIGN_WORKLIST", "kueri %s", name)
+		require.NotContainsf(t, upper, "PC_ASSIGN_WORKBASKET", "kueri %s", name)
+		if name != "list_rcl_pucl" {
+			require.NotContainsf(t, upper, "PC_ASM_FW_GCNMFW_WORK", "kueri %s", name)
+		}
+	}
 }

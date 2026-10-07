@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxadmin"
@@ -27,15 +28,82 @@ func NewRepo(db *sql.DB) *Repo {
 // # Kenapa argumennya disusun per tab, bukan seragam
 //
 // Karena jumlah bind-nya memang berbeda: tab Status RCL/PUCL tidak menerima satu pun,
-// sedangkan Unregistered RCV menerima tiga. Menyeragamkannya menuntut setiap kueri
-// menyebut bind yang tidak dipakainya — dan bind yang hanya ada supaya jumlahnya genap
-// adalah bind yang akan membingungkan orang berikutnya yang membaca SQL-nya.
+// sedangkan Unregistered RCV menerima sepuluh. Menyeragamkannya menuntut setiap kueri
+// menyebut bind yang tidak dipakainya.
+//
+// # Kenapa satu nilai dikirim BERULANG
+//
+// go-ora mengikat parameter MENURUT POSISI, bukan menurut nama. Kueri yang memakai ulang
+// penanda yang sama (`:1` tiga kali) menghasilkan ORA-01008 — atau, lebih buruk, tidak
+// menghasilkan galat sama sekali tetapi mengikat nilai ke penanda yang salah. Keduanya
+// terukur 2026-10-07: tab ALL, Unregistered RCV, dan Branch Claim gagal dengan ORA-01008,
+// sedangkan All Case Admin diam-diam selalu kosong karena login pemanggil terikat ke kotak
+// cari. Setiap kemunculan karena itu bernomor sendiri, dan argumennya disusun menurut
+// urutan kemunculan — pola yang sama dengan inboxcloseclaim.
 type plan struct {
 	// name adalah nama kueri di berkas .sql.
 	name string
 
-	// args menyusun argumen bind sesuai urutan `:1`, `:2`, `:3` di kueri itu.
+	// args menyusun argumen bind sesuai urutan KEMUNCULAN penanda di kueri itu.
 	args func(q inboxadmin.Query) []any
+}
+
+// repeat mengulang satu nilai n kali, untuk penanda yang muncul berkali-kali.
+func repeat(value any, n int) []any {
+	result := make([]any, n)
+	for i := range result {
+		result[i] = value
+	}
+	return result
+}
+
+// join menyambung beberapa kelompok argumen menjadi satu urutan.
+func join(groups ...[]any) []any {
+	var result []any
+	for _, g := range groups {
+		result = append(result, g...)
+	}
+	return result
+}
+
+// nilOrText mengirim teks kosong sebagai NULL, supaya `:n IS NULL` mematikan saringannya.
+func nilOrText(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
+// branchArgs adalah bind batas cabang: dua kemunculan, `:n IS NULL OR ... = :n+1`.
+func branchArgs(q inboxadmin.Query) []any {
+	return repeat(nilOrText(q.Scope.BranchCode), 2)
+}
+
+// regionArgs adalah bind kanwil: dua kemunculan, dengan bentuk yang sama.
+func regionArgs(q inboxadmin.Query) []any {
+	return repeat(nilOrText(q.Scope.RegionCode), 2)
+}
+
+// withBranch dan withBranchAndRegion menambahkan bind batas data di BELAKANG bind kueri —
+// klausanya disisipkan tepat sebelum ORDER BY, sehingga kemunculannya selalu terakhir.
+func withBranch(base func(inboxadmin.Query) []any) func(inboxadmin.Query) []any {
+	return func(q inboxadmin.Query) []any { return join(base(q), branchArgs(q)) }
+}
+
+func withBranchAndRegion(base func(inboxadmin.Query) []any) func(inboxadmin.Query) []any {
+	return func(q inboxadmin.Query) []any { return join(base(q), branchArgs(q), regionArgs(q)) }
+}
+
+// keywordThenBusiness adalah urutan bind tab ALL dan Branch Claim: kata kunci x3, lini
+// bisnis x5.
+func keywordThenBusiness(q inboxadmin.Query) []any {
+	return join(repeat(keyword(q), 3), repeat(string(q.Business), 5))
+}
+
+// callerThenKeyword adalah urutan bind Request Survey dan All Case Admin: login, lalu kata
+// kunci x3.
+func callerThenKeyword(q inboxadmin.Query) []any {
+	return join([]any{q.Caller.Login}, repeat(keyword(q), 3))
 }
 
 // plans memetakan kode tab ke kuerinya.
@@ -46,27 +114,23 @@ type plan struct {
 var plans = map[string]plan{
 	inboxadmin.TabAll: {
 		name: "list_all",
-		args: func(q inboxadmin.Query) []any {
-			return []any{keyword(q), string(q.Business)}
-		},
+		args: withBranchAndRegion(keywordThenBusiness),
 	},
 	inboxadmin.TabUnregisteredRCV: {
 		name: "list_unregistered",
-		args: func(q inboxadmin.Query) []any {
-			return []any{keyword(q), string(q.Business), "NORMAL"}
-		},
+		args: withBranchAndRegion(func(q inboxadmin.Query) []any {
+			return join(repeat("NORMAL", 2), repeat(keyword(q), 3), repeat(string(q.Business), 5))
+		}),
 	},
 	inboxadmin.TabRCVOnline: {
 		name: "list_unregistered",
-		args: func(q inboxadmin.Query) []any {
-			return []any{keyword(q), string(q.Business), "ONLINE"}
-		},
+		args: withBranchAndRegion(func(q inboxadmin.Query) []any {
+			return join(repeat("ONLINE", 2), repeat(keyword(q), 3), repeat(string(q.Business), 5))
+		}),
 	},
 	inboxadmin.TabRequestSurvey: {
 		name: "list_request_survey",
-		args: func(q inboxadmin.Query) []any {
-			return []any{keyword(q), q.Caller.Login}
-		},
+		args: withBranch(callerThenKeyword),
 	},
 	inboxadmin.TabRequestDocument: {
 		name: "list_request_document",
@@ -76,15 +140,11 @@ var plans = map[string]plan{
 	},
 	inboxadmin.TabAllCaseAdmin: {
 		name: "list_all_case_admin",
-		args: func(q inboxadmin.Query) []any {
-			return []any{keyword(q), q.Caller.Login}
-		},
+		args: withBranch(callerThenKeyword),
 	},
 	inboxadmin.TabBranchClaim: {
 		name: "list_branch_claim",
-		args: func(q inboxadmin.Query) []any {
-			return []any{keyword(q), string(q.Business)}
-		},
+		args: withBranchAndRegion(keywordThenBusiness),
 	},
 	inboxadmin.TabRCLPUCL: {
 		name: "list_rcl_pucl",
@@ -109,12 +169,19 @@ func keyword(q inboxadmin.Query) any {
 //
 // Pemotongan halaman terjadi di aplikasi (inboxadmin.Slice) atas keputusan Work Owner
 // 2026-09-20 — lihat catatan di kepala inboxadmin.sql.
+//
+// Klaim Pega dan klaim PNCN keduanya dibaca dari POOLDATA.T_CLAIMLIST_ADMIN, sehingga
+// satu kueri melayani keduanya — lihat bagian SUMBER ANTREAN di inboxadmin.sql.
 func (r *Repo) List(ctx context.Context, q inboxadmin.Query) ([]inboxadmin.WorkItem, error) {
 	selected, known := plans[q.Tab.Code]
 	if !known {
 		return nil, fmt.Errorf("inboxadmin/sqlstore: tab %q belum punya kueri", q.Tab.Code)
 	}
+	return r.run(ctx, selected, q)
+}
 
+// run menjalankan satu kueri dan memindai seluruh barisnya.
+func (r *Repo) run(ctx context.Context, selected plan, q inboxadmin.Query) ([]inboxadmin.WorkItem, error) {
 	rows, err := r.db.QueryContext(ctx, query(selected.name), selected.args(q)...)
 	if err != nil {
 		return nil, fmt.Errorf("menjalankan kueri %s: %w", selected.name, err)
@@ -166,14 +233,14 @@ func scanWorkItem(row scanner) (inboxadmin.WorkItem, error) {
 		caseID, reference, policyNumber, insuredName          sql.NullString
 		businessName, businessSource, branchName, claimBranch sql.NullString
 		creator                                               sql.NullString
-		lossDate, reportDate, inputDate, lodDate              sql.NullTime
+		lossDate, reportDate, inputDate, lodDate              flexTime
 		note, claimPosition, claimStatus, lodStatus           sql.NullString
-		requestDate                                           sql.NullTime
+		requestDate                                           flexTime
 		policyBranch, surveyBranch, technicalPIC              sql.NullString
 		surveyor, surveyNumber                                sql.NullString
-		inboxDate                                             sql.NullTime
+		inboxDate                                             flexTime
 		analystNote, rclPUCLStatus                            sql.NullString
-		letterPrintDate                                       sql.NullTime
+		letterPrintDate                                       flexTime
 		claimAge, expiryStatus                                sql.NullString
 	)
 
@@ -201,38 +268,88 @@ func scanWorkItem(row scanner) (inboxadmin.WorkItem, error) {
 		BranchName:      branchName.String,
 		ClaimBranch:     claimBranch.String,
 		Creator:         creator.String,
-		LossDate:        timeOrNil(lossDate),
-		ReportDate:      timeOrNil(reportDate),
-		InputDate:       timeOrNil(inputDate),
-		LODDate:         timeOrNil(lodDate),
+		LossDate:        lossDate.value(),
+		ReportDate:      reportDate.value(),
+		InputDate:       inputDate.value(),
+		LODDate:         lodDate.value(),
 		Note:            note.String,
 		ClaimPosition:   claimPosition.String,
 		ClaimStatus:     claimStatus.String,
 		LODStatus:       lodStatus.String,
-		RequestDate:     timeOrNil(requestDate),
+		RequestDate:     requestDate.value(),
 		PolicyBranch:    policyBranch.String,
 		SurveyBranch:    surveyBranch.String,
 		TechnicalPIC:    technicalPIC.String,
 		Surveyor:        surveyor.String,
 		SurveyNumber:    surveyNumber.String,
-		InboxDate:       timeOrNil(inboxDate),
+		InboxDate:       inboxDate.value(),
 		AnalystNote:     analystNote.String,
 		RCLPUCLStatus:   rclPUCLStatus.String,
-		LetterPrintDate: timeOrNil(letterPrintDate),
+		LetterPrintDate: letterPrintDate.value(),
 		ClaimAge:        claimAge.String,
 		ExpiryStatus:    expiryStatus.String,
 	}, nil
 }
 
-// timeOrNil mengubah kolom tanggal yang boleh NULL menjadi pointer.
+// flexTime memindai kolom tanggal yang di sistem lama TIDAK selalu bertipe tanggal.
 //
-// Pointer, bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan dari "belum
-// diisi" saat ditampilkan, dan kolom Aging yang dihitung darinya akan menghasilkan angka
-// dalam ratusan ribu hari.
-func timeOrNil(value sql.NullTime) *time.Time {
-	if !value.Valid {
+// `REPORTDATE_1` pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK bertipe VARCHAR2 berisi teks DateTime
+// Pega (`20200105T170000.000 GMT`), sementara kolom tanggal lain bertipe DATE atau
+// TIMESTAMP. sql.NullTime menolak teks ("unsupported Scan"), dan galat itu menggagalkan
+// seluruh tab — terukur 2026-10-07 pada tab ALL dan Branch Claim.
+//
+// Teks diurai sebagai waktu GMT, sama seperti nilai TIMESTAMP yang disimpan Pega. Teks
+// yang tidak dapat diurai menjadi NULL, bukan galat: satu sel yang rusak tidak boleh
+// mengosongkan seluruh antrean.
+//
+// Pointer pada value(), bukan time.Time kosong: tanggal nol tahun 1 tidak dapat dibedakan
+// dari "belum diisi" saat ditampilkan, dan kolom Aging yang dihitung darinya akan
+// menghasilkan angka dalam ratusan ribu hari.
+type flexTime struct {
+	at    time.Time
+	valid bool
+}
+
+// Scan memenuhi sql.Scanner.
+func (f *flexTime) Scan(src any) error {
+	f.at, f.valid = time.Time{}, false
+	switch v := src.(type) {
+	case nil:
+	case time.Time:
+		f.at, f.valid = v, true
+	case string:
+		f.at, f.valid = parsePegaTime(v)
+	case []byte:
+		f.at, f.valid = parsePegaTime(string(v))
+	default:
+		return fmt.Errorf("tipe tanggal %T tidak dikenali", src)
+	}
+	return nil
+}
+
+func (f flexTime) value() *time.Time {
+	if !f.valid {
 		return nil
 	}
-	at := value.Time
+	at := f.at
 	return &at
+}
+
+var pegaTimeLayouts = []string{
+	"20060102T150405.000 MST",
+	"20060102T150405 MST",
+	"20060102T150405.000",
+	"20060102",
+	"2006-01-02 15:04:05",
+	"2006-01-02",
+}
+
+func parsePegaTime(text string) (time.Time, bool) {
+	text = strings.TrimSpace(text)
+	for _, layout := range pegaTimeLayouts {
+		if at, err := time.Parse(layout, text); err == nil {
+			return at.UTC(), true
+		}
+	}
+	return time.Time{}, false
 }

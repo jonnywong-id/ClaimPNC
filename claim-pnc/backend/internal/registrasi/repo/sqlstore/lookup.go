@@ -50,7 +50,7 @@ func (s *ExchangeRateSource) Find(
 	exec := executorFrom(ctx, s.db)
 
 	var text string
-	err := exec.QueryRowContext(ctx, loadQuery("kurs_pada_tanggal"), code, date).Scan(&text)
+	err := exec.QueryRowContext(ctx, loadQuery("kurs_pada_tanggal"), code, code, date).Scan(&text)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		// Bukan galat teknis, melainkan keadaan yang `D-48` tetapkan menolak klaim.

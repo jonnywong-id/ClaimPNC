@@ -136,6 +136,8 @@ export type FilterForm = {
   tab: string
   bisnis: string
   cari: string
+  /** Kanwil pilihan manajer; kosong = seluruh kanwil. */
+  kanwil: string
 }
 
 /**
@@ -145,10 +147,38 @@ export type FilterForm = {
  * terbuka pertama (`tab_bawaan`), dan menuliskannya di sini berarti nilai yang sama hidup di
  * dua tempat dan dapat berselisih.
  */
-export const EMPTY_FILTER: FilterForm = { tab: '', bisnis: '', cari: '' }
+export const EMPTY_FILTER: FilterForm = { tab: '', bisnis: '', cari: '', kanwil: '' }
 
 /** Kode galat modul ini, sebagaimana dikirim backend. */
 export const InboxAdminError = {
   validationFail: 'validasi_gagal',
   callerUnknown: 'profil_pemanggil_tidak_lengkap',
 } as const
+
+/** Satu baris daftar Status Register — GET /api/inbox-admin/jumlah. */
+export type TabCount = {
+  kode: string
+  nama: string
+  jumlah: number
+  /** Kueri tab itu gagal; jumlahnya tidak bermakna. */
+  gagal: boolean
+}
+
+export type CountsResponse = {
+  jumlah: TabCount[]
+  portal: string
+}
+
+/** Satu pilihan dropdown "Pilih Kanwil". */
+export type RegionOption = { kode: string; label: string }
+
+/** Batas data pemanggil — GET /api/inbox-admin/batas. */
+export type ViewerResponse = {
+  /** Manajer: tidak dibatasi cabang dan boleh memilih kanwil. */
+  manajer: boolean
+  /** Cabang yang membatasi antrean; kosong bila tidak dibatasi. */
+  cabang: string
+  /** Isi dropdown kanwil — hanya terisi bagi manajer. */
+  kanwil: RegionOption[]
+  portal: string
+}

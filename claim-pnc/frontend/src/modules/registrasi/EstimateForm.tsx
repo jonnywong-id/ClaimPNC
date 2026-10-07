@@ -671,32 +671,37 @@ function ItemTable({
               <tr className="bg-blue-100/70 align-top">
                 <td className="p-2">{n + 1}</td>
                 <td className="p-2">
+                  {/*
+                    Objek (.ObjectItemName) adalah pxAutoComplete di ObjectItemList_sect (grid
+                    !IsTravel): petugas mengetik bebas, dan saran diambil dari PropertyItemList
+                    objek polis (GetListPropertyItemListFire). Polis yang tidak membawa daftar
+                    item tidak punya saran — di Pega pun sama — dan isiannya tetap dapat diketik.
+                  */}
+                  <input
+                    id={`${id}-objek`}
+                    aria-label="Objek"
+                    list={options.length > 0 ? `${id}-objek-pilihan` : undefined}
+                    placeholder="Ketikan kata kunci, pilih"
+                    title="Masukkan kata kunci dan tekan panah bawah keyboard"
+                    value={it.nama}
+                    onChange={(e) => {
+                      const pilihan = options.find((o) => o.nama === e.target.value)
+                      set((x) => ({ ...x, nama: e.target.value, kelompok: pilihan?.kelompok ?? x.kelompok }))
+                    }}
+                    className="rounded border border-slate-400 bg-white px-1 py-0.5"
+                  />
                   {options.length > 0 ? (
-                    <select
-                      id={`${id}-objek`}
-                      aria-label="Objek"
-                      value={it.nama}
-                      onChange={(e) => {
-                        const pilihan = options.find((o) => o.nama === e.target.value)
-                        set((x) => ({ ...x, nama: e.target.value, kelompok: pilihan?.kelompok ?? '' }))
-                      }}
-                      className="rounded border border-slate-400 bg-white px-1 py-0.5"
-                    >
-                      <option value="">— pilih —</option>
+                    <datalist id={`${id}-objek-pilihan`}>
                       {options.map((o) => (
                         <option key={o.nama} value={o.nama}>
-                          {o.nama}
+                          {o.kelompok}
                         </option>
                       ))}
-                    </select>
+                    </datalist>
                   ) : (
-                    <input
-                      id={`${id}-objek`}
-                      aria-label="Objek"
-                      value={it.nama}
-                      onChange={(e) => set((x) => ({ ...x, nama: e.target.value }))}
-                      className="rounded border border-slate-400 bg-white px-1 py-0.5"
-                    />
+                    <p className="mt-1 max-w-[14rem] text-xs text-slate-500">
+                      Polis tidak memiliki daftar item untuk objek ini — ketik nama objek.
+                    </p>
                   )}
                 </td>
                 <td className="p-2">

@@ -36,6 +36,7 @@ func SampleItems() []menu.Item {
 		{ID: 2, Description: "INBOX", Program: "", ParentID: nil, Sequence: 2},
 		{ID: 3, Description: "VIEW", Program: "", ParentID: nil, Sequence: 3},
 		{ID: 4, Description: "REPORT", Program: "", ParentID: nil, Sequence: 4},
+		{ID: 5, Description: "UTILITY", Program: "", ParentID: nil, Sequence: 5},
 		{ID: 11, Description: "Master Status Klaim", Program: "StatusClaimInbox", ParentID: parent(1), Sequence: 1101},
 		{ID: 12, Description: "Master Rekening", Program: "MasterRekening", ParentID: parent(1), Sequence: 1102},
 		{ID: 13, Description: "Master PIC Teknik", Program: "UserTeknisInbox", ParentID: parent(1), Sequence: 1103},
@@ -112,6 +113,8 @@ func SampleItems() []menu.Item {
 		{ID: 84, Description: "Report KPI PNC", Program: "ReportKPIHarness", ParentID: parent(4), Sequence: 1174},
 		{ID: 85, Description: "Report Klaim", Program: "PNCTATReport", ParentID: parent(4), Sequence: 1175},
 		{ID: 86, Description: "Report Produksi Klaim PA", Program: "ReportProduksiPA_harnes", ParentID: parent(4), Sequence: 1176},
+		// Ditambahkan 2026-10-07 — alat bantu data uji, lihat internal/konversicoverage.
+		{ID: 87, Description: "Konversi Coverage", Program: "KonversiCoverage", ParentID: parent(5), Sequence: 1177},
 	}
 }
 
@@ -145,6 +148,7 @@ func SampleGrants() map[string][]int {
 			47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
 			59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
 			71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81,
+			87,
 		},
 		"JONNY": {
 			4, 82, 83, 84, 85, 86,

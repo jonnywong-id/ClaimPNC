@@ -95,6 +95,7 @@ const (
 	ViolationEstimateExceedsTSI      ViolationCode = "estimasi_melebihi_tsi"
 	ViolationEstimateMissing         ViolationCode = "estimasi_kosong"
 	ViolationReporterStatusEmpty     ViolationCode = "status_pelapor_kosong"
+	ViolationLocationEmpty           ViolationCode = "lokasi_kosong"
 	ViolationFaceSheetMissing        ViolationCode = "belum_claim_face_sheet"
 	ViolationFaceSheetNothingNew     ViolationCode = "tidak_ada_estimasi_baru"
 	ViolationPLANeedsFaceSheet       ViolationCode = "pla_belum_cfs"

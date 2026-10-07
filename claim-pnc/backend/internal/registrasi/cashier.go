@@ -430,6 +430,8 @@ type CashierStore interface {
 	BankGroupID(ctx context.Context, bankName, bankID string) (string, bool, error)
 	// Log menulis TRF_KASIR_LOG.
 	Log(ctx context.Context, entry CashierLog) error
+	// CashierHistory membaca POOLDATA.TRF_KASIR_LOG satu nomor akseptasi, urut waktu.
+	CashierHistory(ctx context.Context, acceptedNo string) ([]CashierHistoryEntry, error)
 	// MarkTransferred mengisi TRANSFER_CASHIER_DATE (bila kosong) dan IDCHASIER.
 	MarkTransferred(ctx context.Context, claimID, objectID string, coverageSeq, adjustmentSeq int, at time.Time, caseID string) error
 	// AccountRegistered menyatakan rekening terdaftar aktif di master rekening Kasir
@@ -455,4 +457,15 @@ type CashierServiceLog struct {
 	AcceptedNo  string
 	Request     CashierPayload
 	Response    string
+}
+
+// CashierHistoryEntry adalah satu baris grid "Histori Transfer Kasir" Section/
+// InputAdjustment_sect.xml (TempDataLogKasir.pxResults): PIC Teknik (.KomiteAccepted),
+// Tanggal Transfer/Reject (.TransferCashierDate), Status Kasir (.StatusBayar), Komentar
+// (.Remarks) — kolom PIC, TGL_TRF, STATUS, ALASAN pada POOLDATA.TRF_KASIR_LOG.
+type CashierHistoryEntry struct {
+	PIC    string
+	At     time.Time
+	Status string
+	Reason string
 }

@@ -29,7 +29,10 @@ import (
 )
 
 // DefaultTimeout adalah batas waktu pemanggilan Kasir.
-const DefaultTimeout = 30 * time.Second
+//
+// Dua menit, bukan 30 detik: Kasir memproses pembayaran sebelum menjawab, dan 30 detik
+// terbukti habis sebelum jawabannya datang (2026-10-07).
+const DefaultTimeout = 2 * time.Minute
 
 // ServiceCatalog adalah seam ke daftar alamat layanan (POOLDATA.GCNM_CONNECT_REST).
 type ServiceCatalog interface {

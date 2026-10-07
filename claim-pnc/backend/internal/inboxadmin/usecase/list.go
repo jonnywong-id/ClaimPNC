@@ -116,6 +116,9 @@ func (s *Service) List(
 	if err != nil {
 		return Listed{}, err
 	}
+	if query.Scope, _, err = s.resolveScope(ctx, repo, query.Caller, input.Region); err != nil {
+		return Listed{}, err
+	}
 
 	rows, err := repo.List(ctx, query)
 	if err != nil {

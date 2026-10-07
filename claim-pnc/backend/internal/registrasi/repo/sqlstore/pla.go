@@ -221,6 +221,36 @@ func (s *PLAStore) Signature(ctx context.Context, id string) (string, []byte, er
 	return trimmed(name), png, nil
 }
 
+// PASignature membaca satu tanda tangan POOLDATA.M_SIGNATURE1. Nama kunci JSON dipangkas
+// spasinya — kunci gambar tersimpan sebagai "TTD " (terukur 2026-10-07). Dokumen atau gambar
+// yang tidak dapat diurai dikembalikan kosong, bukan galat: Draft Persetujuan tetap tercetak.
+func (s *PLAStore) PASignature(ctx context.Context, id string) (string, []byte, error) {
+	var body sql.NullString
+	err := s.db.QueryRowContext(ctx, loadQuery("pa_ttd"), id).Scan(&body)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil, nil
+	}
+	if err != nil {
+		return "", nil, fmt.Errorf("registrasi/sqlstore: membaca tanda tangan PA: %w", err)
+	}
+	var doc map[string]any
+	if json.Unmarshal([]byte(body.String), &doc) != nil {
+		return "", nil, nil
+	}
+	field := map[string]string{}
+	for k, v := range doc {
+		if text, ok := v.(string); ok {
+			field[strings.ToUpper(strings.TrimSpace(k))] = strings.TrimSpace(text)
+		}
+	}
+	image := field["TTD"]
+	if i := strings.Index(image, "base64,"); i >= 0 {
+		image = image[i+len("base64,"):]
+	}
+	png, _ := base64.StdEncoding.DecodeString(image)
+	return field["SIGNATURE_NAME"], png, nil
+}
+
 // LODEmails membaca email tertanggung (pengkinian data) dan email PIC teknik.
 func (s *PLAStore) LODEmails(ctx context.Context, claimNumber, technicalPIC string) (string, string, error) {
 	insured, err := s.firstText(ctx, "lod_email_tertanggung", claimNumber)

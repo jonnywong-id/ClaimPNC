@@ -104,6 +104,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			Tab:      query.Get("tab"),
 			Business: query.Get("bisnis"),
 			Keyword:  query.Get("cari"),
+			Region:   query.Get("kanwil"),
 		},
 		inboxadmin.Pagination{
 			Page: positiveNumber(query.Get("halaman")),

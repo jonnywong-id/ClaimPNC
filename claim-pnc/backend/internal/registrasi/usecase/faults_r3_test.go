@@ -307,6 +307,13 @@ func (w fPLA) UpdateNote(ctx context.Context, c, n string, rev int, note string)
 	return w.PLASource.UpdateNote(ctx, c, n, rev, note)
 }
 
+func (w fPLA) PASignature(ctx context.Context, id string) (string, []byte, error) {
+	if err := w.f.hit("PLA.PASignature"); err != nil {
+		return "", nil, err
+	}
+	return w.PLASource.PASignature(ctx, id)
+}
+
 func (w fPLA) Signature(ctx context.Context, e string) (string, []byte, error) {
 	if err := w.f.hit("PLA.Signature"); err != nil {
 		return "", nil, err

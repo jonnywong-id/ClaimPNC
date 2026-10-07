@@ -190,6 +190,43 @@ func (h *Handler) ItemOptions(w http.ResponseWriter, r *http.Request, claimID st
 	h.writeResponse(w, r, http.StatusOK, ItemOptionsResponse{Option: body})
 }
 
+// CoverageOptionsResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/pilihan-coverage.
+type CoverageOptionsResponse struct {
+	Option []CoverageDTO `json:"pilihan"`
+}
+
+// CoverageOptions menangani GET /api/registrasi/klaim/{klaimID}/pilihan-coverage?objek=… —
+// isi dropdown "Tambah coverage": coverage polis milik objek itu beserta TSI dan
+// spreading-nya, sehingga memilih satu coverage mengisi seluruh barisnya.
+func (h *Handler) CoverageOptions(w http.ResponseWriter, r *http.Request, claimID string) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+	option, err := h.service.CoverageOptions(r.Context(), claimID, r.URL.Query().Get("objek"))
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	body := make([]CoverageDTO, 0, len(option))
+	for _, c := range option {
+		cov := CoverageDTO{
+			ID:          c.ID,
+			Name:        c.Name,
+			CauseOfLoss: c.CauseOfLoss,
+			TSICents:    int64(c.TSI),
+			Spreading:   make([]SpreadingDTO, 0, len(c.Spreading)),
+		}
+		for _, s := range c.Spreading {
+			cov.Spreading = append(cov.Spreading, SpreadingDTO{
+				TreatyKind: s.TreatyKind, Name: s.Name, Share: Percent(s.Share),
+				Removed: s.Removed, FacOfferItem: s.FacOfferItem,
+			})
+		}
+		body = append(body, cov)
+	}
+	h.writeResponse(w, r, http.StatusOK, CoverageOptionsResponse{Option: body})
+}
+
 // Currencies menangani GET /api/registrasi/mata-uang.
 func (h *Handler) Currencies(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.callerOf(w, r); !ok {

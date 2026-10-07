@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"strings"
@@ -390,6 +391,12 @@ func TestAcceptanceLODDLAAndCashier(t *testing.T) {
 	e.cashier.Err = errors.New("timeout")
 	w = e.do(t, http.MethodPost, "/registrasi/klaim/"+task.ClaimID+"/kasir", cashier)
 	requireError(t, w, http.StatusBadGateway, registrasihttp.CodeCashierUnavailable)
+	// Kasir menerima tetapi tidak menjawab dalam batas waktu: 504, pembayaran MUNGKIN sudah
+	// diproses — pesannya meminta petugas memeriksa Kasir, bukan menyatakan tidak terkirim.
+	e.cashier.Err = fmt.Errorf("cashierlink: memanggil kasir: %w", context.DeadlineExceeded)
+	w = e.do(t, http.MethodPost, "/registrasi/klaim/"+task.ClaimID+"/kasir", cashier)
+	requireError(t, w, http.StatusGatewayTimeout, registrasihttp.CodeCashierNoReply)
+	require.Contains(t, decode[registrasihttp.ErrorResponse](t, w).Message, "may already have been received")
 
 	e.cashier.Err = nil
 	e.cashier.Reply = registrasi.CashierReply{ResponseMessage: "SUCCESS", CaseIDCashier: "ECR-1"}
@@ -400,6 +407,24 @@ func TestAcceptanceLODDLAAndCashier(t *testing.T) {
 	// Penandaan baris dilakukan penyimpanan Kasir (memori mencatatnya di Marked).
 	require.Len(t, e.cashier.Marked, 1)
 	require.Equal(t, "ECR-1", e.cashier.Marked[0].CaseID)
+
+	// Riwayat baris: Status Penerimaan Komite dan Histori Transfer Kasir (InputAdjustment_sect).
+	w = e.do(t, http.MethodGet, "/registrasi/klaim/"+task.ClaimID+"/adjustment/riwayat?objek=1&coverage=1&adjustment=1", nil)
+	require.Equal(t, http.StatusOK, w.Code, "badan = %s", w.Body.String())
+	history := decode[registrasihttp.SettlementHistoryResponse](t, w)
+	require.NotEmpty(t, history.Committee)
+	for _, m := range history.Committee {
+		require.Equal(t, registrasi.DecisionApprove, m.Decision)
+		require.NotEmpty(t, m.Name)
+	}
+	require.Len(t, history.Cashier, 1)
+	require.Equal(t, registrasi.CashierLogReasonTransfer, history.Cashier[0].Note)
+	require.Equal(t, registrasi.CashierLogStatusTransfer, history.Cashier[0].Status)
+
+	w = e.do(t, http.MethodGet, "/registrasi/klaim/"+task.ClaimID+"/adjustment/riwayat?objek=1&coverage=1&adjustment=9", nil)
+	requireError(t, w, http.StatusBadRequest, registrasihttp.CodeInvalidAction)
+	w = e.do(t, http.MethodGet, "/registrasi/klaim/K-TIDAK-ADA/adjustment/riwayat?objek=1&coverage=1&adjustment=1", nil)
+	requireError(t, w, http.StatusNotFound, registrasihttp.CodeClaimNotFound)
 
 	// Tugas yang bukan milik klaim itu pada rute akhir: 400.
 	for _, p := range []string{"lod/tipe", "lod", "dla/daftar", "dla", "kasir/pratinjau", "kasir"} {

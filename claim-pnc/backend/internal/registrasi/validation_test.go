@@ -65,6 +65,16 @@ func TestValidClaimPassesEveryRule(t *testing.T) {
 	require.NoError(t, registrasi.Validate(validClaim(), parts()))
 }
 
+// Lokasi wajib di Input Register (pyRequired=always); spasi saja tetap dianggap kosong.
+func TestLocationRequired(t *testing.T) {
+	for _, location := range []string{"", "   "} {
+		k := validClaim()
+		k.Location = location
+		g := violations(t, registrasi.Validate(k, parts()))
+		require.True(t, g.Has(registrasi.ViolationLocationEmpty))
+	}
+}
+
 // TestDateOrdering menguji ketiga aturan urutan pada kasus batas: sama persis, dan
 // selisih satu hari ke arah yang salah.
 func TestDateOrdering(t *testing.T) {
@@ -291,12 +301,39 @@ func TestSLIKNumberRequiredForCreditGuarantee(t *testing.T) {
 	require.NoError(t, registrasi.Validate(k, parts()))
 }
 
-func TestItemWithoutCoverageRejected(t *testing.T) {
+// Cukup SATU objek terisi — coverage dengan spreading 100% (Work Owner, 2026-10-07).
+// Objek lain yang belum terisi tidak memblokir registrasi.
+func TestOnlyOneFilledItemIsRequired(t *testing.T) {
 	k := validClaim()
-	k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{ID: "OBJ-2", Name: "Mesin"})
 
+	// Objek tanpa coverage sama sekali: boleh.
+	k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{ID: "OBJ-2", Name: "Mesin"})
+	// Objek dengan coverage yang spreading-nya belum 100% dan Penyebab Kerugian kosong: boleh.
+	k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{
+		ID: "OBJ-3", Name: "Gudang",
+		Coverage: []registrasi.Coverage{{
+			ID: "CVG-3", TSI: registrasi.Rupiah(1_000_000),
+			Spreading: []registrasi.Spreading{{TreatyKind: "10008", Name: "T", Share: 400_000}},
+		}},
+	})
+	require.NoError(t, registrasi.Validate(k, parts()))
+}
+
+func TestNoItemWithCoverageRejected(t *testing.T) {
+	k := validClaim()
+	for i := range k.InsuredItem {
+		k.InsuredItem[i].Coverage = nil
+	}
 	g := violations(t, registrasi.Validate(k, parts()))
 	require.True(t, g.Has(registrasi.ViolationItemWithoutCoverage))
+}
+
+// Penyebab Kerugian tetap wajib pada objek yang TERISI.
+func TestCauseOfLossStillRequiredOnFilledItem(t *testing.T) {
+	k := validClaim()
+	k.InsuredItem[0].Coverage[0].CauseOfLoss = ""
+	g := violations(t, registrasi.Validate(k, parts()))
+	require.True(t, g.Has(registrasi.ViolationCauseOfLossEmpty))
 }
 
 func TestEstimateMayNotExceedTSI(t *testing.T) {

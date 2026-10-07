@@ -99,6 +99,15 @@ type InsuredItemDTO struct {
 	// dapat dibaca.
 	Job         string `json:"pekerjaan,omitempty"`
 	DateOfBirth string `json:"tanggal_lahir,omitempty"`
+
+	// KTP/Paspor dan Status peserta Travel; Model, Merk, Nama Tipe, dan Nomor Chasis objek
+	// HE. Seluruhnya baca saja dari tabel objek polis, kosong bila tidak berlaku.
+	IDCard            string `json:"ktp_paspor,omitempty"`
+	ParticipantStatus string `json:"status_peserta,omitempty"`
+	VehicleModel      string `json:"model,omitempty"`
+	VehicleBrand      string `json:"merk,omitempty"`
+	VehicleType       string `json:"nama_tipe,omitempty"`
+	ChassisNumber     string `json:"nomor_chasis,omitempty"`
 }
 
 // ReporterDTO adalah orang yang melaporkan kejadian.

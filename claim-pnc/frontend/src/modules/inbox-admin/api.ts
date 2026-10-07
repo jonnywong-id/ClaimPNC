@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { callAPI } from '@/api/client'
+import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { FilterForm, ListResponse, MetadataResponse } from './types'
+import type { CountsResponse, FilterForm, ListResponse, MetadataResponse, ViewerResponse } from './types'
 
 const PATH = '/api/inbox-admin'
 
@@ -20,7 +20,7 @@ const keys = {
     ['inbox-admin', 'tab', portal, token] as const,
 
   list: (portal: string | null, token: string | null, filter: FilterForm, page: number) =>
-    ['inbox-admin', 'daftar', portal, token, filter.tab, filter.bisnis, filter.cari, page] as const,
+    ['inbox-admin', 'daftar', portal, token, filter.tab, filter.bisnis, filter.cari, filter.kanwil, page] as const,
 }
 
 /**
@@ -100,8 +100,78 @@ function buildPath(filter: FilterForm, page: number): string {
   if (filter.tab) params.set('tab', filter.tab)
   if (filter.bisnis) params.set('bisnis', filter.bisnis)
   if (filter.cari.trim()) params.set('cari', filter.cari.trim())
+  if (filter.kanwil) params.set('kanwil', filter.kanwil)
   if (page > 1) params.set('halaman', String(page))
 
   const query = params.toString()
   return query ? `${PATH}?${query}` : PATH
+}
+
+/** Tiga tombol ekspor CSV layar lama. */
+export type ExportKind = 'lod' | 'hasil-auto-claim' | 'klaim-gagal'
+
+/**
+ * useInboxAdminExport mengunduh satu berkas ekspor lalu menyerahkannya ke peramban.
+ *
+ * Lewat `fetch`, bukan tautan biasa: unduhannya menuntut header `Authorization` dan
+ * `X-Portal`, dan menaruh keduanya di URL akan mencatat token dan entitas di log proxy.
+ *
+ * Penyaring yang sedang dipakai ikut dikirim untuk Export LOD, sehingga berkasnya berisi
+ * baris yang sedang dilihat petugas — seluruh halamannya.
+ */
+export function useInboxAdminExport() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return async (kind: ExportKind, filter: FilterForm): Promise<void> => {
+    const params = new URLSearchParams()
+    if (kind === 'lod') {
+      if (filter.bisnis) params.set('bisnis', filter.bisnis)
+      if (filter.cari.trim()) params.set('cari', filter.cari.trim())
+      if (filter.kanwil) params.set('kanwil', filter.kanwil)
+    }
+    const query = params.toString()
+    const path = `${PATH}/ekspor/${kind}${query ? `?${query}` : ''}`
+    simpanBerkas(await unduhBerkas(path, { token, portal }))
+  }
+}
+
+/**
+ * useInboxAdminCounts mengambil jumlah baris setiap tab untuk daftar Status Register.
+ *
+ * Hanya penyaring lini bisnis yang ikut: angka di daftar adalah ukuran antrean, bukan hasil
+ * pencarian.
+ */
+export function useInboxAdminCounts(business: string, region: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const params = new URLSearchParams()
+  if (business) params.set('bisnis', business)
+  if (region) params.set('kanwil', region)
+  const query = params.toString() ? `?${params.toString()}` : ''
+
+  return useQuery({
+    queryKey: ['inbox-admin', 'jumlah', portal, token, business, region] as const,
+    queryFn: () => callAPI<CountsResponse>(`${PATH}/jumlah${query}`, { token, portal }),
+    enabled: enabled && token !== null && portal !== null,
+    placeholderData: (previous) => previous,
+    staleTime: 15 * 1000,
+  })
+}
+
+/**
+ * useInboxAdminViewer membaca batas data pemanggil: apakah ia manajer (boleh memilih
+ * kanwil), cabang yang membatasinya, dan isi dropdown kanwil.
+ */
+export function useInboxAdminViewer(enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['inbox-admin', 'batas', portal, token] as const,
+    queryFn: () => callAPI<ViewerResponse>(`${PATH}/batas`, { token, portal }),
+    enabled: enabled && token !== null && portal !== null,
+    // Peran dan cabang petugas tidak berubah selama sesi berjalan.
+    staleTime: 5 * 60 * 1000,
+  })
 }

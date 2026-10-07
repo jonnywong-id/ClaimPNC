@@ -399,6 +399,8 @@ export const MENU_ROUTES: Record<string, string> = {
   // SLIK diisi jalur akseptasi dan masih dimiliki Pega (`P-1`), dan kontrak layanan
   // pengirimannya tidak ada di export (`R-16`).
   MonitoringSLINKOJK: '/monitoring-slink-ojk',
+  // MENU_ID 87 "Konversi Coverage" — dokumen coverage polis LIVE → tabel relasional TEST.
+  KonversiCoverage: '/konversi-coverage',
   // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
   // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
   //

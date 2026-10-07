@@ -194,6 +194,14 @@ UPDATE POOLDATA.T_CLAIM_OBJECTLIST
 -- Pekerjaan dan Tanggal Lahir peserta (grid objek PA, ShowObjectAdj) dibaca dari T_PERSONLIST polis
 -- pada NOPOLIS + PRODKE klaim, dicocokkan INDEXOBJECT = OBJECTID seperti GetListObjectPATravel.
 -- Objek bukan peserta tidak punya baris di sana dan kedua kolomnya NULL.
+--
+-- Kolom grid objek per lini (Section/InputRegisterDetail-sect.xml) dibaca dengan cara yang
+-- sama, baca saja, dari tabel objek polis:
+--   Travel -- KTP/Paspor (.ObjectIDCard) dan Status (.ObjectParticipantStatus) dari
+--             T_PERSONLIST.ASMIDCARD / ASMPARTICIPANTSTATUS;
+--   HE     -- Model, Merk, Nama Tipe, Nomor Chasis dari T_ANEKALIST, mengikuti alias
+--             RDB List/GetListObjectAneka: VEHICLEHEOBJECTNAMEHE, VEHICLEHEBRANDNAME,
+--             VEHICLEHETYPENAME, VEHICLEHECHASSISNUMBER.
 SELECT o.URUTAN, o.OBJECTID, o.OBJECTNAME, o.LOKASI,
        (SELECT MAX(p.ASMJOBNAME)
           FROM POOLDATA.T_PERSONLIST p
@@ -201,6 +209,30 @@ SELECT o.URUTAN, o.OBJECTID, o.OBJECTNAME, o.LOKASI,
            AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
        (SELECT MAX(p.ASMDATEOFBIRTH)
           FROM POOLDATA.T_PERSONLIST p
+         WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
+           AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
+       (SELECT MAX(p.ASMIDCARD)
+          FROM POOLDATA.T_PERSONLIST p
+         WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
+           AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
+       (SELECT MAX(p.ASMPARTICIPANTSTATUS)
+          FROM POOLDATA.T_PERSONLIST p
+         WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
+           AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
+       (SELECT MAX(p.VEHICLEHEOBJECTNAMEHE)
+          FROM POOLDATA.T_ANEKALIST p
+         WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
+           AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
+       (SELECT MAX(p.VEHICLEHEBRANDNAME)
+          FROM POOLDATA.T_ANEKALIST p
+         WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
+           AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
+       (SELECT MAX(p.VEHICLEHETYPENAME)
+          FROM POOLDATA.T_ANEKALIST p
+         WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
+           AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID)),
+       (SELECT MAX(p.VEHICLEHECHASSISNUMBER)
+          FROM POOLDATA.T_ANEKALIST p
          WHERE p.NOPOLIS = c.NOPOLIS AND p.PRODKE = c.PRODKE
            AND CAST(p.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID))
   FROM POOLDATA.T_CLAIM_OBJECTLIST o
@@ -242,10 +274,29 @@ INSERT INTO POOLDATA.T_CLAIM_OBJECTCOVERAGE
         CLAIMID, URUTAN_OBJEK, URUTAN, COVERAGENAME)
 VALUES (:1, :2, :3 / 100, :4, :5, :6, :7, :8, :9, :10)
 
--- name: coverage_tandai_sisa
-UPDATE POOLDATA.T_CLAIM_OBJECTCOVERAGE
-   SET DIHAPUS_PADA = :1
- WHERE CLAIMID = :2 AND URUTAN_OBJEK = :3 AND URUTAN > :4 AND DIHAPUS_PADA IS NULL
+-- name: coverage_kunci
+--
+-- Seluruh baris coverage satu klaim -- termasuk yang sudah bertanda DIHAPUS_PADA -- untuk
+-- menentukan coverage mana yang sudah dibuang petugas sebelum pohon disimpan ulang.
+-- Lihat ClaimStore.dropRemoved.
+SELECT URUTAN_OBJEK, URUTAN, OBJECTID, OBJECTCOVERAGEID
+  FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
+ WHERE CLAIMID = :1
+
+-- name: coverage_hapus_sisa
+--
+-- Coverage yang dibuang petugas DIHAPUS, bukan lagi ditandai DIHAPUS_PADA -- permintaan
+-- Work Owner 2026-10-07: saat data coverage dihapus, datanya di T_CLAIM_OBJECTCOVERAGE
+-- juga ikut dihapus. Menyupersede penandaan ADR-0012 untuk tabel ini.
+DELETE FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
+ WHERE CLAIMID = :1 AND URUTAN_OBJEK = :2 AND URUTAN > :3
+
+-- name: coverage_hapus_objek_sisa
+--
+-- Coverage milik objek yang dibuang petugas ikut dihapus. Objeknya sendiri tetap
+-- ditandai DIHAPUS_PADA (objek_tandai_sisa) -- permintaan itu tidak menyangkut objek.
+DELETE FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
+ WHERE CLAIMID = :1 AND URUTAN_OBJEK > :2
 
 -- name: coverage_daftar
 --
@@ -257,16 +308,19 @@ SELECT URUTAN_OBJEK, URUTAN, COVERAGEID, CAUSEOFLOSSID, SUMTSI * 100, COVERAGENA
  ORDER BY URUTAN_OBJEK, URUTAN
 
 -- ============================================================================
--- SPREADING — insert bila belum ada, tanpa proses hapus
+-- SPREADING — sisip, perbarui, dan hapus mengikuti isi layar
 -- ============================================================================
 --
 -- Bentuk tabel POOLDATA.T_CLAIM_SPREADING DITETAPKAN Work Owner (CREATE_TABLE_2.sql,
--- 2026-09-26), dan cara menulisinya ditetapkan bersamanya: dari aplikasi hanya INSERT
--- bila barisnya belum ada, dan TIDAK ADA proses DELETE.
+-- 2026-09-26). Aturan tulis awalnya hanya INSERT tanpa DELETE; Work Owner
+-- MENGUBAHNYA 2026-10-07: saat data spreading dihapus, datanya di T_CLAIM_SPREADING
+-- juga ikut dihapus. Tanpa penghapusan, spreading yang dibuang petugas muncul kembali
+-- saat klaim dibuka ulang dan ikut terhitung pada aturan total 100% (D-51).
 --
 -- Kuncinya (CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE) — satu baris per jenis
--- treaty pada satu coverage. Dengan aturan tulis di atas, kunci itu konsisten: tidak ada
--- baris yang ditandai terhapus lalu digantikan baris berjenis sama.
+-- treaty pada satu coverage. Baris yang tetap ada DIPERBARUI, bukan dihapus lalu
+-- disisipkan ulang: tabelnya punya 18 kolom sementara aplikasi hanya menulis tujuh, dan
+-- penggantian utuh akan mengosongkan sebelas sisanya.
 --
 -- # Kenapa DUA pernyataan, bukan satu
 --
@@ -283,10 +337,23 @@ SELECT URUTAN_OBJEK, URUTAN, COVERAGEID, CAUSEOFLOSSID, SUMTSI * 100, COVERAGENA
 -- Pembagian dilakukan di Go dan hasilnya dibulatkan kembali di SQL saat dibaca, sehingga
 -- nilai yang keluar sama persis dengan yang masuk.
 
--- name: spreading_ada
-SELECT 1
+-- name: spreading_jenis
+SELECT TREATYTYPE
   FROM POOLDATA.T_CLAIM_SPREADING
+ WHERE CLAIMID = :1 AND OBJECTID = :2 AND OBJECTCOVERAGEID = :3
+
+-- name: spreading_perbarui
+UPDATE POOLDATA.T_CLAIM_SPREADING
+   SET TREATYNAME = :1, SHAREPERCENTAGE = :2, URUTAN = :3
+ WHERE CLAIMID = :4 AND OBJECTID = :5 AND OBJECTCOVERAGEID = :6 AND TREATYTYPE = :7
+
+-- name: spreading_hapus
+DELETE FROM POOLDATA.T_CLAIM_SPREADING
  WHERE CLAIMID = :1 AND OBJECTID = :2 AND OBJECTCOVERAGEID = :3 AND TREATYTYPE = :4
+
+-- name: spreading_hapus_coverage
+DELETE FROM POOLDATA.T_CLAIM_SPREADING
+ WHERE CLAIMID = :1 AND OBJECTID = :2 AND OBJECTCOVERAGEID = :3
 
 -- name: spreading_sisip
 INSERT INTO POOLDATA.T_CLAIM_SPREADING

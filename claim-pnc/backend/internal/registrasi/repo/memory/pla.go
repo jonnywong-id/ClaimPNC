@@ -100,6 +100,11 @@ func (s *PLA) UpdateNote(_ context.Context, claimID, number string, revision int
 
 func (s *PLA) Signature(_ context.Context, _ string) (string, []byte, error) { return "", nil, nil }
 
+// PASignature mengembalikan nama contoh tanpa gambar.
+func (s *PLA) PASignature(_ context.Context, id string) (string, []byte, error) {
+	return "Penanda Tangan " + id, nil, nil
+}
+
 func (s *PLA) LODEmails(_ context.Context, claimNumber, pic string) (string, string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

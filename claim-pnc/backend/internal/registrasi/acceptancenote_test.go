@@ -30,7 +30,7 @@ func TestAcceptanceNoteSpreading(t *testing.T) {
 	}
 }
 
-// PRINT hanya untuk baris bernomor akseptasi; Travel dan PA belum punya tata letak.
+// PRINT hanya untuk baris bernomor akseptasi; Travel belum punya tata letak, PA sudah.
 func TestCanPrintAcceptanceNote(t *testing.T) {
 	if err := CanPrintAcceptanceNote(SettlementLine{}, Policy{}); err == nil {
 		t.Fatal("tanpa nomor akseptasi harus ditolak")
@@ -39,9 +39,12 @@ func TestCanPrintAcceptanceNote(t *testing.T) {
 	if err := CanPrintAcceptanceNote(line, Policy{Line: LineMarineCargo}); err != nil {
 		t.Fatalf("marine ditolak: %v", err)
 	}
-	for _, p := range []Policy{{Line: LineTravel}, {Line: LinePersonalAccident}} {
+	if err := CanPrintAcceptanceNote(line, Policy{Line: LinePersonalAccident}); err != nil {
+		t.Fatalf("PA ditolak: %v", err)
+	}
+	for _, p := range []Policy{{Line: LineTravel}, {BusinessType: "Travel"}} {
 		if err := CanPrintAcceptanceNote(line, p); err == nil {
-			t.Fatalf("%s harus ditolak", p.Line)
+			t.Fatalf("%+v harus ditolak", p)
 		}
 	}
 }

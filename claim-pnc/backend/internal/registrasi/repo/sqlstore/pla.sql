@@ -96,3 +96,12 @@ SELECT t.EMAIL
   FROM POOLDATA.MST_USER_TEKNIK t
  WHERE t.OPERATOR_ID = :1
  FETCH FIRST 1 ROWS ONLY
+
+-- name: pa_ttd
+--
+-- BrowseSignature-SQL: tanda tangan menurut SIGNATURE_ID. JSONDATA adalah dokumen JSON yang
+-- di Pega dimuat apa adanya ke SignatureFiles (adoptJSONObject); gambar di kunci TTD
+-- (tersimpan dengan spasi di belakang) dan nama di SIGNATURE_NAME.
+SELECT JSONDATA
+  FROM POOLDATA.M_SIGNATURE1
+ WHERE SIGNATURE_ID = :1

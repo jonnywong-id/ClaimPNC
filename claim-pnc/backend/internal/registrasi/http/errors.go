@@ -39,6 +39,7 @@ const (
 	CodeInternalError        = "galat_internal"
 	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
 	CodeCashierUnavailable   = "kasir_tidak_terhubung"
+	CodeCashierNoReply       = "kasir_tidak_menjawab"
 	CodeCashierRejected      = "kasir_menolak"
 )
 
@@ -227,6 +228,15 @@ func mapError(err error) (int, ErrorResponse) {
 		return http.StatusBadRequest, ErrorResponse{
 			Code:    CodeInvalidAction,
 			Message: "Tindakan itu tidak berlaku pada tahap ini.",
+		}
+
+	case errors.Is(err, usecase.ErrCashierNoReply):
+		// Kasir menerima permintaan tetapi tidak menjawab: pembayaran MUNGKIN sudah diproses.
+		// Baris tidak ditandai terkirim; petugas diminta memeriksa Kasir sebelum mengulang.
+		return http.StatusGatewayTimeout, ErrorResponse{
+			Code: CodeCashierNoReply,
+			Message: "The cashier system did not reply in time. The transfer may already have been received by the cashier — " +
+				"check it in the cashier system before trying again, so the payment is not sent twice.",
 		}
 
 	case errors.Is(err, usecase.ErrCashierUnavailable):

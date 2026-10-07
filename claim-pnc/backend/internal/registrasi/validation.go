@@ -96,6 +96,7 @@ func Validate(k Claim, b Parts) error {
 	validatePolicyPeriodActive(v, k, b.Now)
 	validateDates(v, k, b.Now)
 	validateReporterStatus(v, k)
+	validateLocation(v, k)
 	validateDuplicateClaim(v, b.Duplicates)
 	validateItemsAndCoverage(v, k)
 	validateSpreading(v, k)
@@ -250,6 +251,17 @@ func validateReporterStatus(v *collector, k Claim) {
 	v.add(ViolationReporterStatusEmpty, "hubungan_lainnya", "Pilih Status Pelapor.")
 }
 
+// validateLocation — isian Lokasi (.ClaimData.Location) di InputRegisterDetail-sect bertanda
+// `pyRequired=always`. Tanpa aturan ini klaim lolos Input Register dengan lokasi kosong, lalu
+// baru tertahan di akseptasi ("Location kosong !!", AcceptationLOD_PreAct) — terukur pada
+// PNCN.26.38, 2026-10-07.
+func validateLocation(v *collector, k Claim) {
+	if strings.TrimSpace(k.Location) != "" {
+		return
+	}
+	v.add(ViolationLocationEmpty, "lokasi", "Lokasi Kerugian/Kejadian is required.")
+}
+
 // validateDuplicateClaim — langkah 32 dan 33.
 //
 // Kunci duplikasinya disusun usecase, bukan di sini: ia menyentuh basis data. Yang ada
@@ -263,17 +275,33 @@ func validateDuplicateClaim(v *collector, duplicate []DuplicateClaim) {
 }
 
 // validateItemsAndCoverage — langkah 4.4 dan 37.3.3.
+//
+// # Cukup SATU objek yang terisi — Work Owner, 2026-10-07
+//
+// Sistem lama menolak registrasi bila ADA objek polis tanpa coverage, dan memeriksa
+// Penyebab Kerugian pada coverage SETIAP objek. Pada polis berobjek banyak, petugas harus
+// melengkapi objek yang tidak terdampak kerugian hanya supaya registrasinya lolos.
+//
+// Sekarang yang diwajibkan: minimal SATU objek terisi (lihat filledItems). Objek lain yang
+// belum terisi tidak memblokir, dan Penyebab Kerugian hanya diperiksa pada objek terisi.
 func validateItemsAndCoverage(v *collector, k Claim) {
+	withCoverage := false
 	for _, o := range k.InsuredItem {
-		if len(o.Coverage) == 0 {
-			v.add(ViolationItemWithoutCoverage, "objek",
-				"Objek "+itemName(o)+" tidak memiliki coverage.")
-			continue
+		if len(o.Coverage) > 0 {
+			withCoverage = true
+			break
 		}
-		// Penyebab kerugian wajib untuk seluruh lini KECUALI Travel.
-		if k.Policy.Line == LineTravel {
-			continue
-		}
+	}
+	if !withCoverage {
+		v.add(ViolationItemWithoutCoverage, "objek",
+			"Tidak ada objek yang memiliki coverage. Minimal satu objek harus diisi coverage.")
+		return
+	}
+	// Penyebab kerugian wajib untuk seluruh lini KECUALI Travel.
+	if k.Policy.Line == LineTravel {
+		return
+	}
+	for _, o := range filledItems(k) {
 		for _, c := range o.Coverage {
 			if strings.TrimSpace(c.CauseOfLoss) == "" {
 				v.add(ViolationCauseOfLossEmpty, "penyebab_kerugian",
@@ -281,6 +309,34 @@ func validateItemsAndCoverage(v *collector, k Claim) {
 			}
 		}
 	}
+}
+
+// filledItems mengembalikan objek yang TERISI: punya minimal satu coverage, dan setiap
+// coverage-nya punya spreading dengan total dalam toleransi `ADR-0016`.
+//
+// Objek yang tidak terisi tidak memblokir registrasi — cukup satu objek terisi
+// (Work Owner, 2026-10-07).
+func filledItems(k Claim) []InsuredItem {
+	var result []InsuredItem
+	for _, o := range k.InsuredItem {
+		if itemFilled(o) {
+			result = append(result, o)
+		}
+	}
+	return result
+}
+
+func itemFilled(o InsuredItem) bool {
+	if len(o.Coverage) == 0 {
+		return false
+	}
+	for _, c := range o.Coverage {
+		total := c.TotalSpreading()
+		if total < spreadingLowerBound || total > spreadingUpperBound {
+			return false
+		}
+	}
+	return true
 }
 
 func itemName(o InsuredItem) string {
@@ -302,6 +358,10 @@ const (
 )
 
 // validateSpreading — langkah 37.3.2, 37.3.5.3, 37.3.5.4, dan 37.3.6.
+//
+// Total 100% dan kelengkapan Fac Offer hanya diperiksa pada objek TERISI (filledItems):
+// objek lain boleh belum dilengkapi, asalkan minimal satu objek terisi (Work Owner,
+// 2026-10-07). Sebelumnya setiap coverage SETIAP objek wajib 100%.
 func validateSpreading(v *collector, k Claim) {
 	if k.SpreadingCount() == 0 {
 		v.add(ViolationNoSpreading, "spreading",
@@ -309,26 +369,27 @@ func validateSpreading(v *collector, k Claim) {
 		return
 	}
 
-	for _, c := range k.AllCoverages() {
-		for _, s := range c.Spreading {
-			if s.Removed || s.TreatyKind != TreatyFacOut {
-				continue
-			}
-			if strings.TrimSpace(s.FacOfferItem) == "" {
-				v.add(ViolationFacOfferIncomplete, "spreading",
-					"Data Spreading Facout : Object Name belum lengkap.")
-			}
-		}
+	filled := filledItems(k)
+	if len(filled) == 0 {
+		// Pesannya menyebut aturan barunya: petugas perlu tahu bahwa SATU objek cukup,
+		// bukan bahwa seluruh objek harus diperbaiki.
+		v.add(ViolationSpreadingTotalNot100, "spreading",
+			"Total share spreading tidak 100%. Minimal satu objek harus memiliki coverage "+
+				"dengan total share spreading 100% pada setiap coverage-nya.")
+		return
 	}
 
-	// Diperiksa per jaminan (langkah 37.3.6 di dalam loop coverage). Pesannya satu kali saja
-	// berapa pun jaminan yang tidak 100% — teksnya sama untuk semuanya.
-	for _, c := range k.AllCoverages() {
-		total := c.TotalSpreading()
-		if total < spreadingLowerBound || total > spreadingUpperBound {
-			v.add(ViolationSpreadingTotalNot100, "spreading",
-				"Total share spreading tidak 100%. Silakan cek spreading kembali")
-			break
+	for _, o := range filled {
+		for _, c := range o.Coverage {
+			for _, s := range c.Spreading {
+				if s.Removed || s.TreatyKind != TreatyFacOut {
+					continue
+				}
+				if strings.TrimSpace(s.FacOfferItem) == "" {
+					v.add(ViolationFacOfferIncomplete, "spreading",
+						"Data Spreading Facout : Object Name belum lengkap.")
+				}
+			}
 		}
 	}
 }

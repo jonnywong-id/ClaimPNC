@@ -26,8 +26,12 @@ import (
 //   - lampiran `AttachAsPDFC` kategori AcceptanceNote dan email Draft Akseptasi (Travel
 //     TRAVELOKASVC) serta `SendEmailAccCollection` (salvage).
 //
-// Travel dan Personal Accident memakai tata letak lain pada template yang sama (tabel jaminan,
-// dua tanda tangan `SetSignaturePA`); keduanya belum dibangun dan ditolak dengan pesan jelas.
+// Travel dan Personal Accident memakai template yang SAMA (`AcceptanceNotePDF`, tanpa
+// percabangan pemilihan template di activity); bedanya ada di blok `pega:when` di dalamnya.
+// Personal Accident (`GroupPanel='002'`) dibangun — label "Accident", dua tanda tangan
+// `SetSignaturePA` dari POOLDATA.M_SIGNATURE1, tanpa alamat kaki. Travel belum: tabel "Jenis
+// Jaminan"-nya diisi `ObjectCoverageDetailList` jaminan (nama, limit, ID rincian), dan daftar
+// itu belum dibaca maupun disimpan di mana pun di sistem ini.
 
 // AcceptanceNoteFileName adalah nama berkas Pega: `"DraftPersetujuan_"+"NO."+acceptedNo+".pdf"`.
 func AcceptanceNoteFileName(acceptedNo string) string {
@@ -41,15 +45,15 @@ const (
 )
 
 // CanPrintAcceptanceNote memeriksa tombol PRINT seperti InputAdjustment_sect: Nomor Akseptasi
-// terisi. Tata letak Travel dan PA belum tersedia.
+// terisi. Tata letak Travel belum tersedia (lihat catatan kepala berkas).
 func CanPrintAcceptanceNote(line SettlementLine, p Policy) error {
 	if strings.TrimSpace(line.AcceptedNo) == "" {
 		return &ValidationError{Violation: []Violation{{Code: ViolationAcceptanceNoteNotAllowed, Field: "akseptasi",
 			Message: "The adjustment has no Nomor Akseptasi yet."}}}
 	}
-	if p.Line == LineTravel || p.BusinessType == "Travel" || p.Line == LinePersonalAccident {
+	if p.Line == LineTravel || p.BusinessType == "Travel" {
 		return &ValidationError{Violation: []Violation{{Code: ViolationAcceptanceNoteLayout, Field: "akseptasi",
-			Message: "The Draft Persetujuan layout for Travel and Personal Accident is not available yet."}}}
+			Message: "The Draft Persetujuan layout for Travel is not available yet: its Jenis Jaminan table needs the coverage detail list, which this system does not read yet."}}}
 	}
 	return nil
 }
@@ -113,11 +117,15 @@ type AcceptanceNoteReceiver struct {
 	Name, Bank, Branch, AccountNo string
 }
 
-// AcceptanceNote adalah isi satu Draft Persetujuan tata letak umum (bukan Travel, bukan PA).
+// AcceptanceNote adalah isi satu Draft Persetujuan: tata letak umum, atau Personal Accident
+// bila PersonalAccident bernilai benar.
 type AcceptanceNote struct {
-	Entity       string // ASM atau ASI
-	AcceptedNo   string
-	PaymentLabel string
+	Entity string // ASM atau ASI
+	// PersonalAccident memilih blok `GroupPanel='002'` template: judul dan label "Accident",
+	// dua tanda tangan PASigners, tanpa alamat perusahaan di kaki halaman.
+	PersonalAccident bool
+	AcceptedNo       string
+	PaymentLabel     string
 
 	PolicyNumber    string
 	ClaimNumber     string
@@ -154,6 +162,35 @@ type AcceptanceNote struct {
 	SignerName string    // KomiteAccepted
 	SignerID   string    // Tempinput.BranchID — ukuran gambar BAMBANGSG berbeda
 	Signature  []byte
+
+	// PASigners adalah dua tanda tangan blok PA (`SetSignaturePA`), kiri lalu kanan.
+	PASigners []AcceptanceNoteSigner
+}
+
+// AcceptanceNoteSigner adalah satu tanda tangan blok PA: gambar, nama, dan jabatannya.
+type AcceptanceNoteSigner struct {
+	Name      string
+	Title     string
+	Signature []byte
+}
+
+// AcceptanceNotePATitles adalah jabatan di bawah kedua tanda tangan blok PA — teks template.
+var AcceptanceNotePATitles = [2]string{"Accident & Health Ins. Claim Dept.Head", "Claim Section Head"}
+
+// AcceptanceNotePASignatureIDs adalah `SetSignaturePA`: SIGNATURE_ID POOLDATA.M_SIGNATURE1
+// kedua tanda tangan PA per entitas; ID kosong berarti tanda tangan itu tidak dibaca.
+//
+// ASI (SIMASNET) di Pega memakai 60792 untuk tanda tangan pertama dan tanda tangan PENGGUNA
+// YANG LOGIN untuk yang kedua (`BrowseSignatureNMBU` per login). Yang kedua belum dibawa —
+// kolomnya tercetak tanpa gambar dan nama.
+//
+// PENGECUALIAN `D-15` yang disadari, sama dengan tanda tangan PLA, DLA, dan Draft
+// Persetujuan umum: ID penanda tangan tertanam di rule Pega, belum ada master per entitas.
+func AcceptanceNotePASignatureIDs(entity string) [2]string {
+	if strings.TrimSpace(entity) == "ASI" {
+		return [2]string{"60792", ""}
+	}
+	return [2]string{"00924", "60018"}
 }
 
 // AcceptanceNoteBlock menyatakan blok nilai yang dicetak menurut tipe pembayaran.
