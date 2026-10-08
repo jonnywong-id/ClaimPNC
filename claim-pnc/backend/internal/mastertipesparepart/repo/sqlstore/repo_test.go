@@ -16,8 +16,10 @@ import (
 var errBoom = errors.New("boom")
 
 var (
-	joinedColumns = []string{"ID", "NAMA", "KATEGORI_ID", "KATEGORI_NAMA", "APPROVAL"}
-	nameColumns   = []string{"ID", "NAMA", "KATEGORI_ID", "APPROVAL"}
+	// SATU bentuk baris untuk keempat kueri pembaca. Sejak JOIN-nya dicabut (2026-10-04),
+	// type_list, type_list_search, type_get, dan type_find_by_name mengembalikan kolom yang
+	// sama persis — dan scanRow pun tinggal satu.
+	rowColumns = []string{"ID", "NAMA", "KATEGORI_ID", "APPROVAL"}
 )
 
 func newMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
@@ -34,15 +36,15 @@ func q(name string) string { return regexp.QuoteMeta(getQuery(name)) }
 // Tanpa kata kunci dipakai type_list; kunci berbentuk "8.0" dan "08" dirapikan menjadi "8".
 func TestListWithoutKeywordTidiesKeys(t *testing.T) {
 	db, mock := newMock(t)
-	mock.ExpectQuery(q("type_list")).WithArgs("1").WillReturnRows(sqlmock.NewRows(joinedColumns).
-		AddRow("8.0", " Body ", "08", nil, " 1 ").
-		AddRow("1E3", "X", "abc", "Kat", "1"))
+	mock.ExpectQuery(q("type_list")).WithArgs("1").WillReturnRows(sqlmock.NewRows(rowColumns).
+		AddRow("8.0", " Body ", "08", " 1 ").
+		AddRow("1E3", "X", "abc", "1"))
 
 	got, err := NewRepo(db).List(context.Background(), mastertipesparepart.Filter{Status: mastertipesparepart.StatusApproved})
 	require.NoError(t, err)
 	require.Equal(t, []mastertipesparepart.PartType{
 		{ID: "8", Name: "Body", CategoryID: "8", Status: mastertipesparepart.StatusApproved},
-		{ID: "1E3", Name: "X", CategoryID: "abc", CategoryName: "Kat", Status: mastertipesparepart.StatusApproved},
+		{ID: "1E3", Name: "X", CategoryID: "abc", Status: mastertipesparepart.StatusApproved},
 	}, got)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -50,7 +52,7 @@ func TestListWithoutKeywordTidiesKeys(t *testing.T) {
 // Kata kunci diubah ke huruf besar dan karakter pola LIKE diloloskan.
 func TestListWithKeywordEscapesPattern(t *testing.T) {
 	db, mock := newMock(t)
-	mock.ExpectQuery(q("type_list_search")).WithArgs("0", `%A\%\_\\B%`).WillReturnRows(sqlmock.NewRows(joinedColumns))
+	mock.ExpectQuery(q("type_list_search")).WithArgs("0", `%A\%\_\\B%`).WillReturnRows(sqlmock.NewRows(rowColumns))
 
 	got, err := NewRepo(db).List(context.Background(), mastertipesparepart.Filter{
 		Status: mastertipesparepart.StatusPending, Keyword: ` a%_\b `,
@@ -78,7 +80,7 @@ func TestListErrors(t *testing.T) {
 	t.Run("rows err", func(t *testing.T) {
 		db, mock := newMock(t)
 		mock.ExpectQuery(q("type_list")).WillReturnRows(
-			sqlmock.NewRows(joinedColumns).AddRow("1", "a", "1", "k", "1").RowError(0, errBoom))
+			sqlmock.NewRows(rowColumns).AddRow("1", "a", "1", "1").RowError(0, errBoom))
 		_, err := NewRepo(db).List(context.Background(), filter)
 		require.ErrorIs(t, err, errBoom)
 		require.Contains(t, err.Error(), "menelusuri daftar")
@@ -90,12 +92,12 @@ func TestGet(t *testing.T) {
 	repo := NewRepo(db)
 
 	mock.ExpectQuery(q("type_get")).WithArgs("8").WillReturnRows(
-		sqlmock.NewRows(joinedColumns).AddRow("8", "Body", "3", "Eksterior", "0"))
+		sqlmock.NewRows(rowColumns).AddRow("8", "Body", "3", "0"))
 	got, err := repo.Get(context.Background(), " 8 ")
 	require.NoError(t, err)
-	require.Equal(t, "Eksterior", got.CategoryName)
+	require.Equal(t, "3", got.CategoryID)
 
-	mock.ExpectQuery(q("type_get")).WithArgs("9").WillReturnRows(sqlmock.NewRows(joinedColumns))
+	mock.ExpectQuery(q("type_get")).WithArgs("9").WillReturnRows(sqlmock.NewRows(rowColumns))
 	_, err = repo.Get(context.Background(), "9")
 	require.ErrorIs(t, err, mastertipesparepart.ErrNotFound)
 
@@ -111,19 +113,19 @@ func TestFindByName(t *testing.T) {
 	repo := NewRepo(db)
 
 	mock.ExpectQuery(q("type_find_by_name")).WithArgs("BODY").WillReturnRows(
-		sqlmock.NewRows(nameColumns).AddRow("8.0", "Body", "3", "1"))
+		sqlmock.NewRows(rowColumns).AddRow("8.0", "Body", "3", "1"))
 	got, err := repo.FindByName(context.Background(), " body ")
 	require.NoError(t, err)
 	require.Equal(t, mastertipesparepart.PartType{ID: "8", Name: "Body", CategoryID: "3", Status: "1"}, got)
 
-	mock.ExpectQuery(q("type_find_by_name")).WithArgs("X").WillReturnRows(sqlmock.NewRows(nameColumns))
+	mock.ExpectQuery(q("type_find_by_name")).WithArgs("X").WillReturnRows(sqlmock.NewRows(rowColumns))
 	_, err = repo.FindByName(context.Background(), "x")
 	require.ErrorIs(t, err, mastertipesparepart.ErrNotFound)
 
 	mock.ExpectQuery(q("type_find_by_name")).WithArgs("Y").WillReturnError(errBoom)
 	_, err = repo.FindByName(context.Background(), "y")
 	require.ErrorIs(t, err, errBoom)
-	require.Contains(t, err.Error(), "membaca baris menurut nama")
+	require.Contains(t, err.Error(), "membaca baris")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -167,13 +169,13 @@ func TestInsertLocksChecksIssuesAndInserts(t *testing.T) {
 	db, mock := newMock(t)
 	mock.ExpectBegin()
 	mock.ExpectExec(q("type_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectQuery(q("type_find_by_name")).WithArgs("BODY").WillReturnRows(sqlmock.NewRows(nameColumns))
+	mock.ExpectQuery(q("type_find_by_name")).WithArgs("BODY").WillReturnRows(sqlmock.NewRows(rowColumns))
 	mock.ExpectQuery(q("type_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(12))
 	mock.ExpectExec(q("type_insert")).WithArgs("12", "Body", "3", "0").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	got, err := NewRepo(db).Insert(context.Background(), mastertipesparepart.PartType{
-		ID: "abaikan", Name: "Body", CategoryID: "3", CategoryName: "Eksterior", Status: mastertipesparepart.StatusPending,
+		ID: "abaikan", Name: "Body", CategoryID: "3", Status: mastertipesparepart.StatusPending,
 	})
 	require.NoError(t, err)
 	require.Equal(t, mastertipesparepart.PartType{ID: "12", Name: "Body", CategoryID: "3", Status: "0"}, got)
@@ -196,7 +198,7 @@ func TestInsertErrors(t *testing.T) {
 		{"name taken", func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 			mock.ExpectExec(q("type_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(nameColumns).AddRow("1", "Body", "3", "1"))
+			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(rowColumns).AddRow("1", "Body", "3", "1"))
 			mock.ExpectRollback()
 		}, func(t *testing.T, err error) { require.ErrorIs(t, err, mastertipesparepart.ErrNameTaken) }},
 		{"name check error", func(mock sqlmock.Sqlmock) {
@@ -208,21 +210,21 @@ func TestInsertErrors(t *testing.T) {
 		{"next id error", func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 			mock.ExpectExec(q("type_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(nameColumns))
+			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(rowColumns))
 			mock.ExpectQuery(q("type_next_id")).WillReturnError(errBoom)
 			mock.ExpectRollback()
 		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "menerbitkan ID tipe") }},
 		{"next id not positive", func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 			mock.ExpectExec(q("type_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(nameColumns))
+			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(rowColumns))
 			mock.ExpectQuery(q("type_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(0))
 			mock.ExpectRollback()
 		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "tidak masuk akal: 0") }},
 		{"insert", func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 			mock.ExpectExec(q("type_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(nameColumns))
+			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(rowColumns))
 			mock.ExpectQuery(q("type_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(1))
 			mock.ExpectExec(q("type_insert")).WillReturnError(errBoom)
 			mock.ExpectRollback()
@@ -230,7 +232,7 @@ func TestInsertErrors(t *testing.T) {
 		{"commit", func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 			mock.ExpectExec(q("type_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(nameColumns))
+			mock.ExpectQuery(q("type_find_by_name")).WillReturnRows(sqlmock.NewRows(rowColumns))
 			mock.ExpectQuery(q("type_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(1))
 			mock.ExpectExec(q("type_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectCommit().WillReturnError(errBoom)
@@ -364,7 +366,7 @@ func TestCounters(t *testing.T) {
 
 func TestCheckTable(t *testing.T) {
 	db, mock := newMock(t)
-	mock.ExpectQuery(q("type_check_table")).WillReturnRows(sqlmock.NewRows(nameColumns))
+	mock.ExpectQuery(q("type_check_table")).WillReturnRows(sqlmock.NewRows(rowColumns))
 	require.NoError(t, NewRepo(db).CheckTable(context.Background()))
 
 	mock.ExpectQuery(q("type_check_table")).WillReturnError(errBoom)

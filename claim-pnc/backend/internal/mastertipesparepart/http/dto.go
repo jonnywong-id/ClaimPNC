@@ -20,16 +20,20 @@ import "claim-pnc/internal/mastertipesparepart"
 // nama field JSON termasuk di dalamnya, karena mengubahnya adalah perubahan yang merusak
 // klien, bukan penggantian nama.
 //
-// # Kenapa enam field untuk tabel berkolom empat
+// # Lima field: keempat kolom tabel, ditambah label status
 //
-// Dua di antaranya bukan kolom tabel ini. `nama_kategori_sparepart` milik tabel kategori
-// dan ikut dibaca lewat JOIN — grid layar lama memang menampilkan keduanya berdampingan.
 // `status_label` diturunkan dari `status` supaya layar tidak perlu menyimpan petanya
 // sendiri.
 //
-// Tidak ada `user_update` maupun `tanggal_update`: `POOLDATA.GCNM_M_SPAREPART_TYPE` tidak
-// punya kolomnya. Mengirim keduanya sebagai string kosong akan membuat layar menggambar
-// kolom yang selamanya kosong.
+// Yang TIDAK ada, dan itu disengaja:
+//
+//	nama_kategori_sparepart  grid Pega tidak menampilkannya (koreksi Work Owner 2026-10-04);
+//	                         kueri grid Pega pun tanpa JOIN sama sekali
+//	user_update              tabelnya tidak punya kolom pencatat pelaku
+//	tanggal_update           tabelnya tidak punya kolom waktu
+//
+// Mengirim yang terakhir sebagai string kosong akan membuat layar menggambar kolom yang
+// selamanya kosong.
 type PartTypeDTO struct {
 	// ID adalah kolom PART_SECTION_ID. Teks, meski isinya angka — lihat catatan pada
 	// mastertipesparepart.PartType.
@@ -40,14 +44,6 @@ type PartTypeDTO struct {
 
 	// CategoryID adalah kolom PART_CATEGORY_ID — induk tipe ini.
 	CategoryID string `json:"id_kategori_sparepart"`
-
-	// CategoryName adalah PART_CATEGORY_NAME milik tabel kategori, dibaca lewat JOIN.
-	//
-	// Ia dapat KOSONG, dan itu bukan galat: kuerinya memakai LEFT JOIN, sehingga tipe yang
-	// menunjuk kategori yang tidak ada tetap terkirim dengan nama kategori kosong. Di sistem
-	// lama baris seperti itu justru HILANG dari daftar. Layar menampilkannya sebagai tanda
-	// "—" beserta keterangan, bukan sebagai sel kosong yang tidak dapat dijelaskan.
-	CategoryName string `json:"nama_kategori_sparepart"`
 
 	// Status adalah kolom APPROVAL, dikirim apa adanya sebagai "0", "1", atau "2".
 	//
@@ -176,12 +172,11 @@ type ViolationDTO struct {
 // toDTO mengubah satu baris domain menjadi bentuk yang dikirim ke klien.
 func toDTO(t mastertipesparepart.PartType) PartTypeDTO {
 	return PartTypeDTO{
-		ID:           t.ID,
-		Name:         t.Name,
-		CategoryID:   t.CategoryID,
-		CategoryName: t.CategoryName,
-		Status:       string(t.Status),
-		StatusLabel:  t.Status.Label(),
+		ID:          t.ID,
+		Name:        t.Name,
+		CategoryID:  t.CategoryID,
+		Status:      string(t.Status),
+		StatusLabel: t.Status.Label(),
 	}
 }
 

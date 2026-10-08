@@ -31,25 +31,36 @@ import (
 // `POOLDATA.SET_ATTACHMENT_64BIT`, yang menerbitkan `DATAID` lalu menaruhnya di
 // `BENGKEL_HE.DOKUMENID`.
 //
-// # Satu lubang yang Pega tinggalkan, dan diisi di sini
+// # Satu lubang yang Pega tinggalkan, dan ke mana isinya dialihkan
 //
-// `SET_ATTACHMENT_64BIT` **tidak menulis kolom `ATTACHFILE`**, dan jalur Master Bengkel
-// **tidak pernah mengisi `IMAGEID`** — `PNCUploadMasterBengkel_Act`, `SaveFilePenunjang`,
-// maupun `Section/UploadDocument` tidak menyebut `IMAGEID`, `GenerateimageID`, maupun
-// `InsertDokumenPNC` satu kali pun. `SaveFilePenunjang` menghasilkan `FileBase64`, dan nilai
-// itu tidak pernah dikirim ke mana pun.
+// Di sistem lama isi berkasnya TIDAK pernah tersimpan, dan itu terbaca utuh dari rantainya:
 //
-// Akibatnya di sistem lama: barisnya tercatat, berkasnya hilang, dan "Lihat Dokumen"
-// menemukan metadata yang menunjuk isi kosong.
+//   - `Activity/PNCSaveAttachmentToDB` MENYETEL isinya di halaman
+//     (`InsertAttachment.ATTACHFILE = Param.attachfile`),
+//   - tetapi `RDB List/SaveAttachmentToDB_Sql` memanggil prosedurnya dengan sembilan
+//     masukan — dan `ATTACHFILE` **bukan salah satunya**,
+//   - `Database/SET_ATTACHMENT_64BIT.prc:30-31` pun menyisipkan sepuluh kolom tanpa
+//     `ATTACHFILE`,
+//   - sehingga `GetAttachmentFromDB_Sql`, yang membacanya lewat `base64encode(attachfile)`,
+//     selalu menemukan kosong.
 //
-// Yang dipakai di sini adalah pola PEGA SENDIRI dari varian temp-nya —
-// `Database/TEMP_SET_ATTACHMENT_64BIT.prc:30-31` menyimpan isinya lewat parameter
-// `tATTACHFILE in clob` dan `POOLDATA.base64decode(...)`, dan `GetAttachmentFromDB_Sql`
-// memang membacanya kembali lewat `base64encode(attachfile)`. Jadi kolomnya ada, kolomnya
-// dibaca, dan hanya prosedur simpan yang dipakai layar ini yang melewatkannya.
+// Berkasnya dibaca dari peramban, dibawa melintasi tiga rule, lalu jatuh di pemanggilan
+// prosedurnya.
+//
+// Yang TIDAK dilakukan di sini adalah menambal kolom `ATTACHFILE`. Isi berkas dikirim ke
+// **layanan penyimpanan internal** (`D-16`) lewat jalur yang sudah terpasang di aplikasi ini
+// — modul `dokumenpenunjang`, tiruan rantai `InsertDokumenPNC` Pega — dan yang disimpan di
+// barisnya hanyalah `IMAGEID`-nya. Itu persis kolom yang `SET_ATTACHMENT_64BIT` memang
+// sediakan dan memang isi (`tIMAGEID`), sehingga bentuk barisnya tidak bergeser sedikit pun
+// dari Pega.
+//
+// Jalur yang sama dipakai Master Panel, Master Sparepart, Open Protection, dan registrasi,
+// lewat adapter `repo/dokumenlink` masing-masing. Membangunnya ulang di sini berarti dua
+// tiruan aturan Pega yang sama, dan keduanya akan menyimpang pada perbaikan pertama yang
+// hanya diterapkan di salah satunya.
 //
 // Ini **selisih terencana**, bukan perbaikan diam-diam: di uji kesetaraan, dokumen yang
-// diunggah sistem baru akan punya isi sedangkan dokumen Pega tidak.
+// diunggah sistem baru dapat dibuka, sedangkan dokumen Pega tidak.
 //
 // # Yang TIDAK dibawa
 //
@@ -118,23 +129,26 @@ type Document struct {
 	// `BENGKEL_HE.DOKUMENID`.
 	ID string
 
+	// ImageID adalah kunci berkasnya di layanan penyimpanan, mengisi kolom `IMAGEID`.
+	//
+	// Tanpa ini barisnya hanya metadata yang menunjuk ke ketiadaan — dan itulah keadaan
+	// SELURUH dokumen warisan Pega, yang jalur unggahnya tidak pernah mengisinya.
+	ImageID string
+
 	Name     string
 	Note     string
 	MimeType string
-
-	// Content adalah isi berkasnya. Kosong pada dokumen warisan Pega — lihat catatan
-	// kepala berkas ini.
-	Content []byte
 
 	UploadedBy string
 	UploadedAt time.Time
 }
 
-// HasContent membedakan dokumen yang berisi dari dokumen warisan yang hanya metadata.
+// HasFile membedakan dokumen yang berkasnya benar-benar ada dari dokumen warisan yang hanya
+// metadata.
 //
-// Layar memerlukannya: menawarkan tombol unduh untuk baris yang isinya kosong hanya
-// menghasilkan berkas nol byte, dan pengguna tidak punya cara tahu sebabnya.
-func (d Document) HasContent() bool { return len(d.Content) > 0 }
+// Layar memerlukannya: menawarkan tombol buka untuk baris tanpa `IMAGEID` hanya
+// menghasilkan kegagalan, dan pengguna tidak punya cara tahu sebabnya.
+func (d Document) HasFile() bool { return strings.TrimSpace(d.ImageID) != "" }
 
 // UploadInput adalah satu permintaan unggah, apa adanya dari transport.
 type UploadInput struct {
@@ -274,7 +288,7 @@ type DocumentIDSource interface {
 // Ia dideklarasikan di sini — di paket yang MEMAKAINYA — bukan di adapter, sehingga bentuk
 // yang dibutuhkan domain menjadi yang menentukan.
 type DocumentRepo interface {
-	// SaveDocument mencatat satu dokumen beserta isinya, lalu menautkannya ke bengkel.
+	// SaveDocument mencatat satu baris lampiran, lalu menautkannya ke bengkel.
 	//
 	// Keduanya satu transaksi: baris lampiran tanpa tautan adalah dokumen yatim yang tidak
 	// dapat ditemukan siapa pun, dan tautan tanpa baris lampiran adalah `DOKUMENID` yang
@@ -283,4 +297,76 @@ type DocumentRepo interface {
 
 	// FindDocument mengembalikan satu dokumen menurut `DATAID`.
 	FindDocument(ctx context.Context, documentID string) (Document, error)
+}
+
+// UploadFailure menggolongkan kegagalan unggah menurut APA YANG BOLEH DILAKUKAN PENGGUNA.
+//
+// Golongannya sengaja SAMA PERSIS dengan Master Sparepart dan Master Panel: pengguna yang
+// menemui kegagalan yang sama di dua layar tidak seharusnya membaca dua kalimat berbeda.
+//
+// "Unggah gagal" tanpa penggolongan membuat pengguna menebak apakah ia boleh mengulang, dan
+// pada unggahan menebak salah berakibat nyata — mengulang unggahan yang separuh berhasil
+// menghasilkan berkas ganda di layanan penyimpanan.
+type UploadFailure int
+
+const (
+	// UploadInvalid: isi permintaannya salah — perbaiki lalu ulangi.
+	UploadInvalid UploadFailure = iota + 1
+	// UploadTooLarge: berkas melampaui batas ukuran.
+	UploadTooLarge
+	// UploadUnavailable: layanan hulu gagal dan belum ada yang tersimpan — aman diulang.
+	UploadUnavailable
+	// UploadHalfDone: berkas sudah terkirim tetapi catatannya gagal — JANGAN diulang.
+	UploadHalfDone
+	// UploadMisconfigured: salah konfigurasi di sisi aplikasi.
+	UploadMisconfigured
+)
+
+// DocumentUploadError adalah galat unggah beserta golongan dan pesan siap tampil.
+type DocumentUploadError struct {
+	Kind    UploadFailure
+	Message string
+	Err     error
+}
+
+func (e *DocumentUploadError) Error() string {
+	if e == nil {
+		return ""
+	}
+	return e.Message
+}
+
+// Unwrap membuka galat aslinya supaya errors.Is tetap bekerja menembus terjemahan.
+func (e *DocumentUploadError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+// DocumentFile adalah satu berkas yang hendak diunggah ke layanan penyimpanan.
+type DocumentFile struct {
+	// Portal menentukan basis data entitas tujuannya (`D-75`).
+	Portal string
+
+	// FileName adalah nama asli yang dipilih pengguna, LENGKAP dengan ekstensinya —
+	// ekstensi itulah yang menentukan tipe medianya di hilir.
+	FileName string
+
+	// Content adalah isi berkas apa adanya. Penyandian base64 urusan adapter penyimpanan,
+	// bukan urusan modul ini.
+	Content []byte
+
+	// By adalah login pengunggah.
+	By string
+}
+
+// DocumentUploader adalah seam ke layanan penyimpanan internal (`D-16`).
+//
+// Ia mengembalikan IMAGEID saja, karena hanya itu yang disimpan modul ini. URL dan masa
+// berlakunya dimiliki modul dokumen penunjang dan dibaca dari sana saat dibutuhkan —
+// menyalinnya ke sini akan membuat dua tempat menyimpan masa berlaku yang sama, dan yang
+// satu pasti basi lebih dulu.
+type DocumentUploader interface {
+	Upload(ctx context.Context, f DocumentFile) (imageID string, err error)
 }

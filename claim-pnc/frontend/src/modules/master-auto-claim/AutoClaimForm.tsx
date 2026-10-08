@@ -142,7 +142,11 @@ function messageFor(error: unknown): MessageContent | null {
         // akan mengulang hal yang sama.
         return Object.keys(error.violations()).length > 0
           ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
+          : {
+              title: 'Belum dapat disimpan',
+              description: error.message,
+              tone: 'penolakan',
+            }
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
@@ -258,7 +262,10 @@ export function AutoClaimForm({
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
       if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
+        setError(column as (typeof FIELD_NAMES)[number], {
+          type: 'server',
+          message,
+        })
       }
     }
   }, [error, setError])
@@ -280,144 +287,249 @@ export function AutoClaimForm({
   // tidak ada satu isian pun yang lupa menyertakan salah satunya.
   const isLocked = isSaving || isReadOnly
 
+  /*
+    Tab Komite Approval pun TIDAK dapat menyunting — komite hanya menyetujui atau menolak
+    apa yang dilihatnya.
+
+    Terbaca dari `Section/BrowseAutoKlaimKomite-Section.xml`: KESEPULUH isiannya
+    `pyEditOptions = Read-only`, dan satu-satunya kendali yang dapat ditekan adalah tombol
+    Approve dan Reject.
+
+    Dipakai `readOnly`, BUKAN `disabled` seperti tab Waiting Approval. Bedanya menentukan:
+    isian `disabled` tidak ikut terkirim, sedangkan Approve wajib mengirim SELURUH isian
+    baris — keputusan Work Owner 2026-09-19, dan itulah yang menjaga CLIENTID/CLIENTNAME
+    tidak terhapus saat menyetujui.
+  */
+  const isDecisionOnly = canDecide
+
+  /*
+    Pemilih Sumber Bisnis dan Client hanya ada pada section yang memang memilikinya.
+
+    `BrowseAutoKlaim` (Approve) dan `BrowseAutoKlaimReject` memuat dua grid pencarian —
+    caption `SUMBER BISNIS` dan `NAMA CLIENT`. `BrowseAutoKlaimApproval` (Waiting) dan
+    `BrowseAutoKlaimKomite` TIDAK memuat satu pun: keduanya hanya menampilkan baris.
+  */
+  const showPickers = !isEditing || canSave
+
+  // Judul form mengikuti nama tombol yang membukanya, dan itu bukan kerapian belaka:
+  // baris pada tab Waiting Approval dibuka lewat tombol "Detail", dan form yang terbuka
+  // tidak punya satu pun tombol simpan. Menamainya "Ubah" akan menjanjikan sesuatu yang
+  // tidak ada di dalamnya — keputusan Work Owner 2026-10-03.
+  const actionVerb = isReadOnly ? 'Detail' : 'Ubah'
+
   return (
     <form
       onSubmit={submitWith(AutoClaimStatus.menunggu)}
       noValidate
-      aria-label={isEditing ? 'Ubah Master Auto Claim' : 'Tambah Master Auto Claim'}
+      aria-label={isEditing ? `${actionVerb} Master Auto Claim` : 'Tambah Master Auto Claim'}
       className="space-y-4 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
     >
       <h2 className="text-base font-semibold text-slate-900">
-        {isEditing ? `Ubah ${editing.inisial}` : 'Tambah Master Auto Claim'}
+        {isEditing ? `${actionVerb} ${editing.inisial}` : 'Tambah Master Auto Claim'}
       </h2>
 
       {message && (
         <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
       )}
 
-      {isEditing ? (
-        /*
-          Sumber Bisnis ditampilkan sebagai keterangan, bukan isian. Ia kunci baris, dan
-          nama penerimanya pun tidak dapat diperbarui — kueri UPDATE sistem lama tidak
-          menyebut kolomnya.
-        */
-        <div className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5">
-          <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Sumber Bisnis
-          </span>
-          <span className="mt-0.5 block text-sm text-slate-900">
-            {editing.nama_penerima}
-            <span className="ml-2 text-xs text-slate-500">{editing.inisial}</span>
-          </span>
-          <span className="mt-1 block text-xs text-slate-500">
-            Tidak dapat diubah. Sumber bisnis yang keliru diperbaiki dengan menolak baris ini,
-            lalu menambah yang baru.
-          </span>
-        </div>
-      ) : (
+      {/*
+        Pemilih Sumber Bisnis — padanan grid pencarian Pega. Hanya ada pada section yang
+        memilikinya: Approve, Reject, dan penambahan. Komite Approval dan Waiting Approval
+        tidak punya satu pun pemilih.
+      */}
+      {showPickers &&
+        (isEditing ? (
+          <div className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <span className="block text-sm font-medium text-slate-700">SUMBER BISNIS</span>
+            <span className="mt-0.5 block text-sm text-slate-900">{editing.nama_penerima}</span>
+            <span className="mt-1 block text-xs text-slate-500">
+              Tidak dapat diubah. Sumber bisnis yang keliru diperbaiki dengan menolak baris ini,
+              lalu menambah yang baru.
+            </span>
+          </div>
+        ) : (
+          <LookupPicker
+            label="SUMBER BISNIS"
+            selected={sumberBisnis}
+            rows={sourceLookup.data?.sumber_bisnis ?? []}
+            isSearching={sourceLookup.isFetching}
+            isError={sourceLookup.isError}
+            keyword={sourceKeyword}
+            onKeywordChange={setSourceKeyword}
+            onPick={setSumberBisnis}
+            onClear={() => setSumberBisnis(null)}
+            error={violation['inisial'] ?? violation['nama_penerima']}
+            hint="Kode dan namanya diambil dari master Sumber Bisnis; keduanya tidak dapat diketik."
+            disabled={isLocked}
+          />
+        ))}
+
+      {/*
+        Pemilih Client — grid pencarian kedua di Pega, captionnya "NAMA CLIENT" di sana.
+        Di sini ia dinamai "CARI CLIENT" supaya tidak bertabrakan dengan isian baca-saja
+        NAMA CLIENT di bawahnya: dua kendali bernama sama membuat pembaca layar — dan uji —
+        tidak punya cara membedakannya.
+
+        Client boleh kosong; sistem lama pun menyisipkannya kosong. Yang tidak boleh adalah
+        setengah terisi, dan itu mustahil di sini karena ID dan nama selalu dipilih
+        berpasangan.
+      */}
+      {showPickers && (
         <LookupPicker
-          label="Sumber Bisnis"
-          selected={sumberBisnis}
-          rows={sourceLookup.data?.sumber_bisnis ?? []}
-          isSearching={sourceLookup.isFetching}
-          isError={sourceLookup.isError}
-          keyword={sourceKeyword}
-          onKeywordChange={setSourceKeyword}
-          onPick={setSumberBisnis}
-          onClear={() => setSumberBisnis(null)}
-          error={violation['inisial'] ?? violation['nama_penerima']}
-          hint="Kode dan namanya diambil dari master Sumber Bisnis; keduanya tidak dapat diketik."
+          label="CARI CLIENT"
+          selected={client}
+          rows={clientLookup.data?.client ?? []}
+          isSearching={clientLookup.isFetching}
+          isError={clientLookup.isError}
+          keyword={clientKeyword}
+          onKeywordChange={setClientKeyword}
+          onPick={setClient}
+          onClear={() => setClient(null)}
+          error={violation['id_client'] ?? violation['nama_client']}
+          hint="Boleh dikosongkan. Bila diisi, pilih dari master Client."
           disabled={isLocked}
         />
       )}
 
-      <SelectField
-        id="nama_bank"
-        label="Bank penerima"
-        options={(bankList.data?.bank ?? []).map((b) => ({
-          // Yang disimpan adalah NAMANYA — tabel ini tidak punya kolom kode bank.
-          // Kodenya ikut ditampilkan supaya dua bank bernama mirip dapat dibedakan.
-          value: b.nama,
-          label: `${b.nama} (${b.kode})`,
-        }))}
-        error={errors.nama_bank?.message}
-        disabled={isLocked}
-        {...register('nama_bank')}
-      />
+      {/*
+        SATU kisi dua kolom untuk SELURUH isian, mengalir menurut urutan Pega.
 
+        Bentuk ini dipilih dengan sengaja, bukan karena ringkas. Pega menata isiannya dua
+        kolom dan mengisinya berurutan, sehingga pasangan kiri–kanan BERUBAH ketika sebuah
+        isian tersembunyi. Pada tab Komite — tempat NAMA CLIENT, CLIENT ID, dan CLAIM
+        ALLOWED tidak muncul — pasangannya menjadi persis seperti layar Pega:
+
+          NAMA PENERIMA | INISIAL
+          BANK PENERIMA | NO REKENING
+          PCT_MAX       | PIC
+          EMAIL LAPOR   | ALAMAT PENERIMA
+
+        Menata pasangannya satu per satu dengan tangan akan benar pada satu tab dan salah
+        pada tiga tab lainnya.
+      */}
       <div className="grid gap-4 sm:grid-cols-2">
+        {/*
+          NAMA PENERIMA dan INISIAL — keduanya `Read-only` di keempat section Pega.
+          Nilainya datang dari sumber bisnis yang dipilih, tidak pernah dari papan ketik.
+        */}
+        <Field
+          id="nama_penerima"
+          label="NAMA PENERIMA"
+          type="text"
+          readOnly
+          value={isEditing ? editing.nama_penerima : (sumberBisnis?.nama ?? '')}
+          placeholder={isEditing ? undefined : 'Terisi setelah Sumber Bisnis dipilih'}
+        />
+        <Field
+          id="inisial"
+          label="INISIAL"
+          type="text"
+          readOnly
+          value={isEditing ? editing.inisial : (sumberBisnis?.id ?? '')}
+          placeholder={isEditing ? undefined : 'Terisi setelah Sumber Bisnis dipilih'}
+        />
+
+        {/*
+          NAMA CLIENT dan CLIENT ID muncul HANYA bila terisi.
+
+          Itu bukan pilihan tata letak melainkan salinan perilaku Pega: keduanya
+          `pyVisible = NOTBLANK` di keempat section. Layar Komite pada klaim tanpa client
+          karena itu benar-benar tidak menampilkan kedua isian ini sama sekali.
+        */}
+        {client !== null && (
+          <>
+            <Field id="nama_client" label="NAMA CLIENT" type="text" readOnly value={client.nama} />
+            <Field id="id_client" label="CLIENT ID" type="text" readOnly value={client.id} />
+          </>
+        )}
+
+        <SelectField
+          id="nama_bank"
+          label="BANK PENERIMA"
+          options={(bankList.data?.bank ?? []).map((b) => ({
+            // Yang disimpan adalah NAMANYA — tabel ini tidak punya kolom kode bank.
+            // Kodenya ikut ditampilkan supaya dua bank bernama mirip dapat dibedakan.
+            value: b.nama,
+            label: `${b.nama} (${b.kode})`,
+          }))}
+          error={errors.nama_bank?.message}
+          disabled={isLocked || isDecisionOnly}
+          {...register('nama_bank')}
+        />
         <Field
           id="no_rekening"
-          label="Nomor rekening"
+          label="NO REKENING"
           type="text"
           inputMode="numeric"
           maxLength={MAX.noRekening}
           error={errors.no_rekening?.message}
           disabled={isLocked}
+          readOnly={isDecisionOnly}
           {...register('no_rekening')}
         />
+
         <Field
           id="pct_max"
-          label="PCT max"
+          label="PCT_MAX"
           type="text"
           inputMode="decimal"
           hint="Persentase maksimum, 0–100."
           error={errors.pct_max?.message}
           disabled={isLocked}
+          readOnly={isDecisionOnly}
           {...register('pct_max')}
         />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id="pic_lapor"
-          label="PIC lapor"
+          label="PIC"
           type="text"
           maxLength={MAX.picLapor}
           error={errors.pic_lapor?.message}
           disabled={isLocked}
+          readOnly={isDecisionOnly}
           {...register('pic_lapor')}
         />
+
         <Field
           id="email_lapor"
-          label="Email lapor"
+          label="EMAIL LAPOR"
           type="email"
           maxLength={MAX.emailLapor}
           error={errors.email_lapor?.message}
           disabled={isLocked}
+          readOnly={isDecisionOnly}
           {...register('email_lapor')}
         />
+
+        {/*
+          TIDAK ADA isian CLAIM ALLOWED di sini, dan itu MENGIKUTI Pega — bukan
+          menyimpang darinya.
+
+          Selnya memang ada di `BrowseAutoKlaim` dan `BrowseAutoKlaimReject`
+          (`TempInputAutoClaim.District`, `pyEditOptions = Editable`), tetapi
+          keterlihatannya `pyVisible = OTHER` dengan `pyCondition = 1==2` — idiom Pega
+          untuk "tidak pernah tampil". Pengguna tidak pernah melihat, apalagi mengetiknya.
+
+          Nilainya ditetapkan activity, bukan pengguna:
+          `Activity/InsertMstAutoClaim_act` menyetel `TempInputAutoClaim.District := "1"`
+          lalu menyalinnya ke `Local.CLAIM_ALLOWED`.
+
+          Keputusan Work Owner 2026-09-19 — "selalu 1, tidak dapat diubah" — karena itu
+          adalah REPLIKASI perilaku Pega, bukan selisih terhadapnya. Catatan sebelumnya
+          yang menyebut isian ini "dapat diketik di Pega" keliru; lihat §176.
+        */}
+
+        <Field
+          id="alamat_penerima"
+          label="ALAMAT PENERIMA"
+          type="text"
+          maxLength={MAX.alamatPenerima}
+          error={errors.alamat_penerima?.message}
+          disabled={isLocked}
+          readOnly={isDecisionOnly}
+          {...register('alamat_penerima')}
+        />
       </div>
-
-      <Field
-        id="alamat_penerima"
-        label="Alamat penerima"
-        type="text"
-        maxLength={MAX.alamatPenerima}
-        error={errors.alamat_penerima?.message}
-        disabled={isLocked}
-        {...register('alamat_penerima')}
-      />
-
-      {/*
-        Client boleh kosong — sistem lama pun menyisipkannya kosong, dan tidak ada satu
-        pun prasyarat yang mewajibkannya. Yang tidak boleh adalah setengah terisi, dan
-        itu mustahil di sini karena ID dan nama selalu dipilih berpasangan.
-      */}
-      <LookupPicker
-        label="Client"
-        selected={client}
-        rows={clientLookup.data?.client ?? []}
-        isSearching={clientLookup.isFetching}
-        isError={clientLookup.isError}
-        keyword={clientKeyword}
-        onKeywordChange={setClientKeyword}
-        onPick={setClient}
-        onClear={() => setClient(null)}
-        error={violation['id_client'] ?? violation['nama_client']}
-        hint="Boleh dikosongkan. Bila diisi, pilih dari master Client."
-        disabled={isLocked}
-      />
 
       {canSave && (
         <p className="text-xs text-slate-500">
@@ -429,8 +541,8 @@ export function AutoClaimForm({
 
       {isReadOnly && (
         <p className="text-xs text-slate-500">
-          Baca saja. Baris yang menunggu hanya dapat diputuskan komite yang ditunjuk —
-          lihat kolom <span className="font-medium">KOMITE</span> — lewat tab Komite Approval.
+          Baca saja. Baris yang menunggu hanya dapat diputuskan komite yang ditunjuk — lihat kolom{' '}
+          <span className="font-medium">KOMITE</span> — lewat tab Komite Approval.
         </p>
       )}
 
@@ -460,11 +572,7 @@ export function AutoClaimForm({
         */}
         {canDecide && (
           <>
-            <Button
-              tone="kedua"
-              onClick={submitWith(AutoClaimStatus.ditolak)}
-              disabled={isSaving}
-            >
+            <Button tone="kedua" onClick={submitWith(AutoClaimStatus.ditolak)} disabled={isSaving}>
               Reject
             </Button>
             <Button

@@ -64,6 +64,10 @@ func NewService(o Options) (*Service, error) {
 // kecil dan jarang berubah, dan satu perjalanan jaringan lebih baik daripada tiga yang
 // berlomba.
 type Opened struct {
+	// SearchColumns adalah isi dropdown "Tipe Pencarian Archive" pada tab Archive File
+	// Klaim. Ia dikirim server, bukan ditulis layar, supaya daftarnya punya satu sumber.
+	SearchColumns []archivedokumenklaim.SearchColumnOption
+
 	ClaimSearchTypes []archivedokumenklaim.ClaimSearchTypeOption
 	DocumentTypes    []archivedokumenklaim.DocumentTypeOption
 	DocumentKinds    []archivedokumenklaim.DocumentKindOption
@@ -101,6 +105,7 @@ func (s *Service) Open(
 	}
 
 	return Opened{
+		SearchColumns:    archivedokumenklaim.SearchColumns(),
 		ClaimSearchTypes: archivedokumenklaim.ClaimSearchTypes(),
 		DocumentTypes:    types,
 		DocumentKinds:    kinds,

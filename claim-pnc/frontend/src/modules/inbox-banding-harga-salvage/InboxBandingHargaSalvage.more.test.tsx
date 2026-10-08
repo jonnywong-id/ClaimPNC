@@ -8,11 +8,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
+import { BandingHargaTabs } from './BandingHargaTabs'
 import { DecisionConfirm } from './DecisionConfirm'
 import { DecisionPanel } from './DecisionPanel'
 import { DocumentPanel } from './DocumentPanel'
 import { InboxBandingHargaSalvagePage } from './InboxBandingHargaSalvagePage'
-import { StatusSummary } from './StatusSummary'
 import type { AppealRow, DecisionColumn, MetadataResponse, Tab } from './types'
 
 /**
@@ -239,7 +239,7 @@ describe('DecisionPanel', () => {
       },
     }))
     const user = userEvent.setup()
-    wrap(<DecisionPanel claimNo="PNCN.26.0440" columns={COLUMNS} onClose={() => {}} />)
+    wrap(<DecisionPanel claimNo="PNCN.26.0440" columns={COLUMNS} />)
 
     const table = await screen.findByRole('table', { name: 'Keputusan banding klaim PNCN.26.0440' })
     expect(within(table).getByText('Tidak setuju').className).toContain('bg-rose-50')
@@ -253,7 +253,7 @@ describe('DecisionPanel', () => {
 
   it('memakai pesan umum saat riwayat gagal karena jaringan', async () => {
     stub(() => ({ fail: true }))
-    wrap(<DecisionPanel claimNo="PNCN.26.0440" columns={COLUMNS} onClose={() => {}} />)
+    wrap(<DecisionPanel claimNo="PNCN.26.0440" columns={COLUMNS} />)
 
     expect(await screen.findByText('Riwayat tidak dapat dimuat')).toBeInTheDocument()
     expect(
@@ -298,11 +298,75 @@ describe('DocumentPanel', () => {
   })
 })
 
-describe('StatusSummary', () => {
-  it('tidak menggambar apa pun tanpa baris setelah selesai memuat', () => {
-    const { container } = render(
-      <StatusSummary rows={[]} active="x" onSelect={() => {}} isLoading={false} />,
+
+describe('BandingHargaTabs — lencana jumlah', () => {
+  const TABS = [
+    {
+      kode: 'request-banding-harga',
+      nama: 'Request Banding Harga',
+      keterangan: '',
+      parameter_pega: '1',
+      kolom: [],
+    },
+    {
+      kode: 'history-cheker',
+      nama: 'History Cheker',
+      keterangan: '',
+      parameter_pega: '2',
+      kolom: [],
+    },
+  ]
+
+  /*
+    Diuji sebagai KOMPONEN, bukan lewat halaman.
+
+    Uji tingkat halaman sempat ditulis untuk ini dan ternyata membuktikan nol: ia menegaskan
+    lencananya tidak ada, padahal `/ringkas` memang belum tiba pada saat itu — jadi ia lulus
+    apa pun aturannya. Ketahuan saat aturannya dilumpuhkan sementara dan ujinya tetap lulus.
+
+    Dengan prop yang diserahkan langsung, tidak ada yang perlu ditunggu.
+  */
+  it('tidak menggambar lencana ketika jumlahnya nol', () => {
+    render(
+      <BandingHargaTabs
+        tabs={TABS}
+        active="request-banding-harga"
+        onSelect={() => {}}
+        counts={[
+          { status_salvage: 'Request Banding Harga', tab: 'request-banding-harga', jumlah: 0 },
+          { status_salvage: 'History Cheker', tab: 'history-cheker', jumlah: 0 },
+        ]}
+      />,
     )
-    expect(container).toBeEmptyDOMElement()
+
+    expect(screen.getByRole('tab', { name: 'Request Banding Harga' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'History Cheker' })).toBeInTheDocument()
+  })
+
+  // Yang BERISI tetap dilencanai — di situlah angkanya menjawab "berapa yang menunggu saya".
+  it('menggambar lencana ketika antreannya berisi', () => {
+    render(
+      <BandingHargaTabs
+        tabs={TABS}
+        active="request-banding-harga"
+        onSelect={() => {}}
+        counts={[
+          { status_salvage: 'Request Banding Harga', tab: 'request-banding-harga', jumlah: 3 },
+          { status_salvage: 'History Cheker', tab: 'history-cheker', jumlah: 0 },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Request Banding Harga 3' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'History Cheker' })).toBeInTheDocument()
+  })
+
+  // Tanpa angka sama sekali — keadaan sebelum `/ringkas` tiba.
+  it('tidak menggambar lencana sebelum angkanya tiba', () => {
+    render(
+      <BandingHargaTabs tabs={TABS} active="request-banding-harga" onSelect={() => {}} />,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Request Banding Harga' })).toBeInTheDocument()
   })
 })

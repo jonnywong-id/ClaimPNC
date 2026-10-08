@@ -1,7 +1,10 @@
 package masterreashttp
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -13,6 +16,29 @@ import (
 
 	portalhttp "claim-pnc/internal/portal/http"
 )
+
+// maxRequestBody membatasi besar badan permintaan yang dibaca.
+//
+// Badan JSON modul ini memuat empat isian pendek. 32 KiB sudah jauh lebih dari cukup —
+// angkanya disamakan dengan modul master lain alih-alih diperkecil, supaya tidak ada satu
+// modul yang diam-diam menolak permintaan yang diterima modul tetangganya.
+const maxRequestBody = 32 << 10
+
+// Caller adalah pemanggil yang sudah terverifikasi sesinya.
+//
+// Dipakai HANYA untuk mengisi log: `POOLDATA.T_REINSURER` tidak punya satu pun kolom
+// pencatat pelaku maupun stempel waktu. Itu bukan pengganti jejak audit `S-5`, dan tidak
+// diklaim demikian.
+type Caller struct {
+	Login string
+}
+
+// CallerReader mengambil identitas pemanggil dari konteks permintaan.
+//
+// Ia jembatan SATU ARAH dari modul auth, disuntikkan dari cmd. Modul ini tidak mengimpor
+// lapisan transport modul auth — itulah yang membuat keduanya dapat berpindah tanpa
+// menyeret satu sama lain.
+type CallerReader func(ctx context.Context) (Caller, bool)
 
 // MaxKeywordLength membatasi panjang penyaring `cari`.
 //
@@ -35,6 +61,7 @@ const MaxKeywordLength = 100
 // cmd, dan kelak lewat pemeriksaan peran `TKT-F3-005` yang belum ada.
 type Handler struct {
 	service       *usecase.Service
+	caller        CallerReader
 	logger        *slog.Logger
 	writeResponse JSONWriter
 	writeError    ErrorWriter
@@ -43,6 +70,7 @@ type Handler struct {
 // Options adalah bahan pembentuk Handler.
 type Options struct {
 	Service *usecase.Service
+	Caller  CallerReader
 	Logger  *slog.Logger
 
 	// WriteResponse dan WriteError disuntikkan dari cmd, bukan diimpor dari modul auth.
@@ -55,12 +83,16 @@ func NewHandler(o Options) (*Handler, error) {
 	if o.Service == nil {
 		return nil, errors.New("masterreas/http: Service wajib diisi")
 	}
+	if o.Caller == nil {
+		return nil, errors.New("masterreas/http: Caller wajib diisi")
+	}
 	if o.WriteResponse == nil || o.WriteError == nil {
 		return nil, errors.New(
 			"masterreas/http: WriteResponse dan WriteError wajib diisi")
 	}
 	return &Handler{
 		service:       o.Service,
+		caller:        o.Caller,
 		logger:        o.Logger,
 		writeResponse: o.WriteResponse,
 		writeError:    o.WriteError,
@@ -111,6 +143,94 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Save menangani PUT /master/reas.
+//
+// # Jalurnya TANPA parameter, dan itu disengaja
+//
+// Kunci alaminya tiga kolom, salah satunya boleh kosong; lihat SaveRequest. Seluruh kuncinya
+// dikirim di badan permintaan.
+//
+// # Hanya `email` yang berubah
+//
+// `Database/UPDATEREAS.prc` pada baris yang sudah ada hanya menyentuh kolom `EMAIl`. Baris
+// yang tidak ada **ditolak 404**, tidak disisipkan diam-diam seperti yang dilakukan prosedur
+// itu — penyisipan milik alur PLA/DLA, bukan milik petugas yang menekan Simpan di sini.
+func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	by, known := h.caller(r.Context())
+	if !known {
+		// Tidak mungkin terjadi di balik middleware Autentikasi. Dinyatakan supaya cacat
+		// perakitan gagal keras alih-alih menghasilkan log tanpa pelaku — dan pada tabel ini
+		// log adalah SATU-SATUNYA tempat "siapa yang mengubah surel ini" terekam.
+		h.writeError(w, r, errors.New(
+			"masterreas/http: identitas pemanggil tidak ada di konteks"))
+		return
+	}
+
+	var request SaveRequest
+	if !h.readRequest(w, r, &request) {
+		return
+	}
+
+	if err := h.service.Save(r.Context(), active.Alias, request.toKey(), request.toInput(),
+		usecase.Actor{Login: by.Login}, h.logger); err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	// Badannya memuat baris sebagaimana ia tersimpan sekarang. Dibentuk dari permintaan,
+	// bukan dibaca ulang dari basis data: yang berubah hanya surel, dan ketiga kolom kunci
+	// beserta sisanya tidak tersentuh.
+	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+		Member: MemberDTO{
+			ReinsurerID:   strings.TrimSpace(request.ReinsurerID),
+			ReinsurerName: strings.TrimSpace(request.ReinsurerName),
+			Type:          strings.TrimSpace(request.Type),
+			Email:         strings.TrimSpace(request.Email),
+		},
+		Portal: active.Alias,
+	})
+}
+
+// readRequest membaca badan JSON ke dalam target. Nilai balik false bila responsnya sudah
+// ditulis.
+func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request, target any) bool {
+	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
+	decoder := json.NewDecoder(reader)
+	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam. Pada modul ini itu lebih
+	// dari sekadar menangkap salah ketik: `login`, `negara`, dan `cadangan` DIKIRIM pada
+	// setiap jawaban tetapi tidak dapat dikirim balik, dan klien yang mengembalikan seluruh
+	// objek apa adanya harus mengetahuinya saat pertama dicoba — bukan menemukan bahwa
+	// ketiganya diam-diam tidak berpengaruh.
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(target); err != nil {
+		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan badan
+		// permintaan.
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Permintaan tidak dapat dibaca.",
+		})
+		return false
+	}
+
+	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
+	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Permintaan tidak dapat dibaca.",
+		})
+		return false
+	}
+
+	return true
+}
+
 // Mount mendaftarkan rute modul master reas.
 //
 // # Yang dituntut pemanggil
@@ -136,22 +256,31 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 // akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang
 // teknis, bukan diselesaikan sepihak di satu modul.
 //
-// # Yang TIDAK didaftarkan, dan itu keputusan berdasar bukti
+// # Yang didaftarkan, dan yang TIDAK
 //
-// **Tidak ada POST, PUT, maupun DELETE.** Layar lamanya tidak punya jalur tulis: harness
-// `DataMemberReas` memuat satu grid dan satu tombol Refresh, dan satu-satunya penulis
-// `T_REINSURER` di sistem lama adalah alur PLA/DLA lewat `Database/UPDATEREAS.prc` —
-// dipanggil `UpdateDetailPLA2` dan `UpdateDetailDLA2`, bukan layar ini.
+// **`PUT` ada, dan ia hanya mengubah surel.** Layar lamanya punya kolom **Aksi** berisi
+// tombol Ubah — diberitahukan Work Owner 2026-10-05, dan tidak dapat dibaca dari export
+// karena section gridnya hilang (`R-16`). Yang dapat diubah hanya `EMAIL`, karena
+// `Database/UPDATEREAS.prc` pada baris yang sudah ada memang hanya menyentuh kolom itu.
 //
-// **Tidak ada GET satu baris.** Tidak ada layar detail di sistem lama, seluruh kolomnya muat
-// di dalam grid, dan kunci alaminya tiga kolom sehingga harus dipaksakan ke jalur URL.
+// Jalurnya **tanpa parameter** — kunci alaminya tiga kolom dan salah satunya boleh kosong,
+// sehingga seluruhnya dikirim di badan permintaan; lihat SaveRequest.
 //
-// Bila kelak terbukti layar lamanya punya tombol simpan — section gridnya memang tidak ada
-// di export (`R-16`) — yang perlu ditambahkan adalah Repo.Insert/Update beserta rutenya.
+// **Tidak ada POST.** Layar lamanya tidak punya tombol Tambah, dan itu terkalibrasi: indeks
+// rule `Harness/MasterLoginSurvey-Harness.xml` — layar yang terbukti punya dua tombol —
+// menyebut `PYBUTTONLABEL!REFRESH` **dan** `!TAMBAH`; `DataMemberReas` hanya `REFRESH`.
+// Baris baru lahir dari alur PLA/DLA.
+//
+// **Tidak ada DELETE.** Tidak satu pun rule di export menghapus baris tabel ini, dan `D-66`
+// melarang penghapusan fisik data bernilai bisnis.
+//
+// **Tidak ada GET satu baris.** Form ubah dimuat dari baris yang sudah ada di daftar, sama
+// seperti layar lamanya memuat grid lebih dulu.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))
 
 		perPortal.Get("/master/reas", h.List)
+		perPortal.Put("/master/reas", h.Save)
 	})
 }

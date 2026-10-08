@@ -63,13 +63,65 @@ type ListResponse struct {
 	Portal string      `json:"portal"`
 }
 
+// SaveRequest adalah badan permintaan ubah surel.
+//
+// # Kunci ikut di BADAN, bukan di jalur URL
+//
+// Kunci alami tabel ini TIGA kolom — `REINSURERID` + `REINSURERNAME` + `TYPE` — dan ketiganya
+// dibutuhkan untuk menunjuk satu baris (`Database/UPDATEREAS.prc`). Memaksakannya ke jalur
+// URL menuntut tiga segmen yang harus dikodekan, dan salah satunya — `TYPE` — boleh kosong,
+// sehingga jalurnya akan memuat segmen kosong yang mudah tertelan router.
+//
+// Karena itu `PUT /master/reas` tidak berparameter jalur: seluruh kuncinya dikirim di sini.
+//
+// # Hanya `email` yang dapat DIUBAH
+//
+// Ketiga kolom kunci dikirim untuk MENUNJUK baris, bukan untuk diubah. `login` dan `negara`
+// tidak dapat dikirim sama sekali — `UPDATEREAS` pada baris yang sudah ada tidak pernah
+// menyentuh keduanya, dan `LOGIN` menentukan klaim mana yang dilihat seorang mitra.
+type SaveRequest struct {
+	ReinsurerID   string `json:"kode_reas"`
+	ReinsurerName string `json:"nama_reas"`
+	Type          string `json:"tipe"`
+	Email         string `json:"email"`
+}
+
+// ViolationDTO adalah satu pelanggaran isian.
+type ViolationDTO struct {
+	Field   string `json:"isian"`
+	Message string `json:"pesan"`
+}
+
+// SingleResponse adalah jawaban satu baris — dipakai jalur ubah.
+type SingleResponse struct {
+	Member MemberDTO `json:"member_reas"`
+	Portal string    `json:"portal"`
+}
+
 // ErrorResponse adalah bentuk galat modul ini.
 //
 // Bentuknya sama dengan modul lain — `{kode, pesan}` — supaya klien tidak menghadapi dua
 // bentuk galat yang berbeda. Lihat catatan pada berkas errors.go.
 type ErrorResponse struct {
-	Code    string `json:"kode"`
-	Message string `json:"pesan"`
+	Code    string         `json:"kode"`
+	Message string         `json:"pesan"`
+	Detail  []ViolationDTO `json:"detail,omitempty"`
+}
+
+// toKey dan toInput memisahkan bagian PENUNJUK baris dari bagian yang DIUBAH.
+//
+// Pemisahannya bukan kerapian: lapisan aplikasi menerima keduanya sebagai argumen yang
+// berbeda, sehingga tidak ada jalan bagi nilai kunci untuk tanpa sengaja ikut tersimpan.
+func (r SaveRequest) toKey() masterreas.Key {
+	return masterreas.Key{
+		ReinsurerID:   r.ReinsurerID,
+		ReinsurerName: r.ReinsurerName,
+		Type:          r.Type,
+	}
+}
+
+func (r SaveRequest) toInput() masterreas.Input {
+	return masterreas.Input{Email: r.Email}
 }
 
 // toDTO memetakan satu baris domain menjadi bentuk yang dikirim.

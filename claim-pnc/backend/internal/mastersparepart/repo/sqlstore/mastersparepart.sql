@@ -633,3 +633,98 @@ SELECT ID
 -- yang dibenarkan memuat percabangan dialek.
 SELECT POOLDATA.SPAREPART_HE_SEQ.NEXTVAL
   FROM DUAL
+
+-- name: sparepart_document_next_sequence
+--
+-- Nomor urut DATAID baris lampiran.
+--
+-- Deret ini MILIK tabel lampiran, bukan milik Master Sparepart — ia dipakai bersama setiap
+-- modul yang mengunggah dokumen, dan Master Panel memakai deret yang sama. Karena itu ia
+-- TIDAK dirangkai dari deret sparepart sendiri.
+--
+-- `NEXTVAL` dan `FROM DUAL` keduanya khas Oracle; percabangan dialek tidak terhindarkan di
+-- sini (`D-20` §3), dan diisolasi di kueri tersendiri seperti kueri deret lainnya.
+SELECT POOLDATA.ATTACHFILE_SEQ.NEXTVAL
+  FROM DUAL
+
+-- name: sparepart_document_insert
+--
+-- Satu baris metadata dokumen. Padanan INSERT di `Database/SET_ATTACHMENT_64BIT.prc`.
+--
+--   :1  DATAID            sudah dirangkai di Go: tahun || lpad(nomor,10,'0')
+--   :2  INPUTOPERATOR
+--   :3  ATTACHNAME
+--   :4  ATTACHNOTE
+--   :5  ATTACHMIMETYPE
+--   :6  IMAGEID
+--   :7  IDPEGA            ID sparepart-nya
+--
+-- # Kolom ATTACHFILE sengaja TIDAK diisi
+--
+-- Procedure lama pun tidak mengisinya: `PNCSaveAttachmentToDB` menyetel properti
+-- `ATTACHFILE` di halaman, tetapi `SaveAttachmentToDB_Sql` TIDAK mengirimkannya sebagai
+-- parameter. Isi berkasnya hidup di layanan penyimpanan internal, dan `IMAGEID` adalah
+-- satu-satunya tali ke sana (`D-16`).
+--
+-- Mengisinya di sini akan menyimpan berkas dua kali — di tabel dan di layanan — dan
+-- keduanya akan berbeda begitu salah satunya diperbarui.
+--
+-- CATEGORY dan SUB_CATEGORY juga dibiarkan kosong, dengan alasan yang sama seperti Master
+-- Panel: keduanya diisi Pega dari `TempCategoryAttachment`, yang dimuat dari master jenis
+-- dokumen per lini bisnis. Master Sparepart bukan dokumen klaim dan tidak punya kategori di
+-- master itu; mengarang nilainya akan memasukkan baris yang tidak dapat dikelompokkan ke
+-- laporan dokumen mana pun.
+--
+-- CURRENT_TIMESTAMP, bukan SYSDATE (`D-20` §4).
+INSERT INTO POOLDATA.DATA_ATTACHFILE
+            (DATAID, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
+             ATTACHMIMETYPE, IMAGEID, IDPEGA)
+     VALUES (:1, CURRENT_TIMESTAMP, :2, :3, :4, :5, :6, :7)
+
+-- name: sparepart_document_link
+--
+-- Menautkan dokumen yang baru tersimpan ke sparepart-nya.
+--
+--   :1  DATAID
+--   :2  ID
+--
+-- Satu sparepart memegang SATU dokumen (`RDB List/GetIDDokumenSparepart-SQL.xml`), sehingga
+-- ini UPDATE, bukan INSERT: unggahan berikutnya mengganti tautannya.
+--
+-- Baris DATA_ATTACHFILE yang lama TIDAK dihapus, dan itu disengaja — `D-66` melarang
+-- penghapusan fisik data bernilai bisnis. Akibatnya barisnya tetap ada tanpa ada sparepart
+-- yang menunjuknya; ia masih dapat ditelusuri lewat IDPEGA, yang justru sebabnya kolom itu
+-- diisi ID sparepart.
+--
+-- APPROVAL sengaja TIDAK disentuh di sini. Mengunggah dokumen bukan mengubah nilai
+-- sparepart-nya, sehingga ia tidak memindahkan baris ke antrean persetujuan — berbeda dari
+-- menyimpan lewat form, yang `Activity/UpdateSparepartHE_act` setel APPROVAL := "0".
+UPDATE POOLDATA.SPAREPART_HE
+   SET DOKUMENID = :1
+ WHERE TRIM(ID) = TRIM(:2)
+
+-- name: sparepart_document_get
+--
+-- Dokumen sebuah sparepart, lewat tautan DOKUMENID.
+--
+--   :1  ID
+--
+-- Padanan gabungan `GetIDDokumenSparepart` (mengambil DOKUMENID) dan `GetDetailDocument`
+-- (membaca barisnya) — dua perjalanan di Pega, satu di sini.
+--
+-- ATTACHFILE tidak ikut diambil meski kolomnya ada: barisnya yang ditulis aplikasi ini
+-- tidak pernah mengisinya, dan mengambilnya berarti menarik kolom besar yang selalu kosong
+-- pada setiap pembacaan (`08-TECHNICAL-STRATEGY.md` §4.3 — sebutkan kolom, dan jangan
+-- menarik CLOB yang tidak dipakai).
+SELECT a.DATAID         AS DATA_ID,
+       a.IMAGEID        AS IMAGE_ID,
+       a.ATTACHNAME     AS ATTACH_NAME,
+       a.ATTACHMIMETYPE AS ATTACH_MIME_TYPE,
+       a.ATTACHNOTE     AS ATTACH_NOTE,
+       a.INPUTOPERATOR  AS INPUT_OPERATOR,
+       a.INPUTDATE      AS INPUT_DATE,
+       a.IDPEGA         AS ID_PEGA
+  FROM POOLDATA.DATA_ATTACHFILE a
+  JOIN POOLDATA.SPAREPART_HE s
+    ON TRIM(s.DOKUMENID) = TRIM(a.DATAID)
+ WHERE TRIM(s.ID) = TRIM(:1)

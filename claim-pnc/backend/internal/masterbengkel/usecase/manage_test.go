@@ -25,6 +25,7 @@ func newService(t *testing.T) (*usecase.Service, *memory.Repo) {
 			}
 			return repo, nil
 		},
+		Uploader: &fakeUploader{},
 	})
 	require.NoError(t, err)
 	return service, repo

@@ -114,7 +114,7 @@ function show() {
 async function openEdit(user: ReturnType<typeof userEvent.setup>, name = 'Supplier Zeta') {
   const table = await screen.findByRole('table')
   const row = within(table).getByRole('row', { name: new RegExp(name) })
-  await user.click(within(row).getByRole('button', { name: 'Edit' }))
+  await user.click(within(row).getByRole('button', { name: 'Ubah' }))
   await screen.findByLabelText('Nama')
 }
 

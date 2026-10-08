@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react'
 
-import { APIError } from '@/api/client'
 import { WorkshopStatus, type Workshop } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
 
-import { useCreateWorkshop, useDecideWorkshop, useSaveWorkshop, useWorkshopList } from './api'
+import { useCreateWorkshop, useSaveWorkshop, useWorkshopList } from './api'
 import { DocumentPanel } from './DocumentPanel'
 import { WorkshopForm, type WorkshopFormValues } from './WorkshopForm'
 import { compareCodeUnits } from '@/lib/sort'
@@ -124,17 +122,30 @@ function emptyMessageFor(hasPortal: boolean): string {
  * pun. Bengkel yang sudah disetujui lalu disunting kembali menunggu — dan itu benar untuk
  * master yang menentukan diskon, pajak, dan rekening tujuan pembayaran.
  *
- * # Kenapa Approve dan Reject ada DI SINI, bukan di Inbox Manager
+ * # Approve dan Reject TIDAK ada di layar ini — sama seperti Pega
  *
- * Di Pega keduanya ada di layar lain: `Section/ApprovalMasterBengkelHE` dipakai
- * `InboxManager_Sec`, dan keputusannya dijalankan `Activity/SetApprovalAllMaster` yang
- * melayani bengkel, panel, dan sparepart sekaligus.
+ * Tab Waiting Approval hanya MENDAFTAR dan MENGUBAH. Tidak ada cara menyetujui dari sini,
+ * dan itu bukan kekurangan: `Section/BrowseMasterHEApproval-Section.xml` memang tidak
+ * punya tombol keputusan sama sekali — nol rujukan ke `SetApprovalAllMaster`, nol Select
+ * All, dan keenam kemunculan kata "Approve"/"Reject" di dalamnya hanyalah nama halaman
+ * internal Pega (`pgRepPgSubSectionBrowseMasterHEApproveBB`).
  *
- * Inbox Manager belum dibangun. Menunda keputusannya sampai layar itu ada berarti setiap
- * bengkel yang ditambah tertahan di Waiting Approval tanpa satu pun cara menyelesaikannya
- * — dan alur ini tidak dapat dicoba sama sekali. Yang dipakai sebagai gantinya adalah
- * BENTUK yang sama persis: centang beberapa baris, lalu satu tombol untuk seluruh
- * pilihan. Memindahkannya ke Inbox Manager kelak hanya soal letak, bukan soal perilaku.
+ * Keputusannya ada di `Section/ApprovalMasterBengkelHE`, yang dipakai `InboxManager_Sec`
+ * — satu layar "Approval Master" berisi enam master sekaligus, dijalankan
+ * `Activity/SetApprovalAllMaster`.
+ *
+ * # Bilah keputusan yang sempat ada di sini, dan kenapa dicabut
+ *
+ * Versi pertama modul ini memasang centang dan tombol keputusan di tab Waiting Approval,
+ * karena saat itu Inbox Manager belum dibangun dan setiap bengkel baru akan tertahan tanpa
+ * satu pun cara menyelesaikannya.
+ *
+ * Alasan itu habis masa berlakunya. Modul `inbox-manager` (MENU_ID 58) sudah ada beserta
+ * tab Master Bengkel-nya, dan kueri `decide_bengkel` di sana memang meng-UPDATE
+ * `POOLDATA.BENGKEL_HE`. Membiarkan keduanya berarti satu keputusan punya dua pintu, dan
+ * yang satu tidak berpadanan di layar lama.
+ *
+ * Dicabut atas permintaan Work Owner (2026-10-03).
  */
 export function WorkshopPage() {
   const portal = useSelectedPortal((state) => state.alias)
@@ -142,19 +153,27 @@ export function WorkshopPage() {
   const [tab, setTab] = useState<TabId>('approve')
   const [isAdding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Workshop | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
-
-  // Bengkel yang panel dokumennya sedang terbuka. Null berarti tertutup.
-  const [documentFor, setDocumentFor] = useState<Workshop | null>(null)
+  const [isDocumentOpen, setDocumentOpen] = useState(false)
 
   const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = useWorkshopList(active.status)
   const create = useCreateWorkshop()
   const save = useSaveWorkshop()
-  const decide = useDecideWorkshop()
 
   const isFormOpen = isAdding || editing !== null
   const rows = list.data?.bengkel ?? []
+
+  /*
+    Apakah jalur unggah siap dipakai, dibaca dari jawaban daftar.
+
+    Layar memerlukannya SEBELUM pengguna memilih berkas: menonaktifkan tombolnya beserta
+    sebabnya jauh lebih terbaca daripada membiarkan pengguna memilih berkas, menunggu
+    unggahan, lalu menerima penolakan.
+
+    Bawaannya `false` selama daftar belum termuat — tombol yang sempat hidup lalu mati
+    sendiri lebih membingungkan daripada tombol yang baru hidup setelah jawabannya tiba.
+  */
+  const uploadAvailable = list.data?.unggah_tersedia ?? false
 
   /*
     Saran nilai untuk kolom yang daftar pilihannya tidak ada di export (R-16).
@@ -181,18 +200,9 @@ export function WorkshopPage() {
     save.reset()
     setAdding(false)
     setEditing(null)
-  }
-
-  /*
-    Panel dokumen dan form saling menutup.
-
-    Keduanya menggarap baris yang sama dan keduanya digambar di tempat yang sama. Dibiarkan
-    terbuka bersamaan, pengguna melihat dua panel bertumpuk yang tidak jelas mana yang
-    sedang dikerjakannya.
-  */
-  function openDocument(row: Workshop) {
-    closeForm()
-    setDocumentFor(row)
+    // Panel dokumen melekat pada baris yang sedang dibuka; menutup formnya tanpa menutup
+    // panelnya menyisakan panel yang menunjuk bengkel yang sudah tidak terpilih.
+    setDocumentOpen(false)
   }
 
   function openAdd() {
@@ -200,6 +210,8 @@ export function WorkshopPage() {
     save.reset()
     setEditing(null)
     setAdding(true)
+    // Baris baru belum punya ID, sehingga belum ada yang dapat dilampiri.
+    setDocumentOpen(false)
   }
 
   function openEdit(row: Workshop) {
@@ -207,17 +219,9 @@ export function WorkshopPage() {
     save.reset()
     setAdding(false)
     setEditing(row)
-    // Panel dokumen ikut ditutup — lihat alasannya pada openDocument.
-    setDocumentFor(null)
-  }
-
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    // Berpindah baris menutup panelnya: dokumen yang tampil harus selalu milik bengkel yang
+    // sedang dibuka, bukan sisa dari baris sebelumnya.
+    setDocumentOpen(false)
   }
 
   function submit(values: WorkshopFormValues) {
@@ -231,12 +235,6 @@ export function WorkshopPage() {
     create.mutate(values, { onSuccess: closeForm })
   }
 
-  function runDecision(status: string) {
-    decide.mutate(
-      { id_bengkel: [...chosen], status },
-      { onSuccess: () => setChosen(new Set()) },
-    )
-  }
 
   /*
     Susunan kolom mengikuti grid Pega APA ADANYA.
@@ -256,34 +254,10 @@ export function WorkshopPage() {
     hanya muncul di form. Menampilkan lebih banyak "supaya informatif" berarti membuat
     layar yang berbeda dari yang dipakai petugas hari ini (`D-13`).
 
-    SATU kolom ditambahkan, dan hanya pada tab Waiting Approval: kotak centang untuk
-    keputusan borongan. Ia bagian dari keputusan yang sudah dicatat — lihat doc comment
-    WorkshopPage — dan tidak muncul di kedua tab lain.
+    TIDAK ADA kolom tambahan. Kotak centang untuk keputusan borongan sempat ada pada tab
+    Waiting Approval, lalu DICABUT pada 2026-10-03 — lihat doc comment WorkshopPage.
   */
   const columns: Column<Workshop>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Workshop) => (chosen.has(row.id_bengkel) ? 'dipilih' : ''),
-            render: (row: Workshop) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_bengkel)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_bengkel)}
-                />
-                <span className="sr-only">Pilih {row.nama_bengkel}</span>
-              </label>
-            ),
-          } satisfies Column<Workshop>,
-        ]
-      : []),
     {
       key: 'id_bengkel',
       title: 'ID Bengkel',
@@ -322,25 +296,19 @@ export function WorkshopPage() {
     {
       key: 'aksi',
       title: 'Aksi',
-      width: '11rem',
+      width: '6rem',
       noSort: true,
       alignRight: true,
       value: () => '',
+      // Hanya "Ubah".
+      //
+      // Tombol "Dokumen" per baris DICABUT pada 2026-10-03: di Pega unggah dokumen adalah
+      // tombol tingkat layar, dan Work Owner meminta layar ini mengikutinya. Menyisakan
+      // keduanya berarti layar kita punya tombol yang tidak ada di layar lama.
       render: (row) => (
-        <div className="flex justify-end gap-2">
-          <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-            Ubah
-          </Button>
-          {/*
-            Padanan dua tombol layar lama sekaligus — "Upload Document" dan tombol lihat
-            dokumen pada layar persetujuan. Letaknya PER BARIS, bukan tingkat layar:
-            yang disimpannya adalah DOKUMENID, kolom milik satu baris. Alasannya lengkap
-            di DocumentPanel.
-          */}
-          <Button tone="halus" onClick={() => openDocument(row)}>
-            Dokumen
-          </Button>
-        </div>
+        <Button tone="kedua" onClick={() => openEdit(row)} disabled={save.isPending}>
+          Ubah
+        </Button>
       ),
     },
   ]
@@ -364,14 +332,55 @@ export function WorkshopPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
+          {/*
+            Tombol PERTAMA layar Pega, captionnya dari field value `pyButtonLabel Upload
+            Document` pada `Section/BrowseMasterHE-Section.xml`.
+
+            Ia bergantung pada DUA hal, dan keduanya punya sebab berbeda:
+
+              `uploadAvailable`  layanan penyimpanan dokumen terpasang di lingkungan ini
+              `editing`          bengkel mana yang dilampiri
+
+            Yang kedua bukan selera. Di Pega ia tombol tingkat layar, tetapi yang disimpannya
+            adalah `BENGKEL_HE.DOKUMENID` — kolom milik SATU baris. Pada layar daftar, tombol
+            tingkat layar tidak menyatakan baris mana yang dilampiri, sehingga ia disandarkan
+            pada baris yang sedang dibuka. Master Sparepart menempuh cara yang sama.
+
+            Tombol KEDUA layar lama — "Upload Data Master Bengkel", unggah CSV — TETAP
+            DITARIK (Work Owner, 2026-10-07): ia bukan bagian migrasi yang dikerjakan di
+            sini. Ketiadaannya disengaja, bukan rule yang belum ditemukan.
+          */}
+          <Button
+            tone="kedua"
+            onClick={() => { setDocumentOpen(true) }}
+            disabled={!uploadAvailable || editing === null || isDocumentOpen}
+          >
+            Upload Document
+          </Button>
+          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
+            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          </Button>
         </div>
       </header>
+
+      {/*
+        Panel digambar DI BAWAH kepala halaman dan DI ATAS tab, sama seperti Master Sparepart.
+
+        Letaknya tidak meniru Pega, dan itu disengaja: di Pega ia modal (`Flow Action`
+        `UploadDocument` dibuka sebagai overlay). Aplikasi ini tidak memakai modal — form
+        tambah dan ubah pun digambar sebagai panel inline — sehingga satu pola dipakai untuk
+        semuanya.
+      */}
+      {isDocumentOpen && editing !== null && (
+        <DocumentPanel
+          workshop={editing}
+          available={uploadAvailable}
+          onClose={() => { setDocumentOpen(false) }}
+        />
+      )}
 
       <nav
         aria-label="Tab Master Bengkel"
@@ -384,11 +393,6 @@ export function WorkshopPage() {
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
               closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab
-              // sebelumnya, dan menyimpannya berarti keputusan dapat mengenai baris yang
-              // tidak sedang dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
               setTab(t.id)
             }}
             className={[
@@ -415,41 +419,6 @@ export function WorkshopPage() {
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
         </span>
       </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} bengkel dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(WorkshopStatus.disetujui)}
-          onReject={() => runDecision(WorkshopStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
-
-      {documentFor && (
-        <DocumentPanel workshop={documentFor} onClose={() => setDocumentFor(null)} />
-      )}
 
       {isFormOpen && (
         <section className="mt-5">
@@ -490,67 +459,6 @@ export function WorkshopPage() {
   )
 }
 
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Activity/SetApprovalAllMaster`: satu keputusan atas sekumpulan pengajuan,
- * bukan satu keputusan per baris.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang
- * hilang membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus
- * dilakukan lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: {
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang bengkel yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} bengkel</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama
-        sama membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari
-        namanya. Pembaca layar mengumumkan keduanya dengan kata yang sama persis, dan
-        pengguna yang menyebut "tombol Approve" pada perintah suara tidak punya cara
-        memilih yang mana.
-
-        Kata "terpilih" sekaligus menyebutkan sifatnya: ia mengenai SELURUH baris yang
-        dicentang, bukan satu baris.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
-  )
-}
 
 /**
  * LoginCell menggambar kolom Login Aplikasi.

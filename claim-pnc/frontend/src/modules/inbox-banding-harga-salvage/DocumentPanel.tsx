@@ -71,6 +71,8 @@ export function DocumentPanel({ scope, onClose }: Props) {
           rows={documents.data?.baris ?? []}
           rowKey={(row) => row.id}
           label={`Dokumen banding ${scope.no_klaim}`}
+          // Kepala kolom tetap tergambar meski banding itu tidak punya dokumen.
+          showHeaderWhenEmpty
           hideSearch
           isLoading={documents.isPending}
           error={

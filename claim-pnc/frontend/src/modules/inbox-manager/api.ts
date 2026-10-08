@@ -6,6 +6,7 @@ import { useSession } from '@/app/session'
 
 import type {
   CountersResponse,
+  DashboardFilterInput,
   DecisionRequest,
   DecisionResponse,
   ListResponse,
@@ -75,6 +76,17 @@ export function useInboxManagerMetadata() {
 /**
  * Hook pencacah di kepala layar.
  *
+ * # TIDAK DIPAKAI layar saat ini
+ *
+ * Angka pencacah sempat digambar sebagai lencana pada tab dan sebagai kartu ringkasan;
+ * keduanya dicabut atas permintaan Work Owner (2026-10-08) karena Pega tidak menggambarnya di
+ * sana — ia menampilkannya sebagai tabel tersendiri berkolom `Status` dan `Jumlah`
+ * (`Section/InboxManager_Sec`, grid `TempCountDashboard.pxResults`).
+ *
+ * Hook dan rutenya DIPERTAHANKAN, tidak dihapus: tabel itu ada di Pega dan dapat diminta
+ * kemudian. Yang dihapus hanya pemanggilannya, supaya layar tidak menembak server untuk
+ * sesuatu yang tidak digambarnya.
+ *
  * # Kenapa ia permintaan TERSENDIRI
  *
  * Karena isinya tidak berubah saat tab berpindah. Menempelkannya ke setiap pemuatan tab
@@ -99,12 +111,13 @@ export function useInboxManagerList(
   tab: string,
   page: number,
   period: PeriodInput | null,
+  filter: DashboardFilterInput | null,
   enabled: boolean,
 ) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
-  const params = buildParams(tab, page, period)
+  const params = buildParams(tab, page, period, filter)
 
   return useQuery({
     queryKey: keys.list(portal, token, tab, page, params.toString()),
@@ -200,10 +213,21 @@ export function useExportInboxManager() {
  * Ia dipakai daftar DAN kunci cache, supaya dua permintaan yang penyaringnya berbeda tidak
  * pernah berbagi satu entri cache.
  */
-function buildParams(tab: string, page: number, period: PeriodInput | null): URLSearchParams {
+function buildParams(
+  tab: string,
+  page: number,
+  period: PeriodInput | null,
+  filter: DashboardFilterInput | null,
+): URLSearchParams {
   const params = new URLSearchParams()
   if (tab) params.set('tab', tab)
   if (page > 1) params.set('halaman', String(page))
+
+  // Penyaring yang kosong TIDAK dikirim, supaya "All" menghasilkan alamat yang sama dengan
+  // membuka tabnya tanpa menyentuh penyaring sama sekali — dan karena itu berbagi satu entri
+  // cache.
+  if (filter?.reinsurer) params.set('reinsurer', filter.reinsurer)
+  if (filter?.kategori_os) params.set('kategori_os', filter.kategori_os)
 
   if (period) {
     params.set('bentuk_periode', period.bentuk)

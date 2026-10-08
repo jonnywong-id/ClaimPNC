@@ -2,8 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import type {
-  PartTypeDecisionInput,
-  PartTypeDecisionResponse,
   PartTypeInput,
   PartTypeListResponse,
   PartTypeOptionsResponse,
@@ -14,7 +12,6 @@ import { useSession } from '@/app/session'
 
 const ROUTE = '/api/master/tipe-sparepart'
 const ROUTE_OPTIONS = '/api/master/tipe-sparepart/pilihan'
-const ROUTE_DECISION = '/api/master/tipe-sparepart/keputusan'
 
 /**
  * listKey menyertakan portal DAN token.
@@ -138,31 +135,19 @@ export function useSavePartType() {
   })
 }
 
-/**
- * Hook keputusan borongan.
+/*
+ * TIDAK ADA hook keputusan di modul ini.
  *
- * SATU permintaan untuk seluruh baris yang dicentang, bukan satu per baris. Bentuknya
- * mengikuti `Section/ApprovalMasterTipeSparepartHE-Section.xml` — memecahnya menjadi
- * sederet permintaan akan mengubah operasi yang di Pega utuh menjadi sesuatu yang dapat
- * gagal separuh jalan.
+ * Ketiga tab layar Pega — Approve, Reject, dan Waiting Approval — nol tombol dan nol
+ * `pyLocalAction`; dibaca dari ketiga section tab, bukan disimpulkan. Persetujuan di Pega
+ * dikerjakan layar LAIN, `Section/ApprovalMasterTipeSparepartHE-Section.xml`, yang dipakai
+ * Inbox Manager.
  *
- * TANPA catatan: tabelnya tidak punya kolom penampungnya.
+ * Versi pertama modul ini memasang tombol Approve/Reject di dalam layar, mengikuti Master
+ * Kategori Sparepart dan ketiga master HE lainnya. Work Owner mencabutnya pada 2026-10-04:
+ * "jika tidak sama, hapus, ikuti perilaku PEGA".
+ *
+ * Endpoint `POST /api/master/tipe-sparepart/keputusan` TETAP ADA di backend — ia padanan
+ * sah dari section Inbox Manager, dan dipakai begitu layar itu dibangun. Yang dicabut
+ * hanyalah pemakaiannya dari layar ini.
  */
-export function useDecidePartType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
-
-  return useMutation({
-    mutationFn: (input: PartTypeDecisionInput) =>
-      callAPI<PartTypeDecisionResponse>(ROUTE_DECISION, {
-        metode: 'POST',
-        body: input,
-        token,
-        portal,
-      }),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
-    },
-  })
-}

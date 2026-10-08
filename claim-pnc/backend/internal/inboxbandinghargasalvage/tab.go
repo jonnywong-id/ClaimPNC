@@ -256,11 +256,32 @@ func PlannedDifferences() []string {
 			"selain baris itu, dan pada Oracle berpotensi membuat kuerinya galat — yang " +
 			"akibatnya total halaman tidak pernah terisi.",
 
-		"Angka pada tabel ringkas kini SAMA dengan jumlah baris gridnya. Di layar lama " +
-			"keduanya menghitung populasi yang berbeda: daftarnya menyaring " +
+		"Angka antrean kini SAMA dengan jumlah baris gridnya. Di layar lama pencacah dan " +
+			"daftarnya menghitung populasi yang berbeda: daftarnya menyaring " +
 			"`HARGAREQUEST IS NOT NULL` pada tabel checker, sementara pencacahnya " +
 			"menyaring `NILAI_REQUEST IS NOT NULL` pada tabel detail salvage lewat JOIN yang " +
-			"dapat melipatgandakan baris.",
+			"dapat melipatgandakan baris. Angkanya kini digambar sebagai lencana pada tab, " +
+			"bukan sebagai tabel ringkas tersendiri — lihat selisih tampilan di bawah.",
+
+		"TAMPILAN — kedua antrean dipilih lewat BILAH TAB. Di Pega keduanya dua kontainer " +
+			"bersyarat pada section yang sama (`tempQuery.FlagASO==1` dan `==2`), tanpa " +
+			"kendali terlihat di dalam section itu. Sakelarnya setara; bentuknya tidak.",
+
+		"TAMPILAN — jumlah antrean digambar sebagai lencana pada tab, dan HANYA bila " +
+			"antreannya berisi. Pega tidak punya penghitung apa pun di layar ini: tabel " +
+			"ringkas \"Status Salvage / Jumlah\" milik layar Inbox Salvage, dan " +
+			"`GCNMCountRequestSalvage_act` yang memasok angkanya tidak dipanggil harness " +
+			"maupun section mana pun.",
+
+		"TAMPILAN — tombol \"Refresh\" di kepala halaman TIDAK ada padanannya di Pega. " +
+			"Harness maupun section layar ini tidak memuat satu tombol pun di luar kolom aksi; " +
+			"di sana daftar disegarkan dengan memuat ulang layarnya. Tombol ini ditambahkan " +
+			"mengikuti kebiasaan aplikasi baru, bukan menyalin Pega.",
+
+		"TAMPILAN — judul kolom tombol \"Aksi\", sedangkan literal Pega-nya \"Action\". Ini " +
+			"satu-satunya judul kolom yang sengaja tidak menyalin Pega, berlaku seluruh " +
+			"modul (ketetapan Work Owner 2026-10-03). Label TOMBOLNYA tetap literal Pega: " +
+			"Approve, Reject, Lihat File.",
 
 		"Kata kunci pencarian dikirim sebagai parameter terikat, bukan dirangkai ke dalam " +
 			"teks SQL. Sistem lama menyusunnya sebagai `\"and noklaim='\" + kata kunci + \"'\"` " +
@@ -306,6 +327,16 @@ func Limitations() []string {
 			"keputusan menyatakan mana yang benar-benar terjadi — bukan \"berhasil disimpan\" " +
 			"yang menyiratkan lebih.",
 
+		"Baris pada grid Request tidak dapat dibuka — dan di layar lama pun TIDAK. Grid itu " +
+			"berkonfigurasi `pyEditingMode = expandPane` dengan " +
+			"`pyEditAction = ShowDetailSalvageInboxOSClose`, tetapi rule itu **tidak ada di " +
+			"aplikasi Pega-nya**: ia dirujuk tiga section sebagai `pyEditAction` dan tidak " +
+			"terindeks di satu pun `pxRuleReferences`, sementara kedua `pyEditAction` lain " +
+			"pada section yang SAMA terindeks sebagai `Rule-Obj-FlowAction`. Jadi ia rujukan " +
+			"menggantung, bukan artefak yang kurang dari export — tidak ada kemampuan yang " +
+			"hilang, dan tidak ada yang perlu diminta. Keterangan sebelumnya yang menyebutnya " +
+			"\"tidak ada di export\" menyesatkan dan dicabut.",
+
 		"Daftar dokumen pada \"Lihat File\" hanya menampilkan yang BELUM ditandai ditolak. " +
 			"Itu ditiru dari kueri lama (`IDBALAILELANG IS NULL`), bukan pilihan di sini — " +
 			"akibatnya, dokumen banding yang pernah Anda tolak tidak dapat dibuka lagi " +
@@ -321,9 +352,11 @@ func Limitations() []string {
 			"mereka dan MESSAGE_PNC untuk balasan kita — dan satu-satunya rule yang " +
 			"menyentuhnya di export hanya menulis kolom yang pertama.",
 
-		"Tombol \"Tambah\" pada layar lama membuka form pengajuan salvage " +
-			"(`Section/TambahData_Salvage`), yaitu form yang sama dengan milik Inbox Salvage. " +
-			"Ia tidak digandakan di sini; pengajuan salvage dibuat dari layar Inbox Salvage.",
+		"Pengajuan salvage BARU tidak dibuat dari layar ini, melainkan dari layar Inbox " +
+			"Salvage. Keterangan sebelumnya yang menyebut layar lama punya tombol " +
+			"\"Tambah\" di sini KELIRU dan dicabut: harness maupun section layar ini tidak " +
+			"memuat tombol itu sama sekali, dan tidak pula tombol lain. Keduanya hanya " +
+			"memuat kotak cari, kedua grid, dan tombol pada kolom aksi grid Request.",
 
 		"Pemeriksaan peran belum ada. Butir menu ini dijaga `When/IsGCNMUser` di Pega, dan " +
 			"rule itu berisi `1 = 2` — yakni sakelar \"jangan tampilkan ini\", bukan " +

@@ -25,9 +25,10 @@ func TestSampleRepoListsEveryTaskOrderedByCaseNumber(t *testing.T) {
 	page, err := NewSampleRepo().List(context.Background(), inboxinvestigator.Filter{})
 	require.NoError(t, err)
 	require.False(t, page.Truncated)
+	// MENURUN — Report Definition menyatakan `pySortType = DESC` pada `.pyID`.
 	require.Equal(t, []string{
-		"PNC-099801", "PNC-099876", "PNC-100222", "PNC-100230", "PNC-100236",
-		"PNC-100238", "PNC-100241", "PNCN.26.0007",
+		"PNCN.26.0007", "PNC-100241", "PNC-100238", "PNC-100236", "PNC-100230",
+		"PNC-100222", "PNC-099876", "PNC-099801",
 	}, caseNumbers(page.Tasks))
 }
 
@@ -43,7 +44,7 @@ func TestKeywordMatchesEverySearchableColumn(t *testing.T) {
 		"peserta contoh delapan": {"PNC-099801"},
 		"contractors":            {"PNC-099801"},
 		"cabang selatan":         {"PNC-100222"},
-		"admincontoh3":           {"PNC-099876", "PNC-100230"},
+		"admincontoh3":           {"PNC-100230", "PNC-099876"},
 		"tidak-ada-di-mana-pun":  {},
 	} {
 		page, err := repo.List(ctx, inboxinvestigator.Filter{Keyword: "  " + keyword + " "})
@@ -52,8 +53,8 @@ func TestKeywordMatchesEverySearchableColumn(t *testing.T) {
 	}
 }
 
-// Nomor case yang sama diurutkan menurut tanggal pendaftaran, kosong lebih dulu, lalu
-// menurut kunci kerja.
+// Nomor case yang sama diurutkan menurut tanggal pendaftaran MENURUN, kosong paling akhir,
+// lalu menurut kunci kerja menurun.
 func TestTiesAreBrokenByRegistrationThenReference(t *testing.T) {
 	early := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	late := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
@@ -73,7 +74,7 @@ func TestTiesAreBrokenByRegistrationThenReference(t *testing.T) {
 	for _, one := range page.Tasks {
 		references = append(references, one.Reference)
 	}
-	require.Equal(t, []string{"A", "B", "C", "E", "D"}, references)
+	require.Equal(t, []string{"D", "E", "C", "B", "A"}, references)
 }
 
 // Lebih dari MaxRows baris dipotong dan dinyatakan terpotong.
@@ -89,7 +90,10 @@ func TestMoreThanMaxRowsIsTruncatedAndSaysSo(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, page.Truncated)
 	require.Len(t, page.Tasks, inboxinvestigator.MaxRows)
-	require.Equal(t, "PNC-100000", page.Tasks[0].CaseNumber)
+	// Yang BERTAHAN adalah nomor tertinggi, karena urutannya menurun. Arah urutan
+	// menentukan baris mana yang hilang saat antreannya panjang — itulah sebabnya ia diuji
+	// di sini, bukan hanya di uji urutan.
+	require.Equal(t, "PNC-100500", page.Tasks[0].CaseNumber)
 }
 
 // Galat yang dipasang dikembalikan apa adanya.

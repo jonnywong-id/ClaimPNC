@@ -73,29 +73,45 @@
 --
 --
 -- ============================================================================
--- INNER JOIN SISTEM LAMA DIGANTI LEFT JOIN, DAN ITU DISENGAJA
+-- GRID TIDAK BER-JOIN, DAN ITU MENGIKUTI PEGA
 -- ============================================================================
 --
--- `BrowseMasterSparepartTypeClaimHE_sql` menggabungkan kedua tabel dengan gaya koma:
+-- Koreksi 2026-10-04, atas perintah Work Owner: "Di PEGA kolom Kategori Sparepart tidak
+-- ada, ikuti PEGA saja."
 --
---   from POOLDATA.gcnm_m_sparepart_type a, POOLDATA.GCNM_M_SPAREPART_CATEGORY b
---   where A.PART_CATEGORY_ID = B.PART_CATEGORY_ID
+-- Grid ketiga tab layar ini menggambar TIGA kolom, dibaca dengan menelusuri `<rowdata>`
+-- pada ketiga section tab dan memasangkan sel header dengan sel datanya lewat `pyWidth`
+-- yang cocok persis:
 --
--- Itu INNER JOIN. Akibatnya di sistem lama: **tipe yang menunjuk kategori yang tidak ada
--- akan HILANG dari daftar** — tidak muncul di tab mana pun, tidak dapat disunting, dan
--- tidak dapat diperbaiki dari layar. Barisnya tetap ada di basis data, dan tetap terbaca
--- oleh dropdown Tipe pada layar Master Sparepart yang tidak melakukan JOIN sama sekali.
+--   pyWidth  header                  sel data
+--   94       ID Tipe Sparepart       .CityID    -> PART_SECTION_ID
+--   240      Nama Tipe Sparepart     .City      -> PART_SECTION_NAME
+--   156      ID Kategori Sparepart   .District  -> PART_CATEGORY_ID
 --
--- Modul ini memakai LEFT JOIN, sehingga barisnya TETAP TERLIHAT dengan kolom Kategori
--- kosong. Ini SELISIH PERILAKU yang disengaja terhadap Pega, dan satu-satunya pada jalur
--- baca modul ini. Alasannya: baris yang tidak dapat dilihat tidak dapat diperbaiki, dan
--- modul ini menuntut kategori diisi saat menyimpan — tanpa LEFT JOIN, baris rusak itu
--- terkunci selamanya.
+-- `.DistrictID` — alias PART_CATEGORY_NAME — TIDAK ada di grid mana pun. Caption "Kategori
+-- Sparepart" yang sempat terbaca adalah label FORM untuk dropdown-nya, bukan judul kolom.
 --
--- Selisihnya akan muncul pada uji kesetaraan gerbang 1 sebagai "baris berlebih" pada
--- entitas yang datanya memang sudah rusak. `claimpnc -periksa` melaporkan jumlahnya lebih
--- dulu lewat type_count_orphan_category, supaya selisihnya dapat dijelaskan sebelum
--- pengujian dijalankan, bukan sesudah.
+-- Kueri grid Pega karena itu memang tanpa JOIN sama sekali
+-- (`RDB List/BrowseSparepartTipeClaimHE2-SQL.xml`):
+--
+--   select PART_SECTION_ID as "CityID", PART_SECTION_NAME as "City",
+--          PART_CATEGORY_ID as "District"
+--     from POOLDATA.gcnm_m_sparepart_type where APPROVAL = '0'
+--
+-- # Kekeliruan yang dikoreksi di sini
+--
+-- Versi pertama modul ini memakai LEFT JOIN, dengan alasan bahwa inner join Pega membuang
+-- tipe yang kategorinya tidak ada. Inner join itu NYATA — tetapi ia ada di
+-- `BrowseMasterSparepartTypeClaimHE_sql` dan `BrowseSparepartTypeClaimHE_sql`, yang keduanya
+-- memuat SATU BARIS menurut `PART_SECTION_ID`: pemuat FORM, bukan pemuat GRID.
+--
+-- Pada grid, baris tanpa kategori sudah terlihat di Pega karena memang tidak ada join yang
+-- dapat membuangnya. Tidak ada yang perlu diperbaiki, dan tidak ada selisih yang perlu
+-- dijelaskan pada gerbang 1.
+--
+-- `type_count_orphan_category` TETAP ADA, tetapi artinya berubah: ia bukan lagi pencacah
+-- selisih melainkan pemeriksaan integritas — baris yang kolom Kategorinya akan tampil
+-- sebagai ID yang tidak menunjuk apa pun.
 --
 --
 -- ============================================================================
@@ -117,43 +133,33 @@
 
 -- name: type_list
 --
--- Daftar satu tab, beserta nama kategori induknya.
+-- Daftar satu tab — TIGA kolom, sama persis dengan grid Pega.
 --
--- Padanan `RDB List/BrowseMasterSparepartTypeClaimHE_sql-SQL.xml` — satu-satunya rule
--- browse yang membawa nama kategori — dengan penyaring status yang berparameter seperti di
--- sana, dan tanpa penyaring `PART_SECTION_ID` karena yang diminta di sini adalah daftar,
--- bukan satu baris.
+-- Padanan `RDB List/BrowseSparepartTipeClaimHE2-SQL.xml`, dengan penyaring status yang
+-- dijadikan parameter supaya satu kueri melayani ketiga tab.
 --
--- LEFT JOIN, bukan inner join. Lihat banner di kepala berkas ini.
-SELECT T.PART_SECTION_ID,
-       T.PART_SECTION_NAME,
-       T.PART_CATEGORY_ID,
-       C.PART_CATEGORY_NAME,
-       T.APPROVAL
-  FROM POOLDATA.GCNM_M_SPAREPART_TYPE T
-  LEFT JOIN POOLDATA.GCNM_M_SPAREPART_CATEGORY C
-         ON C.PART_CATEGORY_ID = T.PART_CATEGORY_ID
- WHERE TRIM(T.APPROVAL) = :1
- ORDER BY T.PART_SECTION_ID
+-- TANPA JOIN. Lihat banner di kepala berkas ini.
+SELECT PART_SECTION_ID,
+       PART_SECTION_NAME,
+       PART_CATEGORY_ID,
+       APPROVAL
+  FROM POOLDATA.GCNM_M_SPAREPART_TYPE
+ WHERE TRIM(APPROVAL) = :1
+ ORDER BY PART_SECTION_ID
 
 -- name: type_list_search
 --
--- Sama dengan type_list, ditambah penyaring kata kunci.
+-- Sama dengan type_list, ditambah penyaring kata kunci pada NAMA TIPE.
 --
 -- Kueri TERSENDIRI, bukan satu kueri yang klausanya ditempel saat kata kuncinya ada.
 -- Merangkai teks SQL adalah persis pola `{ASIS:...}` yang 03-CURRENT-ARCHITECTURE.md §4.5
 -- catat sebagai celah injeksi, dan pemisahan ini membuat kedua bentuknya dapat dibaca utuh
 -- di berkas ini.
 --
--- Kata kuncinya dicocokkan ke NAMA TIPE dan NAMA KATEGORI sekaligus — berbeda dari Master
--- Kategori Sparepart yang hanya punya satu kolom untuk dicari. Alasannya ada pada
--- mastertipesparepart.Filter: kategori adalah cara pengguna mengelompokkan tipe di
--- kepalanya.
---
--- Parameter yang sama dipakai DUA KALI (`:2` pada kedua sisi OR). Bentuk itu sengaja
--- dipilih alih-alih mengirim nilai yang sama dua kali sebagai `:2` dan `:3` — driver Oracle
--- dan PostgreSQL keduanya menerima penyebutan ulang satu parameter posisional, dan satu
--- nilai untuk satu maksud lebih sulit dibuat tidak sinkron.
+-- Hanya nama tipe yang dicari. Versi pertama ikut mencari NAMA KATEGORI lewat JOIN; itu
+-- dicabut bersama kolomnya (2026-10-04) — mencari kolom yang tidak ditampilkan membuat
+-- hasil pencarian tidak dapat dijelaskan dari layar, karena barisnya cocok pada sesuatu
+-- yang tidak terlihat.
 --
 -- UPPER di kedua sisi, bukan LOWER: rule validasi lamanya memakai `upper(...)`, dan memakai
 -- pasangan yang sama membuat pencarian dan pemeriksaan keunikan tidak pernah berbeda soal
@@ -161,41 +167,43 @@ SELECT T.PART_SECTION_ID,
 --
 -- Kata kuncinya sudah dibungkus tanda persen oleh pemanggil, bukan di sini: menempelkannya
 -- di dalam teks SQL berarti merangkai nilai ke dalam pernyataan.
-SELECT T.PART_SECTION_ID,
-       T.PART_SECTION_NAME,
-       T.PART_CATEGORY_ID,
-       C.PART_CATEGORY_NAME,
-       T.APPROVAL
-  FROM POOLDATA.GCNM_M_SPAREPART_TYPE T
-  LEFT JOIN POOLDATA.GCNM_M_SPAREPART_CATEGORY C
-         ON C.PART_CATEGORY_ID = T.PART_CATEGORY_ID
- WHERE TRIM(T.APPROVAL) = :1
-   AND (UPPER(T.PART_SECTION_NAME) LIKE :2
-        OR UPPER(C.PART_CATEGORY_NAME) LIKE :2)
- ORDER BY T.PART_SECTION_ID
+SELECT PART_SECTION_ID,
+       PART_SECTION_NAME,
+       PART_CATEGORY_ID,
+       APPROVAL
+  FROM POOLDATA.GCNM_M_SPAREPART_TYPE
+ WHERE TRIM(APPROVAL) = :1
+   AND UPPER(PART_SECTION_NAME) LIKE :2
+ ORDER BY PART_SECTION_ID
 
 -- name: type_get
 --
--- Satu baris menurut kuncinya. Padanan
--- `RDB List/BrowseSparepartTypeClaimHE_sql-SQL.xml`, yang dipakai
--- `Activity/SetMasterTipeSparepart_act` untuk memuat baris ke form.
+-- Satu baris menurut kuncinya, untuk dimuat ke form.
 --
--- Rule itu memang TIDAK menyaring APPROVAL, dan itu ditiru: form harus dapat membuka baris
--- dari tab mana pun. Kembarannya yang berparameter status,
--- `BrowseMasterSparepartTypeClaimHE_sql`, dipakai jalur lain.
+-- Padanan `RDB List/BrowseSparepartTypeClaimHE_sql-SQL.xml`, yang dipakai
+-- `Activity/SetMasterTipeSparepart_act`. Rule itu memang TIDAK menyaring APPROVAL, dan itu
+-- ditiru: form harus dapat membuka baris dari tab mana pun.
+--
+-- # JOIN-nya tidak dibawa, dan itu disengaja
+--
+-- Rule lamanya ber-INNER JOIN ke tabel kategori untuk mengambil `PART_CATEGORY_NAME`.
+-- Akibatnya di Pega: membuka baris yang kategorinya sudah tidak ada **tidak mengembalikan
+-- apa pun**, sehingga formnya tidak dapat dibuka dan barisnya tidak dapat diperbaiki.
+--
+-- Nama kategorinya sendiri tidak dibutuhkan form ini: dropdown Kategori mengambil daftarnya
+-- dari `type_category_list`, dan nilai yang terpilih dicocokkan di layar. Membuang JOIN-nya
+-- karena itu menghilangkan kebutuhan sekaligus cacatnya — tanpa menambah kolom apa pun yang
+-- tidak ada di Pega.
 --
 -- TRIM pada kuncinya dengan alasan yang sama seperti pada APPROVAL, ditambah satu lagi:
 -- nilai ini datang dari jalur URL dan dari kolom SPAREPART_HE.TIPE_SPART yang bertipe teks,
 -- sehingga spasi ujung benar-benar mungkin sampai ke sini.
-SELECT T.PART_SECTION_ID,
-       T.PART_SECTION_NAME,
-       T.PART_CATEGORY_ID,
-       C.PART_CATEGORY_NAME,
-       T.APPROVAL
-  FROM POOLDATA.GCNM_M_SPAREPART_TYPE T
-  LEFT JOIN POOLDATA.GCNM_M_SPAREPART_CATEGORY C
-         ON C.PART_CATEGORY_ID = T.PART_CATEGORY_ID
- WHERE TRIM(CAST(T.PART_SECTION_ID AS VARCHAR(64))) = :1
+SELECT PART_SECTION_ID,
+       PART_SECTION_NAME,
+       PART_CATEGORY_ID,
+       APPROVAL
+  FROM POOLDATA.GCNM_M_SPAREPART_TYPE
+ WHERE TRIM(CAST(PART_SECTION_ID AS VARCHAR(64))) = :1
 
 -- name: type_find_by_name
 --
@@ -455,13 +463,16 @@ SELECT COUNT(*)
 --
 -- Baris tipe yang PART_CATEGORY_ID-nya tidak ada di tabel kategori.
 --
--- Inilah baris yang di sistem lama HILANG dari layar karena inner join-nya; lihat banner di
--- kepala berkas ini. Di modul ini ia tetap terlihat dengan kolom Kategori kosong, dan
--- pencacah ini yang membuat jumlahnya diketahui sebelum selisihnya muncul pada uji
--- kesetaraan.
+-- Pemeriksaan INTEGRITAS, bukan pencacah selisih. Barisnya muncul normal di grid — grid
+-- memang tidak ber-JOIN — dan kolom "ID Kategori Sparepart"-nya menampilkan angka yang
+-- tidak menunjuk apa pun.
 --
--- Baris berkategori KOSONG ikut terhitung: ia sama-sama tidak punya induk, dan sama-sama
--- tidak akan pernah muncul di sistem lama.
+-- Yang benar-benar terhalang adalah MENYIMPANNYA: dropdown Kategori hanya menawarkan
+-- kategori yang disetujui, sehingga baris seperti ini menuntut petugas memilih kategori
+-- yang sah lebih dulu. Itu perilaku yang diinginkan, dan pencacah ini yang membuat
+-- jumlahnya diketahui sebelum petugas menemuinya satu per satu.
+--
+-- Baris berkategori KOSONG ikut terhitung: ia sama-sama tidak punya induk.
 SELECT COUNT(T.PART_SECTION_ID)
   FROM POOLDATA.GCNM_M_SPAREPART_TYPE T
  WHERE NOT EXISTS (

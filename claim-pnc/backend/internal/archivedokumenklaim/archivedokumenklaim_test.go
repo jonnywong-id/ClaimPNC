@@ -77,15 +77,47 @@ func TestSaringanLiniBisnisTidakPekaBesarKecilHuruf(t *testing.T) {
 	)
 }
 
-func TestPencarianKataKunciWajibDiisi(t *testing.T) {
-	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode: string(archivedokumenklaim.ModeKeyword),
-	})
+// Setidaknya satu penyaring wajib terisi.
+//
+// Aturan ini TIDAK ada di sistem lama: menekan Cari dengan seluruh isian kosong merangkai
+// `WHERE UPPER(NOKLAIM)=” or NAMABOX=”` — tidak mengembalikan baris, tetapi memindai
+// seluruh tabel arsip lebih dulu.
+func TestPencarianTanpaPenyaringDitolak(t *testing.T) {
+	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{})
 
 	var validation *archivedokumenklaim.ValidationError
 	require.ErrorAs(t, err, &validation)
 	require.Len(t, validation.Violations, 1)
 	require.Equal(t, archivedokumenklaim.FieldKeyword, validation.Violations[0].Field)
+}
+
+// Kata kunci tanpa Tipe Pencarian Archive DITOLAK.
+//
+// Tanpa kolom, kata kunci tidak punya tempat untuk dicocokkan — dan meloloskannya akan
+// membuat kueri menyaring nol kolom, yaitu mengembalikan seluruh tabel.
+func TestKataKunciTanpaKolomDitolak(t *testing.T) {
+	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
+		Keyword: "BOX-A-01",
+	})
+
+	var validation *archivedokumenklaim.ValidationError
+	require.ErrorAs(t, err, &validation)
+	require.Equal(t, archivedokumenklaim.FieldSearchColumn, validation.Violations[0].Field)
+}
+
+// Ketiga kolomnya sama dengan ketiga kolom yang dirangkai kueri lama.
+func TestTigaKolomPencarianArchive(t *testing.T) {
+	codes := make([]archivedokumenklaim.SearchColumn, 0, 3)
+	for _, option := range archivedokumenklaim.SearchColumns() {
+		codes = append(codes, option.Code)
+		require.NotEmpty(t, option.Label)
+	}
+
+	require.Equal(t, []archivedokumenklaim.SearchColumn{
+		archivedokumenklaim.ColumnClaimNumber,
+		archivedokumenklaim.ColumnBoxName,
+		archivedokumenklaim.ColumnInsuredName,
+	}, codes)
 }
 
 // Kata kunci DIBESARKAN hurufnya sebelum dikirim ke kueri.
@@ -95,7 +127,7 @@ func TestPencarianKataKunciWajibDiisi(t *testing.T) {
 // docs/keputusan-implementasi.md.
 func TestKataKunciDibesarkanHurufnya(t *testing.T) {
 	criteria, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode:    string(archivedokumenklaim.ModeKeyword),
+		Column:  string(archivedokumenklaim.ColumnClaimNumber),
 		Keyword: "  pnc-100001  ",
 	})
 
@@ -103,32 +135,43 @@ func TestKataKunciDibesarkanHurufnya(t *testing.T) {
 	require.Equal(t, "PNC-100001", criteria.Keyword)
 }
 
-// Isian yang tidak berlaku bagi mode terpilih DIBUANG, bukan dibawa diam-diam.
+// Kedua penyaring BERLAKU BERSAMAAN, bukan saling menggantikan.
 //
-// Nilai sisa dari mode sebelumnya yang ikut masuk kueri adalah kelas cacat yang tidak ada
-// di sistem lama — di sana tiap isian punya propertinya sendiri.
-func TestIsianDiLuarModeDibuang(t *testing.T) {
+// Ini koreksi atas rancangan pertama, yang menjadikan keduanya satu dropdown mode. Di
+// Pega kedua bloknya ber-`FlagASO==2` — tampil bersamaan di tab yang sama
+// (`Section/SecArchiveDokumen-Section.xml` posisi 164179 dan 707930).
+func TestKeduaPenyaringBerlakuBersamaan(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
 
-	byKeyword, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode:    string(archivedokumenklaim.ModeKeyword),
+	criteria, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
+		Column:  string(archivedokumenklaim.ColumnBoxName),
 		Keyword: "BOX-A-01",
 		From:    &from,
 		To:      &to,
 	})
-	require.NoError(t, err)
-	require.Nil(t, byKeyword.From)
-	require.Nil(t, byKeyword.To)
 
-	byDate, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode:    string(archivedokumenklaim.ModeInputDate),
-		Keyword: "BOX-A-01",
-		From:    &from,
-		To:      &to,
-	})
 	require.NoError(t, err)
-	require.Empty(t, byDate.Keyword)
+	require.True(t, criteria.HasKeyword())
+	require.True(t, criteria.HasDateRange())
+	require.Equal(t, archivedokumenklaim.ColumnBoxName, criteria.Column)
+}
+
+// Rentang yang hanya terisi satu ujung DITOLAK, bukan dilengkapi sendiri.
+//
+// Menebak ujung yang kosong menghasilkan hasil yang tidak diminta pengguna dan tidak
+// terbaca dari layar.
+func TestRentangSetengahTerisiDitolak(t *testing.T) {
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{From: &from})
+	var validation *archivedokumenklaim.ValidationError
+	require.ErrorAs(t, err, &validation)
+	require.Equal(t, archivedokumenklaim.FieldTo, validation.Violations[0].Field)
+
+	_, err = archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{To: &from})
+	require.ErrorAs(t, err, &validation)
+	require.Equal(t, archivedokumenklaim.FieldFrom, validation.Violations[0].Field)
 }
 
 func TestRentangTanggalTerbalikDitolak(t *testing.T) {
@@ -136,7 +179,6 @@ func TestRentangTanggalTerbalikDitolak(t *testing.T) {
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 
 	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode: string(archivedokumenklaim.ModeInputDate),
 		From: &from,
 		To:   &to,
 	})
@@ -155,7 +197,6 @@ func TestRentangTanggalMembuangJam(t *testing.T) {
 	to := time.Date(2024, 3, 31, 23, 59, 0, 0, time.UTC)
 
 	criteria, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode: string(archivedokumenklaim.ModeInputDate),
 		From: &from,
 		To:   &to,
 	})

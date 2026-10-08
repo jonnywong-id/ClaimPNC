@@ -181,7 +181,9 @@ describe('daftar', () => {
     show()
 
     const row = (await screen.findByText('SP-1001')).closest('tr')!
-    expect(within(row).getAllByText('—')).toHaveLength(4)
+    // TIGA sel, bukan empat: kolom Nomor Grup dicabut atas keputusan Work Owner 2026-10-04,
+    // dan sel kosongnya ikut hilang bersamanya.
+    expect(within(row).getAllByText('—')).toHaveLength(3)
 
     await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(await screen.findByText('Belum ada grouping pada tab Reject.')).toBeInTheDocument()
@@ -199,7 +201,6 @@ describe('daftar', () => {
       'Nama Panel',
       'Sisi Panel',
       'No Rangka',
-      'Nomor Grup',
     ]) {
       const column = within(table).getByRole('columnheader', { name: new RegExp(`^${title}`) })
       await userEvent.click(within(column).getByRole('button'))
@@ -222,79 +223,68 @@ describe('daftar', () => {
   })
 })
 
-describe('keputusan', () => {
+/**
+ * Layar ini TIDAK memutuskan apa pun, dan itu memang perilaku Pega.
+ *
+ * `Section/PNCMasterGroupingSparepartHE` beserta ketiga section tabnya hanya merujuk tombol
+ * **SIMPAN** dan **Ubah**; `pySelected` maupun `pxCheckbox` nol kemunculan di kelimanya.
+ * Keputusan Approve/Reject hidup di `Section/ApprovalPNCMasterGroupingSparepartHE`, yang
+ * disertakan `Harness/UserInbox_Harness` dan `Section/InboxManager_Sec` — Inbox Manager.
+ *
+ * Uji ini menggantikan tiga uji keputusan yang sebelumnya ada di sini. Ia menjaga KETIADAAN-nya
+ * supaya centang borongan tidak kembali dipasang tanpa disadari (keputusan Work Owner
+ * 2026-10-04).
+ */
+describe('tanpa keputusan di layar ini', () => {
   async function openPending() {
     show()
     await screen.findByText('SP-1001')
     await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
-    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(2))
+    await screen.findByText('SP-0001')
   }
 
-  it('mengatur pilihan lalu menolak dan menyebut hasilnya', async () => {
+  it('tab Waiting Approval tidak punya centang maupun tombol keputusan', async () => {
     installFetch()
     await openPending()
 
-    expect(screen.getByText('Centang grouping yang akan diputuskan.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reject terpilih' })).toBeDisabled()
-
-    const [first, second] = screen.getAllByRole('checkbox')
-    await userEvent.click(first!)
-    await userEvent.click(second!)
-    expect(screen.getByText('2 grouping')).toBeInTheDocument()
-    await userEvent.click(first!)
-    expect(screen.getByText('1 grouping')).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Bersihkan' }))
-    expect(screen.getByText('Centang grouping yang akan diputuskan.')).toBeInTheDocument()
-
-    await userEvent.click(second!)
-    await userEvent.click(screen.getByRole('button', { name: 'Reject terpilih' }))
-
-    expect(await screen.findByText(/1 grouping dipindahkan ke/)).toHaveTextContent(
-      '1 grouping dipindahkan ke Reject.',
-    )
-    expect(calls.find((c) => c.url.endsWith('/keputusan'))?.body).toEqual({
-      id_grouping: ['8'],
-      status: '2',
-    })
-    // Pilihan dibersihkan setelah keputusan tersimpan.
-    expect(screen.getByText('Centang grouping yang akan diputuskan.')).toBeInTheDocument()
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+    for (const name of ['Approve terpilih', 'Reject terpilih', 'Bersihkan']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+    expect(screen.queryByText('Centang grouping yang akan diputuskan.')).not.toBeInTheDocument()
   })
 
-  it('menampilkan pesan server bila keputusan ditolak', async () => {
-    installFetch((call) =>
-      call.url.endsWith('/keputusan')
-        ? json(409, { kode: 'konflik', pesan: 'Grouping sudah diputuskan.' })
-        : undefined,
-    )
+  it('tidak pernah menembak endpoint keputusan', async () => {
+    installFetch()
     await openPending()
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
 
-    expect(await screen.findByText('Keputusan belum tersimpan')).toBeInTheDocument()
-    expect(screen.getByText('Grouping sudah diputuskan.')).toBeInTheDocument()
+    // Seluruh tombol yang ada di tab ini ditekan; tidak satu pun boleh menghasilkan keputusan.
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    await waitFor(() => expect(calls.filter(isList).length).toBeGreaterThan(1))
 
-    // Berpindah tab membuang galat keputusan.
-    await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
-    expect(screen.queryByText('Keputusan belum tersimpan')).not.toBeInTheDocument()
+    expect(calls.some((c) => c.url.endsWith('/keputusan'))).toBe(false)
   })
 
-  it('menampilkan pesan umum bila keputusan gagal karena jaringan', async () => {
-    installFetch((call) => (call.url.endsWith('/keputusan') ? 'putus' : undefined))
-    await openPending()
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
+  it('susunan kolomnya sama persis dengan kedua tab lain', async () => {
+    installFetch()
+    show()
+    await screen.findByText('SP-1001')
 
-    expect(
-      await screen.findByText(
-        'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-      ),
-    ).toBeInTheDocument()
+    const titleOf = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('columnheader')
+        .map((one) => (one.textContent ?? '').replace(/\s+/g, ' ').trim())
+
+    const onApprove = titleOf()
+    await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
+    await screen.findByText('SP-0001')
+
+    expect(titleOf()).toEqual(onApprove)
   })
 })
 
 describe('form ubah', () => {
-  it('menampilkan ID dan nomor grup lalu mengirim PUT ke grouping itu', async () => {
+  it('menampilkan ID saja lalu mengirim PUT ke grouping itu', async () => {
     installFetch()
     show()
     const row = (await screen.findByText('SP-1001')).closest('tr')!
@@ -304,7 +294,8 @@ describe('form ubah', () => {
       await screen.findByRole('heading', { name: 'Ubah grouping SP-1001 — BUMPER DEPAN' }),
     ).toBeInTheDocument()
     expect(screen.getByText('ID grouping').parentElement).toHaveTextContent('7')
-    expect(screen.getByText('Nomor grup kendaraan').parentElement).toHaveTextContent('—')
+    // Nomor grup TIDAK ditampilkan di mana pun — layar Pega tidak menampilkannya.
+    expect(screen.queryByText('Nomor grup kendaraan')).not.toBeInTheDocument()
     // Isian turunan diambil dari pencarian sparepart yang berjalan saat form dibuka.
     expect(await screen.findByText('FILTER OLI')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tambah' })).toBeDisabled()

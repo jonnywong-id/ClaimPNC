@@ -44,7 +44,7 @@ type Repo struct {
 // NewRepo membentuk repo; db wajib sudah terhubung ke basis data portal yang dimaksud.
 func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 
-// List membaca baris yang cocok dengan penyaring, beserta nama kategori induknya.
+// List membaca baris yang cocok dengan penyaring.
 //
 // Penyaring kata kunci memakai kueri TERSENDIRI, bukan satu kueri yang klausanya ditempel —
 // lihat berkas .sql untuk alasannya.
@@ -61,10 +61,6 @@ func (r *Repo) List(
 	if keyword == "" {
 		rows, err = r.db.QueryContext(ctx, getQuery("type_list"), string(filter.Status))
 	} else {
-		// DUA argumen untuk kueri yang menyebut `:2` dua kali — sekali pada nama tipe, sekali
-		// pada nama kategori. Penyebutan ulang satu parameter posisional diterima kedua
-		// driver, dan pola yang sama sudah dipakai `bengkel_list_search`.
-		//
 		// Tanda persen dipasang di sini, bukan di dalam teks SQL: nilai yang dikirim ke basis
 		// data tetap lewat parameter binding, dan pola pencariannya tetap terbaca di satu
 		// tempat.
@@ -113,10 +109,6 @@ func (r *Repo) Get(
 // kueri sudah memakai `UPPER(TRIM(PART_SECTION_NAME))` di sisi kolom, dan menaruh UPPER
 // pada kedua sisi di dalam teks SQL akan memaksa basis data mengubah nilai yang sudah dapat
 // diubah sekali di sini.
-//
-// Kueri yang dipakainya TIDAK ber-JOIN, sehingga CategoryName pada hasilnya selalu kosong.
-// Itu tidak berakibat apa pun: satu-satunya pemakai hasil ini adalah pemeriksaan keunikan,
-// yang hanya melihat kuncinya.
 func (r *Repo) FindByName(
 	ctx context.Context,
 	name string,
@@ -124,7 +116,7 @@ func (r *Repo) FindByName(
 	row := r.db.QueryRowContext(ctx, getQuery("type_find_by_name"),
 		strings.ToUpper(strings.TrimSpace(name)))
 
-	found, err := scanNameRow(row)
+	found, err := scanRow(row)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return mastertipesparepart.PartType{}, mastertipesparepart.ErrNotFound
@@ -235,10 +227,6 @@ func (r *Repo) Insert(
 			"mastertipesparepart/sqlstore: menutup transaksi sisip: %w", err)
 	}
 
-	// CategoryName TIDAK diisi di sini: ia milik tabel kategori, dan membacanya menuntut
-	// perjalanan kedua yang hanya untuk memperindah satu jawaban. Lapisan aplikasi yang
-	// mengisinya dari daftar kategori yang memang sudah dibacanya untuk memeriksa
-	// keberadaannya — lihat usecase.Service.Create.
 	return fresh, nil
 }
 
@@ -254,7 +242,7 @@ func rejectTakenName(ctx context.Context, tx *sql.Tx, name string) error {
 	row := tx.QueryRowContext(ctx, getQuery("type_find_by_name"),
 		strings.ToUpper(strings.TrimSpace(name)))
 
-	_, err := scanNameRow(row)
+	_, err := scanRow(row)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return nil
@@ -313,8 +301,6 @@ func (r *Repo) NextID(ctx context.Context) (string, error) {
 // Pemeriksaan bentrok nama TIDAK dilakukan di sini, dan itu mengikuti sistem lama:
 // `ValidateMasterTipeSparepart` dipanggil dari layar, bukan dari jalur penyimpanan.
 // Lapisan aplikasi yang memeriksanya, dan ia mengecualikan baris itu sendiri.
-//
-// CategoryName TIDAK ditulis: ia milik tabel kategori.
 func (r *Repo) Update(ctx context.Context, t mastertipesparepart.PartType) error {
 	result, err := r.db.ExecContext(ctx, getQuery("type_update"),
 		t.Name, t.CategoryID, string(t.Status), strings.TrimSpace(t.ID))
@@ -445,12 +431,16 @@ type rowScanner interface {
 	Scan(target ...any) error
 }
 
-// scanRow membaca satu baris LIMA kolom menjadi PartType.
+// scanRow membaca satu baris EMPAT kolom menjadi PartType.
 //
-// Urutan kolomnya mengikuti berkas .sql, dan ketiga kueri ber-JOIN — type_list,
-// type_list_search, dan type_get — membacanya pada urutan yang sama. Itu yang membuat satu
-// fungsi cukup untuk ketiganya, dan yang membuat uji urutan kolom pada query_test.go layak
-// ada.
+// Urutan kolomnya mengikuti berkas .sql, dan KEEMPAT kueri pembaca — type_list,
+// type_list_search, type_get, dan type_find_by_name — membacanya pada urutan yang sama.
+// Itu yang membuat satu fungsi cukup untuk keempatnya, dan yang membuat uji urutan kolom
+// pada query_test.go layak ada.
+//
+// Versi pertama punya DUA fungsi pemindai karena tiga kueri ber-JOIN membawa kolom kelima.
+// Setelah JOIN-nya dicabut (2026-10-04, lihat banner berkas .sql), keempat kueri berbentuk
+// sama dan fungsi keduanya hilang dengan sendirinya.
 //
 // # Seluruh kolomnya dibaca sebagai teks yang boleh NULL
 //
@@ -458,48 +448,10 @@ type rowScanner interface {
 // menolak baris yang kuncinya NULL — keadaan yang tidak seharusnya ada tetapi tidak dijaga
 // constraint apa pun (R-08) — dan menggagalkan SELURUH daftar karena satu baris rusak.
 //
-// PART_CATEGORY_NAME memang BOLEH NULL, dan itu bukan kerusakan: kueri memakai LEFT JOIN,
-// sehingga tipe yang menunjuk kategori yang tidak ada tetap terbaca dengan nama kategori
-// kosong. Lihat banner pada berkas .sql.
-//
 // Bentuk teks kedua kunci kemudian dirapikan: driver Oracle dapat mengembalikan NUMBER
 // sebagai "8.0" atau notasi ilmiah, dan ID yang berbeda bentuk tidak akan cocok dengan
 // `SPAREPART_HE.TIPE_SPART` yang menyimpan "8". Lihat tidyNumber.
 func scanRow(row rowScanner) (mastertipesparepart.PartType, error) {
-	var (
-		id           sql.NullString
-		name         sql.NullString
-		categoryID   sql.NullString
-		categoryName sql.NullString
-		status       sql.NullString
-	)
-	if err := row.Scan(&id, &name, &categoryID, &categoryName, &status); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return mastertipesparepart.PartType{}, err
-		}
-		return mastertipesparepart.PartType{}, fmt.Errorf(
-			"mastertipesparepart/sqlstore: membaca baris: %w", err)
-	}
-
-	return mastertipesparepart.PartType{
-		ID:           tidyNumber(strings.TrimSpace(id.String)),
-		Name:         strings.TrimSpace(name.String),
-		CategoryID:   tidyNumber(strings.TrimSpace(categoryID.String)),
-		CategoryName: strings.TrimSpace(categoryName.String),
-		Status: mastertipesparepart.ApprovalStatus(
-			strings.TrimSpace(status.String)),
-	}, nil
-}
-
-// scanNameRow membaca satu baris EMPAT kolom — hasil type_find_by_name, yang tidak ber-JOIN.
-//
-// Terpisah dari scanRow karena jumlah kolomnya berbeda, dan menyatukannya akan menuntut
-// kueri pemeriksaan keunikan ikut ber-JOIN hanya supaya bentuk barisnya sama. Itu menambah
-// pekerjaan pada jalur yang dilewati SETIAP penyimpanan, demi kolom yang tidak dipakai
-// pemanggilnya.
-//
-// CategoryName pada hasilnya karena itu selalu kosong.
-func scanNameRow(row rowScanner) (mastertipesparepart.PartType, error) {
 	var (
 		id         sql.NullString
 		name       sql.NullString
@@ -511,7 +463,7 @@ func scanNameRow(row rowScanner) (mastertipesparepart.PartType, error) {
 			return mastertipesparepart.PartType{}, err
 		}
 		return mastertipesparepart.PartType{}, fmt.Errorf(
-			"mastertipesparepart/sqlstore: membaca baris menurut nama: %w", err)
+			"mastertipesparepart/sqlstore: membaca baris: %w", err)
 	}
 
 	return mastertipesparepart.PartType{

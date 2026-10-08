@@ -7,16 +7,31 @@
 // jawaban komite yang memutuskannya.
 //
 // Gunanya membandingkan keduanya: seberapa sering komite sependapat dengan AI, dan pada
-// kasus seperti apa keduanya berbeda. Itulah sebabnya layar ini menggambar DUA grid —
-// satu ringkasan pencacah di atas, satu rincian baris di bawah.
+// kasus seperti apa keduanya berbeda.
+//
+// # SATU grid, bukan dua
+//
+// Export `Section/SecLaporanHasilAI-Section.xml` memuat grid KEDUA terikat
+// `TempTotal.pxResults` — pencacah "Keputusan · Total · Diterima · Ditolak" — dan
+// `Activity/SearchDataLaporanAI-Act.xml` benar-benar mengisinya dua baris ("Komite" dan
+// "AI"). Modul ini sempat membangunnya karena itu.
+//
+// **Pega yang berjalan tidak memilikinya** (Work Owner, 2026-10-03), dan layar yang
+// berjalan mengalahkan export yang kuerinya sendiri bertanda `work in progress`. Grid
+// ringkasan beserta kueri agregatnya DIBUANG seluruhnya — bukan disembunyikan — supaya
+// tidak ada pembacaan basis data yang berjalan tanpa pemakai.
+//
+// Jejaknya sengaja ditinggalkan di sini: bila kelak ternyata ia memang ada, yang perlu
+// dibangun ulang adalah `Summarize` pada seam Repo, kueri `report_summary`, dan satu
+// DataTable di layar.
 //
 // # Asal setiap aturan di berkas ini
 //
 // Seluruhnya dibaca dari export rule Pega, bukan dikarang:
 //
 //	Harness/Har_LaporanHasilAI-Harness.xml      layar "Laporan Hasil AI" (MENU_ID 82)
-//	Section/SecLaporanHasilAI-Section.xml       isi layar — 2 isian, 2 tombol, 2 grid
-//	Activity/SearchDataLaporanAI-Act.xml        pengisi kedua grid SEKALIGUS pembuat CSV
+//	Section/SecLaporanHasilAI-Section.xml       isi layar — 2 isian, 2 tombol, grid rincian
+//	Activity/SearchDataLaporanAI-Act.xml        pengisi grid SEKALIGUS pembuat CSV
 //	RDB List/CountAIDiterima_SQL-SQL.xml        kuerinya
 //	Database/INSERTDATAAIKLAIMPNC.prc           daftar kolom T_CLAIM_DATA_RESULTS_AI
 //	Database/m_menu_aplikasi_pnc.csv:77         butir menunya
@@ -56,12 +71,8 @@
 // Layar lama terikat properti klipboard kelas `ASM-FW-GCNMFW-Data-Adjustment` yang dipakai
 // ulang dari layar lain, sehingga namanya tidak ada hubungannya dengan isinya:
 //
-//	grid ringkasan, kolom Keputusan   .BatasUmur       bukan batas umur
-//	grid ringkasan, kolom Total       .NoteAITerima    bukan catatan
-//	grid ringkasan, kolom Diterima    .BatasLapor      bukan batas lapor
-//	grid ringkasan, kolom Ditolak     .NoteKomite      bukan catatan komite
-//	isian Tgl Input Dari              .AnalystTransferDate
-//	isian Tgl Input Sampai            .DateOfLoss      bukan tanggal kejadian
+//	isian Tgl Input Dari   .AnalystTransferDate   bukan tanggal transfer analis
+//	isian Tgl Input Sampai .DateOfLoss            bukan tanggal kejadian
 //
 // Tidak satu pun dibawa. Yang dipakai di sini adalah padanan Inggris yang benar (`D-80`).
 //
@@ -72,21 +83,6 @@ import (
 	"context"
 	"strings"
 	"time"
-)
-
-// Nilai kolom RESULTAI yang dicacah grid ringkasan.
-//
-// Ketiganya dibaca dari precondition langkah pencacah pada
-// `Activity/SearchDataLaporanAI-Act.xml`, yang berbunyi `.ResultAI=="DITERIMA"`,
-// `.ResultAI=="DITOLAK"`, dan `.ResultAI==""`.
-//
-// Perbandingannya di sana PERSIS, bukan mengandung. Yang dilakukan di sini hanya
-// memangkas spasi lebih dulu — kolom bertipe CHAR berlebar tetap memadatkan nilainya
-// dengan spasi tanpa memberi tanda apa pun, dan tanpa pemangkasan itu baris yang sah akan
-// terhitung sebagai "belum dinilai".
-const (
-	AIAccepted = "DITERIMA"
-	AIRejected = "DITOLAK"
 )
 
 // Nilai kolom STATUSAPPROVE pada POOLDATA.T_CLAIM_KOMITE_LIST.
@@ -116,16 +112,6 @@ const (
 	LabelAccepted = "DITERIMA"
 	LabelRejected = "DITOLAK"
 	LabelPending  = "MENUNGGU"
-)
-
-// Subject menamai pihak yang dicacah grid ringkasan.
-//
-// Keduanya berasal dari `TempTotal.pxResults(<APPEND>).BatasUmur := "Komite"` dan
-// `:= "AI"` pada `Activity/SearchDataLaporanAI-Act.xml` — teks yang benar-benar tergambar
-// di kolom "Keputusan".
-const (
-	SubjectAI        = "AI"
-	SubjectCommittee = "Komite"
 )
 
 // Row adalah satu baris grid rincian.
@@ -172,7 +158,7 @@ type Row struct {
 	//
 	// Diturunkan dari CommitteeStatusCode lewat CommitteeLabel, bukan dibaca dari basis
 	// data: kueri lama pun menurunkannya dengan `CASE`, dan menurunkannya di satu tempat
-	// membuat label dan pencacah ringkasan tidak dapat berbeda.
+	// membuat labelnya tidak dapat berbeda antarpemakai.
 	CommitteeStatus string
 
 	// CommitteeStatusCode adalah nilai mentah `STATUSAPPROVE`.
@@ -245,63 +231,6 @@ func CommitteeLabel(code string) string {
 	default:
 		return ""
 	}
-}
-
-// Tally adalah satu baris grid ringkasan.
-type Tally struct {
-	// Subject adalah isi kolom "Keputusan" — SubjectAI atau SubjectCommittee.
-	Subject string
-
-	// Accepted adalah isi kolom "Diterima".
-	Accepted int
-
-	// Rejected adalah isi kolom "Ditolak".
-	Rejected int
-
-	// Pending adalah isi kolom "Menunggu".
-	//
-	// # Kolom ini TIDAK ADA di layar lama, dan itu penambahan yang disengaja
-	//
-	// Work Owner memutuskan pada 2026-09-26 untuk menambahkannya. Alasannya ada pada doc
-	// Total di bawah: tanpa kolom ini, selisih antara Total dan jumlah baris grid tidak
-	// dapat dijelaskan siapa pun yang melihat layarnya.
-	//
-	// Ia tidak mengubah satu pun angka yang sudah ada — Total tetap dihitung dengan cara
-	// yang sama, dan Menunggu hanya menampakkan sisa yang selama ini tidak tergambar.
-	Pending int
-}
-
-// Total adalah isi kolom "Total".
-//
-// # Ia BUKAN jumlah baris, dan itu ditiru apa adanya
-//
-// `Activity/SearchDataLaporanAI-Act.xml` mengisinya `Local.terima + Local.tolak` — hanya
-// yang diterima dan yang ditolak. Baris ber-AI Status kosong dan ber-Komite Status
-// MENUNGGU tidak ikut dihitung.
-//
-// Akibatnya Total dapat lebih kecil daripada jumlah baris grid rincian, dan itu BUKAN
-// salah hitung. Kolom Menunggu ada supaya selisihnya terbaca.
-func (t Tally) Total() int { return t.Accepted + t.Rejected }
-
-// Rows adalah jumlah SELURUH baris yang dicacah — termasuk yang menunggu.
-//
-// Ia tidak digambar sebagai kolom. Gunanya satu: pembuktian di pengujian bahwa pencacah
-// ringkasan dan pencacah paginasi membaca himpunan baris yang sama.
-func (t Tally) Rows() int { return t.Accepted + t.Rejected + t.Pending }
-
-// Summary adalah isi grid ringkasan — dua baris, pada urutan yang tergambar.
-//
-// Urutannya Komite lebih dulu, lalu AI, mengikuti urutan `<APPEND>` pada activity lamanya.
-// Ia tampak sepele, tetapi mengubahnya berarti layar baru berbeda dari layar yang sudah
-// dihafal penggunanya (`D-13`).
-type Summary struct {
-	Committee Tally
-	AI        Tally
-}
-
-// Tallies mengembalikan kedua baris pada urutan yang tergambar di layar.
-func (s Summary) Tallies() []Tally {
-	return []Tally{s.Committee, s.AI}
 }
 
 // Filter adalah penyaring layar — dua isian tanggal, dan tidak ada yang lain.
@@ -430,11 +359,6 @@ func dateOnly(t time.Time) time.Time {
 // pola "3.189 grid terikat page list klipboard" yang `15-NFR-PERFORMANCE-SCALABILITY.md`
 // §3.2 sebut sebagai masalah nyata. Paginasi di server adalah PERUBAHAN PERILAKU yang
 // disengaja dan sudah diputuskan di tingkat Steering, bukan penyimpangan modul ini.
-//
-// Yang penting: ringkasan di atas grid TIDAK ikut dipaginasi. Ia dihitung atas seluruh
-// baris yang cocok, lewat kueri agregat tersendiri. Ringkasan yang hanya mencacah halaman
-// yang sedang terlihat adalah angka yang berubah saat pengguna menekan "berikutnya", dan
-// tidak ada satu pun di layar yang akan menjelaskan kenapa.
 const (
 	DefaultPageSize = 50
 	MaxPageSize     = 100
@@ -483,30 +407,12 @@ type Page struct {
 	Total int
 }
 
-// Result adalah seluruh isi layar setelah tombol "Cari Data" ditekan.
-//
-// Keduanya dikembalikan bersama karena layar lama pun mengisinya dalam SATU kali jalan —
-// `SearchDataLaporanAI` mengisi `DatasearchLaporan` dan `TempTotal` berurutan. Memisahkan
-// keduanya menjadi dua permintaan membuka kemungkinan ringkasan dan rinciannya dibaca dari
-// keadaan basis data yang berbeda.
-type Result struct {
-	Page    Page
-	Summary Summary
-}
-
 // Repo adalah seam ke penyimpanan Laporan Hasil AI SATU portal.
 type Repo interface {
 	// List mengembalikan satu halaman rincian beserta cacah seluruh baris yang cocok.
 	//
 	// Filter sudah harus melewati Clean dan Validate.
 	List(ctx context.Context, filter Filter, page Pagination) (Page, error)
-
-	// Summarize mencacah seluruh baris yang cocok, dipecah menurut keputusan AI dan
-	// keputusan komite.
-	//
-	// Ia TERPISAH dari List dan menerima penyaring yang sama persis. Itu yang membuat
-	// angka ringkasan dan isi grid selalu berbicara tentang himpunan baris yang sama.
-	Summarize(ctx context.Context, filter Filter) (Summary, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

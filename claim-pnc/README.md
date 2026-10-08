@@ -91,11 +91,11 @@ claim-pnc/
 │   │   │   └── http/                    dto, galat, handler, rute
 │   │   │                                TANPA IDSource — kuncinya diturunkan dari NAMA
 │   │   ├── masterreas/              MODUL — Master Reas (menu 35)
-│   │   │   ├── usecase/                 orkestrasi: daftar. TANPA tambah dan simpan
-│   │   │   ├── repo/                    sqlstore (T_REINSURER) — hanya SELECT,
+│   │   │   ├── usecase/                 orkestrasi: daftar, ubah surel. TANPA tambah
+│   │   │   ├── repo/                    sqlstore (T_REINSURER) — SELECT + 1 UPDATE,
 │   │   │   │                            memory + 7 baris contoh
-│   │   │   └── http/                    dto, galat, rute — hanya GET
-│   │   │                                BACA-SAJA — tabelnya ditulis alur PLA/DLA
+│   │   │   └── http/                    dto, galat, rute — GET dan PUT
+│   │   │                                HANYA kolom EMAIL yang dapat diubah
 │   │   ├── detailpenyebab/          MODUL — Detail Penyebab Kerugian (menu 38)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, simpan, cari
 │   │   │   ├── repo/                    sqlstore — TULIS ke D_CAUSE_OF_LOSS,
@@ -466,13 +466,20 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/panel/{id}` | wajib | **wajib** | satu panel beserta lokasinya, untuk dimuat ke form |
 | `POST` | `/api/master/panel` | wajib | **wajib** | 10 isian wajib + daftar lokasi; `ID_PANEL` diterbitkan server → `201` |
 | `PUT` | `/api/master/panel/{id}` | wajib | **wajib** | isian sama; daftar lokasi **diganti seluruhnya**; menyimpan selalu mengembalikan baris ke Waiting Approval |
-| `POST` | `/api/master/panel/keputusan` | wajib | **wajib** | `{id_panel: [...], status, catatan}` — keputusan **borongan**, paling banyak 200 baris |
+| `POST` | `/api/master/panel/keputusan` | wajib | **wajib** | `{id_panel: [...], status, catatan}` — keputusan **borongan**, paling banyak 200 baris. **Belum ada pemanggilnya**: layar Master Panel tidak punya persetujuan, dan endpoint ini menunggu Inbox Manager |
+| `POST` | `/api/master/panel/{id}/dokumen` | wajib | **wajib** | **multipart**, bagian `berkas` + `catatan` opsional; berkas ke layanan penyimpanan internal (`D-16`), metadatanya ke `POOLDATA.DATA_ATTACHFILE`, lalu ditautkan ke `PANEL_HE.DOKUMENID` → `201`. Satu panel satu dokumen: unggahan berikutnya **mengganti**. Dipakai tombol **Upload Document** di kepala layar; berkasnya berujung di layanan penyimpanan internal (GCS) lewat modul `dokumenpenunjang` |
+| `GET` | `/api/master/panel/{id}/dokumen` | wajib | **wajib** | dokumen panel itu; `404 dokumen_belum_ada` bila belum ada — jawaban yang **wajar**, bukan galat. Dipakai tombol **Upload Document** di kepala layar; berkasnya berujung di layanan penyimpanan internal (GCS) lewat modul `dokumenpenunjang` |
+| `POST` | `/api/master/panel/unggah-csv` | wajib | **wajib** | **multipart**, bagian `berkas`; CSV master panel, upsert berkunci `NAME`. Jawabannya **200** beserta laporan per baris — satu baris gagal tidak membatalkan yang lain. Dipakai tombol **Upload Data Master Panel** / **Upload Data Lokasi Panel** di kepala layar. Berkas CSV-nya sendiri **ditautkan sebagai dokumen** ke setiap baris yang disentuhnya, seperti Pega — tautan dokumen lama pada baris itu **tergantikan** |
+| `POST` | `/api/master/panel/unggah-csv-lokasi` | wajib | **wajib** | **multipart**, bagian `berkas`; CSV lokasi panel. Barisnya **ditambahkan**, tidak mengganti; lokasi yang sudah ada tidak digandakan. Dipakai tombol **Upload Data Master Panel** / **Upload Data Lokasi Panel** di kepala layar. Lokasi yang sudah ada **tetap ditambahkan lagi** (`LOKASI(<APPEND>)` Pega); tautan dokumennya dipertahankan |
 | `GET` | `/api/master/sparepart/pilihan` | wajib | **wajib** | Kategori dan Tipe dari `GCNM_M_SPAREPART_CATEGORY` dan `GCNM_M_SPAREPART_TYPE`; **data entitas**, hanya yang sudah disetujui |
 | `GET` | `/api/master/sparepart` | wajib | **wajib** | daftar dari `POOLDATA.SPAREPART_HE`, urut `ID` menaik; saringan `status` (`0`/`1`/`2`, bawaan `1`) dan `cari` (nama, **nomor**, **kode**) |
 | `GET` | `/api/master/sparepart/{id}` | wajib | **wajib** | satu sparepart, untuk dimuat ke form |
 | `POST` | `/api/master/sparepart` | wajib | **wajib** | 20 isian, **4 wajib** (nomor, nama, kode, harga); `ID` diterbitkan server → `201` |
 | `PUT` | `/api/master/sparepart/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval |
 | `POST` | `/api/master/sparepart/keputusan` | wajib | **wajib** | `{id_sparepart: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: tabelnya tidak punya kolom penampungnya |
+| `POST` | `/api/master/sparepart/{id}/dokumen` | wajib | **wajib** | **multipart**, bagian `berkas` + `catatan` opsional; berkas ke layanan penyimpanan internal (`D-16`), metadatanya ke `POOLDATA.DATA_ATTACHFILE`, lalu ditautkan ke `SPAREPART_HE.DOKUMENID` → `201`. Satu sparepart satu dokumen: unggahan berikutnya **mengganti**. **Tidak** memindahkan baris ke Waiting Approval — hanya kolom `DOKUMENID` yang disentuh |
+| `GET` | `/api/master/sparepart/{id}/dokumen` | wajib | **wajib** | dokumen sparepart itu; `404 dokumen_belum_ada` bila belum ada — jawaban yang **wajar**, bukan galat |
+| `POST` | `/api/master/sparepart/unggah-csv` | wajib | **wajib** | **multipart**, bagian `berkas`; upsert per baris dengan kunci **`NO_SPART`** — ketemu `UPDATE`, tidak ketemu `INSERT` ber-ID baru. Setiap baris masuk **Waiting Approval**. Maksimum 5.000 baris. Jawabannya **`200` bahkan bila sebagian baris gagal**: baris yang berhasil tetap tersimpan, dan laporannya menyebut hasil per baris. `NAMA_SPART` **dihurufbesarkan** — hanya di jalur ini, meniru `@toUpperCase` pada activity Pega; jalur form menyimpannya apa adanya. Dipakai tombol **Upload Data Master Sparepart** di kepala layar |
 | `GET` | `/api/master/grouping-sparepart/pilihan` | wajib | **wajib** | Panel dari `POOLDATA.PANEL_HE` (hanya yang disetujui) dan Tipe Kendaraan dari `branddetail`; **data entitas** |
 | `GET` | `/api/master/grouping-sparepart/sisi` | wajib | **wajib** | `?id_panel=&nama_panel=` — sandi Sisi milik satu panel, dari `POOLDATA.LOKASI_PANEL_HE`. Daftar kosong adalah jawaban yang **sah** |
 | `GET` | `/api/master/grouping-sparepart/sparepart` | wajib | **wajib** | `?nomor=` — lima isian turunan dari `POOLDATA.SPAREPART_HE`; `404` bila nomornya tidak ada |
@@ -480,13 +487,13 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/grouping-sparepart/{id}` | wajib | **wajib** | satu grouping, untuk dimuat ke form |
 | `POST` | `/api/master/grouping-sparepart` | wajib | **wajib** | 8 isian, **4 wajib** (nomor sparepart, nama panel, no rangka, sisi). Lima isian turunan **dibaca server**, bukan dikirim klien; `ID` dan nomor grup diterbitkan server → `201` |
 | `PUT` | `/api/master/grouping-sparepart/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval |
-| `POST` | `/api/master/grouping-sparepart/keputusan` | wajib | **wajib** | `{id_grouping: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: kedua tabelnya tidak punya kolom penampungnya |
+| `POST` | `/api/master/grouping-sparepart/keputusan` | wajib | **wajib** | `{id_grouping: [...], status}`, paling banyak 200 baris. **Belum dipanggil layar mana pun**: layar Master Grouping Sparepart tidak memutuskan apa pun — di Pega pun tidak — dan padanannya `ApprovalPNCMasterGroupingSparepartHE` milik **Inbox Manager** yang belum dibangun. **Tanpa catatan**: kedua tabelnya tidak punya kolom penampungnya |
 | `GET` | `/api/master/tipe-sparepart/pilihan` | wajib | **wajib** | Kategori dari `POOLDATA.GCNM_M_SPAREPART_CATEGORY` (**hanya yang disetujui**); **data entitas**. Penanda `terpotong` ikut dikirim bila daftarnya mencapai batas |
-| `GET` | `/api/master/tipe-sparepart` | wajib | **wajib** | daftar dari `GCNM_M_SPAREPART_TYPE` **LEFT JOIN** tabel kategori, urut `PART_SECTION_ID` menaik; saringan `status` (`0`/`1`/`2`, bawaan `1`) dan `cari` (nama tipe **dan nama kategori**) |
+| `GET` | `/api/master/tipe-sparepart` | wajib | **wajib** | daftar dari `GCNM_M_SPAREPART_TYPE` — **tanpa JOIN**, tiga kolom persis seperti grid Pega — urut `PART_SECTION_ID` menaik; saringan `status` (`0`/`1`/`2`, bawaan `1`) dan `cari` (nama tipe) |
 | `GET` | `/api/master/tipe-sparepart/{id}` | wajib | **wajib** | satu tipe, untuk dimuat ke form |
 | `POST` | `/api/master/tipe-sparepart` | wajib | **wajib** | 2 isian, **keduanya wajib** (nama, kategori). Keberadaan kategori **diperiksa server**; ID diterbitkan server → `201` |
 | `PUT` | `/api/master/tipe-sparepart/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval, dan **boleh memindahkan** tipe ke kategori lain |
-| `POST` | `/api/master/tipe-sparepart/keputusan` | wajib | **wajib** | `{id_tipe_sparepart: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: tabelnya tidak punya kolom penampungnya |
+| `POST` | `/api/master/tipe-sparepart/keputusan` | wajib | **wajib** | `{id_tipe_sparepart: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: tabelnya tidak punya kolom penampungnya. **Belum dipanggil layar mana pun**: ketiga tab Pega nol tombol, dan persetujuan di Pega milik Inbox Manager (`ApprovalMasterTipeSparepartHE`) yang belum dibangun |
 | `GET` | `/api/master/supplier` | wajib | **wajib** | daftar dari `M_SUPPLIER`; saringan `cari` (nama, kota, contact person) |
 | `GET` | `/api/master/supplier/{id}` | wajib | **wajib** | satu supplier, untuk dimuat ke form |
 | `POST` | `/api/master/supplier` | wajib | **wajib** | 23 isian, 15 wajib; ID diterbitkan server → `201`. Selalu lahir **belum aktif** |
@@ -500,20 +507,34 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/login/{login}` | wajib | **wajib** | satu baris, untuk dimuat ke form. Jalurnya memakai **LOGIN**, bukan ID terpisah |
 | `POST` | `/api/master/login` | wajib | **wajib** | **4 isian**, 3 wajib (nama, email, telp); `LOGIN`, `STSLOGIN`, dan `LOGINLEADER` **diturunkan server** → `201` |
 | `PUT` | `/api/master/login/{login}` | wajib | **wajib** | isian sama; **nama ditolak bila berbeda** dari yang tersimpan. Ketiga kolom turunan tidak pernah ikut berubah |
-| `GET` | `/api/master/reas` | wajib | **wajib** | daftar dari `POOLDATA.T_REINSURER`, urut `REINSURERNAME, TYPE, REINSURERID`; saringan `cari` (kode, nama, login, email). **Satu-satunya modul master tanpa endpoint tulis** — lihat catatan di bawah |
+| `GET` | `/api/master/reas` | wajib | **wajib** | daftar dari `POOLDATA.T_REINSURER`, urut `REINSURERNAME, TYPE, REINSURERID`; saringan `cari` (kode, nama, login, email) |
+| `PUT` | `/api/master/reas` | wajib | **wajib** | **hanya mengubah `EMAIL`**. Jalurnya tanpa parameter — kunci alaminya 3 kolom dan dikirim di badan. Baris yang tidak ada ditolak **404**, tidak disisipkan |
 
 ### Master Reas
 
 Menggantikan harness Pega `DataMemberReas` (MENU_ID 35) atas `POOLDATA.T_REINSURER` —
-**tujuh kolom, enam dibaca, nol isian**.
+**tujuh kolom, enam dibaca, satu isian**.
 
-Ia **satu-satunya layar master yang BACA-SAJA**, dan itu keputusan berdasar bukti, bukan
-pekerjaan yang belum selesai.
+#### Satu-satunya yang dapat diubah adalah Email
 
-#### Kenapa tidak ada endpoint tulis
+`Database/UPDATEREAS.prc` pada baris yang **sudah ada** hanya menyentuh kolom `EMAIl`:
 
-Satu-satunya penulis tabel ini di sistem lama adalah **alur PLA/DLA**, bukan layar master.
-Penelusuran pemanggilnya berhenti di dua berkas, dan keduanya layar detail:
+```sql
+UPDATE POOLDATA.T_REINSURER SET EMAIl = tEMAIl
+ WHERE REINSURERID = tREINSID AND REINSURERNAME = tREINSNAME AND TYPE = tTYPE
+```
+
+`LOGIN`, `COUNTRY`, dan `COUNTRYID` hanya ditulis pada jalur **sisip**, yang milik alur
+PLA/DLA. `LOGIN` yang paling berakibat bila ikut dapat diubah dari layar master: ia
+menentukan **klaim mana yang dilihat seorang mitra reasuransi** — lima kueri inbox
+menyaringnya — sehingga satu salah ketik memindahkan visibilitas klaim tanpa satu pun pesan
+galat (`R-20`).
+
+#### Tidak ada POST dan tidak ada DELETE
+
+**Tanpa Tambah**, dan itu terkalibrasi: indeks rule `Harness/MasterLoginSurvey-Harness.xml` —
+layar yang terbukti punya dua tombol — menyebut `PYBUTTONLABEL!REFRESH` **dan** `!TAMBAH`;
+`DataMemberReas` hanya menyebut `REFRESH`. Baris baru lahir dari alur PLA/DLA:
 
 ```
 Database/UPDATEREAS.prc              prosedur upsert-nya
@@ -522,14 +543,26 @@ Database/UPDATEREAS.prc              prosedur upsert-nya
       ← Activity/UpdateDetailDLA2-Act.xml    layar detail DLA
 ```
 
-Harness-nya sendiri hanya memuat satu grid dan satu tombol **Refresh**. Jadi baris
-reasuransi lahir dan berubah sebagai efek samping pengiriman PLA/DLA (`B-9`).
+**Tanpa Hapus** — tidak satu pun rule di export menghapus baris tabel ini, dan `D-66`
+melarang penghapusan fisik data bernilai bisnis.
 
-**Keterbatasan buktinya dinyatakan, bukan ditutupi:** section grid `BrowseListMemberReas`
-tidak ada di export (`R-16`), sehingga ini rekonstruksi. Penambahan jalur tulis kelak
-menyentuh `Repo.Insert`/`Update` dan rutenya; domainnya tidak perlu berubah — dan tiga
-kelompok uji sengaja akan gagal lebih dulu supaya penambahan itu menjadi keputusan yang
-disadari.
+#### Baris yang tidak ada DITOLAK, bukan disisipkan
+
+Berbeda dari `UPDATEREAS`, yang menyisipkan baris baru bila kuncinya tidak ditemukan.
+Penyisipan itu milik alur PLA/DLA, yang memang sedang menerbitkan dokumen untuk reasuransi
+yang belum terdaftar. Petugas yang menekan Simpan di layar master sedang **mengubah baris
+yang dilihatnya** — bila baris itu sudah tidak ada, yang benar adalah mengatakannya.
+
+#### Kepala kolomnya diberitahu Work Owner, bukan direkonstruksi
+
+	No · Nama Reinsurer · Login · Email · Tipe · Aksi
+
+Section grid `BrowseListMemberReas` tidak ada di export (`R-16`), sehingga kolomnya sempat
+direkonstruksi dari SELECT yang ada — dan **meleset di tiga tempat**: "Kode Reas" bukan kolom
+tersendiri, "Negara" tidak punya kolom, dan kolom **Aksi** terlewat sama sekali.
+
+**"No" adalah nomor urut tampilan**, bukan ID. Ukuran halamannya **10**, dibaca dari
+`pyRDLPageSize` pada section `ListMemberReas`.
 
 #### Tujuh kolom, satu ditulis tetapi tidak pernah dibaca
 
@@ -628,11 +661,39 @@ tampilan, dan permintaan yang tidak datang dari layar tidak tersentuh olehnya.
 > tidak ada di sistem baru. Penggantinya keunikan `LOGIN` pada tabel modul ini sendiri — kunci
 > alaminya — dengan pesan Pega apa adanya: *"Login sudah terdaftar dengan nama yang sama"*.
 
-#### Grid — lima kolom, satu-lawan-satu dengan Pega
+#### Grid — empat kolom, satu-lawan-satu dengan Pega
 
-`Nama · Login · Email · Telp · Alamat`, dibaca dari `pyLabelFieldValue` pada
-`Section/BrowseLoginSurveyor-Section.xml`. `Status Login` dan `Login Leader` **tidak ada di
-grid** karena Pega pun tidak punya; keduanya hanya muncul saat sebuah baris dibuka.
+`Nama · Login · Email · Telp`, ditambah kolom **Aksi** berisi tombol Ubah.
+
+Keempatnya dibaca dari **sel grid** pada `Section/BrowseLoginSurveyor-Section.xml` — sel
+ber-`pyCellHeader` beserta data yang diikatnya:
+
+| Judul (`pyValue`) | Data terikat |
+|---|---|
+| Nama | `.SurveyName` |
+| Login | `.SurveyorID` |
+| Email | `.Email` |
+| Telp | `.Ekst` |
+
+> **Alamat TIDAK ada di grid — hanya di form.** `.BodyLetterTo` nol kemunculan di wilayah
+> grid; ia hanya muncul di wilayah form. Kolom itu sempat digambar di sini karena daftar
+> kolom disimpulkan dari `pyLabelFieldValue`, yang ternyata **label FORM** dan bukan judul
+> kolom grid. Dikoreksi atas koreksi Work Owner 2026-10-04, dan dipatok uji
+> `tidak menggambar kolom Alamat di grid, karena Pega pun tidak`.
+
+`Status Login` dan `Login Leader` juga **tidak ada di grid** karena Pega pun tidak punya;
+keduanya hanya muncul saat sebuah baris dibuka.
+
+> **"Aksi" adalah satu-satunya judul kolom yang sengaja TIDAK menyalin Pega** — ketetapan
+> Work Owner 2026-10-03, berlaku di seluruh layar.
+>
+> Sel judul kolom tombol di Pega memang kosong: grid ini hanya punya lima
+> `pyLabelFieldValue`, dan `<pyCaption/>` di sebelah tombol Ubah tidak memuat apa pun.
+>
+> Judulnya sempat **dikosongkan pada 2026-10-04** agar menyamai Pega, lalu **dikembalikan
+> pada hari yang sama**: kolom tanpa judul tampak *tidak ada* bagi pengguna yang melihat
+> kepala tabelnya, selain tidak punya nama yang dapat disebut pembaca layar. Dipatok uji
+> `memberi judul "Aksi" pada kolom tombol`, supaya percobaan itu tidak terulang.
 
 Paginasi **15 baris**, dari `pyPageSizeOther` pada grid itu. Satu selisih yang disadari:
 gridnya memakai `pyPageMode = "Next Previous"` sedangkan `DataTable` menomori halamannya —
@@ -822,15 +883,15 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/master/penolakan-klaim` | **Master Penolakan Klaim** — dua tab: Penolakan Klaim dan Penolakan Komite |
 | `/master/auto-claim` | **Master Auto Claim** — empat tab: Master Auto Klaim, Komite Approval, Waiting Approval, Reject |
 | `/master/pasal-kerugian` | **Master Pasal Kerugian** — satu-satunya layar yang **menghapus permanen** |
-| `/master/bengkel` | **Master Bengkel HE** — tiga tab: Approve, Reject, Waiting Approval; grid 6 kolom, 20 baris per halaman; keputusan **borongan** dengan centang |
-| `/master/panel` | **Master Panel HE** — tiga tab (Approve · Reject · Waiting Approval); satu-satunya layar master yang mengelola **baris anak** (daftar lokasi per panel) |
-| `/master/sparepart` | **Master Sparepart HE** — tiga tab (Approve · Reject · Waiting Approval); grid **5 kolom**, 30 baris per halaman; satu-satunya layar master yang mencatat **pelaku dan waktu** di tabelnya sendiri |
-| `/master/grouping-sparepart` | **Master Grouping Sparepart HE** — menu 32; tiga tab (Approve · Reject · Waiting Approval); grid **6 kolom + nomor grup**, 15 baris per halaman. Satu-satunya layar master yang memakai **dua tabel**, yang kunci alaminya **empat kolom bersama-sama**, dan yang lima isiannya **diturunkan** dari master lain |
-| `/master/kategori-sparepart` | **Master Kategori Sparepart** — menu 33; tiga tab (Approve · Reject · Waiting Approval); grid **2 kolom**, 50 baris per halaman; master **terkecil** — tabelnya hanya tiga kolom, dan ia MENULIS tabel yang layar Master Sparepart hanya baca |
-| `/master/tipe-sparepart` | **Master Tipe Sparepart** — menu 34; tiga tab (Approve · Reject · Waiting Approval); grid **4 kolom**, 50 baris per halaman. Master pertama di rumpun sparepart yang menyimpan **kunci asing** — setiap tipe berinduk pada satu kategori. Satu-satunya layar yang **sengaja menampilkan lebih banyak baris daripada Pega**: inner join Pega diganti LEFT JOIN supaya baris tanpa kategori tetap dapat diperbaiki |
+| `/master/bengkel` | **Master Bengkel HE** — tiga tab: Approve, Reject, Waiting Approval; grid 6 kolom, 20 baris per halaman. **Upload Document ADA** di kepala halaman, hidup setelah satu bengkel dibuka lewat Ubah — yang disimpannya `BENGKEL_HE.DOKUMENID`, kolom milik satu baris. Berkasnya ke GCS lewat `dokumenpenunjang`, dan barisnya menyimpan `IMAGEID` — kolom yang `SET_ATTACHMENT_64BIT` memang sediakan tetapi jalur Pega tidak pernah isi, sehingga dokumen warisan ber-`berisi: false`. **Upload Data Master Bengkel (CSV) TIDAK digambar**: bukan lingkup Work Owner (2026-10-07) |
+| `/master/panel` | **Master Panel HE** — tiga tab (Approve · Reject · Waiting Approval), seluruhnya **tanpa persetujuan** seperti Pega; satu-satunya layar master yang mengelola **baris anak** (daftar lokasi per panel). **Ketiga unggahan Pega lengkap** di kepala layar: Upload Document (berkas ke GCS lewat `dokumenpenunjang`, ditahan sampai Simpan), Upload Data Master Panel, dan Upload Data Lokasi Panel (keduanya CSV, dikirim seketika) |
+| `/master/sparepart` | **Master Sparepart HE** — tiga tab (Approve · Reject · Waiting Approval); grid **5 kolom**, 30 baris per halaman; satu-satunya layar master yang mencatat **pelaku dan waktu** di tabelnya sendiri. **Upload Document ADA** di kepala halaman — jalur penyimpanannya sudah tersedia di aplikasi ini (`dokumenpenunjang`, meniru `UploadDocumentToGoogleStorage` → `InsertDokumenPNC`), berkasnya ditahan sampai Simpan ditekan. **Upload Data Master Sparepart (CSV) TIDAK digambar**: itu bagian migrasi modul, bukan lingkup Work Owner (2026-10-07); endpoint-nya tetap hidup dan teruji |
+| `/master/grouping-sparepart` | **Master Grouping Sparepart HE** — menu 32; tiga tab (Approve · Reject · Waiting Approval); grid **6 kolom**, 15 baris per halaman. **Tanpa keputusan Approve/Reject** — layar Pega-nya pun tidak punya, keputusannya milik Inbox Manager. Satu-satunya layar master yang memakai **dua tabel**, yang kunci alaminya **empat kolom bersama-sama**, dan yang lima isiannya **diturunkan** dari master lain |
+| `/master/kategori-sparepart` | **Master Kategori Sparepart** — menu 33; tiga tab (Approve · Reject · Waiting Approval); grid **2 kolom**, 50 baris per halaman; master **terkecil** — tabelnya hanya tiga kolom, dan ia MENULIS tabel yang layar Master Sparepart hanya baca. **Tidak memutuskan persetujuan** — di Pega pun keputusannya ada di Inbox Manager, yang belum dibangun |
+| `/master/tipe-sparepart` | **Master Tipe Sparepart** — menu 34; tiga tab (Approve · Reject · Waiting Approval); grid **3 kolom**, 50 baris per halaman. Master pertama di rumpun sparepart yang menyimpan **kunci asing** — setiap tipe berinduk pada satu kategori, dipilih dari dropdown. Satu-satunya layar master HE **tanpa tombol Approve/Reject**: ketiga tab Pega nol tombol, dan persetujuannya milik Inbox Manager (koreksi Work Owner 2026-10-04) |
 | `/pelaporan-klaim` | **Pelaporan Klaim** — menu 64 |
-| `/inbox/investigator` | **Inbox Investigator** — menu 48; antrean bersama workbasket `InvestigatorPNC`. **Layar INBOX pertama**, dan yang pertama di bawah awalan `/inbox/`. Grid **9 kolom**, 50 baris per halaman (`pyPageSize` grid lamanya). Baca-saja: mengambil pekerjaan dan mencatat hasil investigasi ada di layar kerja yang belum dibangun. **Export Data Investigation TIDAK dibawa** — dihapus atas keputusan Work Owner 2026-09-24; pemetaan 3 dari 13 kolom CSV-nya tidak dapat ditelusuri (lihat `docs/permintaan-artefak-pega.md` §2) |
-| `/inbox/receive-tka` | **Inbox Receive TKA** — menu 49; klaim TKA yang tanggal penerimaan dokumen aslinya belum diisi. **Layar INBOX kedua, dan yang PERTAMA menulis**: pengguna mengisi tanggal di dalam tabel lalu menekan **Submit per baris**, dan barisnya hilang dari daftar. Grid **7 kolom + kolom aksi**, 50 baris per halaman. Dibaca dari **tabel yang sama dengan Report Definition Pega** — `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan `TKA_1 = '1'`, tanggal kelengkapan masih kosong, dan status kerja belum selesai; nama peserta diambil dari `T_GENERAL` karena kolomnya pada tabel kerja kosong. Submit menulis **satu kolom saja** (`T_CLAIM_PNC.TGLDOKLENGKAP`) lalu melepaskan pemberitahuan **di luar** transaksi — surel yang gagal tidak membatalkan penyimpanan. **Tabel engine Pega tidak pernah ditulis**: nilainya akan tertimpa tanpa jejak saat Pega menyimpan kasus itu lagi, sehingga selama masa paralel layar Pega masih menampilkan klaim itu sebagai belum lengkap — selisih yang dicacah `claimpnc -periksa` dan disebutkan di kaki layar. Baris yang klaimnya tidak ditemukan **tetap tampil** dengan isian dimatikan (lihat `docs/permintaan-artefak-pega.md` §3) |
+| `/inbox/investigator` | **Inbox Investigator** — menu 48; antrean bersama workbasket `InvestigatorPNC`. **Layar INBOX pertama**, dan yang pertama di bawah awalan `/inbox/`. Grid **9 kolom**, 50 baris per halaman (`pyPageSize` grid lamanya). **Nomor Case** membuka **formulir kerja Investigator** — padanan Flow Action `InputInvestigator`, modal persis seperti di Pega (80 × 82), tanpa rute baru. Menyimpannya memindahkan klaim ke Analyst (`StatusClaim 1151`); 30 isian, 6 bersyarat, menunggu tabel `TC_PNC_INVESTIGASI` dibuat DBA. Mengambil pekerjaan dari antrean (`openAssignment`) tetap milik modul Penugasan. **Export Data Investigation DIBAWA**: 13 kolom dengan judul yang sama persis, dibaca dari `JSON_KLAIM` jalur `$.SurveyResults[0].SurveyList[0].*`; barisnya dari `T_CLAIM_PNC` menurut rentang `INVESTIGATOR_TF_DATE` — **bukan** dari antrean, persis seperti Pega |
+| `/inbox/receive-tka` | **Inbox Receive TKA** — menu 49; klaim TKA yang tanggal penerimaan dokumen aslinya belum diisi. **Layar INBOX kedua, dan yang PERTAMA menulis**: pengguna mengisi tanggal di dalam tabel lalu menekan **Submit per baris**, dan barisnya hilang dari daftar. Grid **7 kolom + kolom aksi**, 50 baris per halaman. Dibaca dari **tabel yang sama dengan Report Definition Pega** — `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan `TKA_1 = '1'`, tanggal kelengkapan masih kosong, dan status kerja belum selesai; nama peserta diambil dari `T_GENERAL` karena kolomnya pada tabel kerja kosong. Submit menulis **satu kolom saja** (`T_CLAIM_PNC.TGLDOKLENGKAP`) lalu melepaskan pemberitahuan **di luar** transaksi — surel yang gagal tidak membatalkan penyimpanan. **Tabel engine Pega tidak pernah ditulis**: nilainya akan tertimpa tanpa jejak saat Pega menyimpan kasus itu lagi, sehingga selama masa paralel layar Pega masih menampilkan klaim itu sebagai belum lengkap — selisih yang dicacah `claimpnc -periksa` dan **tidak lagi disebutkan di layar** (keterangan kaki layar dicabut atas permintaan Work Owner, 2026-10-04). Baris yang klaimnya tidak ditemukan **tetap tampil** dengan isian dimatikan (lihat `docs/permintaan-artefak-pega.md` §3) |
 | `/riwayat-klaim` | **View History Claim** — menu 76, pencarian riwayat klaim |
 | `/pelaporan-klaim` | **Pelaporan Klaim** — menu 64 |
 | `/riwayat-klaim` | **View History Claim** — menu 76, pencarian riwayat klaim |
@@ -883,6 +944,9 @@ sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `
 | `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | wajib | menandai laporan dikirim ke ASM pusat; `409` bila sudah |
 | `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | wajib | `{nomor_klaim}` — menautkan laporan ke klaim; `409` bila sudah |
 | `GET` | `/api/inbox/investigator` | wajib | antrean Inbox Investigator; saringan `cari`; terpotong pada 500 baris dan **menyatakannya** lewat `terpotong` |
+| `GET` | `/api/inbox/investigator/ekspor` | wajib | berkas CSV Export Data Investigation; `dari`, `sampai` (`YYYY-MM-DD`), dan `investigasi` (`1`/`0`) **wajib**; memuat **data medis** (`FR-R2`) |
+| `GET` | `/api/inbox/investigator/{referensi}/investigasi` | wajib | formulir kerja Investigator; Tanggal Investigasi diisi server saat dibuka (`PresetInvestigation`) |
+| `POST` | `/api/inbox/investigator/{referensi}/investigasi` | wajib | menyimpan hasil investigasi **dan memindahkan klaim ke Analyst** (`StatusClaim 1151`); 503 bila `POOLDATA.TC_PNC_INVESTIGASI` belum dibuat DBA |
 | `GET` | `/api/inbox/receive-tka` | wajib | daftar Inbox Receive TKA; saringan `cari`; terpotong pada 500 baris dan **menyatakannya** lewat `terpotong` |
 | `POST` | `/api/inbox/receive-tka/kelengkapan-dokumen` | wajib | `{nomor_klaim, tanggal_dokumen_lengkap}` — mengisi **satu kolom**, `T_CLAIM_PNC.TGLDOKLENGKAP`; `422` bila tanggal kosong, `409` bila barisnya sudah diisi orang lain / klaimnya tidak ditemukan / nomor klaimnya ganda. **Tidak idempoten**: permintaan kedua ditolak, sehingga surel ganda tidak dapat terjadi |
 | `POST` | `/api/riwayat-klaim/buka` | wajib | menjalankan gerbang proteksi; memakai satu jatah pencarian |

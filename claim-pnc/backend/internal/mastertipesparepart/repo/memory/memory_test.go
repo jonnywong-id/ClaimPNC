@@ -13,24 +13,32 @@ import (
 
 var errBoom = errors.New("boom")
 
-// Daftar menyaring status, mengisi nama kategori seperti LEFT JOIN, dan mencari di nama tipe
-// maupun nama kategori.
-func TestListFiltersStatusAndJoinsCategory(t *testing.T) {
+// Daftar menyaring status dan mencari di NAMA TIPE saja.
+//
+// Tanpa JOIN: grid Pega tidak menampilkan nama kategori, dan kueri daftarnya tidak
+// menggabungkan tabel apa pun (koreksi Work Owner 2026-10-04).
+func TestListFiltersStatusAndSearchesTypeName(t *testing.T) {
 	repo := NewSampleRepo()
 	ctx := context.Background()
 
 	approved, err := repo.List(ctx, mastertipesparepart.Filter{Status: mastertipesparepart.StatusApproved})
 	require.NoError(t, err)
 	require.Len(t, approved, 4)
-	require.Equal(t, "ENGINE", approved[0].CategoryName)
-	// Baris yatim tetap muncul dengan nama kategori kosong.
+	require.Equal(t, "1", approved[0].CategoryID)
+	// Baris yatim tetap muncul — tidak ada JOIN yang dapat membuangnya.
 	require.Equal(t, "7", approved[3].ID)
-	require.Empty(t, approved[3].CategoryName)
+	require.Equal(t, "99", approved[3].CategoryID)
 
-	byCategory, err := repo.List(ctx, mastertipesparepart.Filter{Status: mastertipesparepart.StatusApproved, Keyword: " hydraulic "})
+	// " hydraulic " cocok dengan NAMA TIPE "HYDRAULIC PUMP", bukan dengan nama kategori.
+	byTypeName, err := repo.List(ctx, mastertipesparepart.Filter{Status: mastertipesparepart.StatusApproved, Keyword: " hydraulic "})
 	require.NoError(t, err)
-	require.Len(t, byCategory, 1)
-	require.Equal(t, "HYDRAULIC PUMP", byCategory[0].Name)
+	require.Len(t, byTypeName, 1)
+	require.Equal(t, "HYDRAULIC PUMP", byTypeName[0].Name)
+
+	// "ENGINE" hanya nama KATEGORI, bukan nama tipe mana pun — tidak boleh terjaring.
+	byCategoryName, err := repo.List(ctx, mastertipesparepart.Filter{Status: mastertipesparepart.StatusApproved, Keyword: "engine"})
+	require.NoError(t, err)
+	require.Empty(t, byCategoryName)
 
 	byName, err := repo.List(ctx, mastertipesparepart.Filter{Status: mastertipesparepart.StatusPending, Keyword: "idler"})
 	require.NoError(t, err)
@@ -52,30 +60,19 @@ func TestListSortsNumericThenText(t *testing.T) {
 	require.Equal(t, []string{"9", "10", "a", "b"}, ids)
 }
 
-func TestGetJoinsCategoryAndReportsMissing(t *testing.T) {
+func TestGetTrimsKeyAndReportsMissing(t *testing.T) {
 	repo := NewSampleRepo()
 	got, err := repo.Get(context.Background(), " 3 ")
 	require.NoError(t, err)
-	require.Equal(t, "HYDRAULIC", got.CategoryName)
+	require.Equal(t, "HYDRAULIC PUMP", got.Name)
+	require.Equal(t, "2", got.CategoryID)
 
 	_, err = repo.Get(context.Background(), "404")
 	require.ErrorIs(t, err, mastertipesparepart.ErrNotFound)
 }
 
-// Kategori kosong pada baris tidak dicari ke acuan.
-func TestBlankCategoryHasNoName(t *testing.T) {
-	repo := NewRepo(Options{
-		Rows:     []mastertipesparepart.PartType{{ID: "1", Status: "1"}},
-		Category: []mastertipesparepart.Category{{ID: "", Name: "TANPA ID"}},
-	})
-	got, err := repo.Get(context.Background(), "1")
-	require.NoError(t, err)
-	require.Empty(t, got.CategoryName)
-}
-
-// Pencarian nama tidak menyaring status; bila kembar, yang ID-nya terkecil yang dikembalikan,
-// tanpa nama kategori.
-func TestFindByNamePicksSmallestIDWithoutCategory(t *testing.T) {
+// Pencarian nama tidak menyaring status; bila kembar, yang ID-nya terkecil yang dikembalikan.
+func TestFindByNamePicksSmallestID(t *testing.T) {
 	repo := NewRepo(Options{
 		Rows: []mastertipesparepart.PartType{
 			{ID: "5", Name: "Valve", CategoryID: "1", Status: "2"},
@@ -86,7 +83,6 @@ func TestFindByNamePicksSmallestIDWithoutCategory(t *testing.T) {
 	got, err := repo.FindByName(context.Background(), " valve ")
 	require.NoError(t, err)
 	require.Equal(t, "2", got.ID)
-	require.Empty(t, got.CategoryName)
 
 	_, err = repo.FindByName(context.Background(), "lain")
 	require.ErrorIs(t, err, mastertipesparepart.ErrNotFound)
@@ -120,7 +116,7 @@ func TestInsertIssuesMaxPlusOne(t *testing.T) {
 	require.ErrorIs(t, err, mastertipesparepart.ErrNameTaken)
 
 	fresh, err := repo.Insert(ctx, mastertipesparepart.PartType{
-		ID: "99", Name: "Baru", CategoryID: "1", CategoryName: "abaikan", Status: "0",
+		ID: "99", Name: "Baru", CategoryID: "1", Status: "0",
 	})
 	require.NoError(t, err)
 	require.Equal(t, mastertipesparepart.PartType{ID: "5", Name: "Baru", CategoryID: "1", Status: "0"}, fresh)
@@ -135,11 +131,11 @@ func TestUpdateWritesOnlyEditableColumns(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, repo.Update(ctx, mastertipesparepart.PartType{
-		ID: " 1 ", Name: "Ubah", CategoryID: "2", CategoryName: "abaikan", Status: "0",
+		ID: " 1 ", Name: "Ubah", CategoryID: "2", Status: "0",
 	}))
 	got, err := repo.Get(ctx, "1")
 	require.NoError(t, err)
-	require.Equal(t, mastertipesparepart.PartType{ID: "1", Name: "Ubah", CategoryID: "2", CategoryName: "HYDRAULIC", Status: "0"}, got)
+	require.Equal(t, mastertipesparepart.PartType{ID: "1", Name: "Ubah", CategoryID: "2", Status: "0"}, got)
 
 	require.ErrorIs(t, repo.Update(ctx, mastertipesparepart.PartType{ID: "404"}), mastertipesparepart.ErrNotFound)
 }

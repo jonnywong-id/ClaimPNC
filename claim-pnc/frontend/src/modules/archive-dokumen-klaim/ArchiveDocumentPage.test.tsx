@@ -32,6 +32,11 @@ const PORTAL_LIST = {
  * di-commit, dan larangan itu berlaku untuk data uji sama seperti untuk dokumen.
  */
 const OPENED: OpenResponse = {
+  tipe_pencarian: [
+    { kode: 'no_klaim', label: 'No Klaim' },
+    { kode: 'nama_box', label: 'Nama BOX' },
+    { kode: 'tertanggung', label: 'Tertanggung' },
+  ],
   tipe_input: [
     { kode: 'no_klaim', label: 'No Klaim' },
     { kode: 'no_polis', label: 'No Polis' },
@@ -165,9 +170,18 @@ function renderPage() {
 }
 
 /** renderOpened menggambar layar lalu MENUNGGU isi dropdown tiba. */
+/**
+ * renderOpened menggambar layar lalu MENUNGGU jawaban pembukaan benar-benar tiba.
+ *
+ * Menunggu judulnya saja tidak cukup. Judul digambar seketika, sedangkan isi dropdown
+ * "Tipe Pencarian Archive" datang dari server — memilih "Nama BOX" sebelum jawaban itu
+ * tiba akan gagal dengan "Value not found in options", dan kegagalan itu tidak ada
+ * hubungannya dengan apa yang sedang diuji.
+ */
 async function renderOpened() {
   renderPage()
   await screen.findByRole('heading', { name: 'ARCHIVE FILE KLAIM' })
+  await screen.findByRole('option', { name: 'Nama BOX' })
 }
 
 function lastCallStartingWith(prefix: string): Call | undefined {
@@ -202,44 +216,160 @@ describe('pencarian berkas arsip', () => {
     stubDefaultFetch()
     await renderOpened()
 
+    await userEvent.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'nama_box')
     await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
     await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
 
     expect(await screen.findByText('PNC-100001')).toBeInTheDocument()
 
     const call = lastCallStartingWith(`${PATH}?`)
-    expect(call?.url).toContain('mode=kata_kunci')
+    expect(call?.url).toContain('tipe_pencarian=nama_box')
     expect(call?.url).toContain('kata_kunci=BOX-A-01')
   })
 
   /**
-   * Mengganti mode MEMBERSIHKAN isian lain.
+   * Kedua penyaring TAMPIL BERSAMAAN dan boleh terisi bersama.
    *
-   * Nilai sisa dari mode sebelumnya yang ikut terkirim adalah kelas cacat yang tidak ada
-   * di sistem lama — di sana tiap isian punya properti klipboardnya sendiri.
+   * Koreksi atas rancangan pertama, yang menjadikannya satu dropdown mode yang saling
+   * menggantikan. Di Pega kedua bloknya ber-`FlagASO==2` — tampil di tab yang sama
+   * (`Section/SecArchiveDokumen-Section.xml` posisi 164179 dan 707930).
    */
-  it('mengganti mode ke Tgl Input menukar isiannya dan tidak membawa kata kunci', async () => {
+  it('mengirim kata kunci berikut kolomnya DAN rentang tanggal sekaligus', async () => {
     stubDefaultFetch()
     await renderOpened()
 
+    // Keempat isian ada berbarengan; tidak ada yang hilang saat yang lain diisi.
+    await userEvent.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'nama_box')
     await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
-    await userEvent.selectOptions(
-      screen.getByLabelText('Tipe Pencarian Archive'),
-      'tanggal_input',
-    )
-
-    expect(screen.queryByLabelText('Keyword')).not.toBeInTheDocument()
-
     await userEvent.type(screen.getByLabelText('Tgl Input Dari'), '2026-03-01')
     await userEvent.type(screen.getByLabelText('Tgl Input Sampai'), '2026-03-31')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
 
+    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
     await screen.findByText('PNC-100001')
 
     const call = lastCallStartingWith(`${PATH}?`)
-    expect(call?.url).toContain('mode=tanggal_input')
+    expect(call?.url).toContain('tipe_pencarian=nama_box')
+    expect(call?.url).toContain('kata_kunci=BOX-A-01')
     expect(call?.url).toContain('tanggal_dari=2026-03-01')
-    expect(call?.url).not.toContain('kata_kunci')
+    expect(call?.url).toContain('tanggal_sampai=2026-03-31')
+  })
+
+  /**
+   * Toolbar mengikuti URUTAN PEGA.
+   *
+   * Disebutkan Work Owner dari layarnya (2026-10-03): Tambah · Dokumen Cabang · Cari ·
+   * Refresh. Export To Excel menyusul, dan ia tampak SEJAK AWAL — pada rancangan pertama
+   * ia tersembunyi di kepala tabel yang baru digambar setelah pencarian dijalankan.
+   */
+  it('menggambar toolbar dalam urutan Pega, dan ekspornya tampak sejak awal', async () => {
+    stubDefaultFetch()
+    await renderOpened()
+
+    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
+    const labels = within(toolbar)
+      .getAllByRole('button')
+      .map((button) => button.textContent)
+
+    expect(labels).toEqual([
+      'Tambah',
+      'Dokumen Cabang',
+      'Cari',
+      'Refresh',
+      'Export To Excel',
+    ])
+  })
+
+  /**
+   * Refresh dan Export To Excel berdiri sebagai KELOMPOK KANAN.
+   *
+   * Keduanya tidak berpindah bagian — keduanya bekerja pada bagian yang sedang terbuka —
+   * sementara ketiga tombol kiri menyetel `FalgArchiveData.FlagASO`. Pemisahan itu diminta
+   * Work Owner (2026-10-03).
+   *
+   * Yang diuji STRUKTURNYA, bukan rupanya: jsdom tidak menghitung tata letak, sehingga
+   * "berada di kanan" hanya dapat dinyatakan sebagai "berada di satu wadah yang terdorong
+   * ke kanan". Urutan bacanya diuji terpisah pada uji di atas dan tidak berubah.
+   */
+  it('menaruh Refresh dan Export To Excel pada kelompok kanan', async () => {
+    stubDefaultFetch()
+    await renderOpened()
+
+    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
+    const refresh = within(toolbar).getByRole('button', { name: 'Refresh' })
+    const kanan = refresh.parentElement
+
+    expect(kanan).not.toBeNull()
+    expect(kanan).not.toBe(toolbar)
+    expect(kanan).toHaveClass('sm:ml-auto')
+
+    // Ekspor berada di wadah yang sama; Cari TIDAK.
+    expect(within(kanan!).getByRole('button', { name: 'Export To Excel' })).toBeInTheDocument()
+    expect(within(kanan!).queryByRole('button', { name: 'Cari' })).toBeNull()
+
+    // Ketiga tombol pemindah bagian tetap anak langsung toolbar.
+    for (const nama of ['Tambah', 'Dokumen Cabang', 'Cari']) {
+      expect(within(toolbar).getByRole('button', { name: nama }).parentElement).toBe(toolbar)
+    }
+  })
+
+  /**
+   * Toolbar dan bagian yang terbuka diberi jarak oleh WADAH BERSAMA keduanya.
+   *
+   * Ini pernah salah sekali: `space-y-6` ditaruh di dalam masing-masing bagian, sehingga
+   * isi bagian itu merenggang tetapi celah ke toolbar di atasnya tetap nol — panel
+   * pencarian menempel ke tombol. Uji ini menahan agar jaraknya tidak kembali turun ke
+   * dalam.
+   */
+  it('memberi jarak antara toolbar dan bagian yang terbuka', async () => {
+    stubDefaultFetch()
+    await renderOpened()
+
+    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
+    const wadah = toolbar.parentElement
+
+    expect(wadah).not.toBeNull()
+    expect(wadah).toHaveClass('space-y-6')
+
+    // Panel pencarian adalah SAUDARA toolbar di wadah itu, bukan keturunannya — itulah
+    // sebabnya jaraknya harus berasal dari wadah.
+    const panel = screen.getByLabelText('Tipe Pencarian Archive').closest('form')
+    expect(panel).not.toBeNull()
+    expect(wadah!.contains(panel!)).toBe(true)
+    expect(toolbar.contains(panel!)).toBe(false)
+  })
+
+  /**
+   * Export To Excel HANYA ada di tab Cari.
+   *
+   * Terbaca dari `Section/SecArchiveDokumen-Section.xml`: tombolnya (byte 787286) berada di
+   * dalam kontainer ber-`FalgArchiveData.FlagASO==2` (byte 731034), dan kontainer berikutnya
+   * — `FlagASO==3` — baru dimulai di byte 1012342. Dikonfirmasi Work Owner 2026-10-03.
+   *
+   * Rancangan sebelumnya menampilkannya di ketiga tab. Itu over-koreksi atas laporan
+   * "tidak ada export data": yang salah tempatnya, bukan ketersediaannya.
+   */
+  it('menampilkan Export To Excel hanya pada tab Cari', async () => {
+    stubDefaultFetch()
+    await renderOpened()
+
+    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
+    const ekspor = () => within(toolbar).queryByRole('button', { name: 'Export To Excel' })
+
+    // Tab Cari adalah bawaannya.
+    expect(ekspor()).toBeInTheDocument()
+
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Tambah' }))
+    expect(ekspor()).toBeNull()
+
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Dokumen Cabang' }))
+    expect(ekspor()).toBeNull()
+
+    // Refresh tetap ada di ketiganya — ia bukan tombol Pega, melainkan tambahan sistem baru
+    // yang menyegarkan bagian mana pun yang sedang terbuka.
+    expect(within(toolbar).getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Cari' }))
+    expect(ekspor()).toBeInTheDocument()
   })
 
   /**
@@ -268,7 +398,7 @@ describe('pencarian berkas arsip', () => {
 describe('input data archive', () => {
   async function openInputTab() {
     await renderOpened()
-    await userEvent.click(screen.getByRole('button', { name: 'Input Data Archive' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
   }
 
   it('memilih klaim membuka formulir berisi keterangan klaim itu', async () => {
@@ -420,6 +550,9 @@ describe('export to excel', () => {
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: createURL, revokeObjectURL: revokeURL }))
 
     await renderOpened()
+    // Kolomnya sengaja DIPINDAH dari bawaannya: yang diuji adalah penyaring yang benar-benar
+    // dipakai daftar ikut ke ekspor, bukan kebetulan nilai bawaan keduanya sama.
+    await userEvent.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'nama_box')
     await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
     await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
     await screen.findByText('PNC-100001')
@@ -427,7 +560,7 @@ describe('export to excel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Export To Excel' }))
 
     const call = lastCallStartingWith(`${PATH}/ekspor`)
-    expect(call?.url).toContain('mode=kata_kunci')
+    expect(call?.url).toContain('tipe_pencarian=nama_box')
     expect(call?.url).toContain('kata_kunci=BOX-A-01')
 
     // Blob dilepas setelah dipakai; tanpa itu setiap ekspor menyisakan satu di memori.
@@ -438,7 +571,7 @@ describe('export to excel', () => {
 describe('kirim ke cabang', () => {
   async function openBranchTab() {
     await renderOpened()
-    await userEvent.click(screen.getByRole('button', { name: 'Kirim ke Cabang' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Dokumen Cabang' }))
   }
 
   /**

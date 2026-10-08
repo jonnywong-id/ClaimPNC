@@ -188,10 +188,18 @@ UPDATE POOLDATA.T_CLAIM_OBJECTLIST
  WHERE CLAIMID = :2 AND URUTAN > :3 AND DIHAPUS_PADA IS NULL
 
 -- name: objek_daftar
+--
+-- URUTAN boleh KOSONG, dan pada data warisan ia hampir selalu kosong: 2.611 dari 2.726
+-- baris aktif (diukur 2026-10-07). Kolom itu ditambahkan proyek ini; baris yang ditulis
+-- Pega tidak pernah mengisinya. Karena itu penjodohan ke coverage memakai OBJECTID — kolom
+-- `NOT NULL` di kedua tabel — dan URUTAN hanya dipakai untuk mengurutkan.
+--
+-- OBJECTID menjadi pemecah seri supaya urutan baris warisan tetap sama setiap kali dibaca;
+-- tanpa itu Oracle bebas mengembalikannya dalam urutan apa pun.
 SELECT URUTAN, OBJECTID, OBJECTNAME, LOKASI
   FROM POOLDATA.T_CLAIM_OBJECTLIST
  WHERE CLAIMID = :1 AND DIHAPUS_PADA IS NULL
- ORDER BY URUTAN
+ ORDER BY URUTAN, OBJECTID
 
 -- name: coverage_perbarui
 --
@@ -229,10 +237,19 @@ UPDATE POOLDATA.T_CLAIM_OBJECTCOVERAGE
 -- name: coverage_daftar
 --
 -- Dikalikan 100 supaya domain menerima SEN, satuan yang dipakainya.
-SELECT URUTAN_OBJEK, URUTAN, COVERAGEID, CAUSEOFLOSSID, SUMTSI * 100, COVERAGENAME
+--
+-- OBJECTID dan OBJECTCOVERAGEID IKUT DIBACA, dan keduanya yang menjodohkan baris ini ke
+-- pohon klaim. URUTAN_OBJEK dan URUTAN kosong pada 2.598 dari 2.635 baris aktif (diukur
+-- 2026-10-07) — persis sebanyak baris objek yang URUTAN-nya juga kosong. Kedua kolom itu
+-- ditambahkan proyek ini dan tidak pernah diisi Pega.
+--
+-- Keduanya `NOT NULL` di tabel ini, sehingga penjodohannya berlaku untuk baris warisan
+-- maupun baris baru.
+SELECT OBJECTID, OBJECTCOVERAGEID, URUTAN_OBJEK, URUTAN, COVERAGEID, CAUSEOFLOSSID,
+       SUMTSI * 100, COVERAGENAME
   FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
  WHERE CLAIMID = :1 AND DIHAPUS_PADA IS NULL
- ORDER BY URUTAN_OBJEK, URUTAN
+ ORDER BY URUTAN_OBJEK, URUTAN, OBJECTID, OBJECTCOVERAGEID
 
 -- ============================================================================
 -- SPREADING — insert bila belum ada, tanpa proses hapus

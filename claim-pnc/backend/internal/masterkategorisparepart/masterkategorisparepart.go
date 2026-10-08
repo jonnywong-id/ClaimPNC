@@ -57,6 +57,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -171,21 +172,99 @@ type Input struct {
 
 // MaxNameLength adalah panjang maksimum nama kategori.
 //
-// ASUMSI YANG DISADARI, bukan angka yang diterima dari Work Owner maupun dibaca dari DDL:
-// `POOLDATA.GCNM_M_SPAREPART_CATEGORY` tidak ada DDL-nya di export (`R-08`), dan layar
-// lamanya tidak memasang satu pun `pyMaxLength`.
+// **TERVERIFIKASI 2026-10-04**: katalog Oracle menjawab `PART_CATEGORY_NAME VARCHAR2(100)`.
 //
-// Batasnya tetap dipasang karena tanpa itu penolakan datang dari basis data sebagai
-// ORA-12899 — galat teknis yang tidak menuntun pengguna ke mana pun.
+// Semula ia asumsi — DDL-nya tidak ada di export (`R-08`), dan layar lamanya tidak memasang
+// satu pun `pyMaxLength`. Angka 100 dipilih waktu itu hanya agar sama dengan
+// `mastersparepart.MaxNameLength`, karena nilai kolom ini muncul sebagai label di layar
+// itu. Katalog kemudian membenarkannya persis; keberuntungan itu dicatat apa adanya, bukan
+// diakui sebagai ketepatan penalaran.
 //
-// Seratus dipilih agar sama dengan `mastersparepart.MaxNameLength`: nilai kolom ini
-// dipakai sebagai label pada layar Master Sparepart, dan dua batas yang berbeda pada dua
-// layar bertetangga hanya akan membingungkan.
+// Batasnya ada karena tanpa itu penolakan datang dari basis data sebagai ORA-12899 — galat
+// teknis yang tidak menuntun pengguna ke mana pun.
 //
 // Angka yang sama diulang di `PartCategoryForm.tsx`. Bila berubah, KEDUA tempat harus
 // ikut berubah — utang yang disadari dari menduplikasi sebuah angka, dijaga terlihat oleh
 // uji di masterkategorisparepart_test.go.
 const MaxNameLength = 100
+
+// MaxIDWidth adalah lebar kolom PART_CATEGORY_ID.
+//
+// **Terverifikasi**, bukan asumsi: katalog Oracle dibaca pada 2026-10-04 dan menjawab
+// `VARCHAR2(10)`.
+//
+// Ia berada di paket domain, bukan di adapter, karena BENTUK KUNCI adalah aturan domain —
+// ia yang menentukan bagaimana sebuah kategori dapat dikenali, dan ia harus sama persis
+// pada adapter SQL maupun adapter memori. Satu tempat, satu aturan, dan satu uji yang
+// menjaganya.
+//
+// Sepuluh digit berarti batasnya tidak akan tersentuh pemakaian yang wajar; ia dipasang
+// karena murah, bukan karena diperkirakan tercapai. Tanpa itu, penolakannya datang dari
+// basis data sebagai ORA-12899 — galat teknis yang tidak menuntun pengguna ke mana pun.
+const MaxIDWidth = 10
+
+// NextKey menghitung kunci berikutnya dari kunci yang sudah ada.
+//
+// # Kenapa maksimum NUMERIK, dan bukan tiruan Pega
+//
+// `RDB List/InsertMasterSparepartCategory_sql-SQL.xml` memakai
+// `nvl(max(PART_CATEGORY_ID),0)+1`. Karena kolomnya `VARCHAR2(10)`, `max()` di sana
+// LEKSIKOGRAFIS: atas {"1".."9"} ia menjawab "9" dan menerbitkan 10 — benar. Tetapi begitu
+// "10" ada, ia menjawab "9" LAGI, dan menerbitkan 10 untuk kedua kalinya.
+//
+// Basis data pengembangan pada 2026-10-04 berisi kunci "1".."9": tepat satu penambahan
+// sebelum cacat itu muncul, dan tidak ada constraint unik yang akan menahannya (`R-08`).
+//
+// Yang ditiru karena itu hanyalah BENTUK kuncinya — angka desimal berurut tanpa nol di
+// depan. Cara menghitungnya sengaja berbeda, dan itu **selisih yang direncanakan**: ia
+// mencegah kunci ganda alih-alih mewarisinya.
+//
+// # Kunci yang bukan angka dilewati
+//
+// Satu baris berkunci janggal tidak boleh membuat seluruh penambahan berhenti — ia justru
+// keadaan yang paling membutuhkan baris baru dapat ditambahkan.
+//
+// Nil berarti kunci berikutnya tidak muat di kolomnya.
+func NextKey(existing []string) (string, error) {
+	var highest int64
+	for _, one := range existing {
+		number, err := strconv.ParseInt(strings.TrimSpace(one), 10, 64)
+		if err == nil && number > highest {
+			highest = number
+		}
+	}
+
+	next := strconv.FormatInt(highest+1, 10)
+	if len(next) > MaxIDWidth {
+		return "", fmt.Errorf(
+			"masterkategorisparepart: kunci berikutnya %q melebihi %d karakter",
+			next, MaxIDWidth)
+	}
+	return next, nil
+}
+
+// SortKey mengembalikan bentuk kunci yang dapat diurutkan sebagai TEKS tetapi berperilaku
+// NUMERIK.
+//
+// Ia padanan `LPAD(TRIM(PART_CATEGORY_ID), 10, '0')` pada berkas `.sql`, dan ada di sini
+// supaya kedua adapter mengurutkan dengan aturan yang sama persis. Tanpa itu, daftar yang
+// terlihat saat pengembangan berbeda urutannya dari daftar yang terlihat di produksi —
+// selisih yang tidak akan ketahuan sampai ada yang membandingkan keduanya.
+//
+// `ORDER BY PART_CATEGORY_ID` apa adanya TIDAK dipakai: atas kolom teks ia menaruh "10"
+// sebelum "9". Sistem lama tidak punya `ORDER BY` sama sekali pada rule browse-nya,
+// sehingga urutan di sini bukan peniruan melainkan pilihan — dan urutan numerik adalah
+// satu-satunya yang terbaca masuk akal oleh pengguna.
+//
+// Kunci yang lebih panjang dari MaxIDWidth dikembalikan apa adanya; ia akan terurut paling
+// belakang, dan itu memang tempat yang tepat untuk baris yang bentuknya janggal.
+func SortKey(id string) string {
+	clean := strings.TrimSpace(id)
+	if pad := MaxIDWidth - len(clean); pad > 0 {
+		return strings.Repeat("0", pad) + clean
+	}
+	return clean
+}
 
 // Galat modul ini. Transport yang memetakannya ke kode HTTP; domain tidak tahu HTTP.
 var (

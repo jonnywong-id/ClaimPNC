@@ -45,8 +45,12 @@ func violationFields(t *testing.T, err error) []string {
 }
 
 func TestNewCriteriaCabangGalat(t *testing.T) {
-	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{Mode: "lain"})
-	require.Equal(t, []string{archivedokumenklaim.FieldSearchMode}, violationFields(t, err))
+	// Kolom yang tidak dikenal ditolak — tetapi hanya bila kata kuncinya terisi; tanpa
+	// kata kunci, kolom tidak punya arti apa pun.
+	_, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
+		Column: "lain", Keyword: "PNC-1",
+	})
+	require.Equal(t, []string{archivedokumenklaim.FieldSearchColumn}, violationFields(t, err))
 
 	_, err = archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{Keyword: "  "})
 	require.Equal(t, []string{archivedokumenklaim.FieldKeyword}, violationFields(t, err))
@@ -54,28 +58,33 @@ func TestNewCriteriaCabangGalat(t *testing.T) {
 	from := time.Date(2024, 2, 10, 15, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	_, err = archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode: string(archivedokumenklaim.ModeInputDate), From: &from, To: &to,
+		From: &from, To: &to,
 	})
 	require.Equal(t, []string{archivedokumenklaim.FieldTo}, violationFields(t, err))
 }
 
-// Isian dari mode lain dibuang, dan tanggal dipotong menjadi tanggal kalender.
-func TestNewCriteriaMembuangIsianModeLain(t *testing.T) {
+// Kolom dibuang bila kata kuncinya kosong, dan tanggal dipotong menjadi tanggal kalender.
+//
+// Kolom terpilih tanpa nilai yang dicari akan membuat kueri menyaring kolom itu dengan
+// teks kosong — mengembalikan nol baris tanpa alasan yang terbaca pengguna.
+func TestNewCriteriaMembuangKolomTanpaKataKunci(t *testing.T) {
 	from := time.Date(2024, 2, 1, 15, 30, 0, 0, time.UTC)
+
 	keyword, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
+		Column:  string(archivedokumenklaim.ColumnClaimNumber),
 		Keyword: " pnc-1 ", From: &from, To: &from,
 	})
 	require.NoError(t, err)
-	require.Equal(t, archivedokumenklaim.ModeKeyword, keyword.Mode)
+	require.Equal(t, archivedokumenklaim.ColumnClaimNumber, keyword.Column)
 	require.Equal(t, "PNC-1", keyword.Keyword)
-	require.Nil(t, keyword.From)
-	require.Nil(t, keyword.To)
+	require.Equal(t, time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC), *keyword.From)
 
 	dated, err := archivedokumenklaim.NewCriteria(archivedokumenklaim.CriteriaInput{
-		Mode: string(archivedokumenklaim.ModeInputDate), Keyword: "X", From: &from, To: &from,
+		Column: string(archivedokumenklaim.ColumnClaimNumber), From: &from, To: &from,
 	})
 	require.NoError(t, err)
 	require.Empty(t, dated.Keyword)
+	require.Empty(t, string(dated.Column))
 	require.Equal(t, time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC), *dated.From)
 }
 

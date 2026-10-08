@@ -107,6 +107,17 @@ const (
 	FieldGrupBisnis  = "grup_bisnis"
 	FieldJumlahKlaim = "jumlah"
 
+	// FieldKategoriDOL dan FieldReinsurer adalah kedua kolom tetap grid ketiga tab
+	// Outstanding. Kolom sisanya adalah TAHUN, dan tahun mana saja ditentukan data —
+	// karena itu ia diisi repo, bukan diumumkan di sini.
+	FieldKategoriDOL = "kategori_dol"
+	FieldReinsurer   = "reinsurer"
+
+	// FilterReinsurer dan FilterCategoryOS adalah kunci kedua penyaring dashboard
+	// Outstanding, dipakai bersama oleh repo, transport, dan layar.
+	FilterReinsurer  = "reinsurer"
+	FilterCategoryOS = "kategori_os"
+
 	// Dashboard Produktivitas dan Dashboard Klaim.
 	FieldDimensi         = "dimensi"
 	FieldPenyebab        = "penyebab_kerugian"
@@ -126,6 +137,7 @@ const (
 	FieldNilaiAksep   = "nilai_akseptasi"
 	FieldNilaiTolak   = "nilai_ditolak"
 	FieldNilaiOS      = "nilai_outstanding"
+	FieldNilaiKlaim   = "nilai_klaim"
 	FieldNamaBisnisDK = "nama_bisnis"
 
 	// Antrean persetujuan.
@@ -147,7 +159,36 @@ const (
 	FieldStatusPenolak2 = "status_penolakan_2"
 	FieldPetugas        = "petugas"
 	FieldKategori       = "kategori"
+
+	// Kolom yang BARU dibawa setelah judul kolom disamakan dengan Pega (2026-10-07).
+	// Seluruhnya ada di tabelnya dan memang digambar layar lama; yang sebelumnya kami
+	// tampilkan adalah kolom lain yang dipilih sendiri.
+	FieldTelepon      = "telepon"
+	FieldNoHP         = "no_hp"
+	FieldLoginApl     = "login_aplikasi"
+	FieldStsRepair    = "status_repair"
+	FieldStsEditQty   = "status_edit_quantity"
+	FieldStsPremium   = "status_premium_repair"
+	FieldStsPecah     = "status_pecah"
+	FieldStsSticker   = "status_sticker"
+	FieldStsSisi      = "status_sisi"
+	FieldStsRusak     = "status_rusak_parah"
+	FieldHarga        = "harga"
+	FieldUserUpdate   = "user_update"
+	FieldNoSparepart  = "no_sparepart"
+	FieldNamaPanel    = "nama_panel"
+	FieldSisiPanel    = "sisi_panel"
+	FieldNoRangka     = "no_rangka"
+	FieldIDKategoriSP = "id_kategori_sparepart"
+
+	// Dua kolom Master Panel yang sempat terlewat (2026-10-08).
+	FieldStsAktif   = "status_aktif"
+	FieldExclusionC = "exclusion_c"
 )
+
+// MessageRangeSameYear adalah pesan penolakan rentang lintas tahun, disalin APA ADANYA dari
+// `Activity/DashboardKlaim_act` — `local.message` pada langkah 4.
+const MessageRangeSameYear = "Periode Up To hanya untuk periode tahun yang sama"
 
 // Tab adalah satu bagian layar Inbox Manager.
 type Tab struct {
@@ -185,6 +226,68 @@ type Tab struct {
 	// sendiri. Lihat tab Approval Nomor Rangka Beda.
 	LineBusiness string
 
+	// SectionTitle adalah judul SUB-TAB di dalam tab ini, bila Pega menggambarnya.
+	//
+	// Hanya satu tab punya: kontainer ke-12 di Pega bukan sebuah grid melainkan sebuah bilah
+	// sub-tab (`Section/Sec_PaymentAkseptasiKlaimCase1`), dan sub-tab yang TAMPIL hanya satu
+	// — "Approval Payment Akseptasi".
+	//
+	// Sub-tab keduanya, "Approval Progress Klaim", bersyarat `pyContainerVisibleWhen = 1==2`
+	// (`:67064`) — syarat yang tidak pernah benar. Ia mati di sistem lama dan tidak dibawa;
+	// lihat TestSubTabApprovalProgressKlaimTidakDibawa.
+	SectionTitle string
+
+	// InParentTabStrip menyatakan tab ini muncul di BILAH TAB induknya.
+	//
+	// # Kenapa ini BUKAN hal yang sama dengan Parent()
+	//
+	// Pega menyimpan dua fakta yang berbeda, dan keduanya benar:
+	//
+	//   pohon pencacah   `CountDashbroardManager` menulis SEMBILAN pencacah sebagai anak
+	//                    baris "Approval Master" — termasuk Penolakan Klaim
+	//   bilah tab        `Section/InboxManager_Section2` menyertakan DELAPAN section, dan
+	//                    Penolakan Klaim BUKAN salah satunya
+	//
+	// Penolakan Klaim karena itu terhitung di bawah Approval Master tetapi tidak dapat
+	// dibuka dari bilah tabnya — ia dibuka dengan mengeklik pencacahnya. Menyamakan kedua
+	// fakta itu akan menambah satu tab yang Pega tidak punya, atau menghilangkan satu
+	// pencacah yang Pega punya.
+	InParentTabStrip bool
+
+	// PeriodApplyLabel adalah label tombol yang MENERAPKAN penyaring periode.
+	//
+	// Di Pega periode TIDAK berlaku saat isiannya diubah — ia berlaku saat tombolnya
+	// ditekan, dan labelnya berbeda tiap tab: `pyButtonLabel Cari` pada
+	// `DisplayInboxProduktivitas_Sect`, `pyButtonLabel Lihat Data` pada `DashboardKlaim_sec`.
+	//
+	// Perbedaan itu bukan kerapian. Isian tanggal diisi sepotong demi sepotong, dan tanpa
+	// tombol setiap potongan menjadi permintaan tersendiri — termasuk keadaan setengah jadi
+	// seperti tahun "0020" saat pengguna baru mengetik dua angka.
+	PeriodApplyLabel string
+
+	// RangeSameYearOnly menolak rentang yang kedua tanggalnya berbeda tahun.
+	//
+	// Hanya tab Klaim yang punya batas ini, dan itu BUKAN penyederhanaan:
+	// `Activity/DashboardKlaim_act` langkah 4 memotong tahun dari kedua tanggal
+	// (`@substring(…,6,10)`) lalu langkah 5 melompat ke blok galat bila keduanya berbeda.
+	// `PNCGetDashboardProduktivitasInbox_Act` tidak punya langkah serupa — tidak ada
+	// `Page-Set-Messages`, tidak ada blok galat, dan tidak ada pesan apa pun.
+	RangeSameYearOnly bool
+
+	// PageSize adalah ukuran halaman antrean ini, disalin dari `pyPageSize` pada grid
+	// section-nya. Nol berarti memakai DefaultPageSize.
+	//
+	// Angkanya BERBEDA-BEDA per tab di Pega — 20, 50, dan 15 — dan itu bukan kebetulan
+	// susunan kolomnya: antrean berkolom banyak diberi halaman lebih kecil.
+	PageSize int
+
+	// HasDetailExport menyatakan tab ini punya blok "Export Data Detail Klaim" — ekspor
+	// berentang tanggal yang berdiri sendiri, terpisah dari ekspor antrean di kepala layar.
+	//
+	// Hanya tab Outstanding yang punya, dan itu bukan penyederhanaan: hanya kontainernya
+	// yang memuat tombol `pyButtonLabel Export To Excel`.
+	HasDetailExport bool
+
 	// HasPeriodFilter menyatakan tab ini punya penyaring periode.
 	//
 	// Ia BUKAN seragam: Dashboard Outstanding tidak punya penyaring tanggal sama sekali —
@@ -203,21 +306,56 @@ type Tab struct {
 // ditambah `GetYearDashboardOS`, `GetProgressAllYearDashboarOS`, dan `BrowseMstProgress1`.
 // Ketiga sisanya mengisi penyaring dan daftar pilihan, bukan grid. Membawanya sebagai grid
 // akan menggambar tiga tabel yang tidak pernah ada di layar lama.
+// Judul kolomnya `PIC`, `OS`, `COB`, `OS` — disalin apa adanya dari section (`D-13`),
+// tersimpan di sana sebagai `<pyValue>` pada offset 191893, 197557, 257353, dan 260459.
+// Judul yang lebih panjang seperti "Nama PIC" dan "Jumlah Klaim" sempat dipakai di sini, dan
+// itu karangan: tidak satu pun ada di export.
+//
+// Kedua grid pertama juga TIDAK berjudul di Pega — yang membedakannya adalah kepala
+// kolomnya. Judul per grid karena itu dikosongkan, dan layar tidak menggambar apa pun di
+// tempatnya.
 var dashboardOutstandingPanels = []Panel{
 	{
-		Key:   "pic",
-		Title: "Outstanding per PIC",
+		Key: "pic",
 		Columns: []Column{
-			{Key: FieldPIC, Title: "Nama PIC"},
-			{Key: FieldJumlahKlaim, Title: "Jumlah Klaim"},
+			{Key: FieldPIC, Title: "PIC"},
+			{Key: FieldJumlahKlaim, Title: "OS"},
 		},
 	},
 	{
-		Key:   "grup_bisnis",
-		Title: "Outstanding per Grup Bisnis",
+		Key: "grup_bisnis",
 		Columns: []Column{
-			{Key: FieldGrupBisnis, Title: "Grup Bisnis"},
-			{Key: FieldJumlahKlaim, Title: "Jumlah Klaim"},
+			{Key: FieldGrupBisnis, Title: "COB"},
+			{Key: FieldJumlahKlaim, Title: "OS"},
+		},
+	},
+
+	// Grid ketiga — "Kategori/DOL × Reinsurer × tahun".
+	//
+	// # Kenapa ia sempat tidak ada di sini, dan apa yang membuatnya terlewat
+	//
+	// Catatan sebelumnya menyatakan `GetYearDashboardOS` dan `GetProgressAllYearDashboarOS`
+	// "mengisi penyaring dan daftar pilihan, bukan grid". Itu SALAH, dan Work Owner
+	// menunjukkannya dari layar Pega yang berjalan.
+	//
+	// Sebabnya: `Section/PNCDashboardOS` hanya mengikat DUA page list, dan grid ketiga
+	// tidak diikat page list sama sekali — ia `Rule-HTML-Property` bernama
+	// `PNCSummaryDashboardOS`, dipasang sebagai `pyFormat` pada satu sel baca-saja
+	// (`:355876`). Kontrol HTML tidak terlihat oleh pencarian page list.
+	//
+	// Rule itu sendiri TIDAK ADA di export meski direktori `HTML/` terkirim dengan tiga
+	// puluh rule lain — gap `R-16`. Bentuk datanya tetap ditentukan penuh oleh kedua kueri
+	// pemasoknya, sehingga gridnya dapat dibangun tanpa rule itu; yang tidak dapat
+	// dipulihkan hanyalah detail tampilannya.
+	//
+	// Kolom tahun TIDAK diumumkan di sini karena tahun mana saja yang tampil ditentukan
+	// data — di Pega pun begitu: activity-nya merangkai satu `SUM(CASE WHEN … )` per tahun
+	// yang dikembalikan `GetYearDashboardOS`, lalu menyisipkannya ke daftar SELECT.
+	{
+		Key: "kategori_os",
+		Columns: []Column{
+			{Key: FieldKategoriDOL, Title: "Kategori/DOL"},
+			{Key: FieldReinsurer, Title: "Reinsurer"},
 		},
 	},
 }
@@ -241,32 +379,71 @@ var dashboardOutstandingPanels = []Panel{
 // Jadi kedelapan pencacah itu adalah empat keranjang × dua periode, dan dashboard ini
 // sesungguhnya membandingkan periode berjalan dengan periode yang sama tahun lalu. Tidak ada
 // satu pun judul di layar lama yang menyatakannya; itu hanya terbaca dari predikatnya.
-var dashboardProduktivitasColumns = []Column{
-	{Key: FieldDimensi, Title: "Grup Bisnis / PIC"},
-	{Key: FieldTotalPeriodeIni, Title: "Total — Periode Ini"},
-	{Key: FieldTotalPeriodeLTY, Title: "Total — Tahun Lalu"},
-	{Key: FieldAksepPeriodeIni, Title: "Akseptasi — Periode Ini"},
-	{Key: FieldAksepPeriodeLTY, Title: "Akseptasi — Tahun Lalu"},
-	{Key: FieldTolakPeriodeIni, Title: "Ditolak — Periode Ini"},
-	{Key: FieldTolakPeriodeLTY, Title: "Ditolak — Tahun Lalu"},
-	{Key: FieldOSPeriodeIni, Title: "Outstanding — Periode Ini"},
-	{Key: FieldOSPeriodeLTY, Title: "Outstanding — Tahun Lalu"},
+// Kedelapan judul pencacah disalin APA ADANYA dari section, yang menyimpannya sebagai
+// `<pyValue><b>…</b></pyValue>` pada offset 220362…245764 dan 356549…383444.
+//
+// # Satu judul lama bukan sekadar beda kata, melainkan beda ARTI
+//
+// Pasangan kedua sempat diberi judul "Akseptasi — Periode Ini" dan "Akseptasi — Tahun Lalu".
+// Section-nya menyebutnya **Close**, bukan akseptasi. Keduanya tahapan yang berbeda, dan
+// judul karangan itu membuat penyelia membaca angka penutupan klaim sebagai angka akseptasi.
+var dashboardProduktivitasCounterColumns = []Column{
+	{Key: FieldTotalPeriodeIni, Title: "Total register tahun sama"},
+	{Key: FieldTotalPeriodeLTY, Title: "Total register tahun sebelumnya"},
+	{Key: FieldAksepPeriodeIni, Title: "Total Close tahun sama"},
+	{Key: FieldAksepPeriodeLTY, Title: "Total close tahun sebelumnya"},
+	{Key: FieldTolakPeriodeIni, Title: "Total reject tahun sama"},
+	{Key: FieldTolakPeriodeLTY, Title: "Total reject tahun sebelumnya"},
+	{Key: FieldOSPeriodeIni, Title: "Total OS tahun sama"},
+	{Key: FieldOSPeriodeLTY, Title: "Total OS tahun sebelumnya"},
 }
+
+// Kolom dimensinya BERBEDA antara kedua grid — `Nama PIC` dan `COB` — meski kedelapan
+// pencacahnya sama. Judul gabungan "Grup Bisnis / PIC" yang sempat dipakai tidak ada di
+// export sama sekali; ia karangan yang menutupi perbedaan itu.
+var dashboardProduktivitasPICColumns = append(
+	[]Column{{Key: FieldDimensi, Title: "Nama PIC"}},
+	dashboardProduktivitasCounterColumns...,
+)
+
+var dashboardProduktivitasCOBColumns = append(
+	[]Column{{Key: FieldDimensi, Title: "COB"}},
+	dashboardProduktivitasCounterColumns...,
+)
 
 // dashboardKlaimColumns adalah kolom grid "Total Klaim Bisnis" pada tab Klaim.
 //
 // Empat pencacah dan tiga nilai uang, dibaca dari `RDB List/BrowseCaseClaim-SQL.xml`.
 // Aliasnya sama menyesatkannya dengan tab Produktivitas — `BUSINESSNAME` untuk jumlah klaim,
 // `NOPOLIS` untuk sebuah jumlah uang — dan diabaikan dengan cara yang sama.
+// Judulnya disalin apa adanya dari section (offset 144686…174780), dan URUTANNYA ikut:
+// jumlah dan nilai berselang-seling per tahapan, bukan seluruh jumlah lalu seluruh nilai.
+//
+// Urutan itu bukan kerapian — ia yang membuat sepasang angka tahapan yang sama terbaca
+// berdampingan. Mengelompokkannya memaksa mata melompat delapan kolom untuk memasangkannya.
+//
+// `NILAI Klaim (Rp)` DIBAWA, dan rumusnya direplikasi apa adanya (`P-5`). Ia sempat tidak
+// dibawa dengan alasan "tidak diketahui artinya"; Work Owner meminta kolomnya disamakan
+// dengan Pega (2026-10-07), dan alasan itu tidak cukup untuk menghilangkan satu kolom.
+//
+// Yang perlu diketahui saat membacanya — rumus lamanya bercabang dua, dan cabang pertamanya
+// menyederhana menjadi dua kali nilai outstanding:
+//
+//	stsklaim = '1'              -> (TTLAKSEP+TTLOS)+(TTLOS-TTLAKSEP)  ==  2 x TTLOS
+//	stsklaim bukan '1','2','3'  -> TTLAKSEP+TTLOS
+//
+// Cabang pertama itu patut dicurigai sebagai cacat di Pega, tetapi memperbaikinya di sini
+// akan mengubah angka tanpa dasar keputusan. Ia direplikasi, dan kecurigaannya dicatat.
 var dashboardKlaimColumns = []Column{
-	{Key: FieldNamaBisnisDK, Title: "Grup Bisnis"},
+	{Key: FieldNamaBisnisDK, Title: "COB"},
 	{Key: FieldTotalKlaim, Title: "Total Klaim"},
-	{Key: FieldJumlahAksep, Title: "Jumlah Akseptasi"},
-	{Key: FieldJumlahTolak, Title: "Jumlah Ditolak"},
-	{Key: FieldJumlahOS, Title: "Jumlah Outstanding"},
-	{Key: FieldNilaiAksep, Title: "Nilai Akseptasi", Money: true},
-	{Key: FieldNilaiTolak, Title: "Nilai Ditolak", Money: true},
-	{Key: FieldNilaiOS, Title: "Nilai Outstanding", Money: true},
+	{Key: FieldNilaiKlaim, Title: "NILAI Klaim (Rp)", Money: true},
+	{Key: FieldJumlahAksep, Title: "CASE Akseptasi"},
+	{Key: FieldNilaiAksep, Title: "NILAI Akseptasi (Rp)", Money: true},
+	{Key: FieldJumlahOS, Title: "CASE OS"},
+	{Key: FieldNilaiOS, Title: "NILAI OS (Rp)", Money: true},
+	{Key: FieldJumlahTolak, Title: "CASE Reject"},
+	{Key: FieldNilaiTolak, Title: "NILAI Reject (Rp)", Money: true},
 }
 
 // dashboardKlaimCauseColumns adalah kolom grid "Total Klaim CauseOfLoss" pada tab Klaim.
@@ -276,8 +453,8 @@ var dashboardKlaimColumns = []Column{
 // dimensi `COL_DESC`, yakni penyebab kerugian.
 var dashboardKlaimCauseColumns = append(
 	[]Column{
-		{Key: FieldNamaBisnisDK, Title: "Grup Bisnis"},
-		{Key: FieldPenyebab, Title: "Penyebab Kerugian"},
+		{Key: FieldNamaBisnisDK, Title: "COB"},
+		{Key: FieldPenyebab, Title: "Cause Of Loss"},
 	},
 	dashboardKlaimColumns[1:]...,
 )
@@ -297,16 +474,30 @@ var tabs = []Tab{
 		// TIDAK punya penyaring periode, dan itu diperiksa uji. Ketiga kueri Pega yang
 		// memasoknya tidak menyaring tanggal sama sekali.
 		HasPeriodFilter: false,
+
+		// Blok "Export Data Detail Klaim" — isian Dari dan Sampai beserta tombolnya. Ia
+		// ekspor TERSENDIRI, berbeda dari ekspor antrean di kepala layar: di Pega ia
+		// tombol `pyButtonLabel Export To Excel` yang memanggil activity
+		// `ExportDataDetailKlaim`, dan hanya tab ini yang punya.
+		HasDetailExport: true,
 	},
 	{
-		Code: TabProduktivitas,
-		Name: "Produktivitas Klaim",
+		Code:             TabProduktivitas,
+		PeriodApplyLabel: "Cari",
+		Name:             "Produktivitas Klaim",
 		Description: "Perbandingan jumlah klaim periode berjalan dengan periode yang sama " +
 			"tahun lalu, per grup bisnis dan per PIC.",
 		Kind: KindDashboard,
+		// Urutannya PIC LEBIH DULU, mengikuti urutan page list di section:
+		// `GetPICDashboardProduktivitas` pada offset 200374, `GetBusinessDashboardProduktivitas`
+		// pada 350800. Urutan terbalik yang sempat dipakai membuat grid yang di Pega berada di
+		// kiri tergambar di bawah.
+		//
+		// Judul per grid dikosongkan — section tidak memberi judul pada keduanya; yang
+		// membedakannya kepala kolom `Nama PIC` versus `COB`.
 		Panels: []Panel{
-			{Key: "grup_bisnis", Title: "Produktivitas per Grup Bisnis", Columns: dashboardProduktivitasColumns},
-			{Key: "pic", Title: "Produktivitas per PIC", Columns: dashboardProduktivitasColumns},
+			{Key: "pic", Columns: dashboardProduktivitasPICColumns},
+			{Key: "grup_bisnis", Columns: dashboardProduktivitasCOBColumns},
 		},
 		HasPeriodFilter: true,
 	},
@@ -315,6 +506,14 @@ var tabs = []Tab{
 		Name:        "Klaim",
 		Description: "Jumlah dan nilai klaim per grup bisnis, dan rinciannya per penyebab kerugian.",
 		Kind:        KindDashboard,
+
+		// Hanya tab INI yang menolak rentang lintas tahun — lihat Tab.RangeSameYearOnly.
+		RangeSameYearOnly: true,
+		PeriodApplyLabel:  "Lihat Data",
+		// Kedua grid tab ini PUNYA judul di Pega — `pyTitle` pada
+		// `Section/DashboardKlaim_sec` offset 128772 dan 267644 — berbeda dari tab
+		// Outstanding dan Produktivitas yang tidak punya. Judulnya sempat ikut dikosongkan
+		// saat kedua tab itu dirapikan; itu keliru.
 		Panels: []Panel{
 			{Key: "bisnis", Title: "Total Klaim Bisnis", Columns: dashboardKlaimColumns},
 			{Key: "penyebab", Title: "Total Klaim CauseOfLoss", Columns: dashboardKlaimCauseColumns},
@@ -330,49 +529,97 @@ var tabs = []Tab{
 	},
 
 	{
-		Code:        TabMasterBengkel,
-		Name:        "Master Bengkel",
-		Description: "Pengajuan data bengkel yang menunggu persetujuan.",
-		Kind:        KindQueue,
+		Code:             TabMasterBengkel,
+		InParentTabStrip: true,
+		PageSize:         20,
+		Name:             "Master Bengkel",
+		Description:      "Pengajuan data bengkel yang menunggu persetujuan.",
+		Kind:             KindQueue,
+		// Judul DAN kolomnya disalin dari `Section/ApprovalMasterBengkelHE`, yang
+		// menyimpannya sebagai teks `pyValue` sesudah page list-nya. Nama kolom basis
+		// datanya dibaca dari `Report Definition/BrowseBengkelHE_RD`, yang dipanggil
+		// `Activity/GetDataMaster` lewat `pxRetrieveReportData`.
+		//
+		// "Nama Cabang" dan "Nama Kota" yang sempat kami tampilkan TIDAK ada di layar lama;
+		// keduanya kolom lain pada tabel yang sama yang kami pilih sendiri.
 		Columns: []Column{
 			{Key: FieldID, Title: "ID Bengkel"},
 			{Key: FieldNama, Title: "Nama Bengkel"},
-			{Key: FieldCabang, Title: "Nama Cabang"},
-			{Key: FieldKota, Title: "Nama Kota"},
 			{Key: FieldKeterangan, Title: "Alamat Bengkel"},
+			{Key: FieldTelepon, Title: "Telp Bengkel"},
+			{Key: FieldNoHP, Title: "No HP Bengkel"},
+			{Key: FieldLoginApl, Title: "Login Aplikasi"},
 		},
+		// Satu dari tiga antrean yang punya `Select All` / `Deselect All` di atas gridnya,
+		// dan tombol keputusannya memanggil `SetApprovalAllMaster` yang mengulang baris.
 		Decision: DecisionRule{
 			Decidable:              true,
+			Bulk:                   true,
+			ApproveLabel:           "APPROVE",
+			RejectLabel:            "REJECT",
 			ReasonRequiredOnReject: true,
 			ReasonLabel:            "Alasan Status Bengkel",
 		},
 	},
 	{
-		Code:        TabMasterPanel,
-		Name:        "Master Panel",
-		Description: "Pengajuan data panel kendaraan yang menunggu persetujuan.",
-		Kind:        KindQueue,
+		Code:             TabMasterPanel,
+		InParentTabStrip: true,
+		PageSize:         20,
+		Name:             "Master Panel",
+		Description:      "Pengajuan data panel kendaraan yang menunggu persetujuan.",
+		Kind:             KindQueue,
+		// SEBELAS kolom. Judul dan urutannya dibaca dari `<pyValue>` pada
+		// `Section/ApprovalMasterPanelHE` — offset 145578 sampai 190972 — dan propertinya
+		// dari blok sesudahnya, offset 210365 sampai 276060:
+		//
+		//	ID → .ID_PANEL · NAMA PANEL → .NAME · STATUS REPAIR → .STS_REPAIR
+		//	STATUS EDIT QUANTITY → .STS_EDIT_QTY · STATUS PREMIUM REPAIR → .STS_PREMIUM_REPAIR
+		//	STATUS PECAH → .STS_PECAH · STATUS STICKER → .STS_STICKER · STATUS SISI → .STS_SISI
+		//	STATUS RUSAK PARAH → .STS_RUSAK_PARAH · STATUS AKTIF → .STS_AKTIF
+		//	Exclusion C → .EXCLUSION_C
+		//
+		// Dua yang terakhir sempat terlewat. Keduanya ada di tabelnya dan terisi — pemeriksaan
+		// `POOLDATA.PANEL_HE` pada 2026-10-08: `STS_AKTIF` berisi `1` (105 baris), `0` (16),
+		// NULL (3); `EXCLUSION_C` berisi `0` (100), NULL (20), `1` (4).
+		//
+		// `Exclusion C` ber-`pyReadOnly=false` di Pega — ia dapat DIUBAH di dalam grid. Di
+		// sini ia digambar baca-saja seperti kolom lain; penyuntingan di dalam grid adalah
+		// bentuk layar yang belum dibangun modul ini.
 		Columns: []Column{
-			{Key: FieldID, Title: "ID Panel"},
-			{Key: FieldNama, Title: "Nama Panel"},
+			{Key: FieldID, Title: "ID"},
+			{Key: FieldNama, Title: "NAMA PANEL"},
+			{Key: FieldStsRepair, Title: "STATUS REPAIR"},
+			{Key: FieldStsEditQty, Title: "STATUS EDIT QUANTITY"},
+			{Key: FieldStsPremium, Title: "STATUS PREMIUM REPAIR"},
+			{Key: FieldStsPecah, Title: "STATUS PECAH"},
+			{Key: FieldStsSticker, Title: "STATUS STICKER"},
+			{Key: FieldStsSisi, Title: "STATUS SISI"},
+			{Key: FieldStsRusak, Title: "STATUS RUSAK PARAH"},
+			{Key: FieldStsAktif, Title: "STATUS AKTIF"},
+			{Key: FieldExclusionC, Title: "Exclusion C"},
 		},
 		Decision: DecisionRule{
 			Decidable:              true,
+			Bulk:                   true,
+			ApproveLabel:           "APPROVE",
+			RejectLabel:            "REJECT",
 			ReasonRequiredOnReject: true,
 			ReasonLabel:            "Alasan Tolak",
 		},
 	},
 	{
-		Code: TabNomorRangka,
-		Name: "Approval Nomor Rangka Beda",
+		Code:             TabNomorRangka,
+		InParentTabStrip: true,
+		PageSize:         50,
+		Name:             "Approval Nomor Rangka Beda",
 		Description: "Klaim yang nomor rangka dari bengkel berbeda dengan nomor rangka yang " +
 			"diinput pengguna.",
 		Kind: KindQueue,
 		Columns: []Column{
 			{Key: FieldNoKlaim, Title: "No Klaim"},
 			{Key: FieldPengirim, Title: "Pemilik Kendaraan"},
-			{Key: FieldMerk, Title: "Merk Kendaraan"},
 			{Key: FieldModel, Title: "Model Kendaraan"},
+			{Key: FieldMerk, Title: "Merk Kendaraan"},
 			{Key: FieldTipe, Title: "Tipe Kendaraan"},
 			{Key: FieldRangkaUser, Title: "No Rangka (Inputan User)"},
 			{Key: FieldRangkaBengkel, Title: "No Rangka (Dari Bengkel)"},
@@ -381,7 +628,15 @@ var tabs = []Tab{
 		// Tabelnya TIDAK punya kolom alasan — delapan kolomnya habis untuk identitas
 		// kendaraan dan status. Isian alasan karena itu tidak digambar sama sekali, bukan
 		// digambar lalu isinya dibuang.
-		Decision: DecisionRule{Decidable: true},
+		//
+		// Satu-satunya antrean yang label tombolnya berbahasa Indonesia di Pega, dan
+		// keduanya memanggil activity yang berbeda — `UpdateStatusAksepRangka_HE` dan
+		// `UpdateStatusRejectRangka_HE`, satu baris per panggilan.
+		Decision: DecisionRule{
+			Decidable:    true,
+			ApproveLabel: "Setuju",
+			RejectLabel:  "Tidak Setuju",
+		},
 
 		// SATU-SATUNYA tab yang dibatasi lini bisnis, dan batas itu dibaca dari export:
 		// `Section/InboxKonfirmasiHE_Section-Section.xml` memasang
@@ -389,65 +644,105 @@ var tabs = []Tab{
 		LineBusiness: LineNonMBU,
 	},
 	{
-		Code:        TabMasterSparepart,
-		Name:        "Master Sparepart",
-		Description: "Pengajuan data sparepart yang menunggu persetujuan.",
-		Kind:        KindQueue,
+		Code:             TabMasterSparepart,
+		InParentTabStrip: true,
+		PageSize:         20,
+		Name:             "Master Sparepart",
+		Description:      "Pengajuan data sparepart yang menunggu persetujuan.",
+		Kind:             KindQueue,
+		// Nama kolomnya dari `Report Definition/BrowseSparepartHE_RD`. "Kategori Sparepart"
+		// dan "Nomor Sparepart" yang sempat kami tampilkan tidak ada di layar lama.
 		Columns: []Column{
 			{Key: FieldID, Title: "ID Sparepart"},
 			{Key: FieldNama, Title: "Nama Sparepart"},
-			{Key: FieldKategori, Title: "Kategori Sparepart"},
-			{Key: FieldKeterangan, Title: "Nomor Sparepart"},
+			{Key: FieldHarga, Title: "Harga (Rp)"},
+			{Key: FieldUserUpdate, Title: "User Update"},
 		},
-		Decision: DecisionRule{Decidable: true},
+		Decision: DecisionRule{
+			Decidable:    true,
+			Bulk:         true,
+			ApproveLabel: "APPROVE",
+			RejectLabel:  "REJECT",
+		},
 	},
 	{
-		Code:        TabKategoriSparepart,
-		Name:        "Master Kategori Sparepart",
-		Description: "Pengajuan kategori sparepart yang menunggu persetujuan.",
-		Kind:        KindQueue,
+		Code:             TabKategoriSparepart,
+		InParentTabStrip: true,
+		PageSize:         50,
+		Name:             "Master Kategori Sparepart",
+		Description:      "Pengajuan kategori sparepart yang menunggu persetujuan.",
+		Kind:             KindQueue,
 		Columns: []Column{
-			{Key: FieldID, Title: "ID Kategori Sparepart"},
+			{Key: FieldID, Title: "ID Sparepart Kategori"},
 			{Key: FieldNama, Title: "Sparepart Kategori"},
 		},
-		Decision: DecisionRule{Decidable: true},
+		// TANPA jalur massal: sectionnya tidak menggambar `Select All`, dan tombolnya
+		// memanggil `UpdateKategoriSparepart_act` untuk satu baris.
+		Decision: DecisionRule{
+			Decidable:    true,
+			ApproveLabel: "APPROVE",
+			RejectLabel:  "REJECT",
+		},
 	},
 	{
-		Code:        TabTipeSparepart,
-		Name:        "Master Tipe Sparepart",
-		Description: "Pengajuan tipe sparepart yang menunggu persetujuan.",
-		Kind:        KindQueue,
+		Code:             TabTipeSparepart,
+		InParentTabStrip: true,
+		PageSize:         50,
+		Name:             "Master Tipe Sparepart",
+		Description:      "Pengajuan tipe sparepart yang menunggu persetujuan.",
+		Kind:             KindQueue,
 		Columns: []Column{
 			{Key: FieldID, Title: "ID Tipe Sparepart"},
 			{Key: FieldNama, Title: "Nama Tipe Sparepart"},
-			{Key: FieldKategori, Title: "Nama Kategori Sparepart"},
+			{Key: FieldKategori, Title: "ID Kategori Sparepart"},
 		},
-		Decision: DecisionRule{Decidable: true},
+		Decision: DecisionRule{
+			Decidable:    true,
+			ApproveLabel: "APPROVE",
+			RejectLabel:  "REJECT",
+		},
 	},
 	{
-		Code:        TabGroupingSparepart,
-		Name:        "Master Grouping Sparepart",
-		Description: "Pengajuan pengelompokan sparepart menurut nomor rangka.",
-		Kind:        KindQueue,
+		Code:             TabGroupingSparepart,
+		InParentTabStrip: true,
+		PageSize:         15,
+		Name:             "Master Grouping Sparepart",
+		Description:      "Pengajuan pengelompokan sparepart menurut nomor rangka.",
+		Kind:             KindQueue,
+		// Enam kolom, dan urutannya dari `RDB List/GetDataMasterGrouping-SQL.xml` — kueri
+		// Pega untuk grid yang sama.
 		Columns: []Column{
 			{Key: FieldID, Title: "ID"},
-			{Key: FieldRangkaUser, Title: "No Rangka"},
+			{Key: FieldNoSparepart, Title: "No Sparepart"},
 			{Key: FieldNama, Title: "Nama Sparepart"},
-			{Key: FieldKeterangan, Title: "No Sparepart"},
+			{Key: FieldNamaPanel, Title: "Nama Panel"},
+			{Key: FieldSisiPanel, Title: "Sisi Panel"},
+			{Key: FieldNoRangka, Title: "No Rangka"},
 		},
-		Decision: DecisionRule{Decidable: true},
+		// Huruf besarnya BERBEDA dari lima antrean master lain — "Approve" dan "Reject",
+		// bukan "APPROVE" dan "REJECT". Itu apa adanya dari sectionnya, dan tidak
+		// diseragamkan di sini (`D-13`).
+		Decision: DecisionRule{
+			Decidable:    true,
+			ApproveLabel: "Approve",
+			RejectLabel:  "Reject",
+		},
 	},
 	{
-		Code: TabPaymentAkseptasi,
-		Name: "Payment Klaim Akseptasi",
+		Code:             TabPaymentAkseptasi,
+		InParentTabStrip: true,
+		SectionTitle:     "Approval Payment Akseptasi",
+		PageSize:         15,
+		Name:             "Payment Klaim Akseptasi",
 		Description: "Nomor akseptasi yang menunggu persetujuan atasan sebelum pembayaran " +
 			"diteruskan ke kasir.",
 		Kind: KindQueue,
+		// Tanggal Input lebih dulu, mengikuti urutan kolom di `Akseptasi_PaymentLeader1`.
 		Columns: []Column{
+			{Key: FieldTanggalInput, Title: "Tanggal Input"},
 			{Key: FieldNoKlaim, Title: "No Klaim"},
 			{Key: FieldNoAkseptasi, Title: "No Akseptasi"},
-			{Key: FieldPIC, Title: "PIC"},
-			{Key: FieldTanggalInput, Title: "Tanggal Input"},
+			{Key: FieldPIC, Title: "PIC Klaim"},
 		},
 
 		// # Kenapa jalur SETUJU ditahan, dan jalur TOLAK tidak
@@ -471,6 +766,14 @@ var tabs = []Tab{
 		//
 		// Jalur TOLAK tidak menyentuh satu pun dari itu: ia berhenti di UPDATE tabel
 		// checker. Karena itu ia dibangun penuh, dan hanya jalur setuju yang ditahan.
+		//
+		// # Kenapa tanpa label dan tanpa jalur massal
+		//
+		// Pega tidak punya tombol APPROVE/REJECT di sini. `Section/Akseptasi_PaymentLeader`
+		// — section yang digambar sub-tab "Approval Payment Akseptasi" — hanya punya
+		// `Refresh`, `SIMPAN`, `Dokumen`, dan `DETAILS`; keputusannya diisi DI DALAM grid
+		// lalu disimpan sekali. Dan `SaveApprovalAkseptasiPaymentLeader_Act` menyentuh satu
+		// baris saja: Obj-Open-By-Handle → Obj-Save → Commit.
 		Decision: DecisionRule{
 			Decidable: true,
 			ApproveBlockedReason: "Menyetujui pembayaran di Pega ikut menjalankan transfer ke " +
@@ -488,8 +791,18 @@ var tabs = []Tab{
 		Name:        "Penolakan Klaim",
 		Description: "Pengajuan pasal penolakan klaim yang menunggu persetujuan checker.",
 		Kind:        KindQueue,
+		// Kolom "ID" yang sempat kami tampilkan TIDAK ada di layar lama — `ID_ST` di sana
+		// dipakai sebagai kunci baris, bukan digambar.
+		//
+		// Dua kolom terakhir layar lama, "Approval" dan "Note Approval", juga tidak dibawa
+		// sebagai kolom: di Pega keduanya ISIAN di dalam grid, bukan tampilan. Di sini
+		// keduanya menjadi tombol Setujui/Tolak beserta isian alasan di bilah keputusan.
+		//
+		// Karena itu pula tab ini TANPA label Pega dan tanpa jalur massal:
+		// `Section/Sec_PenolakanKlaimChecker` hanya punya satu tombol, `Simpan Data
+		// Penolakan`, dan `SaveDataCheckerPenolakan` berisi Page-New → Property-Set →
+		// RDB-List atas satu baris.
 		Columns: []Column{
-			{Key: FieldID, Title: "ID"},
 			{Key: FieldStatusPenolak1, Title: "Status Penolakan 1"},
 			{Key: FieldStatusPenolak2, Title: "Status Penolakan 2"},
 			{Key: FieldPetugas, Title: "PIC"},
@@ -521,6 +834,51 @@ func FindTab(code string) (Tab, bool) {
 		}
 	}
 	return Tab{}, false
+}
+
+// Parent mengembalikan kode tab induk, kosong bila tab ini berada di tingkat atas.
+//
+// # Kenapa hanya ada EMPAT tab tingkat atas
+//
+// Karena di Pega pun hanya empat. `Activity/CountDashbroardManager` menulis empat pencacah
+// pertama ke `TempCountDashboard.pxResults(<APPEND>)` langsung, lalu kesembilan sisanya ke
+// `.pxResults(4).pxResults(<APPEND>)` — yakni sebagai ANAK baris keempat, "Approval Master" —
+// dan gridnya ber-`pyRepeatDirection` TreeGrid. Kesembilan antrean persetujuan karena itu
+// BUKAN tab sejajar; ia isi dari satu tab.
+//
+// Jenjangnya diturunkan di sini, bukan dituliskan satu per satu pada kesembilan tab, supaya
+// ia dan `Counter.Parent` tidak dapat menyimpang: keduanya berangkat dari fakta yang sama,
+// yakni `Kind == KindQueue`.
+func (t Tab) Parent() string {
+	if t.Kind == KindQueue {
+		return TabApprovalMaster
+	}
+	return ""
+}
+
+// TopLevelTabs menyaring tab tingkat atas dari sebuah daftar.
+//
+// Ia menerima daftar — bukan membaca `tabs` langsung — supaya penyaringan lini bisnis yang
+// sudah dijalankan VisibleTabs tidak terbuang.
+func TopLevelTabs(list []Tab) []Tab {
+	result := []Tab{}
+	for _, tab := range list {
+		if tab.Parent() == "" {
+			result = append(result, tab)
+		}
+	}
+	return result
+}
+
+// ChildTabs menyaring anak sebuah tab dari sebuah daftar.
+func ChildTabs(list []Tab, parent string) []Tab {
+	result := []Tab{}
+	for _, tab := range list {
+		if tab.Parent() == parent {
+			result = append(result, tab)
+		}
+	}
+	return result
 }
 
 // QueueTabs mengembalikan kesembilan tab antrean — isi tab "Approval Master".
@@ -629,11 +987,16 @@ var PlannedDifferences = []string{
 		"saat diperiksa 2026-09-28 — karena proses pengisinya belum mengejar. Selisih ini " +
 		"menyusut sendiri begitu tabelnya terisi penuh, tanpa perubahan kode.",
 
-	"Dua dashboard berjudul \"Outstanding\" kini benar-benar hanya menghitung klaim yang " +
-		"berjalan. Dua dari tiga kueri Pega yang memasoknya — per grup bisnis dan per " +
-		"tahun — TIDAK menyaring status kerja sama sekali, sehingga klaim yang sudah selesai " +
-		"ikut terhitung dan angkanya tidak pernah cocok dengan pencacah di kepala layar yang " +
-		"sama. Penyaringnya ditambahkan.",
+	"Penyaring Reinsurer pada tab Outstanding memakai nilai yang tersimpan di tabel " +
+		"datar. Pega menempuh jalur lain: ia membaca tabel cuplikan lebih dulu, lalu jatuh " +
+		"ke master sales di basis data lain lewat DB Link — jalur yang penggantinya belum " +
+		"ada (D-25, R-03). Klaim yang hanya dikenali lewat jalur itu karena itu tidak ikut " +
+		"tersaring.",
+
+	"Grid ketiga tab Outstanding memakai SATU dasar tahun — tanggal klaim dibuat — untuk " +
+		"kolom maupun isinya. Pega memakai dua: daftar kolomnya dari tanggal dibuat, " +
+		"sedangkan selnya dari tahun registrasi bila ada. Klaim yang kedua tahunnya berbeda " +
+		"karena itu jatuh ke kolom yang tidak ada di sana, dan hilang dari tabel tanpa jejak.",
 
 	"Pencacah \"Outstanding\" di kepala layar kini menghitung KLAIM, sesuai namanya. Kueri " +
 		"lamanya menggabungkan tabel objek pertanggungan tanpa memilih satu kolom pun " +

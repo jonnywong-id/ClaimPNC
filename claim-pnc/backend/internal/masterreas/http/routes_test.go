@@ -2,6 +2,7 @@ package masterreashttp_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -102,7 +103,16 @@ func newTestServer(t *testing.T) *testServer {
 
 	handler, err := masterreashttp.NewHandler(
 		masterreashttp.Options{
-			Service:       service,
+			Service: service,
+			// Dirantai sama seperti cmd/claimpnc. Pada modul ini identitas pemanggil hanya
+			// mengisi log — tabelnya tidak punya kolom pencatat pelaku sama sekali.
+			Caller: func(ctx context.Context) (masterreashttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return masterreashttp.Caller{}, false
+				}
+				return masterreashttp.Caller{Login: baseCtx.User.Login}, true
+			},
 			Logger:        logger,
 			WriteResponse: writeResponse,
 			WriteError:    masterreashttp.ErrorWriter(writeError),
@@ -332,21 +342,20 @@ func TestDaftarKosongTerkirimSebagaiSenarai(t *testing.T) {
 	require.Contains(t, body.String(), `"member_reas":[]`)
 }
 
-// TestTidakAdaJalurTulis membuktikan modul ini benar-benar hanya membaca.
+// TestHanyaPutYangTerdaftar membuktikan modul ini menulis TEPAT SATU hal.
 //
-// Uji ini menjaga keputusan yang berdasar bukti: satu-satunya penulis `T_REINSURER` di
-// sistem lama adalah alur PLA/DLA lewat `UPDATEREAS`, dipanggil `UpdateDetailPLA2` dan
-// `UpdateDetailDLA2` — bukan layar master ini.
+// Uji ini semula melarang seluruh penulisan. Ia dikoreksi Work Owner 2026-10-05: layar Pega
+// punya kolom Aksi berisi tombol Ubah, dan itu tidak dapat dibaca dari export karena section
+// gridnya hilang (`R-16`).
 //
-// Bila kelak terbukti layar lamanya punya tombol simpan (section gridnya memang tidak ada di
-// export, `R-16`), uji ini yang akan gagal lebih dulu — dan itu memang yang diinginkan:
-// penambahan jalur tulis harus menjadi keputusan yang disadari, bukan yang menyelinap.
-func TestTidakAdaJalurTulis(t *testing.T) {
+// Yang tetap dilarang bertahan alasannya: tidak ada tombol Tambah di layar lamanya
+// (terkalibrasi terhadap `Harness/MasterLoginSurvey-Harness.xml`), dan `D-66` melarang
+// penghapusan data bernilai bisnis.
+func TestHanyaPutYangTerdaftar(t *testing.T) {
 	p := newTestServer(t)
 
 	for _, method := range []string{
 		http.MethodPost,
-		http.MethodPut,
 		http.MethodPatch,
 		http.MethodDelete,
 	} {
@@ -354,4 +363,133 @@ func TestTidakAdaJalurTulis(t *testing.T) {
 		require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode,
 			"%s pada %s seharusnya tidak terdaftar", method, route)
 	}
+}
+
+// saveBody menyusun badan permintaan ubah.
+func saveBody(kode, nama, tipe, email string) string {
+	body, _ := json.Marshal(map[string]string{
+		"kode_reas": kode,
+		"nama_reas": nama,
+		"tipe":      tipe,
+		"email":     email,
+	})
+	return string(body)
+}
+
+// callWithBody menjalankan permintaan ber-badan JSON.
+func (p *testServer) callWithBody(
+	t *testing.T,
+	method, path, portalAlias, body string,
+) (*http.Response, map[string]any) {
+	t.Helper()
+
+	request, err := http.NewRequest(method, p.server.URL+path, strings.NewReader(body))
+	require.NoError(t, err)
+	if p.token != "" {
+		request.Header.Set("Authorization", "Bearer "+p.token)
+	}
+	if portalAlias != "" {
+		request.Header.Set(portalhttp.HeaderPortal, portalAlias)
+	}
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = response.Body.Close() })
+
+	content := map[string]any{}
+	_ = json.NewDecoder(response.Body).Decode(&content)
+	return response, content
+}
+
+// TestUbahSurel membuktikan jalur ubah bekerja, dan bahwa yang berubah hanya surelnya.
+func TestUbahSurel(t *testing.T) {
+	p := newTestServer(t)
+
+	response, _ := p.callWithBody(t, http.MethodPut, route, "ASM",
+		saveBody("RE-004", "Cakrawala Re Asia", "2", "baru.cakrawala@contoh.invalid"))
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	_, content := p.call(t, http.MethodGet, route+"?cari=RE-004", "ASM")
+	list := rows(t, content)
+	require.Len(t, list, 1)
+
+	one, ok := list[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "baru.cakrawala@contoh.invalid", one["email"])
+
+	// Kelima kolom lain TIDAK tersentuh — termasuk LOGIN, yang menentukan klaim mana yang
+	// dilihat mitra reasuransi, dan NEGARA yang ikut tercetak di dokumen PLA/DLA.
+	require.Equal(t, "CakrawalaReAsia", one["login"])
+	require.Equal(t, "Singapura", one["negara"])
+	require.Equal(t, "2", one["tipe"])
+	require.Equal(t, "Cakrawala Re Asia", one["nama_reas"])
+}
+
+// TestUbahMenolakSurelKosong membuktikan kewajiban surel ditegakkan di SERVER.
+//
+// `UPDATEREAS` tidak memeriksa apa pun — ia menerima surel kosong dan menuliskannya. Baris
+// tanpa surel gagal dalam diam: dokumen PLA/DLA terbit, tercatat terkirim, dan tidak pernah
+// sampai ke siapa pun.
+func TestUbahMenolakSurelKosong(t *testing.T) {
+	p := newTestServer(t)
+
+	response, content := p.callWithBody(t, http.MethodPut, route, "ASM",
+		saveBody("RE-004", "Cakrawala Re Asia", "2", "   "))
+
+	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
+	require.Equal(t, masterreashttp.CodeValidationFailed, content["kode"])
+}
+
+// TestUbahMenolakBarisYangTidakAda membuktikan baris hilang DITOLAK, bukan disisipkan.
+//
+// Berbeda dari `UPDATEREAS`, yang menyisipkan baris baru bila kuncinya tidak ditemukan.
+// Penyisipan itu milik alur PLA/DLA; petugas yang menekan Simpan di layar master sedang
+// mengubah baris yang dilihatnya.
+func TestUbahMenolakBarisYangTidakAda(t *testing.T) {
+	p := newTestServer(t)
+
+	response, content := p.callWithBody(t, http.MethodPut, route, "ASM",
+		saveBody("RE-999", "Tidak Ada", "1", "x@contoh.invalid"))
+
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Equal(t, masterreashttp.CodeNotFound, content["kode"])
+
+	// Tidak ada baris baru yang tercipta.
+	_, list := p.call(t, http.MethodGet, route, "ASM")
+	require.Len(t, rows(t, list), sampleRows)
+}
+
+// TestUbahMenolakIsianYangTidakDikenal membuktikan `login` dan `negara` tidak dapat dikirim.
+//
+// Keduanya DIKIRIM pada setiap jawaban tetapi tidak dapat dikirim balik. Klien yang
+// mengembalikan seluruh objek apa adanya harus mengetahuinya saat pertama dicoba — bukan
+// menemukan bahwa keduanya diam-diam tidak berpengaruh.
+func TestUbahMenolakIsianYangTidakDikenal(t *testing.T) {
+	p := newTestServer(t)
+
+	body := `{"kode_reas":"RE-004","nama_reas":"Cakrawala Re Asia","tipe":"2",` +
+		`"email":"x@contoh.invalid","login":"DicobaDiubah"}`
+	response, content := p.callWithBody(t, http.MethodPut, route, "ASM", body)
+
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.Equal(t, masterreashttp.CodeMalformedRequest, content["kode"])
+}
+
+// TestUbahTerpisahAntarPortal membuktikan perubahan di satu entitas tidak menyentuh entitas
+// lain.
+func TestUbahTerpisahAntarPortal(t *testing.T) {
+	p := newTestServer(t)
+
+	response, _ := p.callWithBody(t, http.MethodPut, route, "ASI",
+		saveBody("RE-004", "Cakrawala Re Asia", "2", "x@contoh.invalid"))
+
+	// ASI tidak punya satu baris pun, jadi kuncinya tidak ditemukan di sana.
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+
+	// Dan baris milik ASM tetap seperti semula.
+	_, content := p.call(t, http.MethodGet, route+"?cari=RE-004", "ASM")
+	one, ok := rows(t, content)[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "dla.cakrawala@contoh.invalid", one["email"])
 }

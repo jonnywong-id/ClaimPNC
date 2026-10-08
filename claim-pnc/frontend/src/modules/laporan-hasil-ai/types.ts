@@ -55,22 +55,6 @@ export type ReportRow = {
   kategori_kronologi: string
 }
 
-/**
- * Satu baris grid ringkasan.
- *
- * `total` adalah `diterima + ditolak`, BUKAN jumlah baris — ditiru apa adanya dari
- * `Activity/SearchDataLaporanAI-Act.xml`. Kolom `menunggu` TIDAK ada di layar lama;
- * ia ditambahkan atas keputusan Work Owner 2026-09-26 supaya selisihnya terbaca.
- */
-export type ReportTally = {
-  /** Isi kolom "Keputusan" — "Komite" atau "AI". */
-  keputusan: string
-  total: number
-  diterima: number
-  ditolak: number
-  menunggu: number
-}
-
 export type Pagination = {
   halaman: number
   ukuran: number
@@ -85,8 +69,6 @@ export type AppliedFilter = {
 }
 
 export type SearchResponse = {
-  /** Selalu dua baris, pada urutan yang tergambar: Komite lalu AI. */
-  ringkasan: ReportTally[]
   baris: ReportRow[]
   paginasi: Pagination
   filter: AppliedFilter

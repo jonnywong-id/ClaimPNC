@@ -11,7 +11,6 @@ import (
 var usedQueries = []string{
 	"report_list",
 	"report_count",
-	"report_summary",
 	"report_check_table",
 }
 
@@ -119,7 +118,6 @@ func TestPaginationUsesBoundParameters(t *testing.T) {
 //
 //	report_list      isi grid
 //	report_count     penggerak paginator
-//	report_summary   angka di grid ringkasan
 //
 // Bila salah satunya menyaring berbeda, layar akan menampilkan ringkasan yang tidak dapat
 // dicocokkan dengan barisnya, atau paginator yang melaporkan halaman kosong — dan keduanya
@@ -128,7 +126,7 @@ func TestFilteringQueriesShareTheSameFilter(t *testing.T) {
 	want := whereClauseOf(getQuery("report_list"))
 	require.NotEmpty(t, want, "report_list tidak punya klausa WHERE")
 
-	for _, name := range []string{"report_count", "report_summary"} {
+	for _, name := range []string{"report_count"} {
 		require.Equalf(t, want, whereClauseOf(getQuery(name)),
 			"penyaring kueri %q berbeda dari report_list", name)
 	}
@@ -155,7 +153,7 @@ func whereClauseOf(text string) string {
 // Bila seseorang kelak mengembalikannya menjadi `<=`, hasilnya akan MELEBIHI satu hari —
 // karena pemanggil sudah menambahkan satu hari lewat `Filter.ToExclusive`.
 func TestDateRangeIsHalfOpen(t *testing.T) {
-	for _, name := range []string{"report_list", "report_count", "report_summary"} {
+	for _, name := range []string{"report_list", "report_count"} {
 		text := strings.ToUpper(getQuery(name))
 		require.Containsf(t, text, "B.TANGGALKOMITE >= :1",
 			"kueri %q tidak memakai batas bawah terikat", name)
@@ -172,7 +170,7 @@ func TestDateRangeIsHalfOpen(t *testing.T) {
 // masih berjalan". Menghilangkannya akan memasukkan kasus yang belum tuntas ke dalam
 // laporan, dan ringkasannya akan mencacah keputusan yang belum ada.
 func TestResolvedCaseGateIsPreserved(t *testing.T) {
-	for _, name := range []string{"report_list", "report_count", "report_summary"} {
+	for _, name := range []string{"report_list", "report_count"} {
 		text := getQuery(name)
 		require.Containsf(t, text, "'Resolved-Completed'",
 			"kueri %q kehilangan penyaring kasus selesai", name)
@@ -225,33 +223,6 @@ func TestFiveColumnsStayUnselected(t *testing.T) {
 					"perbarui doc paket laporanhasilai dan uji ini", name, column)
 		}
 	}
-}
-
-// TestSummaryCountsBothSides membuktikan ringkasan mencacah AI DAN komite.
-//
-// Keduanya harus datang dari SATU kueri atas himpunan baris yang sama; itulah yang membuat
-// kedua barisnya dapat dibandingkan satu sama lain — dan membandingkannya adalah seluruh
-// alasan laporan ini ada.
-func TestSummaryCountsBothSides(t *testing.T) {
-	text := strings.ToUpper(getQuery("report_summary"))
-	require.Contains(t, text, "A.RESULTAI = 'DITERIMA'")
-	require.Contains(t, text, "A.RESULTAI = 'DITOLAK'")
-	require.Contains(t, text, "B.STATUSAPPROVE = '1'")
-	require.Contains(t, text, "B.STATUSAPPROVE = '2'")
-	require.Contains(t, text, "COUNT(*)")
-}
-
-// TestSummaryComparesStatusAsText membuktikan STATUSAPPROVE dibandingkan sebagai teks.
-//
-// Tipe kolomnya belum diketahui (`R-08`). Membandingkannya dengan ANGKA berbahaya: pada
-// kolom teks, Oracle akan mengonversi KOLOMNYA dan gagal pada baris yang tidak numerik —
-// dan kegagalan itu baru muncul di produksi, pada baris yang kebetulan kotor.
-func TestSummaryComparesStatusAsText(t *testing.T) {
-	text := strings.ToUpper(getQuery("report_summary"))
-	require.NotContains(t, text, "B.STATUSAPPROVE = 1",
-		"STATUSAPPROVE dibandingkan sebagai angka")
-	require.NotContains(t, text, "B.STATUSAPPROVE = 2",
-		"STATUSAPPROVE dibandingkan sebagai angka")
 }
 
 // selectedColumns mengambil daftar kolom pada klausa SELECT sebuah kueri.

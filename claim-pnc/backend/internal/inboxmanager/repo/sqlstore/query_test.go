@@ -163,6 +163,13 @@ func TestSetiapAntreanPunyaPencacahDanPernyataanKeputusan(t *testing.T) {
 		require.NotPanicsf(t, func() { query(listName) },
 			"kueri daftar %q tidak ada di berkas .sql", listName)
 
+		// Antrean BACA-SAJA berhenti di sini: ia memang tidak punya pernyataan keputusan,
+		// dan menuntutnya akan memaksa kami menulis jalur tulis yang sectionnya di Pega tidak
+		// punya tombolnya. Lihat "Approval Progress Klaim".
+		if !tab.Decision.Decidable {
+			continue
+		}
+
 		decision := inboxmanager.Decision{Tab: tab, Verdict: inboxmanager.VerdictReject}
 		key := "X"
 		if tab.Code == inboxmanager.TabNomorRangka {
@@ -186,6 +193,10 @@ func TestJumlahArgumenKeputusanSamaDenganJumlahPenanda(t *testing.T) {
 	marker := regexp.MustCompile(`:(\d+)`)
 
 	for _, tab := range inboxmanager.QueueTabs() {
+		if !tab.Decision.Decidable {
+			continue
+		}
+
 		key := "X"
 		if tab.Code == inboxmanager.TabNomorRangka {
 			key = "a|b|c|d"

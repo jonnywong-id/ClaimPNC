@@ -435,8 +435,6 @@ export function ReceiveTKAInboxPage() {
     },
   ]
 
-  const orphanCount = rows.filter((row) => !row.klaim_tersedia).length
-
   return (
     <main className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -475,16 +473,6 @@ export function ReceiveTKAInboxPage() {
           Daftar ini <span className="font-medium">lebih panjang</span> daripada yang dapat
           ditampilkan sekaligus. Yang tampil {inbox.data.batas_baris} pekerjaan pertama;
           sisanya belum terlihat. Pakai kotak pencarian untuk mempersempit daftar.
-        </p>
-      )}
-
-      {/* Baris yatim ditandai SEBELUM pengguna mencoba mengisinya. Penolakannya sudah pasti,
-          dan menemukannya sendiri satu per satu hanya membuang waktu petugas. */}
-      {orphanCount > 0 && (
-        <p className="mt-4 rounded-kartu border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-          <span className="font-medium">{orphanCount} baris</span> tidak ditemukan pada data
-          klaim utama, sehingga tanggalnya tidak dapat disimpan. Isian dan tombol Submit pada
-          baris itu dimatikan. Laporkan nomor klaimnya ke administrator Claim PNC.
         </p>
       )}
 
@@ -556,32 +544,6 @@ export function ReceiveTKAInboxPage() {
         )}
       </section>
 
-      <footer className="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
-        <p>
-          <strong className="text-slate-700">Baris hilang setelah tanggalnya diisi.</strong>{' '}
-          Itu memang cara kerjanya: daftar ini hanya memuat klaim TKA yang tanggal
-          penerimaan dokumen aslinya belum diisi. Tanggal yang sudah tersimpan tidak dapat
-          diubah dari layar ini — sama seperti aplikasi lama.
-        </p>
-        <p>
-          <strong className="text-slate-700">Kolom “Aging” dihitung dari tanggal pendaftaran</strong>{' '}
-          klaim, sama seperti aplikasi lama. Arahkan kursor ke atasnya untuk melihat tanggal
-          aslinya. Bertanda hubung berarti tanggal pendaftarannya tidak tercatat.
-        </p>
-        <p>
-          <strong className="text-slate-700">
-            Tanggal yang Anda isi belum langsung terlihat di aplikasi lama.
-          </strong>{' '}
-          Selama kedua aplikasi masih berjalan berdampingan, layar TKA di Pega dapat tetap
-          menampilkan klaim ini sebagai belum lengkap sampai datanya tersinkron. Tanggalnya
-          sendiri sudah tersimpan.
-        </p>
-        <p>
-          <strong className="text-slate-700">Daftar tidak menyegarkan dirinya sendiri.</strong>{' '}
-          Petugas lain dapat mengisi tanggal pada baris yang sama, dan baris baru masuk tanpa
-          tindakan Anda. Tekan Refresh untuk melihat keadaan terbaru.
-        </p>
-      </footer>
     </main>
   )
 }

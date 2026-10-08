@@ -13,8 +13,8 @@ import (
 // Repo membaca antrean pekerjaan Investigator dari tabel engine Pega dan tabel bisnisnya.
 //
 // **Hanya membaca.** Tidak ada satu pun method yang menulis, dan itu bukan kelalaian:
-// mengambil pekerjaan dari antrean serta mencatat hasil investigasi terjadi di layar kerja
-// yang belum dibangun. Lihat banner paket inboxinvestigator.
+// mencatat hasil investigasi hidup di `InvestigationRepo` pada berkas investigation.go,
+// seam tersendiri dengan tabelnya sendiri. Lihat banner paket inboxinvestigator.
 //
 // Keempat tabel yang disentuh, gabungannya, dan asal setiap nama kolom ada di kepala
 // inboxinvestigator.sql.
@@ -88,6 +88,52 @@ func (r *Repo) List(
 		tasks = tasks[:inboxinvestigator.MaxRows]
 	}
 	return inboxinvestigator.Page{Tasks: tasks, Truncated: truncated}, nil
+}
+
+// Export membaca baris berkas Export Data Investigation.
+//
+// # Batas atas rentang digeser SATU HARI di sini, bukan di kueri
+//
+// Isian "Sampai" menyebut hari terakhir yang IKUT terbawa, sementara kuerinya membandingkan
+// `< batasAtas`. Penggeseran itu dikerjakan di sini supaya kuerinya tidak perlu memanggil
+// fungsi tanggal apa pun — lihat kepala kueri `investigator_export`.
+//
+// `AddDate(0, 0, 1)` dipakai, bukan penambahan 24 jam. Keduanya berbeda pada hari yang
+// panjangnya bukan 24 jam, dan meski Asia/Jakarta tidak mengenal pergantian waktu musim,
+// menuliskannya sebagai "sehari" membuat maksudnya terbaca dan tidak akan salah bila kelak
+// dijalankan di zona lain.
+func (r *Repo) Export(
+	ctx context.Context,
+	filter inboxinvestigator.ExportFilter,
+) ([]inboxinvestigator.ExportRow, error) {
+	if err := filter.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Satu lebih banyak daripada yang akan dikirim, dengan alasan yang sama seperti List:
+	// keberadaan baris ke-(N+1) adalah satu-satunya bukti bahwa berkasnya terpotong.
+	limit := inboxinvestigator.MaxExportRows + 1
+	beforeDay := filter.To.AddDate(0, 0, 1)
+
+	rows, err := r.db.QueryContext(ctx, getQuery("investigator_export"),
+		filter.From, beforeDay, filter.Investigated, limit)
+	if err != nil {
+		return nil, fmt.Errorf("inboxinvestigator/sqlstore: membaca data ekspor: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make([]inboxinvestigator.ExportRow, 0, 64)
+	for rows.Next() {
+		one, err := scanExportRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, one)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("inboxinvestigator/sqlstore: menelusuri data ekspor: %w", err)
+	}
+	return result, nil
 }
 
 // CountWaiting mencacah seluruh pekerjaan yang menunggu, tanpa dipotong. Dipakai
@@ -173,12 +219,14 @@ func scanTask(row rowScanner) (inboxinvestigator.Task, error) {
 		branchName      sql.NullString
 		adminName       sql.NullString
 		registeredAt    sql.NullTime
-		surveyDate      sql.NullTime
+		surveyDate      sql.NullString
+		businessLine    sql.NullString
 	)
 
 	if err := row.Scan(
 		&reference, &caseNumber, &policyNumber, &insuredName, &participantName,
 		&businessName, &branchName, &adminName, &registeredAt, &surveyDate,
+		&businessLine,
 	); err != nil {
 		return inboxinvestigator.Task{}, fmt.Errorf(
 			"inboxinvestigator/sqlstore: membaca baris antrean: %w", err)
@@ -194,8 +242,108 @@ func scanTask(row rowScanner) (inboxinvestigator.Task, error) {
 		BranchName:      strings.TrimSpace(branchName.String),
 		AdminName:       strings.TrimSpace(adminName.String),
 		RegisteredAt:    nullableTime(registeredAt),
-		SurveyDate:      nullableTime(surveyDate),
+		SurveyDate:      parsePegaMoment(surveyDate.String),
+		BusinessLine:    strings.TrimSpace(businessLine.String),
 	}, nil
+}
+
+// scanExportRow membaca satu baris menjadi ExportRow.
+//
+// Urutan kolomnya WAJIB sama dengan urutan SELECT pada investigator_export, dan
+// query_test.go yang menjaganya tetap begitu.
+//
+// Seluruh kolom teks dibaca lewat sql.NullString: kedua belas properti JSON-nya OPSIONAL
+// pada formulir investigasi, dan `JSON_VALUE` mengembalikan NULL untuk jalur yang tidak ada
+// — bukan teks kosong. Klaim yang baru ditransfer dan belum diinvestigasi karena itu
+// menghasilkan baris berisi sel kosong, bukan kegagalan.
+func scanExportRow(row rowScanner) (inboxinvestigator.ExportRow, error) {
+	var (
+		investigatedAt      sql.NullTime
+		hospitalAddress     sql.NullString
+		paidByOtherInsurer  sql.NullString
+		paidByPatient       sql.NullString
+		paidByCompany       sql.NullString
+		noPayment           sql.NullString
+		investigated        sql.NullString
+		receiptConfirmation sql.NullString
+		medicalRecordNumber sql.NullString
+		phoneCalled         sql.NullString
+		patientRegistered   sql.NullString
+		remarks             sql.NullString
+		hospitalKind        sql.NullString
+	)
+
+	if err := row.Scan(
+		&investigatedAt, &hospitalAddress, &paidByOtherInsurer, &paidByPatient,
+		&paidByCompany, &noPayment, &investigated, &receiptConfirmation,
+		&medicalRecordNumber, &phoneCalled, &patientRegistered, &remarks, &hospitalKind,
+	); err != nil {
+		return inboxinvestigator.ExportRow{}, fmt.Errorf(
+			"inboxinvestigator/sqlstore: membaca baris ekspor: %w", err)
+	}
+
+	return inboxinvestigator.ExportRow{
+		InvestigatedAt:      nullableTime(investigatedAt),
+		HospitalAddress:     strings.TrimSpace(hospitalAddress.String),
+		PaidByOtherInsurer:  strings.TrimSpace(paidByOtherInsurer.String),
+		PaidByPatient:       strings.TrimSpace(paidByPatient.String),
+		PaidByCompany:       strings.TrimSpace(paidByCompany.String),
+		NoPayment:           strings.TrimSpace(noPayment.String),
+		Investigated:        strings.TrimSpace(investigated.String),
+		ReceiptConfirmation: strings.TrimSpace(receiptConfirmation.String),
+		MedicalRecordNumber: strings.TrimSpace(medicalRecordNumber.String),
+		PhoneCalled:         strings.TrimSpace(phoneCalled.String),
+		PatientRegistered:   strings.TrimSpace(patientRegistered.String),
+		Remarks:             strings.TrimSpace(remarks.String),
+		HospitalKindCode:    strings.TrimSpace(hospitalKind.String),
+	}, nil
+}
+
+// pegaMomentLayout adalah bentuk waktu yang dipakai Pega di dalam dokumen JSON klaim.
+//
+// Contohnya `20260922T010000.000 GMT` — terukur dari `POOLDATA.JSON_KLAIM`, panjang 23
+// karakter, dan sama persis dengan bentuk yang dibaca
+// `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc` saat mengisi kolom tanggal relasional.
+//
+// `GMT` di ujungnya BUKAN hiasan: seluruh waktu Pega disimpan GMT, lalu digeser tujuh jam
+// secara manual di 118 tempat (`F-5`, `R-12`). Di sini pergeseran itu tidak terjadi —
+// waktunya disimpan UTC dan dikonversi ke WIB hanya saat ditampilkan.
+const pegaMomentLayout = "20060102T150405.000"
+
+// pegaMomentZone adalah akhiran zona yang selalu menyertai waktu itu.
+//
+// Ia DIPANGKAS lalu waktunya diurai sebagai UTC, bukan diurai lewat penanda zona `MST`.
+// Go memang menerima `MST` untuk teks "GMT", tetapi hasilnya zona bernama "GMT" yang
+// dibuat di tempat — bukan time.UTC — dan dua waktu yang sama dapat berbeda saat
+// dibandingkan. Memangkasnya membuat hasilnya UTC tanpa syarat.
+const pegaMomentZone = " GMT"
+
+// parsePegaMoment menguraikan waktu Pega dari dokumen JSON menjadi waktu Go.
+//
+// # Kenapa penguraiannya di Go, bukan di SQL
+//
+// `TO_DATE` mengikat kueri pada dialek Oracle, dan `D-20` menuntut satu set SQL yang
+// berjalan sama di Oracle 19c dan PostgreSQL 17+. Pemformatan dan penguraian tanggal
+// karena itu seluruhnya pindah ke Go (`09-DATABASE-STRATEGY.md` §3.2) — aturan yang sama
+// yang menghapus 411 pemakaian `TO_CHAR` dari sistem lama.
+//
+// # Nilai yang tidak terurai menghasilkan nil, bukan galat
+//
+// Dokumen JSON ditulis sistem lain yang masih berjalan, dan tidak ada DDL maupun skema
+// yang membuktikan bentuknya selalu sama (`R-08`). Satu dokumen bernilai aneh karena itu
+// membuat SATU sel kosong, bukan menggagalkan seluruh daftar pekerjaan investigator.
+func parsePegaMoment(value string) *time.Time {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	trimmed = strings.TrimSpace(strings.TrimSuffix(trimmed, pegaMomentZone))
+
+	moment, err := time.ParseInLocation(pegaMomentLayout, trimmed, time.UTC)
+	if err != nil {
+		return nil
+	}
+	return &moment
 }
 
 // nullableTime mengubah kolom tanggal yang dapat kosong menjadi pointer.

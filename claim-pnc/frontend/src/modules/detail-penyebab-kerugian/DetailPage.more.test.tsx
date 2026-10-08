@@ -54,7 +54,17 @@ const ROW = {
   bisnis: [],
 }
 
-const OPTIONS = { status_aktif: [{ kode: '1', label: 'Aktif' }] }
+// KEDUA pilihan, sama seperti yang dijawab `/pilihan` sungguhan.
+//
+// Sebelumnya hanya "Aktif" — fixture yang tidak mewakili server, dan itu baru menggigit
+// ketika dropdown-nya berhenti menggambar pilihan kosong (2026-10-05): uji yang mengubah
+// status tidak punya satu pun nilai lain untuk dipilih.
+const OPTIONS = {
+  status_aktif: [
+    { kode: '1', label: 'Aktif' },
+    { kode: '0', label: 'Tidak Aktif' },
+  ],
+}
 
 function wrap(children: ReactNode) {
   const client = new QueryClient({
@@ -327,10 +337,21 @@ describe('DetailForm — isian ID Master Kerugian', () => {
     const { onSubmit } = show()
 
     await user.type(screen.getByLabelText('Kode Kehilangan'), 'K-9')
-    await user.selectOptions(screen.getByLabelText('Status Aktif'), '')
+    // "Tidak Aktif", bukan nilai kosong.
+    //
+    // Dropdown Status Aktif kini memuat TEPAT DUA pilihan untuk baris yang punya nilai —
+    // persis seperti Pega; lihat tangkapan layar Work Owner 2026-10-05 dan komentar pada
+    // DetailForm. Pilihan kosong hanya muncul pada baris warisan yang memang belum pernah
+    // diisi, dan form ini lahir dengan status "1".
+    //
+    // Maksud uji ini tidak berubah: status yang DIUBAH pengguna ikut terkirim.
+    await user.selectOptions(screen.getByLabelText('Status Aktif'), '0')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
-    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ kode_kehilangan: 'K-9', status_aktif: '' })
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+      kode_kehilangan: 'K-9',
+      status_aktif: '0',
+    })
   })
 })
 

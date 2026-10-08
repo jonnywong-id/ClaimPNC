@@ -151,6 +151,105 @@ func SampleTasks() []inboxinvestigator.Task {
 	}
 }
 
+// SampleExportRows mengembalikan isi berkas Export Data Investigation untuk pengembangan.
+//
+// # Seluruh isinya KARANGAN
+//
+// Berkas ini memuat ALAMAT RUMAH SAKIT dan NOMOR REKAM MEDIS — data medis yang `FR-R2`
+// batasi aksesnya. Tidak ada satu pun nilai nyata di sini, dan larangan `D-69` berlaku
+// lebih keras pada kelompok ini daripada pada kolom mana pun di layar.
+//
+// # Yang sengaja diwakili
+//
+//	baris 1   sudah diinvestigasi, rumah sakit, seluruh kolom terisi
+//	baris 2   sudah diinvestigasi, NON rumah sakit, nomor rekam medis kosong
+//	baris 3   sudah diinvestigasi, di luar rentang contoh paling umum
+//	baris 4   BELUM diinvestigasi  -> hanya muncul bila dropdown dipilih "0"
+//	baris 5   sudah diinvestigasi, SelectRS kosong -> terbaca "NON Rumah Sakit"
+//
+// Baris 4 dan 5 yang paling perlu ada. Yang pertama membuktikan dropdown "Pilih
+// Investigation" benar-benar menyaring; yang kedua membuktikan nilai kosong diterjemahkan
+// sama dengan "0", persis `@if` sistem lama (lihat ExportRow.HospitalKindLabel).
+func SampleExportRows() []inboxinvestigator.ExportRow {
+	return []inboxinvestigator.ExportRow{
+		{
+			InvestigatedAt:      at("2026-09-21T02:15:00Z"),
+			HospitalAddress:     "Jalan Contoh Nomor 1, Kota Contoh",
+			PaidByOtherInsurer:  "false",
+			PaidByPatient:       "true",
+			PaidByCompany:       "false",
+			NoPayment:           "false",
+			Investigated:        inboxinvestigator.InvestigatedYes,
+			ReceiptConfirmation: "1",
+			MedicalRecordNumber: "RM-CONTOH-0001",
+			PhoneCalled:         "021-0000000",
+			PatientRegistered:   "1",
+			Remarks:             "Keterangan contoh baris pertama.",
+			HospitalKindCode:    "1",
+		},
+		{
+			InvestigatedAt:      at("2026-09-18T03:00:00Z"),
+			HospitalAddress:     "Jalan Contoh Nomor 2, Kota Contoh",
+			PaidByOtherInsurer:  "true",
+			PaidByPatient:       "false",
+			PaidByCompany:       "false",
+			NoPayment:           "false",
+			Investigated:        inboxinvestigator.InvestigatedYes,
+			ReceiptConfirmation: "0",
+			MedicalRecordNumber: "",
+			PhoneCalled:         "021-0000001",
+			PatientRegistered:   "0",
+			Remarks:             "Keterangan contoh baris kedua.",
+			HospitalKindCode:    "0",
+		},
+		{
+			InvestigatedAt:      at("2026-08-02T04:30:00Z"),
+			HospitalAddress:     "Jalan Contoh Nomor 3, Kota Contoh",
+			PaidByOtherInsurer:  "false",
+			PaidByPatient:       "false",
+			PaidByCompany:       "true",
+			NoPayment:           "false",
+			Investigated:        inboxinvestigator.InvestigatedYes,
+			ReceiptConfirmation: "1",
+			MedicalRecordNumber: "RM-CONTOH-0003",
+			PhoneCalled:         "021-0000002",
+			PatientRegistered:   "1",
+			Remarks:             "Keterangan contoh baris ketiga.",
+			HospitalKindCode:    "1",
+		},
+		{
+			InvestigatedAt:      at("2026-09-19T01:00:00Z"),
+			HospitalAddress:     "Jalan Contoh Nomor 4, Kota Contoh",
+			PaidByOtherInsurer:  "false",
+			PaidByPatient:       "false",
+			PaidByCompany:       "false",
+			NoPayment:           "true",
+			Investigated:        inboxinvestigator.InvestigatedNo,
+			ReceiptConfirmation: "0",
+			MedicalRecordNumber: "",
+			PhoneCalled:         "",
+			PatientRegistered:   "0",
+			Remarks:             "Belum diinvestigasi.",
+			HospitalKindCode:    "0",
+		},
+		{
+			InvestigatedAt:      at("2026-09-15T07:45:00Z"),
+			HospitalAddress:     "Jalan Contoh Nomor 5, Kota Contoh",
+			PaidByOtherInsurer:  "false",
+			PaidByPatient:       "true",
+			PaidByCompany:       "false",
+			NoPayment:           "false",
+			Investigated:        inboxinvestigator.InvestigatedYes,
+			ReceiptConfirmation: "1",
+			MedicalRecordNumber: "RM-CONTOH-0005",
+			PhoneCalled:         "021-0000004",
+			PatientRegistered:   "1",
+			Remarks:             "SelectRS kosong pada baris ini.",
+			HospitalKindCode:    "",
+		},
+	}
+}
+
 // at membaca waktu contoh, dan panik bila teksnya salah.
 //
 // Panik di sini aman: teksnya konstanta di dalam berkas ini, bukan masukan pengguna,

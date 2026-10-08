@@ -190,15 +190,6 @@ func rows(t *testing.T, content map[string]any) []any {
 	return list
 }
 
-// summary mengambil senarai ringkasan dari badan respons.
-func summary(t *testing.T, content map[string]any) []any {
-	t.Helper()
-
-	list, ok := content["ringkasan"].([]any)
-	require.Truef(t, ok, "badan respons tidak memuat ringkasan: %v", content)
-	return list
-}
-
 // TestSearchRequiresSession membuktikan rutenya benar-benar berada di balik middleware sesi.
 func TestSearchRequiresSession(t *testing.T) {
 	p := newTestServer(t)
@@ -286,39 +277,27 @@ func TestMalformedDateFallsBackToTheMissingMessage(t *testing.T) {
 	require.Equal(t, "dari", first["field"])
 }
 
-// TestSearchReturnsSummaryAndRows membuktikan kedua grid terisi dalam satu permintaan.
+// TestSearchReturnsRows membuktikan grid rincian terisi.
 //
-// Keduanya bersama, bukan dua permintaan: layar lama pun mengisi `DatasearchLaporan` dan
-// `TempTotal` dalam satu kali jalan, dan memisahkannya membuka kemungkinan ringkasan dan
-// rinciannya dibaca dari keadaan yang berbeda.
-func TestSearchReturnsSummaryAndRows(t *testing.T) {
+// Hanya SATU grid: Pega yang berjalan tidak memiliki grid ringkasan (Work Owner,
+// 2026-10-03), sehingga badan responsnya pun tidak memuat `ringkasan`.
+func TestSearchReturnsRows(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, route+wholeSeptember, "ASM")
 	require.Equal(t, http.StatusOK, response.StatusCode)
-
 	require.Len(t, rows(t, content), matchingRows)
-
-	tallies := summary(t, content)
-	require.Len(t, tallies, 2, "ringkasan selalu dua baris")
-
-	first, _ := tallies[0].(map[string]any)
-	second, _ := tallies[1].(map[string]any)
-	require.Equal(t, "Komite", first["keputusan"], "Komite digambar lebih dulu")
-	require.Equal(t, "AI", second["keputusan"])
 }
 
-// TestSummaryTotalExcludesPending mengunci arti kolom Total pada kontrak API.
-func TestSummaryTotalExcludesPending(t *testing.T) {
+// TestResponseCarriesNoSummary mengunci pembuangan grid ringkasan.
+//
+// Ia menjaga `ringkasan` tidak kembali diam-diam ke dalam kontrak — bersama kueri agregat
+// yang menyertainya, yang akan berjalan pada setiap permintaan tanpa satu pun pemakai.
+func TestResponseCarriesNoSummary(t *testing.T) {
 	p := newTestServer(t)
 
 	_, content := p.call(t, route+wholeSeptember, "ASM")
-	ai, _ := summary(t, content)[1].(map[string]any)
-
-	require.Equal(t, float64(3), ai["diterima"])
-	require.Equal(t, float64(2), ai["ditolak"])
-	require.Equal(t, float64(1), ai["menunggu"])
-	require.Equal(t, float64(5), ai["total"], "Total seharusnya Diterima + Ditolak")
+	require.NotContains(t, content, "ringkasan")
 }
 
 // TestEveryRowCarriesAllTenColumns membuktikan kesepuluh field selalu dikirim.
@@ -363,17 +342,6 @@ func TestPaginationWindowsTheRows(t *testing.T) {
 	page, _ := first["paginasi"].(map[string]any)
 	require.Equal(t, float64(matchingRows), page["total"])
 	require.Equal(t, float64(3), page["total_halaman"])
-}
-
-// TestSummaryDoesNotFollowThePage membuktikan ringkasan tidak ikut dipaginasi.
-func TestSummaryDoesNotFollowThePage(t *testing.T) {
-	p := newTestServer(t)
-
-	_, small := p.call(t, route+wholeSeptember+"&ukuran=2", "ASM")
-	_, whole := p.call(t, route+wholeSeptember+"&ukuran=100", "ASM")
-
-	require.Equal(t, summary(t, whole), summary(t, small),
-		"ringkasan seharusnya tidak berubah saat pengguna berpindah halaman")
 }
 
 // TestFilterIsEchoedBack membuktikan jawabannya menyebutkan penyaring yang dipakainya.

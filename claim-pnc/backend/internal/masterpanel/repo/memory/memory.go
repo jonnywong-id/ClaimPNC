@@ -45,6 +45,16 @@ type Repo struct {
 	// produksi — bukan angka berurut yang terlihat berbeda.
 	site     string
 	sequence int64
+
+	// documents menyimpan dokumen per panel; documentSequence menerbitkan DATAID-nya.
+	// Keduanya dipisahkan dari sequence di atas karena DATAID berasal dari deret yang
+	// berbeda (`ATTACHFILE_SEQ`) dengan bentuk yang berbeda pula.
+	documents        documents
+	documentSequence int64
+
+	// documentByID menyimpan dokumen menurut DataID-nya, supaya satu dokumen dapat
+	// ditautkan ke banyak panel — jalur unggah CSV master.
+	documentByID map[string]masterpanel.PanelDocument
 }
 
 // Options adalah isi awal repo memori.

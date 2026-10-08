@@ -144,11 +144,20 @@ func TestDashboardOutstanding(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"PIC", "TOTAL"}).AddRow("ANDI", 3).AddRow(nil, 1))
 	mock.ExpectQuery(exact("dashboard_os_business_group")).WithArgs(values(flags)...).
 		WillReturnRows(sqlmock.NewRows([]string{"GRUP", "TOTAL"}).AddRow("PROPERTY", 4))
+	mock.ExpectQuery(exact("dashboard_os_years")).WithArgs(values(flags)...).
+		WillReturnRows(sqlmock.NewRows([]string{"TAHUN"}).AddRow(2025).AddRow(2026))
+	mock.ExpectQuery(exact("dashboard_os_summary")).
+		WithArgs(values(append(append([]any{}, flags...), 1, "", 1, ""))...).
+		WillReturnRows(sqlmock.NewRows([]string{"KATEGORI", "REINSURER", "TAHUN", "TOTAL"}).
+			AddRow("ACCEPTATION", "LEADER", 2026, 5).
+			AddRow("ACCEPTATION", "LEADER", 2025, 2))
+	mock.ExpectQuery(exact("dashboard_os_categories")).
+		WillReturnRows(sqlmock.NewRows([]string{"LABEL"}).AddRow("REGISTRASI").AddRow("SURVEY"))
 
 	view, err := repo.Dashboard(context.Background(), outstandingQuery(t, "PA"))
 	require.NoError(t, err)
 	require.Nil(t, view.RefreshedAt, "Outstanding tidak punya penyegaran")
-	require.Len(t, view.Panels, 2)
+	require.Len(t, view.Panels, 3)
 
 	require.Equal(t, []inboxmanager.DashboardRow{
 		{Cells: map[string]inboxmanager.DashboardCell{
@@ -164,8 +173,72 @@ func TestDashboardOutstanding(t *testing.T) {
 		}},
 	}, view.Panels[1].Rows)
 
+	// Kolom tahun DITAMBAHKAN dari data, bukan diumumkan definisi tab.
+	require.Equal(t,
+		[]string{inboxmanager.FieldKategoriDOL, inboxmanager.FieldReinsurer, "2025", "2026"},
+		columnKeys(view.Panels[2].Columns))
+
+	// Tahun tanpa klaim digambar NOL, bukan dikosongkan — sel kosong terbaca sebagai
+	// "tidak diketahui".
+	require.Equal(t, []inboxmanager.DashboardRow{
+		{Cells: map[string]inboxmanager.DashboardCell{
+			inboxmanager.FieldKategoriDOL: {Text: "ACCEPTATION"},
+			inboxmanager.FieldReinsurer:   {Text: "LEADER"},
+			"2025":                        {Count: 2},
+			"2026":                        {Count: 5},
+		}},
+	}, view.Panels[2].Rows)
+
+	require.Len(t, view.Filters, 2)
+	require.Equal(t, inboxmanager.FilterReinsurer, view.Filters[0].Key)
+	require.Equal(t, inboxmanager.FilterCategoryOS, view.Filters[1].Key)
+	require.Equal(t, "All", view.Filters[1].Options[0].Label,
+		"pilihan pertama selalu All, dan nilainya kosong")
+	require.Empty(t, view.Filters[1].Options[0].Value)
+
 	// Definisi tab global tidak ikut terisi.
 	require.Empty(t, mustTab(t, inboxmanager.TabOutstanding).Panels[0].Rows)
+	require.Len(t, mustTab(t, inboxmanager.TabOutstanding).Panels[2].Columns, 2,
+		"kolom tahun tidak boleh bocor ke definisi tab global")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// columnKeys menyebut kunci kolom sebuah panel, berurutan.
+func columnKeys(columns []inboxmanager.Column) []string {
+	result := make([]string, 0, len(columns))
+	for _, column := range columns {
+		result = append(result, column.Key)
+	}
+	return result
+}
+
+// TestDashboardOutstandingPenyaringDikirimSebagaiBendera mengunci bentuk argumen penyaring.
+//
+// Penanda bind pada berkas SQL muncul tepat sekali dan menaik, sehingga penyaring opsional
+// dikirim sebagai PASANGAN bendera-dan-nilai — bukan dengan menyusun ulang kuerinya.
+func TestDashboardOutstandingPenyaringDikirimSebagaiBendera(t *testing.T) {
+	repo, mock := newMock(t)
+	flags := lineFlags("PA")
+	picArgs := append(append([]any{}, flags...), flags...)
+
+	mock.ExpectQuery(exact("dashboard_os_pic")).WithArgs(values(picArgs)...).
+		WillReturnRows(sqlmock.NewRows([]string{"PIC", "TOTAL"}))
+	mock.ExpectQuery(exact("dashboard_os_business_group")).WithArgs(values(flags)...).
+		WillReturnRows(sqlmock.NewRows([]string{"GRUP", "TOTAL"}))
+	mock.ExpectQuery(exact("dashboard_os_years")).WithArgs(values(flags)...).
+		WillReturnRows(sqlmock.NewRows([]string{"TAHUN"}).AddRow(2026))
+	mock.ExpectQuery(exact("dashboard_os_summary")).
+		WithArgs(values(append(append([]any{}, flags...), 0, "LEADER", 0, "SURVEY"))...).
+		WillReturnRows(sqlmock.NewRows([]string{"KATEGORI", "REINSURER", "TAHUN", "TOTAL"}))
+	mock.ExpectQuery(exact("dashboard_os_categories")).
+		WillReturnRows(sqlmock.NewRows([]string{"LABEL"}))
+
+	q := outstandingQuery(t, "PA")
+	q.Reinsurer = "LEADER"
+	q.CategoryOS = "SURVEY"
+
+	_, err := repo.Dashboard(context.Background(), q)
+	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -271,8 +344,13 @@ func TestDashboardProduktivitas(t *testing.T) {
 		inboxmanager.FieldTolakPeriodeLTY: {Count: 6},
 		inboxmanager.FieldOSPeriodeIni:    {Count: 7},
 		inboxmanager.FieldOSPeriodeLTY:    {Count: 8},
-	}, view.Panels[0].Rows[0].Cells)
-	require.Equal(t, 9, view.Panels[1].Rows[0].Cells[inboxmanager.FieldOSPeriodeLTY].Count)
+	}, view.Panels[1].Rows[0].Cells, "grid COB adalah panel KEDUA")
+	require.Equal(t, 9, view.Panels[0].Rows[0].Cells[inboxmanager.FieldOSPeriodeLTY].Count,
+		"grid PIC adalah panel PERTAMA, mengikuti urutan page list di section")
+
+	// Kolom dimensinya berbeda antara kedua grid, meski kedelapan pencacahnya sama.
+	require.Equal(t, "Nama PIC", view.Panels[0].Columns[0].Title)
+	require.Equal(t, "COB", view.Panels[1].Columns[0].Title)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -340,8 +418,8 @@ func klaimQuery(t *testing.T, period inboxmanager.PeriodInput) inboxmanager.Quer
 }
 
 var (
-	klaimBusinessColumns = []string{"BISNIS", "TOTAL", "AKSEP", "TOLAK", "OS", "NAKSEP", "NTOLAK", "NOS"}
-	klaimCauseColumns    = []string{"BISNIS", "PENYEBAB", "TOTAL", "AKSEP", "TOLAK", "OS", "NAKSEP", "NTOLAK", "NOS"}
+	klaimBusinessColumns = []string{"BISNIS", "TOTAL", "NKLAIM", "AKSEP", "TOLAK", "OS", "NAKSEP", "NTOLAK", "NOS"}
+	klaimCauseColumns    = []string{"BISNIS", "PENYEBAB", "TOTAL", "NKLAIM", "AKSEP", "TOLAK", "OS", "NAKSEP", "NTOLAK", "NOS"}
 )
 
 func TestDashboardKlaimWithoutPeriodSendsAllPeriodsFlag(t *testing.T) {
@@ -352,10 +430,10 @@ func TestDashboardKlaimWithoutPeriodSendsAllPeriodsFlag(t *testing.T) {
 	args := append([]any{1, time.Time{}, time.Time{}}, lineFlags("")...)
 	mock.ExpectQuery(exact("dashboard_klaim_business")).WithArgs(values(args)...).
 		WillReturnRows(sqlmock.NewRows(klaimBusinessColumns).
-			AddRow("PROPERTY", 10, 4, 3, 2, "1500000.50", nil, "750000"))
+			AddRow("PROPERTY", 10, "9000000", 4, 3, 2, "1500000.50", nil, "750000"))
 	mock.ExpectQuery(exact("dashboard_klaim_cause")).WithArgs(values(args)...).
 		WillReturnRows(sqlmock.NewRows(klaimCauseColumns).
-			AddRow("PROPERTY", "KEBAKARAN", 1, 1, 0, 0, "100", "0", "0"))
+			AddRow("PROPERTY", "KEBAKARAN", 1, "200", 1, 0, 0, "100", "0", "0"))
 	mock.ExpectQuery(exact("dashboard_refreshed_at")).
 		WillReturnRows(sqlmock.NewRows([]string{"REFRESHDATE"}))
 
@@ -366,6 +444,7 @@ func TestDashboardKlaimWithoutPeriodSendsAllPeriodsFlag(t *testing.T) {
 	require.Equal(t, map[string]inboxmanager.DashboardCell{
 		inboxmanager.FieldNamaBisnisDK: {Text: "PROPERTY"},
 		inboxmanager.FieldTotalKlaim:   {Count: 10},
+		inboxmanager.FieldNilaiKlaim:   {Amount: "9000000"},
 		inboxmanager.FieldJumlahAksep:  {Count: 4},
 		inboxmanager.FieldJumlahTolak:  {Count: 3},
 		inboxmanager.FieldJumlahOS:     {Count: 2},
@@ -434,7 +513,7 @@ func TestDashboardKlaimErrors(t *testing.T) {
 		repo, mock := newMock(t)
 		mock.ExpectQuery(exact("dashboard_klaim_business")).
 			WillReturnRows(sqlmock.NewRows(klaimBusinessColumns).
-				AddRow("X", 1, 1, 0, 0, "1", "0", "0").RowError(0, boom))
+				AddRow("X", 1, "1", 1, 0, 0, "1", "0", "0").RowError(0, boom))
 		_, err := repo.Dashboard(context.Background(), klaimQuery(t, inboxmanager.PeriodInput{}))
 		require.ErrorIs(t, err, boom)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -478,23 +557,23 @@ func TestQueueReadsKeyAndCellsAsText(t *testing.T) {
 	input := time.Date(2026, 9, 5, 13, 0, 0, 0, time.UTC)
 	mock.ExpectQuery(exact("queue_payment_akseptasi")).WithoutArgs().
 		WillReturnRows(sqlmock.NewRows(queueColumns(tab)).
-			AddRow(queueRowValues(" K-1 ", " PNC-1 ", []byte(" AKS-9 "), nil, input)...).
+			AddRow(queueRowValues(" K-1 ", input, " PNC-1 ", []byte(" AKS-9 "), nil)...).
 			AddRow(queueRowValues("K-2", int64(42), "x", "PIC", "y")...))
 
 	rows, err := repo.Queue(context.Background(), inboxmanager.Query{Tab: tab})
 	require.NoError(t, err)
 	require.Equal(t, []inboxmanager.QueueRow{
 		{Key: "K-1", Cells: map[string]string{
+			inboxmanager.FieldTanggalInput: "05/09/2026",
 			inboxmanager.FieldNoKlaim:      "PNC-1",
 			inboxmanager.FieldNoAkseptasi:  "AKS-9",
 			inboxmanager.FieldPIC:          "",
-			inboxmanager.FieldTanggalInput: "05/09/2026",
 		}},
 		{Key: "K-2", Cells: map[string]string{
-			inboxmanager.FieldNoKlaim:      "42",
-			inboxmanager.FieldNoAkseptasi:  "x",
-			inboxmanager.FieldPIC:          "PIC",
-			inboxmanager.FieldTanggalInput: "y",
+			inboxmanager.FieldTanggalInput: "42",
+			inboxmanager.FieldNoKlaim:      "x",
+			inboxmanager.FieldNoAkseptasi:  "PIC",
+			inboxmanager.FieldPIC:          "y",
 		}},
 	}, rows)
 	require.NoError(t, mock.ExpectationsWereMet())

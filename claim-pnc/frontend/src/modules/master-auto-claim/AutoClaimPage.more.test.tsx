@@ -81,10 +81,10 @@ function show() {
   )
 }
 
-async function openUpdate(user: ReturnType<typeof userEvent.setup>) {
+async function openEditForm(user: ReturnType<typeof userEvent.setup>) {
   const table = await screen.findByRole('table')
   const row = within(table).getByRole('row', { name: /MITRA ZETA/ })
-  await user.click(within(row).getByRole('button', { name: 'Update' }))
+  await user.click(within(row).getByRole('button', { name: 'Ubah' }))
   return screen.findByRole('form', { name: 'Ubah Master Auto Claim' })
 }
 
@@ -130,7 +130,7 @@ describe('galat simpan', () => {
     const user = userEvent.setup()
     show()
 
-    const form = await openUpdate(user)
+    const form = await openEditForm(user)
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))
     expect(await within(form).findByText(title)).toBeInTheDocument()
   })
@@ -154,7 +154,7 @@ describe('galat simpan', () => {
     const user = userEvent.setup()
     show()
 
-    const form = await openUpdate(user)
+    const form = await openEditForm(user)
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))
     expect(await within(form).findByText('Client sudah tidak ada.')).toHaveAttribute('role', 'alert')
     expect(within(form).getByText('Rekening tidak sah.')).toBeInTheDocument()
@@ -166,7 +166,7 @@ describe('galat simpan', () => {
     const user = userEvent.setup()
     show()
 
-    const form = await openUpdate(user)
+    const form = await openEditForm(user)
     const clientBox = within(form).getByText('TERTANGGUNG ZETA').closest('div') as HTMLElement
     await user.click(within(clientBox).getByRole('button', { name: 'Ganti' }))
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))
@@ -195,18 +195,18 @@ describe('tambah', () => {
     await user.click(screen.getByRole('button', { name: 'Tambah' }))
     const form = await screen.findByRole('form', { name: 'Tambah Master Auto Claim' })
 
-    await user.type(within(form).getByRole('searchbox', { name: 'Sumber Bisnis' }), 'su')
+    await user.type(within(form).getByRole('searchbox', { name: 'SUMBER BISNIS' }), 'su')
     await user.click(await within(form).findByRole('button', { name: /PT SUMBER BARU/ }))
-    await user.type(within(form).getByRole('searchbox', { name: 'Client' }), 'cl')
+    await user.type(within(form).getByRole('searchbox', { name: 'CARI CLIENT' }), 'cl')
     await user.click(await within(form).findByRole('button', { name: /PT CLIENT BARU/ }))
 
     await within(form).findByRole('option', { name: /BANK CONTOH NIAGA/ })
-    await user.selectOptions(within(form).getByLabelText('Bank penerima'), 'BANK CONTOH NIAGA')
-    await user.type(within(form).getByLabelText('Nomor rekening'), '123')
-    await user.type(within(form).getByLabelText('PCT max'), '50')
-    await user.type(within(form).getByLabelText('PIC lapor'), 'PIC Baru')
-    await user.type(within(form).getByLabelText('Email lapor'), 'baru@contoh.example')
-    await user.type(within(form).getByLabelText('Alamat penerima'), 'Jalan Baru')
+    await user.selectOptions(within(form).getByLabelText('BANK PENERIMA'), 'BANK CONTOH NIAGA')
+    await user.type(within(form).getByLabelText('NO REKENING'), '123')
+    await user.type(within(form).getByLabelText('PCT_MAX'), '50')
+    await user.type(within(form).getByLabelText('PIC'), 'PIC Baru')
+    await user.type(within(form).getByLabelText('EMAIL LAPOR'), 'baru@contoh.example')
+    await user.type(within(form).getByLabelText('ALAMAT PENERIMA'), 'Jalan Baru')
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true))
@@ -237,7 +237,7 @@ describe('tambah', () => {
     await screen.findByRole('table')
     await user.click(screen.getByRole('button', { name: 'Tambah' }))
     const form = await screen.findByRole('form', { name: 'Tambah Master Auto Claim' })
-    const box = within(form).getByRole('searchbox', { name: 'Sumber Bisnis' })
+    const box = within(form).getByRole('searchbox', { name: 'SUMBER BISNIS' })
 
     await user.type(box, 'z')
     expect(within(form).queryByText('Mencari…')).not.toBeInTheDocument()
@@ -257,7 +257,7 @@ describe('tambah', () => {
     await user.type(box, 'ok')
     await user.click(await within(form).findByRole('button', { name: /PT SUMBER BARU/ }))
     await user.click(within(form).getAllByRole('button', { name: 'Ganti' })[0]!)
-    expect(within(form).getByRole('searchbox', { name: 'Sumber Bisnis' })).toHaveValue('')
+    expect(within(form).getByRole('searchbox', { name: 'SUMBER BISNIS' })).toHaveValue('')
     expect(within(form).getByRole('button', { name: 'Simpan' })).toBeDisabled()
   })
 })
@@ -271,20 +271,20 @@ describe('daftar', () => {
     const table = await screen.findByRole('table')
     const first = () => within(table).getAllByRole('row')[1]?.textContent ?? ''
     for (const title of [
-      'Inisial',
-      'Nama penerima',
-      'Bank penerima',
-      'No rekening',
-      'Alamat penerima',
-      'Email lapor',
-      'PCT max',
+      'INISIAL',
+      'NAMA PENERIMA',
+      'BANK PENERIMA',
+      'NO REKENING',
+      'ALAMAT PENERIMA',
+      'EMAIL LAPOR',
+      'PCT MAX',
       'PIC',
-      'Komite',
+      'KOMITE',
     ]) {
       await user.click(within(table).getByRole('button', { name: title }))
       expect(first()).not.toBe('')
     }
-    await user.click(within(table).getByRole('button', { name: 'Inisial' }))
+    await user.click(within(table).getByRole('button', { name: 'INISIAL' }))
     expect(first()).toContain('AGN001')
 
     const before = calls.length

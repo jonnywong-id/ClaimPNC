@@ -47,6 +47,15 @@ func TestEveryUsedQueryExists(t *testing.T) {
 		"panel_count_json_mirror",
 		"panel_site",
 		"panel_next_sequence",
+
+		// Jalur dokumen panel — tombol "Upload Document" pada tab Approve dan Reject.
+		"panel_document_next_sequence",
+		"panel_document_insert",
+		"panel_document_link",
+		"panel_document_get",
+		"panel_check_document_table",
+		"panel_count_document_linked",
+		"panel_count_document_dangling",
 	}
 
 	for _, name := range usedNames {
@@ -84,25 +93,36 @@ func TestQueriesFollowPortableSQLDiscipline(t *testing.T) {
 	}
 }
 
-// FROM DUAL dilarang di mana pun KECUALI satu kueri.
+// FROM DUAL dilarang di mana pun KECUALI pada kueri pengambil nomor urut.
 //
 // Pengecualian ini disengaja dan terbatas: NEXTVAL menuntutnya, dan memakai sequence yang
-// sama dengan procedure lama adalah syarat agar ID yang diterbitkan aplikasi ini tidak
-// pernah bertabrakan dengan ID yang pernah diterbitkan Pega.
+// sama dengan procedure lama adalah syarat agar kunci yang diterbitkan aplikasi ini tidak
+// pernah bertabrakan dengan kunci yang pernah diterbitkan Pega.
 //
-// Uji ini memagari pengecualian itu supaya ia tidak menyebar: kueri KEDUA yang memakai
-// FROM DUAL akan membuat uji ini gagal.
+// Uji ini memagari pengecualian itu supaya ia tidak menyebar: kueri BARU yang memakai
+// FROM DUAL akan membuat uji ini gagal sampai seseorang menambahkannya ke daftar ini
+// dengan sadar — dan daftar ini hanya boleh berisi pengambil nomor urut.
+//
+// Dua anggotanya sekarang berasal dari DUA DERET yang berbeda: PANEL_HE_SEQ untuk
+// ID_PANEL, ATTACHFILE_SEQ untuk DATAID lampiran. Keduanya milik tabel yang berbeda
+// dengan bentuk kunci yang berbeda, dan menyatukannya akan menerbitkan kunci yang tidak
+// dikenali baris lama.
 func TestFromDualOnlyInSequenceQuery(t *testing.T) {
-	const exempted = "panel_next_sequence"
+	exempted := map[string]bool{
+		"panel_next_sequence":          true,
+		"panel_document_next_sequence": true,
+	}
 
 	for name, text := range query {
-		if name == exempted {
-			require.Contains(t, strings.ToUpper(text), "FROM DUAL",
-				"kueri urutan memang harus memakainya; bila tidak lagi, hapus pengecualiannya")
+		if exempted[name] {
+			require.Containsf(t, strings.ToUpper(text), "FROM DUAL",
+				"kueri urutan %q memang harus memakainya; bila tidak lagi, hapus pengecualiannya", name)
+			require.Containsf(t, strings.ToUpper(text), "NEXTVAL",
+				"pengecualian FROM DUAL hanya untuk pengambil nomor urut; %q bukan", name)
 			continue
 		}
 		require.NotContainsf(t, strings.ToUpper(text), "FROM DUAL",
-			"kueri %q memakai FROM DUAL; hanya %q yang dibenarkan", name, exempted)
+			"kueri %q memakai FROM DUAL; hanya kueri pengambil nomor urut yang dibenarkan", name)
 	}
 }
 

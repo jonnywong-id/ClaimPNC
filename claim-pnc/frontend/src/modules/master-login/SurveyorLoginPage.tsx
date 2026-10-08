@@ -172,12 +172,28 @@ export function SurveyorLoginPage() {
   }
 
   /*
-    Lima kolom, satu-lawan-satu dengan grid Pega — Nama, Login, Email, Telp, Alamat —
-    ditambah kolom aksi.
+    EMPAT kolom, satu-lawan-satu dengan grid Pega — Nama, Login, Email, Telp — ditambah
+    kolom aksi.
 
-    Kelimanya dibaca dari `pyLabelFieldValue` pada
-    `Section/BrowseLoginSurveyor-Section.xml`. Status Login dan Login Leader TIDAK ada di
-    grid karena Pega pun tidak punya; keduanya hanya muncul saat sebuah baris dibuka.
+    # Keempatnya dibaca dari SEL GRID, bukan dari label form
+
+    `Section/BrowseLoginSurveyor-Section.xml` memuat form DAN grid dalam satu berkas, dan
+    keduanya menamai hal yang berbeda. Judul kolom grid ada pada sel ber-`pyCellHeader`:
+
+        pyValue 'Nama'  @118511      data .SurveyName  @138684
+        pyValue 'Login' @122291      data .SurveyorID  @144741
+        pyValue 'Email' @127606      data .Email       @148596
+        pyValue 'Telp'  @132437      data .Ekst        @153882
+
+    # ALAMAT TIDAK ADA DI GRID — hanya di form
+
+    `.BodyLetterTo` **nol kemunculan** di wilayah grid; ia hanya muncul dua kali di wilayah
+    form. Kolom Alamat sempat digambar di sini karena daftar kolom disimpulkan dari
+    `pyLabelFieldValue` — dan itu **label FORM**, bukan judul kolom grid. Dikoreksi atas
+    koreksi Work Owner 2026-10-04.
+
+    Status Login dan Login Leader juga tidak ada di grid; keduanya hanya muncul saat sebuah
+    baris dibuka.
   */
   const columns: Column<SurveyorLogin>[] = [
     {
@@ -205,11 +221,31 @@ export function SurveyorLoginPage() {
       value: (row) => row.telp,
     },
     {
-      key: 'alamat',
-      title: 'Alamat',
-      value: (row) => row.alamat,
-    },
-    {
+      /*
+        Berjudul "Aksi" — ketetapan Work Owner 2026-10-03, berlaku di seluruh layar.
+
+        # Ia SATU-SATUNYA judul kolom yang sengaja tidak menyalin Pega
+
+        Sel judul kolom tombol pada `Section/BrowseLoginSurveyor-Section.xml` memang kosong:
+        seluruh grid hanya punya LIMA `pyLabelFieldValue` (Nama, Login, Email, Telp,
+        Alamat), dan `<pyCaption/>` di sebelah tombol Ubah tidak memuat apa pun. Delapan
+        kemunculan kata "Action" di section itu seluruhnya nama elemen XML
+        (`pzGridOpenAction`, `pyActionParams`, …), bukan label.
+
+        Menirunya menghasilkan kolom yang tidak dapat disebut namanya oleh pembaca layar
+        maupun pengguna papan ketik — dan, sebagaimana terbukti pada 2026-10-04, kolom yang
+        **tampak tidak ada** bagi pengguna yang melihat kepala tabelnya.
+
+        # Riwayat yang sengaja dicatat di sini
+
+        Judul ini sempat dikosongkan pada 2026-10-04 atas permintaan "samakan dengan Pega",
+        lalu DIKEMBALIKAN pada hari yang sama setelah akibatnya terlihat di layar. Dicatat
+        supaya percobaan yang sama tidak diulang: menyamakannya dengan Pega sudah dicoba,
+        dan hasilnya ditolak.
+
+        `DataTable` memusatkan judul kolom ini dengan mencocokkan literal "Aksi"
+        (`ACTION_COLUMN_TITLE`), jadi tulisannya harus persis begini.
+      */
       key: 'aksi',
       title: 'Aksi',
       width: '7rem',

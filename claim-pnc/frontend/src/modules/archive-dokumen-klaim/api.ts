@@ -5,7 +5,6 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import {
-  SearchMode,
   toSaveRequest,
   type ArchiveForm,
   type ClaimSearchForm,
@@ -38,7 +37,7 @@ const keys = {
       'cari',
       portal,
       token,
-      form.mode,
+      form.tipe_pencarian,
       form.kata_kunci,
       form.tanggal_dari,
       form.tanggal_sampai,
@@ -260,17 +259,7 @@ function filenameOf(response: Response): string {
 
 /** exportParams menyusun penyaring ekspor — sama persis dengan daftar yang tampil. */
 function exportParams(form: SearchForm): string {
-  const params = new URLSearchParams()
-  params.set('mode', form.mode)
-
-  if (form.mode === SearchMode.keyword) {
-    if (form.kata_kunci.trim()) params.set('kata_kunci', form.kata_kunci.trim())
-  } else {
-    if (form.tanggal_dari) params.set('tanggal_dari', form.tanggal_dari)
-    if (form.tanggal_sampai) params.set('tanggal_sampai', form.tanggal_sampai)
-  }
-
-  return params.toString()
+  return searchParams(form).toString()
 }
 
 /**
@@ -281,17 +270,27 @@ function exportParams(form: SearchForm): string {
  * hasilnya sama — dan satu perjalanan jaringan tambahan setiap kali mode berganti.
  */
 function searchPath(form: SearchForm, page: number): string {
-  const params = new URLSearchParams()
-  params.set('mode', form.mode)
-
-  if (form.mode === SearchMode.keyword) {
-    if (form.kata_kunci.trim()) params.set('kata_kunci', form.kata_kunci.trim())
-  } else {
-    if (form.tanggal_dari) params.set('tanggal_dari', form.tanggal_dari)
-    if (form.tanggal_sampai) params.set('tanggal_sampai', form.tanggal_sampai)
-  }
-
+  const params = searchParams(form)
   if (page > 1) params.set('halaman', String(page))
-
   return `${PATH}?${params.toString()}`
+}
+
+/**
+ * searchParams menyusun KEDUA penyaring sekaligus.
+ *
+ * Keduanya berdiri sendiri dan boleh terisi bersamaan — bukan dua mode yang saling
+ * menggantikan. Isian yang kosong tidak dikirim, sehingga server membedakan "tidak
+ * dipakai" dari "dipakai dengan nilai kosong".
+ */
+function searchParams(form: SearchForm): URLSearchParams {
+  const params = new URLSearchParams()
+
+  if (form.kata_kunci.trim()) {
+    params.set('tipe_pencarian', form.tipe_pencarian)
+    params.set('kata_kunci', form.kata_kunci.trim())
+  }
+  if (form.tanggal_dari) params.set('tanggal_dari', form.tanggal_dari)
+  if (form.tanggal_sampai) params.set('tanggal_sampai', form.tanggal_sampai)
+
+  return params
 }

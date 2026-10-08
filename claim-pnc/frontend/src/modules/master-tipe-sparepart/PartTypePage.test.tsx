@@ -14,7 +14,6 @@ const APPROVED = {
   id_tipe_sparepart: '1',
   nama_tipe_sparepart: 'FUEL FILTER',
   id_kategori_sparepart: '1',
-  nama_kategori_sparepart: 'ENGINE',
   status: '1',
   status_label: 'Approve',
 }
@@ -29,7 +28,6 @@ const ORPHAN = {
   id_tipe_sparepart: '7',
   nama_tipe_sparepart: 'SPROCKET',
   id_kategori_sparepart: '99',
-  nama_kategori_sparepart: '',
   status: '1',
   status_label: 'Approve',
 }
@@ -39,7 +37,6 @@ const PENDING = {
   id_tipe_sparepart: '4',
   nama_tipe_sparepart: 'TRACK ROLLER',
   id_kategori_sparepart: '3',
-  nama_kategori_sparepart: 'UNDERCARRIAGE',
   status: '0',
   status_label: 'Waiting Approval',
 }
@@ -55,7 +52,6 @@ const REJECTED = {
   id_tipe_sparepart: '6',
   nama_tipe_sparepart: 'CONTROL VALVE',
   id_kategori_sparepart: '2',
-  nama_kategori_sparepart: 'HYDRAULIC',
   status: '2',
   status_label: 'Reject',
 }
@@ -186,9 +182,9 @@ afterEach(() => {
 })
 
 describe('daftar master tipe sparepart', () => {
-  // Grid Pega punya EMPAT kolom, dan yang keempat bukan kolom tabel ini — ia
-  // PART_CATEGORY_NAME milik tabel kategori, dibaca lewat JOIN.
-  it('menampilkan judul dan keempat kolom grid Pega', async () => {
+  // Grid Pega punya TIGA kolom. Kolom keempat berisi NAMA kategori tidak ada di Pega —
+  // koreksi Work Owner 2026-10-04; caption "Kategori Sparepart" adalah label FORM.
+  it('menampilkan judul dan ketiga kolom grid Pega', async () => {
     installFetch(defaultReply())
     show()
 
@@ -199,10 +195,13 @@ describe('daftar master tipe sparepart', () => {
       'ID Tipe Sparepart',
       'Nama Tipe Sparepart',
       'ID Kategori Sparepart',
-      'Kategori Sparepart',
     ]) {
       expect(within(table).getByRole('columnheader', { name: header })).toBeInTheDocument()
     }
+
+    expect(
+      within(table).queryByRole('columnheader', { name: 'Kategori Sparepart' }),
+    ).not.toBeInTheDocument()
   })
 
   // Tabelnya tidak punya kolom pencatat pelaku maupun stempel waktu. Menggambar kolom yang
@@ -229,26 +228,36 @@ describe('daftar master tipe sparepart', () => {
     expect(await screen.findByText('FUEL FILTER')).toBeInTheDocument()
   })
 
-  // Nama kategori ditampilkan berdampingan dengan ID-nya, persis grid Pega.
-  it('menampilkan nama kategori induk setiap baris', async () => {
+  // Yang ditampilkan adalah ID kategori, bukan namanya.
+  it('menampilkan ID kategori induk setiap baris', async () => {
     installFetch(defaultReply())
     show()
 
-    await screen.findByRole('table')
-    expect(await screen.findByText('ENGINE')).toBeInTheDocument()
+    const table = await screen.findByRole('table')
+    const row = (await screen.findByText('FUEL FILTER')).closest('tr') as HTMLElement
+
+    // Diperiksa menurut POSISI sel, bukan lewat getByText: baris ini ber-ID tipe "1" DAN
+    // ber-ID kategori "1", sehingga pencarian teks menjaring keduanya.
+    const cell = within(row).getAllByRole('cell')
+    expect(cell[0]).toHaveTextContent('1') // ID Tipe Sparepart
+    expect(cell[1]).toHaveTextContent('FUEL FILTER') // Nama Tipe Sparepart
+    expect(cell[2]).toHaveTextContent('1') // ID Kategori Sparepart
+
+    // Nama kategorinya tidak pernah dikirim server, dan tidak digambar di mana pun.
+    expect(within(table).queryByText('ENGINE')).not.toBeInTheDocument()
   })
 
-  // Baris yatim TETAP terlihat, dengan keterangan alih-alih sel kosong.
+  // Baris yatim — kategorinya tidak ada di master kategori — tetap terlihat.
   //
-  // Di Pega baris ini tidak akan pernah muncul. Menampilkannya adalah satu-satunya cara ia
-  // dapat diperbaiki lewat tombol Ubah.
-  it('menampilkan baris yang kategorinya hilang beserta keterangannya', async () => {
+  // Itu peniruan Pega, bukan selisih: kueri grid Pega tidak ber-JOIN, sehingga tidak ada
+  // apa pun yang dapat membuang barisnya.
+  it('menampilkan baris yang kategorinya tidak ada di master', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByRole('table')
-    expect(await screen.findByText('SPROCKET')).toBeInTheDocument()
-    expect(screen.getByText('— kategori tidak ditemukan')).toBeInTheDocument()
+    const row = (await screen.findByText('SPROCKET')).closest('tr') as HTMLElement
+    expect(within(row).getByText('99')).toBeInTheDocument()
   })
 
   // Urutan tab mengikuti layar lama: Approve, Reject, lalu Waiting Approval. Reject berada
@@ -419,7 +428,7 @@ describe('form master tipe sparepart', () => {
     const select = await screen.findByLabelText('Kategori Sparepart')
     await waitFor(() => {
       expect(
-        within(select).getByRole('option', { name: '99 — kategori tidak ditemukan' }),
+        within(select).getByRole('option', { name: '99 — kategori tidak lagi tersedia' }),
       ).toBeInTheDocument()
     })
     expect(select).toHaveValue('99')
@@ -541,73 +550,6 @@ describe('form master tipe sparepart', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
     expect(await screen.findByText(/Daftar kategori terpotong/)).toBeInTheDocument()
-  })
-})
-
-describe('keputusan borongan', () => {
-  // Centang hanya ada di tab Waiting Approval — hanya di sanalah ada yang perlu diputuskan.
-  it('menggambar centang hanya pada tab Waiting Approval', async () => {
-    installFetch(defaultReply())
-    show()
-    await screen.findByRole('table')
-
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('TRACK ROLLER')
-    expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0)
-  })
-
-  it('mengirim satu permintaan untuk seluruh baris yang dicentang', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: { jumlah_berubah: 1, status: '1', status_label: 'Approve', portal: 'ASM' },
-      })),
-    )
-    show()
-    await screen.findByRole('table')
-
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('TRACK ROLLER')
-
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih TRACK ROLLER' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    await waitFor(() => {
-      const post = calls.find((c) => c.url.endsWith('/keputusan'))
-      expect(post?.body).toEqual({ id_tipe_sparepart: ['4'], status: '1' })
-    })
-  })
-
-  // Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan.
-  it('mematikan tombol keputusan selama belum ada yang dicentang', async () => {
-    installFetch(defaultReply())
-    show()
-    await screen.findByRole('table')
-
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('TRACK ROLLER')
-
-    expect(screen.getByRole('button', { name: 'Approve terpilih' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Reject terpilih' })).toBeDisabled()
-  })
-
-  // Centang dibuang saat berpindah tab: baris yang dipilih milik tab sebelumnya.
-  it('membuang centang saat berpindah tab', async () => {
-    installFetch(defaultReply())
-    show()
-    await screen.findByRole('table')
-
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('TRACK ROLLER')
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih TRACK ROLLER' }))
-    expect(screen.getByRole('button', { name: 'Approve terpilih' })).toBeEnabled()
-
-    await userEvent.click(tab('Approve'))
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('TRACK ROLLER')
-
-    expect(screen.getByRole('button', { name: 'Approve terpilih' })).toBeDisabled()
   })
 })
 

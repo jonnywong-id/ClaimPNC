@@ -2523,9 +2523,9 @@ func checkPartCategory(ctx context.Context, primary *sql.DB, print func(string, 
 // apa pun. Nomor yang dilaporkan adalah nomor yang benar-benar akan terpakai bila ada
 // penambahan saat ini juga.
 //
-// Kegagalannya hampir selalu berarti satu hal: PART_CATEGORY_ID ternyata bukan kolom angka.
-// Bila itu terjadi, penerbitan kunci tidak dapat dijalankan sama sekali, dan asumsi yang
-// dipakai seluruh berkas masterkategorisparepart.sql harus ditinjau ulang.
+// Pemeriksaan ini TERBUKTI berguna: ia yang menangkap `ORA-00932` pada 2026-10-04 —
+// `COALESCE(MAX(id),0)+1` atas kolom yang ternyata `VARCHAR2(10)` — yang membuat tombol
+// Simpan gagal tanpa satu pun petunjuk di layar.
 func checkPartCategoryNumbering(
 	ctx context.Context,
 	repo *masterkategorisparepartsql.Repo,
@@ -2534,14 +2534,15 @@ func checkPartCategoryNumbering(
 	id, err := repo.NextID(ctx)
 	if err != nil {
 		print("  [GAGAL] penomoran ID kategori sparepart tidak dapat dijalankan: %v", err)
-		print("            Penambahan kategori baru akan gagal. Penyebab paling mungkin:")
-		print("            PART_CATEGORY_ID bukan kolom angka, sehingga MAX(...)+1 gagal.")
-		print("            Bila benar begitu, asumsi masterkategorisparepart.sql harus")
-		print("            ditinjau ulang — bukan hanya kueri penomorannya.")
+		print("            Penambahan kategori baru akan gagal. Dua penyebab yang mungkin:")
+		print("            kunci yang ada melampaui 10 karakter (lebar PART_CATEGORY_ID),")
+		print("            atau tabelnya tidak dapat dibaca sama sekali.")
 		return
 	}
 	print("  [ok]    penomoran ID kategori sparepart siap; berikutnya: %s", id)
-	print("            (angka berurut dari MAX(PART_CATEGORY_ID)+1, bukan sequence)")
+	print("            (maksimum NUMERIK dari kunci yang ada, ditambah satu — bukan")
+	print("            sequence, dan BUKAN max() leksikografis seperti Pega; lihat")
+	print("            banner masterkategorisparepart.sql)")
 	print("            (tidak ada nomor yang terpakai oleh pemeriksaan ini)")
 }
 
@@ -2588,7 +2589,16 @@ func checkPartCategoryIntegrity(
 	}
 
 	if orphan, err := repo.CountOrphanSparepart(ctx); err != nil {
-		print("  [GAGAL] sparepart tanpa kategori yang sah tidak dapat dihitung: %v", err)
+		// [catat], bukan [GAGAL]: yang gagal BUKAN tabel modul ini melainkan
+		// POOLDATA.SPAREPART_HE yang dibacanya sebagai pembanding. Di basis data
+		// pengembangan ia sebuah VIEW yang rusak (ORA-04063), dan kerusakan itu tidak
+		// menghalangi satu pun fungsi layar Master Kategori Sparepart.
+		//
+		// Melaporkannya sebagai [GAGAL] membuat modul yang sehat tampak rusak, dan itu
+		// justru menutupi kegagalan yang sungguhan.
+		print("  [catat] tautan sparepart → kategori tidak dapat diperiksa: %v", err)
+		print("            Yang bermasalah POOLDATA.SPAREPART_HE, bukan tabel kategori.")
+		print("            Layar Master Kategori Sparepart tidak terpengaruh.")
 	} else if orphan > 0 {
 		print("  [catat] %d sparepart menunjuk kategori yang tidak ada di tabel ini.", orphan)
 		print("            Barisnya tetap terbaca dan tetap dapat disunting; yang tidak")
@@ -2610,10 +2620,9 @@ func checkPartCategoryIntegrity(
 //  3. Baris berstatus di luar '0', '1', dan '2' — tidak muncul di satu pun tab.
 //  4. Nama yang dipakai lebih dari satu baris. Pencacahnya TIDAK mengelompokkan menurut
 //     kategori, meniru cakupan ValidationSparepartType apa adanya.
-//  5. **Tipe yang menunjuk kategori yang tidak ada.** Inilah baris yang di sistem lama
-//     HILANG dari layar karena inner join-nya, dan yang di modul ini justru TETAP terlihat.
-//     Selisih perilaku itu disengaja, dan jumlahnya dilaporkan di sini supaya ia dapat
-//     dijelaskan SEBELUM muncul sebagai selisih pada uji kesetaraan gerbang 1.
+//  5. **Tipe yang menunjuk kategori yang tidak ada.** Barisnya muncul normal di grid — baik
+//     di Pega maupun di sini, karena kueri grid tidak ber-JOIN — dan kolom ID Kategorinya
+//     menampilkan angka yang tidak menunjuk apa pun. Yang terhalang adalah MENYIMPANNYA.
 //  6. **Sparepart yang menunjuk tipe yang tidak ada.** Pemeriksaan dari arah sebaliknya,
 //     ada di sini karena modul INILAH yang kelak menolak sebuah tipe — sedangkan penolakan
 //     tidak memutuskan tautan yang sudah ada.
@@ -2733,11 +2742,11 @@ func checkPartTypeIntegrity(
 		print("  [GAGAL] tipe tanpa kategori yang sah tidak dapat dihitung: %v", err)
 	} else if orphan > 0 {
 		print("  [catat] %d tipe menunjuk kategori yang tidak ada di master kategori.", orphan)
-		print("            SELISIH PERILAKU YANG DISENGAJA: di Pega baris ini HILANG dari")
-		print("            layar karena inner join-nya, di sini ia TETAP terlihat dengan")
-		print("            kolom Kategori kosong. Angka di atas adalah jumlah baris yang")
-		print("            akan tampak berlebih pada uji kesetaraan gerbang 1.")
-		print("            Barisnya hanya dapat disimpan ulang setelah kategorinya dipilih.")
+		print("            Barisnya TETAP tampil di grid — kueri grid tidak ber-JOIN, sama")
+		print("            seperti Pega — dengan kolom ID Kategori berisi angka yang tidak")
+		print("            menunjuk apa pun. Yang terhalang adalah MENYIMPANNYA: dropdown")
+		print("            hanya menawarkan kategori yang disetujui, sehingga petugas harus")
+		print("            memilih kategori yang sah lebih dulu.")
 	}
 
 	if orphan, err := repo.CountOrphanSparepart(ctx); err != nil {
@@ -3232,7 +3241,7 @@ func checkInvestigatorInbox(ctx context.Context, primary *sql.DB, print func(str
 		print("              DATAPEGA.PC_ASM_FW_GCNMFW_WORK   header pekerjaan")
 		print("              DATAPEGA.PC_ASSIGN_WORKBASKET    antrean bersama")
 		print("              POOLDATA.T_CLAIM_OBJECTLIST      nama peserta")
-		print("              POOLDATA.T_SURVEYORLIST          tanggal survei")
+		print("              POOLDATA.JSON_KLAIM              tanggal survei (DATA_JSONBLOB)")
 		print("            Mintakan hak BACA keempatnya ke DBA — modul ini tidak menulis.")
 		return
 	}
@@ -3257,6 +3266,37 @@ func checkInvestigatorInbox(ctx context.Context, primary *sql.DB, print func(str
 	}
 
 	checkInvestigatorInboxSurvey(ctx, repo, waiting, print)
+	checkInvestigationStore(ctx, primary, print)
+}
+
+// checkInvestigationStore melaporkan kesiapan penyimpanan hasil investigasi.
+//
+// # Kenapa ia diperiksa terpisah dari antreannya
+//
+// Keduanya di layar yang sama, tetapi kesiapannya berbeda: antreannya dibaca dari tabel
+// warisan Pega yang sudah ada, sedangkan formulirnya menulis ke
+// `POOLDATA.TC_PNC_INVESTIGASI` — tabel BARU milik aplikasi ini yang menempuh `D-63`
+// (permintaan tertulis, persetujuan Work Owner, pelaksanaan DBA).
+//
+// Selama tabel itu belum dibuat, daftar tetap dapat dibuka dan ekspor tetap berjalan;
+// yang gagal hanya tombol Simpan pada formulirnya. Pemeriksaan yang menggabungkan keduanya
+// akan menyatakan seluruh modul belum siap padahal sebagian besar sudah.
+func checkInvestigationStore(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := inboxinvestigatorsql.NewInvestigationRepo(primary)
+
+	if err := repo.CheckInvestigationTable(ctx); err != nil {
+		print("  [BELUM] formulir Investigator belum dapat MENYIMPAN: %v", err)
+		print("            Tabel POOLDATA.TC_PNC_INVESTIGASI belum ada.")
+		print("            DDL beserta pemetaan 30 kolomnya: docs/ddl/tc_pnc_investigasi.sql")
+		print("            Menempuh D-63: permintaan tertulis → Work Owner → DBA.")
+		print("            Daftar dan Export Data Investigation TETAP berjalan tanpa tabel")
+		print("            ini — yang gagal hanya tombol Simpan pada formulirnya.")
+		return
+	}
+
+	print("  [ok]    formulir Investigator dapat menyimpan hasil investigasi")
+	print("            (POOLDATA.TC_PNC_INVESTIGASI; menyimpan juga memindahkan klaim ke")
+	print("            Analyst lewat T_CLAIM_PNC, tabel yang sudah dimiliki aplikasi ini)")
 }
 
 // checkInvestigatorInboxSurvey melaporkan pekerjaan yang tidak punya baris survei.
@@ -3287,6 +3327,10 @@ func checkInvestigatorInboxSurvey(
 	print("            Kolom kesembilan pada baris itu tampil KOSONG. Captionnya di layar")
 	print("            lama berbunyi \"Lama Masuk Inbox\" meski isinya tanggal survei —")
 	print("            ketidakcocokan itu dibawa apa adanya dari Pega (P-5).")
+	print("            Sumbernya POOLDATA.JSON_KLAIM jalur $.SurveyResults[0].SurveyDate,")
+	print("            jalur yang SAMA dengan properti yang dibaca grid Pega. Bila angka")
+	print("            ini 0 sementara Pega menampilkan isinya, yang keliru adalah")
+	print("            jalurnya — bukan datanya.")
 }
 
 // checkReceiveTKAInbox melaporkan kesiapan sumber daftar Inbox Receive TKA.
@@ -3640,6 +3684,24 @@ func checkCauseOfLossDetail(ctx context.Context, primary *sql.DB, print func(str
 		print("            Dibutuhkan pula sequence D_CAUSE_SEQ dan baris CURRENT_SITE='1'")
 		print("            pada POOLDATA.M_SITE_DATABASE untuk menerbitkan D_COL_ID.")
 		return
+	}
+
+	// Prasyarat jalur TULIS. Hak baca atas kelima objek di atas tidak menyiratkan apa pun
+	// tentang menyimpan; lihat Repo.CheckWritePath.
+	sequenceErr, siteErr := repo.CheckWritePath(ctx)
+	if sequenceErr != nil {
+		print("  [GAGAL] sequence D_CAUSE_SEQ tidak dapat dipakai: %v", sequenceErr)
+		print("            TANPA ini, Tambah akan gagal meski seluruh tabelnya terbaca.")
+		print("            Mintakan ke DBA: CREATE SEQUENCE D_CAUSE_SEQ, dan hak SELECT-nya.")
+	} else {
+		print("  [ok]    sequence D_CAUSE_SEQ dapat dipakai")
+	}
+	if siteErr != nil {
+		print("  [GAGAL] kode situs tidak dapat dibaca: %v", siteErr)
+		print("            Ia bagian PERTAMA setiap D_COL_ID; tanpa itu baris baru tidak")
+		print("            dapat diberi nomor. Mintakan baris CURRENT_SITE='1' ke DBA.")
+	} else {
+		print("  [ok]    kode situs POOLDATA.M_SITE_DATABASE terbaca")
 	}
 
 	// Gejala kunci JSON yang tidak cocok — lihat doc comment di atas.
@@ -5582,6 +5644,7 @@ func checkPanel(ctx context.Context, primary *sql.DB, print func(string, ...any)
 	checkPanelNumbering(ctx, repo, print)
 	checkPanelMirror(ctx, repo, print)
 	checkPanelLocation(ctx, repo, print)
+	checkPanelDocument(ctx, repo, print)
 }
 
 // checkPanelNumbering melaporkan kesiapan penomoran ID_PANEL.
@@ -6162,7 +6225,7 @@ func countDuplicateNames(list []masterpenolakan.RejectionStatus) int {
 // dibaca" di sini berarti tabelnya memang tidak ada di entitas itu, atau akun aplikasi
 // belum diberi hak bacanya — keduanya urusan DBA.
 //
-// Tiga hal dilaporkan, dan ketiganya menjawab pertanyaan yang berbeda:
+// Empat hal dilaporkan, dan keempatnya menjawab pertanyaan yang berbeda:
 //
 //  1. Jumlah baris per status. Itu yang memberi tahu apakah keempat tab layar akan
 //     terisi, sebelum layarnya dibuka.
@@ -6173,6 +6236,11 @@ func countDuplicateNames(list []masterpenolakan.RejectionStatus) int {
 //  3. Ada tidaknya penyetuju komite. Tanpa itu, SETIAP baris baru lahir tanpa penyetuju
 //     dan tertahan di Waiting Approval selamanya — kegagalan senyap yang tidak terlihat
 //     di layar mana pun.
+//  4. Jumlah bank di GENERAL.LST_BANK_GROUP. Tabel itu menyuapi pilihan "Bank Penerima"
+//     SEKALIGUS menjadi pemeriksa nama bank saat menyimpan, sehingga kosongnya tidak
+//     hanya membuat pilihannya kosong — ia membuat SELURUH penyimpanan ditolak, dan
+//     pesannya ("Nama bank tidak dikenali") menyalahkan isian pengguna atas keadaan yang
+//     bukan salah pengguna.
 func checkMasterAutoClaim(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
 	repo := masterautoclaimsql.NewRepo(primary)
 
@@ -6223,6 +6291,32 @@ func checkMasterAutoClaim(ctx context.Context, primary *sql.DB, print func(strin
 		print("            Approval tanpa pernah muncul di tab Komite Approval siapa pun.")
 	default:
 		print("  [ok]    penyetuju komite Master Auto Claim: %s", operator)
+	}
+
+	// Daftar bank. Yang dicetak hanya JUMLAHNYA — nama bank bukan data nasabah, tetapi
+	// mencetak seluruh daftar hanya akan memanjangkan keluaran tanpa menjawab apa pun.
+	switch banks, err := repo.ListBanks(ctx); {
+	case err != nil:
+		print("  [GAGAL] GENERAL.LST_BANK_GROUP tidak dapat dibaca: %v", err)
+		print("            Tanpa tabel ini, pilihan Bank Penerima kosong DAN setiap")
+		print("            penyimpanan ditolak dengan \"Nama bank tidak dikenali\" —")
+		print("            pesan yang menyalahkan isian pengguna atas keadaan yang")
+		print("            bukan salah pengguna.")
+		print("            ORA-00942 berarti objeknya tidak ADA **atau** ada tetapi akun")
+		print("            aplikasi tidak diberi hak bacanya; keduanya tidak dapat")
+		print("            dibedakan dari sini. Yang menjawabnya, dijalankan DBA:")
+		print("              SELECT owner, object_type, status FROM all_objects")
+		print("               WHERE object_name = 'LST_BANK_GROUP'")
+		print("            Tabel yang SAMA dibaca Master Rekening, Master Bengkel, dan")
+		print("            Master Supplier, sehingga ini satu penghalang bersama — bukan")
+		print("            kekurangan modul ini sendiri.")
+	case len(banks) == 0:
+		print("  [WASPADA] GENERAL.LST_BANK_GROUP terbaca tetapi KOSONG")
+		print("            Pilihan Bank Penerima akan kosong, dan karena nama bank")
+		print("            diperiksa terhadap tabel yang sama, tidak ada satu pun baris")
+		print("            yang dapat disimpan sampai isinya ada.")
+	default:
+		print("  [ok]    GENERAL.LST_BANK_GROUP dapat dibaca: %d bank", len(banks))
 	}
 }
 
@@ -7339,4 +7433,62 @@ func firstTreatyClaimID(ctx context.Context, queue *inboxclaimtreatypropsql.Repo
 		return ""
 	}
 	return page.Items[0].ClaimID
+}
+
+// checkPanelDocument melaporkan kesiapan jalur dokumen panel.
+//
+// Ia satu-satunya pemeriksaan modul ini yang dapat MENGGUGURKAN asumsi penulisan sebelum
+// jalurnya dipakai — sama perannya dengan pembandingan kolom NAMA pada checkPanelLocation.
+//
+// Asumsi yang diujinya: `PANEL_HE.DOKUMENID` menyimpan `DATA_ATTACHFILE.DATAID`. Itu
+// disimpulkan dari `Activity/GetDetailDocument-Act.xml`, yang menerima `CoverID` dari
+// `GetIDDokumenPanel` lalu membaca `ATTACHNAME`, `ATTACHMIMETYPE`, dan `ATTACHNOTE` —
+// kolom-kolom `DATA_ATTACHFILE`. Kesimpulan dari pemakaian, bukan dari DDL, dan karena itu
+// ia harus dapat dibantah oleh data.
+func checkPanelDocument(ctx context.Context, repo *masterpanelsql.Repo, print func(string, ...any)) {
+	if err := repo.CheckDocumentTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.DATA_ATTACHFILE belum dapat dibaca: %v", err)
+		print("            Tanpa tabel ini, tombol Upload Document pada tab Approve dan")
+		print("            Reject tidak dapat menyimpan apa pun. Mintakan hak baca dan")
+		print("            tulisnya ke DBA. Kolom yang dituntut: DATAID, IMAGEID,")
+		print("            ATTACHNAME, ATTACHMIMETYPE, ATTACHNOTE, INPUTOPERATOR,")
+		print("            INPUTDATE, IDPEGA.")
+		return
+	}
+
+	linked, err := repo.CountDocumentLinked(ctx)
+	if err != nil {
+		print("  [GAGAL] tautan dokumen panel tidak dapat dihitung: %v", err)
+		return
+	}
+	dangling, err := repo.CountDocumentDangling(ctx)
+	if err != nil {
+		print("  [catat] tautan dokumen yang menggantung tidak dapat dihitung: %v", err)
+		return
+	}
+
+	switch {
+	case linked == 0 && dangling == 0:
+		print("  [ok]    POOLDATA.DATA_ATTACHFILE dapat dibaca; belum ada panel berdokumen")
+		print("            Asumsi DOKUMENID = DATA_ATTACHFILE.DATAID belum teruji data.")
+		print("            Ia baru dapat dibuktikan setelah ada panel yang berdokumen —")
+		print("            jalankan ulang -periksa sesudah unggahan pertama.")
+	case dangling == 0:
+		print("  [ok]    %d panel berdokumen, dan seluruh tautannya ketemu", linked)
+		print("            Asumsi DOKUMENID = DATA_ATTACHFILE.DATAID TERBUKTI untuk data")
+		print("            yang ada.")
+	case linked == 0:
+		print("  [WASPADA] %d panel punya DOKUMENID, dan TIDAK SATU PUN tautannya ketemu", dangling)
+		print("            Asumsi modul ini kemungkinan SALAH: kolom itu agaknya menyimpan")
+		print("            kunci lain — mungkin IMAGEID langsung, bukan DATAID.")
+		print("            JANGAN pakai jalur dokumen sebelum panel_document_get di")
+		print("            masterpanel.sql diperbaiki; layarnya akan selalu kosong tanpa")
+		print("            satu pun pesan galat. Mintakan DDL kedua tabel ke DBA (R-08).")
+	default:
+		print("  [WASPADA] %d panel berdokumen ketemu, %d menggantung", linked, dangling)
+		print("            Sebagian tautan benar dan sebagian tidak. Yang menggantung")
+		print("            kemungkinan warisan dari baris yang dokumennya pernah dihapus")
+		print("            secara fisik — penghapusan yang TIDAK dilakukan modul ini")
+		print("            (`D-66` melarangnya). Laporkan angkanya ke DBA.")
+	}
 }

@@ -6,6 +6,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { claimDetailPath } from '@/lib/claim'
 import { formatDate } from '@/components/format'
 
 import { ManagerAdminTabs } from './ManagerAdminTabs'
@@ -318,25 +319,64 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
 }
 
 /**
- * Tombol rincian.
+ * Tombol rincian — perilakunya SAMA dengan layar My Inbox.
  *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
- * belum dibangun. Tombolnya tetap dibangun mengikuti modul inbox lain, dan tujuannya
- * diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
+ * # Ke mana ia membuka, dan kenapa bukan ke "View Claim"
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega — nilai yang sama yang di layar lama
- * disusun menjadi kunci assignment oleh `SetAssignmentInboxReg_act`. Dengan begitu
- * menyalakan layar rincian kelak tidak menuntut perubahan kontrak API modul ini.
+ * Ke `/registrasi/klaim/:claimID`, halaman klaim aplikasi ini — tujuan yang sama dengan
+ * tautan nomor klaim pada My Inbox (`inbox-outstanding`).
+ *
+ * Sebelumnya ia mengarah ke `/view-claim/:referensi`, penampung bagi `MENU_ID 75`
+ * "View Claim". **Modul itu tidak dipakai lagi** (Work Owner, 2026-09-30): tidak satu pun
+ * inbox Pega yang membukanya — tujuan sebenarnya `openAssignment`, `openWorkByHandle`, atau
+ * `showHarness`. Mengarahkan tombol ke sana berarti membawa pengguna ke layar yang tidak
+ * pernah ada di sistem lama.
+ *
+ * # Kenapa yang dikirim NOMOR klaim, bukan `referensi`
+ *
+ * Karena rutenya menerima nomor. `referensi` adalah `pzInsKey`, kunci teknis Pega yang
+ * memuat nama kelas internalnya — dan `D-22` menetapkan kunci itu tidak pernah dipakai
+ * sebagai alamat di aplikasi ini.
+ *
+ * # Klaim warisan `PNC-xxxx` IKUT dapat dibuka — dan itu koreksi
+ *
+ * Tombolnya sempat dimatikan untuk klaim warisan, menyalin pembatasan My Inbox. **Itu
+ * keliru.** Yang diminta sama adalah TUJUANNYA, bukan pembatasannya, dan pembatasan itu
+ * mematikan hampir seluruh baris: antrean ini didominasi klaim `PNC-xxxx`.
+ *
+ * Dua bukti bahwa klaim warisan memang harus dapat dibuka:
+ *
+ *	klaim_ambil_per_nomor   FROM POOLDATA.T_CLAIM_PNC WHERE CLAIMNO = :1 — tabel klaim
+ *	                        WARISAN; halaman tujuannya memang melayani PNC-xxxx
+ *	Pega layar ini          SetAssignmentInboxReg_act membuka formulir Register_Flow baris
+ *	                        itu, APA PUN format nomornya — bukan hanya klaim baru
+ *
+ * My Inbox memang tidak menautkan klaim warisan, tetapi itu kebijakan layar ITU (`P-3`),
+ * bukan batas kemampuan halaman tujuannya. Setiap layar memutuskan sendiri.
+ *
+ * # Satu keadaan yang tetap mematikan tombol
+ *
+ * Nomor kosong. Nomor terbit di ujung tahap Input Register (`ADR-0009`), sehingga baris
+ * tanpa nomor memang belum punya halaman — dan `/registrasi/klaim/` tanpa nomor bukan rute
+ * mana pun. Alasannya dibawa pada `title`: tombol mati tanpa keterangan terbaca sebagai
+ * aplikasi yang rusak.
  */
 function DetailButton({ item }: { item: WorkItem }) {
   const navigate = useNavigate()
-  const key = item.referensi || item.id
+
+  const claimNumber = item.id
+  const belumBernomor = claimNumber === ''
 
   return (
     <Button
       tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+      disabled={belumBernomor}
+      title={
+        belumBernomor
+          ? 'Klaim ini belum bernomor. Nomor terbit setelah tahap Input Register lolos validasi.'
+          : `Buka rincian klaim ${claimNumber}`
+      }
+      onClick={() => navigate(claimDetailPath(claimNumber))}
     >
       Lihat Detail
     </Button>
@@ -382,8 +422,12 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
   }))
 
   columns.push({
+    // Judul "Aksi" adalah ketetapan Work Owner 2026-10-03, dan satu-satunya judul kolom
+    // yang sengaja TIDAK menyalin Pega — section-nya meninggalkan sel judul tombol kosong.
+    // Mengosongkannya sudah dicoba di layar lain dan DITOLAK: kolom tanpa judul terbaca
+    // sebagai kolom yang TIDAK ADA, bukan sekadar sulit dibaca pembaca layar.
     key: 'aksi',
-    title: '',
+    title: 'Aksi',
     value: () => '',
     render: action,
     noSort: true,

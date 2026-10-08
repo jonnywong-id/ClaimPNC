@@ -64,6 +64,15 @@ export function QueuePanel({
   const approveBlocked = Boolean(rule.alasan_setuju_ditahan)
   const allSelected = rows.length > 0 && selected.length === rows.length
 
+  /*
+    Kata tombol diambil dari Pega bila Pega punya katanya, dan hanya jatuh ke kata aplikasi
+    bila tidak. Dua antrean memang tidak punya tombol bernama di sana — keputusannya diisi di
+    dalam grid lalu disimpan sekali — sehingga memaksakan "APPROVE" pada keduanya justru
+    menuliskan literal yang tidak pernah ada.
+  */
+  const approveLabel = rule.label_setujui ?? 'Setujui'
+  const rejectLabel = rule.label_tolak ?? 'Tolak'
+
   const columns: Column<QueueRow>[] = [
     {
       key: 'pilih',
@@ -89,9 +98,14 @@ export function QueuePanel({
   ]
 
   function toggle(key: string) {
-    setSelected((current) =>
-      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
-    )
+    setSelected((current) => {
+      if (current.includes(key)) return current.filter((item) => item !== key)
+
+      // Pada antrean tanpa jalur massal, memilih baris lain MENGGANTI pilihan sebelumnya
+      // alih-alih menambahnya. Menumpuknya hanya akan menghasilkan permintaan yang ditolak
+      // server, dan penolakan itu baru terbaca setelah tombol ditekan.
+      return rule.dapat_massal ? [...current, key] : [key]
+    })
   }
 
   function toggleAll() {
@@ -100,6 +114,25 @@ export function QueuePanel({
 
   return (
     <div className="space-y-4">
+      {/*
+        Bilah sub-tab, pada tab yang di Pega memang punya.
+
+        Isinya satu sub-tab, dan itu bukan penyederhanaan: `Sec_PaymentAkseptasiKlaimCase1`
+        memuat dua, tetapi yang kedua bersyarat `1==2` — ia tidak pernah tampil bagi siapa
+        pun. Menggambar dua akan menambah layar yang sistem lama tidak punya.
+      */}
+      {tab.judul_sub_tab ? (
+        <div className="border-b border-slate-200" role="tablist" aria-label={tab.nama}>
+          <span
+            role="tab"
+            aria-selected
+            className="inline-block border-b-2 border-blue-500 px-1 pb-2 text-sm font-semibold text-slate-900"
+          >
+            {tab.judul_sub_tab}
+          </span>
+        </div>
+      ) : null}
+
       <DataTable<QueueRow>
         title={tab.nama}
         description={tab.keterangan}
@@ -110,6 +143,11 @@ export function QueuePanel({
         isLoading={isLoading}
         hideSearch
         emptyMessage="Tidak ada pengajuan yang menunggu persetujuan di antrean ini."
+        /*
+          Kepala kolom tetap digambar pada antrean kosong, sama seperti dashboard: antrean
+          yang kosong hari ini tetap perlu menunjukkan data apa yang akan muncul di sana.
+        */
+        showHeaderWhenEmpty
         {...(pagination
           ? {
               pagination: {
@@ -127,20 +165,32 @@ export function QueuePanel({
       {rule.dapat_diputuskan ? (
         <div className="space-y-3 rounded-kontrol border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                aria-label="Pilih semua baris di halaman ini"
-                checked={allSelected}
-                onChange={toggleAll}
-                disabled={rows.length === 0}
-                className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              Pilih semua di halaman ini
-            </label>
+            {/*
+              "Pilih semua" HANYA pada antrean yang punya `Select All` dan `Deselect All` di
+              Pega. Pada enam antrean lain ia tidak digambar sama sekali — keputusannya
+              memang diambil satu baris setiap kali di sana, dan menawarkan jalur massal
+              berarti memberi kewenangan yang sistem lama tidak punya.
+            */}
+            {rule.dapat_massal ? (
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  aria-label="Pilih semua baris di halaman ini"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  disabled={rows.length === 0}
+                  className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Pilih semua di halaman ini
+              </label>
+            ) : null}
 
             <span className="text-sm text-slate-500" aria-live="polite">
-              {selected.length} baris dipilih
+              {rule.dapat_massal
+                ? `${selected.length} baris dipilih`
+                : selected.length === 0
+                  ? 'Belum ada baris dipilih — antrean ini diputuskan satu baris setiap kali.'
+                  : '1 baris dipilih — antrean ini diputuskan satu baris setiap kali.'}
             </span>
           </div>
 
@@ -174,7 +224,7 @@ export function QueuePanel({
               title={rule.alasan_setuju_ditahan}
               onClick={() => onDecide('setujui', selected, reason)}
             >
-              Setujui
+              {approveLabel}
             </Button>
 
             <Button
@@ -183,7 +233,7 @@ export function QueuePanel({
               disabled={selected.length === 0 || isDeciding}
               onClick={() => onDecide('tolak', selected, reason)}
             >
-              Tolak
+              {rejectLabel}
             </Button>
           </div>
 

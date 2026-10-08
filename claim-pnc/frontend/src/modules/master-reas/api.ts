@@ -1,7 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
-import type { ReasMemberListResponse } from '@/api/types'
+import type {
+  ReasMemberListResponse,
+  ReasMemberResponse,
+  ReasMemberSaveInput,
+} from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -55,5 +59,36 @@ export function useReasMemberList() {
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<ReasMemberListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
+  })
+}
+
+/**
+ * Hook ubah surel member reas.
+ *
+ * # Jalurnya TANPA parameter, dan kuncinya ikut di badan
+ *
+ * Kunci alami tabelnya TIGA kolom — kode reas, nama reas, dan tipe — dan salah satunya
+ * (tipe) boleh kosong. Memaksakannya ke jalur URL menuntut tiga segmen yang harus dikodekan,
+ * salah satunya kosong, yang mudah tertelan router. Seluruh kuncinya karena itu dikirim di
+ * badan permintaan.
+ *
+ * # Hanya `email` yang dapat diubah
+ *
+ * `Database/UPDATEREAS.prc` pada baris yang sudah ada hanya menyentuh kolom `EMAIl`. `login`
+ * dan `negara` **tidak dapat dikirim sama sekali** — server menolaknya sebagai permintaan
+ * cacat, bukan mengabaikannya diam-diam. `login` bukan kolom sembarangan: ia menentukan
+ * klaim mana yang dilihat seorang mitra reasuransi.
+ */
+export function useSaveReasMemberEmail() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: ReasMemberSaveInput) =>
+      callAPI<ReasMemberResponse>(ROUTE, { metode: 'PUT', body: input, token, portal }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['master-reas'] })
+    },
   })
 }

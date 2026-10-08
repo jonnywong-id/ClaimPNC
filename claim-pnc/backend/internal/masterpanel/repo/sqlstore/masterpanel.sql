@@ -505,3 +505,140 @@ SELECT ID
 -- yang dibenarkan memuat percabangan dialek.
 SELECT POOLDATA.PANEL_HE_SEQ.NEXTVAL
   FROM DUAL
+
+-- name: panel_document_next_sequence
+--
+-- Nomor urut DATAID, dari sequence yang SAMA dengan yang dipakai procedure lama
+-- (`Database/SET_ATTACHMENT_64BIT.prc`), supaya ID yang diterbitkan aplikasi ini
+-- melanjutkan deret yang sudah ada dan tidak pernah bertabrakan.
+--
+-- Procedure itu juga menyentuh `C_COUNTER_ATTACHMENT`. Pencacah itu TIDAK ditiru: ia
+-- pencacah pelaporan, bukan sumber kunci — kuncinya berasal dari sequence ini. Menirunya
+-- berarti menulis ke tabel yang tidak satu pun kueri pembaca di export membacanya.
+--
+-- FROM DUAL, seperti pada panel_next_sequence, adalah satu-satunya bentuk khas Oracle yang
+-- tidak terhindarkan di sini (`D-20` §3).
+SELECT POOLDATA.ATTACHFILE_SEQ.NEXTVAL
+  FROM DUAL
+
+-- name: panel_document_insert
+--
+-- Satu baris metadata dokumen. Padanan INSERT di `Database/SET_ATTACHMENT_64BIT.prc`.
+--
+--   :1  DATAID            sudah dirangkai di Go: tahun || lpad(nomor,10,'0')
+--   :2  INPUTOPERATOR
+--   :3  ATTACHNAME
+--   :4  ATTACHNOTE
+--   :5  ATTACHMIMETYPE
+--   :6  IMAGEID
+--   :7  IDPEGA            ID panelnya
+--
+-- # Kolom ATTACHFILE sengaja TIDAK diisi
+--
+-- Procedure lama pun tidak mengisinya: `PNCSaveAttachmentToDB` menyetel properti
+-- `ATTACHFILE` di halaman, tetapi `SaveAttachmentToDB_Sql` TIDAK mengirimkannya sebagai
+-- parameter. Isi berkasnya hidup di layanan penyimpanan internal, dan `IMAGEID` adalah
+-- satu-satunya tali ke sana (`D-16`).
+--
+-- Mengisinya di sini akan menyimpan berkas dua kali — di tabel dan di layanan — dan
+-- keduanya akan berbeda begitu salah satunya diperbarui.
+--
+-- CATEGORY dan SUB_CATEGORY juga dibiarkan kosong: keduanya diisi Pega dari
+-- `TempCategoryAttachment`, yang dimuat dari master jenis dokumen per lini bisnis. Master
+-- Panel bukan dokumen klaim dan tidak punya kategori di master itu; mengarang nilainya
+-- akan memasukkan baris yang tidak dapat dikelompokkan ke laporan dokumen mana pun.
+--
+-- CURRENT_TIMESTAMP, bukan SYSDATE (`D-20` §4).
+INSERT INTO POOLDATA.DATA_ATTACHFILE
+            (DATAID, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
+             ATTACHMIMETYPE, IMAGEID, IDPEGA)
+     VALUES (:1, CURRENT_TIMESTAMP, :2, :3, :4, :5, :6, :7)
+
+-- name: panel_document_link
+--
+-- Menautkan dokumen yang baru tersimpan ke panelnya.
+--
+--   :1  DATAID
+--   :2  ID_PANEL
+--
+-- Satu panel memegang SATU dokumen (`RDB List/GetIDDokumenPanel-SQL.xml`), sehingga ini
+-- UPDATE, bukan INSERT: unggahan berikutnya mengganti tautannya.
+--
+-- Baris DATA_ATTACHFILE yang lama TIDAK dihapus, dan itu disengaja — `D-66` melarang
+-- penghapusan fisik data bernilai bisnis. Akibatnya barisnya tetap ada tanpa ada panel
+-- yang menunjuknya; ia masih dapat ditelusuri lewat IDPEGA, yang justru sebabnya kolom itu
+-- diisi ID panel.
+UPDATE POOLDATA.PANEL_HE
+   SET DOKUMENID = :1
+ WHERE TRIM(ID_PANEL) = TRIM(:2)
+
+-- name: panel_document_get
+--
+-- Dokumen sebuah panel, lewat tautan DOKUMENID.
+--
+--   :1  ID_PANEL
+--
+-- Padanan gabungan `GetIDDokumenPanel` (mengambil DOKUMENID) dan `GetDetailDocument`
+-- (membaca barisnya) — dua perjalanan di Pega, satu di sini.
+--
+-- ATTACHFILE tidak ikut diambil meski kolomnya ada: barisnya yang ditulis aplikasi ini
+-- tidak pernah mengisinya, dan mengambilnya berarti menarik kolom besar yang selalu kosong
+-- pada setiap pembacaan (`08-TECHNICAL-STRATEGY.md` §4.3 — sebutkan kolom, dan jangan
+-- menarik CLOB yang tidak dipakai).
+SELECT a.DATAID         AS DATA_ID,
+       a.IMAGEID        AS IMAGE_ID,
+       a.ATTACHNAME     AS ATTACH_NAME,
+       a.ATTACHMIMETYPE AS ATTACH_MIME_TYPE,
+       a.ATTACHNOTE     AS ATTACH_NOTE,
+       a.INPUTOPERATOR  AS INPUT_OPERATOR,
+       a.INPUTDATE      AS INPUT_DATE,
+       a.IDPEGA         AS ID_PEGA
+  FROM POOLDATA.DATA_ATTACHFILE a
+  JOIN POOLDATA.PANEL_HE p
+    ON TRIM(p.DOKUMENID) = TRIM(a.DATAID)
+ WHERE TRIM(p.ID_PANEL) = TRIM(:1)
+
+-- name: panel_check_document_table
+--
+-- Dipakai `claimpnc -periksa`. Membuktikan tabel metadata dokumen terjangkau dan ketujuh
+-- kolom yang ditulis modul ini memang ada — sebelum unggahan pertama, bukan sesudahnya.
+SELECT a.DATAID         AS DATA_ID,
+       a.IMAGEID        AS IMAGE_ID,
+       a.ATTACHNAME     AS ATTACH_NAME,
+       a.ATTACHMIMETYPE AS ATTACH_MIME_TYPE,
+       a.ATTACHNOTE     AS ATTACH_NOTE,
+       a.INPUTOPERATOR  AS INPUT_OPERATOR,
+       a.INPUTDATE      AS INPUT_DATE,
+       a.IDPEGA         AS ID_PEGA
+  FROM POOLDATA.DATA_ATTACHFILE a
+ WHERE 1 = 0
+
+-- name: panel_count_document_linked
+--
+-- Berapa panel yang sudah punya dokumen, dan tautannya benar-benar ketemu.
+--
+-- Dipakai `claimpnc -periksa` berpasangan dengan panel_count_document_dangling di bawah:
+-- selisih keduanya yang memberi tahu apakah asumsi "DOKUMENID = DATA_ATTACHFILE.DATAID"
+-- memang berlaku pada data produksi.
+SELECT COUNT(*) AS TOTAL
+  FROM POOLDATA.PANEL_HE p
+  JOIN POOLDATA.DATA_ATTACHFILE a
+    ON TRIM(a.DATAID) = TRIM(p.DOKUMENID)
+ WHERE p.DOKUMENID IS NOT NULL
+   AND TRIM(p.DOKUMENID) <> ''
+
+-- name: panel_count_document_dangling
+--
+-- Berapa panel yang DOKUMENID-nya terisi tetapi tidak menemukan barisnya.
+--
+-- Angka ini yang dapat MENGGUGURKAN asumsi di atas. Bila ia sama dengan jumlah panel
+-- ber-DOKUMENID, berarti kolom itu menyimpan kunci lain — kemungkinan IMAGEID langsung —
+-- dan kueri panel_document_get harus diubah sebelum dipakai. Lebih baik ketahuan dari
+-- -periksa daripada dari layar yang diam-diam selalu kosong.
+SELECT COUNT(*) AS TOTAL
+  FROM POOLDATA.PANEL_HE p
+ WHERE p.DOKUMENID IS NOT NULL
+   AND TRIM(p.DOKUMENID) <> ''
+   AND NOT EXISTS (SELECT 1
+                     FROM POOLDATA.DATA_ATTACHFILE a
+                    WHERE TRIM(a.DATAID) = TRIM(p.DOKUMENID))

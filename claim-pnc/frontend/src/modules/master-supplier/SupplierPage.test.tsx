@@ -338,7 +338,9 @@ describe('daftar master supplier', () => {
       'Status Rekanan',
       'Status Aktif',
       'Posisi',
-      'Option',
+      // Satu-satunya caption yang sengaja TIDAK menyalin Pega — ketetapan Work Owner
+      // 2026-10-03, berlaku seluruh modul. Pega menuliskannya "Option".
+      'Aksi',
     ])
   })
 
@@ -493,7 +495,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
     const nama = await screen.findByLabelText('Nama')
     expect(nama).toHaveAttribute('readonly')
@@ -520,7 +522,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
     // Dicari DI DALAM form, bukan di seluruh halaman: ID yang sama juga tampil di baris
     // daftarnya, dan pencarian yang tidak dibatasi akan menemukan keduanya.
@@ -550,7 +552,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
     expect(await screen.findByText(/Menonaktifkannya berlaku/)).toBeInTheDocument()
   })
@@ -595,7 +597,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
     await screen.findByLabelText('Nama')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
@@ -618,7 +620,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
     await screen.findByLabelText('Nama')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
@@ -634,7 +636,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
     await screen.findByLabelText('Nama')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
@@ -665,7 +667,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
     await screen.findByLabelText('Nama')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
@@ -683,7 +685,7 @@ describe('form master supplier', () => {
     show()
 
     await screen.findByText('Supplier Contoh Utama')
-    await user.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
     await screen.findByLabelText('Nama')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 

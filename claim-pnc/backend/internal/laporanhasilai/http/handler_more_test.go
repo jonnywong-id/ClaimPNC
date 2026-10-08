@@ -37,8 +37,7 @@ type pagedRepo struct {
 	// claimNumber mengisi kolom No Klaim setiap baris.
 	claimNumber string
 
-	listErr      error
-	summarizeErr error
+	listErr error
 }
 
 var errPageBroken = errors.New("halaman lanjutan gagal dibaca")
@@ -70,10 +69,6 @@ func (r *pagedRepo) List(
 		})
 	}
 	return result, nil
-}
-
-func (r *pagedRepo) Summarize(context.Context, laporanhasilai.Filter) (laporanhasilai.Summary, error) {
-	return laporanhasilai.Summary{}, r.summarizeErr
 }
 
 // handlerOver membentuk handler di atas repo buatan, tanpa middleware apa pun.
@@ -158,7 +153,7 @@ func TestHandlersWithoutActivePortalAreRejected(t *testing.T) {
 
 func TestUnrecognizedErrorWithoutFallbackIs500AndLogged(t *testing.T) {
 	logs := &bytes.Buffer{}
-	handler := handlerOver(t, &pagedRepo{summarizeErr: errors.New("ORA-03113 rahasia")}, nil, logs)
+	handler := handlerOver(t, &pagedRepo{listErr: errors.New("ORA-03113 rahasia")}, nil, logs)
 
 	recorder := httptest.NewRecorder()
 	handler.Search(recorder, withPortal("/api/laporan-hasil-ai"+septemberQuery))

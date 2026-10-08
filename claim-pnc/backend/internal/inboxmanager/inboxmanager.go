@@ -249,8 +249,32 @@ type Panel struct {
 //
 // Ia kosong pada tab Outstanding, yang membaca `T_CLAIMLIST_ADMIN` langsung dan karena itu
 // tidak punya penyegaran untuk dilaporkan.
+// FilterOption adalah satu pilihan pada penyaring dashboard.
+type FilterOption struct {
+	Value string
+	Label string
+}
+
+// FilterView adalah satu penyaring dashboard beserta pilihannya.
+//
+// # Kenapa pilihannya datang bersama DATA, bukan bersama keterangan layar
+//
+// Karena salah satunya dibaca dari master yang dapat berubah tanpa deploy — "Kategori OS"
+// berasal dari `POOLDATA.GCNM_MST_PROGRESS_KLAIM`, dan di Pega pun begitu
+// (`BrowseMstProgress1`). Menaruhnya di keterangan layar yang di-cache lima menit berarti
+// kategori baru tidak muncul sampai cache-nya kedaluwarsa.
+type FilterView struct {
+	Key     string
+	Label   string
+	Options []FilterOption
+}
+
 type DashboardView struct {
 	Panels []Panel
+
+	// Filters adalah penyaring yang digambar di bawah kedua grid pertama, mengikuti layar
+	// lama. Kosong pada tab yang tidak punya penyaring.
+	Filters []FilterView
 
 	// RefreshedAt adalah waktu cuplikan sumbernya terakhir disegarkan, apa adanya dari
 	// basis data. Pointer supaya "belum pernah disegarkan" dapat dibedakan dari tanggal
@@ -296,10 +320,12 @@ type Pagination struct {
 
 // Batas paginasi.
 //
-// DefaultPageSize 25 mengikuti ukuran halaman grid `InboxManager_Sec` — `pyRDLPageSize`
-// bernilai 10 pada grid ringkasan dan tidak ditetapkan pada grid antrean, sehingga tidak ada
-// angka Pega yang dapat disalin untuk antreannya. Yang dipakai karena itu nilai baku
-// aplikasi ini, bukan angka yang dikarang seolah berasal dari export.
+// DefaultPageSize 25 hanya berlaku pada antrean yang TIDAK menyebut ukurannya sendiri.
+//
+// Catatan di sini sebelumnya menyatakan "tidak ada angka Pega yang dapat disalin untuk
+// antreannya". Itu KELIRU: setiap section antrean menyimpan `pyPageSize` pada gridnya, dan
+// angkanya berbeda-beda per tab — 20, 50, atau 15. Angkanya kini disalin ke Tab.PageSize,
+// dan nilai baku ini tinggal menjadi cadangan.
 //
 // MaxSize 100 mengikuti `10-API-STRATEGY.md` §4: permintaan yang lebih besar DITOLAK, bukan
 // dipenuhi diam-diam — memenuhinya membuat batas menjadi saran, bukan batas.

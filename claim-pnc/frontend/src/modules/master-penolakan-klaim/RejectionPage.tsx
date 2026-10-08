@@ -114,10 +114,15 @@ function statusClass(status: string): string {
  * Judul, susunan kolom, dan kedua tabnya mengikuti layar lama (`D-13`: alur dan tata letak
  * ditiru supaya pengguna tidak perlu belajar ulang):
  *
- *   - Dua tombol pemilih isi   — `Section/BrowseNoteRejectClaim-Section.xml`
- *   - Kolom tab Penolakan Klaim — Status Penolakan 1 · Status Penolakan 2 · Status Aproval
- *     · Note Approval
- *   - Kolom tab Penolakan Komite — ID Master · Note Komite Reject · tombol "ubah"
+ *   - Dua tombol pemilih isi   — "Input Master Penolakan Klaim" dan "Input Master Penolakan
+ *     Komite", keduanya disalin apa adanya dari `pyButtonLabel`-nya
+ *   - Kolom tab Penolakan Klaim — No · Status Penolakan 1 · Status Penolakan 2 ·
+ *     Status Aproval · Note Approval
+ *   - Kolom tab Penolakan Komite — ID Master · Note Komite Reject
+ *
+ * Kolom tombol pada keduanya berjudul **"Aksi"** — satu-satunya judul kolom yang sengaja
+ * tidak menyalin Pega, yang meninggalkan sel judulnya kosong (ketetapan Work Owner
+ * 2026-10-03, berlaku seluruh modul).
  *
  * # Yang SENGAJA tidak ada, dan itu bukan pekerjaan yang belum selesai
  *
@@ -159,13 +164,19 @@ export function RejectionPage() {
       </p>
 
       {/* Dua tab menggantikan dua tombol layar lama. Ia `role="tablist"` supaya pembaca
-          layar menyebutnya sebagai pemilih, bukan sebagai dua tombol lepas. */}
+          layar menyebutnya sebagai pemilih, bukan sebagai dua tombol lepas.
+
+          LABELNYA DISALIN APA ADANYA dari `pyButtonLabel` kedua tombol itu
+          (`Section/BrowseNoteRejectClaim-Section.xml` offset 65442 dan 72760) — ketetapan
+          Work Owner 2026-10-03. Sebelumnya dipendekkan menjadi "Penolakan Klaim" dan
+          "Penolakan Komite"; pemendekan itu membuat teks di layar baru tidak dapat
+          dicocokkan dengan teks di layar lama saat pengguna membandingkan keduanya. */}
       <div role="tablist" aria-label="Pilih master" className="mt-5 flex flex-wrap gap-2">
         <TabButton active={tab === 'klaim'} onClick={() => setTab('klaim')}>
-          Penolakan Klaim
+          Input Master Penolakan Klaim
         </TabButton>
         <TabButton active={tab === 'komite'} onClick={() => setTab('komite')}>
-          Penolakan Komite
+          Input Master Penolakan Komite
         </TabButton>
       </div>
 
@@ -259,35 +270,57 @@ function RejectionTab() {
     update.mutate({ id: edited.id, input }, { onSuccess: closeForm })
   }
 
-  // Susunan kolom mengikuti grid Pega apa adanya, terbaca dari label pada
-  // `Section/BrowseNoteRejectClaim-Section.xml`:
+  // Susunan kolom mengikuti grid Pega SEL DEMI SEL, bukan disimpulkan dari urutan label.
   //
-  //	Status Penolakan 1  -> .City    (NOTE_ST, nama induk)
-  //	Status Penolakan 2  -> .CityID  (NOTE_ND, nama baris ini)
-  //	Status Aproval      -> derivasi STATUS
-  //	Note Approval       -> .NoteKasir (NOTEAPPROVED)
+  // Dibaca ulang 2026-10-03 dengan menelusuri `<rowdata>` pada
+  // `Section/BrowseNoteRejectClaim-Section.xml`. Lebar tiap sel header **cocok persis**
+  // dengan lebar sel datanya, dan itulah yang memasangkan keduanya — bukan kedekatan
+  // offset, yang sudah terbukti menyesatkan pada modul lain:
   //
-  // Perhatikan urutannya: induk mendahului nama barisnya sendiri, sama seperti pada Master
-  // Status Progres 2. Itu berlawanan dengan dugaan yang wajar.
+  //	header          lebar  sel data               kolom SQL
+  //	<b>No<b>          55   .CaseID                A.ID_ST       <- induk, BUKAN nomor urut
+  //	Status Penolakan 1 156  .City                 A.NOTE_ST
+  //	Status Penolakan 2 260  .CityID               A.NOTE_ND
+  //	Status Aproval    100   .AnaylstRemarks       derivasi STATUS
+  //	Note Approval     100   .NoteKasir            A.NOTEAPPROVED
+  //	(kosong)           97   .pyTemplateInputBox   tombol
+  //
+  // DUA hal yang hanya terbaca dengan cara ini, dan keduanya berlawanan dengan dugaan:
+  //
+  //  1. Kolom "No" BUKAN nomor urut baris. Ia `.CaseID` = `A.ID_ST`, yaitu ID Status
+  //     Penolakan 1 — INDUK baris ini. Menomori baris 1,2,3 di sini akan tampak masuk akal
+  //     dan menampilkan angka yang sama sekali lain dari yang dilihat pengguna di Pega.
+  //  2. `.District` (`A.ID_ND`, kunci baris ini sendiri) **tidak digambar sama sekali** di
+  //     grid, meski kueri lama membacanya. Ia hanya dipakai modal penyuntingan.
+  //
+  // Urutannya juga perlu diperhatikan: induk mendahului nama barisnya sendiri, sama
+  // seperti pada Master Status Progres 2.
+  //
+  // Lebar ditulis sebagai nilai CSS (`'55px'`), bukan kelas Tailwind: `DataTable`
+  // memasangnya lewat `style={{ width }}`, sehingga `'w-24'` tidak berlaku apa-apa.
+  // Angkanya diambil dari `pyWidth` sel Pega yang bersangkutan.
   const columns: Column<Rejection>[] = [
+    {
+      key: 'no',
+      title: 'No',
+      width: '55px',
+      // ID induk, bukan nomor urut — lihat catatan di atas.
+      value: (row) => row.id_status_1,
+    },
     {
       key: 'status_1',
       title: 'Status Penolakan 1',
-      // ID induk ikut ke `value` supaya pencarian menemukan baris lewat kodenya maupun
-      // lewat namanya.
-      value: (row) => `${row.nama_status_1} ${row.id_status_1}`,
-      render: (row) => (
-        <span>
-          {row.nama_status_1}
-          <span className="ml-2 text-xs text-slate-500">{row.id_status_1}</span>
-        </span>
-      ),
+      width: '156px',
+      // ID induk TIDAK lagi ikut disisipkan di sini: sejak kolom "No" ada, ia punya
+      // kolomnya sendiri, dan pencarian menemukannya dari sana. Menyebutnya dua kali
+      // membuat satu nilai tampak seperti dua keterangan yang berbeda.
+      value: (row) => row.nama_status_1,
     },
-    { key: 'nama', title: 'Status Penolakan 2', value: (row) => row.nama },
+    { key: 'nama', title: 'Status Penolakan 2', width: '260px', value: (row) => row.nama },
     {
       key: 'status',
       title: 'Status Aproval',
-      width: 'w-36',
+      width: '100px',
       value: (row) => row.status_label,
       render: (row) => (
         <span
@@ -300,6 +333,7 @@ function RejectionTab() {
     {
       key: 'catatan_persetujuan',
       title: 'Note Approval',
+      width: '100px',
       value: (row) => row.catatan_persetujuan,
       render: (row) => (
         <span>
@@ -318,12 +352,22 @@ function RejectionTab() {
     },
     {
       key: 'aksi',
-      title: '',
-      width: 'w-24',
+      // Sel judulnya KOSONG di Pega (`pyWidth` 97, `pyValue` kosong). "Aksi" adalah
+      // satu-satunya judul kolom yang sengaja TIDAK menyalin Pega — ketetapan Work Owner
+      // 2026-10-03, berlaku seluruh modul: kolom tanpa judul tidak dapat disebut namanya
+      // oleh pembaca layar maupun pengguna papan ketik.
+      //
+      // Judulnya digambar di TENGAH oleh `DataTable` sendiri, tanpa perlu disebut di sini —
+      // ia mengenali judul "Aksi" dan meratakannya (lihat `headerAlign`).
+      title: 'Aksi',
+      width: '97px',
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data.
       noSort: true,
-      alignRight: true,
+      // Rata TENGAH, bukan rata kanan — permintaan Work Owner 2026-10-03. Rata kanan
+      // menempelkan tombolnya ke tepi tabel; di tengah ia duduk di dalam lebar kolomnya
+      // sendiri dan sejajar dengan judulnya.
+      alignCenter: true,
       value: () => '',
       render: (row) => (
         <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
@@ -418,15 +462,25 @@ function CommitteeTab() {
 
   // Dua kolom, persis seperti kueri lama — ditambah tombol "ubah" yang di Pega dikirim
   // sebagai kolom ketiga beralias `NOKTP`. Label tombolnya dibawa; caranya tidak.
+  //
+  // Dibaca ulang sel demi sel 2026-10-03, dengan cara yang sama seperti grid tab sebelah.
+  // Grid ini TIDAK punya kolom "No": hanya tiga sel, dan yang ketiga tombol.
+  //
+  //	header               lebar  sel data               kolom
+  //	ID Master              76   .IDMaster              IDMASTER
+  //	Note Komite Reject     76   .NoteKasir             NOTEMASTER
+  //	(kosong)              100   .pyTemplateInputBox    tombol
   const columns: Column<CommitteeRejection>[] = [
-    { key: 'id', title: 'ID Master', width: 'w-28', value: (row) => row.id },
+    { key: 'id', title: 'ID Master', width: '76px', value: (row) => row.id },
     { key: 'catatan', title: 'Note Komite Reject', value: (row) => row.catatan },
     {
       key: 'aksi',
-      title: '',
-      width: 'w-24',
+      // Sel judulnya kosong di Pega; "Aksi" ditulis dengan sengaja — alasannya sama
+      // dengan grid tab sebelah.
+      title: 'Aksi',
+      width: '100px',
       noSort: true,
-      alignRight: true,
+      alignCenter: true,
       value: () => '',
       render: (row) => (
         <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.catatan}`}>

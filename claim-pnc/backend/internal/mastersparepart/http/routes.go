@@ -318,7 +318,8 @@ func (h *Handler) Options(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, toOptionsDTO(set.Category, set.Type, active.Alias))
+	h.writeResponse(w, r, http.StatusOK, toOptionsDTO(
+		set.Category, set.Type, active.Alias, h.service.UploadAvailable()))
 }
 
 // nameIndexOf menyusun pemetaan kode acuan ke namanya untuk satu permintaan.
@@ -424,5 +425,23 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Post("/master/sparepart", h.Create)
 		perPortal.Get("/master/sparepart/{id}", h.Get)
 		perPortal.Put("/master/sparepart/{id}", h.Save)
+
+		// Dokumen ikut berada di dalam kelompok per-portal, dan itu bukan sekadar
+		// kerapian: dokumen sebuah sparepart hidup di basis data entitasnya, dan jalur
+		// yang jatuh ke koneksi bawaan akan membaca atau menulis dokumen badan hukum lain
+		// tanpa satu pun galat yang terlihat (`R-20`, `TKT-F6-002`).
+		//
+		// Unggahnya POST, bukan PUT, meski satu sparepart hanya memegang satu dokumen dan
+		// unggahan berikutnya menggantinya. Alasannya: badannya multipart dan tidak
+		// idempoten di sisi layanan penyimpanan — mengulang permintaan yang sama
+		// menghasilkan berkas kedua di sana, sehingga menyebutnya PUT akan menjanjikan
+		// sifat yang tidak dimilikinya.
+		perPortal.Post("/master/sparepart/{id}/dokumen", h.UploadDocument)
+		perPortal.Get("/master/sparepart/{id}/dokumen", h.GetDocument)
+
+		// Unggah CSV TIDAK ber-{id}: ia menyentuh banyak baris sekaligus, dan kuncinya
+		// ada di dalam berkas (`NO_SPART`), bukan di jalur URL. Menaruhnya di bawah
+		// {id} akan menjanjikan lingkup satu baris yang tidak dimilikinya.
+		perPortal.Post("/master/sparepart/unggah-csv", h.ImportCSV)
 	})
 }

@@ -100,6 +100,14 @@ type QueryInput struct {
 
 	// Page adalah paginasi antrean. Diabaikan pada tab dashboard dan tab ringkasan.
 	Page Pagination
+
+	// Reinsurer menyaring grid ketiga tab Outstanding — `LEADER`, `MEMBER`, atau `FAC-IN`.
+	// Kosong berarti seluruhnya, sama seperti pilihan "All" di layar lama.
+	Reinsurer string
+
+	// CategoryOS menyaring grid ketiga menurut tahapan progres klaim. Kosong berarti
+	// seluruhnya.
+	CategoryOS string
 }
 
 // Query adalah permintaan isi satu tab yang sudah tervalidasi.
@@ -119,6 +127,17 @@ type Query struct {
 	// Ia disalin dari Caller supaya repo tidak perlu tahu apa pun tentang identitas: yang
 	// dibutuhkannya hanyalah nilai penyaringnya.
 	LineBusiness string
+
+	// Reinsurer dan CategoryOS menyaring grid ketiga tab Outstanding. Kosong berarti
+	// seluruhnya.
+	//
+	// Keduanya TIDAK divalidasi terhadap daftar pilihan. Alasannya bukan kelonggaran:
+	// "Kategori OS" dibaca dari master yang dapat berubah tanpa deploy, dan menolak nilai
+	// yang tidak dikenal berarti layar yang terbuka sejak sebelum master berubah menjadi
+	// gagal — bukan sekadar kosong. Nilai yang tidak cocok apa pun menghasilkan grid
+	// kosong, dan itu jawaban yang benar.
+	Reinsurer  string
+	CategoryOS string
 
 	// Caller adalah identitas pemanggil.
 	Caller Caller
@@ -162,10 +181,20 @@ func NewQuery(input QueryInput, caller Caller) (Query, error) {
 		return Query{}, ErrTabNotAllowed
 	}
 
+	// Ukuran halaman tab dipakai hanya bila pemanggil TIDAK menyebut ukurannya sendiri.
+	// Dengan begitu `?ukuran=` tetap berlaku, dan tab yang tidak menyebut ukurannya jatuh ke
+	// DefaultPageSize seperti sebelumnya.
+	page := input.Page
+	if page.Size <= 0 && tab.PageSize > 0 {
+		page.Size = tab.PageSize
+	}
+
 	query := Query{
 		Tab:          tab,
-		Page:         input.Page.Normalize(),
+		Page:         page.Normalize(),
 		LineBusiness: cleanCaller.LineBusiness,
+		Reinsurer:    strings.ToUpper(strings.TrimSpace(input.Reinsurer)),
+		CategoryOS:   strings.TrimSpace(input.CategoryOS),
 		Caller:       cleanCaller,
 	}
 
@@ -176,7 +205,7 @@ func NewQuery(input QueryInput, caller Caller) (Query, error) {
 		return query, nil
 	}
 
-	period, err := parsePeriod(input.Period)
+	period, err := parsePeriod(input.Period, tab.RangeSameYearOnly)
 	if err != nil {
 		return Query{}, err
 	}
@@ -191,7 +220,7 @@ func NewQuery(input QueryInput, caller Caller) (Query, error) {
 // Isian kosong BUKAN galat: kedua dashboard berperiode tetap bermakna tanpa penyaring — di
 // Pega pun predikatnya diisi teks kosong bila pengguna belum memilih apa pun
 // (`PNCGetDashboardProduktivitasInbox_Act`, Property-Set bernilai `""`).
-func parsePeriod(input PeriodInput) (Period, error) {
+func parsePeriod(input PeriodInput, sameYearOnly bool) (Period, error) {
 	if input.Blank() {
 		return Period{}, nil
 	}
@@ -208,7 +237,7 @@ func parsePeriod(input PeriodInput) (Period, error) {
 	case PeriodMonth:
 		return parseMonth(input.Month)
 	case PeriodRange:
-		return parseRange(input.From, input.Until)
+		return parseRange(input.From, input.Until, sameYearOnly)
 	default:
 		return Period{}, NewValidationError([]Violation{{
 			Field:   FieldPeriod,
@@ -240,7 +269,7 @@ func parseMonth(value string) (Period, error) {
 }
 
 // parseRange membentuk selang dari sepasang tanggal "YYYY-MM-DD".
-func parseRange(fromValue, untilValue string) (Period, error) {
+func parseRange(fromValue, untilValue string, sameYearOnly bool) (Period, error) {
 	violations := []Violation{}
 
 	from, okFrom := parseDate(fromValue)
@@ -256,6 +285,16 @@ func parseRange(fromValue, untilValue string) (Period, error) {
 		violations = append(violations, Violation{
 			Field:   FieldPeriod,
 			Message: "Tanggal \"Sampai\" tidak dikenali. Contoh yang benar: 2026-09-30.",
+		})
+	}
+
+	// Rentang yang melintasi tahun ditolak pada tab yang Pega pun menolaknya, dengan pesan
+	// yang SAMA PERSIS — `Activity/DashboardKlaim_act` langkah 4 menetapkannya sebagai
+	// `local.message`, dan langkah 5 melompat ke blok galat bila kedua tahun berbeda.
+	if okFrom && okUntil && sameYearOnly && from.Year() != until.Year() {
+		violations = append(violations, Violation{
+			Field:   FieldPeriod,
+			Message: MessageRangeSameYear,
 		})
 	}
 

@@ -16,6 +16,12 @@ var usedQueries = []string{
 	"investigator_inbox_check_table",
 	"investigator_inbox_count_waiting",
 	"investigator_inbox_count_without_survey",
+	"investigator_export",
+	"investigasi_ambil",
+	"investigasi_perbarui",
+	"investigasi_sisip",
+	"investigasi_pindahkan_klaim",
+	"investigasi_check_table",
 }
 
 // Seluruh kueri yang dipanggil kode harus benar-benar ada di berkas .sql. Tanpa uji ini,
@@ -60,22 +66,68 @@ func TestQueriesFollowPortableSQLDiscipline(t *testing.T) {
 	}
 }
 
-// Tidak satu pun kueri modul ini boleh MENULIS.
+// HANYA kueri formulir investigasi yang boleh menulis.
 //
-// Layar ini tidak mengubah apa pun: mengambil pekerjaan dari antrean dan mencatat hasil
-// investigasi terjadi di layar kerja yang belum dibangun. Selama itu benar, `P-1` terpenuhi
-// tanpa negosiasi kepemilikan — Pega tetap satu-satunya penulis tabelnya sendiri (`D-21`).
+// # Kenapa daftarnya disebut satu per satu
 //
-// Uji ini yang menjaganya tetap begitu. Ia akan gagal pada hari seseorang menambahkan
-// UPDATE ke berkas .sql tanpa memindahkan kepemilikan tabelnya lebih dulu.
-func TestNoQueryWrites(t *testing.T) {
+// Modul ini sempat tidak punya jalur tulis sama sekali, dan uji ini melarang SELURUH
+// penulisan. Larangan itu dicabut saat formulir kerja Investigator dibangun — tetapi
+// dicabut **untuk tiga kueri yang disebut namanya**, bukan untuk modulnya.
+//
+// Bedanya menentukan. Kueri daftar, kueri ekspor, dan kedua kueri pencacah membaca tabel
+// milik ENGINE PEGA (`PC_ASM_FW_GCNMFW_WORK`, `PC_ASSIGN_WORKBASKET`) dan tabel bisnis yang
+// ditulis Pega (`JSON_KLAIM`). Satu UPDATE yang menyelinap ke sana melanggar `P-1` tanpa
+// menghasilkan galat apa pun — kerusakannya baru terlihat sebagai data yang bertentangan
+// antara dua sistem.
+//
+// Ketiga kueri yang dikecualikan menulis ke tabel yang kepemilikannya JELAS:
+//
+//	investigasi_perbarui · investigasi_sisip     POOLDATA.TC_PNC_INVESTIGASI — tabel milik
+//	                                             aplikasi ini sepenuhnya, tidak pernah
+//	                                             ditulis Pega
+//	investigasi_pindahkan_klaim                  POOLDATA.T_CLAIM_PNC — sudah ditulis
+//	                                             aplikasi ini lewat modul Registrasi
+func TestOnlyInvestigationQueriesWrite(t *testing.T) {
+	allowed := map[string]bool{
+		"investigasi_perbarui":        true,
+		"investigasi_sisip":           true,
+		"investigasi_pindahkan_klaim": true,
+	}
 	writing := []string{"INSERT ", "UPDATE ", "DELETE ", "MERGE ", "TRUNCATE "}
 
 	for name, text := range query {
+		if allowed[name] {
+			continue
+		}
 		uppercase := strings.ToUpper(text)
 		for _, verb := range writing {
 			require.NotContainsf(t, uppercase, verb,
-				"kueri %q menulis (%s) — modul ini hanya membaca; lihat banner paket", name, verb)
+				"kueri %q menulis (%s) — hanya kueri formulir investigasi yang boleh; "+
+					"lihat catatan pada uji ini", name, verb)
+		}
+	}
+}
+
+// Ketiga kueri yang boleh menulis TIDAK boleh menyentuh tabel milik Pega.
+//
+// Uji ini pasangan dari yang di atas, dan ia yang menjaga pengecualiannya tetap sempit:
+// mencantumkan nama kueri ke dalam daftar yang diizinkan tidak boleh sekaligus membuka
+// tabel mana pun untuknya.
+func TestWritingQueriesNeverTouchPegaTables(t *testing.T) {
+	pegaOwned := []string{
+		"PC_ASM_FW_GCNMFW_WORK",
+		"PC_ASSIGN_WORKBASKET",
+		"JSON_KLAIM",
+		"T_SURVEYORLIST",
+	}
+
+	for _, name := range []string{
+		"investigasi_perbarui", "investigasi_sisip", "investigasi_pindahkan_klaim",
+	} {
+		uppercase := strings.ToUpper(getQuery(name))
+		for _, table := range pegaOwned {
+			require.NotContainsf(t, uppercase, table,
+				"kueri tulis %q menyentuh %s, tabel yang dimiliki Pega (`P-1`)", name, table)
 		}
 	}
 }
@@ -134,6 +186,7 @@ func TestScannedQueriesShareTheSameColumnOrder(t *testing.T) {
 		"ADMIN_NAME",
 		"REGISTERED_AT",
 		"SURVEY_DATE",
+		"BUSINESS_LINE",
 	}
 
 	scanned := []string{

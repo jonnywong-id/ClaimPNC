@@ -108,18 +108,32 @@
 -- kuerinya terbaca — setiap cabang menyebut sendiri lini bisnis mana yang dilayaninya.
 --
 -- ============================================================================
--- TIGA CACAT KUERI LAMA YANG DIPERBAIKI
+-- DUA CACAT KUERI LAMA YANG DIPERBAIKI
 -- ============================================================================
 --
--- 1. `GetBisnisGroupDashboardOS` TIDAK menyaring status kerja sama sekali, sehingga dashboard
---    berjudul "Outstanding" ikut menghitung klaim yang sudah selesai — dan angkanya tidak
---    pernah cocok dengan pencacah di kepala layar yang sama. Penyaringnya ditambahkan.
+-- CATATAN KOREKSI (2026-10-07). Daftar ini sebelumnya memuat butir pertama:
+-- "`GetBisnisGroupDashboardOS` tidak menyaring status kerja sama sekali". ITU SALAH, dan
+-- butir itu DICABUT. Penyaringnya memang tidak tertulis di berkas SQL-nya, tetapi
+-- disuntikkan saat jalan: `Activity/PNCGetDashboardOSInbox_Act` langkah 5 — berketerangan
+-- "untuk default awal" — menetapkan
 --
--- 2. `CountOutstandingManager` menggabung `t_claim_objectlist` tanpa memilih satu kolom pun
+--     tempQuery.EMAIL := " AND a.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected')"
+--
+-- dan kueri itu memuat `{ASIS:tempQuery.EMAIL}`. Hal yang sama berlaku pada
+-- `GetYearDashboardOS`. Jadi KETIGA kueri dashboard ini menyaring status; hanya
+-- `GetPICDashboardOS` yang menuliskannya literal.
+--
+-- Kesimpulan lama itu diambil dengan membaca berkas SQL-nya saja — menyimpulkan KETIADAAN
+-- dari sumber yang memang tidak dapat membuktikannya. Layar Pega yang berjalan membantahnya
+-- secara angka: jumlah seluruh kolom COB sama persis dengan baris ALL pada grid PIC.
+--
+-- Kuerinya sendiri tidak berubah; yang berubah hanyalah pernyataan bahwa itu PERBAIKAN.
+--
+-- 1. `CountOutstandingManager` menggabung `t_claim_objectlist` tanpa memilih satu kolom pun
 --    darinya, sehingga klaim berobjek banyak terhitung berkali-kali pada pencacah yang
 --    menamai dirinya jumlah klaim. Gabungan itu tidak dibawa.
 --
--- 3. Cabang TRAVEL menulis `GROUP_PANEL='005'` TANPA alias pada kueri yang tabelnya memakai
+-- 2. Cabang TRAVEL menulis `GROUP_PANEL='005'` TANPA alias pada kueri yang tabelnya memakai
 --    `grouppanel_1` — kemungkinan galat runtime, atau menunjuk kolom tabel lain. Di sini ia
 --    `a.GROUPPANEL_1 = '005'`, sejalan dengan cabang PA pada kueri yang sama.
 --
@@ -284,9 +298,9 @@ SELECT a.USERTEKNIS_1   AS DIMENSION,
 --
 -- Asal: `RDB List/GetBisnisGroupDashboardOS-SQL.xml`.
 --
--- Penyaring status kerja DITAMBAHKAN — kueri lamanya tidak punya sama sekali, sehingga
--- dashboard berjudul "Outstanding" ikut menghitung klaim yang sudah selesai (cacat #1 di
--- kepala berkas).
+-- Penyaring status kerja ditulis LITERAL di sini, sedangkan kueri lama memperolehnya lewat
+-- `{ASIS:tempQuery.EMAIL}` yang diisi activity. Hasilnya sama — lihat catatan koreksi di
+-- kepala berkas.
 --
 -- Bind: :1..:5 bendera lini bisnis
 SELECT e.NOTE     AS DIMENSION,
@@ -312,6 +326,110 @@ SELECT e.NOTE     AS DIMENSION,
       OR ( :5 = 1 AND a.GROUPPANEL_1 = '005' ) )
  GROUP BY e.NOTE
  ORDER BY e.NOTE ASC
+
+-- name: dashboard_os_years
+-- Kolom tahun grid ketiga tab Outstanding.
+--
+-- Asal: `RDB List/GetYearDashboardOS-SQL.xml`. Tahun mana saja yang tampil ditentukan DATA,
+-- bukan rentang tetap — di layar lama pun kolomnya melompat (2012, lalu 2015) karena tahun
+-- tanpa klaim tidak pernah muncul.
+--
+-- Bind: :1..:5 bendera lini bisnis
+SELECT EXTRACT(YEAR FROM a.PXCREATEDATETIME) AS TAHUN
+  FROM POOLDATA.T_CLAIMLIST_ADMIN a
+  JOIN POOLDATA.BUSINESS f
+    ON a.BUSINESSCODE_1 = f.ID
+ WHERE a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND a.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+   AND (a.PXFLOWNAME IS NULL OR a.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1'))
+   AND (a.PXTASKLABEL IS NULL OR a.PXTASKLABEL NOT IN ('FixCorrespondence'))
+   AND a.USERTEKNIS_1 IS NOT NULL
+   AND ( :1 = 1
+      OR ( :2 = 1
+           AND a.GROUPPANEL_1 IN ('003', '004', '006')
+           AND f.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023')
+           AND a.BRANCHNAME <> 'ASNET' )
+      OR ( :3 = 1
+           AND f.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023') )
+      OR ( :4 = 1 AND a.GROUPPANEL_1 = '002' )
+      OR ( :5 = 1 AND a.GROUPPANEL_1 = '005' ) )
+ GROUP BY EXTRACT(YEAR FROM a.PXCREATEDATETIME)
+ ORDER BY 1 ASC
+
+-- name: dashboard_os_summary
+-- Isi grid ketiga tab Outstanding — "Kategori/DOL x Reinsurer x tahun".
+--
+-- Asal: `RDB List/GetProgressAllYearDashboarOS-SQL.xml`.
+--
+-- # Bentuknya PANJANG, dan pivotnya dilakukan Go
+--
+-- Pega merangkai satu `SUM(CASE WHEN … )` per tahun sebagai TEKS lalu menyisipkannya ke
+-- daftar SELECT (`tempQuery.OLD_OPERATOR_ID`). Pola itu tidak dibawa: ia perangkaian SQL dari
+-- nilai yang berubah-ubah, persis yang dilarang `08-TECHNICAL-STRATEGY.md` §4.3, dan jumlah
+-- penanda bind-nya ikut berubah tiap tahun bertambah.
+--
+-- Di sini kueri mengembalikan satu baris per (kategori, reinsurer, tahun), dan Go menyusunnya
+-- menjadi tabel silang. Hasilnya sama, tanpa SQL yang dibangun saat jalan.
+--
+-- # Empat tabel Pega tidak dijoin, karena nilainya SUDAH ADA di tabel datar
+--
+-- Pega menempuh `gcnm_progress_posisi_pnc` -> `gcnm_progress_claim` ->
+-- `gcnm_mst_progress_klaim` untuk memperoleh label tahapan, lalu `pega_dashboardpnc` dan
+-- `t_claim_pnc` untuk reinsurer. Diperiksa langsung pada 2026-10-07, `T_CLAIMLIST_ADMIN`
+-- sudah menyimpan keduanya dalam bentuk akhir:
+--
+--     STATUSPROGRESS1  REGISTRASI, SURVEY, ACCEPTATION, CLAIM COMMITTEE, COLLECTION, ...
+--     REINSURER        LEADER (118), MEMBER (79), FAC-IN (13), kosong (696)
+--
+-- Keduanya persis keluaran `DECODE` dan lookup master yang Pega lakukan, sehingga joinnya
+-- tidak menambah apa pun.
+--
+-- Baris ber-REINSURER kosong DIBUANG, mengikuti `AND NVL(d.reinsurer, g.leader_member) IS NOT
+-- NULL` pada kueri lama.
+--
+-- Bind: :1..:5 bendera lini bisnis * :6,:7 penyaring Reinsurer * :8,:9 penyaring Kategori OS
+SELECT a.STATUSPROGRESS1                   AS KATEGORI,
+       a.REINSURER                         AS REINSURER,
+       EXTRACT(YEAR FROM a.PXCREATEDATETIME) AS TAHUN,
+       COUNT(*)                              AS TOTAL
+  FROM POOLDATA.T_CLAIMLIST_ADMIN a
+  JOIN POOLDATA.BUSINESS f
+    ON a.BUSINESSCODE_1 = f.ID
+ WHERE a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND a.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+   AND (a.PXFLOWNAME IS NULL OR a.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1'))
+   AND (a.PXTASKLABEL IS NULL OR a.PXTASKLABEL NOT IN ('FixCorrespondence'))
+   AND a.USERTEKNIS_1 IS NOT NULL
+   AND a.REINSURER IS NOT NULL
+   AND a.STATUSPROGRESS1 IS NOT NULL
+   AND ( :1 = 1
+      OR ( :2 = 1
+           AND a.GROUPPANEL_1 IN ('003', '004', '006')
+           AND f.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023')
+           AND a.BRANCHNAME <> 'ASNET' )
+      OR ( :3 = 1
+           AND f.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023') )
+      OR ( :4 = 1 AND a.GROUPPANEL_1 = '002' )
+      OR ( :5 = 1 AND a.GROUPPANEL_1 = '005' ) )
+   AND ( :6 = 1 OR UPPER(TRIM(a.REINSURER)) = :7 )
+   AND ( :8 = 1 OR TRIM(a.STATUSPROGRESS1) = :9 )
+ GROUP BY a.STATUSPROGRESS1,
+          a.REINSURER,
+          EXTRACT(YEAR FROM a.PXCREATEDATETIME)
+ ORDER BY a.STATUSPROGRESS1 ASC, a.REINSURER ASC
+
+-- name: dashboard_os_categories
+-- Pilihan penyaring "Kategori OS".
+--
+-- Asal: `RDB List/BrowseMstProgress1-SQL.xml`, yang membaca master tahapan progres klaim apa
+-- adanya. Dua puluh baris saat diperiksa 2026-10-07.
+--
+-- Nilainya LABEL, bukan `ID_PROGRESS` — karena yang disimpan `T_CLAIMLIST_ADMIN.STATUSPROGRESS1`
+-- adalah labelnya, dan penyaringnya membandingkan kolom itu.
+SELECT m.STS_PROGRESS1 AS LABEL
+  FROM POOLDATA.GCNM_MST_PROGRESS_KLAIM m
+ WHERE m.STS_PROGRESS1 IS NOT NULL
+ ORDER BY m.ID_PROGRESS ASC
 
 -- name: dashboard_produktivitas_business
 -- Grid "Produktivitas per Grup Bisnis".
@@ -454,8 +572,17 @@ SELECT z.*
 -- Nilai uang dipilih sebagai NUMBER apa adanya dan dibaca ke Go sebagai TEKS presisi penuh —
 -- tidak pernah melewati float (`I-12`, `09-DATABASE-STRATEGY.md` §5).
 --
--- Kolom kesembilan kueri lama — `(TTLAKSEP+TTLOS)+(TTLOS-TTLAKSEP)` — TIDAK dibawa. Tidak ada
--- keterangan di export yang menyatakan angka itu mewakili apa.
+-- # Kolom "NILAI Klaim (Rp)" direplikasi APA ADANYA, termasuk kejanggalannya
+--
+-- Rumus kueri lama bercabang dua, dan cabang pertamanya menyederhana menjadi dua kali nilai
+-- outstanding:
+--
+--     stsklaim = '1'              -> (TTLAKSEP+TTLOS)+(TTLOS-TTLAKSEP)  ==  2 x TTLOS
+--     stsklaim bukan '1','2','3'  -> TTLAKSEP+TTLOS
+--
+-- Ia sempat tidak dibawa sama sekali. Work Owner meminta kolomnya disamakan dengan Pega
+-- (2026-10-07), dan `P-5` menuntut hasil yang sama sampai ada keputusan memperbaikinya —
+-- sehingga rumusnya ditulis ulang persis, bukan dirapikan menjadi `2*TTLOS`.
 --
 -- # Periode boleh KOSONG di sini, berbeda dari Dashboard Produktivitas
 --
@@ -469,6 +596,11 @@ SELECT z.*
 -- Bind: :1 bendera "seluruh periode" · :2..:3 periode · :4..:8 bendera lini bisnis
 SELECT d.LGB_NOTE                                                  AS DIMENSION,
        COUNT(*)                                                    AS TOTAL_CLAIM,
+       SUM(CASE WHEN d.STSKLAIM = '1'
+                THEN (d.TTLAKSEP + d.TTLOS) + (d.TTLOS - d.TTLAKSEP)
+                WHEN d.STSKLAIM NOT IN ('1','2','3')
+                THEN d.TTLAKSEP + d.TTLOS
+                ELSE 0 END)                                        AS CLAIM_AMOUNT,
        COUNT(CASE WHEN d.STSKLAIM = '1' THEN 1 END)                AS ACCEPTED_COUNT,
        COUNT(CASE WHEN d.STSKLAIM = '3' THEN 1 END)                AS REJECTED_COUNT,
        COUNT(CASE WHEN d.STSKLAIM NOT IN ('1','2','3') THEN 1 END) AS OUTSTANDING_COUNT,
@@ -498,6 +630,11 @@ SELECT d.LGB_NOTE                                                  AS DIMENSION,
 SELECT d.LGB_NOTE                                                  AS DIMENSION,
        d.COL_DESC                                                  AS CAUSE,
        COUNT(*)                                                    AS TOTAL_CLAIM,
+       SUM(CASE WHEN d.STSKLAIM = '1'
+                THEN (d.TTLAKSEP + d.TTLOS) + (d.TTLOS - d.TTLAKSEP)
+                WHEN d.STSKLAIM NOT IN ('1','2','3')
+                THEN d.TTLAKSEP + d.TTLOS
+                ELSE 0 END)                                        AS CLAIM_AMOUNT,
        COUNT(CASE WHEN d.STSKLAIM = '1' THEN 1 END)                AS ACCEPTED_COUNT,
        COUNT(CASE WHEN d.STSKLAIM = '3' THEN 1 END)                AS REJECTED_COUNT,
        COUNT(CASE WHEN d.STSKLAIM NOT IN ('1','2','3') THEN 1 END) AS OUTSTANDING_COUNT,
@@ -547,9 +684,10 @@ SELECT COUNT(*)
 SELECT TRIM(b.ID_BENGKEL) AS ROW_KEY,
        b.ID_BENGKEL       AS COL1,
        b.NAMA_BENGKEL     AS COL2,
-       b.NAMA_CABANG      AS COL3,
-       b.NAMA_KABUPATEN   AS COL4,
-       b.ALM_BENGKEL      AS COL5
+       b.ALM_BENGKEL      AS COL3,
+       b.TELP_BENGKEL     AS COL4,
+       b.NOHP_BENGKEL     AS COL5,
+       b.LOGIN_APLIKASI   AS COL6
   FROM POOLDATA.BENGKEL_HE b
  WHERE TRIM(b.APPROVAL) = '0'
  ORDER BY b.ID_BENGKEL
@@ -571,9 +709,18 @@ SELECT COUNT(*)
 -- name: queue_panel
 -- Nama panel ada di kolom `NAME`, bukan `NAMA_PANEL` — nama yang terakhir itu justru milik
 -- `SPAREPART_HE_VIN_KEY`. Keduanya terverifikasi dari kueri modul Master yang berjalan.
-SELECT TRIM(p.ID_PANEL) AS ROW_KEY,
-       p.ID_PANEL       AS COL1,
-       p.NAME           AS COL2
+SELECT TRIM(p.ID_PANEL)   AS ROW_KEY,
+       p.ID_PANEL         AS COL1,
+       p.NAME             AS COL2,
+       p.STS_REPAIR       AS COL3,
+       p.STS_EDIT_QTY     AS COL4,
+       p.STS_PREMIUM_REPAIR AS COL5,
+       p.STS_PECAH        AS COL6,
+       p.STS_STICKER      AS COL7,
+       p.STS_SISI         AS COL8,
+       p.STS_RUSAK_PARAH  AS COL9,
+       p.STS_AKTIF        AS COL10,
+       p.EXCLUSION_C      AS COL11
   FROM POOLDATA.PANEL_HE p
  WHERE TRIM(p.APPROVAL) = '0'
  ORDER BY p.ID_PANEL
@@ -613,8 +760,8 @@ SELECT n.NOKLAIM || '|' || n.MODEL || '|' ||
        n.NO_RANGKA_USER || '|' || n.NO_RANGKA_BENGKEL AS ROW_KEY,
        n.NOKLAIM                                      AS COL1,
        n.PENGIRIM                                     AS COL2,
-       n.MERK                                         AS COL3,
-       n.MODEL                                        AS COL4,
+       n.MODEL                                        AS COL3,
+       n.MERK                                         AS COL4,
        n.TIPE                                         AS COL5,
        n.NO_RANGKA_USER                               AS COL6,
        n.NO_RANGKA_BENGKEL                            AS COL7
@@ -652,11 +799,11 @@ SELECT COUNT(*)
  WHERE TRIM(APPROVAL) = '0'
 
 -- name: queue_sparepart
-SELECT TRIM(s.ID)      AS ROW_KEY,
-       s.ID            AS COL1,
-       s.NAMA_SPART    AS COL2,
-       s.KATEGORI_SPART AS COL3,
-       s.NO_SPART      AS COL4
+SELECT TRIM(s.ID)     AS ROW_KEY,
+       s.ID           AS COL1,
+       s.NAMA_SPART   AS COL2,
+       s.HARGA_JUAL   AS COL3,
+       s.USER_UPDATE  AS COL4
   FROM POOLDATA.SPAREPART_HE s
  WHERE TRIM(s.APPROVAL) = '0'
  ORDER BY s.ID
@@ -731,11 +878,13 @@ SELECT COUNT(*)
 -- Nomor rangka ada di tabel GROUP (alias `b`), sedangkan nama dan nomor sparepart ada di
 -- tabel KEY (alias `a`). Pembagian itu terverifikasi dari kueri modul Master Grouping
 -- Sparepart yang berjalan, dan mudah tertukar karena keduanya bernama mirip.
-SELECT TRIM(a.ID)  AS ROW_KEY,
-       a.ID        AS COL1,
-       b.NO_RANGKA AS COL2,
-       a.NAMA_PART AS COL3,
-       a.NO_PART   AS COL4
+SELECT TRIM(a.ID)   AS ROW_KEY,
+       a.ID         AS COL1,
+       a.NO_PART    AS COL2,
+       a.NAMA_PART  AS COL3,
+       a.NAMA_PANEL AS COL4,
+       a.SISI_PANEL AS COL5,
+       b.NO_RANGKA  AS COL6
   FROM POOLDATA.SPAREPART_HE_VIN_KEY a
   JOIN POOLDATA.SPAREPART_HE_VIN_GROUP b
     ON a.ID = b.ID
@@ -777,12 +926,12 @@ SELECT COUNT(*)
 -- Go (`08-TECHNICAL-STRATEGY.md` §4.3), dan mengembalikannya sebagai teks membuat
 -- pengurutannya menjadi pengurutan teks.
 SELECT TRIM(a.NOAKSEPTASI) AS ROW_KEY,
+       a.TGLINPUT                     AS COL1,
        (SELECT x.CLAIMNO
           FROM POOLDATA.T_CLAIM_PNC x
-         WHERE x.CLAIMID = a.CLAIMID) AS COL1,
-       a.NOAKSEPTASI                  AS COL2,
-       a.PIC                          AS COL3,
-       a.TGLINPUT                     AS COL4
+         WHERE x.CLAIMID = a.CLAIMID) AS COL2,
+       a.NOAKSEPTASI                  AS COL3,
+       a.PIC                          AS COL4
   FROM POOLDATA.T_CLAIM_AKSEPTASI_CHECKER a
  WHERE TRIM(a.STSAPP) = '0'
  ORDER BY a.TGLINPUT DESC, a.NOAKSEPTASI
@@ -830,14 +979,25 @@ SELECT COUNT(*)
 -- Kolom terjemahan status kueri lama (`case when A.STATUS='1' then 'APPROVED' …`) TIDAK
 -- dibawa: daftar ini hanya memuat baris berstatus menunggu, sehingga kolom itu akan berbunyi
 -- "MENUNGGU" pada setiap baris.
-SELECT TRIM(a.ID_ST) AS ROW_KEY,
-       a.ID_ST       AS COL1,
-       a.NOTE_ST     AS COL2,
-       a.NOTE_ND     AS COL3,
-       a.USER_INPUT  AS COL4
+--
+-- # Kunci barisnya ID_ND, dan itu BUKAN pilihan gaya
+--
+-- `ID_ST` adalah induk kategorinya, diambil dari `MST_PENOLAKAN_KLAIM_1`, dan ia BERULANG:
+-- diperiksa langsung pada 2026-10-07, 14 baris hanya punya 10 `ID_ST` berbeda, dengan satu
+-- `ID_ST` memayungi tiga baris. `ID_ND` dibuat `max+1` atas seluruh tabel oleh
+-- `Database/MASTERPENOLAKANKLAIM2.prc` dan unik 14 dari 14.
+--
+-- Pega pun memakainya: `RDB List/UpdateStatusPenolakanKlaim2-SQL.xml` mencari satu baris
+-- dengan `WHERE A.ID_ND = …`. Versi berkas ini yang memakai `ID_ST` membuat satu klik
+-- Setujui memutuskan sampai tiga baris sekaligus, dan dua baris berkunci sama tampil sebagai
+-- satu di layar.
+SELECT TRIM(a.ID_ND) AS ROW_KEY,
+       a.NOTE_ST     AS COL1,
+       a.NOTE_ND     AS COL2,
+       a.USER_INPUT  AS COL3
   FROM POOLDATA.MST_PENOLAKAN_KLAIM_2 a
  WHERE TRIM(a.STATUS) = '0'
- ORDER BY a.ID_ST ASC
+ ORDER BY a.ID_ST ASC, a.ID_ND ASC
 
 -- name: decide_penolakan_klaim
 -- Bind: :1 status baru · :2 petugas yang memutuskan · :3 catatan · :4 kunci baris
@@ -850,5 +1010,5 @@ UPDATE POOLDATA.MST_PENOLAKAN_KLAIM_2
        APPROVEBY = :2,
        TANGGAL_APPROVE = CURRENT_TIMESTAMP,
        NOTEAPPROVED = :3
- WHERE TRIM(ID_ST) = :4
+ WHERE TRIM(ID_ND) = :4
    AND TRIM(STATUS) = '0'

@@ -163,6 +163,13 @@ type OptionsResponse struct {
 	Category []CategoryDTO `json:"kategori"`
 	Type     []TypeDTO     `json:"tipe"`
 	Portal   string        `json:"portal"`
+
+	// UploadAvailable menyatakan jalur unggah dokumen siap dipakai.
+	//
+	// Layar menanyakannya SEBELUM menggambar isian berkas. Tanpa ini isiannya akan selalu
+	// tampak hidup dan baru gagal setelah pengguna memilih berkas — kegagalan paling
+	// menjengkelkan, karena ia terjadi sesudah pekerjaan, bukan sebelumnya.
+	UploadAvailable bool `json:"unggah_tersedia"`
 }
 
 // SaveRequest adalah badan permintaan penambahan DAN penyimpanan.
@@ -373,6 +380,7 @@ func toOptionsDTO(
 	source []mastersparepart.Category,
 	kind []mastersparepart.PartType,
 	portalAlias string,
+	uploadAvailable bool,
 ) OptionsResponse {
 	category := make([]CategoryDTO, 0, len(source))
 	for _, one := range source {
@@ -388,5 +396,35 @@ func toOptionsDTO(
 		})
 	}
 
-	return OptionsResponse{Category: category, Type: partType, Portal: portalAlias}
+	return OptionsResponse{
+		Category:        category,
+		Type:            partType,
+		Portal:          portalAlias,
+		UploadAvailable: uploadAvailable,
+	}
+}
+
+// DocumentDTO adalah bentuk kawat satu dokumen sparepart.
+//
+// Nama medannya berbahasa Indonesia karena ia KONTRAK, bukan nama internal (`D-80`), dan
+// disamakan dengan DocumentDTO Master Panel supaya satu komponen layar dapat melayani
+// keduanya tanpa dua bentuk data yang nyaris sama.
+//
+// URL berkasnya sengaja TIDAK ada di sini. Ia dimiliki modul dokumen penunjang beserta masa
+// berlakunya, dan menyalinnya ke sini akan membuat layar menampilkan tautan yang sudah
+// kedaluwarsa tanpa ada yang tahu.
+type DocumentDTO struct {
+	DataID      string `json:"data_id"`
+	ImageID     string `json:"image_id"`
+	Name        string `json:"nama_berkas"`
+	MimeType    string `json:"tipe_media"`
+	Note        string `json:"catatan"`
+	UploadedBy  string `json:"diunggah_oleh"`
+	UploadedAt  string `json:"diunggah_pada"`
+	SparepartID string `json:"id_sparepart"`
+}
+
+// DocumentResponse membungkus satu dokumen.
+type DocumentResponse struct {
+	Data DocumentDTO `json:"data"`
 }

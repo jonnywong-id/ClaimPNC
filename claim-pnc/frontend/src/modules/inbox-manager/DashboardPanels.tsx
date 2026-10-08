@@ -8,19 +8,30 @@ type Props = {
 
   /** Waktu cuplikan sumbernya terakhir disegarkan; kosong berarti tidak berlaku. */
   refreshedAt?: string | undefined
+
 }
 
 /**
  * Grid-grid sebuah tab dashboard.
  *
- * # Dua panel, dan angka dua itu dibaca dari section
+ * # Berapa grid, dan kenapa ia TIDAK dapat dihitung dari page list saja
  *
- * `Section/PNCDashboardOS` mengikat TEPAT DUA page list, meski activity pemasoknya
- * `PNCGetDashboardOSInbox_Act` menjalankan LIMA kueri. Tiga sisanya mengisi penyaring dan
- * daftar pilihan, bukan grid. `DisplayInboxProduktivitas_Sect` dan `DashboardKlaim_sec` pun
- * mengikat dua.
+ * `DisplayInboxProduktivitas_Sect` dan `DashboardKlaim_sec` masing-masing mengikat dua page
+ * list, dan keduanya memang dua grid.
  *
- * Membaca activity saja akan menggambar tiga tabel yang tidak pernah ada di layar lama.
+ * `Section/PNCDashboardOS` juga mengikat dua — tetapi grid ketiganya ADA, dan tidak terlihat
+ * dengan cara itu: ia `Rule-HTML-Property` bernama `PNCSummaryDashboardOS`, dipasang sebagai
+ * `pyFormat` pada satu sel baca-saja. Catatan sebelumnya di sini menyatakan kueri pemasoknya
+ * "mengisi penyaring dan daftar pilihan, bukan grid"; itu SALAH, dan Work Owner
+ * menunjukkannya dari layar Pega yang berjalan.
+ *
+ * Karena itu jumlah grid datang dari SERVER, bukan dari angka yang ditulis di sini.
+ *
+ * # Judul panel boleh kosong
+ *
+ * Kedua grid pertama tab Outstanding tidak berjudul di Pega — yang membedakannya kepala
+ * kolomnya (`PIC` versus `COB`). Panel tanpa judul karena itu digambar tanpa judul, bukan
+ * diberi judul karangan.
  *
  * # Barisnya TIDAK dapat dipilih, dan itu disengaja
  *
@@ -32,19 +43,35 @@ export function DashboardPanels({ panels, isLoading, refreshedAt }: Props) {
     <div className="space-y-6">
       {refreshedAt ? <RefreshNote at={refreshedAt} /> : null}
 
-      {panels.map((panel) => (
-        <DataTable<Record<string, Cell>>
-          key={panel.kunci}
-          title={panel.judul}
-          label={panel.judul}
-          columns={panel.kolom.map(toColumn)}
-          rows={panel.baris}
-          rowKey={(row) => rowKeyOf(panel, row)}
-          isLoading={isLoading}
-          hideSearch
-          emptyMessage="Tidak ada angka untuk penyaring ini."
-        />
-      ))}
+      {/*
+        Panel digambar ATAS-BAWAH, bukan berdampingan — ketetapan Work Owner 2026-10-07.
+        Grid di layar ini berkolom banyak (sembilan dan sepuluh), dan separuh lebar layar
+        memaksa kolomnya berdempetan sampai judulnya terpotong.
+      */}
+      <div className="space-y-6">
+        {panels.map((panel) => (
+          <DataTable<Record<string, Cell>>
+            key={panel.kunci}
+            {...(panel.judul ? { title: panel.judul } : {})}
+            label={panel.judul || panel.kunci}
+            columns={panel.kolom.map(toColumn)}
+            rows={panel.baris}
+            rowKey={(row) => rowKeyOf(panel, row)}
+            isLoading={isLoading}
+            hideSearch
+            emptyMessage="Tidak ada angka untuk penyaring ini."
+            /*
+              Kepala kolom tetap digambar meski tidak ada satu baris pun — ketetapan Work
+              Owner 2026-10-07, dan Pega pun begitu: tabel COB pada layar lama tetap
+              menampilkan kesembilan kepala kolomnya di atas tulisan "Data Tidak Ada".
+
+              Tanpa ini, dashboard yang kosong tidak memberi tahu apa pun tentang angka apa
+              yang sebenarnya dihitung di sana.
+            */
+            showHeaderWhenEmpty
+          />
+        ))}
+      </div>
     </div>
   )
 }

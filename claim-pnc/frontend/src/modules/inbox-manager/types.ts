@@ -41,6 +41,26 @@ export type DecisionRule = {
 
   alasan_wajib_saat_menolak: boolean
   label_alasan?: string
+
+  /**
+   * Label tombol keputusan, apa adanya dari Pega.
+   *
+   * Kosong berarti antrean ini memang tidak punya tombol bernama di sana — Payment Klaim
+   * Akseptasi dan Penolakan Klaim memakai isian di dalam grid lalu satu tombol simpan.
+   * Layar memakai kata aplikasi sendiri pada keduanya.
+   */
+  label_setujui?: string
+  label_tolak?: string
+
+  /**
+   * Antrean ini dapat diputuskan banyak baris sekaligus.
+   *
+   * Hanya tiga antrean punya jalur itu di Pega — yang gridnya diberi `Select All` dan
+   * `Deselect All`. Pada enam sisanya keputusan diambil satu baris setiap kali, dan batas
+   * itu ditegakkan SERVER; di sini ia hanya menjaga layar tidak menawarkan jalur yang akan
+   * ditolak.
+   */
+  dapat_massal: boolean
 }
 
 /** Satu tab beserta bentuk isinya. */
@@ -49,6 +69,34 @@ export type Tab = {
   nama: string
   keterangan: string
   jenis: TabKind
+
+  /**
+   * Kode tab induk; kosong pada keempat tab tingkat atas.
+   *
+   * Layar TIDAK menyimpulkannya sendiri dari `jenis`. Jenjang tab dibaca dari export Pega —
+   * `CountDashbroardManager` menulis sembilan pencacah terakhir sebagai ANAK baris keempat —
+   * dan tempat pembacaan itu tercatat adalah server.
+   */
+  induk?: string
+
+  /**
+   * Tab ini muncul di BILAH TAB induknya.
+   *
+   * Tidak sama dengan `induk`. Pega menyimpan dua fakta berbeda: pohon pencacah menaruh
+   * sembilan antrean di bawah Approval Master, sedangkan `Section/InboxManager_Section2`
+   * hanya menyertakan DELAPAN — Penolakan Klaim terhitung di sana tetapi tidak dapat dibuka
+   * dari bilah tabnya.
+   */
+  dalam_bilah_induk?: boolean
+
+  /**
+   * Judul sub-tab di dalam tab ini.
+   *
+   * Hanya satu tab punya: di Pega, isi "Payment Klaim Akseptasi" bukan sebuah grid melainkan
+   * bilah sub-tab, dan sub-tab yang tampil hanya satu — "Approval Payment Akseptasi".
+   * Kosong berarti isi tab langsung gridnya.
+   */
+  judul_sub_tab?: string
 
   /** Terisi pada tab dashboard. */
   panel?: PanelShape[]
@@ -62,6 +110,33 @@ export type Tab = {
   lini_bisnis?: string
 
   punya_penyaring_periode: boolean
+
+  /**
+   * Label tombol yang MENERAPKAN penyaring periode.
+   *
+   * Berbeda tiap tab di Pega — "Cari" pada Produktivitas Klaim, "Lihat Data" pada Klaim.
+   * Kosong berarti tab ini tidak punya penyaring periode.
+   */
+  label_terapkan_periode?: string
+
+  /**
+   * Tab ini punya blok "Export Data Detail Klaim" — ekspor berentang tanggal yang berdiri
+   * sendiri, terpisah dari ekspor antrean di kepala layar.
+   */
+  punya_ekspor_detail?: boolean
+}
+
+/** Satu pilihan penyaring dashboard. Nilai kosong berarti "seluruhnya". */
+export type FilterOption = {
+  nilai: string
+  label: string
+}
+
+/** Satu penyaring dashboard beserta pilihannya. */
+export type Filter = {
+  kunci: string
+  label: string
+  pilihan: FilterOption[]
 }
 
 /** Jawaban keterangan layar. */
@@ -163,6 +238,12 @@ export type ListResponse = {
    */
   disegarkan_pada?: string
 
+  /**
+   * Penyaring di bawah kedua grid pertama. Ia datang bersama DATA karena salah satu
+   * pilihannya dibaca dari master yang dapat berubah tanpa deploy.
+   */
+  penyaring?: Filter[]
+
   /** Terisi pada tab antrean. */
   baris?: QueueRow[]
   paginasi?: Pagination
@@ -203,6 +284,22 @@ export type PeriodMode = 'bulan' | 'rentang'
 export type PeriodInput = {
   bentuk: PeriodMode
   bulan: string
+  dari: string
+  sampai: string
+}
+
+/**
+ * Nilai kedua penyaring dashboard Outstanding.
+ *
+ * Kosong berarti "All" — sama seperti pilihan bawaan di layar lama.
+ */
+export type DashboardFilterInput = {
+  reinsurer: string
+  kategori_os: string
+}
+
+/** Rentang tanggal blok "Export Data Detail Klaim". */
+export type DetailExportInput = {
   dari: string
   sampai: string
 }

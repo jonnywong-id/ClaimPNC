@@ -34,6 +34,17 @@ func NewSampleStore() *Store {
 		countRow(inboxmanager.FieldGrupBisnis, "MARINE CARGO", 8),
 	})
 
+	// Grid ketiga — tabel silang Kategori/DOL x Reinsurer x tahun. Kolom tahunnya diisi
+	// Store.Dashboard dari kunci sel baris pertama, supaya penyimpanan memori menggambar
+	// bentuk yang sama dengan SQL tanpa perlu daftar tahun tersendiri.
+	store.SetPanel(inboxmanager.TabOutstanding, "kategori_os", []inboxmanager.DashboardRow{
+		summaryRow("ACCEPTATION", "LEADER", map[string]int{"2024": 2, "2025": 6, "2026": 11}),
+		summaryRow("ACCEPTATION", "MEMBER", map[string]int{"2024": 1, "2025": 4, "2026": 7}),
+		summaryRow("CLAIM COMMITTEE", "LEADER", map[string]int{"2024": 0, "2025": 3, "2026": 5}),
+		summaryRow("CLAIM COMMITTEE", "FAC-IN", map[string]int{"2024": 0, "2025": 1, "2026": 2}),
+		summaryRow("REGISTRASI", "LEADER", map[string]int{"2024": 4, "2025": 9, "2026": 23}),
+	})
+
 	store.SetPanel(inboxmanager.TabProduktivitas, "grup_bisnis", []inboxmanager.DashboardRow{
 		comparisonRow("ANEKA", 21, 17, 9, 7, 3, 2, 9, 8),
 		comparisonRow("FIRE", 13, 15, 6, 8, 2, 1, 5, 6),
@@ -56,23 +67,34 @@ func NewSampleStore() *Store {
 		queueRow("BGK-001", map[string]string{
 			inboxmanager.FieldID:         "BGK-001",
 			inboxmanager.FieldNama:       "Bengkel Maju Jaya",
-			inboxmanager.FieldCabang:     "JAKARTA",
-			inboxmanager.FieldKota:       "JAKARTA SELATAN",
 			inboxmanager.FieldKeterangan: "Jl. Contoh No. 1",
+			inboxmanager.FieldTelepon:    "021-5550001",
+			inboxmanager.FieldNoHP:       "0811000001",
+			inboxmanager.FieldLoginApl:   "bengkelmaju",
 		}),
 		queueRow("BGK-002", map[string]string{
 			inboxmanager.FieldID:         "BGK-002",
 			inboxmanager.FieldNama:       "Bengkel Sentosa",
-			inboxmanager.FieldCabang:     "BANDUNG",
-			inboxmanager.FieldKota:       "BANDUNG",
 			inboxmanager.FieldKeterangan: "Jl. Contoh No. 2",
+			inboxmanager.FieldTelepon:    "022-5550002",
+			inboxmanager.FieldNoHP:       "0811000002",
+			inboxmanager.FieldLoginApl:   "bengkelsentosa",
 		}),
 	})
 
 	store.SetQueue(inboxmanager.TabMasterPanel, []inboxmanager.QueueRow{
 		queueRow("PNL-001", map[string]string{
-			inboxmanager.FieldID:   "PNL-001",
-			inboxmanager.FieldNama: "Pintu Depan Kanan",
+			inboxmanager.FieldID:         "PNL-001",
+			inboxmanager.FieldNama:       "Pintu Depan Kanan",
+			inboxmanager.FieldStsRepair:  "1",
+			inboxmanager.FieldStsEditQty: "0",
+			inboxmanager.FieldStsPremium: "0",
+			inboxmanager.FieldStsPecah:   "0",
+			inboxmanager.FieldStsSticker: "1",
+			inboxmanager.FieldStsSisi:    "1",
+			inboxmanager.FieldStsRusak:   "0",
+			inboxmanager.FieldStsAktif:   "1",
+			inboxmanager.FieldExclusionC: "0",
 		}),
 	})
 
@@ -105,10 +127,12 @@ func NewSampleStore() *Store {
 
 	store.SetQueue(inboxmanager.TabGroupingSparepart, []inboxmanager.QueueRow{
 		queueRow("GRP-01", map[string]string{
-			inboxmanager.FieldID:         "GRP-01",
-			inboxmanager.FieldRangkaUser: "MHF001",
-			inboxmanager.FieldNama:       "Pintu Depan Kanan",
-			inboxmanager.FieldKeterangan: "SP-1001",
+			inboxmanager.FieldID:          "GRP-01",
+			inboxmanager.FieldNoSparepart: "SP-1001",
+			inboxmanager.FieldNama:        "Pintu Depan Kanan",
+			inboxmanager.FieldNamaPanel:   "Pintu Depan",
+			inboxmanager.FieldSisiPanel:   "KANAN",
+			inboxmanager.FieldNoRangka:    "MHF001",
 		}),
 	})
 
@@ -123,7 +147,6 @@ func NewSampleStore() *Store {
 
 	store.SetQueue(inboxmanager.TabPenolakanKlaim, []inboxmanager.QueueRow{
 		queueRow("PEN-01", map[string]string{
-			inboxmanager.FieldID:             "PEN-01",
 			inboxmanager.FieldStatusPenolak1: "Tidak dijamin polis",
 			inboxmanager.FieldStatusPenolak2: "Pasal 4 ayat 2",
 			inboxmanager.FieldPetugas:        "BUDI",
@@ -145,6 +168,23 @@ func countRow(dimensionKey, dimension string, total int) inboxmanager.DashboardR
 			inboxmanager.FieldJumlahKlaim: {Count: total},
 		},
 	}
+}
+
+// summaryRow menyusun satu baris tabel silang grid ketiga tab Outstanding.
+//
+// Kunci selnya adalah TAHUN, sama seperti yang disusun repo SQL — bukan nama kolom tetap.
+func summaryRow(
+	category, reinsurer string,
+	perYear map[string]int,
+) inboxmanager.DashboardRow {
+	cells := map[string]inboxmanager.DashboardCell{
+		inboxmanager.FieldKategoriDOL: {Text: category},
+		inboxmanager.FieldReinsurer:   {Text: reinsurer},
+	}
+	for year, total := range perYear {
+		cells[year] = inboxmanager.DashboardCell{Count: total}
+	}
+	return inboxmanager.DashboardRow{Cells: cells}
 }
 
 // comparisonRow menyusun satu baris grid Produktivitas — delapan pencacah, empat keranjang
@@ -181,12 +221,17 @@ func claimRow(
 	cells := map[string]inboxmanager.DashboardCell{
 		inboxmanager.FieldNamaBisnisDK: {Text: dimension},
 		inboxmanager.FieldTotalKlaim:   {Count: total},
-		inboxmanager.FieldJumlahAksep:  {Count: accepted},
-		inboxmanager.FieldJumlahTolak:  {Count: rejected},
-		inboxmanager.FieldJumlahOS:     {Count: outstanding},
-		inboxmanager.FieldNilaiAksep:   {Amount: acceptedAmount},
-		inboxmanager.FieldNilaiTolak:   {Amount: rejectedAmount},
-		inboxmanager.FieldNilaiOS:      {Amount: outstandingAmount},
+
+		// Nilai klaim dicontohkan sebagai jumlah nilai akseptasi dan outstanding, yakni
+		// cabang kedua rumus Pega. Cabang pertamanya menyederhana menjadi dua kali
+		// outstanding — lihat catatan pada kuerinya.
+		inboxmanager.FieldNilaiKlaim:  {Amount: acceptedAmount},
+		inboxmanager.FieldJumlahAksep: {Count: accepted},
+		inboxmanager.FieldJumlahTolak: {Count: rejected},
+		inboxmanager.FieldJumlahOS:    {Count: outstanding},
+		inboxmanager.FieldNilaiAksep:  {Amount: acceptedAmount},
+		inboxmanager.FieldNilaiTolak:  {Amount: rejectedAmount},
+		inboxmanager.FieldNilaiOS:     {Amount: outstandingAmount},
 	}
 	if cause != "" {
 		cells[inboxmanager.FieldPenyebab] = inboxmanager.DashboardCell{Text: cause}

@@ -131,7 +131,13 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		}, true
 
 	default:
-		return 0, ErrorResponse{}, false
+		// Kedua jalur unggah dipetakan di berkasnya masing-masing, supaya pemetaannya
+		// berada di dekat handler-nya — bukan tersebar di berkas yang harus dibaca
+		// bersamaan. Yang CSV diperiksa lebih dulu karena galatnya lebih khusus.
+		if status, body, known := mapCSVError(err); known {
+			return status, body, true
+		}
+		return mapUploadError(err)
 	}
 }
 

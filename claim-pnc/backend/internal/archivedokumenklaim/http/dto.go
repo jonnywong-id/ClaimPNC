@@ -110,6 +110,9 @@ type PaginationDTO struct {
 
 // OpenResponse adalah jawaban saat layar dibuka.
 type OpenResponse struct {
+	// SearchColumns adalah isi dropdown "Tipe Pencarian Archive".
+	SearchColumns []OptionDTO `json:"tipe_pencarian"`
+
 	ClaimSearchTypes []OptionDTO       `json:"tipe_input"`
 	DocumentTypes    []OptionDTO       `json:"tipe_dokumen"`
 	DocumentKinds    []DocumentKindDTO `json:"jenis_dokumen"`
@@ -340,7 +343,16 @@ func toOpenResponse(opened usecase.Opened, portalAlias string) OpenResponse {
 		})
 	}
 
+	searchColumns := make([]OptionDTO, 0, len(opened.SearchColumns))
+	for _, option := range opened.SearchColumns {
+		searchColumns = append(searchColumns, OptionDTO{
+			Code:  string(option.Code),
+			Label: option.Label,
+		})
+	}
+
 	return OpenResponse{
+		SearchColumns:    searchColumns,
 		ClaimSearchTypes: searchTypes,
 		DocumentTypes:    documentTypes,
 		DocumentKinds:    documentKinds,

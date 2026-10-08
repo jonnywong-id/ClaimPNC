@@ -7,7 +7,18 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
-import { useCreatePanel, useDecidePanel, usePanelList, useSavePanel } from './api'
+import {
+  useCreatePanel,
+  useImportLocationCSV,
+  useImportPanelCSV,
+  usePanelDocument,
+  usePanelList,
+  usePanelOptions,
+  useSavePanel,
+  useUploadPanelDocument,
+} from './api'
+import { DocumentField } from './DocumentField'
+import { ImportCSVPanel } from './ImportCSVPanel'
 import { PanelForm, type PanelFormValues } from './PanelForm'
 import { compareCodeUnits } from '@/lib/sort'
 
@@ -75,7 +86,7 @@ const TABS = [
     status: PanelStatus.menunggu,
     pageSize: 50,
     description:
-      'Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.',
+      'Pengajuan dan perubahan yang belum diputuskan. Keputusannya diambil di layar Inbox Manager.',
   },
 ] as const
 
@@ -156,17 +167,25 @@ function loadMessage(error: unknown): MessageContent {
  * Itu bukan efek samping melainkan langkah tersendiri di sistem lama:
  * `Activity/CNMUpdatePanelHE_act` menetapkan `APPROVAL := "0"` tanpa syarat apa pun.
  *
- * # Kenapa Approve dan Reject ada DI SINI, bukan di Inbox Manager
+ * # Layar ini TIDAK punya persetujuan, dan itu mengikuti Pega
  *
- * Di Pega keduanya ada di layar lain: `Section/ApprovalMasterPanelHE` dipakai Inbox
- * Manager, dan keputusannya dijalankan `Activity/SetApprovalAllMaster` yang melayani
- * bengkel, panel, dan sparepart sekaligus.
+ * Ketiga tab Master Panel di Pega hanya punya tombol **Simpan**, **Ubah**, dan **Upload
+ * Document** (`pyButtonLabel` pada ketiga section), serta **nol `pySelected`** — tidak ada
+ * centang, tidak ada pilihan borongan.
  *
- * Inbox Manager belum dibangun. Menunda keputusannya sampai layar itu ada berarti setiap
- * panel yang ditambah tertahan di Waiting Approval tanpa satu pun cara menyelesaikannya —
- * dan alur ini tidak dapat dicoba sama sekali. Yang dipakai sebagai gantinya adalah BENTUK
- * yang sama persis: centang beberapa baris, satu catatan, lalu satu tombol untuk seluruh
- * pilihan. Memindahkannya ke Inbox Manager kelak hanya soal letak, bukan soal perilaku.
+ * Approve, Reject, Select All, dan Deselect All ada di `Section/ApprovalMasterPanelHE`,
+ * yang dimuat `Harness/UserInbox_Harness`, `Section/InboxManager_Sec`, dan
+ * `InboxManager_Section2` — **layar Inbox Manager, bukan layar ini**. Keputusannya
+ * dijalankan `Activity/SetApprovalAllMaster` yang melayani bengkel, panel, dan sparepart
+ * sekaligus lewat `Param.TIPE2`.
+ *
+ * Keduanya sempat digambar di sini dengan alasan "Inbox Manager belum dibangun, bentuknya
+ * sama". Work Owner mencabutnya (2026-10-03): bila Pega tidak punya, layar ini pun tidak.
+ * Tab Waiting Approval tetap ada — ia memang salah satu dari tiga tab Pega — tetapi ia
+ * daftar baca saja.
+ *
+ * Endpoint `POST /api/master/panel/keputusan` tetap ada di backend untuk Inbox Manager;
+ * layar ini tidak pernah memanggilnya.
  */
 export function PanelPage() {
   const portal = useSelectedPortal((state) => state.alias)
@@ -174,14 +193,36 @@ export function PanelPage() {
   const [tab, setTab] = useState<TabId>('approve')
   const [isAdding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Panel | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
+
+  // Berkas DITAHAN di sini, bukan dikirim saat dipilih. Pega menahannya juga —
+  // `SaveFilePenunjang` hanya menaruhnya di halaman sementara, dan `CNMUpdatePanelHE_act`
+  // yang menyimpannya saat panel disimpan. Lihat DocumentField.
+  const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState('')
+  // Panel unggah yang sedang terbuka. Satu saja pada satu waktu — ketiganya menempati
+  // tempat yang sama di bawah kepala halaman, dan membuka dua sekaligus hanya memanjangkan
+  // layar tanpa menambah apa pun.
+  const [panelUnggah, setPanelUnggah] = useState<'dokumen' | 'csv' | 'csv-lokasi' | null>(null)
+
+  function bukaPanel(nama: 'dokumen' | 'csv' | 'csv-lokasi') {
+    setPanelUnggah((sekarang) => (sekarang === nama ? null : nama))
+  }
+
+  const upload = useUploadPanelDocument()
+  const importCSV = useImportPanelCSV()
+  const importLocationCSV = useImportLocationCSV()
+  const options = usePanelOptions()
+
+  // Dokumen panel yang sedang disunting. Null pada mode Tambah: panel yang belum ada tidak
+  // mungkin punya dokumen, dan menembak endpoint-nya hanya untuk menerima 404 akan mengisi
+  // konsol dengan galat yang bukan galat.
+  const currentDocument = usePanelDocument(editing?.id_panel ?? null)
+
 
   const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = usePanelList(active.status)
   const create = useCreatePanel()
   const save = useSavePanel()
-  const decide = useDecidePanel()
 
   const isFormOpen = isAdding || editing !== null
   const rows = list.data?.panel ?? []
@@ -209,8 +250,11 @@ export function PanelPage() {
   function closeForm() {
     create.reset()
     save.reset()
+    upload.reset()
     setAdding(false)
     setEditing(null)
+    setFile(null)
+    setNote('')
   }
 
   function openAdd() {
@@ -227,36 +271,45 @@ export function PanelPage() {
     setEditing(row)
   }
 
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
+  /**
+   * Panel disimpan LEBIH DULU, dokumennya menyusul.
+   *
+   * Urutan itu mengikuti Pega, dan pada jalur Tambah ia satu-satunya yang mungkin: ID panel
+   * baru lahir setelah tersimpan, sementara dokumen menuntut ID untuk ditautkan.
+   *
+   * Form ditutup HANYA setelah keduanya selesai. Menutupnya lebih dulu akan membuang isian
+   * pengguna saat penyimpanan gagal — dan pada form yang memuat daftar lokasi yang baru
+   * disusun, itu kehilangan yang tidak dapat dimaafkan.
+   */
   function submit(values: PanelFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang memuat daftar
-    // lokasi yang baru disusun, itu kehilangan yang tidak dapat dimaafkan.
+    const attach = (id: string) => {
+      if (file === null) {
+        closeForm()
+        return
+      }
+      upload.mutate(
+        { id, file, note },
+        {
+          onSuccess: closeForm,
+          // Panelnya DIBUKA KEMBALI saat unggahan gagal.
+          //
+          // Pesan galatnya digambar di dalam panel dokumen, dan pengguna sudah menutupnya
+          // lewat Submit jauh sebelum Simpan ditekan. Tanpa membukanya kembali, kegagalan
+          // yang paling berbahaya — berkas terkirim tetapi catatannya gagal — tidak
+          // terlihat sama sekali.
+          onError: () => { setPanelUnggah('dokumen') },
+        },
+      )
+    }
+
     if (editing) {
-      save.mutate({ id: editing.id_panel, input: values }, { onSuccess: closeForm })
+      save.mutate(
+        { id: editing.id_panel, input: values },
+        { onSuccess: () => attach(editing.id_panel) },
+      )
       return
     }
-    create.mutate(values, { onSuccess: closeForm })
-  }
-
-  function runDecision(status: string) {
-    decide.mutate(
-      { id_panel: [...chosen], status, catatan: note },
-      {
-        onSuccess: () => {
-          setChosen(new Set())
-          setNote('')
-        },
-      },
-    )
+    create.mutate(values, { onSuccess: (created) => attach(created.panel.id_panel) })
   }
 
   /*
@@ -287,30 +340,18 @@ export function PanelPage() {
     render: (row) => <span className="text-sm text-slate-900">{read(row) || '—'}</span>,
   })
 
+  /*
+    TIDAK ADA kolom "Pilih" di sini, dan itu mengikuti Pega.
+
+    Ketiga tab layar Master Panel — BrowsePanelHEApprove, …Reject, dan …Approval —
+    seluruhnya punya NOL `pySelected`: tidak ada centang, tidak ada pilihan borongan.
+    Tombolnya pun hanya Simpan, Ubah, dan Upload Document.
+
+    Yang punya centang beserta Approve/Reject/Select All/Deselect All adalah
+    `Section/ApprovalMasterPanelHE`, dan ia dimuat `Harness/UserInbox_Harness` serta
+    `Section/InboxManager_Sec` — LAYAR LAIN, modul lain. Lihat catatan pada TABS.
+  */
   const columns: Column<Panel>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Panel) => (chosen.has(row.id_panel) ? 'dipilih' : ''),
-            render: (row: Panel) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_panel)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_panel)}
-                />
-                <span className="sr-only">Pilih {row.nama_panel}</span>
-              </label>
-            ),
-          } satisfies Column<Panel>,
-        ]
-      : []),
     {
       key: 'id',
       title: 'ID',
@@ -363,25 +404,110 @@ export function PanelPage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
+          {/*
+            Tombolnya TIDAK pernah dimatikan, dan itu mengikuti Pega: sel tombolnya di
+            `Section/BrowsePanelHEApprove-Section.xml` berbunyi `pyDisabledNew = false`,
+            tanpa satu pun `pyVisible`/`pyCondition`.
+
+            Ia membuka panel inline, bukan modal, karena aplikasi ini memang tidak punya
+            modal: form tambah dan ubah pun digambar sebagai panel inline. Menambahkan satu
+            mekanisme dialog hanya untuk satu tombol akan menjadikannya satu-satunya di
+            seluruh aplikasi.
+          */}
+          <Button tone="kedua" onClick={() => { bukaPanel('dokumen') }}>
+            Upload Document
+          </Button>
+          <Button tone="kedua" onClick={() => { bukaPanel('csv') }}>
+            Upload Data Master Panel
+          </Button>
+          <Button tone="kedua" onClick={() => { bukaPanel('csv-lokasi') }}>
+            Upload Data Lokasi Panel
+          </Button>
           <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>
       </header>
 
+      {panelUnggah === 'dokumen' && (
+        <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Upload Document</h2>
+          <p className="mb-3 mt-0.5 text-xs text-slate-600">
+            Dokumen pendukung untuk <span className="font-medium">satu</span> panel. Berkasnya
+            disimpan di layanan penyimpanan internal (GCS); yang tersimpan di basis data
+            hanya catatannya.
+          </p>
+          <DocumentField
+            current={currentDocument.data?.data ?? null}
+            available={options.data?.unggah_tersedia ?? false}
+            file={file}
+            note={note}
+            onPick={setFile}
+            onNote={setNote}
+            isSaving={create.isPending || save.isPending || upload.isPending}
+            error={upload.error}
+            onClose={() => { setPanelUnggah(null) }}
+          />
+        </section>
+      )}
+
+      {panelUnggah === 'csv' && (
+        <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Upload Data Master Panel</h2>
+          <p className="mb-3 mt-0.5 text-xs text-slate-600">
+            Berkas CSV berisi <span className="font-medium">banyak</span> panel sekaligus.
+            Barisnya dicocokkan menurut <span className="font-medium">nama panel</span>, dan
+            seluruhnya masuk antrean persetujuan.
+          </p>
+          <ImportCSVPanel
+            isSending={importCSV.isPending}
+            report={importCSV.data?.data ?? null}
+            error={importCSV.error}
+            onSend={(berkas) => { importCSV.mutate(berkas) }}
+            onClose={() => { setPanelUnggah(null) }}
+            rowLabel="Nama Panel"
+          />
+        </section>
+      )}
+
+      {panelUnggah === 'csv-lokasi' && (
+        <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Upload Data Lokasi Panel</h2>
+          <p className="mb-3 mt-0.5 text-xs text-slate-600">
+            Berkas CSV berisi daftar lokasi. Barisnya{' '}
+            <span className="font-medium">ditambahkan</span> ke panel yang disebut — lokasi
+            lain panel itu tidak dihapus, dan yang sudah ada tidak digandakan.
+          </p>
+          <ImportCSVPanel
+            isSending={importLocationCSV.isPending}
+            report={importLocationCSV.data?.data ?? null}
+            error={importLocationCSV.error}
+            onSend={(berkas) => { importLocationCSV.mutate(berkas) }}
+            onClose={() => { setPanelUnggah(null) }}
+            rowLabel="Panel"
+          />
+        </section>
+      )}
+
       {/*
-        Ketiga tombol unggah layar Pega — "Upload Document", "Upload Data Master Panel",
-        dan "Upload Data Lokasi Panel" (`pyButtonLabel` pada Section/BrowsePanelHE) —
-        SENGAJA TIDAK DIGAMBAR di sini.
+        Ketiga tombol unggah layar Pega kini lengkap, dan aturannya diturunkan dari activity
+        yang ADA di export — bukan dari Flow Action pemanggilnya.
 
-        Ketiganya memanggil local action `UploadDocument`, `PNCUploadMasterPanelCSV`, dan
-        `PNCUploadLokasiPanelCSV`; tidak satu pun ada di export (`R-16`), sehingga susunan
-        kolom CSV-nya, validasinya, dan — yang paling menentukan — apakah baris hasil
-        unggah masuk antrean persetujuan, seluruhnya tidak diketahui.
+        Kedua Flow Action CSV (`PNCUploadMasterPanelCSV`, `PNCUploadLokasiPanelCSV`) memang
+        hilang, tetapi isinya hanya pemilih berkas. Yang menentukan perilaku ada di
+        `Activity/PNCUploadMasterPanel_Act` dan `Activity/PNCUploadLokasiSisiPanel_Act`,
+        keduanya terbaca utuh:
 
-        Sempat digambar dalam keadaan mati supaya ketiadaannya terbaca dari layar. Work
-        Owner memilih menghapusnya sama sekali (2026-09-20); lihat
-        docs/keputusan-implementasi.md §25.
+          header CSV = nama kolom tabel (pxUploadCSVResults memetakannya langsung)
+          nilainya KATA, bukan sandi  —  "TIDAK"→0, "GANTI"→1, "JASA"→2, lainnya→3
+          NAME dihurufbesarkan, STS_AKTIF dipaksa "1" dan tidak dibaca dari berkas
+          APPROVAL := "0" tanpa syarat pada KEDUA jalur
+          lokasi memakai LOKASI(<APPEND>) — menambah, bukan mengganti
+
+        Satu jebakan yang nyaris menyesatkan: berkas activity master memuat DUA versi rule
+        (01-01-91 dan 01-01-89) beserta dua ekspresi yang bertentangan. Yang dijalankan
+        adalah `PropertiesValue` di bawah `Embed-MethodParams`; `pyExpression` di bawah
+        `PegaGadget-ExpressionBuilder` hanyalah draf editor yang tertinggal.
       */}
       <nav
         aria-label="Tab Master Panel"
@@ -394,12 +520,6 @@ export function PanelPage() {
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
               closeForm()
-              // Centang dan catatan dibuang saat berpindah tab: baris yang dipilih milik
-              // tab sebelumnya, dan menyimpannya berarti keputusan dapat mengenai baris
-              // yang tidak sedang dilihat siapa pun.
-              setChosen(new Set())
-              setNote('')
-              decide.reset()
               setTab(t.id)
             }}
             className={[
@@ -427,45 +547,13 @@ export function PanelPage() {
         </span>
       </p>
 
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} panel dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          note={note}
-          onNoteChange={setNote}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(PanelStatus.disetujui)}
-          onReject={() => runDecision(PanelStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
 
       {isFormOpen && (
         <section className="mt-5">
           <PanelForm
             editing={editing}
             knownValues={knownValues}
-            isSaving={create.isPending || save.isPending}
+            isSaving={create.isPending || save.isPending || upload.isPending}
             error={editing ? save.error : create.error}
             onSave={submit}
             onCancel={closeForm}
@@ -502,6 +590,18 @@ export function PanelPage() {
             searchLabel="Cari panel"
             emptyMessage={`Belum ada panel pada tab ${active.label}.`}
             pageSize={active.pageSize}
+            /*
+              Kepala kolom tetap digambar meski tidak ada satu pun baris.
+
+              Bukan pilihan tampilan: `pyHideGridHeaderWhenNoRows` bernilai **false** pada
+              ketiga section tab (BrowsePanelHEApprove, …Reject, …Approval), dan Pega
+              menaruh `pyGridNoResultsMessage` di bawah kepala kolomnya — bukan
+              menggantinya dengan kotak kosong.
+
+              Paling terasa di tab Waiting Approval, yang sering kosong: tanpa kepala
+              kolom, tab itu tidak memberi tahu apa pun tentang bentuk datanya.
+            */
+            showHeaderWhenEmpty
           />
         )}
       </section>
@@ -517,96 +617,18 @@ export function PanelPage() {
   dikelola (lihat LocationEditor).
 */
 
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang,
- * beserta satu isian Catatan.
- *
- * Ia padanan `Section/ApprovalMasterPanelHE-Section.xml` yang menyediakan Select All,
- * Deselect All, Approve, dan Reject, ditambah isian `TempStsClaim.pyNote` yang sejajar
- * dengan kolom ALASAN_TOLAK.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  note,
-  onNoteChange,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: {
-  count: number
-  note: string
-  onNoteChange: (value: string) => void
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}) {
-  return (
-    <div className="mt-4 space-y-3 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="min-w-0 flex-1 text-sm text-slate-700">
-          {count === 0 ? (
-            'Centang panel yang akan diputuskan.'
-          ) : (
-            <>
-              <span className="font-medium">{count} panel</span> dipilih.
-            </>
-          )}
-        </span>
-        {count > 0 && (
-          <Button tone="halus" onClick={onClear} disabled={isBusy}>
-            Bersihkan
-          </Button>
-        )}
-        {/*
-          Namanya "Approve terpilih", bukan "Approve" saja.
+/*
+  TIDAK ADA bilah keputusan di layar ini, dan itu mengikuti Pega.
 
-          Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-          "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama
-          sama membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari
-          namanya. Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-        */}
-        <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-          {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-        </Button>
-        <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-          Reject terpilih
-        </Button>
-      </div>
+  Ketiga tab Master Panel hanya punya tombol Simpan, Ubah, dan Upload Document
+  (`pyButtonLabel` pada ketiga section), serta NOL `pySelected` — tidak ada centang dan
+  tidak ada Approve/Reject.
 
-      {/*
-        Catatan hanya tersimpan pada keputusan TOLAK; kolomnya memang bernama ALASAN_TOLAK.
-        Itu dinyatakan di layar, bukan dibiarkan menjadi kejutan saat petugas mengetiknya
-        lalu menekan Approve.
-      */}
-      <div>
-        <label htmlFor="catatan-keputusan" className="block text-sm font-medium text-slate-700">
-          Catatan
-        </label>
-        <input
-          id="catatan-keputusan"
-          type="text"
-          value={note}
-          maxLength={250}
-          disabled={isBusy || count === 0}
-          onChange={(event) => onNoteChange(event.target.value)}
-          className={
-            'mt-1 w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 text-slate-900 ' +
-            'shadow-lembut transition-[border-color,box-shadow] duration-150 ease-halus ' +
-            'focus:border-blue-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 ' +
-            'disabled:bg-slate-100 disabled:text-slate-500'
-          }
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          Tersimpan sebagai alasan penolakan. Pada keputusan Approve, catatan ini tidak ikut
-          tersimpan.
-        </p>
-      </div>
-    </div>
-  )
-}
+  Approve, Reject, Select All, dan Deselect All ada di `Section/ApprovalMasterPanelHE`,
+  yang dimuat `Harness/UserInbox_Harness`, `Section/InboxManager_Sec`, dan
+  `InboxManager_Section2` — layar Inbox Manager, bukan layar ini.
+
+  Sempat digambar di sini dengan alasan "Inbox Manager belum dibangun, bentuknya sama".
+  Work Owner mencabutnya (2026-10-03): bila Pega tidak punya, layar ini pun tidak.
+  Keputusannya di docs/keputusan-implementasi.md.
+*/

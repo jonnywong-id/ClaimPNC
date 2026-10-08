@@ -71,10 +71,14 @@ func TestComposeDocumentID(t *testing.T) {
 	require.Equal(t, "2612345678901", masterbengkel.ComposeDocumentID("26", 12345678901))
 }
 
-// Dokumen warisan tanpa isi dibedakan dari dokumen berisi.
-func TestHasContent(t *testing.T) {
-	require.False(t, masterbengkel.Document{ID: "1"}.HasContent())
-	require.True(t, masterbengkel.Document{Content: []byte("x")}.HasContent())
+// Dokumen warisan tanpa berkas dibedakan dari dokumen yang berkasnya ada.
+//
+// Pembedanya `IMAGEID`, dan itulah yang membuat keadaan warisan dapat dikenali: seluruh
+// baris terbitan Pega pada jalur Master Bengkel punya kolom itu kosong.
+func TestHasFile(t *testing.T) {
+	require.False(t, masterbengkel.Document{ID: "1"}.HasFile())
+	require.False(t, masterbengkel.Document{ID: "1", ImageID: "   "}.HasFile())
+	require.True(t, masterbengkel.Document{ImageID: "img-1"}.HasFile())
 }
 
 // Pesan log galat validasi menyebut setiap isian.

@@ -5,9 +5,8 @@
 // tanpa Oracle saat pengembangan, mengikuti pola modul auth, portal, dan master lainnya.
 //
 // Yang ditiru bukan hanya bentuk datanya, tetapi juga URUTAN barisnya, cara penyaring
-// bekerja, cakupan pemeriksaan nama ganda, bentuk kunci yang diterbitkan, dan **perilaku
-// LEFT JOIN** — kalau tidak, uji yang lulus di sini tidak membuktikan apa pun tentang
-// adapter SQL.
+// bekerja, cakupan pemeriksaan nama ganda, dan bentuk kunci yang diterbitkan — kalau tidak,
+// uji yang lulus di sini tidak membuktikan apa pun tentang adapter SQL.
 package memory
 
 import (
@@ -101,42 +100,16 @@ func (r *Repo) List(
 		if strings.TrimSpace(string(t.Status)) != string(filter.Status) {
 			continue
 		}
-		// Nama kategori diisi di sini, bukan disimpan pada barisnya — meniru LEFT JOIN pada
-		// adapter SQL. Kategori yang berganti nama karena itu langsung terlihat baru di
-		// seluruh barisnya, dan kategori yang tidak ada meninggalkan nama kosong alih-alih
-		// membuang barisnya.
-		joined := t
-		joined.CategoryName = r.categoryNameOf(t.CategoryID)
-
-		if keyword != "" &&
-			!strings.Contains(strings.ToUpper(joined.Name), keyword) &&
-			!strings.Contains(strings.ToUpper(joined.CategoryName), keyword) {
+		// HANYA nama tipe yang dicari, meniru type_list_search. Kueri grid tidak ber-JOIN
+		// sama sekali, sehingga tidak ada nama kategori yang dapat ikut dicocokkan.
+		if keyword != "" && !strings.Contains(strings.ToUpper(t.Name), keyword) {
 			continue
 		}
-		result = append(result, joined)
+		result = append(result, t)
 	}
 
 	sortByID(result)
 	return result, nil
-}
-
-// categoryNameOf mencari nama kategori menurut kuncinya; kosong bila tidak ada.
-//
-// Kosong BUKAN galat: ia padanan sisi kanan LEFT JOIN yang tidak menemukan pasangan. Lihat
-// banner pada berkas .sql.
-//
-// Pemanggil WAJIB sudah memegang mutex.
-func (r *Repo) categoryNameOf(id string) string {
-	wanted := strings.TrimSpace(id)
-	if wanted == "" {
-		return ""
-	}
-	for _, c := range r.category {
-		if strings.TrimSpace(c.ID) == wanted {
-			return c.Name
-		}
-	}
-	return ""
 }
 
 // sortByID mengurutkan seperti `ORDER BY PART_SECTION_ID` pada kolom bertipe ANGKA.
@@ -181,9 +154,7 @@ func (r *Repo) Get(
 		return mastertipesparepart.PartType{}, mastertipesparepart.ErrNotFound
 	}
 
-	found := r.rows[index]
-	found.CategoryName = r.categoryNameOf(found.CategoryID)
-	return found, nil
+	return r.rows[index], nil
 }
 
 // FindByName mencari baris menurut namanya.
@@ -192,8 +163,6 @@ func (r *Repo) Get(
 // adanya. Bila dua baris bernama sama — keadaan yang mungkin ada pada data lama karena
 // tidak ada constraint unik (R-08) — yang dikembalikan adalah yang ID-nya terkecil, sama
 // seperti kueri SQL yang memakai `ORDER BY PART_SECTION_ID FETCH FIRST 1 ROW ONLY`.
-//
-// Nama kategori TIDAK diisi, meniru `type_find_by_name` yang memang tidak ber-JOIN.
 func (r *Repo) FindByName(
 	_ context.Context,
 	name string,
@@ -209,9 +178,7 @@ func (r *Repo) FindByName(
 	var found []mastertipesparepart.PartType
 	for _, t := range r.rows {
 		if strings.ToUpper(strings.TrimSpace(t.Name)) == wanted {
-			one := t
-			one.CategoryName = ""
-			found = append(found, one)
+			found = append(found, t)
 		}
 	}
 	if len(found) == 0 {
@@ -256,8 +223,7 @@ func (r *Repo) ListCategories(
 // Keberadaan KATEGORI tidak diperiksa di sini, sama seperti adapter SQL: pemeriksaannya ada
 // di lapisan aplikasi.
 //
-// ID pada argumen DIABAIKAN, sama seperti pada adapter SQL. CategoryName juga tidak
-// disimpan — ia milik tabel kategori.
+// ID pada argumen DIABAIKAN, sama seperti pada adapter SQL.
 func (r *Repo) Insert(
 	_ context.Context,
 	t mastertipesparepart.PartType,

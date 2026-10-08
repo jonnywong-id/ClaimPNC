@@ -172,27 +172,24 @@ type PartType struct {
 	// menjaganya adalah pemeriksaan di lapisan aplikasi — lihat usecase.Service.Create.
 	CategoryID string
 
-	// CategoryName adalah kolom PART_CATEGORY_NAME milik tabel kategori, ikut dibaca lewat
-	// JOIN.
-	//
-	// Ia BUKAN kolom tabel ini dan TIDAK pernah ditulis. Ia ikut dibawa karena grid layar
-	// lama menampilkan keduanya berdampingan —
-	// `BrowseMasterSparepartTypeClaimHE_sql-SQL.xml` menggabungkan kedua tabel justru untuk
-	// itu:
-	//
-	//	from POOLDATA.gcnm_m_sparepart_type a, POOLDATA.GCNM_M_SPAREPART_CATEGORY b
-	//	where A.PART_CATEGORY_ID = B.PART_CATEGORY_ID
-	//
-	// Ia dapat KOSONG, dan itu bukan galat: JOIN lama berbentuk inner join, sehingga tipe
-	// yang menunjuk kategori yang sudah tidak ada akan HILANG dari daftar di sistem lama.
-	// Modul ini memakai LEFT JOIN supaya barisnya tetap terlihat dengan nama kategori
-	// kosong — lihat catatan pada berkas .sql. Itu satu-satunya selisih perilaku yang
-	// disengaja pada jalur baca.
-	CategoryName string
-
 	// Status adalah kolom APPROVAL.
 	Status ApprovalStatus
 }
+
+// # Kenapa TIDAK ada CategoryName di sini
+//
+// Karena grid Pega tidak menampilkannya. Koreksi Work Owner 2026-10-04 — "Di PEGA kolom
+// Kategori Sparepart tidak ada, ikuti PEGA saja" — dan pembacaan ulang ketiga section tab
+// membenarkannya: grid menggambar TIGA kolom, dan sel datanya `.CityID`, `.City`,
+// `.District`. Alias `.DistrictID` yang membawa `PART_CATEGORY_NAME` tidak dipakai satu pun
+// grid.
+//
+// Caption "Kategori Sparepart" yang sempat terbaca sebagai judul kolom ternyata **label
+// form** untuk dropdown-nya. Keduanya hidup di berkas section yang sama, dan membedakannya
+// menuntut penelusuran `<rowdata>` — bukan pencarian `pyCaption` yang datar.
+//
+// Akibatnya modul ini tidak pernah membaca tabel kategori untuk keperluan daftar, dan
+// kueri grid-nya tanpa JOIN sama sekali — sama seperti Pega.
 
 // Input adalah nilai yang dikirim pengguna dari layar, sebelum diperiksa.
 //
@@ -386,16 +383,16 @@ type Filter struct {
 	// Status wajib salah satu dari tiga yang dikenal.
 	Status ApprovalStatus
 
-	// Keyword mempersempit daftar pada nama tipe DAN nama kategorinya.
+	// Keyword mempersempit daftar pada NAMA TIPE.
 	//
 	// DITAMBAHKAN terhadap sistem lama, yang memuat seluruh baris ke klipboard lalu
 	// menyaringnya di peramban (`pyPageSize=50`, tanpa satu pun kotak pencarian di
 	// section-nya). Kosong berarti tanpa penyaring.
 	//
-	// Nama KATEGORI ikut dicari, dan itu berbeda dari Master Kategori Sparepart yang hanya
-	// mencari satu kolom. Alasannya: kategori adalah cara pengguna mengelompokkan tipe di
-	// kepalanya — "apa saja tipe di HYDRAULIC" adalah pertanyaan yang wajar, dan tanpa ini
-	// ia hanya dapat dijawab dengan memindai seluruh daftar.
+	// HANYA nama tipe. Versi pertama ikut mencari nama kategori lewat JOIN; itu dicabut
+	// bersama kolomnya (2026-10-04). Mencari kolom yang tidak ditampilkan membuat hasil
+	// pencarian tidak dapat dijelaskan dari layar — barisnya cocok pada sesuatu yang tidak
+	// terlihat.
 	Keyword string
 }
 
@@ -474,9 +471,6 @@ type Repo interface {
 	// Sistem lama memecahnya — `ValidateMasterTipeSparepart` dipanggil lebih dulu,
 	// penyisipannya menyusul — dan jarak di antara keduanya tidak dijaga apa pun.
 	//
-	// CategoryName pada argumen maupun pada nilai baliknya TIDAK ditulis: ia milik tabel
-	// kategori. Yang dikembalikan mengisinya dari hasil pembacaan ulang bila ada; lihat
-	// pengisi masing-masing.
 	Insert(ctx context.Context, t PartType) (PartType, error)
 
 	// Update menyimpan perubahan pada baris yang sudah ada; ErrNotFound bila barisnya

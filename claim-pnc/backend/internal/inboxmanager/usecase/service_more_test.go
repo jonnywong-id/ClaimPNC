@@ -207,7 +207,11 @@ func TestLargeQueueIsWarned(t *testing.T) {
 		inboxmanager.QueryInput{Tab: inboxmanager.TabMasterPanel}, manager)
 	require.NoError(t, err)
 	require.Equal(t, inboxmanager.LargeResultWarning+1, view.Queue.Total)
-	require.Len(t, view.Queue.Rows, inboxmanager.DefaultPageSize)
+	// Ukuran halaman tab ini 20, disalin dari `pyPageSize` grid Pega-nya — bukan nilai baku
+	// aplikasi.
+	panel, _ := inboxmanager.FindTab(inboxmanager.TabMasterPanel)
+	require.Equal(t, 20, panel.PageSize)
+	require.Len(t, view.Queue.Rows, panel.PageSize)
 	require.Contains(t, h.logs.String(), "antrean inbox manager sangat besar")
 	require.Contains(t, h.logs.String(), "baris=5001")
 }

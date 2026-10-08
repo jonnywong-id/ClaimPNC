@@ -20,6 +20,10 @@ type Service struct {
 
 	// clock memasok waktu unggah dokumen. Opsional — lihat Options.Clock.
 	clock masterbengkel.Clock
+
+	// uploader mengirim isi berkas ke layanan penyimpanan. Opsional — lihat
+	// Options.Uploader.
+	uploader masterbengkel.DocumentUploader
 }
 
 // Options adalah bahan pembentuk Service.
@@ -33,6 +37,14 @@ type Options struct {
 	// jalur lain modul ini tidak menyentuh waktu sama sekali — mewajibkannya berarti
 	// memaksa setiap perakitan menyediakan sesuatu yang hanya satu fitur butuhkan.
 	Clock masterbengkel.Clock
+
+	// Uploader mengirim isi berkas ke layanan penyimpanan internal (`D-16`).
+	//
+	// Opsional dengan sengaja. Alamat layanannya belum tentu terisi di setiap lingkungan,
+	// dan satu integrasi yang belum dikonfigurasi tidak boleh mematikan seluruh layar
+	// Master Bengkel — pola yang sama dipakai Master Sparepart dan Master Panel. Bila
+	// kosong, unggahan ditolak dengan sebab yang jelas sementara layar lainnya tetap hidup.
+	Uploader masterbengkel.DocumentUploader
 }
 
 // NewService membentuk layanan dan menolak bahan yang tidak lengkap.
@@ -43,7 +55,11 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("masterbengkel/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, clock: o.Clock}, nil
+	return &Service{
+		repoSelector: o.RepoSelector,
+		clock:        o.Clock,
+		uploader:     o.Uploader,
+	}, nil
 }
 
 // Actor adalah pengguna yang sedang melakukan sesuatu.

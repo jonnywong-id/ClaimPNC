@@ -66,7 +66,7 @@ Seluruhnya terverifikasi langsung dari export. Angka lama tidak salah untuk ling
 | Hostname penentu perilaku | 3 | **3** — angkanya benar, **daftarnya salah** | idem |
 | Domain kode Status Klaim | `1142`–`1151` (10 kode) | **`1134`–`1166` (33 kode)** | `R-06` tertutup |
 | Gap export | puluhan rule | **±242 rule**, termasuk **137 When rule** | `R-16` |
-| Ticket rule | "11 ticket" | **17 dirujuk · 8 ada · 9 tanpa rule** | koreksi `FR-W2` |
+| Ticket rule | "11 ticket" | ~~17 dirujuk · 8 ada · 9 tanpa rule~~ — angka ini **dihitung dari nama berkas** dan terbukti keliru (koreksi 2026-10-06, `06-MODULE-BREAKDOWN.md`) | koreksi `FR-W2` |
 | Objek database diminta | 86 procedure | **64 objek** diminta, **62 diterima** | `D-45` |
 | Perbaikan eksplisit `P-5` | 4 butir | **13 butir** | `D-49` |
 | Batas hasil laporan | — | `pyMaxRecords=500` pada **54 dari 56** laporan | `T-12` |
@@ -125,7 +125,7 @@ Seluruhnya terverifikasi langsung dari export. Angka lama tidak salah untuk ling
 | **12 dependensi** yang dipanggil 62 procedure (`UPDATE_LOG_KONVERSI` 162×) | `B-1` dan modul nilai uang | DBA |
 | **±242 rule hilang**, 137 di antaranya When rule | percabangan bisnis hampir semua modul | Tim Pega |
 | **Tujuan penyimpanan rahasia** (`D-40` masih `OPEN`) | `F-4`, `F-5`, seluruh deployment | Tim Infra / Security |
-| **8 Ticket rule custom hilang**; 14 dari 17 nama tanpa pemicu | `B-7`, `B-11`, `B-13`, `B-14` | Tim Pega |
+| ~~8 Ticket rule custom hilang~~ — **GUGUR 2026-10-06**: ticket alur adalah shape di dalam flow, bukan rule tersendiri | `B-7`, `B-11`, `B-13`, `B-14` | — tidak perlu diminta |
 
 ---
 

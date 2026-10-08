@@ -50,17 +50,39 @@
 --
 --
 -- ============================================================================
--- PART_CATEGORY_ID BERTIPE ANGKA, DAN ITU BUKAN TEBAKAN
+-- PART_CATEGORY_ID TERNYATA TEKS, DAN SISTEM LAMA SATU BARIS LAGI DARI RUSAK
 -- ============================================================================
 --
--- `RDB List/InsertMasterSparepartCategory_sql-SQL.xml` menerbitkannya dengan
--- `nvl(max(PART_CATEGORY_ID),0)+1`. Bila kolomnya VARCHAR2, `max(...)` akan mengembalikan
--- maksimum LEKSIKOGRAFIS — "9" lebih besar dari "10" — sehingga ID ke-11 akan bertabrakan
--- dengan yang sudah ada dan sistem lama akan rusak sejak baris kesepuluh. Ia tidak rusak,
--- jadi kolomnya angka.
+-- KOREKSI 2026-10-04. Berkas ini semula menyatakan kolomnya bertipe angka, disimpulkan dari
+-- `nvl(max(PART_CATEGORY_ID),0)+1` pada `InsertMasterSparepartCategory_sql`: bila ia teks,
+-- `max(...)` leksikografis akan menabrakkan ID begitu baris kesepuluh lahir — dan karena
+-- sistem lama tidak rusak, kolomnya dianggap angka.
 --
--- Itu sebabnya `category_list` MENGURUTKAN berdasarkan kolomnya langsung dan bukan
--- berdasarkan teksnya — berbeda dari Master Sparepart, yang ID-nya memang teks.
+-- Kesimpulan itu SALAH, dan katalog Oracle membuktikannya:
+--
+--   PART_CATEGORY_ID    VARCHAR2(10)  NOT NULL
+--   PART_CATEGORY_NAME  VARCHAR2(100)
+--   APPROVAL            VARCHAR2(2)
+--
+-- Yang keliru bukan penalarannya melainkan premisnya: sistem lama **belum** rusak karena
+-- barisnya baru sampai "9". Begitu "10" lahir, `max()` leksikografis mengembalikan "9" lagi
+-- — dan `nvl('9',0)+1` menerbitkan 10 untuk KEDUA kalinya.
+--
+-- Jadi Pega di basis data ini berjarak SATU penambahan dari menerbitkan kunci ganda, dan
+-- tidak ada constraint unik yang akan menahannya (R-08).
+--
+-- Dua akibat langsung pada berkas ini:
+--
+--   1. Penomoran TIDAK meniru `nvl(max(...),0)+1`. Ia memakai maksimum NUMERIK, dihitung
+--      di Go; lihat `category_all_ids`. Itu selisih yang disengaja terhadap sistem lama,
+--      dan ia mencegah kunci ganda alih-alih mewarisinya.
+--   2. Pengurutan TIDAK memakai `ORDER BY PART_CATEGORY_ID`. Atas kolom teks ia menaruh
+--      "10" sebelum "9". Yang dipakai `LPAD(...)`; lihat `category_list`.
+--
+-- `COALESCE(MAX(PART_CATEGORY_ID), 0)` yang semula dipakai di sini **gagal keras** atas
+-- kolom teks — `ORA-00932: inconsistent datatypes: expected CHAR got NUMBER` — karena
+-- COALESCE menuntut tipe yang seragam sementara NVL milik Pega diam-diam mengonversinya.
+-- Itulah sebab tombol Simpan tidak berfungsi sampai 2026-10-04.
 --
 --
 -- ============================================================================
@@ -93,7 +115,7 @@ SELECT PART_CATEGORY_ID,
        APPROVAL
   FROM POOLDATA.GCNM_M_SPAREPART_CATEGORY
  WHERE TRIM(APPROVAL) = :1
- ORDER BY PART_CATEGORY_ID
+ ORDER BY LPAD(TRIM(PART_CATEGORY_ID), 10, '0')
 
 -- name: category_list_search
 --
@@ -116,7 +138,7 @@ SELECT PART_CATEGORY_ID,
   FROM POOLDATA.GCNM_M_SPAREPART_CATEGORY
  WHERE TRIM(APPROVAL) = :1
    AND UPPER(PART_CATEGORY_NAME) LIKE :2
- ORDER BY PART_CATEGORY_ID
+ ORDER BY LPAD(TRIM(PART_CATEGORY_ID), 10, '0')
 
 -- name: category_get
 --
@@ -131,7 +153,7 @@ SELECT PART_CATEGORY_ID,
        PART_CATEGORY_NAME,
        APPROVAL
   FROM POOLDATA.GCNM_M_SPAREPART_CATEGORY
- WHERE TRIM(CAST(PART_CATEGORY_ID AS VARCHAR(64))) = :1
+ WHERE TRIM(PART_CATEGORY_ID) = :1
 
 -- name: category_find_by_name
 --
@@ -157,7 +179,7 @@ SELECT PART_CATEGORY_ID,
        APPROVAL
   FROM POOLDATA.GCNM_M_SPAREPART_CATEGORY
  WHERE UPPER(TRIM(PART_CATEGORY_NAME)) = :1
- ORDER BY PART_CATEGORY_ID
+ ORDER BY LPAD(TRIM(PART_CATEGORY_ID), 10, '0')
  FETCH FIRST 1 ROW ONLY
 
 -- name: category_lock_table
@@ -173,8 +195,12 @@ SELECT PART_CATEGORY_ID,
 --
 -- Sistem lama tidak menjaganya sama sekali — `nvl(max(PART_CATEGORY_ID),0)+1` berada di
 -- dalam satu INSERT tanpa penguncian apa pun. Work Owner memutuskan (2026-09-21) balapan
--- itu ditutup dengan penguncian, bukan dengan meminta sequence baru: bentuk ID-nya tetap
--- sama persis dengan Pega (P-5), dan modulnya tidak tertahan menunggu D-63.
+-- itu ditutup dengan penguncian, bukan dengan meminta sequence baru, supaya modulnya tidak
+-- tertahan menunggu D-63.
+--
+-- BENTUK kuncinya tetap sama dengan Pega — angka desimal berurut tanpa nol di depan —
+-- tetapi CARA menghitungnya tidak lagi meniru `max()` leksikografis milik Pega, karena yang
+-- ditiru itu menerbitkan kunci ganda pada baris kesepuluh. Lihat banner berkas ini.
 --
 -- # Harganya, dan kenapa ia terjangkau di SINI
 --
@@ -200,25 +226,39 @@ SELECT PART_CATEGORY_ID,
 -- persis di Oracle 19c dan PostgreSQL 17+, sehingga ia tidak melanggar D-20.
 LOCK TABLE POOLDATA.GCNM_M_SPAREPART_CATEGORY IN EXCLUSIVE MODE
 
--- name: category_next_id
+-- name: category_all_ids
 --
--- Menerbitkan ID berikutnya, meniru `InsertMasterSparepartCategory_sql` apa adanya kecuali
--- NVL yang diganti COALESCE (D-20).
+-- Seluruh kunci yang ada, untuk menerbitkan kunci berikutnya.
 --
 -- WAJIB dijalankan setelah category_lock_table, di dalam transaksi yang sama. Di luar itu
--- nilainya dapat basi sebelum dipakai.
+-- hasilnya dapat basi sebelum dipakai.
 --
--- Tanpa FROM DUAL: agregat atas tabelnya sendiri sudah menyediakan baris hasil, sehingga
--- bentuk khas Oracle itu tidak diperlukan sama sekali di modul ini — berbeda dari Master
--- Sparepart, yang NEXTVAL-nya menuntutnya.
-SELECT COALESCE(MAX(PART_CATEGORY_ID), 0) + 1
+-- # Kenapa seluruh kunci, bukan satu agregat
+--
+-- Tiga bentuk agregat dipertimbangkan dan ketiganya ditolak:
+--
+--   COALESCE(MAX(id), 0) + 1      GAGAL. ORA-00932 atas kolom teks; lihat banner berkas ini.
+--   NVL(MAX(id), 0) + 1           Oracle saja (D-20 melarang NVL), DAN maksimumnya
+--                                 leksikografis — "9" > "10" — sehingga ia menerbitkan
+--                                 kunci ganda begitu baris kesepuluh lahir.
+--   MAX(TO_NUMBER(id))            Oracle saja: `to_number` PostgreSQL menuntut format mask.
+--
+-- Yang tersisa dan portabel adalah membaca kuncinya lalu menghitung maksimumnya di Go.
+-- Harganya satu pembacaan tabel penuh, dan itu terjangkau: tabel ini master penggolongan
+-- yang isinya berorde puluhan sampai ratusan baris, dan pembacaannya terjadi HANYA pada
+-- penambahan — bukan pada setiap pembukaan layar.
+--
+-- Keuntungan kedua yang tidak dimiliki ketiga bentuk agregat di atas: kunci yang BUKAN
+-- angka dapat dilewati alih-alih menggagalkan seluruh penambahan. Perilakunya karena itu
+-- sama persis dengan adapter memori, yang melewatinya dengan cara yang sama.
+SELECT PART_CATEGORY_ID
   FROM POOLDATA.GCNM_M_SPAREPART_CATEGORY
 
 -- name: category_insert
 --
 -- Ketiga kolomnya pada urutan yang sama dengan Pega.
 --
--- ID diterbitkan lebih dulu oleh category_next_id dan dikirim sebagai parameter, bukan
+-- ID diterbitkan lebih dulu dari category_all_ids dan dikirim sebagai parameter, bukan
 -- ditanam sebagai sub-kueri seperti pada rule lama. Alasannya bukan selera: baris yang
 -- tersimpan harus dikembalikan ke layar beserta ID-nya, dan sub-kueri di dalam VALUES tidak
 -- memberi tahu pemanggil nilai apa yang terpakai.
@@ -245,7 +285,7 @@ VALUES (:1, :2, :3)
 UPDATE POOLDATA.GCNM_M_SPAREPART_CATEGORY
    SET PART_CATEGORY_NAME = :1,
        APPROVAL           = :2
- WHERE TRIM(CAST(PART_CATEGORY_ID AS VARCHAR(64))) = :3
+ WHERE TRIM(PART_CATEGORY_ID) = :3
 
 -- name: category_set_status
 --
@@ -273,7 +313,7 @@ UPDATE POOLDATA.GCNM_M_SPAREPART_CATEGORY
 -- transaksi; jumlah barisnya dibatasi transport (lihat maxDecisionRows).
 UPDATE POOLDATA.GCNM_M_SPAREPART_CATEGORY
    SET APPROVAL = :1
- WHERE TRIM(CAST(PART_CATEGORY_ID AS VARCHAR(64))) = :2
+ WHERE TRIM(PART_CATEGORY_ID) = :2
 
 -- name: category_count_by_status
 --
@@ -358,4 +398,4 @@ SELECT COUNT(S.ID)
    AND NOT EXISTS (
        SELECT 1
          FROM POOLDATA.GCNM_M_SPAREPART_CATEGORY C
-        WHERE TRIM(CAST(C.PART_CATEGORY_ID AS VARCHAR(64))) = TRIM(S.KATEGORI_SPART))
+        WHERE TRIM(C.PART_CATEGORY_ID) = TRIM(S.KATEGORI_SPART))

@@ -418,9 +418,27 @@ func (l *Service) resolveGroupNumber(
 //  2. **Menyetujui dapat MENIMPA isi baris** dengan apa pun yang sedang ada di form
 //     persetujuan, termasuk nilai yang sudah basi.
 //
-// Bentuknya — daftar baris bercentang ditambah satu status — mengikuti Master Bengkel, Master
-// Panel, dan Master Sparepart, sehingga keempat master alat berat diputuskan dengan cara yang
-// sama.
+// # TIDAK dipanggil layar Master Grouping Sparepart, dan itu disengaja
+//
+// Layar `GroupingSparePart_HE` tidak memutuskan apa pun: seluruh tombol yang dirujuk kelima
+// section-nya hanya SIMPAN dan Ubah, dan `pySelected` maupun `pxCheckbox` nol kemunculan.
+// Yang memanggil `ApprovalPNCMasterGroupingSparepartHE` adalah `Harness/UserInbox_Harness`
+// dan `Section/InboxManager_Sec` — Inbox Manager, layar yang belum dibangun.
+//
+// Centang borongan sempat dipasang di layar master; dicabut atas keputusan Work Owner
+// 2026-10-04. Operasi ini dipertahankan karena ia padanan layar Pega yang nyata, bukan
+// kemampuan yang dikarang.
+//
+// # Bentuknya borongan, sedangkan layar Pega memutuskan SATU BARIS pada satu waktu
+//
+// `ApprovalPNCMasterGroupingSparepartHE` punya tombol `Approve`, `Reject`, dan `DETAILS`
+// tanpa satu pun centang. Bentuk borongan di sini diwarisi dari Master Bengkel, Master Panel,
+// dan Master Sparepart, yang memang memakai `Activity/SetApprovalAllMaster` berbasis
+// `.pySelected` — dan itu TIDAK berlaku untuk modul ini.
+//
+// Satu baris tetap dapat diputuskan lewat daftar berisi satu kunci, sehingga bentuk ini
+// mencakup perilaku Pega; yang belum terbukti perlu adalah kelebihannya. Peninjauannya
+// menunggu layar Inbox Manager dibangun.
 //
 // TANPA alasan penolakan: kedua tabel modul ini tidak punya kolom penampungnya. Layar
 // persetujuan Pega pun tidak punya isian catatan.

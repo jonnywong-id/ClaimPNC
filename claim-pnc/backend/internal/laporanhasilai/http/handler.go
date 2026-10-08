@@ -98,9 +98,8 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, SearchResponse{
-		Summary:    toSummaryDTO(result.Summary),
-		Rows:       toRowListDTO(result.Page.Rows),
-		Pagination: toPaginationDTO(page, result.Page.Total),
+		Rows:       toRowListDTO(result.Rows),
+		Pagination: toPaginationDTO(page, result.Total),
 		Filter:     toFilterDTO(filter),
 		Portal:     active.Alias,
 	})

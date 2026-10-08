@@ -301,7 +301,7 @@ func TestSearchKataKunciMengembalikanHalaman(t *testing.T) {
 	h := newHarness(t, options{})
 
 	response := h.do(t, http.MethodGet,
-		"/arsip-dokumen?mode=kata_kunci&kata_kunci=box-a-01&halaman=1&ukuran=1", "", "ASM")
+		"/arsip-dokumen?tipe_pencarian=nama_box&kata_kunci=box-a-01&halaman=1&ukuran=1", "", "ASM")
 	require.Equal(t, http.StatusOK, response.Code)
 
 	body := decode(t, response)
@@ -322,7 +322,7 @@ func TestSearchRentangTanggal(t *testing.T) {
 	h := newHarness(t, options{})
 
 	response := h.do(t, http.MethodGet,
-		"/arsip-dokumen?mode=tanggal_input&tanggal_dari=2024-03-01&tanggal_sampai=2024-04-30&halaman=abc",
+		"/arsip-dokumen?tanggal_dari=2024-03-01&tanggal_sampai=2024-04-30&halaman=abc",
 		"", "ASM")
 	require.Equal(t, http.StatusOK, response.Code)
 	body := decode(t, response)
@@ -334,7 +334,7 @@ func TestSearchTanggalTidakTerbaca(t *testing.T) {
 	h := newHarness(t, options{})
 
 	for _, query := range []string{"tanggal_dari=kemarin", "tanggal_sampai=2024-13-40"} {
-		response := h.do(t, http.MethodGet, "/arsip-dokumen?mode=tanggal_input&"+query, "", "ASM")
+		response := h.do(t, http.MethodGet, "/arsip-dokumen?"+query, "", "ASM")
 		require.Equal(t, http.StatusUnprocessableEntity, response.Code)
 		body := decode(t, response)
 		require.Equal(t, archivehttp.CodeValidationFail, body["kode"])
@@ -345,9 +345,15 @@ func TestSearchTanggalTidakTerbaca(t *testing.T) {
 func TestSearchValidasiGagal(t *testing.T) {
 	h := newHarness(t, options{})
 
-	response := h.do(t, http.MethodGet, "/arsip-dokumen?mode=tanggal_input", "", "ASM")
+	// Tanpa satu pun penyaring: satu pelanggaran, menunjuk isian Keyword.
+	response := h.do(t, http.MethodGet, "/arsip-dokumen", "", "ASM")
 	require.Equal(t, http.StatusUnprocessableEntity, response.Code)
-	require.Len(t, decode(t, response)["detail"], 2)
+	require.Len(t, decode(t, response)["detail"], 1)
+
+	// Rentang setengah terisi: pelanggaran menunjuk ujung yang kosong.
+	response = h.do(t, http.MethodGet, "/arsip-dokumen?tanggal_dari=2024-03-01", "", "ASM")
+	require.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	require.Len(t, decode(t, response)["detail"], 1)
 }
 
 func TestSearchClaims(t *testing.T) {
@@ -541,7 +547,7 @@ func TestExportMenulisCSV(t *testing.T) {
 	h := newHarness(t, options{})
 
 	response := h.do(t, http.MethodGet,
-		"/arsip-dokumen/ekspor?mode=kata_kunci&kata_kunci=PNCN.26.0001", "", "ASM")
+		"/arsip-dokumen/ekspor?tipe_pencarian=no_klaim&kata_kunci=PNCN.26.0001", "", "ASM")
 	require.Equal(t, http.StatusOK, response.Code)
 	require.Equal(t, "text/csv; charset=utf-8", response.Header().Get("Content-Type"))
 	require.Equal(t, "no-store", response.Header().Get("Cache-Control"))
@@ -574,7 +580,7 @@ func TestExportMembacaBerpotongan(t *testing.T) {
 	h.repo.Repo = memory.NewRepo(memory.Options{Files: files})
 
 	response := h.do(t, http.MethodGet,
-		"/arsip-dokumen/ekspor?mode=tanggal_input&tanggal_dari=2025-01-01&tanggal_sampai=2025-01-03",
+		"/arsip-dokumen/ekspor?tanggal_dari=2025-01-01&tanggal_sampai=2025-01-03",
 		"", "ASM")
 	require.Equal(t, http.StatusOK, response.Code)
 	records := readCSV(t, response)
@@ -596,7 +602,7 @@ func TestExportGalatPotonganKeduaDicatat(t *testing.T) {
 	h.repo.failFromCall = 2
 
 	response := h.do(t, http.MethodGet,
-		"/arsip-dokumen/ekspor?mode=tanggal_input&tanggal_dari=2025-01-01&tanggal_sampai=2025-01-03",
+		"/arsip-dokumen/ekspor?tanggal_dari=2025-01-01&tanggal_sampai=2025-01-03",
 		"", "ASM")
 	require.Equal(t, http.StatusOK, response.Code)
 	require.Len(t, readCSV(t, response), 101)
@@ -607,7 +613,7 @@ func TestExportGalatPotonganKeduaDicatat(t *testing.T) {
 func TestExportGalatSebelumHeaderDijawabJSON(t *testing.T) {
 	h := newHarness(t, options{})
 
-	response := h.do(t, http.MethodGet, "/arsip-dokumen/ekspor?mode=lain", "", "ASM")
+	response := h.do(t, http.MethodGet, "/arsip-dokumen/ekspor?tipe_pencarian=lain&kata_kunci=X", "", "ASM")
 	require.Equal(t, http.StatusUnprocessableEntity, response.Code)
 
 	for _, query := range []string{"tanggal_dari=x", "tanggal_sampai=x"} {
@@ -654,7 +660,7 @@ func TestExportGagalMenulisDicatat(t *testing.T) {
 	h := newHarness(t, options{})
 
 	request := httptest.NewRequest(http.MethodGet,
-		"/arsip-dokumen/ekspor?mode=kata_kunci&kata_kunci=BOX-A-01", nil)
+		"/arsip-dokumen/ekspor?tipe_pencarian=nama_box&kata_kunci=BOX-A-01", nil)
 	request.Header.Set(portalhttp.HeaderPortal, "ASM")
 	writer := &failingWriter{header: http.Header{}, limit: 10}
 
@@ -672,7 +678,7 @@ func TestExportTerpotongDiBatas(t *testing.T) {
 	}
 	h.repo.searchPage = &archivedokumenklaim.ArchivePage{Files: chunk, Total: 60000}
 
-	response := h.do(t, http.MethodGet, "/arsip-dokumen/ekspor?kata_kunci=K", "", "ASM")
+	response := h.do(t, http.MethodGet, "/arsip-dokumen/ekspor?tipe_pencarian=no_klaim&kata_kunci=K", "", "ASM")
 	require.Equal(t, http.StatusOK, response.Code)
 
 	records := readCSV(t, response)

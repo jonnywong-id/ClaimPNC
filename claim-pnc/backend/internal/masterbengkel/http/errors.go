@@ -45,11 +45,29 @@ const (
 
 	// CodeDocumentEmpty dibedakan dari CodeDocumentNotFound dengan sengaja.
 	//
-	// Ia keadaan warisan: barisnya ADA, isinya tidak pernah tersimpan karena jalur unggah
-	// Pega tidak pernah menulis kolom isinya. Membedakannya membuat layar dapat
-	// menjelaskan sebabnya, alih-alih menyatakan dokumennya tidak ada padahal keterangannya
-	// terlihat di baris yang sama.
+	// Ia keadaan warisan: barisnya ADA, berkasnya tidak pernah tersimpan karena jalur unggah
+	// Pega tidak pernah mengisi `IMAGEID`. Membedakannya membuat layar dapat menjelaskan
+	// sebabnya, alih-alih menyatakan dokumennya tidak ada padahal keterangannya terlihat di
+	// baris yang sama.
 	CodeDocumentEmpty = "dokumen_tanpa_isi"
+
+	// Kode kegagalan jalur unggah.
+	//
+	// Keempatnya dipisahkan, bukan disatukan menjadi satu "unggah_gagal", karena yang
+	// membedakannya adalah APA YANG BOLEH DILAKUKAN PENGGUNA — satu-satunya hal yang ingin
+	// diketahui pengguna saat unggahan gagal.
+	//
+	// Nilainya SAMA PERSIS dengan Master Sparepart dan Master Panel supaya satu komponen
+	// layar dapat menangani ketiganya tanpa tiga tabel kode yang nyaris sama.
+
+	// CodeUploadInvalid: permintaannya salah — perbaiki lalu ulangi.
+	CodeUploadInvalid = "unggah_tidak_sah"
+	// CodeUploadTooLarge: berkasnya terlalu besar.
+	CodeUploadTooLarge = "berkas_terlalu_besar"
+	// CodeUploadUnavailable: layanan hulu gagal, belum ada yang tersimpan — aman diulang.
+	CodeUploadUnavailable = "layanan_unggah_tidak_tersedia"
+	// CodeUploadHalfDone: berkas terkirim tetapi catatannya gagal — JANGAN diulang.
+	CodeUploadHalfDone = "unggah_separuh_jalan"
 
 	// CodeUnknownStatus muncul bila status yang diminta di luar "0", "1", "2".
 	CodeUnknownStatus = "status_tidak_dikenal"
@@ -91,6 +109,10 @@ func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err e
 // seluruh modul bisnis, bukan satu tafsiran per modul.
 func mapError(err error) (int, ErrorResponse, bool) {
 	var validationError *masterbengkel.ValidationError
+
+	if status, body, ok := mapUploadError(err); ok {
+		return status, body, true
+	}
 
 	switch {
 	case errors.As(err, &validationError):
@@ -161,4 +183,63 @@ func mapError(err error) (int, ErrorResponse, bool) {
 	default:
 		return 0, ErrorResponse{}, false
 	}
+}
+
+// mapUploadError memetakan kegagalan jalur unggah menurut GOLONGANNYA.
+//
+// Ia dipisahkan dari mapError supaya pemetaan ini terbaca utuh di satu tempat, dan supaya
+// perbandingannya dengan Master Sparepart dan Master Panel — yang bentuknya sama persis —
+// dapat dilakukan tanpa menelusuri satu switch panjang.
+func mapUploadError(err error) (int, ErrorResponse, bool) {
+	var upload *masterbengkel.DocumentUploadError
+	if !errors.As(err, &upload) {
+		return 0, ErrorResponse{}, false
+	}
+
+	switch upload.Kind {
+	case masterbengkel.UploadInvalid:
+		// 422: bentuk permintaannya benar, isinya yang salah. Menempel pada isian "berkas"
+		// supaya pesannya muncul di tempat pengguna memilih berkasnya.
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeUploadInvalid,
+			Message: upload.Message,
+			Detail:  []ViolationDTO{{Field: "berkas", Message: upload.Message}},
+		}, true
+
+	case masterbengkel.UploadTooLarge:
+		// 413 adalah kode yang memang untuk ini, dan sebagian proxy sudah menjawabnya
+		// sendiri sebelum permintaan sampai ke kita. Memakai kode yang sama membuat kedua
+		// sumber terbaca serupa oleh layar.
+		return http.StatusRequestEntityTooLarge, ErrorResponse{
+			Code:    CodeUploadTooLarge,
+			Message: upload.Message,
+			Detail:  []ViolationDTO{{Field: "berkas", Message: upload.Message}},
+		}, true
+
+	case masterbengkel.UploadUnavailable:
+		// 503, dan itu disengaja: layanan hulu yang sedang mati bukan kesalahan pengguna,
+		// dan 503 menyatakan "coba lagi nanti" kepada setiap perantara yang membacanya.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodeUploadUnavailable,
+			Message: upload.Message,
+		}, true
+
+	case masterbengkel.UploadHalfDone:
+		// 500, BUKAN 503. Perbedaannya penting: 503 mengundang pengulangan, dan mengulang
+		// unggahan yang separuh berhasil menumpuk berkas ganda di layanan penyimpanan.
+		return http.StatusInternalServerError, ErrorResponse{
+			Code:    CodeUploadHalfDone,
+			Message: upload.Message,
+		}, true
+
+	case masterbengkel.UploadMisconfigured:
+		// 503: salah konfigurasi di sisi kita, dan pengguna tidak dapat berbuat apa pun.
+		// Mengulang tidak membantu, tetapi menyatakannya 500 akan membuatnya terbaca sebagai
+		// cacat program — padahal yang kurang adalah pemasangan.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodeUploadUnavailable,
+			Message: upload.Message,
+		}, true
+	}
+	return 0, ErrorResponse{}, false
 }

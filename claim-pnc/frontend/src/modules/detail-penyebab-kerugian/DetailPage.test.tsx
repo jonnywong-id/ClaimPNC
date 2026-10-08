@@ -172,15 +172,234 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-it('menampilkan keempat kolom grid layar lama', async () => {
+it('keenam kolom tampil pada URUTAN Pega yang sebenarnya', async () => {
+  // Dibaca dari sel ber-`pyCellHeader=true` pada
+  // `Section/BrowseDetailCauseOfLoss-Section.xml` — :8256, :8414, :8517, :8672, :8826,
+  // lalu sel aksi berlebar 41 pada :8967.
+  //
+  // DUA KALI keliru sebelum ini, keduanya karena menyimpulkan kolom dari kedekatan offset
+  // properti alih-alih dari sel headernya: mula-mula "ID Master Kerugian" dikira TIDAK ADA
+  // di grid, lalu ia ditaruh paling akhir. Urutan ini dikoreksi Work Owner 2026-10-05.
   installFetch(defaultReply())
   show()
 
   const table = await screen.findByRole('table')
-  // Keempat kolom asli, dari Section/BrowseDetailCauseOfLoss-Section.xml:9113-9920.
-  for (const title of ['ID', 'Deskripsi Kerugian', 'Status Aktif', 'Kode Kehilangan']) {
-    expect(within(table).getByRole('columnheader', { name: title })).toBeInTheDocument()
+  const headers = within(table)
+    .getAllByRole('columnheader')
+    .map((h) => h.textContent?.trim())
+
+  expect(headers).toEqual([
+    'ID',
+    'ID Master Kerugian',
+    'Deskripsi Kerugian',
+    'Status Aktif',
+    'Kode Kehilangan',
+    'Aksi',
+  ])
+})
+
+it('halaman memakai pembungkus berpadding seperti layar master lain', async () => {
+  // Akar halaman ini sempat hanya `<div className="space-y-4">` — tanpa padding, tanpa
+  // lebar maksimum, tanpa pemusatan — sehingga isinya menempel ke sidebar. Ia satu-satunya
+  // halaman di aplikasi yang begitu; dilaporkan Work Owner 2026-10-05.
+  installFetch(defaultReply())
+  const { container } = show()
+
+  const root = container.firstElementChild as HTMLElement
+  expect(root).not.toBeNull()
+  for (const cls of ['mx-auto', 'max-w-6xl', 'px-4', 'py-8']) {
+    expect(root.className).toContain(cls)
   }
+
+  // BUKAN <main>: PageShell sudah merender satu, dan landmark bersarang tidak sah.
+  expect(root.tagName).toBe('DIV')
+})
+
+it('judul dan tombol berada DI LUAR kanvas tabel', async () => {
+  // Ketiganya sempat diserahkan ke prop `title`/`description`/`actions` milik DataTable,
+  // sehingga tergambar di dalam kartu yang sama dengan tabelnya. Dari 90 pemakai DataTable,
+  // hanya dua lagi yang memberinya `title` — dan keduanya tabel TERSEMAT, bukan halaman.
+  // Dilaporkan Work Owner 2026-10-05.
+  installFetch(defaultReply())
+  show()
+
+  const table = await screen.findByRole('table')
+  const heading = screen.getByRole('heading', { level: 1, name: 'Detail Penyebab Kerugian' })
+
+  // Judul ada di dalam <header> halaman…
+  expect(heading.closest('header')).not.toBeNull()
+  // …dan tabelnya TIDAK berada di dalam header itu.
+  expect(table.closest('header')).toBeNull()
+
+  // Tombolnya pun di kepala halaman, bukan di dalam kartu tabel.
+  expect(screen.getByRole('button', { name: 'Tambah' }).closest('header')).not.toBeNull()
+  expect(screen.getByRole('button', { name: 'Refresh' }).closest('header')).not.toBeNull()
+})
+
+it('keterangan di kepala halaman tetap pendek, agar tombol tidak terdorong turun', async () => {
+  // JSDOM tidak menghitung tata letak, sehingga posisi tombol tidak dapat diuji langsung.
+  // Yang dijaga di sini adalah SEBABNYA: pada `<header>` ber-`flex-wrap`, paragraf panjang
+  // mendorong kelompok tombol turun ke baris berikutnya, dan Tambah/Refresh berhenti
+  // sejajar judul di kanan — dilaporkan Work Owner 2026-10-05.
+  //
+  // Ambangnya 120 aksara; pembandingnya Master Login Surveyor (±85) yang tata letaknya
+  // benar. Keterangan yang lebih panjang dari itu ditaruh di <footer>, bukan di kepala.
+  installFetch(defaultReply())
+  show()
+
+  const heading = await screen.findByRole('heading', { level: 1 })
+  const description = heading.parentElement?.querySelector('p')
+
+  expect(description).not.toBeNull()
+  expect((description?.textContent ?? '').length).toBeLessThanOrEqual(120)
+})
+
+it('tidak menggambar kaki halaman berisi keterangan', async () => {
+  // Kaki halaman berisi dua keterbatasan sempat ada, lalu DICABUT atas permintaan Work
+  // Owner 2026-10-05. Uji ini menjaganya tetap tercabut.
+  installFetch(defaultReply())
+  const { container } = show()
+
+  await screen.findByRole('table')
+  expect(container.querySelector('footer')).toBeNull()
+})
+
+it('baris ber-Status Aktif kosong tidak berubah diam-diam saat disimpan ulang', async () => {
+  // Dihitung dari Oracle 2026-10-05: 232 baris bernilai "1", EMPAT bernilai NULL, dan NOL
+  // bernilai "0". Keempat baris kosong itu nyata.
+  //
+  // Inilah alasan opsi kosong pada dropdown Status Aktif tidak dapat dihilangkan: tanpa
+  // itu, membuka salah satu baris tersebut menampilkan "Aktif" sebagai pilihan terpilih
+  // padahal nilai tersimpannya kosong — dan Simpan akan mengubahnya tanpa diminta.
+  const KOSONG = {
+    ...AKTIF,
+    id: '990006',
+    status_aktif: '',
+    label_status_aktif: 'Belum diisi',
+  }
+  installFetch((call) => {
+    if (call.method === 'GET') {
+      if (/\/detail-penyebab\/\d+$/.test(call.url)) {
+        return { body: { detail: KOSONG, portal: 'ASM' } }
+      }
+      if (call.url.endsWith('/pilihan')) return { body: PILIHAN_STATUS }
+      if (call.url.includes('/pilihan/')) {
+        return { body: { master: [], bisnis: [], portal: 'ASM' } }
+      }
+      return { body: { detail: [KOSONG], portal: 'ASM' } }
+    }
+    return { body: { detail: KOSONG, portal: 'ASM' }, status: 200 }
+  })
+
+  const user = userEvent.setup()
+  show()
+
+  const table = await screen.findByRole('table')
+  const row = within(table).getByRole('row', {
+    name: /Kebakaran akibat hubungan arus pendek/,
+  })
+  await user.click(within(row).getByRole('button', { name: 'Ubah' }))
+
+  // Disimpan ulang TANPA menyentuh dropdown-nya.
+  await user.click(await screen.findByRole('button', { name: 'Simpan' }))
+
+  await waitFor(() => expect(mutationCalls()).toHaveLength(1))
+  expect((mutationCalls()[0]?.body as Record<string, unknown>)['status_aktif']).toBe('')
+})
+
+it('dropdown Status Aktif memuat TEPAT DUA pilihan, seperti Pega', async () => {
+  // Bukti langsung dari layar Pega yang berjalan (tangkapan layar Work Owner 2026-10-05):
+  // dropdown-nya terbuka dan memuat "Aktif" serta "Tidak Aktif" saja, tanpa pilihan kosong.
+  //
+  // Daftar aslinya TIDAK dapat dibaca dari export — `pyListSource = associated`, dan tidak
+  // ada direktori Properties (`R-16`) — sehingga tangkapan layar itu satu-satunya buktinya.
+  installFetch(defaultReply())
+  const user = userEvent.setup()
+  show()
+
+  await screen.findByRole('table')
+  await user.click(screen.getByRole('button', { name: 'Tambah' }))
+
+  const select = await screen.findByLabelText('Status Aktif')
+  const labels = within(select).getAllByRole('option').map((o) => o.textContent)
+
+  expect(labels).toEqual(['Aktif', 'Tidak Aktif'])
+})
+
+it('pilihan kosong HANYA muncul pada baris warisan yang nilainya kosong', async () => {
+  // Empat baris di Oracle ber-STS_AKTIF NULL. Tanpa pilihan kosong, dropdown menampilkan
+  // pilihan PERTAMA sebagai terpilih — dan Simpan akan mengubah datanya tanpa diminta.
+  const KOSONG = { ...AKTIF, status_aktif: '', label_status_aktif: 'Belum diisi' }
+  installFetch((call) => {
+    if (call.method === 'GET') {
+      if (/\/detail-penyebab\/\d+$/.test(call.url)) {
+        return { body: { detail: KOSONG, portal: 'ASM' } }
+      }
+      if (call.url.endsWith('/pilihan')) return { body: PILIHAN_STATUS }
+      if (call.url.includes('/pilihan/')) {
+        return { body: { master: [], bisnis: [], portal: 'ASM' } }
+      }
+      return { body: { detail: [KOSONG], portal: 'ASM' } }
+    }
+    return { body: { detail: KOSONG, portal: 'ASM' }, status: 200 }
+  })
+
+  const user = userEvent.setup()
+  show()
+
+  const table = await screen.findByRole('table')
+  const row = within(table).getByRole('row', {
+    name: /Kebakaran akibat hubungan arus pendek/,
+  })
+  await user.click(within(row).getByRole('button', { name: 'Ubah' }))
+
+  const select = await screen.findByLabelText('Status Aktif')
+  const labels = within(select).getAllByRole('option').map((o) => o.textContent)
+
+  expect(labels).toEqual(['— belum diisi —', 'Aktif', 'Tidak Aktif'])
+})
+
+it('kolom tombol berjudul "Aksi"', async () => {
+  // Satu-satunya judul kolom yang sengaja TIDAK menyalin Pega — di sana literalnya
+  // "Button". Ditetapkan Work Owner 2026-10-03, berlaku seluruh modul.
+  installFetch(defaultReply())
+  show()
+
+  const table = await screen.findByRole('table')
+  expect(within(table).getByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+})
+
+it('menyediakan tombol Refresh yang memuat ulang daftar', async () => {
+  installFetch(defaultReply())
+  const user = userEvent.setup()
+  show()
+
+  await screen.findByRole('table')
+  const before = calls.filter((c) => c.method === 'GET').length
+
+  await user.click(screen.getByRole('button', { name: 'Refresh' }))
+
+  await waitFor(() =>
+    expect(calls.filter((c) => c.method === 'GET').length).toBeGreaterThan(before),
+  )
+})
+
+it('panel form digambar DI ATAS tabel, bukan di bawahnya', async () => {
+  // Di bawah, menekan Tambah membuka form di luar layar dan pengguna harus menggulir —
+  // dilaporkan Work Owner 2026-10-05. Posisi ini juga yang benar terhadap layar lama.
+  installFetch(defaultReply())
+  const user = userEvent.setup()
+  show()
+
+  const table = await screen.findByRole('table')
+  await user.click(screen.getByRole('button', { name: 'Tambah' }))
+
+  const heading = await screen.findByRole('heading', {
+    name: 'Tambah Detail Penyebab Kerugian',
+  })
+
+  // DOCUMENT_POSITION_FOLLOWING = tabel berada SESUDAH judul form.
+  expect(heading.compareDocumentPosition(table)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 })
 
 it('menampilkan baris TIDAK AKTIF, bukan menyembunyikannya', async () => {
@@ -209,17 +428,42 @@ it('tidak menyediakan tombol Hapus di baris mana pun', async () => {
   expect(screen.queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
 })
 
-it('menyatakan ID diterbitkan sistem saat menambah baris baru', async () => {
+it('MENYEMBUNYIKAN isian ID saat menambah, dan menampilkannya saat menyunting', async () => {
+  // Mengikuti Pega (permintaan Work Owner 2026-10-05): pada baris baru isiannya belum
+  // punya nilai dan tidak dapat diketik, sehingga menggambarnya hanya menambah satu baris
+  // yang tidak dapat ditindaklanjuti tepat di puncak form.
   installFetch(defaultReply())
   const user = userEvent.setup()
   show()
 
-  await screen.findByRole('table')
-  await user.click(screen.getByRole('button', { name: 'Tambah' }))
+  const table = await screen.findByRole('table')
 
-  expect(
-    await screen.findByText('Diterbitkan sistem setelah disimpan.'),
-  ).toBeInTheDocument()
+  // Menambah — tidak ada label ID DI DALAM panel form.
+  //
+  // Pencariannya dipersempit ke panelnya: `DataTable` juga merender label "ID" untuk
+  // tampilan kartu di layar sempit, sehingga pencarian seluruh halaman akan menemukannya
+  // dan uji ini lulus/gagal karena alasan yang salah.
+  await user.click(screen.getByRole('button', { name: 'Tambah' }))
+  const addHeading = await screen.findByRole('heading', {
+    name: 'Tambah Detail Penyebab Kerugian',
+  })
+  const addPanel = addHeading.closest('section')
+  expect(addPanel).not.toBeNull()
+  expect(within(addPanel as HTMLElement).queryByText('ID')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Batal' }))
+
+  // Menyunting — ID-nya tampil, karena di sana nilainya ada.
+  const row = within(table).getByRole('row', {
+    name: /Kebakaran akibat hubungan arus pendek/,
+  })
+  await user.click(within(row).getByRole('button', { name: 'Ubah' }))
+
+  const editHeading = await screen.findByRole('heading', { name: 'Memperbaharui Data' })
+  const editPanel = editHeading.closest('section')
+  expect(editPanel).not.toBeNull()
+  // Dipersempit ke panelnya: ID yang sama juga tampil di barisnya pada tabel.
+  expect(within(editPanel as HTMLElement).getByText('990001')).toBeInTheDocument()
 })
 
 it('menyimpan baris baru tanpa mengirim field yang ditolak server', async () => {
@@ -354,7 +598,7 @@ it('tombol Tambah dikunci hanya selagi form terbuka', async () => {
   expect(tambah).not.toBeDisabled()
 
   await user.click(tambah)
-  await screen.findByText('Diterbitkan sistem setelah disimpan.')
+  await screen.findByRole('button', { name: 'Simpan' })
   expect(screen.getByRole('button', { name: 'Tambah' })).toBeDisabled()
 
   await user.click(screen.getByRole('button', { name: 'Batal' }))
@@ -389,7 +633,9 @@ it('tidak menembak server sebelum portal dipilih', async () => {
   await waitFor(() => {
     expect(calls.filter((c) => c.url.includes('/master/detail-penyebab?'))).toHaveLength(0)
   })
-  expect(screen.getByText('Pilih portal entitas lebih dulu.')).toBeInTheDocument()
+  // Keadaan "portal belum dipilih" kini ditangani DI LUAR kartu tabel, sama seperti layar
+  // master lain — bukan sebagai `emptyMessage` di dalamnya.
+  expect(screen.getByText('Portal entitas belum dipilih')).toBeInTheDocument()
 })
 
 it('mengirim portal aktif pada setiap permintaan daftar', async () => {

@@ -1,3 +1,5 @@
+import { useState, type FormEvent } from 'react'
+
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type ReasMember } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
@@ -5,7 +7,7 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
-import { useReasMemberList } from './api'
+import { useReasMemberList, useSaveReasMemberEmail } from './api'
 
 /**
  * Ukuran halaman.
@@ -19,7 +21,7 @@ import { useReasMemberList } from './api'
  * — memperkenalkan angka ketiga tanpa dasar hanya akan membuat satu layar terasa berbeda
  * tanpa alasan yang dapat dijelaskan.
  */
-const PAGE_SIZE = 15
+const PAGE_SIZE = 10
 
 type MessageContent = { title: string; description: string; tone: ErrorTone }
 
@@ -67,6 +69,27 @@ function loadMessage(error: unknown): MessageContent {
 }
 
 /**
+ * Mengubah galat penyimpanan menjadi kalimat yang dapat ditindaklanjuti.
+ *
+ * Dipisahkan dari loadMessage karena keadaannya berbeda: yang gagal di sini bukan membuka
+ * layar melainkan menyimpan satu baris, dan pengguna sudah mengetik sesuatu yang tidak boleh
+ * hilang.
+ */
+function saveMessage(error: unknown): string {
+  if (error instanceof NetworkError) {
+    return 'Server Claim PNC tidak dapat dihubungi. Periksa koneksi jaringan, lalu coba lagi.'
+  }
+  if (error instanceof APIError) {
+    // 422 membawa keterangan per isian dari server; yang pertama sudah cukup karena form
+    // ini hanya punya satu isian.
+    const detail = error.detail?.[0]?.pesan
+    if (detail !== undefined && detail !== '') return detail
+    return error.message
+  }
+  return 'Terjadi kesalahan pada sistem. Coba lagi; bila berulang, hubungi administrator.'
+}
+
+/**
  * Layar Master Reas.
  *
  * Pengganti `Harness/DataMemberReas-harness.xml` atas tabel POOLDATA.T_REINSURER
@@ -79,9 +102,13 @@ function loadMessage(error: unknown): MessageContent {
  *
  * # Layar BACA-SAJA, dan itu keputusan berdasar bukti
  *
- * Harness lamanya memuat satu grid dan satu tombol Refresh — tidak ada tombol Tambah maupun
- * Simpan. Dan satu-satunya penulis `T_REINSURER` di sistem lama adalah **alur PLA/DLA**,
- * bukan layar master:
+ * Harness lamanya memuat satu grid dan satu tombol Refresh. Ketiadaan tombol **Tambah**
+ * terkalibrasi — indeks rule `Harness/MasterLoginSurvey-Harness.xml`, yang layarnya terbukti
+ * punya dua tombol, menyebut `PYBUTTONLABEL!REFRESH` **dan** `PYBUTTONLABEL!TAMBAH`;
+ * `DataMemberReas` hanya menyebut `REFRESH`.
+ *
+ * Dan satu-satunya penulis `T_REINSURER` di sistem lama adalah **alur PLA/DLA**, bukan layar
+ * master:
  *
  *	Database/UPDATEREAS.prc              prosedur upsert-nya
  *	RDB List/UpdateEmailReas-SQL.xml     satu-satunya pemanggil prosedur itu
@@ -93,16 +120,32 @@ function loadMessage(error: unknown): MessageContent {
  * kewenangan yang tidak pernah ada — pada tabel yang menentukan ke mana pemberitahuan klaim
  * dikirim, kewenangan yang tidak pernah diminta siapa pun adalah risiko tanpa imbalan.
  *
- * # Satu keterbatasan bukti yang dinyatakan, bukan ditutupi
+ * # Kepala kolomnya DIBERITAHU Work Owner, bukan direkonstruksi
  *
  * Section grid `BrowseListMemberReas` **tidak ada di antara 2.634 berkas export** (`R-16`),
- * sehingga daftar kolom dan ada-tidaknya tombol simpan di dalamnya tidak terbukti. Keenam
- * kolom di bawah adalah REKONSTRUKSI dari kueri yang benar-benar ada atas tabel itu.
+ * sehingga daftar kolomnya sempat direkonstruksi dari kueri yang ada. Rekonstruksi itu
+ * **meleset di dua tempat**, dan Work Owner mengoreksinya pada 2026-10-05 dengan menyebut
+ * kepala kolom layar Pega apa adanya:
+ *
+ *	No · Nama Reinsurer · Login · Email · Tipe · Aksi
+ *
+ * Yang meleset: "Kode Reas" ternyata adalah kolom **"No"** — sama seperti layar master lain
+ * yang menaruh ID induk di sana — dan **"Negara" tidak punya kolom sama sekali**.
+ *
+ * `COUNTRY` tetap dibaca dan tetap dikirim server; ia terbaca di panel **Detail**, karena
+ * isinya ikut tercetak di dokumen PLA/DLA (`GetDataPreDLA`, `BrowseAllDataXOL_PLA`) dan
+ * tidak boleh terkirim ke pihak luar tanpa satu pun tempat untuk dilihat petugas.
  *
  * # Satu perusahaan dapat muncul beberapa kali, dan kolom Tipe yang menjelaskannya
  *
  * Tanpa kolom Tipe, daftar akan terlihat memuat nama yang sama berkali-kali tanpa sebab.
  * Lihat catatan pada kolomnya.
+ *
+ * # Blok catatan di kaki halaman DIHAPUS
+ *
+ * Ditetapkan Work Owner 2026-10-05. Isinya menyebut nama rule Pega, nama kolom Oracle, dan
+ * nomor keputusan — tidak berarti apa-apa bagi petugas klaim, dan membuat layar tampak belum
+ * selesai. Catatan resminya hidup di doc comment paket `masterreas` dan di `docs/`.
  */
 export function ReasMemberPage() {
   const portal = useSelectedPortal((state) => state.alias)
@@ -110,40 +153,154 @@ export function ReasMemberPage() {
   const list = useReasMemberList()
   const rows = list.data?.member_reas ?? []
 
+  // Baris yang sedang disunting lewat tombol Ubah. null berarti formnya tertutup.
+  const [editing, setEditing] = useState<ReasMember | null>(null)
+  const [email, setEmail] = useState('')
+
+  const save = useSaveReasMemberEmail()
+
+  function openEdit(row: ReasMember) {
+    save.reset()
+    setEditing(row)
+    setEmail(row.email)
+  }
+
+  function closeEdit() {
+    save.reset()
+    setEditing(null)
+    setEmail('')
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (editing === null) return
+
+    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
+    // membuang isian pengguna saat penyimpanan gagal — dan penolakan "baris sudah tidak ada"
+    // benar-benar mungkin di sini, karena alur PLA/DLA menulis ke tabel yang sama.
+    save.mutate(
+      {
+        kode_reas: editing.kode_reas,
+        nama_reas: editing.nama_reas,
+        tipe: editing.tipe,
+        email,
+      },
+      { onSuccess: closeEdit },
+    )
+  }
+
   /*
-    Enam kolom, satu-lawan-satu dengan kolom yang dibaca kueri lama atas tabel ini.
+    ENAM kolom, dan urutannya mengikuti kepala kolom layar Pega apa adanya — ditetapkan Work
+    Owner 2026-10-05:
 
-    Kelimanya yang pertama diambil dari `RDB List/BrowseEmailReas-SQL.xml`, SELECT terlengkap
-    atas tabel ini di seluruh export:
+      No · Nama Reinsurer · Login · Email · Tipe · Aksi
 
-      select email as "City", reinsurername as "District", login as "DistrictID",
-             reinsurerid as "CityID", country as "Country"
-        from pooldata.t_reinsurer
+    Ia MENGGANTIKAN susunan sebelumnya, yang direkonstruksi dari SELECT terlengkap atas tabel
+    ini (`RDB List/BrowseEmailReas-SQL.xml`) karena section gridnya hilang dari export
+    (`R-16`). Rekonstruksi itu meleset di dua tempat, dan keduanya kini diperbaiki:
 
-    Alias klipboardnya TIDAK dibawa — alamat surel dialiaskan menjadi "City", dan nama
-    perusahaan menjadi "District". Judul kolom di sini mengikuti ISINYA.
+      "Kode Reas"  ->  masuk ke kolom "No"; lihat catatan pada kolomnya
+      "Negara"     ->  TIDAK ada kolomnya di Pega, jadi tidak digambar
 
-    Kolom keenam — Tipe — adalah PENAMBAHAN terhadap SELECT itu, dan alasannya dinyatakan
-    pada kolomnya sendiri.
+    Alias klipboard Pega tetap tidak dibawa — `email as "City"` dan
+    `reinsurername as "District"` adalah utang `03-CURRENT-ARCHITECTURE.md` §4.2, bukan nama
+    yang layak ditiru.
+  */
+  /*
+    LEBAR KOLOM — nilai CSS, bukan kelas Tailwind
+
+    `DataTable` memasangnya lewat `style={{ width }}`, sehingga `'w-24'` tidak berlaku apa-apa
+    (dan diam-diam diabaikan peramban).
+
+    Angkanya TIDAK diambil dari `pyWidth` sel Pega seperti pada modul migrasi lain: section
+    gridnya hilang dari export (`R-16`), jadi lebar aslinya tidak diketahui. Ia dipilih
+    menurut ISI kolomnya, dan dijumlahkan supaya muat di `max-w-6xl` (72rem dikurangi padding
+    ≈ 70rem):
+
+        No 3  +  Nama 24  +  Login 12  +  Email 18  +  Tipe 5  +  Aksi 6  =  68rem
+
+    # Kenapa Email ikut diberi lebar, dan kenapa Tipe dipersempit
+
+    Tabelnya `table-auto`, sehingga `width` hanya SARAN — peramban membagi ulang menurut isi.
+    Alamat surel adalah teks panjang tanpa spasi, jadi tanpa lebar eksplisit ia merebut ruang
+    dari kolom di sebelahnya; itulah yang membuat Nama Reinsurer tampak sempit.
+
+    `Tipe` sebelumnya 9rem untuk isi SATU karakter. Ruang yang dibebaskannya dipindahkan ke
+    Nama Reinsurer, yang memuat nama perusahaan reasuransi — teks terpanjang di tabel ini dan
+    satu-satunya yang dipakai orang mengenali barisnya.
   */
   const columns: Column<ReasMember>[] = [
     {
-      key: 'kode_reas',
-      title: 'Kode Reas',
-      width: '9rem',
-      value: (row) => row.kode_reas,
-      render: (row) => <span className="font-medium text-slate-800">{row.kode_reas}</span>,
+      /*
+        "No" memuat KODE REAS (`REINSURERID`), bukan nomor urut tampilan.
+
+        Itu konvensi yang sudah berlaku di layar lain — `RejectionPage` menuliskannya
+        terang-terangan: "ID induk, bukan nomor urut". Nomor urut tampilan juga tidak dapat
+        dibuat di sini: `Column.render` tidak menerima indeks baris, dan angka yang dihitung
+        sebelum `DataTable` menyaring serta mengurutkan akan berantakan begitu pengguna
+        mengurutkan kolom mana pun.
+
+        Ia sekaligus menjelaskan kenapa "Kode Reas" tidak ada di daftar kepala kolom Pega:
+        kolom itulah "No".
+      */
+      key: 'no',
+      title: 'No',
+      width: '3rem',
+      // Kosong: yang digambar adalah NOMOR URUT, bukan isi baris. Nilai kosong membuatnya
+      // tidak ikut tercari — mencari "3" seharusnya tidak menemukan baris ketiga.
+      value: () => '',
+      // Tidak dapat diurutkan: mengurutkan menurut nomor urut tidak berarti apa-apa, dan
+      // hasilnya justru menomori ulang barisnya.
+      noSort: true,
+      render: (_row, nomor) => <span className="text-slate-500">{nomor}</span>,
     },
     {
       key: 'nama_reas',
-      title: 'Nama Reas',
-      width: '18rem',
-      value: (row) => row.nama_reas,
+      title: 'Nama Reinsurer',
+      width: '24rem',
+      /*
+        Kode reas TIDAK digambar di sini — Pega tidak menempelkannya di bawah nama, dan
+        menambahkannya berarti mengarang tampilan (ketetapan Work Owner 2026-10-05).
+
+        Ia tetap ikut di `value`, sehingga tetap DAPAT DICARI meski tidak terlihat. Itu
+        menjaga janji label pencariannya ("Cari kode, nama, login, atau email") dan
+        menyamakan perilaku pencarian layar dengan penyaring `cari` di server, yang memang
+        menyertakan `REINSURERID`.
+
+        Urutannya nama lebih dulu, sehingga pengurutan kolom ini tetap menurut nama.
+
+        `render` WAJIB ada meski isinya sekadar namanya: tanpa itu `DataTable` menggambar
+        `value` apa adanya — dan `value` sengaja memuat kode reas, sehingga kodenya akan
+        tergambar justru lewat pintu belakang.
+      */
+      value: (row) => `${row.nama_reas} ${row.kode_reas}`,
+      /*
+        `minWidth` dipasang pada ISI selnya, bukan hanya lewat `width` kolomnya.
+
+        Sebabnya: tabel `DataTable` memakai `table-auto`, dan di mode itu `width` hanya
+        SARAN — peramban membagi ruang menurut panjang isi tiap kolom. Alamat surel adalah
+        teks panjang tanpa spasi, sehingga ia menang terhadap nama perusahaan yang pendek
+        seperti "AACHEN", dan kolom ini menyusut sampai kepala kolomnya patah dua baris
+        ("Nama" / "Reinsurer").
+
+        Lebar minimum pada isinya menaikkan lebar min-content kolom, dan itu BUKAN saran —
+        peramban wajib memenuhinya. 16rem cukup memuat kepala kolomnya dalam satu baris
+        beserta nama perusahaan yang panjang.
+
+        Memasang `table-fixed` pada komponennya akan menyelesaikan ini secara umum, tetapi
+        ia mengubah tata letak SELURUH layar yang memakai `DataTable` — perubahan yang
+        menuntut keputusan tersendiri, bukan efek samping dari satu modul.
+      */
+      render: (row) => (
+        <span className="block" style={{ minWidth: '16rem' }}>
+          {row.nama_reas}
+        </span>
+      ),
     },
     {
       key: 'login',
       title: 'Login',
-      width: '14rem',
+      width: '12rem',
       value: (row) => row.login,
       render: (row) =>
         row.login ? (
@@ -158,6 +315,7 @@ export function ReasMemberPage() {
     {
       key: 'email',
       title: 'Email',
+      width: '18rem',
       value: (row) => row.email,
       render: (row) =>
         row.email ? (
@@ -167,13 +325,6 @@ export function ReasMemberPage() {
           // terkirim, dan tidak pernah sampai ke siapa pun.
           <span className="text-amber-700">belum ada</span>
         ),
-    },
-    {
-      key: 'negara',
-      title: 'Negara',
-      width: '10rem',
-      value: (row) => row.negara,
-      render: (row) => (row.negara ? row.negara : <span className="text-slate-400">—</span>),
     },
     {
       /*
@@ -191,20 +342,42 @@ export function ReasMemberPage() {
       */
       key: 'tipe',
       title: 'Tipe',
-      width: '9rem',
+      width: '5rem',
       value: (row) => row.tipe,
+      /*
+        Nilainya digambar APA ADANYA, tanpa penanda "cadangan" — Pega tidak punya penanda
+        itu, dan menambahkannya berarti mengarang tampilan (ketetapan Work Owner 2026-10-05).
+
+        Arti `TYPE = '1'` tetap dihitung server dan tetap dikirim sebagai field `cadangan`;
+        yang dihapus adalah penggambarannya, bukan datanya. Keterangannya hidup di doc
+        comment paket `masterreas` dan di `docs/`.
+      */
+      render: (row) => row.tipe || <span className="text-slate-400">—</span>,
+    },
+    {
+      /*
+        Kolom aksi. Judulnya "Aksi" — satu-satunya judul kolom di aplikasi ini yang sengaja
+        TIDAK menyalin Pega, ditetapkan Work Owner 2026-10-03 dan berlaku seluruh modul.
+        Mengosongkannya sudah dicoba dan ditolak: kolom tanpa judul tampak TIDAK ADA bagi
+        pengguna yang membaca kepala tabel.
+
+        Tombolnya **Ubah** — diberitahukan Work Owner 2026-10-05, dan tidak dapat dibaca dari
+        export karena section gridnya hilang (`R-16`).
+
+        Yang dapat diubah hanya **Email**. `Database/UPDATEREAS.prc` pada baris yang sudah ada
+        memang hanya menyentuh kolom `EMAIl`; `LOGIN`, `COUNTRY`, dan `COUNTRYID` hanya
+        ditulis pada jalur sisip, yang milik alur PLA/DLA dan tidak dibawa layar ini.
+      */
+      key: 'aksi',
+      title: 'Aksi',
+      width: '6rem',
+      noSort: true,
+      alignRight: true,
+      value: () => '',
       render: (row) => (
-        <span className="flex items-center gap-2">
-          <span>{row.tipe || <span className="text-slate-400">—</span>}</span>
-          {row.cadangan && (
-            <span
-              className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600"
-              title="Dipakai bila tidak ada baris yang cocok dengan jenis dokumen yang dikirim"
-            >
-              cadangan
-            </span>
-          )}
-        </span>
+        <Button tone="halus" onClick={() => { openEdit(row) }} disabled={save.isPending}>
+          Ubah
+        </Button>
       ),
     },
   ]
@@ -246,6 +419,70 @@ export function ReasMemberPage() {
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
         </span>
       </p>
+
+      {/*
+        Form ubah berada DI ATAS tabel, bukan di bawahnya — ketetapan Work Owner 2026-10-05,
+        dan pola yang sama dipakai Master Login. Alasannya praktis: form di bawah tabel
+        berada di luar layar pada daftar yang panjang, sehingga menekan Ubah tampak seperti
+        tidak melakukan apa-apa.
+      */}
+      {editing !== null && (
+        <section className="mt-5 rounded border border-slate-200 bg-slate-50 p-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Ubah Email — {editing.nama_reas}
+          </h2>
+
+          {/* Keempat keterangan ini TIDAK dapat diubah; ia ditampilkan supaya petugas tahu
+              baris mana yang sedang disunting. Ketiganya yang pertama adalah KUNCI barisnya
+              (`UPDATEREAS` menyaring dengan ketiganya), dan Login tidak pernah disentuh
+              jalur ubah di sistem lama. */}
+          <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+            <div>
+              <dt className="text-xs text-slate-500">Kode Reas</dt>
+              <dd className="text-slate-800">{editing.kode_reas || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Login</dt>
+              <dd className="text-slate-800">{editing.login || 'belum ada'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Negara</dt>
+              <dd className="text-slate-800">{editing.negara || '—'}</dd>
+            </div>
+            <div>
+              {/* Tanpa penanda "cadangan", dengan alasan yang sama seperti di kolomnya. */}
+              <dt className="text-xs text-slate-500">Tipe</dt>
+              <dd className="text-slate-800">{editing.tipe || '—'}</dd>
+            </div>
+          </dl>
+
+          <form className="mt-4" onSubmit={submit}>
+            <label className="block text-sm font-medium text-slate-700" htmlFor="email-reas">
+              Email
+            </label>
+            <input
+              id="email-reas"
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm sm:max-w-md"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value) }}
+              disabled={save.isPending}
+            />
+
+            {save.isError && (
+              <p className="mt-2 text-sm text-rose-700">{saveMessage(save.error)}</p>
+            )}
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button tone="utama" type="submit" disabled={save.isPending}>
+                {save.isPending ? 'Menyimpan…' : 'Simpan'}
+              </Button>
+              <Button tone="halus" onClick={closeEdit} disabled={save.isPending}>
+                Batal
+              </Button>
+            </div>
+          </form>
+        </section>
+      )}
 
       <section className="mt-6">
         {portal === null ? (
@@ -291,32 +528,12 @@ export function ReasMemberPage() {
         )}
       </section>
 
-      {/* Tiga keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan
-          pengguna sendiri.
-
-          Ketiganya berasal dari bentuk tabel dan dari bukti yang tersedia, bukan dari
-          pilihan modul ini — dan ketiganya tidak terlihat dari layar bila tidak disebutkan. */}
-      <footer className="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
-        <p>
-          <strong className="text-slate-700">Layar ini hanya menampilkan.</strong>{' '}
-          Data member reas dibentuk dan diperbarui oleh proses pengiriman PLA dan DLA, bukan
-          dari layar ini — sama seperti di aplikasi lama. Untuk mengubah alamat email
-          tujuan, buka detail PLA atau DLA yang bersangkutan.
-        </p>
-        <p>
-          <strong className="text-slate-700">Satu perusahaan dapat muncul beberapa kali.</strong>{' '}
-          Setiap baris melayani satu jenis dokumen, yang ditandai kolom Tipe. Baris bertanda{' '}
-          <em>cadangan</em> dipakai ketika tidak ada baris yang cocok dengan jenis dokumen
-          yang sedang dikirim.
-        </p>
-        <p>
-          <strong className="text-slate-700">Login menentukan klaim yang dilihat mitra.</strong>{' '}
-          Kolom Login dipakai membatasi klaim mana yang tampil di layar seorang mitra
-          reasuransi. Bila ada login yang kosong, atau satu login dipakai dua kode reas,
-          laporkan ke administrator Claim PNC — keduanya tidak menimbulkan pesan kesalahan
-          apa pun.
-        </p>
-      </footer>
+      {/*
+        BLOK CATATAN DI KAKI HALAMAN DIHAPUS (Work Owner, 2026-10-05). Isinya menyebut nama
+        rule Pega, nama kolom Oracle, dan nomor keputusan — tidak berarti apa-apa bagi
+        petugas klaim, dan membuat layar tampak belum selesai. Catatan resminya tetap hidup
+        di doc comment paket `masterreas` dan di `docs/`, bukan di layar.
+      */}
     </main>
   )
 }
