@@ -1,18 +1,22 @@
-import { useState } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type SurveyorLogin } from '@/api/types'
+import type { SurveyorLogin } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
+import { reloadLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
+import {
+  AddButton,
+  ListHeader,
+  RefreshButton,
+  renderListState,
+} from '@/components/masterpage/MasterPage'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
 import {
   useCreateSurveyorLogin,
   useSaveSurveyorLogin,
   useSurveyorLoginList,
 } from './api'
-import { SurveyorLoginForm, type SurveyorLoginFormValues } from './SurveyorLoginForm'
+import { SurveyorLoginForm } from './SurveyorLoginForm'
 
 /**
  * Ukuran halaman diambil dari `pyPageSizeOther` pada grid
@@ -30,49 +34,9 @@ import { SurveyorLoginForm, type SurveyorLoginFormValues } from './SurveyorLogin
  */
 const PAGE_SIZE = 15
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian ' +
-            'atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar login surveyor tidak dapat dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+  return reloadLoadMessage(error, { failedTitle: 'Daftar login surveyor tidak dapat dimuat' })
 }
 
 /**
@@ -129,47 +93,18 @@ function loadMessage(error: unknown): MessageContent {
 export function SurveyorLoginPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<SurveyorLogin | null>(null)
-
   const list = useSurveyorLoginList()
   const create = useCreateSurveyorLogin()
   const save = useSaveSurveyorLogin()
+  const form = useCrudForm(create, save, (row: SurveyorLogin, input) => ({
+    login: row.login,
+    input,
+  }))
+  const editing = form.openedRow
+  const isFormOpen = form.isOpen
+  const { closeForm, openCreate: openAdd, openEdit } = form
 
-  const isFormOpen = isAdding || editing !== null
   const rows = list.data?.login_surveyor ?? []
-
-  function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
-  }
-
-  function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
-  }
-
-  function openEdit(row: SurveyorLogin) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
-  }
-
-  function submit(values: SurveyorLoginFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan penolakan login ganda adalah
-    // kegagalan yang paling sering terjadi di layar ini.
-    if (editing) {
-      save.mutate({ login: editing.login, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
 
   /*
     Lima kolom, satu-lawan-satu dengan grid Pega — Nama, Login, Email, Telp, Alamat —
@@ -226,64 +161,39 @@ export function SurveyorLoginPage() {
 
   // Isi bagian daftar menurut keadaan portal dan kueri.
   function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
+    return renderListState({
+      portal,
+      query: list,
+      loadingText: 'Memuat daftar login surveyor…',
+      toMessage: loadMessage,
+      render: () => (
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.login}
+          description="Sumber: POOLDATA.MST_LOGIN_SURVEYOR"
+          searchLabel="Cari nama, login, atau email"
+          pageSize={PAGE_SIZE}
+          emptyMessage="Belum ada login surveyor pada entitas ini."
         />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar login surveyor…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.login}
-        description="Sumber: POOLDATA.MST_LOGIN_SURVEYOR"
-        searchLabel="Cari nama, login, atau email"
-        pageSize={PAGE_SIZE}
-        emptyMessage="Belum ada login surveyor pada entitas ini."
-      />
-    )
+      ),
+    })
   }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/* Judulnya dibaca dari `pyCaption Master Login Surveyor` pada
-              Section/LoginSurveyor (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Login Surveyor</h1>
-          <p className="text-sm text-slate-600">
-            Daftar surveyor yang terdaftar pada entitas ini, beserta email, telepon, dan
-            alamatnya.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Kedua tombol ini dibaca dari `pyButtonLabel` pada Section/LoginSurveyor —
-              Tambah dan Refresh, dengan caption itu apa adanya (D-13). */}
-          <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
-            Tambah
-          </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-        </div>
-      </header>
+      {/* Judulnya dibaca dari `pyCaption Master Login Surveyor` pada
+          Section/LoginSurveyor (D-13).
+
+          Kedua tombol ini dibaca dari `pyButtonLabel` pada Section/LoginSurveyor —
+          Tambah dan Refresh, dengan caption itu apa adanya (D-13). */}
+      <ListHeader
+        title="Master Login Surveyor"
+        description="Daftar surveyor yang terdaftar pada entitas ini, beserta email, telepon, dan alamatnya."
+      >
+        <AddButton onClick={openAdd} disabled={isFormOpen} />
+        <RefreshButton query={list} />
+      </ListHeader>
 
       {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
@@ -303,9 +213,9 @@ export function SurveyorLoginPage() {
         <section className="mt-5">
           <SurveyorLoginForm
             editing={editing}
-            isSaving={create.isPending || save.isPending}
-            error={editing ? save.error : create.error}
-            onSave={submit}
+            isSaving={form.isSaving}
+            error={form.saveError}
+            onSave={form.submit}
             onCancel={closeForm}
           />
         </section>

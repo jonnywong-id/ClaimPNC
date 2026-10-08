@@ -1,14 +1,8 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, type ReactNode } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Business, type DocumentObject } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ComboField } from '@/components/ComboField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import type { Business, DocumentObject } from '@/api/types'
+import { BusinessMappedForm } from '@/components/masterform/BusinessMappedForm'
+import { businessListSchema } from '@/components/masterform/BusinessRowsField'
 
 /**
  * Kedua batas harus sama dengan MaxDescriptionLength dan MaxBusinessNameLength di
@@ -43,19 +37,7 @@ const schema = z.object({
       MAX_DESCRIPTION_LENGTH,
       `Daftar Objek Dokumen paling panjang ${MAX_DESCRIPTION_LENGTH} karakter.`,
     ),
-  // Disimpan sebagai senarai objek, bukan senarai teks, karena useFieldArray menuntut setiap
-  // barisnya berupa objek agar dapat memberinya kunci yang stabil.
-  bisnis: z.array(
-    z.object({
-      nama: z
-        .string()
-        .trim()
-        .max(
-          MAX_BUSINESS_NAME_LENGTH,
-          `Nama bisnis paling panjang ${MAX_BUSINESS_NAME_LENGTH} karakter.`,
-        ),
-    }),
-  ),
+  bisnis: businessListSchema(MAX_BUSINESS_NAME_LENGTH),
 })
 
 export type DocumentObjectFields = z.infer<typeof schema>
@@ -71,85 +53,6 @@ type Props = {
   error: unknown
   onSave: (values: DocumentObjectFields) => void
   onCancel: () => void
-}
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf). Yang
- * ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu, karena
- * itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
-        // mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : {
-              title: 'Belum dapat disimpan',
-              description: error.message,
-              tone: 'penolakan',
-            }
-      case ErrorCode.notFound:
-        return {
-          title: 'Baris ini sudah tidak ada',
-          description: 'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
-}
-
-/** Menyusun nilai awal form dari baris yang disunting. */
-function valuesOf(edited: DocumentObject | null): DocumentObjectFields {
-  return {
-    objek_dokumen: edited?.objek_dokumen ?? '',
-    bisnis: (edited?.bisnis ?? []).map((b) => ({ nama: b.nama })),
-  }
-}
-
-/** submitLabel memilih label tombol simpan: sedang menyimpan, modus ubah, atau modus tambah. */
-function submitLabel(isSaving: boolean, editMode: boolean): string {
-  if (isSaving) return 'Menyimpan…'
-  return editMode ? 'Ubah' : 'Simpan'
 }
 
 /**
@@ -180,183 +83,27 @@ function submitLabel(isSaving: boolean, editMode: boolean): string {
  * dibawa, dan penggantinya adalah pesan galat ber-`kode` yang sudah ditangani messageFor di
  * atas.
  */
-export function DocumentObjectForm({
-  edited,
-  businesses,
-  isLoadingBusinessMapping,
-  isSaving,
-  error,
-  onSave,
-  onCancel,
-}: Readonly<Props>) {
-  const editMode = edited !== null
-
-  const {
-    control,
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm<DocumentObjectFields>({
-    resolver: zodResolver(schema),
-    defaultValues: valuesOf(edited),
-  })
-
-  // `bisnis` adalah grid, bukan satu isian. useFieldArray yang memegang barisnya supaya
-  // setiap baris punya kunci stabil — tanpa itu, menghapus baris tengah akan membuat React
-  // memakai ulang elemen input dan nilai baris berikutnya ikut bergeser.
-  const { fields, append, remove } = useFieldArray({ control, name: 'bisnis' })
-
-  // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu —
-  // misalnya pengguna menekan "Ubah" pada baris lain, atau saat pemetaan bisnisnya baru
-  // selesai dimuat dari server.
-  useEffect(() => {
-    reset(valuesOf(edited))
-  }, [edited, reset])
-
-  // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
-  // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (`P-5`),
-  // dan itu hanya berguna bila layar menyorotnya satu per satu.
-  useEffect(() => {
-    for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'objek_dokumen') {
-        setError('objek_dokumen', { type: 'server', message })
-      } else if (column === 'bisnis') {
-        setError('bisnis', { type: 'server', message })
-      }
-    }
-  }, [error, setError])
-
-  const message = messageFor(error)
-
-  // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat dari
-  // ada-tidaknya baris "ID" di bawahnya.
-  const title = 'Memperbaharui Data'
-
-  const businessSuggestions = businesses.map((b) => b.nama)
-
-  function renderBusinessRows(): ReactNode {
-    if (isLoadingBusinessMapping) {
-      return (
-        <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
-      )
-    }
-    if (fields.length === 0) {
-      return (
-        <p className="text-sm text-slate-500">
-          Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat disimpan.
-        </p>
-      )
-    }
-    return (
-      <ul className="space-y-2">
-        {fields.map((row, index) => (
-          <li key={row.id} className="flex items-end gap-2">
-            <div className="grow">
-              {/* ComboField, bukan SelectField: sel Bisnis di Pega memakai kontrol
-                  `pxAutoComplete` yang menerima ketikan bebas, sehingga nama di luar
-                  daftar TETAP boleh diketik dan disimpan. */}
-              <ComboField
-                id={`bisnis-${index}`}
-                label={`Bisnis baris ${index + 1}`}
-                options={businessSuggestions}
-                maxLength={MAX_BUSINESS_NAME_LENGTH}
-                error={errors.bisnis?.[index]?.nama?.message}
-                {...register(`bisnis.${index}.nama` as const)}
-              />
-            </div>
-            <Button
-              tone="halus"
-              onClick={() => remove(index)}
-              aria-label={`Hapus bisnis baris ${index + 1}`}
-            >
-              Hapus
-            </Button>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-
+export function DocumentObjectForm({ businesses, ...props }: Readonly<Props>) {
   return (
-    <form
-      onSubmit={handleSubmit(onSave)}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
-      {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
-          belum ada — nomornya diterbitkan server dari urutan basis data. Di Pega pun
-          isiannya `pyReadOnly=true` dan hanya tampil bila terisi. */}
-      {editMode && (
-        <div>
-          <span className="block text-sm font-medium text-slate-700">ID</span>
-          <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
-            {edited.id}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
-          </p>
-        </div>
-      )}
-
-      <Field
-        id="objek_dokumen"
-        label="Daftar Objek Dokumen"
-        type="text"
-        autoFocus
-        autoComplete="off"
-        maxLength={MAX_DESCRIPTION_LENGTH}
-        error={errors.objek_dokumen?.message}
-        {...register('objek_dokumen')}
-      />
-
-      {/* Bisnis adalah GRID, bukan satu isian. Di Pega ia
-          `pyPageListProperty = TempDocObj.LIST_LBU_ID` dengan sel terikat `.Note` berkelas
-          ASM-FW-GISFW-Int-BUSINESS — satu objek dokumen dapat dipakai banyak bisnis. */}
-      <fieldset className="rounded-kontrol border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">ID Bisnis</legend>
-
-        {renderBusinessRows()}
-
-        {/* Pelanggaran grid dilaporkan di bawah gridnya, bukan di salah satu barisnya:
-            server menyebutnya sebagai satu isian bernama "bisnis". */}
-        {errors.bisnis?.message && (
-          <p className="mt-2 text-sm text-red-600" role="alert">
-            {errors.bisnis.message}
-          </p>
-        )}
-
-        <div className="mt-3">
-          <Button tone="kedua" onClick={() => append({ nama: '' })}>
-            Tambah Bisnis
-          </Button>
-          {/* Daftar saran yang gagal dimuat TIDAK menghalangi apa pun: namanya memang boleh
-              diketik sendiri. Yang hilang hanya kenyamanan memilih. */}
-          {businessSuggestions.length === 0 && (
-            <p className="mt-2 text-sm text-slate-500">
-              Daftar bisnis belum dapat dimuat, jadi tidak ada saran. Nama bisnis tetap dapat
-              diketik sendiri.
-            </p>
-          )}
-        </div>
-      </fieldset>
-
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
-            kedua modusnya (`pyButtonLabel` pada BrowseDocumentObject-Section). */}
-        <Button type="submit" tone="utama" disabled={isSaving || isLoadingBusinessMapping}>
-          {submitLabel(isSaving, editMode)}
-        </Button>
-      </div>
-    </form>
+    <BusinessMappedForm
+      {...props}
+      schema={schema}
+      textName="objek_dokumen"
+      textLabel="Daftar Objek Dokumen"
+      textMaxLength={MAX_DESCRIPTION_LENGTH}
+      textAutoCompleteOff
+      textOf={(row) => row.objek_dokumen}
+      idOf={(row) => row.id}
+      businessesOf={(row) => row.bisnis}
+      // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat
+      // dari ada-tidaknya baris "ID" di bawahnya.
+      title="Memperbaharui Data"
+      // Bisnis adalah GRID: `pyPageListProperty = TempDocObj.LIST_LBU_ID` dengan sel terikat
+      // `.Note` berkelas ASM-FW-GISFW-Int-BUSINESS, kontrol `pxAutoComplete`.
+      legend="ID Bisnis"
+      emptyText="Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat disimpan."
+      businessNames={businesses.map((b) => b.nama)}
+      businessMaxLength={MAX_BUSINESS_NAME_LENGTH}
+    />
   )
 }

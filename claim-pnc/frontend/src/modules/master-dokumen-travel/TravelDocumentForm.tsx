@@ -3,11 +3,10 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type TravelDocument } from '@/api/types'
 import { Field } from '@/components/Field'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { MasterFormActions, MasterFormFrame } from '@/components/masterform/BoxForm'
+import { type CodeMessages, portalMessages, saveErrorMessage } from '@/components/masterform/saveErrorMessage'
 
 /**
  * Skema ini SENGAJA tidak memuat satu pun aturan, dan itu bukan kelalaian.
@@ -45,54 +44,15 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Tidak ada cabang `validasi_gagal` di sini, dan itu konsekuensi langsung dari layar
- * tanpa validasi: server tidak pernah mengirimkannya untuk modul ini.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.travelDocumentNotFound:
-        return {
-          title: 'Dokumen ini sudah tidak ada',
-          description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  [ErrorCode.travelDocumentNotFound]: {
+    title: 'Dokumen ini sudah tidak ada',
+    description:
+      'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
+    tone: 'penolakan',
+  },
+  ...portalMessages,
 }
 
 /**
@@ -121,7 +81,7 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
     reset({ judul: edited?.judul ?? '' })
   }, [edited, reset])
 
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
 
   /**
    * Judulnya SAMA untuk mode tambah maupun ubah, dan itu meniru Pega apa adanya.
@@ -138,18 +98,7 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
   const title = 'Memperbaharui Data'
 
   return (
-    <form
-      onSubmit={handleSubmit(onSave)}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
+    <MasterFormFrame onSubmit={handleSubmit(onSave)} title={title} message={message}>
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan
           ia belum ada — nomornya diterbitkan server dari urutan basis data entitas. */}
       {/*
@@ -192,14 +141,7 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
         {...register('judul')}
       />
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
-    </form>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} />
+    </MasterFormFrame>
   )
 }

@@ -1,15 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useState, useMemo } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, PanelStatus, type Panel } from '@/api/types'
+import { PanelStatus, type Panel } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
+import { ApprovalPanel } from '@/components/masterpage/ApprovalPanel'
+import { retryLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import { useApprovalTabs } from '@/components/masterpage/useApprovalTabs'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
+import {
+  AddButton,
+  ListHeader,
+  RefreshButton,
+  editColumn,
+  renderListState,
+} from '@/components/masterpage/MasterPage'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { selectColumn } from '@/components/ApprovalControls'
 
 import { useCreatePanel, useDecidePanel, usePanelList, useSavePanel } from './api'
-import { PanelForm, type PanelFormValues } from './PanelForm'
-import { compareCodeUnits } from '@/lib/sort'
+import { PanelForm } from './PanelForm'
+import { collectKnownValues } from '@/components/masterpage/knownValues'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -79,8 +88,6 @@ const TABS = [
   },
 ] as const
 
-type TabId = (typeof TABS)[number]['id']
-
 /** Kolom yang nilai sahnya tidak ada di export; sarannya dikumpulkan dari data. */
 const SUGGESTED_COLUMNS = [
   'status_repair',
@@ -94,46 +101,8 @@ const SUGGESTED_COLUMNS = [
   'exclusion_c',
 ] as const
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar panel tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar panel tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+  return retryLoadMessage(error, { failedTitle: 'Daftar panel tidak dapat dimuat' })
 }
 
 /**
@@ -171,19 +140,18 @@ function loadMessage(error: unknown): MessageContent {
 export function PanelPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Panel | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const { tab, setTab, active, chosen, setChosen, toggle } = useApprovalTabs(TABS, 'approve')
   const [note, setNote] = useState('')
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = usePanelList(active.status)
   const create = useCreatePanel()
   const save = useSavePanel()
+  const form = useCrudForm(create, save, (row: Panel, input) => ({ id: row.id_panel, input }))
+  const editing = form.openedRow
+  const isFormOpen = form.isOpen
+  const { closeForm, openCreate: openAdd, openEdit } = form
   const decide = useDecidePanel()
 
-  const isFormOpen = isAdding || editing !== null
   const rows = list.data?.panel ?? []
 
   /*
@@ -193,59 +161,7 @@ export function PanelPage() {
     terbaik yang tersedia atas pertanyaan "nilai apa yang sah di kolom ini" — lihat
     PanelForm bagian "Penanda perlakuan klaim".
   */
-  const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
-    for (const column of SUGGESTED_COLUMNS) {
-      const unique = new Set<string>()
-      for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
-      }
-      collected[column] = [...unique].sort(compareCodeUnits)
-    }
-    return collected
-  }, [rows])
-
-  function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
-  }
-
-  function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
-  }
-
-  function openEdit(row: Panel) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
-  }
-
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function submit(values: PanelFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang memuat daftar
-    // lokasi yang baru disusun, itu kehilangan yang tidak dapat dimaafkan.
-    if (editing) {
-      save.mutate({ id: editing.id_panel, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
+  const knownValues = useMemo(() => collectKnownValues(rows, SUGGESTED_COLUMNS), [rows])
 
   function runDecision(status: string) {
     decide.mutate(
@@ -288,29 +204,14 @@ export function PanelPage() {
   })
 
   const columns: Column<Panel>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Panel) => (chosen.has(row.id_panel) ? 'dipilih' : ''),
-            render: (row: Panel) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_panel)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_panel)}
-                />
-                <span className="sr-only">Pilih {row.nama_panel}</span>
-              </label>
-            ),
-          } satisfies Column<Panel>,
-        ]
-      : []),
+    ...selectColumn<Panel>({
+      enabled: tab === 'menunggu',
+      chosen,
+      idOf: (row) => row.id_panel,
+      nameOf: (row) => row.nama_panel,
+      disabled: decide.isPending,
+      onToggle: toggle,
+    }),
     {
       key: 'id',
       title: 'ID',
@@ -332,79 +233,46 @@ export function PanelPage() {
     statusColumn('rusak_parah', 'STATUS RUSAK PARAH', (row) => row.status_rusak_parah),
     statusColumn('aktif', 'STATUS AKTIF', (row) => row.status_aktif),
     statusColumn('exclusion_c', 'Exclusion C', (row) => row.exclusion_c),
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<Panel>({
+      onEdit: openEdit,
       width: '7rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-          Ubah
-        </Button>
-      ),
-    },
+      tone: 'halus',
+      disabled: save.isPending,
+    }),
   ]
 
   // Isi bagian daftar menurut keadaan portal dan kueri.
   function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
+    return renderListState({
+      portal,
+      query: list,
+      loadingText: 'Memuat daftar panel…',
+      toMessage: loadMessage,
+      render: () => (
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id_panel}
+          description="Sumber: POOLDATA.PANEL_HE dan POOLDATA.LOKASI_PANEL_HE"
+          searchLabel="Cari panel"
+          emptyMessage={`Belum ada panel pada tab ${active.label}.`}
+          pageSize={active.pageSize}
         />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar panel…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.id_panel}
-        description="Sumber: POOLDATA.PANEL_HE dan POOLDATA.LOKASI_PANEL_HE"
-        searchLabel="Cari panel"
-        emptyMessage={`Belum ada panel pada tab ${active.label}.`}
-        pageSize={active.pageSize}
-      />
-    )
+      ),
+    })
   }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/* Judulnya dibaca dari `pyCaption Master Panel HE` pada Section/ListPanelHE —
-              "HE" ikut, karena itulah yang tertulis di layar lama (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Panel HE</h1>
-          <p className="text-sm text-slate-600">
-            Panel bodi kendaraan berat beserta perlakuan klaimnya, dan daftar lokasi pada
-            setiap panel.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
-            Tambah
-          </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-        </div>
-      </header>
+      {/* Judulnya dibaca dari `pyCaption Master Panel HE` pada Section/ListPanelHE —
+          "HE" ikut, karena itulah yang tertulis di layar lama (D-13). */}
+      <ListHeader
+        title="Master Panel HE"
+        description="Panel bodi kendaraan berat beserta perlakuan klaimnya, dan daftar lokasi pada setiap panel."
+      >
+        <AddButton onClick={openAdd} disabled={isFormOpen} />
+        <RefreshButton query={list} />
+      </ListHeader>
 
       {/*
         Ketiga tombol unggah layar Pega — "Upload Document", "Upload Data Master Panel",
@@ -420,91 +288,34 @@ export function PanelPage() {
         Owner memilih menghapusnya sama sekali (2026-09-20); lihat
         docs/keputusan-implementasi.md §25.
       */}
-      <nav
-        aria-label="Tab Master Panel"
-        className="mt-4 flex flex-wrap gap-1 border-b border-slate-200"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
-            onClick={() => {
-              closeForm()
-              // Centang dan catatan dibuang saat berpindah tab: baris yang dipilih milik
-              // tab sebelumnya, dan menyimpannya berarti keputusan dapat mengenai baris
-              // yang tidak sedang dilihat siapa pun.
-              setChosen(new Set())
-              setNote('')
-              decide.reset()
-              setTab(t.id)
-            }}
-            className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-              tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
-          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
-          diandaikan pengguna (ADR-0030, R-20). */}
-      <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
-        <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </span>
-      </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} panel dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          note={note}
-          onNoteChange={setNote}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(PanelStatus.disetujui)}
-          onReject={() => runDecision(PanelStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
+      <ApprovalPanel
+        tabLabel="Tab Master Panel"
+        tabs={TABS}
+        active={active}
+        onSwitch={setTab}
+        onBeforeSwitch={() => {
+          closeForm()
+          setNote('')
+        }}
+        portal={list.data?.portal ?? portal}
+        decide={decide}
+        feedbackNoun="panel"
+        barNoun="panel"
+        chosenCount={chosen.size}
+        onApprove={() => runDecision(PanelStatus.disetujui)}
+        onReject={() => runDecision(PanelStatus.ditolak)}
+        onClear={() => setChosen(new Set())}
+        note={{ value: note, onChange: setNote }}
+      />
 
       {isFormOpen && (
         <section className="mt-5">
           <PanelForm
             editing={editing}
             knownValues={knownValues}
-            isSaving={create.isPending || save.isPending}
-            error={editing ? save.error : create.error}
-            onSave={submit}
+            isSaving={form.isSaving}
+            error={form.saveError}
+            onSave={form.submit}
             onCancel={closeForm}
           />
         </section>
@@ -525,96 +336,3 @@ export function PanelPage() {
   dikelola (lihat LocationEditor).
 */
 
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang,
- * beserta satu isian Catatan.
- *
- * Ia padanan `Section/ApprovalMasterPanelHE-Section.xml` yang menyediakan Select All,
- * Deselect All, Approve, dan Reject, ditambah isian `TempStsClaim.pyNote` yang sejajar
- * dengan kolom ALASAN_TOLAK.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  note,
-  onNoteChange,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: Readonly<{
-  count: number
-  note: string
-  onNoteChange: (value: string) => void
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}>) {
-  return (
-    <div className="mt-4 space-y-3 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="min-w-0 flex-1 text-sm text-slate-700">
-          {count === 0 ? (
-            'Centang panel yang akan diputuskan.'
-          ) : (
-            <>
-              <span className="font-medium">{count} panel</span> dipilih.
-            </>
-          )}
-        </span>
-        {count > 0 && (
-          <Button tone="halus" onClick={onClear} disabled={isBusy}>
-            Bersihkan
-          </Button>
-        )}
-        {/*
-          Namanya "Approve terpilih", bukan "Approve" saja.
-
-          Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-          "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama
-          sama membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari
-          namanya. Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-        */}
-        <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-          {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-        </Button>
-        <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-          Reject terpilih
-        </Button>
-      </div>
-
-      {/*
-        Catatan hanya tersimpan pada keputusan TOLAK; kolomnya memang bernama ALASAN_TOLAK.
-        Itu dinyatakan di layar, bukan dibiarkan menjadi kejutan saat petugas mengetiknya
-        lalu menekan Approve.
-      */}
-      <div>
-        <label htmlFor="catatan-keputusan" className="block text-sm font-medium text-slate-700">
-          Catatan
-        </label>
-        <input
-          id="catatan-keputusan"
-          type="text"
-          value={note}
-          maxLength={250}
-          disabled={isBusy || count === 0}
-          onChange={(event) => onNoteChange(event.target.value)}
-          className={
-            'mt-1 w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 text-slate-900 ' +
-            'shadow-lembut transition-[border-color,box-shadow] duration-150 ease-halus ' +
-            'focus:border-blue-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 ' +
-            'disabled:bg-slate-100 disabled:text-slate-500'
-          }
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          Tersimpan sebagai alasan penolakan. Pada keputusan Approve, catatan ini tidak ikut
-          tersimpan.
-        </p>
-      </div>
-    </div>
-  )
-}

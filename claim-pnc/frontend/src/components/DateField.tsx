@@ -106,7 +106,7 @@ function useDateText(value: string, onChange: (iso: string) => void) {
   return {
     text,
     picker,
-    invalid: text.replace(/\D/g, '').length === 8 && textToISO(text) === '',
+    invalid: text.replaceAll(/\D/g, '').length === 8 && textToISO(text) === '',
     type(raw: string) {
       const next = mask(raw)
       setText(next)
@@ -159,7 +159,7 @@ function HiddenPicker({ d, value }: Readonly<{ d: DateText; value: string }>) {
 
 /** mask menyisipkan garis miring saat mengetik: "01092026" → "01/09/2026". */
 function mask(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  const digits = raw.replaceAll(/\D/g, '').slice(0, 8)
   if (digits.length <= 2) return digits
   if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`

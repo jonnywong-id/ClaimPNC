@@ -260,6 +260,14 @@ function filenameOf(response: Response): string {
 
 /** exportParams menyusun penyaring ekspor — sama persis dengan daftar yang tampil. */
 function exportParams(form: SearchForm): string {
+  return filterParams(form).toString()
+}
+
+/**
+ * filterParams menyusun penyaring yang berlaku bagi mode terpilih — dipakai bersama oleh
+ * ekspor dan pencarian, sehingga keduanya tidak pernah berbeda.
+ */
+function filterParams(form: SearchForm): URLSearchParams {
   const params = new URLSearchParams()
   params.set('mode', form.mode)
 
@@ -270,7 +278,7 @@ function exportParams(form: SearchForm): string {
     if (form.tanggal_sampai) params.set('tanggal_sampai', form.tanggal_sampai)
   }
 
-  return params.toString()
+  return params
 }
 
 /**
@@ -281,15 +289,7 @@ function exportParams(form: SearchForm): string {
  * hasilnya sama — dan satu perjalanan jaringan tambahan setiap kali mode berganti.
  */
 function searchPath(form: SearchForm, page: number): string {
-  const params = new URLSearchParams()
-  params.set('mode', form.mode)
-
-  if (form.mode === SearchMode.keyword) {
-    if (form.kata_kunci.trim()) params.set('kata_kunci', form.kata_kunci.trim())
-  } else {
-    if (form.tanggal_dari) params.set('tanggal_dari', form.tanggal_dari)
-    if (form.tanggal_sampai) params.set('tanggal_sampai', form.tanggal_sampai)
-  }
+  const params = filterParams(form)
 
   if (page > 1) params.set('halaman', String(page))
 

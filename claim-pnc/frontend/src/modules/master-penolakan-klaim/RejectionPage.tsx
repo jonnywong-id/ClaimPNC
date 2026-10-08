@@ -1,11 +1,18 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import type { UseQueryResult } from '@tanstack/react-query'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type CommitteeRejection, type Rejection } from '@/api/types'
-import { Button } from '@/components/Button'
+import type { CommitteeRejection, Rejection } from '@/api/types'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { useSelectedPortal } from '@/app/portal'
+import { retryLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import {
+  AddButton,
+  RefreshButton,
+  editColumn,
+  renderListState,
+} from '@/components/masterpage/MasterPage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
 
 import {
   useCreateRejection,
@@ -32,42 +39,8 @@ import { CommitteeRejectionForm, type CommitteeRejectionFields } from './Committ
  */
 type Tab = 'klaim' | 'komite'
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return { title: 'Daftar tidak dapat dimuat', description: 'Coba beberapa saat lagi.', tone: 'gangguan' }
+  return retryLoadMessage(error)
 }
 
 /**
@@ -221,54 +194,56 @@ function TabButton({
   )
 }
 
-// Menyetel ulang kedua mutasi lalu menetapkan baris yang disunting dan keadaan form.
-// Dipakai bersama oleh kedua tab supaya urutan langkahnya hanya ditulis sekali.
-function setFormState<T>(
-  mutations: ReadonlyArray<{ reset: () => void }>,
-  setEdited: (row: T | null) => void,
-  setFormOpen: (open: boolean) => void,
-  row: T | null,
-  open: boolean,
-) {
-  for (const mutation of mutations) mutation.reset()
-  setEdited(row)
-  setFormOpen(open)
+/**
+ * Isi satu tab: tombol Refresh dan Tambah, form (bila terbuka), lalu daftar. Dipakai bersama
+ * oleh kedua tab supaya susunannya hanya ditulis sekali.
+ */
+function TabBody<TData, TError>({
+  list,
+  onAdd,
+  addDisabled,
+  form,
+  loadingText,
+  renderTable,
+}: Readonly<{
+  list: UseQueryResult<TData, TError>
+  onAdd: () => void
+  addDisabled: boolean
+  form: ReactNode
+  loadingText: string
+  renderTable: (data: TData) => ReactNode
+}>) {
+  return (
+    <>
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <RefreshButton query={list} />
+        <AddButton onClick={onAdd} disabled={addDisabled} />
+      </div>
+
+      {form ? <section className="mt-5">{form}</section> : null}
+
+      {/* Isi bagian daftar menurut keadaan kueri. */}
+      <section className="mt-6">
+        {renderListState({ query: list, loadingText, toMessage: loadMessage, render: renderTable })}
+      </section>
+    </>
+  )
 }
 
 /** Tab pertama — POOLDATA.MST_PENOLAKAN_KLAIM_1 dan _2. */
 function RejectionTab() {
-  const [edited, setEdited] = useState<Rejection | null>(null)
-  const [isFormOpen, setFormOpen] = useState(false)
-
   const list = useRejectionList()
   const parents = useRejectionParentList()
   const create = useCreateRejection()
   const update = useUpdateRejection()
 
+  const form = useCrudForm(create, update, (row: Rejection, input) => ({ id: row.id, input }))
+  const edited = form.openedRow
   const saving = edited === null ? create : update
+  const { openEdit } = form
 
-  function openCreate() {
-    setFormState([create, update], setEdited, setFormOpen, null, true)
-  }
-
-  function openEdit(row: Rejection) {
-    setFormState([create, update], setEdited, setFormOpen, row, true)
-  }
-
-  function closeForm() {
-    setFormState([create, update], setEdited, setFormOpen, null, false)
-  }
-
-  // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-  // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
-  // diketik, itu berarti mengetik ulang dari awal.
   function save(values: RejectionFields) {
-    const input = toInput(values)
-    if (edited === null) {
-      create.mutate(input, { onSuccess: closeForm })
-      return
-    }
-    update.mutate({ id: edited.id, input }, { onSuccess: closeForm })
+    form.submit(toInput(values))
   }
 
   // Susunan kolom mengikuti grid Pega apa adanya, terbaca dari label pada
@@ -328,176 +303,99 @@ function RejectionTab() {
         </span>
       ),
     },
-    {
-      key: 'aksi',
-      title: '',
+    editColumn<Rejection>({
+      onEdit: openEdit,
       width: 'w-24',
-      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
-      // tombol, bukan data.
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
-          Ubah
-        </Button>
-      ),
-    },
+      title: '',
+      ariaLabel: (row) => `Ubah ${row.nama}`,
+    }),
   ]
 
-  // Isi bagian daftar menurut keadaan kueri.
-  function renderList() {
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar penolakan klaim…</p>
-    }
-    if (list.isError) {
-      return <LoadError error={list.error} />
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.penolakan_klaim}
-        rowKey={(row) => row.id}
-        description="Sumber: POOLDATA.MST_PENOLAKAN_KLAIM_2 · persetujuan diisi lewat Inbox Manager"
-        emptyMessage="Belum ada penolakan klaim pada entitas ini."
-      />
-    )
-  }
-
   return (
-    <>
-      <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-          {list.isFetching ? 'Memuat…' : 'Refresh'}
-        </Button>
-        <Button tone="utama" onClick={openCreate} disabled={isFormOpen && edited === null}>
-          Tambah
-        </Button>
-      </div>
-
-      {isFormOpen && (
-        <section className="mt-5">
+    <TabBody
+      list={list}
+      onAdd={form.openCreate}
+      addDisabled={form.isOpen && edited === null}
+      form={
+        form.isOpen && (
           <RejectionForm
             edited={edited}
             parents={parents.data?.status_1 ?? []}
             isSaving={saving.isPending}
             error={saving.error}
             onSave={save}
-            onCancel={closeForm}
+            onCancel={form.closeForm}
           />
-        </section>
+        )
+      }
+      loadingText="Memuat daftar penolakan klaim…"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.penolakan_klaim}
+          rowKey={(row) => row.id}
+          description="Sumber: POOLDATA.MST_PENOLAKAN_KLAIM_2 · persetujuan diisi lewat Inbox Manager"
+          emptyMessage="Belum ada penolakan klaim pada entitas ini."
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </>
+    />
   )
 }
 
 /** Tab kedua — POOLDATA.MST_REJECTED_KOMITE. */
 function CommitteeTab() {
-  const [edited, setEdited] = useState<CommitteeRejection | null>(null)
-  const [isFormOpen, setFormOpen] = useState(false)
-
   const list = useCommitteeRejectionList()
   const create = useCreateCommitteeRejection()
   const update = useUpdateCommitteeRejection()
 
+  const form = useCrudForm(
+    create,
+    update,
+    (row: CommitteeRejection, input: CommitteeRejectionFields) => ({ id: row.id, input }),
+  )
+  const edited = form.openedRow
   const saving = edited === null ? create : update
-
-  function openCreate() {
-    setFormState([create, update], setEdited, setFormOpen, null, true)
-  }
-
-  function openEdit(row: CommitteeRejection) {
-    setFormState([create, update], setEdited, setFormOpen, row, true)
-  }
-
-  function closeForm() {
-    setFormState([create, update], setEdited, setFormOpen, null, false)
-  }
-
-  function save(values: CommitteeRejectionFields) {
-    if (edited === null) {
-      create.mutate(values, { onSuccess: closeForm })
-      return
-    }
-    update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
-  }
+  const { openEdit } = form
 
   // Dua kolom, persis seperti kueri lama — ditambah tombol "ubah" yang di Pega dikirim
   // sebagai kolom ketiga beralias `NOKTP`. Label tombolnya dibawa; caranya tidak.
   const columns: Column<CommitteeRejection>[] = [
     { key: 'id', title: 'ID Master', width: 'w-28', value: (row) => row.id },
     { key: 'catatan', title: 'Note Komite Reject', value: (row) => row.catatan },
-    {
-      key: 'aksi',
-      title: '',
+    editColumn<CommitteeRejection>({
+      onEdit: openEdit,
       width: 'w-24',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.catatan}`}>
-          Ubah
-        </Button>
-      ),
-    },
+      title: '',
+      ariaLabel: (row) => `Ubah ${row.catatan}`,
+    }),
   ]
 
-  // Isi bagian daftar menurut keadaan kueri.
-  function renderList() {
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar penolakan komite…</p>
-    }
-    if (list.isError) {
-      return <LoadError error={list.error} />
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.penolakan_komite}
-        rowKey={(row) => row.id}
-        description="Sumber: POOLDATA.MST_REJECTED_KOMITE"
-        emptyMessage="Belum ada penolakan komite pada entitas ini."
-      />
-    )
-  }
-
   return (
-    <>
-      <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-          {list.isFetching ? 'Memuat…' : 'Refresh'}
-        </Button>
-        <Button tone="utama" onClick={openCreate} disabled={isFormOpen && edited === null}>
-          Tambah
-        </Button>
-      </div>
-
-      {isFormOpen && (
-        <section className="mt-5">
+    <TabBody
+      list={list}
+      onAdd={form.openCreate}
+      addDisabled={form.isOpen && edited === null}
+      form={
+        form.isOpen && (
           <CommitteeRejectionForm
             edited={edited}
             isSaving={saving.isPending}
             error={saving.error}
-            onSave={save}
-            onCancel={closeForm}
+            onSave={form.submit}
+            onCancel={form.closeForm}
           />
-        </section>
+        )
+      }
+      loadingText="Memuat daftar penolakan komite…"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.penolakan_komite}
+          rowKey={(row) => row.id}
+          description="Sumber: POOLDATA.MST_REJECTED_KOMITE"
+          emptyMessage="Belum ada penolakan komite pada entitas ini."
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </>
-  )
-}
-
-function LoadError({ error }: Readonly<{ error: unknown }>) {
-  const message = loadMessage(error)
-  return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+    />
   )
 }

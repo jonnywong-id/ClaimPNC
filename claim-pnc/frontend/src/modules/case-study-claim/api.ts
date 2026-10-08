@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
+import { useQueueList, useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -46,20 +47,7 @@ export const UKURAN_HALAMAN = 20
  * angkanya dapat diubah tanpa deploy, layar ikut berubah tanpa satu baris pun disunting.
  */
 export function useCaseStudyMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/penyaring`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali penyaring berubah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/penyaring`)
 }
 
 /**
@@ -78,22 +66,12 @@ export function useCaseStudyMetadata() {
  * pengguna mencari klaim yang ada di halaman tiga dan diberi tahu bahwa ia tidak ada.
  */
 export function useCaseStudyList(filter: FilterInput, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
-    // menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Layar telaah, bukan antrean kerja: isinya berubah jauh lebih jarang daripada inbox.
-    // Cache-nya karena itu lebih panjang daripada layar inbox mana pun.
-    staleTime: 60 * 1000,
-  })
+  return useQueueList<ListResponse>(
+    (portal, token) => keys.list(portal, token, filter, page),
+    buildPath(filter, page),
+    enabled,
+    60 * 1000,
+  )
 }
 
 /**
@@ -104,16 +82,21 @@ export function useCaseStudyList(filter: FilterInput, page: number, enabled: boo
  * alamatnya lebih pendek dan kuncinya lebih mudah dibaca saat menelusuri masalah.
  */
 function buildPath(filter: FilterInput, page: number): string {
-  const params = new URLSearchParams()
-
-  if (filter.dari) params.set('dari', filter.dari)
-  if (filter.sampai) params.set('sampai', filter.sampai)
-  if (filter.bisnis) params.set('bisnis', filter.bisnis)
-  if (filter.status) params.set('status', filter.status)
+  const params = filterParams(filter)
   params.set('batas', String(UKURAN_HALAMAN))
   if (page > 1) params.set('lewati', String((page - 1) * UKURAN_HALAMAN))
 
   return `${PATH}?${params.toString()}`
+}
+
+/** filterParams menyusun keempat penyaring layar, dipakai grid DAN unduhan. */
+function filterParams(filter: FilterInput): URLSearchParams {
+  const params = new URLSearchParams()
+  if (filter.dari) params.set('dari', filter.dari)
+  if (filter.sampai) params.set('sampai', filter.sampai)
+  if (filter.bisnis) params.set('bisnis', filter.bisnis)
+  if (filter.status) params.set('status', filter.status)
+  return params
 }
 
 /**
@@ -137,11 +120,7 @@ export function useExportCaseStudy() {
 
   return useMutation({
     mutationFn: async (filter: FilterInput) => {
-      const params = new URLSearchParams()
-      if (filter.dari) params.set('dari', filter.dari)
-      if (filter.sampai) params.set('sampai', filter.sampai)
-      if (filter.bisnis) params.set('bisnis', filter.bisnis)
-      if (filter.status) params.set('status', filter.status)
+      const params = filterParams(filter)
 
       simpanBerkas(await unduhBerkas(`${PATH}/unduh?${params.toString()}`, { token, portal }))
     },

@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { queryPath, useQueueList, useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -43,20 +44,7 @@ const keys = {
  * tab itu hidup tanpa satu baris pun di layar ini disunting.
  */
 export function useInboxComplianceMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/tab`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali tab berpindah hanya menambah perjalanan jaringan
-    // tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/tab`)
 }
 
 /**
@@ -74,22 +62,11 @@ export function useInboxComplianceMetadata() {
  * pasti gagal hanya menambah galat di log tanpa menambah keterangan apa pun.
  */
 export function useInboxComplianceList(tab: string, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.list(portal, token, tab, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
-    // menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Antrean kerja berubah saat petugas lain menyelesaikan pekerjaannya, jadi cache-nya
-    // pendek — sama dengan layar antrean kerja lain.
-    staleTime: 15 * 1000,
-  })
+  return useQueueList<ListResponse>(
+    (portal, token) => keys.list(portal, token, tab, page),
+    buildPath(tab, page),
+    enabled,
+  )
 }
 
 /**
@@ -100,13 +77,10 @@ export function useInboxComplianceList(tab: string, page: number, enabled: boole
  * sementara yang pertama memang itu yang diinginkan.
  */
 function buildPath(tab: string, page: number): string {
-  const params = new URLSearchParams()
-
-  if (tab) params.set('tab', tab)
-  if (page > 1) params.set('halaman', String(page))
-
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  return queryPath(PATH, [
+    ['tab', tab],
+    ['halaman', page > 1 && String(page)],
+  ])
 }
 
 /**

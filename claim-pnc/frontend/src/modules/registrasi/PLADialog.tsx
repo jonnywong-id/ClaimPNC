@@ -2,17 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 
 import { simpanBerkas } from '@/api/client'
 import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { useEscapeToClose } from '@/components/shared/useEscapeToClose'
 
 import { usePLAList, usePrintPLA, useSavePLANotes, violationsFrom } from './api'
+import { DialogFailure, DialogSuccess, LossAdviceTable } from './dialogParts'
 import type { PLARow } from './types'
-
-/** Teks galat dialog: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
-function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
-}
 
 /**
  * Dialog Print PLA — padanan layar `Section/PrintPLA_dtl_sect.xml` (flow action lokal
@@ -61,13 +55,7 @@ export function PLADialog({
   })
 
   const busy = list.isPending || save.isPending || print.isPending
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  useEscapeToClose(onClose, busy)
 
   const changed = rows.filter((r) => (notes[r.nomor] ?? '') !== r.catatan)
   const failure = print.error ?? save.error ?? list.error
@@ -99,65 +87,29 @@ export function PLADialog({
         {list.isPending && <p className="mt-4 text-sm text-slate-500">Menyiapkan PLA…</p>}
 
         {rows.length > 0 && (
-          <table className="mt-4 w-full border-collapse text-sm">
-            <caption className="sr-only">Daftar PLA</caption>
-            <thead>
-              <tr className="bg-slate-100 text-left text-xs text-slate-700">
-                <th className="p-2">NO PLA</th>
-                <th className="p-2">PLA REINSURER</th>
-                <th className="p-2">TIPE PLA</th>
-                <th className="p-2">REMARKS</th>
-                <th className="p-2">Email</th>
-                <th className="p-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.nomor} className="border-b border-slate-100 align-top">
-                  <td className="p-2 font-mono text-xs">{r.nomor}</td>
-                  <td className="p-2">{r.penerima}</td>
-                  <td className="p-2">{r.tipe}</td>
-                  <td className="p-2">
-                    <textarea
-                      aria-label={`Remarks ${r.nomor}`}
-                      rows={3}
-                      value={notes[r.nomor] ?? ''}
-                      onChange={(e) => setNotes((n) => ({ ...n, [r.nomor]: e.target.value }))}
-                      className="w-64 rounded border border-slate-300 px-2 py-1"
-                    />
-                  </td>
-                  <td className="p-2 text-xs text-slate-600">{r.email || '—'}</td>
-                  <td className="p-2">
-                    <button
-                      type="button"
-                      disabled={busy || changed.length > 0}
-                      title={changed.length > 0 ? 'Simpan remarks lebih dulu.' : undefined}
-                      onClick={() => download(r.nomor)}
-                      className="rounded bg-blue-800 px-2 py-1 text-xs text-white disabled:opacity-60"
-                    >
-                      Print PLA
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <LossAdviceTable
+            kind="PLA"
+            emailTitle="Email"
+            rows={rows}
+            notes={notes}
+            setNotes={setNotes}
+            remarksProps={() => ({ className: 'w-64 rounded border border-slate-300 px-2 py-1' })}
+            renderActions={(r) => (
+              <button
+                type="button"
+                disabled={busy || changed.length > 0}
+                title={changed.length > 0 ? 'Simpan remarks lebih dulu.' : undefined}
+                onClick={() => download(r.nomor)}
+                className="rounded bg-blue-800 px-2 py-1 text-xs text-white disabled:opacity-60"
+              >
+                Print PLA
+              </button>
+            )}
+          />
         )}
 
-        {failure && (
-          <div className="mt-4">
-            <ErrorMessage
-              title="PLA belum dapat diproses"
-              description={failureDescription(violations, failure)}
-              tone="penolakan"
-            />
-          </div>
-        )}
-        {print.isSuccess && !busy && !failure && (
-          <output className="mt-4 block text-sm text-emerald-700">
-            PLA diunduh.
-          </output>
-        )}
+        <DialogFailure title="PLA belum dapat diproses" failure={failure} violations={violations} />
+        <DialogSuccess show={print.isSuccess && !busy && !failure}>PLA diunduh.</DialogSuccess>
 
         <div className="mt-6 flex flex-wrap justify-between gap-3">
           <Button tone="halus" disabled={busy} onClick={onClose}>

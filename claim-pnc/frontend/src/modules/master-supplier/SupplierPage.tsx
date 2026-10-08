@@ -1,55 +1,17 @@
-import { useState } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, SUPPLIER_ACTIVE, type Supplier, type SupplierCode } from '@/api/types'
+import { SUPPLIER_ACTIVE, type Supplier, type SupplierCode } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
+import { retryLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
+import { renderListState } from '@/components/masterpage/MasterPage'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 
 import { useCreateSupplier, useSaveSupplier, useSupplierCodeList, useSupplierList } from './api'
-import { SupplierForm, type SupplierFormValues } from './SupplierForm'
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+import { SupplierForm } from './SupplierForm'
 
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar supplier tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar supplier tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+  return retryLoadMessage(error, { failedTitle: 'Daftar supplier tidak dapat dimuat' })
 }
 
 /**
@@ -99,15 +61,15 @@ function loadMessage(error: unknown): MessageContent {
 export function SupplierPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Supplier | null>(null)
-
   const list = useSupplierList()
   const codeList = useSupplierCodeList()
   const create = useCreateSupplier()
   const save = useSaveSupplier()
+  const form = useCrudForm(create, save, (row: Supplier, input) => ({ id: row.id_supplier, input }))
+  const editing = form.openedRow
+  const isFormOpen = form.isOpen
+  const { closeForm, openCreate: openAdd, openEdit } = form
 
-  const isFormOpen = isAdding || editing !== null
   const rows = list.data?.supplier ?? []
 
   const codes = {
@@ -116,38 +78,6 @@ export function SupplierPage() {
     jenis_supplier: codeList.data?.jenis_supplier ?? [],
     status_aktif: codeList.data?.status_aktif ?? [],
     status_autopayment: codeList.data?.status_autopayment ?? [],
-  }
-
-  function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
-  }
-
-  function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
-  }
-
-  function openEdit(row: Supplier) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
-  }
-
-  function submit(values: SupplierFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form dua puluh tiga isian,
-    // itu kehilangan yang tidak dapat dimaafkan.
-    if (editing) {
-      save.mutate({ id: editing.id_supplier, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
   }
 
   /*
@@ -246,57 +176,41 @@ export function SupplierPage() {
 
   // Isi bagian daftar menurut keadaan portal dan kueri.
   function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
+    return renderListState({
+      portal,
+      query: list,
+      loadingText: 'Memuat daftar supplier…',
+      toMessage: loadMessage,
+      render: () => (
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id_supplier}
+          description="Sumber: M_SUPPLIER"
+          searchLabel="Cari supplier"
+          emptyMessage="Belum ada supplier pada entitas ini."
+          /*
+            Dua puluh baris per halaman, dibaca langsung dari
+            `Section/InboxMasterSupplier-Section.xml`:
+
+              pyPageMode  = Numeric   nomor halaman, bukan "muat lebih banyak"
+              pyPageSize  = 20
+
+            Angkanya TIDAK seragam antarlayar — Master Bengkel juga 20, sementara Master
+            Rekening, Status Klaim, Status Progres, Pasal Kerugian, dan Penolakan Klaim
+            memakai 15 (`pyPageSizeOther`). Karena itu ia prop per layar, bukan bawaan
+            komponen.
+
+            Paginasinya di peramban, bukan di server: grid Pega pun terikat pada page
+            list klipboard (`pyPageListProperty = ListMasterSupllier.pxResults`) dan
+            memotong daftar yang sudah dimuat. Paginasi keyset sisi server adalah
+            `TKT-U2-001`, dan Steering menyebutnya perubahan perilaku — bukan
+            pemeliharaan.
+          */
+          pageSize={20}
         />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar supplier…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.id_supplier}
-        description="Sumber: M_SUPPLIER"
-        searchLabel="Cari supplier"
-        emptyMessage="Belum ada supplier pada entitas ini."
-        /*
-          Dua puluh baris per halaman, dibaca langsung dari
-          `Section/InboxMasterSupplier-Section.xml`:
-
-            pyPageMode  = Numeric   nomor halaman, bukan "muat lebih banyak"
-            pyPageSize  = 20
-
-          Angkanya TIDAK seragam antarlayar — Master Bengkel juga 20, sementara Master
-          Rekening, Status Klaim, Status Progres, Pasal Kerugian, dan Penolakan Klaim
-          memakai 15 (`pyPageSizeOther`). Karena itu ia prop per layar, bukan bawaan
-          komponen.
-
-          Paginasinya di peramban, bukan di server: grid Pega pun terikat pada page
-          list klipboard (`pyPageListProperty = ListMasterSupllier.pxResults`) dan
-          memotong daftar yang sudah dimuat. Paginasi keyset sisi server adalah
-          `TKT-U2-001`, dan Steering menyebutnya perubahan perilaku — bukan
-          pemeliharaan.
-        */
-        pageSize={20}
-      />
-    )
+      ),
+    })
   }
 
   return (
@@ -352,9 +266,9 @@ export function SupplierPage() {
           <SupplierForm
             editing={editing}
             codes={codes}
-            isSaving={create.isPending || save.isPending}
-            error={editing ? save.error : create.error}
-            onSave={submit}
+            isSaving={form.isSaving}
+            error={form.saveError}
+            onSave={form.submit}
             onCancel={closeForm}
           />
         </section>

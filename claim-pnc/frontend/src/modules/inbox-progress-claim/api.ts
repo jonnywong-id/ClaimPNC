@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -54,20 +55,7 @@ const keys = {
  * dan arti sebenarnya hanya tercatat di backend.
  */
 export function useProgressClaimMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/bagian`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan
-    // dari data. Mengambilnya ulang tiap kali bagian dibuka hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/bagian`)
 }
 
 /**

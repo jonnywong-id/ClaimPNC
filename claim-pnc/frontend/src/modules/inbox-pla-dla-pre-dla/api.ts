@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, downloadAPI } from '@/api/client'
+import { useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -76,19 +77,7 @@ const keys = {
  * tampilan yang boleh diputuskan layar.
  */
 export function usePLADLAMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan
-    // dari data.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/daftar`)
 }
 
 /** Isian penyaring yang dikirim ke server. */

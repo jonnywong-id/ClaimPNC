@@ -2,17 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 
 import { simpanBerkas } from '@/api/client'
 import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { useEscapeToClose } from '@/components/shared/useEscapeToClose'
 
 import { useDLAList, usePrintDLA, violationsFrom } from './api'
+import { DialogFailure, DialogSuccess, LossAdviceTable } from './dialogParts'
 import type { DLAListResponse, DLARow } from './types'
-
-/** Teks galat dialog: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
-function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
-}
 
 /**
  * Dialog Print DLA — padanan layar `Section/PrintDLA-sect.xml` (flow action lokal `PrintDLA`,
@@ -54,13 +48,7 @@ export function DLADialog({
   })
 
   const busy = list.isPending || print.isPending
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  useEscapeToClose(onClose, busy)
 
   const rows: DLARow[] = data?.dla ?? []
   const failure = print.error ?? list.error
@@ -116,78 +104,44 @@ export function DLADialog({
         )}
 
         {rows.length > 0 && (
-          <table className="mt-4 w-full border-collapse text-sm">
-            <caption className="sr-only">Daftar DLA</caption>
-            <thead>
-              <tr className="bg-slate-100 text-left text-xs text-slate-700">
-                <th className="p-2">NO DLA</th>
-                <th className="p-2">DLA REINSURER</th>
-                <th className="p-2">TIPE DLA</th>
-                <th className="p-2">REMARKS</th>
-                <th className="p-2">EMAIL</th>
-                <th className="p-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.nomor} className="border-b border-slate-100 align-top">
-                  <td className="p-2 font-mono text-xs">{r.nomor}</td>
-                  <td className="p-2">{r.penerima}</td>
-                  <td className="p-2">{r.tipe}</td>
-                  <td className="p-2">
-                    <textarea
-                      aria-label={`Remarks ${r.nomor}`}
-                      rows={3}
-                      value={notes[r.nomor] ?? ''}
-                      readOnly={r.sudah_cetak}
-                      disabled={r.sudah_kirim}
-                      onChange={(e) => setNotes((n) => ({ ...n, [r.nomor]: e.target.value }))}
-                      className="w-64 rounded border border-slate-300 px-2 py-1 read-only:bg-slate-50"
-                    />
-                  </td>
-                  <td className="p-2 text-xs text-slate-600">{r.email || '—'}</td>
-                  <td className="p-2">
-                    <div className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => download(r.nomor)}
-                        className="rounded bg-blue-800 px-2 py-1 text-xs text-white disabled:opacity-60"
-                      >
-                        PRINT
-                      </button>
-                      {r.sudah_cetak && (
-                        <button
-                          type="button"
-                          disabled
-                          title="Sending DLA by email is not active yet."
-                          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-400"
-                        >
-                          Kirim
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <LossAdviceTable
+            kind="DLA"
+            emailTitle="EMAIL"
+            rows={rows}
+            notes={notes}
+            setNotes={setNotes}
+            remarksProps={(r) => ({
+              readOnly: r.sudah_cetak,
+              disabled: r.sudah_kirim,
+              className: 'w-64 rounded border border-slate-300 px-2 py-1 read-only:bg-slate-50',
+            })}
+            renderActions={(r) => (
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => download(r.nomor)}
+                  className="rounded bg-blue-800 px-2 py-1 text-xs text-white disabled:opacity-60"
+                >
+                  PRINT
+                </button>
+                {r.sudah_cetak && (
+                  <button
+                    type="button"
+                    disabled
+                    title="Sending DLA by email is not active yet."
+                    className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-400"
+                  >
+                    Kirim
+                  </button>
+                )}
+              </div>
+            )}
+          />
         )}
 
-        {failure && (
-          <div className="mt-4">
-            <ErrorMessage
-              title="DLA belum dapat diproses"
-              description={failureDescription(violations, failure)}
-              tone="penolakan"
-            />
-          </div>
-        )}
-        {print.isSuccess && !busy && !failure && (
-          <output className="mt-4 block text-sm text-emerald-700">
-            DLA diunduh.
-          </output>
-        )}
+        <DialogFailure title="DLA belum dapat diproses" failure={failure} violations={violations} />
+        <DialogSuccess show={print.isSuccess && !busy && !failure}>DLA diunduh.</DialogSuccess>
 
         <div className="mt-6 flex flex-wrap justify-between gap-3">
           <Button tone="halus" disabled={busy} onClick={onClose}>

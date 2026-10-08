@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { callAPI } from '@/api/client'
+import { downloadCSVFile } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -155,38 +156,6 @@ export function useOutstandingSummary(filter: OutstandingFilter) {
 export async function downloadOutstandingCSV(token: string, portal: string): Promise<void> {
   const url = `${PATH}/unduh`
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      [HEADER_PORTAL]: portal,
-    },
-  })
-  if (!response.ok) {
-    throw new Error('Berkas tidak dapat diunduh.')
-  }
-
-  const blob = await response.blob()
-  const objectURL = URL.createObjectURL(blob)
-
-  try {
-    const link = document.createElement('a')
-    link.href = objectURL
-    link.download = fileNameFrom(response) ?? 'inbox-outstanding.csv'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-  } finally {
-    // Objek URL menahan blob-nya di memori sampai dicabut. Tanpa ini, setiap unduhan
-    // meninggalkan satu salinan berkas yang tidak pernah dilepas.
-    URL.revokeObjectURL(objectURL)
-  }
+  await downloadCSVFile(url, token, portal, 'inbox-outstanding.csv')
 }
 
-/** Membaca nama berkas dari header Content-Disposition; null bila tidak ada. */
-function fileNameFrom(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-
-  const match = /filename="([^"]+)"/.exec(disposition)
-  return match?.[1] ?? null
-}

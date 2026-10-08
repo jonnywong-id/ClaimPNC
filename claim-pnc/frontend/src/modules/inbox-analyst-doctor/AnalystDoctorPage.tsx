@@ -1,12 +1,17 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { ReloadIcon } from '@/components/Icon'
+import { NoteList, portalGate } from '@/components/inbox/InboxNotices'
+import { TaskQueueTable } from '@/components/inbox/TaskQueueTable'
+import { apiMessageOf } from '@/components/inbox/messages'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
+import {
+  buildTaskColumns,
+  commonTaskRenderers,
+  textColumn,
+  type TaskRenderer,
+} from '@/components/inbox/taskColumns'
 
 import { PAGE_SIZE, useDaftarAnalystDoctor, useKeteranganAnalystDoctor } from './api'
 import type { KolomLayar, TugasAnalystDoctor } from './types'
@@ -76,33 +81,16 @@ export function AnalystDoctorPage() {
     navigate(`/view-claim/${encodeURIComponent(nomorCase)}`)
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean penilaian medis milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = portalGate(portal, 'Antrean penilaian medis')
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   const kolom = keterangan.data?.kolom ?? []
-  const baris = daftar.data?.data ?? []
-  const total = daftar.data?.total ?? 0
-  const halaman = Math.floor(lewati / PAGE_SIZE) + 1
-  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <PageFrame>
       <div className="mt-6">
-        <DataTable<TugasAnalystDoctor>
-          columns={buildColumns(kolom, bukaKlaim)}
-          rows={baris}
+        <TaskQueueTable<TugasAnalystDoctor>
+          columns={buildTaskColumns(kolom, renderer, bukaKlaim)}
           // Kunci baris memakai klaim_id DAN nomor case sekaligus.
           //
           // Gabungan `INNER JOIN` ke worklist membuat satu klaim yang punya DUA penugasan
@@ -112,88 +100,31 @@ export function AnalystDoctorPage() {
           rowKey={(row) => `${row.klaim_id}|${row.nomor_case}`}
           title="Antrean penilaian medis"
           label="Antrean Inbox Analyst Doctor"
-          // Prop tidak dikirim sama sekali saat kosong, bukan dikirim bernilai undefined:
-          // tsconfig memakai exactOptionalPropertyTypes, yang membedakan keduanya.
-          {...(total > 0 ? { description: `${total} tugas menunggu dinilai.` } : {})}
-          isLoading={daftar.isPending}
+          description={(total) => `${total} tugas menunggu dinilai.`}
           searchLabel="Cari Nomor Case / No Polis"
           // Hanya keadaan "memang tidak ada" yang dinyatakan di sini.
           //
           // Keadaan "pencarian tidak cocok" TIDAK diurus layar ini: `DataTable` sudah
           // menggantinya sendiri menjadi `Tidak ada baris yang cocok dengan “…”` begitu
-          // `serverSearch` terisi. Mencabangkannya di sini akan menghasilkan kode yang tidak
-          // pernah berjalan — dan pesan yang berbeda dari layar lain untuk keadaan yang sama.
+          // `serverSearch` terisi.
           emptyMessage="Tidak ada tugas penilaian medis untuk Anda saat ini."
-          serverSearch={{ value: cari, onChange: ubahPencarian, matchCount: total }}
-          actions={
-            <Button
-              tone="halus"
-              onClick={() => { daftar.refetch() }}
-              disabled={daftar.isFetching}
-            >
-              <ReloadIcon className="h-4 w-4" />
-              {daftar.isFetching ? 'Memuat…' : 'Muat ulang'}
-            </Button>
-          }
-          error={
-            daftar.isError ? (
-              <ErrorMessage
-                title="Antrean tidak dapat dimuat"
-                description={pesanGalat(daftar.error)}
-                tone="gangguan"
-              />
-            ) : undefined
-          }
-          pagination={{
-            page: halaman,
-            size: PAGE_SIZE,
-            total,
-            totalPage: totalHalaman,
-            onPageChange: (nomor) => setLewati((nomor - 1) * PAGE_SIZE),
-            isLoading: daftar.isFetching,
-          }}
+          search={cari}
+          onSearch={ubahPencarian}
+          offset={lewati}
+          onOffset={setLewati}
+          pageSize={PAGE_SIZE}
+          query={daftar}
+          describe={apiMessageOf}
         />
       </div>
 
-      <Catatan
-        judul="Perbedaan yang disengaja terhadap layar lama"
-        baris={keterangan.data?.selisih_terencana ?? []}
+      <NoteList
+        title="Perbedaan yang disengaja terhadap layar lama"
+        lines={keterangan.data?.selisih_terencana ?? []}
       />
-      <Catatan
-        judul="Yang perlu diketahui"
-        baris={keterangan.data?.keterbatasan ?? []}
-      />
+      <NoteList title="Yang perlu diketahui" lines={keterangan.data?.keterbatasan ?? []} />
     </PageFrame>
   )
-}
-
-/**
- * Menyusun kolom tabel dari judul yang dikirim server.
- *
- * Yang datang dari server hanyalah KUNCI dan JUDULNYA; cara menggambarnya tetap milik layar.
- * Pemisahan itu disengaja: judul adalah hasil pembacaan export yang boleh berubah bila
- * bacaannya dikoreksi, sedangkan lebar kolom dan bentuk selnya adalah keputusan tampilan.
- *
- * Kunci yang tidak dikenal dilewati, bukan digambar kosong. Kolom baru menuntut keputusan
- * tampilan yang belum diambil, dan kolom kosong tanpa isi hanya menambah lebar tabel.
- */
-function buildColumns(
-  kolom: KolomLayar[],
-  bukaKlaim: (nomorCase: string) => void,
-): Column<TugasAnalystDoctor>[] {
-  const hasil: Column<TugasAnalystDoctor>[] = []
-
-  for (const k of kolom) {
-    const dibangun = renderer[k.kunci]?.(k, bukaKlaim)
-    if (dibangun) hasil.push(dibangun)
-  }
-  return hasil
-}
-
-/** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
-function Teks({ nilai }: Readonly<{ nilai: string }>) {
-  if (!nilai) return <span className="text-slate-400">—</span>
-  return <span className="truncate">{nilai}</span>
 }
 
 /**
@@ -202,70 +133,16 @@ function Teks({ nilai }: Readonly<{ nilai: string }>) {
  * Judulnya TIDAK diketik di sini — ia diambil dari `k.judul`, supaya satu-satunya sumber
  * judul tetap backend.
  */
-type Renderer = (
-  k: KolomLayar,
-  bukaKlaim: (nomorCase: string) => void,
-) => Column<TugasAnalystDoctor>
+type Renderer = TaskRenderer<TugasAnalystDoctor, KolomLayar>
 
 const renderer: Record<string, Renderer | undefined> = {
-  nomor_case: (k, bukaKlaim) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '11rem',
-    value: (row) => row.nomor_case,
-    render: (row) =>
-      row.nomor_case ? (
-        <button
-          type="button"
-          className="rounded-md font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          onClick={() => bukaKlaim(row.nomor_case)}
-        >
-          {row.nomor_case}
-        </button>
-      ) : (
-        <span className="text-slate-400">belum bernomor</span>
-      ),
-  }),
+  ...commonTaskRenderers<TugasAnalystDoctor, KolomLayar>(),
 
-  nomor_polis: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '11rem',
-    value: (row) => row.nomor_polis,
-    render: (row) => <Teks nilai={row.nomor_polis} />,
-  }),
+  nama_cabang: (k) => textColumn(k, '10rem', (row) => row.nama_cabang),
 
-  nama_tertanggung: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '14rem',
-    value: (row) => row.nama_tertanggung,
-    render: (row) => <Teks nilai={row.nama_tertanggung} />,
-  }),
+  tanggal_pendaftaran: (k) => textColumn(k, '9rem', (row) => row.tanggal_pendaftaran),
 
-  nama_cabang: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '10rem',
-    value: (row) => row.nama_cabang,
-    render: (row) => <Teks nilai={row.nama_cabang} />,
-  }),
-
-  tanggal_pendaftaran: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '9rem',
-    value: (row) => row.tanggal_pendaftaran,
-    render: (row) => <Teks nilai={row.tanggal_pendaftaran} />,
-  }),
-
-  nama_admin: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '10rem',
-    value: (row) => row.nama_admin,
-    render: (row) => <Teks nilai={row.nama_admin} />,
-  }),
+  nama_admin: (k) => textColumn(k, '10rem', (row) => row.nama_admin),
 
   komentar_pic_teknis: (k) => ({
     key: k.kunci,
@@ -307,43 +184,15 @@ const renderer: Record<string, Renderer | undefined> = {
 
 function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Analyst Doctor</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Klaim yang menunggu penilaian medis Anda. Barisnya hilang begitu tugasnya
-          diselesaikan.
-        </p>
-      </header>
+    <InboxPageFrame
+      title="Inbox Analyst Doctor"
+      intro={
+        'Klaim yang menunggu penilaian medis Anda. Barisnya hilang begitu tugasnya ' +
+        'diselesaikan.'
+      }
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
-/**
- * Catatan di bawah layar.
- *
- * Datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya begitu
- * penghalangnya hilang. Tanpa catatan ini, kolom yang belum terbawa dan kotak cari yang tidak
- * ada di Pega akan dilaporkan berulang kali sebagai kerusakan.
- */
-function Catatan({ judul, baris }: Readonly<{ judul: string; baris: string[] }>) {
-  if (baris.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">{judul}</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {baris.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/** pesanGalat mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function pesanGalat(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

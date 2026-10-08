@@ -1,10 +1,8 @@
 import { useState } from 'react'
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
 import { SelectField, type SelectOption } from '@/components/SelectField'
+import { failureNotice, violationsOf } from '@/components/shared/queryFeedback'
+import { PeriodFields, ReportActions } from '@/components/shared/ReportFilterParts'
 
 import { useExportPICTeknik, usePICTeknik } from './api'
 import type {
@@ -61,13 +59,7 @@ export function ReportKPIPICTeknik({
       )
     }
     if (result.isError) {
-      return (
-        <ErrorMessage
-          title="Penilaian tidak dapat diambil"
-          description={messageOf(result.error)}
-          tone="gangguan"
-        />
-      )
+      return failureNotice('Penilaian tidak dapat diambil', result.error)
     }
     if (result.isPending) {
       return (
@@ -124,22 +116,13 @@ export function ReportKPIPICTeknik({
             onChange={(event) => setDraft({ ...draft, lini: event.target.value })}
           />
 
-          <FormField
-            id="kpi-pic-dari"
-            label="Periode — Dari"
-            type="date"
-            value={draft.dari}
-            failure={violations['dari']}
-            onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
-          />
-
-          <FormField
-            id="kpi-pic-sampai"
-            label="Periode — Sampai"
-            type="date"
-            value={draft.sampai}
-            failure={violations['sampai']}
-            onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
+          <PeriodFields
+            idPrefix="kpi-pic"
+            fromLabel="Periode — Dari"
+            toLabel="Periode — Sampai"
+            value={draft}
+            violations={violations}
+            onChange={(patch) => setDraft({ ...draft, ...patch })}
           />
         </div>
 
@@ -147,26 +130,15 @@ export function ReportKPIPICTeknik({
           <p className="text-sm text-slate-600">{lineNote(metadata, draft.lini)}</p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" tone="utama">
-            Cari
-          </Button>
-          <Button
-            onClick={() => exportFile.mutate(active)}
-            disabled={!searched || exportFile.isPending}
-          >
-            Export Data
-          </Button>
-        </div>
+        <ReportActions
+          searchLabel="Cari"
+          exportLabel="Export Data"
+          onExport={() => exportFile.mutate(active)}
+          exportDisabled={!searched || exportFile.isPending}
+        />
       </form>
 
-      {exportFile.isError && (
-        <ErrorMessage
-          title="Berkas tidak dapat diunduh"
-          description={messageOf(exportFile.error)}
-          tone="gangguan"
-        />
-      )}
+      {exportFile.isError && failureNotice('Berkas tidak dapat diunduh', exportFile.error)}
 
       {renderResult()}
 
@@ -308,15 +280,4 @@ function isDescending(components: PICComponent[], code: string): boolean {
 /** round2 membulatkan untuk TAMPILAN saja — nilai simpanannya tidak disentuh. */
 function round2(value: number): number {
   return Math.round(value * 100) / 100
-}
-
-function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
-}
-
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { APIError } from '@/api/client'
 import { AccountStatus, type Account } from '@/api/types'
+import { MasterDataHeader } from '@/components/masterpage/MasterPage'
 
 import { AccountForm } from './AccountForm'
 import { AccountTable } from './AccountTable'
@@ -94,25 +95,16 @@ export function AccountPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
-          <ol className="flex items-center gap-1.5">
-            <li>Master Data</li>
-            <li aria-hidden="true" className="text-slate-300">
-              /
-            </li>
-            <li className="text-slate-700">Rekening</li>
-          </ol>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Master Rekening
-        </h1>
-
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Rekening tujuan pembayaran klaim. Rekening baru menunggu keputusan komite
-          sebelum dapat dipakai.
-        </p>
-      </header>
+      <MasterDataHeader
+        crumb="Rekening"
+        title="Master Rekening"
+        description={
+          <>
+            Rekening tujuan pembayaran klaim. Rekening baru menunggu keputusan komite
+            sebelum dapat dipakai.
+          </>
+        }
+      />
 
       <nav
         aria-label="Tab master rekening"

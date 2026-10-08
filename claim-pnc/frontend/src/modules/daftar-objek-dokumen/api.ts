@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import type {
-  BusinessListResponse,
   DocumentObjectInput,
   DocumentObjectListResponse,
   DocumentObjectResponse,
@@ -23,7 +22,6 @@ const ROUTE = '/api/master/objek-dokumen'
  * melarang satu fitur mengimpor dari fitur lain, dan melanggarnya akan membuat kedua layar
  * gagal bersamaan bila salah satunya dipindahkan.
  */
-const ROUTE_BUSINESS = '/api/master/bisnis'
 
 /**
  * listKey menyertakan portal DAN token.
@@ -42,17 +40,6 @@ function listKey(portal: string | null, token: string | null) {
 
 function detailKey(id: string, portal: string | null, token: string | null) {
   return ['daftar-objek-dokumen', 'detail', id, portal, token] as const
-}
-
-/**
- * businessKey sengaja SAMA PERSIS dengan kunci milik modul Master COL Simas Online.
- *
- * Dengan begitu kedua layar berbagi satu entri cache: membuka layar kedua tidak menembak
- * ulang daftar yang sama, dan keduanya tidak mungkin menampilkan master bisnis yang
- * berbeda. Kunci yang berbeda untuk data yang sama justru yang akan menimbulkan selisih itu.
- */
-function businessKey(portal: string | null, token: string | null) {
-  return ['master-bisnis', portal, token] as const
 }
 
 /**
@@ -96,24 +83,10 @@ export function useDocumentObject(id: string | null) {
 }
 
 /**
- * Hook daftar bisnis untuk saran isian Bisnis.
- *
- * MENUNTUT portal: POOLDATA.BUSINESS hidup di basis data setiap entitas, sehingga "bisnis
- * milik siapa" ditentukan portal yang aktif.
- *
- * Daftarnya jarang berubah, sehingga tidak dimuat ulang setiap kali form dibuka.
+ * Hook daftar bisnis untuk saran isian Bisnis — dipakai bersama layar master lain yang
+ * memetakan bisnis; lihat components/masterpage/useBusinessList.
  */
-export function useBusinessList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: businessKey(portal, token),
-    queryFn: () => callAPI<BusinessListResponse>(ROUTE_BUSINESS, { token, portal }),
-    enabled: token !== null && portal !== null,
-    staleTime: 60 * 60 * 1000,
-  })
-}
+export { useBusinessList } from '@/components/masterpage/useBusinessList'
 
 /** Hook penambahan objek dokumen. */
 export function useCreateDocumentObject() {

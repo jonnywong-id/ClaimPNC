@@ -3,17 +3,16 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import {
   ErrorCode,
   PartTypeErrorCode,
   type PartType,
   type PartTypeCategory,
 } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField, type SelectOption } from '@/components/SelectField'
+import { MasterFormActions, MasterFormFrame, ReadOnlyIdRow, useServerViolations } from '@/components/masterform/BoxForm'
+import { type CodeMessages, notFoundMessage, portalMessages, saveErrorMessage, validationMessage } from '@/components/masterform/saveErrorMessage'
 
 /**
  * Batas panjang nama harus sama dengan mastertipesparepart.MaxNameLength di backend.
@@ -59,100 +58,43 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf).
- * Yang ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu,
- * karena itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
-        // mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : {
-              title: 'Belum dapat disimpan',
-              description: error.message,
-              tone: 'penolakan',
-            }
-      case PartTypeErrorCode.nameTaken:
-        // Ia sudah disorot pada isiannya, tetapi TETAP ditampilkan sebagai kotak pesan —
-        // dan itu berbeda dari galat validasi biasa.
-        //
-        // Alasannya: perbaikannya bukan "betulkan isian" melainkan "cari tipe yang sudah
-        // ada, atau pakai nama lain", dan yang memakainya bisa jadi baris di KATEGORI LAIN
-        // atau baris di tab Reject — keduanya TIDAK terlihat dari tab yang sedang dibuka.
-        // Sorotan di bawah isian tidak cukup menjelaskan ke mana pengguna harus mencari.
-        return {
-          title: 'Nama itu sudah dipakai',
-          description:
-            'Tipe lain sudah memakai nama ini. Keunikan nama berlaku di seluruh master — ' +
-            'termasuk tipe di kategori yang berbeda, dan termasuk tipe yang sudah ditolak. ' +
-            'Periksa juga tab Reject.',
-          tone: 'penolakan',
-        }
-      case PartTypeErrorCode.categoryNotFound:
-        // Penyebabnya BUKAN salah ketik: pengguna memilihnya dari dropdown. Yang berubah
-        // adalah dunia di luar formnya — kategorinya ditolak petugas lain sementara form
-        // terbuka. Perbaikannya karena itu "muat ulang pilihan", bukan "betulkan isian".
-        return {
-          title: 'Kategori itu sudah tidak tersedia',
-          description:
-            'Persetujuan kategori ini dicabut sementara form terbuka, atau kategorinya ' +
-            'sudah tidak ada. Tutup form ini lalu buka kembali untuk memuat ulang daftar ' +
-            'pilihannya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.notFound:
-        return {
-          title: 'Baris ini sudah tidak ada',
-          description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
+  // mengulang hal yang sama.
+  [ErrorCode.validationFailed]: validationMessage,
+  // Ia sudah disorot pada isiannya, tetapi TETAP ditampilkan sebagai kotak pesan —
+  // dan itu berbeda dari galat validasi biasa.
+  //
+  // Alasannya: perbaikannya bukan "betulkan isian" melainkan "cari tipe yang sudah
+  // ada, atau pakai nama lain", dan yang memakainya bisa jadi baris di KATEGORI LAIN
+  // atau baris di tab Reject — keduanya TIDAK terlihat dari tab yang sedang dibuka.
+  // Sorotan di bawah isian tidak cukup menjelaskan ke mana pengguna harus mencari.
+  [PartTypeErrorCode.nameTaken]: {
+    title: 'Nama itu sudah dipakai',
+    description:
+      'Tipe lain sudah memakai nama ini. Keunikan nama berlaku di seluruh master — ' +
+      'termasuk tipe di kategori yang berbeda, dan termasuk tipe yang sudah ditolak. ' +
+      'Periksa juga tab Reject.',
+    tone: 'penolakan',
+  },
+  // Penyebabnya BUKAN salah ketik: pengguna memilihnya dari dropdown. Yang berubah
+  // adalah dunia di luar formnya — kategorinya ditolak petugas lain sementara form
+  // terbuka. Perbaikannya karena itu "muat ulang pilihan", bukan "betulkan isian".
+  [PartTypeErrorCode.categoryNotFound]: {
+    title: 'Kategori itu sudah tidak tersedia',
+    description:
+      'Persetujuan kategori ini dicabut sementara form terbuka, atau kategorinya ' +
+      'sudah tidak ada. Tutup form ini lalu buka kembali untuk memuat ulang daftar ' +
+      'pilihannya.',
+    tone: 'penolakan',
+  },
+  [ErrorCode.notFound]: notFoundMessage,
+  ...portalMessages,
 }
 
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
-}
+/** Isian yang dapat disorot pelanggaran server. */
+const violationFields = ['nama_tipe_sparepart', 'id_kategori_sparepart'] as const
 
 /**
  * PartTypeForm adalah satu form untuk DUA mode — tambah dan ubah.
@@ -225,15 +167,9 @@ export function PartTypeForm({
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan
   // itu hanya berguna bila layar menyorotnya satu per satu.
-  useEffect(() => {
-    for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'nama_tipe_sparepart' || column === 'id_kategori_sparepart') {
-        setError(column, { type: 'server', message })
-      }
-    }
-  }, [error, setError])
+  useServerViolations(error, setError, violationFields)
 
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
   const title = editMode ? 'Ubah Tipe Sparepart' : 'Tambah Tipe Sparepart'
 
   /*
@@ -262,29 +198,10 @@ export function PartTypeForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSave)}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
+    <MasterFormFrame onSubmit={handleSubmit(onSave)} title={title} message={message}>
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
           belum ada — nomornya diterbitkan server dari isi tabel. */}
-      {editMode && (
-        <div>
-          <span className="block text-sm font-medium text-slate-700">ID Tipe Sparepart</span>
-          <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
-            {editing.id_tipe_sparepart}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
-          </p>
-        </div>
-      )}
+      {editMode && <ReadOnlyIdRow label="ID Tipe Sparepart" value={editing.id_tipe_sparepart} />}
 
       <Field
         id="nama_tipe_sparepart"
@@ -338,14 +255,7 @@ export function PartTypeForm({
         baru pada setiap layar yang menampilkannya.
       </p>
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
-    </form>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} />
+    </MasterFormFrame>
   )
 }

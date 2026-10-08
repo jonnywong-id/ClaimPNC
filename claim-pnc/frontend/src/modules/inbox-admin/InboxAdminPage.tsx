@@ -1,13 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { type Column } from '@/components/DataTable'
 import { SelectField } from '@/components/SelectField'
 import { formatDate } from '@/components/format'
+import { screenGate } from '@/components/inbox/InboxNotices'
+import { QueueTable } from '@/components/inbox/QueueTable'
+import { ViewClaimButton } from '@/components/inbox/ViewClaimButton'
+import { apiMessageOf, isISODate } from '@/components/inbox/messages'
+import { columnsWithAction } from '@/components/inbox/serverColumns'
+import { useDebouncedCommit } from '@/components/inbox/useDebouncedCommit'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
 
 import { InboxTabs } from './InboxTabs'
 import { useInboxAdminList, useInboxAdminMetadata } from './api'
@@ -16,7 +19,6 @@ import {
   type BusinessLine,
   type DisabledTab,
   type FilterForm,
-  type PageInfo,
   type Tab,
   type TabColumn,
   type WorkItem,
@@ -61,17 +63,11 @@ export function InboxAdminPage() {
    */
   const [draft, setDraft] = useState('')
 
-  // Ketikan menunggu jeda sebelum dikirim. Jedanya cukup panjang untuk menelan satu kata
-  // yang diketik cepat, dan cukup pendek untuk tidak terasa seperti layar yang menggantung.
-  useEffect(() => {
-    if (draft === filter.cari) return
-
-    const timer = setTimeout(() => {
-      setFilter((previous) => ({ ...previous, cari: draft }))
-      setPage(1)
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [draft, filter.cari])
+  // Ketikan menunggu jeda sebelum dikirim (`useDebouncedCommit`).
+  useDebouncedCommit(draft, filter.cari, (value) => {
+    setFilter((previous) => ({ ...previous, cari: value }))
+    setPage(1)
+  })
 
   const portal = useSelectedPortal((state) => state.alias)
   const meta = useInboxAdminMetadata()
@@ -99,32 +95,14 @@ export function InboxAdminPage() {
     setPage(1)
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean kerja milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = screenGate({
+    portal,
+    subject: 'Antrean kerja',
+    failed: meta.isError,
+    error: meta.error,
+    describe: apiMessageOf,
+  })
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   return (
     <PageFrame>
@@ -146,36 +124,15 @@ export function InboxAdminPage() {
           />
 
           <div className="mt-4">
-            <DataTable<WorkItem>
+            <QueueTable<WorkItem>
+              query={list}
               columns={columnsFor(tab, renderDetailButton)}
-              rows={list.data?.baris ?? []}
               rowKey={(row) => `${row.referensi}|${row.case_id}`}
               title={tab.nama}
-              // Kotak cari bawaan disembunyikan: layar ini punya penyaringnya sendiri di
-              // atas, dan yang kedua hanya akan menyaring halaman yang sedang terbuka —
-              // hasilnya menyesatkan pada data berhalaman.
-              hideSearch
-              isLoading={list.isPending}
-              error={
-                list.isError ? (
-                  <ErrorMessage
-                    title="Antrean tidak dapat dimuat"
-                    description={messageOf(list.error)}
-                    tone="gangguan"
-                  />
-                ) : undefined
-              }
               emptyMessage={emptyMessageFor(tab, filter)}
+              onMove={setPage}
+              describe={apiMessageOf}
             />
-
-            {list.data && list.data.paginasi.total > 0 && (
-              <Pagination
-                info={list.data.paginasi}
-                visible={list.data.baris.length}
-                onMove={setPage}
-                loading={list.isFetching}
-              />
-            )}
           </div>
         </>
       )}
@@ -190,16 +147,15 @@ export function InboxAdminPage() {
 
 function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Admin</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Antrean kerja admin klaim: klaim berjalan, dokumen yang belum diregistrasi,
-          permintaan survei, dan pengingat RCL/PUCL.
-        </p>
-      </header>
+    <InboxPageFrame
+      title="Inbox Admin"
+      intro={
+        'Antrean kerja admin klaim: klaim berjalan, dokumen yang belum diregistrasi, ' +
+        'permintaan survei, dan pengingat RCL/PUCL.'
+      }
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
@@ -294,79 +250,7 @@ function FilterBar({
  * dalam render layar — supaya tidak dibuat ulang setiap render (temuan SonarQube S6478).
  */
 function renderDetailButton(row: WorkItem): ReactNode {
-  return <DetailButton item={row} />
-}
-
-/**
- * Tombol "Lihat Detail Klaim".
- *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
- * belum dibangun. Tombolnya tetap dibangun atas keputusan Work Owner 2026-09-20, dan
- * tujuannya diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
- *
- * Yang dikirim adalah `referensi`, kunci teknis Pega yang memang dipakai
- * `setDataViewKlaim_Act` di sistem lama. Dengan begitu menyalakan layar rincian kelak tidak
- * menuntut perubahan kontrak API modul ini.
- */
-function DetailButton({ item }: Readonly<{ item: WorkItem }>) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.case_id
-
-  return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
-    >
-      Lihat Detail Klaim
-    </Button>
-  )
-}
-
-/**
- * Paginasi "sebelumnya / berikutnya", bukan nomor halaman.
- *
- * Bentuknya sama dengan layar Pelaporan Klaim dan View History Claim supaya ketiganya tidak
- * terasa dirakit dari tiga aplikasi berbeda. Ia hidup di sini, bukan di dalam `DataTable`,
- * karena komponen tabel baku belum mengenal paginasi server — itu lingkup `TKT-U2-001`.
- */
-function Pagination({
-  info,
-  visible,
-  onMove,
-  loading,
-}: Readonly<{
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
-}>) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <output className="block text-sm text-slate-600">
-        Menampilkan {first}–{last} dari {info.total} baris.
-      </output>
-      <div className="flex gap-2">
-        <Button
-          tone="kedua"
-          onClick={() => onMove(Math.max(1, info.halaman - 1))}
-          disabled={info.halaman <= 1 || loading}
-        >
-          Sebelumnya
-        </Button>
-        <Button
-          tone="kedua"
-          onClick={() => onMove(info.halaman + 1)}
-          disabled={info.halaman >= info.total_halaman || loading}
-        >
-          Berikutnya
-        </Button>
-      </div>
-    </div>
-  )
+  return <ViewClaimButton reference={row.referensi || row.case_id} />
 }
 
 /**
@@ -414,25 +298,11 @@ function Notes({
  * dan backend tidak tahu apa pun tentang rute antarmuka.
  */
 function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-    // Kolom Aging diratakan ke kanan karena isinya angka, sama seperti kolom nilai uang
-    // di layar lain.
+  // Kolom Aging diratakan ke kanan karena isinya angka, sama seperti kolom nilai uang di
+  // layar lain.
+  return columnsWithAction<WorkItem, TabColumn>(tab.kolom, cellText, action, (column) => ({
     alignRight: isAging(column.kunci),
   }))
-
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
-  })
-
-  return columns
 }
 
 /** isAging menyatakan sebuah kolom berisi jumlah hari. */
@@ -455,12 +325,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
   if (isAging(column.kunci)) return `${value} hari`
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk seluruh kolom tanggal. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return isISODate(text) ? formatDate(text) : text
 }
 
 /**
@@ -482,8 +347,3 @@ function emptyMessageFor(tab: Tab, filter: FilterForm): string {
   return 'Antrean ini sedang kosong.'
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

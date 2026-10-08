@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
 import { centsToRupiah, rupiahToCents } from '@/components/format'
 
 import { AcceptanceNumber } from './AcceptanceNumber'
 import { useAddSettlement, usePreviewSettlement, useUpdateSettlement, violationsFrom } from './api'
+import { DialogFailure } from './dialogParts'
 import {
   PaymentType,
   RiskType,
@@ -179,13 +179,6 @@ function settlementNumbers(values: Values, f: NumberFlags) {
     survey_expenses_sen: feeValue(() => rupiahToCents(values.survey_expenses)),
     vat: feeValue(() => percentE4(values.vat)),
   }
-}
-
-/** Teks galat: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
-function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
 }
 
 export function SettlementEditor({
@@ -450,15 +443,11 @@ export function SettlementEditor({
       {exGratia && computed && computed.spreading.length > 0 && <SpreadingTable spreading={computed.spreading} />}
 
       {malformed && <p className="mt-3 text-sm text-red-700">Angka tidak valid.</p>}
-      {failure && (
-        <div className="mt-4">
-          <ErrorMessage
-            title={saveError ? 'Adjustment belum tersimpan' : 'Nilai belum dapat dihitung'}
-            description={failureDescription(violations, failure)}
-            tone="penolakan"
-          />
-        </div>
-      )}
+      <DialogFailure
+        title={saveError ? 'Adjustment belum tersimpan' : 'Nilai belum dapat dihitung'}
+        failure={failure}
+        violations={violations}
+      />
 
       {/* Pega tidak punya Simpan/Batal: setiap perubahan isian langsung disimpan. Hapus menghapus baris. */}
       <div className="mt-4 flex items-center justify-end gap-3">

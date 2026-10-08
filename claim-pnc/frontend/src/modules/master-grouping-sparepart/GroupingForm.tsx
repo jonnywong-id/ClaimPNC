@@ -1,15 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError } from '@/api/client'
 import { ErrorCode, GroupingErrorCode, type Grouping, type GroupingInput } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
+import { MasterFormActions, useServerViolations } from '@/components/masterform/BoxForm'
+import { type CodeMessages, portalMessages, saveErrorMessage, validationMessage } from '@/components/masterform/saveErrorMessage'
+import { FieldGroup, ReadOnlyInfo, WaitingApprovalNote } from '@/components/masterform/FormSections'
 
 import { useGroupingOptions, useGroupingPart, useGroupingSides } from './api'
 
@@ -101,67 +103,19 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf). Yang
- * ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu, karena
- * itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case GroupingErrorCode.duplicate:
-        return {
-          title: 'Data sudah ada',
-          description:
-            'Kombinasi nomor sparepart, nama panel, no rangka, dan sisi ini sudah dipakai grouping lain. ' +
-            'Ubah salah satunya, atau buka grouping yang sudah ada.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
-        // mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  [GroupingErrorCode.duplicate]: {
+    title: 'Data sudah ada',
+    description:
+      'Kombinasi nomor sparepart, nama panel, no rangka, dan sisi ini sudah dipakai grouping lain. ' +
+      'Ubah salah satunya, atau buka grouping yang sudah ada.',
+    tone: 'penolakan',
+  },
+  // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
+  // mengulang hal yang sama.
+  [ErrorCode.validationFailed]: validationMessage,
+  ...portalMessages,
 }
 
 /** Nama isian yang dikenali form ini; dipakai menyorot pelanggaran dari server. */
@@ -271,15 +225,9 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan
   // itu hanya berguna bila layar menyorotnya satu per satu.
-  useEffect(() => {
-    for (const [column, message] of Object.entries(violationsOf(error))) {
-      if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
-      }
-    }
-  }, [error, setError])
+  useServerViolations(error, setError, FIELD_NAMES)
 
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
 
   // Kelima isian turunan: hasil pencarian bila ada, jika tidak nilai baris yang sedang
   // disunting. Urutan itu penting — begitu nomornya diganti, yang tampil harus nilai BARU,
@@ -316,12 +264,12 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
 
       {isEditing && (
         <div className="grid gap-3 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5 sm:grid-cols-2">
-          <Keterangan
+          <ReadOnlyInfo
             label="ID grouping"
             value={editing.id_grouping}
             hint="Diterbitkan sistem. Tidak dapat diubah."
           />
-          <Keterangan
+          <ReadOnlyInfo
             label="Nomor grup kendaraan"
             value={editing.nomor_grup || '—'}
             hint="Baris dengan nomor grup yang sama terpasang di kendaraan yang sama."
@@ -329,7 +277,7 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
         </div>
       )}
 
-      <Group title="Sparepart">
+      <FieldGroup title="Sparepart">
         <div className="grid gap-4 sm:grid-cols-2">
           {/*
             Nomor Sparepart adalah SATU-SATUNYA identitas sparepart yang diketik. Pencariannya
@@ -364,9 +312,9 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
         {part.isFetching && (
           <p className="text-xs text-slate-500">Mencari data sparepart…</p>
         )}
-      </Group>
+      </FieldGroup>
 
-      <Group title="Panel">
+      <FieldGroup title="Panel">
         {options.isError && (
           <ErrorMessage
             title="Daftar Panel dan Tipe Kendaraan tidak dapat dimuat"
@@ -434,9 +382,9 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
             dulu — Sisi wajib diisi.
           </p>
         )}
-      </Group>
+      </FieldGroup>
 
-      <Group title="Kendaraan">
+      <FieldGroup title="Kendaraan">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="no_rangka"
@@ -479,9 +427,9 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
             {...register('grouping_dengan_no_rangka')}
           />
         </div>
-      </Group>
+      </FieldGroup>
 
-      <Group title="Keterangan">
+      <FieldGroup title="Keterangan">
         <TextAreaField
           id="catatan"
           label="Catatan"
@@ -491,38 +439,12 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Rea
           disabled={isSaving}
           {...register('catatan')}
         />
-      </Group>
+      </FieldGroup>
 
-      <p className="text-xs text-slate-500">
-        Baris yang disimpan selalu kembali ke <span className="font-medium">Waiting Approval</span>{' '}
-        dan menunggu persetujuan — persetujuan sebelumnya tidak berlaku atas isi yang sudah
-        berubah.
-      </p>
+      <WaitingApprovalNote />
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} />
     </form>
-  )
-}
-
-/**
- * Group membungkus sekumpulan isian di bawah satu judul.
- *
- * Ia `<fieldset>` dan bukan `<div>` supaya pembaca layar mengumumkan judulnya saat kursor
- * masuk ke salah satu isian di dalamnya.
- */
-function Group({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
-  return (
-    <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
-      {children}
-    </fieldset>
   )
 }
 
@@ -544,15 +466,3 @@ function Turunan({ label, value }: Readonly<{ label: string; value: string }>) {
   )
 }
 
-/** Keterangan baca-saja pada kepala form mode ubah. */
-function Keterangan({ label, value, hint }: Readonly<{ label: string; value: string; hint?: string }>) {
-  return (
-    <div>
-      <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
-      <span className="mt-0.5 block text-sm text-slate-900">{value}</span>
-      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
-    </div>
-  )
-}

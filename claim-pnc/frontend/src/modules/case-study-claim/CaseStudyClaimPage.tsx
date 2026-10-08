@@ -1,6 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column as TableColumn } from '@/components/DataTable'
@@ -8,6 +7,8 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { FormField } from '@/components/FormField'
 import { SelectField, type SelectOption } from '@/components/SelectField'
 import { formatDate, formatPercent, formatRupiah } from '@/components/format'
+import { screenGate } from '@/components/inbox/InboxNotices'
+import { apiMessageOf } from '@/components/inbox/messages'
 
 import { RemarkCell } from './RemarkCell'
 import { UKURAN_HALAMAN, useCaseStudyList, useCaseStudyMetadata, useExportCaseStudy } from './api'
@@ -66,32 +67,14 @@ export function CaseStudyClaimPage() {
     [meta.data?.kolom],
   )
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Klaim telaah milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = screenGate({
+    portal,
+    subject: 'Klaim telaah',
+    failed: meta.isError,
+    error: meta.error,
+    describe: apiMessageOf,
+  })
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -179,7 +162,7 @@ export function CaseStudyClaimPage() {
         <div className="mt-4">
           <ErrorMessage
             title="Berkas tidak dapat diunduh"
-            description={messageOf(exportFile.error)}
+            description={apiMessageOf(exportFile.error)}
             tone="gangguan"
           />
         </div>
@@ -202,7 +185,7 @@ export function CaseStudyClaimPage() {
               list.isError ? (
                 <ErrorMessage
                   title="Data tidak dapat dimuat"
-                  description={messageOf(list.error)}
+                  description={apiMessageOf(list.error)}
                   tone="gangguan"
                 />
               ) : undefined
@@ -373,8 +356,3 @@ function formatClock(timestamp: number): string {
   })
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

@@ -2,10 +2,13 @@ import { useState, type ReactNode } from 'react'
 
 import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
+import { InboxPagination } from '@/components/inbox/InboxPagination'
+import { portalGate } from '@/components/inbox/InboxNotices'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
+import { fieldErrorsOf } from '@/components/inbox/messages'
 
 import { SearchPanel } from './SearchPanel'
 import { useClaimHistorySearch, useOpenClaimHistory } from './api'
@@ -14,7 +17,6 @@ import {
   EMPTY_FORM,
   type ClaimHistory,
   type ExtraColumn,
-  type PageInfo,
   type SearchForm,
   type SearchType,
 } from './types'
@@ -62,20 +64,10 @@ export function ClaimHistoryPage() {
     )
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Riwayat klaim milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  // Hanya penghalang portal yang dipakai di sini; gerbang pembukaan layar (jatah
+  // pencarian) ditangani GateBlocked di bawah.
+  const gate = portalGate(portal, 'Riwayat klaim')
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   // Gerbang proteksi data menutup SELURUH layar, bukan sekadar tombolnya: pengguna yang
   // belum terdaftar atau jatahnya habis tidak boleh melihat satu baris pun.
@@ -100,7 +92,7 @@ export function ClaimHistoryPage() {
           setPage(1)
         }}
         busy={opened.isPending || search.isFetching}
-        fieldError={fieldErrorOf(search.error)}
+        fieldError={fieldErrorsOf(search.error)}
       />
 
       {submitted !== null && (
@@ -129,7 +121,8 @@ export function ClaimHistoryPage() {
           />
 
           {search.data && search.data.halaman.total > 0 && (
-            <Pagination
+            <InboxPagination
+              unit="klaim"
               info={search.data.halaman}
               visible={search.data.klaim.length}
               onMove={setPage}
@@ -149,16 +142,15 @@ export function ClaimHistoryPage() {
 
 function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">View History Claim</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Pencarian riwayat klaim menurut nomor polis, nama, tanggal, dan sembilan acuan
-          lain.
-        </p>
-      </header>
+    <InboxPageFrame
+      title="View History Claim"
+      intro={
+        'Pencarian riwayat klaim menurut nomor polis, nama, tanggal, dan sembilan acuan ' +
+        'lain.'
+      }
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
@@ -232,54 +224,6 @@ function QuotaNotice({ remaining }: Readonly<{ remaining: number }>) {
         ? ' kali lagi. Setiap kali layar ini dibuka, satu jatah terpakai.'
         : ' kali. Setiap kali layar ini dibuka, satu jatah terpakai.'}
     </p>
-  )
-}
-
-/**
- * Paginasi "sebelumnya / berikutnya", bukan nomor halaman.
- *
- * Bentuknya sama dengan layar Pelaporan Klaim supaya kedua layar tidak terasa dirakit
- * dari dua aplikasi berbeda. Ia hidup di sini, bukan di dalam `DataTable`, karena
- * komponen tabel baku belum mengenal paginasi server — itu lingkup `TKT-U2-001`, dan
- * menambahkannya sepihak demi satu layar akan mendahului keputusan pustaka tabel yang
- * sengaja ditinggalkan terbuka (`TKT-U2-005`).
- */
-function Pagination({
-  info,
-  visible,
-  onMove,
-  loading,
-}: Readonly<{
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
-}>) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <output className="block text-sm text-slate-600">
-        Menampilkan {first}–{last} dari {info.total} klaim.
-      </output>
-      <div className="flex gap-2">
-        <Button
-          tone="kedua"
-          onClick={() => onMove(Math.max(1, info.halaman - 1))}
-          disabled={info.halaman <= 1 || loading}
-        >
-          Sebelumnya
-        </Button>
-        <Button
-          tone="kedua"
-          onClick={() => onMove(info.halaman + 1)}
-          disabled={info.halaman >= info.total_halaman || loading}
-        >
-          Berikutnya
-        </Button>
-      </div>
-    </div>
   )
 }
 
@@ -380,26 +324,6 @@ function dateText(iso: string | null): string {
 
 function isValidationError(error: unknown): boolean {
   return error instanceof APIError && error.detail.length > 0
-}
-
-/**
- * fieldErrorOf memetakan `detail` galat validasi menjadi pesan per isian.
- *
- * Nama isiannya dibaca dari `field` MAUPUN `kolom`. Keduanya diperiksa karena kontrak
- * galat belum seragam antarmodul — `api/client.ts` mencatat ketiga bentuk yang hidup hari
- * ini, dan penyeragamannya adalah `TKT-F1-004` yang masih terhalang. Modul ini mengirim
- * `field`; membaca keduanya membuat layar tidak ikut rusak bila kontraknya kelak berubah
- * ke bentuk yang lain.
- */
-function fieldErrorOf(error: unknown): Record<string, string> {
-  if (!(error instanceof APIError)) return {}
-
-  const result: Record<string, string> = {}
-  for (const violation of error.detail) {
-    const name = violation.field ?? violation.kolom
-    if (name) result[name] = violation.pesan
-  }
-  return result
 }
 
 function messageOf(error: unknown): string {

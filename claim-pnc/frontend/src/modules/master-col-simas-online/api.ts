@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import type {
-  BusinessListResponse,
   SimasOnlineCauseOfLossInput,
   SimasOnlineCauseOfLossListResponse,
   SimasOnlineCauseOfLossResponse,
@@ -11,7 +10,6 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 const ROUTE = '/api/master/col-simas-online'
-const ROUTE_BUSINESS = '/api/master/bisnis'
 
 /**
  * listKey menyertakan portal DAN token.
@@ -30,10 +28,6 @@ function listKey(portal: string | null, token: string | null) {
 
 function detailKey(id: string, portal: string | null, token: string | null) {
   return ['master-col-simas-online', 'detail', id, portal, token] as const
-}
-
-function businessKey(portal: string | null, token: string | null) {
-  return ['master-bisnis', portal, token] as const
 }
 
 /**
@@ -77,25 +71,10 @@ export function useCauseOfLoss(id: string | null) {
 }
 
 /**
- * Hook daftar bisnis untuk isian Bisnis.
- *
- * MENUNTUT portal: POOLDATA.BUSINESS hidup di basis data setiap entitas, sehingga
- * "bisnis milik siapa" ditentukan portal yang aktif. Ini berbeda dari daftar posisi
- * klaim pada modul Master Status Progres, yang memang milik aplikasi.
- *
- * Daftarnya jarang berubah, sehingga tidak dimuat ulang setiap kali form dibuka.
+ * Hook daftar bisnis untuk saran isian Bisnis — dipakai bersama layar master lain yang
+ * memetakan bisnis; lihat components/masterpage/useBusinessList.
  */
-export function useBusinessList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: businessKey(portal, token),
-    queryFn: () => callAPI<BusinessListResponse>(ROUTE_BUSINESS, { token, portal }),
-    enabled: token !== null && portal !== null,
-    staleTime: 60 * 60 * 1000,
-  })
-}
+export { useBusinessList } from '@/components/masterpage/useBusinessList'
 
 /** Hook penambahan cause of loss. */
 export function useCreateCauseOfLoss() {

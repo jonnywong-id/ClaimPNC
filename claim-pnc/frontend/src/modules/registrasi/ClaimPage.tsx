@@ -485,7 +485,7 @@ function FormRegister({ klaim, tugas }: Readonly<{ klaim: Claim; tugas: Task }>)
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={unsaved.rawat_inap}
                   onChange={(e) => setUnsavedField('rawat_inap', e.target.checked)} />
-                Apakah Melakukan Rawat Inap ?
+                {'Apakah Melakukan Rawat Inap ?'}
               </label>
             </div>
           )}

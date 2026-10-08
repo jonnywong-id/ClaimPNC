@@ -4,6 +4,7 @@ import { APIError, simpanBerkas } from '@/api/client'
 
 import { DateInput } from '@/components/DateField'
 import { centsToRupiah, formatDateTimeWIB, rupiahToCents } from '@/components/format'
+import { useEscapeToClose } from '@/components/shared/useEscapeToClose'
 
 import { type LODType, useAcceptSettlement, useAcceptanceDefaults, useDocuments, useLODTypes, usePrintLOD, violationsFrom } from './api'
 import { DLADialog } from './DLADialog'
@@ -146,13 +147,7 @@ function Popup({
   /** Lebar modal AcceptationLOD, yang memuat dua kolom Remark | Berita Acara. */
   wide?: boolean
 }>) {
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  useEscapeToClose(onClose, busy)
 
   return (
     <dialog

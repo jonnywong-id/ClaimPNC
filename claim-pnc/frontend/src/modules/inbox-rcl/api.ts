@@ -1,8 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { usePersonalTaskList, useScreenMetadata } from '@/api/inboxShared'
 
 import type { DaftarResponse, KeteranganResponse } from './types'
 
@@ -29,16 +25,7 @@ const keys = {
  * `Harness/RCL_Harness-Harness.xml` yang tercatat di backend.
  */
 export function useKeteranganRCL() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.keterangan(portal, token),
-    queryFn: () => callAPI<KeteranganResponse>(`${PATH}/keterangan`, { token, portal }),
-    enabled: token !== null && portal !== null,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<KeteranganResponse>(keys.keterangan, `${PATH}/keterangan`)
 }
 
 /**
@@ -48,19 +35,11 @@ export function useKeteranganRCL() {
  * apa pun — server membacanya dari sesi lalu mencari identitas LAMA-nya sendiri.
  */
 export function useDaftarRCL(cari: string, lewati: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  const params = new URLSearchParams()
-  if (cari.trim()) params.set('cari', cari.trim())
-  if (lewati > 0) params.set('lewati', String(lewati))
-  params.set('batas', String(PAGE_SIZE))
-
-  return useQuery({
-    queryKey: keys.daftar(portal, token, cari.trim(), lewati),
-    queryFn: () => callAPI<DaftarResponse>(`${PATH}?${params.toString()}`, { token, portal }),
-    enabled: token !== null && portal !== null,
-    staleTime: 0,
-    placeholderData: (previous) => previous,
-  })
+  return usePersonalTaskList<DaftarResponse>(
+    (portal, token) => keys.daftar(portal, token, cari.trim(), lewati),
+    PATH,
+    cari,
+    lewati,
+    PAGE_SIZE,
+  )
 }

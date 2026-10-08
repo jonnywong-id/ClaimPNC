@@ -1,3 +1,5 @@
+import { QueueSelect } from '@/components/inbox/QueueSelect'
+
 import type { Tab } from './types'
 
 type Props = {
@@ -54,52 +56,17 @@ type Props = {
  * kenapa.
  */
 export function TreatyViewSelect({ tabs, active, onSelect }: Readonly<Props>) {
+  // "Choose" menampilkan antrean yang SAMA dengan "Prop Treaty-in Admin", dan itu perilaku
+  // Pega — bukan cacat: keduanya bernilai `CARI1` kosong, sehingga pemeriksaan yang memilih
+  // antrean teknik gagal pada keduanya. Karena itu kotaknya kembali menunjuk "Prop Treaty-in
+  // Admin" sesudah dipilih, alih-alih menggantung pada pilihan yang tidak menyaring apa pun.
   return (
-    <div>
-      {/*
-        Labelnya disembunyikan dari mata, bukan dihilangkan. Pega tidak menggambar label
-        apa pun di atas dropdown-nya, dan `D-13` menetapkan tampilan mengikuti Pega —
-        tetapi dropdown tanpa nama sama sekali hanya dibacakan sebagai "combo box" oleh
-        pembaca layar, sehingga pengguna tidak punya cara tahu apa yang sedang dipilihnya.
-      */}
-      <label htmlFor="antrean-treaty-prop" className="sr-only">
-        Antrean klaim treaty proporsional
-      </label>
-      <select
-        id="antrean-treaty-prop"
-        value={active}
-        onChange={(event) => onSelect(event.target.value)}
-        className={[
-          'w-full max-w-xs rounded-kontrol border border-slate-300 bg-white px-3 py-2',
-          'text-sm text-slate-900 shadow-lembut',
-          'transition-[border-color,box-shadow] duration-150 ease-halus',
-          'focus:border-blue-500 focus:outline-none focus-visible:ring-4',
-          'focus-visible:ring-blue-500/20',
-        ].join(' ')}
-      >
-        {/*
-          "Choose" adalah entri kosong bawaan dropdown Pega (`pyHasNoSelection=true`,
-          `pyNoSelectionText="Choose"`), bukan sebuah antrean.
-
-          Memilihnya menampilkan antrean yang SAMA dengan "Prop Treaty-in Admin", dan itu
-          perilaku Pega — bukan cacat: keduanya bernilai `CARI1` kosong, sehingga
-          pemeriksaan yang memilih antrean teknik gagal pada keduanya. Karena itu kotaknya
-          kembali menunjuk "Prop Treaty-in Admin" sesudah dipilih, alih-alih menggantung
-          pada pilihan yang tidak menyaring apa pun.
-        */}
-        <option value="">Choose</option>
-
-        {tabs.map((tab) => (
-          <option key={tab.kode} value={tab.kode}>
-            {/*
-              Penanda ikut masuk ke TEKS pilihannya, bukan digambar sebagai lencana di
-              sampingnya. Isi `<option>` hanya boleh berupa teks, dan keadaan "belum
-              tersedia" harus diketahui SEBELUM dipilih — bukan sesudahnya.
-            */}
-            {tab.terhalang ? `${tab.nama} — belum tersedia` : tab.nama}
-          </option>
-        ))}
-      </select>
-    </div>
+    <QueueSelect
+      tabs={tabs}
+      active={active}
+      onSelect={onSelect}
+      id="antrean-treaty-prop"
+      label="Antrean klaim treaty proporsional"
+    />
   )
 }

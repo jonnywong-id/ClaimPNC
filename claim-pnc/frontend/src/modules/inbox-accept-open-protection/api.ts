@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { offsetSearchPath, useRecordDetail } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -56,13 +57,7 @@ const keys = {
 }
 
 function buildPath(f: ProtectionFilter): string {
-  const params = new URLSearchParams()
-  params.set('antrean', f.queue)
-  if (f.search?.trim()) params.set('cari', f.search.trim())
-  if (f.offset) params.set('lewati', String(f.offset))
-  params.set('batas', String(PAGE_SIZE))
-
-  return `${PATH}?${params.toString()}`
+  return offsetSearchPath(PATH, new URLSearchParams({ antrean: f.queue }), f, PAGE_SIZE)
 }
 
 /**
@@ -121,18 +116,11 @@ export function useAcceptQueue(filter: ProtectionFilter, options?: { enabled?: b
 
 /** Hook pembacaan satu proteksi untuk form akseptasi. */
 export function useProtectionDetail(number: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.detail(portal, token, number ?? ''),
-    queryFn: () =>
-      callAPI<ProtectionDetail>(`${PATH}/${encodeURIComponent(number ?? '')}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && number !== null && number !== '',
-  })
+  return useRecordDetail<ProtectionDetail>(
+    (portal, token) => keys.detail(portal, token, number ?? ''),
+    PATH,
+    number,
+  )
 }
 
 /**

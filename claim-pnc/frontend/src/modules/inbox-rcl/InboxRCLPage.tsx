@@ -1,12 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { ReloadIcon } from '@/components/Icon'
+import { portalGate } from '@/components/inbox/InboxNotices'
+import { TaskQueueTable } from '@/components/inbox/TaskQueueTable'
+import { apiMessageOf } from '@/components/inbox/messages'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
+import {
+  PlainText,
+  buildTaskColumns,
+  commonTaskRenderers,
+  type TaskRenderer,
+} from '@/components/inbox/taskColumns'
 
 import { PAGE_SIZE, useDaftarRCL, useKeteranganRCL } from './api'
 import type { KolomLayar, TugasRCL } from './types'
@@ -78,136 +83,42 @@ export function InboxRCLPage() {
     navigate(`/view-claim/${encodeURIComponent(nomorCase)}`)
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean RCL milik satu badan hukum, dan aplikasi ini melayani empat. Pilih ' +
-            'portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = portalGate(portal, 'Antrean RCL')
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   const kolom = keterangan.data?.kolom ?? []
-  const baris = daftar.data?.data ?? []
-  const total = daftar.data?.total ?? 0
-  const halaman = Math.floor(lewati / PAGE_SIZE) + 1
-  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <PageFrame>
 
       <div className="mt-6">
-        <DataTable<TugasRCL>
-          columns={buildColumns(kolom, bukaKlaim)}
-          rows={baris}
+        <TaskQueueTable<TugasRCL>
+          columns={buildTaskColumns(kolom, renderer, bukaKlaim)}
           // Gabungan `INNER JOIN` ke worklist dapat memunculkan satu klaim dua kali (`P-5`),
           // sehingga kuncinya gabungan klaim_id dan nomor case.
           rowKey={(row) => `${row.klaim_id}|${row.nomor_case}`}
           title="Antrean RCL Dokter"
           label="Antrean Inbox RCL"
-          {...(total > 0 ? { description: `${total} klaim menunggu pertimbangan Anda.` } : {})}
-          isLoading={daftar.isPending}
+          description={(total) => `${total} klaim menunggu pertimbangan Anda.`}
           searchLabel="Cari Nomor Case / No Polis"
           emptyMessage="Tidak ada klaim RCL untuk Anda saat ini."
-          serverSearch={{ value: cari, onChange: ubahPencarian, matchCount: total }}
-          actions={
-            <Button
-              tone="halus"
-              onClick={() => { daftar.refetch() }}
-              disabled={daftar.isFetching}
-            >
-              <ReloadIcon className="h-4 w-4" />
-              {daftar.isFetching ? 'Memuat…' : 'Muat ulang'}
-            </Button>
-          }
-          error={
-            daftar.isError ? (
-              <ErrorMessage
-                title="Antrean tidak dapat dimuat"
-                description={pesanGalat(daftar.error)}
-                tone="gangguan"
-              />
-            ) : undefined
-          }
-          pagination={{
-            page: halaman,
-            size: PAGE_SIZE,
-            total,
-            totalPage: totalHalaman,
-            onPageChange: (nomor) => setLewati((nomor - 1) * PAGE_SIZE),
-            isLoading: daftar.isFetching,
-          }}
+          search={cari}
+          onSearch={ubahPencarian}
+          offset={lewati}
+          onOffset={setLewati}
+          pageSize={PAGE_SIZE}
+          query={daftar}
+          describe={apiMessageOf}
         />
       </div>
     </PageFrame>
   )
 }
 
-/**
- * Menyusun kolom tabel dari judul yang dikirim server. Kunci yang tidak dikenal dilewati,
- * bukan digambar kosong.
- */
-function buildColumns(
-  kolom: KolomLayar[],
-  bukaKlaim: (nomorCase: string) => void,
-): Column<TugasRCL>[] {
-  const hasil: Column<TugasRCL>[] = []
-  for (const k of kolom) {
-    const dibangun = renderer[k.kunci]?.(k, bukaKlaim)
-    if (dibangun) hasil.push(dibangun)
-  }
-  return hasil
-}
-
-/** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
-function Teks({ nilai }: Readonly<{ nilai: string }>) {
-  if (!nilai) return <span className="text-slate-400">—</span>
-  return <span className="truncate">{nilai}</span>
-}
-
-type Renderer = (k: KolomLayar, bukaKlaim: (nomorCase: string) => void) => Column<TugasRCL>
+type Renderer = TaskRenderer<TugasRCL, KolomLayar>
 
 const renderer: Record<string, Renderer | undefined> = {
-  nomor_case: (k, bukaKlaim) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '11rem',
-    value: (row) => row.nomor_case,
-    render: (row) =>
-      row.nomor_case ? (
-        <button
-          type="button"
-          className="rounded-md font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          onClick={() => bukaKlaim(row.nomor_case)}
-        >
-          {row.nomor_case}
-        </button>
-      ) : (
-        <span className="text-slate-400">belum bernomor</span>
-      ),
-  }),
-
-  nomor_polis: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '11rem',
-    value: (row) => row.nomor_polis,
-    render: (row) => <Teks nilai={row.nomor_polis} />,
-  }),
-
-  nama_tertanggung: (k) => ({
-    key: k.kunci,
-    title: k.judul,
-    width: '14rem',
-    value: (row) => row.nama_tertanggung,
-    render: (row) => <Teks nilai={row.nama_tertanggung} />,
-  }),
+  ...commonTaskRenderers<TugasRCL, KolomLayar>(),
 
   tanggal_masuk_inbox: (k) => ({
     key: k.kunci,
@@ -216,7 +127,7 @@ const renderer: Record<string, Renderer | undefined> = {
     value: (row) => row.tanggal_masuk_inbox,
     render: (row) => (
       <span className="tabular-nums" title={k.keterangan ?? ''}>
-        <Teks nilai={row.tanggal_masuk_inbox} />
+        <PlainText value={row.tanggal_masuk_inbox} />
       </span>
     ),
   }),
@@ -237,20 +148,15 @@ const renderer: Record<string, Renderer | undefined> = {
 
 function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox RCL</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Klaim yang dikirim analis untuk pertimbangan penolakan medis Anda. Barisnya hilang
-          begitu tugasnya diselesaikan.
-        </p>
-      </header>
+    <InboxPageFrame
+      title="Inbox RCL"
+      intro={
+        'Klaim yang dikirim analis untuk pertimbangan penolakan medis Anda. Barisnya ' +
+        'hilang begitu tugasnya diselesaikan.'
+      }
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
-function pesanGalat(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { usePortalQuery } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -30,23 +31,14 @@ const keys = {
  * layar, dan kemungkinan keduanya menjawab keadaan yang berbeda.
  */
 export function useInputAcceptation(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.detail(portal, token, claimID),
-    queryFn: () =>
-      callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(claimID)}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && claimID !== '',
-
-    // Akseptasi berubah saat petugas lain menyimpannya, jadi cache-nya pendek. Ia tidak
-    // dibuat nol: membuka ulang layar yang sama dalam hitungan detik — yang terjadi setiap
-    // kali pengguna menekan kembali dari sebuah tautan — tidak perlu menembak server lagi.
-    staleTime: 15 * 1000,
-  })
+  // Akseptasi berubah saat petugas lain menyimpannya, jadi cache-nya pendek. Ia tidak
+  // dibuat nol: membuka ulang layar yang sama dalam hitungan detik — yang terjadi setiap
+  // kali pengguna menekan kembali dari sebuah tautan — tidak perlu menembak server lagi.
+  return usePortalQuery<DetailResponse>(
+    (portal, token) => keys.detail(portal, token, claimID),
+    `${PATH}/${encodeURIComponent(claimID)}`,
+    claimID !== '',
+  )
 }
 
 /**

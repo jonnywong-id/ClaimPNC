@@ -4,6 +4,10 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { TabBar } from '@/components/TabBar'
+import { DifferenceDisclosure } from '@/components/inbox/DifferenceDisclosure'
+import { loadGate } from '@/components/inbox/InboxNotices'
+import { RefreshExportActions } from '@/components/inbox/RefreshExportActions'
+import { serverPaging } from '@/components/inbox/QueueTable'
 
 import {
   useEksporReas,
@@ -139,26 +143,8 @@ export function InboxPLADLAReasPage() {
     setPage(1)
   }
 
-  if (meta.isPending) {
-    return (
-      <Bingkai>
-        <p className="text-sm text-slate-600">Memuat keterangan layar…</p>
-      </Bingkai>
-    )
-  }
-
-  if (meta.isError) {
-    const pesan = pesanMuat(meta.error)
-    return (
-      <Bingkai>
-        <ErrorMessage
-          title={pesan.title}
-          description={pesan.description}
-          tone={pesan.tone}
-        />
-      </Bingkai>
-    )
-  }
+  const gate = loadGate(meta, pesanMuat)
+  if (gate) return <Bingkai>{gate}</Bingkai>
 
   // Penolakan "bukan mitra terdaftar" menggantikan SELURUH isi layar, bukan digambar
   // sebagai galat di atas tabel kosong.
@@ -170,26 +156,14 @@ export function InboxPLADLAReasPage() {
   // sebab yang sama, dan yang mana yang menjawab lebih dulu bergantung pada tab mana yang
   // sedang terbuka.
   if (ditolak || bukanReasuradur(xol.error)) {
-    const pesan = pesanMuat(ditolak ? list.error : xol.error)
-    return (
-      <Bingkai>
-        <ErrorMessage
-          title={pesan.title}
-          description={pesan.description}
-          tone={pesan.tone}
-        />
-      </Bingkai>
-    )
+    const failure = { isPending: false, isError: true, error: ditolak ? list.error : xol.error }
+    return <Bingkai>{loadGate(failure, pesanMuat)}</Bingkai>
   }
 
   return (
     <Bingkai>
       <TabBar
-        tabs={daftar.map((item) => ({
-          kode: item.kode,
-          nama: item.nama,
-          keterangan: item.keterangan,
-        }))}
+        tabs={daftar}
         active={aktif}
         onSelect={pilihDaftar}
         label="Tahap pemberitahuan"
@@ -236,36 +210,17 @@ export function InboxPLADLAReasPage() {
               onChange: setKetikan,
               matchCount: list.data?.paginasi.total,
             }}
-            pagination={{
-              page: list.data?.paginasi.halaman ?? 1,
-              size: list.data?.paginasi.ukuran ?? 10,
-              total: list.data?.paginasi.total ?? 0,
-              totalPage: list.data?.paginasi.total_halaman ?? 1,
-              onPageChange: setPage,
-              isLoading: list.isFetching,
-            }}
+            pagination={serverPaging(list, setPage, 10)}
             actions={
-              <div className="flex flex-wrap items-center gap-2">
+              <RefreshExportActions
+                query={list}
+                exporting={ekspor.isPending}
+                onExport={() => ekspor.mutate(parameter)}
+              >
                 <Button type="button" onClick={cari} disabled={list.isFetching}>
                   {list.isFetching ? 'Mencari…' : 'Search Data'}
                 </Button>
-                <Button
-                  type="button"
-                  tone="kedua"
-                  onClick={() => { list.refetch() }}
-                  disabled={list.isFetching}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  type="button"
-                  tone="kedua"
-                  disabled={ekspor.isPending}
-                  onClick={() => ekspor.mutate(parameter)}
-                >
-                  {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
-                </Button>
-              </div>
+              </RefreshExportActions>
             }
           />
 
@@ -287,7 +242,7 @@ export function InboxPLADLAReasPage() {
         </>
       )}
 
-      <SelisihTerencana butir={meta.data?.selisih_terencana ?? []} />
+      <DifferenceDisclosure items={meta.data?.selisih_terencana ?? []} />
     </Bingkai>
   )
 }
@@ -408,25 +363,3 @@ function pesanKosong(dicari: string, daftar: Daftar | undefined): string {
   return 'Belum ada klaim pada tahap ini yang pemberitahuannya dikirimkan kepada Anda.'
 }
 
-/** SelisihTerencana menggambar selisih terhadap layar Pega di kaki halaman. */
-function SelisihTerencana({ butir }: Readonly<{ butir: string[] }>) {
-  if (butir.length === 0) return null
-
-  return (
-    <details className="rounded-kartu border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-800">
-        Perbedaan yang disengaja terhadap layar Pega ({butir.length})
-      </summary>
-      <ul className="mt-3 space-y-2 text-sm text-slate-600">
-        {butir.map((isi) => (
-          <li key={isi} className="flex gap-2">
-            <span aria-hidden className="text-slate-400">
-              •
-            </span>
-            <span>{isi}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
-}

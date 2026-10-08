@@ -1,11 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
+import { NoteList, screenGate } from '@/components/inbox/InboxNotices'
+import { apiMessageOf, isISODate } from '@/components/inbox/messages'
+import { columnsWithAction } from '@/components/inbox/serverColumns'
+import { useDebouncedCommit } from '@/components/inbox/useDebouncedCommit'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
 
 import { ServiceCenterTabs } from './ServiceCenterTabs'
 import { useInboxServiceCenterList, useInboxServiceCenterMetadata } from './api'
@@ -55,17 +59,11 @@ export function InboxServiceCenterPage() {
    */
   const [draft, setDraft] = useState('')
 
-  // Ketikan menunggu jeda sebelum dikirim. Jedanya cukup panjang untuk menelan satu kata yang
-  // diketik cepat, dan cukup pendek untuk tidak terasa seperti layar yang menggantung.
-  useEffect(() => {
-    if (draft === filter.cari) return
-
-    const timer = setTimeout(() => {
-      setFilter((previous) => ({ ...previous, cari: draft }))
-      setPage(1)
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [draft, filter.cari])
+  // Ketikan menunggu jeda sebelum dikirim (`useDebouncedCommit`).
+  useDebouncedCommit(draft, filter.cari, (value) => {
+    setFilter((previous) => ({ ...previous, cari: value }))
+    setPage(1)
+  })
 
   const portal = useSelectedPortal((state) => state.alias)
   const meta = useInboxServiceCenterMetadata()
@@ -88,32 +86,14 @@ export function InboxServiceCenterPage() {
     setPage(1)
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Klaim portal rekanan milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = screenGate({
+    portal,
+    subject: 'Klaim portal rekanan',
+    failed: meta.isError,
+    error: meta.error,
+    describe: apiMessageOf,
+  })
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   const info = list.data?.paginasi
 
@@ -144,7 +124,7 @@ export function InboxServiceCenterPage() {
                 list.isError ? (
                   <ErrorMessage
                     title="Antrean tidak dapat dimuat"
-                    description={messageOf(list.error)}
+                    description={apiMessageOf(list.error)}
                     tone="gangguan"
                   />
                 ) : undefined
@@ -183,23 +163,22 @@ export function InboxServiceCenterPage() {
         </>
       )}
 
-      <Notes limitations={meta.data?.keterbatasan ?? []} />
+      <NoteList title="Yang perlu diketahui" lines={meta.data?.keterbatasan ?? []} />
     </PageFrame>
   )
 }
 
 function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Service Center</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Klaim portal rekanan yang Anda tangani: registrasi baru, yang menunggu keputusan
-          komite, serta yang sudah disetujui atau ditolak.
-        </p>
-      </header>
+    <InboxPageFrame
+      title="Inbox Service Center"
+      intro={
+        'Klaim portal rekanan yang Anda tangani: registrasi baru, yang menunggu ' +
+        'keputusan komite, serta yang sudah disetujui atau ditolak.'
+      }
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
@@ -252,50 +231,15 @@ function SearchBar({
 }
 
 /**
- * Catatan di bawah tabel: keterbatasan yang berlaku.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya
- * begitu penghalangnya hilang. Tanpa catatan ini, ketiadaan tombol simpan dan pencarian yang
- * tampak setengah bekerja akan dilaporkan berulang kali sebagai kerusakan.
- */
-function Notes({ limitations }: Readonly<{ limitations: string[] }>) {
-  if (limitations.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">Yang perlu diketahui</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {limitations.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
  * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol, dan
  * backend tidak tahu apa pun tentang rute antarmuka.
  */
 function columnsFor(tab: Tab): Column<ServiceClaim>[] {
-  const columns: Column<ServiceClaim>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-  }))
-
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: (row) => <DetailLink id={row.id} />,
-    noSort: true,
-    alignRight: true,
-  })
-
-  return columns
+  return columnsWithAction<ServiceClaim, TabColumn>(tab.kolom, cellText, (row) => (
+    <DetailLink id={row.id} />
+  ))
 }
 
 /**
@@ -335,12 +279,7 @@ function cellText(row: ServiceClaim, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk kolom tanggal. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return isISODate(text) ? formatDate(text) : text
 }
 
 /**
@@ -359,8 +298,3 @@ function emptyMessageFor(tab: Tab, filter: FilterForm): string {
   return `Tidak ada klaim milik Anda pada antrean ${tab.nama}.`
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

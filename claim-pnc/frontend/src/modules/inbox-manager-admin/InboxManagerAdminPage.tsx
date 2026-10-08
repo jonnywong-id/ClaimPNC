@@ -1,12 +1,15 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { type Column } from '@/components/DataTable'
 import { formatDate } from '@/components/format'
+import { ExportDataButton } from '@/components/inbox/ExportDataButton'
+import { NoteList, screenGate } from '@/components/inbox/InboxNotices'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
+import { TabQueueTable } from '@/components/inbox/QueueTable'
+import { ViewClaimButton } from '@/components/inbox/ViewClaimButton'
+import { errorMessageOf, isISODate } from '@/components/inbox/messages'
+import { columnsWithAction } from '@/components/inbox/serverColumns'
 
 import { ManagerAdminTabs } from './ManagerAdminTabs'
 import {
@@ -76,29 +79,17 @@ export function InboxManagerAdminPage() {
     setPage(1)
   }
 
-  if (portal === null) {
+  const gate = screenGate({
+    portal,
+    subject: 'Antrean registrasi klaim',
+    failed: meta.isError,
+    error: meta.error,
+    describe: errorMessageOf,
+  })
+  if (gate) {
     return (
       <PageFrame tab={active} exportable={false}>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean registrasi klaim milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame tab={active} exportable={false}>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
+        {gate}
       </PageFrame>
     )
   }
@@ -120,47 +111,21 @@ export function InboxManagerAdminPage() {
             <>
               <p className="mt-3 text-sm text-slate-600">{tab.keterangan}</p>
 
-              <div className="mt-4">
-                <DataTable<WorkItem>
-                  columns={columnsFor(tab, renderDetailButton)}
-                  rows={list.data?.baris ?? []}
-                  rowKey={(row) => `${row.referensi}|${row.id}`}
-                  title={tab.nama}
-                  label={`Antrean ${tab.nama}`}
-                  // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman
-                  // yang sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada"
-                  // untuk baris yang sebenarnya ada di halaman berikutnya.
-                  //
-                  // Layar lama pun tidak punya kotak cari: Report Definition-nya tidak
-                  // menyaring menurut kata kunci sama sekali.
-                  hideSearch
-                  isLoading={list.isPending}
-                  error={
-                    list.isError ? (
-                      <ErrorMessage
-                        title="Antrean tidak dapat dimuat"
-                        description={messageOf(list.error)}
-                        tone="gangguan"
-                      />
-                    ) : undefined
-                  }
-                  emptyMessage={emptyMessageFor(tab)}
-                  pagination={{
-                    page: list.data?.paginasi.halaman ?? 1,
-                    size: list.data?.paginasi.ukuran ?? 50,
-                    total: list.data?.paginasi.total ?? 0,
-                    totalPage: list.data?.paginasi.total_halaman ?? 1,
-                    onPageChange: setPage,
-                    isLoading: list.isFetching,
-                  }}
-                />
-              </div>
+              <TabQueueTable<WorkItem>
+                tab={tab}
+                query={list}
+                columns={columnsFor(tab, renderDetailButton)}
+                rowKey={(row) => `${row.referensi}|${row.id}`}
+                emptyMessage={emptyMessageFor(tab)}
+                onPageChange={setPage}
+                describe={errorMessageOf}
+              />
             </>
           )}
         </>
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
+      <NoteList lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -176,32 +141,31 @@ function PageFrame({
   children: ReactNode
 }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Manager Admin</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Pandangan penyelia atas antrean registrasi klaim, dipisah menurut unit
-            organisasi admin.
-          </p>
-          {/*
-            Sifat "pandangan penyelia" dinyatakan di layar, bukan hanya di kode.
+    <InboxPageFrame
+      title="Inbox Manager Admin"
+      intro={
+        'Pandangan penyelia atas antrean registrasi klaim, dipisah menurut unit ' +
+        'organisasi admin.'
+      }
+      /*
+        Sifat "pandangan penyelia" dinyatakan di layar, bukan hanya di kode.
 
-            Tidak satu pun tab di sini menyaring menurut pengguna yang login — berbeda dari
-            sebagian layar inbox lain, yang punya tab "milik saya". Tanpa keterangan ini,
-            petugas yang terbiasa dengan layar itu akan mengira daftarnya keliru karena
-            memuat pekerjaan orang lain.
-          */}
-          <p className="mt-2 text-xs text-slate-500">
-            Layar ini menampilkan pekerjaan{' '}
-            <span className="font-medium">seluruh petugas</span> pada unit organisasi yang
-            dipilih, bukan hanya milik Anda. Setiap pembukaannya tercatat.
-          </p>
-        </div>
-        <ExportButton tab={tab} enabled={exportable} />
-      </header>
+        Tidak satu pun tab di sini menyaring menurut pengguna yang login — berbeda dari
+        sebagian layar inbox lain, yang punya tab "milik saya". Tanpa keterangan ini,
+        petugas yang terbiasa dengan layar itu akan mengira daftarnya keliru karena
+        memuat pekerjaan orang lain.
+      */
+      extra={
+        <p className="mt-2 text-xs text-slate-500">
+          Layar ini menampilkan pekerjaan{' '}
+          <span className="font-medium">seluruh petugas</span> pada unit organisasi yang
+          dipilih, bukan hanya milik Anda. Setiap pembukaannya tercatat.
+        </p>
+      }
+      aside={<ExportButton tab={tab} enabled={exportable} />}
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
@@ -219,20 +183,13 @@ function ExportButton({ tab, enabled }: Readonly<{ tab: string; enabled: boolean
   const ekspor = useExportInboxManagerAdmin()
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        tone="kedua"
-        disabled={!enabled || ekspor.isPending}
-        onClick={() => ekspor.mutate(tab)}
-      >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export To Excel'}
-      </Button>
-      {ekspor.isError && (
-        <p className="max-w-md text-right text-xs text-red-700" role="alert">
-          {messageOf(ekspor.error)}
-        </p>
-      )}
-    </div>
+    <ExportDataButton
+      state={ekspor}
+      onExport={() => ekspor.mutate(tab)}
+      enabled={enabled}
+      describe={errorMessageOf}
+      label="Export To Excel"
+    />
   )
 }
 
@@ -319,58 +276,7 @@ function NoTabNotice({ meta }: Readonly<{ meta: MetadataResponse }>) {
 
 /** Isi kolom aksi tiap baris — di tingkat modul agar tidak dibuat ulang tiap render. */
 function renderDetailButton(row: WorkItem): ReactNode {
-  return <DetailButton item={row} />
-}
-
-/**
- * Tombol rincian.
- *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
- * belum dibangun. Tombolnya tetap dibangun mengikuti modul inbox lain, dan tujuannya
- * diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
- *
- * Yang dikirim adalah `referensi`, kunci teknis Pega — nilai yang sama yang di layar lama
- * disusun menjadi kunci assignment oleh `SetAssignmentInboxReg_act`. Dengan begitu
- * menyalakan layar rincian kelak tidak menuntut perubahan kontrak API modul ini.
- */
-function DetailButton({ item }: Readonly<{ item: WorkItem }>) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.id
-
-  return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
-    >
-      Lihat Detail
-    </Button>
-  )
-}
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, tiga hal akan
- * dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar
- * berdampingan: daftar yang tidak lagi terpotong di 500 baris, ketiga grid yang kini menjadi
- * tab, dan kolom Lama Waktu Klaim yang bentuknya direkonstruksi.
- */
-function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
+  return <ViewClaimButton reference={row.referensi || row.id} label="Lihat Detail" />
 }
 
 /**
@@ -380,22 +286,7 @@ function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
  * dan backend tidak tahu apa pun tentang rute antarmuka.
  */
 function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-  }))
-
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
-  })
-
-  return columns
+  return columnsWithAction<WorkItem, TabColumn>(tab.kolom, cellText, action)
 }
 
 /**
@@ -417,12 +308,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return isISODate(text) ? formatDate(text) : text
 }
 
 /**
@@ -444,9 +330,3 @@ function emptyMessageFor(tab: Tab): string {
   )
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

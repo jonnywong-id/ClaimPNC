@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, downloadAPI } from '@/api/client'
+import { useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -61,16 +62,7 @@ const keys = {
 
 /** Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana. */
 export function useReasMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
-    enabled: token !== null && portal !== null,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/daftar`)
 }
 
 /** Isian penyaring yang dikirim ke server. */

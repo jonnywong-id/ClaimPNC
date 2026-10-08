@@ -69,13 +69,13 @@ export function CloseClaimDialog({ claimID, taskID, onClose }: Readonly<{ claimI
           />
           <label className="flex items-center gap-2 text-sm text-slate-800">
             <input type="checkbox" checked={temporary} disabled={busy} onChange={(e) => setTemporary(e.target.checked)} />
-            Tutup Sementara
+            {'Tutup Sementara'}
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <DisabledSelect id="alasan-terlambat" label="Alasan Keterlambatan" />
             <label className="block text-xs font-semibold text-slate-800">
-              No Reff Broker
+              {'No Reff Broker'}
               <input
                 id="no-reff-broker"
                 type="text"

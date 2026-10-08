@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
-
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { useEscapeToClose } from '@/components/shared/useEscapeToClose'
 
 import { useTransferToAnalyst, violationsFrom } from './api'
 import type { Claim, InsuredItem } from './types'
@@ -62,13 +61,7 @@ export function TransferToAnalystDialog({
   const send = useTransferToAnalyst(claimID)
   const busy = send.isPending
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  useEscapeToClose(onClose, busy)
 
   const violations = violationsFrom(send.error)
 

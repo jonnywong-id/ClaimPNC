@@ -10,6 +10,7 @@ import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SearchIcon } from '@/components/Icon'
 import { SelectField } from '@/components/SelectField'
+import { SaveErrorBox } from '@/components/masterform/PanelForm'
 
 import { useLookupEmployee, useSaveTechnician } from './api'
 
@@ -265,7 +266,7 @@ export function TechnicianForm({ technician, onClose }: Readonly<Props>) {
       </div>
 
       <div className="space-y-5 p-5">
-        {save.isError && <SaveErrorMessage error={save.error} />}
+        {save.isError && <SaveErrorBox error={save.error} parse={parseSave} />}
         {lookup.isError && <LookupErrorMessage error={lookup.error} />}
 
         <div className="grid gap-5 sm:grid-cols-2">
@@ -482,33 +483,6 @@ function LookupErrorMessage({ error }: Readonly<{ error: unknown }>) {
   if (message === null) return null
   return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
 }
-
-function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  if (error instanceof NetworkError) {
-    return (
-      <ErrorMessage
-        title="Tidak dapat menghubungi server"
-        description="Perubahan belum tersimpan. Periksa koneksi lalu coba lagi."
-        tone="gangguan"
-      />
-    )
-  }
-
-  if (!(error instanceof APIError)) {
-    return (
-      <ErrorMessage
-        title="Gagal menyimpan"
-        description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
-        tone="gangguan"
-      />
-    )
-  }
-
-  const message = parseSave(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-}
-
 /** Galat yang berasal dari direktori pegawai, dipakai kedua jalur. */
 function parseDirectory(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {

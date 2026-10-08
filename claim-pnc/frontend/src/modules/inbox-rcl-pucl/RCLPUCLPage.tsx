@@ -1,19 +1,26 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { type Column } from '@/components/DataTable'
 import { FormField } from '@/components/FormField'
 import { formatDate } from '@/components/format'
+import {
+  BlockedNotice,
+  DetailedDifferences,
+  TabNotice,
+  screenGate,
+} from '@/components/inbox/InboxNotices'
+import { ColumnsExportButton } from '@/components/inbox/ExportDataButton'
+import { LinkButton } from '@/components/inbox/LinkButton'
+import { TabQueueTable } from '@/components/inbox/QueueTable'
+import { errorMessageOf, isISODate } from '@/components/inbox/messages'
+import { serverColumns } from '@/components/inbox/serverColumns'
 
 import { RCLPUCLTabs } from './RCLPUCLTabs'
 import { useExportRCLPUCL, useRCLPUCLList, useRCLPUCLMetadata } from './api'
 import type {
   DateRange,
-  PlannedDifference,
   ReportColumn,
   Tab,
   TabColumn,
@@ -106,29 +113,17 @@ export function RCLPUCLPage() {
     navigate(`/inbox-rcl-pucl/klaim/${encodeURIComponent(row.referensi)}?${back}`)
   }
 
-  if (portal === null) {
+  const gate = screenGate({
+    portal,
+    subject: 'Antrean RCL/PUCL',
+    failed: meta.isError,
+    error: meta.error,
+    describe: errorMessageOf,
+  })
+  if (gate) {
     return (
       <PageFrame tab={tab} range={range} exportable={false}>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean RCL/PUCL milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame tab={tab} range={range} exportable={false}>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
+        {gate}
       </PageFrame>
     )
   }
@@ -163,46 +158,20 @@ export function RCLPUCLPage() {
           {tab.terhalang ? (
             <BlockedNotice tab={tab} />
           ) : (
-            <div className="mt-4">
-              <DataTable<WorkItem>
-                columns={columnsFor(tab, openCase)}
-                rows={list.data?.baris ?? []}
-                rowKey={(row) => `${row.referensi}|${row.no_case}`}
-                title={tab.nama}
-                label={`Antrean ${tab.nama}`}
-                // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman
-                // yang sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada"
-                // untuk baris yang sebenarnya ada di halaman berikutnya.
-                //
-                // Layar lama pun tidak punya kotak cari: ketiga Report Definition-nya
-                // tidak menyaring menurut kata kunci sama sekali.
-                hideSearch
-                isLoading={list.isPending}
-                error={
-                  list.isError ? (
-                    <ErrorMessage
-                      title="Antrean tidak dapat dimuat"
-                      description={messageOf(list.error)}
-                      tone="gangguan"
-                    />
-                  ) : undefined
-                }
-                emptyMessage={emptyMessageFor(tab)}
-                pagination={{
-                  page: list.data?.paginasi.halaman ?? 1,
-                  size: list.data?.paginasi.ukuran ?? 50,
-                  total: list.data?.paginasi.total ?? 0,
-                  totalPage: list.data?.paginasi.total_halaman ?? 1,
-                  onPageChange: setPage,
-                  isLoading: list.isFetching,
-                }}
-              />
-            </div>
+            <TabQueueTable<WorkItem>
+              tab={tab}
+              query={list}
+              columns={columnsFor(tab, openCase)}
+              rowKey={(row) => `${row.referensi}|${row.no_case}`}
+              emptyMessage={emptyMessageFor(tab)}
+              onPageChange={setPage}
+              describe={errorMessageOf}
+            />
           )}
         </>
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
+      <DetailedDifferences lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -302,21 +271,6 @@ function DateRangeFilter({
 }
 
 /**
- * Catatan yang berlaku pada satu tab saja.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya ia hilang dengan
- * sendirinya begitu keadaannya berubah — khususnya catatan tab "Klaim MSIG", yang berlaku
- * hanya sampai DBA memastikan kolom penandanya.
- */
-function TabNotice({ text }: Readonly<{ text: string }>) {
-  return (
-    <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
-      <p className="text-xs text-slate-700">{text}</p>
-    </div>
-  )
-}
-
-/**
  * Tombol ekspor.
  *
  * # SATU tombol, DUA isi berkas
@@ -346,53 +300,19 @@ function ExportButton({
   if (ekspor.isPending) label = 'Menyiapkan berkas…'
 
   return (
-    <div className="flex max-w-sm flex-col items-end gap-1">
-      <Button
-        tone="kedua"
-        disabled={!enabled || ekspor.isPending || tab === undefined}
-        onClick={() =>
-          ekspor.mutate({
-            tab: tab?.kode ?? '',
-            range: isReport ? range : undefined,
-          })
-        }
-      >
-        {label}
-      </Button>
-
-      {isReport && columns.length > 0 && (
-        <p className="text-right text-xs text-slate-500">
-          Berisi: {columns.map((column) => column.judul).join(' · ')}
-        </p>
-      )}
-
-      {ekspor.isError && (
-        <p className="text-right text-xs text-red-700" role="alert">
-          {messageOf(ekspor.error)}
-        </p>
-      )}
-    </div>
-  )
-}
-
-/**
- * Keterangan tab yang digambar tetapi belum dapat diisi.
- *
- * Alasan dan pemiliknya datang dari SERVER, bukan ditulis tetap di sini, supaya keduanya
- * hilang dengan sendirinya begitu penghalangnya hilang. Menyebut pemiliknya penting:
- * penghalang tanpa alamat tidak pernah hilang.
- */
-function BlockedNotice({ tab }: Readonly<{ tab: Tab }>) {
-  return (
-    <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
-      <h2 className="text-sm font-semibold text-amber-900">{tab.nama} belum tersedia</h2>
-      <p className="mt-2 text-sm text-slate-700">{tab.alasan_terhalang}</p>
-      {tab.pemilik_penghalang && (
-        <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium">Menunggu:</span> {tab.pemilik_penghalang}
-        </p>
-      )}
-    </div>
+    <ColumnsExportButton
+      state={ekspor}
+      disabled={!enabled || ekspor.isPending || tab === undefined}
+      onExport={() =>
+        ekspor.mutate({
+          tab: tab?.kode ?? '',
+          range: isReport ? range : undefined,
+        })
+      }
+      label={label}
+      columns={isReport ? columns : []}
+      describe={errorMessageOf}
+    />
   )
 }
 
@@ -490,83 +410,13 @@ function CaseLink({ item, onOpen }: Readonly<{ item: WorkItem; onOpen: (row: Wor
   if (item.no_case === '') return <span className="text-slate-400">—</span>
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(item)}
-      title={`Buka klaim ${item.no_case}`}
-      className={[
-        'rounded-kontrol text-left font-medium text-blue-700 underline-offset-2',
-        'transition-colors duration-150 ease-halus hover:underline',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-        'disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline',
-      ].join(' ')}
-    >
+    <LinkButton onClick={() => onOpen(item)} title={`Buka klaim ${item.no_case}`} disabledStyles>
       {item.no_case}
-    </button>
+    </LinkButton>
   )
 }
 
 
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, tiga hal akan
- * dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar
- * berdampingan: tab "Klaim MSIG" yang nyaris kosong, isian tanggal yang tidak menyaring
- * tabel, dan berkas ekspor yang isinya berbeda dari tabel.
- *
- * # Panel ini sempat dihapus pada 2026-09-30, lalu DIKEMBALIKAN pada hari yang sama
- *
- * Work Owner meminta menghapusnya, lalu meralatnya sebelum perubahannya dipakai. Ia karena
- * itu tetap digambar apa adanya. Dicatat di sini supaya penghapusan berikutnya menempuh
- * keputusan, bukan diulang atas nama merapikan layar yang panjang —
- * `keputusan-implementasi.md` §80.9.
- */
-function PlannedDifferences({ lines }: Readonly<{ lines: PlannedDifference[] }>) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-
-      <ul className="mt-2 space-y-2 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line.ringkas}>
-            {/*
-              `details` bawaan peramban, bukan buka-tutup yang ditulis sendiri.
-              Isinya tetap ada di halaman saat tertutup, sehingga pencarian peramban
-              (Ctrl+F) dan pembaca layar tetap menemukannya — dan tidak ada state yang
-              dapat menyimpang antara apa yang tergambar dan apa yang dikirim server.
-            */}
-            <details className="group">
-              <summary
-                className={[
-                  'flex cursor-pointer list-none items-start gap-2',
-                  'rounded-kontrol text-slate-700 marker:content-none',
-                  'hover:text-slate-900',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                ].join(' ')}
-              >
-                <span
-                  aria-hidden="true"
-                  className="mt-px shrink-0 text-slate-400 transition-transform duration-150 ease-halus group-open:rotate-90"
-                >
-                  ›
-                </span>
-                <span>{line.ringkas}</span>
-              </summary>
-
-              <p className="mt-1 pl-5 text-slate-500">{line.rincian}</p>
-            </details>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
 
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
@@ -583,17 +433,8 @@ function PlannedDifferences({ lines }: Readonly<{ lines: PlannedDifference[] }>)
  * markup alih-alih nomor case.
  */
 function columnsFor(tab: Tab, onOpen: (row: WorkItem) => void): Column<WorkItem>[] {
-  return tab.kolom.map((column) => {
-    const base: Column<WorkItem> = {
-      key: column.kunci,
-      title: column.judul,
-      value: (row) => cellText(row, column),
-    }
-
-    if (column.kunci === 'no_case') {
-      return { ...base, render: (row) => <CaseLink item={row} onOpen={onOpen} /> }
-    }
-    return base
+  return serverColumns<WorkItem, TabColumn>(tab.kolom, cellText, {
+    no_case: (row) => <CaseLink item={row} onOpen={onOpen} />,
   })
 }
 
@@ -617,12 +458,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return isISODate(text) ? formatDate(text) : text
 }
 
 /**
@@ -662,9 +498,3 @@ function emptyMessageFor(tab: Tab): string {
   )
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

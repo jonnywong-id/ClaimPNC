@@ -1,3 +1,5 @@
+import { TabBar } from '@/components/TabBar'
+
 import type { Tab } from './types'
 
 type Props = {
@@ -43,53 +45,20 @@ type Props = {
  * sebagai "tidak ada pekerjaan".
  */
 export function ReceivePUCLTabs({ tabs, active, onSelect }: Readonly<Props>) {
+  // Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya
+  // menyembunyikan antrean mana saja yang tersedia — hal pertama yang ingin dilihat
+  // penyelia saat membuka layar.
   return (
-    /*
-      Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Melipatnya
-      menyembunyikan antrean mana saja yang tersedia — hal pertama yang ingin dilihat
-      penyelia saat membuka layar.
-    */
-    <div
-      className="overflow-x-auto"
-      role="tablist"
-      aria-label="Antrean penerimaan dokumen dan RCL/PUCL"
-    >
-      <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
-        {tabs.map((tab) => {
-          const selected = tab.kode === active
-          return (
-            <button
-              key={tab.kode}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              title={tab.terhalang ? tab.alasan_terhalang : tab.keterangan}
-              onClick={() => onSelect(tab.kode)}
-              className={[
-                'flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5',
-                'text-sm font-medium whitespace-nowrap',
-                'transition-[color,border-color,background-color] duration-150 ease-halus',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                selected
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
-              ].join(' ')}
-            >
-              {tab.nama}
-
-              {/*
-                Penanda dibaca pembaca layar pula, bukan hanya terlihat. Tab yang terhalang
-                adalah keadaan yang harus diketahui SEBELUM diklik, bukan sesudahnya.
-              */}
-              {tab.terhalang && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-900">
-                  belum tersedia
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
+    <TabBar
+      tabs={tabs.map((tab) => ({
+        kode: tab.kode,
+        nama: tab.nama,
+        keterangan: tab.terhalang ? tab.alasan_terhalang : tab.keterangan,
+        badge: tab.terhalang ? 'belum tersedia' : undefined,
+      }))}
+      active={active}
+      onSelect={onSelect}
+      label="Antrean penerimaan dokumen dan RCL/PUCL"
+    />
   )
 }

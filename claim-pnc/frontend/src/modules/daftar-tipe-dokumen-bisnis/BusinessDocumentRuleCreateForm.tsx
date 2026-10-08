@@ -1,6 +1,5 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
 import {
   ErrorCode,
   type BusinessChoice,
@@ -8,7 +7,9 @@ import {
   type MasterChoice,
 } from '@/api/types'
 import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
+import { businessRuleSaveMessage } from '@/components/masterform/businessDocumentRuleMessages'
+import type { CodeMessages } from '@/components/masterform/saveErrorMessage'
 
 type Props = {
   businesses: BusinessChoice[]
@@ -31,45 +32,16 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa sambungan jaringan, lalu simpan sekali lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.businessDocumentRuleBusinessRequired:
-        return {
-          title: 'Nama Bisnis belum di isi',
-          description: 'Pilih sekurang-kurangnya satu lini bisnis sebelum menyimpan.',
-          tone: 'penolakan',
-        }
-      // Tidak ada cabang untuk "baris dokumen kosong", dan itu disengaja: di Pega keadaan
-      // itu berlalu diam-diam — perulangannya berputar nol kali lalu layar tertutup.
-      // Modul ini menirunya.
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih entitas di bagian atas layar, lalu simpan sekali lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description: 'Hubungi tim infrastruktur bila keadaan ini berlanjut.',
-          tone: 'gangguan',
-        }
-      default:
-        return { title: 'Penyimpanan gagal', description: error.message, tone: 'gangguan' }
-    }
-  }
-  return null
+/** Pesan galat penyimpanan khusus form ini; galat portal dan jaringan memakai pesan bersama. */
+const saveMessages: CodeMessages = {
+  [ErrorCode.businessDocumentRuleBusinessRequired]: {
+    title: 'Nama Bisnis belum di isi',
+    description: 'Pilih sekurang-kurangnya satu lini bisnis sebelum menyimpan.',
+    tone: 'penolakan',
+  },
+  // Tidak ada cabang untuk "baris dokumen kosong", dan itu disengaja: di Pega keadaan
+  // itu berlalu diam-diam — perulangannya berputar nol kali lalu layar tertutup.
+  // Modul ini menirunya.
 }
 
 /** labelFor menyusun teks isian dari kode yang sudah tersimpan. */
@@ -198,7 +170,7 @@ export function BusinessDocumentRuleCreateForm({
   // dapat dicentang satu per satu, persis seperti di Pega.
   const bulkSelectable = businesses.filter((item) => !item.dikecualikan_pilih_semua)
 
-  const message = messageFor(error)
+  const message = businessRuleSaveMessage(error, saveMessages)
 
   function toggleBusiness(id: string) {
     setSelected((current) =>

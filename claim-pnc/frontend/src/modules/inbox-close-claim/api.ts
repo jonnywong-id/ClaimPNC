@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { callAPI } from '@/api/client'
+import { downloadCSVFile, useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -74,20 +75,7 @@ function buildParams(f: PenyaringKlaimTutup): URLSearchParams {
  * satu pun pesan galat.
  */
 export function usePenyaringKlaimTutup() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.penyaring(portal, token),
-    queryFn: () => callAPI<PenyaringResponse>(`${PATH}/penyaring`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali penyaring berubah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<PenyaringResponse>(keys.penyaring, `${PATH}/penyaring`)
 }
 
 /**
@@ -187,38 +175,6 @@ export async function unduhKlaimTutupCSV(
   const query = buildParams(filter).toString()
   const url = query ? `${PATH}/unduh?${query}` : `${PATH}/unduh`
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      [HEADER_PORTAL]: portal,
-    },
-  })
-  if (!response.ok) {
-    throw new Error('Berkas tidak dapat diunduh.')
-  }
-
-  const blob = await response.blob()
-  const objectURL = URL.createObjectURL(blob)
-
-  try {
-    const link = document.createElement('a')
-    link.href = objectURL
-    link.download = fileNameFrom(response) ?? 'inbox-close-claim.csv'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-  } finally {
-    // Objek URL menahan blob-nya di memori sampai dicabut. Tanpa ini, setiap unduhan
-    // meninggalkan satu salinan berkas yang tidak pernah dilepas.
-    URL.revokeObjectURL(objectURL)
-  }
+  await downloadCSVFile(url, token, portal, 'inbox-close-claim.csv')
 }
 
-/** Membaca nama berkas dari header Content-Disposition; null bila tidak ada. */
-function fileNameFrom(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-
-  const match = /filename="([^"]+)"/.exec(disposition)
-  return match?.[1] ?? null
-}

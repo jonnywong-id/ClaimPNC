@@ -3,7 +3,6 @@ import { useEffect, type ReactNode } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import {
   ErrorCode,
   type TravelCoverage,
@@ -13,9 +12,10 @@ import {
 } from '@/api/types'
 import { Button } from '@/components/Button'
 import { ComboField } from '@/components/ComboField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
+import { MasterFormActions, MasterFormFrame, ReadOnlyIdRow } from '@/components/masterform/BoxForm'
+import { type CodeMessages, notFoundMessage, portalMessages, saveErrorMessage } from '@/components/masterform/saveErrorMessage'
 
 /**
  * Nilai STSWAJIB yang benar-benar tersimpan di basis data.
@@ -90,56 +90,13 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Tidak ada cabang `validationFailed` di sini, dan itu bukan kelalaian: modul ini tanpa
- * validasi server, sehingga tidak ada pelanggaran per isian yang dapat dilaporkan.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      // Kode MILIK MODUL INI, bukan `notFound` yang umum — server mengirim
-      // `detail_dokumen_travel_tidak_ditemukan`. Penyeragamannya masuk TKT-F1-004.
-      case ErrorCode.travelDocumentDetailNotFound:
-      case ErrorCode.notFound:
-        return {
-          title: 'Baris ini sudah tidak ada',
-          description: 'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  // Kode MILIK MODUL INI, bukan `notFound` yang umum — server mengirim
+  // `detail_dokumen_travel_tidak_ditemukan`. Penyeragamannya masuk TKT-F1-004.
+  [ErrorCode.travelDocumentDetailNotFound]: notFoundMessage,
+  [ErrorCode.notFound]: notFoundMessage,
+  ...portalMessages,
 }
 
 /** Menyusun nilai awal form dari baris yang disunting. */
@@ -154,12 +111,6 @@ function valuesOf(edited: TravelDocumentDetail | null): TravelDocumentDetailFiel
       nama_jaminan: row.nama_jaminan,
     })),
   }
-}
-
-/** submitLabel memilih label tombol simpan: sedang menyimpan, modus ubah, atau modus tambah. */
-function submitLabel(isSaving: boolean, editMode: boolean): string {
-  if (isSaving) return 'Menyimpan…'
-  return editMode ? 'Ubah' : 'Simpan'
 }
 
 /**
@@ -233,7 +184,7 @@ export function TravelDocumentDetailForm({
     reset(valuesOf(edited))
   }, [edited, reset])
 
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
 
   // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat
   // dari ada-tidaknya baris "ID" di bawahnya dan dari label tombol simpannya.
@@ -315,30 +266,11 @@ export function TravelDocumentDetailForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSave)}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
+    <MasterFormFrame onSubmit={handleSubmit(onSave)} title={title} message={message}>
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
           belum ada — kodenya diterbitkan server dari urutan basis data. Di Pega pun
           isiannya hanya ditampilkan. */}
-      {editMode && (
-        <div>
-          <span className="block text-sm font-medium text-slate-700">ID</span>
-          <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
-            {edited.id}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
-          </p>
-        </div>
-      )}
+      {editMode && <ReadOnlyIdRow value={edited.id} />}
 
       <ComboField
         id="id_dokumen"
@@ -416,17 +348,15 @@ export function TravelDocumentDetailForm({
         </div>
       </fieldset>
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
-            kedua modusnya. */}
-        <Button type="submit" tone="utama" disabled={isSaving || isLoadingCoverageMapping}>
-          {submitLabel(isSaving, editMode)}
-        </Button>
-      </div>
-    </form>
+      {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk kedua
+          modusnya. */}
+      <MasterFormActions
+        isSaving={isSaving}
+        onCancel={onCancel}
+        submitLabel={editMode ? 'Ubah' : 'Simpan'}
+        submitDisabled={isLoadingCoverageMapping}
+      />
+    </MasterFormFrame>
   )
 }
 

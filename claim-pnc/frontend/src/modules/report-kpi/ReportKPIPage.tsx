@@ -1,12 +1,11 @@
 import { useState } from 'react'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
 import { SelectField, type SelectOption } from '@/components/SelectField'
+import { failureNotice, pageControl, violationsOf } from '@/components/shared/queryFeedback'
+import { PeriodFields } from '@/components/shared/ReportFilterParts'
 
 import { ReportKPIAdmin } from './ReportKPIAdmin'
 import { ReportKPIPICTeknik } from './ReportKPIPICTeknik'
@@ -139,13 +138,7 @@ export function ReportKPIPage() {
           exporting={exportFile.isPending}
         />
 
-        {exportFile.isError && (
-          <ErrorMessage
-            title="Berkas tidak dapat diunduh"
-            description={messageOf(exportFile.error)}
-            tone="gangguan"
-          />
-        )}
+        {exportFile.isError && failureNotice('Berkas tidak dapat diunduh', exportFile.error)}
 
         {searched ? (
           <>
@@ -165,13 +158,9 @@ export function ReportKPIPage() {
               rowKey={(row) => `${row.adjuster}|${row.tipe}`}
               isLoading={summary.isPending}
               error={
-                summary.isError ? (
-                  <ErrorMessage
-                    title="Ringkasan tidak dapat diambil"
-                    description={messageOf(summary.error)}
-                    tone="gangguan"
-                  />
-                ) : undefined
+                summary.isError
+                  ? failureNotice('Ringkasan tidak dapat diambil', summary.error)
+                  : undefined
               }
               emptyMessage={emptyMessage}
             />
@@ -189,24 +178,11 @@ export function ReportKPIPage() {
               rowKey={(row) => row.no_case}
               isLoading={detail.isPending}
               error={
-                detail.isError ? (
-                  <ErrorMessage
-                    title="Rincian tidak dapat diambil"
-                    description={messageOf(detail.error)}
-                    tone="gangguan"
-                  />
-                ) : undefined
+                detail.isError ? failureNotice('Rincian tidak dapat diambil', detail.error) : undefined
               }
               emptyMessage={emptyMessage}
               hideSearch
-              pagination={{
-                page: detail.data?.paginasi.halaman ?? 1,
-                size: detail.data?.paginasi.ukuran ?? 50,
-                total: detail.data?.paginasi.total ?? 0,
-                totalPage: detail.data?.paginasi.total_halaman ?? 0,
-                onPageChange: setPage,
-                isLoading: detail.isFetching,
-              }}
+              pagination={pageControl(detail.data?.paginasi, setPage, detail.isFetching)}
             />
           </>
         ) : (
@@ -230,13 +206,7 @@ export function ReportKPIPage() {
         </p>
       </header>
 
-      {metadata.isError && (
-        <ErrorMessage
-          title="Keterangan layar tidak dapat diambil"
-          description={messageOf(metadata.error)}
-          tone="gangguan"
-        />
-      )}
+      {metadata.isError && failureNotice('Keterangan layar tidak dapat diambil', metadata.error)}
 
       {tabs.length > 0 && (
         <ReportKPITabs tabs={tabs} active={activeTab} onSelect={setTab} />
@@ -328,22 +298,13 @@ function FilterForm({
           onChange={(event) => onChange({ ...value, adjuster: event.target.value })}
         />
 
-        <FormField
-          id="kpi-dari"
-          label="Periode — Dari"
-          type="date"
-          value={value.dari}
-          failure={violations['dari']}
-          onChange={(event) => onChange({ ...value, dari: event.target.value })}
-        />
-
-        <FormField
-          id="kpi-sampai"
-          label="Periode — Sampai"
-          type="date"
-          value={value.sampai}
-          failure={violations['sampai']}
-          onChange={(event) => onChange({ ...value, sampai: event.target.value })}
+        <PeriodFields
+          idPrefix="kpi"
+          fromLabel="Periode — Dari"
+          toLabel="Periode — Sampai"
+          value={value}
+          violations={violations}
+          onChange={(patch) => onChange({ ...value, ...patch })}
         />
       </div>
 
@@ -503,17 +464,4 @@ function isComplete(filter: FilterInput): boolean {
 function gridOf(metadata: MetadataResponse | undefined, code: string): Grid | undefined {
   const tab = metadata?.tab.find((item) => item.kode === 'adjuster')
   return tab?.grid.find((item) => item.kode === code)
-}
-
-/** violationsOf mengambil pelanggaran per isian dari sebuah galat, bila ada. */
-function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
-}
-
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
 }

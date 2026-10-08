@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { callAPI } from '@/api/client'
+import { downloadExport, usePortalQuery } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -58,18 +59,9 @@ const keys = {
  * menyangkut uang.
  */
 export function useInboxManagerMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/tab`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Lima menit: cukup lama untuk tidak diambil ulang setiap perpindahan tab, cukup pendek
-    // untuk tidak menahan perubahan lini bisnis sepanjang hari.
-    staleTime: 5 * 60 * 1000,
-  })
+  // Lima menit: cukup lama untuk tidak diambil ulang setiap perpindahan tab, cukup pendek
+  // untuk tidak menahan perubahan lini bisnis sepanjang hari.
+  return usePortalQuery<MetadataResponse>(keys.metadata, `${PATH}/tab`, true, 5 * 60 * 1000)
 }
 
 /**
@@ -170,26 +162,18 @@ export function useExportInboxManager() {
 
   return useMutation({
     mutationFn: async (tab: string) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
-
       const params = new URLSearchParams()
       if (tab) params.set('tab', tab)
 
       const query = params.toString()
       const address = query ? `${PATH}/ekspor?${query}` : `${PATH}/ekspor`
 
-      const response = await fetch(address, { headers: header })
-      if (!response.ok) {
-        // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
-        // lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
-      }
-
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-manager.csv')
+      await downloadExport({
+        address,
+        token,
+        portal,
+        fallbackName: 'inbox-manager.csv',
+      })
     },
   })
 }
@@ -221,30 +205,4 @@ function buildParams(tab: string, page: number, period: PeriodInput | null): URL
 function pathWith(params: URLSearchParams): string {
   const query = params.toString()
   return query ? `${PATH}?${query}` : PATH
-}
-
-/** filenameOf membaca nama berkas dari header Content-Disposition. */
-function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
-}
-
-/**
- * downloadBlob menyimpan berkas lewat tautan sementara.
- *
- * URL objeknya DICABUT setelah dipakai. Tanpa itu, blob-nya tetap dipegang peramban sampai tab
- * ditutup — dan pada layar yang dipakai sepanjang hari, setiap ekspor menumpuk memori yang
- * tidak pernah dilepas.
- */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { callAPI } from '@/api/client'
+import { queryPath, useQueueList, useScreenMetadata, useTabExport } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -44,20 +45,7 @@ const keys = {
  * lagi mencerminkan grid aslinya.
  */
 export function useManagerReceivePUCLMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/tab`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali tab berpindah hanya menambah perjalanan jaringan
-    // tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/tab`)
 }
 
 /**
@@ -72,22 +60,11 @@ export function useManagerReceivePUCLMetadata() {
  * jumlah "total" tetap tepat tanpa menarik seluruh baris.
  */
 export function useManagerReceivePUCLList(tab: string, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.list(portal, token, tab, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
-    // menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Kedua antrean berubah saat petugas lain mengerjakan pekerjaannya, jadi cache-nya
-    // pendek — sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
-    staleTime: 15 * 1000,
-  })
+  return useQueueList<ListResponse>(
+    (portal, token) => keys.list(portal, token, tab, page),
+    buildPath(tab, page),
+    enabled,
+  )
 }
 
 /**
@@ -179,78 +156,19 @@ export function useReceiveDocumentAction() {
  * 50.000 baris itu beberapa megabita, dan dapat diterima.
  */
 export function useExportManagerReceivePUCL() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useMutation({
-    mutationFn: async (tab: string) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
-
-      const params = tabParams(tab).toString()
-      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`
-
-      const response = await fetch(address, { headers: header })
-      if (!response.ok) {
-        // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
-        // lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
-      }
-
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-manager-receive-pucl.csv')
-    },
-  })
+  return useTabExport(PATH, 'inbox-manager-receive-pucl.csv')
 }
 
 /**
- * tabParams menyusun satu-satunya isian penyaring layar ini.
- *
- * Ia dipakai daftar DAN ekspor, supaya keduanya tidak dapat membaca tab dengan cara yang
- * berbeda.
+ * buildPath menyusun alamat permintaan daftar beserta halamannya.
  *
  * Tab yang kosong TIDAK dikirim, bukan dikirim sebagai teks kosong: server membedakan
- * "tidak dikirim" dari "dikirim kosong", dan yang pertama berarti tab bawaan.
+ * "tidak dikirim" dari "dikirim kosong". Ekspor membaca tab dengan aturan yang sama
+ * (`useTabExport`).
  */
-function tabParams(tab: string): URLSearchParams {
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  return params
-}
-
-/** buildPath menyusun alamat permintaan daftar beserta halamannya. */
 function buildPath(tab: string, page: number): string {
-  const params = tabParams(tab)
-  if (page > 1) params.set('halaman', String(page))
-
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
-}
-
-/** filenameOf membaca nama berkas dari header Content-Disposition. */
-function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
-}
-
-/**
- * downloadBlob menyimpan berkas lewat tautan sementara.
- *
- * URL objeknya DICABUT setelah dipakai. Tanpa itu, blob-nya tetap dipegang peramban sampai
- * tab ditutup — dan pada layar yang dipakai sepanjang hari, setiap ekspor menumpuk memori
- * yang tidak pernah dilepas.
- */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  return queryPath(PATH, [
+    ['tab', tab],
+    ['halaman', page > 1 && String(page)],
+  ])
 }

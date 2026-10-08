@@ -1,6 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { downloadExport, useQueueList, useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -50,20 +50,7 @@ const keys = {
  * mengirim kueri komite yang hilang, penghalangnya hilang tanpa menyunting frontend.
  */
 export function useClaimTreatyNonPropMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/tab`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan
-    // dari data. Mengambilnya ulang tiap kali tab berpindah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/tab`)
 }
 
 /**
@@ -83,22 +70,11 @@ export function useClaimTreatyNonPropList(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
-    // menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Antrean kerja berubah saat petugas lain mengambil pekerjaannya, jadi cache-nya
-    // pendek — sama dengan layar Treaty Prop, yang dibuka berulang kali sepanjang hari.
-    staleTime: 15 * 1000,
-  })
+  return useQueueList<ListResponse>(
+    (portal, token) => keys.list(portal, token, filter, page),
+    buildPath(filter, page),
+    enabled,
+  )
 }
 
 /**
@@ -132,23 +108,15 @@ export function useExportClaimTreatyNonProp() {
 
   return useMutation({
     mutationFn: async (filter: FilterForm) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
-
       const params = filterParams(filter).toString()
       const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`
 
-      const response = await fetch(address, { headers: header })
-      if (!response.ok) {
-        // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak
-        // bisa lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
-      }
-
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'klaim-treaty-non-prop.csv')
+      await downloadExport({
+        address,
+        token,
+        portal,
+        fallbackName: 'klaim-treaty-non-prop.csv',
+      })
     },
   })
 }
@@ -184,30 +152,4 @@ function buildPath(filter: FilterForm, page: number): string {
 
   const query = params.toString()
   return query ? `${PATH}?${query}` : PATH
-}
-
-/** filenameOf membaca nama berkas dari header Content-Disposition. */
-function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
-}
-
-/**
- * downloadBlob menyimpan berkas lewat tautan sementara.
- *
- * URL objeknya DICABUT setelah dipakai. Tanpa itu, blob-nya tetap dipegang peramban
- * sampai tab ditutup — dan pada layar yang dipakai sepanjang hari, setiap ekspor
- * menumpuk memori yang tidak pernah dilepas.
- */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
 }

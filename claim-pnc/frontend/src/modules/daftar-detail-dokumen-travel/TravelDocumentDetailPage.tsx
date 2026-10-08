@@ -1,11 +1,9 @@
-import { useState, type ReactNode } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type TravelDocumentDetail } from '@/api/types'
-import { Button } from '@/components/Button'
+import type { TravelDocumentDetail } from '@/api/types'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { useSelectedPortal } from '@/app/portal'
+import { editColumn, MasterListLayout } from '@/components/masterpage/MasterPage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
 
 import {
   useCreateTravelDocumentDetail,
@@ -20,55 +18,6 @@ import {
   TravelDocumentDetailForm,
   type TravelDocumentDetailFields,
 } from './TravelDocumentDetailForm'
-
-/** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
-/** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
-
-type FormState = typeof CLOSED | typeof CREATE | TravelDocumentDetail
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
-}
 
 /**
  * Layar Daftar Detail Dokumen Travel.
@@ -106,7 +55,6 @@ function loadMessage(error: unknown): MessageContent {
  */
 export function TravelDocumentDetailPage() {
   const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
 
   const list = useTravelDocumentDetailList()
   const documents = useTravelDocumentChoiceList()
@@ -114,7 +62,12 @@ export function TravelDocumentDetailPage() {
   const create = useCreateTravelDocumentDetail()
   const update = useUpdateTravelDocumentDetail()
 
-  const openedRow = typeof form === 'string' ? null : form
+  const form = useCrudForm(create, update, (row: TravelDocumentDetail, input) => ({
+    id: row.id,
+    input,
+  }))
+  const openedRow = form.openedRow
+  const { openEdit, closeForm, isSaving, saveError } = form
 
   // Baris yang dibuka dimuat ULANG dari server supaya pembatasan plan-nya ikut terbawa.
   // Daftar sengaja tidak membawanya — grid hanya menampilkan lima kolom — sehingga baris
@@ -124,26 +77,6 @@ export function TravelDocumentDetailPage() {
   const detail = useTravelDocumentDetail(openedRow?.id ?? null)
 
   const edited = openedRow === null ? null : (detail.data?.detail_dokumen_travel ?? openedRow)
-  const isSaving = create.isPending || update.isPending
-  const saveError = openedRow ? update.error : create.error
-
-  function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
-  }
-
-  function openEdit(row: TravelDocumentDetail) {
-    create.reset()
-    update.reset()
-    setForm(row)
-  }
-
-  function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
-  }
 
   function save(values: TravelDocumentDetailFields) {
     const plans = travelPlans.data?.plan ?? []
@@ -185,14 +118,7 @@ export function TravelDocumentDetailPage() {
         }),
     }
 
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
-    // diketik, itu berarti mengetik ulang dari awal.
-    if (openedRow) {
-      update.mutate({ id: openedRow.id, input }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(input, { onSuccess: closeForm })
+    form.submit(input)
   }
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan
@@ -228,98 +154,29 @@ export function TravelDocumentDetailPage() {
       alignRight: true,
       value: (row) => String(row.minimal_unggah),
     },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<TravelDocumentDetail>({
+      onEdit: openEdit,
       width: 'w-24',
-      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
-      // tombol, bukan data.
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button
-          tone="kedua"
-          onClick={() => openEdit(row)}
-          aria-label={`Ubah ${row.nama_dokumen || row.id}`}
-        >
-          Ubah
-        </Button>
-      ),
-    },
+      ariaLabel: (row) => `Ubah ${row.nama_dokumen || row.id}`,
+    }),
   ]
 
-  function renderList(): ReactNode {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      )
-    }
-    if (list.isPending) {
-      return (
-        <p className="text-sm text-slate-500">Memuat daftar detail dokumen travel…</p>
-      )
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.detail_dokumen_travel}
-        rowKey={(row) => row.id}
-        description="Sumber: POOLDATA.V_LST_DOC_TRAVEL"
-        emptyMessage="Belum ada detail dokumen travel pada entitas ini."
-      />
-    )
-  }
-
+  // Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna mengenalinya tanpa
+  // diberi tahu.
+  //
+  // Kegagalan memuat daftar plan TIDAK menutup form dan tidak menghalangi penyimpanan: nama
+  // plan dan jaminan memang boleh diketik sendiri. Yang hilang hanya sarannya, dan form itu
+  // sendiri yang mengatakannya.
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/* Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna
-              mengenalinya tanpa diberi tahu. */}
-          <h1 className="text-xl font-semibold text-slate-900">Detail Dokumen Travel</h1>
-          <p className="text-sm text-slate-600">
-            Dokumen apa saja yang diminta pada klaim Travel, wajib atau tidak, dan paling sedikit
-            berapa berkas yang harus diunggah.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
-            Tambah
-          </Button>
-        </div>
-      </header>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-          empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
-          hanya diandaikan pengguna (`ADR-0030`, `R-20`). */}
-      <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-      </p>
-
-      {form !== CLOSED && (
-        <section className="mt-5">
-          {/* Kegagalan memuat daftar plan TIDAK menutup form dan tidak menghalangi
-              penyimpanan: nama plan dan jaminan memang boleh diketik sendiri. Yang hilang
-              hanya sarannya, dan form itu sendiri yang mengatakannya. */}
+    <MasterListLayout
+      maxWidth="max-w-6xl"
+      title="Detail Dokumen Travel"
+      description="Dokumen apa saja yang diminta pada klaim Travel, wajib atau tidak, dan paling sedikit berapa berkas yang harus diunggah."
+      query={list}
+      portal={portal}
+      crud={form}
+      form={
+        <>
           {travelPlans.isError && (
             <div className="mb-3">
               <ErrorMessage
@@ -349,12 +206,18 @@ export function TravelDocumentDetailPage() {
             onSave={save}
             onCancel={closeForm}
           />
-        </section>
+        </>
+      }
+      loadingText="Memuat daftar detail dokumen travel…"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.detail_dokumen_travel}
+          rowKey={(row) => row.id}
+          description="Sumber: POOLDATA.V_LST_DOC_TRAVEL"
+          emptyMessage="Belum ada detail dokumen travel pada entitas ini."
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </main>
+    />
   )
 }

@@ -1,12 +1,15 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Technician } from '@/api/types'
+import type { Technician } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
+import { refreshLoadMessage } from '@/components/masterpage/loadMessage'
+import {
+  MasterDataLayout,
+  MessageBox,
+  RefreshAddActions,
+  editColumn,
+} from '@/components/masterpage/MasterPage'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { AddIcon, EditIcon, ReloadIcon } from '@/components/Icon'
 
 import { useTechnicianList } from './api'
 import { TechnicianForm } from './TechnicianForm'
@@ -158,96 +161,69 @@ export function TechnicianPage() {
           },
         ]
       : []),
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<Technician>({
+      onEdit: openEdit,
       width: '7rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (t) => (
-        <Button
-          tone="halus"
-          onClick={() => openEdit(t)}
-          aria-label={`Ubah PIC teknik ${t.nama || t.id_operator}`}
-        >
-          <EditIcon className="h-3.5 w-3.5" />
-          Ubah
-        </Button>
-      ),
-    },
+      tone: 'halus',
+      ariaLabel: (t) => `Ubah PIC teknik ${t.nama || t.id_operator}`,
+      withIcon: true,
+    }),
   ]
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
-          <ol className="flex items-center gap-1.5">
-            <li>Master Data</li>
-            <li aria-hidden="true" className="text-slate-300">
-              /
-            </li>
-            <li className="text-slate-700">PIC Teknik</li>
-          </ol>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master PIC Teknik</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+    <MasterDataLayout
+      crumb="PIC Teknik"
+      title="Master PIC Teknik"
+      description={
+        <>
           Petugas teknik yang menangani klaim, beserta grup, atasan, dan kuota
           pekerjaannya. Daftar inilah yang dipakai penugasan klaim untuk memilih petugas
           berikutnya.
-        </p>
-
-        {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-            empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
-            hanya diandaikan pengguna (ADR-0030, R-20). */}
-        <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </p>
-      </header>
-
-      {formOpen && (
-        <div className="mb-6">
+        </>
+      }
+      portalLabel={list.data?.portal ?? portal}
+      form={
+        formOpen && (
           <TechnicianForm technician={beingEdited} onClose={closeForm} />
-        </div>
-      )}
-
-      {portal === null ? (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={rows}
-          rowKey={(t) => t.id_operator}
-          title="Daftar PIC Teknik"
-          description={
-            list.data
-              ? `${list.data.total} petugas aktif pada entitas ini. Petugas nonaktif tidak ditampilkan, sama seperti di sistem lama.`
-              : 'Memuat daftar PIC teknik…'
-          }
-          searchLabel="Cari ID operator, nama, surel, atau grup"
-          emptyMessage="Belum ada PIC teknik aktif pada entitas ini."
-          isLoading={list.isPending}
-          error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-          actions={
-            <>
-              <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-                <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                {list.isFetching ? 'Memuat…' : 'Refresh'}
-              </Button>
-              <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
-                <AddIcon className="h-4 w-4" />
-                Tambah
-              </Button>
-            </>
-          }
-        />
-      )}
-    </div>
+        )
+      }
+      portal={portal}
+    >
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(t) => t.id_operator}
+        title="Daftar PIC Teknik"
+        description={
+          list.data
+            ? `${list.data.total} petugas aktif pada entitas ini. Petugas nonaktif tidak ditampilkan, sama seperti di sistem lama.`
+            : 'Memuat daftar PIC teknik…'
+        }
+        searchLabel="Cari ID operator, nama, surel, atau grup"
+        emptyMessage="Belum ada PIC teknik aktif pada entitas ini."
+        isLoading={list.isPending}
+        // Gagal memuat dibedakan dari gagal menyimpan. Yang di sini selalu bernada
+        // gangguan: pengguna belum melakukan apa pun yang dapat salah — ia baru membuka
+        // layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
+        error={
+          list.isError ? (
+            <MessageBox
+              message={refreshLoadMessage(list.error, {
+                subject: 'Daftar PIC teknik',
+                failedTitle: 'Daftar PIC teknik gagal dimuat',
+              })}
+            />
+          ) : undefined
+        }
+        actions={
+          <RefreshAddActions
+            query={list}
+            onAdd={openAdd}
+            addDisabled={formOpen && !beingEdited}
+          />
+        }
+      />
+    </MasterDataLayout>
   )
 }
 
@@ -278,55 +254,3 @@ function WorkloadCell({ workload, quota }: Readonly<{ workload: number; quota: n
   )
 }
 
-/**
- * Gagal memuat dibedakan dari gagal menyimpan.
- *
- * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat salah
- * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
- */
-function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  const message = loadMessage(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-}
-
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Daftar PIC teknik belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
-  }
-
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar PIC teknik gagal dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-
-  return {
-    title: 'Daftar PIC teknik gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
-}

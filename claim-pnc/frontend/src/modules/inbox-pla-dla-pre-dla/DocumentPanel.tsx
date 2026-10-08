@@ -2,9 +2,10 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { CloseIcon } from '@/components/Icon'
+import { adviceCell } from '@/components/inbox/adviceCell'
 
 import type { Baris, Daftar, Dokumen } from './types'
-import { formatTanggal, pesanGalat } from './pesan'
+import { pesanGalat } from './pesan'
 
 type Props = {
   /** Daftar yang sedang terbuka; kolom gridnya datang dari sini. */
@@ -222,25 +223,5 @@ function nilaiSel(row: Dokumen, kunci: string): string {
  * pertama berarti hal yang SAMA bagi pengguna meski berbeda di data.
  */
 function gambarSel(row: Dokumen, kunci: string, tanggal: boolean) {
-  const isi = nilaiSel(row, kunci)
-
-  if (kunci === 'terkirim') {
-    const sudah = isi === '1'
-    return (
-      <span
-        className={[
-          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-          sudah
-            ? 'bg-emerald-50 text-emerald-700'
-            : 'bg-amber-50 text-amber-800',
-        ].join(' ')}
-      >
-        {sudah ? 'Terkirim' : 'Belum'}
-      </span>
-    )
-  }
-
-  if (tanggal) return formatTanggal(isi)
-  if (isi === '') return <span className="text-slate-400">—</span>
-  return isi
+  return adviceCell(nilaiSel(row, kunci), kunci, tanggal)
 }

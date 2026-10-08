@@ -1,11 +1,18 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { AutoClaimStatus, ErrorCode, type AutoClaim } from '@/api/types'
+import { APIError } from '@/api/client'
+import { AutoClaimStatus, type AutoClaim } from '@/api/types'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { useSelectedPortal } from '@/app/portal'
+import { retryLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import {
+  AddButton,
+  ListHeader,
+  RefreshButton,
+  renderListState,
+} from '@/components/masterpage/MasterPage'
 
 import { useAutoClaimList, useCreateAutoClaim, useSaveAutoClaim } from './api'
 import { AutoClaimForm, type AutoClaimFormValues } from './AutoClaimForm'
@@ -113,42 +120,8 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return { title: 'Daftar tidak dapat dimuat', description: 'Coba beberapa saat lagi.', tone: 'gangguan' }
+  return retryLoadMessage(error)
 }
 
 /**
@@ -338,68 +311,40 @@ export function AutoClaimPage() {
 
   // Isi bagian daftar menurut keadaan portal dan kueri.
   function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
+    return renderListState({
+      portal,
+      query: list,
+      loadingText: 'Memuat daftar auto claim…',
+      toMessage: loadMessage,
+      render: (data) => (
+        <DataTable
+          columns={columns}
+          rows={data.auto_claim}
+          rowKey={(row) => row.inisial}
+          description="Sumber: POOLDATA.M_AUTO_CLAIM_PNC"
+          emptyMessage={`Belum ada baris pada tab ${active.label}.`}
         />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar auto claim…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.auto_claim}
-        rowKey={(row) => row.inisial}
-        description="Sumber: POOLDATA.M_AUTO_CLAIM_PNC"
-        emptyMessage={`Belum ada baris pada tab ${active.label}.`}
-      />
-    )
+      ),
+    })
   }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/*
-            "Klaim" dengan K, bukan "Claim" — itu teks judul pada
-            `Section/MasterAutoKlaim-Section.xml`, dan `D-80` menetapkan teks yang
-            dilihat pengguna mengikuti layar Pega apa adanya.
+      {/* "Klaim" dengan K, bukan "Claim" — itu teks judul pada
+          `Section/MasterAutoKlaim-Section.xml`, dan `D-80` menetapkan teks yang
+          dilihat pengguna mengikuti layar Pega apa adanya.
 
-            Butir MENUNYA di kolom samping tetap "Master Auto Claim" dengan C, karena ia
-            datang dari `POOLDATA.M_MENU_APLIKASI_PNC.MENU_DESC`. Kedua ejaan itu memang
-            berbeda di sistem lama; keduanya direplikasi dari sumbernya masing-masing,
-            bukan diseragamkan sepihak.
-          */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Auto Klaim</h1>
-          <p className="text-sm text-slate-600">
-            Sumber bisnis yang klaimnya boleh dibuat otomatis, beserta rekening tujuan
-            pembayarannya.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
-            Tambah
-          </Button>
-        </div>
-      </header>
+          Butir MENUNYA di kolom samping tetap "Master Auto Claim" dengan C, karena ia
+          datang dari `POOLDATA.M_MENU_APLIKASI_PNC.MENU_DESC`. Kedua ejaan itu memang
+          berbeda di sistem lama; keduanya direplikasi dari sumbernya masing-masing,
+          bukan diseragamkan sepihak. */}
+      <ListHeader
+        title="Master Auto Klaim"
+        description="Sumber bisnis yang klaimnya boleh dibuat otomatis, beserta rekening tujuan pembayarannya."
+      >
+        <RefreshButton query={list} />
+        <AddButton onClick={openAdd} disabled={isFormOpen} />
+      </ListHeader>
 
       <nav
         aria-label="Tab Master Auto Klaim"

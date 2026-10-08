@@ -3,11 +3,12 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type BusinessDocumentRule, type MasterChoice } from '@/api/types'
 import { Button } from '@/components/Button'
 import { ComboField } from '@/components/ComboField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
+import { businessRuleSaveMessage } from '@/components/masterform/businessDocumentRuleMessages'
+import type { CodeMessages } from '@/components/masterform/saveErrorMessage'
 import { Field } from '@/components/Field'
 
 /**
@@ -102,43 +103,14 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa sambungan jaringan, lalu simpan sekali lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.businessDocumentRuleNotFound:
-        return {
-          title: 'Aturan dokumen sudah tidak ada',
-          description:
-            'Baris ini mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih entitas di bagian atas layar, lalu simpan sekali lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description: 'Hubungi tim infrastruktur bila keadaan ini berlanjut.',
-          tone: 'gangguan',
-        }
-      default:
-        return { title: 'Penyimpanan gagal', description: error.message, tone: 'gangguan' }
-    }
-  }
-  return null
+/** Pesan galat penyimpanan khusus form ini; galat portal dan jaringan memakai pesan bersama. */
+const saveMessages: CodeMessages = {
+  [ErrorCode.businessDocumentRuleNotFound]: {
+    title: 'Aturan dokumen sudah tidak ada',
+    description:
+      'Baris ini mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
+    tone: 'penolakan',
+  },
 }
 
 /**
@@ -200,7 +172,7 @@ export function BusinessDocumentRuleForm({
     ? detailDocuments.filter((item) => item.id_induk === selectedDocumentTypeID)
     : detailDocuments
 
-  const message = messageFor(error)
+  const message = businessRuleSaveMessage(error, saveMessages)
 
   function submit(values: FormFields) {
     onSave({

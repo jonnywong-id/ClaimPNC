@@ -1,6 +1,11 @@
-import { APIError, NetworkError } from '@/api/client'
+import { APIError } from '@/api/client'
+import {
+  formatAdviceDate,
+  loadFailureMessage,
+  networkAwareMessage,
+  type LoadMessage,
+} from '@/api/inboxMessages'
 import { ErrorCode } from '@/api/types'
-import type { ErrorTone } from '@/components/ErrorMessage'
 
 /**
  * Kode galat khusus modul ini.
@@ -24,42 +29,14 @@ export const KodeGalat = {
 /**
  * formatTanggal menuliskan tanggal `YYYY-MM-DD` dari server sebagai tanggal Indonesia.
  *
- * # Konversi zona waktu terjadi DI SINI
- *
- * Di tempat waktu ditampilkan — satu-satunya tempat yang boleh melakukannya
- * (`08-TECHNICAL-STRATEGY.md` §4.4). Tidak ada penambahan 7 jam manual di mana pun, dan
- * `Asia/Jakarta` disebut namanya supaya hasilnya tidak bergantung pada zona waktu mesin
- * pengguna.
- *
- * Nilai KOSONG menghasilkan tanda hubung, bukan tanggal apa pun. Itu keadaan yang nyata
- * di layar ini: kolom tanggal advice memang kadang kosong, dan menggambar tanggal di sana
- * akan menampilkan sesuatu yang tidak pernah tercatat.
+ * Konversi zona waktunya terjadi di tempat waktu ditampilkan — lihat `formatAdviceDate`.
  */
-export function formatTanggal(nilai: string): string {
-  const bersih = nilai.trim()
-  if (bersih === '') return '—'
-
-  const saat = new Date(bersih)
-  if (Number.isNaN(saat.getTime())) return bersih
-
-  return saat.toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
+export const formatTanggal = formatAdviceDate
 
 /** pesanGalat mengambil kalimat yang layak dibaca pengguna dari sebuah galat. */
-export function pesanGalat(error: unknown): string {
-  if (error instanceof NetworkError) {
-    return 'Server Claim PNC tidak dapat dihubungi. Periksa koneksi jaringan.'
-  }
-  if (error instanceof APIError) return error.message
-  return 'Terjadi kesalahan pada sistem.'
-}
+export const pesanGalat = networkAwareMessage
 
-export type IsiPesan = { title: string; description: string; tone: ErrorTone }
+export type IsiPesan = LoadMessage
 
 /**
  * pesanMuat mengubah galat pemuatan menjadi pesan yang dapat ditindaklanjuti.
@@ -69,57 +46,16 @@ export type IsiPesan = { title: string; description: string; tone: ErrorTone }
  * portal harus tahu bahwa itulah yang kurang — bukan mengira antreannya kosong.
  */
 export function pesanMuat(error: unknown): IsiPesan {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
-  }
-
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Pemberitahuan reasuransi dimiliki masing-masing entitas. Pilih portal ' +
-            'entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-
-      case ErrorCode.validationFailed:
-        return {
-          title: 'Penyaring belum benar',
-          description: error.message,
-          tone: 'penolakan',
-        }
-
-      default:
-        return {
-          title: 'Antrean tidak dapat dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-
-  return {
-    title: 'Terjadi kesalahan pada sistem',
-    description:
-      'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+  return loadFailureMessage(error, {
+    portalDescription:
+      'Pemberitahuan reasuransi dimiliki masing-masing entitas. Pilih portal ' +
+      'entitas di bagian atas halaman ini lebih dulu.',
+    defaultTitle: 'Antrean tidak dapat dimuat',
+    special: (failure) =>
+      failure.kode === ErrorCode.validationFailed
+        ? { title: 'Penyaring belum benar', description: failure.message, tone: 'penolakan' }
+        : null,
+  })
 }
 
 /**

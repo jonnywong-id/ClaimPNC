@@ -3,12 +3,11 @@ import { useEffect, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, SurveyorLoginErrorCode, type SurveyorLogin } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { TextAreaField } from '@/components/TextAreaField'
+import { MasterFormActions, MasterFormFrame } from '@/components/masterform/BoxForm'
+import { type CodeMessages, notFoundMessage, portalMessages, saveErrorMessage, validationMessage, violationsOf } from '@/components/masterform/saveErrorMessage'
 
 /**
  * Batas panjang harus sama dengan konstanta di backend.
@@ -92,94 +91,34 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf). Yang
- * ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu, karena
- * itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
-        // mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : {
-              title: 'Belum dapat disimpan',
-              description: error.message,
-              tone: 'penolakan',
-            }
-      case SurveyorLoginErrorCode.loginTaken:
-        // Ia sudah disorot pada isiannya, tetapi TETAP ditampilkan sebagai kotak pesan —
-        // dan itu berbeda dari galat validasi biasa.
-        //
-        // Alasannya: yang bentrok bukan Nama melainkan LOGIN yang DITURUNKAN darinya,
-        // sehingga pengguna yang mencari nama itu di daftar bisa saja tidak menemukannya.
-        // Sorotan di bawah isian tidak cukup menjelaskan ke mana ia harus mencari.
-        return {
-          title: 'Login itu sudah terdaftar',
-          description:
-            'Login dibentuk dari Nama dengan membuang spasi, titik, koma, dan tanda ' +
-            'hubung — sehingga dua nama yang terlihat berbeda dapat menghasilkan login ' +
-            'yang sama. Cari login tersebut di daftar, atau pakai nama lain.',
-          tone: 'penolakan',
-        }
-      case SurveyorLoginErrorCode.nameLocked:
-        return {
-          title: 'Nama tidak dapat diubah',
-          description:
-            'Login dibentuk dari Nama, dan mengubahnya akan memindahkan kunci baris ini. ' +
-            'Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.notFound:
-        return {
-          title: 'Baris ini sudah tidak ada',
-          description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
+  // mengulang hal yang sama.
+  [ErrorCode.validationFailed]: validationMessage,
+  // Ia sudah disorot pada isiannya, tetapi TETAP ditampilkan sebagai kotak pesan —
+  // dan itu berbeda dari galat validasi biasa.
+  //
+  // Alasannya: yang bentrok bukan Nama melainkan LOGIN yang DITURUNKAN darinya,
+  // sehingga pengguna yang mencari nama itu di daftar bisa saja tidak menemukannya.
+  // Sorotan di bawah isian tidak cukup menjelaskan ke mana ia harus mencari.
+  [SurveyorLoginErrorCode.loginTaken]: {
+    title: 'Login itu sudah terdaftar',
+    description:
+      'Login dibentuk dari Nama dengan membuang spasi, titik, koma, dan tanda ' +
+      'hubung — sehingga dua nama yang terlihat berbeda dapat menghasilkan login ' +
+      'yang sama. Cari login tersebut di daftar, atau pakai nama lain.',
+    tone: 'penolakan',
+  },
+  [SurveyorLoginErrorCode.nameLocked]: {
+    title: 'Nama tidak dapat diubah',
+    description:
+      'Login dibentuk dari Nama, dan mengubahnya akan memindahkan kunci baris ini. ' +
+      'Tutup form ini dan muat ulang daftarnya.',
+    tone: 'penolakan',
+  },
+  [ErrorCode.notFound]: notFoundMessage,
+  ...portalMessages,
 }
 
 /** Isian yang dapat disorot server. Dipakai menyaring pelanggaran yang tidak dikenal. */
@@ -263,7 +202,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
     }
   }, [error, setError])
 
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
   const title = editMode ? 'Ubah Login Surveyor' : 'Tambah Login Surveyor'
 
   // Isi keterangan Login: kunci yang tersimpan, pratinjau, atau petunjuk.
@@ -282,18 +221,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSave)}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
+    <MasterFormFrame onSubmit={handleSubmit(onSave)} title={title} message={message}>
       <Field
         id="nama"
         label="Nama"
@@ -391,14 +319,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
         </p>
       )}
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
-    </form>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} />
+    </MasterFormFrame>
   )
 }

@@ -1,12 +1,10 @@
 import { useState } from 'react'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
 import { formatDate } from '@/components/format'
+import { failureNotice, pageControl, violationsOf } from '@/components/shared/queryFeedback'
+import { PeriodFields, ReportActions } from '@/components/shared/ReportFilterParts'
 
 import { useExportLaporanHasilAI, useLaporanHasilAI } from './api'
 import { emptyFilter, isComplete, type FilterInput, type ReportRow, type ReportTally } from './types'
@@ -117,57 +115,35 @@ export function LaporanHasilAIPage() {
             Label keduanya disalin APA ADANYA dari layar lama, termasuk yang menyesatkan.
             Lihat catatan KEDUA pada doc komponen ini.
           */}
-          <FormField
-            id="laporan-ai-dari"
-            label="Tgl Input Dari"
-            type="date"
+          <PeriodFields
+            idPrefix="laporan-ai"
+            fromLabel="Tgl Input Dari"
+            toLabel="Tgl Input Sampai"
             className="max-w-xs"
-            value={draft.dari}
-            failure={violations['dari']}
-            onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
-          />
-
-          <FormField
-            id="laporan-ai-sampai"
-            label="Tgl Input Sampai"
-            type="date"
-            className="max-w-xs"
-            value={draft.sampai}
-            failure={violations['sampai']}
-            onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
+            value={draft}
+            violations={violations}
+            onChange={(patch) => setDraft({ ...draft, ...patch })}
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" tone="utama">
-            Cari Data
-          </Button>
-          {/*
-            Ekspor memakai penyaring yang SUDAH DIKIRIM, bukan yang sedang diketik.
-            Berkas yang isinya berbeda dari yang terlihat di layar adalah berkas yang tidak
-            dapat dicocokkan dengan apa pun.
+        {/*
+          Ekspor memakai penyaring yang SUDAH DIKIRIM, bukan yang sedang diketik.
+          Berkas yang isinya berbeda dari yang terlihat di layar adalah berkas yang tidak
+          dapat dicocokkan dengan apa pun.
 
-            Ia dinonaktifkan sebelum pencarian pertama: di layar lama pun tombolnya
-            memanggil activity yang sama, sehingga menekannya tanpa tanggal hanya
-            menghasilkan galat.
-          */}
-          <Button
-            type="button"
-            onClick={() => exportFile.mutate(active)}
-            disabled={!searched || !isComplete(active) || exportFile.isPending}
-          >
-            Export To Excel
-          </Button>
-        </div>
+          Ia dinonaktifkan sebelum pencarian pertama: di layar lama pun tombolnya
+          memanggil activity yang sama, sehingga menekannya tanpa tanggal hanya
+          menghasilkan galat.
+        */}
+        <ReportActions
+          searchLabel="Cari Data"
+          exportLabel="Export To Excel"
+          onExport={() => exportFile.mutate(active)}
+          exportDisabled={!searched || !isComplete(active) || exportFile.isPending}
+        />
       </form>
 
-      {exportFile.isError && (
-        <ErrorMessage
-          title="Berkas tidak dapat diunduh"
-          description={messageOf(exportFile.error)}
-          tone="gangguan"
-        />
-      )}
+      {exportFile.isError && failureNotice('Berkas tidak dapat diunduh', exportFile.error)}
 
       {searched ? (
         <>
@@ -188,13 +164,7 @@ export function LaporanHasilAIPage() {
             hideSearch
             emptyMessage="Belum ada yang dapat diringkas pada rentang ini."
             error={
-              report.isError ? (
-                <ErrorMessage
-                  title="Ringkasan tidak dapat diambil"
-                  description={messageOf(report.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
+              report.isError ? failureNotice('Ringkasan tidak dapat diambil', report.error) : undefined
             }
           />
 
@@ -212,22 +182,9 @@ export function LaporanHasilAIPage() {
             hideSearch
             emptyMessage="Tidak ada data pada rentang tanggal ini."
             error={
-              report.isError ? (
-                <ErrorMessage
-                  title="Rincian tidak dapat diambil"
-                  description={messageOf(report.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
+              report.isError ? failureNotice('Rincian tidak dapat diambil', report.error) : undefined
             }
-            pagination={{
-              page: report.data?.paginasi.halaman ?? 1,
-              size: report.data?.paginasi.ukuran ?? 50,
-              total: report.data?.paginasi.total ?? 0,
-              totalPage: report.data?.paginasi.total_halaman ?? 0,
-              onPageChange: setPage,
-              isLoading: report.isFetching,
-            }}
+            pagination={pageControl(report.data?.paginasi, setPage, report.isFetching)}
           />
         </>
       ) : (
@@ -311,15 +268,4 @@ const detailColumns: Column<ReportRow>[] = [
 function dateCell(value: string | null) {
   if (!value) return <span className="text-slate-400">—</span>
   return formatDate(value)
-}
-
-function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
-}
-
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
 }

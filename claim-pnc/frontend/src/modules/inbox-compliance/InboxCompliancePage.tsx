@@ -1,12 +1,16 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
+import { type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
+import { NoteList, screenGate } from '@/components/inbox/InboxNotices'
+import { QueueTable } from '@/components/inbox/QueueTable'
+import { apiMessageOf, isISODate } from '@/components/inbox/messages'
+import { columnsWithAction } from '@/components/inbox/serverColumns'
+import { InboxPageFrame } from '@/components/inbox/InboxPageFrame'
 
 import { ComplianceTabs } from './ComplianceTabs'
 import {
@@ -14,7 +18,7 @@ import {
   useInboxComplianceMetadata,
   useSendToPostAudit,
 } from './api'
-import type { PageInfo, Tab, TabColumn, WorkItem } from './types'
+import type { Tab, TabColumn, WorkItem } from './types'
 
 /**
  * Inbox Compliance — menu `MENU_ID 47`, pengganti harness `inboxCompliance_Harness`.
@@ -70,32 +74,14 @@ export function InboxCompliancePage() {
     setPage(1)
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean kepatuhan milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = screenGate({
+    portal,
+    subject: 'Antrean kepatuhan',
+    failed: meta.isError,
+    error: meta.error,
+    describe: apiMessageOf,
+  })
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   return (
     <PageFrame>
@@ -109,36 +95,15 @@ export function InboxCompliancePage() {
 
           {tab.tersedia ? (
             <div className="mt-4">
-              <DataTable<WorkItem>
+              <QueueTable<WorkItem>
+                query={list}
                 columns={columnsFor(tab, rowActionsRenderer(tab, setSending))}
-                rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.nomor_case}`}
                 title={tab.nama}
-                // Kotak cari bawaan disembunyikan: sistem lama tidak punya pencarian di
-                // layar ini, dan kotak bawaan hanya akan menyaring halaman yang sedang
-                // terbuka — hasilnya menyesatkan pada data berhalaman.
-                hideSearch
-                isLoading={list.isPending}
-                error={
-                  list.isError ? (
-                    <ErrorMessage
-                      title="Antrean tidak dapat dimuat"
-                      description={messageOf(list.error)}
-                      tone="gangguan"
-                    />
-                  ) : undefined
-                }
                 emptyMessage="Tidak ada klaim yang menunggu pemeriksaan kepatuhan."
+                onMove={setPage}
+                describe={apiMessageOf}
               />
-
-              {list.data && list.data.paginasi.total > 0 && (
-                <Pagination
-                  info={list.data.paginasi}
-                  visible={list.data.baris.length}
-                  onMove={setPage}
-                  loading={list.isFetching}
-                />
-              )}
             </div>
           ) : (
             <PendingTab tab={tab} />
@@ -146,7 +111,7 @@ export function InboxCompliancePage() {
         </>
       )}
 
-      <Notes limitations={meta.data?.keterbatasan ?? []} />
+      <NoteList title="Yang perlu diketahui" lines={meta.data?.keterbatasan ?? []} />
 
       {sending && (
         <SendPostAuditDialog claim={sending} onClose={() => setSending(null)} />
@@ -157,16 +122,15 @@ export function InboxCompliancePage() {
 
 function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Compliance</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Antrean pemeriksaan kepatuhan: klaim yang menunggu diperiksa, dan pemeriksaan Post
-          Audit yang belum ditindaklanjuti.
-        </p>
-      </header>
+    <InboxPageFrame
+      title="Inbox Compliance"
+      intro={
+        'Antrean pemeriksaan kepatuhan: klaim yang menunggu diperiksa, dan pemeriksaan ' +
+        'Post Audit yang belum ditindaklanjuti.'
+      }
+    >
       {children}
-    </div>
+    </InboxPageFrame>
   )
 }
 
@@ -214,76 +178,6 @@ function DetailButton({ item }: Readonly<{ item: WorkItem }>) {
     >
       Lihat Detail Klaim
     </Button>
-  )
-}
-
-/**
- * Paginasi "sebelumnya / berikutnya", bukan nomor halaman.
- *
- * Bentuknya sama dengan Inbox Admin, Pelaporan Klaim, dan View History Claim supaya
- * keempatnya tidak terasa dirakit dari empat aplikasi berbeda. Ia hidup di sini, bukan di
- * dalam `DataTable`, karena komponen tabel baku belum mengenal paginasi server — itu
- * lingkup `TKT-U2-001`.
- */
-function Pagination({
-  info,
-  visible,
-  onMove,
-  loading,
-}: Readonly<{
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
-}>) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <output className="block text-sm text-slate-600">
-        Menampilkan {first}–{last} dari {info.total} baris.
-      </output>
-      <div className="flex gap-2">
-        <Button
-          tone="kedua"
-          onClick={() => onMove(Math.max(1, info.halaman - 1))}
-          disabled={info.halaman <= 1 || loading}
-        >
-          Sebelumnya
-        </Button>
-        <Button
-          tone="kedua"
-          onClick={() => onMove(info.halaman + 1)}
-          disabled={info.halaman >= info.total_halaman || loading}
-        >
-          Berikutnya
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Catatan di bawah tabel: keterbatasan yang berlaku.
- *
- * Datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya begitu
- * penghalangnya hilang. Tanpa catatan ini, Aging yang berbeda dari angka TAT pada laporan
- * KPI akan dilaporkan berulang kali sebagai kerusakan — padahal keduanya memang memakai
- * dasar hitungan yang berbeda sejak di sistem lama.
- */
-function Notes({ limitations }: Readonly<{ limitations: string[] }>) {
-  if (limitations.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">Yang perlu diketahui</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {limitations.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 
@@ -430,7 +324,7 @@ function SendPostAuditDialog({
           <div className="mt-3">
             <ErrorMessage
               title="Pengiriman gagal"
-              description={messageOf(send.error)}
+              description={apiMessageOf(send.error)}
               tone="gangguan"
             />
           </div>
@@ -455,10 +349,7 @@ function SendPostAuditDialog({
 }
 
 function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
+  return columnsWithAction<WorkItem, TabColumn>(tab.kolom, cellText, action, (column) => ({
     alignRight: column.kunci === 'aging' || column.kunci === 'outstanding',
 
     // Kolom Aging dan OutStanding TIDAK dapat diurutkan, dan itu disengaja.
@@ -476,17 +367,6 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
     // yang untuk kedua antrean ini berarti yang paling BARU di atas.
     noSort: column.kunci === 'aging' || column.kunci === 'outstanding',
   }))
-
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
-  })
-
-  return columns
 }
 
 /**
@@ -506,7 +386,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
 
   const text = String(value)
 
-  if (isDate(text)) return formatDate(text)
+  if (isISODate(text)) return formatDate(text)
 
   // Satu kolom membawa jamnya: Tanggal Kirim Audit Compliance. Tanggalnya diformat lewat
   // fungsi bersama yang sama, lalu jamnya ditempelkan — sehingga bentuk tanggalnya tetap
@@ -517,13 +397,3 @@ function cellText(row: WorkItem, column: TabColumn): string {
   return text
 }
 
-/** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk kolom tanggal saja. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
-}
-
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

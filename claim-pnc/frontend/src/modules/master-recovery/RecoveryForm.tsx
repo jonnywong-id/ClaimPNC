@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError } from '@/api/client'
 import {
   ErrorCode,
   type Recovery,
@@ -15,6 +15,7 @@ import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 import { formatMoney, parseMoney, remainder } from '@/lib/money'
+import { SaveErrorBox } from '@/components/masterform/PanelForm'
 
 import { ClaimLineUpload } from './ClaimLineUpload'
 import { useLookupPolicy, useSaveRecovery, useUploadPaymentProof } from './api'
@@ -250,7 +251,7 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Readonly<P
 
   return (
     <form onSubmit={handleSubmit(send)} noValidate className="space-y-6" aria-label="Catat batch recovery">
-      {save.isError && <SaveErrorMessage error={save.error} />}
+      {save.isError && <SaveErrorBox error={save.error} parse={parseSave} networkDescription="Batch belum tersimpan. Isian Anda masih ada — periksa koneksi lalu simpan lagi." />}
 
       {/* ── Principal ─────────────────────────────────────────────────────────── */}
       <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
@@ -583,32 +584,6 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Readonly<P
 }
 
 // ── Pesan galat ───────────────────────────────────────────────────────────────────
-
-function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  if (error instanceof NetworkError) {
-    return (
-      <ErrorMessage
-        title="Tidak dapat menghubungi server"
-        description="Batch belum tersimpan. Isian Anda masih ada — periksa koneksi lalu simpan lagi."
-        tone="gangguan"
-      />
-    )
-  }
-  if (!(error instanceof APIError)) {
-    return (
-      <ErrorMessage
-        title="Gagal menyimpan"
-        description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
-        tone="gangguan"
-      />
-    )
-  }
-
-  const message = parseSave(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-}
-
 type MessageContent = { title: string; description: string; tone: ErrorTone }
 
 function parseSave(error: APIError): MessageContent | null {

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { TextAreaField } from '@/components/TextAreaField'
 import { formatDate } from '@/components/format'
+import { useEscapeToClose } from '@/components/shared/useEscapeToClose'
 
 import { useProgressRecords, useSendToInputor, violationsFrom } from './api'
 import type { Communication } from './types'
@@ -24,13 +25,7 @@ export function SendToInputorDialog({ claimID, taskID, onClose }: Readonly<{ cla
   const [note, setNote] = useState('')
   const busy = send.isPending
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  useEscapeToClose(onClose, busy)
 
   const violations = violationsFrom(send.error)
   const tooLong = note.trim().length > MAX_NOTE

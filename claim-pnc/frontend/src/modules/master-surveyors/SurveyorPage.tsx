@@ -1,12 +1,17 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Surveyor } from '@/api/types'
+import type { Surveyor } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
+import { refreshLoadMessage } from '@/components/masterpage/loadMessage'
+import {
+  MasterDataLayout,
+  MessageBox,
+  RefreshAddActions,
+} from '@/components/masterpage/MasterPage'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { AddIcon, EditIcon, ReloadIcon } from '@/components/Icon'
+import { ErrorMessage } from '@/components/ErrorMessage'
+import { EditIcon } from '@/components/Icon'
 import { useSurveyorTypeList } from '@/modules/master-tipe-surveyors/api'
 
 import { useSurveyorList, type SurveyorFilter } from './api'
@@ -215,128 +220,114 @@ export function SurveyorPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
-          <ol className="flex items-center gap-1.5">
-            <li>Master Data</li>
-            <li aria-hidden="true" className="text-slate-300">
-              /
-            </li>
-            <li className="text-slate-700">Surveyors</li>
-          </ol>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master Surveyors</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+    <MasterDataLayout
+      crumb="Surveyors"
+      title="Master Surveyors"
+      description={
+        <>
           Daftar petugas dan lembaga yang melakukan survei kerugian. Setiap surveyor
           digolongkan ke salah satu tipe pada Master Tipe Surveyors, dan baru dapat
           ditugaskan pada klaim setelah komite menyetujuinya.
-        </p>
-
-        {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-            empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
-            hanya diandaikan pengguna (ADR-0030, R-20). */}
-        <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </p>
-      </header>
-
-      {/* Penyimpangan yang paling perlu diketahui pengguna disebut di layar, bukan hanya
-          di dokumen: surveyor internal yang ditambahkan di sini BELUM mendapat akun. */}
-      <div className="mb-6">
-        <ErrorMessage
-          title="Akun aplikasi surveyor belum dibuat otomatis"
-          description="Di sistem lama, menambah Internal Surveyor sekaligus menerbitkan akun aplikasinya. Di sini nama loginnya tersimpan dan keunikannya dijaga, tetapi akunnya belum terbit — pembuatan akun menunggu modul Identitas & Akses. Sampaikan ke administrator bila surveyor baru perlu segera masuk."
-          tone="gangguan"
-        />
-      </div>
-
-      {formOpen && (
+        </>
+      }
+      portalLabel={list.data?.portal ?? portal}
+      notice={
+        // Penyimpangan yang paling perlu diketahui pengguna disebut di layar, bukan hanya
+        // di dokumen: surveyor internal yang ditambahkan di sini BELUM mendapat akun.
         <div className="mb-6">
+          <ErrorMessage
+            title="Akun aplikasi surveyor belum dibuat otomatis"
+            description="Di sistem lama, menambah Internal Surveyor sekaligus menerbitkan akun aplikasinya. Di sini nama loginnya tersimpan dan keunikannya dijaga, tetapi akunnya belum terbit — pembuatan akun menunggu modul Identitas & Akses. Sampaikan ke administrator bila surveyor baru perlu segera masuk."
+            tone="gangguan"
+          />
+        </div>
+      }
+      form={
+        formOpen && (
           <SurveyorForm
             surveyor={beingEdited}
             surveyorTypes={types.data?.tipe_surveyor ?? []}
             onClose={closeForm}
           />
-        </div>
-      )}
-
-      {beingDecided && (
-        <div className="mb-6">
-          <SurveyorDecisionPanel
-            surveyor={beingDecided}
-            onClose={() => setBeingDecided(null)}
-          />
-        </div>
-      )}
-
-      {portal === null ? (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      ) : (
-        <>
-          <div
-            role="tablist"
-            aria-label="Tab master surveyors"
-            className="mb-4 flex flex-wrap gap-1 border-b border-slate-200"
-          >
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={
-                  '-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium transition ' +
-                  (tab === t.id
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-700')
-                }
-              >
-                {t.label}
-              </button>
-            ))}
+        )
+      }
+      afterForm={
+        beingDecided && (
+          <div className="mb-6">
+            <SurveyorDecisionPanel
+              surveyor={beingDecided}
+              onClose={() => setBeingDecided(null)}
+            />
           </div>
+        )
+      }
+      portal={portal}
+    >
+      <>
+        <div
+          role="tablist"
+          aria-label="Tab master surveyors"
+          className="mb-4 flex flex-wrap gap-1 border-b border-slate-200"
+        >
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                '-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium transition ' +
+                (tab === t.id
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-700')
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(s) => s.id}
-            title="Daftar Surveyor"
-            description={
-              list.data
-                ? `${list.data.total} surveyor pada tab ini.`
-                : 'Memuat daftar surveyor…'
-            }
-            searchLabel="Cari nama surveyor, tipe, atau cabang"
-            emptyMessage={
-              tab === 'komite'
-                ? 'Tidak ada surveyor yang menunggu keputusan Anda.'
-                : 'Belum ada surveyor pada tab ini.'
-            }
-            isLoading={list.isPending}
-            error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-            actions={
-              <>
-                <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-                  <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                  {list.isFetching ? 'Memuat…' : 'Refresh'}
-                </Button>
-                <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
-                  <AddIcon className="h-4 w-4" />
-                  Tambah
-                </Button>
-              </>
-            }
-          />
-        </>
-      )}
-    </div>
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(s) => s.id}
+          title="Daftar Surveyor"
+          description={
+            list.data
+              ? `${list.data.total} surveyor pada tab ini.`
+              : 'Memuat daftar surveyor…'
+          }
+          searchLabel="Cari nama surveyor, tipe, atau cabang"
+          emptyMessage={
+            tab === 'komite'
+              ? 'Tidak ada surveyor yang menunggu keputusan Anda.'
+              : 'Belum ada surveyor pada tab ini.'
+          }
+          isLoading={list.isPending}
+          // Gagal memuat dibedakan dari gagal menyimpan. Yang di sini selalu bernada
+          // gangguan: pengguna belum melakukan apa pun yang dapat salah — ia baru membuka
+          // layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
+          error={
+            list.isError ? (
+              <MessageBox
+                message={refreshLoadMessage(list.error, {
+                  subject: 'Daftar surveyor',
+                  failedTitle: 'Daftar surveyor gagal dimuat',
+                })}
+              />
+            ) : undefined
+          }
+          actions={
+            <RefreshAddActions
+              query={list}
+              onAdd={openAdd}
+              addDisabled={formOpen && !beingEdited}
+            />
+          }
+        />
+      </>
+    </MasterDataLayout>
   )
 }
 
@@ -360,57 +351,3 @@ function StatusBadge({ surveyor }: Readonly<{ surveyor: Surveyor }>) {
   )
 }
 
-/**
- * Gagal memuat dibedakan dari gagal menyimpan.
- *
- * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat salah
- * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
- */
-function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  const message = loadMessage(error)
-  return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
-}
-
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Daftar surveyor belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
-  }
-
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar surveyor gagal dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-
-  return {
-    title: 'Daftar surveyor gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
-}

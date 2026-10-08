@@ -1,67 +1,16 @@
-import { useState } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type TravelDocument } from '@/api/types'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import type { TravelDocument } from '@/api/types'
 import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
 import { useSelectedPortal } from '@/app/portal'
+import { retryLoadMessage } from '@/components/masterpage/loadMessage'
+import { editColumn, MasterListLayout } from '@/components/masterpage/MasterPage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
 
 import {
   useCreateTravelDocument,
   useTravelDocumentList,
   useUpdateTravelDocument,
 } from './api'
-import { TravelDocumentForm, type TravelDocumentFields } from './TravelDocumentForm'
-
-/** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
-/** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
-
-type FormState = typeof CLOSED | typeof CREATE | TravelDocument
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Daftar dokumen Travel dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
-}
+import { TravelDocumentForm } from './TravelDocumentForm'
 
 /**
  * Layar Master Dokumen Travel.
@@ -96,44 +45,14 @@ function loadMessage(error: unknown): MessageContent {
  */
 export function TravelDocumentPage() {
   const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
 
   const list = useTravelDocumentList()
   const create = useCreateTravelDocument()
   const update = useUpdateTravelDocument()
 
-  const edited = typeof form === 'string' ? null : form
-  const isSaving = create.isPending || update.isPending
-  const saveError = edited ? update.error : create.error
-
-  function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
-  }
-
-  function openEdit(row: TravelDocument) {
-    create.reset()
-    update.reset()
-    setForm(row)
-  }
-
-  function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
-  }
-
-  function save(values: TravelDocumentFields) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
-    // diketik, itu berarti mengetik ulang dari awal.
-    if (edited) {
-      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
+  const form = useCrudForm(create, update, (row: TravelDocument, input) => ({ id: row.id, input }))
+  const edited = form.openedRow
+  const { openEdit, closeForm, isSaving, saveError } = form
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan
   // adalah teks polos, yang dilihat pengguna boleh berisi markup.
@@ -166,113 +85,50 @@ export function TravelDocumentPage() {
           </span>
         ),
     },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<TravelDocument>({
+      onEdit: openEdit,
       width: 'w-24',
-      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
-      // tombol, bukan data.
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button
-          tone="kedua"
-          onClick={() => openEdit(row)}
-          aria-label={`Ubah dokumen ${row.judul || row.id}`}
-        >
-          Ubah
-        </Button>
-      ),
-    },
+      ariaLabel: (row) => `Ubah dokumen ${row.judul || row.id}`,
+    }),
   ]
 
-  // Isi bagian daftar menurut keadaan portal dan kueri.
-  function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Daftar dokumen Travel dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar dokumen travel…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.dokumen_travel}
-        rowKey={(row) => row.id}
-        // Tanpa kotak cari, dan dipaginasi 50 baris per halaman — keduanya meniru
-        // grid Pega apa adanya (`pyPageSize=50`, dan tidak ada satu pun
-        // `pySortFilterProperty` yang terisi). Keputusan Work Owner 2026-09-21.
-        //
-        // Berbeda dari Master Status Klaim, yang justru ditambahi kotak cari pada
-        // 2026-09-17. Perbedaan itu disengaja dan dicatat di
-        // docs/keputusan-implementasi.md.
-        searchable={false}
-        pageSize={50}
-        description={`${list.data.total} dokumen terdaftar. Sumber: POOLDATA.M_DOCTRAVEL`}
-        emptyMessage="Belum ada dokumen travel pada entitas ini."
-      />
-    )
-  }
-
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Dokumen Travel</h1>
-          <p className="text-sm text-slate-600">
-            Daftar jenis dokumen yang dapat diminta pada klaim lini Travel.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
-            Tambah
-          </Button>
-        </div>
-      </header>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-          empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
-          hanya diandaikan pengguna (`ADR-0030`, `R-20`). */}
-      <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-      </p>
-
-      {form !== CLOSED && (
-        <section className="mt-5">
-          <TravelDocumentForm
-            edited={edited}
-            isSaving={isSaving}
-            error={saveError}
-            onSave={save}
-            onCancel={closeForm}
-          />
-        </section>
+    <MasterListLayout
+      title="Master Dokumen Travel"
+      description="Daftar jenis dokumen yang dapat diminta pada klaim lini Travel."
+      query={list}
+      portal={portal}
+      crud={form}
+      form={
+        <TravelDocumentForm
+          edited={edited}
+          isSaving={isSaving}
+          error={saveError}
+          onSave={form.submit}
+          onCancel={closeForm}
+        />
+      }
+      loadingText="Memuat daftar dokumen travel…"
+      toMessage={(error) => retryLoadMessage(error, { owner: 'Daftar dokumen Travel' })}
+      portalOwner="Daftar dokumen Travel"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.dokumen_travel}
+          rowKey={(row) => row.id}
+          // Tanpa kotak cari, dan dipaginasi 50 baris per halaman — keduanya meniru
+          // grid Pega apa adanya (`pyPageSize=50`, dan tidak ada satu pun
+          // `pySortFilterProperty` yang terisi). Keputusan Work Owner 2026-09-21.
+          //
+          // Berbeda dari Master Status Klaim, yang justru ditambahi kotak cari pada
+          // 2026-09-17. Perbedaan itu disengaja dan dicatat di
+          // docs/keputusan-implementasi.md.
+          searchable={false}
+          pageSize={50}
+          description={`${data.total} dokumen terdaftar. Sumber: POOLDATA.M_DOCTRAVEL`}
+          emptyMessage="Belum ada dokumen travel pada entitas ini."
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </main>
+    />
   )
 }

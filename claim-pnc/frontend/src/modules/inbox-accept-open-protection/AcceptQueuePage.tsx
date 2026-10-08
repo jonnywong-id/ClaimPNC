@@ -7,6 +7,8 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 import { ReloadIcon } from '@/components/Icon'
+import { offsetPagination } from '@/components/inbox/TaskQueueTable'
+import { policyNumberColumn, protectionTrailingColumns } from '@/components/inbox/protectionColumns'
 import { DokumenPenunjangPanel } from '@/modules/dokumen-penunjang/DokumenPenunjangPanel'
 
 import {
@@ -236,14 +238,7 @@ export function AcceptQueuePage() {
           searchLabel="Cari No Proteksi / No Polis / No Klaim"
           emptyMessage="Tidak ada permintaan proteksi yang menunggu keputusan pada antrean ini."
           serverSearch={{ value: search, onChange: changeSearch, matchCount: total }}
-          pagination={{
-            page: Math.floor(offset / PAGE_SIZE) + 1,
-            size: PAGE_SIZE,
-            total,
-            totalPage: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-            onPageChange: (page) => setOffset((page - 1) * PAGE_SIZE),
-            isLoading: list.isFetching,
-          }}
+          pagination={offsetPagination(offset, PAGE_SIZE, total, setOffset, list.isFetching)}
           actions={
             <Button
               tone="halus"
@@ -287,15 +282,7 @@ function protectionColumns(onOpen: (nomor: string) => void): Column<Protection>[
         </button>
       ),
     },
-    {
-      key: 'nomor_polis',
-      title: 'No Polis',
-      width: '12rem',
-      value: (p) => p.nomor_polis,
-      render: (p) => (
-        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_polis || '—'}</span>
-      ),
-    },
+    policyNumberColumn<Protection>(),
     {
       key: 'nomor_klaim',
       title: 'No Klaim',
@@ -312,34 +299,7 @@ function protectionColumns(onOpen: (nomor: string) => void): Column<Protection>[
       value: (p) => p.tipe_proteksi,
       render: (p) => <span className="truncate">{protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}</span>,
     },
-    {
-      key: 'tanggal_proteksi',
-      title: 'Tanggal Proteksi Dibuat',
-      width: '10rem',
-      value: (p) => p.tanggal_proteksi,
-      render: (p) => (
-        <span className="tabular-nums">
-          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'keterangan',
-      title: 'Keterangan',
-      value: (p) => p.keterangan,
-      render: (p) => (
-        <span className="truncate" title={p.keterangan}>
-          {p.keterangan || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'user_create',
-      title: 'User Create',
-      width: '10rem',
-      value: (p) => p.user_create,
-      render: (p) => <span className="truncate">{p.user_create || '—'}</span>,
-    },
+    ...protectionTrailingColumns<Protection>(),
   ]
 }
 

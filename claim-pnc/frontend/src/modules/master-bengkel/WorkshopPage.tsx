@@ -1,16 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useState, useMemo } from 'react'
 
-import { APIError } from '@/api/client'
 import { WorkshopStatus, type Workshop } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
+import { useApprovalTabs } from '@/components/masterpage/useApprovalTabs'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
+import { ApprovalPanel } from '@/components/masterpage/ApprovalPanel'
+import { AddButton, ListHeader, RefreshButton } from '@/components/masterpage/MasterPage'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { selectColumn } from '@/components/ApprovalControls'
 
 import { useCreateWorkshop, useDecideWorkshop, useSaveWorkshop, useWorkshopList } from './api'
 import { DocumentPanel } from './DocumentPanel'
-import { WorkshopForm, type WorkshopFormValues } from './WorkshopForm'
-import { compareCodeUnits } from '@/lib/sort'
+import { WorkshopForm } from './WorkshopForm'
+import { collectKnownValues } from '@/components/masterpage/knownValues'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -46,8 +49,6 @@ const TABS = [
       'Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.',
   },
 ] as const
-
-type TabId = (typeof TABS)[number]['id']
 
 /**
  * Banyaknya baris per halaman.
@@ -139,21 +140,20 @@ function emptyMessageFor(hasPortal: boolean): string {
 export function WorkshopPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Workshop | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const { tab, setTab, active, chosen, setChosen, toggle } = useApprovalTabs(TABS, 'approve')
 
   // Bengkel yang panel dokumennya sedang terbuka. Null berarti tertutup.
   const [documentFor, setDocumentFor] = useState<Workshop | null>(null)
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = useWorkshopList(active.status)
   const create = useCreateWorkshop()
   const save = useSaveWorkshop()
+  const form = useCrudForm(create, save, (row: Workshop, input) => ({ id: row.id_bengkel, input }))
+  const editing = form.openedRow
+  const isFormOpen = form.isOpen
+  const { closeForm, openCreate: openAdd } = form
   const decide = useDecideWorkshop()
 
-  const isFormOpen = isAdding || editing !== null
   const rows = list.data?.bengkel ?? []
 
   /*
@@ -163,25 +163,7 @@ export function WorkshopPage() {
     jawaban terbaik yang tersedia atas pertanyaan "nilai apa yang sah di kolom ini" —
     lihat WorkshopForm bagian "Penanda sistem".
   */
-  const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
-    for (const column of SUGGESTED_COLUMNS) {
-      const unique = new Set<string>()
-      for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
-      }
-      collected[column] = [...unique].sort(compareCodeUnits)
-    }
-    return collected
-  }, [rows])
-
-  function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
-  }
+  const knownValues = useMemo(() => collectKnownValues(rows, SUGGESTED_COLUMNS), [rows])
 
   /*
     Panel dokumen dan form saling menutup.
@@ -195,40 +177,10 @@ export function WorkshopPage() {
     setDocumentFor(row)
   }
 
-  function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
-  }
-
   function openEdit(row: Workshop) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
+    form.openEdit(row)
     // Panel dokumen ikut ditutup — lihat alasannya pada openDocument.
     setDocumentFor(null)
-  }
-
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function submit(values: WorkshopFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form tiga puluh tiga
-    // isian, itu kehilangan yang tidak dapat dimaafkan.
-    if (editing) {
-      save.mutate({ id: editing.id_bengkel, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
   }
 
   function runDecision(status: string) {
@@ -261,29 +213,14 @@ export function WorkshopPage() {
     WorkshopPage — dan tidak muncul di kedua tab lain.
   */
   const columns: Column<Workshop>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Workshop) => (chosen.has(row.id_bengkel) ? 'dipilih' : ''),
-            render: (row: Workshop) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_bengkel)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_bengkel)}
-                />
-                <span className="sr-only">Pilih {row.nama_bengkel}</span>
-              </label>
-            ),
-          } satisfies Column<Workshop>,
-        ]
-      : []),
+    ...selectColumn<Workshop>({
+      enabled: tab === 'menunggu',
+      chosen,
+      idOf: (row) => row.id_bengkel,
+      nameOf: (row) => row.nama_bengkel,
+      disabled: decide.isPending,
+      onToggle: toggle,
+    }),
     {
       key: 'id_bengkel',
       title: 'ID Bengkel',
@@ -347,105 +284,35 @@ export function WorkshopPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/*
-            "Master Bengkel HE", bukan "Master Bengkel".
+      {/* "Master Bengkel HE", bukan "Master Bengkel".
 
-            Itu judul yang tertulis di layar Pega — caption
-            `Section/MasterBengkelHE-Section.xml`. Butir menunya memang bernama "Master
-            Bengkel" (`M_MENU_APLIKASI_PNC.MENU_DESC`), dan keduanya memang berbeda di
-            sistem lama; `D-13` menuntut teks LAYAR yang diikuti.
-          */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Bengkel HE</h1>
-          <p className="text-sm text-slate-600">
-            Bengkel rekanan beserta syarat kerja samanya — rekening pembayaran, diskon, pajak,
-            dan SLA.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
-            Tambah
-          </Button>
-        </div>
-      </header>
-
-      <nav
-        aria-label="Tab Master Bengkel"
-        className="mt-4 flex flex-wrap gap-1 border-b border-slate-200"
+          Itu judul yang tertulis di layar Pega — caption
+          `Section/MasterBengkelHE-Section.xml`. Butir menunya memang bernama "Master
+          Bengkel" (`M_MENU_APLIKASI_PNC.MENU_DESC`), dan keduanya memang berbeda di
+          sistem lama; `D-13` menuntut teks LAYAR yang diikuti. */}
+      <ListHeader
+        title="Master Bengkel HE"
+        description="Bengkel rekanan beserta syarat kerja samanya — rekening pembayaran, diskon, pajak, dan SLA."
       >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
-            onClick={() => {
-              closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab
-              // sebelumnya, dan menyimpannya berarti keputusan dapat mengenai baris yang
-              // tidak sedang dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
-              setTab(t.id)
-            }}
-            className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-              tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+        <RefreshButton query={list} />
+        <AddButton onClick={openAdd} disabled={isFormOpen} />
+      </ListHeader>
 
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
-          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
-          diandaikan pengguna (ADR-0030, R-20). */}
-      <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
-        <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </span>
-      </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} bengkel dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(WorkshopStatus.disetujui)}
-          onReject={() => runDecision(WorkshopStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
+      <ApprovalPanel
+        tabLabel="Tab Master Bengkel"
+        tabs={TABS}
+        active={active}
+        onSwitch={setTab}
+        onBeforeSwitch={closeForm}
+        portal={list.data?.portal ?? portal}
+        decide={decide}
+        feedbackNoun="bengkel"
+        barNoun="bengkel"
+        chosenCount={chosen.size}
+        onApprove={() => runDecision(WorkshopStatus.disetujui)}
+        onReject={() => runDecision(WorkshopStatus.ditolak)}
+        onClear={() => setChosen(new Set())}
+      />
 
       {documentFor && (
         <DocumentPanel workshop={documentFor} onClose={() => setDocumentFor(null)} />
@@ -456,9 +323,9 @@ export function WorkshopPage() {
           <WorkshopForm
             editing={editing}
             knownValues={knownValues}
-            isSaving={create.isPending || save.isPending}
-            error={editing ? save.error : create.error}
-            onSave={submit}
+            isSaving={form.isSaving}
+            error={form.saveError}
+            onSave={form.submit}
             onCancel={closeForm}
           />
         </section>
@@ -487,68 +354,6 @@ export function WorkshopPage() {
         />
       </section>
     </main>
-  )
-}
-
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Activity/SetApprovalAllMaster`: satu keputusan atas sekumpulan pengajuan,
- * bukan satu keputusan per baris.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang
- * hilang membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus
- * dilakukan lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: Readonly<{
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}>) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang bengkel yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} bengkel</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama
-        sama membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari
-        namanya. Pembaca layar mengumumkan keduanya dengan kata yang sama persis, dan
-        pengguna yang menyebut "tombol Approve" pada perintah suara tidak punya cara
-        memilih yang mana.
-
-        Kata "terpilih" sekaligus menyebutkan sifatnya: ia mengenai SELURUH baris yang
-        dicentang, bukan satu baris.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
   )
 }
 

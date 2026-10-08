@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
+import { useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -74,20 +75,7 @@ const keys = {
  * terlihat sebagai kerusakan — ia hanya terlihat sebagai nilai yang berbeda.
  */
 export function useReportKPIMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/tab`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang setiap kali penyaring berubah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/tab`)
 }
 
 /**

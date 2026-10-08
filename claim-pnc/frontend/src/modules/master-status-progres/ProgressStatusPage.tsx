@@ -1,11 +1,8 @@
-import { useState } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ProgressStatus } from '@/api/types'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
 import { useSelectedPortal } from '@/app/portal'
+import type { ProgressStatus } from '@/api/types'
+import { MasterListLayout, editColumn } from '@/components/masterpage/MasterPage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
 
 import {
   useClaimPositionList,
@@ -14,55 +11,6 @@ import {
   useUpdateProgressStatus,
 } from './api'
 import { ProgressStatusForm, type ProgressStatusFields } from './ProgressStatusForm'
-
-/** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
-/** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
-
-type FormState = typeof CLOSED | typeof CREATE | ProgressStatus
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
-}
 
 /**
  * Layar Master Status Progres 1.
@@ -84,45 +32,18 @@ function loadMessage(error: unknown): MessageContent {
  */
 export function ProgressStatusPage() {
   const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
 
   const list = useProgressStatusList()
   const positions = useClaimPositionList()
   const create = useCreateProgressStatus()
   const update = useUpdateProgressStatus()
 
-  const edited = typeof form === 'string' ? null : form
-  const isSaving = create.isPending || update.isPending
-  const saveError = edited ? update.error : create.error
-
-  function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
-  }
-
-  function openEdit(row: ProgressStatus) {
-    create.reset()
-    update.reset()
-    setForm(row)
-  }
-
-  function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
-  }
-
-  function save(values: ProgressStatusFields) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
-    // diketik, itu berarti mengetik ulang dari awal.
-    if (edited) {
-      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
+  const form = useCrudForm(create, update, (row: ProgressStatus, input: ProgressStatusFields) => ({
+    id: row.id,
+    input,
+  }))
+  const edited = form.openedRow
+  const { openEdit, closeForm } = form
 
   // `nilai` dipisah dari `tampil` mengikuti kontrak Column: yang dicari dan diurutkan
   // adalah teks polos, yang dilihat pengguna boleh berisi markup. Menyatukannya akan
@@ -143,111 +64,50 @@ export function ProgressStatusPage() {
       // "REGISTER REGISTER".
       value: (row) => row.nama_posisi,
     },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<ProgressStatus>({
+      onEdit: openEdit,
       width: 'w-24',
-      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
-      // tombol, bukan data.
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
-          Ubah
-        </Button>
-      ),
-    },
+      ariaLabel: (row) => `Ubah ${row.nama}`,
+    }),
   ]
 
-  // Isi bagian daftar menurut keadaan portal dan kueri.
-  function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar status progres…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.status_progres}
-        rowKey={(row) => row.id}
-        description="Sumber: POOLDATA.GCNM_MST_PROGRESS_KLAIM"
-        emptyMessage="Belum ada status progres pada entitas ini."
-        // 15 baris per halaman, sama seperti layar lama. Angkanya BUKAN dikarang:
-        // `Section/BrowseStatusProgress-Section.xml` menyisipkan `pyGridPaginator`
-        // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`.
-        //
-        // Ditambahkan 2026-09-20 setelah Work Owner menemukan grid ini menggambar
-        // seluruh baris sekaligus, padahal layar lamanya berhalaman.
-        pageSize={15}
-      />
-    )
-  }
-
+  // Tidak ada tautan "kembali ke beranda" di sini: menu utama di kerangka sudah
+  // menyediakannya, dan dua jalan ke tempat yang sama pada satu layar membuat pengguna
+  // menebak mana yang dimaksud.
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      {/* Tidak ada tautan "kembali ke beranda" di sini: menu utama di kerangka sudah
-          menyediakannya, dan dua jalan ke tempat yang sama pada satu layar membuat
-          pengguna menebak mana yang dimaksud. */}
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Status Progres 1</h1>
-          <p className="text-sm text-slate-600">
-            Daftar status progres yang dapat dicatat petugas pada setiap posisi klaim.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
-            Tambah
-          </Button>
-        </div>
-      </header>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-          empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
-          hanya diandaikan pengguna (ADR-0030, R-20). */}
-      <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-      </p>
-
-      {form !== CLOSED && (
-        <section className="mt-5">
-          <ProgressStatusForm
-            edited={edited}
-            positions={positions.data?.posisi ?? []}
-            isSaving={isSaving}
-            error={saveError}
-            onSave={save}
-            onCancel={closeForm}
-          />
-        </section>
+    <MasterListLayout
+      title="Master Status Progres 1"
+      description="Daftar status progres yang dapat dicatat petugas pada setiap posisi klaim."
+      query={list}
+      portal={portal}
+      crud={form}
+      form={
+        <ProgressStatusForm
+          edited={edited}
+          positions={positions.data?.posisi ?? []}
+          isSaving={form.isSaving}
+          error={form.saveError}
+          onSave={form.submit}
+          onCancel={closeForm}
+        />
+      }
+      loadingText="Memuat daftar status progres…"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.status_progres}
+          rowKey={(row) => row.id}
+          description="Sumber: POOLDATA.GCNM_MST_PROGRESS_KLAIM"
+          emptyMessage="Belum ada status progres pada entitas ini."
+          // 15 baris per halaman, sama seperti layar lama. Angkanya BUKAN dikarang:
+          // `Section/BrowseStatusProgress-Section.xml` menyisipkan `pyGridPaginator`
+          // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`.
+          //
+          // Ditambahkan 2026-09-20 setelah Work Owner menemukan grid ini menggambar
+          // seluruh baris sekaligus, padahal layar lamanya berhalaman.
+          pageSize={15}
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </main>
+    />
   )
 }

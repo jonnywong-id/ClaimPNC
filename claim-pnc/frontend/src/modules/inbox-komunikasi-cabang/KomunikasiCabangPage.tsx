@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { type Column } from '@/components/DataTable'
 import { formatDate } from '@/components/format'
+import { ColumnsExportButton } from '@/components/inbox/ExportDataButton'
+import { NoteList, TabNotice, screenGate } from '@/components/inbox/InboxNotices'
+import { PagedQueueTable } from '@/components/inbox/QueueTable'
+import { errorMessageOf, isISODate } from '@/components/inbox/messages'
 
 import { ConversationDetail } from './ConversationDetail'
 import { KomunikasiCabangTabs } from './KomunikasiCabangTabs'
@@ -133,29 +135,17 @@ export function KomunikasiCabangPage() {
     setParams({ tab: active, halaman: String(page) }, { replace: true })
   }
 
-  if (portal === null) {
+  const gate = screenGate({
+    portal,
+    subject: 'Percakapan cabang',
+    failed: meta.isError,
+    error: meta.error,
+    describe: errorMessageOf,
+  })
+  if (gate) {
     return (
       <PageFrame tab={tab} exportable={false}>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Percakapan cabang milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame tab={tab} exportable={false}>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
+        {gate}
       </PageFrame>
     )
   }
@@ -205,7 +195,7 @@ export function KomunikasiCabangPage() {
             terlihat. Pesan yang muncul di sebelahnya akan terlewat justru oleh orang yang
             menekannya.
           */}
-          {finish.isError && <ActionNotice message={messageOf(finish.error)} />}
+          {finish.isError && <ActionNotice message={errorMessageOf(finish.error)} />}
 
           {composing && (
             <NewMessageForm
@@ -256,42 +246,21 @@ export function KomunikasiCabangPage() {
           )}
 
           <div className="mt-4">
-            <DataTable<Conversation>
+            <PagedQueueTable<Conversation>
+              query={list}
               columns={columnsFor(tab, {
                 onOpen: openConversation,
                 onFinish: (row) => setConfirming(row),
                 finishing: finish.isPending,
               })}
-              rows={list.data?.baris ?? []}
               rowKey={(row) => `${row.komunikasi}|${row.tanggal}`}
               title={tab.nama}
               label={`Percakapan ${tab.nama}`}
-              // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman yang
-              // sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada" untuk baris
-              // yang sebenarnya ada di halaman berikutnya.
-              //
-              // Layar lama pun tidak punya pencarian yang berfungsi: kotak "Filter"-nya
-              // menyalin kedua isian ke variabel lokal lalu tidak pernah memakainya lagi.
-              hideSearch
-              isLoading={list.isPending}
-              error={
-                list.isError ? (
-                  <ErrorMessage
-                    title="Percakapan tidak dapat dimuat"
-                    description={messageOf(list.error)}
-                    tone="gangguan"
-                  />
-                ) : undefined
-              }
               emptyMessage={emptyMessageFor(tab, list.data?.batas_cabang)}
-              pagination={{
-                page: list.data?.paginasi.halaman ?? 1,
-                size: list.data?.paginasi.ukuran ?? 20,
-                total: list.data?.paginasi.total ?? 0,
-                totalPage: list.data?.paginasi.total_halaman ?? 1,
-                onPageChange: setPage,
-                isLoading: list.isFetching,
-              }}
+              failureTitle="Percakapan tidak dapat dimuat"
+              onPageChange={setPage}
+              defaultSize={20}
+              describe={errorMessageOf}
             />
           </div>
         </>
@@ -301,7 +270,7 @@ export function KomunikasiCabangPage() {
         <ConversationDetail id={opened} onClose={closeConversation} />
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
+      <NoteList lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -387,20 +356,6 @@ function BranchNotice({ branch }: Readonly<{ branch: BranchScope }>) {
     >
       {branch.keterangan}
     </p>
-  )
-}
-
-/**
- * Catatan yang berlaku pada satu tab saja.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya ia hilang dengan sendirinya
- * begitu keadaannya berubah.
- */
-function TabNotice({ text }: Readonly<{ text: string }>) {
-  return (
-    <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
-      <p className="text-xs text-slate-700">{text}</p>
-    </div>
   )
 }
 
@@ -493,27 +448,14 @@ function ExportButton({
   const ekspor = useExportKomunikasiCabang()
 
   return (
-    <div className="flex max-w-sm flex-col items-end gap-1">
-      <Button
-        tone="kedua"
-        disabled={!enabled || ekspor.isPending || tab === undefined}
-        onClick={() => ekspor.mutate(tab?.kode ?? '')}
-      >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export To Excel'}
-      </Button>
-
-      {columns.length > 0 && (
-        <p className="text-right text-xs text-slate-500">
-          Berisi: {columns.map((column) => column.judul).join(' · ')}
-        </p>
-      )}
-
-      {ekspor.isError && (
-        <p className="text-right text-xs text-red-700" role="alert">
-          {messageOf(ekspor.error)}
-        </p>
-      )}
-    </div>
+    <ColumnsExportButton
+      state={ekspor}
+      disabled={!enabled || ekspor.isPending || tab === undefined}
+      onExport={() => ekspor.mutate(tab?.kode ?? '')}
+      label={ekspor.isPending ? 'Menyiapkan berkas…' : 'Export To Excel'}
+      columns={columns}
+      describe={errorMessageOf}
+    />
   )
 }
 
@@ -685,31 +627,6 @@ function FinishConfirmation({
 }
 
 /**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, beberapa hal
- * akan dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar
- * berdampingan — terutama pemisahan menjadi tab, urutan kedua tab yang berlawanan, dan
- * angka pencacah yang tidak sama dengan jumlah baris tabel.
- */
-function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
  * `value` tetap mengembalikan TEKS polos meski selnya digambar sebagai tautan. Keduanya
@@ -777,12 +694,7 @@ function cellText(row: Conversation, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return isISODate(text) ? formatDate(text) : text
 }
 
 /**
@@ -818,9 +730,3 @@ function emptyMessageFor(tab: Tab, branch: BranchScope | undefined): string {
   )
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

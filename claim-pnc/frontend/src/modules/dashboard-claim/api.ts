@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -71,20 +72,7 @@ function buildParams(f: PenyaringDashboard): URLSearchParams {
  * menolaknya dengan 422, bukan diam-diam menampilkan semuanya.
  */
 export function usePenyaringDashboard() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.penyaring(portal, token),
-    queryFn: () => callAPI<PenyaringResponse>(`${PATH}/penyaring`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali penyaring berubah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<PenyaringResponse>(keys.penyaring, `${PATH}/penyaring`)
 }
 
 /**

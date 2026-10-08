@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { callAPI } from '@/api/client'
+import { downloadExport, queryPath, useQueueList, useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -66,20 +67,7 @@ const keys = {
  * dengan tangan berarti menunggu salah satunya bergeser.
  */
 export function useSalvageMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali daftar berpindah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/daftar`)
 }
 
 /**
@@ -101,22 +89,11 @@ export function useSalvageList(
   search: string,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.list(portal, token, tab, page, search),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page, search), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
-    // menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Antrean berubah saat petugas lain mengerjakan pengajuannya, jadi cache-nya pendek —
-    // sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
-    staleTime: 15 * 1000,
-  })
+  return useQueueList<ListResponse>(
+    (portal, token) => keys.list(portal, token, tab, page, search),
+    buildPath(tab, page, search),
+    enabled,
+  )
 }
 
 /**
@@ -229,10 +206,6 @@ export function useExportSalvage() {
 
   return useMutation({
     mutationFn: async (input: { tab: string; search: string }) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
-
       const params = new URLSearchParams()
       if (input.tab) params.set('daftar', input.tab)
       if (input.search) params.set('cari', input.search)
@@ -240,57 +213,23 @@ export function useExportSalvage() {
       const query = params.toString()
       const address = query ? `${PATH}/ekspor?${query}` : `${PATH}/ekspor`
 
-      const response = await fetch(address, { headers: header })
-      if (!response.ok) {
-        // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
-        // lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as {
-          pesan?: string
-        } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
-      }
-
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-salvage.csv')
+      await downloadExport({
+        address,
+        token,
+        portal,
+        fallbackName: 'inbox-salvage.csv',
+      })
     },
   })
 }
 
 /** buildPath menyusun alamat permintaan daftar beserta halaman dan pencariannya. */
 function buildPath(tab: string, page: number, search: string): string {
-  const params = new URLSearchParams()
-  if (tab) params.set('daftar', tab)
-  if (page > 1) params.set('halaman', String(page))
-  if (search) params.set('cari', search)
-
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
-}
-
-/** filenameOf membaca nama berkas dari header Content-Disposition. */
-function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
-}
-
-/**
- * downloadBlob menyimpan berkas lewat tautan sementara.
- *
- * URL objeknya DICABUT setelah dipakai. Tanpa itu, blob-nya tetap dipegang peramban sampai
- * tab ditutup — dan pada layar yang dipakai sepanjang hari, setiap ekspor menumpuk memori
- * yang tidak pernah dilepas.
- */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  return queryPath(PATH, [
+    ['daftar', tab],
+    ['halaman', page > 1 && String(page)],
+    ['cari', search],
+  ])
 }
 
 /**

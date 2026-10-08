@@ -4,6 +4,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { EntityNotice, TruncatedNotice } from '@/components/inbox/InboxNotices'
 
 import { useInvestigatorInbox } from './api'
 
@@ -307,22 +308,15 @@ export function InvestigatorInboxPage() {
 
           Pada layar ini ia berarti lebih dari sekadar kerapian: barisnya memuat nama
           tertanggung dan nama peserta klaim satu badan hukum. */}
-      <p className="mt-3 text-xs text-slate-500">
-        <span>Antrean ini milik entitas yang sedang dibuka.</span>
-        <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{inbox.data?.portal ?? portal ?? '—'}</span>
-        </span>
-      </p>
+      <EntityNotice
+        lead="Antrean ini milik entitas yang sedang dibuka."
+        portal={inbox.data?.portal ?? portal ?? '—'}
+      />
 
       {/* Pemotongan DINYATAKAN, tidak dibiarkan senyap seperti pyMaxRecords=500 pada sistem
           lama. Batas yang diketahui adalah batas; batas yang senyap adalah data yang hilang. */}
       {inbox.data?.terpotong && (
-        <p className="mt-4 rounded-kartu border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-          Antrean ini <span className="font-medium">lebih panjang</span> daripada yang dapat
-          ditampilkan sekaligus. Yang tampil {inbox.data.batas_baris} pekerjaan pertama;
-          sisanya belum terlihat. Pakai kotak pencarian untuk mempersempit daftar.
-        </p>
+        <TruncatedNotice noun="Antrean ini" limit={inbox.data.batas_baris} />
       )}
 
       <section className="mt-6">

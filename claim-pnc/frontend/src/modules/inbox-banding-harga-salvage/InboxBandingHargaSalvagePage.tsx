@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
+import { NoteList } from '@/components/inbox/InboxNotices'
 
 import { BandingHargaTabs } from './BandingHargaTabs'
 import { DecisionConfirm } from './DecisionConfirm'
@@ -294,11 +295,11 @@ export function InboxBandingHargaSalvagePage() {
         </>
       )}
 
-      <Notes
+      <NoteList
         title="Yang sengaja berbeda dari layar lama"
         lines={meta.data?.selisih_terencana ?? []}
       />
-      <Notes title="Yang belum tersedia" lines={meta.data?.keterbatasan ?? []} />
+      <NoteList title="Yang belum tersedia" lines={meta.data?.keterbatasan ?? []} />
     </PageFrame>
   )
 }
@@ -393,29 +394,6 @@ function SearchBar({
         lama. Separuh nomor tidak menghasilkan baris.
       </p>
     </div>
-  )
-}
-
-/**
- * Catatan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya
- * begitu penghalangnya hilang. Tanpa catatan ini, angka ringkas yang berbeda dari Pega dan
- * keputusan yang tidak sampai ke balai lelang akan dilaporkan berulang kali sebagai
- * kerusakan — atau, yang lebih buruk, tidak dilaporkan sama sekali.
- */
-function Notes({ title, lines }: Readonly<{ title: string; lines: string[] }>) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">{title}</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

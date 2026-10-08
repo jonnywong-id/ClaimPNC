@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -67,20 +68,7 @@ const keys = {
  * menunggu DBA.
  */
 export function useKeteranganSurvei() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.keterangan(portal, token),
-    queryFn: () => callAPI<KeteranganResponse>(`${PATH}/keterangan`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali halaman berpindah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<KeteranganResponse>(keys.keterangan, `${PATH}/keterangan`)
 }
 
 /**

@@ -1,11 +1,14 @@
-import { useState, type ReactNode } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type DocumentObject } from '@/api/types'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import type { DocumentObject, DocumentObjectInput } from '@/api/types'
 import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
 import { useSelectedPortal } from '@/app/portal'
+import {
+  BusinessListWarning,
+  businessFormProps,
+  MasterListLayout,
+  businessNames,
+  editColumn,
+} from '@/components/masterpage/MasterPage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
 
 import {
   useBusinessList,
@@ -15,55 +18,6 @@ import {
   useUpdateDocumentObject,
 } from './api'
 import { DocumentObjectForm, type DocumentObjectFields } from './DocumentObjectForm'
-
-/** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
-/** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
-
-type FormState = typeof CLOSED | typeof CREATE | DocumentObject
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
-}
 
 /**
  * Layar Daftar Objek Dokumen (MENU_ID 43).
@@ -89,14 +43,18 @@ function loadMessage(error: unknown): MessageContent {
  */
 export function DocumentObjectPage() {
   const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
 
   const list = useDocumentObjectList()
   const businesses = useBusinessList()
   const create = useCreateDocumentObject()
   const update = useUpdateDocumentObject()
 
-  const openedRow = typeof form === 'string' ? null : form
+  const form = useCrudForm(create, update, (row: DocumentObject, input: DocumentObjectInput) => ({
+    id: row.id,
+    input,
+  }))
+  const openedRow = form.openedRow
+  const { openEdit } = form
 
   // Baris yang dibuka dimuat ULANG dari server supaya pemetaan bisnisnya ikut terbawa.
   // Daftar sengaja tidak membawanya — grid hanya menampilkan ID dan keterangannya —
@@ -106,48 +64,9 @@ export function DocumentObjectPage() {
   const detail = useDocumentObject(openedRow?.id ?? null)
 
   const edited = openedRow === null ? null : (detail.data?.objek_dokumen ?? openedRow)
-  const isSaving = create.isPending || update.isPending
-  const saveError = openedRow ? update.error : create.error
-
-  function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
-  }
-
-  function openEdit(row: DocumentObject) {
-    create.reset()
-    update.reset()
-    setForm(row)
-  }
-
-  function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
-  }
 
   function save(values: DocumentObjectFields) {
-    const input = {
-      objek_dokumen: values.objek_dokumen,
-      // NAMA yang dikirim, bukan ID: itulah yang diketik dan dilihat petugas, dan nama yang
-      // diketik bebas memang tidak punya ID. Server yang menyelesaikannya menjadi ID dengan
-      // mencocokkan ke master.
-      //
-      // Baris yang dibiarkan kosong dibuang di sini supaya tidak terkirim sebagai pemetaan
-      // ke bisnis bernama kosong — server pun membuangnya, tetapi membuangnya lebih awal
-      // membuat permintaannya menyatakan apa yang benar-benar dimaksud.
-      bisnis: values.bisnis.map((b) => b.nama.trim()).filter((nama) => nama !== ''),
-    }
-
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
-    // diketik, itu berarti mengetik ulang dari awal.
-    if (openedRow) {
-      update.mutate({ id: openedRow.id, input }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(input, { onSuccess: closeForm })
+    form.submit({ objek_dokumen: values.objek_dokumen, bisnis: businessNames(values.bisnis) })
   }
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan adalah
@@ -168,121 +87,42 @@ export function DocumentObjectPage() {
       title: 'Daftar Objek Dokumen',
       value: (row) => row.objek_dokumen,
     },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<DocumentObject>({
+      onEdit: openEdit,
       width: 'w-24',
-      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya tombol,
-      // bukan data.
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button
-          tone="kedua"
-          onClick={() => openEdit(row)}
-          aria-label={`Ubah objek dokumen ${row.objek_dokumen || row.id}`}
-        >
-          Ubah
-        </Button>
-      ),
-    },
+      ariaLabel: (row) => `Ubah objek dokumen ${row.objek_dokumen || row.id}`,
+    }),
   ]
 
-  function renderList(): ReactNode {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      )
-    }
-    if (list.isPending) {
-      return (
-        <p className="text-sm text-slate-500">Memuat daftar objek dokumen…</p>
-      )
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.objek_dokumen}
-        rowKey={(row) => row.id}
-        description={`${list.data.total} objek dokumen terdaftar. Sumber: POOLDATA.V_LST_DOC_OBJ`}
-        emptyMessage="Belum ada objek dokumen pada entitas ini."
-      />
-    )
-  }
-
+  // Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna mengenalinya
+  // tanpa diberi tahu.
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/* Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna
-              mengenalinya tanpa diberi tahu. */}
-          <h1 className="text-xl font-semibold text-slate-900">Daftar Objek Dokumen</h1>
-          <p className="text-sm text-slate-600">
-            Objek yang melekat pada dokumen klaim, beserta bisnis yang memakainya.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
-            Tambah
-          </Button>
-        </div>
-      </header>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
-          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
-          diandaikan pengguna (`ADR-0030`, `R-20`). */}
-      <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-      </p>
-
-      {form !== CLOSED && (
-        <section className="mt-5">
-          {/* Kegagalan memuat daftar bisnis TIDAK menutup form dan tidak menghalangi
-              penyimpanan: nama bisnis memang boleh diketik sendiri. Yang hilang hanya
-              sarannya, dan form itu sendiri yang mengatakannya. */}
-          {businesses.isError && (
-            <div className="mb-3">
-              <ErrorMessage
-                title="Daftar bisnis tidak dapat dimuat"
-                description="Saran nama bisnis tidak tersedia untuk sementara. Namanya tetap dapat diketik sendiri, dan seluruh isian tetap dapat disimpan."
-                tone="gangguan"
-              />
-            </div>
-          )}
+    <MasterListLayout
+      title="Daftar Objek Dokumen"
+      description="Objek yang melekat pada dokumen klaim, beserta bisnis yang memakainya."
+      query={list}
+      portal={portal}
+      crud={form}
+      form={
+        <>
+          <BusinessListWarning show={businesses.isError} />
           <DocumentObjectForm
             edited={edited}
-            businesses={businesses.data?.bisnis ?? []}
-            isLoadingBusinessMapping={openedRow !== null && detail.isPending}
-            isSaving={isSaving}
-            error={saveError}
             onSave={save}
-            onCancel={closeForm}
+            {...businessFormProps(businesses, openedRow !== null && detail.isPending, form)}
           />
-        </section>
+        </>
+      }
+      loadingText="Memuat daftar objek dokumen…"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.objek_dokumen}
+          rowKey={(row) => row.id}
+          description={`${data.total} objek dokumen terdaftar. Sumber: POOLDATA.V_LST_DOC_OBJ`}
+          emptyMessage="Belum ada objek dokumen pada entitas ini."
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </main>
+    />
   )
 }

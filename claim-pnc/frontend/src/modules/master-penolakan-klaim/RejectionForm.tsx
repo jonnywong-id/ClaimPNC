@@ -3,12 +3,12 @@ import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type Rejection, type RejectionInput, type RejectionParent } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
+import { MasterFormActions, MasterFormFrame } from '@/components/masterform/BoxForm'
+import { type CodeMessages, portalMessages, saveErrorMessage, validationMessage, violationsOf } from '@/components/masterform/saveErrorMessage'
 
 /**
  * Batas panjang harus sama dengan masterpenolakan.MaxNameLength di backend.
@@ -89,65 +89,17 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf).
- * Yang ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu,
- * karena itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
-        // mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
-      case ErrorCode.notFound:
-        return {
-          title: 'Baris ini sudah tidak ada',
-          description: 'Mungkin sudah diubah petugas lain. Muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
+  // mengulang hal yang sama.
+  [ErrorCode.validationFailed]: validationMessage,
+  [ErrorCode.notFound]: {
+    title: 'Baris ini sudah tidak ada',
+    description: 'Mungkin sudah diubah petugas lain. Muat ulang daftarnya.',
+    tone: 'penolakan',
+  },
+  ...portalMessages,
 }
 
 /** Menyusun isian awal dari baris yang sedang disunting. */
@@ -219,7 +171,7 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
   const parentChoice = useWatch({ control, name: 'pilihan_status_1' })
   const creatingParent = parentChoice === NEW_PARENT
 
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
   const title = editMode ? 'Ubah Penolakan Klaim' : 'Tambah Penolakan Klaim'
 
   const options = [
@@ -228,18 +180,7 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
   ]
 
   return (
-    <form
-      onSubmit={handleSubmit(onSave)}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
+    <MasterFormFrame onSubmit={handleSubmit(onSave)} title={title} message={message}>
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
           belum ada — nomornya diterbitkan server dari isi tabel. */}
       {editMode && (
@@ -290,14 +231,7 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
         />
       )}
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
-    </form>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} />
+    </MasterFormFrame>
   )
 }

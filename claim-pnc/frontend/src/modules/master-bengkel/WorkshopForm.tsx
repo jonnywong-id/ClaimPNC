@@ -1,14 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, NON_PARTNER, WorkshopErrorCode, type Workshop, type WorkshopInput } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
+import { MasterFormActions, useServerViolations } from '@/components/masterform/BoxForm'
+import { type CodeMessages, portalMessages, saveErrorMessage, validationMessage, violationsOf } from '@/components/masterform/saveErrorMessage'
+import { FieldGroup, Suggestions } from '@/components/masterform/FormSections'
 
 import { useWorkshopBankList, useWorkshopBranchList } from './api'
 import { CityPicker } from './CityPicker'
@@ -150,72 +151,23 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf).
- * Yang ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu,
- * karena itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case WorkshopErrorCode.nameTaken:
-        return {
-          title: 'Nama bengkel itu sudah dipakai',
-          description:
-            'Buka baris yang sudah ada untuk mengubahnya, atau pakai nama lain.',
-          tone: 'penolakan',
-        }
-      case WorkshopErrorCode.loginTaken:
-        return {
-          title: 'Login aplikasi itu sudah dipakai bengkel lain',
-          description: 'Ganti login aplikasinya, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya
-        // akan mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  [WorkshopErrorCode.nameTaken]: {
+    title: 'Nama bengkel itu sudah dipakai',
+    description:
+      'Buka baris yang sudah ada untuk mengubahnya, atau pakai nama lain.',
+    tone: 'penolakan',
+  },
+  [WorkshopErrorCode.loginTaken]: {
+    title: 'Login aplikasi itu sudah dipakai bengkel lain',
+    description: 'Ganti login aplikasinya, lalu simpan lagi.',
+    tone: 'penolakan',
+  },
+  // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya
+  // akan mengulang hal yang sama.
+  [ErrorCode.validationFailed]: validationMessage,
+  ...portalMessages,
 }
 
 /** Nama isian yang dikenali form ini; dipakai menyorot pelanggaran dari server. */
@@ -362,16 +314,10 @@ export function WorkshopForm({
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
   // dan itu hanya berguna bila layar menyorotnya satu per satu.
-  useEffect(() => {
-    for (const [column, message] of Object.entries(violationsOf(error))) {
-      if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
-      }
-    }
-  }, [error, setError])
+  useServerViolations(error, setError, FIELD_NAMES)
 
   const violation = violationsOf(error)
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
   const isPartner = watch('status_rekanan') !== NON_PARTNER
 
   function submit(values: WorkshopFields) {
@@ -417,7 +363,7 @@ export function WorkshopForm({
         </div>
       )}
 
-      <Group title="Identitas bengkel">
+      <FieldGroup title="Identitas bengkel">
         <Field
           id="nama_bengkel"
           label="Nama bengkel"
@@ -457,9 +403,9 @@ export function WorkshopForm({
             disabled={isSaving}
           />
         </div>
-      </Group>
+      </FieldGroup>
 
-      <Group title="Kontak">
+      <FieldGroup title="Kontak">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="telp_bengkel"
@@ -503,9 +449,9 @@ export function WorkshopForm({
             {...register('email_wo')}
           />
         </div>
-      </Group>
+      </FieldGroup>
 
-      <Group title="Status kerja sama">
+      <FieldGroup title="Status kerja sama">
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="status_rekanan"
@@ -572,7 +518,7 @@ export function WorkshopForm({
             {...register('tanggal_status')}
           />
         </div>
-        <Suggestions name="status_bengkel" values={knownValues['status_bengkel'] ?? []} />
+        <Suggestions prefix="bengkel" name="status_bengkel" values={knownValues['status_bengkel'] ?? []} />
         <Field
           id="alasan_status_bengkel"
           label="Alasan status bengkel"
@@ -582,9 +528,9 @@ export function WorkshopForm({
           disabled={isSaving}
           {...register('alasan_status_bengkel')}
         />
-      </Group>
+      </FieldGroup>
 
-      <Group title="Bank dan pajak">
+      <FieldGroup title="Bank dan pajak">
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="id_bank"
@@ -679,10 +625,10 @@ export function WorkshopForm({
             {...register('ppn')}
           />
         </div>
-        <Suggestions name="jenis_pph" values={knownValues['jenis_pph'] ?? []} />
-      </Group>
+        <Suggestions prefix="bengkel" name="jenis_pph" values={knownValues['jenis_pph'] ?? []} />
+      </FieldGroup>
 
-      <Group title="Syarat komersial">
+      <FieldGroup title="Syarat komersial">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="diskon_jasa"
@@ -745,9 +691,9 @@ export function WorkshopForm({
             {...register('supplier')}
           />
         </div>
-      </Group>
+      </FieldGroup>
 
-      <Group title="Penanda sistem">
+      <FieldGroup title="Penanda sistem">
         {/*
           Ketujuh penanda ini dirender pxRadioButtons atau pxDropdown di Pega, dan daftar
           pilihannya ada di rule Field Value yang TIDAK ikut di export (R-16).
@@ -784,11 +730,11 @@ export function WorkshopForm({
                 disabled={isSaving}
                 {...register(name)}
               />
-              <Suggestions name={name} values={knownValues[name] ?? []} />
+              <Suggestions prefix="bengkel" name={name} values={knownValues[name] ?? []} />
             </div>
           ))}
         </div>
-      </Group>
+      </FieldGroup>
 
       <p className="text-xs text-slate-500">
         Baris yang disimpan selalu kembali ke{' '}
@@ -796,53 +742,8 @@ export function WorkshopForm({
         persetujuan sebelumnya tidak berlaku atas isi yang sudah berubah.
       </p>
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} />
     </form>
   )
 }
 
-/**
- * Group membungkus sekumpulan isian di bawah satu judul.
- *
- * Ia `<fieldset>` dan bukan `<div>` supaya pembaca layar mengumumkan judulnya saat kursor
- * masuk ke salah satu isian di dalamnya — pada form tiga puluh tiga isian, "isian ke
- * berapa dari bagian apa" adalah satu-satunya cara menavigasinya tanpa melihat.
- */
-function Group({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
-  return (
-    <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
-      {children}
-    </fieldset>
-  )
-}
-
-/**
- * Suggestions menggambar daftar saran untuk sebuah isian.
- *
- * Isinya berasal dari nilai yang SUDAH DIPAKAI baris lain pada entitas yang sedang
- * dibuka — bukan dari daftar yang dikarang. Ia menjawab pertanyaan yang tidak dapat
- * dijawab export Pega ("nilai apa yang sah di kolom ini?") dengan satu-satunya sumber
- * yang tersedia: data itu sendiri.
- *
- * Tidak menggambar apa pun bila belum ada nilai yang terpakai, supaya daftar kosong tidak
- * muncul sebagai kotak saran yang selalu hampa.
- */
-function Suggestions({ name, values }: Readonly<{ name: string; values: string[] }>) {
-  if (values.length === 0) return null
-
-  return (
-    <datalist id={`bengkel-${name}`}>
-      {values.map((value) => (
-        <option key={value} value={value} />
-      ))}
-    </datalist>
-  )
-}

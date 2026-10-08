@@ -1,18 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { useEscapeToClose } from '@/components/shared/useEscapeToClose'
 
 import { useCashierPreview, useTransferCashier, violationsFrom } from './api'
+import { DialogFailure, DialogSuccess } from './dialogParts'
 
 const amountFormatter = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-/** Teks galat dialog: pesan pelanggaran aturan bila ada, selain itu pesan galatnya sendiri. */
-function failureDescription(violations: readonly { pesan: string }[], failure: unknown) {
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
-}
 
 /**
  * Dialog "Transfer Pembayaran" — flow action `ValidasiTransferKasir_dialog` (section
@@ -47,13 +41,7 @@ export function CashierDialog({
   })
 
   const busy = preview.isPending || transfer.isPending
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  useEscapeToClose(onClose, busy)
 
   const data = preview.data
   const failure = transfer.error ?? preview.error
@@ -158,20 +146,8 @@ export function CashierDialog({
           </output>
         )}
 
-        {failure && (
-          <div className="mt-4">
-            <ErrorMessage
-              title="Transfer Kasir belum dapat diproses"
-              description={failureDescription(violations, failure)}
-              tone="penolakan"
-            />
-          </div>
-        )}
-        {done && (
-          <output className="mt-4 block text-sm text-emerald-700">
-            Berhasil ditransfer ke Kasir.
-          </output>
-        )}
+        <DialogFailure title="Transfer Kasir belum dapat diproses" failure={failure} violations={violations} />
+        <DialogSuccess show={done}>Berhasil ditransfer ke Kasir.</DialogSuccess>
 
         <div className="mt-6 flex justify-end gap-3">
           <Button tone="halus" disabled={busy} onClick={onClose}>

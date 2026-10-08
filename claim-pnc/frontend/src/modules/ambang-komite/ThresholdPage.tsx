@@ -4,6 +4,7 @@ import { ReloadIcon, WarningIcon } from '@/components/Icon'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
 import { Button } from '@/components/Button'
+import { MasterDataHeader } from '@/components/masterpage/MasterPage'
 import { formatRupiah } from '@/lib/money'
 
 import { useThresholdList, useIntegrity } from './api'
@@ -105,25 +106,17 @@ export function ThresholdPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
-          <ol className="flex items-center gap-1.5">
-            <li>Master Data</li>
-            <li aria-hidden="true" className="text-slate-300">
-              /
-            </li>
-            <li className="text-slate-700">Ambang Komite</li>
-          </ol>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Master Ambang Komite
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Tangga jenjang persetujuan nilai klaim. Aturannya <strong>kumulatif</strong>:
-          setiap jenjang yang ambang bawahnya sudah terlampaui nilai klaim ikut
-          menyetujui — makin besar klaim, makin banyak penyetujunya.
-        </p>
-      </header>
+      <MasterDataHeader
+        crumb="Ambang Komite"
+        title="Master Ambang Komite"
+        description={
+          <>
+            Tangga jenjang persetujuan nilai klaim. Aturannya <strong>kumulatif</strong>:
+            setiap jenjang yang ambang bawahnya sudah terlampaui nilai klaim ikut
+            menyetujui — makin besar klaim, makin banyak penyetujunya.
+          </>
+        }
+      />
 
       <ReadOnlyNote />
 

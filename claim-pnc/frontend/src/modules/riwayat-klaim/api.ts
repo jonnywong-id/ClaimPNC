@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { useQueueList } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -85,21 +86,12 @@ export function useOpenClaimHistory() {
  * bukan lambat, melainkan mustahil.
  */
 export function useClaimHistorySearch(form: SearchForm, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.search(portal, token, form, page),
-    queryFn: () => callAPI<SearchResponse>(buildPath(form, page), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel
-    // berkedip menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Riwayat klaim berubah saat klaim diproses petugas lain, jadi cache-nya pendek.
-    staleTime: 30 * 1000,
-  })
+  return useQueueList<SearchResponse>(
+    (portal, token) => keys.search(portal, token, form, page),
+    buildPath(form, page),
+    enabled,
+    30 * 1000,
+  )
 }
 
 /**

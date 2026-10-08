@@ -10,7 +10,14 @@ export type TabItem = {
   kode: string
   nama: string
   /** Kalimat penjelas; digambar sebagai `title` pada butirnya. Boleh kosong. */
-  keterangan?: string
+  keterangan?: string | undefined
+  /**
+   * Penanda kecil di samping nama, mis. "belum tersedia" untuk tab yang terhalang.
+   *
+   * Penanda dibaca pembaca layar pula, bukan hanya terlihat: tab yang terhalang adalah
+   * keadaan yang harus diketahui SEBELUM diklik, bukan sesudahnya.
+   */
+  badge?: string | undefined
 }
 
 type Props = {
@@ -26,6 +33,12 @@ type Props = {
    * hanya ada satu: tanpa nama, ia hanya dibacakan sebagai "daftar tab".
    */
   label: string
+
+  /**
+   * Isi butir disusun flex (nama + penanda sejajar). Bawaannya `true`; beberapa layar
+   * inbox menggambar butirnya tanpa susunan flex, dan bentuk itu dipertahankan.
+   */
+  flexItems?: boolean | undefined
 }
 
 /**
@@ -38,9 +51,9 @@ type Props = {
  * berarti dua tafsir tentang bagaimana sebuah tab terlihat saat terpilih, dan pada
  * layar yang bersebelahan di menu perbedaan itu langsung terlihat.
  *
- * `SalvageTabs` pada modul Inbox Salvage mendahuluinya dan TIDAK diubah: modul itu sudah
- * selesai, dan menyatukan keduanya sekarang berarti menyentuh layar yang tidak sedang
- * dikerjakan.
+ * Bilah tab layar-layar inbox lain (`InboxTabs`, `SalvageTabs`, `RCLPUCLTabs`, dan
+ * saudaranya) kini juga digambar oleh komponen ini — masing-masing tinggal pembungkus
+ * tipis yang menetapkan label, susunan butir, dan penandanya.
  *
  * # Digulir menyamping, bukan dilipat
  *
@@ -48,7 +61,7 @@ type Props = {
  * mana saja yang tersedia — dan pada layar yang tabnya menentukan populasi baris, bukan
  * sekadar penyaring tampilan, itu menyembunyikan struktur layarnya sendiri.
  */
-export function TabBar({ tabs, active, onSelect, label }: Readonly<Props>) {
+export function TabBar({ tabs, active, onSelect, label, flexItems = true }: Readonly<Props>) {
   return (
     <div className="overflow-x-auto" role="tablist" aria-label={label}>
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
@@ -63,7 +76,9 @@ export function TabBar({ tabs, active, onSelect, label }: Readonly<Props>) {
               title={tab.keterangan}
               onClick={() => onSelect(tab.kode)}
               className={[
-                'flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5',
+                flexItems
+                  ? 'flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5'
+                  : 'rounded-t-kontrol border-b-2 px-3.5 py-2.5',
                 'text-sm font-medium whitespace-nowrap',
                 'transition-[color,border-color,background-color] duration-150 ease-halus',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
@@ -73,6 +88,11 @@ export function TabBar({ tabs, active, onSelect, label }: Readonly<Props>) {
               ].join(' ')}
             >
               {tab.nama}
+              {tab.badge ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-900">
+                  {tab.badge}
+                </span>
+              ) : null}
             </button>
           )
         })}

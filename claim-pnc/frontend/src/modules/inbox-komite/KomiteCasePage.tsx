@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { APIError, NetworkError } from '@/api/client'
@@ -177,6 +177,45 @@ export function KomiteCasePage() {
 }
 
 /**
+ * FactSection adalah kartu berjudul berisi daftar label–nilai dua kolom, diikuti isi
+ * tambahan bagian itu.
+ */
+function FactSection({
+  headingId,
+  title,
+  rows,
+  children,
+}: Readonly<{
+  headingId: string
+  title: string
+  rows: { label: string; value: string }[]
+  children?: ReactNode
+}>) {
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
+    >
+      <h2 id={headingId} className="text-base font-semibold text-slate-900">
+        {title}
+      </h2>
+
+      <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label} className="min-w-0 border-b border-slate-100 pb-2">
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              {row.label}
+            </dt>
+            <dd className="mt-0.5 truncate text-sm text-slate-900">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {children}
+    </section>
+  )
+}
+
+/**
  * Medan case dari daftar inbox (`InboxRegisterKomite_RD`) yang TIDAK ada di ClaimSheet.
  *
  * Nomor polis, tertanggung, bisnis, sumber bisnis, dan cabang sudah tergambar di kolom kiri
@@ -193,25 +232,7 @@ function CaseFacts({ item }: Readonly<{ item: KomiteCase }>) {
   ]
 
   return (
-    <section
-      aria-labelledby="judul-fakta-komite"
-      className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 id="judul-fakta-komite" className="text-base font-semibold text-slate-900">
-        Data kasus
-      </h2>
-
-      <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-        {rows.map((row) => (
-          <div key={row.label} className="min-w-0 border-b border-slate-100 pb-2">
-            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              {row.label}
-            </dt>
-            <dd className="mt-0.5 truncate text-sm text-slate-900">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-
+    <FactSection headingId="judul-fakta-komite" title="Data kasus" rows={rows}>
       {/*
         Keputusan yang tercatat DI PEGA ditampilkan terpisah dari data kasusnya, dan diberi
         nama yang menyebut asalnya. Selama masa paralel, keputusan Pega dan keputusan sistem
@@ -228,7 +249,7 @@ function CaseFacts({ item }: Readonly<{ item: KomiteCase }>) {
             : 'Belum ada keputusan yang tercatat.'}
         </p>
       </div>
-    </section>
+    </FactSection>
   )
 }
 
@@ -428,25 +449,7 @@ function ClaimSection({ klaim }: Readonly<{ klaim: NonNullable<KomiteTransferDet
   ]
 
   return (
-    <section
-      aria-labelledby="judul-klaim-komite"
-      className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 id="judul-klaim-komite" className="text-base font-semibold text-slate-900">
-        Klaim yang dikomitekan
-      </h2>
-
-      <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-        {rows.map((row) => (
-          <div key={row.label} className="min-w-0 border-b border-slate-100 pb-2">
-            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              {row.label}
-            </dt>
-            <dd className="mt-0.5 truncate text-sm text-slate-900">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-
+    <FactSection headingId="judul-klaim-komite" title="Klaim yang dikomitekan" rows={rows}>
       {/*
         Kronologi dan rekomendasi TIDAK dipotong: keduanya kalimat yang dibaca anggota
         komite saat memutuskan, dan potongan kalimat lebih buruk daripada kalimat panjang.
@@ -470,7 +473,7 @@ function ClaimSection({ klaim }: Readonly<{ klaim: NonNullable<KomiteTransferDet
           </p>
         </div>
       )}
-    </section>
+    </FactSection>
   )
 }
 

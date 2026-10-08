@@ -147,45 +147,89 @@ export async function callAPI<T>(path: string, options: RequestOptions = {}): Pr
   if (body !== undefined && !isForm) header['Content-Type'] = 'application/json'
   // Token dikirim di header, tidak pernah di URL: nilai di URL ikut tercatat di log
   // peramban, log proxy, dan header Referer.
-  if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  withSession(header, token, portal)
 
   let payload: BodyInit | null = null
   if (body !== undefined) payload = isForm ? body : JSON.stringify(body)
 
-  let response: Response
-  try {
-    response = await fetch(path, {
-      method: metode,
-      headers: header,
-      body: payload,
-    })
-  } catch {
-    throw new NetworkError()
-  }
+  const response = await send(path, {
+    method: metode,
+    headers: header,
+    body: payload,
+  })
 
   if (response.status === 204) return undefined as T
 
   const content = await readJSON(response)
-  if (!response.ok) {
-    // detail dan field dibaca sebagai unknown lalu diperiksa, bukan dipercaya
-    // bentuknya: badan galat datang dari jaringan, dan `as` tidak memeriksa apa pun
-    // saat berjalan.
-    const error = content as {
-      kode?: string
-      pesan?: string
-      detail?: unknown
-      field?: unknown
-    } | null
-    throw new APIError(
-      error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Terjadi kesalahan pada sistem.',
-      response.status,
-      Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
-      fieldMap(error?.field),
-    )
-  }
+  if (!response.ok) throw detailedError(content, response.status, 'Terjadi kesalahan pada sistem.')
   return content as T
+}
+
+/** Opsi sesi untuk permintaan berkas. */
+type SessionOptions = { token?: string | null; portal?: string | null }
+
+/**
+ * withSession menambahkan header Authorization dan X-Portal bila nilainya ada, lalu
+ * mengembalikan header yang sama.
+ */
+function withSession(
+  header: Record<string, string>,
+  token: string | null | undefined,
+  portal: string | null | undefined,
+): Record<string, string> {
+  if (token) header['Authorization'] = `Bearer ${token}`
+  if (portal) header[HEADER_PORTAL] = portal
+  return header
+}
+
+/** send memanggil fetch; kegagalan jaringan diubah menjadi NetworkError. */
+async function send(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init)
+  } catch {
+    throw new NetworkError()
+  }
+}
+
+/** Bentuk badan galat server: dibaca sebagai unknown lalu diperiksa. */
+type ErrorBody = {
+  kode?: string
+  pesan?: string
+  detail?: unknown
+  field?: unknown
+} | null
+
+/**
+ * detailedError menyusun APIError lengkap dengan pelanggaran per isian.
+ *
+ * detail dan field dibaca sebagai unknown lalu diperiksa, bukan dipercaya bentuknya:
+ * badan galat datang dari jaringan, dan `as` tidak memeriksa apa pun saat berjalan.
+ */
+function detailedError(content: unknown, status: number, fallback: string): APIError {
+  const error = content as ErrorBody
+  return new APIError(
+    error?.kode ?? ErrorCode.internalError,
+    error?.pesan ?? fallback,
+    status,
+    Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
+    fieldMap(error?.field),
+  )
+}
+
+/**
+ * fetchFile mengambil berkas dari rute terlindungi sesi dan portal. Galatnya hanya
+ * membawa kode dan pesan, dengan `fallback` bila server tidak menyebutkan pesannya.
+ */
+async function fetchFile(path: string, options: SessionOptions, fallback: string): Promise<Response> {
+  const header = withSession({}, options.token, options.portal)
+
+  const response = await send(path, { headers: header })
+
+  if (!response.ok) {
+    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
+    throw new APIError(error?.kode ?? ErrorCode.internalError, error?.pesan ?? fallback, response.status)
+  }
+  return response
 }
 
 /**
@@ -203,27 +247,9 @@ export async function callAPI<T>(path: string, options: RequestOptions = {}): Pr
 export async function downloadAPI(
   path: string,
   filename: string,
-  options: { token?: string | null; portal?: string | null } = {},
+  options: SessionOptions = {},
 ): Promise<void> {
-  const header: Record<string, string> = {}
-  if (options.token) header['Authorization'] = `Bearer ${options.token}`
-  if (options.portal) header[HEADER_PORTAL] = options.portal
-
-  let response: Response
-  try {
-    response = await fetch(path, { headers: header })
-  } catch {
-    throw new NetworkError()
-  }
-
-  if (!response.ok) {
-    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
-    throw new APIError(
-      error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Berkas tidak dapat diunduh.',
-      response.status,
-    )
-  }
+  const response = await fetchFile(path, options, 'Berkas tidak dapat diunduh.')
 
   const url = URL.createObjectURL(await response.blob())
   try {
@@ -262,27 +288,9 @@ export type BerkasDiambil = {
 
 export async function blobAPI(
   path: string,
-  options: { token?: string | null; portal?: string | null } = {},
+  options: SessionOptions = {},
 ): Promise<BerkasDiambil> {
-  const header: Record<string, string> = {}
-  if (options.token) header['Authorization'] = `Bearer ${options.token}`
-  if (options.portal) header[HEADER_PORTAL] = options.portal
-
-  let response: Response
-  try {
-    response = await fetch(path, { headers: header })
-  } catch {
-    throw new NetworkError()
-  }
-
-  if (!response.ok) {
-    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
-    throw new APIError(
-      error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Berkas tidak dapat dibuka.',
-      response.status,
-    )
-  }
+  const response = await fetchFile(path, options, 'Berkas tidak dapat dibuka.')
 
   const disposition = response.headers.get('Content-Disposition') ?? ''
   const namaCocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
@@ -326,30 +334,12 @@ export async function uploadAPI<T>(path: string, options: UploadOptions): Promis
   form.append('berkas', berkas)
   if (keterangan) form.append('keterangan', keterangan)
 
-  const header: Record<string, string> = { Accept: 'application/json' }
-  if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  const header = withSession({ Accept: 'application/json' }, token, portal)
 
-  let response: Response
-  try {
-    response = await fetch(path, { method: 'POST', headers: header, body: form })
-  } catch {
-    throw new NetworkError()
-  }
+  const response = await send(path, { method: 'POST', headers: header, body: form })
 
   const content = await readJSON(response)
-  if (!response.ok) {
-    const error = content as
-      | { kode?: string; pesan?: string; detail?: unknown; field?: unknown }
-      | null
-    throw new APIError(
-      error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Terjadi kesalahan pada sistem.',
-      response.status,
-      Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
-      fieldMap(error?.field),
-    )
-  }
+  if (!response.ok) throw detailedError(content, response.status, 'Terjadi kesalahan pada sistem.')
   return content as T
 }
 
@@ -410,41 +400,22 @@ export async function unduhBerkas(
 ): Promise<DownloadedFile> {
   const { metode = 'GET', body, token, portal } = options
 
-  const header: Record<string, string> = {}
-  if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  const header = withSession({}, token, portal)
   // Sebagian unduhan adalah tindakan (mis. Claim Face Sheet mencatat revisi), sehingga
   // metode dan badan JSON ikut dibawa; bawaannya tetap GET tanpa badan.
   if (body !== undefined) header['Content-Type'] = 'application/json'
 
-  let response: Response
-  try {
-    response = await fetch(path, {
-      method: metode,
-      headers: header,
-      body: body === undefined ? null : JSON.stringify(body),
-    })
-  } catch {
-    throw new NetworkError()
-  }
+  const response = await send(path, {
+    method: metode,
+    headers: header,
+    body: body === undefined ? null : JSON.stringify(body),
+  })
 
   if (!response.ok) {
     // Pelanggaran validasi ikut dibawa seperti callAPI — tanpa itu penolakan 422 hanya
     // terbaca "Validasi gagal", dan alasan sebenarnya (mis. Print DLA, Draft Persetujuan)
     // tidak pernah sampai ke layar.
-    const content = (await readJSON(response)) as {
-      kode?: string
-      pesan?: string
-      detail?: unknown
-      field?: unknown
-    } | null
-    throw new APIError(
-      content?.kode ?? ErrorCode.internalError,
-      content?.pesan ?? 'Berkas tidak dapat diunduh.',
-      response.status,
-      Array.isArray(content?.detail) ? (content.detail as FieldViolation[]) : [],
-      fieldMap(content?.field),
-    )
+    throw detailedError(await readJSON(response), response.status, 'Berkas tidak dapat diunduh.')
   }
 
   return {

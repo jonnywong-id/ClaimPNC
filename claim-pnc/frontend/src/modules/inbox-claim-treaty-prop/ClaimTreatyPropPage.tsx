@@ -1,20 +1,21 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 
-import { APIError, callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { type Column } from '@/components/DataTable'
 import { formatDate } from '@/components/format'
+import { ClaimNumberLink } from '@/components/inbox/ClaimNumberLink'
+import { CreateClaimButton } from '@/components/inbox/CreateClaimButton'
+import { InboxCheckbox } from '@/components/inbox/InboxCheckbox'
+import { BlockedNotice, NoteList, screenGate } from '@/components/inbox/InboxNotices'
+import { QueueTable } from '@/components/inbox/QueueTable'
+import { apiMessageOf, isISODate } from '@/components/inbox/messages'
+import { serverColumns } from '@/components/inbox/serverColumns'
 
 import { TreatyViewSelect } from './TreatyViewSelect'
 import { useClaimTreatyPropList, useClaimTreatyPropMetadata } from './api'
 import {
   EMPTY_FILTER,
   type FilterForm,
-  type PageInfo,
   type Tab,
   type TabColumn,
   type WorkItem,
@@ -95,32 +96,14 @@ export function ClaimTreatyPropPage() {
     setPage(1)
   }
 
-  if (portal === null) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Antrean klaim treaty milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
-
-  if (meta.isError) {
-    return (
-      <PageFrame>
-        <ErrorMessage
-          title="Layar tidak dapat dibuka"
-          description={messageOf(meta.error)}
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  const gate = screenGate({
+    portal,
+    subject: 'Antrean klaim treaty',
+    failed: meta.isError,
+    error: meta.error,
+    describe: apiMessageOf,
+  })
+  if (gate) return <PageFrame>{gate}</PageFrame>
 
   return (
     <PageFrame>
@@ -143,49 +126,25 @@ export function ClaimTreatyPropPage() {
               />
 
               <div className="mt-4">
-                <DataTable<WorkItem>
+                <QueueTable<WorkItem>
+                  query={list}
                   columns={columnsFor(tab)}
-                  rows={list.data?.baris ?? []}
                   rowKey={(row) => `${row.referensi}|${row.claim_id}`}
                   // Judul GRID, bukan teks pilihan dropdown. Keduanya tampil bersamaan
                   // dan berbunyi berbeda: dropdown "Prop Treaty-in Admin", grid "Work
                   // List Treatyin Propotional".
                   title={tab.judul_grid ?? tab.nama}
-                  // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA
-                  // halaman yang sedang terbuka, sehingga pengguna dapat diberi tahu
-                  // "tidak ada" untuk baris yang sebenarnya ada di halaman berikutnya.
-                  //
-                  // Layar lama pun tidak punya kotak cari: tak satu pun dari ketiga
-                  // kuerinya menyaring menurut kata kunci.
-                  hideSearch
-                  isLoading={list.isPending}
-                  error={
-                    list.isError ? (
-                      <ErrorMessage
-                        title="Antrean tidak dapat dimuat"
-                        description={messageOf(list.error)}
-                        tone="gangguan"
-                      />
-                    ) : undefined
-                  }
                   emptyMessage={emptyMessageFor(tab, filter)}
+                  onMove={setPage}
+                  describe={apiMessageOf}
                 />
-
-                {list.data && list.data.paginasi.total > 0 && (
-                  <Pagination
-                    info={list.data.paginasi}
-                    visible={list.data.baris.length}
-                    onMove={setPage}
-                    loading={list.isFetching}
-                  />
-                )}
               </div>
             </>
           )}
         </>
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
+      <NoteList lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -209,83 +168,20 @@ function PageFrame({ children }: Readonly<{ children: ReactNode }>) {
             lain (Ceding Co) kepada ASM sebagai penanggung ulang.
           </p>
         </div>
-        <CreateClaimButton />
+        {/*
+          Tombol "Create Claim Treaty Prop" DIGAMBAR meski belum membuat apa pun —
+          keputusan Work Owner 2026-09-21. Di sistem lama ia memanggil
+          `CreateInputKlaimTreaty`.
+        */}
+        <CreateClaimButton
+          path="/api/inbox-claim-treaty-prop/klaim"
+          label="Create Claim Treaty Prop"
+          readyNotice="Pembuatan klaim treaty sudah tersedia. Muat ulang layar ini."
+          describe={apiMessageOf}
+          gapClassName="gap-2"
+        />
       </header>
       {children}
-    </div>
-  )
-}
-
-/**
- * Tombol "Create Claim Treaty Prop".
- *
- * Ia DIGAMBAR meski belum membuat apa pun — keputusan Work Owner 2026-09-21. Di sistem
- * lama ia memanggil `CreateInputKlaimTreaty`, yang membuat objek kerja baru di tabel yang
- * selama masa paralel masih dimiliki Pega (`P-1`).
- *
- * Menyembunyikannya akan membuat pengguna mengira fiturnya hilang; menghidupkannya akan
- * membuat dua sistem menulis tabel yang sama. Yang dilakukan tombol ini adalah bertanya ke
- * server lalu menampilkan jawabannya — sehingga alasannya datang dari satu tempat, dan
- * hilang dengan sendirinya begitu kepemilikan tabelnya berpindah.
- */
-function CreateClaimButton() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const [notice, setNotice] = useState('')
-  const [asking, setAsking] = useState(false)
-
-  async function ask() {
-    setAsking(true)
-    try {
-      await callAPI('/api/inbox-claim-treaty-prop/klaim', {
-        metode: 'POST',
-        token,
-        portal,
-      })
-      // Jalur ini tercapai hanya bila server SUDAH dapat membuat klaim. Selama itu belum
-      // terjadi, ia tidak pernah berjalan — dan bila kelak berjalan, pesan di bawah yang
-      // pertama memberi tahu bahwa perilakunya berubah.
-      setNotice('Pembuatan klaim treaty sudah tersedia. Muat ulang layar ini.')
-    } catch (error) {
-      setNotice(messageOf(error))
-    } finally {
-      setAsking(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-2">
-      <Button tone="utama" onClick={ask} disabled={asking || portal === null}>
-        Create Claim Treaty Prop
-      </Button>
-      {notice !== '' && (
-        <output className="block max-w-md text-right text-xs text-amber-900">
-          {notice}
-        </output>
-      )}
-    </div>
-  )
-}
-
-/**
- * Keterangan tab yang digambar tetapi belum dapat diisi.
- *
- * Alasan dan pemiliknya datang dari SERVER, bukan ditulis tetap di sini, supaya keduanya
- * hilang dengan sendirinya begitu penghalangnya hilang. Menyebut pemiliknya penting:
- * penghalang tanpa alamat tidak pernah hilang.
- */
-function BlockedNotice({ tab }: Readonly<{ tab: Tab }>) {
-  return (
-    <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
-      <h2 className="text-sm font-semibold text-amber-900">
-        {tab.nama} belum tersedia
-      </h2>
-      <p className="mt-2 text-sm text-slate-700">{tab.alasan_terhalang}</p>
-      {tab.pemilik_penghalang && (
-        <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium">Menunggu:</span> {tab.pemilik_penghalang}
-        </p>
-      )}
     </div>
   )
 }
@@ -311,15 +207,7 @@ function FilterBar({
   return (
     <div className="mt-4 flex flex-wrap items-center gap-4">
       {tab.pakai_lihat_semua && (
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={seeAll}
-            onChange={(event) => onSeeAll(event.target.checked)}
-            className="size-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
-          />
-          <span>See All Claim</span>
-        </label>
+        <InboxCheckbox label="See All Claim" checked={seeAll} onChange={onSeeAll} />
       )}
 
       {tab.hanya_milik_saya && !seeAll && (
@@ -338,133 +226,16 @@ function FilterBar({
 }
 
 /**
- * Nomor klaim sebagai tautan ke layar Outstanding Claim.
- *
- * Di Pega produksi, mengklik Claim ID menjalankan Flow Action `OutstandingClaim` dan
- * menggambar `Section/OutstandingClaim-Section.xml`. Di sini ia tautan biasa ke rute yang
- * melayani layar itu.
- *
- * # Yang dikirim adalah nomor klaim, bukan kunci teknis Pega
- *
- * Alamatnya terbaca orang (`/outstanding-claim/CLMP-70`), dapat disalin ke percakapan, dan
- * tidak membocorkan bentuk kunci internal Pega ke bilah alamat. Kunci teknisnya tetap
- * dikirim server pada setiap baris, sehingga beralih memakainya kelak tidak menuntut
- * perubahan kontrak.
- *
- * # Baris tanpa nomor klaim tidak menjadi tautan
- *
- * Tautan yang alamatnya kosong tetap dapat diklik dan membawa pengguna ke layar yang pasti
- * gagal. Yang digambar untuk baris seperti itu adalah tanda pisah yang sama dengan sel
- * kosong lain.
- */
-function ClaimIDLink({ item }: Readonly<{ item: WorkItem }>) {
-  if (item.claim_id === '') return <span className="text-slate-400">—</span>
-
-  return (
-    <Link
-      to={`/outstanding-claim/${encodeURIComponent(item.claim_id)}`}
-      className={[
-        'font-medium text-blue-700 underline-offset-2 hover:underline',
-        'focus:outline-none focus-visible:rounded-kontrol',
-        'focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
-    >
-      {item.claim_id}
-    </Link>
-  )
-}
-
-/**
- * Paginasi "sebelumnya / berikutnya", bukan nomor halaman.
- *
- * Bentuknya sama dengan Inbox Admin dan Pelaporan Klaim supaya ketiganya tidak terasa
- * dirakit dari tiga aplikasi berbeda.
- */
-function Pagination({
-  info,
-  visible,
-  onMove,
-  loading,
-}: Readonly<{
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
-}>) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <output className="block text-sm text-slate-600">
-        Menampilkan {first}–{last} dari {info.total} baris.
-      </output>
-      <div className="flex gap-2">
-        <Button
-          tone="kedua"
-          onClick={() => onMove(Math.max(1, info.halaman - 1))}
-          disabled={info.halaman <= 1 || loading}
-        >
-          Sebelumnya
-        </Button>
-        <Button
-          tone="kedua"
-          onClick={() => onMove(info.halaman + 1)}
-          disabled={info.halaman >= info.total_halaman || loading}
-        >
-          Berikutnya
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, kolom
- * "Date Of Loss" yang kini terisi dan tombol pembuat klaim yang menolak akan dilaporkan
- * berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar berdampingan.
- */
-function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
  * SELURUH kolom datang dari server, tanpa kolom aksi tambahan di ujung. Yang membawa
- * pengguna ke rincian klaim adalah nomor klaim di kolom pertama — lihat ClaimIDLink.
- *
- * Kolom pertama itu tetap punya `value` berupa teks polos. `Column.value` adalah yang
- * dicari dan diurutkan, sedangkan `render` yang dilihat; menyatukannya akan membuat
- * pengurutan menelusuri markup tautannya, bukan nomornya.
+ * pengguna ke rincian klaim adalah nomor klaim di kolom pertama: di Pega produksi,
+ * mengklik Claim ID menjalankan Flow Action `OutstandingClaim` dan menggambar
+ * `Section/OutstandingClaim-Section.xml`, yang di sini dilayani modul `outstanding-claim`.
  */
 function columnsFor(tab: Tab): Column<WorkItem>[] {
-  return tab.kolom.map((column) => {
-    const base: Column<WorkItem> = {
-      key: column.kunci,
-      title: column.judul,
-      value: (row) => cellText(row, column),
-    }
-
-    if (column.kunci === 'claim_id') {
-      return { ...base, render: (row) => <ClaimIDLink item={row} /> }
-    }
-    return base
+  return serverColumns<WorkItem, TabColumn>(tab.kolom, cellText, {
+    claim_id: (row) => <ClaimNumberLink value={row.claim_id} basePath="/outstanding-claim" />,
   })
 }
 
@@ -484,12 +255,7 @@ function cellText(row: WorkItem, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return isISODate(text) ? formatDate(text) : text
 }
 
 /**
@@ -507,10 +273,4 @@ function emptyMessageFor(tab: Tab, filter: FilterForm): string {
     )
   }
   return 'Antrean ini sedang kosong.'
-}
-
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
 }

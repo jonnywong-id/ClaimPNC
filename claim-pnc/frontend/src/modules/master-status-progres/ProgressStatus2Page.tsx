@@ -1,11 +1,8 @@
-import { useState } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ProgressStatus2 } from '@/api/types'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import type { ProgressStatus2 } from '@/api/types'
 import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
 import { useSelectedPortal } from '@/app/portal'
+import { MasterListLayout, editColumn } from '@/components/masterpage/MasterPage'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
 
 import {
   useCreateProgressStatus2,
@@ -14,48 +11,6 @@ import {
   useUpdateProgressStatus2,
 } from './api2'
 import { ProgressStatus2Form, type ProgressStatus2Fields } from './ProgressStatus2Form'
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
-}
 
 /**
  * Layar Master Status Progres 2.
@@ -102,16 +57,8 @@ function loadMessage(error: unknown): MessageContent {
  * `TempUpdateStatus2`, bukan baris grid. Ia tetap dibaca dan tetap dikirim pada respons
  * API; yang dihapus hanyalah kolomnya.
  */
-/** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
-/** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
-
-type FormState = typeof CLOSED | typeof CREATE | ProgressStatus2
-
 export function ProgressStatus2Page() {
   const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
 
   const list = useProgressStatus2List()
   const parents = useProgressStatus2ParentList()
@@ -119,40 +66,13 @@ export function ProgressStatus2Page() {
   const update = useUpdateProgressStatus2()
 
   // Keadaan form memikul tiga hal sekaligus — tertutup, tambah, atau baris yang sedang
-  // disunting — mengikuti pola tingkat 1. Menyimpannya sebagai dua state terpisah
-  // (`isOpen` + `edited`) membuka keadaan yang tidak masuk akal: terbuka tanpa mode.
-  const edited = typeof form === 'string' ? null : form
-  const isSaving = create.isPending || update.isPending
-  const saveError = edited ? update.error : create.error
-
-  function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
-  }
-
-  function openEdit(row: ProgressStatus2) {
-    create.reset()
-    update.reset()
-    setForm(row)
-  }
-
-  function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
-  }
-
-  function save(values: ProgressStatus2Fields) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
-    // diketik, itu berarti mengetik ulang dari awal.
-    if (edited) {
-      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
+  // disunting — mengikuti pola tingkat 1 (lihat useCrudForm).
+  const form = useCrudForm(create, update, (row: ProgressStatus2, input: ProgressStatus2Fields) => ({
+    id: row.id,
+    input,
+  }))
+  const edited = form.openedRow
+  const { openEdit, closeForm } = form
 
   // Susunan kolom mengikuti grid Pega APA ADANYA, terbaca dari header
   // `Section/BrowseStatusProgress2-Section.xml`:
@@ -196,108 +116,47 @@ export function ProgressStatus2Page() {
       render: (row) => <span>{row.nama_induk}</span>,
     },
     { key: 'nama', title: 'Status Progres 2', value: (row) => row.nama },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    // Tombol Ubah memakai posisi kolom tanpa judul yang memuat tombol Update pada grid Pega.
+    editColumn<ProgressStatus2>({
+      onEdit: openEdit,
       width: 'w-24',
-      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
-      // tombol, bukan data. Posisinya paling kanan, sama seperti kolom tanpa judul yang
-      // memuat tombol Update pada grid Pega.
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
-          Ubah
-        </Button>
-      ),
-    },
+      ariaLabel: (row) => `Ubah ${row.nama}`,
+    }),
   ]
 
-  // Isi bagian daftar menurut keadaan portal dan kueri.
-  function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar status progres 2…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={list.data.status_progres_2}
-        rowKey={(row) => row.id}
-        description="Sumber: POOLDATA.GCNM_MST_PROGRESS"
-        emptyMessage="Belum ada status progres 2 pada entitas ini."
-        // 15 baris per halaman, sama seperti layar lama. Angkanya dibaca dari section
-        // MILIK LAYAR INI, bukan disalin dari tingkat 1:
-        // `Section/BrowseStatusProgress2-Section.xml` menyisipkan `pyGridPaginator`
-        // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Kebetulan sama
-        // dengan tingkat 1 — dan kebetulan itu diperiksa, bukan diandaikan.
-        pageSize={15}
-      />
-    )
-  }
-
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Status Progres 2</h1>
-          <p className="text-sm text-slate-600">
-            Rincian status progres di bawah setiap Status Progres 1.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-          <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
-            Tambah
-          </Button>
-        </div>
-      </header>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
-          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
-          diandaikan pengguna (ADR-0030, R-20). */}
-      <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-      </p>
-
-      {form !== CLOSED && (
-        <section className="mt-5">
-          <ProgressStatus2Form
-            edited={edited}
-            parents={parents.data?.induk ?? []}
-            isSaving={isSaving}
-            error={saveError}
-            onSave={save}
-            onCancel={closeForm}
-          />
-        </section>
+    <MasterListLayout
+      title="Master Status Progres 2"
+      description="Rincian status progres di bawah setiap Status Progres 1."
+      query={list}
+      portal={portal}
+      crud={form}
+      form={
+        <ProgressStatus2Form
+          edited={edited}
+          parents={parents.data?.induk ?? []}
+          isSaving={form.isSaving}
+          error={form.saveError}
+          onSave={form.submit}
+          onCancel={closeForm}
+        />
+      }
+      loadingText="Memuat daftar status progres 2…"
+      renderTable={(data) => (
+        <DataTable
+          columns={columns}
+          rows={data.status_progres_2}
+          rowKey={(row) => row.id}
+          description="Sumber: POOLDATA.GCNM_MST_PROGRESS"
+          emptyMessage="Belum ada status progres 2 pada entitas ini."
+          // 15 baris per halaman, sama seperti layar lama. Angkanya dibaca dari section
+          // MILIK LAYAR INI, bukan disalin dari tingkat 1:
+          // `Section/BrowseStatusProgress2-Section.xml` menyisipkan `pyGridPaginator`
+          // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Kebetulan sama
+          // dengan tingkat 1 — dan kebetulan itu diperiksa, bukan diandaikan.
+          pageSize={15}
+        />
       )}
-
-      <section className="mt-6">
-        {renderList()}
-      </section>
-    </main>
+    />
   )
 }

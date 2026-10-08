@@ -1,14 +1,20 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError } from '@/api/client'
 import { ErrorCode, type Masking } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon, ShieldIcon } from '@/components/Icon'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { EditIcon, ShieldIcon } from '@/components/Icon'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
 import { SelectField } from '@/components/SelectField'
 import { Field } from '@/components/Field'
 import { Button } from '@/components/Button'
 import { useSelectedPortal } from '@/app/portal'
+import { refreshLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import {
+  MasterDataLayout,
+  MessageBox,
+  RefreshAddActions,
+} from '@/components/masterpage/MasterPage'
 
 import {
   MaskingStatus,
@@ -280,184 +286,154 @@ export function MaskingPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
-          <ol className="flex items-center gap-1.5">
-            <li>Master Data</li>
-            <li aria-hidden="true" className="text-slate-300">
-              /
-            </li>
-            <li className="text-slate-700">Masking</li>
-          </ol>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master Masking</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Kewenangan melihat data pribadi nasabah tanpa disamarkan — nomor KTP, alamat
-          surel, dan nomor telepon — beserta batas berapa banyak data yang boleh dicari dan
-          dilihat setiap pengguna.
-        </p>
-
-        {/*
-          Peringatan ini bukan hiasan. Isi layar ini menentukan siapa yang dapat membuka
-          data pribadi nasabah, dan `D-59` menetapkan tidak ada pemisahan tugas formal —
-          jejak audit adalah satu-satunya kontrol pengimbang yang tersisa.
-        */}
-        <div className="mt-4 flex gap-3 rounded-kartu border border-amber-200 bg-amber-50/70 px-4 py-3">
-          <ShieldIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-xs leading-relaxed text-amber-900">
-            Setiap perubahan di layar ini mengubah siapa yang dapat membuka data pribadi
-            nasabah, dan tercatat lengkap dengan nama pelakunya. Berikan kewenangan
-            seperlunya saja.
-          </p>
-        </div>
-
-        {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-            empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
-            hanya diandaikan pengguna (ADR-0030, R-20). */}
-        <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </p>
-      </header>
-
-      {formOpen && (
-        <div className="mb-6">
-          <MaskingForm masking={beingEdited} onClose={closeForm} />
-        </div>
-      )}
-
-      {portal === null ? (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu."
-          tone="penolakan"
-        />
-      ) : (
+    <MasterDataLayout
+      maxWidth="max-w-7xl"
+      crumb="Masking"
+      title="Master Masking"
+      description={
+        'Kewenangan melihat data pribadi nasabah tanpa disamarkan — nomor KTP, alamat ' +
+        'surel, dan nomor telepon — beserta batas berapa banyak data yang boleh dicari dan ' +
+        'dilihat setiap pengguna.'
+      }
+      headerNote={
         <>
           {/*
-            Panel pencarian meniru bagian CARI DATA layar lama: satu pilihan tipe dan satu
-            kotak kata kunci. Bedanya, kata kunci di sini dikirim sebagai PARAMETER —
-            bukan dirangkai ke dalam teks SQL seperti `{ASIS:InputSearch.CARI1}`.
+            Peringatan ini bukan hiasan. Isi layar ini menentukan siapa yang dapat membuka
+            data pribadi nasabah, dan `D-59` menetapkan tidak ada pemisahan tugas formal —
+            jejak audit adalah satu-satunya kontrol pengimbang yang tersisa.
           */}
-          <form
-            className="mb-4 rounded-kartu border border-slate-200 bg-white p-4 shadow-sm"
-            onSubmit={(event) => {
-              event.preventDefault()
-              search()
-            }}
-            aria-label="Cari data masking"
-          >
-            <div className="grid items-end gap-4 sm:grid-cols-[14rem_1fr_auto]">
-              {/*
-                Keempat pilihannya sama dengan `SearchData.Type` layar lama. Pilihan
-                "semua" memakai opsi kosong bawaan SelectField — itu memang artinya:
-                belum menyaring apa pun.
-              */}
+          <div className="mt-4 flex gap-3 rounded-kartu border border-amber-200 bg-amber-50/70 px-4 py-3">
+            <ShieldIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-xs leading-relaxed text-amber-900">
+              Setiap perubahan di layar ini mengubah siapa yang dapat membuka data pribadi
+              nasabah, dan tercatat lengkap dengan nama pelakunya. Berikan kewenangan
+              seperlunya saja.
+            </p>
+          </div>
+        </>
+      }
+      portalLabel={list.data?.portal ?? portal}
+      form={formOpen && <MaskingForm masking={beingEdited} onClose={closeForm} />}
+      portal={portal}
+    >
+      <>
+        {/*
+          Panel pencarian meniru bagian CARI DATA layar lama: satu pilihan tipe dan satu
+          kotak kata kunci. Bedanya, kata kunci di sini dikirim sebagai PARAMETER —
+          bukan dirangkai ke dalam teks SQL seperti `{ASIS:InputSearch.CARI1}`.
+        */}
+        <form
+          className="mb-4 rounded-kartu border border-slate-200 bg-white p-4 shadow-sm"
+          onSubmit={(event) => {
+            event.preventDefault()
+            search()
+          }}
+          aria-label="Cari data masking"
+        >
+          <div className="grid items-end gap-4 sm:grid-cols-[14rem_1fr_auto]">
+            {/*
+              Keempat pilihannya sama dengan `SearchData.Type` layar lama. Pilihan
+              "semua" memakai opsi kosong bawaan SelectField — itu memang artinya:
+              belum menyaring apa pun.
+            */}
+            <SelectField
+              id="cariDi"
+              label="Tipe Pencarian"
+              emptyText="Semua data"
+              options={[
+                { value: 'cabang', label: 'Nama cabang' },
+                { value: 'login', label: 'Nama pengguna' },
+                { value: 'status', label: 'Status aktif' },
+              ]}
+              value={typeDraft}
+              onChange={(event) => {
+                setTypeDraft(event.target.value as SearchBy)
+                setSearchWarning('')
+              }}
+            />
+
+            {/*
+              Kontrol nilainya BERGANTI menurut tipe, persis seperti layar lama:
+              `SearchData.Type=='2'||SearchData.Type=='3'` menampilkan kotak teks, dan
+              `SearchData.Type=='4'` menampilkan dropdown status.
+            */}
+            {typeDraft === 'status' ? (
               <SelectField
-                id="cariDi"
-                label="Tipe Pencarian"
-                emptyText="Semua data"
+                id="statusPencarian"
+                label="Status Aktif"
+                // Teks kosongnya diambil apa adanya dari layar lama, yang memakai kalimat
+                // yang sama sebagai pesan bila status belum dipilih.
+                emptyText="Pilih Status Aktif"
                 options={[
-                  { value: 'cabang', label: 'Nama cabang' },
-                  { value: 'login', label: 'Nama pengguna' },
-                  { value: 'status', label: 'Status aktif' },
+                  { value: MaskingStatus.aktif, label: 'AKTIF' },
+                  { value: MaskingStatus.tidakAktif, label: 'TIDAK AKTIF' },
                 ]}
-                value={typeDraft}
+                error={searchWarning || undefined}
+                value={statusDraft}
                 onChange={(event) => {
-                  setTypeDraft(event.target.value as SearchBy)
+                  setStatusDraft(event.target.value)
                   setSearchWarning('')
                 }}
               />
-
-              {/*
-                Kontrol nilainya BERGANTI menurut tipe, persis seperti layar lama:
-                `SearchData.Type=='2'||SearchData.Type=='3'` menampilkan kotak teks, dan
-                `SearchData.Type=='4'` menampilkan dropdown status.
-              */}
-              {typeDraft === 'status' ? (
-                <SelectField
-                  id="statusPencarian"
-                  label="Status Aktif"
-                  // Teks kosongnya diambil apa adanya dari layar lama, yang memakai kalimat
-                  // yang sama sebagai pesan bila status belum dipilih.
-                  emptyText="Pilih Status Aktif"
-                  options={[
-                    { value: MaskingStatus.aktif, label: 'AKTIF' },
-                    { value: MaskingStatus.tidakAktif, label: 'TIDAK AKTIF' },
-                  ]}
-                  error={searchWarning || undefined}
-                  value={statusDraft}
-                  onChange={(event) => {
-                    setStatusDraft(event.target.value)
-                    setSearchWarning('')
-                  }}
-                />
-              ) : (
-                <Field
-                  id="kataKunci"
-                  label="Nama Pencarian"
-                  placeholder={
-                    typeDraft === ''
-                      ? 'Tidak dipakai untuk pencarian semua data'
-                      : 'Ketik sebagian nama, lalu tekan Cari'
-                  }
-                  disabled={typeDraft === ''}
-                  value={keywordDraft}
-                  onChange={(event) => setKeywordDraft(event.target.value)}
-                />
-              )}
-
-              <Button tone="utama" type="submit">
-                Cari
-              </Button>
-            </div>
-          </form>
-
-          {setStatus.isError && (
-            <div className="mb-4">
-              <ErrorMessage
-                title="Status tidak dapat diubah"
-                description={
-                  setStatus.error instanceof APIError
-                    ? setStatus.error.message
-                    : 'Periksa koneksi lalu coba lagi.'
+            ) : (
+              <Field
+                id="kataKunci"
+                label="Nama Pencarian"
+                placeholder={
+                  typeDraft === ''
+                    ? 'Tidak dipakai untuk pencarian semua data'
+                    : 'Ketik sebagian nama, lalu tekan Cari'
                 }
-                tone="gangguan"
+                disabled={typeDraft === ''}
+                value={keywordDraft}
+                onChange={(event) => setKeywordDraft(event.target.value)}
               />
-            </div>
-          )}
+            )}
 
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(m) => m.id}
-            title="Daftar Masking Data"
-            description={
-              list.data
-                ? `${list.data.total} data masking pada entitas ini.`
-                : 'Memuat data masking…'
-            }
-            searchLabel="Saring daftar yang sedang tampil"
-            emptyMessage="Tidak ada data masking yang cocok."
-            isLoading={list.isPending}
-            error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-            actions={
-              <>
-                <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-                  <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                  {list.isFetching ? 'Memuat…' : 'Refresh'}
-                </Button>
-                <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
-                  <AddIcon className="h-4 w-4" />
-                  Tambah
-                </Button>
-              </>
-            }
-          />
-        </>
-      )}
-    </div>
+            <Button tone="utama" type="submit">
+              Cari
+            </Button>
+          </div>
+        </form>
+
+        {setStatus.isError && (
+          <div className="mb-4">
+            <ErrorMessage
+              title="Status tidak dapat diubah"
+              description={
+                setStatus.error instanceof APIError
+                  ? setStatus.error.message
+                  : 'Periksa koneksi lalu coba lagi.'
+              }
+              tone="gangguan"
+            />
+          </div>
+        )}
+
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(m) => m.id}
+          title="Daftar Masking Data"
+          description={
+            list.data
+              ? `${list.data.total} data masking pada entitas ini.`
+              : 'Memuat data masking…'
+          }
+          searchLabel="Saring daftar yang sedang tampil"
+          emptyMessage="Tidak ada data masking yang cocok."
+          isLoading={list.isPending}
+          error={list.isError ? <MessageBox message={loadMessage(list.error)} /> : undefined}
+          actions={
+            <RefreshAddActions
+              query={list}
+              onAdd={openAdd}
+              addDisabled={formOpen && !beingEdited}
+            />
+          }
+        />
+      </>
+    </MasterDataLayout>
   )
 }
 
@@ -540,57 +516,20 @@ function Permission({ label, allowed }: Readonly<{ label: string; allowed: boole
  * Gagal memuat dibedakan dari gagal menyimpan.
  *
  * Yang di sini selalu bernada gangguan: pengguna belum melakukan apa pun yang dapat salah
- * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
+ * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri,
+ * dan tipe pencarian yang tidak dikenal server.
  */
-function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  const message = loadMessage(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-}
-
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Data masking belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
-  }
-
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      case ErrorCode.malformedRequest:
-        return {
-          title: 'Pencarian tidak dapat dijalankan',
-          description: 'Pilih tipe pencarian berdasarkan nama cabang atau nama pengguna.',
-          tone: 'penolakan',
-        }
-      default:
-        return {
-          title: 'Data masking gagal dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-
-  return {
-    title: 'Data masking gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+function loadMessage(error: unknown): MessageContent {
+  return refreshLoadMessage(error, {
+    subject: 'Data masking',
+    failedTitle: 'Data masking gagal dimuat',
+    extra: (e) =>
+      e.kode === ErrorCode.malformedRequest
+        ? {
+            title: 'Pencarian tidak dapat dijalankan',
+            description: 'Pilih tipe pencarian berdasarkan nama cabang atau nama pengguna.',
+            tone: 'penolakan',
+          }
+        : undefined,
+  })
 }

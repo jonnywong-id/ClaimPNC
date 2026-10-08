@@ -1,13 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError } from '@/api/client'
 import { ErrorCode, type SurveyorType } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import {
+  PanelCodeAndField,
+  PanelFormActions,
+  PanelFormFrame,
+  PanelSaveErrorMessage,
+  panelCodeTakenMessage,
+  panelPortalMessages,
+} from '@/components/masterform/PanelForm'
+import type { CodeMessages } from '@/components/masterform/saveErrorMessage'
 
 import { useSaveSurveyorType } from './api'
 
@@ -66,7 +72,6 @@ type Props = {
 export function SurveyorTypeForm({ surveyorType, onClose }: Readonly<Props>) {
   const save = useSaveSurveyorType()
   const editing = surveyorType !== null
-  const firstField = useRef<HTMLInputElement | null>(null)
 
   const {
     register,
@@ -78,12 +83,6 @@ export function SurveyorTypeForm({ surveyorType, onClose }: Readonly<Props>) {
     defaultValues: { deskripsi: surveyorType?.deskripsi ?? '' },
   })
 
-  // Fokus dipindahkan ke isian pertama saat form terbuka. Tanpa ini, pengguna papan ketik
-  // harus menekan Tab berkali-kali dari awal halaman untuk mencapainya.
-  useEffect(() => {
-    firstField.current?.focus()
-  }, [])
-
   // Pelanggaran yang dilaporkan server disorot pada isiannya, bukan hanya diringkas di
   // kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan itu hanya
   // berguna bila layar menyorotnya di tempat isiannya.
@@ -92,8 +91,6 @@ export function SurveyorTypeForm({ surveyorType, onClose }: Readonly<Props>) {
     const violation = save.error.violations()['deskripsi']
     if (violation) setError('deskripsi', { type: 'server', message: violation })
   }, [save.error, setError])
-
-  const { ref: refDescription, ...remainingDescription } = register('deskripsi')
 
   function send(values: FieldValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
@@ -104,196 +101,68 @@ export function SurveyorTypeForm({ surveyorType, onClose }: Readonly<Props>) {
     )
   }
 
+  // Panel muncul di atas tabel, bukan sebagai dialog melayang: pengguna sering perlu
+  // melihat tipe lain yang sudah ada untuk memastikan nama yang diketiknya tidak
+  // bertabrakan (lihat PanelFormFrame).
   return (
-    /*
-      Panel ini muncul di atas tabel, bukan sebagai dialog melayang.
-
-      Alasannya praktis: pengguna sering perlu melihat tipe lain yang sudah ada untuk
-      memastikan nama yang diketiknya tidak bertabrakan — dan dialog yang menutup layar
-      justru menyembunyikan jawabannya. Garis aksen di tepi kiri menandai bahwa panel ini
-      keadaan sementara, bukan bagian tetap halaman.
-    */
-    <form
+    <PanelFormFrame
       onSubmit={handleSubmit(send)}
-      noValidate
-      className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
-      aria-label={editing ? 'Ubah tipe surveyor' : 'Tambah tipe surveyor'}
+      ariaLabel={editing ? 'Ubah tipe surveyor' : 'Tambah tipe surveyor'}
+      title={editing ? 'Ubah Tipe Surveyor' : 'Tambah Tipe Surveyor'}
+      subtitle={
+        editing
+          ? 'Hanya nama tipe yang dapat diubah. Kode tetap, karena data surveyor menyimpannya.'
+          : 'Kode dibuat sistem setelah disimpan, melanjutkan nomor terakhir.'
+      }
     >
-      <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">
-          {editing ? 'Ubah Tipe Surveyor' : 'Tambah Tipe Surveyor'}
-        </h3>
-        <p className="mt-1 text-sm text-slate-600">
-          {editing
-            ? 'Hanya nama tipe yang dapat diubah. Kode tetap, karena data surveyor menyimpannya.'
-            : 'Kode dibuat sistem setelah disimpan, melanjutkan nomor terakhir.'}
-        </p>
-      </div>
+      {save.isError && <PanelSaveErrorMessage error={save.error} messages={saveMessages} />}
 
-      <div className="space-y-5 p-5">
-        {save.isError && <SaveErrorMessage error={save.error} />}
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <span className="block text-sm font-medium text-slate-700">Kode</span>
-            {/*
-              Kode digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
-              dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
-              mengkliknya; kotak ini jelas bukan tempat mengetik.
-            */}
-            <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-500">
-              {surveyorType?.kode ?? 'Dibuat sistem'}
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Kode tidak dapat disunting, sama seperti di sistem lama.
-            </p>
-          </div>
-
-          <Field
-            id="deskripsi"
-            label="Tipe Surveyor"
-            placeholder="Contoh: LOSS ADJUSTER"
-            maxLength={MAX_DESCRIPTION_LENGTH}
-            autoComplete="off"
-            hint={`Paling panjang ${MAX_DESCRIPTION_LENGTH} karakter, dan belum dipakai tipe lain.`}
-            error={errors.deskripsi?.message}
-            disabled={save.isPending}
-            {...remainingDescription}
-            ref={(element) => {
-              refDescription(element)
-              firstField.current = element
-            }}
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
-          <Button type="submit" tone="utama" disabled={save.isPending}>
-            {save.isPending && <Spinner />}
-            {save.isPending ? 'Menyimpan…' : 'Simpan'}
-          </Button>
-          <Button tone="halus" onClick={onClose} disabled={save.isPending}>
-            Batal
-          </Button>
-        </div>
-      </div>
-    </form>
-  )
-}
-
-/** Pemutar kecil pada tombol yang sedang bekerja. */
-function Spinner() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 animate-spin">
-      <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
-      <path
-        d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
+      <PanelCodeAndField
+        codeLabel="Kode"
+        codeValue={surveyorType?.kode}
+        id="deskripsi"
+        label="Tipe Surveyor"
+        placeholder="Contoh: LOSS ADJUSTER"
+        maxLength={MAX_DESCRIPTION_LENGTH}
+        hint={`Paling panjang ${MAX_DESCRIPTION_LENGTH} karakter, dan belum dipakai tipe lain.`}
+        error={errors.deskripsi?.message}
+        disabled={save.isPending}
+        registration={register('deskripsi')}
       />
-    </svg>
+
+      <PanelFormActions isPending={save.isPending} onCancel={onClose} />
+    </PanelFormFrame>
   )
 }
 
 /**
- * Galat simpan dibedakan menurut KODE-nya, bukan teks pesannya.
- *
- * Jenisnya menuntut tindak lanjut berbeda: nama yang bentrok dapat diperbaiki pengguna,
- * portal yang belum dipilih diperbaiki di bilah atas, dan gangguan sistem tidak dapat
- * ditolong dengan mencoba ulang berkali-kali.
+ * Galat simpan dibedakan menurut KODE-nya, bukan teks pesannya: nama yang bentrok dapat
+ * diperbaiki pengguna, portal yang belum dipilih diperbaiki di bilah atas, dan gangguan
+ * sistem tidak dapat ditolong dengan mencoba ulang berkali-kali.
  */
-function SaveErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  if (error instanceof NetworkError) {
-    return (
-      <ErrorMessage
-        title="Tidak dapat menghubungi server"
-        description="Perubahan belum tersimpan. Periksa koneksi lalu coba lagi."
-        tone="gangguan"
-      />
-    )
-  }
-
-  if (!(error instanceof APIError)) {
-    return (
-      <ErrorMessage
-        title="Gagal menyimpan"
-        description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
-        tone="gangguan"
-      />
-    )
-  }
-
-  const message = parse(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-}
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function parse(error: APIError): MessageContent | null {
-  switch (error.kode) {
-    case ErrorCode.surveyorTypeTaken:
-      return {
-        title: 'Nama tipe surveyor sudah dipakai',
-        description: 'Sudah ada tipe dengan nama itu di entitas ini. Pakai nama lain.',
-        tone: 'penolakan',
-      }
-
-    case ErrorCode.validationFailed:
-      // Bila detailnya ada, isiannya sudah disorot di tempatnya; kotak pesan hanya akan
-      // mengulang hal yang sama.
-      return Object.keys(error.violations()).length > 0
-        ? null
-        : {
-            title: 'Isian belum benar',
-            description: error.message,
-            tone: 'penolakan',
-          }
-
-    case ErrorCode.surveyorTypeNotFound:
-      return {
-        title: 'Tipe surveyor tidak ditemukan',
-        description: 'Baris ini mungkin sudah diubah petugas lain. Muat ulang daftarnya.',
-        tone: 'penolakan',
-      }
-
-    case ErrorCode.surveyorTypeCodeTaken:
-      return {
-        title: 'Kode bentrok',
-        description: 'Kode yang dibuat sistem sudah dipakai. Coba simpan sekali lagi.',
-        tone: 'gangguan',
-      }
-
-    case ErrorCode.surveyorTypeCodeUnavailable:
-      return {
-        title: 'Kode tidak dapat dibentuk',
-        description:
-          'Basis data entitas ini belum siap menerbitkan kode baru. Mengulang tidak akan menolong — hubungi administrator Claim PNC.',
-        tone: 'gangguan',
-      }
-
-    case ErrorCode.portalNotStated:
-    case ErrorCode.portalUnknown:
-      return {
-        title: 'Portal entitas belum dipilih',
-        description: 'Pilih portal entitas di bilah atas halaman, lalu simpan lagi.',
-        tone: 'penolakan',
-      }
-
-    case ErrorCode.portalNotReady:
-      return {
-        title: 'Basis data entitas ini belum tersedia',
-        description:
-          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-        tone: 'gangguan',
-      }
-
-    default:
-      return {
-        title: 'Gagal menyimpan',
-        description: error.message,
-        tone: 'gangguan',
-      }
-  }
+const saveMessages: CodeMessages = {
+  [ErrorCode.surveyorTypeTaken]: {
+    title: 'Nama tipe surveyor sudah dipakai',
+    description: 'Sudah ada tipe dengan nama itu di entitas ini. Pakai nama lain.',
+    tone: 'penolakan',
+  },
+  // Bila detailnya ada, isiannya sudah disorot di tempatnya; kotak pesan hanya akan
+  // mengulang hal yang sama.
+  [ErrorCode.validationFailed]: (error) =>
+    Object.keys(error.violations()).length > 0
+      ? null
+      : { title: 'Isian belum benar', description: error.message, tone: 'penolakan' },
+  [ErrorCode.surveyorTypeNotFound]: {
+    title: 'Tipe surveyor tidak ditemukan',
+    description: 'Baris ini mungkin sudah diubah petugas lain. Muat ulang daftarnya.',
+    tone: 'penolakan',
+  },
+  [ErrorCode.surveyorTypeCodeTaken]: panelCodeTakenMessage,
+  [ErrorCode.surveyorTypeCodeUnavailable]: {
+    title: 'Kode tidak dapat dibentuk',
+    description:
+      'Basis data entitas ini belum siap menerbitkan kode baru. Mengulang tidak akan menolong — hubungi administrator Claim PNC.',
+    tone: 'gangguan',
+  },
+  ...panelPortalMessages,
 }

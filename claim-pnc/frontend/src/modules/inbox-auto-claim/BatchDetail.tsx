@@ -5,6 +5,7 @@ import { AutoClaimResult, ErrorCode, type AutoClaimLine } from '@/api/types'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { serverPaging } from '@/components/inbox/QueueTable'
 
 import { useAutoClaimLineList } from './api'
 
@@ -163,14 +164,7 @@ export function BatchDetail({ source, company, companyName, batch, onClose }: Re
           // halaman lain dan tidak akan pernah muncul.
           hideSearch
           emptyMessage="Batch ini tidak memuat baris."
-          pagination={{
-            page: list.data?.paginasi.halaman ?? page,
-            size: list.data?.paginasi.ukuran ?? 15,
-            total: list.data?.paginasi.total ?? 0,
-            totalPage: list.data?.paginasi.total_halaman ?? 0,
-            onPageChange: setPage,
-            isLoading: list.isFetching,
-          }}
+          pagination={serverPaging(list, setPage, 15, { page, totalPage: 0 })}
         />
       )}
     </section>

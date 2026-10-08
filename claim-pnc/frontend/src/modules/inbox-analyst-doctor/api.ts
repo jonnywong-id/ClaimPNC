@@ -1,8 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { usePersonalTaskList, useScreenMetadata } from '@/api/inboxShared'
 
 import type { DaftarResponse, KeteranganResponse } from './types'
 
@@ -45,20 +41,7 @@ const keys = {
  * penghalangnya hilang — tanpa menyentuh satu baris pun di layar.
  */
 export function useKeteranganAnalystDoctor() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.keterangan(portal, token),
-    queryFn: () => callAPI<KeteranganResponse>(`${PATH}/keterangan`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali halaman berpindah hanya menambah perjalanan
-    // jaringan tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<KeteranganResponse>(keys.keterangan, `${PATH}/keterangan`)
 }
 
 /**
@@ -83,26 +66,11 @@ export function useKeteranganAnalystDoctor() {
  * dulu hanya untuk menerima penolakan adalah perjalanan jaringan yang sia-sia.
  */
 export function useDaftarAnalystDoctor(cari: string, lewati: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  const params = new URLSearchParams()
-  if (cari.trim()) params.set('cari', cari.trim())
-  if (lewati > 0) params.set('lewati', String(lewati))
-  params.set('batas', String(PAGE_SIZE))
-
-  return useQuery({
-    queryKey: keys.daftar(portal, token, cari.trim(), lewati),
-    queryFn: () => callAPI<DaftarResponse>(`${PATH}?${params.toString()}`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Antrean berubah setiap kali sebuah tugas diselesaikan — termasuk oleh Pega, yang masih
-    // memiliki penugasannya selama masa paralel. Data dianggap usang seketika, tetapi tidak
-    // ditembak ulang sendiri: pengguna yang menekan Muat ulang.
-    staleTime: 0,
-
-    // Halaman sebelumnya dipertahankan selama halaman berikutnya diambil, supaya tabel tidak
-    // berkedip menjadi kosong lalu terisi lagi setiap kali nomor halaman berpindah.
-    placeholderData: (previous) => previous,
-  })
+  return usePersonalTaskList<DaftarResponse>(
+    (portal, token) => keys.daftar(portal, token, cari.trim(), lewati),
+    PATH,
+    cari,
+    lewati,
+    PAGE_SIZE,
+  )
 }

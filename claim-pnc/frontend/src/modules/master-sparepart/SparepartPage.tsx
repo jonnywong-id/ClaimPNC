@@ -1,15 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
-import { APIError } from '@/api/client'
 import { SparepartStatus, type Sparepart } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
+import { useApprovalTabs } from '@/components/masterpage/useApprovalTabs'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
+import { ApprovalPanel } from '@/components/masterpage/ApprovalPanel'
+import {
+  AddButton,
+  ListHeader,
+  RefreshButton,
+  editColumn,
+} from '@/components/masterpage/MasterPage'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { selectColumn } from '@/components/ApprovalControls'
 
 import { useCreateSparepart, useDecideSparepart, useSaveSparepart, useSparepartList } from './api'
-import { SparepartForm, type SparepartFormValues } from './SparepartForm'
-import { compareCodeUnits } from '@/lib/sort'
+import { SparepartForm } from './SparepartForm'
+import { collectKnownValues } from '@/components/masterpage/knownValues'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -47,8 +54,6 @@ const TABS = [
       'Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.',
   },
 ] as const
-
-type TabId = (typeof TABS)[number]['id']
 
 /**
  * Ukuran halaman diambil dari `pyPageSize` pada ketiga section tab Master Sparepart.
@@ -153,18 +158,20 @@ function emptyMessageFor(hasPortal: boolean): string {
 export function SparepartPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Sparepart | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const { tab, setTab, active, chosen, setChosen, toggle } = useApprovalTabs(TABS, 'approve')
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = useSparepartList(active.status)
   const create = useCreateSparepart()
   const save = useSaveSparepart()
+  const form = useCrudForm(create, save, (row: Sparepart, input) => ({
+    id: row.id_sparepart,
+    input,
+  }))
+  const editing = form.openedRow
+  const isFormOpen = form.isOpen
+  const { closeForm, openCreate: openAdd, openEdit } = form
   const decide = useDecideSparepart()
 
-  const isFormOpen = isAdding || editing !== null
   const rows = list.data?.sparepart ?? []
 
   /*
@@ -174,59 +181,7 @@ export function SparepartPage() {
     terbaik yang tersedia atas pertanyaan "nilai apa yang sah di kolom ini" — lihat
     ChoiceField.
   */
-  const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
-    for (const column of MARK_COLUMNS) {
-      const unique = new Set<string>()
-      for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
-      }
-      collected[column] = [...unique].sort(compareCodeUnits)
-    }
-    return collected
-  }, [rows])
-
-  function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
-  }
-
-  function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
-  }
-
-  function openEdit(row: Sparepart) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
-  }
-
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function submit(values: SparepartFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form berisi dua puluh isian,
-    // itu kehilangan yang tidak dapat dimaafkan.
-    if (editing) {
-      save.mutate({ id: editing.id_sparepart, input: values }, { onSuccess: closeForm })
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
+  const knownValues = useMemo(() => collectKnownValues(rows, MARK_COLUMNS), [rows])
 
   function runDecision(status: string) {
     decide.mutate(
@@ -245,29 +200,14 @@ export function SparepartPage() {
     karena nama properti yang bocor bukan tata letak yang layak ditiru, melainkan cacat.
   */
   const columns: Column<Sparepart>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Sparepart) => (chosen.has(row.id_sparepart) ? 'dipilih' : ''),
-            render: (row: Sparepart) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_sparepart)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_sparepart)}
-                />
-                <span className="sr-only">Pilih {row.nama_sparepart}</span>
-              </label>
-            ),
-          } satisfies Column<Sparepart>,
-        ]
-      : []),
+    ...selectColumn<Sparepart>({
+      enabled: tab === 'menunggu',
+      chosen,
+      idOf: (row) => row.id_sparepart,
+      nameOf: (row) => row.nama_sparepart,
+      disabled: decide.isPending,
+      onToggle: toggle,
+    }),
     {
       key: 'id',
       title: 'ID Sparepart',
@@ -311,42 +251,26 @@ export function SparepartPage() {
         <span className="text-sm text-slate-900">{tanggalWIB(row.tanggal_update_harga)}</span>
       ),
     },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<Sparepart>({
+      onEdit: openEdit,
       width: '7rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-          Ubah
-        </Button>
-      ),
-    },
+      tone: 'halus',
+      disabled: save.isPending,
+    }),
   ]
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/* Judulnya dibaca dari `pyCaption Master Sparepart HE` pada
-              Harness/SparePart_HE — "HE" ikut, karena itulah yang tertulis di layar lama
-              (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Sparepart HE</h1>
-          <p className="text-sm text-slate-600">
-            Suku cadang alat berat beserta harga jual, dimensi, dan batas stoknya.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
-            Tambah
-          </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-        </div>
-      </header>
+      {/* Judulnya dibaca dari `pyCaption Master Sparepart HE` pada
+          Harness/SparePart_HE — "HE" ikut, karena itulah yang tertulis di layar lama
+          (D-13). */}
+      <ListHeader
+        title="Master Sparepart HE"
+        description="Suku cadang alat berat beserta harga jual, dimensi, dan batas stoknya."
+      >
+        <AddButton onClick={openAdd} disabled={isFormOpen} />
+        <RefreshButton query={list} />
+      </ListHeader>
 
       {/*
         Kedua tombol unggah layar Pega — "Upload Document" dan "Upload Data Master Sparepart"
@@ -361,88 +285,30 @@ export function SparepartPage() {
         memilih menariknya sama sekali (2026-09-24), menyamakannya dengan Master Panel (§28);
         lihat docs/keputusan-implementasi.md §30.9.
       */}
-      <nav
-        aria-label="Tab Master Sparepart"
-        className="mt-4 flex flex-wrap gap-1 border-b border-slate-200"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
-            onClick={() => {
-              closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab sebelumnya,
-              // dan menyimpannya berarti keputusan dapat mengenai baris yang tidak sedang
-              // dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
-              setTab(t.id)
-            }}
-            className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-              tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
-          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
-          diandaikan pengguna (ADR-0030, R-20). */}
-      <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
-        <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </span>
-      </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} sparepart dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(SparepartStatus.disetujui)}
-          onReject={() => runDecision(SparepartStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
+      <ApprovalPanel
+        tabLabel="Tab Master Sparepart"
+        tabs={TABS}
+        active={active}
+        onSwitch={setTab}
+        onBeforeSwitch={closeForm}
+        portal={list.data?.portal ?? portal}
+        decide={decide}
+        feedbackNoun="sparepart"
+        barNoun="sparepart"
+        chosenCount={chosen.size}
+        onApprove={() => runDecision(SparepartStatus.disetujui)}
+        onReject={() => runDecision(SparepartStatus.ditolak)}
+        onClear={() => setChosen(new Set())}
+      />
 
       {isFormOpen && (
         <section className="mt-5">
           <SparepartForm
             editing={editing}
             knownValues={knownValues}
-            isSaving={create.isPending || save.isPending}
-            error={editing ? save.error : create.error}
-            onSave={submit}
+            isSaving={form.isSaving}
+            error={form.saveError}
+            onSave={form.submit}
             onCancel={closeForm}
           />
         </section>
@@ -471,66 +337,6 @@ export function SparepartPage() {
         />
       </section>
     </main>
-  )
-}
-
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Section/ApprovalMasterSparepartHE-Section.xml` yang menyediakan Select All,
- * Deselect All, Approve, dan Reject.
- *
- * TANPA isian Catatan, berbeda dari Master Panel: `POOLDATA.SPAREPART_HE` tidak punya kolom
- * penampungnya. Lihat catatan pada SparepartPage.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: Readonly<{
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}>) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang sparepart yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} sparepart</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama sama
-        membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari namanya.
-        Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
   )
 }
 

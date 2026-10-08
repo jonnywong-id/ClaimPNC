@@ -4,6 +4,10 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { TabBar } from '@/components/TabBar'
+import { DifferenceDisclosure } from '@/components/inbox/DifferenceDisclosure'
+import { loadGate } from '@/components/inbox/InboxNotices'
+import { RefreshExportActions } from '@/components/inbox/RefreshExportActions'
+import { serverPaging } from '@/components/inbox/QueueTable'
 
 import {
   Tindakan,
@@ -182,35 +186,13 @@ export function InboxPLADLAPreDLAPage() {
     kirimSurat.reset()
   }
 
-  if (meta.isPending) {
-    return (
-      <Bingkai>
-        <p className="text-sm text-slate-600">Memuat keterangan layar…</p>
-      </Bingkai>
-    )
-  }
-
-  if (meta.isError) {
-    const pesan = pesanMuat(meta.error)
-    return (
-      <Bingkai>
-        <ErrorMessage
-          title={pesan.title}
-          description={pesan.description}
-          tone={pesan.tone}
-        />
-      </Bingkai>
-    )
-  }
+  const gate = loadGate(meta, pesanMuat)
+  if (gate) return <Bingkai>{gate}</Bingkai>
 
   return (
     <Bingkai>
       <TabBar
-        tabs={daftar.map((item) => ({
-          kode: item.kode,
-          nama: item.nama,
-          keterangan: item.keterangan,
-        }))}
+        tabs={daftar}
         active={aktif}
         onSelect={pilihDaftar}
         label="Jenis pemberitahuan reasuransi"
@@ -247,33 +229,13 @@ export function InboxPLADLAPreDLAPage() {
           ) : undefined
         }
         emptyMessage={pesanKosong(dikirim)}
-        pagination={{
-          page: list.data?.paginasi.halaman ?? 1,
-          size: list.data?.paginasi.ukuran ?? 10,
-          total: list.data?.paginasi.total ?? 0,
-          totalPage: list.data?.paginasi.total_halaman ?? 1,
-          onPageChange: setPage,
-          isLoading: list.isFetching,
-        }}
+        pagination={serverPaging(list, setPage, 10)}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              tone="kedua"
-              onClick={() => { list.refetch() }}
-              disabled={list.isFetching}
-            >
-              Refresh
-            </Button>
-            <Button
-              type="button"
-              tone="kedua"
-              disabled={ekspor.isPending}
-              onClick={() => ekspor.mutate(parameter)}
-            >
-              {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
-            </Button>
-          </div>
+          <RefreshExportActions
+            query={list}
+            exporting={ekspor.isPending}
+            onExport={() => ekspor.mutate(parameter)}
+          />
         }
       />
 
@@ -370,7 +332,7 @@ export function InboxPLADLAPreDLAPage() {
         />
       )}
 
-      <SelisihTerencana butir={meta.data?.selisih_terencana ?? []} />
+      <DifferenceDisclosure items={meta.data?.selisih_terencana ?? []} />
     </Bingkai>
   )
 }
@@ -538,33 +500,3 @@ function pesanKosong(penyaring: FormPencarian): string {
   return 'Tidak ada pemberitahuan yang menunggu dikirim pada daftar ini.'
 }
 
-/**
- * SelisihTerencana menggambar selisih terhadap layar Pega di kaki halaman.
- *
- * # Kenapa ia digambar, bukan sekadar dicatat di kode
- *
- * Karena petugas yang membandingkan layar ini dengan Pega berdampingan AKAN menemukan
- * selisihnya — dan selisih yang tidak dinyatakan akan dilaporkan sebagai kerusakan, lalu
- * ditelusuri ulang oleh orang yang tidak tahu bahwa ia disengaja.
- */
-function SelisihTerencana({ butir }: Readonly<{ butir: string[] }>) {
-  if (butir.length === 0) return null
-
-  return (
-    <details className="rounded-kartu border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-800">
-        Perbedaan yang disengaja terhadap layar Pega ({butir.length})
-      </summary>
-      <ul className="mt-3 space-y-2 text-sm text-slate-600">
-        {butir.map((isi) => (
-          <li key={isi} className="flex gap-2">
-            <span aria-hidden className="text-slate-400">
-              •
-            </span>
-            <span>{isi}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
-}

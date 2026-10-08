@@ -1,14 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { APIError, NetworkError } from '@/api/client'
 import { AutoClaimErrorCode, AutoClaimStatus, ErrorCode, type AutoClaim } from '@/api/types'
 import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
+import { useServerViolations } from '@/components/masterform/BoxForm'
+import { type CodeMessages, portalMessages, saveErrorMessage, validationMessage, violationsOf } from '@/components/masterform/saveErrorMessage'
 
 import { useAutoClaimBankList, useBusinessSourceLookup, useClientLookup } from './api'
 import { LookupPicker, type LookupRow } from './LookupPicker'
@@ -111,66 +112,18 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot per isian (lihat violationsOf).
- * Yang ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian
- * tertentu, karena itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case AutoClaimErrorCode.initialTaken:
-        return {
-          title: 'Sumber bisnis ini sudah ada di Master Auto Claim',
-          description:
-            'Buka barisnya lewat tab yang sesuai untuk mengubahnya, jangan menambahkannya lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.validationFailed:
-        // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya
-        // akan mengulang hal yang sama.
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  [AutoClaimErrorCode.initialTaken]: {
+    title: 'Sumber bisnis ini sudah ada di Master Auto Claim',
+    description:
+      'Buka barisnya lewat tab yang sesuai untuk mengubahnya, jangan menambahkannya lagi.',
+    tone: 'penolakan',
+  },
+  // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya
+  // akan mengulang hal yang sama.
+  [ErrorCode.validationFailed]: validationMessage,
+  ...portalMessages,
 }
 
 const FIELD_NAMES = [
@@ -255,16 +208,10 @@ export function AutoClaimForm({
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
   // dan itu hanya berguna bila layar menyorotnya satu per satu.
-  useEffect(() => {
-    for (const [column, message] of Object.entries(violationsOf(error))) {
-      if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
-      }
-    }
-  }, [error, setError])
+  useServerViolations(error, setError, FIELD_NAMES)
 
   const violation = violationsOf(error)
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
 
   /**
    * submitWith menyusun penangan untuk satu tombol beserta status yang dikirimnya.

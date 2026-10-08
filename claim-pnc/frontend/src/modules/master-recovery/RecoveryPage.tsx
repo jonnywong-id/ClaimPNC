@@ -1,10 +1,10 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Recovery } from '@/api/types'
+import type { Recovery } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { refreshLoadMessage } from '@/components/masterpage/loadMessage'
+import { MasterDataLayout, MessageBox } from '@/components/masterpage/MasterPage'
 import { AddIcon, ReloadIcon } from '@/components/Icon'
 
 import { TabBar } from '@/components/TabBar'
@@ -86,130 +86,110 @@ export function RecoveryPage() {
   const loadError = form.error ?? principal.error
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
-          <ol className="flex items-center gap-1.5">
-            <li>Master Data</li>
-            <li aria-hidden="true" className="text-slate-300">
-              /
-            </li>
-            <li className="text-slate-700">Recovery</li>
-          </ol>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master Recovery</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+    <MasterDataLayout
+      maxWidth="max-w-5xl"
+      crumb="Recovery"
+      title="Master Recovery"
+      description={
+        <>
           Pencatatan pemulihan dana klaim dari pihak penjamin. Setiap batch menyebut
           principal, tahun, nilai klaim, pembayaran, dan sisanya — beserta bukti bayar dan
           daftar polis yang tercakup.
-        </p>
+        </>
+      }
+      // Di layar ini akibat salah entitas paling berat: nomor rekening virtual milik badan
+      // hukum lain dapat mengarahkan dana ke tempat yang keliru (ADR-0030, R-20).
+      portalLabel={form.data?.portal ?? portal}
+      form={false}
+      portal={portal}
+      portalOwner="Data recovery"
+    >
+      <div className="space-y-6">
+        {loadFailed && <LoadErrorMessage error={loadError} />}
 
-        {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
-            empat badan hukum dengan basis data terpisah, dan di layar ini akibat salah
-            entitas paling berat: nomor rekening virtual milik badan hukum lain dapat
-            mengarahkan dana ke tempat yang keliru (ADR-0030, R-20). */}
-        <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">
-            {form.data?.portal ?? portal ?? '—'}
-          </span>
-        </p>
-      </header>
+        {lastSaved !== null && (
+          <div className="rounded-kartu border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-sm font-medium text-emerald-900">
+              Batch {lastSaved.nomor_batch} tersimpan
+            </p>
+            <p className="mt-1 text-xs text-emerald-800">
+              Sisa yang tercatat: Rp {lastSaved.sisa.toLocaleString('id-ID')} — angka ini
+              dihitung server, dan itulah yang tersimpan.
+            </p>
+            {lastPolicyMissing && (
+              /*
+                Diberitahukan terpisah karena batch-nya TETAP tersimpan. Sistem lama pun
+                meneruskan dengan keempat kolom identitas kosong tanpa mengatakan apa pun
+                — petugas tidak punya cara mengetahuinya sampai membaca laporan.
+              */
+              <p className="mt-2 text-xs font-medium text-amber-800">
+                Identitas polis tidak ditemukan, sehingga lini bisnis, cabang, agen, dan
+                marketing tersimpan kosong. Batch-nya sendiri sudah tercatat.
+              </p>
+            )}
+          </div>
+        )}
 
-      {portal === null ? (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data recovery dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu."
-          tone="penolakan"
+        {vaOpen && (
+          <VirtualAccountPanel
+            onClose={() => setVAOpen(false)}
+            onIssued={() => {
+              // Panel dibiarkan TERBUKA supaya nomor yang baru terbit tetap terlihat dan
+              // dapat disalin. Daftar principal sudah dimuat ulang oleh hook-nya, jadi
+              // principal baru itu langsung dapat dipilih pada form entri.
+              principal.refetch()
+            }}
+          />
+        )}
+
+        {entryOpen && (
+          <RecoveryForm
+            nextBatch={form.data?.nomor_batch_perkiraan}
+            year={form.data?.tahun ?? []}
+            principal={principal.data?.principal ?? []}
+            onSaved={handleSaved}
+          />
+        )}
+
+        {/* Satu tab saja, sama seperti layar lama. Ia tetap digambar meski tunggal:
+            bilahnya bagian dari susunan yang dikenali petugas, dan menghilangkannya
+            membuat layar ini satu-satunya master yang berbeda bentuk. */}
+        <TabBar
+          tabs={[{ kode: 'outstanding', nama: 'Outstanding' }]}
+          active="outstanding"
+          onSelect={() => undefined}
+          label="Daftar Master Recovery"
         />
-      ) : (
-        <div className="space-y-6">
-          {loadFailed && <LoadErrorMessage error={loadError} />}
 
-          {lastSaved !== null && (
-            <div className="rounded-kartu border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-medium text-emerald-900">
-                Batch {lastSaved.nomor_batch} tersimpan
-              </p>
-              <p className="mt-1 text-xs text-emerald-800">
-                Sisa yang tercatat: Rp {lastSaved.sisa.toLocaleString('id-ID')} — angka ini
-                dihitung server, dan itulah yang tersimpan.
-              </p>
-              {lastPolicyMissing && (
-                /*
-                  Diberitahukan terpisah karena batch-nya TETAP tersimpan. Sistem lama pun
-                  meneruskan dengan keempat kolom identitas kosong tanpa mengatakan apa pun
-                  — petugas tidak punya cara mengetahuinya sampai membaca laporan.
-                */
-                <p className="mt-2 text-xs font-medium text-amber-800">
-                  Identitas polis tidak ditemukan, sehingga lini bisnis, cabang, agen, dan
-                  marketing tersimpan kosong. Batch-nya sendiri sudah tercatat.
-                </p>
-              )}
-            </div>
-          )}
-
-          {vaOpen && (
-            <VirtualAccountPanel
-              onClose={() => setVAOpen(false)}
-              onIssued={() => {
-                // Panel dibiarkan TERBUKA supaya nomor yang baru terbit tetap terlihat dan
-                // dapat disalin. Daftar principal sudah dimuat ulang oleh hook-nya, jadi
-                // principal baru itu langsung dapat dipilih pada form entri.
-                principal.refetch()
-              }}
-            />
-          )}
-
-          {entryOpen && (
-            <RecoveryForm
-              nextBatch={form.data?.nomor_batch_perkiraan}
-              year={form.data?.tahun ?? []}
-              principal={principal.data?.principal ?? []}
-              onSaved={handleSaved}
-            />
-          )}
-
-          {/* Satu tab saja, sama seperti layar lama. Ia tetap digambar meski tunggal:
-              bilahnya bagian dari susunan yang dikenali petugas, dan menghilangkannya
-              membuat layar ini satu-satunya master yang berbeda bentuk. */}
-          <TabBar
-            tabs={[{ kode: 'outstanding', nama: 'Outstanding' }]}
-            active="outstanding"
-            onSelect={() => undefined}
-            label="Daftar Master Recovery"
-          />
-
-          <OutstandingTable
-            actions={
-              <>
-                <Button
-                  tone="kedua"
-                  onClick={() => {
-                    form.refetch()
-                    principal.refetch()
-                    refreshList()
-                  }}
-                  disabled={form.isFetching || principal.isFetching}
-                >
-                  <ReloadIcon
-                    className={`h-4 w-4 ${form.isFetching || principal.isFetching ? 'animate-spin' : ''}`}
-                  />
-                  {form.isFetching || principal.isFetching ? 'Memuat…' : 'Refresh'}
-                </Button>
-                <Button tone="halus" onClick={() => setVAOpen((open) => !open)}>
-                  {vaOpen ? 'Tutup panel VA' : 'Terbitkan VA baru'}
-                </Button>
-                <Button tone="utama" onClick={() => setEntryOpen((open) => !open)}>
-                  <AddIcon className="h-4 w-4" />
-                  {entryOpen ? 'Tutup form' : 'Tambah'}
-                </Button>
-              </>
-            }
-          />
-        </div>
-      )}
-    </div>
+        <OutstandingTable
+          actions={
+            <>
+              <Button
+                tone="kedua"
+                onClick={() => {
+                  form.refetch()
+                  principal.refetch()
+                  refreshList()
+                }}
+                disabled={form.isFetching || principal.isFetching}
+              >
+                <ReloadIcon
+                  className={`h-4 w-4 ${form.isFetching || principal.isFetching ? 'animate-spin' : ''}`}
+                />
+                {form.isFetching || principal.isFetching ? 'Memuat…' : 'Refresh'}
+              </Button>
+              <Button tone="halus" onClick={() => setVAOpen((open) => !open)}>
+                {vaOpen ? 'Tutup panel VA' : 'Terbitkan VA baru'}
+              </Button>
+              <Button tone="utama" onClick={() => setEntryOpen((open) => !open)}>
+                <AddIcon className="h-4 w-4" />
+                {entryOpen ? 'Tutup form' : 'Tambah'}
+              </Button>
+            </>
+          }
+        />
+      </div>
+    </MasterDataLayout>
   )
 }
 
@@ -220,46 +200,13 @@ export function RecoveryPage() {
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
 function LoadErrorMessage({ error }: Readonly<{ error: unknown }>) {
-  const message = loadMessage(error)
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+    <MessageBox
+      message={refreshLoadMessage(error, {
+        subject: 'Layar',
+        failedTitle: 'Layar gagal dimuat',
+        owner: 'Data recovery',
+      })}
+    />
   )
-}
-
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Layar belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
-  }
-
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data recovery dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return { title: 'Layar gagal dimuat', description: error.message, tone: 'gangguan' }
-    }
-  }
-
-  return {
-    title: 'Layar gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
 }

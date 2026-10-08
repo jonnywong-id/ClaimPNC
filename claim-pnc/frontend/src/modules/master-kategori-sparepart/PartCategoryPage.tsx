@@ -1,11 +1,18 @@
-import { useState } from 'react'
-
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, PartCategoryStatus, type PartCategory } from '@/api/types'
+import { PartCategoryStatus, type PartCategory } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
+import { ApprovalPanel } from '@/components/masterpage/ApprovalPanel'
+import { reloadLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
+import { useApprovalTabs } from '@/components/masterpage/useApprovalTabs'
+import { useCrudForm } from '@/components/masterpage/useCrudForm'
+import {
+  AddButton,
+  ListHeader,
+  RefreshButton,
+  editColumn,
+  renderListState,
+} from '@/components/masterpage/MasterPage'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { selectColumn } from '@/components/ApprovalControls'
 
 import {
   useCreatePartCategory,
@@ -13,7 +20,7 @@ import {
   usePartCategoryList,
   useSavePartCategory,
 } from './api'
-import { PartCategoryForm, type PartCategoryFormValues } from './PartCategoryForm'
+import { PartCategoryForm } from './PartCategoryForm'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -55,8 +62,6 @@ const TABS = [
   },
 ] as const
 
-type TabId = (typeof TABS)[number]['id']
-
 /**
  * Ukuran halaman diambil dari `pyPageSize` pada ketiga section tab layar ini.
  *
@@ -66,49 +71,9 @@ type TabId = (typeof TABS)[number]['id']
  */
 const PAGE_SIZE = 50
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian ' +
-            'atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar kategori sparepart tidak dapat dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+  return reloadLoadMessage(error, { failedTitle: 'Daftar kategori sparepart tidak dapat dimuat' })
 }
 
 /**
@@ -159,63 +124,21 @@ function loadMessage(error: unknown): MessageContent {
 export function PartCategoryPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<PartCategory | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const { tab, setTab, active, chosen, setChosen, toggle } = useApprovalTabs(TABS, 'approve')
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = usePartCategoryList(active.status)
   const create = useCreatePartCategory()
   const save = useSavePartCategory()
+  const form = useCrudForm(create, save, (row: PartCategory, input) => ({
+    id: row.id_kategori_sparepart,
+    input,
+  }))
+  const editing = form.openedRow
+  const isFormOpen = form.isOpen
+  const { closeForm, openCreate: openAdd, openEdit } = form
   const decide = useDecidePartCategory()
 
-  const isFormOpen = isAdding || editing !== null
   const rows = list.data?.kategori_sparepart ?? []
-
-  function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
-  }
-
-  function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
-  }
-
-  function openEdit(row: PartCategory) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
-  }
-
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function submit(values: PartCategoryFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan penolakan nama ganda adalah
-    // kegagalan yang paling sering terjadi di layar ini.
-    if (editing) {
-      save.mutate(
-        { id: editing.id_kategori_sparepart, input: values },
-        { onSuccess: closeForm },
-      )
-      return
-    }
-    create.mutate(values, { onSuccess: closeForm })
-  }
 
   function runDecision(status: string) {
     decide.mutate(
@@ -232,30 +155,14 @@ export function PartCategoryPage() {
     hanya mengulang hal yang sama di seluruh halaman.
   */
   const columns: Column<PartCategory>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: PartCategory) =>
-              chosen.has(row.id_kategori_sparepart) ? 'dipilih' : '',
-            render: (row: PartCategory) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_kategori_sparepart)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_kategori_sparepart)}
-                />
-                <span className="sr-only">Pilih {row.nama_kategori_sparepart}</span>
-              </label>
-            ),
-          } satisfies Column<PartCategory>,
-        ]
-      : []),
+    ...selectColumn<PartCategory>({
+      enabled: tab === 'menunggu',
+      chosen,
+      idOf: (row) => row.id_kategori_sparepart,
+      nameOf: (row) => row.nama_kategori_sparepart,
+      disabled: decide.isPending,
+      onToggle: toggle,
+    }),
     {
       key: 'id',
       title: 'ID Kategori Sparepart',
@@ -267,161 +174,70 @@ export function PartCategoryPage() {
       title: 'Nama Kategori Sparepart',
       value: (row) => row.nama_kategori_sparepart,
     },
-    {
-      key: 'aksi',
-      title: 'Aksi',
+    editColumn<PartCategory>({
+      onEdit: openEdit,
       width: '7rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-          Ubah
-        </Button>
-      ),
-    },
+      tone: 'halus',
+      disabled: save.isPending,
+    }),
   ]
 
   // Isi bagian daftar menurut keadaan portal dan kueri.
   function renderList() {
-    if (portal === null) {
-      return (
-        <ErrorMessage
-          title="Portal entitas belum dipilih"
-          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-          tone="penolakan"
+    return renderListState({
+      portal,
+      query: list,
+      loadingText: 'Memuat daftar kategori sparepart…',
+      toMessage: loadMessage,
+      render: () => (
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id_kategori_sparepart}
+          description="Sumber: POOLDATA.GCNM_M_SPAREPART_CATEGORY"
+          searchLabel="Cari kategori sparepart"
+          pageSize={PAGE_SIZE}
+          emptyMessage={`Belum ada kategori sparepart pada tab ${active.label}.`}
         />
-      )
-    }
-    if (list.isPending) {
-      return <p className="text-sm text-slate-500">Memuat daftar kategori sparepart…</p>
-    }
-    if (list.isError) {
-      const message = loadMessage(list.error)
-      return (
-        <ErrorMessage
-          title={message.title}
-          description={message.description}
-          tone={message.tone}
-        />
-      )
-    }
-    return (
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.id_kategori_sparepart}
-        description="Sumber: POOLDATA.GCNM_M_SPAREPART_CATEGORY"
-        searchLabel="Cari kategori sparepart"
-        pageSize={PAGE_SIZE}
-        emptyMessage={`Belum ada kategori sparepart pada tab ${active.label}.`}
-      />
-    )
+      ),
+    })
   }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          {/* Judulnya dibaca dari `pyCaption Master Kategori Sparepart` pada
-              Section/MasterKategoriSparepartHE (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Kategori Sparepart</h1>
-          <p className="text-sm text-slate-600">
-            Penggolongan suku cadang alat berat yang menjadi pilihan Kategori di layar Master
-            Sparepart dan Master Tipe Sparepart.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
-            Tambah
-          </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
-          </Button>
-        </div>
-      </header>
-
-      <nav
-        aria-label="Tab Master Kategori Sparepart"
-        className="mt-4 flex flex-wrap gap-1 border-b border-slate-200"
+      {/* Judulnya dibaca dari `pyCaption Master Kategori Sparepart` pada
+          Section/MasterKategoriSparepartHE (D-13). */}
+      <ListHeader
+        title="Master Kategori Sparepart"
+        description="Penggolongan suku cadang alat berat yang menjadi pilihan Kategori di layar Master Sparepart dan Master Tipe Sparepart."
       >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
-            onClick={() => {
-              closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab
-              // sebelumnya, dan menyimpannya berarti keputusan dapat mengenai baris yang
-              // tidak sedang dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
-              setTab(t.id)
-            }}
-            className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-              tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+        <AddButton onClick={openAdd} disabled={isFormOpen} />
+        <RefreshButton query={list} />
+      </ListHeader>
 
-      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
-          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
-          diandaikan pengguna (ADR-0030, R-20). */}
-      <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
-        <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
-        </span>
-      </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} kategori sparepart dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(PartCategoryStatus.disetujui)}
-          onReject={() => runDecision(PartCategoryStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
+      <ApprovalPanel
+        tabLabel="Tab Master Kategori Sparepart"
+        tabs={TABS}
+        active={active}
+        onSwitch={setTab}
+        onBeforeSwitch={closeForm}
+        portal={list.data?.portal ?? portal}
+        decide={decide}
+        feedbackNoun="kategori sparepart"
+        barNoun="kategori"
+        chosenCount={chosen.size}
+        onApprove={() => runDecision(PartCategoryStatus.disetujui)}
+        onReject={() => runDecision(PartCategoryStatus.ditolak)}
+        onClear={() => setChosen(new Set())}
+      />
 
       {isFormOpen && (
         <section className="mt-5">
           <PartCategoryForm
             editing={editing}
-            isSaving={create.isPending || save.isPending}
-            error={editing ? save.error : create.error}
-            onSave={submit}
+            isSaving={form.isSaving}
+            error={form.saveError}
+            onSave={form.submit}
             onCancel={closeForm}
           />
         </section>
@@ -434,65 +250,3 @@ export function PartCategoryPage() {
   )
 }
 
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Section/ApprovalMasterKategoriSparepartHE-Section.xml`, yang menggambar grid
- * bercentang dengan tombol Approve, Reject, dan DETAILS.
- *
- * DETAILS tidak ditiru: di layar ini setiap baris sudah punya tombol Ubah yang membuka
- * seluruh isinya — dan isinya hanya satu isian. Tombol kedua yang membuka hal yang sama
- * hanya akan menambah pilihan tanpa menambah kemampuan.
- *
- * TANPA isian Catatan: tabelnya tidak punya kolom penampungnya.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: Readonly<{
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}>) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang kategori yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} kategori</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama
-        sama membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari
-        namanya. Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
-  )
-}

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
+import { queryPath, useQueueList, useScreenMetadata } from '@/api/inboxShared'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -81,20 +82,7 @@ const keys = {
  * dengan tangan berarti menunggu salah satunya bergeser satu kolom.
  */
 export function useBandingHargaSalvageMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/tab`, { token, portal }),
-    enabled: token !== null && portal !== null,
-
-    // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
-    // data. Mengambilnya ulang tiap kali tab berpindah hanya menambah perjalanan jaringan
-    // tanpa satu pun manfaat.
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
+  return useScreenMetadata<MetadataResponse>(keys.metadata, `${PATH}/tab`)
 }
 
 /**
@@ -112,23 +100,11 @@ export function useBandingHargaSalvageList(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useQuery({
-    queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
-    enabled: enabled && token !== null && portal !== null,
-
-    // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
-    // menjadi kosong lalu terisi lagi.
-    placeholderData: (previous) => previous,
-
-    // Antrean berubah saat balai lelang mengajukan banding baru lewat layanan REST, dan itu
-    // dapat terjadi kapan saja tanpa ada petugas yang menekan apa pun. Cache-nya karena itu
-    // pendek.
-    staleTime: 15 * 1000,
-  })
+  return useQueueList<ListResponse>(
+    (portal, token) => keys.list(portal, token, filter, page),
+    buildPath(filter, page),
+    enabled,
+  )
 }
 
 /**
@@ -161,14 +137,11 @@ export function useBandingHargaSalvageSummary(enabled: boolean) {
  * sementara yang pertama memang itu yang diinginkan.
  */
 function buildPath(filter: FilterForm, page: number): string {
-  const params = new URLSearchParams()
-
-  if (filter.tab) params.set('tab', filter.tab)
-  if (filter.cari.trim()) params.set('cari', filter.cari.trim())
-  if (page > 1) params.set('halaman', String(page))
-
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  return queryPath(PATH, [
+    ['tab', filter.tab],
+    ['cari', filter.cari.trim()],
+    ['halaman', page > 1 && String(page)],
+  ])
 }
 
 /**

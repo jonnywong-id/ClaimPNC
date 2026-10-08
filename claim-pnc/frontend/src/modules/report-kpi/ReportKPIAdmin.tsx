@@ -1,11 +1,9 @@
 import { useState } from 'react'
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
 import { SelectField, type SelectOption } from '@/components/SelectField'
+import { failureNotice, pageControl, violationsOf } from '@/components/shared/queryFeedback'
+import { PeriodFields, ReportActions } from '@/components/shared/ReportFilterParts'
 
 import { useAdminDetail, useAdminScorecard, useExportAdmin } from './api'
 import type {
@@ -79,56 +77,32 @@ export function ReportKPIAdmin({ metadata }: Readonly<{ metadata: MetadataRespon
             onChange={(event) => setDraft({ ...draft, kelompok: event.target.value })}
           />
 
-          <FormField
-            id="kpi-admin-dari"
-            label="Periode — Dari"
-            type="date"
-            value={draft.dari}
-            failure={violations['dari']}
-            onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
-          />
-
-          <FormField
-            id="kpi-admin-sampai"
-            label="Periode — Sampai"
-            type="date"
-            value={draft.sampai}
-            failure={violations['sampai']}
-            onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
+          <PeriodFields
+            idPrefix="kpi-admin"
+            fromLabel="Periode — Dari"
+            toLabel="Periode — Sampai"
+            value={draft}
+            violations={violations}
+            onChange={(patch) => setDraft({ ...draft, ...patch })}
           />
         </div>
 
         {note && <p className="text-sm text-slate-600">{note}</p>}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" tone="utama">
-            Cari
-          </Button>
-          <Button
-            onClick={() => exportFile.mutate(active)}
-            disabled={!searched || exportFile.isPending}
-          >
-            Export Detail Data
-          </Button>
-        </div>
+        <ReportActions
+          searchLabel="Cari"
+          exportLabel="Export Detail Data"
+          onExport={() => exportFile.mutate(active)}
+          exportDisabled={!searched || exportFile.isPending}
+        />
       </form>
 
-      {exportFile.isError && (
-        <ErrorMessage
-          title="Berkas tidak dapat diunduh"
-          description={messageOf(exportFile.error)}
-          tone="gangguan"
-        />
-      )}
+      {exportFile.isError && failureNotice('Berkas tidak dapat diunduh', exportFile.error)}
 
       {searched ? (
         <>
           {scorecard.isError ? (
-            <ErrorMessage
-              title="Kartu skor tidak dapat diambil"
-              description={messageOf(scorecard.error)}
-              tone="gangguan"
-            />
+            failureNotice('Kartu skor tidak dapat diambil', scorecard.error)
           ) : (
             <Scorecard
               card={scorecard.data}
@@ -145,24 +119,11 @@ export function ReportKPIAdmin({ metadata }: Readonly<{ metadata: MetadataRespon
             rowKey={(row) => row.no_klaim}
             isLoading={detail.isPending}
             error={
-              detail.isError ? (
-                <ErrorMessage
-                  title="Rincian tidak dapat diambil"
-                  description={messageOf(detail.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
+              detail.isError ? failureNotice('Rincian tidak dapat diambil', detail.error) : undefined
             }
             emptyMessage={adminEmptyMessage}
             hideSearch
-            pagination={{
-              page: detail.data?.paginasi.halaman ?? 1,
-              size: detail.data?.paginasi.ukuran ?? 50,
-              total: detail.data?.paginasi.total ?? 0,
-              totalPage: detail.data?.paginasi.total_halaman ?? 0,
-              onPageChange: setPage,
-              isLoading: detail.isFetching,
-            }}
+            pagination={pageControl(detail.data?.paginasi, setPage, detail.isFetching)}
           />
         </>
       ) : (
@@ -329,15 +290,4 @@ function adminCellText(row: AdminDetailRow, key: string): string {
   if (value == null || value === '') return '—'
   if (typeof value === 'number') return String(round2(value))
   return value
-}
-
-function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
-}
-
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
 }

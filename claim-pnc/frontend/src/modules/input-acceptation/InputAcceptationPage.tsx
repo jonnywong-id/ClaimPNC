@@ -5,6 +5,8 @@ import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { NoteList, portalGate } from '@/components/inbox/InboxNotices'
+import { errorMessageOf } from '@/components/inbox/messages'
 
 import { useInputAcceptation, useSubmitInputAcceptation } from './api'
 import type { DetailResponse, Field, Grid, GridRow, Group } from './types'
@@ -38,20 +40,10 @@ export function InputAcceptationPage() {
   const portal = useSelectedPortal((state) => state.alias)
   const detail = useInputAcceptation(claimID)
 
-  if (portal === null) {
-    return (
-      <PageFrame claimID={claimID}>
-        <ErrorMessage
-          title="Pilih entitas lebih dulu"
-          description={
-            'Akseptasi klaim treaty milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
-          }
-          tone="gangguan"
-        />
-      </PageFrame>
-    )
-  }
+  // Hanya penghalang portal yang dipakai di sini; kegagalan memuat ditangani di bawah
+  // dengan judul yang menyebut akseptasinya.
+  const gate = portalGate(portal, 'Akseptasi klaim treaty')
+  if (gate) return <PageFrame claimID={claimID}>{gate}</PageFrame>
 
   if (detail.isPending) {
     return (
@@ -68,7 +60,7 @@ export function InputAcceptationPage() {
       <PageFrame claimID={claimID}>
         <ErrorMessage
           title="Akseptasi tidak dapat dibuka"
-          description={messageOf(detail.error)}
+          description={errorMessageOf(detail.error)}
           tone="gangguan"
         />
       </PageFrame>
@@ -140,12 +132,12 @@ function Loaded({ data, claimID }: Readonly<{ data: DetailResponse; claimID: str
       <SubmitBar
         dirty={dirty}
         pending={submit.isPending}
-        error={submit.isError ? messageOf(submit.error) : ''}
+        error={submit.isError ? errorMessageOf(submit.error) : ''}
         success={submit.isSuccess ? submit.data.pesan : ''}
         onSubmit={send}
       />
 
-      <PlannedDifferences lines={data.selisih_terencana} />
+      <NoteList lines={data.selisih_terencana} />
 
       <p className="mt-6 text-xs text-slate-500">
         Terakhir diubah oleh {data.operator_pengubah || '—'}.
@@ -424,30 +416,6 @@ function SubmitBar({
 }
 
 /**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah layar.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, sembilan isian
- * yang selalu kosong dan Submit yang menolak akan dilaporkan berulang kali sebagai kerusakan
- * oleh orang yang membandingkan kedua layar berdampingan.
- */
-function PlannedDifferences({ lines }: Readonly<{ lines: string[] }>) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/**
  * collectEditableGrids menyusun muatan grid untuk Submit.
  *
  * Hanya kolom ber-`dapat_diubah` yang ikut, dan barisnya dikirim UTUH per grid — bukan sebagai
@@ -479,9 +447,3 @@ function collectEditableGrids(data: DetailResponse): Record<string, GridRow[]> {
   return result
 }
 
-/** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
-function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
-}

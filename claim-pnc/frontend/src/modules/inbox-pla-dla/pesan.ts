@@ -1,6 +1,10 @@
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode } from '@/api/types'
-import type { ErrorTone } from '@/components/ErrorMessage'
+import { APIError } from '@/api/client'
+import {
+  formatAdviceDate,
+  loadFailureMessage,
+  networkAwareMessage,
+  type LoadMessage,
+} from '@/api/inboxMessages'
 
 /**
  * Kode galat khusus modul ini.
@@ -22,29 +26,10 @@ export const KodeGalat = {
 } as const
 
 /** formatTanggal menuliskan tanggal `YYYY-MM-DD` sebagai tanggal Indonesia. */
-export function formatTanggal(nilai: string): string {
-  const bersih = nilai.trim()
-  if (bersih === '') return '—'
-
-  const saat = new Date(bersih)
-  if (Number.isNaN(saat.getTime())) return bersih
-
-  return saat.toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
+export const formatTanggal = formatAdviceDate
 
 /** pesanGalat mengambil kalimat yang layak dibaca pengguna dari sebuah galat. */
-export function pesanGalat(error: unknown): string {
-  if (error instanceof NetworkError) {
-    return 'Server Claim PNC tidak dapat dihubungi. Periksa koneksi jaringan.'
-  }
-  if (error instanceof APIError) return error.message
-  return 'Terjadi kesalahan pada sistem.'
-}
+export const pesanGalat = networkAwareMessage
 
 /** bukanReasuradur menyatakan sebuah galat berarti pemanggilnya bukan mitra terdaftar. */
 export function bukanReasuradur(error: unknown): boolean {
@@ -53,7 +38,7 @@ export function bukanReasuradur(error: unknown): boolean {
   )
 }
 
-export type IsiPesan = { title: string; description: string; tone: ErrorTone }
+export type IsiPesan = LoadMessage
 
 /**
  * pesanMuat mengubah galat pemuatan menjadi pesan yang dapat ditindaklanjuti.
@@ -63,55 +48,18 @@ export type IsiPesan = { title: string; description: string; tone: ErrorTone }
  * kosong tanpa keterangan, dan menyimpulkan sistemnya rusak.
  */
 export function pesanMuat(error: unknown): IsiPesan {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
-  }
-
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case KodeGalat.bukanReasuradur:
-        return {
-          title: 'Layar ini untuk mitra reasuransi',
-          description: error.message,
-          tone: 'penolakan',
-        }
-
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Pendaftaran mitra reasuransi dimiliki masing-masing entitas. Pilih ' +
-            'portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-
-      default:
-        return {
-          title: 'Daftar tidak dapat dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-
-  return {
-    title: 'Terjadi kesalahan pada sistem',
-    description:
-      'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+  return loadFailureMessage(error, {
+    portalDescription:
+      'Pendaftaran mitra reasuransi dimiliki masing-masing entitas. Pilih ' +
+      'portal entitas di bagian atas halaman ini lebih dulu.',
+    defaultTitle: 'Daftar tidak dapat dimuat',
+    special: (failure) =>
+      failure.kode === KodeGalat.bukanReasuradur
+        ? {
+            title: 'Layar ini untuk mitra reasuransi',
+            description: failure.message,
+            tone: 'penolakan',
+          }
+        : null,
+  })
 }

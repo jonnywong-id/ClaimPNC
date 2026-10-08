@@ -1,6 +1,5 @@
 import { useEffect, useId, useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
 import {
   ErrorCode,
   type Clause,
@@ -8,10 +7,10 @@ import {
   type ClauseCategory,
   type ClauseInput,
 } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
+import { MasterFormActions, MasterFormFrame } from '@/components/masterform/BoxForm'
+import { type CodeMessages, portalMessages, saveErrorMessage, validationMessage, violationsOf } from '@/components/masterform/saveErrorMessage'
 
 import { BusinessPicker } from './BusinessPicker'
 
@@ -27,64 +26,16 @@ type Props = {
   onCancel: () => void
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-/**
- * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
- *
- * Galat validasi TIDAK ditangani di sini — ia disorot pada isiannya (lihat violationsOf).
- * Yang ditampilkan sebagai kotak pesan hanyalah galat yang tidak menunjuk isian tertentu,
- * karena itulah yang tidak dapat diperbaiki pengguna dengan mengetik.
- */
-function messageFor(error: unknown): MessageContent | null {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.validationFailed:
-        return Object.keys(error.violations()).length > 0
-          ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
-      case ErrorCode.notFound:
-        return {
-          title: 'Pasal ini sudah tidak ada',
-          description:
-            'Mungkin sudah dihapus petugas lain. Muat ulang daftarnya — penghapusan di layar ini permanen.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return null
-}
-
-/** Mengambil pelanggaran per isian dari galat validasi server. */
-function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+/** Pesan galat penyimpanan per kode; yang tidak dikenal jatuh ke pesan galat sistem. */
+const saveMessages: CodeMessages = {
+  [ErrorCode.validationFailed]: validationMessage,
+  [ErrorCode.notFound]: {
+    title: 'Pasal ini sudah tidak ada',
+    description:
+      'Mungkin sudah dihapus petugas lain. Muat ulang daftarnya — penghapusan di layar ini permanen.',
+    tone: 'penolakan',
+  },
+  ...portalMessages,
 }
 
 /**
@@ -147,7 +98,7 @@ export function ClauseForm({
 
   const serverViolation = violationsOf(error)
   const numberError = localError || serverViolation['no_pasal'] || ''
-  const message = messageFor(error)
+  const message = saveErrorMessage(error, saveMessages)
   const title = editMode ? 'Ubah Pasal Kerugian' : 'Tambah Pasal Kerugian'
 
   /**
@@ -191,18 +142,7 @@ export function ClauseForm({
   }
 
   return (
-    <form
-      onSubmit={submit}
-      noValidate
-      aria-label={title}
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-
-      {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-      )}
-
+    <MasterFormFrame onSubmit={submit} title={title} message={message}>
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
           belum ada — nomornya diterbitkan server dari isi tabel. */}
       {editMode && (
@@ -280,14 +220,7 @@ export function ClauseForm({
         )}
       </div>
 
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          Batal
-        </Button>
-        <Button type="submit" tone="utama" disabled={isSaving || isLoading}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
-        </Button>
-      </div>
-    </form>
+      <MasterFormActions isSaving={isSaving} onCancel={onCancel} submitDisabled={isLoading} />
+    </MasterFormFrame>
   )
 }

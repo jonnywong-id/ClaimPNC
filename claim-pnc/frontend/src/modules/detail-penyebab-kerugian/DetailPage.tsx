@@ -8,9 +8,10 @@ import {
   type CauseOfLossDetailInput,
 } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
+import { reloadLoadMessage, type MessageContent } from '@/components/masterpage/loadMessage'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 
 import {
   useCauseOfLossDetail,
@@ -33,8 +34,6 @@ import { DetailForm, type DetailFormValues } from './DetailForm'
  * tidak ada selisih mode seperti pada layar yang memakai `Next Previous`.
  */
 const PAGE_SIZE = 50
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
 
 /** statusClass memilih warna lencana Status Aktif: aktif, kosong, atau selainnya. */
 function statusClass(status: string): string {
@@ -95,45 +94,9 @@ function renderFormBody({
 
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian ' +
-            'atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar detail penyebab kerugian tidak dapat dimuat',
-          description: error.message,
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+  return reloadLoadMessage(error, {
+    failedTitle: 'Daftar detail penyebab kerugian tidak dapat dimuat',
+  })
 }
 
 /** Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti. */

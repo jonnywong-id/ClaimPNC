@@ -5,6 +5,7 @@ import type { AutoClaimBatch } from '@/api/types'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { serverPaging } from '@/components/inbox/QueueTable'
 import { DownloadIcon } from '@/components/Icon'
 
 import { useAutoClaimBatchList, useExportAutoClaim } from './api'
@@ -235,14 +236,7 @@ export function CompanyBatches({ source, company, companyName }: Readonly<Props>
         hideSearch
         dense
         emptyMessage="Perusahaan ini belum punya batch klaim."
-        pagination={{
-          page: list.data?.paginasi.halaman ?? page,
-          size: list.data?.paginasi.ukuran ?? 15,
-          total: list.data?.paginasi.total ?? 0,
-          totalPage: list.data?.paginasi.total_halaman ?? 0,
-          onPageChange: setPage,
-          isLoading: list.isFetching,
-        }}
+        pagination={serverPaging(list, setPage, 15, { page, totalPage: 0 })}
       />
 
       {opened !== null && (

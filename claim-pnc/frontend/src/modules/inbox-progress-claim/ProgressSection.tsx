@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
+import { InboxPagination } from '@/components/inbox/InboxPagination'
 import { DataTable, type Column as TableColumn } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { SelectField } from '@/components/SelectField'
@@ -15,7 +16,6 @@ import {
   type ClaimRow,
   type Column,
   type FilterForm,
-  type PageInfo,
   type Row,
   type Section,
 } from './types'
@@ -149,7 +149,7 @@ export function ProgressSection({
                 {section.pakai_paginasi &&
                   list.data &&
                   list.data.paginasi.total > 0 && (
-                    <Pagination
+                    <InboxPagination
                       info={list.data.paginasi}
                       visible={list.data.baris.length}
                       onMove={setPage}
@@ -378,53 +378,6 @@ function DeadControlNotes({ section }: Readonly<{ section: Section }>) {
         </li>
       ))}
     </ul>
-  )
-}
-
-/**
- * Paginasi "sebelumnya / berikutnya", bukan nomor halaman.
- *
- * Bentuknya sama dengan layar Inbox Admin, Pelaporan Klaim, dan View History Claim supaya
- * keempatnya tidak terasa dirakit dari empat aplikasi berbeda. Ia hidup di sini, bukan di
- * dalam `DataTable`, karena komponen tabel baku belum mengenal paginasi server — itu
- * lingkup `TKT-U2-001`.
- */
-function Pagination({
-  info,
-  visible,
-  onMove,
-  loading,
-}: Readonly<{
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
-}>) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <output className="block text-sm text-slate-600">
-        Menampilkan {first}–{last} dari {info.total} baris.
-      </output>
-      <div className="flex gap-2">
-        <Button
-          tone="kedua"
-          onClick={() => onMove(Math.max(1, info.halaman - 1))}
-          disabled={info.halaman <= 1 || loading}
-        >
-          Sebelumnya
-        </Button>
-        <Button
-          tone="kedua"
-          onClick={() => onMove(info.halaman + 1)}
-          disabled={info.halaman >= info.total_halaman || loading}
-        >
-          Berikutnya
-        </Button>
-      </div>
-    </div>
   )
 }
 
