@@ -429,7 +429,6 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const [addedItem, setAddedItem] = useState<number | null>(null)
   const fieldErrors = messagesByField(violations)
   const hubungan = watch('pelapor_hubungan')
-  const suspicious = watch('prinsip_mengenal_nasabah') === CustomerPrinciple.Suspicious
 
   // Kondisi tampil Section/InputRegisterDetail.
   const panel = klaim.polis.lini
@@ -439,9 +438,9 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const gridColumns = OBJECT_COLUMNS[grid]
   const formItems = watch('objek')
 
-  // Mata Uang (.ClaimData.Currency) adalah dropdown di InputRegisterDetail, bernilai KODE
-  // master POOLDATA.CURRENCY (10026 = IDR), bukan simbol. Klaim lama yang telanjur
-  // menyimpan simbol diterjemahkan ke kodenya begitu daftar termuat.
+  // Mata Uang (.ClaimData.Currency) bernilai KODE master POOLDATA.CURRENCY (10026 = IDR),
+  // bukan simbol. Isiannya tidak ditampilkan di Input Register, tetapi tetap dikirim; klaim
+  // lama yang telanjur menyimpan simbol diterjemahkan ke kodenya begitu daftar termuat.
   const currencies = useCurrencies()
   const currencyList = currencies.data?.pilihan ?? []
   const currencyValue = watch('mata_uang') ?? ''
@@ -451,12 +450,6 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     const bySymbol = currencyList.find((c) => c.nama.trim().toUpperCase() === value.toUpperCase())
     if (bySymbol) setValue('mata_uang', bySymbol.id, { shouldDirty: true })
   }, [currencyValue, currencyList, setValue])
-  const currencyOptions = [
-    ...(currencyValue !== '' && !currencyList.some((c) => c.id === currencyValue)
-      ? [{ value: currencyValue, label: currencyValue }]
-      : []),
-    ...currencyList.map((c) => ({ value: c.id, label: c.nama })),
-  ]
   // Tanggal Terima Dokumen: IsTravelPA. Tetap ditampilkan bila server menolaknya, supaya
   // petugas dapat memperbaikinya.
   const showDateReceived = pa || travel || Boolean(fieldErrors['tanggal_terima_dokumen'])
@@ -723,54 +716,14 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors} />
 
-      <Section title="Estimasi">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SelectField id="mata_uang" label="Mata Uang" options={currencyOptions}
-            emptyText={currencies.isFetching ? 'Memuat…' : '— pilih —'} {...register('mata_uang')}
-            value={currencyValue} />
-          <FormField id="nilai_estimasi" label="Estimasi Klaim" inputMode="decimal"
-            failure={fieldErrors['nilai_estimasi']} {...register('nilai_estimasi')} />
-          <RadioGroup
-            label="Prinsip Mengenal Nasabah"
-            name="prinsip_mengenal_nasabah"
-            register={register}
-            options={[
-              { value: CustomerPrinciple.Normal, label: 'NORMAL' },
-              { value: CustomerPrinciple.Suspicious, label: 'SUSPICIOUS' },
-            ]}
-          />
-          {travel && (
-            <UnsavedField id="data_pengobatan" label="Data Pengobatan" value={unsaved.data_pengobatan}
-              onChange={(v) => setUnsavedField('data_pengobatan', v)} />
-          )}
-          {pa && (
-            <RadioGroup
-              label="Ex Gratia"
-              name="ex_gratia"
-              register={register}
-              options={[
-                { value: 'YES', label: 'YES' },
-                { value: 'NO', label: 'NO' },
-              ]}
-            />
-          )}
-          <FormField id="user_teknis" label={pa ? 'Akan Dikirim ke Analyst' : 'Akan Dikirim ke User Teknis'}
-            {...register('user_teknis')} />
-        </div>
-        {suspicious && (
-          <div className="mt-4">
-            <TextAreaField id="komentar_suspicious" label="Komentar Suspicious" rows={2}
-              {...register('komentar_suspicious')} />
-          </div>
-        )}
-        {pa && (
-          <div className="mt-4">
-            <UnsavedField id="catatan_analis" label="Catatan Ke Analyst" multiline value={unsaved.catatan_analis}
-              onChange={(v) => setUnsavedField('catatan_analis', v)} />
-          </div>
-        )}
-      </Section>
-
+      {/*
+        Bagian Estimasi (Mata Uang, Estimasi Klaim, Prinsip Mengenal Nasabah, Akan Dikirim ke
+        User Teknis, beserta isian PA/Travel-nya) TIDAK ditampilkan pada Input Register —
+        keputusan Work Owner 2026-10-08, berbeda dari InputRegisterDetail-sect.xml. Nilainya
+        tetap dikirim apa adanya dari klaim yang tersimpan (react-hook-form menahan nilai
+        bawaan), sehingga menyimpan Input Register tidak mengosongkannya. Estimasi diisi di
+        tahap Input Estimasi.
+      */}
       <Section title="Data registrasi lainnya">
         <p className="mb-3 text-xs text-slate-500">
           These fields are not on the Pega Register tab (section InputRegisterDetail) but are needed to register the claim.
@@ -832,7 +785,8 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
 /**
  * Lokasi Kerugian/Kejadian beserta wilayahnya — kontainer `!IsHE` pada Section/InputRegisterDetail.
- * Prinsip Mengenal Nasabah dan Ex Gratia berada di bagian Estimasi FormRegister.
+ * Prinsip Mengenal Nasabah dan Ex Gratia berada di bagian Estimasi, yang tidak ditampilkan di
+ * Input Register.
  *
  * # Daftar pilihan bertingkat
  *
@@ -963,32 +917,6 @@ function AreaSelect({
       emptyText={query.isFetching ? 'Memuat…' : '— pilih —'}
       onChange={(e) => onPick(option.find((o) => o.id === e.target.value))}
     />
-  )
-}
-
-function RadioGroup({
-  label,
-  name,
-  register,
-  options,
-}: {
-  label: string
-  name: 'prinsip_mengenal_nasabah' | 'ex_gratia'
-  register: UseFormRegister<RegisterFormValues>
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <fieldset>
-      <legend className="block text-sm font-medium text-slate-700">{label}</legend>
-      <div className="mt-2 flex gap-6">
-        {options.map((o) => (
-          <label key={o.value} className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="radio" value={o.value} className="h-4 w-4 border-slate-300" {...register(name)} />
-            {o.label}
-          </label>
-        ))}
-      </div>
-    </fieldset>
   )
 }
 
@@ -1473,7 +1401,6 @@ function CoverageEditor({
                   <th scope="col" className="py-1 pr-2 font-medium">Treaty</th>
                   <th scope="col" className="py-1 pr-2 font-medium">Nama</th>
                   <th scope="col" className="py-1 pr-2 font-medium">Share %</th>
-                  <th scope="col" className="py-1 pr-2 font-medium">Objek Fac Offer</th>
                   <th scope="col" className="py-1 font-medium">Hapus</th>
                 </tr>
               </thead>
@@ -1492,10 +1419,8 @@ function CoverageEditor({
                       <input className="w-28 rounded border border-slate-300 px-2 py-1" inputMode="decimal"
                         aria-label="Share persen" {...register(`${nama}.spreading.${n}.share`)} />
                     </td>
-                    <td className="py-1 pr-2">
-                      <input className="w-full rounded border border-slate-300 px-2 py-1"
-                        aria-label="Objek Fac Offer" {...register(`${nama}.spreading.${n}.objek_fac_offer`)} />
-                    </td>
+                    {/* Objek Fac Offer tidak ditampilkan — tidak digunakan (Work Owner
+                        2026-10-08). Nilai tersimpannya tetap terkirim apa adanya. */}
                     <td className="py-1">
                       <button type="button" onClick={() => spreading.remove(n)}
                         className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50">

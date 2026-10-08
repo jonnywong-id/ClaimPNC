@@ -257,9 +257,11 @@ describe('layar kerja klaim', () => {
     expect(screen.getByLabelText(/No KTP/)).toBeInTheDocument()
     expect(screen.getByText('Detail Ekspedisi')).toBeInTheDocument()
     expect(screen.getByLabelText('Email Tertanggung')).toBeInTheDocument()
-    expect(screen.getByLabelText('Catatan Ke Analyst')).toBeInTheDocument()
     expect(screen.getByLabelText('Tanggal Terima Dokumen')).toBeInTheDocument()
-    expect(screen.getByText('Ex Gratia')).toBeInTheDocument()
+    // Bagian Estimasi — termasuk Ex Gratia dan Catatan Ke Analyst PA — tidak tampil di
+    // Input Register (Work Owner 2026-10-08).
+    expect(screen.queryByText('Ex Gratia')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Catatan Ke Analyst')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Remarks Recommendation')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Subject Email')).not.toBeInTheDocument()
 
@@ -365,9 +367,6 @@ describe('layar kerja klaim', () => {
 
     expect(screen.getByLabelText('Kode Pos')).toHaveValue('55281')
 
-    await user.click(screen.getByLabelText('SUSPICIOUS'))
-    await user.type(screen.getByLabelText('Komentar Suspicious'), 'Dokumen janggal')
-
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(sentBody).not.toBeNull())
     expect(sentBody).toMatchObject({
@@ -379,8 +378,6 @@ describe('layar kerja klaim', () => {
         kelurahan: 'KEL. CATURTUNGGAL', kelurahan_id: '10004326',
         kode_pos: '55281',
       },
-      prinsip_mengenal_nasabah: '2',
-      komentar_suspicious: 'Dokumen janggal',
     })
   })
 
@@ -986,6 +983,25 @@ describe('tahap Input Estimasi', () => {
       nilai_propose_sen: 1_000_000_000, nilai_pengajuan_sen: 1_200_000_000, tipe_resiko: '1', persen_resiko: 100_000,
     })
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Adjustment baru' })).not.toBeInTheDocument())
+  })
+
+  // Input Estimasi hanya menampilkan objek yang punya baris di T_CLAIM_OBJECTCOVERAGE; objek
+  // tanpa coverage tetap ikut terkirim (kosong) supaya urutan objek klaim tidak bergeser.
+  it('Input Estimasi hanya menampilkan objek yang punya coverage', async () => {
+    const tanpaCoverage = { ...AT_ESTIMATE.klaim.objek[0]!, id: 'OBJ-KOSONG', nama: 'Objek Tanpa Coverage', coverage: [] }
+    stubEstimate({ ...AT_ESTIMATE, klaim: { ...AT_ESTIMATE.klaim, objek: [tanpaCoverage, ...AT_ESTIMATE.klaim.objek] } })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('region', { name: 'Input Estimasi' })
+    expect(screen.queryByText('Objek Tanpa Coverage')).not.toBeInTheDocument()
+    expect(screen.getByText(AT_ESTIMATE.klaim.objek[0]!.nama)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan'))
+    const body = estimateBody?.body as { objek: { coverage: unknown[] }[] }
+    expect(body.objek).toHaveLength(2)
+    expect(body.objek[0]!.coverage).toEqual([])
   })
 
   // Catatan ke PIC Teknis (.ClaimData.Remark → T_CLAIM_PNC.REMARK) terisi dari klaim dan

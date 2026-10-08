@@ -281,9 +281,9 @@ func (r *ClaimStore) dropRemoved(ctx context.Context, exec executor, k registras
 //
 // # `FacOfferItem` tidak tersimpan
 //
-// Tabelnya tidak punya kolomnya. Ia dipakai gerbang kelengkapan Fac Out saat input
-// (Group Panel `003`), dan rincian Fac Offer itu sendiri tinggal di snapshot polis
-// (`D-04`), bukan di baris spreading. Dicatat sebagai keterbatasan yang diketahui.
+// Tabelnya tidak punya kolomnya, dan Objek Fac Offer memang tidak dipakai: proteksi
+// kelengkapan Fac Out dihapus dan T_FACOFFER.JSONDATA tidak dibaca untuknya (Work Owner
+// 2026-10-08).
 func (r *ClaimStore) saveSpreading(
 	ctx context.Context,
 	exec executor,

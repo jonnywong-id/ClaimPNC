@@ -357,11 +357,16 @@ const (
 	spreadingUpperBound Percent = 1_000_001
 )
 
-// validateSpreading — langkah 37.3.2, 37.3.5.3, 37.3.5.4, dan 37.3.6.
+// validateSpreading — langkah 37.3.2 dan 37.3.6.
 //
-// Total 100% dan kelengkapan Fac Offer hanya diperiksa pada objek TERISI (filledItems):
-// objek lain boleh belum dilengkapi, asalkan minimal satu objek terisi (Work Owner,
-// 2026-10-07). Sebelumnya setiap coverage SETIAP objek wajib 100%.
+// Total 100% hanya diperiksa pada objek TERISI (filledItems): objek lain boleh belum
+// dilengkapi, asalkan minimal satu objek terisi (Work Owner, 2026-10-07). Sebelumnya setiap
+// coverage SETIAP objek wajib 100%.
+//
+// Kelengkapan Fac Offer (langkah 37.3.5.3–37.3.5.4: spreading FAC-OUT wajib punya Objek Fac
+// Offer, pesan "Data Spreading Facout : Object Name belum lengkap.") TIDAK dibawa — Work
+// Owner 2026-10-08 menyatakan Objek Fac Offer tidak digunakan, dan isiannya dihapus dari
+// layar Input Register. Ini penyimpangan sadar dari InputRegister_act.
 func validateSpreading(v *collector, k Claim) {
 	if k.SpreadingCount() == 0 {
 		v.add(ViolationNoSpreading, "spreading",
@@ -369,28 +374,13 @@ func validateSpreading(v *collector, k Claim) {
 		return
 	}
 
-	filled := filledItems(k)
-	if len(filled) == 0 {
+	if len(filledItems(k)) == 0 {
 		// Pesannya menyebut aturan barunya: petugas perlu tahu bahwa SATU objek cukup,
 		// bukan bahwa seluruh objek harus diperbaiki.
 		v.add(ViolationSpreadingTotalNot100, "spreading",
 			"Total share spreading tidak 100%. Minimal satu objek harus memiliki coverage "+
 				"dengan total share spreading 100% pada setiap coverage-nya.")
 		return
-	}
-
-	for _, o := range filled {
-		for _, c := range o.Coverage {
-			for _, s := range c.Spreading {
-				if s.Removed || s.TreatyKind != TreatyFacOut {
-					continue
-				}
-				if strings.TrimSpace(s.FacOfferItem) == "" {
-					v.add(ViolationFacOfferIncomplete, "spreading",
-						"Data Spreading Facout : Object Name belum lengkap.")
-				}
-			}
-		}
 	}
 }
 

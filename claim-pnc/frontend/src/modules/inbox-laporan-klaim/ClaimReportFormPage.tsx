@@ -7,7 +7,7 @@ import { DateField } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { NumberField } from '@/components/NumberField'
-import { centsToRupiah, formatDate, rupiahToCents, todayWIB } from '@/components/format'
+import { formatDate, todayWIB } from '@/components/format'
 
 import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
 import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupResponse } from './types'
@@ -42,7 +42,6 @@ export function ClaimReportFormPage() {
   const polis = useLookupPolicy()
 
   const [values, setValues] = useState<ClaimReportDetail>(withReceivedDefault(EMPTY_DETAIL))
-  const [estimateText, setEstimateText] = useState('')
   const [policyResult, setPolicyResult] = useState<PolicyLookupResponse | null>(null)
   const [lookedUpNumber, setLookedUpNumber] = useState<string | null>(null)
 
@@ -52,7 +51,6 @@ export function ClaimReportFormPage() {
   useEffect(() => {
     if (!berkas.data?.isian) return
     setValues(withReceivedDefault(berkas.data.isian))
-    setEstimateText(centsToRupiah(berkas.data.isian.estimasi_kerugian))
   }, [berkas.data])
 
   const [initialLookup, setInitialLookup] = useState(false)
@@ -191,7 +189,9 @@ export function ClaimReportFormPage() {
         onSubmit={(e) => {
           e.preventDefault()
           if (!editable) return
-          simpan.mutate({ ...values, estimasi_kerugian: rupiahToCents(estimateText) || 0 })
+          // Estimasi Kerugian tidak ditampilkan (Work Owner 2026-10-08); nilai tersimpannya
+          // ikut dikirim apa adanya lewat `values`, sehingga tidak terhapus.
+          simpan.mutate(values)
         }}
       >
         <Group title="Dokumen masuk">
@@ -329,22 +329,8 @@ export function ClaimReportFormPage() {
             error={violation['nomor_rujukan']}
             disabled={!editable}
           />
-          {/*
-            Uang diketik sebagai teks lalu diubah menjadi SEN saat dikirim. Memakai
-            <input type="number"> untuk rupiah membuat peramban menyimpannya sebagai
-            pecahan biner, dan `ADR-0016` menuntut presisi penuh.
-          */}
-          <Field
-            id="estimasi_kerugian"
-            label="Estimasi Kerugian"
-            value={estimateText}
-            onChange={(e) => setEstimateText(e.target.value)}
-            placeholder="2.500.000,00"
-            inputMode="decimal"
-            error={violation['estimasi_kerugian']}
-            disabled={!editable}
-            hint="Angka yang disebut pelapor; bukan nilai klaim."
-          />
+          {/* Estimasi Kerugian (InputReceiveDocument_sect) tidak ditampilkan — tidak dipakai,
+              keputusan Work Owner 2026-10-08. */}
           <TextArea
             id="sumber_laporan"
             label="Source Of Reports"
@@ -482,15 +468,22 @@ export function ClaimReportFormPage() {
             <Button
               type="button"
               tone="kedua"
-              disabled={!editable || daftar.isPending || policyBlocked}
+              disabled={!editable || daftar.isPending || simpan.isPending || policyBlocked}
+              // Isian disimpan LEBIH DULU, baru klaim didaftarkan: klaim baru menyalin isi
+              // berkas yang TERSIMPAN — antara lain Kronologis Kejadian menjadi Deskripsi
+              // Laporan (CreateRegisterKlaimPNC_act langkah 14). Tanpa itu, kronologis yang
+              // baru diketik tetapi belum di-Simpan tidak ikut ke klaim.
               onClick={() =>
-                daftar.mutate(
-                  { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
-                  { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
-                )
+                simpan.mutate(values, {
+                  onSuccess: () =>
+                    daftar.mutate(
+                      { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
+                      { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
+                    ),
+                })
               }
             >
-              {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
+              {simpan.isPending || daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
             </Button>
           )}
 

@@ -276,21 +276,36 @@ export function EstimatePaymentTable({
   editor,
   currencyList,
   busy,
+  onlyWithCoverage = false,
 }: {
   klaim: Claim
   tugas: Task
   editor: EstimateEditor
   currencyList: CurrencyOption[]
   busy: boolean
+  /**
+   * Tampilkan hanya objek yang punya baris di POOLDATA.T_CLAIM_OBJECTCOVERAGE (coverage klaim
+   * dibaca dari tabel itu) — layar Input Estimasi, Work Owner 2026-10-08. Objek lain tetap
+   * ada di isian (urutan dan jumlahnya harus sama dengan klaim saat disimpan), hanya tidak
+   * digambar.
+   */
+  onlyWithCoverage?: boolean
 }) {
   const { form, updateItems, updateItem, downloadFaceSheet, plaFor, setPLAFor } = editor
+  const shown = klaim.objek
+    .map((o, i) => ({ o, i }))
+    .filter(({ o }) => !onlyWithCoverage || o.coverage.length > 0)
   return (
     <div className="mt-3">
-      {klaim.objek.length === 0 && (
-        <p className="text-sm text-slate-600">Klaim ini belum punya objek. Kembali ke Input Register untuk mengisinya.</p>
+      {shown.length === 0 && (
+        <p className="text-sm text-slate-600">
+          {klaim.objek.length === 0
+            ? 'Klaim ini belum punya objek. Kembali ke Input Register untuk mengisinya.'
+            : 'Belum ada objek yang punya coverage. Kembali ke Input Register untuk mengisinya.'}
+        </p>
       )}
 
-      {klaim.objek.length > 0 && (
+      {shown.length > 0 && (
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">Objek klaim</caption>
           <thead>
@@ -305,12 +320,12 @@ export function EstimatePaymentTable({
             </tr>
           </thead>
           <tbody>
-            {klaim.objek.map((o, i) => {
+            {shown.map(({ o, i }, n) => {
               const totals = objectTotals(o)
               return (
                 <ObjectRows key={i}>
                   <tr className="bg-blue-100/70 align-top">
-                    <td className="p-2">{i + 1}</td>
+                    <td className="p-2">{n + 1}</td>
                     <td className="p-2">{o.nama || o.id}</td>
                     <td className="p-2">{o.lokasi || '—'}</td>
                     <td className="p-2">{currencyName(klaim.polis.mata_uang, currencyList)}</td>
@@ -487,7 +502,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
 
       {tab === 'Estimasi Pembayaran' && (
-        <EstimatePaymentTable klaim={klaim} tugas={tugas} editor={editor} currencyList={currencyList} busy={busy} />
+        <EstimatePaymentTable klaim={klaim} tugas={tugas} editor={editor} currencyList={currencyList} busy={busy} onlyWithCoverage />
       )}
 
       {failure && (

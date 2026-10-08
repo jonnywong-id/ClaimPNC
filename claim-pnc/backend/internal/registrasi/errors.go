@@ -91,7 +91,6 @@ const (
 	ViolationItemWithoutCoverage     ViolationCode = "objek_tanpa_coverage"
 	ViolationNoSpreading             ViolationCode = "tanpa_spreading"
 	ViolationSpreadingTotalNot100    ViolationCode = "total_spreading_bukan_100"
-	ViolationFacOfferIncomplete      ViolationCode = "fac_offer_tidak_lengkap"
 	ViolationEstimateExceedsTSI      ViolationCode = "estimasi_melebihi_tsi"
 	ViolationEstimateMissing         ViolationCode = "estimasi_kosong"
 	ViolationReporterStatusEmpty     ViolationCode = "status_pelapor_kosong"

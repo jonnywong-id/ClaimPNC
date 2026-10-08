@@ -366,7 +366,9 @@ type Spreading struct {
 	// penghapusan fisik; baris tetap ada dan tidak ikut dihitung.
 	Removed bool
 
-	// FacOfferItem terisi untuk treaty Fac Out. Kosongnya adalah galat kelengkapan.
+	// FacOfferItem — Objek Fac Offer. TIDAK dipakai dan tidak diperiksa (Work Owner
+	// 2026-10-08: POOLDATA.T_FACOFFER.JSONDATA sudah tidak dipakai, dan proteksi Object Name
+	// Fac Out dihapus). Medannya hanya diteruskan apa adanya dari permintaan.
 	FacOfferItem string
 }
 
