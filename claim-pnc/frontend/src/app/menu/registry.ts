@@ -401,6 +401,8 @@ export const MENU_ROUTES: Record<string, string> = {
   MonitoringSLINKOJK: '/monitoring-slink-ojk',
   // MENU_ID 87 "Konversi Coverage" — dokumen coverage polis LIVE → tabel relasional TEST.
   KonversiCoverage: '/konversi-coverage',
+  // MENU_ID 88 "KonversiObjekItemFire" — PropertyItemList polis Fire LIVE → T_PROPERTYITEMLIST TEST.
+  KonversiObjekItemFire: '/konversi-object-item-fire',
   // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
   // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
   //

@@ -91,6 +91,7 @@ import { OutstandingClaimPage } from '@/modules/outstanding-claim/OutstandingCla
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
 import { CoverageConversionPage } from '@/modules/konversi-coverage/CoverageConversionPage'
+import { ObjectItemConversionPage } from '@/modules/konversi-object-item-fire/ObjectItemConversionPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -968,6 +969,20 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <CoverageConversionPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Konversi Object Item Fire (`MENU_ID 88`) — alat bantu data uji: PropertyItemList polis
+        Fire di LIVE dikonversi menjadi T_PROPERTYITEMLIST di TEST, BLOB-nya ikut disalin.
+      */}
+      <Route
+        path="/konversi-object-item-fire"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ObjectItemConversionPage />
             </Protected>
           </SessionGuard>
         }

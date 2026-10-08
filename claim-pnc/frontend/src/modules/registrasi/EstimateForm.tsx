@@ -672,35 +672,37 @@ function ItemTable({
                 <td className="p-2">{n + 1}</td>
                 <td className="p-2">
                   {/*
-                    Objek (.ObjectItemName) adalah pxAutoComplete di ObjectItemList_sect (grid
-                    !IsTravel): petugas mengetik bebas, dan saran diambil dari PropertyItemList
-                    objek polis (GetListPropertyItemListFire). Polis yang tidak membawa daftar
-                    item tidak punya saran — di Pega pun sama — dan isiannya tetap dapat diketik.
+                    Objek (.ObjectItemName) dipilih dari PropertyItemList objek polis
+                    (GetListPropertyItemListFire) — DROPDOWN, tanpa ketik bebas (Work Owner
+                    2026-10-08). Read-only setelah estimasi pertama item ini dibuatkan Claim
+                    Face Sheet (`pyReadOnlyCondition .EstimationList(1).PrintFaceClaim=='1'`).
+                    Nilai tersimpan yang tidak ada di daftar tetap ditampilkan, supaya tidak
+                    hilang diam-diam saat disimpan ulang.
                   */}
-                  <input
+                  <select
                     id={`${id}-objek`}
                     aria-label="Objek"
-                    list={options.length > 0 ? `${id}-objek-pilihan` : undefined}
-                    placeholder="Ketikan kata kunci, pilih"
-                    title="Masukkan kata kunci dan tekan panah bawah keyboard"
                     value={it.nama}
+                    disabled={it.estimasi[0]?.terkunci === true || (options.length === 0 && it.nama === '')}
                     onChange={(e) => {
                       const pilihan = options.find((o) => o.nama === e.target.value)
-                      set((x) => ({ ...x, nama: e.target.value, kelompok: pilihan?.kelompok ?? x.kelompok }))
+                      set((x) => ({ ...x, nama: e.target.value, kelompok: pilihan?.kelompok ?? '' }))
                     }}
-                    className="rounded border border-slate-400 bg-white px-1 py-0.5"
-                  />
-                  {options.length > 0 ? (
-                    <datalist id={`${id}-objek-pilihan`}>
-                      {options.map((o) => (
-                        <option key={o.nama} value={o.nama}>
-                          {o.kelompok}
-                        </option>
-                      ))}
-                    </datalist>
-                  ) : (
+                    className="rounded border border-slate-400 bg-white px-1 py-0.5 disabled:bg-slate-100 disabled:text-slate-600"
+                  >
+                    <option value="">{options.length === 0 ? '— tidak ada pilihan —' : '— pilih —'}</option>
+                    {it.nama !== '' && !options.some((o) => o.nama === it.nama) && (
+                      <option value={it.nama}>{it.nama}</option>
+                    )}
+                    {options.map((o) => (
+                      <option key={o.nama} value={o.nama}>
+                        {o.nama}
+                      </option>
+                    ))}
+                  </select>
+                  {options.length === 0 && (
                     <p className="mt-1 max-w-[14rem] text-xs text-slate-500">
-                      Polis tidak memiliki daftar item untuk objek ini — ketik nama objek.
+                      Polis tidak memiliki daftar item untuk objek ini (PropertyItemList kosong).
                     </p>
                   )}
                 </td>

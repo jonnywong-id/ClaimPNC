@@ -60,6 +60,7 @@ import (
 	"claim-pnc/internal/inputacceptation"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/konversicoverage"
+	"claim-pnc/internal/konversiobjectitemfire"
 	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
@@ -254,6 +255,7 @@ import (
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
 	konversicoveragehttp "claim-pnc/internal/konversicoverage/http"
+	konversiobjectitemfirehttp "claim-pnc/internal/konversiobjectitemfire/http"
 	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
 	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
 	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
@@ -1790,6 +1792,22 @@ func run() error {
 	})
 	defer konversiCoverageHandler.Close()
 
+	// Konversi Object Item Fire (`MENU_ID 88`) — alat bantu data uji yang sama polanya:
+	// PropertyItemList polis Fire dari LIVE menjadi T_PROPERTYITEMLIST di TEST, sekaligus
+	// menyalin BLOB-nya. Memakai koneksi KONVERSI_LIVE_* / KONVERSI_TEST_* yang sama.
+	konversiObjectItemFireHandler := konversiobjectitemfirehttp.NewHandler(konversiobjectitemfirehttp.Options{
+		Config: konversiobjectitemfire.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversiobjectitemfirehttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversiobjectitemfirehttp.Caller{}, false
+			}
+			return konversiobjectitemfirehttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiObjectItemFireHandler.Close()
+
 	slinkOJKHandler := slinkojkhttp.NewHandler(slinkojkhttp.Options{
 		Service: assembly.monitoringSlinkOJK,
 		GetCaller: func(ctx context.Context) (slinkojkhttp.Caller, bool) {
@@ -2517,6 +2535,7 @@ func run() error {
 				// Konversi Coverage — TIDAK di balik pemeriksaan portal: koneksinya ditentukan
 				// konfigurasi modul, bukan portal yang dipilih pengguna.
 				konversicoveragehttp.Mount(protected, konversiCoverageHandler)
+				konversiobjectitemfirehttp.Mount(protected, konversiObjectItemFireHandler)
 
 				// Inbox Salvage memuat nomor klaim DAN nilai uang — nilai pengajuan
 				// PIC, nilai request balai lelang, nilai penawaran. Rutenya menuntut

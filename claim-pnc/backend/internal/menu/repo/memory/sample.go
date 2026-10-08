@@ -115,6 +115,8 @@ func SampleItems() []menu.Item {
 		{ID: 86, Description: "Report Produksi Klaim PA", Program: "ReportProduksiPA_harnes", ParentID: parent(4), Sequence: 1176},
 		// Ditambahkan 2026-10-07 — alat bantu data uji, lihat internal/konversicoverage.
 		{ID: 87, Description: "Konversi Coverage", Program: "KonversiCoverage", ParentID: parent(5), Sequence: 1177},
+		// Ditambahkan 2026-10-08 — alat bantu data uji, lihat internal/konversiobjectitemfire.
+		{ID: 88, Description: "KonversiObjekItemFire", Program: "KonversiObjekItemFire", ParentID: parent(5), Sequence: 1178},
 	}
 }
 
@@ -148,7 +150,7 @@ func SampleGrants() map[string][]int {
 			47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
 			59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
 			71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81,
-			87,
+			87, 88,
 		},
 		"JONNY": {
 			4, 82, 83, 84, 85, 86,

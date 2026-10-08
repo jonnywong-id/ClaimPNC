@@ -1221,8 +1221,8 @@ describe('tahap Input Estimasi', () => {
   })
 
   // Lini Fire: Objek dipilih dari item properti polis, dan kelompoknya ikut terkirim.
-  // Objek adalah pxAutoComplete Pega: isian ketik dengan saran dari item polis. Memilih
-  // saran (mengetik namanya persis) ikut mengisi kelompok itemnya.
+  // Objek adalah DROPDOWN item polis (Work Owner 2026-10-08): tidak dapat diketik bebas.
+  // Memilih item ikut mengisi kelompoknya.
   it('memilih Objek dari item properti polis Fire', async () => {
     itemOptions = [
       { nama: 'BUILDING', kelompok: 'BUILDING(S)', tsi_sen: 0 },
@@ -1232,16 +1232,26 @@ describe('tahap Input Estimasi', () => {
     mount(<ClaimPage />)
     const user = userEvent.setup()
 
-    const field = await screen.findByLabelText('Objek')
-    await waitFor(() => expect(field.getAttribute('list')).toBeTruthy())
-    const suggestions = document.getElementById(field.getAttribute('list')!)
-    expect(Array.from(suggestions!.querySelectorAll('option')).map((o) => o.value)).toEqual(['BUILDING', 'CONTENTS'])
-    await user.type(field, 'CONTENTS')
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    await waitFor(() => expect(screen.getByRole('option', { name: 'CONTENTS' })).toBeInTheDocument())
+    expect(field.tagName).toBe('SELECT')
+    await user.selectOptions(field, 'CONTENTS')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(estimateBody).not.toBeNull())
     expect(estimateBody?.body).toMatchObject({
       objek: [{ coverage: [{ item: [{ nama: 'CONTENTS', kelompok: 'OTHERS' }] }] }],
     })
+  })
+
+  it('Objek tidak dapat diisi bila polis tidak memiliki daftar item', async () => {
+    itemOptions = []
+    stubEstimate()
+    mount(<ClaimPage />)
+
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    expect(field).toBeDisabled()
+    expect(screen.getByRole('option', { name: '— tidak ada pilihan —' })).toBeInTheDocument()
+    expect(screen.getByText(/Polis tidak memiliki daftar item/)).toBeInTheDocument()
   })
 })
