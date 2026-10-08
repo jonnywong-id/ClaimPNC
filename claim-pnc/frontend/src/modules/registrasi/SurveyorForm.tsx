@@ -10,7 +10,8 @@ import { useSession } from '@/app/session'
 import { useCauseOfLossOptions, useClaimTask, useCompleteStage, useCurrencies, useFaceSheet, usePrepareSettlement, violationsFrom } from './api'
 import { AcceptanceButtons } from './AcceptanceButtons'
 import { LODTypeSelect } from './LODTypeSelect'
-import { CommitteeStatus, TransferCommitteeButton } from './Committee'
+import { CommitteeStatus } from './Committee'
+import { CommitteeTransferDialog } from './CommitteeTransferDialog'
 import { DocumentTab, InvestigationTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
 import { ReceiverTab } from './ReceiverTab'
@@ -18,7 +19,7 @@ import { CloseClaimDialog } from './CloseClaim'
 import { SendToInputorDialog } from './SendToInputor'
 import { SendToRCLPUCLDialog } from './SendToRCLPUCL'
 import { SettlementDetail, SettlementEditor } from './SettlementEditor'
-import { TransferToAnalystDialog, isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
+import { isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
 import {
   EstimationType,
   PaymentType,
@@ -110,6 +111,9 @@ const PANEL_FIRE = '006'
 /** When IsNonMBU: Group Panel 003, 004, 006, 009. */
 const NON_MBU_PANELS = ['003', PANEL_MARINE_CARGO, PANEL_FIRE, '009']
 
+/** Nilai Property AcceptanceStatus (dropdown section TransferKomite). Nilai lain tidak berlabel. */
+const ACCEPTANCE_STATUS_LABEL: Record<string, string> = { '1': 'Akseptasi', '2': 'Belum Akseptasi' }
+
 /** When IsAneka: `Quotation.BusinessCode = "10140"`. */
 const BUSINESS_CODE_ANEKA = '10140'
 
@@ -137,7 +141,7 @@ function surveyVisible(klaim: Claim): boolean {
 /**
  * Tugas InputSurveyor dirutekan PNCTeknikRouter ke PIC Teknik (beban paling ringan di
  * POOLDATA.MST_USER_TEKNIK). Ia boleh dikerjakan pemiliknya atau pemegang grup PIC Teknik
- * (PNCKomiteTeknik di M_LOGIN_GROUP_PNC); selebihnya server menolak (ErrNotTaskOwner) —
+ * (PNCKomiteTeknik atau PncPICTeknik di M_LOGIN_GROUP_PNC); selebihnya server menolak (ErrNotTaskOwner) —
  * layar menyatakannya lebih dulu alih-alih membiarkan petugas mengisi lalu ditolak.
  */
 /** Flow action tahap Investigator (Register_Flow Assignment11). */
@@ -693,8 +697,9 @@ function AdjustmentView({
 }) {
   // Jaminan yang baris isian Tambah-nya sedang terbuka.
   const [addFor, setAddFor] = useState<{ i: number; j: number } | null>(null)
-  // Jaminan yang modal "Transfer ke Analyst"-nya sedang terbuka.
-  const [analystFor, setAnalystFor] = useState<{ objekID: string; coverageID: string; name: string } | null>(null)
+  // Modal "Transfer Claim ke Komite" (ClaimComitee_OC) yang sedang terbuka: jaminan berbasis 1, dan
+  // baris adjustment bila dibuka dari tombol Transfer ke Komite grid Adjustment.
+  const [committeeFor, setCommitteeFor] = useState<{ object: number; coverage: number; adjustment?: number } | null>(null)
   // Baris adjustment yang baru tersimpan pertama kali — dibuka di grid supaya isiannya dapat diteruskan.
   const [openFor, setOpenFor] = useState<{ i: number; j: number; n: number } | null>(null)
   // Tambah: ValidationAdjustment lebih dulu. PA pada jaminan tanpa adjustment mendapat estimasi
@@ -839,7 +844,7 @@ function AdjustmentView({
                                           type="button"
                                           disabled={lockedReason !== null}
                                           title={lockedReason ?? undefined}
-                                          onClick={() => setAnalystFor({ objekID: o.id, coverageID: c.id, name: c.nama })}
+                                          onClick={() => setCommitteeFor({ object: i + 1, coverage: j + 1 })}
                                           className="whitespace-nowrap rounded bg-orange-500 px-2 py-1 text-xs text-white disabled:opacity-60"
                                         >
                                           Transfer ke Analyst
@@ -896,6 +901,7 @@ function AdjustmentView({
                                     businessType={klaim.polis.jenis_bisnis}
                                     receivers={klaim.penerima_klaim ?? []}
                                     exGratia={klaim.ex_gratia}
+                                    onTransferCommittee={(n) => setCommitteeFor({ object: i + 1, coverage: j + 1, adjustment: n })}
                                     autoOpen={openFor?.i === i && openFor.j === j ? openFor.n : null}
                                     editable={(n, s) =>
                                       lockedReason === null && s.status_akseptasi === '' && !s.komite_id && !s.sudah_transfer_kasir ? (
@@ -958,14 +964,17 @@ function AdjustmentView({
           })}
         </tbody>
       </table>
-      {analystFor && (
-        <TransferToAnalystDialog
-          claimID={klaim.id}
+      {committeeFor && (
+        <CommitteeTransferDialog
+          klaim={klaim}
           taskID={tugas.id}
-          objekID={analystFor.objekID}
-          coverageID={analystFor.coverageID}
-          coverageName={analystFor.name}
-          onClose={() => setAnalystFor(null)}
+          stage={tugas.tahap}
+          object={committeeFor.object}
+          coverage={committeeFor.coverage}
+          adjustment={committeeFor.adjustment}
+          receivers={klaim.penerima_klaim ?? []}
+          analyst={tugas.analis === true}
+          onClose={() => setCommitteeFor(null)}
         />
       )}
     </NoObjects>
@@ -988,6 +997,7 @@ function SettlementGrid({
   businessType,
   receivers,
   exGratia,
+  onTransferCommittee,
   autoOpen = null,
   editable,
   onAdd,
@@ -1013,6 +1023,8 @@ function SettlementGrid({
   receivers: Receiver[]
   /** Klaim Ex Gratia (`pyWorkPage.ClaimData.ExGratia`). */
   exGratia: boolean
+  /** Tombol "Transfer ke Komite" baris adjustment (berbasis 1) — membuka modal ClaimComitee_OC. */
+  onTransferCommittee: (adjustment: number) => void
   /** Baris (berbasis 0) yang dibuka otomatis — baris yang baru tersimpan pertama kali. */
   autoOpen?: number | null
   /** Form isian untuk baris yang masih dapat diubah (`.AcceptanceStatus == ''`), atau null. */
@@ -1086,17 +1098,28 @@ function SettlementGrid({
                 </button>
               </td>
               <td className="p-2">
-                <TransferCommitteeButton
-                  claimID={claimID}
-                  taskID={taskID}
-                  object={object}
-                  coverage={coverage}
-                  adjustment={n + 1}
-                  line={s}
-                  lockedReason={lockedReason}
-                />
+                {/* ShowAdjustment sel 28: `.IsKomiteTransfer=='' && .AcceptanceStatus=='' && IsNonMBU`,
+                    membuka modal ClaimComitee_OC. Sel 29 (section TransferKomite) tidak ada di export. */}
+                {!s.komite_id && s.status_akseptasi === '' && nonMBU ? (
+                  <button
+                    type="button"
+                    disabled={lockedReason !== null}
+                    title={lockedReason ?? undefined}
+                    onClick={() => onTransferCommittee(n + 1)}
+                    className="whitespace-nowrap rounded bg-orange-500 px-2 py-0.5 text-xs text-white disabled:opacity-60"
+                  >
+                    Transfer ke Komite
+                  </button>
+                ) : s.komite_id ? (
+                  <span className="text-xs text-slate-600">Sudah ditransfer</span>
+                ) : null}
               </td>
-              <td className="p-2">{s.nama_tipe_pembayaran}</td>
+              <td className="p-2">
+                {/* Section TransferKomite: `.PaymentType` · " / " bila `.AcceptanceStatus != ''` ·
+                    `.AcceptanceStatus` (Property AcceptanceStatus: 1 Akseptasi, 2 Belum Akseptasi). */}
+                {s.nama_tipe_pembayaran}
+                {s.status_akseptasi !== '' && <> / {ACCEPTANCE_STATUS_LABEL[s.status_akseptasi] ?? ''}</>}
+              </td>
               <td className="p-2 text-xs">
                 <CommitteeStatus line={s} />
                 <AcceptanceButtons

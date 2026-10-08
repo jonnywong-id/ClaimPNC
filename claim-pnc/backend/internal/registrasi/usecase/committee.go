@@ -18,6 +18,10 @@ type CommitteeTransferCommand struct {
 	Object     int
 	Coverage   int
 	Adjustment int
+
+	// ReceiverID adalah Penerima Klaim modal "Transfer Claim ke Komite" (`.TempReceiver`,
+	// lini Travel). Kosong berarti TEMPRECEIVER jaminan yang tersimpan.
+	ReceiverID string
 }
 
 // CommitteeTransferResult adalah klaim sesudah transfer beserta kasus komitenya.
@@ -34,6 +38,11 @@ const (
 	msgTransferAdjusterFee = "Nilai Professional Fee, Survey Expenses, dan VAT Harus Diisi"
 	msgTransferNoApprover  = "Error Case Komite tidak kebuat. Silakan transfer ulang"
 	msgTransferDone        = "This adjustment has already been transferred to committee."
+
+	// ValidationTypePayment step 9–12 dan setValidasiReceiverClaim_act (lini Travel).
+	msgTransferReceiver        = "Receiver Claim harus di isi"
+	msgTransferReceiverBank    = "Nama Bank Belum Di isi"
+	msgTransferReceiverAccount = "No Rekening Belum Di isi"
 )
 
 // TransferCommittee memindahkan satu baris adjustment ke komite (`ValidationTypePaymentAdj`
@@ -61,6 +70,9 @@ func (l *Service) TransferCommittee(ctx context.Context, p CommitteeTransferComm
 		return CommitteeTransferResult{}, err
 	}
 	if err := checkTransfer(*line); err != nil {
+		return CommitteeTransferResult{}, err
+	}
+	if err := checkTravelReceiver(claim, p); err != nil {
 		return CommitteeTransferResult{}, err
 	}
 
@@ -137,6 +149,48 @@ func checkTransfer(line registrasi.SettlementLine) error {
 		}
 	}
 	return nil
+}
+
+// checkTravelReceiver memeriksa Penerima Klaim lini Travel sebelum transfer —
+// `ValidationTypePayment` step 6 dan 9–12 (`setValidasiReceiverClaim_act` menonaktifkan tombolnya
+// lebih dulu di layar): penerima yang dipilih (`.TempReceiver`) harus ada dan data banknya
+// lengkap, karena pembayarannya kelak dikirim ke kasir.
+//
+// Satu pemeriksaan Pega tidak dibawa: "Cabang Bank Belum Di isi" (`.BranchOfBank`) — kolomnya
+// tidak ada di POOLDATA.T_CLAIM_RECEIVER.
+func checkTravelReceiver(claim registrasi.Claim, p CommitteeTransferCommand) error {
+	if claim.Policy.Line != registrasi.LineTravel && claim.Policy.BusinessType != "Travel" {
+		return nil
+	}
+	id := strings.TrimSpace(p.ReceiverID)
+	if id == "" {
+		id = strings.TrimSpace(claim.InsuredItem[p.Object-1].Coverage[p.Coverage-1].Committee.Receiver)
+	}
+	reject := func(msg string) error {
+		return &registrasi.ValidationError{Violation: []registrasi.Violation{{
+			Code: registrasi.ViolationCommitteeIncomplete, Field: "penerima_klaim", Message: msg,
+		}}}
+	}
+	if id == "" {
+		return reject(msgTransferReceiver)
+	}
+	for _, r := range claim.Receiver {
+		if strings.TrimSpace(r.ID) != id {
+			continue
+		}
+		var v []registrasi.Violation
+		if strings.TrimSpace(r.BankName) == "" {
+			v = append(v, registrasi.Violation{Code: registrasi.ViolationCommitteeIncomplete, Field: "penerima_klaim", Message: msgTransferReceiverBank})
+		}
+		if strings.TrimSpace(r.AccountNo) == "" {
+			v = append(v, registrasi.Violation{Code: registrasi.ViolationCommitteeIncomplete, Field: "penerima_klaim", Message: msgTransferReceiverAccount})
+		}
+		if len(v) > 0 {
+			return &registrasi.ValidationError{Violation: v}
+		}
+		return nil
+	}
+	return reject(msgTransferReceiver)
 }
 
 // rupiahText menulis nilai sen sebagai rupiah bulat berpemisah titik: 2.500.000.

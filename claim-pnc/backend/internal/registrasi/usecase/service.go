@@ -51,6 +51,7 @@ type Service struct {
 	causeOfLoss            registrasi.CauseOfLossDirectory
 	items                  registrasi.PolicyItemSource
 	currency               registrasi.CurrencyDirectory
+	diagnosis              registrasi.DiagnosisDirectory
 	options                registrasi.ItemOptionSource
 	records                registrasi.ClaimRecordSource
 	faceSheet              registrasi.FaceSheetSource
@@ -107,6 +108,10 @@ type Options struct {
 
 	// CurrencyDirectory membaca pilihan Mata Uang tahap Input Estimasi.
 	CurrencyDirectory registrasi.CurrencyDirectory
+
+	// Diagnosis mencari kode diagnosa modal "Transfer Claim ke Komite" (PA). Boleh kosong:
+	// pencarian lalu tidak menemukan apa pun.
+	Diagnosis registrasi.DiagnosisDirectory
 
 	// ItemOptions membaca pilihan Objek item estimasi dari polis.
 	ItemOptions registrasi.ItemOptionSource
@@ -273,6 +278,7 @@ func NewService(o Options) (*Service, error) {
 		causeOfLoss:            o.CauseOfLoss,
 		items:                  o.PolicyItems,
 		currency:               o.CurrencyDirectory,
+		diagnosis:              o.Diagnosis,
 		options:                o.ItemOptions,
 		records:                o.ClaimRecords,
 		faceSheet:              o.FaceSheet,

@@ -64,6 +64,36 @@ export type Coverage = {
   adjustment?: Settlement[]
   /** Jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya dikirim server. */
   sudah_transfer_analis?: boolean
+  /** Isian modal "Transfer Claim ke Komite" (ClaimComitee_OC) — hanya dikirim server. */
+  isian_komite?: CommitteeNote
+}
+
+/** Satu kode diagnosa (sm.m_diagnosis) — hasil Cari Kode / Desc Diagnose. */
+export type DiagnosisOption = {
+  kode: string
+  deskripsi: string
+}
+
+export type DiagnosisResponse = {
+  pilihan: DiagnosisOption[]
+}
+
+/**
+ * Isian modal "Transfer Claim ke Komite" satu jaminan — kolom analisis
+ * T_CLAIM_OBJECTCOVERAGE. Inisial dan tanggal komite hanya dikirim server.
+ */
+export interface CommitteeNote {
+  kronologi_kejadian: string
+  jumlah_kerugian: string
+  polis_liability: string
+  remarks: string
+  remarks_investigasi: string
+  diagnosa: string
+  kode_diagnosa: string
+  desc_diagnosa: string
+  penerima_klaim: string
+  inisial?: string
+  tanggal_komite?: string
 }
 
 /** Kode Tipe Pembayaran (PAYMENTTYPE). */
@@ -147,6 +177,8 @@ export type CommitteeTransferRequest = {
   objek: number
   jaminan: number
   adjustment: number
+  /** Penerima Klaim modal Transfer Claim ke Komite (Travel); kosong = TEMPRECEIVER tersimpan. */
+  penerima_klaim?: string
 }
 
 export type CommitteeTransferResponse = {
@@ -646,6 +678,8 @@ export type FaceSheetRequest = {
 export type PLARequest = FaceSheetRequest & {
   nomor?: string
   catatan?: Record<string, string>
+  /** Isian Email per nomor PLA (`.pyEmailAddress`); hanya nomor yang dikirim yang diubah. */
+  email?: Record<string, string>
 }
 
 /** Satu baris grid layar PrintPLA_dtl. */

@@ -146,3 +146,45 @@ func TestFaceSheetKeepsExistingTechnicalPIC(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "PICLAIN", after.TechnicalPIC)
 }
+
+// PIC Teknis yang dipilih saat CFS adalah PIC yang TERCETAK di dokumennya: pemilihan
+// berjalan sebelum isi CFS dibentuk, bukan sesudahnya.
+func TestFaceSheetPrintsTheTechnicalPICItChose(t *testing.T) {
+	l, f := faultySetup(t)
+	ctx := context.Background()
+	_, register := l.upToInputRegister(t, firePolicy)
+	input := validInput(register.ID)
+	input.TechnicalPIC = ""
+	registered, err := l.service.SaveRegister(ctx, input, l.caller)
+	require.NoError(t, err)
+	task := *registered.NextTask
+
+	_, err = l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(10), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+
+	require.Equal(t, testOperator, f.faceSheet.TechnicalPIC)
+}
+
+// Dokumen yang gagal dibentuk tidak meninggalkan PIC Teknis tercatat di klaim.
+func TestFaceSheetRenderFailureKeepsTechnicalPICEmpty(t *testing.T) {
+	l, f := faultySetup(t)
+	ctx := context.Background()
+	_, register := l.upToInputRegister(t, firePolicy)
+	input := validInput(register.ID)
+	input.TechnicalPIC = ""
+	registered, err := l.service.SaveRegister(ctx, input, l.caller)
+	require.NoError(t, err)
+	task := *registered.NextTask
+
+	_, err = l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(10), 1), l.caller)
+	require.NoError(t, err)
+	f.arm("Render.FaceSheet", 0)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.Error(t, err)
+
+	stored, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Empty(t, stored.TechnicalPIC)
+}

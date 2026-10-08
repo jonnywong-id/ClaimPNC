@@ -91,6 +91,7 @@ import { OutstandingClaimPage } from '@/modules/outstanding-claim/OutstandingCla
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
 import { CoverageConversionPage } from '@/modules/konversi-coverage/CoverageConversionPage'
+import { CoinsConversionPage } from '@/modules/konversi-coins/CoinsConversionPage'
 import { ObjectItemConversionPage } from '@/modules/konversi-object-item-fire/ObjectItemConversionPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
@@ -983,6 +984,20 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ObjectItemConversionPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Konversi Coins (`MENU_ID 89`) — alat bantu data uji: CoinsList dokumen polis
+        JSON_POLIS.DATA_JSONBLOB di LIVE dikonversi menjadi T_COINSLIST di TEST.
+      */}
+      <Route
+        path="/konversi-coins"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CoinsConversionPage />
             </Protected>
           </SessionGuard>
         }

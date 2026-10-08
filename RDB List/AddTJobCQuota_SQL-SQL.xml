@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 
 <pagedata>
+<<<<<<< HEAD
 <pyBrowseSQL>update mst_user_teknis set total_job = total_job+1, counter_quota=counter_quota+1 where operator_id = {TempRepType.SearchName}</pyBrowseSQL>
 <pyLabelOld>AddTJobCQuota_SQL</pyLabelOld>
 <pyJavaStream/>
@@ -161,13 +162,182 @@
 <pyCFieldValue/>
 <pyCFieldName/>
 <pyCFileKey/>
+=======
+<pyShowJavaWindowName>GeneratedJava20261008T082618.184 GMT</pyShowJavaWindowName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>01-01-05</pyRuleSetVersion>
+<pxMoveFromSystem/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM AddTJobCQuota_SQL</pxTabLabel>
+<pyHandlerFlow/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedBy/>
+<pyRelativePath/>
+<pySpecialtyComponentData/>
+<pyDeleteSQL/>
+<pyWindowTitle/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleEnds/>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSERANDOMTEAM_SQL #20171117T124926.864 GMT</pzOriginalInstanceKey>
+<pxSiblingCount/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionPatch>05</pzRuleSetVersionPatch>
+<pyStreamName/>
+<pyJavaStream/>
+<pyCircumstanceVal/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedCreateDateTime/>
+<pxSaveDateTime>20171227T083455.842 GMT</pxSaveDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM AddTJobCQuota_SQL</pyRuleName>
+<pyDocumentTitle/>
+<pyIsFromManageChangeLP/>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDate/>
+<pxOriginalCreateSystemID/>
+<pyRuleParamsStreamName/>
+<pyTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!ADDTJOBCQUOTA_SQL</pxInsName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedKey/>
+<pzChecksum>1361333635</pzChecksum>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyUsage/>
+<pyInterface/>
+<pyLabelOld>AddTJobCQuota_SQL</pyLabelOld>
+<pxInstanceLockedRuleSet/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>SANDY@</pySPRuleSetName>
+<pyRuleStarts/>
+<pyOpenSQL/>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyDescription/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateDateTime>20171227T083455.824 GMT</pxUpdateDateTime>
+<pxCreateOperator>SANDY</pxCreateOperator>
+<pyFormPost/>
+<pyMemo>done</pyMemo>
+<pxOriginalCreateOpName/>
+<pxUpdateOperator>SANDY</pxUpdateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!ADDTJOBCQUOTA_SQL</pxInsId>
+<pyLabel>AddTJobCQuota_SQL</pyLabel>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyCircumstanceProp/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCQUOTA_SQL #20171222T034147.416 GMT</pzInsKey>
+<pySaveSQL/>
+<pxCreateDateTime>20171222T034147.416 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCQUOTA_SQL #20171222T034147.416 GMT</pzDocumentKey>
+<pyCircumstanceDefinition/>
+<pyDeletedObject/>
+<pyBrowseSQL>update mst_user_teknis set total_job = total_job+1, counter_quota=counter_quota+1 where operator_id = {TempRepType.SearchName}</pyBrowseSQL>
+<pxOriginalCreateDateTime/>
+<pyTemplateInputBox/>
+<pxMoveImportDateTime>20191231T033534.421 GMT</pxMoveImportDateTime>
+<pxCreateOpName>SANDY</pxCreateOpName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyStatus/>
+<pyRequestType>AddTJobCQuota_SQL</pyRequestType>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleFormStatusTime>20261008T082618.154 GMT</pyRuleFormStatusTime>
+<pyCircumstanceType/>
+<pxUpdateOpName>SANDY</pxUpdateOpName>
+<pxHostId>jboss2058</pxHostId>
+<pyWorkKey/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+>>>>>>> 461d3c8e8a13b3e1e02177ad2f03df608859e9c7
 <pxSubscript>empty</pxSubscript>
 <pyCFieldType/>
 </rowdata>
 </pyCustomFields>
 <pyRMAction>
+<<<<<<< HEAD
 <pyAction>load</pyAction>
 <pxObjClass>Embed-RuleManagement</pxObjClass>
 <pyV2/>
 </pyRMAction>
+=======
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+<pyV2/>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCQUOTA_SQL #20171222T034147.416 GMT</pzInsKey>
+<pyLabel>01-01-05 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyLaunch>true</pyLaunch>
+<pySave>false</pySave>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyCompareVersion/>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+>>>>>>> 461d3c8e8a13b3e1e02177ad2f03df608859e9c7
 </pagedata>

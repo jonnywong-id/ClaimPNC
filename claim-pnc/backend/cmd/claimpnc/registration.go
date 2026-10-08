@@ -105,6 +105,7 @@ func assembleRegistration(
 		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)
 		options.PolicyItems = registrasisql.NewPolicyItems(db)
 		options.CurrencyDirectory = registrasisql.NewCurrencyDirectory(db)
+		options.Diagnosis = registrasisql.NewDiagnosisDirectory(db)
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
 		options.ClaimRecords = registrasisql.NewClaimRecords(db)
 		options.FaceSheet = registrasisql.NewFaceSheetStore(db)
@@ -183,6 +184,7 @@ func assembleRegistration(
 		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)
 		options.PolicyItems = registrasimemory.NewPolicyItems(registrasimemory.SamplePolicyItems())
 		options.CurrencyDirectory = registrasimemory.CurrencyDirectory{}
+		options.Diagnosis = registrasimemory.DiagnosisDirectory{}
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
 		records := registrasimemory.SampleClaimRecords()
 		options.ClaimRecords = records

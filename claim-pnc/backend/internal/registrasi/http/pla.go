@@ -16,6 +16,8 @@ type PLARequest struct {
 	Coverage int               `json:"jaminan"`
 	Number   string            `json:"nomor"`
 	Notes    map[string]string `json:"catatan"`
+	// Emails berisi isian Email per nomor PLA; hanya nomor yang dikirim yang diubah.
+	Emails map[string]string `json:"email,omitempty"`
 }
 
 // PLARowDTO adalah satu baris grid layar PrintPLA_dtl.
@@ -69,7 +71,7 @@ func (h *Handler) ListPLA(w http.ResponseWriter, r *http.Request, claimID string
 	h.writeResponse(w, r, http.StatusOK, plaListDTO(list))
 }
 
-// SavePLANotes menangani POST …/pla/catatan — menyimpan isian REMARKS.
+// SavePLANotes menangani POST …/pla/catatan — menyimpan isian REMARKS dan Email.
 func (h *Handler) SavePLANotes(w http.ResponseWriter, r *http.Request, claimID string) {
 	caller, ok := h.callerOf(w, r)
 	if !ok {
@@ -79,7 +81,7 @@ func (h *Handler) SavePLANotes(w http.ResponseWriter, r *http.Request, claimID s
 	if !h.readBody(w, r, &body) {
 		return
 	}
-	list, err := h.service.SavePLANotes(r.Context(), body.command(claimID), body.Notes, caller)
+	list, err := h.service.SavePLADetails(r.Context(), body.command(claimID), body.Notes, body.Emails, caller)
 	if err != nil {
 		h.failure(w, r, err)
 		return

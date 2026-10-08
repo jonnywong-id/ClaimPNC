@@ -397,14 +397,12 @@ func TestRemovedSpreadingNotCounted(t *testing.T) {
 	require.NoError(t, registrasi.Validate(k, parts()))
 }
 
-func TestFacOutRequiresFacOfferItem(t *testing.T) {
+// Objek Fac Offer tidak digunakan (Work Owner 2026-10-08): spreading FAC-OUT tanpa Objek Fac
+// Offer tetap lolos validasi.
+func TestFacOutDoesNotRequireFacOfferItem(t *testing.T) {
 	k := validClaim()
 	k.InsuredItem[0].Coverage[0].Spreading[1].TreatyKind = registrasi.TreatyFacOut
 
-	g := violations(t, registrasi.Validate(k, parts()))
-	require.True(t, g.Has(registrasi.ViolationFacOfferIncomplete))
-
-	k.InsuredItem[0].Coverage[0].Spreading[1].FacOfferItem = "Gudang A"
 	require.NoError(t, registrasi.Validate(k, parts()))
 }
 

@@ -35,11 +35,43 @@ SELECT d.NOPLA, d.TGLPLA
  FETCH FIRST 1 ROWS ONLY
 
 -- name: pla_terbit
-SELECT d.NOPLA, d.PLAREINSURER, d.REINSCODE, d.TGLPLA, d.NOTES, d.CURRENCYPOLIS, d.JSON_PLA, d.EMAILPLA
+--
+-- PLA yang diterbitkan layar Print PLA: koasuransi (COINS), fakultatif keluar (FACOUT), dan
+-- BPPDAN / EQ POOL (GeneratePLAList).
+SELECT d.NOPLA, d.PLAREINSURER, d.REINSCODE, d.TGLPLA, d.NOTES, d.CURRENCYPOLIS, d.JSON_PLA, d.EMAILPLA,
+       d.TIPEPLA
   FROM POOLDATA.T_PLALIST d
  WHERE d.CLAIMID = :1 AND d.OBJECTID = :2 AND d.OBJECTCOVERAGEID = :3 AND d.REVISI = :4
-   AND d.TIPEPLA = :5
+   AND d.TIPEPLA IN (:5, :6, :7, :8)
  ORDER BY d.NOPLA
+
+-- name: pla_fac_offer
+--
+-- Fac Offer polis untuk PLA FAC OUT: JSONDATA (FacOfferList, diurai di Go seperti DLA) dan
+-- kolom datar sebagai cadangan bila JSONDATA kosong — 33 dari 409 baris di TEST.
+SELECT f.REINSURER_ID, f.REINSURER_NAME, f.PCT_SHAREREAS, f.JSONDATA
+  FROM POOLDATA.T_FACOFFER f
+ WHERE f.POLICYNO = :1
+   AND f.PRODKE = :2
+ ORDER BY f.REINSURER_ID
+
+-- name: pla_spreading_tsi
+--
+-- TSISPREADED spreading polis satu objek dan coverage — cadangan PLA FAC OUT untuk Fac Offer
+-- tanpa JSONDATA. Objek dicocokkan lewat INDEXOBJECT; untuk Fire (Group Panel 006) ID objek
+-- klaim adalah OBJECTNO, sehingga INDEXOBJECT-nya dicari lebih dulu di T_PROPERTYLIST.
+SELECT s.TREATYTYPE, s.TSISPREADED
+  FROM POOLDATA.T_SPREADINGLIST s
+ WHERE s.NOPOLIS = :1
+   AND s.PRODKE = :2
+   AND s.COVERAGE = :3
+   AND (s.FLAGDELETE IS NULL OR s.FLAGDELETE <> '1')
+   AND ((:4 <> '006' AND s.INDEXOBJECT = :5)
+        OR (:6 = '006' AND s.INDEXOBJECT IN (SELECT p.INDEXOBJECT
+                                               FROM POOLDATA.T_PROPERTYLIST p
+                                              WHERE p.NOPOLIS = :7
+                                                AND p.PRODKE = :8
+                                                AND p.OBJECTNO = :9)))
 
 -- name: pla_site
 SELECT s.ID
@@ -77,6 +109,13 @@ SELECT m.NAME, m.JSONDATA
 -- INSERT_PLADLA.prc cabang PLA, baris sudah ada dan catatan terisi: NOTES diganti, ISPLA = 1.
 UPDATE POOLDATA.T_PLALIST
    SET NOTES = :1, ISPLA = '1'
+ WHERE CLAIMID = :2 AND NOPLA = :3 AND REVISI = :4
+
+-- name: pla_email
+--
+-- Isian Email layar PrintPLA_dtl (`.pyEmailAddress`, pxTextArea Editable).
+UPDATE POOLDATA.T_PLALIST
+   SET EMAILPLA = :1
  WHERE CLAIMID = :2 AND NOPLA = :3 AND REVISI = :4
 
 -- name: lod_email_tertanggung

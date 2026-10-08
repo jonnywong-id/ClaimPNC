@@ -8,6 +8,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { ClaimPage } from './ClaimPage'
+import { CustomerPrinciple } from './types'
 
 /**
  * Uji tambahan layar klaim: keadaan klaim tanpa tugas, tahap tanpa formulir, cabang galat,
@@ -236,17 +237,23 @@ describe('Input Register', () => {
     )
     show()
 
-    expect(await screen.findByLabelText('Mata Uang')).toHaveValue('USD')
-    expect(screen.getByLabelText('Status Pelapor')).toHaveValue('')
+    expect(await screen.findByLabelText('Status Pelapor')).toHaveValue('')
     expect(screen.getByLabelText('Status RCL/PUCL')).toHaveValue('0')
-    expect(screen.getByRole('radio', { name: 'NORMAL' })).toBeChecked()
+    // Bagian Estimasi tidak tampil di Input Register (Work Owner 2026-10-08), tetapi nilai
+    // bawaannya — mata uang polis dan Prinsip Mengenal Nasabah NORMAL — tetap dikirim.
+    expect(screen.queryByLabelText('Mata Uang')).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'NORMAL' })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('Isian belum tersimpan')).toBeInTheDocument()
     expect(screen.getByText('Draf gagal.')).toBeInTheDocument()
+    expect(calls.find((c) => c.url === '/api/registrasi/register/simpan')?.body).toMatchObject({
+      mata_uang: 'USD',
+      prinsip_mengenal_nasabah: CustomerPrinciple.Normal,
+    })
   })
 
-  it('meminta keterangan hubungan lain-lain dan komentar suspicious, lalu mengirimnya', async () => {
+  it('meminta keterangan hubungan lain-lain, lalu mengirimnya', async () => {
     installFetch(response(), (url) =>
       url === '/api/registrasi/register' ? json(200, { ...response(), large_loss: true }) : undefined,
     )
@@ -256,18 +263,12 @@ describe('Input Register', () => {
     expect(screen.queryByLabelText('Sebutkan...')).not.toBeInTheDocument()
     await userEvent.type(hubungan, '7')
     await userEvent.type(screen.getByLabelText('Sebutkan...'), 'Kerabat')
-    await userEvent.click(screen.getByRole('radio', { name: 'SUSPICIOUS' }))
-    await userEvent.type(screen.getByLabelText('Komentar Suspicious'), 'Mencurigakan')
-    // Ex-Gratia hanya tampil untuk PA (ClaimSurvey-sect.xml); klaim ini Fire.
-    expect(screen.queryByRole('radio', { name: 'YES' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('checkbox', { name: 'Transfer Compliance' }))
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
 
     expect(await screen.findByText('Notice of Large Losses diterbitkan.')).toBeInTheDocument()
     expect(calls.find((c) => c.url === '/api/registrasi/register')?.body).toMatchObject({
       pelapor: { hubungan: 7, hubungan_lainnya: 'Kerabat' },
-      prinsip_mengenal_nasabah: '2',
-      komentar_suspicious: 'Mencurigakan',
       transfer_compliance: true,
       kembali: false,
       mata_uang: 'USD',
@@ -555,7 +556,7 @@ describe('Input Register', () => {
     ])
   })
 
-  it('Mata Uang adalah dropdown kode; simbol lama IDR diganti kodenya', async () => {
+  it('Mata Uang tersembunyi tetap dikirim sebagai kode; simbol lama IDR diganti kodenya', async () => {
     installFetch(response({ mata_uang: 'IDR' }), (url) =>
       url === '/api/registrasi/mata-uang'
         ? json(200, { pilihan: [{ id: '10001', nama: 'USD' }, { id: '10026', nama: 'IDR' }] })
@@ -563,9 +564,16 @@ describe('Input Register', () => {
     )
     show()
 
-    const field = await screen.findByRole('combobox', { name: 'Mata Uang' })
-    await screen.findByRole('option', { name: 'USD' })
-    await vi.waitFor(() => expect(field).toHaveValue('10026'), { timeout: 5000 })
+    await screen.findByLabelText('Status Pelapor')
+    // Simbol diterjemahkan begitu daftar mata uang termuat; Save lalu mengirim kodenya.
+    await vi.waitFor(
+      async () => {
+        await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+        const sent = calls.filter((c) => c.url === '/api/registrasi/register/simpan').at(-1)?.body
+        expect(sent).toMatchObject({ mata_uang: '10026' })
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('Tambah dan Hapus hanya mengubah layar — tabel baru berubah saat Save/Next/Back', async () => {
@@ -591,6 +599,8 @@ describe('Input Register', () => {
     await userEvent.type(screen.getByLabelText('TSI jaminan 1 objek 1'), '1.000')
     await userEvent.click(screen.getByRole('button', { name: 'Tambah spreading' }))
     await userEvent.type(screen.getByLabelText('Share persen'), '60,5')
+    // Objek Fac Offer tidak digunakan (Work Owner 2026-10-08): kolomnya tidak ada.
+    expect(screen.queryByLabelText('Objek Fac Offer')).not.toBeInTheDocument()
 
     const summary = screen.getByRole('heading', { name: 'Ringkasan' }).parentElement!
     expect(within(summary).getByText(/belum 100%/)).toBeInTheDocument()

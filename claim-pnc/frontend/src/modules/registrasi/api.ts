@@ -15,6 +15,8 @@ import {
   type FlowResponse,
   type InboxResponse,
   type ClaimResponse,
+  type CommitteeNote,
+  type DiagnosisResponse,
   type CurrenciesResponse,
   type EstimateRequest,
   type ItemOptionsResponse,
@@ -307,6 +309,20 @@ export function useCurrencies() {
     queryKey: ['registrasi', 'mata-uang', token],
     staleTime: 10 * 60 * 1000,
     queryFn: () => callAPI<CurrenciesResponse>('/api/registrasi/mata-uang', { token, portal }),
+  })
+}
+
+/** Cari Kode / Desc Diagnose (modal Transfer Claim ke Komite, PA). Kosong: tidak mencari. */
+export function useDiagnosisSearch(term: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'diagnosa', term, token, portal],
+    enabled: term !== '',
+    retry: false,
+    queryFn: () =>
+      callAPI<DiagnosisResponse>(`/api/registrasi/diagnosa?cari=${encodeURIComponent(term)}`, { token, portal }),
   })
 }
 
@@ -1122,6 +1138,26 @@ export function useTransferCommittee(claimID: string) {
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
       apiClient.invalidateQueries({ queryKey: committeeKey })
+    },
+  })
+}
+
+/** Simpan isian modal "Transfer Claim ke Komite" satu jaminan. Objek dan jaminan berbasis 1. */
+export function useSaveCommitteeNote(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: { tugas_id: string; objek: number; jaminan: number } & CommitteeNote) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/jaminan/isian-komite`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
   })
 }

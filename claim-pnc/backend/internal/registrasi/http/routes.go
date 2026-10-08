@@ -41,6 +41,8 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/estimasi", h.CompleteEstimate)
 		sub.Post("/estimasi/simpan", h.SaveEstimate)
 		sub.Get("/mata-uang", h.Currencies)
+		// Cari Kode / Desc Diagnose modal Transfer Claim ke Komite (PA).
+		sub.Get("/diagnosa", h.SearchDiagnosis)
 		sub.Get("/klaim/{klaimID}/pilihan-item", func(w http.ResponseWriter, r *http.Request) {
 			h.ItemOptions(w, r, chi.URLParam(r, "klaimID"))
 		})
@@ -141,6 +143,10 @@ func Mount(r chi.Router, h *Handler) {
 		// Transfer Komite pada baris Adjustment, dan putusan anggota komite.
 		sub.Post("/klaim/{klaimID}/adjustment/komite", func(w http.ResponseWriter, r *http.Request) {
 			h.TransferCommittee(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Isian modal "Transfer Claim ke Komite" (ClaimComitee_OC) satu jaminan.
+		sub.Post("/klaim/{klaimID}/jaminan/isian-komite", func(w http.ResponseWriter, r *http.Request) {
+			h.SaveCommitteeNote(w, r, chi.URLParam(r, "klaimID"))
 		})
 		sub.Get("/komite", h.PendingCommittees)
 		sub.Get("/komite/{komiteID}", func(w http.ResponseWriter, r *http.Request) {

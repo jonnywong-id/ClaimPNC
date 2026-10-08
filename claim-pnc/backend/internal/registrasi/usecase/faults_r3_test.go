@@ -32,6 +32,9 @@ type faults struct {
 	mu    sync.Mutex
 	armed map[string]int
 	fired bool
+
+	// faceSheet adalah isi Claim Face Sheet terakhir yang diserahkan ke renderer.
+	faceSheet registrasi.FaceSheet
 }
 
 func (f *faults) arm(key string, skip int) {
@@ -565,6 +568,9 @@ func (w fFSRender) Render(d registrasi.FaceSheet) ([]byte, error) {
 	if err := w.f.hit("Render.FaceSheet"); err != nil {
 		return nil, err
 	}
+	w.f.mu.Lock()
+	w.f.faceSheet = d
+	w.f.mu.Unlock()
 	return w.FaceSheetRenderer.Render(d)
 }
 

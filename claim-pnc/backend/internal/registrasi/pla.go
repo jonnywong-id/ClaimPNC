@@ -3,6 +3,7 @@ package registrasi
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 )
@@ -69,6 +70,11 @@ type PLAAmount struct {
 	Share      Percent
 	Result     Money // ResultPLA
 	ASMCount   Money // reserve × share ASM
+
+	// FacShare (SharePLA) dan FacBase (PercentPLA) hanya untuk PLA FAC OUT: bagian
+	// reasuradur dan dasar pembaginya, keduanya NILAI uang, bukan persen.
+	FacShare Money
+	FacBase  Money
 }
 
 // PLA adalah satu PLA untuk satu penerima.
@@ -113,11 +119,19 @@ type PLADocument struct {
 	Place           string
 	SignerName      string
 	Signature       []byte // PNG
+	// ShareLabel adalah akhiran label "Your Share" (PLAShareLabel).
+	ShareLabel string
 }
 
 // PLASource adalah seam ke data PLA: CoinsList, master penerima, nomor, dan T_PLALIST.
 type PLASource interface {
 	CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]PLACoinsMember, error)
+	// FacOffers membaca FacOfferList polis (POOLDATA.T_FACOFFER) — penerima PLA FAC OUT.
+	FacOffers(ctx context.Context, policyNumber, prodKe string) ([]FacOffer, error)
+	// SpreadingTSI membaca TSISPREADED spreading polis (POOLDATA.T_SPREADINGLIST) untuk satu
+	// objek dan coverage: baris FAC OUT (10015) dan jumlah seluruh baris yang berlaku.
+	// Cadangan PLA FAC OUT untuk Fac Offer tanpa JSONDATA. nil bila tidak ada barisnya.
+	SpreadingTSI(ctx context.Context, q SpreadingTSIQuery) (facOut, total *big.Rat, err error)
 	Recipient(ctx context.Context, code, name string) (PLARecipientInfo, error)
 	Previous(ctx context.Context, claimID, recipientCode string) (PLAPrevious, bool, error)
 
@@ -130,6 +144,8 @@ type PLASource interface {
 	Save(ctx context.Context, p PLA) error
 	// UpdateNote mengganti catatan PLA yang sudah terbit.
 	UpdateNote(ctx context.Context, claimID, number string, revision int, note string) error
+	// UpdateEmail mengganti email penerima PLA yang sudah terbit (EMAILPLA).
+	UpdateEmail(ctx context.Context, claimID, number string, revision int, email string) error
 
 	// Signature membaca penanda tangan PLA sebuah entitas (POOLDATA.MTTD).
 	Signature(ctx context.Context, entity string) (name string, png []byte, err error)

@@ -263,15 +263,16 @@ describe('DLADialog', () => {
   })
 })
 
-function pla(nomor: string, catatan = '') {
-  return { nomor, penerima: 'Reas Contoh', tipe: 'OR', catatan, email: '', tanggal: '' }
+function pla(nomor: string, catatan = '', email = '') {
+  return { nomor, penerima: 'Reas Contoh', tipe: 'OR', catatan, email, tanggal: '' }
 }
 
 describe('PLADialog', () => {
   it('menahan cetak sampai remarks disimpan, lalu mencetak satu dan seluruhnya', async () => {
     installFetch((url) => {
       if (url === `${BASE}/pla/daftar`) return json(200, { revisi_cfs: 1, baru_terbit: 0, pla: [pla('PLA-1'), pla('PLA-2', 'ada')] })
-      if (url === `${BASE}/pla/catatan`) return json(200, { revisi_cfs: 1, baru_terbit: 0, pla: [pla('PLA-1', 'baru'), pla('PLA-2', 'ada')] })
+      if (url === `${BASE}/pla/catatan`)
+        return json(200, { revisi_cfs: 1, baru_terbit: 0, pla: [pla('PLA-1', 'baru', 'reas@contoh.example'), pla('PLA-2', 'ada')] })
       if (url === `${BASE}/pla`) return file()
       return undefined
     })
@@ -282,23 +283,26 @@ describe('PLADialog', () => {
 
     expect(screen.getByText('All Risk')).toBeInTheDocument()
     expect(await screen.findByText('PLA-1')).toBeInTheDocument()
-    expect(screen.getAllByText('—')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Simpan Remarks' })).toBeDisabled()
+    expect(screen.getByLabelText('Email PLA-1')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Simpan Remarks & Email' })).toBeDisabled()
 
     await userEvent.type(screen.getByLabelText('Remarks PLA-1'), 'baru')
+    await userEvent.type(screen.getByLabelText('Email PLA-1'), ' reas@contoh.example ')
     const printOne = within(screen.getByText('PLA-1').closest('tr')!).getByRole('button', { name: 'Print PLA' })
     expect(printOne).toBeDisabled()
-    expect(printOne).toHaveAttribute('title', 'Simpan remarks lebih dulu.')
+    expect(printOne).toHaveAttribute('title', 'Simpan remarks dan email lebih dulu.')
     expect(screen.getByRole('button', { name: 'Print All PLA' })).toBeDisabled()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan Remarks' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan Remarks & Email' }))
     await waitFor(() => expect(printOne).toBeEnabled())
     expect(calls.find((c) => c.url === `${BASE}/pla/catatan`)?.body).toEqual({
       tugas_id: 'tugas-1',
       objek: 1,
       jaminan: 2,
       catatan: { 'PLA-1': 'baru' },
+      email: { 'PLA-1': 'reas@contoh.example' },
     })
+    expect(screen.getByLabelText('Email PLA-1')).toHaveValue('reas@contoh.example')
 
     await userEvent.click(printOne)
     expect(await screen.findByText('PLA diunduh.')).toBeInTheDocument()

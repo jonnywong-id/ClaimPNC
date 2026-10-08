@@ -344,6 +344,11 @@ type Coverage struct {
 	// USERBUSINESSPA). Jaminan yang sudah ditandai tidak menampilkan tombol itu lagi. Penyimpanan
 	// hanya MENGISI penanda ini, tidak pernah mengosongkannya.
 	AnalystTransferred bool
+
+	// Committee adalah isian modal "Transfer Claim ke Komite" (lihat CommitteeNote). Dibaca
+	// bersama klaim, tetapi ditulis hanya lewat ClaimRepo.SaveCommitteeNote — Save tidak
+	// menyentuhnya, supaya penyimpanan lain tidak mengosongkannya.
+	Committee CommitteeNote
 }
 
 // CauseOfLossPA adalah kode penyebab kerugian yang menjadi bagian kunci duplikasi
@@ -366,7 +371,9 @@ type Spreading struct {
 	// penghapusan fisik; baris tetap ada dan tidak ikut dihitung.
 	Removed bool
 
-	// FacOfferItem terisi untuk treaty Fac Out. Kosongnya adalah galat kelengkapan.
+	// FacOfferItem — Objek Fac Offer. TIDAK dipakai dan tidak diperiksa (Work Owner
+	// 2026-10-08: POOLDATA.T_FACOFFER.JSONDATA sudah tidak dipakai, dan proteksi Object Name
+	// Fac Out dihapus). Medannya hanya diteruskan apa adanya dari permintaan.
 	FacOfferItem string
 }
 

@@ -27,8 +27,8 @@ type FaceSheetResult struct {
 // DownloadFaceSheet membuat Claim Face Sheet satu jaminan, mencatat revisinya, dan
 // mengunci estimasinya.
 //
-// Dokumen dibentuk SEBELUM transaksi dibuka: bila pembentukannya gagal, tidak ada estimasi
-// yang terkunci tanpa dokumennya pernah sampai ke petugas.
+// PIC Teknis dipilih (bila klaim belum punya) sebelum dokumen dibentuk, sehingga PIC yang
+// tercetak sama dengan yang tersimpan di klaim. Lihat catatan transaksi di dalam.
 func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by Caller) (FaceSheetResult, error) {
 	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate, alsoAction: registrasi.ActionInputSurveyor})
 	if err != nil {

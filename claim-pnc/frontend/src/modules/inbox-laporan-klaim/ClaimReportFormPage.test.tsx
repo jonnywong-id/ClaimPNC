@@ -169,7 +169,6 @@ describe('form Input Receive Document', () => {
       'Tanggal Kejadian',
       'Nama Bisnis',
       'No. Referensi/Placing Slip',
-      'Estimasi Kerugian',
       'Lokasi Kejadian',
       'Kronologis Kejadian',
       'Rincian Kerusakan',
@@ -179,6 +178,8 @@ describe('form Input Receive Document', () => {
     ]) {
       expect(await screen.findByLabelText(label)).toBeInTheDocument()
     }
+    // Estimasi Kerugian tidak ditampilkan (Work Owner 2026-10-08).
+    expect(screen.queryByLabelText('Estimasi Kerugian')).not.toBeInTheDocument()
   })
 
   // InputReceiveDocument_sect: Email Tertanggung dan isian SIM hanya untuk PA (002);
@@ -223,24 +224,23 @@ describe('form Input Receive Document', () => {
     expect(screen.queryByLabelText('SIM Pengendara')).toBeNull()
   })
 
-  it('mengirim seluruh isian sebagai PUT, dan uang dalam sen', async () => {
+  it('mengirim seluruh isian sebagai PUT, termasuk Estimasi Kerugian tersimpan yang tidak tampil', async () => {
     installFetch((call) =>
       call.url.includes('/polis?')
         ? { body: polis({ nomor_polis: 'POL-CONTOH-1', pesan: [{ kode: 'polis_tidak_tersedia', pesan: 'Nomor Polis tidak tersedia', memblokir: false }] }) }
-        : { body: berkas() },
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, estimasi_kerugian: 250_000_000 } }) },
     )
     show()
 
     await screen.findByLabelText('Nomor Polis')
     await userEvent.type(screen.getByLabelText('Nomor Polis'), 'POL-CONTOH-1')
-    await userEvent.type(screen.getByLabelText('Estimasi Kerugian'), '2.500.000,00')
     await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true))
 
     const saved = calls.find((c) => c.method === 'PUT')?.body as Record<string, unknown>
     expect(saved['nomor_polis']).toBe('POL-CONTOH-1')
-    // ADR-0016: uang dikirim sebagai bilangan bulat SEN, tidak pernah pecahan.
+    // Isian tidak tampil, tetapi nilai tersimpannya tidak terhapus saat Simpan.
     expect(saved['estimasi_kerugian']).toBe(250_000_000)
   })
 
@@ -334,7 +334,6 @@ describe('form Input Receive Document', () => {
     expect(await screen.findByLabelText('Nama Pengirim / Pelapor Dokumen')).toHaveValue(
       'Pelapor Contoh',
     )
-    expect(screen.getByLabelText('Estimasi Kerugian')).toHaveValue('2500000,00')
   })
 
   it('Tanggal Terima Dokumen berisi tanggal hari ini pada berkas baru', async () => {
@@ -448,6 +447,28 @@ describe('tombol Register Klaim', () => {
         nomor_laporan: 'RCVN.26.0001',
       })
     })
+  })
+
+  // Kronologis Kejadian menjadi Deskripsi Laporan klaim (CreateRegisterKlaimPNC_act langkah
+  // 14), dan server menyalinnya dari berkas yang TERSIMPAN. Karena itu isian disimpan lebih
+  // dulu: kronologis yang baru diketik tidak boleh tertinggal.
+  it('menyimpan isian lebih dulu, lalu mendaftarkan klaim', async () => {
+    installFetch((call) =>
+      call.url.includes('/api/registrasi/klaim')
+        ? { body: { klaim: { id: 'KLM-1', nomor: 'PNCN.26.0007' } } }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, nomor_polis: '01.002.2026.00001' } }) },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Kronologis Kejadian'), 'Kebocoran atap gudang')
+    await userEvent.click(screen.getByRole('button', { name: 'Register Klaim' }))
+
+    await waitFor(() => expect(calls.some((c) => c.url.includes('/api/registrasi/klaim'))).toBe(true))
+    const save = calls.findIndex((c) => c.method === 'PUT')
+    const register = calls.findIndex((c) => c.url.includes('/api/registrasi/klaim'))
+    expect(save).toBeGreaterThanOrEqual(0)
+    expect(save).toBeLessThan(register)
+    expect(calls[save]?.body).toMatchObject({ kronologis: 'Kebocoran atap gudang' })
   })
 
   // Setelah klaim terbit, petugas dibawa ke klaimnya — bukan ditinggalkan di form laporan
