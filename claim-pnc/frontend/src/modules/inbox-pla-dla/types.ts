@@ -102,7 +102,6 @@ export type MetadataResponse = {
   daftar: Daftar[]
   daftar_bawaan: string
   kolom_xol: Kolom[]
-  selisih_terencana: string[]
   portal: string
 }
 

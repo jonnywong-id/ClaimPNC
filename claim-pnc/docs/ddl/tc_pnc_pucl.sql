@@ -347,7 +347,7 @@ COMMENT ON COLUMN POOLDATA.TC_PNC_PUCL.RCL_PUCL IS
     'Digambar sebagai "Status RCL/PUCL". Kode: 1 RCL, 2 PUCL, 3 Notification. Penerjemahannya di lapisan domain Go, bukan di SQL';
 
 COMMENT ON COLUMN POOLDATA.TC_PNC_PUCL.ASSIGNED_OPERATOR_ID IS
-    'Nama ANTREAN BERSAMA, bukan nama orang — begitulah Pega mengisi pxAssignedOperatorID pada penugasan workbasket. Nilainya RCLPUCL';
+    'Pemilik klaim; satu-satunya penyaring kepemilikan Inbox RCL. Baris Pega berisi nama antrean RCLPUCL atau nama orang; baris aplikasi ini berisi PIC Teknik klaim (Work Owner 2026-10-07)';
 
 COMMENT ON COLUMN POOLDATA.TC_PNC_PUCL.PUCL_APPROVE IS
     'Penanda PUCL: 0 dikirim ke PUCL, 1 dikembalikan ke Analyst. Penyaring <> 1 TIDAK menangkap NULL — perilaku Pega apa adanya, jangan diperbaiki sepihak';
@@ -419,3 +419,53 @@ COMMENT ON COLUMN POOLDATA.TC_PNC_PUCL.GROUPPANEL IS
 -- Selama tabel ini hanya berisi SALINAN dari objek kerja Pega (§3c), `DROP` tidak
 -- menghilangkan apa pun yang tidak dapat disalin ulang. Begitu ada isian yang lahir di layar
 -- baru, pembacaan itu tidak berlaku lagi.
+
+-- ============================================================================
+-- KOLOM YANG DITAMBAHKAN SESUDAH SNAPSHOT INI — BELUM TERCERMIN DI ATAS
+-- ============================================================================
+--
+-- Berkas ini snapshot katalog 2026-10-04. Dua kolom ditambahkan sesudahnya, dan keduanya
+-- TIDAK ada di daftar kolom di atas. Jangan membangun portal baru dari berkas ini tanpa
+-- menambahkan keduanya — layar yang memakainya akan gagal ORA-00904 pada permintaan
+-- pertama, bukan saat build.
+--
+--   ALASAN_DOKTER_REJECT_RCL  VARCHAR2(4000 CHAR)  NULL   ditambahkan 2026-10-05
+--       "Alasan Dokter" pada layar kerja RCLDokter. Ditulis modul `inboxrcl` saat dokter
+--       menekan Tidak Setuju/Back; dibaca layar yang sama.
+--
+--   NAMA_DOKTER_RCL           VARCHAR2(255 BYTE)   SUDAH ADA di basis data
+--       Keberadaan dan panjangnya dikonfirmasi Work Owner 2026-10-07 — TIDAK ada permintaan
+--       perubahan skema untuk ini. Nullability-nya belum dibaca dari katalog.
+--
+--       `.ClaimData.NamaDokterRCL` — dropdown "Nama Dokter" pada modal Kirim ke RCL/PUCL.
+--       Ditulis modul `registrasi` (`surat_rclpucl_perbarui`/`_sisip`) pada jalur RCL dan
+--       Notification; kosong pada jalur PUCL, yang tidak menampilkan isiannya.
+--
+--       SATUANNYA BYTE, dan kolom kembarannya di tabel lain memakai CHAR:
+--
+--           T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1   VARCHAR2(128 CHAR)
+--           TC_PNC_PUCL.NAMA_DOKTER_RCL         VARCHAR2(255 BYTE)
+--
+--       Nilai yang SAMA ditulis ke keduanya, jadi yang berlaku adalah yang lebih dulu
+--       penuh. Untuk ASCII itu 128 karakter; untuk aksara 3-byte, 255 byte tercapai pada
+--       aksara ke-85. Sisi aplikasi karena itu memeriksa KEDUANYA —
+--       `registrasi.MaxPUCLDoctorName` (128 karakter) dan `MaxPUCLDoctorNameBytes` (255).
+--
+--       Patokan lama 512 lebih longgar daripada kedua kolom itu: isian yang lolos validasi
+--       ditolak Oracle dengan ORA-12899, galat yang tidak dapat ditunjukkan kepada pengguna
+--       per isian. Dropdown dua baris membuatnya tidak pernah terpicu, bukan membuatnya
+--       benar — dan perlindungan itu baru benar-benar diuji ketika daftarnya pindah ke
+--       master data (`F-4`) dan boleh diisi bebas.
+--
+-- Keduanya diperiksa `-periksa` lewat `inboxrcl` `check_columns`. Keduanya dinyatakan SUDAH
+-- ADA di basis data yang berjalan (Work Owner, 2026-10-07), sehingga TIDAK ada permintaan
+-- perubahan skema yang menggantung untuk berkas ini.
+--
+-- Pemeriksaan itu tetap dipertahankan, dan bukan karena meragukan pernyataan di atas:
+-- portal lain yang dibangun dari snapshot ini belum tentu punya keduanya, dan `-periksa`
+-- adalah satu-satunya tempat keadaan itu terbaca SEBELUM ada pengguna yang menekan
+-- tombolnya. Tanpa itu, kolom yang tidak ada menggagalkan seluruh tombol Kirim ke RCL/PUCL
+-- dengan ORA-00904 pada klaim pertama.
+--
+-- Bila sebuah portal ternyata belum punya kolomnya, DDL-nya menempuh `D-63` — permintaan
+-- tertulis tim pengembang, persetujuan Work Owner, pelaksanaan DBA.

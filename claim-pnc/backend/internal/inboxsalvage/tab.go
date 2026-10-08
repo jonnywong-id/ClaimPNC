@@ -764,12 +764,6 @@ var PlannedDifferences = []string{
 		"tidak menyaring status apa pun sehingga memuat SELURUH pengajuan. Ia selisih " +
 		"ketiga sejenis pada layar ini, dan direplikasi dengan alasan yang sama (`P-5`).",
 
-	"Grafik lingkaran di samping tabel ringkas TIDAK dibangun. Activity pencacah lama " +
-		"menyusun dua daftar sekaligus — satu untuk tabel, satu untuk grafik — dan " +
-		"keduanya berbeda: baris bernilai nol dibuang dari grafik tetapi tetap tergambar " +
-		"di tabel. Yang dibangun adalah tabelnya, karena itulah yang memuat angka dan " +
-		"tautan ke daftarnya.",
-
 	"Daftar \"Salvage Ditolak\" BERISI baris, dan di Pega selalu kosong. Activity " +
 		"pemuat daftar lama menyebutkan tipe 3, 4, 5, 2, 11, dan 15 pada langkah " +
 		"pengambilan datanya — tetapi TIDAK 16 — dan langkah cadangannya pun " +
@@ -1031,7 +1025,10 @@ var PlannedDifferences = []string{
 		"irisan \"Waive Salvage\" yang tidak punya baris di tabel, sementara tabelnya " +
 		"memuat \"Tidak Ada Salvage\" dan \"Salvage Buyback\" yang tidak punya irisan di " +
 		"grafik. Selisih itu TIDAK direplikasi: grafik dan tabel yang berdampingan dan " +
-		"menyebut hal berbeda memaksa pembacanya memilih mana yang dipercaya.",
+		"menyebut hal berbeda memaksa pembacanya memilih mana yang dipercaya. Yang " +
+		"tetap berbeda hanyalah baris bernilai nol: ia tidak punya irisan yang dapat " +
+		"digambar sehingga hilang dari grafik dan legendanya, dan angkanya tetap " +
+		"terbaca di tabel sebelahnya.",
 
 	"Isian \"Mata Uang\" adalah daftar pilihan yang dibaca dari `POOLDATA.CURRENCY` — " +
 		"tabel yang sama yang dibaca Report Definition `SelectCurrency_RD`, sumber " +
@@ -1043,8 +1040,9 @@ var PlannedDifferences = []string{
 		"`TempCurrencySalvage` dari `T_CLAIM_ADJUSTMENT`, tetapi kolom \"Mata Uang\" " +
 		"pada form ini tidak membacanya — dropdown-nya bersumber Report Definition " +
 		"`SelectCurrency_RD`, dan page itu hanya dideklarasikan di section tanpa satu " +
-		"pun kontrol yang terikat padanya. Kolom \"Mata Uang\" karena itu masih kotak " +
-		"teks bebas, belum daftar pilihan.",
+		"pun kontrol yang terikat padanya. Konsekuensinya dibawa serta: pilihan yang " +
+		"ditawarkan adalah SELURUH mata uang di master, bukan mata uang yang dipakai " +
+		"klaim itu.",
 
 	"Grid \"Detail History Salvage\" pada form Tambah memakai pemetaan " +
 		"`STSTRANSFER` yang BERBEDA dari \"Posisi Salvage\" pada panel rincian, meski " +

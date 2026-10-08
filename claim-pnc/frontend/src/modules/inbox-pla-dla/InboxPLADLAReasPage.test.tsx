@@ -85,7 +85,6 @@ const METADATA = {
   ],
   daftar_bawaan: 'pla',
   kolom_xol: KOLOM_XOL,
-  selisih_terencana: ['Grid XOL kini mengikuti login Anda sendiri.'],
   portal: 'ASM',
 }
 
@@ -393,12 +392,17 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     ).toBeInTheDocument()
   })
 
-  it('menggambar selisih terencana yang dikirim server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
+    await screen.findByRole('table')
     expect(
-      await screen.findByText(/Perbedaan yang disengaja terhadap layar Pega \(1\)/),
-    ).toBeInTheDocument()
+      screen.queryByText(/Perbedaan yang disengaja terhadap layar Pega/),
+    ).not.toBeInTheDocument()
   })
 })

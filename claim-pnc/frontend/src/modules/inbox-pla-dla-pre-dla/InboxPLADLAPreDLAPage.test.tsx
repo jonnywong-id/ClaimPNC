@@ -84,7 +84,6 @@ const METADATA = {
     },
   ],
   daftar_bawaan: 'pla',
-  selisih_terencana: ['Tombol "Send" belum tersedia.'],
   portal: 'ASM',
 }
 
@@ -829,16 +828,18 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     expect(screen.queryByRole('button', { name: 'Rincian' })).toBeNull()
   })
 
-  it('menggambar selisih terencana yang dikirim server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
+    await screen.findByText('PNC-1001')
     expect(
-      await screen.findByText(/Perbedaan yang disengaja terhadap layar Pega \(1\)/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('Tombol "Send" belum tersedia.'),
-    ).toBeInTheDocument()
+      screen.queryByText(/Perbedaan yang disengaja terhadap layar Pega/),
+    ).not.toBeInTheDocument()
   })
 
   it('menjelaskan portal yang belum dipilih, bukan menyebutnya kerusakan', async () => {

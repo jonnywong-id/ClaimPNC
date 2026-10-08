@@ -113,10 +113,6 @@ const METADATA: MetadataResponse = {
     { kode: 'USD', label: 'USD' },
   ],
   kolom_berkas_unggahan: ['item', 'quantity', 'satuan', 'remarks'],
-  selisih_terencana: [
-    'Angka pada baris "Outstanding" di tabel ringkas TIDAK sama dengan jumlah barisnya.',
-    'Kolom "Catatan" SELALU KOSONG.',
-  ],
   portal: 'ASM',
 }
 
@@ -524,14 +520,18 @@ it('menggambar sel kosong sebagai tanda pisah', async () => {
   expect(within(sel as HTMLElement).getAllByText('—').length).toBeGreaterThan(0)
 })
 
-it('menyatakan selisih terencana kepada pengguna', async () => {
+// Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+//
+// Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+// adalah ia berhenti menjadi isi layar.
+it('tidak lagi menggambar panel selisih terencana', async () => {
   stubDefaultFetch()
   await renderLoaded()
 
   expect(
-    await screen.findByText(/Perbedaan yang disengaja terhadap layar Pega/),
-  ).toBeInTheDocument()
-  expect(screen.getByText(/Kolom "Catatan" SELALU KOSONG/)).toBeInTheDocument()
+    screen.queryByText(/Perbedaan yang disengaja terhadap layar Pega/),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(/Kolom "Catatan" SELALU KOSONG/)).not.toBeInTheDocument()
 })
 
 it('berpindah daftar mengosongkan kata kunci pencarian', async () => {

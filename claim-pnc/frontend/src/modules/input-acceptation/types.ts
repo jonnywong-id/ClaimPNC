@@ -85,10 +85,6 @@ export type DetailResponse = {
   operator_pengubah: string
 
   kelompok: Group[]
-
-  /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah layar. */
-  selisih_terencana: string[]
-
   portal: string
 }
 

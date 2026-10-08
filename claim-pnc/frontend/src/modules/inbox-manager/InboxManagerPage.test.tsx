@@ -112,16 +112,10 @@ const TAB_PAYMENT: Tab = {
   punya_penyaring_periode: false,
 }
 
-const SELISIH = [
-  'Dashboard Outstanding kini dihitung dari satu tabel datar, bukan dari gabungan dua tabel ' +
-    'Pega.',
-]
-
 const METADATA: MetadataResponse = {
   tab: [TAB_OUTSTANDING, TAB_APPROVAL_MASTER, TAB_BENGKEL, TAB_PAYMENT],
   tab_bawaan: TAB_OUTSTANDING.kode,
   lini_bisnis_anda: 'NONMBU',
-  selisih_terencana: SELISIH,
 }
 
 /**
@@ -350,13 +344,14 @@ describe('bentuk layar', () => {
     expect(await screen.findByRole('button', { name: 'Export' })).toBeEnabled()
   })
 
-  it('menampilkan selisih terencana kepada pengguna', async () => {
-    // `D-54`: selisih yang hanya tercatat di komentar akan dilaporkan berulang kali sebagai
-    // kerusakan oleh orang yang membandingkan layar ini dengan Pega berdampingan.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
+    // Keputusan Work Owner 2026-10-06: panelnya DIHAPUS dari seluruh layar. Daftarnya tetap
+    // hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah adalah ia
+    // berhenti menjadi isi layar.
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(screen.getByText(/Yang berbeda dari layar lama/)).toBeInTheDocument()
+    expect(screen.queryByText(/Yang berbeda dari layar lama/)).not.toBeInTheDocument()
   })
 })
 

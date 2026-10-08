@@ -63,6 +63,7 @@ func (r *Repo) List(
 		inboxrcl.StatusKerjaSelesai,
 		string(inboxrcl.ModeRCL),
 		string(inboxrcl.ModeMSIG),
+		inboxrcl.StageRCLDoctor,
 		nilIfEmpty(pattern),
 		pattern,
 		pattern,
@@ -106,6 +107,7 @@ func (r *Repo) Detail(
 		inboxrcl.StatusKerjaSelesai,
 		string(inboxrcl.ModeRCL),
 		string(inboxrcl.ModeMSIG),
+		inboxrcl.StageRCLDoctor,
 	)
 
 	detail, err := scanDetail(row)
@@ -236,12 +238,19 @@ func (r *Repo) CheckTables(ctx context.Context) error {
 	return nil
 }
 
-// CheckColumns memastikan kolom ALASAN_DOKTER_REJECT_RCL ada di TC_PNC_PUCL.
+// CheckColumns memastikan kedua kolom tambahan ada di TC_PNC_PUCL —
+// `ALASAN_DOKTER_REJECT_RCL` dan `NAMA_DOKTER_RCL`.
+//
+// Yang kedua dipakai modul `registrasi` saat Kirim ke RCL/PUCL, bukan oleh modul ini.
+// Diperiksa dari sini karena di sinilah `-periksa` atas tabel itu berada — dan kegagalannya
+// jauh lebih luas daripada layar ini: kolom yang belum dibuat membuat SELURUH tombol Kirim
+// ke RCL/PUCL gagal dengan ORA-00904 pada klaim pertama di produksi.
 func (r *Repo) CheckColumns(ctx context.Context) error {
-	var probe int
-	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&probe); err != nil {
+	var alasan, nama int
+	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&alasan, &nama); err != nil {
 		return fmt.Errorf(
-			"kolom ALASAN_DOKTER_REJECT_RCL pada POOLDATA.TC_PNC_PUCL tidak dapat dibaca: %w", err)
+			"kolom ALASAN_DOKTER_REJECT_RCL atau NAMA_DOKTER_RCL pada POOLDATA.TC_PNC_PUCL "+
+				"tidak dapat dibaca: %w", err)
 	}
 	return nil
 }

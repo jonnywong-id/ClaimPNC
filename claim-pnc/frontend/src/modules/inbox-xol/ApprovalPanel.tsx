@@ -6,12 +6,19 @@ import { messageOf } from './errors'
 import type { ApprovalItem, MasterXOL } from './types'
 
 /**
- * Tab "Inbox XOL Komite" — dua antrean persetujuan yang berdiri sendiri.
+ * Dua grid terbawah wadah `source=='1'` — "DATA XOL KLAIM" dan "DATA MASTER XOL".
  *
- * Kolomnya diambil apa adanya dari `Section/InboxClaimXOL-Section.xml`:
+ * Kolom DAN judulnya diambil apa adanya dari `Section/InboxClaimXOL-Section.xml`:
  *
- *	Approval XOL     Date Of Loss · Cause Of Loss · TIPE · Tanggal Insert
- *	DATA MASTER XOL  ID XOL · Nama XOL · Tahun XOL · Kurs Value
+ *	DATA XOL KLAIM   Date Of Loss · Cause Of Loss · TIPE · Tanggal Insert	(`:23598`)
+ *	DATA MASTER XOL  ID XOL · Nama XOL · Tahun XOL · Kurs Value		(`:26664`)
+ *
+ * # "Approval XOL" bukan judul grid
+ *
+ * Ia nama TOMBOL (`pyButtonLabel Approval XOL`, `:30913`), dan tombol itu hanya mengisi
+ * penanda `FlagDataForSerachingXOL.source := 1`. Grid yang terbuka karenanya berjudul
+ * "DATA XOL KLAIM". Memakai nama tombol sebagai judul grid — seperti versi sebelumnya —
+ * membuat judul yang tidak pernah ada di layar lama.
  *
  * # Judul kolom pertama MENYESATKAN, dan tetap dipakai
  *
@@ -48,7 +55,7 @@ export function ApprovalPanel({ active }: { active: boolean }) {
           columns={adviceColumns}
           rows={advices}
           rowKey={(row) => `${row.tipe}|${row.tahun}|${row.sebab_kerugian}`}
-          title="Approval XOL"
+          title="DATA XOL KLAIM"
           description="Satu baris mewakili sekumpulan pemberitahuan — satu tahun, satu penyebab kerugian, satu tipe."
           isLoading={approvals.isPending && active}
           error={error}

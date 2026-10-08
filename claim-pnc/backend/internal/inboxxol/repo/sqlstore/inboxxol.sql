@@ -119,8 +119,20 @@
 --                                      .CurrencyID sebagai daftar kode group business
 --   GetDataMasterXOLForKomiteApprove   kolom yang sama, dari tabel yang sama
 --
--- Kolom min(LIMIT) dan min(EXCESS) dari MST_XOL_LAYER yang dibawa kueri lama TIDAK ikut:
--- tidak satu pun dari keenam grid layar ini menampilkannya.
+-- # Koreksi: min(LIMIT) TERNYATA ditampilkan
+--
+-- Catatan sebelumnya di sini menyatakan `min(LIMIT)` dan `min(EXCESS)` dari
+-- `MST_XOL_LAYER` tidak dipakai grid mana pun. Itu KELIRU: grid di layar rincian
+-- menampilkan keduanya sebagai "Min Limit" dan "Min Limit IDR", persis seperti alias
+-- `AIDiterima` dan `ClaimAmount` pada `RDB List/GetDataMasterXOL-SQL.xml:11`.
+--
+-- `MIN_LIMIT` karena itu dibawa. `min(EXCESS)` tetap tidak dibawa — kueri lama memang
+-- mengambilnya (alias `KategoriKronologi`), tetapi tidak satu pun kolom layar
+-- menampilkannya.
+--
+-- "Min Limit IDR" TIDAK dihitung di sini. Kueri lama merangkainya sebagai
+-- `min(limit)*A.KURSVALUE`; perkaliannya dipindahkan ke Go, tempat kurs sudah ada —
+-- satu nilai turunan yang dihitung dua kali di dua lapisan akan menyimpang diam-diam.
 SELECT m.ID                AS MASTER_ID,
        m.NAMA              AS MASTER_NAME,
        m.TAHUN             AS YEAR_XOL,
@@ -133,7 +145,10 @@ SELECT m.ID                AS MASTER_ID,
        (SELECT u.EMAIL
           FROM POOLDATA.MST_USER_TEKNIK u
          WHERE UPPER(TRIM(u.OPERATOR_ID)) = UPPER(TRIM(m.PIC))
-         FETCH NEXT 1 ROW ONLY) AS PIC_EMAIL
+         FETCH NEXT 1 ROW ONLY) AS PIC_EMAIL,
+       (SELECT MIN(l.LIMIT)
+          FROM POOLDATA.MST_XOL_LAYER l
+         WHERE l.ID = m.ID) AS MIN_LIMIT
   FROM POOLDATA.MST_XOL_PNC m
  ORDER BY m.ID
 
@@ -155,7 +170,10 @@ SELECT m.ID                AS MASTER_ID,
        (SELECT u.EMAIL
           FROM POOLDATA.MST_USER_TEKNIK u
          WHERE UPPER(TRIM(u.OPERATOR_ID)) = UPPER(TRIM(m.PIC))
-         FETCH NEXT 1 ROW ONLY) AS PIC_EMAIL
+         FETCH NEXT 1 ROW ONLY) AS PIC_EMAIL,
+       (SELECT MIN(l.LIMIT)
+          FROM POOLDATA.MST_XOL_LAYER l
+         WHERE l.ID = m.ID) AS MIN_LIMIT
   FROM POOLDATA.MST_XOL_PNC m
  WHERE TRIM(m.STSKOMITE) = '0'
  ORDER BY m.TAHUN
@@ -473,3 +491,46 @@ SELECT v.D_COL_ID    AS CAUSE_OF_LOSS_ID,
        v.DESCRIPTION AS CAUSE_OF_LOSS_DESC
   FROM POOLDATA.V_D_CAUSE_OF_LOSS v
  ORDER BY v.DESCRIPTION
+
+-- name: summary_business
+-- Grid "Summary Data XOL" pada layar rincian — satu baris per group business yang
+-- menanggung klaim pada tanggal kejadian dan penyebab kerugian itu.
+--
+-- Sumber: `RDB List/GetBusinessnameXOLForSummerry-SQL.xml`, dipanggil
+-- `Activity/SummaryXOLBeforeGeneratedKlaim-Act.xml` untuk mengisi page `BusinessXOLL`.
+--
+-- # Dua sumber disatukan UNION, bukan dijumlahkan
+--
+-- Klaim milik sendiri datang dari `T_CLAIM_XOL`, klaim treaty inward dari
+-- `T_CLAIM_INWARD_XOL`. Keduanya tidak punya group business yang sebanding — yang kedua
+-- diberi nama tetap "Treaty Inward" oleh kueri lama, dan itu dipertahankan.
+--
+-- `DATEOFLOSS` kedua tabel bertipe BERBEDA: pada `T_CLAIM_XOL` ia tanggal, pada
+-- `T_CLAIM_INWARD_XOL` ia teks `dd/mm/yyyy`. Perlakuannya karena itu juga berbeda —
+-- sama seperti pada `breakdown_treaty_inward`.
+--
+-- `ROWNUM = 1` pada anak kueri nama diganti `FETCH NEXT 1 ROW ONLY` (`DB-3`); keduanya
+-- memilih satu baris sembarang, dan kueri lama memang tidak menetapkan baris yang mana.
+--
+-- ORDER BY ditambahkan; kueri lama tidak punya urutan sama sekali. Grid yang barisnya
+-- berpindah tanpa sebab terbaca sebagai kerusakan.
+--
+-- :1 tanggal kejadian `dd/mm/yyyy`   :2 penyebab kerugian
+SELECT b.BUSINESS_GROUP_ID, b.BUSINESS_GROUP_NAME
+  FROM (SELECT x.BUSINESSGROUPID AS BUSINESS_GROUP_ID,
+               (SELECT g.BUSINESSGROUPNAME
+                  FROM POOLDATA.BUSINESS g
+                 WHERE g.BUSINESSGROUPID = x.BUSINESSGROUPID
+                 FETCH NEXT 1 ROW ONLY) AS BUSINESS_GROUP_NAME
+          FROM POOLDATA.T_CLAIM_XOL x
+         WHERE TO_CHAR(x.DATEOFLOSS, 'dd/mm/yyyy') = :1
+           AND x.COL_DESC = :2
+         GROUP BY x.BUSINESSGROUPID
+        UNION
+        SELECT a.BUSINESSID AS BUSINESS_GROUP_ID,
+               'Treaty Inward' AS BUSINESS_GROUP_NAME
+          FROM POOLDATA.T_CLAIM_INWARD_XOL a
+         WHERE TO_CHAR(TO_DATE(a.DATEOFLOSS, 'dd/mm/yyyy'), 'dd/mm/yyyy') = :1
+           AND a.CAUSEOFLOSS = :2
+         GROUP BY a.BUSINESSID) b
+ ORDER BY b.BUSINESS_GROUP_NAME, b.BUSINESS_GROUP_ID

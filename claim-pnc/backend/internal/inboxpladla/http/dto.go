@@ -138,9 +138,6 @@ type MetadataResponse struct {
 	// XOLColumns adalah kolom grid "DATA PLA DLA XOL KLAIM".
 	XOLColumns []ColumnDTO `json:"kolom_xol"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal adalah alias entitas yang sedang dijawab.
 	Portal string `json:"portal"`
 }
@@ -155,7 +152,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
 		XOLColumns:         toColumnDTOs(meta.XOLColumns),
-		PlannedDifferences: meta.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }

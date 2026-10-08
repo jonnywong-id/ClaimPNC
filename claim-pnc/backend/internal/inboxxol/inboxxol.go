@@ -157,6 +157,14 @@ type MasterXOL struct {
 	// Mengubahnya menjadi angka di sini berarti menebak tipe kolom yang belum terlihat.
 	Year string
 
+	// MinLimit adalah batas layer TERENDAH perjanjian ini — `MIN(LIMIT)` atas
+	// `POOLDATA.MST_XOL_LAYER`, dalam mata uang perjanjian.
+	//
+	// Ia kolom "Min Limit" pada grid layar rincian; dikalikan kurs ia menjadi
+	// "Min Limit IDR". Sumbernya `RDB List/GetDataMasterXOL-SQL.xml:11`, alias
+	// `AIDiterima` dan `ClaimAmount`.
+	MinLimit float64
+
 	// ExchangeRate — `KURSVALUE`, kurs yang dipakai mengubah nilai klaim rupiah menjadi
 	// mata uang perjanjian. Nilai grid "OS Value (USD)" adalah nilai rupiah DIBAGI angka
 	// ini (`Activity/GetClaimXOL-Act.xml`, `.Currency := @toDecimal(.Currency)/local.kurs`).
@@ -278,6 +286,18 @@ func (m MasterXOL) AwaitingCommittee() bool {
 // Satu baris = satu Tanggal Kejadian × satu Penyebab Kerugian, dengan nilai klaim
 // seluruh group business perjanjian itu sudah dijumlahkan.
 type ClaimSummary struct {
+	// MasterID adalah perjanjian XOL yang MELAHIRKAN baris ini.
+	//
+	// Ia perlu dibawa per baris karena grid menggabungkan hasil SELURUH perjanjian —
+	// `Activity/GetClaimXOL-Act.xml` step 4 me-loop `MstXOL.pxResults` dan meng-APPEND
+	// hasil tiap perjanjian ke satu daftar. Tanpa penanda ini, rincian di balik sebuah
+	// baris tidak tahu tahun, kurs, dan group business mana yang berlaku baginya.
+	//
+	// Sistem lama membawanya sebagai `CaseIDCashier` dan `Notes` pada baris yang
+	// di-append — nama yang tidak ada hubungannya dengan isinya. Di sini namanya
+	// dibetulkan; perannya tidak.
+	MasterID string
+
 	// LossDate adalah Tanggal Kejadian — kolom `DOL` pada
 	// `POOLDATA.XOL_TABLE_ALL_KLAIM`.
 	//
@@ -654,6 +674,10 @@ type Repo interface {
 	// perjanjian yang `STSKOMITE`-nya masih `'0'`.
 	ListPendingMasterApproval(ctx context.Context) ([]MasterXOL, error)
 
+	// SummarizeBusiness mengembalikan grid "Summary Data XOL" — group business yang
+	// menanggung klaim pada satu Tanggal Kejadian dan Penyebab Kerugian.
+	SummarizeBusiness(ctx context.Context, filter SummaryFilter) ([]SummaryBusiness, error)
+
 	// ListCauseOfLoss mengembalikan daftar Penyebab Kerugian yang dapat dipilih.
 	ListCauseOfLoss(ctx context.Context) ([]CauseOfLoss, error)
 }
@@ -668,3 +692,37 @@ type Repo interface {
 // nama reasuradur satu badan hukum dari basis data badan hukum lain tanpa satu pun pesan
 // galat (`R-20`).
 type RepoSelector func(portalAlias string) (Repo, error)
+
+// SummaryBusiness adalah satu baris grid "Summary Data XOL" pada layar rincian.
+//
+// Satu baris = satu group business yang menanggung klaim pada tanggal kejadian dan
+// penyebab kerugian yang sedang dibuka. Ia TIDAK membawa nilai uang: kueri lama
+// (`GetBusinessnameXOLForSummerry`) hanya mengembalikan kode dan namanya, dan grid di
+// layar lama pun hanya berkolom "Business Name".
+type SummaryBusiness struct {
+	// BusinessGroupID — `BUSINESSGROUPID` pada klaim sendiri, `BUSINESSID` pada treaty
+	// inward. Keduanya disatukan UNION oleh kuerinya.
+	BusinessGroupID string
+
+	// BusinessGroupName — nama dari `POOLDATA.BUSINESS`, atau teks tetap
+	// "Treaty Inward" untuk baris treaty.
+	BusinessGroupName string
+}
+
+// SummaryFilter menyaring grid "Summary Data XOL".
+//
+// Hanya dua kolom, dan keduanya berasal dari BARIS yang sedang dibuka di grid
+// "DATA XOL BASED ON DOL AND COL" — bukan dari perjanjian XOL. Group business TIDAK ikut
+// menyaring: grid ini justru yang menyebutkan group business mana saja yang terlibat.
+type SummaryFilter struct {
+	// LossDate — Tanggal Kejadian berformat `dd/mm/yyyy`.
+	LossDate string
+
+	// CauseOfLoss — DESKRIPSI penyebab kerugian, bukan kodenya.
+	CauseOfLoss string
+}
+
+// Empty menyatakan penyaring belum lengkap, sehingga kuerinya tidak perlu dijalankan.
+func (f SummaryFilter) Empty() bool {
+	return strings.TrimSpace(f.LossDate) == "" || strings.TrimSpace(f.CauseOfLoss) == ""
+}

@@ -2,6 +2,7 @@ package registrasi
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -73,7 +74,29 @@ const (
 	MaxPUCLSubject     = 4000 // PERIHAL
 	MaxPUCLNote        = 4000 // KETERANGAN1 · KETERANGAN2 · KETERANGAN3
 	MaxPUCLAnalystNote = 4000 // KOMENTAR_ANALISATOR
-	MaxPUCLDoctorName  = 512  // dipakai bersama NAMADOKTERRCL_1 di T_CLAIMLIST_ADMIN
+
+	// MaxPUCLDoctorName adalah batas KARAKTER "Nama Dokter" — dan ia ditentukan oleh kolom
+	// yang paling sempit dari DUA tabel, bukan satu.
+	//
+	//	T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1   VARCHAR2(128 CHAR)
+	//	TC_PNC_PUCL.NAMA_DOKTER_RCL         VARCHAR2(255 BYTE)   (Work Owner, 2026-10-07)
+	//
+	// Nilai yang sama ditulis ke keduanya, sehingga yang berlaku adalah yang lebih dulu
+	// penuh. Untuk teks ASCII itu **128 karakter**.
+	//
+	// Angkanya sempat 512 — lebih longgar daripada KEDUA kolomnya. Isian itu dulu teks
+	// bebas, jadi nama panjang yang diketik analis lolos validasi lalu ditolak Oracle dengan
+	// ORA-12899 — galat yang tidak dapat ditunjukkan sebagai pesan per isian. Dropdown dua
+	// baris membuatnya tidak pernah terpicu, bukan membuatnya benar.
+	MaxPUCLDoctorName = 128
+
+	// MaxPUCLDoctorNameBytes adalah batas BYTE kolom `TC_PNC_PUCL.NAMA_DOKTER_RCL`.
+	//
+	// Diperiksa TERPISAH dari batas karakter karena satuannya memang berbeda: 128 karakter
+	// non-ASCII dapat menjadi 384 byte pada AL32UTF8 dan menembus kolom ini walau batas
+	// karakternya terpenuhi. Memeriksa satu saja meninggalkan celah yang hanya muncul pada
+	// nama tertentu — kelas cacat yang paling sulit ditelusuri.
+	MaxPUCLDoctorNameBytes = 255
 )
 
 // Nilai yang menempatkan baris baru di tab **"Cetak Surat"** layar Inbox RCL/PUCL.
@@ -215,9 +238,15 @@ type PUCLLetter struct {
 	TechnicalPIC string
 	ClaimStatus  string
 
-	// Operator adalah `OPERATOR_ID` — analis yang menekan Kirim. `ASSIGNED_OPERATOR_ID`
-	// diisi nilai yang sama: tugas RCL/PUCL lahir sebagai antrean bersama, sehingga
-	// belum ada orang lain yang memegangnya.
+	// ClaimAdmin adalah admin klaim — `ClaimData.UserAdmin`, tersimpan di
+	// `T_CLAIM_PNC.ADMINKLAIM` dan dikenal di sini sebagai `Claim.CreatedBy`.
+	//
+	// Dipakai HANYA oleh jalur PUCL; lihat AssignedOperator.
+	ClaimAdmin string
+
+	// Operator adalah `OPERATOR_ID` — analis yang menekan Kirim.
+	//
+	// `ASSIGNED_OPERATOR_ID` TIDAK lagi diisi nilai yang sama; lihat AssignedOperator.
 	Operator string
 
 	// DateOfLoss mengisi `DATE_OF_LOSS`; SentAt mengisi `TGL_CREATE_PUCL` (kunci
@@ -226,15 +255,89 @@ type PUCLLetter struct {
 	SentAt     time.Time
 }
 
+// AssignedOperator adalah nilai `ASSIGNED_OPERATOR_ID` — **bukan** analis yang menekan
+// Kirim, dan **bukan** nama antrean `RCLPUCL`.
+//
+// # Siapa pemiliknya bergantung pada JALUR
+//
+//	PUCL (2)          admin klaim  — klaim langsung masuk antrean RCL/PUCL
+//	RCL (1) · Notif (3)  PIC Teknik — klaim singgah di Inbox RCL lebih dulu
+//
+// Pembagian itu ditetapkan Work Owner pada 2026-10-07 ("saat pilih PUCL maka langsung
+// `ASSIGNED_OPERATOR_ID` UserAdmin"), dan ia sejalan dengan tujuan masing-masing jalur:
+// hanya PUCL yang tidak singgah di dokter (lihat InRCLPUCLQueue), sehingga hanya ia yang
+// tidak membutuhkan pemilik yang dapat dicocokkan penyaring Inbox RCL.
+//
+// Keputusan Setuju di Inbox RCL memindahkan kolom ini ke admin klaim juga — dengan kata
+// lain, begitu klaim benar-benar berada di antrean RCL/PUCL, pemiliknya adalah admin,
+// dari jalur mana pun ia tiba (`inboxrcl/repo/sqlstore/decision.go`).
+//
+// # Kenapa kolom ini tidak boleh berisi analis
+//
+// Inbox RCL (layar dokter RCL) menyaring TEPAT dengan kolom ini dan tidak dengan yang
+// lain:
+//
+//	UPPER(TRIM(p.ASSIGNED_OPERATOR_ID)) = UPPER(<LOGIN_ID pemanggil>)
+//
+// Selama kolom itu berisi analis, klaim berjalur RCL mendarat di Inbox RCL **analis
+// sendiri** — orang yang baru saja melepasnya — bukan di inbox petugas yang harus
+// menanganinya. Cacat itu pernah dicatat sebagai "ditahan" di `usecase.SendToRCLPUCL`
+// menunggu pemetaan nama dokter ke `M_LOGIN_PNC.LOGIN_ID`; Work Owner menjawabnya pada
+// 2026-10-07 dengan menetapkan **user teknis** sebagai pemiliknya, sehingga pemetaan itu
+// tidak lagi dibutuhkan: PIC Teknik memang sudah login yang sah di aplikasi ini.
+//
+// # Kenapa analis tetap menjadi cadangan, bukan NULL
+//
+// Tombol "Kirim ke RCL/PUCL" sudah ada sejak tahap Choose Surveyor, dan klaim yang belum
+// pernah melewati tahap berouter PIC Teknik bisa saja belum punya `TechnicalPIC`.
+// Mengosongkan kolom pada kasus itu membuat klaimnya tidak muncul di Inbox RCL siapa pun
+// — hilang tanpa satu pun galat, kelas cacat yang paling mahal di modul ini. Analis yang
+// mengirimnya adalah satu-satunya identitas yang PASTI ada pada saat itu, sehingga ia
+// yang dipakai: klaimnya tetap terlihat oleh seseorang yang mengenalnya.
+// Urutan cadangannya pun berbeda menurut jalur, dan keduanya berakhir di analis — satu
+// nilai yang PASTI ada saat tombolnya ditekan. Tidak ada cabang yang boleh mengembalikan
+// teks kosong.
+func (l PUCLLetter) AssignedOperator() string {
+	admin := strings.TrimSpace(l.ClaimAdmin)
+	pic := strings.TrimSpace(l.TechnicalPIC)
+
+	// Jalur PUCL: admin klaim, lalu PIC Teknik, lalu analis.
+	//
+	// PIC Teknik menjadi cadangan pertama — bukan langsung analis — karena klaim lama
+	// kerap punya PIC tetapi belum punya `ADMINKLAIM`, dan PIC masih orang yang mengenal
+	// klaimnya. Rantai yang sama dipakai keputusan Setuju di Inbox RCL.
+	if l.InRCLPUCLQueue() {
+		if admin != "" {
+			return admin
+		}
+		if pic != "" {
+			return pic
+		}
+		return strings.TrimSpace(l.Operator)
+	}
+
+	// Jalur RCL dan Notification: PIC Teknik, lalu analis. Admin TIDAK dipakai di sini —
+	// klaimnya singgah di Inbox RCL, dan yang harus menemukannya di sana adalah petugas
+	// teknis, bukan admin yang mendaftarkannya.
+	if pic != "" {
+		return pic
+	}
+	return strings.TrimSpace(l.Operator)
+}
+
 // InRCLPUCLQueue menyatakan apakah surat ini LANGSUNG masuk antrean Inbox RCL/PUCL.
 //
-// # Jalur RCL tidak, dan itu keputusan Work Owner 2026-10-05
+// # Hanya jalur PUCL — RCL dan Notification singgah di dokter lebih dulu
 //
-// Klaim berjalur RCL harus singgah di **Inbox RCL** lebih dulu — antrean dokter RCL —
-// bukan muncul serentak di kedua layar. Jalur PUCL dan Notification tidak punya singgahan
-// seperti itu, sehingga keduanya langsung masuk antrean RCL/PUCL. Pembagian itu sejalan
-// dengan tahap tujuannya, yang sudah lebih dulu dibedakan TicketSendToRCLPUCL:
-// RCL ke RCLDokter, dua lainnya ke antrean bersama RCL/PUCL.
+// Klaim berjalur RCL harus singgah di **Inbox RCL** lebih dulu (Work Owner 2026-10-05),
+// bukan muncul serentak di kedua layar. **Notification berlaku sama sejak 2026-10-07**:
+// layar kerja dokter digambar untuk `RCL_PUCL` 1 DAN 3, dan isian "Nama Dokter" tampil
+// bila `RCL_PUCL != 2` — keduanya memisahkan PUCL sendirian. Alasan lengkapnya beserta
+// ketiga artefaknya ada di `usecase.TicketSendToRCLPUCL`.
+//
+// Jadi hanya jalur **PUCL** yang tidak punya singgahan, dan hanya ia yang langsung masuk
+// antrean RCL/PUCL. Pembagian itu sejalan dengan tahap tujuannya, yang sudah lebih dulu
+// dibedakan TicketSendToRCLPUCL.
 //
 // # Bagaimana "tidak masuk antrean" itu dinyatakan
 //
@@ -252,16 +355,19 @@ type PUCLLetter struct {
 //
 // Ketika kelak dokter RCL meneruskan klaimnya ke RCL/PUCL, yang dibutuhkan hanyalah
 // mengisi `STATUS_CASE` pada baris yang sama; suratnya sudah ada di sana.
-func (l PUCLLetter) InRCLPUCLQueue() bool { return l.Track != PUCLTrackRCL }
+func (l PUCLLetter) InRCLPUCLQueue() bool { return l.Track == PUCLTrackPUCL }
 
 // EntersRCLInbox menyatakan apakah surat ini menempatkan klaim di antrean **Inbox RCL**.
 //
 // Penyaring layar itu dua kolom `T_CLAIMLIST_ADMIN` yang ditambahkan migrasi 0012 —
 // `TANGGALANALYSTSENDRCL_1 IS NOT NULL` dan `NAMADOKTERRCL_1` yang dicocokkan dengan
-// identitas pemanggil. Keduanya karena itu ditulis TEPAT pada jalur ini, dan hanya pada
-// jalur ini: menulisnya pada jalur PUCL atau Notification akan menaruh klaim yang sudah
-// berada di antrean RCL/PUCL ke antrean dokter RCL pula.
-func (l PUCLLetter) EntersRCLInbox() bool { return l.Track == PUCLTrackRCL }
+// identitas pemanggil. Keduanya ditulis pada jalur **RCL dan Notification**, dan TIDAK
+// pada jalur PUCL: menulisnya di sana akan menaruh klaim yang sudah berada di antrean
+// RCL/PUCL ke antrean dokter RCL pula.
+//
+// Notification ikut sejak 2026-10-07 — lihat `usecase.TicketSendToRCLPUCL` untuk ketiga
+// artefak yang memisahkan PUCL sendirian.
+func (l PUCLLetter) EntersRCLInbox() bool { return l.Track != PUCLTrackPUCL }
 
 // PUCLSubjectOption adalah satu baris `POOLDATA.M_PERIHAL_RCLPUCL` (12 baris).
 //

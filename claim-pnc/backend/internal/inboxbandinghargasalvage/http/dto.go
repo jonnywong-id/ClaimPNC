@@ -116,8 +116,6 @@ type MetadataResponse struct {
 	// DecisionColumns adalah kolom panel rincian pada grid History Cheker.
 	DecisionColumns []ColumnDTO `json:"kolom_rincian"`
 
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Limitations menyatakan hal yang BELUM berjalan penuh beserta alasannya, dalam kalimat
 	// yang dapat langsung ditampilkan ke pengguna.
 	Limitations []string `json:"keterbatasan"`
@@ -275,8 +273,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
 
 	limitations := make([]string, 0, len(meta.Limitations))
 	limitations = append(limitations, meta.Limitations...)
@@ -296,7 +292,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		DecisionColumns:    decisionColumns,
 		SearchLabel:        meta.SearchLabel,
 		SearchPlaceholder:  meta.SearchPlaceholder,
-		PlannedDifferences: differences,
 		Limitations:        limitations,
 		Portal:             portalAlias,
 	}

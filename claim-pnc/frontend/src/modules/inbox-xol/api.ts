@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -11,7 +11,9 @@ import type {
   Breakdown,
   CauseOfLoss,
   ClaimSummaryResponse,
+  InsertDolColForm,
   MasterXOL,
+  SummaryBusiness,
 } from './types'
 
 const PATH = '/api/inbox-xol'
@@ -83,23 +85,26 @@ export function useMasters() {
 }
 
 /**
- * Hook akumulasi klaim satu perjanjian — grid "DATA XOL BASED ON DOL AND COL".
+ * Hook grid "DATA XOL BASED ON DOL AND COL" — akumulasi SELURUH perjanjian XOL.
  *
- * Tidak ditembak sebelum sebuah perjanjian dipilih. Backend memang menolak permintaan
- * tanpa `id_master`, tetapi menembaknya lebih dulu hanya untuk menerima penolakan akan
- * menampilkan pesan validasi sebelum pengguna sempat memilih apa pun.
+ * # Kenapa tanpa `id_master`
+ *
+ * Karena layar lama tidak pernah memilih satu perjanjian. `Activity/GetClaimXOL-Act.xml`
+ * step 4 me-loop `MstXOL.pxResults` — seluruh perjanjian, tanpa batas awal maupun akhir —
+ * lalu meng-APPEND hasil tiap perjanjian ke satu daftar, masing-masing dibagi kursnya
+ * sendiri.
+ *
+ * Versi sebelumnya mengirim satu `id_master` dan memilihkannya sendiri di layar. Itu
+ * mengarang perilaku yang tidak ada, dan akibatnya grid menampilkan satu perjanjian saja
+ * — pada data nyata, perjanjian yang kebetulan tidak punya klaim.
  */
-export function useClaimSummary(masterID: string) {
+export function useClaimSummary() {
   const { token, portal, ready } = useSessionPortal()
 
   return useQuery({
-    queryKey: keys.claims(portal, token, masterID),
-    queryFn: () =>
-      callAPI<ClaimSummaryResponse>(
-        `${PATH}/klaim?id_master=${encodeURIComponent(masterID)}`,
-        { token, portal },
-      ),
-    enabled: ready && masterID !== '',
+    queryKey: keys.claims(portal, token, ''),
+    queryFn: () => callAPI<ClaimSummaryResponse>(`${PATH}/klaim`, { token, portal }),
+    enabled: ready,
   })
 }
 
@@ -194,6 +199,62 @@ export function useCauseOfLoss() {
 }
 
 /**
+ * Hook tombol "Simpan" pada modal INSERT DOL DAN COL.
+ *
+ * # Permintaannya benar-benar DIKIRIM, dan memang harus
+ *
+ * Jawaban penolakannya datang dari server, bukan dikarang layar. Alasannya ada tiga:
+ *
+ *  1. `internal/inboxxol/http/handler.go` menyediakan rute ini KHUSUS untuk itu —
+ *     `RejectWrite` menjawab `409` beserta sebabnya, bukan `404` yang terbaca seperti
+ *     salah alamat.
+ *  2. Pada hari kewenangan menulis berpindah ke sini (`P-1` gugur), yang berubah cukup
+ *     satu handler. Layar yang menolak sendiri harus ikut disunting, dan itulah jenis
+ *     suntingan yang terlupakan.
+ *  3. Penolakan yang tercatat di log server dapat ditelusuri; penolakan yang hanya hidup
+ *     di peramban tidak meninggalkan jejak apa pun.
+ *
+ * Isi badan permintaan dikirim apa adanya supaya penolakannya tercatat bersama data yang
+ * hendak disimpan — itu yang membedakan "pengguna mencoba menyimpan" dari "pengguna
+ * menekan tombol tanpa mengisi apa-apa".
+ */
+export function useInsertDolCol() {
+  const { token, portal } = useSessionPortal()
+
+  return useMutation({
+    mutationFn: (body: InsertDolColForm) =>
+      callAPI<void>(`${PATH}/dol-col`, { metode: 'POST', body, token, portal }),
+  })
+}
+
+/**
+ * Hook tombol "Remove All Data".
+ *
+ * # Ia MENGHAPUS, dan itu terbaca dari rule-nya
+ *
+ * `RDB List/DeleteDataInXOLSummarybasedondol-SQL.xml` berbunyi
+ *
+ *	delete POOLDATA.XOL_TABLE_ALL_KLAIM
+ *	 where dol={…} and CAUSEOFLOSS={…} and GROUPBUSINESS={…}
+ *
+ * Jadi tombol itu membuang baris dari tabel yang dibaca grid di atasnya — bukan
+ * mengosongkan tampilan. Versi sebelumnya menebak yang kedua dan menggambarnya sebagai
+ * tombol yang bekerja; tebakan itu keliru, dan keliru ke arah yang berbahaya.
+ *
+ * Rutenya sama dengan INSERT DOL DAN COL karena TABELNYA sama — `routes.go` memetakan
+ * `dol-col` ke `POOLDATA.XOL_TABLE_ALL_KLAIM`. Selama masa paralel tabel itu dimiliki
+ * Pega (`P-1`), sehingga server menolak dengan menyebutkan sebabnya.
+ */
+export function useRemoveDolCol() {
+  const { token, portal } = useSessionPortal()
+
+  return useMutation({
+    mutationFn: (body: { tanggal_kejadian: string; sebab_kerugian: string }) =>
+      callAPI<void>(`${PATH}/dol-col`, { metode: 'POST', body, token, portal }),
+  })
+}
+
+/**
  * downloadURL menyusun alamat unduhan perhitungan PLA/DLA.
  *
  * # Kenapa alamat, bukan hook
@@ -213,4 +274,30 @@ export function downloadURL(form: AdviceForm): string {
     tipe: form.tipe,
   })
   return `${PATH}/pla-dla/unduh?${query}`
+}
+
+/**
+ * Hook grid "Summary Data XOL" pada layar rincian.
+ *
+ * Penyaringnya Tanggal Kejadian dan Penyebab Kerugian — keduanya milik baris yang sedang
+ * dibuka. Ditembak hanya saat baris benar-benar terbentang, sehingga membuka layar tidak
+ * memanggilnya sama sekali.
+ */
+export function useSummaryBusiness(lossDate: string, cause: string) {
+  const { token, portal, ready } = useSessionPortal()
+
+  return useQuery({
+    queryKey: ['inbox-xol', 'summary', portal, token, lossDate, cause],
+    queryFn: () => {
+      const query = new URLSearchParams({
+        tanggal_kejadian: lossDate,
+        sebab_kerugian: cause,
+      })
+      return callAPI<{ baris: SummaryBusiness[] }>(`${PATH}/klaim/summary?${query}`, {
+        token,
+        portal,
+      })
+    },
+    enabled: ready && lossDate !== '' && cause !== '',
+  })
 }

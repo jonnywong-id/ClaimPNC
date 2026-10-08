@@ -22,6 +22,14 @@ export type MasterXOL = {
   /** Kurs perjanjian; nilai klaim rupiah dibagi angka ini sebelum ditampilkan. */
   kurs: number
 
+  /**
+   * Batas layer terendah — `MIN(LIMIT)` atas `MST_XOL_LAYER`, dalam mata uang perjanjian,
+   * beserta nilai rupiahnya. Keduanya kolom "Min Limit" dan "Min Limit IDR" pada grid
+   * layar rincian.
+   */
+  min_limit: number
+  min_limit_idr: number
+
   tipe: string
 
   /** Nama group business yang sudah dirangkai, seperti kolom "Group Business". */
@@ -43,8 +51,15 @@ export type MasterXOL = {
   catatan_pic: string
 }
 
-/** Satu baris grid "DATA XOL BASED ON DOL AND COL". */
+/**
+ * Satu baris grid "DATA XOL BASED ON DOL AND COL".
+ *
+ * Grid ini menggabungkan hasil SELURUH perjanjian XOL, sehingga tiap baris membawa
+ * perjanjian asalnya sendiri. `id_master` itulah yang dipakai membuka rincian di
+ * baliknya — rincian butuh tahun, kurs, dan group business perjanjian tersebut.
+ */
 export type ClaimSummary = {
+  id_master: string
   tanggal_kejadian: string
   sebab_kerugian: string
   group_business: string
@@ -108,6 +123,7 @@ export type Advice = {
 }
 
 /** Satu baris antrean persetujuan pemberitahuan pada tab Komite. */
+
 export type ApprovalItem = {
   /**
    * Tahun perjanjian.
@@ -155,6 +171,26 @@ export const EMPTY_ADVICE_FORM: AdviceForm = {
 }
 
 /**
+ * Isian modal "INSERT DOL DAN COL".
+ *
+ * Ketiganya persis isian modal lama: dua kolom kunci baris yang hendak ditulis ke
+ * `POOLDATA.XOL_TABLE_ALL_KLAIM`, ditambah perjanjian yang dipilih dari grid
+ * "PILIH MASTER XOL" di dalam modal yang sama.
+ */
+export type InsertDolColForm = {
+  id_master: string
+  tanggal_kejadian: string
+  sebab_kerugian: string
+}
+
+/** Isian kosong, dipakai sebagai keadaan awal modal. */
+export const EMPTY_INSERT_FORM: InsertDolColForm = {
+  id_master: '',
+  tanggal_kejadian: '',
+  sebab_kerugian: '',
+}
+
+/**
  * Kode galat yang dikenali layar.
  *
  * Nilainya sama persis dengan konstanta di `internal/inboxxol/http/errors.go`. Layar
@@ -166,3 +202,15 @@ export const InboxXOLError = {
   callerUnknown: 'profil_pemanggil_tidak_lengkap',
   writeNotAllowed: 'aksi_belum_tersedia',
 } as const
+
+/**
+ * Satu baris grid "Summary Data XOL" pada layar rincian.
+ *
+ * Hanya dua kolom, dan itu memang isi kuerinya: `GetBusinessnameXOLForSummerry` hanya
+ * menyebutkan group business MANA yang menanggung klaim pada tanggal kejadian dan
+ * penyebab kerugian itu — tanpa nilai uang.
+ */
+export type SummaryBusiness = {
+  kode_group_business: string
+  group_business: string
+}

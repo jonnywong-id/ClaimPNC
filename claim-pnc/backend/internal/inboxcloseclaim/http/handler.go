@@ -159,7 +159,6 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		Total:             result.Page.Total,
 		PermintaanTerbaca: result.PendingLookupError == nil,
 		BolehMengajukan:   boleh,
-		SelisihTerencana:  selisihTerencana(),
 
 		// Selama belum ada pelaksananya, permintaan yang tercatat tidak akan mengubah apa
 		// pun. Itu dinyatakan HANYA bila pengajuannya memang terbuka — menyatakannya saat

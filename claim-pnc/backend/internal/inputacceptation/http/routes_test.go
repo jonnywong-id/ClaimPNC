@@ -128,7 +128,7 @@ func TestDetailRendersEveryGroupWithValues(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "CLMNP-1001", body["no_klaim"])
 	require.Equal(t, "ASM", body["portal"])
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 
 	groups := body["kelompok"].([]any)
 	require.NotEmpty(t, groups)

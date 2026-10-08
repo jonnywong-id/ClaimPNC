@@ -177,7 +177,6 @@ func TestMetadataDescribesTheScreen(t *testing.T) {
 	require.Equal(t, "ASM", body.Portal)
 	require.Len(t, body.Tabs, len(inboxpladla.Tabs()))
 	require.NotEmpty(t, body.XOLColumns)
-	require.NotEmpty(t, body.PlannedDifferences)
 	require.Equal(t, inboxpladla.TabPLA, body.Tabs[0].Code)
 	require.NotEmpty(t, body.Tabs[0].Columns)
 }

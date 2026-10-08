@@ -114,6 +114,17 @@ const (
 	StageRCLPUCL       = "rcl-pucl"     // Assignment6 "RCL/PUCL", antrean bersama
 	StageSendToAnalyst = "kirim-analis" // Assignment5 "Send To Analis", worklist PIC Teknik
 
+	// StageRCLDoctor adalah tahap yang DILAYANI layar ini — Assignment12, tempat klaim
+	// menunggu keputusan dokter RCL. Ia penyaring E (`inboxrcl.sql`): sejak
+	// `ASSIGNED_OPERATOR_ID` selalu berisi user teknis (Work Owner 2026-10-07), kolom itu
+	// tidak lagi dapat menjawab "klaim ini masih di tangan dokter" — tahap tugasnya yang
+	// menjawabnya.
+	//
+	// Nilainya WAJIB sama dengan `registrasi.StageRCLDoctor`; keduanya menulis dan membaca
+	// kolom `CPNC_TUGAS.TAHAP` yang sama. Tidak diimpor supaya kedua modul tetap berdiri
+	// sendiri — yang menjaganya uji, bukan kompilator.
+	StageRCLDoctor = "rcl-dokter"
+
 	StageNameRCLPUCL       = "RCL/PUCL"
 	StageNameSendToAnalyst = "Send To Analis"
 

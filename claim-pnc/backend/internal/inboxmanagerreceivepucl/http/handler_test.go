@@ -129,7 +129,7 @@ func TestMetadataReturnsTabsWithPortalAlias(t *testing.T) {
 	require.Equal(t, "ASM", body["portal"])
 	require.Equal(t, inboxmanagerreceivepucl.DefaultTab, body["tab_bawaan"])
 	require.Len(t, body["tab"], len(inboxmanagerreceivepucl.Tabs()))
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 }
 
 func TestRoutesRejectMissingPortal(t *testing.T) {

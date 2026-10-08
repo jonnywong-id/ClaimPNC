@@ -49,7 +49,6 @@ const METADATA: MetadataResponse = {
   tab: [TAB_GRID, TAB_BLOCKED, TAB_BLOCKED_NO_OWNER],
   tab_bawaan: '2',
   kolom_laporan: [],
-  selisih_terencana: [],
   portal: 'ASM',
 }
 

@@ -163,7 +163,7 @@ func TestMetadataDescribesBothTabs(t *testing.T) {
 	require.Equal(t, inboxbandinghargasalvage.DefaultTab, body["tab_bawaan"])
 	require.Equal(t, "Cari No Klaim", body["label_cari"])
 	require.NotEmpty(t, body["kolom_rincian"])
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 	require.NotEmpty(t, body["keterbatasan"])
 	require.Equal(t, "ASM", body["portal"])
 }

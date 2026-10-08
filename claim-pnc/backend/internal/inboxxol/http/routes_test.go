@@ -55,6 +55,10 @@ func (brokenRepo) ListCauseOfLoss(context.Context) ([]inboxxol.CauseOfLoss, erro
 	return nil, errBroken
 }
 
+func (brokenRepo) SummarizeBusiness(context.Context, inboxxol.SummaryFilter) ([]inboxxol.SummaryBusiness, error) {
+	return nil, errBroken
+}
+
 type serverOptions struct {
 	caller   inboxxolhttp.CallerReader
 	fallback bool
@@ -161,16 +165,26 @@ func TestSummarizeClaimsDividesByRate(t *testing.T) {
 	require.InDelta(t, 4_650_000_000.0/15500, rows[0].(map[string]any)["nilai_outstanding"], 0.001)
 }
 
-func TestSummarizeClaimsValidationAndNotFound(t *testing.T) {
+// Tanpa `id_master`, grid mengakumulasi SELURUH perjanjian — bukan menolak permintaan.
+//
+// Itu perilaku `GetClaimXOL` step 4, yang me-loop `MstXOL.pxResults` dan meng-APPEND
+// hasil tiap perjanjian ke satu daftar.
+func TestSummarizeClaimsTanpaMasterMengakumulasiSeluruhnya(t *testing.T) {
 	server := newServer(t, serverOptions{caller: knownCaller, fallback: true})
 
 	record := call(t, server, http.MethodGet, "/api/inbox-xol/klaim", "ASM")
-	require.Equal(t, http.StatusUnprocessableEntity, record.Code)
-	body := decode(t, record)
-	require.Equal(t, inboxxolhttp.CodeValidationFail, body["kode"])
-	require.Equal(t, inboxxol.FieldMasterID, body["detail"].([]any)[0].(map[string]any)["field"])
+	require.Equal(t, http.StatusOK, record.Code)
 
-	record = call(t, server, http.MethodGet, "/api/inbox-xol/klaim?id_master=TIDAK-ADA", "ASM")
+	rows := decode(t, record)["baris"].([]any)
+	require.NotEmpty(t, rows)
+	// Tiap baris menyebut perjanjian asalnya, supaya rincian di baliknya dapat dibuka.
+	require.NotEmpty(t, rows[0].(map[string]any)["id_master"])
+}
+
+func TestSummarizeClaimsNotFound(t *testing.T) {
+	server := newServer(t, serverOptions{caller: knownCaller, fallback: true})
+
+	record := call(t, server, http.MethodGet, "/api/inbox-xol/klaim?id_master=TIDAK-ADA", "ASM")
 	require.Equal(t, http.StatusNotFound, record.Code)
 	require.Equal(t, inboxxolhttp.CodeMasterNotFound, decode(t, record)["kode"])
 }

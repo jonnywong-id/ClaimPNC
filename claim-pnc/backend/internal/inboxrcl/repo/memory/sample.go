@@ -27,6 +27,14 @@ func at(year int, month time.Month, date, hour int) time.Time {
 // Tidak Setuju/Back.
 const SampleTechnicalPIC = "PICTEKNIK01"
 
+// SampleClaimAdmin adalah admin klaim contoh — pemilik `ASSIGNED_OPERATOR_ID` setelah Dokter
+// Setuju (Work Owner, 2026-10-07).
+//
+// Sengaja BERBEDA dari SampleTechnicalPIC: contoh yang keduanya bernilai sama akan lulus
+// baik ketika yang dipakai admin maupun ketika yang dipakai PIC Teknik, sehingga ia tidak
+// menguji apa pun.
+const SampleClaimAdmin = "ADMINKLAIM01"
+
 // SampleLogins adalah baris contoh `M_LOGIN_PNC`.
 var SampleLogins = []LoginRow{
 	{LoginID: SampleLogin, Active: true},
@@ -50,6 +58,7 @@ var SampleLogins = []LoginRow{
 var SampleRecords = []Record{
 	{
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.October, 5, 1),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0412",
@@ -67,6 +76,7 @@ var SampleRecords = []Record{
 	{
 		// Berwaktu daftar SAMA PERSIS dengan baris di bawahnya — …0405 harus mendahului …0404.
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.October, 3, 2),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0405",
@@ -83,6 +93,7 @@ var SampleRecords = []Record{
 	},
 	{
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.October, 3, 2),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0404",
@@ -98,6 +109,7 @@ var SampleRecords = []Record{
 	{
 		// HARUS TETAP MUNCUL — hanya Resolved-Completed yang dikecualikan.
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.September, 28, 4),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0380",
@@ -113,6 +125,7 @@ var SampleRecords = []Record{
 	{
 		// TIDAK BOLEH MUNCUL — tugasnya sudah tuntas (penyaring B).
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.September, 20, 2),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0371",
@@ -127,6 +140,7 @@ var SampleRecords = []Record{
 	{
 		// TIDAK BOLEH MUNCUL — belum dikirim analis (penyaring C).
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.October, 4, 5),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0366",
@@ -140,6 +154,7 @@ var SampleRecords = []Record{
 	{
 		// TIDAK BOLEH MUNCUL — jalur PUCL, tidak melewati dokter (penyaring D).
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.October, 4, 6),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0359",
@@ -154,6 +169,7 @@ var SampleRecords = []Record{
 	{
 		// TIDAK BOLEH MUNCUL bagi SampleOperator — milik dokter lain (penyaring A).
 		TechnicalPIC: SampleTechnicalPIC,
+		ClaimAdmin:   SampleClaimAdmin,
 		RegisteredAt: at(2026, time.October, 4, 7),
 		Detail: inboxrcl.RCLDetail{
 			ClaimNumber:      "PNCN.26.0350",

@@ -54,9 +54,9 @@ import type {
  * KETIGA — pencarian pada tiga daftar COCOK PERSIS, bukan mengandung. Mengetik separuh
  * nomor klaim di sana tidak menghasilkan apa-apa, dan itu perilaku layar lama apa adanya.
  *
- * Ketiganya dinyatakan ke pengguna lewat `selisih_terencana` dan `catatan_daftar` — bukan
- * hanya tercatat di kode, karena selisih yang tidak dinyatakan akan dilaporkan berulang
- * kali sebagai kerusakan.
+ * Ketiganya dinyatakan ke pengguna lewat `catatan_daftar`. Panel selisih terencana yang
+ * dulu menyertainya DIHAPUS atas keputusan Work Owner 2026-10-06; daftarnya tetap hidup
+ * di kode Go untuk uji kesetaraan gerbang 1 (`D-54`).
  *
  * # Portal Insurtech BELUM dibangun
  *
@@ -397,8 +397,6 @@ export function SalvageInboxPage() {
           )}
         </>
       )}
-
-      <PlannedDifferences items={meta.data?.selisih_terencana ?? []} />
     </Frame>
   )
 }
@@ -614,35 +612,6 @@ function emptyMessageFor(tab: Tab | undefined, search: string): string {
     return `Tidak ada pengajuan yang cocok dengan "${search}".`
   }
   return 'Belum ada pengajuan pada daftar ini.'
-}
-
-/**
- * PlannedDifferences menggambar selisih terhadap Pega yang sudah diputuskan.
- *
- * Ia DIGAMBAR, bukan hanya tercatat di kode, dan alasannya nyata di layar ini: tiga angka
- * pada tabel ringkas memang tidak cocok dengan tabel di bawahnya, dan tanpa keterangan itu
- * akan dilaporkan berulang kali sebagai kerusakan.
- *
- * Dilipat secara bawaan supaya tidak menyaingi isi layar, tetapi TIDAK disembunyikan.
- */
-function PlannedDifferences({ items }: { items: string[] }) {
-  if (items.length === 0) return null
-
-  return (
-    <details className="rounded-kartu border border-slate-200 bg-white p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-800">
-        Perbedaan yang disengaja terhadap layar Pega ({items.length})
-      </summary>
-
-      <ul className="mt-3 space-y-2 text-sm text-slate-600">
-        {items.map((item) => (
-          <li key={item} className="border-l-2 border-slate-200 pl-3">
-            {item}
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
 }
 
 function messageOf(error: unknown): string {

@@ -38899,3 +38899,249 @@ sebaliknya, tetapi memindahkannya menuntut `registrasi.SaveLetter` ikut mengisi 
 seluruh baris yang sudah ada hilang dari Inbox RCL. Dibiarkan sebagai satu kolom yang tidak terpakai.
 
 Backend dijalankan ulang 16:41.
+
+## 151. `ASSIGNED_OPERATOR_ID` diisi user teknis — penahanan §149 dicabut (2026-10-07)
+
+**Laporan Work Owner:** pada "Kirim ke RCL/PUCL", `POOLDATA.TC_PNC_PUCL.ASSIGNED_OPERATOR_ID` **harus berisi nama
+user teknis** — bukan analis, dan bukan nama antrean `RCLPUCL`.
+
+**Ini menjawab pertanyaan yang §149 tahan.** §148 memasang dokter sebagai pemilik, §149 mencabutnya karena satu mata
+rantai tidak terbukti: Inbox RCL mencocokkan `ASSIGNED_OPERATOR_ID` dengan `M_LOGIN_PNC.LOGIN_ID`, sedangkan yang
+dapat ditulis dari dropdown adalah `pyStandardValue` — ruang nama lain. Keputusan ini membuat pemetaan itu **tidak
+lagi dibutuhkan**: PIC Teknik sudah login yang sah di aplikasi ini.
+
+**Apa yang berubah, dan kenapa harus TIGA tempat sekaligus**
+
+| Tempat | Sebelum | Sesudah |
+|---|---|---|
+| `TC_PNC_PUCL.ASSIGNED_OPERATOR_ID` | analis yang menekan Kirim | PIC Teknik klaim |
+| `CPNC_TUGAS.PEMILIK` tahap `rcl-dokter` | `ServicePNC` (diparkir) | PIC Teknik klaim |
+| `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` cadangan | `recipients.Operator` (`ServicePNC`) | nilai yang sama |
+
+Ketiganya wajib menyebut orang yang sama. Membetulkan satu saja menghasilkan klaim yang terlihat di Inbox RCL tetapi
+hilang dari My Inbox — atau sebaliknya; persis kelas kegagalan senyap yang §150 catat.
+
+**Aturannya satu tempat:** `registrasi.PUCLLetter.AssignedOperator()` — PIC Teknik, jatuh ke analis bila klaim belum
+punya PIC. Cadangan itu bukan kerapian: tombol "Kirim ke RCL/PUCL" ada sejak tahap Choose Surveyor, dan kolom kosong
+membuat klaimnya hilang dari Inbox RCL siapa pun tanpa satu pun galat.
+
+**Keputusan dokter pun ikut berubah, dan itu menuntut penyaring baru.** Pembacaan katalog 2026-10-07 membuktikan
+`RCLPUCL` yang dilaporkan Work Owner **bukan** ditulis tombol Kirim: ketiga baris `PNCN.*` menempuh `KomentarRCLPUCL`
+→ `rcl-dokter` → `SendtoPUCL`, dan yang menimpanya adalah tombol **Setuju/Submit** di layar dokter. Saat insert,
+kolomnya berisi `JONNY` — analis, yang kebetulan juga user teknisnya.
+
+Jadi kolom itu selama ini memikul **dua arti**: "siapa pemilik klaim" dan "klaim ini masih di tahap dokter". Di Pega
+arti kedua tidak pernah ada di sana — penyaringnya membaca `pxAssignedOperatorID` sebuah **penugasan**, dan penugasan
+lenyap saat tahapnya selesai. `TC_PNC_PUCL` menyimpan satu baris per klaim yang tidak pernah lenyap, sehingga arti
+kedua harus dititipkan ke kolom pemilik — dan merusak arti pertama.
+
+Work Owner memilih memindahkan arti kedua, bukan mempertahankan titipannya:
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| "siapa pemilik klaim" | `ASSIGNED_OPERATOR_ID`, tertimpa `RCLPUCL` | `ASSIGNED_OPERATOR_ID`, **selalu user teknis** |
+| "masih di tahap dokter" | numpang di kolom yang sama | **penyaring E** — `CPNC_TUGAS` tahap `rcl-dokter` masih terbuka |
+
+**Penyaring E tidak boleh berupa `EXISTS` sendirian.** Klaim yang lahir di Pega tidak punya satu baris pun di
+`CPNC_TUGAS`; `EXISTS` saja akan menghapus **7.722 baris** — seluruh antrean yang berjalan hari ini — dari layar.
+Karena itu dua cabang: klaim yang punya tugas dinilai dari tugasnya, klaim yang tidak punya dinilai seperti
+sebelumnya. Dijaga `TestKlaimPegaTidakIkutTersaringPenyaringTahap`.
+
+**Cadangan pada keputusan Setuju:** klaim tanpa PIC Teknik sama sekali tetap jatuh ke `RCLPUCL`, bukan ke kolom
+kosong — kolom kosong tidak cocok dengan penyaring A mana pun dan klaimnya hilang dari setiap layar tanpa galat.
+Jalur Tidak Setuju tetap MENUNTUT orangnya: tugas worklist tanpa pemilik mandek tanpa ada yang tahu.
+
+**Data lama — migrasi `0016`.** Ketiga baris `PNCN.*` dikoreksi ke `USER_TEKNIS`-nya masing-masing (`JONNY` bagi yang
+tidak punya), atas persetujuan Work Owner. Urutannya **mengikat**: penyaring E dipasang dan di-deploy lebih dulu,
+baru migrasinya dijalankan. Tanpa itu dua klaim ber-`Resolved-Rejected` akan tertarik kembali ke Inbox RCL — penyaring
+status hanya mengecualikan `Resolved-Completed`.
+
+**Dua uji yang mengunci penahanan §149 dibalik**, dan satu uji baru menjaga cadangannya
+(`TestSendToRCLPUCLTanpaPICTeknikJatuhKeAnalis`).
+
+**Tidak ada kolom baru.** `USER_TEKNIS` sudah terisi pada baris yang sama sejak §147.
+
+## 152. Notification singgah di Inbox RCL, bukan langsung ke RCL/PUCL (2026-10-07)
+
+**Pertanyaan Work Owner:** *"alurnya jika Kirim PUCL atau Notification maka masuk Inbox RCL dulu kan?"*
+
+Jawabannya **terbelah**, dan kode kita salah pada separuhnya.
+
+| Jalur | Singgah di Inbox RCL? | Kode sebelum | Kode sesudah |
+|---|---|---|---|
+| `1` RCL | ya | ya | ya |
+| `3` Notification | **ya** | **tidak** ❌ | **ya** ✅ |
+| `2` PUCL | tidak | tidak | tidak |
+
+**Tiga artefak export yang memutuskannya, dan ketiganya memisahkan PUCL SENDIRIAN:**
+
+| Artefak | Isi |
+|---|---|
+| `Section/RCLDokter-Section.xml` | layar kerja dokter digambar untuk `RCL_PUCL = 1` **dan** `RCL_PUCL = 3` |
+| `Section/SectionPUCL-sect.xml` | isian "Nama Dokter" tampil bila `RCL_PUCL != 2 && IsPA` |
+| `Report Definition/InboxRCLDokter_RD-RD.xml` | penyaring D = `.ClaimData.NamaDokterRCL = Param.assign` |
+
+Penyaring D itu yang mematahkan dugaan lama. `usecase.TicketSendToRCLPUCL` berargumen Notification "tidak
+menyentuh dokter mana pun" — padahal ia menyentuhnya lewat kolom yang **sama persis** dengan RCL. Dan hanya jalur
+yang dapat MENGISI "Nama Dokter" yang dapat memenuhi penyaring itu; jalur PUCL tidak pernah menampilkan isiannya.
+
+**Berkas itu sudah menandai dugaannya sendiri sebagai "penyimpulan yang paling lemah di berkas ini".** Ia benar.
+Yang kurang bukan kehati-hatian menulisnya, melainkan satu pembacaan ke `Section/RCLDokter-Section.xml` — yang
+jawabannya ada di satu baris.
+
+**Tujuan akhir Notification TIDAK berubah.** Sesudah dokter menekan Submit (mode MSIG), `inboxrcl.Plan` memasang
+Ticket `SendtoPUCL` dan klaimnya sampai juga ke antrean RCL/PUCL. Yang berubah hanya **singgahannya**.
+
+**Akibat yang ikut rapi dengan sendirinya:** penyaring Inbox RCL sudah sejak awal berbunyi `RCL_PUCL IN ('1','3')`.
+Sebelum koreksi ini, klaim Notification tidak pernah dapat memenuhinya — penyaringnya menunggu klaim yang tidak
+pernah dikirim ke sana. Sekarang penyaring dan perutean menyebut himpunan yang sama.
+
+**Yang berubah:** `TicketSendToRCLPUCL` (Notification → `RCLDokter`) · `InRCLPUCLQueue()` (`Track == PUCL`) ·
+`EntersRCLInbox()` (`Track != PUCL`). Satu uji dibalik, satu uji baru
+(`TestSendToRCLPUCLJalurNotificationSinggahDiInboxRCL`).
+
+## 151. Setuju di Inbox RCL — `ASSIGNED_OPERATOR_ID` menjadi admin klaim (2026-10-07)
+
+Work Owner: *"saat di Inbox RCL saat klik setuju `ASSIGNED_OPERATOR_ID` operator UserAdmin, bukan RCL/PUCL."*
+
+**Sumbernya `T_CLAIM_PNC.ADMINKLAIM`** — kolom yang diisi modul Registrasi saat klaim dibuat (`claim.sql`), dan padanan
+`ClaimData.UserAdmin` yang dipakai `PNCAdminRouter`. Kueri baru `decision_claim_admin`, sejajar dengan
+`decision_technical_pic`.
+
+**Kolom yang TIDAK dipakai, dan alasannya.** `TC_PNC_PUCL.OPERATOR_ID` berlabel "Nama Admin" di DDL-nya
+(`docs/ddl/tc_pnc_pucl.sql:264`, dipetakan dari `.pyOrigUserID`) dan tersedia di baris yang sudah terkunci — tanpa
+kueri tambahan. Ia tetap tidak dipakai: `registrasi.SaveLetter` menulisinya dengan identitas **analis** yang menekan
+Kirim, bukan admin klaim. Memakainya akan mengembalikan klaim ke analis, bukan ke admin.
+
+**Rantai cadangan, dan kenapa tidak boleh ada yang kosong:**
+
+    admin klaim  ->  PIC Teknik  ->  nama antrean 'RCLPUCL'
+
+Baris ber-`ASSIGNED_OPERATOR_ID` kosong tidak terbaca penyaring A mana pun, sehingga klaimnya hilang dari SETIAP layar
+tanpa satu pun galat. Karena itu `claimAdmin` mengembalikan kosong tanpa galat — berbeda dari `technicalPIC`, yang
+jalur worklist-nya memang menuntut orangnya dan menolak bila tidak ada.
+
+Jalur **Tidak Setuju/Back tidak berubah**: tetap ke PIC Teknik. Diuji dengan sengaja mengisi admin pada contohnya,
+supaya uji itu gagal bila aturan Setuju kelak ikut terbawa ke jalur ini.
+
+**Adapter memori ternyata basi, dan itu menyembunyikan satu uji yang salah.** `repo/memory` masih menulis nama antrean
+pada jalur Setuju — ia tidak ikut diperbarui saat `ASSIGNED_OPERATOR_ID` dipindah ke PIC Teknik pagi ini. Akibatnya
+`usecase/decide_test.go` yang menegaskan `WorkbasketRCLPUCL` tetap **hijau** meski adapter Oracle-nya sudah lama
+berperilaku lain. Keduanya kini sepadan, dan `SampleClaimAdmin` sengaja dibuat BERBEDA dari `SampleTechnicalPIC` —
+contoh yang keduanya sama akan lulus pada kedua aturan, sehingga tidak menguji apa pun.
+
+Ini kejadian ketiga dalam dua hari di mana **uji hijau menyembunyikan perilaku yang salah** (§150 dua, §151 satu).
+Polanya sama: uji ditulis dari sisi yang sama dengan kodenya, bukan dari sisi gejala yang dilihat pengguna.
+
+**Di luar lingkup, dicatat supaya tidak dikira akibat perubahan ini:** `internal/inboxsalvage` dan
+`internal/inboxpladla` gagal build/uji di working tree ini (`brokenRepo` tanpa `AttachDocument`, `service.Metadata`
+kurang argumen). Keduanya **tidak bergantung pada `inboxrcl`** (`go list -deps` nol kecocokan) — pekerjaan yang sedang
+berjalan di cabang ini, bukan dampak keputusan RCL.
+
+## 152. Kirim RCL/PUCL jalur PUCL — `ASSIGNED_OPERATOR_ID` langsung ke admin klaim (2026-10-07)
+
+Work Owner: *"pada saat Kirim RCL/PUCL pada saat pilih PUCL maka langsung `ASSIGNED_OPERATOR_ID` UserAdmin."*
+
+**Pemilik penugasan kini bergantung pada JALUR**, bukan satu aturan untuk ketiganya:
+
+| Jalur | `ASSIGNED_OPERATOR_ID` | Alasan |
+|---|---|---|
+| **PUCL (2)** | **admin klaim** | langsung masuk antrean RCL/PUCL — tidak singgah di dokter |
+| RCL (1) · Notification (3) | PIC Teknik | singgah di Inbox RCL lebih dulu; yang harus menemukannya di sana petugas teknis |
+
+Sumber admin: `Claim.CreatedBy` — `ClaimData.UserAdmin`, tersimpan di `T_CLAIM_PNC.ADMINKLAIM`. `OPERATOR_ID` **tidak
+berubah**: ia tetap mencatat analis yang menekan Kirim, dan justru perbedaan kedua kolom itulah intinya.
+
+**Pembagian ini menutup lingkarannya dengan §151.** Keputusan Setuju di Inbox RCL juga memindahkan kolom ini ke admin
+klaim. Jadi aturannya kini dapat dinyatakan satu kalimat: *begitu klaim benar-benar berada di antrean RCL/PUCL,
+pemiliknya adalah admin — dari jalur mana pun ia tiba.* Jalur PUCL tiba seketika; jalur RCL tiba setelah dokter
+menyetujui.
+
+**Rantai cadangan jalur PUCL:** admin klaim → PIC Teknik → analis. PIC menjadi cadangan pertama karena klaim lama kerap
+punya PIC tetapi belum punya `ADMINKLAIM`, dan PIC masih orang yang mengenal klaimnya. Tidak satu pun cabang boleh
+mengembalikan kosong: baris ber-`ASSIGNED_OPERATOR_ID` kosong tidak terbaca penyaring kepemilikan mana pun, dan
+klaimnya hilang tanpa satu pun galat.
+
+**Uji: +3.** `TestPemilikPenugasanSuratBergantungPadaJalur` menguji ketiga jalur dengan **tiga identitas yang sengaja
+berbeda** — analis, PIC, admin. Nilai yang kembar akan meluluskan aturan mana pun, sehingga tidak menguji apa pun; itu
+pelajaran dari §151, tempat contoh memori yang kembar menyembunyikan adapter yang basi. Ditambah uji rantai cadangan
+dan satu uji ujung-ke-ujung lewat `SendToRCLPUCL`.
+
+Belum dijalankan ulang di lingkungan Work Owner — perubahan ini belum hidup sampai backend di-restart.
+
+## 153. `NAMA_DOKTER_RCL` tidak pernah sampai ke `TC_PNC_PUCL` — dua sebab, bukan satu (2026-10-07)
+
+Work Owner: *"pada saat Kirim RCL/PUCL untuk yg RCL dan Notifications `NAMA_DOKTER_RCL` belum ter-insert ke table
+`POOLDATA.TC_PNC_PUCL`."*
+
+**Sebab pertama — ditulis ke tabel yang sudah tidak dibaca siapa pun.** Nama dokter hanya ditulis ke
+`T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` lewat `surat_rclpucl_dokter`. Kueri itu dibuat ketika Inbox RCL masih membaca
+`T_CLAIMLIST_ADMIN`; sejak Work Owner memindahkannya ke `TC_PNC_PUCL` (2026-10-05), **tidak satu kueri pun di seluruh
+aplikasi membaca `NAMADOKTERRCL_1`** — diperiksa dengan pencarian menyeluruh pada seluruh berkas `.sql`. Nilainya
+tersimpan rapi di tempat yang tidak pernah dilihat.
+
+**Sebab kedua — jalur Notification membuangnya di tengah jalan.** `buildPUCLLetter` menyaring dengan
+`p.Track == PUCLTrackRCL`, padahal isiannya tampil bila `RCL_PUCL != 2 && IsPA` — RCL **dan** Notification
+(`SectionPUCL-sect.xml:2149`), dan layar memang menggambarnya pada keduanya (`showDoctorName`). Jadi pada jalur
+Notification, apa yang diisi analis dibuang sebelum sempat disimpan ke mana pun. Syaratnya kini memakai
+`letter.EntersRCLInbox()`, satu-satunya tempat pembagian jalur itu didefinisikan.
+
+**Perbaikan:** `NAMA_DOKTER_RCL` ikut ditulis `surat_rclpucl_perbarui` dan `_sisip` sebagai bind ke-25.
+`NAMADOKTERRCL_1` tetap ditulis — bukan karena masih dibaca, melainkan karena mencabutnya belum diputuskan.
+
+**Satu uji yang menahan perbaikan yang sah, dan diperbaiki pangkalnya.** `rclpucl_siklus_test.go` memaku jumlah bind
+di **25** supaya penambahan tidak menggeser urutan — kekhawatiran yang benar, karena go-ora mengikat menurut urutan
+KEMUNCULAN. Tetapi angka tetap itu menolak setiap kolom baru yang sah. Diganti menjadi **kesepadanan** antara
+`surat_rclpucl_perbarui` dan `_sisip` — invarian yang sebenarnya dijaga — ditambah penjagaan bahwa kedua kolom siklus
+tetap dikosongkan sebagai LITERAL. Penghitungnya juga dikoreksi: `strings.Count(body, ":")` ikut mencacah titik dua di
+prosa (26 lawan 29), diganti pola `:\d+`.
+
+**Kolomnya mungkin belum ada di basis data.** `docs/ddl/tc_pnc_pucl.sql` adalah snapshot 2026-10-04 dan **tidak memuat
+`ALASAN_DOKTER_REJECT_RCL` maupun `NAMA_DOKTER_RCL`** — berkas itu sudah basi untuk keduanya. Ditambahkan bagian
+"Kolom yang ditambahkan sesudah snapshot ini" beserta DDL-nya. Probe `inboxrcl` `check_columns` kini memeriksa KEDUANYA,
+sehingga `-periksa` melaporkannya sebelum ada pengguna yang menekan tombolnya — tanpa itu, kolom yang belum dibuat
+menggagalkan **seluruh** tombol Kirim ke RCL/PUCL dengan ORA-00904, bukan hanya nama dokternya.
+
+Uji: +2 (`TestNamaDokterBertahanPadaJalurRCLDanNotification`, `TestNamaDokterDibuangPadaJalurPUCLWalauLiniPA`).
+`registrasi`, `inboxrcl`, `inboxrclpucl` hijau; `gofmt` bersih. Belum dijalankan ulang di lingkungan Work Owner.
+
+**Pembaruan — kolomnya sudah ada (Work Owner, 2026-10-07).** `NAMA_DOKTER_RCL` dinyatakan SUDAH ADA di
+`POOLDATA.TC_PNC_PUCL`, sehingga **tidak ada permintaan perubahan skema** yang menggantung dari §153. Dugaan
+"mungkin belum dibuat" dicabut; `docs/ddl/tc_pnc_pucl.sql` dikoreksi.
+
+Probe `check_columns` tetap dipertahankan — bukan karena meragukan pernyataan itu, melainkan karena portal lain yang
+dibangun dari snapshot DDL itu belum tentu memilikinya, dan `-periksa` satu-satunya tempat keadaan itu terbaca sebelum
+ada pengguna yang menekan tombolnya.
+
+**Satu hal yang masih belum dibaca, dan sengaja tidak ditebak:** PANJANG kolomnya. Sisi aplikasi membatasi isian pada
+`MaxPUCLDoctorName` (512), mengikuti `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`. Bila kolom di `TC_PNC_PUCL` ternyata lebih
+pendek, batas itu tidak lagi melindungi — nilai yang lolos validasi akan ditolak ORA-12899 saat disimpan. Hari ini
+risikonya kecil: isiannya dropdown dua baris, terpanjang 21 aksara. Ia menjadi nyata begitu daftarnya pindah ke master
+data (`F-4`) dan boleh diisi bebas.
+
+**Panjang kolomnya 255 byte (Work Owner, 2026-10-07) — dan itu membuka cacat lama.**
+
+Tiga angka yang ternyata tidak sepadan:
+
+| Tempat | Batas |
+|---|---|
+| `registrasi.MaxPUCLDoctorName` (validasi aplikasi) | **512 karakter** |
+| `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` | VARCHAR2(**128 CHAR**) |
+| `TC_PNC_PUCL.NAMA_DOKTER_RCL` | VARCHAR2(**255 BYTE**) |
+
+Batas aplikasi **lebih longgar daripada kedua kolomnya**, dan sudah begitu sejak sebelum perubahan hari ini —
+komentarnya bahkan menyebut `NAMADOKTERRCL_1` sebagai acuan, kolom yang 128. Isian itu dulu teks bebas, sehingga nama
+panjang yang diketik analis lolos validasi lalu ditolak Oracle dengan ORA-12899 — galat yang tidak dapat ditunjukkan
+sebagai pesan per isian. Dropdown dua baris membuatnya tidak pernah terpicu, bukan membuatnya benar.
+
+**Diperbaiki menjadi dua batas, karena satuannya memang dua.** `MaxPUCLDoctorName` turun 512 → **128 karakter**, dan
+`MaxPUCLDoctorNameBytes` ditambahkan di **255 byte**, diperiksa terpisah. Memeriksa satu saja meninggalkan celah yang
+hanya terpicu pada nama tertentu: 100 aksara 3-byte memenuhi batas karakter tetapi menjadi 300 byte dan menembus kolom
+kedua — kelas cacat yang paling sulit ditelusuri karena bergantung pada isi, bukan pada panjang yang terlihat.
+
+Uji: +2. `TestNamaDokterDibatasiKarakterDanByte` menguji keduanya; `TestBatasNamaDokterTidakLebihLonggarDariKolomnya`
+mengunci agar patokannya tidak kembali melampaui kolomnya.
+
+**Fixture uji saya sendiri salah pada percobaan pertama** — 100 × `é` hanya 200 byte, tidak menembus 255, sehingga
+kasusnya tidak menguji apa yang dinamainya. Yang menangkapnya dua `require` yang memeriksa premis fixture itu SEBELUM
+dipakai. Tanpa keduanya, uji itu akan "lulus" dengan alasan yang salah — persis pola yang berulang di §150 dan §151.

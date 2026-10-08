@@ -29,7 +29,7 @@ func q(name string) string { return "^" + regexp.QuoteMeta(query(name)) + "$" }
 func qText(text string) string { return "^" + regexp.QuoteMeta(text) + "$" }
 
 var masterColumns = []string{"ID", "NAMA", "TAHUN", "KURS", "TIPE", "STSKOMITE", "KET_KOMITE",
-	"PIC", "KET_PIC", "EMAIL_PIC"}
+	"PIC", "KET_PIC", "EMAIL_PIC", "MIN_LIMIT"}
 
 var adviceColumns = []string{"NO", "REV", "REAS_ID", "REAS", "LAYER_ID", "LAYER", "TAHUN", "COL",
 	"KURS", "SHARE", "LIMIT", "STATUS", "MASTER", "INPUT", "KET_REAS", "KET_APPROVE", "KET_PIC",
@@ -38,8 +38,8 @@ var adviceColumns = []string{"NO", "REV", "REAS_ID", "REAS", "LAYER_ID", "LAYER"
 func TestListMasterXOLAttachesBusinessGroups(t *testing.T) {
 	repo, mock := newMock(t)
 	mock.ExpectQuery(q("master_list")).WillReturnRows(sqlmock.NewRows(masterColumns).
-		AddRow(" X1 ", " Treaty A ", "2025", 15000.5, "XOL", "1", "ok", "pic", "cat", "p@x").
-		AddRow("X2", "Treaty B", "2026", nil, nil, nil, nil, nil, nil, nil))
+		AddRow(" X1 ", " Treaty A ", "2025", 15000.5, "XOL", "1", "ok", "pic", "cat", "p@x", 2000.0).
+		AddRow("X2", "Treaty B", "2026", nil, nil, nil, nil, nil, nil, nil, nil))
 	mock.ExpectQuery(q("master_business_list")).WillReturnRows(
 		sqlmock.NewRows([]string{"MASTER", "GROUP", "NAMA"}).
 			AddRow(" X1 ", " 01 ", " Fire ").
@@ -49,7 +49,7 @@ func TestListMasterXOLAttachesBusinessGroups(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, inboxxol.MasterXOL{
-		ID: "X1", Name: "Treaty A", Year: "2025", ExchangeRate: 15000.5, Type: "XOL",
+		ID: "X1", Name: "Treaty A", Year: "2025", ExchangeRate: 15000.5, MinLimit: 2000, Type: "XOL",
 		CommitteeStatus: "1", CommitteeNote: "ok", PIC: "pic", PICNote: "cat", PICEmail: "p@x",
 		BusinessGroups: []inboxxol.BusinessGroup{{ID: "01", Name: "Fire"}, {ID: "02", Name: "Marine"}},
 	}, got[0])
@@ -61,7 +61,7 @@ func TestListMasterXOLAttachesBusinessGroups(t *testing.T) {
 func TestListPendingMasterApprovalUsesCommitteeQuery(t *testing.T) {
 	repo, mock := newMock(t)
 	mock.ExpectQuery(q("master_pending_committee")).WillReturnRows(sqlmock.NewRows(masterColumns).
-		AddRow("X9", "N", "2024", 1.0, "T", "0", "", "", "", ""))
+		AddRow("X9", "N", "2024", 1.0, "T", "0", "", "", "", "", nil))
 	mock.ExpectQuery(q("master_business_list")).WillReturnRows(
 		sqlmock.NewRows([]string{"MASTER", "GROUP", "NAMA"}))
 
@@ -91,7 +91,7 @@ func TestListMastersErrors(t *testing.T) {
 	t.Run("rows err", func(t *testing.T) {
 		repo, mock := newMock(t)
 		mock.ExpectQuery(q("master_list")).WillReturnRows(sqlmock.NewRows(masterColumns).
-			AddRow("X", "", "", 0.0, "", "", "", "", "", "").RowError(0, errDB))
+			AddRow("X", "", "", 0.0, "", "", "", "", "", "", nil).RowError(0, errDB))
 		_, err := repo.ListMasterXOL(ctx)
 		require.ErrorIs(t, err, errDB)
 	})

@@ -148,7 +148,6 @@ export type Penyaring = {
 export type MetadataResponse = {
   daftar: Daftar[]
   daftar_bawaan: string
-  selisih_terencana: string[]
   portal: string
 }
 

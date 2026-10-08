@@ -93,14 +93,8 @@ type MetadataResponse struct {
 	// ReportTypes adalah isi dropdown "Pilih Tipe Report".
 	ReportTypes []ReportTypeDTO `json:"tipe_report"`
 
-	// PlannedDifferences adalah selisih terencana tab KPI Adjuster.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// AdminGroups adalah isi dropdown "Pilih Data KPI" pada tab KPI Admin.
 	AdminGroups []AdminGroupDTO `json:"kelompok_admin"`
-
-	// AdminPlannedDifferences adalah selisih terencana tab KPI Admin.
-	AdminPlannedDifferences []string `json:"selisih_terencana_admin"`
 
 	// CoordinatorInQuery adalah nama koordinator sebagaimana ditulis di TEKS KUERI lama,
 	// yang BERBEDA dari yang ditampilkan. Dikirim supaya layar dapat menjelaskan
@@ -112,9 +106,6 @@ type MetadataResponse struct {
 
 	// PICComponents adalah keempat komponen penilaian PIC Teknik.
 	PICComponents []PICComponentDTO `json:"komponen_pic"`
-
-	// PICTeknikPlannedDifferences adalah selisih terencana tab KPI PIC Teknik.
-	PICTeknikPlannedDifferences []string `json:"selisih_terencana_pic"`
 
 	// SLAExcludedPICs adalah petugas yang dikecualikan dari penilaian SLA di sistem lama.
 	SLAExcludedPICs []string `json:"pic_dikecualikan_sla"`
@@ -260,8 +251,6 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 		})
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
 
 	adminGroups := make([]AdminGroupDTO, 0, len(meta.AdminGroups))
 	for _, g := range meta.AdminGroups {
@@ -270,25 +259,17 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 		})
 	}
 
-	adminDifferences := make([]string, 0, len(meta.AdminPlannedDifferences))
-	adminDifferences = append(adminDifferences, meta.AdminPlannedDifferences...)
 
 	return MetadataResponse{
 		Tabs:                    tabs,
 		DefaultTab:              meta.DefaultTab,
 		Components:              componentList,
 		ReportTypes:             typeList,
-		PlannedDifferences:      differences,
 		AdminGroups:             adminGroups,
-		AdminPlannedDifferences: adminDifferences,
 		CoordinatorInQuery:      meta.CoordinatorInQuery,
 
 		BusinessLines: toBusinessLines(meta.BusinessLines),
 		PICComponents: toPICComponents(meta.PICComponents),
-		PICTeknikPlannedDifferences: append(
-			make([]string, 0, len(meta.PICTeknikPlannedDifferences)),
-			meta.PICTeknikPlannedDifferences...,
-		),
 		SLAExcludedPICs: append(
 			make([]string, 0, len(meta.SLAExcludedPICs)),
 			meta.SLAExcludedPICs...,

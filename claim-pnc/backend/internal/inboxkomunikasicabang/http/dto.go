@@ -167,9 +167,6 @@ type MetadataResponse struct {
 	// ExportColumns adalah kolom berkas ekspor.
 	ExportColumns []ColumnDTO `json:"kolom_ekspor"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal yang
 	// sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -323,7 +320,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
 		ExportColumns:      toColumnDTOs(meta.ExportColumns),
-		PlannedDifferences: meta.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }

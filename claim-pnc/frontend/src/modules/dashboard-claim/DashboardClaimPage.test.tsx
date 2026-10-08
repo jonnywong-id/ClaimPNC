@@ -43,7 +43,6 @@ function ringkasanResponse(partial: Partial<RingkasanResponse> = {}): RingkasanR
     ],
     lini_bisnis: 'ALL',
     portal: 'ASM',
-    selisih_terencana: ['Kolom No Klaim menampilkan nomor klaim induk, bukan kunci Pega.'],
     catatan_warisan: [
       'Angka pada kartu Loss Adjuster menghitung jumlah klaim, telusurnya menampilkan baris survei.',
     ],

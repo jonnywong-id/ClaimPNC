@@ -30,7 +30,9 @@ type Props = {
  * pencacahnya di Pega. Keputusan Work Owner 2026-09-25: direplikasi, karena angkanya
  * berjalan dan dibaca orang setiap hari.
  *
- * Keterangannya ada di `selisih_terencana`, yang digambar halaman ini di bawah tabel.
+ * Keterangannya TIDAK lagi digambar di layar: panel selisih terencana dihapus atas
+ * keputusan Work Owner 2026-10-06. Daftarnya tetap hidup di `inboxsalvage.PlannedDifferences`
+ * sebagai pemetaan ke butir `P-5` untuk uji kesetaraan gerbang 1 (`D-54`).
  *
  * # Grafik di kiri, tabel di kanan
  *

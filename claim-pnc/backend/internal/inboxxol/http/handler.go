@@ -338,3 +338,23 @@ func (h *Handler) logDownloadFailure(r *http.Request, err error) {
 		slog.String("jalur", r.URL.Path),
 		slog.String("galat", err.Error()))
 }
+
+// SummarizeBusiness menangani GET /inbox-xol/klaim/summary.
+//
+// Ia grid "Summary Data XOL" pada layar rincian — group business yang menanggung klaim
+// pada satu Tanggal Kejadian dan Penyebab Kerugian.
+func (h *Handler) SummarizeBusiness(w http.ResponseWriter, r *http.Request) {
+	alias, caller, ready := h.context(w, r)
+	if !ready {
+		return
+	}
+
+	query := r.URL.Query()
+	rows, err := h.service.SummarizeBusiness(r.Context(), alias, caller,
+		query.Get("tanggal_kejadian"), query.Get("sebab_kerugian"))
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	h.writeJSON(w, r, http.StatusOK, toSummaryBusinessResponse(rows))
+}

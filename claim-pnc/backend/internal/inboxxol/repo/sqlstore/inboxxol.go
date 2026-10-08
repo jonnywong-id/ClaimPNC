@@ -388,9 +388,10 @@ func scanMaster(row scanner) (inboxxol.MasterXOL, error) {
 		pic             sql.NullString
 		picNote         sql.NullString
 		picEmail        sql.NullString
+		minLimit        sql.NullFloat64
 	)
 	if err := row.Scan(&id, &name, &year, &exchangeRate, &masterType,
-		&committeeStatus, &committeeNote, &pic, &picNote, &picEmail); err != nil {
+		&committeeStatus, &committeeNote, &pic, &picNote, &picEmail, &minLimit); err != nil {
 		return inboxxol.MasterXOL{}, err
 	}
 	return inboxxol.MasterXOL{
@@ -404,6 +405,7 @@ func scanMaster(row scanner) (inboxxol.MasterXOL, error) {
 		PIC:             strings.TrimSpace(pic.String),
 		PICNote:         strings.TrimSpace(picNote.String),
 		PICEmail:        strings.TrimSpace(picEmail.String),
+		MinLimit:        minLimit.Float64,
 	}, nil
 }
 
@@ -463,4 +465,39 @@ func scanAdvice(row scanner) (inboxxol.Advice, error) {
 		InputByEmail:   strings.TrimSpace(inputByEmail.String),
 		IssuedOn:       strings.TrimSpace(issuedOn.String),
 	}, nil
+}
+
+// SummarizeBusiness mengembalikan grid "Summary Data XOL" pada layar rincian.
+func (r *Repo) SummarizeBusiness(
+	ctx context.Context,
+	filter inboxxol.SummaryFilter,
+) ([]inboxxol.SummaryBusiness, error) {
+	if filter.Empty() {
+		// Dijawab daftar kosong, bukan galat: penyaring kosong berarti belum ada baris
+		// yang dibuka, dan menolaknya akan membuat layar tampak rusak.
+		return nil, nil
+	}
+
+	rows, err := r.db.QueryContext(ctx, query("summary_business"),
+		strings.TrimSpace(filter.LossDate), strings.TrimSpace(filter.CauseOfLoss))
+	if err != nil {
+		return nil, fmt.Errorf("inboxxol/sqlstore: summary_business: %w", err)
+	}
+	defer rows.Close()
+
+	result := make([]inboxxol.SummaryBusiness, 0, 16)
+	for rows.Next() {
+		var id, name sql.NullString
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("inboxxol/sqlstore: summary_business: %w", err)
+		}
+		result = append(result, inboxxol.SummaryBusiness{
+			BusinessGroupID:   strings.TrimSpace(id.String),
+			BusinessGroupName: strings.TrimSpace(name.String),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("inboxxol/sqlstore: summary_business: %w", err)
+	}
+	return result, nil
 }

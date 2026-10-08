@@ -54,19 +54,21 @@ func (s *PUCLStore) SaveLetter(ctx context.Context, letter registrasi.PUCLLetter
 	// TGL_CREATE_PUCL. UPDATE menutup dengan CLAIMID di WHERE; INSERT membukanya
 	// sebagai kolom pertama.
 	//
-	// `OPERATOR_ID` dan `ASSIGNED_OPERATOR_ID` ditulis dengan nilai yang SAMA — analis yang
-	// menekan Kirim — dan itu CACAT YANG DITAHAN, bukan yang terlewat.
+	// `OPERATOR_ID` dan `ASSIGNED_OPERATOR_ID` ditulis dengan nilai yang BERBEDA sejak
+	// 2026-10-07, dan perbedaan itulah intinya:
 	//
-	// Kolom kedua seharusnya pemilik tugas berikutnya: Inbox RCL menyaring dengannya
-	// (penyaring A `InboxRCLDokter_RD`), sehingga klaim berjalur RCL hari ini mendarat di
-	// Inbox RCL analis sendiri, bukan dokternya. Perbaikannya pernah dipasang dan lulus
-	// uji, lalu ditahan Work Owner (2026-10-06) sampai pemetaan nama dokter ke
-	// `M_LOGIN_PNC.LOGIN_ID` terverifikasi — tanpa itu klaimnya justru hilang dari inbox
-	// siapa pun. Alasan lengkapnya di `usecase.SendToRCLPUCL`.
+	//	OPERATOR_ID           analis yang menekan Kirim — catatan "siapa mengirim"
+	//	ASSIGNED_OPERATOR_ID  PIC Teknik klaim          — penyaring "siapa menerima"
+	//
+	// Kolom kedua adalah SATU-SATUNYA penyaring kepemilikan Inbox RCL (penyaring A
+	// `InboxRCLDokter_RD`). Selama ia berisi analis, klaim berjalur RCL mendarat di Inbox
+	// RCL analis sendiri, bukan di inbox petugas yang harus menanganinya. Work Owner
+	// menetapkan user teknis sebagai pemiliknya; aturan dan cadangannya ada di
+	// `registrasi.PUCLLetter.AssignedOperator`.
 	values := []any{
 		letter.SentAt,
 		emptyTextAsNil(letter.Operator),
-		emptyTextAsNil(letter.Operator),
+		emptyTextAsNil(letter.AssignedOperator()),
 		registrasi.WorkStatusNew,
 		statusCase,
 		strconv.Itoa(letter.Track),
@@ -88,6 +90,13 @@ func (s *PUCLStore) SaveLetter(ctx context.Context, letter registrasi.PUCLLetter
 		emptyTextAsNil(letter.ObjectID),
 		ordinalOrNil(letter.CoverageIndex),
 		ordinalOrNil(letter.AdjustmentIndex),
+		// `NAMA_DOKTER_RCL` — argumen ke-25, dan ia yang menutup gejala yang dilaporkan
+		// Work Owner: nama dokter dulu HANYA ditulis ke
+		// `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`, tabel yang sejak 2026-10-05 tidak lagi
+		// dibaca Inbox RCL. Nilainya tersimpan rapi di tempat yang tidak pernah dilihat.
+		//
+		// Kosong pada jalur PUCL — isiannya memang tidak ditampilkan di sana.
+		emptyTextAsNil(strings.TrimSpace(letter.DoctorName)),
 	}
 	update := append(append([]any{}, values...), letter.ClaimID)
 	insert := append([]any{letter.ClaimID}, values...)

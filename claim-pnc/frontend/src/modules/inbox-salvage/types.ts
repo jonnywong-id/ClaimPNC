@@ -163,7 +163,6 @@ export type MetadataResponse = {
    */
   pilihan_mata_uang: StatusOption[]
   kolom_berkas_unggahan: string[]
-  selisih_terencana: string[]
   portal: string
 }
 

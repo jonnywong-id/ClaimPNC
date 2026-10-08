@@ -32,16 +32,6 @@ export type RingkasanResponse = {
   kartu: Kartu[]
   lini_bisnis: string
   portal: string
-
-  /**
-   * Selisih yang DISENGAJA terhadap sistem lama.
-   *
-   * Ditampilkan di layar, bukan disembunyikan sebagai detail teknis: penguji gerbang 1
-   * membacanya saat membandingkan angka, dan selisih yang ditemukan tanpa dinyatakan lebih
-   * dulu akan dilaporkan sebagai cacat (`D-54`).
-   */
-  selisih_terencana: string[]
-
   /**
    * Perilaku yang SAMA dengan sistem lama tetapi mudah dibaca sebagai cacat.
    *

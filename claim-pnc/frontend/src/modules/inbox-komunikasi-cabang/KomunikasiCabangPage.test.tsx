@@ -99,10 +99,6 @@ const METADATA: MetadataResponse = {
     { kunci: 'tujuan', judul: 'Tujuan' },
     { kunci: 'status_register', judul: 'Status Register' },
   ],
-  selisih_terencana: [
-    'Kedua daftar dipisahkan menjadi TAB. Layar lama menggambar keduanya bertumpuk.',
-    'Urutan kedua tab BERLAWANAN, dan itu perilaku layar lama apa adanya.',
-  ],
   portal: 'ASM',
 }
 
@@ -766,12 +762,14 @@ describe('keterangan yang wajib terlihat', () => {
     expect(screen.queryByText(/Yang masih dikerjakan lewat Pega/)).not.toBeInTheDocument()
   })
 
-  it('menggambar selisih terencana dari peladen', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     await renderLoaded()
 
-    expect(
-      await screen.findByText(/Kedua daftar dipisahkan menjadi TAB/),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Kedua daftar dipisahkan menjadi TAB/)).not.toBeInTheDocument()
   })
 
   it('menyebutkan kolom berkas unduhan sebelum diunduh', async () => {

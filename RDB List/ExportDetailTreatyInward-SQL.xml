@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILTREATYINWARD #20221205T082443.427 GMT</pzInsKey>
+<pyShowJavaWindowName>GeneratedJava20261007T104233.279 GMT</pyShowJavaWindowName>
+<pxUpdateDateTime>20221205T082519.913 GMT</pxUpdateDateTime>
+<pyCircumstanceDate/>
+<pyMethodStatus/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedRuleSet/>
+<pyMemo>done</pyMemo>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSetVersion>01-02-02</pyRuleSetVersion>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20221107T092850.755 GMT</pzOriginalInstanceKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILTREATYINWARD #20221205T082443.427 GMT</pzDocumentKey>
+<pyLabel>ExportDetailTreatyInward</pyLabel>
+<pyJavaStream/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedKey/>
+<pyDeleteSQL/>
+<pxMoveFromSystem/>
+<pxCommitDateTime>20230112T100629.000 GMT</pxCommitDateTime>
+<pyTemplate/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM ExportDetailTreatyInward</pyRuleName>
+<pyFormPost/>
+<pyCircumstanceType/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!EXPORTDETAILTREATYINWARD</pxInsName>
+<pxSaveDateTime>20221205T082519.920 GMT</pxSaveDateTime>
+<pxOriginalCreateOpName/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRequestType>ExportDetailTreatyInward</pyRequestType>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceTemplate/>
+<pyRuleFormStatusTime>20261007T104233.259 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateOperator/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pzChecksum>-906248786</pzChecksum>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxHostId>jboss10362</pxHostId>
+<pyRuleEnds/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM ExportDetailTreatyInward</pxTabLabel>
+<pyCircumstanceVal/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDateProp/>
+<pyDocumentTitle/>
+<pyRuleStarts/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxMoveImportDateTime>20230112T100628.951 GMT</pxMoveImportDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyBrowseSQL>select A.COMPANYNAME as "pyCompany",A.RESERVEDCLAIM as "IsReservedClaim",A.OWNRISKVALUE as "OwnRiskValue", A.QRTREATY as "QsTreaty",
+A.DEDUCTIBLEVALUE as "DeductibleValue", A.CLAIMAMOUNT as "ClaimAmount",A.SHAREASM as "ASMShare",A.CLAIMAMOUNTSHARE as "ClaimAmountShareASM",
+A.PAIDCLAIMAMOUNTSHARE as "PaidClaimAmountShare",A.BALANCECLAIMASMSHARE as "BalanceClaimASMShare",A.CURRENCY as "Currency",A.CAUSEOFLOSS as "CauseOfLoss",A.DATEOFLOSS as "DateOfLoss" from POOLDATA.T_CLAIM_INWARD_XOL a where A.DATEOFLOSS={TempExport.CaseID} and A.CAUSEOFLOSS={TempExport.CauseOfLoss}</pyBrowseSQL>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyLabelOld>ExportDetailTreatyInward</pyLabelOld>
+<pyStreamName/>
+<pyRuleParamsStreamName/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyTemplateInputBox/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedDateTime/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pzRuleSetVersionPatch>02</pzRuleSetVersionPatch>
+<pySaveSQL/>
+<pyDeletedObject/>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!EXPORTDETAILTREATYINWARD</pxInsId>
+<pxOriginalCreateSystemID/>
+<pyOpenSQL/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedCreateDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDescription/>
+<pyBaseRule>false</pyBaseRule>
+<pyWorkKey/>
+<pyInterface/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsFromManageChangeLP/>
+<pxCreateDateTime>20221205T082443.427 GMT</pxCreateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyHandlerFlow/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyUsage/>
+<pyWindowTitle/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceProp/>
+<pyRelativePath/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeleteMemo>add doll</pyDeleteMemo>
+<pxInstanceLockedBy/>
+<pxSiblingCount/>
+<pyStatus/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILTREATYINWARD #20221205T082443.427 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-02-02 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

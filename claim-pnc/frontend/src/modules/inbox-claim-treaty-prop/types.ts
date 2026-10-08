@@ -123,10 +123,6 @@ export type AppliedFilter = {
 export type MetadataResponse = {
   tab: Tab[]
   tab_bawaan: string
-
-  /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel. */
-  selisih_terencana: string[]
-
   portal: string
 }
 

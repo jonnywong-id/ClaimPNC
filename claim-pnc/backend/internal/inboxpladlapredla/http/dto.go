@@ -248,13 +248,6 @@ type MetadataResponse struct {
 	Tabs       []TabDTO `json:"daftar"`
 	DefaultTab string   `json:"daftar_bawaan"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	//
-	// Ia DIKIRIM ke layar, bukan hanya tercatat di kode. Selisih yang hanya tercatat di
-	// komentar akan dilaporkan berulang kali sebagai kerusakan oleh orang yang
-	// membandingkan layar baru dengan Pega berdampingan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal adalah alias entitas yang sedang dijawab.
 	//
 	// Ia dikirim supaya layar dapat memastikan jawabannya berasal dari portal yang sedang
@@ -271,7 +264,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	return MetadataResponse{
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
-		PlannedDifferences: meta.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }

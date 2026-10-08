@@ -101,18 +101,54 @@ func TestSendToRCLPUCLJalurRCLTidakMasukAntreanRCLPUCL(t *testing.T) {
 // Jalur PUCL dan Notification tidak punya singgahan: keduanya langsung masuk antrean
 // RCL/PUCL, dan tidak satu pun menyentuh kedua penyaring Inbox RCL.
 func TestSendToRCLPUCLJalurSelainRCLLangsungKeAntreanRCLPUCL(t *testing.T) {
-	for _, track := range []int{registrasi.PUCLTrackPUCL, registrasi.PUCLTrackNotification} {
-		l := setup(t)
-		task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+	l := setup(t)
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
 
-		_, err := l.service.SendToRCLPUCL(context.Background(), isiLengkap(task.ID, track), l.caller)
-		require.NoError(t, err)
+	_, err := l.service.SendToRCLPUCL(context.Background(),
+		isiLengkap(task.ID, registrasi.PUCLTrackPUCL), l.caller)
+	require.NoError(t, err)
 
-		letter := l.pucl.Letter[0]
-		require.True(t, letter.InRCLPUCLQueue(), "jalur %d masuk antrean RCL/PUCL", track)
-		require.False(t, letter.EntersRCLInbox(), "jalur %d tidak menyentuh Inbox RCL", track)
-		require.Empty(t, letter.DoctorName, "jalur %d tidak menulis Nama Dokter", track)
-	}
+	letter := l.pucl.Letter[0]
+	require.True(t, letter.InRCLPUCLQueue(), "jalur PUCL masuk antrean RCL/PUCL")
+	require.False(t, letter.EntersRCLInbox(), "jalur PUCL tidak menyentuh Inbox RCL")
+	require.Empty(t, letter.DoctorName, "jalur PUCL tidak menulis Nama Dokter")
+}
+
+// Notification SINGGAH DI INBOX RCL lebih dulu, sama seperti RCL — dikoreksi 2026-10-07.
+//
+// # Uji ini mengunci koreksi, dan bentuk lamanya mengunci cacatnya
+//
+// Sebelumnya Notification diperlakukan seperti PUCL: langsung ke antrean RCL/PUCL. Tiga
+// artefak export mematahkannya, dan ketiganya memisahkan **PUCL sendirian**:
+//
+//	Section/RCLDokter-Section.xml   layar dokter digambar untuk RCL_PUCL 1 DAN 3
+//	Section/SectionPUCL-sect.xml    isian "Nama Dokter" tampil bila RCL_PUCL != 2
+//	InboxRCLDokter_RD penyaring D   .ClaimData.NamaDokterRCL = Param.assign
+//
+// Tujuan AKHIRNYA tidak berubah: sesudah dokter menekan Submit, Notification tetap sampai
+// ke antrean RCL/PUCL. Yang berubah hanya singgahannya.
+func TestSendToRCLPUCLJalurNotificationSinggahDiInboxRCL(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	pic := claim.TechnicalPIC
+	require.NotEmpty(t, pic)
+
+	result, err := l.service.SendToRCLPUCL(ctx,
+		isiLengkap(task.ID, registrasi.PUCLTrackNotification), l.caller)
+	require.NoError(t, err)
+
+	require.Equal(t, registrasi.StageRCLDoctor, result.Claim.CurrentStage,
+		"Notification singgah di dokter, bukan langsung ke antrean RCL/PUCL")
+
+	letter := l.pucl.Letter[0]
+	require.False(t, letter.InRCLPUCLQueue(), "STATUS_CASE dibiarkan kosong — belum di antrean")
+	require.True(t, letter.EntersRCLInbox(), "penyaring Inbox RCL ditulis")
+	require.Equal(t, pic, letter.AssignedOperator())
+	require.Equal(t, pic, result.NextTask.Owner)
 }
 
 // Jalur RCL SELALU membawa penghuni `NAMADOKTERRCL_1`, bahkan ketika analis tidak
@@ -171,7 +207,7 @@ func TestSendToRCLPUCLJalurNotificationMasukAntreanRCLPUCL(t *testing.T) {
 	result, err := l.service.SendToRCLPUCL(context.Background(),
 		isiLengkap(task.ID, registrasi.PUCLTrackNotification), l.caller)
 	require.NoError(t, err)
-	require.Equal(t, registrasi.StageRCLPUCL, result.Claim.CurrentStage)
+	require.Equal(t, registrasi.StageRCLDoctor, result.Claim.CurrentStage)
 	require.Equal(t, registrasi.PUCLTrackNotification, result.Claim.PUCLStatus)
 	require.Len(t, l.pucl.Letter, 1)
 	require.Equal(t, registrasi.PUCLTrackNotification, l.pucl.Letter[0].Track)
@@ -209,20 +245,19 @@ func TestSendToRCLPUCLMembuangNamaDokterDiLuarJalurnya(t *testing.T) {
 	require.Empty(t, l.pucl.Letter[0].DoctorName, "lini polis contoh bukan PA")
 }
 
-// Dokter yang dipilih TERSIMPAN, tetapi BELUM memindahkan klaimnya — ditahan Work Owner.
+// Dokter yang dipilih TERSIMPAN sebagai keterangan, tetapi yang MEMINDAHKAN klaim adalah
+// PIC Teknik — keputusan Work Owner 2026-10-07.
 //
-// # Uji ini mengunci keputusan, bukan perilaku yang diinginkan
+// # Apa yang dikunci uji ini
 //
-// Yang diinginkan adalah `RouterRCLDokter` apa adanya: `Param.AssignTo :=
-// ClaimData.NamaDokterRCL`. Itu pernah dipasang dan lulus uji, lalu ditahan Work Owner
-// (2026-10-06) karena satu mata rantai belum terverifikasi: Inbox RCL mencocokkan
-// `ASSIGNED_OPERATOR_ID` dengan `M_LOGIN_PNC.LOGIN_ID` pemanggil, sedangkan yang kita
-// tulis adalah `pyStandardValue` prompt list — ruang nama yang berbeda. Tidak cocok,
-// klaimnya hilang dari inbox siapa pun tanpa satu pun galat.
+// `RouterRCLDokter` di Pega berbunyi `Param.AssignTo := ClaimData.NamaDokterRCL`, dan nama
+// itu tidak pernah dapat dicocokkan ke `M_LOGIN_PNC.LOGIN_ID` — penyaring satu-satunya
+// Inbox RCL. Selama pertanyaan itu terbuka, tugasnya diparkir di `ServicePNC` dan
+// `ASSIGNED_OPERATOR_ID` diisi analis, sehingga klaim RCL mendarat di Inbox RCL analis
+// sendiri. Work Owner menutupnya dengan menetapkan **user teknis** sebagai pemiliknya.
 //
-// Jadi uji ini ada supaya keadaan tertahan itu **disengaja dan terlihat**, bukan diam-diam
-// berlaku. Begitu pemetaannya terverifikasi, uji ini yang pertama harus dibalik.
-func TestSendToRCLPUCLDokterTersimpanTetapiBelumMemindahkanKlaim(t *testing.T) {
+// Pilihan dokternya tidak dibuang: ia tetap tersimpan sebagai keterangan.
+func TestSendToRCLPUCLDipegangPICTeknikMeskiDokterDipilih(t *testing.T) {
 	l := setup(t)
 	ctx := context.Background()
 	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
@@ -232,6 +267,8 @@ func TestSendToRCLPUCLDokterTersimpanTetapiBelumMemindahkanKlaim(t *testing.T) {
 	require.NoError(t, err)
 	claim.Policy.Line = registrasi.LinePersonalAccident
 	require.NoError(t, l.store.Save(ctx, claim))
+	pic := claim.TechnicalPIC
+	require.NotEmpty(t, pic, "klaim contoh sudah melewati tahap teknis")
 
 	const dokter = "WAHYUKRISTANTI" // `pyPromptTableList` NamaDokterRCL, baris pertama
 	isi := isiLengkap(task.ID, registrasi.PUCLTrackRCL)
@@ -245,27 +282,153 @@ func TestSendToRCLPUCLDokterTersimpanTetapiBelumMemindahkanKlaim(t *testing.T) {
 	// Pilihannya TERSIMPAN — analis tidak kehilangan apa yang ia isi.
 	require.Equal(t, dokter, l.pucl.Letter[0].DoctorName)
 
-	// Tetapi tugasnya BELUM berpindah ke dokter itu. Inilah yang ditahan.
-	require.Equal(t, registrasi.OperatorUnassigned, result.NextTask.Owner,
-		"penerapan RouterRCLDokter ditahan sampai pemetaan nama dokter ke LOGIN_ID terverifikasi")
+	// Yang memegang klaimnya PIC Teknik, bukan analis dan bukan ServicePNC.
+	require.Equal(t, pic, result.NextTask.Owner)
+	require.Equal(t, pic, l.pucl.Letter[0].AssignedOperator(),
+		"ASSIGNED_OPERATOR_ID dan pemilik tugas wajib menunjuk orang yang sama")
 }
 
-// Tanpa dokter yang dipilih, tugasnya TETAP diparkir di `ServicePNC`.
-//
-// Pasangan dari uji di atas, dan ia yang menjaga cadangannya tidak ikut hilang: lini
-// selain PA tidak menampilkan isian "Nama Dokter" sama sekali, sehingga klaimnya harus
-// mendarat di antrean belum-ditugaskan — bukan di tangan orang terakhir yang kebetulan
-// tersimpan di suatu tempat.
-func TestSendToRCLPUCLTanpaDokterTetapDiParkir(t *testing.T) {
+// Tanpa dokter yang dipilih — lini selain PA tidak menampilkan isiannya sama sekali —
+// klaimnya tetap mendarat di PIC Teknik, dan kolom nama dokter menunjuk orang yang sama.
+func TestSendToRCLPUCLTanpaDokterTetapKePICTeknik(t *testing.T) {
 	l := setup(t)
+	ctx := context.Background()
 	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
 
-	result, err := l.service.SendToRCLPUCL(context.Background(),
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	pic := claim.TechnicalPIC
+	require.NotEmpty(t, pic)
+
+	result, err := l.service.SendToRCLPUCL(ctx,
 		isiLengkap(task.ID, registrasi.PUCLTrackRCL), l.caller)
 	require.NoError(t, err)
 
-	require.Equal(t, registrasi.OperatorUnassigned, result.NextTask.Owner, "lini contoh bukan PA")
-	require.Equal(t, registrasi.OperatorUnassigned, l.pucl.Letter[0].DoctorName)
+	require.Equal(t, pic, result.NextTask.Owner, "lini contoh bukan PA")
+	require.Equal(t, pic, l.pucl.Letter[0].DoctorName)
+	require.Equal(t, pic, l.pucl.Letter[0].AssignedOperator())
+}
+
+// Klaim yang belum punya PIC Teknik tidak boleh berakhir tanpa pemilik: `ASSIGNED_OPERATOR_ID`
+// kosong membuatnya hilang dari Inbox RCL siapa pun, tanpa satu pun galat.
+func TestSendToRCLPUCLTanpaPICTeknikJatuhKeAnalis(t *testing.T) {
+	letter := registrasi.PUCLLetter{Operator: "ANALIS01", Track: registrasi.PUCLTrackRCL}
+	require.Equal(t, "ANALIS01", letter.AssignedOperator())
+
+	letter.TechnicalPIC = "  TEKNIK01  "
+	require.Equal(t, "TEKNIK01", letter.AssignedOperator(), "PIC Teknik menang dan dipangkas")
+}
+
+// PEMILIK `ASSIGNED_OPERATOR_ID` BERGANTUNG PADA JALUR (Work Owner, 2026-10-07).
+//
+//	PUCL                 admin klaim — langsung masuk antrean RCL/PUCL
+//	RCL dan Notification PIC Teknik  — singgah di Inbox RCL lebih dulu
+//
+// Ketiga identitas contoh sengaja BERBEDA satu sama lain. Nilai yang kembar akan membuat
+// uji ini lulus pada aturan mana pun, sehingga ia tidak menguji apa pun.
+func TestPemilikPenugasanSuratBergantungPadaJalur(t *testing.T) {
+	dasar := registrasi.PUCLLetter{
+		Operator: "ANALIS01", TechnicalPIC: "TEKNIK01", ClaimAdmin: "ADMINKLAIM01",
+	}
+
+	for _, uji := range []struct {
+		nama  string
+		track int
+		mau   string
+	}{
+		{"PUCL memakai admin klaim", registrasi.PUCLTrackPUCL, "ADMINKLAIM01"},
+		{"RCL memakai PIC Teknik", registrasi.PUCLTrackRCL, "TEKNIK01"},
+		{"Notification memakai PIC Teknik", registrasi.PUCLTrackNotification, "TEKNIK01"},
+	} {
+		t.Run(uji.nama, func(t *testing.T) {
+			letter := dasar
+			letter.Track = uji.track
+			require.Equal(t, uji.mau, letter.AssignedOperator())
+		})
+	}
+}
+
+// Rantai cadangan jalur PUCL: admin klaim, lalu PIC Teknik, lalu analis.
+//
+// Tidak satu pun boleh mengembalikan kosong — baris ber-`ASSIGNED_OPERATOR_ID` kosong
+// tidak terbaca penyaring kepemilikan mana pun, dan klaimnya hilang tanpa satu pun galat.
+func TestPemilikJalurPUCLPunyaRantaiCadangan(t *testing.T) {
+	letter := registrasi.PUCLLetter{Track: registrasi.PUCLTrackPUCL, Operator: "ANALIS01"}
+	require.Equal(t, "ANALIS01", letter.AssignedOperator(), "tanpa admin dan tanpa PIC")
+
+	letter.TechnicalPIC = "TEKNIK01"
+	require.Equal(t, "TEKNIK01", letter.AssignedOperator(), "tanpa admin, PIC yang dipakai")
+
+	letter.ClaimAdmin = "  ADMINKLAIM01  "
+	require.Equal(t, "ADMINKLAIM01", letter.AssignedOperator(), "admin menang dan dipangkas")
+}
+
+// NAMA DOKTER BERTAHAN PADA JALUR RCL **DAN** NOTIFICATION, bukan RCL saja.
+//
+// Isiannya tampil bila `RCL_PUCL != 2 && IsPA` (`SectionPUCL-sect.xml:2149`), dan layar
+// memang menggambarnya pada kedua jalur (`showDoctorName`). Syarat di `buildPUCLLetter`
+// sempat berbunyi `Track == RCL`, sehingga apa yang diisi analis pada jalur Notification
+// DIBUANG diam-diam — separuh gejala yang dilaporkan Work Owner 2026-10-07.
+func TestNamaDokterBertahanPadaJalurRCLDanNotification(t *testing.T) {
+	for _, track := range []int{registrasi.PUCLTrackRCL, registrasi.PUCLTrackNotification} {
+		l := setup(t)
+		ctx := context.Background()
+		task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+		claim, err := l.store.Get(ctx, task.ClaimID)
+		require.NoError(t, err)
+		claim.Policy.Line = registrasi.LinePersonalAccident
+		require.NoError(t, l.store.Save(ctx, claim))
+
+		isi := isiLengkap(task.ID, track)
+		isi.DoctorName = "WAHYUKRISTANTI"
+
+		_, err = l.service.SendToRCLPUCL(ctx, isi, l.caller)
+		require.NoError(t, err)
+
+		require.Equalf(t, "WAHYUKRISTANTI", l.pucl.Letter[0].DoctorName,
+			"jalur %d menampilkan isian Nama Dokter, jadi isiannya tidak boleh dibuang", track)
+	}
+}
+
+// Jalur PUCL tetap MEMBUANGNYA — layar tidak menampilkan isiannya di sana.
+func TestNamaDokterDibuangPadaJalurPUCLWalauLiniPA(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	claim.Policy.Line = registrasi.LinePersonalAccident
+	require.NoError(t, l.store.Save(ctx, claim))
+
+	isi := isiLengkap(task.ID, registrasi.PUCLTrackPUCL)
+	isi.DoctorName = "WAHYUKRISTANTI"
+
+	_, err = l.service.SendToRCLPUCL(ctx, isi, l.caller)
+	require.NoError(t, err)
+	require.Empty(t, l.pucl.Letter[0].DoctorName)
+}
+
+// Jalur PUCL dari ujung ke ujung: surat yang tersimpan membawa admin klaim.
+func TestSendToRCLPUCLJalurPUCLMenugaskanKeAdminKlaim(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	admin := claim.CreatedBy
+	require.NotEmpty(t, admin, "klaim contoh wajib punya admin, kalau tidak uji ini tidak membuktikan apa pun")
+
+	_, err = l.service.SendToRCLPUCL(ctx, isiLengkap(task.ID, registrasi.PUCLTrackPUCL), l.caller)
+	require.NoError(t, err)
+
+	letter := l.pucl.Letter[0]
+	require.Equal(t, admin, letter.AssignedOperator(),
+		"jalur PUCL menugaskan ke admin klaim, bukan ke analis maupun PIC Teknik")
+	require.Equal(t, l.caller.Identity, letter.Operator,
+		"OPERATOR_ID tetap mencatat analis yang menekan Kirim")
 }
 
 // "Nama Dokter" tampil bila `RCL_PUCL != 2 && IsPA` — jadi jalur Notification pun
@@ -314,6 +477,73 @@ func TestSendToRCLPUCLMenolakIsianMelebihiPanjangKolom(t *testing.T) {
 	require.ErrorAs(t, err, &broken)
 	require.Equal(t, registrasi.ViolationNoteTooLong, broken.Violation[0].Code)
 	require.Equal(t, "keterangan_isi", broken.Violation[0].Field)
+}
+
+// BATAS "NAMA DOKTER" DIJAGA DALAM DUA SATUAN — karakter dan byte.
+//
+// Nilainya ditulis ke DUA kolom yang satuannya berbeda:
+//
+//	T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1   VARCHAR2(128 CHAR)
+//	TC_PNC_PUCL.NAMA_DOKTER_RCL         VARCHAR2(255 BYTE)
+//
+// Memeriksa satu saja meninggalkan celah yang hanya terpicu pada nama tertentu: 128 aksara
+// non-ASCII memenuhi batas karakter tetapi menjadi 384 byte dan menembus kolom kedua.
+// Keduanya karena itu diuji terpisah, dan keduanya pada jalur RCL lini PA — satu-satunya
+// jalur yang tidak mengosongkan isian ini.
+func TestNamaDokterDibatasiKarakterDanByte(t *testing.T) {
+	jalankan := func(t *testing.T, dokter string) *registrasi.ValidationError {
+		t.Helper()
+		l := setup(t)
+		ctx := context.Background()
+		task := l.upToChooseSurveyor(t, registrasi.Rupiah(5_000_000), 0)
+
+		claim, err := l.store.Get(ctx, task.ClaimID)
+		require.NoError(t, err)
+		claim.Policy.Line = registrasi.LinePersonalAccident
+		require.NoError(t, l.store.Save(ctx, claim))
+
+		isi := isiLengkap(task.ID, registrasi.PUCLTrackRCL)
+		isi.DoctorName = dokter
+
+		_, err = l.service.SendToRCLPUCL(ctx, isi, l.caller)
+		var broken *registrasi.ValidationError
+		require.ErrorAs(t, err, &broken)
+		return broken
+	}
+
+	t.Run("melebihi batas karakter", func(t *testing.T) {
+		broken := jalankan(t, strings.Repeat("x", registrasi.MaxPUCLDoctorName+1))
+		require.Equal(t, "nama_dokter", broken.Violation[0].Field)
+		require.Equal(t, registrasi.ViolationNoteTooLong, broken.Violation[0].Code)
+	})
+
+	// 100 aksara — di bawah batas 128 karakter — tetapi 300 byte pada UTF-8, sehingga
+	// menembus kolom 255 byte. Inilah kasus yang lolos bila hanya karakternya diperiksa.
+	//
+	// Dipakai aksara 3-byte, bukan 2-byte: 100 aksara beraksen hanya 200 byte dan TIDAK
+	// menembus apa pun — fixture pertama saya persis begitu, dan kedua `require` di bawah
+	// yang menangkapnya. Contoh yang tidak memenuhi premisnya sendiri akan "lulus" dengan
+	// alasan yang salah.
+	t.Run("memenuhi batas karakter tetapi menembus batas byte", func(t *testing.T) {
+		nama := strings.Repeat("あ", 100) // 3 byte per aksara -> 300 byte
+		require.LessOrEqual(t, len([]rune(nama)), registrasi.MaxPUCLDoctorName)
+		require.Greater(t, len(nama), registrasi.MaxPUCLDoctorNameBytes)
+
+		broken := jalankan(t, nama)
+		require.Equal(t, "nama_dokter", broken.Violation[0].Field)
+	})
+}
+
+// Batas aplikasi tidak boleh LEBIH LONGGAR daripada kolom yang menampungnya.
+//
+// Patokan 512 pernah berlaku di sini — lebih longgar daripada kedua kolomnya — sehingga
+// isian yang lolos validasi ditolak Oracle dengan ORA-12899, galat yang tidak dapat
+// ditunjukkan kepada pengguna sebagai pesan per isian.
+func TestBatasNamaDokterTidakLebihLonggarDariKolomnya(t *testing.T) {
+	require.LessOrEqual(t, registrasi.MaxPUCLDoctorName, 128,
+		"T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1 adalah VARCHAR2(128 CHAR)")
+	require.LessOrEqual(t, registrasi.MaxPUCLDoctorNameBytes, 255,
+		"TC_PNC_PUCL.NAMA_DOKTER_RCL adalah VARCHAR2(255 BYTE)")
 }
 
 // Pilihan Perihal menyempit menurut jalur: "Tolakan…" untuk RCL, "Kelengkapan…" untuk

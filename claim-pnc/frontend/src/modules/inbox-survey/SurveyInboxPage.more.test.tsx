@@ -81,7 +81,6 @@ const KETERANGAN: KeteranganResponse = {
   tab_bawaan: 'aktif',
   jenis_kpi: ['outstanding', 'lain'],
   ukuran_halaman: 25,
-  selisih_terencana: [],
   keterbatasan: [],
 }
 

@@ -188,10 +188,6 @@ export type MetadataResponse = {
    * berkasnya dibuka.
    */
   kolom_laporan: ReportColumn[]
-
-  /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel. */
-  selisih_terencana: PlannedDifference[]
-
   portal: string
 }
 

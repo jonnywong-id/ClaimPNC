@@ -240,3 +240,42 @@ func (r *Repo) ListCauseOfLoss(_ context.Context) ([]inboxxol.CauseOfLoss, error
 func breakdownKey(lossDate, causeOfLoss string) string {
 	return strings.TrimSpace(lossDate) + "\x00" + strings.ToUpper(strings.TrimSpace(causeOfLoss))
 }
+
+// SummarizeBusiness menyusun grid "Summary Data XOL" dari rincian yang sudah ada.
+//
+// # Kenapa diturunkan, bukan disimpan terpisah
+//
+// Karena isinya memang turunan: kuerinya hanya menyebutkan group business MANA yang
+// menanggung klaim pada tanggal dan penyebab kerugian itu — persis himpunan yang sudah
+// dibawa kedua daftar rincian. Menyimpannya sebagai daftar ketiga membuka kemungkinan
+// ketiganya saling bertentangan di data contoh, dan itu cacat yang hanya ada di tiruan.
+func (r *Repo) SummarizeBusiness(
+	_ context.Context,
+	filter inboxxol.SummaryFilter,
+) ([]inboxxol.SummaryBusiness, error) {
+	if filter.Empty() {
+		return nil, nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := breakdownKey(filter.LossDate, filter.CauseOfLoss)
+	result := make([]inboxxol.SummaryBusiness, 0, 8)
+	seen := make(map[string]bool)
+
+	for _, row := range append(append([]inboxxol.BusinessBreakdown(nil),
+		r.breakdowns[key]...), r.treaty[key]...) {
+		id := strings.TrimSpace(row.BusinessGroupID)
+		name := strings.TrimSpace(row.BusinessGroup)
+		if seen[id+"|"+name] {
+			continue
+		}
+		seen[id+"|"+name] = true
+		result = append(result, inboxxol.SummaryBusiness{
+			BusinessGroupID:   id,
+			BusinessGroupName: name,
+		})
+	}
+	return result, nil
+}

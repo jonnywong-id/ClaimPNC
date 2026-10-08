@@ -36,7 +36,6 @@ const keteranganResponse: KeteranganResponse = {
     { kunci: 'tanggal_masuk_inbox', judul: 'Tanggal Masuk Inbox' },
     { kunci: 'deskripsi_analyst', judul: 'Deskripsi Analyst' },
   ],
-  selisih_terencana: ['Kotak cari Nomor Case dan No Polis adalah TAMBAHAN.'],
   keterbatasan: ['Antrean disaring dengan identitas LAMA Anda.'],
   ukuran_halaman: 25,
 }

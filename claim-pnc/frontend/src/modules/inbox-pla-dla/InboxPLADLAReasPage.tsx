@@ -287,7 +287,6 @@ export function InboxPLADLAReasPage() {
         </>
       )}
 
-      <SelisihTerencana butir={meta.data?.selisih_terencana ?? []} />
     </Bingkai>
   )
 }
@@ -408,25 +407,3 @@ function pesanKosong(dicari: string, daftar: Daftar | undefined): string {
   return 'Belum ada klaim pada tahap ini yang pemberitahuannya dikirimkan kepada Anda.'
 }
 
-/** SelisihTerencana menggambar selisih terhadap layar Pega di kaki halaman. */
-function SelisihTerencana({ butir }: { butir: string[] }) {
-  if (butir.length === 0) return null
-
-  return (
-    <details className="rounded-kartu border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-800">
-        Perbedaan yang disengaja terhadap layar Pega ({butir.length})
-      </summary>
-      <ul className="mt-3 space-y-2 text-sm text-slate-600">
-        {butir.map((isi) => (
-          <li key={isi} className="flex gap-2">
-            <span aria-hidden className="text-slate-400">
-              •
-            </span>
-            <span>{isi}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
-}

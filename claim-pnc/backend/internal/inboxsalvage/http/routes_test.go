@@ -163,7 +163,6 @@ func TestMetadataDescribesTheOfferedTabsAndThePortal(t *testing.T) {
 	require.Equal(t, inboxsalvage.DefaultTab, body.DefaultTab)
 	require.Equal(t, portalASM, body.Portal)
 	require.NotEmpty(t, body.StatusOptions)
-	require.Equal(t, inboxsalvage.PlannedDifferences, body.PlannedDifferences)
 	require.Contains(t, body.UploadColumns, "item")
 
 	// Kunci rincian diturunkan dari keluarga kueri tiap daftar.

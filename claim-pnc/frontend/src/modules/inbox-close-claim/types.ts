@@ -92,9 +92,6 @@ export type DaftarResponse = {
    * Dinyatakan supaya pengguna tidak menunggu perubahan yang belum akan datang.
    */
   pelaksana_belum_ada: boolean
-
-  /** Perbedaan yang DISENGAJA terhadap layar Pega, dinyatakan kepada pengguna (`D-54`). */
-  selisih_terencana: string[]
 }
 
 /** Satu butir dropdown penyaring. */

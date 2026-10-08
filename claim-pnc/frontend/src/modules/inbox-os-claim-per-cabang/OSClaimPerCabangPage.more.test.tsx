@@ -47,7 +47,6 @@ function list(rows: WorkItem[], halaman = 1, total = rows.length, totalHalaman =
     cabang: { kode: '100099', nama: '' },
     paginasi: { halaman, ukuran: 25, total, total_halaman: totalHalaman },
     ambang_aging: 180,
-    selisih_terencana: [],
     portal: 'ASM',
   }
 }

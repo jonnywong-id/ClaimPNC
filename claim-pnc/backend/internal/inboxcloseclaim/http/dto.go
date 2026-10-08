@@ -141,11 +141,6 @@ type listResponse struct {
 	// belum ditentukan. Layar wajib menyatakannya — pengguna yang mengajukan lalu menunggu
 	// perubahan yang tidak akan datang akan melaporkannya sebagai kegagalan.
 	PelaksanaBelumAda bool `json:"pelaksana_belum_ada"`
-
-	// SelisihTerencana menyebut perbedaan yang disengaja terhadap layar Pega.
-	//
-	// Ia dinyatakan kepada pengguna, bukan disembunyikan sebagai detail teknis (`D-54`).
-	SelisihTerencana []string `json:"selisih_terencana"`
 }
 
 // metadataResponse adalah keterangan bentuk layar: isi ketiga dropdown penyaring.

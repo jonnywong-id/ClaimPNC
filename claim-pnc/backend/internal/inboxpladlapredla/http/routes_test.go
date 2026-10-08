@@ -176,7 +176,7 @@ func TestMetadataDescribesEveryList(t *testing.T) {
 	require.Len(t, tabs, 3)
 	first := tabs[0].(map[string]any)
 	require.NotEmpty(t, first["kolom"])
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 }
 
 // Tanpa header portal, middleware menolak sebelum handler disentuh.

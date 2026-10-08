@@ -84,8 +84,6 @@ type MetadataResponse struct {
 	Tabs         []TabDTO `json:"tab"`
 	DefaultTab   string   `json:"tab_bawaan"`
 	LineBusiness string   `json:"lini_bisnis_anda"`
-
-	PlannedDifferences []string `json:"selisih_terencana"`
 }
 
 // CounterDTO adalah satu pencacah di kepala layar.
@@ -240,7 +238,6 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 	response := MetadataResponse{
 		DefaultTab:         meta.DefaultTab,
 		LineBusiness:       meta.LineBusiness,
-		PlannedDifferences: meta.PlannedDifferences,
 		Tabs:               []TabDTO{},
 	}
 	for _, tab := range meta.Tabs {

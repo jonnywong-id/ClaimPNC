@@ -26,6 +26,7 @@ var requiredQueries = []string{
 	"advice_list_dla",
 	"approval_advice_queue",
 	"cause_of_loss_list",
+	"summary_business",
 }
 
 func TestSeluruhKueriYangDibutuhkanAda(t *testing.T) {
@@ -165,8 +166,8 @@ func TestKeduaKueriMasterMemakaiKolomYangSama(t *testing.T) {
 // kolom yang dipindai kodenya.
 func TestJumlahKolomSesuaiDenganPemindainya(t *testing.T) {
 	cases := map[string]int{
-		"master_list":              10,
-		"master_pending_committee": 10,
+		"master_list":              11,
+		"master_pending_committee": 11,
 		"master_business_list":     3,
 		"claim_summary":            4,
 		"breakdown_business":       5,
@@ -175,6 +176,7 @@ func TestJumlahKolomSesuaiDenganPemindainya(t *testing.T) {
 		"advice_list_dla":          21,
 		"approval_advice_queue":    4,
 		"cause_of_loss_list":       2,
+		"summary_business":         2,
 	}
 	for name, wanted := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -256,6 +258,12 @@ func TestKomentarTidakIkutTerkirim(t *testing.T) {
 func TestTabelYangDisentuhSemuanyaDiketahui(t *testing.T) {
 	known := map[string]bool{
 		"POOLDATA.MST_XOL_PNC":         true,
+		// Dibaca master_list dan master_pending_committee untuk MIN(LIMIT) — kolom
+		// "Min Limit" pada grid rincian (`RDB List/GetDataMasterXOL-SQL.xml:11`).
+		"POOLDATA.MST_XOL_LAYER":       true,
+		// Dibaca summary_business untuk nama group business pada grid "Summary Data XOL"
+		// (`RDB List/GetBusinessnameXOLForSummerry-SQL.xml`).
+		"POOLDATA.BUSINESS":             true,
 		"POOLDATA.MST_XOL_BUSINESS":    true,
 		"POOLDATA.BUSINESSGROUP":       true,
 		"POOLDATA.MST_USER_TEKNIK":     true,

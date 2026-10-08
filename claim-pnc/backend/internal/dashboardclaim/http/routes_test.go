@@ -194,48 +194,37 @@ func TestRingkasanMenghitungDariContohYangSama(t *testing.T) {
 	require.Equal(t, float64(2), counts["internal-surveyor"])
 }
 
-// TestRingkasanMenyebutkanSelisihTerencana menjaga janji `D-54`.
+// TestRingkasanTidakLagiMengirimSelisihTerencana mengunci keputusan Work Owner 2026-10-06.
 //
-// Selisih yang disengaja terhadap sistem lama WAJIB dinyatakan lebih dulu. Yang ditemukan
-// tanpa dinyatakan akan dilaporkan sebagai cacat pada gerbang 1, dan menjelaskannya
-// belakangan jauh lebih mahal.
-func TestRingkasanMenyebutkanSelisihTerencana(t *testing.T) {
+// Panel "Perbedaan yang disengaja" DIHAPUS dari seluruh layar, dan medannya tidak lagi ikut
+// dalam respons. Daftarnya sendiri tetap hidup di kode Go — `D-54` masih menuntutnya sebagai
+// pemetaan selisih ke butir `P-5` pada uji kesetaraan gerbang 1 — tetapi ia artefak
+// pengembang, bukan isi layar.
+//
+// Test ini menjaga agar medannya tidak kembali diam-diam saat modul lain disalin.
+func TestRingkasanTidakLagiMengirimSelisihTerencana(t *testing.T) {
 	server := testServer(t)
 
 	body := decode(t, get(t, server, "/api/dashboard-claim/ringkasan"))
-	differences, ok := body["selisih_terencana"].([]any)
 
-	require.True(t, ok, "respons ringkasan wajib menyebutkan selisih terencana")
-	require.NotEmpty(t, differences)
+	require.NotContains(t, body, "selisih_terencana",
+		"panel selisih terencana dihapus dari layar — medannya tidak boleh ikut dikirim")
 }
 
-// TestRingkasanMemisahkanSelisihDariCatatanWarisan menjaga pemisahan yang menentukan.
+// TestRingkasanTetapMenyebutkanCatatanWarisan menjaga yang TIDAK ikut dihapus.
 //
-// `selisih_terencana` berisi hal yang BERBEDA dari Pega dan menuntut persetujuan;
-// `catatan_warisan` berisi hal yang SAMA dengan Pega dan hanya menuntut penjelasan.
-//
-// Menggabungkan keduanya akan membuat penguji gerbang 1 mencari selisih yang tidak ada —
-// dan tiga butir teratas justru perilaku yang sengaja dipertahankan (keputusan Work Owner
-// 2026-09-26).
-func TestRingkasanMemisahkanSelisihDariCatatanWarisan(t *testing.T) {
+// `catatan_warisan` berisi hal yang SAMA dengan Pega dan hanya menuntut penjelasan — ia
+// menjawab "mengapa angka kartu berbeda dari telusurnya", pertanyaan yang muncul justru
+// ketika layarnya dipakai. Penghapusan panel selisih tidak menyentuhnya.
+func TestRingkasanTetapMenyebutkanCatatanWarisan(t *testing.T) {
 	server := testServer(t)
 
 	body := decode(t, get(t, server, "/api/dashboard-claim/ringkasan"))
-
-	selisih, ok := body["selisih_terencana"].([]any)
-	require.True(t, ok, "respons ringkasan wajib menyebutkan selisih terencana")
 
 	warisan, ok := body["catatan_warisan"].([]any)
 	require.True(t, ok, "respons ringkasan wajib menyebutkan catatan warisan")
 	require.NotEmpty(t, warisan,
 		"perbedaan angka kartu terhadap telusurnya wajib dinyatakan, bukan dibiarkan tampak sebagai cacat")
-
-	// Kedua angka kartu survei TIDAK boleh lagi muncul sebagai selisih: keduanya kini
-	// mengikuti Pega apa adanya.
-	for _, raw := range selisih {
-		require.NotContainsf(t, raw.(string), "BARIS SURVEI",
-			"penyeragaman angka kartu sudah dicabut — ia tidak boleh lagi diumumkan sebagai selisih")
-	}
 }
 
 // TestPenyaringLiniBisnisMenyaringKeempatKartu memastikan penyaring berlaku menyeluruh.

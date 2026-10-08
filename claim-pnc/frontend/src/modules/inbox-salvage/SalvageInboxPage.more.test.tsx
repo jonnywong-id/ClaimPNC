@@ -43,7 +43,6 @@ const META: MetadataResponse = {
   pilihan_status_salvage: [{ kode: '2', label: 'Salvage DiTerima' }],
   kolom_berkas_unggahan: ['item', 'quantity'],
   pilihan_mata_uang: [{ kode: 'IDR', label: 'IDR' }],
-  selisih_terencana: [],
   portal: 'ASM',
 }
 

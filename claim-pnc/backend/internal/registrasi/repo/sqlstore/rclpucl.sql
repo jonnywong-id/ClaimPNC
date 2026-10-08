@@ -19,12 +19,42 @@
 --   Keterangan Penutup          .ClaimData.PUCLStatus.Keterangan3            KETERANGAN3
 --   Nama Dokter                 .ClaimData.NamaDokterRCL                     — (lihat di bawah)
 --
+-- DUA KOLOM PEMILIK, DAN KEDUANYA BERBEDA ARTI:
+--
+--   OPERATOR_ID           analis yang menekan Kirim — catatan "siapa mengirim"
+--   ASSIGNED_OPERATOR_ID  PIC Teknik klaim          — penyaring "siapa menerima"
+--
+-- Yang kedua adalah satu-satunya penyaring kepemilikan layar Inbox RCL
+-- (`inboxrcl/repo/sqlstore/inboxrcl.sql`, penyaring A). Mengisinya dengan analis — bentuk
+-- yang berlaku sampai 2026-10-06 — menaruh klaim berjalur RCL di Inbox RCL analis sendiri.
+-- Work Owner menetapkan user teknis sebagai pemiliknya (2026-10-07); aturan lengkapnya di
+-- `registrasi.PUCLLetter.AssignedOperator`, termasuk kenapa analis tetap menjadi cadangan
+-- ketika klaim belum punya PIC Teknik.
+--
 -- Sempat dikira keempat isian surat hidup hanya di blob objek kerja Pega. Modul
 -- `inboxrclpucl` membuktikan sebaliknya pada 2026-10-01: kolomnya ada dan TERISI, dan
 -- isinya cocok kata demi kata dengan layar Pega.
 --
 -- ============================================================================
--- SATU ISIAN YANG MEMANG TIDAK PUNYA KOLOM DI SINI: NAMA DOKTER
+-- NAMA DOKTER — SEJAK 2026-10-07 DITULIS KE TABEL INI JUGA
+-- ============================================================================
+--
+-- Work Owner melaporkan `NAMA_DOKTER_RCL` belum terisi di `TC_PNC_PUCL` pada jalur RCL dan
+-- Notification. Kolomnya kini ikut ditulis `surat_rclpucl_perbarui`/`_sisip` (`:25`).
+--
+-- Catatan di bawah ditulis ketika tabel ini BELUM punya kolomnya, dan dipertahankan karena
+-- ia menjelaskan kenapa `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` masih ikut ditulis — bukan
+-- karena masih dibaca, melainkan karena belum ada keputusan mencabutnya.
+--
+-- YANG BERUBAH DI ANTARANYA: Inbox RCL tidak lagi membaca `T_CLAIMLIST_ADMIN` sama sekali
+-- (Work Owner 2026-10-05; modul itu kini membaca `TC_PNC_PUCL`). Sejak saat itu
+-- `NAMADOKTERRCL_1` **tidak dibaca satu kueri pun** di aplikasi ini — dicek dengan
+-- pencarian menyeluruh pada seluruh berkas `.sql`. Menulis ke sana saja karena itu berarti
+-- menyimpan nama dokter ke tempat yang tidak pernah dilihat siapa pun, dan itulah gejala
+-- yang dilaporkan.
+--
+-- ============================================================================
+-- CATATAN LAMA: KETIKA TABEL INI BELUM PUNYA KOLOM NAMA DOKTER
 -- ============================================================================
 --
 -- `TC_PNC_PUCL` tidak punya kolom untuknya. Penampungnya
@@ -126,9 +156,10 @@ UPDATE POOLDATA.TC_PNC_PUCL
        ID_OBJECT            = :22,
        ID_COVERAGE          = :23,
        ID_ADJUSTMENT        = :24,
+       NAMA_DOKTER_RCL      = :25,
        PUCL_APPROVE           = NULL,
        TGL_CETAK_DOKUMEN_PUCL = NULL
- WHERE CLAIMID = :25
+ WHERE CLAIMID = :26
 
 -- name: surat_rclpucl_sisip
 -- Surat klaim yang belum pernah dikirim ke RCL/PUCL. Dijalankan hanya bila UPDATE di
@@ -185,13 +216,13 @@ INSERT INTO POOLDATA.TC_PNC_PUCL (
        KOMENTAR_ANALISATOR, PERIHAL, KETERANGAN1, KETERANGAN2, KETERANGAN3,
        POLICY_NO, QQ_NAME, BUSINESS_NAME, BRANCH_NAME, SOB_NAME,
        GROUPPANEL, USER_TEKNIS, STATUS_KLAIM, DATE_OF_LOSS, TGL_KIRIM_PUCL,
-       ID_OBJECT, ID_COVERAGE, ID_ADJUSTMENT)
+       ID_OBJECT, ID_COVERAGE, ID_ADJUSTMENT, NAMA_DOKTER_RCL)
 VALUES (:1, :2, :3, :4,
         :5, :6, :7,
         :8, :9, :10, :11, :12,
         :13, :14, :15, :16, :17,
         :18, :19, :20, :21, :22,
-        :23, :24, :25)
+        :23, :24, :25, :26)
 
 -- name: surat_rclpucl_dokter
 -- Kedua penyaring layar Inbox RCL, beserta kolom "Deskripsi Analyst" yang digambar di sana.

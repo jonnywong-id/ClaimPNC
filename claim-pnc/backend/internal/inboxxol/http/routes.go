@@ -55,6 +55,7 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox-xol/perjanjian", h.ListMasters)
 		perPortal.Get("/inbox-xol/klaim", h.SummarizeClaims)
 		perPortal.Get("/inbox-xol/klaim/rincian", h.Breakdown)
+		perPortal.Get("/inbox-xol/klaim/summary", h.SummarizeBusiness)
 		perPortal.Get("/inbox-xol/pla-dla", h.SearchAdvice)
 		perPortal.Get("/inbox-xol/pla-dla/unduh", h.DownloadAdvice)
 		perPortal.Get("/inbox-xol/persetujuan", h.ListApprovals)
