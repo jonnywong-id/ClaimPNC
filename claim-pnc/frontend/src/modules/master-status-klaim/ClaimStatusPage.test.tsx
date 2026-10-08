@@ -228,8 +228,10 @@ describe('tambah', () => {
     await pengguna.click(screen.getByRole('button', { name: 'Tambah' }))
 
     const form = screen.getByRole('form', { name: /tambah status klaim/i })
-    // Kode tidak dapat disunting: ia dibuat sistem, sama seperti di Pega.
-    expect(within(form).getByText('Dibuat sistem')).toBeInTheDocument()
+    // Kode TIDAK ditampilkan di form (keputusan Work Owner 2026-10-03). Nomornya
+    // diterbitkan sistem dan tidak dapat disunting, sehingga menampilkannya hanya
+    // menyita ruang tanpa memberi pengguna satu pun hal yang dapat ia lakukan.
+    expect(within(form).queryByText(/dibuat sistem/i)).not.toBeInTheDocument()
 
     await pengguna.type(within(form).getByLabelText('Status'), 'Status Percobaan')
     await pengguna.click(within(form).getByRole('button', { name: 'Simpan' }))
@@ -339,8 +341,8 @@ describe('ubah', () => {
 
     const form = screen.getByRole('form', { name: /ubah status klaim/i })
     expect(within(form).getByLabelText('Status')).toHaveValue('Paid')
-    // Kode ditampilkan tetapi tidak dapat disunting.
-    expect(within(form).getByText('1163')).toBeInTheDocument()
+    // Kode TIDAK ditampilkan di form — ia tetap terlihat di kolom pertama TABEL.
+    expect(within(form).queryByText('1163')).not.toBeInTheDocument()
     expect(within(form).queryByLabelText('Kode')).not.toBeInTheDocument()
 
     await pengguna.clear(within(form).getByLabelText('Status'))

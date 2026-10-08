@@ -35,31 +35,34 @@ import { SurveyorForm } from './SurveyorForm'
  * diketahui menuntut membuka tab satu per satu.
  */
 const TABS = [
-  { id: 'cari', label: 'Cari' },
-  { id: 'komite', label: 'Antrean Komite Saya' },
-  { id: 'menunggu', label: 'Menunggu Approval' },
-  { id: 'disetujui', label: 'Sudah Disetujui' },
-  { id: 'ditolak', label: 'Sudah Ditolak' },
+  { id: 'approve', label: 'Approve' },
+  { id: 'reject', label: 'Reject' },
+  { id: 'waiting', label: 'Waiting Approval' },
+  { id: 'komite', label: 'Komite Approval' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
-/** Menyusun saringan yang berlaku untuk satu tab. */
+/**
+ * Saringan tiap tab, diambil dari `pyRDParams` masing-masing section — bukan ditafsirkan.
+ *
+ *	tab               Approve   Komite
+ *	Approve           "1"       (kosong)
+ *	Reject            "2"       (kosong)
+ *	Waiting Approval  "0"       (kosong)
+ *	Komite Approval   "0"       OperatorID.pyUserIdentifier
+ */
 function filterFor(tab: TabId): SurveyorFilter {
   switch (tab) {
-    case 'komite':
-      return { antrean_saya: true }
-    case 'menunggu':
-      return { status: '0' }
-    case 'disetujui':
+    case 'approve':
       return { status: '1' }
-    case 'ditolak':
+    case 'reject':
       return { status: '2' }
-    case 'cari':
+    case 'waiting':
+      return { status: '0' }
+    case 'komite':
     default:
-      // Tanpa saringan: seluruh posisi persetujuan ikut, dan pencarian ditangani kotak
-      // cari milik DataTable.
-      return {}
+      return { antrean_saya: true }
   }
 }
 
@@ -99,7 +102,8 @@ function filterFor(tab: TabId): SurveyorFilter {
 export function SurveyorPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
-  const [tab, setTab] = useState<TabId>('cari')
+  // Tab yang terbuka pertama adalah "Approve", sama seperti layar lama.
+  const [tab, setTab] = useState<TabId>('approve')
   const list = useSurveyorList(filterFor(tab))
 
   // Daftar tipe dibaca dari modul tetangga, bukan disalin. Ia sumber yang sama dengan
@@ -136,23 +140,23 @@ export function SurveyorPage() {
 
   const rows = list.data?.surveyor ?? []
 
+  // KOLOM DAN JUDULNYA mengikuti grid layar lama persis, dibaca dari properti yang
+  // dirujuk keempat section (`.D_SURVEY_ID`, `sub1.DESCRIPTION`, `.NAME`, `.BRANCHNAME`,
+  // `.TELEPHONE`, `.EMAIL`, `.KOMITE`, lalu tautan Ubah).
+  //
+  // Kolom "Status" yang sempat ada di sini DIBUANG: layar lama tidak memilikinya, dan
+  // memang tidak perlu — tab yang sedang dibuka sudah menyatakan statusnya.
   const columns: Column<Surveyor>[] = [
     {
-      key: 'nama',
-      title: 'Nama Surveyor',
-      value: (s) => s.nama,
-      render: (s) => (
-        <div>
-          <span className="font-medium text-slate-900">{s.nama}</span>
-          {s.login_aplikasi && (
-            <span className="ml-2 font-mono text-xs text-slate-500">{s.login_aplikasi}</span>
-          )}
-        </div>
-      ),
+      key: 'id',
+      title: 'ID',
+      width: '7rem',
+      value: (s) => s.id,
+      render: (s) => <span className="font-mono text-xs text-slate-700">{s.id}</span>,
     },
     {
       key: 'nama_tipe',
-      title: 'Tipe',
+      title: 'ID Survei Master',
       width: '11rem',
       value: (s) => s.nama_tipe || s.kode_tipe,
       render: (s) => (
@@ -170,6 +174,13 @@ export function SurveyorPage() {
       ),
     },
     {
+      key: 'nama',
+      // "Nama", bukan "Input Nama": teks itu nol kemunculan di seluruh export.
+      title: 'Nama',
+      value: (s) => s.nama,
+      render: (s) => <span className="font-medium text-slate-900">{s.nama}</span>,
+    },
+    {
       key: 'nama_cabang',
       title: 'Cabang',
       width: '10rem',
@@ -177,28 +188,44 @@ export function SurveyorPage() {
       render: (s) => <span className="text-slate-700">{s.nama_cabang || s.kode_cabang || '—'}</span>,
     },
     {
-      key: 'status',
-      title: 'Status',
-      width: '11rem',
-      value: (s) => s.status_label,
-      render: (s) => <StatusBadge surveyor={s} />,
+      key: 'telepon',
+      title: 'Telp',
+      width: '9rem',
+      value: (s) => s.telepon,
+      render: (s) => <span className="text-slate-700">{s.telepon || '—'}</span>,
+    },
+    {
+      key: 'email',
+      title: 'Email',
+      value: (s) => s.email,
+      render: (s) => <span className="break-all text-slate-700">{s.email || '—'}</span>,
+    },
+    {
+      key: 'komite',
+      title: 'Komite',
+      width: '10rem',
+      value: (s) => s.komite,
+      render: (s) => <span className="font-mono text-xs text-slate-700">{s.komite || '—'}</span>,
     },
     {
       key: 'aksi',
-      title: 'Aksi',
-      width: '12rem',
+      title: '',
+      width: '11rem',
       noSort: true,
       alignRight: true,
       value: () => '',
+      // Tombol Approve dan Reject HANYA muncul di tab "Komite Approval" — sama seperti
+      // layar lama, yang menaruh keduanya di section `-Komite` saja. Tab Approve, Reject,
+      // dan Waiting Approval hanya punya tautan Ubah.
       render: (s) => (
         <div className="flex justify-end gap-1.5">
-          {s.status === '0' && (
+          {tab === 'komite' && s.status === '0' && (
             <Button
               tone="halus"
               onClick={() => openDecision(s)}
               aria-label={`Putuskan sebagai komite untuk surveyor ${s.nama}`}
             >
-              Keputusan
+              Approve / Reject
             </Button>
           )}
           <Button
@@ -337,24 +364,6 @@ export function SurveyorPage() {
         </>
       )}
     </div>
-  )
-}
-
-/** Penanda status persetujuan, berwarna menurut posisinya. */
-function StatusBadge({ surveyor }: { surveyor: Surveyor }) {
-  const tone =
-    surveyor.status === '1'
-      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-      : surveyor.status === '2'
-        ? 'bg-rose-50 text-rose-700 ring-rose-200'
-        : 'bg-amber-50 text-amber-700 ring-amber-200'
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${tone}`}
-    >
-      {surveyor.status_label}
-    </span>
   )
 }
 

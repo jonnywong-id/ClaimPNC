@@ -77,18 +77,22 @@ func (r *Repo) List(ctx context.Context, f masterrekening.Filter) ([]masterreken
 	return result, total, nil
 }
 
-// filterInput menyusun sepuluh argumen saringan dalam urutan yang dituntut kedua
+// filterInput menyusun lima belas argumen saringan dalam urutan yang dituntut kedua
 // kueri.
 //
 // Setiap saringan muncul dua kali di dalam SQL — sekali pada pemeriksaan IS NULL,
 // sekali pada perbandingannya — sehingga nilainya dikirim dua kali pula. Nomor bind
 // sengaja dibedakan, bukan diulang, supaya tidak bergantung pada tafsir driver
 // terhadap bind bernomor sama.
+//
+// Kata kunci adalah perkecualiannya: ia muncul LIMA kali, karena satu kata dicocokkan
+// ke empat kolom sekaligus.
 func filterInput(f masterrekening.Filter) []any {
 	status := emptyToNil(string(f.Status))
 	nomor := emptyToNil(f.Number)
 	owner := emptyToNil(f.OwnerName)
 	bank := emptyToNil(f.BankName)
+	keyword := emptyToNil(f.Keyword)
 
 	var committee any
 	if f.MyCommitteeOnly {
@@ -101,6 +105,7 @@ func filterInput(f masterrekening.Filter) []any {
 		owner, owner,
 		bank, bank,
 		committee, committee,
+		keyword, keyword, keyword, keyword, keyword,
 	}
 }
 

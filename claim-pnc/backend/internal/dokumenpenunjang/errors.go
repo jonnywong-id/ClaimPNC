@@ -29,6 +29,13 @@ var ErrBerkasTerlaluBesar = errors.New("dokumenpenunjang: ukuran berkas melampau
 // menaruh sebuah berkas — dan `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang.
 var ErrPengunggahKosong = errors.New("dokumenpenunjang: pengunggah tidak diketahui")
 
+// ErrTautanGagal dikembalikan ketika alamat baca berkas yang kedaluwarsa tidak dapat
+// diperpanjang layanan penyimpanan.
+var ErrTautanGagal = errors.New("dokumenpenunjang: alamat berkas tidak dapat diperpanjang")
+
+// ErrHapusGagal dikembalikan ketika layanan penyimpanan tidak menyatakan berkasnya terhapus.
+var ErrHapusGagal = errors.New("dokumenpenunjang: berkas tidak terhapus dari penyimpanan")
+
 // ErrTidakDitemukan dikembalikan ketika dokumen yang diminta tidak ada.
 var ErrTidakDitemukan = errors.New("dokumenpenunjang: dokumen tidak ditemukan")
 

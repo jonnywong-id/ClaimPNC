@@ -21,8 +21,6 @@ var detailColumns = []string{
 	"ID_COL", "KET_COL", "ID_OBJ", "DESC_OBJ", "RESIKO",
 }
 
-var businessColumns = []string{"ID_BISNIS", "NAMA_BISNIS", "WAJIB", "MIN_DOC"}
-
 func newMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
@@ -79,23 +77,6 @@ func TestListErrors(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestGetReadsDetailAndBusinesses(t *testing.T) {
-	db, mock := newMock(t)
-	mock.ExpectQuery(q("detail_get")).WithArgs("100001").WillReturnRows(detailRow("100001"))
-	mock.ExpectQuery(q("detail_business_list")).WithArgs("100001").WillReturnRows(
-		sqlmock.NewRows(businessColumns).
-			AddRow(" 003 ", " ANEKA ", "Ya", " 2 ").
-			AddRow("006", "FIRE", "Tidak", "x"))
-
-	got, err := NewRepo(db).Get(context.Background(), " 100001 ")
-	require.NoError(t, err)
-	require.Equal(t, []daftardetailtipedokumen.BusinessRule{
-		{BusinessID: "003", BusinessName: "ANEKA", Mandatory: true, MinDocument: 2},
-		{BusinessID: "006", BusinessName: "FIRE", Mandatory: false, MinDocument: 0},
-	}, got.Businesses)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
 func TestGetErrors(t *testing.T) {
 	db, mock := newMock(t)
 	repo := NewRepo(db)
@@ -108,21 +89,6 @@ func TestGetErrors(t *testing.T) {
 	_, err = repo.Get(context.Background(), "9")
 	require.ErrorContains(t, err, `membaca detail "9"`)
 
-	mock.ExpectQuery(q("detail_get")).WithArgs("1").WillReturnRows(detailRow("1"))
-	mock.ExpectQuery(q("detail_business_list")).WithArgs("1").WillReturnError(errDB)
-	_, err = repo.Get(context.Background(), "1")
-	require.ErrorContains(t, err, `membaca bisnis detail "1"`)
-
-	mock.ExpectQuery(q("detail_get")).WithArgs("1").WillReturnRows(detailRow("1"))
-	mock.ExpectQuery(q("detail_business_list")).WithArgs("1").WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("x"))
-	_, err = repo.Get(context.Background(), "1")
-	require.ErrorContains(t, err, "membaca baris bisnis")
-
-	mock.ExpectQuery(q("detail_get")).WithArgs("1").WillReturnRows(detailRow("1"))
-	mock.ExpectQuery(q("detail_business_list")).WithArgs("1").WillReturnRows(
-		sqlmock.NewRows(businessColumns).AddRow("003", "A", "Ya", "1").RowError(0, errDB))
-	_, err = repo.Get(context.Background(), "1")
-	require.ErrorContains(t, err, `menelusuri bisnis detail "1"`)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -131,14 +97,10 @@ func sampleInput() daftardetailtipedokumen.Input {
 		DocumentTypeID: "10001", Detail: "Kwitansi", InsuredStatus: "Tertanggung",
 		CauseOfLossID: "1001", CauseOfLossDescription: "Gol A",
 		ObjectDocumentID: "10002", ObjectDocumentDescription: "Polis", Risk: "0",
-		Businesses: []daftardetailtipedokumen.BusinessInput{
-			{BusinessID: "003", Mandatory: true, MinDocument: 2},
-			{BusinessID: "006", Mandatory: false, MinDocument: 0},
-		},
 	}
 }
 
-func TestInsertNewWritesDetailAndBusinessesThenRereads(t *testing.T) {
+func TestInsertNewWritesDetailThenRereads(t *testing.T) {
 	db, mock := newMock(t)
 	mock.ExpectBegin()
 	mock.ExpectQuery(q("detail_site")).WillReturnRows(sqlmock.NewRows([]string{"SITE"}).AddRow("10"))
@@ -146,11 +108,8 @@ func TestInsertNewWritesDetailAndBusinessesThenRereads(t *testing.T) {
 	mock.ExpectExec(q("detail_insert")).
 		WithArgs("100007", "10001", "Kwitansi", "Tertanggung", "1001", "Gol A", "10002", "Polis", "0", editStamp, "adminpnc").
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("detail_business_insert")).WithArgs("100007", "003", "Ya", 2).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("detail_business_insert")).WithArgs("100007", "006", "Tidak", 0).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	mock.ExpectQuery(q("detail_get")).WithArgs("100007").WillReturnRows(detailRow("100007"))
-	mock.ExpectQuery(q("detail_business_list")).WithArgs("100007").WillReturnRows(sqlmock.NewRows(businessColumns))
 
 	got, err := NewRepo(db).InsertNew(context.Background(), sampleInput(), daftardetailtipedokumen.Editor{Identity: "adminpnc", At: editAt})
 	require.NoError(t, err)
@@ -185,21 +144,11 @@ func TestInsertNewFailures(t *testing.T) {
 			m.ExpectExec(q("detail_insert")).WillReturnError(errDB)
 			m.ExpectRollback()
 		}, `menyisipkan detail "100001"`},
-		{"business insert", func(m sqlmock.Sqlmock) {
-			m.ExpectBegin()
-			m.ExpectQuery(q("detail_site")).WillReturnRows(sqlmock.NewRows([]string{"SITE"}).AddRow("10"))
-			m.ExpectQuery(q("detail_next_sequence")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(int64(1)))
-			m.ExpectExec(q("detail_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
-			m.ExpectExec(q("detail_business_insert")).WillReturnError(errDB)
-			m.ExpectRollback()
-		}, `menyisipkan bisnis detail "100001"`},
 		{"commit", func(m sqlmock.Sqlmock) {
 			m.ExpectBegin()
 			m.ExpectQuery(q("detail_site")).WillReturnRows(sqlmock.NewRows([]string{"SITE"}).AddRow("10"))
 			m.ExpectQuery(q("detail_next_sequence")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(int64(1)))
 			m.ExpectExec(q("detail_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
-			m.ExpectExec(q("detail_business_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
-			m.ExpectExec(q("detail_business_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
 			m.ExpectCommit().WillReturnError(errDB)
 		}, "menutup transaksi"},
 	}
@@ -215,18 +164,14 @@ func TestInsertNewFailures(t *testing.T) {
 	}
 }
 
-func TestUpdateReplacesBusinessesThenRereads(t *testing.T) {
+func TestUpdateWritesDetailThenRereads(t *testing.T) {
 	db, mock := newMock(t)
 	mock.ExpectBegin()
 	mock.ExpectExec(q("detail_update")).
 		WithArgs("10001", "Kwitansi", "Tertanggung", "1001", "Gol A", "10002", "Polis", "0", editStamp, "pic", "100001").
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("detail_business_delete_all")).WithArgs("100001").WillReturnResult(sqlmock.NewResult(0, 3))
-	mock.ExpectExec(q("detail_business_insert")).WithArgs("100001", "003", "Ya", 2).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("detail_business_insert")).WithArgs("100001", "006", "Tidak", 0).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	mock.ExpectQuery(q("detail_get")).WithArgs("100001").WillReturnRows(detailRow("100001"))
-	mock.ExpectQuery(q("detail_business_list")).WithArgs("100001").WillReturnRows(sqlmock.NewRows(businessColumns))
 
 	got, err := NewRepo(db).Update(context.Background(), " 100001 ", sampleInput(), daftardetailtipedokumen.Editor{Identity: "pic", At: editAt})
 	require.NoError(t, err)
@@ -253,14 +198,6 @@ func TestUpdateFailures(t *testing.T) {
 	require.ErrorContains(t, err, `memperbarui detail "9"`)
 	require.NoError(t, mock.ExpectationsWereMet())
 
-	db, mock = newMock(t)
-	mock.ExpectBegin()
-	mock.ExpectExec(q("detail_update")).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("detail_business_delete_all")).WillReturnError(errDB)
-	mock.ExpectRollback()
-	_, err = NewRepo(db).Update(context.Background(), "9", sampleInput(), by)
-	require.ErrorContains(t, err, `membuang bisnis detail "9"`)
-	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestCheckTables(t *testing.T) {
@@ -271,18 +208,16 @@ func TestCheckTables(t *testing.T) {
 	require.NoError(t, repo.CheckTable(context.Background()))
 
 	mock.ExpectQuery(q("detail_write_check_table")).WillReturnRows(sqlmock.NewRows([]string{"X"}))
-	mock.ExpectQuery(q("detail_business_check_table")).WillReturnRows(sqlmock.NewRows([]string{"X"}))
 	require.NoError(t, repo.CheckWriteTable(context.Background()))
 
-	mock.ExpectQuery(q("detail_write_check_table")).WillReturnRows(sqlmock.NewRows([]string{"X"}))
-	mock.ExpectQuery(q("detail_business_check_table")).WillReturnError(errDB)
+	mock.ExpectQuery(q("detail_write_check_table")).WillReturnError(errDB)
 	err := repo.CheckWriteTable(context.Background())
 	require.ErrorIs(t, err, errDB)
-	require.ErrorContains(t, err, "(detail_business_check_table)")
+	require.ErrorContains(t, err, "(detail_write_check_table)")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestReferenceListsMapPairs(t *testing.T) {
+func TestReferenceListMapsPairs(t *testing.T) {
 	db, mock := newMock(t)
 	repo := NewReferenceRepo(db)
 	ctx := context.Background()
@@ -294,25 +229,10 @@ func TestReferenceListsMapPairs(t *testing.T) {
 	documentTypes, err := repo.ListDocumentTypes(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []daftardetailtipedokumen.DocumentTypeOption{{ID: "1", Name: "Satu"}, {}}, documentTypes)
-
-	mock.ExpectQuery(q("cause_of_loss_choice_list")).WillReturnRows(pairRows())
-	causes, err := repo.ListCausesOfLoss(ctx)
-	require.NoError(t, err)
-	require.Equal(t, daftardetailtipedokumen.CauseOfLossOption{ID: "1", Description: "Satu"}, causes[0])
-
-	mock.ExpectQuery(q("object_document_choice_list")).WillReturnRows(pairRows())
-	objects, err := repo.ListObjectDocuments(ctx)
-	require.NoError(t, err)
-	require.Equal(t, daftardetailtipedokumen.ObjectDocumentOption{ID: "1", Description: "Satu"}, objects[0])
-
-	mock.ExpectQuery(q("business_choice_list")).WillReturnRows(pairRows())
-	businesses, err := repo.ListBusinesses(ctx)
-	require.NoError(t, err)
-	require.Equal(t, daftardetailtipedokumen.Business{ID: "1", Name: "Satu"}, businesses[0])
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestReferenceListsPropagateErrors(t *testing.T) {
+func TestReferenceListPropagatesErrors(t *testing.T) {
 	db, mock := newMock(t)
 	repo := NewReferenceRepo(db)
 	ctx := context.Background()
@@ -321,18 +241,14 @@ func TestReferenceListsPropagateErrors(t *testing.T) {
 	_, err := repo.ListDocumentTypes(ctx)
 	require.ErrorContains(t, err, "membaca POOLDATA.V_LST_DOC_TYPE")
 
-	mock.ExpectQuery(q("cause_of_loss_choice_list")).WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("1"))
-	_, err = repo.ListCausesOfLoss(ctx)
-	require.ErrorContains(t, err, "membaca baris POOLDATA.M_CAUSE_OF_LOSS")
+	mock.ExpectQuery(q("document_type_choice_list")).WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("1"))
+	_, err = repo.ListDocumentTypes(ctx)
+	require.ErrorContains(t, err, "membaca baris POOLDATA.V_LST_DOC_TYPE")
 
-	mock.ExpectQuery(q("object_document_choice_list")).WillReturnRows(
+	mock.ExpectQuery(q("document_type_choice_list")).WillReturnRows(
 		sqlmock.NewRows([]string{"A", "B"}).AddRow("1", "x").RowError(0, errDB))
-	_, err = repo.ListObjectDocuments(ctx)
-	require.ErrorContains(t, err, "menelusuri POOLDATA.V_LST_DOC_OBJ")
-
-	mock.ExpectQuery(q("business_choice_list")).WillReturnError(errDB)
-	_, err = repo.ListBusinesses(ctx)
-	require.ErrorContains(t, err, "membaca POOLDATA.BUSINESS")
+	_, err = repo.ListDocumentTypes(ctx)
+	require.ErrorContains(t, err, "menelusuri POOLDATA.V_LST_DOC_TYPE")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -340,7 +256,7 @@ func TestReferenceCheckTable(t *testing.T) {
 	// Urutan kueri dari peta tidak tetap, jadi pencocokan tanpa urutan.
 	db, mock := newMock(t)
 	mock.MatchExpectationsInOrder(false)
-	for _, name := range []string{"document_type_check_table", "cause_of_loss_check_table", "object_document_check_table", "business_check_table"} {
+	for _, name := range []string{"document_type_check_table"} {
 		mock.ExpectQuery(q(name)).WillReturnRows(sqlmock.NewRows([]string{"X"}))
 	}
 	require.NoError(t, NewReferenceRepo(db).CheckTable(context.Background()))
@@ -349,7 +265,7 @@ func TestReferenceCheckTable(t *testing.T) {
 	// Seluruh kueri gagal: apa pun yang dijalankan lebih dulu, galatnya menyebut objeknya.
 	db, mock = newMock(t)
 	mock.MatchExpectationsInOrder(false)
-	for _, name := range []string{"document_type_check_table", "cause_of_loss_check_table", "object_document_check_table", "business_check_table"} {
+	for _, name := range []string{"document_type_check_table"} {
 		mock.ExpectQuery(q(name)).WillReturnError(errDB)
 	}
 	err := NewReferenceRepo(db).CheckTable(context.Background())

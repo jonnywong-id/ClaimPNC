@@ -270,6 +270,18 @@ type Coverage struct {
 // ID diterbitkan penyimpanan, kedua nama hasil join, dan daftar jaminan ditambahkan lewat
 // jalurnya sendiri.
 type Input struct {
+	// ID kosong berarti BARIS BARU.
+	//
+	// Ini bentuk yang dipakai sistem lama apa adanya: setiap baris grid dikirim dengan
+	// `@if(.ID!="",.ID,"UnknownID")`
+	// (`Activity/InsertDetailTypeDocumentBusiness_act-Act.xml:2399-2401`), dan procedure-nya
+	// bercabang pada sentinel itu — `UnknownID` menyisipkan, selainnya memperbarui.
+	//
+	// Akibatnya satu penyimpanan dapat memuat campuran baris lama dan baru, dan itu
+	// memang yang terjadi di layar: petugas membuka sebuah bisnis, mengubah dua baris,
+	// menambah satu, lalu menekan Simpan sekali.
+	ID string
+
 	DocumentTypeID  string
 	ObjectDocID     string
 	DetailTypeDocID string
@@ -300,6 +312,7 @@ type Input struct {
 // dan selisih itu tidak terlihat di layar karena spasi tidak tampak.
 func (i Input) Clean() Input {
 	clean := Input{
+		ID:              strings.TrimSpace(i.ID),
 		DocumentTypeID:  strings.TrimSpace(i.DocumentTypeID),
 		ObjectDocID:     strings.TrimSpace(i.ObjectDocID),
 		DetailTypeDocID: strings.TrimSpace(i.DetailTypeDocID),
@@ -377,6 +390,28 @@ func (b BatchInput) Clean() BatchInput {
 			continue
 		}
 		clean.Rules = append(clean.Rules, rule)
+	}
+	return clean
+}
+
+// CleanRows memangkas sekumpulan baris dan membuang baris BARU yang seluruh isiannya
+// kosong.
+//
+// Baris ber-ID TIDAK pernah dibuang walau isiannya dikosongkan, dan pembedaan itu
+// disengaja: mengosongkan baris yang sudah tersimpan adalah perintah "kosongkan baris
+// ini", sedangkan baris baru yang kosong hanyalah baris yang terlanjur ditambahkan dan
+// belum diisi. Membuang keduanya akan membuat pengosongan tampak berhasil di layar lalu
+// diam-diam tidak tersimpan.
+func CleanRows(rows []Input) []Input {
+	var clean []Input
+	for _, row := range rows {
+		row = row.Clean()
+		if row.ID == "" &&
+			row.DocumentTypeID == "" && row.ObjectDocID == "" && row.DetailTypeDocID == "" &&
+			row.DetailDocument == "" && row.MinDocument == 0 && !row.Mandatory {
+			continue
+		}
+		clean = append(clean, row)
 	}
 	return clean
 }
@@ -477,6 +512,20 @@ type Repo interface {
 	//
 	// BUSINESSID tidak ikut berubah — lihat DocumentRule.BusinessID.
 	Update(ctx context.Context, id string, input Input, by Editor) (DocumentRule, error)
+
+	// SaveForBusiness menyimpan SELURUH baris satu lini bisnis dalam satu transaksi:
+	// baris ber-ID diperbarui, baris tanpa ID disisipkan.
+	//
+	// Inilah bentuk penyimpanan layar Ubah, dan ia bukan karangan — sistem lama
+	// mengirim setiap baris grid dengan `@if(.ID!="",.ID,"UnknownID")`
+	// (`InsertDetailTypeDocumentBusiness_act-Act.xml:2399-2401`), dan procedure-nya
+	// bercabang pada sentinel itu. Yang berbeda hanya transaksinya: sistem lama
+	// COMMIT per baris, sehingga kegagalan di baris ketiga meninggalkan dua baris
+	// tersimpan dan sisanya hilang tanpa tanda (`D-68`).
+	//
+	// Baris yang hilang di antara pemuatan layar dan penyimpanan menghasilkan
+	// ErrNotFound, bukan penyisipan diam-diam dengan ID baru.
+	SaveForBusiness(ctx context.Context, businessID string, rows []Input, by Editor) ([]DocumentRule, error)
 
 	// AddCoverage menambahkan satu jaminan pada sebuah aturan, dan tidak melakukan apa
 	// pun bila jaminan itu sudah ada.

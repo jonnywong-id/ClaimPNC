@@ -148,7 +148,9 @@ describe('daftar', () => {
     // Baris tanpa detail dokumen memakai ID-nya pada label tombol Ubah.
     expect(within(table).getByRole('button', { name: 'Ubah 100001' })).toBeInTheDocument()
 
-    for (const title of ['ID', 'Tipe Dokumen', 'Detail Dokumen', 'Objek Dokumen', 'Penyebab Kerugian']) {
+    // Tepat tiga kolom data, sama dengan grid Pega — tidak ada Objek Dokumen maupun
+    // Penyebab Kerugian di sini.
+    for (const title of ['ID', 'Tipe Dokumen', 'Detail Dokumen']) {
       const header = within(table).getByRole('columnheader', { name: new RegExp(`^${title}`) })
       await userEvent.click(within(header).getByRole('button'))
       expect(header).toHaveAttribute('aria-sort', 'ascending')
@@ -168,8 +170,11 @@ describe('daftar', () => {
     await screen.findByRole('table')
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
 
+    // Hanya master yang benar-benar dipakai sebuah isian yang disebut. Penyebab Kerugian
+    // dan Objek Dokumen tidak lagi punya isian di layar ini, sehingga menyebutnya hanya
+    // akan membingungkan — tidak ada yang bisa dikerjakan petugas atasnya.
     expect(
-      await screen.findByText(/Saran untuk isian Tipe Dokumen, Penyebab Kerugian, Objek Dokumen, Bisnis tidak tersedia/),
+      await screen.findByText(/Saran untuk isian Tipe Dokumen tidak tersedia/),
     ).toBeInTheDocument()
   })
 })

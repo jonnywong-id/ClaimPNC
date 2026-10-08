@@ -25,8 +25,8 @@ export type TugasRCL = {
   /** Kolom "Deskripsi Analyst" — `ClaimData.PUCLStatus.KomentarAnalisator`. */
   deskripsi_analyst: string
 
-  /** Tidak digambar; dikirim untuk penelusuran. */
-  dokter_rcl: string
+  /** `RCL_PUCL`: "1" RCL, "3" MSIG. Tidak digambar. */
+  mode: string
   status_proses: string
   operator_penerima: string
 }
@@ -61,9 +61,50 @@ export type DaftarResponse = {
   cari: string
 
   /**
-   * `false` berarti identitas lama Anda (`TempOperator.City` di sistem lama) tidak
-   * ditemukan — antreannya kosong karena belum diketahui pekerjaan siapa, bukan karena
-   * tidak ada pekerjaan.
+   * `false` berarti login Anda tidak ada atau tidak aktif di POOLDATA.M_LOGIN_PNC, sehingga
+   * antreannya tidak dicari. Tidak digambar layar — sama seperti Pega, hanya grid kosong.
    */
-  identitas_lama_ditemukan: boolean
+  pengguna_ditemukan: boolean
+}
+
+/**
+ * Isi layar kerja `RCLDokter` satu klaim — seluruhnya dari POOLDATA.TC_PNC_PUCL.
+ *
+ * `mode` menentukan isi layar (`Section/RCLDokter-Section.xml`):
+ *   "1" RCL  — Catatan dari Analyst · Alasan Klaim Ditolak/RCL · Setuju / Tidak Setuju
+ *   "3" MSIG — Catatan dari Analyst · Alasan Klaim MSIG        · Back / Submit
+ */
+export type DetailRCL = {
+  portal: string
+  nomor_case: string
+  nomor_polis: string
+  nama_tertanggung: string
+  mode: string
+  /** "Catatan dari Analyst" — KOMENTAR_ANALISATOR. */
+  catatan_analyst: string
+  /** "Alasan Klaim Ditolak/RCL" atau "Alasan Klaim MSIG" — KETERANGAN2. */
+  alasan: string
+  /** "Alasan Dokter" — ALASAN_DOKTER_REJECT_RCL. */
+  alasan_dokter: string
+  status_klaim: string
+  status_proses: string
+  operator_penerima: string
+  tanggal_masuk_inbox: string
+}
+
+/**
+ * Nilai `StatusRCL` yang dikirim tombol, apa adanya dari kedua section Pega:
+ *   SETUJU      tombol Setuju (mode RCL)
+ *   MSIG        tombol Submit (mode MSIG)
+ *   TidakSetuju Kirim pada layar Alasan Dokter, dibuka dari Tidak Setuju (mode RCL)
+ *   BackMSIG    Kirim pada layar Alasan Dokter, dibuka dari Back (mode MSIG)
+ */
+export type KeputusanRCL = 'SETUJU' | 'MSIG' | 'TidakSetuju' | 'BackMSIG'
+
+export type KeputusanResponse = {
+  portal: string
+  nomor_case: string
+  status_klaim: string
+  /** Nama tahap tujuan — "RCL/PUCL" atau "Send To Analis". */
+  tahap_berikutnya: string
 }

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Tanggal** | 2026-09-29, diperbarui 2026-09-30 (kolom tiba, isinya belum) |
+| **Tanggal** | 2026-09-29 · 2026-09-30 kolom tiba, isinya belum · **2026-10-03 lingkup menyusut jadi 3 kolom** |
 | **Diminta oleh** | Tim migrasi Claim PNC |
 | **Ditujukan ke** | **Tim Pega** |
 | **Menempuh** | `D-63` — permintaan tertulis tim pengembang, persetujuan Work Owner, pelaksanaan DBA |
@@ -11,17 +11,103 @@
 
 ---
 
-## 1. Ringkas — separuh permintaan ini SUDAH dipenuhi
+## 1. Ringkas — SELURUH kolom sudah ada, isinya belum
 
-Per **2026-09-30** tiga dari empat kolom sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST`.
+Per **2026-10-03** kelima kolom yang diminta sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST`.
 **Seluruhnya masih kosong**, dan karena itu belum satu pun manfaat di bawah terwujud.
+
+**Tidak ada `ALTER` lagi yang diminta.** Yang tersisa hanyalah §2 — pengisiannya.
+
+Dua permintaan **dicoret** sepanjang jalan karena kolomnya ternyata sudah ada di tempat lain;
+cara gugurnya dicatat di §4 karena lebih berguna daripada daftarnya.
 
 | # | Kolom di `T_SURVEYORLIST` | Yang dihidupkan | Ada | Terisi |
 |---|---|---|:---:|:---:|
 | 1 | `ADJUSTERACCEPT` | tab Outstanding, ALL, dan Invoice | ✅ | ❌ |
 | 2 | `PYSTATUSWORK` | tab Close, dan penyaring "berkas survei masih terbuka" | ✅ | ❌ |
 | 3 | `REFNO` | kolom "Reference No" dan setengah kotak cari | ✅ | ❌ |
-| 4 | `ADJUSTERPIC` | kolom "Appointment No" | ❌ | — |
+| 4 | `ADJUSTERPIC` | kolom "PIC Loss Adjuster" | ✅ | ❌ |
+| 5 | `RESCHEDULELOCATION` | kolom "Location" | ✅ | ❌ |
+| ~~—~~ | ~~`ADJUSTERPIC` untuk "Appointment No"~~ | ~~kolom "Appointment No"~~ | **DICORET** | — |
+| ~~—~~ | ~~`ASMSTATUS`~~ | ~~kolom "Status ASM"~~ | **DICORET** | — |
+
+> **Kelima kolom sudah ada** per 2026-10-03 — `ADJUSTERPIC VARCHAR2(150)` dan
+> `RESCHEDULELOCATION VARCHAR2(1500 CHAR)` ditambahkan hari itu. **Seluruhnya masih kosong.**
+
+### Tiga kolom sempat diajukan 2026-10-03 — **dua gugur setelah diukur**
+
+Dicatat lengkap, karena cara gugurnya lebih berguna daripada daftarnya.
+
+| Kolom | Status | Yang memutuskan |
+|---|---|---|
+| ~~`ASMSTATUS`~~ | **BATAL** | `T_CLAIM_PNC.LEADER_MEMBER` sudah membawanya |
+| **`ADJUSTERPIC`** | **DIMINTA** | terukur: orangnya berbeda |
+| `RESCHEDULELOCATION` | tertahan | pengukuran belum tuntas |
+
+**`ASMSTATUS` batal — usulan Work Owner.** Kolom "Status ASM" ternyata bukan status melainkan
+**peran koasuransi**: `ASMSTATUS_1` hanya bernilai `LEADER`, `MEMBER`, atau kosong. Work Owner
+mengusulkan `T_CLAIM_PNC.LEADER_MEMBER`, dan pengukuran membuktikannya — **nol pertentangan**
+pada 17.633 baris:
+
+```
+LEADER_MEMBER  ASMSTATUS_1    baris
+LEADER         LEADER        15.125
+LEADER         (kosong)       1.444
+MEMBER         MEMBER         1.054
+MEMBER         (kosong)          10
+```
+
+Sepuluh baris terakhir adalah satu-satunya selisih (**0,06%**), dan di sana modul baru justru
+lebih tepat daripada Pega yang menjatuhkan nilai kosong ke `LEADER`.
+
+**`ADJUSTERPIC` diminta — terukur berbeda orang, dan terpusat pada adjuster eksternal.**
+
+Dari 2.463 berkas survei, dipecah menurut jenis surveyor:
+
+| `SURVEYORTYPE_1` | berkas | `ADJUSTERPIC_1` terisi | `SURVEYORNAME_1` terisi |
+|---|---:|---:|---:|
+| `1` internal | 328 | **23 (7%)** | 295 (90%) |
+| **`2` loss adjuster** | **2.126** | **1.796 (84%)** | 2.123 (99,9%) |
+| `4` | 3 | 1 | 3 |
+| (kosong) | 6 | 0 | 1 |
+
+Polanya tegas: `ADJUSTERPIC_1` adalah **PIC pada adjuster eksternal**, hampir tidak pernah terisi
+untuk surveyor internal. Itu sejalan dengan `ExportDataDetailKlaim-SQL.xml`, yang memisahkan
+`Adjusterpic_1` (type 2/3/4) dari `SURVEYORNAME_1` (type 1).
+
+Dan keduanya **orang yang berbeda** — dari 2.463 berkas, hanya **3** yang namanya sama. Ditambah
+`T_SURVEYORLIST.SURVEYOR_NAME` terbukti padanan `SURVEYORNAME_1`: 17.198 dari 17.238 baris
+adjuster eksternal cocok dengan yang pertama, **nol** dengan yang kedua.
+
+**Akibat tanpa kolom ini:** pada **1.796 berkas** adjuster eksternal, kolom "PIC Loss Adjuster"
+menampilkan orang yang salah. Dan pada 305 berkas surveyor internal ia menampilkan nama padahal
+Pega mengosongkannya.
+
+> `ADJUSTERPIC` sempat dicoret sebagai asal "Appointment No", dan **itu tetap benar**. Keempat
+> kueri tab menunjukkan ia asal **"PIC Loss Adjuster"** — kolom yang lain.
+
+**`RESCHEDULELOCATION` — terukur berbeda, menunggu keputusan Work Owner.**
+
+Ketiga kolom yang sudah ada dibandingkan terhadapnya:
+
+| Pembanding | Cakupan | Cocok |
+|---|---|---|
+| `LOCATION_SURVEY` | 17.637 baris (seluruh langkah) | 14.039 — 79,6% |
+| `LOCATION_OBJECT` | idem | 5.650 — 32% |
+| `OBJECT_NAME` | idem | **0** |
+| `LOCATION_SURVEY` | **2.427 berkas (langkah terakhir — yang digambar layar)** | **1.767 — 72,8%** |
+
+Dugaan bahwa selisihnya berasal dari langkah-langkah lama **gugur**: membatasi ke langkah
+terakhir justru memperlebar selisih. **660 dari 2.427 berkas** akan menampilkan lokasi yang
+berbeda dari Pega.
+
+Sejalan dengan jalur penulisnya — `LOCATION_SURVEY ← Param.ObjName ← ObjectLocation`/`ObjectName`,
+sedangkan Pega menggambar `ObjectSurveyLocation`. Dua konsep, bukan dua salinan.
+
+**Pilihannya milik Work Owner:** minta kolomnya, atau terima 73% dengan penanda `· pengganti`.
+
+Sampai keputusannya jatuh, kolom "PIC Loss Adjuster" dan "Location" **tetap digambar dengan
+pengganti** dan ditandai `· pengganti` di judulnya, supaya selisihnya terlihat.
 
 > **Perhatikan penamaannya.** Di `T_SURVEYORLIST` kolomnya **tanpa akhiran `_1`**. Akhiran itu
 > artefak perataan objek kerja di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, dan menghilangkannya memang
@@ -29,8 +115,8 @@ Per **2026-09-30** tiga dari empat kolom sudah ditambahkan ke `POOLDATA.T_SURVEY
 > ditambahkan sempat terbaca sebagai belum ada oleh orang yang menambahkannya. Seluruh dokumen
 > ini sekarang memakai nama sebenarnya.
 
-**Yang tersisa dari permintaan ini adalah §2 — pengisiannya.** Butir 4 belum tentu diperlukan;
-lihat §4.
+**Yang tersisa dari permintaan ini hanyalah §2 — pengisiannya.** Tidak ada `ALTER` lagi yang
+diminta.
 
 > **`POOLDATA.T_CLAIM_SURVEY_DATAPEGA` tidak dipakai** (keputusan Work Owner 2026-09-30). Tabel
 > cermin itu sempat menjadi sasaran permintaan ini dan dilepas.
@@ -76,9 +162,9 @@ sebelum keterisiannya terukur.
 
 ---
 
-## 3. Kenapa keempatnya, dan dari mana buktinya
+## 3. Kenapa ketiganya, dan dari mana buktinya
 
-Keempat kolom milik objek kerja `ASM-FW-GCNMFW-Work-SurveyClaim`. Ketiga rule yang tersisa
+Ketiga kolom milik objek kerja `ASM-FW-GCNMFW-Work-SurveyClaim`. Ketiga rule yang tersisa
 membacanya dari objek yang sama, tanpa join:
 
 | Rule | Bukti |
@@ -111,36 +197,42 @@ baris bernilai `'0'`, dan perilaku Pega dibawa apa adanya (`P-5`).
 
 Dicatat supaya tidak diminta ulang.
 
-### `ADJUSTERPIC` — kemungkinan besar tidak diperlukan
+### `ADJUSTERPIC` — DICORET, tidak pernah diperlukan
 
-Judul layar **"Appointment No"** adalah kolom paling kiri grid My Work, dan ia mengikat
-`.City`, yang `BrowseLossAdjuster-SQL.xml` isi dari `AdjusterPIC_1`.
+Work Owner melihat layar Pega berjalan pada 2026-10-03 dan melaporkan isi kolom **"Appointment
+No"**: **`SRV-xxx`**. Bukan nama adjuster.
 
-`ExportDataDetailKlaim-SQL.xml` membuktikan kolom itu berisi **nama adjuster**, bukan nomor
-penugasan:
+Itu menutup pertanyaannya sekaligus mematahkan dugaan kami. Nomor berkas survei **sudah ada di
+tangan**: `T_SURVEYORLIST.CASEID` menyimpan kunci utuh `ASM-FW-GCNMFW-WORK SRV-xxxxx`
+(dikonfirmasi Work Owner), dan Pega sendiri memperoleh nomornya dengan memotong prefix itu:
 
-```sql
-CASE WHEN C.SURVEYORTYPE_1 IN ('2','3','4') THEN C.Adjusterpic_1 ELSE '' END
-CASE WHEN C.SURVEYORTYPE_1 = '1'            THEN c.SURVEYORNAME_1 …
+```
+Activity/SetTempLostAdjuster-Act.xml:6197
+    TempDataLostAdjuster.pxResults(<LAST>).UserName  <-  @substring(.CaseID,19,30)
 ```
 
-Keduanya konsep yang sama, dipisah menurut jenis surveyor — eksternal versus internal. Dan
-`Database/INSERT_SURVEYORLIST.prc` hanya punya **satu** kolom nama, `SURVEYOR_NAME`, diisi
-`TempSurvey.SurveyorName` tanpa memandang jenisnya.
+`"ASM-FW-GCNMFW-WORK "` panjangnya tepat 19 karakter. Modul baru melakukan hal yang sama, dan
+kolomnya **sudah hidup** — tanpa menunggu siapa pun.
 
-Bila itu benar, kolom "Appointment No" menggandakan "PIC Loss Adjuster" di sebelahnya, dan
-`SURVEYOR_NAME` sudah membawanya. **Satu kueri memastikannya sebelum butir 4 dicoret:**
+> **Kenapa kami sempat salah.** Pemetaan judul-ke-kolom disusun dari `BrowseLossAdjuster` dan
+> `BrowseInternalSurveyor`, padahal **keempat kueri yang benar-benar dipakai tab hilang dari
+> export** (`R-16`). Rujukan terdekat bukan sumber — dan dua kolom pertama grid adalah tempat
+> perbedaannya muncul.
 
-```sql
-SELECT surveytype, COUNT(*) AS baris, COUNT(surveyor_name) AS terisi
-  FROM POOLDATA.T_SURVEYORLIST GROUP BY surveytype ORDER BY surveytype;
+### `REFNO` sebagai asal kolom "Reference No" — juga keliru
+
+`REFNO_1` memang diambil kedua kueri rujukan, tetapi dialiaskan **`"Province"`** — dan
+`.Province` **tidak termasuk 13 sel data grid**. Jadi ia diambil lalu tidak pernah digambar.
+
+`REFNO` **tetap diminta**, tetapi lingkupnya menyusut: ia dibutuhkan untuk **kotak cari**, yang
+di Pega mencari pada dua kolom sekaligus —
+
+```
+"AND (a.pzinskey LIKE '%…%' OR A.REFNO_1 LIKE '%…%')"
 ```
 
-Bila `terisi` penuh di semua `surveytype` — termasuk `1` dan `2` — satu kolom itu cukup.
-
-**Keputusan Work Owner yang menyertainya:** kolom "Appointment No" di layar baru dihapus, atau
-dipertahankan menampilkan nama adjuster seperti Pega? Menghapusnya menyimpang dari `D-13`;
-mempertahankannya berarti dua kolom bersebelahan berisi nama yang sama.
+— bukan untuk kolom layar. Asal kolom layar "Reference No" **belum diketahui**, dan hanya dapat
+dipastikan dengan melihat layar Pega yang berjalan.
 
 ### `ADJUSTERSTATUS_1` — `STS_SURVEY` sudah membawanya
 
@@ -219,8 +311,8 @@ procedure:
 Keluarannya per 2026-09-30:
 
 ```
-[catat] Keempat kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:
-          ADJUSTERACCEPT ADA · ADJUSTERPIC belum · REFNO ADA · PYSTATUSWORK ADA
+[catat] Ketiga kolom yang ditunggu di POOLDATA.T_SURVEYORLIST:
+          ADJUSTERACCEPT ADA · PYSTATUSWORK ADA · REFNO ADA
 
 [catat] Keterisian, dari 17.641 baris: ADJUSTERACCEPT 0 · REFNO 0 · PYSTATUSWORK 0
 [BELUM] PYSTATUSWORK ADA tetapi SELURUHNYA kosong

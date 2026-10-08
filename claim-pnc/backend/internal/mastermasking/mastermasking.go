@@ -175,6 +175,61 @@ type Masking struct {
 	InputAt time.Time
 }
 
+// SaveOutcome adalah hasil penyimpanan SATU baris pada penyimpanan massal.
+//
+// Ia ada karena form Tambah layar lama menyimpan BANYAK baris sekaligus, dan procedure
+// lamanya dipanggil satu kali per baris di dalam perulangan
+// (`Activity/InsermaskingDataKlaimPnc_-Act.xml`, langkah ber-`pyStepsObjectName =
+// TempLogin.pxResults`). Sebagian baris dapat berhasil sementara sebagian ditolak —
+// terutama oleh aturan "satu pengguna satu baris per cabang".
+//
+// Ia tinggal di domain, bukan di usecase, supaya transport dapat membacanya tanpa
+// mengimpor usecase.
+type SaveOutcome struct {
+	// Login menyebut baris mana yang dimaksud.
+	Login string
+
+	// Saved bernilai false bila baris itu ditolak.
+	Saved bool
+
+	// Err berisi sebab penolakan. Nil bila berhasil.
+	Err error
+}
+
+// Operator adalah satu pengguna yang dapat diberi kewenangan masking.
+//
+// Ia dibaca dari DATAPEGA.PR_OPERATORS, bukan dari tabel masking — daftarnya adalah
+// SELURUH petugas pada sebuah cabang, termasuk yang belum punya baris masking sama sekali.
+// Itulah yang membuat form Tambah di layar lama berbentuk daftar: pengguna memilih cabang,
+// lalu mengisi kewenangan untuk petugas-petugas di cabang itu sekaligus.
+//
+// Sumbernya `RDB List/GetDataLogin-SQL.xml`, yang menyaring `PYPOSITION` ke empat jabatan
+// dan `BRANCHCODE` ke cabang terpilih.
+type Operator struct {
+	// Login adalah PYUSERIDENTIFIER — nilai yang disimpan ke kolom LOGIN.
+	//
+	// Sebagian di antaranya berupa ALAMAT SUREL, bukan nama pengguna biasa; itu keadaan
+	// nyata di portal ASM dan dibawa apa adanya.
+	Login string
+
+	// Name adalah PYUSERNAME, nama orangnya. Ia hanya DITAMPILKAN, tidak pernah disimpan.
+	//
+	// Perhatikan alias di kueri lama: `PYUSERNAME as "BranchName"`. Nama aliasnya menunjuk
+	// cabang padahal isinya nama orang — contoh lain dari utang teknis §4.2 yang `D-19`
+	// perintahkan untuk tidak dibawa.
+	Name string
+}
+
+// OperatorPositions adalah empat jabatan yang berhak diberi kewenangan masking.
+//
+// Diambil apa adanya dari `RDB List/GetDataLogin-SQL.xml`. Ia menentukan SIAPA yang muncul
+// di form Tambah, sehingga mengubahnya berarti mengubah siapa yang dapat diberi akses ke
+// data pribadi — bukan sekadar memperluas daftar pilihan.
+//
+// Sebarannya di portal ASM pada 2026-10-04: NONMBU 2.200 · PA 22 · TRAVEL 6 ·
+// PUCL/RCL IP 1.
+var OperatorPositions = []string{"NONMBU", "TRAVEL", "PA", "PUCL/RCL IP"}
+
 // Branch adalah satu pilihan cabang untuk isian CABANG.
 //
 // Ia sengaja BUKAN master milik modul ini: POOLDATA.BRANCH dimiliki sistem lain dan hanya
@@ -343,6 +398,12 @@ type Repo interface {
 
 	// ListBranches mengembalikan pilihan cabang yang cocok dengan kata kunci.
 	ListBranches(ctx context.Context, keyword string, limit int) ([]Branch, error)
+
+	// ListOperators mengembalikan petugas sebuah cabang yang berhak diberi kewenangan.
+	//
+	// Inilah yang mengisi tabel pada form Tambah. Ia membaca DATAPEGA.PR_OPERATORS — tabel
+	// milik engine Pega yang hanya DIBACA di sini, tidak pernah ditulis.
+	ListOperators(ctx context.Context, branchID string) ([]Operator, error)
 
 	// BranchExists menyatakan apakah kode cabang benar-benar ada di POOLDATA.BRANCH.
 	BranchExists(ctx context.Context, branchID string) (bool, error)

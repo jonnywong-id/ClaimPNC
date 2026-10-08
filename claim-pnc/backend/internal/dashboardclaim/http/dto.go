@@ -88,8 +88,24 @@ type claimDTO struct {
 	PICTeknik    string `json:"pic_teknik"`
 	AdminPNC     string `json:"admin_pnc"`
 
-	TanggalRegister string `json:"tanggal_register"`
+	// TanggalPendaftaran adalah kolom "Tanggal Pendaftaran" pada layar lama.
+	//
+	// Namanya mengikuti layar, bukan nama kolom basis datanya (`PXCREATEDATETIME`): yang
+	// dibaca pengguna adalah judul kolomnya (`D-13`).
+	TanggalPendaftaran string `json:"tanggal_pendaftaran"`
+
+	// TanggalLapor adalah kolom "Report Date" — `RECEIVEDDATE_1`.
+	//
+	// Hanya terisi pada tile Outstanding; tile Close Claim tidak menggambarnya.
+	TanggalLapor string `json:"tanggal_lapor"`
+
 	TanggalKejadian string `json:"tanggal_kejadian"`
+
+	// LamaHari adalah kolom "Lama Waktu Klaim", dalam HARI.
+	//
+	// Dikirim sebagai angka, bukan sebagai teks "6y ago": pemformatannya urusan layar, dan
+	// mengirim teks membuat pengurutan serta perbandingan menjadi pengurutan teks.
+	LamaHari int `json:"lama_hari"`
 
 	// StatusKlaimKode adalah KODE, bukan artinya.
 	//
@@ -97,7 +113,14 @@ type claimDTO struct {
 	// pemakaiannya seluruhnya terbukti salah saat master diterima (`R-06`); pelabelannya
 	// adalah urusan master status klaim.
 	StatusKlaimKode string `json:"status_klaim_kode"`
-	StatusProses    string `json:"status_proses"`
+
+	// StatusKlaimLabel adalah kolom "Claim status" — artinya, bukan kodenya.
+	//
+	// Inilah yang digambar layar lama: "Register", "Waiting Survey". Kodenya tidak pernah
+	// ditampilkan kepada pengguna.
+	StatusKlaimLabel string `json:"status_klaim_label"`
+
+	StatusProses string `json:"status_proses"`
 }
 
 // surveyDTO adalah satu baris telusur bertipe survei.
@@ -123,6 +146,9 @@ type surveyDTO struct {
 	// jujur daripada mengisinya dengan tanggal lain yang kebetulan ada.
 	TanggalSurvei string `json:"tanggal_survei"`
 	TanggalTugas  string `json:"tanggal_tugas"`
+
+	// LamaHari adalah kolom "Aging", dalam HARI — sama sifatnya dengan LamaHari pada klaim.
+	LamaHari int `json:"lama_hari"`
 
 	StatusSurvei string `json:"status_survei"`
 	StatusProses string `json:"status_proses"`
@@ -205,26 +231,32 @@ type tileDTO struct {
 }
 
 // adaptClaim memetakan satu baris klaim menjadi DTO.
-func adaptClaim(row dashboardclaim.ClaimRow, loc *time.Location) claimDTO {
+//
+// Jam diterima sebagai argumen, bukan dibaca dari time.Now() di sini, supaya kolom "Lama
+// Waktu Klaim" dapat diuji dengan angka pasti.
+func adaptClaim(row dashboardclaim.ClaimRow, now time.Time, loc *time.Location) claimDTO {
 	return claimDTO{
-		KlaimID:         row.ClaimID,
-		NomorKlaim:      row.ClaimNumber,
-		NomorPolis:      row.PolicyNumber,
-		Tertanggung:     row.InsuredName,
-		NamaBisnis:      row.BusinessName,
-		SumberBisnis:    row.BusinessSource,
-		NamaCabang:      row.BranchName,
-		PICTeknik:       row.TechnicalPIC,
-		AdminPNC:        row.AdminPNC,
-		TanggalRegister: formatDate(&row.RegisteredAt, loc),
-		TanggalKejadian: formatDate(row.LossDate, loc),
-		StatusKlaimKode: row.ClaimStatusCode,
-		StatusProses:    row.ProcessStatus,
+		KlaimID:            row.ClaimID,
+		NomorKlaim:         row.ClaimNumber,
+		NomorPolis:         row.PolicyNumber,
+		Tertanggung:        row.InsuredName,
+		NamaBisnis:         row.BusinessName,
+		SumberBisnis:       row.BusinessSource,
+		NamaCabang:         row.BranchName,
+		PICTeknik:          row.TechnicalPIC,
+		AdminPNC:           row.AdminPNC,
+		TanggalPendaftaran: formatDate(&row.RegisteredAt, loc),
+		TanggalLapor:       formatDate(row.ReportDate, loc),
+		TanggalKejadian:    formatDate(row.LossDate, loc),
+		LamaHari:           row.AgeInDays(now, loc),
+		StatusKlaimKode:    row.ClaimStatusCode,
+		StatusKlaimLabel:   row.ClaimStatusLabel,
+		StatusProses:       row.ProcessStatus,
 	}
 }
 
 // adaptSurvey memetakan satu baris survei menjadi DTO.
-func adaptSurvey(row dashboardclaim.SurveyRow, loc *time.Location) surveyDTO {
+func adaptSurvey(row dashboardclaim.SurveyRow, now time.Time, loc *time.Location) surveyDTO {
 	return surveyDTO{
 		SurveiID:       row.SurveyID,
 		NomorSurvei:    row.SurveyNumber,
@@ -238,6 +270,7 @@ func adaptSurvey(row dashboardclaim.SurveyRow, loc *time.Location) surveyDTO {
 		LokasiSurvei:   row.SurveyLocation,
 		TanggalSurvei:  formatDate(row.ScheduledAt, loc),
 		TanggalTugas:   formatDate(&row.AssignedAt, loc),
+		LamaHari:       row.AgeInDays(now, loc),
 		StatusSurvei:   row.SurveyStatus,
 		StatusProses:   row.ProcessStatus,
 	}
@@ -258,4 +291,44 @@ func formatDate(t *time.Time, loc *time.Location) string {
 		loc = time.UTC
 	}
 	return t.In(loc).Format("2006-01-02")
+}
+
+// holdingDTO adalah satu baris tab Inbox Tampungan PIC.
+//
+// Kolomnya mengikuti grid layar lama apa adanya — sembilan kolom, tanpa PIC Teknik (menurut
+// definisi tab ini, belum ada), tanpa status, dan tanpa umur.
+type holdingDTO struct {
+	KlaimID string `json:"klaim_id"`
+
+	NomorKlaim   string `json:"nomor_klaim"`
+	NomorPolis   string `json:"nomor_polis"`
+	Tertanggung  string `json:"nama_tertanggung"`
+	NamaBisnis   string `json:"nama_bisnis"`
+	SumberBisnis string `json:"sumber_bisnis"`
+	NamaCabang   string `json:"nama_cabang"`
+	AdminPNC     string `json:"admin_pnc"`
+
+	TanggalPendaftaran string `json:"tanggal_pendaftaran"`
+}
+
+// holdingResponse adalah jawaban GET /dashboard-claim/tampungan.
+type holdingResponse struct {
+	Klaim   []holdingDTO  `json:"klaim"`
+	Halaman paginationDTO `json:"halaman"`
+	Portal  string        `json:"portal"`
+}
+
+// adaptHolding memetakan satu baris penampungan menjadi DTO.
+func adaptHolding(row dashboardclaim.HoldingRow, loc *time.Location) holdingDTO {
+	return holdingDTO{
+		KlaimID:            row.ClaimID,
+		NomorKlaim:         row.ClaimNumber,
+		NomorPolis:         row.PolicyNumber,
+		Tertanggung:        row.InsuredName,
+		NamaBisnis:         row.BusinessName,
+		SumberBisnis:       row.BusinessSource,
+		NamaCabang:         row.BranchName,
+		AdminPNC:           row.AdminPNC,
+		TanggalPendaftaran: formatDate(&row.RegisteredAt, loc),
+	}
 }

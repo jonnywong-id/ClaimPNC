@@ -106,6 +106,28 @@ func TestDateOrdering(t *testing.T) {
 	})
 }
 
+// Tanggal Terima Dokumen hanya tampil dan wajib pada Travel dan PA (`IsTravelPA`,
+// pyRequired=true). Lini lain boleh kosong, dan aturan yang memakainya dilewati.
+func TestDateReceivedRequiredOnlyForTravelPA(t *testing.T) {
+	t.Run("Marine tanpa tanggal terima dokumen diterima", func(t *testing.T) {
+		k := validClaim()
+		k.Policy.Line = registrasi.LineMarineCargo
+		k.DateReceived = time.Time{}
+		require.NoError(t, registrasi.Validate(k, parts()))
+	})
+
+	for _, line := range []registrasi.LineOfBusiness{registrasi.LineTravel, registrasi.LinePersonalAccident} {
+		t.Run("lini "+string(line)+" tanpa tanggal terima dokumen ditolak", func(t *testing.T) {
+			k := validClaim()
+			k.Policy.Line = line
+			k.DateReceived = time.Time{}
+			g := violations(t, registrasi.Validate(k, parts()))
+			require.True(t, g.Has(registrasi.ViolationReceivedDateRequired))
+			require.False(t, g.Has(registrasi.ViolationReceivedBeforeReport))
+		})
+	}
+}
+
 // TestPolicyPeriodBoundaries menguji keempat batas periode polis.
 func TestPolicyPeriodBoundaries(t *testing.T) {
 	cases := []struct {

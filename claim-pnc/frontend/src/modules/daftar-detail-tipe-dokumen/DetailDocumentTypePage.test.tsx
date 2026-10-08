@@ -180,9 +180,6 @@ async function openEditForm() {
   await userEvent.click(screen.getByRole('button', { name: 'Ubah Formulir Laporan Kerugian' }))
 
   const form = await screen.findByRole('form', { name: 'Detail Tipe Dokumen' })
-  await waitFor(() => {
-    expect(within(form).getByLabelText('ID Bisnis baris 1')).toHaveValue('003')
-  })
   return form
 }
 
@@ -237,53 +234,52 @@ describe('DetailDocumentTypePage', () => {
     expect(screen.getByText('Dokumen Warisan Tanpa Master')).toBeInTheDocument()
   })
 
-  it('memuat ulang satu baris saat form ubah dibuka, supaya lini bisnisnya ikut', async () => {
-    // Daftar TIDAK membawa aturan bisnis. Memakai baris dari daftar akan membuat form
-    // tampak seolah seluruh lini bisnisnya sudah dihapus — dan menyimpannya benar-benar
-    // menghapusnya.
-    installFetch(defaultReply())
-    show()
-
-    const form = await openEditForm()
-
-    expect(within(form).getByLabelText('ID Bisnis baris 1')).toHaveValue('003')
-    expect(within(form).getByLabelText('ID Bisnis baris 2')).toHaveValue('099')
-    expect(
-      calls.some((call) => call.method === 'GET' && call.url.includes('/detail-tipe-dokumen/100001')),
-    ).toBe(true)
-  })
-
-  it('mengisi form dengan KETERANGAN pada dua isian rujukan, bukan kodenya', async () => {
-    // Inilah yang dilihat petugas di Pega: `Section/BrowseListDetailTypeDocument-Section.xml`
-    // mengikat isian "Dokumen kolom ID" ke TempDTDoc.DOC_COL_INFO dan "Objek Dokumen" ke
-    // TempDTDoc.OBJ_DOC_DESC. Kodenya hanya target tersembunyi.
-    //
-    // "ID Tipe Dokumen" sebaliknya memang berisi kode — labelnya pun menyebutnya demikian.
+  it('mengisi kedua isian dari baris yang disunting', async () => {
     installFetch(defaultReply())
     show()
 
     const form = await openEditForm()
 
     expect(within(form).getByLabelText('ID Tipe Dokumen')).toHaveValue('10001')
-    expect(within(form).getByLabelText('Dokumen kolom ID')).toHaveValue('Contoh Golongan A')
-    expect(within(form).getByLabelText('Objek Dokumen')).toHaveValue('Polis Asli')
+    expect(within(form).getByLabelText('Detail Dokumen')).toHaveValue(
+      'Formulir Laporan Kerugian',
+    )
   })
 
-  it('menampilkan pasangan kode dan keterangan sebagai petunjuk', async () => {
-    // Petunjuknya menggantikan peran daftar autocomplete Pega setelah pilihannya ditutup:
-    // pada isian berisi kode ditampilkan namanya, pada isian berisi keterangan ditampilkan
-    // kodenya.
+  it('hanya meminta dua isian, sama seperti layar Pega yang berjalan', async () => {
+    // Layar "Tambah Data" Pega berhenti pada Detail Dokumen dan langsung tombol Simpan.
+    // Keempat kolom lain tetap ada di tabel, tetapi tidak disunting dari sini.
     installFetch(defaultReply())
     show()
 
     const form = await openEditForm()
 
-    expect(within(form).getByText('Tipe dokumen: Dokumen Registrasi')).toBeInTheDocument()
-    expect(within(form).getByText('Kode penyebab kerugian: 1001')).toBeInTheDocument()
-    expect(within(form).getByText('Kode objek dokumen: 10002')).toBeInTheDocument()
+    for (const label of [
+      'Status Tertanggung',
+      'Dokumen kolom ID',
+      'Penyebab Kerugian',
+      'Objek Dokumen',
+      'Resiko',
+    ]) {
+      expect(within(form).queryByLabelText(label)).not.toBeInTheDocument()
+    }
   })
 
-  it('mengirim kode DAN keterangan berpasangan saat disimpan', async () => {
+  it('menampilkan ID Tipe Dokumen sebagai dropdown, bukan isian ketik', async () => {
+    // `pyFormat = pxDropdown` dengan `pyDisplayAsComboBox = false` pada
+    // TempDTDoc.DOC_TYPE_ID — kode di luar daftar tidak dapat diketik di layar lama.
+    installFetch(defaultReply())
+    show()
+
+    const form = await openEditForm()
+
+    expect(within(form).getByLabelText('ID Tipe Dokumen').tagName).toBe('SELECT')
+  })
+
+  it('membawa keenam kolom yang tidak disunting apa adanya', async () => {
+    // Kolom yang tidak dapat disunting pengguna tidak boleh ikut terhapus saat menyimpan.
+    // Mengirimnya kosong akan mengosongkan kolomnya pada setiap penyimpanan, padahal
+    // petugas tidak pernah diberi kesempatan mengubahnya.
     installFetch(defaultReply(() => ({ body: DETAIL })))
     show()
 
@@ -294,89 +290,12 @@ describe('DetailDocumentTypePage', () => {
       expect(calls.some((call) => call.method === 'PUT')).toBe(true)
     })
     const saved = calls.find((call) => call.method === 'PUT')?.body as Record<string, unknown>
+    expect(saved.status_tertanggung).toBe(DETAIL.detail_tipe_dokumen.status_tertanggung)
     expect(saved.keterangan_penyebab_kerugian).toBe('Contoh Golongan A')
     expect(saved.id_penyebab_kerugian).toBe('1001')
     expect(saved.keterangan_objek_dokumen).toBe('Polis Asli')
     expect(saved.id_objek_dokumen).toBe('10002')
-  })
-
-  it('mengirim keterangan yang diketik bebas TANPA kode', async () => {
-    // `pyAllowFreeFormInput=true` di layar lama mengizinkannya, dan kedua keterangan punya
-    // kolomnya sendiri sehingga isian itu tersimpan utuh. Membuangnya karena kodenya tidak
-    // ada berarti menghilangkan apa yang baru saja diketik petugas.
-    installFetch(defaultReply(() => ({ body: DETAIL })))
-    show()
-
-    const form = await openEditForm()
-    const field = within(form).getByLabelText('Objek Dokumen')
-    await userEvent.clear(field)
-    await userEvent.type(field, 'Objek yang tidak ada di master')
-    await userEvent.click(within(form).getByRole('button', { name: 'Ubah' }))
-
-    await waitFor(() => {
-      expect(calls.some((call) => call.method === 'PUT')).toBe(true)
-    })
-    const saved = calls.find((call) => call.method === 'PUT')?.body as Record<string, unknown>
-    expect(saved.keterangan_objek_dokumen).toBe('Objek yang tidak ada di master')
-    expect(saved.id_objek_dokumen).toBe('')
-  })
-
-  it('mengganti SELURUH daftar bisnis saat disimpan, bukan menambahinya', async () => {
-    // Grid mengirim susunan akhir yang dikehendaki petugas, dan tidak ada satu pun penanda
-    // di sana yang menyatakan baris mana yang baru, mana yang berubah, dan mana yang
-    // dibuang.
-    installFetch(defaultReply(() => ({ body: DETAIL })))
-    show()
-
-    const form = await openEditForm()
-    await userEvent.click(within(form).getByRole('button', { name: 'Hapus lini bisnis baris 2' }))
-    await userEvent.click(within(form).getByRole('button', { name: 'Ubah' }))
-
-    await waitFor(() => {
-      expect(calls.some((call) => call.method === 'PUT')).toBe(true)
-    })
-    const saved = calls.find((call) => call.method === 'PUT')?.body as {
-      bisnis: { id_bisnis: string }[]
-    }
-    expect(saved.bisnis).toHaveLength(1)
-    expect(saved.bisnis[0]?.id_bisnis).toBe('003')
-  })
-
-  it('mengirim status wajib sebagai boolean, bukan teks', async () => {
-    // Kontraknya boolean; yang TERSIMPAN teks "Ya"/"Tidak". Server yang menjembataninya,
-    // dan layar tidak boleh ikut mengirim teksnya.
-    installFetch(defaultReply(() => ({ body: DETAIL })))
-    show()
-
-    const form = await openEditForm()
-    await userEvent.click(within(form).getByRole('button', { name: 'Ubah' }))
-
-    await waitFor(() => {
-      expect(calls.some((call) => call.method === 'PUT')).toBe(true)
-    })
-    const saved = calls.find((call) => call.method === 'PUT')?.body as {
-      bisnis: { status_wajib: unknown }[]
-    }
-    expect(saved.bisnis[0]?.status_wajib).toBe(true)
-  })
-
-  it('membuang baris bisnis yang kodenya belum diisi', async () => {
-    // Grid selalu menyisakan baris yang baru ditambahkan tetapi belum diisi. Menyimpannya
-    // berarti menulis aturan yang tidak menunjuk lini bisnis mana pun.
-    installFetch(defaultReply(() => ({ body: DETAIL })))
-    show()
-
-    const form = await openEditForm()
-    await userEvent.click(within(form).getByRole('button', { name: 'Tambah Bisnis' }))
-    await userEvent.click(within(form).getByRole('button', { name: 'Ubah' }))
-
-    await waitFor(() => {
-      expect(calls.some((call) => call.method === 'PUT')).toBe(true)
-    })
-    const saved = calls.find((call) => call.method === 'PUT')?.body as {
-      bisnis: unknown[]
-    }
-    expect(saved.bisnis).toHaveLength(2)
+    expect(saved.resiko).toBe(DETAIL.detail_tipe_dokumen.resiko)
   })
 
   it('menerima seluruh isian kosong, mengikuti layar lama yang tanpa validasi', async () => {
@@ -394,10 +313,9 @@ describe('DetailDocumentTypePage', () => {
     })
   })
 
-  it('menolak Resiko yang bukan angka sebelum permintaan dikirim', async () => {
-    // Ini bentuk kolom, bukan aturan bisnis: `SetTypePDFAdjustment` membacanya dengan
-    // `@toDecimal(.RISK)`, dan teks yang bukan angka akan terbaca NOL di sana tanpa satu
-    // pun tanda.
+  it('form tambah berhenti pada Detail Dokumen, tanpa grid lini bisnis', async () => {
+    // Sama seperti layar "Tambah Data" Pega. Lini bisnisnya diisi setelah barisnya ada,
+    // lewat tombol Ubah.
     installFetch(defaultReply())
     show()
 
@@ -405,11 +323,9 @@ describe('DetailDocumentTypePage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
 
     const form = await screen.findByRole('form', { name: 'Detail Tipe Dokumen' })
-    await userEvent.type(within(form).getByLabelText('Resiko'), 'abc')
-    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
-
-    expect(await within(form).findByText('Resiko hanya boleh berisi angka.')).toBeInTheDocument()
-    expect(calls.some((call) => call.method === 'POST')).toBe(false)
+    expect(within(form).getByLabelText('ID Tipe Dokumen')).toBeInTheDocument()
+    expect(within(form).getByLabelText('Detail Dokumen')).toBeInTheDocument()
+    expect(within(form).queryByRole('button', { name: 'Tambah Bisnis' })).not.toBeInTheDocument()
   })
 
   it('tetap dapat menyimpan meski sebagian daftar pilihan gagal dimuat', async () => {

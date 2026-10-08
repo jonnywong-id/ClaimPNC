@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/platform/clock"
@@ -204,6 +206,7 @@ func (h *Handler) ViewClaim(w http.ResponseWriter, r *http.Request, claimID stri
 	if summary.Task != nil {
 		t := taskDTO(*summary.Task, h.service.Flow())
 		t.Workable = h.service.CanWork(*summary.Task, caller)
+		t.Analyst = registrasi.IsAnalyst(caller.Roles)
 		response.Task = &t
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
@@ -369,6 +372,175 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request, taskID st
 	h.writeResponse(w, r, http.StatusOK, response)
 }
 
+// SendToInputor menangani POST /api/registrasi/tugas/{taskID}/kirim-inputor.
+func (h *Handler) SendToInputor(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body SendToInputorRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.SendToInputor(r.Context(), usecase.SendToInputorCommand{
+		TaskID: taskID,
+		Note:   body.Note,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// SendToRCLPUCL menangani POST /api/registrasi/tugas/{taskID}/kirim-rclpucl — tombol
+// Kirim pada modal "Kirim ke RCL/PUCL".
+func (h *Handler) SendToRCLPUCL(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body SendToRCLPUCLRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.SendToRCLPUCL(r.Context(), usecase.SendToRCLPUCLCommand{
+		TaskID:      taskID,
+		Track:       body.Track,
+		AnalystNote: body.Note,
+		Subject:     body.Subject,
+		OpeningNote: body.OpeningNote,
+		BodyNote:    body.BodyNote,
+		ClosingNote: body.ClosingNote,
+		DoctorName:  body.DoctorName,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// PUCLSubjects menangani GET /api/registrasi/rclpucl/perihal?jalur=N.
+func (h *Handler) PUCLSubjects(w http.ResponseWriter, r *http.Request) {
+	track, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("jalur")))
+
+	options, err := h.service.PUCLSubjectOptions(r.Context(), track)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := PUCLSubjectResponse{Pilihan: make([]PUCLSubjectDTO, 0, len(options))}
+	for _, o := range options {
+		response.Pilihan = append(response.Pilihan, PUCLSubjectDTO{ID: o.ID, Nama: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// PUCLReasons menangani GET /api/registrasi/rclpucl/alasan?cari=…&batas=N.
+func (h *Handler) PUCLReasons(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("batas")))
+
+	reasons, err := h.service.PUCLRejectReasons(r.Context(), r.URL.Query().Get("cari"), limit)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := PUCLReasonResponse{Pilihan: make([]PUCLReasonDTO, 0, len(reasons))}
+	for _, o := range reasons {
+		response.Pilihan = append(response.Pilihan, PUCLReasonDTO{ID: o.ID, Nama: o.Name, Deskripsi: o.Description})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// RCLDoctors menangani GET /api/registrasi/rclpucl/dokter.
+func (h *Handler) RCLDoctors(w http.ResponseWriter, r *http.Request) {
+	doctors, err := h.service.RCLDoctorOptions(r.Context())
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := RCLDoctorResponse{Pilihan: make([]RCLDoctorDTO, 0, len(doctors))}
+	for _, o := range doctors {
+		response.Pilihan = append(response.Pilihan, RCLDoctorDTO{ID: o.ID})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// CloseClaim menangani POST /api/registrasi/tugas/{taskID}/tutup-klaim — tombol Ya dialog
+// "Prevent Close Claim".
+func (h *Handler) CloseClaim(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body CloseClaimRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	result, err := h.service.CloseClaim(r.Context(), usecase.CloseClaimCommand{
+		TaskID: taskID,
+		Closure: registrasi.Closure{
+			Note: body.Note, Proposal: body.Proposal, Effort: body.Effort, Obstacle: body.Obstacle,
+			Temporary: body.Temporary,
+		},
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(result.Claim)})
+}
+
+// TransferToAnalyst menangani POST /api/registrasi/tugas/{taskID}/transfer-analis.
+func (h *Handler) TransferToAnalyst(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body TransferToAnalystRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.TransferToAnalyst(r.Context(), usecase.TransferToAnalystCommand{
+		TaskID:     taskID,
+		ObjectID:   body.ObjectID,
+		CoverageID: body.CoverageID,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
 // ── Terjemahan antara bentuk wire dan tipe modul ─────────────────────────────────
 
 const dateLayout = "2006-01-02"
@@ -389,6 +561,18 @@ func parseDate(s, name string) (time.Time, error) {
 	return t, nil
 }
 
+// birthDate menormalkan ASMDATEOFBIRTH T_PERSONLIST — yyyymmdd atau dd/mm/yyyy — menjadi
+// YYYY-MM-DD. Bentuk lain dikosongkan, bukan ditebak.
+func birthDate(raw string) string {
+	raw = strings.TrimSpace(raw)
+	for _, layout := range []string{"20060102", "02/01/2006"} {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t.Format(dateLayout)
+		}
+	}
+	return ""
+}
+
 func formatDate(t time.Time) string {
 	if t.IsZero() {
 		return ""
@@ -405,9 +589,14 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 	if err != nil {
 		return usecase.RegisterCommand{}, err
 	}
-	receivedDate, err := parseDate(b.DateReceived, "Tanggal Terima Dokumen")
-	if err != nil {
-		return usecase.RegisterCommand{}, err
+	// Tanggal Terima Dokumen boleh kosong: isiannya hanya tampil pada Travel dan PA
+	// (`IsTravelPA`), dan kewajibannya ditegakkan domain untuk kedua lini itu saja.
+	var receivedDate time.Time
+	if b.DateReceived != "" {
+		receivedDate, err = parseDate(b.DateReceived, "Tanggal Terima Dokumen")
+		if err != nil {
+			return usecase.RegisterCommand{}, err
+		}
 	}
 	if b.TaskID == "" {
 		return usecase.RegisterCommand{}, errors.New("tugas_id wajib diisi")
@@ -509,10 +698,12 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 	insuredItem := make([]InsuredItemDTO, 0, len(k.InsuredItem))
 	for _, o := range k.InsuredItem {
 		item := InsuredItemDTO{
-			ID:       o.ID,
-			Name:     o.Name,
-			Location: o.Location,
-			Coverage: make([]CoverageDTO, 0, len(o.Coverage)),
+			ID:          o.ID,
+			Name:        o.Name,
+			Location:    o.Location,
+			Coverage:    make([]CoverageDTO, 0, len(o.Coverage)),
+			Job:         o.Job,
+			DateOfBirth: birthDate(o.DateOfBirth),
 		}
 		for _, c := range o.Coverage {
 			cov := CoverageDTO{
@@ -523,6 +714,8 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 				Spreading:   make([]SpreadingDTO, 0, len(c.Spreading)),
 				Item:        itemDTO(c.Item),
 				Adjustment:  settlementDTO(c.Settlement),
+
+				AnalystTransferred: c.AnalystTransferred,
 			}
 			for _, s := range c.Spreading {
 				cov.Spreading = append(cov.Spreading, SpreadingDTO{
@@ -556,6 +749,10 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			CreditGuarantee: k.Policy.CreditGuarantee,
 			CoinsType:       k.Policy.TypeOfCoins,
 			CoinsRole:       k.Policy.Coinsurance.Role,
+
+			SourceOfBusinessName: k.Policy.SourceOfBusinessName,
+			BusinessName:         k.Policy.BusinessName,
+			BranchCode:           k.Policy.BranchCode,
 		},
 		Receiver:     receiverDTO(k.Receiver),
 		DateOfLoss:   formatDate(k.DateOfLoss),
@@ -598,6 +795,8 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		ProcessStatus:          string(k.ProcessStatus),
 		ClaimStatus:            string(k.ClaimStatus),
 		ClaimStatusName:        k.ClaimStatusName,
+		AnalystTransferred:     !k.AnalystTransferredAt.IsZero(),
+		PendingClose:           k.PendingClose,
 		ClaimFlag:              string(k.ClaimFlag),
 		ProgressPositionStatus: string(k.ProgressPositionStatus),
 		CurrentStage:           k.CurrentStage,

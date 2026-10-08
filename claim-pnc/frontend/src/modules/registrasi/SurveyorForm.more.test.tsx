@@ -209,6 +209,76 @@ describe('bagian atas', () => {
     expect(screen.queryByLabelText('Status Klaim')).not.toBeInTheDocument()
   })
 
+  // Kirim ke RCL/PUCL — ClaimSurvey_sect sel 6, `isAnalystPA_PNC || isAnalisatorTravel`.
+  //
+  // KEDUANYA menguji data klaim, bukan peran penekan tombol: `isAnalisatorTravel`
+  // berkelas `ASM-FW-GCNMFW-Work-PNC`, sedangkan rule peran (`IsAnalisator`) berkelas
+  // `Data-Admin-Operator-ID`. Lihat catatan pada showSendToRCLPUCL.
+  it.each([
+    {
+      name: 'PA yang sudah ditransfer ke Analyst',
+      klaim: claim({ sudah_transfer_analis: true }, { lini: '002', jenis_bisnis: 'PA' }),
+      tugas: task(),
+    },
+    {
+      name: 'Travel yang sudah ditransfer ke Analyst',
+      klaim: claim({ sudah_transfer_analis: true }, { lini: '005', jenis_bisnis: 'Travel' }),
+      tugas: task(),
+    },
+    {
+      name: 'Travel sudah transfer, penekan BUKAN anggota grup Analyst',
+      klaim: claim({ sudah_transfer_analis: true }, { lini: '005', jenis_bisnis: 'Travel' }),
+      tugas: task({ analis: false }),
+    },
+  ])('menampilkan Kirim ke RCL/PUCL untuk $name', ({ klaim, tugas }) => {
+    wrap(<SurveyorForm klaim={klaim} tugas={tugas} />)
+    // Tugasnya dapat dikerjakan pemanggil, sehingga tombolnya membuka modal.
+    expect(screen.getByRole('button', { name: 'Kirim ke RCL/PUCL' })).toBeEnabled()
+  })
+
+  it('membuka modal KomentarRCLPUCL saat Kirim ke RCL/PUCL ditekan', async () => {
+    const user = userEvent.setup()
+    wrap(
+      <SurveyorForm
+        klaim={claim({ sudah_transfer_analis: true }, { lini: '002', jenis_bisnis: 'PA' })}
+        tugas={task()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Kirim ke RCL/PUCL' }))
+    expect(screen.getByRole('dialog', { name: 'Kirim ke RCL/PUCL' })).toBeInTheDocument()
+  })
+
+  it('mematikan Kirim ke RCL/PUCL bila tugasnya bukan milik pemanggil', () => {
+    wrap(
+      <SurveyorForm
+        klaim={claim({ sudah_transfer_analis: true }, { lini: '002', jenis_bisnis: 'PA' })}
+        tugas={task({ dapat_dikerjakan: false, pemilik: 'ORANG LAIN' })}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Kirim ke RCL/PUCL' })).toBeDisabled()
+  })
+
+  it.each([
+    {
+      name: 'PA yang belum ditransfer ke Analyst',
+      klaim: claim({}, { lini: '002', jenis_bisnis: 'PA' }),
+      tugas: task(),
+    },
+    {
+      name: 'Travel yang belum ditransfer ke Analyst',
+      klaim: claim({}, { lini: '005', jenis_bisnis: 'Travel' }),
+      tugas: task({ analis: true }),
+    },
+    {
+      name: 'lini lain meski sudah ditransfer ke Analyst',
+      klaim: claim({ sudah_transfer_analis: true }),
+      tugas: task({ analis: true }),
+    },
+  ])('tidak menampilkan Kirim ke RCL/PUCL untuk $name', ({ klaim, tugas }) => {
+    wrap(<SurveyorForm klaim={klaim} tugas={tugas} />)
+    expect(screen.queryByRole('button', { name: 'Kirim ke RCL/PUCL' })).not.toBeInTheDocument()
+  })
+
   it.each([
     { name: 'Marine Cargo menurut jenis bisnis', polis: { lini: '999', jenis_bisnis: 'MarineCargo' } },
     { name: 'Fire menurut jenis bisnis', polis: { lini: '999', jenis_bisnis: 'Fire' } },
@@ -271,6 +341,59 @@ describe('tab', () => {
 })
 
 describe('grid Adjustment', () => {
+  // ShowObjectAdj IsPA: Pekerjaan dan Tanggal Lahir (T_PERSONLIST), Nilai Estimasi, tanpa Lokasi dan Adjuster.
+  it('lini PA memakai kolom grid objek PA', () => {
+    const base = claim()
+    const pa = claim({ objek: base.objek.map((o) => ({ ...o, pekerjaan: 'KARYAWAN', tanggal_lahir: '1989-05-24' })) }, { lini: '002', jenis_bisnis: 'PA' })
+    wrap(<SurveyorForm klaim={pa} tugas={task({ tindakan_keluar: 'InputSurveyorPA' })} />)
+
+    const summary = screen.getByRole('table', { name: 'Adjustment dan akseptasi' })
+    const header = within(summary).getAllByRole('columnheader').slice(0, 7).map((h) => h.textContent)
+    expect(header).toEqual(['', 'Nama Objek', 'Pekerjaan', 'Tanggal Lahir', 'Currency', 'Nilai Estimasi', 'Nilai Akseptasi Klaim'])
+    const row = within(summary).getAllByRole('row')[1]!
+    expect(row).toHaveTextContent('KARYAWAN')
+    expect(row).toHaveTextContent('24/05/89')
+    // ObjectCoverageAdj IsPA: baris coverage memuat Penyebab Kerugian.
+    const coverage = screen.getAllByRole('table').find((t) => t.querySelector('caption')?.textContent?.startsWith('Jaminan'))!
+    expect(within(coverage).getAllByRole('columnheader').slice(0, 5).map((h) => h.textContent)).toEqual(['', 'Nama Coverage', 'Penyebab Kerugian', 'Mata Uang', 'TSI'])
+  })
+
+  // TrfKomiteButton (IsPA): Transfer ke Analyst pada setiap jaminan yang belum ditandai, tahap Estimation PA.
+  it('lini PA tahap Estimation menampilkan Transfer ke Analyst pada jaminan yang belum ditandai', () => {
+    const base = claim({ tahap_kini: 'estimasi-pa' }, { lini: '002', jenis_bisnis: 'PA' })
+    const pa = {
+      ...base,
+      objek: base.objek.map((o) => ({
+        ...o,
+        coverage: o.coverage.map((c, i) => ({ ...c, id: i === 0 ? '10003' : '10009', sudah_transfer_analis: i === 0 })),
+      })),
+    }
+    wrap(<SurveyorForm klaim={pa} tugas={task({ tahap: 'estimasi-pa', nama_tahap: 'Estimation', tindakan_keluar: 'InputSurveyor' })} />)
+
+    const buttons = screen.getAllByRole('button', { name: 'Transfer ke Analyst' })
+    expect(buttons).toHaveLength(1)
+    // Sel terakhir baris jaminan itu sendiri (sejajar Nama Coverage), di atas grid adjustment-nya.
+    expect(buttons[0]!.closest('tr')).toHaveTextContent('Kosong')
+  })
+
+  // ValidationAdjustment step 15: Tambah pada jaminan PA tanpa adjustment memanggil NewEstimationPA lebih dulu.
+  it('lini PA: Tambah memanggil rute tambah sebelum membuka baris baru', async () => {
+    const seen: string[] = []
+    vi.stubGlobal('fetch', (url: string) => {
+      seen.push(url)
+      if (url === '/api/registrasi/mata-uang') return Promise.resolve(json(200, { pilihan: [{ id: 'IDR', nama: 'Rupiah' }] }))
+      if (url.endsWith('/adjustment/tambah')) return Promise.resolve(json(200, { klaim: { id: 'klaim-1' } }))
+      return Promise.resolve(json(200, { pilihan: [], adjustment: settlement({}), spreading: [] }))
+    })
+    const base = claim({ tahap_kini: 'estimasi-pa' }, { lini: '002', jenis_bisnis: 'PA' })
+    const pa = { ...base, objek: base.objek.map((o) => ({ ...o, coverage: [{ ...o.coverage[1]!, id: '10003' }] })) }
+    wrap(<SurveyorForm klaim={pa} tugas={task({ tahap: 'estimasi-pa', nama_tahap: 'Estimation', tindakan_keluar: 'InputSurveyor' })} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    expect(await screen.findByRole('group', { name: 'Adjustment baru' })).toBeInTheDocument()
+    expect(seen).toContain('/api/registrasi/klaim/klaim-1/adjustment/tambah')
+  })
+
   it('menjumlahkan nilai akseptasi klaim dan adjuster, lalu membuka editor Tambah', async () => {
     wrap(<SurveyorForm klaim={claim()} tugas={task()} />)
 

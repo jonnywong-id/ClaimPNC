@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { DateField } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
+import { NumberField } from '@/components/NumberField'
 import { centsToRupiah, formatDate, rupiahToCents } from '@/components/format'
 
 import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
@@ -240,14 +241,12 @@ export function ClaimReportFormPage() {
             error={violation['nama_kurir']}
             disabled={!editable}
           />
-          <Field
+          <NumberField
             id="jumlah_dokumen"
             label="Total Jumlah Dokumen"
-            type="number"
-            min={0}
             max={FIELD_LIMIT.jumlahDokumen}
-            value={values.jumlah_dokumen === 0 ? '' : String(values.jumlah_dokumen)}
-            onChange={(e) => set('jumlah_dokumen', Number(e.target.value) || 0)}
+            value={values.jumlah_dokumen}
+            onValueChange={(jumlah_dokumen) => set('jumlah_dokumen', jumlah_dokumen)}
             error={violation['jumlah_dokumen']}
             disabled={!editable}
             hint="Rincian per dokumen menunggu modul penyimpanan dokumen."

@@ -610,6 +610,26 @@ var kolomTanpaSumber = map[reportklaim.Code][]string{
 	reportklaim.CodeTAT: {
 		"Status", // "Remark"
 	},
+
+	// Sebab KETIGA, dan hanya panel ini yang punya: sumbernya ADA dan jelas, tetapi
+	// tersimpan di tempat yang tidak dapat dibaca SQL.
+	//
+	// Keduanya berasal dari `ClaimData.ComplianceList(<LAST>)` — page list di dalam BLOB
+	// Pega. Dipastikan tiga kali: keenam rule Property-nya tanpa `pyColumnInclusion`,
+	// kueri katalog atas `PC_ASM_FW_GCNMFW_WORK` nol kolom ber-`%COMPLIANCE%`, dan kelas
+	// `ASM-FW-GCNMFW-Work-Compliance` `belongs to a class group` sehingga menumpang tabel
+	// yang sama.
+	//
+	// Keduanya tetap DIDAFTARKAN sebagai kolom berkas, bukan dibuang, supaya bentuk
+	// berkasnya tetap 12 kolom seperti Pega dan dapat dibandingkan berdampingan.
+	//
+	// Yang memulihkannya: Declare Index atas `ComplianceList` — bukan "Optimize for
+	// Reporting", karena keduanya ada di dalam page list dan satu klaim dapat punya
+	// banyak barisnya.
+	reportklaim.CodeCompliance: {
+		"Remark",    // "Komentar Compliance"
+		"NoteKasir", // "Tanggal Compliance"
+	},
 	reportklaim.CodeKlaimHarian: {
 		"Location", // "Location"
 	},

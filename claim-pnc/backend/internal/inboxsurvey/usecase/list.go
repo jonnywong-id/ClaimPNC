@@ -76,19 +76,37 @@ type Column struct {
 	// layarnya mengira isinya hilang. Yang berubah: judulnya menyatakan sebabnya lewat Note,
 	// alih-alih menampilkan sel kosong yang terbaca sebagai "data belum diisi".
 	Available bool
+
+	// Substitute menyatakan kolom ini TERISI, tetapi dari kolom yang BERBEDA dari Pega.
+	//
+	// # Kenapa keadaan ketiga, bukan cukup dua
+	//
+	// `Available` membedakan "terisi" dari "kosong". Ia TIDAK dapat menyatakan keadaan yang
+	// paling berbahaya di antara keduanya: **terisi, wajar dilihat, dan bukan angka yang
+	// sama dengan Pega**.
+	//
+	// Keadaan itu nyata pada tiga kolom. Pega membacanya dari kolom objek kerja yang
+	// `POOLDATA.T_SURVEYORLIST` **tidak punya sama sekali** — terbukti dari daftar kolom
+	// `INSERT_SURVEYORLIST.prc:31-32` dan `:38-52`:
+	//
+	//	judul layar         Pega                     di sini
+	//	------------------- ------------------------ ------------------------
+	//	Status ASM          a.ASMSTATUS_1            s.STS_SURVEY
+	//	PIC Loss Adjuster   a.ADJUSTERPIC_1          s.SURVEYOR_NAME
+	//	Location            a.RescheduleLocation_1   s.LOCATION_SURVEY
+	//
+	// Menandainya `Available: false` akan menyembunyikan data yang benar-benar ada dan
+	// berguna. Membiarkannya polos akan menyamarkan selisih yang menyentuh `P-5`. Penanda
+	// tersendiri inilah yang membuat pengguna melihat keduanya sekaligus.
+	Substitute bool
 }
 
-// Kedua kolom yang belum tersedia punya SEBAB YANG BERBEDA, dan teksnya karena itu terpisah.
+// Tinggal SATU kolom yang belum tersedia — "Reference No" — sehingga keterangannya ditulis di
+// tempatnya sendiri, bukan sebagai konstanta bersama.
 //
-// Menyatukannya pernah dicoba — satu konstanta bersama — dan hasilnya menyesatkan: keduanya
-// terbaca menunggu hal yang sama, padahal yang satu menunggu `ALTER` dari DBA dan yang satu
-// lagi menunggu jalur pengisian dari Tim Pega.
-const (
-	columnNotAdded = "BELUM TERSEDIA. Kolomnya belum ada di POOLDATA.T_SURVEYORLIST."
-
-	columnAddedButEmpty = "BELUM TERSEDIA. Kolomnya sudah ada di POOLDATA.T_SURVEYORLIST " +
-		"tetapi seluruh barisnya masih kosong — menunggu jalur pengisian dari Tim Pega."
-)
+// Konstanta bersama sempat ada dan dihapus 2026-10-03: begitu "Appointment No" hidup, satu-
+// satunya pemakai lainnya tinggal satu, dan konstanta yang dipakai sekali hanya menjauhkan
+// teksnya dari kolom yang dijelaskannya.
 
 // columns adalah ketiga belas kolom layar, dalam urutan tampilnya.
 //
@@ -98,16 +116,16 @@ var columns = []Column{
 	{
 		Key:   "appointment_no",
 		Title: "Appointment No",
-		Note: columnNotAdded + " Padanan Pega-nya `ADJUSTERPIC_1`, yang menurut " +
-			"`ExportDataDetailKlaim-SQL.xml` berisi NAMA adjuster eksternal — bukan nomor " +
-			"penugasan. Bila itu benar, isinya sudah dibawa SURVEYOR_NAME dan kolom ini " +
-			"tidak perlu ditambahkan sama sekali.",
-		Available: false,
+		Note: "Nomor berkas survei, dipotong dari POOLDATA.T_SURVEYORLIST.CASEID — sama " +
+			"seperti Pega, yang memotongnya dengan @substring(.CaseID,19,30).",
+		Available: true,
 	},
 	{
-		Key:       "reference_no",
-		Title:     "Reference No",
-		Note:      columnAddedButEmpty + " Kolomnya `REFNO`.",
+		Key:   "reference_no",
+		Title: "Reference No",
+		Note: "BELUM TERSEDIA. Kolomnya POOLDATA.T_SURVEYORLIST.REFNO sudah ada tetapi " +
+			"seluruh barisnya masih kosong — menunggu jalur pengisian dari Tim Pega. " +
+			"Asalnya terbukti dari keempat kueri tab: a.REFNO_1 AS \"UserName\".",
 		Available: false,
 	},
 	{Key: "claim_no", Title: "Claim No", Available: true},
@@ -121,9 +139,27 @@ var columns = []Column{
 			"export, sehingga pemetaannya belum dapat dibuktikan.",
 		Available: true,
 	},
-	{Key: "location", Title: "Location", Available: true},
+	{
+		Key:   "location",
+		Title: "Location",
+		Note: "PENGGANTI, dan terukur berbeda pada 660 dari 2.427 berkas. Pega menggambar " +
+			"`RescheduleLocation_1` yang berasal dari `ObjectSurveyLocation`. Kolom ini " +
+			"menggambar `LOCATION_SURVEY`, yang diisi `Param.ObjName` — yaitu lokasi objek " +
+			"atau nama objek. Dua konsep, bukan dua salinan.",
+		Available:  true,
+		Substitute: true,
+	},
 	{Key: "pic_asm", Title: "PIC ASM", Available: true},
-	{Key: "pic_loss_adjuster", Title: "PIC Loss Adjuster", Available: true},
+	{
+		Key:   "pic_loss_adjuster",
+		Title: "PIC Loss Adjuster",
+		Note: "PENGGANTI, dan terukur berbeda orang. Pega menggambar `ADJUSTERPIC_1` — PIC " +
+			"pada adjuster eksternal, terisi 1.796 dari 2.126 berkas type 2 dan hampir " +
+			"tidak pernah pada surveyor internal. Kolom ini menggambar `SURVEYOR_NAME`, " +
+			"padanan `SURVEYORNAME_1`. Dari 2.463 berkas, hanya 3 yang namanya sama.",
+		Available:  true,
+		Substitute: true,
+	},
 	{Key: "date_of_loss", Title: "Date of Loss", Available: true},
 	{
 		Key:   "aging",
@@ -136,9 +172,11 @@ var columns = []Column{
 	{
 		Key:   "status_asm",
 		Title: "Status ASM",
-		Note: "Diambil dari `STS_SURVEY` pada langkah terakhir jejak perkembangan survei. " +
-			"Kolom itu terbukti membawa domain `ADJUSTERSTATUS_1` — sebarannya di produksi " +
-			"memuat `Final Report`, `Invoice Fee`, dan `Close Case`.",
+		Note: "Peran koasuransi ASM pada klaim ini — LEADER atau MEMBER — dari " +
+			"`T_CLAIM_PNC.LEADER_MEMBER`. Padanannya di Pega `ASMSTATUS_1`, diukur di " +
+			"produksi tanpa satu pun pertentangan pada 17.633 baris. Selisihnya 10 baris " +
+			"(0,06%): Pega menggambar LEADER saat kolomnya kosong, sedangkan di sini " +
+			"peran sebenarnya yang digambar.",
 		Available: true,
 	},
 }
@@ -307,7 +345,7 @@ func PlannedDifferences() []string {
 // keterbatasan yang selesai dapat dihapus tanpa menyentuh keputusan yang masih berlaku.
 func Limitations() []string {
 	return []string{
-		"EMPAT dari tujuh tab dan DUA dari tiga belas kolom belum dapat diisi, dan sebabnya " +
+		"EMPAT dari tujuh tab dan SATU dari tiga belas kolom belum dapat diisi, dan sebabnya " +
 			"BUKAN kolom yang tidak ada. Per 2026-09-30 `ADJUSTERACCEPT`, `REFNO`, dan " +
 			"`PYSTATUSWORK` SUDAH ditambahkan ke `POOLDATA.T_SURVEYORLIST` — tetapi seluruh " +
 			"17.641 barisnya masih kosong. Yang ditunggu sekarang adalah jalur PENGISIANNYA " +
@@ -320,11 +358,6 @@ func Limitations() []string {
 			"angkanya masuk akal, isinya salah. Tab ALL dan Invoice sebaliknya, kosong sama " +
 			"sekali, yang terbaca sebagai tidak ada pekerjaan.",
 
-		"Satu kolom masih benar-benar belum ada: `ADJUSTERPIC` untuk \"Appointment No\". " +
-			"Padanannya di Pega berisi NAMA adjuster eksternal, bukan nomor penugasan, " +
-			"sehingga kemungkinan besar kolom itu tidak perlu ditambahkan sama sekali — " +
-			"`SURVEYOR_NAME` sudah membawanya. Menunggu keputusan Work Owner.",
-
 		"Berkas survei yang SUDAH ditutup atau dibatalkan di Pega masih ikut ditampilkan. " +
 			"Penyaringnya sudah terpasang dan akan menyala SENDIRI begitu `PYSTATUSWORK` " +
 			"terisi — tidak ada perubahan kode yang dibutuhkan. Diukur di produksi " +
@@ -333,13 +366,27 @@ func Limitations() []string {
 		"Kotak cari kehilangan satu kolom. Layar lama mencari pada Claim No DAN Reference " +
 			"No; yang kedua ikut tertunda bersama kolomnya.",
 
-		"Empat kueri tab layar lama HILANG dari export — `BrowseOSLostAdjuster`, " +
-			"`BrowseConfirmLostAdjuster`, `BrowseCommunicationLostAdjuster`, dan " +
-			"`BrowseCloseLostAdjuster`. Penyaring ketujuh tab dipulihkan dari " +
-			"`CountOSLostAdjuster` yang menghitung keranjang yang sama; daftar kolom dan " +
-			"urutannya mengikuti `BrowseLossAdjuster`.",
+		"Keempat kueri tab layar lama DITERIMA 2026-10-03, dan pemetaan kolom disusun " +
+			"ulang terhadapnya. Sebelum itu ia disusun dari `BrowseLossAdjuster` dan " +
+			"`BrowseInternalSurveyor` — dua kueri yang ternyata BUKAN penggerak grid ini — " +
+			"sehingga lima hal keliru sekaligus: urutan daftar, asal Cause Of Loss, " +
+			"Location, PIC Loss Adjuster, dan Status ASM.",
 
-		"Satu pemetaan kolom menunggu konfirmasi DBA: \"Cause Of Loss\" ke `LOSSTYPE`.",
+		"Kolom \"Status ASM\" menampilkan hal yang BERBEDA dari Pega, dan ini selisih yang " +
+			"belum diputuskan. Pega menggambar `ASMSTATUS_1` (bernilai seperti `MEMBER`); " +
+			"modul ini menggambar `STS_SURVEY` yang berisi progres adjuster. " +
+			"`POOLDATA.T_SURVEYORLIST` tidak punya padanan `ASMSTATUS` sama sekali.",
+
+		"ENAM padanan kolom masih BELUM diuji ke basis data, dan seluruhnya dipakai hari " +
+			"ini: Claim No (`CASEID_1`), Policy No (`POLICYNO`), Insured Name (`QQNAME`), " +
+			"Location (`RescheduleLocation_1` versus `LOCATION_SURVEY`), PIC Loss Adjuster " +
+			"(`ADJUSTERPIC_1` versus `SURVEYOR_NAME`), dan Aging (`pxcreatedatetime` versus " +
+			"`TGLINPUT`). Padanannya masuk akal, tetapi masuk akal bukan terbukti.",
+
+		"Tab komunikasi di Pega hanya menampilkan berkas yang MASIH punya penugasan " +
+			"terbuka — `BrowseCommunicationLostAdjuster` menyambung ke " +
+			"`pc_assign_worklist` lewat `a.pzInsKey = b.pxrefobjectkey`. Modul ini tidak " +
+			"membawa penyaring itu, sehingga tabnya dapat memuat lebih banyak baris.",
 
 		"Membuka baris untuk mengerjakan surveinya belum tersedia. Di layar lama tautannya " +
 			"membuka penugasan `Surveyor_Flow`, dan flow itu tidak ada di export — " +

@@ -114,23 +114,28 @@ func translate(f dashboardclaim.Filter) inboxcloseclaim.Filter {
 
 // adapt memetakan satu klaim tutup menjadi baris telusur dashboard.
 //
-// Kolom yang tidak digambar layar ini — tanggal tutup, tanggal selesai, status transfer
+// Kolom yang tidak digambar tile ini — tanggal tutup, tanggal selesai, status transfer
 // kasir — tidak ikut dibawa. Membawanya berarti menambah kolom pada kontrak yang tidak
 // dipakai siapa pun, dan kontrak lebih sulit dikecilkan daripada dibesarkan.
+//
+// ReportDate sengaja TIDAK diisi: layar lama tidak menggambar kolom "Report Date" pada tile
+// Close Claim, dan modul sebelah pun tidak membacanya. Mengisinya dengan tanggal lain yang
+// kebetulan ada akan menampilkan angka yang tampak sah dan salah.
 func adapt(claim inboxcloseclaim.ClosedClaim) dashboardclaim.ClaimRow {
 	return dashboardclaim.ClaimRow{
-		ClaimID:         claim.ClaimID,
-		ClaimNumber:     claim.ClaimNumber,
-		PolicyNumber:    claim.PolicyNumber,
-		InsuredName:     claim.InsuredName,
-		BusinessName:    claim.BusinessName,
-		BusinessSource:  claim.BusinessSource,
-		BranchName:      claim.BranchName,
-		TechnicalPIC:    claim.TechnicalPIC,
-		AdminPNC:        claim.AdminPNC,
-		ClaimStatusCode: claim.ClaimStatusCode,
-		ProcessStatus:   claim.ProcessStatus,
-		LossDate:        claim.LossDate,
-		RegisteredAt:    claim.RegisteredAt,
+		ClaimID:          claim.ClaimID,
+		ClaimNumber:      claim.ClaimNumber,
+		PolicyNumber:     claim.PolicyNumber,
+		InsuredName:      claim.InsuredName,
+		BusinessName:     claim.BusinessName,
+		BusinessSource:   claim.BusinessSource,
+		BranchName:       claim.BranchName,
+		TechnicalPIC:     claim.TechnicalPIC,
+		AdminPNC:         claim.AdminPNC,
+		ClaimStatusCode:  claim.ClaimStatusCode,
+		ClaimStatusLabel: claim.ClaimStatusLabel,
+		ProcessStatus:    claim.ProcessStatus,
+		LossDate:         claim.LossDate,
+		RegisteredAt:     claim.RegisteredAt,
 	}
 }

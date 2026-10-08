@@ -76,19 +76,38 @@ import (
 // Angka yang sama diulang di frontend supaya pengguna tahu sebelum mengirim; server tetap
 // yang berwenang. Bila salah satu berubah, KEDUANYA wajib ikut berubah.
 const (
-	MaxOperatorIDLength   = 64
-	MaxEmailLength        = 100
-	MaxGroupLength        = 50
-	MaxSupervisorLength   = 64
-	MaxBusinessLineLength = 50
+	MaxOperatorIDLength = 64
+	MaxEmailLength      = 100
+	MaxSupervisorLength = 64
 )
 
-// MaxQuota menahan angka kuota yang tidak masuk akal.
+// MaxClaimCounter menahan angka pencacah klaim yang tidak masuk akal.
 //
 // Ia bukan aturan bisnis yang ditemukan di export — tidak ada batas di sana — melainkan
-// penjaga agar salah ketik tidak menghasilkan petugas berkuota jutaan yang menyedot
-// seluruh antrean penugasan.
-const MaxQuota = 9999
+// penjaga agar salah ketik tidak menghasilkan pencacah berisi jutaan, yang akan membuat
+// petugas itu tidak pernah terpilih lagi oleh `ORDER BY counter_quota ASC`.
+const MaxClaimCounter = 9999
+
+// GroupCodes adalah seluruh nilai sah kolom TEAM_GROUP, berlabel "Kelompok".
+//
+// Bukan tebakan dari data: dibaca dari `Property/TEAM_GROUP_property.xml`, yang
+// mendaftarkannya sebagai Local List ber-`pyStandardValue` A, B, dan C. Itulah yang
+// mengisi dropdown di layar Pega.
+var GroupCodes = []string{"A", "B", "C"}
+
+// BusinessCodes adalah seluruh nilai sah kolom TYPE_BUSINESS, berlabel "Bisnis".
+//
+// Dibaca dari `Property/TYPE_BUSINESS_property.xml`. Urutannya sengaja mengikuti urutan
+// `pyStandardValue` di berkas itu, bukan diurutkan ulang menurut abjad — dropdown-nya
+// tampil dalam urutan yang sama dengan layar lama.
+var BusinessCodes = []string{"NONMBU", "TRAVEL", "PA", "BONDING"}
+
+// ATASAN sengaja TIDAK punya daftar nilai.
+//
+// `Property/ATASAN_property.xml` adalah properti Text biasa tanpa `pyStandardValue`; yang
+// membatasi isiannya di layar adalah autocomplete atas daftar operator
+// (`Section/BrowseUserTeknis-Section.xml:20650` menampilkan `.MCL_NAME`, menyimpan
+// `.OPERATOR_ID`). Karena itu isinya divalidasi sebagai teks, bukan sebagai pilihan.
 
 // ActiveCode adalah isi kolom STS_AKTIF untuk petugas yang aktif.
 //
@@ -118,12 +137,16 @@ type Technician struct {
 	// menyalin nama dan id, tidak menyentuh surel.
 	Email string
 
-	// BusinessLine adalah TYPE_BUSINESS. Ia teks bebas, bukan pilihan tertutup:
-	// satu-satunya nilai yang benar-benar muncul di export adalah "NONMBU", dan mengarang
-	// daftar pilihan dari satu contoh akan menolak nilai sah yang belum terlihat.
+	// BusinessLine adalah TYPE_BUSINESS, berlabel **"Bisnis"** di layar.
+	//
+	// Isinya teks bebas di sisi penyimpanan — layar Pega menyajikannya sebagai dropdown,
+	// tetapi daftar pilihannya tidak ada di export. Nilai yang benar-benar terlihat:
+	// "NONMBU" dan "BONDING".
 	BusinessLine string
 
-	// Group adalah TEAM_GROUP, kelompok kerja petugas.
+	// Group adalah TEAM_GROUP, berlabel **"Kelompok"** di layar.
+	//
+	// Nilai yang benar-benar terlihat berupa huruf tunggal: "A", "B", "C".
 	Group string
 
 	// Supervisor adalah ATASAN — diisi OPERATOR_ID atasannya, bukan namanya.
@@ -133,23 +156,32 @@ type Technician struct {
 	// diusulkan dari blok `EmpLeader` respons direktori, dan tetap dapat diubah petugas.
 	Supervisor string
 
-	// Quota adalah COUNTER_QUOTA, banyaknya pekerjaan yang boleh dipikul petugas ini.
-	Quota int
+	// ClaimCounterBelow1M adalah COUNTER_QUOTA, berlabel **"Counter Klaim <1M"**.
+	//
+	// # Ini PENCACAH, bukan kuota
+	//
+	// Nama kolomnya menyesatkan dan sempat menyesatkan saya juga. Labelnya di layar
+	// (`Section/BrowseUserTeknis-Section.xml:21683`) menyebutnya pencacah klaim, dan
+	// pemakaiannya membenarkan itu: `RDB List/BrowsePICRandomTeam-SQL.xml:39-40` memilih
+	// petugas dengan `ORDER BY counter_quota ASC` — yang paling sedikit menangani klaim —
+	// lalu `AddTJobCounterPIC_SQL` menaikkannya satu. Tidak ada satu pun tempat yang
+	// membandingkannya sebagai batas.
+	//
+	// Pemisahan "<1M" dan ">1M" adalah nilai klaim di bawah dan di atas **Rp 1 Miliar**,
+	// ambang yang sama dengan Notice of Large Losses.
+	ClaimCounterBelow1M int
 
-	// ExternalQuota adalah COUNTER_QUOTA2.
+	// ClaimCounterAbove1M adalah COUNTER_QUOTA2, berlabel **"Counter Klaim >1M"**.
 	//
-	// Namanya di sistem lama — alias "OLD_OPERATOR_ID" — menyesatkan: isinya ANGKA, bukan
-	// identitas. Procedure lamanya pun menerimanya sebagai `TJOB2 number`.
+	// Aliasnya di sistem lama — "OLD_OPERATOR_ID" — menyesatkan dua kali: ia bukan
+	// identitas (procedure menerimanya sebagai `TJOB2 number`), dan ia bukan "kuota sistem
+	// lain" seperti yang sempat saya tulis. Ia pencacah klaim bernilai di atas Rp 1 Miliar.
 	//
-	// `SetTotalJobMstUserTeknis` mengisinya dengan `sum(total_job)` dari sistem luar lewat
-	// DB link (`new_general.m_user_job@opjava.sinarmas.co.id`), yaitu beban kerja petugas
-	// yang sama di aplikasi lain. DB link itu TIDAK dibawa ke sini — `ADR-0008` menetapkan
-	// DB link diganti API, dan API-nya belum ada.
-	//
-	// Sampai API itu ada ia dikelola sebagai isian biasa, dan itu bukan penyimpangan:
-	// layar Pega pun menandainya `pyReadOnly=false`
-	// (`Section/BrowseUserTeknis-Section.xml:22351`).
-	ExternalQuota int
+	// `SetTotalJobMstUserTeknis` pernah mengisinya dari sistem luar lewat DB link
+	// (`new_general.m_user_job@opjava.sinarmas.co.id`); DB link itu TIDAK dibawa ke sini
+	// (`ADR-0008`). Layar Pega menandainya `pyReadOnly=false`
+	// (`Section/BrowseUserTeknis-Section.xml:22351`), jadi ia tetap dapat diisi petugas.
+	ClaimCounterAbove1M int
 
 	// PanelGroup adalah GROUPPANEL, dialias "IBNR" pada `GetMasterPICTeknis`.
 	//
@@ -158,13 +190,16 @@ type Technician struct {
 	// Menjadikannya dapat diubah di sini berarti menambah perilaku yang tidak pernah ada.
 	PanelGroup string
 
-	// Workload adalah TOTAL_JOB, beban pekerjaan petugas yang sebenarnya — berbeda dari
-	// Quota yang menyatakan batas yang BOLEH dipikul.
+	// Workload adalah TOTAL_JOB, kolom milik view POOLDATA.V_MST_USER_TEKNIS yang tidak
+	// ada di tabelnya.
 	//
-	// HANYA DIBACA, dan hanya terisi pada daftar: ia kolom milik view
-	// POOLDATA.V_MST_USER_TEKNIS dan tidak ada di tabelnya. Layar Pega pun menandainya
-	// `pyReadOnly=true` (`Section/BrowseUserTeknis-Section.xml:19414`), dan
-	// `GetMasterPICTeknis` yang mengisi form tidak menyertakannya sama sekali.
+	// **TIDAK DITAMPILKAN DI LAYAR MANA PUN**, dan itu mengikuti Pega: grid-nya memuat
+	// tujuh kolom dan TOTAL_JOB bukan salah satunya, sementara form-nya pun tidak
+	// memuatnya. Ia ikut dibaca karena Report Definition lama memang menyebutnya dan
+	// karena mengambilnya tidak berbiaya — bukan karena ada yang memakainya.
+	//
+	// Jangan menampilkannya tanpa keputusan Work Owner: menambahkan kolom yang tidak ada
+	// di sistem lama adalah persis yang membuat layar ini sempat berbeda dari aslinya.
 	Workload int
 
 	// Active menyatakan petugas masih menerima penugasan.
@@ -303,32 +338,42 @@ func Check(t Technician) []Violation {
 		add(FieldOperatorID, "ID operator paling panjang "+strconv.Itoa(MaxOperatorIDLength)+" karakter.")
 	}
 
-	// Surel wajib. Perbedaan yang DISENGAJA dari sistem lama, yang menerima kosong:
-	// petugas tanpa surel tidak dapat menerima satu pun pemberitahuan penugasan, dan
-	// ketiadaannya baru ketahuan saat pemberitahuan gagal terkirim — jauh dari layar ini.
-	if t.Email == "" {
-		add(FieldEmail, "Email wajib diisi.")
-	} else if !EmailPlausible(t.Email) {
+	// Surel TIDAK wajib, dan itu koreksi.
+	//
+	// Sempat diwajibkan di sini sebagai "perbedaan yang disengaja". Itu keliru:
+	// `Section/BrowseUserTeknis-Section.xml` tidak memuat satu pun `pyRequired=true` —
+	// nol isian wajib di seluruh layar — dan kolomnya NULLABLE. Mewajibkannya membuat
+	// baris lama yang surelnya kosong TIDAK DAPAT disunting sama sekali, karena petugas
+	// dipaksa mengarang surel hanya untuk mengubah kolom lain.
+	//
+	// Formatnya tetap diperiksa bila diisi; yang dicabut hanya kewajiban mengisinya.
+	if t.Email != "" && !EmailPlausible(t.Email) {
 		add(FieldEmail, "Format email tidak benar.")
 	} else if utf8.RuneCountInString(t.Email) > MaxEmailLength {
 		add(FieldEmail, "Email paling panjang "+strconv.Itoa(MaxEmailLength)+" karakter.")
 	}
 
-	if utf8.RuneCountInString(t.BusinessLine) > MaxBusinessLineLength {
-		add(FieldBusinessLine, "Lini bisnis paling panjang "+strconv.Itoa(MaxBusinessLineLength)+" karakter.")
+	// Kelompok dan Bisnis adalah PILIHAN, bukan teks bebas — keduanya Local List pada
+	// Property rule-nya. Pemeriksaannya di sini, bukan hanya di layar, karena pemanggilan
+	// langsung ke API tidak melewati dropdown mana pun.
+	//
+	// Kosong tetap diterima: layar Pega menyajikan pilihan `--Pilih--`, dan kolomnya pun
+	// NULLABLE.
+	if t.Group != "" && !oneOf(t.Group, GroupCodes) {
+		add(FieldGroup, "Kelompok harus salah satu dari "+strings.Join(GroupCodes, ", ")+".")
 	}
-	if utf8.RuneCountInString(t.Group) > MaxGroupLength {
-		add(FieldGroup, "Grup paling panjang "+strconv.Itoa(MaxGroupLength)+" karakter.")
+	if t.BusinessLine != "" && !oneOf(t.BusinessLine, BusinessCodes) {
+		add(FieldBusinessLine, "Bisnis harus salah satu dari "+strings.Join(BusinessCodes, ", ")+".")
 	}
 	if utf8.RuneCountInString(t.Supervisor) > MaxSupervisorLength {
 		add(FieldSupervisor, "Atasan paling panjang "+strconv.Itoa(MaxSupervisorLength)+" karakter.")
 	}
 
-	if t.Quota < 0 || t.Quota > MaxQuota {
-		add(FieldQuota, "Kuota harus antara 0 dan "+strconv.Itoa(MaxQuota)+".")
+	if t.ClaimCounterBelow1M < 0 || t.ClaimCounterBelow1M > MaxClaimCounter {
+		add(FieldClaimCounterBelow1M, "Counter Klaim <1M harus antara 0 dan "+strconv.Itoa(MaxClaimCounter)+".")
 	}
-	if t.ExternalQuota < 0 || t.ExternalQuota > MaxQuota {
-		add(FieldExternalQuota, "Kuota sistem lain harus antara 0 dan "+strconv.Itoa(MaxQuota)+".")
+	if t.ClaimCounterAbove1M < 0 || t.ClaimCounterAbove1M > MaxClaimCounter {
+		add(FieldClaimCounterAbove1M, "Counter Klaim >1M harus antara 0 dan "+strconv.Itoa(MaxClaimCounter)+".")
 	}
 
 	// Petugas tidak boleh menjadi atasan dirinya sendiri. Bukan aturan yang tertulis di
@@ -339,6 +384,21 @@ func Check(t Technician) []Violation {
 	}
 
 	return violation
+}
+
+// oneOf memeriksa keanggotaan dengan mengabaikan besar-kecil huruf.
+//
+// Mengabaikannya disengaja: data lama dapat menyimpan "nonmbu" sementara Property rule
+// menulis "NONMBU", dan menolak baris yang sebenarnya sah hanya karena hurufnya berbeda
+// akan membuat petugas tidak dapat menyunting barisnya sendiri.
+func oneOf(value string, allowed []string) bool {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	for _, candidate := range allowed {
+		if strings.ToUpper(candidate) == value {
+			return true
+		}
+	}
+	return false
 }
 
 // EmailPlausible memeriksa bentuk alamat surel sekadarnya.

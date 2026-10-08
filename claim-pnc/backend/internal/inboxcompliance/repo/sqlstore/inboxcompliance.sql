@@ -275,6 +275,37 @@ SELECT COUNT(*)
   FROM POOLDATA.T_CLAIM_COMPLIANCE_H
  WHERE 1 = 0
 
+-- name: check_post_audit_sequence
+-- Memeriksa sequence penomoran Post Audit ADA dan dapat dipakai akun aplikasi.
+--
+-- # Kenapa ini diperiksa terpisah, dan kenapa ia tidak boleh digabung ke check_table
+--
+-- Karena ia memeriksa jalur TULIS, sedangkan check_table memeriksa jalur BACA, dan
+-- kegagalan keduanya berakibat berbeda: tanpa hak baca seluruh layar kosong, sedangkan
+-- tanpa sequence layar tetap utuh dan hanya tombol Kirim yang gagal. Menggabungkannya
+-- membuat modul yang sebenarnya 90% berfungsi dilaporkan mati total.
+--
+-- # Kenapa ALL_SEQUENCES, bukan memanggil NEXTVAL
+--
+-- Karena `-periksa` berjanji tidak menulis apa pun, dan `NEXTVAL` MENGHABISKAN satu nomor
+-- setiap kali dipanggil — sekalipun transaksinya di-rollback, sequence Oracle tidak ikut
+-- mundur. Memeriksa dengan NEXTVAL berarti setiap kali aplikasi start, satu nomor Post
+-- Audit hilang. Lubang penomoran itu persis yang NOCACHE pada migrasi 0011 hindari.
+--
+-- `ALL_SEQUENCES` hanya memuat sequence yang DAPAT DIAKSES akun saat ini, sehingga satu
+-- kueri ini membuktikan dua hal sekaligus: objeknya ada, dan haknya diberikan. Keduanya
+-- gagal dengan pesan Oracle yang sama menyesatkan ("sequence does not exist"), sehingga
+-- membedakannya di sini tidak berguna — yang berguna adalah tahu sebelum tombol diklik.
+--
+-- Yang TIDAK dibuktikan kueri ini: hak INSERT pada tabelnya. Satu-satunya cara
+-- membuktikannya adalah benar-benar menyisipkan baris, dan itu melanggar janji `-periksa`.
+--
+-- Bind: :1 pemilik sequence · :2 nama sequence
+SELECT COUNT(*)
+  FROM ALL_SEQUENCES
+ WHERE SEQUENCE_OWNER = :1
+   AND SEQUENCE_NAME = :2
+
 -- name: check_table
 -- Memeriksa tabel inti modul ini terbaca dari koneksi yang dipakai.
 --
@@ -359,3 +390,63 @@ SELECT POOLDATA.CPNC_POST_AUDIT_SEQ.NEXTVAL
 INSERT INTO POOLDATA.T_CLAIM_COMPLIANCE_H
        (CASEID, NO_KLAIM, NAMA_TERTANGGUNG, NO_POLIS, REMARKS, TGL_KIRIM_POST_AUDIT)
 VALUES (:1, :2, :3, :4, :5, :6)
+
+-- name: find_compliance_decision
+-- Mengambil keputusan Compliance yang sudah tersimpan atas satu klaim.
+--
+-- Tabelnya MILIK aplikasi ini, bukan tabel warisan — lihat catatan pada SaveDecision di
+-- inboxcompliance.go. Tidak ada baris berarti klaimnya belum pernah diputuskan, dan itu
+-- keadaan normal, bukan galat.
+--
+-- Bind: :1 kunci klaim (PZINSKEY)
+SELECT PILIHAN            AS CHOICE,
+       NOTE               AS NOTE,
+       CATATAN            AS REMARKS,
+       DIPUTUSKAN_OLEH    AS DECIDED_BY,
+       DIPUTUSKAN_PADA    AS DECIDED_AT,
+       TGL_VALID          AS VALIDATED_AT,
+       TGL_KIRIM_POST_AUDIT AS SENT_TO_POST_AUDIT_AT
+  FROM POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE
+ WHERE NO_KLAIM = :1
+
+-- name: upsert_compliance_decision
+-- Menyimpan keputusan Compliance, menimpa keputusan sebelumnya atas klaim yang sama.
+--
+-- MERGE, bukan INSERT: satu klaim hanya punya SATU keputusan yang berlaku, karena
+-- `.ClaimData.PilihanCompliance` adalah satu properti pada klaimnya — bukan daftar.
+-- Petugas yang membuka form kedua kalinya dan mengubah pilihannya mengubah keputusan itu,
+-- tidak menambah keputusan kedua.
+--
+-- Riwayat perubahannya TIDAK disimpan di sini. Di Pega ia ada di `InsertHistoryClaimPNC`,
+-- tabel yang berbeda dan dimiliki Pega — dan sampai `S-5` ada, satu-satunya jejak
+-- perubahan keputusan di aplikasi ini adalah baris log (`D-59`).
+--
+-- `MERGE` didukung Oracle 9i+ dan PostgreSQL 15+, sehingga ia tidak menambah pengecualian
+-- dialek baru (`D-20`, `D-24` menargetkan PostgreSQL 17+).
+--
+-- Bind: :1 NO_KLAIM · :2 PILIHAN · :3 NOTE · :4 CATATAN · :5 DIPUTUSKAN_OLEH
+--       :6 DIPUTUSKAN_PADA · :7 TGL_VALID · :8 TGL_KIRIM_POST_AUDIT
+MERGE INTO POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE t
+     USING (SELECT :1 AS NO_KLAIM FROM DUAL) s
+        ON (t.NO_KLAIM = s.NO_KLAIM)
+      WHEN MATCHED THEN
+           UPDATE SET t.PILIHAN              = :2,
+                      t.NOTE                 = :3,
+                      t.CATATAN              = :4,
+                      t.DIPUTUSKAN_OLEH      = :5,
+                      t.DIPUTUSKAN_PADA      = :6,
+                      t.TGL_VALID            = :7,
+                      t.TGL_KIRIM_POST_AUDIT = :8
+      WHEN NOT MATCHED THEN
+           INSERT (NO_KLAIM, PILIHAN, NOTE, CATATAN,
+                   DIPUTUSKAN_OLEH, DIPUTUSKAN_PADA, TGL_VALID, TGL_KIRIM_POST_AUDIT)
+           VALUES (s.NO_KLAIM, :2, :3, :4, :5, :6, :7, :8)
+
+-- name: check_table_decision
+-- Membuktikan tabel keputusan Compliance ada DAN dapat dibaca akun aplikasi.
+--
+-- `FETCH FIRST 0 ROWS ONLY` memaksa Oracle mengurai dan memeriksa hak akses tanpa membaca
+-- satu baris pun — sama polanya dengan check_table_post_audit.
+SELECT 1
+  FROM POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE
+ FETCH FIRST 0 ROWS ONLY

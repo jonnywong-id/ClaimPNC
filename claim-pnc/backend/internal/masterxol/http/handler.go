@@ -39,6 +39,7 @@ type Service interface {
 	DeleteReinsurer(ctx context.Context, portalAlias, layerID, reinsurerID string) error
 	Form(ctx context.Context, portalAlias string) (usecase.FormOption, error)
 	BusinessGroup(ctx context.Context, portalAlias string, t masterxol.Type) ([]masterxol.Business, error)
+	SearchReinsurer(ctx context.Context, portalAlias, keyword string) ([]masterxol.ReinsurerOption, error)
 }
 
 // Caller adalah identitas pemanggil yang sedang bekerja.
@@ -196,6 +197,54 @@ func (h *Handler) BusinessGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	h.writeResponse(w, r, http.StatusOK, BusinessGroupResponse{
 		Bisnis: content,
+		Total:  len(content),
+		Portal: active,
+	})
+}
+
+// maxReinsurerKeywordBytes membatasi panjang kata kunci pencarian.
+//
+// Kata kunci masuk ke klausa LIKE sebagai parameter terikat, sehingga panjangnya tidak
+// menimbulkan risiko penyuntikan. Yang dibatasi adalah biayanya: kata kunci sepanjang
+// megabita memaksa basis data memindai master dengan pola yang pasti tidak cocok.
+// Satuannya KARAKTER, bukan bita: memotong per bita dapat membelah karakter multibita di
+// tengah dan menghasilkan teks yang bukan UTF-8 sah.
+const maxReinsurerKeywordRunes = 200
+
+// SearchReinsurer menangani GET /api/master/xol/reas?cari={kata kunci}.
+//
+// # Kenapa endpoint-nya ada, padahal section Pega-nya tidak
+//
+// Layar Pega memuat kotak "NAMA REASURANSI" bertombol "Cari" di atas grid Reas, dan
+// **section-nya tidak ada di export** (`R-16`). Yang dapat dibaca adalah sumber datanya —
+// `POOLDATA.T_REINSURER`, lewat `Activity/FindDataReinsurer-Act.xml` dan
+// `RDB List/GetListDataLoginReas-SQL.xml`. Lihat masterxol.Repo.SearchReinsurer.
+//
+// Kata kunci kosong dijawab daftar kosong, bukan seluruh isi master — supaya layar yang
+// memanggil tanpa isian tidak menarik ribuan baris.
+func (h *Handler) SearchReinsurer(w http.ResponseWriter, r *http.Request) {
+	active, ok := h.activePortal(w, r)
+	if !ok {
+		return
+	}
+
+	keyword := r.URL.Query().Get("cari")
+	if huruf := []rune(keyword); len(huruf) > maxReinsurerKeywordRunes {
+		keyword = string(huruf[:maxReinsurerKeywordRunes])
+	}
+
+	list, err := h.service.SearchReinsurer(r.Context(), active, keyword)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	content := make([]ReinsurerOptionDTO, 0, len(list))
+	for _, o := range list {
+		content = append(content, ReinsurerOptionDTO{ID: o.ID, Nama: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, ReinsurerSearchResponse{
+		Reas:   content,
 		Total:  len(content),
 		Portal: active,
 	})

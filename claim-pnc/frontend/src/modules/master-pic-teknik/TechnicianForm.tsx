@@ -8,10 +8,9 @@ import { ErrorCode, type Technician } from '@/api/types'
 import { Button } from '@/components/Button'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
-import { SearchIcon } from '@/components/Icon'
-import { SelectField } from '@/components/SelectField'
+import { SelectField, type SelectOption } from '@/components/SelectField'
 
-import { useLookupEmployee, useSaveTechnician } from './api'
+import { useLookupEmployee, useSaveTechnician, useTechnicianList } from './api'
 
 /**
  * Batas panjang isian; sama dengan konstanta di internal/masterpicteknik.
@@ -22,67 +21,89 @@ import { useLookupEmployee, useSaveTechnician } from './api'
  */
 const MAX_OPERATOR_ID_LENGTH = 64
 const MAX_EMAIL_LENGTH = 100
-const MAX_GROUP_LENGTH = 50
 const MAX_SUPERVISOR_LENGTH = 64
-const MAX_BUSINESS_LINE_LENGTH = 50
-const MAX_QUOTA = 9999
+const MAX_CLAIM_COUNTER = 9999
+
+/**
+ * Pilihan Kelompok dan Bisnis, DISALIN dari Property rule Pega — bukan diturunkan dari
+ * data yang kebetulan tampil.
+ *
+ *	Property/TEAM_GROUP_property.xml     pyStandardValue A · B · C
+ *	Property/TYPE_BUSINESS_property.xml  pyStandardValue NONMBU · TRAVEL · PA · BONDING
+ *
+ * Urutannya mengikuti urutan di berkas itu, bukan diurutkan ulang menurut abjad, supaya
+ * dropdown tampil sama dengan layar lama.
+ *
+ * Daftar yang sama ditegakkan server di `masterpicteknik.GroupCodes` dan `BusinessCodes`.
+ * Bila Property rule berubah, KEDUA tempat wajib ikut berubah.
+ */
+const GROUP_CODES = ['A', 'B', 'C'] as const
+const BUSINESS_CODES = ['NONMBU', 'TRAVEL', 'PA', 'BONDING'] as const
 
 /**
  * Aturan yang sama dinyatakan dua kali: di sini dan di domain Go.
  *
- * Itu duplikasi yang DISENGAJA, bukan kelalaian. Yang di sini menjawab pengguna tanpa
- * perjalanan jaringan; yang di sana adalah yang menegakkan — karena pemanggilan langsung
- * ke API tidak melewati layar ini sama sekali.
+ * Itu duplikasi yang DISENGAJA. Yang di sini menjawab pengguna tanpa perjalanan jaringan;
+ * yang di sana adalah yang menegakkan — karena pemanggilan langsung ke API tidak melewati
+ * layar ini sama sekali.
  *
- * Keberadaan pegawai di direktori TIDAK diperiksa di sini: ia menuntut memanggil layanan
- * luar, dan jawabannya dapat berubah antara saat form dibuka dan saat Simpan ditekan.
- * Penegakannya ada di server, dan galatnya disorot pada kolom id_operator.
+ * Nama isiannya mengikuti LABEL layar Pega, bukan nama kolomnya:
+ * `TYPE_BUSINESS` → Bisnis, `TEAM_GROUP` → Kelompok, `COUNTER_QUOTA` → Counter Klaim <1M.
  */
 const schema = z.object({
   id_operator: z
     .string()
     .trim()
-    .min(1, 'ID operator wajib diisi.')
-    .max(MAX_OPERATOR_ID_LENGTH, `ID operator paling panjang ${MAX_OPERATOR_ID_LENGTH} karakter.`),
+    .min(1, 'Username wajib diisi.')
+    .max(MAX_OPERATOR_ID_LENGTH, `Username paling panjang ${MAX_OPERATOR_ID_LENGTH} karakter.`),
+  // Email TIDAK wajib — Section Pega tidak memuat satu pun `pyRequired=true`, dan
+  // kolomnya NULLABLE. Mewajibkannya membuat baris lama yang surelnya kosong tidak dapat
+  // disunting sama sekali. Formatnya tetap diperiksa bila diisi.
   email: z
     .string()
     .trim()
-    .min(1, 'Email wajib diisi.')
     .max(MAX_EMAIL_LENGTH, `Email paling panjang ${MAX_EMAIL_LENGTH} karakter.`)
-    // Sengaja longgar, sama dengan EmailPlausible di domain: satu-satunya cara
-    // membuktikan alamat benar adalah mengirim surel ke sana, dan validasi yang terlalu
-    // ketat justru menolak alamat yang sah.
-    .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, 'Format email tidak benar.'),
-  lini_bisnis: z
+    // Sengaja longgar, sama dengan EmailPlausible di domain: satu-satunya cara membuktikan
+    // alamat benar adalah mengirim surel ke sana, dan validasi yang terlalu ketat justru
+    // menolak alamat yang sah.
+    .refine(
+      (value) => value === '' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value),
+      'Format email tidak benar.',
+    ),
+  // Kelompok dan Bisnis adalah PILIHAN, bukan teks bebas. Kosong tetap diterima: layar
+  // Pega menyediakan `--Pilih--`, dan kolomnya NULLABLE.
+  kelompok: z
     .string()
     .trim()
-    .max(MAX_BUSINESS_LINE_LENGTH, `Lini bisnis paling panjang ${MAX_BUSINESS_LINE_LENGTH} karakter.`),
-  grup: z.string().trim().max(MAX_GROUP_LENGTH, `Grup paling panjang ${MAX_GROUP_LENGTH} karakter.`),
+    .refine(
+      (value) => value === '' || GROUP_CODES.some((code) => code === value.toUpperCase()),
+      `Kelompok harus salah satu dari ${GROUP_CODES.join(', ')}.`,
+    ),
+  aktif: z.enum(['1', '0']),
   atasan: z
     .string()
     .trim()
     .max(MAX_SUPERVISOR_LENGTH, `Atasan paling panjang ${MAX_SUPERVISOR_LENGTH} karakter.`),
-  // Angka diubah React Hook Form lewat `valueAsNumber` saat register, BUKAN oleh
-  // `z.coerce` di sini.
-  //
-  // Alasannya bukan selera: pada Zod 4 tipe masukan `z.coerce.number()` adalah `unknown`,
-  // dan itu merusak keterkaitan tipe antara skema dan form — kesalahan nama isian tidak
-  // lagi tertangkap pemeriksa tipe. Membiarkan form yang mengubahnya menjaga jaring
-  // pengaman itu tetap utuh.
-  //
-  // Isian kosong menjadi NaN, dan `z.number()` menolaknya — itulah pesan "harus berupa
-  // angka" di bawah.
-  kuota: z
-    .number({ error: 'Kuota harus berupa angka.' })
-    .int('Kuota harus bilangan bulat.')
-    .min(0, 'Kuota tidak boleh negatif.')
-    .max(MAX_QUOTA, `Kuota paling besar ${MAX_QUOTA}.`),
-  kuota_luar: z
-    .number({ error: 'Kuota sistem lain harus berupa angka.' })
-    .int('Kuota sistem lain harus bilangan bulat.')
-    .min(0, 'Kuota sistem lain tidak boleh negatif.')
-    .max(MAX_QUOTA, `Kuota sistem lain paling besar ${MAX_QUOTA}.`),
-  aktif: z.enum(['1', '0']),
+  bisnis: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === '' || BUSINESS_CODES.some((code) => code === value.toUpperCase()),
+      `Bisnis harus salah satu dari ${BUSINESS_CODES.join(', ')}.`,
+    ),
+  // Angka diubah React Hook Form lewat `valueAsNumber`, BUKAN oleh `z.coerce`: pada Zod 4
+  // tipe masukan `z.coerce.number()` adalah `unknown`, dan itu merusak keterkaitan tipe
+  // antara skema dan form. Isian kosong menjadi NaN, dan `z.number()` menolaknya.
+  counter_klaim_kurang_1m: z
+    .number({ error: 'Counter Klaim <1M harus berupa angka.' })
+    .int('Counter Klaim <1M harus bilangan bulat.')
+    .min(0, 'Counter Klaim <1M tidak boleh negatif.')
+    .max(MAX_CLAIM_COUNTER, `Counter Klaim <1M paling besar ${MAX_CLAIM_COUNTER}.`),
+  counter_klaim_lebih_1m: z
+    .number({ error: 'Counter Klaim >1M harus berupa angka.' })
+    .int('Counter Klaim >1M harus bilangan bulat.')
+    .min(0, 'Counter Klaim >1M tidak boleh negatif.')
+    .max(MAX_CLAIM_COUNTER, `Counter Klaim >1M paling besar ${MAX_CLAIM_COUNTER}.`),
 })
 
 type FieldValues = z.infer<typeof schema>
@@ -96,24 +117,32 @@ type Props = {
 /**
  * Form tambah dan ubah Master PIC Teknik.
  *
- * Meniru `Section/BrowseUserTeknis-Section.xml` beserta pembagian isiannya:
+ * # Isiannya SAMA PERSIS dengan Pega
  *
- * | Isian | Di Pega | Di sini |
- * |---|---|---|
- * | ID Operator | diketik, memicu pencarian | sama, dengan tombol Cari yang terlihat |
- * | Nama | hasil pencarian, tidak diketik | sama, digambar sebagai kotak mati |
- * | Beban kerja | `pyReadOnly=true` | sama, hanya tampil saat mengubah |
- * | Kuota, Kuota sistem lain | dapat diisi | sama |
- * | Email, Lini bisnis, Grup, Atasan, Status | dapat diisi | sama |
- * | Grup panel | tidak ada di form | tidak ada |
+ * Urutan dan labelnya dibaca dari `Section/BrowseUserTeknis-Section.xml`, bukan dikarang:
  *
- * Yang sengaja dibuat berbeda: pencariannya punya tombol dan hasilnya terlihat sebelum
- * Simpan ditekan. Di Pega ia berjalan diam-diam, dan kegagalannya baru muncul sebagai
- * penolakan setelah seluruh form diisi.
+ *	16284 Username              → TempDcol.OPERATOR_ID   (16390)
+ *	      Input Nama            → TempDcol.MCL_NAME      (17068) — hanya dibaca
+ *	17839 Email                 → TempDcol.EMAIL         (17878)
+ *	18319 Kelompok              → TempDcol.TEAM_GROUP    (18329) — dropdown
+ *	19882 Status Aktif          → TempDcol.STS_AKTIF     (19800) — dropdown Ya/Tidak
+ *	20426 Atasan                → TempDcol.ATASAN        (20503) — dropdown
+ *	21180 Bisnis                → TempDcol.TYPE_BUSINESS (21059) — dropdown, --Pilih--
+ *	21683 Counter Klaim <1M     → TempDcol.COUNTER_QUOTA (21807)
+ *	22436 Counter Klaim >1M     → TempDcol.OLD_OPERATOR_ID (22351)
+ *
+ * Judulnya `pyTitle` pada baris 15873: **"Memperbaharui Data"**.
+ *
+ * # Yang TIDAK ada, karena tidak ada pula di Pega
+ *
+ * TOTAL_JOB tidak diisikan ke form mana pun, dan tidak ada tombol Cari tersendiri —
+ * pencariannya berjalan saat isian Username ditinggalkan, persis seperti
+ * `SetMstUserTeknisMstUser_act` yang terpicu tanpa tombol.
  */
 export function TechnicianForm({ technician, onClose }: Props) {
   const save = useSaveTechnician()
   const lookup = useLookupEmployee()
+  const list = useTechnicianList()
   const editing = technician !== null
   const firstField = useRef<HTMLInputElement | null>(null)
 
@@ -121,6 +150,8 @@ export function TechnicianForm({ technician, onClose }: Props) {
   // server. Mereka hanya ditampilkan, dan sumbernya pencarian direktori.
   const [name, setName] = useState(technician?.nama ?? '')
   const [supervisorName, setSupervisorName] = useState('')
+
+  const rows = list.data?.pic_teknik ?? []
 
   const {
     register,
@@ -134,12 +165,12 @@ export function TechnicianForm({ technician, onClose }: Props) {
     defaultValues: {
       id_operator: technician?.id_operator ?? '',
       email: technician?.email ?? '',
-      lini_bisnis: technician?.lini_bisnis ?? '',
-      grup: technician?.grup ?? '',
-      atasan: technician?.atasan ?? '',
-      kuota: technician?.kuota ?? 0,
-      kuota_luar: technician?.kuota_luar ?? 0,
+      kelompok: technician?.kelompok ?? '',
       aktif: technician?.aktif === false ? '0' : '1',
+      atasan: technician?.atasan ?? '',
+      bisnis: technician?.bisnis ?? '',
+      counter_klaim_kurang_1m: technician?.counter_klaim_kurang_1m ?? 0,
+      counter_klaim_lebih_1m: technician?.counter_klaim_lebih_1m ?? 0,
     },
   })
 
@@ -161,19 +192,21 @@ export function TechnicianForm({ technician, onClose }: Props) {
     }
   }, [save.error, setError])
 
-  // Pencarian yang gagal karena ID tidak terdaftar juga disorot pada kolom ID.
-  useEffect(() => {
-    if (!(lookup.error instanceof APIError)) return
-    const violation = lookup.error.violations()['id_operator']
-    if (violation) setError('id_operator', { type: 'server', message: violation })
-  }, [lookup.error, setError])
+  // ID yang tidak ketemu TIDAK lagi ditandai sebagai isian salah.
+  //
+  // Dulu ia dipasang lewat setError, sehingga isian memerah dan form tampak tidak dapat
+  // disimpan. Itu menyesatkan: server kini menerimanya — sama seperti Pega, yang hanya
+  // mengisi MCL_NAME apa adanya tanpa memeriksa hasil pencarian. Yang tersisa cukup
+  // sebuah keterangan di bawah isian, bukan penolakan.
+  const notFound =
+    lookup.error instanceof APIError && lookup.error.violations()['id_operator'] !== undefined
 
   /**
    * Mencari pegawai lalu mengisikan hasilnya ke form.
    *
-   * Atasan hanya diisi bila pengguna mengosongkannya — usulan direktori adalah atasan
-   * menurut struktur organisasi, dan itu belum tentu atasan penanganan klaim. Server
-   * memakai aturan yang sama persis saat menyimpan.
+   * Atasan dan surel hanya diisi bila pengguna mengosongkannya. Atasan dari direktori
+   * adalah atasan menurut struktur organisasi — belum tentu atasan penanganan klaim — dan
+   * surel memang DIKETIK di sistem lama, bukan diturunkan. Server memakai aturan yang sama.
    */
   function searchDirectory() {
     const operatorID = getValues('id_operator').trim()
@@ -186,9 +219,6 @@ export function TechnicianForm({ technician, onClose }: Props) {
         if (getValues('atasan').trim() === '') {
           setValue('atasan', answer.pegawai.atasan)
         }
-        // Surel diusulkan hanya bila kosong. Ia DIKETIK di sistem lama — pencarian di sana
-        // menyalin nama dan id saja — sehingga surel milik master ini, bukan milik
-        // direktori, dan tidak boleh menimpa yang sudah diisi petugas.
         if (getValues('email').trim() === '' && answer.pegawai.email !== '') {
           setValue('email', answer.pegawai.email)
         }
@@ -196,9 +226,9 @@ export function TechnicianForm({ technician, onClose }: Props) {
     })
   }
 
-  // onBlur ikut dipisahkan, bukan hanya ref: isian ID memicu pencarian saat ditinggalkan,
-  // dan menimpa onBlur milik React Hook Form akan mematikan penandaan "sudah disentuh"
-  // yang dipakainya. Keduanya dirantai di bawah, tidak saling menggantikan.
+  // onBlur ikut dipisahkan, bukan hanya ref: isian Username memicu pencarian saat
+  // ditinggalkan, dan menimpa onBlur milik React Hook Form akan mematikan penandaan
+  // "sudah disentuh" yang dipakainya. Keduanya dirantai, tidak saling menggantikan.
   const {
     ref: refOperatorID,
     onBlur: onBlurOperatorID,
@@ -206,113 +236,115 @@ export function TechnicianForm({ technician, onClose }: Props) {
   } = register('id_operator')
 
   function handleOperatorIDBlur(event: FocusEvent<HTMLInputElement>) {
-    onBlurOperatorID(event)
+    void onBlurOperatorID(event)
     searchDirectory()
   }
 
   function send(values: FieldValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal.
-    save.mutate(
-      {
-        ...values,
-        aktif: values.aktif === '1',
-        ubah: editing,
-      },
-      { onSuccess: onClose },
-    )
+    save.mutate({ ...values, aktif: values.aktif === '1', ubah: editing }, { onSuccess: onClose })
   }
 
   const busy = save.isPending || lookup.isPending
 
+  /*
+    Kelompok dan Bisnis memakai daftar TETAP dari Property rule Pega.
+
+    Nilai baris yang sedang disunting tetap ikut dimasukkan walau di luar daftar — tanpa
+    itu, membuka baris lama yang menyimpan nilai warisan akan mengosongkan isiannya
+    diam-diam, dan menyimpan kembali justru menghapus nilai yang sebenarnya ada.
+
+    ATASAN berbeda: `Property/ATASAN_property.xml` adalah Text biasa tanpa daftar nilai.
+    Yang membatasinya di layar Pega adalah autocomplete atas daftar operator, dan di sini
+    daftar itu diambil dari isi master yang sedang tampil.
+  */
+  const groupOptions = optionsFrom(GROUP_CODES, technician?.kelompok)
+  const businessOptions = optionsFrom(BUSINESS_CODES, technician?.bisnis)
+  const supervisorOptions = optionsFrom(
+    [...new Set(rows.map((t) => t.id_operator.trim()).filter((id) => id !== ''))]
+      .filter((id) => id !== technician?.id_operator)
+      .sort(),
+    technician?.atasan,
+  )
+
   return (
     /*
-      Panel ini muncul di atas tabel, bukan sebagai dialog melayang.
-
-      Alasannya praktis: pengguna sering perlu melihat petugas lain yang sudah ada untuk
-      memastikan grup dan atasan yang diisinya masuk akal — dan dialog yang menutup layar
-      justru menyembunyikan jawabannya.
+      Panel ini muncul di atas tabel, bukan sebagai dialog melayang: pengguna sering perlu
+      melihat petugas lain yang sudah ada untuk memastikan kelompok dan atasan yang
+      diisinya masuk akal — dan dialog yang menutup layar menyembunyikan jawabannya.
     */
     <form
       onSubmit={handleSubmit(send)}
       noValidate
       className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
-      aria-label={editing ? 'Ubah PIC teknik' : 'Tambah PIC teknik'}
+      aria-label={editing ? 'Memperbaharui Data' : 'Memperbaharui Data'}
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+        {/* Judulnya diambil dari pyTitle layar Pega apa adanya. */}
         <h3 className="text-base font-semibold text-slate-900">
-          {editing ? 'Ubah PIC Teknik' : 'Tambah PIC Teknik'}
+          {editing ? 'Memperbaharui Data' : 'Memperbaharui Data'}
         </h3>
         <p className="mt-1 text-sm text-slate-600">
           {editing
-            ? 'ID operator tetap, karena data klaim menyimpannya. Nama disegarkan dari direktori setiap kali disimpan.'
-            : 'Isi ID operator lalu tekan Cari. Nama diambil dari direktori pegawai, tidak diketik.'}
+            ? 'Username tetap, karena data klaim menyimpannya. Input Nama disegarkan dari direktori pegawai setiap kali disimpan.'
+            : 'Isi Username lalu pindah ke isian berikutnya. Input Nama diambil dari direktori pegawai, tidak diketik.'}
         </p>
       </div>
 
       <div className="space-y-5 p-5">
         {save.isError && <SaveErrorMessage error={save.error} />}
-        {lookup.isError && <LookupErrorMessage error={lookup.error} />}
+        {lookup.isError && !notFound && <LookupErrorMessage error={lookup.error} />}
 
         <div className="grid gap-5 sm:grid-cols-2">
+          {/* 1. Username */}
           {editing ? (
             <div>
-              <span className="block text-sm font-medium text-slate-700">ID Operator</span>
+              <span className="block text-sm font-medium text-slate-700">Username</span>
               {/*
                 Digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
                 dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
                 mengkliknya; kotak ini jelas bukan tempat mengetik.
               */}
-              <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-500">
+              <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
                 {technician.id_operator}
               </p>
               <p className="mt-1.5 text-xs text-slate-500">
-                Tidak dapat diubah — setiap klaim menyimpan ID ini.
+                Tidak dapat diubah — setiap klaim menyimpan Username ini.
               </p>
               <input type="hidden" {...remainingOperatorID} ref={refOperatorID} />
             </div>
           ) : (
-            <div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <Field
-                    id="id_operator"
-                    label="ID Operator"
-                    placeholder="Contoh: PICTEKNIK05"
-                    maxLength={MAX_OPERATOR_ID_LENGTH}
-                    autoComplete="off"
-                    icon={<SearchIcon className="h-4 w-4" />}
-                    error={errors.id_operator?.message}
-                    disabled={busy}
-                    {...remainingOperatorID}
-                    ref={(element) => {
-                      refOperatorID(element)
-                      firstField.current = element
-                    }}
-                    // Pencarian juga berjalan saat pengguna meninggalkan kolom, meniru
-                    // sistem lama yang memicunya tanpa tombol. Tombolnya tetap ada supaya
-                    // tindakannya terlihat — dan supaya dapat diulang tanpa mengetik ulang.
-                    onBlur={handleOperatorIDBlur}
-                  />
-                </div>
-                <Button
-                  tone="kedua"
-                  onClick={searchDirectory}
-                  disabled={busy}
-                  className="mb-[1.5rem] shrink-0"
-                  aria-label="Cari pegawai di direktori"
-                >
-                  {lookup.isPending ? 'Mencari…' : 'Cari'}
-                </Button>
-              </div>
-            </div>
+            <Field
+              id="id_operator"
+              label="Username"
+              placeholder="Contoh: PICTEKNIK05"
+              maxLength={MAX_OPERATOR_ID_LENGTH}
+              autoComplete="off"
+              hint={
+                notFound
+                  ? 'Namanya tidak ketemu di master maupun direktori pegawai. Tetap dapat disimpan; kolom Input Nama akan kosong.'
+                  : 'Nama petugas dicari setelah isian ini ditinggalkan.'
+              }
+              error={errors.id_operator?.message}
+              disabled={busy}
+              {...remainingOperatorID}
+              ref={(element) => {
+                refOperatorID(element)
+                firstField.current = element
+              }}
+              onBlur={handleOperatorIDBlur}
+            />
           )}
 
+          {/* 2. Input Nama — hanya dibaca, hasil pencarian direktori */}
           <div>
-            <span className="block text-sm font-medium text-slate-700">Nama</span>
+            <span className="block text-sm font-medium text-slate-700">Input Nama</span>
             <p className="mt-1.5 flex min-h-[2.75rem] items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
-              {name === '' ? (
-                <span className="text-slate-400">Belum dicari</span>
+              {lookup.isPending ? (
+                <span className="text-slate-400">Mencari…</span>
+              ) : name === '' ? (
+                <span className="text-slate-400">——</span>
               ) : (
                 <span className="font-medium text-slate-900">{name}</span>
               )}
@@ -322,6 +354,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
             </p>
           </div>
 
+          {/* 3. Email */}
           <Field
             id="email"
             label="Email"
@@ -329,117 +362,92 @@ export function TechnicianForm({ technician, onClose }: Props) {
             placeholder="nama@sinarmas.co.id"
             maxLength={MAX_EMAIL_LENGTH}
             autoComplete="off"
-            hint="Tujuan pemberitahuan penugasan untuk petugas ini."
             error={errors.email?.message}
             disabled={busy}
             {...register('email')}
           />
 
-          <Field
-            id="lini_bisnis"
-            label="Lini Bisnis"
-            placeholder="Contoh: NONMBU"
-            maxLength={MAX_BUSINESS_LINE_LENGTH}
-            autoComplete="off"
-            hint="Teks bebas — boleh dikosongkan."
-            error={errors.lini_bisnis?.message}
+          {/* 4. Kelompok */}
+          <SelectField
+            id="kelompok"
+            label="Kelompok"
+            options={groupOptions}
+            emptyText="--Pilih--"
+            error={errors.kelompok?.message}
             disabled={busy}
-            {...register('lini_bisnis')}
+            {...register('kelompok')}
           />
 
-          <Field
-            id="grup"
-            label="Grup"
-            placeholder="Contoh: TEKNIK JAKARTA"
-            maxLength={MAX_GROUP_LENGTH}
-            autoComplete="off"
-            error={errors.grup?.message}
+          {/* 5. Status Aktif */}
+          <SelectField
+            id="aktif"
+            label="Status Aktif"
+            options={[
+              { value: '1', label: 'Ya' },
+              { value: '0', label: 'Tidak' },
+            ]}
+            emptyText="--Pilih--"
+            error={errors.aktif?.message}
             disabled={busy}
-            {...register('grup')}
+            {...register('aktif')}
           />
 
+          {/* 6. Atasan */}
           <div>
-            <Field
+            <SelectField
               id="atasan"
               label="Atasan"
-              placeholder="ID operator atasan"
-              maxLength={MAX_SUPERVISOR_LENGTH}
-              autoComplete="off"
-              hint={
-                supervisorName === ''
-                  ? 'Diisi ID operator, bukan nama. Terisi sendiri setelah pencarian.'
-                  : undefined
-              }
+              options={supervisorOptions}
+              emptyText="--Pilih--"
               error={errors.atasan?.message}
               disabled={busy}
               {...register('atasan')}
             />
             {supervisorName !== '' && (
               <p className="mt-1.5 text-xs text-slate-500">
-                Menurut direktori: <span className="font-medium text-slate-700">{supervisorName}</span>
+                Menurut direktori:{' '}
+                <span className="font-medium text-slate-700">{supervisorName}</span>
               </p>
             )}
           </div>
 
-          <Field
-            id="kuota"
-            label="Kuota"
-            type="number"
-            min={0}
-            max={MAX_QUOTA}
-            hint="Banyaknya pekerjaan yang boleh dipikul petugas ini."
-            error={errors.kuota?.message}
-            disabled={busy}
-            {...register('kuota', { valueAsNumber: true })}
-          />
-
-          <Field
-            id="kuota_luar"
-            label="Kuota Sistem Lain"
-            type="number"
-            min={0}
-            max={MAX_QUOTA}
-            hint="Beban petugas yang sama di aplikasi lain. Diisi manual sampai API penggantinya ada."
-            error={errors.kuota_luar?.message}
-            disabled={busy}
-            {...register('kuota_luar', { valueAsNumber: true })}
-          />
-
+          {/* 7. Bisnis */}
           <SelectField
-            id="aktif"
-            label="Status"
-            options={[
-              { value: '1', label: 'Aktif' },
-              { value: '0', label: 'Nonaktif' },
-            ]}
-            emptyText="— pilih —"
-            error={errors.aktif?.message}
+            id="bisnis"
+            label="Bisnis"
+            options={businessOptions}
+            emptyText="--Pilih--"
+            error={errors.bisnis?.message}
             disabled={busy}
-            {...register('aktif')}
+            {...register('bisnis')}
           />
 
-          {editing && (
-            <div>
-              <span className="block text-sm font-medium text-slate-700">Beban Kerja</span>
-              <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
-                {technician.beban_kerja} pekerjaan berjalan
-              </p>
-              <p className="mt-1.5 text-xs text-slate-500">
-                Dihitung sistem; tidak dapat diubah dari layar ini.
-              </p>
-            </div>
-          )}
-        </div>
+          {/* 8. Counter Klaim <1M */}
+          <Field
+            id="counter_klaim_kurang_1m"
+            label="Counter Klaim <1M"
+            type="number"
+            min={0}
+            max={MAX_CLAIM_COUNTER}
+            hint="Banyaknya klaim bernilai di bawah Rp 1 Miliar yang sudah ditangani."
+            error={errors.counter_klaim_kurang_1m?.message}
+            disabled={busy}
+            {...register('counter_klaim_kurang_1m', { valueAsNumber: true })}
+          />
 
-        {/* Peringatan menonaktifkan diberikan SEBELUM disimpan, bukan sesudah. Petugas
-            yang dinonaktifkan hilang dari daftar, dan tanpa keterangan ini pengguna akan
-            mengira datanya terhapus. */}
-        {editing && technician.aktif && (
-          <p className="rounded-kontrol bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-100">
-            Menonaktifkan petugas membuatnya hilang dari daftar — sama seperti di sistem
-            lama. Datanya tidak dihapus dan masih dapat dibuka lewat pencarian ID.
-          </p>
-        )}
+          {/* 9. Counter Klaim >1M */}
+          <Field
+            id="counter_klaim_lebih_1m"
+            label="Counter Klaim >1M"
+            type="number"
+            min={0}
+            max={MAX_CLAIM_COUNTER}
+            hint="Banyaknya klaim bernilai di atas Rp 1 Miliar yang sudah ditangani."
+            error={errors.counter_klaim_lebih_1m?.message}
+            disabled={busy}
+            {...register('counter_klaim_lebih_1m', { valueAsNumber: true })}
+          />
+        </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={busy}>
@@ -454,14 +462,31 @@ export function TechnicianForm({ technician, onClose }: Props) {
   )
 }
 
+/**
+ * optionsFrom menyusun pilihan dropdown, dengan nilai baris yang sedang disunting selalu
+ * ikut walau berada di luar daftar.
+ *
+ * Urutan daftarnya DIPERTAHANKAN apa adanya — untuk Kelompok dan Bisnis ia urutan
+ * `pyStandardValue` di Property rule, dan mengurutkannya ulang membuat dropdown tampil
+ * berbeda dari layar lama. Nilai warisan yang di luar daftar ditaruh di belakang.
+ */
+function optionsFrom(values: readonly string[], current?: string): SelectOption[] {
+  const option = values.map((value) => ({ value, label: value }))
+  const currentClean = (current ?? '').trim()
+
+  if (currentClean !== '' && !values.some((value) => value === currentClean)) {
+    option.push({ value: currentClean, label: currentClean })
+  }
+  return option
+}
+
 type MessageContent = { title: string; description: string; tone: ErrorTone }
 
 /**
  * Galat pencarian dipisahkan dari galat simpan.
  *
  * Keduanya terjadi pada saat yang berbeda dan menuntut tindakan yang berbeda: yang satu
- * saat mengisi ID, yang lain saat menekan Simpan. Menyatukannya akan membuat pesan
- * pencarian bertahan di layar setelah pengguna memperbaiki ID-nya.
+ * saat mengisi Username, yang lain saat menekan Simpan.
  */
 function LookupErrorMessage({ error }: { error: unknown }) {
   const message = parseDirectory(error)
@@ -495,12 +520,28 @@ function SaveErrorMessage({ error }: { error: unknown }) {
   return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
 }
 
-/** Galat yang berasal dari direktori pegawai, dipakai kedua jalur. */
+/**
+ * Galat pencarian direktori.
+ *
+ * Yang TIDAK dikenali jatuh ke "Pencarian gagal" — dan itu hanya benar di jalur ini.
+ * Jalur simpan memakai `parseSave`, yang jatuh ke "Gagal menyimpan": galat penyimpanan
+ * yang dijawab "pencarian gagal" akan menyuruh pengguna memperbaiki hal yang salah.
+ */
 function parseDirectory(error: unknown): MessageContent | null {
+  return parseShared(error) ?? fallbackFor(error, 'Pencarian gagal')
+}
+
+/**
+ * Kode galat yang berarti sama di kedua jalur: gangguan direktori, portal, dan validasi.
+ *
+ * Mengembalikan null bila kodenya bukan salah satu di antaranya, supaya pemanggil
+ * menentukan sendiri pesan penutupnya.
+ */
+function parseShared(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
       title: 'Tidak dapat menghubungi server',
-      description: 'Pencarian pegawai belum dapat dijalankan. Periksa koneksi lalu coba lagi.',
+      description: 'Permintaan belum dapat dijalankan. Periksa koneksi lalu coba lagi.',
       tone: 'gangguan',
     }
   }
@@ -523,7 +564,7 @@ function parseDirectory(error: unknown): MessageContent | null {
       }
 
     case ErrorCode.validationFailed:
-      // ID yang tidak terdaftar sudah disorot di kolomnya; kotak pesan hanya akan
+      // Bila detailnya ada, isiannya sudah disorot di tempatnya; kotak pesan hanya akan
       // mengulang hal yang sama.
       return Object.keys(error.violations()).length > 0
         ? null
@@ -538,16 +579,23 @@ function parseDirectory(error: unknown): MessageContent | null {
       }
 
     default:
-      return { title: 'Pencarian gagal', description: error.message, tone: 'gangguan' }
+      return null
   }
+}
+
+/** Pesan penutup bila kode galatnya tidak dikenali sama sekali. */
+function fallbackFor(error: unknown, title: string): MessageContent | null {
+  if (!(error instanceof APIError)) return null
+  return { title, description: error.message, tone: 'gangguan' }
 }
 
 function parseSave(error: APIError): MessageContent | null {
   switch (error.kode) {
     case ErrorCode.technicianExists:
       return {
-        title: 'ID operator sudah terdaftar',
-        description: 'Petugas dengan ID itu sudah ada di entitas ini. Buka datanya lalu ubah di sana.',
+        title: 'Username sudah terdaftar',
+        description:
+          'Petugas dengan Username itu sudah ada di entitas ini. Buka datanya lalu ubah di sana.',
         tone: 'penolakan',
       }
 
@@ -567,6 +615,8 @@ function parseSave(error: APIError): MessageContent | null {
       }
 
     default:
-      return parseDirectory(error) ?? { title: 'Gagal menyimpan', description: error.message, tone: 'gangguan' }
+      // Kode bersama — gangguan direktori, portal, validasi — dipetakan sama di kedua
+      // jalur; sisanya ditutup pesan SIMPAN, bukan pesan pencarian.
+      return parseShared(error) ?? fallbackFor(error, 'Gagal menyimpan')
   }
 }

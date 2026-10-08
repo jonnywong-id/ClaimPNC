@@ -9,82 +9,53 @@
 //
 // # JANGAN tertukar dengan Inbox RCL/PUCL (`MENU_ID 61`, modul `inboxrclpucl`)
 //
-// Namanya nyaris sama, isinya berbeda sama sekali:
+//	Inbox RCL/PUCL (61)  antrean BERSAMA `RCLPUCL` — tiga tab perjalanan surat
+//	Inbox RCL      (62)  antrean PER ORANG — dokter RCL, tahap `RCLDokter`
 //
-//	Inbox RCL/PUCL (61)  antrean BERSAMA `RCLPUCL` — workbasket, tiga tab perjalanan surat
-//	Inbox RCL      (62)  antrean PER ORANG — worklist dokter RCL, tahap `RCLDokter`
-//
-// Pega pun memisahkannya menjadi dua harness, dua section, dan dua Report Definition.
+// Keduanya kini membaca tabel yang SAMA, `POOLDATA.TC_PNC_PUCL`, dengan penyaring berbeda.
 //
 // # Artefak Pega yang dibaca
 //
-// Layar ini LENGKAP di export:
-//
-//	Harness/RCL_Harness-Harness.xml                     judul layar, 5 judul kolom,
-//	                                                    activity pemuat `GetpyUserIdentifierFromTable`
-//	Section/InboxRCLDokter_Section-Section.xml          grid, 5 sel berkepala, tautan baris,
-//	                                                    parameter `assign = TempOperator.City`
-//	Report Definition/InboxRCLDokter_RD-RD.xml          SELURUH penyaring, urutan, isian
-//	Activity/GetpyUserIdentifierFromTable-Act.xml       dari mana `TempOperator.City` datang
-//	RDB List/GetOperatorID-SQL.xml                      kueri identitas lama
-//	Activity/SetAssignmentInboxRCLDoctor_act-Act.xml    aksi klik baris
-//	When/IsRCLPA-When.xml                               siapa yang melihat menunya
-//	Flow/Register_Flow.xml                              dari mana tugasnya datang (`Assignment12`)
+//	Harness/RCL_Harness-Harness.xml                  judul layar, 5 judul kolom
+//	Section/InboxRCLDokter_Section-Section.xml       grid, 5 sel berkepala, tautan baris
+//	Report Definition/InboxRCLDokter_RD-RD.xml       penyaring, urutan, isian
+//	Flow Action/SendToRCLDokter-FA.xml               layar kerja = section `RCLDokter`
+//	Section/RCLDokter-Section.xml                    layar kerja dokter RCL, dua mode
+//	Activity/RouterRCLDokter-act.xml                 `Param.AssignTo := ClaimData.NamaDokterRCL`
+//	Flow/Register_Flow.xml                           tahap `Assignment12`
 //
 // # Apa itu Inbox RCL
 //
-// Antrean **penolakan yang memerlukan pertimbangan medis**. `CONTEXT.md` mendefinisikan RCL
-// Dokter sebagai penolakan klaim lini Personal Accident yang menuntut penilaian dokter, dan
-// `Flow/Register_Flow.xml` menempatkannya sebagai `Assignment12` — salah satu dari empat tahap
-// penutup jalur analis, ditugaskan ke worklist oleh router `RouterRCLDokter`.
+// Antrean **penolakan yang memerlukan pertimbangan medis**: klaim yang dikirim analis ke
+// dokter RCL. Ia benar-benar Inbox menurut `D-79` — barisnya tugas milik satu orang, dan
+// barisnya hilang begitu tugasnya selesai.
 //
-// Ia benar-benar Inbox menurut `D-79`: barisnya **tugas** milik satu orang, barisnya
-// **hilang** begitu tugasnya selesai (`pyStatusWork != Resolved-Completed`), "hanya milik saya"
-// adalah **aturan kewenangan**, dan barisnya menempuh penugasan — bukan data acuan.
+// # SUMBER DATANYA `POOLDATA.TC_PNC_PUCL`
 //
-// # Penyaringnya — keempatnya dari Report Definition, bukan dikarang
+// Work Owner menetapkan 2026-10-05: daftar dan layar kerja `RCLDokter` membaca
+// `POOLDATA.TC_PNC_PUCL` — tabel yang menyimpan `ClaimData.PUCLStatus` satu baris per klaim,
+// dan yang juga dibaca Inbox RCL/PUCL. Keempat penyaring `InboxRCLDokter_RD`
+// (`A AND B AND C AND D`) dipetakan ke kolomnya:
 //
-// `InboxRCLDokter_RD` menyatakan `pyFilterLogic = "A AND B AND C AND D"` atas:
+//	A  newAssignPage.pxAssignedOperatorID = assign  ->  ASSIGNED_OPERATOR_ID = operator
+//	B  .pyStatusWork != "Resolved-Completed"         ->  STATUS_WORK <> 'Resolved-Completed'
+//	C  .ClaimData.TanggalAnalystSendRCL IS NOT NULL  ->  TGL_KIRIM_PUCL IS NOT NULL
+//	D  .ClaimData.NamaDokterRCL = assign             ->  RCL_PUCL IN ('1','3')
 //
-//	A  newAssignPage.pxAssignedOperatorID  =   Param.assign
-//	B  .pyStatusWork                       !=  "Resolved-Completed"
-//	C  .ClaimData.TanggalAnalystSendRCL    IS NOT NULL
-//	D  .ClaimData.NamaDokterRCL            =   Param.assign
+// Dasar pemetaan C: `Activity/SendToPUCL-Act.xml` langkah 8 mengisi `TanggalAnalystSendRCL`
+// dan `PUCLStatus.TanggalKirimPUCL` dengan `@CurrentDateTime()` pada langkah yang sama.
 //
-// ditambah gabungan `INNER JOIN Assign-Worklist ON pxRefObjectKey = .pzInsKey` (di sini digantikan tabel datar — lihat di bawah) dan urutan
-// `.pxCreateDateTime DESC, .pyID DESC`.
+// Dasar pemetaan D: tidak ada kolom nama dokter. `RouterRCLDokter` menugaskan klaim ke
+// `NamaDokterRCL`, sehingga dokter = pemilik penugasan (sudah dijaga A). Yang tersisa dari D
+// adalah "klaim ini memang punya dokter RCL" — hanya jalur RCL (`1`) dan MSIG (`3`) yang
+// melewati dokter; PUCL (`2`) tidak. Tanpa saringan itu, baris PUCL milik orang yang sama
+// ikut masuk antrean ini.
 //
-// # SATU HAL YANG MEMBEDAKANNYA DARI SELURUH INBOX LAIN: `Param.assign` BUKAN LOGIN
+// # Operator = `POOLDATA.M_LOGIN_PNC.LOGIN_ID`
 //
-// Section-nya mengisi `assign` dengan **`TempOperator.City`**, dan harness-nya memuat
-// activity `GetpyUserIdentifierFromTable` sebelum grid digambar. Activity itu menjalankan
-// `RDB List/GetOperatorID-SQL.xml`:
-//
-//	SELECT OLD_OPERATOR_ID AS "City" FROM POOLDATA.T_ACCESS_GROUP_PNC
-//	 WHERE OPERATOR_ID = {OperatorID.pyUserIdentifier} AND STS_AKTIF = '1'
-//	   AND ACCESS_GROUP IN ('GCNMFW:Administrators','GCNMFW:PNCKomite','GCNMFW:CaseManager')
-//	   AND ACCESS_GROUP != 'GCNMFW:ViewClaimPNC'
-//
-// lalu `TempOperator.City := TempOPID.pxResults(1).City` — TANPA cadangan. Jadi antrean ini
-// disaring dengan **identitas LAMA** pemanggil, dan hanya identitas lama yang tercatat pada
-// salah satu dari tiga grup akses itu. Pengguna tanpa baris seperti itu melihat antrean
-// KOSONG di Pega.
-//
-// Perilaku itu dibawa apa adanya (`P-5`), dengan satu perbaikan pada cara ia DILAPORKAN:
-// antrean yang kosong karena identitas lama tidak ditemukan dinyatakan ke layar sebagai
-// keadaan tersendiri, tidak disamarkan sebagai "tidak ada pekerjaan". Lihat IdentityResult.
-//
-// # SUMBER DATANYA `POOLDATA.T_CLAIMLIST_ADMIN`, BUKAN TABEL PEGA
-//
-// Work Owner menetapkan 2026-09-27: modul ini tidak membaca `DATAPEGA` lagi. Report
-// Definition aslinya menggabung objek kerja dengan worklist; tabel datar menyimpan satu baris
-// per klaim beserta pemilik penugasan yang sedang berjalan, sehingga gabungannya hilang.
-//
-// Tiga isian layar ini — `TanggalAnalystSendRCL` (penyaring C dan kolom "Tanggal Masuk
-// Inbox"), `NamaDokterRCL` (penyaring D), dan `KomentarAnalisator` ("Deskripsi Analyst") —
-// belum punya kolom di tabel itu, dan dua yang pertama bahkan `unexposed` di Pega. Ketiganya
-// diajukan lewat `migrations/0012_claimlist_admin_rcl.up.sql`, dijalankan DBA (`D-63`).
-// Lihat kepala `repo/sqlstore/inboxrcl.sql`.
+// Di Pega `assign = TempOperator.City` (identitas lama dari `T_ACCESS_GROUP_PNC`). Work Owner
+// menetapkan 2026-10-05: tabel itu tidak dipakai lagi; login aktif di `M_LOGIN_PNC` dipakai
+// langsung.
 //
 // Lapisan Domain — dilarang mengimpor HTTP, SQL, driver basis data, maupun bentuk JSON.
 package inboxrcl
@@ -95,83 +66,107 @@ import (
 	"time"
 )
 
-// StatusKerjaSelesai adalah nilai `PYSTATUSWORK` yang MENGELUARKAN tugas dari antrean ini.
+// StatusKerjaSelesai adalah nilai `STATUS_WORK` yang MENGELUARKAN tugas dari antrean ini.
 //
-// Penyaringnya `!=`, bukan `=`. Hanya `Resolved-Completed` yang dikecualikan;
-// `Resolved-Rejected` TIDAK — klaim yang ditolak tetap muncul. Itu isi Report Definition apa
-// adanya, sama seperti `inboxanalystdoctor` dan berbeda dari `inboxoutstanding`.
+// Hanya `Resolved-Completed` yang dikecualikan; `Resolved-Rejected` TIDAK — isi Report
+// Definition apa adanya.
 const StatusKerjaSelesai = "Resolved-Completed"
 
-// LegacyAccessGroups adalah ketiga grup akses yang identitas lamanya boleh menjadi pemilik
-// antrean ini, dan grup yang dikecualikan.
-//
-// Asalnya `TempOperator.AlasanKlaim` pada langkah pertama
-// `Activity/GetpyUserIdentifierFromTable-Act.xml`, yang disisipkan ke kueri lewat
-// `{Asis:...}`. Di sini nilainya menjadi konstanta dan dikirim lewat parameter binding —
-// perangkaian teks SQL tidak dibawa (`08-TECHNICAL-STRATEGY.md` §4.3).
-//
-// Ketiganya sama dengan grup yang disebut `When/IsRCLPA-When.xml` sebagai penjaga menu:
-// `(Administrators OR (PNCKomite AND PA) OR (CaseManager AND PA)) AND NOT ViewClaimPNC`.
-// Kesamaan itu bukan kebetulan — dokter RCL di sistem lama adalah anggota komite PA.
-var LegacyAccessGroups = []string{
-	"GCNMFW:Administrators",
-	"GCNMFW:PNCKomite",
-	"GCNMFW:CaseManager",
-}
+// LoginAktif adalah nilai `M_LOGIN_PNC.ACTIVE_STATUS` bagi login yang masih berlaku.
+const LoginAktif = "1"
 
-// ExcludedAccessGroup dikecualikan meski pemanggil juga memegang salah satu grup di atas.
-const ExcludedAccessGroup = "GCNMFW:ViewClaimPNC"
+// Mode adalah `PUCLStatus.RCL_PUCL` — jalur yang menentukan isi layar kerja `RCLDokter`.
+type Mode string
+
+// Ketiga nilai `RCL_PUCL`. Hanya RCL dan MSIG yang melewati dokter RCL.
+const (
+	ModeRCL  Mode = "1"
+	ModePUCL Mode = "2"
+	ModeMSIG Mode = "3"
+)
+
+// DoctorModes adalah nilai `RCL_PUCL` yang termasuk antrean ini — padanan penyaring D.
+var DoctorModes = []Mode{ModeRCL, ModeMSIG}
+
+// IsDoctorMode menyatakan apakah sebuah mode melewati dokter RCL.
+func IsDoctorMode(m Mode) bool {
+	for _, d := range DoctorModes {
+		if m == d {
+			return true
+		}
+	}
+	return false
+}
 
 // RCLTask adalah satu baris pada layar — satu tugas penolakan medis yang menunggu.
 type RCLTask struct {
-	// ClaimID adalah kunci teknis `PZINSKEY`. Tidak digambar sebagai kolom; ia dipakai
-	// tautan baris dan sebagai kunci baris di layar.
-	ClaimID string
-
-	// ClaimNumber — kolom **"Nomor Case"** <- PYID. Juga kunci urutan kedua, menurun.
+	// ClaimNumber — kolom **"Nomor Case"** <- `TC_PNC_PUCL.CLAIMID` (nomor klaim, mis.
+	// `PNCN.26.31`). Juga kunci urutan kedua, menurun, dan kunci layar kerja.
 	ClaimNumber string
 
-	PolicyNumber string // "No Polis"         <- POLICYNO
-	InsuredName  string // "Nama Tertanggung" <- QQNAME
+	PolicyNumber string // "No Polis"         <- POLICY_NO
+	InsuredName  string // "Nama Tertanggung" <- QQ_NAME
 
-	// SentToRCLAt — kolom **"Tanggal Masuk Inbox"** <- `.ClaimData.TanggalAnalystSendRCL`.
-	//
-	// Judul kolomnya memang "Tanggal Masuk Inbox", bukan nama propertinya: ia waktu analis
-	// mengirim klaim ke dokter RCL. Propertinya TIDAK TEREKSPOS — lihat kepala paket.
+	// SentToRCLAt — kolom **"Tanggal Masuk Inbox"** <- `TGL_KIRIM_PUCL`.
 	SentToRCLAt time.Time
 
-	// AnalystNote — kolom **"Deskripsi Analyst"** <- `.ClaimData.PUCLStatus.KomentarAnalisator`.
-	//
-	// Label Report Definition-nya "Komentar Analisator"; judul yang dilihat pengguna di
-	// harness "Deskripsi Analyst". Yang dipakai judul harness (`D-13`).
+	// AnalystNote — kolom **"Deskripsi Analyst"** <- `KOMENTAR_ANALISATOR`.
 	AnalystNote string
 
-	// RCLDoctor adalah `.ClaimData.NamaDokterRCL`. Tidak digambar; ia penyaring D.
-	RCLDoctor string
+	// Mode adalah `RCL_PUCL`. Tidak digambar; penyaring D.
+	Mode Mode
 
-	// RegisteredAt adalah `PXCREATEDATETIME`, kunci urutan pertama. Tidak digambar —
-	// kelima judul kolom di harness tidak memuatnya.
+	// RegisteredAt adalah `TGL_CREATE_PUCL`, kunci urutan pertama (padanan `.pxCreateDateTime`).
 	RegisteredAt time.Time
 
-	// ProcessStatus adalah `PYSTATUSWORK`. Tidak digambar; ia penyaring B.
+	// ProcessStatus adalah `STATUS_WORK`. Tidak digambar; penyaring B.
 	ProcessStatus string
 
-	// AssignedOperator adalah `PXASSIGNEDOPERATORID`. Tidak digambar; ia penyaring A.
+	// AssignedOperator adalah `ASSIGNED_OPERATOR_ID`. Tidak digambar; penyaring A.
 	AssignedOperator string
+}
+
+// RCLDetail adalah isi layar kerja `RCLDokter` untuk satu klaim — seluruhnya dari
+// `TC_PNC_PUCL`.
+type RCLDetail struct {
+	ClaimNumber  string
+	PolicyNumber string
+	InsuredName  string
+
+	// Mode menentukan isi layar (`Section/RCLDokter-Section.xml`):
+	//
+	//	ModeRCL   Catatan dari Analyst · Alasan Klaim Ditolak/RCL · tombol Setuju / Tidak Setuju
+	//	ModeMSIG  Catatan dari Analyst · Alasan Klaim MSIG        · tombol Back / Submit
+	Mode Mode
+
+	// AnalystNote — "Catatan dari Analyst" <- `KOMENTAR_ANALISATOR`.
+	AnalystNote string
+
+	// Reason — "Alasan Klaim Ditolak/RCL" (mode RCL) atau "Alasan Klaim MSIG" (mode MSIG).
+	// Keduanya properti yang sama di Pega, `PUCLStatus.Keterangan2` <- `KETERANGAN2`.
+	Reason string
+
+	// DoctorReason — "Alasan Dokter" pada layar Tidak Setuju/Back
+	// (`sendToAnalystTolakRCL_sect`) <- `ALASAN_DOKTER_REJECT_RCL`.
+	DoctorReason string
+
+	StatusClaim      string // STATUS_CLAIM
+	ProcessStatus    string // STATUS_WORK
+	AssignedOperator string // ASSIGNED_OPERATOR_ID
+	SentToRCLAt      time.Time
 }
 
 // Caller adalah identitas pemanggil sebagaimana dibutuhkan modul ini.
 type Caller struct {
-	// Login adalah nama pengguna yang DIKETIK saat masuk, bukan NIK. Ia padanan
-	// `OperatorID.pyUserIdentifier`, kunci pencarian identitas lamanya.
+	// Login adalah nama pengguna yang DIKETIK saat masuk — kunci pencarian di
+	// `M_LOGIN_PNC.LOGIN_ID`.
 	Login string
 }
 
 // Filter adalah penyaring dan paginasi yang diminta layar.
 //
-// Report Definition tidak punya satu pun penyaring yang dapat diubah pengguna. Kotak cari di
-// bawah ini adalah TAMBAHAN yang disadari — dinyatakan ke pengguna sebagai selisih terencana,
-// sama seperti di Inbox Analyst Doctor.
+// Report Definition tidak punya penyaring yang dapat diubah pengguna; kotak cari adalah
+// tambahan yang sama dengan inbox lain.
 type Filter struct {
 	// Search mencari pada Nomor Case DAN No Polis sekaligus, di SERVER.
 	Search string
@@ -181,8 +176,6 @@ type Filter struct {
 }
 
 // Batas paginasi, sama dengan inbox lain di aplikasi ini.
-//
-// `InboxRCLDokter_RD` memakai `pyMaxRecords = 500`; batas itu TIDAK ditegakkan (`ADR-0011`).
 const (
 	DefaultLimit   = 25
 	MaxLimit       = 100
@@ -212,27 +205,39 @@ type Page struct {
 }
 
 // Repo adalah seam ke penyimpanan antrean RCL Dokter.
-//
-// Ia hanya MEMBACA. Menyelesaikan tugas RCL Dokter berarti menjalankan Flow Action
-// `SendToRCLDokter`, yang menulis objek kerja DAN memindahkan penugasannya — keduanya milik
-// Pega selama masa paralel (`P-1`).
 type Repo interface {
-	// LegacyOperatorFor membaca identitas LAMA seorang petugas — padanan
-	// `GetOperatorID-SQL.xml` dengan ketiga grup akses `LegacyAccessGroups`.
-	//
-	// Petugas yang tidak punya baris mengembalikan string kosong TANPA galat: di Pega ia
-	// menghasilkan antrean kosong, bukan kegagalan.
-	LegacyOperatorFor(ctx context.Context, loginID string) (string, error)
+	// OperatorFor membaca `LOGIN_ID` seorang petugas dari `M_LOGIN_PNC`. Login yang tidak
+	// ada atau tidak aktif mengembalikan string kosong TANPA galat.
+	OperatorFor(ctx context.Context, loginID string) (string, error)
 
-	// List mengambil satu halaman antrean milik sebuah identitas lama.
-	//
-	// Operator diserahkan terpisah dari Filter: ia batas kewenangan, bukan penyaring pilihan.
+	// List mengambil satu halaman antrean milik seorang operator.
 	List(ctx context.Context, operator string, f Filter) (Page, error)
+
+	// Detail mengambil isi layar kerja satu klaim milik seorang operator.
+	//
+	// Klaim yang tidak ada, BUKAN milik operator itu, atau tidak lolos penyaring antrean
+	// mengembalikan ErrClaimNotFound — layar kerja hanya terbuka bagi klaim yang memang
+	// tampil di antrean pemanggil.
+	Detail(ctx context.Context, operator, claimNumber string) (RCLDetail, error)
+
+	// Decide menjalankan keputusan dokter RCL atas satu klaim di antrean operator — padanan
+	// `SendToPUCL` — dalam SATU transaksi: baris TC_PNC_PUCL dikunci, Plan dijalankan,
+	// TC_PNC_PUCL dan T_CLAIMLIST_ADMIN ditulis, tugas dipindahkan, riwayat dicatat.
+	//
+	// Klaim yang tidak lagi di antrean operator (sudah diputus di tab lain, atau milik orang
+	// lain) mengembalikan ErrClaimNotFound dan TIDAK menulis apa pun.
+	Decide(ctx context.Context, cmd DecisionCommand) (Outcome, error)
 }
 
-// RepoSelector memilih Repo milik satu portal entitas.
-//
-// Portal yang tidak dikenal menghasilkan galat — TIDAK PERNAH dialihkan ke koneksi utama
-// (`R-20`, `TKT-F6-002`). Barisnya adalah klaim Personal Accident, dan `FR-R2` membatasi
-// akses data medis pada peran Analyst Doctor dan RCL Dokter.
+// DecisionCommand adalah satu keputusan dokter RCL.
+type DecisionCommand struct {
+	Operator     string // LOGIN_ID pemanggil — pemilik penugasan dan pelaku riwayat
+	ClaimNumber  string
+	Decision     Decision
+	DoctorReason string // isian "Alasan Dokter"; hanya dipakai Tidak Setuju/Back
+	At           time.Time
+}
+
+// RepoSelector memilih Repo milik satu portal entitas. Portal yang tidak dikenal
+// menghasilkan galat — TIDAK PERNAH dialihkan ke koneksi utama (`R-20`).
 type RepoSelector func(portalAlias string) (Repo, error)

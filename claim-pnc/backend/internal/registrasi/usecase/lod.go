@@ -192,7 +192,7 @@ func (l *Service) lodTask(ctx context.Context, claimID, taskID string, by Caller
 		return registrasi.Claim{}, registrasi.Task{}, fmt.Errorf("%w: tugas %s bukan milik klaim %s", registrasi.ErrInvalidAction, taskID, claimID)
 	}
 	if !settlementStages[task.Stage] {
-		return registrasi.Claim{}, registrasi.Task{}, registrasi.ErrStageMismatch
+		return registrasi.Claim{}, registrasi.Task{}, fmt.Errorf("%w: %q", registrasi.ErrNotAvailableAtStage, task.Stage)
 	}
 	if !l.canWork(task, by) {
 		return registrasi.Claim{}, registrasi.Task{}, registrasi.ErrNotTaskOwner

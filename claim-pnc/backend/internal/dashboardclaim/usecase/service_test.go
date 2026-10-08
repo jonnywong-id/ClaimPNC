@@ -49,6 +49,13 @@ func (f faultyRepo) ListSurvey(context.Context, dashboardclaim.SurveyorType, das
 	return dashboardclaim.SurveyPage{}, nil
 }
 
+func (f faultyRepo) ListHolding(context.Context, dashboardclaim.Filter) (dashboardclaim.HoldingPage, error) {
+	if f.failList {
+		return dashboardclaim.HoldingPage{}, errStore
+	}
+	return dashboardclaim.HoldingPage{}, nil
+}
+
 // faultyClosed selalu gagal.
 type faultyClosed struct{}
 

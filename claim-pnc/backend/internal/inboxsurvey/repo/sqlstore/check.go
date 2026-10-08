@@ -58,17 +58,25 @@ func (r *Repo) CheckColumns(ctx context.Context) error {
 	return nil
 }
 
-// NewColumns menyatakan kolom mana dari keempat yang ditunggu sudah ada.
+// NewColumns menyatakan kolom mana dari kelima yang ditunggu sudah ada.
+//
+// # Kenapa jumlahnya berubah-ubah, dan itu bukan kebingungan
+//
+// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTERPIC` dicoret sebagai asal
+// "Appointment No", lalu LIMA setelah keempat kueri tab tiba dan dua kolom lain terbukti
+// benar-benar berbeda. Setiap perubahan bersandar pada satu pengukuran, bukan pada pembacaan
+// ulang — dan daftar yang mengecil justru hasil terbaiknya.
 type NewColumns struct {
-	Accept      bool
-	Appointment bool
-	Reference   bool
-	WorkStatus  bool
+	Accept         bool
+	Reference      bool
+	WorkStatus     bool
+	AdjusterPIC    bool
+	SurveyLocation bool
 }
 
-// All menyatakan keempatnya sudah ada.
+// All menyatakan kelimanya sudah ada.
 func (c NewColumns) All() bool {
-	return c.Accept && c.Appointment && c.Reference && c.WorkStatus
+	return c.Accept && c.Reference && c.WorkStatus && c.AdjusterPIC && c.SurveyLocation
 }
 
 // CheckNewColumns melaporkan kolom mana dari keempatnya yang sudah ada.
@@ -82,32 +90,34 @@ func (c NewColumns) All() bool {
 //
 // Keberadaan kolom **bukan** berarti terisi. Keterisian diukur CheckFilledColumns.
 func (r *Repo) CheckNewColumns(ctx context.Context) (NewColumns, error) {
-	var accept, appointment, reference, workStatus int
+	var accept, reference, workStatus, adjusterPIC, surveyLocation int
 
 	err := r.db.QueryRowContext(ctx, query("check_new_columns")).
-		Scan(&accept, &appointment, &reference, &workStatus)
+		Scan(&accept, &reference, &workStatus, &adjusterPIC, &surveyLocation)
 	if err != nil {
 		return NewColumns{}, fmt.Errorf(
 			"membaca katalog kolom POOLDATA.T_SURVEYORLIST: %w", err)
 	}
 
 	return NewColumns{
-		Accept:      accept > 0,
-		Appointment: appointment > 0,
-		Reference:   reference > 0,
-		WorkStatus:  workStatus > 0,
+		Accept:         accept > 0,
+		Reference:      reference > 0,
+		WorkStatus:     workStatus > 0,
+		AdjusterPIC:    adjusterPIC > 0,
+		SurveyLocation: surveyLocation > 0,
 	}, nil
 }
 
 // FilledColumns adalah hasil pengukuran keterisian kolom yang SUDAH ADA.
 //
-// Hanya memuat kolom yang ada per 2026-09-30. `ADJUSTERPIC` belum ditambahkan, sehingga tidak
-// dapat diukur — CheckNewColumns yang melaporkan ketiadaannya.
+// Kelimanya sudah ADA di basis data per 2026-10-03 — yang diukur di sini adalah ISINYA.
 type FilledColumns struct {
-	TotalRows  int
-	Accept     int
-	Reference  int
-	WorkStatus int
+	TotalRows      int
+	Accept         int
+	Reference      int
+	WorkStatus     int
+	AdjusterPIC    int
+	SurveyLocation int
 }
 
 // CheckFilledColumns menghitung berapa baris kolom yang sudah ada BENAR-BENAR terisi.
@@ -132,6 +142,8 @@ func (r *Repo) CheckFilledColumns(ctx context.Context) (FilledColumns, error) {
 		&result.Accept,
 		&result.Reference,
 		&result.WorkStatus,
+		&result.AdjusterPIC,
+		&result.SurveyLocation,
 	)
 	if err != nil {
 		return FilledColumns{}, fmt.Errorf(

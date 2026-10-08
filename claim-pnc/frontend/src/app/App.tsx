@@ -6,6 +6,7 @@ import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
 import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
+import { ComplianceCheckerPage } from '@/modules/inbox-compliance/ComplianceCheckerPage'
 import { InboxCompliancePage } from '@/modules/inbox-compliance/InboxCompliancePage'
 import { InboxServiceCenterPage } from '@/modules/inbox-service-center/InboxServiceCenterPage'
 import { ServiceCenterDetailPage } from '@/modules/inbox-service-center/ServiceCenterDetailPage'
@@ -42,6 +43,7 @@ import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocume
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
 import { SurveyInboxPage } from '@/modules/inbox-survey/SurveyInboxPage'
 import { InboxRCLPage } from '@/modules/inbox-rcl/InboxRCLPage'
+import { RCLDokterPage } from '@/modules/inbox-rcl/RCLDokterPage'
 import { DashboardClaimPage } from '@/modules/dashboard-claim/DashboardClaimPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
@@ -590,6 +592,26 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxCompliancePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Form Compliance Checker — yang terbuka ketika petugas menekan Nomor Case.
+
+        Ia TIDAK punya butir menu sendiri, dan memang tidak boleh punya: di Pega pun ia
+        bukan menu melainkan flow action di atas assignment yang menunggu di workbasket
+        `CompliancePNC`. Satu-satunya pintu masuknya adalah baris antrean.
+
+        `:referensi` adalah `PZINSKEY`, yang memuat spasi dan tanda hubung — pemanggilnya
+        mengkodekannya, dan React Router mendekodekannya kembali.
+      */}
+      <Route
+        path="/inbox-compliance/:referensi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ComplianceCheckerPage />
             </Protected>
           </SessionGuard>
         }
@@ -1219,6 +1241,20 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxRCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Layar kerja RCL Dokter — section `RCLDokter` dari Flow Action `SendToRCLDokter`,
+        dibuka dari Nomor Case di Inbox RCL. Isinya dari POOLDATA.TC_PNC_PUCL.
+      */}
+      <Route
+        path="/inbox-rcl/klaim/:nomor"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RCLDokterPage />
             </Protected>
           </SessionGuard>
         }

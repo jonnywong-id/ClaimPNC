@@ -171,9 +171,51 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
 }
 
 /** Peladen tiruan yang menjawab bentuk layar dan isi antrean. */
+/**
+ * Jawaban form Compliance Checker.
+ *
+ * Ia ada di berkas ini meski formnya diuji terpisah, karena satu uji di sini BERPINDAH ke
+ * form itu — menekan Nomor Case menggambar `ComplianceCheckerPage` sungguhan. Tanpa
+ * jawaban berbentuk benar, yang gagal bukan hal yang sedang diuji melainkan layar
+ * tujuannya, dan pesan gagalnya tidak menyebut sebab yang sebenarnya.
+ */
+const CHECKER = {
+  klaim: ROW,
+  pilihan: [
+    { nilai: '0', label: 'Fraud / Tolak' },
+    { nilai: '1', label: 'Bayar / Valid' },
+    { nilai: '2', label: 'Bayar / PostAudit' },
+    { nilai: '3', label: 'Lain-Lain' },
+  ],
+  keputusan: null,
+  keterbatasan:
+    'Keputusan tersimpan di aplikasi baru. Status klaim di sistem lama belum ikut ' +
+    'berubah dan klaimnya masih menunggu di antrean Compliance Pega.',
+  portal: 'ASM',
+}
+
 function stubDefaultFetch(rows: WorkItem[] = [ROW], total = rows.length, pages = 1) {
   stubFetch((url) => {
     if (url === TAB_PATH) return jsonResponse(200, METADATA)
+
+    // Jalur form Compliance Checker — `/api/inbox-compliance/{referensi}`.
+    //
+    // Dibedakan dari jalur daftar lewat adanya segmen SETELAH `/api/inbox-compliance`,
+    // bukan lewat pencocokan persis: kunci klaimnya memuat spasi yang dikodekan, dan
+    // menuliskannya kembali di sini berarti bentuk pengkodean yang sama hidup di dua
+    // tempat.
+    //
+    // Kedua jalur harfiah DIKECUALIKAN. Keduanya juga berawalan `${PATH}/`, dan tanpa
+    // pengecualian ini permintaan Kirim ke Post Audit akan dijawab badan form — yang
+    // membuat ujinya gagal dengan pesan yang tidak menyebut sebabnya.
+    if (
+      url.startsWith(`${PATH}/`) &&
+      url !== TAB_PATH &&
+      !url.startsWith(`${PATH}/post-audit`)
+    ) {
+      return jsonResponse(200, CHECKER)
+    }
+
     return jsonResponse(200, {
       tab: TAB_COMPLIANCE,
       baris: rows,
@@ -238,16 +280,101 @@ describe('bentuk layar', () => {
     )
   })
 
-  it('menggambar kolom persis seperti yang ditetapkan server', async () => {
+  /**
+   * Tab Compliance menggambar SATU kolom: Nomor Case.
+   *
+   * Layar Pega yang berjalan hanya menampilkan itu, dan Work Owner meminta keduanya
+   * disamakan setelah membandingkannya berdampingan (2026-10-05). Alasan lengkapnya —
+   * berikut bukti bahwa rule-nya justru menetapkan delapan kolom — ada pada KOLOM_TAMPIL
+   * di InboxCompliancePage.tsx.
+   *
+   * Uji ini menyebut ketujuh kolom lain satu per satu, bukan sekadar menghitung jumlahnya,
+   * supaya ia gagal dengan nama kolom yang muncul kembali — bukan dengan "expected 1, got
+   * 2" yang tidak memberi tahu apa pun.
+   */
+  it('menggambar hanya kolom Nomor Case, meniru layar Pega', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     const table = await screen.findByRole('table')
+
+    expect(
+      within(table).getByRole('columnheader', { name: 'Nomor Case' }),
+    ).toBeInTheDocument()
+
     for (const column of TAB_COMPLIANCE.kolom) {
+      if (column.kunci === 'nomor_case') continue
       expect(
-        within(table).getByRole('columnheader', { name: column.judul }),
-      ).toBeInTheDocument()
+        within(table).queryByRole('columnheader', { name: column.judul }),
+      ).not.toBeInTheDocument()
     }
+  })
+
+  /**
+   * Nomor Case dapat diklik untuk membuka klaimnya, meniru tautan di Pega.
+   *
+   * Di sistem lama nomornya sendiri yang diklik; tidak ada tombol terpisah di ujung baris.
+   */
+  it('menggambar Nomor Case sebagai tautan pembuka klaim', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const table = await screen.findByRole('table')
+    expect(
+      within(table).getByRole('button', { name: 'PNC-9001' }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * Tautan Nomor Case membuka FORM COMPLIANCE CHECKER, bukan layar rincian klaim.
+   *
+   * # Kenapa uji ini pernah menegaskan hal yang keliru
+   *
+   * Versi sebelumnya menuntut tautannya menuju `/registrasi/klaim/:nomor` — layar rincian
+   * yang dibuka My Inbox. Itu SALAH, dan Work Owner mengoreksinya pada 2026-10-05.
+   *
+   * Penelusuran export membenarkan koreksi itu, dan ketiga rule inilah yang membuktikannya:
+   *
+   *   1. `Section/InputComplianceDtl_Section-Section.xml` — sel Nomor Case menjalankan
+   *      `SetAssignmentInboxPUCL_act(inskey=.pzInsKey)`, yang MEMBUKA ASSIGNMENT;
+   *   2. `Flow/Register_Flow.xml` — Assignment9 "Compliance",
+   *      `pyWorkBasket=CompliancePNC`, dengan SATU transisi: `ComplianceChecker` → `End1`;
+   *   3. `Flow Action/ComplianceChecker-FA.xml` — `pySectionReference=ComplianceChecker`.
+   *
+   * Baris di antrean ini adalah PEKERJAAN, bukan rujukan ke sebuah klaim. Membukanya
+   * berarti mengerjakannya.
+   *
+   * # Dua hal yang diperiksa, dan keduanya pernah salah
+   *
+   *   1. rutenya `/inbox-compliance/:referensi`, bukan `/registrasi/klaim/...`;
+   *   2. yang dikirim KUNCI TEKNIS Pega, bukan nomor klaim polos — kebalikan dari yang
+   *      dituntut uji versi sebelumnya. Assignment dikenali lewat `PZINSKEY`, tepat yang
+   *      dipakai `SetAssignmentInboxPUCL_act`.
+   */
+  it('membuka form Compliance Checker dengan kunci teknis Pega', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const table = await screen.findByRole('table')
+    await userEvent.click(within(table).getByRole('button', { name: 'PNC-9001' }))
+
+    // Yang diperiksa adalah alamat yang BENAR-BENAR diminta layar tujuan, bukan sekadar
+    // rute yang berpindah: rute yang benar dengan pengenal yang salah tetap berakhir di
+    // "klaim tidak ada di antrean", dan hanya alamat permintaannya yang memperlihatkan itu.
+    await waitFor(() => {
+      expect(
+        calls.some((c) =>
+          c.url.startsWith(
+            `/api/inbox-compliance/${encodeURIComponent('ASM-FW-GCNMFW-WORK PNC-9001')}`,
+          ),
+        ),
+      ).toBe(true)
+    })
+
+    expect(
+      calls.some((c) => c.url.startsWith('/api/registrasi/klaim/')),
+      'Nomor Case tidak boleh membuka layar rincian klaim — di Pega ia membuka assignment',
+    ).toBe(false)
   })
 
   /**
@@ -265,53 +392,81 @@ describe('bentuk layar', () => {
     expect(screen.queryByRole('combobox', { name: /business/i })).not.toBeInTheDocument()
   })
 
-  it('menampilkan keterbatasan yang dikirim server', async () => {
+  /**
+   * Catatan keterbatasan TIDAK ditampilkan selama kolom yang diterangkannya tersembunyi.
+   *
+   * Satu-satunya catatan yang ada menjelaskan kolom Aging, dan tab Compliance kini hanya
+   * menggambar Nomor Case. Catatan tentang kolom yang tidak ada membuat pembacanya mencari
+   * sesuatu yang tidak akan ia temukan.
+   *
+   * Catatannya tetap dikirim server — ini penundaan tampilan, bukan penghapusan. Keduanya
+   * dikendalikan sakelar yang sama, sehingga mengembalikan kolomnya mengembalikan
+   * catatannya pula.
+   */
+  it('tidak menampilkan catatan Aging selama kolomnya tersembunyi', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(await screen.findByText(/memotong hari Sabtu dan Minggu/)).toBeInTheDocument()
+    expect(screen.queryByText(/memotong hari Sabtu dan Minggu/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Yang perlu diketahui')).not.toBeInTheDocument()
   })
 })
 
+/**
+ * # Kenapa kolom Aging tidak lagi diuji di sini
+ *
+ * Karena ia tidak lagi DIGAMBAR. Tab Compliance disamakan dengan layar Pega yang hanya
+ * menampilkan Nomor Case, sehingga Aging — beserta enam kolom lain — ikut tersembunyi.
+ *
+ * Yang hilang hanyalah tampilannya, bukan perhitungannya. Server tetap mengirim `aging`
+ * dan `aging_jam` pada setiap baris, dan perilaku yang dulu diuji di sini tetap dijaga di
+ * backend:
+ *
+ *   - pemotongan akhir pekan dan bentuk teksnya — inboxcompliance/aging_test.go
+ *   - Aging KOSONG, bukan "0 hours ago", saat tidak dapat dihitung (`P-5` butir 13,
+ *     `D-49` butir 10) — usecase/list_test.go, TestListMengisiAging
+ *
+ * Ketiga uji antarmuka yang dulu ada di sini dihapus, bukan dilonggarkan, supaya tidak ada
+ * uji yang lulus atas kolom yang tidak pernah digambar.
+ */
 describe('kolom Aging', () => {
-  it('menampilkan teks Aging apa adanya dari server', async () => {
+  /**
+   * Aging TIDAK digambar di tab Compliance.
+   *
+   * Diuji secara tegas supaya memunculkannya kembali menuntut keputusan sadar — bukan
+   * terjadi diam-diam karena seseorang menghapus satu baris penyaring.
+   */
+  it('tidak digambar, karena tab Compliance meniru layar Pega', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(await screen.findByText('2 days 3 hours ago')).toBeInTheDocument()
+    const table = await screen.findByRole('table')
+    expect(
+      within(table).queryByRole('columnheader', { name: 'Aging' }),
+    ).not.toBeInTheDocument()
+    expect(within(table).queryByText('2 days 3 hours ago')).not.toBeInTheDocument()
   })
 
   /**
-   * Baris tanpa Tanggal Kirim Compliance menampilkan tanda pisah, BUKAN "0 hours ago".
+   * Baris yang Aging-nya tidak dapat dihitung tetap tergambar, bukan hilang.
    *
-   * Ini butir ke-13 daftar perbaikan eksplisit `P-5` (`D-49` butir 10) sebagaimana terlihat
-   * pengguna: `GETSELISIHJAM` lama mengembalikan `0` pada setiap kegagalan, sehingga
-   * kegagalan tak terbedakan dari klaim yang baru masuk antrean.
+   * Dulu uji ini memeriksa tanda pisah pada kolom Aging. Kolomnya kini tersembunyi,
+   * sehingga yang tersisa untuk diuji di antarmuka adalah hal yang lebih mendasar: baris
+   * tanpa Tanggal Kirim Compliance TIDAK boleh ikut menghilang dari antrean. Pekerjaan
+   * yang tidak tampil adalah pekerjaan yang tidak dikerjakan.
+   *
+   * Bentuk Aging-nya sendiri — kosong, bukan "0 hours ago" (`P-5` butir 13, `D-49`
+   * butir 10) — dijaga di backend, usecase/list_test.go TestListMengisiAging.
    */
-  it('menampilkan tanda pisah, bukan nol jam, saat Aging tidak dapat dihitung', async () => {
+  it('tetap menggambar baris yang Aging-nya tidak dapat dihitung', async () => {
     stubDefaultFetch([ROW_TANPA_TANGGAL])
     await renderLoaded()
 
     const table = await screen.findByRole('table')
     expect(within(table).queryByText(/0 hours ago/)).not.toBeInTheDocument()
-    expect(within(table).getAllByText('—').length).toBeGreaterThan(0)
-  })
-
-  /**
-   * Kolom Aging tidak dapat diurutkan, dan itu disengaja.
-   *
-   * `DataTable` mengurutkan berdasarkan teks, sedangkan isi kolom ini berbentuk
-   * "2 days 3 hours ago" — mengurutkannya sebagai teks menaruh "10 hours ago" sebelum
-   * "2 days ago".
-   */
-  it('tidak menawarkan pengurutan pada kolom Aging', async () => {
-    stubDefaultFetch()
-    await renderLoaded()
-
-    const table = await screen.findByRole('table')
-    const aging = within(table).getByRole('columnheader', { name: 'Aging' })
-
-    expect(within(aging).queryByRole('button')).not.toBeInTheDocument()
+    expect(
+      within(table).getByRole('button', { name: ROW_TANPA_TANGGAL.nomor_case }),
+    ).toBeInTheDocument()
   })
 })
 

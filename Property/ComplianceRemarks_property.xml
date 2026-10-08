@@ -1,0 +1,287 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzChecksum>608873412</pzChecksum>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyTableAggregate/>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyTableOption/>
+<pyIsGateway/>
+<pxUpdateSystemID>ASMPegaSystem</pxUpdateSystemID>
+<pxTabLabel>ComplianceRemarks</pxTabLabel>
+<pyRuleName>ComplianceRemarks</pyRuleName>
+<pyFormPost/>
+<pyPropertyName>ComplianceRemarks</pyPropertyName>
+<pySPRuleSetName>WILLYYAKOBUSTANDRA@</pySPRuleSetName>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pyFieldClass/>
+<pyRefLocalizedValue/>
+<pzIndexCount>3</pzIndexCount>
+<pxOriginalCreateOperator/>
+<pyPropertyMode>String</pyPropertyMode>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyGatewayClass/>
+<pxInstanceLockedBy/>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyComparator/>
+<pyIsReference>false</pyIsReference>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleAccessWhen/>
+<pyStreamName>pxTextArea</pyStreamName>
+<pyCircumstanceType/>
+<pySpecialtyComponentData/>
+<pyMaxLength/>
+<pyWorkKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyOnInput/>
+<pyOldStreamName>pxTextArea</pyOldStreamName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzRuleSetVersionPatch>86</pzRuleSetVersionPatch>
+<pzEntryCode>sTN</pzEntryCode>
+<pyRelativePath/>
+<pySpecial>false</pySpecial>
+<pyDataRetrievalType/>
+<pyDeletedObject/>
+<pyTableClass/>
+<pxUpdateOpName>WILLY YAKOBUS TANDRA</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pyLocalize>false</pyLocalize>
+<pxUpdateDateTime>20200707T070756.596 GMT</pxUpdateDateTime>
+<pxCommitDateTime>20200707T070756.000 GMT</pxCommitDateTime>
+<pyShowJavaWindowName>GeneratedJava20260930T061754.329 GMT</pyShowJavaWindowName>
+<pxInsId>!COMPLIANCEREMARKS</pxInsId>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCEREMARKS #20200707T070748.468 GMT</pzDocumentKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyLabel>ComplianceRemarks</pyLabel>
+<pyInterface/>
+<pyRuleFormStatusTime>20260930T061754.292 GMT</pyRuleFormStatusTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pySerializeJavaObject/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedDateTime/>
+<pyClassName>ASM-FW-GCNMFW-Data-Compliance</pyClassName>
+<pyFieldName/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyOnObjChange/>
+<pyIsAssociation/>
+<pxInstanceLockedRuleSetVersion/>
+<pyStringType>Text</pyStringType>
+<pxHostId>jboss2058</pxHostId>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSetVersion>01-01-86</pyRuleSetVersion>
+<pyIsTransient/>
+<pyCircumstanceVal/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyMethodStatus/>
+<pyWindowTitle/>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyColumnInclusion/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsLightweight>false</pyIsLightweight>
+<pxMoveImportDateTime>20191231T031835.049 GMT</pxMoveImportDateTime>
+<pyTableProperty/>
+<pyStatus/>
+<pyMemo>done</pyMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyTemplateInputBox/>
+<pyUseForLocalization/>
+<pyDescription/>
+<pyJavaStream/>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-COMPLIANCE COMPLIANCEREMARKS #20171122T123657.956 GMT</pzOriginalInstanceKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInsName>ASM-FW-GCNMFW-DATA-COMPLIANCE!COMPLIANCEREMARKS</pxInsName>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateOpName/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceProp/>
+<pyIsFromManageChangeLP/>
+<pyUsage/>
+<pyDocumentTitle/>
+<pyEditValidate/>
+<pyReflectStatus>true</pyReflectStatus>
+<pyIsManualReference/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyExpectedSize/>
+<pxInstanceLockedKey/>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCEREMARKS #20200707T070748.468 GMT</pzInsKey>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pyCircumstanceDate/>
+<pyIsJavaPage/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyJavaObjectClass/>
+<pyTableSelector/>
+<pxCreateDateTime>20200707T070748.468 GMT</pxCreateDateTime>
+<pyRuleParamsStreamName/>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pyRuleStarts/>
+<pyColumnIndexed/>
+<pxSaveDateTime>20200707T070756.715 GMT</pxSaveDateTime>
+<pxUpdateOperator>WILLYYAKOBUSTANDRA</pxUpdateOperator>
+<pyRuleEnds/>
+<pyLabelOld>ComplianceRemarks</pyLabelOld>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalCreateDateTime/>
+<pyDataObject/>
+<pyPageClass/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedCreateDateTime/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pyLabel/>
+<pxSubscript>none</pxSubscript>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+</rowdata>
+</pyqualifierpagegroup>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyDelete>false</pyDelete>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyPreview>true</pyPreview>
+<pySave>false</pySave>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>true</pyUsesInheritance>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCEREMARKS #20200707T070748.468 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Compliance</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMethodStatus/>
+<pyRuleName>pxTextArea</pyRuleName>
+<pxRuleFamilyName>PXTEXTAREA</pxRuleFamilyName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCEREMARKS #20200707T070748.468 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCEREMARKS #20200707T070748.468 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-COMPLIANCE</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Compliance</pxRuleClassName>
+<pyMethodStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Compliance</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStandardValue/>
+<pyLocalizedValue/>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+</pyPromptTableList>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+<pyKeyValue/>
+<pyKeyCaption/>
+</rowdata>
+</pyTableKeys>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-COMPLIANCE COMPLIANCEREMARKS #20200707T070748.468 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

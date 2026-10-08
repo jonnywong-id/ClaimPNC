@@ -180,6 +180,42 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 	return nil
 }
 
+// CheckPostAuditWritable memeriksa prasyarat jalur TULIS, terpisah dari CheckTable.
+//
+// # Kenapa terpisah
+//
+// Karena akibat kegagalannya berbeda. Tanpa hak baca, seluruh layar kosong dan modulnya
+// memang mati. Tanpa sequence, layar tetap utuh, kedua tab tetap terbaca, dan yang gagal
+// HANYA tombol Kirim ke Post Audit. Melaporkan keduanya sebagai satu kegagalan membuat
+// modul yang sebagian besar berfungsi terbaca seperti modul yang tidak berfungsi.
+//
+// # Apa yang dibuktikan, dan apa yang tidak
+//
+// Dibuktikan: sequence-nya ada dan dapat diakses akun aplikasi.
+//
+// TIDAK dibuktikan: hak INSERT pada `POOLDATA.T_CLAIM_COMPLIANCE_H`. Membuktikannya
+// menuntut penyisipan baris sungguhan, dan `-periksa` berjanji tidak menulis apa pun.
+// Batas itu disebutkan dalam pesan galatnya supaya tidak dikira sudah tercakup.
+func (r *Repo) CheckPostAuditWritable(ctx context.Context) error {
+	var found int
+
+	if err := r.db.QueryRowContext(
+		ctx, query("check_post_audit_sequence"), sequenceOwner, sequenceName,
+	).Scan(&found); err != nil {
+		return fmt.Errorf("membaca katalog ALL_SEQUENCES: %w", err)
+	}
+
+	if found == 0 {
+		return fmt.Errorf(
+			"sequence %s.%s tidak ada atau tidak dapat diakses akun aplikasi; "+
+				"jalankan migrations/0011_post_audit_compliance.up.sql beserta kedua "+
+				"GRANT di dalamnya (DBA, `D-63`), di basis data SETIAP entitas",
+			sequenceOwner, sequenceName)
+	}
+
+	return nil
+}
+
 // scanner adalah bentuk minimal yang dibutuhkan scanWorkItem, sehingga ia dapat diuji tanpa
 // basis data.
 type scanner interface {
@@ -332,8 +368,17 @@ func (r *Repo) CreatePostAudit(
 	if err := tx.QueryRowContext(
 		ctx, query("post_audit_next_sequence"),
 	).Scan(&sequence); err != nil {
+		// Penyebab paling mungkin bukan cacat kode melainkan migrasi 0011 yang belum
+		// dijalankan DBA, dan Oracle melaporkan keduanya dengan pesan yang sama
+		// ("sequence does not exist") baik objeknya memang tidak ada maupun haknya belum
+		// diberikan. Menyebut berkas migrasinya di sini membuat galat itu dapat
+		// ditindaklanjuti tanpa menebak — lihat juga CheckPostAuditWritable, yang
+		// menemukannya saat start sehingga seharusnya tidak pernah sampai ke sini.
 		return inboxcompliance.PostAuditEntry{}, fmt.Errorf(
-			"mengambil nomor urut Post Audit: %w", err)
+			"mengambil nomor urut Post Audit dari %s.%s "+
+				"(bila sequence-nya belum ada, jalankan "+
+				"migrations/0011_post_audit_compliance.up.sql): %w",
+			sequenceOwner, sequenceName, err)
 	}
 
 	saved := entry
@@ -373,4 +418,123 @@ func nullableText(value string) any {
 		return nil
 	}
 	return value
+}
+
+// FindDecision mengambil keputusan Compliance yang sudah tersimpan atas satu klaim.
+//
+// Nilai kedua bernilai salah ketika klaimnya belum pernah diputuskan — bukan galat. Setiap
+// klaim yang baru masuk antrean berada dalam keadaan itu.
+func (r *Repo) FindDecision(
+	ctx context.Context, reference string,
+) (inboxcompliance.Decision, bool, error) {
+	row := r.db.QueryRowContext(ctx, query("find_compliance_decision"), reference)
+
+	var (
+		choice    sql.NullString
+		note      sql.NullString
+		remarks   sql.NullString
+		decidedBy sql.NullString
+		decidedAt sql.NullTime
+		validated sql.NullTime
+		sent      sql.NullTime
+	)
+
+	err := row.Scan(&choice, &note, &remarks, &decidedBy, &decidedAt, &validated, &sent)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxcompliance.Decision{}, false, nil
+	}
+	if err != nil {
+		return inboxcompliance.Decision{}, false, fmt.Errorf(
+			"menjalankan kueri find_compliance_decision: %w", err)
+	}
+
+	decision := inboxcompliance.Decision{
+		Reference: reference,
+		Choice:    choice.String,
+		Note:      note.String,
+		Remarks:   remarks.String,
+		DecidedBy: decidedBy.String,
+	}
+	if decidedAt.Valid {
+		decision.DecidedAt = decidedAt.Time
+	}
+
+	// Kedua stempel waktu di bawah dibiarkan nil ketika kolomnya NULL, dan pembedaan itu
+	// yang dibaca layar: `TGL_VALID` terisi HANYA pada pilihan Bayar/Valid, dan
+	// `TGL_KIRIM_POST_AUDIT` HANYA pada Bayar/PostAudit. Memulangkan waktu nol tahun 1
+	// akan membuat keduanya tampak selalu terisi.
+	if validated.Valid {
+		at := validated.Time
+		decision.ValidatedAt = &at
+	}
+	if sent.Valid {
+		at := sent.Time
+		decision.SentToPostAuditAt = &at
+	}
+
+	return decision, true, nil
+}
+
+// SaveDecision menyimpan keputusan Compliance, menimpa keputusan sebelumnya atas klaim yang
+// sama.
+//
+// # Ke tabel mana, dan apa yang TIDAK ikut tersentuh
+//
+// Ke `POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE`, tabel baru milik aplikasi ini. Klaimnya sendiri
+// — `T_CLAIM_PNC` dan `PC_ASM_FW_GCNMFW_WORK` — TIDAK disentuh, karena keduanya masih
+// dimiliki Pega selama masa paralel (`P-1`). Konsekuensinya dijelaskan di
+// usecase.SubmitDecision, bagian "Akibat yang BELUM sampai ke klaim".
+//
+// Satu pernyataan, sehingga tidak perlu transaksi: `MERGE` sudah atomik dengan sendirinya.
+func (r *Repo) SaveDecision(
+	ctx context.Context, decision inboxcompliance.Decision,
+) error {
+	if _, err := r.db.ExecContext(
+		ctx, query("upsert_compliance_decision"),
+		decision.Reference,
+		decision.Choice,
+		nullableText(decision.Note),
+		nullableText(decision.Remarks),
+		nullableText(decision.DecidedBy),
+		decision.DecidedAt,
+		nullableTime(decision.ValidatedAt),
+		nullableTime(decision.SentToPostAuditAt),
+	); err != nil {
+		// Sama seperti pada CreatePostAudit, penyebab paling mungkin adalah migrasinya
+		// yang belum dijalankan DBA — bukan cacat kode. Menyebut berkasnya membuat galat
+		// itu dapat ditindaklanjuti tanpa menebak.
+		return fmt.Errorf(
+			"menyimpan keputusan Compliance ke POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE "+
+				"(bila tabelnya belum ada, jalankan "+
+				"migrations/0012_keputusan_compliance.up.sql): %w", err)
+	}
+	return nil
+}
+
+// CheckDecisionWritable membuktikan tabel keputusan Compliance ada dan dapat diakses akun
+// aplikasi.
+//
+// Ia dipanggil `-periksa` saat start. Seperti CheckPostAuditWritable, ia membuktikan
+// keberadaan DAN hak baca — tetapi TIDAK membuktikan hak tulis, karena membuktikannya
+// menuntut benar-benar menulis lalu membatalkannya.
+func (r *Repo) CheckDecisionWritable(ctx context.Context) error {
+	if _, err := r.db.ExecContext(ctx, query("check_table_decision")); err != nil {
+		return fmt.Errorf(
+			"tabel POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE tidak ada atau tidak dapat diakses "+
+				"akun aplikasi; jalankan migrations/0012_keputusan_compliance.up.sql "+
+				"beserta GRANT di dalamnya (DBA, `D-63`), di basis data SETIAP entitas: %w",
+			err)
+	}
+	return nil
+}
+
+// nullableTime mengirim waktu yang tidak terisi sebagai NULL.
+//
+// Pointer, bukan time.Time kosong, karena tahun 1 tidak dapat dibedakan dari "tidak
+// terisi" — dan pada kedua kolom ini perbedaannya menentukan pilihan mana yang diambil.
+func nullableTime(value *time.Time) any {
+	if value == nil {
+		return nil
+	}
+	return *value
 }

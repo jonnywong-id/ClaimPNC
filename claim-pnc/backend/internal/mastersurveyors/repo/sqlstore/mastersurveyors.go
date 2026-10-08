@@ -194,18 +194,18 @@ func (r *Repo) Insert(ctx context.Context, s mastersurveyors.Surveyor) (mastersu
 		clean.Name,
 		nullIfEmpty(clean.Address),
 		nullIfEmpty(clean.PostalCode),
-		nullIfEmpty(clean.State),
+		nullIfEmpty(clean.Country),
 		nullIfEmpty(clean.Phone),
 		nullIfEmpty(clean.Fax),
 		nullIfEmpty(clean.Email),
-		nullIfEmpty(clean.OtherContact),
+		nullIfEmpty(clean.ContactName),
 		nullIfEmpty(clean.BranchCode),
 		nullIfEmpty(clean.BranchName),
 		nullIfEmpty(clean.AppLogin),
 		nullIfEmpty(clean.DocumentID),
 		string(clean.Status),
 		nullIfEmpty(clean.Committee),
-		nullIfEmpty(clean.CommitteeTransferred),
+		nullIfEmpty(clean.NeedDirector),
 		// CreatedBy sengaja TIDAK diikat: kolom USER_INPUT belum ada di tabelnya.
 	)
 	if err != nil {
@@ -231,17 +231,17 @@ func (r *Repo) Update(ctx context.Context, s mastersurveyors.Surveyor) error {
 		clean.Name,
 		nullIfEmpty(clean.Address),
 		nullIfEmpty(clean.PostalCode),
-		nullIfEmpty(clean.State),
+		nullIfEmpty(clean.Country),
 		nullIfEmpty(clean.Phone),
 		nullIfEmpty(clean.Fax),
 		nullIfEmpty(clean.Email),
-		nullIfEmpty(clean.OtherContact),
+		nullIfEmpty(clean.ContactName),
 		nullIfEmpty(clean.BranchCode),
 		nullIfEmpty(clean.BranchName),
 		nullIfEmpty(clean.AppLogin),
 		nullIfEmpty(clean.DocumentID),
 		string(clean.Status),
-		nullIfEmpty(clean.CommitteeTransferred),
+		nullIfEmpty(clean.NeedDirector),
 		// DecidedAt, Note, dan UpdatedBy sengaja TIDAK diikat: kolomnya belum ada di
 		// POOLDATA.D_SURVEYORS, dan Pega pun tidak punya ketiganya. Lihat catatan pada
 		// `surveyor_update` di mastersurveyors.sql.
@@ -384,28 +384,28 @@ func scanSurveyor(row scanRow) (mastersurveyors.Surveyor, error) {
 	}
 
 	surveyor := mastersurveyors.Surveyor{
-		ID:                   id.String,
-		LegacyID:             legacyID.String,
-		TypeCode:             typeCode.String,
-		TypeDescription:      typeDesc.String,
-		Name:                 name.String,
-		Address:              address.String,
-		PostalCode:           postalCode.String,
-		State:                state.String,
-		Phone:                phone.String,
-		Fax:                  fax.String,
-		Email:                email.String,
-		OtherContact:         otherContact.String,
-		BranchCode:           branchCode.String,
-		BranchName:           branchName.String,
-		AppLogin:             appLogin.String,
-		DocumentID:           docID.String,
-		Status:               mastersurveyors.ApprovalStatus(strings.TrimSpace(approval.String)),
-		Committee:            committee.String,
-		CommitteeTransferred: committeeTransferred.String,
-		Note:                 note.String,
-		CreatedBy:            createdBy.String,
-		UpdatedBy:            updatedBy.String,
+		ID:              id.String,
+		LegacyID:        legacyID.String,
+		TypeCode:        typeCode.String,
+		TypeDescription: typeDesc.String,
+		Name:            name.String,
+		Address:         address.String,
+		PostalCode:      postalCode.String,
+		Country:         state.String,
+		Phone:           phone.String,
+		Fax:             fax.String,
+		Email:           email.String,
+		ContactName:     otherContact.String,
+		BranchCode:      branchCode.String,
+		BranchName:      branchName.String,
+		AppLogin:        appLogin.String,
+		DocumentID:      docID.String,
+		Status:          mastersurveyors.ApprovalStatus(strings.TrimSpace(approval.String)),
+		Committee:       committee.String,
+		NeedDirector:    committeeTransferred.String,
+		Note:            note.String,
+		CreatedBy:       createdBy.String,
+		UpdatedBy:       updatedBy.String,
 	}
 	if decidedAt.Valid {
 		when := decidedAt.Time
@@ -456,4 +456,110 @@ func translateWriteError(err error, activity string) error {
 	default:
 		return fmt.Errorf("mastersurveyors/sqlstore: %s: %w", activity, err)
 	}
+}
+
+// ListCountries membaca daftar negara untuk dropdown "Negara".
+//
+// Tabelnya DIMILIKI pihak lain (GISFW) dan hanya DIBACA. Lihat catatan pada kueri
+// surveyor_country_list: nama tabel fisiknya disimpulkan dari nama kelas Pega dan BELUM
+// diverifikasi ke katalog.
+//
+// Kegagalan membacanya TIDAK dijadikan galat yang menggagalkan layar: Negara bukan isian
+// wajib, dan dropdown kosong jauh lebih baik daripada formulir yang tidak dapat dibuka
+// hanya karena tabel milik modul lain belum tersedia.
+func (r *Repo) ListCountries(ctx context.Context) ([]mastersurveyors.Country, error) {
+	rows, err := r.db.QueryContext(ctx, getQuery("surveyor_country_list"))
+	if err != nil {
+		return nil, nil
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []mastersurveyors.Country
+	for rows.Next() {
+		var code, name sql.NullString
+		if err := rows.Scan(&code, &name); err != nil {
+			return nil, fmt.Errorf("mastersurveyors/sqlstore: memindai baris negara: %w", err)
+		}
+		result = append(result, mastersurveyors.Country{
+			Code: strings.TrimSpace(code.String),
+			Name: strings.TrimSpace(name.String),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("mastersurveyors/sqlstore: menelusuri daftar negara: %w", err)
+	}
+	return result, nil
+}
+
+// ListEmployees membaca daftar pegawai yang boleh dijadikan Surveyor Internal.
+//
+// Ia menjalankan DUA kueri, bukan satu `UNION ALL` seperti rule lama, dan itu disengaja:
+// separuh pertama menempuh DB Link ke HRD (`D-25`, `R-03`) sedangkan separuh kedua hidup
+// di basis data yang sedang dibaca. Disatukan, DB Link yang mati menjatuhkan keduanya dan
+// daftar pegawai menjadi kosong sama sekali — padahal separuh yang lokal baik-baik saja.
+//
+// Kegagalan separuh HRD karena itu TIDAK dijadikan galat: daftarnya diteruskan apa adanya
+// dengan isi yang tersedia. Yang hilang hanyalah pegawai HRD, dan itu terlihat sebagai
+// daftar yang lebih pendek — bukan sebagai layar yang tidak dapat dibuka.
+//
+// Kegagalan separuh LOKAL juga tidak digagalkan, dengan alasan yang sama seperti
+// ListCountries: isian ini melayani satu tipe surveyor saja.
+func (r *Repo) ListEmployees(ctx context.Context) ([]mastersurveyors.Employee, error) {
+	var result []mastersurveyors.Employee
+
+	// Urutannya: HRD lebih dulu, lalu user teknik — sama dengan urutan `UNION ALL` rule
+	// lama. `UNION ALL`, bukan `UNION`, sehingga nama kembar memang dibiarkan muncul dua
+	// kali di sistem lama; itu tidak diubah di sini.
+	for _, name := range []string{"surveyor_employee_list", "surveyor_user_teknik_list"} {
+		rows, err := r.db.QueryContext(ctx, getQuery(name))
+		if err != nil {
+			continue
+		}
+		for rows.Next() {
+			var nama, login, email sql.NullString
+			if err := rows.Scan(&nama, &login, &email); err != nil {
+				_ = rows.Close()
+				return nil, fmt.Errorf("mastersurveyors/sqlstore: memindai baris pegawai: %w", err)
+			}
+			result = append(result, mastersurveyors.Employee{
+				Name:  strings.TrimSpace(nama.String),
+				Login: strings.TrimSpace(login.String),
+				Email: strings.TrimSpace(email.String),
+			})
+		}
+		err = rows.Err()
+		_ = rows.Close()
+		if err != nil {
+			return nil, fmt.Errorf("mastersurveyors/sqlstore: menelusuri daftar pegawai: %w", err)
+		}
+	}
+	return result, nil
+}
+
+// ListBranches membaca daftar cabang untuk isian "Cabang".
+//
+// Tabelnya DIMILIKI GISFW dan hanya DIBACA. Kegagalannya tidak menggagalkan layar, sama
+// seperti ListCountries.
+func (r *Repo) ListBranches(ctx context.Context) ([]mastersurveyors.Branch, error) {
+	rows, err := r.db.QueryContext(ctx, getQuery("surveyor_branch_list"))
+	if err != nil {
+		return nil, nil
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []mastersurveyors.Branch
+	for rows.Next() {
+		var code, name sql.NullString
+		if err := rows.Scan(&code, &name); err != nil {
+			return nil, fmt.Errorf("mastersurveyors/sqlstore: memindai baris cabang: %w", err)
+		}
+		result = append(result, mastersurveyors.Branch{
+			Code: strings.TrimSpace(code.String),
+			Name: strings.TrimSpace(name.String),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("mastersurveyors/sqlstore: menelusuri daftar cabang: %w", err)
+	}
+	return result, nil
 }

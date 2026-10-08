@@ -29,8 +29,9 @@ import (
 const defaultSiteCode = "1"
 
 // sequenceDigits adalah lebar nomor urut, mengikuti
-// `Database/PEGA_LST_DOC_TYPE.prc:21` — empat, bukan tiga.
-const sequenceDigits = 4
+// `POOLDATA.PEGA_LST_DOC_OBJ` — LIMA. Procedure itu ADA di basis data meski hilang dari
+// export, dan ID yang terpakai hari ini (100766..100777, CHAR(6)) menegaskannya.
+const sequenceDigits = 5
 
 // Repo menyimpan objek dokumen satu portal di memori.
 //
@@ -151,7 +152,7 @@ func (r *Repo) Update(_ context.Context, id string, data daftarobjekdokumen.Save
 	return daftarobjekdokumen.DocumentObject{}, daftarobjekdokumen.ErrNotFound
 }
 
-// nextID meniru `id_site || lpad(to_char(SET_LST_DOC_OBJ.nextval), 4, '0')`.
+// nextID meniru `id_site || lpad(to_char(LST_DOC_OBJ_SEQ.nextval), 5, '0')`.
 //
 // Nomor urutnya diturunkan dari isi yang tersimpan, bukan dari pencacah tersendiri, supaya
 // repo yang dibentuk dengan SampleList melanjutkan deret yang sudah ada.
@@ -171,7 +172,7 @@ func (r *Repo) nextID() string {
 	// Perulangan ini nyaris selalu berhenti pada percobaan pertama. Ia ada untuk isi tabel
 	// yang sudah memuat ID berbentuk lain, supaya baris baru tidak menabraknya.
 	for number := highest + 1; ; number++ {
-		candidate := defaultSiteCode + fourDigits(number)
+		candidate := defaultSiteCode + fiveDigits(number)
 		if !taken[candidate] {
 			return candidate
 		}
@@ -193,10 +194,10 @@ func copyBusinesses(list []daftarobjekdokumen.Business) []daftarobjekdokumen.Bus
 	return result
 }
 
-// fourDigits meniru lpad(to_char(seq), 4, '0'). Bilangan di atas 9999 dikembalikan apa
+// fiveDigits meniru lpad(to_char(seq), 5, '0'). Bilangan di atas 99999 dikembalikan apa
 // adanya, sama seperti LPAD Oracle — lihat catatan panjang pada
-// `repo/sqlstore/daftarobjekdokumen.go` fungsi FourDigits.
-func fourDigits(n int) string {
+// `repo/sqlstore/daftarobjekdokumen.go` fungsi FiveDigits.
+func fiveDigits(n int) string {
 	digits := strconv.Itoa(n)
 	for len(digits) < sequenceDigits {
 		digits = "0" + digits
@@ -245,18 +246,20 @@ func (r *BusinessRepo) List(_ context.Context) ([]daftarobjekdokumen.Business, e
 // ada berkas CSV-nya di `Database/` seperti halnya `v_sts_claim.csv`, dan DDL-nya pun belum
 // diterima (`R-08`).
 //
-// Yang di bawah disusun dari **Group Panel** yang memang terbaca di export dan sudah
-// tercatat di `CONTEXT.md` — Personal Accident, Aneka, Marine Cargo, Travel, dan
-// Fire/Property. Isinya sengaja SAMA PERSIS dengan SampleBusinessList milik modul Master
-// COL Simas Online: keduanya membaca tabel yang sama, dan daftar contoh yang berbeda akan
-// membuat dua layar menampilkan master yang seolah berbeda.
+// Nama-namanya disusun dari **Group Panel** yang terbaca di export dan tercatat di
+// `CONTEXT.md`. BENTUK ID-nya mengikuti data sebenarnya — pembacaan basis data 2026-10-03
+// memperlihatkan BUSINESS.ID berupa lima digit seperti `10027`, bukan tiga digit seperti
+// yang semula disalin dari modul Master COL Simas Online.
+//
+// Bentuk yang keliru pada data contoh tidak menimbulkan galat; ia hanya membuat uji lulus
+// atas bentuk yang tidak pernah ada di produksi.
 func SampleBusinessList() []daftarobjekdokumen.Business {
 	return []daftarobjekdokumen.Business{
-		{ID: "002", Name: "PERSONAL ACCIDENT"},
-		{ID: "003", Name: "ANEKA"},
-		{ID: "004", Name: "MARINE CARGO"},
-		{ID: "005", Name: "TRAVEL"},
-		{ID: "006", Name: "FIRE / PROPERTY"},
+		{ID: "10002", Name: "PERSONAL ACCIDENT"},
+		{ID: "10013", Name: "ANEKA"},
+		{ID: "10027", Name: "MARINE CARGO"},
+		{ID: "10045", Name: "TRAVEL"},
+		{ID: "10052", Name: "FIRE / PROPERTY"},
 	}
 }
 
@@ -266,48 +269,50 @@ func SampleBusinessList() []daftarobjekdokumen.Business {
 // PERINGATAN — INI BUKAN DATA PRODUKSI. Isi V_LST_DOC_OBJ tidak ada di export, dan tidak
 // ada satu pun berkas CSV-nya di `Database/`.
 //
-// Nama-nama di bawah SUSUNAN SENDIRI, dipilih agar bentuk ID-nya benar (`id_site` + empat
-// digit) dan agar pemetaan ke lebih dari satu bisnis dapat dicoba di layar. Ia TIDAK boleh
-// dipakai sebagai dasar uji kesetaraan gerbang 1.
+// Nama-nama di bawah SUSUNAN SENDIRI, dipilih agar bentuk ID-nya benar — kode situs "1"
+// ditambah LIMA digit, menghasilkan enam karakter persis seperti `100766`..`100777` yang
+// terpakai di produksi. Ia TIDAK boleh dipakai sebagai dasar uji kesetaraan gerbang 1.
 //
-// Tiga keadaan sengaja ikut terwakili, karena ketiganya sah dan harus ditangani setiap
-// layar:
+// Panjang keterangannya sengaja di bawah 20 karakter, karena itulah lebar kolomnya.
 //
-//	10002  pemetaan ke lebih dari satu bisnis
-//	10003  punya OLD_ID — baris warisan yang pernah bernomor lain
-//	10004  satu bisnis yang TIDAK ada di SampleBusinessList ("KENDARAAN BERMOTOR"),
-//	       yaitu nama yang diketik bebas dan karena itu tersimpan tanpa ID
+// Dua keadaan sengaja ikut terwakili, karena keduanya sah dan harus ditangani setiap layar:
+//
+//	100002  pemetaan ke lebih dari satu bisnis
+//	100003  punya OLD_ID — baris warisan yang pernah bernomor lain
+//
+// Keadaan "nama bisnis yang tidak ada di master" TIDAK lagi diwakili di sini, dan itu
+// disengaja: sejak pemetaan terbukti hanya menyimpan ID, nama seperti itu tidak dapat
+// tersimpan sama sekali. Penolakannya diuji di `usecase`, bukan diwakili data contoh.
 func SampleList() []daftarobjekdokumen.DocumentObject {
 	return []daftarobjekdokumen.DocumentObject{
 		{
-			ID:          "10001",
+			ID:          "100001",
 			Description: "KTP Tertanggung",
 			Businesses: []daftarobjekdokumen.Business{
-				{ID: "002", Name: "PERSONAL ACCIDENT"},
+				{ID: "10002", Name: "PERSONAL ACCIDENT"},
 			},
 		},
 		{
-			ID:          "10002",
+			ID:          "100002",
 			Description: "Polis Asli",
 			Businesses: []daftarobjekdokumen.Business{
-				{ID: "006", Name: "FIRE / PROPERTY"},
-				{ID: "003", Name: "ANEKA"},
+				{ID: "10052", Name: "FIRE / PROPERTY"},
+				{ID: "10013", Name: "ANEKA"},
 			},
 		},
 		{
-			ID:          "10003",
-			Description: "Surat Keterangan Dokter",
-			OldID:       "07",
+			ID:          "100003",
+			Description: "Surat Dokter",
+			OldID:       "0007",
 			Businesses: []daftarobjekdokumen.Business{
-				{ID: "002", Name: "PERSONAL ACCIDENT"},
+				{ID: "10002", Name: "PERSONAL ACCIDENT"},
 			},
 		},
 		{
-			ID:          "10004",
+			ID:          "100004",
 			Description: "Bill of Lading",
 			Businesses: []daftarobjekdokumen.Business{
-				{ID: "004", Name: "MARINE CARGO"},
-				{ID: "", Name: "KENDARAAN BERMOTOR"},
+				{ID: "10027", Name: "MARINE CARGO"},
 			},
 		},
 	}

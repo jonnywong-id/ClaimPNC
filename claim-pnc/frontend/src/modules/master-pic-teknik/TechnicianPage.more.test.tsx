@@ -46,11 +46,11 @@ const TECH: Technician = {
   id_operator: 'PICTEKNIK09',
   nama: '',
   email: 'contoh.sembilan@example.invalid',
-  lini_bisnis: '',
-  grup: '',
+  bisnis: '',
+  kelompok: '',
   atasan: '',
-  kuota: 0,
-  kuota_luar: 0,
+  counter_klaim_kurang_1m: 0,
+  counter_klaim_lebih_1m: 0,
   beban_kerja: 3,
   grup_panel: '',
   aktif: false,
@@ -94,10 +94,10 @@ describe('TechnicianPage — galat dan sel', () => {
     expect(await screen.findByText(title)).toBeInTheDocument()
   })
 
-  it('menulis tanda pisah untuk grup, atasan, kuota luar kosong dan memuat ulang', async () => {
+  it('menulis tanda pisah untuk atasan, bisnis, dan kelompok kosong lalu memuat ulang', async () => {
     installFetch(() => ({
       body: {
-        pic_teknik: [TECH, { ...TECH, id_operator: 'PICTEKNIK10', nama: 'Lain', kuota_luar: 2 }],
+        pic_teknik: [TECH, { ...TECH, id_operator: 'PICTEKNIK10', nama: 'Lain', counter_klaim_lebih_1m: 2 }],
         total: 2,
         portal: 'ASM',
       },
@@ -117,11 +117,11 @@ describe('TechnicianPage — galat dan sel', () => {
     await waitFor(() => expect(calls.length).toBe(before + 1))
   })
 
-  it('menyaring baris lewat kotak cari dan mengurutkan menurut beban', async () => {
+  it('menyaring baris lewat kotak cari dan mengurutkan menurut pencacah klaim', async () => {
     installFetch(() => ({
       body: {
         pic_teknik: [
-          { ...TECH, nama: 'Petugas Ringan', beban_kerja: 1, kuota_luar: 4 },
+          { ...TECH, nama: 'Petugas Ringan', beban_kerja: 1, counter_klaim_lebih_1m: 4 },
           { ...TECH, id_operator: 'PICTEKNIK11', nama: 'Petugas Berat', beban_kerja: 8 },
         ],
         total: 2,
@@ -131,13 +131,17 @@ describe('TechnicianPage — galat dan sel', () => {
     const user = userEvent.setup()
     wrap(<TechnicianPage />)
 
-    await screen.findAllByText('Petugas Ringan')
-    await user.click(screen.getAllByRole('button', { name: /Beban \/ Kuota/ })[0]!)
-    await user.click(screen.getAllByRole('button', { name: /Kuota sistem lain/ })[0]!)
+    // Grid menampilkan ID operator, bukan nama — sama dengan Pega. Nama tetap ikut
+    // DICARI, dan itulah yang diuji di bawah.
+    await screen.findAllByText('PICTEKNIK09')
+    await user.click(screen.getAllByRole('button', { name: /Counter Klaim <1M/ })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /Counter Klaim >1M/ })[0]!)
     await user.type(screen.getByLabelText(/Cari ID operator/), 'Berat')
 
-    await waitFor(() => expect(screen.queryAllByText('Petugas Ringan')).toHaveLength(0))
-    expect(screen.getAllByText('Petugas Berat').length).toBeGreaterThan(0)
+    // Mencari lewat NAMA tetap bekerja walau namanya tidak ditampilkan: baris yang namanya
+    // tidak cocok hilang, yang cocok bertahan.
+    await waitFor(() => expect(screen.queryAllByText('PICTEKNIK09')).toHaveLength(0))
+    expect(screen.getAllByText('PICTEKNIK11').length).toBeGreaterThan(0)
   })
 
   it('mengunci tombol Tambah selagi form tambah terbuka, lalu menutup lewat Batal', async () => {
@@ -145,7 +149,7 @@ describe('TechnicianPage — galat dan sel', () => {
     const user = userEvent.setup()
     wrap(<TechnicianPage />)
 
-    expect(await screen.findByText('Belum ada PIC teknik aktif pada entitas ini.')).toBeInTheDocument()
+    expect(await screen.findByText('Belum ada PIC teknik pada entitas ini.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Tambah/ }))
     expect(screen.getByRole('button', { name: /Tambah/ })).toBeDisabled()
 
@@ -167,52 +171,73 @@ describe('TechnicianForm', () => {
     const user = userEvent.setup()
     show()
 
-    expect(screen.getByLabelText('ID Operator')).toHaveFocus()
+    expect(screen.getByLabelText('Username')).toHaveFocus()
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
-    expect(await screen.findByText('ID operator wajib diisi.')).toBeInTheDocument()
+    expect(await screen.findByText('Username wajib diisi.')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Email'), 'bukan-email')
-    await user.clear(screen.getByLabelText('Kuota'))
+    await user.clear(screen.getByLabelText('Counter Klaim <1M'))
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
 
     expect(await screen.findByText('Format email tidak benar.')).toBeInTheDocument()
-    expect(screen.getByText('Kuota harus berupa angka.')).toBeInTheDocument()
-    expect(calls).toHaveLength(0)
+    expect(screen.getByText('Counter Klaim <1M harus berupa angka.')).toBeInTheDocument()
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(0)
   })
 
-  it('tidak mencari ke direktori bila ID masih kosong', async () => {
+  it('tidak mencari ke direktori bila Username masih kosong', async () => {
     installFetch(() => ({ body: {} }))
     const user = userEvent.setup()
     show()
 
-    await user.click(screen.getByRole('button', { name: 'Cari pegawai di direktori' }))
-    expect(calls).toHaveLength(0)
+    await user.tab()
+    // Form memuat daftar untuk mengisi dropdown Kelompok, Atasan, dan Bisnis; yang tidak
+    // boleh terjadi adalah panggilan ke DIREKTORI.
+    expect(calls.filter((c) => c.url.includes('/direktori/'))).toHaveLength(0)
   })
 
   it('tidak menimpa atasan dan surel yang sudah diisi', async () => {
-    installFetch(() => ({
-      body: {
-        pegawai: {
-          id_operator: 'X',
-          nama: 'Pegawai Contoh',
-          email: 'dari.direktori@example.invalid',
-          atasan: 'ATASANDIREKTORI',
-          nama_atasan: 'Atasan Contoh',
+    installFetch((call) => {
+      if (call.url.includes('/direktori/')) {
+        return {
+          body: {
+            pegawai: {
+              id_operator: 'X',
+              nama: 'Pegawai Contoh',
+              email: 'dari.direktori@example.invalid',
+              atasan: 'ATASANDIREKTORI',
+              nama_atasan: 'Atasan Contoh',
+            },
+            portal: 'ASM',
+          },
+        }
+      }
+      // Daftar mengisi dropdown Atasan; tanpa isi, tidak ada yang dapat dipilih.
+      return {
+        body: {
+          pic_teknik: [{ ...TECH, id_operator: 'ATASANSAYA' }],
+          total: 1,
+          portal: 'ASM',
         },
-        portal: 'ASM',
-      },
-    }))
+      }
+    })
     const user = userEvent.setup()
     show()
 
-    await user.type(screen.getByLabelText('Atasan'), 'ATASANSAYA')
+    // Atasan kini DROPDOWN, mengikuti layar Pega — dipilih, bukan diketik.
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'ATASANSAYA' })).toBeInTheDocument()
+    })
+    await user.selectOptions(screen.getByLabelText('Atasan'), 'ATASANSAYA')
     await user.type(screen.getByLabelText('Email'), 'saya@example.invalid')
-    await user.type(screen.getByLabelText('ID Operator'), 'X')
-    // Meninggalkan kolom ID juga memicu pencarian.
+    await user.type(screen.getByLabelText('Username'), 'X')
+    // Meninggalkan isian Username memicu pencarian — tanpa tombol, sama dengan Pega.
     await user.tab()
 
     expect(await screen.findByText('Pegawai Contoh')).toBeInTheDocument()
-    expect(calls[0]?.url).toBe('/api/master/pic-teknik/direktori/X')
+    expect(calls.find((c) => c.url.includes('/direktori/'))?.url).toBe(
+      '/api/master/pic-teknik/direktori/X',
+    )
+    // Usulan direktori TIDAK menimpa pilihan pengguna.
     expect(screen.getByLabelText('Atasan')).toHaveValue('ATASANSAYA')
     expect(screen.getByLabelText('Email')).toHaveValue('saya@example.invalid')
   })
@@ -231,14 +256,14 @@ describe('TechnicianForm', () => {
     const user = userEvent.setup()
     show()
 
-    await user.type(screen.getByLabelText('ID Operator'), 'X')
-    await user.click(screen.getByRole('button', { name: 'Cari pegawai di direktori' }))
+    await user.type(screen.getByLabelText('Username'), 'X')
+    await user.tab()
     expect(await screen.findByText(title)).toBeInTheDocument()
   })
 
   it.each([
     [{ fail: true }, 'Tidak dapat menghubungi server'],
-    [{ status: 409, body: { kode: 'id_operator_sudah_terdaftar', pesan: 'x' } }, 'ID operator sudah terdaftar'],
+    [{ status: 409, body: { kode: 'id_operator_sudah_terdaftar', pesan: 'x' } }, 'Username sudah terdaftar'],
     [{ status: 404, body: { kode: 'pic_teknik_tidak_ditemukan', pesan: 'x' } }, 'PIC teknik tidak ditemukan'],
     [{ status: 503, body: { kode: 'portal_belum_siap', pesan: 'x' } }, 'Basis data entitas ini belum tersedia'],
     [
@@ -262,7 +287,7 @@ describe('TechnicianForm', () => {
         kode: 'validasi_gagal',
         pesan: 'Isian belum benar.',
         detail: [
-          { field: 'grup', pesan: 'Grup tidak dikenal.' },
+          { field: 'kelompok', pesan: 'Kelompok tidak dikenal.' },
           { field: 'bukan_isian', pesan: 'diabaikan' },
         ],
       },
@@ -271,33 +296,37 @@ describe('TechnicianForm', () => {
     show(TECH)
 
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
-    expect(await screen.findByText('Grup tidak dikenal.')).toBeInTheDocument()
+    expect(await screen.findByText('Kelompok tidak dikenal.')).toBeInTheDocument()
     expect(screen.queryByText('Isian belum benar')).not.toBeInTheDocument()
     expect(screen.queryByText('diabaikan')).not.toBeInTheDocument()
   })
 
   it('menjatuhkan galat simpan tak dikenal ke pesan umum lalu menutup setelah berhasil', async () => {
-    let attempt = 0
-    installFetch(() => {
-      attempt++
-      return attempt === 1
+    // Stub dikunci pada METODE, bukan urutan panggilan: form memuat daftar lebih dulu
+    // untuk mengisi dropdown, sehingga menghitung "panggilan pertama" tidak lagi menunjuk
+    // penyimpanan.
+    let saves = 0
+    installFetch((call) => {
+      if (call.method !== 'PUT') return { body: { pic_teknik: [], total: 0, portal: 'ASM' } }
+      saves++
+      return saves === 1
         ? { status: 500, body: { kode: 'galat_lain', pesan: 'Galat aneh.' } }
         : { body: { pic_teknik: TECH, portal: 'ASM' } }
     })
     const user = userEvent.setup()
     const { onClose } = show(TECH)
 
-    // Petugas nonaktif tidak diberi peringatan penonaktifan.
-    expect(screen.queryByText(/hilang dari daftar/)).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Status')).toHaveValue('0')
+    expect(screen.getByLabelText('Status Aktif')).toHaveValue('0')
 
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
-    expect(await screen.findByText('Pencarian gagal')).toBeInTheDocument()
+    expect(await screen.findByText('Gagal menyimpan')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^Simpan$/ }))
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
-    expect(calls[1]?.method).toBe('PUT')
-    expect(calls[1]?.body).toMatchObject({ id_operator: 'PICTEKNIK09', aktif: false })
+
+    const put = calls.filter((c) => c.method === 'PUT')
+    expect(put).toHaveLength(2)
+    expect(put[0]?.body).toMatchObject({ id_operator: 'PICTEKNIK09', aktif: false })
   })
 
   it('menampilkan Mencari selagi direktori belum menjawab', async () => {
@@ -305,8 +334,8 @@ describe('TechnicianForm', () => {
     const user = userEvent.setup()
     show()
 
-    await user.type(screen.getByLabelText('ID Operator'), 'X')
-    await user.click(screen.getByRole('button', { name: 'Cari pegawai di direktori' }))
+    await user.type(screen.getByLabelText('Username'), 'X')
+    await user.tab()
     expect(await screen.findByText('Mencari…')).toBeInTheDocument()
   })
 })

@@ -175,3 +175,23 @@ func TestInterimPaidCountsAcceptedInterimOnly(t *testing.T) {
 	}}
 	require.Equal(t, registrasi.Rupiah(1_000_000), registrasi.InterimPaid(c))
 }
+
+// Estimation PA (Assignment4) ditutup flow action InputSurveyor — layar dan grid Adjustment yang
+// sama dengan Choose Surveyor — sehingga adjustment dapat dihitung di sana. Sebelumnya tahap ini
+// tidak terdaftar dan permintaan ditolak sebagai "klaim sudah berpindah tahap".
+func TestPreviewSettlementOnEstimationPA(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	_, task := l.upToInputRegister(t, paPolicy)
+	input := validInput(task.ID)
+	input.InsuredItem[0].Coverage[0].CauseOfLoss = registrasi.CauseOfLossPA
+	registered, err := l.service.SaveRegister(ctx, input, l.caller)
+	require.NoError(t, err)
+	require.Equal(t, registrasi.StageEstimatePA, registered.NextTask.Stage)
+
+	_, err = l.service.PreviewSettlement(ctx, addSettlement(*registered.NextTask, registrasi.SettlementInput{
+		PaymentType: registrasi.PaymentFinal, Propose: registrasi.Rupiah(1_000_000),
+	}), l.caller)
+	require.NotErrorIs(t, err, registrasi.ErrStageMismatch)
+	require.NotErrorIs(t, err, registrasi.ErrNotAvailableAtStage)
+}

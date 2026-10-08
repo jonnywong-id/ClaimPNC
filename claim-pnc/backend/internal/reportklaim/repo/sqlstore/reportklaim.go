@@ -38,6 +38,24 @@ import (
 // mencarinya di basis data.
 var ErrQueryNotPorted = errors.New("reportklaim/sqlstore: kueri laporan belum dipindahkan")
 
+// ErrQueryFailed menandai kueri yang DITOLAK basis data saat dijalankan.
+//
+// # Kenapa ia perlu penanda sendiri
+//
+// Tanpanya, galat Oracle jatuh ke penulis galat umum dan sampai ke pengguna sebagai
+// "Terjadi kesalahan pada sistem" — kalimat yang tidak dapat dibedakan dari cacat
+// pemrograman mana pun, dan tidak menyebutkan satu pun hal yang dapat ditindaklanjuti.
+//
+// Itu benar-benar terjadi pada 2026-10-01: seluruh tombol ekspor menjawab kalimat itu,
+// dan sebabnya tidak dapat ditentukan dari layar maupun dari responsnya. Pesan ORA-nya
+// ada — tetapi hanya di konsol peladen, tempat yang tidak dilihat siapa pun.
+//
+// Dengan penanda ini, lapisan transport dapat menjawab dengan kode tersendiri beserta
+// ID permintaan, sehingga baris log yang tepat dapat ditemukan tanpa menebak. Pesan
+// ORA-nya sendiri TETAP tidak dikirim ke klien: ia memuat nama tabel dan kolom
+// (`11-CROSSCUTTING.md` §1.2 aturan 5).
+var ErrQueryFailed = errors.New("reportklaim/sqlstore: kueri laporan ditolak basis data")
+
 // Repo menjalankan kueri laporan atas basis data satu portal.
 type Repo struct {
 	db *sql.DB
@@ -87,7 +105,30 @@ type plan struct {
 	//
 	// Nil berarti baris dipakai apa adanya.
 	derive deriveBuilder
+
+	// keep menyaring BARIS, bukan kolom — dan itu bedanya dari derive.
+	//
+	// # Kenapa ada
+	//
+	// Satu laporan menyaring barisnya lewat gabungan ke basis data LAIN:
+	// `report_mitra` membatasi diri pada petugas yang terdaftar sebagai mitra, dan
+	// daftar itu hidup di koneksi kedua. Gabungan antar dua koneksi tidak dapat ditulis
+	// sebagai satu pernyataan SQL, sehingga penyaringnya dipindahkan ke sini.
+	//
+	// Ia SENGAJA dipisah dari derive. Derive menambah kolom dan tidak pernah dapat
+	// menghilangkan baris; menyelipkan pembuangan baris ke dalamnya akan membuat
+	// perubahan jumlah baris tersembunyi di balik nama yang menjanjikan sebaliknya.
+	//
+	// Nil berarti seluruh baris dipakai.
+	keep keepBuilder
 }
+
+// keepBuilder menyiapkan penyaring baris untuk satu kali jalan laporan.
+//
+// Bentuknya sama dengan deriveBuilder, dan itu disengaja: keduanya disiapkan di tempat
+// yang sama, SEBELUM kueri utama dijalankan, sehingga kegagalannya terjadi sebelum satu
+// baris pun terkirim.
+type keepBuilder func(ctx context.Context, r *Repo, f reportklaim.Filter) (func(reportklaim.Row) bool, error)
 
 // satu menyusun pemilih kueri yang selalu mengembalikan nama yang sama.
 func satu(name string) func(reportklaim.Filter) string {
@@ -205,6 +246,17 @@ var plans = map[reportklaim.Code]plan{
 	// ---- kelompok Operasional ----
 	reportklaim.CodeProduksiKlaimPA: {query: satu("report_produksi_klaim_pa"), args: dateOnly, derive: staticDerive(derivePeriodeProduksiPA)},
 	reportklaim.CodeKomunikasiKlaim: fixed("report_komunikasi_klaim", noArgs),
+
+	// Satu-satunya laporan yang menyaring BARIS lewat koneksi kedua — lihat mitraKeep.
+	reportklaim.CodeMitra: {query: satu("report_mitra"), args: dateOnly, keep: mitraKeep},
+
+	// Kuerinya DIREKONSTRUKSI dari activity dan inbox survei, bukan disalin dari Report
+	// Definition — keduanya tidak ada di export. Tiga simpulannya disebut di berkas .sql.
+	reportklaim.CodeAdjuster: fixed("report_adjuster", dateOnly),
+
+	// Berjalan TANPA penyaring Status Compliance, dan dua kolom komentarnya kosong —
+	// ketiganya properti klipboard yang belum dioptimasi. Dinyatakan di label tombolnya.
+	reportklaim.CodeCompliance: fixed("report_compliance", dateOnly),
 }
 
 // komiteNonMBUArgs menyusun parameter susunan rinci Data Komite.
@@ -314,9 +366,20 @@ func (r *Repo) Stream(
 		derive = built
 	}
 
+	// Penyaring baris disiapkan di sini pula, dan alasannya sama tajamnya: bila daftar
+	// penyaringnya gagal dibaca, laporannya harus DITOLAK — bukan terbit tanpa penyaring.
+	var keep func(reportklaim.Row) bool
+	if p.keep != nil {
+		built, err := p.keep(ctx, r, filter)
+		if err != nil {
+			return fmt.Errorf("reportklaim/sqlstore: menyiapkan penyaring baris %q: %w", report.Code, err)
+		}
+		keep = built
+	}
+
 	rows, err := r.db.QueryContext(ctx, getQuery(name), p.args(filter)...)
 	if err != nil {
-		return fmt.Errorf("reportklaim/sqlstore: menjalankan laporan %q: %w", report.Code, err)
+		return fmt.Errorf("%w: laporan %q kueri %q: %w", ErrQueryFailed, report.Code, name, err)
 	}
 	defer rows.Close()
 
@@ -341,6 +404,12 @@ func (r *Repo) Stream(
 		}
 		if derive != nil {
 			derive(row)
+		}
+		// Disaring SESUDAH derive, supaya penyaringnya dapat membaca kolom turunan pula
+		// bila kelak dibutuhkan. Hari ini tidak ada yang memakainya begitu, dan urutan
+		// ini yang paling sedikit mengejutkan.
+		if keep != nil && !keep(row) {
+			continue
 		}
 		if err := emit(row); err != nil {
 			return err
@@ -517,4 +586,64 @@ func (r *Repo) dominantFactors(ctx context.Context, from, to time.Time) *reportk
 		return reportklaim.UnavailableDominantFactors()
 	}
 	return reportklaim.NewDominantFactors(pairs)
+}
+
+// ErrMitraListUnavailable menyatakan daftar mitra tidak dapat dibaca.
+//
+// Ia galat tersendiri, bukan galat umum, karena akibatnya khas: laporan Mitra yang
+// terbit tanpa daftar ini berisi SELURUH petugas alih-alih petugas mitra — berkasnya
+// tetap wajar dilihat, dan tidak ada satu pun tanda bahwa isinya bukan yang diminta.
+var ErrMitraListUnavailable = errors.New(
+	"daftar mitra tidak dapat dibaca dari koneksi kedua portal")
+
+// mitraKeep menyiapkan penyaring baris laporan Mitra.
+//
+// # Kenapa ia MENOLAK alih-alih melewatkan
+//
+// Di modul ini, kolom yang bersumber DB Link umumnya cukup dikosongkan bila koneksinya
+// tidak ada. Perlakuan itu TIDAK berlaku di sini: `general.lst_mitra` bukan pelengkap
+// kolom melainkan penyaring baris, dan laporan yang kehilangan penyaringnya tidak
+// kehilangan kolom — ia berubah isi.
+//
+// Karena itu ketiadaan koneksi, kegagalan pembacaan, dan daftar KOSONG sama-sama
+// menghentikan laporannya. Yang terakhir perlu disebut khusus: daftar kosong secara
+// teknis sah, tetapi ia menghasilkan berkas tanpa satu baris pun — dan berkas kosong
+// tidak dapat dibedakan dari "memang tidak ada penugasan pada periode itu".
+func mitraKeep(ctx context.Context, r *Repo, _ reportklaim.Filter) (func(reportklaim.Row) bool, error) {
+	if r.aneka == nil {
+		return nil, fmt.Errorf("%w: koneksi kedua belum dikonfigurasi (ANEKA_<PORTAL_ALIAS>_*)",
+			ErrMitraListUnavailable)
+	}
+
+	rows, err := r.aneka.QueryContext(ctx, getQuery("report_mitra_logins"))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrMitraListUnavailable, err)
+	}
+	defer rows.Close()
+
+	logins := map[string]struct{}{}
+	for rows.Next() {
+		var login sql.NullString
+		if err := rows.Scan(&login); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrMitraListUnavailable, err)
+		}
+		// Dinormalkan huruf besar dan dipangkas spasinya: kolom `userassign` dan
+		// `login_aplikasi` berada di dua basis data yang berbeda, dan keseragaman
+		// penulisannya tidak dijamin oleh apa pun.
+		if key := strings.ToUpper(strings.TrimSpace(login.String)); key != "" {
+			logins[key] = struct{}{}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrMitraListUnavailable, err)
+	}
+
+	if len(logins) == 0 {
+		return nil, fmt.Errorf("%w: daftarnya kosong", ErrMitraListUnavailable)
+	}
+
+	return func(row reportklaim.Row) bool {
+		_, mitra := logins[strings.ToUpper(strings.TrimSpace(row["QQNAME"]))]
+		return mitra
+	}, nil
 }

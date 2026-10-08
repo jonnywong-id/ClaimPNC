@@ -25,9 +25,14 @@ type AccountDTO struct {
 	AccountType string `json:"tipe_rekening"`
 	Active      bool   `json:"aktif"`
 
-	Email     string `json:"email"`
-	Phone     string `json:"telepon"`
-	NIK       string `json:"nik"`
+	Email string `json:"email"`
+	Phone string `json:"telepon"`
+	NIK   string `json:"nik"`
+
+	// SubmitterEmail dikirim supaya layar ubah dapat mengisinya kembali. Tanpa ini,
+	// setiap kali rekening diubah, Email Inputor akan tampil kosong dan tertimpa.
+	SubmitterEmail string `json:"email_inputor"`
+
 	Note      string `json:"catatan"`
 	Document  string `json:"id_dokumen"`
 	CreatedBy string `json:"diinput_oleh"`
@@ -65,6 +70,7 @@ func FromAccount(r masterrekening.Account) AccountDTO {
 		Email:            r.Email,
 		Phone:            r.Phone,
 		NIK:              r.NIK,
+		SubmitterEmail:   r.SubmitterEmail,
 		Note:             r.Note,
 		Document:         r.DocumentID,
 		CreatedBy:        r.CreatedBy,
@@ -122,6 +128,11 @@ type SaveRequest struct {
 	DocumentID  string `json:"id_dokumen"`
 	Note        string `json:"catatan"`
 	Active      bool   `json:"aktif"`
+
+	// SubmitterEmail adalah "Email Inputor" pada layar Pega. Ia DIISI PENGGUNA —
+	// alamat yang dipakai Kasir mengirim pemberitahuan approval kembali ke pengaju,
+	// dan tidak selalu sama dengan surel akun yang sedang masuk.
+	SubmitterEmail string `json:"email_inputor"`
 
 	PreviousBankCode  string `json:"kode_bank_lama"`
 	PreviousNumber    string `json:"nomor_rekening_lama"`

@@ -544,5 +544,5 @@ func TestTanggalDiformatWIB(t *testing.T) {
 	body := decode(t, get(t, server, "/api/dashboard-claim/outstanding"))
 	first := body["klaim"].([]any)[0].(map[string]any)
 
-	require.Regexp(t, `^\d{4}-\d{2}-\d{2}$`, first["tanggal_register"])
+	require.Regexp(t, `^\d{4}-\d{2}-\d{2}$`, first["tanggal_pendaftaran"])
 }

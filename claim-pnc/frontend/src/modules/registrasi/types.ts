@@ -38,6 +38,8 @@ export type Task = {
    * M_LOGIN_GROUP_PNC. Dikirim hanya pada respons satu klaim.
    */
   dapat_dikerjakan?: boolean
+  /** Pemanggil anggota grup Analyst (When `IsAnalisator`). Dikirim hanya pada respons satu klaim. */
+  analis?: boolean
 }
 
 export type Spreading = {
@@ -60,6 +62,8 @@ export type Coverage = {
   item?: ObjectItem[]
   /** AdjustmentList — diisi tombol Tambah di tahap InputSurveyor. */
   adjustment?: Settlement[]
+  /** Jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya dikirim server. */
+  sudah_transfer_analis?: boolean
 }
 
 /** Kode Tipe Pembayaran (PAYMENTTYPE). */
@@ -182,6 +186,8 @@ export type SettlementRequest = {
   tugas_id: string
   objek: number
   jaminan: number
+  /** Nomor baris (berbasis 1) yang diubah — hanya rute ubah. */
+  adjustment?: number
   tipe_pembayaran: string
   mata_uang: string
   nilai_propose_sen: Cents
@@ -245,6 +251,9 @@ export type InsuredItem = {
   nama: string
   lokasi: string
   coverage: Coverage[]
+  /** Pekerjaan dan tanggal lahir (YYYY-MM-DD) peserta PA — T_PERSONLIST polis, baca saja. */
+  pekerjaan?: string
+  tanggal_lahir?: string
 }
 
 /** Satu penerima klaim. */
@@ -305,7 +314,32 @@ export type Policy = {
   /** TYPEOFCOINS: 0 tanpa koasuransi, 1 member, 2 leader, F fac in. */
   jenis_koasuransi?: string
   peran_koasuransi?: string
+  /** Quotation.SobName dan Quotation.BusinessName — DATA TERTANGGUNG KLAIM. */
+  nama_sumbis?: string
+  nama_bisnis?: string
+  kode_cabang?: string
 }
+
+/** Satu baris grid Telephone dan Email (CIFData ASMTelfax). */
+export type InsuredPhone = { jenis: string; nama_jenis: string; kode: string; nomor: string; ekstensi: string }
+
+/** Satu alamat tertanggung dari CIF polis (CIFData.AddressList). */
+export type InsuredAddress = {
+  jenis: string
+  nama_jenis: string
+  alamat: string
+  kota: string
+  nama_kota: string
+  kecamatan: string
+  nama_kecamatan: string
+  kelurahan: string
+  nama_kelurahan: string
+  kode_pos: string
+  telepon: InsuredPhone[]
+}
+
+/** GET /api/registrasi/klaim/{id}/tertanggung. */
+export type InsuredResponse = { no_ktp: string; alamat: InsuredAddress[] }
 
 /**
  * Wilayah kejadian — bagian bawah layar Input Register Pega
@@ -417,6 +451,10 @@ export type Claim = {
   status_klaim: string
   /** Nama Status Klaim dari master V_STS_CLAIM, mis. "Register". */
   status_klaim_nama?: string
+  /** Klaim sudah pernah ditransfer ke Analyst (ANALYST_TRANSFERDATE terisi). */
+  sudah_transfer_analis?: boolean
+  /** Klaim ditutup sementara (ISPENDINGCLOSE) — tombol Tutup Klaim tidak tampil. */
+  tutup_sementara?: boolean
   flag_klaim: string
   status_posisi_progres: string
 
@@ -545,8 +583,12 @@ export type Attachment = {
   diunggah_oleh: string
   /** RFC 3339, WIB. */
   diunggah_pada: string
+  /** Tombol Delete tampil: berkas diunggah pemanggil sendiri dan tersimpan di penyimpanan (dinilai server). */
+  bisa_dihapus?: boolean
 }
 export type DocumentsResponse = { kategori: DocumentCategory[]; berkas: Attachment[] }
+/** Alamat baca satu lampiran — tombol Lihat dokumen. berlaku_sampai RFC 3339 WIB, boleh kosong. */
+export type DocumentLink = { url: string; berlaku_sampai: string }
 
 export type ProgressEntry = {
   urutan: number
@@ -568,6 +610,8 @@ export type Communication = {
   balasan: string
   penjawab: string
   tanggal_balasan: string
+  /** COMMUNICATE_FROM; "SENDTOINPUTOR" untuk catatan tombol Kirim ke Inputor. */
+  kanal?: string
 }
 export type ProgressResponse = { progres: ProgressEntry[]; komunikasi: Communication[] }
 

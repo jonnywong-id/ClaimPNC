@@ -251,14 +251,18 @@ export function TravelDocumentPage() {
             columns={columns}
             rows={list.data.dokumen_travel}
             rowKey={(row) => row.id}
-            // Tanpa kotak cari, dan dipaginasi 50 baris per halaman — keduanya meniru
-            // grid Pega apa adanya (`pyPageSize=50`, dan tidak ada satu pun
-            // `pySortFilterProperty` yang terisi). Keputusan Work Owner 2026-09-21.
+            // Kotak cari ditambahkan atas permintaan Work Owner 2026-10-03, MENCABUT
+            // keputusan 2026-09-21 yang semula meniru Pega apa adanya (grid lama tidak
+            // punya satu pun `pySortFilterProperty` yang terisi).
             //
-            // Berbeda dari Master Status Klaim, yang justru ditambahi kotak cari pada
-            // 2026-09-17. Perbedaan itu disengaja dan dicatat di
-            // docs/keputusan-implementasi.md.
-            searchable={false}
+            // Bentuknya disamakan dengan Master Penyebab Kerugian: satu kotak cari yang
+            // menelusuri seluruh kolom, bukan filter per kolom seperti di Pega. Dengan
+            // ini ketiga layar master — Status Klaim, Penyebab Kerugian, dan Dokumen
+            // Travel — memakai pola pencarian yang sama.
+            searchLabel="Cari ID atau Judul Dokumen Travel"
+            // Paginasi 50 baris tetap dipertahankan; ia meniru `pyPageSize=50` pada grid
+            // Pega dan tidak bertabrakan dengan pencarian — halaman dihitung dari baris
+            // yang SUDAH disaring, dan tombolnya hilang saat hasilnya muat satu halaman.
             pageSize={50}
             description={`${list.data.total} dokumen terdaftar. Sumber: POOLDATA.M_DOCTRAVEL`}
             emptyMessage="Belum ada dokumen travel pada entitas ini."

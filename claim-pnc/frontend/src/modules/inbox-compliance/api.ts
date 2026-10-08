@@ -5,10 +5,13 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import type {
+  CheckerResponse,
   ListResponse,
   MetadataResponse,
   SendPostAuditRequest,
   SendPostAuditResponse,
+  SubmitDecisionRequest,
+  SubmitDecisionResponse,
 } from './types'
 
 const PATH = '/api/inbox-compliance'
@@ -26,6 +29,9 @@ const keys = {
 
   list: (portal: string | null, token: string | null, tab: string, page: number) =>
     ['inbox-compliance', 'daftar', portal, token, tab, page] as const,
+
+  checker: (portal: string | null, token: string | null, reference: string) =>
+    ['inbox-compliance', 'checker', portal, token, reference] as const,
 }
 
 /**
@@ -136,6 +142,74 @@ export function useSendToPostAudit() {
       }),
 
     onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['inbox-compliance', 'daftar'] })
+    },
+  })
+}
+
+/**
+ * Hook pembukaan form Compliance Checker atas satu klaim.
+ *
+ * # Kenapa `retry: false`
+ *
+ * Karena galat yang paling mungkin terjadi di sini BUKAN gangguan jaringan melainkan
+ * `ErrClaimNotInQueue` — klaimnya sudah diputuskan petugas lain, atau sudah selesai.
+ * Mengulanginya tiga kali tidak akan mengubah jawabannya; yang ia lakukan hanyalah menunda
+ * pesan yang perlu segera dibaca petugas.
+ *
+ * # Kenapa `staleTime` nol
+ *
+ * Berbeda dari daftarnya, form ini dibuka untuk DIKERJAKAN. Menampilkan keputusan yang
+ * tersimpan beberapa detik lalu oleh petugas lain — lalu menimpanya — adalah kelas
+ * kesalahan yang tidak sepadan dengan satu perjalanan jaringan yang dihemat.
+ */
+export function useComplianceChecker(reference: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.checker(portal, token, reference),
+    queryFn: () =>
+      callAPI<CheckerResponse>(`${PATH}/${encodeURIComponent(reference)}`, {
+        token,
+        portal,
+      }),
+    enabled: reference !== '' && token !== null && portal !== null,
+    retry: false,
+    staleTime: 0,
+  })
+}
+
+/**
+ * Hook penyimpanan keputusan Compliance — padanan tombol "Simpan Data".
+ *
+ * # Tiga cache yang disegarkan, dan kenapa ketiganya
+ *
+ *   - `checker`  — form itu sendiri, supaya keputusan yang baru tersimpan terbaca saat
+ *                  form dibuka ulang.
+ *   - `daftar`   — kedua tab. Pada pilihan Bayar/PostAudit barisnya MUNCUL di tab Post
+ *                  Audit, dan menyegarkan satu saja membuat layar menampilkan keadaan
+ *                  yang tidak pernah ada.
+ *
+ * Yang TIDAK berubah adalah antrean Compliance di Pega: klaimnya tetap menunggu di sana,
+ * karena tabel klaim masih dimiliki Pega (`P-1`). Jadi baris yang baru diputuskan akan
+ * tetap tampil di tab Compliance setelah disegarkan — itu BUKAN cache yang basi,
+ * melainkan keterbatasan yang dinyatakan di `keterbatasan`.
+ */
+export function useSubmitComplianceDecision(reference: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: SubmitDecisionRequest) =>
+      callAPI<SubmitDecisionResponse>(
+        `${PATH}/${encodeURIComponent(reference)}/keputusan`,
+        { token, portal, metode: 'POST', body },
+      ),
+
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['inbox-compliance', 'checker'] })
       client.invalidateQueries({ queryKey: ['inbox-compliance', 'daftar'] })
     },
   })

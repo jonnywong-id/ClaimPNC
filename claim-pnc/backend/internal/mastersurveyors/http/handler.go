@@ -50,6 +50,9 @@ type Service interface {
 	Submit(ctx context.Context, portalAlias string, in usecase.Submission, by usecase.Submitter) (mastersurveyors.Surveyor, error)
 	Update(ctx context.Context, portalAlias, id string, in usecase.Submission, by usecase.Submitter) (mastersurveyors.Surveyor, error)
 	Decide(ctx context.Context, portalAlias, id string, d usecase.Decision, by usecase.Committee) (mastersurveyors.Surveyor, error)
+	ListCountries(ctx context.Context, portalAlias string) ([]mastersurveyors.Country, error)
+	ListEmployees(ctx context.Context, portalAlias string) ([]mastersurveyors.Employee, error)
+	ListBranches(ctx context.Context, portalAlias string) ([]mastersurveyors.Branch, error)
 }
 
 // Handler melayani permintaan Master Surveyors.
@@ -332,17 +335,89 @@ func (h *Handler) filterFrom(r *http.Request) (mastersurveyors.Filter, error) {
 func submissionFrom(body SaveRequest) usecase.Submission {
 	return usecase.Submission{
 		TypeCode:     body.TypeCode,
-		Name:         body.Name,
-		Address:      body.Address,
-		PostalCode:   body.PostalCode,
-		State:        body.State,
-		Phone:        body.Phone,
-		Fax:          body.Fax,
-		Email:        body.Email,
-		OtherContact: body.OtherContact,
-		BranchCode:   body.BranchCode,
-		BranchName:   body.BranchName,
-		AppLogin:     body.AppLogin,
-		DocumentID:   body.DocumentID,
+		NeedDirector: body.NeedDirector,
+
+		Name:        body.Name,
+		Address:     body.Address,
+		PostalCode:  body.PostalCode,
+		Country:     body.Country,
+		Phone:       body.Phone,
+		Fax:         body.Fax,
+		Email:       body.Email,
+		ContactName: body.ContactName,
+		BranchCode:  body.BranchCode,
+		BranchName:  body.BranchName,
+		AppLogin:    body.AppLogin,
+		DocumentID:  body.DocumentID,
 	}
+}
+
+// Countries menangani GET /api/master/surveyor/negara.
+//
+// Jalur terpisah dari daftar surveyor karena ia data acuan milik modul lain yang hanya
+// dibaca — bukan bagian dari baris surveyor mana pun.
+func (h *Handler) Countries(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	list, err := h.service.ListCountries(r.Context(), active.Alias)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	content := make([]CountryDTO, 0, len(list))
+	for _, c := range list {
+		content = append(content, CountryDTO{Code: c.Code, Name: c.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, CountryListResponse{Country: content, Portal: active.Alias})
+}
+
+// Employees menangani GET /api/master/surveyor/pegawai.
+//
+// Mengisi isian Nama untuk SURVEYOR INTERNAL, yang di layar lama berupa daftar pilihan
+// pegawai — bukan kotak teks. Memilih satu pegawai mengisi nama, login aplikasi, dan
+// email sekaligus.
+func (h *Handler) Employees(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	list, err := h.service.ListEmployees(r.Context(), active.Alias)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	content := make([]EmployeeDTO, 0, len(list))
+	for _, e := range list {
+		content = append(content, EmployeeDTO{Name: e.Name, Login: e.Login, Email: e.Email})
+	}
+	h.writeResponse(w, r, http.StatusOK, EmployeeListResponse{Employee: content, Portal: active.Alias})
+}
+
+// Branches menangani GET /api/master/surveyor/cabang.
+func (h *Handler) Branches(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	list, err := h.service.ListBranches(r.Context(), active.Alias)
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	content := make([]BranchDTO, 0, len(list))
+	for _, b := range list {
+		content = append(content, BranchDTO{Code: b.Code, Name: b.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, BranchListResponse{Branch: content, Portal: active.Alias})
 }

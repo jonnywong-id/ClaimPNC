@@ -88,6 +88,7 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 			// keduanya satu ruas jalur, dan yang terdaftar lebih dulu akan menelan
 			// keduanya.
 			master.Get("/bisnis/{businessID}", h.ListByBusiness)
+			master.Put("/bisnis/{businessID}", h.SaveForBusiness)
 
 			master.Get("/{id}", h.Get)
 			master.Put("/{id}", h.Update)

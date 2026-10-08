@@ -227,7 +227,7 @@ func TestListMengembalikanAmplopLengkap(t *testing.T) {
 
 	first, ok := rows[0].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "10001", first["id"])
+	require.Equal(t, "100001", first["id"])
 	require.Equal(t, "KTP Tertanggung", first["objek_dokumen"])
 }
 
@@ -288,7 +288,7 @@ func TestDaftarTanpaBisnisSatuBarisDenganBisnis(t *testing.T) {
 	first, _ := rows[0].(map[string]any)
 	require.Empty(t, first["bisnis"])
 
-	_, one := s.call(t, http.MethodGet, routeList+"/10002", "ASM", "")
+	_, one := s.call(t, http.MethodGet, routeList+"/100002", "ASM", "")
 	row, _ := one["objek_dokumen"].(map[string]any)
 	businesses, ok := row["bisnis"].([]any)
 	require.True(t, ok)
@@ -302,16 +302,16 @@ func TestDaftarTanpaBisnisSatuBarisDenganBisnis(t *testing.T) {
 func TestIDLamaTetapDikirim(t *testing.T) {
 	s := newTestServer(t)
 
-	_, content := s.call(t, http.MethodGet, routeList+"/10003", "ASM", "")
+	_, content := s.call(t, http.MethodGet, routeList+"/100003", "ASM", "")
 	row, _ := content["objek_dokumen"].(map[string]any)
-	require.Equal(t, "07", row["id_lama"])
+	require.Equal(t, "0007", row["id_lama"])
 }
 
 // Baris yang tidak ada menjawab 404 dengan kode yang dapat dibaca mesin.
 func TestBarisTidakAda(t *testing.T) {
 	s := newTestServer(t)
 
-	response, content := s.call(t, http.MethodGet, routeList+"/99999", "ASM", "")
+	response, content := s.call(t, http.MethodGet, routeList+"/999999", "ASM", "")
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
 	require.Equal(t, "tidak_ditemukan", content["kode"])
 }
@@ -326,20 +326,20 @@ func TestCreate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	row, _ := content["objek_dokumen"].(map[string]any)
-	require.Equal(t, "10005", row["id"])
+	require.Equal(t, "100005", row["id"])
 	require.Equal(t, "Surat Kuasa", row["objek_dokumen"])
 
 	businesses, _ := row["bisnis"].([]any)
 	require.Len(t, businesses, 2)
 	first, _ := businesses[0].(map[string]any)
-	require.Equal(t, "003", first["id"], "nama yang cocok master diselesaikan menjadi ID")
+	require.Equal(t, "10013", first["id"], "nama yang cocok master diselesaikan menjadi ID")
 }
 
 // Penyuntingan MENGGANTI seluruh pemetaan bisnis, bukan menggabungkannya.
 func TestUpdateMenggantiPemetaanBisnis(t *testing.T) {
 	s := newTestServer(t)
 
-	response, content := s.call(t, http.MethodPut, routeList+"/10002", "ASM",
+	response, content := s.call(t, http.MethodPut, routeList+"/100002", "ASM",
 		`{"objek_dokumen":"Polis Asli","bisnis":["TRAVEL"]}`)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 
@@ -418,6 +418,6 @@ func TestRuteBisnisTidakDidaftarkanModulIni(t *testing.T) {
 func TestTidakAdaRuteHapus(t *testing.T) {
 	s := newTestServer(t)
 
-	response, _ := s.call(t, http.MethodDelete, routeList+"/10001", "ASM", "")
+	response, _ := s.call(t, http.MethodDelete, routeList+"/100001", "ASM", "")
 	require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
 }

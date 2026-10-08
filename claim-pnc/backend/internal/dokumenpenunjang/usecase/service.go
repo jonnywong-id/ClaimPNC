@@ -269,6 +269,143 @@ func (s *Service) List(
 	return repo.PerKlaim(ctx, rapi)
 }
 
+// Get mengembalikan metadata satu dokumen menurut ImageID-nya, dari basis data portalnya.
+func (s *Service) Get(
+	ctx context.Context,
+	portalAlias, imageID string,
+) (dokumenpenunjang.Document, error) {
+	repo, err := s.repos(portalAlias)
+	if err != nil {
+		return dokumenpenunjang.Document{}, err
+	}
+	return repo.Ambil(ctx, strings.TrimSpace(imageID))
+}
+
+// Tautan mengembalikan dokumen dengan alamat baca yang masih berlaku — padanan
+// `Activity/GetLinkViewDoc_Act-act.xml`.
+//
+//	langkah 5–7   alamat tersimpan dipakai selama `@CompareDates(exp, sekarang)`
+//	langkah 8     bila kosong atau kedaluwarsa: GetAppFolder, GenerateTokenPNCDokumen,
+//	              NewLinkDokumenPNC, lalu UpdateNewDocumentPNC
+//
+// Masa berlaku yang tidak tercatat diperlakukan kedaluwarsa, seperti Pega: `@CompareDates`
+// dengan tanggal kosong bernilai false.
+//
+// Yang TIDAK dibawa: langkah 9 membungkus alamat dengan penampil Office daring
+// (`view.officeapps.live.com`). Penampil itu tidak membuka PDF dan gambar, padahal lampiran
+// klaim seluruhnya PDF dan gambar; alamatnya dikembalikan apa adanya.
+func (s *Service) Tautan(
+	ctx context.Context,
+	portalAlias, imageID, pengguna string,
+) (dokumenpenunjang.Document, error) {
+	repo, err := s.repos(portalAlias)
+	if err != nil {
+		return dokumenpenunjang.Document{}, err
+	}
+	dokumen, err := repo.Ambil(ctx, strings.TrimSpace(imageID))
+	if err != nil {
+		return dokumenpenunjang.Document{}, err
+	}
+	if dokumen.URL != "" && dokumen.ExpiresAt != nil && dokumen.ExpiresAt.After(s.clock.Now()) {
+		return dokumen, nil
+	}
+
+	pengguna = strings.TrimSpace(pengguna)
+	if pengguna == "" {
+		return dokumenpenunjang.Document{}, dokumenpenunjang.ErrPengunggahKosong
+	}
+	folder := dokumenpenunjang.FolderDariAppFolder(dokumen.Folder)
+	if folder == "" || dokumen.FileName == "" {
+		return dokumenpenunjang.Document{}, fmt.Errorf(
+			"%w: folder atau nama berkas tidak terbaca dari metadata", dokumenpenunjang.ErrTautanGagal)
+	}
+	folderAplikasi, err := repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
+	if err != nil {
+		return dokumenpenunjang.Document{}, err
+	}
+	kodeAkses := s.accessCode
+	if kodeAkses == "" {
+		kodeAkses, err = repo.CatatAksesUnggah(ctx, folderAplikasi, pengguna)
+		if err != nil {
+			return dokumenpenunjang.Document{}, err
+		}
+	}
+
+	hasil, err := s.storage.PerpanjangTautan(ctx, dokumenpenunjang.PerintahTautan{
+		NamaAplikasi: folderAplikasi,
+		Pengunggah:   pengguna,
+		KodeAkses:    kodeAkses,
+		ImageID:      dokumen.ImageID,
+		Folder:       folder,
+		NamaBerkas:   dokumen.FileName,
+		Durasi:       dokumenpenunjang.DurasiTautan,
+	})
+	if err != nil {
+		return dokumenpenunjang.Document{}, fmt.Errorf("%w: %v", dokumenpenunjang.ErrTautanGagal, err)
+	}
+	if strings.TrimSpace(hasil.URL) == "" {
+		return dokumenpenunjang.Document{}, fmt.Errorf(
+			"%w: layanan tidak mengembalikan URLImage", dokumenpenunjang.ErrTautanGagal)
+	}
+	if err := repo.PerbaruiTautan(ctx, dokumen.ImageID, hasil); err != nil {
+		return dokumenpenunjang.Document{}, err
+	}
+
+	dokumen.URL = strings.TrimSpace(hasil.URL)
+	dokumen.ExpiresAt = hasil.ExpiresAt
+	if hasil.Folder != "" {
+		dokumen.Folder = hasil.Folder
+	}
+	return dokumen, nil
+}
+
+// Hapus menghapus berkas dari bucket penyimpanan — `Activity/DeleteAttachDoc-act.xml` langkah 6–14.
+//
+// Berhasil hanya bila jawaban layanan memuat "deleted from bucket" (langkah 15–19). Baris
+// GENERAL.T_STORAGE_IMAGE TIDAK dihapus: `DeleteDataStorage_SQL` di Pega menghapus IMAGEID
+// tiruan, sehingga metadatanya selalu tertinggal — ditiru apa adanya.
+func (s *Service) Hapus(ctx context.Context, portalAlias, imageID, pengguna string) error {
+	repo, err := s.repos(portalAlias)
+	if err != nil {
+		return err
+	}
+	dokumen, err := repo.Ambil(ctx, strings.TrimSpace(imageID))
+	if err != nil {
+		return err
+	}
+	jalur := dokumenpenunjang.JalurDariAppFolder(dokumen.Folder)
+	if jalur == "" {
+		return fmt.Errorf("%w: jalur berkas tidak terbaca dari metadata", dokumenpenunjang.ErrHapusGagal)
+	}
+	pengguna = strings.TrimSpace(pengguna)
+	if pengguna == "" {
+		return dokumenpenunjang.ErrPengunggahKosong
+	}
+	folderAplikasi, err := repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
+	if err != nil {
+		return err
+	}
+	kodeAkses := s.accessCode
+	if kodeAkses == "" {
+		kodeAkses, err = repo.CatatAksesUnggah(ctx, folderAplikasi, pengguna)
+		if err != nil {
+			return err
+		}
+	}
+	pesan, err := s.storage.Hapus(ctx, dokumenpenunjang.PerintahHapus{
+		NamaAplikasi: folderAplikasi,
+		KodeAkses:    kodeAkses,
+		Jalur:        jalur,
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %v", dokumenpenunjang.ErrHapusGagal, err)
+	}
+	if !strings.Contains(pesan, "deleted from bucket") {
+		return fmt.Errorf("%w: jawaban layanan %q", dokumenpenunjang.ErrHapusGagal, pesan)
+	}
+	return nil
+}
+
 // periksa menegakkan aturan yang tidak boleh sampai ke layanan penyimpanan.
 func periksa(p dokumenpenunjang.UploadRequest) error {
 	if strings.TrimSpace(p.By) == "" {

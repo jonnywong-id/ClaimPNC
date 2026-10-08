@@ -265,15 +265,18 @@ describe('mengubah dokumen travel', () => {
 })
 
 /**
- * Keempat uji di bawah mengunci kesetiaan pada teks dan perilaku layar Pega
- * (keputusan Work Owner 2026-09-21).
+ * Uji di bawah mengunci dua hal yang berbeda, dan keduanya mudah dikira cacat.
  *
- * Tanpa uji, keempatnya tampak seperti kelalaian bagi orang berikutnya — label yang
- * keliru, judul yang menyatakan hal yang salah, dan kotak cari yang hilang semuanya
- * "terlihat seperti bug". Uji inilah yang membuat perbaikannya menjadi keputusan yang
- * disadari, bukan rapi-rapi yang menyelinap.
+ * **Yang ditiru dari Pega** (keputusan Work Owner 2026-09-21): label yang keliru, judul
+ * form yang menyatakan hal yang salah, dan paginasi 50 baris. Ketiganya "terlihat
+ * seperti bug" bagi orang berikutnya, dan uji inilah yang membuat perbaikannya menjadi
+ * keputusan yang disadari — bukan rapi-rapi yang menyelinap.
+ *
+ * **Yang sengaja BERBEDA dari Pega** (permintaan Work Owner 2026-10-03): kotak cari.
+ * Grid lama tidak punya pencarian sama sekali; uji ini menjaga penambahannya tidak
+ * hilang kembali saat seseorang menyelaraskan ulang layar ini ke Pega.
  */
-describe('kesetiaan pada layar Pega', () => {
+describe('kesetiaan pada layar Pega, dan selisih yang direncanakan', () => {
   it('memakai label "ID Kerugian" seperti layar lama, walau labelnya keliru', async () => {
     // Terikat ke TempMstDocTravel.DOCID di
     // Section/BrowseMasterDocumentTravel-Section.xml:11035. "Kerugian" terbawa dari
@@ -300,13 +303,39 @@ describe('kesetiaan pada layar Pega', () => {
     expect(screen.getByLabelText('Judul Dokumen')).toHaveValue('')
   })
 
-  it('tidak menampilkan kotak pencarian', async () => {
-    // Grid Pega tidak punya satu pun pySortFilterProperty yang terisi.
+  it('menyediakan kotak cari yang menelusuri ID maupun judul', async () => {
+    // Selisih TERENCANA dari Pega, diminta Work Owner 2026-10-03 — grid lama tidak
+    // punya satu pun pySortFilterProperty yang terisi. Bentuknya disamakan dengan
+    // Master Penyebab Kerugian: satu kotak cari atas seluruh kolom.
     installFetch(defaultReply())
     show()
     await screen.findByText('Paspor')
 
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    const search = screen.getByRole('searchbox')
+
+    // Menelusuri judul.
+    await userEvent.type(search, 'tiket')
+    expect(screen.getByText('Tiket Perjalanan')).toBeInTheDocument()
+    expect(screen.queryByText('Paspor')).not.toBeInTheDocument()
+
+    // Menelusuri ID juga, bukan judul saja.
+    await userEvent.clear(search)
+    await userEvent.type(search, '100001')
+    expect(screen.getByText('Paspor')).toBeInTheDocument()
+    expect(screen.queryByText('Tiket Perjalanan')).not.toBeInTheDocument()
+  })
+
+  it('tidak menembak server saat mencari', async () => {
+    // Penyaringan dikerjakan di peramban atas baris yang sudah di tangan. Mengirim satu
+    // permintaan per huruf yang diketik tidak menambah apa pun pada master berisi
+    // puluhan baris — dan layar yang datanya besar tidak boleh memakai pola ini.
+    installFetch(defaultReply())
+    show()
+    await screen.findByText('Paspor')
+
+    const before = calls.length
+    await userEvent.type(screen.getByRole('searchbox'), 'paspor')
+    expect(calls).toHaveLength(before)
   })
 
   it('memaginasi 50 baris per halaman seperti pyPageSize', async () => {

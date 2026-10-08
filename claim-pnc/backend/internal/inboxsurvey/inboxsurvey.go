@@ -77,21 +77,37 @@
 //
 // ### Akibat yang harus terlihat: isian yang belum tersedia
 //
-// Empat nilai layar berasal dari objek kerja `Work-SurveyClaim`, yang di Pega diratakan ke
+// Beberapa nilai layar berasal dari objek kerja `Work-SurveyClaim`, yang di Pega diratakan ke
 // `PC_ASM_FW_GCNMFW_WORK` dengan akhiran `_1`. Di `T_SURVEYORLIST` akhiran itu TIDAK dipakai,
 // dan penamaan itulah yang berlaku di sini:
 //
-//	Pega                 T_SURVEYORLIST    keadaan per 2026-09-30
-//	ADJUSTERSTATUS_1     STS_SURVEY        ADA dan TERISI — tidak lagi menghalangi
+//	Pega                 T_SURVEYORLIST    keadaan per 2026-10-03
+//	ADJUSTERSTATUS_1     STS_SURVEY        ADA dan TERISI — tidak menghalangi
 //	ADJUSTERACCEPT_1     ADJUSTERACCEPT    ADA, seluruh barisnya masih KOSONG
-//	REFNO_1              REFNO             ADA, seluruh barisnya masih KOSONG
 //	PYSTATUSWORK         PYSTATUSWORK      ADA, seluruh barisnya masih KOSONG
-//	ADJUSTERPIC_1        —                 belum ditambahkan
+//	REFNO_1              REFNO             ADA & kosong — tetapi BUKAN asal "Reference No"
 //
 // **Kolom yang ADA tetapi KOSONG tidak lebih siap daripada kolom yang tidak ada**, dan pada tab
 // Outstanding ia justru lebih berbahaya: penyaringnya `ADJUSTERACCEPT IS NULL` bernilai benar
 // untuk SELURUH antrean, sehingga tabnya terisi wajar dan isinya salah. Karena itu keduanya
 // sama-sama menahan tab — lihat UnavailableReason.
+//
+// ### Dua dugaan yang DICABUT 2026-10-03
+//
+// Keduanya dipatahkan Work Owner yang melihat layar Pega berjalan, bukan oleh pembacaan ulang.
+// Dicatat supaya tidak dihidupkan kembali oleh pembaca berikutnya:
+//
+//	"Appointment No" berisi nama adjuster dari ADJUSTERPIC_1
+//	    SALAH. Isinya `SRV-xxxxx` — nomor berkas survei. Sudah di tangan modul ini sebagai
+//	    CASEID, dan `ADJUSTERPIC` TIDAK perlu diminta sama sekali. Lihat AppointmentNo.
+//
+//	"Reference No" berasal dari REFNO_1
+//	    SALAH. `REFNO_1` dialiaskan "Province" di kedua kueri rujukan, dan properti itu tidak
+//	    termasuk 13 sel data grid — ia diambil lalu tidak pernah digambar.
+//
+// Akar kedua kekeliruan ini sama: pemetaan judul-ke-kolom disusun dari kueri **rujukan**
+// (`BrowseLossAdjuster`, `BrowseInternalSurveyor`), padahal keempat kueri yang BENAR-BENAR
+// dipakai tab hilang dari export (`R-16`, lihat §2 di bawah). Rujukan terdekat bukan sumber.
 //
 // ## 2. EMPAT kueri tab HILANG dari export
 //
@@ -439,10 +455,12 @@ type SurveyTask struct {
 	//
 	// Bentuknya `ASM-FW-GCNMFW-WORK <pyID>`, terbaca dari
 	// `BroswseKlaimByNoSurvey-SQL.xml` yang merangkainya sebagai
-	// `'ASM-FW-GCNMFW-WORK ' || {InputData.CARI4}`. Nama kelas internal Pega tertanam di
-	// dalam kunci data bisnis — utang teknis §4.1.
+	// `'ASM-FW-GCNMFW-WORK ' || {InputData.CARI4}`, dan **dikonfirmasi Work Owner 2026-10-03**
+	// bahwa isinya memang kunci utuh berprefix. Nama kelas internal Pega tertanam di dalam
+	// kunci data bisnis — utang teknis §4.1.
 	//
-	// TIDAK digambar sebagai kolom; ia kunci baris dan tujuan tautan.
+	// Tidak digambar apa adanya; ia kunci baris, tujuan tautan, dan **asal kolom
+	// "Appointment No"** lewat AppointmentNo.
 	SurveyID string
 
 	// ClaimID adalah `T_SURVEYORLIST.PNCCASEID` — kunci klaim induknya.
@@ -457,22 +475,23 @@ type SurveyTask struct {
 	// tidak dapat dibedakan di layar maupun saat menelusuri keluhan.
 	SurveyIndex string
 
-	// AppointmentNumber dan ReferenceNumber BELUM TERSEDIA, dengan sebab yang BERBEDA.
+	// ReferenceNumber adalah kolom layar **"Reference No"**, dari `T_SURVEYORLIST.REFNO`.
 	//
-	//	ReferenceNumber   -> T_SURVEYORLIST.REFNO   kolomnya ADA, isinya masih kosong
-	//	AppointmentNumber -> belum ada kolomnya sama sekali
+	// Asalnya TERBUKTI sejak keempat kueri tab diterima 2026-10-03 — keempatnya memakai
+	// `a.REFNO_1 AS "UserName"`, dan `.UserName` adalah sel kedua grid.
 	//
-	// Keduanya TIDAK dihapus dari tipe ini. Menghapusnya akan menghilangkan kolomnya dari
-	// layar, dan isian yang belum terbawa harus TERLIHAT — bukan tersamar sebagai layar yang
-	// sudah setara.
+	// Kolomnya SUDAH ADA tetapi seluruh barisnya masih kosong, sehingga ia tetap dinyatakan
+	// belum tersedia. Ia TIDAK dihapus dari tipe ini: menghapusnya akan menghilangkan kolomnya
+	// dari layar, dan isian yang belum terbawa harus TERLIHAT.
 	//
-	// Satu catatan untuk AppointmentNumber: judul "Appointment No" di Pega menggambar
-	// `AdjusterPIC_1`, dan `ExportDataDetailKlaim-SQL.xml` membuktikan kolom itu berisi **nama
-	// adjuster eksternal**, bukan nomor penugasan. Bila itu benar, isinya menggandakan kolom
-	// "PIC Loss Adjuster" di sebelahnya dan `T_SURVEYORLIST.SURVEYOR_NAME` sudah membawanya —
-	// lihat `docs/permintaan-kolom-t-surveyorlist.md` §4.
-	AppointmentNumber string // "Appointment No"  ** BELUM ADA KOLOMNYA **
-	ReferenceNumber   string // "Reference No"    <- REFNO ** ADA, MASIH KOSONG **
+	// # Catatan untuk pembaca yang menemukan jejak dugaan yang dicabut
+	//
+	// Pada 2026-10-03 kolom ini sempat dinyatakan "asalnya belum diketahui", karena kedua kueri
+	// RUJUKAN (`BrowseLossAdjuster`, `BrowseInternalSurveyor`) mengaliaskan `REFNO_1` menjadi
+	// `"Province"` — properti yang tidak digambar. Kesimpulan itu salah sebabnya sama dengan
+	// kekeliruan lain di modul ini: **rujukan terdekat bukan sumber**. Begitu kueri tab yang
+	// sebenarnya tiba, `REFNO_1` terbukti memang asal kolom ini.
+	ReferenceNumber string // "Reference No"  <- REFNO ** ADA, MASIH KOSONG **
 
 	ClaimNumber     string // "Claim No"      <- T_CLAIM_PNC.CLAIMNO
 	PolicyNumber    string // "Policy No"     <- T_CLAIM_PNC.NOPOLIS
@@ -504,18 +523,33 @@ type SurveyTask struct {
 	// Ia kunci urutan antrean, DAN dasar kolom Aging. Tidak digambar sendiri.
 	CreatedAt time.Time
 
-	// ASMStatus — kolom **"Status ASM"** <- `T_SURVEYORLIST.STS_SURVEY` pada langkah terakhir.
+	// ASMStatus — kolom **"Status ASM"** <- `T_CLAIM_PNC.LEADER_MEMBER`.
 	//
-	// # Ia TERSEDIA, dan itu berubah pada 2026-09-29
+	// # Ia BUKAN status, melainkan PERAN KOASURANSI
 	//
-	// `STS_SURVEY` terbukti membawa domain `ADJUSTERSTATUS_1`. Sebaran nilainya di produksi
-	// memuat ketiga nilai yang dipakai Pega sebagai penyaring, dengan jumlah yang nyata:
-	// `Final Report` 1.466 · `Invoice Fee` 1.069 · `Close Case` 316 — berdampingan dengan
-	// seluruh tahapan hidup survei dari `Waiting Claim Document` sampai `Close Case`.
+	// Judulnya menyesatkan sejak di Pega. Kolom yang digambarnya, `ASMSTATUS_1`, hanya
+	// bernilai `LEADER`, `MEMBER`, atau kosong — dan `SetTempLostAdjuster` menggambarnya
+	// lewat `@If(.UserAdmin=="", "LEADER", .UserAdmin)`. Jadi yang dijawabnya adalah: **ASM
+	// bertindak sebagai leader atau member pada klaim ini.**
 	//
-	// Pernyataan sebelumnya bahwa kolom ini hanya berisi `"On Progress"` DICABUT: itu satu
-	// dari 22 nilai, dan disimpulkan dari satu-satunya penulis yang kebetulan ada di export.
-	// Penulis lainnya berada di luar export (`R-01`, `R-16`).
+	// # Kenapa dari T_CLAIM_PNC, bukan dari tabel survei
+	//
+	// `T_SURVEYORLIST` tidak punya padanannya. `T_CLAIM_PNC.LEADER_MEMBER` punya, dan
+	// kesetaraannya diukur di produksi 2026-10-03 dengan **nol pertentangan** pada 17.633
+	// baris: setiap `ASMSTATUS_1` yang terisi selalu sama dengan `LEADER_MEMBER`.
+	//
+	// Selisihnya **10 baris (0,06%)** — ber-`LEADER_MEMBER = MEMBER` tetapi `ASMSTATUS_1`
+	// kosong, sehingga Pega menggambarnya LEADER. Di sana modul ini justru lebih tepat.
+	//
+	// # Dua dugaan yang DICABUT, dicatat supaya tidak dihidupkan kembali
+	//
+	//	"kolom ini berisi STS_SURVEY"      salah — itu status perkembangan adjuster, dan
+	//	                                   Pega TIDAK menggambarnya di grid sama sekali
+	//	"butuh kolom ASMSTATUS baru"       tidak perlu — LEADER_MEMBER sudah ada
+	//
+	// Usulan memakai `LEADER_MEMBER` datang dari Work Owner. Ia menghapus satu permintaan
+	// kolom yang sudah sempat diajukan — dan pola yang pantas ditiru: **cari kolom yang sudah
+	// ada sebelum meminta yang baru.**
 	ASMStatus string
 
 	// SurveyorType adalah `SURVEYORTYPE_1` — `"1"` internal, `"2"` loss adjuster.
@@ -552,6 +586,46 @@ type SurveyTask struct {
 // janji yang masuk antara pukul 00.00 dan 07.00 WIB dihitung satu hari lebih tua. Keduanya
 // diserahkan pemanggil lewat parameter, bukan dibaca dari jam sistem — supaya dapat diuji
 // tanpa bergantung mesin (`F-5`).
+// pegaWorkKeyPrefix adalah prefix kelas Pega yang tertanam di dalam `T_SURVEYORLIST.CASEID`.
+//
+// Panjangnya **tepat 19 karakter** — dan angka itu bukan hitungan sendiri melainkan terbaca
+// langsung dari `Activity/SetTempLostAdjuster-Act.xml:6197`, yang memotongnya dengan
+// `@substring(.CaseID,19,30)`.
+const pegaWorkKeyPrefix = "ASM-FW-GCNMFW-WORK "
+
+// AppointmentNo adalah kolom layar **"Appointment No"** — nomor berkas survei, `SRV-xxxxx`.
+//
+// # Kenapa ia diturunkan, bukan dibaca dari kolom tersendiri
+//
+// Karena memang begitu di Pega. `SetTempLostAdjuster-Act.xml:6197` tidak membaca kolom mana
+// pun untuk ini; ia **memotong prefix** dari kunci objek kerja yang sudah di tangan:
+//
+//	TempDataLostAdjuster.pxResults(<LAST>).UserName  <-  @substring(.CaseID,19,30)
+//
+// `T_SURVEYORLIST.CASEID` menyimpan kunci utuh yang sama (dikonfirmasi Work Owner 2026-10-03),
+// sehingga nomornya **sudah ada di tangan modul ini** — tidak menunggu kolom baru dari siapa
+// pun.
+//
+// # Dugaan yang dicabut, dan kenapa dicatat di sini
+//
+// Sampai 2026-10-03 kolom ini dinyatakan menunggu `ADJUSTERPIC` dari Tim Pega, atas dugaan
+// bahwa "Appointment No" menggambar `AdjusterPIC_1`. Dugaan itu **salah**, dan yang
+// mematahkannya bukan pembacaan ulang melainkan **Work Owner yang melihat layarnya**: isinya
+// `SRV-xxx`, bukan nama orang.
+//
+// Dicatat supaya permintaan `ADJUSTERPIC` tidak dihidupkan kembali oleh pembaca berikutnya
+// yang menemukan jejak dugaan lama.
+//
+// # Kenapa prefiksnya dipotong dengan TrimPrefix, bukan substring(19)
+//
+// `@substring(.CaseID,19,30)` memotong **membabi buta** pada posisi 19 — pada nilai yang
+// bentuknya tidak terduga ia memotong di tengah. TrimPrefix hanya memotong bila prefiksnya
+// memang ada, dan mengembalikan nilainya apa adanya bila tidak. Selisihnya hanya muncul pada
+// data yang menyimpang, dan di situlah ia justru dibutuhkan.
+func (t SurveyTask) AppointmentNo() string {
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(t.SurveyID), pegaWorkKeyPrefix))
+}
+
 func (t SurveyTask) AgingDays(now time.Time, location *time.Location) *int {
 	if t.CreatedAt.IsZero() {
 		// Tanpa tanggal masuk, umurnya tidak dapat dihitung — dan itu BERBEDA dari nol hari.
@@ -629,10 +703,15 @@ type Filter struct {
 	//	"AND (a.pzinskey LIKE '%" + TempLaporan.CaseID + "%' OR A.REFNO_1 LIKE '%…%')"
 	//
 	// Yang dibawa hanya yang pertama, dengan `pzinskey` digantikan nomor klaim yang terbaca
-	// manusia: pengguna mengetik `PNC-1865`, bukan `ASM-FW-GCNMFW-WORK PNC-1865`. Bagian
-	// `REFNO_1` GUGUR karena kolomnya belum tersedia — lihat SurveyTask.ReferenceNumber. Ia
-	// kembali begitu kolomnya tiba, dan sampai saat itu selisihnya dinyatakan lewat
-	// Limitations, bukan disamarkan.
+	// manusia: pengguna mengetik `PNC-1865`, bukan `ASM-FW-GCNMFW-WORK PNC-1865`.
+	//
+	// Bagian `REFNO_1` GUGUR. Kolom `REFNO` di `T_SURVEYORLIST` sudah ada tetapi seluruhnya
+	// kosong, sehingga mencarinya tidak akan pernah menemukan apa pun. Perhatikan bahwa ini
+	// soal yang BERBEDA dari kolom layar "Reference No": di sini `REFNO_1` memang benar-benar
+	// kolom yang dicari Pega, sedangkan sebagai kolom layar ia terbukti bukan asalnya — lihat
+	// SurveyTask.ReferenceNumber. Dua pertanyaan berbeda tentang satu nama kolom.
+	//
+	// Selisihnya dinyatakan lewat Limitations, bukan disamarkan.
 	Search string
 
 	Limit  int

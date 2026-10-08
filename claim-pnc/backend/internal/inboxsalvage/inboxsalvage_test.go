@@ -381,6 +381,29 @@ func TestEveryVisibleCounterRowOpensAVisibleList(t *testing.T) {
 	}
 }
 
+// Dan sebaliknya: setiap daftar yang DITAWARKAN punya baris pencacah yang membukanya.
+//
+// Ini arah yang baru menjadi penting setelah bilah tab dihapus dari layar (2026-10-03,
+// atas permintaan Work Owner). Selama bilah itu ada, daftar tanpa baris pencacah tetap
+// dapat dibuka lewat tabnya. Sekarang tabel ringkas adalah SATU-SATUNYA jalan ke sebuah
+// daftar — dan daftar yang tidak disebut satu baris pun di sana tidak dapat dibuka
+// pengguna sama sekali, tanpa satu pun galat yang menyatakannya.
+func TestEveryVisibleListIsReachableFromACounterRow(t *testing.T) {
+	reachable := map[string]bool{}
+	for _, row := range inboxsalvage.CountRows() {
+		if row.Tab != "" {
+			reachable[row.Tab] = true
+		}
+	}
+
+	for _, tab := range inboxsalvage.Tabs() {
+		require.Truef(t, reachable[tab.Code],
+			"daftar %q (%s) tidak punya baris pencacah yang membukanya — "+
+				"setelah bilah tab dihapus, ia tidak dapat dibuka pengguna",
+			tab.Code, tab.Name)
+	}
+}
+
 // Kode daftar yang tidak ditawarkan diperlakukan sama dengan kode yang tidak dikenal.
 func TestHiddenTabCodesAreNotResolvable(t *testing.T) {
 	hidden := inboxsalvage.HiddenTabs()

@@ -211,6 +211,68 @@ func (r *Repo) Update(
 	return r.get(key)
 }
 
+// SaveForBusiness menyimpan seluruh baris satu lini bisnis sekaligus.
+//
+// Baris ber-ID diperbarui, baris tanpa ID disisipkan. Baris yang hilang membatalkan
+// SELURUH penyimpanan dan tidak meninggalkan perubahan separuh — tiruan transaksi
+// Oracle-nya, karena pengujian yang lulus di memori tetapi gagal di Oracle tidak ada
+// gunanya.
+func (r *Repo) SaveForBusiness(
+	_ context.Context,
+	businessID string,
+	rows []daftartipedokumenbisnis.Input,
+	_ daftartipedokumenbisnis.Editor,
+) ([]daftartipedokumenbisnis.DocumentRule, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return nil, r.failure
+	}
+
+	business := strings.TrimSpace(businessID)
+
+	// Seluruh baris diperiksa lebih dulu, sebelum satu pun ditulis.
+	for _, row := range rows {
+		if row.ID == "" {
+			continue
+		}
+		if _, exists := r.rules[row.ID]; !exists {
+			return nil, daftartipedokumenbisnis.ErrNotFound
+		}
+	}
+
+	for _, row := range rows {
+		id := row.ID
+		saved := daftartipedokumenbisnis.DocumentRule{
+			BusinessID: business,
+		}
+		if id == "" {
+			id = r.issueID()
+		} else {
+			// Nama hasil join dan BusinessID dipertahankan apa adanya, sama seperti Update.
+			saved = r.rules[id]
+		}
+		saved.ID = id
+		saved.DocumentTypeID = row.DocumentTypeID
+		saved.ObjectDocID = row.ObjectDocID
+		saved.DetailTypeDocID = row.DetailTypeDocID
+		saved.DetailDocument = row.DetailDocument
+		saved.Mandatory = row.Mandatory
+		saved.MinDocument = row.MinDocument
+		saved.Coverages = nil
+		r.rules[id] = saved
+	}
+
+	var result []daftartipedokumenbisnis.DocumentRule
+	for _, rule := range r.rules {
+		if rule.BusinessID == business {
+			result = append(result, rule)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
 // AddCoverage menambahkan satu jaminan, dan diam bila jaminan itu sudah ada.
 func (r *Repo) AddCoverage(_ context.Context, id string, coverageID string) (daftartipedokumenbisnis.DocumentRule, error) {
 	r.mutex.Lock()

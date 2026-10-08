@@ -1719,10 +1719,10 @@ func run() error {
 			FallbackErrorWriter: inboxsurveyhttp.ErrorWriter(writePortalAwareError),
 		})
 
-	// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
-	// Inbox Analyst Doctor, login itu BUKAN yang menyaring antrean. Ia hanya kunci untuk
-	// mencari identitas LAMA pemanggil di `POOLDATA.T_ACCESS_GROUP_PNC`, padanan
-	// `TempOperator.City` yang diisi `GetpyUserIdentifierFromTable` pada harness lama.
+	// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN, yang dicari di
+	// `POOLDATA.M_LOGIN_PNC` lalu LOGIN_ID-nya dipakai langsung sebagai penyaring antrean
+	// (pengganti `TempOperator.City`; T_ACCESS_GROUP_PNC tidak dipakai lagi — Work Owner
+	// 2026-10-05).
 	//
 	// Tidak ada Clock: layar ini tidak punya kolom durasi.
 	inboxRCLHandler := inboxrclhttp.NewHandler(
@@ -1962,7 +1962,20 @@ func run() error {
 	// sehingga tidak ada satu pun tempat yang menambah tujuh jam sendiri seperti
 	// `Set7Hours` sistem lama (`F-5`).
 	dashboardClaimHandler, err := dashboardclaimhttp.NewHandler(dashboardclaimhttp.Options{
-		Service:       assembly.dashboardClaim,
+		Service: assembly.dashboardClaim,
+		// Jembatan satu arah dari modul auth. DUA field diambil: jejak permintaan transfer
+		// menyimpan NAMA pemohon bersama login-nya, supaya jejak itu tetap terbaca utuh tanpa
+		// join ke tabel pengguna — dan jejak yang dapat berubah bukan jejak.
+		Caller: func(ctx context.Context) (dashboardclaimhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return dashboardclaimhttp.Caller{}, false
+			}
+			return dashboardclaimhttp.Caller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+			}, true
+		},
 		Logger:        logger,
 		WriteResponse: writeJSON,
 		WriteError: dashboardclaimhttp.WriteError(
@@ -2200,11 +2213,10 @@ func run() error {
 				// COL Simas Online di atas, dan layar modul ini memakainya bersama.
 				daftarobjekdokumenhttp.Mount(protected, documentObjectHandler, activePortalDeps)
 				// Daftar Detail Dokumen Travel. Ia juga memasang
-				// /master/dokumen-travel-pilihan dan /master/plan-travel — dua daftar
-				// acuan yang tabelnya dimiliki modul lain dan tim lain, dan hanya
-				// dibacanya. Bila kelak ada modul Master Plan Travel tersendiri, rute
-				// kedua pindah ke sana; chi akan panik saat start bila keduanya
-				// mendaftarkannya bersamaan, dan itu justru yang membuat kekeliruan itu
+				// /master/dokumen-travel-pilihan — daftar acuan yang tabelnya dimiliki
+				// modul Master Dokumen Travel, dan hanya dibacanya. Bila kelak ada modul
+				// lain yang mendaftarkan rute itu juga, chi akan panik saat start, dan
+				// itu justru yang membuat kekeliruan itu
 				// mustahil lolos diam-diam.
 				daftardetaildokumentravelhttp.Mount(protected, travelDocumentDetailHandler, activePortalDeps)
 				// Daftar Detail Tipe Dokumen (MENU_ID 41). Keempat daftar acuannya
@@ -3244,6 +3256,13 @@ type storage struct {
 	// atas, supaya kuerinya tidak disalin ke dua modul yang kelak dapat menyimpang.
 	dashboardSelector dashboardclaim.RepoSelector
 
+	// dashboardTransfers memilih penyimpanan PERMINTAAN transfer milik satu portal.
+	//
+	// Terpisah dari dashboardSelector meski keduanya melayani satu layar, dan pembelahannya
+	// mengikuti kepemilikan tabel: yang pertama membaca tabel milik Pega, yang kedua menulis
+	// tabel milik aplikasi ini sendiri (`P-1`).
+	dashboardTransfers dashboardclaim.TransferRepoSelector
+
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
 	// Ia fungsi, bukan repo tunggal, karena tabelnya ada di basis data SETIAP entitas
@@ -3378,10 +3397,6 @@ type storage struct {
 	// modul Daftar Detail mengimpor tipe modul Master Dokumen Travel — dan sejak itu,
 	// perubahan di salah satunya merambat ke yang lain tanpa alasan.
 	travelChoiceSelector daftardetaildokumentravel.DocumentRepoSelector
-
-	// travelPlanSelector memilih pembaca POOLDATA.M_PLANTRAVEL milik GISFW yang HANYA
-	// DIBACA (`D-03`), sejajar dengan businessSelector di bawah.
-	travelPlanSelector daftardetaildokumentravel.PlanRepoSelector
 
 	// Kedua pemilih modul Daftar Detail Tipe Dokumen (MENU_ID 41).
 	//
@@ -3622,7 +3637,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	travelDocumentDetailService, err := daftardetaildokumentravelusecase.NewService(daftardetaildokumentravelusecase.Options{
 		RepoSelector:     store.detailTravelSelector,
 		DocumentSelector: store.travelChoiceSelector,
-		PlanSelector:     store.travelPlanSelector,
 	})
 	if err != nil {
 		store.close()
@@ -4362,6 +4376,9 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	dashboardClaimService, err := dashboardclaimusecase.NewService(dashboardclaimusecase.Options{
 		RepoSelector: store.dashboardSelector,
 		ClosedClaim:  dashboardClosedReader,
+		Transfers:    store.dashboardTransfers,
+		IDs:          dashboardclaimmemory.IDGenerator{},
+		Clock:        clock.System{},
 	})
 	if err != nil {
 		store.close()
@@ -4735,6 +4752,21 @@ func (penyimpananBelumDikonfigurasi) Upload(
 	return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
 		"%w: alamat layanan penyimpanan belum dikonfigurasi (PENYIMPANAN_DOKUMEN_ALAMAT)",
 		dokumenpenunjang.ErrUnggahGagal)
+}
+
+func (penyimpananBelumDikonfigurasi) PerpanjangTautan(
+	context.Context,
+	dokumenpenunjang.PerintahTautan,
+) (dokumenpenunjang.HasilUnggah, error) {
+	return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+		"%w: alamat layanan penyimpanan belum dikonfigurasi (PENYIMPANAN_DOKUMEN_ALAMAT)",
+		dokumenpenunjang.ErrTautanGagal)
+}
+
+func (penyimpananBelumDikonfigurasi) Hapus(context.Context, dokumenpenunjang.PerintahHapus) (string, error) {
+	return "", fmt.Errorf(
+		"%w: alamat layanan penyimpanan belum dikonfigurasi (PENYIMPANAN_DOKUMEN_ALAMAT)",
+		dokumenpenunjang.ErrHapusGagal)
 }
 
 // buildImageConverter membentuk klien layanan konversi gambar.
@@ -5290,13 +5322,6 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return daftardetaildokumentravelsql.NewDocumentRepo(conn), nil
 		}
-		store.travelPlanSelector = func(alias string) (daftardetaildokumentravel.PlanRepo, error) {
-			conn, err := pool.For(alias)
-			if err != nil {
-				return nil, err
-			}
-			return daftardetaildokumentravelsql.NewPlanRepo(conn), nil
-		}
 
 		// Daftar Detail Tipe Dokumen memakai DUA pemilih di atas koneksi yang sama.
 		// Keempat master rujukannya dilayani satu repo — bukan empat — karena keempatnya
@@ -5455,6 +5480,19 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				return nil, err
 			}
 			return dashboardclaimsql.NewRepo(conn), nil
+		}
+
+		// Permintaan transfer ditulis ke basis data entitas yang SAMA dengan klaimnya.
+		//
+		// Tabelnya dibuat migrasi `0014`, yang BELUM dijalankan DBA di lingkungan mana pun.
+		// Sampai itu terjadi, pencatatannya gagal dan layar menjawab 503 yang menyebutkan
+		// sebabnya — bukan 500 yang tidak menjelaskan apa-apa.
+		store.dashboardTransfers = func(alias string) (dashboardclaim.TransferRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return dashboardclaimsql.NewTransferRepo(conn), nil
 		}
 
 		// Permintaan ReOpen dan Copy Klaim ditulis ke basis data entitas yang SAMA dengan
@@ -5822,12 +5860,11 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.documentObjectSelector = documentObjectSelectorMemory(cfg.PrimaryPortal)
 		store.documentObjectBusinessSelector = documentObjectBusinessSelectorMemory(cfg.PrimaryPortal, documentObjectBusiness)
 
-		// Ketiga pemilih Daftar Detail Dokumen Travel dirakit bersamaan, meniru
-		// kenyataannya: detail, master dokumen, dan master plan hidup di basis data yang
-		// SAMA pada satu entitas.
+		// Kedua pemilih Daftar Detail Dokumen Travel dirakit bersamaan, meniru
+		// kenyataannya: detail dan master dokumen hidup di basis data yang SAMA pada
+		// satu entitas.
 		store.detailTravelSelector = detailTravelSelectorMemory(cfg.PrimaryPortal)
 		store.travelChoiceSelector = travelChoiceSelectorMemory(cfg.PrimaryPortal)
-		store.travelPlanSelector = travelPlanSelectorMemory(cfg.PrimaryPortal)
 
 		// Kedua pemilih Daftar Detail Tipe Dokumen. Pembaca masternya dirakit LEBIH DULU
 		// lalu disambungkan ke repo detailnya — tanpa itu, baris yang baru disimpan akan
@@ -5960,6 +5997,12 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		)
 		store.dashboardSelector = func(string) (dashboardclaim.Repo, error) {
 			return dashboardMemory, nil
+		}
+		// Permintaan transfer ditampung di memori supaya tombolnya dapat dicoba tanpa Oracle
+		// DAN tanpa menunggu migrasi `0014`.
+		dashboardTransferMemory := dashboardclaimmemory.NewTransferStore()
+		store.dashboardTransfers = func(string) (dashboardclaim.TransferRepo, error) {
+			return dashboardTransferMemory, nil
 		}
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
@@ -7077,24 +7120,6 @@ func travelChoiceSelectorMemory(primaryAlias string) daftardetaildokumentravel.D
 	}
 }
 
-// travelPlanSelectorMemory menyusun pembaca plan dan jaminan Travel di memori.
-//
-// BACA-SAJA dengan alasan yang sama seperti travelChoiceSelectorMemory di atas.
-func travelPlanSelectorMemory(primaryAlias string) daftardetaildokumentravel.PlanRepoSelector {
-	shared := daftardetaildokumentravelmemory.NewPlanRepo(
-		daftardetaildokumentravelmemory.SamplePlanList(),
-		daftardetaildokumentravelmemory.SampleCoverageList(),
-	)
-
-	return func(alias string) (daftardetaildokumentravel.PlanRepo, error) {
-		clean := strings.ToUpper(strings.TrimSpace(alias))
-		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
-			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
-		}
-		return shared, nil
-	}
-}
-
 // simasOnlineCauseOfLossSelectorMemory menyusun penyimpanan master COL Simas Online di
 // memori.
 //
@@ -7451,6 +7476,11 @@ func maskingSelectorMemory(primaryAlias string) mastermasking.RepoSelector {
 		// sudah terpakai — dan setiap penambahan akan ditolak sebagai pasangan ganda.
 		fresh := mastermaskingmemory.NewRepo(mastermaskingmemory.SampleList()...).
 			WithBranches(mastermaskingmemory.SampleBranches()...)
+		// Petugas per cabang ikut dimuat supaya form Tambah — yang berbentuk daftar
+		// petugas satu cabang — dapat dicoba sampai tersimpan tanpa Oracle.
+		for branchID, operator := range mastermaskingmemory.SampleOperators() {
+			fresh = fresh.WithOperators(branchID, operator...)
+		}
 		store[clean] = fresh
 		return fresh, nil
 	}

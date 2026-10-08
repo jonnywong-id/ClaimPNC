@@ -13,13 +13,13 @@ import (
 // supaya yang diuji benar-benar SATU aturan — bukan kombinasi yang kebetulan gagal.
 func valid() masterpicteknik.Technician {
 	return masterpicteknik.Technician{
-		OperatorID:   "PICTEKNIK01",
-		Email:        "petugas@example.invalid",
-		BusinessLine: "NONMBU",
-		Group:        "TEKNIK JAKARTA",
-		Supervisor:   "PICTEKNIK02",
-		Quota:        10,
-		Active:       true,
+		OperatorID:          "PICTEKNIK01",
+		Email:               "petugas@example.invalid",
+		BusinessLine:        "NONMBU",
+		Group:               "A",
+		Supervisor:          "PICTEKNIK02",
+		ClaimCounterBelow1M: 10,
+		Active:              true,
 	}
 }
 
@@ -55,45 +55,40 @@ func TestCheckRejectsEachRule(t *testing.T) {
 			field: masterpicteknik.FieldOperatorID,
 		},
 		{
-			name:  "email kosong",
-			build: func(t masterpicteknik.Technician) masterpicteknik.Technician { t.Email = ""; return t },
-			field: masterpicteknik.FieldEmail,
-		},
-		{
 			name:  "email tanpa domain",
 			build: func(t masterpicteknik.Technician) masterpicteknik.Technician { t.Email = "petugas@"; return t },
 			field: masterpicteknik.FieldEmail,
 		},
 		{
 			name:  "kuota negatif",
-			build: func(t masterpicteknik.Technician) masterpicteknik.Technician { t.Quota = -1; return t },
-			field: masterpicteknik.FieldQuota,
+			build: func(t masterpicteknik.Technician) masterpicteknik.Technician { t.ClaimCounterBelow1M = -1; return t },
+			field: masterpicteknik.FieldClaimCounterBelow1M,
 		},
 		{
 			name: "kuota melebihi batas",
 			build: func(t masterpicteknik.Technician) masterpicteknik.Technician {
-				t.Quota = masterpicteknik.MaxQuota + 1
+				t.ClaimCounterBelow1M = masterpicteknik.MaxClaimCounter + 1
 				return t
 			},
-			field: masterpicteknik.FieldQuota,
+			field: masterpicteknik.FieldClaimCounterBelow1M,
 		},
 		{
 			name:  "kuota sistem lain negatif",
-			build: func(t masterpicteknik.Technician) masterpicteknik.Technician { t.ExternalQuota = -1; return t },
-			field: masterpicteknik.FieldExternalQuota,
+			build: func(t masterpicteknik.Technician) masterpicteknik.Technician { t.ClaimCounterAbove1M = -1; return t },
+			field: masterpicteknik.FieldClaimCounterAbove1M,
 		},
 		{
-			name: "grup terlalu panjang",
+			name: "kelompok di luar daftar Property",
 			build: func(t masterpicteknik.Technician) masterpicteknik.Technician {
-				t.Group = strings.Repeat("G", masterpicteknik.MaxGroupLength+1)
+				t.Group = "Z"
 				return t
 			},
 			field: masterpicteknik.FieldGroup,
 		},
 		{
-			name: "lini bisnis terlalu panjang",
+			name: "bisnis di luar daftar Property",
 			build: func(t masterpicteknik.Technician) masterpicteknik.Technician {
-				t.BusinessLine = strings.Repeat("L", masterpicteknik.MaxBusinessLineLength+1)
+				t.BusinessLine = "MBU"
 				return t
 			},
 			field: masterpicteknik.FieldBusinessLine,
@@ -111,10 +106,10 @@ func TestCheckRejectsEachRule(t *testing.T) {
 // Kuota tepat pada batas harus DITERIMA. Kasus "tepat di batas" adalah tempat aturan
 // berangka paling sering salah — `docs/Steering/14-TESTING-STRATEGY.md` §3.1 mewajibkannya.
 func TestCheckAcceptsQuotaAtBoundary(t *testing.T) {
-	for _, quota := range []int{0, masterpicteknik.MaxQuota} {
+	for _, quota := range []int{0, masterpicteknik.MaxClaimCounter} {
 		technician := valid()
-		technician.Quota = quota
-		technician.ExternalQuota = quota
+		technician.ClaimCounterBelow1M = quota
+		technician.ClaimCounterAbove1M = quota
 		require.Empty(t, masterpicteknik.Check(technician))
 	}
 }
@@ -139,15 +134,15 @@ func TestCheckRejectsSelfSupervisionRegardlessOfCase(t *testing.T) {
 // kesetaraan perilaku dengan sistem lama, bukan kerapian.
 func TestCheckCollectsEveryViolationAtOnce(t *testing.T) {
 	violation := masterpicteknik.Check(masterpicteknik.Technician{
-		OperatorID: "",
-		Email:      "bukan-email",
-		Quota:      -5,
+		OperatorID:          "",
+		Email:               "bukan-email",
+		ClaimCounterBelow1M: -5,
 	})
 
 	found := fields(violation)
 	require.Contains(t, found, masterpicteknik.FieldOperatorID)
 	require.Contains(t, found, masterpicteknik.FieldEmail)
-	require.Contains(t, found, masterpicteknik.FieldQuota)
+	require.Contains(t, found, masterpicteknik.FieldClaimCounterBelow1M)
 	require.GreaterOrEqual(t, len(violation), 3)
 }
 
@@ -157,6 +152,46 @@ func TestNewValidationErrorIsTrulyNilWhenClean(t *testing.T) {
 	require.Nil(t, masterpicteknik.NewValidationError(nil))
 	require.NoError(t, masterpicteknik.NewValidationError([]masterpicteknik.Violation{}))
 	require.Error(t, masterpicteknik.NewValidationError([]masterpicteknik.Violation{{Field: "x", Message: "y"}}))
+}
+
+// Daftar nilainya DISALIN dari Property rule, bukan dikarang dari data yang kebetulan
+// terlihat. Uji ini yang menahannya berubah diam-diam.
+//
+//	Property/TEAM_GROUP_property.xml     A · B · C
+//	Property/TYPE_BUSINESS_property.xml  NONMBU · TRAVEL · PA · BONDING
+func TestValueListsMatchPropertyRules(t *testing.T) {
+	require.Equal(t, []string{"A", "B", "C"}, masterpicteknik.GroupCodes)
+	require.Equal(t, []string{"NONMBU", "TRAVEL", "PA", "BONDING"}, masterpicteknik.BusinessCodes)
+}
+
+func TestCheckAcceptsEveryValueFromPropertyRules(t *testing.T) {
+	for _, group := range masterpicteknik.GroupCodes {
+		technician := valid()
+		technician.Group = group
+		require.Emptyf(t, masterpicteknik.Check(technician), "kelompok %q seharusnya sah", group)
+	}
+	for _, business := range masterpicteknik.BusinessCodes {
+		technician := valid()
+		technician.BusinessLine = business
+		require.Emptyf(t, masterpicteknik.Check(technician), "bisnis %q seharusnya sah", business)
+	}
+}
+
+// Kosong diterima: layar Pega menyediakan pilihan `--Pilih--`, dan kolomnya NULLABLE.
+func TestCheckAcceptsEmptyGroupAndBusiness(t *testing.T) {
+	technician := valid()
+	technician.Group = ""
+	technician.BusinessLine = ""
+	require.Empty(t, masterpicteknik.Check(technician))
+}
+
+// Besar-kecil huruf diabaikan supaya baris lama yang tersimpan huruf kecil tetap dapat
+// disunting petugasnya sendiri.
+func TestCheckAcceptsListValuesRegardlessOfCase(t *testing.T) {
+	technician := valid()
+	technician.Group = "a"
+	technician.BusinessLine = "nonmbu"
+	require.Empty(t, masterpicteknik.Check(technician))
 }
 
 func TestIDKeyNormalises(t *testing.T) {
@@ -202,4 +237,16 @@ func TestEmailPlausible(t *testing.T) {
 func TestActiveCodeIsOne(t *testing.T) {
 	require.Equal(t, "1", masterpicteknik.ActiveCode)
 	require.Equal(t, "0", masterpicteknik.InactiveCode)
+}
+
+// Surel kosong DITERIMA.
+//
+// Section Pega tidak memuat satu pun `pyRequired=true`, dan kolomnya NULLABLE.
+// Mewajibkannya — yang sempat dilakukan di sini — membuat setiap baris lama yang surelnya
+// kosong tidak dapat disunting sama sekali, termasuk untuk dinonaktifkan.
+func TestCheckAcceptsEmptyEmail(t *testing.T) {
+	technician := valid()
+	technician.Email = ""
+
+	require.Empty(t, masterpicteknik.Check(technician))
 }

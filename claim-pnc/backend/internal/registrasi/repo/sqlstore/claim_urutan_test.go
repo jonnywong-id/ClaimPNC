@@ -42,11 +42,11 @@ func be4StepByName(steps []be4Step, name string, cols int, rows [][]driver.Value
 // coverage menempel ke objeknya, dan spreading menempel ke coverage-nya.
 func TestClaimGetWorksWhenUrutanIsNull(t *testing.T) {
 	steps := be4GetSteps()
-	be4StepByName(steps, "objek_daftar", 4, [][]driver.Value{
-		{nil, "OBJ1 ", "Gudang", "Jakarta"},
+	be4StepByName(steps, "objek_daftar", 6, [][]driver.Value{
+		{nil, "OBJ1 ", "Gudang", "Jakarta", nil, nil},
 	})
-	be4StepByName(steps, "coverage_daftar", 8, [][]driver.Value{
-		{"OBJ1 ", "1", nil, nil, "COV1", "C1", int64(1000), "Kebakaran"},
+	be4StepByName(steps, "coverage_daftar", 9, [][]driver.Value{
+		{"OBJ1 ", "1", nil, nil, "COV1", "C1", int64(1000), "Kebakaran", nil},
 	})
 	be4StepByName(steps, "spreading_daftar", 6, [][]driver.Value{
 		{"OBJ1", "1", int64(1), "10001", "OR", int64(400000)},
@@ -77,12 +77,12 @@ func TestClaimGetWorksWhenUrutanIsNull(t *testing.T) {
 // belakangan, dan hasilnya berubah-ubah antar pembacaan.
 func TestClaimGetPrefersFirstRowOnDuplicateObjectID(t *testing.T) {
 	steps := be4GetSteps()
-	be4StepByName(steps, "objek_daftar", 4, [][]driver.Value{
-		{nil, "OBJ1", "Gudang Depan", "Jakarta"},
-		{nil, "OBJ1", "Gudang Belakang", "Bandung"},
+	be4StepByName(steps, "objek_daftar", 6, [][]driver.Value{
+		{nil, "OBJ1", "Gudang Depan", "Jakarta", nil, nil},
+		{nil, "OBJ1", "Gudang Belakang", "Bandung", nil, nil},
 	})
-	be4StepByName(steps, "coverage_daftar", 8, [][]driver.Value{
-		{"OBJ1", "1", nil, nil, "COV1", "C1", int64(1000), "Kebakaran"},
+	be4StepByName(steps, "coverage_daftar", 9, [][]driver.Value{
+		{"OBJ1", "1", nil, nil, "COV1", "C1", int64(1000), "Kebakaran", nil},
 	})
 	be4StepByName(steps, "spreading_daftar", 6, [][]driver.Value{})
 

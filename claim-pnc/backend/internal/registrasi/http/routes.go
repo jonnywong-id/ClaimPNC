@@ -52,6 +52,14 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.Documents(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Delete pada daftar berkas Lihat dokumen — hapus permanen (keputusan-implementasi §171).
+		sub.Post("/klaim/{klaimID}/dokumen/{lampiranID}/hapus", func(w http.ResponseWriter, r *http.Request) {
+			h.DeleteDocument(w, r, chi.URLParam(r, "klaimID"), chi.URLParam(r, "lampiranID"))
+		})
+		// Tombol Lihat dokumen: alamat baca satu lampiran dari metadata penyimpanan.
+		sub.Get("/klaim/{klaimID}/dokumen/{lampiranID}/tautan", func(w http.ResponseWriter, r *http.Request) {
+			h.DocumentLink(w, r, chi.URLParam(r, "klaimID"), chi.URLParam(r, "lampiranID"))
+		})
 		// Tombol Unggah Dokumen pada satu baris checklist: layanan penyimpanan + DATA_ATTACHFILE.
 		sub.Post("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.UploadDocument(w, r, chi.URLParam(r, "klaimID"))
@@ -113,6 +121,14 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/adjustment", func(w http.ResponseWriter, r *http.Request) {
 			h.AddSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Tambah: ValidationAdjustment (PA: estimasi NewEstimationPA).
+		sub.Post("/klaim/{klaimID}/adjustment/tambah", func(w http.ResponseWriter, r *http.Request) {
+			h.PrepareSettlement(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Perubahan isian baris yang sudah ada: hitung, periksa, simpan (SetNilaiResikoSendiri).
+		sub.Post("/klaim/{klaimID}/adjustment/ubah", func(w http.ResponseWriter, r *http.Request) {
+			h.UpdateSettlement(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Transfer Komite pada baris Adjustment, dan putusan anggota komite.
 		sub.Post("/klaim/{klaimID}/adjustment/komite", func(w http.ResponseWriter, r *http.Request) {
 			h.TransferCommittee(w, r, chi.URLParam(r, "klaimID"))
@@ -131,6 +147,10 @@ func Mount(r chi.Router, h *Handler) {
 		})
 		sub.Post("/klaim/{klaimID}/penerima", func(w http.ResponseWriter, r *http.Request) {
 			h.SaveReceiver(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Data tertanggung (CIF polis) untuk tab Register. Hanya membaca.
+		sub.Get("/klaim/{klaimID}/tertanggung", func(w http.ResponseWriter, r *http.Request) {
+			h.Insured(w, r, chi.URLParam(r, "klaimID"))
 		})
 		sub.Get("/klaim/{klaimID}/progres", func(w http.ResponseWriter, r *http.Request) {
 			h.Progress(w, r, chi.URLParam(r, "klaimID"))
@@ -151,5 +171,27 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/tugas/{tugasID}/selesai", func(w http.ResponseWriter, r *http.Request) {
 			h.CompleteTask(w, r, chi.URLParam(r, "tugasID"))
 		})
+		// Tombol "Transfer ke Analyst" (TrfKomiteButton → modal ClaimComitee_OC → Kirim Analyst).
+		sub.Post("/tugas/{tugasID}/transfer-analis", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferToAnalyst(w, r, chi.URLParam(r, "tugasID"))
+		})
+
+		// Tombol "Kirim ke Inputor": catatan analis lalu lompat ke Input Register.
+		// Tombol Tutup Klaim — dialog Prevent Close Claim (CloseClaim).
+		sub.Post("/tugas/{tugasID}/tutup-klaim", func(w http.ResponseWriter, r *http.Request) {
+			h.CloseClaim(w, r, chi.URLParam(r, "tugasID"))
+		})
+		sub.Post("/tugas/{tugasID}/kirim-inputor", func(w http.ResponseWriter, r *http.Request) {
+			h.SendToInputor(w, r, chi.URLParam(r, "tugasID"))
+		})
+
+		// Tombol "Kirim ke RCL/PUCL" (modal KomentarRCLPUCL → SectionPUCL) beserta ketiga
+		// daftar pilihannya. Ketiganya GET karena hanya membaca master.
+		sub.Post("/tugas/{tugasID}/kirim-rclpucl", func(w http.ResponseWriter, r *http.Request) {
+			h.SendToRCLPUCL(w, r, chi.URLParam(r, "tugasID"))
+		})
+		sub.Get("/rclpucl/perihal", h.PUCLSubjects)
+		sub.Get("/rclpucl/alasan", h.PUCLReasons)
+		sub.Get("/rclpucl/dokter", h.RCLDoctors)
 	})
 }

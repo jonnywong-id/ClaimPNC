@@ -18,9 +18,12 @@ func TestCheckNamesAllEmptyFieldsAtOnce(t *testing.T) {
 	var validasi *masterrekening.ValidationError
 	require.ErrorAs(t, err, &validasi)
 
+	// Kesebelas nama di bawah adalah kesebelas kolom bertanda bintang merah di layar
+	// Pega `Memperbaharui Data`. Daftarnya dikunci di sini supaya satu kolom wajib
+	// tidak dapat hilang diam-diam dari pemeriksaan.
 	assert.ElementsMatch(t, []string{
 		"nomor_rekening", "nama_pemilik", "nama_bank", "cabang_bank", "alamat_bank",
-		"kode_bank", "tipe_rekening", "email", "nik",
+		"kode_bank", "tipe_rekening", "email", "nik", "telepon", "email_penginput",
 	}, key(validasi.Field))
 }
 
@@ -132,9 +135,12 @@ func completeAccount() masterrekening.Account {
 		BankCode:    "014",
 		AccountType: "BIASA",
 		Email:       "keuangan@contoh.co.id",
+		Phone:       "0211234567",
 		NIK:         "3171000000000000",
-		Active:      true,
-		Status:      masterrekening.StatusPending,
+		// Email Inputor wajib sejak layar Pega ditiru apa adanya — lihat Check().
+		SubmitterEmail: "pengaju@contoh.co.id",
+		Active:         true,
+		Status:         masterrekening.StatusPending,
 	}
 }
 

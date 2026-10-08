@@ -13,7 +13,9 @@ import (
 
 var errStore = errors.New("penyimpanan rusak")
 
-func TestListShowsOnlyActiveTechniciansSorted(t *testing.T) {
+// Daftar memuat SELURUH petugas, aktif maupun tidak, terurut menurut ID operator —
+// sama dengan grid Pega, yang menampilkan Status Aktif `0` dan `1` berdampingan.
+func TestListShowsEveryTechnicianSorted(t *testing.T) {
 	repo := memory.NewRepo(memory.SampleList()...)
 	rows, err := repo.List(context.Background())
 	require.NoError(t, err)
@@ -22,8 +24,8 @@ func TestListShowsOnlyActiveTechniciansSorted(t *testing.T) {
 	for _, r := range rows {
 		ids = append(ids, r.OperatorID)
 	}
-	require.Equal(t, []string{"PICTEKNIK01", "PICTEKNIK02", "PICTEKNIK03"}, ids,
-		"yang nonaktif disembunyikan")
+	require.Equal(t, []string{"PICTEKNIK01", "PICTEKNIK02", "PICTEKNIK03", "PICTEKNIK04"}, ids,
+		"yang nonaktif ikut tampil, dibedakan lewat kolom Status Aktif")
 }
 
 func TestGetIgnoresCase(t *testing.T) {
@@ -54,17 +56,17 @@ func TestInsertRefusesADuplicateIdentity(t *testing.T) {
 
 func TestUpdateKeepsTheFieldsTheScreenDoesNotOwn(t *testing.T) {
 	repo := memory.NewRepo(masterpicteknik.Technician{
-		OperatorID: "BUDI", PanelGroup: "006", Workload: 7, Quota: 5, Active: true,
+		OperatorID: "BUDI", PanelGroup: "006", Workload: 7, ClaimCounterBelow1M: 5, Active: true,
 	})
 
 	updated, err := repo.Update(context.Background(), masterpicteknik.Technician{
-		OperatorID: "budi", PanelGroup: "999", Workload: 0, Quota: 9, Name: "Budi",
+		OperatorID: "budi", PanelGroup: "999", Workload: 0, ClaimCounterBelow1M: 9, Name: "Budi",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "BUDI", updated.OperatorID, "ejaan identitas lama dipertahankan")
 	require.Equal(t, "006", updated.PanelGroup)
 	require.Equal(t, 7, updated.Workload)
-	require.Equal(t, 9, updated.Quota)
+	require.Equal(t, 9, updated.ClaimCounterBelow1M)
 
 	stored, _ := repo.Get(context.Background(), "BUDI")
 	require.Equal(t, "Budi", stored.Name)

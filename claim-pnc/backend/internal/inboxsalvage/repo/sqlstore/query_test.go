@@ -451,3 +451,159 @@ func TestHistoryQueryDoesNotTranslateStatusIntoSentences(t *testing.T) {
 	require.Contains(t, text, "AS TRANSFER_STATUS")
 	require.Contains(t, text, "AS HAS_ACCEPTANCE_NO")
 }
+
+// Kedua kueri pilihan form "Menambahkan Data Salvage" ada dan terikat parameternya.
+//
+// Keduanya salinan langkah 2 dan 3 `Activity/GetDataSalavageCovCurObj_act-Act.xml`.
+func TestClaimChoiceQueriesExistAndBindTheirParameters(t *testing.T) {
+	for _, name := range []string{"claim_objects", "claim_coverages"} {
+		require.NotPanicsf(t, func() { query(name) }, "kueri %q hilang", name)
+
+		text := query(name)
+		require.Containsf(t, text, ":1", "kueri %q tidak mengikat awalan kunci Pega", name)
+		require.Containsf(t, text, ":2", "kueri %q tidak mengikat nomor klaim", name)
+	}
+
+	require.Contains(t, strings.ToUpper(query("claim_objects")), "T_CLAIM_OBJECTLIST")
+	require.Contains(t, strings.ToUpper(query("claim_coverages")), "T_CLAIM_OBJECTCOVERAGE")
+}
+
+// Pilihan "Nama Coverage" memakai `COVERAGEID`, BUKAN `OBJECTCOVERAGEID`.
+//
+// # Kenapa ini perlu dijaga uji
+//
+// Karena kekeliruan ke arah sebaliknya sudah pernah terjadi, dan alasannya masuk akal:
+// tujuh kueri PLA/DLA memperlakukan "IDCoverage" sebagai `OBJECTCOVERAGEID`
+// (`GetDataDLA-SQL.xml:49`, `GetDataPLA-SQL.xml:108`, `GetDataPreDLA-SQL.xml:47`).
+// Siapa pun yang membaca kueri-kueri itu lebih dulu akan menyimpulkan hal yang sama.
+//
+// Yang berlaku di layar ini adalah kuerinya sendiri:
+// `RDB List/GetDataSalvageObjectCoverageForOs-SQL.xml` menyebut `COVERAGEID` apa adanya.
+//
+// Uji ini gagal bila seseorang "memperbaikinya" kembali.
+func TestCoverageChoiceCarriesTheCoverageTypeCode(t *testing.T) {
+	text := strings.ToUpper(query("claim_coverages"))
+
+	require.Contains(t, text, "COVERAGEID",
+		"pilihan coverage harus membawa COVERAGEID, kolom yang dipakai kueri layar ini")
+	require.NotContains(t, text, "OBJECTCOVERAGEID",
+		"OBJECTCOVERAGEID adalah kolom yang dipakai layar PLA/DLA, bukan layar ini")
+}
+
+// Pilihan coverage TIDAK terikat objek, sama seperti di layar lama.
+//
+// Kueri aslinya tidak mengambil `OBJECTID` sama sekali â€” daftar coverage ditarik per
+// KLAIM. Mempersempitnya menurut objek terdengar masuk akal dan pernah dicoba, tetapi itu
+// menyembunyikan pilihan yang di Pega tersedia (`P-5`).
+func TestCoverageChoiceIsNotScopedToAnObject(t *testing.T) {
+	text := strings.ToUpper(query("claim_coverages"))
+
+	require.NotContains(t, text, "OBJECTID",
+		"kueri coverage layar lama tidak mengambil OBJECTID; daftarnya per klaim")
+}
+
+// Kedua kueri pilihan TIDAK menyentuh kolom yang lahir dari migrasi.
+//
+// # Kenapa ini perlu dijaga uji
+//
+// Karena penyaring `DIHAPUS_PADA IS NULL` sempat dipasang di sini — atas dasar `D-66`,
+// yang memang menuntut setiap pembaca membuang baris bertanda terhapus — dan itu MEMUTUS
+// layar. Kolom itu bukan bawaan kedua tabel warisan: ia ditambahkan migrasi
+// `0008_klaim_anak_dan_spreading`, sehingga basis data portal yang belum menjalankannya
+// menolak kuerinya dengan `ORA-00904`, dan yang gagal bukan hanya daftar pilihan
+// melainkan seluruh permintaan rincian klaim.
+//
+// Kedua kueri ini karena itu dibatasi pada kolom yang sudah ada di tabel warisan sejak
+// semula — kolom yang sama yang dibaca kueri Pega aslinya.
+func TestClaimChoiceQueriesTouchOnlyLegacyColumns(t *testing.T) {
+	for _, name := range []string{"claim_objects", "claim_coverages"} {
+		require.NotContainsf(t, strings.ToUpper(query(name)), "DIHAPUS_PADA",
+			"kueri %q tidak boleh bergantung pada kolom hasil migrasi 0008 — "+
+				"portal yang belum bermigrasi akan menolaknya dengan ORA-00904", name)
+	}
+}
+
+// Kedua kueri pilihan menyatakan urutannya.
+//
+// Kueri aslinya tidak, sehingga urutan daftar pilihan tidak ditentukan dan dapat berbeda
+// pada setiap pembukaan. Urutannya menurut NAMA â€” satu-satunya isian yang dibaca pengguna
+// pada autocomplete.
+func TestClaimChoiceQueriesOrderByTheNameThatIsRead(t *testing.T) {
+	require.Contains(t, strings.ToUpper(query("claim_objects")), "ORDER BY O.OBJECTNAME")
+	require.Contains(t, strings.ToUpper(query("claim_coverages")), "ORDER BY C.COVERAGENAME")
+}
+
+
+// ============================================================================
+// UNGGAHAN DOKUMEN
+// ============================================================================
+
+// Keenam kueri rantai unggahan ada, dan masing-masing mengikat parameternya.
+//
+// Rantai ini dipanggil berurutan di dalam SATU transaksi; satu nama yang salah ketik
+// baru terlihat ketika dokumen nasabah pertama diunggah di produksi.
+func TestAttachmentChainQueriesExistAndBindTheirParameters(t *testing.T) {
+	for _, name := range []string{
+		"attachment_name_prefix",
+		"attachment_sequence_of_claim",
+		"attachment_content",
+		"attachment_meta",
+		"attachment_history",
+		"attachment_by_image",
+		"salvage_document_link",
+	} {
+		require.NotPanicsf(t, func() { query(name) }, "kueri %q tidak ada", name)
+		require.Containsf(t, query(name), ":1", "kueri %q tidak mengikat parameter", name)
+	}
+}
+
+// Penyimpan ISI menerima satu bind LEBIH BANYAK daripada penyimpan KETERANGAN.
+//
+// Selisih satu itu adalah isi berkasnya, dan ia satu-satunya pembeda kedua procedure.
+// Memanggil salah satu dengan jumlah argumen milik yang lain ditolak Oracle dengan
+// PLS-00306 — galat yang baru muncul saat kuerinya benar-benar dijalankan.
+func TestContentStoreTakesExactlyOneMoreBindThanTheMetadataStore(t *testing.T) {
+	require.Equal(t, 12, highestBind(query("attachment_content")))
+	require.Equal(t, 11, highestBind(query("attachment_meta")))
+}
+
+// `IMAGEID` tidak dibangkitkan di dalam SQL.
+//
+// `GenerateimageID` menyusunnya dengan `STANDARD_HASH` atas `SYSTIMESTAMP`; keduanya khas
+// Oracle dan `D-20` melarangnya. Pembangkitannya pindah ke `inboxsalvage.NewImageID`, dan
+// uji ini menjaganya supaya tidak diam-diam kembali ke SQL.
+func TestNoAttachmentQueryGeneratesTheImageKeyInOracle(t *testing.T) {
+	for name, text := range queries {
+		upper := strings.ToUpper(text)
+		require.NotContainsf(t, upper, "STANDARD_HASH",
+			"kueri %q membangkitkan kunci di Oracle; itu milik Go", name)
+		require.NotContainsf(t, upper, "SYSTIMESTAMP",
+			"kueri %q memakai SYSTIMESTAMP; `D-20` melarangnya", name)
+	}
+}
+
+// Penaut salvage memakai DATAID yang dikembalikan `attachment_by_image`.
+//
+// Kedua tabel lampiran membangkitkan DATAID sendiri-sendiri dan keduanya BERBEDA. Yang
+// menautkan keduanya `IMAGEID`. Penaut salvage yang memakai DATAID milik tabel isi akan
+// menunjuk baris yang tidak ada di tabel keterangan — dan tidak ada galat yang muncul,
+// hanya dokumen yang tidak dapat dibuka dari layar salvage.
+func TestTheImageLookupIsWhatBridgesTheTwoAttachmentTables(t *testing.T) {
+	upper := strings.ToUpper(query("attachment_by_image"))
+
+	require.Contains(t, upper, "DATA_ATTACHFILE")
+	require.Contains(t, upper, "IMAGEID = :1")
+	require.NotContains(t, upper, "TEMP_DATA_ATTACHFILE",
+		"yang dibaca tabel KETERANGAN, bukan tabel isi")
+}
+
+// Nama tabel yang SALAH KETIK dibawa apa adanya.
+//
+// `SALAVAGEDOCUMENT` dan kolom `CATRGORY` memang bernama begitu di basis data. Membetulkan
+// ejaannya di sini berarti menunjuk objek yang tidak ada; membetulkannya di basis data
+// menempuh `D-63`.
+func TestLegacyMisspellingsAreCarriedUnchanged(t *testing.T) {
+	require.Contains(t, strings.ToUpper(query("attachment_sequence_of_claim")),
+		"SALAVAGEDOCUMENT")
+	require.Contains(t, strings.ToUpper(query("attachment_history")), "CATRGORY")
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -104,7 +105,8 @@ func TestClaimRecordsAttachments(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Attachment{
 		ID: "1", Name: "lod.pdf", MimeType: "pdf", Note: "n", Category: "10064", SubCategory: "14901",
-		ImageID: "IMG", UploadedBy: "NIK1", UploadedAt: at,
+		// INPUTDATE dibaca sebagai jam dinding WIB.
+		ImageID: "IMG", UploadedBy: "NIK1", UploadedAt: time.Date(2026, 6, 9, 0, 0, 0, 0, clock.ZoneWIB),
 	}, got[0])
 	require.True(t, got[1].UploadedAt.IsZero())
 	r3RowFailures(t, mock, "lampiran_daftar", 9, func() error {
@@ -144,20 +146,40 @@ func TestClaimRecordsCommunications(t *testing.T) {
 	at := time.Date(2026, 6, 9, 0, 0, 0, 0, time.UTC)
 	mock.ExpectQuery(be4Q("komunikasi_daftar")).
 		WithArgs(r3Keys.Number, r3Keys.ID, r3Keys.Prefixed, r3Keys.Number, r3Keys.ID, r3Keys.Prefixed).
-		WillReturnRows(sqlmock.NewRows(be4Cols(10)).
-			AddRow(" KM1 ", int64(7), at, " NIK1 ", " Budi ", " halo ", " ya ", " Ani ", at, " 1 ").
-			AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows(be4Cols(11)).
+			AddRow(" KM1 ", int64(7), at, " NIK1 ", " Budi ", " halo ", " ya ", " Ani ", at, " 1 ", " SENDTOINPUTOR ").
+			AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil))
 	got, err := r.Communications(context.Background(), r3Keys)
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Communication{
 		CaseID: "KM1", ID: "7", SentAt: at, Sender: "NIK1", SenderName: "Budi", Message: "halo",
-		Reply: "ya", ReplierName: "Ani", RepliedAt: at, Status: "1",
+		Reply: "ya", ReplierName: "Ani", RepliedAt: at, Status: "1", Channel: registrasi.ChannelSendToInputor,
 	}, got[0])
 	require.Equal(t, registrasi.Communication{}, got[1])
-	r3RowFailures(t, mock, "komunikasi_daftar", 10, func() error {
+	r3RowFailures(t, mock, "komunikasi_daftar", 11, func() error {
 		_, err := r.Communications(context.Background(), r3Keys)
 		return err
 	})
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Catatan "Kirim ke Inputor": kunci klaim di CASEID dan CASECLAIM, nama kosong menjadi NULL.
+func TestClaimRecordsAddCommunication(t *testing.T) {
+	db, mock := be4DB(t)
+	r := NewClaimRecords(db)
+	c := registrasi.NewCommunication{
+		ClaimID: "K1", ClaimNumber: "PNCN.26.1", Sender: "NIK1", Message: "lengkapi KTP",
+		Recipient: "ADMIN1", Channel: registrasi.ChannelSendToInputor, Status: registrasi.CommunicationStatusOpen,
+	}
+	mock.ExpectExec(be4Q("komunikasi_sisip")).
+		WithArgs("K1", "K1", "NIK1", nil, "lengkapi KTP", "0", "ADMIN1", "SENDTOINPUTOR").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, r.AddCommunication(context.Background(), c))
+
+	mock.ExpectExec(be4Q("komunikasi_sisip")).WillReturnError(be4Boom)
+	err := r.AddCommunication(context.Background(), c)
+	require.ErrorIs(t, err, be4Boom)
+	require.ErrorContains(t, err, "menyimpan komunikasi klaim PNCN.26.1")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

@@ -238,7 +238,19 @@ func (r Account) Check() error {
 		{"kode_bank", r.BankCode, "Bank wajib dipilih dari daftar."},
 		{"tipe_rekening", r.AccountType, "Tipe rekening wajib dipilih."},
 		{"email", r.Email, "Email wajib diisi."},
-		{"nik", r.NIK, "NIK pemilik rekening wajib diisi."},
+		{"nik", r.NIK, "KTP/NIK/NPWP wajib diisi."},
+
+		// Dua berikut ditandai WAJIB di layar Pega — bintang merah pada "NOMOR TELEPON"
+		// dan "Email Inputor" — meski prasyarat activity CNMUpdateMasterRekening_act
+		// tidak menyebutnya. Layar yang menolak lebih dulu adalah perilaku yang
+		// sesungguhnya dialami pengguna, dan itulah yang ditiru.
+		//
+		// Keduanya juga punya alasan bisnis yang tertulis di layar itu sendiri:
+		// nomor telepon dipakai Kasir mengirim notifikasi WhatsApp saat pembayaran
+		// diproses, dan Email Inputor dipakai mengirim notifikasi approval kembali ke
+		// orang yang mengajukan.
+		{"telepon", r.Phone, "Nomor telepon wajib diisi."},
+		{"email_penginput", r.SubmitterEmail, "Email inputor wajib diisi."},
 	}
 	for _, w := range wajib {
 		if strings.TrimSpace(w.value) == "" {
@@ -323,6 +335,21 @@ type Filter struct {
 	Number    string
 	OwnerName string
 	BankName  string
+
+	// Keyword adalah satu kata kunci yang dicocokkan ke NOMOR REKENING, NAMA PEMILIK,
+	// NAMA BANK, dan CABANG BANK sekaligus — cocok di salah satunya sudah cukup.
+	//
+	// # Kenapa ia ada di samping ketiga saringan di atas, bukan menggantikannya
+	//
+	// Layar memakai SATU kotak cari, sama dengan layar master lain. Pencarian itu harus
+	// dikerjakan server, bukan peramban: daftar dipotong paginasi, dan menyaring di
+	// peramban hanya menyentuh halaman yang sedang terbuka — pengguna mencari rekening
+	// yang ada di halaman tiga lalu diberi tahu bahwa ia tidak ada.
+	//
+	// Ketiga saringan berkolom tetap dipertahankan karena keduanya menjawab kebutuhan
+	// berbeda: kata kunci untuk mencari cepat, saringan berkolom untuk mempersempit
+	// dengan tepat. Keduanya digabung dengan AND bila sama-sama terisi.
+	Keyword string
 
 	// MyCommitteeOnly membatasi ke rekening yang menunggu keputusan komite yang
 	// sedang masuk. Dipakai tab "Komite Approval".

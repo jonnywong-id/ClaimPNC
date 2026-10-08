@@ -26,15 +26,20 @@ export type TugasSurvei = {
   index_survei: string;
 
   /**
-   * `appointment_no` dan `reference_no` SELALU kosong hari ini.
+   * `appointment_no` adalah nomor berkas survei — `SRV-xxxxx`.
    *
-   * Kolom asalnya milik objek kerja survei di Pega, dan belum ada di `T_SURVEYORLIST`. Keduanya
-   * tetap dikirim supaya kolomnya tetap tergambar; `KolomLayar.tersedia` yang menyatakan
-   * sebabnya, sehingga sel kosong tidak terbaca sebagai "data belum diisi".
-   *
-   * `status_asm` TIDAK termasuk — kolom itu terisi dari `STS_SURVEY`.
+   * Ia TERISI sejak 2026-10-03, dan tidak pernah benar-benar menunggu siapa pun: backend
+   * menurunkannya dari `T_SURVEYORLIST.CASEID` dengan memotong prefix kelas Pega, persis
+   * seperti Pega sendiri melakukannya.
    */
   appointment_no: string;
+
+  /**
+   * `reference_no` SELALU kosong hari ini, dan asalnya BELUM DIKETAHUI.
+   *
+   * Ia tetap dikirim supaya kolomnya tetap tergambar; `KolomLayar.tersedia` yang menyatakan
+   * sebabnya, sehingga sel kosong tidak terbaca sebagai "data belum diisi".
+   */
   reference_no: string;
   claim_no: string;
   policy_no: string;
@@ -79,6 +84,15 @@ export type KolomLayar = {
    * terbaca sebagai "data belum diisi".
    */
   tersedia: boolean;
+
+  /**
+   * Kolom ini terisi, tetapi dari kolom yang BERBEDA dari Pega.
+   *
+   * Keadaan ketiga, dan yang paling mudah terlewat: selnya terisi dan tampak wajar, tetapi
+   * angkanya bukan angka yang sama dengan layar lama. Tanpa penanda tersendiri ia tidak dapat
+   * dibedakan dari kolom yang benar-benar setara.
+   */
+  pengganti?: boolean;
 };
 
 /** Satu tab beserta judulnya. */

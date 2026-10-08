@@ -31,10 +31,11 @@ const maxSaveBodyBytes = 8 << 10
 type Service interface {
 	List(ctx context.Context, portalAlias string, filter mastermasking.Filter) ([]mastermasking.Masking, error)
 	Get(ctx context.Context, portalAlias, id string) (mastermasking.Masking, error)
-	Create(ctx context.Context, portalAlias string, m mastermasking.Masking, by string) (mastermasking.Masking, error)
+	CreateMany(ctx context.Context, portalAlias, branchID string, row []mastermasking.Masking, by string) ([]mastermasking.SaveOutcome, error)
 	Update(ctx context.Context, portalAlias, id string, m mastermasking.Masking, by string) (mastermasking.Masking, error)
 	SetActive(ctx context.Context, portalAlias, id string, active bool, by string) (mastermasking.Masking, error)
 	Branches(ctx context.Context, portalAlias, keyword string) ([]mastermasking.Branch, error)
+	Operators(ctx context.Context, portalAlias, branchID string) ([]mastermasking.Operator, error)
 }
 
 // Caller adalah identitas pemanggil yang sedang bekerja.
@@ -223,29 +224,129 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, read := h.readSaveRequest(w, r)
-	if !read {
+	var request BulkSaveRequest
+	if !h.decode(w, r, &request) {
 		return
 	}
 
-	masking := fromRequest(request)
-	// Baris baru SELALU aktif, apa pun yang dikirim klien di field `aktif`.
-	//
-	// Layar lama tidak punya cara membuat baris nonaktif: `T_ACTION = 'insert'` pada
-	// procedure menulis `T_STSAKTF` apa adanya, tetapi tombol penonaktifan hanya ada pada
-	// baris yang SUDAH tersimpan. Menambah kewenangan yang langsung tidak berlaku tidak
-	// ada gunanya, dan membiarkannya hanya membuka satu bentuk keadaan yang membingungkan.
-	masking.Active = true
+	row := make([]mastermasking.Masking, 0, len(request.Row))
+	for _, item := range request.Row {
+		row = append(row, mastermasking.Masking{
+			Login:       item.Login,
+			Module:      item.Module,
+			SubModule:   item.SubModule,
+			SearchQuota: item.SearchQuota,
+			ViewQuota:   item.ViewQuota,
+			ViewIDCard:  item.ViewIDCard,
+			ViewEmail:   item.ViewEmail,
+			ViewPhone:   item.ViewPhone,
+		})
+	}
 
-	saved, err := h.service.Create(r.Context(), active.Alias, masking, h.identity(r.Context()))
+	outcome, err := h.service.CreateMany(
+		r.Context(), active.Alias, request.BranchID, row, h.identity(r.Context()))
 	if err != nil {
+		if errors.Is(err, mastermasking.ErrNoRowChosen) {
+			h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+				Code:    CodeNoRowChosen,
+				Message: "Belum ada petugas yang diisi. Isi kewenangan minimal satu petugas lebih dulu.",
+			})
+			return
+		}
 		h.writeModuleError(w, r, err)
 		return
 	}
-	// 201, bukan 200: sumber daya baru terbentuk dan ID-nya baru diketahui di sini.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
-		Masking: toDTO(saved),
-		Portal:  active.Alias,
+
+	body := BulkSaveResponse{Portal: active.Alias, Hasil: make([]BulkOutcomeDTO, 0, len(outcome))}
+	for _, o := range outcome {
+		item := BulkOutcomeDTO{Login: o.Login, Tersimpan: o.Saved}
+		if o.Saved {
+			body.Tersimpan++
+		} else {
+			body.Ditolak++
+			item.Pesan = outcomeMessage(o.Err)
+		}
+		body.Hasil = append(body.Hasil, item)
+	}
+
+	// 201 bila ADA yang tersimpan, 200 bila tidak ada — keduanya 2xx, dan itu disengaja.
+	//
+	// Nol baris tersimpan BUKAN permintaan yang gagal: permintaannya berbentuk benar,
+	// dipahami, dan dijalankan per baris. Yang gagal adalah barisnya, satu per satu, dan
+	// alasannya ada di dalam `hasil`.
+	//
+	// Pernah dijawab 409 di sini, dan itu keliru — bukan karena nomor statusnya kurang
+	// tepat, melainkan karena akibatnya: klien memperlakukan setiap non-2xx sebagai galat
+	// dan mencari `pesan` di badannya. Badan ini tidak punya `pesan` — ia punya `hasil`.
+	// Jadi laporan per baris, satu-satunya tempat petugas dapat membaca baris mana yang
+	// ditolak dan mengapa, dibuang tepat sebelum sampai ke layar, dan yang tersisa hanyalah
+	// kalimat umum "Terjadi kesalahan pada sistem".
+	//
+	// Keberhasilan palsu yang dikhawatirkan dulu tidak terjadi lewat status: layar membaca
+	// `tersimpan` dan `ditolak` dari badan, menutup form HANYA bila `ditolak == 0`, dan
+	// menggambar panel merah beserta alasannya bila tidak.
+	status := http.StatusCreated
+	if body.Tersimpan == 0 {
+		status = http.StatusOK
+	}
+	h.writeResponse(w, r, status, body)
+}
+
+// outcomeMessage menerjemahkan penolakan satu baris menjadi kalimat yang dibaca petugas.
+//
+// Rincian galat basis data TIDAK diteruskan: ia tidak dapat ditindaklanjuti petugas dan
+// dapat membocorkan bentuk penyimpanan. Yang tidak dikenali dijawab kalimat umum, dan
+// sebab aslinya tetap masuk log lewat jalur galat biasa.
+func outcomeMessage(err error) string {
+	var validationError *mastermasking.ValidationError
+
+	switch {
+	case errors.As(err, &validationError):
+		if len(validationError.Violation) > 0 {
+			return validationError.Violation[0].Message
+		}
+		return "Isian belum benar."
+	case errors.Is(err, mastermasking.ErrPairTaken):
+		return "Petugas ini sudah punya data masking di cabang tersebut."
+	case errors.Is(err, mastermasking.ErrIDTaken):
+		return "Nomor data sedang dipakai permintaan lain. Coba simpan sekali lagi."
+	default:
+		return "Tidak tersimpan karena kesalahan sistem."
+	}
+}
+
+// Operators menangani GET /api/master/masking/pengguna?cabang={kode}.
+//
+// Mengisi tabel NAMA USER / LOGIN pada form Tambah, menggantikan
+// `RDB List/GetDataLogin-SQL.xml`.
+func (h *Handler) Operators(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	list, err := h.service.Operators(r.Context(), active.Alias, r.URL.Query().Get("cabang"))
+	if err != nil {
+		if errors.Is(err, mastermasking.ErrBranchNotChosen) {
+			h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+				Code:    CodeBranchNotChosen,
+				Message: "Pilih cabang lebih dulu.",
+			})
+			return
+		}
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	content := make([]OperatorDTO, 0, len(list))
+	for _, o := range list {
+		content = append(content, OperatorDTO{Login: o.Login, Name: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, OperatorListResponse{
+		Pengguna: content,
+		Total:    len(content),
+		Portal:   active.Alias,
 	})
 }
 

@@ -222,20 +222,63 @@ func TestClaimScopedCoverageIsExcluded(t *testing.T) {
 // procedure lama mengosongkannya dengan sengaja. Versi pertama modul ini memakai LEFT JOIN
 // untuk ketiganya; itu penyimpangan saya sendiri, dan dicabut atas keputusan Work Owner
 // 2026-09-23 ("seperti aplikasi Pega saja").
-func TestRuleQueriesMirrorTheLegacyJoinShape(t *testing.T) {
+// Ketiga master dijoin secara LONGGAR, dan itu menjaga satu cacat agar tidak kembali.
+//
+// INNER JOIN ke V_LST_DOC_TYPE dan V_LST_DET_TYPE_DOC pernah dipakai di sini demi meniru
+// kueri lama, dan akibatnya terbukti di layar pada 2026-10-04: baris yang kodenya kosong —
+// mudah terjadi karena isiannya autocomplete ber-teks-bebas — TETAP TERSIMPAN tetapi
+// dibuang join, sehingga penyimpanan menjawab 200 tanpa galat dan barisnya tidak pernah
+// muncul di mana pun. Barisnya tetap berlaku pada klaim, tidak dapat diperbaiki karena tak
+// terlihat, dan tidak dapat dibuang karena `D-66`.
+//
+// Uji ini mengunci LEFT, bukan sekadar "ada join". Versi sebelumnya memeriksa
+// `Contains("JOIN POOLDATA.V_LST_DOC_TYPE")` dan LULUS terhadap kedua bentuk, karena
+// "LEFT JOIN …" memuat "JOIN …" sebagai substring — jebakan yang sama seperti pada
+// pemeriksaan kolom `ID =` sebelumnya. Pemeriksaannya karena itu dilakukan per baris, bukan
+// per substring.
+func TestRuleQueriesJoinMastersLoosely(t *testing.T) {
+	loose := []string{
+		"POOLDATA.V_LST_DOC_TYPE",
+		"POOLDATA.V_LST_DET_TYPE_DOC",
+		"POOLDATA.V_LST_DOC_OBJ",
+	}
+
 	for _, name := range []string{"rule_list_by_business", "rule_get"} {
-		text := strings.ToUpper(getQuery(name))
+		text := getQuery(name)
 
-		require.Containsf(t, text, "JOIN POOLDATA.BUSINESS",
-			"kueri %q harus menyamakan BUSINESS secara ketat seperti kueri lama", name)
-		require.Containsf(t, text, "JOIN POOLDATA.V_LST_DOC_TYPE",
-			"kueri %q harus menyamakan V_LST_DOC_TYPE secara ketat seperti kueri lama", name)
-		require.Containsf(t, text, "JOIN POOLDATA.V_LST_DET_TYPE_DOC",
-			"kueri %q harus menyamakan V_LST_DET_TYPE_DOC secara ketat seperti kueri lama", name)
+		var businessJoined bool
+		joinedLoosely := map[string]bool{}
 
-		require.Containsf(t, text, "LEFT JOIN POOLDATA.V_LST_DOC_OBJ",
-			"OBJECT_DOC_ID boleh kosong; menyamakannya ketat akan menghilangkan baris "+
-				"tanpa objek dokumen, dan itu BUKAN perilaku Pega (kueri %q)", name)
+		for _, line := range strings.Split(text, "\n") {
+			upper := strings.ToUpper(strings.TrimSpace(line))
+			if !strings.Contains(upper, "JOIN ") {
+				continue
+			}
+			isLeft := strings.HasPrefix(upper, "LEFT ")
+
+			if strings.Contains(upper, "POOLDATA.BUSINESS") {
+				// BUSINESS sengaja tetap ketat: BUSINESSID selalu diisi modul ini, dan
+				// daftar bisnis justru diturunkan darinya.
+				require.Falsef(t, isLeft,
+					"kueri %q menjoin BUSINESS secara longgar; BUSINESSID tidak pernah kosong", name)
+				businessJoined = true
+				continue
+			}
+			for _, master := range loose {
+				if strings.Contains(upper, master) {
+					require.Truef(t, isLeft,
+						"kueri %q menjoin %s secara KETAT — baris yang kodenya kosong akan "+
+							"tersimpan tetapi tidak pernah terlihat, dan tidak dapat diperbaiki "+
+							"maupun dibuang", name, master)
+					joinedLoosely[master] = true
+				}
+			}
+		}
+
+		require.Truef(t, businessJoined, "kueri %q tidak menjoin BUSINESS", name)
+		for _, master := range loose {
+			require.Truef(t, joinedLoosely[master], "kueri %q tidak menjoin %s", name, master)
+		}
 	}
 }
 

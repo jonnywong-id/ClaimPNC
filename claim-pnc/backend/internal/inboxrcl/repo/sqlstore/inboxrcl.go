@@ -10,9 +10,9 @@ import (
 	"claim-pnc/internal/inboxrcl"
 )
 
-// Repo membaca antrean RCL Dokter dari SATU basis data entitas.
-//
-// Tidak ada satu pun operasi yang menulis (`P-1`).
+// Repo membaca antrean RCL Dokter dari SATU basis data entitas — `POOLDATA.TC_PNC_PUCL`
+// dan `POOLDATA.M_LOGIN_PNC`. Satu-satunya operasi yang menulis adalah Decide (decision.go,
+// decision.sql).
 type Repo struct {
 	db *sql.DB
 }
@@ -22,46 +22,30 @@ func NewRepo(db *sql.DB) *Repo {
 	return &Repo{db: db}
 }
 
-// LegacyOperatorFor membaca identitas lama petugas — padanan `TempOperator.City`.
+// OperatorFor membaca LOGIN_ID pemanggil dari POOLDATA.M_LOGIN_PNC — pengganti
+// `TempOperator.City` (T_ACCESS_GROUP_PNC tidak dipakai lagi; Work Owner 2026-10-05).
 //
-// Ketiadaan baris BUKAN galat: di Pega ia menghasilkan antrean kosong, dan pemanggil yang
-// menyatakan keadaannya ke layar.
-//
-// # Kenapa identitas lama yang SAMA dengan login tetap dikembalikan
-//
-// Berbeda dari `inboxoutstanding.LegacyOperatorFor`, yang mengosongkannya karena di sana ia
-// TAMBAHAN di samping login. Di sini ia SATU-SATUNYA identitas yang menyaring antrean —
-// mengosongkannya akan menghapus antrean pengguna yang identitasnya tidak pernah berganti.
-func (r *Repo) LegacyOperatorFor(ctx context.Context, loginID string) (string, error) {
+// Login yang tidak ada atau tidak aktif BUKAN galat: ia mengembalikan string kosong.
+func (r *Repo) OperatorFor(ctx context.Context, loginID string) (string, error) {
 	id := strings.ToUpper(strings.TrimSpace(loginID))
 	if id == "" {
 		return "", nil
 	}
 
-	groups := inboxrcl.LegacyAccessGroups
-
-	var legacy sql.NullString
-	err := r.db.QueryRowContext(ctx, query("legacy_operator_for"),
-		id,
-		groups[0], groups[1], groups[2],
-		inboxrcl.ExcludedAccessGroup,
-	).Scan(&legacy)
+	var login sql.NullString
+	err := r.db.QueryRowContext(ctx, query("operator_for"), id, inboxrcl.LoginAktif).Scan(&login)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return "", nil
 	case err != nil:
-		return "", fmt.Errorf("inboxrcl/sqlstore: membaca identitas lama petugas: %w", err)
+		return "", fmt.Errorf("inboxrcl/sqlstore: membaca login dari M_LOGIN_PNC: %w", err)
 	}
 
 	// MAX atas himpunan kosong mengembalikan satu baris bernilai NULL, bukan nol baris.
-	return strings.ToUpper(strings.TrimSpace(legacy.String)), nil
+	return strings.ToUpper(strings.TrimSpace(login.String)), nil
 }
 
-// List mengambil satu halaman antrean milik sebuah identitas lama.
-//
-// Jumlah seluruh baris ikut dibawa kueri yang sama lewat `COUNT(*) OVER ()`, sehingga pada
-// halaman KOSONG jumlah totalnya nol — halaman di luar jangkauan ditangani layar dengan
-// kembali ke halaman pertama.
+// List mengambil satu halaman antrean milik seorang operator dari TC_PNC_PUCL.
 func (r *Repo) List(
 	ctx context.Context,
 	operator string,
@@ -72,13 +56,13 @@ func (r *Repo) List(
 	result := inboxrcl.Page{Tasks: []inboxrcl.RCLTask{}}
 
 	// Satu argumen untuk SETIAP kemunculan penanda — godror mengikat menurut urutan
-	// kemunculan (lihat kepala list_tasks). Pola yang sama dikirim dua kali, untuk PYID dan
-	// untuk POLICYNO.
+	// kemunculan (lihat kepala inboxrcl.sql).
 	pattern := searchPattern(clean.Search)
 	rows, err := r.db.QueryContext(ctx, query("list_tasks"),
 		operator,
 		inboxrcl.StatusKerjaSelesai,
-		operator,
+		string(inboxrcl.ModeRCL),
+		string(inboxrcl.ModeMSIG),
 		nilIfEmpty(pattern),
 		pattern,
 		pattern,
@@ -105,11 +89,38 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// searchPattern membentuk pola LIKE `%KATA%` berhuruf besar — sisi SQL memakai UPPER(...),
-// dan perbandingan yang hanya satu sisinya diseragamkan tidak pernah cocok.
-//
-// Karakter khusus LIKE di-escape supaya pencarian "100%" tidak berubah menjadi pola yang
-// mencocokkan apa saja; `ESCAPE '\'`-nya dinyatakan di sisi SQL. Preseden `inboxoutstanding`.
+// Detail mengambil isi layar kerja `RCLDokter` satu klaim — hanya bila klaim itu ada di
+// antrean operator. Selebihnya ErrClaimNotFound.
+func (r *Repo) Detail(
+	ctx context.Context,
+	operator, claimNumber string,
+) (inboxrcl.RCLDetail, error) {
+	number := strings.TrimSpace(claimNumber)
+	if number == "" || strings.TrimSpace(operator) == "" {
+		return inboxrcl.RCLDetail{}, inboxrcl.ErrClaimNotFound
+	}
+
+	row := r.db.QueryRowContext(ctx, query("claim_detail"),
+		number,
+		operator,
+		inboxrcl.StatusKerjaSelesai,
+		string(inboxrcl.ModeRCL),
+		string(inboxrcl.ModeMSIG),
+	)
+
+	detail, err := scanDetail(row)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return inboxrcl.RCLDetail{}, inboxrcl.ErrClaimNotFound
+	case err != nil:
+		return inboxrcl.RCLDetail{}, fmt.Errorf("menjalankan kueri claim_detail: %w", err)
+	}
+	return detail, nil
+}
+
+// searchPattern membentuk pola LIKE `%KATA%` berhuruf besar; karakter khusus LIKE di-escape
+// supaya pencarian "100%" tidak menjadi pola yang cocok dengan semuanya. Preseden
+// `inboxoutstanding`.
 func searchPattern(search string) string {
 	trimmed := strings.TrimSpace(search)
 	if trimmed == "" {
@@ -119,8 +130,8 @@ func searchPattern(search string) string {
 	return "%" + strings.ToUpper(escaped) + "%"
 }
 
-// nilIfEmpty mengirim pola kosong sebagai NULL, supaya `:4 IS NULL` mematikan seluruh
-// saringan pencarian alih-alih memaksa `LIKE` memindai setiap baris.
+// nilIfEmpty mengirim pola kosong sebagai NULL, supaya `:5 IS NULL` mematikan seluruh
+// saringan pencarian.
 func nilIfEmpty(value string) any {
 	if value == "" {
 		return nil
@@ -128,34 +139,24 @@ func nilIfEmpty(value string) any {
 	return value
 }
 
-// scanTask membaca satu baris hasil beserta jumlah seluruh baris yang menyertainya.
+// scanTask membaca satu baris list_tasks. Urutannya WAJIB sama dengan taskColumns.
 //
-// Urutan pembacaan WAJIB sama dengan urutan kolom pada kueri dan dengan taskColumns.
-// Seluruh kolom teks dibaca sebagai NullString: kolom tabel ini tidak punya constraint
-// NOT NULL, dan satu baris warisan yang kosong tidak boleh menjatuhkan seluruh halaman.
+// Seluruh kolom teks dibaca sebagai NullString: satu baris warisan yang kosong tidak boleh
+// menjatuhkan seluruh halaman.
 func scanTask(rows *sql.Rows) (inboxrcl.RCLTask, int, error) {
 	var (
-		reference        sql.NullString
-		caseID           sql.NullString
-		policyNumber     sql.NullString
-		insuredName      sql.NullString
-		sentToRCLAt      sql.NullTime
-		analystNote      sql.NullString
-		rclDoctor        sql.NullString
-		registeredAt     sql.NullTime
-		processStatus    sql.NullString
-		assignedOperator sql.NullString
-		total            int
+		caseID, policyNumber, insuredName, analystNote, mode, processStatus, assignedOperator sql.NullString
+		sentToRCLAt, registeredAt                                                             sql.NullTime
+		total                                                                                 int
 	)
 
 	if err := rows.Scan(
-		&reference,
 		&caseID,
 		&policyNumber,
 		&insuredName,
 		&sentToRCLAt,
 		&analystNote,
-		&rclDoctor,
+		&mode,
 		&registeredAt,
 		&processStatus,
 		&assignedOperator,
@@ -165,30 +166,68 @@ func scanTask(rows *sql.Rows) (inboxrcl.RCLTask, int, error) {
 	}
 
 	task := inboxrcl.RCLTask{
-		ClaimID:          reference.String,
-		ClaimNumber:      caseID.String,
+		ClaimNumber:      strings.TrimSpace(caseID.String),
 		PolicyNumber:     policyNumber.String,
 		InsuredName:      insuredName.String,
 		AnalystNote:      analystNote.String,
-		RCLDoctor:        rclDoctor.String,
+		Mode:             inboxrcl.Mode(strings.TrimSpace(mode.String)),
 		ProcessStatus:    processStatus.String,
 		AssignedOperator: assignedOperator.String,
 	}
-
-	// Waktu disimpan UTC (`08-TECHNICAL-STRATEGY.md` §4.4); konversi ke WIB hanya di
-	// lapisan transport.
+	// Waktu dibawa UTC; konversi ke WIB hanya di lapisan transport.
 	if sentToRCLAt.Valid {
 		task.SentToRCLAt = sentToRCLAt.Time.UTC()
 	}
 	if registeredAt.Valid {
 		task.RegisteredAt = registeredAt.Time.UTC()
 	}
-
 	return task, total, nil
 }
 
-// CheckTables memastikan T_CLAIMLIST_ADMIN dan T_ACCESS_GROUP_PNC terbaca dari koneksi ini.
-// Dipakai `-periksa`.
+// scanDetail membaca satu baris claim_detail. Urutannya WAJIB sama dengan detailColumns.
+func scanDetail(row *sql.Row) (inboxrcl.RCLDetail, error) {
+	var (
+		caseID, policyNumber, insuredName, mode, analystNote, reason, doctorReason sql.NullString
+		statusClaim, processStatus, assignedOperator                               sql.NullString
+		sentToRCLAt                                                                sql.NullTime
+	)
+
+	if err := row.Scan(
+		&caseID,
+		&policyNumber,
+		&insuredName,
+		&mode,
+		&analystNote,
+		&reason,
+		&doctorReason,
+		&statusClaim,
+		&processStatus,
+		&assignedOperator,
+		&sentToRCLAt,
+	); err != nil {
+		return inboxrcl.RCLDetail{}, err
+	}
+
+	detail := inboxrcl.RCLDetail{
+		ClaimNumber:      strings.TrimSpace(caseID.String),
+		PolicyNumber:     policyNumber.String,
+		InsuredName:      insuredName.String,
+		Mode:             inboxrcl.Mode(strings.TrimSpace(mode.String)),
+		AnalystNote:      analystNote.String,
+		Reason:           reason.String,
+		DoctorReason:     doctorReason.String,
+		StatusClaim:      strings.TrimSpace(statusClaim.String),
+		ProcessStatus:    processStatus.String,
+		AssignedOperator: assignedOperator.String,
+	}
+	if sentToRCLAt.Valid {
+		detail.SentToRCLAt = sentToRCLAt.Time.UTC()
+	}
+	return detail, nil
+}
+
+// CheckTables memastikan TC_PNC_PUCL dan M_LOGIN_PNC terbaca dari koneksi ini. Dipakai
+// `-periksa`.
 func (r *Repo) CheckTables(ctx context.Context) error {
 	var probe int
 	if err := r.db.QueryRowContext(ctx, query("check_tables")).Scan(&probe); err != nil {
@@ -197,16 +236,12 @@ func (r *Repo) CheckTables(ctx context.Context) error {
 	return nil
 }
 
-// CheckColumns memastikan ketiga kolom migrasi 0012 sudah ada di T_CLAIMLIST_ADMIN.
-//
-// Terpisah dari CheckTables karena sebab gagalnya berbeda — lihat check_columns.
+// CheckColumns memastikan kolom ALASAN_DOKTER_REJECT_RCL ada di TC_PNC_PUCL.
 func (r *Repo) CheckColumns(ctx context.Context) error {
-	var sent, doctor, note int
-	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&sent, &doctor, &note); err != nil {
+	var probe int
+	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&probe); err != nil {
 		return fmt.Errorf(
-			"kolom TANGGALANALYSTSENDRCL_1 / NAMADOKTERRCL_1 / KOMENTARANALISATOR_1 pada "+
-				"POOLDATA.T_CLAIMLIST_ADMIN tidak dapat dibaca — migrasi "+
-				"0012_claimlist_admin_rcl belum dijalankan DBA: %w", err)
+			"kolom ALASAN_DOKTER_REJECT_RCL pada POOLDATA.TC_PNC_PUCL tidak dapat dibaca: %w", err)
 	}
 	return nil
 }

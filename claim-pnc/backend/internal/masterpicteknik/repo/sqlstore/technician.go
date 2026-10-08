@@ -45,12 +45,12 @@ type Repo struct {
 // NewRepo membentuk repo; db wajib sudah terhubung ke basis data portal yang dituju.
 func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 
-// List membaca petugas AKTIF dari view.
+// List membaca SELURUH petugas dari view — aktif maupun tidak.
 //
-// Sandi aktif dikirim sebagai parameter, bukan ditulis di dalam teks SQL, supaya ia hidup
-// di satu tempat saja — masterpicteknik.ActiveCode.
+// Tanpa penyaring, mengikuti layar Pega yang menampilkan keduanya berdampingan dan
+// membedakannya lewat kolom Status Aktif.
 func (r *Repo) List(ctx context.Context) ([]masterpicteknik.Technician, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("technician_list"), masterpicteknik.ActiveCode)
+	rows, err := r.db.QueryContext(ctx, getQuery("technician_list"))
 	if err != nil {
 		return nil, fmt.Errorf("masterpicteknik/sqlstore: membaca daftar PIC teknik: %w", err)
 	}
@@ -58,7 +58,12 @@ func (r *Repo) List(ctx context.Context) ([]masterpicteknik.Technician, error) {
 
 	var result []masterpicteknik.Technician
 	for rows.Next() {
-		technician, err := scanListRow(rows)
+		// Pemindai yang SAMA dengan Get: sejak daftar ikut membaca
+		// POOLDATA.MST_USER_TEKNIK, kolom dan urutannya identik. Dua pemindai untuk satu
+		// bentuk baris adalah dua tempat yang dapat menyimpang diam-diam — dan itu persis
+		// yang terjadi ketika daftar membaca OLD_OPERATOR_ID sementara form membaca
+		// COUNTER_QUOTA2.
+		technician, err := scanTableRow(rows)
 		if err != nil {
 			return nil, fmt.Errorf("masterpicteknik/sqlstore: membaca baris PIC teknik: %w", err)
 		}
@@ -121,13 +126,13 @@ func (r *Repo) Insert(ctx context.Context, t masterpicteknik.Technician) (master
 
 	if _, err := tx.ExecContext(ctx, getQuery("technician_insert"),
 		t.OperatorID,
-		t.Quota,
+		t.ClaimCounterBelow1M,
 		nullable(t.BusinessLine),
 		nullable(t.Email),
 		activeCode(t.Active),
 		nullable(t.Group),
 		nullable(t.Supervisor),
-		t.ExternalQuota,
+		t.ClaimCounterAbove1M,
 		nullable(t.Name),
 	); err != nil {
 		return masterpicteknik.Technician{}, translateWriteError(err, "menambah PIC teknik")
@@ -151,8 +156,8 @@ func (r *Repo) Update(ctx context.Context, t masterpicteknik.Technician) (master
 		nullable(t.BusinessLine),
 		nullable(t.Group),
 		nullable(t.Supervisor),
-		t.Quota,
-		t.ExternalQuota,
+		t.ClaimCounterBelow1M,
+		t.ClaimCounterAbove1M,
 		activeCode(t.Active),
 		t.OperatorID,
 	)
@@ -200,41 +205,6 @@ func (r *Repo) CheckView(ctx context.Context) error {
 // sama tetapi tidak berbagi antarmuka apa pun di pustaka standar.
 type rowScanner interface{ Scan(to ...any) error }
 
-// scanListRow membaca satu baris dari VIEW — sepuluh kolom, termasuk TOTAL_JOB.
-func scanListRow(rows rowScanner) (masterpicteknik.Technician, error) {
-	var (
-		operatorID    string
-		name          sql.NullString
-		email         sql.NullString
-		businessLine  sql.NullString
-		group         sql.NullString
-		supervisor    sql.NullString
-		quota         sql.NullInt64
-		externalQuota sql.NullInt64
-		workload      sql.NullInt64
-		active        sql.NullString
-	)
-	if err := rows.Scan(
-		&operatorID, &name, &email, &businessLine, &group,
-		&supervisor, &quota, &externalQuota, &workload, &active,
-	); err != nil {
-		return masterpicteknik.Technician{}, err
-	}
-
-	return masterpicteknik.Technician{
-		OperatorID:    operatorID,
-		Name:          name.String,
-		Email:         email.String,
-		BusinessLine:  businessLine.String,
-		Group:         group.String,
-		Supervisor:    supervisor.String,
-		Quota:         int(quota.Int64),
-		ExternalQuota: int(externalQuota.Int64),
-		Workload:      int(workload.Int64),
-		Active:        isActive(active),
-	}.Clean(), nil
-}
-
 // scanTableRow membaca satu baris dari TABEL — sepuluh kolom, dengan GROUPPANEL
 // menggantikan TOTAL_JOB yang tidak ada di sana.
 func scanTableRow(rows rowScanner) (masterpicteknik.Technician, error) {
@@ -258,16 +228,16 @@ func scanTableRow(rows rowScanner) (masterpicteknik.Technician, error) {
 	}
 
 	return masterpicteknik.Technician{
-		OperatorID:    operatorID,
-		Name:          name.String,
-		Email:         email.String,
-		BusinessLine:  businessLine.String,
-		Group:         group.String,
-		Supervisor:    supervisor.String,
-		Quota:         int(quota.Int64),
-		ExternalQuota: int(externalQuota.Int64),
-		PanelGroup:    panelGroup.String,
-		Active:        isActive(active),
+		OperatorID:          operatorID,
+		Name:                name.String,
+		Email:               email.String,
+		BusinessLine:        businessLine.String,
+		Group:               group.String,
+		Supervisor:          supervisor.String,
+		ClaimCounterBelow1M: int(quota.Int64),
+		ClaimCounterAbove1M: int(externalQuota.Int64),
+		PanelGroup:          panelGroup.String,
+		Active:              isActive(active),
 	}.Clean(), nil
 }
 

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"claim-pnc/internal/inboxcompliance"
 	"claim-pnc/internal/inboxcompliance/usecase"
 	"claim-pnc/internal/portal"
@@ -186,4 +188,85 @@ func (h *Handler) readCaller(r *http.Request) (Caller, bool) {
 		return Caller{}, false
 	}
 	return caller, true
+}
+
+// OpenChecker menangani GET /api/inbox-compliance/{referensi}.
+//
+// # Kenapa jalurnya memuat kunci klaim, bukan parameter query
+//
+// Karena yang dibuka adalah SATU klaim tertentu, dan jalur yang menyebutnya dapat
+// ditandai, dibagikan, dan muncul di riwayat peramban sebagai alamat tersendiri. Di Pega
+// pun begitu: menekan Nomor Case membuka assignment-nya, bukan menyaring daftar.
+//
+// Kuncinya `PZINSKEY`, yang memuat spasi dan tanda hubung — layar WAJIB mengkodekannya.
+// chi sudah mendekodekannya kembali saat dibaca lewat URLParam.
+func (h *Handler) OpenChecker(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	reference := strings.TrimSpace(chi.URLParam(r, "referensi"))
+
+	opened, err := h.service.OpenChecker(r.Context(), active.Alias, reference)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toCheckerResponse(opened, active.Alias))
+}
+
+// SubmitDecision menangani POST /api/inbox-compliance/{referensi}/keputusan.
+//
+// Padanan tombol "Simpan Data" pada `Section/ComplianceChecker-Section.xml`.
+//
+// POST, bukan PUT, meski kuerinya MERGE dan pemanggilan kedua menimpa yang pertama. Dua
+// alasan: pada pilihan Bayar/PostAudit ia MENERBITKAN baris baru — akibat yang tidak
+// idempoten — dan jalurnya bukan alamat sumber daya keputusan itu sendiri melainkan aksi
+// atas klaimnya (`10-API-STRATEGY.md` §2, aksi bisnis dimodelkan sebagai peristiwa).
+func (h *Handler) SubmitDecision(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxcompliance.ErrCallerUnknown)
+		return
+	}
+
+	var body SubmitDecisionRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		h.writeError(w, r, errMalformedBody)
+		return
+	}
+
+	decided, err := h.service.SubmitDecision(
+		r.Context(),
+		active.Alias,
+		usecase.Caller{Login: caller.Login},
+		inboxcompliance.DecisionInput{
+			// Kunci klaim diambil dari JALUR, bukan dari badan permintaan. Badan yang
+			// menyebut klaim berbeda dari jalurnya akan diam-diam memutuskan klaim yang
+			// salah; dengan satu sumber, keadaan itu tidak mungkin terjadi.
+			Reference: strings.TrimSpace(chi.URLParam(r, "referensi")),
+			Choice:    body.Choice,
+			Note:      body.Note,
+			Remarks:   body.Remarks,
+		},
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// 200, bukan 201: yang utama adalah keputusan atas klaim yang SUDAH ada, dan
+	// menyimpannya ulang menimpa yang sebelumnya. Baris Post Audit yang kadang ikut
+	// terbit dibawa di dalam badan, bukan dijadikan alasan mengubah kodenya — layar tetap
+	// perlu membedakan keduanya lewat isi, bukan lewat status.
+	h.writeJSON(w, r, http.StatusOK, toSubmitDecisionResponse(decided, active.Alias))
 }

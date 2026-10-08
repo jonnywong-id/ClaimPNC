@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
 )
 
@@ -120,7 +122,9 @@ func (r *ClaimRecords) Attachments(ctx context.Context, keys registrasi.RecordKe
 			Category: trimmed(category), SubCategory: trimmed(sub), ImageID: trimmed(image), UploadedBy: trimmed(by),
 		}
 		if at.Valid {
-			a.UploadedAt = at.Time
+			// INPUTDATE adalah jam dinding WIB (SYSDATE server +07:00), bukan UTC.
+			w := at.Time
+			a.UploadedAt = time.Date(w.Year(), w.Month(), w.Day(), w.Hour(), w.Minute(), w.Second(), w.Nanosecond(), clock.ZoneWIB)
 		}
 		result = append(result, a)
 	}
@@ -168,16 +172,17 @@ func (r *ClaimRecords) Communications(ctx context.Context, keys registrasi.Recor
 	defer func() { _ = rows.Close() }()
 	var result []registrasi.Communication
 	for rows.Next() {
-		var caseID, sender, senderName, message, reply, replier, status sql.NullString
+		var caseID, sender, senderName, message, reply, replier, status, channel sql.NullString
 		var id sql.NullInt64
 		var sent, replied sql.NullTime
 		if err := rows.Scan(&caseID, &id, &sent, &sender, &senderName, &message, &reply,
-			&replier, &replied, &status); err != nil {
+			&replier, &replied, &status, &channel); err != nil {
 			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris komunikasi: %w", err)
 		}
 		c := registrasi.Communication{
 			CaseID: trimmed(caseID), Sender: trimmed(sender), SenderName: trimmed(senderName),
 			Message: trimmed(message), Reply: trimmed(reply), ReplierName: trimmed(replier), Status: trimmed(status),
+			Channel: trimmed(channel),
 		}
 		if id.Valid {
 			c.ID = strconv.FormatInt(id.Int64, 10)
@@ -191,4 +196,15 @@ func (r *ClaimRecords) Communications(ctx context.Context, keys registrasi.Recor
 		result = append(result, c)
 	}
 	return result, rows.Err()
+}
+
+// AddCommunication menyisipkan satu pesan klaim ke M_KOMUNIKASI_PNC.
+func (r *ClaimRecords) AddCommunication(ctx context.Context, c registrasi.NewCommunication) error {
+	_, err := executorFrom(ctx, r.db).ExecContext(ctx, loadQuery("komunikasi_sisip"),
+		c.ClaimID, c.ClaimID, c.Sender, emptyTextAsNil(c.SenderName), c.Message, c.Status,
+		emptyTextAsNil(c.Recipient), c.Channel)
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menyimpan komunikasi klaim %s: %w", c.ClaimNumber, err)
+	}
+	return nil
 }

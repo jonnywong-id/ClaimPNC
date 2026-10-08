@@ -1,9 +1,10 @@
-import { Fragment, useState, type ReactNode } from 'react'
+import { Fragment, useRef, useState, type ReactNode } from 'react'
 
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
-import { useDocuments, useProgressRecords, useSurveys, useUploadDocument } from './api'
+import { useDeleteDocument, useDocumentLink, useDocuments, useProgressRecords, useSurveys, useUploadDocument } from './api'
+import type { Attachment } from './types'
 
 /*
  * Tiga tab pendamping tahap Input Estimasi. Sub-section aslinya — TabSurvey,
@@ -146,7 +147,35 @@ function UploadPanel({ claimID, typeID, typeName, onDone }: { claimID: string; t
   const upload = useUploadDocument(claimID)
   const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState('')
+  const picker = useRef<HTMLInputElement>(null)
+  // Ditekan sebelum berkas dipilih: pemilih berkas dibuka, dan unggahan langsung berjalan
+  // begitu berkas dipilih.
+  const uploadAfterPick = useRef(false)
   const message = upload.error instanceof Error ? upload.error.message : ''
+
+  const send = (chosen: File) =>
+    upload.mutate({ jenisDokumen: typeID, berkas: chosen, catatan: note }, { onSuccess: onDone })
+
+  /*
+   * Tombol Unggah selalu dapat ditekan, seperti Pega (Work Owner, 2026-10-04): tanpa berkas,
+   * ia membuka pemilih berkas alih-alih diam dalam keadaan nonaktif.
+   */
+  const submit = () => {
+    if (file) {
+      send(file)
+      return
+    }
+    uploadAfterPick.current = true
+    picker.current?.click()
+  }
+
+  const pick = (chosen: File | null) => {
+    setFile(chosen)
+    if (chosen && uploadAfterPick.current) {
+      uploadAfterPick.current = false
+      send(chosen)
+    }
+  }
 
   return (
     <div className="space-y-2 rounded border border-blue-200 bg-blue-50/60 p-3 text-sm">
@@ -157,8 +186,9 @@ function UploadPanel({ claimID, typeID, typeName, onDone }: { claimID: string; t
           type="file"
           accept={ACCEPTED_FILES}
           aria-label="Berkas"
+          ref={picker}
           className="mt-1 block w-full text-sm"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => pick(e.target.files?.[0] ?? null)}
         />
       </label>
       <label className="block">
@@ -176,8 +206,8 @@ function UploadPanel({ claimID, typeID, typeName, onDone }: { claimID: string; t
       <div className="flex gap-2">
         <button
           type="button"
-          disabled={!file || upload.isPending}
-          onClick={() => file && upload.mutate({ jenisDokumen: typeID, berkas: file, catatan: note }, { onSuccess: onDone })}
+          disabled={upload.isPending}
+          onClick={submit}
           className="rounded bg-blue-700 px-3 py-1 text-white disabled:opacity-60"
         >
           {upload.isPending ? 'Mengunggah…' : 'Unggah'}
@@ -187,6 +217,122 @@ function UploadPanel({ claimID, typeID, typeName, onDone }: { claimID: string; t
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Daftar berkas satu jenis dokumen — isi tombol "Lihat dokumen".
+ *
+ * Flow action Pega-nya (`GCNMViewAttachment2`) tidak ada di export. Pembukaan berkasnya
+ * mengikuti `Activity/GetLinkViewDoc_Act-act.xml`: alamat dibaca dari metadata penyimpanan
+ * dan dipakai selama belum kedaluwarsa.
+ *
+ * Berkas dibuka sebagai jendela pop-up tersendiri (bukan tab baru), atas permintaan Work Owner.
+ * Satu jendela bernama dipakai ulang, sehingga membuka berkas kedua menggantikan isi jendela
+ * yang sama alih-alih menumpuk jendela.
+ *
+ * Jendela dibuka LEBIH DULU, sebelum alamatnya diminta: peramban memblokir jendela yang dibuka
+ * sesudah menunggu jaringan karena tidak lagi dianggap hasil klik pengguna.
+ */
+const POPUP_NAME = 'lihat-dokumen-klaim'
+
+/** Ukuran pop-up: sebagian besar layar, di tengah. */
+function popupFeatures(): string {
+  const screenWidth = window.screen?.availWidth || 1280
+  const screenHeight = window.screen?.availHeight || 800
+  const width = Math.round(screenWidth * 0.8)
+  const height = Math.round(screenHeight * 0.85)
+  const left = Math.max(0, Math.round((screenWidth - width) / 2))
+  const top = Math.max(0, Math.round((screenHeight - height) / 2))
+  return `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+}
+
+function AttachmentList({ claimID, files, onDeleted }: { claimID: string; files: Attachment[]; onDeleted: () => void }) {
+  const link = useDocumentLink(claimID)
+  const remove = useDeleteDocument(claimID)
+  const [failed, setFailed] = useState<{ id: string; message: string } | null>(null)
+
+  /*
+   * Tombol Delete — Section/GCNMViewAttachment2-sect.xml: ikon pxIconDeleteItem "Delete this row",
+   * tampil untuk berkas yang diunggah pemanggil sendiri (`.UserInput == OperatorID.pyUserIdentifier`;
+   * dinilai server, `bisa_dihapus`). Tanpa konfirmasi, seperti Pega; sesudahnya hitungan
+   * diperbarui dan daftar ditutup (`closeContainer`).
+   */
+  const destroy = (file: Attachment) => {
+    setFailed(null)
+    remove.mutate(file.id, {
+      onSuccess: onDeleted,
+      onError: (error) => setFailed({ id: file.id, message: error instanceof Error ? error.message : String(error) }),
+    })
+  }
+
+  if (files.length === 0) {
+    return <p className="text-xs text-slate-700">Belum ada berkas untuk jenis dokumen ini.</p>
+  }
+
+  const open = (file: Attachment) => {
+    setFailed(null)
+    const target = window.open('', POPUP_NAME, popupFeatures())
+    if (target) {
+      target.opener = null
+      target.focus()
+    }
+    link.mutate(file.id, {
+      onSuccess: (found) => {
+        if (target) target.location.href = found.url
+        else window.open(found.url, POPUP_NAME, `${popupFeatures()},noopener`)
+      },
+      onError: (error) => {
+        target?.close()
+        setFailed({ id: file.id, message: error instanceof Error ? error.message : String(error) })
+      },
+    })
+  }
+
+  return (
+    <table className="w-full border-collapse text-xs" aria-label="Daftar berkas">
+      <tbody>
+        {files.map((b) => (
+          <Fragment key={b.id}>
+            <tr className="border-b border-slate-100">
+              <td className="p-1">{b.nama || '(tanpa nama)'}</td>
+              <td className="p-1">{b.diunggah_oleh || '—'}</td>
+              <td className="p-1">{formatMoment(b.diunggah_pada)}</td>
+              <td className="p-1 text-right">
+                <button
+                  type="button"
+                  disabled={!b.tersimpan || link.isPending}
+                  title={b.tersimpan ? undefined : 'Berkas ini tidak tercatat di layanan penyimpanan.'}
+                  onClick={() => open(b)}
+                  className="rounded border border-blue-300 px-2 text-blue-700 disabled:opacity-60"
+                >
+                  {link.isPending && link.variables === b.id ? 'Membuka…' : 'Lihat'}
+                </button>
+                {b.bisa_dihapus && (
+                  <button
+                    type="button"
+                    aria-label="Delete this row"
+                    title="Delete this row"
+                    disabled={remove.isPending}
+                    onClick={() => destroy(b)}
+                    className="ml-2 rounded border border-red-300 px-2 text-red-700 disabled:opacity-60"
+                  >
+                    {remove.isPending && remove.variables === b.id ? '…' : '🗑'}
+                  </button>
+                )}
+              </td>
+            </tr>
+            {failed?.id === b.id && (
+              <tr>
+                <td colSpan={4} className="p-1">
+                  <ErrorMessage title="Dokumen tidak dapat diproses" description={failed.message} tone="gangguan" />
+                </td>
+              </tr>
+            )}
+          </Fragment>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -295,10 +441,8 @@ export function DocumentTab({ claimID, line = '' }: { claimID: string; line?: st
                 )}
                 {viewing === key && (
                   <tr>
-                    <td colSpan={6} className="p-2 text-xs text-slate-700">
-                      {own.length === 0
-                        ? 'Belum ada berkas untuk jenis dokumen ini.'
-                        : own.map((b) => `${b.nama || '(tanpa nama)'} · ${b.diunggah_oleh || '—'} · ${formatMoment(b.diunggah_pada)}`).join(' | ')}
+                    <td colSpan={6} className="p-2">
+                      <AttachmentList claimID={claimID} files={own} onDeleted={() => setViewing(null)} />
                     </td>
                   </tr>
                 )}

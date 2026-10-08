@@ -1,22 +1,33 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { APIError, NetworkError } from '@/api/client'
-import { AccountErrorCode } from '@/api/types'
-import { Field } from '@/components/Field'
+import { AccountErrorCode, AccountStatus, type Account } from '@/api/types'
+import { Button } from '@/components/Button'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { Field } from '@/components/Field'
+import { SelectField, type SelectOption } from '@/components/SelectField'
+import { TextAreaField } from '@/components/TextAreaField'
 
-import { useSubmitAccount, useBankList, type AccountFields } from './api'
+import {
+  useSubmitAccount,
+  useUpdateAccount,
+  useBankList,
+  type AccountFields,
+} from './api'
 
 /**
- * Aturan wajib di sini adalah CERMINAN aturan di server, bukan penggantinya.
+ * Aturan wajib di sini adalah CERMINAN tanda bintang merah pada layar Pega, bukan
+ * karangan sendiri.
  *
- * Server tetap memeriksa seluruhnya — validasi peramban hanya mempercepat umpan balik
- * dan dapat dilewati siapa pun dengan memanggil API langsung. Daftar kolomnya diambil
- * dari prasyarat activity CNMUpdateMasterRekening_act, sama dengan yang ditegakkan
- * masterrekening.Account.Check di backend.
+ * Sebelas kolom bertanda `*` di layar `Memperbaharui Data`: NOMOR REKENING, NAMA BANK,
+ * Input Nama, NAMA CABANG BANK, NOMOR TELEPON, Email, ALAMAT, TIPE REKENING,
+ * STATUS AKTIF, KTP/NIK/NPWP, dan Email Inputor. Seluruhnya wajib di sini pula.
+ *
+ * Server tetap memeriksa ulang semuanya — validasi peramban hanya mempercepat umpan
+ * balik dan dapat dilewati siapa pun dengan memanggil API langsung.
  */
 const schema = z.object({
   nomorRekening: z
@@ -24,52 +35,100 @@ const schema = z.object({
     .trim()
     .min(1, 'Nomor rekening wajib diisi.')
     .regex(/^[0-9-]+$/, 'Nomor rekening hanya boleh berisi angka.'),
-  namaPemilik: z.string().trim().min(1, 'Nama pemilik rekening wajib diisi.'),
-  namaBank: z.string().trim().min(1, 'Nama bank wajib diisi.'),
+  kodeBank: z.string().trim().min(1, 'Nama bank wajib dipilih.'),
+  namaPemilik: z.string().trim().min(1, 'Nama wajib diisi.'),
   cabangBank: z.string().trim().min(1, 'Nama cabang bank wajib diisi.'),
-  alamatBank: z.string().trim().min(1, 'Alamat bank wajib diisi.'),
-  kodeBank: z.string().trim().min(1, 'Bank wajib dipilih dari daftar.'),
-  tipeRekening: z.string().trim().min(1, 'Tipe rekening wajib dipilih.'),
+  telepon: z.string().trim().min(1, 'Nomor telepon wajib diisi.'),
   email: z.string().trim().min(1, 'Email wajib diisi.').email('Format email tidak benar.'),
-  telepon: z.string().trim(),
-  nik: z.string().trim().min(1, 'NIK pemilik rekening wajib diisi.'),
+  alamatBank: z.string().trim().min(1, 'Alamat wajib diisi.'),
+  tipeRekening: z.string().trim().min(1, 'Tipe rekening wajib dipilih.'),
+  statusAktif: z.string().trim().min(1, 'Status aktif wajib dipilih.'),
+  nik: z.string().trim().min(1, 'KTP/NIK/NPWP wajib diisi.'),
+  emailInputor: z
+    .string()
+    .trim()
+    .min(1, 'Email inputor wajib diisi.')
+    .email('Format email tidak benar.'),
   idDokumen: z.string().trim(),
-  catatan: z.string().trim(),
-  aktif: z.boolean(),
 })
 
 type FieldValues = z.infer<typeof schema>
 
 /**
- * Tipe rekening yang dapat dipilih — isi kolom ACCOUNT_TYPE.
+ * Tipe rekening — isi kolom ACCOUNT_TYPE.
  *
  * Nilainya diambil apa adanya dari activity SetTipeRekening, yang mengisi daftar
  * pilihan layar lama:
  *
  *	TempTipeBank.pxResults(<APPEND>).Telephone = "BIASA"
  *	TempTipeBank.pxResults(<APPEND>).Telephone = "VA"
- *
- * "VA" berarti Virtual Account. Jadi tipe di sini membedakan BENTUK rekening, bukan
- * jenis pemiliknya — perbedaan yang mudah salah dibaca dari nama kolomnya saja.
- *
- * CATATAN. Daftarnya di sistem lama berasal dari kode, bukan tabel — persis bentuk
- * hardcode yang ADR-0025 perintahkan menjadi master. Ia ditaruh di satu konstanta
- * bernama supaya saat masternya tersedia, yang perlu diubah hanya satu tempat ini.
  */
-const ACCOUNT_TYPES = [
-  { value: 'BIASA', label: 'BIASA — rekening bank biasa' },
-  { value: 'VA', label: 'VA — Virtual Account' },
-] as const
+const ACCOUNT_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'BIASA', label: 'BIASA' },
+  { value: 'VA', label: 'VA' },
+]
+
+/**
+ * Status aktif — isi kolom STS_AKTIF.
+ *
+ * Sandinya "Ya"/"Tidak", BUKAN "1"/"0". Nilainya dari activity yang sama:
+ *
+ *	TempTipeBank.pxResults(<APPEND>).NomorKontrak = "Ya"
+ *	TempTipeBank.pxResults(<APPEND>).NomorKontrak = "Tidak"
+ *
+ * Di layar Pega ia dropdown, bukan kotak centang — dan itu ditiru di sini: kotak centang
+ * tidak punya keadaan "belum dipilih", sehingga tidak dapat mewajibkan pengguna
+ * menentukan pilihannya.
+ */
+const ACTIVE_OPTIONS: SelectOption[] = [
+  { value: 'Ya', label: 'Ya' },
+  { value: 'Tidak', label: 'Tidak' },
+]
 
 type Props = {
-  /** Dipanggil setelah pengajuan berhasil tersimpan. */
-  onSuccess?: () => void
+  /** Null berarti menambah; terisi berarti mengubah baris itu. */
+  account: Account | null
+  onClose: () => void
 }
 
-/** AccountForm adalah formulir pengajuan rekening baru. */
-export function AccountForm({ onSuccess }: Props) {
+/**
+ * Form tambah dan ubah Master Rekening.
+ *
+ * Susunan kolom, label, tanda wajib, dan jenis kontrolnya mengikuti layar Pega
+ * `Memperbaharui Data` apa adanya. Yang sebelumnya berbeda dan kini diluruskan:
+ *
+ * | Hal | Sebelumnya di sini | Pega — dan sekarang |
+ * |---|---|---|
+ * | Bank | dua kolom: dropdown kode + teks nama | **satu** dropdown NAMA BANK |
+ * | Nama pemilik | input satu baris | **textarea** "Input Nama" |
+ * | Alamat | input, label "Alamat bank" | **textarea**, label "ALAMAT" |
+ * | Status aktif | kotak centang | **dropdown** `--Pilih--` |
+ * | Nomor telepon | opsional | **wajib** |
+ * | Email Inputor | diambil diam-diam dari sesi | **kolom wajib** yang diisi pengguna |
+ * | Catatan | ada | **tidak ada** — NOTE diisi komite saat menyetujui, bukan pengaju |
+ * | ID dokumen | kolom teks | tombol **Upload Document** |
+ *
+ * # Bentuknya mengikuti layar master lain, bukan hanya layar Pega
+ *
+ * Isian memakai `Field`, `SelectField`, dan `TextAreaField` dari pustaka komponen; panel
+ * dan tombolnya mengikuti Master Tipe Surveyors. Yang ditiru dari Pega adalah **kolom
+ * apa saja dan apa namanya** (`D-13`), bukan bagaimana sebuah kotak isian digambar —
+ * dan `U-2` menetapkan yang kedua itu satu untuk seluruh aplikasi.
+ */
+export function AccountForm({ account, onClose }: Props) {
   const submit = useSubmitAccount()
+  const update = useUpdateAccount()
   const bank = useBankList()
+
+  const editing = account !== null
+  const action = editing ? update : submit
+  const firstField = useRef<HTMLInputElement | null>(null)
+
+  // Tombol Upload Document di Pega membuka pengunggah berkas. Modul dokumen (`S-1`)
+  // belum ada, sehingga yang dibuka di sini adalah isian ID dokumen — satu-satunya
+  // bagian yang memang dibutuhkan komite untuk menyetujui. Letak dan namanya tetap
+  // sama supaya layar tidak berubah bentuk saat pengunggah sungguhan dipasang.
+  const [showDocument, setShowDocument] = useState(false)
 
   const {
     register,
@@ -79,269 +138,431 @@ export function AccountForm({ onSuccess }: Props) {
     formState: { errors },
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      nomorRekening: '',
-      namaPemilik: '',
-      namaBank: '',
-      cabangBank: '',
-      alamatBank: '',
-      kodeBank: '',
-      tipeRekening: '',
-      email: '',
-      telepon: '',
-      nik: '',
-      idDokumen: '',
-      catatan: '',
-      aktif: true,
-    },
+    defaultValues: initialValues(account),
   })
+
+  // Saat baris lain dipilih untuk diubah, form harus memuat ulang isinya. Tanpa ini,
+  // React Hook Form mempertahankan nilai pertama dan pengguna menyunting data yang
+  // salah tanpa menyadarinya.
+  useEffect(() => {
+    reset(initialValues(account))
+    setShowDocument(false)
+  }, [account, reset])
+
+  // Fokus dipindahkan ke isian pertama saat form terbuka. Tanpa ini, pengguna papan
+  // ketik harus menekan Tab berkali-kali dari awal halaman untuk mencapainya.
+  useEffect(() => {
+    firstField.current?.focus()
+  }, [])
 
   // Galat validasi dari server dipindahkan ke kolomnya masing-masing. Tanpa langkah
   // ini, pengguna melihat satu kotak merah berisi daftar kolom dan harus mencocokkan
   // sendiri kalimat mana milik kolom mana.
   useEffect(() => {
-    const error = submit.error
+    const error = action.error
     if (!(error instanceof APIError) || error.kode !== AccountErrorCode.invalidInput) return
 
-    // violations() menyatukan kedua bentuk pelanggaran yang dipakai backend. Modul ini
-    // mengirimkannya sebagai PETA `field` (internal/masterrekening/http/dto.go:151),
-    // bukan sebagai senarai `detail` seperti kedua modul master lainnya.
-    for (const [field, pesan] of Object.entries(error.violations())) {
+    for (const [field, message] of Object.entries(error.violations())) {
       const column = COLUMN_MAP[field]
-      if (column) setError(column, { type: 'server', message: pesan })
+      if (column) setError(column, { type: 'server', message })
     }
-  }, [submit.error, setError])
+  }, [action.error, setError])
+
+  const { ref: refNumber, ...remainingNumber } = register('nomorRekening')
 
   function send(values: FieldValues) {
-    submit.mutate(values as AccountFields, {
-      onSuccess: () => {
-        reset()
-        onSuccess?.()
-      },
-    })
+    const payload = fieldsFrom(values, bank.data?.bank ?? [])
+
+    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
+    // membuang isian pengguna saat penyimpanan gagal.
+    if (editing && account) {
+      update.mutate(
+        { kodeBank: account.kode_bank, nomorRekening: account.nomor_rekening, values: payload },
+        { onSuccess: onClose },
+      )
+      return
+    }
+    submit.mutate(payload, { onSuccess: onClose })
+  }
+
+  const bankOptions: SelectOption[] = (bank.data?.bank ?? []).map((b) => ({
+    value: b.kode,
+    label: b.nama,
+  }))
+
+  // Saat mengubah rekening yang banknya tidak ada di daftar — misalnya daftar gagal
+  // dimuat, atau banknya sudah dihapus dari master — pilihannya tetap ditampilkan.
+  // Tanpa ini, menyimpan ulang rekening lama diam-diam memindahkannya ke bank lain.
+  if (account && !bankOptions.some((o) => o.value === account.kode_bank)) {
+    bankOptions.unshift({ value: account.kode_bank, label: account.nama_bank || account.kode_bank })
   }
 
   return (
-    <form onSubmit={handleSubmit(send)} className="space-y-4" noValidate>
-      {submit.isError && <SubmitErrorMessage error={submit.error} />}
+    /*
+      Panel muncul di atas tabel, bukan sebagai dialog melayang — sama dengan Master Tipe
+      Surveyors dan master lainnya. Garis aksen di tepi kiri menandai bahwa panel ini
+      keadaan sementara, bukan bagian tetap halaman.
+    */
+    <form
+      onSubmit={handleSubmit(send)}
+      noValidate
+      className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
+      aria-label={editing ? 'Ubah rekening' : 'Tambah rekening'}
+    >
+      <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+        <h3 className="text-base font-semibold text-slate-900">
+          {editing ? `Memperbaharui Data — ${account.nomor_rekening}` : 'Memperbaharui Data'}
+        </h3>
 
-      {submit.isSuccess && (
-        <div role="status" className="rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          <p className="font-medium">Rekening diajukan</p>
-          <p className="mt-1">
-            Rekening menunggu keputusan komite. Ia belum dapat dipakai membayar klaim
-            sampai komite menyetujuinya.
+        {/*
+          Kedua kalimat ini ada di layar Pega, di atas panel isian. Keduanya menjelaskan
+          hal yang tidak terlihat dari kolomnya sendiri — kenapa nomor telepon harus
+          nomor WhatsApp, dan apa yang terjadi setelah atasan menyetujui.
+        */}
+        <div className="mt-2 space-y-1 text-xs leading-relaxed text-slate-600">
+          <p>
+            No. Telp agar diisi nomor yang terhubung dengan WhatsApp untuk mengirim
+            notifikasi dari Kasir jika sudah diproses bayar.
           </p>
+          <p>Setelah atasan aksep rekening, rekening akan menunggu persetujuan dari Kasir.</p>
         </div>
-      )}
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          id="nomorRekening"
-          label="Nomor rekening"
-          inputMode="numeric"
-          error={errors.nomorRekening?.message}
-          {...register('nomorRekening')}
-        />
-        <Field
-          id="namaPemilik"
-          label="Nama pemilik rekening"
-          error={errors.namaPemilik?.message}
-          {...register('namaPemilik')}
-        />
+      <div className="space-y-5 p-5">
+        {action.isError && <SaveErrorMessage error={action.error} />}
 
-        <div>
-          <label htmlFor="kodeBank" className="block text-sm font-medium text-slate-700">
-            Bank
-          </label>
-          <select
-            id="kodeBank"
-            aria-invalid={errors.kodeBank ? 'true' : 'false'}
-            className={
-              'mt-1 w-full rounded border px-3 py-2 text-slate-900 focus:outline-none ' +
-              (errors.kodeBank
-                ? 'border-red-400 focus:border-red-500'
-                : 'border-slate-300 focus:border-slate-500')
+        {/*
+          Peringatan ini muncul HANYA saat mengubah rekening yang sudah diputuskan
+          komite, dan ia bukan hiasan: menyimpan akan mencabut persetujuannya. Pengguna
+          yang mengira sedang membetulkan satu huruf perlu tahu bahwa rekening itu
+          berhenti dapat dipakai sampai komite memutuskan ulang.
+        */}
+        {editing && account.status !== AccountStatus.menunggu && (
+          <ErrorMessage
+            title="Menyimpan akan mencabut persetujuan komite"
+            description="Rekening ini sudah diputuskan komite. Setelah disimpan, ia kembali menunggu keputusan atas data yang baru, dan belum dapat dipakai membayar klaim sampai disetujui lagi."
+            tone="penolakan"
+          />
+        )}
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            id="nomorRekening"
+            label="NOMOR REKENING *"
+            inputMode="numeric"
+            autoComplete="off"
+            // Nomor rekening adalah bagian kunci alaminya. Mengubahnya pada baris yang
+            // sudah ada berarti memindahkan rekening ke kunci lain — itu pengajuan
+            // baru, bukan perubahan.
+            readOnly={editing}
+            hint={
+              editing
+                ? 'Belum dapat diubah di sini. Layar lama mengizinkannya lewat OLDACCOUNT_NO; itu pekerjaan yang masih tersisa.'
+                : undefined
             }
-            {...register('kodeBank')}
-          >
-            <option value="">— pilih bank —</option>
-            {bank.data?.bank.map((b) => (
-              <option key={b.kode} value={b.kode}>
-                {b.nama}
-              </option>
-            ))}
-          </select>
-          {bank.isError && (
-            <p className="mt-1 text-sm text-amber-800">
-              Daftar bank tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.
-            </p>
-          )}
-          {errors.kodeBank && (
-            <p className="mt-1 text-sm text-red-700">{errors.kodeBank.message}</p>
-          )}
-        </div>
+            error={errors.nomorRekening?.message}
+            disabled={action.isPending}
+            {...remainingNumber}
+            ref={(element) => {
+              refNumber(element)
+              firstField.current = element
+            }}
+          />
 
-        <Field
-          id="namaBank"
-          label="Nama bank"
-          error={errors.namaBank?.message}
-          {...register('namaBank')}
-        />
-        <Field
-          id="cabangBank"
-          label="Cabang bank"
-          error={errors.cabangBank?.message}
-          {...register('cabangBank')}
-        />
-        <Field
-          id="alamatBank"
-          label="Alamat bank"
-          error={errors.alamatBank?.message}
-          {...register('alamatBank')}
-        />
+          <div>
+            <SelectField
+              id="kodeBank"
+              label="NAMA BANK *"
+              options={bankOptions}
+              emptyText="--Pilih--"
+              error={errors.kodeBank?.message}
+              disabled={action.isPending}
+              {...register('kodeBank')}
+            />
+            {bank.isError && (
+              <p className="mt-1 text-xs text-amber-800">
+                Daftar bank tidak dapat dimuat. Muat ulang halaman; bila tetap kosong,
+                hak baca master bank perlu diminta ke DBA.
+              </p>
+            )}
+          </div>
 
-        <div>
-          <label htmlFor="tipeRekening" className="block text-sm font-medium text-slate-700">
-            Tipe rekening
-          </label>
-          <select
+          <TextAreaField
+            id="namaPemilik"
+            label="Input Nama *"
+            rows={3}
+            error={errors.namaPemilik?.message}
+            disabled={action.isPending}
+            {...register('namaPemilik')}
+          />
+
+          <TextAreaField
+            id="alamatBank"
+            label="ALAMAT *"
+            rows={3}
+            error={errors.alamatBank?.message}
+            disabled={action.isPending}
+            {...register('alamatBank')}
+          />
+
+          <Field
+            id="cabangBank"
+            label="NAMA CABANG BANK *"
+            autoComplete="off"
+            error={errors.cabangBank?.message}
+            disabled={action.isPending}
+            {...register('cabangBank')}
+          />
+
+          <Field
+            id="telepon"
+            label="NOMOR TELEPON *"
+            inputMode="tel"
+            autoComplete="off"
+            hint="Nomor yang terhubung dengan WhatsApp."
+            error={errors.telepon?.message}
+            disabled={action.isPending}
+            {...register('telepon')}
+          />
+
+          <Field
+            id="email"
+            label="Email *"
+            type="email"
+            autoComplete="off"
+            error={errors.email?.message}
+            disabled={action.isPending}
+            {...register('email')}
+          />
+
+          <Field
+            id="nik"
+            label="KTP/NIK/NPWP *"
+            inputMode="numeric"
+            autoComplete="off"
+            error={errors.nik?.message}
+            disabled={action.isPending}
+            {...register('nik')}
+          />
+
+          <SelectField
             id="tipeRekening"
-            aria-invalid={errors.tipeRekening ? 'true' : 'false'}
-            className={
-              'mt-1 w-full rounded border px-3 py-2 text-slate-900 focus:outline-none ' +
-              (errors.tipeRekening
-                ? 'border-red-400 focus:border-red-500'
-                : 'border-slate-300 focus:border-slate-500')
-            }
+            label="TIPE REKENING *"
+            options={ACCOUNT_TYPE_OPTIONS}
+            emptyText="--Pilih--"
+            error={errors.tipeRekening?.message}
+            disabled={action.isPending}
             {...register('tipeRekening')}
+          />
+
+          <SelectField
+            id="statusAktif"
+            label="STATUS AKTIF *"
+            options={ACTIVE_OPTIONS}
+            emptyText="--Pilih--"
+            error={errors.statusAktif?.message}
+            disabled={action.isPending}
+            {...register('statusAktif')}
+          />
+
+          <div className="sm:col-span-2">
+            <Field
+              id="emailInputor"
+              label="Email Inputor *"
+              type="email"
+              autoComplete="off"
+              placeholder="Wajib masukan email Anda untuk Notif Approval dari Kasir"
+              hint="Ke alamat inilah Kasir mengirim pemberitahuan saat rekening disetujui."
+              error={errors.emailInputor?.message}
+              disabled={action.isPending}
+              {...register('emailInputor')}
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 pt-5">
+          <Button
+            tone="kedua"
+            onClick={() => setShowDocument((open) => !open)}
+            disabled={action.isPending}
           >
-            <option value="">— pilih tipe —</option>
-            {ACCOUNT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-          {errors.tipeRekening && (
-            <p className="mt-1 text-sm text-red-700">{errors.tipeRekening.message}</p>
+            Upload Document
+          </Button>
+
+          {showDocument && (
+            <div className="mt-3 max-w-md">
+              <Field
+                id="idDokumen"
+                label="ID dokumen buku rekening"
+                autoComplete="off"
+                hint="Pengunggah berkas adalah modul S-1 yang belum dibangun. Isi ID dokumen yang sudah ada di penyimpanan — komite tidak dapat menyetujui rekening tanpa buku rekening."
+                error={errors.idDokumen?.message}
+                disabled={action.isPending}
+                {...register('idDokumen')}
+              />
+            </div>
           )}
         </div>
 
-        <Field
-          id="nik"
-          label="NIK pemilik rekening"
-          inputMode="numeric"
-          error={errors.nik?.message}
-          {...register('nik')}
-        />
-        <Field
-          id="email"
-          label="Email"
-          type="email"
-          error={errors.email?.message}
-          {...register('email')}
-        />
-        <Field
-          id="telepon"
-          label="Telepon (opsional)"
-          inputMode="tel"
-          error={errors.telepon?.message}
-          {...register('telepon')}
-        />
-        <Field
-          id="idDokumen"
-          label="ID dokumen buku rekening"
-          error={errors.idDokumen?.message}
-          {...register('idDokumen')}
-        />
+        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
+          <Button type="submit" tone="utama" disabled={action.isPending}>
+            {action.isPending && <Spinner />}
+            {action.isPending ? 'Menyimpan…' : 'Simpan'}
+          </Button>
+          <Button tone="halus" onClick={onClose} disabled={action.isPending}>
+            Batal
+          </Button>
+        </div>
       </div>
-
-      <div>
-        <label htmlFor="catatan" className="block text-sm font-medium text-slate-700">
-          Catatan
-        </label>
-        <textarea
-          id="catatan"
-          rows={3}
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none"
-          {...register('catatan')}
-        />
-      </div>
-
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" className="rounded border-slate-300" {...register('aktif')} />
-        Rekening aktif
-      </label>
-
-      <p className="text-sm text-slate-600">
-        Buku rekening wajib diunggah dan keterangan approval atasan wajib diisi sebelum
-        komite dapat menyetujui rekening ini.
-      </p>
-
-      <button
-        type="submit"
-        disabled={submit.isPending}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {submit.isPending ? 'Menyimpan…' : 'Ajukan rekening'}
-      </button>
     </form>
   )
 }
 
-/** PETA_KOLOM memetakan nama field server ke nama field formulir. */
+/** Pemutar kecil pada tombol yang sedang bekerja. */
+function Spinner() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 animate-spin">
+      <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
+      <path
+        d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/** initialValues menyusun isian awal — kosong saat menambah, terisi saat mengubah. */
+function initialValues(account: Account | null): FieldValues {
+  return {
+    nomorRekening: account?.nomor_rekening ?? '',
+    kodeBank: account?.kode_bank ?? '',
+    namaPemilik: account?.nama_pemilik ?? '',
+    cabangBank: account?.cabang_bank ?? '',
+    telepon: account?.telepon ?? '',
+    email: account?.email ?? '',
+    alamatBank: account?.alamat_bank ?? '',
+    tipeRekening: account?.tipe_rekening ?? '',
+    // Nol-nilai bool tidak dapat membedakan "nonaktif" dari "belum dipilih", sehingga
+    // status dibawa sebagai teks di formulir dan baru diubah menjadi bool saat dikirim.
+    statusAktif: account === null ? '' : account.aktif ? 'Ya' : 'Tidak',
+    nik: account?.nik ?? '',
+    emailInputor: account?.email_inputor ?? '',
+    idDokumen: account?.id_dokumen ?? '',
+  }
+}
+
+/**
+ * fieldsFrom mengubah isian formulir menjadi badan permintaan.
+ *
+ * Nama bank diturunkan dari kode yang dipilih, bukan diketik terpisah. Di layar Pega
+ * keduanya satu kontrol; memisahkannya menjadi dua kolom seperti sebelumnya membuka
+ * kemungkinan `BANKID` dan `BANK_NAME` saling bertentangan di dalam satu baris.
+ */
+function fieldsFrom(
+  values: FieldValues,
+  banks: { kode: string; nama: string }[],
+): AccountFields {
+  const selected = banks.find((b) => b.kode === values.kodeBank)
+
+  return {
+    nomorRekening: values.nomorRekening,
+    namaPemilik: values.namaPemilik,
+    namaBank: selected?.nama ?? values.kodeBank,
+    cabangBank: values.cabangBank,
+    alamatBank: values.alamatBank,
+    kodeBank: values.kodeBank,
+    tipeRekening: values.tipeRekening,
+    email: values.email,
+    telepon: values.telepon,
+    nik: values.nik,
+    emailInputor: values.emailInputor,
+    idDokumen: values.idDokumen,
+    catatan: '',
+    aktif: values.statusAktif === 'Ya',
+  }
+}
+
+/** COLUMN_MAP memetakan nama field server ke nama field formulir. */
 const COLUMN_MAP: Record<string, keyof FieldValues> = {
   nomor_rekening: 'nomorRekening',
   nama_pemilik: 'namaPemilik',
-  nama_bank: 'namaBank',
+  nama_bank: 'kodeBank',
+  kode_bank: 'kodeBank',
   cabang_bank: 'cabangBank',
   alamat_bank: 'alamatBank',
-  kode_bank: 'kodeBank',
   tipe_rekening: 'tipeRekening',
   email: 'email',
+  telepon: 'telepon',
   nik: 'nik',
+  email_penginput: 'emailInputor',
 }
 
-function SubmitErrorMessage({ error }: { error: unknown }) {
+/**
+ * Galat simpan dibedakan menurut KODE-nya, bukan teks pesannya.
+ *
+ * Jenisnya menuntut tindak lanjut berbeda: nomor yang bentrok dapat diperbaiki pengguna,
+ * rekening yang sudah diputuskan tidak dapat ditolong dengan mencoba ulang.
+ */
+function SaveErrorMessage({ error }: { error: unknown }) {
   const content = messageFor(error)
+  if (content === null) return null
   return <ErrorMessage title={content.title} description={content.description} tone={content.tone} />
 }
 
-function messageFor(error: unknown): { title: string; description: string; tone: ErrorTone } {
+type MessageContent = { title: string; description: string; tone: ErrorTone }
+
+function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu coba lagi.',
+      title: 'Tidak dapat menghubungi server',
+      description: 'Perubahan belum tersimpan. Periksa koneksi lalu coba lagi.',
       tone: 'gangguan',
     }
   }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case AccountErrorCode.alreadyExists:
-        return {
-          title: 'Nomor rekening sudah terdaftar',
-          description:
-            'Nomor ini sudah ada dan belum ditolak komite. Gunakan data yang sudah ada, atau tunggu keputusan komite atas pengajuan sebelumnya.',
-          tone: 'penolakan',
-        }
-      case AccountErrorCode.invalidInput:
-        return {
-          title: 'Ada isian yang belum benar',
-          description: 'Periksa kolom yang ditandai di bawah, lalu kirim ulang.',
-          tone: 'penolakan',
-        }
-      default:
-        return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+  if (!(error instanceof APIError)) {
+    return {
+      title: 'Gagal menyimpan',
+      description: 'Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi.',
+      tone: 'gangguan',
     }
   }
-  return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
+
+  switch (error.kode) {
+    case AccountErrorCode.alreadyExists:
+      return {
+        title: 'Nomor rekening sudah terdaftar',
+        description:
+          'Nomor ini sudah ada dan belum ditolak komite. Gunakan data yang sudah ada, atau tunggu keputusan komite atas pengajuan sebelumnya.',
+        tone: 'penolakan',
+      }
+
+    case AccountErrorCode.invalidInput:
+      // Bila detailnya ada, isiannya sudah disorot di tempatnya; kotak pesan hanya akan
+      // mengulang hal yang sama.
+      return Object.keys(error.violations()).length > 0
+        ? null
+        : {
+            title: 'Ada isian yang belum benar',
+            description: error.message,
+            tone: 'penolakan',
+          }
+
+    case AccountErrorCode.alreadyDecided:
+      return {
+        title: 'Rekening sudah diputuskan komite',
+        description:
+          'Rekening yang sudah disetujui atau ditolak tidak dapat diubah. Ajukan rekening baru bila datanya perlu berubah.',
+        tone: 'penolakan',
+      }
+
+    default:
+      return {
+        title: 'Gagal menyimpan',
+        description: error.message,
+        tone: 'gangguan',
+      }
   }
 }
