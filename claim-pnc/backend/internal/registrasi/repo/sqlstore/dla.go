@@ -426,18 +426,31 @@ func parseFacOffer(o jsonMap) registrasi.FacOffer {
 			GoodID: field(x, "GoodID"), GoodNote: field(x, "GoodNote"), IndexObject: field(x, "IndexObject"),
 			Coverage: facCoverages(x)})
 	}
+	for _, x := range list(o, "PersonList") {
+		f.Person = append(f.Person, registrasi.FacObject{Coverage: facCoveragesOf(x, "ASMCoverage")})
+	}
 	return f
 }
 
-func facCoverages(x jsonMap) []registrasi.FacCoverage {
+func facCoverages(x jsonMap) []registrasi.FacCoverage { return facCoveragesOf(x, "CoverageList") }
+
+// facCoveragesOf mengurai daftar coverage FacOffer di bawah kunci tertentu: CoverageList
+// (Property/Aneka/Cargo) atau ASMCoverage (PersonList).
+func facCoveragesOf(x jsonMap, key string) []registrasi.FacCoverage {
 	var out []registrasi.FacCoverage
-	for _, c := range list(x, "CoverageList") {
+	for _, c := range list(x, key) {
 		cv := registrasi.FacCoverage{
 			Code: field(c, "Coverage"), TSI: field(c, "TSI"), SumTSI: field(c, "SumTSI"), TSISublimit: field(c, "TSISublimit"),
+			Sublimit: field(c, "Sublimit"), SumTSISpreaded: field(c, "SumTSISpreaded"),
 		}
 		if fo := list(c, "FacOutObjectList"); len(fo) > 0 {
 			cv.ShareOffered = field(fo[0], "ShareOffered")
 			cv.Percent = field(fo[0], "Percent")
+		}
+		for _, s := range list(c, "SpreadingList") {
+			if field(s, "TreatyType") == registrasi.TreatyFacOut {
+				cv.SpreadFacOut = field(s, "TSISpreaded")
+			}
 		}
 		out = append(out, cv)
 	}

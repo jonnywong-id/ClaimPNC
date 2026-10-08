@@ -55,6 +55,40 @@ func coinsMembers(ctx context.Context, db *sql.DB, policyNumber, prodKe string) 
 	return out, rows.Err()
 }
 
+// FacOffers membaca Fac Offer polis untuk PLA FAC OUT. Baris ber-JSONDATA diurai seperti
+// DLA FAC OUT (parseFacOfferRow); baris tanpa JSONDATA memakai kolom datar REINSURER_NAME
+// dan PCT_SHAREREAS sebagai cadangan (FacOffer.FlatShare).
+func (s *PLAStore) FacOffers(ctx context.Context, policyNumber, prodKe string) ([]registrasi.FacOffer, error) {
+	rows, err := executorFrom(ctx, s.db).QueryContext(ctx, loadQuery("pla_fac_offer"),
+		strings.TrimSpace(policyNumber), strings.TrimSpace(prodKe))
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca T_FACOFFER polis %q: %w", policyNumber, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []registrasi.FacOffer
+	for rows.Next() {
+		var id, name, pct, body sql.NullString
+		if err := rows.Scan(&id, &name, &pct, &body); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris T_FACOFFER: %w", err)
+		}
+		f, ok, err := parseFacOfferRow(trimmed(id), []byte(body.String))
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			if trimmed(pct) == "" {
+				continue
+			}
+			f = registrasi.FacOffer{ReinsurerID: trimmed(id), ReinsurerName: trimmed(name), FlatShare: trimmed(pct)}
+		}
+		if f.ReinsurerName == "" {
+			f.ReinsurerName = trimmed(name)
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
 // Recipient membaca login, negara, dan email penerima dari T_REINSURER.
 func (s *PLAStore) Recipient(ctx context.Context, code, name string) (registrasi.PLARecipientInfo, error) {
 	var login, country, email sql.NullString
@@ -98,38 +132,50 @@ type plaJSONLine struct {
 	PremiShare         string `json:"PremiShare"`
 	ObjClass           string `json:"pxObjClass"`
 	ResultPLA          string `json:"ResultPLA"`
+	// SharePLA hanya pada PLA FAC OUT: bagian reasuradur (nilai uang). Pada tipe itu
+	// PercentPLA juga nilai uang — dasar pembagi IMProfit2 — bukan persen.
+	SharePLA string `json:"SharePLA,omitempty"`
 }
 
 // Issued membaca PLA yang sudah terbit untuk satu revisi CFS sebuah jaminan.
 func (s *PLAStore) Issued(ctx context.Context, claimID, objectID string, coverageSeq, revision int) ([]registrasi.PLA, error) {
 	rows, err := executorFrom(ctx, s.db).QueryContext(ctx, loadQuery("pla_terbit"),
-		claimID, objectID, strconv.Itoa(coverageSeq), strconv.Itoa(revision), registrasi.PLATypeCoins)
+		claimID, objectID, strconv.Itoa(coverageSeq), strconv.Itoa(revision),
+		registrasi.PLATypeCoins, registrasi.PLATypeFacOut, registrasi.PLATypeBPPDAN, registrasi.PLATypeEQPool)
 	if err != nil {
 		return nil, fmt.Errorf("registrasi/sqlstore: membaca PLA terbit: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	var out []registrasi.PLA
 	for rows.Next() {
-		var number, recipient, code, note, currency, body, email sql.NullString
+		var number, recipient, code, note, currency, body, email, kind sql.NullString
 		var date sql.NullTime
-		if err := rows.Scan(&number, &recipient, &code, &date, &note, &currency, &body, &email); err != nil {
+		if err := rows.Scan(&number, &recipient, &code, &date, &note, &currency, &body, &email, &kind); err != nil {
 			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris PLA: %w", err)
 		}
 		p := registrasi.PLA{
 			ClaimID: claimID, ObjectID: objectID, CoverageSeq: coverageSeq, Revision: revision,
-			Number: trimmed(number), Type: registrasi.PLATypeCoins, Recipient: trimmed(recipient),
+			Number: trimmed(number), Type: trimmed(kind), Recipient: trimmed(recipient),
 			RecipientCode: trimmed(code), Date: wallWIB(date.Time), Note: note.String, PolicyCurrency: trimmed(currency),
 			Info: registrasi.PLARecipientInfo{Email: trimmed(email)},
 		}
 		var doc plaJSON
 		if body.Valid && json.Unmarshal([]byte(body.String), &doc) == nil {
 			for _, l := range doc.EstimasiList {
-				share, _ := parsePercent(l.PercentPLA)
-				p.Amount = append(p.Amount, registrasi.PLAAmount{
-					Currency: l.Currency, CurrencyID: l.CurrencyID, Share: share,
+				a := registrasi.PLAAmount{
+					Currency: l.Currency, CurrencyID: l.CurrencyID,
 					Reserve: parseMoney(l.EstimastionReserve), Base: parseMoney(l.EstimationValue),
 					Result: parseMoney(l.ResultPLA), ASMCount: parseMoney(l.ASMCount),
-				})
+				}
+				switch p.Type {
+				case registrasi.PLATypeFacOut:
+					a.FacShare, a.FacBase = parseMoney(l.SharePLA), parseMoney(l.PercentPLA)
+				case registrasi.PLATypeBPPDAN, registrasi.PLATypeEQPool:
+					a.FacShare = parseMoney(l.SharePLA)
+				default:
+					a.Share, _ = parsePercent(l.PercentPLA)
+				}
+				p.Amount = append(p.Amount, a)
 			}
 		}
 		out = append(out, p)
@@ -167,12 +213,20 @@ func (s *PLAStore) NextNumber(ctx context.Context, code string, year int) (strin
 func (s *PLAStore) Save(ctx context.Context, p registrasi.PLA) error {
 	doc := plaJSON{ObjClass: "ASM-FW-GCNMFW-Data-PLA"}
 	for _, a := range p.Amount {
-		doc.EstimasiList = append(doc.EstimasiList, plaJSONLine{
+		line := plaJSONLine{
 			ASMCount: moneyText(a.ASMCount), Currency: a.Currency, CurrencyID: a.CurrencyID,
 			EstimastionReserve: moneyText(a.Reserve), EstimationValue: moneyText(a.Base),
 			PercentPLA: percentText(a.Share), PremiShare: moneyText(a.Result),
 			ObjClass: "ASM-FW-GCNMFW-Data-Estimasi", ResultPLA: moneyText(a.Result),
-		})
+		}
+		switch p.Type {
+		case registrasi.PLATypeFacOut:
+			line.PercentPLA, line.SharePLA = moneyText(a.FacBase), moneyText(a.FacShare)
+		case registrasi.PLATypeBPPDAN, registrasi.PLATypeEQPool:
+			// PLABPPDAN_Act 3.9: SharePLA = persen bagian; PercentPLA tidak diisi.
+			line.PercentPLA, line.SharePLA = "", moneyText(a.FacShare)
+		}
+		doc.EstimasiList = append(doc.EstimasiList, line)
 	}
 	body, err := json.Marshal(doc)
 	if err != nil {

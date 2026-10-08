@@ -14,6 +14,7 @@ type PLA struct {
 	mu sync.Mutex
 
 	Coins      map[string][]registrasi.PLACoinsMember // per nomor polis
+	Offers     map[string][]registrasi.FacOffer       // FacOfferList per nomor polis
 	Recipients map[string]registrasi.PLARecipientInfo
 	Saved      []registrasi.PLA
 	counter    int64
@@ -24,7 +25,14 @@ type PLA struct {
 
 // NewPLA membentuk penyimpanan PLA kosong.
 func NewPLA() *PLA {
-	return &PLA{Coins: map[string][]registrasi.PLACoinsMember{}, Recipients: map[string]registrasi.PLARecipientInfo{}}
+	return &PLA{Coins: map[string][]registrasi.PLACoinsMember{}, Offers: map[string][]registrasi.FacOffer{},
+		Recipients: map[string]registrasi.PLARecipientInfo{}}
+}
+
+func (s *PLA) FacOffers(_ context.Context, policy, _ string) ([]registrasi.FacOffer, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Offers[policy], nil
 }
 
 func (s *PLA) CoinsMembers(_ context.Context, policy, _ string) ([]registrasi.PLACoinsMember, error) {

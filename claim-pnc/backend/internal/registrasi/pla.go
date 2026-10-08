@@ -69,6 +69,11 @@ type PLAAmount struct {
 	Share      Percent
 	Result     Money // ResultPLA
 	ASMCount   Money // reserve × share ASM
+
+	// FacShare (SharePLA) dan FacBase (PercentPLA) hanya untuk PLA FAC OUT: bagian
+	// reasuradur dan dasar pembaginya, keduanya NILAI uang, bukan persen.
+	FacShare Money
+	FacBase  Money
 }
 
 // PLA adalah satu PLA untuk satu penerima.
@@ -113,11 +118,15 @@ type PLADocument struct {
 	Place           string
 	SignerName      string
 	Signature       []byte // PNG
+	// ShareLabel adalah akhiran label "Your Share" (PLAShareLabel).
+	ShareLabel string
 }
 
 // PLASource adalah seam ke data PLA: CoinsList, master penerima, nomor, dan T_PLALIST.
 type PLASource interface {
 	CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]PLACoinsMember, error)
+	// FacOffers membaca FacOfferList polis (POOLDATA.T_FACOFFER) — penerima PLA FAC OUT.
+	FacOffers(ctx context.Context, policyNumber, prodKe string) ([]FacOffer, error)
 	Recipient(ctx context.Context, code, name string) (PLARecipientInfo, error)
 	Previous(ctx context.Context, claimID, recipientCode string) (PLAPrevious, bool, error)
 

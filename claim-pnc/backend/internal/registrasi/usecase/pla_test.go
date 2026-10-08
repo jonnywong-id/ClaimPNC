@@ -142,3 +142,134 @@ func TestPLAListNotesAndSinglePrint(t *testing.T) {
 	require.Equal(t, "application/pdf", one.ContentType)
 	require.Equal(t, "PLACOINS"+number+".pdf", one.FileName)
 }
+
+// Jaminan dengan spreading FAC OUT mendapat PLA FACOUT per reasuradur FacOffer — juga bila
+// polis tidak berkoasuransi (DownloadFireLossAdvice_act langkah 23 dan 25). Nilainya
+// ShareOffered × reserve / (TSISublimit × percentASM).
+func TestPLAFacOutWithoutCoinsurance(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	claim.InsuredItem[0].Coverage[0].Spreading[0].TreatyKind = registrasi.TreatyFacOut
+	require.NoError(t, l.store.Save(ctx, claim))
+	objectID := claim.InsuredItem[0].ID
+	l.dla.Cases[registrasi.TreatyFacOut] = "3" // REINSURANCETYPE.TYPE fakultatif
+	l.pla.Offers[firePolicy] = []registrasi.FacOffer{{
+		ReinsurerName: "REASURANSI CONTOH", ReinsurerID: "R9",
+		Property: []registrasi.FacObject{{ObjectNo: objectID, Coverage: []registrasi.FacCoverage{
+			{Code: claim.InsuredItem[0].Coverage[0].ID, TSISublimit: "1000000000", ShareOffered: "250000000"},
+		}}},
+	}}
+
+	_, err = l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(40_000_000), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+
+	list, err := l.service.ListPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, list.PLA, 1)
+	p := list.PLA[0]
+	require.Equal(t, registrasi.PLATypeFacOut, p.Type)
+	require.Equal(t, "REASURANSI CONTOH", p.Recipient)
+	require.True(t, strings.HasPrefix(p.Number, registrasi.PLACodeFacOut))
+	require.Equal(t, registrasi.Rupiah(10_000_000), p.Amount[0].Result, "250 jt / 1 M × 40 jt")
+
+	printed, err := l.service.PrintPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Equal(t, "PLAFACOFFER"+p.Number+".pdf", printed.FileName)
+}
+
+// GeneratePLAList langkah 33: PLA yang terbit mengubah Status Klaim menjadi 1138 (PLA Report).
+func TestPLAIssueSetsStatusPLAReport(t *testing.T) {
+	l := setup(t)
+	coinsLeader(l)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+	_, err := l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(50_000_000), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+
+	_, err = l.service.ListPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	stored, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, registrasi.StatusClaimPLAReport, stored.ClaimStatus)
+}
+
+// GeneratePLAList langkah 6: klaim Ex Gratia tidak menerbitkan PLA.
+func TestPLANotIssuedForExGratia(t *testing.T) {
+	l := setup(t)
+	coinsLeader(l)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+	_, err := l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(50_000_000), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	claim.ExGratia = true
+	require.NoError(t, l.store.Save(ctx, claim))
+
+	_, err = l.service.ListPLA(ctx, printPLA(task), l.caller)
+	violation(t, err, registrasi.ViolationPLAExGratia)
+}
+
+// DownloadAllDocumentPLA: PLA dengan REMARKS kosong tidak dicetak.
+func TestPLAPrintNeedsRemarks(t *testing.T) {
+	l := setup(t)
+	coinsLeader(l)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+	_, err := l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(50_000_000), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+	list, err := l.service.ListPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	number := list.PLA[0].Number
+	_, err = l.service.SavePLANotes(ctx, printPLA(task), map[string]string{number: "  "}, l.caller)
+	require.NoError(t, err)
+
+	command := printPLA(task)
+	command.Number = number
+	_, err = l.service.PrintPLA(ctx, command, l.caller)
+	violation(t, err, registrasi.ViolationPLARemarksEmpty)
+}
+
+// Spreading BPPDAN menerbitkan PLA BPPDAN (PLABPPDAN_Act): penerima BPPDAN, huruf H, nilai
+// reserve × persen bagian; dokumennya PLABPPDAN<nomor>.pdf.
+func TestPLABPPDAN(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+
+	claim, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	claim.InsuredItem[0].Coverage[0].Spreading[0].TreatyKind = "10010"
+	claim.InsuredItem[0].Coverage[0].Spreading[0].Share = 25_000 // 2,5%
+	require.NoError(t, l.store.Save(ctx, claim))
+
+	_, err = l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(40_000_000), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+
+	list, err := l.service.ListPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, list.PLA, 1)
+	p := list.PLA[0]
+	require.Equal(t, registrasi.PLATypeBPPDAN, p.Type)
+	require.Equal(t, "10038311", p.RecipientCode)
+	require.True(t, strings.HasPrefix(p.Number, registrasi.PLACodeBPPDAN))
+	require.Equal(t, registrasi.Rupiah(1_000_000), p.Amount[0].Result, "2,5% × 40 jt")
+
+	printed, err := l.service.PrintPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Equal(t, "PLABPPDAN"+p.Number+".pdf", printed.FileName)
+}

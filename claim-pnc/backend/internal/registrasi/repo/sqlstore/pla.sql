@@ -35,11 +35,25 @@ SELECT d.NOPLA, d.TGLPLA
  FETCH FIRST 1 ROWS ONLY
 
 -- name: pla_terbit
-SELECT d.NOPLA, d.PLAREINSURER, d.REINSCODE, d.TGLPLA, d.NOTES, d.CURRENCYPOLIS, d.JSON_PLA, d.EMAILPLA
+--
+-- PLA yang diterbitkan layar Print PLA: koasuransi (COINS), fakultatif keluar (FACOUT), dan
+-- BPPDAN / EQ POOL (GeneratePLAList).
+SELECT d.NOPLA, d.PLAREINSURER, d.REINSCODE, d.TGLPLA, d.NOTES, d.CURRENCYPOLIS, d.JSON_PLA, d.EMAILPLA,
+       d.TIPEPLA
   FROM POOLDATA.T_PLALIST d
  WHERE d.CLAIMID = :1 AND d.OBJECTID = :2 AND d.OBJECTCOVERAGEID = :3 AND d.REVISI = :4
-   AND d.TIPEPLA = :5
+   AND d.TIPEPLA IN (:5, :6, :7, :8)
  ORDER BY d.NOPLA
+
+-- name: pla_fac_offer
+--
+-- Fac Offer polis untuk PLA FAC OUT: JSONDATA (FacOfferList, diurai di Go seperti DLA) dan
+-- kolom datar sebagai cadangan bila JSONDATA kosong — 33 dari 409 baris di TEST.
+SELECT f.REINSURER_ID, f.REINSURER_NAME, f.PCT_SHAREREAS, f.JSONDATA
+  FROM POOLDATA.T_FACOFFER f
+ WHERE f.POLICYNO = :1
+   AND f.PRODKE = :2
+ ORDER BY f.REINSURER_ID
 
 -- name: pla_site
 SELECT s.ID

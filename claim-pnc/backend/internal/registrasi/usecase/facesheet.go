@@ -27,8 +27,8 @@ type FaceSheetResult struct {
 // DownloadFaceSheet membuat Claim Face Sheet satu jaminan, mencatat revisinya, dan
 // mengunci estimasinya.
 //
-// Dokumen dibentuk SEBELUM transaksi dibuka: bila pembentukannya gagal, tidak ada estimasi
-// yang terkunci tanpa dokumennya pernah sampai ke petugas.
+// PIC Teknis dipilih (bila klaim belum punya) sebelum dokumen dibentuk, sehingga PIC yang
+// tercetak sama dengan yang tersimpan di klaim. Lihat catatan transaksi di dalam.
 func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by Caller) (FaceSheetResult, error) {
 	claim, task, err := l.loadOpenTask(loadContext{ctx: ctx, taskID: p.TaskID, action: registrasi.ActionInputEstimate, alsoAction: registrasi.ActionInputSurveyor})
 	if err != nil {
@@ -50,35 +50,46 @@ func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by 
 		return FaceSheetResult{}, registrasi.ErrFaceSheetNothingNew()
 	}
 
-	in, err := l.faceSheetInput(ctx, claim, p)
-	if err != nil {
-		return FaceSheetResult{}, err
-	}
-	sheet := registrasi.BuildFaceSheet(in)
-	content, err := l.renderer.Render(sheet)
-	if err != nil {
-		return FaceSheetResult{}, fmt.Errorf("registrasi/usecase: membentuk Claim Face Sheet: %w", err)
-	}
-
-	last, found, err := l.faceSheet.LastRevision(ctx, claim.ID, object.ID, p.Coverage)
-	if err != nil {
-		return FaceSheetResult{}, err
-	}
-	revision := 0
-	if found {
-		revision = last + 1
-	}
-	now := in.Now
-	fileName := registrasi.FaceSheetFileName(p.Object, p.Coverage, revision)
-
-	registrasi.LockEstimates(coverage, now)
-	claim.UpdatedBy = by.Identity
-	claim.UpdatedAt = now
-
+	// Seluruhnya berjalan di dalam SATU transaksi, dan urutannya penting: PIC Teknis dipilih
+	// LEBIH DULU, baru isi CFS dibentuk — supaya PIC yang tercatat di klaim adalah PIC yang
+	// tercetak di dokumennya. Bila pembentukan dokumen gagal, transaksinya dibatalkan: tidak
+	// ada estimasi yang terkunci dan beban petugas tidak ikut naik tanpa dokumennya pernah
+	// sampai ke petugas. Seluruh langkah di dalamnya hanya membaca/menulis basis data dan
+	// merender PDF di memori — tidak ada panggilan jaringan yang menahan kunci baris.
+	var (
+		content  []byte
+		revision int
+	)
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
 		if err := l.adoptTechnicalPICOnFaceSheet(ctx, &claim, by); err != nil {
 			return err
 		}
+
+		in, err := l.faceSheetInput(ctx, claim, p)
+		if err != nil {
+			return err
+		}
+		sheet := registrasi.BuildFaceSheet(in)
+		content, err = l.renderer.Render(sheet)
+		if err != nil {
+			return fmt.Errorf("registrasi/usecase: membentuk Claim Face Sheet: %w", err)
+		}
+
+		last, found, err := l.faceSheet.LastRevision(ctx, claim.ID, object.ID, p.Coverage)
+		if err != nil {
+			return err
+		}
+		revision = 0
+		if found {
+			revision = last + 1
+		}
+		now := in.Now
+		fileName := registrasi.FaceSheetFileName(p.Object, p.Coverage, revision)
+
+		registrasi.LockEstimates(coverage, now)
+		claim.UpdatedBy = by.Identity
+		claim.UpdatedAt = now
+
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}

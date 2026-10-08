@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
@@ -121,7 +122,7 @@ func (l *Service) issuedOrNew(ctx context.Context, sc plaScope, by Caller) ([]re
 	if err != nil || len(list) > 0 {
 		return list, 0, err
 	}
-	list, err = l.issueCoinsPLA(ctx, sc.claim, sc.object, sc.coverage, sc.seq, sc.revision, sc.names, sc.ids, by)
+	list, err = l.issuePLA(ctx, sc.claim, sc.object, sc.coverage, sc.seq, sc.revision, sc.names, sc.ids, by)
 	return list, len(list), err
 }
 
@@ -170,7 +171,7 @@ func (l *Service) SavePLANotes(ctx context.Context, p PLACommand, notes map[stri
 	return PLAList{Revision: sc.revision, PLA: list}, nil
 }
 
-// PrintPLA mencetak PLA koasuransi satu jaminan — satu nomor, atau seluruhnya. PLA yang
+// PrintPLA mencetak PLA satu jaminan (koasuransi dan fac out) — satu nomor, atau seluruhnya. PLA yang
 // belum terbit diterbitkan lebih dulu.
 func (l *Service) PrintPLA(ctx context.Context, p PLACommand, by Caller) (PLAResult, error) {
 	sc, err := l.plaScopeOf(ctx, p, by)
@@ -193,6 +194,12 @@ func (l *Service) PrintPLA(ctx context.Context, p PLACommand, by Caller) (PLARes
 		}
 		list = one
 	}
+	// DownloadAllDocumentPLA: PLA tidak dicetak selama REMARKS-nya kosong.
+	for _, x := range list {
+		if strings.TrimSpace(x.Note) == "" {
+			return PLAResult{}, registrasi.ErrPLARemarksEmpty()
+		}
+	}
 	docs, err := l.plaDocuments(ctx, sc.claim, sc.object, sc.coverage, sc.names, list)
 	if err != nil {
 		return PLAResult{}, err
@@ -200,32 +207,32 @@ func (l *Service) PrintPLA(ctx context.Context, p PLACommand, by Caller) (PLARes
 	return packPLA(docs, issued)
 }
 
-// issueCoinsPLA menerbitkan satu PLA per anggota koasuransi dalam satu transaksi.
-func (l *Service) issueCoinsPLA(ctx context.Context, claim registrasi.Claim, object registrasi.InsuredItem,
+// pendingPLA adalah satu PLA yang siap diterbitkan: penerima dan nilainya, tanpa nomor.
+type pendingPLA struct {
+	code, kind string
+	name, id   string
+	amount     []registrasi.PLAAmount
+}
+
+// issuePLA menerbitkan PLA satu jaminan dalam satu transaksi — `DownloadFireLossAdvice_act`:
+// satu PLA per anggota koasuransi (COINS, huruf J) dan satu per reasuradur fakultatif keluar
+// bila jaminan punya spreading FAC OUT (FACOUT, huruf H, langkah 23 dan 25).
+//
+// Koasuransi yang tidak berlaku (polis tanpa anggota, atau Sinar Mas bukan leader) tidak
+// menggagalkan FAC OUT: keduanya penerima yang berbeda. Galat koasuransi baru dikembalikan
+// bila tidak ada penerima FAC OUT sama sekali, supaya pesannya tetap menyebut alasannya.
+func (l *Service) issuePLA(ctx context.Context, claim registrasi.Claim, object registrasi.InsuredItem,
 	coverage registrasi.Coverage, coverageSeq, revision int, names, ids map[string]string, by Caller) ([]registrasi.PLA, error) {
+	if claim.ExGratia {
+		return nil, registrasi.ErrPLAExGratia()
+	}
 	members, err := l.pla.CoinsMembers(ctx, claim.Policy.Number, claim.Policy.ProdKe)
 	if err != nil {
 		return nil, err
 	}
-	recipients, err := registrasi.CoinsPLARecipients(claim.Portal, members)
-	if err != nil {
-		return nil, err
-	}
 
-	// Reserve PLA adalah reserve Claim Face Sheet: hanya estimasi yang sudah dikunci.
-	locked := coverage
-	locked.Item = nil
-	for _, it := range coverage.Item {
-		x := it
-		x.Estimation = nil
-		for _, e := range it.Estimation {
-			if e.FaceSheet {
-				x.Estimation = append(x.Estimation, e)
-			}
-		}
-		locked.Item = append(locked.Item, x)
-	}
-	reserve := registrasi.FaceSheetReserve(locked, func(code string) string {
+	// Reserve PLA: estimasi ber-CFS per mata uang (GeneratePLAList langkah 18–20).
+	reserve := registrasi.PLAReserve(coverage, func(code string) string {
 		if n := names[code]; n != "" {
 			return n
 		}
@@ -234,14 +241,43 @@ func (l *Service) issueCoinsPLA(ctx context.Context, claim registrasi.Claim, obj
 	if len(reserve) == 0 {
 		return nil, registrasi.ErrPLANoReserve()
 	}
-	asm := registrasi.PercentFull
-	if c := claim.Policy.Coinsurance; c.HasShare {
-		asm = c.ShareASM
+
+	var pending []pendingPLA
+
+	// Koasuransi.
+	coins, coinsErr := registrasi.CoinsPLARecipients(claim.Portal, members)
+	if coinsErr == nil {
+		asm := registrasi.PercentFull
+		if c := claim.Policy.Coinsurance; c.HasShare {
+			asm = c.ShareASM
+		}
+		for _, r := range coins {
+			pending = append(pending, pendingPLA{
+				code: registrasi.PLACodeCoins, kind: registrasi.PLATypeCoins, name: r.Name, id: r.ID,
+				amount: registrasi.CoinsPLAAmounts(reserve, ids, r.Share, asm),
+			})
+		}
 	}
 
-	infos := make([]registrasi.PLARecipientInfo, len(recipients))
-	for i, r := range recipients {
-		if infos[i], err = l.pla.Recipient(ctx, r.ID, r.Name); err != nil {
+	// Reasuransi: setiap baris spreading digolongkan lewat REINSURANCETYPE (GeneratePLAList
+	// langkah 26) — BPPDAN/EQ POOL ke PLABPPDAN_Act, fakultatif ke PLAFacout_Act. Treaty
+	// (PLATreaty_Act) belum dibangun.
+	reinsurance, err := l.reinsurancePLA(ctx, claim, object, coverage, coverageSeq, members, reserve, ids)
+	if err != nil {
+		return nil, err
+	}
+	pending = append(pending, reinsurance.pending...)
+
+	if len(pending) == 0 {
+		if coinsErr != nil && !reinsurance.routed {
+			return nil, coinsErr
+		}
+		return nil, registrasi.ErrPLANoRecipient()
+	}
+
+	infos := make([]registrasi.PLARecipientInfo, len(pending))
+	for i, r := range pending {
+		if infos[i], err = l.pla.Recipient(ctx, r.id, r.name); err != nil {
 			return nil, err
 		}
 	}
@@ -258,35 +294,118 @@ func (l *Service) issueCoinsPLA(ctx context.Context, claim registrasi.Claim, obj
 	}
 
 	var out []registrasi.PLA
+	counts := map[string]int{}
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
-		for i, r := range recipients {
-			number, err := l.pla.NextNumber(ctx, registrasi.PLACodeCoins, year)
+		for i, r := range pending {
+			number, err := l.pla.NextNumber(ctx, r.code, year)
 			if err != nil {
 				return err
 			}
-			previous, had, err := l.pla.Previous(ctx, claim.ID, r.ID)
+			previous, had, err := l.pla.Previous(ctx, claim.ID, r.id)
 			if err != nil {
 				return err
 			}
 			p := registrasi.PLA{
 				ClaimID: claim.ID, ObjectID: object.ID, CoverageSeq: coverageSeq, Number: number,
-				Type: registrasi.PLATypeCoins, Recipient: r.Name, RecipientCode: r.ID, Revision: revision,
+				Type: r.kind, Recipient: r.name, RecipientCode: r.id, Revision: revision,
 				Date: now, Note: registrasi.PLANote(previous, had), PolicyCurrency: policyCurrency,
-				Amount: registrasi.CoinsPLAAmounts(reserve, ids, r.Share, asm), Info: infos[i],
+				Amount: r.amount, Info: infos[i],
 			}
 			if err := l.pla.Save(ctx, p); err != nil {
 				return err
 			}
 			out = append(out, p)
+			counts[r.kind]++
+		}
+		reinsCount := len(out) - counts[registrasi.PLATypeCoins]
+		// GeneratePLAList langkah 33: Status Klaim menjadi PLA Report.
+		claim.ClaimStatus = registrasi.StatusClaimPLAReport
+		claim.UpdatedBy = by.Identity
+		claim.UpdatedAt = now
+		if err := l.claim.Save(ctx, claim); err != nil {
+			return err
+		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
 		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "PLA_TERBIT", Actor: by.Identity, At: now,
-			Note: "PLA koasuransi objek " + object.ID + " jaminan " + strconv.Itoa(coverageSeq) +
-				" revisi CFS " + strconv.Itoa(revision) + ": " + strconv.Itoa(len(recipients)) + " penerima",
+			Note: "PLA objek " + object.ID + " jaminan " + strconv.Itoa(coverageSeq) +
+				" revisi CFS " + strconv.Itoa(revision) + ": " + strconv.Itoa(counts[registrasi.PLATypeCoins]) +
+				" koasuransi, " + strconv.Itoa(reinsCount) + " reasuransi",
 		})
 	})
 	if err != nil {
 		return nil, err
+	}
+	return out, nil
+}
+
+// reinsurancePLA adalah hasil penggolongan spreading jaminan untuk PLA reasuransi.
+type reinsurancePLA struct {
+	pending []pendingPLA
+	routed  bool // ada baris spreading yang punya pengolah PLA reasuransi
+}
+
+// reinsurancePLA menyusun PLA reasuransi satu jaminan — `GeneratePLAList` langkah 15–19 dan
+// 26: bagian ASM (termasuk FAC IN) dari dokumen polis, lalu setiap baris spreading ke
+// pengolahnya. Fac Offer dibaca dari T_FACOFFER dengan cadangan kolom datar.
+func (l *Service) reinsurancePLA(ctx context.Context, claim registrasi.Claim, object registrasi.InsuredItem,
+	coverage registrasi.Coverage, coverageSeq int, members []registrasi.PLACoinsMember,
+	reserve []registrasi.FaceSheetAmount, ids map[string]string) (reinsurancePLA, error) {
+	var out reinsurancePLA
+	var live []registrasi.Spreading
+	for _, s := range coverage.Spreading {
+		if !s.Removed {
+			live = append(live, s)
+		}
+	}
+	if len(live) == 0 {
+		return out, nil
+	}
+	cases, err := l.dla.ReinsuranceCase(ctx)
+	if err != nil {
+		return out, err
+	}
+	policy, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe)
+	if err != nil {
+		return out, err
+	}
+	policy.Coins = members
+	pct := registrasi.FacOutPercentASM(claim.Portal, policy)
+	_, leader := registrasi.ASMCoinsShare(claim.Portal, members)
+
+	var offers []registrasi.FacOffer
+	offersRead := false
+	for _, s := range live {
+		var recipients []registrasi.PLARecipient
+		switch registrasi.RouteSpreading(s.TreatyKind, cases[s.TreatyKind]) {
+		case registrasi.DLARouteBPPDAN:
+			if r, ok := registrasi.BPPDANPLARecipient(s.TreatyKind, s.Share); ok {
+				recipients = append(recipients, r)
+			}
+		case registrasi.DLARouteFacOut:
+			if !offersRead {
+				if offers, err = l.pla.FacOffers(ctx, claim.Policy.Number, claim.Policy.ProdKe); err != nil {
+					return out, err
+				}
+				offersRead = true
+			}
+			recipients = registrasi.FacOutPLARecipients(registrasi.PLAReinsuranceInput{
+				TreatyType: s.TreatyKind, GroupPanel: string(claim.Policy.Line),
+				ObjectID: object.ID, ObjectName: object.Name, Coverage: coverage.ID, CoverageSeq: coverageSeq,
+				PercentASM: pct, Policy: policy, Offers: offers,
+			})
+		default:
+			continue
+		}
+		out.routed = true
+		for _, r := range recipients {
+			out.pending = append(out.pending, pendingPLA{
+				code: r.Code, kind: r.Type, name: r.Name, id: r.ID,
+				amount: registrasi.PLAReinsuranceAmounts(reserve, ids, r, pct, leader),
+			})
+		}
 	}
 	return out, nil
 }
@@ -322,6 +441,15 @@ func (l *Service) plaDocuments(ctx context.Context, claim registrasi.Claim, obje
 	if currency == "" {
 		currency = claim.Policy.Currency
 	}
+	// Total Sum Insured dokumen PLA adalah SumOfTSI POLIS (DownloadPLA langkah 13:
+	// tempObjeCvg.AgingAmount := pyWorkPage.Policy.SumOfTSI), bukan TSI jaminan; TSI jaminan
+	// hanya cadangan bila dokumen polis tidak memuatnya.
+	sumInsured := coverage.TSI
+	if doc, err := l.dla.Policy(ctx, claim.Policy.Number, claim.Policy.ProdKe); err != nil {
+		return nil, err
+	} else if doc.SumOfTSI != nil && doc.SumOfTSI.Sign() != 0 {
+		sumInsured = registrasi.RupiahOf(doc.SumOfTSI)
+	}
 
 	files := make([]plaFile, 0, len(list))
 	for _, p := range list {
@@ -332,7 +460,8 @@ func (l *Service) plaDocuments(ctx context.Context, claim registrasi.Claim, obje
 			ClaimNumber:     claim.Number,
 			Insured:         firstText(claim.Policy.InsuredName, policy.InsuredName),
 			Interest:        object.Name,
-			SumInsured:      registrasi.FaceSheetAmount{Currency: currency, Value: coverage.TSI},
+			SumInsured:      registrasi.FaceSheetAmount{Currency: currency, Value: sumInsured},
+			ShareLabel:      registrasi.PLAShareLabel(p),
 			PeriodStart:     policy.CoverageStart,
 			PeriodEnd:       policy.CoverageEnd,
 			PolicyCondition: firstText(coverage.Name, coverage.ID),
@@ -345,7 +474,13 @@ func (l *Service) plaDocuments(ctx context.Context, claim registrasi.Claim, obje
 		if err != nil {
 			return nil, fmt.Errorf("registrasi/usecase: membentuk PLA %s: %w", p.Number, err)
 		}
-		files = append(files, plaFile{name: "PLA" + p.Type + p.Number + ".pdf", content: content})
+		// Nama berkas Pega (DownloadPLA langkah 26–32): FAC OUT "PLAFACOFFER", selainnya
+		// "PLA" + tipe (PLACOINS, PLABPPDAN, PLAEQPOOL).
+		name := "PLA" + p.Type + p.Number + ".pdf"
+		if p.Type == registrasi.PLATypeFacOut {
+			name = "PLAFACOFFER" + p.Number + ".pdf"
+		}
+		files = append(files, plaFile{name: name, content: content})
 	}
 	return files, nil
 }
