@@ -576,3 +576,20 @@ func TestPLAFacOffersJSONAndFlatFallback(t *testing.T) {
 	require.Equal(t, registrasi.FacOffer{ReinsurerID: "R2", ReinsurerName: "AON", FlatShare: "3"}, got[1])
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// SpreadingTSI menjumlahkan TSISPREADED baris FAC OUT dan seluruh baris objek-coverage.
+func TestPLASpreadingTSI(t *testing.T) {
+	db, mock := be4DB(t)
+	s := NewPLAStore(db)
+	mock.ExpectQuery(be4Q("pla_spreading_tsi")).
+		WithArgs("POL", "1", "100829", "006", "40", "006", "POL", "1", "40").
+		WillReturnRows(sqlmock.NewRows(be4Cols(2)).
+			AddRow("10001", "1782838988.8625").
+			AddRow("10015", "1782838988.8625"))
+	facOut, total, err := s.SpreadingTSI(context.Background(), registrasi.SpreadingTSIQuery{
+		PolicyNumber: " POL ", ProdKe: "1", GroupPanel: "006", ObjectID: "40", Coverage: "100829"})
+	require.NoError(t, err)
+	require.Equal(t, "1782838988.8625", facOut.FloatString(4))
+	require.Equal(t, "3565677977.7250", total.FloatString(4))
+	require.NoError(t, mock.ExpectationsWereMet())
+}

@@ -55,6 +55,24 @@ SELECT f.REINSURER_ID, f.REINSURER_NAME, f.PCT_SHAREREAS, f.JSONDATA
    AND f.PRODKE = :2
  ORDER BY f.REINSURER_ID
 
+-- name: pla_spreading_tsi
+--
+-- TSISPREADED spreading polis satu objek dan coverage — cadangan PLA FAC OUT untuk Fac Offer
+-- tanpa JSONDATA. Objek dicocokkan lewat INDEXOBJECT; untuk Fire (Group Panel 006) ID objek
+-- klaim adalah OBJECTNO, sehingga INDEXOBJECT-nya dicari lebih dulu di T_PROPERTYLIST.
+SELECT s.TREATYTYPE, s.TSISPREADED
+  FROM POOLDATA.T_SPREADINGLIST s
+ WHERE s.NOPOLIS = :1
+   AND s.PRODKE = :2
+   AND s.COVERAGE = :3
+   AND (s.FLAGDELETE IS NULL OR s.FLAGDELETE <> '1')
+   AND ((:4 <> '006' AND s.INDEXOBJECT = :5)
+        OR (:6 = '006' AND s.INDEXOBJECT IN (SELECT p.INDEXOBJECT
+                                               FROM POOLDATA.T_PROPERTYLIST p
+                                              WHERE p.NOPOLIS = :7
+                                                AND p.PRODKE = :8
+                                                AND p.OBJECTNO = :9)))
+
 -- name: pla_site
 SELECT s.ID
   FROM POOLDATA.M_SITE_DATABASE s

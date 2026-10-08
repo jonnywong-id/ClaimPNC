@@ -46,6 +46,20 @@ type PLAReinsuranceInput struct {
 	PercentASM  *big.Rat
 	Policy      DLAPolicy
 	Offers      []FacOffer
+
+	// FlatFacOut dan FlatTotal adalah TSISPREADED T_SPREADINGLIST polis untuk objek dan
+	// coverage ini: baris FAC OUT, dan jumlah seluruh baris yang berlaku. Dipakai Fac Offer
+	// tanpa JSONDATA (FacOffer.FlatShare). nil bila tidak ada barisnya.
+	FlatFacOut *big.Rat
+	FlatTotal  *big.Rat
+}
+
+// SpreadingTSIQuery memilih baris T_SPREADINGLIST satu objek dan coverage polis.
+type SpreadingTSIQuery struct {
+	PolicyNumber, ProdKe string
+	GroupPanel           string
+	ObjectID             string // ObjectList.ObjectID
+	Coverage             string // CoverageOldID
 }
 
 // PLARecipient adalah satu penerima PLA reasuransi beserta bagian dan dasar pembaginya.
@@ -67,9 +81,12 @@ type PLARecipient struct {
 //     memakai dasar FacOffer sebelumnya (`local.ShareTSI` satu untuk seluruh perulangan).
 //   - Group Panel 002/005 (PA, Travel) tidak punya cabang: bagiannya 0.
 //
-// Penyimpangan sadar: baris T_FACOFFER tanpa JSONDATA (FacOffer.FlatShare) memakai
-// PCT_SHAREREAS persen dengan dasar 100 — Pega tidak punya jalur ini karena FacOfferList
-// selalu terisi di halaman polisnya.
+// Jalur cadangan: baris T_FACOFFER tanpa JSONDATA (FacOffer.FlatShare). Pega tidak punya
+// jalur ini — FacOfferList selalu terisi di halaman polisnya — tetapi angkanya dapat dibentuk
+// ulang dari T_SPREADINGLIST polis: bagian = TSISPREADED baris FAC OUT objek-coverage itu,
+// dasar = jumlah TSISPREADED seluruh baris yang berlaku. Terbukti sama dengan PLA Pega
+// PNC-119856 (1.782.838.988,86 / 3.565.677.977,73). Reasuradur lebih dari satu berbagi bagian
+// FAC OUT menurut PCT_SHAREREAS. Tanpa baris spreading, PCT_SHAREREAS persen dengan dasar 100.
 func FacOutPLARecipients(in PLAReinsuranceInput) []PLARecipient {
 	pct := in.PercentASM
 	if pct == nil {
@@ -101,7 +118,7 @@ func FacOutPLARecipients(in PLAReinsuranceInput) []PLARecipient {
 			Name: offer.ReinsurerName, ID: strings.TrimSpace(offer.ReinsurerID), Share: new(big.Rat)}
 
 		if strings.TrimSpace(offer.FlatShare) != "" {
-			r.Share, r.Base = decimalOf(offer.FlatShare), big.NewRat(100, 1)
+			r.Share, r.Base = flatFacOutShare(in, offer)
 			out = append(out, r)
 			continue
 		}
@@ -197,6 +214,34 @@ func FacOutPLARecipients(in PLAReinsuranceInput) []PLARecipient {
 		out = append(out, r)
 	}
 	return out
+}
+
+// flatFacOutShare adalah bagian dan dasar Fac Offer tanpa JSONDATA — lihat
+// FacOutPLARecipients.
+func flatFacOutShare(in PLAReinsuranceInput, offer FacOffer) (*big.Rat, *big.Rat) {
+	if in.FlatFacOut == nil || in.FlatTotal == nil || in.FlatTotal.Sign() == 0 {
+		return decimalOf(offer.FlatShare), big.NewRat(100, 1)
+	}
+	var total *big.Rat
+	count := 0
+	for _, o := range in.Offers {
+		if o.Deleted || strings.TrimSpace(o.FlatShare) == "" {
+			continue
+		}
+		count++
+		if total == nil {
+			total = new(big.Rat)
+		}
+		total.Add(total, decimalOf(o.FlatShare))
+	}
+	weight := big.NewRat(1, 1)
+	switch {
+	case total != nil && total.Sign() != 0:
+		weight = div(decimalOf(offer.FlatShare), total)
+	case count > 1:
+		weight = big.NewRat(1, int64(count))
+	}
+	return mul(in.FlatFacOut, weight), in.FlatTotal
 }
 
 // firstAnekaCoverage adalah FacOfferList(1).AnekaList(1).CoverageList(1) — cadangan

@@ -137,7 +137,7 @@ function surveyVisible(klaim: Claim): boolean {
 /**
  * Tugas InputSurveyor dirutekan PNCTeknikRouter ke PIC Teknik (beban paling ringan di
  * POOLDATA.MST_USER_TEKNIK). Ia boleh dikerjakan pemiliknya atau pemegang grup PIC Teknik
- * (PNCKomiteTeknik di M_LOGIN_GROUP_PNC); selebihnya server menolak (ErrNotTaskOwner) —
+ * (PNCKomiteTeknik atau PncPICTeknik di M_LOGIN_GROUP_PNC); selebihnya server menolak (ErrNotTaskOwner) —
  * layar menyatakannya lebih dulu alih-alih membiarkan petugas mengisi lalu ditolak.
  */
 /** Flow action tahap Investigator (Register_Flow Assignment11). */

@@ -205,3 +205,31 @@ func TestPLAReserve(t *testing.T) {
 	require.Equal(t, []registrasi.FaceSheetAmount{{Currency: "IDR", Value: 150}, {Currency: "USD", Value: 77}},
 		registrasi.PLAReserve(c, name))
 }
+
+// Fac Offer tanpa JSONDATA dengan baris T_SPREADINGLIST: bagian = TSISPREADED FAC OUT, dasar =
+// jumlah TSISPREADED. Angka dari PLA Pega PNC-119856 (polis yang sama dengan PNCN.26.34):
+// 1.782.838.988,86 / 3.565.677.977,73 × 192.000 = 96.000.
+func TestFacOutPLAFlatFromSpreading(t *testing.T) {
+	facOut, _ := new(big.Rat).SetString("1782838988.8625")
+	total, _ := new(big.Rat).SetString("3565677977.725")
+	in := registrasi.PLAReinsuranceInput{
+		TreatyType: registrasi.TreatyFacOut, GroupPanel: "006", ObjectID: "40", PercentASM: big.NewRat(1, 1),
+		Offers:     []registrasi.FacOffer{{ReinsurerName: "AON", ReinsurerID: "10038693", FlatShare: "3"}},
+		FlatFacOut: facOut, FlatTotal: total,
+	}
+	got := registrasi.FacOutPLARecipients(in)
+	require.Len(t, got, 1)
+	amounts := registrasi.PLAReinsuranceAmounts(idr(192_000), nil, got[0], big.NewRat(1, 1), false)
+	require.Equal(t, registrasi.Rupiah(96_000), amounts[0].Result)
+	require.Equal(t, registrasi.Money(178_283_898_886), amounts[0].FacShare, "1.782.838.988,86")
+	require.Equal(t, registrasi.Money(356_567_797_773), amounts[0].FacBase, "3.565.677.977,73")
+
+	// Dua reasuradur berbagi bagian FAC OUT menurut PCT_SHAREREAS (1 : 3).
+	in.Offers = []registrasi.FacOffer{
+		{ReinsurerName: "A", ReinsurerID: "R1", FlatShare: "1"},
+		{ReinsurerName: "B", ReinsurerID: "R2", FlatShare: "3"},
+	}
+	two := registrasi.FacOutPLARecipients(in)
+	require.Equal(t, new(big.Rat).Mul(facOut, big.NewRat(1, 4)), two[0].Share)
+	require.Equal(t, new(big.Rat).Mul(facOut, big.NewRat(3, 4)), two[1].Share)
+}

@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -15,6 +16,8 @@ type PLA struct {
 
 	Coins      map[string][]registrasi.PLACoinsMember // per nomor polis
 	Offers     map[string][]registrasi.FacOffer       // FacOfferList per nomor polis
+	FlatFacOut *big.Rat                               // TSISPREADED FAC OUT (SpreadingTSI)
+	FlatTotal  *big.Rat                               // jumlah TSISPREADED (SpreadingTSI)
 	Recipients map[string]registrasi.PLARecipientInfo
 	Saved      []registrasi.PLA
 	counter    int64
@@ -27,6 +30,13 @@ type PLA struct {
 func NewPLA() *PLA {
 	return &PLA{Coins: map[string][]registrasi.PLACoinsMember{}, Offers: map[string][]registrasi.FacOffer{},
 		Recipients: map[string]registrasi.PLARecipientInfo{}}
+}
+
+// SpreadingTSI mengembalikan FlatFacOut dan FlatTotal yang dipasang pengujian.
+func (s *PLA) SpreadingTSI(_ context.Context, _ registrasi.SpreadingTSIQuery) (*big.Rat, *big.Rat, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.FlatFacOut, s.FlatTotal, nil
 }
 
 func (s *PLA) FacOffers(_ context.Context, policy, _ string) ([]registrasi.FacOffer, error) {

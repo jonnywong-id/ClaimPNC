@@ -3,6 +3,7 @@ package registrasi
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 )
@@ -127,6 +128,10 @@ type PLASource interface {
 	CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]PLACoinsMember, error)
 	// FacOffers membaca FacOfferList polis (POOLDATA.T_FACOFFER) — penerima PLA FAC OUT.
 	FacOffers(ctx context.Context, policyNumber, prodKe string) ([]FacOffer, error)
+	// SpreadingTSI membaca TSISPREADED spreading polis (POOLDATA.T_SPREADINGLIST) untuk satu
+	// objek dan coverage: baris FAC OUT (10015) dan jumlah seluruh baris yang berlaku.
+	// Cadangan PLA FAC OUT untuk Fac Offer tanpa JSONDATA. nil bila tidak ada barisnya.
+	SpreadingTSI(ctx context.Context, q SpreadingTSIQuery) (facOut, total *big.Rat, err error)
 	Recipient(ctx context.Context, code, name string) (PLARecipientInfo, error)
 	Previous(ctx context.Context, claimID, recipientCode string) (PLAPrevious, bool, error)
 

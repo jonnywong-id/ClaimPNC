@@ -89,6 +89,38 @@ func (s *PLAStore) FacOffers(ctx context.Context, policyNumber, prodKe string) (
 	return out, rows.Err()
 }
 
+// SpreadingTSI membaca TSISPREADED T_SPREADINGLIST satu objek dan coverage polis: baris FAC
+// OUT (10015) dan jumlah seluruh baris. nil bila tidak ada barisnya.
+func (s *PLAStore) SpreadingTSI(ctx context.Context, q registrasi.SpreadingTSIQuery) (*big.Rat, *big.Rat, error) {
+	number, prodKe := strings.TrimSpace(q.PolicyNumber), strings.TrimSpace(q.ProdKe)
+	gp, object := strings.TrimSpace(q.GroupPanel), strings.TrimSpace(q.ObjectID)
+	rows, err := executorFrom(ctx, s.db).QueryContext(ctx, loadQuery("pla_spreading_tsi"),
+		number, prodKe, strings.TrimSpace(q.Coverage), gp, object, gp, number, prodKe, object)
+	if err != nil {
+		return nil, nil, fmt.Errorf("registrasi/sqlstore: membaca T_SPREADINGLIST polis %q: %w", q.PolicyNumber, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var facOut, total *big.Rat
+	for rows.Next() {
+		var kind, tsi sql.NullString
+		if err := rows.Scan(&kind, &tsi); err != nil {
+			return nil, nil, fmt.Errorf("registrasi/sqlstore: membaca baris T_SPREADINGLIST: %w", err)
+		}
+		v := registrasi.DecimalOf(trimmed(tsi))
+		if total == nil {
+			total = new(big.Rat)
+		}
+		total.Add(total, v)
+		if trimmed(kind) == registrasi.TreatyFacOut {
+			if facOut == nil {
+				facOut = new(big.Rat)
+			}
+			facOut.Add(facOut, v)
+		}
+	}
+	return facOut, total, rows.Err()
+}
+
 // Recipient membaca login, negara, dan email penerima dari T_REINSURER.
 func (s *PLAStore) Recipient(ctx context.Context, code, name string) (registrasi.PLARecipientInfo, error) {
 	var login, country, email sql.NullString

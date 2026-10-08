@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -376,6 +377,7 @@ func (l *Service) reinsurancePLA(ctx context.Context, claim registrasi.Claim, ob
 	_, leader := registrasi.ASMCoinsShare(claim.Portal, members)
 
 	var offers []registrasi.FacOffer
+	var flatFacOut, flatTotal *big.Rat
 	offersRead := false
 	for _, s := range live {
 		var recipients []registrasi.PLARecipient
@@ -390,11 +392,21 @@ func (l *Service) reinsurancePLA(ctx context.Context, claim registrasi.Claim, ob
 					return out, err
 				}
 				offersRead = true
+				if hasFlatOffer(offers) {
+					flatFacOut, flatTotal, err = l.pla.SpreadingTSI(ctx, registrasi.SpreadingTSIQuery{
+						PolicyNumber: claim.Policy.Number, ProdKe: claim.Policy.ProdKe,
+						GroupPanel: string(claim.Policy.Line), ObjectID: object.ID, Coverage: coverage.ID,
+					})
+					if err != nil {
+						return out, err
+					}
+				}
 			}
 			recipients = registrasi.FacOutPLARecipients(registrasi.PLAReinsuranceInput{
 				TreatyType: s.TreatyKind, GroupPanel: string(claim.Policy.Line),
 				ObjectID: object.ID, ObjectName: object.Name, Coverage: coverage.ID, CoverageSeq: coverageSeq,
 				PercentASM: pct, Policy: policy, Offers: offers,
+				FlatFacOut: flatFacOut, FlatTotal: flatTotal,
 			})
 		default:
 			continue
@@ -408,6 +420,17 @@ func (l *Service) reinsurancePLA(ctx context.Context, claim registrasi.Claim, ob
 		}
 	}
 	return out, nil
+}
+
+// hasFlatOffer menyatakan ada Fac Offer tanpa JSONDATA — hanya saat itu T_SPREADINGLIST
+// dibaca.
+func hasFlatOffer(offers []registrasi.FacOffer) bool {
+	for _, o := range offers {
+		if strings.TrimSpace(o.FlatShare) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 type plaFile struct {
