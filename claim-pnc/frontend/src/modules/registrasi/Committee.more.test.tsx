@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import { CommitteeInbox, CommitteeStatus, TransferCommitteeButton } from './Committee'
+import { CommitteeInbox, CommitteeStatus } from './Committee'
 import { StagePath } from './StagePath'
 import type { CommitteeItem, Settlement } from './types'
 
@@ -84,68 +84,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   useSelectedPortal.getState().clear()
-})
-
-describe('TransferCommitteeButton', () => {
-  function button(extra: Partial<Settlement> = {}, lockedReason: string | null = null) {
-    return (
-      <TransferCommitteeButton
-        claimID="klaim-1"
-        taskID="tugas-1"
-        object={1}
-        coverage={2}
-        adjustment={3}
-        line={line(extra)}
-        lockedReason={lockedReason}
-      />
-    )
-  }
-
-  it('mengirim alamat baris dan menampilkan pelanggaran validasi', async () => {
-    installFetch((url) =>
-      url === '/api/registrasi/klaim/klaim-1/adjustment/komite'
-        ? json(422, {
-            kode: 'validasi_gagal',
-            pesan: 'x',
-            detail: [
-              { kode: 'a', field: '', pesan: 'Nilai di bawah ambang.' },
-              { kode: 'b', field: '', pesan: 'Rekening kosong.' },
-            ],
-          })
-        : undefined,
-    )
-    wrap(button())
-
-    await userEvent.click(screen.getByRole('button', { name: 'Transfer Komite' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nilai di bawah ambang. Rekening kosong.')
-    expect(calls[0]?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 2, adjustment: 3 })
-  })
-
-  it.each([
-    { name: 'galat API', answer: (): Answer => json(500, { kode: 'x', pesan: 'Komite sibuk.' }), text: 'Komite sibuk.' },
-    { name: 'jaringan putus', answer: (): Answer => 'putus', text: 'Tidak dapat menghubungi server Claim PNC.' },
-  ])('menampilkan galat transfer: $name', async ({ answer, text }) => {
-    installFetch((url) => (url.endsWith('/adjustment/komite') ? answer() : undefined))
-    wrap(button())
-
-    await userEvent.click(screen.getByRole('button', { name: 'Transfer Komite' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(text)
-  })
-
-  it('mematikan tombol untuk baris yang sudah ditransfer atau dikunci', () => {
-    installFetch(() => undefined)
-    const { unmount } = wrap(button({ komite_id: 'KMT-1' }))
-    expect(screen.getByRole('button', { name: 'Transfer Komite' })).toHaveAttribute(
-      'title',
-      'Sudah ditransfer ke komite.',
-    )
-    expect(screen.getByRole('button', { name: 'Transfer Komite' })).toBeDisabled()
-    unmount()
-
-    wrap(button({}, 'Simpan baris lebih dulu.'))
-    expect(screen.getByRole('button', { name: 'Transfer Komite' })).toHaveAttribute('title', 'Simpan baris lebih dulu.')
-    expect(screen.getByRole('button', { name: 'Transfer Komite' })).toBeDisabled()
-  })
 })
 
 describe('CommitteeStatus', () => {

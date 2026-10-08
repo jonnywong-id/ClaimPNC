@@ -344,6 +344,11 @@ type Coverage struct {
 	// USERBUSINESSPA). Jaminan yang sudah ditandai tidak menampilkan tombol itu lagi. Penyimpanan
 	// hanya MENGISI penanda ini, tidak pernah mengosongkannya.
 	AnalystTransferred bool
+
+	// Committee adalah isian modal "Transfer Claim ke Komite" (lihat CommitteeNote). Dibaca
+	// bersama klaim, tetapi ditulis hanya lewat ClaimRepo.SaveCommitteeNote — Save tidak
+	// menyentuhnya, supaya penyimpanan lain tidak mengosongkannya.
+	Committee CommitteeNote
 }
 
 // CauseOfLossPA adalah kode penyebab kerugian yang menjadi bagian kunci duplikasi

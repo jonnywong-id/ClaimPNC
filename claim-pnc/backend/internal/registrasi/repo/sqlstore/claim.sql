@@ -304,10 +304,23 @@ DELETE FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
 --
 -- Dikalikan 100 supaya domain menerima SEN, satuan yang dipakainya.
 SELECT URUTAN_OBJEK, URUTAN, COVERAGEID, CAUSEOFLOSSID, SUMTSI * 100, COVERAGENAME,
-       ISANALISTRANSFER
+       ISANALISTRANSFER,
+       CURICUMOFLOSS, EXTENTOFLOSS, LEGALLIABILITY, REMARKS, REMARKINVESTIGATION,
+       DIAGNOSE, CODEDIAGNOSE, DESCDIAGNOSE, TEMPRECEIVER, INITIALNAME, TANGGALCOMITEE
   FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
  WHERE CLAIMID = :1 AND DIHAPUS_PADA IS NULL
  ORDER BY URUTAN_OBJEK, URUTAN
+
+-- name: coverage_catatan_komite
+--
+-- Isian modal "Transfer Claim ke Komite" (Section/ClaimComitee_OC) satu jaminan — lihat
+-- registrasi.CommitteeNote. INITIALNAME dan TANGGALCOMITEE tidak ditulis: activity yang
+-- mengisinya (PNCSaveButton2) tidak ada di export.
+UPDATE POOLDATA.T_CLAIM_OBJECTCOVERAGE
+   SET CURICUMOFLOSS = :1, EXTENTOFLOSS = :2, LEGALLIABILITY = :3, REMARKS = :4,
+       REMARKINVESTIGATION = :5, DIAGNOSE = :6, CODEDIAGNOSE = :7, DESCDIAGNOSE = :8,
+       TEMPRECEIVER = :9
+ WHERE CLAIMID = :10 AND URUTAN_OBJEK = :11 AND URUTAN = :12 AND DIHAPUS_PADA IS NULL
 
 -- ============================================================================
 -- SPREADING — sisip, perbarui, dan hapus mengikuti isi layar

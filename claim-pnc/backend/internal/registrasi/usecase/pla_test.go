@@ -135,6 +135,20 @@ func TestPLAListNotesAndSinglePrint(t *testing.T) {
 	_, err = l.service.SavePLANotes(ctx, printPLA(task), map[string]string{"BUKAN-MILIK": "x"}, l.caller)
 	require.ErrorIs(t, err, registrasi.ErrInvalidAction)
 
+	// Isian Email (`.pyEmailAddress`) dapat diubah bersama Remarks; dipangkas, dan dibatasi
+	// panjang kolom EMAILPLA.
+	withEmail, err := l.service.SavePLADetails(ctx, printPLA(task), nil,
+		map[string]string{number: "  klaim@contoh.co.id; re@contoh.co.id  "}, l.caller)
+	require.NoError(t, err)
+	require.Equal(t, "klaim@contoh.co.id; re@contoh.co.id", withEmail.PLA[0].Info.Email)
+	reread, err := l.service.ListPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Equal(t, "klaim@contoh.co.id; re@contoh.co.id", reread.PLA[0].Info.Email)
+	_, err = l.service.SavePLADetails(ctx, printPLA(task), nil, map[string]string{number: strings.Repeat("a", 1001)}, l.caller)
+	violation(t, err, registrasi.ViolationPLAEmailTooLong)
+	_, err = l.service.SavePLADetails(ctx, printPLA(task), nil, map[string]string{"BUKAN-MILIK": "x@contoh.co.id"}, l.caller)
+	require.ErrorIs(t, err, registrasi.ErrInvalidAction)
+
 	command := printPLA(task)
 	command.Number = number
 	one, err := l.service.PrintPLA(ctx, command, l.caller)

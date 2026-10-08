@@ -59,6 +59,7 @@ import (
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/inputacceptation"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/konversicoins"
 	"claim-pnc/internal/konversicoverage"
 	"claim-pnc/internal/konversiobjectitemfire"
 	"claim-pnc/internal/laporanhasilai"
@@ -254,6 +255,7 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	konversicoinshttp "claim-pnc/internal/konversicoins/http"
 	konversicoveragehttp "claim-pnc/internal/konversicoverage/http"
 	konversiobjectitemfirehttp "claim-pnc/internal/konversiobjectitemfire/http"
 	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
@@ -1808,6 +1810,22 @@ func run() error {
 	})
 	defer konversiObjectItemFireHandler.Close()
 
+	// Konversi Coins (`MENU_ID 89`) — alat bantu data uji yang sama polanya: CoinsList dokumen
+	// polis JSON_POLIS.DATA_JSONBLOB di LIVE menjadi T_COINSLIST di TEST. Memakai koneksi
+	// KONVERSI_LIVE_* / KONVERSI_TEST_* yang sama.
+	konversiCoinsHandler := konversicoinshttp.NewHandler(konversicoinshttp.Options{
+		Config: konversicoins.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversicoinshttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversicoinshttp.Caller{}, false
+			}
+			return konversicoinshttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiCoinsHandler.Close()
+
 	slinkOJKHandler := slinkojkhttp.NewHandler(slinkojkhttp.Options{
 		Service: assembly.monitoringSlinkOJK,
 		GetCaller: func(ctx context.Context) (slinkojkhttp.Caller, bool) {
@@ -2536,6 +2554,7 @@ func run() error {
 				// konfigurasi modul, bukan portal yang dipilih pengguna.
 				konversicoveragehttp.Mount(protected, konversiCoverageHandler)
 				konversiobjectitemfirehttp.Mount(protected, konversiObjectItemFireHandler)
+				konversicoinshttp.Mount(protected, konversiCoinsHandler)
 
 				// Inbox Salvage memuat nomor klaim DAN nilai uang — nilai pengajuan
 				// PIC, nilai request balai lelang, nilai penawaran. Rutenya menuntut

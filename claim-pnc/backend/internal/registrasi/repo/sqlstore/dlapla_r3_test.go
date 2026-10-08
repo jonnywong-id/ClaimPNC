@@ -469,6 +469,13 @@ func TestPLAUpdateNoteSignatureAndEmails(t *testing.T) {
 	mock.ExpectExec(be4Q("pla_catatan")).WillReturnError(be4Boom)
 	require.ErrorContains(t, s.UpdateNote(ctx, "K1", "P1", 2, "baru"), "menyimpan catatan PLA P1")
 
+	mock.ExpectExec(be4Q("pla_email")).WithArgs("a@contoh.co.id", "K1", "P1", "2").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.UpdateEmail(ctx, "K1", "P1", 2, "a@contoh.co.id"))
+	mock.ExpectExec(be4Q("pla_email")).WithArgs(nil, "K1", "P1", "2").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.UpdateEmail(ctx, "K1", "P1", 2, ""))
+	mock.ExpectExec(be4Q("pla_email")).WillReturnError(be4Boom)
+	require.ErrorContains(t, s.UpdateEmail(ctx, "K1", "P1", 2, "x"), "menyimpan email PLA P1")
+
 	png := []byte{0x89, 'P', 'N', 'G'}
 	mock.ExpectQuery(be4Q("pla_ttd")).WithArgs("T1").
 		WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow(" BUDI ", `{"TTDWeb":"`+base64.StdEncoding.EncodeToString(png)+`"}`))

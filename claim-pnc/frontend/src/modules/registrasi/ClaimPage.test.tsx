@@ -838,7 +838,7 @@ describe('tahap Input Estimasi', () => {
 
   // Transfer Komite mengirim alamat baris adjustment; baris yang sudah ditransfer menampilkan
   // status komite per jenjang dan tombolnya mati (IsKomiteTransfer).
-  it('Transfer Komite mengirim baris adjustment, dan baris tertransfer menampilkan status komite', async () => {
+  it('Transfer ke Komite membuka modal ClaimComitee_OC: Kirim Komite menyimpan isian lalu mentransfer baris', async () => {
     const base = AT_ESTIMATE.klaim.objek[0]!
     const line = {
       tipe_pembayaran: '1', nama_tipe_pembayaran: 'Final', mata_uang: 'IDR', kurs_e4: 10_000,
@@ -861,7 +861,10 @@ describe('tahap Input Estimasi', () => {
     let current = atSurveyor([line, { ...line, komite_id: 'KMTN-00001', status_akseptasi: '0' }])
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
       let body: unknown = {}
-      if (url.endsWith('/adjustment/komite')) {
+      if (url.endsWith('/jaminan/isian-komite')) {
+        sent.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
+        body = current
+      } else if (url.endsWith('/adjustment/komite')) {
         sent.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
         body = { klaim: current.klaim, komite: { id: 'KMTN-00002', nomor_klaim: 'PNCN.26.0001', status: 'berjalan', anggota: [] } }
       } else if (url === '/api/registrasi/komite/KMTN-00001') {
@@ -880,18 +883,29 @@ describe('tahap Input Estimasi', () => {
     mount(<ClaimPage />)
     const user = userEvent.setup()
 
-    const buttons = await screen.findAllByRole('button', { name: 'Transfer Komite' })
-    expect(buttons).toHaveLength(2)
-    expect(buttons[0]).toBeEnabled()
-    expect(buttons[1]).toBeDisabled()
+    // Tombol hanya tampil pada baris yang belum ditransfer (`.IsKomiteTransfer==''`).
+    const buttons = await screen.findAllByRole('button', { name: 'Transfer ke Komite' })
+    expect(buttons).toHaveLength(1)
+    expect(screen.getByText('Sudah ditransfer')).toBeInTheDocument()
     expect(await screen.findByText(/Komite KMTN-00001 · jenjang 1\/2 menunggu KOMITE01/)).toBeInTheDocument()
     expect(screen.getByText('Belum ditransfer')).toBeInTheDocument()
 
-    current = atSurveyor([line, line])
     await user.click(buttons[0]!)
-    await waitFor(() => expect(sent).toHaveLength(1))
-    expect(sent[0]?.url).toBe('/api/registrasi/klaim/klaim-1/adjustment/komite')
-    expect(sent[0]?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, adjustment: 1 })
+    const dialog = await screen.findByRole('dialog', { name: 'Transfer Claim ke Komite' })
+    expect(within(dialog).getByLabelText('Kronologi Kejadian')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Polis Liability')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Penerima Klaim')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Kirim Analyst' })).not.toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('Kronologi Kejadian'), 'Gudang terbakar')
+
+    current = atSurveyor([line, line])
+    await user.click(within(dialog).getByRole('button', { name: 'Kirim Komite' }))
+    await waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent[0]?.url).toBe('/api/registrasi/klaim/klaim-1/jaminan/isian-komite')
+    expect(sent[0]?.body).toMatchObject({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, kronologi_kejadian: 'Gudang terbakar' })
+    expect(sent[1]?.url).toBe('/api/registrasi/klaim/klaim-1/adjustment/komite')
+    expect(sent[1]?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, adjustment: 1 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   // Anggota grup PIC Teknik (M_LOGIN_GROUP_PNC) boleh mengerjakan tugas milik PIC lain:

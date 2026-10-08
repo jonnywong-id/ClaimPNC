@@ -724,6 +724,8 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 
 				AnalystTransferred: c.AnalystTransferred,
 			}
+			committee := committeeNoteDTO(c.Committee)
+			cov.Committee = &committee
 			for _, s := range c.Spreading {
 				cov.Spreading = append(cov.Spreading, SpreadingDTO{
 					TreatyKind:   s.TreatyKind,

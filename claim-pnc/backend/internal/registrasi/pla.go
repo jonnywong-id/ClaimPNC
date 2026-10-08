@@ -144,6 +144,8 @@ type PLASource interface {
 	Save(ctx context.Context, p PLA) error
 	// UpdateNote mengganti catatan PLA yang sudah terbit.
 	UpdateNote(ctx context.Context, claimID, number string, revision int, note string) error
+	// UpdateEmail mengganti email penerima PLA yang sudah terbit (EMAILPLA).
+	UpdateEmail(ctx context.Context, claimID, number string, revision int, email string) error
 
 	// Signature membaca penanda tangan PLA sebuah entitas (POOLDATA.MTTD).
 	Signature(ctx context.Context, entity string) (name string, png []byte, err error)

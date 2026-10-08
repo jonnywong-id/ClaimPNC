@@ -27,6 +27,11 @@ type ClaimRepo interface {
 	// terhitung, dan pencarian mencakup klaim yang dibuat KEDUA sistem selama masa
 	// paralel — nomor `PNC-xxxx` dari Pega maupun `PNCN.YY.xxxx` dari sini.
 	FindDuplicates(ctx context.Context, key []DuplicateKey, exceptID string) ([]DuplicateClaim, error)
+
+	// SaveCommitteeNote menuliskan isian modal "Transfer Claim ke Komite" satu jaminan.
+	// object dan coverage berbasis 1 (URUTAN_OBJEK, URUTAN). InitialName dan CommitteeDate
+	// tidak ditulis.
+	SaveCommitteeNote(ctx context.Context, claimID string, object, coverage int, n CommitteeNote) error
 }
 
 // TaskRepo adalah seam ke penyimpanan tugas.

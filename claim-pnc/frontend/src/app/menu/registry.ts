@@ -403,6 +403,8 @@ export const MENU_ROUTES: Record<string, string> = {
   KonversiCoverage: '/konversi-coverage',
   // MENU_ID 88 "KonversiObjekItemFire" — PropertyItemList polis Fire LIVE → T_PROPERTYITEMLIST TEST.
   KonversiObjekItemFire: '/konversi-object-item-fire',
+  // MENU_ID 89 "Konversi Coins" — CoinsList JSON_POLIS.DATA_JSONBLOB LIVE → T_COINSLIST TEST.
+  KonversiCoins: '/konversi-coins',
   // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
   // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
   //

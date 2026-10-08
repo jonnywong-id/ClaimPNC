@@ -287,6 +287,15 @@ func (s *PLAStore) UpdateNote(ctx context.Context, claimID, number string, revis
 	return nil
 }
 
+// UpdateEmail mengganti email penerima PLA yang sudah terbit — isian Email layar PrintPLA_dtl.
+func (s *PLAStore) UpdateEmail(ctx context.Context, claimID, number string, revision int, email string) error {
+	_, err := executorFrom(ctx, s.db).ExecContext(ctx, loadQuery("pla_email"), emptyTextAsNil(email), claimID, number, strconv.Itoa(revision))
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menyimpan email PLA %s: %w", number, err)
+	}
+	return nil
+}
+
 // Signature membaca nama dan gambar tanda tangan (JSONDATA.TTDWeb, PNG base64).
 func (s *PLAStore) Signature(ctx context.Context, id string) (string, []byte, error) {
 	var name, body sql.NullString

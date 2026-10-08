@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyBaseRule>false</pyBaseRule>
+<pyDeletedObject/>
+<pyTemplate/>
+<pxHostId>jboss10403</pxHostId>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSet/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDateProp/>
+<pxSiblingCount/>
+<pyRuleStarts/>
+<pyDeleteSQL/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDate/>
+<pyStreamName/>
+<pyMemo>dones</pyMemo>
+<pxMoveFromSystem/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxTabLabel>@baseclass GCNM GetKodeDiagnosaKlaimPa</pxTabLabel>
+<pxInsName>@BASECLASS!GCNM!GETKODEDIAGNOSAKLAIMPA</pxInsName>
+<pxInstanceLockedKey/>
+<pyLabelOld>GetKodeDiagnosaKlaimPa</pyLabelOld>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyIsFromManageChangeLP/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject>false</pyHistoryObject>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceProp/>
+<pyStatus/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleFormStatusTime>20261008T105807.041 GMT</pyRuleFormStatusTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyClassName>@baseclass</pyClassName>
+<pyRuleName>@baseclass GCNM GetKodeDiagnosaKlaimPa</pyRuleName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateDateTime>20240326T013236.955 GMT</pxCreateDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>GetKodeDiagnosaKlaimPa</pyLabel>
+<pyRuleParamsStreamName/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalCreateSystemID/>
+<pyInterface/>
+<pxUpdateDateTime>20240326T023024.523 GMT</pxUpdateDateTime>
+<pyRequestType>GetKodeDiagnosaKlaimPa</pyRequestType>
+<pyRuleEnds/>
+<pxInstanceLockedBy/>
+<pyWorkKey/>
+<pyRuleSetVersion>01-03-03</pyRuleSetVersion>
+<pyDocumentTitle/>
+<pzChecksum>1352141038</pzChecksum>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInsId>@BASECLASS!GCNM!GETKODEDIAGNOSAKLAIMPA</pxInsId>
+<pyFormPost/>
+<pxCommitDateTime>20240328T101949.000 GMT</pxCommitDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyWindowTitle/>
+<pyHandlerFlow/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyCircumstanceVal/>
+<pyDescription/>
+<pyOpenSQL/>
+<pxOriginalCreateDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL @BASECLASS GCNM!GETKODEDIAGNOSAKLAIMPA #20240326T013236.955 GMT</pzDocumentKey>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceType/>
+<pzRuleSetVersionPatch>03</pzRuleSetVersionPatch>
+<pyShowJavaWindowName>GeneratedJava20261008T105807.060 GMT</pyShowJavaWindowName>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxSaveDateTime>20240326T023024.532 GMT</pxSaveDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL @BASECLASS GCNM!GETPROGRESSKLAIMLASTFORCHECK #20240320T125024.857 GMT</pzOriginalInstanceKey>
+<pySpecialtyComponentData/>
+<pyRelativePath/>
+<pxOriginalCreateOpName/>
+<pySaveSQL/>
+<pxOriginalCreateOperator/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyCircumstanceDefinition/>
+<pyUsage/>
+<pyBrowseSQL>select DIAGNOSIS_DESC as "City",DIAGNOSIS_KODE as "CityID" from sm.m_diagnosis@asmd.sinarmas.co.id where upper(DIAGNOSIS_KODE)=upper({TempKodeDiagnosa.NoteKasir}) or upper(DIAGNOSIS_DESC) like {ASIS:TempKodeDiagnosa.Remark}</pyBrowseSQL>
+<pxMoveImportDateTime>20240328T101948.622 GMT</pxMoveImportDateTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!GETKODEDIAGNOSAKLAIMPA #20240326T013236.955 GMT</pzInsKey>
+<pyCircumstanceTemplate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!GETKODEDIAGNOSAKLAIMPA #20240326T013236.955 GMT</pzInsKey>
+<pyLabel>01-03-03 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRestore>false</pyRestore>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPreview>false</pyPreview>
+<pySave>false</pySave>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

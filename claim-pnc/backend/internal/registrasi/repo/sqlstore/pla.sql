@@ -111,6 +111,13 @@ UPDATE POOLDATA.T_PLALIST
    SET NOTES = :1, ISPLA = '1'
  WHERE CLAIMID = :2 AND NOPLA = :3 AND REVISI = :4
 
+-- name: pla_email
+--
+-- Isian Email layar PrintPLA_dtl (`.pyEmailAddress`, pxTextArea Editable).
+UPDATE POOLDATA.T_PLALIST
+   SET EMAILPLA = :1
+ WHERE CLAIMID = :2 AND NOPLA = :3 AND REVISI = :4
+
 -- name: lod_email_tertanggung
 --
 -- Isian Email LOD (`SetDataEmailTertanggung` ← `ClaimData.Email`), yang diisi

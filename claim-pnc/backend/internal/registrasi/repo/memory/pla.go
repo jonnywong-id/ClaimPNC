@@ -116,6 +116,18 @@ func (s *PLA) UpdateNote(_ context.Context, claimID, number string, revision int
 	return fmt.Errorf("memory: PLA %s tidak ada", number)
 }
 
+func (s *PLA) UpdateEmail(_ context.Context, claimID, number string, revision int, email string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.Saved {
+		if s.Saved[i].ClaimID == claimID && s.Saved[i].Number == number && s.Saved[i].Revision == revision {
+			s.Saved[i].Info.Email = email
+			return nil
+		}
+	}
+	return fmt.Errorf("memory: PLA %s tidak ada", number)
+}
+
 func (s *PLA) Signature(_ context.Context, _ string) (string, []byte, error) { return "", nil, nil }
 
 // PASignature mengembalikan nama contoh tanpa gambar.

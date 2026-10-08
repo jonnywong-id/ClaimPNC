@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
@@ -129,6 +130,26 @@ func (l *Service) issuedOrNew(ctx context.Context, sc plaScope, by Caller) ([]re
 
 // SavePLANotes menyimpan isian REMARKS PLA yang sudah terbit, dikunci nomor PLA.
 func (l *Service) SavePLANotes(ctx context.Context, p PLACommand, notes map[string]string, by Caller) (PLAList, error) {
+	return l.SavePLADetails(ctx, p, notes, nil, by)
+}
+
+// PLAEmailMax adalah panjang maksimum isian Email PLA: T_PLALIST.EMAILPLA VARCHAR2(1000),
+// terukur dari ALL_TAB_COLUMNS 2026-10-08.
+const PLAEmailMax = 1000
+
+// SavePLADetails menyimpan isian REMARKS dan Email PLA yang sudah terbit (layar PrintPLA_dtl:
+// `.PLARemarks` dan `.pyEmailAddress`, keduanya Editable), dikunci nomor PLA. Email disimpan
+// apa adanya setelah dipangkas — Pega tidak memeriksa formatnya, dan satu isian dapat memuat
+// lebih dari satu alamat.
+func (l *Service) SavePLADetails(ctx context.Context, p PLACommand, notes, emails map[string]string, by Caller) (PLAList, error) {
+	for number, email := range emails {
+		if utf8.RuneCountInString(strings.TrimSpace(email)) > PLAEmailMax {
+			return PLAList{}, &registrasi.ValidationError{Violation: []registrasi.Violation{{
+				Code: registrasi.ViolationPLAEmailTooLong, Field: "email",
+				Message: "Email PLA " + number + " is limited to 1000 characters.",
+			}}}
+		}
+	}
 	sc, err := l.plaScopeOf(ctx, p, by)
 	if err != nil {
 		return PLAList{}, err
@@ -158,12 +179,27 @@ func (l *Service) SavePLANotes(ctx context.Context, p PLACommand, notes map[stri
 			list[i].Note = note
 			changed++
 		}
+		for number, email := range emails {
+			i, ok := known[number]
+			if !ok {
+				return fmt.Errorf("%w: PLA %s bukan milik jaminan ini", registrasi.ErrInvalidAction, number)
+			}
+			email = strings.TrimSpace(email)
+			if list[i].Info.Email == email {
+				continue
+			}
+			if err := l.pla.UpdateEmail(ctx, sc.claim.ID, number, sc.revision, email); err != nil {
+				return err
+			}
+			list[i].Info.Email = email
+			changed++
+		}
 		if changed == 0 {
 			return nil
 		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: sc.claim.ID, ClaimNumber: sc.claim.Number, Event: "PLA_CATATAN", Actor: by.Identity, At: now,
-			Note: "Catatan " + strconv.Itoa(changed) + " PLA diubah",
+			Note: "Remarks/Email " + strconv.Itoa(changed) + " PLA diubah",
 		})
 	})
 	if err != nil {

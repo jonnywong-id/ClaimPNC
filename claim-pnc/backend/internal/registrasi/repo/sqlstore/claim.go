@@ -678,8 +678,12 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			coverageName      sql.NullString
 			tsi               sql.NullInt64
 			analystFlag       sql.NullInt64
+			note              [10]sql.NullString
+			committeeDate     sql.NullTime
 		)
-		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi, &coverageName, &analystFlag); err != nil {
+		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi, &coverageName, &analystFlag,
+			&note[0], &note[1], &note[2], &note[3], &note[4], &note[5], &note[6], &note[7], &note[8], &note[9],
+			&committeeDate); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris coverage: %w", err)
 		}
 		i, ok := itemIndex[itemSeq]
@@ -697,6 +701,12 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			TSI:         registrasi.Money(tsi.Int64),
 
 			AnalystTransferred: analystFlag.Valid && analystFlag.Int64 == 1,
+			Committee: registrasi.CommitteeNote{
+				Circumstances: note[0].String, ExtentOfLoss: note[1].String, LegalLiability: note[2].String,
+				Remarks: note[3].String, RemarkInvestigation: note[4].String, Diagnose: note[5].String,
+				DiagnoseCode: note[6].String, DiagnoseDesc: note[7].String, Receiver: note[8].String,
+				InitialName: note[9].String, CommitteeDate: committeeDate.Time,
+			},
 		})
 	}
 	if err := coverageRow.Err(); err != nil {
@@ -917,6 +927,20 @@ func emptyTextAsNil(s string) any {
 		return nil
 	}
 	return s
+}
+
+// SaveCommitteeNote menuliskan isian modal "Transfer Claim ke Komite" satu jaminan.
+func (r *ClaimStore) SaveCommitteeNote(ctx context.Context, claimID string, object, coverage int, n registrasi.CommitteeNote) error {
+	res, err := executorFrom(ctx, r.db).ExecContext(ctx, loadQuery("coverage_catatan_komite"),
+		n.Circumstances, n.ExtentOfLoss, n.LegalLiability, n.Remarks, n.RemarkInvestigation,
+		n.Diagnose, n.DiagnoseCode, n.DiagnoseDesc, n.Receiver, claimID, object, coverage)
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menyimpan isian komite jaminan %d/%d: %w", object, coverage, err)
+	}
+	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
+		return fmt.Errorf("%w: jaminan %d/%d tidak ada", registrasi.ErrInvalidAction, object, coverage)
+	}
+	return nil
 }
 
 var _ registrasi.ClaimRepo = (*ClaimStore)(nil)

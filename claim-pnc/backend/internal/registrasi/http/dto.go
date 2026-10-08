@@ -86,6 +86,10 @@ type CoverageDTO struct {
 	// AnalystTransferred: jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya
 	// dikirim server; tombolnya tidak tampil lagi pada jaminan ini.
 	AnalystTransferred bool `json:"sudah_transfer_analis,omitempty"`
+
+	// Committee adalah isian modal "Transfer Claim ke Komite" — hanya dikirim server; diubah
+	// lewat POST /klaim/{id}/jaminan/isian-komite.
+	Committee *CommitteeNoteDTO `json:"isian_komite,omitempty"`
 }
 
 // InsuredItemDTO adalah satu objek pertanggungan.

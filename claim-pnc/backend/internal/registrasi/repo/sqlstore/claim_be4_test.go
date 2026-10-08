@@ -250,9 +250,11 @@ func be4GetSteps() []be4Step {
 			{int64(1), "OBJ1 ", "Gudang", "Jakarta", " KARYAWAN ", "19890524",
 				" A1234 ", "1", " DUMP TRUCK ", "HINO", nil, " CH-9 "},
 		}},
-		{name: "coverage_daftar", cols: 7, rows: [][]driver.Value{
-			{int64(1), int64(1), "COV1", "C1", int64(1000), "Kebakaran", int64(1)},
-			{int64(9), int64(1), "COVX", "C9", int64(5), "Yatim", nil}, // objek induk sudah ditandai hapus
+		{name: "coverage_daftar", cols: 18, rows: [][]driver.Value{
+			{int64(1), int64(1), "COV1", "C1", int64(1000), "Kebakaran", int64(1),
+				"Kronologi", "Rugi", "Liab", "Remark", "Inv", "Diag", "D1", "Desc", "1", "ABC", created},
+			{int64(9), int64(1), "COVX", "C9", int64(5), "Yatim", nil, // objek induk sudah ditandai hapus
+				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
 		}},
 		{name: "spreading_daftar", cols: 6, rows: [][]driver.Value{
 			{"OBJ1", "1", int64(1), "10001", "OR", int64(400000)},
@@ -298,6 +300,11 @@ func TestClaimGetReadsWholeTree(t *testing.T) {
 	require.Equal(t, 2, k.PUCLStatus)
 	require.Equal(t, "input-estimasi", k.CurrentStage)
 	require.Equal(t, registrasi.PositionInProgress, k.ProgressPositionStatus)
+	require.Equal(t, registrasi.CommitteeNote{
+		Circumstances: "Kronologi", ExtentOfLoss: "Rugi", LegalLiability: "Liab", Remarks: "Remark",
+		RemarkInvestigation: "Inv", Diagnose: "Diag", DiagnoseCode: "D1", DiagnoseDesc: "Desc",
+		Receiver: "1", InitialName: "ABC", CommitteeDate: time.Date(2026, 9, 20, 3, 0, 0, 0, time.UTC),
+	}, k.InsuredItem[0].Coverage[0].Committee)
 	require.Equal(t, registrasi.FlagUnset, k.ClaimFlag)
 	require.True(t, k.Policy.Declaration)
 	require.Equal(t, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), k.Policy.CoverageStart)
