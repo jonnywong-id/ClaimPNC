@@ -490,6 +490,7 @@ describe('tahap Input Estimasi', () => {
         body = RECORDS.dokumen
       }
       else if (url.endsWith('/progres')) body = RECORDS.progres
+      else if (url.endsWith('/aging')) body = { aging_amount: '1250000.00', tersedia: true }
       else if (url.startsWith('/api/registrasi/klaim/')) body = claim
       else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }, { id: '10001', nama: 'USD' }] }
       else if (url.startsWith('/api/registrasi/estimasi')) {
@@ -713,6 +714,8 @@ describe('tahap Input Estimasi', () => {
     await waitFor(() => expect(estimateBody).not.toBeNull())
     expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan')
     expect(estimateBody?.body).toMatchObject({ tugas_id: 'tugas-1', kembali: false })
+    // Layar InputSurveyor tidak punya Catatan ke PIC Teknis: catatan tersimpan dibiarkan.
+    expect(estimateBody?.body).not.toHaveProperty('catatan_pic_teknis')
   })
 
   // Choose Surveyor dirutekan ke PIC Teknik; bila tugas milik orang lain, Tambah dikunci
@@ -985,6 +988,22 @@ describe('tahap Input Estimasi', () => {
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Adjustment baru' })).not.toBeInTheDocument())
   })
 
+  // Catatan ke PIC Teknis (.ClaimData.Remark → T_CLAIM_PNC.REMARK) terisi dari klaim dan
+  // ikut terkirim saat Save.
+  it('Catatan ke PIC Teknis terisi dari klaim dan ikut tersimpan', async () => {
+    stubEstimate({ ...AT_ESTIMATE, klaim: { ...AT_ESTIMATE.klaim, catatan_pic_teknis: 'Catatan lama' } })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const note = await screen.findByRole('textbox', { name: 'Catatan ke PIC Teknis' })
+    expect(note).toHaveValue('Catatan lama')
+    await user.clear(note)
+    await user.type(note, 'Mohon cek survei')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan'))
+    expect(estimateBody?.body).toMatchObject({ catatan_pic_teknis: 'Mohon cek survei' })
+  })
+
   it('Save memakai jalur simpan, Back mengirim kembali', async () => {
     stubEstimate()
     mount(<ClaimPage />)
@@ -1141,6 +1160,7 @@ describe('tahap Input Estimasi', () => {
     await screen.findByRole('region', { name: 'Input Estimasi' })
     expect(screen.getByText('Catatan ke PIC Teknis')).toBeInTheDocument()
     expect(screen.getByText('TEKNIK01')).toBeInTheDocument()
+    expect(await screen.findByText('1.250.000')).toBeInTheDocument()
     expect(screen.getByText('Data Tidak Ada')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Estimasi Pembayaran' })).toHaveAttribute('aria-selected', 'true')
     for (const label of ['Nama Objek', 'Lokasi Object', 'Nilai Klaim', 'Nilai Adjuster', 'Jaminan', 'Deskripsi Item']) {

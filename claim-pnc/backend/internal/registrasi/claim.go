@@ -443,6 +443,10 @@ type Claim struct {
 	SubjectEmail         string
 	SalvageStatus        string
 
+	// TechnicalPICNote — "Catatan ke PIC Teknis" layar Input Estimasi, `.ClaimData.Remark`
+	// (POOLDATA.T_CLAIM_PNC.REMARK).
+	TechnicalPICNote string
+
 	EstimateValue Money
 	Currency      string
 

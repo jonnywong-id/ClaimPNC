@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -183,4 +184,38 @@ func TestSaveEstimateAlsoWorksAtInputSurveyor(t *testing.T) {
 
 	_, err = l.service.CompleteEstimate(ctx, command, l.caller)
 	require.ErrorIs(t, err, registrasi.ErrInvalidAction)
+}
+
+// Catatan ke PIC Teknis tersimpan bersama isian estimasi (T_CLAIM_PNC.REMARK); permintaan
+// tanpa catatan (nil) membiarkan catatan yang tersimpan.
+func TestEstimateSavesTechnicalPICNote(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+
+	command := oneEstimate(task.ID, registrasi.Rupiah(10), 1)
+	note := "  Mohon cek dokumen survei  "
+	command.TechnicalPICNote = &note
+	_, err := l.service.SaveEstimate(ctx, command, l.caller)
+	require.NoError(t, err)
+	stored, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, "Mohon cek dokumen survei", stored.TechnicalPICNote)
+
+	_, err = l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(10), 1), l.caller)
+	require.NoError(t, err)
+	stored, err = l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, "Mohon cek dokumen survei", stored.TechnicalPICNote)
+}
+
+// Catatan yang tidak muat di kolom REMARK (4000) ditolak.
+func TestEstimateRejectsTooLongTechnicalPICNote(t *testing.T) {
+	l := setup(t)
+	_, task := l.upToInputEstimate(t)
+	command := oneEstimate(task.ID, registrasi.Rupiah(10), 1)
+	note := strings.Repeat("a", registrasi.TechnicalPICNoteMax+1)
+	command.TechnicalPICNote = &note
+	_, err := l.service.SaveEstimate(context.Background(), command, l.caller)
+	violation(t, err, registrasi.ViolationTechnicalPICNoteTooLong)
 }

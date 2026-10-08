@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"claim-pnc/internal/registrasi"
 )
@@ -75,6 +76,9 @@ func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by 
 	claim.UpdatedAt = now
 
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
+		if err := l.adoptTechnicalPICOnFaceSheet(ctx, &claim, by); err != nil {
+			return err
+		}
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
@@ -134,4 +138,34 @@ func (l *Service) faceSheetInput(ctx context.Context, claim registrasi.Claim, p 
 		in.CurrencyName[c.ID] = c.Name
 	}
 	return in, nil
+}
+
+// adoptTechnicalPICOnFaceSheet memilih PIC Teknis klaim saat Claim Face Sheet diunduh, bila
+// klaim belum punya PIC — keputusan Work Owner 2026-10-08. Pega memilihnya lebih awal
+// (`getRandomTeam_act` saat klaim dibuka); di sini titiknya CFS, supaya PIC tampil di layar
+// Input Estimasi sebelum tombol Kirim PIC Teknik ditekan.
+//
+// Pemilihannya sama dengan router tahap Send To PIC Teknik (beban paling sedikit per lini),
+// dan berjalan di dalam transaksi CFS: bila CFS gagal tersimpan, beban petugas tidak ikut
+// naik. Saat Kirim PIC Teknik ditekan, PIC yang sudah tercatat ini yang menerima tugasnya
+// (AssignedTechnicalPIC), sehingga bebannya tidak dinaikkan dua kali.
+//
+// Lini tanpa petugas aktif dibiarkan kosong — antrean ServicePNC bukan nama orang.
+func (l *Service) adoptTechnicalPICOnFaceSheet(ctx context.Context, claim *registrasi.Claim, by Caller) error {
+	if strings.TrimSpace(claim.TechnicalPIC) != "" {
+		return nil
+	}
+	stage, ok := l.flow.Stage(registrasi.StageSendToTechnicalPIC)
+	if !ok {
+		return fmt.Errorf("registrasi/usecase: tahap %q tidak ada di flow", registrasi.StageSendToTechnicalPIC)
+	}
+	to, err := l.assigner.Assign(ctx, stage, *claim, by.Identity)
+	if err != nil {
+		return fmt.Errorf("registrasi/usecase: memilih PIC Teknis: %w", err)
+	}
+	if strings.TrimSpace(to.Operator) == registrasi.OperatorUnassigned {
+		return nil
+	}
+	registrasi.AdoptTechnicalPIC(claim, stage, to)
+	return nil
 }

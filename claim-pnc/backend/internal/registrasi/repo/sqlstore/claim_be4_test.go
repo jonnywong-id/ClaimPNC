@@ -18,9 +18,10 @@ import (
 func be4Claim() registrasi.Claim {
 	at := time.Date(2026, 9, 20, 3, 0, 0, 0, time.UTC)
 	return registrasi.Claim{
-		ID:     "K1",
-		Number: "",
-		Portal: "ASM",
+		ID:               "K1",
+		Number:           "",
+		Portal:           "ASM",
+		TechnicalPICNote: "Catatan untuk PIC",
 		Policy: registrasi.Policy{
 			Number: "POL-1", Line: registrasi.LineTravel,
 			Coinsurance: registrasi.Coinsurance{ShareASM: 600_000, HasShare: true},
@@ -92,9 +93,9 @@ func TestClaimSaveWritesWholeTree(t *testing.T) {
 	k := be4Claim()
 
 	// Nomor kosong ditulis NULL, ExGratia "Y", bagian ASM dalam persen, ID di akhir.
-	steps[0].args = be4AnyArgs(57, map[int]driver.Value{
-		0: nil, 1: "ASM", 2: "POL-1", 3: "005", 20: "Y", 26: nil, 36: 60.0, 55: nil, 56: "K1"})
-	steps[1].args = be4AnyArgs(59, map[int]driver.Value{55: nil, 56: "K1", 57: "adminpnc"})
+	steps[0].args = be4AnyArgs(58, map[int]driver.Value{
+		0: nil, 1: "ASM", 2: "POL-1", 3: "005", 20: "Y", 26: nil, 36: 60.0, 55: nil, 56: "Catatan untuk PIC", 57: "K1"})
+	steps[1].args = be4AnyArgs(60, map[int]driver.Value{55: nil, 56: "Catatan untuk PIC", 57: "K1", 58: "adminpnc"})
 	steps[2].args = []driver.Value{"K1"}
 	steps[3].args = []driver.Value{"K1", "OBJ1", "2"}
 	steps[4].args = []driver.Value{"K1", "OBJ-LAMA", "1"}
@@ -184,7 +185,7 @@ func TestClaimSaveUpdatesExistingHeader(t *testing.T) {
 	db, mock := be4DB(t)
 	k := registrasi.Claim{ID: "K2", Number: "PNCN.26.1", LargeLossNoticed: true}
 	mock.ExpectExec(be4Q("klaim_perbarui")).
-		WithArgs(be4AnyArgs(57, map[int]driver.Value{0: "PNCN.26.1", 8: nil, 26: "1", 36: nil, 55: nil, 56: "K2"})...).
+		WithArgs(be4AnyArgs(58, map[int]driver.Value{0: "PNCN.26.1", 8: nil, 26: "1", 36: nil, 55: nil, 56: nil, 57: "K2"})...).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(be4Q("coverage_kunci")).WithArgs("K2").
 		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d"}))
@@ -197,7 +198,7 @@ func TestClaimSaveUpdatesExistingHeader(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// be4GetRow membentuk baris klaim_ambil (59 kolom).
+// be4GetRow membentuk baris klaim_ambil (60 kolom).
 func be4GetRow(created time.Time) []driver.Value {
 	loss := time.Date(2026, 9, 1, 0, 0, 0, 0, clock.ZoneWIB)
 	return []driver.Value{
@@ -215,7 +216,7 @@ func be4GetRow(created time.Time) []driver.Value {
 		"Koas", "LEADER", int64(600000), "ASM",
 		"Indonesia", "ID", "DKI", "31", "Jakarta", "3171", "Gambir", "317101", "RW01", "R1", "10110",
 		"2", "Mencurigakan",
-		"lod@contoh", "rekomendasi", "subjek", " 2 ", nil,
+		"lod@contoh", "rekomendasi", "subjek", " 2 ", nil, "catatan PIC",
 	}
 }
 
@@ -234,7 +235,7 @@ func be4GetSteps() []be4Step {
 		}
 	}
 	return []be4Step{
-		{name: "klaim_ambil", cols: 59, rows: [][]driver.Value{be4GetRow(created)}, args: []driver.Value{"K1"}},
+		{name: "klaim_ambil", cols: 60, rows: [][]driver.Value{be4GetRow(created)}, args: []driver.Value{"K1"}},
 		{name: "tugas_terbuka_klaim", cols: 11, args: []driver.Value{"K1"}, rows: [][]driver.Value{
 			{"T1", "K1", "PNCN.26.7", "input-estimasi", "WORKLIST", nil, "picteknik", created, nil, nil, nil},
 			{"T2", "K1", "PNCN.26.7", "lain", "WORKLIST", nil, "x", created, nil, nil, nil},
@@ -303,6 +304,7 @@ func TestClaimGetReadsWholeTree(t *testing.T) {
 	require.Equal(t, registrasi.Coinsurance{Name: "Koas", Role: "LEADER", ShareASM: 600000, HasShare: true}, k.Policy.Coinsurance)
 	require.Equal(t, "Gambir", k.Area.District)
 	require.Equal(t, "Register", k.ClaimStatusName)
+	require.Equal(t, "catatan PIC", k.TechnicalPICNote)
 
 	require.Len(t, k.InsuredItem, 1)
 	require.Equal(t, "KARYAWAN", k.InsuredItem[0].Job)
@@ -339,7 +341,7 @@ func TestClaimGetReadsWholeTree(t *testing.T) {
 func TestClaimGetByNumberAndNotFound(t *testing.T) {
 	db, mock := be4DB(t)
 	mock.ExpectQuery(be4Q("klaim_ambil_per_nomor")).WithArgs("PNCN.26.9").
-		WillReturnRows(sqlmock.NewRows(be4Cols(59)))
+		WillReturnRows(sqlmock.NewRows(be4Cols(60)))
 	_, err := NewClaimStore(db).GetByNumber(context.Background(), "PNCN.26.9")
 	require.ErrorIs(t, err, registrasi.ErrClaimNotFound)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -348,11 +350,11 @@ func TestClaimGetByNumberAndNotFound(t *testing.T) {
 // TestClaimGetWithoutPolicyOrStatus membuktikan klaim selesai tanpa polis dan status tidak membaca keduanya.
 func TestClaimGetWithoutPolicyOrStatus(t *testing.T) {
 	db, mock := be4DB(t)
-	row := make([]driver.Value, 59)
+	row := make([]driver.Value, 60)
 	row[0] = "K3"
 	row[3] = "" // nomor polis kosong: kolom ini di-scan ke string biasa, bukan NullString
 	row[25] = "SELESAI"
-	mock.ExpectQuery(be4Q("klaim_ambil")).WillReturnRows(sqlmock.NewRows(be4Cols(59)).AddRow(row...))
+	mock.ExpectQuery(be4Q("klaim_ambil")).WillReturnRows(sqlmock.NewRows(be4Cols(60)).AddRow(row...))
 	mock.ExpectQuery(be4Q("tugas_terbuka_klaim")).WillReturnRows(sqlmock.NewRows(be4Cols(11)))
 	for _, name := range []string{"objek_daftar", "coverage_daftar", "spreading_daftar", "item_daftar",
 		"estimasi_daftar", "adjustment_daftar", "penerima_daftar"} {

@@ -42,6 +42,7 @@ func TestRoutesRejectMissingSession(t *testing.T) {
 		{http.MethodGet, "/registrasi/mata-uang"},
 		{http.MethodGet, "/registrasi/klaim/K1/pilihan-item"},
 		{http.MethodGet, "/registrasi/klaim/K1/pilihan-coverage"},
+		{http.MethodGet, "/registrasi/klaim/K1/aging"},
 		{http.MethodGet, "/registrasi/klaim/K1/survey"},
 		{http.MethodGet, "/registrasi/klaim/K1/dokumen"},
 		{http.MethodPost, "/registrasi/klaim/K1/dokumen"},
@@ -173,6 +174,7 @@ func TestClaimReadRoutesUnknownClaim(t *testing.T) {
 		"/registrasi/klaim/K-TIDAK-ADA/progres",
 		"/registrasi/klaim/K-TIDAK-ADA/pilihan-item",
 		"/registrasi/klaim/K-TIDAK-ADA/pilihan-coverage",
+		"/registrasi/klaim/K-TIDAK-ADA/aging",
 	} {
 		w := e.do(t, http.MethodGet, p, nil)
 		requireError(t, w, http.StatusNotFound, registrasihttp.CodeClaimNotFound)
@@ -361,4 +363,17 @@ func TestCoverageOptionsFollowRequestedObject(t *testing.T) {
 	w = e.do(t, http.MethodGet, "/registrasi/klaim/"+est.Claim.ID+"/pilihan-coverage?objek=OBJ-TIDAK-ADA", nil)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Empty(t, decode[registrasihttp.CoverageOptionsResponse](t, w).Option)
+}
+
+// Aging Amount dibaca dari layanan premi (pengisi memori menjawab AgingAmount 0).
+func TestPremiumAgingReadsPremiumService(t *testing.T) {
+	e := newHTTPEnv(t)
+	out := e.upToInputEstimate(t)
+
+	w := e.do(t, http.MethodGet, "/registrasi/klaim/"+out.Claim.ID+"/aging", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := decode[registrasihttp.PremiumAgingResponse](t, w)
+	require.True(t, body.Available)
+	require.NotNil(t, body.Amount)
+	require.Equal(t, "0.00", *body.Amount)
 }

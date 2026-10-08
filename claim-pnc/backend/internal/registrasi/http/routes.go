@@ -121,6 +121,9 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/adjustment/riwayat", func(w http.ResponseWriter, r *http.Request) {
 			h.SettlementHistory(w, r, chi.URLParam(r, "klaimID"))
 		})
+		sub.Get("/klaim/{klaimID}/aging", func(w http.ResponseWriter, r *http.Request) {
+			h.PremiumAging(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Post("/klaim/{klaimID}/adjustment/hitung", func(w http.ResponseWriter, r *http.Request) {
 			h.PreviewSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})

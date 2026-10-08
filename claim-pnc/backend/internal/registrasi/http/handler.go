@@ -782,6 +782,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		RemarkRecommendation: k.RemarkRecommendation,
 		SubjectEmail:         k.SubjectEmail,
 		SalvageStatus:        k.SalvageStatus,
+		TechnicalPICNote:     k.TechnicalPICNote,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,

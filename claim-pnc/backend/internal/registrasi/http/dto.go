@@ -221,6 +221,9 @@ type ClaimDTO struct {
 	SubjectEmail         string `json:"subjek_email"`
 	SalvageStatus        string `json:"status_salvage"`
 
+	// TechnicalPICNote adalah Catatan ke PIC Teknis (T_CLAIM_PNC.REMARK).
+	TechnicalPICNote string `json:"catatan_pic_teknis"`
+
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
 	SLIKNumber         string `json:"nomor_slik"`

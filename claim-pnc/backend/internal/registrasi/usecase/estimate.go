@@ -37,6 +37,10 @@ type EstimateCommand struct {
 
 	// Return menandai tombol Back: klaim kembali ke Input Register (Decision5/Decision6).
 	Return bool
+
+	// TechnicalPICNote adalah Catatan ke PIC Teknis (`.ClaimData.Remark`). nil berarti
+	// catatan yang tersimpan tidak diubah.
+	TechnicalPICNote *string
 }
 
 // Currencies membaca pilihan Mata Uang.
@@ -178,6 +182,13 @@ func (l *Service) prepareEstimate(ctx context.Context, p EstimateCommand, by Cal
 	now := l.clock.Now().UTC()
 	if err := l.applyEstimate(ctx, &claim, p, now); err != nil {
 		return registrasi.Claim{}, registrasi.Task{}, time.Time{}, err
+	}
+	if p.TechnicalPICNote != nil {
+		note := strings.TrimSpace(*p.TechnicalPICNote)
+		if err := registrasi.ValidateTechnicalPICNote(note); err != nil {
+			return registrasi.Claim{}, registrasi.Task{}, time.Time{}, err
+		}
+		claim.TechnicalPICNote = note
 	}
 	claim.UpdatedBy = by.Identity
 	claim.UpdatedAt = now

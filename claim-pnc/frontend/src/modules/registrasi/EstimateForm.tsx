@@ -5,7 +5,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { simpanBerkas } from '@/api/client'
 import { centsToRupiah, formatRupiah, rupiahToCents, todayWIB } from '@/components/format'
 
-import { useCurrencies, useFaceSheet, useItemOptions, useSaveEstimate, violationsFrom } from './api'
+import { useCurrencies, useFaceSheet, useItemOptions, usePremiumAging, useSaveEstimate, violationsFrom } from './api'
 import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { PLADialog } from './PLADialog'
 import {
@@ -137,10 +137,11 @@ function fromClaim(klaim: Claim): ItemForm[][][] {
   )
 }
 
-function toRequest(taskID: string, form: ItemForm[][][], kembali: boolean): EstimateRequest {
+function toRequest(taskID: string, form: ItemForm[][][], kembali: boolean, note?: string): EstimateRequest {
   return {
     tugas_id: taskID,
     kembali,
+    ...(note !== undefined && { catatan_pic_teknis: note }),
     objek: form.map((coverages) => ({
       coverage: coverages.map((items) => ({
         item: items.map(
@@ -189,8 +190,12 @@ function currencyName(code: string, list: CurrencyOption[]): string {
  * InputSurveyor (`ClaimSurvey_sect`) — sehingga isiannya hidup di sini, bukan di salah satu
  * layar.
  */
-export function useEstimateEditor(klaim: Claim, tugas: Task) {
+export function useEstimateEditor(klaim: Claim, tugas: Task, options: { withNote?: boolean } = {}) {
   const [form, setForm] = useState<ItemForm[][][]>(() => fromClaim(klaim))
+  // Catatan ke PIC Teknis (`.ClaimData.Remark`) — hanya milik layar Input Estimasi. Layar
+  // InputSurveyor tidak mengirimnya, sehingga catatan tersimpan dibiarkan.
+  const [note, setNote] = useState(klaim.catatan_pic_teknis ?? '')
+  const sentNote = options.withNote ? note : undefined
   const save = useSaveEstimate(true)
   const faceSheet = useFaceSheet(klaim.id)
   // Jaminan yang dialog Print PLA-nya sedang terbuka.
@@ -203,7 +208,7 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
    */
   function downloadFaceSheet(i: number, j: number) {
     faceSheet.reset()
-    save.mutate(toRequest(tugas.id, form, false), {
+    save.mutate(toRequest(tugas.id, form, false, sentNote), {
       onSuccess: (result) => {
         afterSave(result)
         faceSheet.mutate(
@@ -235,6 +240,7 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
 
   function afterSave(result: { klaim: Claim }) {
     setForm(fromClaim(result.klaim))
+    setNote(result.klaim.catatan_pic_teknis ?? '')
   }
 
   return {
@@ -247,10 +253,12 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
     updateItem,
     afterSave,
     downloadFaceSheet,
+    note,
+    setNote,
     /** Permintaan simpan dari isian yang sedang tampil. */
-    request: (kembali: boolean) => toRequest(tugas.id, form, kembali),
+    request: (kembali: boolean) => toRequest(tugas.id, form, kembali, sentNote),
     /** Save tanpa menutup tahap. */
-    saveNow: () => save.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave }),
+    saveNow: () => save.mutate(toRequest(tugas.id, form, false, sentNote), { onSuccess: afterSave }),
     hasFaceSheet: () => claimHasFaceSheet(form),
   }
 }
@@ -358,8 +366,8 @@ export function EstimatePaymentTable({
 }
 
 export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
-  const editor = useEstimateEditor(klaim, tugas)
-  const { form, save, faceSheet, afterSave } = editor
+  const editor = useEstimateEditor(klaim, tugas, { withNote: true })
+  const { save, faceSheet, afterSave } = editor
   const [tab, setTab] = useState<Tab>('Estimasi Pembayaran')
   const complete = useSaveEstimate(false)
   const currencies = useCurrencies()
@@ -403,7 +411,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             tone="utama"
             disabled={busy || !editor.hasFaceSheet()}
             title={editor.hasFaceSheet() ? undefined : 'Download Claim Face Sheet lebih dulu.'}
-            onClick={() => complete.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave })}
+            onClick={() => complete.mutate(editor.request(false), { onSuccess: afterSave })}
           >
             {complete.isPending ? 'Memproses…' : 'Kirim PIC Teknik'}
           </Button>
@@ -412,18 +420,24 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <label className="mt-4 block text-sm font-semibold text-slate-800">
         Catatan ke PIC Teknis
+        {/* `.ClaimData.Remark` → POOLDATA.T_CLAIM_PNC.REMARK (VARCHAR2 4000), tersimpan bersama
+            Save, Download Claim Face Sheet, Kirim PIC Teknik, dan Back. */}
         <textarea
-          disabled
           rows={4}
-          className="mt-1 block w-full rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm font-normal"
-          placeholder="Belum dapat disimpan: POOLDATA.T_CLAIM_PNC belum punya kolom untuk catatan ini."
+          maxLength={4000}
+          value={editor.note}
+          onChange={(e) => editor.setNote(e.target.value)}
+          disabled={busy}
+          className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm font-normal disabled:bg-slate-50"
         />
       </label>
 
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
           <dt className="text-sm font-semibold text-slate-800">Aging Amount</dt>
-          <dd className="text-sm text-slate-600">—</dd>
+          <dd className="text-sm text-slate-600">
+            <PremiumAgingValue claimID={klaim.id} />
+          </dd>
         </div>
         <div>
           <dt className="text-sm font-semibold text-slate-800">PIC Teknis</dt>
@@ -500,7 +514,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         <Button
           tone="halus"
           disabled={busy}
-          onClick={() => complete.mutate(toRequest(tugas.id, form, true), { onSuccess: afterSave })}
+          onClick={() => complete.mutate(editor.request(true), { onSuccess: afterSave })}
         >
           Back
         </Button>
@@ -516,6 +530,20 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       </div>
     </section>
   )
+}
+
+/**
+ * Isi Aging Amount — `.PaymentData.AgingAmount` dari layanan premi, angka apa adanya
+ * (section Pega menampilkannya sebagai teks, tanpa lambang mata uang).
+ */
+function PremiumAgingValue({ claimID }: { claimID: string }) {
+  const aging = usePremiumAging(claimID)
+  if (aging.isPending) return <>Memuat…</>
+  if (aging.isError || !aging.data?.tersedia) return <>Premium service could not be reached.</>
+  const amount = aging.data.aging_amount
+  if (amount === null) return <>—</>
+  const value = Number(amount)
+  return <>{Number.isFinite(value) ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value) : amount}</>
 }
 
 function ObjectRows({ children }: { children: ReactNode }) {

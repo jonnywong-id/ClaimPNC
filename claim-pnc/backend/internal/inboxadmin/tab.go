@@ -124,6 +124,10 @@ type Tab struct {
 	// Hanya kueri yang bergabung ke POOLDATA.BUSINESS dan BUSINESSGROUP yang dapat
 	// menyaringnya — empat dari tujuh.
 	SupportsBusinessFilter bool
+
+	// PageSize adalah jumlah baris per halaman tab ini bila pemanggil tidak menyebut
+	// `ukuran`. Nol berarti DefaultPageSize.
+	PageSize int
 }
 
 // Kolom yang dipakai berulang, disusun sekali supaya judulnya tidak dapat berbeda antar tab
@@ -170,6 +174,8 @@ var tabs = []Tab{
 		// 2026-10-07 dari tangkapan layar Pega yang berjalan.
 		Name:        "Outstanding",
 		Description: "Seluruh klaim PNC yang masih berjalan pada tahap Register, Estimasi, atau Estimation.",
+		// 10 baris per halaman — permintaan Work Owner 2026-10-08.
+		PageSize: 10,
 		Columns: []Column{
 			colCaseID, colPolicyNumber, colInsuredName, colBusinessName, colBusinessSrc,
 			colBranchName, colLossDate, colReportDate, colInputDate,

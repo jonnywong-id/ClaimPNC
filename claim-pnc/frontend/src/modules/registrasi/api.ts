@@ -20,6 +20,7 @@ import {
   type ItemOptionsResponse,
   type CoverageOptionsResponse,
   type SettlementHistoryResponse,
+  type PremiumAgingResponse,
   type SurveysResponse,
   type DocumentLink,
   type DocumentsResponse,
@@ -277,6 +278,23 @@ export function useSettlementHistory(claimID: string, object: number, coverage: 
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/riwayat?${query}`,
         { token, portal },
       ),
+  })
+}
+
+/**
+ * Aging Amount polis klaim (`.PaymentData.AgingAmount`), dibaca dari layanan premi. Layanan
+ * yang tidak dapat dihubungi dijawab `tersedia: false`, bukan galat.
+ */
+export function usePremiumAging(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'aging', claimID, portal, token],
+    enabled: claimID !== '',
+    staleTime: 5 * 60 * 1000,
+    queryFn: () =>
+      callAPI<PremiumAgingResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/aging`, { token, portal }),
   })
 }
 

@@ -237,6 +237,8 @@ export type EstimateRequest = {
   tugas_id: string
   kembali: boolean
   objek: { coverage: { item: ObjectItem[] }[] }[]
+  /** Catatan ke PIC Teknis; tidak dikirim berarti catatan tersimpan dibiarkan. */
+  catatan_pic_teknis?: string
 }
 
 export type CurrencyOption = { id: string; nama: string }
@@ -448,6 +450,8 @@ export type Claim = {
   nomor_slik: string
   ex_gratia: boolean
   user_teknis: string
+  /** Catatan ke PIC Teknis layar Input Estimasi (T_CLAIM_PNC.REMARK). */
+  catatan_pic_teknis?: string
   rcv_id: string
   objek: InsuredItem[]
   /** ClaimData.ReceiverClaim — penerima klaim (T_CLAIM_RECEIVER). */
@@ -739,3 +743,6 @@ export type CommitteeStatusRow = {
 export type CashierHistoryRow = { pic_teknik: string; tanggal: string; status_kasir: string; komentar: string }
 
 export type SettlementHistoryResponse = { komite: CommitteeStatusRow[]; kasir: CashierHistoryRow[] }
+
+/** Jawaban GET /klaim/{id}/aging — `.PaymentData.AgingAmount` dari layanan premi. */
+export type PremiumAgingResponse = { aging_amount: string | null; tersedia: boolean }

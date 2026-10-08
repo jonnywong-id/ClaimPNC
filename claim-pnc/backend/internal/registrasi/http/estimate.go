@@ -47,6 +47,10 @@ type EstimateRequest struct {
 	TaskID string              `json:"tugas_id"`
 	Return bool                `json:"kembali"`
 	Object []EstimateObjectDTO `json:"objek"`
+
+	// TechnicalPICNote adalah Catatan ke PIC Teknis. Tidak dikirim (null) berarti catatan
+	// yang tersimpan dibiarkan — layar Input Surveyor memakai endpoint yang sama tanpa isian ini.
+	TechnicalPICNote *string `json:"catatan_pic_teknis"`
 }
 
 // CurrencyDTO adalah satu pilihan Mata Uang.
@@ -77,7 +81,7 @@ func itemDTO(items []registrasi.ObjectItem) []ObjectItemDTO {
 }
 
 func estimateCommand(b EstimateRequest) (usecase.EstimateCommand, error) {
-	command := usecase.EstimateCommand{TaskID: strings.TrimSpace(b.TaskID), Return: b.Return}
+	command := usecase.EstimateCommand{TaskID: strings.TrimSpace(b.TaskID), Return: b.Return, TechnicalPICNote: b.TechnicalPICNote}
 	for _, o := range b.Object {
 		var coverages [][]usecase.ObjectItemInput
 		for _, c := range o.Coverage {

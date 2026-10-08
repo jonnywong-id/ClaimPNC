@@ -144,5 +144,10 @@ func (s *Service) List(
 		rows[i] = rows[i].WithAging(now)
 	}
 
+	// Ukuran halaman tab berlaku hanya bila pemanggil tidak menyebutnya sendiri.
+	if page.Size < 1 && query.Tab.PageSize > 0 {
+		page.Size = query.Tab.PageSize
+	}
+
 	return Listed{Page: inboxadmin.Slice(rows, page), Query: query}, nil
 }
