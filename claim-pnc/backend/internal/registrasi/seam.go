@@ -126,6 +126,15 @@ type Assigner interface {
 	Assign(ctx context.Context, stage Stage, claim Claim, caller string) (Assignee, error)
 }
 
+// AttendanceSource adalah seam ke absensi PIC — Connect REST `ServiceGetDataAbsenPIC`
+// (`GET .../HCC/Absen/attendance/{PIC}/{yyyyMMdd}?caseId=`).
+//
+// Galat dikembalikan apa adanya; pemanggil memperlakukannya seperti Pega (step 15.6 menelan
+// galat penguraian), yaitu sebagai absensi kosong.
+type AttendanceSource interface {
+	Attendance(ctx context.Context, operator string, date time.Time, claimNumber string) (Attendance, error)
+}
+
 // NotificationKind menamai peristiwa yang layak diberitahukan ke luar modul.
 type NotificationKind string
 

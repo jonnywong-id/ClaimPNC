@@ -252,16 +252,16 @@ func TestEmptyKeywordIsSentAsNull(t *testing.T) {
 
 func TestQueueQueriesReadClaimListAdmin(t *testing.T) {
 	// Keputusan Work Owner 2026-10-07: antrean dibaca dari POOLDATA.T_CLAIMLIST_ADMIN,
-	// bukan dari tabel kerja dan tabel penugasan Pega. Satu-satunya pengecualian adalah
-	// kolom PUCL pada tab PUCL, yang tidak ada di T_CLAIMLIST_ADMIN.
+	// bukan dari tabel kerja dan tabel penugasan Pega. Kolom PUCL pada tab PUCL, yang tidak
+	// ada di T_CLAIMLIST_ADMIN, sejak 2026-10-08 dibaca dari POOLDATA.TC_PNC_PUCL — tabel
+	// kerja Pega tidak dipakai lagi oleh tab mana pun.
 	for _, tab := range inboxadmin.Tabs() {
 		name := plans[tab.Code].name
 		upper := strings.ToUpper(query(name))
 		require.Containsf(t, upper, "POOLDATA.T_CLAIMLIST_ADMIN", "kueri %s", name)
 		require.NotContainsf(t, upper, "PC_ASSIGN_WORKLIST", "kueri %s", name)
 		require.NotContainsf(t, upper, "PC_ASSIGN_WORKBASKET", "kueri %s", name)
-		if name != "list_rcl_pucl" {
-			require.NotContainsf(t, upper, "PC_ASM_FW_GCNMFW_WORK", "kueri %s", name)
-		}
+		require.NotContainsf(t, upper, "PC_ASM_FW_GCNMFW_WORK", "kueri %s", name)
 	}
+	require.Contains(t, strings.ToUpper(query("list_rcl_pucl")), "POOLDATA.TC_PNC_PUCL")
 }

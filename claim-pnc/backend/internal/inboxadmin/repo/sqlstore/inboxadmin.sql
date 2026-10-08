@@ -533,10 +533,10 @@ SELECT A.PYID                                            AS CASE_ID,
 -- Perhatikan saringannya berbeda dari tab lain: ia hanya mengecualikan
 -- `Resolved-Completed`, sehingga klaim ber-`Resolved-Rejected` TETAP muncul. Itu masuk
 -- akal untuk antrean penolakan, dan dibawa apa adanya.
-SELECT A.PYID                                            AS CASE_ID,
-       A.PZINSKEY                                        AS REFERENCE,
-       A.POLICYNO                                        AS POLICY_NUMBER,
-       A.QQNAME                                          AS INSURED_NAME,
+SELECT L.PYID                                            AS CASE_ID,
+       L.PZINSKEY                                        AS REFERENCE,
+       L.POLICYNO                                        AS POLICY_NUMBER,
+       L.QQNAME                                          AS INSURED_NAME,
        CAST(NULL AS VARCHAR2(200))                       AS BUSINESS_NAME,
        CAST(NULL AS VARCHAR2(200))                       AS BUSINESS_SOURCE,
        CAST(NULL AS VARCHAR2(200))                       AS BRANCH_NAME,
@@ -556,28 +556,40 @@ SELECT A.PYID                                            AS CASE_ID,
        CAST(NULL AS VARCHAR2(200))                       AS TECHNICAL_PIC,
        CAST(NULL AS VARCHAR2(200))                       AS SURVEYOR,
        CAST(NULL AS VARCHAR2(100))                       AS SURVEY_NUMBER,
-       A.TANGGALKIRIMPUCL_1                              AS INBOX_DATE,
-       A.KOMENTARANALISATOR_1                            AS ANALYST_NOTE,
-       CASE A.RCL_PUCL_1
+       A.TGL_KIRIM_PUCL                                  AS INBOX_DATE,
+       A.KOMENTAR_ANALISATOR                             AS ANALYST_NOTE,
+       CASE A.RCL_PUCL
             WHEN '1' THEN 'RCL'
             WHEN '2' THEN 'PUCL'
        END                                               AS RCL_PUCL_STATUS,
-       A.TANGGALCETAKDOKUMENPUCL_1                       AS LETTER_PRINT_DATE,
-       A.LAMAKLAIM_1                                     AS CLAIM_AGE,
-       A.STATUSKLAIM_1                                   AS EXPIRY_STATUS
+       A.TGL_CETAK_DOKUMEN_PUCL                          AS LETTER_PRINT_DATE,
+       A.LAMA_KLAIM                                      AS CLAIM_AGE,
+       A.STATUS_KLAIM                                    AS EXPIRY_STATUS
   FROM POOLDATA.T_CLAIMLIST_ADMIN L
        -- Tujuh kolom PUCL (tanggal kirim/cetak, status, lama klaim, persetujuan, MSIG)
-       -- TIDAK ada di T_CLAIMLIST_ADMIN, sehingga masih dibaca dari tabel kerja Pega.
-       -- Penugasannya -- siapa dan di workbasket mana -- dibaca dari T_CLAIMLIST_ADMIN.
-       INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-              ON A.PZINSKEY = L.PZINSKEY
+       -- TIDAK ada di T_CLAIMLIST_ADMIN. Penugasannya -- siapa dan di workbasket mana --
+       -- dibaca dari T_CLAIMLIST_ADMIN.
+       --
+       -- SUMBER BARU (2026-10-08): kolom PUCL dulu dibaca dari tabel kerja Pega (kolom
+       -- ber-`_1`), kini dari POOLDATA.TC_PNC_PUCL — satu baris per klaim, kunci CLAIMID =
+       -- nomor case (bukan kunci berprefix) = L.PYID. Pemetaan: TANGGALKIRIMPUCL_1 ->
+       -- TGL_KIRIM_PUCL, KOMENTARANALISATOR_1 -> KOMENTAR_ANALISATOR, RCL_PUCL_1 -> RCL_PUCL,
+       -- TANGGALCETAKDOKUMENPUCL_1 -> TGL_CETAK_DOKUMEN_PUCL, LAMAKLAIM_1 -> LAMA_KLAIM,
+       -- STATUSKLAIM_1 -> STATUS_KLAIM, PUCLAPPROVE_1 -> PUCL_APPROVE, MSIG_1 -> MSIG (tipe
+       -- sama: TIMESTAMP/VARCHAR2). Tetap INNER seperti dulu: tanpa baris PUCL, tiga saringan
+       -- di bawah memang tidak pernah lolos. Akibat terukur di Oracle dev: TC_PNC_PUCL berisi
+       -- 6 klaim, sedangkan tabel kerja memuat 24 klaim yang lolos saringan PUCL; antrean
+       -- RCLPUCL di T_CLAIMLIST_ADMIN saat ini kosong, sehingga hasil lama dan baru sama-sama
+       -- 0 baris.
+       INNER JOIN POOLDATA.TC_PNC_PUCL A
+              ON A.CLAIMID = L.PYID
  WHERE L.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND L.PYSTATUSWORK <> 'Resolved-Completed'
    AND L.PXASSIGNEDOPERATORID = 'RCLPUCL'
-   AND A.TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL
-   AND A.PUCLAPPROVE_1 <> '1'
-   AND A.MSIG_1 IS NULL
- ORDER BY A.TANGGALKIRIMPUCL_1 DESC
+   AND A.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
+   AND A.PUCL_APPROVE <> '1'
+   AND A.MSIG IS NULL
+ ORDER BY A.TGL_KIRIM_PUCL DESC
 
 -- ============================================================================
 -- SUMBER ANTREAN: POOLDATA.T_CLAIMLIST_ADMIN -- keputusan Work Owner 2026-10-07

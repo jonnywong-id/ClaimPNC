@@ -9,19 +9,40 @@
 -- ditulis SATU sistem, dan tabel-tabel ini milik Pega (`P-1`).
 --
 -- ============================================================================
--- TIGA TABEL, BUKAN DUA
+-- SUMBER BARU (2026-10-08) — objek kerja `b` DILEPAS
 -- ============================================================================
 --
--- Layar Prop menggabungkan dua tabel. Layar ini menggabungkan TIGA, dan ketiganya
--- dibutuhkan:
+-- Keputusan Work Owner 2026-10-08: DATAPEGA.PC_ASM_FW_GCNMFW_WORK sudah tidak dipakai.
+-- Kueri lama menggabungkan TIGA tabel; kini DUA:
 --
---   DATAPEGA.PC_ASSIGN_WORKLIST / _WORKBASKET  a   baris penugasan — siapa memegang apa
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK             b   objek kerja klaim — kolom bisnisnya
---   POOLDATA.JSON_KLAIM                        c   nomor polis dan blob JSON klaim
+--   DATAPEGA.PC_ASSIGN_WORKLIST / _WORKBASKET  a   baris penugasan — tetap penggerak
+--   POOLDATA.JSON_KLAIM                        c   nomor polis dan dokumen JSON klaim
 --
--- Di layar Prop, kolom bisnis (nama tertanggung, Ceding Co, dan seterusnya) dibaca dari
--- blob JSON. Di sini kolom yang sama dibaca sebagai KOLOM TABEL pada `b`. Itu bukan pilihan
--- gaya: kueri lamanya memang begitu, dan kedua sumber itu dapat berbeda isinya.
+-- Kolom bisnis yang dulu dibaca dari `b` kini dipetik dari `c.DATA_JSONBLOB` — dokumen
+-- ClaimData klaim treaty, dengan jalur yang sama persis dengan yang dipakai rule Pega layar
+-- saudaranya (`RDB List/GetClaimTreaty_SQL-SQL.xml`: `$.QuotationData.BusinessName`,
+-- `$.QuotationData.SobName`, `$.QuotationData.CedingCoName`, `$.InsuredName`, `$.IDMaster`).
+-- Kolom `b.MASTERID` dkk. adalah properti ClaimData yang SAMA, diekspos ke tabel objek kerja.
+--
+-- Kenapa bukan T_CLAIM_PNC / T_CLAIMLIST_ADMIN: terukur di Oracle dev (2026-10-08),
+-- KEDUANYA memuat 0 dari 25 objek kerja ClaimTreatyNonProp yang ditunjuk penugasan.
+-- JSON_KLAIM memuat 14 dari 25 (IDPEGA unik — LEFT JOIN tidak menggandakan baris).
+--
+-- Kenapa DATA_JSONBLOB, bukan DATA_JSON milik layar ini: terukur, DATA_JSON KOSONG pada
+-- 14/14 baris treaty, DATA_JSONBLOB terisi 14/14. Akibatnya kolom LOSS_DATE dan
+-- JSON_MASTER_ID (tetap DATA_JSON, tidak diubah) selalu kosong di dev — temuan lama,
+-- bukan akibat perubahan ini.
+--
+-- Akibat yang terlihat pengguna (terukur di dev):
+--   * kolom bisnis b.* pada kelas non-prop terisi 0/25 — kini terisi bila JSON_KLAIM ada
+--     (BusinessName 12, SobName/CedingCoName/IDMaster 13, InsuredName 8 dari 25);
+--   * WORK_CREATED_AT (b.PXCREATEDATETIME, kolom "Status" grid Teknik dan bahan Aging) TIDAK
+--     punya padanan: PXCREATEDATETIME penugasan hanya sama pada 14/25, JSON_KLAIM.TGL_INPUT
+--     0/14. Dikirim NULL bertipe — kolom "Status" kosong dan Aging 0;
+--   * LAST_UPDATE_OPERATOR (b.PXUPDATEOPERATOR) TIDAK punya padanan (operator pengubah
+--     penugasan sama 0/25). Dikirim NULL;
+--   * urutan baris kini `a.PXCREATEDATETIME` (waktu penugasan), bukan waktu objek kerja.
+-- Jumlah baris setiap tab TIDAK berubah: penugasan tetap penggerak, gabungan tetap LEFT.
 --
 -- ============================================================================
 -- PEMETAAN TIGA ARAH — alias grid Pega -> asal sebenarnya -> alias di sini
@@ -54,6 +75,9 @@
 -- CARI23      c.DATA_JSON '$.IDMaster'                     JSON_MASTER_ID
 -- CARI24      b.PXUPDATEOPERATOR                           LAST_UPDATE_OPERATOR
 --
+-- Kolom "asal sebenarnya" ber-`b.` di atas adalah asal di SISTEM LAMA. Sejak 2026-10-08
+-- (lihat SUMBER BARU): CARI14–17 dan CARI19 dari c.DATA_JSONBLOB; CARI21 dan CARI24 NULL.
+--
 -- `ASSIGNED_OPERATOR` tidak punya pasangan alias Pega: kueri lama MENYARING menurut kolom
 -- itu tetapi tidak pernah memilihnya. Ia dibawa di sini supaya penyimpanan memori dapat
 -- meniru penyaring yang sama, dan tidak pernah digambar sebagai kolom.
@@ -67,6 +91,8 @@
 -- bawah judul "Status". Ke-15 alias wajib sama di setiap kueri (lihat bawah), dan kolomnya
 -- memang ada di tabel yang sama pada kelimanya — mengambilnya tidak menambah satu gabungan
 -- pun. Ia sekaligus BAHAN perhitungan Aging di Go, lihat catatan 5.
+-- Sejak 2026-10-08 nilainya NULL bertipe di kelima kueri (lihat SUMBER BARU); aliasnya
+-- tetap ada supaya pemindai dan kontrak kolom tidak berubah.
 --
 -- ============================================================================
 -- DUA KOLOM JSON YANG BERBEDA PADA SATU TABEL — JANGAN TERTUKAR
@@ -77,8 +103,13 @@
 --   DATA_JSONBLOB   dibaca kueri layar Prop   (GetClaimTreaty_SQL:104-109)
 --   DATA_JSON       dibaca kueri layar ini    (GetKlaimNonPropAdmin_SQL:43-44)
 --
--- Keduanya TIDAK disamakan di sini. Apakah isinya sama tidak dapat diperiksa: DDL tabelnya
--- belum tersedia (`R-08`) dan isi kedua kolom belum pernah dilihat. Menukar salah satunya
+-- KOREKSI 2026-10-08: sejak objek kerja dilepas, layar ini membaca KEDUANYA — DATA_JSON
+-- tetap untuk CARI22/CARI23 (tidak diubah), DATA_JSONBLOB untuk kolom yang dulu milik `b`.
+-- Isinya kini terukur di dev: DATA_JSON kosong pada 14/14 baris treaty non-prop,
+-- DATA_JSONBLOB terisi 14/14. Apakah CARI22/CARI23 sebaiknya ikut pindah ke DATA_JSONBLOB
+-- adalah keputusan Work Owner, bukan bagian dari migrasi ini.
+--
+-- Kedua pembacaan lama TIDAK disamakan di sini. Menukar salah satunya
 -- ke yang lain adalah perubahan yang tidak menghasilkan galat apa pun bila salah — ia hanya
 -- menampilkan tanggal dan ID master milik dokumen yang berbeda.
 --
@@ -149,7 +180,9 @@
 --    baris ditarik sekaligus; begitu halamannya dipotong, urutan yang tidak ditetapkan
 --    membuat satu baris muncul di dua halaman sekaligus hilang dari halaman lain.
 --    Kueri Teknik SUDAH punya `ORDER BY CARI21` di sistem lama, dan urutan itu
---    dipertahankan apa adanya.
+--    dipertahankan apa adanya — SAMPAI 2026-10-08: CARI21 (waktu objek kerja) tidak lagi
+--    terbaca, sehingga kelima kueri kini mengurutkan menurut `a.PXCREATEDATETIME` (waktu
+--    penugasan) dengan arah yang sama seperti sebelumnya.
 --
 -- 4. GABUNGAN DITULIS SEBAGAI `JOIN`, BUKAN DAFTAR TABEL BERKOMA.
 --    Kueri lama memakai gabungan gaya lama (`FROM a, b, c WHERE a.x = b.y AND …`), yang
@@ -214,7 +247,8 @@
 --   dibaca pengguna (`20240201T095612.955 GMT`) disusun di Go oleh
 --   `inboxclaimtreatynonprop.FormatPegaDateTime`. Memformatnya di SQL menuntut `TO_CHAR`,
 --   yang ada di daftar terlarang `08-TECHNICAL-STRATEGY.md` §4.3 — dan pemformatan tampilan
---   memang milik Go, bukan milik kueri.
+--   memang milik Go, bukan milik kueri. (Sejak 2026-10-08 nilainya NULL bertipe
+--   `CAST(NULL AS TIMESTAMP)`; pemindai `sql.NullTime` menghasilkan teks kosong dan umur 0.)
 --
 -- * Nama akun antrean teknik dikirim sebagai BIND, bukan ditulis di sini. Nilainya satu
 --   tempat saja — inboxclaimtreatynonprop.TechnicalWorkbasket — supaya SQL dan penyimpanan
@@ -224,7 +258,9 @@
 --   (riwayatklaim, inboxadmin, inboxclaimtreatyprop). Ia satu-satunya bentuk tak portabel
 --   di berkas ini dan tercatat sebagai utang teknis yang diselesaikan serentak untuk
 --   seluruh modul saat perpindahan ke PostgreSQL (`09-DATABASE-STRATEGY.md` §10), bukan
---   sepihak di sini.
+--   sepihak di sini. Sejak 2026-10-08 ada bentuk tak portabel KEDUA: `JSON_VALUE` atas
+--   kolom BLOB (`DATA_JSONBLOB`) — di PostgreSQL kolom itu harus `jsonb`, bukan `bytea`.
+--   Bentuk yang sama sudah dipakai rule Pega layar Prop; ia ikut daftar utang yang sama.
 
 -- name: list_admin
 -- Tab Admin tanpa checkbox apa pun — antrean milik pemanggil.
@@ -234,26 +270,27 @@
 SELECT a.PZINSKEY                                    AS REFERENCE,
        a.PXREFOBJECTINSNAME                          AS CLAIM_ID,
        a.PXASSIGNEDOPERATORID                        AS ASSIGNED_OPERATOR,
-       b.MASTERID                                    AS MASTER_ID,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.IDMaster')     AS MASTER_ID,
        JSON_VALUE(c.DATA_JSON, '$.IDMaster')         AS JSON_MASTER_ID,
        c.NOPOLIS                                     AS POLICY_NUMBER,
        JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')       AS LOSS_DATE,
-       b.BUSINESSNAME                                AS BUSINESS_NAME,
-       b.SOBNAME                                     AS BUSINESS_SOURCE,
-       b.CEDINGCONAME                                AS CEDING_COMPANY,
-       b.INSUREDNAME                                 AS INSURED_NAME,
-       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.BusinessName')
+                                                     AS BUSINESS_NAME,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.SobName')
+                                                     AS BUSINESS_SOURCE,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.CedingCoName')
+                                                     AS CEDING_COMPANY,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.InsuredName')  AS INSURED_NAME,
+       CAST(NULL AS TIMESTAMP)                       AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
-       b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
+       CAST(NULL AS VARCHAR2(100))                   AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK b
-              ON a.PXREFOBJECTKEY = b.PZINSKEY
        LEFT JOIN POOLDATA.JSON_KLAIM c
               ON a.PXREFOBJECTKEY = c.IDPEGA
  WHERE a.PXREFOBJECTINSNAME LIKE 'CLMNP-%'
    AND a.PXASSIGNEDOPERATORID = :1
- ORDER BY b.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
+ ORDER BY a.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
 OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 
 -- name: list_admin_all
@@ -268,25 +305,26 @@ OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 SELECT a.PZINSKEY                                    AS REFERENCE,
        a.PXREFOBJECTINSNAME                          AS CLAIM_ID,
        a.PXASSIGNEDOPERATORID                        AS ASSIGNED_OPERATOR,
-       b.MASTERID                                    AS MASTER_ID,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.IDMaster')     AS MASTER_ID,
        JSON_VALUE(c.DATA_JSON, '$.IDMaster')         AS JSON_MASTER_ID,
        c.NOPOLIS                                     AS POLICY_NUMBER,
        JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')       AS LOSS_DATE,
-       b.BUSINESSNAME                                AS BUSINESS_NAME,
-       b.SOBNAME                                     AS BUSINESS_SOURCE,
-       b.CEDINGCONAME                                AS CEDING_COMPANY,
-       b.INSUREDNAME                                 AS INSURED_NAME,
-       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.BusinessName')
+                                                     AS BUSINESS_NAME,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.SobName')
+                                                     AS BUSINESS_SOURCE,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.CedingCoName')
+                                                     AS CEDING_COMPANY,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.InsuredName')  AS INSURED_NAME,
+       CAST(NULL AS TIMESTAMP)                       AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
-       b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
+       CAST(NULL AS VARCHAR2(100))                   AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK b
-              ON a.PXREFOBJECTKEY = b.PZINSKEY
        LEFT JOIN POOLDATA.JSON_KLAIM c
               ON a.PXREFOBJECTKEY = c.IDPEGA
  WHERE a.PXREFOBJECTINSNAME LIKE 'CLMNP-%'
- ORDER BY b.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
+ ORDER BY a.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
 OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 
 -- name: list_admin_tba
@@ -300,27 +338,28 @@ OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 SELECT a.PZINSKEY                                    AS REFERENCE,
        a.PXREFOBJECTINSNAME                          AS CLAIM_ID,
        a.PXASSIGNEDOPERATORID                        AS ASSIGNED_OPERATOR,
-       b.MASTERID                                    AS MASTER_ID,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.IDMaster')     AS MASTER_ID,
        JSON_VALUE(c.DATA_JSON, '$.IDMaster')         AS JSON_MASTER_ID,
        c.NOPOLIS                                     AS POLICY_NUMBER,
        JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')       AS LOSS_DATE,
-       b.BUSINESSNAME                                AS BUSINESS_NAME,
-       b.SOBNAME                                     AS BUSINESS_SOURCE,
-       b.CEDINGCONAME                                AS CEDING_COMPANY,
-       b.INSUREDNAME                                 AS INSURED_NAME,
-       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.BusinessName')
+                                                     AS BUSINESS_NAME,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.SobName')
+                                                     AS BUSINESS_SOURCE,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.CedingCoName')
+                                                     AS CEDING_COMPANY,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.InsuredName')  AS INSURED_NAME,
+       CAST(NULL AS TIMESTAMP)                       AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
-       b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
+       CAST(NULL AS VARCHAR2(100))                   AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK b
-              ON a.PXREFOBJECTKEY = b.PZINSKEY
        LEFT JOIN POOLDATA.JSON_KLAIM c
               ON a.PXREFOBJECTKEY = c.IDPEGA
  WHERE a.PXREFOBJECTINSNAME LIKE 'CLMNP-%'
    AND a.PXASSIGNEDOPERATORID = :1
    AND c.NOPOLIS IS NULL
- ORDER BY b.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
+ ORDER BY a.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
 OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 
 -- name: list_admin_all_tba
@@ -333,26 +372,27 @@ OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 SELECT a.PZINSKEY                                    AS REFERENCE,
        a.PXREFOBJECTINSNAME                          AS CLAIM_ID,
        a.PXASSIGNEDOPERATORID                        AS ASSIGNED_OPERATOR,
-       b.MASTERID                                    AS MASTER_ID,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.IDMaster')     AS MASTER_ID,
        JSON_VALUE(c.DATA_JSON, '$.IDMaster')         AS JSON_MASTER_ID,
        c.NOPOLIS                                     AS POLICY_NUMBER,
        JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')       AS LOSS_DATE,
-       b.BUSINESSNAME                                AS BUSINESS_NAME,
-       b.SOBNAME                                     AS BUSINESS_SOURCE,
-       b.CEDINGCONAME                                AS CEDING_COMPANY,
-       b.INSUREDNAME                                 AS INSURED_NAME,
-       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.BusinessName')
+                                                     AS BUSINESS_NAME,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.SobName')
+                                                     AS BUSINESS_SOURCE,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.CedingCoName')
+                                                     AS CEDING_COMPANY,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.InsuredName')  AS INSURED_NAME,
+       CAST(NULL AS TIMESTAMP)                       AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
-       b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
+       CAST(NULL AS VARCHAR2(100))                   AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK b
-              ON a.PXREFOBJECTKEY = b.PZINSKEY
        LEFT JOIN POOLDATA.JSON_KLAIM c
               ON a.PXREFOBJECTKEY = c.IDPEGA
  WHERE a.PXREFOBJECTINSNAME LIKE 'CLMNP-%'
    AND c.NOPOLIS IS NULL
- ORDER BY b.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
+ ORDER BY a.PXCREATEDATETIME DESC, a.PXREFOBJECTINSNAME
 OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 
 -- name: list_technical
@@ -364,51 +404,53 @@ OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 --
 -- Dua hal yang HANYA berlaku di sini:
 --   * JSON_MASTER_ID tidak diambil sama sekali — kueri lamanya tidak memuat CARI23, dan
---     grid Teknik memang memakai `b.MASTERID` sebagai kolom "ID Master";
---   * hanya grid inilah yang MENGGAMBAR `WORK_CREATED_AT`, di bawah judul "Status".
+--     grid Teknik memang memakai `b.MASTERID` sebagai kolom "ID Master" (sejak 2026-10-08
+--     dipetik dari `$.IDMaster` pada DATA_JSONBLOB — properti yang sama);
+--   * hanya grid inilah yang MENGGAMBAR `WORK_CREATED_AT`, di bawah judul "Status" (sejak
+--     2026-10-08 NULL — lihat SUMBER BARU).
 --
--- Urutannya `ORDER BY CARI21`, yaitu `b.PXCREATEDATETIME` MENAIK, dan itu dipertahankan
--- apa adanya meski berlawanan arah dengan urutan tab Admin. Antrean bersama memang wajar
--- didahulukan yang paling lama menunggu.
+-- Urutannya dulu `ORDER BY CARI21`, yaitu `b.PXCREATEDATETIME` MENAIK. Sejak 2026-10-08
+-- waktu objek kerja tidak lagi terbaca; arahnya dipertahankan (MENAIK) atas waktu penugasan
+-- `a.PXCREATEDATETIME`. Antrean bersama memang wajar didahulukan yang paling lama menunggu.
 --
 -- Bind: :1 nama akun antrean teknik · :2 offset · :3 jumlah baris
 SELECT a.PZINSKEY                                    AS REFERENCE,
        a.PXREFOBJECTINSNAME                          AS CLAIM_ID,
        a.PXASSIGNEDOPERATORID                        AS ASSIGNED_OPERATOR,
-       b.MASTERID                                    AS MASTER_ID,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.IDMaster')     AS MASTER_ID,
        CAST(NULL AS VARCHAR2(100))                   AS JSON_MASTER_ID,
        c.NOPOLIS                                     AS POLICY_NUMBER,
        JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')       AS LOSS_DATE,
-       b.BUSINESSNAME                                AS BUSINESS_NAME,
-       b.SOBNAME                                     AS BUSINESS_SOURCE,
-       b.CEDINGCONAME                                AS CEDING_COMPANY,
-       b.INSUREDNAME                                 AS INSURED_NAME,
-       b.PXCREATEDATETIME                            AS WORK_CREATED_AT,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.BusinessName')
+                                                     AS BUSINESS_NAME,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.SobName')
+                                                     AS BUSINESS_SOURCE,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.QuotationData.CedingCoName')
+                                                     AS CEDING_COMPANY,
+       JSON_VALUE(c.DATA_JSONBLOB, '$.InsuredName')  AS INSURED_NAME,
+       CAST(NULL AS TIMESTAMP)                       AS WORK_CREATED_AT,
        a.PXCREATEOPNAME                              AS CREATE_OPERATOR,
-       b.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
+       CAST(NULL AS VARCHAR2(100))                   AS LAST_UPDATE_OPERATOR,
        COUNT(*) OVER ()                              AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASSIGN_WORKBASKET a
-       LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK b
-              ON a.PXREFOBJECTKEY = b.PZINSKEY
        LEFT JOIN POOLDATA.JSON_KLAIM c
               ON a.PXREFOBJECTKEY = c.IDPEGA
  WHERE a.PXREFOBJECTINSNAME LIKE 'CLMNP-%'
    AND a.PXASSIGNEDOPERATORID = :1
- ORDER BY b.PXCREATEDATETIME, a.PXREFOBJECTINSNAME
+ ORDER BY a.PXCREATEDATETIME, a.PXREFOBJECTINSNAME
 OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 
 -- name: check_admin
--- Dipakai perintah `-periksa`: memastikan tabel penugasan perorangan DAN kedua tabel yang
--- digabungkan kepadanya terbaca dari koneksi yang dipakai.
+-- Dipakai perintah `-periksa`: memastikan tabel penugasan perorangan DAN tabel yang
+-- digabungkan kepadanya (sejak 2026-10-08 hanya POOLDATA.JSON_KLAIM) terbaca dari koneksi
+-- yang dipakai.
 --
 -- Ia tidak menyentuh satu baris pun — yang diperiksa adalah hak baca dan keberadaan
--- tabelnya, bukan isinya. Ketiganya diperiksa sekaligus karena kegagalan yang paling
+-- tabelnya, bukan isinya. Keduanya diperiksa sekaligus karena kegagalan yang paling
 -- mungkin terjadi bukan "tabel tidak ada" melainkan "hak baca hanya diberikan pada
 -- sebagiannya".
 SELECT COUNT(*) AS PROBE
   FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK b
-              ON a.PXREFOBJECTKEY = b.PZINSKEY
        LEFT JOIN POOLDATA.JSON_KLAIM c
               ON a.PXREFOBJECTKEY = c.IDPEGA
  WHERE 1 = 0

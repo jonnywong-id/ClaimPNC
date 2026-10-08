@@ -18,6 +18,7 @@ import (
 	"claim-pnc/internal/registrasi/facesheetpdf"
 	"claim-pnc/internal/registrasi/lodpdf"
 	"claim-pnc/internal/registrasi/plapdf"
+	"claim-pnc/internal/registrasi/repo/absenlink"
 	"claim-pnc/internal/registrasi/repo/cashierlink"
 	"claim-pnc/internal/registrasi/repo/komitelink"
 	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
@@ -60,6 +61,7 @@ func assembleRegistration(
 	documents registrasi.DocumentUploader,
 	catalog premiumlink.ServiceCatalog,
 	cashier config.Cashier,
+	attendance config.AttendancePIC,
 	acceptanceCommittee string,
 ) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
@@ -88,7 +90,16 @@ func assembleRegistration(
 		options.PolicyRepo = registrasisql.NewPolicyRepo(db)
 		options.Parameter = registrasisql.NewParameter(db)
 		options.ExchangeRateSource = registrasisql.NewExchangeRateSource(db)
-		options.Assigner = registrasisql.NewAssigner(db)
+		// Absensi PIC Teknik (ServiceGetDataAbsenPIC): tanpa ABSEN_PIC_URL setiap kandidat
+		// dianggap hadir, sama dengan Pega saat layanannya tidak menjawab.
+		assigner := registrasisql.NewAssigner(db)
+		if attendance.Active() {
+			assigner.WithAttendance(absenlink.New(attendance.BaseURL, attendance.User, attendance.Password,
+				&http.Client{Timeout: attendance.Timeout}), logger)
+		} else {
+			logger.Warn("absensi PIC Teknik tidak diperiksa — isi ABSEN_PIC_URL (ServiceGetDataAbsenPIC)")
+		}
+		options.Assigner = assigner
 		options.ClaimReportLink = registrasisql.NewClaimReportLink(db)
 		options.AreaDirectory = registrasisql.NewAreaDirectory(db)
 		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)

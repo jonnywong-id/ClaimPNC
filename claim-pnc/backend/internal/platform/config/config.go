@@ -92,6 +92,7 @@ type Config struct {
 	Session         Session
 	HCQ             HCQ
 	Cashier         Cashier
+	AttendancePIC   AttendancePIC
 	VirtualAccount  VirtualAccount
 	// AcceptanceCommittee adalah Nama Komite Akseptasi yang terisi pada form AcceptationLOD
 	// bila komite adjustment beranggota dua atau lebih (AKSEPTASI_KOMITE_BERJENJANG). Pega
@@ -264,6 +265,24 @@ type Cashier struct {
 	// KASIR_CEK_REKENING (Steering §3.4). Bawaannya menyala di staging dan produksi.
 	CheckAccount bool
 }
+
+// AttendancePIC adalah layanan absensi PIC — Connect REST `ServiceGetDataAbsenPIC`
+// (`.../prweb/PRRestService/HCC/Absen/attendance/{PIC}/{yyyyMMdd}`), dipakai memilih PIC
+// Teknik. Rule Pega memuat alamat tetap dan auth profile `servicehcd`; keduanya TIDAK
+// disalin (ADR-0025): alamat dasar dari ABSEN_PIC_URL, kredensial dari ABSEN_PIC_USER /
+// ABSEN_PIC_PASSWORD.
+//
+// Boleh kosong. Tanpa alamat, setiap kandidat PIC dianggap hadir — sama dengan Pega saat
+// layanannya tidak menjawab.
+type AttendancePIC struct {
+	BaseURL  string
+	User     string
+	Password string
+	Timeout  time.Duration
+}
+
+// Active menyatakan alamat layanan absensi sudah diisi.
+func (a AttendancePIC) Active() bool { return strings.TrimSpace(a.BaseURL) != "" }
 
 // Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
 func (k Cashier) Active() bool {
@@ -602,6 +621,12 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// 10 detik, bukan 300 detik seperti rule Pega: absensi dibaca di dalam transaksi Claim
+	// Face Sheet, dan layanan yang menggantung tidak boleh menahan kunci baris selama itu.
+	attendanceTimeout, err := getDuration("ABSEN_PIC_BATAS_WAKTU", 10*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	// 30 detik: layanan penerbit VA sendiri berbicara ke bank, sehingga jawabannya wajar
 	// lebih lambat daripada pemanggilan internal biasa.
 	virtualAccountTimeout, err := getDuration("VIRTUAL_ACCOUNT_BATAS_WAKTU", 30*time.Second)
@@ -711,6 +736,12 @@ func Load() (Config, error) {
 			Timeout:         cashierTimeout,
 			TransferTimeout: cashierTransferTimeout,
 			CheckAccount:    cashierCheckAccount(env),
+		},
+		AttendancePIC: AttendancePIC{
+			BaseURL:  strings.TrimSpace(os.Getenv("ABSEN_PIC_URL")),
+			User:     strings.TrimSpace(os.Getenv("ABSEN_PIC_USER")),
+			Password: os.Getenv("ABSEN_PIC_PASSWORD"),
+			Timeout:  attendanceTimeout,
 		},
 		// Bawaannya `tiruan`, dan itu disengaja: menyalakannya menerbitkan rekening
 		// sungguhan. Lihat VirtualAccount untuk alasan lengkapnya.

@@ -73,13 +73,8 @@ func TestCountOutstandingError(t *testing.T) {
 func TestListOutstandingMapsRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	loss := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
-	// RECEIVEDDATE_1 tersimpan sebagai TEKS bergaya Pega, bukan sebagai DATE — lihat
-	// catatan pada pegaTimestamp. Ujinya mengirim bentuk aslinya supaya pemindainya benar
-	// diuji, bukan diberi tipe yang tidak pernah datang dari basis data.
-	reportText := "20260902T000000.000 GMT"
-	// Zonanya FixedZone("GMT"), bukan time.UTC: itulah yang dihasilkan time.Parse atas
-	// singkatan "GMT" pada teks aslinya. Instannya sama; yang berbeda hanya nama zonanya.
-	report := time.Date(2026, time.September, 2, 0, 0, 0, 0, time.FixedZone("GMT", 0))
+	// Tanggal lapor kini T_CLAIM_PNC.RECEIVEDATE — kolom DATE, bukan teks bergaya Pega.
+	report := time.Date(2026, time.September, 2, 0, 0, 0, 0, time.UTC)
 	registered := time.Date(2026, time.September, 2, 3, 0, 0, 0, time.UTC)
 
 	filters := []driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL"}
@@ -88,7 +83,7 @@ func TestListOutstandingMapsRows(t *testing.T) {
 	mock.ExpectQuery(exact("outstanding_list")).WithArgs(append(filters, 25, 25)...).
 		WillReturnRows(sqlmock.NewRows(claimColumns).
 			AddRow("ID1", "PNCN.26.0001", "POL", "Tertanggung", "Bisnis", "Sumber", "Cabang",
-				"PIC", "Admin", "1147", "Register", "Open", loss, reportText, registered).
+				"PIC", "Admin", "1147", "Register", "Open", loss, report, registered).
 			AddRow("ID2", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil))
 
 	page, err := repo.ListOutstanding(context.Background(), dashboardclaim.Filter{Offset: 25})

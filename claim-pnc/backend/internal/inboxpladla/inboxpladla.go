@@ -143,8 +143,9 @@ type Row struct {
 	// PICTeknik — kolom **"PIC Teknik"** <- `PICTEKNIK`, beralias `"BRANCH_NAME"`.
 	PICTeknik string
 
-	// StatusCode — kolom **"Status"** <- `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1`,
-	// beralias `"pyLabel"`.
+	// StatusCode — kolom **"Status"** <- `T_CLAIM_PNC.STATUSCLAIM` (di Pega
+	// `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1`, beralias `"pyLabel"`; tabel kerja itu sudah tidak
+	// dipakai sejak 2026-10-08).
 	//
 	// Pada tab DLA ia DIGANTI `1139` ketika `ISPENDINGCLOSE = 'true'` — klaim yang
 	// sebenarnya sudah `Resolved-Completed` tetapi masih menunggu penutupan. Penggantian

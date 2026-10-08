@@ -238,11 +238,11 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_receive")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK, DATAPEGA.PC_ASSIGN_WORKLIST, "+
-				"atau POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKLIST, POOLDATA.T_CLAIMLIST_ADMIN, "+
+				"POOLDATA.T_CLAIM_RECIVEDCLAIM, atau POOLDATA.T_CLAIM_PNC: %w", err)
 	}
 	if err := r.db.QueryRowContext(ctx, query("check_rclpucl")).Scan(&ignored); err != nil {
-		return fmt.Errorf("membaca DATAPEGA.PC_ASSIGN_WORKBASKET: %w", err)
+		return fmt.Errorf("membaca POOLDATA.TC_PNC_PUCL atau POOLDATA.T_CLAIM_PNC: %w", err)
 	}
 	return nil
 }

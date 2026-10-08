@@ -214,7 +214,7 @@ func TestCheckTableWrapsError(t *testing.T) {
 
 	err := repo.CheckTable(context.Background())
 	require.ErrorIs(t, err, boom)
-	require.ErrorContains(t, err, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
+	require.ErrorContains(t, err, "POOLDATA.T_CLAIMLIST_ADMIN")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

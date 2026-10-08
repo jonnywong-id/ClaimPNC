@@ -203,13 +203,12 @@ func (r *Repo) DailyReport(
 	total := 0
 
 	cursor, err := r.db.QueryContext(ctx, query("daily_report"),
-		// Cabang antrean bersama.
-		inboxrclpucl.WorkClassClaim,
+		// Cabang antrean bersama. Kelas objek kerja tidak lagi dikirim: TC_PNC_PUCL hanya
+		// berisi klaim dan tidak punya kolom PXOBJCLASS.
 		inboxrclpucl.RCLPUCLWorkbasket,
 		rng.From,
 		rng.To,
-		// Cabang Personal Accident — TANPA gabungan antrean bersama, mengikuti kueri lama.
-		inboxrclpucl.WorkClassClaim,
+		// Cabang Personal Accident — TANPA penyaring antrean bersama, mengikuti kueri lama.
 		inboxrclpucl.GroupPanelPA,
 		rng.From,
 		rng.To,
@@ -657,15 +656,13 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 				"POOLDATA.T_CLAIM_ADJUSTMENT: %w", err)
 	}
 
-	// Kedua tabel Pega diperiksa PALING AKHIR dan terpisah, karena kegagalannya paling
-	// SEMPIT akibatnya: sejak ketiga tab pindah ke tabel datar, keduanya hanya dipakai
-	// laporan harian. Yang gagal karenanya hanyalah tombol unduh tab "Cetak Surat" — bukan
-	// layarnya.
+	// Kolom laporan harian diperiksa PALING AKHIR dan terpisah, karena kegagalannya paling
+	// SEMPIT akibatnya: yang gagal hanyalah tombol unduh tab "Cetak Surat" — bukan layarnya.
 	if err := r.db.QueryRowContext(ctx, query("check_laporan")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK atau "+
-				"DATAPEGA.PC_ASSIGN_WORKBASKET — keduanya hanya dipakai laporan harian "+
-				"tab Cetak Surat: %w", err)
+			"membaca kolom laporan harian POOLDATA.TC_PNC_PUCL (GROUPPANEL, "+
+				"ASSIGNED_OPERATOR_ID, STATUS_CLAIM, TGL_KIRIM_PUCL) — hanya dipakai "+
+				"laporan harian tab Cetak Surat: %w", err)
 	}
 	return nil
 }

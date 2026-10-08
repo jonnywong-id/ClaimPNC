@@ -264,17 +264,25 @@ func stripComments(text string) string {
 func TestListIsDrawnFromThePegaWorkTable(t *testing.T) {
 	source := strings.ToUpper(getQuery("claim_report_source"))
 
-	require.Contains(t, source, "FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
-		"baris daftar tidak lagi ditarik dari tabel kerja Pega")
+	// SUMBER BARU (2026-10-08): tabel kerja Pega tidak dipakai lagi (keputusan Work Owner).
+	// Baris warisan Pega kini ditarik dari tabel cermin T_CLAIM_RECIVEDCLAIM, yang memuat
+	// seluruh berkas penerimaan T_CLAIMLIST_ADMIN dan 2.774 dari 2.788 baris versi lama.
+	require.NotContains(t, source, "PC_ASM_FW_GCNMFW_WORK",
+		"tabel kerja Pega kembali dibaca, padahal sudah tidak dipakai")
+	require.Contains(t, source,
+		"FROM POOLDATA.T_CLAIM_RECIVEDCLAIM R\n      LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN",
+		"baris warisan Pega tidak lagi ditarik dari tabel cermin")
 	require.NotContains(t, source, "FROM POOLDATA.T_CLAIMLIST_ADMIN",
 		"tabel admin kembali menjadi tabel penggerak daftar — isinya hanya 5% dari daftar")
 	require.Contains(t, source, "LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN",
 		"tabel admin tidak lagi dibaca untuk sts_aktif, aging, kurir, dan keterangan")
 
-	// Penyaring jenis case DIPERTAHANKAN dari kueri lama: tabel ini memuat seluruh case
-	// Pega, bukan hanya Receive Document.
-	require.Contains(t, source, "ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT",
-		"penyaring pxobjclass hilang saat sumbernya ditukar")
+	// Pengganti penyaring jenis case: tabel cermin juga memuat beberapa kunci klaim, sehingga
+	// yang diterima hanya kunci berkas penerimaan warisan Pega.
+	require.Contains(t, source, "R.CLAIMID LIKE 'ASM-FW-GCNMFW-WORK RCV-%'",
+		"penyaring jenis case hilang saat sumbernya ditukar")
+	require.Contains(t, source, "T.PXOBJCLASS = 'ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT'",
+		"gabungan tabel admin tidak lagi dibatasi kelas berkas penerimaan")
 }
 
 // Posisi punya EMPAT keadaan, dan yang keempat tidak masuk tab mana pun.
@@ -288,13 +296,23 @@ func TestListIsDrawnFromThePegaWorkTable(t *testing.T) {
 //
 // Keempat kombinasinya dihitung langsung pada 2026-09-23 dan sama persis dengan layar lama:
 // 42 · 123 · 340 · 166, berjumlah 671.
+//
+// SUMBER BARU (2026-10-08): pada baris warisan Pega penanda kunci `statuslock_1` tidak
+// punya padanan sesudah tabel kerja Pega tidak dipakai lagi, sehingga cabang pertama hanya
+// dapat menurunkan dua keadaan. Keempatnya tetap dijaga pada cabang terbitan sendiri.
 func TestPositionHasFourStatesNotThree(t *testing.T) {
 	source := strings.ToUpper(getQuery("claim_report_source"))
 
+	require.Contains(t, source,
+		"WHEN COALESCE(T.PNCCASEID, R.NOKLAIM) IS NULL THEN 'NOT TRANSFERRED'",
+		"cabang Pega tidak lagi menurunkan Not Transferred dari nomor klaim")
+	require.Contains(t, source, "CAST(NULL AS VARCHAR(32))  AS ASSIGNMENT_REF",
+		"penanda kunci cabang Pega tidak lagi dinyatakan kosong secara tegas")
+
 	for _, branch := range []string{
-		"WHEN W.PNCCASEID IS NOT NULL AND W.STATUSLOCK_1 IS NOT NULL THEN 'OUTSTANDING'",
-		"WHEN W.PNCCASEID IS NULL     AND W.STATUSLOCK_1 IS NOT NULL THEN 'NOT REGISTERED'",
-		"WHEN W.PNCCASEID IS NULL     AND W.STATUSLOCK_1 IS NULL     THEN 'NOT TRANSFERRED'",
+		"WHEN R.NOKLAIM IS NOT NULL AND R.TRANSFERASM IS NOT NULL THEN 'OUTSTANDING'",
+		"WHEN R.NOKLAIM IS NULL     AND R.TRANSFERASM IS NOT NULL THEN 'NOT REGISTERED'",
+		"WHEN R.NOKLAIM IS NULL     AND R.TRANSFERASM IS NULL     THEN 'NOT TRANSFERRED'",
 	} {
 		require.Containsf(t, source, branch, "cabang posisi hilang: %q", branch)
 	}

@@ -198,7 +198,7 @@ func TestClaimSaveUpdatesExistingHeader(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// be4GetRow membentuk baris klaim_ambil (60 kolom).
+// be4GetRow membentuk baris klaim_ambil (61 kolom).
 func be4GetRow(created time.Time) []driver.Value {
 	loss := time.Date(2026, 9, 1, 0, 0, 0, 0, clock.ZoneWIB)
 	return []driver.Value{
@@ -217,6 +217,7 @@ func be4GetRow(created time.Time) []driver.Value {
 		"Indonesia", "ID", "DKI", "31", "Jakarta", "3171", "Gambir", "317101", "RW01", "R1", "10110",
 		"2", "Mencurigakan",
 		"lod@contoh", "rekomendasi", "subjek", " 2 ", nil, "catatan PIC",
+		"1",
 	}
 }
 
@@ -235,7 +236,7 @@ func be4GetSteps() []be4Step {
 		}
 	}
 	return []be4Step{
-		{name: "klaim_ambil", cols: 60, rows: [][]driver.Value{be4GetRow(created)}, args: []driver.Value{"K1"}},
+		{name: "klaim_ambil", cols: 61, rows: [][]driver.Value{be4GetRow(created)}, args: []driver.Value{"K1"}},
 		{name: "tugas_terbuka_klaim", cols: 11, args: []driver.Value{"K1"}, rows: [][]driver.Value{
 			{"T1", "K1", "PNCN.26.7", "input-estimasi", "WORKLIST", nil, "picteknik", created, nil, nil, nil},
 			{"T2", "K1", "PNCN.26.7", "lain", "WORKLIST", nil, "x", created, nil, nil, nil},
@@ -341,7 +342,7 @@ func TestClaimGetReadsWholeTree(t *testing.T) {
 func TestClaimGetByNumberAndNotFound(t *testing.T) {
 	db, mock := be4DB(t)
 	mock.ExpectQuery(be4Q("klaim_ambil_per_nomor")).WithArgs("PNCN.26.9").
-		WillReturnRows(sqlmock.NewRows(be4Cols(60)))
+		WillReturnRows(sqlmock.NewRows(be4Cols(61)))
 	_, err := NewClaimStore(db).GetByNumber(context.Background(), "PNCN.26.9")
 	require.ErrorIs(t, err, registrasi.ErrClaimNotFound)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -350,11 +351,11 @@ func TestClaimGetByNumberAndNotFound(t *testing.T) {
 // TestClaimGetWithoutPolicyOrStatus membuktikan klaim selesai tanpa polis dan status tidak membaca keduanya.
 func TestClaimGetWithoutPolicyOrStatus(t *testing.T) {
 	db, mock := be4DB(t)
-	row := make([]driver.Value, 60)
+	row := make([]driver.Value, 61)
 	row[0] = "K3"
 	row[3] = "" // nomor polis kosong: kolom ini di-scan ke string biasa, bukan NullString
 	row[25] = "SELESAI"
-	mock.ExpectQuery(be4Q("klaim_ambil")).WillReturnRows(sqlmock.NewRows(be4Cols(60)).AddRow(row...))
+	mock.ExpectQuery(be4Q("klaim_ambil")).WillReturnRows(sqlmock.NewRows(be4Cols(61)).AddRow(row...))
 	mock.ExpectQuery(be4Q("tugas_terbuka_klaim")).WillReturnRows(sqlmock.NewRows(be4Cols(11)))
 	for _, name := range []string{"objek_daftar", "coverage_daftar", "spreading_daftar", "item_daftar",
 		"estimasi_daftar", "adjustment_daftar", "penerima_daftar"} {

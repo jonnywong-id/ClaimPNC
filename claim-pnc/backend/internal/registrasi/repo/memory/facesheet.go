@@ -17,6 +17,9 @@ type FaceSheet struct {
 	CoMember    map[string][]registrasi.CoinsuranceRow
 	Reinsurer   map[string][]registrasi.FacReinsurer
 	Revision    []registrasi.FaceSheetRevision
+
+	// PICJob mencatat AddTechnicalPICJob per PIC — padanan MST_USER_TEKNIS.TOTAL_JOB.
+	PICJob map[string]int
 }
 
 // NewFaceSheet membentuk penyimpanan Claim Face Sheet kosong.
@@ -74,6 +77,17 @@ func (f *FaceSheet) SaveRevision(_ context.Context, r registrasi.FaceSheetRevisi
 		}
 	}
 	f.Revision = append(f.Revision, r)
+	return nil
+}
+
+// AddTechnicalPICJob memenuhi registrasi.FaceSheetSource.
+func (f *FaceSheet) AddTechnicalPICJob(_ context.Context, operatorID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.PICJob == nil {
+		f.PICJob = map[string]int{}
+	}
+	f.PICJob[operatorID]++
 	return nil
 }
 

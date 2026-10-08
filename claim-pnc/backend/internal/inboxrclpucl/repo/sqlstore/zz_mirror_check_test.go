@@ -61,11 +61,16 @@ func TestKueriDokumenMengakuiKlaimPNCN(t *testing.T) {
 			"FROM POOLDATA.T_CLAIM_PNC c",
 			"c.CLAIMID",
 			"'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)",
-			"w.PZINSKEY",
+			"OR a.IDPEGA = 'ASM-FW-GCNMFW-WORK ' || TRIM(:",
 		} {
 			if !strings.Contains(sql, want) {
 				t.Fatalf("kueri %s tidak memuat %q:\n%s", nama, want, sql)
 			}
+		}
+		// Sejak 2026-10-08 kunci ketiga dirangkai dari nomor case; tabel objek kerja Pega
+		// tidak dipakai lagi.
+		if strings.Contains(sql, "PC_ASM_FW_GCNMFW_WORK") {
+			t.Fatalf("kueri %s masih membaca tabel objek kerja Pega:\n%s", nama, sql)
 		}
 	}
 }

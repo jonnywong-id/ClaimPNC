@@ -43,6 +43,10 @@
 // Alasannya ada di WorkItem.LastUpdateOperator. Itulah tabel KETIGA yang dibaca modul ini,
 // dan satu-satunya yang ditambahkan tanpa dasar export.
 //
+// SEJAK 2026-10-08 tabel objek kerja itu sudah tidak dipakai (keputusan Work Owner). Kolom
+// bisnis kini dipetik dari `POOLDATA.JSON_KLAIM.DATA_JSONBLOB`, sedangkan kedua kolom di atas
+// tidak punya padanan dan SELALU KOSONG. Rinciannya di kepala `repo/sqlstore/*.sql`.
+//
 // # Layar lama punya DUA MODE, dan pemisahnya bukan tombol
 //
 // `Section/InboxClaimTreaty_Section-Section.xml` menjaga kontainernya dengan
@@ -219,7 +223,9 @@ type WorkItem struct {
 	Subjectivity string
 
 	// LastUpdateOperator adalah petugas yang TERAKHIR mengubah objek kerjanya —
-	// `PXUPDATEOPERATOR` pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK, berjudul "Last update".
+	// dulu `PXUPDATEOPERATOR` pada tabel objek kerja Pega, berjudul "Last update". Sejak
+	// 2026-10-08 SELALU KOSONG: tabel itu sudah tidak dipakai dan kolomnya tidak punya
+	// padanan (operator pengubah penugasan sama 0/70 di dev).
 	//
 	// # Ia TIDAK ada di export, dan itu perlu dibaca sebelum dipercaya
 	//
@@ -240,8 +246,10 @@ type WorkItem struct {
 	// atas.
 	LastUpdateOperator string
 
-	// ClaimStatus adalah status objek kerja klaimnya — `PYSTATUSWORK` pada
-	// DATAPEGA.PC_ASM_FW_GCNMFW_WORK, berjudul "Status Claim ID".
+	// ClaimStatus adalah status objek kerja klaimnya — dulu `PYSTATUSWORK` pada tabel objek
+	// kerja Pega, berjudul "Status Claim ID". Sejak 2026-10-08 SELALU KOSONG: status alur
+	// kerja tidak ada di tabel POOLDATA mana pun (T_CLAIM_PNC.STATUSWORK tidak memuat klaim
+	// treaty sama sekali).
 	//
 	// Nilainya teks apa adanya dari Pega — "New", "Pending", dan seterusnya — dan TIDAK
 	// diterjemahkan maupun dipetakan ke master status klaim. Dua alasan:

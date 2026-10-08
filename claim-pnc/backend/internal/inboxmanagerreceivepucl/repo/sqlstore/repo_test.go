@@ -204,13 +204,13 @@ func TestCheckTableReportsWhichTableFailed(t *testing.T) {
 	repo, mock := newMock(t)
 	mock.ExpectQuery(query("check_receive")).WillReturnError(errors.New("ora-942"))
 	err := repo.CheckTable(context.Background())
-	require.Regexp(t, regexp.MustCompile(`^membaca DATAPEGA\.PC_ASM_FW_GCNMFW_WORK.*ora-942$`), err.Error())
+	require.Regexp(t, regexp.MustCompile(`^membaca DATAPEGA\.PC_ASSIGN_WORKLIST, POOLDATA\.T_CLAIMLIST_ADMIN.*ora-942$`), err.Error())
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	repo, mock = newMock(t)
 	mock.ExpectQuery(query("check_receive")).WillReturnRows(sqlmock.NewRows([]string{"X"}).AddRow(1))
 	mock.ExpectQuery(query("check_rclpucl")).WillReturnError(errors.New("ora-942"))
 	require.EqualError(t, repo.CheckTable(context.Background()),
-		"membaca DATAPEGA.PC_ASSIGN_WORKBASKET: ora-942")
+		"membaca POOLDATA.TC_PNC_PUCL atau POOLDATA.T_CLAIM_PNC: ora-942")
 	require.NoError(t, mock.ExpectationsWereMet())
 }

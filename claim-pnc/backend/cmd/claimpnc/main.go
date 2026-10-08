@@ -4549,7 +4549,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee)
 		if err != nil {
 			store.close()
 			return assembly{}, err

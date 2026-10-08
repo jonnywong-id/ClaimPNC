@@ -159,32 +159,79 @@ func TestAssignerLightestTechnician(t *testing.T) {
 	ctx := context.Background()
 	technical := registrasi.Stage{ID: "T", Router: registrasi.RouterPNCTechnical}
 
-	for line, group := range map[registrasi.LineOfBusiness]string{
-		registrasi.LinePersonalAccident: "PA",
-		registrasi.LineTravel:           "TRAVEL",
-		registrasi.LineFire:             "NONMBU",
-	} {
-		mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WithArgs(group).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow(" TEK1 "))
-		mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs(" TEK1 ").WillReturnResult(sqlmock.NewResult(0, 1))
-		got, err := a.Assign(ctx, technical, registrasi.Claim{Policy: registrasi.Policy{Line: line}}, "NIK1")
-		require.NoError(t, err)
-		require.Equal(t, registrasi.Assignee{Operator: "TEK1"}, got)
-	}
+	row := func() *sqlmock.Rows { return sqlmock.NewRows([]string{"o"}).AddRow(" TEK1 ") }
+	fire := registrasi.Policy{Line: registrasi.LineFire}
 
-	claim := registrasi.Claim{Policy: registrasi.Policy{Line: registrasi.LineFire}}
-	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC.
-	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnRows(sqlmock.NewRows([]string{"o"}))
-	got, err := a.Assign(ctx, technical, claim, "NIK1")
+	pa := registrasi.Policy{Line: registrasi.LinePersonalAccident, BusinessType: "PA"}
+	position := func(v string) *sqlmock.Rows { return sqlmock.NewRows([]string{"p"}).AddRow(v) }
+
+	// Jabatan PA + TKI: GETDATA_PICTEKNIK memilih DIBADYASANTI, lalu COUNTER_QUOTA naik.
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WithArgs("NIK1").WillReturnRows(position("PA"))
+	mock.ExpectQuery(be4Q("pic_teknik_pa")).WithArgs("DIBADYASANTI").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs(" TEK1 ").WillReturnResult(sqlmock.NewResult(0, 1))
+	got, err := a.Assign(ctx, technical, registrasi.Claim{Policy: pa, TKI: true}, " nik1 ")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: "TEK1"}, got)
+
+	// Jabatan selain PA (atau tidak ada di M_LOGIN_PNC): cabang TRAVEL, beban paling ringan.
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(sqlmock.NewRows([]string{"p"}))
+	mock.ExpectQuery(be4Q("pic_teknik_travel")).WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs(" TEK1 ").WillReturnResult(sqlmock.NewResult(0, 1))
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
+	require.NoError(t, err)
+
+	// Petugas PA tidak ada di master: prosedur keluar tanpa PIC.
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(position("PA"))
+	mock.ExpectQuery(be4Q("pic_teknik_pa")).WithArgs("ESTHERSIMBOLON").WillReturnRows(sqlmock.NewRows([]string{"o"}))
+	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, got)
 
-	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnError(be4Boom)
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnError(be4Boom)
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
+	require.ErrorContains(t, err, "membaca jabatan operator")
+
+	// NONMBU < 1M, ASM leader: tanpa saringan tim C, dan TANPA kenaikan beban (seperti Pega).
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: fire}, "NIK1")
+	require.NoError(t, err)
+
+	// NONMBU > 1M, ASM member: tim C, diurutkan COUNTER_QUOTA2.
+	member := fire
+	member.Coinsurance.Role = "MEMBER"
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu_besar")).WithArgs(registrasi.ExcludedTechnicalPIC, "Y").WillReturnRows(row())
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: member, EstimateValue: registrasi.Rupiah(2_000_000_000)}, "NIK1")
+	require.NoError(t, err)
+
+	// Kandidat tetap per sumber bisnis: tanpa kueri dan tanpa kenaikan beban.
+	ibs := member
+	ibs.SourceOfBusiness = "10001551"
+	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: ibs}, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: "YOSECHRISTOFER"}, got)
+
+	// Asuransi Kredit: PIC = admin, tanpa kueri dan tanpa beban.
+	credit := fire
+	credit.BusinessCode = "10165"
+	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: credit, CreatedBy: "ADMIN1"}, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: "ADMIN1"}, got)
+
+	claim := registrasi.Claim{Policy: fire}
+	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC.
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WillReturnRows(sqlmock.NewRows([]string{"o"}))
+	got, err = a.Assign(ctx, technical, claim, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, got)
+
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WillReturnError(be4Boom)
 	_, err = a.Assign(ctx, technical, claim, "NIK1")
 	require.ErrorContains(t, err, "memilih petugas teknis")
 
-	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow("TEK1"))
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(position("PA"))
+	mock.ExpectQuery(be4Q("pic_teknik_pa")).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow("TEK1"))
 	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WillReturnError(be4Boom)
-	_, err = a.Assign(ctx, technical, claim, "NIK1")
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
 	require.ErrorContains(t, err, `menaikkan beban petugas "TEK1"`)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -385,4 +432,54 @@ func TestJSONTextAndParseMoney(t *testing.T) {
 	require.Equal(t, registrasi.Money(0), parseMoney("x"))
 	require.Equal(t, registrasi.Money(-150), parseMoney("-1.495"))
 	require.Equal(t, registrasi.Money(9_720_000_000), parseMoney("97200000.0000"))
+}
+
+// fakeAttendance menjawab absensi per petugas; tanggal dan nomor klaim yang diminta dicatat.
+type fakeAttendance struct {
+	by    map[string]registrasi.Attendance
+	err   map[string]error
+	asked []string
+}
+
+func (f *fakeAttendance) Attendance(_ context.Context, operator string, date time.Time, claimNumber string) (registrasi.Attendance, error) {
+	f.asked = append(f.asked, operator+"|"+date.Format("20060102")+"|"+claimNumber)
+	return f.by[operator], f.err[operator]
+}
+
+// TestAssignerAttendanceLoop: getRandomTeam_act step 15 — lewati yang tidak masuk, berhenti
+// pada akhir pekan/libur, dan kegagalan layanan dianggap hadir.
+func TestAssignerAttendanceLoop(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	claim := registrasi.Claim{Number: "PNCN.26.1", DateOfLoss: start.AddDate(0, 3, 0),
+		Policy: registrasi.Policy{Line: registrasi.LineFire, Number: "P1", CoverageStart: start, CoverageEnd: start.AddDate(1, 0, 0)}}
+	now := time.Date(2026, 10, 7, 20, 0, 0, 0, time.UTC) // 8 Oktober WIB
+	att := &fakeAttendance{by: map[string]registrasi.Attendance{
+		"A": {RuleTimeIn: "000000"},
+		"B": {RuleTimeIn: "080000"},
+	}, err: map[string]error{}}
+	a := NewAssigner(nil).WithAttendance(att, nil)
+	a.now = func() time.Time { return now }
+
+	require.Equal(t, "B", a.firstPresent(context.Background(), claim, []string{"A", " B ", "C"}))
+	require.Equal(t, []string{"A|20261008|PNCN.26.1", "B|20261008|PNCN.26.1"}, att.asked)
+
+	att.by["A"] = registrasi.Attendance{Day: "SABTU"}
+	require.Empty(t, a.firstPresent(context.Background(), claim, []string{"A", "B"}), "akhir pekan: tanpa PIC")
+
+	att.by["A"] = registrasi.Attendance{RuleTimeIn: "000000"}
+	att.by["B"] = registrasi.Attendance{RuleTimeIn: "000000"}
+	require.Empty(t, a.firstPresent(context.Background(), claim, []string{"A", "B"}), "semua tidak masuk")
+
+	att.err["A"] = be4Boom
+	require.Equal(t, "A", a.firstPresent(context.Background(), claim, []string{"A", "B"}), "layanan gagal = hadir")
+
+	// Tanggal kejadian di luar periode polis: jawaban absensi diabaikan.
+	outside := claim
+	outside.DateOfLoss = start.AddDate(-1, 0, 0)
+	att.asked = nil
+	require.Equal(t, "A", a.firstPresent(context.Background(), outside, []string{"A", "B"}))
+	require.Empty(t, att.asked)
+
+	// Tanpa sumber absensi: kandidat pertama.
+	require.Equal(t, "A", NewAssigner(nil).firstPresent(context.Background(), claim, []string{"A", "B"}))
 }

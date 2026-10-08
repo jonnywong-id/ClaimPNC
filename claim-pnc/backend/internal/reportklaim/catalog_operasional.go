@@ -201,6 +201,10 @@ func catalogOperasional() []Report {
 			// 2026-09-30 yang menutup sisanya: `SURVEYDATE_1`, `KETERANGAN_1`,
 			// `ADJUSTERSTATUS_1`, `USERTEKNIS_1`, `SURVEYORNAME_1`.
 			//
+			// Sejak 2026-10-08 objek kerja itu tidak dibaca lagi: sumbernya langkah terakhir
+			// per berkas di `T_SURVEYORLIST` ditambah `T_CLAIM_PNC`. Padanan `SURVEYDATE_1`
+			// dan `KETERANGAN_1` BELUM terbukti — lihat SUMBER BARU di report_adjuster.
+			//
 			// TIGA hal masih berupa simpulan dan mengubah ISI laporan — arti "Close",
 			// kolom yang disaring periode, dan rumus "Nilai Reserve Klaim ASM". Ketiganya
 			// diuraikan di `report_adjuster` pada reportklaim_operasional.sql, dan hanya

@@ -188,37 +188,68 @@
 -- name: list_tasks
 -- Satu halaman antrean Analyst Doctor milik seorang operator.
 --
--- Bind:
---   :1  penanda antrean — `ClaimData.isComplianceTransfer`, bernilai "2"
---   :2  Operator ID pemanggil
---   :3  status kerja yang DIKECUALIKAN — "Resolved-Completed"
---   :4  kata kunci pencarian, atau NULL bila kotak carinya kosong
---   :5  offset
---   :6  jumlah baris
-SELECT w.PZINSKEY                    AS REFERENCE,
-       w.PYID                        AS CASE_ID,
-       w.POLICYNO                    AS POLICY_NUMBER,
-       w.QQNAME                      AS INSURED_NAME,
-       w.BRANCHNAME                  AS BRANCH_NAME,
-       w.PYORIGUSERID                AS ADMIN_NAME,
-       w.USERTEKNIS_1                AS TECHNICAL_PIC,
-       w.ANALYSTDOCTORREMAKS_1       AS TECHNICAL_PIC_NOTE,
-       w.PXCREATEDATETIME            AS REGISTERED_AT,
-       w.PYSTATUSWORK                AS PROCESS_STATUS,
-       a.PXASSIGNEDOPERATORID        AS ASSIGNED_OPERATOR,
-       COUNT(*) OVER ()              AS TOTAL_ROWS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
-               ON a.PXREFOBJECTKEY = w.PZINSKEY
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.ISCOMPLIANCETRANSFER_1 = :1
-   AND UPPER(a.PXASSIGNEDOPERATORID) = UPPER(:2)
-   AND w.PYSTATUSWORK <> :3
-   AND (:4 IS NULL
-        OR UPPER(w.PYID) LIKE '%' || UPPER(:4) || '%'
-        OR UPPER(w.POLICYNO) LIKE '%' || UPPER(:4) || '%')
- ORDER BY w.PXCREATEDATETIME DESC, w.PZINSKEY DESC
-OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
+-- ============================================================================
+-- SUMBER BARU (2026-10-08) — DAN DUA ISIAN YANG TIDAK PUNYA SUMBER
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` tidak dipakai lagi. Baris DIGERAKKAN worklist operator
+-- (`PC_ASSIGN_WORKLIST`), lalu LEFT JOIN `T_CLAIM_PNC` c (data klaim) dan `T_CLAIMLIST_ADMIN` k
+-- (Nama Admin). T_CLAIMLIST_ADMIN tidak dijadikan tabel utama: ia hanya memuat tugas antrean
+-- Admin, bukan antrean Analyst Doctor.
+--
+-- Pemetaan: PZINSKEY -> a.PXREFOBJECTKEY · PYID -> a.PXREFOBJECTINSNAME (nomor case Pega
+-- persis), cadangan ekor c.CLAIMID · POLICYNO -> c.NOPOLIS · USERTEKNIS_1 -> c.PICTEKNIK ·
+-- PXCREATEDATETIME -> c.REGISTERDATE, cadangan saat tugas dibuat · PYSTATUSWORK ->
+-- c.STATUSWORK (NULL tidak dibuang: ia masih memegang tugas) · PYORIGUSERID ->
+-- k.PYORIGUSERID -> k.PXCREATEOPERATOR -> c.ADMINKLAIM.
+--
+-- `.ClaimData.isComplianceTransfer` dan `.ClaimData.AnalystDoctorRemaks` TIDAK ADA sebagai
+-- kolom di skema mana pun — DATAPEGA maupun POOLDATA (katalog 2026-10-08). Kueri lama yang
+-- menebak namanya ISCOMPLIANCETRANSFER_1 dan ANALYSTDOCTORREMAKS_1 karena itu SELALU gagal
+-- ORA-00904. Akibatnya, sampai kolomnya dibuat:
+--
+--   * penyaring "penanda antrean = 2" DILEPAS — layar menampilkan seluruh tugas klaim di
+--     worklist operator itu sendiri. Batas "hanya milik saya" tetap berlaku lewat worklist.
+--   * kolom "Komentar dari PIC Teknis" kosong.
+--
+-- check_columns tetap memeriksa kedua kolom (kini di T_CLAIM_PNC), sehingga `-periksa` terus
+-- melaporkannya BELUM sampai kolomnya ada.
+--
+-- Bind — setiap kemunculan bernomor sendiri, karena go-ora mengikat menurut URUTAN
+-- KEMUNCULAN. Kueri lama memakai `:4` tiga kali sementara Go mengirim satu nilai, sehingga ia
+-- juga akan gagal ORA-01008 begitu kotak cari diisi.
+--   :1        Operator ID pemanggil
+--   :2        status kerja yang DIKECUALIKAN — "Resolved-Completed"
+--   :3 :4 :5  kata kunci pencarian, atau NULL bila kotak carinya kosong
+--   :6        offset
+--   :7        jumlah baris
+SELECT a.PXREFOBJECTKEY                                           AS REFERENCE,
+       COALESCE(a.PXREFOBJECTINSNAME,
+                REPLACE(c.CLAIMID, 'ASM-FW-GCNMFW-WORK ', ''))    AS CASE_ID,
+       c.NOPOLIS                                                  AS POLICY_NUMBER,
+       c.QQNAME                                                   AS INSURED_NAME,
+       c.BRANCHNAME                                               AS BRANCH_NAME,
+       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, c.ADMINKLAIM) AS ADMIN_NAME,
+       c.PICTEKNIK                                                AS TECHNICAL_PIC,
+       NULL                                                       AS TECHNICAL_PIC_NOTE,
+       COALESCE(c.REGISTERDATE, a.PXCREATEDATETIME)               AS REGISTERED_AT,
+       c.STATUSWORK                                               AS PROCESS_STATUS,
+       a.PXASSIGNEDOPERATORID                                     AS ASSIGNED_OPERATOR,
+       COUNT(*) OVER ()                                           AS TOTAL_ROWS
+  FROM DATAPEGA.PC_ASSIGN_WORKLIST a
+       LEFT JOIN POOLDATA.T_CLAIM_PNC c
+              ON c.CLAIMID = a.PXREFOBJECTKEY
+       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+              ON k.PZINSKEY = a.PXREFOBJECTKEY
+             AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE a.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND UPPER(a.PXASSIGNEDOPERATORID) = UPPER(:1)
+   AND (c.STATUSWORK IS NULL OR c.STATUSWORK <> :2)
+   AND (:3 IS NULL
+        OR UPPER(COALESCE(a.PXREFOBJECTINSNAME, c.CLAIMNO)) LIKE '%' || UPPER(:4) || '%'
+        OR UPPER(c.NOPOLIS) LIKE '%' || UPPER(:5) || '%')
+ ORDER BY COALESCE(c.REGISTERDATE, a.PXCREATEDATETIME) DESC, a.PXREFOBJECTKEY DESC
+OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 
 -- name: check_tables
 -- Dipakai perintah `-periksa`: memastikan KEDUA tabel terbaca dari koneksi yang dipakai.
@@ -231,9 +262,11 @@ OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 -- penyaringnya tidak meloloskan apa pun — pemanggil karena itu tidak perlu membedakan "tidak
 -- ada baris" dari "gagal dibaca".
 SELECT COUNT(*) AS PROBE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
-               ON a.PXREFOBJECTKEY = w.PZINSKEY
+  FROM DATAPEGA.PC_ASSIGN_WORKLIST a
+       LEFT JOIN POOLDATA.T_CLAIM_PNC c
+              ON c.CLAIMID = a.PXREFOBJECTKEY
+       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+              ON k.PZINSKEY = a.PXREFOBJECTKEY
  WHERE 1 = 0
 
 -- name: check_columns
@@ -245,7 +278,7 @@ SELECT COUNT(*) AS PROBE
 --
 -- `WHERE 1 = 0` membuat Oracle tetap MEM-PARSE kedua kolom tanpa membaca satu baris pun.
 -- Parsing itulah yang menghasilkan ORA-00904 bila namanya salah, dan itu yang dicari di sini.
-SELECT COUNT(w.ISCOMPLIANCETRANSFER_1) AS PROBE_TRANSFER,
-       COUNT(w.ANALYSTDOCTORREMAKS_1)  AS PROBE_NOTE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+SELECT COUNT(c.ISCOMPLIANCETRANSFER_1) AS PROBE_TRANSFER,
+       COUNT(c.ANALYSTDOCTORREMAKS_1)  AS PROBE_NOTE
+  FROM POOLDATA.T_CLAIM_PNC c
  WHERE 1 = 0

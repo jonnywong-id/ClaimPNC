@@ -34,8 +34,8 @@ func TestListMapsRowsAndTotal(t *testing.T) {
 	wib := time.FixedZone("WIB", 7*3600)
 	registered := time.Date(2026, 9, 20, 10, 0, 0, 0, wib)
 	mock.ExpectQuery(q("list_tasks")).
-		WithArgs(inboxanalystdoctor.TransferAnalystDoctor, "DOKTER1", inboxanalystdoctor.StatusKerjaSelesai,
-			"banjir", 50, inboxanalystdoctor.MaxLimit).
+		WithArgs("DOKTER1", inboxanalystdoctor.StatusKerjaSelesai,
+			"banjir", "banjir", "banjir", 50, inboxanalystdoctor.MaxLimit).
 		WillReturnRows(sqlmock.NewRows(rowColumns).
 			AddRow("REF-1", "PNC-1", "POL", "PT", "Jakarta", "Admin", "PIC", "catatan", registered, "Pending", "DOKTER1", 42).
 			AddRow("REF-2", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 42))
@@ -58,8 +58,8 @@ func TestListMapsRowsAndTotal(t *testing.T) {
 func TestListEmptySearchSendsNullAndEmptySlice(t *testing.T) {
 	repo, mock := newMock(t)
 	mock.ExpectQuery(q("list_tasks")).
-		WithArgs(inboxanalystdoctor.TransferAnalystDoctor, "D", inboxanalystdoctor.StatusKerjaSelesai,
-			nil, 0, inboxanalystdoctor.DefaultLimit).
+		WithArgs("D", inboxanalystdoctor.StatusKerjaSelesai,
+			nil, nil, nil, 0, inboxanalystdoctor.DefaultLimit).
 		WillReturnRows(sqlmock.NewRows(rowColumns))
 	page, err := repo.List(context.Background(), "D", inboxanalystdoctor.Filter{})
 	require.NoError(t, err)

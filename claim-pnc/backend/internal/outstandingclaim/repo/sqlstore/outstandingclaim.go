@@ -54,7 +54,9 @@ func (r *Repo) Find(
 		rawDocument                                        sql.NullString
 	)
 
-	err := r.db.QueryRowContext(ctx, query("find_claim"), q.ClaimID).Scan(
+	err := r.db.QueryRowContext(ctx, query("find_claim"),
+		// Tiga bind bernilai sama — lihat find_claim (go-ora mengikat menurut urutan).
+		q.ClaimID, q.ClaimID, q.ClaimID).Scan(
 		&claimID, &reference, &statusWork, &lastUpdateOperator, &rawDocument,
 	)
 	switch {
@@ -94,7 +96,7 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 	var ignored int
 	if err := r.db.QueryRowContext(ctx, query("check_tables")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK atau POOLDATA.JSON_KLAIM: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKLIST/WORKBASKET atau POOLDATA.JSON_KLAIM: %w", err)
 	}
 	return nil
 }

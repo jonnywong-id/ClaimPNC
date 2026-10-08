@@ -195,41 +195,76 @@ SELECT JSONDATA
   FROM POOLDATA.M_PARAMETER
  WHERE ID = :1
 
--- name: pic_teknik_paling_ringan
+-- ============================================================================
+-- PIC TEKNIK — getRandomTeam_act (lihat registrasi/technicalpic.go)
+-- ============================================================================
 --
--- Petugas teknis dengan beban paling sedikit untuk sebuah lini bisnis.
+-- Disamakan dengan Pega atas keputusan Work Owner 2026-10-08, termasuk pengecualian
+-- ELLENSUPRIYATI yang di Pega tertulis di dalam kueri. Namanya diikat sebagai parameter
+-- (registrasi.ExcludedTechnicalPIC), bukan ditulis di SQL, supaya hanya ada satu tempat.
+-- Penanda tim C diikat 'Y'/'N' — klausa `{ASIS:TempNoPolis.InvoiceNo}` Pega tidak dibawa.
+
+-- name: pic_teknik_nonmbu
 --
--- Disalin dari `RDB List/BrowsePICRandomTeam-SQL.xml` — `ORDER BY counter_quota ASC`,
--- yakni yang paling sedikit bebannya mendapat tugas berikutnya. Itulah algoritma yang
--- `R-04` sebut hilang bersama PNCAdminRouter dan PNCTeknikRouter, dan yang terbaca
--- kembali dari kueri ini.
---
--- # Satu hal yang TIDAK dibawa
---
--- Kueri lama memuat `and operator_ID != 'ELLENSUPRIYATI'` — satu dari 24 Operator ID yang
--- tertanam di dalam kode. `D-15` menetapkan seluruhnya menjadi master data, dan `P-5`
--- butir 1 menjadikannya perbaikan yang direncanakan. Mekanisme yang benar sudah ada di
--- tabel ini: `STS_AKTIF`. Mengecualikan seseorang dilakukan dengan menonaktifkannya di
--- master, bukan dengan menulis namanya di dalam kueri.
---
--- Selisih yang mungkin timbul pada uji kesetaraan karena itu SUDAH DIPERKIRAKAN, dan
--- terpetakan ke butir `P-5` nomor 1.
+-- SELURUH kandidat, berurutan: `getRandomTeam_act` step 15 memeriksa absensinya satu per satu.
+-- `RDB List/BrowsePICRandomTeam-SQL.xml` — estimasi < Rp 1 miliar, beban COUNTER_QUOTA.
 SELECT OPERATOR_ID
   FROM POOLDATA.MST_USER_TEKNIK
  WHERE STS_AKTIF = '1'
-   AND TRIM(TYPE_BUSINESS) = :1
+   AND TRIM(TYPE_BUSINESS) = 'NONMBU'
+   AND TRIM(OPERATOR_ID) <> :1
+   AND (:2 = 'N' OR TRIM(TEAM_GROUP) = 'C')
+ ORDER BY COUNTER_QUOTA ASC, OPERATOR_ID ASC
+
+-- name: pic_teknik_nonmbu_besar
+--
+-- `RDB List/BrowsePICRandomTeam2-SQL.xml` — estimasi > Rp 1 miliar, beban COUNTER_QUOTA2.
+SELECT OPERATOR_ID
+  FROM POOLDATA.MST_USER_TEKNIK
+ WHERE STS_AKTIF = '1'
+   AND TRIM(TYPE_BUSINESS) = 'NONMBU'
+   AND TRIM(OPERATOR_ID) <> :1
+   AND (:2 = 'N' OR TRIM(TEAM_GROUP) = 'C')
+ ORDER BY COUNTER_QUOTA2 ASC, OPERATOR_ID ASC
+
+-- name: pic_teknik_jabatan
+--
+-- `OperatorID.pyPosition` operator yang sedang bekerja — padanannya M_LOGIN_PNC.LINE_BUSINESS,
+-- sama dengan `line_business_for` modul Inbox Outstanding. Bind: :1 login, huruf besar.
+SELECT p.LINE_BUSINESS
+  FROM POOLDATA.M_LOGIN_PNC p
+ WHERE UPPER(TRIM(p.LOGIN_ID)) = :1
+
+-- name: pic_teknik_pa
+--
+-- `Database/POOLDATA.GETDATA_PICTEKNIK.sql` cabang PA: satu petugas bernama (TKI atau
+-- bukan). Prosedurnya tidak menyaring STS_AKTIF, dan itu dibawa apa adanya.
+SELECT OPERATOR_ID
+  FROM POOLDATA.MST_USER_TEKNIK
+ WHERE TRIM(TYPE_BUSINESS) = 'PA'
+   AND TRIM(OPERATOR_ID) = :1
+ FETCH FIRST 1 ROWS ONLY
+
+-- name: pic_teknik_travel
+--
+-- `Database/POOLDATA.GETDATA_PICTEKNIK.sql` cabang selain PA: beban paling ringan TRAVEL,
+-- juga tanpa saringan STS_AKTIF.
+SELECT OPERATOR_ID
+  FROM POOLDATA.MST_USER_TEKNIK
+ WHERE TRIM(TYPE_BUSINESS) = 'TRAVEL'
  ORDER BY COUNTER_QUOTA ASC, OPERATOR_ID ASC
  FETCH FIRST 1 ROWS ONLY
 
 -- name: pic_teknik_naikkan_beban
 --
--- Menaikkan pencacah beban petugas yang baru saja menerima tugas.
+-- Langkah UPDATE pada akhir `GETDATA_PICTEKNIK` — hanya cabang prosedur PA/Travel.
 --
--- Disalin dari `RDB List/AddTJobCounterPIC_SQL-SQL.xml`. Tanpa langkah ini, petugas yang
--- sama akan terus terpilih karena bebannya tidak pernah bertambah.
+-- Jalur NONMBU tidak memakainya: `AddTJobCounterPIC_SQL` di Pega berada pada step 15.9–15.10
+-- yang tidak pernah tercapai. Beban NONMBU dinaikkan `cfs_tambah_beban_pic` (facesheet.sql).
 UPDATE POOLDATA.MST_USER_TEKNIK
    SET COUNTER_QUOTA = COUNTER_QUOTA + 1
  WHERE OPERATOR_ID = :1
+
 
 -- name: polis_koasuransi
 --

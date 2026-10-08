@@ -43,11 +43,14 @@ func (r *Repo) List(
 		Tasks: []inboxanalystdoctor.AnalystDoctorTask{},
 	}
 
+	// Penanda antrean (TransferAnalystDoctor) TIDAK dikirim: kolom penyaringnya tidak ada di
+	// tabel mana pun — lihat kepala list_tasks. Kata kunci dikirim tiga kali karena go-ora
+	// mengikat menurut urutan kemunculan, dan kuerinya memakainya di tiga tempat.
+	search := keyword(clean.Search)
 	rows, err := r.db.QueryContext(ctx, query("list_tasks"),
-		inboxanalystdoctor.TransferAnalystDoctor,
 		operator,
 		inboxanalystdoctor.StatusKerjaSelesai,
-		keyword(clean.Search),
+		search, search, search,
 		clean.Offset,
 		clean.Limit,
 	)
@@ -176,10 +179,10 @@ func (r *Repo) CheckColumns(ctx context.Context) error {
 	var transfer, note int
 	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&transfer, &note); err != nil {
 		return fmt.Errorf(
-			"kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 pada "+
-				"DATAPEGA.PC_ASM_FW_GCNMFW_WORK tidak dapat dibaca. Kedua properti Pega-nya "+
-				"ditandai `unexposed`, sehingga nama kolomnya masih menunggu konfirmasi DBA "+
-				"— lihat kepala inboxanalystdoctor.sql: %w", err)
+			"kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 belum ada di "+
+				"POOLDATA.T_CLAIM_PNC (katalog 2026-10-08: tidak ada di skema mana pun). "+
+				"Selama belum ada, antrean Analyst Doctor tidak disaring penanda antreannya "+
+				"dan kolom Komentar PIC Teknis kosong — lihat kepala list_tasks: %w", err)
 	}
 	return nil
 }

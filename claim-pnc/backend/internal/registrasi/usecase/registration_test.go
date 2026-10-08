@@ -68,6 +68,7 @@ type environment struct {
 	accounts   *memory.Accounts
 	areas      *memory.AreaDirectory
 	pucl       *memory.PUCL
+	faceSheet  *memory.FaceSheet
 	caller     usecase.Caller
 }
 
@@ -76,6 +77,7 @@ func setup(t *testing.T, roles ...string) environment {
 
 	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
+	faceSheet := memory.NewFaceSheet()
 	parameter := memory.NewParameter()
 	link := memory.NewClaimReportLink()
 	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
@@ -109,7 +111,7 @@ func setup(t *testing.T, roles ...string) environment {
 		CurrencyDirectory:      memory.CurrencyDirectory{},
 		ItemOptions:            policyItems,
 		ClaimRecords:           records,
-		FaceSheet:              memory.NewFaceSheet(),
+		FaceSheet:              faceSheet,
 		FaceSheetRenderer:      facesheetpdf.Renderer{},
 		PLA:                    pla,
 		PLARenderer:            plapdf.Renderer{},
@@ -139,6 +141,7 @@ func setup(t *testing.T, roles ...string) environment {
 	require.NoError(t, err)
 
 	return environment{
+		faceSheet:  faceSheet,
 		service:    service,
 		store:      store,
 		parameter:  parameter,

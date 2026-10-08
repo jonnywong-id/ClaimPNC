@@ -56,8 +56,10 @@ func TestKueriDaftarMenyaringKelasObjekKerja(t *testing.T) {
 func TestKueriDaftarMemakaiGabunganDalamKeWorklist(t *testing.T) {
 	text := strings.ToUpper(query("list_tasks"))
 
-	require.Contains(t, text, "INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST")
-	require.Contains(t, text, "A.PXREFOBJECTKEY = W.PZINSKEY")
+	// Sejak 2026-10-08 worklist yang MENGGERAKKAN baris (objek kerja Pega tidak dibaca lagi),
+	// sehingga klaim dengan dua penugasan terbuka tetap muncul dua kali — perilaku yang sama.
+	require.Contains(t, text, "FROM DATAPEGA.PC_ASSIGN_WORKLIST A")
+	require.NotContains(t, text, "PC_ASM_FW_GCNMFW_WORK")
 	require.NotContains(t, text, "EXISTS")
 }
 
@@ -78,7 +80,7 @@ func TestKueriDaftarMemakaiWorklistBukanWorkbasket(t *testing.T) {
 // Filter C berbunyi `!=`. Satu tanda yang salah membalik seluruh isi layar: yang tampil
 // menjadi tugas yang sudah tuntas, dan tidak ada apa pun yang menandakannya.
 func TestPenyaringStatusMemakaiTidakSamaDengan(t *testing.T) {
-	require.Contains(t, strings.ToUpper(query("list_tasks")), "W.PYSTATUSWORK <> :3")
+	require.Contains(t, strings.ToUpper(query("list_tasks")), "C.STATUSWORK <> :2")
 }
 
 // TestResolvedRejectedTidakIkutDikecualikan menjaga perbedaan terhadap Inbox Outstanding.
@@ -89,13 +91,13 @@ func TestResolvedRejectedTidakIkutDikecualikan(t *testing.T) {
 // TestUrutanMenurunDenganPemutusSeri mengunci kedua `pySortType = DESC`.
 func TestUrutanMenurunDenganPemutusSeri(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("list_tasks")),
-		"ORDER BY W.PXCREATEDATETIME DESC, W.PZINSKEY DESC")
+		"ORDER BY COALESCE(C.REGISTERDATE, A.PXCREATEDATETIME) DESC, A.PXREFOBJECTKEY DESC")
 }
 
 // TestPaginasiDikerjakanBasisData menjaga halaman dipotong sebelum baris meninggalkannya.
 func TestPaginasiDikerjakanBasisData(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("list_tasks")),
-		"OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY")
+		"OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY")
 }
 
 // TestJumlahBarisDihitungFungsiJendela menjaga satu perjalanan, bukan dua.
@@ -121,7 +123,7 @@ func TestSeluruhNilaiLewatParameterBinding(t *testing.T) {
 	for _, marker := range markers {
 		seen[marker] = true
 	}
-	for _, expected := range []string{":1", ":2", ":3", ":4", ":5", ":6"} {
+	for _, expected := range []string{":1", ":2", ":3", ":4", ":5", ":6", ":7"} {
 		require.Truef(t, seen[expected], "penanda bind %s tidak dipakai", expected)
 	}
 
@@ -133,10 +135,11 @@ func TestSeluruhNilaiLewatParameterBinding(t *testing.T) {
 	// Pemeriksaannya dilakukan dengan MEMBUANG pola yang sah lebih dulu, lalu menuntut tidak
 	// ada `||` yang tersisa. Sekadar melarang `' ||` akan menolak pola yang benar sekaligus
 	// meloloskan `|| TempFilter.Nama ||` yang justru berbahaya.
-	const wildcard = "'%' || UPPER(:4) || '%'"
-	require.Contains(t, text, wildcard)
-
-	rest := strings.ReplaceAll(text, wildcard, "")
+	rest := text
+	for _, wildcard := range []string{"'%' || UPPER(:4) || '%'", "'%' || UPPER(:5) || '%'"} {
+		require.Contains(t, text, wildcard)
+		rest = strings.ReplaceAll(rest, wildcard, "")
+	}
 	require.NotContains(t, rest, "||",
 		"selain pola wildcard LIKE, tidak boleh ada perangkaian apa pun ke teks SQL")
 }
@@ -146,13 +149,13 @@ func TestSeluruhNilaiLewatParameterBinding(t *testing.T) {
 // `LIKE '%%'` kebetulan cocok dengan semuanya, tetapi memaksa basis data memeriksa setiap
 // baris alih-alih melewati predikatnya.
 func TestPencarianDimatikanSaatKataKunciNULL(t *testing.T) {
-	require.Contains(t, strings.ToUpper(query("list_tasks")), ":4 IS NULL")
+	require.Contains(t, strings.ToUpper(query("list_tasks")), ":3 IS NULL")
 }
 
 // TestPerbandinganOperatorTidakPekaHurufBesarKecil mengunci CATATAN 3.
 func TestPerbandinganOperatorTidakPekaHurufBesarKecil(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("list_tasks")),
-		"UPPER(A.PXASSIGNEDOPERATORID) = UPPER(:2)")
+		"UPPER(A.PXASSIGNEDOPERATORID) = UPPER(:1)")
 }
 
 // TestTidakAdaPernyataanYangMenulis menjaga `P-1`.
