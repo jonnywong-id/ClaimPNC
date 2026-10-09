@@ -146,6 +146,22 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 	}
 	claim.InsuredItem = registrasi.BuildInsuredItems(policy, claim.DateOfLoss, source)
 
+	// PA: Deskripsi Laporan diisi kalimat baku + Kronologis berkas RCV —
+	// CallActivityInputRegister langkah 44 (When isPA_PNC).
+	if policy.Line == registrasi.LinePersonalAccident {
+		claim.Chronology = registrasi.PAReportDescription(claim.DateOfLoss, claim.Chronology)
+	}
+
+	// PA: objek (peserta) tetap dari polis, tetapi coverage TIDAK diisi otomatis — petugas
+	// menambahkannya sendiri pada peserta yang terdampak lewat Tambah coverage, yang mengisi
+	// nama, TSI, dan spreading dari polis (Work Owner 2026-10-08). Gerbang validasi cukup
+	// menuntut minimal satu objek ber-coverage.
+	if policy.Line == registrasi.LinePersonalAccident {
+		for i := range claim.InsuredItem {
+			claim.InsuredItem[i].Coverage = nil
+		}
+	}
+
 	// Penyebab Kerugian tidak ada di dokumen polis; petugas memilihnya dari daftar kode
 	// bisnis polis. Bila daftar itu hanya berisi satu pilihan, pilihan itulah yang diisi —
 	// petugas tidak perlu memilih sesuatu yang tidak punya alternatif.

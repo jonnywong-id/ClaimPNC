@@ -454,6 +454,15 @@ type Claim struct {
 	// (POOLDATA.T_CLAIM_PNC.REMARK).
 	TechnicalPICNote string
 
+	// InsuredUpdate adalah isian "Pengkinian Data" dan No KTP bagian DATA TERTANGGUNG KLAIM
+	// Input Register PA — lihat InsuredUpdate.
+	InsuredUpdate InsuredUpdate
+
+	// ReportType adalah Jenis Laporan Input Register (`.ClaimData.ReportType`) —
+	// POOLDATA.T_CLAIM_PNC.REPORTTYPE, kode 1 Direct · 2 Via Email · 3 Via Fax · 4 Via Pos /
+	// Kurir · 5 Via Telephone · 6 Via Portal (Work Owner 2026-10-09).
+	ReportType string
+
 	EstimateValue Money
 	Currency      string
 

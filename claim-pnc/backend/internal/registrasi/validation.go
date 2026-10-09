@@ -255,8 +255,11 @@ func validateReporterStatus(v *collector, k Claim) {
 // `pyRequired=always`. Tanpa aturan ini klaim lolos Input Register dengan lokasi kosong, lalu
 // baru tertahan di akseptasi ("Location kosong !!", AcceptationLOD_PreAct) — terukur pada
 // PNCN.26.38, 2026-10-07.
+//
+// PA dikecualikan: bagian Lokasi Kerugian/Kejadian tidak ditampilkan pada Input Register PA
+// (Work Owner 2026-10-08), dan pemeriksaan lokasi saat akseptasi hanya berlaku Non-MBU.
 func validateLocation(v *collector, k Claim) {
-	if strings.TrimSpace(k.Location) != "" {
+	if strings.TrimSpace(k.Location) != "" || k.Policy.Line == LinePersonalAccident {
 		return
 	}
 	v.add(ViolationLocationEmpty, "lokasi", "Lokasi Kerugian/Kejadian is required.")

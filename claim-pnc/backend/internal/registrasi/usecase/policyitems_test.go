@@ -2,6 +2,7 @@ package usecase_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,4 +60,28 @@ func TestStartFillsCauseOfLossOnlyWhenThereIsOneChoice(t *testing.T) {
 	options, err := one.service.CauseOfLossOptions(ctx, "10013")
 	require.NoError(t, err)
 	require.Len(t, options, 1)
+}
+
+// PA: objek (peserta) tetap dibuat dari polis, tetapi coverage tidak diisi otomatis — petugas
+// menambahkannya sendiri (Work Owner 2026-10-08).
+func TestStartLeavesPACoverageEmpty(t *testing.T) {
+	l := setup(t)
+	start, err := l.service.Start(context.Background(), usecase.StartCommand{PolicyNumber: "POL-PA-0002", Portal: "ASM"}, l.caller)
+	require.NoError(t, err)
+	require.Len(t, start.Claim.InsuredItem, 1)
+	require.Equal(t, "PESERTA CONTOH", start.Claim.InsuredItem[0].Name)
+	require.Empty(t, start.Claim.InsuredItem[0].Coverage)
+}
+
+// PA: Deskripsi Laporan klaim yang baru dibuka diisi kalimat baku CallActivityInputRegister
+// langkah 44.
+func TestStartFillsPAReportDescription(t *testing.T) {
+	l := setup(t)
+	start, err := l.service.Start(context.Background(), usecase.StartCommand{PolicyNumber: "POL-PA-0002", Portal: "ASM"}, l.caller)
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(start.Claim.Chronology, "Berdasarkan surat keterangan kematian dari ..."))
+
+	fire, err := l.service.Start(context.Background(), usecase.StartCommand{PolicyNumber: firePolicy, Portal: "ASM"}, l.caller)
+	require.NoError(t, err)
+	require.NotContains(t, fire.Claim.Chronology, "surat keterangan kematian")
 }
