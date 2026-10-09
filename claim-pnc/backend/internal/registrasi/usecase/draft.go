@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"claim-pnc/internal/registrasi"
 )
@@ -46,6 +47,12 @@ func (l *Service) SaveDraft(ctx context.Context, p RegisterCommand, by Caller) (
 		return registrasi.Claim{}, registrasi.ErrNotTaskOwner
 	}
 
+	if err := registrasi.ValidateInsuredUpdate(p.InsuredUpdate.Trimmed()); err != nil {
+		return registrasi.Claim{}, err
+	}
+	if err := registrasi.ValidateReportType(strings.TrimSpace(p.ReportType)); err != nil {
+		return registrasi.Claim{}, err
+	}
 	now := l.clock.Now().UTC()
 	p.Return = false
 	applyInput(&claim, p, by, now)

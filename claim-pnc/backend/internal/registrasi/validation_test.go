@@ -75,6 +75,17 @@ func TestLocationRequired(t *testing.T) {
 	}
 }
 
+// PA: bagian Lokasi tidak ditampilkan di Input Register, sehingga lokasi kosong tidak ditolak.
+func TestLocationNotRequiredForPA(t *testing.T) {
+	k := validClaim()
+	k.Location = ""
+	k.Policy.Line = registrasi.LinePersonalAccident
+	err := registrasi.Validate(k, parts())
+	if err != nil {
+		require.False(t, violations(t, err).Has(registrasi.ViolationLocationEmpty))
+	}
+}
+
 // TestDateOrdering menguji ketiga aturan urutan pada kasus batas: sama persis, dan
 // selisih satu hari ke arah yang salah.
 func TestDateOrdering(t *testing.T) {

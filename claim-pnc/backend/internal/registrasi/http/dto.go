@@ -228,6 +228,14 @@ type ClaimDTO struct {
 	// TechnicalPICNote adalah Catatan ke PIC Teknis (T_CLAIM_PNC.REMARK).
 	TechnicalPICNote string `json:"catatan_pic_teknis"`
 
+	// No KTP dan Pengkinian Data Input Register PA (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL).
+	UpdateIDCard string `json:"pengkinian_no_ktp"`
+	UpdatePhone  string `json:"pengkinian_no_hp"`
+	UpdateEmail  string `json:"pengkinian_email"`
+
+	// ReportType adalah Jenis Laporan (T_CLAIM_PNC.REPORTTYPE).
+	ReportType string `json:"jenis_laporan"`
+
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
 	SLIKNumber         string `json:"nomor_slik"`
@@ -324,6 +332,14 @@ type RegisterRequest struct {
 	RemarkRecommendation string `json:"rekomendasi"`
 	SubjectEmail         string `json:"subjek_email"`
 	SalvageStatus        string `json:"status_salvage"`
+
+	// No KTP dan Pengkinian Data Input Register PA.
+	UpdateIDCard string `json:"pengkinian_no_ktp"`
+	UpdatePhone  string `json:"pengkinian_no_hp"`
+	UpdateEmail  string `json:"pengkinian_email"`
+
+	// ReportType adalah Jenis Laporan (T_CLAIM_PNC.REPORTTYPE).
+	ReportType string `json:"jenis_laporan"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`

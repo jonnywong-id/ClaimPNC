@@ -122,6 +122,10 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 		emptyTextAsNil(k.SalvageStatus),
 		registerMoment(k.AnalystTransferredAt),
 		emptyTextAsNil(k.TechnicalPICNote),
+		emptyTextAsNil(k.InsuredUpdate.IDCard),
+		emptyTextAsNil(k.InsuredUpdate.Phone),
+		emptyTextAsNil(k.InsuredUpdate.Email),
+		emptyTextAsNil(k.ReportType),
 		k.ID,
 	}
 
@@ -416,6 +420,8 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		customerPrinciple, suspiciousComment     sql.NullString
 		emailLOD, recommendation, subjectEmail   sql.NullString
 		technicalPICNote                         sql.NullString
+		updateIDCard, updatePhone, updateEmail   sql.NullString
+		reportType                               sql.NullString
 		salvageStatus                            sql.NullString
 		analystTransferredAt                     sql.NullTime
 	)
@@ -438,6 +444,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&rw, &rwID, &postalCode, &customerPrinciple, &suspiciousComment,
 		&emailLOD, &recommendation, &subjectEmail, &salvageStatus,
 		&analystTransferredAt, &technicalPICNote,
+		&updateIDCard, &updatePhone, &updateEmail, &reportType,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
@@ -505,6 +512,10 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	k.RemarkRecommendation = recommendation.String
 	k.SubjectEmail = subjectEmail.String
 	k.TechnicalPICNote = technicalPICNote.String
+	k.InsuredUpdate = registrasi.InsuredUpdate{
+		IDCard: updateIDCard.String, Phone: updatePhone.String, Email: updateEmail.String,
+	}
+	k.ReportType = strings.TrimSpace(reportType.String)
 	k.SalvageStatus = strings.TrimSpace(salvageStatus.String)
 	if analystTransferredAt.Valid {
 		k.AnalystTransferredAt = analystTransferredAt.Time

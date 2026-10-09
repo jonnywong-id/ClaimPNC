@@ -484,6 +484,13 @@ export type Claim = {
   user_teknis: string
   /** Catatan ke PIC Teknis layar Input Estimasi (T_CLAIM_PNC.REMARK). */
   catatan_pic_teknis?: string
+  /** No KTP dan Pengkinian Data Input Register PA (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL). */
+  pengkinian_no_ktp?: string
+  pengkinian_no_hp?: string
+  pengkinian_email?: string
+  /** Jenis Laporan (T_CLAIM_PNC.REPORTTYPE): 1 Direct · 2 Via Email · 3 Via Fax · 4 Via Pos /
+   * Kurir · 5 Via Telephone · 6 Via Portal. */
+  jenis_laporan?: string
   rcv_id: string
   objek: InsuredItem[]
   /** ClaimData.ReceiverClaim — penerima klaim (T_CLAIM_RECEIVER). */
@@ -579,6 +586,12 @@ export type RegisterRequest = {
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
   email_lod: string
+  /** No KTP dan Pengkinian Data Input Register PA. */
+  pengkinian_no_ktp?: string
+  pengkinian_no_hp?: string
+  pengkinian_email?: string
+  /** Jenis Laporan (T_CLAIM_PNC.REPORTTYPE). */
+  jenis_laporan?: string
   rekomendasi: string
   subjek_email: string
   status_salvage: string

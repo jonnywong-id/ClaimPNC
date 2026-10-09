@@ -98,6 +98,8 @@ const (
 	ViolationTechnicalPICNoteTooLong ViolationCode = "catatan_pic_teknis_terlalu_panjang"
 	ViolationCommitteeNoteTooLong    ViolationCode = "isian_komite_terlalu_panjang"
 	ViolationPLAEmailTooLong         ViolationCode = "email_pla_terlalu_panjang"
+	ViolationInsuredUpdateTooLong    ViolationCode = "pengkinian_terlalu_panjang"
+	ViolationReportTypeTooLong       ViolationCode = "jenis_laporan_terlalu_panjang"
 	ViolationFaceSheetMissing        ViolationCode = "belum_claim_face_sheet"
 	ViolationFaceSheetNothingNew     ViolationCode = "tidak_ada_estimasi_baru"
 	ViolationPLANeedsFaceSheet       ViolationCode = "pla_belum_cfs"

@@ -255,7 +255,7 @@ describe('layar kerja klaim', () => {
 
     expect(screen.getByRole('region', { name: 'DATA TERTANGGUNG KLAIM' })).toBeInTheDocument()
     expect(screen.getByLabelText(/No KTP/)).toBeInTheDocument()
-    expect(screen.getByText('Detail Ekspedisi')).toBeInTheDocument()
+    expect(screen.queryByText('Detail Ekspedisi')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Email Tertanggung')).toBeInTheDocument()
     expect(screen.getByLabelText('Tanggal Terima Dokumen')).toBeInTheDocument()
     // Bagian Estimasi — termasuk Ex Gratia dan Catatan Ke Analyst PA — tidak tampil di
@@ -269,6 +269,49 @@ describe('layar kerja klaim', () => {
     expect(screen.queryByLabelText('Tanggal Keluar Rawat Inap')).not.toBeInTheDocument()
     await userEvent.setup().click(screen.getByLabelText('Apakah Melakukan Rawat Inap ?'))
     expect(screen.getByLabelText('Tanggal Keluar Rawat Inap')).toBeInTheDocument()
+  })
+
+  // Work Owner 2026-10-08: Tanggal Terima Dokumen otomatis tanggal input, Tgl Terima HCDKP
+  // disembunyikan, dan Email Pelapor/Email Tertanggung mengikuti Email Pengkinian Data.
+  it('PA: Tanggal Terima Dokumen otomatis, tanpa HCDKP, telepon dan email mengikuti Pengkinian Data', async () => {
+    const pa = {
+      ...CLAIM,
+      klaim: { ...CLAIM.klaim, tanggal_terima_dokumen: '', polis: { ...CLAIM.klaim.polis, lini: '002', nama_lini: 'Personal Accident' } },
+    }
+    stubFetch(() => ({ body: pa, status: 200 }))
+    const base = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      url === '/api/registrasi/klaim/klaim-1'
+        ? Promise.resolve(new Response(JSON.stringify(pa), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : base(url, init))
+    mount(<ClaimPage />)
+
+    expect(await screen.findByLabelText('Tanggal Terima Dokumen')).not.toHaveValue('')
+    expect(screen.queryByLabelText('Tgl Terima HCDKP')).not.toBeInTheDocument()
+    // Lokasi Kerugian/Kejadian dan Data registrasi lainnya tidak ditampilkan untuk PA.
+    expect(screen.queryByLabelText(/Lokasi Kerugian\/Kejadian/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Data registrasi lainnya')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Nomor SLIK')).not.toBeInTheDocument()
+    // Objek pertanggungan PA: Tambah objek dan Hapus objek disembunyikan.
+    expect(screen.queryByRole('button', { name: 'Tambah objek' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Hapus objek/ })).not.toBeInTheDocument()
+
+    await userEvent.setup().type(screen.getByLabelText('No. HP'), '081234567890')
+    expect(screen.getByLabelText('No. Telepon Pelapor')).toHaveValue('081234567890')
+
+    await userEvent.setup().type(screen.getByLabelText('Email'), 'peserta@contoh.example')
+    expect(screen.getByLabelText('Email Pelapor')).toHaveValue('peserta@contoh.example')
+    expect(screen.getByLabelText('Email Tertanggung')).toHaveValue('peserta@contoh.example')
+
+    // No KTP dan Pengkinian Data tersimpan ke T_CLAIM_PNC (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL).
+    await userEvent.setup().type(screen.getByLabelText(/No KTP/), '3171000000000001')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(draftBody).not.toBeNull())
+    expect(draftBody).toMatchObject({
+      pengkinian_no_ktp: '3171000000000001',
+      pengkinian_no_hp: '081234567890',
+      pengkinian_email: 'peserta@contoh.example',
+    })
   })
 
   it('mengirim uang sebagai sen dan share sebagai persen dikali sepuluh ribu', async () => {

@@ -18,7 +18,7 @@ import { FormField } from '@/components/FormField'
 import { SelectField } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatPercent, formatRupiah, formatDate, rupiahToCents, centsToRupiah } from '@/components/format'
+import { formatPercent, formatRupiah, formatDate, rupiahToCents, centsToRupiah, todayWIB } from '@/components/format'
 
 import {
   useFlow,
@@ -30,6 +30,7 @@ import {
   useCauseOfLossOptions,
   useCoverageOptions,
   useCurrencies,
+  useInsuredProfile,
   violationsFrom,
   messagesByField,
 } from './api'
@@ -75,6 +76,21 @@ const REPORT_TYPES = [
   { value: '5', label: 'Via Telephone' },
   { value: '6', label: 'Via Portal' },
 ]
+
+/** Pilihan Jenis Laporan, ditambah kode tersimpan yang tidak ada di daftar. */
+function reportTypeOptions(current: string | undefined) {
+  return withStoredCode(REPORT_TYPES, current)
+}
+
+/**
+ * Daftar pilihan ditambah kode tersimpan yang tidak ada di daftar (mis. Status Pelapor 0 pada
+ * klaim lama), supaya nilainya tidak diam-diam berubah saat form dibuka.
+ */
+function withStoredCode(options: { value: string; label: string }[], current: string | undefined) {
+  const code = (current ?? '').trim()
+  if (code === '' || options.some((t) => t.value === code)) return options
+  return [...options, { value: code, label: code }]
+}
 
 /** Pesan isian Lokasi kosong — sama dengan pesan server (ViolationLocationEmpty). */
 const LOCATION_REQUIRED = 'Lokasi Kerugian/Kejadian is required.'
@@ -357,6 +373,8 @@ type InsuredItemInput = {
 }
 
 type RegisterFormValues = {
+  /** Jenis Laporan — T_CLAIM_PNC.REPORTTYPE. */
+  jenis_laporan: string
   tanggal_kejadian: string
   tanggal_lapor: string
   tanggal_terima_dokumen: string
@@ -391,6 +409,23 @@ type RegisterFormValues = {
 /** Kode hubungan pelapor yang menuntut keterangan tambahan (langkah 28 sistem lama). */
 const HUBUNGAN_LAIN_LAIN = '7'
 
+/** Status Pelapor — Property InsuredRelationship (`.ClaimData.InsuredRelationship`). */
+const RELATIONSHIPS = [
+  { value: '1', label: 'Tertanggung' },
+  { value: '2', label: 'Suami/Istri' },
+  { value: '3', label: 'Anak' },
+  { value: '4', label: 'Orang Tua' },
+  { value: '5', label: 'Famili' },
+  { value: '6', label: 'Teman' },
+  { value: '7', label: 'Lainnya' },
+]
+
+/** Status Pelapor Tertanggung — SetTertanggungRegister. */
+const RELATIONSHIP_INSURED = '1'
+
+/** Jenis Laporan pelaporan online — SetTertanggungRegister (`.ClaimData.ReportType == 7`). */
+const REPORT_TYPE_ONLINE = '7'
+
 /**
  * Formulir tahap Input Register.
  *
@@ -405,9 +440,6 @@ const HUBUNGAN_LAIN_LAIN = '7'
  * Yang dilakukan layar adalah memastikan setiap pesan dari server menempel pada KOLOM
  * yang benar, supaya petugas tahu apa yang harus ia perbaiki.
  */
-/** Kode cabang yang tidak menampilkan Tgl Terima HCDKP (`KodeCabang != '100081'`, InputRegisterDetail). */
-const BRANCH_HEAD_OFFICE = '100081'
-
 function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const save = useSaveRegister()
   const draft = useSaveDraft()
@@ -429,6 +461,29 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const [addedItem, setAddedItem] = useState<number | null>(null)
   const fieldErrors = messagesByField(violations)
   const hubungan = watch('pelapor_hubungan')
+
+  // SetTertanggungRegister — dijalankan saat Status Pelapor dipilih:
+  //   Tertanggung, bukan pelaporan online: Nama Pelapor = QQName polis, No. Telepon Pelapor =
+  //     telepon pertama alamat pertama tertanggung (AddressList(1).ASMTelfax(1)), Alamat Pelapor
+  //     = alamat pertama (AddressList(1).ASMAddress).
+  //   Tertanggung, pelaporan online (Jenis Laporan 7): data pengirim berkas RCV — sudah terisi
+  //     dari berkas saat klaim dibuka, sehingga dibiarkan.
+  //   Selain Tertanggung: Nama, No. Telepon, dan Alamat Pelapor dikosongkan.
+  const insuredProfile = useInsuredProfile(klaim.id)
+  const applyRelationship = (value: string) => {
+    const dirty = { shouldDirty: true }
+    if (value !== RELATIONSHIP_INSURED) {
+      setValue('pelapor_nama', '', dirty)
+      setValue('pelapor_telepon', '', dirty)
+      setValue('pelapor_alamat', '', dirty)
+      return
+    }
+    if (watch('jenis_laporan') === REPORT_TYPE_ONLINE) return
+    const address = insuredProfile.data?.alamat?.[0]
+    setValue('pelapor_nama', klaim.polis.nama_tertanggung ?? '', dirty)
+    setValue('pelapor_telepon', address?.telepon?.[0]?.nomor ?? '', dirty)
+    setValue('pelapor_alamat', address?.alamat ?? '', dirty)
+  }
 
   // Kondisi tampil Section/InputRegisterDetail.
   const panel = klaim.polis.lini
@@ -454,13 +509,24 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   // petugas dapat memperbaikinya.
   const showDateReceived = pa || travel || Boolean(fieldErrors['tanggal_terima_dokumen'])
 
+  // PA: Tanggal Terima Dokumen terisi otomatis tanggal input (hari ini, WIB) bila masih kosong —
+  // permintaan Work Owner 2026-10-08. Tetap dapat diubah petugas.
+  const dateReceived = watch('tanggal_terima_dokumen')
+  useEffect(() => {
+    if (pa && !dateReceived) setValue('tanggal_terima_dokumen', todayWIB(), { shouldDirty: true })
+  }, [pa, dateReceived, setValue])
+
   // Isian tanpa kolom di T_CLAIM_PNC — tampil sesuai section, belum tersimpan.
   const [unsaved, setUnsaved] = useState({
-    rawat_inap: false, tanggal_keluar_rawat_inap: '', no_ktp: '', catatan_analis: '',
-    jenis_laporan: REPORT_TYPE_DIRECT, tgl_terima_hcdkp: '', data_pengobatan: '',
-    ekspedisi: '', ekspedisi_lain: '', no_resi: '', tanggal_kirim_ekspedisi: '', estimasi_sampai_ekspedisi: '',
-    pengkinian_hp: '', pengkinian_email: '',
+    rawat_inap: false, tanggal_keluar_rawat_inap: '', catatan_analis: '',
+    data_pengobatan: '',
   })
+  // No KTP dan Pengkinian Data — tersimpan ke T_CLAIM_PNC.PENGKINIAN_NO_KTP / _NO_HP / _EMAIL
+  // (Work Owner 2026-10-09). Dimuat ulang dari klaim setiap kali klaim dimuat.
+  const [insuredUpdate, setInsuredUpdate] = useState(() => insuredUpdateOf(klaim))
+  useEffect(() => {
+    setInsuredUpdate(insuredUpdateOf(klaim))
+  }, [klaim])
   const setUnsavedField = (name: keyof typeof unsaved, value: string | boolean) =>
     setUnsaved((current) => ({ ...current, [name]: value }))
 
@@ -468,13 +534,18 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     ...content,
     email_lod: pa ? content.email_lod : '',
   })
+  // Hanya PA yang menampilkan isiannya; lini lain mengirim nilai tersimpan apa adanya.
+  const withInsuredUpdate = (request: RegisterRequest): RegisterRequest => ({
+    ...request,
+    ...(pa ? insuredUpdate : insuredUpdateOf(klaim)),
+  })
 
   const submit = (content: RegisterFormValues, kembali: boolean) => {
     // Lokasi Kerugian/Kejadian wajib (`pyRequired=always` di InputRegisterDetail-sect). Next
     // ditahan di layar lebih dulu; server menolaknya juga (ViolationLocationEmpty), sehingga
     // klaim tidak lagi lolos ke akseptasi dengan lokasi kosong ("Location kosong !!").
     // Back tidak diperiksa: ia hanya mengembalikan tahap.
-    if (!kembali && !(content.lokasi ?? '').trim()) {
+    if (!kembali && !pa && !(content.lokasi ?? '').trim()) {
       save.reset()
       draft.reset()
       setViolations([{ kode: 'lokasi_kosong', field: 'lokasi', pesan: LOCATION_REQUIRED }])
@@ -483,7 +554,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     }
     setViolations([])
     draft.reset()
-    save.mutate(toRequest(visible(content), tugas.id, kembali), {
+    save.mutate(withInsuredUpdate(toRequest(visible(content), tugas.id, kembali)), {
       onError: (failure) => setViolations(violationsFrom(failure)),
     })
   }
@@ -492,7 +563,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const saveOnly = (content: RegisterFormValues) => {
     setViolations([])
     save.reset()
-    draft.mutate(toRequest(visible(content), tugas.id, false))
+    draft.mutate(withInsuredUpdate(toRequest(visible(content), tugas.id, false)))
   }
 
   const busy = save.isPending || draft.isPending
@@ -548,12 +619,23 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       {pa && (
         <InsuredDataSection
           klaim={klaim}
-          idCard={unsaved.no_ktp}
-          onIDCard={(v) => setUnsavedField('no_ktp', v)}
-          phone={unsaved.pengkinian_hp}
-          onPhone={(v) => setUnsavedField('pengkinian_hp', v)}
-          email={unsaved.pengkinian_email}
-          onEmail={(v) => setUnsavedField('pengkinian_email', v)}
+          idCard={insuredUpdate.pengkinian_no_ktp}
+          onIDCard={(v) => setInsuredUpdate((u) => ({ ...u, pengkinian_no_ktp: v }))}
+          phone={insuredUpdate.pengkinian_no_hp}
+          onPhone={(v) => {
+            // No. Telepon Pelapor mengikuti No. HP Pengkinian Data — permintaan Work Owner
+            // 2026-10-08. Tetap dapat diubah sesudahnya.
+            setInsuredUpdate((u) => ({ ...u, pengkinian_no_hp: v }))
+            setValue('pelapor_telepon', v, { shouldDirty: true })
+          }}
+          email={insuredUpdate.pengkinian_email}
+          onEmail={(v) => {
+            // Email Pelapor dan Email Tertanggung mengikuti Email Pengkinian Data — permintaan
+            // Work Owner 2026-10-08. Keduanya tetap dapat diubah sesudahnya.
+            setInsuredUpdate((u) => ({ ...u, pengkinian_email: v }))
+            setValue('pelapor_email', v, { shouldDirty: true })
+            setValue('email_lod', v, { shouldDirty: true })
+          }}
         />
       )}
 
@@ -590,15 +672,15 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             <DateField id="tanggal_lapor" label="Tanggal Lapor" value={field.value} onChange={field.onChange}
               error={fieldErrors['tanggal_lapor']} />
           )} />
-          {pa && (klaim.polis.kode_cabang ?? '') !== BRANCH_HEAD_OFFICE && (
-            <UnsavedField id="tgl_terima_hcdkp" label="Tgl Terima HCDKP" type="date" value={unsaved.tgl_terima_hcdkp}
-              onChange={(v) => setUnsavedField('tgl_terima_hcdkp', v)} />
-          )}
+          {/* Tgl Terima HCDKP disembunyikan — tidak dipakai (Work Owner 2026-10-08). */}
           <FormField id="pelapor_nama" label="Nama Pelapor" {...register('pelapor_nama')} />
-          <UnsavedField id="jenis_laporan" label="Jenis Laporan" value={unsaved.jenis_laporan}
-            options={REPORT_TYPES} note="Not saved yet: this screen does not write T_CLAIM_PNC.REPORTTYPE yet."
-            onChange={(v) => setUnsavedField('jenis_laporan', v)} />
-          <FormField id="pelapor_hubungan" label="Status Pelapor" inputMode="numeric" {...register('pelapor_hubungan')} />
+          {/* Jenis Laporan — tersimpan ke T_CLAIM_PNC.REPORTTYPE (Work Owner 2026-10-09). Kode
+              tersimpan di luar daftar (mis. 7 dari unggahan) tetap ditampilkan apa adanya. */}
+          <SelectField id="jenis_laporan" label="Jenis Laporan" emptyText="— pilih —"
+            options={reportTypeOptions(watch('jenis_laporan'))} {...register('jenis_laporan')} />
+          <SelectField id="pelapor_hubungan" label="Status Pelapor" emptyText="— pilih —"
+            options={withStoredCode(RELATIONSHIPS, hubungan)}
+            {...register('pelapor_hubungan', { onChange: (e) => applyRelationship(e.target.value) })} />
           {hubungan === HUBUNGAN_LAIN_LAIN && (
             <FormField id="hubungan_lainnya" label="Sebutkan..."
               failure={fieldErrors['hubungan_lainnya']} {...register('pelapor_hubungan_lainnya')} />
@@ -612,25 +694,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
       </Section>
 
-      {/* Detail Ekspedisi — kontainer GroupPanel == 002. */}
-      {pa && (
-        <Section title="Detail Ekspedisi">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <UnsavedField id="ekspedisi" label="Ekspedisi" value={unsaved.ekspedisi}
-              onChange={(v) => setUnsavedField('ekspedisi', v)} />
-            {unsaved.ekspedisi.trim().toUpperCase() === 'LAINNYA' && (
-              <UnsavedField id="ekspedisi_lain" label="Ekspedisi Lain" value={unsaved.ekspedisi_lain}
-                onChange={(v) => setUnsavedField('ekspedisi_lain', v)} />
-            )}
-            <UnsavedField id="no_resi" label="No Resi Eskpedisi" value={unsaved.no_resi}
-              onChange={(v) => setUnsavedField('no_resi', v)} />
-            <UnsavedField id="tanggal_kirim_ekspedisi" label="Tanggal Kirim Ekspedisi" type="date"
-              value={unsaved.tanggal_kirim_ekspedisi} onChange={(v) => setUnsavedField('tanggal_kirim_ekspedisi', v)} />
-            <UnsavedField id="estimasi_sampai_ekspedisi" label="Estimasi Sampai Ekspedisi" type="date"
-              value={unsaved.estimasi_sampai_ekspedisi} onChange={(v) => setUnsavedField('estimasi_sampai_ekspedisi', v)} />
-          </div>
-        </Section>
-      )}
+      {/* Detail Ekspedisi (kontainer GroupPanel == 002) disembunyikan — tidak digunakan (Work Owner 2026-10-08). */}
 
       <Section title="Deksripsi Laporan">
         <TextAreaField id="kronologi" label="Deksripsi Laporan" rows={3} {...register('kronologi')} />
@@ -691,6 +755,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
                   setValue={setValue}
                   businessCode={klaim.polis.kode_bisnis ?? ''}
                   saved={klaim.objek.find((o) => o.id.trim() === (formItems?.[i]?.id ?? '').trim())}
+                  pa={pa}
                   onRemove={() => objek.remove(i)}
                 />
               ))}
@@ -698,6 +763,9 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           </table>
         </div>
 
+        {/* PA: objek mengikuti peserta polis — Tambah objek dan Hapus objek disembunyikan
+            (Work Owner 2026-10-08). */}
+        {!pa && (
         <button
           type="button"
           onClick={() => {
@@ -710,11 +778,17 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         >
           Tambah objek
         </button>
+        )}
       </Section>
 
       <SpreadingSummary values={watch('objek')} />
 
-      <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors} />
+      {/* PA: Lokasi Kerugian/Kejadian dan Data registrasi lainnya disembunyikan — tidak digunakan
+          (Work Owner 2026-10-08). Server tidak mewajibkan lokasi untuk PA. Nilainya yang tersimpan
+          tetap terkirim apa adanya. */}
+      {!pa && (
+        <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors} />
+      )}
 
       {/*
         Bagian Estimasi (Mata Uang, Estimasi Klaim, Prinsip Mengenal Nasabah, Akan Dikirim ke
@@ -724,6 +798,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         bawaan), sehingga menyimpan Input Register tidak mengosongkannya. Estimasi diisi di
         tahap Input Estimasi.
       */}
+      {(!pa || fieldErrors['nomor_slik'] || fieldErrors['nomor_polis']) && (
       <Section title="Data registrasi lainnya">
         <p className="mb-3 text-xs text-slate-500">
           These fields are not on the Pega Register tab (section InputRegisterDetail) but are needed to register the claim.
@@ -741,6 +816,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           <p className="mt-3 text-sm text-red-700">{fieldErrors['nomor_polis']}</p>
         )}
       </Section>
+      )}
 
 
       {/*
@@ -1048,8 +1124,11 @@ function InsuredItemEditor({
   setValue,
   businessCode,
   saved,
+  pa = false,
   onRemove,
 }: {
+  /** Lini PA: tombol Hapus objek dan Tambah spreading disembunyikan. */
+  pa?: boolean
   /** ID klaim — dipakai membaca pilihan coverage polis per objek. */
   claimID: string
   index: number
@@ -1154,14 +1233,16 @@ function InsuredItemEditor({
             bernama "Hapus" yang semuanya terdengar sama bagi pembaca layar — dan tiga di
             antaranya membuang hal yang berbeda: objek, jaminan, dan baris spreading.
           */}
-          <button
-            type="button"
-            aria-label={`Hapus objek baris ${index + 1}`}
-            onClick={onRemove}
-            className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-          >
-            Hapus
-          </button>
+          {!pa && (
+            <button
+              type="button"
+              aria-label={`Hapus objek baris ${index + 1}`}
+              onClick={onRemove}
+              className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+            >
+              Hapus
+            </button>
+          )}
         </td>
       </tr>
 
@@ -1218,6 +1299,7 @@ function InsuredItemEditor({
                     register={register}
                     setValue={setValue}
                     businessCode={businessCode}
+                    pa={pa}
                     onRemove={() => coverage.remove(j)}
                   />
                 ))}
@@ -1254,8 +1336,11 @@ function CoverageEditor({
   register,
   setValue,
   businessCode,
+  pa = false,
   onRemove,
 }: {
+  /** Lini PA: Tambah spreading disembunyikan (spreading mengikuti polis). */
+  pa?: boolean
   claimID: string
   itemIndex: number
   index: number
@@ -1432,13 +1517,15 @@ function CoverageEditor({
               </tbody>
             </table>
 
-            <button
-              type="button"
-              onClick={() => spreading.append({ jenis_treaty: '', nama: '', share: '', objek_fac_offer: '', dihapus: false })}
-              className="mt-2 rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
-            >
-              Tambah spreading
-            </button>
+            {!pa && (
+              <button
+                type="button"
+                onClick={() => spreading.append({ jenis_treaty: '', nama: '', share: '', objek_fac_offer: '', dihapus: false })}
+                className="mt-2 rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+              >
+                Tambah spreading
+              </button>
+            )}
           </td>
         </tr>
       )}
@@ -1555,6 +1642,8 @@ const EMPTY_AREA: Area = {
 
 function fromClaim(klaim: Claim): RegisterFormValues {
   return {
+    // Klaim yang belum punya Jenis Laporan dibuka dengan Direct, pilihan pertama dropdown.
+    jenis_laporan: klaim.jenis_laporan || REPORT_TYPE_DIRECT,
     tanggal_kejadian: klaim.tanggal_kejadian,
     tanggal_lapor: klaim.tanggal_lapor,
     tanggal_terima_dokumen: klaim.tanggal_terima_dokumen,
@@ -1606,6 +1695,15 @@ function fromClaim(klaim: Claim): RegisterFormValues {
   }
 }
 
+/** No KTP dan Pengkinian Data yang tersimpan pada klaim. */
+function insuredUpdateOf(klaim: Claim) {
+  return {
+    pengkinian_no_ktp: klaim.pengkinian_no_ktp ?? '',
+    pengkinian_no_hp: klaim.pengkinian_no_hp ?? '',
+    pengkinian_email: klaim.pengkinian_email ?? '',
+  }
+}
+
 function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean): RegisterRequest {
   return {
     tugas_id: taskID,
@@ -1634,6 +1732,7 @@ function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean
     // Isian yang tersembunyi menurut lini tidak dikirim: EmailLOD hanya PA, Remarks
     // Recommendation dan Subject Email hanya selain PA (kondisi InputRegisterDetail2_sect).
     email_lod: content.email_lod,
+    jenis_laporan: content.jenis_laporan,
     rekomendasi: content.rekomendasi,
     subjek_email: content.subjek_email,
     status_salvage: content.status_salvage,

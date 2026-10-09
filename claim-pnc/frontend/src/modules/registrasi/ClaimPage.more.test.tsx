@@ -261,7 +261,10 @@ describe('Input Register', () => {
 
     const hubungan = await screen.findByLabelText('Status Pelapor')
     expect(screen.queryByLabelText('Sebutkan...')).not.toBeInTheDocument()
-    await userEvent.type(hubungan, '7')
+    expect(within(hubungan).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '— pilih —', 'Tertanggung', 'Suami/Istri', 'Anak', 'Orang Tua', 'Famili', 'Teman', 'Lainnya',
+    ])
+    await userEvent.selectOptions(hubungan, '7')
     await userEvent.type(screen.getByLabelText('Sebutkan...'), 'Kerabat')
     await userEvent.click(screen.getByRole('checkbox', { name: 'Transfer Compliance' }))
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
@@ -273,6 +276,31 @@ describe('Input Register', () => {
       kembali: false,
       mata_uang: 'USD',
     })
+  })
+
+  // SetTertanggungRegister: Tertanggung mengisi Nama/Telepon/Alamat Pelapor dari polis dan CIF;
+  // status lain mengosongkannya.
+  it('Status Pelapor Tertanggung mengisi data pelapor dari tertanggung, status lain mengosongkannya', async () => {
+    installFetch(response({ polis: { ...response().klaim.polis, nama_tertanggung: 'PT TERTANGGUNG CONTOH' } }), (url) =>
+      url.endsWith('/tertanggung')
+        ? json(200, {
+            no_ktp: '',
+            alamat: [{ alamat: 'Jl. Contoh 1', telepon: [{ jenis: '1', nama_jenis: 'HP', kode: '', nomor: '0811111', ekstensi: '' }] }],
+          })
+        : undefined,
+    )
+    show()
+    const hubungan = await screen.findByLabelText('Status Pelapor')
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/tertanggung'))).toBe(true))
+    await userEvent.selectOptions(hubungan, '1')
+    expect(screen.getByLabelText('Nama Pelapor')).toHaveValue('PT TERTANGGUNG CONTOH')
+    expect(screen.getByLabelText('No. Telepon Pelapor')).toHaveValue('0811111')
+    expect(screen.getByLabelText('Alamat Pelapor')).toHaveValue('Jl. Contoh 1')
+
+    await userEvent.selectOptions(hubungan, '3')
+    expect(screen.getByLabelText('Nama Pelapor')).toHaveValue('')
+    expect(screen.getByLabelText('No. Telepon Pelapor')).toHaveValue('')
+    expect(screen.getByLabelText('Alamat Pelapor')).toHaveValue('')
   })
 
   it('Next ditahan bila Lokasi Kerugian/Kejadian kosong; Save tetap menyimpan', async () => {
@@ -552,8 +580,21 @@ describe('Input Register', () => {
     const field = await screen.findByRole('combobox', { name: 'Jenis Laporan' })
     expect(field).toHaveValue('1')
     expect(within(field).getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'Direct', 'Via Email', 'Via Fax', 'Via Pos / Kurir', 'Via Telephone', 'Via Portal',
+      '— pilih —', 'Direct', 'Via Email', 'Via Fax', 'Via Pos / Kurir', 'Via Telephone', 'Via Portal',
     ])
+
+    // Tersimpan ke T_CLAIM_PNC.REPORTTYPE lewat Save.
+    await userEvent.selectOptions(field, '5')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls.some((c) => c.url === '/api/registrasi/register/simpan')).toBe(true))
+    expect(calls.find((c) => c.url === '/api/registrasi/register/simpan')?.body).toMatchObject({ jenis_laporan: '5' })
+  })
+
+  it('Jenis Laporan tersimpan dimuat kembali, termasuk kode di luar daftar', async () => {
+    installFetch(response({ jenis_laporan: '7' }))
+    show()
+    const field = await screen.findByRole('combobox', { name: 'Jenis Laporan' })
+    expect(field).toHaveValue('7')
   })
 
   it('Mata Uang tersembunyi tetap dikirim sebagai kode; simbol lama IDR diganti kodenya', async () => {
