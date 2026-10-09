@@ -14,6 +14,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { DateField } from '@/components/DateField'
+import { Paginator } from '@/components/DataTable'
 import { FormField } from '@/components/FormField'
 import { SelectField } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
@@ -378,6 +379,10 @@ type RegisterFormValues = {
   tanggal_kejadian: string
   tanggal_lapor: string
   tanggal_terima_dokumen: string
+  /** Apakah Melakukan Rawat Inap — tidak punya kolom; tercentang bila tanggal keluar terisi. */
+  rawat_inap: boolean
+  /** Tanggal Keluar Rawat Inap — T_CLAIM_PNC.TANGGALSELESAIRAWATINAP. */
+  tanggal_keluar_rawat_inap: string
   lokasi: string
   kronologi: string
   pelapor_nama: string
@@ -408,6 +413,30 @@ type RegisterFormValues = {
 
 /** Kode hubungan pelapor yang menuntut keterangan tambahan (langkah 28 sistem lama). */
 const HUBUNGAN_LAIN_LAIN = '7'
+
+/** Pemisah beberapa alamat pada Email Pelapor. */
+const EMAIL_SEPARATOR = /[;,]/
+
+/** Bentuk alamat email yang diterima: satu "@", tanpa spasi, domain bertitik. */
+const EMAIL_PATTERN = /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/
+
+/**
+ * Alamat Email Pelapor yang tidak berbentuk email. Isian boleh kosong, dan boleh memuat
+ * beberapa alamat dipisah ";" atau ","; pemisah ganda atau di ujung diabaikan.
+ */
+export function invalidEmails(text: string | undefined): string[] {
+  return (text ?? '')
+    .split(EMAIL_SEPARATOR)
+    .map((part) => part.trim())
+    .filter((part) => part !== '' && !EMAIL_PATTERN.test(part))
+}
+
+function emailMessage(bad: string[]): string {
+  return `Email Pelapor tidak valid: ${bad.join(', ')}. Pisahkan beberapa email dengan ";" atau ",".`
+}
+
+/** Baris grid Objek pertanggungan per halaman (Work Owner 2026-10-09). */
+const ITEM_PAGE_SIZE = 10
 
 /** Status Pelapor — Property InsuredRelationship (`.ClaimData.InsuredRelationship`). */
 const RELATIONSHIPS = [
@@ -459,6 +488,10 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   // Objek yang baru ditambahkan: barisnya digambar sudah terbuka. Menambah objek lalu
   // mendapati tidak ada yang terjadi adalah tombol yang tampak rusak.
   const [addedItem, setAddedItem] = useState<number | null>(null)
+  // Grid objek dipaginasi di layar, ITEM_PAGE_SIZE baris per halaman (Work Owner 2026-10-09):
+  // klaim PA dapat memuat ratusan peserta. Baris di halaman lain tetap ada di form dan ikut
+  // tersimpan; hanya tidak digambar.
+  const [itemPage, setItemPage] = useState(1)
   const fieldErrors = messagesByField(violations)
   const hubungan = watch('pelapor_hubungan')
 
@@ -516,19 +549,12 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     if (pa && !dateReceived) setValue('tanggal_terima_dokumen', todayWIB(), { shouldDirty: true })
   }, [pa, dateReceived, setValue])
 
-  // Isian tanpa kolom di T_CLAIM_PNC — tampil sesuai section, belum tersimpan.
-  const [unsaved, setUnsaved] = useState({
-    rawat_inap: false, tanggal_keluar_rawat_inap: '', catatan_analis: '',
-    data_pengobatan: '',
-  })
   // No KTP dan Pengkinian Data — tersimpan ke T_CLAIM_PNC.PENGKINIAN_NO_KTP / _NO_HP / _EMAIL
   // (Work Owner 2026-10-09). Dimuat ulang dari klaim setiap kali klaim dimuat.
   const [insuredUpdate, setInsuredUpdate] = useState(() => insuredUpdateOf(klaim))
   useEffect(() => {
     setInsuredUpdate(insuredUpdateOf(klaim))
   }, [klaim])
-  const setUnsavedField = (name: keyof typeof unsaved, value: string | boolean) =>
-    setUnsaved((current) => ({ ...current, [name]: value }))
 
   const visible = (content: RegisterFormValues): RegisterFormValues => ({
     ...content,
@@ -540,6 +566,12 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
     ...(pa ? insuredUpdate : insuredUpdateOf(klaim)),
   })
 
+  // Halaman dijepit ke jumlah halaman yang ada: menghapus objek terakhir di halaman terakhir
+  // tidak meninggalkan halaman kosong.
+  const itemPages = Math.max(1, Math.ceil(objek.fields.length / ITEM_PAGE_SIZE))
+  const itemCurrentPage = Math.min(itemPage, itemPages)
+  const itemFirst = (itemCurrentPage - 1) * ITEM_PAGE_SIZE
+
   const submit = (content: RegisterFormValues, kembali: boolean) => {
     // Lokasi Kerugian/Kejadian wajib (`pyRequired=always` di InputRegisterDetail-sect). Next
     // ditahan di layar lebih dulu; server menolaknya juga (ViolationLocationEmpty), sehingga
@@ -550,6 +582,14 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       draft.reset()
       setViolations([{ kode: 'lokasi_kosong', field: 'lokasi', pesan: LOCATION_REQUIRED }])
       document.getElementById('lokasi')?.focus()
+      return
+    }
+    const badEmail = invalidEmails(content.pelapor_email)
+    if (badEmail.length > 0) {
+      save.reset()
+      draft.reset()
+      setViolations([{ kode: 'email_pelapor_tidak_valid', field: 'pelapor_email', pesan: emailMessage(badEmail) }])
+      document.getElementById('pelapor_email')?.focus()
       return
     }
     setViolations([])
@@ -657,16 +697,18 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           {pa && (
             <div className="flex items-end pb-2">
               <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={unsaved.rawat_inap}
-                  onChange={(e) => setUnsavedField('rawat_inap', e.target.checked)} />
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...register('rawat_inap')} />
                 Apakah Melakukan Rawat Inap ?
               </label>
             </div>
           )}
-          {pa && unsaved.rawat_inap && (
-            <UnsavedField id="tanggal_keluar_rawat_inap" label="Tanggal Keluar Rawat Inap" type="date"
-              value={unsaved.tanggal_keluar_rawat_inap}
-              onChange={(v) => setUnsavedField('tanggal_keluar_rawat_inap', v)} />
+          {/* Tanggal Keluar Rawat Inap — tersimpan ke T_CLAIM_PNC.TANGGALSELESAIRAWATINAP
+              (Work Owner 2026-10-09). Lama Hari Rawat Inap dihitung darinya di layar Adjustment. */}
+          {pa && watch('rawat_inap') && (
+            <Controller control={control} name="tanggal_keluar_rawat_inap" render={({ field }) => (
+              <DateField id="tanggal_keluar_rawat_inap" label="Tanggal Keluar Rawat Inap" value={field.value}
+                onChange={field.onChange} error={fieldErrors['tanggal_keluar_rawat_inap']} />
+            )} />
           )}
           <Controller control={control} name="tanggal_lapor" render={({ field }) => (
             <DateField id="tanggal_lapor" label="Tanggal Lapor" value={field.value} onChange={field.onChange}
@@ -686,7 +728,10 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
               failure={fieldErrors['hubungan_lainnya']} {...register('pelapor_hubungan_lainnya')} />
           )}
           <FormField id="pelapor_telepon" label="No. Telepon Pelapor" {...register('pelapor_telepon')} />
-          <FormField id="pelapor_email" label="Email Pelapor" type="email" {...register('pelapor_email')} />
+          {/* Lebih dari satu alamat boleh, dipisah ";" atau "," (Work Owner 2026-10-09) — karena itu
+              teks biasa, bukan type="email" yang menolak pemisah. Setiap alamat diperiksa saat simpan. */}
+          <FormField id="pelapor_email" label="Email Pelapor" placeholder="nama@contoh.co.id; nama2@contoh.co.id"
+            failure={fieldErrors['pelapor_email']} {...register('pelapor_email')} />
           {pa && (
             <TextAreaField id="email_lod" label="Email Tertanggung" rows={2} {...register('email_lod')} />
           )}
@@ -742,7 +787,9 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
                   </td>
                 </tr>
               )}
-              {objek.fields.map((f, i) => (
+              {objek.fields.slice(itemFirst, itemFirst + ITEM_PAGE_SIZE).map((f, n) => {
+                const i = itemFirst + n
+                return (
                 <InsuredItemEditor
                   key={f.id}
                   claimID={klaim.id}
@@ -758,10 +805,21 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
                   pa={pa}
                   onRemove={() => objek.remove(i)}
                 />
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
+        {objek.fields.length > ITEM_PAGE_SIZE && (
+          <Paginator
+            firstRow={itemFirst + 1}
+            lastRow={Math.min(itemFirst + ITEM_PAGE_SIZE, objek.fields.length)}
+            totalRows={objek.fields.length}
+            currentPage={itemCurrentPage}
+            totalPages={itemPages}
+            onPick={setItemPage}
+          />
+        )}
 
         {/* PA: objek mengikuti peserta polis — Tambah objek dan Hapus objek disembunyikan
             (Work Owner 2026-10-08). */}
@@ -770,6 +828,8 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           type="button"
           onClick={() => {
             setAddedItem(objek.fields.length)
+            // Objek baru ada di baris terakhir: buka halaman terakhir supaya terlihat.
+            setItemPage(Math.floor(objek.fields.length / ITEM_PAGE_SIZE) + 1)
             // Kode objek tidak punya kolom di grid Pega; objek tambahan diberi kode berikutnya.
             const used = [...(formItems ?? []).map((o) => o.id), ...klaim.objek.map((o) => o.id)]
             objek.append({ id: nextObjectID(used), nama: '', lokasi: '', coverage: [] })
@@ -783,12 +843,11 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <SpreadingSummary values={watch('objek')} />
 
-      {/* PA: Lokasi Kerugian/Kejadian dan Data registrasi lainnya disembunyikan — tidak digunakan
-          (Work Owner 2026-10-08). Server tidak mewajibkan lokasi untuk PA. Nilainya yang tersimpan
-          tetap terkirim apa adanya. */}
-      {!pa && (
-        <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors} />
-      )}
+      {/* PA: Lokasi Kerugian/Kejadian ditampilkan tanpa Negara, Provinsi, dan wilayah di bawahnya
+          (Work Owner 2026-10-09); Data registrasi lainnya tetap disembunyikan (2026-10-08). Lokasi
+          tidak wajib untuk PA, di layar maupun di server. Wilayah tersimpan tetap terkirim apa adanya. */}
+      <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors}
+        withArea={!pa} required={!pa} />
 
       {/*
         Bagian Estimasi (Mata Uang, Estimasi Klaim, Prinsip Mengenal Nasabah, Akan Dikirim ke
@@ -881,11 +940,17 @@ function LossLocationSection({
   watch,
   setValue,
   fieldErrors,
+  withArea,
+  required,
 }: {
   register: UseFormRegister<RegisterFormValues>
   watch: UseFormWatch<RegisterFormValues>
   setValue: UseFormSetValue<RegisterFormValues>
   fieldErrors: Record<string, string>
+  /** Tampilkan Negara, Provinsi, dan tingkat di bawahnya — tidak untuk PA. */
+  withArea: boolean
+  /** Lokasi wajib diisi — tidak untuk PA. */
+  required: boolean
 }) {
   const w = watch('wilayah')
   const indonesia = (w.negara ?? '').toUpperCase() === COUNTRY_INDONESIA
@@ -926,12 +991,13 @@ function LossLocationSection({
     <Section title="Lokasi kerugian/kejadian">
       <TextAreaField
         id="lokasi"
-        label="Lokasi Kerugian/Kejadian *"
+        label={required ? 'Lokasi Kerugian/Kejadian *' : 'Lokasi Kerugian/Kejadian'}
         rows={3}
         error={fieldErrors['lokasi']}
         {...register('lokasi')}
       />
 
+      {withArea && (
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <AreaSelect id="negara" label="Negara" query={countries} value={w.negara_id} currentName={w.negara}
           onPick={(o) => pick(0, o)} />
@@ -950,6 +1016,7 @@ function LossLocationSection({
           </>
         )}
       </div>
+      )}
 
     </Section>
   )
@@ -993,47 +1060,6 @@ function AreaSelect({
       emptyText={query.isFetching ? 'Memuat…' : '— pilih —'}
       onChange={(e) => onPick(option.find((o) => o.id === e.target.value))}
     />
-  )
-}
-
-/**
- * Isian Section/InputRegisterDetail yang belum punya kolom di T_CLAIM_PNC (Rawat Inap, No KTP,
- * Jenis Laporan, Detail Ekspedisi, Catatan Ke Analyst, dan lainnya). Tampil sesuai section, tetapi
- * nilainya hanya di layar — tidak dikirim ke server.
- */
-function UnsavedField({
-  id, label, value, onChange, type = 'text', multiline = false, options, note,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  type?: string
-  multiline?: boolean
-  /** Bila diisi, isian digambar sebagai dropdown berpilihan ini (`pxDropdown` Pega). */
-  options?: { value: string; label: string }[]
-  /** Pengganti catatan "belum tersimpan" bawaan. */
-  note?: string
-}) {
-  const className = 'mt-1 w-full rounded border border-dashed border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none'
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>
-      {options ? (
-        <select id={id} className={className} value={value} onChange={(e) => onChange(e.target.value)}>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      ) : multiline ? (
-        <textarea id={id} rows={3} className={className} value={value} onChange={(e) => onChange(e.target.value)} />
-      ) : (
-        <input id={id} type={type} className={className} value={value} onChange={(e) => onChange(e.target.value)} />
-      )}
-      <p className="mt-1 text-xs text-amber-700">{note ?? 'Not saved yet: no column for this field in T_CLAIM_PNC.'}</p>
-    </div>
   )
 }
 
@@ -1486,7 +1512,8 @@ function CoverageEditor({
                   <th scope="col" className="py-1 pr-2 font-medium">Treaty</th>
                   <th scope="col" className="py-1 pr-2 font-medium">Nama</th>
                   <th scope="col" className="py-1 pr-2 font-medium">Share %</th>
-                  <th scope="col" className="py-1 font-medium">Hapus</th>
+                  {/* PA: spreading tidak dapat dihapus maupun ditambah (Work Owner 2026-10-09). */}
+                  {!pa && <th scope="col" className="py-1 font-medium">Hapus</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1506,12 +1533,14 @@ function CoverageEditor({
                     </td>
                     {/* Objek Fac Offer tidak ditampilkan — tidak digunakan (Work Owner
                         2026-10-08). Nilai tersimpannya tetap terkirim apa adanya. */}
-                    <td className="py-1">
-                      <button type="button" onClick={() => spreading.remove(n)}
-                        className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50">
-                        Hapus
-                      </button>
-                    </td>
+                    {!pa && (
+                      <td className="py-1">
+                        <button type="button" onClick={() => spreading.remove(n)}
+                          className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50">
+                          Hapus
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -1647,6 +1676,8 @@ function fromClaim(klaim: Claim): RegisterFormValues {
     tanggal_kejadian: klaim.tanggal_kejadian,
     tanggal_lapor: klaim.tanggal_lapor,
     tanggal_terima_dokumen: klaim.tanggal_terima_dokumen,
+    rawat_inap: !!klaim.tanggal_keluar_rawat_inap,
+    tanggal_keluar_rawat_inap: klaim.tanggal_keluar_rawat_inap ?? '',
     lokasi: klaim.lokasi,
     kronologi: klaim.kronologi,
     pelapor_nama: klaim.pelapor.nama,
@@ -1710,6 +1741,8 @@ function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean
     tanggal_kejadian: content.tanggal_kejadian,
     tanggal_lapor: content.tanggal_lapor,
     tanggal_terima_dokumen: content.tanggal_terima_dokumen,
+    // Rawat inap tidak dicentang: tanggal keluar dikosongkan.
+    tanggal_keluar_rawat_inap: content.rawat_inap ? content.tanggal_keluar_rawat_inap : '',
     lokasi: content.lokasi,
     kronologi: content.kronologi,
     pelapor: {

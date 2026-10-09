@@ -126,6 +126,7 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 		emptyTextAsNil(k.InsuredUpdate.Phone),
 		emptyTextAsNil(k.InsuredUpdate.Email),
 		emptyTextAsNil(k.ReportType),
+		calendarDateOrNil(k.DischargeDate),
 		k.ID,
 	}
 
@@ -156,10 +157,16 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 	if err := r.dropRemoved(ctx, exec, k); err != nil {
 		return err
 	}
+	stored, err := r.storedItems(ctx, exec, k.ID)
+	if err != nil {
+		return err
+	}
 
 	for i, o := range k.InsuredItem {
 		itemSeq := i + 1
-		if err := upsert(ctx, exec,
+		if s, ok := stored[itemSeq]; ok && s.unchanged(o) {
+			// Objek tidak berubah: tidak ditulis ulang.
+		} else if err := upsert(ctx, exec,
 			"objek_perbarui", []any{o.ID, o.Name, o.Location, k.ID, itemSeq},
 			"objek_sisip", []any{o.ID, o.Name, o.Location, k.ID, itemSeq},
 		); err != nil {
@@ -205,6 +212,51 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 	return nil
 }
 
+// storedItem adalah satu baris T_CLAIM_OBJECTLIST tersimpan.
+type storedItem struct {
+	id, name, location string
+	removed            bool
+	duplicate          bool
+}
+
+// unchanged melaporkan objek o sama dengan baris tersimpannya, sehingga objek_perbarui tidak
+// perlu dijalankan. Baris bertanda DIHAPUS_PADA atau URUTAN ganda selalu ditulis ulang.
+func (s storedItem) unchanged(o registrasi.InsuredItem) bool {
+	return !s.removed && !s.duplicate &&
+		s.id == o.ID && s.name == o.Name && s.location == o.Location
+}
+
+// storedItems membaca objek tersimpan per URUTAN dengan satu kueri.
+func (r *ClaimStore) storedItems(ctx context.Context, exec executor, claimID string) (map[int]storedItem, error) {
+	rows, err := exec.QueryContext(ctx, loadQuery("objek_kunci"), claimID)
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca objek tersimpan: %w", err)
+	}
+	defer rows.Close()
+	result := map[int]storedItem{}
+	for rows.Next() {
+		var seq sql.NullInt64
+		var id, name, location sql.NullString
+		var removedAt sql.NullTime
+		if err := rows.Scan(&seq, &id, &name, &location, &removedAt); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca objek tersimpan: %w", err)
+		}
+		if !seq.Valid {
+			continue
+		}
+		n := int(seq.Int64)
+		if _, ok := result[n]; ok {
+			result[n] = storedItem{duplicate: true}
+			continue
+		}
+		result[n] = storedItem{id: id.String, name: name.String, location: location.String, removed: removedAt.Valid}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: menelusuri objek tersimpan: %w", err)
+	}
+	return result, nil
+}
+
 // dropRemoved menghapus coverage yang dibuang petugas beserta spreading-nya, SEBELUM
 // pohon klaim disimpan ulang.
 //
@@ -237,12 +289,19 @@ func (r *ClaimStore) dropRemoved(ctx context.Context, exec executor, k registras
 	}
 	var stale [][2]string
 	seen := map[[2]string]bool{}
+	// URUTAN coverage tertinggi yang tersimpan per URUTAN_OBJEK: coverage_hapus_sisa hanya
+	// dijalankan untuk objek yang memang punya coverage di atas jumlah sekarang, bukan untuk
+	// setiap objek (klaim PA bisa ratusan objek tanpa coverage).
+	maxSeq := map[int64]int64{}
 	for rows.Next() {
 		var itemSeq, coverageSeq sql.NullInt64
 		var objectID, coverageID sql.NullString
 		if err := rows.Scan(&itemSeq, &coverageSeq, &objectID, &coverageID); err != nil {
 			_ = rows.Close()
 			return fmt.Errorf("registrasi/sqlstore: membaca coverage tersimpan: %w", err)
+		}
+		if itemSeq.Valid && coverageSeq.Valid && coverageSeq.Int64 > maxSeq[itemSeq.Int64] {
+			maxSeq[itemSeq.Int64] = coverageSeq.Int64
 		}
 		pair := [2]string{objectID.String, coverageID.String}
 		if live[pair] || seen[pair] {
@@ -263,6 +322,9 @@ func (r *ClaimStore) dropRemoved(ctx context.Context, exec executor, k registras
 		}
 	}
 	for i, o := range k.InsuredItem {
+		if maxSeq[int64(i+1)] <= int64(len(o.Coverage)) {
+			continue
+		}
 		if _, err := exec.ExecContext(ctx, loadQuery("coverage_hapus_sisa"), k.ID, i+1, len(o.Coverage)); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: menghapus coverage yang dibuang: %w", err)
 		}
@@ -396,6 +458,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		number, portal, line, businessType sql.NullString
 		policyCurrency, insured, branch    sql.NullString
 		lossDate, reportDate, receivedDate sql.NullTime
+		dischargeDate                      sql.NullTime
 		location, chronology               sql.NullString
 		rName, rPhone, rAddress            sql.NullString
 		rRelation                          sql.NullInt64
@@ -447,6 +510,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&analystTransferredAt, &technicalPICNote,
 		&tki,
 		&updateIDCard, &updatePhone, &updateEmail, &reportType,
+		&dischargeDate,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
@@ -466,6 +530,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	k.DateOfLoss = lossDate.Time
 	k.ReportDate = reportDate.Time
 	k.DateReceived = receivedDate.Time
+	k.DischargeDate = dischargeDate.Time
 	k.Location = location.String
 	k.Chronology = chronology.String
 
@@ -642,7 +707,7 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 	itemIndex := map[int]int{}
 	objectSeqByID := map[string]int{}
 
-	row, err := exec.QueryContext(ctx, loadQuery("objek_daftar"), k.ID)
+	row, err := exec.QueryContext(ctx, loadQuery("objek_daftar"), k.ID, k.ID, k.ID)
 	if err != nil {
 		return fmt.Errorf("registrasi/sqlstore: membaca objek: %w", err)
 	}

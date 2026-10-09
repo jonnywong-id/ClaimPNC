@@ -423,6 +423,10 @@ type Claim struct {
 	ReportDate   time.Time
 	DateReceived time.Time
 
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (`.ClaimData.TanggalSelesaiRawatInap`)
+	// — POOLDATA.T_CLAIM_PNC.TANGGALSELESAIRAWATINAP (DATE). Kosong: tidak rawat inap.
+	DischargeDate time.Time
+
 	Location   string
 	Chronology string
 	Reporter   Reporter

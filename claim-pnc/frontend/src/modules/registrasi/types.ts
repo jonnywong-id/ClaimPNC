@@ -122,6 +122,8 @@ export type Settlement = {
   kurs_e4: number
   nilai_propose_sen: Cents
   nilai_pengajuan_sen: Cents
+  /** Nilai Pengajuan Tertanggung PA (T_CLAIM_ADJUSTMENT.PROPOSE_VALUE_TERTANGGUNG). */
+  nilai_pengajuan_tertanggung_sen?: Cents
   loc: PercentE4
   nilai_salvage_sen: Cents
   nilai_salvage_b_sen: Cents
@@ -230,6 +232,8 @@ export type SettlementRequest = {
   mata_uang: string
   nilai_propose_sen: Cents
   nilai_pengajuan_sen: Cents
+  /** Nilai Pengajuan Tertanggung PA (T_CLAIM_ADJUSTMENT.PROPOSE_VALUE_TERTANGGUNG). */
+  nilai_pengajuan_tertanggung_sen?: Cents
   loc: PercentE4
   nilai_salvage_sen: Cents
   nilai_salvage_b_sen: Cents
@@ -480,6 +484,8 @@ export type Claim = {
   tanggal_kejadian: string
   tanggal_lapor: string
   tanggal_terima_dokumen: string
+  /** Tanggal Keluar Rawat Inap PA (T_CLAIM_PNC.TANGGALSELESAIRAWATINAP); kosong: tidak rawat inap. */
+  tanggal_keluar_rawat_inap?: string
   lokasi: string
   kronologi: string
   pelapor: Reporter
@@ -593,6 +599,8 @@ export type RegisterRequest = {
   tanggal_kejadian: string
   tanggal_lapor: string
   tanggal_terima_dokumen: string
+  /** Tanggal Keluar Rawat Inap PA (T_CLAIM_PNC.TANGGALSELESAIRAWATINAP); kosong: tidak rawat inap. */
+  tanggal_keluar_rawat_inap?: string
   lokasi: string
   kronologi: string
   pelapor: Reporter

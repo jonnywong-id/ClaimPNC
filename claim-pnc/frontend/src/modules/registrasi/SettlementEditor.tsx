@@ -73,6 +73,26 @@ const DELETE_NEEDS_COLUMN = 'Deleting a saved line needs column DIHAPUS_PADA on 
 const PREVIEW_DELAY_MS = 300
 
 /** Persen × 10.000 menjadi teks yang dapat disunting kembali (`105000` → `10,5`). */
+/**
+ * Lama Hari Rawat Inap (`.InpatientDay`) — `ValidationAdjustment` langkah 95:
+ * `@DateTimeDifference(DateOfLoss, TanggalSelesaiRawatInap, 'D')`, yaitu selisih hari kalender
+ * Tanggal Kejadian / Tanggal Masuk Rawat Inap sampai Tanggal Keluar Rawat Inap. Null bila salah
+ * satunya kosong atau tanggal keluar mendahului tanggal masuk.
+ *
+ * Batas `.InpatientDayMax` jaminan (langkah 94–95: hari di atas batas diganti batasnya) tidak
+ * diterapkan — batas per jaminan itu (SumOfDay) belum ada di data jaminan aplikasi ini.
+ */
+export function inpatientDays(admission: string | undefined, discharge: string | undefined): number | null {
+  const day = (iso: string | undefined) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '')
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86_400_000 : null
+  }
+  const from = day(admission)
+  const to = day(discharge)
+  if (from === null || to === null || to < from) return null
+  return to - from
+}
+
 function percentText(e4: number): string {
   return e4 ? String(e4 / 10_000).replace('.', ',') : ''
 }
@@ -121,6 +141,7 @@ export function SettlementEditor({
   nonMBU,
   pa = false,
   exGratia = false,
+  inpatientDays = null,
   analyst = false,
   analystTransfer = false,
   existing,
@@ -141,6 +162,8 @@ export function SettlementEditor({
   pa?: boolean
   /** `pyWorkPage.ClaimData.ExGratia = 1` — baris adjustment mewarisinya (`.ExGratia`). */
   exGratia?: boolean
+  /** Lama Hari Rawat Inap klaim PA (lihat inpatientDays); null bila tidak rawat inap. */
+  inpatientDays?: number | null
   /** When `IsAnalisator` — pemanggil anggota grup Analyst. */
   analyst?: boolean
   /**
@@ -166,7 +189,7 @@ export function SettlementEditor({
     mata_uang: old ? old.mata_uang : policyCurrency,
     total_klaim: old ? centsToRupiah(old.nilai_propose_sen) : '',
     nilai_pengajuan: old ? centsToRupiah(old.nilai_pengajuan_sen) : '',
-    nilai_pengajuan_tertanggung: '',
+    nilai_pengajuan_tertanggung: old ? centsToRupiah(old.nilai_pengajuan_tertanggung_sen ?? 0) : '',
     no_invoice: '',
     loc: old ? percentText(old.loc) : '',
     salvage_a: old ? centsToRupiah(old.nilai_salvage_sen) : '',
@@ -199,6 +222,8 @@ export function SettlementEditor({
     // PA: Total Klaim (.ProposeAdjustmentValue) hanya ada pada baris isAnalistorTransfer.
     nilai_propose_sen: proposeBased && (!pa || analystTransfer) ? rupiahToCents(values.total_klaim) : 0,
     nilai_pengajuan_sen: proposeBased ? rupiahToCents(values.nilai_pengajuan) : 0,
+    // Nilai Pengajuan Tertanggung PA — PROPOSE_VALUE_TERTANGGUNG (Work Owner 2026-10-09).
+    nilai_pengajuan_tertanggung_sen: proposeBased && pa ? rupiahToCents(values.nilai_pengajuan_tertanggung) : 0,
     loc: proposeBased && !travel && !pa ? percentE4(values.loc) : 0,
     nilai_salvage_sen: proposeBased && !travel && !pa ? rupiahToCents(values.salvage_a) : 0,
     nilai_salvage_b_sen: proposeBased && !travel && !pa ? rupiahToCents(values.salvage_b) : 0,
@@ -308,13 +333,12 @@ export function SettlementEditor({
           {proposeBased && pa && (
             <>
               {/* Kontainer IsPA, tipe selain 3/4. */}
-              <Text onBlur={commitSoon}
+              <Money onBlur={commitSoon}
                 label="Nilai Pengajuan Tertanggung"
                 value={values.nilai_pengajuan_tertanggung}
                 onChange={set('nilai_pengajuan_tertanggung')}
-                note="Belum tersimpan: POOLDATA.T_CLAIM_ADJUSTMENT belum punya kolom ProposeValueTertanggung."
               />
-              <Text onBlur={commitSoon} label="Nilai Pengajuan" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} disabled={analyst} />
+              <Money onBlur={commitSoon} label="Nilai Pengajuan" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} disabled={analyst} />
               {analystTransfer && (
                 <Text onBlur={commitSoon} label="Total Klaim" required value={values.total_klaim} onChange={set('total_klaim')} />
               )}
@@ -323,7 +347,7 @@ export function SettlementEditor({
           {proposeBased && !pa && (
             <>
               <Text onBlur={commitSoon} label="Total Klaim" required value={values.total_klaim} onChange={set('total_klaim')} />
-              <Text onBlur={commitSoon} label="Nilai Pengajuan Tertanggung" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} />
+              <Money onBlur={commitSoon} label="Nilai Pengajuan Tertanggung" required value={values.nilai_pengajuan} onChange={set('nilai_pengajuan')} />
             </>
           )}
 
@@ -336,7 +360,7 @@ export function SettlementEditor({
                 <Display label="Persen Resiko Sendiri (%)">{EMPTY}</Display>
               )}
               {manualRisk ? (
-                <Text onBlur={commitSoon} label="Nilai Resiko Sendiri" required value={values.nilai_resiko} onChange={set('nilai_resiko')} />
+                <Money onBlur={commitSoon} label="Nilai Resiko Sendiri" required value={values.nilai_resiko} onChange={set('nilai_resiko')} />
               ) : (
                 <Display label="Nilai Resiko Sendiri">{money(line?.nilai_resiko_sen)}</Display>
               )}
@@ -371,7 +395,7 @@ export function SettlementEditor({
           <Display label="Nilai Dalam IDR">{line ? rate.format(line.kurs_e4 / 10_000) : EMPTY}</Display>
           <Display label="Nilai Estimasi">{money(line?.nilai_estimasi_sen)}</Display>
           {/* Lama hari rawat inap (.InpatientDay): IsPA, baca saja kecuali isAnalistorTransfer. */}
-          {pa && <Display label="Lama Hari Rawat Inap">{EMPTY}</Display>}
+          {pa && <Display label="Lama Hari Rawat Inap">{inpatientDays ?? EMPTY}</Display>}
 
           {/* LOC, Salvage A, Salvage B: kontainer `!IsPATRAVEL` — tidak untuk PA dan Travel. */}
           {proposeBased && !travel && !pa && (
@@ -526,6 +550,48 @@ function Text({
   )
 }
 
+/**
+ * Isian uang yang memasang pemisah ribuan saat diketik — 3000000 tampil 3.000.000 — dan
+ * melengkapi dua desimal saat ditinggalkan: 3.000.000,00 (Work Owner 2026-10-09). Nilainya
+ * tetap teks berformat Indonesia yang dibaca rupiahToCents.
+ */
+function Money(props: Parameters<typeof Text>[0]) {
+  return (
+    <Text
+      {...props}
+      value={groupMoney(props.value)}
+      onChange={(v) => props.onChange(groupMoney(v))}
+      onBlur={() => {
+        props.onChange(finishMoney(props.value))
+        props.onBlur?.()
+      }}
+    />
+  )
+}
+
+/**
+ * groupMoney merapikan ketikan uang: hanya angka dan satu koma desimal (paling banyak dua
+ * angka di belakangnya), dengan titik pemisah ribuan. Titik yang diketik pengguna dibuang —
+ * ia pemisah ribuan, bukan desimal.
+ */
+export function groupMoney(text: string): string {
+  const clean = text.replace(/[^\d,]/g, '')
+  if (clean === '') return ''
+  const comma = clean.indexOf(',')
+  const whole = (comma < 0 ? clean : clean.slice(0, comma)).replace(/^0+(?=\d)/, '')
+  const grouped = (whole === '' ? '0' : whole).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  if (comma < 0) return grouped
+  return `${grouped},${clean.slice(comma + 1).replace(/,/g, '').slice(0, 2)}`
+}
+
+/** finishMoney melengkapi dua desimal: 3.000.000 menjadi 3.000.000,00. Kosong tetap kosong. */
+export function finishMoney(text: string): string {
+  const grouped = groupMoney(text)
+  if (grouped === '') return ''
+  const [whole, fraction = ''] = grouped.split(',')
+  return `${whole},${fraction.padEnd(2, '0')}`
+}
+
 /** Label pilihan Persetujuan Tertanggung pada form AcceptationLOD. */
 const LOD_STATUS: Record<string, string> = { '1': 'Setuju', '0': 'Tidak Setuju' }
 
@@ -552,6 +618,7 @@ export function SettlementDetail({
   nonMBU,
   pa = false,
   exGratia = false,
+  inpatientDays = null,
   address,
 }: {
   line: Settlement
@@ -565,6 +632,8 @@ export function SettlementDetail({
   pa?: boolean
   /** Klaim Ex Gratia — tabel treaty hanya tampil di kontainer `.ExGratia = 1`. */
   exGratia?: boolean
+  /** Lama Hari Rawat Inap klaim PA (lihat inpatientDays); null bila tidak rawat inap. */
+  inpatientDays?: number | null
   /** Tugas dan letak baris ini (berbasis 1) — untuk tombol PRINT dan Transfer Kasir. */
   address?: { claimID: string; taskID: string; object: number; coverage: number; adjustment: number }
 }) {
@@ -584,8 +653,8 @@ export function SettlementDetail({
             <>
               {pa ? (
                 <>
-                  {/* Kontainer IsPA: ProposeValueTertanggung tidak tersimpan; ProposeValue; ProposeAdjustmentValue bila diisi. */}
-                  <Display label="Nilai Pengajuan Tertanggung">{EMPTY}</Display>
+                  {/* Kontainer IsPA: ProposeValueTertanggung (PROPOSE_VALUE_TERTANGGUNG); ProposeValue; ProposeAdjustmentValue bila diisi. */}
+                  <Display label="Nilai Pengajuan Tertanggung">{optional(line.nilai_pengajuan_tertanggung_sen ?? 0)}</Display>
                   <Display label="Nilai Pengajuan">{money(line.nilai_pengajuan_sen)}</Display>
                   {line.nilai_propose_sen > 0 && <Display label="Total Klaim">{money(line.nilai_propose_sen)}</Display>}
                 </>
@@ -614,7 +683,7 @@ export function SettlementDetail({
         <div className="space-y-3">
           <Display label="Nilai Dalam IDR">{rate.format(line.kurs_e4 / 10_000)}</Display>
           <Display label="Nilai Estimasi">{money(line.nilai_estimasi_sen || estimation)}</Display>
-          {pa && <Display label="Lama Hari Rawat Inap">{EMPTY}</Display>}
+          {pa && <Display label="Lama Hari Rawat Inap">{inpatientDays ?? EMPTY}</Display>}
           {proposeBased && !travel && !pa && (
             <>
               <Display label="Lack Of Document (%)">{line.loc ? percent.format(line.loc / 10_000) : EMPTY}</Display>

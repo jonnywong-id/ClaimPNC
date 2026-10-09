@@ -152,32 +152,17 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		claim.Chronology = registrasi.PAReportDescription(claim.DateOfLoss, claim.Chronology)
 	}
 
-	// PA: objek (peserta) tetap dari polis, tetapi coverage TIDAK diisi otomatis — petugas
-	// menambahkannya sendiri pada peserta yang terdampak lewat Tambah coverage, yang mengisi
-	// nama, TSI, dan spreading dari polis (Work Owner 2026-10-08). Gerbang validasi cukup
-	// menuntut minimal satu objek ber-coverage.
-	if policy.Line == registrasi.LinePersonalAccident {
-		for i := range claim.InsuredItem {
-			claim.InsuredItem[i].Coverage = nil
-		}
+	// Objek tetap dari polis, tetapi coverage TIDAK diisi otomatis — petugas menambahkannya
+	// sendiri pada objek yang terdampak lewat Tambah coverage, yang mengisi nama, TSI, dan
+	// spreading dari polis. Awalnya hanya PA (Work Owner 2026-10-08), kini seluruh lini (Work
+	// Owner 2026-10-09). Gerbang validasi cukup menuntut minimal satu objek ber-coverage.
+	for i := range claim.InsuredItem {
+		claim.InsuredItem[i].Coverage = nil
 	}
 
-	// Penyebab Kerugian tidak ada di dokumen polis; petugas memilihnya dari daftar kode
-	// bisnis polis. Bila daftar itu hanya berisi satu pilihan, pilihan itulah yang diisi —
-	// petugas tidak perlu memilih sesuatu yang tidak punya alternatif.
-	causes, err := l.causeOfLoss.CauseOfLossOptions(ctx, policy.BusinessCode)
-	if err != nil {
-		return StartResult{}, fmt.Errorf("registrasi/usecase: membaca pilihan penyebab kerugian: %w", err)
-	}
-	if only, ok := registrasi.SingleCauseOfLoss(causes); ok {
-		for i := range claim.InsuredItem {
-			for j := range claim.InsuredItem[i].Coverage {
-				if claim.InsuredItem[i].Coverage[j].CauseOfLoss == "" {
-					claim.InsuredItem[i].Coverage[j].CauseOfLoss = only.ID
-				}
-			}
-		}
-	}
+	// Penyebab Kerugian tunggal tidak lagi diisi di sini: tidak ada coverage saat klaim dibuka.
+	// Layar Input Register mengisinya sendiri pada setiap coverage yang ditambahkan bila kode
+	// bisnis polis hanya punya satu pilihan.
 
 	recipients, err := l.assigner.Assign(ctx, firstStage, claim, by.Identity)
 	if err != nil {

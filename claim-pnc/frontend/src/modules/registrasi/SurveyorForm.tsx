@@ -18,7 +18,7 @@ import { ReceiverTab } from './ReceiverTab'
 import { CloseClaimDialog } from './CloseClaim'
 import { SendToInputorDialog } from './SendToInputor'
 import { SendToRCLPUCLDialog } from './SendToRCLPUCL'
-import { SettlementDetail, SettlementEditor } from './SettlementEditor'
+import { SettlementDetail, SettlementEditor, inpatientDays } from './SettlementEditor'
 import { isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
 import {
   EstimationType,
@@ -909,6 +909,7 @@ function AdjustmentView({
                                     businessType={klaim.polis.jenis_bisnis}
                                     receivers={klaim.penerima_klaim ?? []}
                                     exGratia={klaim.ex_gratia}
+                                          inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
                                     onTransferCommittee={(n) => setCommitteeFor({ object: i + 1, coverage: j + 1, adjustment: n })}
                                     autoOpen={openFor?.i === i && openFor.j === j ? openFor.n : null}
                                     editable={(n, s) =>
@@ -925,6 +926,7 @@ function AdjustmentView({
                                           nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
                                           pa={pa}
                                           exGratia={klaim.ex_gratia}
+                                          inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
                                           analyst={tugas.analis === true}
                                           analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
                                           existing={{ index: n, line: s }}
@@ -947,6 +949,7 @@ function AdjustmentView({
                                           nonMBU={NON_MBU_PANELS.includes(klaim.polis.lini)}
                                           pa={pa}
                                           exGratia={klaim.ex_gratia}
+                                          inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
                                           analyst={tugas.analis === true}
                                           analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
                                           onCreated={(n) => {
@@ -1005,6 +1008,7 @@ function SettlementGrid({
   businessType,
   receivers,
   exGratia,
+  inpatientDays,
   onTransferCommittee,
   autoOpen = null,
   editable,
@@ -1031,6 +1035,8 @@ function SettlementGrid({
   receivers: Receiver[]
   /** Klaim Ex Gratia (`pyWorkPage.ClaimData.ExGratia`). */
   exGratia: boolean
+  /** Lama Hari Rawat Inap klaim PA (lihat inpatientDays). */
+  inpatientDays: number | null
   /** Tombol "Transfer ke Komite" baris adjustment (berbasis 1) — membuka modal ClaimComitee_OC. */
   onTransferCommittee: (adjustment: number) => void
   /** Baris (berbasis 0) yang dibuka otomatis — baris yang baru tersimpan pertama kali. */
@@ -1157,6 +1163,7 @@ function SettlementGrid({
                     nonMBU={nonMBU}
                     pa={groupPanel === PANEL_PA}
                     exGratia={exGratia}
+                    inpatientDays={inpatientDays}
                     address={{ claimID, taskID, object, coverage, adjustment: n + 1 }}
                   />
                   )}

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSession } from '@/app/session'
 import { formatPercent, formatRupiah, formatDate, rupiahToCents } from '@/components/format'
 
-import { ClaimPage } from './ClaimPage'
+import { ClaimPage, invalidEmails } from './ClaimPage'
 
 const CLAIM = {
   klaim: {
@@ -271,6 +271,55 @@ describe('layar kerja klaim', () => {
     expect(screen.getByLabelText('Tanggal Keluar Rawat Inap')).toBeInTheDocument()
   })
 
+  // Work Owner 2026-10-09: Email Pelapor boleh berisi beberapa alamat, dipisah ";" atau ",".
+  it('Email Pelapor menerima beberapa alamat dipisah titik koma atau koma', () => {
+    expect(invalidEmails('')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id; b@contoh.co.id,c@contoh.co.id;')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id;;  ,b@contoh.co.id')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id; bukan-email, c@contoh')).toEqual(['bukan-email', 'c@contoh'])
+  })
+
+  it('Next ditahan bila salah satu Email Pelapor tidak valid', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+    const email = await screen.findByLabelText('Email Pelapor')
+    expect(email).not.toHaveAttribute('type', 'email')
+    await user.clear(email)
+    await user.type(email, 'a@contoh.co.id;salah')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText(/Email Pelapor tidak valid: salah/)).toBeInTheDocument()
+  })
+
+  // Work Owner 2026-10-09: grid Objek pertanggungan dipaginasi 10 baris per halaman.
+  it('grid Objek pertanggungan menampilkan 10 objek per halaman', async () => {
+    const base = CLAIM.klaim.objek[0]!
+    const many = {
+      ...CLAIM,
+      klaim: {
+        ...CLAIM.klaim,
+        objek: Array.from({ length: 12 }, (_, n) => ({ ...base, id: `OBJ-${n + 1}`, nama: `Peserta ${n + 1}` })),
+      },
+    }
+    stubFetch(() => ({ body: many, status: 200 }))
+    const base2 = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      url === '/api/registrasi/klaim/klaim-1'
+        ? Promise.resolve(new Response(JSON.stringify(many), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : base2(url, init))
+    mount(<ClaimPage />)
+
+    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
+    expect(within(grid).getByText('Peserta 10')).toBeInTheDocument()
+    expect(within(grid).queryByText('Peserta 11')).not.toBeInTheDocument()
+    expect(screen.getByText('1–10')).toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Halaman 2' }))
+    expect(within(grid).getByText('Peserta 12')).toBeInTheDocument()
+    expect(within(grid).queryByText('Peserta 1')).not.toBeInTheDocument()
+  })
+
   // Work Owner 2026-10-08: Tanggal Terima Dokumen otomatis tanggal input, Tgl Terima HCDKP
   // disembunyikan, dan Email Pelapor/Email Tertanggung mengikuti Email Pengkinian Data.
   it('PA: Tanggal Terima Dokumen otomatis, tanpa HCDKP, telepon dan email mengikuti Pengkinian Data', async () => {
@@ -288,13 +337,24 @@ describe('layar kerja klaim', () => {
 
     expect(await screen.findByLabelText('Tanggal Terima Dokumen')).not.toHaveValue('')
     expect(screen.queryByLabelText('Tgl Terima HCDKP')).not.toBeInTheDocument()
-    // Lokasi Kerugian/Kejadian dan Data registrasi lainnya tidak ditampilkan untuk PA.
-    expect(screen.queryByLabelText(/Lokasi Kerugian\/Kejadian/)).not.toBeInTheDocument()
+    // PA: Lokasi Kerugian/Kejadian tampil (tidak wajib) tanpa Negara dan Provinsi; Data
+    // registrasi lainnya tidak ditampilkan.
+    expect(screen.getByLabelText('Lokasi Kerugian/Kejadian')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Negara')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Provinsi')).not.toBeInTheDocument()
     expect(screen.queryByText('Data registrasi lainnya')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Nomor SLIK')).not.toBeInTheDocument()
     // Objek pertanggungan PA: Tambah objek dan Hapus objek disembunyikan.
     expect(screen.queryByRole('button', { name: 'Tambah objek' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Hapus objek/ })).not.toBeInTheDocument()
+    // Spreading PA: tombol Hapus treaty dan Tambah spreading disembunyikan (Work Owner 2026-10-09).
+    const openCoverage = screen.queryAllByRole('button', { name: /^Buka jaminan objek/ })
+    for (const b of openCoverage) await userEvent.setup().click(b)
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /^Buka spreading/ })[0]!)
+    const spreadingTable = screen.getAllByRole('table').find((t) => t.querySelector('caption')?.textContent?.startsWith('Spreading reasuransi'))!
+    expect(within(spreadingTable).getAllByLabelText('Jenis treaty').length).toBeGreaterThan(0)
+    expect(within(spreadingTable).queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tambah spreading' })).not.toBeInTheDocument()
 
     await userEvent.setup().type(screen.getByLabelText('No. HP'), '081234567890')
     expect(screen.getByLabelText('No. Telepon Pelapor')).toHaveValue('081234567890')
@@ -305,12 +365,16 @@ describe('layar kerja klaim', () => {
 
     // No KTP dan Pengkinian Data tersimpan ke T_CLAIM_PNC (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL).
     await userEvent.setup().type(screen.getByLabelText(/No KTP/), '3171000000000001')
+    // Tanggal Keluar Rawat Inap tersimpan ke T_CLAIM_PNC.TANGGALSELESAIRAWATINAP.
+    await userEvent.setup().click(screen.getByLabelText('Apakah Melakukan Rawat Inap ?'))
+    await userEvent.setup().type(screen.getByLabelText('Tanggal Keluar Rawat Inap'), '08/06/2026')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(draftBody).not.toBeNull())
     expect(draftBody).toMatchObject({
       pengkinian_no_ktp: '3171000000000001',
       pengkinian_no_hp: '081234567890',
       pengkinian_email: 'peserta@contoh.example',
+      tanggal_keluar_rawat_inap: '2026-06-08',
     })
   })
 

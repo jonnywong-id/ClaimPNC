@@ -598,6 +598,14 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 			return usecase.RegisterCommand{}, err
 		}
 	}
+	// Tanggal Keluar Rawat Inap boleh kosong: isiannya hanya tampil pada PA yang rawat inap.
+	var dischargeDate time.Time
+	if b.DischargeDate != "" {
+		dischargeDate, err = parseDate(b.DischargeDate, "Tanggal Keluar Rawat Inap")
+		if err != nil {
+			return usecase.RegisterCommand{}, err
+		}
+	}
 	if b.TaskID == "" {
 		return usecase.RegisterCommand{}, errors.New("tugas_id wajib diisi")
 	}
@@ -633,12 +641,13 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 	}
 
 	return usecase.RegisterCommand{
-		TaskID:       b.TaskID,
-		DateOfLoss:   lossDate,
-		ReportDate:   reportDate,
-		DateReceived: receivedDate,
-		Location:     b.Location,
-		Chronology:   b.Chronology,
+		TaskID:        b.TaskID,
+		DateOfLoss:    lossDate,
+		ReportDate:    reportDate,
+		DateReceived:  receivedDate,
+		DischargeDate: dischargeDate,
+		Location:      b.Location,
+		Chronology:    b.Chronology,
 		Area: registrasi.Area{
 			Country: b.Area.Country, CountryID: b.Area.CountryID,
 			Province: b.Area.Province, ProvinceID: b.Area.ProvinceID,
@@ -767,12 +776,13 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			BusinessName:         k.Policy.BusinessName,
 			BranchCode:           k.Policy.BranchCode,
 		},
-		Receiver:     receiverDTO(k.Receiver),
-		DateOfLoss:   formatDate(k.DateOfLoss),
-		ReportDate:   formatDate(k.ReportDate),
-		DateReceived: formatDate(k.DateReceived),
-		Location:     k.Location,
-		Chronology:   k.Chronology,
+		Receiver:      receiverDTO(k.Receiver),
+		DateOfLoss:    formatDate(k.DateOfLoss),
+		ReportDate:    formatDate(k.ReportDate),
+		DateReceived:  formatDate(k.DateReceived),
+		DischargeDate: formatDate(k.DischargeDate),
+		Location:      k.Location,
+		Chronology:    k.Chronology,
 		Area: AreaDTO{
 			Country: k.Area.Country, CountryID: k.Area.CountryID,
 			Province: k.Area.Province, ProvinceID: k.Area.ProvinceID,

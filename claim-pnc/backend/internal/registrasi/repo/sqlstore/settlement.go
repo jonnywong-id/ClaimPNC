@@ -32,7 +32,7 @@ func (r *ClaimStore) saveSettlement(
 			int64(s.Accepted), int64(s.Submitted), exGratia, emptyTextAsNil(s.Chronology),
 			emptyTextAsNil(s.Notes), emptyTextAsNil(s.AcceptanceStatus), emptyTextAsNil(s.AcceptedNo),
 			emptyTextAsNil(strings.TrimSpace(s.CommitteeCaseID)), timeOrNil(s.CommitteeTransferredAt),
-			timeOrNil(s.CommitteeDecidedAt),
+			timeOrNil(s.CommitteeDecidedAt), int64(s.InsuredSubmitted),
 		}
 		keys := []any{claimID, objectID, coverageID, adjustmentID}
 		if err := upsert(ctx, exec,
@@ -68,13 +68,14 @@ func loadSettlement(
 			lodStatus, receiverID, receiverName, lodType                        sql.NullString
 			acceptedAt, printedAt, receivedAt, cashierAt                        sql.NullTime
 			cashierCase                                                         sql.NullString
+			insuredSubmitted                                                    sql.NullInt64
 		)
 		if err := rows.Scan(&objectID, &coverageID, &adjustmentID, &paymentType, &currency,
 			&rate, &propose, &loc, &salvageA, &riskType, &riskPercent, &riskValue, &gross,
 			&share, &value, &accepted, &submitted, &exGratia, &chronology, &notes, &status,
 			&acceptedNo, &committeeCase, &transferredAt, &decidedAt, &lodStatus,
 			&acceptedAt, &receiverID, &receiverName, &printedAt, &receivedAt, &lodType,
-			&cashierAt, &cashierCase); err != nil {
+			&cashierAt, &cashierCase, &insuredSubmitted); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris adjustment: %w", err)
 		}
 		c := coverageAt(strings.TrimSpace(objectID.String), strings.TrimSpace(coverageID.String))
@@ -96,6 +97,7 @@ func loadSettlement(
 			Value:            registrasi.Money(value.Int64),
 			Accepted:         registrasi.Money(accepted.Int64),
 			Submitted:        registrasi.Money(submitted.Int64),
+			InsuredSubmitted: registrasi.Money(insuredSubmitted.Int64),
 			ExGratia:         strings.TrimSpace(exGratia.String) == "1",
 			Chronology:       chronology.String,
 			Notes:            notes.String,

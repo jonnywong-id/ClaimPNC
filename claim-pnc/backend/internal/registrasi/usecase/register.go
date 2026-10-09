@@ -43,6 +43,9 @@ type RegisterCommand struct {
 	ReportDate   time.Time
 	DateReceived time.Time
 
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (TANGGALSELESAIRAWATINAP).
+	DischargeDate time.Time
+
 	Location   string
 	Chronology string
 	Reporter   registrasi.Reporter
@@ -353,6 +356,7 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.DateOfLoss = p.DateOfLoss.UTC()
 	k.ReportDate = p.ReportDate.UTC()
 	k.DateReceived = p.DateReceived.UTC()
+	k.DischargeDate = p.DischargeDate.UTC()
 
 	k.Location = p.Location
 	k.Chronology = p.Chronology

@@ -211,6 +211,8 @@ type ClaimDTO struct {
 	DateOfLoss   string `json:"tanggal_kejadian"`
 	ReportDate   string `json:"tanggal_lapor"`
 	DateReceived string `json:"tanggal_terima_dokumen"`
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (TANGGALSELESAIRAWATINAP).
+	DischargeDate string `json:"tanggal_keluar_rawat_inap"`
 
 	Location   string      `json:"lokasi"`
 	Chronology string      `json:"kronologi"`
@@ -319,6 +321,8 @@ type RegisterRequest struct {
 	DateOfLoss   string `json:"tanggal_kejadian"`
 	ReportDate   string `json:"tanggal_lapor"`
 	DateReceived string `json:"tanggal_terima_dokumen"`
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (TANGGALSELESAIRAWATINAP).
+	DischargeDate string `json:"tanggal_keluar_rawat_inap"`
 
 	Location   string      `json:"lokasi"`
 	Chronology string      `json:"kronologi"`
