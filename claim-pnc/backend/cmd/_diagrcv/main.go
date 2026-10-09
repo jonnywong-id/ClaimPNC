@@ -52,7 +52,7 @@ func main() {
 		}
 		dumpRow(ctx, conn, "POOLDATA.T_CLAIM_RECIVEDCLAIM", "CLAIMID = :1", id)
 		dumpRow(ctx, conn, "POOLDATA.T_CLAIM_PNC", "CLAIMID = :1", id)
-		claims(ctx, conn); return
+		lap(ctx, conn, id); return
 		near(ctx, conn); for _, x := range []string{"RCVN.26.64","RCVN.26.70","RCVN.26.86"} { dumpRow(ctx, conn, "POOLDATA.T_CLAIM_RECIVEDCLAIM", "CLAIMID = :1", x) }
 		snap, err := sqlstore.NewClaimReportLink(conn).Snapshot(ctx, id)
 		fmt.Printf("snapshot: %+v err=%v\n", snap, err)
