@@ -98,8 +98,13 @@ type Config struct {
 	// menuliskan satu Operator ID di dalam rule (AcceptationLOD_PreAct langkah 15); di sini
 	// ia pengaturan (D-15). Kosong: anggota komite terakhir yang menyetujui.
 	AcceptanceCommittee string
-	SMTP                SMTP
-	DocumentStorage     DocumentStorage
+	// PATechnicalPIC adalah PIC Teknik bawaan klaim PA yang belum punya PIC Teknik
+	// (PIC_TEKNIK_PA_BAWAAN). Pega menuliskan satu Operator ID di dalam rule
+	// (PreClaimComitee_OC langkah 21: UserTeknis kosong -> ESTHERSIMBOLON); di sini ia
+	// pengaturan (D-15). Kosong: PIC PA dengan beban paling sedikit.
+	PATechnicalPIC  string
+	SMTP            SMTP
+	DocumentStorage DocumentStorage
 
 	// PrimaryPortal adalah alias portal yang basis datanya melayani hal-hal yang
 	// dibutuhkan SEBELUM pengguna memilih portal: daftar portal (M_PORTAL_PNC),
@@ -721,6 +726,7 @@ func Load() (Config, error) {
 			Timeout:  virtualAccountTimeout,
 		},
 		AcceptanceCommittee: strings.TrimSpace(os.Getenv("AKSEPTASI_KOMITE_BERJENJANG")),
+		PATechnicalPIC:      strings.TrimSpace(os.Getenv("PIC_TEKNIK_PA_BAWAAN")),
 		DocumentStorage: DocumentStorage{
 			BaseURL:        get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
 			ConverterURL:   get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),

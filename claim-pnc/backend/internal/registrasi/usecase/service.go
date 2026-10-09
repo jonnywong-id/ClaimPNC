@@ -63,6 +63,7 @@ type Service struct {
 	acceptanceNoteRenderer registrasi.AcceptanceNoteRenderer
 	cashierAccountCheck    bool
 	acceptanceMultiLevel   string
+	defaultPATechnicalPIC  string
 	cashier                registrasi.CashierStore
 	cashierGateway         registrasi.CashierGateway
 	lodRenderer            registrasi.LODRenderer
@@ -139,6 +140,10 @@ type Options struct {
 	// komitenya beranggota dua atau lebih (AKSEPTASI_KOMITE_BERJENJANG) — di Pega Operator ID
 	// tetap di AcceptationLOD_PreAct langkah 15. Kosong: anggota terakhir yang menyetujui.
 	AcceptanceMultiLevelCommittee string
+	// DefaultPATechnicalPIC adalah PIC Teknik klaim PA yang belum punya PIC, dipakai Transfer
+	// ke Analyst (PreClaimComitee_OC langkah 21). Kosong: router memilih PIC PA dengan beban
+	// paling sedikit.
+	DefaultPATechnicalPIC string
 	// Cashier membaca kode bank dan menulis log serta status Transfer Kasir; CashierGateway
 	// mengirim pembayaran ke sistem Kasir.
 	Cashier        registrasi.CashierStore
@@ -290,6 +295,7 @@ func NewService(o Options) (*Service, error) {
 		acceptanceNoteRenderer: o.AcceptanceNoteRenderer,
 		cashierAccountCheck:    o.CashierAccountCheck,
 		acceptanceMultiLevel:   o.AcceptanceMultiLevelCommittee,
+		defaultPATechnicalPIC:  o.DefaultPATechnicalPIC,
 		cashier:                o.Cashier,
 		cashierGateway:         o.CashierGateway,
 		lodRenderer:            o.LODRenderer,

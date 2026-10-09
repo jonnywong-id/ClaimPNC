@@ -124,3 +124,41 @@ func TestTransferToAnalystOnlyOnEstimationPA(t *testing.T) {
 	_, err := l.service.TransferToAnalyst(context.Background(), usecase.TransferToAnalystCommand{TaskID: task.ID}, l.caller)
 	require.ErrorIs(t, err, registrasi.ErrNotAvailableAtStage)
 }
+
+// PreClaimComitee_OC langkah 21: klaim PA tanpa PIC Teknik dikirim ke PIC Teknik bawaan
+// (PIC_TEKNIK_PA_BAWAAN), dan PIC itu dicatat ke klaim.
+func TestTransferToAnalystUsesDefaultPATechnicalPIC(t *testing.T) {
+	l := setupWith(t, func(o *usecase.Options) { o.DefaultPATechnicalPIC = "PICBAWAAN" })
+	ctx := context.Background()
+	claim, task := l.upToEstimationPA(t)
+	// Klaim tanpa PIC Teknik — seperti PNCN.26.56 (PICTEKNIK kosong).
+	claim.TechnicalPIC = ""
+	require.NoError(t, l.store.Save(ctx, claim))
+	item := claim.InsuredItem[0]
+
+	result, err := l.service.TransferToAnalyst(ctx, usecase.TransferToAnalystCommand{
+		TaskID: task.ID, ObjectID: item.ID, CoverageID: item.Coverage[len(item.Coverage)-1].ID,
+	}, l.caller)
+	require.NoError(t, err)
+	require.Equal(t, "PICBAWAAN", result.NextTask.Owner)
+	stored, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, "PICBAWAAN", stored.TechnicalPIC)
+}
+
+// Tanpa PIC bawaan, PIC yang dipilih router tetap dicatat ke klaim (PICTEKNIK).
+func TestTransferToAnalystRecordsChosenPIC(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	claim, task := l.upToEstimationPA(t)
+	item := claim.InsuredItem[0]
+
+	result, err := l.service.TransferToAnalyst(ctx, usecase.TransferToAnalystCommand{
+		TaskID: task.ID, ObjectID: item.ID, CoverageID: item.Coverage[len(item.Coverage)-1].ID,
+	}, l.caller)
+	require.NoError(t, err)
+	require.NotEmpty(t, result.NextTask.Owner)
+	stored, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, result.NextTask.Owner, stored.TechnicalPIC)
+}

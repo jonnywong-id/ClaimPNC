@@ -739,18 +739,26 @@ function AdjustmentView({
     ? ['', 'Nama Objek', 'Pekerjaan', 'Tanggal Lahir', 'Currency', 'Nilai Estimasi', 'Nilai Akseptasi Klaim']
     : ['', 'Nama Objek', 'Lokasi', 'Currency', 'Nilai Akseptasi Klaim', 'Nilai Akseptasi Adjuster']
 
+  // Hanya objek yang punya baris T_CLAIM_OBJECTCOVERAGE, seperti lini lain. Klaim PA menyimpan
+  // seluruh peserta polis sebagai objek meski belum ada coverage-nya (Work Owner 2026-10-09).
+  // Nomor objek asli (i) tetap dipakai untuk API; kolom nomor baris diurutkan ulang.
+  const listed = klaim.objek.map((o, i) => ({ o, i })).filter(({ o }) => o.coverage.length > 0)
+
   return (
     <NoObjects klaim={klaim}>
+      {listed.length === 0 && (
+        <p className="mt-3 text-sm text-slate-600">Belum ada objek yang punya coverage.</p>
+      )}
       <table className="mt-3 w-full border-collapse text-sm">
         <caption className="sr-only">Adjustment dan akseptasi</caption>
         <Head columns={columns} />
         <tbody>
-          {klaim.objek.map((o, i) => {
+          {listed.map(({ o, i }, row) => {
             const totals = acceptedTotals(o)
             return (
               <Fragment key={i}>
                 <tr className="border-b border-slate-200 align-top">
-                  <td className="p-2">{i + 1}</td>
+                  <td className="p-2">{row + 1}</td>
                   <td className="p-2">{o.nama || o.id}</td>
                   {pa ? (
                     <>

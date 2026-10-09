@@ -61,6 +61,7 @@ func assembleRegistration(
 	catalog premiumlink.ServiceCatalog,
 	cashier config.Cashier,
 	acceptanceCommittee string,
+	paTechnicalPIC string,
 ) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
@@ -75,6 +76,7 @@ func assembleRegistration(
 		LODRenderer:            lodpdf.Renderer{},
 
 		AcceptanceMultiLevelCommittee: acceptanceCommittee,
+		DefaultPATechnicalPIC:         paTechnicalPIC,
 	}
 
 	if db != nil {
