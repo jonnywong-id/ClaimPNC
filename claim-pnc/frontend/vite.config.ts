@@ -46,9 +46,31 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // Peramban tertua yang wajib didukung: Chrome 109, versi terakhir untuk Windows 7.
+  //
+  // Tailwind v4 menulis palet warnanya dengan `oklch()`, yang baru dikenal Chrome 111.
+  // Di Chrome 109 variabel warna itu tidak sah, `color` jatuh ke warna warisan `body`
+  // (hampir putih untuk bilah navy), dan tulisan di area konten terang tidak terbaca sampai
+  // diblok. Lightning CSS menurunkan setiap `oklch()` menjadi hex dan menaruh nilai aslinya
+  // di balik `@supports`, sehingga peramban baru tetap memakai warna yang sama persis.
+  //
+  // Target peramban lain disebut supaya awalan `-webkit-` yang dibutuhkan Safari
+  // (mis. backdrop-filter) tidak dibuang saat minifikasi.
+  css: {
+    lightningcss: {
+      targets: {
+        chrome: 109 << 16,
+        edge: 109 << 16,
+        firefox: 115 << 16,
+        safari: (16 << 16) | (4 << 8),
+      },
+    },
+  },
   build: {
     outDir: '../backend/spa/dist',
     emptyOutDir: true,
+    target: ['chrome109', 'edge109', 'firefox115', 'safari16.4'],
+    cssMinify: 'lightningcss',
   },
   server: {
     port: 5173,
