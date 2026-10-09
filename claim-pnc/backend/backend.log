@@ -814,3 +814,6 @@
 {"time":"2026-10-09T16:07:19.2792588+07:00","level":"INFO","msg":"antarmuka tersemat","dibangun":"2026-10-09T09:06:35.047Z"}
 {"time":"2026-10-09T16:07:19.2874199+07:00","level":"INFO","msg":"server menyala","alamat":":8080"}
 {"time":"2026-10-09T16:07:20.8736213+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"5db94b15860f50c3","metode":"GET","jalur":"/","status":200,"lama":73718900}
+{"time":"2026-10-09T16:07:21.0044905+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"fb6f086835912a5e","metode":"GET","jalur":"/","status":200,"lama":0}
+{"time":"2026-10-09T16:07:21.0884819+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"617f92fc1cc97f5c","metode":"GET","jalur":"/assets/index-j2NAYRBd.css","status":200,"lama":583400}
+{"time":"2026-10-09T16:10:38.4275344+07:00","level":"INFO","msg":"permintaan selesai","id_permintaan":"089d5bfb20aca101","metode":"POST","jalur":"/api/keluar","status":204,"lama":0}
