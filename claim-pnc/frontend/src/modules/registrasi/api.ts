@@ -114,7 +114,12 @@ export function useStartClaim() {
     // Portal TIDAK ikut di badan permintaan: server mengambilnya dari portal aktif,
     // supaya pemanggil tidak dapat menuliskan klaim atas nama entitas lain (`R-20`).
     mutationFn: (content: { nomor_polis: string }) =>
-      callAPI<ClaimResponse>('/api/registrasi/klaim', { metode: 'POST', body: content, token, portal }),
+      callAPI<ClaimResponse>('/api/registrasi/klaim', {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: inboxKey })
     },
@@ -129,7 +134,12 @@ export function useSaveRegister() {
 
   return useMutation({
     mutationFn: (content: RegisterRequest) =>
-      callAPI<ClaimResponse>('/api/registrasi/register', { metode: 'POST', body: content, token, portal }),
+      callAPI<ClaimResponse>('/api/registrasi/register', {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
     onSuccess: (result) => {
       apiClient.invalidateQueries({ queryKey: inboxKey })
       apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
@@ -148,7 +158,12 @@ export function useSaveDraft() {
 
   return useMutation({
     mutationFn: (content: RegisterRequest) =>
-      callAPI<ClaimResponse>('/api/registrasi/register/simpan', { metode: 'POST', body: content, token, portal }),
+      callAPI<ClaimResponse>('/api/registrasi/register/simpan', {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
     onSuccess: (result) => {
       apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
@@ -207,12 +222,15 @@ export function useSaveEstimate(simpan: boolean) {
 
   return useMutation({
     mutationFn: (content: EstimateRequest) =>
-      callAPI<ClaimResponse>(simpan ? '/api/registrasi/estimasi/simpan' : '/api/registrasi/estimasi', {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        simpan ? '/api/registrasi/estimasi/simpan' : '/api/registrasi/estimasi',
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: (result) => {
       apiClient.invalidateQueries({ queryKey: inboxKey })
       apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
@@ -220,17 +238,20 @@ export function useSaveEstimate(simpan: boolean) {
   })
 }
 
-/** Pilihan Objek untuk item estimasi satu objek klaim. */
-export function useItemOptions(claimID: string, objectID: string) {
+/**
+ * Pilihan Objek untuk item estimasi satu jaminan. coverageID adalah kode coverage jaminan —
+ * plan untuk lini Travel; lini lain tidak memakainya.
+ */
+export function useItemOptions(claimID: string, objectID: string, coverageID: string) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
-    queryKey: ['registrasi', 'pilihan-item', claimID, objectID, token],
+    queryKey: ['registrasi', 'pilihan-item', claimID, objectID, coverageID, token],
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
       callAPI<ItemOptionsResponse>(
-        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-item?objek=${encodeURIComponent(objectID)}`,
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-item?objek=${encodeURIComponent(objectID)}&coverage=${encodeURIComponent(coverageID)}`,
         { token, portal },
       ),
   })
@@ -261,9 +282,15 @@ export function useCoverageOptions(claimID: string, objectID: string) {
  * Baris dialamatkan lewat urutan objek, jaminan, dan adjustment (berbasis 1).
  */
 /** Awalan kunci riwayat adjustment satu klaim — dipakai juga untuk menyegarkannya. */
-export const settlementHistoryKey = (claimID: string) => ['registrasi', 'riwayat-adjustment', claimID] as const
+export const settlementHistoryKey = (claimID: string) =>
+  ['registrasi', 'riwayat-adjustment', claimID] as const
 
-export function useSettlementHistory(claimID: string, object: number, coverage: number, adjustment: number) {
+export function useSettlementHistory(
+  claimID: string,
+  object: number,
+  coverage: number,
+  adjustment: number,
+) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
   const query = new URLSearchParams({
@@ -296,7 +323,10 @@ export function usePremiumAging(claimID: string) {
     enabled: claimID !== '',
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
-      callAPI<PremiumAgingResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/aging`, { token, portal }),
+      callAPI<PremiumAgingResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/aging`, {
+        token,
+        portal,
+      }),
   })
 }
 
@@ -322,7 +352,10 @@ export function useDiagnosisSearch(term: string) {
     enabled: term !== '',
     retry: false,
     queryFn: () =>
-      callAPI<DiagnosisResponse>(`/api/registrasi/diagnosa?cari=${encodeURIComponent(term)}`, { token, portal }),
+      callAPI<DiagnosisResponse>(`/api/registrasi/diagnosa?cari=${encodeURIComponent(term)}`, {
+        token,
+        portal,
+      }),
   })
 }
 
@@ -583,7 +616,11 @@ export function messagesByField(violations: Violation[]): Record<string, string>
  * useClaimRecord membaca satu tab pendamping Input Estimasi: survey, dokumen, atau
  * progres. Ketiganya hanya membaca.
  */
-function useClaimRecord<T>(claimID: string, path: 'survey' | 'dokumen' | 'progres' | 'tertanggung', enabled: boolean) {
+function useClaimRecord<T>(
+  claimID: string,
+  path: 'survey' | 'dokumen' | 'progres' | 'tertanggung',
+  enabled: boolean,
+) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
@@ -630,12 +667,15 @@ export function useUploadDocument(claimID: string) {
       form.append('berkas', input.berkas, input.berkas.name)
       form.append('jenis_dokumen', input.jenisDokumen)
       if (input.catatan?.trim()) form.append('catatan', input.catatan.trim())
-      return callAPI<DocumentsResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen`, {
-        metode: 'POST',
-        body: form,
-        token,
-        portal,
-      })
+      return callAPI<DocumentsResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen`,
+        {
+          metode: 'POST',
+          body: form,
+          token,
+          portal,
+        },
+      )
     },
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
@@ -826,12 +866,15 @@ export function useCashierPreview(claimID: string) {
 
   return useMutation({
     mutationFn: (content: CashierRequest) =>
-      callAPI<CashierPreview>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir/pratinjau`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<CashierPreview>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir/pratinjau`,
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
   })
 }
 
@@ -922,12 +965,15 @@ export function useAcceptanceDefaults(
     queryKey: ['registrasi', 'akseptasi-awal', claimID, address, token],
     staleTime: 0,
     queryFn: () =>
-      callAPI<AcceptanceDefaults>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/awal`, {
-        metode: 'POST',
-        body: address,
-        token,
-        portal,
-      }),
+      callAPI<AcceptanceDefaults>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/awal`,
+        {
+          metode: 'POST',
+          body: address,
+          token,
+          portal,
+        },
+      ),
   })
 }
 
@@ -1011,12 +1057,15 @@ export function useAcceptSettlement(claimID: string) {
         form.append('berkas', f.berkas, f.berkas.name)
         form.append('jenis_dokumen', f.jenisDokumen)
       }
-      return callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi`, {
-        metode: 'POST',
-        body: form,
-        token,
-        portal,
-      })
+      return callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi`,
+        {
+          metode: 'POST',
+          body: form,
+          token,
+          portal,
+        },
+      )
     },
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
@@ -1053,12 +1102,15 @@ export function usePrepareSettlement(claimID: string) {
 
   return useMutation({
     mutationFn: (content: { tugas_id: string; objek: number; jaminan: number }) =>
-      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/tambah`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/tambah`,
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
@@ -1073,12 +1125,15 @@ export function useUpdateSettlement(claimID: string) {
 
   return useMutation({
     mutationFn: (content: SettlementRequest) =>
-      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/ubah`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/ubah`,
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
@@ -1092,12 +1147,15 @@ export function usePreviewSettlement(claimID: string) {
 
   return useMutation({
     mutationFn: (content: SettlementRequest) =>
-      callAPI<SettlementPreviewResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/hitung`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<SettlementPreviewResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/hitung`,
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
   })
 }
 
@@ -1115,7 +1173,10 @@ export function useBankAccount(number: string) {
     enabled: trimmed !== '',
     retry: false,
     queryFn: () =>
-      callAPI<BankAccount>(`/api/registrasi/rekening/${encodeURIComponent(trimmed)}`, { token, portal }),
+      callAPI<BankAccount>(`/api/registrasi/rekening/${encodeURIComponent(trimmed)}`, {
+        token,
+        portal,
+      }),
   })
 }
 
@@ -1129,12 +1190,15 @@ export function useTransferCommittee(claimID: string) {
 
   return useMutation({
     mutationFn: (content: CommitteeTransferRequest) =>
-      callAPI<CommitteeTransferResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/komite`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<CommitteeTransferResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/komite`,
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
       apiClient.invalidateQueries({ queryKey: committeeKey })
@@ -1150,12 +1214,15 @@ export function useSaveCommitteeNote(claimID: string) {
 
   return useMutation({
     mutationFn: (content: { tugas_id: string; objek: number; jaminan: number } & CommitteeNote) =>
-      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/jaminan/isian-komite`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/jaminan/isian-komite`,
+        {
+          metode: 'POST',
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
     },
@@ -1170,7 +1237,11 @@ export function useCommittee(committeeID: string | undefined) {
   return useQuery({
     queryKey: [...committeeKey, committeeID ?? '', token, portal],
     enabled: !!committeeID,
-    queryFn: () => callAPI<Committee>(`/api/registrasi/komite/${encodeURIComponent(committeeID ?? '')}`, { token, portal }),
+    queryFn: () =>
+      callAPI<Committee>(`/api/registrasi/komite/${encodeURIComponent(committeeID ?? '')}`, {
+        token,
+        portal,
+      }),
   })
 }
 

@@ -20,10 +20,16 @@
 //
 //	                    Prop                        Non Prop (paket ini)
 //	penanda objek kerja PXREFOBJECTKEY LIKE %CLMP%  PXREFOBJECTINSNAME LIKE 'CLMNP-%'
-//	jumlah tabel        2                           3
-//	asal kolom bisnis   JSON_VALUE(DATA_JSONBLOB)   kolom PC_ASM_FW_GCNMFW_WORK
+//	jumlah tabel        2                           2 (*)
+//	asal kolom bisnis   JSON_VALUE(DATA_JSONBLOB)   JSON_VALUE(DATA_JSONBLOB) (*)
 //	varian tab pertama  2 (biasa, See All)          3 (biasa, See All, TBA)
 //	kolom tambahan      —                           Status, Aging, Create/Last Update Operator
+//
+// (*) Sampai 2026-10-08 layar ini menggabungkan tiga tabel dan membaca kolom bisnis dari
+// tabel objek kerja Pega (`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`). Tabel itu sudah tidak dipakai
+// (keputusan Work Owner 2026-10-08); kolom bisnisnya kini dipetik dari dokumen ClaimData di
+// `POOLDATA.JSON_KLAIM.DATA_JSONBLOB`, sedangkan Status, Aging, dan Last Update Operator
+// tidak punya padanan dan kosong. Rinciannya di kepala `repo/sqlstore/*.sql`.
 //
 // Menyatukan keduanya karena judulnya mirip akan memaksa satu kueri melayani dua bentuk
 // data yang tidak sama, dan itulah cacat yang justru sedang ditinggalkan (utang teknis
@@ -134,8 +140,9 @@ type WorkItem struct {
 	// memori tidak dapat meniru penyaring yang sama.
 	AssignedOperator string
 
-	// MasterID — `b.MASTERID` pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK (alias `CARI19`),
-	// berjudul "MasterID".
+	// MasterID — dulu `b.MASTERID` pada tabel objek kerja Pega (alias `CARI19`), berjudul
+	// "MasterID". Sejak 2026-10-08 dipetik dari `$.IDMaster` pada
+	// `POOLDATA.JSON_KLAIM.DATA_JSONBLOB` — properti ClaimData yang sama.
 	//
 	// Ia BUKAN isian yang sama dengan JSONMasterID di bawah, meski keduanya terbaca sebagai
 	// "master id". Lihat catatan di sana.
@@ -195,6 +202,9 @@ type WorkItem struct {
 	InsuredName string
 
 	// CreatedAt adalah waktu OBJEK KERJA dibuat — `b.PXCREATEDATETIME` (alias `CARI21`).
+	//
+	// Sejak 2026-10-08 SELALU KOSONG (begitu pula AgingDays = 0): tabel objek kerja sudah
+	// tidak dipakai dan waktunya tidak punya padanan terbukti di tabel pengganti.
 	//
 	// # Ia digambar di bawah judul kolom "Status", dan itu bukan salah pasang
 	//

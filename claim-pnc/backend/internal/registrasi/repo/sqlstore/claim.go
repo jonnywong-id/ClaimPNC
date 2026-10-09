@@ -424,6 +424,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		reportType                               sql.NullString
 		salvageStatus                            sql.NullString
 		analystTransferredAt                     sql.NullTime
+		tki                                      sql.NullString
 	)
 
 	row := exec.QueryRowContext(ctx, loadQuery(queryName), value)
@@ -444,6 +445,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&rw, &rwID, &postalCode, &customerPrinciple, &suspiciousComment,
 		&emailLOD, &recommendation, &subjectEmail, &salvageStatus,
 		&analystTransferredAt, &technicalPICNote,
+		&tki,
 		&updateIDCard, &updatePhone, &updateEmail, &reportType,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -480,6 +482,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	k.SLIKNumber = slikNumber.String
 	k.ExGratia = fromYesNo(exGratia.String)
 	k.TechnicalPIC = technicalPIC.String
+	k.TKI = strings.TrimSpace(tki.String) == "1"
 	k.RCVID = rcvID.String
 	k.PUCLStatus = int(puclStatus.Int64)
 

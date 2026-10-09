@@ -100,7 +100,8 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 	// ditambahkan kemudian dapat menarik data dari tabel yang belum pernah ditinjau
 	// kepemilikannya (`P-1`) maupun kewenangan bacanya.
 	allowed := []string{
-		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		"DATAPEGA.PC_ASSIGN_WORKLIST",
+		"DATAPEGA.PC_ASSIGN_WORKBASKET",
 		"POOLDATA.JSON_KLAIM",
 	}
 

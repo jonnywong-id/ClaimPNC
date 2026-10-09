@@ -52,6 +52,16 @@ func TestChosenTechnicalPICIsStoredOnClaim(t *testing.T) {
 	require.Equal(t, task.Owner, e.AssignedOperator())
 }
 
+// PIC Teknik berisi `-` berarti belum ada PIC: router memilih ulang, dan `-` diganti
+// pemegang tugasnya — bukan tugas diberikan kepada operator bernama "-".
+func TestDashTechnicalPICIsTreatedAsEmpty(t *testing.T) {
+	l := setup(t)
+	claim, task := l.toChooseSurveyorWithPIC(t, "-")
+
+	require.Equal(t, testOperator, task.Owner)
+	require.Equal(t, task.Owner, claim.TechnicalPIC, "`-` harus diganti PIC terpilih")
+}
+
 // Klaim yang sudah punya PIC Teknik: tahap teknis diberikan kepadanya, bukan ke petugas
 // dengan beban paling ringan (320 dari 338 baris Choose Surveyor Pega).
 func TestExistingTechnicalPICReceivesTechnicalStage(t *testing.T) {
@@ -78,4 +88,12 @@ func TestAdoptTechnicalPICOnlyForTechnicalRouterAndEmptyPIC(t *testing.T) {
 
 	require.Equal(t, "PIC1", registrasi.AssignedTechnicalPIC(technical, k))
 	require.Empty(t, registrasi.AssignedTechnicalPIC(admin, k))
+}
+
+// AddTJobCQuota_SQL: Claim Face Sheet pertama klaim menaikkan beban PIC Teknik-nya
+// (MST_USER_TEKNIS) tepat satu kali.
+func TestFirstFaceSheetAddsTechnicalPICJob(t *testing.T) {
+	l := setup(t)
+	l.toChooseSurveyorWithPIC(t, "PICLAIN")
+	require.Equal(t, map[string]int{"PICLAIN": 1}, l.faceSheet.PICJob)
 }

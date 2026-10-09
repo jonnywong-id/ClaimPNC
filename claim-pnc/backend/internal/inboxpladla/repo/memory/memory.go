@@ -26,11 +26,10 @@ import (
 	"claim-pnc/internal/inboxpladla"
 )
 
-// Claim adalah satu baris `POOLDATA.T_CLAIM_PNC` beserta kolom tabel kerja Pega yang
-// dibaca layar ini.
+// Claim adalah satu baris `POOLDATA.T_CLAIM_PNC` sejauh yang dibaca layar ini.
 //
-// Kedua tabel digabung MENDATAR di sini karena hubungannya satu-ke-satu lewat
-// `PZINSKEY = CLAIMID`. Yang diuji adalah penyaringnya, bukan cara gabungannya disusun.
+// SUMBER BARU (2026-10-08): kode status dan penanda tunggu-tutup dulu dibaca dari tabel
+// kerja Pega (`PZINSKEY = CLAIMID`); kini keduanya kolom `T_CLAIM_PNC` sendiri.
 type Claim struct {
 	// Key adalah `CLAIMID`, kunci objek kerja Pega.
 	Key string
@@ -50,21 +49,18 @@ type Claim struct {
 	// WorkStatus adalah `T_CLAIM_PNC.STATUSWORK`.
 	WorkStatus string
 
-	// StatusCode adalah `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1`.
+	// StatusCode adalah `T_CLAIM_PNC.STATUSCLAIM`.
+	//
+	// SUMBER BARU (2026-10-08): dulu `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1`; tabel kerja
+	// Pega sudah tidak dipakai.
 	StatusCode string
 
-	// PendingClose adalah `PC_ASM_FW_GCNMFW_WORK.ISPENDINGCLOSE = 'true'`.
+	// PendingClose adalah `T_CLAIM_PNC.ISPENDINGCLOSE = 'true'` (dulu kolom yang sama pada
+	// tabel kerja Pega).
 	//
 	// Ia menentukan dua hal sekaligus pada tab DLA: apakah klaimnya ikut daftar meski
 	// sudah `Resolved-Completed`, dan apakah kode statusnya diganti `1139`.
 	PendingClose bool
-
-	// HasWorkRow menyatakan baris `PC_ASM_FW_GCNMFW_WORK`-nya ADA.
-	//
-	// Ia dibutuhkan karena ketiga kueri tidak sepakat: tab DLA memakai gabungan INNER —
-	// klaim tanpa baris kerja TIDAK muncul — sementara dua tab lain memakai sub-kueri,
-	// yang setara dengan LEFT JOIN. Tanpa isian ini, perbedaan itu tidak dapat diuji.
-	HasWorkRow bool
 }
 
 // Advice adalah satu baris `T_PLALIST` atau `T_DLALIST` sejauh yang dibaca layar ini.
@@ -384,10 +380,8 @@ func claimPassesTab(claim Claim, tab inboxpladla.Tab) bool {
 		return !containsValue(inboxpladla.ClosedWorkStatuses, claim.WorkStatus)
 
 	case inboxpladla.WorkOpenOrPendingClose:
-		// Gabungan INNER pada kueri tab DLA: klaim tanpa baris tabel kerja TIDAK muncul.
-		if !claim.HasWorkRow {
-			return false
-		}
+		// Gabungan INNER ke tabel kerja Pega sudah tidak ada (SUMBER BARU 2026-10-08):
+		// klaim tanpa baris kerja Pega kini ikut, sama seperti pada dua tab lain.
 		if !containsValue(inboxpladla.ClosedWorkStatuses, claim.WorkStatus) {
 			return true
 		}

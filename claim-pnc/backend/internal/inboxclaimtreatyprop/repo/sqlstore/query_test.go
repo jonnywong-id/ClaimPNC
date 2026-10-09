@@ -153,82 +153,91 @@ func TestEveryListQueryReturnsTheSameAliases(t *testing.T) {
 	}
 }
 
-func TestSubjectivityIsNeverGuessed(t *testing.T) {
-	// `IsSubjectivity` adalah satu-satunya properti pada Report Definition yang nama kolom
-	// tereksposnya tidak dapat ditemukan di export. Ia dikirim NULL.
+func TestSubjectivityComesFromTheClaimDocument(t *testing.T) {
+	// `IsSubjectivity` dulu satu-satunya properti Report Definition yang nama kolom
+	// tereksposnya pada objek kerja tidak dapat ditemukan, sehingga ia dikirim NULL.
 	//
-	// Menebak namanya menggagalkan SELURUH kueri dengan ORA-00904 — tab yang tidak dapat
-	// dibuka sama sekali, alih-alih satu kolom yang kosong. Uji ini yang menahan tebakan
-	// itu masuk.
+	// Sejak 2026-10-08 objek kerja tidak lagi dibaca, dan properti yang SAMA
+	// (`WorkPage.ClaimData.IsSubjectivity`) dipetik langsung dari dokumen ClaimData —
+	// jalurnya terbukti ada lewat JSON_DATAGUIDE atas data dev. Uji ini menjaga ia tidak
+	// kembali menjadi tebakan nama kolom.
 	for _, name := range listQueries {
 		upper := strings.ToUpper(query(name))
-		require.Containsf(t, upper, "AS SUBJECTIVITY",
-			"kueri %s tidak lagi mengirim kolom SUBJECTIVITY", name)
-		require.Containsf(t, upper, "CAST(NULL AS VARCHAR2(100))",
-			"kueri %s tidak lagi mengirim SUBJECTIVITY sebagai NULL", name)
+		require.Containsf(t, query(name),
+			"JSON_VALUE(j.DATA_JSONBLOB, '$.IsSubjectivity')",
+			"kueri %s tidak memetik IsSubjectivity dari dokumen klaim", name)
 		require.NotContainsf(t, upper, "W.ISSUBJECTIVITY",
 			"kueri %s menebak nama kolom IsSubjectivity", name)
 	}
 }
 
-func TestEveryListQueryReadsTheLossDateFromTheWorkObject(t *testing.T) {
-	// `DATEOFLOSS_1`, BUKAN `DATEOFLOSS`. Pada seluruh rule Pega yang aliasnya menunjuk
-	// tabel objek kerja, yang dipakai selalu bentuk ber-`_1` (19 berkas) dan tidak pernah
-	// yang tanpa (0 berkas).
+func TestEveryListQueryReadsBusinessColumnsFromTheClaimDocument(t *testing.T) {
+	// Keputusan Work Owner 2026-10-08: tabel objek kerja Pega sudah tidak dipakai. Kolom
+	// bisnis dipetik dari `POOLDATA.JSON_KLAIM.DATA_JSONBLOB` — dokumen ClaimData — dengan
+	// jalur yang mengikuti properti Report Definition (`WorkPage.ClaimData.<X>` -> `$.<X>`).
 	//
-	// Salah memilih di antara keduanya tidak menghasilkan galat bila kolom tanpa `_1`
-	// kebetulan ada — hanya tanggal milik properti yang berbeda.
-	for _, name := range listQueries {
-		require.Containsf(t, query(name), "w.DATEOFLOSS_1",
-			"kueri %s tidak membaca Tanggal Kejadian dari tabel objek kerja", name)
-		require.Containsf(t, query(name), "AS LOSS_DATE",
-			"kueri %s tidak mengaliaskan Tanggal Kejadian ke LOSS_DATE", name)
+	// DATA_JSONBLOB, BUKAN DATA_JSON: terukur di dev, DATA_JSON kosong pada seluruh baris
+	// klaim treaty. Menukarnya tidak menghasilkan galat apa pun — hanya kolom kosong.
+	paths := map[string]string{
+		"MASTER_ID":       "'$.IDMaster'",
+		"POLICY_NUMBER":   "'$.PolicyData.PolicyNo'",
+		"LOSS_DATE":       "'$.DateOfLoss'",
+		"BUSINESS_NAME":   "'$.QuotationData.BusinessName'",
+		"BUSINESS_SOURCE": "'$.QuotationData.SobName'",
+		"CEDING_COMPANY":  "'$.QuotationData.CedingCoName'",
+		"INSURED_NAME":    "'$.InsuredName'",
 	}
-}
-
-func TestNoQueryReadsTheClaimJSONDocument(t *testing.T) {
-	// Sumber kolom bisnis BERPINDAH: kedua Report Definition membacanya dari kolom
-	// terekspos pada objek kerja, bukan dari dokumen JSON. Kedua sumber dapat berbeda
-	// isinya, dan membaca yang salah menampilkan nilai milik salinan yang usang tanpa satu
-	// pun galat.
-	for name, text := range queries {
-		upper := strings.ToUpper(text)
-		require.NotContainsf(t, upper, "JSON_VALUE",
-			"kueri %s masih memetik dari dokumen JSON", name)
-		require.NotContainsf(t, upper, "JSON_KLAIM",
-			"kueri %s masih menyentuh POOLDATA.JSON_KLAIM", name)
-	}
-}
-
-func TestEveryListQueryReadsTheWorkObjectColumns(t *testing.T) {
-	// "Last update" dan "Status Claim ID" disebut Report Definition sebagai
-	// `WorkPage.pxUpdateOperator` dan `WorkPage.pyStatusWork` — keduanya milik objek kerja.
-	// Uji ini memastikan kedua kueri membacanya dari kolom yang SAMA; satu kueri yang
-	// mengambilnya dari tempat lain akan menampilkan arti berbeda pada tab yang berbeda,
-	// tanpa satu pun galat.
 	for _, name := range listQueries {
 		text := query(name)
-		require.Containsf(t, text, "w.PXUPDATEOPERATOR",
-			"kueri %s tidak membaca operator pengubah", name)
-		require.Containsf(t, text, "w.PYSTATUSWORK",
-			"kueri %s tidak membaca status objek kerja", name)
-		require.Containsf(t, text, "INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w",
-			"kueri %s menggabungkan tabel objek kerja bukan dengan INNER JOIN", name)
+		for alias, path := range paths {
+			require.Containsf(t, text, "JSON_VALUE(j.DATA_JSONBLOB, "+path+")",
+				"kueri %s tidak memetik %s dari DATA_JSONBLOB", name, alias)
+		}
+		require.NotContainsf(t, text, "j.DATA_JSON,",
+			"kueri %s membaca DATA_JSON, yang kosong untuk klaim treaty", name)
 	}
 }
 
-func TestTheWorkObjectJoinIsInner(t *testing.T) {
-	// Report Definition menyatakan `JOIN type=INNER`. Versi sebelumnya di sini memakai LEFT
-	// dengan alasan "penugasan yang objek kerjanya tidak terbaca tetap muncul"; alasan itu
-	// DITARIK setelah RD-nya dibaca — yang di-LEFT-join dulu adalah JSON_KLAIM, salinan yang
-	// memang boleh belum ada, sedangkan ini objek kerja yang DITUNJUK penugasan itu sendiri.
-	//
-	// Memakai LEFT di sini akan menampilkan baris yang Pega produksi buang, dan barisnya
-	// kosong di SELURUH kolom bisnis — terbaca sebagai data hilang.
+func TestColumnsWithoutReplacementAreTypedNull(t *testing.T) {
+	// "Last update" (`WorkPage.pxUpdateOperator`) dan "Status Claim ID"
+	// (`WorkPage.pyStatusWork`) milik objek kerja yang sudah tidak dipakai, dan tidak punya
+	// padanan terbukti di tabel POOLDATA mana pun. Keduanya dikirim NULL bertipe — bukan
+	// diganti kolom penugasan yang terbaca masuk akal tetapi berarti lain.
 	for _, name := range listQueries {
-		require.Containsf(t, strings.ToUpper(query(name)),
-			"INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
-			"kueri %s tidak menggabungkan tabel objek kerja dengan INNER JOIN", name)
+		text := query(name)
+		for _, alias := range []string{"LAST_UPDATE_OPERATOR", "CLAIM_STATUS"} {
+			typedNull := regexp.MustCompile(
+				`(?i)CAST\(NULL AS VARCHAR2\(100\)\)\s+AS\s+` + alias + `\b`)
+			require.Truef(t, typedNull.MatchString(text),
+				"kueri %s tidak mengirim %s sebagai NULL bertipe", name, alias)
+		}
+		require.NotContainsf(t, strings.ToUpper(text), "PXUPDATEOPERATOR",
+			"kueri %s mengganti Last update dengan kolom lain", name)
+	}
+}
+
+func TestTheClaimDocumentJoinIsLeft(t *testing.T) {
+	// Dulu gabungannya INNER ke objek kerja yang ditunjuk penugasan — yang selalu ada.
+	// Penggantinya, POOLDATA.JSON_KLAIM, memuat hanya 17 dari 70 objek kerja klaim treaty di
+	// dev. INNER di sini akan menghilangkan 53 pekerjaan antrean tanpa satu pun galat.
+	for _, name := range listQueries {
+		upper := strings.ToUpper(query(name))
+		require.Containsf(t, upper, "LEFT JOIN POOLDATA.JSON_KLAIM J",
+			"kueri %s tidak menggabungkan dokumen klaim dengan LEFT JOIN", name)
+		require.NotContainsf(t, upper, "INNER JOIN",
+			"kueri %s memakai INNER JOIN yang dapat menghilangkan pekerjaan", name)
+	}
+}
+
+func TestNoQueryReadsTheRetiredPegaWorkTable(t *testing.T) {
+	// Keputusan Work Owner 2026-10-08: DATAPEGA.PC_ASM_FW_GCNMFW_WORK sudah tidak dipakai.
+	// Gabungan yang kembali ke sana akan berjalan di dev (tabelnya masih ada) tetapi gagal
+	// begitu tabelnya dicabut.
+	for name, text := range queries {
+		require.NotContainsf(t, strings.ToUpper(text), "PC_ASM_FW_GCNMFW_WORK",
+			"kueri %s masih membaca tabel objek kerja Pega", name)
+		require.NotContainsf(t, text, "w.",
+			"kueri %s masih merujuk alias objek kerja w", name)
 	}
 }
 
@@ -344,8 +353,12 @@ func TestEveryListQueryRestrictsTheWorkClass(t *testing.T) {
 	// Tanpa pembatas ini, kedua tab menampilkan penugasan SELURUH jenis klaim — bukan hanya
 	// treaty proporsional — dengan susunan kolom treaty. Tidak ada galat, hanya baris yang
 	// seharusnya tidak ada di sana.
+	//
+	// Sejak 2026-10-08 pembatasnya kelas yang ditunjuk baris penugasan
+	// (`a.PXREFOBJECTCLASS`), bukan `w.PXOBJCLASS` objek kerja yang sudah tidak dibaca —
+	// keduanya terbukti setara pada data dev (0 penugasan berselisih kelas).
 	for _, name := range listQueries {
-		require.Containsf(t, query(name), "w.PXOBJCLASS = :1",
+		require.Containsf(t, query(name), "a.PXREFOBJECTCLASS = :1",
 			"kueri %s tidak membatasi kelas objek kerja", name)
 	}
 }
@@ -358,9 +371,9 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 		"DATAPEGA.PC_ASSIGN_WORKLIST",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
 
-		// Tabel objek kerja — sumber SELURUH kolom bisnis sejak layar ini dipasok Report
-		// Definition. `POOLDATA.JSON_KLAIM` sengaja TIDAK ada di daftar ini lagi.
-		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		// Dokumen klaim — sumber SELURUH kolom bisnis sejak 2026-10-08, menggantikan tabel
+		// objek kerja Pega (DATAPEGA.PC_ASM_FW_GCNMFW_WORK) yang sudah tidak dipakai.
+		"POOLDATA.JSON_KLAIM",
 	}
 
 	table := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+([A-Z_]+\.[A-Z_]+)`)

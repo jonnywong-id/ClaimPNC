@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"math/big"
 	"strconv"
@@ -444,15 +445,30 @@ func (p *Parameter) read(ctx context.Context, id string, into any) error {
 //	PNCTeknikRouter   Param.AssignTo = ClaimData.UserTeknis; kosong -> "ServicePNC"
 //	RouterRCLDokter   Param.AssignTo = ClaimData.NamaDokterRCL
 //
-// UserTeknis di Pega diisi lebih awal oleh `getRandomTeam_act` (beban paling sedikit,
-// `BrowsePICRandomTeam-SQL.xml`); di sini pemilihan beban itu dilakukan saat tahap teknis
-// pertama, lalu dicatat kembali ke klaim (AdoptTechnicalPIC).
+// UserTeknis di Pega diisi lebih awal oleh `getRandomTeam_act`; aturannya ada di
+// registrasi.PlanTechnicalPIC dan dijalankan chooseTechnicalPIC — saat Claim Face Sheet
+// diunduh, atau saat tahap teknis pertama bila klaim masih belum punya PIC.
 type Assigner struct {
-	db *sql.DB
+	db         *sql.DB
+	attendance registrasi.AttendanceSource
+	now        func() time.Time
+	logger     *slog.Logger
 }
 
 // NewAssigner membentuk pemilih penugasan di atas sebuah koneksi.
-func NewAssigner(db *sql.DB) *Assigner { return &Assigner{db: db} }
+func NewAssigner(db *sql.DB) *Assigner {
+	return &Assigner{db: db, now: time.Now, logger: slog.Default()}
+}
+
+// WithAttendance memasang sumber absensi PIC (ServiceGetDataAbsenPIC). Tanpa sumber, setiap
+// kandidat dianggap hadir — sama dengan Pega saat layanannya tidak menjawab.
+func (a *Assigner) WithAttendance(src registrasi.AttendanceSource, logger *slog.Logger) *Assigner {
+	a.attendance = src
+	if logger != nil {
+		a.logger = logger
+	}
+	return a
+}
 
 // Assign memilih penerima tugas untuk sebuah tahap.
 func (a *Assigner) Assign(
@@ -524,42 +540,196 @@ func (a *Assigner) Assign(
 		return registrasi.Assignee{Operator: pic}, nil
 	}
 
-	line := businessGroupOf(claim.Policy.Line)
-	exec := executorFrom(ctx, a.db)
-
-	var operator string
-	err := exec.QueryRowContext(ctx, loadQuery("pic_teknik_paling_ringan"), line).Scan(&operator)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		// Tidak ada petugas aktif untuk lini ini: PNCTeknikRouter langkah 2 — UserTeknis
-		// kosong — menugaskan ke ServicePNC, antrean "belum ditugaskan" yang dibagikan ulang
-		// agent TransferAllCaseNotAssigned. Tugas tidak dibuang dan tidak jatuh ke pemanggil.
+	operator, err := a.chooseTechnicalPIC(ctx, claim, caller)
+	if err != nil {
+		return registrasi.Assignee{}, err
+	}
+	if operator == "" {
+		// Tidak ada kandidat: PNCTeknikRouter langkah 2 — UserTeknis kosong — menugaskan ke
+		// ServicePNC, antrean "belum ditugaskan" yang dibagikan ulang agent
+		// TransferAllCaseNotAssigned. Tugas tidak dibuang dan tidak jatuh ke pemanggil.
 		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
-	case err != nil:
-		return registrasi.Assignee{}, fmt.Errorf("registrasi/sqlstore: memilih petugas teknis: %w", err)
 	}
-
-	if _, err := exec.ExecContext(ctx, loadQuery("pic_teknik_naikkan_beban"), operator); err != nil {
-		return registrasi.Assignee{}, fmt.Errorf(
-			"registrasi/sqlstore: menaikkan beban petugas %q: %w", operator, err)
-	}
-	return registrasi.Assignee{Operator: strings.TrimSpace(operator)}, nil
+	return registrasi.Assignee{Operator: operator}, nil
 }
 
-// businessGroupOf memetakan lini bisnis ke nilai TYPE_BUSINESS pada master petugas.
+// chooseTechnicalPIC menjalankan jalur registrasi.PlanTechnicalPIC terhadap
+// POOLDATA.MST_USER_TEKNIK. Kosong berarti tidak ada kandidat.
 //
-// Nilai yang dipakai master terverifikasi 2026-09-24: NONMBU (15 petugas aktif),
-// BONDING (5), PA (3), TRAVEL (1). Lini yang tidak punya kelompoknya sendiri masuk
-// NONMBU — itulah kelompok terbesar dan memang berarti "Non-Motor selain yang khusus".
-func businessGroupOf(line registrasi.LineOfBusiness) string {
-	switch line {
-	case registrasi.LinePersonalAccident:
-		return "PA"
-	case registrasi.LineTravel:
-		return "TRAVEL"
-	default:
-		return "NONMBU"
+// # Beban petugas
+//
+// Mengikuti Pega apa adanya. Prosedur PA/Travel menaikkan MST_USER_TEKNIK.COUNTER_QUOTA.
+// Jalur NONMBU TIDAK menaikkan beban apa pun saat memilih; bebannya dinaikkan
+// `AddTJobCQuota_SQL` saat Claim Face Sheet pertama — di MST_USER_TEKNIS, bukan di
+// MST_USER_TEKNIK yang dipakai mengurutkan kandidat (lihat usecase/facesheet.go).
+func (a *Assigner) chooseTechnicalPIC(ctx context.Context, claim registrasi.Claim, caller string) (string, error) {
+	estimate, err := a.estimateIDR(ctx, claim)
+	if err != nil {
+		return "", err
 	}
+	plan := registrasi.PlanTechnicalPIC(claim, estimate)
+	if plan.Operator != "" {
+		return plan.Operator, nil
+	}
+
+	exec := executorFrom(ctx, a.db)
+	var operator string
+	switch plan.Pool {
+	case registrasi.PoolNone:
+		return "", nil
+	case registrasi.PoolProcedure:
+		operator, err = a.procedurePIC(ctx, exec, plan, caller)
+	case registrasi.PoolNonMBU:
+		// GetRandomTeamClaimLeader berjalan SEBELUM daftar kandidat (step 12–13), dan tetap
+		// berjalan walau akhirnya tidak ada PIC yang terpilih.
+		if err = a.rotateTeam(ctx, exec, plan.Rotation); err != nil {
+			break
+		}
+		candidates := plan.Preferred
+		if len(candidates) == 0 {
+			candidates, err = a.nonMBUCandidates(ctx, exec, plan)
+		}
+		if err == nil {
+			operator = a.firstPresent(ctx, claim, candidates)
+		}
+	}
+	if err != nil {
+		return "", fmt.Errorf("registrasi/sqlstore: memilih petugas teknis: %w", err)
+	}
+	if operator == "" {
+		return "", nil
+	}
+
+	// Hanya cabang prosedur yang menaikkan beban MST_USER_TEKNIK (UPDATE di akhir
+	// GETDATA_PICTEKNIK). Jalur NONMBU tidak: di Pega step 15.8 keluar ke EX sebelum step
+	// 15.9–15.10, sehingga pencacahnya tidak pernah jalan.
+	if plan.Pool == registrasi.PoolProcedure {
+		if _, err := exec.ExecContext(ctx, loadQuery("pic_teknik_naikkan_beban"), operator); err != nil {
+			return "", fmt.Errorf("registrasi/sqlstore: menaikkan beban petugas %q: %w", operator, err)
+		}
+	}
+	return strings.TrimSpace(operator), nil
+}
+
+// procedurePIC adalah `POOLDATA.GETDATA_PICTEKNIK(txtBusinessType, txtTKI)` dengan
+// txtBusinessType = jabatan operator yang sedang bekerja (`getRandomTeam_act` step 19/24).
+func (a *Assigner) procedurePIC(ctx context.Context, exec executor, plan registrasi.TechnicalPICPlan, caller string) (string, error) {
+	var position sql.NullString
+	err := exec.QueryRowContext(ctx, loadQuery("pic_teknik_jabatan"), strings.ToUpper(strings.TrimSpace(caller))).Scan(&position)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("membaca jabatan operator %q: %w", caller, err)
+	}
+
+	var operator string
+	if strings.TrimSpace(position.String) == registrasi.PositionPA {
+		err = exec.QueryRowContext(ctx, loadQuery("pic_teknik_pa"), registrasi.PATechnicalPIC(plan.TKI)).Scan(&operator)
+	} else {
+		err = exec.QueryRowContext(ctx, loadQuery("pic_teknik_travel")).Scan(&operator)
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		// Prosedur mengisi errmsg dan keluar tanpa PIC.
+		return "", nil
+	}
+	return operator, err
+}
+
+// rotateTeam adalah `RandomOver1M_act` / `RandomUnder1M_act`: baca flag tim terakhir, tulis
+// giliran berikutnya (registrasi.NextTeam). Hasilnya hanya label grup klaim yang tidak
+// disimpan di mana pun (lihat registrasi.TeamRotation), sehingga yang dikerjakan di sini
+// hanyalah memutar flag-nya.
+func (a *Assigner) rotateTeam(ctx context.Context, exec executor, rotation registrasi.TeamRotation) error {
+	var read, write string
+	switch rotation {
+	case registrasi.RotationLarge:
+		read, write = "rotasi_tim_baca_besar", "rotasi_tim_tulis_besar"
+	case registrasi.RotationSmall:
+		read, write = "rotasi_tim_baca_kecil", "rotasi_tim_tulis_kecil"
+	default:
+		return nil
+	}
+	var last sql.NullString
+	if err := exec.QueryRowContext(ctx, loadQuery(read)).Scan(&last); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("membaca rotasi tim %s: %w", rotation, err)
+	}
+	if _, err := exec.ExecContext(ctx, loadQuery(write), registrasi.NextTeam(last.String)); err != nil {
+		return fmt.Errorf("menulis rotasi tim %s: %w", rotation, err)
+	}
+	return nil
+}
+
+// nonMBUCandidates adalah seluruh daftar `BrowsePICRandomTeam` / `BrowsePICRandomTeam2`,
+// berurutan menurut beban.
+func (a *Assigner) nonMBUCandidates(ctx context.Context, exec executor, plan registrasi.TechnicalPICPlan) ([]string, error) {
+	query := "pic_teknik_nonmbu"
+	if plan.Large {
+		query = "pic_teknik_nonmbu_besar"
+	}
+	rows, err := exec.QueryContext(ctx, loadQuery(query), registrasi.ExcludedTechnicalPIC, yesNo(plan.TeamC))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// firstPresent adalah loop `getRandomTeam_act` step 15 atas daftar kandidat:
+//
+//   - akhir pekan atau hari libur (jawaban absensi kandidat yang sedang diperiksa) →
+//     pemilihan berhenti TANPA PIC (step 15.7);
+//   - `RuleTimeIn` memuat "000000" → kandidat dilewati (step 15.8);
+//   - selain itu kandidat itu yang dipilih.
+//
+// Kegagalan layanan absensi diperlakukan seperti Pega: jawabannya kosong, sehingga kandidat
+// itu dipilih. Kegagalannya dicatat, bukan ditelan diam-diam.
+func (a *Assigner) firstPresent(ctx context.Context, claim registrasi.Claim, candidates []string) string {
+	date := a.now().In(clock.ZoneWIB)
+	check := a.attendance != nil && registrasi.AttendanceApplies(claim)
+	for _, candidate := range candidates {
+		id := strings.TrimSpace(candidate)
+		if id == "" {
+			continue
+		}
+		if !check {
+			return id
+		}
+		att, err := a.attendance.Attendance(ctx, id, date, claim.Number)
+		if err != nil {
+			a.logger.WarnContext(ctx, "absensi PIC tidak terbaca; kandidat dianggap hadir seperti Pega",
+				slog.String("pic", id), slog.String("nomor_klaim", claim.Number), slog.String("galat", err.Error()))
+			return id
+		}
+		if att.Closed() {
+			return ""
+		}
+		if att.Absent() {
+			continue
+		}
+		return id
+	}
+	return ""
+}
+
+// estimateIDR adalah `ClaimEstimate × DollarCurrencyVal` — estimasi klaim dalam rupiah,
+// dengan kurs tanggal kejadian (`D-48`), sama seperti registrasi menghitung ambang Large
+// Losses. Klaim tanpa mata uang dianggap rupiah.
+func (a *Assigner) estimateIDR(ctx context.Context, claim registrasi.Claim) (registrasi.Money, error) {
+	currency := strings.TrimSpace(claim.Currency)
+	if currency == "" {
+		return claim.EstimateValue, nil
+	}
+	rate, err := NewExchangeRateSource(a.db).Find(ctx, currency, claim.DateOfLoss)
+	if err != nil {
+		return 0, fmt.Errorf("registrasi/sqlstore: kurs estimasi untuk memilih PIC Teknik: %w", err)
+	}
+	return claim.EstimateValue.Convert(rate), nil
 }
 
 var (

@@ -153,19 +153,31 @@ func TestCountAndListMayDifferForSurveyTiles(t *testing.T) {
 
 // TestSurveyCountsRunOverClaimTable menjaga bentuk kueri hitung terhadap sumbernya.
 //
-// Keduanya berjalan atas tabel KLAIM dengan gabung ke PC_ASSIGN_WORKLIST — bukan atas tabel
-// survei. Itulah yang membuat angkanya setara dengan sistem lama, termasuk penggandaan pada
-// klaim yang memegang lebih dari satu penugasan.
+// Keduanya berjalan atas tabel KLAIM — kini `T_CLAIMLIST_ADMIN`, pengganti objek kerja Pega
+// dan penugasannya — bukan atas tabel survei.
 func TestSurveyCountsRunOverClaimTable(t *testing.T) {
 	for _, name := range []string{"loss_adjuster_count", "internal_surveyor_count"} {
 		statement := query(name)
 
+		require.Containsf(t, statement, "FROM POOLDATA.T_CLAIMLIST_ADMIN A",
+			"kueri %s harus berjalan atas tabel klaim T_CLAIMLIST_ADMIN", name)
 		require.Containsf(t, statement, "'ASM-FW-GCNMFW-Work-PNC'",
-			"kueri %s harus berjalan atas tabel klaim", name)
-		require.Containsf(t, statement, "PC_ASSIGN_WORKLIST",
-			"kueri %s harus menggabung ke PC_ASSIGN_WORKLIST seperti kueri lamanya", name)
+			"kueri %s harus menyaring baris klaim dari tabel yang bercampur", name)
 		require.Containsf(t, statement, "COALESCE(SUM(",
 			"kueri %s harus memakai SUM(CASE …) seperti kueri lamanya, dibungkus COALESCE", name)
+	}
+}
+
+// TestSurveyQueriesLeaveTheRetiredPegaTables memastikan keempat kueri survei tidak lagi
+// membaca tabel DATAPEGA yang sudah tidak dipakai.
+func TestSurveyQueriesLeaveTheRetiredPegaTables(t *testing.T) {
+	for _, name := range []string{
+		"outstanding_count", "outstanding_list",
+		"loss_adjuster_count", "loss_adjuster_list", "internal_surveyor_count", "internal_surveyor_list",
+	} {
+		statement := query(name)
+		require.NotContainsf(t, statement, "PC_ASM_FW_GCNMFW_WORK", "kueri %s masih membaca objek kerja Pega", name)
+		require.NotContainsf(t, statement, "PC_ASSIGN_WORKLIST", "kueri %s masih membaca worklist Pega", name)
 	}
 }
 
@@ -176,12 +188,21 @@ func TestSurveyCountsRunOverClaimTable(t *testing.T) {
 // keduanya tidak tertukar saat disunting.
 func TestSurveyorTypeIsPinnedPerQuery(t *testing.T) {
 	for _, name := range []string{"loss_adjuster_count", "loss_adjuster_list"} {
-		require.Containsf(t, query(name), "SURVEYORTYPE_1 = '2'",
+		require.Containsf(t, query(name), "SURVEYTYPE = '2'",
 			"kueri %s harus menyaring loss adjuster", name)
 	}
 	for _, name := range []string{"internal_surveyor_count", "internal_surveyor_list"} {
-		require.Containsf(t, query(name), "SURVEYORTYPE_1 = '1'",
+		require.Containsf(t, query(name), "SURVEYTYPE = '1'",
 			"kueri %s harus menyaring surveyor internal", name)
+	}
+}
+
+// TestSurveyListsReadTheLastStep memastikan daftar survei membaca LANGKAH TERAKHIR tiap
+// berkas. T_SURVEYORLIST menyimpan satu baris per perubahan status; tanpa penyaring ini satu
+// berkas tampil sebanyak langkahnya.
+func TestSurveyListsReadTheLastStep(t *testing.T) {
+	for _, name := range []string{"loss_adjuster_list", "internal_surveyor_list", "internal_surveyor_count"} {
+		require.Containsf(t, query(name), "STEP_RANK = 1", "kueri %s harus membaca langkah terakhir", name)
 	}
 }
 
@@ -450,6 +471,11 @@ func TestHoldingKeepsTheThreeConditions(t *testing.T) {
 			"kueri %s kehilangan syarat belum punya PIC Teknik", name)
 		require.Containsf(t, statement, "POLICYNO IS NOT NULL",
 			"kueri %s kehilangan syarat polis sudah terisi", name)
+		// Sejak 2026-10-08 kepala klaimnya dari T_CLAIMLIST_ADMIN, bukan objek kerja Pega.
+		require.Containsf(t, statement, "FROM POOLDATA.T_CLAIMLIST_ADMIN A",
+			"kueri %s harus membaca kepala klaim dari T_CLAIMLIST_ADMIN", name)
+		require.NotContainsf(t, statement, "PC_ASM_FW_GCNMFW_WORK",
+			"kueri %s masih membaca objek kerja Pega", name)
 	}
 }
 

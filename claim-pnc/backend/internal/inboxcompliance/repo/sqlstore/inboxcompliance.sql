@@ -108,29 +108,63 @@
 --    Sistem lama memanggil `POOLDATA.GETSELISIHJAM` lewat rule SQL terpisah, satu kali per
 --    baris. Di sini kueri hanya membawa tanggalnya; jamnya dihitung di Go (`D-02`, `D-50`).
 --    Lihat internal/inboxcompliance/aging.go.
+--
+-- ============================================================================
+-- SUMBER BARU (2026-10-08): OBJEK KERJA PEGA TIDAK DIBACA LAGI
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` tidak dipakai lagi ("Perubahan nama tabel untuk
+-- Inbox.xlsx"). Baris kini DIGERAKKAN ANTREAN — `PC_ASSIGN_WORKBASKET` — lalu disambung
+-- LEFT JOIN ke dua tabel datar:
+--
+--   T_CLAIM_PNC p         data klaim: polis, tertanggung, bisnis, cabang, status. Nomor
+--                         case dari `PXREFOBJECTINSNAME` penugasan (nomor case Pega persis);
+--                         `CLAIMNO` hanya cadangan — 15 klaim punya CLAIMNO yang berbeda
+--   T_CLAIMLIST_ADMIN k   kolom "Nama Admin" (`PYORIGUSERID`), yang tidak ada di T_CLAIM_PNC
+--
+-- KENAPA BUKAN T_CLAIMLIST_ADMIN SEBAGAI TABEL UTAMA. Ia hanya memuat klaim yang tugasnya
+-- di antrean ADMIN (Input Register, Input Estimasi, Choose Surveyor). Diukur 2026-10-08:
+-- klaim di antrean CompliancePNC 2 baris — 2 ada di T_CLAIM_PNC, **0 ada di
+-- T_CLAIMLIST_ADMIN**. Menjadikannya tabel utama akan MENGOSONGKAN tab ini.
+--
+-- KENAPA ANTREAN YANG MENGGERAKKAN, BUKAN T_CLAIM_PNC. Catatan di atas: T_CLAIM_PNC diisi
+-- prosedur konversi yang berjalan terpisah. Dengan antrean sebagai penggerak, klaim yang
+-- konversinya tertinggal tetap tampil (kolomnya kosong, nomornya dari
+-- `PXREFOBJECTINSNAME`), bukan hilang dari antrean.
+--
+-- "Nama Admin": `PYORIGUSERID` di T_CLAIMLIST_ADMIN terisi 1 dari 915 baris, dan klaim di
+-- antrean ini tidak ada di sana. Cadangannya berurutan:
+--   k.PYORIGUSERID -> k.PXCREATEOPERATOR -> p.ADMINKLAIM
+-- `ADMINKLAIM` adalah Operator ID pembuat klaim: sama dengan `PXCREATEOPERATOR` pada 504
+-- dari 522 klaim yang ada di kedua tabel (diukur 2026-10-08).
+--
+-- Status proses: `p.STATUSWORK` boleh NULL (klaim yang konversinya tertinggal), dan baris
+-- seperti itu TIDAK dibuang — ia masih memegang tugas di antrean, sehingga belum selesai.
 
 -- name: list_compliance
 -- Tab Compliance — Report Definition/InboxRegisterCompliance_RD-RD.xml
 --
 -- Bind: :1 nama workbasket · :2 offset · :3 jumlah baris
-SELECT A.PYID                     AS CASE_ID,
-       A.PZINSKEY                 AS REFERENCE,
-       A.POLICYNO                 AS POLICY_NUMBER,
-       A.QQNAME                   AS INSURED_NAME,
-       A.BUSINESSNAME             AS BUSINESS_NAME,
-       A.BRANCHNAME               AS BRANCH_NAME,
-       A.PYORIGUSERID             AS ADMIN_NAME,
-       p.COMPLIANCE_CREATEDATE    AS COMPLIANCE_SENT_DATE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET wb
-               ON wb.PXREFOBJECTKEY = A.PZINSKEY
-              AND wb.PXOBJCLASS = 'Assign-WorkBasket'
+SELECT COALESCE(wb.PXREFOBJECTINSNAME, p.CLAIMNO)                 AS CASE_ID,
+       wb.PXREFOBJECTKEY                                          AS REFERENCE,
+       p.NOPOLIS                                                  AS POLICY_NUMBER,
+       p.QQNAME                                                   AS INSURED_NAME,
+       p.BUSINESSNAME                                             AS BUSINESS_NAME,
+       p.BRANCHNAME                                               AS BRANCH_NAME,
+       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM) AS ADMIN_NAME,
+       p.COMPLIANCE_CREATEDATE                                    AS COMPLIANCE_SENT_DATE
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET wb
        LEFT JOIN POOLDATA.T_CLAIM_PNC p
-              ON p.CLAIMID = A.PZINSKEY
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+              ON p.CLAIMID = wb.PXREFOBJECTKEY
+       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+              ON k.PZINSKEY = wb.PXREFOBJECTKEY
+             AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE wb.PXOBJCLASS = 'Assign-WorkBasket'
+   AND wb.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND wb.PXASSIGNEDOPERATORID = :1
-   AND A.PYSTATUSWORK <> 'Resolved-Completed'
- ORDER BY A.PXCREATEDATETIME DESC, A.PYID DESC
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
+ ORDER BY COALESCE(p.REGISTERDATE, wb.PXCREATEDATETIME) DESC,
+          COALESCE(wb.PXREFOBJECTINSNAME, p.CLAIMNO) DESC
  OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 
 -- name: count_compliance
@@ -140,18 +174,18 @@ SELECT A.PYID                     AS CASE_ID,
 -- menggambar halaman yang tidak pernah berisi apa pun — dan selisihnya tidak terlihat
 -- sampai seseorang membuka halaman terakhir.
 --
--- `T_CLAIM_PNC` sengaja TIDAK ikut di-join di sini: ia LEFT JOIN yang tidak menyaring apa
--- pun, sehingga menyertakannya hanya menambah beban tanpa mengubah hasil hitungan.
+-- `T_CLAIM_PNC` IKUT di-join karena kini ia yang membawa status proses yang menyaring.
+-- `T_CLAIMLIST_ADMIN` tidak: ia LEFT JOIN yang tidak menyaring apa pun.
 --
 -- Bind: :1 nama workbasket
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET wb
-               ON wb.PXREFOBJECTKEY = A.PZINSKEY
-              AND wb.PXOBJCLASS = 'Assign-WorkBasket'
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET wb
+       LEFT JOIN POOLDATA.T_CLAIM_PNC p
+              ON p.CLAIMID = wb.PXREFOBJECTKEY
+ WHERE wb.PXOBJCLASS = 'Assign-WorkBasket'
+   AND wb.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND wb.PXASSIGNEDOPERATORID = :1
-   AND A.PYSTATUSWORK <> 'Resolved-Completed'
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
 
 -- ============================================================================
 -- TAB POST AUDIT — SUMBERNYA BUKAN TABEL PEGA
@@ -316,11 +350,11 @@ SELECT COUNT(*)
 -- list_compliance — memeriksa satu saja akan meloloskan keadaan yang tetap membuat layar
 -- gagal.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET wb
-               ON wb.PXREFOBJECTKEY = A.PZINSKEY
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET wb
        LEFT JOIN POOLDATA.T_CLAIM_PNC p
-              ON p.CLAIMID = A.PZINSKEY
+              ON p.CLAIMID = wb.PXREFOBJECTKEY
+       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+              ON k.PZINSKEY = wb.PXREFOBJECTKEY
  WHERE 1 = 0
 
 -- ============================================================================
@@ -345,24 +379,25 @@ SELECT COUNT(*)
 -- Aliasnya sama dengan list_compliance supaya satu pemindai melayani keduanya.
 --
 -- Bind: :1 nama workbasket · :2 kunci klaim (PZINSKEY)
-SELECT A.PYID                     AS CASE_ID,
-       A.PZINSKEY                 AS REFERENCE,
-       A.POLICYNO                 AS POLICY_NUMBER,
-       A.QQNAME                   AS INSURED_NAME,
-       A.BUSINESSNAME             AS BUSINESS_NAME,
-       A.BRANCHNAME               AS BRANCH_NAME,
-       A.PYORIGUSERID             AS ADMIN_NAME,
-       p.COMPLIANCE_CREATEDATE    AS COMPLIANCE_SENT_DATE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET wb
-               ON wb.PXREFOBJECTKEY = A.PZINSKEY
-              AND wb.PXOBJCLASS = 'Assign-WorkBasket'
+SELECT COALESCE(wb.PXREFOBJECTINSNAME, p.CLAIMNO)                 AS CASE_ID,
+       wb.PXREFOBJECTKEY                                          AS REFERENCE,
+       p.NOPOLIS                                                  AS POLICY_NUMBER,
+       p.QQNAME                                                   AS INSURED_NAME,
+       p.BUSINESSNAME                                             AS BUSINESS_NAME,
+       p.BRANCHNAME                                               AS BRANCH_NAME,
+       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM) AS ADMIN_NAME,
+       p.COMPLIANCE_CREATEDATE                                    AS COMPLIANCE_SENT_DATE
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET wb
        LEFT JOIN POOLDATA.T_CLAIM_PNC p
-              ON p.CLAIMID = A.PZINSKEY
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+              ON p.CLAIMID = wb.PXREFOBJECTKEY
+       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+              ON k.PZINSKEY = wb.PXREFOBJECTKEY
+             AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE wb.PXOBJCLASS = 'Assign-WorkBasket'
+   AND wb.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND wb.PXASSIGNEDOPERATORID = :1
-   AND A.PYSTATUSWORK <> 'Resolved-Completed'
-   AND A.PZINSKEY = :2
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
+   AND wb.PXREFOBJECTKEY = :2
  FETCH FIRST 1 ROW ONLY
 
 -- name: post_audit_next_sequence

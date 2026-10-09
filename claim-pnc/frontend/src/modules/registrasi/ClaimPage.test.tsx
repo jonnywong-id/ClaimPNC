@@ -517,13 +517,14 @@ describe('tahap Input Estimasi', () => {
 
   let estimateBody: { url: string; body: unknown } | null = null
   let uploads: FormData[] = []
-  let itemOptions: { nama: string; kelompok: string; tsi_sen: number }[] = []
+  let itemOptions: { id?: string; nama: string; kelompok: string; tsi_sen: number }[] = []
+  let itemDefault = ''
 
   function stubEstimate(claim: unknown = AT_ESTIMATE) {
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
       let body: unknown = {}
       if (url === '/api/registrasi/alur') body = ALUR
-      else if (url.includes('/pilihan-item')) body = { pilihan: itemOptions }
+      else if (url.includes('/pilihan-item')) body = { pilihan: itemOptions, bawaan: itemDefault }
       else if (url.endsWith('/survey')) body = RECORDS.survey
       else if (url.endsWith('/dokumen')) {
         if (init?.method === 'POST') uploads.push(init.body as FormData)
@@ -545,6 +546,7 @@ describe('tahap Input Estimasi', () => {
     estimateBody = null
     uploads = []
     itemOptions = []
+    itemDefault = ''
   })
 
   // Section InputEstimasiAdmin tidak punya tombol Next: tahap ditutup Kirim PIC Teknik
@@ -1346,5 +1348,38 @@ describe('tahap Input Estimasi', () => {
     expect(field).toBeDisabled()
     expect(screen.getByRole('option', { name: '— tidak ada pilihan —' })).toBeInTheDocument()
     expect(screen.getByText(/Polis tidak memiliki daftar item/)).toBeInTheDocument()
+  })
+
+  // Aneka, Marine Cargo, PA: satu-satunya pilihan "Others", dan item baru langsung bernama
+  // "Others" seperti item bawaan Pega (GetObjectFromTable).
+  it('item baru lini tanpa daftar item langsung bernama Others', async () => {
+    itemOptions = [{ id: '', nama: 'Others', kelompok: '', tsi_sen: 0 }]
+    itemDefault = 'Others'
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    await waitFor(() => expect(field).toHaveValue('Others'))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(estimateBody).not.toBeNull())
+    expect(estimateBody?.body).toMatchObject({
+      objek: [{ coverage: [{ item: [{ nama: 'Others' }] }] }],
+    })
+  })
+
+  // Travel: pilihan adalah manfaat plan; nama bawaan OTHERS tetap tampil walau tidak di daftar.
+  it('Travel memilih Objek dari manfaat plan coverage', async () => {
+    itemOptions = [{ id: '10919', nama: 'B.1. Kehilangan Bagasi', kelompok: '', tsi_sen: 0 }]
+    itemDefault = 'OTHERS'
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    await waitFor(() => expect(field).toHaveValue('OTHERS'))
+    await user.selectOptions(field, 'B.1. Kehilangan Bagasi')
+    expect(field).toHaveValue('B.1. Kehilangan Bagasi')
   })
 })

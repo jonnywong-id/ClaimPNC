@@ -210,7 +210,7 @@ func (r *Repo) run(ctx context.Context, selected plan, q inboxadmin.Query) ([]in
 func (r *Repo) CheckTable(ctx context.Context) error {
 	var ignored int
 	if err := r.db.QueryRowContext(ctx, query("check_table")).Scan(&ignored); err != nil {
-		return fmt.Errorf("membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK: %w", err)
+		return fmt.Errorf("membaca POOLDATA.T_CLAIMLIST_ADMIN: %w", err)
 	}
 	return nil
 }

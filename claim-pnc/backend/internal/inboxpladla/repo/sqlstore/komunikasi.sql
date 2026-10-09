@@ -53,6 +53,15 @@
 -- Oracle mengikat argumen menurut urutan KEMUNCULAN penanda di dalam teks, bukan menurut
 -- angka pada `:n`. Karena kolom "PLA No" berada di klausa SELECT — sebelum WHERE — login
 -- untuknya bernomor `:1`, bukan `:3`. `TestBindMarkersAppearInAscendingOrder` menjaganya.
+--
+-- ============================================================================
+-- SUMBER BARU (2026-10-08)
+-- ============================================================================
+--
+-- Kode status dibaca dari `T_CLAIM_PNC.STATUSCLAIM`, bukan lagi `STATUSCLAIM_1` pada tabel
+-- kerja Pega yang sudah tidak dipakai. Urutan dan jumlah bind tidak berubah. Akibatnya sama
+-- dengan yang dicatat di kepala inboxpladla.sql: kode status dapat berbeda dari layar Pega
+-- pada sebagian klaim.
 
 -- name: list_komunikasi_recipient
 -- Klaim yang punya percakapan DITUJUKAN kepada pemanggil (`COMMUNICATE_TO`).
@@ -68,7 +77,7 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.REGISTERDATE                    AS REGISTER_DATE,
        c.DATEOFLOSS                      AS LOSS_DATE,
        c.PICTEKNIK                       AS PIC_TEKNIK,
-       w.STATUSCLAIM_1                   AS STATUS_CODE,
+       c.STATUSCLAIM                     AS STATUS_CODE,
        s.LSC_NOTE                        AS STATUS_LABEL,
        (SELECT p.NOPLA
           FROM POOLDATA.T_PLALIST p
@@ -83,10 +92,8 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.CLOSECLAIMNOTE                  AS CLOSE_NOTE,
        COUNT(*) OVER ()                  AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:2 IS NULL OR UPPER(c.CLAIMID) LIKE :3 ESCAPE '\')
    AND EXISTS (SELECT 1
@@ -104,14 +111,12 @@ OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 -- yang tidak diambil — sehingga rantai reasuradur untuk kolom itu tidak ada di sini.
 --
 -- Bind: :1 penanda pencarian · :2 pola pencarian · :3 status percakapan · :4 login
-SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
+SELECT c.STATUSCLAIM                     AS STATUS_CODE,
        MAX(s.LSC_NOTE)                   AS STATUS_LABEL,
        COUNT(*)                          AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:1 IS NULL OR UPPER(c.CLAIMID) LIKE :2 ESCAPE '\')
    AND EXISTS (SELECT 1
@@ -119,8 +124,8 @@ SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
                 WHERE k.CASEID = c.CLAIMID
                   AND k.KOMUNIKASISTATUS = :3
                   AND UPPER(TRIM(k.COMMUNICATE_TO)) = UPPER(TRIM(:4)))
- GROUP BY w.STATUSCLAIM_1
- ORDER BY w.STATUSCLAIM_1
+ GROUP BY c.STATUSCLAIM
+ ORDER BY c.STATUSCLAIM
 
 -- name: list_komunikasi_sender
 -- Klaim yang punya percakapan DIKIRIM pemanggil (`SENDER`).
@@ -141,7 +146,7 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.REGISTERDATE                    AS REGISTER_DATE,
        c.DATEOFLOSS                      AS LOSS_DATE,
        c.PICTEKNIK                       AS PIC_TEKNIK,
-       w.STATUSCLAIM_1                   AS STATUS_CODE,
+       c.STATUSCLAIM                     AS STATUS_CODE,
        s.LSC_NOTE                        AS STATUS_LABEL,
        (SELECT p.NOPLA
           FROM POOLDATA.T_PLALIST p
@@ -156,10 +161,8 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.CLOSECLAIMNOTE                  AS CLOSE_NOTE,
        COUNT(*) OVER ()                  AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:2 IS NULL OR UPPER(c.CLAIMID) LIKE :3 ESCAPE '\')
    AND EXISTS (SELECT 1
@@ -174,14 +177,12 @@ OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 -- Tabel ringkas "Status / Jumlah" untuk kedua daftar komunikasi terkirim.
 --
 -- Bind: :1 penanda pencarian · :2 pola pencarian · :3 status percakapan · :4 login
-SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
+SELECT c.STATUSCLAIM                     AS STATUS_CODE,
        MAX(s.LSC_NOTE)                   AS STATUS_LABEL,
        COUNT(*)                          AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:1 IS NULL OR UPPER(c.CLAIMID) LIKE :2 ESCAPE '\')
    AND EXISTS (SELECT 1
@@ -189,5 +190,5 @@ SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
                 WHERE k.CASEID = c.CLAIMID
                   AND k.KOMUNIKASISTATUS = :3
                   AND UPPER(TRIM(k.SENDER)) = UPPER(TRIM(:4)))
- GROUP BY w.STATUSCLAIM_1
- ORDER BY w.STATUSCLAIM_1
+ GROUP BY c.STATUSCLAIM
+ ORDER BY c.STATUSCLAIM

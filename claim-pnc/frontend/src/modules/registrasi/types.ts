@@ -168,7 +168,13 @@ export type Committee = {
   status: 'berjalan' | 'disetujui' | 'ditolak'
   /** Operator jenjang yang sedang ditunggu. */
   menunggu?: string
-  anggota: { jenjang: number; komite: string; keputusan: string; catatan: string; tanggal_putusan?: string }[]
+  anggota: {
+    jenjang: number
+    komite: string
+    keputusan: string
+    catatan: string
+    tanggal_putusan?: string
+  }[]
 }
 
 /** Badan tombol Transfer Komite. Indeks berbasis 1. */
@@ -276,8 +282,10 @@ export type EstimateRequest = {
 export type CurrencyOption = { id: string; nama: string }
 
 /** Pilihan Objek item estimasi — item properti polis Fire. Lini lain: daftar kosong. */
-export type ItemOption = { nama: string; kelompok: string; tsi_sen: Cents }
-export type ItemOptionsResponse = { pilihan: ItemOption[] }
+/** id: ObjectItemID pilihan (manfaat plan Travel); kosong untuk lini lain. */
+export type ItemOption = { id: string; nama: string; kelompok: string; tsi_sen: Cents }
+/** bawaan: nama item untuk item baru ("Others"/"OTHERS"); kosong untuk Fire. */
+export type ItemOptionsResponse = { pilihan: ItemOption[]; bawaan: string }
 /**
  * Pilihan dropdown "Tambah coverage" — coverage polis milik satu objek, dibaca dari
  * POOLDATA.T_COVERAGELIST_CARGO/ANEKA/FIRE/PERSON sesuai lini bisnis polis.
@@ -368,7 +376,13 @@ export type Policy = {
 }
 
 /** Satu baris grid Telephone dan Email (CIFData ASMTelfax). */
-export type InsuredPhone = { jenis: string; nama_jenis: string; kode: string; nomor: string; ekstensi: string }
+export type InsuredPhone = {
+  jenis: string
+  nama_jenis: string
+  kode: string
+  nomor: string
+  ekstensi: string
+}
 
 /** Satu alamat tertanggung dari CIF polis (CIFData.AddressList). */
 export type InsuredAddress = {
@@ -787,7 +801,12 @@ export type CommitteeStatusRow = {
 }
 
 /** Satu baris grid Histori Transfer Kasir (InputAdjustment_sect, TempDataLogKasir). */
-export type CashierHistoryRow = { pic_teknik: string; tanggal: string; status_kasir: string; komentar: string }
+export type CashierHistoryRow = {
+  pic_teknik: string
+  tanggal: string
+  status_kasir: string
+  komentar: string
+}
 
 export type SettlementHistoryResponse = { komite: CommitteeStatusRow[]; kasir: CashierHistoryRow[] }
 

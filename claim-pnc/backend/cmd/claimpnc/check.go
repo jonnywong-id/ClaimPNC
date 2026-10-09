@@ -2211,7 +2211,7 @@ func checkClaimTreatyNonProp(
 		print("  [BELUM] Tabel antrean treaty non-prop tidak dapat dibaca: %v", err)
 		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
 		print("            Periksa hak SELECT akun aplikasi atas DATAPEGA.PC_ASSIGN_WORKLIST,")
-		print("            DATAPEGA.PC_ASSIGN_WORKBASKET, DATAPEGA.PC_ASM_FW_GCNMFW_WORK,")
+		print("            DATAPEGA.PC_ASSIGN_WORKBASKET,")
 		print("            dan POOLDATA.JSON_KLAIM.")
 		return
 	}
@@ -2257,10 +2257,10 @@ func checkClaimTreatyNonProp(
 	// gabungannya, bukan datanya.
 	for _, item := range result.Items {
 		if item.InsuredName == "" && item.CedingCompany == "" {
-			print("  [PERIKSA] %s: seluruh kolom dari PC_ASM_FW_GCNMFW_WORK kosong.",
+			print("  [PERIKSA] %s: seluruh kolom dari JSON_KLAIM kosong.",
 				item.ClaimID)
 			print("            Bila ini terjadi pada SEMUA baris, gabungan")
-			print("            PXREFOBJECTKEY = PZINSKEY tidak menemukan pasangannya.")
+			print("            PXREFOBJECTKEY = JSON_KLAIM.IDPEGA tidak menemukan pasangannya.")
 			break
 		}
 	}
@@ -2275,8 +2275,9 @@ func checkManagerReceivePUCL(
 		print("  [BELUM] Tabel Inbox Manager Receive / PUCL tidak dapat dibaca: %v", err)
 		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
 		print("            Periksa hak SELECT akun aplikasi atas")
-		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK, DATAPEGA.PC_ASSIGN_WORKLIST,")
-		print("            DATAPEGA.PC_ASSIGN_WORKBASKET, dan POOLDATA.T_CLAIM_RECIVEDCLAIM.")
+		print("            DATAPEGA.PC_ASSIGN_WORKLIST, POOLDATA.T_CLAIMLIST_ADMIN,")
+		print("            POOLDATA.T_CLAIM_RECIVEDCLAIM, POOLDATA.T_CLAIM_PNC, dan")
+		print("            POOLDATA.TC_PNC_PUCL.")
 		return
 	}
 	print("  [ok]    Keempat tabel Inbox Manager Receive / PUCL dapat dibaca")
@@ -2311,9 +2312,8 @@ func checkManagerReceivePUCL(
 		if err != nil {
 			print("  [GAGAL] Tab %q tidak dapat dibaca: %v", tab.Name, err)
 			print("            Bila galatnya menyebut kolom, periksa apakah nama kolom")
-			print("            pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK masih sama — DDL tabel")
-			print("            itu belum pernah diterima (`R-08`), dan seluruh nama kolom")
-			print("            di modul ini dibaca dari kueri Pega, bukan dari DDL.")
+			print("            pada T_CLAIMLIST_ADMIN, T_CLAIM_RECIVEDCLAIM, T_CLAIM_PNC, dan")
+			print("            TC_PNC_PUCL masih sama dengan katalog 2026-10-08 (ALL_TAB_COLUMNS).")
 			return
 		}
 
@@ -3226,8 +3226,9 @@ func checkInvestigatorInbox(ctx context.Context, primary *sql.DB, print func(str
 
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] antrean Inbox Investigator belum dapat dibaca: %v", err)
-		print("            Empat tabel warisan Pega, di DUA skema:")
-		print("              DATAPEGA.PC_ASM_FW_GCNMFW_WORK   header pekerjaan")
+		print("            Lima tabel, di DUA skema:")
+		print("              POOLDATA.T_CLAIM_PNC             header klaim")
+		print("              POOLDATA.T_CLAIMLIST_ADMIN       Nama Admin")
 		print("              DATAPEGA.PC_ASSIGN_WORKBASKET    antrean bersama")
 		print("              POOLDATA.T_CLAIM_OBJECTLIST      nama peserta")
 		print("              POOLDATA.T_SURVEYORLIST          tanggal survei")
@@ -3304,8 +3305,8 @@ func checkReceiveTKAInbox(ctx context.Context, primary *sql.DB, print func(strin
 
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] daftar Inbox Receive TKA belum dapat dibaca: %v", err)
-		print("            Tiga tabel, di DUA skema:")
-		print("              DATAPEGA.PC_ASM_FW_GCNMFW_WORK   antrean klaim TKA")
+		print("            Tiga tabel POOLDATA:")
+		print("              POOLDATA.JSON_KLAIM              antrean klaim TKA ($.TKA)")
 		print("              POOLDATA.T_CLAIM_PNC             klaim sebenarnya")
 		print("              POOLDATA.T_GENERAL               nama peserta, dari polis")
 		print("            Mintakan hak BACA ketiganya ke DBA.")
@@ -3800,14 +3801,14 @@ func checkRCLPUCL(
 	// apa adanya, sehingga penyaringnya tidak akan diubah. Kuerinya tetap dicetak untuk
 	// satu keperluan yang tersisa: menjawab laporan "klaim saya hilang" dengan angka,
 	// bukan dengan dugaan.
-	print("  [CATATAN] Klaim yang suratnya SUDAH dicetak tetapi PUCLAPPROVE_1 kosong")
+	print("  [CATATAN] Klaim yang suratnya SUDAH dicetak tetapi PUCL_APPROVE kosong")
 	print("            keluar dari tab \"Cetak Surat\" DAN tidak masuk tab mana pun — di")
 	print("            sini maupun di Pega. Keputusan Work Owner 2026-09-30: ikuti Pega")
 	print("            apa adanya. Bila ada yang melapor klaimnya hilang, inilah sebabnya,")
 	print("            dan ini kueri yang menghitungnya:")
-	print("            SELECT COUNT(*) FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
-	print("             WHERE TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL")
-	print("               AND PUCLAPPROVE_1 IS NULL;")
+	print("            SELECT COUNT(*) FROM POOLDATA.TC_PNC_PUCL")
+	print("             WHERE TGL_CETAK_DOKUMEN_PUCL IS NOT NULL")
+	print("               AND PUCL_APPROVE IS NULL;")
 
 	// Klaim yang ditandai tercetak TANPA suratnya terbit.
 	//
@@ -3872,8 +3873,8 @@ func checkRCLPUCL(
 		print("            pernah bernilai benar untuk nilai KOSONG, sehingga klaim yang")
 		print("            penandanya belum pernah diisi tidak muncul. Perilakunya")
 		print("            direplikasi dari Pega dengan sengaja; periksa sebarannya:")
-		print("            SELECT PUCLAPPROVE_1, COUNT(*) FROM")
-		print("             DATAPEGA.PC_ASM_FW_GCNMFW_WORK GROUP BY PUCLAPPROVE_1;")
+		print("            SELECT PUCL_APPROVE, COUNT(*) FROM")
+		print("             POOLDATA.TC_PNC_PUCL GROUP BY PUCL_APPROVE;")
 	}
 }
 
@@ -4142,24 +4143,22 @@ func checkInboxAnalystDoctor(
 ) {
 	if err := repo.CheckTables(ctx); err != nil {
 		print("  [BELUM] Tabel Inbox Analyst Doctor tidak dapat dibaca: %v", err)
-		print("            Dibutuhkan hak SELECT atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan")
-		print("            DATAPEGA.PC_ASSIGN_WORKLIST. Keduanya milik sistem lama dan tidak")
-		print("            dibuat migrasi mana pun.")
+		print("            Dibutuhkan hak SELECT atas DATAPEGA.PC_ASSIGN_WORKLIST,")
+		print("            POOLDATA.T_CLAIM_PNC, dan POOLDATA.T_CLAIMLIST_ADMIN. Ketiganya")
+		print("            tidak dibuat migrasi mana pun.")
 		return
 	}
 	print("  [ok]    Tabel Inbox Analyst Doctor dapat dibaca")
 
 	if err := repo.CheckColumns(ctx); err != nil {
-		print("  [BELUM] Kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 tidak ada: %v", err)
-		print("            INI SUDAH DIDUGA. Kedua properti Pega-nya ditandai `unexposed`,")
-		print("            sehingga keduanya tidak punya kolom SQL yang terbukti. Yang")
-		print("            pertama adalah PENYARING UTAMA layar ini; tanpanya layar tidak")
-		print("            dapat dipakai sama sekali terhadap Oracle.")
-		print("            Yang diminta ke DBA — satu kueri katalog:")
-		print("              SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT FROM ALL_TAB_COLUMNS")
-		print("               WHERE OWNER = 'DATAPEGA' AND TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'")
-		print("                 AND (COLUMN_NAME LIKE '%%COMPLIANCE%%'")
-		print("                      OR COLUMN_NAME LIKE '%%ANALYSTDOCTOR%%');")
+		print("  [BELUM] Kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 belum ada: %v", err)
+		print("            INI SUDAH DIKETAHUI. Kedua properti Pega-nya ditandai `unexposed`")
+		print("            dan TIDAK ADA sebagai kolom di skema mana pun (katalog 2026-10-08).")
+		print("            Selama belum dibuat di POOLDATA.T_CLAIM_PNC, layar menampilkan")
+		print("            seluruh tugas worklist operator TANPA penyaring penanda antrean,")
+		print("            dan kolom Komentar PIC Teknis kosong. Yang diminta ke DBA/Tim Pega:")
+		print("            ekspos ClaimData.isComplianceTransfer dan AnalystDoctorRemaks")
+		print("            menjadi kolom ISCOMPLIANCETRANSFER_1 dan ANALYSTDOCTORREMAKS_1.")
 		return
 	}
 	print("  [ok]    Kolom ISCOMPLIANCETRANSFER_1 dan ANALYSTDOCTORREMAKS_1 ada")
@@ -4476,9 +4475,9 @@ func checkCloseClaim(
 	page, err := repo.List(ctx, inboxcloseclaim.Filter{Limit: 5})
 	if err != nil {
 		print("  [BELUM] Klaim tutup tidak dapat dibaca: %v", err)
-		print("            Kuerinya menempuh DATAPEGA.PC_ASM_FW_GCNMFW_WORK,")
+		print("            Kuerinya menempuh POOLDATA.T_CLAIMLIST_ADMIN, POOLDATA.T_CLAIM_PNC,")
 		print("            POOLDATA.BUSINESS, POOLDATA.BUSINESSGROUP, POOLDATA.V_STS_CLAIM,")
-		print("            dan POOLDATA.T_CLAIM_ADJUSTMENT. Kelimanya milik sistem lama dan")
+		print("            dan POOLDATA.T_CLAIM_ADJUSTMENT. Keenamnya tabel lama dan")
 		print("            tidak dibuat migrasi mana pun — yang kurang hampir pasti hak")
 		print("            SELECT atas salah satunya.")
 	} else {
@@ -6332,7 +6331,7 @@ func checkOSClaimPerCabang(
 		print("  [BELUM] Tabel OS klaim per cabang tidak dapat dibaca: %v", err)
 		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
 		print("            Periksa hak SELECT akun aplikasi atas POOLDATA.T_CLAIM_PNC,")
-		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK, POOLDATA.GCNM_PROGRESS_CLAIM,")
+		print("            POOLDATA.GCNM_PROGRESS_CLAIM,")
 		print("            POOLDATA.GCNM_MST_PROGRESS, POOLDATA.T_CLAIM_ESTIMASI,")
 		print("            POOLDATA.T_SURVEYORLIST, POOLDATA.T_CLAIM_OBJECTCOVERAGE,")
 		print("            dan POOLDATA.BRANCH.")
@@ -7009,8 +7008,8 @@ func checkKomiteInbox(
 
 	if err := kasus.CheckTables(ctx); err != nil {
 		print("  [BELUM] Tabel warisan Inbox Komite tidak dapat dibaca: %v", err)
-		print("            Dibutuhkan hak SELECT atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK,")
-		print("            DATAPEGA.PC_ASSIGN_WORKLIST, dan POOLDATA.T_CLAIM_KOMITE_LIST.")
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_CLAIM_KOMITE_LIST,")
+		print("            POOLDATA.T_CLAIM_PNC, dan POOLDATA.T_CLAIMLIST_ADMIN.")
 		return
 	}
 	print("  [ok]    Tabel warisan Inbox Komite dapat dibaca (ketiganya)")
@@ -7049,15 +7048,18 @@ func checkKomiteInbox(
 	// Inilah yang memisahkan "basis datanya memang kosong" dari "ada pekerjaannya, tetapi
 	// bukan milik login yang diperiksa" — dua keadaan yang di layar sama-sama terbaca
 	// sebagai tabel kosong, dan tindakannya sama sekali berbeda.
+	//
+	// Sejak 2026-10-08 dihitung atas POOLDATA.T_CLAIM_KOMITE_LIST — tabel yang benar-benar
+	// dibaca inbox komite — bukan objek kerja Pega Work-Komite, yang tidak dipakai lagi.
 	var seluruhnya int
 	err := primary.QueryRowContext(ctx,
-		`SELECT COUNT(1) FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK
-          WHERE PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'`).Scan(&seluruhnya)
+		`SELECT COUNT(DISTINCT KOMITE_ID) FROM POOLDATA.T_CLAIM_KOMITE_LIST
+          WHERE KOMITE_ID IS NOT NULL`).Scan(&seluruhnya)
 	if err != nil {
 		print("  [BELUM] Jumlah kasus komite tidak dapat dihitung: %v", err)
 		return
 	}
-	print("  [ok]    Kasus Work-Komite di basis data ini: %d", seluruhnya)
+	print("  [ok]    Kasus komite (T_CLAIM_KOMITE_LIST) di basis data ini: %d", seluruhnya)
 
 	// Penyaring tahun `F1` pada InboxRegisterKomite_RD dihitung TERPISAH.
 	//
@@ -7065,14 +7067,12 @@ func checkKomiteInbox(
 	// "kenapa case lama tidak muncul" tidak dapat dijawab selain dengan menebak.
 	var lolosTahun int
 	if err := primary.QueryRowContext(ctx,
-		`SELECT COUNT(1)
-           FROM DATAPEGA.PC_ASSIGN_WORKLIST w
-           JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a ON a.PZINSKEY = w.PXREFOBJECTKEY
-          WHERE w.PXOBJCLASS = 'Assign-Worklist'
-            AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
-            AND a.PXCREATEDATETIME >= :1`,
+		`SELECT COUNT(DISTINCT KOMITE_ID)
+           FROM POOLDATA.T_CLAIM_KOMITE_LIST
+          WHERE KOMITE_ID IS NOT NULL
+            AND DATEOFCOMMITE_CREATE >= :1`,
 		komite.InboxEarliestCreatedAt()).Scan(&lolosTahun); err == nil {
-		print("  [ok]    Ditugaskan DAN dibuat sejak %d: %d — inilah yang dapat muncul di inbox",
+		print("  [ok]    Kasus komite dibuat sejak %d: %d — inilah yang dapat muncul di inbox",
 			komite.InboxEarliestYear, lolosTahun)
 		print("            Penyaring tahun berasal dari `F1` pada InboxRegisterKomite_RD;")
 		print("            case yang lebih tua memang TIDAK pernah muncul di layar Pega.")
@@ -7149,7 +7149,8 @@ func checkInputAcceptation(
 		print("  [BELUM] Tabel akseptasi klaim treaty non-prop tidak dapat dibaca: %v", err)
 		print("            Modul ini TIDAK menuntut migrasi — kedua tabelnya milik Pega.")
 		print("            Periksa hak SELECT akun aplikasi atas")
-		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan POOLDATA.JSON_KLAIM.")
+		print("            DATAPEGA.PC_ASSIGN_WORKLIST, DATAPEGA.PC_ASSIGN_WORKBASKET,")
+		print("            dan POOLDATA.JSON_KLAIM.")
 		return
 	}
 	print("  [ok]    Tabel akseptasi klaim treaty non-prop dapat dibaca")
@@ -7295,7 +7296,8 @@ func checkOutstandingClaim(
 		print("  [BELUM] Tabel rincian klaim treaty tidak dapat dibaca: %v", err)
 		print("            Modul ini TIDAK menuntut migrasi — kedua tabelnya milik Pega.")
 		print("            Periksa hak SELECT akun aplikasi atas")
-		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan POOLDATA.JSON_KLAIM.")
+		print("            DATAPEGA.PC_ASSIGN_WORKLIST, DATAPEGA.PC_ASSIGN_WORKBASKET,")
+		print("            dan POOLDATA.JSON_KLAIM.")
 		return
 	}
 	print("  [ok]    Tabel rincian klaim treaty dapat dibaca")

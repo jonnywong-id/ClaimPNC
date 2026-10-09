@@ -82,20 +82,38 @@
 -- bukan sesuatu yang diselaraskan sepihak dari sini. Dicatat di
 -- docs/keputusan-implementasi.md.
 
+--
+-- ============================================================================
+-- SUMBER BARIS: POOLDATA.T_CLAIMLIST_ADMIN (2026-10-08)
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan `DATAPEGA.PC_ASSIGN_WORKLIST` tidak dipakai lagi.
+-- Penggantinya tabel datar `POOLDATA.T_CLAIMLIST_ADMIN` (Work Owner, "Perubahan nama tabel
+-- untuk Inbox.xlsx" kolom E), yang menyatukan objek kerja dan penugasannya dalam SATU baris
+-- per klaim — nama kolomnya sama dengan Pega, sehingga `PXFLOWNAME`/`PXTASKLABEL` dibaca
+-- langsung dari sana dan gabung ke worklist hilang.
+--
+-- Karena satu baris per klaim (`PZINSKEY` unik — diukur 2026-10-08: 915 baris, 915 kunci),
+-- `DISTINCT` dan `COUNT(DISTINCT …)` tidak diperlukan lagi.
+--
+-- Tiga kolom yang kosong atau tidak ada di T_CLAIMLIST_ADMIN dibaca dari `T_CLAIM_PNC`
+-- (`c.CLAIMID = A.PZINSKEY`, LEFT JOIN — baris tanpa pasangan tetap tampil):
+--
+--   STATUSCLAIM_1   ada, tetapi kosong di seluruh baris  -> c.STATUSCLAIM
+--   USERTEKNIS_1    terisi sebagian                       -> COALESCE dengan c.PICTEKNIK
+--   RECEIVEDDATE_1  tidak ada                             -> c.RECEIVEDATE (DATE, bukan teks)
+--
+-- AKIBAT YANG HARUS DISADARI: tabel ini hanya memuat klaim yang sedang berada di antrean
+-- Admin, sehingga populasi kartu ini MENGIKUTI isi tabel tersebut, bukan seluruh klaim berjalan.
+
 -- name: outstanding_count
 -- Menghitung SELURUH klaim berjalan yang cocok, bukan baris pada halaman ini.
 --
 -- Syarat WHERE-nya wajib sama persis dengan outstanding_list. Bila keduanya menyimpang,
 -- pengguna membaca satu angka pada kartu lalu menemukan jumlah baris yang lain saat
 -- menelusurinya — dan tidak ada galat yang muncul. `query_test.go` menjaganya baris per baris.
---
--- COUNT(DISTINCT A.PZINSKEY), bukan COUNT(*): gabung ke PC_ASSIGN_WORKLIST menggandakan
--- baris untuk klaim yang punya lebih dari satu penugasan. Kueri lama memakai SELECT DISTINCT
--- dengan alasan yang sama.
-SELECT COUNT(DISTINCT A.PZINSKEY)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+SELECT COUNT(*)
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
@@ -104,8 +122,8 @@ SELECT COUNT(DISTINCT A.PZINSKEY)
    AND A.PYSTATUSWORK <> 'Resolved-Completed'
    AND A.PYSTATUSWORK <> 'Resolved-Rejected'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 IS NULL
         OR UPPER(A.POLICYNO) LIKE :2 ESCAPE '\'
         OR UPPER(A.PYID) LIKE :3 ESCAPE '\')
@@ -121,44 +139,39 @@ SELECT COUNT(DISTINCT A.PZINSKEY)
 -- name: outstanding_list
 -- Membaca satu halaman klaim berjalan.
 --
--- DISTINCT dipertahankan dengan alasan yang sama seperti pada kueri hitung: satu klaim dapat
--- memegang lebih dari satu penugasan di PC_ASSIGN_WORKLIST, dan tanpa DISTINCT ia tampil
--- berkali-kali di grid.
---
 -- Urutannya `PXCREATEDATETIME ASC` mengikuti kueri lama, ditambah PZINSKEY sebagai pemutus
 -- seri. Tanpa pemutus seri, dua baris berwaktu sama dapat bertukar urutan antar halaman
 -- sehingga satu baris tampil dua kali dan satu lagi tidak pernah tampil.
-SELECT DISTINCT
-       A.PZINSKEY          AS ID_KLAIM,
+SELECT A.PZINSKEY          AS ID_KLAIM,
        A.PYID              AS NO_KLAIM,
        A.POLICYNO          AS NO_POLIS,
        A.QQNAME            AS NAMA_TERTANGGUNG,
        A.BUSINESSNAME      AS NAMA_BISNIS,
        A.SOBNAME           AS SUMBER_BISNIS,
        A.BRANCHNAME        AS NAMA_CABANG,
-       A.USERTEKNIS_1      AS PIC_TEKNIK,
+       COALESCE(A.USERTEKNIS_1, p.PICTEKNIK) AS PIC_TEKNIK,
        A.PXCREATEOPNAME    AS ADMIN_PNC,
-       A.STATUSCLAIM_1     AS KODE_STATUS_KLAIM,
+       COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM) AS KODE_STATUS_KLAIM,
        (SELECT s.LSC_NOTE
           FROM POOLDATA.V_STS_CLAIM s
-         WHERE s.LSC_ID = A.STATUSCLAIM_1) AS LABEL_STATUS_KLAIM,
+         WHERE s.LSC_ID = COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM)) AS LABEL_STATUS_KLAIM,
        A.PYSTATUSWORK      AS STATUS_PROSES,
        CAST(A.DATEOFLOSS_1 AS DATE) AS TANGGAL_KEJADIAN,
-       A.RECEIVEDDATE_1    AS TANGGAL_LAPOR,
+       p.RECEIVEDATE       AS TANGGAL_LAPOR,
        A.PXCREATEDATETIME  AS TANGGAL_PENDAFTARAN
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
+       LEFT JOIN POOLDATA.T_CLAIM_PNC p
+              ON p.CLAIMID = A.PZINSKEY
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.PYSTATUSWORK <> 'Resolved-Completed'
    AND A.PYSTATUSWORK <> 'Resolved-Rejected'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 IS NULL
         OR UPPER(A.POLICYNO) LIKE :2 ESCAPE '\'
         OR UPPER(A.PYID) LIKE :3 ESCAPE '\')

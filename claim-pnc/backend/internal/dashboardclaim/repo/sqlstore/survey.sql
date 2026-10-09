@@ -93,53 +93,74 @@
 -- Kedua kueri di sini karena itu memakai subquery yang sama — cara yang sudah dipakai
 -- `BrowseLossAdjuster` — sehingga keduanya menampilkan NOMOR KLAIM yang terbaca pengguna.
 
+-- ============================================================================
+-- SUMBER BARU (2026-10-08): T_CLAIMLIST_ADMIN + T_SURVEYORLIST
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan `DATAPEGA.PC_ASSIGN_WORKLIST` tidak dipakai lagi
+-- ("Perubahan nama tabel untuk Inbox.xlsx", kolom E):
+--
+--   objek kerja Work-PNC          -> POOLDATA.T_CLAIMLIST_ADMIN  (satu baris per klaim,
+--                                    sudah memuat PXFLOWNAME/PXTASKLABEL penugasannya)
+--   objek kerja Work-SurveyClaim  -> POOLDATA.T_SURVEYORLIST
+--
+-- Pemetaan kolom survei (nama di T_SURVEYORLIST TANPA akhiran `_1`, dibaca dari katalog
+-- 2026-10-08 — BUKAN nama yang tercatat di docs/permintaan-kolom-t-surveyorlist.md):
+--
+--   PZINSKEY             -> CASEID                (kunci berprefix, `ASM-FW-GCNMFW-WORK SRV-…`)
+--   PYID                 -> CASEID tanpa prefix
+--   CASEID_1             -> PNCCASEID             (kunci klaim induk)
+--   SURVEYORTYPE_1       -> SURVEYTYPE            (domain sama: 1 internal, 2 loss adjuster, 4)
+--   SURVEYORNAME_1       -> SURVEYOR_NAME
+--   ADJUSTERPIC_1        -> ADJUSTER_PIC
+--   ADJUSTERSTATUS_1     -> STS_SURVEY
+--   REFNO_1              -> REFNO
+--   RESCHEDULELOCATION_1 -> RESCHEDULE_LOCATION
+--   RESCHEDULEDATE_1     -> RESCHEDULE_DATE       (kini juga mengisi Tanggal Survei loss adjuster,
+--                                                  yang di kueri lama selalu kosong)
+--   PYSTATUSWORK         -> PYSTATUSWORK
+--   PXCREATEDATETIME     -> MIN(TGLINPUT) per berkas — saat berkas survei pertama tercatat
+--   POLICYNO, QQNAME, USERTEKNIS_1 -> dari klaim induk di T_CLAIMLIST_ADMIN
+--
+-- DUA PERBEDAAN BENTUK YANG MENGUBAH ANGKA, dan tidak dapat dihindari:
+--
+--   1. T_SURVEYORLIST adalah JEJAK PERKEMBANGAN — satu baris per perubahan status, bukan per
+--      berkas. Setiap kueri di bawah membaca LANGKAH TERAKHIR tiap berkas (`STEP_RANK = 1`),
+--      sama seperti modul inboxsurvey. Tanpa itu satu berkas tampil berkali-kali.
+--   2. T_CLAIMLIST_ADMIN satu baris per klaim. Penggandaan baris akibat gabung ke
+--      PC_ASSIGN_WORKLIST — yang menurut keputusan Work Owner 2026-09-26 dipertahankan apa
+--      adanya — HILANG dengan sendirinya: tabel penggantinya tidak punya baris ganda.
+--
+-- `PYSTATUSWORK` berkas survei dibandingkan dengan bentuk yang menerima NULL
+-- (`IS NULL OR NOT IN …`). Kolomnya baru diisi belakangan; tanpa itu `NOT IN` atas NULL
+-- membuang SELURUH baris yang belum terisi tanpa galat apa pun.
+
 -- name: loss_adjuster_count
--- Menghitung baris survei loss adjuster yang cocok.
+-- Menghitung **JUMLAH KLAIM** yang punya sekurang-kurangnya satu berkas loss adjuster.
 --
--- Menghitung **JUMLAH KLAIM** yang punya sekurang-kurangnya satu survei loss adjuster.
+-- Satuannya KLAIM, sedangkan loss_adjuster_list mengembalikan berkas SURVEI — angka kartu
+-- karena itu TIDAK akan sama dengan jumlah baris telusurnya, sama seperti di Pega.
 --
--- Bentuknya mengikuti `RDB List/Get_CountLostAdjusterClaim-SQL.xml` apa adanya — keputusan
--- Work Owner 2026-09-26. Tiga akibatnya dinyatakan di sini supaya tidak dibaca sebagai cacat:
---
---   1. Satuannya KLAIM, sedangkan loss_adjuster_list mengembalikan baris SURVEI. Angka kartu
---      karena itu TIDAK akan sama dengan jumlah baris telusurnya, dan memang begitu di Pega.
---   2. Penyaring lini bisnis dan kotak cari berlaku atas KLAIM induk, bukan atas baris survei
---      — berbeda dari kueri daftarnya, dan itu pun apa adanya.
---   3. Gabung ke PC_ASSIGN_WORKLIST menggandakan baris klaim yang memegang lebih dari satu
---      penugasan, dan SUM berjalan di atas baris hasil gabungan itu. Klaim seperti itu
---      terhitung berkali-kali.
---
--- Status klaim induk TIDAK disaring di WHERE luar, melainkan ikut sebagai syarat di dalam
--- CASE — persis seperti aslinya. Akibatnya klaim yang sudah selesai tetap menyumbang baris,
--- hanya menyumbang nilai 0.
---
--- COALESCE ditambahkan karena SUM atas nol baris menghasilkan NULL, dan NULL tidak dapat
--- dipindai ke int di Go. Ia tidak mengubah angka yang dibaca pengguna — layar lama pun
--- menampilkan kosong sebagai nol.
---
--- ORDER BY pada kueri aslinya TIDAK dibawa: pada SELECT beragregat tanpa GROUP BY ia tidak
--- mengurutkan apa pun, dan Oracle menolaknya dengan ORA-00979.
+-- Status klaim induk ikut sebagai syarat di dalam CASE, persis seperti aslinya: klaim yang
+-- sudah selesai tetap menyumbang baris, hanya menyumbang nilai 0.
 SELECT COALESCE(SUM(CASE
-                    WHEN (SELECT COUNT(*)
-                            FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
-                           WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-                             AND s.SURVEYORTYPE_1 = '2'
-                             AND s.CASEID_1 = A.PZINSKEY
-                             AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')) > 0
+                    WHEN A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+                     AND EXISTS (SELECT 1
+                                   FROM POOLDATA.T_SURVEYORLIST s
+                                  WHERE s.SURVEYTYPE = '2'
+                                    AND s.PNCCASEID = A.PZINSKEY)
                     THEN 1
                     ELSE 0
                  END), 0)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 = 'ALL'
         OR (:2 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -153,104 +174,88 @@ SELECT COALESCE(SUM(CASE
         OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
 
 -- name: loss_adjuster_list
--- Membaca satu halaman survei loss adjuster.
-SELECT A.PZINSKEY             AS ID_SURVEY,
-       A.PYID                 AS NO_SURVEY,
-       (SELECT p.PYID
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK p
-         WHERE p.PZINSKEY = A.CASEID_1
-           AND p.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC') AS NO_KLAIM,
-       A.POLICYNO             AS NO_POLIS,
-       A.QQNAME               AS NAMA_TERTANGGUNG,
-       A.REFNO_1              AS NO_REFERENSI,
-       A.SURVEYORNAME_1       AS NAMA_SURVEYOR,
-       A.USERTEKNIS_1         AS PIC_TEKNIK,
-       A.RESCHEDULELOCATION_1 AS LOKASI_SURVEI,
-       A.ADJUSTERSTATUS_1     AS STATUS_SURVEI,
-       A.PYSTATUSWORK         AS STATUS_PROSES,
-       A.ADJUSTERPIC_1        AS PIC_ADJUSTER,
-       CAST(NULL AS DATE)     AS TANGGAL_SURVEI,
-       A.PXCREATEDATETIME     AS TANGGAL_TUGAS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-   AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND A.SURVEYORTYPE_1 = '2'
-   AND EXISTS (SELECT 1
-                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK z
-                      INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST b
-                              ON z.PZINSKEY = b.PXREFOBJECTKEY
-                      INNER JOIN POOLDATA.BUSINESS c
-                              ON z.BUSINESSCODE_1 = c.ID
-                      INNER JOIN POOLDATA.BUSINESSGROUP d
-                              ON c.BUSINESSGROUPID = d.ID
-                WHERE z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-                  AND z.BRANCHNAME <> 'ASNET'
-                  AND b.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-                  AND b.PXTASKLABEL NOT IN ('FixCorrespondence')
-                  AND A.CASEID_1 = z.PZINSKEY
-                  AND (:1 = 'ALL'
-                       OR (:2 = 'NONMBU'
-                           AND z.GROUPPANEL_1 IN ('003', '004', '006')
-                           AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
-                       OR (:3 = 'BONDING'
-                           AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
-                       OR (:4 = 'PA' AND z.GROUPPANEL_1 = '002')
-                       OR (:5 = 'TRAVEL' AND z.GROUPPANEL_1 = '005')))
+-- Membaca satu halaman berkas survei loss adjuster — langkah terakhir tiap berkas.
+SELECT s.CASEID                                         AS ID_SURVEY,
+       REPLACE(s.CASEID, 'ASM-FW-GCNMFW-WORK ', '')     AS NO_SURVEY,
+       z.PYID                                           AS NO_KLAIM,
+       z.POLICYNO                                       AS NO_POLIS,
+       z.QQNAME                                         AS NAMA_TERTANGGUNG,
+       s.REFNO                                          AS NO_REFERENSI,
+       s.SURVEYOR_NAME                                  AS NAMA_SURVEYOR,
+       COALESCE(z.USERTEKNIS_1, p.PICTEKNIK)            AS PIC_TEKNIK,
+       s.RESCHEDULE_LOCATION                            AS LOKASI_SURVEI,
+       s.STS_SURVEY                                     AS STATUS_SURVEI,
+       s.PYSTATUSWORK                                   AS STATUS_PROSES,
+       s.ADJUSTER_PIC                                   AS PIC_ADJUSTER,
+       s.RESCHEDULE_DATE                                AS TANGGAL_SURVEI,
+       s.CREATED_AT                                     AS TANGGAL_TUGAS
+  FROM (SELECT t.*,
+               ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                  ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           t.TGLINPUT DESC NULLS LAST) AS STEP_RANK,
+               MIN(t.TGLINPUT) OVER (PARTITION BY t.CASEID)            AS CREATED_AT
+          FROM POOLDATA.T_SURVEYORLIST t) s
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN z
+               ON z.PZINSKEY = s.PNCCASEID
+              AND z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+       INNER JOIN POOLDATA.BUSINESS c
+               ON z.BUSINESSCODE_1 = c.ID
+       INNER JOIN POOLDATA.BUSINESSGROUP d
+               ON c.BUSINESSGROUPID = d.ID
+       LEFT JOIN POOLDATA.T_CLAIM_PNC p
+              ON p.CLAIMID = s.PNCCASEID
+ WHERE s.STEP_RANK = 1
+   AND s.SURVEYTYPE = '2'
+   AND (s.PYSTATUSWORK IS NULL
+        OR s.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
+   AND z.BRANCHNAME <> 'ASNET'
+   AND z.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND z.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND (:1 = 'ALL'
+        OR (:2 = 'NONMBU'
+            AND z.GROUPPANEL_1 IN ('003', '004', '006')
+            AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
+        OR (:3 = 'BONDING'
+            AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
+        OR (:4 = 'PA' AND z.GROUPPANEL_1 = '002')
+        OR (:5 = 'TRAVEL' AND z.GROUPPANEL_1 = '005'))
    AND (:6 IS NULL
-        OR UPPER(A.POLICYNO) LIKE :7 ESCAPE '\'
-        OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
- ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
+        OR UPPER(z.POLICYNO) LIKE :7 ESCAPE '\'
+        OR UPPER(s.CASEID) LIKE :8 ESCAPE '\')
+ ORDER BY s.CREATED_AT ASC, s.CASEID
 OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 -- name: internal_surveyor_count
--- Menghitung **JUMLAH SURVEI** internal, dijumlahkan per klaim yang memilikinya.
+-- Menghitung **JUMLAH BERKAS SURVEI** internal yang masih terbuka, dijumlahkan per klaim
+-- yang memilikinya — satuan yang BERBEDA dari padanan loss adjuster-nya, sama seperti di
+-- Pega (keputusan Work Owner 2026-09-26).
 --
--- Bentuknya mengikuti `RDB List/Get_CountInternalSurveyor-SQL.xml` apa adanya — keputusan
--- Work Owner 2026-09-26.
---
--- Perhatikan ia TIDAK sejajar dengan padanan loss adjuster-nya, dan ketidaksejajaran itu ada
--- di sistem lama:
---
---   * yang ini menjumlahkan BANYAKNYA survei; yang itu menghitung 1 per klaim;
---   * yang ini menyaring status survei di dalam subkueri; yang itu tidak menyaringnya.
---
--- Subkueri yang sama ditulis DUA KALI — sekali pada syarat WHEN, sekali sebagai nilai THEN —
--- persis seperti aslinya. Menggantinya dengan satu subkueri akan mengubah bentuk rencana
--- eksekusi, dan angka yang dihasilkan memang sama; ia dibiarkan supaya kesetaraannya dengan
--- kueri lama dapat dibaca berdampingan tanpa menafsirkan.
---
--- Penyaring lini bisnis dan kotak cari berlaku atas KLAIM induk, sedangkan kueri daftarnya
--- menyaring baris survei. Akibatnya angka kartu dan jumlah baris telusur dapat berbeda.
+-- Yang dihitung adalah BERKAS (langkah terakhir), bukan baris jejak: menghitung baris
+-- T_SURVEYORLIST akan melipatgandakan angka dengan banyaknya langkah tiap berkas.
 SELECT COALESCE(SUM(CASE
-                    WHEN (SELECT COUNT(*)
-                            FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
-                           WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-                             AND s.SURVEYORTYPE_1 = '1'
-                             AND s.PYSTATUSWORK <> 'Resolved-Completed'
-                             AND s.PYSTATUSWORK <> 'Resolved-Rejected'
-                             AND s.CASEID_1 = A.PZINSKEY
-                             AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')) > 0
+                    WHEN A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
                     THEN (SELECT COUNT(*)
-                            FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
-                           WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-                             AND s.SURVEYORTYPE_1 = '1'
-                             AND s.PYSTATUSWORK <> 'Resolved-Completed'
-                             AND s.PYSTATUSWORK <> 'Resolved-Rejected'
-                             AND s.CASEID_1 = A.PZINSKEY
-                             AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
+                            FROM (SELECT t.PNCCASEID, t.SURVEYTYPE, t.PYSTATUSWORK,
+                                         ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                                            ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                                                     t.TGLINPUT DESC NULLS LAST) AS STEP_RANK
+                                    FROM POOLDATA.T_SURVEYORLIST t) s
+                           WHERE s.STEP_RANK = 1
+                             AND s.SURVEYTYPE = '1'
+                             AND (s.PYSTATUSWORK IS NULL
+                                  OR s.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
+                             AND s.PNCCASEID = A.PZINSKEY)
                     ELSE 0
                  END), 0)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 = 'ALL'
         OR (:2 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -264,53 +269,54 @@ SELECT COALESCE(SUM(CASE
         OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
 
 -- name: internal_surveyor_list
--- Membaca satu halaman survei internal.
+-- Membaca satu halaman berkas survei internal — langkah terakhir tiap berkas.
 --
--- Gabung ke `PC_ASSIGN_WORKLIST` pada kueri lama TIDAK dibawa. Di sana ia dipakai hanya
--- untuk mengambil `B.PXFLOWNAME` sebagai kolom `"RefNo"` — kolom yang tidak digambar
--- `Section/DashboardClaim_Section1-Section.xml`. Gabungnya sendiri menggandakan baris survei
--- untuk klaim yang memegang lebih dari satu penugasan, sehingga membawanya berarti menampilkan
--- survei yang sama berkali-kali demi kolom yang tidak dibaca siapa pun.
-SELECT A.PZINSKEY             AS ID_SURVEY,
-       A.PYID                 AS NO_SURVEY,
-       (SELECT p.PYID
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK p
-         WHERE p.PZINSKEY = A.CASEID_1
-           AND p.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC') AS NO_KLAIM,
-       A.POLICYNO             AS NO_POLIS,
-       A.QQNAME               AS NAMA_TERTANGGUNG,
-       A.REFNO_1              AS NO_REFERENSI,
-       A.SURVEYORNAME_1       AS NAMA_SURVEYOR,
-       A.USERTEKNIS_1         AS PIC_TEKNIK,
-       A.RESCHEDULELOCATION_1 AS LOKASI_SURVEI,
-       A.ADJUSTERSTATUS_1     AS STATUS_SURVEI,
-       A.PYSTATUSWORK         AS STATUS_PROSES,
-       A.SURVEYORNAME_1       AS PIC_ADJUSTER,
-       A.RESCHEDULEDATE_1     AS TANGGAL_SURVEI,
-       A.PXCREATEDATETIME     AS TANGGAL_TUGAS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+-- Klaim induknya wajib belum selesai, dan penyaring lini bisnis berlaku atas klaim induk
+-- itu (di Pega ia berlaku atas salinan kolom yang sama pada objek kerja survei).
+SELECT s.CASEID                                         AS ID_SURVEY,
+       REPLACE(s.CASEID, 'ASM-FW-GCNMFW-WORK ', '')     AS NO_SURVEY,
+       z.PYID                                           AS NO_KLAIM,
+       z.POLICYNO                                       AS NO_POLIS,
+       z.QQNAME                                         AS NAMA_TERTANGGUNG,
+       s.REFNO                                          AS NO_REFERENSI,
+       s.SURVEYOR_NAME                                  AS NAMA_SURVEYOR,
+       COALESCE(z.USERTEKNIS_1, p.PICTEKNIK)            AS PIC_TEKNIK,
+       s.RESCHEDULE_LOCATION                            AS LOKASI_SURVEI,
+       s.STS_SURVEY                                     AS STATUS_SURVEI,
+       s.PYSTATUSWORK                                   AS STATUS_PROSES,
+       s.SURVEYOR_NAME                                  AS PIC_ADJUSTER,
+       s.RESCHEDULE_DATE                                AS TANGGAL_SURVEI,
+       s.CREATED_AT                                     AS TANGGAL_TUGAS
+  FROM (SELECT t.*,
+               ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                  ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           t.TGLINPUT DESC NULLS LAST) AS STEP_RANK,
+               MIN(t.TGLINPUT) OVER (PARTITION BY t.CASEID)            AS CREATED_AT
+          FROM POOLDATA.T_SURVEYORLIST t) s
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN z
+               ON z.PZINSKEY = s.PNCCASEID
+              AND z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
        INNER JOIN POOLDATA.BUSINESS c
-               ON A.BUSINESSCODE_1 = c.ID
+               ON z.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-   AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND A.SURVEYORTYPE_1 = '1'
-   AND EXISTS (SELECT 1
-                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK z
-                WHERE z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-                  AND z.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-                  AND A.CASEID_1 = z.PZINSKEY)
+       LEFT JOIN POOLDATA.T_CLAIM_PNC p
+              ON p.CLAIMID = s.PNCCASEID
+ WHERE s.STEP_RANK = 1
+   AND s.SURVEYTYPE = '1'
+   AND (s.PYSTATUSWORK IS NULL
+        OR s.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
+   AND z.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:1 = 'ALL'
         OR (:2 = 'NONMBU'
-            AND A.GROUPPANEL_1 IN ('003', '004', '006')
+            AND z.GROUPPANEL_1 IN ('003', '004', '006')
             AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
         OR (:3 = 'BONDING'
             AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
-        OR (:4 = 'PA' AND A.GROUPPANEL_1 = '002')
-        OR (:5 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+        OR (:4 = 'PA' AND z.GROUPPANEL_1 = '002')
+        OR (:5 = 'TRAVEL' AND z.GROUPPANEL_1 = '005'))
    AND (:6 IS NULL
-        OR UPPER(A.POLICYNO) LIKE :7 ESCAPE '\'
-        OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
- ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
+        OR UPPER(z.POLICYNO) LIKE :7 ESCAPE '\'
+        OR UPPER(s.CASEID) LIKE :8 ESCAPE '\')
+ ORDER BY s.CREATED_AT ASC, s.CASEID
 OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY

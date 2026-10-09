@@ -2,6 +2,7 @@ package registrasi
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -43,19 +44,68 @@ type ObjectItem struct {
 }
 
 // ItemOption adalah satu pilihan "Objek" pada daftar item sebuah coverage.
-//
-// Untuk lini Fire, pilihannya item properti polis (`PropertyItemList` di
-// POOLDATA.T_PROPERTYLIST: ItemType dan PropertyItemGroup). Untuk lini lain sumbernya
-// tidak ada di export; daftarnya kosong dan layar memakai isian bebas.
 type ItemOption struct {
+	// ID adalah ObjectItemID pilihan — COVERAGETRAVEL.ID untuk Travel; kosong untuk lini lain.
+	ID    string
 	Name  string
 	Group string
 	TSI   Money
 }
 
-// ItemOptionSource adalah seam ke pilihan item objek dari polis.
+// # Objek item estimasi per lini — mengikuti `Section/ObjectItemList_sect.xml`
+//
+// Seluruh lini memakai DROPDOWN (pxAutoComplete), dengan dua sumber yang dipisah
+// `IsTravel`:
+//
+//	Travel      dropdown `tempTravel.pxResults`: manfaat plan dari POOLDATA.COVERAGETRAVEL,
+//	            plan = kode coverage Travel (`SearchCoverageTravel_RD`, Param.plan =
+//	            .CoverageOldID). Terukur 2026-10-09: ObjectItemID klaim Pega = COVERAGETRAVEL.ID.
+//	!IsTravel   dropdown `Showobjectitem`. Rule-nya tidak ada di export (`R-16`); untuk Fire
+//	            isinya item properti polis (T_PROPERTYITEMLIST). Aneka, Marine Cargo, dan PA
+//	            tidak punya daftar item — item klaim Pega di lini itu hampir seluruhnya
+//	            "Others" (5.353 dari 5.445 item Aneka), sehingga pilihannya hanya itu.
+//
+// Item yang baru dibuat diberi nama bawaan seperti pembentukan objek Pega
+// (DefaultItemName).
+
+// ItemFromPropertyList menyatakan pilihan Objek dibaca dari item properti polis (Fire).
+func ItemFromPropertyList(p Policy) bool { return SourceOf(p) == SourceProperty }
+
+// ItemFromTravelPlan menyatakan pilihan Objek dibaca dari manfaat plan Travel.
+func ItemFromTravelPlan(p Policy) bool {
+	return p.Line == LineTravel || strings.EqualFold(strings.TrimSpace(p.BusinessType), "Travel")
+}
+
+// ItemOthers adalah satu-satunya pilihan Objek bagi lini tanpa daftar item, sekaligus nama
+// item bawaannya — `GetObjectFromTable` dan kembarannya menulis "Others".
+const ItemOthers = "Others"
+
+// DefaultItemName adalah nama item yang dibuat otomatis untuk jaminan tanpa item:
+// `GetObjectFromTable_Travel` menulis "OTHERS", `GetObjectFromTable` dan kembarannya
+// "Others". Fire tidak diberi nama bawaan — itemnya dipilih dari item properti polis.
+func DefaultItemName(p Policy) string {
+	switch {
+	case ItemFromPropertyList(p):
+		return ""
+	case ItemFromTravelPlan(p):
+		return "OTHERS"
+	default:
+		return ItemOthers
+	}
+}
+
+// ItemChoices adalah isi dropdown Objek item estimasi untuk satu jaminan.
+type ItemChoices struct {
+	Option []ItemOption
+	// Default adalah nama item bawaan bagi item baru — lihat DefaultItemName.
+	Default string
+}
+
+// ItemOptionSource adalah seam ke pilihan item objek dari polis: item properti polis Fire
+// dan manfaat plan Travel. Lini lain tidak membaca apa pun.
 type ItemOptionSource interface {
 	ItemOptions(ctx context.Context, policy Policy, objectID string) ([]ItemOption, error)
+	TravelBenefits(ctx context.Context, plan string) ([]ItemOption, error)
 }
 
 // Estimation adalah satu baris estimasi — satu baris T_CLAIM_ESTIMASI.

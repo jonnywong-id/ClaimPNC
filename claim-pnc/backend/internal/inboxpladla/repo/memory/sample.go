@@ -43,7 +43,7 @@ const SampleSecondLogin = "REASGANDA"
 //	PNC-2004  DLA ditandai terkirim TANPA tanggal kirim -> TIDAK dihitung terkirim
 //	PNC-2005  Resolved-Completed + menunggu tutup       -> muncul di DLA, status 1139
 //	PNC-2006  Resolved-Rejected                         -> TIDAK muncul di daftar mana pun
-//	PNC-2007  tanpa baris tabel kerja Pega              -> muncul di PLA, TIDAK di DLA
+//	PNC-2007  tanpa kode status (klaim tanpa baris Pega) -> tetap muncul di PLA
 //	PNC-2009  lini Personal Accident TANPA pemberitahuan -> HANYA di daftar komunikasi
 //
 // Baris terakhir itu satu-satunya yang membuktikan DUA perbedaan sekaligus antara daftar
@@ -132,7 +132,7 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 5),
 			LossDate:     day(2026, time.January, 2),
 			PICTeknik:    "BUDI",
-			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
+			WorkStatus:   "Open", StatusCode: "1147",
 		},
 		{
 			// PLA dan DLA keduanya terkirim -> daftar DLA saja, BUKAN daftar PLA.
@@ -142,7 +142,7 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 6),
 			LossDate:     day(2026, time.January, 3),
 			PICTeknik:    "SITI",
-			WorkStatus:   "Open", StatusCode: "1149", HasWorkRow: true,
+			WorkStatus:   "Open", StatusCode: "1149",
 		},
 		{
 			// Sudah selesai dan tidak menunggu penutupan -> daftar Close.
@@ -152,7 +152,7 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 7),
 			LossDate:     day(2026, time.January, 4),
 			PICTeknik:    "AGUS", CloseNote: "Selesai dibayar",
-			WorkStatus: "Resolved-Completed", StatusCode: "1163", HasWorkRow: true,
+			WorkStatus: "Resolved-Completed", StatusCode: "1163",
 		},
 		{
 			// PLA-nya ditandai terkirim TANPA tanggal kirim -> tidak masuk daftar mana
@@ -163,7 +163,7 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 8),
 			LossDate:     day(2026, time.January, 5),
 			PICTeknik:    "BUDI",
-			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
+			WorkStatus:   "Open", StatusCode: "1147",
 		},
 		{
 			// Sudah `Resolved-Completed` TETAPI masih menunggu penutupan.
@@ -177,7 +177,7 @@ func sampleClaims() []Claim {
 			LossDate:     day(2026, time.January, 6),
 			PICTeknik:    "RINA",
 			WorkStatus:   "Resolved-Completed", StatusCode: "1163",
-			PendingClose: true, HasWorkRow: true,
+			PendingClose: true,
 		},
 		{
 			// DITOLAK. Ia punya PLA terkirim, tetapi tidak muncul di daftar mana pun —
@@ -191,20 +191,20 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 10),
 			LossDate:     day(2026, time.January, 7),
 			PICTeknik:    "RINA",
-			WorkStatus:   "Resolved-Rejected", StatusCode: "1142", HasWorkRow: true,
+			WorkStatus:   "Resolved-Rejected", StatusCode: "1142",
 		},
 		{
-			// TANPA baris tabel kerja Pega.
+			// Klaim yang dulu TANPA baris tabel kerja Pega, sehingga kode statusnya kosong.
 			//
-			// Ia muncul di daftar PLA — kueri lamanya memakai sub-kueri, setara LEFT
-			// JOIN — tetapi TIDAK di daftar DLA, yang menggabungkannya secara INNER.
+			// Ia tetap muncul di daftar PLA. Sejak SUMBER BARU (2026-10-08) daftar DLA pun
+			// tidak lagi menggabungkan tabel kerja secara INNER.
 			Key: workKey("PNC-2007"), No: "PNC-2007",
 			PolicyNo: "POL-2026-2007", Insured: "PT Contoh Tujuh",
 			BusinessName: "FIRE", GroupPanel: "006",
 			RegisterDate: day(2026, time.January, 11),
 			LossDate:     day(2026, time.January, 8),
 			PICTeknik:    "AGUS",
-			WorkStatus:   "Open", StatusCode: "", HasWorkRow: false,
+			WorkStatus:   "Open", StatusCode: "",
 		},
 		{
 			// Milik login KEDUA, dan PLA-nya dikirim ke kode reasuradur yang LEBIH
@@ -219,7 +219,7 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 12),
 			LossDate:     day(2026, time.January, 9),
 			PICTeknik:    "SITI", CloseNote: "Ditutup",
-			WorkStatus: "Resolved-Completed", StatusCode: "1163", HasWorkRow: true,
+			WorkStatus: "Resolved-Completed", StatusCode: "1163",
 		},
 		{
 			// Lini PERSONAL ACCIDENT (`002`), TANPA satu pun pemberitahuan.
@@ -236,7 +236,7 @@ func sampleClaims() []Claim {
 			RegisterDate: day(2026, time.January, 13),
 			LossDate:     day(2026, time.January, 10),
 			PICTeknik:    "BUDI",
-			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
+			WorkStatus:   "Open", StatusCode: "1147",
 		},
 	}
 }
@@ -335,7 +335,7 @@ func sampleAdvices() []Advice {
 			Sent: sent1, SentDate: date1, Email: mail1,
 		},
 
-		// PNC-2007 — PLA terkirim; klaimnya tanpa baris tabel kerja.
+		// PNC-2007 — PLA terkirim; kode status klaimnya kosong.
 		{
 			ClaimKey: workKey("PNC-2007"), Kind: "pla", No: "PLA/2026/2007",
 			ReinsCode: "R100", Revision: 0,

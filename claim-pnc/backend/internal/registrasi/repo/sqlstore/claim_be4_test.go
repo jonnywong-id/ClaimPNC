@@ -220,6 +220,7 @@ func be4GetRow(created time.Time) []driver.Value {
 		"Indonesia", "ID", "DKI", "31", "Jakarta", "3171", "Gambir", "317101", "RW01", "R1", "10110",
 		"2", "Mencurigakan",
 		"lod@contoh", "rekomendasi", "subjek", " 2 ", nil, "catatan PIC",
+		"1",
 		"3171000000000001", "081234567890", "peserta@contoh.example", " 5 ",
 	}
 }

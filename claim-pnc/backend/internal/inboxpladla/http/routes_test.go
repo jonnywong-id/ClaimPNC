@@ -527,7 +527,7 @@ func bigStore(total int) *memory.Store {
 			BusinessName: "FIRE", GroupPanel: "006",
 			RegisterDate: sentOn, LossDate: sentOn,
 			PICTeknik: "BUDI", CloseNote: "catatan",
-			WorkStatus: "Open", StatusCode: "9999", HasWorkRow: true,
+			WorkStatus: "Open", StatusCode: "9999",
 		})
 		advices = append(advices, memory.Advice{
 			ClaimKey: key, Kind: "pla", No: "PLA/" + no, ReinsCode: "R100",

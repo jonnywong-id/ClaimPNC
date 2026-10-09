@@ -167,6 +167,7 @@ func (h *Handler) CompleteEstimate(w http.ResponseWriter, r *http.Request) {
 
 // ItemOptionDTO adalah satu pilihan Objek item estimasi.
 type ItemOptionDTO struct {
+	ID       string `json:"id"`
 	Name     string `json:"nama"`
 	Group    string `json:"kelompok"`
 	TSICents int64  `json:"tsi_sen"`
@@ -175,23 +176,27 @@ type ItemOptionDTO struct {
 // ItemOptionsResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/pilihan-item.
 type ItemOptionsResponse struct {
 	Option []ItemOptionDTO `json:"pilihan"`
+	// Default adalah nama item bawaan untuk item baru ("Others"/"OTHERS"; kosong untuk Fire).
+	Default string `json:"bawaan"`
 }
 
-// ItemOptions menangani GET /api/registrasi/klaim/{klaimID}/pilihan-item?objek=….
+// ItemOptions menangani GET /api/registrasi/klaim/{klaimID}/pilihan-item?objek=…&coverage=….
+// coverage adalah kode coverage jaminan — plan untuk lini Travel.
 func (h *Handler) ItemOptions(w http.ResponseWriter, r *http.Request, claimID string) {
 	if _, ok := h.callerOf(w, r); !ok {
 		return
 	}
-	option, err := h.service.ItemOptions(r.Context(), claimID, r.URL.Query().Get("objek"))
+	query := r.URL.Query()
+	choices, err := h.service.ItemOptions(r.Context(), claimID, query.Get("objek"), query.Get("coverage"))
 	if err != nil {
 		h.failure(w, r, err)
 		return
 	}
-	body := make([]ItemOptionDTO, 0, len(option))
-	for _, o := range option {
-		body = append(body, ItemOptionDTO{Name: o.Name, Group: o.Group, TSICents: int64(o.TSI)})
+	body := make([]ItemOptionDTO, 0, len(choices.Option))
+	for _, o := range choices.Option {
+		body = append(body, ItemOptionDTO{ID: o.ID, Name: o.Name, Group: o.Group, TSICents: int64(o.TSI)})
 	}
-	h.writeResponse(w, r, http.StatusOK, ItemOptionsResponse{Option: body})
+	h.writeResponse(w, r, http.StatusOK, ItemOptionsResponse{Option: body, Default: choices.Default})
 }
 
 // CoverageOptionsResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/pilihan-coverage.

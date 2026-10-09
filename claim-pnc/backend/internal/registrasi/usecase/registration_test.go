@@ -68,6 +68,7 @@ type environment struct {
 	accounts   *memory.Accounts
 	areas      *memory.AreaDirectory
 	pucl       *memory.PUCL
+	faceSheet  *memory.FaceSheet
 	caller     usecase.Caller
 }
 
@@ -82,6 +83,7 @@ func setupWith(t *testing.T, tweak func(*usecase.Options), roles ...string) envi
 
 	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
+	faceSheet := memory.NewFaceSheet()
 	parameter := memory.NewParameter()
 	link := memory.NewClaimReportLink()
 	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
@@ -101,6 +103,7 @@ func setupWith(t *testing.T, tweak func(*usecase.Options), roles ...string) envi
 	options := usecase.Options{
 		ClaimRepo:              store,
 		TaskRepo:               store.TaskRepo(),
+		UnassignedTasks:        store,
 		PolicyRepo:             memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
 		NumberIssuer:           memory.NewNumberIssuer(),
 		Parameter:              parameter,
@@ -115,7 +118,7 @@ func setupWith(t *testing.T, tweak func(*usecase.Options), roles ...string) envi
 		CurrencyDirectory:      memory.CurrencyDirectory{},
 		ItemOptions:            policyItems,
 		ClaimRecords:           records,
-		FaceSheet:              memory.NewFaceSheet(),
+		FaceSheet:              faceSheet,
 		FaceSheetRenderer:      facesheetpdf.Renderer{},
 		PLA:                    pla,
 		PLARenderer:            plapdf.Renderer{},
@@ -149,6 +152,7 @@ func setupWith(t *testing.T, tweak func(*usecase.Options), roles ...string) envi
 	require.NoError(t, err)
 
 	return environment{
+		faceSheet:  faceSheet,
 		service:    service,
 		store:      store,
 		parameter:  parameter,

@@ -37,7 +37,7 @@ func TestFindReadsTheDocumentAndLogsItsStatistics(t *testing.T) {
 	logs := &bytes.Buffer{}
 	repo = repo.WithLogger(slog.New(slog.NewJSONHandler(logs, nil)))
 
-	mock.ExpectQuery(exact("find_claim")).WithArgs("CLMNP-1001").
+	mock.ExpectQuery(exact("find_claim")).WithArgs("CLMNP-1001", "CLMNP-1001", "CLMNP-1001").
 		WillReturnRows(sqlmock.NewRows(findColumns).AddRow(
 			"CLMNP-1001", "REF-1", "New", "ADMIN",
 			`{"NoClaim":"CLMNP-1001","AdjustmentList":[{"Type":"Final"}]}`))

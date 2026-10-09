@@ -445,6 +445,13 @@ func run() error {
 	}
 	defer assembly.close()
 
+	// Pekerjaan terjadwal hidup selama server hidup.
+	jobs, stopJobs := context.WithCancel(context.Background())
+	defer stopJobs()
+	if err := startAutoPIC(jobs, cfg.AutoPIC, assembly.registrasi, logger); err != nil {
+		return err
+	}
+
 	spaFiles, err := spa.Files()
 	if err != nil {
 		logger.Warn("antarmuka tidak tersedia; aplikasi hanya melayani API",
@@ -4568,7 +4575,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee, cfg.PATechnicalPIC)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee)
 		if err != nil {
 			store.close()
 			return assembly{}, err

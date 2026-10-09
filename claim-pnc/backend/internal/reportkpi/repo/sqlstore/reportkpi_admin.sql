@@ -51,6 +51,33 @@
 --    periode yang dipilih, pembaginya nol dan Oracle menjawab `ORA-01476`. Di Pega galat
 --    itu sampai ke pengguna apa adanya. Di sini ia DITAHAN — lihat NULLIF di bawah, satu-
 --    satunya penyimpangan pada berkas ini dan alasannya ada di komentar tempatnya.
+--
+-- ============================================================================
+-- OBJEK KERJA PEGA TIDAK DIBACA LAGI (2026-10-08)
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` (alias `d`) dipakai keempat kueri HANYA untuk
+-- `PXCREATEOPERATOR` — penyaring "klaim siapa yang dihitung" — dan, pada rincian PA,
+-- `PYSTATUSWORK`. Ia diganti ("Perubahan nama tabel untuk Inbox.xlsx", baris 18–21) dengan
+-- inline view beralias `d` yang SAMA, sehingga seluruh rujukan `d.*` tetap berlaku:
+--
+--   d.pzinskey          <- T_CLAIM_PNC.CLAIMID
+--   d.pxcreateoperator  <- T_CLAIMLIST_ADMIN.PXCREATEOPERATOR, cadangan T_CLAIM_PNC.ADMINKLAIM
+--   d.pystatuswork      <- T_CLAIM_PNC.STATUSWORK
+--
+-- KENAPA ADA CADANGAN. T_CLAIMLIST_ADMIN hanya memuat klaim yang masih di antrean Admin
+-- (915 dari 1.742 klaim di portal ASM, diukur 2026-10-08). Karena `pxcreateoperator` adalah
+-- PENYARING, membacanya dari tabel itu saja akan membuang setiap klaim yang sudah keluar
+-- antrean — dan angka KPI menyusut tanpa galat apa pun. `ADMINKLAIM` adalah Operator ID
+-- pembuat klaim: sama dengan `PXCREATEOPERATOR` pada 504 dari 522 klaim yang ada di kedua
+-- tabel.
+--
+-- SATU PERBAIKAN YANG IKUT: kedua kueri NON-MBU menyaring `b.group_panel` dan
+-- `b.groupbisnisid`, padahal `b` adalah `T_CLAIM_PNC`, yang TIDAK punya kedua kolom itu
+-- (katalog 2026-10-08: `GROUPPANEL`, tanpa `GROUPBISNISID`). Kueri itu karena itu selalu
+-- gagal ORA-00904. Kedua kolom milik `pega_dashboardpnc` (alias `a`), dan di sanalah ia kini
+-- dibaca — sama dengan `report_close_klaim_nonmbu` yang menyaring `a.group_panel` dan
+-- `a.groupbisnisid` atas tabel yang sama.
 
 -- name: admin_scorecard_nonmbu
 -- Kartu skor **NON-MBU** — satu baris, seluruh angkanya dihitung basis data.
@@ -116,14 +143,20 @@ SELECT leader_over_sla                                          AS LEADER_OVER_S
                                  b.REGISTERDATE, b.TRANSFERPIC_DATE) / 28800 AS tat_regis
                           FROM pooldata.pega_dashboardpnc a,
                                pooldata.t_claim_pnc b,
-                               datapega.pc_asm_fw_gcnmfw_work d
+                               (SELECT c.claimid AS pzinskey,
+                                       COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+                                       c.statuswork AS pystatuswork
+                                  FROM pooldata.t_claim_pnc c
+                                  LEFT JOIN pooldata.t_claimlist_admin k
+                                         ON k.pzinskey = c.claimid
+                                        AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d
                          WHERE a.noklaim = b.claimno
                            AND b.claimid = d.pzinskey
                            AND a.stsklaim <> '2'
                            AND d.pxcreateoperator IN
                                  ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')
-                           AND b.group_panel IN ('003', '004', '006', '009')
-                           AND b.groupbisnisid NOT IN ('09', '11', '16', '25')
+                           AND a.group_panel IN ('003', '004', '006', '009')
+                           AND a.groupbisnisid NOT IN ('09', '11', '16', '25')
                            AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
                            AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY)))
 
@@ -149,14 +182,20 @@ SELECT a.noklaim                AS CLAIM_NUMBER,
        COUNT(*) OVER ()         AS TOTAL_ROWS
   FROM pooldata.pega_dashboardpnc a,
        pooldata.t_claim_pnc b,
-       datapega.pc_asm_fw_gcnmfw_work d
+       (SELECT c.claimid AS pzinskey,
+               COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+               c.statuswork AS pystatuswork
+          FROM pooldata.t_claim_pnc c
+          LEFT JOIN pooldata.t_claimlist_admin k
+                 ON k.pzinskey = c.claimid
+                AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d
  WHERE a.noklaim = b.claimno
    AND a.stsklaim <> '2'
    AND b.claimid = d.pzinskey
    AND d.pxcreateoperator IN
          ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')
-   AND b.group_panel IN ('003', '004', '006')
-   AND b.groupbisnisid NOT IN ('09', '11', '16', '25')
+   AND a.group_panel IN ('003', '004', '006')
+   AND a.groupbisnisid NOT IN ('09', '11', '16', '25')
    AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
    AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY
  ORDER BY b.REGISTERDATE DESC, a.noklaim
@@ -213,7 +252,13 @@ SELECT register_over_sla                                       AS REGISTER_OVER_
                           datamining.get_working_hours@asmd.sinarmas.co.id(
                             b.receivedate, b.REGISTERDATE) / 28800 AS tat_regis
                      FROM pooldata.t_claim_pnc b,
-                          datapega.pc_asm_fw_gcnmfw_work d
+                          (SELECT c.claimid AS pzinskey,
+                                  COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+                                  c.statuswork AS pystatuswork
+                             FROM pooldata.t_claim_pnc c
+                             LEFT JOIN pooldata.t_claimlist_admin k
+                                    ON k.pzinskey = c.claimid
+                                   AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d
                     WHERE b.claimid = d.pzinskey
                       AND b.STATUSWORK <> 'Resolved-Rejected'
                       AND d.pxcreateoperator IN
@@ -229,7 +274,13 @@ SELECT register_over_sla                                       AS REGISTER_OVER_
                             c.RECEIVEDATELOD, c.TGLAKSEPTASI) / 28800 AS tat_bayar
                      FROM pooldata.t_claim_pnc b,
                           POOLDATA.T_CLAIM_ADJUSTMENT c,
-                          datapega.pc_asm_fw_gcnmfw_work d
+                          (SELECT c.claimid AS pzinskey,
+                                  COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+                                  c.statuswork AS pystatuswork
+                             FROM pooldata.t_claim_pnc c
+                             LEFT JOIN pooldata.t_claimlist_admin k
+                                    ON k.pzinskey = c.claimid
+                                   AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d
                     WHERE b.CLAIMID = c.CLAIMID
                       AND b.claimid = d.pzinskey
                       AND b.STATUSWORK <> 'Resolved-Rejected'
@@ -244,7 +295,13 @@ SELECT register_over_sla                                       AS REGISTER_OVER_
           (SELECT COUNT(CLAIMNO)
              FROM (SELECT b.CLAIMNO
                      FROM pooldata.t_claim_pnc b,
-                          datapega.pc_asm_fw_gcnmfw_work d
+                          (SELECT c.claimid AS pzinskey,
+                                  COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+                                  c.statuswork AS pystatuswork
+                             FROM pooldata.t_claim_pnc c
+                             LEFT JOIN pooldata.t_claimlist_admin k
+                                    ON k.pzinskey = c.claimid
+                                   AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d
                     WHERE b.claimid = d.pzinskey
                       AND b.STATUSWORK <> 'Resolved-Rejected'
                       AND d.pxcreateoperator IN
@@ -262,7 +319,13 @@ SELECT register_over_sla                                       AS REGISTER_OVER_
                             c.RECEIVEDATELOD, c.TGLAKSEPTASI) / 28800 AS tat_bayar
                      FROM pooldata.t_claim_pnc b,
                           POOLDATA.T_CLAIM_ADJUSTMENT c,
-                          datapega.pc_asm_fw_gcnmfw_work d
+                          (SELECT c.claimid AS pzinskey,
+                                  COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+                                  c.statuswork AS pystatuswork
+                             FROM pooldata.t_claim_pnc c
+                             LEFT JOIN pooldata.t_claimlist_admin k
+                                    ON k.pzinskey = c.claimid
+                                   AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d
                     WHERE b.CLAIMID = c.CLAIMID
                       AND b.claimid = d.pzinskey
                       AND b.STATUSWORK <> 'Resolved-Rejected'
@@ -315,7 +378,13 @@ SELECT b.CLAIMNO             AS CLAIM_NUMBER,
        COUNT(*) OVER ()                     AS TOTAL_ROWS
   FROM pooldata.t_claim_pnc b
        INNER JOIN POOLDATA.T_CLAIM_ADJUSTMENT c ON b.CLAIMID = c.CLAIMID
-       INNER JOIN datapega.pc_asm_fw_gcnmfw_work d ON b.claimid = d.pzinskey
+       INNER JOIN (SELECT c.claimid AS pzinskey,
+                          COALESCE(k.pxcreateoperator, c.adminklaim) AS pxcreateoperator,
+                          c.statuswork AS pystatuswork
+                     FROM pooldata.t_claim_pnc c
+                     LEFT JOIN pooldata.t_claimlist_admin k
+                            ON k.pzinskey = c.claimid
+                           AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC') d ON b.claimid = d.pzinskey
        LEFT JOIN POOLDATA.T_GENERAL g
               ON g.nopolis = b.NOPOLIS AND g.PRODKE = b.PRODKE
  WHERE d.pxcreateoperator IN

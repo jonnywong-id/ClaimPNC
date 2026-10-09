@@ -135,6 +135,28 @@
 --
 -- Kedua kueri WAJIB memakai syarat WHERE yang sama persis — lihat catatan pada
 -- close_claim_count.
+--
+-- ============================================================================
+-- SUMBER BARIS: POOLDATA.T_CLAIMLIST_ADMIN (2026-10-08)
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` tidak dipakai lagi; penggantinya `T_CLAIMLIST_ADMIN`
+-- ("Perubahan nama tabel untuk Inbox.xlsx", kolom E), yang memakai nama kolom Pega yang sama.
+-- Kolom yang kosong atau tidak ada di sana dibaca dari `T_CLAIM_PNC` (`p.CLAIMID = A.PZINSKEY`,
+-- LEFT JOIN — baris tanpa pasangan tetap tampil):
+--
+--   STATUSCLAIM_1        ada tetapi kosong     -> COALESCE dengan p.STATUSCLAIM
+--   USERTEKNIS_1         terisi sebagian       -> COALESCE dengan p.PICTEKNIK
+--   CLOSECLAIMDATE_1     tidak ada             -> p.CLOSECLAIMDATE
+--   PYRESOLVEDTIMESTAMP  tidak ada di mana pun -> NULL; ia hanya CADANGAN bagi tanggal
+--                                                close, yang kini terisi dari p.CLOSECLAIMDATE
+--
+-- Penyaring "BELUM LUNAS" tetap membuang baris tanpa kode status (lihat catatan di atas):
+-- yang berubah hanya asal kodenya, bukan perlakuan atas NULL.
+--
+-- AKIBAT YANG HARUS DISADARI: T_CLAIMLIST_ADMIN memuat klaim yang sedang berada di antrean
+-- Admin. Klaim yang sudah `Resolved-*` hanya tampil di layar ini bila barisnya masih ada di
+-- tabel tersebut.
 
 -- name: close_claim_list
 SELECT A.PZINSKEY,
@@ -148,23 +170,25 @@ SELECT A.PZINSKEY,
        c.BUSINESSGROUPID,
        A.PXCREATEDATETIME,
        A.DATEOFLOSS_1,
-       A.CLOSECLAIMDATE_1,
-       A.PYRESOLVEDTIMESTAMP,
+       p.CLOSECLAIMDATE,
+       CAST(NULL AS TIMESTAMP),
        A.PYSTATUSWORK,
-       A.STATUSCLAIM_1,
+       COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM),
        (SELECT s.LSC_NOTE FROM POOLDATA.V_STS_CLAIM s
-         WHERE s.LSC_ID = A.STATUSCLAIM_1)            AS STATUS_KLAIM_LABEL,
-       A.USERTEKNIS_1,
+         WHERE s.LSC_ID = COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM))            AS STATUS_KLAIM_LABEL,
+       COALESCE(A.USERTEKNIS_1, p.PICTEKNIK),
        A.PXCREATEOPNAME,
        CASE WHEN EXISTS (SELECT 1 FROM POOLDATA.T_CLAIM_ADJUSTMENT B
                           WHERE B.TRANSFER_CASHIER_DATE IS NOT NULL
                             AND B.CLAIMID = A.PZINSKEY)
             THEN 1 ELSE 0 END                         AS SUDAH_TRANSFER
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
+       LEFT JOIN POOLDATA.T_CLAIM_PNC p
+              ON p.CLAIMID = A.PZINSKEY
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.PYSTATUSWORK IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (A.BRANCHNAME <> 'ASNET' OR A.BRANCHNAME IS NULL)
@@ -173,7 +197,7 @@ SELECT A.PZINSKEY,
         OR UPPER(A.PYID) LIKE :3 ESCAPE '\')
    AND (:4 IS NULL OR UPPER(A.POLICYNO) LIKE :5 ESCAPE '\')
    AND (:6 IS NULL OR UPPER(A.PYID) LIKE :7 ESCAPE '\')
-   AND (:8 IS NULL OR UPPER(A.USERTEKNIS_1) LIKE :9 ESCAPE '\')
+   AND (:8 IS NULL OR UPPER(COALESCE(A.USERTEKNIS_1, p.PICTEKNIK)) LIKE :9 ESCAPE '\')
    AND (:10 = 'ALL'
         OR (:11 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -192,8 +216,8 @@ SELECT A.PZINSKEY,
                              WHERE B.TRANSFER_CASHIER_DATE IS NOT NULL
                                AND B.CLAIMID = A.PZINSKEY)))
    AND (:18 IS NULL
-        OR (:19 = 'LUNAS' AND A.STATUSCLAIM_1 = :20)
-        OR (:21 = 'BELUM LUNAS' AND A.STATUSCLAIM_1 <> :22))
+        OR (:19 = 'LUNAS' AND COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM) = :20)
+        OR (:21 = 'BELUM LUNAS' AND COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM) <> :22))
  ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
 OFFSET :23 ROWS FETCH NEXT :24 ROWS ONLY
 
@@ -219,11 +243,13 @@ OFFSET :23 ROWS FETCH NEXT :24 ROWS ONLY
 -- Syarat WHERE di bawah wajib sama persis dengan close_claim_list. Bila keduanya menyimpang
 -- lagi, cacat yang sama kembali — dan `query_test.go` menjaganya baris per baris.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
+       LEFT JOIN POOLDATA.T_CLAIM_PNC p
+              ON p.CLAIMID = A.PZINSKEY
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.PYSTATUSWORK IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (A.BRANCHNAME <> 'ASNET' OR A.BRANCHNAME IS NULL)
@@ -232,7 +258,7 @@ SELECT COUNT(*)
         OR UPPER(A.PYID) LIKE :3 ESCAPE '\')
    AND (:4 IS NULL OR UPPER(A.POLICYNO) LIKE :5 ESCAPE '\')
    AND (:6 IS NULL OR UPPER(A.PYID) LIKE :7 ESCAPE '\')
-   AND (:8 IS NULL OR UPPER(A.USERTEKNIS_1) LIKE :9 ESCAPE '\')
+   AND (:8 IS NULL OR UPPER(COALESCE(A.USERTEKNIS_1, p.PICTEKNIK)) LIKE :9 ESCAPE '\')
    AND (:10 = 'ALL'
         OR (:11 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -251,8 +277,8 @@ SELECT COUNT(*)
                              WHERE B.TRANSFER_CASHIER_DATE IS NOT NULL
                                AND B.CLAIMID = A.PZINSKEY)))
    AND (:18 IS NULL
-        OR (:19 = 'LUNAS' AND A.STATUSCLAIM_1 = :20)
-        OR (:21 = 'BELUM LUNAS' AND A.STATUSCLAIM_1 <> :22))
+        OR (:19 = 'LUNAS' AND COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM) = :20)
+        OR (:21 = 'BELUM LUNAS' AND COALESCE(A.STATUSCLAIM_1, p.STATUSCLAIM) <> :22))
 
 -- name: close_claim_exists
 -- Memastikan sebuah klaim benar-benar ADA dan benar-benar SUDAH TUTUP.
@@ -266,7 +292,7 @@ SELECT COUNT(*)
 --
 -- Bind: :1 PZINSKEY
 SELECT A.PYID
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.PYSTATUSWORK IN ('Resolved-Completed', 'Resolved-Rejected')
    AND A.PZINSKEY = :1

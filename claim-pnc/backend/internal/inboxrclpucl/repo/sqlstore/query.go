@@ -166,22 +166,21 @@ var flatTableQueries = []string{
 // perlindungan itu untuk seluruh kueri; menyebut pengecualiannya satu per satu hanya
 // menghapusnya untuk yang memang diputuskan.
 //
-// Satu-satunya isiannya hari ini adalah `detail`, yang membaca DUA kolom hasil ekspos baris
-// pertama page list "Tanggal Terima Dokumen". Keduanya tidak ada di tabel datar, dan
-// katalognya sudah dicari — lihat catatan pada kueri `detail`.
+// Isiannya KOSONG sejak 2026-10-08. Sebelumnya `detail` membaca DUA kolom hasil ekspos baris
+// pertama page list "Tanggal Terima Dokumen" (`RECEIVEDDATE_1`, `KETERANGAN_1`) dari tabel
+// objek kerja Pega. Work Owner memutuskan tabel itu tidak dipakai lagi: tanggalnya kini dari
+// `T_CLAIM_PNC.RECEIVEDATE`, catatannya NULL — lihat catatan pada kueri `detail`.
 //
-// Begitu layanan Pega (`permintaan-artefak-pega.md` §12) mengembalikan daftar itu utuh,
-// isian ini dikosongkan dan subkuerinya dibuang.
-var pegaReadsAllowedIn = map[string][]string{
-	"detail": {"RECEIVEDDATE_1", "KETERANGAN_1", "PYID"},
-}
+// Petanya dipertahankan supaya pengecualian berikutnya, bila memang diputuskan, tetap harus
+// disebut satu per satu.
+var pegaReadsAllowedIn = map[string][]string{}
 
 // documentColumns adalah alias kueri daftar dokumen.
 //
-// Ia TIDAK masuk flatTableQueries dan itu disengaja: `documents` memang membaca tabel Pega
-// (`PC_ASM_FW_GCNMFW_WORK`) untuk menerjemahkan nomor case menjadi kunci objek kerja, karena
-// `TC_PNC_PUCL` tidak menyimpan kunci itu. Memasukkannya ke daftar penjaga akan membuat uji
-// menuntut hal yang mustahil.
+// Ia TIDAK masuk flatTableQueries dan itu disengaja: `documents` tidak membaca `TC_PNC_PUCL`
+// sama sekali — ia menerjemahkan nomor case menjadi kunci lampiran lewat `T_CLAIM_PNC` dan
+// (sejak 2026-10-08, menggantikan tabel objek kerja Pega) kunci berprefix yang dirangkai dari
+// nomor case. Memasukkannya ke daftar penjaga akan membuat uji menuntut hal yang mustahil.
 var documentColumns = []string{
 	"DOCUMENT_ID", "DOCUMENT_NAME", "MIME_TYPE",
 	"CATEGORY_NAME", "SUBCATEGORY_NAME", "UPLOADED_AT", "UPLOADED_BY",

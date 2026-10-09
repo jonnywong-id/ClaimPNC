@@ -64,11 +64,16 @@
 -- DUA TABEL, DAN PEMBAGIAN TUGASNYA
 -- ============================================================================
 --
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK  w   KEADAAN objek kerja — nomor, status, pengubah
+--   (lama) DATAPEGA.PC_ASM_FW_GCNMFW_WORK  w   KEADAAN objek kerja — nomor, status, pengubah
 --   POOLDATA.JSON_KLAIM             b   ISI klaimnya — satu dokumen JSON
 --
 -- Pembagian itu bukan pilihan gaya: status alur kerja dan petugas pengubah adalah milik objek
 -- kerja Pega dan tidak ikut tersimpan di dalam dokumen `.ClaimData`.
+--
+-- SUMBER BARU (2026-10-08): objek kerja Pega tidak dipakai lagi. Keberadaan klaim dibuktikan
+-- dari `JSON_KLAIM.IDPEGA` + `PC_ASSIGN_WORKLIST`/`PC_ASSIGN_WORKBASKET.PXREFOBJECTKEY`; status
+-- alur kerja dan petugas pengubah karenanya KOSONG (tidak ada padanan terbukti). Rincian di
+-- `find_claim`. Kata "objek kerja" di catatan berikut merujuk perilaku lama.
 --
 -- Gabungannya `LEFT JOIN`, dengan alasan yang sama seperti di Inbox Claim Treaty Non Prop:
 -- klaim yang belum punya baris di JSON_KLAIM tetap DAPAT DIBUKA, dengan seluruh isian kosong
@@ -118,27 +123,49 @@
 --
 -- Kolomnya `DATA_JSONBLOB` — lihat catatan "KOLOMNYA DATA_JSONBLOB" di kepala berkas.
 --
--- Bind: :1 nomor klaim (mis. `CLMNP-232`)
-SELECT w.PYID                                        AS CLAIM_ID,
-       w.PZINSKEY                                    AS REFERENCE,
-       w.PYSTATUSWORK                                AS STATUS_WORK,
-       w.PXUPDATEOPERATOR                            AS LAST_UPDATE_OPERATOR,
+-- SUMBER BARU (2026-10-08). Objek kerja Pega (`PC_ASM_FW_GCNMFW_WORK`) tidak dipakai lagi
+-- (keputusan Work Owner). Klaim `CLMNP-*` TIDAK ada di `T_CLAIM_PNC` maupun `T_CLAIMLIST_ADMIN`,
+-- sehingga keberadaan klaimnya kini dibuktikan dari tiga tempat yang memuat kuncinya:
+-- `JSON_KLAIM.IDPEGA` (isi klaim) serta `PC_ASSIGN_WORKLIST`/`PC_ASSIGN_WORKBASKET`
+-- (`PXREFOBJECTKEY`, tugas yang masih terbuka). Diukur di Oracle dev: ketiganya bersama
+-- mencakup 22 dari 22 objek kerja `CLMNP-*` (JSON_KLAIM saja hanya 14). Kuncinya
+-- `'ASM-FW-GCNMFW-WORK ' + nomor` — terukur sama dengan `PZINSKEY` pada 91/91 objek treaty.
+--
+-- Akibat: STATUS_WORK dan LAST_UPDATE_OPERATOR tidak punya padanan terbukti di luar objek
+-- kerja (`PXUPDATEOPERATOR` tabel penugasan sama dengan milik objek kerja pada 0/91 baris),
+-- sehingga keduanya kini NULL bertipe — layar menampilkannya kosong.
+--
+-- Bind: :1 :2 :3 nomor klaim yang SAMA (mis. `CLMNP-232`) — go-ora mengikat menurut urutan.
+SELECT REPLACE(k.CLAIM_KEY, 'ASM-FW-GCNMFW-WORK ', '')   AS CLAIM_ID,
+       k.CLAIM_KEY                                   AS REFERENCE,
+       CAST(NULL AS VARCHAR2(32))                    AS STATUS_WORK,
+       CAST(NULL AS VARCHAR2(128))                   AS LAST_UPDATE_OPERATOR,
        b.DATA_JSONBLOB                               AS CLAIM_DOCUMENT
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+  FROM (SELECT j.IDPEGA CLAIM_KEY FROM POOLDATA.JSON_KLAIM j
+         WHERE j.IDPEGA = CONCAT('ASM-FW-GCNMFW-WORK ', :1)
+        UNION
+        SELECT l.PXREFOBJECTKEY FROM DATAPEGA.PC_ASSIGN_WORKLIST l
+         WHERE l.PXREFOBJECTKEY = CONCAT('ASM-FW-GCNMFW-WORK ', :2)
+        UNION
+        SELECT q.PXREFOBJECTKEY FROM DATAPEGA.PC_ASSIGN_WORKBASKET q
+         WHERE q.PXREFOBJECTKEY = CONCAT('ASM-FW-GCNMFW-WORK ', :3)) k
        LEFT JOIN POOLDATA.JSON_KLAIM b
-              ON w.PZINSKEY = b.IDPEGA
- WHERE w.PYID = :1
-   AND w.PYID LIKE 'CLMNP-%'
+              ON k.CLAIM_KEY = b.IDPEGA
+ WHERE REPLACE(k.CLAIM_KEY, 'ASM-FW-GCNMFW-WORK ', '') LIKE 'CLMNP-%'
 
 -- name: check_tables
--- Dipakai perintah `-periksa`: memastikan kedua tabel DAN gabungannya terbaca dari koneksi
+-- Dipakai perintah `-periksa`: memastikan ketiga tabel DAN gabungannya terbaca dari koneksi
 -- yang dipakai.
 --
 -- Ia tidak menyentuh satu baris pun — yang diperiksa adalah hak baca dan keberadaan tabelnya,
 -- bukan isinya. Gabungannya ikut diperiksa karena kegagalan yang paling mungkin terjadi bukan
 -- "tabel tidak ada" melainkan "hak baca hanya diberikan pada salah satunya".
+--
+-- SUMBER BARU (2026-10-08): mengikuti `find_claim` — objek kerja Pega diganti tabel penugasan.
 SELECT COUNT(*) AS PROBE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+  FROM DATAPEGA.PC_ASSIGN_WORKLIST l
+       LEFT JOIN DATAPEGA.PC_ASSIGN_WORKBASKET q
+              ON l.PXREFOBJECTKEY = q.PXREFOBJECTKEY
        LEFT JOIN POOLDATA.JSON_KLAIM b
-              ON w.PZINSKEY = b.IDPEGA
+              ON l.PXREFOBJECTKEY = b.IDPEGA
  WHERE 1 = 0

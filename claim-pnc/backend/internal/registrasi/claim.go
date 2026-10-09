@@ -476,6 +476,10 @@ type Claim struct {
 	// TechnicalPIC adalah PIC teknik yang menerima klaim setelah registrasi.
 	TechnicalPIC string
 
+	// TKI adalah `ClaimData.TKI` — POOLDATA.T_CLAIM_PNC.STS_TKI bernilai "1". Hanya dibaca:
+	// ia memilih petugas PA pada GETDATA_PICTEKNIK (lihat technicalpic.go).
+	TKI bool
+
 	// LargeLossNoticed menandai Notice of Large Losses sudah pernah terbit untuk klaim
 	// ini — `ClaimData.FlagNOLL` di sistem lama.
 	//

@@ -125,8 +125,8 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// CheckTable memastikan ketiga tabel yang disentuh modul ini terbaca dari koneksi yang
-// dipakai.
+// CheckTable memastikan ketiga tabel yang disentuh modul ini (kedua tabel penugasan dan
+// POOLDATA.JSON_KLAIM) terbaca dari koneksi yang dipakai.
 //
 // Dipanggil perintah `-periksa`. Ia tidak menyentuh satu baris pun: yang diperiksa adalah
 // hak baca dan keberadaan tabelnya.
@@ -135,8 +135,7 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_worklist")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASSIGN_WORKLIST atau "+
-				"DATAPEGA.PC_ASM_FW_GCNMFW_WORK: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKLIST atau POOLDATA.JSON_KLAIM: %w", err)
 	}
 	if err := r.db.QueryRowContext(ctx, query("check_workbasket")).Scan(&ignored); err != nil {
 		return fmt.Errorf("membaca DATAPEGA.PC_ASSIGN_WORKBASKET: %w", err)
@@ -155,10 +154,11 @@ type scanner interface {
 // Urutannya WAJIB sama dengan resultColumns dan dengan urutan kolom di
 // inboxclaimtreatyprop.sql. Ketiganya dijaga query_test.go.
 //
-// Seluruh kolom teks dipindai lewat tipe yang mengizinkan NULL. Gabungannya memang INNER —
-// sehingga barisnya pasti punya objek kerja — tetapi KOLOMNYA sendiri boleh kosong: kolom
-// terekspos pada objek kerja Pega diisi ketika propertinya diisi, dan klaim lama banyak yang
-// belum. SUBJECTIVITY bahkan SELALU NULL, karena nama kolomnya belum diketahui.
+// Seluruh kolom teks dipindai lewat tipe yang mengizinkan NULL. Sejak 2026-10-08 kolom
+// bisnis dipetik dari POOLDATA.JSON_KLAIM lewat LEFT JOIN, sehingga penugasan yang belum
+// punya dokumen mengembalikan NULL pada seluruh kolom bisnis sekaligus (53 dari 70 di dev).
+// LAST_UPDATE_OPERATOR dan CLAIM_STATUS bahkan SELALU NULL: keduanya milik objek kerja Pega
+// yang sudah tidak dipakai dan tidak punya padanan.
 func scanWorkItem(row scanner) (inboxclaimtreatyprop.WorkItem, int, error) {
 	var (
 		workKey, reference, claimID, assignedOperator sql.NullString

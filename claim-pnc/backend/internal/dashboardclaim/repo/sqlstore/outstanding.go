@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"claim-pnc/internal/dashboardclaim"
@@ -85,15 +84,10 @@ func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 		lossDate         sql.NullTime
 		registeredAt     sql.NullTime
 
-		// RECEIVEDDATE_1 dibaca sebagai TEKS, bukan sebagai tanggal.
-		//
-		// Kolomnya memang bertipe teks dan berisi stempel waktu bergaya Pega
-		// (`20200106T142602.000 GMT`, 23 karakter) — bukan DATE. Memindainya ke sql.NullTime
-		// menghasilkan galat konversi pada baris pertama yang terisi, dan layar menjawab 500.
-		//
-		// Temuan ini sudah tercatat di modul lain:
-		// `internal/inboxrclpucl/repo/sqlstore/inboxrclpucl.sql:760`.
-		reportDate sql.NullString
+		// Tanggal lapor kini dibaca dari `T_CLAIM_PNC.RECEIVEDATE`, kolom bertipe DATE.
+		// Dulu sumbernya `RECEIVEDDATE_1` objek kerja Pega — TEKS bergaya
+		// `20200106T142602.000 GMT` — yang tidak ada di `T_CLAIMLIST_ADMIN`.
+		reportDate sql.NullTime
 	)
 
 	if err := s.Scan(
@@ -130,45 +124,12 @@ func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 		ClaimStatusLabel: text(claimStatusLabel),
 		ProcessStatus:    text(processStatus),
 		LossDate:         timeOrNil(lossDate),
-		ReportDate:       pegaTimestamp(text(reportDate)),
+		ReportDate:       timeOrNil(reportDate),
 	}
 	if registeredAt.Valid {
 		row.RegisteredAt = registeredAt.Time
 	}
 	return row, nil
-}
-
-// pegaTimestamp membaca stempel waktu bergaya Pega yang tersimpan sebagai TEKS.
-//
-// Bentuknya `20200106T142602.000 GMT` — tahun, bulan, hari, `T`, jam, menit, detik, milidetik,
-// lalu zona. Ia disimpan apa adanya di kolom bertipe teks, bukan sebagai DATE.
-//
-// Teks yang TIDAK terbaca mengembalikan nil, bukan galat: satu baris berformat menyimpang
-// tidak boleh menggagalkan seluruh halaman. Yang hilang karena itu satu kolom pada satu
-// baris — dan kolom kosong di layar sudah menyatakan bahwa tanggalnya tidak terbaca.
-//
-// Beberapa bentuk dicoba berurutan karena data warisan tidak seragam: sebagian baris
-// menyimpannya tanpa milidetik, sebagian tanpa zona.
-func pegaTimestamp(value string) *time.Time {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return nil
-	}
-
-	for _, layout := range []string{
-		"20060102T150405.000 MST",
-		"20060102T150405 MST",
-		"20060102T150405.000",
-		"20060102T150405",
-		time.RFC3339,
-		"2006-01-02 15:04:05",
-		"2006-01-02",
-	} {
-		if parsed, err := time.Parse(layout, trimmed); err == nil {
-			return &parsed
-		}
-	}
-	return nil
 }
 
 // timeOrNil mengubah kolom waktu yang boleh kosong menjadi penunjuk.

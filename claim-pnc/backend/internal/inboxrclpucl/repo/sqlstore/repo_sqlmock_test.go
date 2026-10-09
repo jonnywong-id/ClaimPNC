@@ -191,10 +191,8 @@ func TestDailyReportBindsTheRangeOnBothBranchesAndMapsTheRows(t *testing.T) {
 
 	mock.ExpectQuery(exactly("daily_report")).
 		WithArgs(
-			inboxrclpucl.WorkClassClaim,
 			inboxrclpucl.RCLPUCLWorkbasket,
 			"2026-09-01", "2026-09-30",
-			inboxrclpucl.WorkClassClaim,
 			inboxrclpucl.GroupPanelPA,
 			"2026-09-01", "2026-09-30",
 			0, inboxrclpucl.DefaultPageSize,
@@ -398,9 +396,10 @@ func TestCheckTableNamesTheColumnsWhenTheColumnProbeFails(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Kegagalan probe KEEMPAT wajib menyebut kedua tabel Pega, karena yang rusak karenanya
-// hanyalah tombol unduh tab "Cetak Surat" — bukan layarnya, dan pesannya yang membedakan.
-func TestCheckTableNamesThePegaTablesWhenTheReportProbeFails(t *testing.T) {
+// Kegagalan probe KEEMPAT wajib menyebut kolom laporan harian di TC_PNC_PUCL, karena yang
+// rusak karenanya hanyalah tombol unduh tab "Cetak Surat" — bukan layarnya, dan pesannya
+// yang membedakan.
+func TestCheckTableNamesTheReportColumnsWhenTheReportProbeFails(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	cause := errors.New("ORA-00942")
 
@@ -411,8 +410,8 @@ func TestCheckTableNamesThePegaTablesWhenTheReportProbeFails(t *testing.T) {
 
 	err := repo.CheckTable(context.Background())
 	require.ErrorIs(t, err, cause)
-	require.ErrorContains(t, err, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
-	require.ErrorContains(t, err, "DATAPEGA.PC_ASSIGN_WORKBASKET")
+	require.ErrorContains(t, err, "POOLDATA.TC_PNC_PUCL")
+	require.ErrorContains(t, err, "laporan harian")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

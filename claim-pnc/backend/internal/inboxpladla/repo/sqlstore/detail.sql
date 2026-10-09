@@ -50,6 +50,9 @@
 --
 -- Bind: :1 kunci klaim · :2 login (PLA) · :3 login (DLA) · :4 login (percakapan tujuan)
 --       :5 login (percakapan pengirim)
+--
+-- SUMBER BARU (2026-10-08): kode status dari `T_CLAIM_PNC.STATUSCLAIM`, bukan lagi
+-- `STATUSCLAIM_1` tabel kerja Pega. Syarat kepemilikan tidak berubah.
 SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.CLAIMNO                         AS CLAIM_NO,
        c.NOPOLIS                         AS POLICY_NO,
@@ -58,13 +61,11 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.REGISTERDATE                    AS REGISTER_DATE,
        c.DATEOFLOSS                      AS LOSS_DATE,
        c.PICTEKNIK                       AS PIC_TEKNIK,
-       w.STATUSCLAIM_1                   AS STATUS_CODE,
+       c.STATUSCLAIM                     AS STATUS_CODE,
        s.LSC_NOTE                        AS STATUS_LABEL
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.CLAIMID = :1
    AND (EXISTS (SELECT 1
                   FROM POOLDATA.T_PLALIST p

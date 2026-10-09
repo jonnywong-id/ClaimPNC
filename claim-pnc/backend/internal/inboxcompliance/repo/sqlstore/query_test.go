@@ -100,9 +100,9 @@ func TestCountAndListSharePredicates(t *testing.T) {
 	list, count := query("list_compliance"), query("count_compliance")
 
 	predicates := []string{
-		"A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'",
+		"wb.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'",
 		"wb.PXASSIGNEDOPERATORID = :1",
-		"A.PYSTATUSWORK <> 'Resolved-Completed'",
+		"(p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
 		"wb.PXOBJCLASS = 'Assign-WorkBasket'",
 	}

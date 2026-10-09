@@ -69,7 +69,11 @@ type TransferDetail struct {
 	// HasCommitteeRecord membedakan "tidak ada barisnya" dari "ada tetapi kosong".
 	HasCommitteeRecord bool
 
-	// GroupPanel adalah `GROUPPANEL_1` pada baris kerja case komite ini.
+	// GroupPanel adalah Group Panel klaim yang dinaungi case komite ini.
+	//
+	// Di Pega ia `GROUPPANEL_1` pada baris kerja Work-Komite. SUMBER BARU (2026-10-08):
+	// tabel kerja itu sudah tidak dipakai; nilainya kini dari baris Work-PNC klaimnya di
+	// `T_CLAIMLIST_ADMIN`, jatuh ke `T_CLAIM_PNC.GROUPPANEL` — lihat `transfer_case`.
 	//
 	// Ia ada di sini semata-mata karena judul layar membutuhkannya: `ShowTransfer`
 	// menyembunyikan akhiran "- ADJUSTMENT" ketika `IsTravel` benar, dan `IsTravel`
@@ -100,6 +104,10 @@ type TransferDetail struct {
 	//
 	// Diukur pada basis data ASM: terisi 0 dari 610. Kolomnya ada, tetapi Pega tidak
 	// pernah menulisinya untuk kelas `Work-Komite` — nilainya hidup di clipboard.
+	//
+	// SUMBER BARU (2026-10-08): kini dibaca dari `T_CLAIM_PNC.POLIS_JENIS_BISNIS` klaimnya,
+	// sama seperti case KMTN. Pada klaim seluruh case komite Pega kolom itu juga kosong
+	// (diukur 2026-10-08), sehingga perilakunya tidak berubah.
 	//
 	// Medan ini tetap dibaca supaya cabang HE menjadi benar dengan sendirinya bila kolom
 	// itu kelak terisi, dan supaya layar dapat menyatakan dengan jujur bahwa cabang itu

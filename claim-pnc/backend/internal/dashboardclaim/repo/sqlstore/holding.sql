@@ -49,15 +49,31 @@
 --     PXCREATEDATETIME  AS "Province"   -> TANGGAL_PENDAFTARAN
 --
 -- Ketujuhnya memakai nama geografis untuk data yang sama sekali bukan geografis.
+--
+-- ============================================================================
+-- SUMBER BARU (2026-10-08)
+-- ============================================================================
+--
+-- Objek kerja Pega (`DATAPEGA` objek kerja, alias A lama) tidak dipakai lagi (keputusan Work
+-- Owner). Kepala klaim kini dibaca dari POOLDATA.T_CLAIMLIST_ADMIN — nama kolomnya sama persis
+-- (PYID, POLICYNO, QQNAME, BUSINESSNAME, SOBNAME, BRANCHNAME, PXCREATEOPNAME,
+-- PXCREATEDATETIME, USERTEKNIS_1, PXOBJCLASS), sehingga alias dan bind tidak berubah.
+-- Gabungannya ke worklist kini `A.PZINSKEY = B.PXREFOBJECTKEY` (tabel baru tidak punya
+-- PXINSNAME).
+--
+-- Diukur di Oracle dev: dari 103 tugas Work-PNC milik `ServicePNC`, 101 punya baris di
+-- T_CLAIMLIST_ADMIN (T_CLAIM_PNC hanya 20 — karena itu BUKAN sumbernya); kesembilan kolom di
+-- atas sama dengan objek kerja pada 101/101 baris; populasi tampungan lama 57 dan baru 57,
+-- selisih himpunan 0.
 
 -- name: holding_count
 -- Menghitung SELURUH klaim di penampungan yang cocok.
 --
 -- Syarat WHERE-nya wajib sama persis dengan holding_list; `query_test.go` menjaganya.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PXINSNAME = B.PXREFOBJECTINSNAME
+               ON A.PZINSKEY = B.PXREFOBJECTKEY
  WHERE B.PXASSIGNEDOPERATORID = 'ServicePNC'
    AND A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.USERTEKNIS_1 IS NULL
@@ -83,9 +99,9 @@ SELECT A.PZINSKEY         AS ID_KLAIM,
        A.BRANCHNAME       AS NAMA_CABANG,
        A.PXCREATEOPNAME   AS ADMIN_PNC,
        A.PXCREATEDATETIME AS TANGGAL_PENDAFTARAN
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PXINSNAME = B.PXREFOBJECTINSNAME
+               ON A.PZINSKEY = B.PXREFOBJECTKEY
  WHERE B.PXASSIGNEDOPERATORID = 'ServicePNC'
    AND A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.USERTEKNIS_1 IS NULL

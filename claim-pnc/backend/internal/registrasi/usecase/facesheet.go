@@ -50,46 +50,50 @@ func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by 
 		return FaceSheetResult{}, registrasi.ErrFaceSheetNothingNew()
 	}
 
-	// Seluruhnya berjalan di dalam SATU transaksi, dan urutannya penting: PIC Teknis dipilih
-	// LEBIH DULU, baru isi CFS dibentuk — supaya PIC yang tercatat di klaim adalah PIC yang
-	// tercetak di dokumennya. Bila pembentukan dokumen gagal, transaksinya dibatalkan: tidak
-	// ada estimasi yang terkunci dan beban petugas tidak ikut naik tanpa dokumennya pernah
-	// sampai ke petugas. Seluruh langkah di dalamnya hanya membaca/menulis basis data dan
-	// merender PDF di memori — tidak ada panggilan jaringan yang menahan kunci baris.
-	var (
-		content  []byte
-		revision int
-	)
+	last, found, err := l.faceSheet.LastRevision(ctx, claim.ID, object.ID, p.Coverage)
+	if err != nil {
+		return FaceSheetResult{}, err
+	}
+	revision := 0
+	if found {
+		revision = last + 1
+	}
+	now := l.clock.Now().UTC()
+	fileName := registrasi.FaceSheetFileName(p.Object, p.Coverage, revision)
+
+	// `IsCFS_PNC == ""`: dibaca SEBELUM estimasinya dikunci.
+	firstFaceSheet := !claim.HasFaceSheet()
+
+	// Urutannya mengikuti `DownloadClaimFaceSheet_act`: PIC Teknis dipilih (step 7–12) SEBELUM
+	// dokumen dibentuk, sehingga PIC yang tercetak sama dengan yang tersimpan. Pembentukan
+	// dokumen berada di dalam transaksi yang sama: bila gagal, pemilihan PIC, beban, rotasi
+	// tim, dan kunci estimasi ikut batal — tidak ada yang tercatat tanpa dokumennya.
+	var content []byte
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
 		if err := l.adoptTechnicalPICOnFaceSheet(ctx, &claim, by); err != nil {
 			return err
 		}
-
 		in, err := l.faceSheetInput(ctx, claim, p)
 		if err != nil {
 			return err
 		}
+		in.Now = now
 		sheet := registrasi.BuildFaceSheet(in)
-		content, err = l.renderer.Render(sheet)
-		if err != nil {
+		if content, err = l.renderer.Render(sheet); err != nil {
 			return fmt.Errorf("registrasi/usecase: membentuk Claim Face Sheet: %w", err)
 		}
-
-		last, found, err := l.faceSheet.LastRevision(ctx, claim.ID, object.ID, p.Coverage)
-		if err != nil {
-			return err
-		}
-		revision = 0
-		if found {
-			revision = last + 1
-		}
-		now := in.Now
-		fileName := registrasi.FaceSheetFileName(p.Object, p.Coverage, revision)
 
 		registrasi.LockEstimates(coverage, now)
 		claim.UpdatedBy = by.Identity
 		claim.UpdatedAt = now
 
+		// `DownloadClaimFaceSheet_act` step 14 — `AddTJobCQuota_SQL` untuk PIC akhir klaim,
+		// hanya pada Claim Face Sheet pertama.
+		if firstFaceSheet && registrasi.HasTechnicalPIC(claim) {
+			if err := l.faceSheet.AddTechnicalPICJob(ctx, strings.TrimSpace(claim.TechnicalPIC)); err != nil {
+				return err
+			}
+		}
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
@@ -162,21 +166,26 @@ func (l *Service) faceSheetInput(ctx context.Context, claim registrasi.Claim, p 
 // (AssignedTechnicalPIC), sehingga bebannya tidak dinaikkan dua kali.
 //
 // Lini tanpa petugas aktif dibiarkan kosong — antrean ServicePNC bukan nama orang.
+//
+// Sesudah pemilihan, `DownloadClaimFaceSheet_act` menimpa PIC untuk admin JONI_1 (step 8)
+// dan jaminan PA PHK (step 12) — registrasi.FaceSheetTechnicalPIC. Penimpaan itu berlaku
+// juga bila klaim sudah punya PIC, sama seperti Pega.
 func (l *Service) adoptTechnicalPICOnFaceSheet(ctx context.Context, claim *registrasi.Claim, by Caller) error {
-	if strings.TrimSpace(claim.TechnicalPIC) != "" {
-		return nil
+	if !registrasi.HasTechnicalPIC(*claim) {
+		stage, ok := l.flow.Stage(registrasi.StageSendToTechnicalPIC)
+		if !ok {
+			return fmt.Errorf("registrasi/usecase: tahap %q tidak ada di flow", registrasi.StageSendToTechnicalPIC)
+		}
+		to, err := l.assigner.Assign(ctx, stage, *claim, by.Identity)
+		if err != nil {
+			return fmt.Errorf("registrasi/usecase: memilih PIC Teknis: %w", err)
+		}
+		if strings.TrimSpace(to.Operator) != registrasi.OperatorUnassigned {
+			registrasi.AdoptTechnicalPIC(claim, stage, to)
+		}
 	}
-	stage, ok := l.flow.Stage(registrasi.StageSendToTechnicalPIC)
-	if !ok {
-		return fmt.Errorf("registrasi/usecase: tahap %q tidak ada di flow", registrasi.StageSendToTechnicalPIC)
+	if pic := registrasi.FaceSheetTechnicalPIC(*claim); pic != "" {
+		claim.TechnicalPIC = pic
 	}
-	to, err := l.assigner.Assign(ctx, stage, *claim, by.Identity)
-	if err != nil {
-		return fmt.Errorf("registrasi/usecase: memilih PIC Teknis: %w", err)
-	}
-	if strings.TrimSpace(to.Operator) == registrasi.OperatorUnassigned {
-		return nil
-	}
-	registrasi.AdoptTechnicalPIC(claim, stage, to)
 	return nil
 }
