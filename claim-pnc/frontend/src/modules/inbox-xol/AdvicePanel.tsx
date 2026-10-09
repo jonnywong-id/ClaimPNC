@@ -6,7 +6,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 
-import { downloadURL, useAdviceSearch, useCauseOfLoss } from './api'
+import { downloadURL, useAdviceSearch, useCauseOfLoss, useUnduhBerkas } from './api'
 import { isValidationError, messageOf, violationsOf } from './errors'
 import { EMPTY_ADVICE_FORM, type Advice, type AdviceForm, type AdviceType } from './types'
 
@@ -268,17 +268,42 @@ function DataModeNotice() {
  * dokumen resmi padahal bukan adalah kekeliruan yang berakibat ke luar perusahaan —
  * PLA dan DLA dikirim kepada reasuradur.
  *
- * Ia tautan, bukan tombol ber-onClick: unduhan adalah navigasi, dan peramban sudah
- * menanganinya termasuk saat pengguna membukanya di tab baru.
+ * # Kenapa tombol, bukan `<a href>`
+ *
+ * Ia SEMPAT ditulis sebagai tautan polos dengan alasan "unduhan adalah navigasi, dan
+ * peramban sudah menanganinya". Itu keliru: sesi dikirim sebagai header `Authorization`,
+ * bukan cookie, dan peramban tidak mengirim header apa pun pada navigasi biasa — tautan
+ * polos selalu dijawab `sesi_tidak_sah`.
  */
 function DownloadButton({ form }: { form: AdviceForm }) {
+  const unduh = useUnduhBerkas()
+
   return (
-    <a
-      href={downloadURL(form)}
-      className="inline-flex items-center rounded-kontrol border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-lembut transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4"
-    >
-      Unduh perhitungan (CSV)
-    </a>
+    <div>
+      <button
+        type="button"
+        className="inline-flex items-center rounded-kontrol border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-lembut transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 disabled:text-slate-400"
+        disabled={unduh.isPending}
+        onClick={() =>
+          unduh.mutate({
+            alamat: downloadURL(form),
+            namaBerkas: `perhitungan-${form.tipe.toLowerCase()}-${form.tahun}-${form.sebab_kerugian}.csv`,
+          })
+        }
+      >
+        {unduh.isPending ? 'Menyiapkan…' : 'Unduh perhitungan (CSV)'}
+      </button>
+
+      {unduh.isError && (
+        <div className="mt-2">
+          <ErrorMessage
+            title="Berkas tidak dapat diunduh"
+            description={messageOf(unduh.error)}
+            tone="gangguan"
+          />
+        </div>
+      )}
+    </div>
   )
 }
 

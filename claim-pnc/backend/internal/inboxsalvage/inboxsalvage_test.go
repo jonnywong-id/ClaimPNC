@@ -104,14 +104,22 @@ func TestTidakTerjualCounterRowDeliberatelyLeadsNowhere(t *testing.T) {
 	require.True(t, found, "baris \"Tidak Terjual\" hilang dari pencacah")
 }
 
-// Pencacah "Outstanding" dan daftarnya menghitung populasi yang BERBEDA di Pega, dan itu
-// direplikasi (`P-5`). Uji ini menjaga selisihnya tetap ada — kalau seseorang
-// "memperbaikinya", uji ini yang gagal lebih dulu, bukan pengguna yang melaporkannya.
-func TestOutstandingCounterDeliberatelyCountsADifferentPopulationThanItsList(t *testing.T) {
+// Pencacah "Outstanding" dan daftarnya mencacah populasi yang SAMA PERSIS.
+//
+// # Kenapa pernah berbeda, dan kenapa sekarang tidak boleh
+//
+// Sampai 2026-10-08 keduanya memang berbeda, dan selisihnya dijaga uji sebagai replikasi
+// yang disengaja (`P-5`). Premisnya runtuh ketika layar Pega sungguhan diukur: daftarnya
+// 145 baris, pencacahnya 234, dan angka kami 465 — tiga angka yang tidak satu pun cocok.
+// Yang cocok adalah "STSSALVAGE 3 atau 5, dan pekerjaannya masih berjalan", pada 145.
+//
+// Work Owner memutuskan pencacahnya mengikuti daftarnya. Uji ini menjaga keputusan itu dari
+// sisi DEFINISI; `repo/memory` menjaganya dari sisi angka.
+func TestOutstandingCounterCountsTheSamePopulationAsItsList(t *testing.T) {
 	tab, found := inboxsalvage.FindTab(inboxsalvage.TabOutstanding)
 	require.True(t, found)
-	require.True(t, tab.SalvageStatusIsNull,
-		"daftar Salvage Outstanding menyaring STSSALVAGE yang KOSONG")
+	require.True(t, tab.OutstandingSalvage,
+		"daftar Salvage Outstanding menyaring STSSALVAGE 3 atau 5")
 
 	var counter inboxsalvage.CountRow
 	for _, row := range inboxsalvage.CountRows() {
@@ -119,9 +127,10 @@ func TestOutstandingCounterDeliberatelyCountsADifferentPopulationThanItsList(t *
 			counter = row
 		}
 	}
-	require.False(t, counter.SalvageStatusIsNull,
-		"pencacahnya justru TIDAK menghitung yang kosong")
-	require.Equal(t, []string{"3", "5"}, counter.SalvageStatuses)
+	require.Equal(t, inboxsalvage.OutstandingSalvageStatuses, counter.SalvageStatuses,
+		"pencacahnya memakai penanda salvage yang sama dengan daftarnya")
+	require.True(t, counter.ExcludesClosedWork,
+		"dan ikut membuang klaim yang pekerjaannya sudah selesai, seperti daftarnya")
 }
 
 // Selisih yang direplikasi maupun yang diperbaiki WAJIB dinyatakan ke pengguna, bukan hanya

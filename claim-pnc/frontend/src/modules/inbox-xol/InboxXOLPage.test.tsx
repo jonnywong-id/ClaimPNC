@@ -183,6 +183,28 @@ function stubDefaultFetch() {
     if (url === `${PATH}/perjanjian`) return jsonResponse(200, { perjanjian: MASTERS })
     if (url === `${PATH}/sebab-kerugian`) return jsonResponse(200, { sebab_kerugian: CAUSES })
     if (url === `${PATH}/persetujuan`) return jsonResponse(200, APPROVALS)
+    if (url.startsWith(`${PATH}/klaim/daftar`)) {
+      return jsonResponse(200, {
+        baris: [
+          {
+            no_klaim: 'PNC-1865',
+            mata_uang: 'IDR',
+            sumber: 'bisnis',
+            nilai_outstanding: 106535.05,
+            nilai_akseptasi: 106535.05,
+            kurs_tidak_tersedia: false,
+          },
+          {
+            no_klaim: 'Reasuransi Contoh',
+            mata_uang: 'USD',
+            sumber: 'treaty',
+            nilai_outstanding: 0,
+            nilai_akseptasi: 0,
+            kurs_tidak_tersedia: true,
+          },
+        ],
+      })
+    }
     if (url.startsWith(`${PATH}/klaim/summary`)) {
       return jsonResponse(200, {
         baris: [
@@ -504,7 +526,7 @@ describe('wadah Generated DLA PLA XOL', () => {
     expect(within(treatyRow).queryByText('0')).not.toBeInTheDocument()
 
     expect(
-      await screen.findByText(/tidak dapat dihitung karena kurs mata uangnya/),
+      (await screen.findAllByText(/tidak dapat dihitung karena kurs mata uangnya/))[0],
     ).toBeInTheDocument()
   })
 
@@ -563,8 +585,13 @@ describe('wadah Generated DLA PLA XOL', () => {
     */
     await userEvent.click(screen.getByRole('button', { name: 'Remove All Data' }))
 
-    await waitFor(() => expect(callsTo(`${PATH}/dol-col`)).toHaveLength(1))
-    expect(callsTo(`${PATH}/dol-col`)[0]!.init?.method).toBe('POST')
+    /*
+      Jalurnya WAJIB `dol-col/hapus`, bukan `dol-col`. Sejak `dol-col` benar-benar
+      menyisipkan, mengirim penghapusan ke jalur itu berarti menekan "Remove All Data"
+      lalu memperoleh baris BARU — kegagalan yang tidak akan terlihat sebagai galat.
+    */
+    await waitFor(() => expect(callsTo(`${PATH}/dol-col/hapus`)).toHaveLength(1))
+    expect(callsTo(`${PATH}/dol-col/hapus`)[0]!.init?.method).toBe('POST')
     // Gridnya TIDAK dikosongkan sendiri oleh layar.
     expect((await screen.findAllByText('XOL-001')).length).toBeGreaterThan(0)
   })
@@ -574,8 +601,7 @@ describe('wadah Generated DLA PLA XOL', () => {
    * Date Of Loss, Cause Of Loss, grid PILIH MASTER XOL, dan Simpan.
    *
    * Menyembunyikannya — seperti versi sebelumnya, yang hanya menyisakan keterangan —
-   * membuat pengguna melaporkan fitur yang hilang. Itu pula alasan rute
-   * `POST /inbox-xol/dol-col` ada di backend meski ia selalu menolak.
+   * membuat pengguna melaporkan fitur yang hilang.
    */
   it('menggambar tombol INSERT DOL DAN COL beserta isi modalnya', async () => {
     stubDefaultFetch()
@@ -637,10 +663,13 @@ describe('wadah Generated DLA PLA XOL', () => {
   })
 
   /**
-   * Grid "No Klaim" digambar dengan kolom yang benar tetapi KOSONG: activity pengisinya
-   * (`ShowDataKlaimXOLKlaimBeforeGenerated`) tidak ada di export Pega.
+   * Grid "No Klaim" — `RDB List/BrowserT_claim_xolDesc-SQL.xml`, diisi
+   * `ShowDataKlaimXOLKlaimBeforeGenerated`.
+   *
+   * Dua sumber disatukan: klaim sendiri dari `T_CLAIM_XOL`, dan klaim treaty inward yang
+   * nomornya diisi NAMA PERUSAHAAN karena klaim inward tidak punya nomor klaim ASM.
    */
-  it('menggambar kolom grid No Klaim dan menyatakan isinya belum tersedia', async () => {
+  it('menggambar grid No Klaim beserta baris treaty inward', async () => {
     stubDefaultFetch()
     await renderWithMasters()
     await screen.findByText('12/03/2024')
@@ -650,9 +679,28 @@ describe('wadah Generated DLA PLA XOL', () => {
     expect(screen.getAllByText('Os Value').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Accept Value').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Currency').length).toBeGreaterThan(0)
-    expect(
-      screen.getByText(/ShowDataKlaimXOLKlaimBeforeGenerated/),
-    ).toBeInTheDocument()
+
+    expect((await screen.findAllByText('PNC-1865')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Reasuransi Contoh').length).toBeGreaterThan(0)
+
+    const call = callsTo(`${PATH}/klaim/daftar`)[0]!
+    expect(call.url).toContain('tanggal_kejadian=12%2F03%2F2024')
+    expect(call.url).toContain('sebab_kerugian=BANJIR')
+  })
+
+  /**
+   * Baris yang kursnya tidak ditemukan TIDAK digambar angkanya — pengganti `RETURN 1`
+   * pada `GETCURRENCYSTANDARD` (`D-48`).
+   */
+  it('menolak menggambar nilai klaim yang kursnya tidak ada', async () => {
+    stubDefaultFetch()
+    await renderWithMasters()
+    await screen.findByText('12/03/2024')
+    await bukaRincian('12/03/2024')
+
+    const row = (await screen.findAllByText('Reasuransi Contoh'))[0]!.closest('tr')!
+    expect(within(row).getByText('USD')).toBeInTheDocument()
+    expect(within(row).queryByText('0')).not.toBeInTheDocument()
   })
 })
 
@@ -743,8 +791,11 @@ describe('panel PLA/DLA', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: 'PLA' }))
     await userEvent.click(screen.getByRole('button', { name: 'Cari Data' }))
 
-    const link = await screen.findByRole('link', { name: 'Unduh perhitungan (CSV)' })
-    expect(link).toHaveAttribute('href', expect.stringContaining(`${PATH}/pla-dla/unduh`))
+    // Unduhan memakai TOMBOL, bukan tautan: sesi dikirim sebagai header Authorization,
+    // dan peramban tidak mengirim header apa pun pada navigasi biasa.
+    expect(
+      await screen.findByRole('button', { name: 'Unduh perhitungan (CSV)' }),
+    ).toBeInTheDocument()
     expect(screen.queryByText('Print Perhitungan')).not.toBeInTheDocument()
   })
 })

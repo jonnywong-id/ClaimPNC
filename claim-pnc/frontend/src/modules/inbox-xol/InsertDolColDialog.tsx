@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
+import { DateField, isoToText } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 
 import { useCauseOfLoss, useInsertDolCol, useMasters } from './api'
-import { messageOf } from './errors'
+import { isValidationError, messageOf, violationsOf } from './errors'
 import { EMPTY_INSERT_FORM, type InsertDolColForm, type MasterXOL } from './types'
 
 /**
@@ -34,12 +34,32 @@ import { EMPTY_INSERT_FORM, type InsertDolColForm, type MasterXOL } from './type
  * yang mahal: grid jadi menampilkan satu perjanjian saja — pada data nyata, perjanjian
  * yang kebetulan belum punya klaim.
  *
- * "Simpan" MENULIS ke `POOLDATA.XOL_TABLE_ALL_KLAIM`, dan tabel itu masih dimiliki Pega
- * selama masa paralel (`P-1`). Ia tetap digambar dan tetap dapat ditekan; yang menolak
- * adalah server, dengan menyebutkan sebabnya.
+ * # "Simpan" menulis SATU BARIS PER GROUP BUSINESS
+ *
+ * Bukan satu baris. Activity lama memecah daftar group business perjanjian yang dipilih,
+ * lalu mengulang sisipannya untuk setiap anggotanya. Jumlah yang benar-benar tertulis
+ * karena itu ditampilkan setelah berhasil — perjanjian berisi lima group business
+ * menghasilkan lima baris, dan pengguna berhak tahu itu.
+ *
+ * # Kenapa isian tanggalnya DateField, bukan isian teks biasa
+ *
+ * Versi sebelumnya memakai Field berplaceholder "dd/mm/yyyy": tanggalnya HARUS diketik,
+ * karena tidak ada kalender yang dapat dibuka. DateField membawa tombol kalender di sisi
+ * kanan isian, dan tetap menerima ketikan bagi yang lebih cepat mengetik.
+ *
+ * Nilainya ISO (`YYYY-MM-DD`) selama berada di layar, lalu diubah menjadi `DD/MM/YYYY`
+ * tepat saat dikirim — bentuk kolom `DOL`, dan bentuk yang sama dengan `tanggal_kejadian`
+ * di seluruh kontrak modul ini. Konversinya dilakukan DI SINI, terlihat, bukan disembunyikan
+ * di dalam hook: yang membacanya nanti perlu melihat bahwa kedua bentuk itu memang berbeda.
  */
 export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<InsertDolColForm>(EMPTY_INSERT_FORM)
+
+  // Tanggal disimpan ISO selama di layar — bentuk yang dipakai DateField. Ia TERPISAH
+  // dari form.tanggal_kejadian, yang berbentuk DD/MM/YYYY karena itulah bentuk kontrak.
+  // Menyatukan keduanya berarti mengubah bentuk di setiap ketikan, dan tanggal separuh
+  // jadi akan terbaca sebagai tanggal yang salah.
+  const [lossDateISO, setLossDateISO] = useState('')
 
   const masters = useMasters()
   const causes = useCauseOfLoss()
@@ -53,6 +73,10 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     closeRef.current?.focus()
   }, [])
+
+  // Pelanggaran per isian, supaya pesannya menempel di kolom yang salah — bukan satu
+  // kalimat di atas formulir yang memaksa pengguna menebak kolom mana yang dimaksud.
+  const violations = violationsOf(simpan.error)
 
   const causeOptions = (causes.data?.sebab_kerugian ?? []).map((cause) => ({
     // Nilainya DESKRIPSI, bukan ID: itulah yang tersimpan di kolom CAUSEOFLOSS.
@@ -100,18 +124,38 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
-            simpan.mutate(form)
+            simpan.mutate(form, {
+              /*
+                Isian DIKOSONGKAN setelah berhasil.
+
+                Sisipannya tidak memeriksa duplikat — itu perilaku sistem lama, dibawa apa
+                adanya (`P-5`). Membiarkan isian tetap terisi berarti satu klik tak sengaja
+                menulis baris yang sama untuk kedua kalinya, dan gridnya akan menjumlahkan
+                keduanya tanpa tanda apa pun bahwa itu salah.
+
+                Modalnya TIDAK ditutup: pengguna yang hendak mendaftarkan beberapa
+                kombinasi berturut-turut tidak perlu membukanya lagi, dan pesan jumlah
+                baris tetap terbaca.
+              */
+              onSuccess: () => {
+                setForm(EMPTY_INSERT_FORM)
+                setLossDateISO('')
+              },
+            })
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
+            <DateField
               id="insert-dol"
               label="Date Of Loss"
-              placeholder="dd/mm/yyyy"
-              value={form.tanggal_kejadian}
-              onChange={(event) =>
-                setForm({ ...form, tanggal_kejadian: event.target.value })
-              }
+              value={lossDateISO}
+              error={violations['tanggal_kejadian']}
+              onChange={(iso) => {
+                setLossDateISO(iso)
+                // isoToText mengembalikan '' untuk ISO yang belum lengkap, sehingga
+                // isian setengah jadi tidak pernah terkirim sebagai tanggal.
+                setForm({ ...form, tanggal_kejadian: isoToText(iso) })
+              }}
             />
 
             <SelectField
@@ -120,6 +164,7 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
               options={causeOptions}
               emptyText={causes.isPending ? '— memuat —' : 'Pilih Cause Of Loss'}
               value={form.sebab_kerugian}
+              error={violations['sebab_kerugian']}
               onChange={(event) =>
                 setForm({ ...form, sebab_kerugian: event.target.value })
               }
@@ -142,6 +187,7 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
             // Modal TIDAK ditutup di sini. Memilih perjanjian baru separuh pekerjaan —
             // Date Of Loss dan Cause Of Loss masih harus diisi sebelum Simpan.
             onPick={(masterID) => setForm({ ...form, id_master: masterID })}
+            violation={violations['id_master']}
           />
 
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
@@ -155,16 +201,36 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           {/*
-            Penolakan server digambar APA ADANYA. Pesannya sudah menyebutkan sebabnya —
-            kewenangan menulis tabel XOL masih di Pega — dan menggantinya dengan kalimat
-            layar akan membuat dua sumber kebenaran untuk satu keadaan yang sama.
+            Galat VALIDASI tidak digambar dua kali. Ia sudah menempel di isiannya
+            masing-masing lewat prop error, dan mengulanginya sebagai kotak merah di
+            bawah formulir membuat satu kesalahan terbaca seperti dua.
+
+            Galat lain — penolakan kewenangan, perjanjian hilang, basis data mati —
+            digambar APA ADANYA. Pesannya datang dari server dan sudah menyebutkan
+            sebabnya; menggantinya dengan kalimat layar akan membuat dua sumber
+            kebenaran untuk satu keadaan yang sama.
           */}
-          {simpan.isError && (
+          {simpan.isError && !isValidationError(simpan.error) && (
             <ErrorMessage
               title="Belum dapat disimpan"
               description={messageOf(simpan.error)}
               tone="gangguan"
             />
+          )}
+
+          {/*
+            Hasilnya menyebut JUMLAH BARIS, bukan sekadar "tersimpan". Satu simpan
+            menuliskan satu baris per Group Business perjanjian, dan angka itulah
+            satu-satunya cara pengguna mengetahui berapa banyak yang ditulis atas namanya.
+          */}
+          {simpan.isSuccess && (
+            <p
+              role="status"
+              className="rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+            >
+              Tersimpan — {simpan.data?.jumlah_baris ?? 0} baris ditulis, satu per Group
+              Business perjanjian. Grid di belakang sudah diperbarui.
+            </p>
           )}
         </form>
       </div>
@@ -185,12 +251,15 @@ function MasterPicker({
   error,
   selected,
   onPick,
+  violation,
 }: {
   rows: MasterXOL[]
   loading: boolean
   error: string | null
   selected: string
   onPick: (masterID: string) => void
+  /** Pesan validasi "perjanjian wajib dipilih", bila server mengirimkannya. */
+  violation?: string | undefined
 }) {
   const columns: Column<MasterXOL>[] = [
     {
@@ -234,22 +303,31 @@ function MasterPicker({
   ]
 
   return (
-    <DataTable<MasterXOL>
-      columns={columns}
-      rows={rows}
-      rowKey={(row) => row.id}
-      title="PILIH MASTER XOL"
-      isLoading={loading}
-      error={
-        error ? (
-          <ErrorMessage
-            title="Daftar perjanjian XOL tidak dapat dimuat"
-            description={error}
-            tone="gangguan"
-          />
-        ) : undefined
-      }
-      emptyMessage="Belum ada perjanjian XOL pada entitas ini."
-    />
+    <div>
+      <DataTable<MasterXOL>
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        title="PILIH MASTER XOL"
+        isLoading={loading}
+        error={
+          error ? (
+            <ErrorMessage
+              title="Daftar perjanjian XOL tidak dapat dimuat"
+              description={error}
+              tone="gangguan"
+            />
+          ) : undefined
+        }
+        emptyMessage="Belum ada perjanjian XOL pada entitas ini."
+      />
+
+      {/*
+        Pesannya di BAWAH grid, bukan di atas: yang harus diperbaiki pengguna adalah
+        menekan "Pilih" pada salah satu baris, dan pesan di atas grid panjang akan
+        tergulung keluar layar justru saat barisnya dicari.
+      */}
+      {violation && <p className="mt-1.5 text-sm text-red-700">{violation}</p>}
+    </div>
   )
 }

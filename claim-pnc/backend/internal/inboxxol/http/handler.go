@@ -3,6 +3,7 @@ package inboxxolhttp
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -357,4 +358,267 @@ func (h *Handler) SummarizeBusiness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeJSON(w, r, http.StatusOK, toSummaryBusinessResponse(rows))
+}
+
+// ListClaims menangani GET /inbox-xol/klaim/daftar.
+//
+// Ia grid "No Klaim" pada layar rincian — daftar klaim pada satu Tanggal Kejadian dan
+// Penyebab Kerugian, klaim sendiri dan treaty inward disatukan.
+func (h *Handler) ListClaims(w http.ResponseWriter, r *http.Request) {
+	alias, caller, ready := h.context(w, r)
+	if !ready {
+		return
+	}
+
+	query := r.URL.Query()
+	rows, err := h.service.ListClaims(r.Context(), alias, caller,
+		query.Get("tanggal_kejadian"), query.Get("sebab_kerugian"))
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	h.writeJSON(w, r, http.StatusOK, toClaimListResponse(rows))
+}
+
+// ExportClaimDetail menangani GET /inbox-xol/klaim/rincian/unduh.
+//
+// Ia tombol "Export to Excel" pada baris grid rincian. Keluarannya CSV, bukan XLSX —
+// sistem lama pun demikian: `GenerateDetailClaimBusinessXOL` mengakhiri dengan
+// `pxConvertResultsToCSV`, dan labelnya saja yang berbunyi "Excel".
+func (h *Handler) ExportClaimDetail(w http.ResponseWriter, r *http.Request) {
+	alias, caller, ready := h.context(w, r)
+	if !ready {
+		return
+	}
+
+	query := r.URL.Query()
+	filter := inboxxol.ExportFilter{
+		LossDate:        query.Get("tanggal_kejadian"),
+		CauseOfLoss:     query.Get("sebab_kerugian"),
+		BusinessGroupID: query.Get("kode_group_business"),
+	}
+
+	table, err := h.service.ExportClaimDetail(r.Context(), alias, caller, filter)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// Header ditulis SEBELUM baris pertama, dan tidak ada galat sesudahnya — alasannya
+	// sama dengan DownloadAdvice.
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition",
+		`attachment; filename="`+exportFileName(query.Get("nama_group_business"))+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	if err := writer.Write(table.Headers); err != nil {
+		h.logDownloadFailure(r, err)
+		return
+	}
+	for _, row := range table.Rows {
+		if err := writer.Write(row); err != nil {
+			h.logDownloadFailure(r, err)
+			return
+		}
+	}
+}
+
+// exportFileName menyusun nama berkas unduhan.
+//
+// Bentuknya mengikuti sistem lama apa adanya (`D-13`):
+// `Activity/GenerateDetailClaimBusinessXOL-Act.xml:2757` menyusunnya sebagai
+// `"Detail Claim XOL " + Param.biz`, yaitu NAMA group business baris yang diekspor —
+// satu-satunya kegunaan parameter itu di seluruh activity.
+//
+// Yang ditambahkan di sini hanya dua hal yang tidak dapat ditinggalkan: akhiran `.csv`,
+// dan pembersihan karakter yang tidak sah pada nama berkas. Nama group business berasal
+// dari basis data, sehingga ia dapat memuat garis miring maupun kutip ganda — kutip ganda
+// akan menutup nilai header lebih awal dan menyisipkan arahan tambahan ke dalamnya.
+func exportFileName(businessGroup string) string {
+	replacer := strings.NewReplacer("/", "-", "\\", "-", `"`, "", ":", "-",
+		"\r", "", "\n", "")
+	name := strings.TrimSpace(replacer.Replace(businessGroup))
+	if name == "" {
+		return "Detail Claim XOL.csv"
+	}
+	return "Detail Claim XOL " + name + ".csv"
+}
+
+// DownloadUploadTemplate menangani GET /inbox-xol/format-unggah.
+//
+// Ia kedua tautan "Format MBU Salvage" dan "Format Inward" pada layar rincian. Keduanya
+// berkas CONTOH untuk diisi pengguna — berisi baris judul saja — dan isinya sepenuhnya
+// statis, sehingga tidak menyentuh penyimpanan sama sekali.
+func (h *Handler) DownloadUploadTemplate(w http.ResponseWriter, r *http.Request) {
+	if _, _, ready := h.context(w, r); !ready {
+		return
+	}
+
+	kind := r.URL.Query().Get("jenis")
+	table, name, known := inboxxol.UploadTemplate(kind)
+	if !known {
+		h.writeError(w, r, inboxxol.NewValidationError([]inboxxol.Violation{{
+			Field:   "jenis",
+			Message: "Jenis format unggahan tidak dikenal.",
+		}}))
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`.csv"`)
+	w.Header().Set("Cache-Control", "no-store")
+
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+	if err := writer.Write(table.Headers); err != nil {
+		h.logDownloadFailure(r, err)
+	}
+}
+
+// maxUploadRequest membatasi besar seluruh permintaan unggahan, bukan hanya berkasnya.
+//
+// Ia sedikit lebih besar daripada batas berkas di domain, menyisakan ruang untuk batas
+// multipart dan nama berkas.
+const maxUploadRequest = 10 << 20
+
+// uploadFormField adalah nama bagian multipart yang memuat berkasnya.
+const uploadFormField = "berkas"
+
+// UploadSalvageMBU menangani POST /inbox-xol/unggah/mbu-salvage.
+//
+// Ia tombol "Upload MBU Salvage" pada layar rincian — satu-satunya aksi TULIS modul ini
+// yang sudah dapat dikerjakan. Pasangannya, "Upload Inward", masih dijawab penolakan:
+// activity pemetaannya, `ConvertDataCsvInwardToPage`, tidak ada di export.
+func (h *Handler) UploadSalvageMBU(w http.ResponseWriter, r *http.Request) {
+	alias, caller, ready := h.context(w, r)
+	if !ready {
+		return
+	}
+
+	// Batas besar dipasang SEBELUM badan permintaan dibaca. Tanpa itu, berkas ratusan
+	// megabyte tetap ditarik seluruhnya hanya untuk ditolak sesudahnya.
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadRequest)
+	if err := r.ParseMultipartForm(maxUploadRequest); err != nil {
+		h.writeError(w, r, inboxxol.NewValidationError([]inboxxol.Violation{{
+			Field:   uploadFormField,
+			Message: "Berkas tidak dapat dibaca. Pastikan ukurannya wajar dan formatnya CSV.",
+		}}))
+		return
+	}
+	defer func() {
+		if r.MultipartForm != nil {
+			// Berkas sementara yang ditulis ParseMultipartForm ke disk dihapus. Tanpa
+			// ini, setiap unggahan meninggalkan salinan data nasabah di direktori
+			// sementara server.
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
+
+	file, header, err := r.FormFile(uploadFormField)
+	if err != nil {
+		h.writeError(w, r, inboxxol.NewValidationError([]inboxxol.Violation{{
+			Field:   uploadFormField,
+			Message: `Berkas belum dilampirkan pada bagian "` + uploadFormField + `".`,
+		}}))
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	rows, err := inboxxol.ParseSalvageUpload(file)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	result, err := h.service.UploadSalvageMBU(r.Context(), alias, caller, rows)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// Nama berkas TIDAK dicatat ke log: ia dipilih pengguna dan dapat memuat nomor klaim
+	// atau nama tertanggung (`D-69`). Yang dicatat hanya ukuran dan hasilnya.
+	if h.logger != nil {
+		h.logger.InfoContext(r.Context(), "unggahan MBU salvage tersimpan",
+			slog.String("portal", alias),
+			slog.Int("baris", result.Rows),
+			slog.Int("tersimpan", result.Inserted),
+			slog.Int("ditolak", len(result.Rejected)),
+			slog.Int64("ukuran_berkas", header.Size),
+		)
+	}
+
+	h.writeJSON(w, r, http.StatusOK, uploadResultDTO(result))
+}
+
+// maxJSONRequest membatasi besar badan permintaan JSON.
+//
+// Badan `POST /inbox-xol/dol-col` berisi tiga teks pendek; 64 KiB sudah jauh melampaui
+// bentuk sahnya. Batasnya dipasang SEBELUM badan dibaca supaya kiriman besar ditolak
+// tanpa pernah ditarik seluruhnya ke memori.
+const maxJSONRequest = 64 << 10
+
+// InsertDolCol menangani POST /inbox-xol/dol-col.
+//
+// Ia tombol "Simpan" pada modal "INSERT DOL DAN COL" — satu simpan menuliskan satu baris
+// per group business perjanjian yang dipilih.
+//
+// # Kenapa rute ini tidak lagi menolak
+//
+// Sampai 2026-10-08 ia dijawab RejectWrite, karena `POOLDATA.XOL_TABLE_ALL_KLAIM` masih
+// dimiliki Pega selama masa paralel (`P-1`). Work Owner meminta aksinya dipindahkan, dan
+// seluruh rantai rule-nya memang ada di export sehingga tidak ada yang perlu ditebak:
+//
+//	Section/InboxClaimXOL-Section.xml:10863           tombol Simpan
+//	Activity/InsertDateAndCauseLossXOL-Act.xml        pemeriksaan dan pemetaan nilainya
+//	RDB List/DeleteDataInXOLSummarybasedondol-SQL.xml tab Save — sisipannya
+//
+// Yang DITERIMA bersamanya: tabel itu kini ditulis dua sistem. Aksi yang sama dijalankan
+// di kedua aplikasi menghasilkan dua baris, dan grid menjumlahkan keduanya.
+//
+// "Remove All Data" TIDAK ikut pindah; ia tetap dijawab penolakan di rute terpisah —
+// lihat routes.go.
+func (h *Handler) InsertDolCol(w http.ResponseWriter, r *http.Request) {
+	alias, caller, ready := h.context(w, r)
+	if !ready {
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONRequest)
+
+	var body InsertDolColRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		// 422 lewat ValidationError, bukan 400 telanjang: badan yang tidak terbaca pada
+		// modal ini hampir selalu berarti permintaan terpotong, dan pesan yang menyebut
+		// apa yang harus dilakukan lebih berguna daripada "bad request".
+		h.writeError(w, r, inboxxol.NewValidationError([]inboxxol.Violation{{
+			Field:   inboxxol.FieldMasterID,
+			Message: "Isian tidak dapat dibaca. Muat ulang halaman lalu coba lagi.",
+		}}))
+		return
+	}
+
+	request := body.toDomain()
+	written, err := h.service.InsertDolCol(r.Context(), alias, caller, request)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// Yang dicatat adalah PERJANJIAN dan penyebab kerugiannya, bukan nilai apa pun —
+	// barisnya memang disisipkan bernilai nol. Tanggal kejadian ikut karena ia yang
+	// membedakan satu simpan dari simpan berikutnya saat ditelusuri.
+	if h.logger != nil {
+		h.logger.InfoContext(r.Context(), "baris DOL dan COL tersimpan",
+			slog.String("portal", alias),
+			slog.String("id_master", request.Clean().MasterID),
+			slog.String("tanggal_kejadian", request.Clean().LossDate),
+			slog.Int("baris", written),
+		)
+	}
+
+	h.writeJSON(w, r, http.StatusCreated, InsertDolColResponse{JumlahBaris: written})
 }

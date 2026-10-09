@@ -39,6 +39,12 @@ func (f failingRepo) Create(context.Context, inboxsalvage.Form) (string, error) 
 	return "", f.err
 }
 
+func (f failingRepo) MarkSentToAuction(
+	context.Context, string, inboxsalvage.AuctionReceipt,
+) error {
+	return f.err
+}
+
 var caller = inboxsalvage.Caller{Login: memory.SampleCallerPIC}
 
 // newService membentuk layanan dengan satu portal "ASM" berisi data contoh, dan logger

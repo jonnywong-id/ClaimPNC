@@ -718,7 +718,13 @@ func TestCountsRunsOneQueryPerVisibleRowWithTheRightBinds(t *testing.T) {
 	total := func(n int) *sqlmock.Rows { return sqlmock.NewRows([]string{"TOTAL"}).AddRow(n) }
 
 	// Urutan mengikuti inboxsalvage.CountRows().
-	mock.ExpectQuery(exact("count_claim_status")).WithArgs("3", "5").WillReturnRows(total(1))
+	//
+	// Baris PERTAMA — Outstanding — memakai kueri yang BERBEDA: penanda salvage yang sama
+	// dengan daftarnya, DITAMBAH penyaring status pekerjaan. Hanya baris ini yang
+	// menyaring status pekerjaan. Lihat inboxsalvage.CountRow.ExcludesClosedWork.
+	mock.ExpectQuery(exact("count_claim_outstanding")).
+		WithArgs("3", "5", "Resolved-Completed", "Resolved-Rejected").
+		WillReturnRows(total(1))
 	mock.ExpectQuery(exact("count_claim_status")).WithArgs("3", "3").WillReturnRows(total(2))
 	mock.ExpectQuery(exact("count_salvage_status")).WithArgs("4", "4", patternAll).
 		WillReturnRows(total(3))
@@ -746,11 +752,12 @@ func TestCountsRunsOneQueryPerVisibleRowWithTheRightBinds(t *testing.T) {
 
 func TestCountsStopsAtTheFirstFailure(t *testing.T) {
 	repo, mock := newMock(t)
-	mock.ExpectQuery(exact("count_claim_status")).WillReturnError(errBoom)
+	// Baris pertama yang dijalankan adalah Outstanding, dan kuerinya tersendiri.
+	mock.ExpectQuery(exact("count_claim_outstanding")).WillReturnError(errBoom)
 
 	_, err := repo.Counts(context.Background(), inboxsalvage.Caller{Login: "SITI"})
 	require.ErrorIs(t, err, errBoom)
-	require.ErrorContains(t, err, "count_claim_status")
+	require.ErrorContains(t, err, "count_claim_outstanding")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

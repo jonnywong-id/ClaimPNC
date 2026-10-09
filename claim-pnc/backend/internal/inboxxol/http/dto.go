@@ -335,3 +335,106 @@ func toSummaryBusinessResponse(rows []inboxxol.SummaryBusiness) SummaryBusinessR
 	}
 	return SummaryBusinessResponse{Rows: result}
 }
+
+// ClaimListItemDTO adalah satu baris grid "No Klaim" pada layar rincian.
+type ClaimListItemDTO struct {
+	ClaimNo      string `json:"no_klaim"`
+	CurrencyName string `json:"mata_uang"`
+	Source       string `json:"sumber"`
+
+	OutstandingValue float64 `json:"nilai_outstanding"`
+	AcceptedValue    float64 `json:"nilai_akseptasi"`
+
+	// RateMissing menandai baris yang kursnya tidak ditemukan. Layar menolak menggambar
+	// angkanya, bukan menggambar nol (`D-48`).
+	RateMissing bool `json:"kurs_tidak_tersedia"`
+}
+
+// ClaimListResponse membungkus grid "No Klaim".
+type ClaimListResponse struct {
+	Rows []ClaimListItemDTO `json:"baris"`
+}
+
+func toClaimListResponse(rows []inboxxol.ClaimListItem) ClaimListResponse {
+	result := make([]ClaimListItemDTO, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, ClaimListItemDTO{
+			ClaimNo:          row.ClaimNo,
+			CurrencyName:     row.CurrencyName,
+			Source:           string(row.Source),
+			OutstandingValue: row.OutstandingValue,
+			AcceptedValue:    row.AcceptedValue,
+			RateMissing:      row.RateMissing,
+		})
+	}
+	return ClaimListResponse{Rows: result}
+}
+
+// UploadResultResponse adalah jawaban "Upload MBU Salvage".
+type UploadResultResponse struct {
+	JumlahBaris     int                 `json:"jumlah_baris"`
+	JumlahTersimpan int                 `json:"jumlah_tersimpan"`
+	Ditolak         []UploadRejectedDTO `json:"ditolak"`
+}
+
+// UploadRejectedDTO adalah satu baris berkas yang tidak tersimpan.
+//
+// Nomor barisnya ikut karena yang diperbaiki pengguna adalah BERKASNYA. Pada berkas
+// ratusan baris, "ada yang gagal" saja tidak dapat ditindaklanjuti.
+type UploadRejectedDTO struct {
+	Baris   int    `json:"baris"`
+	NoKlaim string `json:"no_klaim"`
+	Alasan  string `json:"alasan"`
+}
+
+// uploadResultDTO mengubah hasil domain menjadi bentuk kontrak.
+func uploadResultDTO(result inboxxol.SalvageUploadResult) UploadResultResponse {
+	rejected := make([]UploadRejectedDTO, 0, len(result.Rejected))
+	for _, row := range result.Rejected {
+		rejected = append(rejected, UploadRejectedDTO{
+			Baris:   row.LineNumber,
+			NoKlaim: row.ClaimNo,
+			Alasan:  row.Message,
+		})
+	}
+	return UploadResultResponse{
+		JumlahBaris:     result.Rows,
+		JumlahTersimpan: result.Inserted,
+		Ditolak:         rejected,
+	}
+}
+
+// InsertDolColRequest adalah badan permintaan `POST /inbox-xol/dol-col`.
+//
+// Nama fieldnya SAMA dengan nama field yang sudah dipakai modul ini di tempat lain —
+// `id_master`, `tanggal_kejadian`, `sebab_kerugian` — dan itu bukan kebetulan: nilainya
+// pun berarti hal yang sama, termasuk bentuk tanggalnya (`DD/MM/YYYY`, bentuk kolom
+// `DOL`). Satu nama yang berarti dua hal berbeda di satu modul adalah persis cacat yang
+// `D-19` perintahkan tidak dibawa.
+//
+// Nilainya WAJIB cocok dengan konstanta Field* di `internal/inboxxol/errors.go`; bila
+// tidak, pesan validasinya tetap sampai ke layar tetapi tidak menempel pada isian mana
+// pun.
+type InsertDolColRequest struct {
+	MasterID    string `json:"id_master"`
+	LossDate    string `json:"tanggal_kejadian"`
+	CauseOfLoss string `json:"sebab_kerugian"`
+}
+
+// toDomain mengubah badan permintaan menjadi bentuk domain.
+func (r InsertDolColRequest) toDomain() inboxxol.DolColRequest {
+	return inboxxol.DolColRequest{
+		MasterID:    r.MasterID,
+		LossDate:    r.LossDate,
+		CauseOfLoss: r.CauseOfLoss,
+	}
+}
+
+// InsertDolColResponse adalah jawaban simpan yang berhasil.
+//
+// Ia membawa JUMLAH BARIS, bukan sekadar status: satu simpan menghasilkan satu baris per
+// group business perjanjian, dan angka itulah satu-satunya cara pengguna mengetahui
+// berapa banyak yang benar-benar ditulis atas namanya.
+type InsertDolColResponse struct {
+	JumlahBaris int `json:"jumlah_baris"`
+}

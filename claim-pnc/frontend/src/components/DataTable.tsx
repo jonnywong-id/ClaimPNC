@@ -98,6 +98,31 @@ type Props<T> = {
   emptyMessage?: string
 
   /**
+   * Kalimat kekosongan saat PENCARIAN sedang terisi.
+   *
+   * # Kenapa ia isian tersendiri, bukan `emptyMessage` saja
+   *
+   * Karena tabel ini menangani dua kekosongan yang berbeda: "daftarnya memang belum ada
+   * isinya" dan "ada isinya, tetapi tidak ada yang cocok dengan yang diketik". Keduanya
+   * menuntut kalimat yang berbeda, dan sampai 2026-10-08 yang kedua SELALU memakai
+   * kalimat bawaan — `emptyMessage` yang dikirim pemanggil diabaikan diam-diam begitu
+   * kotak pencarian terisi.
+   *
+   * Itu menjadikan penjelasan yang disusun pemanggil untuk keadaan "tidak ada yang cocok"
+   * menjadi kode mati, justru pada satu-satunya keadaan yang menjadi alasan ia ditulis.
+   * Ketahuan di Inbox Salvage, yang menjelaskan mengapa pencarian COCOK PERSIS tidak
+   * menerima separuh nomor klaim — dan penjelasan itu tidak pernah sampai ke layar.
+   *
+   * # Kosong berarti perilaku LAMA, bagi keempat belas layar yang sudah ada
+   *
+   * Yang tidak mengisinya tetap menerima kalimat bawaan apa adanya. Hanya layar yang
+   * benar-benar punya penjelasan sendiri yang menyalakannya.
+   *
+   * Saran "coba kata kunci yang lebih pendek" IKUT PADAM saat isian ini diisi: pada
+   * daftar yang mencocokkan persis, kata kunci yang lebih pendek justru yang salah.
+   */
+  searchEmptyMessage?: string
+  /**
    * Kotak pencarian ditampilkan.
    *
    * Bawaannya `true` supaya layar yang sudah ada tidak berubah. Dimatikan oleh layar
@@ -311,6 +336,7 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  searchEmptyMessage,
   searchable = true,
   serverSearch,
   hideSearch = false,
@@ -374,6 +400,24 @@ export function DataTable<T>({
   }
 
   const hasSearch = query.trim() !== ''
+
+  /*
+    Kalimat kekosongan, dan saran yang menyertainya.
+
+    Keduanya dihitung SEKALI di sini, bukan dirangkai ulang di dua tempat penggambaran di
+    bawah. Sebelumnya memang dirangkai dua kali, dan keduanya wajib tetap sama — bentuk
+    yang selalu berakhir berbeda begitu salah satunya disunting.
+  */
+  const emptyText = hasSearch
+    ? (searchEmptyMessage ?? `Tidak ada baris yang cocok dengan “${query.trim()}”.`)
+    : emptyMessage
+
+  // Saran bawaan padam begitu pemanggil memberi kalimatnya sendiri — lihat
+  // searchEmptyMessage.
+  const emptyHint =
+    hasSearch && searchEmptyMessage === undefined
+      ? 'Coba kata kunci yang lebih pendek.'
+      : undefined
 
   /*
     Paginasi dikerjakan SESUDAH pencarian dan pengurutan, bukan sebelumnya.
@@ -457,10 +501,7 @@ export function DataTable<T>({
       ) : isLoading ? (
         <LoadingState />
       ) : visible.length === 0 && !showHeaderWhenEmpty ? (
-        <EmptyState
-          pesan={hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage}
-          saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-        />
+        <EmptyState pesan={emptyText} saran={emptyHint} />
       ) : (
         <div className="md:overflow-x-auto">
           <table aria-label={label} className="block w-full border-collapse text-sm md:table">
@@ -527,14 +568,7 @@ export function DataTable<T>({
               {visible.length === 0 ? (
                 <tr className="block md:table-row">
                   <td className="block md:table-cell" colSpan={columns.length}>
-                    <EmptyState
-                      pesan={
-                        hasSearch
-                          ? `Tidak ada baris yang cocok dengan “${query.trim()}”.`
-                          : emptyMessage
-                      }
-                      saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-                    />
+                    <EmptyState pesan={emptyText} saran={emptyHint} />
                   </td>
                 </tr>
               ) : null}

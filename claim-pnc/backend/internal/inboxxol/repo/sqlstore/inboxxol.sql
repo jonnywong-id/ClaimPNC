@@ -534,3 +534,515 @@ SELECT b.BUSINESS_GROUP_ID, b.BUSINESS_GROUP_NAME
            AND a.CAUSEOFLOSS = :2
          GROUP BY a.BUSINESSID) b
  ORDER BY b.BUSINESS_GROUP_NAME, b.BUSINESS_GROUP_ID
+
+
+-- name: claim_list
+-- Grid "No Klaim · Os Value · Accept Value · Currency" pada layar rincian.
+--
+-- Sumber: `RDB List/BrowserT_claim_xolDesc-SQL.xml`, dipanggil
+-- `Activity/ShowDataKlaimXOLKlaimBeforeGenerated-Act.xml` — activity di balik tombol
+-- "Pilih" DAN "Show All Data" — untuk mengisi page `TempAllData`.
+--
+-- # Empat kolom dibawa, enam ditinggalkan
+--
+-- Kueri lama mengembalikan sepuluh kolom; grid menampilkan empat. Yang ditinggalkan dan
+-- alasannya:
+--
+--	rownum "City"		nomor baris; digambar layar, bukan dibaca dari basis data
+--	salvage_value		tidak ada kolomnya di grid, dan ia menyeret T_SALVAGE_MBU
+--	LBU_ID			tidak ada kolomnya, dan ia menyeret DB LINK `@asmd`
+--				(`D-25`, `R-03`) — satu-satunya DB Link di seluruh modul ini
+--	BusinessID/Name		tidak ada kolomnya di grid
+--	IDCURRENCY		kode mata uang; yang ditampilkan NAMANYA
+--
+-- Membawanya hanya untuk dibuang berarti modul ini bergantung pada DB Link yang sudah
+-- diputuskan diganti API, demi kolom yang tidak pernah dilihat siapa pun.
+--
+-- # Dua sumber, dua perlakuan nilai
+--
+-- Klaim sendiri (`T_CLAIM_XOL`) sudah bernilai rupiah dan tinggal dikalikan share.
+-- Treaty inward (`T_CLAIM_INWARD_XOL`) menyimpan nilainya sebagai TEKS bergaya Indonesia
+-- dan bermata uang sendiri, sehingga dikonversi lewat `M_CURRENCYSTANDARD` — pola yang
+-- sama persis dengan `breakdown_treaty_inward`, termasuk alasannya: `GETCURRENCYSTANDARD`
+-- mengembalikan `1` saat kurs tidak ditemukan (`D-48`), dan nilai yang salah tetapi tampak
+-- benar lebih berbahaya daripada nilai yang hilang.
+--
+-- Baris treaty inward memakai COMPANYNAME sebagai "No Klaim" — begitulah kueri lama
+-- (`A.COMPANYNAME as CLAIMNO`), karena klaim inward tidak punya nomor klaim ASM.
+--
+-- :1 tanggal kejadian `dd/mm/yyyy`   :2 penyebab kerugian   :3 kode mata uang dasar
+SELECT x.CLAIM_NO, x.CURRENCY_NAME, x.SOURCE,
+       x.OUTSTANDING_VALUE, x.ACCEPTED_VALUE, x.RATE_MISSING
+  FROM (SELECT k.CLAIMNO AS CLAIM_NO,
+               (SELECT c.CURRENCY
+                  FROM POOLDATA.CURRENCY c
+                 WHERE c.ID = k.CURRENCY
+                 FETCH NEXT 1 ROW ONLY) AS CURRENCY_NAME,
+               'bisnis' AS SOURCE,
+               SUM(k.OS_VALUE    * k.CLAIM_OR * k.CLAIM_SHARE_ASM) AS OUTSTANDING_VALUE,
+               SUM(k.AKSEP_VALUE * k.CLAIM_OR * k.CLAIM_SHARE_ASM) AS ACCEPTED_VALUE,
+               0 AS RATE_MISSING
+          FROM POOLDATA.T_CLAIM_XOL k
+         WHERE TO_CHAR(k.DATEOFLOSS, 'dd/mm/yyyy') = :1
+           AND k.COL_DESC = :2
+         GROUP BY k.CLAIMNO, k.CURRENCY
+        UNION ALL
+        SELECT t.COMPANY_NAME AS CLAIM_NO,
+               t.CURRENCY_NAME,
+               'treaty' AS SOURCE,
+               SUM(t.CLAIM_AMOUNT * t.CLAIM_RATE / t.BASE_RATE) AS OUTSTANDING_VALUE,
+               SUM(t.PAID_SHARE   * t.CLAIM_RATE / t.BASE_RATE) AS ACCEPTED_VALUE,
+               MAX(CASE WHEN t.CLAIM_RATE IS NULL
+                          OR t.BASE_RATE IS NULL
+                          OR t.BASE_RATE = 0
+                        THEN 1 ELSE 0 END) AS RATE_MISSING
+          FROM (SELECT i.COMPANYNAME AS COMPANY_NAME,
+                       (SELECT c.CURRENCY
+                          FROM POOLDATA.CURRENCY c
+                         WHERE c.ID = i.CURRENCYID
+                         FETCH NEXT 1 ROW ONLY) AS CURRENCY_NAME,
+                       CAST(REPLACE(REPLACE(i.CLAIMAMOUNT, '.', ''), ',', '.') AS NUMERIC)
+                           AS CLAIM_AMOUNT,
+                       CAST(REPLACE(REPLACE(i.PAIDCLAIMAMOUNTSHARE, '.', ''), ',', '.') AS NUMERIC)
+                           AS PAID_SHARE,
+                       (SELECT CAST(REPLACE(r.CURRENCYVALUE, ',', '.') AS NUMERIC)
+                          FROM POOLDATA.M_CURRENCYSTANDARD r
+                         WHERE r.ID = i.CURRENCYID
+                           AND CAST(r.CURRENCYDATE AS DATE)
+                               <= CAST(TO_DATE(i.DATEOFLOSS, 'dd/mm/yyyy') AS DATE)
+                         ORDER BY r.CURRENCYDATE DESC
+                         FETCH NEXT 1 ROW ONLY) AS CLAIM_RATE,
+                       (SELECT CAST(REPLACE(r.CURRENCYVALUE, ',', '.') AS NUMERIC)
+                          FROM POOLDATA.M_CURRENCYSTANDARD r
+                         WHERE r.ID = :3
+                           AND CAST(r.CURRENCYDATE AS DATE)
+                               <= CAST(TO_DATE(i.DATEOFLOSS, 'dd/mm/yyyy') AS DATE)
+                         ORDER BY r.CURRENCYDATE DESC
+                         FETCH NEXT 1 ROW ONLY) AS BASE_RATE
+                  FROM POOLDATA.T_CLAIM_INWARD_XOL i
+                 WHERE TO_CHAR(TO_DATE(i.DATEOFLOSS, 'dd/mm/yyyy'), 'dd/mm/yyyy') = :1
+                   AND i.CAUSEOFLOSS = :2) t
+         GROUP BY t.COMPANY_NAME, t.CURRENCY_NAME) x
+ ORDER BY x.SOURCE, x.CLAIM_NO
+
+
+-- name: export_per_business
+-- Isi "Export to Excel" untuk satu group business biasa — bukan MBU, bukan treaty inward.
+--
+-- Sumber: `RDB List/ExportDetailXOLPerBiz-SQL.xml`, dipanggil
+-- `Activity/GenerateDetailClaimBusinessXOL-Act.xml` lalu diubah menjadi berkas oleh
+-- `pxConvertResultsToCSV`. Jadi "Excel" pada label tombolnya sebenarnya CSV — sejalan
+-- dengan `D-11`, dan dengan pola unduhan yang sudah dipakai panel PLA/DLA.
+--
+-- # Alias Pega DIPERTAHANKAN
+--
+-- Nama kolomnya tetap `"AlasanKlaim"`, `"Keyword"`, `"District"` dan seterusnya — nama
+-- properti Pega yang sebagian tidak ada hubungannya dengan isinya. Itu disengaja: urutan
+-- dan judul kolom CSV ditentukan parameter `CSVProperties` dan `CSVPropHeaders` pada
+-- activity, dan keduanya menyebut properti dengan nama itu. Menamai ulang di sini berarti
+-- memutus satu-satunya rujukan yang membuat pemetaan 42 kolom dapat diperiksa.
+--
+-- Nama yang dibaca PENGGUNA tetap benar: ia datang dari `CSVPropHeaders` (INSURED,
+-- RISK LOCATION, ASM POLICY, …), bukan dari alias ini.
+--
+-- # Dua penyesuaian portabilitas
+--
+--	ROWNUM = 1	→ FETCH NEXT 1 ROW ONLY	(`DB-3`)
+--	{TempExport.*}	→ :1 :2 :3		parameter binding, bukan perangkaian teks
+--
+-- `TO_CHAR(dateofloss,'dd/mm/yyyy')` DIBIARKAN: ia sah di Oracle maupun PostgreSQL, dan
+-- format tanggalnya adalah bagian dari bentuk berkas yang diterima pengguna.
+--
+-- :1 tanggal kejadian `dd/mm/yyyy`   :2 penyebab kerugian   :3 kode group business
+SELECT a.picteknik AS "UserTeknis",
+       a.claimno AS "ClaimNo",
+       qqname AS "AlasanKlaim",
+       b.risk_loc_klaim AS "Location",
+       a.nopolis AS "PolicyNo",
+       TO_CHAR (a.dateofloss, 'dd/mm/yyyy') AS "AnalystDoctorRemaks",
+       a.coinsname AS "AllBusinessFlag",
+       (SELECT currency
+          FROM pooldata.currency
+         WHERE id = z.currency)
+          AS "Currency",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.ACCEPTED ELSE z.RESERVE END
+          AS "Keyword",
+       z.ACCEPTED AS "CauseOfLossID",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN z.ASM_SHARE
+          ELSE z.ASM_SHARE_OS
+       END
+          AS "ClaimAmount",
+       z.ASM_SHARE_PRSN_OS AS "ASMShare",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.OR_AKSEP ELSE z.OR_OS END
+          AS "BranchID",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.BPPDAN ELSE z.BPPDAN_OS END
+          AS "BranchName",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.FACOUT ELSE z.FACOUT_OS END
+          AS "BusinessID",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.FSPL ELSE z.FSPL_OS END
+          AS "BusinessName",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.PSPL ELSE z.PSPL_OS END
+          AS "CASEDB",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.AKSEP_QS ELSE z.OS_QS END
+          AS "CaseID",
+       z.ASM_SHARE AS "SIM",
+       z.OR_AKSEP AS "City",
+       z.BPPDAN AS "CityID",
+       z.FACOUT AS "ClaimEstimate",
+       z.FSPL AS "ClaimID",
+       z.PSPL AS "ClaimNoSRB",
+       z.AKSEP_QS AS "ClientID",
+       z.SALVAGE AS "District",
+       a.LEADER_MEMBER AS "EmailTertanggung",
+       a.SOBNAME AS "FlagASO",
+       b.OCCUPATION AS "IsPLA",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE z.RESERVE - z.ACCEPTED
+       END
+          AS "ClientName",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.CLAIM_OR
+       END
+          AS "CloseClaimNote",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.BPPDAN_PRSN
+       END
+          AS "ConsultantID",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.FACOUT_PRSN
+       END
+          AS "ConsultantName",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.FSPL_PRSN
+       END
+          AS "Conveyance",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.PSPL_PRSN
+       END
+          AS "ContractNo",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.QSRI_PRSN
+       END
+          AS "Country",
+       z.ADJUSTER AS "Email",
+       (SELECT SURVEYOR_NAME
+          FROM pooldata.t_surveyorlist
+         WHERE pnccaseid = a.claimid
+         FETCH NEXT 1 ROW ONLY)
+          AS "IDMaster",
+       CASE
+          when (select ISPENDINGCLOSE from DATAPEGA.PC_ASM_FW_GCNMFW_WORK where pyid=A.CLAIMNO)='true' then
+          (REPLACE (
+                (SELECT G.KETERANGAN
+                   FROM POOLDATA.GCNM_PROGRESS_CLAIM G
+                  WHERE     G.PNCCASEID = a.claimno
+                        AND ID_UPDATE = (SELECT MAX (ID_UPDATE)
+                                           FROM POOLDATA.GCNM_PROGRESS_CLAIM
+                                          WHERE PNCCASEID = a.claimno)),
+                '\\n',
+                ''))
+          WHEN A.STATUSCLAIM = '1143'
+          THEN
+             'Closed'
+          ELSE
+             REPLACE (
+                (SELECT G.KETERANGAN
+                   FROM POOLDATA.GCNM_PROGRESS_CLAIM G
+                  WHERE     G.PNCCASEID = a.claimno
+                        AND ID_UPDATE = (SELECT MAX (ID_UPDATE)
+                                           FROM POOLDATA.GCNM_PROGRESS_CLAIM
+                                          WHERE PNCCASEID = a.claimno)
+                        AND STATUS_PROGRESS2 NOT IN ('2', '24', '60', '59')),
+                '\\n',
+                '')
+       END
+          AS "Remark",
+       CASE
+        when (select X.PYSTATUSWORK from DATAPEGA.PC_ASM_FW_GCNMFW_WORK x where pyid=A.CLAIMNO) in ('New','Open') then
+          'Outstanding'
+          WHEN A.STATUSCLAIM = '1143'
+          THEN
+             'Closed'
+          ELSE
+             (SELECT I.STS_PROGRESS1
+                FROM POOLDATA.GCNM_PROGRESS_CLAIM G,
+                     POOLDATA.GCNM_MST_PROGRESS_KLAIM I
+               WHERE     G.STATUS_PROGRESS1 = I.ID_PROGRESS
+                     AND G.PNCCASEID = a.claimno
+                     AND ID_UPDATE =
+                            (SELECT MAX (ID_UPDATE)
+                               FROM POOLDATA.GCNM_PROGRESS_CLAIM
+                              WHERE     PNCCASEID = a.claimno
+                                    AND STATUS_PROGRESS2 NOT IN
+                                           ('2', '24', '60', '59')))
+       END
+          AS "ReporterName"
+  FROM pooldata.t_claim_pnc a,
+       pooldata.pega_dashboardpnc b,
+       (  SELECT claimno,
+                 currency,
+                 MAX (claim_or) AS CLAIM_OR,
+                 MAX (bppdan) AS BPPDAN_PRSN,
+                 MAX (facout) AS FACOUT_PRSN,
+                 MAX (fspl) AS FSPL_PRSN,
+                 MAX (pspl) AS PSPL_PRSN,
+                 MAX (qsri) AS QSRI_PRSN,
+                 MAX (claim_share_asm) * 100 AS ASM_SHARE_PRSN_OS,
+                 SUM (
+                    CASE
+                       WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                       ELSE os_value
+                    END)
+                    AS RESERVE,
+                 SUM (
+                    CASE
+                       WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                       ELSE aksep_value
+                    END)
+                    AS ACCEPTED,
+                   MAX (claim_share_asm)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS ASM_SHARE_OS,
+                   MAX (claim_share_asm)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS ASM_SHARE,
+                   MAX (claim_or)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype != '3' AND paymenttype != '4' THEN os_value
+                         ELSE 0
+                      END)
+                    AS OR_OS,
+                   MAX (bppdan)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS BPPDAN_OS,
+                   MAX (facout)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS FACOUT_OS,
+                   MAX (fspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS FSPL_OS,
+                   MAX (pspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS PSPL_OS,
+                   MAX (qsri)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS OS_QS,
+                   MAX (claim_or)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS OR_AKSEP,
+                   MAX (bppdan)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS BPPDAN,
+                   MAX (facout)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS FACOUT,
+                   MAX (fspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS FSPL,
+                   MAX (pspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS PSPL,
+                   MAX (qsri)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS AKSEP_QS,
+                   MAX (claim_or)/100
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' THEN aksep_value * -1
+                         ELSE 0
+                      END)
+                    AS SALVAGE,
+                   MAX (claim_or)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE WHEN paymenttype = '4' THEN aksep_value ELSE 0 END)
+                    AS ADJUSTER
+            FROM pooldata.t_claim_xol
+        GROUP BY claimno, currency) z
+ WHERE     a.claimno = b.noklaim
+       AND a.claimno = z.claimno
+       AND EXISTS (select 1 from pooldata.t_claim_xol where claimno=a.claimno and businessgroupid=:3 and to_char(dateofloss,'dd/mm/yyyy')=:1 and col_desc=:2)
+
+
+-- name: export_mbu
+-- Isi "Export to Excel" untuk group business MBU.
+--
+-- Sumber: `RDB List/ExportDetailXOLMBU-SQL.xml`. Dipilih saat `Param.grpbzid == '10004'`
+-- pada `GenerateDetailClaimBusinessXOL` — dan kodenya memang dipatok di dalam kueri
+-- (`BUSINESSGROUPID='10004'`), sehingga group business TIDAK menjadi parameter di sini.
+--
+-- Alias Pega dipertahankan; alasannya sama dengan export_per_business.
+--
+-- :1 tanggal kejadian `dd/mm/yyyy`   :2 penyebab kerugian
+select claimno as "ClaimNo", 
+    no_polis as "PolicyNo",
+    (select currency from pooldata.currency where id=a.currency) as "Currency",
+    TO_CHAR(DATEOFLOSS,'dd/mm/yyyy') as "BranchID",
+    case when max(sts_aksep)='1' THEN 'CLOSE'
+    ELSE 'OS'END AS "StatusClaim",
+    max(claim_share_asm)*sum (os_value) as "ClaimEstimate",
+    sum (os_value) as "ClaimAmount",
+    max(claim_share_asm)*sum (aksep_value) as "BusinessID",
+    sum (aksep_value) as "ASMShare",
+    max(qq) as "AlasanKlaim",
+    max(coverage) as "CoverageNote",
+    max(detail_object_desc) as "Message",
+    (select sum(salvageos) from pooldata.t_salvage_mbu b where b.claimno=a.claimno and b.currency=a.currency group by currency) as "District",
+    (select sum(salvageaksep) from pooldata.t_salvage_mbu b where b.claimno=a.claimno and b.currency=a.currency group by currency) as "DistrictID"
+from pooldata.t_claim_xol a where 
+BUSINESSGROUPID='10004' and col_desc=:2 and to_char(dateofloss,'dd/mm/yyyy')=:1
+group by claimno,no_polis,currency,TO_CHAR(DATEOFLOSS,'dd/mm/yyyy')
+
+
+-- name: export_treaty_inward
+-- Isi "Export to Excel" untuk baris treaty inward.
+--
+-- Sumber: `RDB List/ExportDetailTreatyInward-SQL.xml`. Dipilih saat
+-- `Param.grpbzid == 'treaty'` — nilai khusus, bukan kode group business.
+--
+-- Nilainya dibawa APA ADANYA, tanpa konversi kurs: kolom `CURRENCY` ikut diekspor,
+-- sehingga pembaca berkas dapat melihat satuan tiap barisnya sendiri. Ini berbeda dari
+-- grid di layar, yang menyatukan seluruh baris ke satu mata uang dan karena itu harus
+-- mengonversi.
+--
+-- :1 tanggal kejadian `dd/mm/yyyy`   :2 penyebab kerugian
+select A.COMPANYNAME as "pyCompany",A.RESERVEDCLAIM as "IsReservedClaim",A.OWNRISKVALUE as "OwnRiskValue", A.QRTREATY as "QsTreaty",
+A.DEDUCTIBLEVALUE as "DeductibleValue", A.CLAIMAMOUNT as "ClaimAmount",A.SHAREASM as "ASMShare",A.CLAIMAMOUNTSHARE as "ClaimAmountShareASM",
+A.PAIDCLAIMAMOUNTSHARE as "PaidClaimAmountShare",A.BALANCECLAIMASMSHARE as "BalanceClaimASMShare",A.CURRENCY as "Currency",A.CAUSEOFLOSS as "CauseOfLoss",A.DATEOFLOSS as "DateOfLoss" from POOLDATA.T_CLAIM_INWARD_XOL a where A.DATEOFLOSS=:1 and A.CAUSEOFLOSS=:2
+
+
+-- name: currency_id_by_name
+-- Mencari ID mata uang dari namanya, untuk unggahan MBU Salvage.
+--
+-- Sumber: `RDB List/BrowseCurrency-SQL.xml` —
+--   select ID from Currency where currency = {TempDefaultCurrency.Currency}
+--
+-- Nama tabelnya di rule lama ditulis tanpa skema, sehingga ia mengikuti skema milik
+-- pengguna koneksi. Di sini skemanya disebut tegas, sama seperti kueri lain modul ini.
+--
+-- Perbandingannya DINAIKKAN menjadi tanpa membedakan huruf besar-kecil. Nilainya datang
+-- dari berkas yang diketik pengguna, dan "usd" yang ditolak sementara "USD" diterima
+-- adalah kegagalan yang tidak dapat dijelaskan kepada siapa pun.
+SELECT ID AS CURRENCY_ID
+  FROM POOLDATA.CURRENCY
+ WHERE UPPER(TRIM(CURRENCY)) = UPPER(TRIM(:1))
+ FETCH NEXT 1 ROW ONLY
+
+
+-- name: insert_salvage_mbu
+-- Menyisipkan satu baris hasil unggahan "Upload MBU Salvage".
+--
+-- Sumber: `RDB List/InsertDataSalvageMBU-SQL.xml`, disalin apa adanya kecuali dua hal.
+--
+-- Pertama, nilainya diikat sebagai parameter, bukan dirangkai ke dalam teks SQL seperti
+-- pola `{TempInsertSalvage.ClaimNo}` warisan — isi berkas berasal dari pengguna, dan
+-- merangkainya adalah celah injeksi (§4.5 utang teknis).
+--
+-- Kedua, `SYSDATE` menjadi `CURRENT_TIMESTAMP` demi portabilitas (`DB-3`).
+INSERT INTO POOLDATA.T_SALVAGE_MBU
+       (CLAIMNO, DATEOFLOSS, CURRENCY, SALVAGEAKSEP, SALVAGEOS,
+        CAUSEOFLOSS, BUSINESSID, INSERTDATE)
+VALUES (:1, :2, :3, :4, :5, :6, :7, CURRENT_TIMESTAMP)
+
+
+-- name: insert_dol_col
+-- Menyisipkan satu baris hasil modal "INSERT DOL DAN COL".
+--
+-- Sumber: `RDB List/DeleteDataInXOLSummarybasedondol-SQL.xml`, tab Save —
+--   Insert into POOLDATA.XOL_TABLE_ALL_KLAIM
+--          (GROUPBUSINESS,DOL,CURRENCY,LBU_ID,OSVALUE,AKSEPVALUE,CAUSEOFLOSS,SALVAGEVALUE)
+--   values ({TempGetDOLCOL.District},{TempGetDOLCOL.NoKTP},…)
+--
+-- Nama rule-nya menyebut "Delete" karena tab Browse rule yang sama memuat sebuah DELETE.
+-- Tab itu TIDAK dijalankan di jalur ini: `Activity/InsertDateAndCauseLossXOL-Act.xml`
+-- hanya memanggil RDB-Save, yang menjalankan tab Save. Yang disalin ke sini karena itu
+-- hanya sisipannya.
+--
+-- # Akibat yang harus disadari
+--
+-- Karena hanya menyisipkan, menyimpan kombinasi Tanggal Kejadian × Penyebab Kerugian yang
+-- SAMA dua kali menghasilkan dua baris, dan grid menjumlahkan keduanya. Itu perilaku
+-- sistem lama, dibawa apa adanya (`P-5`). Mengubahnya menjadi hapus-lalu-sisip adalah
+-- keputusan Work Owner, bukan keputusan teknis — ia mengubah data yang sudah ada.
+--
+-- Dua hal yang BERUBAH dari rule lama, keduanya wajib:
+--
+--   * Nilainya diikat sebagai parameter, bukan dirangkai ke dalam teks SQL seperti pola
+--     `{TempGetDOLCOL.District}` warisan. Penyebab Kerugian datang dari isian pengguna,
+--     dan merangkainya adalah celah injeksi (§4.5 utang teknis).
+--   * Nama kolomnya ditulis tegas pada daftar INSERT, sehingga kolom baru di tabel tidak
+--     diam-diam mengubah arti posisi nilai.
+INSERT INTO POOLDATA.XOL_TABLE_ALL_KLAIM
+       (GROUPBUSINESS, DOL, CURRENCY, LBU_ID,
+        OSVALUE, AKSEPVALUE, CAUSEOFLOSS, SALVAGEVALUE)
+VALUES (:1, :2, :3, :4, :5, :6, :7, :8)

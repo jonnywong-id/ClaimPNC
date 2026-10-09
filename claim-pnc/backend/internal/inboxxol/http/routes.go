@@ -56,21 +56,56 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox-xol/klaim", h.SummarizeClaims)
 		perPortal.Get("/inbox-xol/klaim/rincian", h.Breakdown)
 		perPortal.Get("/inbox-xol/klaim/summary", h.SummarizeBusiness)
+		perPortal.Get("/inbox-xol/klaim/daftar", h.ListClaims)
+		perPortal.Get("/inbox-xol/klaim/rincian/unduh", h.ExportClaimDetail)
 		perPortal.Get("/inbox-xol/pla-dla", h.SearchAdvice)
 		perPortal.Get("/inbox-xol/pla-dla/unduh", h.DownloadAdvice)
 		perPortal.Get("/inbox-xol/persetujuan", h.ListApprovals)
 		perPortal.Get("/inbox-xol/sebab-kerugian", h.ListCauseOfLoss)
+		perPortal.Get("/inbox-xol/format-unggah", h.DownloadUploadTemplate)
 
-		// Ketiga aksi tulis sistem lama. Rutenya ADA supaya tombolnya menjawab dengan
-		// alasan, bukan dengan "halaman tidak ditemukan" — lihat Handler.RejectWrite.
+		// Aksi tulis sistem lama, dan baru DUA yang dapat dikerjakan.
 		//
-		// Ketiganya menulis tabel yang selama masa paralel masih dimiliki Pega (`P-1`):
+		//	unggah/mbu-salvage → POOLDATA.T_SALVAGE_MBU       ✓ berjalan
+		//	dol-col            → POOLDATA.XOL_TABLE_ALL_KLAIM  ✓ berjalan
+		//	dol-col/hapus      → POOLDATA.XOL_TABLE_ALL_KLAIM (DELETE)
+		//	persetujuan        → POOLDATA.T_PLA_XOL, POOLDATA.T_DLA_XOL
+		//	pengajuan          → POOLDATA.MST_XOL_PNC
+		//	unggah/inward      → POOLDATA.T_CLAIM_INWARD_XOL
+		//	generate/pla       → penerbitan PLA XOL
+		//	generate/dla       → penerbitan DLA XOL
 		//
-		//	dol-col     → POOLDATA.XOL_TABLE_ALL_KLAIM
-		//	persetujuan → POOLDATA.T_PLA_XOL, POOLDATA.T_DLA_XOL
-		//	pengajuan   → POOLDATA.MST_XOL_PNC
-		perPortal.Post("/inbox-xol/dol-col", h.RejectWrite)
+		// Sisanya dijawab penolakan beserta sebabnya, bukan "halaman tidak ditemukan" —
+		// lihat Handler.RejectWrite. Sebabnya berbeda-beda:
+		//
+		//	dol-col/hapus  ia MENGHAPUS baris yang sudah ada, dan jalur Pega yang
+		//	               menjalankan DELETE itu belum tertelusuri: tombol "Remove All
+		//	               Data" di section memanggil ToFlaggingDataXOLByRequest, yang
+		//	               hanya Property-Set dan Page-New — tidak menghapus apa pun.
+		//	               Memindahkan penghapusan atas dasar tebakan berarti membuang
+		//	               baris produksi tanpa tahu aturan aslinya.
+		//
+		//	unggah/inward  satu activity TIDAK ada di export —
+		//	               `ConvertDataCsvInwardToPage`, yang hanya dirujuk flow
+		//	               action-nya sendiri. Pemetaan kolom berkasnya karena itu
+		//	               belum pernah dibaca siapa pun, dan menebaknya berarti
+		//	               menulis tabel dengan isi yang dikarang.
+		//
+		//	generate/*     rule-nya LENGKAP di export, tetapi belum dianalisis:
+		//	               `GenerateXOLByType` (257 KB) memanggil `GenerateDLAXOL_`
+		//	               (543 KB) dan `PerhitunganxolUntukWillisDanSimasre` (524 KB),
+		//	               ditambah delapan rule SQL. Tombolnya digambar lebih dulu
+		//	               supaya layarnya utuh; isinya menyusul.
+		//
+		// `unggah/mbu-salvage` dapat dikerjakan karena seluruh rantainya ada:
+		// flow action → `ConvertDataCsvSalvageMBUToPage` → `InsertDataSalvageMBU`.
+		perPortal.Post("/inbox-xol/dol-col", h.InsertDolCol)
+		perPortal.Post("/inbox-xol/dol-col/hapus", h.RejectWrite)
 		perPortal.Post("/inbox-xol/persetujuan", h.RejectWrite)
 		perPortal.Post("/inbox-xol/pengajuan-komite", h.RejectWrite)
+		perPortal.Post("/inbox-xol/unggah/mbu-salvage", h.UploadSalvageMBU)
+		perPortal.Post("/inbox-xol/unggah/inward", h.RejectWrite)
+		perPortal.Post("/inbox-xol/generate/pla", h.RejectWrite)
+		perPortal.Post("/inbox-xol/generate/dla", h.RejectWrite)
 	})
 }

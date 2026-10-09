@@ -1,0 +1,223 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDocumentTitle/>
+<pyFormPost/>
+<pyCircumstanceDate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeletedObject/>
+<pyRequestType>BrowserT_claim_xolDesc</pyRequestType>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyLabel>BrowserT_claim_xolDesc</pyLabel>
+<pyLabelOld>BrowserT_claim_xolDesc</pyLabelOld>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleEnds/>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!BROWSERT_CLAIM_XOLDESC</pxInsId>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyCircumstanceType/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveImportDateTime>20241223T123620.988 GMT</pxMoveImportDateTime>
+<pyMethodStatus/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM BrowserT_claim_xolDesc</pyRuleName>
+<pyRuleFormStatusTime>20261008T014549.805 GMT</pyRuleFormStatusTime>
+<pxSiblingCount/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceProp/>
+<pyDeleteSQL/>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveFromSystem/>
+<pyIsFromManageChangeLP/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!BROWSERT_CLAIM_XOLDESC</pxInsName>
+<pyUsage/>
+<pxHostId>jboss10372</pxHostId>
+<pyDescription>select CLAIMNO as "Country",NilaiOS as "District",NilaiAksep as "DistrictID",Currencys as "Currency",rownum as "City",BUSINESSGROUPID as "BusinessID",BusinessName as "BusinessName",salvage_value as "NoteKasir",LBU_ID as "AlasanKlaim",IDCURRENCY as "CASEDB" from 
+(select CLAIMNO,sum(OS_VALUE*CLAIM_OR*CLAIM_SHARE_ASM) as NilaiOS,sum(AKSEP_VALUE*CLAIM_OR*CLAIM_SHARE_ASM) as NilaiAksep,
+sum(case when PAYMENTTYPE = '3' then (case when AKSEP_VALUE&lt;0 then AKSEP_VALUE*-1 else AKSEP_VALUE end * claim_or*CLAIM_SHARE_ASM)
+         else 
+            0
+           end) as salvage_value,(select distinct(LBU_ID) from v_klaim@asmd.sinarmas.co.id where no_klaim=CLAIMNO) as LBU_ID
+,(SELECT a.CURRENCY FROM POOLDATA.CURRENCY a where ID=x.CURRENCY) as Currencys,x.CURRENCY as IDCURRENCY,BUSINESSGROUPID,(SELECT BUSINESSGROUPNAME
+          FROM POOLDATA.BUSINESS b
+         WHERE X.BUSINESSGROUPID = B.BUSINESSGROUPID and rownum=1)
+          AS BusinessName from  Pooldata.T_CLAIM_XOL x 
+where col_desc={getDetailXOL.CauseOfLoss} and to_char(DATEOFLOSS,'dd/mm/yyyy')={getDetailXOL.NoKTP}
+group by CLAIMNO,BUSINESSGROUPID,CURRENCY) order by BUSINESSGROUPID</pyDescription>
+<pyStatus/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pyRuleStarts/>
+<pyShowJavaWindowName>GeneratedJava20261008T014549.827 GMT</pyShowJavaWindowName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyOpenSQL/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pyBrowseSQL>select CLAIMNO as "Country",NilaiOS as "District",NilaiAksep as "DistrictID",Currencys as "Currency",rownum as "City",BUSINESSGROUPID as "BusinessID",BusinessName as "BusinessName",salvage_value as "NoteKasir",LBU_ID as "AlasanKlaim",IDCURRENCY as "CASEDB" from 
+(
+select CLAIMNO,sum(OS_VALUE*CLAIM_OR*CLAIM_SHARE_ASM) as NilaiOS,sum(AKSEP_VALUE*CLAIM_OR*CLAIM_SHARE_ASM) as NilaiAksep,
+case when X.BUSINESSGROUPID='10004' then (select sum(salvageaksep) from pooldata.T_SALVAGE_MBU mb where mb.claimno=x.claimno)
+else sum(case when PAYMENTTYPE = '3' then (case when AKSEP_VALUE&lt;0 then AKSEP_VALUE*-1 else AKSEP_VALUE end * claim_or*CLAIM_SHARE_ASM)
+         else 
+            0
+           end)
+end as salvage_value,(select distinct(LBU_ID) from v_klaim@asmd.sinarmas.co.id where no_klaim=CLAIMNO) as LBU_ID
+,(SELECT a.CURRENCY FROM POOLDATA.CURRENCY a where ID=x.CURRENCY) as Currencys,x.CURRENCY as IDCURRENCY,BUSINESSGROUPID,(SELECT BUSINESSGROUPNAME
+          FROM POOLDATA.BUSINESS b
+         WHERE X.BUSINESSGROUPID = B.BUSINESSGROUPID and rownum=1)
+          AS BusinessName from  Pooldata.T_CLAIM_XOL x 
+where col_desc={getDetailXOL.CauseOfLoss} and to_char(DATEOFLOSS,'dd/mm/yyyy')={getDetailXOL.NoKTP}
+group by CLAIMNO,BUSINESSGROUPID,CURRENCY
+UNION
+SELECT A.COMPANYNAME as CLAIMNO,
+         SUM (
+              TO_NUMBER (REPLACE (REPLACE (CLAIMAMOUNT, '.', ''), ',', '.'))
+            * POOLDATA.GETCURRENCYSTANDARD (
+                 A.CURRENCYID,
+                 TO_DATE (A.DATEOFLOSS, 'dd/mm/yyyy'))
+            / POOLDATA.GETCURRENCYSTANDARD (
+                 '10001',
+                 TO_DATE (A.DATEOFLOSS, 'dd/mm/yyyy'))) as NilaiOS,
+         SUM (
+              TO_NUMBER (
+                 REPLACE (REPLACE (PAIDCLAIMAMOUNTSHARE, '.', ''), ',', '.'))
+            * POOLDATA.GETCURRENCYSTANDARD (
+                 A.CURRENCYID,
+                 TO_DATE (A.DATEOFLOSS, 'dd/mm/yyyy'))
+            / POOLDATA.GETCURRENCYSTANDARD (
+                 '10001',
+                 TO_DATE (A.DATEOFLOSS, 'dd/mm/yyyy'))) as NilaiAksep,0 as salvage_value,'' as LBU_ID,
+                 (SELECT a.CURRENCY FROM POOLDATA.CURRENCY a where ID=A.CURRENCYID) as Currencys,A.CURRENCYID as IDCURRENCY,A.BUSINESSID as BUSINESSGROUPID,'Treaty Inward' as BusinessName
+    FROM POOLDATA.T_CLAIM_INWARD_XOL a
+   WHERE     TO_CHAR (TO_DATE (a.dateofloss, 'dd/mm/yyyy'), 'dd/mm/yyyy') ={getDetailXOL.NoKTP}
+         AND A.CAUSEOFLOSS = {getDetailXOL.CauseOfLoss}
+GROUP BY COMPANYNAME,BUSINESSID,CURRENCYID)</pyBrowseSQL>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM BrowserT_claim_xolDesc</pxTabLabel>
+<pyMemo>dones</pyMemo>
+<pyCircumstanceDateProp/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!BROWSERT_CLAIM_XOLDESC #20240821T012552.627 GMT</pzDocumentKey>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRelativePath/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxInstanceLockedKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyJavaStream/>
+<pxUpdateDateTime>20240905T053237.865 GMT</pxUpdateDateTime>
+<pySpecialtyComponentData/>
+<pySaveSQL/>
+<pyWorkKey/>
+<pzChecksum>-162778725</pzChecksum>
+<pyCircumstanceTemplate/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxInstanceLockedDateTime/>
+<pyInterface/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!BROWSERT_CLAIM_XOLDESC #20240821T012552.627 GMT</pzOriginalInstanceKey>
+<pyWindowTitle/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!BROWSERT_CLAIM_XOLDESC #20240821T012552.627 GMT</pzInsKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyHandlerFlow/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateDateTime>20240821T012552.627 GMT</pxCreateDateTime>
+<pyCircumstanceVal/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedBy/>
+<pyBaseRule>false</pyBaseRule>
+<pyHistoryObject/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSaveDateTime>20240905T053237.930 GMT</pxSaveDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySave>false</pySave>
+<pySaveAs>true</pySaveAs>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPreview>false</pyPreview>
+<pyFavorites>true</pyFavorites>
+<pyLaunch>true</pyLaunch>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!BROWSERT_CLAIM_XOLDESC #20240821T012552.627 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!BROWSERT_CLAIM_XOLDESC #20240626T093727.143 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

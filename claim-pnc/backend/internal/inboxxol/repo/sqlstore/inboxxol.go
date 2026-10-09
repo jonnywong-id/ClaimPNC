@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -500,4 +501,259 @@ func (r *Repo) SummarizeBusiness(
 		return nil, fmt.Errorf("inboxxol/sqlstore: summary_business: %w", err)
 	}
 	return result, nil
+}
+
+// ListClaims mengembalikan grid "No Klaim" pada layar rincian.
+func (r *Repo) ListClaims(
+	ctx context.Context,
+	filter inboxxol.ClaimListFilter,
+) ([]inboxxol.ClaimListItem, error) {
+	if filter.Empty() {
+		return nil, nil
+	}
+
+	rows, err := r.db.QueryContext(ctx, query("claim_list"),
+		strings.TrimSpace(filter.LossDate),
+		strings.TrimSpace(filter.CauseOfLoss),
+		r.baseCurrencyID)
+	if err != nil {
+		return nil, fmt.Errorf("inboxxol/sqlstore: claim_list: %w", err)
+	}
+	defer rows.Close()
+
+	result := make([]inboxxol.ClaimListItem, 0, 64)
+	for rows.Next() {
+		var (
+			claimNo     sql.NullString
+			currency    sql.NullString
+			source      sql.NullString
+			outstanding sql.NullFloat64
+			accepted    sql.NullFloat64
+			rateMissing sql.NullInt64
+		)
+		if err := rows.Scan(&claimNo, &currency, &source,
+			&outstanding, &accepted, &rateMissing); err != nil {
+			return nil, fmt.Errorf("inboxxol/sqlstore: claim_list: %w", err)
+		}
+		result = append(result, inboxxol.ClaimListItem{
+			ClaimNo:          strings.TrimSpace(claimNo.String),
+			CurrencyName:     strings.TrimSpace(currency.String),
+			Source:           inboxxol.BreakdownSource(strings.TrimSpace(source.String)),
+			OutstandingValue: outstanding.Float64,
+			AcceptedValue:    accepted.Float64,
+			RateMissing:      rateMissing.Int64 == 1,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("inboxxol/sqlstore: claim_list: %w", err)
+	}
+	return result, nil
+}
+
+// ExportClaimDetail mengembalikan isi berkas "Export to Excel" untuk satu baris rincian.
+//
+// Kuerinya dipilih menurut group business, persis seperti percabangan pada
+// `Activity/GenerateDetailClaimBusinessXOL-Act.xml`.
+func (r *Repo) ExportClaimDetail(
+	ctx context.Context,
+	filter inboxxol.ExportFilter,
+) (inboxxol.ExportTable, error) {
+	if filter.Empty() {
+		return inboxxol.ExportTable{}, nil
+	}
+
+	group := strings.TrimSpace(filter.BusinessGroupID)
+
+	var (
+		name      string
+		spec      exportColumns
+		arguments []any
+	)
+	base := []any{strings.TrimSpace(filter.LossDate), strings.TrimSpace(filter.CauseOfLoss)}
+
+	switch group {
+	case inboxxol.ExportBusinessGroupTreaty:
+		name, spec, arguments = "export_treaty_inward", exportTreatyInwardColumns, base
+	case inboxxol.ExportBusinessGroupMBU:
+		// Kode MBU dipatok DI DALAM kuerinya (`BUSINESSGROUPID='10004'`), jadi ia tidak
+		// ikut sebagai parameter — menambahkannya akan menyisakan placeholder tak terpakai.
+		name, spec, arguments = "export_mbu", exportMBUColumns, base
+	default:
+		name, spec, arguments = "export_per_business", exportPerBusinessColumns,
+			append(base, group)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query(name), arguments...)
+	if err != nil {
+		return inboxxol.ExportTable{}, fmt.Errorf("inboxxol/sqlstore: %s: %w", name, err)
+	}
+	defer rows.Close()
+
+	table, err := readExportTable(rows, spec)
+	if err != nil {
+		return inboxxol.ExportTable{}, fmt.Errorf("inboxxol/sqlstore: %s: %w", name, err)
+	}
+	return table, nil
+}
+
+// readExportTable menyusun ulang hasil kueri menurut urutan kolom yang diminta activity.
+//
+// # Kenapa dibaca menurut NAMA, bukan posisi
+//
+// Karena urutan kolom kueri BERBEDA dari urutan kolom berkas, dan satu properti boleh
+// muncul beberapa kali di berkas (`Currency` empat kali pada varian per-business).
+// Membaca menurut posisi menuntut menyusun ulang 42 kolom dengan tangan — dan satu
+// pergeseran akan menaruh nilai di bawah judul yang salah tanpa satu pun galat.
+//
+// Kolom yang diminta tetapi tidak dikembalikan kueri menjadi sel KOSONG, bukan galat:
+// berkas yang kehilangan satu kolom masih berguna, sedangkan unduhan yang gagal tidak.
+func readExportTable(rows *sql.Rows, spec exportColumns) (inboxxol.ExportTable, error) {
+	names, err := rows.Columns()
+	if err != nil {
+		return inboxxol.ExportTable{}, err
+	}
+
+	index := make(map[string]int, len(names))
+	for i, name := range names {
+		// Nama kolom dikembalikan driver dengan huruf besar-kecil yang berbeda-beda
+		// antara Oracle dan PostgreSQL. Dicocokkan tanpa peduli huruf besar-kecil.
+		index[strings.ToUpper(strings.TrimSpace(name))] = i
+	}
+
+	table := inboxxol.ExportTable{Headers: spec.headers, Rows: make([][]string, 0, 256)}
+
+	for rows.Next() {
+		cells := make([]sql.NullString, len(names))
+		targets := make([]any, len(names))
+		for i := range cells {
+			targets[i] = &cells[i]
+		}
+		if err := rows.Scan(targets...); err != nil {
+			return inboxxol.ExportTable{}, err
+		}
+
+		row := make([]string, len(spec.properties))
+		for i, property := range spec.properties {
+			if at, found := index[strings.ToUpper(property)]; found {
+				row[i] = strings.TrimSpace(cells[at].String)
+			}
+		}
+		table.Rows = append(table.Rows, row)
+	}
+	return table, rows.Err()
+}
+
+// UploadSalvageMBU menyisipkan baris hasil "Upload MBU Salvage".
+//
+// # Kenapa satu transaksi, padahal sistem lama tidak
+//
+// Sistem lama menyisipkan baris demi baris tanpa transaksi, sehingga berkas yang gagal di
+// tengah meninggalkan separuh isinya tersimpan dan separuh lagi tidak — tanpa cara
+// mengetahui di mana batasnya. `D-68` menetapkan kepemilikan transaksi berpindah ke Go,
+// dan di sinilah ia dipakai: berkas tersimpan seluruhnya, atau tidak sama sekali.
+//
+// Baris yang DITOLAK karena isinya tidak membatalkan apa pun — ia dilewati dan dilaporkan,
+// persis seperti `ConvertDataCsvSalvageMBUToPage` melewati baris tanpa Cause Of Loss.
+func (r *Repo) UploadSalvageMBU(
+	ctx context.Context,
+	rows []inboxxol.SalvageInsert,
+) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("inboxxol/sqlstore: insert_salvage_mbu: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	statement, err := tx.PrepareContext(ctx, query("insert_salvage_mbu"))
+	if err != nil {
+		return fmt.Errorf("inboxxol/sqlstore: insert_salvage_mbu: %w", err)
+	}
+	defer func() { _ = statement.Close() }()
+
+	for _, row := range rows {
+		if _, err := statement.ExecContext(ctx,
+			row.ClaimNo, row.DateOfLoss, row.CurrencyID,
+			row.SalvageAksep, row.SalvageOS,
+			row.CauseOfLoss, row.BusinessGroupID,
+		); err != nil {
+			return fmt.Errorf("inboxxol/sqlstore: insert_salvage_mbu: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("inboxxol/sqlstore: insert_salvage_mbu: %w", err)
+	}
+	return nil
+}
+
+// CurrencyIDByName mencari ID mata uang dari namanya.
+//
+// Mata uang yang tidak ditemukan dijawab teks kosong tanpa galat — pemanggilnya menolak
+// baris itu beserta sebabnya, dan satu nama yang salah ketik di satu baris tidak boleh
+// menggugurkan seluruh berkas.
+func (r *Repo) CurrencyIDByName(ctx context.Context, name string) (string, error) {
+	clean := strings.TrimSpace(name)
+	if clean == "" {
+		return "", nil
+	}
+
+	var id sql.NullString
+	err := r.db.QueryRowContext(ctx, query("currency_id_by_name"), clean).Scan(&id)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return "", nil
+	case err != nil:
+		return "", fmt.Errorf("inboxxol/sqlstore: currency_id_by_name: %w", err)
+	}
+	return strings.TrimSpace(id.String), nil
+}
+
+// InsertDolCol menyisipkan baris hasil modal "INSERT DOL DAN COL".
+//
+// Satu simpan menghasilkan satu baris per group business perjanjian, dan seluruhnya masuk
+// dalam SATU transaksi — perjanjian tersimpan seluruh group business-nya, atau tidak sama
+// sekali.
+//
+// Sistem lama mengulang RDB-Save tanpa transaksi (`InsertDateAndCauseLossXOL-Act.xml`
+// langkah 7), sehingga kegagalan di group business ketiga meninggalkan dua baris
+// tersimpan dan sisanya tidak — tanpa cara mengetahui di mana batasnya. `D-68`
+// memindahkan kepemilikan transaksi ke Go, dan di sinilah ia dipakai.
+//
+// Perbedaannya pada uji kesetaraan harus disadari: saat GAGAL, sistem lama meninggalkan
+// sebagian baris dan sistem baru tidak meninggalkan apa pun (`14-TESTING-STRATEGY.md`
+// §6.4).
+func (r *Repo) InsertDolCol(ctx context.Context, rows []inboxxol.DolColInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("inboxxol/sqlstore: insert_dol_col: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	statement, err := tx.PrepareContext(ctx, query("insert_dol_col"))
+	if err != nil {
+		return fmt.Errorf("inboxxol/sqlstore: insert_dol_col: %w", err)
+	}
+	defer func() { _ = statement.Close() }()
+
+	for _, row := range rows {
+		if _, err := statement.ExecContext(ctx,
+			row.BusinessGroupID, row.LossDate, row.CurrencyID, row.LBUID,
+			row.OutstandingValue, row.AcceptedValue, row.CauseOfLoss, row.SalvageValue,
+		); err != nil {
+			return fmt.Errorf("inboxxol/sqlstore: insert_dol_col: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("inboxxol/sqlstore: insert_dol_col: %w", err)
+	}
+	return nil
 }

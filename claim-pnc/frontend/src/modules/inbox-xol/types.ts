@@ -183,6 +183,17 @@ export type InsertDolColForm = {
   sebab_kerugian: string
 }
 
+/**
+ * Jawaban simpan INSERT DOL DAN COL.
+ *
+ * Ia membawa JUMLAH BARIS karena satu simpan menuliskan satu baris per Group Business
+ * perjanjian — bukan satu baris. Tanpa angka itu, pengguna tidak punya cara mengetahui
+ * berapa banyak yang ditulis atas namanya.
+ */
+export type InsertDolColResult = {
+  jumlah_baris: number
+}
+
 /** Isian kosong, dipakai sebagai keadaan awal modal. */
 export const EMPTY_INSERT_FORM: InsertDolColForm = {
   id_master: '',
@@ -213,4 +224,39 @@ export const InboxXOLError = {
 export type SummaryBusiness = {
   kode_group_business: string
   group_business: string
+}
+
+/**
+ * Satu baris grid "No Klaim" pada layar rincian.
+ *
+ * Untuk baris treaty inward, `no_klaim` berisi NAMA PERUSAHAAN — klaim inward tidak punya
+ * nomor klaim ASM, dan kueri lama memang mengisinya dengan `COMPANYNAME`.
+ */
+export type ClaimListItem = {
+  no_klaim: string
+  mata_uang: string
+  sumber: BreakdownSource
+  nilai_outstanding: number
+  nilai_akseptasi: number
+  kurs_tidak_tersedia: boolean
+}
+
+/**
+ * Hasil unggahan "Upload MBU Salvage".
+ *
+ * Baris yang ditolak dilaporkan satu per satu, tidak diringkas menjadi jumlah: yang
+ * diperbaiki pengguna adalah BERKASNYA, dan pada berkas ratusan baris "ada yang gagal"
+ * saja tidak dapat ditindaklanjuti.
+ */
+export type UploadResult = {
+  jumlah_baris: number
+  jumlah_tersimpan: number
+  ditolak: UploadRejected[]
+}
+
+/** Satu baris berkas yang tidak tersimpan, beserta nomor barisnya di berkas. */
+export type UploadRejected = {
+  baris: number
+  no_klaim: string
+  alasan: string
 }

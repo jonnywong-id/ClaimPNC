@@ -19,6 +19,7 @@ import {
   useSalvageMetadata,
 } from './api'
 import type {
+  CatatanSimpan,
   DetailItem,
   DetailKey,
   DetailResponse,
@@ -37,9 +38,24 @@ import type {
  * # Susunan layar, dan dari mana bentuknya
  *
  * Diambil dari `Section/InboxSalvage-Section.xml` dan `InboxSalvageASM-Section.xml`:
- * tombol Tambah dan Refresh, tabel ringkas "Status Salvage / Jumlah", lalu grid berhalaman
- * 20 baris. Judul kolom TIDAK diterjemahkan — `D-13` menetapkan tampilan meniru Pega, dan
- * itulah teks yang selama ini dibaca pengguna.
+ * tombol Tambah dan Refresh di kepala layar, grafik donat dan tabel ringkas "Status
+ * Salvage / Jumlah", lalu grid berhalaman 20 baris. Judul kolom TIDAK diterjemahkan —
+ * `D-13` menetapkan tampilan meniru Pega, dan itulah teks yang selama ini dibaca pengguna.
+ *
+ * # Gridnya BARU digambar setelah sebuah status diklik (2026-10-08)
+ *
+ * Sebelumnya layar jatuh ke `daftar_bawaan` dan langsung menggambar daftar Outstanding,
+ * sehingga tabel ringkas di atasnya terbaca seperti hiasan. Keputusan Work Owner: ringkasan
+ * dulu, daftarnya menyusul — seperti layar Pega, tempat barisnyalah yang mengirim
+ * `Param.tipe`/`Param.tipe2`.
+ *
+ * Tiga akibat yang ditangani di sini, bukan dibiarkan:
+ *
+ *  1. Daftar TIDAK ditembak selama belum dipilih — bukan sekadar disembunyikan.
+ *  2. Tambah dan Refresh naik ke kepala layar; keduanya dulu hidup di toolbar grid dan
+ *     akan ikut hilang bersamanya.
+ *  3. Ringkasan yang gagal atau kosong membuat layar jatuh ke `daftar_bawaan`, supaya
+ *     satu-satunya pintu masuk yang tidak tergambar tidak berubah menjadi jalan buntu.
  *
  * # Tiga hal yang paling mudah disalahpahami di layar ini
  *
@@ -54,9 +70,11 @@ import type {
  * KETIGA — pencarian pada tiga daftar COCOK PERSIS, bukan mengandung. Mengetik separuh
  * nomor klaim di sana tidak menghasilkan apa-apa, dan itu perilaku layar lama apa adanya.
  *
- * Ketiganya dinyatakan ke pengguna lewat `catatan_daftar`. Panel selisih terencana yang
- * dulu menyertainya DIHAPUS atas keputusan Work Owner 2026-10-06; daftarnya tetap hidup
- * di kode Go untuk uji kesetaraan gerbang 1 (`D-54`).
+ * Ketiganya TIDAK lagi dinyatakan di layar. Bilah kuning `catatan_daftar` dicabut
+ * 2026-10-08, menyusul panel selisih terencana yang dicabut 2026-10-06 — keduanya atas
+ * alasan yang sama: isinya bukan galat, sementara warnanya mengatakan sebaliknya kepada
+ * setiap orang yang membuka daftar. Keterangannya tetap hidup di kode Go untuk uji
+ * kesetaraan gerbang 1 (`D-54`), tempat ia dipetakan ke butir `P-5`.
  *
  * # Portal Insurtech BELUM dibangun
  *
@@ -73,7 +91,13 @@ export function SalvageInboxPage() {
   // dilihat, bukan preferensi tampilan.
   const [params, setParams] = useSearchParams()
   const [adding, setAdding] = useState(false)
-  const [saved, setSaved] = useState('')
+  // Catatan di atas layar sesudah Submit, beserta NADA-nya.
+  //
+  // Sebelumnya ia sekadar teks yang selalu digambar hijau. Sejak Submit benar-benar
+  // mengirim ke balai lelang dan benar-benar mengirim surel, salah satunya dapat gagal
+  // sementara pengajuannya tetap tersimpan — dan bilah hijau yang berbunyi "GAGAL
+  // terkirim" adalah isyarat bercampur yang justru membuat orang berhenti membacanya.
+  const [saved, setSaved] = useState<CatatanSimpan | null>(null)
 
   // Pengajuan yang panel rinciannya sedang terbuka; kosong berarti tertutup.
   //
@@ -92,10 +116,42 @@ export function SalvageInboxPage() {
   const counts = useSalvageCounts()
 
   const tabs: Tab[] = meta.data?.daftar ?? []
-  const active = tabCode || meta.data?.daftar_bawaan || ''
+
+  // Ringkasan yang TIDAK dapat dipakai sebagai navigasi.
+  //
+  // Dua sebabnya, dan keduanya nyata: permintaan `/ringkas` gagal, atau ia berhasil tetapi
+  // tidak mengembalikan satu baris pun.
+  const ringkasTidakTerpakai =
+    counts.isError || (counts.isSuccess && (counts.data?.baris.length ?? 0) === 0)
+
+  // TIDAK ada daftar yang terbuka sampai sebuah status DIKLIK.
+  //
+  // Sebelum 2026-10-08 layar jatuh ke `daftar_bawaan` dan langsung menggambar daftar
+  // Outstanding — sehingga tabel ringkas di atasnya terbaca seperti hiasan, dan petugas
+  // yang membuka layar ini langsung dihadapkan pada satu daftar yang belum tentu ia cari.
+  //
+  // Keputusan Work Owner 2026-10-08: ringkasan dulu, daftarnya menyusul setelah diklik —
+  // seperti layar Pega.
+  //
+  // # Kenapa `daftar_bawaan` TETAP dipakai, dan hanya di satu keadaan
+  //
+  // Karena sejak tabel ringkas menjadi satu-satunya pintu masuk, ringkasan yang tidak
+  // tergambar berarti layar TANPA PINTU: tidak ada yang dapat diklik, dan kalimat "pilih
+  // salah satu Status Salvage" menunjuk ke tempat kosong. Itu lebih buruk daripada
+  // keadaan sebelumnya, bukan lebih baik.
+  //
+  // Karena itu ketika ringkasannya gagal atau kosong, layar jatuh ke `daftar_bawaan` —
+  // tetap dapat dipakai, hanya tanpa navigasi. Pada keadaan normal ia tidak pernah
+  // tersentuh.
+  const active = tabCode || (ringkasTidakTerpakai ? (meta.data?.daftar_bawaan ?? '') : '')
   const tab = tabs.find((candidate) => candidate.kode === active)
 
-  const list = useSalvageList(active, page, search, meta.isSuccess)
+  // Daftar belum ditembak sama sekali selama belum ada yang dipilih.
+  //
+  // Bukan sekadar disembunyikan: permintaan yang tetap berjalan di balik layar membebani
+  // basis data untuk jawaban yang tidak pernah dilihat siapa pun — dan di modul ini
+  // kuerinya menyentuh puluhan juta baris.
+  const list = useSalvageList(active, page, search, meta.isSuccess && active !== '')
   const exporting = useExportSalvage()
 
   // Permintaan rincian dipegang HALAMAN, bukan panelnya.
@@ -210,16 +266,43 @@ export function SalvageInboxPage() {
   }
 
   return (
-    <Frame>
-      {saved !== '' && (
+    <Frame
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={() => setAdding(true)}>
+            Tambah
+          </Button>
+          <Button
+            type="button"
+            tone="kedua"
+            onClick={() => {
+              // Ringkasan SELALU disegarkan; daftarnya hanya bila memang ada yang terbuka.
+              //
+              // Memanggil refetch pada permintaan yang sedang padam (`enabled: false`)
+              // akan menjalankannya sekali — persis yang dihindari dengan tidak
+              // menembaknya sejak awal.
+              void counts.refetch()
+              if (active !== '') void list.refetch()
+            }}
+            disabled={counts.isFetching || list.isFetching}
+          >
+            Refresh
+          </Button>
+        </div>
+      }
+    >
+      {saved !== null && (
         <div
-          className="rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
+          className={
+            saved.perluPerhatian
+              ? 'rounded-kartu border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900'
+              : 'rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900'
+          }
           role="status"
         >
-          {saved}
+          {saved.pesan}
         </div>
       )}
-
       <StatusSummary
         rows={counts.data?.baris ?? []}
         active={active}
@@ -246,8 +329,8 @@ export function SalvageInboxPage() {
           }}
           history={editingFor.riwayat}
           onClose={() => setOpened(null)}
-          onSaved={(message) => {
-            setSaved(message)
+          onSaved={(catatan) => {
+            setSaved(catatan)
             setOpened(null)
           }}
         />
@@ -280,8 +363,8 @@ export function SalvageInboxPage() {
           }}
           history={creatingFor.riwayat}
           onClose={() => setOpened(null)}
-          onSaved={(message) => {
-            setSaved(message)
+          onSaved={(catatan) => {
+            setSaved(catatan)
             setOpened(null)
           }}
         />
@@ -293,6 +376,22 @@ export function SalvageInboxPage() {
           onClose={() => setAdding(false)}
           onSaved={setSaved}
         />
+      ) : active === '' ? (
+        /*
+          Belum ada status yang dipilih — daftarnya memang BELUM digambar.
+
+          Kalimat ini menggantikan grid, bukan menemaninya. Layar yang menampilkan
+          ringkasan lalu berhenti tanpa sepatah kata terbaca seperti layar yang gagal
+          memuat; yang membedakan keduanya hanyalah satu kalimat yang menyebut apa yang
+          harus dilakukan.
+        */
+        <p
+          className="rounded-kartu border border-slate-200 bg-white p-4 text-sm text-slate-600"
+          role="status"
+        >
+          Pilih salah satu <strong className="font-semibold">Status Salvage</strong> di atas
+          untuk membuka daftarnya.
+        </p>
       ) : (
         <>
           {/*
@@ -315,11 +414,21 @@ export function SalvageInboxPage() {
           */}
           {tab && <p className="text-sm text-slate-600">{tab.keterangan}</p>}
 
-          {tab?.catatan_daftar !== undefined && tab.catatan_daftar !== '' && (
-            <p className="rounded-kartu border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              {tab.catatan_daftar}
-            </p>
-          )}
+          {/*
+            Bilah kuning "catatan daftar" DICABUT (2026-10-08).
+
+            Isinya bukan galat dan bukan peringatan — ia keterangan bahwa sebuah selisih
+            terhadap Pega memang DISENGAJA. Digambar kuning, ia terbaca sebaliknya: setiap
+            kali daftar dibuka, petugas disodori kotak berwarna peringatan yang
+            memberitahunya bahwa tidak ada yang perlu dikhawatirkan.
+
+            Keputusan Work Owner 2026-10-08: yang bukan galat tidak digambar. Ia mengikuti
+            pencabutan panel selisih terencana (2026-10-06) atas alasan yang sama.
+
+            Keterangannya TIDAK hilang dari sistem — `inboxsalvage.Tab.Notice` tetap hidup
+            di Go, tempat uji kesetaraan gerbang 1 memetakannya ke butir `P-5` (`D-54`).
+            Yang berubah hanyalah ia tidak lagi dikirim ke layar.
+          */}
 
           <DataTable<SalvageRow>
             columns={columnsOf(tab, (key, reference) => setOpened({ key, reference }))}
@@ -336,7 +445,13 @@ export function SalvageInboxPage() {
                 />
               ) : undefined
             }
-            emptyMessage={emptyMessageFor(tab, search)}
+            emptyMessage={emptyMessageFor(tab, '')}
+
+            // Penjelasan "kenapa kosong padahal saya mencari" kini BENAR-BENAR sampai
+            // ke layar. Sebelum isian ini ada, DataTable selalu menimpanya dengan
+            // kalimat bawaannya sendiri begitu kotak pencarian terisi — justru pada
+            // satu-satunya keadaan yang menjadi alasan kalimat ini ditulis.
+            searchEmptyMessage={emptyMessageFor(tab, search)}
             searchLabel={tab?.label_pencarian ?? 'Cari'}
             serverSearch={{
               value: search,
@@ -352,27 +467,20 @@ export function SalvageInboxPage() {
               isLoading: list.isFetching,
             }}
             actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" onClick={() => setAdding(true)}>
-                  Tambah
-                </Button>
-                <Button
-                  type="button"
-                  tone="kedua"
-                  onClick={() => { list.refetch() }}
-                  disabled={list.isFetching}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  type="button"
-                  tone="kedua"
-                  disabled={exporting.isPending}
-                  onClick={() => exporting.mutate({ tab: active, search })}
-                >
-                  {exporting.isPending ? 'Menyiapkan…' : 'Export Data'}
-                </Button>
-              </div>
+              // Hanya Export Data yang tersisa di toolbar grid.
+              //
+              // Tambah dan Refresh naik ke kepala layar — keduanya tindakan tingkat layar
+              // dan harus tetap dapat ditekan saat belum ada daftar yang dibuka. Export
+              // TIDAK ikut naik, dan itu bukan kelalaian: ia mengunduh SALINAN DAFTAR YANG
+              // SEDANG DILIHAT, sehingga tanpa daftar ia tidak punya arti.
+              <Button
+                type="button"
+                tone="kedua"
+                disabled={exporting.isPending}
+                onClick={() => exporting.mutate({ tab: active, search })}
+              >
+                {exporting.isPending ? 'Menyiapkan…' : 'Export Data'}
+              </Button>
             }
           />
 
@@ -466,17 +574,34 @@ function toFormItems(detail: DetailResponse): DetailItem[] {
 }
 
 /** Frame adalah judul layar beserta ruang isinya. */
-function Frame({ children }: { children: ReactNode }) {
+/**
+ * Frame adalah kerangka tetap layar ini: judul, keterangan, dan tombol tingkat layar.
+ *
+ * # Kenapa tombolnya di SINI, bukan di toolbar grid
+ *
+ * Karena sejak 2026-10-08 gridnya TIDAK digambar sampai sebuah status dipilih, dan tombol
+ * yang hidup di dalam toolbar grid ikut hilang bersamanya. "Tambah" adalah tindakan
+ * tingkat layar — ia tidak menambah baris pada daftar yang sedang dibuka, ia membuat
+ * pengajuan baru — sehingga meletakkannya di dalam daftar sudah keliru bahkan sebelum
+ * gridnya disembunyikan.
+ *
+ * Letaknya di kanan judul mengikuti layar Pega apa adanya (`D-13`).
+ */
+function Frame({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-lg font-semibold text-slate-900">
-          Inbox Salvage Asuransi Sinarmas
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Pengelolaan barang sisa klaim — dari penandaan awal sampai penjualan lewat balai
-          lelang.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">
+            Inbox Salvage Asuransi Sinarmas
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Pengelolaan barang sisa klaim — dari penandaan awal sampai penjualan lewat balai
+            lelang.
+          </p>
+        </div>
+
+        {actions}
       </header>
 
       {children}

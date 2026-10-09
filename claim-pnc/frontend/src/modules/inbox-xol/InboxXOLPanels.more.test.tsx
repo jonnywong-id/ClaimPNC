@@ -141,6 +141,76 @@ describe('ClaimPanel', () => {
     expect(calls.filter((u) => u === `${PATH}/dol-col`)).toHaveLength(1)
   })
 
+  /**
+   * Dua hal yang dulu rusak dan diperbaiki bersamaan, diuji dalam satu alur karena
+   * keduanya hanya terbukti bila simpannya benar-benar berhasil:
+   *
+   *  1. Date Of Loss dapat dipilih dari KALENDER. Versi sebelumnya memakai isian teks
+   *     polos, sehingga tanggalnya harus diketik lebih dulu — tidak ada kalender yang
+   *     dapat dibuka sama sekali.
+   *  2. Simpan benar-benar MENYIMPAN. Rute `POST /inbox-xol/dol-col` dulu selalu
+   *     menolak dengan 409.
+   *
+   * Yang diperiksa pada badan permintaannya adalah BENTUK TANGGALNYA. Isian menyimpannya
+   * sebagai ISO selama di layar, dan kolom `DOL` menyimpannya sebagai `DD/MM/YYYY`;
+   * mengirim ISO ke server berarti baris yang tersimpan tidak pernah terbaca grid mana
+   * pun, tanpa satu pun pesan galat.
+   */
+  it('menyimpan DOL dan COL, dengan tanggal berbentuk DD/MM/YYYY', async () => {
+    const bodies: unknown[] = []
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      calls.push(url)
+      if (url === `${PATH}/dol-col`) {
+        bodies.push(JSON.parse(String(init?.body)))
+        return Promise.resolve(
+          new Response(JSON.stringify({ jumlah_baris: 2 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+      const body =
+        url === `${PATH}/perjanjian`
+          ? { perjanjian: [MASTER] }
+          : url.startsWith(`${PATH}/sebab-kerugian`)
+            ? { sebab_kerugian: [{ id: '1', deskripsi: 'Kebakaran' }] }
+            : {}
+      return Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
+
+    const user = userEvent.setup()
+    wrap(<ClaimPanel />)
+
+    await user.click(screen.getByRole('button', { name: 'INSERT DOL DAN COL' }))
+    const modal = await screen.findByRole('dialog', { name: 'Insert DOL dan COL' })
+
+    // Tombol kalendernya ada — inilah yang hilang di versi sebelumnya.
+    expect(
+      within(modal).getByRole('button', { name: 'Pilih Date Of Loss dari kalender' }),
+    ).toBeInTheDocument()
+
+    await user.type(within(modal).getByLabelText('Date Of Loss'), '15032024')
+    await user.selectOptions(within(modal).getByLabelText('Cause Of Loss'), 'Kebakaran')
+    await user.click(await within(modal).findByRole('button', { name: /Pilih perjanjian/ }))
+    await user.click(within(modal).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({
+      id_master: 'XOL-001',
+      tanggal_kejadian: '15/03/2024',
+      sebab_kerugian: 'Kebakaran',
+    })
+
+    // Jumlah barisnya disebut, bukan sekadar "tersimpan": satu simpan menulis satu baris
+    // per Group Business perjanjian.
+    expect(await screen.findByText(/2 baris ditulis/)).toBeInTheDocument()
+  })
+
   it('menyatakan akumulasi yang gagal dimuat', async () => {
     stub((url) => {
       if (url === `${PATH}/perjanjian`) return { body: { perjanjian: [MASTER] } }
@@ -248,6 +318,226 @@ describe('ClaimPanel', () => {
     expect(await screen.findByText('Rincian tidak dapat dimuat')).toBeInTheDocument()
     expect(screen.getByText('Rincian rusak.')).toBeInTheDocument()
   })
+
+  it('menaruh Export To Excel pada setiap baris rincian, dengan group business barisnya', async () => {
+    stub((url) => {
+      if (url === `${PATH}/perjanjian`) return { body: { perjanjian: [MASTER] } }
+      if (url.startsWith(`${PATH}/klaim/rincian`)) {
+        return {
+          body: {
+            baris: [
+              { group_business: 'Marine', kode_group_business: '20', jumlah_klaim: 3, nilai_outstanding: 9, nilai_akseptasi: 1, sumber: 'bisnis', kurs_tidak_tersedia: false },
+              { group_business: 'Treaty Inward', kode_group_business: '', jumlah_klaim: 1, nilai_outstanding: 2, nilai_akseptasi: 5, sumber: 'treaty', kurs_tidak_tersedia: false },
+            ],
+          },
+        }
+      }
+      if (url.startsWith(`${PATH}/klaim`)) {
+        return {
+          body: {
+            perjanjian: MASTER,
+            baris: [
+              { id_master: 'XOL-001', tanggal_kejadian: '12/03/2024', sebab_kerugian: 'BANJIR', group_business: 'A', nilai_outstanding: 1, nilai_akseptasi: 1 },
+            ],
+          },
+        }
+      }
+      return {}
+    })
+    const user = userEvent.setup()
+    wrap(<ClaimPanel />)
+
+    const section = (await screen.findByText(/^DATA XOL BASED ON DOL AND COL$/)).closest('section')!
+    await waitFor(() => expect(section.querySelector('tbody tr')).not.toBeNull())
+    await user.click(section.querySelectorAll('tbody tr')[0]!)
+
+    // Tombol, bukan tautan: sesi dikirim sebagai header `Authorization`, dan peramban
+    // tidak mengirim header apa pun pada navigasi biasa — tautan polos dijawab
+    // `sesi_tidak_sah`, bukan berkas.
+    const tombol = await screen.findAllByRole('button', { name: 'Export To Excel' })
+    // Satu tombol per baris rincian — di layar lama pun tombolnya berada DI DALAM baris,
+    // dengan parameter diambil dari properti baris itu.
+    expect(tombol).toHaveLength(2)
+
+    await user.click(tombol[0]!)
+    const baris1 = new URL(
+      calls.find((u) => u.includes('/klaim/rincian/unduh'))!,
+      'http://x',
+    ).searchParams
+    expect(baris1.get('tanggal_kejadian')).toBe('12/03/2024')
+    expect(baris1.get('sebab_kerugian')).toBe('BANJIR')
+    expect(baris1.get('kode_group_business')).toBe('20')
+    expect(baris1.get('nama_group_business')).toBe('Marine')
+
+    // Baris treaty inward tidak punya kode group business; ia memilih cabang kueri
+    // tersendiri, persis seperti `Param.grpbzid` di sistem lama.
+    await user.click(tombol[1]!)
+    const unduhan = calls.filter((u) => u.includes('/klaim/rincian/unduh'))
+    const baris2 = new URL(unduhan[unduhan.length - 1]!, 'http://x').searchParams
+    expect(baris2.get('kode_group_business')).toBe('treaty')
+  })
+
+  /**
+   * Keempat kendali unggahan digambar, dan hanya "Upload Inward" yang masih ditolak.
+   *
+   * "Upload MBU Salvage" berjalan penuh — seluruh rantai rule-nya ada di export.
+   * "Upload Inward" belum: activity `ConvertDataCsvInwardToPage` tidak ada, sehingga
+   * pemetaan kolomnya tidak dapat dibaca siapa pun.
+   */
+  it('mengunggah MBU Salvage dan melaporkan baris yang ditolak', async () => {
+    stub((url) => {
+      if (url === `${PATH}/perjanjian`) return { body: { perjanjian: [MASTER] } }
+      if (url.startsWith(`${PATH}/klaim/rincian`)) {
+        return {
+          body: {
+            baris: [
+              { group_business: 'Marine', kode_group_business: '20', jumlah_klaim: 3, nilai_outstanding: 9, nilai_akseptasi: 1, sumber: 'bisnis', kurs_tidak_tersedia: false },
+            ],
+          },
+        }
+      }
+      if (url === `${PATH}/unggah/mbu-salvage`) {
+        return {
+          body: {
+            jumlah_baris: 3,
+            jumlah_tersimpan: 2,
+            ditolak: [{ baris: 4, no_klaim: 'PNC-3', alasan: 'Cause Of Loss kosong.' }],
+          },
+        }
+      }
+      if (url.startsWith(`${PATH}/klaim`)) {
+        return {
+          body: {
+            perjanjian: MASTER,
+            baris: [
+              { id_master: 'XOL-001', tanggal_kejadian: '12/03/2024', sebab_kerugian: 'BANJIR', group_business: 'A', nilai_outstanding: 1, nilai_akseptasi: 1 },
+            ],
+          },
+        }
+      }
+      return {}
+    })
+    const user = userEvent.setup()
+    wrap(<ClaimPanel />)
+
+    const section = (await screen.findByText(/^DATA XOL BASED ON DOL AND COL$/)).closest('section')!
+    await waitFor(() => expect(section.querySelector('tbody tr')).not.toBeNull())
+    await user.click(section.querySelectorAll('tbody tr')[0]!)
+
+    const berkas = new File(
+      ['ClaimNo;DateOfLoss;Currency;SalvageOS;SalvageAksep;CauseOfLoss\n'],
+      'salvage.csv',
+      { type: 'text/csv' },
+    )
+    await user.upload(await screen.findByLabelText('Berkas MBU Salvage'), berkas)
+
+    expect(await screen.findByText('2 dari 3 baris tersimpan.')).toBeInTheDocument()
+    // Nomor barisnya disebut — tanpa itu, berkas ratusan baris tidak dapat diperbaiki.
+    expect(screen.getByText(/Baris 4 \(PNC-3\): Cause Of Loss kosong\./)).toBeInTheDocument()
+    expect(calls.filter((u) => u === `${PATH}/unggah/mbu-salvage`)).toHaveLength(1)
+  })
+
+  it('menggambar tautan Format dan menampilkan penolakan server pada Upload Inward', async () => {
+    stub((url) => {
+      if (url === `${PATH}/perjanjian`) return { body: { perjanjian: [MASTER] } }
+      if (url.startsWith(`${PATH}/klaim/rincian`)) {
+        return {
+          body: {
+            baris: [
+              { group_business: 'Marine', kode_group_business: '20', jumlah_klaim: 3, nilai_outstanding: 9, nilai_akseptasi: 1, sumber: 'bisnis', kurs_tidak_tersedia: false },
+            ],
+          },
+        }
+      }
+      if (url.startsWith(`${PATH}/unggah/`)) {
+        return {
+          status: 409,
+          body: { kode: 'aksi_belum_tersedia', pesan: 'Aksi ini belum tersedia di aplikasi baru.' },
+        }
+      }
+      if (url.startsWith(`${PATH}/klaim`)) {
+        return {
+          body: {
+            perjanjian: MASTER,
+            baris: [
+              { id_master: 'XOL-001', tanggal_kejadian: '12/03/2024', sebab_kerugian: 'BANJIR', group_business: 'A', nilai_outstanding: 1, nilai_akseptasi: 1 },
+            ],
+          },
+        }
+      }
+      return {}
+    })
+    const user = userEvent.setup()
+    wrap(<ClaimPanel />)
+
+    const section = (await screen.findByText(/^DATA XOL BASED ON DOL AND COL$/)).closest('section')!
+    await waitFor(() => expect(section.querySelector('tbody tr')).not.toBeNull())
+    await user.click(section.querySelectorAll('tbody tr')[0]!)
+
+    // Berkas contoh dapat diambil — `jenis` persis `Param.jenis` tombol lama.
+    //
+    // Keduanya TOMBOL, bukan tautan: sesi dikirim sebagai header `Authorization`, dan
+    // tautan polos karena itu dijawab `sesi_tidak_sah`, bukan berkas.
+    await user.click(await screen.findByRole('button', { name: 'Format MBU Salvage' }))
+    expect(calls).toContain(`${PATH}/format-unggah?jenis=1`)
+
+    await user.click(screen.getByRole('button', { name: 'Format Inward' }))
+    expect(calls).toContain(`${PATH}/format-unggah?jenis=2`)
+
+    await user.click(screen.getByRole('button', { name: 'Upload Inward' }))
+    expect(await screen.findByText('Upload Inward belum tersedia')).toBeInTheDocument()
+    expect(screen.getByText('Aksi ini belum tersedia di aplikasi baru.')).toBeInTheDocument()
+    expect(calls.filter((u) => u === `${PATH}/unggah/inward`)).toHaveLength(1)
+
+    // Berkasnya TIDAK ikut dikirim — tidak ada pemilih berkas untuk Inward.
+    expect(screen.queryByLabelText('Berkas Inward')).not.toBeInTheDocument()
+  })
+
+  it('menggambar Generate PLA dan Generate DLA, dan menyatakan penolakan server', async () => {
+    stub((url) => {
+      if (url === `${PATH}/perjanjian`) return { body: { perjanjian: [MASTER] } }
+      if (url.startsWith(`${PATH}/klaim/rincian`)) {
+        return {
+          body: {
+            baris: [
+              { group_business: 'Marine', kode_group_business: '20', jumlah_klaim: 3, nilai_outstanding: 9, nilai_akseptasi: 1, sumber: 'bisnis', kurs_tidak_tersedia: false },
+            ],
+          },
+        }
+      }
+      if (url.startsWith(`${PATH}/generate/`)) {
+        return {
+          status: 409,
+          body: { kode: 'aksi_belum_tersedia', pesan: 'Aksi ini belum tersedia di aplikasi baru.' },
+        }
+      }
+      if (url.startsWith(`${PATH}/klaim`)) {
+        return {
+          body: {
+            perjanjian: MASTER,
+            baris: [
+              { id_master: 'XOL-001', tanggal_kejadian: '12/03/2024', sebab_kerugian: 'BANJIR', group_business: 'A', nilai_outstanding: 1, nilai_akseptasi: 1 },
+            ],
+          },
+        }
+      }
+      return {}
+    })
+    const user = userEvent.setup()
+    wrap(<ClaimPanel />)
+
+    const section = (await screen.findByText(/^DATA XOL BASED ON DOL AND COL$/)).closest('section')!
+    await waitFor(() => expect(section.querySelector('tbody tr')).not.toBeNull())
+    await user.click(section.querySelectorAll('tbody tr')[0]!)
+
+    await user.click(await screen.findByRole('button', { name: 'Generate PLA' }))
+    expect(await screen.findByText('Generate PLA belum tersedia')).toBeInTheDocument()
+    expect(calls.filter((u) => u === `${PATH}/generate/pla`)).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Generate DLA' }))
+    expect(await screen.findByText('Generate DLA belum tersedia')).toBeInTheDocument()
+    expect(calls.filter((u) => u === `${PATH}/generate/dla`)).toHaveLength(1)
+  })
 })
 
 describe('AdvicePanel', () => {
@@ -322,7 +612,7 @@ describe('AdvicePanel', () => {
       await user.click(within(table).getByRole('button', { name: title }))
       expect(first()).toContain('Reas A')
     }
-    expect(screen.getByRole('link', { name: 'Unduh perhitungan (CSV)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unduh perhitungan (CSV)' })).toBeInTheDocument()
   })
 })
 

@@ -27,6 +27,13 @@ var requiredQueries = []string{
 	"approval_advice_queue",
 	"cause_of_loss_list",
 	"summary_business",
+	"claim_list",
+	"export_per_business",
+	"export_mbu",
+	"export_treaty_inward",
+	"currency_id_by_name",
+	"insert_salvage_mbu",
+	"insert_dol_col",
 }
 
 func TestSeluruhKueriYangDibutuhkanAda(t *testing.T) {
@@ -50,17 +57,42 @@ func TestTidakAdaKueriTakTerpakai(t *testing.T) {
 	}
 }
 
-// TestTidakAdaPernyataanYangMenulis menegakkan batas yang ditetapkan Work Owner
-// 2026-09-20: modul ini membaca saja.
+// penulisYangDiizinkan adalah SATU-SATUNYA kueri modul ini yang boleh menulis.
 //
-// Ia bukan sekadar kerapian. Keempat tabel yang ditulis sistem lama —
-// XOL_TABLE_ALL_KLAIM, T_PLA_XOL, T_DLA_XOL, dan MST_XOL_PNC — tetap dimiliki Pega
-// selama masa paralel (`P-1`). Satu INSERT yang lolos ke sini berarti dua sistem menulis
-// satu tabel dengan aturan berbeda, dan akibatnya bukan galat melainkan data yang saling
-// menimpa tanpa jejak.
+// # Kenapa daftarnya ada, bukan sekadar larangan dicabut
+//
+// Batas yang ditetapkan Work Owner 2026-09-20 berbunyi "modul ini membaca saja", dan
+// alasannya tetap berlaku untuk tabel yang TIDAK terdaftar di bawah: T_PLA_XOL,
+// T_DLA_XOL, dan MST_XOL_PNC masih dimiliki Pega selama masa paralel (`P-1`). Satu INSERT
+// yang lolos ke salah satunya berarti dua sistem menulis satu tabel dengan aturan
+// berbeda, dan akibatnya bukan galat melainkan data yang saling menimpa tanpa jejak.
+//
+// Dua tabel dikecualikan atas permintaan Work Owner, masing-masing setelah seluruh
+// rantai rule-nya ada di export:
+//
+//	T_SALVAGE_MBU        Flow Action/PNCUploadClaimCSV_MBUSalvage-FA.xml
+//	                     Activity/ConvertDataCsvSalvageMBUToPage-Act.xml
+//	                     RDB List/InsertDataSalvageMBU-SQL.xml
+//
+//	XOL_TABLE_ALL_KLAIM  Section/InboxClaimXOL-Section.xml:10863
+//	                     Activity/InsertDateAndCauseLossXOL-Act.xml
+//	                     RDB List/DeleteDataInXOLSummarybasedondol-SQL.xml (tab Save)
+//
+// Daftar ini sengaja berupa izin per kueri, bukan pencabutan larangan: kueri tulis
+// BERIKUTNYA tetap akan menggagalkan uji ini sampai seseorang menuliskan alasannya di
+// sini.
+var penulisYangDiizinkan = map[string]string{
+	"insert_salvage_mbu": "POOLDATA.T_SALVAGE_MBU — unggahan Upload MBU Salvage",
+	"insert_dol_col":     "POOLDATA.XOL_TABLE_ALL_KLAIM — modal INSERT DOL DAN COL",
+}
+
+// TestTidakAdaPernyataanYangMenulis menjaga modul ini tidak menulis di luar daftar izin.
 func TestTidakAdaPernyataanYangMenulis(t *testing.T) {
 	forbidden := []string{"INSERT", "UPDATE", "DELETE", "MERGE", "TRUNCATE", "COMMIT"}
 	for name, text := range queries {
+		if _, allowed := penulisYangDiizinkan[name]; allowed {
+			continue
+		}
 		upper := strings.ToUpper(text)
 		for _, word := range forbidden {
 			require.NotRegexp(t, regexp.MustCompile(`\b`+word+`\b`), upper,
@@ -68,6 +100,16 @@ func TestTidakAdaPernyataanYangMenulis(t *testing.T) {
 		}
 		require.True(t, strings.HasPrefix(strings.ToUpper(strings.TrimSpace(text)), "SELECT"),
 			"kueri %q tidak dimulai dengan SELECT", name)
+	}
+
+	// Kueri yang diizinkan menulis tetap diperiksa: ia harus benar-benar ada, dan harus
+	// menyentuh tabel yang disebut alasannya — bukan tabel lain.
+	for name, reason := range penulisYangDiizinkan {
+		text, exists := queries[name]
+		require.True(t, exists, "kueri %q terdaftar boleh menulis tetapi tidak ada", name)
+		table := strings.Fields(reason)[0]
+		require.Contains(t, strings.ToUpper(text), table,
+			"kueri %q boleh menulis %s, tetapi tidak menyentuhnya", name, table)
 	}
 }
 
@@ -177,6 +219,7 @@ func TestJumlahKolomSesuaiDenganPemindainya(t *testing.T) {
 		"approval_advice_queue":    4,
 		"cause_of_loss_list":       2,
 		"summary_business":         2,
+		"claim_list":               6,
 	}
 	for name, wanted := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -257,13 +300,16 @@ func TestKomentarTidakIkutTerkirim(t *testing.T) {
 // pernah dibaca rule-nya — persis yang `P-5` tuntut jangan terjadi.
 func TestTabelYangDisentuhSemuanyaDiketahui(t *testing.T) {
 	known := map[string]bool{
-		"POOLDATA.MST_XOL_PNC":         true,
+		"POOLDATA.MST_XOL_PNC": true,
 		// Dibaca master_list dan master_pending_committee untuk MIN(LIMIT) — kolom
 		// "Min Limit" pada grid rincian (`RDB List/GetDataMasterXOL-SQL.xml:11`).
-		"POOLDATA.MST_XOL_LAYER":       true,
+		"POOLDATA.MST_XOL_LAYER": true,
 		// Dibaca summary_business untuk nama group business pada grid "Summary Data XOL"
 		// (`RDB List/GetBusinessnameXOLForSummerry-SQL.xml`).
-		"POOLDATA.BUSINESS":             true,
+		"POOLDATA.BUSINESS": true,
+		// Dibaca claim_list untuk NAMA mata uang tiap klaim — grid "No Klaim"
+		// menampilkan namanya, bukan kodenya (`RDB List/BrowserT_claim_xolDesc-SQL.xml`).
+		"POOLDATA.CURRENCY":            true,
 		"POOLDATA.MST_XOL_BUSINESS":    true,
 		"POOLDATA.BUSINESSGROUP":       true,
 		"POOLDATA.MST_USER_TEKNIK":     true,
@@ -275,6 +321,30 @@ func TestTabelYangDisentuhSemuanyaDiketahui(t *testing.T) {
 		"POOLDATA.T_PLA_XOL":           true,
 		"POOLDATA.T_DLA_XOL":           true,
 		"POOLDATA.T_REINSURER":         true,
+
+		// Lima berikut hanya dibaca ketiga kueri "Export to Excel", dan seluruhnya
+		// berasal dari rule ekspor sistem lama — bukan tabel baru:
+		//   `RDB List/ExportDetailXOLPerBiz-SQL.xml`
+		//   `RDB List/ExportDetailXOLMBU-SQL.xml`
+		//   `RDB List/ExportDetailTreatyInward-SQL.xml`
+		// Ketiganya hanya MEMBACA; kepemilikan tulisnya tetap di Pega (`P-1`).
+		"POOLDATA.T_CLAIM_PNC":         true,
+		"POOLDATA.T_SURVEYORLIST":      true,
+		"POOLDATA.GCNM_PROGRESS_CLAIM": true,
+		"POOLDATA.T_SALVAGE_MBU":       true,
+	}
+	// Tabel di luar POOLDATA ikut diperiksa: ekspor per group business membaca
+	// `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, tabel milik engine Pega (`D-21`).
+	knownOutside := map[string]bool{
+		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK": true,
+	}
+	outside := regexp.MustCompile(`(?i)\bFROM\s+(DATAPEGA\.[A-Z_][A-Z0-9_]*)`)
+	for name, text := range queries {
+		for _, match := range outside.FindAllStringSubmatch(text, -1) {
+			table := strings.ToUpper(match[1])
+			require.True(t, knownOutside[table],
+				"kueri %q membaca tabel %s yang belum tercatat", name, table)
+		}
 	}
 	pattern := regexp.MustCompile(`(?i)\bFROM\s+(POOLDATA\.[A-Z_][A-Z0-9_]*)`)
 	for name, text := range queries {

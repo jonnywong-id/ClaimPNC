@@ -1,0 +1,382 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyBaseRule>false</pyBaseRule>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pxCreateOpName>ANDREW HANDOKO</pxCreateOpName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzDocumentKey>
+<pyRuleName>SendEmailRejectedApprovetochecker</pyRuleName>
+<pyStreamName>SendEmailRejectedApprovetochecker</pyStreamName>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_SendEmailRejectedApprovetochecker_Stream_20230327T041859_663_GMT</pyJavaClassName>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateDateTime>20230327T043524.447 GMT</pxUpdateDateTime>
+<pzRuleSetVersionPatch>04</pzRuleSetVersionPatch>
+<pyRuleSetVersion>01-02-04</pyRuleSetVersion>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!SENDEMAILREJECTEDAPPROVETOCHECKER</pxInsName>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pxMoveImportDateTime>20230414T101650.642 GMT</pxMoveImportDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatusTime>20261008T085258.439 GMT</pyRuleFormStatusTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pySPRuleSetName>ANDREWHANDOKO@</pySPRuleSetName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyLabel>SendEmailRejectedApprovetochecker</pyLabel>
+<pyLabelOld>SendEmailRejectedApprovetochecker</pyLabelOld>
+<pxTabLabel>SendEmailRejectedApprovetochecker</pxTabLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzInsKey>
+<pxCreateOperator>ANDREWHANDOKO</pxCreateOperator>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyCompact>false</pyCompact>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInsId>!SENDEMAILREJECTEDAPPROVETOCHECKER</pxInsId>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pzIndexCount>28</pzIndexCount>
+<pxUpdateOperator>ANDREWHANDOKO</pxUpdateOperator>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxCommitDateTime>20230414T101651.000 GMT</pxCommitDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxSaveDateTime>20230327T043524.457 GMT</pxSaveDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzChecksum>-659916117</pzChecksum>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyShowJavaWindowName>GeneratedJava20261008T085258.500 GMT</pyShowJavaWindowName>
+<pyHistoryObject>false</pyHistoryObject>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+ &lt;style&gt;
+.link-button{
+   background-color: white;
+   border: 2px solid #e7e7e7;
+  border-radius: 12px;
+  color: black;
+  font-color: black;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+&lt;/style&gt;
+  &lt;/head&gt;
+   &lt;body&gt;
+     &lt;table&gt;
+       &lt;tr&gt;&lt;td&gt;Dear,&lt;/td&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Berikut Pengajuan Salvage yang akan diproses &lt;/td&gt;&lt;/tr&gt; 
+          &lt;tr&gt;&lt;br/&gt;&lt;/tr&gt;
+       &lt;tr&gt; &lt;td&gt;No Klaim&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="pyWorkPage.ClaimData.ClaimNo"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt; &lt;td&gt;No Polis&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="pyWorkPage.Policy.PolicyNo"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Nama PIC&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="pyWorkPage.ClaimData.UserTeknis"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Status Salvage&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;pega:when test="TempInsert.StatusSalvage=='1'"&gt;
+           &lt;td&gt;&lt;b&gt;Tidak Ada Salvage&lt;/b&gt;&lt;/td&gt;
+                  &lt;/pega:when&gt;
+         &lt;pega:when test="TempInsert.StatusSalvage=='2'"&gt;
+           &lt;td&gt;&lt;b&gt;Ada Salvage&lt;/b&gt;&lt;/td&gt;
+                  &lt;/pega:when&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Catatan PIC : &lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempInsert.ExGratiaNote"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+     &lt;/table&gt;&lt;br&gt;
+     Terima Kasih.
+	&lt;br&gt;&lt;br&gt;
+   
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyMemo>Done</pyMemo>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>ANDREW HANDOKO</pxUpdateOpName>
+<pxCreateDateTime>20230327T041859.663 GMT</pxCreateDateTime>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDFILESIMAS #20220126T070355.968 GMT</pzOriginalInstanceKey>
+<pyReloadForm>true</pyReloadForm>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMergeSynchronized>20220126T083940.471 GMT</pxMergeSynchronized>
+<pxHostId>jboss10-42</pxHostId>
+<pzStatus>valid</pzStatus>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzInsKey>
+<pyLabel>01-02-04 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20220126T075755.932 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleCompareList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>CLAIMNO</pxRuleFamilyName>
+<pyRuleName>ClaimNo</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>UserTeknis</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>USERTEKNIS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>EXGRATIANOTE</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ExGratiaNote</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>Policy</pyRuleName>
+<pxRuleFamilyName>POLICY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-INT-V_STS_CLAIM</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-POLICY</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pyRuleName>ASM-FW-GISFW-Data-Policy</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyRuleName>PolicyNo</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>POLICYNO</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxRuleFamilyName>CLAIMDATA</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>ClaimData</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>TempGetApp</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempInsert</pyPagesAndClassesPage>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-02-04 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20220126T075755.932 GMT</pzInsKey>
+<pyLabel>01-01-96 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCheckIn>false</pyCheckIn>
+<pyForward>true</pyForward>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPreview>true</pyPreview>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyShowJava>true</pyShowJava>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageName>TempInsert</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxPageName>pyWorkPage</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILREJECTEDAPPROVETOCHECKER #20230327T041859.663 GMT</pzIndexOwnerKey>
+<pxPageName>TempGetApp</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+</pagedata>

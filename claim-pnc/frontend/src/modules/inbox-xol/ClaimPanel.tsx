@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
@@ -6,15 +7,29 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { SelectField } from '@/components/SelectField'
 
 import {
+  exportClaimDetailURL,
+  uploadTemplateURL,
+  useUploadSalvageMBU,
+  useUploadInward,
+  useUnduhBerkas,
+  useGenerateAdvice,
   useBreakdown,
   useClaimSummary,
   useMasters,
   useRemoveDolCol,
+  useClaimList,
   useSummaryBusiness,
 } from './api'
 import { messageOf } from './errors'
 import { InsertDolColDialog } from './InsertDolColDialog'
-import type { Breakdown, ClaimSummary, MasterXOL, SummaryBusiness } from './types'
+import type {
+  Breakdown,
+  ClaimListItem,
+  ClaimSummary,
+  MasterXOL,
+  SummaryBusiness,
+  UploadResult,
+} from './types'
 
 /**
  * Dua blok teratas wadah `source=='1'` — tombol INSERT DOL DAN COL dan grid akumulasi.
@@ -194,6 +209,7 @@ function BreakdownTable({
   cause: string
 }) {
   const breakdown = useBreakdown(masterID, lossDate, cause)
+  const unduh = useUnduhBerkas()
   const rows = breakdown.data?.baris ?? []
 
   const columns: Column<Breakdown>[] = [
@@ -238,6 +254,45 @@ function BreakdownTable({
       alignRight: true,
       width: '11rem',
     },
+    {
+      /*
+        Tombol "Export To Excel" di sistem lama berada DI DALAM baris grid ini, bukan di
+        bawahnya: keempat parameternya diambil dari properti baris
+        (`Section/DetailValueClaimXOL-Section.xml:4506` dan `:4530-4570`). Karena itu ia
+        satu kolom, bukan satu tombol untuk seluruh grid.
+
+        Berkasnya CSV meski labelnya berbunyi "Excel" — activity lamanya pun berakhir di
+        `pxConvertResultsToCSV`, bukan di penulis XLSX. Label dipertahankan apa adanya
+        (`D-13`); yang berubah hanya cara menyebut isinya di bawah ini.
+      */
+      key: 'export',
+      title: 'Export',
+      value: () => '',
+      width: '9rem',
+      render: (row) => (
+        <button
+          type="button"
+          className="font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900"
+          disabled={unduh.isPending}
+          onClick={(event) => {
+            // Klik ini tidak boleh ikut membuka-tutup baris yang sedang terbentang —
+            // seluruh baris adalah tombol pembuka rincian.
+            event.stopPropagation()
+            unduh.mutate({
+              alamat: exportClaimDetailURL(
+                lossDate,
+                cause,
+                row.sumber === 'treaty' ? 'treaty' : row.kode_group_business,
+                row.group_business,
+              ),
+              namaBerkas: `Detail Claim XOL ${row.group_business}.csv`,
+            })
+          }}
+        >
+          Export To Excel
+        </button>
+      ),
+    },
   ]
 
   return (
@@ -270,32 +325,260 @@ function BreakdownTable({
 
       {rows.some((row) => row.kurs_tidak_tersedia) && <MissingRateNotice />}
 
-      <UploadNotice />
+      <UploadBar />
       <MasterLayerPanel lossDate={lossDate} cause={cause} />
-      <ClaimListPanel />
+      <ClaimListPanel lossDate={lossDate} cause={cause} />
       <SummaryPanel lossDate={lossDate} cause={cause} />
+      <GenerateBar lossDate={lossDate} cause={cause} />
     </div>
   )
 }
 
 /**
- * UploadNotice menjelaskan ketiadaan "Upload MBU Salvage" dan "Upload Inward".
+ * GenerateBar — dua tombol penutup layar rincian: "Generate PLA" dan "Generate DLA".
  *
- * Keduanya MENGISI tabel yang dibaca rincian ini — nama kueri lamanya menyebutkannya
- * sendiri: `GetDataTrytyInwardFromUploadData`, "dari data upload". Selama masa paralel
- * tabel itu masih dimiliki Pega (`P-1`), jadi mengunggah dari sini berarti dua sistem
- * menulis satu tabel.
+ * Keduanya memanggil activity yang SAMA di sistem lama, `GenerateXOLByType`, dan hanya
+ * dibedakan parameter `type` (`Section/DetailValueClaimXOL-Section.xml:23215` dan
+ * `:24351`).
  *
- * Tautan "Format MBU Salvage" dan "Format Inward" — berkas contoh yang diunduh — ikut
- * belum ada: berkasnya tidak ikut di export, dan menyusun sendiri format unggah yang
- * harus cocok dengan pembacanya adalah menebak.
+ * "Generate DLA" digambar menonjol dan "Generate PLA" tidak — mengikuti layar lama, yang
+ * memberi DLA gaya tombol utama. Urutan PLA lalu DLA juga mengikuti urutan penerbitannya:
+ * PLA memberitahukan nilai estimasi, DLA memberitahukan nilai akseptasi.
  */
-function UploadNotice() {
+function GenerateBar({ lossDate, cause }: { lossDate: string; cause: string }) {
+  const pla = useGenerateAdvice('pla')
+  const dla = useGenerateAdvice('dla')
+  const isian = { tanggal_kejadian: lossDate, sebab_kerugian: cause }
+
   return (
-    <p className="rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      Unggah MBU Salvage dan Inward belum tersedia di aplikasi baru. Selama masa paralel,
-      pengisiannya masih dilakukan lewat aplikasi Pega; layar ini menampilkan hasilnya.
-    </p>
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button tone="halus" onClick={() => pla.mutate(isian)} disabled={pla.isPending}>
+          Generate PLA
+        </Button>
+        <Button tone="utama" onClick={() => dla.mutate(isian)} disabled={dla.isPending}>
+          Generate DLA
+        </Button>
+      </div>
+
+      {pla.isError && (
+        <ErrorMessage
+          title="Generate PLA belum tersedia"
+          description={messageOf(pla.error)}
+          tone="gangguan"
+        />
+      )}
+      {dla.isError && (
+        <ErrorMessage
+          title="Generate DLA belum tersedia"
+          description={messageOf(dla.error)}
+          tone="gangguan"
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * UploadBar menggambar empat kendali unggahan pada layar rincian, seperti layar lama:
+ * dua tombol "Upload ..." dan dua tautan "Format ..."
+ * (`Section/DetailValueClaimXOL-Section.xml:6323`, `:6793`, `:7094`, `:7480`).
+ *
+ * # Keduanya tidak sama derajatnya, dan itu disengaja
+ *
+ * Tautan **Format** berjalan penuh. Ia hanya MEMBACA — `DownloadFormatForAllUploadingFile`
+ * menurunkan berkas contoh berisi baris judul saja, dan judul kolomnya ada lengkap di
+ * activity itu, sehingga tidak ada yang perlu ditebak.
+ *
+ * Tombol **Upload** menulis, dan dua hal menghalanginya:
+ *
+ *  1. Tabel tujuannya — `POOLDATA.T_SALVAGE_MBU` dan `POOLDATA.T_CLAIM_INWARD_XOL` —
+ *     selama masa paralel masih dimiliki Pega (`P-1`). Nama kueri lamanya menyebutkannya
+ *     sendiri: `GetDataTrytyInwardFromUploadData`, "dari data upload".
+ *  2. Aturan pembacaan berkasnya belum pernah dibaca siapa pun: flow action
+ *     `PNCUploadClaimCSV_MBUSalvage` dan `PNCUploadClaimCSV_Inward` TIDAK ada di export —
+ *     keduanya hanya dirujuk section itu, di `:6137`, `:6343`, `:6609`, dan `:6823`.
+ *
+ * Tombolnya tetap DIGAMBAR, dan yang menolak adalah server beserta sebabnya — pola yang
+ * sama dengan "INSERT DOL DAN COL" dan "Remove All Data". Paragraf keterangan yang dulu
+ * berdiri di sini menggantikan keempat kendali itu sekaligus, sehingga pengguna tidak
+ * dapat mengambil berkas contoh yang sebenarnya sudah dapat diberikan.
+ */
+function UploadBar() {
+  return (
+    <div className="space-y-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <UploadSalvageButton />
+        <UploadInwardButton />
+
+        <FormatLink
+          jenis="1"
+          label="Format MBU Salvage"
+          namaBerkas="Format Upload Salvage MBU.csv"
+        />
+        <FormatLink jenis="2" label="Format Inward" namaBerkas="Format Upload Inward.csv" />
+      </div>
+
+      <p className="text-xs text-slate-500">
+        Berkas berformat CSV. Unduh contohnya lewat tautan Format di atas.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * FormatLink — satu tautan unduh berkas contoh.
+ *
+ * # Kenapa tombol, bukan `<a href>`
+ *
+ * Karena sesi dikirim sebagai header `Authorization`, bukan cookie, dan peramban tidak
+ * mengirim header apa pun pada navigasi biasa. Tautan polos dijawab `sesi_tidak_sah` —
+ * bukan berkas. Lihat `useUnduhBerkas`.
+ */
+function FormatLink({
+  jenis,
+  label,
+  namaBerkas,
+}: {
+  jenis: '1' | '2'
+  label: string
+  namaBerkas: string
+}) {
+  const unduh = useUnduhBerkas()
+
+  return (
+    <>
+      <button
+        type="button"
+        className="text-sm font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900 disabled:text-slate-400"
+        disabled={unduh.isPending}
+        onClick={() => unduh.mutate({ alamat: uploadTemplateURL(jenis), namaBerkas })}
+      >
+        {label}
+      </button>
+
+      {unduh.isError && (
+        <div className="w-full">
+          <ErrorMessage
+            title={`${label} tidak dapat diunduh`}
+            description={messageOf(unduh.error)}
+            tone="gangguan"
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
+/**
+ * UploadSalvageButton — tombol "Upload MBU Salvage" beserta laporan hasilnya.
+ *
+ * Tombolnya memicu pemilih berkas tersembunyi, bukan membuka dialog tersendiri. Layar
+ * lama pun langsung meminta berkas; menambahkan satu dialog di tengahnya berarti satu
+ * langkah yang tidak ada di sistem lama.
+ */
+function UploadSalvageButton() {
+  const pilih = useRef<HTMLInputElement>(null)
+  const unggah = useUploadSalvageMBU()
+  const klien = useQueryClient()
+
+  return (
+    <>
+      <Button tone="kedua" onClick={() => pilih.current?.click()} disabled={unggah.isPending}>
+        {unggah.isPending ? 'Mengunggah…' : 'Upload MBU Salvage'}
+      </Button>
+
+      <input
+        ref={pilih}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        aria-label="Berkas MBU Salvage"
+        onChange={(event) => {
+          const berkas = event.target.files?.[0]
+          // Nilai input dikosongkan supaya memilih BERKAS YANG SAMA dua kali tetap
+          // memicu onChange — tanpa ini, mengunggah ulang setelah perbaikan diam saja.
+          event.target.value = ''
+          if (!berkas) return
+          unggah.mutate(berkas, {
+            onSuccess: (hasil) => {
+              // Grid rincian dan daftar klaim membaca tabel yang barusan ditulis.
+              if (hasil.jumlah_tersimpan > 0) {
+                void klien.invalidateQueries({ queryKey: ['inbox-xol'] })
+              }
+            },
+          })
+        }}
+      />
+
+      {unggah.isError && (
+        <div className="w-full">
+          <ErrorMessage
+            title="Berkas tidak dapat diunggah"
+            description={messageOf(unggah.error)}
+            tone="gangguan"
+          />
+        </div>
+      )}
+
+      {unggah.isSuccess && <UploadReport hasil={unggah.data} />}
+    </>
+  )
+}
+
+/** UploadReport menyatakan berapa baris tersimpan, dan baris mana yang tidak. */
+function UploadReport({ hasil }: { hasil: UploadResult }) {
+  return (
+    <div className="w-full space-y-1 rounded-kartu border border-slate-200 bg-white px-3 py-2 text-sm">
+      <p className="text-slate-700">
+        {hasil.jumlah_tersimpan} dari {hasil.jumlah_baris} baris tersimpan.
+      </p>
+
+      {hasil.ditolak.length > 0 && (
+        <ul className="list-disc space-y-0.5 pl-5 text-slate-600">
+          {/*
+            Nomor baris disebut karena yang diperbaiki pengguna adalah BERKASNYA. Pada
+            berkas ratusan baris, "ada yang gagal" saja tidak dapat ditindaklanjuti.
+          */}
+          {hasil.ditolak.map((baris) => (
+            <li key={baris.baris}>
+              Baris {baris.baris}
+              {baris.no_klaim ? ` (${baris.no_klaim})` : ''}: {baris.alasan}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/**
+ * UploadInwardButton — tombol "Upload Inward", yang masih dijawab penolakan server.
+ *
+ * Ia TIDAK meminta berkas lebih dulu: activity pemetaan kolomnya,
+ * `ConvertDataCsvInwardToPage`, tidak ada di export, sehingga isi berkas itu belum dapat
+ * dibaca siapa pun. Meminta berkas hanya untuk menolaknya akan memindahkan data nasabah
+ * tanpa satu pun kegunaan.
+ */
+function UploadInwardButton() {
+  const unggah = useUploadInward()
+
+  return (
+    <>
+      <Button tone="kedua" onClick={() => unggah.mutate()} disabled={unggah.isPending}>
+        Upload Inward
+      </Button>
+
+      {unggah.isError && (
+        <div className="w-full">
+          <ErrorMessage
+            title="Upload Inward belum tersedia"
+            description={messageOf(unggah.error)}
+            tone="gangguan"
+          />
+        </div>
+      )}
+    </>
   )
 }
 
@@ -518,45 +801,94 @@ function formatNumber(value: number): string {
 }
 
 /**
- * ClaimListPanel — grid "No Klaim · Os Value · Accept Value · Currency · Button".
+ * ClaimListPanel — grid "No Klaim · Os Value · Accept Value · Currency".
  *
- * # Kolomnya terbaca, isinya belum
+ * Kolomnya dari `Section/DetailValueClaimXOL-Section.xml:17050-17656`; isinya dari
+ * `RDB List/BrowserT_claim_xolDesc-SQL.xml` lewat
+ * `Activity/ShowDataKlaimXOLKlaimBeforeGenerated-Act.xml`.
  *
- * Judul kolom diambil dari `Section/DetailValueClaimXOL-Section.xml:17050-17656`, dan
- * gridnya terikat page klipboard `TempAllData`. Yang MENGISI page itu adalah
- * `ShowDataKlaimXOLKlaimBeforeGenerated` — activity di balik tombol "Show All Data" —
- * dan activity itu TIDAK ada di export.
+ * # Kolom "Button" tidak digambar
  *
- * Jadi gridnya digambar dengan kolom yang benar dan isi kosong, bukan diisi tebakan.
- * Di layar lama pun ia berbunyi "Data Tidak Ada" sampai tombolnya ditekan.
+ * Judulnya ada di section lama, tetapi isinya tombol yang menjalankan rule yang belum
+ * ter-export. Kolom kosong berjudul "Button" tidak menyampaikan apa pun.
  */
-function ClaimListPanel() {
-  const columns: Column<Record<string, never>>[] = [
-    { key: 'no_klaim', title: 'No Klaim', value: () => '' },
-    { key: 'os_value', title: 'Os Value', value: () => '', alignRight: true, width: '10rem' },
+function ClaimListPanel({ lossDate, cause }: { lossDate: string; cause: string }) {
+  const daftar = useClaimList(lossDate, cause)
+  const rows = daftar.data?.baris ?? []
+
+  const columns: Column<ClaimListItem>[] = [
     {
-      key: 'accept_value',
-      title: 'Accept Value',
-      value: () => '',
+      key: 'no_klaim',
+      title: 'No Klaim',
+      value: (row) => row.no_klaim,
+      render: (row) =>
+        row.sumber === 'treaty' ? (
+          <span>
+            {row.no_klaim}
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+              treaty inward
+            </span>
+          </span>
+        ) : (
+          row.no_klaim
+        ),
+    },
+    {
+      key: 'nilai_outstanding',
+      title: 'Os Value',
+      value: (row) => String(row.nilai_outstanding),
+      render: (row) => claimValueCell(row, row.nilai_outstanding),
       alignRight: true,
       width: '10rem',
     },
-    { key: 'currency', title: 'Currency', value: () => '', width: '8rem' },
+    {
+      key: 'nilai_akseptasi',
+      title: 'Accept Value',
+      value: (row) => String(row.nilai_akseptasi),
+      render: (row) => claimValueCell(row, row.nilai_akseptasi),
+      alignRight: true,
+      width: '10rem',
+    },
+    {
+      key: 'mata_uang',
+      title: 'Currency',
+      value: (row) => row.mata_uang,
+      width: '8rem',
+    },
   ]
 
   return (
-    <DataTable<Record<string, never>>
-      columns={columns}
-      rows={[]}
-      rowKey={() => ''}
-      showHeaderWhenEmpty
-      hideSearch
-      emptyMessage={
-        'Daftar klaim per nomor belum dapat ditampilkan: activity pengisinya ' +
-        '(ShowDataKlaimXOLKlaimBeforeGenerated) belum ada di export Pega.'
-      }
-    />
+    <div>
+      <DataTable<ClaimListItem>
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => `${row.sumber}|${row.no_klaim}|${row.mata_uang}`}
+        showHeaderWhenEmpty
+        hideSearch
+        isLoading={daftar.isPending}
+        error={
+          daftar.isError ? (
+            <ErrorMessage
+              title="Daftar klaim tidak dapat dimuat"
+              description={messageOf(daftar.error)}
+              tone="gangguan"
+            />
+          ) : undefined
+        }
+        emptyMessage="Tidak ada klaim pada tanggal dan penyebab kerugian ini."
+      />
+
+      {rows.some((row) => row.kurs_tidak_tersedia) && <MissingRateNotice />}
+    </div>
   )
+}
+
+/** claimValueCell menolak menggambar angka yang kursnya tidak diketahui (`D-48`). */
+function claimValueCell(row: ClaimListItem, value: number) {
+  if (row.kurs_tidak_tersedia) {
+    return <span className="text-slate-400">—</span>
+  }
+  return formatNumber(value)
 }
 
 /**

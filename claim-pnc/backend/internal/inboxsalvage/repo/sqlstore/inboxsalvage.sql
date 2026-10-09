@@ -6,7 +6,6 @@
 --
 -- ============================================================================
 -- TABEL YANG DIBACA, DAN SIAPA PEMILIKNYA
--- ============================================================================
 --
 --   POOLDATA.T_CLAIM_PNC         dimiliki Pega   — hanya dibaca
 --   POOLDATA.T_CLAIM_OBJECTLIST  dimiliki Pega   — hanya dibaca
@@ -76,17 +75,82 @@
 -- diam-diam. Pola itu tidak dibawa (`11-SECURITY.md` §5).
 --
 -- Jumlah seluruhnya pun berbeda sumbernya: sistem lama memakai kueri penghitung TERPISAH
--- (`GetCountSalvage_OS`, `GetCountSalvage_All`, …), dan salah satunya menghitung populasi
--- yang berbeda dari daftarnya. Lihat catatan pada count_outstanding_legacy.
+-- (`GetCountSalvage_OS`, `GetCountSalvage_All`, …). Pencacah di sini memakai predikat yang
+-- SAMA dengan daftarnya; lihat catatan pada count_claim_outstanding.
 
 -- name: list_claim
--- Daftar Salvage Outstanding — klaim yang belum ditandai punya salvage.
+-- Daftar Salvage Outstanding — klaim ber-STSSALVAGE 3 atau 5 yang masih berjalan.
 --
 -- Bind: :1 status kerja dikecualikan pertama · :2 kedua · :3 offset · :4 jumlah baris
 --
--- Penyaring `STSSALVAGE IS NULL` ditulis TETAP di sini, bukan diikat, karena ia satu-satunya
--- bentuknya: hanya daftar ini yang menyaring kekosongan, dan `IS NULL` tidak dapat
--- dinyatakan lewat bind.
+-- ============================================================================
+-- PENYARING: `STSSALVAGE` 3 ATAU 5 — BUKAN YANG KOSONG (2026-10-08)
+-- ============================================================================
+--
+-- "Salvage Outstanding" berarti **salvage yang masih menggantung**: sudah dinilai Ekonomis
+-- (`3`) atau TBA (`5`), tetapi belum selesai dijual. BUKAN "klaim yang belum dinilai sama
+-- sekali", yang justru dipakai di sini sampai hari ini.
+--
+-- # Export menunjuk ke `IS NULL`, dan export-nya yang keliru
+--
+-- `Activity/SetDataSalavage_act-Act.xml` memasang penyaring ini DUA KALI, keduanya dijaga
+-- prasyarat `Param.tipe==1` yang sama:
+--
+--	langkah 14  tempQuery.NewEmail := "and (STSSALVAGE='3' or STSSALVAGE='5')"
+--	langkah 26  tempQuery.NewEmail := "and STSSALVAGE IS NULL"
+--	langkah 38  menjalankan GcnmSalvageData_OS_SQL
+--
+-- Karena langkah 26 berjalan sesudah 14 dan sebelum 38, pada export ini yang sampai ke
+-- daftar adalah `IS NULL`. Itulah dasar bentuk lama di sini.
+--
+-- # Yang membantahnya: pengukuran, dua kali, saling bebas
+--
+--	daftar Outstanding di Pega sungguhan        145 baris
+--	(STSSALVAGE 3 atau 5) + masih terbuka       145   <- sama persis
+--	(STSSALVAGE kosong)   + masih terbuka       465   <- yang kita pakai dulu
+--
+-- Dan pemeriksaan langsung oleh Work Owner: klaim `PNC-2671`, yang tampil pada daftar
+-- Outstanding Pega, JUGA tampil pada daftar TBA — mustahil bila daftarnya menyaring
+-- penanda yang kosong.
+--
+-- Maka langkah 26 tidak berjalan di Pega yang hidup. Sama seperti pencacahnya, export
+-- untuk layar ini tertinggal dari sistem yang berjalan (`R-09`).
+--
+-- Nilainya ditulis TETAP, bukan diikat, dengan alasan yang sama seperti `GROUPPANEL` dan
+-- `BUSINESSCODE` di atasnya: ia domain tertutup milik aturan bisnis, bukan masukan
+-- pengguna.
+--
+-- ============================================================================
+-- URUTAN: TANGGAL KEJADIAN TERBARU DULU (2026-10-08)
+-- ============================================================================
+--
+-- Pega TIDAK mengurutkan daftar ini sama sekali — `GcnmSalvageData_OS_SQL` tidak memuat
+-- satu pun `ORDER BY`, dan paginasinya memakai `ROWNUM` atas hasil yang tak terurut.
+-- Artinya urutan barisnya di sana ARBITRER: ia ditentukan jalur akses Oracle, dapat
+-- berbeda antar pemuatan, dan tidak dapat ditiru dengan sengaja.
+--
+-- Dilaporkan Work Owner: jumlah barisnya sudah sama (145 di kedua sistem, karena
+-- predikatnya memang identik) tetapi BARIS YANG TAMPIL berbeda. Sebabnya hanya ini —
+-- kita mengurutkan, Pega tidak.
+--
+-- Keputusan Work Owner 2026-10-08: urutkan menurut **Tanggal Kejadian, terbaru dulu**.
+-- Meniru ketiadaan urutan Pega ditawarkan dan DITOLAK, dengan alasan yang disampaikan di
+-- muka: tanpa `ORDER BY`, paginasi Oracle tidak dijamin stabil — satu baris dapat muncul
+-- dua kali di halaman berbeda atau terlewat sama sekali — dan ia tetap tidak menjamin
+-- hasil yang sama dengan Pega.
+--
+-- # `c.CLAIMNO` sebagai pemecah seri BUKAN hiasan
+--
+-- Tanggal kejadian BERULANG: pada data yang dibandingkan, tiga klaim berbagi tanggal yang
+-- sama. Mengurutkan hanya dengan tanggal membuat urutan di dalam satu tanggal tidak
+-- ditentukan — dan itu mengembalikan persis ketidakstabilan paginasi yang hendak
+-- dihindari.
+--
+-- # `NULLS LAST` disebut TEGAS
+--
+-- Bawaan Oracle untuk `DESC` adalah `NULLS FIRST`, sehingga klaim yang tanggal kejadiannya
+-- kosong akan menempati puncak daftar — tepat kebalikan dari yang diminta. PostgreSQL 17+
+-- menerima sintaks yang sama, sehingga `D-20` tidak dilanggar.
 SELECT c.CLAIMNO                        AS CLAIM_NO,
        c.PICTEKNIK                      AS PIC,
        c.BUSINESSNAME                   AS BUSINESS_NAME,
@@ -96,8 +160,8 @@ SELECT c.CLAIMNO                        AS CLAIM_NO,
  WHERE c.GROUPPANEL IN ('003', '004', '006', '009')
    AND c.BUSINESSCODE NOT IN ('10145', '10168')
    AND c.STATUSWORK NOT IN (:1, :2)
-   AND c.STSSALVAGE IS NULL
- ORDER BY c.CLAIMNO
+   AND c.STSSALVAGE IN ('3', '5')
+ ORDER BY c.DATEOFLOSS DESC NULLS LAST, c.CLAIMNO
 OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 
 -- name: list_claim_search
@@ -122,9 +186,9 @@ SELECT c.CLAIMNO                        AS CLAIM_NO,
  WHERE c.GROUPPANEL IN ('003', '004', '006', '009')
    AND c.BUSINESSCODE NOT IN ('10145', '10168')
    AND c.STATUSWORK NOT IN (:1, :2)
-   AND c.STSSALVAGE IS NULL
+   AND c.STSSALVAGE IN ('3', '5')
    AND UPPER(c.CLAIMNO) LIKE UPPER(:3) ESCAPE '\'
- ORDER BY c.CLAIMNO
+ ORDER BY c.DATEOFLOSS DESC NULLS LAST, c.CLAIMNO
 OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: list_claim_object
@@ -350,21 +414,50 @@ SELECT a.IDSALVAGE                      AS SALVAGE_ID,
 OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 
 -- name: count_claim_status
--- Pencacah baris keluarga klaim: Ekonomis · TBA · Tidak Ekonomis · Tidak Ada Salvage,
--- dan baris "Outstanding" yang menghitung DUA nilai sekaligus.
+-- Pencacah baris keluarga klaim: Ekonomis · TBA · Tidak Ekonomis · Tidak Ada Salvage.
 --
 -- Bind: :1 nilai STSSALVAGE pertama · :2 kedua
 --
 -- Kedua bind menerima nilai yang SAMA bila hanya satu yang dihitung. Menulisnya begitu
--- membuat satu kueri melayani kelima baris tanpa merangkai teks SQL.
+-- membuat satu kueri melayani keempat baris tanpa merangkai teks SQL.
 --
--- Perhatikan baris "Outstanding" menghitung `STSSALVAGE` 3 atau 5 — BUKAN yang kosong,
--- yang justru ditampilkan daftarnya. Selisih itu ada di Pega dan direplikasi (`P-5`).
+-- Baris "Outstanding" TIDAK memakai kueri ini — ia perlu penyaring status pekerjaan
+-- supaya angkanya sepadan dengan daftarnya. Lihat count_claim_outstanding.
 SELECT COUNT(*)                         AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
  WHERE c.GROUPPANEL IN ('003', '004', '006', '009')
    AND c.BUSINESSCODE NOT IN ('10145', '10168')
    AND c.STSSALVAGE IN (:1, :2)
+
+-- name: count_claim_outstanding
+-- Pencacah baris "Outstanding" — POPULASI YANG SAMA PERSIS dengan daftarnya.
+--
+-- Bind: :1 STSSALVAGE pertama · :2 kedua · :3 status kerja dikecualikan pertama · :4 kedua
+--
+-- ============================================================================
+-- KENAPA IA SAMA DENGAN DAFTARNYA, DAN KENAPA ITU KEPUTUSAN
+-- ============================================================================
+--
+-- Pega TIDAK konsisten di sini: ringkasannya berbunyi 234 sementara daftar yang dibuka
+-- baris itu berbunyi 145. Tidak ada satu pun rule di export yang menghasilkan 234, dan
+-- angkanya tidak dapat diturunkan dari kesembilan baris lain.
+--
+-- Keputusan Work Owner 2026-10-08: samakan dengan daftarnya. Angka di ringkasan menjadi
+-- jumlah baris yang benar-benar keluar saat diklik — dan keluhan "145 pas diklik jadi 465"
+-- hilang pada sebabnya, bukan pada gejalanya.
+--
+-- Konsekuensi yang diterima: angka ringkasan kita BERBEDA dari Pega (145 lawan 234).
+-- Selisih itu disengaja dan tercatat, bukan terlewat.
+--
+-- Keempat baris sekeluarganya TETAP memakai count_claim_status tanpa penyaring status
+-- kerja — angka keempatnya sudah cocok dengan Pega, dan menambahkan penyaring akan
+-- merusak yang sudah benar.
+SELECT COUNT(*)                         AS TOTAL_ROWS
+  FROM POOLDATA.T_CLAIM_PNC c
+ WHERE c.GROUPPANEL IN ('003', '004', '006', '009')
+   AND c.BUSINESSCODE NOT IN ('10145', '10168')
+   AND c.STSSALVAGE IN (:1, :2)
+   AND c.STATUSWORK NOT IN (:3, :4)
 
 -- name: count_claim_buyback
 -- Pencacah baris "Salvage Buyback".
@@ -1078,3 +1171,22 @@ SELECT c.COVERAGEID                     AS COVERAGE_ID,
   FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE c
  WHERE c.CLAIMID = UPPER(:1 || :2)
  ORDER BY c.COVERAGENAME
+
+-- name: mark_sent_to_auction
+-- Mencatat jawaban balai lelang pada baris pengajuan.
+--
+-- Bind: :1 STSTRANSFER · :2 IDSIMASBID · :3 IDSALVAGE
+--
+-- Menggantikan langkah `RDB-Save` "Simpan IDSIMASBID Ke Table" pada
+-- `Activity/Insert_salvageToSimasBid-Act.xml`, yang menyimpan halaman `TempSimasBid` —
+-- halaman yang kolom-kolomnya DIALIASKAN dengan nama yang tidak ada hubungannya dengan
+-- isinya (`CaseID` memuat kode status, `DistrictID` memuat ID SimasBid). Alias semacam itu
+-- persis yang `D-19` cabut; di sini kolomnya disebut dengan namanya sendiri.
+--
+-- `IDSIMASBID` ditulis dengan COALESCE supaya jawaban yang tidak membawa nomor TIDAK
+-- menimpa nomor yang sudah ada dari pengiriman sebelumnya. Pengiriman ulang yang ditolak
+-- karena itu mengubah statusnya tanpa menghapus jejak pengiriman yang pernah berhasil.
+UPDATE POOLDATA.PNC_SALVAGE
+   SET STSTRANSFER = :1,
+       IDSIMASBID = COALESCE(:2, IDSIMASBID)
+ WHERE IDSALVAGE = :3

@@ -118,9 +118,6 @@ export type Tab = {
    */
   pencarian_cocok_persis: boolean
 
-  /** Keterangan yang berlaku pada daftar ini saja. */
-  catatan_daftar?: string
-
   /**
    * Dengan APA panel rincian dibuka pada daftar ini.
    *
@@ -246,11 +243,54 @@ export type CreateRequest = {
   detail_item_salvage: DetailItem[]
 }
 
+/**
+ * Hasil pengiriman satu pengajuan ke balai lelang SimasBid.
+ *
+ * Ia objek, bukan dilarutkan ke dalam `pesan`, karena layar perlu memperlakukan dua
+ * keadaannya secara berbeda: pengiriman yang DITOLAK menuntut tindakan petugas, sementara
+ * pengiriman yang belum dikonfigurasi menuntut tindakan Tim Infra. Membedakannya dari teks
+ * berarti mengurai kalimat — dan kalimat adalah hal pertama yang berubah.
+ */
+export type HasilBalaiLelang = {
+  /** Salah bila pengiriman memang belum dikonfigurasi — bukan bila dicoba lalu gagal. */
+  dicoba: boolean
+
+  /** Benar hanya bila balai lelang MENERIMA pengajuan ini. */
+  diterima: boolean
+
+  id_balai_lelang?: string
+
+  /** Jawaban balai lelang, atau sebab kegagalannya. */
+  keterangan?: string
+}
+
+/** Hasil pengiriman surel pemberitahuan. */
+export type HasilPemberitahuan = {
+  /** Salah bila surel memang belum dikonfigurasi di lingkungan ini. */
+  dicoba: boolean
+  terkirim: boolean
+}
+
 export type CreateResponse = {
   id_salvage: string
   jumlah_detail_item: number
   pesan: string
+  balai_lelang: HasilBalaiLelang
+  pemberitahuan: HasilPemberitahuan
   portal: string
+}
+
+/**
+ * Catatan yang digambar sebagai bilah di atas layar sesudah Submit.
+ *
+ * `perluPerhatian` menentukan WARNANYA, dan itu bukan hiasan. Sejak Submit benar-benar
+ * mengirim ke balai lelang dan benar-benar mengirim surel, salah satunya dapat gagal
+ * sementara pengajuannya tetap tersimpan — dan bilah hijau yang berbunyi "GAGAL terkirim"
+ * adalah isyarat bercampur yang justru membuat orang berhenti membacanya.
+ */
+export type CatatanSimpan = {
+  pesan: string
+  perluPerhatian: boolean
 }
 
 /**

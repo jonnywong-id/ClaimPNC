@@ -212,11 +212,33 @@ func (s *Store) claimRows(query inboxsalvage.Query) []inboxsalvage.Row {
 		rows = append(rows, row)
 	}
 
-	// Urutan mengikuti nomor klaim. Kueri keluarga A dan B sistem lama TIDAK menyebut
-	// `ORDER BY` sama sekali, sehingga urutannya tidak ditentukan di sana; urutan yang
-	// pasti ditambahkan di sini supaya halaman kedua tidak pernah mengulang baris halaman
-	// pertama. Lihat PlannedDifferences.
+	// Urutannya mengikuti pengisi SQL, dan BERBEDA menurut daftarnya.
+	//
+	// Daftar Salvage Outstanding: tanggal kejadian TERBARU dulu, dengan nomor klaim
+	// sebagai pemecah seri — keputusan Work Owner 2026-10-08. Daftar keluarga lain tetap
+	// menurut nomor klaim.
+	//
+	// Kueri keluarga A dan B sistem lama TIDAK menyebut `ORDER BY` sama sekali, sehingga
+	// urutannya di sana tidak ditentukan dan tidak dapat ditiru dengan sengaja. Urutan
+	// yang pasti ditambahkan di sini supaya halaman kedua tidak pernah mengulang baris
+	// halaman pertama — lihat catatan pada `list_claim` di inboxsalvage.sql.
+	//
+	// Pemecah seri WAJIB: tanggal kejadian berulang, dan tanpa pemecah seri urutan di
+	// dalam satu tanggal tidak ditentukan — persis ketidakstabilan yang hendak dihindari.
 	sort.SliceStable(rows, func(i, j int) bool {
+		if query.Tab.OutstandingSalvage {
+			if rows[i].LossDate != rows[j].LossDate {
+				// Kosong jatuh ke BAWAH, sepadan dengan `NULLS LAST` pada pengisi SQL.
+				if rows[i].LossDate == "" {
+					return false
+				}
+				if rows[j].LossDate == "" {
+					return true
+				}
+				return rows[i].LossDate > rows[j].LossDate
+			}
+			return rows[i].ClaimNo < rows[j].ClaimNo
+		}
 		return rows[i].ClaimNo < rows[j].ClaimNo
 	})
 	return rows
@@ -236,8 +258,12 @@ func claimMatchesTab(claim Claim, tab inboxsalvage.Tab) bool {
 	switch {
 	case tab.BuybackFilter:
 		return claim.HasBuybackValue
-	case tab.SalvageStatusIsNull:
-		return strings.TrimSpace(claim.SalvageStatus) == ""
+	case tab.OutstandingSalvage:
+		// STSSALVAGE 3 atau 5 — penanda yang SAMA dengan daftar Ekonomis dan TBA
+		// digabungkan. Status pekerjaan sudah disaring di atas. Lihat
+		// inboxsalvage.Tab.OutstandingSalvage untuk sebab ia tidak menyaring
+		// "belum ditandai" seperti bacaan export.
+		return containsValue(inboxsalvage.OutstandingSalvageStatuses, claim.SalvageStatus)
 	case tab.SalvageStatus != "":
 		return claim.SalvageStatus == tab.SalvageStatus
 	default:
@@ -346,12 +372,14 @@ func (s *Store) countFor(row inboxsalvage.CountRow, caller inboxsalvage.Caller) 
 
 	default:
 		for _, claim := range s.claims {
-			if row.SalvageStatusIsNull {
-				if strings.TrimSpace(claim.SalvageStatus) == "" {
-					total++
-				}
+			// Baris Outstanding — dan HANYA baris Outstanding — ikut menyaring status
+			// pekerjaan, supaya angkanya mencacah populasi yang SAMA PERSIS dengan
+			// daftarnya. Lihat inboxsalvage.CountRow.ExcludesClosedWork.
+			if row.ExcludesClosedWork &&
+				containsValue(inboxsalvage.ClosedWorkStatuses, claim.WorkStatus) {
 				continue
 			}
+
 			if containsValue(row.SalvageStatuses, claim.SalvageStatus) {
 				total++
 			}
@@ -718,4 +746,30 @@ func applyForm(item Salvage, form inboxsalvage.Form) Salvage {
 // inboxsalvage.AgingOf.
 func todayISO() string {
 	return inboxsalvage.TodayWIB()
+}
+
+// MarkSentToAuction mencatat jawaban balai lelang pada satu pengajuan.
+//
+// Penyimpanan memori TIDAK menyimpan `IDSIMASBID` sebagai kolom tersendiri — yang diuji di
+// sini adalah apakah `STSTRANSFER` berpindah ke kode yang benar, karena kolom itulah yang
+// menentukan di daftar mana barisnya muncul. Nomor dari balai lelang diuji pada pengisi
+// SQL, tempat ia benar-benar punya kolom.
+func (s *Store) MarkSentToAuction(
+	ctx context.Context, salvageID string, receipt inboxsalvage.AuctionReceipt,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for index, item := range s.salvages {
+		if item.SalvageID != salvageID {
+			continue
+		}
+		s.salvages[index].TransferStatus = receipt.TransferStatus()
+		return nil
+	}
+	return inboxsalvage.ErrRowNotFound
 }
