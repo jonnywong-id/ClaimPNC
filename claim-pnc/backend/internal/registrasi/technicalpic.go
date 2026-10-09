@@ -26,12 +26,15 @@ import "strings"
 //
 // # Yang sengaja TIDAK dibawa
 //
-//   - Rotasi Team A/B lewat `pooldata.pega_dashboardpnc_refresh` (`RandomOver1M_act`,
-//     `RandomUnder1M_act`). Ia hanya mengisi label `ClaimData.UserTeknisGroup`, tidak
-//     menyaring kueri PIC, dan A maupun B sama-sama menjadi komite NONMBUAB; tabel flag-nya
-//     masih ditulis Pega (`P-1`). Menunggu keputusan Work Owner.
 //   - Cabang host dev (`pegadev`) pada `DownloadClaimFaceSheet_act` step 6 — perilaku
 //     berdasarkan hostname dilarang (Cross-Cutting §3.4).
+//
+// Rotasi Team A/B (`GetRandomTeamClaimLeader` → `RandomOver1M_act`/`RandomUnder1M_act`)
+// DIBAWA atas keputusan Work Owner 2026-10-09, tetap memakai
+// `pooldata.pega_dashboardpnc_refresh` — tabel yang juga ditulis Pega selama masa paralel,
+// pengecualian sadar terhadap `P-1`. Label grup hasilnya (`ClaimData.UserTeknisGroup`)
+// tidak punya kolom di basis data mana pun — di Pega ia hanya hidup di BLOB kasus — sehingga
+// yang tersimpan hanyalah flag-nya. Rotasi tidak menyaring kueri PIC.
 //
 // Kandidat alamat Gmail pada `GetRandomTeam2_act` step 7 DIBAWA atas keputusan Work Owner
 // 2026-10-08, sebagai pengecualian sadar terhadap `D-67`.
@@ -132,6 +135,35 @@ type TechnicalPICPlan struct {
 
 	// Large memakai COUNTER_QUOTA2 (estimasi > Rp 1 miliar), bukan COUNTER_QUOTA.
 	Large bool
+
+	// Rotation adalah rotasi Team A/B yang dijalankan sebelum kandidat dipilih.
+	Rotation TeamRotation
+}
+
+// TeamRotation adalah kolom flag `pooldata.pega_dashboardpnc_refresh` yang diputar
+// `GetRandomTeamClaimLeader`.
+type TeamRotation string
+
+const (
+	// RotationNone: tidak ada rotasi.
+	RotationNone TeamRotation = ""
+	// RotationLarge: estimasi > Rp 1 miliar — `RandomOver1M_act`, kolom FLAG.
+	RotationLarge TeamRotation = "FLAG"
+	// RotationSmall: estimasi < Rp 1 miliar — `RandomUnder1M_act`, kolom FLAG2.
+	RotationSmall TeamRotation = "FLAG2"
+)
+
+// NextTeam adalah step 4–5 `RandomOver1M_act`/`RandomUnder1M_act`: tim terakhir kosong atau
+// B → A; A → B. Nilai lain tidak cocok dengan kedua step, sehingga flag ditulis kosong — sama
+// dengan Pega (TempNoPolis.CedingCoName belum diisi pada jalur ini).
+func NextTeam(last string) string {
+	switch strings.TrimSpace(last) {
+	case "", "B":
+		return "A"
+	case "A":
+		return "B"
+	}
+	return ""
 }
 
 // PlanTechnicalPIC menentukan jalur pemilihan PIC Teknik, mengikuti urutan
@@ -189,6 +221,20 @@ func PlanTechnicalPIC(claim Claim, estimateIDR Money) TechnicalPICPlan {
 		return TechnicalPICPlan{}
 	}
 	plan.Large = estimateIDR > LargeTechnicalClaim
+
+	// Rotasi: `getRandomTeam_act` step 12 (CoinsList kosong) dan `GetRandomTeamGroup_act`
+	// (CoinsList kosong, atau baris leader ASURANSI SINAR MAS) memanggil
+	// GetRandomTeamClaimLeader. Fac In (step 11) dan member tidak. Posisi koasuransi klaim
+	// sudah diturunkan menjadi LEADER/MEMBER/FAC IN (DeriveCoinsurance), dan LEADER mencakup
+	// daftar koasuransi yang kosong.
+	if !fac && !member {
+		switch {
+		case estimateIDR > LargeTechnicalClaim:
+			plan.Rotation = RotationLarge
+		case estimateIDR < LargeTechnicalClaim:
+			plan.Rotation = RotationSmall
+		}
+	}
 	return plan
 }
 

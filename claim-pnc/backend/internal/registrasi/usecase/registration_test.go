@@ -97,6 +97,7 @@ func setup(t *testing.T, roles ...string) environment {
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:              store,
 		TaskRepo:               store.TaskRepo(),
+		UnassignedTasks:        store,
 		PolicyRepo:             memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
 		NumberIssuer:           memory.NewNumberIssuer(),
 		Parameter:              parameter,

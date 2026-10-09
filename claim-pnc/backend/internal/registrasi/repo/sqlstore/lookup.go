@@ -580,6 +580,11 @@ func (a *Assigner) chooseTechnicalPIC(ctx context.Context, claim registrasi.Clai
 	case registrasi.PoolProcedure:
 		operator, err = a.procedurePIC(ctx, exec, plan, caller)
 	case registrasi.PoolNonMBU:
+		// GetRandomTeamClaimLeader berjalan SEBELUM daftar kandidat (step 12–13), dan tetap
+		// berjalan walau akhirnya tidak ada PIC yang terpilih.
+		if err = a.rotateTeam(ctx, exec, plan.Rotation); err != nil {
+			break
+		}
 		candidates := plan.Preferred
 		if len(candidates) == 0 {
 			candidates, err = a.nonMBUCandidates(ctx, exec, plan)
@@ -626,6 +631,30 @@ func (a *Assigner) procedurePIC(ctx context.Context, exec executor, plan registr
 		return "", nil
 	}
 	return operator, err
+}
+
+// rotateTeam adalah `RandomOver1M_act` / `RandomUnder1M_act`: baca flag tim terakhir, tulis
+// giliran berikutnya (registrasi.NextTeam). Hasilnya hanya label grup klaim yang tidak
+// disimpan di mana pun (lihat registrasi.TeamRotation), sehingga yang dikerjakan di sini
+// hanyalah memutar flag-nya.
+func (a *Assigner) rotateTeam(ctx context.Context, exec executor, rotation registrasi.TeamRotation) error {
+	var read, write string
+	switch rotation {
+	case registrasi.RotationLarge:
+		read, write = "rotasi_tim_baca_besar", "rotasi_tim_tulis_besar"
+	case registrasi.RotationSmall:
+		read, write = "rotasi_tim_baca_kecil", "rotasi_tim_tulis_kecil"
+	default:
+		return nil
+	}
+	var last sql.NullString
+	if err := exec.QueryRowContext(ctx, loadQuery(read)).Scan(&last); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("membaca rotasi tim %s: %w", rotation, err)
+	}
+	if _, err := exec.ExecContext(ctx, loadQuery(write), registrasi.NextTeam(last.String)); err != nil {
+		return fmt.Errorf("menulis rotasi tim %s: %w", rotation, err)
+	}
+	return nil
 }
 
 // nonMBUCandidates adalah seluruh daftar `BrowsePICRandomTeam` / `BrowsePICRandomTeam2`,

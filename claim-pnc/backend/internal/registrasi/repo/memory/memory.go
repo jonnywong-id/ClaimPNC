@@ -376,3 +376,46 @@ var (
 	_ registrasi.Notifier      = (*Store)(nil)
 	_ registrasi.TaskRepo      = taskRepo{}
 )
+
+// ── UnassignedTasks ───────────────────────────────────────────────────────────────
+
+// UnassignedTechnicalTasks memenuhi registrasi.UnassignedTasks.
+func (p *Store) UnassignedTechnicalTasks(ctx context.Context) ([]registrasi.Task, error) {
+	defer p.key(ctx)()
+	var result []registrasi.Task
+	for _, t := range sortTasks(p.task) {
+		if !t.Open() || t.Owner != registrasi.OperatorUnassigned {
+			continue
+		}
+		c, ok := p.claim[t.ClaimID]
+		if !ok || registrasi.HasTechnicalPIC(c) || c.Policy.Number == "" {
+			continue
+		}
+		result = append(result, t)
+	}
+	return result, nil
+}
+
+// LockUnassigned memenuhi registrasi.UnassignedTasks.
+func (p *Store) LockUnassigned(ctx context.Context, taskID string) (registrasi.Task, error) {
+	defer p.key(ctx)()
+	t, ok := p.task[taskID]
+	if !ok || !t.Open() || t.Owner != registrasi.OperatorUnassigned {
+		return registrasi.Task{}, registrasi.ErrTaskNotFound
+	}
+	return t, nil
+}
+
+// Reassign memenuhi registrasi.UnassignedTasks.
+func (p *Store) Reassign(ctx context.Context, taskID, to string) error {
+	defer p.key(ctx)()
+	t, ok := p.task[taskID]
+	if !ok || !t.Open() || t.Owner != registrasi.OperatorUnassigned {
+		return registrasi.ErrTaskAlreadyClaimed
+	}
+	t.Owner = to
+	p.task[taskID] = t
+	return nil
+}
+
+var _ registrasi.UnassignedTasks = (*Store)(nil)

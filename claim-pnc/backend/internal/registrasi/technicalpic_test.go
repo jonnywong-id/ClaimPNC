@@ -49,9 +49,9 @@ func TestPlanTechnicalPICFollowsGetRandomTeam(t *testing.T) {
 		{"Bonding = admin", with(func(c *registrasi.Claim) { c.Policy.BusinessType = "BondingKBG" }), under,
 			registrasi.TechnicalPICPlan{Operator: "ADMIN1"}},
 		{"NONMBU leader < 1M", with(func(c *registrasi.Claim) { c.Policy.Coinsurance.Role = "LEADER" }), under,
-			registrasi.TechnicalPICPlan{Pool: registrasi.PoolNonMBU}},
+			registrasi.TechnicalPICPlan{Pool: registrasi.PoolNonMBU, Rotation: registrasi.RotationSmall}},
 		{"NONMBU > 1M", with(func(*registrasi.Claim) {}), registrasi.Rupiah(1_000_000_001),
-			registrasi.TechnicalPICPlan{Pool: registrasi.PoolNonMBU, Large: true}},
+			registrasi.TechnicalPICPlan{Pool: registrasi.PoolNonMBU, Large: true, Rotation: registrasi.RotationLarge}},
 		{"tepat 1M tanpa kandidat", with(func(*registrasi.Claim) {}), registrasi.Rupiah(1_000_000_000),
 			registrasi.TechnicalPICPlan{}},
 		{"Fac In = tim C tanpa kandidat tetap", with(func(c *registrasi.Claim) {
@@ -79,7 +79,7 @@ func TestPlanTechnicalPICFollowsGetRandomTeam(t *testing.T) {
 		{"leader sumbis IBS tanpa kandidat tetap", with(func(c *registrasi.Claim) {
 			c.Policy.Coinsurance.Role = "LEADER"
 			c.Policy.SourceOfBusiness = "10000952"
-		}), under, registrasi.TechnicalPICPlan{Pool: registrasi.PoolNonMBU}},
+		}), under, registrasi.TechnicalPICPlan{Pool: registrasi.PoolNonMBU, Rotation: registrasi.RotationSmall}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -117,4 +117,12 @@ func TestAttendanceRules(t *testing.T) {
 	require.False(t, registrasi.AttendanceApplies(claim))
 	claim.DateOfLoss, claim.Policy.Number = start, ""
 	require.False(t, registrasi.AttendanceApplies(claim))
+}
+
+// TestNextTeam: RandomOver1M_act/RandomUnder1M_act step 4–5.
+func TestNextTeam(t *testing.T) {
+	require.Equal(t, "A", registrasi.NextTeam(""))
+	require.Equal(t, "A", registrasi.NextTeam("B"))
+	require.Equal(t, "B", registrasi.NextTeam(" A "))
+	require.Empty(t, registrasi.NextTeam("C"))
 }

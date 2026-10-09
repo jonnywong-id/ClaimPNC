@@ -335,3 +335,33 @@ SELECT ID, JSON_VALUE(JSONDATA, '$.Note'), JSON_VALUE(JSONDATA, '$.ZipCode')
   FROM POOLDATA.M_RW
  WHERE JSON_VALUE(JSONDATA, '$.DistrictID') = :1
  ORDER BY 2
+
+-- ============================================================================
+-- ROTASI TEAM A/B — GetRandomTeamClaimLeader (lihat registrasi.TeamRotation)
+-- ============================================================================
+--
+-- Tabel yang SAMA dengan Pega (`RDB List/GetLastTeamGetSurveyor_sql*`,
+-- `UpdateLastTeamGetSurveyor_sql*`), keputusan Work Owner 2026-10-09. Selama masa paralel ia
+-- ditulis dua sistem — pengecualian sadar terhadap `P-1`. Pega membaca baris pertama tanpa
+-- WHERE dan menulis tanpa WHERE; FOR UPDATE ditambahkan supaya dua instans aplikasi ini
+-- tidak membaca flag yang sama lalu menulis giliran yang sama.
+
+-- name: rotasi_tim_baca_besar
+-- `GetLastTeamGetSurveyor_sql` (RandomOver1M_act, estimasi > Rp 1 miliar).
+SELECT FLAG
+  FROM POOLDATA.PEGA_DASHBOARDPNC_REFRESH
+   FOR UPDATE
+
+-- name: rotasi_tim_tulis_besar
+-- `UpdateLastTeamGetSurveyor_sql`.
+UPDATE POOLDATA.PEGA_DASHBOARDPNC_REFRESH SET FLAG = :1
+
+-- name: rotasi_tim_baca_kecil
+-- `GetLastTeamGetSurveyor_sql2` (RandomUnder1M_act, estimasi < Rp 1 miliar).
+SELECT FLAG2
+  FROM POOLDATA.PEGA_DASHBOARDPNC_REFRESH
+   FOR UPDATE
+
+-- name: rotasi_tim_tulis_kecil
+-- `UpdateLastTeamGetSurveyor_sql2`.
+UPDATE POOLDATA.PEGA_DASHBOARDPNC_REFRESH SET FLAG2 = :1

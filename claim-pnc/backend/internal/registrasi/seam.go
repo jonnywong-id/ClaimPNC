@@ -409,3 +409,19 @@ func SingleCauseOfLoss(options []CauseOfLossOption) (CauseOfLossOption, bool) {
 	}
 	return options[0], true
 }
+
+// UnassignedTasks adalah seam agent `AutoPICAgent` (`TransferAllCaseNotAssigned`): tugas yang
+// diparkir di antrean ServicePNC karena klaimnya belum punya PIC Teknik.
+type UnassignedTasks interface {
+	// UnassignedTechnicalTasks adalah `BrowseCaseNotAssigned`: tugas terbuka milik
+	// ServicePNC yang klaimnya belum ber-PIC Teknik (kosong atau `-`) dan bernomor polis.
+	UnassignedTechnicalTasks(ctx context.Context) ([]Task, error)
+
+	// LockUnassigned mengunci satu tugas di dalam transaksi, bila tugas itu masih terbuka dan
+	// masih milik ServicePNC; selain itu ErrTaskNotFound. Kunci inilah yang membuat dua
+	// instans aplikasi tidak memproses klaim yang sama dua kali.
+	LockUnassigned(ctx context.Context, taskID string) (Task, error)
+
+	// Reassign memindahkan tugas terbuka dari ServicePNC ke operator itu.
+	Reassign(ctx context.Context, taskID, to string) error
+}

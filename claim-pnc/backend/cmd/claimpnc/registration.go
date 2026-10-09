@@ -81,7 +81,9 @@ func assembleRegistration(
 
 	if db != nil {
 		options.ClaimRepo = registrasisql.NewClaimStore(db)
-		options.TaskRepo = registrasisql.NewTaskStore(db)
+		taskStore := registrasisql.NewTaskStore(db)
+		options.TaskRepo = taskStore
+		options.UnassignedTasks = taskStore
 		options.NumberIssuer = registrasisql.NewNumberIssuer(db)
 		options.AuditRecorder = registrasisql.NewAuditRecorder(db, idGenerator)
 		options.Notifier = registrasisql.NewNotifier(db, idGenerator)
@@ -170,6 +172,7 @@ func assembleRegistration(
 		store := registrasimemory.NewStore()
 		options.ClaimRepo = store
 		options.TaskRepo = store.TaskRepo()
+		options.UnassignedTasks = store
 		options.NumberIssuer = registrasimemory.NewNumberIssuer()
 		options.AuditRecorder = store
 		options.Notifier = store

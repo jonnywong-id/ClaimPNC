@@ -445,6 +445,13 @@ func run() error {
 	}
 	defer assembly.close()
 
+	// Pekerjaan terjadwal hidup selama server hidup.
+	jobs, stopJobs := context.WithCancel(context.Background())
+	defer stopJobs()
+	if err := startAutoPIC(jobs, cfg.AutoPIC, assembly.registrasi, logger); err != nil {
+		return err
+	}
+
 	spaFiles, err := spa.Files()
 	if err != nil {
 		logger.Warn("antarmuka tidak tersedia; aplikasi hanya melayani API",

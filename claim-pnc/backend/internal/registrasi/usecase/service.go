@@ -81,6 +81,7 @@ type Service struct {
 	id                     registrasi.IDGenerator
 	unit                   registrasi.UnitOfWork
 	clock                  clock.Clock
+	unassigned             registrasi.UnassignedTasks
 
 	validateOnReturn bool
 }
@@ -184,6 +185,11 @@ type Options struct {
 	IDGenerator registrasi.IDGenerator
 	UnitOfWork  registrasi.UnitOfWork
 	Clock       clock.Clock
+
+	// UnassignedTasks dipakai agent PIC Teknik otomatis (AssignUnassignedTechnicalPIC).
+	// SATU-SATUNYA seam yang boleh kosong: tanpanya agent menolak berjalan, layanan lain tidak
+	// terpengaruh.
+	UnassignedTasks registrasi.UnassignedTasks
 
 	// ValidateOnReturn menentukan apakah tombol Back ikut melewati gerbang validasi.
 	//
@@ -308,6 +314,7 @@ func NewService(o Options) (*Service, error) {
 		id:                     o.IDGenerator,
 		unit:                   o.UnitOfWork,
 		clock:                  o.Clock,
+		unassigned:             o.UnassignedTasks,
 		validateOnReturn:       o.ValidateOnReturn,
 	}, nil
 }

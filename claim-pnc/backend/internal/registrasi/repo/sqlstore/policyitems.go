@@ -339,10 +339,11 @@ func parseMoney(raw string) registrasi.Money {
 // text memangkas nilai kolom teks yang boleh kosong.
 func text(value sql.NullString) string { return strings.TrimSpace(value.String) }
 
-// ItemOptions membaca pilihan Objek item estimasi. Hanya lini Fire yang punya sumbernya —
-// PropertyItemList objek polis; lini lain mengembalikan daftar kosong.
+// ItemOptions membaca pilihan Objek item estimasi lini Fire — T_PROPERTYITEMLIST objek
+// polis; lini lain mengembalikan daftar kosong (lihat registrasi.ItemFromPropertyList).
+// Nama yang sama hanya ditampilkan sekali.
 func (p *PolicyItems) ItemOptions(ctx context.Context, policy registrasi.Policy, objectID string) ([]registrasi.ItemOption, error) {
-	if registrasi.SourceOf(policy) != registrasi.SourceProperty {
+	if !registrasi.ItemFromPropertyList(policy) {
 		return nil, nil
 	}
 	rows, err := p.db.QueryContext(ctx, loadQuery("item_pilihan_properti"),
@@ -355,34 +356,46 @@ func (p *PolicyItems) ItemOptions(ctx context.Context, policy registrasi.Policy,
 	var result []registrasi.ItemOption
 	seen := map[string]bool{}
 	for rows.Next() {
-		var doc sql.NullString
-		if err := rows.Scan(&doc); err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: membaca dokumen item properti: %w", err)
+		var itemType, group, tsi sql.NullString
+		if err := rows.Scan(&itemType, &group, &tsi); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris item properti: %w", err)
 		}
-		if strings.TrimSpace(doc.String) == "" {
+		name := text(itemType)
+		if name == "" || seen[name] {
 			continue
 		}
-		var parsed struct {
-			PropertyItemList []struct {
-				ItemType          jsonText `json:"ItemType"`
-				PropertyItemGroup jsonText `json:"PropertyItemGroup"`
-				TSIObjectItem     jsonText `json:"TSIObjectItem"`
-				FlagDelete        jsonText `json:"FlagDelete"`
-			} `json:"PropertyItemList"`
+		seen[name] = true
+		result = append(result, registrasi.ItemOption{Name: name, Group: text(group), TSI: parseMoney(text(tsi))})
+	}
+	return result, rows.Err()
+}
+
+// TravelBenefits membaca manfaat sebuah plan Travel — pilihan Objek item estimasi lini
+// Travel (`SearchCoverageTravel_RD`).
+func (p *PolicyItems) TravelBenefits(ctx context.Context, plan string) ([]registrasi.ItemOption, error) {
+	plan = strings.TrimSpace(plan)
+	if plan == "" {
+		return nil, nil
+	}
+	rows, err := p.db.QueryContext(ctx, loadQuery("item_pilihan_travel"), plan)
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca manfaat plan Travel: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []registrasi.ItemOption
+	seen := map[string]bool{}
+	for rows.Next() {
+		var id, name sql.NullString
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris manfaat Travel: %w", err)
 		}
-		if err := json.Unmarshal([]byte(doc.String), &parsed); err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: dokumen item properti: %w", err)
+		n := text(name)
+		if n == "" || seen[n] {
+			continue
 		}
-		for _, it := range parsed.PropertyItemList {
-			name := strings.TrimSpace(string(it.ItemType))
-			if name == "" || string(it.FlagDelete) == "1" || seen[name] {
-				continue
-			}
-			seen[name] = true
-			result = append(result, registrasi.ItemOption{
-				Name: name, Group: string(it.PropertyItemGroup), TSI: parseMoney(string(it.TSIObjectItem)),
-			})
-		}
+		seen[n] = true
+		result = append(result, registrasi.ItemOption{ID: text(id), Name: n})
 	}
 	return result, rows.Err()
 }

@@ -583,6 +583,10 @@ func TestPolicyItemsAndCurrenciesMemory(t *testing.T) {
 	require.Len(t, opts, 2)
 	opts, _ = p.ItemOptions(bg, registrasi.Policy{Line: registrasi.LineTravel}, "1")
 	require.Nil(t, opts)
+	opts, _ = p.TravelBenefits(bg, "10001")
+	require.Len(t, opts, 2)
+	opts, _ = p.TravelBenefits(bg, "lain")
+	require.Nil(t, opts)
 
 	cur, err := CurrencyDirectory{}.Currencies(bg)
 	require.NoError(t, err)

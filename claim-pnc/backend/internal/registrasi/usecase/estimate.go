@@ -48,13 +48,26 @@ func (l *Service) Currencies(ctx context.Context) ([]registrasi.CurrencyOption, 
 	return l.currency.Currencies(ctx)
 }
 
-// ItemOptions membaca pilihan Objek item estimasi untuk satu objek klaim.
-func (l *Service) ItemOptions(ctx context.Context, claimID, objectID string) ([]registrasi.ItemOption, error) {
+// ItemOptions membaca dropdown Objek item estimasi untuk satu jaminan (objek dan kode
+// coverage-nya) — lihat registrasi.ItemFromPropertyList dan ItemFromTravelPlan.
+func (l *Service) ItemOptions(ctx context.Context, claimID, objectID, coverageID string) (registrasi.ItemChoices, error) {
 	claim, err := l.claim.Get(ctx, claimID)
 	if err != nil {
-		return nil, err
+		return registrasi.ItemChoices{}, err
 	}
-	return l.options.ItemOptions(ctx, claim.Policy, objectID)
+	choices := registrasi.ItemChoices{Default: registrasi.DefaultItemName(claim.Policy)}
+	switch {
+	case registrasi.ItemFromPropertyList(claim.Policy):
+		choices.Option, err = l.options.ItemOptions(ctx, claim.Policy, objectID)
+	case registrasi.ItemFromTravelPlan(claim.Policy):
+		choices.Option, err = l.options.TravelBenefits(ctx, coverageID)
+	default:
+		choices.Option = []registrasi.ItemOption{{Name: registrasi.ItemOthers}}
+	}
+	if err != nil {
+		return registrasi.ItemChoices{}, err
+	}
+	return choices, nil
 }
 
 // CoverageOptions adalah isi dropdown "Tambah coverage" pada tahap Input Register: coverage

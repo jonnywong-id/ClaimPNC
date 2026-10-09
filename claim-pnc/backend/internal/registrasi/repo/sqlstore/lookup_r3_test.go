@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -191,7 +192,14 @@ func TestAssignerLightestTechnician(t *testing.T) {
 	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
 	require.ErrorContains(t, err, "membaca jabatan operator")
 
-	// NONMBU < 1M, ASM leader: tanpa saringan tim C, dan TANPA kenaikan beban (seperti Pega).
+	// Rotasi Team A/B kolom FLAG2 (< 1M): terakhir A → B.
+	rotateSmall := func(last any, next string) {
+		mock.ExpectQuery(be4Q("rotasi_tim_baca_kecil")).WillReturnRows(sqlmock.NewRows([]string{"f"}).AddRow(last))
+		mock.ExpectExec(be4Q("rotasi_tim_tulis_kecil")).WithArgs(next).WillReturnResult(sqlmock.NewResult(0, 1))
+	}
+
+	// NONMBU < 1M, ASM leader: rotasi, tanpa saringan tim C, TANPA kenaikan beban (seperti Pega).
+	rotateSmall("A", "B")
 	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
 	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: fire}, "NIK1")
 	require.NoError(t, err)
@@ -218,15 +226,32 @@ func TestAssignerLightestTechnician(t *testing.T) {
 	require.Equal(t, registrasi.Assignee{Operator: "ADMIN1"}, got)
 
 	claim := registrasi.Claim{Policy: fire}
-	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC.
+	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC. Rotasi tetap jalan.
+	rotateSmall(nil, "A")
 	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WillReturnRows(sqlmock.NewRows([]string{"o"}))
 	got, err = a.Assign(ctx, technical, claim, "NIK1")
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, got)
 
+	rotateSmall("B", "A")
 	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WillReturnError(be4Boom)
 	_, err = a.Assign(ctx, technical, claim, "NIK1")
 	require.ErrorContains(t, err, "memilih petugas teknis")
+
+	// Rotasi > 1M memakai FLAG; galat bacanya menghentikan pemilihan.
+	big := registrasi.Claim{Policy: fire, EstimateValue: registrasi.Rupiah(2_000_000_000)}
+	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnRows(sqlmock.NewRows([]string{"f"}))
+	mock.ExpectExec(be4Q("rotasi_tim_tulis_besar")).WithArgs("A").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu_besar")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
+	_, err = a.Assign(ctx, technical, big, "NIK1")
+	require.NoError(t, err)
+	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnError(be4Boom)
+	_, err = a.Assign(ctx, technical, big, "NIK1")
+	require.ErrorContains(t, err, "membaca rotasi tim FLAG")
+	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnRows(sqlmock.NewRows([]string{"f"}).AddRow("B"))
+	mock.ExpectExec(be4Q("rotasi_tim_tulis_besar")).WillReturnError(be4Boom)
+	_, err = a.Assign(ctx, technical, big, "NIK1")
+	require.ErrorContains(t, err, "menulis rotasi tim FLAG")
 
 	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(position("PA"))
 	mock.ExpectQuery(be4Q("pic_teknik_pa")).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow("TEK1"))
@@ -397,11 +422,13 @@ func TestPolicyItemsItemOptions(t *testing.T) {
 	require.Nil(t, got)
 
 	fire := registrasi.Policy{Number: " POL ", ProdKe: " 1 ", Line: registrasi.LineFire}
-	doc := `{"PropertyItemList":[{"ItemType":" Bangunan ","PropertyItemGroup":"G1","TSIObjectItem":"1000.5"},
-		{"ItemType":"Bangunan","PropertyItemGroup":"G1","TSIObjectItem":"1"},
-		{"ItemType":"Hapus","FlagDelete":"1"},{"ItemType":""}]}`
+	cols := []string{"ITEMTYPE", "PROPERTYITEMGROUP", "TSIOBJECTITEM"}
 	mock.ExpectQuery(be4Q("item_pilihan_properti")).WithArgs("POL", "1", "OBJ1").
-		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(doc).AddRow(" "))
+		WillReturnRows(sqlmock.NewRows(cols).
+			AddRow(" Bangunan ", "G1", "1000.5").
+			AddRow("Bangunan", "G1", "1").
+			AddRow("", "G2", "5").
+			AddRow(nil, nil, nil))
 	got, err = p.ItemOptions(ctx, fire, " OBJ1 ")
 	require.NoError(t, err)
 	require.Equal(t, []registrasi.ItemOption{{Name: "Bangunan", Group: "G1", TSI: 100_050}}, got)
@@ -409,12 +436,40 @@ func TestPolicyItemsItemOptions(t *testing.T) {
 	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnError(be4Boom)
 	_, err = p.ItemOptions(ctx, fire, "OBJ1")
 	require.ErrorContains(t, err, "membaca item properti polis")
-	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnRows(sqlmock.NewRows([]string{"a", "b"}).AddRow("1", "2"))
+	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow("1"))
 	_, err = p.ItemOptions(ctx, fire, "OBJ1")
-	require.ErrorContains(t, err, "membaca dokumen item properti")
-	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow("{rusak"))
-	_, err = p.ItemOptions(ctx, fire, "OBJ1")
-	require.ErrorContains(t, err, "dokumen item properti")
+	require.ErrorContains(t, err, "membaca baris item properti")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPolicyItemsTravelBenefits(t *testing.T) {
+	db, mock := be4DB(t)
+	p := NewPolicyItems(db)
+	ctx := context.Background()
+
+	got, err := p.TravelBenefits(ctx, "  ")
+	require.NoError(t, err)
+	require.Nil(t, got, "tanpa plan tidak ada kueri")
+
+	mock.ExpectQuery(be4Q("item_pilihan_travel")).WithArgs("10089").
+		WillReturnRows(sqlmock.NewRows([]string{"ID", "INDCOVERAGENAME"}).
+			AddRow("10919", "   B.1. Bagasi  ").
+			AddRow("10920", "B.1. Bagasi").
+			AddRow("10921", "B.2. Keterlambatan").
+			AddRow("10922", nil))
+	got, err = p.TravelBenefits(ctx, " 10089 ")
+	require.NoError(t, err)
+	require.Equal(t, []registrasi.ItemOption{
+		{ID: "10919", Name: "B.1. Bagasi"},
+		{ID: "10921", Name: "B.2. Keterlambatan"},
+	}, got)
+
+	mock.ExpectQuery(be4Q("item_pilihan_travel")).WillReturnError(be4Boom)
+	_, err = p.TravelBenefits(ctx, "10089")
+	require.ErrorContains(t, err, "membaca manfaat plan Travel")
+	mock.ExpectQuery(be4Q("item_pilihan_travel")).WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow("1"))
+	_, err = p.TravelBenefits(ctx, "10089")
+	require.ErrorContains(t, err, "membaca baris manfaat Travel")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -482,4 +537,40 @@ func TestAssignerAttendanceLoop(t *testing.T) {
 
 	// Tanpa sumber absensi: kandidat pertama.
 	require.Equal(t, "A", NewAssigner(nil).firstPresent(context.Background(), claim, []string{"A", "B"}))
+}
+
+// TestTaskStoreUnassigned: kueri agent PIC Teknik otomatis.
+func TestTaskStoreUnassigned(t *testing.T) {
+	db, mock := be4DB(t)
+	s := NewTaskStore(db)
+	ctx := context.Background()
+	created := time.Date(2026, 10, 9, 1, 0, 0, 0, time.UTC)
+	row := []driver.Value{"T1", "K1", "PNCN.26.1", "pilih-surveyor", "WORKLIST", nil, "ServicePNC", created, nil, nil, nil}
+
+	mock.ExpectQuery(be4Q("tugas_belum_bertuan")).WithArgs("ServicePNC").
+		WillReturnRows(sqlmock.NewRows(be4Cols(11)).AddRow(row...))
+	got, err := s.UnassignedTechnicalTasks(ctx)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "ServicePNC", got[0].Owner)
+
+	mock.ExpectQuery(be4Q("tugas_kunci_belum_bertuan")).WithArgs("T1", "ServicePNC").
+		WillReturnRows(sqlmock.NewRows(be4Cols(11)).AddRow(row...))
+	locked, err := s.LockUnassigned(ctx, "T1")
+	require.NoError(t, err)
+	require.Equal(t, "T1", locked.ID)
+	mock.ExpectQuery(be4Q("tugas_kunci_belum_bertuan")).WillReturnRows(sqlmock.NewRows(be4Cols(11)))
+	_, err = s.LockUnassigned(ctx, "T1")
+	require.ErrorIs(t, err, registrasi.ErrTaskNotFound)
+	mock.ExpectQuery(be4Q("tugas_kunci_belum_bertuan")).WillReturnError(be4Boom)
+	_, err = s.LockUnassigned(ctx, "T1")
+	require.ErrorContains(t, err, "mengunci tugas T1")
+
+	mock.ExpectExec(be4Q("tugas_pindah_dari_antrean")).WithArgs("PIC1", "T1", "ServicePNC").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.Reassign(ctx, "T1", "PIC1"))
+	mock.ExpectExec(be4Q("tugas_pindah_dari_antrean")).WillReturnResult(sqlmock.NewResult(0, 0))
+	require.ErrorIs(t, s.Reassign(ctx, "T1", "PIC1"), registrasi.ErrTaskAlreadyClaimed)
+	mock.ExpectExec(be4Q("tugas_pindah_dari_antrean")).WillReturnError(be4Boom)
+	require.ErrorContains(t, s.Reassign(ctx, "T1", "PIC1"), "memindahkan tugas T1")
+	require.NoError(t, mock.ExpectationsWereMet())
 }

@@ -50,16 +50,6 @@ func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by 
 		return FaceSheetResult{}, registrasi.ErrFaceSheetNothingNew()
 	}
 
-	in, err := l.faceSheetInput(ctx, claim, p)
-	if err != nil {
-		return FaceSheetResult{}, err
-	}
-	sheet := registrasi.BuildFaceSheet(in)
-	content, err := l.renderer.Render(sheet)
-	if err != nil {
-		return FaceSheetResult{}, fmt.Errorf("registrasi/usecase: membentuk Claim Face Sheet: %w", err)
-	}
-
 	last, found, err := l.faceSheet.LastRevision(ctx, claim.ID, object.ID, p.Coverage)
 	if err != nil {
 		return FaceSheetResult{}, err
@@ -68,19 +58,35 @@ func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by 
 	if found {
 		revision = last + 1
 	}
-	now := in.Now
+	now := l.clock.Now().UTC()
 	fileName := registrasi.FaceSheetFileName(p.Object, p.Coverage, revision)
 
 	// `IsCFS_PNC == ""`: dibaca SEBELUM estimasinya dikunci.
 	firstFaceSheet := !claim.HasFaceSheet()
-	registrasi.LockEstimates(coverage, now)
-	claim.UpdatedBy = by.Identity
-	claim.UpdatedAt = now
 
+	// Urutannya mengikuti `DownloadClaimFaceSheet_act`: PIC Teknis dipilih (step 7–12) SEBELUM
+	// dokumen dibentuk, sehingga PIC yang tercetak sama dengan yang tersimpan. Pembentukan
+	// dokumen berada di dalam transaksi yang sama: bila gagal, pemilihan PIC, beban, rotasi
+	// tim, dan kunci estimasi ikut batal — tidak ada yang tercatat tanpa dokumennya.
+	var content []byte
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
 		if err := l.adoptTechnicalPICOnFaceSheet(ctx, &claim, by); err != nil {
 			return err
 		}
+		in, err := l.faceSheetInput(ctx, claim, p)
+		if err != nil {
+			return err
+		}
+		in.Now = now
+		sheet := registrasi.BuildFaceSheet(in)
+		if content, err = l.renderer.Render(sheet); err != nil {
+			return fmt.Errorf("registrasi/usecase: membentuk Claim Face Sheet: %w", err)
+		}
+
+		registrasi.LockEstimates(coverage, now)
+		claim.UpdatedBy = by.Identity
+		claim.UpdatedAt = now
+
 		// `DownloadClaimFaceSheet_act` step 14 — `AddTJobCQuota_SQL` untuk PIC akhir klaim,
 		// hanya pada Claim Face Sheet pertama.
 		if firstFaceSheet && registrasi.HasTechnicalPIC(claim) {
